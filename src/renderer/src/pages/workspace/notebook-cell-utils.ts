@@ -1,8 +1,32 @@
+import type { TranslationKey } from '@/i18n'
 import type { NotebookKernelKind, NotebookRunRecord } from '../../../../shared/notebook'
 
 // Groups the non-success terminal states rendered with a diagnostic error badge.
 const isProblemRunStatus = (status: NotebookRunRecord['status']): boolean =>
   status === 'failed' || status === 'timeout' || status === 'interrupted'
+
+// What that badge says. The three problem statuses share a style, but only a failure is an error: the
+// domain records an app-terminated interruption as NOT failed ("the code may have been fine"), so folding
+// it into "error" would put a statement on screen that the recorder explicitly denies. Shared by both cells
+// that render runs (the notebook pane and the session/provenance dialog) so the two cannot drift into
+// saying different things about the same run.
+const problemBadgeLabel = (
+  run: Pick<NotebookRunRecord, 'status' | 'interruptionReason'>,
+  errorLine: number | undefined,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string
+): string | undefined => {
+  if (!isProblemRunStatus(run.status)) return undefined
+  if (run.status === 'timeout') return t('ws.notebookRunTimeout')
+  if (run.status === 'interrupted') {
+    const reason = run.interruptionReason
+      ? ` — ${t(`ws.notebookInterruptionReason.${run.interruptionReason}` as TranslationKey)}`
+      : ''
+    return `${t('ws.notebookRunInterrupted')}${reason}`
+  }
+  return errorLine === undefined
+    ? t('ws.notebookRunError')
+    : t('ws.notebookRunErrorAtLine', { line: errorLine })
+}
 
 // Best-effort 1-based error line, parsed from the user-code frames of a Python traceback. The
 // executor compiles cells as "<cell>" (runtime errors) and ast.parse reports "<unknown>" (syntax
@@ -108,6 +132,7 @@ export {
   detectCellLanguage,
   environmentLabel,
   isProblemRunStatus,
+  problemBadgeLabel,
   kernelKindLabel,
   kernelOriginLabel,
   resolveRunErrorLine,

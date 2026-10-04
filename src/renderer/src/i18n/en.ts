@@ -4081,6 +4081,8 @@ export const en: Record<ZhKey, string> = {
   'reviewer.summaryPending': 'Review pending',
   'artifact.reconstructionBounded':
     'The immutable Execution Log was bounded; the reconstruction may include a provenance-gap comment.',
+  'artifact.scriptTruncated':
+    'This script was shortened before it was stored — it is not the whole script.',
   'artifact.checkingPreviousScript': 'Checking for a previously generated script…',
   'artifact.provenanceSourceLabel': 'Source',
   'common.upTo': 'Up to {value}',

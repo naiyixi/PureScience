@@ -4168,6 +4168,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': 'Prüfung ausstehend',
   'artifact.reconstructionBounded':
     'Das unveränderliche Ausführungsprotokoll wurde begrenzt; die Rekonstruktion kann einen Hinweis auf eine Herkunftslücke enthalten.',
+  'artifact.scriptTruncated':
+    'Dieses Skript wurde vor dem Speichern gekürzt — es ist nicht das ganze Skript.',
   'artifact.checkingPreviousScript': 'Es wird geprüft, ob bereits ein Skript erzeugt wurde…',
   'artifact.provenanceSourceLabel': 'Quelle',
   'common.upTo': 'bis zu {value}',

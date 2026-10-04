@@ -121,9 +121,12 @@ const toNotebookOutput = (output: ProvenanceNotebookRun['outputs'][number]): Not
 
 const toNotebookRun = (
   record: ProvenanceNotebookRun
-): { run: NotebookRunRecord; index: number } => {
+): { run: NotebookRunRecord; index: number; scriptTruncated: boolean } => {
   return {
     index: record.runIndex,
+    // Carried out of the projection rather than dropped: the stored script may be a clipped version of the
+    // run's script, and the cell below shows (and the .ipynb export carries) that clipped text.
+    scriptTruncated: record.scriptTruncated === true,
     run: {
       runId: record.runId,
       cellId: `provenance-${record.runId}`,
@@ -1232,8 +1235,13 @@ const ArtifactProvenancePanel = ({
                 <p className="px-4 py-2 text-xs text-danger-000">{notebookExportError}</p>
               ) : null}
               <div className="divide-y divide-border-300/50">
-                {executionRuns.map(({ run, index }) => (
-                  <NotebookDialogCell key={run.runId} run={run} index={index} />
+                {executionRuns.map(({ run, index, scriptTruncated }) => (
+                  <NotebookDialogCell
+                    key={run.runId}
+                    run={run}
+                    index={index}
+                    scriptTruncated={scriptTruncated}
+                  />
                 ))}
               </div>
             </div>

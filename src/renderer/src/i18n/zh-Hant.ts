@@ -3753,6 +3753,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryOutdated': '{summary}（已過期）',
   'reviewer.summaryPending': '等待審查',
   'artifact.reconstructionBounded': '不可變的執行日誌已被截斷；重建結果可能帶有溯源缺口註釋。',
+  'artifact.scriptTruncated': '這段腳本在存下來之前被截短了——它不是完整腳本。',
   'artifact.checkingPreviousScript': '正在檢查先前產生的指令碼…',
   'artifact.provenanceSourceLabel': '來源',
   'common.upTo': '最多 {value}',

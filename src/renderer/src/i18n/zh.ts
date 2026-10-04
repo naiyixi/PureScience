@@ -3813,6 +3813,7 @@ export const zh = {
   'reviewer.summaryOutdated': '{summary}（已过期）',
   'reviewer.summaryPending': '等待审查',
   'artifact.reconstructionBounded': '不可变的执行日志已被截断；重建结果可能带有溯源缺口注释。',
+  'artifact.scriptTruncated': '这段脚本在存下来之前被截短了——它不是完整脚本。',
   'artifact.checkingPreviousScript': '正在检查此前生成的脚本…',
   'artifact.provenanceSourceLabel': '来源',
   'common.upTo': '最多 {value}',

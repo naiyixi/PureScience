@@ -20,7 +20,8 @@ import {
   kernelKindLabel,
   kernelOriginLabel,
   resolveRunErrorLine,
-  resolveRunKernelKind
+  resolveRunKernelKind,
+  problemBadgeLabel
 } from './notebook-cell-utils'
 import { loadSessionNotebookRuns } from './session-notebook-data'
 
@@ -42,14 +43,21 @@ const pluralize = (count: number, word: string): string =>
 const NotebookDialogCell = ({
   run,
   index,
-  showInputData = false
+  showInputData = false,
+  scriptTruncated = false
 }: {
   run: NotebookRunRecord
   index: number
   showInputData?: boolean
+  // True when the stored script is not the whole script (the provenance log clips long cells for storage).
+  // Stated on the cell, because the code block below is what a reader copies and what the .ipynb export
+  // carries — an unlabelled clipped script is a false completeness claim.
+  scriptTruncated?: boolean
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const isProblem = isProblemRunStatus(run.status)
   const errorLine = isProblem ? resolveRunErrorLine(run) : undefined
+  const problemLabel = problemBadgeLabel(run, errorLine, t)
   const kind = resolveRunKernelKind(run)
   const originLabel = kernelOriginLabel(kind)
 
@@ -60,13 +68,16 @@ const NotebookDialogCell = ({
           <span className="font-mono text-text-300">[{index}]</span>
           <span className="rounded bg-bg-300 px-1.5 py-0.5 text-text-200">{kind}</span>
           {isProblem ? (
-            errorLine ? (
-              <span className="rounded bg-danger-000 px-1.5 py-0.5 font-medium text-white">
-                error (line {errorLine})
-              </span>
-            ) : (
-              <span className="rounded bg-danger-900 px-1.5 py-0.5 text-danger-000">error</span>
-            )
+            <span
+              className={
+                run.status === 'failed'
+                  ? 'rounded bg-danger-000 px-1.5 py-0.5 font-medium text-white'
+                  : 'rounded bg-danger-900 px-1.5 py-0.5 text-danger-000'
+              }
+              data-testid="session-notebook-cell-problem"
+            >
+              {problemLabel}
+            </span>
           ) : null}
         </div>
         {originLabel ? (
@@ -80,6 +91,14 @@ const NotebookDialogCell = ({
           inputFiles={run.inputFiles ?? []}
           className="mb-2 rounded-md border border-border bg-muted px-2 py-1.5"
         />
+      ) : null}
+      {scriptTruncated ? (
+        <p
+          className="mb-2 rounded-md border border-warning-100/50 bg-warning-100/10 px-2 py-1.5 text-xs text-text-200"
+          data-testid="session-notebook-cell-script-truncated"
+        >
+          {t('artifact.scriptTruncated')}
+        </p>
       ) : null}
       <NotebookCodeBlock
         code={run.script}

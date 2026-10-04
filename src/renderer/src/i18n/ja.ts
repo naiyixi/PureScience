@@ -4045,6 +4045,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': 'レビュー待ち',
   'artifact.reconstructionBounded':
     '不変の実行ログが上限に達したため、再構成の結果に来歴ギャップの注記が含まれる場合があります。',
+  'artifact.scriptTruncated': 'このスクリプトは保存前に短縮されています——全体ではありません。',
   'artifact.checkingPreviousScript': '以前に生成されたスクリプトを確認しています…',
   'artifact.provenanceSourceLabel': '取得元',
   'common.upTo': '最大 {value}',

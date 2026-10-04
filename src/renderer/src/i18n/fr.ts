@@ -4155,6 +4155,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': 'Révision en attente',
   'artifact.reconstructionBounded':
     "Le journal d'exécution immuable a été tronqué ; la reconstruction peut contenir un commentaire signalant une lacune de provenance.",
+  'artifact.scriptTruncated':
+    "Ce script a été raccourci avant l'enregistrement — ce n'est pas le script complet.",
   'artifact.checkingPreviousScript': 'Vérification d’un script déjà généré…',
   'artifact.provenanceSourceLabel': 'Source',
   'common.upTo': "jusqu'à {value}",

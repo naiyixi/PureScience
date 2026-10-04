@@ -4130,6 +4130,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': 'Revisión pendiente',
   'artifact.reconstructionBounded':
     'El registro de ejecución inmutable se truncó; la reconstrucción puede incluir un comentario sobre una laguna de procedencia.',
+  'artifact.scriptTruncated': 'Este script se acortó antes de guardarse: no es el script completo.',
   'artifact.checkingPreviousScript': 'Comprobando si ya existe un script generado…',
   'artifact.provenanceSourceLabel': 'Origen',
   'common.upTo': 'hasta {value}',

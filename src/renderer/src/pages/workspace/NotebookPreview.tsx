@@ -1,4 +1,4 @@
-import { useLanguage, type TranslationKey } from '@/i18n'
+import { useLanguage } from '@/i18n'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
@@ -31,6 +31,7 @@ import {
   resolveRunErrorLine,
   environmentLabel,
   isProblemRunStatus,
+  problemBadgeLabel,
   kernelKindLabel,
   kernelOriginLabel,
   resolveRunEnvironment,
@@ -199,24 +200,7 @@ const NotebookRunCell = ({
   const { t } = useLanguage()
   const isProblem = isProblemRunStatus(run.status)
   const errorLine = isProblem ? resolveRunErrorLine(run) : undefined
-  // A run can stop for reasons that are not the code's fault. `isProblemRunStatus` groups all three
-  // problem statuses for styling, but calling every one of them "error" says something the domain layer
-  // explicitly denies — `repository.ts:273`: an `interrupted` run whose reason is 'app-terminated' is NOT
-  // failed, "the code may have been fine". The badge therefore states the status it actually has, and an
-  // interruption carries its named reason instead of being folded into an error.
-  const problemLabel = ((): string | undefined => {
-    if (!isProblem) return undefined
-    if (run.status === 'timeout') return t('ws.notebookRunTimeout')
-    if (run.status === 'interrupted') {
-      const reason = run.interruptionReason
-        ? ` — ${t(`ws.notebookInterruptionReason.${run.interruptionReason}` as TranslationKey)}`
-        : ''
-      return `${t('ws.notebookRunInterrupted')}${reason}`
-    }
-    return errorLine === undefined
-      ? t('ws.notebookRunError')
-      : t('ws.notebookRunErrorAtLine', { line: errorLine })
-  })()
+  const problemLabel = problemBadgeLabel(run, errorLine, t)
   const kind = resolveRunKernelKind(run)
   const originLabel = kernelOriginLabel(kind)
 

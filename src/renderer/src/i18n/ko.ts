@@ -3979,6 +3979,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': '검토 대기 중',
   'artifact.reconstructionBounded':
     '변경할 수 없는 실행 로그가 잘렸습니다. 재구성 결과에 출처 공백 주석이 포함될 수 있습니다.',
+  'artifact.scriptTruncated': '이 스크립트는 저장 전에 잘렸습니다 — 전체 스크립트가 아닙니다.',
   'artifact.checkingPreviousScript': '이전에 생성된 스크립트를 확인하는 중…',
   'artifact.provenanceSourceLabel': '출처',
   'common.upTo': '최대 {value}',

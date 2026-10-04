@@ -4058,6 +4058,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'reviewer.summaryPending': 'Проверка ожидается',
   'artifact.reconstructionBounded':
     'Неизменяемый журнал выполнения был ограничен; в реконструкции может быть комментарий о пробеле в происхождении.',
+  'artifact.scriptTruncated': 'Этот скрипт был сокращён перед сохранением — это не полный скрипт.',
   'artifact.checkingPreviousScript': 'Проверяем, не создан ли уже сценарий…',
   'artifact.provenanceSourceLabel': 'Источник',
   'common.upTo': 'до {value}',
