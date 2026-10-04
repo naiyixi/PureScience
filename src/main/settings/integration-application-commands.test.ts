@@ -43,6 +43,7 @@ const expectedConnectorChannels = [
   'settings:set-connectors-enabled',
   'settings:set-connector-auto-allow',
   'settings:set-tool-permission',
+  'settings:sign-out-custom-server',
   'settings:set-ncbi-credentials',
   'settings:add-custom-server',
   'settings:set-custom-server-enabled',
@@ -126,7 +127,7 @@ const createDependencies = (): Readonly<{
 }
 
 describe('Settings integration application commands', () => {
-  it('defines the exact 22-command Skill, Connector, and approval inventory', () => {
+  it('defines the exact 23-command Skill, Connector, and approval inventory', () => {
     const groups = [
       settingsSkillApplicationCommandGroup,
       settingsConnectorApplicationCommandGroup,
@@ -160,7 +161,7 @@ describe('Settings integration application commands', () => {
     expect(settingsApprovalApplicationCommandGroup.commands.map((command) => command.name)).toEqual(
       expectedApprovalChannels
     )
-    expect(groups.reduce((count, group) => count + group.commands.length, 0)).toBe(22)
+    expect(groups.reduce((count, group) => count + group.commands.length, 0)).toBe(23)
     expect(router.dispatcher.commandNames()).toEqual([...expectedChannels].sort())
     expect(settingsChannels).toEqual(
       expect.arrayContaining([
@@ -169,7 +170,7 @@ describe('Settings integration application commands', () => {
         ...expectedApprovalChannels
       ])
     )
-    expect(integrationContracts).toHaveLength(22)
+    expect(integrationContracts).toHaveLength(23)
     expect(
       integrationContracts
         ?.filter(

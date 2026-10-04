@@ -4034,5 +4034,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': '외 {count}건',
   'references.journalMetrics.conflictBadgeTitle':
     '같은 연도에 서로 다른 출처의 값이 여러 개 있습니다. 아래에 모두 표시합니다.',
-  'references.journalMetrics.conflictLine': '함께: {value}({year} · {source})'
+  'references.journalMetrics.conflictLine': '함께: {value}({year} · {source})',
+  'settings.signOutOf': '{name}에서 로그아웃',
+  'settings.oauthSignOutFailed': '로그아웃하지 못했습니다. 다시 시도하세요.'
 }

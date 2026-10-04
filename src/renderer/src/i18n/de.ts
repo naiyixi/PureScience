@@ -4226,5 +4226,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': 'außerdem {count}',
   'references.journalMetrics.conflictBadgeTitle':
     'Für dasselbe Jahr gibt es mehrere Werte aus verschiedenen Quellen; alle sind unten aufgeführt.',
-  'references.journalMetrics.conflictLine': 'außerdem {value} ({year} · {source})'
+  'references.journalMetrics.conflictLine': 'außerdem {value} ({year} · {source})',
+  'settings.signOutOf': 'Von {name} abmelden',
+  'settings.oauthSignOutFailed': 'Abmelden fehlgeschlagen. Bitte erneut versuchen.'
 }

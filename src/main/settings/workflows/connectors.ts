@@ -27,6 +27,7 @@ type ConnectorSettingsWorkflowStore = Pick<
   | 'updateCustomServer'
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
+  | 'signOutCustomServer'
   | 'exportMcpServers'
   | 'importMcpServers'
 >
@@ -73,6 +74,12 @@ class ConnectorSettingsWorkflows {
 
   async setToolPermission(request: SetToolPermissionRequest): WorkflowResult<'setToolPermission'> {
     return this.afterConnectorsChanged(() => this.settings.setToolPermission(request))
+  }
+
+  // IC21: signing out invalidates the connector projection (the row must stop reading "Connected"), so it
+  // goes through the same after-change hook as the other connector mutations.
+  async signOutCustomServer(request: { id: string }): WorkflowResult<'signOutCustomServer'> {
+    return this.afterConnectorsChanged(() => this.settings.signOutCustomServer(request))
   }
 
   async setNcbiCredentials(

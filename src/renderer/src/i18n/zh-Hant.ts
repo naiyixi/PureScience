@@ -3803,5 +3803,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': '另 {count} 條',
   'references.journalMetrics.conflictBadgeTitle':
     '同一年份存在來自不同來源的多個數值；下方全部列出。',
-  'references.journalMetrics.conflictLine': '同時：{value}（{year} · {source}）'
+  'references.journalMetrics.conflictLine': '同時：{value}（{year} · {source}）',
+  'settings.signOutOf': '登出 {name}',
+  'settings.oauthSignOutFailed': '登出失敗，請重試。'
 }

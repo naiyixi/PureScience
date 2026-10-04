@@ -4186,5 +4186,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': 'también {count}',
   'references.journalMetrics.conflictBadgeTitle':
     'El mismo año tiene varios valores de fuentes distintas; todos se listan abajo.',
-  'references.journalMetrics.conflictLine': 'también {value} ({year} · {source})'
+  'references.journalMetrics.conflictLine': 'también {value} ({year} · {source})',
+  'settings.signOutOf': 'Cerrar sesión de {name}',
+  'settings.oauthSignOutFailed': 'No se pudo cerrar la sesión. Inténtalo de nuevo.'
 }

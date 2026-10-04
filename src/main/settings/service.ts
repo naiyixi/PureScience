@@ -1236,6 +1236,15 @@ class SettingsService {
     this.connectors.setCustomServerToolsProvider(provider)
   }
 
+  // IC21: pass the sign-out provider through to the Connector module (see its own comment).
+  setCustomServerSignOutProvider(provider: (serverId: string) => Promise<void>): void {
+    this.connectors.setCustomServerSignOutProvider(provider)
+  }
+
+  signOutCustomServer(request: { id: string }): Promise<ConnectorsSnapshot> {
+    return this.connectors.signOutCustomServer(request)
+  }
+
   // Returns the subset of forced ids that are currently disabled in settings — i.e. the picks that need
   // a respawn to materialize. Enabled picks are already present and need no reconnect.
   async skillsNeedingForceLoad(forcedIds: string[]): Promise<string[]> {

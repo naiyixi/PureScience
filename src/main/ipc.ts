@@ -1071,6 +1071,9 @@ const createApplicationModules = async (
   settingsService.setCustomServerToolsProvider((server) =>
     mcpClientManager.listTools(toCustomMcpConfig(server))
   )
+  // IC21: signing out also drops the live client session, so a signed-out server cannot keep answering from
+  // a connection the user just ended.
+  settingsService.setCustomServerSignOutProvider((serverId) => mcpClientManager.close(serverId))
   settingsService.setCustomServerAuthenticator(
     async (serverId) => {
       const server = (await settingsService.getConnectors())?.customMcpServers?.find(

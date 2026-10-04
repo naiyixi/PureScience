@@ -312,6 +312,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.setUiLanguage': 'settings:set-ui-language',
   'settings.setUseIntent': 'settings:set-use-intent',
   'settings.setVisionModel': 'settings:set-vision-model',
+  'settings.signOutCustomServer': 'settings:sign-out-custom-server',
   'settings.skillAvailability': 'settings:skill-availability',
   'settings.skillReuse': 'settings:skill-reuse',
   'settings.testCredential': 'settings:test-credential',

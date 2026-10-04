@@ -4137,5 +4137,7 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.conflictBadge': 'also {count}',
   'references.journalMetrics.conflictBadgeTitle':
     'The same year holds more than one value from different sources; all are listed below.',
-  'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})'
+  'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})',
+  'settings.signOutOf': 'Sign out of {name}',
+  'settings.oauthSignOutFailed': 'Could not sign out. Try again.'
 }

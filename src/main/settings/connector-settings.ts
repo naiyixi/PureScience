@@ -63,6 +63,8 @@ class ConnectorSettingsModule {
   // IC19: set by the composition root; absent means "no live tool list available" (the detail still opens).
   private customServerToolsProvider:
     ((server: StoredCustomMcpServer) => Promise<McpClientManagerTool[]>) | undefined
+  // IC21: set by the composition root; drops the live MCP client session for a server the user signed out of.
+  private customServerSignOutProvider: ((serverId: string) => Promise<void>) | undefined
 
   constructor(private readonly repository: SettingsRepository) {}
 
@@ -549,6 +551,27 @@ class ConnectorSettingsModule {
       ...stored,
       ...(state ? { oauthRef: encryptKey(JSON.stringify(state)) } : { oauthRef: undefined })
     })
+  }
+
+  // IC21: signing out of a user-added OAuth server. The durable token state IS the sign-in — the provider
+  // reads access_token from it and re-runs the OAuth flow when it is gone — so clearing it is the honest
+  // sign-out, and the live client is dropped in the same move so nothing keeps using a session the user just
+  // ended. The provider is injected (the settings module owns no MCP client), same as the tools provider.
+  setCustomServerSignOutProvider(provider: (serverId: string) => Promise<void>): void {
+    this.customServerSignOutProvider = provider
+  }
+
+  async signOutCustomServer(request: { id: string }): Promise<ConnectorsSnapshot> {
+    const stored = (await this.repository.getSettings()).connectors?.customMcpServers?.find(
+      (server) => server.id === request.id
+    )
+    if (!stored) throw new Error(`Unknown custom connector: ${request.id}`)
+    if (!stored.oauth) throw new Error(`Custom connector "${request.id}" is not configured for OAuth`)
+
+    await this.saveCustomServerOAuthState(request.id, undefined)
+    await this.customServerSignOutProvider?.(request.id)
+
+    return this.connectorsSnapshot()
   }
 
   private decryptOAuthState(ref: string): StoredCustomMcpOAuthState | undefined {

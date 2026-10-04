@@ -4100,5 +4100,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': '他に {count} 件',
   'references.journalMetrics.conflictBadgeTitle':
     '同じ年でも情報源により複数の値があります。すべて下に表示しています。',
-  'references.journalMetrics.conflictLine': '併記：{value}（{year} · {source}）'
+  'references.journalMetrics.conflictLine': '併記：{value}（{year} · {source}）',
+  'settings.signOutOf': '{name} からサインアウト',
+  'settings.oauthSignOutFailed': 'サインアウトできませんでした。もう一度お試しください。'
 }

@@ -6,6 +6,7 @@ import {
   FileCode2,
   FileUp,
   Globe,
+  LogOut,
   Pencil,
   Plus,
   Search,
@@ -109,6 +110,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   const cancelCustomServerAuthentication = useSettingsStore(
     (state) => state.cancelCustomServerAuthentication
   )
+  const signOutCustomServer = useSettingsStore((state) => state.signOutCustomServer)
   const setNcbiCredentials = useSettingsStore((state) => state.setNcbiCredentials)
 
   const [bulkOutcome, setBulkOutcome] = useState<{
@@ -234,6 +236,17 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   const clearKey = async (): Promise<void> => {
     await setNcbiCredentials({ contactEmail: emailField, apiKey: '' })
     setKeyField('')
+  }
+
+  // IC21: end a signed-in session for a user-added server. The durable tokens are cleared in main and the
+  // projection is reconciled, so the row stops claiming to be connected.
+  const signOut = async (id: string): Promise<void> => {
+    setAuthError(null)
+    try {
+      await signOutCustomServer({ id })
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : t('settings.oauthSignOutFailed'))
+    }
   }
 
   const signIn = async (id: string): Promise<void> => {
@@ -743,6 +756,13 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                         onClick={() => void requestRemoval(server)}
                         danger
                       />
+                      {server.oauth?.hasTokens ? (
+                        <SettingsIconAction
+                          label={t('settings.signOutOf').replace('{name}', server.name)}
+                          icon={LogOut}
+                          onClick={() => void signOut(server.id)}
+                        />
+                      ) : null}
                       {server.oauth ? (
                         <Button
                           type="button"

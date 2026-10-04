@@ -40,6 +40,7 @@ type ConnectorIntegrationWorkflows = Pick<
   | 'updateCustomServer'
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
+  | 'signOutCustomServer'
 >
 
 type OwnerArgs<Owner, Method extends keyof Owner> = Owner[Method] extends (
@@ -121,6 +122,11 @@ const settingsIntegrationApplicationCommands = Object.freeze({
     OwnerArgs<ConnectorIntegrationWorkflows, 'setToolPermission'>,
     OwnerResult<ConnectorIntegrationWorkflows, 'setToolPermission'>
   >('settings:set-tool-permission'),
+  signOutCustomServer: defineApplicationCommand<
+    'settings:sign-out-custom-server',
+    OwnerArgs<ConnectorIntegrationWorkflows, 'signOutCustomServer'>,
+    OwnerResult<ConnectorIntegrationWorkflows, 'signOutCustomServer'>
+  >('settings:sign-out-custom-server'),
   setNcbiCredentials: defineApplicationCommand<
     'settings:set-ncbi-credentials',
     OwnerArgs<ConnectorIntegrationWorkflows, 'setNcbiCredentials'>,
@@ -191,6 +197,7 @@ const settingsConnectorApplicationCommandGroup = defineApplicationCommandGroup(
     settingsIntegrationApplicationCommands.setConnectorsEnabled,
     settingsIntegrationApplicationCommands.setConnectorAutoAllow,
     settingsIntegrationApplicationCommands.setToolPermission,
+    settingsIntegrationApplicationCommands.signOutCustomServer,
     settingsIntegrationApplicationCommands.setNcbiCredentials,
     settingsIntegrationApplicationCommands.addCustomServer,
     settingsIntegrationApplicationCommands.setCustomServerEnabled,
@@ -247,6 +254,8 @@ const registerIntegrationSettingsApplicationCommands = (
         dependencies.connectors.setConnectorAutoAllow(args[0]),
       'settings:set-tool-permission': ({ args }) =>
         dependencies.connectors.setToolPermission(args[0]),
+      'settings:sign-out-custom-server': ({ args }) =>
+        dependencies.connectors.signOutCustomServer(args[0]),
       'settings:set-ncbi-credentials': ({ args }) =>
         dependencies.connectors.setNcbiCredentials(args[0]),
       'settings:add-custom-server': ({ args }) => dependencies.connectors.addCustomServer(args[0]),

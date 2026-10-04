@@ -544,6 +544,10 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:set-tool-permission', (_event, request: SetToolPermissionRequest) =>
     workflows.connectors.setToolPermission(request)
   )
+  // IC21: sign out of a user-added OAuth server — clears the durable token state and drops the live client.
+  ipcMainHandle('settings:sign-out-custom-server', (_event, request: { id: string }) =>
+    workflows.connectors.signOutCustomServer(request)
+  )
   ipcMainHandle('settings:set-ncbi-credentials', (_event, request: SetNcbiCredentialsRequest) =>
     workflows.connectors.setNcbiCredentials(request)
   )

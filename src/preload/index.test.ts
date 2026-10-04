@@ -596,6 +596,8 @@ describe('preload bridge — public surface inventory', () => {
       'settings.setUiLanguage',
       'settings.setUseIntent',
       'settings.setVisionModel',
+      // IC21: sign out of a user-added OAuth MCP server.
+      'settings.signOutCustomServer',
       'settings.skillAvailability',
       'settings.skillReuse',
       'settings.testCredential',
@@ -708,7 +710,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(236)
+    expect(runtimeContracts).toHaveLength(237)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

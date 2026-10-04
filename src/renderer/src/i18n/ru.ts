@@ -4114,5 +4114,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': 'ещё {count}',
   'references.journalMetrics.conflictBadgeTitle':
     'За один год есть несколько значений из разных источников; все перечислены ниже.',
-  'references.journalMetrics.conflictLine': 'также {value} ({year} · {source})'
+  'references.journalMetrics.conflictLine': 'также {value} ({year} · {source})',
+  'settings.signOutOf': 'Выйти из {name}',
+  'settings.oauthSignOutFailed': 'Не удалось выйти. Повторите попытку.'
 }

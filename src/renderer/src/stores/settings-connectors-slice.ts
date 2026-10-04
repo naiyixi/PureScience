@@ -37,6 +37,8 @@ export type SettingsConnectorsActions = {
   updateCustomServer: (request: UpdateCustomServerRequest) => Promise<void>
   authenticateCustomServer: (request: AuthenticateCustomServerRequest) => Promise<void>
   cancelCustomServerAuthentication: (request: AuthenticateCustomServerRequest) => Promise<void>
+  // IC21: sign out of a user-added OAuth server (clears its durable tokens in main).
+  signOutCustomServer: (request: { id: string }) => Promise<void>
   setCustomServerEnabled: (id: string, enabled: boolean) => Promise<void>
   removeCustomServer: (id: string) => Promise<void>
   enqueueApproval: (request: ConnectorApprovalRequest) => void
@@ -55,6 +57,7 @@ type SettingsConnectorsCommands = Pick<
   | 'updateCustomServer'
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
+  | 'signOutCustomServer'
   | 'setCustomServerEnabled'
   | 'removeCustomServer'
   | 'respondConnectorApproval'
@@ -137,6 +140,11 @@ export const createSettingsConnectorsSlice = ({
     },
     cancelCustomServerAuthentication: (request) =>
       getCommands().cancelCustomServerAuthentication(request),
+    signOutCustomServer: async (request) => {
+      // The durable tokens live in main; reconciling afterwards is what makes the row stop reading
+      // "Connected" — the same refresh the sign-in path performs when authentication fails.
+      await reconcile(() => getCommands().signOutCustomServer(request))
+    },
     setCustomServerEnabled: async (id, enabled) => {
       setState((state) => ({
         customServers: state.customServers.map((server) =>

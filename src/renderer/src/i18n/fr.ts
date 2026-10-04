@@ -4213,5 +4213,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.conflictBadge': 'aussi {count}',
   'references.journalMetrics.conflictBadgeTitle':
     'La même année compte plusieurs valeurs de sources différentes ; toutes sont listées ci-dessous.',
-  'references.journalMetrics.conflictLine': 'aussi {value} ({year} · {source})'
+  'references.journalMetrics.conflictLine': 'aussi {value} ({year} · {source})',
+  'settings.signOutOf': 'Se déconnecter de {name}',
+  'settings.oauthSignOutFailed': 'Échec de la déconnexion. Réessayez.'
 }

@@ -3863,7 +3863,9 @@ export const zh = {
   'references.journalMetrics.conflictBadge': '另 {count} 条',
   'references.journalMetrics.conflictBadgeTitle':
     '同一年份存在来自不同来源的多个数值；下方全部列出。',
-  'references.journalMetrics.conflictLine': '同时：{value}（{year} · {source}）'
+  'references.journalMetrics.conflictLine': '同时：{value}（{year} · {source}）',
+  'settings.signOutOf': '退出 {name} 的登录',
+  'settings.oauthSignOutFailed': '退出登录失败，请重试。'
 }
 
 export type ZhKey = keyof typeof zh

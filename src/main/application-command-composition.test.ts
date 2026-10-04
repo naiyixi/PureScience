@@ -178,7 +178,7 @@ describe('application command composition', () => {
     // the two export channels.
     // One more for the window package install/uninstall (runtime:manage-packages, IC13), local-only like
     // the named-environment surface it sits beside.
-    expect(composition.localWeb.commandNames()).toHaveLength(349)
+    expect(composition.localWeb.commandNames()).toHaveLength(350)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -197,7 +197,7 @@ describe('application command composition', () => {
     // the plain Web request profile, which is mapped on both Web surfaces), so remote dispatch grows with
     // local. The fail-closed rejection set is unchanged — neither channel is a rejection stub. Same +1 for
     // project-files:list-kinds, which carries no surface flag.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(226)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(227)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(123)
     await expect(
