@@ -323,6 +323,66 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 **注**：本条与「追加四」的用户退出路径互不替代——那条走**具名关停**（`procs.clear()` 先清 map），
 本条走**崩溃分支 + latch**；两条现在都落同一个域词汇 `interrupted` + `app-terminated`。
 
+## 追加七：关停拆两半（拒绝即刻 / 收尾等队列）+ 硬化①落地，都已验收
+
+### 1) 关停的"拒绝"与"收进程树"必须拆开（本仓自己的测试抓出来的）
+
+上一版把 `shutdownExecutor()` 改成**直接**调 `executor.shutdown(...)`（其第一段同步清 map + 拒在飞）。
+跑**整个 `src/main/notebook` 目录**的单测才暴露：`runtime-service.test.ts` 有一条
+**「drains a callback that already owns persistence before session teardown」**——它钉住的是
+**持久化回调在写盘时不能被收尾打断**（`updateKernelStatus` 卡在闸门上时，executor 的 `shutdown`
+**不该被调用**）。上一版违反了它（20ms 内 `shutdown` 已被调用）。
+
+⇒ 最终形状是**拆两半**（两条约束同时成立）：
+
+| 阶段 | 调用 | 时机 | 保证 |
+| --- | --- | --- | --- |
+| 拒绝 | `executor.refuseInflightRuns({interruptionReason})` | **同步**，队列之前 | 退出预算耗尽也能落下中断；内核已被移出路由 map ⇒ 其退出不再是"意外崩溃" |
+| 收尾 | `executor.shutdown({interruptionReason})` | 生命周期队列**之后** | 排队中的持久化写不被中途打断；只收 `refuseInflightRuns` 记下的那些 loop（`refusedProcs`，避免泄漏） |
+
+接口上 `refuseInflightRuns` 是**可选**的：不会拆的 executor（测试替身等）继续走单次 `shutdown` 的顺序。
+kernel-executor 内部 `shutdown()` 仍会先调一次 `refuseInflightRuns()`（幂等），所以内核重启那条路行为不变。
+
+### 2) 硬化①：显式项目名不一致时拒绝（不再静默答另一份历史）
+
+- 落点：`session-lifecycle.ensure()` 在拿到 session 后比对——**只有调用方"显式"给了项目名**且与
+  session 自己的项目不符时才抛 `NotebookSessionProjectMismatchError`（具名、带两边的名字）；
+  **省略**项目名是**文档化的回退**（按 sessionId 解析），必须继续可用。
+- 为什么必须区分：`local-rpc-notebook-adapter.ts` 只断言 `sessionId` + `workspaceCwd`
+  并把参数原样透传 ⇒ **agent/RPC 路径根本不带项目名**。若把"省略"也当冲突，
+  agent 的 notebook 调用会在 UI 已建会话时直接失败（真回归）。这条边界是读代码确认的，不是猜的。
+- 单元：4 例（显式相符 ⇒ 通过；显式不符 ⇒ 具名拒绝；省略 ⇒ 回退到默认项目名；省略 ⇒ **按 session 自己的项目原样服务**）。
+- **认证 spec 按"坑"里写的方式修正**（而不是放宽断言）：先用 `notebook.getReference({sessionId, workspaceCwd})`
+  取应用自己解析出的项目名，再把它用于后续所有 notebook 调用——与本仓面板走同一条路。
+  最新读数第一行即为证据：`[interrupt] notebookProject=cmutfovcl0000wfbgsh3v9f48`。
+
+### 3) 真机读数（**改完重取**，树 = 拆两半 + 硬化① + spec 修正）
+
+```
+[interrupt] notebookProject=cmutfovcl0000wfbgsh3v9f48
+[interrupt] attempt 1: running=true statuses=["completed","running"]      ← 前提实测成立
+[interrupt] confirm action: "Quit"
+[interrupt] run.json on disk: [["…-1","completed",null],
+                              ["…-2","interrupted","app-terminated"]]
+1 passed (47.4s)
+```
+
+### 4) 验证与两个如实说明
+
+- `typecheck:node` **0 错**；`src/main/notebook` 目录单测 **81 passed / 1 failed / 8 skipped**，其中那 1 条
+  （`executeShell` 的 `expected '' to contain 'hi'`）**与本次改动无关**（没碰 shell 路径），
+  **单独重跑该文件 184/184 全绿** ⇒ 判为负载下的偶发，不是回归；`session-lifecycle`/`session-aggregate`/
+  `runtime-service`（含上表那条持久化顺序用例）全绿。
+- 硬化① 落地时我犯了一个机械错误并且被测试抓住：`export class X` 与 `export { X }` 重复导出
+  （esbuild: `Multiple exports with the same name`）——已修（`typecheck` 反而没报，是 vitest 的 transform 报的）。
+
+### 5) 仍挂账
+
+**硬化②（只读通道不该落档）**：仍未做。而且**现在更清楚了它不能怎么做**——只读路径若在没有权威项目名
+（例如省略项目名、按 sessionId 解析）时就**创建聚合**，会把该 session 的项目身份**钉错**，
+之后真正的写路径会把 run 写进那个幻影路径。所以 ② 必须**先有权威项目名，再决定是否需要落档**，
+不能只加个"读不写"开关。这条留作独立排期。
+
 
 
 

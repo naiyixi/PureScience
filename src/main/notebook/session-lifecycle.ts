@@ -45,6 +45,24 @@ type NotebookSessionLifecycleOptions = {
   toSessionReference: (session: RuntimeSession) => NotebookSessionReference
 }
 
+// A notebook session belongs to exactly one project, and its history lives under that project's path. The
+// session registry keys by sessionId alone, so a caller naming a different project would otherwise be
+// answered from another project's document — silently, which reads like "the history is gone" (and a write
+// would land in that other project). Refuse instead, naming both sides.
+export class NotebookSessionProjectMismatchError extends Error {
+  readonly name = 'NotebookSessionProjectMismatchError'
+
+  constructor(
+    readonly sessionId: string,
+    readonly requestedProject: string,
+    readonly sessionProject: string
+  ) {
+    super(
+      `Notebook session ${sessionId} belongs to project "${sessionProject}", not "${requestedProject}". Use the session's own project name.`
+    )
+  }
+}
+
 const processKeyFor = (kind: KernelProcessKind | undefined, env: string | undefined): string => {
   const resolvedKind = kind ?? 'python'
   if (resolvedKind === 'repl') return 'repl'
@@ -66,7 +84,7 @@ class NotebookSessionLifecycleOwner {
 
   ensure(request: NotebookSessionRequest): Promise<RuntimeSession> {
     const projectName = request.projectName ?? this.options.defaultProjectName
-    return this.options.sessions.getOrCreate(request.sessionId, async () => {
+    const owned = this.options.sessions.getOrCreate(request.sessionId, async () => {
       let document = await this.options.repository.loadOrCreate({
         projectName,
         sessionId: request.sessionId,
@@ -109,6 +127,21 @@ class NotebookSessionLifecycleOwner {
         }
         throw error
       }
+    })
+
+    // Only an EXPLICIT project name is a claim about which project this session belongs to: an omitted one
+    // is the documented "resolve by sessionId" fallback the local RPC / agent path relies on, so it must
+    // keep working. An explicit disagreement, on the other hand, is a caller bug that would otherwise be
+    // answered from another project's document in silence.
+    return owned.then((session) => {
+      if (request.projectName !== undefined && session.projectName !== request.projectName) {
+        throw new NotebookSessionProjectMismatchError(
+          request.sessionId,
+          request.projectName,
+          session.projectName
+        )
+      }
+      return session
     })
   }
 

@@ -89,6 +89,10 @@ export type NotebookSessionExecutor<
   // off: 'app-terminated' when the application is going away, which records the run as interrupted
   // instead of failed. Omitted for a kernel restart, where no such reason applies.
   shutdown: (options?: { interruptionReason?: 'app-terminated' }) => Promise<{ reaped: boolean }>
+  // Refuses the in-flight run WITHOUT tearing the loops down, for a caller whose refusal must land before
+  // the process goes away while a queued persistence callback is still draining. Optional: an executor that
+  // cannot split the two keeps the single shutdown() ordering.
+  refuseInflightRuns?: (options?: { interruptionReason?: 'app-terminated' }) => void
   restart?: () => Promise<void>
   terminate?: (kind: 'python' | 'r' | 'repl', env: string) => Promise<void>
   // Live-namespace snapshot for the Variables view; absent on shells/repl.
@@ -435,20 +439,20 @@ export class NotebookSessionAggregate<
     this.executorGenerationActive = true
   }
 
-  // Tears the executor down without queueing the refusal behind earlier work. `shutdown()` clears the
-  // kernel routing map and refuses the in-flight run synchronously — before its first await — so calling
-  // it here, instead of inside `.then()` after the lifecycle queue, is what makes an app quit stop looking
-  // like a crash: previously the refusal was sequenced strictly after a queue, so a quit that ran out of
-  // budget never reached it, and the kernel then died with its entry still in the routing map — which is
-  // exactly the "unexpected exit" branch in kernel-executor ('Notebook kernel process exited.') that
-  // persists the run as failed. The queue is still awaited, so queued kernel-status writes land, and
-  // 'app-terminated' records the refused run as the interruption the domain says it is.
+  // Tears the executor down in the order the quit path needs: the refusal lands NOW, and the process-tree
+  // teardown waits for the lifecycle queue. `refuseInflightRuns()` clears the kernel routing map and refuses
+  // the in-flight run synchronously, which is what keeps an app quit from being recorded as a crash —
+  // previously the refusal was sequenced strictly after the queue, so a quit that ran out of budget never
+  // reached it and the kernel then died with its map entry intact (kernel-executor's "unexpected exit"
+  // branch, which persists the run as failed). The queue still gates the shutdown() that follows, so a
+  // queued persistence-owning callback is never cut off mid-write. 'app-terminated' records a refused run as
+  // the interruption the domain says it is. An executor without the split keeps the single-shutdown ordering.
   shutdownExecutor(): Promise<{ reaped: boolean }> {
     const executor = this.executorValue
     this.executorGenerationActive = false
+    executor.refuseInflightRuns?.({ interruptionReason: 'app-terminated' })
     const lifecycleDrain = this.executorLifecycleQueue
-    const shutdown = executor.shutdown({ interruptionReason: 'app-terminated' })
-    return Promise.all([lifecycleDrain, shutdown]).then(([, result]) => result)
+    return lifecycleDrain.then(() => executor.shutdown({ interruptionReason: 'app-terminated' }))
   }
 
   async resolveMcpRpcConnection(

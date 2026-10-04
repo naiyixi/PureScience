@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-import { NotebookSessionLifecycleOwner } from './session-lifecycle'
+import {
+  NotebookSessionLifecycleOwner,
+  NotebookSessionProjectMismatchError
+} from './session-lifecycle'
 
 // The window learns that a notebook exists from `notebook:available`, and the pane is unreachable without
 // it: `NotebookSessionLifecycleOwner.notifyAvailable` used to be the only emitter, and it had no caller on
@@ -63,5 +66,53 @@ describe('notebook availability announcement', () => {
       )
       expect(body, `${facade} must announce the notebook`).toContain('notifyAvailable(')
     }
+  })
+})
+
+// A session's project is part of its identity: the registry keys by sessionId alone, so a caller that names
+// a different project would otherwise be answered from another project's document without any sign that
+// anything was wrong. These pin the refusal (and that the default project name still works).
+describe('notebook session project ownership', () => {
+  const createEnsureOwner = (sessionProject: string): NotebookSessionLifecycleOwner =>
+    new NotebookSessionLifecycleOwner({
+      defaultProjectName: 'default-project',
+      sessions: {
+        getOrCreate: async () => ({ sessionId: 's1', projectName: sessionProject })
+      }
+    } as unknown as NotifyOptions)
+
+  it('resolves a session under its own project name', async () => {
+    const owner = createEnsureOwner('project-a')
+
+    await expect(
+      owner.ensure({ sessionId: 's1', workspaceCwd: '/w', projectName: 'project-a' })
+    ).resolves.toMatchObject({ sessionId: 's1', projectName: 'project-a' })
+  })
+
+  it('refuses a caller naming a different project instead of answering another project history', async () => {
+    const owner = createEnsureOwner('project-a')
+
+    await expect(
+      owner.ensure({ sessionId: 's1', workspaceCwd: '/w', projectName: 'display-name' })
+    ).rejects.toBeInstanceOf(NotebookSessionProjectMismatchError)
+  })
+
+  it('falls back to the default project name when the caller omits it', async () => {
+    const owner = createEnsureOwner('default-project')
+
+    await expect(owner.ensure({ sessionId: 's1', workspaceCwd: '/w' })).resolves.toMatchObject({
+      projectName: 'default-project'
+    })
+  })
+
+  it('serves a session as it is when the caller omits the name, instead of relabelling it', async () => {
+    // The local RPC / agent path sends no project name at all, so an omitted name must never be treated as a
+    // claim about a different project: the session's own project stands.
+    const owner = createEnsureOwner('project-a')
+
+    await expect(owner.ensure({ sessionId: 's1', workspaceCwd: '/w' })).resolves.toMatchObject({
+      sessionId: 's1',
+      projectName: 'project-a'
+    })
   })
 })

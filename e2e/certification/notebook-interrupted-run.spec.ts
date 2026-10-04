@@ -157,6 +157,28 @@ test('a run cut off by the user quitting the app is recorded as interrupted, not
   console.log(`[interrupt] session=${session.id}`)
   expect(session.id).not.toBe('')
 
+  // Every notebook call must carry the session's OWN project name: the session registry keys by sessionId
+  // alone, so a different (e.g. display) name is refused. Taken from the app's own reference resolution —
+  // the same path the pane uses — instead of this spec inventing one.
+  const notebookProject = await page.evaluate(
+    async ({ sessionId, workspaceCwd }) => {
+      const bridge = globalThis as unknown as {
+        api: {
+          notebook: {
+            getReference: (
+              request: Record<string, unknown>
+            ) => Promise<{ projectName?: string } | null>
+          }
+        }
+      }
+      const reference = await bridge.api.notebook.getReference({ sessionId, workspaceCwd })
+      return reference?.projectName ?? ''
+    },
+    { sessionId: session.id, workspaceCwd: session.cwd }
+  )
+  console.log(`[interrupt] notebookProject=${notebookProject}`)
+  expect(notebookProject).not.toBe('')
+
   // --- fire the cell, and verify the premise instead of assuming it ---------------------------------
   let inFlight = false
   let lastText = ''
@@ -181,7 +203,12 @@ test('a run cut off by the user quitting the app is recorded as interrupted, not
             return undefined
           })
       },
-      { sessionId: session.id, workspaceCwd: session.cwd, projectName, seconds: 45 }
+      {
+        sessionId: session.id,
+        workspaceCwd: session.cwd,
+        projectName: notebookProject,
+        seconds: 45
+      }
     )
     await page.waitForTimeout(3_000)
     const reading = await page.evaluate(
@@ -198,7 +225,7 @@ test('a run cut off by the user quitting the app is recorded as interrupted, not
         const state = await bridge.api.notebook.state({ sessionId, workspaceCwd, projectName })
         return state.runs ?? []
       },
-      { sessionId: session.id, workspaceCwd: session.cwd, projectName }
+      { sessionId: session.id, workspaceCwd: session.cwd, projectName: notebookProject }
     )
     inFlight = reading.some((run) => run.status === 'running')
     lastText = reading
@@ -226,7 +253,7 @@ test('a run cut off by the user quitting the app is recorded as interrupted, not
       const state = await bridge.api.notebook.state({ sessionId, workspaceCwd, projectName })
       return state.runJsonPath ?? ''
     },
-    { sessionId: session.id, workspaceCwd: session.cwd, projectName }
+    { sessionId: session.id, workspaceCwd: session.cwd, projectName: notebookProject }
   )
   console.log(`[interrupt] runJsonPath=${runJsonPath}`)
   expect(runJsonPath).not.toBe('')

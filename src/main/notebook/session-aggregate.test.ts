@@ -102,9 +102,10 @@ describe('NotebookSessionAggregate', () => {
     })
   })
 
-  it('refuses the in-flight teardown immediately instead of queueing it behind the lifecycle queue', async () => {
+  it('refuses the in-flight run immediately, then tears the executor down after the lifecycle queue', async () => {
     const order: string[] = []
     const shutdownOptions: Array<{ interruptionReason?: 'app-terminated' } | undefined> = []
+    const refuseOptions: Array<{ interruptionReason?: 'app-terminated' } | undefined> = []
     let releaseCallback!: () => void
     const callbackGate = new Promise<void>((resolve) => {
       releaseCallback = resolve
@@ -129,6 +130,10 @@ describe('NotebookSessionAggregate', () => {
           cwdAfter: '/workspace/data',
           outputs: []
         }),
+        refuseInflightRuns: (options) => {
+          order.push('refuse')
+          refuseOptions.push(options)
+        },
         shutdown: async (options) => {
           order.push('shutdown')
           shutdownOptions.push(options)
@@ -137,8 +142,8 @@ describe('NotebookSessionAggregate', () => {
       }
     })
 
-    // A queued executor-lifecycle callback (a kernel-status write) that is still outstanding: this is
-    // what the teardown must not have to wait for before it can refuse the in-flight run.
+    // A queued executor-lifecycle callback (a kernel-status write) that is still outstanding. The refusal must
+    // not wait for it — that is what a quit with no budget left never survived — while the teardown must.
     const callback = session.runExecutorLifecycleCallback(generation, async () => {
       order.push('callback')
       await callbackGate
@@ -151,15 +156,17 @@ describe('NotebookSessionAggregate', () => {
       return result
     })
 
-    // The refusal happened synchronously with the teardown call, and it names why: 'app-terminated' is
-    // what turns the refused run into the domain's interrupted record instead of a failure.
-    expect(order).toEqual(['callback', 'shutdown'])
-    expect(shutdownOptions).toEqual([{ interruptionReason: 'app-terminated' }])
+    // Dispatched synchronously with the teardown call, and it names why: 'app-terminated' is what turns the
+    // refused run into the domain's interrupted record instead of a failure.
+    expect(order).toEqual(['callback', 'refuse'])
+    expect(refuseOptions).toEqual([{ interruptionReason: 'app-terminated' }])
+    // ...and the process-tree teardown has NOT started yet: a queued persistence write is never cut off.
+    expect(shutdownOptions).toEqual([])
 
     releaseCallback()
     await expect(callback).resolves.toBe('persisted')
     await expect(teardown).resolves.toEqual({ reaped: true })
-    // The queue was still awaited, so a queued persistent write lands before the teardown resolves.
-    expect(order).toEqual(['callback', 'shutdown', 'teardown'])
+    expect(order).toEqual(['callback', 'refuse', 'shutdown', 'teardown'])
+    expect(shutdownOptions).toEqual([{ interruptionReason: 'app-terminated' }])
   })
 })

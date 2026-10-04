@@ -343,6 +343,10 @@ const buildReadEvidence = async (
 
 class NotebookKernelExecutor implements NotebookExecutor {
   private readonly procs = new Map<ProcessKey, ProcState>()
+  // Loops already refused by refuseInflightRuns() but not yet physically torn down: they are out of the
+  // routing map (so their exit is a no-op, never a fabricated crash) while their process trees still have to
+  // be reaped by the shutdown that follows.
+  private readonly refusedProcs: ProcState[] = []
   // In-flight process-tree teardowns, keyed by the process key of the proc being reaped. A dropped
   // proc's tree is killed asynchronously; ensureProc awaits any pending teardown for a key before
   // spawning its replacement, so two live process trees for the SAME (kind, env) never briefly coexist.
@@ -427,17 +431,13 @@ class NotebookKernelExecutor implements NotebookExecutor {
     }
   }
 
-  // Kills every loop, rejects any pending run, and removes the temp figures dir. Returns { reaped }:
-  // true only when every kernel tree was cleanly reaped, so shutdownAll can gate the update-install
-  // uninstall on all interpreter file handles being released.
-  //
-  // The map-clear + reject phase is SYNCHRONOUS — it completes before this method's first await — and
-  // callers depend on that: the quit-path teardown must refuse the in-flight run without queueing the
-  // refusal behind the very execution it is interrupting (see NotebookSessionAggregate.shutdownExecutor).
-  // Clearing the map first is also what keeps the kernel's own exit a no-op instead of a fabricated
-  // crash, and `options.interruptionReason` is what tells errorToExecutionResult to record the refused
-  // run as an interruption rather than a failure.
-  async shutdown(options: NotebookKernelShutdownOptions = {}): Promise<ProcessTreeKillResult> {
+  // Refuses every in-flight run and drops the loops out of the routing map, WITHOUT killing them. Split out
+  // of shutdown() because the two halves have different deadlines on the quit path: the refusal has to land
+  // before the process goes away (a run the app took away is recorded as the domain's interruption, and a
+  // loop whose map entry outlives its own death would be recorded as a crash), while the process-tree
+  // teardown must still wait for a queued persistence-owning callback to finish. Synchronous by construction,
+  // so a caller gets the refusal in the same tick. Cleared procs are remembered for the shutdown that follows.
+  refuseInflightRuns(options: NotebookKernelShutdownOptions = {}): void {
     const procs = Array.from(this.procs.values())
     this.procs.clear()
 
@@ -445,7 +445,21 @@ class NotebookKernelExecutor implements NotebookExecutor {
       this.disarmIdleTimer(proc)
       this.rejectPending(proc, new NotebookKernelShutdownError(options.interruptionReason))
       proc.readline.close()
+      this.refusedProcs.push(proc)
     }
+  }
+
+  // Kills every loop, rejects any pending run, and removes the temp figures dir. Returns { reaped }:
+  // true only when every kernel tree was cleanly reaped, so shutdownAll can gate the update-install
+  // uninstall on all interpreter file handles being released.
+  //
+  // `options.interruptionReason` is what tells errorToExecutionResult to record a refused run as the domain's
+  // interruption instead of a failure; a caller that must refuse before this runs (the quit path) can call
+  // refuseInflightRuns() first — this method then reaps exactly the loops that call cleared.
+  async shutdown(options: NotebookKernelShutdownOptions = {}): Promise<ProcessTreeKillResult> {
+    this.refuseInflightRuns(options)
+    const procs = this.refusedProcs.splice(0, this.refusedProcs.length)
+
     // A hard-timeout/idle/identity-change drop moves its tree kill into pendingTeardowns and removes
     // the proc from `procs`, so a teardown started just before shutdown is invisible to the loop above.
     // Snapshot and await those too: a still-dying old tree must not let the reaped result greenlight the
