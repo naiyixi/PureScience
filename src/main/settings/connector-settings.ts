@@ -201,16 +201,19 @@ class ConnectorSettingsModule {
       if (!server) throw new Error(`Unknown connector: ${id}`)
       // Built here, not looked up in toConnectorViews(): that projection only walks the bundled catalog, so
       // reusing it would throw for every custom id (found by this unit's own test before it shipped).
+      // autoAllow is read from the durable set rather than hardcoded: a user-added server's id is one of its
+      // own aliases (see customConnectorAliases), so the value written by the detail's "Skip approvals"
+      // toggle is the same identity the approval gate matches on — hardcoding false left that switch showing
+      // off forever no matter how many times it was flipped (IC20).
       const view: ConnectorView = {
         id: server.id,
         displayName: server.name,
         description: server.description ?? '',
-        // A user-added server declares no catalog data sources, and its approval policy is per tool rather
-        // than a per-connector "skip approvals" switch.
+        // A user-added server declares no catalog data sources.
         sources: [],
         requiresNcbi: false,
         enabled: server.enabled,
-        autoAllow: false,
+        autoAllow: (connectors?.autoAllowIds ?? []).includes(server.id),
         group: 'directory'
       }
       const liveTools = await this.customServerToolsProvider?.(server)

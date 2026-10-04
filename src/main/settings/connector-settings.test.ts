@@ -201,6 +201,30 @@ describe('ConnectorSettingsModule', () => {
     )
   })
 
+  // IC20: the detail's "Skip approvals" toggle writes the server's id into autoAllowIds, and the detail must
+  // read that back — it previously hardcoded false, so the switch showed off however often it was flipped.
+  it('reflects the skip-approvals switch for a user-added server (IC20)', async () => {
+    const snapshot = await service.addCustomServer({
+      name: 'Probe Server',
+      transport: 'stdio',
+      command: 'npx'
+    })
+    const added = snapshot.customServers[0]
+
+    expect((await service.getConnectorDetail(added.id)).autoAllow).toBe(false)
+
+    await service.setConnectorAutoAllow({ id: added.id, autoAllow: true })
+
+    const on = await service.getConnectorDetail(added.id)
+    expect(on.autoAllow).toBe(true)
+    // And the durable set is where the approval gate looks, by one of the server's own aliases.
+    const stored = await service.getConnectors()
+    expect(stored?.autoAllowIds ?? []).toContain(added.id)
+
+    await service.setConnectorAutoAllow({ id: added.id, autoAllow: false })
+    expect((await service.getConnectorDetail(added.id)).autoAllow).toBe(false)
+  })
+
   it('cycles a tool through block, ask, and back to allow', async () => {
     const first = await service.getConnectorDetail('chemistry')
     const toolId = first.tools[0].id

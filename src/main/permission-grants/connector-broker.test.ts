@@ -83,6 +83,26 @@ describe('ConnectorPermissionBroker', () => {
     expect(prompt).not.toHaveBeenCalled()
   })
 
+  // IC20: the Settings "Skip approvals" toggle for a user-added server stores that server's ID — while the
+  // call arrives with the server's own aliases ([slug, name, id], see customConnectorAliases). Holding only
+  // the id must therefore still auto-allow, or the switch would write a value nothing ever matches.
+  it('auto-allows a user-added server when the policy holds only its id (IC20)', async () => {
+    const { registry, resolve } = createRegistry()
+    const prompt = vi.fn()
+    const broker = new ConnectorPermissionBroker(registry, prompt)
+    const serverId = 'e2f0a1c4-8f77-4a2f-9c0d-1b5e7a3d9f21'
+    const request = createRequest({
+      policy: {
+        aliases: ['probe-mcp', 'Probe MCP', serverId],
+        autoAllowIds: [serverId]
+      }
+    })
+
+    await expect(broker.authorize(request)).resolves.toBeUndefined()
+    expect(resolve).not.toHaveBeenCalled()
+    expect(prompt).not.toHaveBeenCalled()
+  })
+
   it('uses a remembered grant before opening Require approval', async () => {
     const remembered: PermissionGrantRecord = {
       id: 'grant-1',
