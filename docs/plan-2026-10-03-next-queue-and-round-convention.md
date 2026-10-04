@@ -211,3 +211,40 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 若 v1.84.0 要让该维度也有真机读数，需要给 spec 一个能产出结论的复核夹具（工作许可的 provider 桩）。
 **发版窗口内执行器已暂停**（`hermes cron pause 2be4405e5dc6`，按收口约定第 4 条：发版期间不许并发推送），
 发布完成、Release 页核对后恢复。
+
+## 五、本轮追加（执行器，2026-10-04）
+
+B 段已耗尽（S3/S4 全落地、M2 卡产品决定），A 段唯一开项（egress 60 秒窗口读数）归会话 ⇒ 按排期文件进入
+**v1.84.0 批次 4**，本轮取 **IC16（工作区环境准备遮罩加 Cancel）**。
+
+**先核审计口径，再动手**：`notebook-env:cancel` 通道、preload、store 的 `cancel(lang)`、主进程
+`provisioner.cancel` **四层全都在**（设置页 Runtimes 卡片一直在用）——真缺口只是**工作区那层遮罩没有这个控件**：
+首跑下载一开始，用户被挡在灰罩里，除等它跑完没有任何出口。⇒ 本单元不是新建后端，是补一个挂载点。
+
+落地 `24dd3b6b`（3 文件 +132）：`EnvProvisionOverlay` 新增可选 `onCancel`，preparing 态渲染 Cancel；
+`NotebookPreview` 按 `ui.scope` 传语言（python/r 可中止）。**复用 9 语字典已有的 `common.cancel`** ⇒ 零新键、零契约计数涟漪。
+验证：新增 4 条用例（遮罩层 Cancel 存在与回调 / 无 handler 不画 / 挂载态点它真的带语言调 `notebookEnv.cancel` / upgrade 态不出）
++ 194 文件 2292 passed、双 typecheck exit 0、`eslint --no-cache .` 0 error。CI：`Nightly` + `Windows Full Test` 已触发（结论见本轮汇报）。
+
+**刻意不出按钮的一种状态（防空壳）**：`scope='upgrade'` —— 附加式 upgrade 在运行时里既没有 abort controller，
+`serializeProvisioner` 又会丢弃语言级 cancel ⇒ 出这个按钮就是个点了没反应的空壳。口径写进代码注释 + 测试
+`offers no cancel while an additive upgrade holds the pane`。
+
+**⏳ 真机读数未取（具名立案）**：本机此刻可用内存 ~90MB、swap 13.9G/15.36G（桌面版实例 + 十余个 agent 子进程在跑），
+而本仓明令「跑真机 e2e 前必重建、禁裸跑 `electron-vite build`」⇒ 在这种内存压力下重建 + 起 Electron 取证不安全
+（本机有 16G 堆把机器打崩的前例）。**取证配方（下一轮内存宽松时一次跑完）**：
+
+1. 骨架复制 `e2e/certification/notebook-rerun.spec.ts`（provenance 夹具 → `kernel-notebook-pane` attach → `workspace-preview-toggle`），
+   并按 `e2e/certification/lock-import.spec.ts` 的老规矩先 `process.env.PURESCIENCE_MICROMAMBA_BIN = <真 runtime 的 micromamba>`
+   （隔离实例不自带 micromamba，不设这个 provisioner 直接拒）。
+2. 设置页 Runtimes 点 python 卡的「Download and set up」——**必须走这条**：遮罩的 `ui` 由 store 的 `scope`/`status.provisioning` 派生，
+   而直接从 `page.evaluate` 调 `api.notebookEnv.provision` 只让主进程开跑，store 不会把 `ui` 翻成 preparing。
+3. 关设置 → 断言 `notebook-env-gate` 可见且 `notebook-env-cancel` 文案为 Cancel → 点它 →
+   断言遮罩离开 preparing（落 error 分支带 Retry、具名原因是取消）、`api.notebookEnv.getStatus().provisioning === false`。
+4. **只允许在跑绿之后提交该 spec**：`e2e/certification/**` 是发布认证作业的一部分，未跑过就进仓＝留一道从未通过的闸门。
+
+**并发说明**：本轮开工时 `origin/main` 为 `9cd33a05`（`17:19` 由会话写入的 v1.83.0 发布记录）；执行器提交前先 `git fetch` 核对，
+本轮的 `24dd3b6b` 落在它之上，无重写、无 force-push。
+
+**下一轮第一步**：先看 `Nightly`/`Windows Full Test` 在 `24dd3b6b` 上的结论（红则先归因再动）；
+内存宽松则按上面 1–4 补 IC16 真机读数；否则顺延到 v1.84.0 的下一条（IC13/IC14/IC15 任选一条，落点见排期文件批次 4 表）。

@@ -110,7 +110,7 @@
 | IC13 | 窗口**直装 / 卸载包**（现只有"允许安装"这一个无动作的许可） | `package-manager.ts:553,1115`；`RuntimesPanel.tsx:459-477,679-721`     |
 | IC14 | **会话级运行时绑定/切换** + 不可用原因                      | `runtime-binding.ts:59,151-169,207,225`；`NotebookPreview.tsx:640-665` |
 | IC15 | 内核**常驻**「重启 / 关闭」（现在重启只在 R 装卸后出现）    | `notebook/ipc.ts:48,51`；`NotebookPreview.tsx:816-832`                 |
-| IC16 | 工作区环境准备遮罩加 **Cancel**                             | `env-ipc.ts:27`；`EnvProvisionOverlay.tsx:55-64`                       |
+| IC16 | **工作区环境准备遮罩加 Cancel** ✅ 已落地（执行器 `24dd3b6b`）：preparing 态出 Cancel，接 store 的 `cancel(scope)`；`scope='upgrade'` 刻意不出按钮（附加式 upgrade 在运行时里既没有 abort controller、也会被 serialize 包装层丢弃语言级 cancel ⇒ 宁可不出，也不出点了没反应的按钮）。**真机读数未取**（本机此刻内存压力过高，重建 + Electron 取证不安全；判据见队列档 §四） | `EnvProvisionOverlay.tsx`（新增可选 `onCancel`）、`NotebookPreview.tsx:456-466,721-728`；复用 9 语字典已有的 `common.cancel` ⇒ 零新键、零契约计数涟漪 |
 | IC17 | 设置页下载明细（速度/ETA/续传，与工作区同源）               | `shared/download-progress.ts`；`RuntimesPanel.tsx:809,919-935`         |
 | IC18 | 运行时来源（official / override）可见                       | `shared/notebook-env.ts:35`；`provisioner.ts:765,1786-1800`            |
 
