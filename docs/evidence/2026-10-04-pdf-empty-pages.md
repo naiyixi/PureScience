@@ -48,7 +48,23 @@ PdfExplorePanel.render.test.tsx + PdfTablePanel.render.test.tsx   →  2 passed 
 
 其他：`translation-quality` **42 passed**；`typecheck:web` **0**；`eslint` 0 problems。
 
-## 未取（具名）
+## 真机读数（已取，2026-10-04）
 
-**真窗口读数未取**：需要一份**真扫描版 PDF**（纯图像、无文字层）打开这两个面板看提示。
-本轮验证停在真实组件的渲染测试（真面板 + 真语言提供者 + 真实 mock 载荷形状）。
+**夹具**：本机造的真「扫描件」——把一张 PNG 用 `sips -s format pdf` 转成 PDF，字节层面
+`/Font: False`、`/Text: False`（无文字层）。**断言打在应用自己的测量上，不打在 mock 上**：
+
+```
+[pdf-scan] fixture /tmp/pdfscan/scan.pdf (642477 bytes)
+[pdf-scan] {"ok":true,"pageCount":1,"textPageCount":0,"emptyPageCount":1}
+1 passed (10.4s)          e2e/certification/pdf-scanned-pages.spec.ts
+```
+
+**顺带纠了我自己一个错**：第一版断言写死 `pageCount === 2`（我按文件里 `/Type /Page` 的出现次数粗算的），
+跑出来是 **1 页**——**读数是对的、我的猜测是错的**。改成真正的不变量：
+`pageCount > 0 && textPageCount === 0 && emptyPageCount === pageCount`（「没有一页带文字层」），
+而不是一个从字节里猜出来的页数。
+
+**仍未取的只剩显示层那一步**：把这份扫描件送进 `PdfExplorePanel`/`PdfTablePanel` 的**真窗口**读数
+（需要走参考文献库的 PDF 选择器把文件纳入项目）。显示层行为由两个面板的渲染测试覆盖（19 passed），
+事实层由本条真机读数覆盖。
+
