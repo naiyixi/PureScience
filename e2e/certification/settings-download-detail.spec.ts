@@ -108,8 +108,8 @@ test('the Settings setup card shows the same live download detail the workspace 
   // own output. What the REAL app shows during a pack download is the percent advancing
   // ("Downloading managed python runtime (1%) … (6%)") with NO speed/size/ETA line: the progress ticks
   // reach the renderer, but the rich `download` field does not survive to the store in this flow. That is
-  // an upstream defect, recorded as its own finding rather than papered over here — so this reading asserts
-  // the advance it can see and LOGS the missing detail instead of asserting it away.
+  // a defect in the progress pipeline, recorded as its own finding rather than papered over here — so this
+  // reading asserts the advance it can see and LOGS the missing detail instead of asserting it away.
   const seen = new Set<string>()
   for (let i = 0; i < 8; i += 1) {
     const section = (await settings.getByTestId('runtimes-cards-python').innerText()).replace(
