@@ -7,8 +7,10 @@ import { flushDiagnosticsWithTimeout } from './diagnostics/flush'
 import { diagnosticErrorFields, type Logger } from './logger'
 import { startDiagnosticOperation } from './diagnostics/operation'
 import {
+  clearApplicationShutdownRequested,
   clearApplicationShutdownTrigger,
   currentApplicationShutdownTrigger,
+  markApplicationShutdownRequested,
   type ApplicationShutdownTrigger
 } from './application-shutdown-trigger'
 import type {
@@ -199,6 +201,10 @@ export const installAppLifecycle = (
   // migration-cancelled quit is respected. #177's will-quit guard remains a synchronous backstop for a
   // committed quit that never reaches this path.
   deps.app.on('before-quit', (event) => {
+    // Latch the shutdown request before any gate below can defer it: a notebook kernel that dies from here
+    // on was cut off by the app going away, so its run must be recorded as an interruption, not a crash.
+    // A quit that gets cancelled clears the latch again (see the confirmation branch).
+    markApplicationShutdownRequested()
     if (shutdownFinished) return
     if (shutdownStarted) {
       // Cleanup already running; hold the quit until it calls app.exit(0).
@@ -210,6 +216,7 @@ export const installAppLifecycle = (
       // confirmation and shutdown trigger so neither leaks into a later close: otherwise a later
       // ordinary quit could bypass its active-session confirmation.
       clearApplicationShutdownTrigger()
+      clearApplicationShutdownRequested()
       quitConfirmed = false
       return
     }
@@ -228,6 +235,9 @@ export const installAppLifecycle = (
             deps.quit()
             return
           }
+          // The quit was cancelled and the app keeps running: drop the latch, or a kernel that genuinely
+          // dies later would be recorded as an app-terminated interruption.
+          clearApplicationShutdownRequested()
           // Cancel with no tray and no surviving window would strand the app with no UI (no-tray
           // Windows/Linux: X destroys the window -> window-all-closed quit -> Cancel): recreate the
           // window so the app the user chose to keep stays reachable. Gate on a window that existed

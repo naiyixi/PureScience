@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { NotebookKernelExecutor } from './kernel-executor'
 import {
+  clearApplicationShutdownRequested,
+  markApplicationShutdownRequested
+} from '../application-shutdown-trigger'
+import {
   DEFAULT_PY_ENV,
   DEFAULT_R_ENV,
   envPrefix,
@@ -263,6 +267,8 @@ const baseRequest = (
 })
 
 afterEach(async () => {
+  // The shutdown latch is process-global state: a test that sets it must not leak into the next one.
+  clearApplicationShutdownRequested()
   if (cwdDir) {
     await rm(cwdDir, { recursive: true, force: true })
     cwdDir = undefined
@@ -858,6 +864,56 @@ gate('NotebookKernelExecutor (fake loop)', () => {
       const refused = await inFlight
       expect(refused.status).toBe('failed')
       expect(refused.interruptionReason).toBeUndefined()
+    } finally {
+      await executor.shutdown()
+    }
+  }, 15_000)
+
+  it('records a run cut off by an external kill during a requested shutdown as an interruption', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-quit-kill-')
+    const executor = makeExecutor()
+    const internals = executor as unknown as { procs: Map<string, { pending?: unknown }> }
+    try {
+      await executor.execute({ ...baseRequest(cwdDir), code: 'warm' })
+
+      // A quit has been requested (before-quit ran) and an external termination then kills the loop while a
+      // cell is in flight: the app is going away, so the run is the domain's interruption, not a failure.
+      markApplicationShutdownRequested()
+      const inFlight = executor.execute({ ...baseRequest(cwdDir), code: '__SLEEP__' })
+      await vi.waitFor(
+        () => expect(internals.procs.get(procKeyFor('python'))?.pending).toBeDefined(),
+        { timeout: 5_000, interval: 10 }
+      )
+      const child = procFor(executor, 'python')?.child as ChildProcessWithoutNullStreams
+      child.kill('SIGKILL')
+
+      const refused = await inFlight
+      expect(refused.status).toBe('interrupted')
+      expect(refused.interruptionReason).toBe('app-terminated')
+    } finally {
+      await executor.shutdown()
+    }
+  }, 15_000)
+
+  it('still records a kernel that dies with no shutdown requested as a failure', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-crash-status-')
+    const executor = makeExecutor()
+    const internals = executor as unknown as { procs: Map<string, { pending?: unknown }> }
+    try {
+      await executor.execute({ ...baseRequest(cwdDir), code: 'warm' })
+      const inFlight = executor.execute({ ...baseRequest(cwdDir), code: '__SLEEP__' })
+      await vi.waitFor(
+        () => expect(internals.procs.get(procKeyFor('python'))?.pending).toBeDefined(),
+        { timeout: 5_000, interval: 10 }
+      )
+      const child = procFor(executor, 'python')?.child as ChildProcessWithoutNullStreams
+      child.kill('SIGKILL')
+
+      // No quit in progress: an unexpectedly dead kernel is a crash, and the run says so.
+      const crashed = await inFlight
+      expect(crashed.status).toBe('failed')
+      expect(crashed.interruptionReason).toBeUndefined()
+      expect(crashed.traceback).toBe('Notebook kernel process exited.')
     } finally {
       await executor.shutdown()
     }

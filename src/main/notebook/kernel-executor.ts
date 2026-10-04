@@ -47,6 +47,7 @@ import type {
   NotebookExecutor
 } from './runtime-service'
 import { DEFAULT_TIMEOUT_MS, TimeoutController } from './timeout-controller'
+import { isApplicationShutdownRequested } from '../application-shutdown-trigger'
 
 // Unified child-process proxy environment: every spawned kernel resolves the
 // system proxy once (Electron session rules incl. PAC) and inherits it, so R/Python/REPL outbound
@@ -204,6 +205,15 @@ class NotebookKernelShutdownError extends Error {
     this.name = 'NotebookKernelShutdownError'
   }
 }
+
+// The error a run gets when its kernel loop died on its own. A shutdown requested for this process makes
+// that death part of the app going away — even when the app never got to run its own teardown, which is the
+// case an external termination produces — so the run is the domain's interruption ('the code may have been
+// fine'); with no shutdown in flight it stays a crash, which is what an unexpectedly dead kernel really is.
+const crashingRunError = (): Error =>
+  isApplicationShutdownRequested()
+    ? new NotebookKernelShutdownError('app-terminated')
+    : new Error('Notebook kernel process exited.')
 
 // Resolves the packaged/dev location of python_loop.py; an env override wins (tests, dev), then the
 // packaged resources dir, then the repo-relative dev path.
@@ -585,7 +595,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
                 ? `Notebook execution timed out after ${pending.timeoutMs}ms.`
                 : 'Notebook kernel never began executing: its startup grace expired.'
             )
-          : new Error('Notebook kernel process exited.')
+          : crashingRunError()
       )
       // Unexpected exit of a still-live proc is a crash; surface it as a 'terminated' kernel status.
       // Intentional teardown (shutdown/restart) and hard-timeout/idle drops clear the map first, so

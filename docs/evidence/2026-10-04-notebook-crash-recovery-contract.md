@@ -222,14 +222,12 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 ⇒ 前两轮的 `failed` 是**夹具强杀的产物**，不是用户退出路径的读数；也因此"照形状改一处"看不出变化——**不是修复无效，是那两轮没触发这条路径**。
 另：`requestMainWindowClose()` 在 macOS 上按 `windows.ts` 的分类是 **'hide'（最小化到托盘）**，不会退出、也不会弹确认框——这是第一次改动没取到读数的原因。
 
-### 仍挂账、有据可查的一条（另立，不在本契约内）
+### 曾经挂账、现已修并已真机验收的一条（追加六）
 
-**进程树被外部强杀、而主进程还活着时，在飞运行会被写成 `failed`**（证据：上面那张表第 3 行 + 本轮之前的盘读
-`["…-2","failed",null]`，`traceback`/`stderr` 同为 `Notebook kernel process exited.`）。为什么这条值得立案：
-盘上的运行已经**不再是 `running`**，所以下次启动的 `reconcileInterruptedRuns`（只认 running/queued）
-**无物可改** ⇒ 用户看到的是一格 error，而不是"被中断"。触发面很窄（要内核先死、主进程后死），
-真修法的形状是让**崩溃分支也能知道"应用正在终止"**（`before-quit` 已置位 / 收到 SIGTERM 时置一个 latch，
-再把该运行按 `interrupted` + `app-terminated` 落盘）；寻常 SIGKILL 仍走"进程直接没了 ⇒ 下次加载恢复"那条路，无需改动。
+**进程树被外部强杀、而主进程还活着时，在飞运行被写成 `failed`**（证据：上面那张表第 3 行 + 当时的盘读
+`["…-2","failed",null]`，`traceback`/`stderr` 同为 `Notebook kernel process exited.`）。为什么这条要紧：
+盘上的运行已**不再是 `running`**，所以下次启动的 `reconcileInterruptedRuns`（只认 running/queued）
+**无物可改** ⇒ 用户看到的是一格 error，而不是"被中断"。**修法与读数见文末「追加六」。**
 
 ### 顺带确证的第二个现象根因（原"重启后 `notebook.state` 返回空"）
 
@@ -272,7 +270,44 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 
 **队列其余项（本轮未动，如实记）**：第 3 项（v1.83.0 的 IC6 真机收割／A7 下载路径／egress 审批窗口侧）、
 第 4 项（技能瘦身：`openscience-dev` 本体 99,664 字符已超 100,000 上限，references 307 个文件需合并）、
-第 5 项（竞品差距：IEDB 免疫学连接器未做；PDB `pdb_search_by_sequence` 已实现待确认收口）均未开始。
+第 5 项（竞品差距：IEDB 免疫学连接器未做；PDB `pdb_search_by_sequence` 已实现且已提交——
+`d40bfd8e feat(structures): PDB 自由序列搜索`，文件与测试均在树、工作区干净）均未开始。
+
+## 追加六：外部强杀那条缺口——已修，且已真机验收
+
+**修法（收窄到三处）**：给「应用正在关停」加一个**进程级 latch**，让**崩溃分支知道应用正在离去**。
+
+1. `application-shutdown-trigger.ts`：新增 `mark/clear/isApplicationShutdownRequested()`（模块级 boolean，
+   注释写明它把"内核死因"分成中断与崩溃两类）。
+2. `app-lifecycle.ts`：**`before-quit` 的第一句**即 `markApplicationShutdownRequested()`（在任何门之前），
+   并在**两条取消路径**上 `clear`——迁移守卫取消那支、以及关窗确认框选 **Cancel** 那一支
+   （不 clear 的话，之后一次真正的内核崩溃会被误记成"应用终止"）。
+3. `kernel-executor.ts`：崩溃分支（`:548` 那处原 `new Error('Notebook kernel process exited.')`）改为
+   `crashingRunError()`——**有 latch ⇒ 具名 `NotebookKernelShutdownError('app-terminated')`**（经半②写成
+   `interrupted` + `app-terminated`）；**无 latch ⇒ 仍是 `failed`**（意外死掉的内核本来就该记失败）。
+   超时判别优先于它，未动。
+
+**为什么 latch 能覆盖本场景**：那一轮 trace 里跑单元格的实例**没有** `runForQuit`，但 before-quit 有两条出口——
+确认门会把退出**推迟**（`event.preventDefault()` + 弹框等用户），而 `runForQuit` 只在门放行后的清理里跑。
+外部 `SIGTERM` 让 Electron 走 `app.quit()` ⇒ **before-quit 会跑**（因此 latch 置位）⇒ 内核被树杀先死时，
+崩溃分支读到 latch ⇒ 记中断。寻常 SIGKILL（连主进程一起秒杀）不写任何记录 ⇒ 仍由"下次加载恢复"覆盖。
+
+**真机读数（临时探针，--workers=1；触发用夹具 `app.restart()` = 优雅关窗超时后按进程树强杀）**：
+
+```
+[kill-run] attempt 1: running=true statuses=["completed","running"]     ← 前提实测成立
+[kill-run] calling app.restart() (close() → graceful window → tree kill)
+[kill-run] run.json on disk: [["…-1","completed",null],
+                              ["…-2","interrupted","app-terminated"]]   ← 修复前这里是 failed
+1 passed (53.8s)
+```
+
+**单元**：kernel-executor 新增两例并绿——「外部强杀 + 已请求关停 ⇒ interrupted + app-terminated」、
+「无关停请求的内核死亡 ⇒ 仍 failed 且文案 `Notebook kernel process exited.`」；
+文件级 `afterEach` 清理该模块级 latch（否则会漏进同文件的其它用例）。
+
+**注**：本条与「追加四」的用户退出路径互不替代——那条走**具名关停**（`procs.clear()` 先清 map），
+本条走**崩溃分支 + latch**；两条现在都落同一个域词汇 `interrupted` + `app-terminated`。
 
 
 
