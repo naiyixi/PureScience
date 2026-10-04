@@ -503,3 +503,113 @@ describe('pdb_get_ligands', () => {
     expect(out.truncated).toBe(true)
   })
 })
+
+// The sequence search exists because a chain does not always have an accession yet. Two things it must
+// never do: report a malformed sequence as "no matches" (that reads as "not in the PDB"), and drop the
+// thresholds that produced the list — a short list from a narrow cutoff is not a small family.
+describe('pdb_search_by_sequence', () => {
+  const UBIQUITIN = 'MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG'
+
+  it('POSTs a sequence query, maps polymer entities to entries, and prints the cutoffs it applied', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      jsonRes({
+        total_count: 1689,
+        result_set: [
+          { identifier: '11SY_2', score: 1.0 },
+          { identifier: '1UBQ_1', score: 0.99 }
+        ]
+      })
+    )
+    const out = (await run(
+      'pdb_search_by_sequence',
+      { sequence: UBIQUITIN, identity_cutoff: 0.95, evalue_cutoff: 0.001, max_rows: 2 },
+      fetchImpl
+    )) as {
+      sequence_length: number
+      sequence_type: string
+      sequence_header_lines_stripped: number
+      filters: { identity_cutoff: number; evalue_cutoff: number }
+      total_count: number
+      n_retrieved: number
+      truncated: boolean
+      records: Array<{ polymer_entity_id: string; pdb_id: string; identity: number }>
+    }
+
+    expect(String(fetchImpl.mock.calls[0][0])).toBe('https://search.rcsb.org/rcsbsearch/v2/query')
+    const init = fetchImpl.mock.calls[0][1] as { method?: string; body?: string }
+    expect(init.method).toBe('POST')
+    const payload = JSON.parse(init.body as string)
+    expect(payload.query.type).toBe('terminal')
+    expect(payload.query.service).toBe('sequence')
+    expect(payload.query.parameters.value).toBe(UBIQUITIN)
+    expect(payload.query.parameters.sequence_type).toBe('protein')
+    expect(payload.query.parameters.identity_cutoff).toBe(0.95)
+    expect(payload.return_type).toBe('polymer_entity')
+    expect(payload.request_options.scoring_strategy).toBe('sequence')
+
+    // The entity id is what the API returns; the entry id is what a reader looks up.
+    expect(out.records).toEqual([
+      { polymer_entity_id: '11SY_2', pdb_id: '11SY', identity: 1.0 },
+      { polymer_entity_id: '1UBQ_1', pdb_id: '1UBQ', identity: 0.99 }
+    ])
+    expect(out.sequence_length).toBe(UBIQUITIN.length)
+    expect(out.filters).toEqual({ identity_cutoff: 0.95, evalue_cutoff: 0.001 })
+    expect(out.total_count).toBe(1689)
+    expect(out.n_retrieved).toBe(2)
+    expect(out.truncated).toBe(true)
+  })
+
+  it('accepts a wrapped FASTA record and searches the bare sequence', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(jsonRes({ total_count: 1, result_set: [] }))
+    const fasta = `>sp|P0CG48|UBC_HUMAN Polyubiquitin-C\n${UBIQUITIN.slice(0, 38)}\n${UBIQUITIN.slice(38)}\n`
+
+    const out = (await run('pdb_search_by_sequence', { sequence: fasta }, fetchImpl)) as {
+      sequence_length: number
+      sequence_header_lines_stripped: number
+    }
+
+    const payload = JSON.parse((fetchImpl.mock.calls[0][1] as { body: string }).body)
+    expect(payload.query.parameters.value).toBe(UBIQUITIN)
+    expect(out.sequence_length).toBe(UBIQUITIN.length)
+    expect(out.sequence_header_lines_stripped).toBe(1)
+  })
+
+  it('refuses a malformed sequence by name instead of asking the service and reporting no matches', async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      run('pdb_search_by_sequence', { sequence: 'MQIFV!KLTG' }, fetchImpl)
+    ).rejects.toThrow(/"!" at position 6/)
+    // Nothing was sent: the refusal is the answer, not a query that happens to come back empty.
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('refuses a header-only FASTA rather than searching an empty sequence', async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      run('pdb_search_by_sequence', { sequence: '>just a header' }, fetchImpl)
+    ).rejects.toThrow(/Empty protein sequence/)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('refuses an out-of-range identity_cutoff instead of silently clamping it', async () => {
+    const fetchImpl = vi.fn()
+    await expect(
+      run('pdb_search_by_sequence', { sequence: UBIQUITIN, identity_cutoff: 1.5 }, fetchImpl)
+    ).rejects.toThrow(/identity_cutoff must be a number between 0 and 1 \(got 1.5\)/)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('reports zero hits as an empty list, not as an error', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(res204())
+    const out = (await run('pdb_search_by_sequence', { sequence: UBIQUITIN }, fetchImpl)) as {
+      total_count: number
+      n_retrieved: number
+      truncated: boolean
+      records: unknown[]
+    }
+    expect(out.total_count).toBe(0)
+    expect(out.n_retrieved).toBe(0)
+    expect(out.truncated).toBe(false)
+    expect(out.records).toEqual([])
+  })
+})

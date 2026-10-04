@@ -348,6 +348,77 @@ function buildSearchQuery(a: Record<string, unknown>): Record<string, unknown> {
 
 // ---- the 4 tools ----------------------------------------------------------------------------
 
+// ---- Sequence input handling for pdb_search_by_sequence ---------------------------------------
+// Sequences are pasted, not typed: a FASTA record (header lines starting with '>'), line wrapping and
+// stray whitespace are all normal input. Normalise first, then judge the letters — otherwise a wrapped
+// FASTA reads as "invalid character" and the reader is told their sequence is wrong when it is not.
+const SEQUENCE_ALPHABETS = {
+  protein: {
+    // The 20 standard residues plus the ambiguity/special codes the PDB itself allows: B/Z (Asx/Glx),
+    // X (any), U (selenocysteine) and O (pyrrolysine).
+    pattern: /^[ACDEFGHIKLMNPQRSTVWYBZXUO]+$/i,
+    described: 'the 20 standard amino-acid letters plus the ambiguity codes B, Z, X, U and O'
+  },
+  dna: {
+    pattern: /^[ACGTUNRYKMSWBDHV]+$/i,
+    described:
+      'the IUPAC nucleotide codes A, C, G, T/U and the ambiguity codes R, Y, K, M, S, W, B, D, H, V, N'
+  },
+  rna: {
+    pattern: /^[ACGTUNRYKMSWBDHV]+$/i,
+    described:
+      'the IUPAC nucleotide codes A, C, G, U/T and the ambiguity codes R, Y, K, M, S, W, B, D, H, V, N'
+  }
+} as const
+
+type SequenceType = keyof typeof SEQUENCE_ALPHABETS
+
+const SEQUENCE_MAX_RESIDUES = 10_000
+
+const normaliseSequence = (raw: string): { sequence: string; strippedHeaderLines: number } => {
+  let strippedHeaderLines = 0
+  const kept: string[] = []
+  for (const line of raw.split(/\r?\n/)) {
+    if (line.trimStart().startsWith('>')) {
+      strippedHeaderLines += 1
+      continue
+    }
+    kept.push(line)
+  }
+  return { sequence: kept.join('').replace(/\s+/g, '').toUpperCase(), strippedHeaderLines }
+}
+
+// Judged BEFORE anything is sent: a service asked to search a malformed sequence answers "no matches",
+// which reads as "your protein is not in the PDB" — a different, false statement. Naming the offending
+// character and its position keeps the two apart.
+const refuseIfNotSequence = (sequence: string, type: SequenceType): void => {
+  if (sequence === '') {
+    throw new Error(
+      `Empty ${type} sequence: provide at least one residue (a FASTA header alone carries no sequence).`
+    )
+  }
+  if (sequence.length > SEQUENCE_MAX_RESIDUES) {
+    throw new Error(
+      `Sequence is ${sequence.length} residues, above this tool's limit of ${SEQUENCE_MAX_RESIDUES}; ` +
+        'search a domain or a shorter window instead of the whole chain.'
+    )
+  }
+  const { pattern, described } = SEQUENCE_ALPHABETS[type]
+  if (!pattern.test(sequence)) {
+    const offenders: string[] = []
+    for (let index = 0; index < sequence.length && offenders.length < 5; index += 1) {
+      const residue = sequence[index]
+      if (!new RegExp(pattern.source, 'i').test(residue)) {
+        offenders.push(`"${residue}" at position ${index + 1}`)
+      }
+    }
+    throw new Error(
+      `Not a valid ${type} sequence: unexpected ${offenders.join(', ')}. A ${type} sequence uses ` +
+        `${described}.`
+    )
+  }
+}
+
 export const STRUCTURES_PDB_TOOLS: ToolDescriptor[] = [
   {
     id: 'pdb_search_structures',
@@ -415,6 +486,137 @@ export const STRUCTURES_PDB_TOOLS: ToolDescriptor[] = [
       }
 
       return {
+        total_count: totalCount,
+        n_retrieved: records.length,
+        truncated: totalCount > records.length,
+        max_rows: maxRows,
+        records
+      }
+    }
+  },
+  {
+    id: 'pdb_search_by_sequence',
+    connector: 'structures',
+    description:
+      'Find PDB polymer entities by SEQUENCE — for a chain that has no UniProt accession yet (a designed ' +
+      'variant, a construct, a chain quoted in a paper). Submits the sequence to the RCSB sequence search ' +
+      'and returns entities in identity order, each with its PDB id, its polymer-entity id and the identity ' +
+      'the service reports (0-1). The identity_cutoff and evalue_cutoff that were APPLIED are printed with ' +
+      'the result, because the service filters server-side and those thresholds are the reason a short list ' +
+      'may be a narrow query rather than a small family. The sequence is normalised first (FASTA header ' +
+      'lines and line wrapping are fine) and checked against the declared type before anything is sent: a ' +
+      'malformed sequence is refused by name instead of being answered with "no matches", which would read ' +
+      'as "this sequence is not in the PDB". Metadata only — no coordinate files are downloaded.',
+    input: {
+      type: 'object',
+      properties: {
+        sequence: { type: 'string' },
+        sequence_type: { type: 'string', enum: ['protein', 'dna', 'rna'], default: 'protein' },
+        identity_cutoff: { type: 'number', default: 0.9 },
+        evalue_cutoff: { type: 'number', default: 1 },
+        max_rows: { type: 'integer', default: 100 }
+      },
+      required: ['sequence']
+    },
+    returns:
+      '{sequence_length, sequence_type, sequence_header_lines_stripped, filters:{identity_cutoff, evalue_cutoff}, total_count (API match total), n_retrieved, truncated (total_count > n_retrieved), max_rows, records:[{polymer_entity_id, pdb_id, identity}]} in identity order; records is [] when nothing matches the cutoffs.',
+    example:
+      'const result = await host.mcp("structures", "pdb_search_by_sequence", {"sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", "identity_cutoff": 0.9, "max_rows": 25})',
+    run: async (ctx, a) => {
+      const type = (
+        typeof a.sequence_type === 'string' ? a.sequence_type : 'protein'
+      ) as SequenceType
+      if (!(type in SEQUENCE_ALPHABETS)) {
+        throw new Error(
+          `Unknown sequence_type "${String(a.sequence_type)}": use one of ` +
+            `${Object.keys(SEQUENCE_ALPHABETS).join(', ')}.`
+        )
+      }
+      const { sequence, strippedHeaderLines } = normaliseSequence(String(a.sequence ?? ''))
+      refuseIfNotSequence(sequence, type)
+
+      // A cutoff outside its range is refused rather than clamped: silently widening or narrowing the
+      // query would move the result set while the caller believes they asked for something else.
+      const rawIdentity = a.identity_cutoff
+      const identityCutoff = rawIdentity === undefined ? 0.9 : Number(rawIdentity)
+      if (!Number.isFinite(identityCutoff) || identityCutoff < 0 || identityCutoff > 1) {
+        throw new Error(
+          `identity_cutoff must be a number between 0 and 1 (got ${String(rawIdentity)}); ` +
+            '0.9 means 90% identity.'
+        )
+      }
+      const rawEvalue = a.evalue_cutoff
+      const evalueCutoff = rawEvalue === undefined ? 1 : Number(rawEvalue)
+      if (!Number.isFinite(evalueCutoff) || evalueCutoff <= 0) {
+        throw new Error(
+          `evalue_cutoff must be a positive number (got ${String(rawEvalue)}); the default is 1.`
+        )
+      }
+
+      const maxRows = clampInt(a.max_rows, 100, 1, MAX_ROWS_LIMIT)
+      const query = {
+        type: 'terminal',
+        service: 'sequence',
+        parameters: {
+          evalue_cutoff: evalueCutoff,
+          identity_cutoff: identityCutoff,
+          sequence_type: type,
+          value: sequence
+        }
+      }
+
+      const records: Array<{
+        polymer_entity_id: string | undefined
+        pdb_id: string | undefined
+        identity: number | null
+      }> = []
+      let totalCount = 0
+      let start = 0
+      // Same paging discipline as the attribute search: count-verified against the API's own total,
+      // stopping at the cap or at a short page rather than spinning.
+      for (let guard = 0; guard < MAX_ROWS_LIMIT; guard++) {
+        const rows = Math.min(PAGE_ROWS, maxRows - records.length)
+        const payload = {
+          query,
+          return_type: 'polymer_entity',
+          request_options: { paginate: { start, rows }, scoring_strategy: 'sequence' }
+        }
+        let body: SearchResponse | null
+        try {
+          body = (await ctx.postJson(SEARCH_URL, payload)) as SearchResponse
+        } catch (err) {
+          // Zero hits arrive as HTTP 204 with an empty body, so the JSON parse throws; genuine
+          // HTTP/transport failures are re-thrown.
+          if (err instanceof SyntaxError) body = null
+          else throw err
+        }
+        if (body == null) {
+          totalCount = 0
+          break
+        }
+        totalCount = body.total_count ?? 0
+        const page = body.result_set ?? []
+        for (const r of page) {
+          const identifier = r.identifier
+          records.push({
+            polymer_entity_id: identifier,
+            // '11SY_2' is entity 2 of entry 11SY — the entry id is what a reader looks up.
+            pdb_id: identifier?.includes('_')
+              ? identifier.slice(0, identifier.lastIndexOf('_'))
+              : identifier,
+            identity: r.score ?? null
+          })
+        }
+        start += page.length
+        if (records.length >= Math.min(totalCount, maxRows)) break
+        if (page.length === 0) break
+      }
+
+      return {
+        sequence_length: sequence.length,
+        sequence_type: type,
+        sequence_header_lines_stripped: strippedHeaderLines,
+        filters: { identity_cutoff: identityCutoff, evalue_cutoff: evalueCutoff },
         total_count: totalCount,
         n_retrieved: records.length,
         truncated: totalCount > records.length,
