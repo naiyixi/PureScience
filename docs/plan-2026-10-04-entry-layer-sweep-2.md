@@ -44,8 +44,8 @@ left_on|warning|notice|blocked|rejected|capped|truncat|empty|absent|missing`）�
 | `validationFailed` | **假缺口，划掉** | `function-models.ts:110-111` 把它折成具名理由 `provider-unverified` 上屏 |
 | `boundConversationsUnavailable` | **假缺口，划掉** | 载荷里恒为 `true` 的**常量**，读不读没有差别 |
 | `emptyPageCount` | **真缺口，已修** | `PdfOpenResult` 带着它、两个消费面板都只取 `docId`；扫描版 PDF 打开后一片空白而无解释 |
-| `unsealedReasons` | 待判 | 先进 MCP 工具结果（`:793`）⇒ 先查是否已由 agent 侧转达 |
-| `retryableNetworkFailure` / `regionBlocked` | 待判 | main 用它们决定重试/换源（`claude-install.ts:412,442`）⇒ 先查最终失败是否已被具名上报 |
+| `regionBlocked` / `retryableNetworkFailure` | **假缺口，划掉** | main 用它们决定**换源/重试**，且把「官方安装器在你所在地区似乎不可用，改用 npm…」作为**日志行发给用户**（`claude-install.ts:411-424`）——事实已上屏，且带可行动的下一步 |
+| `unsealedReasons` | **未判（下一步已定位）** | 它进 MCP 工具结果（`artifacts/mcp-server.ts:793`，agent 侧看得到）；渲染层**没有**封存面（`grep -rn sealed src/renderer/src` 零命中）。**下一步**：查重执行拒绝码 `recipe-not-sealed`（`shared/reproducibility-reexecution.ts:14,64`）是否上屏——若是，则同属假缺口 |
 | `emptyPageCount` 之外的 PDF 面 | 已并查 | 见上 |
 
 **注**：`unsealedReasons`、`retryableNetworkFailure`、`regionBlocked` 三项的第三条判据「该事实是否已由另一条路（agent 转达 / 具名失败）上屏」**尚未走完**——不是缺口，是**未判**。
