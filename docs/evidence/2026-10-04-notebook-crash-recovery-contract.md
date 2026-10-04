@@ -240,9 +240,11 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 
 ### 收尾与规范（本轮）
 
-- **临时件全部删除**：`src/main/notebook/quit-trace.ts`、5 个文件里的打点、`e2e/fixtures/electron-app.ts` 的
-  `requestQuit()` 探针助手、`e2e/certification/notebook-quit-trace.spec.ts`（红 spec 与探针 spec 都不落树）；
-  `git status` 只剩自主执行器自己改的那个 plan 文件。
+- **临时件全部删除**：`src/main/notebook/quit-trace.ts`、5 个文件里的打点、`e2e/certification/notebook-quit-trace.spec.ts`
+  （红 spec 与一次性探针都不落树）；`git status` 只剩自主执行器自己改的那个 plan 文件。
+- **该验收已固化**（不靠一次性探针）：`e2e/certification/notebook-interrupted-run.spec.ts`（跑绿：**1 passed / 56.5s**，
+  同一读数 `["…-2","interrupted","app-terminated"]`）+ `e2e/fixtures/electron-app.ts` 的 `requestQuit()`
+  （永久夹具能力，注释写明为何不能用 `requestMainWindowClose()`/`close()`）；spec 无策展包时自跳过。
 - **验收纪律（本轮代价换来的）**：断言"退出时在飞"的读数，**必须走应用自己的退出路径**
   （`app.quit()` → 确认框 → Quit）；用夹具的 `close()` 去"拿走应用"读不到这条契约——
   它会先给一个**没有会话的实例**发正常退出，再把**真正在跑的实例**强杀，

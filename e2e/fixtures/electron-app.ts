@@ -142,6 +142,12 @@ type ElectronApp = {
    */
   stubUpdateManifest: (manifest: unknown) => Promise<void>
   requestMainWindowClose: () => Promise<void>
+  /**
+   * Quits the app the way its own tray/menu Quit does (`app.quit()`). Deliberately NOT
+   * `requestMainWindowClose`: on macOS a window close classifies as 'hide' (minimize to tray) — see
+   * windows.ts — so it never reaches the quit path a spec asserting quit behavior needs.
+   */
+  requestQuit: () => Promise<void>
   restart: () => Promise<Page>
 }
 
@@ -523,6 +529,13 @@ class ElectronAppHarness implements ElectronApp {
       const mainWindow = BrowserWindow.getAllWindows()[0]
       if (!mainWindow) throw new Error('PureScience main window was not found.')
       mainWindow.close()
+    })
+  }
+
+  /** Quits the app the way its own tray/menu Quit does. See the interface comment for why not `close()`. */
+  async requestQuit(): Promise<void> {
+    await this.runningApplication.evaluate(({ app }) => {
+      app.quit()
     })
   }
 
