@@ -56,7 +56,51 @@
 真机读数我这一轮没取到**。所以 `ff05c41c` 的结论文案应理解为「显示与记录一致」，而不是「中断在任何情况下
 都不会被显示成 error」。
 
-## 留下的东西（都可用）
+## 追加：我试了一版修法，**实测无效**，已撤回并立案
+
+**修法（已撤回）**：`session-lifecycle.shutdownAll()` 里「**先**对 `activeSessions()` 调
+`repository.reconcileInterruptedRuns`、**再**收内核」，并用单元测试钉住顺序 `['mark','reap']`。
+单元 5 passed（顺序、只碰有在飞运行的会话、历史写不进去也能退）。
+
+**真机实测：逐字相同**（三连跑，其中一次还先 `npm run build:e2e` 重建过）：
+
+```
+attempt 1: running=true statuses=["completed","running"]        ← 前提成立（实测）
+runs after restart: []                                          ← 状态读仍为空
+run.json on disk: [["…-1","completed",null],["…-2","failed",null]]   ← 盘上仍是 failed、理由 null
+```
+
+**为什么两种顺序都不行**（这是本轮最有用的产出，下次不用重走）：
+
+- **先改写、后收内核**：收内核让在飞执行抛错，那记抛错经
+  `execution-owner.errorToExecutionResult` **把该运行写回 `failed`，覆盖掉我的改写**；
+- **先收内核、后改写**：`reconcileInterruptedRuns` 只改写 `running`/`queued`（这是它的契约），
+  而收内核之后该运行已经是 `failed` ⇒ **无物可改**。
+
+⇒ 「在退出的某一时刻补一次改写」这个形状**做不到**，因为终态写入发生在收内核那一刻、且它把状态定成
+`failed`。**真修法的形状**应是：让**终态写入本身知道「应用正在退出」**——一个 quitting 信号（或退出时
+把「当时在飞的那些运行」记下来，收尾后按名单改写，而不是按状态筛选）。这属于终态写入路径的改动，
+比一个 quit 钩子深，需要单独排期。
+
+**撤回的理由**（如实说）：一个**观测不到任何效果**的改动 + 只钉住实现顺序的测试，正是本仓说的
+「看着像修复」。所以源码与测试都已 `git checkout` 回 HEAD，spec 也移出树；留下一份**能直接
+接着做的立案**，而不是一个假装的修复。
+
+## 第二个已确证、独立挂账的现象
+
+**重启后 `notebook.state` 返回空运行列表，而盘上 `run.json` 有两条记录**（三连跑均如此）。
+UI 读的正是这条通道 ⇒ 一个刚重启的应用里，**笔记本面板可能看不到任何历史**。
+它与我这一支的中断问题**无关**（我的探针读法若错，它仍是一条独立读数），需单独判：
+先查这条通道在重启后是否需要「先打开笔记本」才会加载历史。
+
+## 待取读数（下一步，明确到一处改动）
+
+1. **测覆盖假设**：把盘读那一行加上 traceback —— 若那格 `failed` 的 traceback 是**内核/传输错误**
+   （而非用户代码的错），即证「收内核的抛错覆盖了改写」，真修法方向即为「终态写入带 quitting 信号」；
+2. **测状态读异常**：重启后**先用 UI 打开该会话的笔记本**，再读 `notebook.state` 与盘，比较两者；
+3. 脚手架 `~/.hermes/cache/scratch/comp/notebook-interrupted-run.spec.ts`（227 行）**已跑通到
+   `runJsonPath` 那一步**（导入+绑定+真跑+实测前提+盘读全可用），补上面任一读数只需改一行。
+
 
 - **脚手架不落树**（跑不绿的不算验收）：227 行的 spec
   `~/.hermes/cache/scratch/comp/notebook-interrupted-run.spec.ts` —— 缓存包导入 → 绑定 → 真跑单元格 →
