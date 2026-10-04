@@ -171,6 +171,8 @@ const dataContentApplicationCommands = Object.freeze({
   artifactGetVersionReview: artifactCommand('artifacts:get-version-review', 'getVersionReview'),
   artifactListProjectFiles: artifactCommand('artifacts:list-project-files', 'listProjectFiles'),
   artifactOpenFile: artifactCommand('artifacts:open-file', 'openFile'),
+  // The second OS handoff for the same resolved file: show it in the file manager instead of opening it.
+  artifactRevealFile: artifactCommand('artifacts:reveal-file', 'revealFile'),
   artifactReadPreview: artifactCommand('artifacts:read-preview', 'readPreview'),
   // Availability for many paths in one round-trip: a transcript card asked this question one file at a time,
   // and each ask resolved (and checksummed) the whole file to answer yes/no.
@@ -290,6 +292,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.artifactGetVersionReview,
     dataContentApplicationCommands.artifactListProjectFiles,
     dataContentApplicationCommands.artifactOpenFile,
+    dataContentApplicationCommands.artifactRevealFile,
     dataContentApplicationCommands.artifactProbeAvailability,
     dataContentApplicationCommands.artifactReadPreview,
     dataContentApplicationCommands.artifactReconcilePending,
@@ -428,6 +431,10 @@ const registerDataContentApplicationCommands = (
       'artifacts:open-file': (invocation) => {
         assertLocalCaller(invocation, dataContentApplicationCommands.artifactOpenFile.name)
         return dependencies.artifacts.openFile(invocation.args[0])
+      },
+      'artifacts:reveal-file': (invocation) => {
+        assertLocalCaller(invocation, dataContentApplicationCommands.artifactRevealFile.name)
+        return dependencies.artifacts.revealFile(invocation.args[0])
       },
       'artifacts:read-preview': ({ args }) => dependencies.artifacts.readPreview(args[0]),
       'artifacts:probe-availability': ({ args }) =>

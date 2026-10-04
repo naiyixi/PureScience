@@ -744,6 +744,9 @@ const api: PureScienceAPI = {
     reconcilePendingArtifacts: (request) =>
       electronRendererContracts.invoke('artifacts.reconcilePendingArtifacts', request),
     openFile: (request) => electronRendererContracts.invoke('artifacts.openFile', request),
+    // Resolves the same managed file and shows it in the file manager: the preview handle a reader holds
+    // is a Version locator, not a filesystem path, so this must not be handed to the raw local-fs reveal.
+    revealFile: (request) => electronRendererContracts.invoke('artifacts.revealFile', request),
     // Keep preview reads on the same managed-file trust path as opening files.
     readPreview: (request) => electronRendererContracts.invoke('artifacts.readPreview', request),
     // One round-trip for many paths: the transcript's cards ask "is this still on disk?" together instead of

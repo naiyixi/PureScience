@@ -72,6 +72,7 @@ const createDependencies = () => {
     listProjectFiles: vi.fn(async () => []),
     reconcilePendingArtifacts: vi.fn(async () => []),
     openFile: vi.fn(async () => undefined),
+    revealFile: vi.fn(async () => undefined),
     readPreview: vi.fn(async () => ({ content: '', encoding: 'utf8', size: 0, truncated: false })),
     probeAvailability: vi.fn(async () => ({ unavailable: [] })),
     getLineage: vi.fn(async () => undefined),
@@ -209,6 +210,7 @@ type DataContentCommandKey = keyof typeof dataContentApplicationCommands
 const WRAPPED_COMMAND_KEYS = [
   'artifactFinalizeRun',
   'artifactOpenFile',
+  'artifactRevealFile',
   'artifactReplayVersion',
   'lifecycleClientId',
   'projectCreate',
@@ -263,6 +265,7 @@ describe('Data and content application commands', () => {
         'artifacts:get-version-review',
         'artifacts:list-project-files',
         'artifacts:open-file',
+        'artifacts:reveal-file',
         'artifacts:probe-availability',
         'artifacts:read-preview',
         'artifacts:reconcile-pending',
@@ -625,6 +628,22 @@ describe('Data and content application commands', () => {
       invocation([{ path: 'artifact://report' }] as const)
     )
     expect(deps.artifacts.openFile).toHaveBeenCalledWith({ path: 'artifact://report' })
+
+    // The reveal handoff is the same local-only artifact capability: refused before dispatch for a remote
+    // caller, dispatched with the caller's own request object for the local window.
+    await expect(
+      router.dispatcher.invoke(
+        dataContentApplicationCommands.artifactRevealFile,
+        invocation([{ path: 'artifact://report' }] as const, remoteCaller)
+      )
+    ).rejects.toThrow('Channel only available from the local app: artifacts:reveal-file')
+    expect(deps.artifacts.revealFile).not.toHaveBeenCalled()
+
+    await router.dispatcher.invoke(
+      dataContentApplicationCommands.artifactRevealFile,
+      invocation([{ path: 'artifact://report' }] as const)
+    )
+    expect(deps.artifacts.revealFile).toHaveBeenCalledWith({ path: 'artifact://report' })
   })
 
   it('publishes project and session mutations after durable owner completion without failing commits', async () => {

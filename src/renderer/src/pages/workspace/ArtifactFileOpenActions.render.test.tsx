@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 // The open/reveal cluster beside a managed artifact preview. The window is given two real controls; this
-// pins the half a real run cannot reach — a handler that REFUSES. `artifacts:open-file` refuses by name
-// (a path outside artifact storage, an unconfigured provenance resolver), and a refusal that went nowhere
-// would leave the reader clicking a button that looks inert, which is the defect this control exists to
-// close. The message asserted below is the one the real handler produces (`storage-access.ts:100`).
+// pins the half a real run cannot reach — a handler that REFUSES. Both handoffs now go through the
+// artifact surface (`artifacts:open-file` / `artifacts:reveal-file`), which resolves the preview handle
+// (a Version locator, not a filesystem path) before the OS sees it, and refuses by name when the path is
+// outside artifact storage (`storage-access.ts:100`). A refusal that went nowhere would leave the reader
+// clicking a button that looks inert, which is the defect this control exists to close.
+//
+// The regression this file also guards: reveal must NOT be wired to the raw local-fs channel. The preview
+// handle is `artifact-version:<project>/<session>/<artifact>/<version>`; handed straight to `local-fs:reveal`
+// it is refused with "Local path must be absolute." on every machine, which is exactly what the packaged
+// macos runner caught. `localFsReveal` is spied and asserted unused so that wiring cannot come back.
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -15,15 +21,20 @@ const REFUSAL = 'Artifact file is outside artifact storage.'
 
 const installBridge = (
   openFile: (request: { path: string }) => Promise<void>,
-  reveal: (path: string) => Promise<void>
-): { openFile: ReturnType<typeof vi.fn>; reveal: ReturnType<typeof vi.fn> } => {
+  revealFile: (request: { path: string }) => Promise<void>
+): {
+  openFile: ReturnType<typeof vi.fn>
+  revealFile: ReturnType<typeof vi.fn>
+  localFsReveal: ReturnType<typeof vi.fn>
+} => {
   const openSpy = vi.fn(openFile)
-  const revealSpy = vi.fn(reveal)
+  const revealSpy = vi.fn(revealFile)
+  const localFsRevealSpy = vi.fn(() => Promise.resolve())
   ;(globalThis as unknown as { window: { api: unknown } }).window.api = {
-    artifacts: { openFile: openSpy },
-    localFs: { reveal: revealSpy }
+    artifacts: { openFile: openSpy, revealFile: revealSpy },
+    localFs: { reveal: localFsRevealSpy }
   }
-  return { openFile: openSpy, reveal: revealSpy }
+  return { openFile: openSpy, revealFile: revealSpy, localFsReveal: localFsRevealSpy }
 }
 
 const render = async (path: string): Promise<void> => {
@@ -53,29 +64,34 @@ afterEach(() => {
 })
 
 describe('ArtifactFileOpenActions', () => {
-  it('hands the preview item’s own path to the opener and to the file manager', async () => {
+  it('hands the preview handle to both artifact handoffs, never to the raw local-fs reveal', async () => {
     const bridge = installBridge(
       () => Promise.resolve(),
       () => Promise.resolve()
     )
-    await render('v1/table-evidence.pdf')
+    const locator = 'artifact-version:proj/sess/art/ver'
+    await render(locator)
 
     await click('artifact-open-with-system')
     await click('artifact-show-in-folder')
 
-    expect(bridge.openFile).toHaveBeenCalledWith({ path: 'v1/table-evidence.pdf' })
-    expect(bridge.reveal).toHaveBeenCalledWith('v1/table-evidence.pdf')
+    // Both actions ask the artifact surface, which resolves the locator before the OS sees a path.
+    expect(bridge.openFile).toHaveBeenCalledWith({ path: locator })
+    expect(bridge.revealFile).toHaveBeenCalledWith({ path: locator })
+    // The raw local-fs channel only accepts absolute filesystem paths; a locator there is refused on every
+    // machine, so this cluster must never reach it.
+    expect(bridge.localFsReveal).not.toHaveBeenCalled()
     expect(container.querySelector('[data-testid="artifact-open-failure"]')).toBeNull()
   })
 
   it('shows the handler’s own refusal instead of swallowing it, and clears it on a later success', async () => {
     installBridge(
       () => Promise.reject(new Error(REFUSAL)),
-      () => Promise.resolve()
+      () => Promise.reject(new Error(REFUSAL))
     )
     await render('outside/table-evidence.pdf')
 
-    await click('artifact-open-with-system')
+    await click('artifact-show-in-folder')
     const badge = container.querySelector('[data-testid="artifact-open-failure"]')
     expect(badge).not.toBeNull()
     expect(badge?.textContent ?? '').toContain(REFUSAL)

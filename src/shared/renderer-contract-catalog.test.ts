@@ -24,21 +24,25 @@ describe('renderer contract catalog', () => {
     // the rejecting stub it gets for being local-only.
     // 457 with the named-environment surface (runtime.manageNamedEnvironments, audit P0-8): same profile
     // as the import above, so the same three counts move again.
+    // 458 with the artifact reveal handoff (artifacts:reveal-file, IC9): a LOCAL artifact channel, so the
+    // catalog, the invoke map and the local-Web installation set each move by one while the remote-Web one
+    // grows by the rejecting stub it gets for being local-only.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(457)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(458)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(352)
+    expect(Object.keys(projection.invoke)).toHaveLength(353)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
   it('separates actual Web installation from the generated compatibility projection', () => {
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
+    // 383 with the artifact reveal handoff (artifacts:reveal-file, IC9), a LOCAL artifact channel.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(382)
+    ).toHaveLength(383)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -71,7 +75,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(75)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(121)
+    ).toHaveLength(122)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

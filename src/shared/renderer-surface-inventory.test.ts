@@ -145,7 +145,7 @@ const WEB_UNAVAILABLE_CHANNELS = [
 ] as const
 
 const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
-  artifacts: ['open-file', 'write-user-edited-version'],
+  artifacts: ['open-file', 'reveal-file', 'write-user-edited-version'],
   cli: ['install', 'uninstall'],
   compute: ['download', 'reveal-in-folder'],
   'local-fs': ['get-roots', 'list-dir', 'open-path', 'read-preview', 'reveal'],
@@ -290,7 +290,9 @@ describe('renderer surface inventory', () => {
     // 456 with the external-lock import (runtime.importLock, A7): one local-only runtime channel, so the
     // preload inventory, the catalog and the local-Web installation count all move by one.
     // 457 with the named-environment surface (runtime.manageNamedEnvironments, audit P0-8): same profile.
-    expect(electronPaths).toHaveLength(457)
+    // 458 with the artifact reveal handoff (artifacts:reveal-file, IC9): one more LOCAL artifact channel,
+    // so the preload inventory, the catalog and the local-Web installation count all move by one.
+    expect(electronPaths).toHaveLength(458)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -298,7 +300,7 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(352)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(353)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -334,7 +336,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(121)
+    expect(expectedRemoteLocalOnly).toHaveLength(122)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

@@ -984,6 +984,7 @@ export interface PureScienceAPI {
     listProjectFiles(request: ListProjectArtifactsRequest): Promise<ArtifactFile[]>
     reconcilePendingArtifacts(request: ReconcilePendingArtifactsRequest): Promise<ArtifactFile[]>
     openFile(request: OpenArtifactFileRequest): Promise<void>
+    revealFile(request: OpenArtifactFileRequest): Promise<void>
     readPreview(request: ReadArtifactPreviewRequest): Promise<ArtifactPreviewResult>
     probeAvailability(
       request: ProbeArtifactAvailabilityRequest

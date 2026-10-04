@@ -197,7 +197,9 @@ describe('renderer argument-shape characterization', () => {
     // both are LOCAL-only and refused at dispatch in the Web profile, but they still appear as CALLABLE
     // paths on the Web surface, which is what this pin counts — the remote rejection set carries the same
     // two (see the localOnly pins in src/main/web-service/http-server.test.ts).
-    expect(actualPaths).toHaveLength(382)
+    // 383 with the artifact reveal handoff (artifacts:reveal-file, IC9): a LOCAL-only artifact channel,
+    // refused at dispatch in the Web profile, but still a CALLABLE path on the Web surface.
+    expect(actualPaths).toHaveLength(383)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

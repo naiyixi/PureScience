@@ -59,6 +59,10 @@ type ArtifactHandlers = {
   listProjectFiles: (request: ListProjectArtifactsRequest) => Promise<ArtifactFile[]>
   reconcilePendingArtifacts: (request: ReconcilePendingArtifactsRequest) => Promise<ArtifactFile[]>
   openFile: (request: OpenArtifactFileRequest) => Promise<void>
+  // Same resolution as openFile, but the OS handoff is "show in the file manager". Kept a sibling rather
+  // than folded into openFile: the two handoffs fail differently and a reader asking for one must not get
+  // the other.
+  revealFile: (request: OpenArtifactFileRequest) => Promise<void>
   readPreview: (request: ReadArtifactPreviewRequest) => Promise<ArtifactPreviewResult>
   probeAvailability: (
     request: ProbeArtifactAvailabilityRequest
@@ -90,6 +94,7 @@ type ArtifactHandlers = {
 
 type ArtifactHandlerDependencies = {
   openPath?: (path: string) => Promise<string>
+  reveal?: (path: string) => void
   logger?: Pick<Logger, 'error'>
   // Run ids of turns in flight right now (live runtime state). Their pending files are still being
   // written, so the orphan scan excludes them; a crashed run is absent here and correctly surfaces.
@@ -164,7 +169,25 @@ const createArtifactHandlers = (
   const finalizeLocks = new Map<string, Promise<void>>()
   const openPath =
     dependencies.openPath ?? ((filePath: string): Promise<string> => shell.openPath(filePath))
+  const reveal =
+    dependencies.reveal ?? ((filePath: string): void => shell.showItemInFolder(filePath))
   const getActiveArtifactRunIds = dependencies.getActiveArtifactRunIds ?? ((): string[] => [])
+
+  // Both OS handoffs (open, reveal) must be reached through the same resolution: a preview item carries
+  // either an immutable Version locator or a managed path, and neither is a filesystem path the shell may
+  // be handed directly. Resolving here keeps `shell.*` from ever seeing an unmanaged location — and keeps
+  // the two actions from drifting apart (reveal used to be wired to the raw preview handle, which is a
+  // locator, so the file manager was asked to show a path that is not a path).
+  const resolveOsHandoffPath = async (request: OpenArtifactFileRequest): Promise<string> => {
+    const versionIdentity = parseArtifactVersionLocator(request.path)
+    const filePath = versionIdentity
+      ? await dependencies.provenance
+          ?.resolveVersionContent(versionIdentity)
+          .then((resolved) => resolved.path)
+      : await repository.resolveManagedFilePath(request)
+    if (!filePath) throw new Error('Artifact Provenance is not configured.')
+    return filePath
+  }
 
   // A pending run must be treated as in-flight (not orphaned) for its whole lifecycle: while the prompt
   // runs (getActiveArtifactRunIds), AND after stop while its claim awaits the renderer's finalize call
@@ -208,18 +231,15 @@ const createArtifactHandlers = (
       withDataRootWrite(() => repository.reconcilePendingArtifactPaths(request)),
     openFile: async (request) => {
       // Resolve through the repository first so shell.openPath never sees unmanaged locations.
-      const versionIdentity = parseArtifactVersionLocator(request.path)
-      const filePath = versionIdentity
-        ? await dependencies.provenance
-            ?.resolveVersionContent(versionIdentity)
-            .then((resolved) => resolved.path)
-        : await repository.resolveManagedFilePath(request)
-      if (!filePath) throw new Error('Artifact Provenance is not configured.')
+      const filePath = await resolveOsHandoffPath(request)
       const openError = await openPath(filePath)
 
       if (openError) {
         throw new Error(openError)
       }
+    },
+    revealFile: async (request) => {
+      reveal(await resolveOsHandoffPath(request))
     },
     readPreview: async (request) => {
       const versionIdentity = parseArtifactVersionLocator(request.path)
@@ -531,6 +551,9 @@ const registerArtifactIpcHandlers = (
   )
   ipcMainHandle('artifacts:open-file', (_event, request: OpenArtifactFileRequest) =>
     handlers.openFile(request)
+  )
+  ipcMainHandle('artifacts:reveal-file', (_event, request: OpenArtifactFileRequest) =>
+    handlers.revealFile(request)
   )
   ipcMainHandle(
     'artifacts:write-user-edited-version',

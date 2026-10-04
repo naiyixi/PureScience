@@ -611,6 +611,32 @@ describe('artifact IPC handlers', () => {
     )
   })
 
+  it('reveals the resolved file in the file manager, refusing an unmanaged path', async () => {
+    // Regression (IC9, caught by the packaged macos runner): the window's reveal control held a preview
+    // handle — a Version locator, not a path — and handed it to the raw local-fs channel, which refuses
+    // anything non-absolute ("Local path must be absolute.") on every machine. The OS must be handed the
+    // resolved filesystem path, and an unmanaged path must be refused before the file manager is called.
+    const repository = new ArtifactRepository(await createStorageRoot())
+    const reveal = vi.fn()
+    const handlers = createArtifactHandlers(repository, new ArtifactRunRegistry(), { reveal })
+    const artifact = await repository.writePendingFile({
+      projectName: 'default-project',
+      sessionId: 'artifact-session-1',
+      runId: 'run-1',
+      filename: 'result.txt',
+      source: createInlineSource('ok')
+    })
+
+    await handlers.revealFile({ path: artifact.path })
+
+    expect(reveal).toHaveBeenCalledWith(await realpath(artifact.path))
+
+    await expect(handlers.revealFile({ path: join(tmpdir(), 'outside.txt') })).rejects.toThrow(
+      /outside artifact storage/
+    )
+    expect(reveal).toHaveBeenCalledTimes(1)
+  })
+
   it('reads only bounded preview text from managed artifact files', async () => {
     const repository = new ArtifactRepository(await createStorageRoot())
     const handlers = createArtifactHandlers(repository, new ArtifactRunRegistry())
@@ -847,6 +873,7 @@ describe('artifact IPC handler registration', () => {
       'artifacts:reconcile-pending',
       'artifacts:replay-version',
       'artifacts:resolve-version-descriptors',
+      'artifacts:reveal-file',
       'artifacts:write-user-edited-version'
     ])
   })
@@ -892,6 +919,7 @@ describe('artifact IPC handler registration', () => {
       listProjectFiles: vi.fn().mockResolvedValue([]),
       reconcilePendingArtifacts: vi.fn(),
       openFile: vi.fn(),
+      revealFile: vi.fn(),
       readPreview: vi.fn(),
       probeAvailability: vi.fn(),
       writeUserEditedVersion: vi.fn(),

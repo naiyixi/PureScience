@@ -73,7 +73,7 @@ export const ArtifactFileOpenActions = ({
               className={buttonClass}
               data-testid="artifact-show-in-folder"
               aria-label={t('previewSurface.showInFolder')}
-              onClick={() => void run(() => window.api.localFs.reveal(path))}
+              onClick={() => void run(() => window.api.artifacts.revealFile({ path }))}
             >
               <FolderOpen aria-hidden="true" />
             </Button>
