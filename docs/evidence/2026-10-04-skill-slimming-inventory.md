@@ -86,11 +86,28 @@
 
 ### 5.4 三条新规矩（已写进技能 `references/skill-file-budget.md`，防复发）
 
-1. **合并前先把源复制到树外**（`~/.hermes/cache/scratch/premerge-backups/<簇>-<日期>/`）——树外副本是唯一能立刻回滚的东西。
+1. **合并前先把源复制到树外**（持久位置 `~/.hermes/skill-merges/<日期>/<簇>/`——**不要只放 scratch**：scratch 闲置 24h 会被清理，事故当天的那份副本正是放在 scratch 里才需要立刻另存）——树外副本是唯一能立刻回滚的东西。
 2. **合并器绝不许删"目标文件"自身**：写完**先验证**（目标在盘且 ≥ 源字符数×0.95）**再**逐份删源，且每份都做 `abspath(src) != abspath(target)` 判断。
 3. **候选提取不许按"最大"取**：`skill_view` 的结果含 SKILL.md 正文 + **全量文件清单** ⇒ 每个 references 名都能命中它，按长度取最大必把 SKILL.md 当正文、把真候选挤掉；判据要用**该文件自己的标题行**。
 
-### 5.5 后续（本项未完成的部分）
+### 5.5 分批推进结果（每批都是：树外备份 + 记 H1 清单 → 合并 → 验证目标在盘且小节齐全 → 才删源）
 
-按第 2 节的表继续：发布/CI-CDN 簇（6 份 + `release-mechanics.md` 73KB + `release-publishing.md` 20KB + …）、
-入口层簇（6 份）、会话簇（10+ 份）、带日期的 16 份。**每一簇都按 5.4 的三条规矩做**（树外备份 → 验证后删源 → 标题校验）。
+| 批次 | 簇 | 源份数 | 落点 | 落点字节 | references 总数 |
+| --- | --- | --- | --- | --- | --- |
+| 0 | i18n 清扫 playbook + settings zh | 22 + 6 | 2 份（`i18n-sweep-playbook.md` 133,664 / `settings-zh-sweep.md` 42,746） | 见左 | 308 → 280 |
+| 1 | 发布 / CI / CDN（含 `release-mechanics.md` 本体） | 26 | 5 份（`release-mechanics.md` 130,289 · `release-publishing.md` 67,089 · `ci-gates-and-discipline.md` 84,405（新）· `ci-monitoring-and-push-discipline.md` 72,893 · `pr-gate-diagnosis.md` 21,182） | 见左 | 280 → 255 |
+| 2 | 入口层 / 会话 / 带日期的会话沉淀 | 28 | 4 份（`entry-layer-audit.md` 101,540 · `session-forensics-and-packages.md` 46,845（新）· `session-lifecycle-and-controls.md` 33,685（新）· `archive-2026-08-09-session-logs.md` 134,972（新）） | 见左 | 255 → 230 |
+| — | **合计** | **82 份并入 11 个主题落点** | — | — | **308 → 230（净 −78）** |
+
+- 每批的**源副本 + H1 清单**在 `~/.hermes/skill-merges/2026-10-04/`（3 个批次目录 + 2 份批次定义 JSON，共 82 份源副本 / 1.0 MB；scratch 下的同名副本只是工作区，**持久件在这里**）。
+- 校验口径：合并后逐份 grep `^## <源名>$`，**每批 0 缺失**才算通过；落点文件必须在盘且 ≥ 源字符数×0.95。
+- 逐份 H1 与"是否在盘"的抽查同时确认了：**目标名在源列表里时不会再自删**（批次 1 与 2 都各有 3 个目标名本身在源列表内，均正常保留）。
+
+### 5.6 后续（本项未完成的部分）
+
+references 仍余 **230 份**（计划目标是 140–160）。按前缀看还剩这些成簇的机会（示例）：
+`runtime-*`×6、`artifact-*`×8、`settings-*`×6、`renderer-*`×5、`v014x-*`×6、`agent-framework-*`×3、
+`ipc-channel-*`×3、`mcp-*`×5、`xai-oauth-*`×2、`website-content-*`×2、`performance-*`×3，
+以及**两簇前缀本身就在本仓禁用词表内**的同主题文件（外部参考产品同步、对照基准产品研究各一簇）——
+此处**不复述其字面**（照本仓「词表只存在于 `scripts/brand-patterns.sh`、读它不要复述」的口径）。
+**每一簇都按 5.4 的三条规矩做**（树外备份 → 验证后删源 → 标题校验），批次定义写成 JSON 留档。
