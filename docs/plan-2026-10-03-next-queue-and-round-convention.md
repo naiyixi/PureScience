@@ -505,6 +505,9 @@ prettier warning 已就地改掉）；`bash scripts/pre-push-checks.sh` 全通�
 不含 `64.8`，计数行含 `1 of 2`；②清空上限、下限填 `5`、上限填 `20` ⇒ 只剩 `16.6`；③清空两者后回到 2 行。
 （英文界面标签即 `Impact factor ≤`；该 spec 已用 `getByLabel('Impact factor ≥')` 定位下限，同一套取法。）
 
+**CI 结论（双绿，按完整 40 位 SHA `e2ce9966…` 查）**：`Windows Full Test` run **37234788587 success**；
+`Nightly` run **37234788865 success**（`build / Verify`＝lint + typecheck + test + package **success**、四平台 build 全 success、`publish` success）。
+
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且桌面空闲 ⇒ 按 §九 顺序取
 **IC27**（整表同一指标，纯 UI，`defaultKind` 入参已在，`JournalMetricsImport.tsx:63`）；仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；
 ② 内存宽松时取本单元真机读数（上面配方）；③ 盯本单元推送后 `Nightly` + `Windows Full Test` 双绿（红了先读作业级注解归因）。
