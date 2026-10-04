@@ -3948,6 +3948,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.filter.partition': 'Catégorie',
   'references.journalMetrics.filter.partitionAny': 'Toutes les catégories',
   'references.journalMetrics.filter.minImpactFactor': 'Facteur d’impact ≥',
+  'references.journalMetrics.filter.maxImpactFactor': 'Facteur d’impact ≤',
   'references.journalMetrics.filter.year': 'Année',
   'references.journalMetrics.filter.yearAny': 'Année la plus récente',
   'references.journalMetrics.unknown': 'Inconnu',

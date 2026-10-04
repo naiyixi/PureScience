@@ -3876,6 +3876,7 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.filter.partition': 'Partition',
   'references.journalMetrics.filter.partitionAny': 'Any partition',
   'references.journalMetrics.filter.minImpactFactor': 'Impact factor ≥',
+  'references.journalMetrics.filter.maxImpactFactor': 'Impact factor ≤',
   'references.journalMetrics.filter.year': 'Year',
   'references.journalMetrics.filter.yearAny': 'Latest year',
   'references.journalMetrics.unknown': 'Unknown',

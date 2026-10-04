@@ -3854,6 +3854,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.filter.partition': 'Категория',
   'references.journalMetrics.filter.partitionAny': 'Все категории',
   'references.journalMetrics.filter.minImpactFactor': 'Импакт-фактор ≥',
+  'references.journalMetrics.filter.maxImpactFactor': 'Импакт-фактор ≤',
   'references.journalMetrics.filter.year': 'Год',
   'references.journalMetrics.filter.yearAny': 'Последний год',
   'references.journalMetrics.unknown': 'Неизвестно',

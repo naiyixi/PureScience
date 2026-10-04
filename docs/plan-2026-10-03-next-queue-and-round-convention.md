@@ -466,3 +466,45 @@ profile 目录也已随之消失），两枚各常驻 ~13 MB 且不在跑任何�
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short` ——
 树干净且桌面空闲 ⇒ 按上面顺序取 **IC28**（UI-only，1 键 ×9 语 + 渲染用例 + 若有真机余量补读数）；
 仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；② 按**完整 40 位 SHA** 重查 `3fed6d74` 两条 run 的判决，红则先归因（读作业级注解）再动手。
+
+## 十、本轮追加（执行器，2026-10-05 04:55–05:1x）——IC28 期刊指标「上限」筛选已落地（真机读数具名立案）
+
+**开工核对（防重做）**：`origin/main` = HEAD = `c8dc6f27`（= tag `v1.84.0`；Release 页 **21 资产**、
+`isDraft:false`、`isPrerelease:false`，tag 提交与 HEAD **逐字符一致**）；`git status --short` **空**；
+无在跑 `electron-vite` / `playwright` / `vitest` 进程（`ps` 只看到用户在跑的应用与 agent 子进程）；
+上一次提交 03:21、距今约 1.5 h ⇒ 按 §九「下一轮第一步 ①」取 **IC28**。
+
+**§九 第一步 ② 已闭（读数即结论）**：`3fed6d74`（IC20）→ `Windows Full Test` **37224346166 success**、
+`Nightly` **37224346334 cancelled**（被 3 分钟后的推送按 `cancel-in-progress` 顶掉）⇒ **Nightly 无判决（取消 ≠ 绿）**；
+它的 CI 证据只能由「包含它的下一次绿色 `Nightly`」代替给出（CI 跑整棵树而不是 diff）。**别把 cancelled 写成绿，也别为它重跑。**
+
+**缺口核实（对着当前源码、按机制名 grep）**：共享筛选 `withinBounds`（`src/shared/journal-metrics-overview.ts:217-222`）
+**早已同时处理下限与上限**，filter 类型也带 `maxImpactFactor`（`:52`）；`grep -rn "maxImpactFactor" src/renderer` **0 命中**
+⇒ 缺口**只在渲染层**：面板只渲染了下限输入。**本单元不新建后端**，是补一个挂载点 + 一条文案。
+
+**落地（`JournalMetricsPanel.tsx` + 9 语 + 共享/渲染用例；零新通道 ⇒ 零契约计数涟漪）**：
+
+- 面板新增 `maxImpactFactor` 状态 + 上限输入（`aria-label` 用新键，与下限同形）+ 接进 `filter` 的 `useMemo`（依赖数组同步补齐）；
+- **1 键 × 9 语**：`references.journalMetrics.filter.maxImpactFactor`（en `Impact factor ≤` / zh `影响因子 ≤` /
+  zh-Hant `影響因子 ≤` / ja `インパクトファクター ≤` / ko `임팩트 팩터 ≤` / fr `Facteur d’impact ≤` /
+  de `Impact-Faktor ≤` / es `Factor de impacto ≤` / ru `Импакт-фактор ≤`；zh ≠ en、繁体门禁过）；**未新增 pending 条目**；
+- 共享层 **+2 用例**：上限**含边界**（值恰等于上限仍在）、下限+上限**同用**成一条区间（四桶仍等于总数，两端都记 outside the bounds）；
+- 面板 **+2 渲染用例**（**真渲染 `JournalMetricsPanel` 容器**、stub `window.api.references.listJournalMetrics`）：
+  ①上限 `30` 真的把两条收窄成 Nature Communications 一条，且计数行印出 `1 of 2 journals match` / `1 fall outside the bounds`；
+  ②下限 `5` + 上限 `20` 同用只留 `16.6` 那条。**这类用例是必须的**——只测纯函数会在「面板根本没把新界接进 filter」时照样全绿。
+
+**验证（本机，全部实跑）**：定向 vitest（`src/shared` + `src/renderer/src/components/references` + `src/renderer/src/i18n`）
+**109 文件 / 1228 passed**；**全量 vitest `1201 passed | 16 skipped`（15639 passed | 196 skipped，400.8 s，exit 0）**；
+`npm run typecheck`（node + web）**双绿**；`eslint --no-cache .` **0 error / 123 warning**（回到既有基线——我引入的那条
+prettier warning 已就地改掉）；`bash scripts/pre-push-checks.sh` 全通过。
+
+**⏳ 真机读数未取（具名立案）**：开工时 swap **14.2 G / 15.36 G 已用**、空闲物理页 5,229（≈85 MB）⇒ 仍不具备
+「重建 + 起 Electron」的安全余量（本机有堆把机器打崩的前例），故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
+**配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在既有 `e2e/certification/journal-metrics-panel.spec.ts`
+第一条用例的过滤器读数段之后接三条：①`await dialog.getByLabel('Impact factor ≤').fill('30')` ⇒ 断言 tbody 只剩 1 行、含 `16.6`、
+不含 `64.8`，计数行含 `1 of 2`；②清空上限、下限填 `5`、上限填 `20` ⇒ 只剩 `16.6`；③清空两者后回到 2 行。
+（英文界面标签即 `Impact factor ≤`；该 spec 已用 `getByLabel('Impact factor ≥')` 定位下限，同一套取法。）
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且桌面空闲 ⇒ 按 §九 顺序取
+**IC27**（整表同一指标，纯 UI，`defaultKind` 入参已在，`JournalMetricsImport.tsx:63`）；仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；
+② 内存宽松时取本单元真机读数（上面配方）；③ 盯本单元推送后 `Nightly` + `Windows Full Test` 双绿（红了先读作业级注解归因）。

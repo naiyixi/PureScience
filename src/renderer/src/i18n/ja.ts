@@ -3846,6 +3846,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.filter.partition': '区分',
   'references.journalMetrics.filter.partitionAny': 'すべての区分',
   'references.journalMetrics.filter.minImpactFactor': 'インパクトファクター ≥',
+  'references.journalMetrics.filter.maxImpactFactor': 'インパクトファクター ≤',
   'references.journalMetrics.filter.year': '年',
   'references.journalMetrics.filter.yearAny': '最新年',
   'references.journalMetrics.unknown': '不明',

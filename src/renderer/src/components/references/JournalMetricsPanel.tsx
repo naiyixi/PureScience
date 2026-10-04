@@ -273,6 +273,7 @@ export function JournalMetricsPanel(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [partition, setPartition] = useState('')
   const [minImpactFactor, setMinImpactFactor] = useState('')
+  const [maxImpactFactor, setMaxImpactFactor] = useState('')
   const [year, setYear] = useState('')
   const [merging, setMerging] = useState(false)
   const [mergeResult, setMergeResult] = useState<JournalMergeResult | null>(null)
@@ -345,13 +346,15 @@ export function JournalMetricsPanel(): React.JSX.Element {
   const filter: JournalMetricsFilter = useMemo(() => {
     const parsedYear = Number.parseInt(year, 10)
     const parsedMin = Number.parseFloat(minImpactFactor)
+    const parsedMax = Number.parseFloat(maxImpactFactor)
 
     return {
       ...(partition ? { partition } : {}),
       ...(Number.isFinite(parsedMin) ? { minImpactFactor: parsedMin } : {}),
+      ...(Number.isFinite(parsedMax) ? { maxImpactFactor: parsedMax } : {}),
       ...(Number.isFinite(parsedYear) ? { year: parsedYear } : {})
     }
-  }, [minImpactFactor, partition, year])
+  }, [maxImpactFactor, minImpactFactor, partition, year])
 
   const overview = useMemo(
     () =>
@@ -414,6 +417,22 @@ export function JournalMetricsPanel(): React.JSX.Element {
             inputMode="decimal"
             onChange={(event) => setMinImpactFactor(event.target.value)}
             value={minImpactFactor}
+          />
+        </label>
+
+        {/* The ceiling of the same range. The store's filter has carried both bounds since the screening view
+            landed; only the floor was reachable from the window, so a reader could not ask "which journals
+            are at most X" — the question a submission shortlist is usually about. */}
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-[var(--muted-foreground)]">
+            {t('references.journalMetrics.filter.maxImpactFactor')}
+          </span>
+          <input
+            aria-label={t('references.journalMetrics.filter.maxImpactFactor')}
+            className="w-24 rounded border border-[var(--border)] bg-transparent px-2 py-1"
+            inputMode="decimal"
+            onChange={(event) => setMaxImpactFactor(event.target.value)}
+            value={maxImpactFactor}
           />
         </label>
 

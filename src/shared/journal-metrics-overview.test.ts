@@ -183,6 +183,69 @@ describe('buildJournalMetricsOverview', () => {
     })
   })
 
+  it('honours the ceiling the same way as the floor, inclusively at the boundary', () => {
+    const journalsWithFactors = [
+      { id: 'high', normalizedName: 'high', issn: null },
+      { id: 'edge', normalizedName: 'edge', issn: null },
+      { id: 'low', normalizedName: 'low', issn: null }
+    ]
+    const overview = buildJournalMetricsOverview({
+      journals: journalsWithFactors,
+      claims: [
+        claim({ journalId: 'high', kind: 'impact-factor', value: '30.0', numericValue: 30 }),
+        claim({ journalId: 'edge', kind: 'impact-factor', value: '10.0', numericValue: 10 }),
+        claim({ journalId: 'low', kind: 'impact-factor', value: '4.0', numericValue: 4 })
+      ],
+      filter: { maxImpactFactor: 10 }
+    })
+
+    // The bound is inclusive on both sides: a value exactly at the ceiling stays in.
+    expect(overview.rows.map((row) => row.name)).toEqual(['edge', 'low'])
+    expect(overview.counts).toEqual({
+      total: 3,
+      matched: 2,
+      missingMetric: 0,
+      valueNotNumeric: 0,
+      notMatching: 1
+    })
+  })
+
+  it('applies both bounds together, so a range narrows the same way a single bound does', () => {
+    const journalsWithFactors = [
+      { id: 'too-high', normalizedName: 'too-high', issn: null },
+      { id: 'in-range', normalizedName: 'in-range', issn: null },
+      { id: 'too-low', normalizedName: 'too-low', issn: null },
+      { id: 'not-a-number', normalizedName: 'not-a-number', issn: null }
+    ]
+    const overview = buildJournalMetricsOverview({
+      journals: journalsWithFactors,
+      claims: [
+        claim({ journalId: 'too-high', kind: 'impact-factor', value: '20', numericValue: 20 }),
+        claim({ journalId: 'in-range', kind: 'impact-factor', value: '12', numericValue: 12 }),
+        claim({ journalId: 'too-low', kind: 'impact-factor', value: '2', numericValue: 2 }),
+        claim({
+          journalId: 'not-a-number',
+          kind: 'impact-factor',
+          value: 'n/a',
+          numericValue: null
+        })
+      ],
+      filter: { minImpactFactor: 5, maxImpactFactor: 15 }
+    })
+
+    expect(overview.rows.map((row) => row.name)).toEqual(['in-range'])
+    // Both ends are "outside the bounds", never "missing": the four buckets still add up to the total.
+    expect(overview.counts).toEqual({
+      total: 4,
+      matched: 1,
+      missingMetric: 0,
+      valueNotNumeric: 1,
+      notMatching: 2
+    })
+    const { total, matched, missingMetric, valueNotNumeric, notMatching } = overview.counts
+    expect(matched + missingMetric + valueNotNumeric + notMatching).toBe(total)
+  })
+
   it('a partition filter never drops a journal for lacking an impact factor', () => {
     const overview = buildJournalMetricsOverview({
       journals: [journals[0]],

@@ -3565,6 +3565,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.filter.partition': '分區',
   'references.journalMetrics.filter.partitionAny': '全部分區',
   'references.journalMetrics.filter.minImpactFactor': '影響因子 ≥',
+  'references.journalMetrics.filter.maxImpactFactor': '影響因子 ≤',
   'references.journalMetrics.filter.year': '年份',
   'references.journalMetrics.filter.yearAny': '最新年份',
   'references.journalMetrics.unknown': '未知',

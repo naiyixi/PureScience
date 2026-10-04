@@ -14,6 +14,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/i18n', () => {
   const labels: Record<string, string> = {
+    'references.journalMetrics.title': 'Journal metrics',
+    'references.journalMetrics.hint':
+      'Every number is shown with its year and the source it came from.',
+    'references.journalMetrics.filter.partition': 'Partition',
+    'references.journalMetrics.filter.partitionAny': 'Any partition',
+    'references.journalMetrics.filter.minImpactFactor': 'Impact factor ≥',
+    'references.journalMetrics.filter.maxImpactFactor': 'Impact factor ≤',
+    'references.journalMetrics.filter.year': 'Year',
+    'references.journalMetrics.filter.yearAny': 'Latest year',
+    'references.journalMetrics.loading': 'Loading journal metrics…',
+    'references.journalMetrics.empty': 'No journal matches this filter.',
     'references.journalMetrics.unknown': 'Unknown',
     'references.journalMetrics.counts':
       '{matched} of {total} journals match · {missing} have no such metric · {notNumeric} have a value that is not a number · {notMatching} fall outside the bounds',
@@ -53,7 +64,7 @@ vi.mock('@/i18n', () => {
   }
 })
 
-import { JournalMergeControls, JournalMetricsTable } from './JournalMetricsPanel'
+import { JournalMergeControls, JournalMetricsPanel, JournalMetricsTable } from './JournalMetricsPanel'
 
 let container: HTMLDivElement
 let root: Root
@@ -363,5 +374,112 @@ describe('journal merge controls', () => {
     const refusal = container.querySelector('[data-slot="journal-merge-result"]')?.textContent ?? ''
     expect(refusal).toContain('That name already belongs to another journal')
     expect(refusal).toContain('already an alias of journal j-third')
+  })
+})
+
+// The screening controls live in the panel, not in the presentational table, so the bounds are pinned here by
+// driving the real container: state -> the filter the pure function is called with -> the rows on screen. A
+// unit test of the pure function alone would pass even if the panel never wired the new bound to it.
+describe('journal metrics panel range filters', () => {
+  const library = {
+    journals: [
+      { id: 'j-nature', normalizedName: 'nature', displayName: 'Nature', issn: '0028-0836' },
+      {
+        id: 'j-comms',
+        normalizedName: 'nature communications',
+        displayName: 'Nature Communications',
+        issn: '2041-1723'
+      }
+    ],
+    claims: [
+      {
+        journalId: 'j-nature',
+        kind: 'impact-factor',
+        value: '64.8',
+        numericValue: 64.8,
+        year: 2023,
+        source: 'Journal Citation Reports',
+        fetchedAt: 1
+      },
+      {
+        journalId: 'j-comms',
+        kind: 'impact-factor',
+        value: '16.6',
+        numericValue: 16.6,
+        year: 2023,
+        source: 'Journal Citation Reports',
+        fetchedAt: 1
+      }
+    ],
+    aliases: []
+  }
+
+  const flush = async (): Promise<void> => {
+    await act(async () => {
+      await Promise.resolve()
+    })
+  }
+
+  const renderPanel = async (): Promise<void> => {
+    await act(async () => {
+      root.render(<JournalMetricsPanel />)
+    })
+    await flush()
+  }
+
+  const setValue = (label: string, value: string): void => {
+    const input = container.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
+    if (!input) throw new Error(`no input labelled ${label}`)
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    setter?.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  const rowTexts = (): string[] =>
+    [...container.querySelectorAll('tbody tr')].map((row) => (row.textContent ?? '').trim())
+
+  beforeEach(() => {
+    window.api = {
+      references: { listJournalMetrics: vi.fn().mockResolvedValue(library) }
+    } as unknown as typeof window.api
+  })
+
+  it('narrows the table by a ceiling, not only a floor', async () => {
+    await renderPanel()
+
+    // Both bounds are reachable, and the unfiltered library really holds two journals — without this the
+    // assertion below could pass on a panel that simply never showed the second row.
+    expect(container.querySelector('input[aria-label="Impact factor ≥"]')).not.toBeNull()
+    expect(container.querySelector('input[aria-label="Impact factor ≤"]')).not.toBeNull()
+    expect(rowTexts()).toHaveLength(2)
+
+    await act(async () => {
+      setValue('Impact factor ≤', '30')
+    })
+
+    const filtered = rowTexts()
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0]).toContain('Nature Communications')
+    expect(filtered.join(' ')).not.toContain('64.8')
+    // The excluded journal is counted as outside the bounds rather than as absent, so "one row" cannot be
+    // misread as "the library only ever held one journal".
+    expect(container.textContent).toContain('1 of 2 journals match')
+    expect(container.textContent).toContain('1 fall outside the bounds')
+  })
+
+  it('applies the floor and the ceiling together as one range', async () => {
+    await renderPanel()
+
+    await act(async () => {
+      setValue('Impact factor ≥', '5')
+    })
+    await act(async () => {
+      setValue('Impact factor ≤', '20')
+    })
+
+    const filtered = rowTexts()
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0]).toContain('16.6')
+    expect(filtered.join(' ')).not.toContain('64.8')
   })
 })

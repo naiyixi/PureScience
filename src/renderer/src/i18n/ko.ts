@@ -3780,6 +3780,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.filter.partition': '구분',
   'references.journalMetrics.filter.partitionAny': '모든 구분',
   'references.journalMetrics.filter.minImpactFactor': '임팩트 팩터 ≥',
+  'references.journalMetrics.filter.maxImpactFactor': '임팩트 팩터 ≤',
   'references.journalMetrics.filter.year': '연도',
   'references.journalMetrics.filter.yearAny': '최신 연도',
   'references.journalMetrics.unknown': '알 수 없음',
