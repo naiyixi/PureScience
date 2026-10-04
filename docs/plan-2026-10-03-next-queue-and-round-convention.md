@@ -255,3 +255,40 @@ B 段已耗尽（S3/S4 全落地、M2 卡产品决定），A 段唯一开项（e
 
 **下一轮第一步**：先看 `Nightly`/`Windows Full Test` 在 `24dd3b6b` 上的结论（红则先归因再动）；
 内存宽松则按上面 1–4 补 IC16 真机读数；否则顺延到 v1.84.0 的下一条（IC13/IC14/IC15 任选一条，落点见排期文件批次 4 表）。
+
+## 六、本轮追加（执行器，2026-10-04 19:35–19:55）——让位轮 + CI 归因
+
+**本轮判定：让位，不改动工作区（零代码提交）。** 开工时的事实：
+
+- `git status --short` 显示**桌面会话正在改的一批文件**（IC12 迁移遗留副本）：`storage/migration-service.ts`、
+  `storage/command-owner.ts`、`shared/storage.ts`、`StorageMigrationModal.tsx`(+render 测试)、**9 语字典**、
+  `session-import-posture.spec.ts`，外加新增的 `e2e/certification/storage-migration-unfinished.spec.ts`；
+- 进程表里有**正在跑的** `playwright test e2e/certification/storage-migration-unfinished.spec.ts`（它还留下
+  `test-results/electron/certification-storage-migr-…/test-failed-*.png`）⇒ 桌面会话此刻在跑真机 e2e；
+- 本机 swap **16.7G / 17.4G**、可用内存 **< 1G**。
+
+按共存红线（并行时只能有一个在改）＋ 本仓「跑真机 e2e 前必重建」的纪律：此刻任何重建/测试都会与它抢内存与端口，
+且必然纠缠同一批文件（含 9 语字典）⇒ **本轮不落代码**，产物是下面这份 CI 归因（下一轮直接引用，不要再重查）。
+
+**CI 归因（结论已定）**：
+
+1. **上一单元 IC16（`24dd3b6b`）没有任何 CI 判决**：该 SHA 上 `Nightly`（`37198…`）与 `Windows Full Test`
+   均为 **cancelled**（`2026-10-04T09:30:32Z` 创建，被 19:16 的 IC11 推送按 `cancel-in-progress` 顶掉）。
+   **取消 ≠ 绿**（见 `references/ci-gates-and-discipline.md`）⇒ IC16 的 CI 结论只能由
+   「**包含 `24dd3b6b` 的下一次绿色 `Nightly`**」代替给出（CI 跑整棵树而不是 diff）。
+2. **当前 HEAD（`99f36bc4`）的 `Nightly` 是红的**（run **37198183869**），红在 `build / Verify` 的 **Typecheck** 步，
+   全文只有一种错误：`e2e/certification/session-import-posture.spec.ts` **5 处 `TS2304: Cannot find name 'Bridge'`**
+   （该 spec 是会话 IC11 的产物，缺一个本文件内的局部 `Bridge` 类型声明）。**同一 SHA 上没有别的 TS 错误**
+   ⇒ 这次红是 IC11 spec 自身的类型缺口，**与 IC16 无关**。
+3. **`Windows Full Test` 在同一 SHA 上是绿的（8/8 分片）**：它的分片只跑 vitest，不含 e2e 目录的 typecheck 作用域
+   ⇒ 同一条缺陷只被 `Nightly` 抓到。**别把这条读成「两条车道互相矛盾」**。
+4. **会话已在工作区里修掉了它**（未提交）：WIP 版加了 `import type { SessionPackageImportRecord }` + 文件内
+   `type Bridge = { … }`。我核对过修法落点真实存在——`src/shared/session-package-import.ts:144` 导出该类型，
+   `src/preload/index.ts:207/212/215` 三个方法（`exportPackage`/`importPackage`/`importPosture`）都在
+   ⇒ 它把 typecheck 转绿后，第 2 条即消失。
+
+**下一轮第一步（三选一，按当时事实判）**：
+① `git log --oneline origin/main -3` + `git status --short`：会话若已提交推送 IC12 且树干净 ⇒ 取 v1.84.0 的
+下一条（**IC15** 内核常驻「重启/关闭」 或 **IC13** 窗口直装包，落点见排期文件批次 4 表）；
+② 树仍脏 / 桌面仍活跃 ⇒ 继续让位，只做只读取证，不落代码；
+③ 内存宽松时优先补 **IC16 真机读数**（配方见 §五 1–4），并**顺带把「包含 `24dd3b6b` 的绿色 `Nightly`」记为 IC16 的 CI 证据**。
