@@ -1340,6 +1340,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     '新圖示會立即顯示在應用程式視窗中。Explorer、工作列、開始功能表或 Linux 啟動器中的圖示屬於已安裝的應用程式，維持不變。',
   'settings.appManaged': '由應用程式管理',
+  'settings.runtimeSourceOfficial': '執行環境來源：官方發佈 CDN',
+  'settings.runtimeSourceOverride': '執行環境來源：覆寫（{url}）',
   'settings.appStorageWriteAccessHint': 'PureScience 需要其私有設定目錄的寫入權限。',
   'settings.appVersion': '應用程式版本',
   'workspace.exportPackage': '匯出工作階段套件',

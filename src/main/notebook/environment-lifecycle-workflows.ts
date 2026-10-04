@@ -13,7 +13,13 @@ import {
   type ProvisionStatus,
   type RuntimeProvisioner
 } from './provisioner'
-import { DEFAULT_ENV_VERSION, DEFAULT_PY_ENV, envPrefix, readReadyMarker } from './runtime-paths'
+import {
+  DEFAULT_ENV_VERSION,
+  DEFAULT_PY_ENV,
+  envPrefix,
+  readReadyMarker,
+  resolveRuntimeCdnBase
+} from './runtime-paths'
 
 type NotebookEnvironmentLifecycle = {
   status: () => Promise<ProvisionStatus>
@@ -57,13 +63,23 @@ const runUnavailableOperation = (
 const createUnavailableLifecycle = (
   deps: NotebookEnvironmentLifecycleDeps
 ): NotebookEnvironmentLifecycle => ({
-  status: () =>
-    Promise.resolve({
+  status: () => {
+    // Even with no provisioner the window must be able to say where the runtime WOULD come from. The
+    // source is environment-derived, so it is knowable before any download happens — which is exactly when
+    // a user wants it. Limitation, stated rather than hidden: an override configured through the
+    // provisioner's own options (not the env var) is not visible on this fallback path.
+    const overrideBase = process.env.PURESCIENCE_ENV_CDN_BASE
+    return Promise.resolve({
       pythonReady: false,
       rReady: false,
       version: DEFAULT_ENV_VERSION,
-      provisioning: false
-    }),
+      provisioning: false,
+      bundleSource: {
+        kind: overrideBase !== undefined ? 'override' : 'official',
+        baseUrl: resolveRuntimeCdnBase(overrideBase)
+      }
+    })
+  },
   provision: (language, operationId) =>
     runUnavailableOperation(deps, 'provision', language, operationId),
   repair: (language, operationId) => runUnavailableOperation(deps, 'repair', language, operationId),

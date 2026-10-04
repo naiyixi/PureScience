@@ -452,6 +452,38 @@ describe('RuntimesPanel', () => {
     expect(container.textContent).toContain('attempt 2')
   })
 
+  it('says where the app-managed runtime comes from — official CDN vs an override, with its URL', async () => {
+    await render()
+    // Nothing on the status yet: the line stays out of the way rather than guessing.
+    expect(container.querySelector('[data-testid="runtimes-bundle-source"]')).toBeNull()
+
+    act(() =>
+      useNotebookEnvStore.setState({
+        status: {
+          ...useNotebookEnvStore.getState().status,
+          bundleSource: { kind: 'override', baseUrl: 'http://127.0.0.1:41997' }
+        }
+      })
+    )
+    const line = container.querySelector('[data-testid="runtimes-bundle-source"]')
+    expect(line).not.toBeNull()
+    // The URL is the point: a mirror used to be indistinguishable from the vendor's CDN.
+    expect(line?.textContent ?? '').toContain('override')
+    expect(line?.textContent ?? '').toContain('http://127.0.0.1:41997')
+
+    act(() =>
+      useNotebookEnvStore.setState({
+        status: {
+          ...useNotebookEnvStore.getState().status,
+          bundleSource: { kind: 'official', baseUrl: 'https://cdn.example/runtime' }
+        }
+      })
+    )
+    const official = container.querySelector('[data-testid="runtimes-bundle-source"]')?.textContent
+    expect(official ?? '').toContain('official')
+    expect(official ?? '').not.toContain('override')
+  })
+
   it('surfaces Reset in the app-managed SETUP card when a language is recovery-blocked', async () => {
     await render()
     // R has no provisioned managed env -> its section shows the setup card. A recovery-blocked error

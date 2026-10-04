@@ -560,7 +560,8 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookClosingKernel': 'Closing…',
   'ws.notebookKernelRestarted': 'Kernel restarted',
   'ws.notebookKernelClosed': 'Kernel closed',
-  'ws.notebookRuntimeEmpty': 'No runtime is enabled for this language — enable one in Settings → Runtimes',
+  'ws.notebookRuntimeEmpty':
+    'No runtime is enabled for this language — enable one in Settings → Runtimes',
   'ws.notebookRerunDone': 'Re-ran this cell · {status}',
   'settings.marketplaceInstalled': 'Marketplace',
   'settings.marketplaceFilter': 'Marketplace',
@@ -680,6 +681,8 @@ export const en: Record<ZhKey, string> = {
   'settings.permissionDetailsUnavailable': 'Some permission details are unavailable',
   'settings.remoteControl': 'Remote control',
   'settings.appManaged': 'App-managed',
+  'settings.runtimeSourceOfficial': 'Runtime source: the official release CDN',
+  'settings.runtimeSourceOverride': 'Runtime source: override ({url})',
   'settings.name': 'Name',
   'settings.version': 'Version',
   'settings.build': 'Build',

@@ -1408,6 +1408,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     '새 아이콘은 앱 창에 즉시 반영됩니다. Explorer, 작업 표시줄, 시작 메뉴 또는 Linux 런처의 아이콘은 설치된 앱의 일부이므로 그대로 유지됩니다.',
   'settings.appManaged': '앱 관리',
+  'settings.runtimeSourceOfficial': '런타임 출처: 공식 릴리스 CDN',
+  'settings.runtimeSourceOverride': '런타임 출처: 재정의 ({url})',
   'settings.appStorageWriteAccessHint':
     'PureScience는 자체 전용 구성 디렉터리에 대한 쓰기 권한이 필요합니다.',
   'settings.appVersion': '앱 버전',
@@ -3239,7 +3241,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.notebookClosingKernel': '닫는 중…',
   'ws.notebookKernelRestarted': '커널을 다시 시작했습니다',
   'ws.notebookKernelClosed': '커널을 닫았습니다',
-  'ws.notebookRuntimeEmpty': '이 언어에 활성화된 런타임이 없습니다 — 설정 → 런타임에서 활성화하세요',
+  'ws.notebookRuntimeEmpty':
+    '이 언어에 활성화된 런타임이 없습니다 — 설정 → 런타임에서 활성화하세요',
   'ws.notebookRerunDone': '이 셀을 다시 실행했습니다 · {status}',
   'ws.notebookVariables': '변수',
   'ws.notebookVariablesCount': '변수',

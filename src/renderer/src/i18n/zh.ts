@@ -652,6 +652,8 @@ export const zh = {
   'settings.permissionDetailsUnavailable': '部分权限详情不可用',
   'settings.remoteControl': '远程控制',
   'settings.appManaged': '应用托管',
+  'settings.runtimeSourceOfficial': '运行时来源：官方发布 CDN',
+  'settings.runtimeSourceOverride': '运行时来源：覆盖（{url}）',
   'settings.name': '名称',
   'settings.version': '版本',
   'settings.build': '构建',

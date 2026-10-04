@@ -1423,6 +1423,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     '新しいアイコンはアプリウィンドウにすぐ反映されます。Explorer、タスクバー、スタートメニュー、Linux ランチャーのアイコンはインストール済みアプリの一部であるため、変わりません。',
   'settings.appManaged': 'アプリ管理',
+  'settings.runtimeSourceOfficial': 'ランタイムの取得元: 公式リリース CDN',
+  'settings.runtimeSourceOverride': 'ランタイムの取得元: 上書き（{url}）',
   'settings.appStorageWriteAccessHint':
     'PureScience がプライベート設定ディレクトリへの書き込みアクセスを必要としています。',
   'settings.appVersion': 'アプリバージョン',
@@ -3297,7 +3299,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.notebookClosingKernel': '閉じています…',
   'ws.notebookKernelRestarted': 'カーネルを再起動しました',
   'ws.notebookKernelClosed': 'カーネルを閉じました',
-  'ws.notebookRuntimeEmpty': 'この言語で有効なランタイムがありません — 設定 → ランタイム で有効にしてください',
+  'ws.notebookRuntimeEmpty':
+    'この言語で有効なランタイムがありません — 設定 → ランタイム で有効にしてください',
   'ws.notebookRerunDone': 'このセルを再実行しました · {status}',
   'ws.notebookVariables': '変数',
   'ws.notebookVariablesCount': '個の変数',

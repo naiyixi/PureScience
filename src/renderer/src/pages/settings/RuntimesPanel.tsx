@@ -218,6 +218,10 @@ const RuntimesPanel = ({
   // Per-language provisioning state: python and R each track their own progress/preparing/error, so
   // requesting one never makes the other's card look cancelled (the provisioner serializes the runs).
   const byLang = useNotebookEnvStore((state) => state.byLang)
+  // IC18: where the app-managed runtime comes FROM. The provisioner has always reported this on the
+  // status (official CDN vs an override — an env var or a configured base URL); the window just never
+  // showed it, so a machine pointed at a mirror looked identical to one fetching from the vendor.
+  const bundleSource = useNotebookEnvStore((state) => state.status.bundleSource)
 
   useEffect(() => {
     void initEnv()
@@ -1074,6 +1078,19 @@ const RuntimesPanel = ({
                               finishing ? t('settings.finishingSetup') : langProgress?.message
                             )}
                           </div>
+                          {bundleSource ? (
+                            <p
+                              className="mt-1 text-[12px] text-muted-foreground"
+                              data-testid="runtimes-bundle-source"
+                            >
+                              {bundleSource.kind === 'override'
+                                ? t('settings.runtimeSourceOverride').replace(
+                                    '{url}',
+                                    bundleSource.baseUrl
+                                  )
+                                : t('settings.runtimeSourceOfficial')}
+                            </p>
+                          ) : null}
                           {settingUp ? (
                             langProgress?.download ? (
                               // The SAME line the workspace banner and the update dialog show: speed,

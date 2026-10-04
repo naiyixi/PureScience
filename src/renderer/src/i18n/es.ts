@@ -1454,6 +1454,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     'El icono nuevo aparece de inmediato en la ventana de la aplicación. El icono de Explorer, la barra de tareas, el menú Inicio o un lanzador de Linux forma parte de la aplicación instalada y no cambia.',
   'settings.appManaged': 'Gestionado por la aplicación',
+  'settings.runtimeSourceOfficial': 'Origen del entorno: el CDN oficial de versiones',
+  'settings.runtimeSourceOverride': 'Origen del entorno: anulación ({url})',
   'settings.appStorageWriteAccessHint':
     'PureScience necesita permiso de escritura en su directorio de configuración privado.',
   'settings.appVersion': 'Versión de la aplicación',
@@ -3359,7 +3361,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.notebookClosingKernel': 'Cerrando…',
   'ws.notebookKernelRestarted': 'Kernel reiniciado',
   'ws.notebookKernelClosed': 'Kernel cerrado',
-  'ws.notebookRuntimeEmpty': 'No hay ningún entorno habilitado para este lenguaje: habilita uno en Ajustes → Entornos',
+  'ws.notebookRuntimeEmpty':
+    'No hay ningún entorno habilitado para este lenguaje: habilita uno en Ajustes → Entornos',
   'ws.notebookRerunDone': 'Celda reejecutada · {status}',
   'ws.notebookVariables': 'Variables',
   'ws.notebookVariablesCount': 'variables',

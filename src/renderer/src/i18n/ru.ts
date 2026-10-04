@@ -1429,6 +1429,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     'Новый значок сразу появляется в окне приложения. Значок в Проводнике, на панели задач, в меню «Пуск» или в панели запуска Linux относится к установленному приложению и остаётся прежним.',
   'settings.appManaged': 'Управляется приложением',
+  'settings.runtimeSourceOfficial': 'Источник среды: официальный CDN релизов',
+  'settings.runtimeSourceOverride': 'Источник среды: переопределение ({url})',
   'settings.appStorageWriteAccessHint':
     'PureScience требуется доступ на запись к своему приватному каталогу конфигурации.',
   'settings.appVersion': 'Версия приложения',

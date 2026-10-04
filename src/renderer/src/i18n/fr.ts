@@ -1463,6 +1463,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     'La nouvelle icône apparaît immédiatement dans la fenêtre de l’application. L’icône dans l’Explorateur, la barre des tâches, le menu Démarrer ou un lanceur Linux fait partie de l’application installée et reste inchangée.',
   'settings.appManaged': 'Géré par l’application',
+  'settings.runtimeSourceOfficial': "Source de l'environnement : le CDN officiel des versions",
+  'settings.runtimeSourceOverride': "Source de l'environnement : remplacement ({url})",
   'settings.appStorageWriteAccessHint':
     'PureScience a besoin d’un accès en écriture à son répertoire de configuration privé.',
   'settings.appVersion': 'Version de l’application',
@@ -3375,13 +3377,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.notebookRuntime': 'Environnement',
   'ws.notebookRuntimeBound': 'utilisé',
   'ws.notebookRuntimeNotRunnable': 'indisponible',
-  'ws.notebookRuntimeUnavailable': 'Ne peut pas s\'exécuter ici',
+  'ws.notebookRuntimeUnavailable': "Ne peut pas s'exécuter ici",
   'ws.notebookRestartKernel': 'Redémarrer le noyau',
   'ws.notebookCloseKernel': 'Fermer le noyau',
   'ws.notebookClosingKernel': 'Fermeture…',
   'ws.notebookKernelRestarted': 'Noyau redémarré',
   'ws.notebookKernelClosed': 'Noyau fermé',
-  'ws.notebookRuntimeEmpty': 'Aucun environnement n\'est activé pour ce langage — activez-en un dans Paramètres → Environnements',
+  'ws.notebookRuntimeEmpty':
+    "Aucun environnement n'est activé pour ce langage — activez-en un dans Paramètres → Environnements",
   'ws.notebookRerunDone': 'Cellule réexécutée · {status}',
   'ws.notebookVariables': 'Variables',
   'ws.notebookVariablesCount': 'variables',

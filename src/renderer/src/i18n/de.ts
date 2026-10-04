@@ -1466,6 +1466,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.appIconHint':
     'Das neue Symbol erscheint sofort im App-Fenster. Das Symbol im Explorer, in der Taskleiste, im Startmenü oder in einem Linux-Launcher gehört zur installierten App und bleibt unverändert.',
   'settings.appManaged': 'Von der App verwaltet',
+  'settings.runtimeSourceOfficial': 'Laufzeitquelle: der offizielle Release-CDN',
+  'settings.runtimeSourceOverride': 'Laufzeitquelle: Überschreibung ({url})',
   'settings.appStorageWriteAccessHint':
     'PureScience benötigt Schreibzugriff auf sein privates Konfigurationsverzeichnis.',
   'settings.appVersion': 'App-Version',
@@ -3391,7 +3393,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.notebookClosingKernel': 'Wird geschlossen…',
   'ws.notebookKernelRestarted': 'Kernel neu gestartet',
   'ws.notebookKernelClosed': 'Kernel geschlossen',
-  'ws.notebookRuntimeEmpty': 'Für diese Sprache ist keine Laufzeit aktiviert — aktivieren Sie eine unter Einstellungen → Laufzeiten',
+  'ws.notebookRuntimeEmpty':
+    'Für diese Sprache ist keine Laufzeit aktiviert — aktivieren Sie eine unter Einstellungen → Laufzeiten',
   'ws.notebookRerunDone': 'Zelle erneut ausgeführt · {status}',
   'ws.notebookVariables': 'Variablen',
   'ws.notebookVariablesCount': 'Variablen',
