@@ -740,6 +740,19 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                           ) : null}
                         </button>
                       </div>
+                      {/* IC22: the server's physical state, in words. Before this the row looked the same
+                          whether the server could not run at all or simply needed a sign-in. */}
+                      {server.availability ? (
+                        <span
+                          data-testid="custom-server-availability"
+                          data-availability={server.availability}
+                          className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                        >
+                          {server.availability === 'unavailable'
+                            ? t('settings.connectorUnavailable')
+                            : t('settings.connectorNeedsSignIn')}
+                        </span>
+                      ) : null}
                       <SettingsIconAction
                         label={t('settings.exportConnectorAction').replace('{name}', server.name)}
                         icon={Download}
@@ -788,11 +801,16 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                       <SettingsToggle
                         enabled={server.enabled}
                         aria-label={server.name}
-                        disabled={Boolean(server.oauth && !server.oauth.hasTokens)}
+                        disabled={
+                          server.availability === 'unavailable' ||
+                          Boolean(server.oauth && !server.oauth.hasTokens)
+                        }
                         title={
-                          server.oauth && !server.oauth.hasTokens
-                            ? t('settings.signInBeforeEnabling')
-                            : undefined
+                          server.availability === 'unavailable'
+                            ? t('settings.connectorUnavailableHint')
+                            : server.oauth && !server.oauth.hasTokens
+                              ? t('settings.signInBeforeEnabling')
+                              : undefined
                         }
                         onToggle={() => void setCustomServerEnabled(server.id, !server.enabled)}
                       />

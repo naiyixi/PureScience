@@ -4102,5 +4102,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '同じ年でも情報源により複数の値があります。すべて下に表示しています。',
   'references.journalMetrics.conflictLine': '併記：{value}（{year} · {source}）',
   'settings.signOutOf': '{name} からサインアウト',
-  'settings.oauthSignOutFailed': 'サインアウトできませんでした。もう一度お試しください。'
+  'settings.oauthSignOutFailed': 'サインアウトできませんでした。もう一度お試しください。',
+  'settings.connectorUnavailable': '利用不可',
+  'settings.connectorNeedsSignIn': 'サインインが必要',
+  'settings.connectorUnavailableHint':
+    'このサーバーは実行できません。設定が不完全か、経路が利用できません。'
 }

@@ -324,6 +324,63 @@ describe('ConnectorsPanel (groups)', () => {
     expect(onNavigate).toHaveBeenCalledWith({ kind: 'import' })
   })
 
+  // IC22: the row must say WHY it is not usable, and its toggle must be inert when the server cannot run.
+  it('labels an unavailable server and disables its toggle (IC22)', () => {
+    useSettingsStore.setState({
+      customServers: [
+        {
+          id: 'broken-mcp',
+          slug: 'broken-mcp',
+          name: 'Broken MCP',
+          transport: 'streamable_http',
+          enabled: false,
+          availability: 'unavailable'
+        }
+      ]
+    })
+    act(() => {
+      root.render(<ConnectorsPanel onNavigate={vi.fn()} />)
+    })
+
+    const badge = document.body.querySelector<HTMLElement>(
+      '[data-testid="custom-server-availability"]'
+    )
+    expect(badge?.getAttribute('data-availability')).toBe('unavailable')
+    expect(badge?.textContent).toContain('Unavailable')
+
+    const toggle = document.body.querySelector<HTMLButtonElement>('[aria-label="Broken MCP"]')
+    expect(toggle?.disabled).toBe(true)
+  })
+
+  it('labels a signed-out OAuth server as needing sign-in (IC22)', () => {
+    useSettingsStore.setState({
+      customServers: [
+        {
+          id: 'oauth-mcp',
+          slug: 'oauth-mcp',
+          name: 'OAuth MCP',
+          transport: 'streamable_http',
+          enabled: false,
+          url: 'https://mcp.example.test',
+          oauth: { hasTokens: false },
+          availability: 'unauthenticated'
+        }
+      ]
+    })
+    act(() => {
+      root.render(<ConnectorsPanel onNavigate={vi.fn()} />)
+    })
+
+    const badge = document.body.querySelector<HTMLElement>(
+      '[data-testid="custom-server-availability"]'
+    )
+    expect(badge?.getAttribute('data-availability')).toBe('unauthenticated')
+    expect(badge?.textContent).toContain('Sign-in required')
+
+    const toggle = document.body.querySelector<HTMLButtonElement>('[aria-label="OAuth MCP"]')
+    expect(toggle?.disabled).toBe(true)
+  })
+
   it('starts OAuth sign-in and displays the connected state', async () => {
     useSettingsStore.setState({
       customServers: [

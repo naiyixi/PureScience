@@ -4116,5 +4116,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'За один год есть несколько значений из разных источников; все перечислены ниже.',
   'references.journalMetrics.conflictLine': 'также {value} ({year} · {source})',
   'settings.signOutOf': 'Выйти из {name}',
-  'settings.oauthSignOutFailed': 'Не удалось выйти. Повторите попытку.'
+  'settings.oauthSignOutFailed': 'Не удалось выйти. Повторите попытку.',
+  'settings.connectorUnavailable': 'Недоступен',
+  'settings.connectorNeedsSignIn': 'Требуется вход',
+  'settings.connectorUnavailableHint':
+    'Этот сервер не может быть запущен: конфигурация неполна или маршрут недоступен.'
 }

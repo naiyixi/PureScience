@@ -3865,7 +3865,10 @@ export const zh = {
     '同一年份存在来自不同来源的多个数值；下方全部列出。',
   'references.journalMetrics.conflictLine': '同时：{value}（{year} · {source}）',
   'settings.signOutOf': '退出 {name} 的登录',
-  'settings.oauthSignOutFailed': '退出登录失败，请重试。'
+  'settings.oauthSignOutFailed': '退出登录失败，请重试。',
+  'settings.connectorUnavailable': '不可用',
+  'settings.connectorNeedsSignIn': '需要登录',
+  'settings.connectorUnavailableHint': '该服务器无法运行：配置不完整，或路由不可用。'
 }
 
 export type ZhKey = keyof typeof zh

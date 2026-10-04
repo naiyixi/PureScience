@@ -4139,5 +4139,9 @@ export const en: Record<ZhKey, string> = {
     'The same year holds more than one value from different sources; all are listed below.',
   'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})',
   'settings.signOutOf': 'Sign out of {name}',
-  'settings.oauthSignOutFailed': 'Could not sign out. Try again.'
+  'settings.oauthSignOutFailed': 'Could not sign out. Try again.',
+  'settings.connectorUnavailable': 'Unavailable',
+  'settings.connectorNeedsSignIn': 'Sign-in required',
+  'settings.connectorUnavailableHint':
+    'This server cannot run: its configuration is incomplete or its route is unavailable.'
 }

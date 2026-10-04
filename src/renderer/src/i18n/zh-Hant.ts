@@ -3805,5 +3805,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '同一年份存在來自不同來源的多個數值；下方全部列出。',
   'references.journalMetrics.conflictLine': '同時：{value}（{year} · {source}）',
   'settings.signOutOf': '登出 {name}',
-  'settings.oauthSignOutFailed': '登出失敗，請重試。'
+  'settings.oauthSignOutFailed': '登出失敗，請重試。',
+  'settings.connectorUnavailable': '無法使用',
+  'settings.connectorNeedsSignIn': '需要登入',
+  'settings.connectorUnavailableHint': '該伺服器無法執行：設定不完整，或路由無法使用。'
 }

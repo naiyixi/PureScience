@@ -4215,5 +4215,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'La même année compte plusieurs valeurs de sources différentes ; toutes sont listées ci-dessous.',
   'references.journalMetrics.conflictLine': 'aussi {value} ({year} · {source})',
   'settings.signOutOf': 'Se déconnecter de {name}',
-  'settings.oauthSignOutFailed': 'Échec de la déconnexion. Réessayez.'
+  'settings.oauthSignOutFailed': 'Échec de la déconnexion. Réessayez.',
+  'settings.connectorUnavailable': 'Indisponible',
+  'settings.connectorNeedsSignIn': 'Connexion requise',
+  'settings.connectorUnavailableHint':
+    "Ce serveur ne peut pas s'exécuter : configuration incomplète ou route indisponible."
 }

@@ -4036,5 +4036,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '같은 연도에 서로 다른 출처의 값이 여러 개 있습니다. 아래에 모두 표시합니다.',
   'references.journalMetrics.conflictLine': '함께: {value}({year} · {source})',
   'settings.signOutOf': '{name}에서 로그아웃',
-  'settings.oauthSignOutFailed': '로그아웃하지 못했습니다. 다시 시도하세요.'
+  'settings.oauthSignOutFailed': '로그아웃하지 못했습니다. 다시 시도하세요.',
+  'settings.connectorUnavailable': '사용 불가',
+  'settings.connectorNeedsSignIn': '로그인 필요',
+  'settings.connectorUnavailableHint':
+    '이 서버는 실행할 수 없습니다. 구성이 불완전하거나 경로를 사용할 수 없습니다.'
 }
