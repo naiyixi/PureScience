@@ -97,17 +97,30 @@
 | 0 | i18n 清扫 playbook + settings zh | 22 + 6 | 2 份（`i18n-sweep-playbook.md` 133,664 / `settings-zh-sweep.md` 42,746） | 见左 | 308 → 280 |
 | 1 | 发布 / CI / CDN（含 `release-mechanics.md` 本体） | 26 | 5 份（`release-mechanics.md` 130,289 · `release-publishing.md` 67,089 · `ci-gates-and-discipline.md` 84,405（新）· `ci-monitoring-and-push-discipline.md` 72,893 · `pr-gate-diagnosis.md` 21,182） | 见左 | 280 → 255 |
 | 2 | 入口层 / 会话 / 带日期的会话沉淀 | 28 | 4 份（`entry-layer-audit.md` 101,540 · `session-forensics-and-packages.md` 46,845（新）· `session-lifecycle-and-controls.md` 33,685（新）· `archive-2026-08-09-session-logs.md` 134,972（新）） | 见左 | 255 → 230 |
-| — | **合计** | **82 份并入 11 个主题落点** | — | — | **308 → 230（净 −78）** |
+| 3 | 运行时/DDL、渲染层、设置面板、IPC、产物 | 28 | 5 份（`runtime-and-schema-evolution.md` 35,762 · `renderer-development-and-testing.md` 56,066 · `settings-panels-and-gates.md` 37,264 · `ipc-surface-and-contracts.md` 48,257 · `artifact-lifecycle-and-provenance.md` 54,191，全部新建） | 见左 | 230 → 207 |
+| 4 | 验证/契约门禁、agent 面（MCP/ACP/框架）、无头与 CDP、真机探针、参考产品研究 | 50 | 5 份（`verification-and-contract-gates.md` 124,012 · `agent-surfaces-mcp-and-acp.md` 72,525 · `headless-and-cdp-driving.md` 40,887 · `real-machine-probing.md` 97,527 · `reference-product-research.md` 164,439，全部新建） | 见左 | 207 → **162** |
+| — | **合计** | **160 份并入 21 个主题落点** | — | — | **308 → 162（净 −146）** |
 
-- 每批的**源副本 + H1 清单**在 `~/.hermes/skill-merges/2026-10-04/`（3 个批次目录 + 2 份批次定义 JSON，共 82 份源副本 / 1.0 MB；scratch 下的同名副本只是工作区，**持久件在这里**）。
-- 校验口径：合并后逐份 grep `^## <源名>$`，**每批 0 缺失**才算通过；落点文件必须在盘且 ≥ 源字符数×0.95。
-- 逐份 H1 与"是否在盘"的抽查同时确认了：**目标名在源列表里时不会再自删**（批次 1 与 2 都各有 3 个目标名本身在源列表内，均正常保留）。
+- 每批的**源副本 + H1 清单**在 `~/.hermes/skill-merges/2026-10-04/`（5 个批次目录 + 4 份批次定义 JSON，共 160 份源副本 / 1.9 MB；scratch 下的同名副本只是工作区，**持久件在这里**）。
+- 校验口径（脚本 `verify_batch.py` 可重放）：合并后逐份 grep `\n## <源名>\n`，**四批 0 缺失**才算通过；落点文件必须在盘且 ≥ 源字符数×0.95 才允许删源。
+- 逐份 H1 与"是否在盘"的抽查同时确认了：**目标名在源列表里时不会再自删**（批次 1 与 2 各有 3 个目标名本身在源列表内，均正常保留）。
+- 批次 4 的 `reference-product-research.md` 由**源名带禁用词前缀**的那两簇合并而来——落点在技能目录，**不进仓库**；仓库这边只记"参考产品研究一簇"。
 
-### 5.6 后续（本项未完成的部分）
+### 5.6 现状与收尾
 
-references 仍余 **230 份**（计划目标是 140–160）。按前缀看还剩这些成簇的机会（示例）：
-`runtime-*`×6、`artifact-*`×8、`settings-*`×6、`renderer-*`×5、`v014x-*`×6、`agent-framework-*`×3、
-`ipc-channel-*`×3、`mcp-*`×5、`xai-oauth-*`×2、`website-content-*`×2、`performance-*`×3，
-以及**两簇前缀本身就在本仓禁用词表内**的同主题文件（外部参考产品同步、对照基准产品研究各一簇）——
-此处**不复述其字面**（照本仓「词表只存在于 `scripts/brand-patterns.sh`、读它不要复述」的口径）。
-**每一簇都按 5.4 的三条规矩做**（树外备份 → 验证后删源 → 标题校验），批次定义写成 JSON 留档。
+references **162 份**（起点 308，净 −146），已到计划目标区间（140–160）的边缘；**成簇的大块已全部合并**，
+剩下的是单主题单份（编排、预览/帧安全、通知、启动诊断之类），继续并的收益递减。
+收尾动作两条：① **SKILL.md 补一条防回退约定**——references 按主题分簇、**命名不带日期/事件名**，
+同主题要补内容时先 grep 既有落点、扩写已有文件（见 `references/skill-file-budget.md` 的"写新内容的门槛"与三条合并规矩）；
+② 5.4 的三条合并规矩（树外备份 → 验证后删源 → 标题校验）保留在技能里，供下一次瘦身直接照做。
+
+### 5.7 合并的连带影响：指针会断（本次 11 处，已全修）
+
+合并把 160 份的文件名换成了 21 个落点名，而 `SKILL.md` 里有 39 处 `references/<名>.md` 指针 —— 重新核对后
+**11 处变成断链**（`ci-failure-attribution` / `ci-gates-and-measurement-discipline` / `real-machine-probe` /
+`entry-layer-wiring` / `entry-layer-coverage-audit` / `release-and-front-page-ops` /
+`release-asset-and-claim-integrity` / `web-ui-driving-and-screenshots` / `debrand-2026-08` / 参考产品迁移那一份，
+以及事故中损失的那一份）。修法：按批次定义把每处**重指到吸收它的落点**（13 处提及一次性替换），
+复验脚本报 **36 处提及 / 0 断链**。**规程**：以后每次合簇之后都要重跑这遍指针核对（脚本
+`check_skill_pointers.py` 读批次 JSON 反查并列出断链），并把这个动作写进技能（已写：SKILL.md 的
+「references 按主题分簇」那条约定里）。
