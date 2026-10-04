@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { NotebookCell } from '../../shared/notebook'
 
@@ -100,5 +100,66 @@ describe('NotebookSessionAggregate', () => {
       cells: [{ id: 'cell-1', code: 'original', status: 'idle' }],
       kernelStatuses: [['python:default-python', 'idle']]
     })
+  })
+
+  it('refuses the in-flight teardown immediately instead of queueing it behind the lifecycle queue', async () => {
+    const order: string[] = []
+    const shutdownOptions: Array<{ interruptionReason?: 'app-terminated' } | undefined> = []
+    let releaseCallback!: () => void
+    const callbackGate = new Promise<void>((resolve) => {
+      releaseCallback = resolve
+    })
+    const generation = Symbol('executor-1')
+    const session = new NotebookSessionAggregate({
+      sessionId: 'session-1',
+      projectName: 'default-project',
+      cwd: '/workspace/data',
+      notebookSessionRoot: '/workspace',
+      dataRoot: '/workspace/data',
+      runtimeRoot: '/runtime',
+      runJsonPath: '/workspace/run.json',
+      executionCount: 1,
+      executorGeneration: generation,
+      executor: {
+        execute: async () => ({
+          status: 'running',
+          stdout: '',
+          stderr: '',
+          traceback: '',
+          cwdAfter: '/workspace/data',
+          outputs: []
+        }),
+        shutdown: async (options) => {
+          order.push('shutdown')
+          shutdownOptions.push(options)
+          return { reaped: true }
+        }
+      }
+    })
+
+    // A queued executor-lifecycle callback (a kernel-status write) that is still outstanding: this is
+    // what the teardown must not have to wait for before it can refuse the in-flight run.
+    const callback = session.runExecutorLifecycleCallback(generation, async () => {
+      order.push('callback')
+      await callbackGate
+      return 'persisted'
+    })
+    await vi.waitFor(() => expect(order).toContain('callback'))
+
+    const teardown = session.shutdownExecutor().then((result) => {
+      order.push('teardown')
+      return result
+    })
+
+    // The refusal happened synchronously with the teardown call, and it names why: 'app-terminated' is
+    // what turns the refused run into the domain's interrupted record instead of a failure.
+    expect(order).toEqual(['callback', 'shutdown'])
+    expect(shutdownOptions).toEqual([{ interruptionReason: 'app-terminated' }])
+
+    releaseCallback()
+    await expect(callback).resolves.toBe('persisted')
+    await expect(teardown).resolves.toEqual({ reaped: true })
+    // The queue was still awaited, so a queued persistent write lands before the teardown resolves.
+    expect(order).toEqual(['callback', 'shutdown', 'teardown'])
   })
 })

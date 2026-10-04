@@ -8,6 +8,7 @@ import type {
   NotebookLiveEnvironmentOverlay,
   NotebookOutput,
   NotebookRunEnvironmentCapture,
+  NotebookRunRecord,
   NotebookRunSource,
   NotebookRunStatus,
   NotebookWorkingFile,
@@ -51,13 +52,20 @@ export type NotebookSessionExecutionRequest = {
 }
 
 export type NotebookSessionExecutionResult = {
-  status: Extract<NotebookRunStatus, 'completed' | 'failed' | 'timeout' | 'cancelled'>
+  status: Extract<
+    NotebookRunStatus,
+    'completed' | 'failed' | 'timeout' | 'cancelled' | 'interrupted'
+  >
   stdout: string
   stderr: string
   traceback: string
   cwdAfter: string
   outputs: NotebookOutput[]
   workingFiles?: NotebookWorkingFile[]
+  // Why an 'interrupted' run ended: the application was terminated while the cell was executing. Present
+  // only alongside status 'interrupted' — the domain rule is that such a run is NOT a failure (the code
+  // may have been fine), so this is what distinguishes it from a failed run in the terminalised record.
+  interruptionReason?: Extract<NotebookRunRecord['interruptionReason'], 'app-terminated'>
   // How complete the write list is (captured / truncated + shortfall / unavailable + reason /
   // unattributed + shared directory). Carried beside workingFiles so a short list can never be read
   // as a complete one.
@@ -76,7 +84,11 @@ export type NotebookSessionExecutor<
   Result = NotebookSessionExecutionResult
 > = {
   execute: (request: Request) => Promise<Result>
-  shutdown: () => Promise<{ reaped: boolean }>
+  // Refuses any in-flight run (and, before its first await, clears the kernel routing map so the kernel's
+  // own exit cannot be mistaken for a crash). `options.interruptionReason` names why the run is being cut
+  // off: 'app-terminated' when the application is going away, which records the run as interrupted
+  // instead of failed. Omitted for a kernel restart, where no such reason applies.
+  shutdown: (options?: { interruptionReason?: 'app-terminated' }) => Promise<{ reaped: boolean }>
   restart?: () => Promise<void>
   terminate?: (kind: 'python' | 'r' | 'repl', env: string) => Promise<void>
   // Live-namespace snapshot for the Variables view; absent on shells/repl.
@@ -423,11 +435,20 @@ export class NotebookSessionAggregate<
     this.executorGenerationActive = true
   }
 
+  // Tears the executor down without queueing the refusal behind earlier work. `shutdown()` clears the
+  // kernel routing map and refuses the in-flight run synchronously — before its first await — so calling
+  // it here, instead of inside `.then()` after the lifecycle queue, is what makes an app quit stop looking
+  // like a crash: previously the refusal was sequenced strictly after a queue, so a quit that ran out of
+  // budget never reached it, and the kernel then died with its entry still in the routing map — which is
+  // exactly the "unexpected exit" branch in kernel-executor ('Notebook kernel process exited.') that
+  // persists the run as failed. The queue is still awaited, so queued kernel-status writes land, and
+  // 'app-terminated' records the refused run as the interruption the domain says it is.
   shutdownExecutor(): Promise<{ reaped: boolean }> {
     const executor = this.executorValue
     this.executorGenerationActive = false
     const lifecycleDrain = this.executorLifecycleQueue
-    return lifecycleDrain.then(() => executor.shutdown())
+    const shutdown = executor.shutdown({ interruptionReason: 'app-terminated' })
+    return Promise.all([lifecycleDrain, shutdown]).then(([, result]) => result)
   }
 
   async resolveMcpRpcConnection(

@@ -811,6 +811,58 @@ gate('NotebookKernelExecutor (fake loop)', () => {
     expect(child.exitCode !== null || child.signalCode !== null).toBe(true)
   }, 15_000)
 
+  it('refuses an in-flight run as an interruption when the teardown names app-terminated', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-shutdown-interrupt-')
+    const executor = makeExecutor()
+    const internals = executor as unknown as { procs: Map<string, { pending?: unknown }> }
+    try {
+      await executor.execute({ ...baseRequest(cwdDir), code: 'warm' })
+
+      // __SLEEP__ blocks the child for real, so the run is deterministically still in flight when the
+      // teardown lands — the same shape as an app quit while a cell is running.
+      const inFlight = executor.execute({ ...baseRequest(cwdDir), code: '__SLEEP__' })
+      await vi.waitFor(
+        () => expect(internals.procs.get(procKeyFor('python'))?.pending).toBeDefined(),
+        { timeout: 5_000, interval: 10 }
+      )
+
+      await executor.shutdown({ interruptionReason: 'app-terminated' })
+
+      const refused = await inFlight
+      // The domain's rule for a run the app took away: interrupted, NOT failed — the code may have been
+      // fine (repository.ts states it), and the reason is what the badge reads.
+      expect(refused.status).toBe('interrupted')
+      expect(refused.interruptionReason).toBe('app-terminated')
+      // Deliberate-teardown wording, not the exit handler's crash wording ('... process exited.'), so a
+      // reader can still tell the two apart in the record.
+      expect(refused.traceback).toBe('Notebook kernel was shut down.')
+    } finally {
+      await executor.shutdown()
+    }
+  }, 15_000)
+
+  it('keeps a restart refusal a failure, since no interruption reason applies', async () => {
+    cwdDir = await makeDefaultEnvCwd('os-kernel-shutdown-restart-')
+    const executor = makeExecutor()
+    const internals = executor as unknown as { procs: Map<string, { pending?: unknown }> }
+    try {
+      await executor.execute({ ...baseRequest(cwdDir), code: 'warm' })
+      const inFlight = executor.execute({ ...baseRequest(cwdDir), code: '__SLEEP__' })
+      await vi.waitFor(
+        () => expect(internals.procs.get(procKeyFor('python'))?.pending).toBeDefined(),
+        { timeout: 5_000, interval: 10 }
+      )
+
+      await executor.shutdown()
+
+      const refused = await inFlight
+      expect(refused.status).toBe('failed')
+      expect(refused.interruptionReason).toBeUndefined()
+    } finally {
+      await executor.shutdown()
+    }
+  }, 15_000)
+
   it('hard-kills a loop that ignores SIGINT, then respawns on the next execute', async () => {
     cwdDir = await makeDefaultEnvCwd('os-kernel-hard-')
     const executor = makeExecutor()

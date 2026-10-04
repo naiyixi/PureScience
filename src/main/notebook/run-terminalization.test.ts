@@ -153,6 +153,33 @@ describe('NotebookRunTerminalizationOwner', () => {
     })
   })
 
+  it('persists an interruption reason on an interrupted run, and never on a finished one', async () => {
+    const harness = createHarness()
+    const interrupted = await harness.owner.run({
+      session,
+      runningRun: runningRun('run-interrupted'),
+      invoke: async () => ({
+        ...completedResult('interrupted' as NotebookRunStatus),
+        interruptionReason: 'app-terminated' as const
+      })
+    })
+    expect(interrupted.run.status).toBe('interrupted')
+    expect(interrupted.run.interruptionReason).toBe('app-terminated')
+
+    // The reason belongs to the interruption alone: a run that finished must not carry it, even when a
+    // caller hands one over.
+    const completed = await harness.owner.run({
+      session,
+      runningRun: runningRun('run-completed'),
+      invoke: async () => ({
+        ...completedResult('completed'),
+        interruptionReason: 'app-terminated' as const
+      })
+    })
+    expect(completed.run.status).toBe('completed')
+    expect(completed.run.interruptionReason).toBeUndefined()
+  })
+
   it('commits one terminal record before post-commit work and the final notification', async () => {
     const harness = createHarness()
     const running = runningRun('run-1')

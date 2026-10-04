@@ -39,6 +39,9 @@ type NotebookRunTerminalResult = {
   environmentManifestChecksum?: string
   environmentManifestFingerprint?: string
   environmentCapture?: NotebookRunEnvironmentCapture
+  // Set only when the run was cut off rather than finished: the record then says 'interrupted' with this
+  // reason, which is the difference between "your code failed" and "the app went away mid-run".
+  interruptionReason?: 'app-terminated'
 }
 
 type TerminalizeNotebookRunRequest<Result extends NotebookRunTerminalResult> = {
@@ -114,6 +117,11 @@ class NotebookRunTerminalizationOwner {
         result.fileCapture ?? unavailableWriteEvidence('observation-unavailable')
       ),
       environmentCapture,
+      // Only a run that was cut off carries a reason. Guarded on the status so a terminal result can never
+      // stamp 'app-terminated' onto a completed or failed run.
+      ...(result.status === 'interrupted' && result.interruptionReason
+        ? { interruptionReason: result.interruptionReason }
+        : {}),
       ...(environmentCapture.state !== 'unavailable' && result.environmentManifest
         ? { environmentManifest: result.environmentManifest }
         : {}),

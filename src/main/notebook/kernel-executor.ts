@@ -181,6 +181,30 @@ class NotebookExecutionTimeoutError extends Error {
   }
 }
 
+// Why a deliberate teardown is refusing an in-flight run. 'app-terminated' means the application is
+// going away (quit / pre-update-install teardown) rather than the cell's code being wrong, which is the
+// one case the domain records as 'interrupted' instead of 'failed' — repository.ts states the rule and
+// its reason: a run cut off by the app going away is NOT a failure, "the code may have been fine".
+type NotebookKernelShutdownInterruption = 'app-terminated'
+
+type NotebookKernelShutdownOptions = {
+  // Names why the in-flight run is refused, so the terminalised record can say 'interrupted' +
+  // 'app-terminated' rather than a failure. Omitted on a kernel restart, where no such reason applies
+  // and the refusal stays an ordinary failed run.
+  interruptionReason?: NotebookKernelShutdownInterruption
+}
+
+// Marks a run refused because its kernel loop was deliberately shut down, and carries the reason when
+// one is known. Distinct from a crash: the exit handler's "process exited" error only fires for a
+// genuine unexpected death (a teardown clears the routing map first), and unlike that one this error is
+// not the cell's fault.
+class NotebookKernelShutdownError extends Error {
+  constructor(readonly interruptionReason?: NotebookKernelShutdownInterruption) {
+    super('Notebook kernel was shut down.')
+    this.name = 'NotebookKernelShutdownError'
+  }
+}
+
 // Resolves the packaged/dev location of python_loop.py; an env override wins (tests, dev), then the
 // packaged resources dir, then the repo-relative dev path.
 const defaultPythonLoopPath = (): string => {
@@ -239,15 +263,24 @@ const errorToExecutionResult = (
   request: NotebookExecutionRequest
 ): NotebookExecutionResult => {
   const message = error instanceof Error ? error.message : String(error)
+  // A deliberate teardown that names its reason is an interruption, not a failure; a teardown without a
+  // reason (a kernel restart) and every genuine error stay 'failed'.
+  const interruptionReason =
+    error instanceof NotebookKernelShutdownError ? error.interruptionReason : undefined
 
   return {
-    status: error instanceof NotebookExecutionTimeoutError ? 'timeout' : 'failed',
+    status: interruptionReason
+      ? 'interrupted'
+      : error instanceof NotebookExecutionTimeoutError
+        ? 'timeout'
+        : 'failed',
     stdout: '',
     stderr: message,
     traceback: message,
     cwdAfter: request.cwd,
     outputs: [{ type: 'error', message, traceback: message }],
-    workingFiles: []
+    workingFiles: [],
+    ...(interruptionReason ? { interruptionReason } : {})
   }
 }
 
@@ -387,13 +420,20 @@ class NotebookKernelExecutor implements NotebookExecutor {
   // Kills every loop, rejects any pending run, and removes the temp figures dir. Returns { reaped }:
   // true only when every kernel tree was cleanly reaped, so shutdownAll can gate the update-install
   // uninstall on all interpreter file handles being released.
-  async shutdown(): Promise<ProcessTreeKillResult> {
+  //
+  // The map-clear + reject phase is SYNCHRONOUS — it completes before this method's first await — and
+  // callers depend on that: the quit-path teardown must refuse the in-flight run without queueing the
+  // refusal behind the very execution it is interrupting (see NotebookSessionAggregate.shutdownExecutor).
+  // Clearing the map first is also what keeps the kernel's own exit a no-op instead of a fabricated
+  // crash, and `options.interruptionReason` is what tells errorToExecutionResult to record the refused
+  // run as an interruption rather than a failure.
+  async shutdown(options: NotebookKernelShutdownOptions = {}): Promise<ProcessTreeKillResult> {
     const procs = Array.from(this.procs.values())
     this.procs.clear()
 
     for (const proc of procs) {
       this.disarmIdleTimer(proc)
-      this.rejectPending(proc, new Error('Notebook kernel was shut down.'))
+      this.rejectPending(proc, new NotebookKernelShutdownError(options.interruptionReason))
       proc.readline.close()
     }
     // A hard-timeout/idle/identity-change drop moves its tree kill into pendingTeardowns and removes
