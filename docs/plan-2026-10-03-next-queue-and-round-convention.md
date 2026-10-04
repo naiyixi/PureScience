@@ -201,6 +201,10 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 只有一次 **status 重读**（例如打开设置面板）才让门控与 Cancel 出现。后果：用户从 Runtimes 面板起下载后回到工作区，可能长时间看不到任何门控/取消入口。
 验收建议：工作区侧订阅或初始化时拉一次状态，让进度广播真正驱动 `preparing`（本轮修的推导已为它铺好路）。
 
+**IC13 窗口直装包 ✅ 真机读数已取（`1 passed (53.7s)`）**：包对话框可直装（含 pip 纯 pypi 包，真装后**环境自己能 import**）；四段"应用原话"读数齐（卸载 additive-only、命名环境具名拒绝、非加法式规格拒绝）。
+取证中修掉三处产品问题 + 一处我自己的 UI 缺陷：①窗口只走 conda ⇒ 纯 pypi 包装不上（补 pip 开关，端到端字段本就存在）；②**静默改指**风险——准入的环境名只来自会话绑定、请求里的名字对它透明，所以点名别的环境的请求会被静默落到默认环境（现在按名具名拒绝，真机断言默认环境未被误改）；③身份比对过严（发现给 realpath、面板回传用户拿到的路径）⇒ 两处查找改为按解析后路径判等；④对话框动作状态跨环境残留（旧错误还会压住新提示）⇒ 收敛为单一 `openPackagesDialog`。
+**立案（窗口这一侧的结构性边界）**：**窗口无法完成卸载** —— 准入 `package-admission.ts` 用 `binding?.source === 'managed' && binding.envName ? … : defaultEnvironment(language)` 解析目标环境，窗口没有会话 ⇒ 只到得了托管默认环境，而默认环境按设计 additive-only（`package-manager.ts:752`）。两条候选修法：㈠让准入在**无绑定时**接受一个受校验的环境名（需它自己的测试与安全评审，因为绑定驱动的解析是防 agent 越界的原意）；㈡把**命名环境纳入窗口可达面**（面板的命名环境行已有入口，但那条请求现在按名拒绝）。在此之前，对话框对非默认环境是**只读视图**，卸载按钮只在默认环境上出现且如实显示应用的规则。
+
 **v1.83.0 已发布（2026-10-04）**：tag `v1.83.0` → 提交 `efc4b1fd`（自 `v1.82.0` 起 **37 笔**），
 `release.yml` run **37189184119** 全绿（preflight / build×4 / `Verify` / `notarize-mac`（无 Apple 凭据 ⇒ 按设计标 UNSIGNED）/
 **publish** / `windows-upgrade-smoke`）。发布页 **21 个资产** + `Latest`；`RELEASE-CERTIFICATION.json.sourceSha` 与 tag 提交
