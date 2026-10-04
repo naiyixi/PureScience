@@ -585,7 +585,7 @@ describe('notebook preview integration', () => {
     expect(notebookPreviewSource).toContain("source: 'user'")
     expect(notebookPreviewSource).toContain("inputKind: 'terminal'")
     expect(notebookPreviewSource).toContain(
-      "import {\n  resolveRunErrorLine,\n  environmentLabel,\n  isProblemRunStatus,\n  kernelKindLabel,\n  kernelOriginLabel,\n  resolveRunEnvironment,\n  resolveRunKernelKind\n} from './notebook-cell-utils'"
+      "import {\n  resolveRunErrorLine,\n  environmentLabel,\n  isProblemRunStatus,\n  problemBadgeLabel,\n  kernelKindLabel,\n  kernelOriginLabel,\n  resolveRunEnvironment,\n  resolveRunKernelKind\n} from './notebook-cell-utils'"
     )
     expect(notebookPreviewSource).toContain('[{index}]')
     expect(notebookPreviewSource).toContain('resolveRunKernelKind(run)')
