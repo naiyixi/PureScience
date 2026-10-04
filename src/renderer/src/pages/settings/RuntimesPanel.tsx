@@ -22,6 +22,7 @@ import {
   dialogPanelClassName,
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
+import { DownloadProgressLine } from '@/components/DownloadProgressLine'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -1074,21 +1075,29 @@ const RuntimesPanel = ({
                             )}
                           </div>
                           {settingUp ? (
-                            <div
-                              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
-                              role="progressbar"
-                              aria-label={`Setting up ${label} runtime`}
-                              aria-valuenow={Math.round(progress * 100)}
-                              aria-valuemin={0}
-                              aria-valuemax={100}
-                            >
+                            langProgress?.download ? (
+                              // The SAME line the workspace banner and the update dialog show: speed,
+                              // transferred/total, ETA — and while reconnecting the bar holds its fraction
+                              // so a stall reads as resuming rather than resetting to zero. One component
+                              // and one formatter, so Settings and the workspace cannot drift apart.
+                              <DownloadProgressLine progress={langProgress.download} />
+                            ) : (
                               <div
-                                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                                style={{
-                                  width: `${Math.max(2, Math.min(100, Math.round(progress * 100)))}%`
-                                }}
-                              />
-                            </div>
+                                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                                role="progressbar"
+                                aria-label={`Setting up ${label} runtime`}
+                                aria-valuenow={Math.round(progress * 100)}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                              >
+                                <div
+                                  className="h-full rounded-full bg-primary transition-[width] duration-300"
+                                  style={{
+                                    width: `${Math.max(2, Math.min(100, Math.round(progress * 100)))}%`
+                                  }}
+                                />
+                              </div>
+                            )
                           ) : null}
                           {!settingUp && langError ? (
                             <p

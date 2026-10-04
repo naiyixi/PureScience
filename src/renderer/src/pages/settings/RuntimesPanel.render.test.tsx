@@ -9,7 +9,8 @@ import type {
   EnvPackage,
   RuntimeEnablement
 } from '../../../../shared/notebook-runtime'
-import { createInitialNotebookEnvState, useNotebookEnvStore } from '../../stores/notebook-env-store'
+import { createInitialNotebookEnvState, useNotebookEnvStore } from '@/stores/notebook-env-store'
+import { formatProgressLine } from '../../../../shared/download-progress'
 import { RuntimesPanel } from './RuntimesPanel'
 
 let container: HTMLDivElement
@@ -395,6 +396,60 @@ describe('RuntimesPanel', () => {
     expect(cancelBtn).toBeDefined()
     await click(cancelBtn ?? null)
     expect(cancelBridge).toHaveBeenCalled()
+  })
+
+  it('shows the same download detail the workspace shows (speed / size / ETA) while setting up', async () => {
+    const download = {
+      phase: 'downloading' as const,
+      transferred: 5_000_000,
+      total: 16_000_000,
+      percent: 31,
+      bytesPerSecond: 1_000_000,
+      etaSeconds: 11,
+      attempt: 1
+    }
+    await render()
+    act(() =>
+      useNotebookEnvStore.setState({
+        byLang: {
+          r: {
+            preparing: true,
+            progress: {
+              phase: 'download',
+              message: 'Downloading managed R runtime',
+              progress: 0.31,
+              language: 'r',
+              download
+            }
+          }
+        }
+      })
+    )
+    // Asserted against the SHARED formatter's own output rather than a re-typed string: one source with the
+    // workspace banner and the update dialog is exactly what "the same detail" has to mean.
+    expect(container.textContent).toContain(formatProgressLine(download))
+    expect(container.textContent).toContain('~11s')
+
+    // A stalled transfer must read as resuming, not as a frozen 0 B/s — that is the resume half of IC17.
+    const reconnecting = { ...download, phase: 'reconnecting' as const, attempt: 2 }
+    act(() =>
+      useNotebookEnvStore.setState({
+        byLang: {
+          r: {
+            preparing: true,
+            progress: {
+              phase: 'download',
+              message: 'Downloading managed R runtime',
+              progress: 0.31,
+              language: 'r',
+              download: reconnecting
+            }
+          }
+        }
+      })
+    )
+    expect(container.textContent).toContain('resuming')
+    expect(container.textContent).toContain('attempt 2')
   })
 
   it('surfaces Reset in the app-managed SETUP card when a language is recovery-blocked', async () => {
