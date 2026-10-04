@@ -1,4 +1,4 @@
-import { useLanguage, type Translate } from '@/i18n'
+import { useLanguage, type Translate, type TranslationKey } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
@@ -29,6 +29,20 @@ const statusCopy = (handoff: HandoffTranscriptProjection, t: Translate): string 
   }
 }
 
+// Where a retry would pick up is the one fact that says what to do next, and it has been in the payload all
+// along: `failure.retryFrom` is required on the failure record, and the main process chooses the recovery
+// path from exactly this value (`app-handoff-runtime.ts:82-90`). Until now the row showed only the
+// free-text message, so "the runtime was never reconfigured" and "it was reconfigured and only the
+// continuation failed" read identically.
+const retryFromCopy = (handoff: HandoffTranscriptProjection, t: Translate): string | undefined => {
+  const retryFrom = handoff.failure?.retryFrom
+  if (!retryFrom) return undefined
+  return t(`handoff.retryFrom.${retryFrom}` as TranslationKey).replace(
+    '{target}',
+    targetLabel(handoff.target, t)
+  )
+}
+
 const HandoffLifecycleStatus = ({
   handoff,
   onRetry
@@ -38,6 +52,7 @@ const HandoffLifecycleStatus = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const isFailure = handoff.phase === 'failed'
+  const retryFrom = retryFromCopy(handoff, t)
   const [isRetrying, setIsRetrying] = useState(false)
   const [retryError, setRetryError] = useState<string | undefined>()
 
@@ -73,6 +88,11 @@ const HandoffLifecycleStatus = ({
         <span className="ml-1">{t('ui.theoriginaltaskcontinuesinth')}</span>
       ) : null}
       {handoff.failure ? <span className="ml-1">{handoff.failure.message}</span> : null}
+      {retryFrom ? (
+        <span className="ml-1" data-testid="handoff-retry-from">
+          {retryFrom}
+        </span>
+      ) : null}
       {isFailure && onRetry ? (
         <Button
           type="button"

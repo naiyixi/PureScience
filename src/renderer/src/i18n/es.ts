@@ -3183,6 +3183,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     'No se pudo iniciar el reintento. El traspaso guardado sigue disponible.',
   'handoff.failedContinue': 'No se pudo continuar con {target}',
+  'handoff.retryFrom.switching': 'reintentar empieza el cambio de nuevo',
+  'handoff.retryFrom.reconfiguring': 'reintentar continúa en la reconfiguración de {target}',
+  'handoff.retryFrom.continuation-start': 'reintentar continúa en el inicio de la continuación',
   'ws.marketplaceAllSourcesUnavailable':
     'No se pudo acceder al Marketplace desde ninguna fuente configurada. Revisa tu red e inténtalo de nuevo.',
   'ws.marketplaceBackToMarketplace': 'Volver al Marketplace',

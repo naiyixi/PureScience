@@ -3067,6 +3067,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     '재시도를 시작하지 못했습니다. 저장된 인계는 그대로 사용할 수 있습니다.',
   'handoff.failedContinue': '{target}과(와) 이어가지 못했습니다',
+  'handoff.retryFrom.switching': '재시도는 전환을 처음부터 다시 시작합니다',
+  'handoff.retryFrom.reconfiguring': '재시도는 {target} 재구성부터 이어집니다',
+  'handoff.retryFrom.continuation-start': '재시도는 이어하기 시작부터 이어집니다',
   'ws.marketplaceAllSourcesUnavailable':
     '구성된 어떤 소스에서도 마켓플레이스에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도하세요.',
   'ws.marketplaceBackToMarketplace': '마켓플레이스로 돌아가기',

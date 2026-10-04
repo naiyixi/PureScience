@@ -3212,6 +3212,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     'Der erneute Versuch konnte nicht starten. Die gespeicherte Übergabe bleibt verfügbar.',
   'handoff.failedContinue': 'Fortsetzung mit {target} nicht möglich',
+  'handoff.retryFrom.switching': 'Wiederholen beginnt den Wechsel von vorn',
+  'handoff.retryFrom.reconfiguring': 'Wiederholen setzt bei der Neukonfiguration von {target} an',
+  'handoff.retryFrom.continuation-start': 'Wiederholen setzt beim Fortsetzen an',
   'ws.marketplaceAllSourcesUnavailable':
     'Der Marketplace war über keine konfigurierte Quelle erreichbar. Prüfen Sie Ihr Netzwerk und versuchen Sie es erneut.',
   'ws.marketplaceBackToMarketplace': 'Zurück zum Marketplace',

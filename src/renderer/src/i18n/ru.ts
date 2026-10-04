@@ -3124,6 +3124,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     'Не удалось запустить повтор. Сохранённая передача остаётся доступной.',
   'handoff.failedContinue': 'Не удалось продолжить с {target}',
+  'handoff.retryFrom.switching': 'повтор начнёт переключение заново',
+  'handoff.retryFrom.reconfiguring': 'повтор продолжит с перенастройки {target}',
+  'handoff.retryFrom.continuation-start': 'повтор продолжит с запуска продолжения',
   'ws.marketplaceAllSourcesUnavailable':
     'Не удалось связаться с маркетплейсом ни через один из настроенных источников. Проверьте сеть и попробуйте ещё раз.',
   'ws.marketplaceBackToMarketplace': 'Назад к маркетплейсу',

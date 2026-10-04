@@ -3122,6 +3122,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     '再試行を開始できませんでした。保存された引き継ぎはそのまま利用できます。',
   'handoff.failedContinue': '{target} と継続できませんでした',
+  'handoff.retryFrom.switching': '再試行は切り替えを最初からやり直します',
+  'handoff.retryFrom.reconfiguring': '再試行は {target} の再構成から再開します',
+  'handoff.retryFrom.continuation-start': '再試行は続きの開始から再開します',
   'ws.marketplaceAllSourcesUnavailable':
     '設定済みのどのソースからもマーケットプレイスに到達できませんでした。ネットワークを確認して再試行してください。',
   'ws.marketplaceBackToMarketplace': 'マーケットプレイスに戻る',

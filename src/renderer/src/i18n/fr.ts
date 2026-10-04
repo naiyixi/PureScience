@@ -3204,6 +3204,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'handoff.retryCouldNotStart':
     'La nouvelle tentative n’a pas pu démarrer. La passation enregistrée reste disponible.',
   'handoff.failedContinue': 'Impossible de continuer avec {target}',
+  'handoff.retryFrom.switching': 'la reprise recommence le basculement',
+  'handoff.retryFrom.reconfiguring': 'la reprise reprend à la reconfiguration de {target}',
+  'handoff.retryFrom.continuation-start': 'la reprise reprend au démarrage de la suite',
   'ws.marketplaceAllSourcesUnavailable':
     'La Marketplace est injoignable depuis toutes les sources configurées. Vérifiez votre réseau et réessayez.',
   'ws.marketplaceBackToMarketplace': 'Retour à la Marketplace',

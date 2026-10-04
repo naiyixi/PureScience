@@ -146,6 +146,9 @@ describe('same-turn handoff transcript', () => {
     expect(lifecycle?.getAttribute('role')).toBe('alert')
     expect(lifecycle?.textContent).toContain('Could not continue with Data analyst')
     expect(lifecycle?.textContent).toContain('The approved target is unavailable.')
+    // Where the retry would pick up is the fact that decides what to do next — the payload has carried it
+    // (`failure.retryFrom`) and main chooses the recovery path from it; the row used to show only the text.
+    expect(lifecycle?.textContent).toContain('retry resumes at reconfiguring Data analyst')
     await act(async () => {
       root.render(
         <LanguageProvider>
@@ -181,5 +184,9 @@ describe('same-turn handoff transcript', () => {
     expect(container.textContent).toContain('Could not continue with Data analyst')
     expect(container.textContent).toContain('Retry could not start')
     expect(container.textContent).toContain('Retry handoff')
+    // The other phase reads differently: here the reconfiguration had already happened and only the
+    // continuation failed, so the retry resumes at the continuation rather than at reconfiguring.
+    expect(container.textContent).toContain('retry resumes at the continuation')
+    expect(container.textContent).not.toContain('retry resumes at reconfiguring')
   })
 })
