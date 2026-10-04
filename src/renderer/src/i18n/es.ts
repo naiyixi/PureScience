@@ -3962,6 +3962,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.screening.reason.input-too-long':
     'La evidencia supera el límite de entrada del modelo',
   'references.screening.reason.uncertain': 'La propia decisión es incierta',
+  'references.screening.failureKind.model-error': 'Error del modelo',
+  'references.screening.failureKind.transport-error': 'Error de transporte',
+  'references.screening.failureKind.invalid-response': 'Respuesta no utilizable',
   'references.screening.coverage.full-text': 'Texto completo',
   'references.screening.coverage.abstract-only': 'Solo resumen',
   'references.screening.coverage.metadata-only': 'Solo metadatos',

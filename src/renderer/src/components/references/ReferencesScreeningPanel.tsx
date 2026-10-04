@@ -14,11 +14,13 @@ import { citationStyleFromImport } from '../../../../shared/citation/csl'
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
 import {
   SCREENING_EVIDENCE_COVERAGES,
+  SCREENING_FAILURE_KINDS,
   SCREENING_NAMED_REASONS,
   SCREENING_VERDICTS,
   type ScreeningCollectionSnapshot,
   type ScreeningCriterion,
   type ScreeningEvidenceCoverage,
+  type ScreeningFailureKind,
   type ScreeningItemView,
   type ScreeningNamedReason,
   type ScreeningOverrideDecision,
@@ -73,6 +75,15 @@ const REASON_LABEL: Record<ScreeningNamedReason, TranslationKey> = {
   'missing-evidence': 'references.screening.reason.missing-evidence',
   'input-too-long': 'references.screening.reason.input-too-long',
   uncertain: 'references.screening.reason.uncertain'
+}
+
+// Failing is not one thing, and the difference decides what to do next: a transport error is worth
+// retrying, an unusable response is worth inspecting instead of being retried forever. Without these
+// kinds the run block can only say how much is left over, never which way to clear it.
+const FAILURE_KIND_LABEL: Record<ScreeningFailureKind, TranslationKey> = {
+  'model-error': 'references.screening.failureKind.model-error',
+  'transport-error': 'references.screening.failureKind.transport-error',
+  'invalid-response': 'references.screening.failureKind.invalid-response'
 }
 
 const COVERAGE_LABEL: Record<ScreeningEvidenceCoverage, TranslationKey> = {
@@ -269,6 +280,7 @@ export function ReferencesScreeningPanel({
     assessed: number
     deferred: number
     failed: number
+    failureKinds: Record<ScreeningFailureKind, number>
     pending: number
     runId: string
   } | null>(null)
@@ -331,6 +343,7 @@ export function ReferencesScreeningPanel({
             assessed: next.lastRun.assessed,
             deferred: next.lastRun.deferred,
             failed: next.lastRun.failed,
+            failureKinds: next.lastRun.failureKinds,
             pending: next.lastRun.pending,
             runId: next.lastRun.run.id
           }
@@ -1272,6 +1285,18 @@ export function ReferencesScreeningPanel({
                 pending: run.pending
               })}
             </span>
+            {/* Only when something failed, and only the kinds that did: the number above says how much is
+                left over, this says whether retrying is how to clear it. */}
+            {run.failed > 0 ? (
+              <span
+                className="text-[10px] text-[var(--muted-foreground)]"
+                data-testid="screening-run-failure-kinds"
+              >
+                {SCREENING_FAILURE_KINDS.filter((kind) => run.failureKinds[kind] > 0)
+                  .map((kind) => `${t(FAILURE_KIND_LABEL[kind])}: ${run.failureKinds[kind]}`)
+                  .join(' · ')}
+              </span>
+            ) : null}
           </div>
         ) : null}
         {lastError ? (

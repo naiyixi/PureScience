@@ -239,6 +239,10 @@ export type ScreeningRunView = {
   assessed: number
   deferred: number
   failed: number
+  // How the failed items failed, by kind. Kept beside the bare `failed` count because the kinds are what
+  // decide the next move: a transport error is worth retrying, an unusable response is worth inspecting
+  // rather than being retried forever (`SCREENING_FAILURE_KINDS`).
+  failureKinds: Record<ScreeningFailureKind, number>
   pending: number
   // True while this process is actively driving the pass.
   running: boolean

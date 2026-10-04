@@ -11,6 +11,7 @@ import type {
   ScreeningCoverageEntry,
   ScreeningDecisionView,
   ScreeningEvidenceCitation,
+  ScreeningFailureKind,
   ScreeningItemView,
   ScreeningNamedReason,
   ScreeningOverride,
@@ -20,7 +21,7 @@ import type {
   StartScreeningRunInput,
   StartScreeningRunResult
 } from '../../shared/references-screening'
-import { SCREENING_NAMED_REASONS } from '../../shared/references-screening'
+import { SCREENING_FAILURE_KINDS, SCREENING_NAMED_REASONS } from '../../shared/references-screening'
 import { computeScreeningInputDigest } from './screening-digest'
 import { assembleScreeningEvidence } from './screening-evidence'
 import {
@@ -640,6 +641,14 @@ export class ScreeningService {
     const items = await this.repository.listRunItems(runId)
     const count = (state: ScreeningRunItem['state']): number =>
       items.filter((item) => item.state === state).length
+    // Counted by kind beside the state count: "failed: 3" says work is left over, but only the kinds say
+    // whether retrying is the way to clear it.
+    const failureKinds = Object.fromEntries(
+      SCREENING_FAILURE_KINDS.map((kind) => [kind, 0])
+    ) as Record<ScreeningFailureKind, number>
+    for (const item of items) {
+      if (item.failureKind) failureKinds[item.failureKind] += 1
+    }
     return {
       run,
       ruleRevision: run.ruleRevision,
@@ -647,6 +656,7 @@ export class ScreeningService {
       assessed: count('assessed'),
       deferred: count('deferred'),
       failed: count('failed'),
+      failureKinds,
       pending: count('pending'),
       running: this.activePasses.get(collectionId)?.runId === runId
     }

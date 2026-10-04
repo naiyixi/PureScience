@@ -7,7 +7,7 @@ import type {
 } from '../../shared/references-screening'
 import { computeScreeningInputDigest } from './screening-digest'
 import { assembleScreeningEvidence } from './screening-evidence'
-import type { ScreeningModelRunner } from './screening-engine'
+import { ScreeningTransportError, type ScreeningModelRunner } from './screening-engine'
 import { ScreeningService, ScreeningRunnerUnavailableError } from './screening-service'
 import { SCREENING_PROMPT_POLICY_KEY } from './screening-prompt'
 import { ScreeningRepository } from './screening-repository'
@@ -346,6 +346,29 @@ describe('ScreeningService runs', () => {
       pending: 0
     })
     expect(snapshot.lastRun?.run.status).toBe('completed')
+  })
+
+  // The count says how much is left over; the kinds say which way to clear it. A transport failure is the
+  // one a resume can retry immediately (`SCREENING_FAILURE_KINDS`), so it has to be countable by name —
+  // this is the number the run block prints beside `failed`.
+  it('counts the failed items by kind, beside the count itself', async () => {
+    const { service } = build([reference('ref-a'), reference('ref-b')], {
+      fullText: async () => FULL_TEXT,
+      runner: {
+        model: 'stub-model-v1',
+        run: async () => {
+          throw new ScreeningTransportError('socket closed')
+        }
+      }
+    })
+    await service.appendRuleRevision({ collectionId: COLLECTION, inclusion, exclusion })
+    await service.startRun({ collectionId: COLLECTION })
+    const snapshot = await pollUntilIdle(service)
+
+    expect(snapshot.lastRun).toMatchObject({
+      failed: 2,
+      failureKinds: { 'model-error': 0, 'transport-error': 2, 'invalid-response': 0 }
+    })
   })
 
   it('defers evidence beyond the model input budget with its own reason instead of truncating it', async () => {

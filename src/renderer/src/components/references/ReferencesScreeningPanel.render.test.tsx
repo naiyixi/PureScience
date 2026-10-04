@@ -57,6 +57,9 @@ vi.mock('@/i18n', () => {
     'references.screening.reason.missing-evidence': 'No full text on hand',
     'references.screening.reason.input-too-long': 'Evidence beyond the model input budget',
     'references.screening.reason.uncertain': 'The decision itself is uncertain',
+    'references.screening.failureKind.model-error': 'Model error',
+    'references.screening.failureKind.transport-error': 'Transport error',
+    'references.screening.failureKind.invalid-response': 'Unusable response',
     'references.screening.coverage.full-text': 'Full text',
     'references.screening.coverage.abstract-only': 'Abstract only',
     'references.screening.coverage.metadata-only': 'Metadata only',
@@ -303,6 +306,7 @@ const snapshot = (items: ScreeningItemView[], running = false): ScreeningCollect
     assessed: items.filter((entry) => entry.decision.verdict !== 'not-evaluated').length,
     deferred: 0,
     failed: 0,
+    failureKinds: { 'model-error': 0, 'transport-error': 0, 'invalid-response': 0 },
     pending: items.filter((entry) => entry.decision.verdict === 'not-evaluated').length,
     running
   },
@@ -439,6 +443,48 @@ describe('ReferencesScreeningPanel', () => {
     await flush()
     await flush()
   }
+
+  // The run block says how much is left over; this says which way to clear it. The kind decides that: a
+  // transport error is worth retrying, an unusable response is worth inspecting — which is why the domain
+  // layer names the kinds at all (`SCREENING_FAILURE_KINDS`).
+  it('names how the failed items failed, and stays out when nothing failed', async () => {
+    const base = snapshot([])
+    const baseRun = base.lastRun
+    if (!baseRun) throw new Error('the fixture must carry a run')
+
+    // Nothing failed: no breakdown line at all, rather than a row of zeroes.
+    await render(
+      {
+        ...base,
+        lastRun: {
+          ...baseRun,
+          failed: 0,
+          failureKinds: { 'model-error': 0, 'transport-error': 0, 'invalid-response': 0 }
+        }
+      },
+      []
+    )
+    expect(container.querySelector('[data-testid="screening-run-failure-kinds"]')).toBeNull()
+
+    // Two failed, two different kinds: both named, and the kind that did not occur stays off the line.
+    await render(
+      {
+        ...base,
+        lastRun: {
+          ...baseRun,
+          failed: 2,
+          failureKinds: { 'model-error': 1, 'transport-error': 1, 'invalid-response': 0 }
+        }
+      },
+      []
+    )
+    const line = container.querySelector('[data-testid="screening-run-failure-kinds"]')
+    expect(line).not.toBeNull()
+    const text = line?.textContent ?? ''
+    expect(text).toContain('Model error: 1')
+    expect(text).toContain('Transport error: 1')
+    expect(text).not.toContain('Unusable response')
+  })
 
   beforeEach(() => {
     container = document.createElement('div')
@@ -1434,6 +1480,11 @@ describe('the screening surface speaks all nine languages', () => {
     expect(zhText('references.screening.reason.missing-evidence')).toBe('没有全文可读')
     expect(zhText('references.screening.reason.input-too-long')).toBe('依据超出模型输入上限')
     expect(zhText('references.screening.reason.uncertain')).toBe('判定本身不确定')
+    // The three failure kinds — the distinction that says whether retrying is the way to clear a failure,
+    // spelled out rather than left as model-error / transport-error / invalid-response.
+    expect(zhText('references.screening.failureKind.model-error')).toBe('模型出错')
+    expect(zhText('references.screening.failureKind.transport-error')).toBe('传输错误')
+    expect(zhText('references.screening.failureKind.invalid-response')).toBe('返回不可用')
     // The four coverage tiers and the counting line that separates AI decisions from human overrides.
     expect(zhText('references.screening.coverage.full-text')).toBe('全文')
     expect(zhText('references.screening.coverage.unavailable')).toBe('无依据')
