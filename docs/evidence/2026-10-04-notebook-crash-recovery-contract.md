@@ -141,3 +141,44 @@ runForUpdateGate(...) → this.deps.notebook.shutdownAll()   // ← 只有更新
   **实测前提** → 重启 → 读回状态**并读盘仲裁**。它现在**红在最后一条断言**上，而这条红是**真读数**
   而非探针故障；改一处（把「读状态」换成「UI 打开该会话的笔记本」）即可继续。
 - `docs/evidence/2026-10-04-notebook-run-badge-status.md` 的「未取」一节由本份接续。
+
+## 追加三：最后一环——关停被排在自己要打断的那个执行后面（真因定位完毕）
+
+`session-aggregate.ts:426-431`：
+
+```ts
+shutdownExecutor(): Promise<{ reaped: boolean }> {
+  const executor = this.executorValue
+  this.executorGenerationActive = false
+  const lifecycleDrain = this.executorLifecycleQueue
+  return lifecycleDrain.then(() => executor.shutdown())   // ← 关停排在生命周期队列之后
+}
+```
+
+而 `executor.shutdown()`（`kernel-executor.ts:390-398`）的**第一步**就是 `procs.clear()` + 以
+`'Notebook kernel was shut down.'` 拒在飞运行——**只有先跑到它**，执行器才不会把退出误判成崩溃
+（`:531-553` 的意外退出处理要求 proc 还在路由 map 里）。
+
+**链条**：退出 → `runtime.dispose()` → `sessionLifecycle.dispose()` → `sessions.dispose()` →
+`disposePermanently()` → `teardownOwnedSessions(true)` → 每个会话 `shutdownExecutor()` →
+**`lifecycleDrain.then(() => executor.shutdown())`**。而 drain 里压着的正是在飞的执行；关停要打断的
+**恰恰是它自己在等的东西**。退出预算一到、主进程下去，子进程被系统收走——此时路由 map **还在** ⇒
+`child.on('exit')` 走意外退出分支 ⇒ 在飞运行落 `failed`，文本 `Notebook kernel process exited.`
+（本轮实测：`stderr` 与 `traceback` 同为此串，正合 `errorToExecutionResult` 的写法）。
+
+**为什么更新门那条路也不可靠**：`shutdownAll()` 与 `dispose()` 最终都走同一个
+`teardownOwnedSessions` → 同一个 `shutdownExecutor()`；差别只在 `terminalCleanup` 标志（影响失败处理，
+不影响这个顺序）。⇒ 这个顺序缺陷是**共用的**，不是退出独有；只是退出是最常见的触发场景。
+
+**修法形状（已收窄到一处）**：让「拒在飞运行」**不等**生命周期队列——把 `executor.shutdown()` 拆成两步：
+**立刻**清 map + 拒在飞（并产出具名的关停错误），**再**等 drain 完成后收进程树。加上第二半（终态把具名
+关停错误写成 `interrupted` + `app-terminated` 而不是 `failed`），域规则才成立。这一处属笔记本运行时核心的
+等待链，**改动需单独排期并逐次真机验收**（脚手架 7.5 分钟/轮），不在发现问题的那一晚顺手改。
+
+**证据强度说明（不夸大）**：文本来源的唯一性 + map 守卫是从源码读出的**推断**，与「退出路径确实会走到
+`executor.shutdown()`」这一源码事实相抵；解开张力的正是上面那条**被排在 drain 之后**的顺序。若要更硬的
+证据，可在 `kernel-executor.ts:396` 与 `:548` 各加一行退出期日志，跑同一份脚手架看哪一行先打。
+
+**另一条本轮实测的边界**：退出时渲染进程里的 `execute()` promise **不会**拒（整个进程先没了，本轮日志
+里那行 `execute rejected with:` 从未出现）⇒ 这类读数只能从**盘上记录**取，不能指望渲染层 promise。
+
