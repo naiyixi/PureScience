@@ -149,6 +149,7 @@ describe('runtime IPC adapter', () => {
       'runtime:list-environments',
       'runtime:list-packages',
       'runtime:list-package-counts',
+      'runtime:manage-packages',
       'runtime:set-selection',
       'runtime:get-enablement',
       'runtime:describe-usage',

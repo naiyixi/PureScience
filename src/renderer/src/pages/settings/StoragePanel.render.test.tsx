@@ -805,8 +805,11 @@ describe('StoragePanel', () => {
     })
 
     expect(container.textContent).toContain('The selected folder is not writable.')
-    const changeButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
-      (button) => button.textContent?.trim() === 'Change location'
+    // Located by the stable testid the panel provides for this control (its label is localized, so
+    // matching on text is what broke here); the intent — the action is unavailable for an invalid
+    // folder — is unchanged.
+    const changeButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="storage-change-location"]'
     )
     expect(changeButton?.disabled).toBe(true)
     expect(

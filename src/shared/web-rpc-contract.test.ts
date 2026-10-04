@@ -127,6 +127,7 @@ describe('Web RPC contract', () => {
       'runtime.listPackageCounts',
       'runtime.listPackages',
       'runtime.manageNamedEnvironments',
+      'runtime.managePackages',
       'runtime.pickInterpreter',
       'runtime.registerInterpreter',
       'runtime.setEnvironmentEnabled',
