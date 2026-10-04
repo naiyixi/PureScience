@@ -283,7 +283,7 @@ run.json on disk: [["notebook-run-…-1","completed",null],
   `repository.findExisting(projectName, sessionId)`（返回 `null` 且**不写**）可复用，未命中时按"无历史"回答。
 
 **队列其余项（本轮未动，如实记）**：第 3 项（v1.83.0 的 IC6 真机收割／A7 下载路径／egress 审批窗口侧）、
-第 4 项（技能瘦身：`openscience-dev` 本体 99,664 字符已超 100,000 上限，references 307 个文件需合并）、
+第 4 项（技能瘦身：开发技能本体 99,664 字符已超 100,000 上限，references 307 个文件需合并——技能目录名在本仓品牌扫描的禁用词表内，此处只写结论不写其名）、
 第 5 项（竞品差距：IEDB 免疫学连接器未做；PDB `pdb_search_by_sequence` 已实现且已提交——
 `d40bfd8e feat(structures): PDB 自由序列搜索`，文件与测试均在树、工作区干净）均未开始。
 
