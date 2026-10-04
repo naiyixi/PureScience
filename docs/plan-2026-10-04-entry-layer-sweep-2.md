@@ -45,11 +45,13 @@ left_on|warning|notice|blocked|rejected|capped|truncat|empty|absent|missing`）�
 | `boundConversationsUnavailable` | **假缺口，划掉** | 载荷里恒为 `true` 的**常量**，读不读没有差别 |
 | `emptyPageCount` | **真缺口，已修** | `PdfOpenResult` 带着它、两个消费面板都只取 `docId`；扫描版 PDF 打开后一片空白而无解释 |
 | `regionBlocked` / `retryableNetworkFailure` | **假缺口，划掉** | main 用它们决定**换源/重试**，且把「官方安装器在你所在地区似乎不可用，改用 npm…」作为**日志行发给用户**（`claude-install.ts:411-424`）——事实已上屏，且带可行动的下一步 |
-| `unsealedReasons` | **未判（下一步已定位）** | 它进 MCP 工具结果（`artifacts/mcp-server.ts:793`，agent 侧看得到）；渲染层**没有**封存面（`grep -rn sealed src/renderer/src` 零命中）。**下一步**：查重执行拒绝码 `recipe-not-sealed`（`shared/reproducibility-reexecution.ts:14,64`）是否上屏——若是，则同属假缺口 |
+| `unsealedReasons` | **假缺口，划掉** | 报告的 `reasons` 里**已含**未封存理由（`shared/reproducibility.ts:434-442`：`!recipe.sealed ⇒ reasons: [...recipe.unsealedReasons, ...]`），而重放面板**正在渲染** `report.reasons`（`ArtifactReplaySection.tsx:188-192`，`data-testid="artifact-replay-reasons"`）⇒ 事实已上屏 |
+| `failedPhase`（ACP 错误事件侧，余项） | **收口：已由另一面覆盖，不再单独立项** | 该事件（`runtime-coordinator.ts:530-545`，带 `text` 与 `handoffFailure`）说的正是生命周期行刚补上的那件事；转录行现在是这次失败**在会话内的权威陈述**（且九语种），ACP 事件是并行通道，再补一份同义陈述只会多一个漂移点——与「两面不许各说一套」的原则相反。**判据链**：`failedPhase`(`stop-or-reconfigure`/`continuation-start`) 与已上屏的 `retryFrom`(`switching`/`reconfiguring`/`continuation-start`) 描述同一失败位置，前者无新增信息 |
 | `emptyPageCount` 之外的 PDF 面 | 已并查 | 见上 |
 
-**注**：`unsealedReasons`、`retryableNetworkFailure`、`regionBlocked` 三项的第三条判据「该事实是否已由另一条路（agent 转达 / 具名失败）上屏」**尚未走完**——不是缺口，是**未判**。
-
+**12 项判完，无未判项**：真缺口 **4**（`interruptionReason`、`failureKind`、`scriptTruncated`、`emptyPageCount`，均已修且各有读数）、
+假缺口 **6**（`deferredReason`、`validationFailed`、`boundConversationsUnavailable`、`regionBlocked`、`retryableNetworkFailure`、`unsealedReasons`）、
+少数/覆盖 **1**（ACP `failedPhase`，判据见上表）、未判 **0**。
 ## 二、两条本机做不到、已具名归档
 
 ### 1. IEDB 免疫学证据连接器（竞品 #3261）—— **环境阻断，不做**
