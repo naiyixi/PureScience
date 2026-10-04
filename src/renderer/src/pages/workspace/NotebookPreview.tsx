@@ -1,4 +1,4 @@
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
@@ -199,6 +199,24 @@ const NotebookRunCell = ({
   const { t } = useLanguage()
   const isProblem = isProblemRunStatus(run.status)
   const errorLine = isProblem ? resolveRunErrorLine(run) : undefined
+  // A run can stop for reasons that are not the code's fault. `isProblemRunStatus` groups all three
+  // problem statuses for styling, but calling every one of them "error" says something the domain layer
+  // explicitly denies — `repository.ts:273`: an `interrupted` run whose reason is 'app-terminated' is NOT
+  // failed, "the code may have been fine". The badge therefore states the status it actually has, and an
+  // interruption carries its named reason instead of being folded into an error.
+  const problemLabel = ((): string | undefined => {
+    if (!isProblem) return undefined
+    if (run.status === 'timeout') return t('ws.notebookRunTimeout')
+    if (run.status === 'interrupted') {
+      const reason = run.interruptionReason
+        ? ` — ${t(`ws.notebookInterruptionReason.${run.interruptionReason}` as TranslationKey)}`
+        : ''
+      return `${t('ws.notebookRunInterrupted')}${reason}`
+    }
+    return errorLine === undefined
+      ? t('ws.notebookRunError')
+      : t('ws.notebookRunErrorAtLine', { line: errorLine })
+  })()
   const kind = resolveRunKernelKind(run)
   const originLabel = kernelOriginLabel(kind)
 
@@ -220,13 +238,16 @@ const NotebookRunCell = ({
             </span>
           ) : null}
           {isProblem ? (
-            errorLine ? (
-              <span className="rounded bg-danger-000 px-1.5 py-0.5 font-medium text-white">
-                error (line {errorLine})
-              </span>
-            ) : (
-              <span className="rounded bg-danger-900 px-1.5 py-0.5 text-danger-000">error</span>
-            )
+            <span
+              className={
+                run.status === 'failed'
+                  ? 'rounded bg-danger-000 px-1.5 py-0.5 font-medium text-white'
+                  : 'rounded bg-danger-900 px-1.5 py-0.5 text-danger-000'
+              }
+              data-testid="notebook-cell-problem"
+            >
+              {problemLabel}
+            </span>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">

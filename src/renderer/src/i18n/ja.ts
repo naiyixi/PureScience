@@ -3253,6 +3253,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Notebook コントロール',
   'ws.notebookHydrationFailed': 'Notebook 参照のハイドレーションに失敗しました',
   'ws.notebookStale': '古い',
+  'ws.notebookRunError': 'エラー',
+  'ws.notebookRunErrorAtLine': 'エラー（{line} 行目）',
+  'ws.notebookRunTimeout': 'タイムアウト',
+  'ws.notebookRunInterrupted': '中断',
+  'ws.notebookInterruptionReason.app-terminated': '完了前にアプリが終了しました',
   'ws.notebookRunCellAgain': 'このセルを実行',
   'ws.notebookRunCellBlockedBusy': 'すでに実行中です。終わるまでお待ちください',
   'ws.notebookRunCellBlockedWriting':

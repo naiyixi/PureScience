@@ -3253,6 +3253,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Управление Notebook',
   'ws.notebookHydrationFailed': 'Не удалось восстановить ссылку на Notebook',
   'ws.notebookStale': 'устарел',
+  'ws.notebookRunError': 'ошибка',
+  'ws.notebookRunErrorAtLine': 'ошибка (строка {line})',
+  'ws.notebookRunTimeout': 'превышено время',
+  'ws.notebookRunInterrupted': 'прервано',
+  'ws.notebookInterruptionReason.app-terminated': 'приложение закрылось до завершения',
   'ws.notebookRunCellAgain': 'Запустить эту ячейку',
   'ws.notebookRunCellBlockedBusy': 'Запуск уже идёт — дождитесь его завершения',
   'ws.notebookRunCellBlockedWriting':

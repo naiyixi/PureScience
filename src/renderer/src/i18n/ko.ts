@@ -3195,6 +3195,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': '노트북 컨트롤',
   'ws.notebookHydrationFailed': '노트북 참조 하이드레이션 실패',
   'ws.notebookStale': '오래됨',
+  'ws.notebookRunError': '오류',
+  'ws.notebookRunErrorAtLine': '오류 ({line}번째 줄)',
+  'ws.notebookRunTimeout': '시간 초과',
+  'ws.notebookRunInterrupted': '중단됨',
+  'ws.notebookInterruptionReason.app-terminated': '끝나기 전에 앱이 종료되었습니다',
   'ws.notebookRunCellAgain': '이 셀 실행',
   'ws.notebookRunCellBlockedBusy': '이미 실행 중입니다. 끝난 뒤 다시 실행하세요',
   'ws.notebookRunCellBlockedWriting':

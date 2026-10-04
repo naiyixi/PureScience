@@ -256,4 +256,41 @@ describe('NotebookPreview cell re-run', () => {
     await clickRerun()
     expect(runCell).not.toHaveBeenCalled()
   })
+
+  // A run that stopped for a reason outside the code is not a failed run. `isProblemRunStatus` groups
+  // failed / timeout / interrupted for styling, and the badge used to label all three "error" — which the
+  // domain layer denies in as many words (`repository.ts:273`: an app-terminated interruption is NOT
+  // failed, "the code may have been fine"). The badge now states the status the run actually has.
+  it('states an interruption and its reason instead of calling it an error', async () => {
+    await mount([
+      makeRun({
+        runId: 'r1',
+        cellId: 'c1',
+        status: 'interrupted',
+        interruptionReason: 'app-terminated'
+      }),
+      makeRun({ runId: 'r2', cellId: 'c2', status: 'failed' })
+    ])
+
+    const badges = Array.from(
+      container.querySelectorAll('[data-testid="notebook-cell-problem"]')
+    ).map((node) => (node.textContent ?? '').trim())
+    console.log(`[run-badge] ${JSON.stringify(badges)}`)
+
+    // The interrupted run names itself and its reason, and never reads as a plain error.
+    const interrupted = badges.filter((badge) => badge.includes('interrupted'))
+    expect(interrupted).toHaveLength(1)
+    expect(interrupted[0]).toContain('the app closed before it finished')
+
+    // Exactly one badge is the bare failure label: the genuine failure.
+    expect(badges.filter((badge) => badge === 'error')).toHaveLength(1)
+  })
+
+  // A timeout is its own statement too: the code may not have errored, it ran out of time.
+  it('says a run timed out rather than that it errored', async () => {
+    await mount([makeRun({ runId: 'r3', cellId: 'c3', status: 'timeout' })])
+
+    const badge = container.querySelector('[data-testid="notebook-cell-problem"]')?.textContent
+    expect((badge ?? '').trim()).toBe('timed out')
+  })
 })

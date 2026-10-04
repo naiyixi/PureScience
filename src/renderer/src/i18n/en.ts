@@ -539,6 +539,11 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookVariablesRefresh': 'Refresh',
   'ws.notebookVariablesRefreshing': 'Refreshing…',
   'ws.notebookStale': 'stale',
+  'ws.notebookRunError': 'error',
+  'ws.notebookRunErrorAtLine': 'error (line {line})',
+  'ws.notebookRunTimeout': 'timed out',
+  'ws.notebookRunInterrupted': 'interrupted',
+  'ws.notebookInterruptionReason.app-terminated': 'the app closed before it finished',
   'ws.notebookRunCellAgain': 'Run this cell',
   'ws.notebookRunCellBlockedBusy': 'A run is already in flight — wait for it to finish',
   'ws.notebookRunCellBlockedWriting':

@@ -3346,6 +3346,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.notebookControl': 'Notebook-Steuerung',
   'ws.notebookHydrationFailed': 'Notebook-Referenz-Hydrierung fehlgeschlagen',
   'ws.notebookStale': 'veraltet',
+  'ws.notebookRunError': 'Fehler',
+  'ws.notebookRunErrorAtLine': 'Fehler (Zeile {line})',
+  'ws.notebookRunTimeout': 'Zeitüberschreitung',
+  'ws.notebookRunInterrupted': 'unterbrochen',
+  'ws.notebookInterruptionReason.app-terminated': 'die App wurde vor dem Ende geschlossen',
   'ws.notebookRunCellAgain': 'Diese Zelle ausführen',
   'ws.notebookRunCellBlockedBusy':
     'Es läuft bereits eine Ausführung — warten Sie, bis sie beendet ist',
