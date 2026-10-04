@@ -12,6 +12,9 @@ const VERSION = '1.0.0'
 const PERMISSION_PROMPT = 'Request fixture permission.'
 const PROVIDER_BRIDGE_PROMPT = 'Verify the provider bridge.'
 const NOTEBOOK_LIFECYCLE_PROMPT = 'Verify the notebook lifecycle.'
+// IC14: a PYTHON notebook run — the runtime binding strip only exists for the env-scoped kernels
+// (python/r), and the other notebook scenarios all drive bash.
+const NOTEBOOK_PYTHON_PROMPT = 'Run a python cell.'
 const ARTIFACT_PROVENANCE_PROMPT = 'Create a provenance artifact.'
 const PDF_TABLE_PROMPT = 'Create a table PDF fixture.'
 const PDF_PROSE_PROMPT = 'Create a prose PDF fixture.'
@@ -189,6 +192,26 @@ const verifyNotebookLifecycle = async (sessionId) =>
     }
     return `Notebook lifecycle verified for ${initial.sessionId}.`
   })
+
+// IC14: one real python cell through the notebook MCP. The pane promotes itself once the session holds a
+// notebook run (same as the other scenarios), and because this run is python the runtime binding strip —
+// which only exists for the env-scoped kernels — is on screen for the reading.
+const runPythonNotebookCell = async (sessionId) => {
+  const marker = 'ic14-python-cell'
+  await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
+    const execution = toolResult(
+      'notebook_execute',
+      await client.callTool({
+        name: 'notebook_execute',
+        arguments: { language: 'python', code: `print("${marker}")` }
+      })
+    )
+    if (!JSON.stringify(execution).includes(marker)) {
+      throw new Error('The Notebook did not run the python cell.')
+    }
+  })
+  return 'Python cell ran.'
+}
 
 const createProvenanceArtifact = async (sessionId) => {
   const producerRunId = await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
@@ -534,6 +557,8 @@ if (process.argv.includes('--version')) {
           reply = verifyProviderBridge()
         } else if (prompt.includes(NOTEBOOK_LIFECYCLE_PROMPT)) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
+        } else if (prompt.includes(NOTEBOOK_PYTHON_PROMPT)) {
+          reply = await runPythonNotebookCell(context.params.sessionId)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {
           reply = await createProvenanceArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_PROSE_PROMPT)) {

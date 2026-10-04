@@ -5109,6 +5109,9 @@ describe('v4 runtime bindings & agent tools', () => {
 
     const listedDefault = await service.listRuntimes({ sessionId: 's', workspaceCwd: root })
     expect(listedDefault.runtimes.map((r) => r.runtimeId)).toEqual([managedPy.envId])
+    // Nothing is explicitly bound, but the session still RESOLVES to the app-managed default — so that is
+    // the runtime the window must show as in use, rather than every row looking unused.
+    expect(listedDefault.runtimes.find((r) => r.runtimeId === managedPy.envId)?.bound).toBe(true)
 
     // Enabling one external env surfaces it too, still excluding the other (disabled) one.
     const enabledService = bindingService(root, {
@@ -5119,6 +5122,18 @@ describe('v4 runtime bindings & agent tools', () => {
       [managedPy.envId, userPyA.envId].sort()
     )
     expect(listed.runtimes.every((r) => r.runtimeId !== userPyB.envId)).toBe(true)
+
+    // A binding, once made, moves the flag off the default and onto the chosen runtime.
+    await enabledService.bindRuntime({
+      sessionId: 's2',
+      workspaceCwd: root,
+      language: 'python',
+      runtimeId: userPyA.envId
+    })
+    const afterBind = await enabledService.listRuntimes({ sessionId: 's2', workspaceCwd: root })
+    expect(afterBind.runtimes.find((r) => r.runtimeId === userPyA.envId)?.bound).toBe(true)
+    // The explicit binding wins: the default is no longer what the session resolves to.
+    expect(afterBind.runtimes.find((r) => r.runtimeId === managedPy.envId)?.bound).toBe(false)
   })
 
   it('refuses binding a disabled or unknown runtime IN THE MAIN process', async () => {

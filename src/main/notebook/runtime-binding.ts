@@ -158,9 +158,22 @@ export class NotebookRuntimeBindingOwner {
   }> {
     const runtimes: NotebookRuntimeListing[] = []
     for (const language of ['python', 'r'] as const) {
-      const bound = session.runtimeBinding(language)
+      const explicit = session.runtimeBinding(language)
+      // Which runtime is IN USE. With no explicit binding the session still resolves to the app-managed
+      // default for this language, and leaving every row unmarked would hide that from the window — so the
+      // default is reported as the binding until the session actually switches away from it.
+      const defaultEnvName = language === 'r' ? DEFAULT_R_ENV : DEFAULT_PY_ENV
       for (const env of await this.listEnabledInterpreters(language)) {
         const binding = this.toInternalBinding(env)
+        // The app-managed default is identified by name when discovery reported one and by its prefix
+        // otherwise — hand-built discovery fixtures carry no `condaEnv`, and the window must still be told
+        // which runtime is in use.
+        const inUse =
+          explicit !== undefined
+            ? explicit.runtimeId === binding.runtimeId
+            : binding.provenance === 'app-managed' &&
+              (env.condaEnv === defaultEnvName ||
+                binding.interpreterPath.includes(`/envs/${defaultEnvName}/`))
         runtimes.push({
           language: binding.language,
           runtimeId: binding.runtimeId,
@@ -171,7 +184,7 @@ export class NotebookRuntimeBindingOwner {
           version: binding.version,
           runnable: env.runnable,
           detail: env.detail,
-          bound: bound?.runtimeId === binding.runtimeId
+          bound: inUse
         })
       }
     }
