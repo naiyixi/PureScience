@@ -301,3 +301,55 @@ B 段已耗尽（S3/S4 全落地、M2 卡产品决定），A 段唯一开项（e
 下一条（**IC15** 内核常驻「重启/关闭」 或 **IC13** 窗口直装包，落点见排期文件批次 4 表）；
 ② 树仍脏 / 桌面仍活跃 ⇒ 继续让位，只做只读取证，不落代码；
 ③ 内存宽松时优先补 **IC16 真机读数**（配方见 §五 1–4），并**顺带把「包含 `24dd3b6b` 的绿色 `Nightly`」记为 IC16 的 CI 证据**。
+
+## 七、本轮追加（执行器，2026-10-04 21:38–22:0x）——让位轮 + 当前 HEAD 的红已完整归因（含逐条修法）
+
+**本轮判定：让位（零代码提交）。** 依据 §六 的「下一轮第一步 ②」：开工时**树仍脏且桌面仍活跃**——
+`git status --short` 是会话 IC13 未提交的那批（`notebook/runtime-selection-workflows.ts`、`RuntimesPanel.tsx`(+render 测试)、
+`shared/notebook-runtime.ts`、9 语字典、新增 `e2e/certification/packages-mutation.spec.ts`），
+`RuntimesPanel.tsx` 的 mtime 是 **21:44**，且进程表里有 **21:45 起跑、正在跑**的
+`playwright test e2e/certification/packages-mutation.spec.ts`（`npm exec` → playwright → Electron 全链在），
+本机 swap 12.0G/13.3G、空闲物理页 ≈72MB。按共存红线，此刻任何重建/测试都会与它抢资源，故不落代码。
+
+**本轮产物 = 当前 HEAD 的红完整归因（下一轮**直接引用，不要再查**）。** 上一轮（§六）只知道「Nightly 红在 Verify」，
+本轮把**红到哪条断言、由谁引入、怎么修**全部钉死：
+
+- **HEAD = `e3bda25b`（= `origin/main`）**。`Nightly` run **37203794992** failure：**`build / Verify` 里
+  `Lint` ✓、`Typecheck` ✓、`Test (with coverage)` ✗**（下游 `Build ${{matrix.name}}` 与 `publish` 全 skipped ⇒ 无产物、无发布页）；
+  `Windows Full Test` run **37203794805**：**8 分片里 2/3/6/7/8 红、1/4/5 绿**。两车道同一 SHA 同因。
+- **红 = 5 条断言、2 个根因。** （证据取法：`gh api repos/naiyixi/PureScience/check-runs/<job-id>/annotations`
+  —— 一次拿到 `文件:行 + AssertionError 原文 + 期望/实收`，比拉 job 日志快得多；本轮拉日志在 CN 网 5 MB 就要 180 s 并超时。）
+
+**根因 A（IC13 的 `b2edc984` 加了通道 `runtime:manage-packages`，但 4 处契约 pin 未跟 ⇒ 契约计数连锁只修了一半）**：
+`b2edc984` 已改 `application-command-composition.test.ts`、`renderer-contract-catalog.test.ts`、
+`renderer-surface-inventory.test.ts`、`preload/index.test.ts`，**漏了这 4 处**：
+
+1. `src/main/notebook/runtime-ipc.test.ts:147` —— 「registers the exact runtime command surface」：14 → **15**，加入 `'runtime:manage-packages'`。
+2. `src/main/web-service/http-server.test.ts:927` —— `localOnly(runtimeChannels)`：8 → **9**，把 `'runtime:manage-packages'` 插在
+   `'runtime:manage-named-environments'` **之后**（字典序：`named` < `packages`）。
+3. `src/shared/web-rpc-contract.test.ts:122` —— `runtime.*` 可调用面：14 → **15**，把 `'runtime.managePackages'` 插在
+   `'runtime.manageNamedEnvironments'` **之后**。
+4. `src/renderer/web/renderer-argument-shape-characterization.test.ts:202` —— Web 可调用面总计数 `toHaveLength(383)` → **384**
+   （即本技能正文点名过的那一处「独立计数」；`expectedPaths` 侧无需改，它由目录派生）。
+
+**根因 B（IC12 的 `70cf2046` 改了按钮文案＋加了 testid，但 `StoragePanel.render.test.tsx` 未跟 ⇒ 自 `70cf2046` 起一直红）**：
+`src/renderer/src/pages/settings/StoragePanel.render.test.tsx:811` 断言 `expect(changeButton?.disabled).toBe(true)` 得到 `undefined`。
+原因：用例第 808–810 行按**文案** `'Change location'` 找按钮，而组件 `StoragePanel.tsx:479` 在 `kind === 'invalid'` 时渲染的是
+`t('common.continue')`（英文即 `Continue`）⇒ 找不到按钮。**修法（不弱化断言意图）**：改用组件**已经提供**的稳定锚点
+`container.querySelector<HTMLButtonElement>('[data-testid="storage-change-location"]')`（该 testid 正是 `70cf2046` 为「稳定定位」加的），
+「invalid 下动作不可用（disabled）」的意图逐字保留。**已核**：`StoragePanel.render.test.tsx` 的最后一次改动是 `1d97f9d4`（早于 `70cf2046`）
+⇒ 是测试未随组件同步，不是新的产品缺陷。
+
+**红的起点（已用 check-run 注解复核，不是推断）**：`StoragePanel.render.test.tsx:811` 在 `70cf2046` 与 `1e32bcac` 的 Verify 注解里
+**同为该行**（`70cf2046` 起就红）；4 处 pin 是在 `b2edc984` 引入（该 SHA 的 run 被 `e3bda25b` 按 `cancel-in-progress` 顶掉 ⇒ **cancelled，无判决**），
+在 `e3bda25b` 上完整暴露。**取消 ≠ 绿**。
+**同批待确认（不当作现状）**：`70cf2046`/`1e32bcac` 的 Verify 注解里另有 mac update feed 的 arm64 缺失/不完整两条；
+`e3bda25b` 的注解里**没有**它们（未跑到或被修），留作下一轮验证项，先别当缺陷改。
+
+**下一轮第一步**：① 先 `git status --short` + `git log --oneline origin/main -3`；**树干净且桌面空闲** ⇒ **先修上面 5 条**
+（4 处 pin + StoragePanel 用例；都与会话本轮改动的文件不重叠），跑这 5 个文件定向 vitest + 双 typecheck + `eslint --no-cache .`，
+提交推送并盯 `Nightly`+`Windows Full Test` 双绿；② 仍脏/仍活跃 ⇒ 继续让位（只读取证），并优先补 §五 1–4 的 IC16 真机读数（内存宽松时）。
+**⚠️ 防重做**：会话正在做的正是 IC13，它的下一笔提交前必然要跑 `src/main/notebook` / `src/renderer/src/pages/settings` / `src/shared`
+这三处受影响套件——**这 5 条大概率会被会话自己修掉**。所以下一轮**先 `git log --oneline -5 origin/main` 与会话提交核对**：
+若其中已含「runtime:manage-packages 的 pin 补齐」或「StoragePanel 用例改 testid」，**跳过、不要重做**（重做＝白烧词元）；
+核对不到才修。修的时候也**只许加强断言**，不许把 pin 改成「只测存在性」那种更弱的写法。
