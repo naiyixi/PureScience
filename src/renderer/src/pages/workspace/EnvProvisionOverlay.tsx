@@ -1,15 +1,21 @@
 import { DownloadProgressLine } from '@/components/DownloadProgressLine'
+import { useLanguage } from '@/i18n'
 import type { ProvisionUiState } from './provisioning-view'
 
 // Reusable provisioning progress surface. Rendered as a greyed overlay over the notebook pane, and
 // (compact) inside the onboarding step and the launch banner. Returns null when the env is ready.
 const EnvProvisionOverlay = ({
   ui,
-  onRetry
+  onRetry,
+  onCancel
 }: {
   ui: ProvisionUiState
   onRetry?: () => void
+  // Supplied only when the in-flight run is actually abortable. An additive upgrade has no abort
+  // path in the runtime, so its caller passes nothing and no dead button is drawn.
+  onCancel?: () => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   if (ui.kind === 'ready') return null
 
   const title =
@@ -43,6 +49,18 @@ const EnvProvisionOverlay = ({
             <div className="w-56">
               <DownloadProgressLine progress={ui.download} />
             </div>
+          ) : null}
+          {/* Aborting a first-run download is a normal thing to want (wrong mirror, offline, changed
+              your mind) — without this the gate is un-escapable until the runtime finishes. */}
+          {onCancel ? (
+            <button
+              type="button"
+              data-testid="notebook-env-cancel"
+              onClick={onCancel}
+              className="rounded border border-border-100 px-3 py-1 text-xs text-text-100 hover:bg-bg-300"
+            >
+              {t('common.cancel')}
+            </button>
           ) : null}
         </>
       ) : (

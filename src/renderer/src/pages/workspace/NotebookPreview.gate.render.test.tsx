@@ -11,6 +11,8 @@ import { NotebookPreview, type NotebookPreviewItem } from './NotebookPreview'
 import { deriveProvisionUi } from './provisioning-view'
 
 const notebookCodeBlockSpy = vi.hoisted(() => vi.fn())
+// Records what the gate overlay's Cancel control asks the main process to abort.
+const notebookEnvCancelSpy = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 
 vi.mock('./notebook-code', () => ({
   NotebookCodeBlock: (props: { code: string; language?: string; highlightLine?: number }) => {
@@ -24,6 +26,7 @@ let root: Root
 
 beforeEach(() => {
   notebookCodeBlockSpy.mockClear()
+  notebookEnvCancelSpy.mockClear()
   useNotebookEnvStore.setState(createInitialNotebookEnvState())
   container = document.createElement('div')
   document.body.appendChild(container)
@@ -70,6 +73,35 @@ describe('EnvProvisionOverlay', () => {
     act(() => root.render(<EnvProvisionOverlay ui={{ kind: 'ready' }} />))
     expect(container.querySelector('[data-testid="notebook-env-gate"]')).toBeNull()
   })
+
+  it('offers Cancel while preparing when the caller can abort the run', () => {
+    let cancelled = 0
+    const ui = deriveProvisionUi(
+      { pythonReady: false, rReady: false, version: 3, provisioning: true },
+      'python',
+      { phase: 'download', message: 'Downloading managed python runtime', progress: 0.25 },
+      undefined
+    )
+    act(() => root.render(<EnvProvisionOverlay ui={ui} onCancel={() => (cancelled += 1)} />))
+    const button = container.querySelector(
+      '[data-testid="notebook-env-cancel"]'
+    ) as HTMLButtonElement
+    expect(button).not.toBeNull()
+    act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(cancelled).toBe(1)
+  })
+
+  it('draws no Cancel when the caller passes no abort handler (additive upgrade)', () => {
+    const ui = deriveProvisionUi(
+      { pythonReady: true, rReady: false, version: 3, provisioning: true },
+      undefined,
+      { phase: 'upgrade', message: 'Updating default packages…', progress: 0.1, scope: 'upgrade' },
+      undefined
+    )
+    act(() => root.render(<EnvProvisionOverlay ui={ui} />))
+    expect(container.querySelector('[data-testid="notebook-env-gate"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="notebook-env-cancel"]')).toBeNull()
+  })
 })
 
 // D3-review recipe: mount the real NotebookPreview with a never-resolving notebook.state() (so it
@@ -104,9 +136,76 @@ describe('NotebookPreview env gate (mounted)', () => {
       notebookEnv: {
         getStatus: vi.fn(() => Promise.resolve(createInitialNotebookEnvState().status)),
         provision: vi.fn(() => Promise.resolve()),
+        cancel: notebookEnvCancelSpy,
         onProgress: vi.fn(() => vi.fn())
       }
     } as never
+  })
+
+  it('cancels the in-flight python provision from the gate overlay', async () => {
+    const preparingStatus: ProvisionStatus = {
+      pythonReady: false,
+      rReady: false,
+      version: 1,
+      provisioning: true
+    }
+    useNotebookEnvStore.setState({
+      status: preparingStatus,
+      scope: 'python',
+      ui: deriveProvisionUi(
+        preparingStatus,
+        'python',
+        {
+          phase: 'download',
+          message: 'Downloading managed python runtime',
+          progress: 0.25,
+          scope: 'python'
+        },
+        undefined
+      )
+    })
+
+    act(() => root.render(<NotebookPreview item={item} />))
+    const button = container.querySelector(
+      '[data-testid="notebook-env-cancel"]'
+    ) as HTMLButtonElement
+    expect(button).not.toBeNull()
+
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // The language is forwarded, so cancelling the frozen pane never aborts the other language's run.
+    expect(notebookEnvCancelSpy).toHaveBeenCalledWith('python')
+  })
+
+  it('offers no cancel while an additive upgrade holds the pane', () => {
+    const upgradingStatus: ProvisionStatus = {
+      pythonReady: true,
+      rReady: false,
+      version: 1,
+      provisioning: true
+    }
+    useNotebookEnvStore.setState({
+      status: upgradingStatus,
+      ui: deriveProvisionUi(
+        upgradingStatus,
+        undefined,
+        {
+          phase: 'upgrade',
+          message: 'Updating default packages…',
+          progress: 0.1,
+          scope: 'upgrade'
+        },
+        undefined
+      )
+    })
+
+    act(() => root.render(<NotebookPreview item={item} />))
+    expect(container.querySelector('[data-testid="notebook-env-gate"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="notebook-env-cancel"]')).toBeNull()
+    expect(notebookEnvCancelSpy).not.toHaveBeenCalled()
   })
 
   it('shows notebook-env-gate while preparing and hides it once python is ready', () => {

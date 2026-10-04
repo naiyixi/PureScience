@@ -453,7 +453,16 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   const provisionUi = useNotebookEnvStore((s) => s.ui)
   const retryProvision = useNotebookEnvStore((s) => s.retry)
   const provision = useNotebookEnvStore((s) => s.provision)
+  const cancelProvision = useNotebookEnvStore((s) => s.cancel)
   const gated = notebookGated(envStatus, provisionUi, item.notebook.sessionId)
+  // Cancel is offered only where the runtime can really abort: a python/R provision. An additive
+  // upgrade runs without an abort controller (and the serialized wrapper drops a per-language cancel
+  // for it), so that state shows no Cancel rather than a button that does nothing.
+  const cancellableScope: NotebookLanguage | undefined =
+    provisionUi.kind === 'preparing' &&
+    (provisionUi.scope === 'python' || provisionUi.scope === 'r')
+      ? provisionUi.scope
+      : undefined
   const isPreparingR =
     provisionUi.kind === 'preparing' &&
     provisionUi.scope === 'r' &&
@@ -710,7 +719,11 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       data-testid="kernel-notebook-pane"
     >
       {gated ? (
-        <EnvProvisionOverlay ui={provisionUi} onRetry={() => void retryProvision()} />
+        <EnvProvisionOverlay
+          ui={provisionUi}
+          onRetry={() => void retryProvision()}
+          {...(cancellableScope ? { onCancel: () => void cancelProvision(cancellableScope) } : {})}
+        />
       ) : null}
       <header
         className="flex shrink-0 items-center border-b border-border-100 px-2 py-1.5"
