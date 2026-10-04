@@ -16,6 +16,12 @@ import type {
   NotebookSessionState,
   RunNotebookCellRequest
 } from '../../shared/notebook'
+import type {
+  NotebookRuntimeBinding,
+  NotebookRuntimeBindings,
+  NotebookRuntimeBindingRequest,
+  NotebookRuntimeListing
+} from '../../shared/notebook-runtime'
 import { withDataRootWrite } from '../storage/migration-state'
 
 type BeginNotebookCodeCellResult = {
@@ -56,6 +62,12 @@ type NotebookCommandRuntime = {
   inspectVariables(
     request: InspectNotebookVariablesRequest
   ): Promise<InspectNotebookVariablesResult | undefined>
+  // IC14: the session's runtime bindings, surfaced to the window through the SAME main-process gate the
+  // agent's list_notebook_runtimes / notebook_bind_runtime / notebook_switch_runtime already use: a
+  // disabled or unknown runtime is refused there, and a switch tears the old kernel down before rebinding.
+  listRuntimes(request: NotebookSessionRequest): Promise<NotebookRuntimeListingResult>
+  bindRuntime(request: NotebookRuntimeBindingRequest): Promise<NotebookRuntimeBindingResult>
+  switchRuntime(request: NotebookRuntimeBindingRequest): Promise<NotebookRuntimeBindingResult>
 }
 
 type NotebookCommandWorkflows = {
@@ -73,6 +85,24 @@ type NotebookCommandWorkflows = {
   inspectVariables(
     request: InspectNotebookVariablesRequest
   ): Promise<InspectNotebookVariablesResult | undefined>
+  // IC14: the session's runtime bindings, surfaced to the window through the SAME main-process gate the
+  // agent's list_notebook_runtimes / notebook_bind_runtime / notebook_switch_runtime already use: a
+  // disabled or unknown runtime is refused there, and a switch tears the old kernel down before rebinding.
+  listRuntimes(request: NotebookSessionRequest): Promise<NotebookRuntimeListingResult>
+  bindRuntime(request: NotebookRuntimeBindingRequest): Promise<NotebookRuntimeBindingResult>
+  switchRuntime(request: NotebookRuntimeBindingRequest): Promise<NotebookRuntimeBindingResult>
+}
+
+// IC14: the window-facing RESULT shapes for a session's runtime binding. Named here (not spelled inline
+// three times) so the workflow port, the IPC adapter and the preload bridge all describe one thing; the
+// request side is shared, because the renderer's own type surface needs it too.
+type NotebookRuntimeListingResult = {
+  runtimes: NotebookRuntimeListing[]
+  bindings: NotebookRuntimeBindings
+}
+type NotebookRuntimeBindingResult = {
+  bound: NotebookRuntimeBinding
+  bindings: NotebookRuntimeBindings
 }
 
 const withoutTrustedTurnContext = <
@@ -105,7 +135,13 @@ const createNotebookCommandWorkflows = (
   restart: (request) => withDataRootWrite(() => runtime.restart(request)),
   shutdown: (request) => withDataRootWrite(() => runtime.shutdown(request)),
   inspectVariables: (request) =>
-    withDataRootWrite(() => runtime.inspectVariables(withoutTrustedTurnContext(request)))
+    withDataRootWrite(() => runtime.inspectVariables(withoutTrustedTurnContext(request))),
+  // A read: listing never starts a kernel, so it needs no write lease.
+  listRuntimes: (request) => runtime.listRuntimes(request),
+  // Both of these mutate the session (and a switch tears a kernel down first), so they take the same
+  // data-root write lease as every other notebook mutation.
+  bindRuntime: (request) => withDataRootWrite(() => runtime.bindRuntime(request)),
+  switchRuntime: (request) => withDataRootWrite(() => runtime.switchRuntime(request))
 })
 
 export { createNotebookCommandWorkflows }

@@ -551,6 +551,11 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookRunCellBlockedWriting':
     'The agent is still streaming code into this cell — running it now would interleave the two',
   'ws.notebookRunCellBlockedProvisioning': 'The environment is still being prepared',
+  'ws.notebookRuntime': 'Runtime',
+  'ws.notebookRuntimeBound': 'in use',
+  'ws.notebookRuntimeNotRunnable': 'unavailable',
+  'ws.notebookRuntimeUnavailable': 'Cannot run here',
+  'ws.notebookRuntimeEmpty': 'No runtime is enabled for this language — enable one in Settings → Runtimes',
   'ws.notebookRerunDone': 'Re-ran this cell · {status}',
   'settings.marketplaceInstalled': 'Marketplace',
   'settings.marketplaceFilter': 'Marketplace',

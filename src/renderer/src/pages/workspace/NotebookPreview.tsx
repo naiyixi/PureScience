@@ -6,6 +6,10 @@ import { computeStaleRunIds } from '../../../../shared/run-dependencies'
 import { Braces, FilePenLine } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
+import type {
+  NotebookRuntimeBindings,
+  NotebookRuntimeListing
+} from '../../../../shared/notebook-runtime'
 import { WriteAuditPanel } from './WriteAuditPanel'
 import {
   isVariableToken as isVariableTokenSuggestion,
@@ -688,7 +692,81 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       return entryEnvName === envName
     })?.status
 
+  // IC14: the session's runtime binding, straight from the main process — the same three calls the agent's
+  // notebook runtime tools make, so the window cannot bind or switch around that gate. An unavailable
+  // binding carries the app's own `reason`, which is shown on the row instead of leaving a dead control.
+  const [runtimeListing, setRuntimeListing] = useState<{
+    runtimes: NotebookRuntimeListing[]
+    bindings: NotebookRuntimeBindings
+  } | null>(null)
+  const [runtimeBindingError, setRuntimeBindingError] = useState<string | null>(null)
+  const [runtimeBindingBusy, setRuntimeBindingBusy] = useState(false)
+  const runtimeSessionId = item.notebook.sessionId
+  // Every notebook call carries the session context (sessionId + workspaceCwd, plus the project name
+  // when the pane knows it), so the main process can resolve the same session the rest of the pane uses.
+  const runtimeSessionContext = {
+    sessionId: runtimeSessionId,
+    workspaceCwd: item.notebook.workspaceCwd,
+    projectName: item.notebook.projectName
+  }
+  const loadRuntimes = useCallback(async (): Promise<void> => {
+    try {
+      // Built inline (not from the object below) so this callback's dependencies stay primitives and the
+      // hook rules can see exactly what it reads.
+      const listing = await window.api.notebook.listRuntimes({
+        sessionId: runtimeSessionId,
+        workspaceCwd: item.notebook.workspaceCwd,
+        projectName: item.notebook.projectName
+      })
+      setRuntimeListing(listing)
+      setRuntimeBindingError(null)
+    } catch (error) {
+      setRuntimeBindingError(error instanceof Error ? error.message : String(error))
+    }
+  }, [runtimeSessionId, item.notebook.workspaceCwd, item.notebook.projectName])
+  useEffect(() => {
+    // Defer like the notebook-state load above: a synchronous setState in the effect phase trips
+    // react-hooks/set-state-in-effect, and the listing is not needed before the pane's first paint.
+    const handle = window.setTimeout(() => {
+      void loadRuntimes()
+    }, 0)
+    return () => window.clearTimeout(handle)
+  }, [loadRuntimes])
+
+  // Bind the first time and switch afterwards: the main process refuses to re-bind a different runtime
+  // (bind_runtime) and its switch tears the current kernel down before rebinding, so the window must ask
+  // for the right one instead of retrying blindly.
+  const applyRuntime = async (runtimeId: string, bound: boolean): Promise<void> => {
+    if (runtimeBindingBusy) return
+    setRuntimeBindingBusy(true)
+    setRuntimeBindingError(null)
+    try {
+      const request = {
+        ...runtimeSessionContext,
+        language: effectiveActiveKind as NotebookLanguage,
+        runtimeId
+      }
+      if (bound) {
+        await window.api.notebook.switchRuntime(request)
+      } else {
+        await window.api.notebook.bindRuntime(request)
+      }
+      // The write returns the new bindings, but the ROW's truth (bound flags, runnable, reasons) comes
+      // from the listing, so re-read it rather than patching state by hand.
+      await loadRuntimes()
+    } catch (error) {
+      setRuntimeBindingError(error instanceof Error ? error.message : String(error))
+    } finally {
+      setRuntimeBindingBusy(false)
+    }
+  }
+
   // R-only restart prompt: an R install/uninstall flags the active R env until its kernel restarts.
+  const activeRuntimeBinding =
+    runtimeListing?.bindings[effectiveActiveKind === 'r' ? 'r' : 'python']
+  // An ABSENT binding means this language still resolves to the app-managed default, so the first
+  // explicit choice is a bind; anything after that is a switch.
+  const hasExplicitBinding = activeRuntimeBinding !== undefined
   const activeEnvName =
     effectiveActiveEnv ?? (effectiveActiveKind === 'r' ? 'default-r' : 'default-python')
   const restartRecommended =
@@ -828,6 +906,70 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
               {environmentLabel(envName)}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {isEnvScopedKind && runtimeListing ? (
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-100 px-2 py-1 text-[11px]"
+          data-testid="notebook-runtime-binding"
+        >
+          <span className="text-text-300">{t('ws.notebookRuntime')}</span>
+          {runtimeListing.runtimes
+            .filter((runtime) => runtime.language === effectiveActiveKind)
+            .map((runtime) => (
+              <button
+                key={runtime.runtimeId}
+                type="button"
+                data-testid={`notebook-runtime-option-${runtime.runtimeId}`}
+                disabled={runtimeBindingBusy || !runtime.runnable}
+                title={
+                  runtime.runnable
+                    ? undefined
+                    : (runtime.detail ?? t('ws.notebookRuntimeNotRunnable'))
+                }
+                onClick={() => {
+                  // Already in use: nothing to do (a switch to the same runtime would tear the kernel
+                  // down for no reason). Otherwise the FIRST explicit binding uses bindRuntime; once one
+                  // exists, a different runtime needs switchRuntime — which the main process enforces.
+                  if (runtime.bound) return
+                  void applyRuntime(runtime.runtimeId, hasExplicitBinding)
+                }}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 transition-colors',
+                  runtime.bound
+                    ? 'bg-bg-200 text-text-100'
+                    : 'text-text-300 hover:bg-bg-200 hover:text-text-100',
+                  !runtime.runnable && 'cursor-not-allowed opacity-60'
+                )}
+              >
+                {runtime.label}
+                {runtime.bound ? ` · ${t('ws.notebookRuntimeBound')}` : ''}
+                {runtime.runnable ? '' : ` · ${t('ws.notebookRuntimeNotRunnable')}`}
+              </button>
+            ))}
+          {runtimeListing.runtimes.filter((runtime) => runtime.language === effectiveActiveKind)
+            .length === 0 ? (
+            <span data-testid="notebook-runtime-empty">{t('ws.notebookRuntimeEmpty')}</span>
+          ) : null}
+          {/* Why the session's bound runtime cannot back a kernel — the app's own reason, kept on the row
+              rather than left for the user to discover by running a cell. */}
+          {runtimeListing.bindings[effectiveActiveKind === 'r' ? 'r' : 'python']?.status ===
+          'unavailable' ? (
+            <span role="status" data-testid="notebook-runtime-reason" className="text-text-300">
+              {t('ws.notebookRuntimeUnavailable')}:{' '}
+              {runtimeListing.bindings[effectiveActiveKind === 'r' ? 'r' : 'python']?.reason ?? ''}
+            </span>
+          ) : null}
+          {runtimeBindingError !== null ? (
+            <span
+              role="alert"
+              data-testid="notebook-runtime-error"
+              className="text-destructive-100"
+            >
+              {runtimeBindingError}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

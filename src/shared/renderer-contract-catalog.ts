@@ -222,6 +222,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['beginCodeCell', 'notebook:begin-code-cell'], ['execute', 'notebook:execute'], ['inspectVariables', 'notebook:inspect-variables'], ['exportIpynb', 'notebook:export-ipynb', LOCAL],
     ['exportIpynbAll', 'notebook:export-ipynb-all', LOCAL], ['finishCodeCell', 'notebook:finish-code-cell'], ['getReference', 'notebook:reference'],
     ['readInputPreview', 'notebook:read-input-preview'], ['restart', 'notebook:restart'], ['runCell', 'notebook:run-cell'], ['shutdown', 'notebook:shutdown'],
+    ['bindRuntime', 'notebook:bind-runtime'], ['listRuntimes', 'notebook:list-runtimes'], ['switchRuntime', 'notebook:switch-runtime'],
     ['state', 'notebook:state'],
   ]),
   group('notebook-environment', 'notebookEnv', [

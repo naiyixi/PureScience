@@ -31,13 +31,17 @@ describe('renderer contract catalog', () => {
     // runtime channel, so the catalog, the preload inventory and the local-Web installation set each
     // move by one while the remote-Web one grows by the rejecting stub it gets for being local-only.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(460)
+    // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
+    // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
+    // local-Web installation set each move by three while the remote-Web set grows by the same three.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(463)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
-    expect(Object.keys(projection.invoke)).toHaveLength(354)
+    // 357 with the session runtime binding surface (IC14): three more local invoke channels.
+    expect(Object.keys(projection.invoke)).toHaveLength(357)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -45,9 +49,10 @@ describe('renderer contract catalog', () => {
     // 378 with the journal metric import (references.importJournalMetrics), a plain Web request profile.
     // 383 with the artifact reveal handoff (artifacts:reveal-file, IC9), a LOCAL artifact channel.
     // 384 with the window package install/uninstall (runtime.manage-packages, IC13), same profile.
+    // 387 with the session runtime binding surface (notebook.*, IC14): three plain Web request channels.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(384)
+    ).toHaveLength(387)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

@@ -200,7 +200,8 @@ describe('renderer argument-shape characterization', () => {
     // 383 with the artifact reveal handoff (artifacts:reveal-file, IC9): a LOCAL-only artifact channel,
     // refused at dispatch in the Web profile, but still a CALLABLE path on the Web surface.
     // 384 with the window package install/uninstall (runtime.managePackages, IC13): same profile.
-    expect(actualPaths).toHaveLength(384)
+    // 387 with the session runtime binding surface (notebook.*, IC14): three plain Web request channels.
+    expect(actualPaths).toHaveLength(387)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

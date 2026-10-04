@@ -705,3 +705,178 @@ describe('NotebookPreview per-environment selector', () => {
     expect(analysisBadge.className).toContain('bg-accent')
   })
 })
+
+// IC14: the session's runtime binding surface. Every assertion here is about what the WINDOW does with
+// the main process's answer — the binding it asks for, and the reason it shows when the bound runtime
+// cannot back a kernel.
+describe('NotebookPreview runtime binding (IC14)', () => {
+  const item: NotebookPreviewItem = {
+    id: 'tool:notebook:runtime-session',
+    sessionId: 'session-1',
+    title: 'Notebook',
+    type: 'tool',
+    toolKind: 'notebook',
+    notebook: {
+      sessionId: 'session-1',
+      projectName: 'proj',
+      workspaceCwd: '/tmp/proj',
+      notebookSessionRoot: '/tmp/proj/.notebook',
+      dataRoot: '/tmp/proj/.notebook/data',
+      runtimeRoot: '/tmp/proj/.notebook/runtime',
+      runJsonPath: '/tmp/proj/.notebook/run.json'
+    }
+  }
+
+  const managed = {
+    language: 'python' as const,
+    runtimeId: 'managed:default-python',
+    source: 'managed' as const,
+    provenance: 'app-managed' as const,
+    interpreterPath: '/runtime/envs/default-python/bin/python',
+    label: 'Python 3.12 (managed)'
+  }
+  const external = {
+    language: 'python' as const,
+    runtimeId: 'external:/opt/py/bin/python',
+    source: 'external' as const,
+    provenance: 'user-own' as const,
+    interpreterPath: '/opt/py/bin/python',
+    label: 'System Python'
+  }
+
+  let listRuntimes: ReturnType<typeof vi.fn>
+  let bindRuntime: ReturnType<typeof vi.fn>
+  let switchRuntime: ReturnType<typeof vi.fn>
+  let responses: Array<{ runtimes: unknown[]; bindings: unknown }>
+  let listCalls: number
+
+  beforeEach(() => {
+    responses = []
+    listCalls = 0
+    // First call answers the BEFORE state, every later call the AFTER state — so the test can prove the
+    // row is re-read from the app rather than patched locally.
+    listRuntimes = vi.fn(async () => {
+      const index = Math.min(listCalls, responses.length - 1)
+      listCalls += 1
+      return responses[Math.max(0, index)]
+    })
+    bindRuntime = vi.fn(async () => ({ bound: external, bindings: { python: external } }))
+    switchRuntime = vi.fn(async () => ({ bound: managed, bindings: { python: managed } }))
+    window.api = {
+      notebook: {
+        listRuntimes,
+        bindRuntime,
+        switchRuntime,
+        // The pane subscribes to the session's change stream on mount; the double answers with a no-op
+        // unsubscribe so the render never depends on a real event source.
+        onChanged: () => () => {},
+        onAvailable: () => () => {}
+      }
+    } as unknown as typeof window.api
+  })
+
+  it('lists the enabled runtimes, marks the bound one, then binds once and switches afterwards', async () => {
+    responses = [
+      // Nothing explicitly bound: this language still resolves to the app-managed default.
+      {
+        runtimes: [
+          { ...managed, runnable: true, bound: true },
+          { ...external, runnable: true, bound: false }
+        ],
+        bindings: {}
+      },
+      // After the write the row's truth comes from the app, not from local patching.
+      {
+        runtimes: [
+          { ...managed, runnable: true, bound: false },
+          { ...external, runnable: true, bound: true }
+        ],
+        bindings: { python: external }
+      }
+    ]
+
+    await act(async () => {
+      root.render(<NotebookPreview item={item} />)
+    })
+    await act(async () => {})
+    // The listing is loaded on a deferred timeout, so flush that phase before reading the row.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    const strip = container.querySelector('[data-testid="notebook-runtime-binding"]')
+    expect(strip?.textContent).toContain('Python 3.12 (managed)')
+    expect(strip?.textContent).toContain('System Python')
+    expect(strip?.textContent).toContain('in use')
+
+    const option = container.querySelector(
+      `[data-testid="notebook-runtime-option-${external.runtimeId}"]`
+    ) as HTMLButtonElement
+    await act(async () => option.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+
+    // The FIRST explicit choice is a bind — and it names the session and the runtime the user picked.
+    expect(bindRuntime).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      workspaceCwd: '/tmp/proj',
+      projectName: 'proj',
+      language: 'python',
+      runtimeId: external.runtimeId
+    })
+    expect(switchRuntime).not.toHaveBeenCalled()
+    // The listing was re-read, so the row now reflects the app's answer.
+    expect(listRuntimes.mock.calls.length).toBeGreaterThan(1)
+    expect(
+      container.querySelector('[data-testid="notebook-runtime-binding"]')?.textContent
+    ).toContain('in use')
+
+    // Once an explicit binding exists, a different runtime needs a SWITCH (the main process refuses a
+    // second bind, and a switch tears the old kernel down first).
+    const other = container.querySelector(
+      `[data-testid="notebook-runtime-option-${managed.runtimeId}"]`
+    ) as HTMLButtonElement
+    await act(async () => other.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(switchRuntime).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      workspaceCwd: '/tmp/proj',
+      projectName: 'proj',
+      language: 'python',
+      runtimeId: managed.runtimeId
+    })
+  })
+
+  it("shows the app's own reason when the bound runtime cannot back a kernel, and offers no dead control", async () => {
+    responses = [
+      {
+        runtimes: [
+          {
+            ...managed,
+            runnable: false,
+            bound: true,
+            detail: 'Repair the environment before running'
+          }
+        ],
+        bindings: {
+          python: { ...managed, status: 'unavailable', reason: 'repair-required' }
+        }
+      }
+    ]
+
+    await act(async () => {
+      root.render(<NotebookPreview item={item} />)
+    })
+    await act(async () => {})
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+
+    // The reason is on the row, in the app's own terms — not left for the user to discover by running a
+    // cell.
+    const reason = container.querySelector('[data-testid="notebook-runtime-reason"]')
+    expect(reason?.textContent).toContain('repair-required')
+    // And an unrunnable runtime cannot be chosen, so the click cannot be a no-op.
+    const option = container.querySelector(
+      `[data-testid="notebook-runtime-option-${managed.runtimeId}"]`
+    ) as HTMLButtonElement
+    expect(option.disabled).toBe(true)
+  })
+})

@@ -30,6 +30,10 @@ const createRuntime = (
   exportIpynbAll: unavailable('exportIpynbAll'),
   restart: unavailable('restart'),
   shutdown: unavailable('shutdown'),
+  // IC14: the session runtime binding surface — unavailable unless a test wires it.
+  listRuntimes: unavailable('listRuntimes'),
+  bindRuntime: unavailable('bindRuntime'),
+  switchRuntime: unavailable('switchRuntime'),
   ...overrides
 })
 

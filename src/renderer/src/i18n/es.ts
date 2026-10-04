@@ -3350,6 +3350,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.notebookRunCellBlockedWriting':
     'El agente aún está escribiendo código en esta celda; ejecutarla ahora entrelazaría ambos',
   'ws.notebookRunCellBlockedProvisioning': 'El entorno todavía se está preparando',
+  'ws.notebookRuntime': 'Entorno',
+  'ws.notebookRuntimeBound': 'en uso',
+  'ws.notebookRuntimeNotRunnable': 'no disponible',
+  'ws.notebookRuntimeUnavailable': 'No puede ejecutarse aquí',
+  'ws.notebookRuntimeEmpty': 'No hay ningún entorno habilitado para este lenguaje: habilita uno en Ajustes → Entornos',
   'ws.notebookRerunDone': 'Celda reejecutada · {status}',
   'ws.notebookVariables': 'Variables',
   'ws.notebookVariablesCount': 'variables',

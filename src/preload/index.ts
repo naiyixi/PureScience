@@ -4,7 +4,8 @@ import { createElectronRendererContractAdapter } from './electron-renderer-contr
 import type { PureScienceAPI } from './renderer-api'
 
 import type { ComputeApprovalDecision, ComputeApprovalRequest, JobSummary } from '../shared/compute'
-import type { NotebookLanguage } from '../shared/notebook'
+import type { NotebookLanguage, NotebookSessionRequest } from '../shared/notebook'
+import type { NotebookRuntimeBindingRequest } from '../shared/notebook-runtime'
 import type {
   ImportLockRequest,
   ImportLockResult,
@@ -846,6 +847,15 @@ const api: PureScienceAPI = {
     exportIpynbAll: (request) =>
       electronRendererContracts.invoke('notebook.exportIpynbAll', request),
     restart: (request) => electronRendererContracts.invoke('notebook.restart', request),
+    // IC14: the session's runtime bindings. The window asks the SAME three questions the agent's
+    // list_notebook_runtimes / notebook_bind_runtime / notebook_switch_runtime do, so a disabled or
+    // unknown runtime is refused by the main process and a switch tears the kernel down first.
+    listRuntimes: (request: NotebookSessionRequest) =>
+      electronRendererContracts.invoke('notebook.listRuntimes', request),
+    bindRuntime: (request: NotebookRuntimeBindingRequest) =>
+      electronRendererContracts.invoke('notebook.bindRuntime', request),
+    switchRuntime: (request: NotebookRuntimeBindingRequest) =>
+      electronRendererContracts.invoke('notebook.switchRuntime', request),
     shutdown: (request) =>
       electronRendererContracts.invoke('notebook.shutdown', request) as Promise<{
         sessionId: string

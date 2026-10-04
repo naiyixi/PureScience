@@ -71,7 +71,7 @@ const invocation = <Args extends readonly unknown[]>(
 })
 
 describe('Notebook application commands', () => {
-  it('owns exactly the 16 renderer-callable Notebook and Environment commands', () => {
+  it('owns exactly the 19 renderer-callable Notebook and Environment commands', () => {
     expect([
       ...notebookApplicationCommands.commands,
       ...notebookEnvironmentApplicationCommands.commands
@@ -89,6 +89,10 @@ describe('Notebook application commands', () => {
       expect.objectContaining({ name: 'notebook:restart' }),
       expect.objectContaining({ name: 'notebook:shutdown' }),
       expect.objectContaining({ name: 'notebook:read-input-preview' }),
+      // IC14: the session runtime binding surface.
+      expect.objectContaining({ name: 'notebook:list-runtimes' }),
+      expect.objectContaining({ name: 'notebook:bind-runtime' }),
+      expect.objectContaining({ name: 'notebook:switch-runtime' }),
       expect.objectContaining({ name: 'notebook-env:status' }),
       expect.objectContaining({ name: 'notebook-env:provision' }),
       expect.objectContaining({ name: 'notebook-env:repair' }),
@@ -108,7 +112,11 @@ describe('Notebook application commands', () => {
       'exportIpynb',
       'exportIpynbAll',
       'restart',
-      'shutdown'
+      'shutdown',
+      // IC14: the session runtime binding surface.
+      'listRuntimes',
+      'bindRuntime',
+      'switchRuntime'
     ] as const
     const workflows = Object.fromEntries(
       workflowMethods.map((method) => [

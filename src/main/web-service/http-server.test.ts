@@ -906,15 +906,18 @@ describe('startWebHttpServer', () => {
     ).toEqual([
       'notebook:append-code-cell',
       'notebook:begin-code-cell',
+      'notebook:bind-runtime',
       'notebook:execute',
       'notebook:finish-code-cell',
       'notebook:reference',
       'notebook:inspect-variables',
+      'notebook:list-runtimes',
       'notebook:read-input-preview',
       'notebook:restart',
       'notebook:run-cell',
       'notebook:shutdown',
-      'notebook:state'
+      'notebook:state',
+      'notebook:switch-runtime'
     ])
     expect(localOnly(environmentChannels)).toEqual([
       'notebook-env:cancel',

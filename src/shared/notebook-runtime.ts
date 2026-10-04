@@ -1,7 +1,8 @@
 import type {
   NotebookEnvironmentPackageChange,
   NotebookLanguage,
-  NotebookPackageInstallerAttempt
+  NotebookPackageInstallerAttempt,
+  NotebookSessionRequest
 } from './notebook'
 
 // Renderer-safe wire shapes for the notebook Runtime Registry (managed + external environments).
@@ -122,6 +123,14 @@ export type EnvPackage = {
   version: string
   build?: string
   channel?: string
+}
+
+// IC14: what the window sends to bind or switch one language's runtime for a session. Defined here so the
+// workflow port, the IPC adapter, the preload bridge and the renderer's type surface all describe the same
+// request — the session context travels with it exactly as every other notebook call carries it.
+export type NotebookRuntimeBindingRequest = NotebookSessionRequest & {
+  language: NotebookLanguage
+  runtimeId: string
 }
 
 // IC13: what the Settings "Packages" dialog asks the main process to do. `envId` is the same key the

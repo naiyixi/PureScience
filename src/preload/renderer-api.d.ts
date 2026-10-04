@@ -140,6 +140,12 @@ import type {
   RunNotebookCellRequest
 } from '../shared/notebook'
 import type {
+  NotebookRuntimeBinding,
+  NotebookRuntimeBindingRequest,
+  NotebookRuntimeBindings,
+  NotebookRuntimeListing
+} from '../shared/notebook-runtime'
+import type {
   ImportLockRequest,
   ImportLockResult,
   NamedEnvironmentRequest,
@@ -1091,6 +1097,21 @@ export interface PureScienceAPI {
       request: InspectNotebookVariablesRequest
     ): Promise<InspectNotebookVariablesResult | undefined>
     restart(request: NotebookSessionRequest): Promise<NotebookSessionState>
+    // IC14: this session's runtime bindings, and the two writes. `listRuntimes` flags which runtime is the
+    // current binding and never returns a disabled one; both writes go through the main-process gate, so a
+    // disabled or unknown runtime is refused there (and a switch tears the current kernel down first).
+    listRuntimes(request: NotebookSessionRequest): Promise<{
+      runtimes: NotebookRuntimeListing[]
+      bindings: NotebookRuntimeBindings
+    }>
+    bindRuntime(request: NotebookRuntimeBindingRequest): Promise<{
+      bound: NotebookRuntimeBinding
+      bindings: NotebookRuntimeBindings
+    }>
+    switchRuntime(request: NotebookRuntimeBindingRequest): Promise<{
+      bound: NotebookRuntimeBinding
+      bindings: NotebookRuntimeBindings
+    }>
     shutdown(request: NotebookSessionRequest): Promise<{ sessionId: string; status: 'shutdown' }>
     onAvailable(listener: AcpListener<NotebookAvailableEvent>): RemoveListener
     onChanged(listener: AcpListener<NotebookChangedEvent>): RemoveListener

@@ -3288,6 +3288,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.notebookRunCellBlockedWriting':
     'agent がこのセルにコードを書き込み中です。今実行すると 2 つのコードが混ざります',
   'ws.notebookRunCellBlockedProvisioning': '環境を準備しています',
+  'ws.notebookRuntime': 'ランタイム',
+  'ws.notebookRuntimeBound': '使用中',
+  'ws.notebookRuntimeNotRunnable': '利用不可',
+  'ws.notebookRuntimeUnavailable': 'ここでは実行できません',
+  'ws.notebookRuntimeEmpty': 'この言語で有効なランタイムがありません — 設定 → ランタイム で有効にしてください',
   'ws.notebookRerunDone': 'このセルを再実行しました · {status}',
   'ws.notebookVariables': '変数',
   'ws.notebookVariablesCount': '個の変数',

@@ -93,6 +93,27 @@ const notebookReadInputPreviewCommand = defineApplicationCommand<
   ArtifactPreviewResult
 >('notebook:read-input-preview')
 
+// IC14: the session's runtime binding surface. The same three operations the agent's
+// list_notebook_runtimes / notebook_bind_runtime / notebook_switch_runtime use, registered here so the
+// window reaches them through the application-command router like every other notebook channel — and so
+// the main-process gate (disabled/unknown runtime refused, kernel torn down before a switch) is what the
+// window actually hits.
+const notebookListRuntimesCommand = defineApplicationCommand<
+  'notebook:list-runtimes',
+  WorkflowArgs<'listRuntimes'>,
+  WorkflowResult<'listRuntimes'>
+>('notebook:list-runtimes')
+const notebookBindRuntimeCommand = defineApplicationCommand<
+  'notebook:bind-runtime',
+  WorkflowArgs<'bindRuntime'>,
+  WorkflowResult<'bindRuntime'>
+>('notebook:bind-runtime')
+const notebookSwitchRuntimeCommand = defineApplicationCommand<
+  'notebook:switch-runtime',
+  WorkflowArgs<'switchRuntime'>,
+  WorkflowResult<'switchRuntime'>
+>('notebook:switch-runtime')
+
 const notebookApplicationCommands = defineApplicationCommandGroup('notebook', [
   notebookStateCommand,
   notebookReferenceCommand,
@@ -106,7 +127,10 @@ const notebookApplicationCommands = defineApplicationCommandGroup('notebook', [
   notebookExportIpynbAllCommand,
   notebookRestartCommand,
   notebookShutdownCommand,
-  notebookReadInputPreviewCommand
+  notebookReadInputPreviewCommand,
+  notebookListRuntimesCommand,
+  notebookBindRuntimeCommand,
+  notebookSwitchRuntimeCommand
 ] as const)
 
 const installNotebookApplicationCommands = (
@@ -139,7 +163,15 @@ const installNotebookApplicationCommands = (
       'notebook:restart': (invocation) => dependencies.workflows.restart(invocation.args[0]),
       'notebook:shutdown': (invocation) => dependencies.workflows.shutdown(invocation.args[0]),
       'notebook:read-input-preview': (invocation) =>
-        dependencies.readInputPreview(invocation.args[0])
+        dependencies.readInputPreview(invocation.args[0]),
+      // IC14: binds and switches are session writes; the workflow layer owns the write lease and the
+      // runtime owner owns the gate, so the router only has to hand the request through.
+      'notebook:list-runtimes': (invocation) =>
+        dependencies.workflows.listRuntimes(invocation.args[0]),
+      'notebook:bind-runtime': (invocation) =>
+        dependencies.workflows.bindRuntime(invocation.args[0]),
+      'notebook:switch-runtime': (invocation) =>
+        dependencies.workflows.switchRuntime(invocation.args[0])
     })
     return scope.complete()
   } catch (error) {
@@ -163,6 +195,9 @@ export {
   notebookRestartCommand,
   notebookRunCellCommand,
   notebookShutdownCommand,
-  notebookStateCommand
+  notebookStateCommand,
+  notebookListRuntimesCommand,
+  notebookBindRuntimeCommand,
+  notebookSwitchRuntimeCommand
 }
 export type { NotebookApplicationCommandDependencies }

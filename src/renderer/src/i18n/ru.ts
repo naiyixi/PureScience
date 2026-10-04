@@ -3289,6 +3289,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.notebookRunCellBlockedWriting':
     'Агент ещё пишет код в эту ячейку — запуск сейчас перемешает два потока',
   'ws.notebookRunCellBlockedProvisioning': 'Среда ещё готовится',
+  'ws.notebookRuntime': 'Среда',
+  'ws.notebookRuntimeBound': 'используется',
+  'ws.notebookRuntimeNotRunnable': 'недоступно',
+  'ws.notebookRuntimeUnavailable': 'Здесь запустить нельзя',
+  'ws.notebookRuntimeEmpty': 'Для этого языка не включена среда — включите её в Настройки → Среды',
   'ws.notebookRerunDone': 'Ячейка запущена повторно · {status}',
   'ws.notebookVariables': 'Переменные',
   'ws.notebookVariablesCount': 'переменных',

@@ -101,17 +101,20 @@ describe('Web RPC contract', () => {
     expect(invokePaths.filter((path) => path.startsWith('notebook.'))).toEqual([
       'notebook.appendCodeCell',
       'notebook.beginCodeCell',
+      'notebook.bindRuntime',
       'notebook.execute',
       'notebook.exportIpynb',
       'notebook.exportIpynbAll',
       'notebook.finishCodeCell',
       'notebook.getReference',
       'notebook.inspectVariables',
+      'notebook.listRuntimes',
       'notebook.readInputPreview',
       'notebook.restart',
       'notebook.runCell',
       'notebook.shutdown',
-      'notebook.state'
+      'notebook.state',
+      'notebook.switchRuntime'
     ])
     expect(invokePaths.filter((path) => path.startsWith('notebookEnv.'))).toEqual([
       'notebookEnv.cancel',

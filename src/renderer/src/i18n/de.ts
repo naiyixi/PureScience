@@ -3382,6 +3382,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.notebookRunCellBlockedWriting':
     'Der Agent schreibt noch Code in diese Zelle — ein Start jetzt würde beide Ströme verschränken',
   'ws.notebookRunCellBlockedProvisioning': 'Die Umgebung wird noch vorbereitet',
+  'ws.notebookRuntime': 'Laufzeit',
+  'ws.notebookRuntimeBound': 'in Verwendung',
+  'ws.notebookRuntimeNotRunnable': 'nicht verfügbar',
+  'ws.notebookRuntimeUnavailable': 'Kann hier nicht laufen',
+  'ws.notebookRuntimeEmpty': 'Für diese Sprache ist keine Laufzeit aktiviert — aktivieren Sie eine unter Einstellungen → Laufzeiten',
   'ws.notebookRerunDone': 'Zelle erneut ausgeführt · {status}',
   'ws.notebookVariables': 'Variablen',
   'ws.notebookVariablesCount': 'Variablen',

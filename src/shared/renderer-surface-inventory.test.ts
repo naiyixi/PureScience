@@ -295,7 +295,10 @@ describe('renderer surface inventory', () => {
     // 458 with the artifact reveal handoff (artifacts:reveal-file, IC9): one more LOCAL artifact channel,
     // so the preload inventory, the catalog and the local-Web installation count all move by one.
     // 460 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
-    expect(electronPaths).toHaveLength(460)
+    // 463 with the session runtime binding surface (notebook.listRuntimes / bindRuntime /
+    // switchRuntime, IC14): the preload bridge exposes one method per contract, so the preload
+    // inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(463)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -304,7 +307,8 @@ describe('renderer surface inventory', () => {
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(354)
+    // 357 with the session runtime binding surface (IC14): three more local invoke channels.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(357)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

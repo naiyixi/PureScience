@@ -330,12 +330,14 @@ describe('preload bridge — public surface inventory', () => {
       'network.getInfo',
       'notebook.appendCodeCell',
       'notebook.beginCodeCell',
+      'notebook.bindRuntime',
       'notebook.execute',
       'notebook.exportIpynb',
       'notebook.exportIpynbAll',
       'notebook.finishCodeCell',
       'notebook.getReference',
       'notebook.inspectVariables',
+      'notebook.listRuntimes',
       'notebook.onAvailable',
       'notebook.onChanged',
       'notebook.readInputPreview',
@@ -343,6 +345,7 @@ describe('preload bridge — public surface inventory', () => {
       'notebook.runCell',
       'notebook.shutdown',
       'notebook.state',
+      'notebook.switchRuntime',
       'notebookEnv.cancel',
       'notebookEnv.getStatus',
       'notebookEnv.onProgress',
@@ -705,7 +708,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(233)
+    expect(runtimeContracts).toHaveLength(236)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

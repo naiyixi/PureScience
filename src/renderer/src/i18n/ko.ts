@@ -3230,6 +3230,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.notebookRunCellBlockedWriting':
     'agent가 이 셀에 코드를 쓰는 중입니다. 지금 실행하면 두 코드가 섞입니다',
   'ws.notebookRunCellBlockedProvisioning': '환경을 준비하는 중입니다',
+  'ws.notebookRuntime': '런타임',
+  'ws.notebookRuntimeBound': '사용 중',
+  'ws.notebookRuntimeNotRunnable': '사용할 수 없음',
+  'ws.notebookRuntimeUnavailable': '여기서 실행할 수 없음',
+  'ws.notebookRuntimeEmpty': '이 언어에 활성화된 런타임이 없습니다 — 설정 → 런타임에서 활성화하세요',
   'ws.notebookRerunDone': '이 셀을 다시 실행했습니다 · {status}',
   'ws.notebookVariables': '변수',
   'ws.notebookVariablesCount': '변수',
