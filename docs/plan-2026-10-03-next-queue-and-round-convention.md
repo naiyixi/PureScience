@@ -185,11 +185,20 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 
 ## 四、本轮追加（会话，2026-10-04）
 
-**v1.83.0 发布进行中（会话负责）**：自 `v1.82.0` 起 **34 笔**已落地（IC9 真缺陷、IC10 会话包随包证据落库 + 真机读数、
-PDB 自由序列搜索、扫描件 PDF 空页读数、A7 下载路径与 V6 两条真机读数、筛选失败类别具名、交接重试起点、
-截短脚本不再冒充完整、以及笔记本「中断就是中断」主线：退出/强杀按 `interrupted`+`app-terminated` 记录、
-关停拆两半、显式项目名不符具名拒绝）。发布件：`package.json` 1.82.0 → **1.83.0** + `CHANGELOG.md` v1.83.0 条目
-+ 双 README 横幅与成熟度块（成熟度块是 Release 正文的来源，已同步）。
+**v1.83.0 已发布（2026-10-04）**：tag `v1.83.0` → 提交 `efc4b1fd`（自 `v1.82.0` 起 **37 笔**），
+`release.yml` run **37189184119** 全绿（preflight / build×4 / `Verify` / `notarize-mac`（无 Apple 凭据 ⇒ 按设计标 UNSIGNED）/
+**publish** / `windows-upgrade-smoke`）。发布页 **21 个资产** + `Latest`；`RELEASE-CERTIFICATION.json.sourceSha` 与 tag 提交
+**逐字符一致**；`version.json` 四条目 host 全为 github.com、sha256 与 `SHA256SUMS.txt` 四条**全对（0 不符）**；
+正文 = 脚本自 tag 树合成（成熟度块 + 本版 CHANGELOG 条目（含下列口径补正）+ mac 未签名披露）**非桩**（21,193 字节）；
+`Publish npm package` 只认 `npm-v*` 标签 ⇒ 桌面 `v*` 不触发是设计如此，不是漏跑。
+本条记数修正：tag **标注**里我写「35 笔」是错的（真数 37）；发布页正文不含计数，不为一个标注里的数字重跑 40 分钟 CI 并重传 21 个资产，故在此如实记正。
+
+**第一次 tag 跑（run `37186656589`）红在 `Enforce platform certification`**：IC10 认证 spec 的
+`expect(landed.skipped).toEqual([])` 把「对一条**非本 spec 自造**的 ambient 复核行做具名拒绝（`message-not-found`）」
+读成了失败 ⇒ **断言口径缺陷，不是产品缺陷**（落地模块「没落地的行一律点名」是设计行为）。改法见 `efc4b1fd`
+与证据档 §五；救济按收口约定「删 tag 重建」（**没有**重跑单个 job），重打 tag 后全绿。
+同一次跑还新发现「**包内自洽**」缺口（见下条 v1.84.0 立案）。
+
 **IC11 / IC12 未开工，已明确移出到 v1.84.0**（理由与落点写进 CHANGELOG 的「明确没做」段与排期档批次 3 表）——
 不为凑齐出半截界面，也不让它们堵住发版。
 
