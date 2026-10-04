@@ -93,7 +93,41 @@ UI 读的正是这条通道 ⇒ 一个刚重启的应用里，**笔记本面板�
 它与我这一支的中断问题**无关**（我的探针读法若错，它仍是一条独立读数），需单独判：
 先查这条通道在重启后是否需要「先打开笔记本」才会加载历史。
 
-## 待取读数（下一步，明确到一处改动）
+## 追加二：真因定位到一处**分叉**，且修法已有先例（本轮终局）
+
+用 traceback 读出那句原话：`"Notebook kernel process exited."` —— **内核/传输错误，不是用户代码的错**
+（`{"error":null,"traceback":"Notebook kernel process exited.","stderr":…}`）。而这句话只在
+`kernel-executor.ts:531-553` 的 `child.on('exit')` 里产生，**且要求该 proc 还在路由 map 里**（注释：
+「Intentional teardown (shutdown/restart) … clear the map first, so this only fires for a genuine crash」）。
+⇒ 退出时那颗内核**不是**经 `shutdown()` 收的。
+
+`lifecycle-shutdown.ts` 把分叉摆得很清楚：
+
+```ts
+runForQuit(...)       → this.deps.notebook.dispose()       // ← 用户退出走这条
+runForUpdateGate(...) → this.deps.notebook.shutdownAll()   // ← 只有更新门走这条（干净路）
+```
+
+而 `kernel-executor.ts:390-398` 的 `shutdown()` 才是「先 `procs.clear()`、再以
+**`'Notebook kernel was shut down.'`** 拒在飞运行」的那条路。**用户退出拿不到它** ⇒ 内核被从下面收走 ⇒
+执行器判成**意外崩溃** ⇒ 在飞运行落 `failed`。域规则（app-terminated **NOT failed**，因为「代码可能没
+错」）因此**只在更新门那条路上成立**。
+
+**修法（两半，缺一不可）**：
+
+1. **退出要走干净路**：`runForQuit` 目前 `dispose()`；应让它在 `dispose()` 之前先跑
+   `shutdownAll()`（或让退出路径的 dispose 以**关停语义**拒在飞运行），这样执行器不再把「退出」误判成
+   「崩溃」——判据就在 `kernel-executor.ts:531-553` 的注释里。
+2. **终态写入要带上「非失败」的区分**：本文件的既有先例是**文本级**的
+   （`execution-owner.ts:129-132`：取消仍落 `failed`，但文本具名 `CANCELLED_MESSAGE`），而域里退出用的是
+   **状态级**词汇（`interrupted` + `interruptionReason: 'app-terminated'`，`repository.ts:271-287`）。
+   所以退出路径的终态要么产出一个终态写入能识别的**具名错误**（照 `CANCELLED_MESSAGE` 的形状），
+   要么在收尾时按**名单**（退出时在飞的那批）改写——**不能按状态筛选**，因为退出路径的拒斥落下来就是
+   `failed`（这一点两轮实测已证）。
+
+**验证路径已就绪**：脚手架（227 行）已能跑到 `runJsonPath` + 盘读；修复后盘上那格必须是
+`interrupted` + `app-terminated`。这条断言就是验收，不需要新造夹具。
+
 
 1. **测覆盖假设**：把盘读那一行加上 traceback —— 若那格 `failed` 的 traceback 是**内核/传输错误**
    （而非用户代码的错），即证「收内核的抛错覆盖了改写」，真修法方向即为「终态写入带 quitting 信号」；
