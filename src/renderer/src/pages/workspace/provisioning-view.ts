@@ -33,7 +33,16 @@ export function deriveProvisionUi(
   progress: ProvisionProgress | undefined,
   error: string | undefined
 ): ProvisionUiState {
-  if (status.provisioning) {
+  // A progress tick is itself evidence that a run is in flight. The store deliberately does NOT re-read
+  // the authoritative status on every tick (that write storm overflowed React's update depth — error
+  // #185), so `status.provisioning` stays stale-false for the whole run. A derivation that trusted only
+  // that flag would never reach the preparing state in a real window — and the Cancel button lives
+  // exactly here, which would leave the gate un-escapable (measured: the main process reported
+  // `provisioning: true` for two minutes while the notebook gate rendered nothing at all).
+  const inFlight =
+    status.provisioning ||
+    (progress !== undefined && progress.phase !== 'done' && progress.phase !== 'error')
+  if (inFlight) {
     const resolvedScope: PreparingScope =
       progress?.scope ?? scope ?? (status.pythonReady ? 'upgrade' : 'python')
     return {

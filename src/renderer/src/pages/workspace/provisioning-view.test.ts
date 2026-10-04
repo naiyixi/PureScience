@@ -36,6 +36,35 @@ describe('deriveProvisionUi', () => {
     })
   })
 
+  it('treats an in-flight progress tick as preparation even when the status flag is stale', () => {
+    // The store refreshes the authoritative status only when a run SETTLES (a per-tick re-read was a
+    // write storm — React #185), so `provisioning` is stale-false for a whole run. Without this rule the
+    // preparing state never reached a real window, and neither did the Cancel button that lives in it.
+    const ui = deriveProvisionUi(
+      status({ provisioning: false }),
+      'python',
+      { phase: 'download', message: 'Downloading…', progress: 0.1, scope: 'python' },
+      undefined
+    )
+    expect(ui).toEqual({
+      kind: 'preparing',
+      scope: 'python',
+      phase: 'download',
+      message: 'Downloading…',
+      progress: 0.1
+    })
+  })
+
+  it('does not treat a settled tick as preparation (a failure stays an error)', () => {
+    const ui = deriveProvisionUi(
+      status({ provisioning: false }),
+      'python',
+      { phase: 'error', message: 'offline', progress: 1 },
+      'offline'
+    )
+    expect(ui).toEqual({ kind: 'error', message: 'offline' })
+  })
+
   it('infers the upgrade scope when python is already ready but provisioning runs (auto upgrade)', () => {
     const ui = deriveProvisionUi(
       status({ pythonReady: true, provisioning: true }),
