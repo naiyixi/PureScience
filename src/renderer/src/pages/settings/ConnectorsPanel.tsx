@@ -409,12 +409,46 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
 
   const [bulkRunning, setBulkRunning] = useState(false)
   const focusRestore = useDialogFocusRestore(removal !== null)
+  // IC24: "what is on screen" spans both families — bundled connectors and user-added servers — so the bulk
+  // buttons act on the sum. Custom servers go through their own setter (one at a time) because they are a
+  // different id space; a server that cannot be enabled is reported by name with the reason rather than
+  // silently skipped, since a single "done" would hide exactly the entry that did not take effect.
+  const bulkScopeCount = visibleConnectors.length + visibleCustomServers.length
   const runBulk = async (enabled: boolean): Promise<void> => {
     const ids = visibleConnectors.map((connector) => connector.id)
-    if (ids.length === 0) return
+    if (ids.length === 0 && visibleCustomServers.length === 0) return
     setBulkRunning(true)
     try {
-      const results = await setConnectorsEnabled(ids, enabled)
+      const results: SetConnectorsEnabledItemResult[] =
+        ids.length > 0 ? [...(await setConnectorsEnabled(ids, enabled))] : []
+      for (const server of visibleCustomServers) {
+        if (enabled && server.availability) {
+          results.push({
+            connector: server.name,
+            enabled,
+            changed: false,
+            // The row's own badge wording, already localized: no new sentence to keep in nine languages.
+            error: t(
+              server.availability === 'unavailable'
+                ? 'settings.connectorUnavailable'
+                : 'settings.connectorNeedsSignIn'
+            )
+          })
+          continue
+        }
+        const wasEnabled = server.enabled
+        try {
+          await setCustomServerEnabled(server.id, enabled)
+          results.push({ connector: server.name, enabled, changed: wasEnabled !== enabled })
+        } catch (error) {
+          results.push({
+            connector: server.name,
+            enabled,
+            changed: false,
+            error: error instanceof Error ? error.message : String(error)
+          })
+        }
+      }
       setBulkOutcome({ enabled, results })
     } finally {
       setBulkRunning(false)
@@ -621,26 +655,26 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
         <div className="mt-4 rounded-md border border-border px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-muted-foreground">
-              {t('settings.connectorsBulkScope', { count: visibleConnectors.length })}
+              {t('settings.connectorsBulkScope', { count: bulkScopeCount })}
             </span>
             <div className="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={visibleConnectors.length === 0 || bulkRunning}
+                disabled={bulkScopeCount === 0 || bulkRunning}
                 onClick={() => void runBulk(true)}
               >
-                {t('settings.connectorsBulkEnable', { count: visibleConnectors.length })}
+                {t('settings.connectorsBulkEnable', { count: bulkScopeCount })}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={visibleConnectors.length === 0 || bulkRunning}
+                disabled={bulkScopeCount === 0 || bulkRunning}
                 onClick={() => void runBulk(false)}
               >
-                {t('settings.connectorsBulkDisable', { count: visibleConnectors.length })}
+                {t('settings.connectorsBulkDisable', { count: bulkScopeCount })}
               </Button>
             </div>
           </div>

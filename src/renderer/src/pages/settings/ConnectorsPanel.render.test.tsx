@@ -324,6 +324,69 @@ describe('ConnectorsPanel (groups)', () => {
     expect(onNavigate).toHaveBeenCalledWith({ kind: 'import' })
   })
 
+  // IC24: the bulk buttons act on everything on screen, user-added servers included — and a server that
+  // cannot be enabled is named with its reason instead of vanishing into a single "done".
+  it('bulk enable covers user-added servers and names the ones it cannot enable (IC24)', async () => {
+    useSettingsStore.setState({
+      // The bulk path is exercised for real here, so both family setters must be stubbed: an unstubbed one
+      // reaches for window.api, which jsdom does not have.
+      setConnectorsEnabled: vi.fn().mockResolvedValue([]),
+      connectors: [
+        {
+          id: 'pubmed',
+          displayName: 'PubMed',
+          description: 'Biomedical literature',
+          sources: ['NCBI'],
+          requiresNcbi: true,
+          enabled: false,
+          autoAllow: false,
+          group: 'directory'
+        }
+      ],
+      customServers: [
+        {
+          id: 'live-mcp',
+          slug: 'live-mcp',
+          name: 'Live MCP',
+          transport: 'streamable_http',
+          url: 'https://live.test/mcp',
+          enabled: false
+        },
+        {
+          id: 'broken-mcp',
+          slug: 'broken-mcp',
+          name: 'Broken MCP',
+          transport: 'streamable_http',
+          enabled: false,
+          availability: 'unavailable'
+        }
+      ]
+    })
+    act(() => {
+      root.render(<ConnectorsPanel onNavigate={vi.fn()} />)
+    })
+
+    // The scope label counts both families, so the button says 3.
+    expect(document.body.textContent).toContain('Enable all 3')
+
+    await act(async () => {
+      clickButtonByText('Enable all 3')
+    })
+
+    // The usable one was actually enabled through its own setter…
+    expect(useSettingsStore.getState().setCustomServerEnabled).toHaveBeenCalledWith(
+      'live-mcp',
+      true
+    )
+    // …and the one that cannot run is reported by name with its reason, not silently dropped.
+    expect(useSettingsStore.getState().setCustomServerEnabled).not.toHaveBeenCalledWith(
+      'broken-mcp',
+      true
+    )
+    expect(document.body.textContent).toContain('Broken MCP')
+    expect(document.body.textContent).toContain('Unavailable')
+  })
+
   // IC22: the row must say WHY it is not usable, and its toggle must be inert when the server cannot run.
   it('labels an unavailable server and disables its toggle (IC22)', () => {
     useSettingsStore.setState({
