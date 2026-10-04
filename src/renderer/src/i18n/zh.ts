@@ -3111,6 +3111,8 @@ export const zh = {
   'settings.filterPackages': '筛选软件包',
   'settings.filterPackagesPlaceholder': '筛选软件包…',
   'settings.installPackagePlaceholder': '要安装的包（如 numpy）',
+  'settings.installWithPip': '用 pip 安装（conda 频道没有的包）',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': '安装',
   'settings.uninstallPackage': '卸载',
   'settings.remoteBrowserLinkHint': '在任意浏览器中打开持久链接，并经过两步验证。',

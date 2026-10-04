@@ -3339,6 +3339,8 @@ export const en: Record<ZhKey, string> = {
   'settings.filterPackages': 'Filter packages',
   'settings.filterPackagesPlaceholder': 'Filter packages…',
   'settings.installPackagePlaceholder': 'Package to install (e.g. numpy)',
+  'settings.installWithPip': 'Install with pip (for packages conda does not carry)',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': 'Install',
   'settings.uninstallPackage': 'Uninstall',
   'settings.remoteBrowserLinkHint':

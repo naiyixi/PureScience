@@ -2069,6 +2069,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.filterPackages': '패키지 필터링',
   'settings.filterPackagesPlaceholder': '패키지 필터링…',
   'settings.installPackagePlaceholder': '설치할 패키지 (예: numpy)',
+  'settings.installWithPip': 'pip로 설치 (conda에 없는 패키지용)',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': '설치',
   'settings.uninstallPackage': '제거',
   'settings.filterPermissionsByScope': '범위별로 권한 필터링',

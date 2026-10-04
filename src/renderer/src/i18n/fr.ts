@@ -2153,6 +2153,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.filterPackages': 'Filtrer les paquets',
   'settings.filterPackagesPlaceholder': 'Filtrer les paquets…',
   'settings.installPackagePlaceholder': 'Paquet à installer (ex. numpy)',
+  'settings.installWithPip': 'Installer avec pip (paquets absents de conda)',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': 'Installer',
   'settings.uninstallPackage': 'Désinstaller',
   'settings.filterPermissionsByScope': 'Filtrer les autorisations par portée',

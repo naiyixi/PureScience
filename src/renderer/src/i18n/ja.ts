@@ -2097,6 +2097,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.filterPackages': 'パッケージを絞り込み',
   'settings.filterPackagesPlaceholder': 'パッケージを絞り込み…',
   'settings.installPackagePlaceholder': 'インストールするパッケージ（例: numpy）',
+  'settings.installWithPip': 'pip でインストール（conda に無いパッケージ用）',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': 'インストール',
   'settings.uninstallPackage': 'アンインストール',
   'settings.filterPermissionsByScope': 'スコープで権限を絞り込み',

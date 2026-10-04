@@ -1950,6 +1950,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.filterPackages': '篩選套件',
   'settings.filterPackagesPlaceholder': '篩選套件…',
   'settings.installPackagePlaceholder': '要安裝的套件（如 numpy）',
+  'settings.installWithPip': '用 pip 安裝（conda 頻道沒有的套件）',
+  'settings.installWithPipShort': 'pip',
   'settings.installPackage': '安裝',
   'settings.uninstallPackage': '解除安裝',
   'settings.filterPermissionsByScope': '依範圍篩選權限',

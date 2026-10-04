@@ -23,6 +23,7 @@ import {
   dialogTitleClassName
 } from '@/components/ui/dialog-chrome'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -180,6 +181,7 @@ const RuntimesPanel = ({
   // gate's own answer. A refusal is shown VERBATIM (the main process returns the admission's named
   // reason), because rewording it would hide which rule actually refused the click.
   const [packageSpec, setPackageSpec] = useState('')
+  const [packageUsePip, setPackageUsePip] = useState(false)
   const [packageBusy, setPackageBusy] = useState(false)
   const [packageNotice, setPackageNotice] = useState<string | null>(null)
   const [packageActionError, setPackageActionError] = useState<string | null>(null)
@@ -319,6 +321,20 @@ const RuntimesPanel = ({
     }
   }, [packagesEnv, packagesRetryNonce, t])
 
+  // Opening the dialog ALWAYS starts from a clean slate: the panel serves more than one environment, and
+  // a stale answer from the previous one (a refusal the gate gave for the DEFAULT env, say) would be
+  // read as this environment's answer — and, because the error line renders first, it would also hide a
+  // fresh success notice.
+  const openPackagesDialog = (env: DiscoveredInterpreter): void => {
+    setPackages(null)
+    setPackagesError(null)
+    setPackagesFilter('')
+    setPackageNotice(null)
+    setPackageActionError(null)
+    setPackageUsePip(false)
+    setPackagesEnv(env)
+  }
+
   // IC13: install/remove packages through the main process's package admission — the same one the
   // agent's manage_packages goes through, so an unauthorized or externally-owned environment refuses
   // here exactly as it would for an agent, and the reason is the gate's own wording. On success the
@@ -338,7 +354,10 @@ const RuntimesPanel = ({
         language: env.language,
         envId: env.envId,
         packages: names,
-        operation
+        operation,
+        // Only meaningful for an install: the installer's conda-first path cannot reach a pypi-only
+        // package at all, so the dialog has to be able to say "use pip" out loud.
+        ...(operation === 'install' && packageUsePip ? { usePip: true } : {})
       })
       if (!result.ok) {
         setPackageActionError(result.error ?? t('runtimes.packageMutationFailed'))
@@ -826,12 +845,7 @@ const RuntimesPanel = ({
               variant="outline"
               size="sm"
               data-testid="runtime-packages-button"
-              onClick={() => {
-                setPackages(null)
-                setPackagesError(null)
-                setPackagesFilter('')
-                setPackagesEnv(env)
-              }}
+              onClick={() => openPackagesDialog(env)}
             >
               <Package aria-hidden="true" />
               Packages
@@ -1181,16 +1195,41 @@ const RuntimesPanel = ({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {env.language === 'python' && env.interpreterPath ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      data-testid="named-env-use"
-                      disabled={busy}
-                      onClick={() => void applyNamedEnvAsRuntime(env)}
-                    >
-                      <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="named-env-packages"
+                        onClick={() => {
+                          // The dialog is a READ view for a named environment: the package admission
+                          // resolves its target from a session binding the window does not have, so a
+                          // request naming this env is refused by name rather than applied to the default.
+                          openPackagesDialog({
+                            language: env.language,
+                            provenance: 'app-managed',
+                            envId: env.interpreterPath ?? env.name,
+                            interpreterPath: env.interpreterPath ?? env.name,
+                            label: env.name,
+                            runnable: true,
+                            condaEnv: env.name
+                          })
+                        }}
+                      >
+                        <Package aria-hidden="true" />
+                        Packages
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="named-env-use"
+                        disabled={busy}
+                        onClick={() => void applyNamedEnvAsRuntime(env)}
+                      >
+                        <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
+                      </Button>
+                    </>
                   ) : null}
                   <Button
                     type="button"
@@ -1379,6 +1418,17 @@ const RuntimesPanel = ({
                       data-testid="runtime-package-spec"
                       className="h-8 w-48"
                     />
+                    {/* pypi-only packages are unreachable through the conda solver, so the dialog has
+                        to be able to ask for pip explicitly — the agent already can. */}
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Switch
+                        checked={packageUsePip}
+                        onCheckedChange={setPackageUsePip}
+                        aria-label={t('settings.installWithPip')}
+                        data-testid="runtime-package-use-pip"
+                      />
+                      {t('settings.installWithPipShort')}
+                    </label>
                     <Button
                       type="button"
                       variant="outline"

@@ -1148,4 +1148,26 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
     // The row survives — nothing was deleted.
     expect(container.querySelector('[data-testid="named-env-row"]')).not.toBeNull()
   })
+
+  it('opens the Packages dialog for a named environment, addressed by its own interpreter', async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list' ? { environments: [namedEnv] } : { environments: [] }
+    )
+    await render()
+    await flush()
+    const button = container.querySelector(
+      '[data-testid="named-env-row"] [data-testid="named-env-packages"]'
+    )
+    expect(button, 'the named row must offer the Packages action').not.toBeNull()
+    await click(button)
+    await flush()
+    const dialog = document.querySelector('[data-testid="runtime-packages-dialog"]')
+    expect(dialog).not.toBeNull()
+    // A named environment is not a discovery entry, so the identity has to come from the row itself —
+    // and it is the only place the app's rules allow a removal (the default env is additive-only).
+    expect(listPackages).toHaveBeenCalledWith(
+      'python',
+      '/data/runtime/envs/lock-import-env/bin/python'
+    )
+  })
 })

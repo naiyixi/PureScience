@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs'
+
 import type { NotebookLanguage } from '../../shared/notebook'
 import type {
   ImportLockRequest,
@@ -26,6 +28,7 @@ import {
 } from './environment-discovery'
 import { listEnvPackages } from './package-listing'
 import type { InstallRequest, InstallResult } from './package-manager'
+import { DEFAULT_PY_ENV, DEFAULT_R_ENV } from './runtime-paths'
 import { RuntimeRegistry } from './runtime-registry'
 import { prepareExternalPythonRuntime, type AppOwnedExternalSelection } from './venv-overlay'
 
@@ -143,6 +146,30 @@ type RuntimeSelectionWorkflows = {
   managePackages(request: RuntimePackageMutation): Promise<InstallResult>
 }
 
+// Discovery reports an environment's `envId` as the interpreter's REALPATH — on macOS `/var` is a
+// symlink to `/private/var`, and a conda env's `bin/python` is a symlink to `bin/python3.12` — while the
+// surfaces that carry an identity across a round trip (the named-environment rows, the packages dialog)
+// hand back the path they were given. Comparing those forms literally misses an environment that is
+// literally the same one, so every lookup by path compares RESOLVED paths.
+const sameEnvironmentPath = (a: string, b: string): boolean => {
+  if (a === b) return true
+  try {
+    return realpathSync(a) === realpathSync(b)
+  } catch {
+    return false
+  }
+}
+
+const findDiscoveredEnvironment = (
+  discovered: readonly DiscoveredInterpreter[],
+  envId: string
+): DiscoveredInterpreter | undefined =>
+  discovered.find(
+    (candidate) =>
+      sameEnvironmentPath(candidate.envId, envId) ||
+      sameEnvironmentPath(candidate.interpreterPath, envId)
+  )
+
 const createRuntimeSelectionWorkflows = (
   deps: RuntimeSelectionWorkflowDeps
 ): RuntimeSelectionWorkflows => {
@@ -213,8 +240,9 @@ const createRuntimeSelectionWorkflows = (
     // path / provenance used for dispatch come from discovery, so an arbitrary renderer-supplied
     // path can never be probed.
     listPackages: async (request) => {
-      const env = (await discoverLanguageEnvs(request.language)).find(
-        (candidate) => candidate.envId === request.envId
+      const env = findDiscoveredEnvironment(
+        await discoverLanguageEnvs(request.language),
+        request.envId
       )
       if (!env) {
         throw new Error(`Unknown ${request.language} environment: ${request.envId}`)
@@ -327,29 +355,33 @@ const createRuntimeSelectionWorkflows = (
       // Resolve the environment the dialog belongs to against LIVE discovery — a stale or foreign id
       // fails here by name instead of retargeting the mutation at whatever happens to be the default.
       const discovered = await discoverLanguageEnvs(request.language)
-      const env = discovered.find((candidate) => candidate.envId === request.envId)
-      if (!env) {
+      const discoveredEnv = findDiscoveredEnvironment(discovered, request.envId)
+      // A NAMED environment is not a discovery entry — the panel's cards come from discovery, which only
+      // classifies the app-managed defaults — yet it is the only place the app's own rules allow a
+      // removal or a downgrade (the default environment is additive-only). So a request naming one is
+      // served by name, through the same service call and the same admission as everything else.
+      const named = discoveredEnv
+        ? undefined
+        : (await deps.manageNamedEnvironments?.({ action: 'list' }))?.environments.find(
+            (candidate) =>
+              candidate.language === request.language &&
+              (candidate.interpreterPath === request.envId || candidate.name === request.envId)
+          )
+      if (!discoveredEnv && !named) {
         return {
           ok: false,
           needsRestart: false,
           log: '',
-          error: 'That environment is no longer discovered. Reopen the dialog and try again.'
+          error: 'That environment is no longer available. Reopen the dialog and try again.'
         }
       }
       // The admission addresses an environment by NAME (`request.environment`), falling back to the
-      // language's managed default when none is given. So a named environment is addressed by name
-      // (managed or not — the admission then applies its own rules), and only a NAMELESS entry falls
-      // back: an app-managed one IS the default, anything else cannot be addressed at all and is
+      // language's managed default when none is given. So an environment with a name is addressed by
+      // name (managed or not — the admission then applies its own rules), and only a NAMELESS entry
+      // falls back: an app-managed one IS the default, anything else cannot be addressed at all and is
       // refused by name rather than guessed at.
-      if (env.condaEnv) {
-        return run({
-          language: request.language,
-          packages: [...request.packages],
-          operation: request.operation ?? 'install',
-          environment: env.condaEnv
-        })
-      }
-      if (env.provenance !== 'app-managed') {
+      const environmentName = discoveredEnv?.condaEnv ?? named?.name
+      if (!environmentName && discoveredEnv?.provenance !== 'app-managed') {
         return {
           ok: false,
           needsRestart: false,
@@ -359,10 +391,33 @@ const createRuntimeSelectionWorkflows = (
             'it. Use the app-managed environment, or manage this one yourself.'
         }
       }
+      // The admission resolves the environment from the SESSION BINDING, never from `request.environment`
+      // (package-admission.ts: `binding?.source === 'managed' && binding.envName ? … : default`), and the
+      // window has no session. So the only environment a window request can actually act on is the
+      // app-managed default — and a request that names anything else must be refused HERE, by name,
+      // instead of being silently applied to the default (the mis-target this resolution exists to
+      // prevent). A named environment is still reachable for the agent, which does have a binding.
+      const addressesDefault =
+        !environmentName ||
+        (discoveredEnv?.provenance === 'app-managed' && !discoveredEnv?.condaEnv) ||
+        discoveredEnv?.condaEnv === DEFAULT_PY_ENV ||
+        discoveredEnv?.condaEnv === DEFAULT_R_ENV
+      if (!addressesDefault) {
+        return {
+          ok: false,
+          needsRestart: false,
+          log: '',
+          error:
+            'The Settings package dialog manages the app-managed default environment. Managing "' +
+            `${environmentName ?? request.envId}" needs a notebook session bound to it — ask the ` +
+            'assistant, or manage that environment yourself.'
+        }
+      }
       return run({
         language: request.language,
         packages: [...request.packages],
-        operation: request.operation ?? 'install'
+        operation: request.operation ?? 'install',
+        ...(request.usePip ? { usePip: true } : {})
       })
     }
   }

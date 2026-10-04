@@ -134,6 +134,11 @@ export type RuntimePackageMutation = {
   packages: readonly string[]
   /** Defaults to 'install'. */
   operation?: 'install' | 'uninstall'
+  // IC13: install through pip instead of the conda solver. The window needs this because a pypi-only
+  // package cannot be reached any other way — the installer runs conda first and only reaches pip when
+  // asked explicitly (package-manager.ts's `usePip` branch), so without this the dialog could not
+  // install a package that conda channels do not carry at all. Ignored for 'uninstall'.
+  usePip?: boolean
 }
 
 // IC13: the installer's own result, as the window and the agent both receive it. Defined HERE (shared)
