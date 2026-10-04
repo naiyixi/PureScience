@@ -48,7 +48,30 @@ const { clearApplicationShutdownTrigger, currentApplicationShutdownTrigger } =
   await import('../application-shutdown-trigger')
 const { readMigrationMarker, writeMigrationMarker } = await import('./migration-marker')
 
-// Writes the verified staging marker a completed copy phase would leave, so commit/discard gates pass.
+// Writes the marker a copy phase would leave, so commit/discard gates pass. A 'verified' marker is a
+// finished-but-uncommitted copy; 'copying' is the state a crash mid-copy leaves behind.
+const seedMarker = async (
+  targetDir: string,
+  source: string,
+  status: 'copying' | 'verified' = 'verified'
+): Promise<void> => {
+  await mkdir(targetDir, { recursive: true })
+  await writeMigrationMarker(targetDir, {
+    version: 1,
+    token: 'tok-ipc',
+    source,
+    target: targetDir,
+    createdAt: Date.now(),
+    status,
+    inventory: {
+      dirs: [],
+      fileCount: 0,
+      totalBytes: 0,
+      digest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+    }
+  })
+}
+
 const seedVerifiedMarker = async (targetDir: string, source: string): Promise<void> => {
   await mkdir(targetDir, { recursive: true })
   await writeMigrationMarker(targetDir, {
@@ -565,9 +588,39 @@ describe('storage IPC handlers', () => {
     expect(JSON.stringify(diagnosticRecords(logger))).not.toContain(markerToken)
   })
 
-  it('commit-and-relaunch refuses a verified marker not staged by this process', async () => {
+  it('commit-and-relaunch finishes a verified marker that a PREVIOUS process staged', async () => {
     initDataRoot(dataRoot)
+    // Nothing was staged in this process's memory: the marker on disk is the surviving state, which is
+    // exactly the restart case. The commit gate still checks source→target→token, so this is the same
+    // path a same-session commit takes — only which memory answers first differs.
     await seedVerifiedMarker(target, dataRoot)
+    const deps = fakeDeps()
+    registerStorageIpcHandlers(deps)
+
+    await expect(invoke('storage:commit-and-relaunch', { parent: targetParent })).resolves.toEqual({
+      ok: true
+    })
+    expect(deps.settingsService.setDataRoot).toHaveBeenCalledWith(target)
+  })
+
+  it('commit-and-relaunch refuses an incomplete (copying) marker by name', async () => {
+    initDataRoot(dataRoot)
+    await seedMarker(target, dataRoot, 'copying')
+    const deps = fakeDeps()
+    registerStorageIpcHandlers(deps)
+
+    await expect(
+      invoke('storage:commit-and-relaunch', { parent: targetParent })
+    ).resolves.toMatchObject({ ok: false, error: expect.stringContaining('incomplete') })
+    expect(deps.settingsService.setDataRoot).not.toHaveBeenCalled()
+    expect(deps.relaunch).not.toHaveBeenCalled()
+  })
+
+  it('commit-and-relaunch refuses a marker that belongs to a DIFFERENT source', async () => {
+    initDataRoot(dataRoot)
+    // Same shape, a different move: the marker names another root as its source, so it is not this
+    // app's staged copy and must never be promoted. The disk read does not relax that guard.
+    await seedVerifiedMarker(target, join(dataRoot, 'somewhere-else'))
     const deps = fakeDeps()
     registerStorageIpcHandlers(deps)
 
@@ -576,6 +629,18 @@ describe('storage IPC handlers', () => {
     ).resolves.toMatchObject({ ok: false })
     expect(deps.settingsService.setDataRoot).not.toHaveBeenCalled()
     expect(deps.relaunch).not.toHaveBeenCalled()
+  })
+
+  it('discard-migrated-copy resolves a staged copy from disk when no process staged it', async () => {
+    initDataRoot(dataRoot)
+    await seedMarker(target, dataRoot, 'verified')
+    const deps = fakeDeps()
+    registerStorageIpcHandlers(deps)
+
+    await invoke('storage:discard-migrated-copy', { parent: targetParent })
+
+    await expect(readMigrationMarker(target)).resolves.toBeNull()
+    expect(existsSync(target)).toBe(false)
   })
 
   it('commit-and-relaunch returns {ok:false} and does NOT relaunch when no verified copy exists', async () => {

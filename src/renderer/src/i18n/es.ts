@@ -2243,6 +2243,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.its': 'su',
   'settings.jobPromptPlaceholder':
     '¿Cómo se ejecutan aquí los trabajos — sbatch, qsub o simplemente bash? ¿Se puede instalar con pip/conda y dónde deben ir los entornos nuevos? ¿Hay que usar alguna partición, cuenta o módulo?',
+  'settings.unfinishedMoveTitle': 'Esta carpeta contiene un traslado de datos sin terminar',
+  'settings.unfinishedMoveVerified': 'Aquí espera una copia terminada. Completa el traslado para cambiar a ella ahora, o descártala y quédate donde estás.',
+  'settings.unfinishedMoveCopying': 'La copia se interrumpió y está incompleta: nunca se cambia a una copia inacabada. Descártala y reinicia el traslado.',
+  'settings.finishMove': 'Completar el traslado',
   'settings.keepCurrentLocation': 'Conservar la ubicación actual',
   'settings.language': 'Idioma',
   'settings.largeDirectoryNote':

@@ -2251,6 +2251,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.its': 'Ses',
   'settings.jobPromptPlaceholder':
     'Comment les travaux s’exécutent-ils ici — sbatch, qsub ou simplement bash ? Peut-on installer avec pip/conda, et où doivent aller les nouveaux environnements ? Faut-il utiliser une partition, un compte ou un module ?',
+  'settings.unfinishedMoveTitle': 'Ce dossier contient un déplacement de données inachevé',
+  'settings.unfinishedMoveVerified': 'Une copie terminée attend ici. Terminez le déplacement pour y basculer maintenant, ou abandonnez-la et restez où vous êtes.',
+  'settings.unfinishedMoveCopying': 'La copie a été interrompue et reste incomplète — on ne bascule jamais sur une copie inachevée. Abandonnez-la, puis relancez le déplacement.',
+  'settings.finishMove': 'Terminer le déplacement',
   'settings.keepCurrentLocation': 'Conserver l’emplacement actuel',
   'settings.language': 'Langue',
   'settings.largeDirectoryNote':

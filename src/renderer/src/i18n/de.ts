@@ -2264,6 +2264,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.its': 'dessen',
   'settings.jobPromptPlaceholder':
     'Wie laufen Aufträge hier — sbatch, qsub oder einfach bash? Ist es in Ordnung, per pip/conda zu installieren, und wohin sollen neue Umgebungen? Gibt es Partitionen, Konten oder Module zu verwenden?',
+  'settings.unfinishedMoveTitle': 'In diesem Ordner liegt ein nicht abgeschlossener Datenumzug',
+  'settings.unfinishedMoveVerified': 'Hier wartet eine fertige Kopie. Umzug abschließen, um jetzt dorthin zu wechseln – oder verwerfen und bleiben, wo Sie sind.',
+  'settings.unfinishedMoveCopying': 'Die Kopie wurde unterbrochen und ist unvollständig – auf eine unvollständige Kopie wird nie umgeschaltet. Verwerfen und den Umzug neu starten.',
+  'settings.finishMove': 'Umzug abschließen',
   'settings.keepCurrentLocation': 'Aktuellen Speicherort beibehalten',
   'settings.language': 'Sprache',
   'settings.largeDirectoryNote':

@@ -94,4 +94,11 @@ export type DataRootInspection = {
   kind: DataRootKind
   dataRoot: string
   error?: string
+  /**
+   * Present when the picked folder carries a migration marker: a copy that was staged but never
+   * committed, possibly by a previous process. 'verified' can still be committed; 'copying' is an
+   * incomplete copy and can only be discarded. The folder stays `kind: 'invalid'` either way — it is
+   * not usable as a data root as it stands — so no existing consumer can mistake it for adoptable.
+   */
+  unfinishedMove?: { status: 'copying' | 'verified' }
 }

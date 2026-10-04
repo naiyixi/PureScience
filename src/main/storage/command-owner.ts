@@ -32,6 +32,7 @@ import {
   classifyDataRoot,
   commitDataRootSwitch,
   discardStagedCopy,
+  readStagedMoveAt,
   runDataRootMigration,
   validateNewDataRoot,
   type ValidateResult
@@ -325,15 +326,21 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
       logger.warn('staged data root discard ignored', { reason: 'copy-in-progress' })
       return
     }
-    if (!activeStaged || !samePath(activeStaged.target, dataRootForPicked(request.parent))) {
+    // The copy may have been staged by a PREVIOUS process: after a restart nothing is in memory, and
+    // the marker beside the folder is what answers. It carries the same token the discard gate checks,
+    // so this is not a weaker path — and nothing is removed unless that gate agrees.
+    const stagedToken =
+      activeStaged && samePath(activeStaged.target, dataRootForPicked(request.parent))
+        ? activeStaged.token
+        : (await readStagedMoveAt(request.parent, resolveDataRoot()))?.token
+    if (!stagedToken) {
       logger.warn('staged data root discard ignored', { reason: 'no-matching-copy' })
       return
     }
-    const staged = activeStaged
     resolutionInProgress = true
     try {
       const result = await discardStagedCopy(
-        { currentDataRoot: resolveDataRoot(), expectedToken: staged.token },
+        { currentDataRoot: resolveDataRoot(), expectedToken: stagedToken },
         request.parent
       )
       if (result.ok) {
@@ -376,13 +383,30 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     if (activeMigration) {
       return { ok: false, error: 'A migration copy is still in progress.' }
     }
-    if (!activeStaged || !samePath(activeStaged.target, dataRootForPicked(request.parent))) {
-      return { ok: false, error: 'No completed migration from this app session was found.' }
+    // Resolve the staged move from THIS process's memory when it staged it, and from the marker on disk
+    // when a previous one did — that is what makes "finish" reachable after a restart. A copy that never
+    // reached 'verified' is refused by name: promoting a half-copied tree would be the one thing the
+    // commit gate exists to prevent, and the surface needs to know to offer the discard instead.
+    const target = dataRootForPicked(request.parent)
+    const stagedFromMemory =
+      activeStaged && samePath(activeStaged.target, target) ? activeStaged : undefined
+    const stagedOnDisk = stagedFromMemory
+      ? undefined
+      : await readStagedMoveAt(request.parent, resolveDataRoot())
+    if (!stagedFromMemory && !stagedOnDisk) {
+      return { ok: false, error: 'No completed migration was found for this folder.' }
+    }
+    if (stagedOnDisk && stagedOnDisk.status !== 'verified') {
+      return {
+        ok: false,
+        error: 'The staged copy is incomplete — discard it instead of finishing it.'
+      }
     }
     if (resolutionInProgress) {
       return { ok: false, error: 'A migration is already being resolved.' }
     }
-    const staged = activeStaged
+    const stagedToken = stagedFromMemory?.token ?? stagedOnDisk!.token
+    const staged = { token: stagedToken, correlationId: stagedFromMemory?.correlationId }
     resolutionInProgress = true
     const previousDataRoot = resolveDataRoot()
     let outcome: MigrationOutcome

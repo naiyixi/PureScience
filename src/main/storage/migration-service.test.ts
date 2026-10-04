@@ -379,6 +379,25 @@ describe('classifyDataRoot', () => {
 
     expect(result.kind).toBe('invalid')
   })
+
+  it("carries the marker's own state, so the surface can offer finish or discard", async () => {
+    // Still 'invalid' (never adoptable), but the marker's status travels with the result: a 'verified'
+    // copy can still be finished, an incomplete ('copying') one can only be discarded. That is what
+    // makes both actions reachable after a restart, when nothing is left in memory.
+    await seedVerifiedMarker(emptyParent, currentDataRoot)
+
+    const verified = await classifyDataRoot(emptyParent, currentDataRoot)
+
+    expect(verified.kind).toBe('invalid')
+    expect(verified.unfinishedMove).toEqual({ status: 'verified' })
+
+    await seedVerifiedMarker(emptyParent, currentDataRoot, { status: 'copying' })
+
+    const copying = await classifyDataRoot(emptyParent, currentDataRoot)
+
+    expect(copying.kind).toBe('invalid')
+    expect(copying.unfinishedMove).toEqual({ status: 'copying' })
+  })
 })
 
 describe('validateNewDataRoot', () => {

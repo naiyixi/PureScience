@@ -2191,6 +2191,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.its': 'Его',
   'settings.jobPromptPlaceholder':
     'Как здесь выполняются задания — sbatch, qsub или просто bash? Можно ли устанавливать через pip/conda и куда помещать новые окружения? Нужно ли указывать раздел (partition), учётную запись или модуль?',
+  'settings.unfinishedMoveTitle': 'В этой папке остался незавершённый перенос данных',
+  'settings.unfinishedMoveVerified': 'Готовая копия ждёт здесь. Завершите перенос, чтобы переключиться на неё, или откажитесь от копии и останьтесь на месте.',
+  'settings.unfinishedMoveCopying': 'Копирование было прервано, копия неполная — переключение на неполную копию не выполняется. Откажитесь от неё и запустите перенос заново.',
+  'settings.finishMove': 'Завершить перенос',
   'settings.keepCurrentLocation': 'Оставить текущее расположение',
   'settings.language': 'Язык',
   'settings.largeDirectoryNote': 'Показываются только первые записи — этот каталог очень большой.',

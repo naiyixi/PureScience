@@ -14,7 +14,7 @@ import type {
   MigrationProgress
 } from '../../../../shared/storage'
 
-type Stage = 'detecting' | 'confirm' | 'migrating' | 'done' | 'committing' | 'error'
+type Stage = 'detecting' | 'unfinished' | 'confirm' | 'migrating' | 'done' | 'committing' | 'error'
 
 type StorageMigrationModalProps = {
   targetPath: string
@@ -60,6 +60,14 @@ const StorageMigrationModal = ({
   // Discarding the copied-but-uncommitted new root can be slow (it deletes the whole copy), so the
   // done stage shows a loading state and awaits it instead of firing-and-forgetting.
   const [isDiscarding, setIsDiscarding] = useState(false)
+  // An unfinished move found BESIDE the picked folder (a marker left by a copy that crashed, or whose
+  // window is gone). The marker carries source→target→token, so this is resolvable from disk alone —
+  // which is what makes both actions reachable after a restart. 'verified' can still be finished;
+  // 'copying' can only be discarded, because promoting an incomplete copy is exactly what the commit
+  // gate exists to refuse and a button the main process would refuse by name is worse than no button.
+  const [unfinishedMove, setUnfinishedMove] = useState<{ status: 'copying' | 'verified' } | null>(
+    null
+  )
   const [ipcError, setIpcError] = useState(false)
   // Elapsed clock: `startedAt` is stamped at each transition into the migrating stage (event
   // handler / async callback, never an effect body), and `now` is ticked every second. Both are
@@ -91,23 +99,34 @@ const StorageMigrationModal = ({
   // non-dismissable until a stage transition happens.
   useEffect(() => {
     void window.api.storage
-      .detectActive()
-      .then((sessions) => {
+      .inspectDataRoot(targetPath)
+      .then((inspection) => {
         if (!mountedRef.current) return
-        if (sessions.length > 0) {
-          setActive(sessions)
-          setStage('confirm')
-        } else {
-          setStartedAt(Date.now())
-          setStage('migrating')
+        // An unfinished move takes precedence over starting a new one: the marker is the surviving
+        // state of a previous attempt, and staging a fresh copy beside it would put two candidates in
+        // the same folder. Resolving it first is the only honest order.
+        if (inspection.unfinishedMove) {
+          setUnfinishedMove(inspection.unfinishedMove)
+          setStage('unfinished')
+          return
         }
+        return window.api.storage.detectActive().then((sessions) => {
+          if (!mountedRef.current) return
+          if (sessions.length > 0) {
+            setActive(sessions)
+            setStage('confirm')
+          } else {
+            setStartedAt(Date.now())
+            setStage('migrating')
+          }
+        })
       })
       .catch(() => {
         if (!mountedRef.current) return
         setIpcError(true)
         setStage('error')
       })
-  }, [])
+  }, [targetPath])
 
   // Runs the move once we enter the migrating stage: subscribe to progress and call migrate,
   // routing its outcome to done / cancelled (close, no error) / error.
@@ -307,6 +326,52 @@ const StorageMigrationModal = ({
                 <Button type="button" variant="outline" onClick={handleCancel}>
                   {t('common.cancel')}
                 </Button>
+              </div>
+            </>
+          ) : null}
+
+          {stage === 'unfinished' ? (
+            <>
+              <div className="flex items-start gap-3" data-testid="migration-unfinished">
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  aria-hidden="true"
+                >
+                  <TriangleAlert className="size-[18px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Dialog.Title className="text-sm font-semibold text-foreground">
+                    {t('settings.unfinishedMoveTitle')}
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {unfinishedMove?.status === 'verified'
+                      ? t('settings.unfinishedMoveVerified')
+                      : t('settings.unfinishedMoveCopying')}
+                  </Dialog.Description>
+                  <p className="mt-2 break-all text-xs text-muted-foreground">{targetPath}</p>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid="migration-unfinished-discard"
+                  disabled={isDiscarding}
+                  onClick={handleKeepCurrent}
+                >
+                  {isDiscarding ? t('settings.discarding') : t('settings.keepCurrentLocation')}
+                </Button>
+                {unfinishedMove?.status === 'verified' ? (
+                  <Button
+                    type="button"
+                    data-testid="migration-unfinished-finish"
+                    disabled={isDiscarding}
+                    onClick={handleRestart}
+                  >
+                    <RefreshCw aria-hidden="true" />
+                    {t('settings.finishMove')}
+                  </Button>
+                ) : null}
               </div>
             </>
           ) : null}

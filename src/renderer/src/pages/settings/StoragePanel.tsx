@@ -21,7 +21,12 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { DataRootWarning } from '@/components/DataRootWarning'
 import { useSettingsStore } from '@/stores/settings-store'
-import type { DataRootKind, StorageInfo, UsageCategoryKey } from '../../../../shared/storage'
+import type {
+  DataRootInspection,
+  DataRootKind,
+  StorageInfo,
+  UsageCategoryKey
+} from '../../../../shared/storage'
 import { SettingsSection } from './SettingsLayout'
 import { isAgentRepairCheck } from './settings-navigation'
 import { StorageMigrationModal } from './StorageMigrationModal'
@@ -88,13 +93,10 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   const [newPath, setNewPath] = useState('')
   // The classification of `newPath` (a PARENT the user typed/picked), keyed by the exact path it
   // was computed for so a stale response for an already-superseded path never drives the action
-  // buttons. `dataRoot` is the derived `<newPath>/PureScience` the app will actually use.
-  const [inspection, setInspection] = useState<{
-    path: string
-    kind: DataRootKind
-    dataRoot: string
-    error?: string
-  } | null>(null)
+  // buttons. `dataRoot` is the derived `<newPath>/PureScience` the app will actually use. The shared
+  // inspection type (not a restated shape) so a field the classifier starts carrying — like
+  // `unfinishedMove` — cannot be dropped here.
+  const [inspection, setInspection] = useState<(DataRootInspection & { path: string }) | null>(null)
   const [migrationTarget, setMigrationTarget] = useState<string | null>(null)
   const [adoptConfirmOpen, setAdoptConfirmOpen] = useState(false)
   const [isAdopting, setIsAdopting] = useState(false)
@@ -225,7 +227,14 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   // Only trust the classification when it was computed for the exact path currently shown.
   const kind: DataRootKind | null =
     inspection && inspection.path === trimmedNewPath ? inspection.kind : null
-  const canChangeLocation = kind === 'move'
+  // A folder beside an unfinished move is not usable as a root — but it is not a dead end either: the
+  // marker names a copy that can still be finished or discarded, and that resolution is exactly what
+  // this button opens. Disabling it here would leave the sentence as the only answer, with no way to act.
+  const canResolveUnfinishedMove =
+    kind === 'invalid' &&
+    inspection?.path === trimmedNewPath &&
+    inspection.unfinishedMove !== undefined
+  const canChangeLocation = kind === 'move' || canResolveUnfinishedMove
 
   const toggleCategory = (key: UsageCategoryKey): void => {
     setExpandedCategory((current) => (current === key ? null : key))
@@ -426,9 +435,21 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                 )}
 
                 {kind === 'invalid' && inspection?.error ? (
-                  <p className="mt-2 text-xs text-destructive" role="alert">
-                    {inspection.error}
-                  </p>
+                  inspection.unfinishedMove ? (
+                    <p
+                      className="mt-2 text-xs text-muted-foreground"
+                      data-testid="unfinished-move-note"
+                    >
+                      {t('settings.unfinishedMoveTitle')} —{' '}
+                      {inspection.unfinishedMove.status === 'verified'
+                        ? t('settings.unfinishedMoveVerified')
+                        : t('settings.unfinishedMoveCopying')}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-destructive" role="alert">
+                      {inspection.error}
+                    </p>
+                  )
                 ) : null}
 
                 {adoptError ? (
@@ -450,11 +471,12 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                   ) : (
                     <Button
                       type="button"
+                      data-testid="storage-change-location"
                       disabled={!canChangeLocation}
                       onClick={() => setMigrationTarget(trimmedNewPath)}
                     >
                       <FolderInput className="size-4" aria-hidden="true" />
-                      {t('settings.changeLocation')}
+                      {kind === 'invalid' ? t('common.continue') : t('settings.changeLocation')}
                     </Button>
                   )}
                   <Button type="button" variant="outline" onClick={handleCancelNewPath}>

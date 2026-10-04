@@ -2191,6 +2191,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.its': '',
   'settings.jobPromptPlaceholder':
     'このホストのジョブはどのように実行されますか — sbatch、qsub、それとも単純な bash？pip/conda でのインストールは可能ですか？新しい環境はどこに作成しますか？使用すべきパーティション・アカウント・モジュールはありますか？',
+  'settings.unfinishedMoveTitle': 'このフォルダには未完了のデータ移動があります',
+  'settings.unfinishedMoveVerified': 'コピーは完了しています。今すぐ移動を完了して切り替えるか、破棄して現在の場所にとどまれます。',
+  'settings.unfinishedMoveCopying': 'コピーは中断されており不完全です。不完全なコピーに切り替えることはありません。破棄してから、もう一度移動を開始してください。',
+  'settings.finishMove': '移動を完了',
   'settings.keepCurrentLocation': '現在の場所を維持',
   'settings.language': '言語',
   'settings.largeDirectoryNote':

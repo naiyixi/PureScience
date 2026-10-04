@@ -2041,6 +2041,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.its': '其',
   'settings.jobPromptPlaceholder':
     '作業在這裡要怎麼執行——sbatch、qsub，還是直接 bash？允許 pip/conda 安裝嗎？新環境應該放在哪裡？需要指定任何分割區、帳戶或模組嗎？',
+  'settings.unfinishedMoveTitle': '這個資料夾裡有一次沒做完的資料搬移',
+  'settings.unfinishedMoveVerified': '這裡有一份已經複製完成、但還沒切換過去的資料副本。可以現在切換過去（完成），也可以丟棄它、留在原位。',
+  'settings.unfinishedMoveCopying': '這裡的副本曾被中斷，並不完整——不完整的副本不會被切換過去。請丟棄它，然後重新開始搬移。',
+  'settings.finishMove': '完成搬移',
   'settings.keepCurrentLocation': '保留目前位置',
   'settings.language': '語言',
   'settings.largeDirectoryNote': '僅顯示前幾個條目——此目錄非常龐大。',

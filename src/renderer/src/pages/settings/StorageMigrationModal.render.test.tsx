@@ -15,6 +15,7 @@ type MockStorageApi = {
   cancelMigrate: ReturnType<typeof vi.fn>
   commitAndRelaunch: ReturnType<typeof vi.fn>
   discardMigratedCopy: ReturnType<typeof vi.fn>
+  inspectDataRoot: ReturnType<typeof vi.fn>
   onProgress: ReturnType<typeof vi.fn>
 }
 
@@ -25,6 +26,11 @@ const installApi = (overrides: Partial<MockStorageApi> = {}): MockStorageApi => 
     cancelMigrate: vi.fn().mockResolvedValue(undefined),
     commitAndRelaunch: vi.fn().mockResolvedValue({ ok: true }),
     discardMigratedCopy: vi.fn().mockResolvedValue(undefined),
+    // An ordinary empty folder unless a case says otherwise: the modal now looks for a marker BESIDE the
+    // folder before it starts a fresh copy.
+    inspectDataRoot: vi
+      .fn()
+      .mockResolvedValue({ kind: 'move', dataRoot: '/home/user/PureScience' }),
     onProgress: vi.fn(() => () => {}),
     ...overrides
   }
@@ -427,5 +433,73 @@ describe('StorageMigrationModal', () => {
     await act(async () => {
       await Promise.resolve()
     })
+  })
+
+  // IC12: an unfinished move is resolved from the marker beside the folder, so it is reachable after a
+  // restart — and the two actions are the same ones the done stage offers, not a second path.
+  it('offers finish and discard when the folder holds a verified unfinished move', async () => {
+    const api = installApi({
+      inspectDataRoot: vi.fn().mockResolvedValue({
+        kind: 'invalid',
+        dataRoot: '/mnt/disk/PureScience',
+        error: 'This folder holds an unfinished data move.',
+        unfinishedMove: { status: 'verified' }
+      })
+    })
+
+    await act(async () => {
+      root.render(<StorageMigrationModal targetPath="/mnt/disk" onClose={vi.fn()} />)
+    })
+
+    expect(document.body.querySelector('[data-testid="migration-unfinished"]')).not.toBeNull()
+    expect(document.body.textContent ?? '').toContain('unfinished data move')
+    // Starting a fresh copy would stage a second candidate in the same folder: resolving comes first.
+    expect(api.detectActive).not.toHaveBeenCalled()
+
+    clickButton((button) => button.dataset.testid === 'migration-unfinished-finish')
+    expect(api.commitAndRelaunch).toHaveBeenCalledWith('/mnt/disk')
+  })
+
+  it('discards from the unfinished stage when the user keeps the current location', async () => {
+    const api = installApi({
+      inspectDataRoot: vi.fn().mockResolvedValue({
+        kind: 'invalid',
+        dataRoot: '/mnt/disk/PureScience',
+        error: 'This folder holds an unfinished data move.',
+        unfinishedMove: { status: 'verified' }
+      })
+    })
+
+    await act(async () => {
+      root.render(<StorageMigrationModal targetPath="/mnt/disk" onClose={vi.fn()} />)
+    })
+
+    clickButton((button) => button.dataset.testid === 'migration-unfinished-discard')
+
+    expect(api.discardMigratedCopy).toHaveBeenCalledWith('/mnt/disk')
+    expect(api.commitAndRelaunch).not.toHaveBeenCalled()
+  })
+
+  it('offers only discard for an incomplete (copying) unfinished move', async () => {
+    installApi({
+      inspectDataRoot: vi.fn().mockResolvedValue({
+        kind: 'invalid',
+        dataRoot: '/mnt/disk/PureScience',
+        error: 'This folder holds an unfinished data move.',
+        unfinishedMove: { status: 'copying' }
+      })
+    })
+
+    await act(async () => {
+      root.render(<StorageMigrationModal targetPath="/mnt/disk" onClose={vi.fn()} />)
+    })
+
+    // No finish button: the commit gate refuses an incomplete copy, and a button the main process
+    // refuses by name is worse than no button at all.
+    expect(
+      document.body.querySelector('[data-testid="migration-unfinished-discard"]')
+    ).not.toBeNull()
+    expect(document.body.querySelector('[data-testid="migration-unfinished-finish"]')).toBeNull()
+    expect(document.body.textContent ?? '').toContain('incomplete')
   })
 })

@@ -50,7 +50,12 @@ export type ValidateResult = { ok: true } | { ok: false; error: string }
 // migration, or the user's own pre-existing folder) - the pointer should switch to it as-is,
 // never be moved into. 'invalid' carries a user-facing reason.
 export type DataRootKind = 'move' | 'adopt' | 'invalid'
-export type ClassifyResult = { kind: DataRootKind; error?: string }
+export type ClassifyResult = {
+  kind: DataRootKind
+  error?: string
+  /** See DataRootInspection.unfinishedMove — the marker's own state, read for the caller to act on. */
+  unfinishedMove?: { status: 'copying' | 'verified' }
+}
 
 // Windows' historical MAX_PATH. Long-path opt-outs exist but aren't something we can rely on across
 // every tool a user's Python/R environment might shell out to, so the app guards against it directly.
@@ -226,10 +231,15 @@ export const classifyDataRoot = async (
   // finished (e.g. a crash). Never adopt it — that would bypass the commit gate and switch to a possibly
   // incomplete snapshot — and never populate over it; the user must finish or discard that move first.
   if (entries.some((entry) => entry.name === MIGRATION_MARKER_FILENAME)) {
+    // The marker carries the move's own state, so the caller can offer to finish or discard it —
+    // including after a restart, when nothing is left in memory. An unreadable marker still counts as
+    // unfinished (default 'copying'): the folder is not usable, and only discarding is safe.
+    const marker = await readMigrationMarker(target)
     return {
       kind: 'invalid',
       error:
-        'This folder holds an unfinished data move. Finish or discard that move before using it here.'
+        'This folder holds an unfinished data move. Finish or discard that move before using it here.',
+      unfinishedMove: { status: marker?.status ?? 'copying' }
     }
   }
 
@@ -731,6 +741,24 @@ export const commitDataRootSwitch = async (
 // location" on the done stage). Refuses unless the target is genuinely a staging copy for the current
 // root — never the live data location, and only when a marker confirms this source→target pair — so a
 // misrouted parent can never rm the folder the app is actively using.
+/**
+ * The staged copy a picked folder holds, read from the marker ON DISK rather than from this process's
+ * memory. That is what makes an unfinished move resolvable after a restart: the marker carries the same
+ * source→target→token the commit and discard gates already check, so resuming is not a second, weaker
+ * path. A marker describing a different source or target is a different move, and is refused.
+ */
+export const readStagedMoveAt = async (
+  parent: string,
+  currentDataRoot: string
+): Promise<{ status: 'copying' | 'verified'; token: string; target: string } | undefined> => {
+  const target = dataRootForPicked(parent)
+  const marker = await readMigrationMarker(target)
+  if (!marker) return undefined
+  if (!samePath(marker.source, currentDataRoot)) return undefined
+  if (!samePath(marker.target, target)) return undefined
+  return { status: marker.status, token: marker.token, target: marker.target }
+}
+
 export const discardStagedCopy = async (
   deps: { currentDataRoot: string; expectedToken: string },
   parent: string

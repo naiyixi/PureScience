@@ -2162,6 +2162,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.its': '해당 전문가의',
   'settings.jobPromptPlaceholder':
     '여기서 작업은 어떻게 실행되나요 — sbatch, qsub 아니면 그냥 bash인가요? pip/conda 설치는 괜찮은가요, 새 환경은 어디에 만들어야 하나요? 사용할 파티션, 계정 또는 모듈이 있나요?',
+  'settings.unfinishedMoveTitle': '이 폴더에 완료되지 않은 데이터 이동이 있습니다',
+  'settings.unfinishedMoveVerified': '복사는 끝났습니다. 지금 이동을 완료해 전환하거나, 버리고 현재 위치에 머물 수 있습니다.',
+  'settings.unfinishedMoveCopying': '복사가 중단되어 불완전합니다. 불완전한 복사본으로는 전환하지 않습니다. 버린 뒤 이동을 다시 시작하세요.',
+  'settings.finishMove': '이동 완료',
   'settings.keepCurrentLocation': '현재 위치 유지',
   'settings.language': '언어',
   'settings.largeDirectoryNote': '처음 항목만 표시됩니다 — 이 디렉터리는 매우 큽니다.',
