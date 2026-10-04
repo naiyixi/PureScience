@@ -880,3 +880,142 @@ describe('NotebookPreview runtime binding (IC14)', () => {
     expect(option.disabled).toBe(true)
   })
 })
+
+// IC15: the kernel's own controls. The gap this closed is that restart surfaced ONLY off the R
+// install/uninstall recommendation, so a python kernel had no visible way to be restarted or closed
+// from the pane. Every assertion here is about the window: that the controls are present for a plain
+// python kernel, and that each click reaches the main process with THIS session's request.
+describe('NotebookPreview kernel controls (IC15)', () => {
+  const item: NotebookPreviewItem = {
+    id: 'tool:notebook:kernel-controls',
+    sessionId: 'session-1',
+    title: 'Notebook',
+    type: 'tool',
+    toolKind: 'notebook',
+    notebook: {
+      sessionId: 'session-1',
+      projectName: 'proj',
+      workspaceCwd: '/tmp/proj',
+      notebookSessionRoot: '/tmp/proj/.notebook',
+      dataRoot: '/tmp/proj/.notebook/data',
+      runtimeRoot: '/tmp/proj/.notebook/runtime',
+      runJsonPath: '/tmp/proj/.notebook/run.json'
+    }
+  }
+
+  const readyStatus: ProvisionStatus = {
+    pythonReady: true,
+    rReady: false,
+    version: 1,
+    provisioning: false
+  }
+
+  const sessionSnapshot = (): unknown => ({
+    id: 'session-1',
+    sessionId: 'session-1',
+    cwd: '/tmp/proj',
+    notebookSessionRoot: '/tmp/proj/.notebook',
+    dataRoot: '/tmp/proj/.notebook/data',
+    runtimeRoot: '/tmp/proj/.notebook/runtime',
+    kernelStatus: 'idle',
+    runJsonPath: '/tmp/proj/.notebook/run.json',
+    cells: [],
+    runs: [makeRun({ runId: 'p1', kernelKind: 'python' })],
+    recentRuns: [],
+    environments: []
+  })
+
+  let restart: ReturnType<typeof vi.fn>
+  let shutdown: ReturnType<typeof vi.fn>
+  let state: ReturnType<typeof vi.fn>
+
+  const mount = async (): Promise<void> => {
+    useNotebookEnvStore.setState({
+      status: readyStatus,
+      ui: deriveProvisionUi(readyStatus, undefined, undefined, undefined)
+    })
+    restart = vi.fn(async () => sessionSnapshot())
+    shutdown = vi.fn(async () => ({ sessionId: 'session-1', status: 'shutdown' }))
+    state = vi.fn(async () => sessionSnapshot())
+    window.api = {
+      notebook: {
+        state,
+        restart,
+        shutdown,
+        onChanged: () => () => {},
+        onAvailable: () => () => {}
+      }
+    } as unknown as typeof window.api
+
+    await act(async () => {
+      root.render(<NotebookPreview item={item} />)
+    })
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+    }
+  }
+
+  const click = async (testId: string): Promise<void> => {
+    const button = container.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+  }
+
+  it('always offers restart and close for a python kernel with no R recommendation pending', async () => {
+    await mount()
+
+    // The R-only banner is exactly what used to gate the control; it must NOT be the way in here.
+    expect(container.querySelector('[data-testid="r-restart-banner"]')).toBeNull()
+
+    const restartButton = container.querySelector(
+      '[data-testid="kernel-restart-button"]'
+    ) as HTMLButtonElement
+    const closeButton = container.querySelector(
+      '[data-testid="kernel-shutdown-button"]'
+    ) as HTMLButtonElement
+    expect(restartButton).not.toBeNull()
+    expect(closeButton).not.toBeNull()
+    // Both are actionable — a control whose predicate rejects every reachable target would be a shell.
+    expect(restartButton.disabled).toBe(false)
+    expect(closeButton.disabled).toBe(false)
+    expect(restartButton.textContent).toContain('Restart kernel')
+    expect(closeButton.textContent).toContain('Close kernel')
+  })
+
+  it('closes the session kernel from the pane, reports it, and re-reads the session truth', async () => {
+    await mount()
+    const readsBeforeClick = state.mock.calls.length
+
+    await click('kernel-shutdown-button')
+
+    expect(shutdown).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      workspaceCwd: '/tmp/proj',
+      projectName: 'proj'
+    })
+    // The channel answers with a receipt, not a snapshot, so the pane re-reads instead of trusting it.
+    expect(state.mock.calls.length).toBeGreaterThan(readsBeforeClick)
+    expect(container.querySelector('[data-testid="notebook-kernel-notice"]')?.textContent).toBe(
+      'Kernel closed'
+    )
+  })
+
+  it('restarts the kernel from the always-present control and reports it', async () => {
+    await mount()
+
+    await click('kernel-restart-button')
+
+    expect(restart).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      workspaceCwd: '/tmp/proj',
+      projectName: 'proj'
+    })
+    expect(container.querySelector('[data-testid="notebook-kernel-notice"]')?.textContent).toBe(
+      'Kernel restarted'
+    )
+  })
+})

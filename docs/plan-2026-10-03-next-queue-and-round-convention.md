@@ -360,3 +360,44 @@ B 段已耗尽（S3/S4 全落地、M2 卡产品决定），A 段唯一开项（e
 这三处受影响套件——**这 5 条大概率会被会话自己修掉**。所以下一轮**先 `git log --oneline -5 origin/main` 与会话提交核对**：
 若其中已含「runtime:manage-packages 的 pin 补齐」或「StoragePanel 用例改 testid」，**跳过、不要重做**（重做＝白烧词元）；
 核对不到才修。修的时候也**只许加强断言**，不许把 pin 改成「只测存在性」那种更弱的写法。
+
+## 八、本轮追加（执行器，2026-10-05 00:00–00:3x）——IC15 内核常驻「重启 / 关闭」已落地（真机读数具名立案）
+
+**开工核对（防重做，按 §七 的判据）**：`origin/main` 已到 `88fad0b9`。§七 钉的那 5 条红**已被会话在 `9ed4f313` 修掉**
+（4 处契约 pin + `StoragePanel.render.test.tsx` 改按 testid 定位），且该提交 **CI 双绿**：`Nightly` run `37207925081`
+success、`Windows Full Test` run `37207924668` success ⇒ 按防重做判据**跳过、没有重做**。会话的 IC14（`660c20e3`）同样双绿
+（`build / Verify` success、Windows 8/8 success）；`097226a1` 那一轮被 `cancel-in-progress` 顶掉 ⇒ **cancelled 无判决**（不是红）。
+
+**本轮取 v1.84.0 的下一条 = IC15**（§六 ① 的指路）。开工时树干净、无在跑构建/真机进程（会话 23:58 收尾后空闲）。
+
+**缺口核实（按「补缺口前先在代码里确认它真的缺」）**：`notebook:restart` / `notebook:shutdown` 两条通道 + preload +
+主进程工作流**全都在** ⇒ 缺口只在渲染层：重启按钮的唯一挂载点是 **R 专用**的推荐横幅
+（`restartRecommended` = 活动语言是 R 且该环境被标 `restartRecommended`），**python 内核与空闲的 R 内核在界面上没有
+任何重启/关闭入口**。
+
+**落地（`NotebookPreview.tsx` + 9 语 + 渲染用例；零新通道 ⇒ 零契约计数涟漪）**：
+
+- 头部新增常驻控件组 `kernel-controls`：`kernel-restart-button` / `kernel-shutdown-button` + 回执 `notebook-kernel-notice`；
+- **关闭**走既有 `notebook.shutdown`（与 agent 收起会话用的是同一条）；它回的是**回执不是状态快照** ⇒ 面板随后
+  `loadNotebookState()` 重读会话真值（不把回执当快照）；
+- **重启**沿用既有 `notebook.restart`（它本就顺带清该会话的 R 重启推荐，横幅语义不变）；
+- 两个控件互相串行（任一在飞都禁用），在飞写入的排水归主进程（`withSessionTeardown` / `waitForWrites`）；
+- **5 键 × 9 语**：`ws.notebookRestartKernel` / `notebookCloseKernel` / `notebookClosingKernel` / `notebookKernelRestarted` /
+  `notebookKernelClosed`；zh ≠ en；zh-Hant 依既有译法用「核心」（与 `common.restartRKernel` 一致）；**未新增 pending 条目**；
+- 3 条渲染用例：python 内核下 **R 横幅缺席**但两控件在且**不 disabled**（防空壳）、点关闭真的到主进程并**真重读**、
+  点重启真的到主进程并给出回执。
+
+**验证（本机）**：`NotebookPreview.gate.render.test.tsx` **26 passed**；`src/renderer/src/pages/workspace` +
+`src/renderer/src/i18n` **165 文件 / 1827 passed**；`typecheck` node+web 绿（node 首跑撞本机堆崩，按本机既有做法
+`NODE_OPTIONS=--max-old-space-size=4096` 复跑通过 ⇒ 是本机内存问题不是类型错误）；`eslint --no-cache .` **0 error**
+（132 warnings；我引入的 2 条 prettier warning 已就地改掉）；`bash scripts/pre-push-checks.sh` 全通过。CI 结论见本轮汇报。
+
+**⏳ 真机读数未取（具名立案）**：本机 swap **14.8 G / 15.36 G 已用尽**（空闲物理页 ~1 G），而本仓明令「跑真机 e2e 前必重建、
+禁裸跑 `electron-vite build`」⇒ 此刻重建 + 起 Electron 不安全（本机有堆把机器打崩的前例）。**配方（下一轮内存宽松时一次
+跑完）**：`e2e/certification/` 下开 `kernel-controls.spec.ts`：provenance 夹具 attach `kernel-notebook-pane` → 断言
+`kernel-controls` 可见且两按钮不 disabled → 点 `kernel-shutdown-button` → 断言 `notebook-kernel-notice` 文案与
+`api.notebook.state()` 的 `kernelStatus` 落回 `idle`；再点 `kernel-restart-button` → 断言回执与状态。
+**只允许跑绿之后提交该 spec**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
+
+**下一轮第一步**：① 内存宽松 ⇒ 取上面那条真机读数（IC15 收口）；② 否则顺延 v1.84.0 的下一条（**IC17** 设置页下载明细 /
+**IC18** 运行时来源可见，落点见排期文件批次 4 表）。

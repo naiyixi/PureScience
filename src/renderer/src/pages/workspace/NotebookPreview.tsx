@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
 import { computeStaleRunIds } from '../../../../shared/run-dependencies'
-import { Braces, FilePenLine } from 'lucide-react'
+import { Braces, FilePenLine, Power, RotateCw } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
 import type {
@@ -447,6 +447,10 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   // when they are not watching the run list.
   const [rerunNotice, setRerunNotice] = useState<string | null>(null)
   const [isRestarting, setIsRestarting] = useState(false)
+  // IC15: closing the session's interpreter is its own in-flight state, so the two kernel controls can
+  // never both be mid-action, and the receipt below names what the last one did.
+  const [isClosingKernel, setIsClosingKernel] = useState(false)
+  const [kernelNotice, setKernelNotice] = useState<string | null>(null)
   const [activeKind, setActiveKind] = useState<NotebookKernelKind>('python')
   // Selected environment within the active python/r pane; undefined lets the effective-env
   // computation below default to the first (canonical-default-first) environment.
@@ -784,12 +788,33 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
     try {
       const next = await window.api.notebook.restart(createNotebookRequest(item.notebook))
       applyNotebookState(next)
+      setKernelNotice(t('ws.notebookKernelRestarted'))
     } catch (error) {
       setActionError(getErrorMessage(error))
     } finally {
       setIsRestarting(false)
     }
   }
+
+  // IC15: closes the session's interpreter — the same teardown the agent's runtime uses when a session
+  // ends. The channel answers with a receipt rather than a state snapshot, so the pane re-reads the
+  // session's truth; the next run lazily starts a fresh kernel. Main-process teardown already waits for
+  // in-flight writes, so the pane only has to stop a second click while either control is running.
+  const handleShutdown = async (): Promise<void> => {
+    setIsClosingKernel(true)
+    setActionError(null)
+    try {
+      await window.api.notebook.shutdown(createNotebookRequest(item.notebook))
+      setKernelNotice(t('ws.notebookKernelClosed'))
+      await loadNotebookState()
+    } catch (error) {
+      setActionError(getErrorMessage(error))
+    } finally {
+      setIsClosingKernel(false)
+    }
+  }
+  // Both controls are serialized against each other; the main process owns draining in-flight work.
+  const kernelControlBusy = isRestarting || isClosingKernel
 
   return (
     <section
@@ -845,6 +870,46 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
               </button>
             )
           )}
+        </div>
+        {/* IC15: the kernel's own controls, always present. Restart used to surface only when an R
+            install/uninstall flagged a pending restart, so a python kernel — or an idle R one — had no
+            visible way to be restarted or closed from the pane. */}
+        <div className="flex shrink-0 items-center gap-1" data-testid="kernel-controls">
+          <button
+            type="button"
+            data-testid="kernel-restart-button"
+            disabled={kernelControlBusy}
+            onClick={() => void handleRestart()}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-300 transition-colors',
+              'hover:bg-bg-200 hover:text-text-100 disabled:opacity-50'
+            )}
+          >
+            <RotateCw className="size-3.5" aria-hidden="true" />
+            {isRestarting ? t('common.restarting') : t('ws.notebookRestartKernel')}
+          </button>
+          <button
+            type="button"
+            data-testid="kernel-shutdown-button"
+            disabled={kernelControlBusy}
+            onClick={() => void handleShutdown()}
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-300 transition-colors',
+              'hover:bg-bg-200 hover:text-text-100 disabled:opacity-50'
+            )}
+          >
+            <Power className="size-3.5" aria-hidden="true" />
+            {isClosingKernel ? t('ws.notebookClosingKernel') : t('ws.notebookCloseKernel')}
+          </button>
+          {kernelNotice ? (
+            <span
+              role="status"
+              data-testid="notebook-kernel-notice"
+              className="shrink-0 text-text-300"
+            >
+              {kernelNotice}
+            </span>
+          ) : null}
         </div>
         <button
           type="button"
