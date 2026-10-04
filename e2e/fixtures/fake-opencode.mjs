@@ -196,7 +196,7 @@ const verifyNotebookLifecycle = async (sessionId) =>
 // IC14: one real python cell through the notebook MCP. The pane promotes itself once the session holds a
 // notebook run (same as the other scenarios), and because this run is python the runtime binding strip —
 // which only exists for the env-scoped kernels — is on screen for the reading.
-const runPythonNotebookCell = async (sessionId) => {
+const runPythonNotebookCell = async (sessionId, prompt) => {
   const marker = 'ic14-python-cell'
   await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
     const execution = toolResult(
@@ -210,6 +210,10 @@ const runPythonNotebookCell = async (sessionId) => {
       throw new Error('The Notebook did not run the python cell.')
     }
   })
+  // A distinct reply per call, so a spec that runs this cell more than once (IC15 restarts and closes a
+  // kernel around it) can tell the runs apart instead of matching two identical bubbles.
+  if (prompt.includes('#3')) return 'Python cell ran (#3).'
+  if (prompt.includes('#2')) return 'Python cell ran (#2).'
   return 'Python cell ran.'
 }
 
@@ -558,7 +562,7 @@ if (process.argv.includes('--version')) {
         } else if (prompt.includes(NOTEBOOK_LIFECYCLE_PROMPT)) {
           reply = await verifyNotebookLifecycle(context.params.sessionId)
         } else if (prompt.includes(NOTEBOOK_PYTHON_PROMPT)) {
-          reply = await runPythonNotebookCell(context.params.sessionId)
+          reply = await runPythonNotebookCell(context.params.sessionId, prompt)
         } else if (prompt.includes(ARTIFACT_PROVENANCE_PROMPT)) {
           reply = await createProvenanceArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_PROSE_PROMPT)) {
