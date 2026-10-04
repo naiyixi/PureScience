@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect } from '@playwright/test'
+import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
 import { createProject, sendPrompt } from './helpers'
