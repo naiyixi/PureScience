@@ -268,6 +268,20 @@ run.json on disk: [["notebook-run-…-1","completed",null],
    `(projectName, sessionId)` 会**创建并写出**一份空 `run.json`（本轮就落了 `notebooks/interrupted-run/…`）。
    只读调用应先 `findExisting` 命中才加载，未命中就按"无历史"回答，绝不写档。
 
+**硬化① 的实施要点与一个必须避开的坑（下一轮照此做，别现场重推）**：
+
+- 检查点很小：`session-lifecycle.ensure()` 里 `sessions.getOrCreate(sessionId, …)` 返回后比对
+  `session.projectName !== (request.projectName ?? default)` ⇒ 抛具名错误（不要静默）。
+  聚合**已存在**时项目名被忽略，这就是"静默答另一份"的入口；`loadOrCreate` 用请求里的 projectName
+  做路径，所以**首次创建**时它决定读哪份档（硬化②要在这里避免写）。
+- **坑**：本轮那份**已认证的 spec**（`e2e/certification/notebook-interrupted-run.spec.ts`）的前置读数
+  用的是项目**显示名** `interrupted-run` 当 `projectName`——硬化①落地后它会**开始抛错**。
+  ⇒ 实施硬化时必须同时把该 spec 的 `projectName` 换成**真实 project id**
+  （可从 `sessions.loadAll()` 的条目，或首轮 `notebook.state` 返回的 `runJsonPath` 里的项目键取），
+  **不是**去放宽断言。这一步本身就是把探针的误用改对。
+- 硬化② 的落点：`runtime-service.state()` 的读路径不要经过 `loadOrCreate`；仓库已有
+  `repository.findExisting(projectName, sessionId)`（返回 `null` 且**不写**）可复用，未命中时按"无历史"回答。
+
 **队列其余项（本轮未动，如实记）**：第 3 项（v1.83.0 的 IC6 真机收割／A7 下载路径／egress 审批窗口侧）、
 第 4 项（技能瘦身：`openscience-dev` 本体 99,664 字符已超 100,000 上限，references 307 个文件需合并）、
 第 5 项（竞品差距：IEDB 免疫学连接器未做；PDB `pdb_search_by_sequence` 已实现且已提交——
