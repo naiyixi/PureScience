@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ProvisionProgress, ProvisionStatus } from '../../../shared/notebook-env'
+import { notebookGated } from '../pages/workspace/provisioning-view'
 import { createInitialNotebookEnvState, useNotebookEnvStore } from './notebook-env-store'
 
 type ProgressListener = (p: ProvisionProgress) => void
@@ -683,6 +684,50 @@ describe('notebook-env-store', () => {
     expect(useNotebookEnvStore.getState().byLang.python?.error).toContain(
       'RUNTIME_RECOVERY_BLOCKED'
     )
+  })
+
+  it('a cancelled python provision leaves the workspace gate a reason + Retry (not an empty pane)', async () => {
+    // What the workspace overlay depends on, end to end at the store level: while the run is up `ui` is
+    // 'preparing' (that is where Cancel is drawn from), and once the abort lands the gate must still say
+    // something. `ui: 'ready'` with `pythonReady: false` would leave the pane gated shut while the
+    // overlay renders null — an empty grey box with no explanation and no way out.
+    let provisioning = true
+    const cancel = vi.fn(async () => undefined)
+    const { emit } = installApi({
+      cancel,
+      getStatus: vi.fn(async () => ({
+        pythonReady: false,
+        rReady: false,
+        version: 3,
+        provisioning
+      }))
+    })
+    await useNotebookEnvStore.getState().init()
+    expect(useNotebookEnvStore.getState().ui.kind).toBe('preparing')
+
+    // The user hits Cancel: main aborts, then answers the status re-read as no longer provisioning.
+    provisioning = false
+    await useNotebookEnvStore.getState().cancel('python')
+    expect(cancel).toHaveBeenCalledWith('python')
+    // Main reports the aborted run as a terminal error (the logged-operation catch), so the surface has a
+    // reason to show rather than a bare cleared state.
+    await emit({
+      phase: 'error',
+      message: 'Runtime setup cancelled.',
+      progress: 0,
+      scope: 'python',
+      language: 'python'
+    })
+
+    const state = useNotebookEnvStore.getState()
+    expect(state.ui).toEqual({
+      kind: 'error',
+      message: 'Runtime setup cancelled.',
+      scope: 'python'
+    })
+    // …and the pane stays gated (python is still missing) with that failure branch — message + Retry —
+    // rendered inside it.
+    expect(notebookGated(state.status, state.ui, undefined)).toBe(true)
   })
 
   it('a successful provision clears a stale recovery-blocked message for the OTHER language', async () => {
