@@ -174,6 +174,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   runtime: [
     'import-lock',
     'manage-named-environments',
+    'manage-packages',
     'pick-interpreter',
     'register-interpreter',
     'set-environment-enabled',
@@ -293,7 +294,8 @@ describe('renderer surface inventory', () => {
     // 457 with the named-environment surface (runtime.manageNamedEnvironments, audit P0-8): same profile.
     // 458 with the artifact reveal handoff (artifacts:reveal-file, IC9): one more LOCAL artifact channel,
     // so the preload inventory, the catalog and the local-Web installation count all move by one.
-    expect(electronPaths).toHaveLength(459)
+    // 460 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
+    expect(electronPaths).toHaveLength(460)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -301,7 +303,8 @@ describe('renderer surface inventory', () => {
     // 344 since the PDF annotation export channels (文档标注层 A4), 342 since the annotation surface
     // (A3) and 337 since the literature-screening surface (v1.77 unit): all of them are local invoke
     // channels, so the invoke map moves with them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(353)
+    // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(354)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -337,7 +340,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(122)
+    expect(expectedRemoteLocalOnly).toHaveLength(123)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

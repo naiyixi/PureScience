@@ -70,6 +70,8 @@ const createWorkflows = (): RuntimeSelectionWorkflows => ({
   })),
   // Audit P0-8: the group also owns the named-environment surface.
   manageNamedEnvironments: vi.fn(async () => ({ environments: [] })),
+  // IC13: and the window package install/uninstall.
+  managePackages: vi.fn(async () => ({ ok: true, needsRestart: false, log: '' })),
   setEnvironmentEnabled: vi.fn(async () => ({
     enabled: { managed: false },
     installAuthorized: {}
@@ -100,13 +102,13 @@ const install = (
 }
 
 describe('runtime application commands', () => {
-  it('installs the exact 14-command group and dispatches a remote-safe survey', async () => {
+  it('installs the exact 15-command group and dispatches a remote-safe survey', async () => {
     const { router, workflows } = install()
     const runtimeChannels = RENDERER_CONTRACT_GROUPS.find(
       (group) => group.capability === 'runtime'
     )?.contracts.map((contract) => contract.channel)
 
-    expect(runtimeChannels).toHaveLength(14)
+    expect(runtimeChannels).toHaveLength(15)
     expect(runtimeApplicationCommandGroup.commands.map((command) => command.name)).toEqual(
       runtimeChannels
     )

@@ -11,7 +11,11 @@ import type {
   NamedEnvironmentRequest,
   NamedEnvironmentResult
 } from '../shared/notebook-env'
-import type { DiscoveredInterpreter } from '../shared/notebook-runtime'
+import type {
+  DiscoveredInterpreter,
+  RuntimePackageMutation,
+  RuntimePackageMutationResult
+} from '../shared/notebook-runtime'
 import type {
   AddCustomServerRequest,
   AuthenticateCustomServerRequest,
@@ -906,7 +910,15 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke(
         'runtime.manageNamedEnvironments',
         request
-      ) as Promise<NamedEnvironmentResult>
+      ) as Promise<NamedEnvironmentResult>,
+    // IC13: install/remove packages in one discovered environment from the Settings "Packages" dialog.
+    // The main process resolves `envId` against live discovery and then runs the SAME admission the
+    // agent's manage_packages goes through, so a refusal here is the gate's own named reason.
+    managePackages: (request: RuntimePackageMutation) =>
+      electronRendererContracts.invoke(
+        'runtime.managePackages',
+        request
+      ) as Promise<RuntimePackageMutationResult>
   },
   storage: {
     getInfo: () => electronRendererContracts.invoke('storage.getInfo'),

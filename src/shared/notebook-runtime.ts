@@ -1,4 +1,8 @@
-import type { NotebookLanguage } from './notebook'
+import type {
+  NotebookEnvironmentPackageChange,
+  NotebookLanguage,
+  NotebookPackageInstallerAttempt
+} from './notebook'
 
 // Renderer-safe wire shapes for the notebook Runtime Registry (managed + external environments).
 // Shared by Settings, Onboarding, the main runtime-registry, and (later) the executor/manage_packages
@@ -118,6 +122,40 @@ export type EnvPackage = {
   version: string
   build?: string
   channel?: string
+}
+
+// IC13: what the Settings "Packages" dialog asks the main process to do. `envId` is the same key the
+// panels already use to identify a discovered environment (the interpreter's real path), so the main
+// side can resolve it against live discovery — a stale or foreign id fails that lookup by name instead
+// of silently retargeting the mutation at whichever environment happened to be the default.
+export type RuntimePackageMutation = {
+  language: NotebookLanguage
+  envId: string
+  packages: readonly string[]
+  /** Defaults to 'install'. */
+  operation?: 'install' | 'uninstall'
+}
+
+// IC13: the installer's own result, as the window and the agent both receive it. Defined HERE (shared)
+// rather than beside the installer so there is exactly one definition — the main-process package
+// manager aliases this type, which is what keeps the dialog from ever drifting from what an agent is
+// told. `method` records which installer actually ran: conda (micromamba), pip, or cran (R's
+// install.packages fallback); `packageChanges` carries verified changes for the explicitly requested
+// packages only (transitive dependency changes stay in the operation manifest, keeping the agent-facing
+// result compact); `prefix` is the absolute env prefix so both surfaces can name the install location;
+// `repairRequired` means a protected interpreter package changed despite the approved plan, and the
+// caller must quarantine this runtime and require Repair before another kernel can execute from it.
+export type RuntimePackageMutationResult = {
+  ok: boolean
+  needsRestart: boolean
+  log: string
+  method?: 'conda' | 'pip' | 'cran'
+  attempts?: NotebookPackageInstallerAttempt[]
+  fallbackUsed?: boolean
+  packageChanges?: NotebookEnvironmentPackageChange[]
+  prefix?: string
+  repairRequired?: boolean
+  error?: string
 }
 
 // The v4 per-language enablement state, keyed by `envId` (the interpreter's real path). `enabled` is

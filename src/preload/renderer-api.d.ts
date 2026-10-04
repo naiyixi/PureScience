@@ -151,6 +151,8 @@ import type {
   DiscoveredInterpreter,
   EnvPackage,
   RuntimeEnablement,
+  RuntimePackageMutation,
+  RuntimePackageMutationResult,
   RuntimeUsage,
   RuntimeSelection,
   RuntimeSurvey
@@ -1145,6 +1147,10 @@ export interface PureScienceAPI {
     // Audit P0-8: the named environments (what notebooks select from) and removal of one. Removal is
     // refused while a live kernel uses the env — the rejection message says so.
     manageNamedEnvironments(request: NamedEnvironmentRequest): Promise<NamedEnvironmentResult>
+    // IC13: install/remove packages in one discovered environment (the Settings "Packages" dialog). Runs
+    // through the same package admission the agent's manage_packages uses, so an unauthorized or
+    // externally-owned environment comes back with the gate's own named reason in `error`.
+    managePackages(request: RuntimePackageMutation): Promise<RuntimePackageMutationResult>
   }
   storage: {
     getInfo(): Promise<StorageInfo>

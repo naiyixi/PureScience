@@ -2603,7 +2603,12 @@ const createApplicationModules = async (
       notebookService.importEnvironmentFromLock(request, onProgress),
     // Audit P0-8: the window lists/removes named environments through the SAME service call the agent
     // uses, so the same validation and live-kernel refusal apply to both.
-    manageNamedEnvironments: (request) => notebookService.manageEnvironments(request)
+    manageNamedEnvironments: (request) => notebookService.manageEnvironments(request),
+    // IC13: a click in the Settings "Packages" dialog runs through the SAME service call the agent's
+    // manage_packages uses, so the per-env install authorization, the disabled-runtime refusals, the
+    // external-environment limits and the per-env mutation lock all apply to the window exactly as to
+    // an agent — the dialog can only ever show what the gate decided.
+    managePackages: (request) => notebookService.managePackages(request)
   })
   declareElectronAdapter('notebook-runtime', () =>
     registerRuntimeIpcHandlers(runtimeSelectionWorkflows)

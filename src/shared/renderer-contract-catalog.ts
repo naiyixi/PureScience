@@ -345,6 +345,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['listEnvironments', 'runtime:list-environments'],
     ['listPackageCounts', 'runtime:list-package-counts', WEB, RUNTIME_LANGUAGE, POSITIONAL],
     ['listPackages', 'runtime:list-packages', WEB, RUNTIME_LANGUAGE_ENV, POSITIONAL], ['manageNamedEnvironments', 'runtime:manage-named-environments', LOCAL],
+    ['managePackages', 'runtime:manage-packages', LOCAL],
     ['pickInterpreter', 'runtime:pick-interpreter', LOCAL],
     ['registerInterpreter', 'runtime:register-interpreter', LOCAL, RUNTIME_INTERPRETER, POSITIONAL],
     [

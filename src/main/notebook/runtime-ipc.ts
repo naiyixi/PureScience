@@ -4,7 +4,7 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 
 import type { NotebookLanguage } from '../../shared/notebook'
 import type { ImportLockRequest, NamedEnvironmentRequest } from '../../shared/notebook-env'
-import type { RuntimeSelection } from '../../shared/notebook-runtime'
+import type { RuntimePackageMutation, RuntimeSelection } from '../../shared/notebook-runtime'
 import { broadcastNotebookEnvProgress } from './env-ipc'
 import type { RuntimeSelectionWorkflows } from './runtime-selection-workflows'
 
@@ -31,6 +31,13 @@ const registerRuntimeIpcHandlers = (
 
   ipcMainHandle('runtime:list-package-counts', (_event, request: { language: NotebookLanguage }) =>
     workflows.listPackageCounts(request)
+  )
+
+  // IC13: the Settings "Packages" dialog installs/removes here. The workflow resolves `envId` against
+  // live discovery and delegates to the same package service the agent's manage_packages uses, so the
+  // window cannot install around the authorization gate — and its named refusals come back as results.
+  ipcMainHandle('runtime:manage-packages', (_event, request: RuntimePackageMutation) =>
+    workflows.managePackages(request)
   )
 
   ipcMainHandle(

@@ -9,6 +9,7 @@ import type {
 import type {
   EnvPackage,
   RuntimeEnablement,
+  RuntimePackageMutation,
   RuntimeSelection,
   RuntimeSurvey,
   RuntimeUsage
@@ -24,6 +25,7 @@ import {
   type DiscoveredInterpreter
 } from './environment-discovery'
 import { listEnvPackages } from './package-listing'
+import type { InstallRequest, InstallResult } from './package-manager'
 import { RuntimeRegistry } from './runtime-registry'
 import { prepareExternalPythonRuntime, type AppOwnedExternalSelection } from './venv-overlay'
 
@@ -90,6 +92,12 @@ type RuntimeSelectionWorkflowDeps = {
   // service's manageEnvironments, so the SAME validation and live-kernel refusal gate the window as the
   // agent. Absent in tests that do not exercise the surface → guarded error, never a silent no-op.
   manageNamedEnvironments?: (request: NamedEnvironmentRequest) => Promise<NamedEnvironmentResult>
+  // IC13: install/remove packages from the Settings "Packages" dialog. Production injects the notebook
+  // service's managePackages, so the window goes through the SAME package admission as the agent —
+  // per-environment install authorization, disabled-runtime refusals, external-environment limits and
+  // the environment mutation lock all apply, and their named refusals reach the screen verbatim. The
+  // dep speaks the installer's own request type (the workflow has already resolved the target env).
+  managePackages?: (request: InstallRequest) => Promise<InstallResult>
 }
 
 type RuntimeSelectionWorkflows = {
@@ -129,6 +137,10 @@ type RuntimeSelectionWorkflows = {
   ): Promise<ImportLockResult>
   // Audit P0-8: list the named environments (the set notebooks select from) and remove one.
   manageNamedEnvironments(request: NamedEnvironmentRequest): Promise<NamedEnvironmentResult>
+  // IC13: install/remove packages in one discovered environment, through the same admission the agent's
+  // manage_packages goes through. `envId` identifies the environment the dialog belongs to; the target
+  // is resolved by discovery, so a stale id cannot silently retarget the install.
+  managePackages(request: RuntimePackageMutation): Promise<InstallResult>
 }
 
 const createRuntimeSelectionWorkflows = (
@@ -306,6 +318,52 @@ const createRuntimeSelectionWorkflows = (
         throw new Error('Named-environment management is unavailable.')
       }
       return run(request)
+    },
+    managePackages: async (request) => {
+      const run = deps.managePackages
+      if (!run) {
+        throw new Error('Package install/uninstall is unavailable.')
+      }
+      // Resolve the environment the dialog belongs to against LIVE discovery — a stale or foreign id
+      // fails here by name instead of retargeting the mutation at whatever happens to be the default.
+      const discovered = await discoverLanguageEnvs(request.language)
+      const env = discovered.find((candidate) => candidate.envId === request.envId)
+      if (!env) {
+        return {
+          ok: false,
+          needsRestart: false,
+          log: '',
+          error: 'That environment is no longer discovered. Reopen the dialog and try again.'
+        }
+      }
+      // The admission addresses an environment by NAME (`request.environment`), falling back to the
+      // language's managed default when none is given. So a named environment is addressed by name
+      // (managed or not — the admission then applies its own rules), and only a NAMELESS entry falls
+      // back: an app-managed one IS the default, anything else cannot be addressed at all and is
+      // refused by name rather than guessed at.
+      if (env.condaEnv) {
+        return run({
+          language: request.language,
+          packages: [...request.packages],
+          operation: request.operation ?? 'install',
+          environment: env.condaEnv
+        })
+      }
+      if (env.provenance !== 'app-managed') {
+        return {
+          ok: false,
+          needsRestart: false,
+          log: '',
+          error:
+            'This environment does not identify a package target, so the app cannot install into ' +
+            'it. Use the app-managed environment, or manage this one yourself.'
+        }
+      }
+      return run({
+        language: request.language,
+        packages: [...request.packages],
+        operation: request.operation ?? 'install'
+      })
     }
   }
 }

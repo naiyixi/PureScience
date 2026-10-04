@@ -9,6 +9,7 @@ import type {
   DiscoveredInterpreter,
   EnvPackage,
   RuntimeEnablement,
+  RuntimePackageMutation,
   RuntimeSelection,
   RuntimeSurvey,
   RuntimeUsage
@@ -20,6 +21,7 @@ import {
   type ApplicationCommandRegistrar
 } from '../application-command-router'
 import type { CallerContext } from '../caller-context'
+import type { InstallResult } from './package-manager'
 import type { RuntimeSelectionWorkflows } from './runtime-selection-workflows'
 
 type RuntimeLanguageRequest = Readonly<{ language: NotebookLanguage }>
@@ -44,6 +46,8 @@ type RuntimeInterpreterRequest = Readonly<{ language: NotebookLanguage; path: st
 type RuntimeImportLockRequest = Readonly<ImportLockRequest>
 // Audit P0-8: list/remove named environments — one narrow request object, like the import above.
 type RuntimeNamedEnvironmentRequest = Readonly<NamedEnvironmentRequest>
+// IC13: install/remove packages in the environment a dialog belongs to — same one-object shape.
+type RuntimePackageMutationRequest = Readonly<RuntimePackageMutation>
 
 const runtimeApplicationCommands = Object.freeze({
   survey: defineApplicationCommand<'runtime:survey', readonly [], RuntimeSurvey[]>(
@@ -115,7 +119,17 @@ const runtimeApplicationCommands = Object.freeze({
     'runtime:manage-named-environments',
     readonly [request: RuntimeNamedEnvironmentRequest],
     NamedEnvironmentResult
-  >('runtime:manage-named-environments')
+  >('runtime:manage-named-environments'),
+  // IC13: install/remove packages in one discovered environment from the Settings "Packages" dialog.
+  // Local-only (it writes THIS machine's runtime root) and it runs through the SAME package admission
+  // as the agent's manage_packages — the per-environment install authorization, the disabled-runtime
+  // refusals, the external-environment limits and the per-env mutation lock all apply, and their named
+  // refusals are returned verbatim for the dialog to show.
+  managePackages: defineApplicationCommand<
+    'runtime:manage-packages',
+    readonly [request: RuntimePackageMutationRequest],
+    InstallResult
+  >('runtime:manage-packages')
 })
 
 const runtimeApplicationCommandGroup = defineApplicationCommandGroup('runtime', [
@@ -126,6 +140,7 @@ const runtimeApplicationCommandGroup = defineApplicationCommandGroup('runtime', 
   runtimeApplicationCommands.listPackageCounts,
   runtimeApplicationCommands.listPackages,
   runtimeApplicationCommands.manageNamedEnvironments,
+  runtimeApplicationCommands.managePackages,
   runtimeApplicationCommands.pickInterpreter,
   runtimeApplicationCommands.registerInterpreter,
   runtimeApplicationCommands.setEnvironmentEnabled,
@@ -200,6 +215,10 @@ const registerRuntimeApplicationCommands = (
       'runtime:manage-named-environments': (invocation) => {
         requireLocalCaller(invocation.callerContext)
         return dependencies.workflows.manageNamedEnvironments(invocation.args[0])
+      },
+      'runtime:manage-packages': (invocation) => {
+        requireLocalCaller(invocation.callerContext)
+        return dependencies.workflows.managePackages(invocation.args[0])
       }
     })
     return scope.complete()

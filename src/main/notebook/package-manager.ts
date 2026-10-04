@@ -5,11 +5,11 @@ import { join } from 'node:path'
 
 import { PROD_SESSION_DIR_NAME } from '../session-persistence/repository'
 import type {
-  NotebookEnvironmentPackageChange,
   NotebookLanguage,
   NotebookPackageInstaller,
   NotebookPackageInstallerAttempt
 } from '../../shared/notebook'
+import type { RuntimePackageMutationResult } from '../../shared/notebook-runtime'
 import {
   caBundleEnv,
   installArgv,
@@ -59,26 +59,10 @@ export type InstallRequest = {
   workspaceCwd?: string
   projectName?: string
 }
-// method records which installer actually ran: conda (micromamba), pip, or cran (R install.packages
-// fallback) — useful to verify the path taken, especially when conda falls back.
-export type InstallResult = {
-  ok: boolean
-  needsRestart: boolean
-  log: string
-  method?: 'conda' | 'pip' | 'cran'
-  attempts?: NotebookPackageInstallerAttempt[]
-  fallbackUsed?: boolean
-  // Verified changes for the explicitly requested packages only. Transitive dependency changes stay
-  // in the immutable operation manifest so the agent-facing result remains compact.
-  packageChanges?: NotebookEnvironmentPackageChange[]
-  // Absolute env prefix the packages were installed into (<dataRoot>/runtime/envs/<env>), so the
-  // UI/agent can see the concrete, env-scoped install location. Set on every real install outcome.
-  prefix?: string
-  // A protected interpreter package changed despite the approved plan. The caller must quarantine
-  // this runtime and require Repair before another kernel can execute from it.
-  repairRequired?: boolean
-  error?: string
-}
+// The installer's result. Defined once in the shared wire layer (RuntimePackageMutationResult) so the
+// Settings dialog and the agent receive the SAME shape from the same definition — see that type for the
+// field meanings. Aliased here to keep the main-process call sites unchanged.
+export type InstallResult = RuntimePackageMutationResult
 
 // One spawned install command's outcome; injected so tests never launch micromamba/pip/R.
 export type SpawnResult = { code: number; stdout: string; stderr: string }
