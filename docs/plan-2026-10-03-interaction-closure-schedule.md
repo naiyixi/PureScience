@@ -66,6 +66,24 @@
 > 拒绝按 handler 原话上屏；真机 `artifact-open-actions.spec.ts` **1 passed (13.3s)**（两控件均可见、
 > 点击后无具名拒绝）。证据 `docs/evidence/2026-10-04-ic9-artifact-open-actions.md`。
 >
+> **IC9 真缺陷已修（2026-10-04）**：打包态 macos runner 确定性报
+> `local-fs:reveal → Local path must be absolute.`（**上面那次本机「无具名拒绝」是假绿**）——
+> 「在文件夹中显示」把预览项的**版本定位符**当文件系统路径交给了 `localFs.reveal`。
+> 修法照搬本仓成对先例（`logs:open-file` / `logs:reveal-in-folder`）：抽出**唯一**解析函数
+> `resolveOsHandoffPath`，`openFile` 与新增 `revealFile` 共用；新增 LOCAL 命令
+> `artifacts:reveal-file` + 计数连锁六处全改；渲染层改走 `window.api.artifacts.revealFile`。
+> 守卫是加强不是放松——渲染测试断言 `localFs.reveal` **从未被调用**，主进程断言 OS 拿到 `realpath`、存储外路径被拒。
+> 修复后真机 1 passed (12.4s)。证据同上档 §六。
+>
+> **IC10 已落地（`04761221` + 本批真机读数）**：导入侧不再只读 `conversation.json`——
+> `session-package/import-evidence.ts` 把引用 / 复核 / 审查结论 / 人工附证真正写成接收方的行
+> （7 个具名跳过码、发送方本机指针一律不携带、人工附证指纹在本机对导入转录**重新派生**）。
+> 真机读数：`e2e/certification/session-package-import-evidence.spec.ts` **1 passed (16.2s)**，
+> 接收方（新建空项目）四维与发送方真源**逐项相等**（引用 1 / 复核 2 / 验证 1、`skipped:[]`），
+> 钉子带本机可复算指纹。**诚实说明**：`reviewFindings` 两侧都是 0（e2e 假 agent 不产复核结论）
+> ⇒「复核结论（checks）落地」只有单测覆盖，本机读数未覆盖，不算已实测。
+> 证据 `docs/evidence/2026-10-04-ic10-session-package-import-evidence.md`。
+>
 > **IC7 接线已落地（`dba7d15a`）**：`App.tsx` 启动处订阅一次 `notification-inbox-store.listen()`
 > （内部走既有的 `notifications.onChanged` / `getSnapshot`，**零新通道**）；`App.test.tsx` 40 passed、
 > 契约四件套 91 passed。**真机读数已取（2026-10-04）**：`e2e/certification/notification-arrival.spec.ts`
