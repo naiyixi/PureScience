@@ -248,5 +248,30 @@ run.json on disk: [["notebook-run-…-1","completed",null],
   它会先给一个**没有会话的实例**发正常退出，再把**真正在跑的实例**强杀，
   两种都不落在"用户确认退出"这个触发条件上。平台差异也要先查：macOS 上关窗是 `hide`，不是退出。
 
+## 追加五：队列第 2 项的结论（"重启后状态返回空"），与前一项的硬化候选
+
+**结论：UI 面板路径不受影响，这一项按"探针误用 + 待硬化"收口。**
+
+- 机械原因（追加四末节已证）：`sessions.getOrCreate(sessionId, …)` **只按 sessionId 命中**，项目名只对
+  **首次创建**生效；`loadOrCreate` 又用**请求里的 projectName 做路径**。
+- UI 传的是什么：`NotebookPreview.tsx:76-86` 的 `createNotebookRequest` 用
+  `NotebookSessionReference.projectName`（主进程解析出来的**真实 projectId**），
+  `session-persistence.ts:269` 同样用 `session.projectId` ⇒ **面板不会传显示名**，因此重启后打开会加载对的那份档。
+- 我读到空，是因为探针把**项目显示名** `interrupted-run` 当 projectName 传了：新进程里那次调用成了
+  "首次创建"，于是读到（并且**写出了**）那个项目下的空 `run.json`。这是探针误用，不是面板缺陷。
+
+**据此立案两条硬化（都还没做，都已具名）**：
+
+1. **同名会话 + 不同项目名 ⇒ 静默答另一份历史**：应改为**报错**（或按 `(projectName, sessionId)` 建键），
+   而不是答一份空文档——静默是最坏的形态，读数会像"历史丢了"。
+2. **只读通道不该落档**：`notebook.state` 走 `ensure` → `loadOrCreate`，对未知的
+   `(projectName, sessionId)` 会**创建并写出**一份空 `run.json`（本轮就落了 `notebooks/interrupted-run/…`）。
+   只读调用应先 `findExisting` 命中才加载，未命中就按"无历史"回答，绝不写档。
+
+**队列其余项（本轮未动，如实记）**：第 3 项（v1.83.0 的 IC6 真机收割／A7 下载路径／egress 审批窗口侧）、
+第 4 项（技能瘦身：`openscience-dev` 本体 99,664 字符已超 100,000 上限，references 307 个文件需合并）、
+第 5 项（竞品差距：IEDB 免疫学连接器未做；PDB `pdb_search_by_sequence` 已实现待确认收口）均未开始。
+
+
 
 
