@@ -3808,5 +3808,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.oauthSignOutFailed': '登出失敗，請重試。',
   'settings.connectorUnavailable': '無法使用',
   'settings.connectorNeedsSignIn': '需要登入',
-  'settings.connectorUnavailableHint': '該伺服器無法執行：設定不完整，或路由無法使用。'
+  'settings.connectorUnavailableHint': '該伺服器無法執行：設定不完整，或路由無法使用。',
+  'settings.testingConnection': '正在測試…',
+  'settings.testConnectionOk': '伺服器已回應：{count} 個工具。',
+  'settings.testConnectionFailed': '伺服器未回應：{detail}'
 }

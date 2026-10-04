@@ -694,6 +694,7 @@ export interface PureScienceAPI {
     authenticateCustomServer(request: AuthenticateCustomServerRequest): Promise<ConnectorsSnapshot>
     cancelCustomServerAuthentication(request: AuthenticateCustomServerRequest): Promise<void>
     signOutCustomServer(request: { id: string }): Promise<ConnectorsSnapshot>
+    testCustomServer(request: { id: string }): Promise<CustomServerTestResult>
     onConnectorApprovalRequest(listener: AcpListener<ConnectorApprovalRequest>): RemoveListener
     onSkillImportApprovalRequest(
       listener: AcpListener<ConversationSkillImportApprovalRequest>

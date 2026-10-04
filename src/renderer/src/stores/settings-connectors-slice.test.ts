@@ -75,6 +75,7 @@ const createCommands = (): ConnectorCommands => ({
   authenticateCustomServer: vi.fn(async () => snapshot()),
   cancelCustomServerAuthentication: vi.fn(async () => undefined),
   signOutCustomServer: vi.fn(async () => snapshot()),
+  testCustomServer: vi.fn(async () => ({ ok: true, tools: [] })),
   setCustomServerEnabled: vi.fn(async () => snapshot()),
   removeCustomServer: vi.fn(async () => snapshot()),
   respondConnectorApproval: vi.fn(async () => undefined)

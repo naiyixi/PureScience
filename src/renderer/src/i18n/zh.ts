@@ -3868,7 +3868,10 @@ export const zh = {
   'settings.oauthSignOutFailed': '退出登录失败，请重试。',
   'settings.connectorUnavailable': '不可用',
   'settings.connectorNeedsSignIn': '需要登录',
-  'settings.connectorUnavailableHint': '该服务器无法运行：配置不完整，或路由不可用。'
+  'settings.connectorUnavailableHint': '该服务器无法运行：配置不完整，或路由不可用。',
+  'settings.testingConnection': '正在测试…',
+  'settings.testConnectionOk': '服务器已回应：{count} 个工具。',
+  'settings.testConnectionFailed': '服务器未回应：{detail}'
 }
 
 export type ZhKey = keyof typeof zh

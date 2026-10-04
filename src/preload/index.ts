@@ -386,6 +386,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.setToolPermission', request),
     signOutCustomServer: (request: { id: string }) =>
       electronRendererContracts.invoke('settings.signOutCustomServer', request),
+    testCustomServer: (request: { id: string }) =>
+      electronRendererContracts.invoke('settings.testCustomServer', request),
     setNcbiCredentials: (request: SetNcbiCredentialsRequest) =>
       electronRendererContracts.invoke('settings.setNcbiCredentials', request),
     addCustomServer: (request: AddCustomServerRequest) =>

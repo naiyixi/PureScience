@@ -4106,5 +4106,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailable': '利用不可',
   'settings.connectorNeedsSignIn': 'サインインが必要',
   'settings.connectorUnavailableHint':
-    'このサーバーは実行できません。設定が不完全か、経路が利用できません。'
+    'このサーバーは実行できません。設定が不完全か、経路が利用できません。',
+  'settings.testingConnection': 'テスト中…',
+  'settings.testConnectionOk': 'サーバーが応答しました：ツール {count} 個。',
+  'settings.testConnectionFailed': 'サーバーが応答しません：{detail}'
 }

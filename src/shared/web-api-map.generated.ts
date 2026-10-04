@@ -316,6 +316,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.skillAvailability': 'settings:skill-availability',
   'settings.skillReuse': 'settings:skill-reuse',
   'settings.testCredential': 'settings:test-credential',
+  'settings.testCustomServer': 'settings:test-custom-server',
   'settings.uninstallClaude': 'settings:uninstall-claude',
   'settings.uninstallCodex': 'settings:uninstall-codex',
   'settings.uninstallOpencode': 'settings:uninstall-opencode',

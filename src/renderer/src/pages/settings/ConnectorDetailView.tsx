@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import type {
   ConnectorDetailView as ConnectorDetail,
+  CustomServerTestResult,
   ToolPermission
 } from '../../../../shared/settings'
 import { useLanguage } from '@/i18n'
@@ -43,6 +44,7 @@ const ConnectorDetailView = ({
   const setConnectorEnabled = useSettingsStore((state) => state.setConnectorEnabled)
   const setConnectorAutoAllow = useSettingsStore((state) => state.setConnectorAutoAllow)
   const setToolPermission = useSettingsStore((state) => state.setToolPermission)
+  const testCustomServer = useSettingsStore((state) => state.testCustomServer)
   // The connector-level enabled/auto-allow state lives in the store's connectors list, which the
   // toggle actions reconcile authoritatively; the detail fetch only seeds tools + metadata. Reading
   // enabled/autoAllow from the store (falling back to the initial detail) keeps the two header
@@ -53,6 +55,22 @@ const ConnectorDetailView = ({
   const [detail, setDetail] = useState<ConnectorDetail | null>(null)
   // Ids of tools whose description is expanded.
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // IC23: a probe is its own action, not a re-render of the loaded detail. `undefined` means "not tested
+  // yet", which is what lets the UI stay silent rather than claim the server has no tools.
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<CustomServerTestResult | undefined>(undefined)
+
+  const runConnectionTest = async (): Promise<void> => {
+    setTesting(true)
+    try {
+      setTestResult(await testCustomServer({ id }))
+    } catch (error) {
+      // A throw here is the channel itself failing, which is still an answer worth showing.
+      setTestResult({ ok: false, detail: error instanceof Error ? error.message : String(error) })
+    } finally {
+      setTesting(false)
+    }
+  }
 
   const toggleExpanded = (toolId: string): void =>
     setExpanded((prev) => {
@@ -132,8 +150,40 @@ const ConnectorDetailView = ({
 
       {/* Tools: per-tool permission controls. */}
       <section className="mt-6 border-t border-border pt-4">
-        <h2 className="text-sm font-semibold text-foreground">{t('settings.toolsTitle')}</h2>
-        <p className="text-xs text-muted-foreground">{t('ui.whattheagentcandowiththiscon')}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">{t('settings.toolsTitle')}</h2>
+            <p className="text-xs text-muted-foreground">{t('ui.whattheagentcandowiththiscon')}</p>
+          </div>
+          {/* IC23: ask the server itself. The list below is whatever the last read produced, so an
+              unreachable server and a server with no tools look identical until this is pressed. */}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid="connector-test-connection"
+            disabled={testing}
+            onClick={() => void runConnectionTest()}
+          >
+            {testing ? t('settings.testingConnection') : t('settings.testConnection')}
+          </Button>
+        </div>
+        {testResult ? (
+          <p
+            data-testid="connector-test-result"
+            data-result={testResult.ok ? 'ok' : 'failed'}
+            className={`mt-2 text-xs [text-wrap:pretty] ${
+              testResult.ok ? 'text-muted-foreground' : 'text-destructive'
+            }`}
+          >
+            {testResult.ok
+              ? t('settings.testConnectionOk').replace(
+                  '{count}',
+                  String(testResult.tools?.length ?? 0)
+                )
+              : t('settings.testConnectionFailed').replace('{detail}', testResult.detail ?? '')}
+          </p>
+        ) : null}
         {detail.tools.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             {t('settings.thisConnectorHasNoTools')}

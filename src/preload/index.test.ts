@@ -601,6 +601,8 @@ describe('preload bridge — public surface inventory', () => {
       'settings.skillAvailability',
       'settings.skillReuse',
       'settings.testCredential',
+      // IC23: probe a user-added MCP server from its detail page.
+      'settings.testCustomServer',
       'settings.uninstallClaude',
       'settings.uninstallCodex',
       'settings.uninstallOpencode',
@@ -710,7 +712,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(237)
+    expect(runtimeContracts).toHaveLength(238)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

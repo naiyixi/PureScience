@@ -4143,5 +4143,8 @@ export const en: Record<ZhKey, string> = {
   'settings.connectorUnavailable': 'Unavailable',
   'settings.connectorNeedsSignIn': 'Sign-in required',
   'settings.connectorUnavailableHint':
-    'This server cannot run: its configuration is incomplete or its route is unavailable.'
+    'This server cannot run: its configuration is incomplete or its route is unavailable.',
+  'settings.testingConnection': 'Testing…',
+  'settings.testConnectionOk': 'The server answered with {count} tools.',
+  'settings.testConnectionFailed': 'The server did not answer: {detail}'
 }

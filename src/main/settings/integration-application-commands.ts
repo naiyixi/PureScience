@@ -41,6 +41,7 @@ type ConnectorIntegrationWorkflows = Pick<
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
   | 'signOutCustomServer'
+  | 'testCustomServer'
 >
 
 type OwnerArgs<Owner, Method extends keyof Owner> = Owner[Method] extends (
@@ -127,6 +128,11 @@ const settingsIntegrationApplicationCommands = Object.freeze({
     OwnerArgs<ConnectorIntegrationWorkflows, 'signOutCustomServer'>,
     OwnerResult<ConnectorIntegrationWorkflows, 'signOutCustomServer'>
   >('settings:sign-out-custom-server'),
+  testCustomServer: defineApplicationCommand<
+    'settings:test-custom-server',
+    OwnerArgs<ConnectorIntegrationWorkflows, 'testCustomServer'>,
+    OwnerResult<ConnectorIntegrationWorkflows, 'testCustomServer'>
+  >('settings:test-custom-server'),
   setNcbiCredentials: defineApplicationCommand<
     'settings:set-ncbi-credentials',
     OwnerArgs<ConnectorIntegrationWorkflows, 'setNcbiCredentials'>,
@@ -198,6 +204,7 @@ const settingsConnectorApplicationCommandGroup = defineApplicationCommandGroup(
     settingsIntegrationApplicationCommands.setConnectorAutoAllow,
     settingsIntegrationApplicationCommands.setToolPermission,
     settingsIntegrationApplicationCommands.signOutCustomServer,
+    settingsIntegrationApplicationCommands.testCustomServer,
     settingsIntegrationApplicationCommands.setNcbiCredentials,
     settingsIntegrationApplicationCommands.addCustomServer,
     settingsIntegrationApplicationCommands.setCustomServerEnabled,
@@ -256,6 +263,8 @@ const registerIntegrationSettingsApplicationCommands = (
         dependencies.connectors.setToolPermission(args[0]),
       'settings:sign-out-custom-server': ({ args }) =>
         dependencies.connectors.signOutCustomServer(args[0]),
+      'settings:test-custom-server': ({ args }) =>
+        dependencies.connectors.testCustomServer(args[0]),
       'settings:set-ncbi-credentials': ({ args }) =>
         dependencies.connectors.setNcbiCredentials(args[0]),
       'settings:add-custom-server': ({ args }) => dependencies.connectors.addCustomServer(args[0]),

@@ -62,6 +62,7 @@ import type {
   ValidateProviderResult,
   CredentialTestResult,
   CredentialView,
+  CustomServerTestResult,
   SetCredentialRequest,
   StoredCredential,
   EgressSettings
@@ -1243,6 +1244,11 @@ class SettingsService {
 
   signOutCustomServer(request: { id: string }): Promise<ConnectorsSnapshot> {
     return this.connectors.signOutCustomServer(request)
+  }
+
+  // IC23: pass the connection probe through to the Connector module.
+  testCustomServer(request: { id: string }): Promise<CustomServerTestResult> {
+    return this.connectors.testCustomServer(request)
   }
 
   // Returns the subset of forced ids that are currently disabled in settings — i.e. the picks that need

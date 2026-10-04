@@ -9,6 +9,7 @@ import type {
   ConnectorsSnapshot,
   ConnectorToolView,
   ConnectorView,
+  CustomServerTestResult,
   CustomServerView,
   NcbiCredentialsView,
   RemoveCustomServerRequest,
@@ -218,8 +219,16 @@ class ConnectorSettingsModule {
         autoAllow: (connectors?.autoAllowIds ?? []).includes(server.id),
         group: 'directory'
       }
-      const liveTools = await this.customServerToolsProvider?.(server)
-      const tools: ConnectorToolView[] = (liveTools ?? []).map((tool) => {
+      // A server that cannot answer must not make its own detail page unusable: this read is best-effort, so
+      // a failure degrades to an empty list rather than a thrown error, and the "Test connection" action is
+      // what names the failure in words (IC23). Found while writing that unit's real-machine reading.
+      let liveTools: McpClientManagerTool[] = []
+      try {
+        liveTools = (await this.customServerToolsProvider?.(server)) ?? []
+      } catch {
+        liveTools = []
+      }
+      const tools: ConnectorToolView[] = liveTools.map((tool) => {
         const toolId = `${id}/${tool.name}`
         return {
           id: toolId,
@@ -566,12 +575,30 @@ class ConnectorSettingsModule {
       (server) => server.id === request.id
     )
     if (!stored) throw new Error(`Unknown custom connector: ${request.id}`)
-    if (!stored.oauth) throw new Error(`Custom connector "${request.id}" is not configured for OAuth`)
+    if (!stored.oauth)
+      throw new Error(`Custom connector "${request.id}" is not configured for OAuth`)
 
     await this.saveCustomServerOAuthState(request.id, undefined)
     await this.customServerSignOutProvider?.(request.id)
 
     return this.connectorsSnapshot()
+  }
+
+  // IC23: probe a user-added server without enabling, installing, or signing in to anything. Uses the same
+  // live tool list the detail page reads; wrapping it here is what makes "the server did not answer" a
+  // distinct outcome from "the server advertises no tools" — a bare tool list cannot tell those apart.
+  async testCustomServer(request: { id: string }): Promise<CustomServerTestResult> {
+    const stored = (await this.repository.getSettings()).connectors?.customMcpServers?.find(
+      (server) => server.id === request.id
+    )
+    if (!stored) throw new Error(`Unknown custom connector: ${request.id}`)
+
+    try {
+      const tools = (await this.customServerToolsProvider?.(stored)) ?? []
+      return { ok: true, tools: tools.map((tool) => tool.name) }
+    } catch (error) {
+      return { ok: false, detail: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   private decryptOAuthState(ref: string): StoredCustomMcpOAuthState | undefined {

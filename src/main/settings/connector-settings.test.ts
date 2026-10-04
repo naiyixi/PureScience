@@ -201,6 +201,26 @@ describe('ConnectorSettingsModule', () => {
     )
   })
 
+  // Found while writing IC23's reading: a server whose process cannot start made getConnectorDetail reject,
+  // so its own detail page was unusable. The tool read is best-effort; the named failure belongs to the
+  // connection test.
+  it('opens the detail even when the live tool list fails (IC23)', async () => {
+    const snapshot = await service.addCustomServer({
+      name: 'Dead Server',
+      transport: 'stdio',
+      command: 'this-command-does-not-exist'
+    })
+    const added = snapshot.customServers[0]
+    service.setCustomServerToolsProvider(async () => {
+      throw new Error('spawn this-command-does-not-exist ENOENT')
+    })
+
+    const detail = await service.getConnectorDetail(added.id)
+
+    expect(detail.displayName).toBe('Dead Server')
+    expect(detail.tools).toEqual([])
+  })
+
   // IC20: the detail's "Skip approvals" toggle writes the server's id into autoAllowIds, and the detail must
   // read that back — it previously hardcoded false, so the switch showed off however often it was flipped.
   it('reflects the skip-approvals switch for a user-added server (IC20)', async () => {

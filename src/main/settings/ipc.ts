@@ -548,6 +548,10 @@ const registerSettingsIpcHandlers = ({
   ipcMainHandle('settings:sign-out-custom-server', (_event, request: { id: string }) =>
     workflows.connectors.signOutCustomServer(request)
   )
+  // IC23: probe a user-added server and report what it advertises (or why it did not answer).
+  ipcMainHandle('settings:test-custom-server', (_event, request: { id: string }) =>
+    workflows.connectors.testCustomServer(request)
+  )
   ipcMainHandle('settings:set-ncbi-credentials', (_event, request: SetNcbiCredentialsRequest) =>
     workflows.connectors.setNcbiCredentials(request)
   )

@@ -4232,5 +4232,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailable': 'Nicht verfügbar',
   'settings.connectorNeedsSignIn': 'Anmeldung erforderlich',
   'settings.connectorUnavailableHint':
-    'Dieser Server kann nicht ausgeführt werden: Konfiguration unvollständig oder Route nicht verfügbar.'
+    'Dieser Server kann nicht ausgeführt werden: Konfiguration unvollständig oder Route nicht verfügbar.',
+  'settings.testingConnection': 'Wird getestet…',
+  'settings.testConnectionOk': 'Der Server antwortete mit {count} Tools.',
+  'settings.testConnectionFailed': 'Der Server hat nicht geantwortet: {detail}'
 }

@@ -4192,5 +4192,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailable': 'No disponible',
   'settings.connectorNeedsSignIn': 'Se requiere iniciar sesión',
   'settings.connectorUnavailableHint':
-    'Este servidor no puede ejecutarse: la configuración está incompleta o la ruta no está disponible.'
+    'Este servidor no puede ejecutarse: la configuración está incompleta o la ruta no está disponible.',
+  'settings.testingConnection': 'Probando…',
+  'settings.testConnectionOk': 'El servidor respondió: {count} herramientas.',
+  'settings.testConnectionFailed': 'El servidor no respondió: {detail}'
 }

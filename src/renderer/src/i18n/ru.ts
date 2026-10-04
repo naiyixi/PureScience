@@ -4120,5 +4120,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailable': 'Недоступен',
   'settings.connectorNeedsSignIn': 'Требуется вход',
   'settings.connectorUnavailableHint':
-    'Этот сервер не может быть запущен: конфигурация неполна или маршрут недоступен.'
+    'Этот сервер не может быть запущен: конфигурация неполна или маршрут недоступен.',
+  'settings.testingConnection': 'Проверка…',
+  'settings.testConnectionOk': 'Сервер ответил: инструментов — {count}.',
+  'settings.testConnectionFailed': 'Сервер не ответил: {detail}'
 }

@@ -167,16 +167,16 @@ const GROUP_COUNT = 39
 // +1 each on the same three for the window package install/uninstall (runtime:manage-packages, IC13):
 // writing THIS machine's runtime root from a Settings dialog is local-only by nature, so the dispatch
 // count stays and the fail-closed set takes it.
-const INTERNAL_COMMAND_COUNT = 352
+const INTERNAL_COMMAND_COUNT = 353
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 350
+const LOCAL_WEB_COMMAND_COUNT = 351
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 227
+const REMOTE_WEB_COMMAND_COUNT = 228
 const REMOTE_REJECTED_COMMAND_COUNT = 123
 const TASK_COMMAND_COUNT = 11
 

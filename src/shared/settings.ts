@@ -1361,6 +1361,18 @@ export type CredentialTestResult = {
   kind?: 'auth' | 'network' | 'format' | 'unknown'
 }
 
+// Result of a connection test against a user-added MCP server (IC23): whether it answered, and what it
+// advertises. A failure is a first-class outcome here — the point of the action is to tell "the server is
+// unreachable" apart from "the server has no tools", which a bare tool list cannot express.
+export type CustomServerTestResult = {
+  ok: boolean
+  // The tools the server advertised (present on success; an empty array is a real answer, distinct from a
+  // failure — which is the whole reason this result is not just a tool list).
+  tools?: string[]
+  // Raw failure text, for diagnostics; the sentence the user sees is composed by the renderer (9 locales).
+  detail?: string
+}
+
 // Re-export the egress allowlist schema (defined in shared/egress.ts) so consumers that import
 // settings types from here keep one source.
 export type { EgressSettings, EgressDomainGroupId } from './egress'

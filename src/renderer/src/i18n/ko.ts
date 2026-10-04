@@ -4040,5 +4040,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailable': '사용 불가',
   'settings.connectorNeedsSignIn': '로그인 필요',
   'settings.connectorUnavailableHint':
-    '이 서버는 실행할 수 없습니다. 구성이 불완전하거나 경로를 사용할 수 없습니다.'
+    '이 서버는 실행할 수 없습니다. 구성이 불완전하거나 경로를 사용할 수 없습니다.',
+  'settings.testingConnection': '테스트 중…',
+  'settings.testConnectionOk': '서버가 응답했습니다: 도구 {count}개.',
+  'settings.testConnectionFailed': '서버가 응답하지 않았습니다: {detail}'
 }

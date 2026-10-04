@@ -1,6 +1,7 @@
 import type {
   AuthenticateCustomServerRequest,
   AddCustomServerRequest,
+  CustomServerTestResult,
   RemoveCustomServerRequest,
   SetConnectorAutoAllowRequest,
   SetConnectorEnabledRequest,
@@ -28,6 +29,7 @@ type ConnectorSettingsWorkflowStore = Pick<
   | 'authenticateCustomServer'
   | 'cancelCustomServerAuthentication'
   | 'signOutCustomServer'
+  | 'testCustomServer'
   | 'exportMcpServers'
   | 'importMcpServers'
 >
@@ -80,6 +82,11 @@ class ConnectorSettingsWorkflows {
   // goes through the same after-change hook as the other connector mutations.
   async signOutCustomServer(request: { id: string }): WorkflowResult<'signOutCustomServer'> {
     return this.afterConnectorsChanged(() => this.settings.signOutCustomServer(request))
+  }
+
+  // IC23: probing does not change anything durable, so it deliberately skips the after-change hook.
+  async testCustomServer(request: { id: string }): Promise<CustomServerTestResult> {
+    return this.settings.testCustomServer(request)
   }
 
   async setNcbiCredentials(
