@@ -218,6 +218,7 @@ import type {
 } from '../shared/session-package'
 import type {
   SessionPackageImportPreview,
+  SessionPackageImportRecord,
   SessionPackageImportRequest,
   SessionPackageImportResult
 } from '../shared/session-package-import'
@@ -525,6 +526,14 @@ export interface PureScienceAPI {
     previewPackage(request?: { packagePath?: string }): Promise<SessionPackageImportPreview | null>
     /** Lands a previewed package as a new, read-only session. Needs an explicit confirmation. */
     importPackage(request: SessionPackageImportRequest): Promise<SessionPackageImportResult>
+    /**
+     * The posture an imported session carries, read from the record beside it (the same file the run
+     * guard reads). `null` means this is an ordinary session. Never writes.
+     */
+    importPosture(request: {
+      projectId: string
+      sessionId: string
+    }): Promise<SessionPackageImportRecord | null>
     onFlushRequest?(listener: AcpListener<SessionPersistenceFlushRequest>): RemoveListener
     sendFlushResponse?(response: SessionPersistenceFlushResponse): void
     onCreated(listener: AcpListener<SessionUpsertEvent>): RemoveListener

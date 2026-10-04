@@ -1846,6 +1846,10 @@ export const en: Record<ZhKey, string> = {
     'Every conclusion in this package is the sender’s assertion. This machine has not verified it.',
   'sessions.packageImport.readOnly':
     'Imported sessions are read-only: you can read and cite them, never run or continue them.',
+  'sessions.importPosture.title': 'Imported session — read-only',
+  'sessions.importPosture.importedFrom': 'Imported from {project} / {session} (app {appVersion})',
+  'sessions.importPosture.exportedAt': 'Exported {when}',
+  'sessions.importPosture.notVerified': 'Not verified on this machine — every conclusion is the sender’s assertion.',
   'sessions.packageImport.confirm': 'Import',
   'sessions.packageImport.cancel': 'Cancel',
   'sessions.packageImport.refused': 'This package cannot be imported: {reason}',

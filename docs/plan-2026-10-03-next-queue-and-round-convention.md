@@ -185,6 +185,13 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 
 ## 四、本轮追加（会话，2026-10-04）
 
+**v1.84.0 进行中（会话负责）**：**IC11 导入会话的只读/来源姿态可见 ✅ 已落地**（新增 `sessions:import-posture`
+只读通道 + `SessionImportPostureBanner`；真机 `e2e/certification/session-import-posture.spec.ts` **1 passed (31.9s)**，
+含"重启进程后再读"与"同项目普通会话 0 横幅"两道关键断言；契约连锁 7 处计数、4 键 ×9 语）。
+**IC12 迁移遗留副本的「完成/丢弃」在办**：缺口已钉准——marker 在生产代码里只有迁移流程自己读（目标文件夹检查 + 提交闸门），
+**没有任何持久化的"待决副本"指针**，所以重启后无从知道去哪个目录解析；修法=暂存时持久化指针（source/target/token/status）
++ 启动扫描按 marker 复核 + 两个入口（完成走既有闸门 `expectedToken`、丢弃删暂存目录），文案换掉目前指向不存在按钮的那句英文。
+
 **v1.83.0 已发布（2026-10-04）**：tag `v1.83.0` → 提交 `efc4b1fd`（自 `v1.82.0` 起 **37 笔**），
 `release.yml` run **37189184119** 全绿（preflight / build×4 / `Verify` / `notarize-mac`（无 Apple 凭据 ⇒ 按设计标 UNSIGNED）/
 **publish** / `windows-upgrade-smoke`）。发布页 **21 个资产** + `Latest`；`RELEASE-CERTIFICATION.json.sourceSha` 与 tag 提交

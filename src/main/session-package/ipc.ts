@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { SESSION_PACKAGE_EXTENSION } from '../../shared/session-package'
 import type {
   SessionPackageImportPreview,
+  SessionPackageImportRecord,
   SessionPackageImportRequest
 } from '../../shared/session-package-import'
 import { ipcMainHandle } from '../ipc-handler-registry'
@@ -50,6 +51,15 @@ export type SessionPackageImportIpcDeps = {
   owner: SessionPackageImportOwner
   /** Chooses a package with the OS dialog. Absent where no dialog can exist. */
   showOpenDialog?: (window?: BrowserWindow) => Promise<string | null>
+  /**
+   * Reads the record beside a session. Deliberately the SAME reader the run guard uses, so the posture
+   * the window shows is the posture that is enforced — a second notion of "imported" could disagree
+   * with the file that actually refuses execution.
+   */
+  readImportRecord?: (
+    projectId: string,
+    sessionId: string
+  ) => Promise<SessionPackageImportRecord | undefined>
 }
 
 const readPackageFile = async (path: string): Promise<Uint8Array> =>
@@ -80,5 +90,18 @@ export const registerSessionPackageImportIpcHandlers = (
       deps.owner.ports(readPackageFile) satisfies SessionPackageImportDeps,
       request
     )
+  )
+
+  // The posture of an imported session, for the window that opens it. Read-only and non-writing: it
+  // reports the record the import already wrote (where the session came from, when it left the other
+  // machine, and the refusal it carries). `null` means an ordinary session — the absence of the record
+  // IS the answer, so no second flag is invented here.
+  ipcMainHandle(
+    'sessions:import-posture',
+    async (_event, request: { projectId?: string; sessionId?: string } | undefined) => {
+      const { projectId, sessionId } = request ?? {}
+      if (!projectId || !sessionId || !deps.readImportRecord) return null
+      return (await deps.readImportRecord(projectId, sessionId).catch(() => undefined)) ?? null
+    }
   )
 }

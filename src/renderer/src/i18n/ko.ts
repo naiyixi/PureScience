@@ -1467,6 +1467,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '패키지 안의 결론은 모두 보낸 쪽의 주장이며, 이 기기에서는 검증하지 않았습니다.',
   'sessions.packageImport.readOnly':
     '가져온 세션은 읽기 전용입니다. 열람과 인용은 되지만 실행이나 이어가기는 안 됩니다.',
+  'sessions.importPosture.title': '가져온 세션 — 읽기 전용',
+  'sessions.importPosture.importedFrom': '{project} / {session}에서 가져옴 (앱 {appVersion})',
+  'sessions.importPosture.exportedAt': '내보낸 시각 {when}',
+  'sessions.importPosture.notVerified': '이 컴퓨터에서 검증되지 않음 — 모든 결론은 보낸 사람의 주장입니다.',
   'sessions.packageImport.confirm': '가져오기',
   'sessions.packageImport.cancel': '취소',
   'sessions.packageImport.refused': '이 패키지는 가져올 수 없습니다: {reason}',

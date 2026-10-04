@@ -210,6 +210,9 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('sessions.previewPackage', request),
     // Lands a previewed package as a new read-only session.
     importPackage: (request) => electronRendererContracts.invoke('sessions.importPackage', request),
+    // Reports the posture an imported session carries (where it came from, when it was exported, and
+    // the refusal it holds). `null` for an ordinary session.
+    importPosture: (request) => electronRendererContracts.invoke('sessions.importPosture', request),
     onFlushRequest: (listener) =>
       electronRendererContracts.subscribe('sessions.onFlushRequest', listener),
     sendFlushResponse: (response) =>

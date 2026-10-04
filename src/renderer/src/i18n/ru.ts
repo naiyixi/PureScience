@@ -1490,6 +1490,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Все выводы в пакете — утверждения отправителя; на этой машине они не проверялись.',
   'sessions.packageImport.readOnly':
     'Импортированные сессии доступны только для чтения: их можно читать и цитировать, но нельзя запускать или продолжать.',
+  'sessions.importPosture.title': 'Импортированная сессия — только чтение',
+  'sessions.importPosture.importedFrom': 'Импортировано из {project} / {session} (приложение {appVersion})',
+  'sessions.importPosture.exportedAt': 'Экспортировано {when}',
+  'sessions.importPosture.notVerified': 'Не проверено на этой машине — каждый вывод является утверждением отправителя.',
   'sessions.packageImport.confirm': 'Импортировать',
   'sessions.packageImport.cancel': 'Отмена',
   'sessions.packageImport.refused': 'Этот пакет нельзя импортировать: {reason}',

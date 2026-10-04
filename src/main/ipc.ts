@@ -3034,6 +3034,10 @@ const createApplicationModules = async (
             input
           )
       }),
+      // The posture reader is the SAME one the run guard uses, so what the window shows is exactly
+      // what refuses execution — not a parallel notion of "imported".
+      readImportRecord: (projectId, sessionId) =>
+        readSessionPackageImportRecord(resolveConfigRoot(), projectId, sessionId),
       // The picker lives at the edge, like the export's save dialog: only the adapter knows the window.
       showOpenDialog: async (window?: BrowserWindow) => {
         const options = {

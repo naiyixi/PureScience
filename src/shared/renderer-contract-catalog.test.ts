@@ -28,7 +28,7 @@ describe('renderer contract catalog', () => {
     // catalog, the invoke map and the local-Web installation set each move by one while the remote-Web one
     // grows by the rejecting stub it gets for being local-only.
     expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(458)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(459)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -72,7 +72,7 @@ describe('renderer contract catalog', () => {
     })
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(75)
+    ).toHaveLength(76)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(122)

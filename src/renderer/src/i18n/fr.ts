@@ -1528,6 +1528,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Toutes les conclusions du paquet sont des affirmations de l’expéditeur ; cette machine ne les a pas vérifiées.',
   'sessions.packageImport.readOnly':
     'Les sessions importées sont en lecture seule : consultation et citation oui, exécution ou reprise non.',
+  'sessions.importPosture.title': 'Session importée — lecture seule',
+  'sessions.importPosture.importedFrom': 'Importée depuis {project} / {session} (app {appVersion})',
+  'sessions.importPosture.exportedAt': 'Exportée le {when}',
+  'sessions.importPosture.notVerified': 'Non vérifié sur cette machine — chaque conclusion est l’affirmation de l’expéditeur.',
   'sessions.packageImport.confirm': 'Importer',
   'sessions.packageImport.cancel': 'Annuler',
   'sessions.packageImport.refused': 'Ce paquet ne peut pas être importé : {reason}',

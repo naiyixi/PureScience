@@ -5,6 +5,7 @@ import { Bookmark, Library, MessagesSquare, PanelLeft, PanelRight } from 'lucide
 import type { PanelImperativeHandle, PanelSize } from 'react-resizable-panels'
 
 import type { NotebookSessionReference } from '../../../../shared/notebook'
+import type { SessionPackageImportRecord } from '../../../../shared/session-package-import'
 import type { ElicitationAnswer, ElicitationRequestView } from '../../../../shared/elicitation'
 import type { EgressApprovalDecision, EgressApprovalRequest } from '../../../../shared/egress'
 import {
@@ -77,6 +78,7 @@ import {
 } from './composer/composer-history'
 import { buildCustomizePrefillDoc } from '@/lib/customize-chat'
 import { ConversationPanel } from './ConversationPanel'
+import { SessionImportPostureBanner } from '@/components/session-package/SessionImportPostureBanner'
 import { useRenderSessions } from './use-render-sessions'
 import { FolderGrantsPanel } from '@/components/FolderGrantsPanel'
 import { DeleteSessionDialog } from './DeleteSessionDialog'
@@ -1132,6 +1134,28 @@ const WorkspacePage = ({
       cancelled = true
     }
   }, [activeSession, setActivePlanProjection])
+  // The read-only posture an imported session carries, read from the record beside it whenever the
+  // session is opened: the session itself says where it came from and that nothing here verified it —
+  // not only the dialog that once imported it. Keyed by session id so a posture can never linger on a
+  // session it does not belong to, and so an ordinary session (no record, nothing to set) simply shows
+  // no banner.
+  const [importPosture, setImportPosture] = useState<{
+    sessionId: string
+    record: SessionPackageImportRecord
+  } | null>(null)
+  useEffect(() => {
+    const readImportPosture = window.api.sessions?.importPosture
+    if (!activeSession || !readImportPosture) return
+    let cancelled = false
+    void readImportPosture({ projectId: activeSession.projectId, sessionId: activeSession.id })
+      .then((record) => {
+        if (!cancelled && record) setImportPosture({ sessionId: activeSession.id, record })
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [activeSession])
   const activeSessionHasSendPreparation = activeSession
     ? sendPreparationInFlightSessionIds.includes(activeSession.id)
     : false
@@ -2942,6 +2966,9 @@ const WorkspacePage = ({
             </>
           ) : null}
 
+          {importPosture && activeSession?.id === importPosture.sessionId ? (
+            <SessionImportPostureBanner record={importPosture.record} />
+          ) : null}
           <ConversationPanel
             activeSession={activeSession}
             draftDoc={draftDoc}

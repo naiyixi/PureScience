@@ -1519,6 +1519,10 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Todas las conclusiones del paquete son afirmaciones del remitente; esta máquina no las ha verificado.',
   'sessions.packageImport.readOnly':
     'Las sesiones importadas son de solo lectura: se pueden leer y citar, nunca ejecutar ni continuar.',
+  'sessions.importPosture.title': 'Sesión importada — solo lectura',
+  'sessions.importPosture.importedFrom': 'Importada desde {project} / {session} (app {appVersion})',
+  'sessions.importPosture.exportedAt': 'Exportada el {when}',
+  'sessions.importPosture.notVerified': 'Sin verificar en este equipo: cada conclusión es la afirmación del remitente.',
   'sessions.packageImport.confirm': 'Importar',
   'sessions.packageImport.cancel': 'Cancelar',
   'sessions.packageImport.refused': 'Este paquete no se puede importar: {reason}',

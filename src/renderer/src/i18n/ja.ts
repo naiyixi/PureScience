@@ -1485,6 +1485,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'パッケージ内の結論はすべて送信側の主張で、この端末では検証していません。',
   'sessions.packageImport.readOnly':
     '読み込んだセッションは読み取り専用です。閲覧と引用はできますが、実行や続行はできません。',
+  'sessions.importPosture.title': 'インポートされたセッション — 読み取り専用',
+  'sessions.importPosture.importedFrom': '{project} / {session} からインポート（アプリ {appVersion}）',
+  'sessions.importPosture.exportedAt': 'エクスポート日時 {when}',
+  'sessions.importPosture.notVerified': 'このマシンでは未検証 — すべての結論は送信者の主張です。',
   'sessions.packageImport.confirm': '読み込む',
   'sessions.packageImport.cancel': 'キャンセル',
   'sessions.packageImport.refused': 'このパッケージは読み込めません：{reason}',

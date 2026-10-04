@@ -1530,6 +1530,10 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Alle Schlussfolgerungen im Paket sind Behauptungen des Absenders; auf diesem Rechner wurden sie nicht geprüft.',
   'sessions.packageImport.readOnly':
     'Importierte Sitzungen sind schreibgeschützt: lesen und zitieren ja, ausführen oder fortsetzen nein.',
+  'sessions.importPosture.title': 'Importierte Sitzung – schreibgeschützt',
+  'sessions.importPosture.importedFrom': 'Importiert aus {project} / {session} (App {appVersion})',
+  'sessions.importPosture.exportedAt': 'Exportiert am {when}',
+  'sessions.importPosture.notVerified': 'Auf diesem Rechner nicht überprüft – jede Schlussfolgerung ist die Behauptung des Absenders.',
   'sessions.packageImport.confirm': 'Importieren',
   'sessions.packageImport.cancel': 'Abbrechen',
   'sessions.packageImport.refused': 'Dieses Paket lässt sich nicht importieren: {reason}',

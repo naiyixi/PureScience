@@ -76,6 +76,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'roCrate.exportProject',
   'sessions.exportPackage',
   'sessions.importPackage',
+  'sessions.importPosture',
   'sessions.onFlushRequest',
   'sessions.previewPackage',
   'sessions.sendFlushResponse',
@@ -292,7 +293,7 @@ describe('renderer surface inventory', () => {
     // 457 with the named-environment surface (runtime.manageNamedEnvironments, audit P0-8): same profile.
     // 458 with the artifact reveal handoff (artifacts:reveal-file, IC9): one more LOCAL artifact channel,
     // so the preload inventory, the catalog and the local-Web installation count all move by one.
-    expect(electronPaths).toHaveLength(458)
+    expect(electronPaths).toHaveLength(459)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
