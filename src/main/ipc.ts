@@ -1065,6 +1065,12 @@ const createApplicationModules = async (
   settingsService.setMaterializedCustomSkillNamesProvider(() =>
     connectorRuntimeSettings.materializedCustomSkillNames()
   )
+  // IC19: the Settings detail for a user-added MCP server needs that server's OWN tool list, which only the
+  // MCP client can produce. Injected here (the composition root holds both) rather than letting the settings
+  // module reach into the connector runtime.
+  settingsService.setCustomServerToolsProvider((server) =>
+    mcpClientManager.listTools(toCustomMcpConfig(server))
+  )
   settingsService.setCustomServerAuthenticator(
     async (serverId) => {
       const server = (await settingsService.getConnectors())?.customMcpServers?.find(

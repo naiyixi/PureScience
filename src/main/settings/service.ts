@@ -164,12 +164,18 @@ import {
   type ExplicitAgentBackendTarget
 } from './backend-resolver'
 import { CONNECTOR_CATALOG } from '../connectors/catalog'
+import type { McpClientManagerTool } from '../connectors/mcp-client-manager'
 import { SkillRegistry } from '../skills/registry'
 import { readSkillUsageLedger } from './skill-usage-hook'
 import type { SkillPayoff } from '../../shared/skill-usage'
 import { UserSkillRepository } from '../skills/user-skill-repository'
 import type { SkillExportArchive } from '../skills/export'
-import type { StoredConnectors, StoredCustomMcpOAuthState, StoredSettings } from './types'
+import type {
+  StoredConnectors,
+  StoredCustomMcpOAuthState,
+  StoredCustomMcpServer,
+  StoredSettings
+} from './types'
 import type { VisionModelConfiguration } from '../../shared/settings'
 import type { CodexAuthControllerPort } from './codex-auth'
 import { createSettingsIdSequence } from './id-sequence'
@@ -1221,6 +1227,13 @@ class SettingsService {
 
   setMaterializedCustomSkillNamesProvider(provider: () => readonly string[]): void {
     this.connectors.setMaterializedCustomSkillNamesProvider(provider)
+  }
+
+  // IC19: pass the live MCP tool-list provider through to the Connector module (see its own comment).
+  setCustomServerToolsProvider(
+    provider: (server: StoredCustomMcpServer) => Promise<McpClientManagerTool[]>
+  ): void {
+    this.connectors.setCustomServerToolsProvider(provider)
   }
 
   // Returns the subset of forced ids that are currently disabled in settings — i.e. the picks that need

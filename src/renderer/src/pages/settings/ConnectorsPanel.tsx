@@ -710,14 +710,22 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                     >
                       <ConnectorGlyph size={24} />
                       <div className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-foreground">
-                          {server.name}
-                        </span>
-                        {server.description ? (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {server.description}
+                        {/* IC19: a user-added server opens the same detail page as a bundled one — its own
+                            tool list (whatever the MCP server advertises) with per-tool permissions. */}
+                        <button
+                          type="button"
+                          onClick={() => onNavigate({ kind: 'detail', id: server.id })}
+                          className="block w-full text-left"
+                        >
+                          <span className="block truncate text-sm text-foreground">
+                            {server.name}
                           </span>
-                        ) : null}
+                          {server.description ? (
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {server.description}
+                            </span>
+                          ) : null}
+                        </button>
                       </div>
                       <SettingsIconAction
                         label={t('settings.exportConnectorAction').replace('{name}', server.name)}

@@ -130,6 +130,77 @@ describe('ConnectorSettingsModule', () => {
     expect(detail.tools[0].id).toBe(`chemistry/${detail.tools[0].method}`)
   })
 
+  // IC19: a user-added server is not in the bundled catalog, so the old code threw on its id and the
+  // Settings detail was simply unreachable. Its detail now works the same way as a bundled connector's —
+  // with the tool list coming from the MCP server itself (the live list, not a static map).
+  it('opens the detail of a user-added server with its own live tool list (IC19)', async () => {
+    const snapshot = await service.addCustomServer({
+      name: 'Probe Server',
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-probe'],
+      description: 'Probe server'
+    })
+    const added = snapshot.customServers[0]
+    let askedFor: string | undefined
+    service.setCustomServerToolsProvider(async (server) => {
+      askedFor = server.id
+      return [{ name: 'probe_alpha', description: 'Alpha tool' }, { name: 'probe_beta' }]
+    })
+
+    const detail = await service.getConnectorDetail(added.id)
+
+    expect(askedFor).toBe(added.id)
+    expect(detail.displayName).toBe('Probe Server')
+    expect(detail.description).toBe('Probe server')
+    expect(detail.tools.map((t) => t.method)).toEqual(['probe_alpha', 'probe_beta'])
+    expect(detail.tools.map((t) => t.id)).toEqual([
+      `${added.id}/probe_alpha`,
+      `${added.id}/probe_beta`
+    ])
+    expect(detail.tools.every((t) => t.permission === 'allow')).toBe(true)
+  })
+
+  it('applies the same permission precedence to a user-added server tool (IC19)', async () => {
+    const snapshot = await service.addCustomServer({
+      name: 'Probe Server',
+      transport: 'stdio',
+      command: 'npx'
+    })
+    const added = snapshot.customServers[0]
+    service.setCustomServerToolsProvider(async () => [
+      { name: 'probe_alpha', description: 'Alpha' }
+    ])
+
+    const toolId = `${added.id}/probe_alpha`
+    await service.setToolPermission({ toolId, permission: 'block' })
+
+    const detail = await service.getConnectorDetail(added.id)
+    expect(detail.tools.find((t) => t.id === toolId)?.permission).toBe('block')
+  })
+
+  it('opens a user-added server detail even when no live tool list is available (IC19)', async () => {
+    const snapshot = await service.addCustomServer({
+      name: 'Probe Server',
+      transport: 'stdio',
+      command: 'npx'
+    })
+    const added = snapshot.customServers[0]
+
+    // No provider installed (a composition that forgot it, or a test): the header still opens and the tool
+    // list is simply empty — an honest blank rather than an error.
+    const detail = await service.getConnectorDetail(added.id)
+
+    expect(detail.displayName).toBe('Probe Server')
+    expect(detail.tools).toEqual([])
+  })
+
+  it('still rejects a genuinely unknown connector id (IC19)', async () => {
+    await expect(service.getConnectorDetail('no-such-server-anywhere')).rejects.toThrow(
+      'Unknown connector'
+    )
+  })
+
   it('cycles a tool through block, ask, and back to allow', async () => {
     const first = await service.getConnectorDetail('chemistry')
     const toolId = first.tools[0].id

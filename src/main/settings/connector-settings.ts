@@ -7,6 +7,7 @@ import type {
   ConnectorTemplateExportPreview,
   ConnectorTemplatePreview,
   ConnectorsSnapshot,
+  ConnectorToolView,
   ConnectorView,
   CustomServerView,
   NcbiCredentialsView,
@@ -31,6 +32,7 @@ import {
 } from '../../shared/custom-connector'
 import { CONNECTOR_CATALOG } from '../connectors/catalog'
 import { isCustomMcpServerRouteSafe } from '../connectors/custom-mcp-bootstrap'
+import type { McpClientManagerTool } from '../connectors/mcp-client-manager'
 import { getConnectorTools } from '../connectors/registry'
 import { encryptKey, isEncryptionAvailable, tryDecryptKey } from './crypto'
 import { sanitizeCustomMcpServer, type SettingsRepository } from './repository'
@@ -58,11 +60,23 @@ const normalizeOAuthConfig = (
 // clients, approval decisions, Specialist bindings, and refresh workflows remain outside this module.
 class ConnectorSettingsModule {
   private materializedCustomSkillNamesProvider: () => readonly string[] = () => []
+  // IC19: set by the composition root; absent means "no live tool list available" (the detail still opens).
+  private customServerToolsProvider:
+    ((server: StoredCustomMcpServer) => Promise<McpClientManagerTool[]>) | undefined
 
   constructor(private readonly repository: SettingsRepository) {}
 
   setMaterializedCustomSkillNamesProvider(provider: () => readonly string[]): void {
     this.materializedCustomSkillNamesProvider = provider
+  }
+
+  // IC19: the live tool list of a user-added MCP server, injected from the composition root (the settings
+  // module owns no MCP client). Absent (unit tests, a composition that forgot it) simply yields no tools
+  // rather than an error: the detail still opens with its header fields.
+  setCustomServerToolsProvider(
+    provider: (server: StoredCustomMcpServer) => Promise<McpClientManagerTool[]>
+  ): void {
+    this.customServerToolsProvider = provider
   }
 
   // Bundled connectors are default-on. Keep this projection on the durable owner so runtime
@@ -171,23 +185,64 @@ class ConnectorSettingsModule {
 
   async getConnectorDetail(id: string): Promise<ConnectorDetailView> {
     const meta = CONNECTOR_CATALOG.find((entry) => entry.id === id)
-
-    if (!meta) throw new Error(`Unknown connector: ${id}`)
-
     const connectors = await this.getConnectors()
-    const view = this.toConnectorViews(connectors).find((entry) => entry.id === id)
     const blocked = new Set(connectors?.blockedToolIds ?? [])
     const ask = new Set(connectors?.askToolIds ?? [])
+    // Precedence: block > ask > allow (the default; tools run without a prompt unless opted in).
+    const permissionFor = (toolId: string): ToolPermission =>
+      blocked.has(toolId) ? 'block' : ask.has(toolId) ? 'ask' : 'allow'
+
+    if (!meta) {
+      // IC19: a user-added server is not in the bundled catalog, but its detail must work the same way —
+      // its own header fields, its OWN tool list (the live one the MCP server advertises, not a static
+      // map), and the same per-tool permission precedence as a bundled connector. Only a genuinely unknown
+      // id is an error now.
+      const server = (connectors?.customMcpServers ?? []).find((entry) => entry.id === id)
+      if (!server) throw new Error(`Unknown connector: ${id}`)
+      // Built here, not looked up in toConnectorViews(): that projection only walks the bundled catalog, so
+      // reusing it would throw for every custom id (found by this unit's own test before it shipped).
+      const view: ConnectorView = {
+        id: server.id,
+        displayName: server.name,
+        description: server.description ?? '',
+        // A user-added server declares no catalog data sources, and its approval policy is per tool rather
+        // than a per-connector "skip approvals" switch.
+        sources: [],
+        requiresNcbi: false,
+        enabled: server.enabled,
+        autoAllow: false,
+        group: 'directory'
+      }
+      const liveTools = await this.customServerToolsProvider?.(server)
+      const tools: ConnectorToolView[] = (liveTools ?? []).map((tool) => {
+        const toolId = `${id}/${tool.name}`
+        return {
+          id: toolId,
+          method: tool.name,
+          description: tool.description ?? '',
+          permission: permissionFor(toolId)
+        }
+      })
+
+      return {
+        ...view,
+        useWhen:
+          'The tools this MCP server itself advertises, each gated by its own permission. ' +
+          'Reach for them when the server is the right place to answer from.',
+        tools
+      }
+    }
+
+    const view = this.toConnectorViews(connectors).find((entry) => entry.id === id)
     const tools = getConnectorTools(id).map((tool) => {
       const toolId = `${id}/${tool.id}`
-      // Precedence: block > ask > allow (the default; tools run without a prompt unless opted in).
-      const permission: ToolPermission = blocked.has(toolId)
-        ? 'block'
-        : ask.has(toolId)
-          ? 'ask'
-          : 'allow'
 
-      return { id: toolId, method: tool.id, description: tool.description, permission }
+      return {
+        id: toolId,
+        method: tool.id,
+        description: tool.description,
+        permission: permissionFor(toolId)
+      }
     })
 
     return { ...view!, useWhen: meta.useWhen, termsUrl: meta.termsUrl, tools }
