@@ -194,6 +194,13 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 **随带修掉一个我自己造成的红**：IC11 spec 抄了 IC10 的 `Bridge` 用法却没抄它的本地声明 ⇒ Playwright 不做类型检查、
 `typecheck:node` 覆盖 `e2e/**`，所以那次提交带着 5 个 TS2304 推出去了（`faa68afe` 修）。
 
+**IC16 工作区环境准备遮罩的 Cancel ✅ 真机读数已取（`1 passed (21.6s)`）**：替身 CDN（首次 manifest 500 造错误态 + Retry；其后合法 manifest + 滴包体）
+→ 真界面走到遮罩 `preparing` 且 Cancel 在场（真遥测 63.8 KB/s · 24.0 KB / 16.0 MB · ~4m 17s）→ 点 Cancel → `provisioning:false` 且 `pythonReady:false`。
+取证时抓到并修掉一个真缺陷（`deriveProvisionUi` 无法从进度推出 preparing；store 刻意不逐 tick 重读状态 ⇒ 真机里 Cancel 永不出现）+ 两条单测。
+**同批新立案（未修，独立缺口）**：**主进程的 provision 进度广播未送达渲染端 store**——实测包体已下载到 2% / 39.8 KB/s / ETA 约 6m43s、持续整整一分钟，而工作区遮罩渲染为空；
+只有一次 **status 重读**（例如打开设置面板）才让门控与 Cancel 出现。后果：用户从 Runtimes 面板起下载后回到工作区，可能长时间看不到任何门控/取消入口。
+验收建议：工作区侧订阅或初始化时拉一次状态，让进度广播真正驱动 `preparing`（本轮修的推导已为它铺好路）。
+
 **v1.83.0 已发布（2026-10-04）**：tag `v1.83.0` → 提交 `efc4b1fd`（自 `v1.82.0` 起 **37 笔**），
 `release.yml` run **37189184119** 全绿（preflight / build×4 / `Verify` / `notarize-mac`（无 Apple 凭据 ⇒ 按设计标 UNSIGNED）/
 **publish** / `windows-upgrade-smoke`）。发布页 **21 个资产** + `Latest`；`RELEASE-CERTIFICATION.json.sourceSha` 与 tag 提交
