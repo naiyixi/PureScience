@@ -462,6 +462,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'runtimes.namedEnvRemoved': '「{name}」を削除しました。',
   'runtimes.useNamedEnv': 'ノートブックで使用',
   'runtimes.namedEnvUsed': 'ノートブックは「{name}」を使用します。',
+  'runtimes.packageMutationDone': '完了: {names}',
+  'runtimes.packageMutationNeedsRestart':
+    '完了: {names}。反映するにはノートブックカーネルを再起動してください。',
+  'runtimes.packageMutationFailed': '変更を完了できませんでした。',
   'skillDetail.detailsTitle': '詳細',
   'settings.skillTriggerQuality': 'トリガー品質',
   'settings.skillIntegrityOk': '内容は取り込み時と一致しています。',
@@ -1486,7 +1490,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.readOnly':
     '読み込んだセッションは読み取り専用です。閲覧と引用はできますが、実行や続行はできません。',
   'sessions.importPosture.title': 'インポートされたセッション — 読み取り専用',
-  'sessions.importPosture.importedFrom': '{project} / {session} からインポート（アプリ {appVersion}）',
+  'sessions.importPosture.importedFrom':
+    '{project} / {session} からインポート（アプリ {appVersion}）',
   'sessions.importPosture.exportedAt': 'エクスポート日時 {when}',
   'sessions.importPosture.notVerified': 'このマシンでは未検証 — すべての結論は送信者の主張です。',
   'sessions.packageImport.confirm': '読み込む',
@@ -2091,6 +2096,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.filterConnectorsByGroup': 'グループでコネクタを絞り込み',
   'settings.filterPackages': 'パッケージを絞り込み',
   'settings.filterPackagesPlaceholder': 'パッケージを絞り込み…',
+  'settings.installPackagePlaceholder': 'インストールするパッケージ（例: numpy）',
+  'settings.installPackage': 'インストール',
+  'settings.uninstallPackage': 'アンインストール',
   'settings.filterPermissionsByScope': 'スコープで権限を絞り込み',
   'settings.filterSkillsBySource': 'ソースでスキルを絞り込み',
   'settings.filterSpecialistsByCategory': 'カテゴリでスペシャリストを絞り込み',
@@ -2192,8 +2200,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.jobPromptPlaceholder':
     'このホストのジョブはどのように実行されますか — sbatch、qsub、それとも単純な bash？pip/conda でのインストールは可能ですか？新しい環境はどこに作成しますか？使用すべきパーティション・アカウント・モジュールはありますか？',
   'settings.unfinishedMoveTitle': 'このフォルダには未完了のデータ移動があります',
-  'settings.unfinishedMoveVerified': 'コピーは完了しています。今すぐ移動を完了して切り替えるか、破棄して現在の場所にとどまれます。',
-  'settings.unfinishedMoveCopying': 'コピーは中断されており不完全です。不完全なコピーに切り替えることはありません。破棄してから、もう一度移動を開始してください。',
+  'settings.unfinishedMoveVerified':
+    'コピーは完了しています。今すぐ移動を完了して切り替えるか、破棄して現在の場所にとどまれます。',
+  'settings.unfinishedMoveCopying':
+    'コピーは中断されており不完全です。不完全なコピーに切り替えることはありません。破棄してから、もう一度移動を開始してください。',
   'settings.finishMove': '移動を完了',
   'settings.keepCurrentLocation': '現在の場所を維持',
   'settings.language': '言語',

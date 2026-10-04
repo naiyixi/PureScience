@@ -463,6 +463,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'runtimes.namedEnvRemoved': '«{name}» удалено.',
   'runtimes.useNamedEnv': 'Использовать для ноутбуков',
   'runtimes.namedEnvUsed': 'Ноутбуки будут использовать «{name}».',
+  'runtimes.packageMutationDone': 'Готово: {names}',
+  'runtimes.packageMutationNeedsRestart':
+    'Готово: {names}. Перезапустите ядро блокнота, чтобы применить изменение.',
+  'runtimes.packageMutationFailed': 'Не удалось завершить изменение.',
   'skillDetail.detailsTitle': 'Подробности',
   'settings.skillTriggerQuality': 'Качество срабатывания',
   'settings.skillIntegrityOk': 'Содержимое совпадает с импортированным.',
@@ -1491,9 +1495,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.readOnly':
     'Импортированные сессии доступны только для чтения: их можно читать и цитировать, но нельзя запускать или продолжать.',
   'sessions.importPosture.title': 'Импортированная сессия — только чтение',
-  'sessions.importPosture.importedFrom': 'Импортировано из {project} / {session} (приложение {appVersion})',
+  'sessions.importPosture.importedFrom':
+    'Импортировано из {project} / {session} (приложение {appVersion})',
   'sessions.importPosture.exportedAt': 'Экспортировано {when}',
-  'sessions.importPosture.notVerified': 'Не проверено на этой машине — каждый вывод является утверждением отправителя.',
+  'sessions.importPosture.notVerified':
+    'Не проверено на этой машине — каждый вывод является утверждением отправителя.',
   'sessions.packageImport.confirm': 'Импортировать',
   'sessions.packageImport.cancel': 'Отмена',
   'sessions.packageImport.refused': 'Этот пакет нельзя импортировать: {reason}',
@@ -2091,6 +2097,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.filterConnectorsByGroup': 'Фильтр коннекторов по группе',
   'settings.filterPackages': 'Фильтр пакетов',
   'settings.filterPackagesPlaceholder': 'Фильтр пакетов…',
+  'settings.installPackagePlaceholder': 'Пакет для установки (напр. numpy)',
+  'settings.installPackage': 'Установить',
+  'settings.uninstallPackage': 'Удалить',
   'settings.filterPermissionsByScope': 'Фильтр разрешений по области действия',
   'settings.filterSkillsBySource': 'Фильтр навыков по источнику',
   'settings.filterSpecialistsByCategory': 'Фильтр специалистов по категории',
@@ -2192,8 +2201,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.jobPromptPlaceholder':
     'Как здесь выполняются задания — sbatch, qsub или просто bash? Можно ли устанавливать через pip/conda и куда помещать новые окружения? Нужно ли указывать раздел (partition), учётную запись или модуль?',
   'settings.unfinishedMoveTitle': 'В этой папке остался незавершённый перенос данных',
-  'settings.unfinishedMoveVerified': 'Готовая копия ждёт здесь. Завершите перенос, чтобы переключиться на неё, или откажитесь от копии и останьтесь на месте.',
-  'settings.unfinishedMoveCopying': 'Копирование было прервано, копия неполная — переключение на неполную копию не выполняется. Откажитесь от неё и запустите перенос заново.',
+  'settings.unfinishedMoveVerified':
+    'Готовая копия ждёт здесь. Завершите перенос, чтобы переключиться на неё, или откажитесь от копии и останьтесь на месте.',
+  'settings.unfinishedMoveCopying':
+    'Копирование было прервано, копия неполная — переключение на неполную копию не выполняется. Откажитесь от неё и запустите перенос заново.',
   'settings.finishMove': 'Завершить перенос',
   'settings.keepCurrentLocation': 'Оставить текущее расположение',
   'settings.language': 'Язык',

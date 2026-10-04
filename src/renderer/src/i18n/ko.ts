@@ -458,6 +458,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'runtimes.namedEnvRemoved': '“{name}”을(를) 제거했습니다.',
   'runtimes.useNamedEnv': '노트북에서 사용',
   'runtimes.namedEnvUsed': '노트북이 “{name}”을(를) 사용합니다.',
+  'runtimes.packageMutationDone': '완료: {names}',
+  'runtimes.packageMutationNeedsRestart':
+    '완료: {names}. 적용하려면 노트북 커널을 다시 시작하세요.',
+  'runtimes.packageMutationFailed': '변경을 완료하지 못했습니다.',
   'skillDetail.detailsTitle': '세부 정보',
   'settings.skillTriggerQuality': '트리거 품질',
   'settings.skillIntegrityOk': '내용이 가져올 때와 일치합니다.',
@@ -1470,7 +1474,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.title': '가져온 세션 — 읽기 전용',
   'sessions.importPosture.importedFrom': '{project} / {session}에서 가져옴 (앱 {appVersion})',
   'sessions.importPosture.exportedAt': '내보낸 시각 {when}',
-  'sessions.importPosture.notVerified': '이 컴퓨터에서 검증되지 않음 — 모든 결론은 보낸 사람의 주장입니다.',
+  'sessions.importPosture.notVerified':
+    '이 컴퓨터에서 검증되지 않음 — 모든 결론은 보낸 사람의 주장입니다.',
   'sessions.packageImport.confirm': '가져오기',
   'sessions.packageImport.cancel': '취소',
   'sessions.packageImport.refused': '이 패키지는 가져올 수 없습니다: {reason}',
@@ -2063,6 +2068,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.filterConnectorsByGroup': '그룹별로 커넥터 필터링',
   'settings.filterPackages': '패키지 필터링',
   'settings.filterPackagesPlaceholder': '패키지 필터링…',
+  'settings.installPackagePlaceholder': '설치할 패키지 (예: numpy)',
+  'settings.installPackage': '설치',
+  'settings.uninstallPackage': '제거',
   'settings.filterPermissionsByScope': '범위별로 권한 필터링',
   'settings.filterSkillsBySource': '출처별로 스킬 필터링',
   'settings.filterSpecialistsByCategory': '카테고리별로 전문가 필터링',
@@ -2163,8 +2171,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.jobPromptPlaceholder':
     '여기서 작업은 어떻게 실행되나요 — sbatch, qsub 아니면 그냥 bash인가요? pip/conda 설치는 괜찮은가요, 새 환경은 어디에 만들어야 하나요? 사용할 파티션, 계정 또는 모듈이 있나요?',
   'settings.unfinishedMoveTitle': '이 폴더에 완료되지 않은 데이터 이동이 있습니다',
-  'settings.unfinishedMoveVerified': '복사는 끝났습니다. 지금 이동을 완료해 전환하거나, 버리고 현재 위치에 머물 수 있습니다.',
-  'settings.unfinishedMoveCopying': '복사가 중단되어 불완전합니다. 불완전한 복사본으로는 전환하지 않습니다. 버린 뒤 이동을 다시 시작하세요.',
+  'settings.unfinishedMoveVerified':
+    '복사는 끝났습니다. 지금 이동을 완료해 전환하거나, 버리고 현재 위치에 머물 수 있습니다.',
+  'settings.unfinishedMoveCopying':
+    '복사가 중단되어 불완전합니다. 불완전한 복사본으로는 전환하지 않습니다. 버린 뒤 이동을 다시 시작하세요.',
   'settings.finishMove': '이동 완료',
   'settings.keepCurrentLocation': '현재 위치 유지',
   'settings.language': '언어',

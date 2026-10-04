@@ -472,6 +472,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'runtimes.namedEnvRemoved': '« {name} » supprimé.',
   'runtimes.useNamedEnv': 'Utiliser pour les notebooks',
   'runtimes.namedEnvUsed': 'Les notebooks utiliseront « {name} ».',
+  'runtimes.packageMutationDone': 'Terminé : {names}.',
+  'runtimes.packageMutationNeedsRestart':
+    'Terminé : {names}. Redémarrez le noyau du carnet pour appliquer la modification.',
+  'runtimes.packageMutationFailed': "La modification n'a pas pu aboutir.",
   'skillDetail.detailsTitle': 'Détails',
   'settings.skillTriggerQuality': 'Qualité de déclenchement',
   'settings.skillIntegrityOk': 'Le contenu correspond à ce qui a été importé.',
@@ -1531,7 +1535,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.title': 'Session importée — lecture seule',
   'sessions.importPosture.importedFrom': 'Importée depuis {project} / {session} (app {appVersion})',
   'sessions.importPosture.exportedAt': 'Exportée le {when}',
-  'sessions.importPosture.notVerified': 'Non vérifié sur cette machine — chaque conclusion est l’affirmation de l’expéditeur.',
+  'sessions.importPosture.notVerified':
+    'Non vérifié sur cette machine — chaque conclusion est l’affirmation de l’expéditeur.',
   'sessions.packageImport.confirm': 'Importer',
   'sessions.packageImport.cancel': 'Annuler',
   'sessions.packageImport.refused': 'Ce paquet ne peut pas être importé : {reason}',
@@ -2147,6 +2152,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.filterConnectorsByGroup': 'Filtrer les connecteurs par groupe',
   'settings.filterPackages': 'Filtrer les paquets',
   'settings.filterPackagesPlaceholder': 'Filtrer les paquets…',
+  'settings.installPackagePlaceholder': 'Paquet à installer (ex. numpy)',
+  'settings.installPackage': 'Installer',
+  'settings.uninstallPackage': 'Désinstaller',
   'settings.filterPermissionsByScope': 'Filtrer les autorisations par portée',
   'settings.filterSkillsBySource': 'Filtrer les compétences par source',
   'settings.filterSpecialistsByCategory': 'Filtrer les spécialistes par catégorie',
@@ -2252,8 +2260,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.jobPromptPlaceholder':
     'Comment les travaux s’exécutent-ils ici — sbatch, qsub ou simplement bash ? Peut-on installer avec pip/conda, et où doivent aller les nouveaux environnements ? Faut-il utiliser une partition, un compte ou un module ?',
   'settings.unfinishedMoveTitle': 'Ce dossier contient un déplacement de données inachevé',
-  'settings.unfinishedMoveVerified': 'Une copie terminée attend ici. Terminez le déplacement pour y basculer maintenant, ou abandonnez-la et restez où vous êtes.',
-  'settings.unfinishedMoveCopying': 'La copie a été interrompue et reste incomplète — on ne bascule jamais sur une copie inachevée. Abandonnez-la, puis relancez le déplacement.',
+  'settings.unfinishedMoveVerified':
+    'Une copie terminée attend ici. Terminez le déplacement pour y basculer maintenant, ou abandonnez-la et restez où vous êtes.',
+  'settings.unfinishedMoveCopying':
+    'La copie a été interrompue et reste incomplète — on ne bascule jamais sur une copie inachevée. Abandonnez-la, puis relancez le déplacement.',
   'settings.finishMove': 'Terminer le déplacement',
   'settings.keepCurrentLocation': 'Conserver l’emplacement actuel',
   'settings.language': 'Langue',

@@ -1773,8 +1773,10 @@ export const en: Record<ZhKey, string> = {
   'settings.restartNow': 'Restart now',
   'settings.discarding': 'Discarding…',
   'settings.unfinishedMoveTitle': 'This folder holds an unfinished data move',
-  'settings.unfinishedMoveVerified': 'A finished copy is waiting here. Finish the move to switch to it now, or discard it and stay where you are.',
-  'settings.unfinishedMoveCopying': 'The copy here was interrupted, so it is incomplete — an unfinished copy is never switched to. Discard it, then start the move again.',
+  'settings.unfinishedMoveVerified':
+    'A finished copy is waiting here. Finish the move to switch to it now, or discard it and stay where you are.',
+  'settings.unfinishedMoveCopying':
+    'The copy here was interrupted, so it is incomplete — an unfinished copy is never switched to. Discard it, then start the move again.',
   'settings.finishMove': 'Finish the move',
   'settings.keepCurrentLocation': 'Keep current location',
   'settings.elapsedTime': 'Elapsed time',
@@ -1853,7 +1855,8 @@ export const en: Record<ZhKey, string> = {
   'sessions.importPosture.title': 'Imported session — read-only',
   'sessions.importPosture.importedFrom': 'Imported from {project} / {session} (app {appVersion})',
   'sessions.importPosture.exportedAt': 'Exported {when}',
-  'sessions.importPosture.notVerified': 'Not verified on this machine — every conclusion is the sender’s assertion.',
+  'sessions.importPosture.notVerified':
+    'Not verified on this machine — every conclusion is the sender’s assertion.',
   'sessions.packageImport.confirm': 'Import',
   'sessions.packageImport.cancel': 'Cancel',
   'sessions.packageImport.refused': 'This package cannot be imported: {reason}',
@@ -2911,6 +2914,10 @@ export const en: Record<ZhKey, string> = {
   'runtimes.namedEnvRemoved': 'Removed “{name}”.',
   'runtimes.useNamedEnv': 'Use for notebooks',
   'runtimes.namedEnvUsed': 'Notebooks will use “{name}”.',
+  'runtimes.packageMutationDone': 'Done: {names}.',
+  'runtimes.packageMutationNeedsRestart':
+    'Done: {names}. Restart the notebook kernel to use the change.',
+  'runtimes.packageMutationFailed': 'The change could not be completed.',
   'skillDetail.detailsTitle': 'Details',
   'settings.skillTriggerQuality': 'Trigger quality',
   'settings.skillIntegrityOk': 'Content matches what was imported.',
@@ -3331,6 +3338,9 @@ export const en: Record<ZhKey, string> = {
   'settings.downloadAndSetUp': 'Download and set up',
   'settings.filterPackages': 'Filter packages',
   'settings.filterPackagesPlaceholder': 'Filter packages…',
+  'settings.installPackagePlaceholder': 'Package to install (e.g. numpy)',
+  'settings.installPackage': 'Install',
+  'settings.uninstallPackage': 'Uninstall',
   'settings.remoteBrowserLinkHint':
     'Open a persistent link in any browser with two-step verification.',
   'settings.remoteBrowserAccess': 'Remote browser access',

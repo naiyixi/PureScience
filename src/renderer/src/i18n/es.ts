@@ -470,6 +470,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'runtimes.namedEnvRemoved': 'Se eliminó «{name}».',
   'runtimes.useNamedEnv': 'Usar en cuadernos',
   'runtimes.namedEnvUsed': 'Los cuadernos usarán «{name}».',
+  'runtimes.packageMutationDone': 'Hecho: {names}.',
+  'runtimes.packageMutationNeedsRestart':
+    'Hecho: {names}. Reinicia el núcleo del cuaderno para aplicar el cambio.',
+  'runtimes.packageMutationFailed': 'No se pudo completar el cambio.',
   'skillDetail.detailsTitle': 'Detalles',
   'settings.skillTriggerQuality': 'Calidad de activación',
   'settings.skillIntegrityOk': 'El contenido coincide con lo importado.',
@@ -1522,7 +1526,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.title': 'Sesión importada — solo lectura',
   'sessions.importPosture.importedFrom': 'Importada desde {project} / {session} (app {appVersion})',
   'sessions.importPosture.exportedAt': 'Exportada el {when}',
-  'sessions.importPosture.notVerified': 'Sin verificar en este equipo: cada conclusión es la afirmación del remitente.',
+  'sessions.importPosture.notVerified':
+    'Sin verificar en este equipo: cada conclusión es la afirmación del remitente.',
   'sessions.packageImport.confirm': 'Importar',
   'sessions.packageImport.cancel': 'Cancelar',
   'sessions.packageImport.refused': 'Este paquete no se puede importar: {reason}',
@@ -2141,6 +2146,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.filterConnectorsByGroup': 'Filtrar conectores por grupo',
   'settings.filterPackages': 'Filtrar paquetes',
   'settings.filterPackagesPlaceholder': 'Filtrar paquetes…',
+  'settings.installPackagePlaceholder': 'Paquete a instalar (p. ej. numpy)',
+  'settings.installPackage': 'Instalar',
+  'settings.uninstallPackage': 'Desinstalar',
   'settings.filterPermissionsByScope': 'Filtrar permisos por ámbito',
   'settings.filterSkillsBySource': 'Filtrar habilidades por origen',
   'settings.filterSpecialistsByCategory': 'Filtrar especialistas por categoría',
@@ -2244,8 +2252,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.jobPromptPlaceholder':
     '¿Cómo se ejecutan aquí los trabajos — sbatch, qsub o simplemente bash? ¿Se puede instalar con pip/conda y dónde deben ir los entornos nuevos? ¿Hay que usar alguna partición, cuenta o módulo?',
   'settings.unfinishedMoveTitle': 'Esta carpeta contiene un traslado de datos sin terminar',
-  'settings.unfinishedMoveVerified': 'Aquí espera una copia terminada. Completa el traslado para cambiar a ella ahora, o descártala y quédate donde estás.',
-  'settings.unfinishedMoveCopying': 'La copia se interrumpió y está incompleta: nunca se cambia a una copia inacabada. Descártala y reinicia el traslado.',
+  'settings.unfinishedMoveVerified':
+    'Aquí espera una copia terminada. Completa el traslado para cambiar a ella ahora, o descártala y quédate donde estás.',
+  'settings.unfinishedMoveCopying':
+    'La copia se interrumpió y está incompleta: nunca se cambia a una copia inacabada. Descártala y reinicia el traslado.',
   'settings.finishMove': 'Completar el traslado',
   'settings.keepCurrentLocation': 'Conservar la ubicación actual',
   'settings.language': 'Idioma',

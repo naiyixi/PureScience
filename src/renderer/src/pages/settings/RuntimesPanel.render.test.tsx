@@ -61,6 +61,7 @@ let registerInterpreter: ReturnType<typeof vi.fn>
 let pickInterpreter: ReturnType<typeof vi.fn>
 let importLock: ReturnType<typeof vi.fn>
 let manageNamedEnvironments: ReturnType<typeof vi.fn>
+let managePackages: ReturnType<typeof vi.fn>
 let provision: ReturnType<typeof vi.fn>
 let cancelBridge: ReturnType<typeof vi.fn>
 let repairBridge: ReturnType<typeof vi.fn>
@@ -120,12 +121,15 @@ beforeEach(() => {
   // Audit P0-8: the panel lists named environments on mount, so the double must answer that call.
   manageNamedEnvironments = vi.fn().mockResolvedValue({ environments: [] })
   provision = vi.fn().mockRejectedValue(new Error('runtime CDN unavailable'))
+  // IC13: default to "the gate allowed it"; the tests that care about a refusal override this.
+  managePackages = vi.fn().mockResolvedValue({ ok: true, needsRestart: false, log: '' })
   cancelBridge = vi.fn().mockResolvedValue(undefined)
   repairBridge = vi.fn().mockResolvedValue(undefined)
   ;(window as unknown as { api: unknown }).api = {
     runtime: {
       listEnvironments,
       listPackages,
+      managePackages,
       listPackageCounts,
       getEnablement,
       describeUsage,
@@ -694,6 +698,69 @@ describe('RuntimesPanel packages dialog', () => {
     )
     dialog = document.querySelector('[data-testid="runtime-packages-dialog"]')
     expect(occurrences(dialog, 'Conda: bio')).toBe(1)
+  })
+
+  it("installs into the dialog's OWN environment and refreshes the inventory it showed", async () => {
+    await render()
+    await flush()
+    await click(
+      cardWith('Python 3.12 (managed)')?.querySelector('[data-testid="runtime-packages-button"]') ??
+        null
+    )
+    const spec = document.querySelector<HTMLInputElement>('[data-testid="runtime-package-spec"]')
+    expect(spec).not.toBeNull()
+    await act(async () => setInputValue(spec!, 'scipy'))
+
+    const before = listPackages.mock.calls.length
+    await click(document.querySelector('[data-testid="runtime-package-install"]'))
+    await flush()
+
+    // The request carries the environment the dialog belongs to — NOT the default one — because the
+    // main process resolves the target by discovery and must never install into a different
+    // environment than the one whose packages the user is looking at.
+    expect(managePackages).toHaveBeenCalledWith({
+      language: 'python',
+      envId: '/data/runtime/envs/default-python-3.12/bin/python',
+      packages: ['scipy'],
+      operation: 'install'
+    })
+    // The dialog re-reads the inventory: it must show what the environment NOW holds.
+    expect(listPackages.mock.calls.length).toBe(before + 1)
+    const notice = document.querySelector('[data-testid="runtime-package-notice"]')
+    expect(notice?.textContent).toContain('scipy')
+    expect(document.querySelector('[data-testid="runtime-package-error"]')).toBeNull()
+  })
+
+  it("removes one package by name and shows the gate's refusal verbatim when it says no", async () => {
+    managePackages.mockResolvedValue({
+      ok: false,
+      needsRestart: false,
+      log: '',
+      error:
+        'Installing packages into your own python environment is not authorized. Turn on "Allow package install" for this environment first.'
+    })
+    await render()
+    await flush()
+    await click(
+      cardWith('Python 3.12 (managed)')?.querySelector('[data-testid="runtime-packages-button"]') ??
+        null
+    )
+    const before = listPackages.mock.calls.length
+    await click(document.querySelectorAll('[data-testid="runtime-package-uninstall"]')[0])
+    await flush()
+
+    expect(managePackages).toHaveBeenCalledWith({
+      language: 'python',
+      envId: '/data/runtime/envs/default-python-3.12/bin/python',
+      packages: ['numpy'],
+      operation: 'uninstall'
+    })
+    // Never reworded into something friendlier: the gate's own reason is the reading, and a refused
+    // click changes nothing, so the inventory is NOT re-read and no success notice appears.
+    const error = document.querySelector('[data-testid="runtime-package-error"]')
+    expect(error?.textContent).toContain('is not authorized')
+    expect(document.querySelector('[data-testid="runtime-package-notice"]')).toBeNull()
+    expect(listPackages.mock.calls.length).toBe(before)
   })
 })
 

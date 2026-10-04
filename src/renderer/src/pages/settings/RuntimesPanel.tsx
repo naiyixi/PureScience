@@ -176,6 +176,13 @@ const RuntimesPanel = ({
   const [packagesError, setPackagesError] = useState<string | null>(null)
   const [packagesRetryNonce, setPackagesRetryNonce] = useState(0)
   const [packagesFilter, setPackagesFilter] = useState('')
+  // IC13: the package-mutation state of the open dialog — the spec being typed, a busy flag, and the
+  // gate's own answer. A refusal is shown VERBATIM (the main process returns the admission's named
+  // reason), because rewording it would hide which rule actually refused the click.
+  const [packageSpec, setPackageSpec] = useState('')
+  const [packageBusy, setPackageBusy] = useState(false)
+  const [packageNotice, setPackageNotice] = useState<string | null>(null)
+  const [packageActionError, setPackageActionError] = useState<string | null>(null)
   // Per-env package counts for the card button badges, fetched lazily AFTER the panel loads.
   // countsRef is the source of truth (readable inside effects without re-triggering them); the
   // state mirror drives rendering. A present null entry means "fetch attempted, unavailable" —
@@ -311,6 +318,50 @@ const RuntimesPanel = ({
       cancelled = true
     }
   }, [packagesEnv, packagesRetryNonce, t])
+
+  // IC13: install/remove packages through the main process's package admission — the same one the
+  // agent's manage_packages goes through, so an unauthorized or externally-owned environment refuses
+  // here exactly as it would for an agent, and the reason is the gate's own wording. On success the
+  // dialog re-reads the inventory (it must show what the environment NOW holds) and says whether a
+  // kernel restart is needed before the change is usable.
+  const runPackageMutation = async (
+    operation: 'install' | 'uninstall',
+    names: string[]
+  ): Promise<void> => {
+    if (packagesEnv === null || names.length === 0 || packageBusy) return
+    const env = packagesEnv
+    setPackageBusy(true)
+    setPackageActionError(null)
+    setPackageNotice(null)
+    try {
+      const result = await window.api.runtime.managePackages({
+        language: env.language,
+        envId: env.envId,
+        packages: names,
+        operation
+      })
+      if (!result.ok) {
+        setPackageActionError(result.error ?? t('runtimes.packageMutationFailed'))
+        return
+      }
+      setPackageNotice(
+        t(
+          result.needsRestart
+            ? 'runtimes.packageMutationNeedsRestart'
+            : 'runtimes.packageMutationDone'
+        ).replace('{names}', names.join(', '))
+      )
+      setPackageSpec('')
+      setPackages(null)
+      setPackagesRetryNonce((nonce) => nonce + 1)
+    } catch (error) {
+      setPackageActionError(
+        error instanceof Error ? error.message : t('runtimes.packageMutationFailed')
+      )
+    } finally {
+      setPackageBusy(false)
+    }
+  }
 
   // Recheck refreshes both halves of the runtime registry together for the same reason as initial
   // loading: cards and their permissions must describe one coherent backend snapshot. Counts are
@@ -1312,7 +1363,52 @@ const RuntimesPanel = ({
                         : ''}
                     </span>
                   ) : null}
+                  {/* IC13: install into THIS environment. The request carries the env's own id, so the
+                      main process resolves the target by discovery instead of assuming the default. */}
+                  <div className="ml-auto flex items-center gap-2">
+                    <Input
+                      value={packageSpec}
+                      onChange={(event) => setPackageSpec(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter') return
+                        const spec = packageSpec.trim()
+                        if (spec.length > 0) void runPackageMutation('install', [spec])
+                      }}
+                      placeholder={t('settings.installPackagePlaceholder')}
+                      aria-label={t('settings.installPackage')}
+                      data-testid="runtime-package-spec"
+                      className="h-8 w-48"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      data-testid="runtime-package-install"
+                      disabled={packageBusy || packageSpec.trim().length === 0}
+                      onClick={() => void runPackageMutation('install', [packageSpec.trim()])}
+                    >
+                      {t('settings.installPackage')}
+                    </Button>
+                  </div>
                 </div>
+
+                {packageActionError !== null ? (
+                  <p
+                    role="alert"
+                    data-testid="runtime-package-error"
+                    className="mt-2 text-[13px] text-destructive"
+                  >
+                    {packageActionError}
+                  </p>
+                ) : packageNotice !== null ? (
+                  <p
+                    role="status"
+                    data-testid="runtime-package-notice"
+                    className="mt-2 text-[13px] text-muted-foreground"
+                  >
+                    {packageNotice}
+                  </p>
+                ) : null}
 
                 <div className="mt-2 min-h-0 flex-1 overflow-y-auto rounded-md border border-border">
                   {packagesError !== null ? (
@@ -1374,6 +1470,22 @@ const RuntimesPanel = ({
                                 </td>
                               </>
                             ) : null}
+                            {/* IC13: remove this one package. Shown for every listed row — the gate
+                                decides whether it is allowed, and its refusal says why. */}
+                            <td className="py-1.5 pl-2 pr-3 text-right">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                data-testid="runtime-package-uninstall"
+                                aria-label={`${t('settings.uninstallPackage')}: ${pkg.name}`}
+                                disabled={packageBusy}
+                                onClick={() => void runPackageMutation('uninstall', [pkg.name])}
+                              >
+                                {t('settings.uninstallPackage')}
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
