@@ -182,73 +182,71 @@ shutdownExecutor(): Promise<{ reaped: boolean }> {
 **另一条本轮实测的边界**：退出时渲染进程里的 `execute()` promise **不会**拒（整个进程先没了，本轮日志
 里那行 `execute rejected with:` 从未出现）⇒ 这类读数只能从**盘上记录**取，不能指望渲染层 promise。
 
-## 追加四：两半修法已落码，真机读数**未转绿**（如实说）——靶子上移一层
+## 追加四：真机验收**已通过**（用户退出路径读数），并如实说明前三轮为什么读不到
 
-**已实现（含单元测试 99 passed / 6 skipped，typecheck 与 prettier/eslint 均绿）**：
+### 结论（先给读数）
 
-1. **拒在飞不再排在队列后面**：`session-aggregate.ts` 的 `shutdownExecutor()` 改为**直接**调
-   `executor.shutdown({ interruptionReason: 'app-terminated' })`，再 `Promise.all([lifecycleDrain, shutdown])`。
-   `kernel-executor.shutdown()` 的「清 map + 拒在飞」本就在它**第一个 `await` 之前**同步完成，所以直调即立刻生效。
-2. **终态写入状态级区分**：新增具名 `NotebookKernelShutdownError`（带理由）；执行器的
-   `errorToExecutionResult` 把**具名关停错误**写成 `interrupted` + `app-terminated`，
-   **不带理由的关停（内核重启）仍是 `failed`**（没有把重启误标成 app-terminated）；
-   `run-terminalization.ts` 按状态守卫携带 `interruptionReason`。
-
-**真机读数（同一份脚手架，--workers=1）：与修复前逐字相同**：
+用**用户自己的退出路径**（向应用发 Quit → 应用自己弹「仍有工作正在运行，退出将中断它们。」→ 点 **Quit**）取到的盘上读数：
 
 ```
-attempt 1: running=true statuses=["completed","running"]         ← 前提成立（实测）
-run.json on disk: [["…-1","completed",null],["…-2","failed",null]]
-failed run … says: {"error":null,"traceback":"Notebook kernel process exited.","stderr":同}
+run.json on disk: [["notebook-run-…-1","completed",null],
+                   ["notebook-run-…-2","interrupted","app-terminated"]]      ← 在飞那格
+1 passed (1.1m)
 ```
 
-**先排除掉「包是旧的」这个假读数来源**（本仓为此白跑过两轮）：`npm run build:e2e` 之后
-`out/main/ipc-BoQKD4o9.js` 里确实有 `executor.shutdown({ interruptionReason: "app-terminated" })`
-与终态守卫，且 `'Notebook kernel was shut down.'` 在包里**只剩类构造器那一处**（内联 `new Error(...)` 已消失）
-⇒ 跑的是新包，读数是真的没变。
+**没有 failed**，且退出期 trace 把整条链按顺序摆出来了（同一进程，毫秒级）：
 
-**新读数给出的关键坐标**：那格 `startedAt→endedAt` 只隔 **13.8 秒**（单元格要跑 90 秒），
-`app.close()` 开始后约 6.6 秒主进程还在——即**优雅退出**、且**关停在自己 5 秒预算内也没走到 `procs.clear()`**。
-⇒ 关停不是"走到了但太晚"，而是**在到达 `shutdownExecutor()` 之前就被谁挡住了**。
-
-**靶子上移一层（下一轮从这里开跑）**——`session-registry.ts:151-158` 的 `teardownOwnedSessions` 在调
-`shutdownExecutor()` **之前**有一串 await：
-
-```ts
-const removalOutcomes = await Promise.allSettled(removals…)      // 本轮为空
-await this.options.beforeTeardown?.()   // runtime-service.ts:364 → environmentOperations.waitForRevocationDrains()
-                                        //                            → runtimeBindingOwner.waitForWrites()
-await Promise.allSettled(Array.from(this.creations.values()))
+```
++12348ms runForQuit:enter budgetMs=5000
++12355ms runtime.dispose:enter
++12355ms teardownOwnedSessions:enter terminal=true sessions=1     ← 会话在册（1）
++12357ms shutdownExecutor:enter session=e2e-session-1             ← 半① 立刻派发拒绝
++12357ms executor.shutdown:enter procs=1                          ← 清路由 map + 拒在飞
++12365ms shutdownExecutor:refusal-dispatched
+（本轮**没有** crash-branch:fired —— 内核是被这次具名关停收走的，不是意外退出）
 ```
 
-而 `session-lifecycle.ts:150` 的 `dispose()` 还要先过 `runtime-binding.ts:104 withGlobalTeardown` 的
-**globalWriteGate**（`while (this.globalWriteGate) await this.globalWriteGate.promise`）。
-⇒ 这两处都要**逐个排除**，但**本轮已排掉一个**（见下），别再凭形状猜。
+⇒ 契约在**真机上成立**：退出时在飞的单元格被记成 `interrupted` + `app-terminated`，不是 failed；
+半①（拒在飞不再排在队列后面）与半②（终态按理由写成中断）都在读数里看得见。
 
-**已排除（本轮真读代码）**：「在飞的 `execute` 持有绑定写租约，所以关停排在它后面」这个假设**不成立**：
-`runWrites` 的调用点只有 `bindRuntime`/`switchRuntime`（`runtime-service.ts:616/627`）与环境/修复操作，
-**`execute`/`runCell` 不在写租约里**（`session-lifecycle.ts:137` 的 `waitForWrites(sessionId)` 是移除单会话时用的）
-⇒ `waitForWrites()` 在退出那一刻应当是空的。剩下的候选只有
-`environmentOperations.waitForRevocationDrains()` 与 `creations`/`removalOutcomes` 两处 `allSettled`。
+### 为什么前三轮拿到的是「与修复前逐字相同」的 failed 读数（如实说）
 
-**下一步的判定手段（照证据档原话，先取证再改码，不要先改码）**：在 `kernel-executor.ts:396`（清 map 那行）、
-`:548`（崩溃分支）与 `shutdownExecutor` 入口各加一行退出期日志，跑同一份脚手架看**哪一行先打**：
+三轮 trace 取证（临时 `quit-trace` 打点，已删）说明前两轮**测的根本不是这条路径**：
 
-| 观测 | 结论 |
+| 观测 | 事实 |
 | --- | --- |
-| `shutdownExecutor` 那行**没打** | 关停被挡在 registry 门/`beforeTeardown`/创建集之前 —— 继续往 `dispose()` 链上找 |
-| 打了、`:396` 没打 | 挡在 `shutdown()` 自身（进程在 kill 之前就没了） |
-| `:396` 打了而 `:548` 也打了 | 另有第二条在飞路径没走 `shutdown()`（本轮的半 ① 需要再收窄） |
+| `+0ms runForQuit:enter … sessions=0` | 这个退出属于**onboarding 之前的那个实例**（`completeOnboarding()`/`configureFakeAgent()` 各自会重启应用）：它的注册表**从来没有会话**，所以关停无事可拒 |
+| `+2999ms runtimeService:constructed tag=rt1` / `+8367ms registry:session-created` | 真正跑单元格的实例在**那个退出之后**才起来（两个进程的 tag 计数都从 rt1 开始，正说明"两个进程"） |
+| 该实例的 trace 里**完全没有** `runForQuit`／`runtime.dispose` | 跑单元格的那个实例**从未走自己的退出路径**：fixture 的 `application.close()` 优雅窗口超时后**按进程树强杀**，内核子进程先死、主进程还活着 ⇒ `child.on('exit')` 走意外退出分支 ⇒ 写下 `failed` + `Notebook kernel process exited.` |
 
-在此之前**不要**再改码——本轮已证明"照形状改一处"得不到读数变化，白跑一轮。
+⇒ 前两轮的 `failed` 是**夹具强杀的产物**，不是用户退出路径的读数；也因此"照形状改一处"看不出变化——**不是修复无效，是那两轮没触发这条路径**。
+另：`requestMainWindowClose()` 在 macOS 上按 `windows.ts` 的分类是 **'hide'（最小化到托盘）**，不会退出、也不会弹确认框——这是第一次改动没取到读数的原因。
 
-**同时确证的第二个现象根因（原"重启后 `notebook.state` 返回空"）**：重启后 `state` 答的是
-`notebooks/**interrupted-run**/…`（**项目名**），而盘上真源在 `notebooks/**cmute78s7…**/…`（**项目 id**）。
-⇒ 新进程里 `notebook.state` 为**同一个 sessionId** 建了**另一个项目键**下的聚合，答的是那份空文档
+### 仍挂账、有据可查的一条（另立，不在本契约内）
+
+**进程树被外部强杀、而主进程还活着时，在飞运行会被写成 `failed`**（证据：上面那张表第 3 行 + 本轮之前的盘读
+`["…-2","failed",null]`，`traceback`/`stderr` 同为 `Notebook kernel process exited.`）。为什么这条值得立案：
+盘上的运行已经**不再是 `running`**，所以下次启动的 `reconcileInterruptedRuns`（只认 running/queued）
+**无物可改** ⇒ 用户看到的是一格 error，而不是"被中断"。触发面很窄（要内核先死、主进程后死），
+真修法的形状是让**崩溃分支也能知道"应用正在终止"**（`before-quit` 已置位 / 收到 SIGTERM 时置一个 latch，
+再把该运行按 `interrupted` + `app-terminated` 落盘）；寻常 SIGKILL 仍走"进程直接没了 ⇒ 下次加载恢复"那条路，无需改动。
+
+### 顺带确证的第二个现象根因（原"重启后 `notebook.state` 返回空"）
+
+重启后 `state` 答的是 `notebooks/**interrupted-run**/…`（**项目名**），而盘上真源在
+`notebooks/**cmute…**/…`（**项目 id**）：同一 `sessionId` 在**另一个项目键**下建了聚合，答的是那份空文档
 （`sessions.getOrCreate(sessionId, …)` 只按 sessionId 命中，项目名只对"首次创建"生效）。
-这条与中断契约无关，但它就是"盘上有两条、状态返回空"的机械原因，可直接据此立案。
+与中断契约无关，但它就是"盘上有两条、状态返回空"的机械原因。
 
-**收尾**：红 spec 已按铁律从树里删除（`e2e/certification/notebook-interrupted-run.spec.ts`），
-脚手架原件仍在 `~/.hermes/cache/scratch/comp/`。
+### 收尾与规范（本轮）
+
+- **临时件全部删除**：`src/main/notebook/quit-trace.ts`、5 个文件里的打点、`e2e/fixtures/electron-app.ts` 的
+  `requestQuit()` 探针助手、`e2e/certification/notebook-quit-trace.spec.ts`（红 spec 与探针 spec 都不落树）；
+  `git status` 只剩自主执行器自己改的那个 plan 文件。
+- **验收纪律（本轮代价换来的）**：断言"退出时在飞"的读数，**必须走应用自己的退出路径**
+  （`app.quit()` → 确认框 → Quit）；用夹具的 `close()` 去"拿走应用"读不到这条契约——
+  它会先给一个**没有会话的实例**发正常退出，再把**真正在跑的实例**强杀，
+  两种都不落在"用户确认退出"这个触发条件上。平台差异也要先查：macOS 上关窗是 `hide`，不是退出。
+
 
 
