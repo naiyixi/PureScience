@@ -17,7 +17,9 @@ import { createProject, sendPrompt } from './helpers'
 
 test.setTimeout(180_000)
 
-test('a managed artifact preview opens with the system app and shows in the folder', async ({ app }) => {
+test('a managed artifact preview opens with the system app and shows in the folder', async ({
+  app
+}) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Artifact open actions')
