@@ -37,6 +37,7 @@ const mount = async (
     scannedPages: number
     rejectedPages?: PdfTableRejection[]
     rotatedPages?: { page: number; rotation: 90 | 180 | 270 }[]
+    emptyPageCount?: number
   },
   sessionId?: string
 ): Promise<void> => {
@@ -45,7 +46,7 @@ const mount = async (
       open: vi.fn().mockResolvedValue({
         doc: { docId: 'doc-1', title: 'paper.pdf', pageCount: 5, outline: [] },
         textPageCount: 5,
-        emptyPageCount: 0
+        emptyPageCount: result.emptyPageCount ?? 0
       }),
       tables: vi.fn().mockResolvedValue({ docId: 'doc-1', ...result })
     }
@@ -235,5 +236,22 @@ describe('PdfTablePanel', () => {
       path: 'paper.pdf',
       sessionId: 'session-1'
     })
+  })
+  // "No tables found" on a document that plainly has pages needs its cause on screen: a scanned page has
+  // no text layer, and `open` counted exactly those pages before this panel scanned anything.
+  it('names the pages that carried no extractable text before saying nothing was found', async () => {
+    await mount({ candidates: [], scannedPages: 5, emptyPageCount: 5 })
+
+    const notice = container.querySelector('[data-testid="pdf-table-empty-pages"]')
+    expect(notice).not.toBeNull()
+    expect(notice?.textContent ?? '').toContain('5')
+    // The verdict line is still there — the cause is added, not substituted.
+    expect(container.querySelector('[data-testid="pdf-table-empty"]')).not.toBeNull()
+  })
+
+  it('stays quiet about pages when every page carried text', async () => {
+    await mount({ candidates: [], scannedPages: 5, emptyPageCount: 0 })
+
+    expect(container.querySelector('[data-testid="pdf-table-empty-pages"]')).toBeNull()
   })
 })

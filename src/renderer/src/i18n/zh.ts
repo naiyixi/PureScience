@@ -221,6 +221,7 @@ export const zh = {
   'pdf.table.exportHint': '每份导出都带页码、方法、行列数与需核对的原因。',
   'pdf.table.scanning': '正在按 PDF 自身的版面读取表格…',
   'pdf.table.noneFound': '已扫描 {n} 页，没有发现表格候选。',
+  'pdf.emptyPages': '扫描页没有文字层：{total} 页中有 {empty} 页取不到文本。',
   'pdf.table.capped': '已达到读取器返回的前 {n} 个候选上限。',
   'pdf.table.rejectedTitle': '这些页面为什么没被当作表格：',
   'pdf.table.rejectedLine':

@@ -40,6 +40,10 @@ type ScanState =
       rejectedPages: readonly PdfTableRejection[]
       /** Pages whose coordinates were rotated back to upright before the reader measured them. */
       rotatedPages: readonly PdfRotatedPage[]
+      /** Document page count and how many of those pages carried no text at all. A scanned page has no
+       * text layer, which is the root cause behind "no tables found" on a document that plainly has pages. */
+      pageCount: number
+      emptyPageCount: number
     }
   | { status: 'failed'; message: string }
 
@@ -74,7 +78,9 @@ const PdfTablePanel = ({
           candidates: result.candidates,
           scannedPages: result.scannedPages,
           rejectedPages: result.rejectedPages ?? [],
-          rotatedPages: result.rotatedPages ?? []
+          rotatedPages: result.rotatedPages ?? [],
+          pageCount: opened.doc.pageCount,
+          emptyPageCount: opened.emptyPageCount
         })
       } catch (error) {
         if (!active) return
@@ -131,6 +137,12 @@ const PdfTablePanel = ({
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {state.status === 'ready' && state.emptyPageCount > 0 ? (
+        <p className="text-xs text-warning-900" data-testid="pdf-table-empty-pages">
+          {t('pdf.emptyPages', { empty: state.emptyPageCount, total: state.pageCount })}
+        </p>
       ) : null}
 
       {state.status === 'ready' && state.candidates.length === 0 ? (

@@ -777,6 +777,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '내보내기에는 페이지, 방법, 행·열 수와 확인이 필요한 이유가 항상 포함됩니다.',
   'pdf.table.scanning': 'PDF 자체의 레이아웃에서 표를 읽는 중…',
   'pdf.table.noneFound': '스캔한 {n}페이지에서 표 후보를 찾지 못했습니다.',
+  'pdf.emptyPages':
+    '스캔한 페이지에는 텍스트 레이어가 없습니다: {total}페이지 중 {empty}페이지에서 텍스트를 추출할 수 없었습니다.',
   'pdf.table.capped': '리더가 반환하는 상위 {n}개 후보에서 멈췄습니다.',
   'pdf.table.rejectedTitle': '표로 보고되지 않은 이유:',
   'pdf.table.rejectedLine':

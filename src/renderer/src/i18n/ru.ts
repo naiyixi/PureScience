@@ -786,6 +786,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'pdf.table.exportHint': 'В каждом экспорте есть страница, метод, размеры и причины для проверки.',
   'pdf.table.scanning': 'Таблицы читаются из собственной разметки PDF…',
   'pdf.table.noneFound': 'На {n} просмотренных страницах кандидатов таблиц нет.',
+  'pdf.emptyPages':
+    'У сканированной страницы нет текстового слоя: текст не удалось извлечь с {empty} из {total} страниц.',
   'pdf.table.capped': 'Остановлено на первых {n} кандидатах, возвращённых читалкой.',
   'pdf.table.rejectedTitle': 'Почему таблица не была найдена:',
   'pdf.table.rejectedLine':

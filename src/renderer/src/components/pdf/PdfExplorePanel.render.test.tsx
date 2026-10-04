@@ -42,6 +42,7 @@ let root: Root
 const mount = async (options: {
   outline?: PdfOutlineEntry[]
   pageCount?: number
+  emptyPageCount?: number
   figures?: PdfFigureForAgent[]
   scannedPages?: number
   skippedSmall?: number
@@ -60,7 +61,7 @@ const mount = async (options: {
                 outline: []
               },
               textPageCount: 4,
-              emptyPageCount: 0
+              emptyPageCount: options.emptyPageCount ?? 0
             }),
             outline: vi.fn().mockResolvedValue({
               docId: 'doc-1',
@@ -164,5 +165,21 @@ describe('PdfExplorePanel', () => {
 
     expect(container.querySelector('[data-testid="pdf-explore-outline-failed"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="pdf-explore-figures-failed"]')).not.toBeNull()
+  })
+  // An outline / figure / table list that comes back empty on a document with pages has a cause worth
+  // naming: a scanned page carries no text layer, and `open` already counted those pages.
+  it('names the pages that carried no extractable text', async () => {
+    await mount({ pageCount: 12, emptyPageCount: 9 })
+
+    const notice = container.querySelector('[data-testid="pdf-explore-empty-pages"]')
+    expect(notice).not.toBeNull()
+    expect(notice?.textContent ?? '').toContain('9')
+    expect(notice?.textContent ?? '').toContain('12')
+  })
+
+  it('stays quiet when every page carried text', async () => {
+    await mount({ pageCount: 12, emptyPageCount: 0 })
+
+    expect(container.querySelector('[data-testid="pdf-explore-empty-pages"]')).toBeNull()
   })
 })

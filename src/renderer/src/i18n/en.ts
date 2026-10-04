@@ -233,6 +233,8 @@ export const en: Record<ZhKey, string> = {
     'Every export carries its page, method, counts and the reasons it needs checking.',
   'pdf.table.scanning': "Reading the PDF's own layout for tables…",
   'pdf.table.noneFound': 'No table candidate in the {n} page(s) scanned.',
+  'pdf.emptyPages':
+    'A scanned page has no text layer: {empty} of {total} pages had no extractable text.',
   'pdf.table.capped': 'Stopped at the first {n} candidates the reader returns.',
   'pdf.table.rejectedTitle': 'Why no table was reported:',
   'pdf.table.rejectedLine':

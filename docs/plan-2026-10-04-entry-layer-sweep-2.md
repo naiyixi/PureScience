@@ -32,6 +32,24 @@ left_on|warning|notice|blocked|rejected|capped|truncat|empty|absent|missing`）�
 ② 它的语义对读者有用吗（**没有理由的清单无法据以行动**）；③ 挂载点在哪（现有面板 / 菜单 / 状态行）。
 三条都过才进批次；只过一两条的**归档并写明理由**，不许「为了凑数」做。
 
+## 一之二、12 项的裁定台账（逐项三判，边判边记）
+
+| 字段 | 裁定 | 依据 / 落点 |
+| --- | --- | --- |
+| `interruptionReason` | **真缺口，已修**（`ff05c41c`） | 而且比预想重：`failed/timeout/interrupted` 被同一个徽章一律印成 `error`，与 `repository.ts:273`「中断**不是**失败」直接冲突 ⇒ 改成按状态分说 + 具名原因 |
+| `failureKind` | **真缺口，已修**（`db647e2a`） | main 逐条产出、渲染层零读；领域层注释写明 transport 可重试、invalid-response 该留档 ⇒ 运行块加类别细分 |
+| `deferredReason` | **假缺口，划掉** | 面板 `:1040-1042` 早已按 `REASON_LABEL` 印「理由: 计数」——**以为没人读 ≠ 真的没人读** |
+| `scriptTruncated` | **真缺口，已修**（`72a7ef38`） | 投影把标记丢掉 ⇒ 残缺脚本被展示、并被 `.ipynb` 导出携带；顺带修掉共用单元格里同款徽章问题，并把徽章规则抽成一个共享函数防漂移 |
+| `failedPhase`（ACP 侧） | **部分** | 近亲 `HandoffLifecycleFailure.retryFrom` 已修（`ac8b3a4f`，载荷早有、main 在用、屏幕不读）；**ACP 错误事件上的相仍未上屏，继续挂着** |
+| `validationFailed` | **假缺口，划掉** | `function-models.ts:110-111` 把它折成具名理由 `provider-unverified` 上屏 |
+| `boundConversationsUnavailable` | **假缺口，划掉** | 载荷里恒为 `true` 的**常量**，读不读没有差别 |
+| `emptyPageCount` | **真缺口，已修** | `PdfOpenResult` 带着它、两个消费面板都只取 `docId`；扫描版 PDF 打开后一片空白而无解释 |
+| `unsealedReasons` | 待判 | 先进 MCP 工具结果（`:793`）⇒ 先查是否已由 agent 侧转达 |
+| `retryableNetworkFailure` / `regionBlocked` | 待判 | main 用它们决定重试/换源（`claude-install.ts:412,442`）⇒ 先查最终失败是否已被具名上报 |
+| `emptyPageCount` 之外的 PDF 面 | 已并查 | 见上 |
+
+**注**：`unsealedReasons`、`retryableNetworkFailure`、`regionBlocked` 三项的第三条判据「该事实是否已由另一条路（agent 转达 / 具名失败）上屏」**尚未走完**——不是缺口，是**未判**。
+
 ## 二、两条本机做不到、已具名归档
 
 ### 1. IEDB 免疫学证据连接器（竞品 #3261）—— **环境阻断，不做**

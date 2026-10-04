@@ -807,6 +807,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Chaque export porte sa page, sa méthode, ses dimensions et les raisons de le vérifier.',
   'pdf.table.scanning': "Lecture des tableaux d'après la mise en page du PDF…",
   'pdf.table.noneFound': 'Aucun candidat de tableau dans les {n} page(s) analysée(s).',
+  'pdf.emptyPages':
+    "Une page numérisée n'a pas de couche texte : aucun texte n'a pu être extrait de {empty} pages sur {total}.",
   'pdf.table.capped': 'Arrêt aux {n} premiers candidats renvoyés par le lecteur.',
   'pdf.table.rejectedTitle': "Pourquoi aucun tableau n'a été signalé :",
   'pdf.table.rejectedLine':

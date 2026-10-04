@@ -745,6 +745,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'pdf.table.exportHint': '每份匯出都帶頁碼、方法、行列數與需核對的原因。',
   'pdf.table.scanning': '正在依 PDF 自身的版面讀取表格…',
   'pdf.table.noneFound': '已掃描 {n} 頁，沒有發現表格候選。',
+  'pdf.emptyPages': '掃描頁沒有文字層：{total} 頁中有 {empty} 頁取不到文字。',
   'pdf.table.capped': '已達讀取器回傳的前 {n} 個候選上限。',
   'pdf.table.rejectedTitle': '這些頁面為什麼沒被當作表格：',
   'pdf.table.rejectedLine':

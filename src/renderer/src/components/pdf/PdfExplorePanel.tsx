@@ -27,7 +27,13 @@ type PdfExplorePanelProps = {
 
 type OutlineState =
   | { status: 'loading' }
-  | { status: 'ready'; entries: PdfOutlineEntry[]; pageCount: number; title: string }
+  | {
+      status: 'ready'
+      entries: PdfOutlineEntry[]
+      pageCount: number
+      title: string
+      emptyPageCount: number
+    }
   | { status: 'failed'; message: string }
 
 type FiguresState =
@@ -77,7 +83,11 @@ const PdfExplorePanel = ({
           status: 'ready',
           entries: outlineResult.outline,
           pageCount: outlineResult.pageCount,
-          title: outlineResult.title
+          title: outlineResult.title,
+          // `open` already reports how many pages carried no text at all. It is the root cause behind an
+          // empty outline, no figures and no tables on a scanned document, so it is carried here instead of
+          // being dropped with the rest of the open result.
+          emptyPageCount: opened.emptyPageCount
         })
         setFigures(
           figuresResult
@@ -144,6 +154,17 @@ const PdfExplorePanel = ({
           >
             {t('pdf.explore.outlineHeading')}
           </h3>
+          {/* Why an outline, figures or tables can come back empty on a document that plainly has pages: a
+              scanned page carries no text layer. The count comes from `open`, which the panel already
+              called. */}
+          {outline.status === 'ready' && outline.emptyPageCount > 0 ? (
+            <p className="py-1 text-xs text-warning-900" data-testid="pdf-explore-empty-pages">
+              {t('pdf.emptyPages', {
+                empty: outline.emptyPageCount,
+                total: outline.pageCount
+              })}
+            </p>
+          ) : null}
           {outline.status === 'loading' ? (
             <p className="py-1 text-xs text-text-300" data-testid="pdf-explore-outline-loading">
               {t('common.loading')}

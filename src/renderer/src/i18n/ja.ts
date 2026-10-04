@@ -786,6 +786,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdf.table.exportHint': '書き出しにはページ・手法・行数列と確認が必要な理由が必ず付きます。',
   'pdf.table.scanning': 'PDF 自体のレイアウトから表を読み取っています…',
   'pdf.table.noneFound': '走査した {n} ページに表の候補はありません。',
+  'pdf.emptyPages':
+    'スキャンしたページにはテキスト層がありません：{total} ページ中 {empty} ページからテキストを取得できませんでした。',
   'pdf.table.capped': 'リーダーが返す先頭 {n} 件の候補で打ち切りました。',
   'pdf.table.rejectedTitle': '表として報告されなかった理由：',
   'pdf.table.rejectedLine':

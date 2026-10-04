@@ -811,6 +811,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Jeder Export trägt Seite, Methode, Umfang und die Gründe für die Prüfung mit.',
   'pdf.table.scanning': 'Die Tabellen werden aus dem eigenen Layout der PDF gelesen…',
   'pdf.table.noneFound': 'Kein Tabellenkandidat auf den {n} gelesenen Seiten.',
+  'pdf.emptyPages':
+    'Eine gescannte Seite hat keine Textebene: aus {empty} von {total} Seiten ließ sich kein Text gewinnen.',
   'pdf.table.capped': 'Beim {n}. Kandidat des Lesers abgebrochen.',
   'pdf.table.rejectedTitle': 'Warum keine Tabelle gemeldet wurde:',
   'pdf.table.rejectedLine':
