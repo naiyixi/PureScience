@@ -271,15 +271,38 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   expect(imported.ok, `import failed: ${JSON.stringify(imported)}`).toBe(true)
   const landed = imported.landed!
   console.log(`[ic10] landed: ${JSON.stringify(landed)}`)
-  // Every dimension matches the SENDER's own counts — row for row, not "at least one". A landing that
-  // duplicated a row, or dropped one, reads as a mismatch here.
+  // Every dimension is accounted for: each row the package carried either landed on this machine or is
+  // NAMED in `skipped`. The sender's evidence set includes review rows the app creates on its own (an
+  // auto review at turn end) and those can point at a turn message the package's transcript does not
+  // carry — the landing module refuses such a row BY NAME instead of landing it against the wrong turn.
+  // So the invariant is "landed + named = carried", not "nothing was skipped": the latter reports a
+  // correct, named refusal as a failure, which is exactly what it did on the first packaged run (one
+  // ambient review row, `message-not-found`; see the queue's v1.84.0 item on package self-consistency).
+  const sourceReviewIds = sourceReviews.map((review) => review.id)
+  const skippedIds = new Set(landed.skipped.flatMap((row) => (row.id ? [row.id] : [])))
+  const notLandedReviewIds = sourceReviewIds.filter((id) => skippedIds.has(id))
+  const findingsOfLandedReviews = sourceReviews
+    .filter((review) => !skippedIds.has(review.id))
+    .reduce((total, review) => total + (review.checks?.length ?? 0), 0)
+
+  // Row for row against the SENDER's own counts — a landing that duplicated a row, or dropped one
+  // without naming it, reads as a mismatch here.
   expect(landed.citations, `source citations=${sourceCitations.length}`).toBe(
     sourceCitations.length
   )
-  expect(landed.reviews, `source reviews=${reviewShape(sourceReviews)}`).toBe(sourceReviews.length)
-  expect(landed.reviewFindings, 'source review findings').toBe(sourceFindings)
+  expect(
+    landed.reviews,
+    `source reviews=${reviewShape(sourceReviews)} notLanded=${JSON.stringify(notLandedReviewIds)} skipped=${JSON.stringify(landed.skipped)}`
+  ).toBe(sourceReviews.length - notLandedReviewIds.length)
+  expect(
+    landed.reviewFindings,
+    `source findings=${sourceFindings} notLanded=${JSON.stringify(notLandedReviewIds)}`
+  ).toBe(findingsOfLandedReviews)
+  // Citations and pins have no ambient rows — the spec made every one of them — so these stay exact.
   expect(landed.verificationRecords, `source pins=${sourcePins.length}`).toBe(sourcePins.length)
-  expect(landed.skipped).toEqual([])
+  // The rows THIS spec created are the ones it can vouch for: refusing any of them is a defect, not an
+  // environment difference. (An ambient review row may be refused, but only by name — never silently.)
+  expect(skippedIds.has(sourceReviewId), 'the review this spec ran must land').toBe(false)
 
   // 6) Read the receiving machine's own stores back — the counts must match what the package carried.
   const targetReferences = await page.evaluate(async (projectId) => {

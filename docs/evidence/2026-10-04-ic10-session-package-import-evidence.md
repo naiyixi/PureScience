@@ -61,3 +61,28 @@
 | 接线 | `import-owner.test.ts` + `import-session.test.ts` + `ipc.ts` 端口透传 |
 | 界面 | 导入对话框「已落库：引用 x · 复核 y · 审查结论 z · 验证 w」+ 逐条跳过原因（9 语 3 键） |
 | **真机** | 本档 §一：真包、跨项目、接收方四张表逐项相等 + 本机可复算指纹 |
+
+## 五、打包机上的第一次认证跑：抓到的是断言口径缺陷 + 一个具名的包内自洽缺口（2026-10-04 发版窗口）
+
+`release.yml` 的 mac job 红在最后一步 `Enforce platform certification`（`build / Build macos-arm64`），
+元凶是本 spec 第 282 行的 `expect(landed.skipped).toEqual([])`：
+
+```
+[ic10] landed: {"citations":1,"reviews":1,"reviewFindings":0,"verificationRecords":1,
+  "skipped":[{"kind":"review-findings","reason":"message-not-found","id":"cmutjtbsg…"}]}
+[ic10] source: reviews=error/null:0     ← 打包机上发送方只有 1 条复核行（本机是 2 条）
+```
+
+两条结论，分别落地：
+
+1. **断言口径缺陷（已改）**：`skipped == []` 把「对一条**非本 spec 自造**的行做具名拒绝」读成了失败。
+   发送方证据集里有一条应用自己在回合结束创建的 auto-review 行；打包机上它的 `turnMessageId`
+   不在包内转录里 ⇒ 落地模块**具名拒绝**（`message-not-found`）而不是挂到错误的回合上——
+   这正是 `import-session.ts:181-195` 写明的口径（没落地的行一律具名，绝不假装落地）。
+   改法：断言 = 「**本 spec 自造的行必须落地 + 落地数 + 具名数 = 发送方真源数（零静默丢失）**」；
+   引用与钉子无 ambient 行 ⇒ 保持严格相等；本 spec 亲手跑的那条复核行被拒绝 ⇒ 判红。
+   本机复跑（dev `out/`）：`1 passed (12.5s)`。
+2. **包内自洽缺口（具名，立案 v1.84.0）**：包可以带上一条「**它自己的转录里没有那条消息**」的复核行。
+   接收端能具名拒绝、读者不会被误导，但**导出侧本应自洽**：复核行与它引用的回合消息要么成对进包、
+   要么该行不进包。这条是打包认证跑**新发现**的，与 §一 的开发机读数不冲突（那边恰好两条行都自洽），
+   立案 v1.84.0，并在认证 spec 里补一条「包内自洽」断言作为它的验收。
