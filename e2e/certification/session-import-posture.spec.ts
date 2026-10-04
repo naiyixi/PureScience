@@ -1,8 +1,33 @@
 import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
+import type { SessionPackageImportRecord } from '../../src/shared/session-package-import'
 import { test } from '../fixtures/electron-app'
 import { createProject } from './helpers'
+
+// The window bridge, declared narrowly for what this spec calls (the shared record type is imported
+// rather than restated, so a change to the record cannot pass here unnoticed).
+type Bridge = {
+  api: {
+    sessions: {
+      loadAll: () => Promise<unknown>
+      exportPackage: (request: {
+        projectId: string
+        sessionId: string
+        mode: 'essential' | 'full'
+        destinationPath?: string
+      }) => Promise<{ ok: boolean; error?: string }>
+      importPackage: (request: {
+        packagePath: string
+        confirm?: { targetProjectId?: string }
+      }) => Promise<{ ok: boolean; sessionId?: string; reason?: string }>
+      importPosture: (request: {
+        projectId: string
+        sessionId: string
+      }) => Promise<SessionPackageImportRecord | null>
+    }
+  }
+}
 
 // IC11: the read-only / provenance posture of an imported session must be visible on the session
 // itself — after a restart, not only in the dialog that imported it.
@@ -80,7 +105,12 @@ test('an imported session states where it came from after a restart, and an ordi
       const bridge = globalThis as unknown as Bridge
       return bridge.api.sessions.exportPackage(request)
     },
-    { projectId: sourceProjectId, sessionId: source.sessionId, mode: 'full' as const, destinationPath: packagePath }
+    {
+      projectId: sourceProjectId,
+      sessionId: source.sessionId,
+      mode: 'full' as const,
+      destinationPath: packagePath
+    }
   )
   expect(exported.ok, `export failed: ${JSON.stringify(exported)}`).toBe(true)
 
