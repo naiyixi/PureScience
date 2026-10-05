@@ -456,7 +456,8 @@ const MemoryNoteList = ({
   notes,
   onSubmitNote,
   onUpdateNote,
-  onDeleteNote
+  onDeleteNote,
+  onSupersedeNote
 }: {
   category: MemoryCategory | undefined
   notes: MemoryNote[]
