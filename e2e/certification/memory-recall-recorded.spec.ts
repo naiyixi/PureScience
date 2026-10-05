@@ -81,4 +81,31 @@ test('a session that was given a memory note leaves the recall recorded on it', 
   console.log(
     `[ic43] the note now reads: "${(await chip.first().innerText()).replace(/\s+/g, ' ').trim()}"`
   )
+
+  // IC43, the other half: which note replaced this one. The chain has a reader (recall skips superseded
+  // notes) and had no writer; this drives the panel's own control and reads the stored record back.
+  await again.locator('[data-slot="memory-note-composer"]').fill('Prefers terse answers')
+  await again.locator('[data-slot="memory-note-composer"]').press('Enter')
+  await expect(again.locator('[data-memory-note]')).toHaveCount(2, { timeout: 30_000 })
+
+  const supersede = again.locator('[data-slot="memory-note-supersede"]').first()
+  await expect(supersede).toBeVisible()
+  const sibling = await supersede.locator('option').nth(1).getAttribute('value')
+  expect(sibling).toBeTruthy()
+  await supersede.selectOption({ value: sibling as string })
+  console.log(`[ic43] marked a note as superseded by ${sibling}`)
+
+  const supersededBadge = again.locator('[data-testid="memory-note-superseded"]')
+  await expect(supersededBadge.first()).toBeVisible({ timeout: 30_000 })
+  console.log('[ic43] the card now carries the superseded marker')
+
+  // …and the app's own stored memory is the proof, not just the marker: read it back through the bridge.
+  const afterSupersede = await page.evaluate(async () => {
+    const bridge = globalThis as unknown as {
+      api: { settings: { getMemory: () => Promise<unknown> } }
+    }
+    return bridge.api.settings.getMemory()
+  })
+  console.log(`[ic43] stored after superseding: ${JSON.stringify(afterSupersede)}`)
+  expect(JSON.stringify(afterSupersede)).toContain(`"supersededBy":"${sibling}"`)
 })
