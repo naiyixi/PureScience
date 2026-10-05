@@ -2,6 +2,12 @@ import { chmod, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { ENGINE_CATALOG, evaluateEngineAvailability } from '../../shared/engine-catalog'
+import {
+  describeEngineWeightGate,
+  renderEngineWeightGateEnglish,
+  weightDownloadPossible,
+  weightGateBlocksEngine
+} from '../../shared/engine-weights'
 import type { ComputeHost } from '../../shared/compute'
 
 const COMPUTE_SKILL_ID = 'remote-compute-ssh'
@@ -95,33 +101,43 @@ export const renderEngineAvailability = (hosts: readonly ComputeHost[]): string 
     // A GPU is only claimed when a probed host actually reported one; the local machine never
     // advertises a GPU it has not proven.
     hasGpu: hostGpus.length > 0,
-    allowOnDemandDownload: false,
+    // Derived, not assumed: this build may download weights only when a published checksum is on file
+    // (`shared/engine-weights`). Today none is, so the answer is no — and saying so from the same
+    // source the window uses keeps the two surfaces from disagreeing about the same engine.
+    allowOnDemandDownload: weightDownloadPossible(),
     hasComputeHost
   }
   const lines: string[] = ['Engines available for this project (from the engine catalog):']
   for (const engine of ENGINE_CATALOG) {
     const availability = evaluateEngineAvailability(engine, context)
+    const gate = describeEngineWeightGate(engine, { consent: context.allowOnDemandDownload })
     const output =
       engine.outputKind === 'measured'
         ? 'measured'
         : engine.outputKind === 'lookup'
           ? 'database lookup'
           : 'PREDICTED (must be labelled, never presented as a measurement)'
-    const status =
-      availability.status === 'ready'
+    const status = weightGateBlocksEngine(gate)
+      ? 'unavailable: its weights have no publisher checksum in this build, so approving a download cannot enable it'
+      : availability.status === 'ready'
         ? 'available'
         : availability.status === 'needs-consent'
           ? `needs user consent: ${availability.reason}`
           : availability.status === 'needs-host'
             ? `needs a compute host: ${availability.reason}`
             : `unavailable: ${availability.reason}`
-    lines.push(`  - ${engine.id} (${engine.label}) — ${output} — ${status}`)
+    lines.push(
+      `  - ${engine.id} (${engine.label}) — ${output} — ${status} — ${renderEngineWeightGateEnglish(gate)}`
+    )
   }
   lines.push(
     '',
     'Engine rules: never start a weight download or a job without the user approving it; a PREDICTED',
     'output must say so wherever it appears; if nothing above can produce the number, say "not',
-    'computed: <what> — requires <engine or host>" instead of describing the number qualitatively.'
+    'computed: <what> — requires <engine or host>" instead of describing the number qualitatively.',
+    'Weights are never fetched without a publisher checksum. When a line above says no checksum is on',
+    'file, that engine cannot be enabled by approving anything — report it as unavailable and',
+    'do not ask the user to allow a download.'
   )
   return lines.join('\n')
 }

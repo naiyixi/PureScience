@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { EngineAvailabilityContext } from './engine-catalog'
 import {
+  foldingRouteAdvice,
   planDdgRoute,
   planFoldingRoute,
   planStructureRoute,
@@ -62,6 +63,17 @@ describe('structure routing', () => {
     expect(route.message).toContain('未计算')
     expect(route.message).toContain('需要 GPU')
     expect(route.provenance).toEqual([])
+  })
+
+  it('never offers an on-demand download this build cannot perform', () => {
+    // The build holds no publisher checksum, so approving a download changes nothing: the advice must
+    // say so rather than send the user after the action ("enable on-demand downloads").
+    expect(foldingRouteAdvice(false)).toContain('按需下载无法启用')
+    expect(foldingRouteAdvice(false)).not.toContain('启用按需下载')
+    expect(foldingRouteAdvice(false)).toContain('没有任何已发布的权重校验值')
+    // And when a checksum list does exist, the same sentence stays the old, truthful one.
+    expect(foldingRouteAdvice(true)).toContain('批准按需下载')
+    expect(foldingRouteAdvice(true)).not.toContain('无法启用')
   })
 })
 

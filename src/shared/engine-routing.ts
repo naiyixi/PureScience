@@ -14,6 +14,7 @@ import {
   type EngineAvailabilityContext,
   type EngineDefinition
 } from './engine-catalog'
+import { weightDownloadPossible } from './engine-weights'
 
 export type StructureIdentifier = { kind: 'pdb' | 'uniprot'; id: string }
 
@@ -95,6 +96,16 @@ const runsHere = (engine: EngineDefinition, context: EngineAvailabilityContext):
 const reasonsFor = (blocked: { engine: EngineDefinition; reason: string }[]): string =>
   blocked.map((entry) => entry.reason).join('；') || '没有可用引擎'
 
+/**
+ * What to tell the user when no folding engine can serve the request, given whether on-demand weight
+ * downloads are possible in this build. Two states, both named: offering "enable on-demand downloads"
+ * while the build holds no publisher checksum would describe an action that changes nothing.
+ */
+export const foldingRouteAdvice = (downloadPossible: boolean): string =>
+  downloadPossible
+    ? '请配置 GPU 主机或批准按需下载。'
+    : '请配置 GPU 主机：本版没有任何已发布的权重校验值，按需下载无法启用。'
+
 export const planFoldingRoute = (context: EngineAvailabilityContext): EngineRoute => {
   const { ready, blocked } = resolveEnginesForTask('structure-prediction', context)
   const candidates = [...ready, ...blocked.map((entry) => entry.engine)]
@@ -129,11 +140,15 @@ export const planFoldingRoute = (context: EngineAvailabilityContext): EngineRout
     }
   }
 
+  // The advice has to match what this build can actually do. With no publisher checksum on file
+  // (`shared/engine-weights`), no amount of approving enables an on-demand download, so offering it
+  // as the remedy would send the user after an action that cannot change the outcome. Derived from
+  // the same predicate the window and the compute skill doc use, never re-decided here.
   return {
     kind: 'not-computed',
     requiresApproval: false,
     provenance: [],
-    message: `未计算：本机与已注册主机都无法提供折叠引擎（${reasonsFor(blocked)}）。请配置 GPU 主机或启用按需下载。`
+    message: `未计算：本机与已注册主机都无法提供折叠引擎（${reasonsFor(blocked)}）。${foldingRouteAdvice(weightDownloadPossible())}`
   }
 }
 

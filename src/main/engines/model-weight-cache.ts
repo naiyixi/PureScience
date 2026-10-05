@@ -11,14 +11,11 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-export type WeightSpec = {
-  modelId: string
-  url: string
-  bytes: number
-  /** Published SHA256 of the artifact (lowercase hex). Required — never optional. */
-  sha256: string
-  license: string
-}
+import type { EngineWeightSpec } from '../../shared/engine-weights'
+
+/** The spec shape is owned by `shared/engine-weights` (the build-level list of what may be downloaded);
+ *  this module only fetches against it, so the two cannot drift into two vocabularies. */
+export type WeightSpec = EngineWeightSpec
 
 export type WeightDownloadOutcome =
   | { status: 'cached'; path: string; spec: WeightSpec; verifiedSha256: string }

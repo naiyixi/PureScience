@@ -156,7 +156,12 @@ describe('engine availability projection', () => {
     // A prediction must never be presented as a measurement.
     expect(block).toContain('esmfold')
     expect(block).toContain('PREDICTED (must be labelled, never presented as a measurement)')
-    expect(block).toContain('needs user consent')
+    // This build has no publisher checksum on file, so an engine that needs on-demand weights cannot be
+    // enabled by approving anything. The doc must say that, and must not offer a download to approve —
+    // "needs user consent" would promise the agent an action that cannot work.
+    expect(block).toContain('no publisher checksum is on file for this build')
+    expect(block).not.toContain('needs user consent')
+    expect(block).toContain('do not ask the user to allow a download')
     expect(block).toContain('not')
     expect(block).toContain('computed: <what> — requires <engine or host>')
   })
@@ -165,11 +170,11 @@ describe('engine availability projection', () => {
     const withoutGpu = renderEngineAvailability([
       { id: 'h1', displayName: 'host-1', executionMode: 'direct_ssh', probeResult: { ok: true } }
     ] as never)
-    // No probed accelerator ⇒ the folding engine is not advertised as available; it needs a
-    // consented weight download (or a GPU host).
+    // No probed accelerator ⇒ the folding engine is not advertised as available; it needs weights this
+    // build cannot download (or a GPU host).
     expect(withoutGpu).toContain('esmfold')
     expect(withoutGpu).not.toMatch(/esmfold[^\n]*—\s*available/)
-    expect(withoutGpu).toContain('needs user consent')
+    expect(withoutGpu).toContain('no publisher checksum is on file for this build')
 
     const withGpu = renderEngineAvailability([
       {
@@ -179,6 +184,8 @@ describe('engine availability projection', () => {
         probeResult: { ok: true, gpus: [{ type: 'A100', count: 2 }] }
       }
     ] as never)
-    expect(withGpu).toContain('available')
+    // A remote physics engine with a connected host is genuinely available — asserted on its own line,
+    // not on the bare word "available" (which "unavailable:" also contains).
+    expect(withGpu).toMatch(/openmm-fep[^\n]*— available —/)
   })
 })
