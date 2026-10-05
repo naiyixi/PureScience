@@ -202,7 +202,7 @@
 | IC48 | **RO-Crate 导入**与外部 crate 校验（`validateRoCrate` 可复用但从未用于外来 crate）                | 立项做互操作，还是明确只做导出                 |
 | IC49 | 期刊**合并可撤销**（现无解绑别名/拆分入口）                                                       | 做撤销，还是在 UI 明写「合并不可逆」           |
 | IC50 | 技能**导入版分叉为个人技能**                                                                      | 做分叉，还是明写「导入版只读」                 |
-| IC51 | 设置搜索补 **egress / 白名单 / 域名** 关键词                                                      | 可直接做（无争议），随本批扫尾                 |
+| IC51 | 设置搜索补 **egress / 白名单 / 域名** 关键词 | ✅ **已落地（会话，2026-10-05）**：`SettingsPage.tsx` 的 network 面板 keywords 补 `egress/allowlist/domain/白名单/域名`；按「两面同一套词汇」的既有约定，`palette-commands.ts` 的 `settings.network` 同步补齐；加强 `settings-search.test.ts`（新增用例：`白名单/域名/egress/allowlist` ⇒ 都到 Network）⇒ **单测 4 passed**。**真机读数受阻（具名）**：`e2e/certification/palette-commands.spec.ts` 已按既有形状扩写（命令面板读 `白名单/egress/域名`、设置内搜索读 `白名单/域名`），但本轮 `build:e2e` 会把执行器**在飞的 `src/main/compute/*`（IC39）**一并编入主进程包 ⇒ 应用启动即挂在 `firstWindow`（用无关最小 spec 复现同形）⇒ 读数待其提交后再取。教训：**并发期间不要为取读数而 `build:e2e`**，产物里会混入他人半成品。 |
 
 ## 3. 关键路径与依赖
 

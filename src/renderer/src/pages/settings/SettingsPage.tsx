@@ -251,10 +251,15 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
           'registry',
           'npm',
           'download',
+          'egress',
+          'allowlist',
+          'domain',
           '镜像',
           '代理',
           '网络',
-          '下载源'
+          '下载源',
+          '白名单',
+          '域名'
         ]
       },
       {

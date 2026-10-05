@@ -55,7 +55,21 @@ export const buildPaletteCommands = ({
   {
     id: 'settings.network',
     labelKey: 'palette.settingsNetwork',
-    keywords: ['network', 'proxy', 'mirror', 'registry', 'npm', '镜像', '代理', '网络'],
+    keywords: [
+      'network',
+      'proxy',
+      'mirror',
+      'registry',
+      'npm',
+      'egress',
+      'allowlist',
+      'domain',
+      '镜像',
+      '代理',
+      '网络',
+      '白名单',
+      '域名'
+    ],
     run: () => openSettingsToPanel('network')
   },
   {

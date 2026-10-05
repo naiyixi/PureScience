@@ -8,7 +8,19 @@ const panels = [
   {
     id: 'network',
     label: 'Network',
-    keywords: ['proxy', 'mirror', 'registry', 'npm', '镜像', '代理']
+    keywords: [
+      'proxy',
+      'mirror',
+      'registry',
+      'npm',
+      'egress',
+      'allowlist',
+      'domain',
+      '镜像',
+      '代理',
+      '白名单',
+      '域名'
+    ]
   },
   { id: 'runtimes', label: 'Runtimes', keywords: ['python', 'environment', 'mirror', '运行环境'] },
   { id: 'storage', label: 'Storage', keywords: ['data root', 'disk', '存储'] },
@@ -35,5 +47,13 @@ describe('settings search', () => {
   it('shows everything before anything is typed, and nothing for a query no panel answers', () => {
     expect(idsFor('')).toEqual(['network', 'runtimes', 'storage', 'general'])
     expect(idsFor('zzzz-no-such-panel')).toEqual([])
+  })
+
+  it('reaches the network panel by the allowlist vocabulary it now answers to', () => {
+    // The notebook network allowlist lives inside Network: someone looking for it types these, not "Network".
+    expect(idsFor('白名单')).toEqual(['network'])
+    expect(idsFor('域名')).toEqual(['network'])
+    expect(idsFor('egress')).toEqual(['network'])
+    expect(idsFor('allowlist')).toEqual(['network'])
   })
 })
