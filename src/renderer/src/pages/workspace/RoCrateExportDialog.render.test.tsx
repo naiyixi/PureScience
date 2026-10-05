@@ -86,6 +86,13 @@ describe('RoCrateExportDialog', () => {
     expect(container.querySelector('[data-testid="ro-crate-export-refused"]')?.textContent).toBe(
       'Refused 1 published versions whose bytes no longer match the recorded checksum.'
     )
+    // …and the count is followed by the list itself: which Version, and why its bytes did not make it in.
+    const refusedList = container.querySelector(
+      '[data-testid="ro-crate-export-refused-list-success"]'
+    )
+    expect(refusedList?.textContent).toContain('version-9')
+    expect(refusedList?.textContent).toContain('no longer hash to what was recorded')
+    expect(refusedList?.querySelectorAll('li')).toHaveLength(1)
   })
 
   it.each([
@@ -129,5 +136,71 @@ describe('RoCrateExportDialog', () => {
 
     expect(onClose).toHaveBeenCalled()
     expect(container.querySelector('[data-testid="ro-crate-export-failure"]')).toBeNull()
+  })
+
+  it('lists which versions were refused and why, under the named refusal', async () => {
+    exportProject.mockResolvedValue({
+      ok: false,
+      error: 'no-exportable-version',
+      refused: [
+        {
+          appSessionId: 'session-2',
+          artifactId: 'artifact-9',
+          versionId: 'version-9',
+          reason: 'checksum-mismatch'
+        },
+        {
+          appSessionId: 'session-2',
+          artifactId: 'artifact-10',
+          versionId: 'version-10',
+          reason: 'content-missing'
+        }
+      ]
+    })
+    await render(true)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="ro-crate-export-submit"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    // The named refusal stays the first line; the evidence follows it rather than replacing it.
+    expect(container.querySelector('[data-testid="ro-crate-export-failure"]')?.textContent).toBe(
+      'Every published version was refused: their recorded provenance no longer matches the stored bytes.'
+    )
+    const list = container.querySelector('[data-testid="ro-crate-export-refused-list"]')
+    expect(list?.querySelectorAll('li')).toHaveLength(2)
+    expect(list?.textContent).toContain('version-9')
+    expect(list?.textContent).toContain('no longer hash to what was recorded')
+    expect(list?.textContent).toContain('version-10')
+    expect(list?.textContent).toContain('no longer on disk')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('shows the writer’s own rule-level detail when its assertions failed', async () => {
+    exportProject.mockResolvedValue({
+      ok: false,
+      error: 'validation-failed',
+      detail:
+        'RO-Crate validation failed: root-data-entity (spec-must): the Root Data Entity MUST be a Dataset whose @id ends with /'
+    })
+    await render(true)
+
+    await act(async () => {
+      container
+        .querySelector('[data-testid="ro-crate-export-submit"]')
+        ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    // The free-text detail is never the only thing on screen: the named failure comes first.
+    expect(container.querySelector('[data-testid="ro-crate-export-failure"]')?.textContent).toBe(
+      'The exported crate failed RO-Crate verification.'
+    )
+    expect(
+      container.querySelector('[data-testid="ro-crate-export-failure-detail"]')?.textContent
+    ).toContain('root-data-entity (spec-must)')
   })
 })

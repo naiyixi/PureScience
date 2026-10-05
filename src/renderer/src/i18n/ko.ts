@@ -4090,5 +4090,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     '원격 접속이 꺼져 있어 이 주소는 지금 응답하지 않습니다. 지난번 켰을 때 저장된 주소이며, 다시 켜면 사용할 수 있습니다.',
   'sessionInfo.visionEvidence': '이미지 변환 ({count})',
-  'sessionInfo.visionExtractor': '추출기 {digest}'
+  'sessionInfo.visionExtractor': '추출기 {digest}',
+  'roCrate.export.refusal.evidence-unreadable': '기록된 증거를 읽을 수 없습니다.',
+  'roCrate.export.refusal.evidence-invalid': '기록된 증거가 올바르지 않습니다.',
+  'roCrate.export.refusal.content-missing': '파일이 더 이상 디스크에 없습니다.',
+  'roCrate.export.refusal.checksum-mismatch': '바이트가 기록된 해시와 일치하지 않습니다.',
+  'roCrate.export.refusedEntry': '{version} — 제외됨: {reason}'
 }

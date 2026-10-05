@@ -4270,5 +4270,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     "L'accès à distance est désactivé, cette adresse ne répond donc pas pour l'instant. Elle a été enregistrée lors de la dernière activation — réactivez l'accès pour l'utiliser.",
   'sessionInfo.visionEvidence': "interprétations d'image ({count})",
-  'sessionInfo.visionExtractor': 'extracteur {digest}'
+  'sessionInfo.visionExtractor': 'extracteur {digest}',
+  'roCrate.export.refusal.evidence-unreadable': "Ses preuves enregistrées n'ont pas pu être lues.",
+  'roCrate.export.refusal.evidence-invalid': 'Ses preuves enregistrées ne sont pas valides.',
+  'roCrate.export.refusal.content-missing': 'Ses fichiers ne sont plus sur le disque.',
+  'roCrate.export.refusal.checksum-mismatch':
+    "Ses octets ne correspondent plus à l'empreinte enregistrée.",
+  'roCrate.export.refusedEntry': '{version} — refusée : {reason}'
 }

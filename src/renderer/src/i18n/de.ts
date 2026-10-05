@@ -4283,5 +4283,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     'Der Fernzugriff ist aus, daher antwortet diese Adresse derzeit nicht. Sie wurde beim letzten Einschalten gespeichert — schalte den Zugriff wieder ein, um sie zu nutzen.',
   'sessionInfo.visionEvidence': 'Bildauswertungen ({count})',
-  'sessionInfo.visionExtractor': 'Extraktor {digest}'
+  'sessionInfo.visionExtractor': 'Extraktor {digest}',
+  'roCrate.export.refusal.evidence-unreadable':
+    'Die aufgezeichneten Belege ließen sich nicht lesen.',
+  'roCrate.export.refusal.evidence-invalid': 'Die aufgezeichneten Belege sind ungültig.',
+  'roCrate.export.refusal.content-missing':
+    'Die zugehörigen Dateien liegen nicht mehr auf der Platte.',
+  'roCrate.export.refusal.checksum-mismatch':
+    'Die Bytes ergeben nicht mehr den aufgezeichneten Hash.',
+  'roCrate.export.refusedEntry': '{version} — abgelehnt: {reason}'
 }

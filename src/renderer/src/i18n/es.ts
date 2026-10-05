@@ -4242,5 +4242,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     'El acceso remoto está desactivado, así que esta dirección no responde ahora mismo. Se guardó la última vez que estuvo activo: vuelve a activarlo para usarla.',
   'sessionInfo.visionEvidence': 'interpretaciones de imagen ({count})',
-  'sessionInfo.visionExtractor': 'extractor de imagen {digest}'
+  'sessionInfo.visionExtractor': 'extractor de imagen {digest}',
+  'roCrate.export.refusal.evidence-unreadable': 'No se pudo leer la evidencia registrada.',
+  'roCrate.export.refusal.evidence-invalid': 'La evidencia registrada no es válida.',
+  'roCrate.export.refusal.content-missing': 'Sus archivos ya no están en el disco.',
+  'roCrate.export.refusal.checksum-mismatch': 'Sus bytes ya no coinciden con el hash registrado.',
+  'roCrate.export.refusedEntry': '{version} — rechazada: {reason}'
 }

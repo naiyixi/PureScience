@@ -3,6 +3,7 @@ import { Boxes, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
 import { useLanguage } from '@/i18n'
+import type { TranslationKey } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import {
   dialogCloseButtonClassName,
@@ -11,7 +12,11 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
-import type { RoCrateExportFailure, RoCrateExportSuccess } from '../../../../shared/ro-crate-export'
+import type {
+  RoCrateExportRefusal,
+  RoCrateExportRefusedVersion,
+  RoCrateExportSuccess
+} from '../../../../shared/ro-crate-export'
 
 // `ro-crate:export-project` is the desktop half of the RO-Crate export: the writer already builds a
 // crate and refuses its own output if it does not validate, but until a window can call it the export
@@ -21,6 +26,11 @@ import type { RoCrateExportFailure, RoCrateExportSuccess } from '../../../../sha
 // A refusal is shown by its NAME (the code main returned). "Something went wrong" would leave the
 // person with no next step; "no published version yet" and "every version was refused because its
 // bytes no longer matched" are different problems with different answers.
+//
+// Naming it is the first line, not the whole answer: the writer already says WHICH Versions it refused
+// and why, and — when it failed its own assertions — which requirement was not met. Those are read here
+// rather than dropped. `detail` is free text from the writer, so it is shown UNDER the named refusal and
+// never as the only thing on screen.
 const FAILURE_KEYS = {
   cancelled: 'common.cancel',
   'project-not-found': 'roCrate.export.failure.project-not-found',
@@ -31,6 +41,13 @@ const FAILURE_KEYS = {
   'write-failed': 'roCrate.export.failure.write-failed'
 } as const
 
+const REFUSAL_REASON_KEYS = {
+  'evidence-unreadable': 'roCrate.export.refusal.evidence-unreadable',
+  'evidence-invalid': 'roCrate.export.refusal.evidence-invalid',
+  'content-missing': 'roCrate.export.refusal.content-missing',
+  'checksum-mismatch': 'roCrate.export.refusal.checksum-mismatch'
+} as const satisfies Record<RoCrateExportRefusedVersion['reason'], string>
+
 type RoCrateExportDialogProps = {
   projectId: string
   projectName: string
@@ -38,6 +55,27 @@ type RoCrateExportDialogProps = {
   open: boolean
   onClose: () => void
 }
+
+/** One line per refused Version: the record it came from, and why its bytes did not make it in. */
+const RefusedList = ({
+  refused,
+  t,
+  testId
+}: {
+  refused: readonly RoCrateExportRefusedVersion[]
+  t: (key: TranslationKey) => string
+  testId: string
+}): React.JSX.Element => (
+  <ul data-testid={testId} className="space-y-1 text-muted-foreground">
+    {refused.map((entry) => (
+      <li key={entry.versionId} className="break-words">
+        {t('roCrate.export.refusedEntry')
+          .replace('{version}', entry.versionId)
+          .replace('{reason}', t(REFUSAL_REASON_KEYS[entry.reason]))}
+      </li>
+    ))}
+  </ul>
+)
 
 const RoCrateExportDialog = ({
   projectId,
@@ -50,7 +88,9 @@ const RoCrateExportDialog = ({
   // animation plays.
   const retainedName = useRetainedDialogValue(open ? projectName : undefined)
   const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<RoCrateExportFailure | undefined>(undefined)
+  // The whole refusal is kept, not only its code: the named reason and the evidence behind it are the
+  // same answer, and the writer already put both on the wire.
+  const [failure, setFailure] = useState<RoCrateExportRefusal | undefined>(undefined)
   const [written, setWritten] = useState<RoCrateExportSuccess | undefined>(undefined)
   useDialogFocusRestore(open)
 
@@ -64,7 +104,7 @@ const RoCrateExportDialog = ({
     if (!result.ok) {
       // A closed save sheet is a decision, not a failure — nothing is reported as one.
       if (result.error === 'cancelled') onClose()
-      else setFailure(result.error)
+      else setFailure(result)
       return
     }
     setWritten(result)
@@ -103,13 +143,22 @@ const RoCrateExportDialog = ({
         <p className="mt-3 text-xs text-muted-foreground">{t('roCrate.export.description')}</p>
 
         {failure !== undefined ? (
-          <p
-            role="alert"
-            data-testid="ro-crate-export-failure"
-            className="mt-3 text-xs text-destructive"
-          >
-            {t(FAILURE_KEYS[failure])}
-          </p>
+          <div className="mt-3 space-y-1 text-xs">
+            <p role="alert" data-testid="ro-crate-export-failure" className="text-destructive">
+              {t(FAILURE_KEYS[failure.error])}
+            </p>
+            {failure.detail ? (
+              <p
+                data-testid="ro-crate-export-failure-detail"
+                className="max-h-32 overflow-y-auto break-words text-[0.7rem] text-muted-foreground"
+              >
+                {failure.detail}
+              </p>
+            ) : null}
+            {failure.refused && failure.refused.length > 0 ? (
+              <RefusedList refused={failure.refused} t={t} testId="ro-crate-export-refused-list" />
+            ) : null}
+          </div>
         ) : null}
 
         {written !== undefined ? (
@@ -125,10 +174,17 @@ const RoCrateExportDialog = ({
             <p data-testid="ro-crate-export-validation">
               {t('roCrate.export.validated').replace('{passed}', String(written.validation.passed))}
             </p>
-            {written.refusedCount > 0 ? (
-              <p data-testid="ro-crate-export-refused">
-                {t('roCrate.export.refused').replace('{count}', String(written.refusedCount))}
-              </p>
+            {written.refused.length > 0 ? (
+              <>
+                <p data-testid="ro-crate-export-refused">
+                  {t('roCrate.export.refused').replace('{count}', String(written.refusedCount))}
+                </p>
+                <RefusedList
+                  refused={written.refused}
+                  t={t}
+                  testId="ro-crate-export-refused-list-success"
+                />
+              </>
             ) : null}
           </div>
         ) : null}

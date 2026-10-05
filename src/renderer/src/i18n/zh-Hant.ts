@@ -3857,5 +3857,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     '遠端存取已關閉，這個位址此刻不會回應。它是上次開啟時儲存下來的 —— 重新開啟遠端存取即可再次使用。',
   'sessionInfo.visionEvidence': '視覺轉譯（{count}）',
-  'sessionInfo.visionExtractor': '擷取器 {digest}'
+  'sessionInfo.visionExtractor': '擷取器 {digest}',
+  'roCrate.export.refusal.evidence-unreadable': '它的證據記錄讀不出來。',
+  'roCrate.export.refusal.evidence-invalid': '它的證據記錄不合法。',
+  'roCrate.export.refusal.content-missing': '它的檔案已不在磁碟上。',
+  'roCrate.export.refusal.checksum-mismatch': '它的位元組與記錄的雜湊不再一致。',
+  'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}'
 }

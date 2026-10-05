@@ -4193,5 +4193,10 @@ export const en: Record<ZhKey, string> = {
   'remoteControl.savedAddressInactive':
     'Remote access is off, so this address does not answer right now. It is the one saved the last time access was on — turn access on to use it again.',
   'sessionInfo.visionEvidence': 'Vision translations ({count})',
-  'sessionInfo.visionExtractor': 'extractor {digest}'
+  'sessionInfo.visionExtractor': 'extractor {digest}',
+  'roCrate.export.refusal.evidence-unreadable': 'Its recorded evidence could not be read.',
+  'roCrate.export.refusal.evidence-invalid': 'Its recorded evidence is not valid.',
+  'roCrate.export.refusal.content-missing': 'Its files are no longer on disk.',
+  'roCrate.export.refusal.checksum-mismatch': 'Its bytes no longer hash to what was recorded.',
+  'roCrate.export.refusedEntry': '{version} — refused: {reason}'
 }

@@ -4156,5 +4156,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     'リモートアクセスがオフのため、このアドレスは現在応答しません。前回オンのときに保存されたもので、オンに戻せば再び使えます。',
   'sessionInfo.visionEvidence': '画像の読み取り（{count}）',
-  'sessionInfo.visionExtractor': '抽出器 {digest}'
+  'sessionInfo.visionExtractor': '抽出器 {digest}',
+  'roCrate.export.refusal.evidence-unreadable': '記録されたエビデンスを読み取れませんでした。',
+  'roCrate.export.refusal.evidence-invalid': '記録されたエビデンスが不正です。',
+  'roCrate.export.refusal.content-missing': 'ファイルがディスク上に存在しません。',
+  'roCrate.export.refusal.checksum-mismatch': 'バイト列のハッシュが記録と一致しません。',
+  'roCrate.export.refusedEntry': '{version} — 除外：{reason}'
 }

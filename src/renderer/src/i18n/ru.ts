@@ -4170,5 +4170,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'remoteControl.savedAddressInactive':
     'Удалённый доступ выключен, поэтому этот адрес сейчас не отвечает. Он сохранён с прошлого включения — включите доступ, чтобы снова им пользоваться.',
   'sessionInfo.visionEvidence': 'распознаваний изображений ({count})',
-  'sessionInfo.visionExtractor': 'экстрактор {digest}'
+  'sessionInfo.visionExtractor': 'экстрактор {digest}',
+  'roCrate.export.refusal.evidence-unreadable': 'Записанные доказательства не удалось прочитать.',
+  'roCrate.export.refusal.evidence-invalid': 'Записанные доказательства недействительны.',
+  'roCrate.export.refusal.content-missing': 'Его файлов больше нет на диске.',
+  'roCrate.export.refusal.checksum-mismatch': 'Байты больше не совпадают с записанным хешем.',
+  'roCrate.export.refusedEntry': '{version} — отклонено: {reason}'
 }
