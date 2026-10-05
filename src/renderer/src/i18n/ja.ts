@@ -4164,5 +4164,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusedEntry': '{version} — 除外：{reason}',
   'settings.memoryNoteFilterPlaceholder': 'メモを絞り込む…',
   'settings.memoryNoteFilterEmpty': 'この絞り込みに一致するメモはありません。',
-  'roCrate.export.exportOnly': '書き出し専用 — 外部の crate はまだ取り込めず、検証もできません。'
+  'roCrate.export.exportOnly': '書き出し専用 — 外部の crate はまだ取り込めず、検証もできません。',
+  'settings.skillImportedKept':
+    '取り込んだまま保持されます。この内容は取り込み時と照合され、自分のスキルとして分岐させる方法はまだありません。'
 }

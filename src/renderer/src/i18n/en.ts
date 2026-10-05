@@ -4202,5 +4202,7 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryNoteFilterPlaceholder': 'Filter notes…',
   'settings.memoryNoteFilterEmpty': 'No note here matches that filter.',
   'roCrate.export.exportOnly':
-    'Export only — an external crate cannot be imported or checked here yet.'
+    'Export only — an external crate cannot be imported or checked here yet.',
+  'settings.skillImportedKept':
+    'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.'
 }

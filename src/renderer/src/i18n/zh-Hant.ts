@@ -3865,5 +3865,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
   'settings.memoryNoteFilterPlaceholder': '篩選筆記…',
   'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。',
-  'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。'
+  'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。',
+  'settings.skillImportedKept':
+    '依匯入原樣保留：這份副本會與匯入時的內容比對，目前還不能把它分叉成屬於你自己的技能。'
 }

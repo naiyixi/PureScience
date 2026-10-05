@@ -4179,5 +4179,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterPlaceholder': 'Фильтр заметок…',
   'settings.memoryNoteFilterEmpty': 'Ни одна заметка не соответствует этому фильтру.',
   'roCrate.export.exportOnly':
-    'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.'
+    'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.',
+  'settings.skillImportedKept':
+    'Хранится как импортированное: эта копия сверяется с импортом, и отделить из неё собственный навык пока нельзя.'
 }

@@ -4295,5 +4295,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterPlaceholder': 'Notizen filtern…',
   'settings.memoryNoteFilterEmpty': 'Keine Notiz entspricht diesem Filter.',
   'roCrate.export.exportOnly':
-    'Nur Export — ein fremdes Crate kann hier noch nicht eingelesen oder geprüft werden.'
+    'Nur Export — ein fremdes Crate kann hier noch nicht eingelesen oder geprüft werden.',
+  'settings.skillImportedKept':
+    'Bleibt wie importiert: Diese Fassung wird mit dem Importierten verglichen, und sie lässt sich noch nicht in einen eigenen Skill abzweigen.'
 }

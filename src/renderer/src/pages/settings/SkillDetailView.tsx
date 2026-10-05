@@ -129,6 +129,15 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
         </p>
       ) : null}
 
+      {/* And what an imported skill is NOT: it stays the imported copy. Saying it here is the difference
+          between a limitation and something the reader has to discover by looking for a fork action that
+          does not exist. */}
+      {detail?.source === 'imported' ? (
+        <p className="mt-2 text-xs text-muted-foreground" data-slot="skill-imported-kept">
+          {t('settings.skillImportedKept')}
+        </p>
+      ) : null}
+
       {/* Trigger quality: pure local rules, scored at read time, so the number is one the user can
           reproduce offline instead of a publisher's self-assessment. Every failing check says what is
           missing — a bare score would say "worse" without saying "worse how". */}

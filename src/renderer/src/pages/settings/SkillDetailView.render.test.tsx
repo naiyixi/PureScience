@@ -73,6 +73,10 @@ describe('SkillDetailView', () => {
 
     const row = document.body.querySelector('[data-testid="skill-content-integrity"]')
     expect(row?.getAttribute('data-integrity')).toBe('changed')
+    // …and the same view says what an imported skill is NOT: it stays the imported copy, with no fork.
+    expect(document.body.querySelector('[data-slot="skill-imported-kept"]')?.textContent).toBe(
+      'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.'
+    )
     expect(row?.textContent).toContain('Content differs from what was imported.')
   })
 
@@ -91,6 +95,8 @@ describe('SkillDetailView', () => {
     })
 
     expect(document.body.querySelector('[data-testid="skill-content-integrity"]')).toBeNull()
+    // A curated skill is not an imported one, so the "kept as imported" line must not appear for it.
+    expect(document.body.querySelector('[data-slot="skill-imported-kept"]')).toBeNull()
   })
 
   it('says the licence is unknown instead of leaving the row blank', async () => {
