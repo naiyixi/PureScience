@@ -746,4 +746,6 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **发版车道判决（对 tag 提交 `0cb1df43`）**：Release ✅ success（21 资产、非草稿、非预发布、正文 16952 字符、**Latest**）、Windows Full Test ✅ success、**Nightly ❌ failure** —— 具名作业 `build / Build macos-arm64` 第 23 步 `Enforce platform certification`，真凶是 `e2e/certification/journal-claim-correction.spec.ts:15:5`（**预存竞争**，非本批改动）：`toBeVisible()` 对本来就在场的历史区立刻为真 ⇒ 紧随的 `innerText()` 读到订正落地前的快照（实收 `"impact-factor · 3.5 · 2024 · Publisher table"`）。本机 3 遍复现 **2 红 1 绿** ⇒ 真竞争；修法是**收紧**（先 `toContainText('Corrected by hand')` 再取快照），修后 3/3 绿，提交 `ec6ffa7e`。**下一步：等 `ec6ffa7e` 的 Nightly 转绿后删 tag 重建**（让 tag 自身的车道集全绿；重建前把本条记入 CHANGELOG 与队列档）。
 
+**重建 tag 后的终局（2026-10-05 21:4x）**：tag 重建到 `f562876c`（含修复与本节文档）。该提交**只改 markdown**（CHANGELOG + 本档）⇒ Nightly 与 Windows Full Test 按各自的 `paths-ignore` **正确地没有触发**（设计行为，不是缺跑）；**Release** 车道（无 paths 过滤）✅ success —— 页面 21 资产、`draft=false`、非预发布、正文 **17442** 字符（比首版 16952 多出修复那一段）、**Latest**。**代码级证明落在 `ec6ffa7e`**：Nightly ✅ success + Windows Full Test ✅ success（原红车道就此转绿）。⇒ 车道证明完整，且 tag 在其应触发的范围内全绿。
+
 **下一个未被认领的单元 = IC39**（取消排队 / 运行中的远程任务；当前只有 poller 超时后内部 kill）。
