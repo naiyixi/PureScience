@@ -4297,5 +4297,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly':
     'Nur Export — ein fremdes Crate kann hier noch nicht eingelesen oder geprüft werden.',
   'settings.skillImportedKept':
-    'Bleibt wie importiert: Diese Fassung wird mit dem Importierten verglichen, und sie lässt sich noch nicht in einen eigenen Skill abzweigen.'
+    'Bleibt wie importiert: Diese Fassung wird mit dem Importierten verglichen, und sie lässt sich noch nicht in einen eigenen Skill abzweigen.',
+  'settings.memoryLastSurfaced': 'Zuletzt abgerufen am {when}'
 }

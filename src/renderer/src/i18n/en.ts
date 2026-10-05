@@ -4204,5 +4204,6 @@ export const en: Record<ZhKey, string> = {
   'roCrate.export.exportOnly':
     'Export only — an external crate cannot be imported or checked here yet.',
   'settings.skillImportedKept':
-    'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.'
+    'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.',
+  'settings.memoryLastSurfaced': 'Last recalled {when}'
 }

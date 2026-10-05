@@ -3927,7 +3927,8 @@ export const zh = {
   'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。',
   'roCrate.export.exportOnly': '仅支持导出 —— 目前还不能把外部的 crate 导入进来或对它做校验。',
   'settings.skillImportedKept':
-    '按导入原样保留：这份副本会与导入时的内容比对，目前还不能把它分叉成属于你自己的技能。'
+    '按导入原样保留：这份副本会与导入时的内容比对，目前还不能把它分叉成属于你自己的技能。',
+  'settings.memoryLastSurfaced': '最近被回忆：{when}'
 }
 
 export type ZhKey = keyof typeof zh

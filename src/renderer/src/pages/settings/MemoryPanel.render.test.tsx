@@ -478,4 +478,38 @@ describe('MemoryPanel', () => {
     await typeInto(filter, '')
     expect(cards()).toHaveLength(2)
   })
+
+  it('shows when recall last handed a note over, and nothing when it never has', async () => {
+    useMemoryStore.setState({
+      memory: {
+        enabled: true,
+        categories: [{ id: 'about-you', name: 'About you', createdAt: 1 }],
+        notes: [
+          {
+            id: 'note-used',
+            categoryId: 'about-you',
+            text: 'Prefers concise answers',
+            createdAt: 1,
+            updatedAt: 2,
+            lastSurfacedAt: 1_760_000_000_000
+          },
+          {
+            id: 'note-fresh',
+            categoryId: 'about-you',
+            text: 'A newer note',
+            createdAt: 3,
+            updatedAt: 3
+          }
+        ]
+      },
+      isLoading: false
+    })
+    await renderPanel()
+
+    // Only the note recall has actually carried gets the line: "never recalled" is not a state to print,
+    // it is the absence of one.
+    const surfaced = container.querySelectorAll('[data-testid="memory-note-last-surfaced"]')
+    expect(surfaced).toHaveLength(1)
+    expect(surfaced[0]?.textContent).toContain('settings.memoryLastSurfaced')
+  })
 })

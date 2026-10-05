@@ -89,6 +89,7 @@ import {
   type FunctionModelEvent
 } from '../function-models/event-log'
 import { detectFunctionModelTarget } from '../function-models/detect'
+import { createLogger } from '../logger'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -338,7 +339,14 @@ class SettingsService {
       runtime: this.runtimeManager,
       connectors: this.connectors,
       storageRoot: this.storageRoot,
-      userClaudeDir: this.userClaudeDir
+      userClaudeDir: this.userClaudeDir,
+      // Recall recorded as a fact about the notes. Fire-and-forget on purpose: a session must start even if
+      // this write cannot land, and a failure is a log line rather than a refusal.
+      recordRecall: (noteIds) => {
+        void this.repository.markNotesSurfaced(noteIds, Date.now()).catch((error: unknown) => {
+          createLogger('memory-recall').warn('could not record the recall', error)
+        })
+      }
     })
     this.visionModels = createVisionModels(this.repository, this.providers, this.backendResolver)
   }

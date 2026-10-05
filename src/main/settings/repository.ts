@@ -1306,6 +1306,28 @@ class SettingsRepository {
     return this.mutate((settings) => ({ ...settings, memory: sanitized }))
   }
 
+  // Records that recall injected these notes just now, by stamping each one's `lastSurfacedAt`.
+  //
+  // A TARGETED mutation rather than `setMemory(...)`: the panel can be editing notes at the very moment a
+  // session starts, and rewriting the whole memory blob from a background caller would clobber that edit.
+  // Sanitising is deliberately skipped — this changes one numeric field on notes that are already
+  // persisted, and it must not silently drop a note the sanitiser would disagree with mid-edit.
+  async markNotesSurfaced(noteIds: readonly string[], at: number): Promise<StoredSettings> {
+    const ids = new Set(noteIds)
+    if (ids.size === 0) return this.getSettings()
+    return this.mutate((settings) => {
+      const memory = settings.memory
+      if (!memory) return settings
+      let changed = false
+      const notes = memory.notes.map((note) => {
+        if (!ids.has(note.id) || note.lastSurfacedAt === at) return note
+        changed = true
+        return { ...note, lastSurfacedAt: at }
+      })
+      return changed ? { ...settings, memory: { ...memory, notes } } : settings
+    })
+  }
+
   async setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<StoredSettings> {
     return this.mutate((settings) => ({ ...settings, useIntent }))
   }

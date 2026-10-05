@@ -37,7 +37,7 @@ import {
   normalizeResponsesBaseUrl
 } from '../agent-framework/codex'
 import { renderConnectorInstructions } from '../connectors/skill-doc'
-import { renderMemoryRecallInstructions } from './memory-recall'
+import { renderMemoryRecallInstructions, recalledNoteIds } from './memory-recall'
 import { NOTEBOOK_MCP_SERVER_NAME, NOTEBOOK_RPC_TOOLS } from '../notebook/mcp-server'
 import { ARTIFACT_MCP_SERVER_NAME, writeArtifactFileToolSchema } from '../artifacts/mcp-server'
 import { REVIEWER_BRIDGE_NAMESPACED_TOOLS } from '../reviewer/bridge-tools'
@@ -241,6 +241,11 @@ export type AgentBackendResolverOptions = {
   ) => OpenAiProviderBridgePort
   ensureCodexSubscriptionHome?: () => Promise<void>
   nextGenerationId?: () => string
+  /**
+   * Records which notes a recall actually injected. Optional, and never allowed to fail the resolution:
+   * starting a session must not depend on writing down that memory was used.
+   */
+  recordRecall?: (noteIds: readonly string[]) => void
 }
 
 // Codex exposes local MCP tools as namespaced Responses functions. Chat Completions has no namespace
@@ -319,6 +324,7 @@ export class AgentBackendResolver {
   ) => OpenAiProviderBridgePort
   private readonly ensureCodexSubscriptionHome: () => Promise<void>
   private readonly nextGenerationId: () => string
+  private readonly recordRecall: ((noteIds: readonly string[]) => void) | undefined
   private readonly responsesBridges = new Map<string, ResponsesBridgeEntry>()
   private readonly nativeResponsesCompatibilityProxies = new Map<
     string,
@@ -332,6 +338,7 @@ export class AgentBackendResolver {
     this.connectors = options.connectors
     this.storageRoot = options.storageRoot
     this.userClaudeDir = options.userClaudeDir
+    this.recordRecall = options.recordRecall
     this.readFrameworkOverride =
       options.readFrameworkOverride ?? (() => process.env.PURESCIENCE_AGENT_FRAMEWORK)
     this.createResponsesBridge =
@@ -566,6 +573,13 @@ export class AgentBackendResolver {
     // Computed once for the whole resolution: claude-code returns early with its own appends, and
     // the opencode/codex paths merge into the persistent appends below.
     const memoryRecallInstructions = renderMemoryRecallInstructions(settings.memory)
+    // Recall is also a fact ABOUT the notes: record which ones this session was actually handed, so the
+    // panel can say when each was last used. Derived from the same selection as the text above, and it may
+    // never disturb starting the session.
+    if (memoryRecallInstructions !== undefined) {
+      const surfaced = recalledNoteIds(settings.memory)
+      if (surfaced.length > 0) this.recordRecall?.(surfaced)
+    }
     const storedProvider = providerId
       ? settings.providers.find((provider) => provider.id === providerId)
       : undefined

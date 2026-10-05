@@ -560,7 +560,7 @@ const MemoryNoteList = ({
                 className="min-h-0 w-full resize-y bg-transparent text-[12px] leading-5 text-text-100 outline-none placeholder:text-text-300"
                 onChange={(event) => onUpdateNote(note, event.target.value)}
               />
-              {(note.evidence || note.supersededBy) && (
+              {(note.evidence || note.supersededBy || note.lastSurfacedAt !== undefined) && (
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-text-400">
                   {note.supersededBy && (
                     <span
@@ -576,6 +576,15 @@ const MemoryNoteList = ({
                       {t('settings.memoryEvidence')}: {note.evidence}
                     </span>
                   )}
+                  {/* Recall is a fact about the note: when a session was actually handed it. Absent until
+                      recall has run once, which is why it is not shown as "never" — nothing has happened. */}
+                  {note.lastSurfacedAt !== undefined ? (
+                    <span data-testid="memory-note-last-surfaced" className="truncate">
+                      {t('settings.memoryLastSurfaced', {
+                        when: new Date(note.lastSurfacedAt).toLocaleString()
+                      })}
+                    </span>
+                  ) : null}
                 </div>
               )}
               <div className="mt-1 flex items-center justify-end">

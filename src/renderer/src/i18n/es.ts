@@ -4253,5 +4253,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly':
     'Solo exportación: aquí todavía no se puede importar ni verificar un crate externo.',
   'settings.skillImportedKept':
-    'Se conserva tal como se importó: esta copia se compara con lo importado y aún no hay forma de derivarla en un skill propio.'
+    'Se conserva tal como se importó: esta copia se compara con lo importado y aún no hay forma de derivarla en un skill propio.',
+  'settings.memoryLastSurfaced': 'Última recuperación el {when}'
 }

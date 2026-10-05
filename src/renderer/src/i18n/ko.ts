@@ -4100,5 +4100,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.',
   'roCrate.export.exportOnly': '내보내기 전용 — 외부 crate는 아직 가져오거나 검사할 수 없습니다.',
   'settings.skillImportedKept':
-    '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교되며, 아직 내 스킬로 분기할 수 없습니다.'
+    '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교되며, 아직 내 스킬로 분기할 수 없습니다.',
+  'settings.memoryLastSurfaced': '마지막으로 불러온 시각 {when}'
 }

@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MemorySettings } from '../../shared/settings'
-import { renderMemoryRecallInstructions } from './memory-recall'
+import { recalledNoteIds, renderMemoryRecallInstructions } from './memory-recall'
 
 const memoryFixture = (overrides: Partial<MemorySettings> = {}): MemorySettings => ({
   enabled: true,
@@ -21,6 +21,41 @@ const memoryFixture = (overrides: Partial<MemorySettings> = {}): MemorySettings 
     }
   ],
   ...overrides
+})
+
+// The recorder's contract: the ids it reports are exactly the notes the text carries. That is the whole
+// reason it shares the selection above — a note that was NOT injected must never be marked as used.
+describe('recalledNoteIds', () => {
+  it('names exactly the notes the instruction text carries', () => {
+    const memory = memoryFixture({
+      notes: [
+        {
+          id: 'n1',
+          categoryId: 'about-you',
+          text: 'Prefers concise answers',
+          createdAt: 1,
+          updatedAt: 2
+        },
+        {
+          id: 'n2',
+          categoryId: 'about-you',
+          text: 'Old preference',
+          createdAt: 1,
+          updatedAt: 1,
+          supersededBy: 'n1'
+        }
+      ]
+    })
+
+    // The superseded note stays readable in the panel but is never recalled, so it is never stamped.
+    expect(recalledNoteIds(memory)).toEqual(['n1'])
+    expect(renderMemoryRecallInstructions(memory)).not.toContain('Old preference')
+  })
+
+  it('names nothing when there is nothing to recall', () => {
+    expect(recalledNoteIds(memoryFixture({ enabled: false }))).toEqual([])
+    expect(recalledNoteIds(undefined)).toEqual([])
+  })
 })
 
 describe('renderMemoryRecallInstructions', () => {
