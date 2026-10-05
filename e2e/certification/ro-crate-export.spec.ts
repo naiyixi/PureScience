@@ -89,6 +89,13 @@ test('exports a project from the interface into a crate that validates on disk',
   await expect(dialog).toBeVisible()
   await dialog.getByTestId('ro-crate-export-submit').click()
 
+  // What this surface does NOT do is stated up front — an external crate has no way in, so it is never
+  // validated either. Saying it here is the difference between a limitation and a mystery.
+  await expect(dialog.locator('[data-slot="ro-crate-export-only"]')).toContainText(
+    'Export only — an external crate cannot be imported or checked here yet.'
+  )
+  console.log('[ic48] the dialog states it is export-only')
+
   // The panel reports a result a person can check: how many files, where, and the validation verdict.
   const result = dialog.getByTestId('ro-crate-export-result')
   await expect(result).toBeVisible({ timeout: 60_000 })
