@@ -796,3 +796,42 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 ⇒ 断言 banner 原文**且回读该行仍为 running**（证明「送不到不改行」）。**要证「远端进程真被 kill」需要一台可 SSH 的替身主机**（本机未开远程登录）⇒ 该半以单测 + 主进程答复为准，不冒充真机。
 
 **下一步**：批次 8 余下 IC40（后台交付 needs-attention 全局可见）与 IC42（引擎面板：可用性矩阵 + 权重下载同意门与进度，零入口）。
+
+## 十九、本轮追加（执行器，2026-10-06 04:2x–）——IC40 落地（批次 8 第二条）
+
+**开局判定（防重做）**：`HEAD == origin/main == d5f1dcf3`；会话已推 IC41（`a15f41fa` + 读数 `49aeb883`）与 IC43–IC51（§十七）；
+本轮的 IC40 是**上一轮留在工作区的未提交实现**（9 个 i18n 文件 + `owner.ts` + `ipc.ts` + `NotificationBell.tsx`），本轮把它的门禁跑齐后提交，
+未与任何会话路径相交。
+
+**交付（IC40：后台交付送不进会话时，消息中心给出全局可见的通知卡）**
+
+| 面 | 内容 |
+| --- | --- |
+| 生产者 | `BackgroundDeliveryOwner` 新增可选端口 `onNeedsAttention` / `onReportError`，在**投递落定处**从**台账**扫该会话的 needs-attention 行上报（覆盖「本 pass 刚标记」与「上个进程标记后重启」两半 —— 只读本 pass 产出必漏后者） |
+| 载荷 | 新 `src/main/notifications/needs-attention-notification.ts`：`task.needs-attention:<sessionId>:<deliveryId>`，**状态不进 key**（否则同一行先上报后投递成功会多出一张卡）；纯函数、可单测 |
+| 同源文案 | `shared/notifications.ts` 两条规范英文卡面常量：主进程记录、渲染端按语言映射；有「en 字典与规范串逐字一致」的用例钉住，防止只改一侧而静默失去翻译 |
+| 接线 | `ipc.ts` → `notificationInbox.record`；上报抛错只记一行日志，**绝不弄挂投递 pass** |
+| 界面 | `NotificationBell.tsx` 补 title/summary 两处映射 + 2 键 ×9 语（zh ≠ en、zh-Hant 纯繁体） |
+
+**为什么选 inbox 通知而不是「全局交付视图」**：本行给的两个选项里，inbox 复用既有共享面（`notificationInbox.record` + 铃铛），
+**零新通道、零新界面骨架**；另起一个全局只读列表会制造第二份「同一展示」的来源，与本仓的单一来源规矩相悖。
+
+**清读闭环已对源核实、无需新通道**：`isTaskOutcome`（`notification-inbox-controller.ts:75`，`kind.startsWith('task.')`）
++ 「会话可见即已读」规则覆盖全部 `task.*` ⇒ 新卡照常被清零。**这是读源码得到的结论、不是推断**。
+
+**验证（全部实跑）**：定向 182 文件 / **1846 passed**；契约族 16 文件 / 187 passed；i18n **3653 键 ×9 语 100%**；
+`check:web-api-map` 通过（本单元不加通道 ⇒ 计数无变动，属应有的 no-op）；双 typecheck 净（**tsc 首次在默认 2GB 堆上 OOM**
+⇒ 记一条环境事实：本轮起 `typecheck` 与全仓 eslint 都要带 `NODE_OPTIONS=--max-old-space-size=4096`）；
+`eslint --no-cache .` **0 error** / 122 warning；`scripts/pre-push-checks.sh` 全通过。
+
+**真机读数具名立案（未取）**：本机 swap 已用 **9.5G/10.24G**、空闲物理页 ~85MB（`vm_stat` 5425 页 ×16KB）⇒ 无 `build:e2e` + Electron 的安全余量。
+**配方（隔离实例三件齐 + 造数据）**：`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT`（**同时**把 `settings.dataRoot` 指到隔离目录）+ 独立端口；
+按应用自己的存储形状预置一条 `BackgroundDelivery`（`state='needs-attention'`、`sessionId` 指向一个**不可读**的会话）⇒ 触发一次投递 pass（重启应用即走恢复扫描）
+⇒ 打开消息中心（`notif.center` = "Message center"，**别按常识猜成 /notification/i**），断言卡面 = "Background result needs attention" **且** 该卡随「打开会话 / 全部已读」被清零。
+
+**下一步**：批次 8 只剩 **IC42**（引擎面板：可用性矩阵 + 权重下载同意门与进度）——按排期档 §3 的关键路径，它是**新通道组（engine:*）**，需要契约连锁 + 生成式 API 映射 + 9 语，**单独立项文件**。
+本轮已对源核实其现状（`model-weight-cache.ts` **零消费方**、`allowOnDemandDownload` 在真实代码里**恒为 false**、无 GPU 探测、`ENGINE_CATALOG` 无任何界面渲染，
+且 `docs/plan-2026-10-03-M2-blocker-and-deferral.md` 已判定「**没有已发布 SHA256 的权重清单 ⇒ 下载路径不可做真**」）。
+**设计约束（下一步必须遵守，防造死控件）**：矩阵与「同意门」用真实上下文（GPU / 已注册主机 / 持久化的同意设置）计算，同意开关必须**真的翻转矩阵状态**；
+**权重下载不得做成一个永远被拒的按钮**——M2 的清单尚不存在，因此下载半只能以**明写现状**（"无已发布校验值 ⇒ 按设计不可下载"）呈现，
+按钮留到清单落地那天再接，并在计划档具名立案。
