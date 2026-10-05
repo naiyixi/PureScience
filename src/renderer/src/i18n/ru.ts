@@ -4182,5 +4182,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.',
   'settings.skillImportedKept':
     'Хранится как импортированное: эта копия сверяется с импортом, и отделить из неё собственный навык пока нельзя.',
-  'settings.memoryLastSurfaced': 'Последний раз использовано: {when}'
+  'settings.memoryLastSurfaced': 'Последний раз использовано: {when}',
+  'jobDetail.cancelJob': 'Остановить задание',
+  'jobDetail.cancelling': 'Останавливаем…',
+  'jobDetail.cancelDone': 'Запрошена остановка — задание отменено.',
+  'jobDetail.cancelRefusedAlreadyTerminal':
+    'Это задание уже завершилось, останавливать было нечего.',
+  'jobDetail.cancelRefusedHostUnreachable':
+    'Узел недоступен, поэтому задание не остановлено и продолжает выполняться.',
+  'jobDetail.cancelRefusedStarting':
+    'Это задание ещё готовится на узле, поэтому ничего не остановлено. Повторите попытку, когда оно запустится.',
+  'jobDetail.cancelFailed': 'Не удалось попросить приложение остановить это задание.',
+  'settings.memorySupersedeBy': 'Заменена заметкой',
+  'settings.memorySupersedeNone': 'Не заменена'
 }

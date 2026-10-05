@@ -4205,5 +4205,17 @@ export const en: Record<ZhKey, string> = {
     'Export only — an external crate cannot be imported or checked here yet.',
   'settings.skillImportedKept':
     'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.',
-  'settings.memoryLastSurfaced': 'Last recalled {when}'
+  'settings.memoryLastSurfaced': 'Last recalled {when}',
+  'jobDetail.cancelJob': 'Cancel job',
+  'jobDetail.cancelling': 'Stopping…',
+  'jobDetail.cancelDone': 'Stop requested — the job is now cancelled.',
+  'jobDetail.cancelRefusedAlreadyTerminal':
+    'This job had already finished, so there was nothing to stop.',
+  'jobDetail.cancelRefusedHostUnreachable':
+    'The host could not be reached, so the job was not stopped and is still running.',
+  'jobDetail.cancelRefusedStarting':
+    'This job is still being prepared on the host, so nothing was stopped yet. Try again once it is running.',
+  'jobDetail.cancelFailed': 'Could not ask the app to stop this job.',
+  'settings.memorySupersedeBy': 'Superseded by',
+  'settings.memorySupersedeNone': 'Not superseded'
 }

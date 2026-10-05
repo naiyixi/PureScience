@@ -4101,5 +4101,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly': '내보내기 전용 — 외부 crate는 아직 가져오거나 검사할 수 없습니다.',
   'settings.skillImportedKept':
     '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교되며, 아직 내 스킬로 분기할 수 없습니다.',
-  'settings.memoryLastSurfaced': '마지막으로 불러온 시각 {when}'
+  'settings.memoryLastSurfaced': '마지막으로 불러온 시각 {when}',
+  'jobDetail.cancelJob': '작업 중지',
+  'jobDetail.cancelling': '중지하는 중…',
+  'jobDetail.cancelDone': '중지를 요청했습니다 — 이 작업은 취소되었습니다.',
+  'jobDetail.cancelRefusedAlreadyTerminal': '이 작업은 이미 끝났으므로 중지할 대상이 없습니다.',
+  'jobDetail.cancelRefusedHostUnreachable':
+    '호스트에 연결할 수 없어 작업이 중지되지 않았고 계속 실행 중입니다.',
+  'jobDetail.cancelRefusedStarting':
+    '이 작업은 아직 호스트에서 준비 중이라 중지된 것이 없습니다. 실행이 시작된 뒤 다시 시도하세요.',
+  'jobDetail.cancelFailed': '앱에 이 작업의 중지를 요청하지 못했습니다.',
+  'settings.memorySupersedeBy': '대체한 메모',
+  'settings.memorySupersedeNone': '대체되지 않음'
 }

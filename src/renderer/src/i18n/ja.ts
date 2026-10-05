@@ -4167,5 +4167,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly': '書き出し専用 — 外部の crate はまだ取り込めず、検証もできません。',
   'settings.skillImportedKept':
     '取り込んだまま保持されます。この内容は取り込み時と照合され、自分のスキルとして分岐させる方法はまだありません。',
-  'settings.memoryLastSurfaced': '最後に想起された日時 {when}'
+  'settings.memoryLastSurfaced': '最後に想起された日時 {when}',
+  'jobDetail.cancelJob': 'ジョブを中止',
+  'jobDetail.cancelling': '停止しています…',
+  'jobDetail.cancelDone': '停止を要求しました — このジョブは中止されました。',
+  'jobDetail.cancelRefusedAlreadyTerminal':
+    'このジョブはすでに終了しているため、停止する対象がありません。',
+  'jobDetail.cancelRefusedHostUnreachable':
+    'ホストに接続できなかったため、ジョブは停止されておらず、まだ実行中です。',
+  'jobDetail.cancelRefusedStarting':
+    'このジョブはまだホスト上で準備中で、何も停止していません。実行が始まってからもう一度お試しください。',
+  'jobDetail.cancelFailed': 'アプリにこのジョブの停止を要求できませんでした。',
+  'settings.memorySupersedeBy': '置き換えたメモ',
+  'settings.memorySupersedeNone': '置き換えなし'
 }

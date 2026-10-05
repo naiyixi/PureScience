@@ -3928,7 +3928,17 @@ export const zh = {
   'roCrate.export.exportOnly': '仅支持导出 —— 目前还不能把外部的 crate 导入进来或对它做校验。',
   'settings.skillImportedKept':
     '按导入原样保留：这份副本会与导入时的内容比对，目前还不能把它分叉成属于你自己的技能。',
-  'settings.memoryLastSurfaced': '最近被回忆：{when}'
+  'settings.memoryLastSurfaced': '最近被回忆：{when}',
+  'jobDetail.cancelJob': '取消任务',
+  'jobDetail.cancelling': '正在停止…',
+  'jobDetail.cancelDone': '已请求停止 — 该任务现已取消。',
+  'jobDetail.cancelRefusedAlreadyTerminal': '这个任务此前已经结束，没有需要停止的进程。',
+  'jobDetail.cancelRefusedHostUnreachable': '无法连接到主机，任务未被停止，仍在运行。',
+  'jobDetail.cancelRefusedStarting':
+    '这个任务仍在主机上准备中，还没有开始运行，因此没有停止任何进程。等它开始运行后再试。',
+  'jobDetail.cancelFailed': '无法请求应用停止这个任务。',
+  'settings.memorySupersedeBy': '被哪条取代',
+  'settings.memorySupersedeNone': '未被取代'
 }
 
 export type ZhKey = keyof typeof zh

@@ -4283,5 +4283,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Export uniquement — un crate externe ne peut pas encore être importé ni vérifié ici.',
   'settings.skillImportedKept':
     'Conservé tel qu’importé : cette copie est comparée à ce qui a été importé, et il n’existe pas encore de moyen d’en dériver un skill personnel.',
-  'settings.memoryLastSurfaced': 'Dernière récupération le {when}'
+  'settings.memoryLastSurfaced': 'Dernière récupération le {when}',
+  'jobDetail.cancelJob': 'Interrompre le job',
+  'jobDetail.cancelling': 'Arrêt en cours …',
+  'jobDetail.cancelDone': 'Arrêt demandé — le job est désormais interrompu.',
+  'jobDetail.cancelRefusedAlreadyTerminal':
+    'Ce job était déjà terminé ; il n’y avait rien à arrêter.',
+  'jobDetail.cancelRefusedHostUnreachable':
+    'L’hôte est injoignable : le job n’a pas été arrêté et s’exécute toujours.',
+  'jobDetail.cancelRefusedStarting':
+    'Ce job est encore en préparation sur l’hôte : rien n’a été arrêté. Réessayez une fois qu’il s’exécute.',
+  'jobDetail.cancelFailed': 'Impossible de demander à l’application d’arrêter ce job.',
+  'settings.memorySupersedeBy': 'Remplacée par',
+  'settings.memorySupersedeNone': 'Non remplacée'
 }

@@ -3868,5 +3868,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。',
   'settings.skillImportedKept':
     '依匯入原樣保留：這份副本會與匯入時的內容比對，目前還不能把它分叉成屬於你自己的技能。',
-  'settings.memoryLastSurfaced': '最近被回憶：{when}'
+  'settings.memoryLastSurfaced': '最近被回憶：{when}',
+  'jobDetail.cancelJob': '取消任務',
+  'jobDetail.cancelling': '正在停止…',
+  'jobDetail.cancelDone': '已請求停止 — 該任務現已取消。',
+  'jobDetail.cancelRefusedAlreadyTerminal': '這個任務先前已經結束，沒有需要停止的程序。',
+  'jobDetail.cancelRefusedHostUnreachable': '無法連線到主機，任務未被停止，仍在執行中。',
+  'jobDetail.cancelRefusedStarting':
+    '這個任務仍在主機上準備中，還沒有開始執行，因此沒有停止任何程序。等它開始執行後再試。',
+  'jobDetail.cancelFailed': '無法請求應用程式停止這個任務。',
+  'settings.memorySupersedeBy': '被哪條取代',
+  'settings.memorySupersedeNone': '未被取代'
 }

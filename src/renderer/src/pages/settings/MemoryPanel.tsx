@@ -463,6 +463,7 @@ const MemoryNoteList = ({
   onSubmitNote: (text: string) => void
   onUpdateNote: (note: MemoryNote, text: string) => void
   onDeleteNote: (noteId: string) => void
+  onSupersedeNote: (noteId: string, byNoteId: string | undefined) => void
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const [draft, setDraft] = useState('')
@@ -598,6 +599,32 @@ const MemoryNoteList = ({
                   <Trash2 className="size-3.5" aria-hidden="true" />
                 </button>
               </div>
+              {/* Which note replaced this one, if any. Recall already skips superseded notes, so this is the
+                  control that takes a note out of recall WITHOUT deleting what it said — and putting it back
+                  is the same control, because the record is a statement rather than a deletion. */}
+              <label className="mt-1 flex items-center gap-1.5 text-[10px] text-text-400">
+                <span>{t('settings.memorySupersedeBy')}</span>
+                <select
+                  data-slot="memory-note-supersede"
+                  value={note.supersededBy ?? ''}
+                  onChange={(event) =>
+                    onSupersedeNote(
+                      note.id,
+                      event.target.value === '' ? undefined : event.target.value
+                    )
+                  }
+                  className="max-w-[14rem] rounded border border-border bg-transparent px-1 py-0.5 text-[10px] text-text-200 outline-none"
+                >
+                  <option value="">{t('settings.memorySupersedeNone')}</option>
+                  {notes
+                    .filter((candidate) => candidate.id !== note.id)
+                    .map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.text.replace(/\s+/g, ' ').slice(0, 40)}
+                      </option>
+                    ))}
+                </select>
+              </label>
             </div>
           ))
         )}
@@ -677,6 +704,26 @@ export const MemoryPanel = (): React.JSX.Element => {
         notes: normalized.notes.map((candidate) =>
           candidate.id === note.id ? { ...candidate, text, updatedAt: Date.now() } : candidate
         )
+      })
+    },
+    [normalized, persist]
+  )
+
+  const supersedeNote = useCallback(
+    (noteId: string, byNoteId: string | undefined): void => {
+      // The chain the recall reader already honours: a superseded note stays readable in the panel but is
+      // never injected again. Clearing it (`undefined`) puts the note back in recall — the record is a
+      // statement, not a deletion, so it must be reversible by the same control that set it.
+      persist({
+        ...normalized,
+        notes: normalized.notes.map((candidate) => {
+          if (candidate.id !== noteId) return candidate
+          if (byNoteId === undefined) {
+            const { supersededBy: _dropped, ...rest } = candidate
+            return { ...rest, updatedAt: Date.now() }
+          }
+          return { ...candidate, supersededBy: byNoteId, updatedAt: Date.now() }
+        })
       })
     },
     [normalized, persist]
@@ -779,6 +826,7 @@ export const MemoryPanel = (): React.JSX.Element => {
             onSubmitNote={addNote}
             onUpdateNote={updateNote}
             onDeleteNote={deleteNote}
+            onSupersedeNote={supersedeNote}
           />
         )}
       </div>
