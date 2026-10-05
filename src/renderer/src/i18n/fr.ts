@@ -4226,5 +4226,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': "Le serveur n'a pas répondu : {detail}",
   'references.journalMetrics.import.defaultKind': 'Type de métrique pour une table sans colonne',
   'references.journalMetrics.import.defaultKindHint':
-    'Utilisé quand la table n’a pas de colonne de type ; une valeur présente dans la table l’emporte.'
+    'Utilisé quand la table n’a pas de colonne de type ; une valeur présente dans la table l’emporte.',
+  'references.journalMetrics.import.attribution': 'rattaché à {journal} · {match}',
+  'references.journalMetrics.import.created': 'nouvelle revue',
+  'references.journalMetrics.import.match.byIssn': 'apparié par ISSN',
+  'references.journalMetrics.import.match.byNormalizedName': 'apparié par nom',
+  'references.journalMetrics.import.match.byAlias': 'apparié par alias fusionné'
 }

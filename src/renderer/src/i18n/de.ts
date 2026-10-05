@@ -4239,5 +4239,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': 'Der Server hat nicht geantwortet: {detail}',
   'references.journalMetrics.import.defaultKind': 'Kennzahl für Tabellen ohne eigene Spalte',
   'references.journalMetrics.import.defaultKindHint':
-    'Gilt, wenn die Tabelle keine Kennzahl-Spalte hat; eine Angabe in der Tabelle hat Vorrang.'
+    'Gilt, wenn die Tabelle keine Kennzahl-Spalte hat; eine Angabe in der Tabelle hat Vorrang.',
+  'references.journalMetrics.import.attribution': 'zugeordnet zu {journal} · {match}',
+  'references.journalMetrics.import.created': 'neue Zeitschrift',
+  'references.journalMetrics.import.match.byIssn': 'über ISSN zugeordnet',
+  'references.journalMetrics.import.match.byNormalizedName': 'über den Namen zugeordnet',
+  'references.journalMetrics.import.match.byAlias': 'über fusionierten Alias zugeordnet'
 }

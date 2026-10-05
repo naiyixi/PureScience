@@ -4047,5 +4047,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': '서버가 응답하지 않았습니다: {detail}',
   'references.journalMetrics.import.defaultKind': '지표 열이 없는 표에 쓸 종류',
   'references.journalMetrics.import.defaultKindHint':
-    '표에 지표 열이 없으면 모든 행을 이 종류로 기록합니다. 표에 종류가 있으면 표의 값을 우선합니다.'
+    '표에 지표 열이 없으면 모든 행을 이 종류로 기록합니다. 표에 종류가 있으면 표의 값을 우선합니다.',
+  'references.journalMetrics.import.attribution': '{journal}에 반영됨 · {match}',
+  'references.journalMetrics.import.created': '새 저널',
+  'references.journalMetrics.import.match.byIssn': 'ISSN으로 일치',
+  'references.journalMetrics.import.match.byNormalizedName': '저널 이름으로 일치',
+  'references.journalMetrics.import.match.byAlias': '병합된 별칭으로 일치'
 }

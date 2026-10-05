@@ -3815,5 +3815,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': '伺服器未回應：{detail}',
   'references.journalMetrics.import.defaultKind': '表格無指標欄時統一用它',
   'references.journalMetrics.import.defaultKindHint':
-    '表格沒有指標欄時，每一行都按這個指標記錄；表格自帶指標欄的，以表格為準。'
+    '表格沒有指標欄時，每一行都按這個指標記錄；表格自帶指標欄的，以表格為準。',
+  'references.journalMetrics.import.attribution': '歸入 {journal} · {match}',
+  'references.journalMetrics.import.created': '新建刊物',
+  'references.journalMetrics.import.match.byIssn': '依 ISSN 比對',
+  'references.journalMetrics.import.match.byNormalizedName': '依刊名比對',
+  'references.journalMetrics.import.match.byAlias': '依已合併的別名比對'
 }

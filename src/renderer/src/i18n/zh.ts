@@ -3875,7 +3875,12 @@ export const zh = {
   'settings.testConnectionFailed': '服务器未回应：{detail}',
   'references.journalMetrics.import.defaultKind': '表格无指标列时统一用它',
   'references.journalMetrics.import.defaultKindHint':
-    '表格没有指标列时，每一行都按这个指标记录；表格自带指标列的，以表格为准。'
+    '表格没有指标列时，每一行都按这个指标记录；表格自带指标列的，以表格为准。',
+  'references.journalMetrics.import.attribution': '归入 {journal} · {match}',
+  'references.journalMetrics.import.created': '新建刊物',
+  'references.journalMetrics.import.match.byIssn': '按 ISSN 匹配',
+  'references.journalMetrics.import.match.byNormalizedName': '按刊名匹配',
+  'references.journalMetrics.import.match.byAlias': '按已合并的别名匹配'
 }
 
 export type ZhKey = keyof typeof zh

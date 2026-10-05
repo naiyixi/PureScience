@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import type { TranslationKey } from '@/i18n'
 import type {
+  JournalMetricImportOutcome,
   JournalMetricImportRequest,
   JournalMetricImportResult,
   JournalMetricRowProblem
@@ -34,11 +35,31 @@ const REASON_LABEL_KEYS: Readonly<Record<JournalMetricRowProblem, TranslationKey
   duplicate: 'references.journalMetrics.import.reason.duplicate'
 } as Record<JournalMetricRowProblem, TranslationKey>)
 
+// Which rule identified the journal a row landed in. The store's outcome has carried this (and whether the
+// row was what created the journal) since the import path was written, but the report only printed the
+// number — so a reader looking at "line 3 imported" could not tell whether it went to the journal they meant,
+// under which spelling, or whether it had quietly started a second identity. The map is keyed off the store's
+// own union, so a fourth resolving rule would fail to compile here rather than print a raw token.
+type ImportedOutcome = Extract<JournalMetricImportOutcome, { status: 'imported' }>
+
+const MATCH_KEYS: Readonly<Record<ImportedOutcome['journalMatch'], TranslationKey>> = Object.freeze(
+  {
+    'by-issn': 'references.journalMetrics.import.match.byIssn',
+    'by-normalized-name': 'references.journalMetrics.import.match.byNormalizedName',
+    'by-alias': 'references.journalMetrics.import.match.byAlias'
+  } as Record<ImportedOutcome['journalMatch'], TranslationKey>
+)
+
 const buttonClass = 'rounded border border-[var(--border)] px-2 py-1 disabled:opacity-50'
 
 export function JournalMetricsImport({
+  journals,
   onImported
 }: {
+  // The names the library already knows, so each imported row can say WHICH journal it landed in instead of
+  // printing an opaque id. A journal the import itself created appears here once the library is re-read; until
+  // then the row falls back to the store's own id (never an invented name).
+  journals: readonly { id: string; name: string }[]
   // Re-reads the library so the table above shows what the import just stored instead of a local guess.
   onImported: () => void
 }): React.JSX.Element {
@@ -79,6 +100,11 @@ export function JournalMetricsImport({
 
   const imported = result?.outcomes.filter((outcome) => outcome.status === 'imported') ?? []
   const skipped = result?.outcomes.filter((outcome) => outcome.status === 'skipped') ?? []
+
+  // A row's journal, named from what the library knows. Absent (the library has not been re-read since the
+  // import created it) the store's own id is shown rather than a guess — the id is a fact, a name would not be.
+  const journalName = (id: string): string =>
+    journals.find((journal) => journal.id === id)?.name ?? id
 
   return (
     <div className="flex flex-col gap-2 rounded border border-[var(--border)] p-2">
@@ -168,6 +194,18 @@ export function JournalMetricsImport({
                     value: outcome.value,
                     year: outcome.year
                   })}
+                  <span
+                    className="block text-[10px]"
+                    data-slot="journal-metrics-import-attribution"
+                  >
+                    {t('references.journalMetrics.import.attribution', {
+                      journal: journalName(outcome.journalId),
+                      match: t(MATCH_KEYS[outcome.journalMatch])
+                    })}
+                    {outcome.journalCreated
+                      ? ` · ${t('references.journalMetrics.import.created')}`
+                      : ''}
+                  </span>
                 </li>
               ))}
             </ul>

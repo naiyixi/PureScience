@@ -38,6 +38,11 @@ vi.mock('@/i18n', () => {
     'references.journalMetrics.import.defaultKind': 'Metric kind for tables without one',
     'references.journalMetrics.import.defaultKindHint':
       'Used when the table has no kind column; a kind in the table still wins.',
+    'references.journalMetrics.import.attribution': 'landed in {journal} · {match}',
+    'references.journalMetrics.import.created': 'new journal identity',
+    'references.journalMetrics.import.match.byIssn': 'matched by ISSN',
+    'references.journalMetrics.import.match.byNormalizedName': 'matched by name',
+    'references.journalMetrics.import.match.byAlias': 'matched by a merged alias',
     'references.journalMetrics.kind.impactFactor': 'Impact factor',
     'references.journalMetrics.kind.jcrQuartile': 'JCR quartile',
     'references.journalMetrics.kind.casPartition': 'CAS partition',
@@ -85,9 +90,15 @@ const flush = async (): Promise<void> => {
   })
 }
 
+// The journals the library already knows, as the panel hands them over (id → name).
+const JOURNALS: readonly { id: string; name: string }[] = [
+  { id: 'j-nature', name: 'Nature' },
+  { id: 'j-new', name: 'Journal of New Metrics' }
+]
+
 const renderForm = async (): Promise<void> => {
   await act(async () => {
-    root.render(<JournalMetricsImport onImported={onImported} />)
+    root.render(<JournalMetricsImport journals={JOURNALS} onImported={onImported} />)
   })
   await flush()
 }
@@ -203,5 +214,71 @@ describe('journal metric import form', () => {
       format: 'csv',
       text: TABLE_WITHOUT_KIND
     })
+  })
+
+  it('names the journal each imported row landed in, how it matched, and whether it started one', async () => {
+    importJournalMetrics.mockResolvedValue({
+      imported: 3,
+      skipped: 0,
+      journalsCreated: 1,
+      outcomes: [
+        {
+          index: 0,
+          line: 2,
+          status: 'imported',
+          kind: 'impact-factor',
+          value: '64.8',
+          year: 2023,
+          source: 'JCR 2023',
+          journalId: 'j-nature',
+          journalMatch: 'by-issn',
+          journalCreated: false,
+          metricId: 'm-1'
+        },
+        {
+          index: 1,
+          line: 3,
+          status: 'imported',
+          kind: 'impact-factor',
+          value: '9.1',
+          year: 2023,
+          source: 'JCR 2023',
+          journalId: 'j-new',
+          journalMatch: 'by-normalized-name',
+          journalCreated: true,
+          metricId: 'm-2'
+        },
+        {
+          index: 2,
+          line: 4,
+          status: 'imported',
+          kind: 'impact-factor',
+          value: '3.3',
+          year: 2023,
+          source: 'JCR 2023',
+          journalId: 'j-unknown',
+          journalMatch: 'by-alias',
+          journalCreated: false,
+          metricId: 'm-3'
+        }
+      ]
+    })
+
+    await renderForm()
+    await type('journal-metrics-import-text', TABLE_WITHOUT_KIND)
+    await submit()
+
+    // What the window adds to the store's own counts: the journal by NAME (not the opaque id it stores), the
+    // rule that identified it, and — only when it is true — that this row is what created the journal. The
+    // third row's journal is not in the library yet, so it falls back to the store's id rather than a guessed
+    // name; the middle row proves the created marker rides along with a name the library does know.
+    const attribution = [
+      ...container.querySelectorAll('[data-slot="journal-metrics-import-attribution"]')
+    ].map((element) => element.textContent)
+    expect(attribution).toEqual([
+      'landed in Nature · matched by ISSN',
+      'landed in Journal of New Metrics · matched by name · new journal identity',
+      'landed in j-unknown · matched by a merged alias'
+    ])
   })
 })

@@ -4127,5 +4127,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': 'Сервер не ответил: {detail}',
   'references.journalMetrics.import.defaultKind': 'Тип показателя для таблиц без своего столбца',
   'references.journalMetrics.import.defaultKindHint':
-    'Используется, если в таблице нет столбца типа; значение из таблицы имеет приоритет.'
+    'Используется, если в таблице нет столбца типа; значение из таблицы имеет приоритет.',
+  'references.journalMetrics.import.attribution': 'отнесено к {journal} · {match}',
+  'references.journalMetrics.import.created': 'новый журнал',
+  'references.journalMetrics.import.match.byIssn': 'совпадение по ISSN',
+  'references.journalMetrics.import.match.byNormalizedName': 'совпадение по названию',
+  'references.journalMetrics.import.match.byAlias': 'совпадение по объединённому псевдониму'
 }

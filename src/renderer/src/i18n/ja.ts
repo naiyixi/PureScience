@@ -4113,5 +4113,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.testConnectionFailed': 'サーバーが応答しません：{detail}',
   'references.journalMetrics.import.defaultKind': '指標列がない表で使う種別',
   'references.journalMetrics.import.defaultKindHint':
-    '表に指標列がないときは、すべての行をこの種別で記録します。表に種別があればそちらを優先します。'
+    '表に指標列がないときは、すべての行をこの種別で記録します。表に種別があればそちらを優先します。',
+  'references.journalMetrics.import.attribution': '{journal} に取り込み · {match}',
+  'references.journalMetrics.import.created': '新規ジャーナル',
+  'references.journalMetrics.import.match.byIssn': 'ISSN で照合',
+  'references.journalMetrics.import.match.byNormalizedName': '誌名で照合',
+  'references.journalMetrics.import.match.byAlias': '統合済みの別名で照合'
 }

@@ -443,8 +443,10 @@ export function JournalMetricsPanel(): React.JSX.Element {
       </div>
 
       {/* The import entry lives with the table it fills: before this the command existed with no way to reach
-          it from the window (it was registered agent-only), and the reader had to take the counts on trust. */}
-      <JournalMetricsImport onImported={() => void readLibrary()} />
+          it from the window (it was registered agent-only), and the reader had to take the counts on trust.
+          It is handed the same id→name list the merge controls use, so each imported row can name the journal
+          it landed in rather than print an id. */}
+      <JournalMetricsImport journals={mergeChoices} onImported={() => void readLibrary()} />
 
       {error !== null ? (
         <p className="text-xs text-[var(--accent)]">{error}</p>

@@ -4150,5 +4150,10 @@ export const en: Record<ZhKey, string> = {
   'settings.testConnectionFailed': 'The server did not answer: {detail}',
   'references.journalMetrics.import.defaultKind': 'Metric kind for tables without one',
   'references.journalMetrics.import.defaultKindHint':
-    'Used when the table has no kind column; a kind in the table still wins.'
+    'Used when the table has no kind column; a kind in the table still wins.',
+  'references.journalMetrics.import.attribution': 'landed in {journal} · {match}',
+  'references.journalMetrics.import.created': 'new journal identity',
+  'references.journalMetrics.import.match.byIssn': 'matched by ISSN',
+  'references.journalMetrics.import.match.byNormalizedName': 'matched by name',
+  'references.journalMetrics.import.match.byAlias': 'matched by a merged alias'
 }
