@@ -71,9 +71,13 @@ test('a hand-corrected metric is appended, not substituted', async ({ app }) => 
   await editor.getByLabel('Note').fill('Publisher erratum')
   await editor.getByRole('button', { name: 'Add claim' }).first().click()
 
-  // The history shows both claims — the correction did not overwrite the imported one.
+  // The history shows both claims — the correction did not overwrite the imported one. The wait is on the
+  // corrected claim itself: `toBeVisible` was already true for the imported claim, so reading the text right
+  // after it snapshots the list before the write's round trip has landed — which is what a loaded CI machine
+  // reproduced (`Expected substring: "4.1"`, received the pre-correction "3.5 · Publisher table").
   const history = editor.getByTestId('journal-claim-history').first()
   await expect(history).toBeVisible({ timeout: 30_000 })
+  await expect(history).toContainText('Corrected by hand', { timeout: 30_000 })
   const text = (await history.innerText()).replace(/\s+/g, ' ').trim()
   console.log(`[ic29] the claim history on screen: "${text}"`)
   expect(text).toContain('3.5')
