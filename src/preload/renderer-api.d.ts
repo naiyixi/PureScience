@@ -774,8 +774,6 @@ export interface PureScienceAPI {
     ): RemoveListener
   }
   handoff: {
-    list(request: HandoffEventsRequest): Promise<readonly HandoffLifecycleEvent[]>
-    retry(request: HandoffRetryRequest): Promise<void>
     onChanged(listener: AcpListener<HandoffLifecycleChange>): RemoveListener
   }
   logs: {

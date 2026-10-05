@@ -58,9 +58,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'diagnostics.listVisionEvidence',
   'diagnostics.reportRendererFailure',
   'getRuntimeVersions',
-  'handoff.list',
   'handoff.onChanged',
-  'handoff.retry',
   'network.checkConnectivity',
   'network.getInfo',
   'notifications.getSnapshot',
@@ -301,7 +299,7 @@ describe('renderer surface inventory', () => {
     // 463 with the session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): the preload bridge exposes one method per contract, so the preload
     // inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(470)
+    expect(electronPaths).toHaveLength(468)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

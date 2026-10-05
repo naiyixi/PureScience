@@ -93,7 +93,6 @@ import type {
 } from '../shared/pdf-annotation-surface'
 import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type { FigureReviewRequest } from '../shared/figure'
-import type { HandoffEventsRequest, HandoffRetryRequest } from '../shared/handoff-lifecycle'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
 type RemoveListener = () => void
@@ -501,10 +500,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.subscribe('specialist.onMarketplaceDownloadProgress', listener)
   },
   handoff: {
-    list: (request: HandoffEventsRequest) =>
-      electronRendererContracts.invoke('handoff.list', request),
-    retry: (request: HandoffRetryRequest) =>
-      electronRendererContracts.invoke('handoff.retry', request),
+    // `list` / `retry` used to live here, inviting `handoff.list` / `handoff.retry` — channel names that
+    // were never registered (the lifecycle channels are `handoff-lifecycle:list` / `:retry`, and the UI's
+    // own path is `specialist.getHandoffEvents` / `specialist.retryHandoff`). Rather than keep a wrapper
+    // nobody calls and that could not have worked, the dead pair is gone; the live event stays.
     onChanged: (listener) => electronRendererContracts.subscribe('handoff.onChanged', listener)
   },
   logs: {

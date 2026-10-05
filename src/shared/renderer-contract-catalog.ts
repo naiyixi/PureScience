@@ -205,7 +205,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getStars', 'github:get-stars'],
   ]),
   group('handoff', 'handoff', [
-    ['list', 'handoff-lifecycle:list', ELECTRON], ['onChanged', 'handoff-lifecycle:changed', ELECTRON_EVENT], ['retry', 'handoff-lifecycle:retry', ELECTRON],
+    // Only the event survives: `handoff-lifecycle:list` / `:retry` had no registrar in the main process and
+    // no caller in the renderer (the UI's own path is `specialist.getHandoffEvents` / `retryHandoff`), so
+    // declaring them here kept two contracts alive that could never be answered.
+    ['onChanged', 'handoff-lifecycle:changed', ELECTRON_EVENT]
   ]),
   group('lifecycle', 'lifecycle', [
     ['getClientId', 'lifecycle:client-id'],

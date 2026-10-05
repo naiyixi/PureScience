@@ -316,9 +316,7 @@ describe('preload bridge — public surface inventory', () => {
       'folderGrants.revoke',
       'getRuntimeVersions',
       'github.getStars',
-      'handoff.list',
       'handoff.onChanged',
-      'handoff.retry',
       'lifecycle.getClientId',
       'localFs.getRoots',
       'localFs.listDir',
@@ -719,7 +717,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(239)
+    expect(runtimeContracts).toHaveLength(237)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
