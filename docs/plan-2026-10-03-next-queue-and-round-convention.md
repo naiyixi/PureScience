@@ -681,3 +681,46 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 **发版结果（本轮收尾）**：**v1.85.0 已发布** ✅ —— Release 页 `draft=false`、非预发布、**21 资产**、**Latest**；`Release` / `Nightly` / `Windows Full Test` **三条全绿**；正文 21,339 字符（成熟度自陈 + 批次 6 六条 + 质量与证据口径 + 明确没做）。执行器已 `resume`（发版窗口结束）。**版本号说明**：本档原写「批次 6 = v1.86.0」，实际按「版本号取自上一个**已发布**位点」的口径发布为 **v1.85.0**（v1.84.0 的正文已含批次 5 ⇒ 批次 6 是 tag 以来唯一未发布内容，不连抬两个号）。
 
 **本轮给后续轮次的第四条坑（本会话咬人三次）**：**Electron 的 e2e 跑的是 `build:e2e` 的产物**，只跑 `build:web` 会让读数落在陈旧渲染包上——表现为「改动没生效」或「定位器超时」这类**假红**。另：**设置页视觉基准要与发布版本解耦**——`v{version} · {releaseCode}` 那一行在打包态与未打包构建里取值不同，spec 只藏按钮与 `<p>` 会漏掉它本身（CI 因此差 6020 像素、1.0%、重试复现，而本机因取到旧值反而"通过"）。
+
+## 十五、本轮追加（执行器，2026-10-05 17:33–18:0x）——批次 7 开工：IC31 egress 读/写错误态已落地（真机读数具名立案）
+
+**开工核对（防重做）**：`HEAD = origin/main = cb8befa6`（**17:32:51**，发版收尾的 docs 提交，我开工时它刚落地 30 秒）。`git status --short` **只有 2 个文件**：
+`docs/evidence/2026-10-03-{journal-metric-conflict,primary-brand-blue}.png`，mtime **15:23:34/44** —— 由 `e2e/certification/journal-metrics-panel.spec.ts:165/632` 自己重跑刷新的截图，
+**不是本轮产物、我没有提交也没有动它**（会话在 14:26 的 `9b1e367e` 提交过同一对截图的更早一次刷新；这次刷新发生在 15:23 的发布车道修复跑里）。
+进程表无 `electron-vite` / `playwright` / `vitest`；本机 swap **10.06 G / 11.26 G 已用**、空闲物理页 35,481（≈581 MB）⇒ 仍不足以跑 `build:e2e`（8 GB 堆）+ 起 Electron，
+故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
+**CI 核对（读数即结论）**：`cb8befa6` 是纯 `docs/**`（2 个 plan 文档）⇒ 两条车道都有 `paths:` 过滤、**0 条 run**（设计如此，不是漏跑）；
+上一笔带代码的 `ecf8ef71`（= tag `v1.85.0` 的提交）三车道**全绿**：`Nightly` **37285007658 success**、`Windows Full Test` **37285007125 success**、`Release` **37285031894 success**。
+`159066e9`（IC28 读数）与 `ebb37e1f`（IC29）两条**都是 cancelled**（被后续推送按 `cancel-in-progress` 顶掉）⇒ **无判决，取消 ≠ 绿**；它们的 CI 证据由「包含它们的下一次绿色 `Nightly`」即 `ecf8ef71` 这一次代替给出（CI 跑整棵树而不是 diff；`ecf8ef71` 的祖先含两者）。
+
+**发布位点核验（不靠"看列表"）**：`gh release view v1.85.0 --json name,tagName,isDraft,isPrerelease,assets` ⇒ `draft=false`、`isPrerelease=false`、**21 资产**（mac arm64/x64 的 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+zip、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest*.yml`、`arm64-mac.yml`/`x64-mac.yml`），标记 **Latest**；tag `v1.85.0` → 提交 **`ecf8ef71`**，与发布 run 的 `head_sha` 逐字符一致。
+
+**版本号台账更正（已改档，防下一轮照旧标签取号）**：`docs/plan-2026-10-03-interaction-closure-schedule.md` 的总览表原按批次标签写（批次 4/5/6/7 = v1.84/1.85/1.86/1.87），而实际位点是**批次 4 + 批次 5 同版发布为 v1.84.0**、**批次 6 = v1.85.0**（已发布）⇒ 批次 7 起全部**顺延一号**：批次 7 = **v1.86.0**（下一版）、8 = v1.87.0、9 = v1.88.0、10 = v1.89.0、对标批次 = v1.90.0+。表格、四个批次小节标题与依赖草图共 17 处已按此改正，并在总览表下加了一条「版本号列是排期标签、不是发版承诺」的口径说明。
+
+**本轮取 v1.86.0（批次 7）的 IC31**（§十三 建议顺序的第一条，零新通道）。
+
+**缺口核实（对着当前源码、按机制名核；§十三 的结论仍成立）**：`EgressSection`（`NetworkPanel.tsx:320` 起）——读 `getEgress().then()` **无 catch**（失败即 `loaded` 恒 false ⇒ 永久停在 Loading，无原因无出口），写 `setEgress(next).catch(() => undefined)` **静默吞错**且**乐观值不回滚**（用户看到的值可能根本没落盘）。两条都是真缺口，且都只在渲染层 ⇒ **零新通道、零契约计数涟漪**。
+
+**落地（1 改源码 + 2 键 × 9 语 + 6 条渲染用例，`NetworkPanel.tsx` + `NetworkPanel.render.test.tsx`）**：
+
+- 读侧改为三态 `loadState: 'loading' | 'ready' | 'error'`：失败渲染**具名错误 + `role="alert"` + 重试按钮**（`data-slot="egress-load-error"` / `egress-retry-load`，复用既有 `common.retry`，不新增键），重试真的重新取一次（用例断言 `getEgress` 被调用 2 次且错误节点消失、开关回来）。
+- 写侧加 `persisted` ref（最近一次被主进程确认的值）：拒绝时**回滚到它**并显示 `data-slot="egress-save-error"`（`role="alert"`），下一次成功的保存清掉提示。乐观更新保留（点一下开关必须立刻动），但不再可能停在未落盘的值上。
+- 抽了 `EMPTY_EGRESS_SETTINGS` 常量（原先两处字面量）。
+- **2 键 × 9 语**：`settings.egressLoadFailed` / `settings.egressSaveFailed`（zh 与 en 不同形、zh-Hant 纯繁体、未新增 pending 条目；i18n 覆盖 **3618 键 × 9 语 = 100.0%**）。
+- 用例放在**新开的 `describe('NetworkPanel egress error states')`**，故意排在文件**最前**：既有那条代理用例用了 `void act(async …)`（未 await），会留下跨用例的 act 作用域 —— 我第一次把新用例追加在文件末尾时**两条全红**（渲染根本没跑到 ready，`querySelector` 全 null，1–3 ms 失败），移到前面即全绿。这条已写进用例注释，供后人别再踩。
+
+**自查抓到我自己的一条红（重要）**：第一版把 `setLoadState('loading')` 放在 `load()` 里由 `useEffect` 调用 ⇒ eslint 报 **1 error**（`react-hooks` 的「Calling setState synchronously within an effect can trigger cascading renders」）⇒ **CI 的 Verify 会红**。修法：`load()` 不再置 loading（初态本就是 loading），只有**重试按钮的事件处理器**里置 loading（`retry()`）。**教训**：全仓 `eslint --no-cache .` 必须在提交前跑（`npm run lint` 的缓存 + 只跑改动文件都会漏掉这条 error）。
+
+**验证（本机，全部实跑）**：定向 vitest（`src/renderer/src/pages/settings` + `src/renderer/src/i18n` + `src/renderer/web`）**67 文件 / 714 passed**；
+`node scripts/i18n-coverage.mjs` 九语 **3618 键 / 100.0%**；`typecheck` node + web **双绿**（用 `NODE_OPTIONS=--max-old-space-size=3072`，本机内存吃紧下的工具进程堆上限）；`eslint --no-cache .` （修完上面那条 error 后）**0 error / 118 warning**。
+`bash scripts/pre-push-checks.sh` 结论见本轮汇报。CI 结论见本轮汇报。
+
+**⏳ 真机读数未取（具名立案）**：本机 swap **10.06 G / 11.26 G 已用**、空闲物理页 35,481（≈581 MB）——比 §十三 记的 ~67 MB 宽松，但仍不足以跑 `build:e2e`（8 GB 堆）+ Electron（本机有堆把机器打崩的前例），故**未改 `e2e/certification/**`**。
+**配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在 `e2e/certification/` 开 `egress-error-states.spec.ts` —— 骨架照 `network-panel.spec.ts`（若不存在则照 `settings-download-detail.spec.ts` 的设置页骨架）：
+① 打开设置 → 网络页，断言 `[data-slot="egress-section"]` 与主开关在场（这是**当前**的正常路径读数，用来对照）；
+② 让读失败只能用**替身**方式——渲染层的 `getEgress` 走主进程通道，真机上无法让它拒绝，因此这条要**如实写明：真机只读覆盖"正常路径 + 重试按钮在场"这一半**，写失败的**回滚**那半由渲染用例覆盖（jsdom），**不许把 jsdom 写成真机**；
+③ 若要做真机失败读数，可行路径是**在隔离实例里改配置根让它读到坏设置**（例如把 `settings.json` 的 egress 段写成非法形状，看主进程是否拒绝并让渲染端走 error 分支）——需先探针确认主进程对该形状的行为（拒绝 vs 兜底），**探针先行，别先写断言**。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净（除那 2 张非我产生的 evidence PNG）且无 dev/build/test 进程 ⇒ 按 §十三 顺序取 **IC34**（存储信息读失败的错误态 + 重试；`StoragePanel.tsx:117-119` 读无 catch ⇒ `info` 恒 null ⇒ 含迁移唯一入口的整段永久不可达且不说原因；零新通道）；
+② 按完整 40 位 SHA 复查本轮推送的 `Nightly` + `Windows Full Test`（红了先读作业级注解归因）；
+③ 内存宽松时补 **IC27 / IC28 / IC30** 真机读数（配方见 §十一、§十、§十二）。
