@@ -4210,5 +4210,17 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': 'adjuntado el {date}',
   'references.notes': 'Notas',
   'references.notesPlaceholder': 'Notas sobre este registro',
-  'references.notesSave': 'Guardar notas'
+  'references.notesSave': 'Guardar notas',
+  'references.journalMetrics.correct.title': 'Corregir una métrica',
+  'references.journalMetrics.correct.hint':
+    'Una corrección se **añade** como otra afirmación, para que el valor original siga siendo legible a su lado.',
+  'references.journalMetrics.correct.journal': 'Revista',
+  'references.journalMetrics.correct.kind': 'Tipo',
+  'references.journalMetrics.correct.value': 'Valor',
+  'references.journalMetrics.correct.year': 'Año',
+  'references.journalMetrics.correct.source': 'Fuente',
+  'references.journalMetrics.correct.note': 'Nota',
+  'references.journalMetrics.correct.submit': 'Añadir afirmación',
+  'references.journalMetrics.correct.history': 'Afirmaciones de esta revista',
+  'references.journalMetrics.correct.historyEmpty': 'Aún no hay afirmaciones.'
 }

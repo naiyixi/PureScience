@@ -3886,7 +3886,19 @@ export const zh = {
   'references.attachmentAttachedOn': '{date} 挂载',
   'references.notes': '笔记',
   'references.notesPlaceholder': '这条记录的笔记',
-  'references.notesSave': '保存笔记'
+  'references.notesSave': '保存笔记',
+  'references.journalMetrics.correct.title': '订正指标',
+  'references.journalMetrics.correct.hint':
+    '订正是**追加**一条 claim，来源原先说的那句话仍与它并列可读。',
+  'references.journalMetrics.correct.journal': '期刊',
+  'references.journalMetrics.correct.kind': '指标',
+  'references.journalMetrics.correct.value': '数值',
+  'references.journalMetrics.correct.year': '年份',
+  'references.journalMetrics.correct.source': '来源',
+  'references.journalMetrics.correct.note': '备注',
+  'references.journalMetrics.correct.submit': '追加 claim',
+  'references.journalMetrics.correct.history': '该刊的全部 claim',
+  'references.journalMetrics.correct.historyEmpty': '还没有 claim。'
 }
 
 export type ZhKey = keyof typeof zh

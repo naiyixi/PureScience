@@ -4161,5 +4161,17 @@ export const en: Record<ZhKey, string> = {
   'references.attachmentAttachedOn': 'attached {date}',
   'references.notes': 'Notes',
   'references.notesPlaceholder': 'Notes for this record',
-  'references.notesSave': 'Save notes'
+  'references.notesSave': 'Save notes',
+  'references.journalMetrics.correct.title': 'Correct a metric',
+  'references.journalMetrics.correct.hint':
+    'A correction is added as another claim, so what the source said stays readable beside it.',
+  'references.journalMetrics.correct.journal': 'Journal',
+  'references.journalMetrics.correct.kind': 'Kind',
+  'references.journalMetrics.correct.value': 'Value',
+  'references.journalMetrics.correct.year': 'Year',
+  'references.journalMetrics.correct.source': 'Source',
+  'references.journalMetrics.correct.note': 'Note',
+  'references.journalMetrics.correct.submit': 'Add claim',
+  'references.journalMetrics.correct.history': 'Claims on this journal',
+  'references.journalMetrics.correct.historyEmpty': 'No claims yet.'
 }

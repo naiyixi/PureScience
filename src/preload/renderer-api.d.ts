@@ -935,6 +935,17 @@ export interface PureScienceAPI {
     }>
     detachPdf(referenceId: string): Promise<Reference>
     setNotes(referenceId: string, notes: string): Promise<Reference>
+    appendJournalMetric(input: {
+      journalId: string
+      kind: string
+      value: string
+      year: number
+      source: string
+      note?: string
+    }): Promise<{ id: string }>
+    listJournalClaims(
+      journalId: string
+    ): Promise<{ kind: string; value: string; year: number; source: string; fetchedAt: number }[]>
     // Imports a publisher's metric table into the journal library (R2): one outcome per input row, and a
     // named reason for every row that was skipped.
     importJournalMetrics(

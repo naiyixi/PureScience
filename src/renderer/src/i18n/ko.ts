@@ -4058,5 +4058,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': '{date} 첨부됨',
   'references.notes': '노트',
   'references.notesPlaceholder': '이 문헌의 노트',
-  'references.notesSave': '노트 저장'
+  'references.notesSave': '노트 저장',
+  'references.journalMetrics.correct.title': '지표 정정',
+  'references.journalMetrics.correct.hint':
+    '정정은 claim을 **추가**하는 것입니다. 출처가 밝힌 값은 그대로 나란히 읽힙니다.',
+  'references.journalMetrics.correct.journal': '저널',
+  'references.journalMetrics.correct.kind': '종류',
+  'references.journalMetrics.correct.value': '값',
+  'references.journalMetrics.correct.year': '연도',
+  'references.journalMetrics.correct.source': '출처',
+  'references.journalMetrics.correct.note': '비고',
+  'references.journalMetrics.correct.submit': 'claim 추가',
+  'references.journalMetrics.correct.history': '이 저널의 claim',
+  'references.journalMetrics.correct.historyEmpty': '아직 claim이 없습니다.'
 }

@@ -680,6 +680,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('references.attachPdf', referenceId, pdfManagedFileId),
     setNotes: (referenceId, notes) =>
       electronRendererContracts.invoke('references.setNotes', referenceId, notes),
+    appendJournalMetric: (input) =>
+      electronRendererContracts.invoke('references.appendJournalMetric', input),
+    listJournalClaims: (journalId) =>
+      electronRendererContracts.invoke('references.listJournalClaims', journalId),
     // Reads the identifiers a PDF cites and imports the references they resolve to (3.4).
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       electronRendererContracts.invoke('references.importDoisFromPdf', projectId, pdfPath, limit),

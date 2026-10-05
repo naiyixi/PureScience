@@ -39,6 +39,8 @@ type ReferencesCommandOwner = Pick<
   | 'importJournalMetrics'
   | 'listJournalMetrics'
   | 'mergeJournals'
+  | 'appendJournalMetric'
+  | 'listJournalClaims'
   | 'listCitationStyles'
   | 'importCitationStyle'
   | 'removeCitationStyle'
@@ -123,6 +125,16 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'mergeJournals'>,
     OwnerResult<ReferencesCommandOwner, 'mergeJournals'>
   >('references:merge-journals'),
+  appendJournalMetric: defineApplicationCommand<
+    'references:append-journal-metric',
+    OwnerArgs<ReferencesCommandOwner, 'appendJournalMetric'>,
+    OwnerResult<ReferencesCommandOwner, 'appendJournalMetric'>
+  >('references:append-journal-metric'),
+  listJournalClaims: defineApplicationCommand<
+    'references:list-journal-claims',
+    OwnerArgs<ReferencesCommandOwner, 'listJournalClaims'>,
+    OwnerResult<ReferencesCommandOwner, 'listJournalClaims'>
+  >('references:list-journal-claims'),
   attachPdf: defineApplicationCommand<
     'references:attach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'attachPdf'>,
@@ -210,6 +222,8 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.importJournalMetrics,
   referencesApplicationCommands.listJournalMetrics,
   referencesApplicationCommands.mergeJournals,
+  referencesApplicationCommands.appendJournalMetric,
+  referencesApplicationCommands.listJournalClaims,
   referencesApplicationCommands.attachPdf,
   referencesApplicationCommands.setNotes,
   referencesApplicationCommands.detachPdf,
@@ -255,6 +269,10 @@ const registerReferencesApplicationCommands = (
         dependencies.references.importJournalMetrics(args[0]),
       'references:list-journal-metrics': () => dependencies.references.listJournalMetrics(),
       'references:merge-journals': ({ args }) => dependencies.references.mergeJournals(args[0]),
+      'references:append-journal-metric': ({ args }) =>
+        dependencies.references.appendJournalMetric(args[0]),
+      'references:list-journal-claims': ({ args }) =>
+        dependencies.references.listJournalClaims(args[0]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
       'references:set-notes': ({ args }) => dependencies.references.setNotes(args[0], args[1]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),

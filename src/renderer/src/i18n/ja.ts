@@ -4124,5 +4124,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': '{date} に添付',
   'references.notes': 'ノート',
   'references.notesPlaceholder': 'この文献のノート',
-  'references.notesSave': 'ノートを保存'
+  'references.notesSave': 'ノートを保存',
+  'references.journalMetrics.correct.title': '指標を訂正',
+  'references.journalMetrics.correct.hint':
+    '訂正は claim の**追加**です。出典が示した値はそのまま並んで読めます。',
+  'references.journalMetrics.correct.journal': 'ジャーナル',
+  'references.journalMetrics.correct.kind': '種別',
+  'references.journalMetrics.correct.value': '値',
+  'references.journalMetrics.correct.year': '年',
+  'references.journalMetrics.correct.source': '出典',
+  'references.journalMetrics.correct.note': '注記',
+  'references.journalMetrics.correct.submit': 'claim を追加',
+  'references.journalMetrics.correct.history': 'このジャーナルの claim',
+  'references.journalMetrics.correct.historyEmpty': 'claim はまだありません。'
 }

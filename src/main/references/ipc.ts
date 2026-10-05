@@ -77,6 +77,21 @@ export type ReferencesHandlers = {
   // Aliases and the explicit merge (R2-U4): merging two journals re-attributes their metrics and references
   // and keeps the source's spelling as an alias — never a fuzzy/automatic merge, and every refusal is named.
   mergeJournals(input: JournalMergeRequest): Promise<JournalMergeResult>
+  // IC29: a reader's own correction is an append, not an edit — the table is append-only so that what the
+  // source originally said stays readable beside the correction (and the repository enforces the doctrine:
+  // a missing value is not a zero, and an undated or unsourced number is refused outright).
+  appendJournalMetric(input: {
+    journalId: string
+    kind: string
+    value: string
+    year: number
+    source: string
+    note?: string
+  }): Promise<{ id: string }>
+  // Every claim ever made about one journal, newest year first inside each kind.
+  listJournalClaims(
+    journalId: string
+  ): Promise<{ kind: string; value: string; year: number; source: string; fetchedAt: number }[]>
   // Citation-style layer (v1.65): imported CSL styles live application-wide; the renderer merges
   // them with the built-in styles and formats locally.
   listCitationStyles(): Promise<ImportedCitationStyle[]>
@@ -232,6 +247,16 @@ export const createReferencesIpcModule = (
     // The merge is the store's own write: no owner layer sits between the user's decision and the rewrite, so
     // there is nowhere for a second interpretation of "the same journal" to creep in.
     mergeJournals: (input) => journalRepository.mergeJournals(input),
+    appendJournalMetric: (input) => journalRepository.appendMetric(input),
+    listJournalClaims: async (journalId) =>
+      (await journalRepository.listMetrics(journalId)).map((claim) => ({
+        kind: claim.kind,
+        value: claim.value,
+        year: claim.year,
+        source: claim.source,
+        // A Date does not survive the bridge as a Date; the renderer only prints the day.
+        fetchedAt: claim.fetchedAt.getTime()
+      })),
     listCitationStyles: () => citationStyles.listStyles(),
     importCitationStyle: (input) => citationStyles.importStyle(input),
     removeCitationStyle: (styleId) => citationStyles.removeStyle(styleId),
@@ -318,6 +343,14 @@ export const installReferencesIpcHandlers = (
     ipcMainHandle('references:list-journal-metrics', () => handlers.listJournalMetrics())
     ipcMainHandle('references:merge-journals', (_event, input: JournalMergeRequest) =>
       handlers.mergeJournals(input)
+    )
+    ipcMainHandle(
+      'references:append-journal-metric',
+      (_event, input: Parameters<ReferencesHandlers['appendJournalMetric']>[0]) =>
+        handlers.appendJournalMetric(input)
+    )
+    ipcMainHandle('references:list-journal-claims', (_event, journalId: string) =>
+      handlers.listJournalClaims(journalId)
     )
     ipcMainHandle('references:list-citation-styles', () => handlers.listCitationStyles())
     ipcMainHandle(

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { JournalMetricsImport } from './JournalMetricsImport'
+import { JournalClaimEditor } from './JournalClaimEditor'
 import { KIND_LABEL_KEYS } from './journal-metric-kind-labels'
 import {
   buildJournalMetricsOverview,
@@ -466,6 +467,17 @@ export function JournalMetricsPanel(): React.JSX.Element {
           kinds={overview.kinds}
           rows={overview.rows}
           unknownLabel={t('references.journalMetrics.unknown')}
+        />
+      ) : null}
+
+      {/* IC29: the correction form and the claim history are one section on purpose — a correction is only
+          meaningful beside the claims it joins, and the store's doctrine is that it JOINS them (append-only)
+          rather than replacing the number the source reported. */}
+      {library !== null && mergeChoices.length > 0 ? (
+        <JournalClaimEditor
+          journals={mergeChoices}
+          kinds={overview.kinds}
+          onAppended={() => void readLibrary()}
         />
       ) : null}
 

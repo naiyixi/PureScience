@@ -4138,5 +4138,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': 'прикреплён {date}',
   'references.notes': 'Заметки',
   'references.notesPlaceholder': 'Заметки к этой записи',
-  'references.notesSave': 'Сохранить заметки'
+  'references.notesSave': 'Сохранить заметки',
+  'references.journalMetrics.correct.title': 'Исправить показатель',
+  'references.journalMetrics.correct.hint':
+    'Исправление **добавляется** как ещё одно утверждение, чтобы исходное значение оставалось читаемым рядом.',
+  'references.journalMetrics.correct.journal': 'Журнал',
+  'references.journalMetrics.correct.kind': 'Вид',
+  'references.journalMetrics.correct.value': 'Значение',
+  'references.journalMetrics.correct.year': 'Год',
+  'references.journalMetrics.correct.source': 'Источник',
+  'references.journalMetrics.correct.note': 'Примечание',
+  'references.journalMetrics.correct.submit': 'Добавить утверждение',
+  'references.journalMetrics.correct.history': 'Утверждения по этому журналу',
+  'references.journalMetrics.correct.historyEmpty': 'Утверждений пока нет.'
 }

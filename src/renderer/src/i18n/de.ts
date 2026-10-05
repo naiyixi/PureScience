@@ -4250,5 +4250,17 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': 'angehängt am {date}',
   'references.notes': 'Notizen',
   'references.notesPlaceholder': 'Notizen zu diesem Eintrag',
-  'references.notesSave': 'Notizen speichern'
+  'references.notesSave': 'Notizen speichern',
+  'references.journalMetrics.correct.title': 'Kennzahl korrigieren',
+  'references.journalMetrics.correct.hint':
+    'Eine Korrektur wird als weiterer Claim **angehängt**, damit die ursprüngliche Angabe daneben lesbar bleibt.',
+  'references.journalMetrics.correct.journal': 'Journal',
+  'references.journalMetrics.correct.kind': 'Art',
+  'references.journalMetrics.correct.value': 'Wert',
+  'references.journalMetrics.correct.year': 'Jahr',
+  'references.journalMetrics.correct.source': 'Quelle',
+  'references.journalMetrics.correct.note': 'Notiz',
+  'references.journalMetrics.correct.submit': 'Claim hinzufügen',
+  'references.journalMetrics.correct.history': 'Claims zu diesem Journal',
+  'references.journalMetrics.correct.historyEmpty': 'Noch keine Claims.'
 }

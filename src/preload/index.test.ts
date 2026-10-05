@@ -410,6 +410,8 @@ describe('preload bridge — public surface inventory', () => {
       'query.run',
       'references.add',
       'references.addToCollection',
+      // IC29: a reader's own correction (an appended claim) and the claims read back for one journal.
+      'references.appendJournalMetric',
       'references.appendScreeningRuleRevision',
       'references.attachPdf',
       'references.cancelScreeningRun',
@@ -425,6 +427,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.list',
       'references.listCitationStyles',
       'references.listCollections',
+      'references.listJournalClaims',
       'references.listJournalMetrics',
       'references.listScreeningRuleRevisions',
       'references.merge',
@@ -826,7 +829,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     ])
     // 223 with the journal metric import (references.importJournalMetrics): one core contract beside the
     // other reference-library methods.
-    expect(coreContracts).toHaveLength(228)
+    expect(coreContracts).toHaveLength(230)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -838,7 +841,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 190, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 192, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -847,7 +850,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(190)
+    expect(requestContracts).toHaveLength(192)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

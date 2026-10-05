@@ -3826,5 +3826,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.attachmentAttachedOn': '{date} 掛載',
   'references.notes': '筆記',
   'references.notesPlaceholder': '這筆記錄的筆記',
-  'references.notesSave': '儲存筆記'
+  'references.notesSave': '儲存筆記',
+  'references.journalMetrics.correct.title': '訂正指標',
+  'references.journalMetrics.correct.hint':
+    '訂正是**追加**一筆 claim，來源原本的說法仍與它並列可讀。',
+  'references.journalMetrics.correct.journal': '期刊',
+  'references.journalMetrics.correct.kind': '指標',
+  'references.journalMetrics.correct.value': '數值',
+  'references.journalMetrics.correct.year': '年份',
+  'references.journalMetrics.correct.source': '來源',
+  'references.journalMetrics.correct.note': '備註',
+  'references.journalMetrics.correct.submit': '追加 claim',
+  'references.journalMetrics.correct.history': '該刊的全部 claim',
+  'references.journalMetrics.correct.historyEmpty': '還沒有 claim。'
 }
