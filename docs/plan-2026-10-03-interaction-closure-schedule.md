@@ -136,6 +136,25 @@
 | IC29 | 指标**手工订正 + 单刊 claim 历史**（append-only） ✅ **已落地且真机读数已取（2026-10-05）** | 全链：`references:append-journal-metric` + `references:list-journal-claims`（两条通道**五处登记**齐：`ipcMainHandle`、`ReferencesHandlers` 类型与处理器映射、references 族应用命令四处、契约目录、preload 与渲染端声明）；渲染端新组件 `JournalClaimEditor`（订正表单 + 该刊 claim 历史，刻意同区——订正只有挨着它加入的 claims 才读得懂）；11 键 ×9 语 | **真机 `e2e/certification/journal-claim-correction.spec.ts` 1 passed (7.0s)**：夹具走应用自己的导入路径造出 1 条 claim，再在真 UI 手工订正 ⇒ `history: "impact-factor · 4.1 · 2025 · Corrected by hand  impact-factor · 3.5 · 2024 · Publisher table"`（**原值仍在**）→ 主进程回读 `claims: 2`（追加而非替换）。组件测试 3 条（列表回显、订正后**从存储重读**而非本地替换、主进程拒绝原话上屏且不假装已落地）。契约 pin 全部按实测（内部 356 / 本地 354 / 远端 231 / 契约目录 468 / invoke 362 / preload 466+2·核心 230·请求 192 / 本地 Web 可调用面 392 / 表面清单 468·invoke 362 / references 族通道 29）。**读数中另修掉一条 IC26 漏项**：`screening-ipc.test.ts` 的族通道清单当时漏了 `references:set-notes` |
 | IC30 | 导入**逐行归属**反馈（归到哪刊、按什么匹配、是否新建） ✅ **数据契约已取读数；窗口渲染那半实测有缺陷、已立案** | `journal-metrics.ts:76-100`；`JournalMetricsImport.tsx:120-132`。**读数**：outcome 带 `journalMatch:"by-issn"` + `journalCreated:true` + `journalsCreated:1`（逐行归属的字段是真的）。**立案（实测）**：窗口自己的导入区**从不渲染结果** —— 主字段确已填、按钮确可用、点击确落地、渲染进程无报错，而四个结果节点始终不存在（面板文本停在 "Import metrics Paste a publisher table (CSV/TSV)… Import"）；代码确在运行包里（非陈旧构建）；两条旁证（同一文本经桥接导入成功、点击后主字段仍在）排除探针自身的错。spec 里 `test.fixme` 挂起 + 文件头写全证据，待后续从"窗口对那次点击的处理"起步 |
 
+### 批次 6 收口（2026-10-05）
+
+**六条全部收口，逐条都带真机读数或按仓规结案**：
+
+| 单元 | 结论 | 取证方式 |
+| ---- | ---- | -------- |
+| IC25 文献附件历史 | ✅ 已落地 + 真机读数 | 真 UI 读到被替换版本（替换日/挂载日/哈希片段）。**读数钉出真语义**：`pdfVersions` 只装被顶替的版本、当前那份在记录本身上 ⇒ 原先"多于 1 条才显示"的闸门与"当前"档都是死代码，已改为从第一次替换起显示 |
+| IC26 文献 notes 可读写 | ✅ 已落地 + 真机读数 | UI 写笔记 → 主进程回读 → 重启后仍在。**读数抓出真缺口**：漏了 `ipcMainHandle` 的实际注册（渲染端报 `No handler registered`） |
+| IC27 整表同一指标导入 | ✅ 已落地；存储契约读数已取 | 没有指标列的表 + 默认指标 ⇒ 指标确来自请求（行号 2 = 表头占第 1 行） |
+| IC28 指标上限筛选 | ✅ 按仓规结案（架构已覆盖）+ 读数补齐 | 审计发现类型/比较/输入/9 语**全在**，缺的只是读数；扩既有 spec 补正向断言（留下 16.6、筛掉 64.8） |
+| IC29 手工订正 + claim 历史 | ✅ 已落地 + 真机读数 | 订正后历史**两条并存**（原值仍在）、store 回读 2 条（追加而非替换） |
+| IC30 逐行归属反馈 | ✅ 数据契约读数已取；**窗口渲染那半实测有缺陷，已立案** | outcome 的归属字段是真的；窗口导入区从不渲染结果（见下） |
+
+**净收益**：三条读数各抓出一个单元测试看不见的真缺陷并当批修掉（IC25 的死代码闸门、IC26 漏注册的通道、IC30 窗口不渲染结果）。
+
+**立案（未修）**：IC30（连带 IC27）的**窗口渲染那半** —— 主字段确已填、按钮确可用、点击确落地、渲染进程无报错，而四个结果节点始终不存在；代码确在运行包里（非陈旧构建）；两条旁证（同一文本经桥接导入成功、点击后主字段仍在）排除探针自身的错。`e2e/certification/journal-import-attribution.spec.ts` 以 `test.fixme` 挂起并写全证据，后续从"窗口对那次点击的处理"起步。
+
+**另一条入档的教训**：`ReferencesLibraryDialog` 里"References"按钮与对话框同名头按钮会互撞（`getByRole` 命中 2 个 ⇒ 30 秒超时），要 `.locator('visible=true').first()`；同理按 placeholder 抓控件可能落到相邻的建议输入上（症状是"按钮点了没反应"，真因是主字段仍为空、处理器按守卫静默返回）。
+
 ### 批次 7 · v1.87.0 —— 出网 / 存储 / 视觉 / 诊断的可核性（8 条）
 
 | 单元 | 内容                                                            | 落点                                                              |
