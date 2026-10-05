@@ -16,7 +16,11 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 
-import type { NotificationInboxItem } from '../../../shared/notifications'
+import {
+  BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY,
+  BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE,
+  type NotificationInboxItem
+} from '../../../shared/notifications'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import { cn } from '@/lib/utils'
@@ -377,7 +381,10 @@ const NotificationBell = ({
                                       ? t('notifications.taskFailed')
                                       : item.title === 'Authorization required'
                                         ? t('notifications.authorizationRequired')
-                                        : item.title}
+                                        : item.title ===
+                                            BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE
+                                          ? t('notifications.deliveryNeedsAttention')
+                                          : item.title}
                               </span>
                               <span
                                 className={cn(
@@ -397,7 +404,10 @@ const NotificationBell = ({
                               {item.summary ===
                               'A task update was waiting before the message center upgrade.'
                                 ? t('notifications.previousTaskUpdateDesc')
-                                : item.summary}
+                                : item.summary ===
+                                    BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY
+                                  ? t('notifications.deliveryNeedsAttentionDesc')
+                                  : item.summary}
                             </span>
                             {label ? (
                               <span

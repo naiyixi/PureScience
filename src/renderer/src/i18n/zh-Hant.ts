@@ -3878,5 +3878,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '這個任務仍在主機上準備中，還沒有開始執行，因此沒有停止任何程序。等它開始執行後再試。',
   'jobDetail.cancelFailed': '無法請求應用程式停止這個任務。',
   'settings.memorySupersedeBy': '被哪條取代',
-  'settings.memorySupersedeNone': '未被取代'
+  'settings.memorySupersedeNone': '未被取代',
+  'notifications.deliveryNeedsAttention': '背景結果需要處理',
+  'notifications.deliveryNeedsAttentionDesc': '一個已完成的背景結果無法送進它所屬的對話。'
 }

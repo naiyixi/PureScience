@@ -4295,5 +4295,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Ce job est encore en préparation sur l’hôte : rien n’a été arrêté. Réessayez une fois qu’il s’exécute.',
   'jobDetail.cancelFailed': 'Impossible de demander à l’application d’arrêter ce job.',
   'settings.memorySupersedeBy': 'Remplacée par',
-  'settings.memorySupersedeNone': 'Non remplacée'
+  'settings.memorySupersedeNone': 'Non remplacée',
+  'notifications.deliveryNeedsAttention': 'Un résultat en arrière-plan demande votre attention',
+  'notifications.deliveryNeedsAttentionDesc':
+    "Un résultat en arrière-plan terminé n'a pas pu être livré à sa conversation."
 }

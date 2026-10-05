@@ -4266,5 +4266,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Este trabajo todavía se está preparando en el host, así que no se detuvo nada. Inténtalo de nuevo cuando esté en ejecución.',
   'jobDetail.cancelFailed': 'No se pudo pedir a la aplicación que detuviera este trabajo.',
   'settings.memorySupersedeBy': 'Reemplazada por',
-  'settings.memorySupersedeNone': 'Sin reemplazo'
+  'settings.memorySupersedeNone': 'Sin reemplazo',
+  'notifications.deliveryNeedsAttention': 'Un resultado en segundo plano requiere atención',
+  'notifications.deliveryNeedsAttentionDesc':
+    'Un resultado en segundo plano terminado no se pudo entregar a su conversación.'
 }

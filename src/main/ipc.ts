@@ -120,6 +120,7 @@ import { TaskNotificationService } from './notifications/task-notifications'
 import { createNotificationInboxController } from './notifications/notification-inbox-controller'
 import { registerNotificationInboxIpcAdapter } from './notifications/notification-inbox-ipc'
 import { NotificationInboxDbRepository } from './notifications/notification-inbox-repository'
+import { buildNeedsAttentionNotification } from './notifications/needs-attention-notification'
 import { bindNotificationInboxDeletionRuntime } from './notifications/notification-inbox-runtime'
 import {
   buildSkillImportApprovalBroadcast,
@@ -1456,6 +1457,14 @@ const createApplicationModules = async (
   deliveryLedgerReader.list = (sessionId) => backgroundDeliveries.listForSession(sessionId)
   const backgroundDeliveryOwner = new BackgroundDeliveryOwner({
     deliveries: backgroundDeliveries,
+    // Surface a delivery that could not be delivered outside its own conversation (IC40). The card is
+    // keyed on the ledger row, so the many later passes over it are no-ops in the inbox; a failure here
+    // is logged and never allowed to fail the delivery pass that produced it.
+    onNeedsAttention: async ({ delivery }) => {
+      await notificationInbox.record(buildNeedsAttentionNotification(delivery))
+    },
+    onReportError: (error) =>
+      notificationsLog.warn('needs-attention report failed', errorLogFields(error)),
     // Read per delivery: the continuation turn must speak the language the window was last showing,
     // which can differ from the language in force when this owner was constructed.
     labels: async () => backgroundDeliveryLabelsFor(await settingsService.getUiLanguage()),

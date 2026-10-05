@@ -3938,7 +3938,9 @@ export const zh = {
     '这个任务仍在主机上准备中，还没有开始运行，因此没有停止任何进程。等它开始运行后再试。',
   'jobDetail.cancelFailed': '无法请求应用停止这个任务。',
   'settings.memorySupersedeBy': '被哪条取代',
-  'settings.memorySupersedeNone': '未被取代'
+  'settings.memorySupersedeNone': '未被取代',
+  'notifications.deliveryNeedsAttention': '后台结果需要处理',
+  'notifications.deliveryNeedsAttentionDesc': '一个已完成的背景结果没能送进它所属的会话。'
 }
 
 export type ZhKey = keyof typeof zh

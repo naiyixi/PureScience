@@ -4112,5 +4112,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 작업은 아직 호스트에서 준비 중이라 중지된 것이 없습니다. 실행이 시작된 뒤 다시 시도하세요.',
   'jobDetail.cancelFailed': '앱에 이 작업의 중지를 요청하지 못했습니다.',
   'settings.memorySupersedeBy': '대체한 메모',
-  'settings.memorySupersedeNone': '대체되지 않음'
+  'settings.memorySupersedeNone': '대체되지 않음',
+  'notifications.deliveryNeedsAttention': '백그라운드 결과 확인 필요',
+  'notifications.deliveryNeedsAttentionDesc':
+    '완료된 백그라운드 결과를 해당 대화로 전달하지 못했습니다.'
 }

@@ -41,6 +41,13 @@ export type NotificationInboxItem = Readonly<{
   settledAt?: number
 }>
 
+// Canonical English wording for inbox cards whose text the renderer maps to the interface language at
+// render time. Main records them, the renderer matches them, and both import from here: a card that is
+// reworded on one side only would otherwise silently stop being translated on the other.
+export const BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE = 'Background result needs attention'
+export const BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY =
+  'A finished background result could not be delivered to its conversation.'
+
 export type NotificationInboxSnapshot = Readonly<{
   revision: number
   unreadCount: number

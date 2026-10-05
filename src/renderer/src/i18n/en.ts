@@ -4217,5 +4217,8 @@ export const en: Record<ZhKey, string> = {
     'This job is still being prepared on the host, so nothing was stopped yet. Try again once it is running.',
   'jobDetail.cancelFailed': 'Could not ask the app to stop this job.',
   'settings.memorySupersedeBy': 'Superseded by',
-  'settings.memorySupersedeNone': 'Not superseded'
+  'settings.memorySupersedeNone': 'Not superseded',
+  'notifications.deliveryNeedsAttention': 'Background result needs attention',
+  'notifications.deliveryNeedsAttentionDesc':
+    'A finished background result could not be delivered to its conversation.'
 }

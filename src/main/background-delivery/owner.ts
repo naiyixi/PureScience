@@ -39,6 +39,16 @@ export type BackgroundDeliveryOwnerDeps = {
     deliveryIds: readonly string[]
     prompt: string
   }) => Promise<void>
+  // Reports a delivery sitting in needs-attention, so a surface outside the delivery's own session can
+  // say so (IC40). Called once per blocked ledger row per pass — not once per transition — which is what
+  // lets the consumer be idempotent instead of keeping state of its own; the notification inbox dedupes
+  // on the key the report carries. A report must never fail the pass that produced it: a throw is routed
+  // to `onReportError` and the pass continues.
+  onNeedsAttention?: (input: {
+    delivery: BackgroundDelivery
+    reason: BackgroundDeliveryReason | undefined
+  }) => Promise<void> | void
+  onReportError?: (error: unknown) => void
   now?: () => number
   leaseMs?: number
   newClaimToken?: () => string
@@ -123,6 +133,7 @@ export class BackgroundDeliveryOwner {
       })
       if (!claimed || claimed.status !== 'claimed') {
         const started = await this.startTurnForRun(sessionId, delivered)
+        await this.reportNeedsAttention(sessionId)
         return { delivered, blocked, drained: true, startedTurn: started }
       }
       handled.push(claimed.delivery.id)
@@ -130,6 +141,24 @@ export class BackgroundDeliveryOwner {
       const outcome = await this.deliverClaimed(claimed.delivery, claimed.claimToken)
       if (outcome.status === 'delivered') delivered.push(outcome.delivery)
       else blocked.push({ delivery: outcome.delivery, reason: outcome.reason })
+    }
+  }
+
+  // Reports every delivery of this session that is sitting in needs-attention. Read from the ledger rather
+  // than from this pass's own outcome on purpose: a row flagged by an earlier process — the app stopped
+  // before anyone could be told — has to be reported too, and this is the one place that sees both. A
+  // repeat report is expected, which is why the consumer dedupes on the key rather than counting calls.
+  private async reportNeedsAttention(sessionId: string): Promise<void> {
+    const report = this.deps.onNeedsAttention
+    if (!report) return
+    const outstanding = await this.deps.deliveries.listForSession(sessionId)
+    for (const delivery of outstanding) {
+      if (delivery.state !== 'needs-attention') continue
+      try {
+        await report({ delivery, reason: delivery.reason })
+      } catch (error) {
+        this.deps.onReportError?.(error)
+      }
     }
   }
 

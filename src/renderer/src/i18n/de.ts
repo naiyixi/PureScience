@@ -4310,5 +4310,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Dieser Auftrag wird auf dem Host noch vorbereitet, es wurde nichts gestoppt. Versuchen Sie es erneut, sobald er läuft.',
   'jobDetail.cancelFailed': 'Die Anwendung konnte nicht gebeten werden, diesen Auftrag zu stoppen.',
   'settings.memorySupersedeBy': 'Ersetzt durch',
-  'settings.memorySupersedeNone': 'Nicht ersetzt'
+  'settings.memorySupersedeNone': 'Nicht ersetzt',
+  'notifications.deliveryNeedsAttention': 'Hintergrund-Ergebnis erfordert Aufmerksamkeit',
+  'notifications.deliveryNeedsAttentionDesc':
+    'Ein fertiges Hintergrund-Ergebnis konnte nicht in sein Gespräch zugestellt werden.'
 }

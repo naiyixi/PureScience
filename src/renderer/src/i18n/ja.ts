@@ -4179,5 +4179,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このジョブはまだホスト上で準備中で、何も停止していません。実行が始まってからもう一度お試しください。',
   'jobDetail.cancelFailed': 'アプリにこのジョブの停止を要求できませんでした。',
   'settings.memorySupersedeBy': '置き換えたメモ',
-  'settings.memorySupersedeNone': '置き換えなし'
+  'settings.memorySupersedeNone': '置き換えなし',
+  'notifications.deliveryNeedsAttention': 'バックグラウンド結果の確認が必要',
+  'notifications.deliveryNeedsAttentionDesc':
+    '完了したバックグラウンド結果を、その会話に届けられませんでした。'
 }

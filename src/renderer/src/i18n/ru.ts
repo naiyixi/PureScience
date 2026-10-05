@@ -4194,5 +4194,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Это задание ещё готовится на узле, поэтому ничего не остановлено. Повторите попытку, когда оно запустится.',
   'jobDetail.cancelFailed': 'Не удалось попросить приложение остановить это задание.',
   'settings.memorySupersedeBy': 'Заменена заметкой',
-  'settings.memorySupersedeNone': 'Не заменена'
+  'settings.memorySupersedeNone': 'Не заменена',
+  'notifications.deliveryNeedsAttention': 'Результат фоновой задачи требует внимания',
+  'notifications.deliveryNeedsAttentionDesc':
+    'Завершённый результат фоновой задачи не удалось доставить в его диалог.'
 }

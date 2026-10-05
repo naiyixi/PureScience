@@ -72,6 +72,8 @@ const owner = (
     leaseMs?: number
     startTurn?: BackgroundDeliveryOwnerDeps['startTurn']
     labels?: BackgroundDeliveryOwnerDeps['labels']
+    onNeedsAttention?: BackgroundDeliveryOwnerDeps['onNeedsAttention']
+    onReportError?: BackgroundDeliveryOwnerDeps['onReportError']
   } = {}
 ): BackgroundDeliveryOwner => {
   const repo = new BackgroundDeliveryRepository(() => getProjectDbClient(root))
@@ -91,6 +93,8 @@ const owner = (
     },
     labels: overrides.labels ?? NEUTRAL_BACKGROUND_DELIVERY_LABELS,
     startTurn: overrides.startTurn,
+    onNeedsAttention: overrides.onNeedsAttention,
+    onReportError: overrides.onReportError,
     now: overrides.now ?? (() => 1_000),
     leaseMs: overrides.leaseMs,
     newClaimToken: () => 'claim-token',
@@ -250,6 +254,101 @@ describe('background delivery owner against a real database and session file', (
     expect(retry.delivered).toHaveLength(1)
     const delivered = await readSession('session-missing')
     expect(delivered.messages[0].backgroundDelivery?.jobId).toBe('job-no-session')
+  })
+
+  it('reports a flagged delivery out of its own session, on the pass that flags it and on later ones', async () => {
+    // The card that says "this result never arrived" has to be reachable without opening the very session
+    // that could not be read, so the pass reports it to a surface outside the ledger.
+    const sessionId = 'session-report-blocked'
+    const reports: { deliveryId: string; jobId: string; reason: string | undefined }[] = []
+    const app = owner({
+      now: () => 60_000,
+      onNeedsAttention: ({ delivery, reason }) => {
+        reports.push({ deliveryId: delivery.id, jobId: delivery.jobId, reason })
+      }
+    })
+
+    await app.registerJobResult({
+      jobId: 'job-report-blocked',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/out.csv'],
+      fingerprint: 'sha256:blocked'
+    })
+
+    const first = await app.deliverSession(sessionId)
+    expect(first.blocked).toHaveLength(1)
+    expect(reports).toHaveLength(1)
+    expect(reports[0].jobId).toBe('job-report-blocked')
+    expect(reports[0].reason).toBe('session-unavailable')
+
+    // Reported once per blocked row per pass, not once per transition: a restarted process has no memory of
+    // the earlier report, so re-reporting is the normal case and the consumer dedupes on the row.
+    await app.deliverSession(sessionId)
+    expect(reports.map((report) => report.jobId)).toEqual([
+      'job-report-blocked',
+      'job-report-blocked'
+    ])
+    expect(reports.map((report) => report.deliveryId)).toEqual([
+      reports[0].deliveryId,
+      reports[0].deliveryId
+    ])
+  })
+
+  it('stays silent about a delivery that landed, and survives a report that throws', async () => {
+    const sessionId = 'session-report-delivered'
+    await writeSession(sessionId, seedSession(sessionId))
+    const reports: string[] = []
+    const errors: unknown[] = []
+    const app = owner({
+      now: () => 70_000,
+      onNeedsAttention: ({ delivery }) => {
+        reports.push(delivery.id)
+        throw new Error('inbox is down')
+      },
+      onReportError: (error) => {
+        errors.push(error)
+      }
+    })
+
+    await app.registerJobResult({
+      jobId: 'job-report-delivered',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/out.csv'],
+      fingerprint: 'sha256:landed'
+    })
+
+    const run = await app.deliverSession(sessionId)
+    expect(run.delivered).toHaveLength(1)
+    // Nothing was blocked, so there is nothing to report and no error to swallow.
+    expect(reports).toHaveLength(0)
+    expect(errors).toHaveLength(0)
+
+    // A report that throws is routed to onReportError and never fails the pass that produced it.
+    const blockedSessionId = 'session-report-throws'
+    const throwing = owner({
+      now: () => 71_000,
+      onNeedsAttention: () => {
+        throw new Error('inbox is down')
+      },
+      onReportError: (error) => {
+        errors.push(error)
+      }
+    })
+    await throwing.registerJobResult({
+      jobId: 'job-report-throws',
+      projectId: 'project-a',
+      sessionId: blockedSessionId,
+      outputFiles: ['hpc/out.csv'],
+      fingerprint: 'sha256:throws'
+    })
+
+    const blockedRun = await throwing.deliverSession(blockedSessionId)
+    expect(blockedRun.drained).toBe(true)
+    expect(blockedRun.blocked).toHaveLength(1)
+    expect(errors).toHaveLength(1)
+    expect((errors[0] as Error).message).toBe('inbox is down')
   })
 
   it('hands its claims back on a clean stop instead of sitting on them', async () => {
