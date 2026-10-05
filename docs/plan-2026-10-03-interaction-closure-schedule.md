@@ -180,7 +180,7 @@
 | ---- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | IC39 | **取消**排队/运行中的远程任务（现只有 poller 超时内部 kill）      | `compute/ipc.ts`、`job-poller.ts:566-575`；`JobDetailModal.tsx`                                          |
 | IC40 | 后台交付 **needs-attention 全局可见**（inbox 通知或全局交付视图） | `background-delivery.ts:26-45`；`JobDeliveryLedger.tsx:88-123`                                           |
-| IC41 | 按会话清除完成通知（IPC+store 已有，**无人调用**）                | `notification-inbox-ipc.ts:26-29`；`notification-inbox-store.ts:11,67-74`                                |
+| IC41 | 按会话清除完成通知（IPC+store 已有，**无人调用**） | ✅ **已落地 + 真机读数已取（会话，2026-10-06）**。**核实结论**：两侧**早就齐备** —— 通道 `notifications:mark-session-completions-read`（`notification-inbox-ipc.ts:26`）+ store 动作 `markSessionCompletionsRead`（`notification-inbox-store.ts:67`）—— 唯独**没有任何调用点**。**落地**：补上唯一的调用点 —— **从通知中心点开某个会话**时清除该会话的完成通知（`NotificationBell.tsx` 的 item 点击处理器）。**为什么不选"会话被激活即清"**：应用可能自行激活某会话，那会**静默抹掉用户没看过的通知**；而点击通知中心里那一条，是用户明确指名了该会话。该动作只清**完成通知**，未读消息不受影响。**真机 `e2e/certification/notification-session-clear.spec.ts` 1 passed (15.5s)**：假 agent 跑完一轮 ⇒ 收件箱 `unread=1`、一条 `task.completed`（`sessionId: e2e-session-1`）⇒ 打开中心（读回文案 `"Messages 1 unread Mark all read Task completed now end_turn Resolved"`）⇒ 点该条 ⇒ 存储读回 **`unread=0` 且该会话的完成通知已读 `[true]`**。**该组件没有既有渲染套件** ⇒ 按仓规以真机读数为验收（而非为它新建重载荷的 jsdom 套件）。**第三次踩到"按常识猜文案"**：中心 aria-label 实为 `notif.center` = **"Message center"**，我写的 `/notification/i` 直接 30s 超时。 |
 | IC42 | **引擎面板**：可用性矩阵 + 权重下载同意门与进度                   | `engines/alphafold-lookup.ts:61`、`model-weight-cache.ts:48`、`shared/engine-catalog.ts:152`（现零入口） |
 
 ### 批次 9 · v1.88.0 —— 记忆溯源与审查明细（3 条）
