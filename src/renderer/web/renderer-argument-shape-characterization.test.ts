@@ -201,7 +201,9 @@ describe('renderer argument-shape characterization', () => {
     // refused at dispatch in the Web profile, but still a CALLABLE path on the Web surface.
     // 384 with the window package install/uninstall (runtime.managePackages, IC13): same profile.
     // 387 with the session runtime binding surface (notebook.*, IC14): three plain Web request channels.
-    expect(actualPaths).toHaveLength(392)
+    // 388 with stopping a remote job (compute.jobsCancel, IC39): a LOCAL-only compute channel, refused
+    // at dispatch in the Web profile but still a CALLABLE path on the Web surface.
+    expect(actualPaths).toHaveLength(393)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

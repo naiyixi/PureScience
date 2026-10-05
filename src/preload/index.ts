@@ -648,6 +648,8 @@ const api: PureScienceAPI = {
     // Marks job ids as notification-consumed after a successful analysis turn (issue 05).
     jobsMarkConsumed: (sessionId, jobIds) =>
       electronRendererContracts.invoke('compute.jobsMarkConsumed', sessionId, jobIds),
+    // Stops a queued or running remote job on the user's instruction (IC39).
+    jobsCancel: (jobId) => electronRendererContracts.invoke('compute.jobsCancel', jobId),
     // Fires when a job's status or tail changes (broadcast from the main-process poller).
     onJobUpdated: (listener: (job: JobSummary) => void) =>
       electronRendererContracts.subscribe('compute.onJobUpdated', listener),

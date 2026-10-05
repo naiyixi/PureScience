@@ -43,7 +43,12 @@ const createDependencies = (): ComputeApplicationCommandDependencies => ({
     approvalRespond: vi.fn(() => undefined),
     jobsList: vi.fn(async () => []),
     jobsPendingNotification: vi.fn(async () => []),
-    jobsMarkConsumed: vi.fn(async () => undefined)
+    jobsMarkConsumed: vi.fn(async () => undefined),
+    jobsCancel: vi.fn(async () => ({
+      job_id: 'job-1',
+      outcome: 'cancelled' as const,
+      status: 'cancelled' as const
+    }))
   } as unknown as ComputeCommandOwner,
   bookmarks: {
     get: vi.fn(async () => ['/work']),
@@ -69,14 +74,14 @@ const invocation = <Args extends readonly unknown[]>(
 }
 
 describe('Compute application commands', () => {
-  it('defines exactly the 23 public Compute commands without session-internal handlers', () => {
+  it('defines exactly the 24 public Compute commands without session-internal handlers', () => {
     const publicComputeChannels = RENDERER_CONTRACT_GROUPS.find(
       (group) => group.capability === 'compute'
     )
       ?.contracts.filter((contract) => contract.kind === 'method')
       .map((contract) => contract.channel)
 
-    expect(publicComputeChannels).toHaveLength(23)
+    expect(publicComputeChannels).toHaveLength(24)
     expect(computeApplicationCommandGroup.commands.map(({ name }) => name)).toEqual(
       publicComputeChannels
     )
@@ -145,6 +150,7 @@ describe('Compute application commands', () => {
       computeApplicationCommands.jobsMarkConsumed,
       invocation(['session-1', ['job-1']])
     )
+    await router.dispatcher.invoke(computeApplicationCommands.jobsCancel, invocation(['job-1']))
     await router.dispatcher.invoke(
       computeApplicationCommands.enabledHostsGet,
       invocation(['session-1'])
@@ -178,6 +184,7 @@ describe('Compute application commands', () => {
     expect(dependencies.compute.approvalRespond).toHaveBeenCalledWith('approval-1', 'once')
     expect(dependencies.compute.jobsList).toHaveBeenCalledWith(filter)
     expect(dependencies.compute.jobsMarkConsumed).toHaveBeenCalledWith('session-1', ['job-1'])
+    expect(dependencies.compute.jobsCancel).toHaveBeenCalledWith('job-1')
     expect(dependencies.enabledHosts.set).toHaveBeenCalledWith('session-1', ['ssh:cluster'])
     expect(dependencies.bookmarks.set).toHaveBeenCalledWith('ssh:cluster', ['/work'])
   })
@@ -245,9 +252,16 @@ describe('Compute application commands', () => {
         invocation(['/tmp/result.csv'], callerContext)
       )
     ).rejects.toThrow('Channel only available from the local app: compute:reveal-in-folder')
+    await expect(
+      router.dispatcher.invoke(
+        computeApplicationCommands.jobsCancel,
+        invocation(['job-1'], callerContext)
+      )
+    ).rejects.toThrow('Channel only available from the local app: compute:jobs:cancel')
 
     expect(dependencies.compute.download).not.toHaveBeenCalled()
     expect(dependencies.compute.revealInFolder).not.toHaveBeenCalled()
+    expect(dependencies.compute.jobsCancel).not.toHaveBeenCalled()
   })
 
   it('accepts Compute approval responses only from current human-originated callers', async () => {

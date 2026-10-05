@@ -306,3 +306,134 @@ describe('JobDetailModal — session jobs list view', () => {
     expect(container.querySelector('[data-testid="job-detail-back"]')).toBeNull()
   })
 })
+
+// ─── IC39: the window can stop a queued / running remote job ──────────────────
+// The control is only a real feature if the answer from the main process reaches the screen: a
+// cancellation the host never received must not read as one, so each refusal shape is asserted by the
+// sentence the user sees, not by "the button was clicked".
+describe('JobDetailModal — stopping a remote job', () => {
+  const stubCancel = (impl: (jobId: string) => Promise<unknown>): ReturnType<typeof vi.fn> => {
+    const jobsCancel = vi.fn(impl)
+    ;(window as unknown as { api: unknown }).api = { compute: { jobsCancel } }
+    return jobsCancel
+  }
+
+  afterEach(() => {
+    delete (window as unknown as { api?: unknown }).api
+  })
+
+  const openDetail = async (job: JobSummary): Promise<void> => {
+    const { JobDetailModal } = await import('./JobDetailModal')
+    useSessionJobStore.getState().applyUpdate(job)
+    act(() => {
+      root.render(
+        <JobDetailModal open={true} sessionId="sess-1" initialJob={job} onClose={vi.fn()} />
+      )
+    })
+  }
+
+  const cancelButton = (): HTMLButtonElement =>
+    container.querySelector('[data-testid="job-cancel"]') as HTMLButtonElement
+
+  it('offers the control on a running job and reports the stop the main process confirmed', async () => {
+    const jobsCancel = stubCancel(async () => ({
+      job_id: 'job-abc',
+      outcome: 'cancelled',
+      status: 'cancelled'
+    }))
+    await openDetail(makeJob({ status: 'running' }))
+    expect(cancelButton().textContent).toContain('Cancel job')
+
+    await act(async () => {
+      cancelButton().click()
+    })
+
+    expect(jobsCancel).toHaveBeenCalledWith('job-abc')
+    const result = container.querySelector('[data-slot="job-cancel-result"]')
+    expect(result?.textContent).toContain('the job is now cancelled')
+    expect(result?.getAttribute('role')).toBe('status')
+  })
+
+  it('reports a host that could not be reached as a refusal, with the launch failure verbatim', async () => {
+    stubCancel(async () => ({
+      job_id: 'job-abc',
+      outcome: 'refused',
+      refusal: 'host-unreachable',
+      status: 'running',
+      detail: 'ssh: connect to host biowulf port 22: Operation timed out'
+    }))
+    await openDetail(makeJob({ status: 'running' }))
+
+    await act(async () => {
+      cancelButton().click()
+    })
+
+    const result = container.querySelector('[data-slot="job-cancel-result"]')
+    expect(result?.textContent).toContain('was not stopped and is still running')
+    expect(result?.textContent).toContain('Operation timed out')
+    expect(result?.getAttribute('role')).toBe('alert')
+  })
+
+  it('reports a job that had already finished instead of pretending to stop it', async () => {
+    stubCancel(async () => ({
+      job_id: 'job-abc',
+      outcome: 'refused',
+      refusal: 'already-terminal',
+      status: 'success'
+    }))
+    await openDetail(makeJob({ status: 'running' }))
+
+    await act(async () => {
+      cancelButton().click()
+    })
+
+    const result = container.querySelector('[data-slot="job-cancel-result"]')
+    expect(result?.textContent).toContain('had already finished')
+  })
+
+  it('reports a job that is still being prepared as not stopped yet', async () => {
+    stubCancel(async () => ({
+      job_id: 'job-abc',
+      outcome: 'refused',
+      refusal: 'starting',
+      status: 'submitted'
+    }))
+    await openDetail(makeJob({ status: 'submitted' }))
+
+    await act(async () => {
+      cancelButton().click()
+    })
+
+    const result = container.querySelector('[data-slot="job-cancel-result"]')
+    expect(result?.textContent).toContain('still being prepared on the host')
+  })
+
+  it('says so when the request never reached the app', async () => {
+    stubCancel(async () => {
+      throw new Error('channel closed')
+    })
+    await openDetail(makeJob({ status: 'running' }))
+
+    await act(async () => {
+      cancelButton().click()
+    })
+
+    const result = container.querySelector('[data-slot="job-cancel-result"]')
+    expect(result?.textContent).toContain('Could not ask the app to stop this job')
+    expect(result?.getAttribute('role')).toBe('alert')
+  })
+
+  it('hides the control on a job that already rests in a terminal state', async () => {
+    stubCancel(async () => ({ job_id: 'job-abc', outcome: 'cancelled', status: 'cancelled' }))
+    await openDetail(makeJob({ status: 'success', finished_at: Date.now() }))
+
+    expect(container.querySelector('[data-testid="job-cancel"]')).toBeNull()
+  })
+
+  it('hides the control on a cancelled job as well', async () => {
+    stubCancel(async () => ({ job_id: 'job-abc', outcome: 'cancelled', status: 'cancelled' }))
+    await openDetail(makeJob({ status: 'cancelled', finished_at: Date.now() }))
+
+    expect(container.querySelector('[data-testid="job-cancel"]')).toBeNull()
+  })
+})

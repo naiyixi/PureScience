@@ -11,6 +11,7 @@ import {
 } from '../ipc-handler-registry'
 
 import type {
+  CancelComputeJobResult,
   ComputeApprovalDecision,
   ComputeHost,
   ComputeApprovalRequest,
@@ -196,6 +197,9 @@ type ComputeHandlers = {
   jobsPendingNotification: (sessionId: string) => Promise<JobSummary[]>
   // Marks the given job ids as notification-consumed. Idempotent (issue 05).
   jobsMarkConsumed: (sessionId: string, jobIds: string[]) => Promise<void>
+  // Stops a queued or running remote job on the user's instruction (IC39). Returns what actually
+  // happened (cancelled / refused + why) instead of assuming the cancel landed.
+  jobsCancel: (jobId: string) => Promise<CancelComputeJobResult>
   // The background-delivery ledger for a session (state, fingerprint, trigger), for the UI to show
   // where a delivered result came from. Read-only: delivery itself happens in the main process.
   deliveriesList: (sessionId: string) => Promise<BackgroundDelivery[]>
@@ -439,7 +443,8 @@ const createComputeHandlers = (
     jobsMarkConsumed: async (_sessionId, jobIds) => {
       if (!jobRepository) return
       await jobRepository.markNotificationsConsumed(jobIds)
-    }
+    },
+    jobsCancel: (jobId) => service.cancelJob(jobId)
   }
 }
 
@@ -654,6 +659,9 @@ const registerComputeIpcHandlerSet = ({
   ipcMainHandle('compute:jobs:mark-consumed', (_event, sessionId: string, jobIds: string[]) =>
     handlers.jobsMarkConsumed(sessionId, jobIds)
   )
+  // Stops a queued or running remote job on the user's instruction (IC39). No approval gate: the
+  // user is the one asking, and the answer (cancelled / refused + why) is returned to the window.
+  ipcMainHandle('compute:jobs:cancel', (_event, jobId: string) => handlers.jobsCancel(jobId))
   // Reads the background-delivery ledger for a session: state, fingerprint, trigger, timestamps
   // (P2-d-2). Read-only — delivery happens in the main process, not through this channel.
   ipcMainHandle(COMPUTE_DELIVERIES_LIST_CHANNEL, (_event, sessionId: string) =>

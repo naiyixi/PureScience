@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 
 import type {
+  CancelComputeJobResult,
   ComputeCallError,
   ComputeHost,
   ComputeJob,
@@ -14,7 +15,7 @@ import type {
   ProbeResult,
   SubmitJobResult
 } from '../../shared/compute'
-import { DETAILS_DOC_MAX_LENGTH } from '../../shared/compute'
+import { DETAILS_DOC_MAX_LENGTH, isTerminalComputeJobStatus } from '../../shared/compute'
 import {
   unresolvedExecutionProtectionSnapshot,
   type ExecutionProtectionSnapshot,
@@ -42,6 +43,13 @@ import {
 } from './scp-runner'
 import type { ComputeJobRepository } from './job-repository'
 import { computeRemoteWorkdir, dispatchJob, hashCommand } from './job-dispatcher'
+import { sharedDispatchTracker } from './dispatch-tracker'
+import {
+  buildRemoteKillCommand,
+  parseRemoteHandle,
+  REMOTE_KILL_MAX_OUTPUT_BYTES,
+  REMOTE_KILL_TIMEOUT_MS
+} from './remote-job-kill'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import type { StagedInputEntry } from './job-dispatcher'
 import { getJobHarvestDir } from './harvest-engine'
@@ -1439,6 +1447,122 @@ export class ComputeService {
     }
   }
 
+  // Stops a queued or running remote job on the user's instruction (IC39). This is the one
+  // user-facing cancellation path; the poller's fallback timeout kills with the same command and the
+  // same best-effort semantics, but only after `timeout_seconds + grace` has elapsed.
+  //
+  // Reported honestly in both directions:
+  //   - a kill that could not be delivered leaves the row non-terminal (the job is still running
+  //     remotely and keeps being polled) and refuses with the launch failure — never a silent
+  //     "cancelled" for a process nobody stopped;
+  //   - a job that is still queued or being staged has no remote handle to address, so it is refused
+  //     as 'starting' rather than closed: marking it cancelled while the dispatcher goes on to launch
+  //     would leave a running process that no one polls.
+  //
+  // A cancelled job is deliberately NOT harvested and NOT notified: the user asked for the stop, so
+  // there is no result to bring back and no analysis turn to trigger. `remote_workdir` stays on the
+  // row, which is what the window offers for a manual look at partial output.
+  async cancelJob(jobId: string): Promise<CancelComputeJobResult> {
+    if (!this.jobRepository) {
+      throw new Error('ComputeJobRepository is required to cancel a job.')
+    }
+
+    const job = await this.jobRepository.get(jobId)
+    if (!job) {
+      throw new Error(`No compute job found with id "${jobId}".`)
+    }
+
+    // A terminal row has nothing left to stop. Report the status it actually holds so the window can
+    // say why — its own copy may be seconds stale.
+    if (isTerminalComputeJobStatus(job.status)) {
+      return {
+        job_id: job.job_id,
+        outcome: 'refused',
+        refusal: 'already-terminal',
+        status: job.status
+      }
+    }
+
+    const handle = parseRemoteHandle(job.remote_handle)
+
+    if (!handle) {
+      // 'submitted' with no handle is the staging/launch window (mkdir + input upload + launch), which
+      // can last many minutes. The tracker is what distinguishes "a dispatch is live in this process"
+      // from "queued / orphaned"; a live one is refused, an orphaned one is closed below (the poller
+      // would otherwise flip it to dispatch_failed anyway).
+      if (job.status === 'submitted' && sharedDispatchTracker.has(job.job_id)) {
+        return {
+          job_id: job.job_id,
+          outcome: 'refused',
+          refusal: 'starting',
+          status: job.status
+        }
+      }
+    } else {
+      const host = await this.repository.get(job.provider_id)
+      if (!host) {
+        return {
+          job_id: job.job_id,
+          outcome: 'refused',
+          refusal: 'host-unreachable',
+          status: job.status,
+          detail: `No compute host is registered for "${job.provider_id}".`
+        }
+      }
+
+      let target
+      try {
+        target = await resolveSshTarget(host.sshAlias, host.sshOverrides)
+      } catch (error) {
+        return {
+          job_id: job.job_id,
+          outcome: 'refused',
+          refusal: 'host-unreachable',
+          status: job.status,
+          detail: error instanceof Error ? error.message : String(error)
+        }
+      }
+
+      try {
+        await this.runner.run(target, buildRemoteKillCommand(handle), {
+          timeoutMs: REMOTE_KILL_TIMEOUT_MS,
+          loginShell: false,
+          maxOutputBytes: REMOTE_KILL_MAX_OUTPUT_BYTES
+        })
+      } catch (error) {
+        // The kill never got there. Leave the row alone: it is still running remotely.
+        return {
+          job_id: job.job_id,
+          outcome: 'refused',
+          refusal: 'host-unreachable',
+          status: job.status,
+          detail: error instanceof Error ? error.message : String(error)
+        }
+      }
+    }
+
+    const cancelled = await this.jobRepository.update(jobId, {
+      status: 'cancelled',
+      finishedAt: new Date()
+    })
+    this.handleJobUpdated(cancelled)
+
+    // The dispatcher promotes a queued job to 'submitted' inside its own lock and launches outside
+    // it, and a poll tick may be holding a pre-cancel snapshot of this row, so one re-read decides
+    // what to report: only a row that still says 'cancelled' is a cancellation.
+    const settled = await this.jobRepository.get(jobId)
+    if (settled && settled.status !== 'cancelled') {
+      return {
+        job_id: job.job_id,
+        outcome: 'refused',
+        refusal: isTerminalComputeJobStatus(settled.status) ? 'already-terminal' : 'starting',
+        status: settled.status
+      }
+    }
+
+    return { job_id: job.job_id, outcome: 'cancelled', status: 'cancelled' }
+  }
+
   // Returns the full job result (spec §11.4, design §9). Non-blocking: reads DB row + scans
   // the local harvest directory. Does not make any SSH call or trigger harvest.
   //
@@ -1461,8 +1585,7 @@ export class ComputeService {
     }
 
     // Terminal states that can have harvest output.
-    const terminalStates = new Set(['success', 'failed', 'timeout', 'error'])
-    const isTerminal = terminalStates.has(job.status)
+    const isTerminal = isTerminalComputeJobStatus(job.status)
 
     // Parse left_on_remote JSON from the job row (may be undefined before harvest).
     let leftOnRemote: Array<{ uri: string; size_mb: number; reason: string }> = []

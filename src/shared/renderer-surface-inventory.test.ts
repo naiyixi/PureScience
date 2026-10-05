@@ -149,7 +149,9 @@ const WEB_UNAVAILABLE_CHANNELS = [
 const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   artifacts: ['open-file', 'reveal-file', 'write-user-edited-version'],
   cli: ['install', 'uninstall'],
-  compute: ['download', 'reveal-in-folder'],
+  // 'jobs:cancel' keeps its own colon: this group's prefix is the capability, so the expanded channel
+  // is compute:jobs:cancel (not compute:jobs-cancel).
+  compute: ['download', 'jobs:cancel', 'reveal-in-folder'],
   'local-fs': ['get-roots', 'list-dir', 'open-path', 'read-preview', 'reveal'],
   logs: ['open-file', 'reveal-in-folder'],
   'notebook-env': ['cancel', 'provision', 'repair'],
@@ -299,7 +301,7 @@ describe('renderer surface inventory', () => {
     // 463 with the session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): the preload bridge exposes one method per contract, so the preload
     // inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(469)
+    expect(electronPaths).toHaveLength(470)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -309,7 +311,7 @@ describe('renderer surface inventory', () => {
     // channels, so the invoke map moves with them.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(362)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(363)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -345,7 +347,7 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(123)
+    expect(expectedRemoteLocalOnly).toHaveLength(124)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

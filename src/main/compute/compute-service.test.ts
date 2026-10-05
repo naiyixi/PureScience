@@ -7,6 +7,7 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest'
 import type { ComputeHost } from '../../shared/compute'
 import type { DownloadDest } from '../../shared/remote-fs'
 import { ComputeService, parseProbeOutput, resolveInputs } from './compute-service'
+import { sharedDispatchTracker } from './dispatch-tracker'
 import type { ComputeApprovalBroker } from './compute-approval-broker'
 import type { ComputeHostRepository } from './repository'
 import type { ResolvedSshTarget, SshRunner } from './ssh-runner'
@@ -2855,5 +2856,258 @@ describe('ComputeService — protection evidence', () => {
       unmet: [{ code: 'protection-unresolved', detail: 'settings unreadable' }]
     })
     expect(result.execution_protection).toMatchObject({ level: 'unprotected' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ComputeService.cancelJob — the window's stop path (IC39)
+// ---------------------------------------------------------------------------
+
+describe('ComputeService.cancelJob', () => {
+  const remoteHandleJson = (overrides: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      kind: 'pid',
+      pid: 4242,
+      exit_code_path: '/work/exit_code',
+      stdout_path: '/work/stdout',
+      stderr_path: '/work/stderr',
+      workdir: '/work',
+      ...overrides
+    })
+
+  const jobRow = (
+    overrides: Partial<import('../../shared/compute').ComputeJob> = {}
+  ): import('../../shared/compute').ComputeJob => ({
+    job_id: 'job-cancel-1',
+    provider_id: 'ssh:biowulf',
+    shape: 'direct_ssh',
+    session_id: 'sess-1',
+    project_id: 'proj-1',
+    status: 'running',
+    intent: 'long run',
+    command: 'sleep 1000',
+    command_hash: 'abc',
+    environment: undefined,
+    resource_request: undefined,
+    input_manifest: undefined,
+    output_manifest: undefined,
+    harvest_config: undefined,
+    timeout_seconds: 3600,
+    remote_workdir: '/work',
+    remote_handle: remoteHandleJson(),
+    exit_code: undefined,
+    stdout_tail: undefined,
+    stderr_tail: undefined,
+    error_code: undefined,
+    created_at: 1,
+    submitted_at: 1,
+    started_at: 2,
+    finished_at: undefined,
+    harvested_at: undefined,
+    ...overrides
+  })
+
+  const okResult = {
+    exitCode: 0,
+    stdout: '',
+    stderr: '',
+    truncated: false,
+    timedOut: false
+  }
+
+  const makeRunner = (
+    run: (target: unknown, command: string, options: unknown) => Promise<typeof okResult>
+  ): { runner: SshRunner; run: ReturnType<typeof vi.fn> } => {
+    const spy = vi.fn(run)
+    return { runner: { run: spy } as unknown as SshRunner, run: spy }
+  }
+
+  const makeService = (options: {
+    job: import('../../shared/compute').ComputeJob
+    host?: ComputeHost | null
+    runner: SshRunner
+    onJobUpdated?: (job: import('../../shared/compute').ComputeJob) => void
+  }): {
+    service: ComputeService
+    updateCalls: ReturnType<typeof vi.fn>
+    jobs: Map<string, import('../../shared/compute').ComputeJob>
+  } => {
+    const jobs = new Map([[options.job.job_id, options.job]])
+    const { repo: jobRepo, updateCalls } = makeJobRepo(jobs)
+    const { repo: hostRepo } = makeRepo(options.host === undefined ? sampleHost() : options.host)
+    const service = new ComputeService(
+      options.runner,
+      hostRepo,
+      undefined,
+      undefined,
+      undefined,
+      jobRepo,
+      options.onJobUpdated
+    )
+    return { service, updateCalls, jobs }
+  }
+
+  it('stops a running job on the host, records the terminal row and reports what it did', async () => {
+    const job = jobRow()
+    const { runner, run } = makeRunner(async () => okResult)
+    const onJobUpdated = vi.fn()
+    const { service, updateCalls, jobs } = makeService({ job, runner, onJobUpdated })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toEqual({ job_id: job.job_id, outcome: 'cancelled', status: 'cancelled' })
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(run.mock.calls[0]?.[0]).toEqual(fakeTarget)
+    expect(run.mock.calls[0]?.[1]).toContain('kill 4242')
+    expect(updateCalls).toHaveBeenCalledWith(
+      job.job_id,
+      expect.objectContaining({ status: 'cancelled', finishedAt: expect.any(Date) })
+    )
+    expect(jobs.get(job.job_id)?.status).toBe('cancelled')
+    expect(onJobUpdated).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }))
+  })
+
+  it('cancels a scheduler job through scancel rather than by pid', async () => {
+    const job = jobRow({
+      shape: 'scheduler_cluster',
+      remote_handle: remoteHandleJson({ kind: 'slurm', pid: undefined, slurm_job_id: 987 })
+    })
+    const { runner, run } = makeRunner(async () => okResult)
+    const { service } = makeService({ job, runner })
+
+    await service.cancelJob(job.job_id)
+
+    expect(run.mock.calls[0]?.[1]).toBe('scancel 987 2>/dev/null; true')
+  })
+
+  it('leaves a job running when the kill never reached the host, and says why', async () => {
+    const job = jobRow()
+    const { runner, run } = makeRunner(() =>
+      Promise.reject(new Error('ssh: connect to host biowulf port 22: Operation timed out'))
+    )
+    const onJobUpdated = vi.fn()
+    const { service, updateCalls, jobs } = makeService({ job, runner, onJobUpdated })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toMatchObject({
+      outcome: 'refused',
+      refusal: 'host-unreachable',
+      status: 'running'
+    })
+    expect(result.detail).toContain('Operation timed out')
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(updateCalls).not.toHaveBeenCalled()
+    expect(jobs.get(job.job_id)?.status).toBe('running')
+    expect(onJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('refuses when the host record is gone instead of claiming a stop', async () => {
+    const job = jobRow()
+    const { runner, run } = makeRunner(async () => okResult)
+    const { service, updateCalls } = makeService({ job, runner, host: null })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toMatchObject({ outcome: 'refused', refusal: 'host-unreachable' })
+    expect(result.detail).toContain('No compute host is registered')
+    expect(run).not.toHaveBeenCalled()
+    expect(updateCalls).not.toHaveBeenCalled()
+  })
+
+  it('refuses a job whose dispatch is live on the host and has no addressable process yet', async () => {
+    const job = jobRow({ status: 'submitted', remote_handle: undefined, started_at: undefined })
+    const { runner, run } = makeRunner(async () => okResult)
+    const { service, updateCalls, jobs } = makeService({ job, runner })
+    sharedDispatchTracker.begin(job.job_id)
+    try {
+      const result = await service.cancelJob(job.job_id)
+
+      expect(result).toMatchObject({
+        outcome: 'refused',
+        refusal: 'starting',
+        status: 'submitted'
+      })
+      expect(run).not.toHaveBeenCalled()
+      expect(updateCalls).not.toHaveBeenCalled()
+      expect(jobs.get(job.job_id)?.status).toBe('submitted')
+    } finally {
+      sharedDispatchTracker.end(job.job_id)
+    }
+  })
+
+  it('closes a submitted job that no live dispatch owns (restart-orphaned, nothing launched)', async () => {
+    const job = jobRow({ status: 'submitted', remote_handle: undefined, started_at: undefined })
+    const { runner, run } = makeRunner(async () => okResult)
+    const { service, jobs } = makeService({ job, runner })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toEqual({ job_id: job.job_id, outcome: 'cancelled', status: 'cancelled' })
+    expect(run).not.toHaveBeenCalled()
+    expect(jobs.get(job.job_id)?.status).toBe('cancelled')
+  })
+
+  it('refuses a job that already rests in a terminal state, reporting the status it holds', async () => {
+    for (const status of ['success', 'failed', 'timeout', 'error', 'cancelled'] as const) {
+      const job = jobRow({ status, finished_at: 5 })
+      const { runner, run } = makeRunner(async () => okResult)
+      const { service, updateCalls } = makeService({ job, runner })
+
+      const result = await service.cancelJob(job.job_id)
+
+      expect(result).toEqual({
+        job_id: job.job_id,
+        outcome: 'refused',
+        refusal: 'already-terminal',
+        status
+      })
+      expect(run).not.toHaveBeenCalled()
+      expect(updateCalls).not.toHaveBeenCalled()
+    }
+  })
+
+  it('reports the status a poll tick left instead of a cancellation it cannot confirm', async () => {
+    // The row is written 'cancelled', then the single re-read finds a poll tick that had already
+    // decided 'timeout' — the user must not be told a stop landed.
+    const job = jobRow()
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce(job)
+      .mockResolvedValueOnce({ ...job, status: 'timeout', finished_at: 9 })
+    const update = vi.fn(async () => ({ ...job, status: 'cancelled' as const }))
+    const jobRepo = { get, update } as unknown as import('./job-repository').ComputeJobRepository
+    const { repo: hostRepo } = makeRepo()
+    const { runner } = makeRunner(async () => okResult)
+    const service = new ComputeService(runner, hostRepo, undefined, undefined, undefined, jobRepo)
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toEqual({
+      job_id: job.job_id,
+      outcome: 'refused',
+      refusal: 'already-terminal',
+      status: 'timeout'
+    })
+  })
+
+  it('throws for a job id that does not exist', async () => {
+    const job = jobRow()
+    const { runner } = makeRunner(async () => okResult)
+    const { service } = makeService({ job, runner })
+
+    await expect(service.cancelJob('job-missing')).rejects.toThrow(
+      'No compute job found with id "job-missing".'
+    )
+  })
+
+  it('refuses to run without a job repository', async () => {
+    const { runner } = makeRunner(async () => okResult)
+    const { repo } = makeRepo()
+    const service = new ComputeService(runner, repo)
+
+    await expect(service.cancelJob('job-cancel-1')).rejects.toThrow(
+      'ComputeJobRepository is required to cancel a job.'
+    )
   })
 })

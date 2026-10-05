@@ -80,6 +80,7 @@ import type {
   SpecialistExportSaveResult
 } from '../shared/specialist-package'
 import type {
+  CancelComputeJobResult,
   ComputeApprovalDecision,
   ComputeApprovalRequest,
   ComputeHost,
@@ -900,6 +901,9 @@ export interface PureScienceAPI {
     jobsPendingNotification(sessionId: string): Promise<JobSummary[]>
     // Marks job ids as notification-consumed after a successful analysis turn (issue 05).
     jobsMarkConsumed(sessionId: string, jobIds: string[]): Promise<void>
+    // Stops a queued or running remote job on the user's instruction (IC39). The result says whether
+    // the cancellation landed and, when it did not, why — the window never assumes it worked.
+    jobsCancel(jobId: string): Promise<CancelComputeJobResult>
     // Fires when a job's status or tail changes (broadcast from the main-process poller).
     onJobUpdated(listener: (job: JobSummary) => void): () => void
     // Per-session enabled compute hosts (issue 06). The renderer owns the durable state (session JSON);

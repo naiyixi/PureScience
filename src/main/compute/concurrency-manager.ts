@@ -1,6 +1,7 @@
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
 import type { ComputeJob } from '../../shared/compute'
+import { TERMINAL_COMPUTE_JOB_STATUSES } from '../../shared/compute'
 
 export type SessionStatus = {
   session_limit: number | null
@@ -14,12 +15,12 @@ const DEFAULT_PROVIDER_CEILING = 10
 
 // Global queue limit (max queued jobs across all sessions).
 const GLOBAL_QUEUE_LIMIT = 100
-const TERMINAL_JOB_STATUSES: ReadonlySet<ComputeJob['status']> = new Set([
-  'success',
-  'failed',
-  'timeout',
-  'error'
-])
+// A cancelled job frees its slot exactly like a finished one: the window's cancel path publishes
+// through this manager's handleJobUpdated, so without 'cancelled' here a stopped job would hold a
+// session slot / provider ceiling slot until the app restarted.
+const TERMINAL_JOB_STATUSES: ReadonlySet<ComputeJob['status']> = new Set(
+  TERMINAL_COMPUTE_JOB_STATUSES
+)
 
 type DispatchQueuedJob = (jobId: string, onJobUpdated: (job: ComputeJob) => void) => Promise<void>
 

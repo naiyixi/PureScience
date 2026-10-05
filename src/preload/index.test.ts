@@ -286,6 +286,7 @@ describe('preload bridge — public surface inventory', () => {
       'compute.enabledHostsSet',
       'compute.executionModeSet',
       'compute.get',
+      'compute.jobsCancel',
       'compute.jobsList',
       'compute.jobsMarkConsumed',
       'compute.jobsPendingNotification',
@@ -718,7 +719,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(238)
+    expect(runtimeContracts).toHaveLength(239)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

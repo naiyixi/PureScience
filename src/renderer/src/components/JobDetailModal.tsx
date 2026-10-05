@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, X } from 'lucide-react'
+import { ArrowLeft, CircleStop, ExternalLink, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
-import type { JobSummary } from '../../../shared/compute'
+import { isTerminalComputeJobStatus } from '../../../shared/compute'
+import type { CancelComputeJobResult, JobSummary } from '../../../shared/compute'
 import type { ExecutionProtectionLevel } from '../../../shared/execution-protection'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import { Button } from '@/components/ui/button'
@@ -122,6 +123,40 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
   // Pull latest data from the store on every render (store subscribes to compute:job-updated).
   const latestJob = useSessionJobStore((s) => s.jobsById.get(job.job_id)) ?? job
 
+  // The window's cancel request: the main process answers with what actually happened (stopped, or
+  // refused and why), and this state is that answer on screen — never an assumed success.
+  const [cancelState, setCancelState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'pending' }
+    | { kind: 'done'; result: CancelComputeJobResult }
+    | { kind: 'unreachable' }
+  >({ kind: 'idle' })
+
+  const handleCancel = async (): Promise<void> => {
+    setCancelState({ kind: 'pending' })
+    try {
+      const result = await window.api.compute.jobsCancel(latestJob.job_id)
+      setCancelState({ kind: 'done', result })
+    } catch {
+      // The request never reached the main process (channel gone / window shutting down).
+      setCancelState({ kind: 'unreachable' })
+    }
+  }
+
+  const cancelMessage = (result: CancelComputeJobResult): string => {
+    if (result.outcome === 'cancelled') return t('jobDetail.cancelDone')
+    switch (result.refusal) {
+      case 'already-terminal':
+        return t('jobDetail.cancelRefusedAlreadyTerminal')
+      case 'host-unreachable':
+        return t('jobDetail.cancelRefusedHostUnreachable')
+      case 'starting':
+        return t('jobDetail.cancelRefusedStarting')
+      default:
+        return t('jobDetail.cancelFailed')
+    }
+  }
+
   // Track elapsed time for running jobs
   const [now, setNow] = useState(() => Date.now())
   const isRunning = latestJob.status === 'running' || latestJob.status === 'submitted'
@@ -181,8 +216,55 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
           Back
         </button>
         <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{latestJob.intent}</span>
+        {/* The one place a running job can be stopped. Refused (already finished / host unreachable /
+            still starting) is a real answer too, and the banner below says which one it was. */}
+        {!isTerminalComputeJobStatus(latestJob.status) && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="job-cancel"
+            data-slot="job-cancel"
+            disabled={cancelState.kind === 'pending'}
+            onClick={() => void handleCancel()}
+          >
+            <CircleStop size={13} aria-hidden="true" />
+            {cancelState.kind === 'pending' ? t('jobDetail.cancelling') : t('jobDetail.cancelJob')}
+          </Button>
+        )}
         <JobStatusBadge status={latestJob.status} />
       </div>
+
+      {/* What the cancel attempt actually did. 'cancelled' is a neutral statement; every refusal is an
+          alert, because the job is still running and the user has to know that. */}
+      {cancelState.kind === 'done' && (
+        <div
+          data-slot="job-cancel-result"
+          role={cancelState.result.outcome === 'cancelled' ? 'status' : 'alert'}
+          className={cn(
+            'flex shrink-0 flex-col gap-0.5 border-b border-border px-4 py-2 text-[12px]',
+            cancelState.result.outcome === 'cancelled'
+              ? 'bg-muted/40 text-secondary-foreground'
+              : 'bg-destructive/10 text-destructive'
+          )}
+        >
+          <span>{cancelMessage(cancelState.result)}</span>
+          {cancelState.result.detail && (
+            <span className="break-all font-mono text-[11px] text-muted-foreground">
+              {cancelState.result.detail}
+            </span>
+          )}
+        </div>
+      )}
+      {cancelState.kind === 'unreachable' && (
+        <div
+          data-slot="job-cancel-result"
+          role="alert"
+          className="shrink-0 border-b border-border bg-destructive/10 px-4 py-2 text-[12px] text-destructive"
+        >
+          {t('jobDetail.cancelFailed')}
+        </div>
+      )}
 
       {/* Meta info grid */}
       <div

@@ -62,6 +62,7 @@ const computePaths = [
   'compute.enabledHostsSet',
   'compute.executionModeSet',
   'compute.get',
+  'compute.jobsCancel',
   'compute.jobsList',
   'compute.jobsMarkConsumed',
   'compute.jobsPendingNotification',
@@ -241,7 +242,11 @@ describe('renderer surface compatibility matrix', () => {
     const remoteRestrictedCompute = computePaths
       .map((path) => WEB_INVOKE_CHANNELS[path])
       .filter((channel) => REMOTE_LOCAL_ONLY_RPC_CHANNELS.has(channel))
-    expect(remoteRestrictedCompute).toEqual(['compute:download', 'compute:reveal-in-folder'])
+    expect(remoteRestrictedCompute).toEqual([
+      'compute:download',
+      'compute:jobs:cancel',
+      'compute:reveal-in-folder'
+    ])
 
     const remoteApi: Record<string, unknown> = {}
     installWebRendererContracts(remoteApi, {

@@ -31,6 +31,7 @@ import {
   createPreviewFileItemFromUpload
 } from './preview-file-item'
 import { createPreviewRequestScope } from './previews/preview-file-reader'
+import { isTerminalComputeJobStatus } from '../../../../shared/compute'
 import type { JobSummary } from '../../../../shared/compute'
 import type { AnnotationImageRef, AnnotationRegion } from '../../../../shared/annotations'
 import { CompletedJobCard } from '@/components/CompletedJobCard'
@@ -617,8 +618,11 @@ const WorkspaceMessageScrollerImpl = ({
 
   // Unbound completed jobs: jobs not found in any activity rawOutput — go into timeline
   const unboundCompletedJobs = useMemo((): JobSummary[] => {
-    const terminalStatuses = new Set(['success', 'failed', 'timeout', 'error'])
-    return sessionJobs.filter((j) => !boundJobIds.has(j.job_id) && terminalStatuses.has(j.status))
+    // A user-stopped job belongs here too: it rests in a terminal state and has to stay visible in the
+    // timeline rather than disappear (the terminal set is shared, not re-listed here).
+    return sessionJobs.filter(
+      (j) => !boundJobIds.has(j.job_id) && isTerminalComputeJobStatus(j.status)
+    )
   }, [sessionJobs, boundJobIds])
 
   // Assign each unbound completed job to exactly one slot in the conversation timeline so

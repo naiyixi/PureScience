@@ -178,7 +178,9 @@ describe('application command composition', () => {
     // the two export channels.
     // One more for the window package install/uninstall (runtime:manage-packages, IC13), local-only like
     // the named-environment surface it sits beside.
-    expect(composition.localWeb.commandNames()).toHaveLength(354)
+    // One more for stopping a remote job (compute:jobs:cancel, IC39): asking THIS machine to kill a job
+    // it launched is local-only by nature, so it joins the local Web surface and the rejection set.
+    expect(composition.localWeb.commandNames()).toHaveLength(355)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -199,10 +201,13 @@ describe('application command composition', () => {
     // project-files:list-kinds, which carries no surface flag.
     expect(composition.remoteWeb.commandNames()).toHaveLength(231)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(123)
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(124)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')
+    await expect(
+      composition.remoteWeb.invoke('compute:jobs:cancel', invocation('remote'))
+    ).rejects.toThrow('Application command is rejected before dispatch: compute:jobs:cancel')
     expect(onDiagnostic).not.toHaveBeenCalled()
     await expect(
       composition.remoteWeb.invoke('projects:list', invocation('remote'))

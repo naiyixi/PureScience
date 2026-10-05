@@ -34,14 +34,14 @@ describe('renderer contract catalog', () => {
     // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
     // local-Web installation set each move by three while the remote-Web set grows by the same three.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(469)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(470)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(projection.invoke)).toHaveLength(362)
+    expect(Object.keys(projection.invoke)).toHaveLength(363)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -50,9 +50,12 @@ describe('renderer contract catalog', () => {
     // 383 with the artifact reveal handoff (artifacts:reveal-file, IC9), a LOCAL artifact channel.
     // 384 with the window package install/uninstall (runtime.manage-packages, IC13), same profile.
     // 387 with the session runtime binding surface (notebook.*, IC14): three plain Web request channels.
+    // 388 with stopping a remote job (compute.jobsCancel, IC39): a LOCAL-only compute channel, so the
+    // catalog, the invoke map and the local-Web installation set each move by one while the remote-Web
+    // set grows by the rejecting stub it gets for being local-only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(392)
+    ).toHaveLength(393)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -85,7 +88,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(77)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(123)
+    ).toHaveLength(124)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')
@@ -207,12 +210,12 @@ describe('renderer contract catalog', () => {
     const compute = RENDERER_CONTRACT_CATALOG.filter(({ publicPath }) =>
       publicPath.startsWith('compute.')
     )
-    expect(compute).toHaveLength(25)
+    expect(compute).toHaveLength(26)
     expect(
       compute
         .filter(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
         .map(({ publicPath }) => publicPath)
-    ).toEqual(['compute.download', 'compute.revealInFolder'])
+    ).toEqual(['compute.download', 'compute.jobsCancel', 'compute.revealInFolder'])
   })
 
   it('records the paired window lifecycle channels and teardown ordering', () => {

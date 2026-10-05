@@ -1,7 +1,8 @@
 import type { ComputeJobStatus } from '../../../shared/compute'
 
 // Maps job status to badge styling. Follows design.md §6 badge pattern (same conventions as ReviewCard).
-// Terminal statuses consolidate under semantic groups: success=Done, error/failed/timeout=Failed.
+// Terminal statuses consolidate under semantic groups: success=Done, error/failed/timeout=Failed, and
+// cancelled stays its own neutral group (the user stopped it; calling that a failure would be wrong).
 const STATUS_STYLE: Record<ComputeJobStatus, { label: string; className: string }> = {
   queued: {
     label: 'Queued',
@@ -37,6 +38,12 @@ const STATUS_STYLE: Record<ComputeJobStatus, { label: string; className: string 
     label: 'Error',
     className:
       'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-800/50'
+  },
+  // A user-initiated stop is neither a success nor a failure: neutral, like the queued states.
+  cancelled: {
+    label: 'Cancelled',
+    className:
+      'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-950/40 dark:text-slate-400 dark:border-slate-800/50'
   }
 }
 

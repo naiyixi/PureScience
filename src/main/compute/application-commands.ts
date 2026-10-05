@@ -29,6 +29,7 @@ type ComputeCommandOwner = Pick<
   | 'jobsList'
   | 'jobsPendingNotification'
   | 'jobsMarkConsumed'
+  | 'jobsCancel'
   | 'deliveriesList'
 >
 
@@ -150,6 +151,11 @@ const computeApplicationCommands = Object.freeze({
     OwnerArgs<ComputeCommandOwner, 'jobsMarkConsumed'>,
     OwnerResult<ComputeCommandOwner, 'jobsMarkConsumed'>
   >('compute:jobs:mark-consumed'),
+  jobsCancel: defineApplicationCommand<
+    'compute:jobs:cancel',
+    OwnerArgs<ComputeCommandOwner, 'jobsCancel'>,
+    OwnerResult<ComputeCommandOwner, 'jobsCancel'>
+  >('compute:jobs:cancel'),
   enabledHostsGet: defineApplicationCommand<
     'compute:enabled-hosts:get',
     OwnerArgs<ComputeEnabledHostsOwner, 'get'>,
@@ -186,6 +192,7 @@ const computeApplicationCommandGroup = defineApplicationCommandGroup('compute', 
   computeApplicationCommands.executionModeSet,
   computeApplicationCommands.get,
   computeApplicationCommands.deliveriesList,
+  computeApplicationCommands.jobsCancel,
   computeApplicationCommands.jobsList,
   computeApplicationCommands.jobsMarkConsumed,
   computeApplicationCommands.jobsPendingNotification,
@@ -268,6 +275,12 @@ const registerComputeApplicationCommands = (
         dependencies.compute.jobsPendingNotification(args[0]),
       'compute:jobs:mark-consumed': ({ args }) =>
         dependencies.compute.jobsMarkConsumed(args[0], args[1]),
+      // Local-only: a paired remote browser may not stop this machine's remote jobs (fail-closed
+      // pre-dispatch rejection on the remote surface, same family as compute:download).
+      'compute:jobs:cancel': ({ args, callerContext }) => {
+        assertLocalCommand(callerContext, 'compute:jobs:cancel')
+        return dependencies.compute.jobsCancel(args[0])
+      },
       'compute:deliveries:list': ({ args }) => dependencies.compute.deliveriesList(args[0]),
       'compute:enabled-hosts:get': ({ args }) => dependencies.enabledHosts.get(args[0]),
       'compute:enabled-hosts:set': ({ args }) => dependencies.enabledHosts.set(args[0], args[1]),

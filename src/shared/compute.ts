@@ -192,8 +192,53 @@ export type ComputeApprovalRequest = {
 }
 
 // The job status values for the Phase 3a state machine. 'queued' is reserved for Phase 3c.
+// 'cancelled' is the status a job takes when the user stops it from the window (IC39): it is a
+// terminal resting state, distinct from 'failed' so the UI does not report a user's own decision as
+// a failure, and it is deliberately NOT harvested and NOT notified (the user asked for the stop).
 export type ComputeJobStatus =
-  'queued' | 'submitted' | 'running' | 'success' | 'failed' | 'timeout' | 'error'
+  'queued' | 'submitted' | 'running' | 'success' | 'failed' | 'timeout' | 'error' | 'cancelled'
+
+// Every status a job can rest in: it will never be polled again and can no longer be cancelled.
+// Declared once so a new terminal status cannot be honoured by one consumer (the poller's query, the
+// concurrency manager's queue release, the timeline's completed-job card) and forgotten by another.
+export const TERMINAL_COMPUTE_JOB_STATUSES = [
+  'success',
+  'failed',
+  'timeout',
+  'error',
+  'cancelled'
+] as const
+
+export type TerminalComputeJobStatus = (typeof TERMINAL_COMPUTE_JOB_STATUSES)[number]
+
+export const isTerminalComputeJobStatus = (status: ComputeJobStatus): boolean =>
+  (TERMINAL_COMPUTE_JOB_STATUSES as readonly string[]).includes(status)
+
+// Why a user-initiated cancel could not stop the job (IC39). Kept as codes, not sentences:
+// the window owns the wording (9 languages) and the main process reports what it observed.
+export type CancelComputeJobRefusal =
+  // The row was already in a terminal state when the cancel arrived — nothing was left to stop.
+  | 'already-terminal'
+  // The job's host could not be reached (missing record, or the SSH round-trip failed), so the
+  // remote process is still running. The row is left non-terminal and keeps being polled: a
+  // cancellation that could not be delivered must not be reported as one.
+  | 'host-unreachable'
+  // The job is still being prepared on the host (queued behind a free slot, or staging/launching
+  // with no remote handle yet), so there is no remote process to address. Nothing was stopped;
+  // the caller may try again once the job reports as running.
+  | 'starting'
+
+// Result of the window's cancel request. `status` is the status the row holds *after* the attempt,
+// so the window states what happened instead of assuming the cancel landed.
+export type CancelComputeJobResult = {
+  job_id: string
+  outcome: 'cancelled' | 'refused'
+  refusal?: CancelComputeJobRefusal
+  status: ComputeJobStatus
+  // The launch/transport failure that stopped the kill from running. Present only on
+  // 'host-unreachable'; the window shows it verbatim beneath its own wording.
+  detail?: string
+}
 
 // A compute job record, normalized for cross-process sharing (main → renderer via IPC, main → repl
 // via JSON RPC). Timestamps are epoch milliseconds; JSON columns are parsed at the repository

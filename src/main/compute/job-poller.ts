@@ -7,6 +7,12 @@ import type { ComputeHostRepository } from './repository'
 import type { SshRunner } from './ssh-runner'
 import { resolveSshTarget } from './ssh-runner'
 import { quoteRemotePath, type RemoteHandle } from './job-dispatcher'
+import {
+  buildRemoteKillCommand,
+  parseRemoteHandle,
+  REMOTE_KILL_MAX_OUTPUT_BYTES,
+  REMOTE_KILL_TIMEOUT_MS
+} from './remote-job-kill'
 import { sharedDispatchTracker, type DispatchTracker } from './dispatch-tracker'
 import { emitJobNotification } from './job-notifier'
 
@@ -386,12 +392,7 @@ export class JobPoller {
   }
 
   private _parseHandle(raw: string | undefined): RemoteHandle | null {
-    if (!raw) return null
-    try {
-      return JSON.parse(raw) as RemoteHandle
-    } catch {
-      return null
-    }
+    return parseRemoteHandle(raw)
   }
 
   // Records a transient SSH connectivity error for each job without changing job status.
@@ -564,15 +565,12 @@ export class JobPoller {
         if (handle) {
           // Best-effort kill; ignore errors (process/job may have already exited). Slurm jobs are
           // cancelled through the scheduler (scancel) — the scheduler owns the process tree.
-          const killCmd =
-            handle.kind === 'slurm' && handle.slurm_job_id
-              ? `scancel ${handle.slurm_job_id} 2>/dev/null; true`
-              : `kill ${handle.pid ?? ''} 2>/dev/null; kill -9 ${handle.pid ?? ''} 2>/dev/null; true`
+          const killCmd = buildRemoteKillCommand(handle)
           try {
             await this.deps.runner.run(target, killCmd, {
-              timeoutMs: 10_000,
+              timeoutMs: REMOTE_KILL_TIMEOUT_MS,
               loginShell: false,
-              maxOutputBytes: 64
+              maxOutputBytes: REMOTE_KILL_MAX_OUTPUT_BYTES
             })
           } catch {
             // Ignore kill errors — the job is marked terminal regardless.
