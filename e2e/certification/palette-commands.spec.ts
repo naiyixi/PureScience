@@ -54,4 +54,37 @@ test('answers a palette query with a command that lands on its destination', asy
   await expect(sheet).toBeVisible()
   await expect(page.getByTestId('shortcut-row-settings')).toContainText(',')
   await expect(page.getByTestId('shortcut-row-close')).toContainText('W')
+
+  await page.keyboard.press('Escape')
+  await expect(sheet).toHaveCount(0)
+
+  // IC51: the allowlist vocabulary reaches the panel that owns it, on both surfaces a user can query. Someone
+  // typing "白名单" / "egress" is looking for the notebook network allowlist, and that panel is called Network.
+  await page.keyboard.press(`${modifier}+k`)
+  const paletteAgain = page.getByTestId('global-search-dialog')
+  await expect(paletteAgain).toBeVisible()
+  for (const query of ['白名单', 'egress', '域名']) {
+    // The window holds other comboboxes; the palette's own field is the one inside its dialog.
+    await paletteAgain.locator('input[role="combobox"]').first().fill(query)
+    const reached = page.getByTestId('palette-command-settings.network')
+    await expect(reached).toBeVisible()
+    console.log(
+      `[ic51] the palette answers "${query}" with: ${(await reached.innerText()).replace(/\s+/g, ' ').trim()}`
+    )
+  }
+  await page.getByTestId('palette-command-settings.network').click()
+
+  const settingsAgain = page.getByRole('dialog', { name: 'Settings' })
+  await expect(settingsAgain).toBeVisible()
+  // The panel's own search has to answer the same words — the allowlist lives inside Network.
+  const settingsSearch = settingsAgain.getByRole('searchbox')
+  const networkEntry = settingsAgain
+    .getByRole('button', { name: 'Network', exact: true })
+    .locator('visible=true')
+    .first()
+  for (const query of ['白名单', '域名']) {
+    await settingsSearch.fill(query)
+    await expect(networkEntry).toBeVisible()
+    console.log(`[ic51] the settings search still lists Network for "${query}"`)
+  }
 })
