@@ -4278,5 +4278,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Ses octets ne correspondent plus à l'empreinte enregistrée.",
   'roCrate.export.refusedEntry': '{version} — refusée : {reason}',
   'settings.memoryNoteFilterPlaceholder': 'Filtrer les notes…',
-  'settings.memoryNoteFilterEmpty': 'Aucune note ne correspond à ce filtre.'
+  'settings.memoryNoteFilterEmpty': 'Aucune note ne correspond à ce filtre.',
+  'roCrate.export.exportOnly':
+    'Export uniquement — un crate externe ne peut pas encore être importé ni vérifié ici.'
 }

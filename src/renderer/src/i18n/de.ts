@@ -4293,5 +4293,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die Bytes ergeben nicht mehr den aufgezeichneten Hash.',
   'roCrate.export.refusedEntry': '{version} — abgelehnt: {reason}',
   'settings.memoryNoteFilterPlaceholder': 'Notizen filtern…',
-  'settings.memoryNoteFilterEmpty': 'Keine Notiz entspricht diesem Filter.'
+  'settings.memoryNoteFilterEmpty': 'Keine Notiz entspricht diesem Filter.',
+  'roCrate.export.exportOnly':
+    'Nur Export — ein fremdes Crate kann hier noch nicht eingelesen oder geprüft werden.'
 }

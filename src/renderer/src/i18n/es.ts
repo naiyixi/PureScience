@@ -4249,5 +4249,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.checksum-mismatch': 'Sus bytes ya no coinciden con el hash registrado.',
   'roCrate.export.refusedEntry': '{version} — rechazada: {reason}',
   'settings.memoryNoteFilterPlaceholder': 'Filtrar notas…',
-  'settings.memoryNoteFilterEmpty': 'Ninguna nota coincide con ese filtro.'
+  'settings.memoryNoteFilterEmpty': 'Ninguna nota coincide con ese filtro.',
+  'roCrate.export.exportOnly':
+    'Solo exportación: aquí todavía no se puede importar ni verificar un crate externo.'
 }

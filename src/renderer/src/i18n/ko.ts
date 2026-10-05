@@ -4097,5 +4097,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.checksum-mismatch': '바이트가 기록된 해시와 일치하지 않습니다.',
   'roCrate.export.refusedEntry': '{version} — 제외됨: {reason}',
   'settings.memoryNoteFilterPlaceholder': '메모 필터…',
-  'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.'
+  'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.',
+  'roCrate.export.exportOnly': '내보내기 전용 — 외부 crate는 아직 가져오거나 검사할 수 없습니다.'
 }

@@ -3924,7 +3924,8 @@ export const zh = {
   'roCrate.export.refusal.checksum-mismatch': '它的字节与记录的哈希不再一致。',
   'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
   'settings.memoryNoteFilterPlaceholder': '筛选笔记…',
-  'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。'
+  'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。',
+  'roCrate.export.exportOnly': '仅支持导出 —— 目前还不能把外部的 crate 导入进来或对它做校验。'
 }
 
 export type ZhKey = keyof typeof zh

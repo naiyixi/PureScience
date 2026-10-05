@@ -4200,5 +4200,7 @@ export const en: Record<ZhKey, string> = {
   'roCrate.export.refusal.checksum-mismatch': 'Its bytes no longer hash to what was recorded.',
   'roCrate.export.refusedEntry': '{version} — refused: {reason}',
   'settings.memoryNoteFilterPlaceholder': 'Filter notes…',
-  'settings.memoryNoteFilterEmpty': 'No note here matches that filter.'
+  'settings.memoryNoteFilterEmpty': 'No note here matches that filter.',
+  'roCrate.export.exportOnly':
+    'Export only — an external crate cannot be imported or checked here yet.'
 }

@@ -4163,5 +4163,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.checksum-mismatch': 'バイト列のハッシュが記録と一致しません。',
   'roCrate.export.refusedEntry': '{version} — 除外：{reason}',
   'settings.memoryNoteFilterPlaceholder': 'メモを絞り込む…',
-  'settings.memoryNoteFilterEmpty': 'この絞り込みに一致するメモはありません。'
+  'settings.memoryNoteFilterEmpty': 'この絞り込みに一致するメモはありません。',
+  'roCrate.export.exportOnly': '書き出し専用 — 外部の crate はまだ取り込めず、検証もできません。'
 }

@@ -3864,5 +3864,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.checksum-mismatch': '它的位元組與記錄的雜湊不再一致。',
   'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
   'settings.memoryNoteFilterPlaceholder': '篩選筆記…',
-  'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。'
+  'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。',
+  'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。'
 }

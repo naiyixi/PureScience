@@ -141,6 +141,12 @@ const RoCrateExportDialog = ({
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">{t('roCrate.export.description')}</p>
+        {/* What this surface does NOT do is said here rather than left to be discovered: the crate
+            validator exists and is applied to everything this app writes, but a crate from elsewhere has
+            no way in — no import, and therefore no validation of a foreign crate. */}
+        <p className="mt-1 text-xs text-muted-foreground" data-slot="ro-crate-export-only">
+          {t('roCrate.export.exportOnly')}
+        </p>
 
         {failure !== undefined ? (
           <div className="mt-3 space-y-1 text-xs">

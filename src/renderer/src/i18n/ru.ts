@@ -4177,5 +4177,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.checksum-mismatch': 'Байты больше не совпадают с записанным хешем.',
   'roCrate.export.refusedEntry': '{version} — отклонено: {reason}',
   'settings.memoryNoteFilterPlaceholder': 'Фильтр заметок…',
-  'settings.memoryNoteFilterEmpty': 'Ни одна заметка не соответствует этому фильтру.'
+  'settings.memoryNoteFilterEmpty': 'Ни одна заметка не соответствует этому фильтру.',
+  'roCrate.export.exportOnly':
+    'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.'
 }

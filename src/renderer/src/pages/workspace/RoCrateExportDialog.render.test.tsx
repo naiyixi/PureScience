@@ -203,4 +203,12 @@ describe('RoCrateExportDialog', () => {
       container.querySelector('[data-testid="ro-crate-export-failure-detail"]')?.textContent
     ).toContain('root-data-entity (spec-must)')
   })
+
+  it('says the surface is export-only, so a missing import is not a mystery', async () => {
+    await render(true)
+
+    expect(container.querySelector('[data-slot="ro-crate-export-only"]')?.textContent).toBe(
+      'Export only — an external crate cannot be imported or checked here yet.'
+    )
+  })
 })
