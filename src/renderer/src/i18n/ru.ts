@@ -4175,5 +4175,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.evidence-invalid': 'Записанные доказательства недействительны.',
   'roCrate.export.refusal.content-missing': 'Его файлов больше нет на диске.',
   'roCrate.export.refusal.checksum-mismatch': 'Байты больше не совпадают с записанным хешем.',
-  'roCrate.export.refusedEntry': '{version} — отклонено: {reason}'
+  'roCrate.export.refusedEntry': '{version} — отклонено: {reason}',
+  'settings.memoryNoteFilterPlaceholder': 'Фильтр заметок…',
+  'settings.memoryNoteFilterEmpty': 'Ни одна заметка не соответствует этому фильтру.'
 }

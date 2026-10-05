@@ -3922,7 +3922,9 @@ export const zh = {
   'roCrate.export.refusal.evidence-invalid': '它的证据记录不合法。',
   'roCrate.export.refusal.content-missing': '它的文件已不在磁盘上。',
   'roCrate.export.refusal.checksum-mismatch': '它的字节与记录的哈希不再一致。',
-  'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}'
+  'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
+  'settings.memoryNoteFilterPlaceholder': '筛选笔记…',
+  'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。'
 }
 
 export type ZhKey = keyof typeof zh

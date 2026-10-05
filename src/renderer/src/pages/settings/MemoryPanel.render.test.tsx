@@ -448,4 +448,34 @@ describe('MemoryPanel', () => {
     // The t() shim in jsdom returns the raw key; assert on the marker's presence + data attribute.
     expect(marker!.getAttribute('data-testid')).toBe('memory-note-superseded')
   })
+
+  it('searches the notes by their text, and says so when a filter matches nothing', async () => {
+    await renderPanel()
+    // A second note through the real composer, so there is something to search across.
+    await typeInto(composer(), 'Uses npmmirror for installs')
+    await act(async () => {
+      composer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    const cards = (): NodeListOf<Element> => container.querySelectorAll('[data-memory-note]')
+    expect(cards()).toHaveLength(2)
+
+    const filter = container.querySelector<HTMLInputElement>('[data-slot="memory-note-filter"]')!
+    await typeInto(filter, 'npmmirror')
+
+    // Only the note carrying the word survives.
+    expect(cards()).toHaveLength(1)
+    expect(cards()[0]?.textContent).toContain('Uses npmmirror for installs')
+    expect(container.querySelector('[data-slot="memory-note-filter-empty"]')).toBeNull()
+
+    // A filter that matches nothing is its own answer — NOT the same screen as "no notes at all".
+    await typeInto(filter, 'zzz-no-such-note-anywhere')
+    expect(cards()).toHaveLength(0)
+    expect(container.querySelector('[data-slot="memory-note-filter-empty"]')).not.toBeNull()
+    expect(container.textContent).not.toContain('settings.memoryNoNotes')
+
+    // Clearing it brings the whole list back.
+    await typeInto(filter, '')
+    expect(cards()).toHaveLength(2)
+  })
 })

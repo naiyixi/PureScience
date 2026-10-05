@@ -4276,5 +4276,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.content-missing': 'Ses fichiers ne sont plus sur le disque.',
   'roCrate.export.refusal.checksum-mismatch':
     "Ses octets ne correspondent plus à l'empreinte enregistrée.",
-  'roCrate.export.refusedEntry': '{version} — refusée : {reason}'
+  'roCrate.export.refusedEntry': '{version} — refusée : {reason}',
+  'settings.memoryNoteFilterPlaceholder': 'Filtrer les notes…',
+  'settings.memoryNoteFilterEmpty': 'Aucune note ne correspond à ce filtre.'
 }

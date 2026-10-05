@@ -4198,5 +4198,7 @@ export const en: Record<ZhKey, string> = {
   'roCrate.export.refusal.evidence-invalid': 'Its recorded evidence is not valid.',
   'roCrate.export.refusal.content-missing': 'Its files are no longer on disk.',
   'roCrate.export.refusal.checksum-mismatch': 'Its bytes no longer hash to what was recorded.',
-  'roCrate.export.refusedEntry': '{version} — refused: {reason}'
+  'roCrate.export.refusedEntry': '{version} — refused: {reason}',
+  'settings.memoryNoteFilterPlaceholder': 'Filter notes…',
+  'settings.memoryNoteFilterEmpty': 'No note here matches that filter.'
 }

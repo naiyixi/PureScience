@@ -466,7 +466,20 @@ const MemoryNoteList = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const [draft, setDraft] = useState('')
+  const [filter, setFilter] = useState('')
   const composerRef = useRef<HTMLInputElement>(null)
+  // The list is SEARCHED, not only scrolled: the copy above promises a searchable memory, and a long
+  // category is exactly where that promise has to hold. A note's own text and the evidence it records are
+  // both searchable. Nothing here matches ⇒ that is a different answer from "this category has no notes".
+  const visibleNotes = useMemo(() => {
+    const query = filter.trim().toLowerCase()
+    if (query === '') return notes
+    return notes.filter(
+      (note) =>
+        note.text.toLowerCase().includes(query) ||
+        (note.evidence ?? '').toLowerCase().includes(query)
+    )
+  }, [filter, notes])
 
   if (!category) {
     return (
@@ -516,13 +529,25 @@ const MemoryNoteList = ({
           aria-label={t('settings.memoryAddNote')}
           className="w-full rounded-lg border border-border bg-bg-00 px-3 py-2 text-[12px] text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
         />
+        <input
+          data-slot="memory-note-filter"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder={t('settings.memoryNoteFilterPlaceholder')}
+          aria-label={t('settings.memoryNoteFilterPlaceholder')}
+          className="w-full rounded-lg border border-border bg-bg-00 px-3 py-1.5 text-[12px] text-text-100 outline-none placeholder:text-text-300 focus-visible:ring-2 focus-visible:ring-ring/50"
+        />
         {notes.length === 0 ? (
           <div className="py-8 text-center">
             <p className="text-[12px] text-text-300">{t('settings.memoryNoNotes')}</p>
             <p className="mt-1 text-[12px] text-text-300">{t('settings.memoryNoNotesHint')}</p>
           </div>
+        ) : visibleNotes.length === 0 ? (
+          <div className="py-8 text-center" data-slot="memory-note-filter-empty">
+            <p className="text-[12px] text-text-300">{t('settings.memoryNoteFilterEmpty')}</p>
+          </div>
         ) : (
-          notes.map((note) => (
+          visibleNotes.map((note) => (
             <div
               key={note.id}
               className="group rounded-lg border border-border bg-bg-00 p-2.5 transition-colors hover:border-bg-200"

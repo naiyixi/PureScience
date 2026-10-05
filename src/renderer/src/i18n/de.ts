@@ -4291,5 +4291,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die zugehörigen Dateien liegen nicht mehr auf der Platte.',
   'roCrate.export.refusal.checksum-mismatch':
     'Die Bytes ergeben nicht mehr den aufgezeichneten Hash.',
-  'roCrate.export.refusedEntry': '{version} — abgelehnt: {reason}'
+  'roCrate.export.refusedEntry': '{version} — abgelehnt: {reason}',
+  'settings.memoryNoteFilterPlaceholder': 'Notizen filtern…',
+  'settings.memoryNoteFilterEmpty': 'Keine Notiz entspricht diesem Filter.'
 }

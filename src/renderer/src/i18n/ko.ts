@@ -4095,5 +4095,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.evidence-invalid': '기록된 증거가 올바르지 않습니다.',
   'roCrate.export.refusal.content-missing': '파일이 더 이상 디스크에 없습니다.',
   'roCrate.export.refusal.checksum-mismatch': '바이트가 기록된 해시와 일치하지 않습니다.',
-  'roCrate.export.refusedEntry': '{version} — 제외됨: {reason}'
+  'roCrate.export.refusedEntry': '{version} — 제외됨: {reason}',
+  'settings.memoryNoteFilterPlaceholder': '메모 필터…',
+  'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.'
 }

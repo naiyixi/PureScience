@@ -3862,5 +3862,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.evidence-invalid': '它的證據記錄不合法。',
   'roCrate.export.refusal.content-missing': '它的檔案已不在磁碟上。',
   'roCrate.export.refusal.checksum-mismatch': '它的位元組與記錄的雜湊不再一致。',
-  'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}'
+  'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
+  'settings.memoryNoteFilterPlaceholder': '篩選筆記…',
+  'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。'
 }

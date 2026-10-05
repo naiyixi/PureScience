@@ -4247,5 +4247,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.evidence-invalid': 'La evidencia registrada no es válida.',
   'roCrate.export.refusal.content-missing': 'Sus archivos ya no están en el disco.',
   'roCrate.export.refusal.checksum-mismatch': 'Sus bytes ya no coinciden con el hash registrado.',
-  'roCrate.export.refusedEntry': '{version} — rechazada: {reason}'
+  'roCrate.export.refusedEntry': '{version} — rechazada: {reason}',
+  'settings.memoryNoteFilterPlaceholder': 'Filtrar notas…',
+  'settings.memoryNoteFilterEmpty': 'Ninguna nota coincide con ese filtro.'
 }

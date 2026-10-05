@@ -4161,5 +4161,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusal.evidence-invalid': '記録されたエビデンスが不正です。',
   'roCrate.export.refusal.content-missing': 'ファイルがディスク上に存在しません。',
   'roCrate.export.refusal.checksum-mismatch': 'バイト列のハッシュが記録と一致しません。',
-  'roCrate.export.refusedEntry': '{version} — 除外：{reason}'
+  'roCrate.export.refusedEntry': '{version} — 除外：{reason}',
+  'settings.memoryNoteFilterPlaceholder': 'メモを絞り込む…',
+  'settings.memoryNoteFilterEmpty': 'この絞り込みに一致するメモはありません。'
 }
