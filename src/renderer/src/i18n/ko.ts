@@ -4055,5 +4055,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.match.byAlias': '병합된 별칭으로 일치',
   'references.attachmentCurrent': '현재',
   'references.attachmentReplacedOn': '{date} 교체됨',
-  'references.attachmentAttachedOn': '{date} 첨부됨'
+  'references.attachmentAttachedOn': '{date} 첨부됨',
+  'references.notes': '노트',
+  'references.notesPlaceholder': '이 문헌의 노트',
+  'references.notesSave': '노트 저장'
 }

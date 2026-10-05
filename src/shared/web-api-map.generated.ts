@@ -171,6 +171,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.remove': 'references:remove',
   'references.removeCitationStyle': 'references:remove-citation-style',
   'references.removeFromCollection': 'references:remove-from-collection',
+  'references.setNotes': 'references:set-notes',
   'references.setScreeningOverride': 'references:set-screening-override',
   'references.setScreeningOverrides': 'references:set-screening-overrides',
   'references.startScreeningRun': 'references:start-screening-run',

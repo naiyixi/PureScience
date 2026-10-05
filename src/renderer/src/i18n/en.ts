@@ -4158,5 +4158,8 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.import.match.byAlias': 'matched by a merged alias',
   'references.attachmentCurrent': 'current',
   'references.attachmentReplacedOn': 'replaced {date}',
-  'references.attachmentAttachedOn': 'attached {date}'
+  'references.attachmentAttachedOn': 'attached {date}',
+  'references.notes': 'Notes',
+  'references.notesPlaceholder': 'Notes for this record',
+  'references.notesSave': 'Save notes'
 }

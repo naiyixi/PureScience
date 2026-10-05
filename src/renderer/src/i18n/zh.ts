@@ -3883,7 +3883,10 @@ export const zh = {
   'references.journalMetrics.import.match.byAlias': '按已合并的别名匹配',
   'references.attachmentCurrent': '当前',
   'references.attachmentReplacedOn': '{date} 被替换',
-  'references.attachmentAttachedOn': '{date} 挂载'
+  'references.attachmentAttachedOn': '{date} 挂载',
+  'references.notes': '笔记',
+  'references.notesPlaceholder': '这条记录的笔记',
+  'references.notesSave': '保存笔记'
 }
 
 export type ZhKey = keyof typeof zh

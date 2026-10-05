@@ -33,6 +33,7 @@ type ReferencesCommandOwner = Pick<
   | 'merge'
   | 'fetchByIdentifier'
   | 'attachPdf'
+  | 'setNotes'
   | 'detachPdf'
   | 'importDoisFromPdf'
   | 'importJournalMetrics'
@@ -127,6 +128,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'attachPdf'>,
     OwnerResult<ReferencesCommandOwner, 'attachPdf'>
   >('references:attach-pdf'),
+  setNotes: defineApplicationCommand<
+    'references:set-notes',
+    OwnerArgs<ReferencesCommandOwner, 'setNotes'>,
+    OwnerResult<ReferencesCommandOwner, 'setNotes'>
+  >('references:set-notes'),
   detachPdf: defineApplicationCommand<
     'references:detach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'detachPdf'>,
@@ -205,6 +211,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.listJournalMetrics,
   referencesApplicationCommands.mergeJournals,
   referencesApplicationCommands.attachPdf,
+  referencesApplicationCommands.setNotes,
   referencesApplicationCommands.detachPdf,
   referencesApplicationCommands.listCitationStyles,
   referencesApplicationCommands.importCitationStyle,
@@ -249,6 +256,7 @@ const registerReferencesApplicationCommands = (
       'references:list-journal-metrics': () => dependencies.references.listJournalMetrics(),
       'references:merge-journals': ({ args }) => dependencies.references.mergeJournals(args[0]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
+      'references:set-notes': ({ args }) => dependencies.references.setNotes(args[0], args[1]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),
       'references:list-citation-styles': () => dependencies.references.listCitationStyles(),
       'references:import-citation-style': ({ args }) =>

@@ -178,6 +178,22 @@ export function ReferencesLibraryDialog({
   // Journals are a library-level entity, not a per-collection one, so this toggle does not depend on the
   // selected collection (unlike the screening pass, which runs against one).
   const [showJournalMetrics, setShowJournalMetrics] = useState(false)
+  // IC26: the record's notes. The column and the create path existed; this is the way to change them on an
+  // existing record, so the draft lives here and is written back through the reference channel.
+  const [notesEditingId, setNotesEditingId] = useState<string | null>(null)
+  const [notesDraft, setNotesDraft] = useState('')
+  const [notesSaving, setNotesSaving] = useState(false)
+
+  const saveNotes = async (referenceId: string): Promise<void> => {
+    setNotesSaving(true)
+    try {
+      await window.api.references.setNotes(referenceId, notesDraft)
+      await refresh()
+      setNotesEditingId(null)
+    } finally {
+      setNotesSaving(false)
+    }
+  }
 
   // Citation-style layer (v1.65): built-ins come from the shared catalogue, imported styles from the
   // store; both are merged here so one picker drives export, copy and the side-by-side comparison.
@@ -1175,6 +1191,40 @@ export function ReferencesLibraryDialog({
                                   ? ` · ${t('references.provenanceBadge')}`
                                   : ''}
                               </p>
+                              {/* IC26: the record's own notes. The column and the create path existed; this is
+                                  the way to change them, so a reader's own annotation is editable and shown. */}
+                              {notesEditingId === reference.id ? (
+                                <div className="mt-1.5 flex flex-col gap-1">
+                                  <textarea
+                                    className="min-h-16 w-full rounded border border-[var(--border)] bg-transparent px-2 py-1 text-xs text-[var(--foreground)]"
+                                    aria-label={t('references.notes')}
+                                    placeholder={t('references.notesPlaceholder')}
+                                    value={notesDraft}
+                                    onChange={(event) => setNotesDraft(event.target.value)}
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      className={ghostClass}
+                                      disabled={notesSaving}
+                                      onClick={() => void saveNotes(reference.id)}
+                                    >
+                                      {t('references.notesSave')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className={ghostClass}
+                                      onClick={() => setNotesEditingId(null)}
+                                    >
+                                      {t('common.cancel')}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : reference.notes ? (
+                                <p className="mt-1 text-xs text-[var(--muted-foreground)] [text-wrap:pretty]">
+                                  {reference.notes}
+                                </p>
+                              ) : null}
                               {/* IC25: the attachment history the repository already sends with the list. Its
                                   semantics decide the shape: `pdfVersions` holds the versions a later attachment
                                   DISPLACED (the current one lives on the record itself, named by the chip
@@ -1214,6 +1264,17 @@ export function ReferencesLibraryDialog({
                               ) : null}
                             </div>
                             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                title={t('references.notes')}
+                                onClick={() => {
+                                  setNotesEditingId(reference.id)
+                                  setNotesDraft(reference.notes ?? '')
+                                }}
+                              >
+                                {t('references.notes')}
+                              </button>
                               {reference.pdfManagedFileId ? (
                                 <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
                                   {t('references.attachmentCurrent')} ·{' '}

@@ -4121,5 +4121,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.match.byAlias': '統合済みの別名で照合',
   'references.attachmentCurrent': '現在',
   'references.attachmentReplacedOn': '{date} に置換',
-  'references.attachmentAttachedOn': '{date} に添付'
+  'references.attachmentAttachedOn': '{date} に添付',
+  'references.notes': 'ノート',
+  'references.notesPlaceholder': 'この文献のノート',
+  'references.notesSave': 'ノートを保存'
 }

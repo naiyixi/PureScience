@@ -65,6 +65,9 @@ export type ReferencesHandlers = {
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
   detachPdf(referenceId: string): Promise<Reference>
+  // IC26: the record's own notes. The column, the create path and the list projection all existed; there was
+  // simply no way to change them on an existing record.
+  setNotes(referenceId: string, notes: string): Promise<Reference>
   // Journal metric import (R2): one downloaded publisher table in, one outcome per row out — imported, or
   // skipped with a named reason. Nothing is dropped silently, and no row without a year and a source lands.
   importJournalMetrics(input: JournalMetricImportRequest): Promise<JournalMetricImportResult>
@@ -221,6 +224,7 @@ export const createReferencesIpcModule = (
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId),
+    setNotes: (referenceId, notes) => service.setNotes(referenceId, notes),
     importJournalMetrics: (input) => journalMetrics.importMetrics(input),
     // Read side of the same store: one call for the whole library, filtered in the renderer (see the shared
     // pure view), so changing a filter never waits on the main process.
@@ -303,6 +307,9 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:detach-pdf', (_event, referenceId: string) =>
       handlers.detachPdf(referenceId)
+    )
+    ipcMainHandle('references:set-notes', (_event, referenceId: string, notes: string) =>
+      handlers.setNotes(referenceId, notes)
     )
     ipcMainHandle(
       'references:import-journal-metrics',

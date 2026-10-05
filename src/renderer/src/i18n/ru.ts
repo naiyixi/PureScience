@@ -4135,5 +4135,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.match.byAlias': 'совпадение по объединённому псевдониму',
   'references.attachmentCurrent': 'текущий',
   'references.attachmentReplacedOn': 'заменён {date}',
-  'references.attachmentAttachedOn': 'прикреплён {date}'
+  'references.attachmentAttachedOn': 'прикреплён {date}',
+  'references.notes': 'Заметки',
+  'references.notesPlaceholder': 'Заметки к этой записи',
+  'references.notesSave': 'Сохранить заметки'
 }

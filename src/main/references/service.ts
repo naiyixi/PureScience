@@ -337,6 +337,18 @@ export class ReferenceService {
     await this.repository.deleteReference(id)
   }
 
+  // IC26: write the record's notes and hand back the re-read record, so the caller never has to guess what
+  // landed (the same shape attachPdf/detachPdf use).
+  async setNotes(referenceId: string, notes: string): Promise<Reference> {
+    const existing = await this.repository.getReference(referenceId)
+    if (!existing) throw new Error('Reference not found.')
+    // The repository leaves undefined untouched; an empty string is how a reader clears the field.
+    await this.repository.updateReference(referenceId, { notes })
+    const updated = await this.repository.getReference(referenceId)
+    if (!updated) throw new Error('Reference not found.')
+    return updated
+  }
+
   // Attaches the project-managed PDF that backs page-level annotations for a reference. The
   // renderer only offers files that belong to the active project; existence of the reference is
   // enforced here so a stale id can never silently write into a missing record.

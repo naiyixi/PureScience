@@ -4234,5 +4234,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.match.byAlias': 'apparié par alias fusionné',
   'references.attachmentCurrent': 'actuel',
   'references.attachmentReplacedOn': 'remplacé le {date}',
-  'references.attachmentAttachedOn': 'ajouté le {date}'
+  'references.attachmentAttachedOn': 'ajouté le {date}',
+  'references.notes': 'Notes',
+  'references.notesPlaceholder': 'Notes sur cette référence',
+  'references.notesSave': 'Enregistrer les notes'
 }

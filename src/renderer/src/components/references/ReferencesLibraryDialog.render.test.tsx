@@ -43,6 +43,9 @@ vi.mock('@/i18n', () => ({
       'references.pdfImport.summaryStoppedWithFailures':
         'Stopped · imported {imported} PDF file(s), {failed} failed.',
       'references.attachPdf': 'Attach PDF',
+      'references.notes': 'Notes',
+      'references.notesPlaceholder': 'Notes for this record',
+      'references.notesSave': 'Save notes',
       'references.attachmentCurrent': 'current',
       'references.attachmentReplacedOn': 'replaced {date}',
       'references.attachmentAttachedOn': 'attached {date}',
@@ -115,6 +118,7 @@ describe('ReferencesLibraryDialog collections', () => {
   let listFiles: ReturnType<typeof vi.fn>
   let addReference: ReturnType<typeof vi.fn>
   let attachPdf: ReturnType<typeof vi.fn>
+  let setNotes: ReturnType<typeof vi.fn>
 
   const findButton = (name: string | RegExp): HTMLButtonElement => {
     // Radix renders the dialog into a portal on document.body, not into the container div.
@@ -155,6 +159,14 @@ describe('ReferencesLibraryDialog collections', () => {
     await flush()
   }
 
+  // Clicks the first button whose visible text matches exactly (the row's controls are text buttons).
+  const clickButtonByText = (text: string): void => {
+    const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) => candidate.textContent?.trim() === text
+    )
+    act(() => button?.click())
+  }
+
   beforeEach(() => {
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -169,6 +181,7 @@ describe('ReferencesLibraryDialog collections', () => {
       duplicateOf: []
     })
     attachPdf = vi.fn().mockResolvedValue(undefined)
+    setNotes = vi.fn().mockResolvedValue(reference)
     window.api = {
       references: {
         list: vi.fn().mockResolvedValue([reference]),
@@ -180,7 +193,8 @@ describe('ReferencesLibraryDialog collections', () => {
         removeFromCollection: vi.fn().mockResolvedValue(undefined),
         remove: vi.fn().mockResolvedValue(undefined),
         add: addReference,
-        attachPdf
+        attachPdf,
+        setNotes
       },
       projectFiles: { listFiles }
     } as unknown as typeof window.api
@@ -227,6 +241,45 @@ describe('ReferencesLibraryDialog collections', () => {
     await render()
 
     expect(document.querySelector('[data-testid="reference-attachment-history"]')).toBeNull()
+  })
+
+  // IC26: the record's own notes. The column, the create path and the list projection all existed; what was
+  // missing was any way to change them, so these pin the write and the "cancel changes nothing" case.
+  it('edits a record’s notes and writes them through the reference channel (IC26)', async () => {
+    await render()
+
+    clickButtonByText('Notes')
+    const field = document.body.querySelector<HTMLTextAreaElement>('textarea[aria-label="Notes"]')
+    expect(field).not.toBeNull()
+
+    act(() => {
+      if (field) {
+        // React tracks the DOM value and dedupes a plain assignment, so the native setter is what makes the
+        // change event observable (the same trick the composer tests use).
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+        setter?.call(field, 'Follow up on the supplement')
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    })
+    await act(async () => {
+      clickButtonByText('Save notes')
+    })
+
+    expect(setNotes).toHaveBeenCalledWith('reference-1', 'Follow up on the supplement')
+  })
+
+  it('leaves the notes alone when the editor is cancelled (IC26)', async () => {
+    await render()
+
+    clickButtonByText('Notes')
+    expect(document.body.querySelector('textarea[aria-label="Notes"]')).not.toBeNull()
+
+    await act(async () => {
+      clickButtonByText('Cancel')
+    })
+
+    expect(setNotes).not.toHaveBeenCalled()
+    expect(document.body.querySelector('textarea[aria-label="Notes"]')).toBeNull()
   })
 
   afterEach(() => {
