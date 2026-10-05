@@ -607,3 +607,61 @@ B 段已全部收口（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 按 §十�
 dev/build/test 进程 ⇒ 按 §十一 的顺序取 **IC25**（文献附件历史，**只做「列出附件历史」半边**——数据已在 list 响应里，
 纯 UI；「回看旧版」要新通道或一条路径来源，先别落一个点不动的按钮）；② 内存宽松时取 **IC27 / IC28 / IC30**
 真机读数（配方见 §十一、§十、本节）；③ 按完整 40 位 SHA 看 `796757bf` 的 `Nightly` + `Windows Full Test`。
+
+## 十三、本轮追加（执行器，2026-10-05 13:43–14:0x）——旁路只读取证：批次 7 前置缺口核实 + 三笔提交的 CI 判决
+
+**本轮判定：旁路（不对工作区落任何代码、不改 `e2e/certification/**`）。** 开工时的事实：
+
+- `HEAD = origin/main = 159066e9`；`git status --short` 是**桌面会话正在改的 18 个已跟踪文件 + 1 个新文件**：
+  `src/main/references/{application-commands.ts,ipc.ts}`、`src/preload/{index.ts,renderer-api.d.ts}`、
+  `src/renderer/src/components/references/{JournalMetricsPanel.tsx,JournalClaimEditor.tsx}`、9 语字典全 9 份、
+  `src/shared/{renderer-contract-catalog.ts,web-api-map.generated.ts}`，另有两张 `docs/evidence/*.png` 被重写；
+  最新 mtime **13:42:40**（查证时刻 13:43）⇒ 会话此刻在写**批次 6 的最后一条**（新增期刊指标主张的写入通道，
+  按触面判断为 IC29；未逐字核会话意图）。它的触面与任何新通道的契约连锁**完全相同**（目录 / 生成的 API 映射 /
+  前载类型 / 9 语字典）⇒ 此刻落代码必与它撞同一批文件，按共存红线**不动工作区**。
+- 本机 swap **13.6 G / 14.3 G 已用**、空闲物理页 4,291（≈67 MB）⇒ 仍不具备「重建 + 起 Electron」的安全余量。
+- 卫生复核：**无**孤儿 e2e Electron 进程、**无**遗留 `purescience-electron-e2e-*` 临时根（两处都逐条核过）。
+
+**批次 6 现状（会话已完成的三笔，别再重做）**：IC25 `c7fcea3f`、IC26 `a8ea33d7`、IC28 真机读数 `159066e9`
+三笔各带认证 spec（`reference-attachment-history.spec.ts` +96 行 / `reference-notes.spec.ts` +83 行 /
+`journal-metrics-panel.spec.ts` +40 行）；加上此前 IC27 `1aceb41e`、IC30 `796757bf`，批次 6 只剩会话在做的 IC29。
+
+**CI 判决（按完整 40 位 SHA 查；取消 ≠ 绿）**：
+
+| 提交                | Nightly              | Windows Full Test    |
+| ------------------- | -------------------- | -------------------- |
+| `c7fcea3f`（IC25）  | 37267562535 cancelled | 37267562108 **success** |
+| `a8ea33d7`（IC26）  | 37268607426 cancelled | 37268607106 cancelled |
+| `159066e9`（IC28 读数）| 37268817932 in_progress | 37268817667 in_progress（查证时）|
+
+⇒ 前两笔都被后续推送按 `cancel-in-progress` 顶掉，**无判决**；它们的 CI 证据只能由「包含它们各自的下一次
+绿色 `Nightly`」代替给出（CI 跑整棵树而不是 diff）。第三笔查证时未出判决，下一轮按完整 SHA 复查。
+
+**发布位点（台账，供用户与下一轮核对）**：`gh release list` 的 Latest = **v1.84.0**（2026-10-04T20:05Z），
+`package.json` 版本 = `1.84.0`，README 首屏横幅 = v1.84.0（三者一致）。而**批次 5（对应 v1.85.0）与批次 6
+（对应 v1.86.0）的代码都已落地、都还没发布** ⇒ 眼下欠**两个版本边界**，且这两个边界都不可能靠一次发布补完
+（一批 = 一个版本号）。建议：IC29 收口后按 v1.85.0（批次 5：自定义服务器闭环六条）→ v1.86.0（批次 6：
+文献/期刊闭环六条）两次走完发版流程；若决定合并成一次，需按「版本号取自实际已发布位点」的口径在 CHANGELOG
+里写明合并理由，别照批次标签连抬两个号又只发一次。
+
+**本轮产物 = 批次 7（v1.87.0：出网 / 存储 / 视觉 / 诊断的可核性，IC31–IC38）逐条对着当前源码核过的前置缺口表**
+（分类方式同 §九，供实现者直接照做，省掉一次审计）：
+
+| 单元 | 缺口的真伪（本轮实测） | 证据（file:line） | 要新通道？ | 成本与判据建议 |
+| --- | --- | --- | --- | --- |
+| IC31 egress 读/写错误态 | **真缺口（纯 UI）**：读 `getEgress().then()` **无 catch、无错误态、无重试** ⇒ 失败时 `loaded` 恒 false，面板**永久停在 Loading**；写 `setEgress().catch(() => undefined)` **静默吞错**且乐观值不回滚 ⇒ 用户看到的值可能没落盘 | `NetworkPanel.tsx:326-336`（读）、`:338-344`（写） | 否 | 1 键 ×9 语；渲染用例：stub 拒绝一次 → 出错误态 + 重试；写拒绝 → 值回到已保存态 |
+| IC32 egress 接管时手动代理 | **真缺口（纯 UI）**：`ProxySection` 只读 `getProxy()`，**全程不读 egress 状态**（文件里 egress 引用全在 `EgressSection`），而它自己的注释写明「egress 开启时手动代理不生效」⇒ 控件照常可编辑可保存、写进去的值不生效，**页面上没有一个字说明** | `NetworkPanel.tsx:503-507`（注释即契约）、`:508-528`（只取 proxy） | 否（egress 读取通道已有） | 1–2 键 ×9 语；渲染用例：egress on ⇒ 控件 disabled + 说明在场；off ⇒ 恢复 |
+| IC33 审批卡剩余有效期 | **真缺口（纯 UI）**：`expiresInSec` 主进程已发，渲染层只拿它做**到期退休的定时器**，卡片自身**不印剩余时间**，到点**无声消失**（用户只看到对话像卡住） | `shared/egress.ts:133-139`；`EgressApprovalCard.tsx:1-83`（通篇无 expiresInSec）；`WorkspacePage.tsx:1215,1240` | 否 | 2 键 ×9 语（剩余秒数 + 超时具名解释）；渲染用例断言倒计时与「已超时」文案 |
+| IC34 存储信息读失败 | **真缺口（纯 UI，后果比预期重）**：`getInfo().then(setInfo)` **无 catch** ⇒ 失败后 `info` 恒 null，而那一段的分支是 **Loading**，且「改变位置」入口被 `info !== null` 关掉 ⇒ 一次读失败让**整段数据位置（含迁移唯一入口）永久不可达且不说原因** | `StoragePanel.tsx:117-119`；`:336-344`（门与 Loading 分支） | 否 | 1 键 ×9 语 + 重试；渲染用例：stub 拒绝 → 错误态 + 重试按钮，重试成功 → 恢复可操作 |
+| IC35 迁移 staleEvidence 明细 | **真缺口（纯 UI）**：`StaleProvenanceEvidence` 已带 kind/path/recordedDigest/expectedDigest/runId/project/session，弹窗**只印条数** | `shared/storage.ts:66-78`；`StorageMigrationModal.tsx:395-407`（只印 length） | 否 | 明细展开 + 1 键 ×9 语；渲染用例喂两条 evidence，断言 path/runId 在场 |
+| IC36 视觉转译证据只读面 | **真缺口（要新通道）**：`visionEvidence` 的消费者**全在主进程**（`image-input-compatibility-owner.ts`、`runtime-composition.ts`、`prisma-client.ts` + 仓储自身），渲染层 / preload / 契约目录 **0 命中**（目录里只有 `settings:set-vision-model`）⇒ 用户看不到「哪张图由哪个模型转译成什么」 | `main/vision/vision-evidence-repository.ts:37-95`；`shared/renderer-contract-catalog.ts:423` | **是（新通道组）** | 本批最大件：契约连锁全修（目录 / preload / 两份 Web 面 / inventory / entry-coverage）+ 9 语 + 真机读数；建议排在本批最后并单独立项 |
+| IC37 支持包体积与脱敏条数 | **真缺口（纯 UI）**：`ExportSupportBundleResult` 已带 `bytes` / `redactions`（主进程写入结果即有这两个数），面板只用 `path` | `shared/diagnostics.ts:63-69`；`GeneralPanel.tsx:105-114`；`diagnostics/support-bundle-ipc.ts:13` | 否 | 1 键 ×9 语（两个数写进成功文案）；渲染用例断言两个数逐字上屏 |
+| IC38 远程访问关闭态的公网地址 | **真缺口（纯 UI）**：快照字段的注释明写「saved … including while locally disabled」，主进程照发，而渲染层**只在 `enabled && accessUrl` 时显示链接**（该字段只在一处渲染测试里出现过） | `shared/remote-access.ts:53-54`；`main/remote-access/service.ts:150`；`RemoteControlPanel.tsx:432-484` | 否 | 关闭态给只读地址 + 复制 + 「关掉后该地址不可达」的如实说明；2 键 ×9 语 |
+
+**建议顺序（零新通道优先，回归面小、本机可取证）**：IC31 → IC34 → IC37 → IC35 → IC33 → IC32 → IC38 → IC36（单独立项）。
+**一句提醒**：以上分类是**当前源码**的实测结论；实现前若源码已动，以当时的 `file:line` 复核为准（会话在推时尤其如此）。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且无
+dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC31**（零新通道）；仍脏 / 仍活跃 ⇒ 继续旁路取证
+（只读，不改树）；② 按完整 40 位 SHA 复查 `159066e9` 与 IC29 的 CI；③ 内存宽松时补 **IC27 / IC28 / IC30**
+真机读数（配方见 §十一、§十、§十二）。
