@@ -121,7 +121,9 @@ test('the metrics panel names year and source, and says Unknown where a metric i
       }
     }
   })
-  console.log(`[panel-reading] --primary token: ${palette.primary.token} → paints as: ${palette.primary.painted}`)
+  console.log(
+    `[panel-reading] --primary token: ${palette.primary.token} → paints as: ${palette.primary.painted}`
+  )
   console.log(
     `[panel-reading] --primary-foreground token: ${palette.foreground.token} → paints as: ${palette.foreground.painted}`
   )
@@ -152,7 +154,6 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   )
   console.log(`[panel-reading] primary-text contrast: ${contrast.toFixed(3)}:1`)
 
-
   // Into the library through its own toggle, then the panel through its own button.
   await page.getByTestId('workspace-references-toggle').click()
   const dialog = page.getByRole('dialog')
@@ -169,7 +170,9 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   // Now that a primary CTA is on screen, read its real typography and finish the contrast verdict: the WCAG
   // floor depends on whether the text counts as large (≥24px, or ≥18.66px at weight ≥700).
   const cta = await page.evaluate(() => {
-    const button = document.querySelector<HTMLElement>('[data-slot="journal-metrics-import-submit"]')
+    const button = document.querySelector<HTMLElement>(
+      '[data-slot="journal-metrics-import-submit"]'
+    )
     if (!button) return null
     const style = getComputedStyle(button)
     return {
@@ -259,6 +262,24 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   expect(natureIn2022).toContain('Unknown')
   expect(yearRows.join(' ')).not.toContain('64.8')
   expect(yearRows.join(' ')).not.toContain('16.6')
+
+  // IC28: the ceiling of the same range. The store carried both bounds, but only the floor was ever reachable
+  // from the window — so a reader could not ask "which journals are at most X", the question a submission
+  // shortlist is usually about. A positive assertion, not just the empty notice: with a ceiling of 20 the
+  // 16.6 journal must survive and the 64.8 one must not.
+  await dialog.getByLabel('Year').fill('')
+  await dialog.getByLabel('Impact factor ≤').fill('20')
+  const ceilingRows = await rows()
+  console.log(`[panel-reading] impact factor ≤ 20 rows: ${JSON.stringify(ceilingRows)}`)
+  expect(ceilingRows).toHaveLength(1)
+  expect(ceilingRows[0]).toContain('Nature Communications')
+  expect(ceilingRows[0]).toContain('16.6')
+  expect(ceilingRows.join(' ')).not.toContain('64.8')
+
+  await dialog.getByLabel('Impact factor ≤').fill('1')
+  await expect(dialog.getByText('No journal matches this filter.')).toBeVisible()
+  expect(await table.locator('tbody tr').count()).toBe(0)
+  await dialog.getByLabel('Impact factor ≤').fill('')
 })
 
 // The alias/merge reading (R2-U4), taken off the same real window: two spellings that LOOK alike start life as
@@ -359,7 +380,9 @@ test('an explicit merge folds two journals into one row and keeps the old spelli
         label: select?.selectedOptions[0]?.textContent?.trim() ?? 'missing'
       }
     }
-    const confirmButton = root.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')
+    const confirmButton = root.querySelector<HTMLButtonElement>(
+      '[data-slot="journal-merge-confirm"]'
+    )
     return {
       source: read('journal-merge-source'),
       target: read('journal-merge-target'),
@@ -380,9 +403,12 @@ test('an explicit merge folds two journals into one row and keeps the old spelli
   // written" are different claims.
   const armedState = await dialog.evaluate((root) => {
     const read = (slot: string): string =>
-      root.querySelector<HTMLSelectElement>(`[data-slot="${slot}"]`)?.selectedOptions[0]?.textContent?.trim() ??
-      'missing'
-    const confirmButton = root.querySelector<HTMLButtonElement>('[data-slot="journal-merge-confirm"]')
+      root
+        .querySelector<HTMLSelectElement>(`[data-slot="${slot}"]`)
+        ?.selectedOptions[0]?.textContent?.trim() ?? 'missing'
+    const confirmButton = root.querySelector<HTMLButtonElement>(
+      '[data-slot="journal-merge-confirm"]'
+    )
     return {
       source: read('journal-merge-source'),
       target: read('journal-merge-target'),
