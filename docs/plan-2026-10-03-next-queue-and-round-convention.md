@@ -556,3 +556,50 @@ skipped 为 0、且上方表格出现表头 `Impact factor`（新列按该指标
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且桌面空闲 ⇒ 按 §九 顺序取
 **IC30**（逐行归属：outcome 本就带匹配规则与「是否新建」两字段，对话框没印，纯 UI）；仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；
 ② 内存宽松时取 IC27（上面配方）+ IC28（§十 配方）真机读数；③ 按**完整 40 位 SHA** 看本轮推送的 `Nightly` + `Windows Full Test`，红了先读作业级注解归因。
+
+## 十二、本轮追加（执行器，2026-10-05 10:27–11:0x）——IC30 导入逐行归属反馈已落地（真机读数具名立案）
+
+**开工核对（防重做）**：`HEAD = origin/main = 1aceb41e`（IC27 提交）；`git status --short` **空**；无在跑 `electron-vite` / `playwright` / `vitest` 进程。
+B 段已全部收口（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 按 §十一「下一轮第一步 ①」取 **IC30**。
+
+**CI 核对（闭掉 §十一 遗留项 2）**：`1aceb41e` 按完整 40 位 SHA 复查 —— `Nightly` **37246004460 success**、
+`Windows Full Test` **37246004268（attempt 2）success** ⇒ **双绿**。首跑 failure 确系负载抖动（隔离复跑本机绿
+60 passed / 6.22 s），rerun 后通过，未当回归处理。
+
+**缺口核实（对着当前源码、按机制名 grep）**：outcome 的 imported 分支带 `journalMatch`
+（`by-issn` / `by-normalized-name` / `by-alias`）与 `journalCreated`（`shared/journal-metrics.ts` 的
+`JournalMetricImportOutcome`），而 `grep -rn "journalMatch\|journalCreated" src/renderer` **0 命中**
+（只被主进程与主进程用例读到）⇒ 缺口**只在该表单的报告区**：读者只能看到「line N: kind value (year)」，
+哪行进了哪本刊、按哪条规则认出来、哪行新建了刊物，全不可见。**纯渲染层 ⇒ 零新通道、零契约计数涟漪。**
+
+**落地（3 改 + 9 语）**：
+
+- `JournalMetricsImport.tsx`：imported 行下新增 `[data-slot="journal-metrics-import-attribution"]` 一行 ——
+  `{journal} · {match}`（新建时追加 ` · new journal identity`）。刊名取自面板已持有的 id→name 列表；
+  **库尚未重读到新建刊物时回落到 store 自己的 `journalId`**（绝不给一个编造的名字）。`MATCH_KEYS` 以 store 的
+  `journalMatch` 联合为键 ⇒ 将来多一条解析规则会编译不过，而不是把裸 token 印上屏。
+- `JournalMetricsPanel.tsx`：把既有的 `mergeChoices`（id→name）传给表单（与合并控件同一来源，不新造映射）。
+- **5 键 × 9 语**（`import.attribution` / `import.created` / `import.match.byIssn|byNormalizedName|byAlias`；
+  zh ≠ en、繁体门禁过、**未新增 pending 条目**）；覆盖 **3599 键 × 9 语 = 100.0%**。
+- 用例：`JournalMetricsImport.render.test.tsx` **+1 条**——三条 outcome 覆盖三种匹配规则、`journalCreated` 标记、
+  以及「刊名不在列表里 ⇒ 回落 id」。
+
+**验证（本机，全部实跑）**：定向 vitest（references 组件 + i18n + `shared/journal-metrics.test.ts`）
+**7 文件 / 103 passed**；**全量 vitest 1202 passed | 16 skipped（15644 passed | 196 skipped，439.8 s，exit 0）**；
+**双 typecheck 绿**（tsc 在默认 2 GB 堆上撞 `Ineffective mark-compacts … heap out of memory` ⇒ 与 CI 同用
+`NODE_OPTIONS=--max-old-space-size=3072` 通过；这是本机内存吃紧下的**工具进程堆上限**，不是代码缺陷）；
+`eslint --no-cache .` **0 error / 123 warning**（既有基线）；`bash scripts/pre-push-checks.sh` **全过**（exit 0）。
+
+**提交 `796757bf`**（12 文件，+174/−12），已推送，`HEAD == origin/main`。
+
+**⏳ 真机读数未取（具名立案）**：开工时 swap **14.1 G / 15.36 G 已用**、空闲物理页一度只剩 ~4k
+⇒ 不具备「重建 + 起 Electron」的安全余量，故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
+**配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在 `journal-metrics-panel.spec.ts` 那条导入用例后接一条 ——
+①贴一张**同一指标、多行、其中一行是库里没有的新刊**的表并导入；②断言 imported 区出现
+`[data-slot="journal-metrics-import-attribution"]`，既有刊那行含刊名 + 对应匹配文案（`by-issn` 行含 `matched by ISSN`）；
+③新刊那行含 `new journal identity`，且**面板重读后刊名不再是 id**。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且无
+dev/build/test 进程 ⇒ 按 §十一 的顺序取 **IC25**（文献附件历史，**只做「列出附件历史」半边**——数据已在 list 响应里，
+纯 UI；「回看旧版」要新通道或一条路径来源，先别落一个点不动的按钮）；② 内存宽松时取 **IC27 / IC28 / IC30**
+真机读数（配方见 §十一、§十、本节）；③ 按完整 40 位 SHA 看 `796757bf` 的 `Nightly` + `Windows Full Test`。
