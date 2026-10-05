@@ -4070,5 +4070,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.note': '비고',
   'references.journalMetrics.correct.submit': 'claim 추가',
   'references.journalMetrics.correct.history': '이 저널의 claim',
-  'references.journalMetrics.correct.historyEmpty': '아직 claim이 없습니다.'
+  'references.journalMetrics.correct.historyEmpty': '아직 claim이 없습니다.',
+  'settings.egressLoadFailed': '노트북 네트워크 설정을 읽지 못했습니다.',
+  'settings.egressSaveFailed':
+    '노트북 네트워크 설정을 저장하지 못했습니다 — 변경 사항을 되돌렸습니다.'
 }

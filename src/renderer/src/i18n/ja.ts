@@ -4136,5 +4136,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.note': '注記',
   'references.journalMetrics.correct.submit': 'claim を追加',
   'references.journalMetrics.correct.history': 'このジャーナルの claim',
-  'references.journalMetrics.correct.historyEmpty': 'claim はまだありません。'
+  'references.journalMetrics.correct.historyEmpty': 'claim はまだありません。',
+  'settings.egressLoadFailed': 'ノートブックのネットワーク設定を読み込めませんでした。',
+  'settings.egressSaveFailed':
+    'ノートブックのネットワーク設定を保存できませんでした — 変更は元に戻しました。'
 }

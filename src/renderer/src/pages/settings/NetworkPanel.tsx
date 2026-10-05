@@ -27,6 +27,10 @@ const fieldLabelClassName = 'text-xs font-medium text-muted-foreground'
 const actionButtonClassName =
   'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50'
 
+// Switch-off default. Also what the egress section shows when the main process has no stored
+// settings yet, so an unread / empty read cannot be mistaken for "everything blocked".
+const EMPTY_EGRESS_SETTINGS: EgressSettings = { enabled: false, groups: {}, customDomains: [] }
+
 // Package-mirror list vs. configure form. The configure form is a settings-nav sub-view (not local
 // state) so the shared header shows a "Network / Package mirror" breadcrumb with back/forward.
 type NetworkView = { kind: 'list' | 'configure' }
@@ -320,30 +324,60 @@ const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Elemen
 const EgressSection = (): React.JSX.Element => {
   const { t } = useLanguage()
   const [settings, setSettings] = useState<EgressSettings | undefined>(undefined)
-  const [loaded, setLoaded] = useState(false)
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [saveFailed, setSaveFailed] = useState(false)
   const [draftDomain, setDraftDomain] = useState('')
+  // The last value the main process acknowledged. A refused save falls back to it below, so the
+  // panel never keeps showing a value that was not persisted.
+  const persisted = useRef<EgressSettings>(EMPTY_EGRESS_SETTINGS)
 
-  useEffect(() => {
-    let cancelled = false
-    void window.api.settings.getEgress().then((value) => {
-      if (cancelled) return
-      setSettings(value ?? { enabled: false, groups: {}, customDomains: [] })
-      setLoaded(true)
-    })
-    return () => {
-      cancelled = true
-    }
+  // The read itself must not setState synchronously inside the effect (that is a cascading render and
+  // the linter rejects it) — the initial state is already 'loading'. Only the retry button flips it
+  // back, and that happens in an event handler.
+  const load = useCallback((): void => {
+    void window.api.settings.getEgress().then(
+      (value) => {
+        const next = value ?? EMPTY_EGRESS_SETTINGS
+        persisted.current = next
+        setSettings(next)
+        setLoadState('ready')
+      },
+      // A read failure used to leave `loaded` false forever: the section stayed on "Loading…" with
+      // no reason and no way out. Say what happened and offer the retry.
+      () => setLoadState('error')
+    )
   }, [])
 
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const retry = useCallback((): void => {
+    setLoadState('loading')
+    load()
+  }, [load])
+
   const update = (next: EgressSettings): void => {
+    const previous = persisted.current
+    setSaveFailed(false)
+    // Optimistic: the switch / checkbox must move the moment it is clicked.
     setSettings(next)
-    void window.api.settings
-      .setEgress(next)
-      .then(setSettings)
-      .catch(() => undefined)
+    void window.api.settings.setEgress(next).then(
+      (value) => {
+        const saved = value ?? next
+        persisted.current = saved
+        setSettings(saved)
+      },
+      // A refused save used to be swallowed (`catch(() => undefined)`): the panel kept the optimistic
+      // value, so the user saw a setting that was never stored. Roll back and say so.
+      () => {
+        setSettings(previous)
+        setSaveFailed(true)
+      }
+    )
   }
 
-  if (!loaded) {
+  if (loadState === 'loading') {
     return (
       <section className="mt-6 rounded-xl border border-border bg-card p-4">
         <p className="text-xs text-muted-foreground">{t('settings.loading')}</p>
@@ -351,7 +385,31 @@ const EgressSection = (): React.JSX.Element => {
     )
   }
 
-  const current = settings ?? { enabled: false, groups: {}, customDomains: [] }
+  if (loadState === 'error') {
+    return (
+      <section
+        className="mt-6 rounded-xl border border-border bg-card p-4"
+        data-slot="egress-section"
+      >
+        <h3 className="text-sm font-medium text-foreground">{t('settings.egressTitle')}</h3>
+        <p className="mt-2 text-xs text-destructive" role="alert" data-slot="egress-load-error">
+          {t('settings.egressLoadFailed')}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          data-slot="egress-retry-load"
+          onClick={retry}
+        >
+          {t('common.retry')}
+        </Button>
+      </section>
+    )
+  }
+
+  const current = settings ?? EMPTY_EGRESS_SETTINGS
   const groupIds = EGRESS_DOMAIN_GROUPS.map((group) => group.id)
   const groupLabels: Record<EgressDomainGroupId, string> = {
     literature: t('settings.egressGroupLiterature'),
@@ -408,6 +466,12 @@ const EgressSection = (): React.JSX.Element => {
           />
         </button>
       </div>
+
+      {saveFailed ? (
+        <p className="mt-3 text-xs text-destructive" role="alert" data-slot="egress-save-error">
+          {t('settings.egressSaveFailed')}
+        </p>
+      ) : null}
 
       {current.enabled ? (
         <div className="mt-4 space-y-4">

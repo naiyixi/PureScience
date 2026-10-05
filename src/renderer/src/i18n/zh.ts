@@ -3898,7 +3898,9 @@ export const zh = {
   'references.journalMetrics.correct.note': '备注',
   'references.journalMetrics.correct.submit': '追加 claim',
   'references.journalMetrics.correct.history': '该刊的全部 claim',
-  'references.journalMetrics.correct.historyEmpty': '还没有 claim。'
+  'references.journalMetrics.correct.historyEmpty': '还没有 claim。',
+  'settings.egressLoadFailed': '无法读取笔记本网络设置。',
+  'settings.egressSaveFailed': '无法保存笔记本网络设置 — 改动已还原。'
 }
 
 export type ZhKey = keyof typeof zh

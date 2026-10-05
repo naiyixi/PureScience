@@ -4249,5 +4249,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.note': 'Remarque',
   'references.journalMetrics.correct.submit': 'Ajouter la revendication',
   'references.journalMetrics.correct.history': 'Revendications de cette revue',
-  'references.journalMetrics.correct.historyEmpty': 'Aucune revendication.'
+  'references.journalMetrics.correct.historyEmpty': 'Aucune revendication.',
+  'settings.egressLoadFailed': 'Impossible de lire les paramètres réseau du notebook.',
+  'settings.egressSaveFailed':
+    'Impossible d’enregistrer les paramètres réseau du notebook — la modification a été annulée.'
 }

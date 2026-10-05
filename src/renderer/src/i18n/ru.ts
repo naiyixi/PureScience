@@ -4150,5 +4150,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.note': 'Примечание',
   'references.journalMetrics.correct.submit': 'Добавить утверждение',
   'references.journalMetrics.correct.history': 'Утверждения по этому журналу',
-  'references.journalMetrics.correct.historyEmpty': 'Утверждений пока нет.'
+  'references.journalMetrics.correct.historyEmpty': 'Утверждений пока нет.',
+  'settings.egressLoadFailed': 'Не удалось прочитать сетевые настройки ноутбука.',
+  'settings.egressSaveFailed':
+    'Не удалось сохранить сетевые настройки ноутбука — изменение отменено.'
 }

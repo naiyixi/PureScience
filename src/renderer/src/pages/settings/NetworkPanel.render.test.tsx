@@ -24,6 +24,10 @@ vi.mock('@/i18n', () => ({
       'settings.proxyTitle': 'Proxy',
       'settings.proxyModeSystem': 'Follow system',
       'settings.proxyModeManual': 'Manual configuration',
+      'settings.egressLoadFailed': 'Could not read the notebook network settings.',
+      'settings.egressSaveFailed':
+        'Could not save the notebook network settings — the change was reverted.',
+      'common.retry': 'Retry',
       'settings.loading': 'Loading…'
     }
     return { t: (key: string): string => labels[key] ?? key }
@@ -51,6 +55,94 @@ const mockApi = (egress = { enabled: false, groups: {}, customDomains: [] }): vo
     }
   }
 }
+
+// IC31: both failure paths of the egress section used to be silent — a failed read left the section
+// on "Loading…" forever (no reason, no way out) and a refused save kept the optimistic value on
+// screen. These live in their own block, first in the file, so they never inherit the unawaited
+// act() scopes the proxy test opens further down.
+describe('NetworkPanel egress error states', () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    mockApi()
+    useNetworkStore.setState({ isOnline: true, connectivity: 'unknown' })
+    container = document.createElement('div')
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+  })
+
+  const renderPanel = (): Promise<void> =>
+    act(async () => {
+      root.render(<NetworkPanel view={{ kind: 'list' }} onNavigate={() => undefined} />)
+    })
+
+  it('names a read failure and offers a retry that recovers', async () => {
+    const getEgress = window.api.settings.getEgress as unknown as ReturnType<typeof vi.fn>
+    getEgress.mockRejectedValueOnce(new Error('ipc unavailable'))
+
+    await renderPanel()
+
+    // The failure is named on screen instead of leaving the section on "Loading…" forever.
+    const section = container.querySelector('[data-slot="egress-section"]')
+    expect(section?.textContent).toContain('Could not read the notebook network settings.')
+    expect(section?.textContent).not.toContain('Loading…')
+    const error = container.querySelector('[data-slot="egress-load-error"]')
+    expect(error?.getAttribute('role')).toBe('alert')
+    expect(container.querySelector('[data-slot="egress-master-switch"]')).toBeNull()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="egress-retry-load"]')?.click()
+    })
+
+    expect(getEgress).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('[data-slot="egress-load-error"]')).toBeNull()
+    const master = container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
+    expect(master?.getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('reverts a refused save and says so, then clears the notice on the next save', async () => {
+    const setEgress = window.api.settings.setEgress as unknown as ReturnType<typeof vi.fn>
+    setEgress.mockRejectedValueOnce(new Error('refused'))
+
+    await renderPanel()
+
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')?.click()
+    })
+
+    // The optimistic value must not survive a refused write: the switch goes back, the groups stay
+    // hidden, and the reason is on screen.
+    expect(
+      container
+        .querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
+        ?.getAttribute('aria-checked')
+    ).toBe('false')
+    expect(container.querySelector('[data-slot="egress-group-literature"]')).toBeNull()
+    const alert = container.querySelector('[data-slot="egress-save-error"]')
+    expect(alert?.textContent).toBe(
+      'Could not save the notebook network settings — the change was reverted.'
+    )
+    expect(alert?.getAttribute('role')).toBe('alert')
+
+    // A save that goes through clears the notice and keeps the new value.
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')?.click()
+    })
+    expect(container.querySelector('[data-slot="egress-save-error"]')).toBeNull()
+    expect(
+      container
+        .querySelector<HTMLButtonElement>('[data-slot="egress-master-switch"]')
+        ?.getAttribute('aria-checked')
+    ).toBe('true')
+    expect(container.querySelector('[data-slot="egress-group-literature"]')).toBeTruthy()
+  })
+})
 
 describe('NetworkPanel egress section', () => {
   let container: HTMLDivElement
