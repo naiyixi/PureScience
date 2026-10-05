@@ -3872,7 +3872,10 @@ export const zh = {
   'settings.connectorUnavailableHint': '该服务器无法运行：配置不完整，或路由不可用。',
   'settings.testingConnection': '正在测试…',
   'settings.testConnectionOk': '服务器已回应：{count} 个工具。',
-  'settings.testConnectionFailed': '服务器未回应：{detail}'
+  'settings.testConnectionFailed': '服务器未回应：{detail}',
+  'references.journalMetrics.import.defaultKind': '表格无指标列时统一用它',
+  'references.journalMetrics.import.defaultKindHint':
+    '表格没有指标列时，每一行都按这个指标记录；表格自带指标列的，以表格为准。'
 }
 
 export type ZhKey = keyof typeof zh

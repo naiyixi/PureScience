@@ -135,6 +135,29 @@ describe('prepareJournalMetricCandidates', () => {
     ])
   })
 
+  it('lets a cell with a kind win over the table-wide kind, and fills only the blank cells with it', () => {
+    // The sentence the request-level kind promises is "a kind cell with a value always wins". A mixed table is
+    // how that gets read in practice: an export where one row was annotated and the rest were not.
+    const csv = [
+      'Journal,Value,Year,Source,Kind',
+      'Nature,48.5,2024,JCR,impact-factor',
+      'Cell,64.5,2024,JCR,',
+      'Science,56.2,2024,JCR,cas-partition'
+    ].join('\n')
+
+    const candidates = prepareJournalMetricCandidates({
+      text: csv,
+      format: 'csv',
+      defaultKind: 'acceptance-rate'
+    })
+
+    expect(candidates.map((candidate) => candidate.row?.kind)).toEqual([
+      'impact-factor',
+      'acceptance-rate',
+      'cas-partition'
+    ])
+  })
+
   it('does not treat a blank line as a row, and keeps line numbers for the rows it does read', () => {
     const csv = [
       'Journal,Value,Year,Source,Kind',

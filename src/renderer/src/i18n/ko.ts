@@ -4044,5 +4044,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 서버는 실행할 수 없습니다. 구성이 불완전하거나 경로를 사용할 수 없습니다.',
   'settings.testingConnection': '테스트 중…',
   'settings.testConnectionOk': '서버가 응답했습니다: 도구 {count}개.',
-  'settings.testConnectionFailed': '서버가 응답하지 않았습니다: {detail}'
+  'settings.testConnectionFailed': '서버가 응답하지 않았습니다: {detail}',
+  'references.journalMetrics.import.defaultKind': '지표 열이 없는 표에 쓸 종류',
+  'references.journalMetrics.import.defaultKindHint':
+    '표에 지표 열이 없으면 모든 행을 이 종류로 기록합니다. 표에 종류가 있으면 표의 값을 우선합니다.'
 }

@@ -4236,5 +4236,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Dieser Server kann nicht ausgeführt werden: Konfiguration unvollständig oder Route nicht verfügbar.',
   'settings.testingConnection': 'Wird getestet…',
   'settings.testConnectionOk': 'Der Server antwortete mit {count} Tools.',
-  'settings.testConnectionFailed': 'Der Server hat nicht geantwortet: {detail}'
+  'settings.testConnectionFailed': 'Der Server hat nicht geantwortet: {detail}',
+  'references.journalMetrics.import.defaultKind': 'Kennzahl für Tabellen ohne eigene Spalte',
+  'references.journalMetrics.import.defaultKindHint':
+    'Gilt, wenn die Tabelle keine Kennzahl-Spalte hat; eine Angabe in der Tabelle hat Vorrang.'
 }

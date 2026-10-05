@@ -4124,5 +4124,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Этот сервер не может быть запущен: конфигурация неполна или маршрут недоступен.',
   'settings.testingConnection': 'Проверка…',
   'settings.testConnectionOk': 'Сервер ответил: инструментов — {count}.',
-  'settings.testConnectionFailed': 'Сервер не ответил: {detail}'
+  'settings.testConnectionFailed': 'Сервер не ответил: {detail}',
+  'references.journalMetrics.import.defaultKind': 'Тип показателя для таблиц без своего столбца',
+  'references.journalMetrics.import.defaultKindHint':
+    'Используется, если в таблице нет столбца типа; значение из таблицы имеет приоритет.'
 }

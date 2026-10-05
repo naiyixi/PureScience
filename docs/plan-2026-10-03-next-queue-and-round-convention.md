@@ -511,3 +511,48 @@ prettier warning 已就地改掉）；`bash scripts/pre-push-checks.sh` 全通�
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且桌面空闲 ⇒ 按 §九 顺序取
 **IC27**（整表同一指标，纯 UI，`defaultKind` 入参已在，`JournalMetricsImport.tsx:63`）；仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；
 ② 内存宽松时取本单元真机读数（上面配方）；③ 盯本单元推送后 `Nightly` + `Windows Full Test` 双绿（红了先读作业级注解归因）。
+
+## 十一、本轮追加（执行器，2026-10-05 07:4x–08:0x）——IC27 期刊指标「整表同一指标」已落地（真机读数具名立案）
+
+**开工核对（防重做）**：`HEAD = origin/main = 75009f9a`（IC28 的 docs 落档提交）；`git status --short` **空**；
+无在跑 `electron-vite` / `playwright` / `vitest` 进程（上一提交 06:55 左右，距今约 1 h）⇒ 按 §十「下一轮第一步 ①」取 **IC27**。
+**CI 核对（读数即结论）**：`75009f9a` 是纯 `docs/**` ⇒ 两条车道都有 `paths:` 过滤、**0 条 run**（设计如此，不是漏跑）；
+上一笔有判决的 `e2ce9966`（IC28）＝ `Nightly` **37234788865 success** + `Windows Full Test` **37234788587 success**（双绿，与 §十 一致）。
+
+**缺口核实（对着当前源码、按机制名 grep）**：共享请求类型带 `defaultKind`（`shared/journal-metrics.ts:45`），解析器在
+缺 kind 列时用它填 `kind`（`:283-284` 的缺列判据、`:363` 的 `pick('kind') || defaultKind`），**并且单元格里的值永远优先**；
+而 `grep -rn "defaultKind" src/renderer` **0 命中** ⇒ 缺口**只在渲染层**：表格没有指标列时，窗口无话可说，只能去改文件加一列。
+**本单元不新建后端、零新通道 ⇒ 零契约计数涟漪。**
+
+**落地（3 改 2 新，零新通道）**：
+
+- 新增 `journal-metric-kind-labels.ts`：把面板里那份「五种已知指标 → 文案键」映射**搬成单一来源**，面板与会话表单都引它
+  ——两份列表会让面板给一个表单提示不出来的指标加标签（或反过来），且不会有人发现；同时导出 `JOURNAL_METRIC_KINDS`（**store 自己的
+  token**，不是译文）。
+- `JournalMetricsImport.tsx`：新增受控输入 `[data-slot="journal-metrics-import-default-kind"]`（`aria-label` 用新键）+
+  `<datalist>` 提示那五种 token（文案复用既有 5 条 `kind.*` 键，**不新增译文**）+ 一行说明；提交时
+  **空值不发 `defaultKind`**（用 `toStrictEqual` 钉住「键不存在」，避免「我试过」被读成「我说没有」）；未知指标仍然允许手输。
+- **2 键 × 9 语**：`references.journalMetrics.import.defaultKind` / `…defaultKindHint`（en / zh / zh-Hant / ja / ko / fr / de / es / ru；
+  zh ≠ en、繁体门禁过、**未新增 pending 条目**）；i18n 覆盖 **3594 键 × 9 语 = 100.0%**。
+- 用例：**新建 `JournalMetricsImport.render.test.tsx`**（该类此前**没有任何测试**，正是「表单根本没把值送出去也照样全绿」的形状）——
+  ①五种建议=store 的 token 且 `list` 真挂在输入上；②填 `cas-partition` + 无 kind 列的表 ⇒ 请求**逐字**带该值且面板重读；
+  ③留空 / 只输空白 ⇒ `toStrictEqual` 断言**没有这个键**。共享层 **+1 用例**：混列表（一格有值、一格空、一格另一种）⇒
+  有值的格胜出、空的那格才用表级值（补上原用例**标题承诺却从未测**的语义）。
+
+**验证（本机，全部实跑）**：定向 vitest（`src/shared/journal-metrics.test.ts` + `src/renderer/src/components/references` + `src/renderer/src/i18n`）
+**7 文件 / 102 passed**；**全量 vitest `1202 passed | 16 skipped`（15643 passed | 196 skipped，363.9 s，exit 0）**；
+`npm run typecheck`（node + web）**双绿**（先修掉我自己的 `Mock<…>` 类型缺口——`ReturnType<typeof vi.fn>` 让 `onImported` 不再可赋值）；
+`eslint --no-cache .` **0 error / 123 warning**（既有基线）；`bash scripts/pre-push-checks.sh` **全过**（exit 0）。
+
+**⏳ 真机读数未取（具名立案）**：开工时 swap **13.2 G / 14.3 G 已用**、空闲物理页 4,617（≈72 MB）⇒ 仍不具备「重建 + 起 Electron」的安全余量，
+故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
+**配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在 `journal-metrics-panel.spec.ts` 的
+`the import entry stores the good row and names the refused one` 之后接一条：①同一路径打开面板；②贴一张**没有 kind 列**的表
+（`journal,issn,value,year,source`，两行）；③**先不填**新输入就点 Import ⇒ 断言 `[data-slot="journal-metrics-import-error"]`
+印出 store 自己那句点名 `kind (or defaultKind)` 的话（这是本单元之前的真实处境，现在成了上屏的具名拒绝）；④填
+`getByLabel('Metric kind for tables without one')` = `impact-factor` 再点 ⇒ 断言 imported 行含 `impact-factor 64.8 (2023)`、
+skipped 为 0、且上方表格出现表头 `Impact factor`（新列按该指标建起来）。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净且桌面空闲 ⇒ 按 §九 顺序取
+**IC30**（逐行归属：outcome 本就带匹配规则与「是否新建」两字段，对话框没印，纯 UI）；仍脏 / 仍活跃 ⇒ 继续让位（只读取证）；
+② 内存宽松时取 IC27（上面配方）+ IC28（§十 配方）真机读数；③ 按**完整 40 位 SHA** 看本轮推送的 `Nightly` + `Windows Full Test`，红了先读作业级注解归因。

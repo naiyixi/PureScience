@@ -4110,5 +4110,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このサーバーは実行できません。設定が不完全か、経路が利用できません。',
   'settings.testingConnection': 'テスト中…',
   'settings.testConnectionOk': 'サーバーが応答しました：ツール {count} 個。',
-  'settings.testConnectionFailed': 'サーバーが応答しません：{detail}'
+  'settings.testConnectionFailed': 'サーバーが応答しません：{detail}',
+  'references.journalMetrics.import.defaultKind': '指標列がない表で使う種別',
+  'references.journalMetrics.import.defaultKindHint':
+    '表に指標列がないときは、すべての行をこの種別で記録します。表に種別があればそちらを優先します。'
 }

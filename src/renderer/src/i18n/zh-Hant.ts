@@ -3812,5 +3812,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.connectorUnavailableHint': '該伺服器無法執行：設定不完整，或路由無法使用。',
   'settings.testingConnection': '正在測試…',
   'settings.testConnectionOk': '伺服器已回應：{count} 個工具。',
-  'settings.testConnectionFailed': '伺服器未回應：{detail}'
+  'settings.testConnectionFailed': '伺服器未回應：{detail}',
+  'references.journalMetrics.import.defaultKind': '表格無指標欄時統一用它',
+  'references.journalMetrics.import.defaultKindHint':
+    '表格沒有指標欄時，每一行都按這個指標記錄；表格自帶指標欄的，以表格為準。'
 }

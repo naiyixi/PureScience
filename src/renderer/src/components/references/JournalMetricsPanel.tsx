@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { JournalMetricsImport } from './JournalMetricsImport'
+import { KIND_LABEL_KEYS } from './journal-metric-kind-labels'
 import {
   buildJournalMetricsOverview,
   type JournalMetricLibrary,
@@ -14,16 +15,6 @@ import {
   isJournalMergeOutcome,
   type JournalMergeResult
 } from '../../../../shared/journal-merge'
-
-// The five kinds the library knows by name get a label; any other kind keeps the store's own word, because
-// inventing a translation for a kind nobody defined is how a vocabulary drifts.
-const KIND_LABEL_KEYS: Readonly<Record<string, string>> = Object.freeze({
-  'impact-factor': 'references.journalMetrics.kind.impactFactor',
-  'jcr-quartile': 'references.journalMetrics.kind.jcrQuartile',
-  'cas-partition': 'references.journalMetrics.kind.casPartition',
-  'cas-top': 'references.journalMetrics.kind.casTop',
-  'acceptance-rate': 'references.journalMetrics.kind.acceptanceRate'
-})
 
 // Presentational on purpose: the table takes the view it must draw and nothing else, so the reading that
 // matters (a missing metric must say so, and every number must carry its year and source) is testable

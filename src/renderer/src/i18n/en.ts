@@ -4147,5 +4147,8 @@ export const en: Record<ZhKey, string> = {
     'This server cannot run: its configuration is incomplete or its route is unavailable.',
   'settings.testingConnection': 'Testing…',
   'settings.testConnectionOk': 'The server answered with {count} tools.',
-  'settings.testConnectionFailed': 'The server did not answer: {detail}'
+  'settings.testConnectionFailed': 'The server did not answer: {detail}',
+  'references.journalMetrics.import.defaultKind': 'Metric kind for tables without one',
+  'references.journalMetrics.import.defaultKindHint':
+    'Used when the table has no kind column; a kind in the table still wins.'
 }

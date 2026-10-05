@@ -4196,5 +4196,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Este servidor no puede ejecutarse: la configuración está incompleta o la ruta no está disponible.',
   'settings.testingConnection': 'Probando…',
   'settings.testConnectionOk': 'El servidor respondió: {count} herramientas.',
-  'settings.testConnectionFailed': 'El servidor no respondió: {detail}'
+  'settings.testConnectionFailed': 'El servidor no respondió: {detail}',
+  'references.journalMetrics.import.defaultKind': 'Tipo de métrica si la tabla no la trae',
+  'references.journalMetrics.import.defaultKindHint':
+    'Se usa cuando la tabla no trae columna de tipo; un tipo presente en la tabla tiene prioridad.'
 }

@@ -3,9 +3,11 @@ import { useCallback, useState } from 'react'
 import { useLanguage } from '@/i18n'
 import type { TranslationKey } from '@/i18n'
 import type {
+  JournalMetricImportRequest,
   JournalMetricImportResult,
   JournalMetricRowProblem
 } from '../../../../shared/journal-metrics'
+import { JOURNAL_METRIC_KINDS, KIND_LABEL_KEYS } from './journal-metric-kind-labels'
 import type { ButtonHTMLAttributes } from 'react'
 
 // Import entry for the journal metric library. Before this the surface existed only as an application
@@ -42,6 +44,7 @@ export function JournalMetricsImport({
 }): React.JSX.Element {
   const { t } = useLanguage()
   const [text, setText] = useState('')
+  const [defaultKind, setDefaultKind] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<JournalMetricImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -54,8 +57,15 @@ export function JournalMetricsImport({
     // the requirement), so the window states it: a tab in the pasted text means TSV, otherwise the
     // comma-separated shape every publisher export here uses.
     const format = text.includes('\t') ? 'tsv' : 'csv'
+    // A table that names its kind per row needs nothing here — the parser lets a cell win over this value — so
+    // an empty box must send NO `defaultKind` rather than send ''. '' would read as "the caller said nothing",
+    // which happens to be right, but the store's own error message for a missing kind column says
+    // "kind (or defaultKind)" — a caller that meant "no kind anywhere" should not look like it tried.
+    const kind = defaultKind.trim()
+    const request: JournalMetricImportRequest =
+      kind === '' ? { format, text } : { format, text, defaultKind: kind }
     void window.api.references
-      .importJournalMetrics({ format, text })
+      .importJournalMetrics(request)
       .then((next) => {
         setResult(next)
         onImported()
@@ -65,7 +75,7 @@ export function JournalMetricsImport({
         setError(reason instanceof Error ? reason.message : String(reason))
       })
       .finally(() => setBusy(false))
-  }, [onImported, text])
+  }, [defaultKind, onImported, text])
 
   const imported = result?.outcomes.filter((outcome) => outcome.status === 'imported') ?? []
   const skipped = result?.outcomes.filter((outcome) => outcome.status === 'skipped') ?? []
@@ -87,6 +97,37 @@ export function JournalMetricsImport({
         placeholder={t('references.journalMetrics.import.placeholder')}
         value={text}
       />
+
+      {/* Most publisher exports have no kind column: every row of the file is one metric. The store has always
+          accepted that sentence (a request-level `defaultKind`, and a cell with a value still wins), but the
+          window never sent it, so a kind-less table could only be imported after someone edited the file to
+          add a column. It is a form field now, and the five kinds the library knows by name are suggested —
+          an unknown kind is still allowed, because the table's own word is what the store keeps. */}
+      <div className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-[var(--muted-foreground)]">
+            {t('references.journalMetrics.import.defaultKind')}
+          </span>
+          <input
+            aria-label={t('references.journalMetrics.import.defaultKind')}
+            className="w-56 rounded border border-[var(--border)] bg-transparent px-2 py-1 font-mono text-[11px]"
+            data-slot="journal-metrics-import-default-kind"
+            list="journal-metric-kind-suggestions"
+            onChange={(event) => setDefaultKind(event.target.value)}
+            value={defaultKind}
+          />
+        </label>
+        <datalist id="journal-metric-kind-suggestions">
+          {JOURNAL_METRIC_KINDS.map((kind) => (
+            <option key={kind} value={kind}>
+              {t(KIND_LABEL_KEYS[kind])}
+            </option>
+          ))}
+        </datalist>
+        <p className="text-[10px] text-[var(--muted-foreground)]">
+          {t('references.journalMetrics.import.defaultKindHint')}
+        </p>
+      </div>
 
       <div className="flex items-center gap-2">
         <button
