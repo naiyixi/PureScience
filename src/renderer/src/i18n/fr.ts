@@ -4255,5 +4255,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Impossible d’enregistrer les paramètres réseau du notebook — la modification a été annulée.',
   'settings.storageInfoFailed':
     "Impossible de lire les informations sur l'emplacement des données.",
-  'settings.supportBundleDetail': '{size}, {redactions} champs masqués'
+  'settings.supportBundleDetail': '{size}, {redactions} champs masqués',
+  'settings.staleEvidenceKindNameMismatch': 'nom de manifeste différent',
+  'settings.staleEvidenceKindChecksumMismatch': 'somme de contrôle du manifeste différente',
+  'settings.staleEvidenceDigests': 'enregistré {recorded} · attendu {expected}',
+  'settings.staleEvidenceRun': 'exécution {runId}',
+  'settings.staleEvidenceOwner': 'projet {project} · session {session}'
 }

@@ -4268,5 +4268,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.egressSaveFailed':
     'Die Netzwerkeinstellungen des Notebooks konnten nicht gespeichert werden — die Änderung wurde zurückgenommen.',
   'settings.storageInfoFailed': 'Die Angaben zum Datenort konnten nicht gelesen werden.',
-  'settings.supportBundleDetail': '{size}, {redactions} Felder unkenntlich gemacht'
+  'settings.supportBundleDetail': '{size}, {redactions} Felder unkenntlich gemacht',
+  'settings.staleEvidenceKindNameMismatch': 'Namensabweichung im Manifest',
+  'settings.staleEvidenceKindChecksumMismatch': 'Prüfsummenabweichung im Manifest',
+  'settings.staleEvidenceDigests': 'aufgezeichnet {recorded} · erwartet {expected}',
+  'settings.staleEvidenceRun': 'Lauf {runId}',
+  'settings.staleEvidenceOwner': 'Projekt {project} · Sitzung {session}'
 }

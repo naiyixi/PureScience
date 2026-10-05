@@ -4075,5 +4075,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.egressSaveFailed':
     '노트북 네트워크 설정을 저장하지 못했습니다 — 변경 사항을 되돌렸습니다.',
   'settings.storageInfoFailed': '데이터 위치 정보를 읽을 수 없습니다.',
-  'settings.supportBundleDetail': '{size}, {redactions}개 항목 마스킹됨'
+  'settings.supportBundleDetail': '{size}, {redactions}개 항목 마스킹됨',
+  'settings.staleEvidenceKindNameMismatch': '매니페스트 이름 불일치',
+  'settings.staleEvidenceKindChecksumMismatch': '매니페스트 체크섬 불일치',
+  'settings.staleEvidenceDigests': '기록 {recorded} · 기대 {expected}',
+  'settings.staleEvidenceRun': '실행 {runId}',
+  'settings.staleEvidenceOwner': '프로젝트 {project} · 세션 {session}'
 }

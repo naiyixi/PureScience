@@ -4178,5 +4178,10 @@ export const en: Record<ZhKey, string> = {
   'settings.egressSaveFailed':
     'Could not save the notebook network settings — the change was reverted.',
   'settings.storageInfoFailed': 'Could not read the data location information.',
-  'settings.supportBundleDetail': '{size}, {redactions} fields redacted'
+  'settings.supportBundleDetail': '{size}, {redactions} fields redacted',
+  'settings.staleEvidenceKindNameMismatch': 'manifest name mismatch',
+  'settings.staleEvidenceKindChecksumMismatch': 'manifest checksum mismatch',
+  'settings.staleEvidenceDigests': 'recorded {recorded} · expected {expected}',
+  'settings.staleEvidenceRun': 'run {runId}',
+  'settings.staleEvidenceOwner': 'project {project} · session {session}'
 }

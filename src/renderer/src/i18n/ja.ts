@@ -4141,5 +4141,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.egressSaveFailed':
     'ノートブックのネットワーク設定を保存できませんでした — 変更は元に戻しました。',
   'settings.storageInfoFailed': 'データの保存場所の情報を読み取れませんでした。',
-  'settings.supportBundleDetail': '{size}、{redactions} 件をマスク'
+  'settings.supportBundleDetail': '{size}、{redactions} 件をマスク',
+  'settings.staleEvidenceKindNameMismatch': 'マニフェスト名の不一致',
+  'settings.staleEvidenceKindChecksumMismatch': 'マニフェストのチェックサム不一致',
+  'settings.staleEvidenceDigests': '記録 {recorded} · 期待 {expected}',
+  'settings.staleEvidenceRun': '実行 {runId}',
+  'settings.staleEvidenceOwner': 'プロジェクト {project} · セッション {session}'
 }

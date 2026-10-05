@@ -3902,7 +3902,12 @@ export const zh = {
   'settings.egressLoadFailed': '无法读取笔记本网络设置。',
   'settings.egressSaveFailed': '无法保存笔记本网络设置 — 改动已还原。',
   'settings.storageInfoFailed': '无法读取数据位置信息。',
-  'settings.supportBundleDetail': '{size}，脱敏 {redactions} 处'
+  'settings.supportBundleDetail': '{size}，脱敏 {redactions} 处',
+  'settings.staleEvidenceKindNameMismatch': '清单名称不匹配',
+  'settings.staleEvidenceKindChecksumMismatch': '清单校验和不匹配',
+  'settings.staleEvidenceDigests': '记录 {recorded} · 期望 {expected}',
+  'settings.staleEvidenceRun': '运行 {runId}',
+  'settings.staleEvidenceOwner': '项目 {project} · 会话 {session}'
 }
 
 export type ZhKey = keyof typeof zh

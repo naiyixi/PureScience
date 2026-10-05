@@ -4227,5 +4227,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.egressSaveFailed':
     'No se pudo guardar la configuración de red del notebook — el cambio se ha revertido.',
   'settings.storageInfoFailed': 'No se pudo leer la información de la ubicación de los datos.',
-  'settings.supportBundleDetail': '{size}, {redactions} campos ocultados'
+  'settings.supportBundleDetail': '{size}, {redactions} campos ocultados',
+  'settings.staleEvidenceKindNameMismatch': 'nombre de manifiesto distinto',
+  'settings.staleEvidenceKindChecksumMismatch': 'suma de comprobación del manifiesto distinta',
+  'settings.staleEvidenceDigests': 'registrado {recorded} · esperado {expected}',
+  'settings.staleEvidenceRun': 'ejecución {runId}',
+  'settings.staleEvidenceOwner': 'proyecto {project} · sesión {session}'
 }

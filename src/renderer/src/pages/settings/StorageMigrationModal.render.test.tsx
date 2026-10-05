@@ -182,10 +182,21 @@ describe('StorageMigrationModal', () => {
     })
 
     // The move succeeded, so the user sees the done stage — plus a line saying older evidence was kept
-    // as-is rather than re-validated, which is exactly what changed: it no longer blocks the move.
+    // as-is rather than re-validated, which is exactly what changed: it no longer blocks the move. The count
+    // is asserted on the sentence's own element: the list now follows it in the DOM, and `\b1\b` cannot match
+    // a number that markup glued to the next word.
     const note = document.body.querySelector('[data-testid="stale-evidence-note"]')
     expect(note?.textContent).toContain('Older environment manifests were kept as-is')
-    expect(note?.textContent).toMatch(/\b1\b/)
+    const sentence = note?.querySelector('p')
+    expect(sentence?.textContent?.trim().endsWith('1')).toBe(true)
+    // And the count is no longer all the reader gets: the entry itself is on screen — its kind, its path and
+    // the two digests the main process reported (shortened), so the line can be acted on.
+    const list = document.body.querySelector('[data-testid="stale-evidence-list"]')
+    expect(list?.querySelectorAll('li')).toHaveLength(1)
+    expect(list?.textContent).toContain('manifest name mismatch')
+    expect(list?.textContent).toContain('/old/runtime/provenance/environment-manifests/aaaa.json')
+    expect(list?.textContent).toContain('bbbbbbbbbbbb')
+    expect(list?.textContent).toContain('aaaaaaaaaaaa')
   })
 
   it('Keep current location discards the copy and closes without committing', async () => {

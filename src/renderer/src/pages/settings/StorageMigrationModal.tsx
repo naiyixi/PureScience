@@ -395,15 +395,51 @@ const StorageMigrationModal = ({
                   {outcome?.ok === true &&
                   outcome.staleEvidence &&
                   outcome.staleEvidence.length > 0 ? (
-                    <p
-                      className="mt-2 text-xs leading-relaxed text-muted-foreground"
-                      data-testid="stale-evidence-note"
-                    >
-                      {t('settings.moveStaleEvidenceNote')}{' '}
-                      <span className="font-medium text-foreground">
-                        {outcome.staleEvidence.length}
-                      </span>
-                    </p>
+                    <div className="mt-2" data-testid="stale-evidence-note">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t('settings.moveStaleEvidenceNote')}{' '}
+                        <span className="font-medium text-foreground">
+                          {outcome.staleEvidence.length}
+                        </span>
+                      </p>
+                      {/* The count alone left the reader unable to act on it: which file, which run, and what the
+                          two digests actually were. The list is the data the main process already reports. */}
+                      <ul
+                        className="mt-2 max-h-48 space-y-1.5 overflow-y-auto"
+                        data-testid="stale-evidence-list"
+                      >
+                        {outcome.staleEvidence.map((item) => (
+                          <li
+                            key={`${item.kind}:${item.path}`}
+                            className="rounded border border-[var(--border)] px-2 py-1.5 text-[10px] text-[var(--muted-foreground)]"
+                          >
+                            <div className="font-medium text-foreground">
+                              {item.kind === 'manifest-name-mismatch'
+                                ? t('settings.staleEvidenceKindNameMismatch')
+                                : t('settings.staleEvidenceKindChecksumMismatch')}
+                            </div>
+                            <div className="break-all">{item.path}</div>
+                            <div>
+                              {t('settings.staleEvidenceDigests')
+                                .replace('{recorded}', item.recordedDigest.slice(0, 12))
+                                .replace('{expected}', item.expectedDigest.slice(0, 12))}
+                            </div>
+                            {item.runId ? (
+                              <div>
+                                {t('settings.staleEvidenceRun').replace('{runId}', item.runId)}
+                              </div>
+                            ) : null}
+                            {item.project || item.session ? (
+                              <div>
+                                {t('settings.staleEvidenceOwner')
+                                  .replace('{project}', item.project ?? '—')
+                                  .replace('{session}', item.session ?? '—')}
+                              </div>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ) : null}
                 </div>
               </div>

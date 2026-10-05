@@ -4155,5 +4155,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.egressSaveFailed':
     'Не удалось сохранить сетевые настройки ноутбука — изменение отменено.',
   'settings.storageInfoFailed': 'Не удалось прочитать сведения о расположении данных.',
-  'settings.supportBundleDetail': '{size}, скрыто полей: {redactions}'
+  'settings.supportBundleDetail': '{size}, скрыто полей: {redactions}',
+  'settings.staleEvidenceKindNameMismatch': 'несовпадение имени манифеста',
+  'settings.staleEvidenceKindChecksumMismatch': 'несовпадение контрольной суммы манифеста',
+  'settings.staleEvidenceDigests': 'записано {recorded} · ожидалось {expected}',
+  'settings.staleEvidenceRun': 'запуск {runId}',
+  'settings.staleEvidenceOwner': 'проект {project} · сессия {session}'
 }

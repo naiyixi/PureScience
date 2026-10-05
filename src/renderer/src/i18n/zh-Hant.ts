@@ -3842,5 +3842,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.egressLoadFailed': '無法讀取筆記本網路設定。',
   'settings.egressSaveFailed': '無法儲存筆記本網路設定 — 變更已還原。',
   'settings.storageInfoFailed': '無法讀取資料位置資訊。',
-  'settings.supportBundleDetail': '{size}，脫敏 {redactions} 處'
+  'settings.supportBundleDetail': '{size}，脫敏 {redactions} 處',
+  'settings.staleEvidenceKindNameMismatch': '清單名稱不符',
+  'settings.staleEvidenceKindChecksumMismatch': '清單校驗碼不符',
+  'settings.staleEvidenceDigests': '記錄 {recorded} · 期望 {expected}',
+  'settings.staleEvidenceRun': '執行 {runId}',
+  'settings.staleEvidenceOwner': '專案 {project} · 工作階段 {session}'
 }

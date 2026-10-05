@@ -158,8 +158,25 @@ test('shows the stale-evidence note in the move dialog an older manifest would o
     'Older environment manifests were kept as-is and not re-validated.'
   )
   // The count renders after the sentence; assert its shape rather than pinning a number the fixture does
-  // not own, so any extra evidence the app legitimately reports cannot fail this.
-  await expect(note).toHaveText(/not re-validated\.\s*\d+\s*$/)
+  // not own, so any extra evidence the app legitimately reports cannot fail this. (It no longer anchors on
+  // the end of the note: the entry list below follows the sentence now.)
+  await expect(note).toHaveText(/not re-validated\.\s*\d+/)
+
+  // IC35: the count is no longer all the reader gets. Each entry is listed with its kind, its path and the two
+  // digests the main process reported, so a line like this can be acted on instead of just noticed. The count
+  // is checked for self-consistency with the list rather than pinned to a number this fixture does not own —
+  // as a substring, because markup concatenates without separators and a word boundary would not match there.
+  const list = page.getByTestId('stale-evidence-list')
+  await expect(list).toBeVisible()
+  const entries = list.locator('li')
+  const entryCount = await entries.count()
+  expect(entryCount).toBeGreaterThan(0)
+  await expect(note).toContainText(`not re-validated. ${entryCount}`)
+  const entryText = (await entries.first().innerText()).replace(/\s+/g, ' ').trim()
+  console.log(`[ic35] the stale entry on screen: "${entryText}"`)
+  expect(entryText).toContain('manifest name mismatch')
+  expect(entryText).toContain('environment-manifests')
+  expect(entryText).toMatch(/recorded [0-9a-f]{12} · expected [0-9a-f]{12}/)
 
   await page.evaluate(async (targetParent) => {
     const bridge = globalThis as unknown as {
