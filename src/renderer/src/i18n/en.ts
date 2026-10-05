@@ -4155,5 +4155,8 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.import.created': 'new journal identity',
   'references.journalMetrics.import.match.byIssn': 'matched by ISSN',
   'references.journalMetrics.import.match.byNormalizedName': 'matched by name',
-  'references.journalMetrics.import.match.byAlias': 'matched by a merged alias'
+  'references.journalMetrics.import.match.byAlias': 'matched by a merged alias',
+  'references.attachmentCurrent': 'current',
+  'references.attachmentReplacedOn': 'replaced {date}',
+  'references.attachmentAttachedOn': 'attached {date}'
 }

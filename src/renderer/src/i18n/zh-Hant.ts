@@ -3820,5 +3820,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.created': '新建刊物',
   'references.journalMetrics.import.match.byIssn': '依 ISSN 比對',
   'references.journalMetrics.import.match.byNormalizedName': '依刊名比對',
-  'references.journalMetrics.import.match.byAlias': '依已合併的別名比對'
+  'references.journalMetrics.import.match.byAlias': '依已合併的別名比對',
+  'references.attachmentCurrent': '目前',
+  'references.attachmentReplacedOn': '{date} 被替換',
+  'references.attachmentAttachedOn': '{date} 掛載'
 }

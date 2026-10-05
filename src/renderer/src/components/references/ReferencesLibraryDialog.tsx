@@ -1175,11 +1175,49 @@ export function ReferencesLibraryDialog({
                                   ? ` · ${t('references.provenanceBadge')}`
                                   : ''}
                               </p>
+                              {/* IC25: the attachment history the repository already sends with the list. Its
+                                  semantics decide the shape: `pdfVersions` holds the versions a later attachment
+                                  DISPLACED (the current one lives on the record itself, named by the chip
+                                  above), so the list starts at the first replacement and every entry in it is a
+                                  replaced version. The rows are deliberately not clickable: there is no
+                                  attachment-read channel yet, and a control that cannot open anything would be
+                                  a dead one. */}
+                              {reference.pdfVersions && reference.pdfVersions.length > 0 ? (
+                                <ul
+                                  className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[var(--muted-foreground)]"
+                                  data-testid="reference-attachment-history"
+                                >
+                                  {reference.pdfVersions.map((version) => (
+                                    <li key={version.id} className="flex items-center gap-1">
+                                      <span className="text-[var(--foreground)]">
+                                        {t('references.attachmentReplacedOn').replace(
+                                          '{date}',
+                                          new Date(version.replacedAt ?? version.attachedAt)
+                                            .toISOString()
+                                            .slice(0, 10)
+                                        )}
+                                      </span>
+                                      <span>
+                                        {t('references.attachmentAttachedOn').replace(
+                                          '{date}',
+                                          new Date(version.attachedAt).toISOString().slice(0, 10)
+                                        )}
+                                      </span>
+                                      <span className="rounded border border-[var(--border)] px-1">
+                                        {version.contentHash
+                                          ? version.contentHash.slice(0, 8)
+                                          : version.managedFileId.slice(-8)}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
                             </div>
                             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                               {reference.pdfManagedFileId ? (
                                 <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
-                                  PDF · {reference.pdfManagedFileId.slice(-8)}
+                                  {t('references.attachmentCurrent')} ·{' '}
+                                  {reference.pdfManagedFileId.slice(-8)}
                                   <button
                                     type="button"
                                     title={t('references.detachPdf')}

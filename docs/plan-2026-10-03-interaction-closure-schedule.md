@@ -129,7 +129,7 @@
 
 | 单元 | 内容                                                   | 落点                                                                           |
 | ---- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| IC25 | 文献**附件历史**（被替换 PDF 可回看）                  | `references/repository.ts:181-206` 已返回 `pdfVersions`                        |
+| IC25 | 文献**附件历史**（被替换 PDF 可回看） ✅ **已落地且真机读数已取（2026-10-05）** | `ReferencesLibraryDialog.tsx`：条目的元信息行下渲染被替换版本（替换日/挂载日/哈希片段）；记录原有的 PDF 芯片标为「当前」 | **真机 `e2e/certification/reference-attachment-history.spec.ts` 1 passed (11.8s)**：两次 `attachPdf`（走应用自己的写路径）⇒ `count=1 current=managed-second rows=[{managedFileId:'managed-first', replacedAt:…}]`；真 UI 打开文献库读到 `"replaced 2026-10-05 attached 2026-10-05 ed-first"`。**读数钉出真语义并据此改了界面**：`pdfVersions` **只装被顶替的版本**，当前那份在记录本身上（不进历史）⇒ 原先"多于 1 条才显示"的闸门与"当前"那一档都是死代码，已改为**从第一次替换起显示**且每条都标"被替换"、"当前"标回芯片。**两次夹具失败也入档**：直插 SQLite 的行读不回来（Prisma 的 `DateTime` 映射不是原生 INSERT 的文本格式）、`references.list` **按 projectId 过滤**（传空串读不到） |
 | IC26 | 文献 **notes** 可读写（现无 IPC、窗口不显示）          | `references/repository.ts:404-419`；`references/ipc.ts`                        |
 | IC27 | 期刊指标**整表同一指标**导入（`defaultKind`）          | `journal-metrics.ts:44-45,283-284`；`JournalMetricsImport.tsx:56-58`           |
 | IC28 | 期刊指标**上限**筛选（`maxImpactFactor`）              | `journal-metrics-overview.ts:51-52,160-165`；`JournalMetricsPanel.tsx:317-326` |

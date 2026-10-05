@@ -4132,5 +4132,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.created': 'новый журнал',
   'references.journalMetrics.import.match.byIssn': 'совпадение по ISSN',
   'references.journalMetrics.import.match.byNormalizedName': 'совпадение по названию',
-  'references.journalMetrics.import.match.byAlias': 'совпадение по объединённому псевдониму'
+  'references.journalMetrics.import.match.byAlias': 'совпадение по объединённому псевдониму',
+  'references.attachmentCurrent': 'текущий',
+  'references.attachmentReplacedOn': 'заменён {date}',
+  'references.attachmentAttachedOn': 'прикреплён {date}'
 }

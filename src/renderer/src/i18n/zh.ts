@@ -3880,7 +3880,10 @@ export const zh = {
   'references.journalMetrics.import.created': '新建刊物',
   'references.journalMetrics.import.match.byIssn': '按 ISSN 匹配',
   'references.journalMetrics.import.match.byNormalizedName': '按刊名匹配',
-  'references.journalMetrics.import.match.byAlias': '按已合并的别名匹配'
+  'references.journalMetrics.import.match.byAlias': '按已合并的别名匹配',
+  'references.attachmentCurrent': '当前',
+  'references.attachmentReplacedOn': '{date} 被替换',
+  'references.attachmentAttachedOn': '{date} 挂载'
 }
 
 export type ZhKey = keyof typeof zh

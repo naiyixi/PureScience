@@ -4052,5 +4052,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.import.created': '새 저널',
   'references.journalMetrics.import.match.byIssn': 'ISSN으로 일치',
   'references.journalMetrics.import.match.byNormalizedName': '저널 이름으로 일치',
-  'references.journalMetrics.import.match.byAlias': '병합된 별칭으로 일치'
+  'references.journalMetrics.import.match.byAlias': '병합된 별칭으로 일치',
+  'references.attachmentCurrent': '현재',
+  'references.attachmentReplacedOn': '{date} 교체됨',
+  'references.attachmentAttachedOn': '{date} 첨부됨'
 }

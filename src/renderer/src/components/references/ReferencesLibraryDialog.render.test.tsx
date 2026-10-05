@@ -43,6 +43,9 @@ vi.mock('@/i18n', () => ({
       'references.pdfImport.summaryStoppedWithFailures':
         'Stopped · imported {imported} PDF file(s), {failed} failed.',
       'references.attachPdf': 'Attach PDF',
+      'references.attachmentCurrent': 'current',
+      'references.attachmentReplacedOn': 'replaced {date}',
+      'references.attachmentAttachedOn': 'attached {date}',
       'references.addedToCollection': 'Added to collection.',
       'common.delete': 'Delete',
       'common.cancel': 'Cancel'
@@ -181,6 +184,49 @@ describe('ReferencesLibraryDialog collections', () => {
       },
       projectFiles: { listFiles }
     } as unknown as typeof window.api
+  })
+
+  // IC25: the attachment history the repository already sends with the list. Its semantics decide the shape —
+  // `pdfVersions` holds the versions a later attachment displaced (the current one is on the record itself,
+  // named by the chip), so one replacement is enough to have something to show.
+  it('shows the attachment history once a PDF has been replaced (IC25)', async () => {
+    vi.mocked(window.api.references.list).mockResolvedValue([
+      {
+        ...reference,
+        pdfManagedFileId: 'managed-new',
+        pdfVersions: [
+          {
+            id: 'version-1',
+            managedFileId: 'managed-old',
+            contentHash: 'aaaaaaaa11',
+            attachedAt: Date.UTC(2026, 8, 1),
+            replacedAt: Date.UTC(2026, 9, 5)
+          }
+        ]
+      }
+    ] as never)
+
+    await render()
+
+    const history = document.querySelector('[data-testid="reference-attachment-history"]')
+    expect(history).not.toBeNull()
+    const text = history?.textContent ?? ''
+    // The displaced version: when it was replaced, when it had been attached, and its own hash prefix.
+    expect(text).toContain('replaced 2026-10-05')
+    expect(text).toContain('attached 2026-09-01')
+    expect(text).toContain('aaaaaaaa')
+    // The current attachment is named on the chip instead (the newest version is not in this list).
+    expect(document.body.textContent).toContain('current')
+  })
+
+  it('stays quiet for a record that never had a PDF replaced (IC25)', async () => {
+    vi.mocked(window.api.references.list).mockResolvedValue([
+      { ...reference, pdfManagedFileId: 'managed-only' }
+    ] as never)
+
+    await render()
+
+    expect(document.querySelector('[data-testid="reference-attachment-history"]')).toBeNull()
   })
 
   afterEach(() => {
