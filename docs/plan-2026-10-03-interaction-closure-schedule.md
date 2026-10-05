@@ -171,7 +171,7 @@
 | IC34 | 存储信息读取失败的错误态 + 重试 ✅ **已落地 + 真机读数已取（2026-10-05）** | `StoragePanel.tsx`：读改为三态（loading/ready/error）+ 重试；「改变位置」入口改为**显式要求就绪**（原先只看 `info !== null`）⇒ 失败时不再"永久 Loading 且入口消失"。i18n 1 键 ×9 | **真机 `e2e/certification/storage-info-read-failure.spec.ts` 1 passed (9.8s)**：把 `settings.dataRoot` 指到 `chmod 000` 的目录并重启 ⇒ 面板**仍能渲染**该根且入口可用（`1 passed`）；修复权限后重挂载 ⇒ 真 IPC **重读**到修复后的路径。**读数同时钉出两条关于修复前提的事实（已写进 spec 头）**：① `storage.getInfo()` 内部**每一条可能失败的调用都被兜住**（可用空间、设置/状态块），唯一无守卫的用量遍历也**内部降级** ⇒ 坏根下主进程**不会拒绝**（实测 `ok`）；② 渲染端**无法覆盖桥接**（`contextBridge` 对象冻结，实测赋值被静默忽略）⇒ **错误态在文件系统层面不可达**（只有主进程故障/通道故障才触达）⇒ 该处理是**预防性**的，其错误+重试半以渲染套件为证（`StoragePanel.render.test.tsx` 两条用例：拒绝时具名并扣住入口、重试成功后回到真内容），**不冒充真机读数** |
 | IC35 | 迁移 `staleEvidence` **明细展开**（path/runId/project/session） | `shared/storage.ts:65-78`；`StorageMigrationModal.tsx:330-342`    |
 | IC36 | **视觉转译证据**只读面（哪张图由哪个模型转译成什么）            | `vision/vision-evidence-repository.ts:50-73` 只写不读             |
-| IC37 | 支持包导出回读**体积与脱敏条数**                                | `support-bundle.ts:52-57`；`GeneralPanel.tsx:103-115`             |
+| IC37 | 支持包导出回读**体积与脱敏条数** ✅ **已落地 + 真机读数已取（2026-10-05）** | `GeneralPanel.tsx`：导出成功的消息补上主进程**早已返回**的 `bytes`/`redactions`（体积走 `shared/update` 的共享 `formatBytes`，不新增第四份格式化器；两个数缺省时降级为只有路径）。i18n 1 键 ×9 | **真机 `e2e/certification/support-bundle-export-readback.spec.ts` 1 passed (5.5s)**：只打桩系统保存对话框（夹具唯一接缝），导出本身全真 ⇒ 面板读到 `"…— 235.9 KB, 314 fields redacted"`，而与**磁盘上文件的实际大小** `241563 bytes`（同一共享格式化器渲染为 `235.9 KB`）**交叉核对一致** ⇒ 不是两处引用同一个桩。既有渲染用例的桩本就带 `bytes/redactions` 却只断言路径 ⇒ 按「只紧不放」补上这两条断言 |
 | IC38 | 远程访问关闭态仍显示已保存的公网地址（只读+复制+失效说明）      | `shared/remote-access.ts:53-54`；`RemoteControlPanel.tsx:432-465` |
 
 ### 批次 8 · v1.87.0 —— 算力与引擎（4 条）

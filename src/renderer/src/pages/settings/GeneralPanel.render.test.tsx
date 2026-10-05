@@ -3,6 +3,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
+import { formatBytes } from '../../../../shared/update'
+
 import { useUpdateStore } from '@/stores/update-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useThemeStore } from '@/stores/theme-store'
@@ -338,6 +340,10 @@ describe('GeneralPanel support bundle', () => {
 
     expect(exportSupportBundle).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain('/tmp/support-bundle-20260928-123456.tar.gz')
+    // The result has always carried both numbers; the message used to show only the path, so a reader had to
+    // open the archive to learn the size or how much had been stripped. Both must reach the user now.
+    expect(container.textContent).toContain(formatBytes(4096, 'en'))
+    expect(container.textContent).toContain('2 fields redacted')
   })
 
   it('surfaces a refused bundle as an error instead of a saved path', async () => {

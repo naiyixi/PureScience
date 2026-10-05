@@ -4177,5 +4177,6 @@ export const en: Record<ZhKey, string> = {
   'settings.egressLoadFailed': 'Could not read the notebook network settings.',
   'settings.egressSaveFailed':
     'Could not save the notebook network settings — the change was reverted.',
-  'settings.storageInfoFailed': 'Could not read the data location information.'
+  'settings.storageInfoFailed': 'Could not read the data location information.',
+  'settings.supportBundleDetail': '{size}, {redactions} fields redacted'
 }

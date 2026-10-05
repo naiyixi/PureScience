@@ -3841,5 +3841,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.historyEmpty': '還沒有 claim。',
   'settings.egressLoadFailed': '無法讀取筆記本網路設定。',
   'settings.egressSaveFailed': '無法儲存筆記本網路設定 — 變更已還原。',
-  'settings.storageInfoFailed': '無法讀取資料位置資訊。'
+  'settings.storageInfoFailed': '無法讀取資料位置資訊。',
+  'settings.supportBundleDetail': '{size}，脫敏 {redactions} 處'
 }

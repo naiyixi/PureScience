@@ -12,6 +12,7 @@ import { useSettingsStore } from '@/stores/settings-store'
 import type { CloseActionPreference } from '../../../../shared/window-controls'
 import type { CliLauncherStatus } from '../../../../shared/cli'
 import { APP } from '../../../../shared/app-config'
+import { formatBytes } from '../../../../shared/update'
 import { AppIconSection } from './AppIconSection'
 import { AppVersionSection } from './AppVersionSection'
 import { SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
@@ -103,7 +104,16 @@ const GeneralPanel = (): React.JSX.Element => {
       const result = await window.api.diagnostics?.exportSupportBundle()
 
       if (result?.exported && result.path) {
-        setBundleMessage(t('settings.supportBundleSaved').replace('{path}', result.path))
+        // The main process already reports what it wrote and how much it stripped; showing only the path made
+        // the user open the file to learn either. Both numbers are optional on the result, so the message
+        // degrades to the path when a build does not report them.
+        const detail =
+          typeof result.bytes === 'number' && typeof result.redactions === 'number'
+            ? ` — ${t('settings.supportBundleDetail')
+                .replace('{size}', formatBytes(result.bytes, lang))
+                .replace('{redactions}', String(result.redactions))}`
+            : ''
+        setBundleMessage(t('settings.supportBundleSaved').replace('{path}', result.path) + detail)
       } else if (result?.error) {
         setMessage(result.error)
       }

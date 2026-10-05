@@ -4154,5 +4154,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.egressLoadFailed': 'Не удалось прочитать сетевые настройки ноутбука.',
   'settings.egressSaveFailed':
     'Не удалось сохранить сетевые настройки ноутбука — изменение отменено.',
-  'settings.storageInfoFailed': 'Не удалось прочитать сведения о расположении данных.'
+  'settings.storageInfoFailed': 'Не удалось прочитать сведения о расположении данных.',
+  'settings.supportBundleDetail': '{size}, скрыто полей: {redactions}'
 }

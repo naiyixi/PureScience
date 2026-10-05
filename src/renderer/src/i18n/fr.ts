@@ -4253,5 +4253,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.egressLoadFailed': 'Impossible de lire les paramètres réseau du notebook.',
   'settings.egressSaveFailed':
     'Impossible d’enregistrer les paramètres réseau du notebook — la modification a été annulée.',
-  'settings.storageInfoFailed': "Impossible de lire les informations sur l'emplacement des données."
+  'settings.storageInfoFailed':
+    "Impossible de lire les informations sur l'emplacement des données.",
+  'settings.supportBundleDetail': '{size}, {redactions} champs masqués'
 }
