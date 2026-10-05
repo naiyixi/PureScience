@@ -761,3 +761,38 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 **新入档两条纪律**（技能 `references/e2e-certification-lane.md`）：① 快推互相取消 ⇒ 认最后一笔、汇报时逐条点名"哪笔有判决／哪笔只是被取消"；② Windows `database` 分片 EBUSY 抖动的形态与判定顺序（先看失败文件的最后改动者；与本批无关则归因车道、**不改产品**）。
 
 **本段交付小结（会话，v1.86.0 之后）**：IC51 ✅ 真机 10.5s · IC45 ✅ 真机 11.6s · IC44 ✅ 真机 5.6s · IC49 ✅ 真机 6.9s（核实后按「架构已覆盖」结案）· IC48 ✅ 真机 11.4s · IC50 ✅ 渲染 52 passed（**真机读数具名立案**，未跑绿的 spec 已按仓规删除、未落树）。全段未触碰执行器在飞的 `src/main/compute/*`、`src/preload/*`、`src/shared/renderer-contract-catalog.ts`、`WorkspaceMessageScroller.tsx`。
+
+## 十八、本轮追加（执行器，2026-10-06 02:0x–）——IC39 远程任务取消落地（批次 8 首条）
+
+**开局判定（防重做）**：`HEAD == origin/main == 43d743d7`；会话已推 IC41（`a15f41fa` + 读数 `49aeb883`）与 IC43–IC51（§十七）；
+本轮**只**碰 `src/main/compute/*`、`src/preload/*`、`src/shared/*` 契约面与两个渲染文件（`JobDetailModal.tsx` / `JobStatusBadge.tsx` / `WorkspaceMessageScroller.tsx`），与 §十七 点名的会话路径不相交。
+
+**本轮定位到的真因（解开会话在 IC50 段记的「在飞改动 + `build:e2e` ⇒ 应用启动即挂 `firstWindow`」）**：
+`src/main/application-command-composition.ts` 的 `certifyInventory()` 在**启动路径**上按硬计数校验（装配根 `ipc.ts:3255` 起，不匹配即抛
+`Application command inventory mismatch`）⇒ 新增一条应用命令而不同步计数 = **窗口永不出现**，且**无任何错误 UI**。
+计数已按实测逐项追平：内部 356→**357**、本地 Web 354→**355**、远程拒绝 123→**124**（远程 Web 231 不动），并补了「+1」注释说明为什么这条通道落在 fail-closed 集上。
+**教训**：计数/签名这类 **no-op 与真跑完全同形**，门禁必须读**计数**而不是「看列表」——否则一条「看起来在守」的校验会以「应用打不开」的形式红在别处。
+
+**交付（IC39：取消排队 / 运行中的远程任务）**
+
+| 面 | 内容 |
+| --- | --- |
+| 唯一 kill 实现 | 新 `src/main/compute/remote-job-kill.ts`（`parseRemoteHandle` / `buildRemoteKillCommand` / 10s 超时 / 64B 输出预算）；`job-poller.ts` 的兜底超时 kill 改为复用（原先两处各写一份，必漂移） |
+| 终态单一来源 | `shared/compute.ts` 增 `'cancelled'` + `TERMINAL_COMPUTE_JOB_STATUSES` / `isTerminalComputeJobStatus`；并发管理器据此**释放槽位**、时间线据此保留、`getJobResult` 据此判终态 |
+| `cancelJob` | 终态 ⇒ 具名拒绝；有 handle ⇒ 真发 kill（slurm `scancel` / 直连 SIGTERM+SIGKILL），**送不到就拒绝且不改行**；无 handle ⇒ `sharedDispatchTracker` 判活（在飞 ⇒ `starting`）；关行后**回读一次**，只有仍是 `cancelled` 才报成功；不 harvest、不通知 |
+| 新通道 | `compute:jobs:cancel`（**LOCAL 档** fail-closed：远程配对浏览器不得停本机远程任务）；契约连锁按失败原文逐个追平；`gen:web-api-map` 重跑后与手改逐字一致 |
+| 界面 | `JobDetailModal` 详情头「取消任务」按钮（仅非终态）+ 按主进程**实际答复**渲染四条结果（已取消 / 已完成无可停 / 主机不可达 + 原始报错 / 仍在准备），`role=status` 与 `role=alert` 分开；`JobStatusBadge` 中性 `cancelled` 徽标；**7 键 ×9 语** |
+
+**验证（全部实跑）**：定向 + 契约族 `src/main/compute`、`src/shared`、`src/preload`、`src/main/web-service`、`src/renderer/web`、composition/data-content = **120 文件 / 1327 passed**；
+新增用例 `remote-job-kill` 7 条、`ComputeService.cancelJob` **11 条**、渲染 **8 条**；
+**全量单测 1205 files / 15695 passed | 197 skipped（零失败）**；双 typecheck 净；`eslint --no-cache .` **0 error**；`bash scripts/pre-push-checks.sh` 全通过。
+
+**并发事实（入档）**：IC39 的七条 i18n 键在树上未提交时，被会话的 IC43 提交 `e99258bd` 一并带走（跨执行体 `git add`）。
+本轮已核实九语言文件 × 七键**齐备**、zh ≠ en、zh-Hant 无简体字 ⇒ 内容无丢失；但这是「**禁止 `git add -A`**」那条纪律的又一实证。
+
+**真机读数具名立案（未取）**：开机读数 swap 8.57G/10.24G、空闲物理页 ~113MB（`vm_stat` 6929 页 × 16KB）⇒ 无 `build:e2e` + Electron 的安全余量。
+**配方（隔离实例，三件齐）**：`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT`（**同时**把 `settings.dataRoot` 指到隔离目录）+ 独立端口；
+按应用自己的存储形状预置一条 `ComputeJob`（`status='running'`、`remote_handle` 指向不存在的主机）+ 一条不可达 `ComputeHost` ⇒ 走真入口点「取消任务」
+⇒ 断言 banner 原文**且回读该行仍为 running**（证明「送不到不改行」）。**要证「远端进程真被 kill」需要一台可 SSH 的替身主机**（本机未开远程登录）⇒ 该半以单测 + 主进程答复为准，不冒充真机。
+
+**下一步**：批次 8 余下 IC40（后台交付 needs-attention 全局可见）与 IC42（引擎面板：可用性矩阵 + 权重下载同意门与进度，零入口）。
