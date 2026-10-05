@@ -20,7 +20,8 @@
 - 全量单测 **1203 文件 / 15651 passed（196 skipped，零失败）**、双 typecheck 净、全仓 `eslint --no-cache .` **0 error**（115 warning，均在基线内）。
 - 本版六条里 **三条的真机取证各抓出单元测试看不见的真缺陷并当批修掉**（IC25 的死代码闸门、IC26 漏注册的通道、IC30 的窗口不渲染结果），一条按「架构已覆盖」结案（IC28），一条在读数里顺手修掉上一单元的漏项（IC29 修 IC26 的族清单）。
 - **全量门禁又抓出三处单元测试看不见的红并当批修掉**：IC29 新增的渲染子树让既有面板渲染测试的 `window.api` 桩炸掉（缺 `listJournalClaims`，抛在 passive effect 里 —— 补桩，不在组件里加防御）；`fr`/`de` 两处译法与英文同形被多语言门禁判为"未翻译"（**改译法而不是放宽 `LATIN_COGNATES` 白名单**：`Notes de lecture` / `Remarque` / `Zeitschrift`）。
-- 两条定位教训入档：对话框里与**头按钮同名**的按钮会让 `getByRole` 命中两个（改 `.locator('visible=true').first()`）；按 **placeholder** 抓控件可能落到相邻的建议输入上 —— 症状是「按钮点了没反应」，真因是主字段仍为空、处理器按守卫**静默返回**。
+- **发版车道又抓到两处真回归并当批修掉**：文献行的 PDF 芯片在 IC25 里被换成 `current · <hash>`，把「这是个 PDF」这个有信息量的词丢了（改为 `PDF · current · <hash>`，旧断言与新语义同时成立）；指标面板的年份筛选与 IC29 的订正表单撞名（给筛选区加 `data-testid="journal-metrics-filters"`，把既有 spec 的两处定位**收窄到该区**，只紧不放）。另有两条车道抖动（PDF 批注浮层、`settings-general.png` 像素差）本机隔离复跑**均绿**，按负载抖动记档，既不谎报通过也不当回归。
+- 两条定位教训入档：对话框里与**头按钮同名**的按钮会让 `getByRole` 命中两个（改 `.locator('visible=true').first()`）；按 **placeholder** 抓控件可能落到相邻的建议输入上 —— 症状是「按钮点了没反应」，真因是主字段仍为空、处理器按守卫**静默返回**。另记一条：**Electron 的 e2e 跑的是 `build:e2e` 的产物**，只跑 `build:web` 会让读数落在陈旧渲染包上（表现为"改动没生效"的假红）。
 
 ### 明确没做（本版不承诺）
 
