@@ -744,4 +744,6 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **门禁**：全量单测 **1204 文件 / 15663 passed（196 skipped，零失败）**、双 typecheck 净、仓规五查通过（仅"v1.86.0 尚未发布"这条不阻断提醒）。
 
+**发版车道判决（对 tag 提交 `0cb1df43`）**：Release ✅ success（21 资产、非草稿、非预发布、正文 16952 字符、**Latest**）、Windows Full Test ✅ success、**Nightly ❌ failure** —— 具名作业 `build / Build macos-arm64` 第 23 步 `Enforce platform certification`，真凶是 `e2e/certification/journal-claim-correction.spec.ts:15:5`（**预存竞争**，非本批改动）：`toBeVisible()` 对本来就在场的历史区立刻为真 ⇒ 紧随的 `innerText()` 读到订正落地前的快照（实收 `"impact-factor · 3.5 · 2024 · Publisher table"`）。本机 3 遍复现 **2 红 1 绿** ⇒ 真竞争；修法是**收紧**（先 `toContainText('Corrected by hand')` 再取快照），修后 3/3 绿，提交 `ec6ffa7e`。**下一步：等 `ec6ffa7e` 的 Nightly 转绿后删 tag 重建**（让 tag 自身的车道集全绿；重建前把本条记入 CHANGELOG 与队列档）。
+
 **下一个未被认领的单元 = IC39**（取消排队 / 运行中的远程任务；当前只有 poller 超时后内部 kill）。

@@ -24,6 +24,7 @@
 - 读数各抓到的真事实：IC38 的块原先落在"关闭时够不着"的分支（渲染测试当场逼出）；IC36 六处 pin 按失败原文逐个追平、生成物未变佐证档位；IC35 更新两条既有断言；IC34 钉出"主进程兜住 + 桥接冻结 ⇒ 错误态不可达"；IC31 钉出"坏库退化为空值 ⇒ 读不拒绝"。
 - 一条**配方更正**：`ELECTRON_NATIVE_COMMAND_NAMES` **不该**为新通道加名 —— 该常量只装组合层自己安装的应用命令，加了会当场报 `unexpected Electron-native commands`；纯 IPC 处理器不进该清单。
 - 一条测试取法教训入档：`sessions/<projectId>/` 下 `<id>.json` 旁边就是 `<id>.json.summary.json`（无 `id` 字段）⇒ "取第一个 `.json`"必读到摘要。
+- **发版车道抓出一处预存竞争并当批修掉**：`e2e/certification/journal-claim-correction.spec.ts`（IC29 的作品）在 tag 的 mac 认证车道红 —— 根因是 `toBeVisible()` 对**本来就在场**的历史区立刻为真，紧随其后的 `innerText()` 因此读到**订正落地前**的快照（实收 `"impact-factor · 3.5 · 2024 · Publisher table"`）。本机 3 遍复现 **2 红 1 绿** ⇒ 真竞争，非 CI 独有；**该 spec 在 v1.85.0 发版时全绿因此带运气成分**。修法是**收紧**：先 `await expect(history).toContainText('Corrected by hand')`（会重试）再取快照，修后本机 **3/3 绿**。通则已入档：凡 `innerText()`/`textContent()`/`page.evaluate()` 这类一次性读，前面必须有一条针对「它要断的那件事」的自动重试断言。
 
 ### 明确没做（本版不承诺）
 
