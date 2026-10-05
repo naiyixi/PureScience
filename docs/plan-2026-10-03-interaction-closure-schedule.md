@@ -125,7 +125,11 @@
 | IC23 | **连接测试**（探活 + 工具清单预览） ✅ **已落地且真机读数已取（2026-10-05）** | 主进程：新通道 `settings:test-custom-server`（复用活体 `listTools`，把失败**当作结果**返回而非空清单；workflow 拥有者故意不挂钩子——探测不改持久状态）；共享类型只承载数据（句子由渲染端 9 语组装）；详情页工具区加「连接测试」按钮 + 结果行 | **真机 `e2e/certification/connector-test-connection.spec.ts` 1 passed (5.4s)**：真 stdio 夹具 ⇒ `ok :: "The server answered with 2 tools."`；指向不存在命令 ⇒ `failed :: "The server did not answer: spawn this-command-does-not-exist-anywhere ENOENT"`。**写读数时抓出并修掉 IC19 遗留缺口**：服务器起不来会让它自己的详情页报错（活体清单没兜错）⇒ 改为尽力而为（失败降级为空列表），失败由连接测试具名说出（补单测钉住）。契约 pin 七处按实测追平（内部 353 / 本地 Web 351 / 远端 Web 228 / 契约目录 465 / preload 465·运行时 238 / 本地 Web 可调用面 389 / 设置集成命令 24） |
 | IC24 | **批量启停**纳入自定义服务器 ✅ **已落地且真机读数已取（2026-10-05）** | `ConnectorsPanel.tsx`：批量作用域改为**两族之和**（内置 + 自定义）；自定义走自己的逐条 setter，不能启用的**按名给出原因**（复用徽标文案，零新增键），配 `SetConnectorsEnabledItemResult` 的逐条结果 | **真机 `e2e/certification/connector-bulk-custom-servers.spec.ts` 1 passed (6.7s)**：按钮读作「Enable all 29」；批量启用后 `Probe MCP: true` 而两条同名冲突的 `Broken Probe: false`，且结果列表按名给出「Unavailable」。**取证顺带发现**：批量路径此前**在 jsdom 里从未被测试**（我第一次给它写渲染测试就暴露 `window.api` 未 stub ⇒ 该用例成为这条路径的第一个测试）；"缺字段"的不可用态再次被载入丢弃（夹具必须用**同名冲突**这个能活过载入的形态） |
 
-### 批次 6 · v1.86.0 —— 文献 / 期刊闭环（6 条）
+### 批次 6 · v1.85.0 —— 文献 / 期刊闭环（6 条）✅ **已发布（2026-10-05）**
+
+> **版本号更正**：本档原按批次标签写为 v1.86.0。实际发布位点取自 `gh release list` 的 Latest（当时为 v1.84.0）与 `package.json`(1.84.0)，且 v1.84.0 的 Release 正文**已含批次 5** ⇒ 批次 6 是 tag 以来唯一未发布的内容 ⇒ 按「一批一版但**不照批次标签连抬号**」的口径装进 **v1.85.0**。
+> **发布读数**：Release 页 `draft=false`、非预发布、**21 资产**（四平台 dmg/zip/AppImage/deb/setup.exe + blockmap + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest*.yml`）、标记为 **Latest**；`Release` / `Nightly` / `Windows Full Test` 三条车道**全绿**；正文 21,339 字符（成熟度自陈 + 六条 + 质量与证据口径 + 明确没做，非桩）。
+> **首发红的五处真回归**（三轮车道各抓出、均已当批修掉）：IC29 新渲染子树打断既有面板渲染测试的 `window.api` 桩；`fr`/`de` 译法与英文同形被多语言门禁判为未翻译（改译法、不放宽白名单）；文献行 PDF 芯片措辞退步（恢复 `PDF` 并保留 `current`）；指标面板年份筛选与订正表单撞名（筛选区加 `data-testid`，既有 spec 只紧不放）；设置页视觉基准与发布版本解耦（遮蔽整个「App version」区）。两条抖动（PDF 批注浮层、若干 e2e）本机隔离复跑均绿、记档不谎报。
 
 | 单元 | 内容                                                   | 落点                                                                           |
 | ---- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
