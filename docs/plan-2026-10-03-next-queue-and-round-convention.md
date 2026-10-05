@@ -713,7 +713,10 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **验证（本机，全部实跑）**：定向 vitest（`src/renderer/src/pages/settings` + `src/renderer/src/i18n` + `src/renderer/web`）**67 文件 / 714 passed**；
 `node scripts/i18n-coverage.mjs` 九语 **3618 键 / 100.0%**；`typecheck` node + web **双绿**（用 `NODE_OPTIONS=--max-old-space-size=3072`，本机内存吃紧下的工具进程堆上限）；`eslint --no-cache .` （修完上面那条 error 后）**0 error / 118 warning**。
-`bash scripts/pre-push-checks.sh` 结论见本轮汇报。CI 结论见本轮汇报。
+`bash scripts/pre-push-checks.sh` **全过**（品牌扫描 / README 版本 / CHANGELOG / 双语同步）。
+**CI 判决（实测，取消 ≠ 绿）**：本轮推送 `dc34bfd5` 的两条车道（`Nightly` 37291995233 / `Windows Full Test` 37291994731，17:44 排队）**在 17:54 被会话的 `24730be1` 推送按 `cancel-in-progress` 顶掉**（`completed/cancelled`）⇒ **无判决**；IC31 的 CI 证据只能由「包含它的最新绿色 `Nightly`」给出（CI 跑整棵树而不是 diff），即 `24730be1`（37293071065 / 37293070554）或其后继。**不要再为 `dc34bfd5` 重跑。**
+
+**⚠️ 并发实测（本轮咬到一次）**：会话在**同一棵工作树**里工作 —— 我 17:44 推送 `dc34bfd5` 后，会话 17:54 推了 `24730be1 feat(settings): IC34 存储信息读失败有具名错误与重试（真机读数已取）`（含 `e2e/certification/storage-info-read-failure.spec.ts` 103 行 + 排期档行），**恰好是我 §十三 计划里的下一条**；随后会话继续在飞 **IC37**（`GeneralPanel.tsx` 的支持包体积/脱敏条数 + 新键 `settings.supportBundleDetail`，树此刻脏）。⇒ **IC34 与 IC37 都不要重做**（防重做规则）。
 
 **⏳ 真机读数未取（具名立案）**：本机 swap **10.06 G / 11.26 G 已用**、空闲物理页 35,481（≈581 MB）——比 §十三 记的 ~67 MB 宽松，但仍不足以跑 `build:e2e`（8 GB 堆）+ Electron（本机有堆把机器打崩的前例），故**未改 `e2e/certification/**`**。
 **配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在 `e2e/certification/` 开 `egress-error-states.spec.ts` —— 骨架照 `network-panel.spec.ts`（若不存在则照 `settings-download-detail.spec.ts` 的设置页骨架）：
@@ -721,6 +724,7 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 ② 让读失败只能用**替身**方式——渲染层的 `getEgress` 走主进程通道，真机上无法让它拒绝，因此这条要**如实写明：真机只读覆盖"正常路径 + 重试按钮在场"这一半**，写失败的**回滚**那半由渲染用例覆盖（jsdom），**不许把 jsdom 写成真机**；
 ③ 若要做真机失败读数，可行路径是**在隔离实例里改配置根让它读到坏设置**（例如把 `settings.json` 的 egress 段写成非法形状，看主进程是否拒绝并让渲染端走 error 分支）——需先探针确认主进程对该形状的行为（拒绝 vs 兜底），**探针先行，别先写断言**。
 
-**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`——树干净（除那 2 张非我产生的 evidence PNG）且无 dev/build/test 进程 ⇒ 按 §十三 顺序取 **IC34**（存储信息读失败的错误态 + 重试；`StoragePanel.tsx:117-119` 读无 catch ⇒ `info` 恒 null ⇒ 含迁移唯一入口的整段永久不可达且不说原因；零新通道）；
-② 按完整 40 位 SHA 复查本轮推送的 `Nightly` + `Windows Full Test`（红了先读作业级注解归因）；
-③ 内存宽松时补 **IC27 / IC28 / IC30** 真机读数（配方见 §十一、§十、§十二）。
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，**先按提交把会话已完成的单元划掉**（2026-10-05 17:54 实测：**IC34 已由会话 `24730be1` 落地并带真机读数**；会话当时在飞 **IC37**）⇒ **这两个都不要再做**；
+② 树干净（除那 2 张非我产生的 evidence PNG）且无 dev/build/test 进程 ⇒ 按 §十三 顺序取**下一个未被认领的单元 = IC35**（迁移 `staleEvidence` 明细展开；`shared/storage.ts:66-78` 已带 kind/path/两个 digest/runId/project/session，弹窗只印条数 ⇒ 纯 UI、零新通道）；仍脏 / 仍活跃（**大概率如此——会话正在推 IC37 的收尾**）⇒ 继续旁路取证（只读，不改树，可顺手核 IC32/IC33/IC38 的缺口是否仍成立）；
+③ 按**完整 40 位 SHA** 复查 CI：`dc34bfd5` 两条车道**已被取消、无判决**（见上），改查 `24730be1`（Nightly 37293071065 / Windows 37293070554）及其后继的终态；红了先读**作业级注解**归因，不要重跑单个 job；
+④ 内存宽松时补 **IC27 / IC28 / IC30** 真机读数（配方见 §十一、§十、§十二）。
