@@ -91,6 +91,9 @@ const NotificationBell = ({
   const error = useNotificationInboxStore((state) => state.error)
   const refresh = useNotificationInboxStore((state) => state.refresh)
   const markRead = useNotificationInboxStore((state) => state.markRead)
+  const markSessionCompletionsRead = useNotificationInboxStore(
+    (state) => state.markSessionCompletionsRead
+  )
   const markAllRead = useNotificationInboxStore((state) => state.markAllRead)
 
   const updatePanelPosition = useCallback((): void => {
@@ -195,6 +198,11 @@ const NotificationBell = ({
     if (item.readAt === undefined) await markRead([item.id])
     const replayedApproval = await replayPendingApproval()
     if (item.sessionId) {
+      // Opening a session from the centre IS handling it: that session's completion notices are the same
+      // message the reader just acted on, so they are cleared here — the one place a person has explicitly
+      // named the session. Nothing is cleared in the background, and unread messages stay untouched
+      // (this action only clears completions).
+      await markSessionCompletionsRead([item.sessionId])
       useNavigationStore.getState().openSessionById(item.sessionId, 'notification')
       setOpen(false)
     } else if (item.projectId) {
