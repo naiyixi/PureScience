@@ -3907,7 +3907,10 @@ export const zh = {
   'settings.staleEvidenceKindChecksumMismatch': '清单校验和不匹配',
   'settings.staleEvidenceDigests': '记录 {recorded} · 期望 {expected}',
   'settings.staleEvidenceRun': '运行 {runId}',
-  'settings.staleEvidenceOwner': '项目 {project} · 会话 {session}'
+  'settings.staleEvidenceOwner': '项目 {project} · 会话 {session}',
+  'ws.egressApprovalExpiresIn': '{seconds} 秒后过期',
+  'ws.egressApprovalExpired':
+    '这条请求在有人答复之前就过期了 —— 代理已拒绝它，笔记本自己的输出里写着失败原因。'
 }
 
 export type ZhKey = keyof typeof zh

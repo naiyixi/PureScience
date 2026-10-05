@@ -4260,5 +4260,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': 'somme de contrôle du manifeste différente',
   'settings.staleEvidenceDigests': 'enregistré {recorded} · attendu {expected}',
   'settings.staleEvidenceRun': 'exécution {runId}',
-  'settings.staleEvidenceOwner': 'projet {project} · session {session}'
+  'settings.staleEvidenceOwner': 'projet {project} · session {session}',
+  'ws.egressApprovalExpiresIn': 'expire dans {seconds} s',
+  'ws.egressApprovalExpired':
+    "Cette requête a expiré avant d'être traitée — le proxy l'a refusée et la sortie du notebook en donne la raison."
 }

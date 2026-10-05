@@ -1218,6 +1218,14 @@ const WorkspacePage = ({
   // hidden by retiring the card — the proxy answers 403 to the child process, so the notebook's own output
   // carries the failure, and retrying raises a fresh card.
   const [pendingEgressApprovals, setPendingEgressApprovals] = useState<EgressApprovalRequest[]>([])
+  // Deadlines that already passed. Such a request is refused by the proxy, and the card states that instead of
+  // vanishing without a word.
+  const [expiredEgressApprovals, setExpiredEgressApprovals] = useState<string[]>([])
+  const expireEgressApproval = useCallback((requestId: string): void => {
+    setExpiredEgressApprovals((current) =>
+      current.includes(requestId) ? current : [...current, requestId]
+    )
+  }, [])
   const dropEgressApproval = useCallback((requestId: string): void => {
     setPendingEgressApprovals((current) => current.filter((item) => item.requestId !== requestId))
   }, [])
@@ -1235,7 +1243,7 @@ const WorkspacePage = ({
         setTimeout(
           () => {
             deadlines.delete(request.requestId)
-            dropEgressApproval(request.requestId)
+            expireEgressApproval(request.requestId)
           },
           Math.max(0, request.expiresInSec) * 1000
         )
@@ -1246,7 +1254,7 @@ const WorkspacePage = ({
       for (const timer of deadlines.values()) clearTimeout(timer)
       unsubscribe?.()
     }
-  }, [dropEgressApproval])
+  }, [expireEgressApproval])
   const respondToEgressApproval = useCallback(
     (requestId: string, decision: EgressApprovalDecision): void => {
       void window.api.egress
@@ -2987,6 +2995,7 @@ const WorkspacePage = ({
             pendingElicitations={visibleElicitations}
             onRespondToElicitation={respondToElicitation}
             pendingEgressApprovals={pendingEgressApprovals}
+            expiredEgressApprovals={expiredEgressApprovals}
             onRespondToEgressApproval={respondToEgressApproval}
             pendingAnnotations={pendingAnnotations}
             onRemoveAnnotation={removeAnnotation}

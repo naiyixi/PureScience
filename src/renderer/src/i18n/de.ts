@@ -4273,5 +4273,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': 'Prüfsummenabweichung im Manifest',
   'settings.staleEvidenceDigests': 'aufgezeichnet {recorded} · erwartet {expected}',
   'settings.staleEvidenceRun': 'Lauf {runId}',
-  'settings.staleEvidenceOwner': 'Projekt {project} · Sitzung {session}'
+  'settings.staleEvidenceOwner': 'Projekt {project} · Sitzung {session}',
+  'ws.egressApprovalExpiresIn': 'läuft in {seconds} s ab',
+  'ws.egressApprovalExpired':
+    'Diese Anfrage ist vor einer Antwort abgelaufen — der Proxy hat sie abgelehnt, und die Ausgabe des Notebooks nennt den Grund.'
 }

@@ -159,6 +159,7 @@ type ConversationPanelProps = {
   pendingPermissions: AcpPermissionRequest[]
   pendingElicitations: ElicitationRequestView[]
   pendingEgressApprovals: EgressApprovalRequest[]
+  expiredEgressApprovals: string[]
   onRespondToEgressApproval: (requestId: string, decision: EgressApprovalDecision) => void
   permissionProfile: PermissionProfileId
   permissionProfileState: SessionPermissionProfileState | undefined
@@ -271,6 +272,7 @@ const ConversationPanel = ({
   pendingElicitations,
   onRespondToElicitation,
   pendingEgressApprovals,
+  expiredEgressApprovals,
   onRespondToEgressApproval,
   pendingAnnotations,
   onRemoveAnnotation,
@@ -718,6 +720,7 @@ const ConversationPanel = ({
                     <EgressApprovalCard
                       key={request.requestId}
                       request={request}
+                      expired={expiredEgressApprovals.includes(request.requestId)}
                       onRespond={onRespondToEgressApproval}
                     />
                   ))}

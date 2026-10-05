@@ -299,6 +299,7 @@ const panelProps: Omit<PanelProps, 'activeSession'> = {
   pendingPermissions: [],
   pendingElicitations: [],
   pendingEgressApprovals: [],
+  expiredEgressApprovals: [],
   pendingAnnotations: [],
   permissionProfile: 'ask',
   permissionProfileState: undefined,

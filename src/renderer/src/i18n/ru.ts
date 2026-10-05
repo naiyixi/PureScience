@@ -4160,5 +4160,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': 'несовпадение контрольной суммы манифеста',
   'settings.staleEvidenceDigests': 'записано {recorded} · ожидалось {expected}',
   'settings.staleEvidenceRun': 'запуск {runId}',
-  'settings.staleEvidenceOwner': 'проект {project} · сессия {session}'
+  'settings.staleEvidenceOwner': 'проект {project} · сессия {session}',
+  'ws.egressApprovalExpiresIn': 'истекает через {seconds} с',
+  'ws.egressApprovalExpired':
+    'Этот запрос истёк до ответа — прокси отклонил его, а причина указана в выводе самого блокнота.'
 }

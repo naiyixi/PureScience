@@ -3847,5 +3847,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': '清單校驗碼不符',
   'settings.staleEvidenceDigests': '記錄 {recorded} · 期望 {expected}',
   'settings.staleEvidenceRun': '執行 {runId}',
-  'settings.staleEvidenceOwner': '專案 {project} · 工作階段 {session}'
+  'settings.staleEvidenceOwner': '專案 {project} · 工作階段 {session}',
+  'ws.egressApprovalExpiresIn': '{seconds} 秒後過期',
+  'ws.egressApprovalExpired':
+    '這條請求在有人回覆之前就過期了 —— 代理已拒絕它，筆記本自己的輸出裡寫著失敗原因。'
 }

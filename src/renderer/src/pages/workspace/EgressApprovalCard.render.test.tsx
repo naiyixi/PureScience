@@ -76,4 +76,41 @@ describe('EgressApprovalCard', () => {
     })
     expect(document.body.textContent).toContain('This applies to this one connection attempt only.')
   })
+
+  it('counts down the remaining validity it was handed, instead of leaving the reader to guess', () => {
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        root.render(
+          <EgressApprovalCard request={{ ...request, expiresInSec: 5 }} onRespond={vi.fn()} />
+        )
+      })
+      const countdown = document.body.querySelector('[data-slot="egress-approval-countdown"]')
+      expect(countdown?.textContent).toContain('expires in 5s')
+
+      act(() => {
+        vi.advanceTimersByTime(2000)
+      })
+      expect(countdown?.textContent).toContain('expires in 3s')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('states the timeout once the deadline passed, and offers no controls that could not settle anything', () => {
+    act(() => {
+      root.render(<EgressApprovalCard request={request} expired onRespond={vi.fn()} />)
+    })
+
+    const card = document.body.querySelector('[data-slot="egress-approval-card"]')
+    expect(card?.getAttribute('data-expired')).toBe('true')
+    // The deadline is named rather than left to the reader to infer from a card that vanished.
+    expect(
+      document.body.querySelector('[data-slot="egress-approval-expired"]')?.textContent
+    ).toContain('This request expired before it was answered')
+    // The host is still on screen (the reader can see what was refused) — but there is nothing to click.
+    expect(document.body.textContent).toContain('stats.example.com')
+    expect(document.body.querySelectorAll('button')).toHaveLength(0)
+    expect(document.body.querySelector('[data-slot="egress-approval-countdown"]')).toBeNull()
+  })
 })

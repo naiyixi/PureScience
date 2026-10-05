@@ -4146,5 +4146,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': 'マニフェストのチェックサム不一致',
   'settings.staleEvidenceDigests': '記録 {recorded} · 期待 {expected}',
   'settings.staleEvidenceRun': '実行 {runId}',
-  'settings.staleEvidenceOwner': 'プロジェクト {project} · セッション {session}'
+  'settings.staleEvidenceOwner': 'プロジェクト {project} · セッション {session}',
+  'ws.egressApprovalExpiresIn': '{seconds} 秒で失効',
+  'ws.egressApprovalExpired':
+    'このリクエストは応答される前に失効しました。プロキシが拒否しており、失敗の理由はノートブック自身の出力に書かれています。'
 }

@@ -4183,5 +4183,8 @@ export const en: Record<ZhKey, string> = {
   'settings.staleEvidenceKindChecksumMismatch': 'manifest checksum mismatch',
   'settings.staleEvidenceDigests': 'recorded {recorded} · expected {expected}',
   'settings.staleEvidenceRun': 'run {runId}',
-  'settings.staleEvidenceOwner': 'project {project} · session {session}'
+  'settings.staleEvidenceOwner': 'project {project} · session {session}',
+  'ws.egressApprovalExpiresIn': 'expires in {seconds}s',
+  'ws.egressApprovalExpired':
+    "This request expired before it was answered — the proxy refused it, and the notebook's own output names the failure."
 }

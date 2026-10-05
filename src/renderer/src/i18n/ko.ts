@@ -4080,5 +4080,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceKindChecksumMismatch': '매니페스트 체크섬 불일치',
   'settings.staleEvidenceDigests': '기록 {recorded} · 기대 {expected}',
   'settings.staleEvidenceRun': '실행 {runId}',
-  'settings.staleEvidenceOwner': '프로젝트 {project} · 세션 {session}'
+  'settings.staleEvidenceOwner': '프로젝트 {project} · 세션 {session}',
+  'ws.egressApprovalExpiresIn': '{seconds}초 후 만료',
+  'ws.egressApprovalExpired':
+    '이 요청은 응답되기 전에 만료되었습니다. 프록시가 거부했으며 실패 이유는 노트북 자체 출력에 기록됩니다.'
 }
