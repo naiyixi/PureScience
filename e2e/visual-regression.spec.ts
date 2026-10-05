@@ -57,6 +57,14 @@ test('keeps core desktop surfaces visually stable', async ({ app }) => {
     .click()
   await expect(settings.getByRole('heading', { name: 'Appearance' })).toBeVisible()
   const appVersion = settings.getByRole('region', { name: 'App version' })
+  // The version line itself carries no layout information and changes every release, while the packaged app and
+  // an unpackaged build report different values for it — so it is masked outright rather than compared. Hiding
+  // only the buttons and the <p> elements left the line itself visible, which is exactly the pixel difference
+  // that failed the release lane (6020 px, 1.0%, reproduced on retry, and absent when run against the build
+  // rather than the packaged app).
+  await appVersion.locator('*').evaluateAll((elements) => {
+    for (const element of elements) element.style.visibility = 'hidden'
+  })
   await appVersion.getByRole('button').evaluateAll((elements) => {
     for (const element of elements) element.style.visibility = 'hidden'
   })
