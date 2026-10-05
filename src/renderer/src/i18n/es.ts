@@ -4235,5 +4235,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceOwner': 'proyecto {project} · sesión {session}',
   'ws.egressApprovalExpiresIn': 'caduca en {seconds} s',
   'ws.egressApprovalExpired':
-    'Esta solicitud caducó antes de ser atendida — el proxy la rechazó y la salida del cuaderno indica el motivo.'
+    'Esta solicitud caducó antes de ser atendida — el proxy la rechazó y la salida del cuaderno indica el motivo.',
+  'settings.proxyManualInactive':
+    'Inactivo mientras la lista de permitidos de red del cuaderno esté activa: esa lista controla la ruta, así que desactívala para enrutar los procesos hijos por este proxy.'
 }

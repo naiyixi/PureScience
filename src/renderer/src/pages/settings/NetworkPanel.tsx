@@ -43,6 +43,10 @@ type NetworkPanelProps = { view: NetworkView; onNavigate: (view: NetworkView) =>
 // fetches at a mirror instead. The scientific-domains egress allowlist from the design is
 // phase-3 (spec §14, §9) and is intentionally not built here.
 const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Element => {
+  // The egress allowlist owns the child-process route while it is on, which makes the manual proxy below the
+  // inactive one. The section that knows that reports it up so the proxy section can say so out loud instead
+  // of leaving controls that look live but cannot take effect.
+  const [egressEnabled, setEgressEnabled] = useState(false)
   const { t } = useLanguage()
   const packageMirror = useSettingsStore((state) => state.packageMirror)
   const setPackageMirror = useSettingsStore((state) => state.setPackageMirror)
@@ -311,8 +315,8 @@ const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Elemen
         </p>
       </section>
 
-      <EgressSection />
-      <ProxySection />
+      <EgressSection onEnabledChange={setEgressEnabled} />
+      <ProxySection egressEnabled={egressEnabled} />
     </div>
   )
 }
@@ -321,7 +325,12 @@ const NetworkPanel = ({ view, onNavigate }: NetworkPanelProps): React.JSX.Elemen
 // switch is on, notebook/REPL/shell child processes are routed through a local filtering proxy that
 // only allows the enabled groups and custom domains. Persisted via settings IPC; applied to the
 // child-process runtime immediately on save.
-const EgressSection = (): React.JSX.Element => {
+const EgressSection = ({
+  onEnabledChange
+}: {
+  /** Reported upward so the manual-proxy section below can say it is the inactive route while this is on. */
+  onEnabledChange: (enabled: boolean) => void
+}): React.JSX.Element => {
   const { t } = useLanguage()
   const [settings, setSettings] = useState<EgressSettings | undefined>(undefined)
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -351,6 +360,12 @@ const EgressSection = (): React.JSX.Element => {
   useEffect(() => {
     load()
   }, [load])
+
+  // Tell the panel above whether this allowlist is on, so the manual-proxy section can name itself inactive.
+  const egressOn = settings?.enabled === true
+  useEffect(() => {
+    onEnabledChange(egressOn)
+  }, [egressOn, onEnabledChange])
 
   const retry = useCallback((): void => {
     setLoadState('loading')
@@ -569,7 +584,7 @@ const EgressSection = (): React.JSX.Element => {
 // Persisted via settings IPC and applied to the child-process runtime immediately on
 // save. While the egress allowlist above is enabled it owns the route (the filtering
 // proxy must stay the only hop), so the manual proxy applies only when egress is off.
-const ProxySection = (): React.JSX.Element => {
+const ProxySection = ({ egressEnabled }: { egressEnabled: boolean }): React.JSX.Element => {
   const { t } = useLanguage()
   const [saved, setSaved] = useState<ProxySettings | undefined>(undefined)
   const [draft, setDraft] = useState<ProxySettings>(DEFAULT_PROXY_SETTINGS)
@@ -693,6 +708,7 @@ const ProxySection = (): React.JSX.Element => {
             name="proxy-mode"
             className="mt-0.5 accent-primary"
             checked={draft.mode === 'system'}
+            disabled={egressEnabled}
             onChange={() => setDraft({ ...draft, mode: 'system' })}
           />
           <span className="min-w-0">
@@ -723,6 +739,7 @@ const ProxySection = (): React.JSX.Element => {
             name="proxy-mode"
             className="mt-0.5 accent-primary"
             checked={draft.mode === 'manual'}
+            disabled={egressEnabled}
             onChange={() => setDraft({ ...draft, mode: 'manual' })}
           />
           <span className="min-w-0">
@@ -736,8 +753,22 @@ const ProxySection = (): React.JSX.Element => {
         </button>
       </div>
 
+      {egressEnabled ? (
+        <p
+          className="mt-3 rounded-lg border border-[var(--border)] bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground"
+          data-slot="proxy-inactive-while-egress"
+          role="status"
+        >
+          {t('settings.proxyManualInactive')}
+        </p>
+      ) : null}
+
       {draft.mode === 'manual' ? (
-        <div className="mt-4 space-y-3" data-slot="proxy-manual-fields">
+        <fieldset
+          className="mt-4 space-y-3"
+          data-slot="proxy-manual-fields"
+          disabled={egressEnabled}
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_2fr_1fr]">
             <div className="space-y-1.5">
               <label className={fieldLabelClassName} htmlFor="proxy-type">
@@ -797,7 +828,7 @@ const ProxySection = (): React.JSX.Element => {
             />
             <p className="text-[11px] text-muted-foreground">{t('settings.proxyNoProxyHint')}</p>
           </div>
-        </div>
+        </fieldset>
       ) : null}
 
       <div className="mt-4 flex items-center justify-between gap-3">

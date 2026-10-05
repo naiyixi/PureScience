@@ -4186,5 +4186,7 @@ export const en: Record<ZhKey, string> = {
   'settings.staleEvidenceOwner': 'project {project} · session {session}',
   'ws.egressApprovalExpiresIn': 'expires in {seconds}s',
   'ws.egressApprovalExpired':
-    "This request expired before it was answered — the proxy refused it, and the notebook's own output names the failure."
+    "This request expired before it was answered — the proxy refused it, and the notebook's own output names the failure.",
+  'settings.proxyManualInactive':
+    'Inactive while the notebook network allowlist is on — that allowlist owns the route, so turn it off to route child processes through this proxy.'
 }

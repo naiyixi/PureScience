@@ -4149,5 +4149,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceOwner': 'プロジェクト {project} · セッション {session}',
   'ws.egressApprovalExpiresIn': '{seconds} 秒で失効',
   'ws.egressApprovalExpired':
-    'このリクエストは応答される前に失効しました。プロキシが拒否しており、失敗の理由はノートブック自身の出力に書かれています。'
+    'このリクエストは応答される前に失効しました。プロキシが拒否しており、失敗の理由はノートブック自身の出力に書かれています。',
+  'settings.proxyManualInactive':
+    'ノートブックのネットワーク許可リストが有効な間は機能しません。経路は許可リストが占有しているため、このプロキシを使うには許可リストをオフにしてください。'
 }

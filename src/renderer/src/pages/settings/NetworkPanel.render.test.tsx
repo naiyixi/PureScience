@@ -22,6 +22,7 @@ vi.mock('@/i18n', () => ({
       'settings.egressRemoveDomain': 'Remove domain',
       'settings.egressNoCustom': 'No custom domains yet.',
       'settings.proxyTitle': 'Proxy',
+      'settings.proxyManualInactive': 'Inactive while the notebook network allowlist is on',
       'settings.proxyModeSystem': 'Follow system',
       'settings.proxyModeManual': 'Manual configuration',
       'settings.egressLoadFailed': 'Could not read the notebook network settings.',
@@ -175,6 +176,33 @@ describe('NetworkPanel egress section', () => {
     expect(master?.getAttribute('aria-checked')).toBe('false')
     // Groups are hidden until enabled.
     expect(container.querySelector('[data-slot="egress-group-literature"]')).toBeNull()
+  })
+
+  it('says the manual proxy is inactive while the allowlist owns the route, and holds its controls', async () => {
+    mockApi({ enabled: true, groups: {}, customDomains: [] })
+    await renderPanel()
+
+    // The sentence names why, instead of leaving controls that look live but cannot take effect.
+    const note = container.querySelector('[data-slot="proxy-inactive-while-egress"]')
+    expect(note?.textContent).toContain('Inactive while the notebook network allowlist is on')
+    // Neither mode can be chosen: the route belongs to the allowlist while it is on.
+    const modes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[name="proxy-mode"]')
+    )
+    expect(modes.length).toBeGreaterThan(0)
+    expect(modes.every((input) => input.disabled)).toBe(true)
+  })
+
+  it('leaves the manual proxy live once the allowlist is off', async () => {
+    mockApi()
+    await renderPanel()
+
+    expect(container.querySelector('[data-slot="proxy-inactive-while-egress"]')).toBeNull()
+    const modes = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[name="proxy-mode"]')
+    )
+    expect(modes.length).toBeGreaterThan(0)
+    expect(modes.every((input) => input.disabled)).toBe(false)
   })
 
   it('enabling the switch reveals the 6 domain groups and persists', async () => {

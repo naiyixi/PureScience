@@ -4083,5 +4083,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceOwner': '프로젝트 {project} · 세션 {session}',
   'ws.egressApprovalExpiresIn': '{seconds}초 후 만료',
   'ws.egressApprovalExpired':
-    '이 요청은 응답되기 전에 만료되었습니다. 프록시가 거부했으며 실패 이유는 노트북 자체 출력에 기록됩니다.'
+    '이 요청은 응답되기 전에 만료되었습니다. 프록시가 거부했으며 실패 이유는 노트북 자체 출력에 기록됩니다.',
+  'settings.proxyManualInactive':
+    '노트북 네트워크 허용 목록이 켜져 있는 동안에는 적용되지 않습니다. 경로를 허용 목록이 차지하므로 이 프록시를 쓰려면 허용 목록을 끄십시오.'
 }

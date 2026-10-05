@@ -4276,5 +4276,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceOwner': 'Projekt {project} · Sitzung {session}',
   'ws.egressApprovalExpiresIn': 'läuft in {seconds} s ab',
   'ws.egressApprovalExpired':
-    'Diese Anfrage ist vor einer Antwort abgelaufen — der Proxy hat sie abgelehnt, und die Ausgabe des Notebooks nennt den Grund.'
+    'Diese Anfrage ist vor einer Antwort abgelaufen — der Proxy hat sie abgelehnt, und die Ausgabe des Notebooks nennt den Grund.',
+  'settings.proxyManualInactive':
+    'Inaktiv, solange die Netzwerk-Allowlist des Notebooks aktiv ist — sie besitzt die Route; schalte sie aus, um untergeordnete Prozesse über diesen Proxy zu leiten.'
 }

@@ -3910,7 +3910,9 @@ export const zh = {
   'settings.staleEvidenceOwner': '项目 {project} · 会话 {session}',
   'ws.egressApprovalExpiresIn': '{seconds} 秒后过期',
   'ws.egressApprovalExpired':
-    '这条请求在有人答复之前就过期了 —— 代理已拒绝它，笔记本自己的输出里写着失败原因。'
+    '这条请求在有人答复之前就过期了 —— 代理已拒绝它，笔记本自己的输出里写着失败原因。',
+  'settings.proxyManualInactive':
+    '笔记本网络白名单开启期间它不生效 —— 那条白名单接管了链路；想让子进程走这个代理，先关掉白名单。'
 }
 
 export type ZhKey = keyof typeof zh

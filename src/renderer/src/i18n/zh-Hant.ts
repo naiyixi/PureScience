@@ -3850,5 +3850,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.staleEvidenceOwner': '專案 {project} · 工作階段 {session}',
   'ws.egressApprovalExpiresIn': '{seconds} 秒後過期',
   'ws.egressApprovalExpired':
-    '這條請求在有人回覆之前就過期了 —— 代理已拒絕它，筆記本自己的輸出裡寫著失敗原因。'
+    '這條請求在有人回覆之前就過期了 —— 代理已拒絕它，筆記本自己的輸出裡寫著失敗原因。',
+  'settings.proxyManualInactive':
+    '筆記本網路白名單開啟期間它不生效 —— 那條白名單接管了路徑；想讓子行程走這個代理，請先關掉白名單。'
 }
