@@ -4254,7 +4254,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.title': 'Kennzahl korrigieren',
   'references.journalMetrics.correct.hint':
     'Eine Korrektur wird als weiterer Claim **angehängt**, damit die ursprüngliche Angabe daneben lesbar bleibt.',
-  'references.journalMetrics.correct.journal': 'Journal',
+  'references.journalMetrics.correct.journal': 'Zeitschrift',
   'references.journalMetrics.correct.kind': 'Art',
   'references.journalMetrics.correct.value': 'Wert',
   'references.journalMetrics.correct.year': 'Jahr',

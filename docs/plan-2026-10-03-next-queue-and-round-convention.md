@@ -665,3 +665,15 @@ dev/build/test 进程 ⇒ 按 §十一 的顺序取 **IC25**（文献附件历�
 dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC31**（零新通道）；仍脏 / 仍活跃 ⇒ 继续旁路取证
 （只读，不改树）；② 按完整 40 位 SHA 复查 `159066e9` 与 IC29 的 CI；③ 内存宽松时补 **IC27 / IC28 / IC30**
 真机读数（配方见 §十一、§十、§十二）。
+
+## 十四、本轮追加（发版窗口，2026-10-05 14:0x–）——v1.85.0 发版 + 批次 6 读数的可证部分已取
+
+**发版**：窗口内 `hermes cron pause 2be4405e5dc6` 已生效（核对完 Release 页再 resume）。**v1.85.0 = 文献 / 期刊闭环（批次 6，IC25–IC30）**：版本号取自**实际已发布位点**（`gh release list` 的 Latest=v1.84.0、`package.json`=1.84.0）⇒ 按「一批=一版」但**不照批次标签连抬号**的口径，只抬到 **1.85.0**。
+
+**读数补齐（§十三 的 ③）**：
+- **IC27 + IC30 的存储 / 数据契约已取真读数**（新增 `e2e/certification/journal-import-attribution.spec.ts`）：没有指标列的表配上 `defaultKind` ⇒ `{"imported":1,"skipped":0,"journalsCreated":1,"first":{"kind":"impact-factor","value":"7.3","year":2024,"journalMatch":"by-issn","journalCreated":true,"line":2}}`，store 回读 `[{"kind":"impact-factor","value":"7.3"}]`。`1 passed (5.2s)` + 1 skipped。
+- **IC28** 的读数已由 §十 落地（`4 passed (35.1s)`，含上限 20 留 16.6 筛 64.8 的正向断言）。
+
+**立案（未修，落点已写明）**：**IC30（连带 IC27）的窗口渲染那半 —— 实测有缺陷**：主字段确已填、Import 按钮确可用、点击确落地、渲染进程无报错，而四个结果节点（`journal-metrics-import-summary` / `-error` / `-imported` / `-attribution`）**始终不存在**，面板文本停在 `Import metrics Paste a publisher table (CSV/TSV)… Import`；代码确在运行包里（`out/renderer/assets/index-lwOwGRux.js` 含 `journal-metrics-import-attribution` 与 `defaultKind`），**不是陈旧构建**；两条旁证排除探针自身的错（同一段文本经桥接导入成功、点击后主字段仍在 ⇒ 组件没有重挂载丢状态）。**后续从这里起步：窗口对那次点击的处理**。spec 以 `test.fixme` 挂起 + 文件头写全证据（本仓「红 spec 不落树」的合规写法）。三处已同步记录：CHANGELOG v1.85.0 的「明确没做」段、排期档 IC30 行、本段。
+
+**给执行器的两条定位教训**（写读数时会咬人）：① 对话框里与**头按钮同名**的按钮会让 `getByRole` 命中两个 ⇒ 30 秒超时，改 `.locator('visible=true').first()`；② 按 **placeholder** 抓控件可能落到相邻的**建议输入**上（本例的指标选择器是 input+datalist）——症状是「按钮点了没反应」，真因是主字段仍为空、处理器按守卫**静默返回**。这两条与 §十三 的读数是同一类：**现象与真因隔着一层，先让读数具名到元素与值**。

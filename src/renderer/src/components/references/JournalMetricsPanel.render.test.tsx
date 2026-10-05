@@ -440,7 +440,14 @@ describe('journal metrics panel range filters', () => {
 
   beforeEach(() => {
     window.api = {
-      references: { listJournalMetrics: vi.fn().mockResolvedValue(library) }
+      references: {
+        listJournalMetrics: vi.fn().mockResolvedValue(library),
+        // IC29 put the claim editor on this panel, and its effect reads the journal's claims on mount. A stub
+        // that lacks the call does not fail loudly — it throws inside a passive effect — so it is stubbed here
+        // rather than guarded away in the component.
+        listJournalClaims: vi.fn().mockResolvedValue([]),
+        appendJournalMetric: vi.fn().mockResolvedValue({ id: 'claim-1' })
+      }
     } as unknown as typeof window.api
   })
 
