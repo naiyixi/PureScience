@@ -4225,5 +4225,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.historyEmpty': 'Aún no hay afirmaciones.',
   'settings.egressLoadFailed': 'No se pudo leer la configuración de red del notebook.',
   'settings.egressSaveFailed':
-    'No se pudo guardar la configuración de red del notebook — el cambio se ha revertido.'
+    'No se pudo guardar la configuración de red del notebook — el cambio se ha revertido.',
+  'settings.storageInfoFailed': 'No se pudo leer la información de la ubicación de los datos.'
 }

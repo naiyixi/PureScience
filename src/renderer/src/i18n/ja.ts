@@ -4139,5 +4139,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.historyEmpty': 'claim はまだありません。',
   'settings.egressLoadFailed': 'ノートブックのネットワーク設定を読み込めませんでした。',
   'settings.egressSaveFailed':
-    'ノートブックのネットワーク設定を保存できませんでした — 変更は元に戻しました。'
+    'ノートブックのネットワーク設定を保存できませんでした — 変更は元に戻しました。',
+  'settings.storageInfoFailed': 'データの保存場所の情報を読み取れませんでした。'
 }

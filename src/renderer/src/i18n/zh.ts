@@ -3900,7 +3900,8 @@ export const zh = {
   'references.journalMetrics.correct.history': '该刊的全部 claim',
   'references.journalMetrics.correct.historyEmpty': '还没有 claim。',
   'settings.egressLoadFailed': '无法读取笔记本网络设置。',
-  'settings.egressSaveFailed': '无法保存笔记本网络设置 — 改动已还原。'
+  'settings.egressSaveFailed': '无法保存笔记本网络设置 — 改动已还原。',
+  'settings.storageInfoFailed': '无法读取数据位置信息。'
 }
 
 export type ZhKey = keyof typeof zh

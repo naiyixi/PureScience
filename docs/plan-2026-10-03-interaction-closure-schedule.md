@@ -168,7 +168,7 @@
 | IC31 | egress 读失败有错误态+重试；写失败回滚或并入写入协调器 ✅ **已落地（2026-10-05，执行器）** | `NetworkPanel.tsx:320-410`：读改三态 + 具名错误 + 重试按钮；写失败**回滚到最近被确认的值**并 `role="alert"` 上屏；2 键 ×9 语；6 条渲染用例（含「重试真的重取」与「回滚后下一次成功清提示」）；**零新通道**。详见队列档 §十五 |
 | IC32 | egress 接管时手动代理**显式禁用并说明**                         | `proxy-runtime.ts:3-4`；`NetworkPanel.tsx:507-528`                |
 | IC33 | 出网审批卡**剩余有效期** + 超时具名解释                         | `shared/egress.ts:133-139`；`EgressApprovalCard.tsx`              |
-| IC34 | 存储信息读取失败的错误态 + 重试                                 | `StoragePanel.tsx:115-117`                                        |
+| IC34 | 存储信息读取失败的错误态 + 重试 ✅ **已落地 + 真机读数已取（2026-10-05）** | `StoragePanel.tsx`：读改为三态（loading/ready/error）+ 重试；「改变位置」入口改为**显式要求就绪**（原先只看 `info !== null`）⇒ 失败时不再"永久 Loading 且入口消失"。i18n 1 键 ×9 | **真机 `e2e/certification/storage-info-read-failure.spec.ts` 1 passed (9.8s)**：把 `settings.dataRoot` 指到 `chmod 000` 的目录并重启 ⇒ 面板**仍能渲染**该根且入口可用（`1 passed`）；修复权限后重挂载 ⇒ 真 IPC **重读**到修复后的路径。**读数同时钉出两条关于修复前提的事实（已写进 spec 头）**：① `storage.getInfo()` 内部**每一条可能失败的调用都被兜住**（可用空间、设置/状态块），唯一无守卫的用量遍历也**内部降级** ⇒ 坏根下主进程**不会拒绝**（实测 `ok`）；② 渲染端**无法覆盖桥接**（`contextBridge` 对象冻结，实测赋值被静默忽略）⇒ **错误态在文件系统层面不可达**（只有主进程故障/通道故障才触达）⇒ 该处理是**预防性**的，其错误+重试半以渲染套件为证（`StoragePanel.render.test.tsx` 两条用例：拒绝时具名并扣住入口、重试成功后回到真内容），**不冒充真机读数** |
 | IC35 | 迁移 `staleEvidence` **明细展开**（path/runId/project/session） | `shared/storage.ts:65-78`；`StorageMigrationModal.tsx:330-342`    |
 | IC36 | **视觉转译证据**只读面（哪张图由哪个模型转译成什么）            | `vision/vision-evidence-repository.ts:50-73` 只写不读             |
 | IC37 | 支持包导出回读**体积与脱敏条数**                                | `support-bundle.ts:52-57`；`GeneralPanel.tsx:103-115`             |

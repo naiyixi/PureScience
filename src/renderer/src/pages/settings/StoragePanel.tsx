@@ -113,10 +113,33 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   const inspectRequestRef = useRef(0)
   const focusRestoreWarn = useDialogFocusRestore(warnOpen)
   const focusRestoreAdopt = useDialogFocusRestore(adoptConfirmOpen)
+  // A read failure used to leave `info` null forever, which this panel renders as "Loading" — so a single
+  // failed read disabled the whole data-location section, including the only entry to the move flow, with no
+  // reason and no way out. Three states, and a retry that can actually get back to the content.
+  const [infoState, setInfoState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [infoReloadToken, setInfoReloadToken] = useState(0)
 
   useEffect(() => {
-    void window.api.storage.getInfo().then(setInfo)
-  }, [])
+    let alive = true
+    void window.api.storage.getInfo().then(
+      (value) => {
+        if (!alive) return
+        setInfo(value)
+        setInfoState('ready')
+      },
+      () => {
+        if (alive) setInfoState('error')
+      }
+    )
+    return () => {
+      alive = false
+    }
+  }, [infoReloadToken])
+
+  const retryStorageInfo = (): void => {
+    setInfoState('loading')
+    setInfoReloadToken((token) => token + 1)
+  }
 
   const storageCheck = environmentCheck?.checks.find((check) => check.id === 'storage')
   const storagePassed = storageCheck?.status === 'passed'
@@ -333,14 +356,30 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
         aria-label={t('settings.dataLocation')}
         separated={storageRepairActive}
         action={
-          info !== null && !isEditing ? (
+          info !== null && infoState === 'ready' && !isEditing ? (
             <Button type="button" variant="outline" onClick={() => setWarnOpen(true)}>
               {t('settings.changeLocation')}
             </Button>
           ) : undefined
         }
       >
-        {info === null ? (
+        {infoState === 'error' ? (
+          <div data-slot="storage-info-error">
+            <p className="text-xs text-destructive" role="alert">
+              {t('settings.storageInfoFailed')}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              data-slot="storage-retry-info"
+              onClick={retryStorageInfo}
+            >
+              {t('common.retry')}
+            </Button>
+          </div>
+        ) : info === null ? (
           <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
         ) : (
           <>

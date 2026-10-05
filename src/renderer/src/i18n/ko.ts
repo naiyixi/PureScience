@@ -4073,5 +4073,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.correct.historyEmpty': '아직 claim이 없습니다.',
   'settings.egressLoadFailed': '노트북 네트워크 설정을 읽지 못했습니다.',
   'settings.egressSaveFailed':
-    '노트북 네트워크 설정을 저장하지 못했습니다 — 변경 사항을 되돌렸습니다.'
+    '노트북 네트워크 설정을 저장하지 못했습니다 — 변경 사항을 되돌렸습니다.',
+  'settings.storageInfoFailed': '데이터 위치 정보를 읽을 수 없습니다.'
 }

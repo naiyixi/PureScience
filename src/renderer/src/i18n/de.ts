@@ -4266,5 +4266,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.egressLoadFailed':
     'Die Netzwerkeinstellungen des Notebooks konnten nicht gelesen werden.',
   'settings.egressSaveFailed':
-    'Die Netzwerkeinstellungen des Notebooks konnten nicht gespeichert werden — die Änderung wurde zurückgenommen.'
+    'Die Netzwerkeinstellungen des Notebooks konnten nicht gespeichert werden — die Änderung wurde zurückgenommen.',
+  'settings.storageInfoFailed': 'Die Angaben zum Datenort konnten nicht gelesen werden.'
 }

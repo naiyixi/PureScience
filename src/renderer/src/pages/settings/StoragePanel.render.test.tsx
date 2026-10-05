@@ -105,6 +105,56 @@ afterEach(() => {
 })
 
 describe('StoragePanel', () => {
+  it('says why the data-location read failed and offers a retry, instead of sitting on Loading', async () => {
+    ;(
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo.mockRejectedValue(new Error('EACCES: permission denied'))
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // The section says what happened…
+    expect(document.querySelector('[data-slot="storage-info-error"]')).not.toBeNull()
+    expect(container.textContent).toContain('Could not read the data location information.')
+    // …and the way out exists. The move entry needs the info to be known, so it must not pretend otherwise.
+    expect(document.querySelector('[data-slot="storage-retry-info"]')).not.toBeNull()
+    expect(container.textContent).not.toContain('Change location')
+  })
+
+  it('recovers to the real content when the retry succeeds', async () => {
+    const getInfo = (
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo
+    getInfo.mockRejectedValueOnce(new Error('EACCES: permission denied'))
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[data-slot="storage-info-error"]')).not.toBeNull()
+
+    getInfo.mockResolvedValue({
+      dataRoot: '/home/u/.purescience',
+      isDefault: true,
+      usage: { categories: [], totalBytes: 35_600_000, sharedBytes: 2_500_000, sharedFiles: 3 },
+      availableBytes: 500_000_000_000
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-retry-info"]')?.click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('[data-slot="storage-info-error"]')).toBeNull()
+    expect(container.textContent).toContain('/home/u/.purescience')
+    expect(container.textContent).toContain('Change location')
+  })
+
   it('states what sharing saved, from the same walk as the total', async () => {
     await act(async () => {
       root.render(<StoragePanel />)

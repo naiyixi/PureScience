@@ -4176,5 +4176,6 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.correct.historyEmpty': 'No claims yet.',
   'settings.egressLoadFailed': 'Could not read the notebook network settings.',
   'settings.egressSaveFailed':
-    'Could not save the notebook network settings — the change was reverted.'
+    'Could not save the notebook network settings — the change was reverted.',
+  'settings.storageInfoFailed': 'Could not read the data location information.'
 }
