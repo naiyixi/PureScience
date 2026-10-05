@@ -4151,5 +4151,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.egressApprovalExpired':
     'このリクエストは応答される前に失効しました。プロキシが拒否しており、失敗の理由はノートブック自身の出力に書かれています。',
   'settings.proxyManualInactive':
-    'ノートブックのネットワーク許可リストが有効な間は機能しません。経路は許可リストが占有しているため、このプロキシを使うには許可リストをオフにしてください。'
+    'ノートブックのネットワーク許可リストが有効な間は機能しません。経路は許可リストが占有しているため、このプロキシを使うには許可リストをオフにしてください。',
+  'remoteControl.savedAddressTitle': '保存済みのブラウザーアドレス',
+  'remoteControl.savedAddressInactive':
+    'リモートアクセスがオフのため、このアドレスは現在応答しません。前回オンのときに保存されたもので、オンに戻せば再び使えます。'
 }

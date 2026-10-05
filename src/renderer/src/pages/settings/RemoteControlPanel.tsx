@@ -118,7 +118,7 @@ export const RemoteControlPanel = (): React.JSX.Element => {
   const [snapshot, setSnapshot] = useState<RemoteAccessSnapshot | null>(null)
   const [busy, setBusy] = useState<string | null>('loading')
   const [actionError, setActionError] = useState<string | undefined>()
-  const [copied, setCopied] = useState(false)
+  const [copiedValue, setCopiedValue] = useState<string | null>(null)
 
   const refresh = async (detect = false, completesBusyOperation = true): Promise<void> => {
     try {
@@ -180,11 +180,16 @@ export const RemoteControlPanel = (): React.JSX.Element => {
     void run(`approve:${requestId}`, () => window.api.remoteAccess.approve({ requestId, decision }))
   }
 
-  const copyUrl = async (): Promise<void> => {
-    if (!snapshot?.accessUrl) return
-    await copyText(snapshot.accessUrl)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1_500)
+  // One copier for both addresses this panel can show (the live one, and the saved one that survives while
+  // access is off). It remembers which value was copied so neither button claims the other's copy.
+  const copyAddress = async (value: string | undefined): Promise<void> => {
+    if (!value) return
+    await copyText(value)
+    setCopiedValue(value)
+    window.setTimeout(
+      () => setCopiedValue((current) => (current === value ? null : current)),
+      1_500
+    )
   }
 
   if (!snapshot) {
@@ -447,10 +452,12 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => void copyUrl()}
+                            onClick={() => void copyAddress(snapshot.accessUrl)}
                           >
                             <Copy className="size-3.5" aria-hidden="true" />
-                            {copied ? t('settings.copied') : t('settings.copy')}
+                            {copiedValue === snapshot.accessUrl
+                              ? t('settings.copied')
+                              : t('settings.copy')}
                           </Button>
                           <Button type="button" variant="outline" size="sm" asChild>
                             <a href={snapshot.accessUrl} target="_blank" rel="noreferrer">
@@ -493,6 +500,43 @@ export const RemoteControlPanel = (): React.JSX.Element => {
                 <BrowserAccessSteps />
               </div>
             )}
+          </div>
+        </SettingsSection>
+      ) : null}
+
+      {/* A saved address outlives the switch. The store keeps `remoteItPublicUrl` "including while locally
+          disabled", but the browser section above disappears with the mode (a disabled session is back to
+          `off`), so an address saved by an earlier public session had no way back on screen — which is the one
+          thing a reader needs to get in again. Shown read-only, with a copy action and what it does not do. */}
+      {!snapshot.enabled && snapshot.remoteItPublicUrl ? (
+        <SettingsSection
+          title={t('remoteControl.savedAddressTitle')}
+          aria-label={t('remoteControl.savedAddressTitle')}
+        >
+          <div
+            className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
+            data-slot="saved-browser-address"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="break-all font-mono text-xs text-muted-foreground">
+                {snapshot.remoteItPublicUrl}
+              </div>
+              <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
+                {t('remoteControl.savedAddressInactive')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void copyAddress(snapshot.remoteItPublicUrl)}
+            >
+              <Copy className="size-3.5" aria-hidden="true" />
+              {copiedValue === snapshot.remoteItPublicUrl
+                ? t('settings.copied')
+                : t('settings.copy')}
+            </Button>
           </div>
         </SettingsSection>
       ) : null}

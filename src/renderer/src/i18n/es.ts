@@ -4237,5 +4237,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.egressApprovalExpired':
     'Esta solicitud caducó antes de ser atendida — el proxy la rechazó y la salida del cuaderno indica el motivo.',
   'settings.proxyManualInactive':
-    'Inactivo mientras la lista de permitidos de red del cuaderno esté activa: esa lista controla la ruta, así que desactívala para enrutar los procesos hijos por este proxy.'
+    'Inactivo mientras la lista de permitidos de red del cuaderno esté activa: esa lista controla la ruta, así que desactívala para enrutar los procesos hijos por este proxy.',
+  'remoteControl.savedAddressTitle': 'dirección de navegador guardada',
+  'remoteControl.savedAddressInactive':
+    'El acceso remoto está desactivado, así que esta dirección no responde ahora mismo. Se guardó la última vez que estuvo activo: vuelve a activarlo para usarla.'
 }

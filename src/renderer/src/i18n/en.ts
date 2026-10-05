@@ -4188,5 +4188,8 @@ export const en: Record<ZhKey, string> = {
   'ws.egressApprovalExpired':
     "This request expired before it was answered — the proxy refused it, and the notebook's own output names the failure.",
   'settings.proxyManualInactive':
-    'Inactive while the notebook network allowlist is on — that allowlist owns the route, so turn it off to route child processes through this proxy.'
+    'Inactive while the notebook network allowlist is on — that allowlist owns the route, so turn it off to route child processes through this proxy.',
+  'remoteControl.savedAddressTitle': 'Saved browser address',
+  'remoteControl.savedAddressInactive':
+    'Remote access is off, so this address does not answer right now. It is the one saved the last time access was on — turn access on to use it again.'
 }

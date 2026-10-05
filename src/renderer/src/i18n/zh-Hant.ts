@@ -3852,5 +3852,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.egressApprovalExpired':
     '這條請求在有人回覆之前就過期了 —— 代理已拒絕它，筆記本自己的輸出裡寫著失敗原因。',
   'settings.proxyManualInactive':
-    '筆記本網路白名單開啟期間它不生效 —— 那條白名單接管了路徑；想讓子行程走這個代理，請先關掉白名單。'
+    '筆記本網路白名單開啟期間它不生效 —— 那條白名單接管了路徑；想讓子行程走這個代理，請先關掉白名單。',
+  'remoteControl.savedAddressTitle': '已儲存的瀏覽器位址',
+  'remoteControl.savedAddressInactive':
+    '遠端存取已關閉，這個位址此刻不會回應。它是上次開啟時儲存下來的 —— 重新開啟遠端存取即可再次使用。'
 }
