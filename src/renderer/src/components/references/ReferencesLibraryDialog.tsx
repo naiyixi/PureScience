@@ -1277,7 +1277,7 @@ export function ReferencesLibraryDialog({
                               </button>
                               {reference.pdfManagedFileId ? (
                                 <span className="flex items-center gap-1 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
-                                  {t('references.attachmentCurrent')} ·{' '}
+                                  PDF · {t('references.attachmentCurrent')} ·{' '}
                                   {reference.pdfManagedFileId.slice(-8)}
                                   <button
                                     type="button"

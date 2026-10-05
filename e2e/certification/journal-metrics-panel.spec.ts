@@ -251,7 +251,10 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   expect(await table.locator('tbody tr').count()).toBe(0)
 
   await dialog.getByLabel('Impact factor ≥').fill('')
-  await dialog.getByLabel('Year').fill('2022')
+  // Scoped to the filter region: the correction form further down this panel has its own "Year" field, and an
+  // unscoped lookup resolves to both.
+  const filters = dialog.getByTestId('journal-metrics-filters')
+  await filters.getByLabel('Year').fill('2022')
   const yearRows = await rows()
   console.log(`[panel-reading] year=2022 rows: ${JSON.stringify(yearRows)}`)
   const natureIn2022 = yearRows.find((text) => text.startsWith('Nature')) ?? ''
@@ -267,7 +270,7 @@ test('the metrics panel names year and source, and says Unknown where a metric i
   // from the window — so a reader could not ask "which journals are at most X", the question a submission
   // shortlist is usually about. A positive assertion, not just the empty notice: with a ceiling of 20 the
   // 16.6 journal must survive and the 64.8 one must not.
-  await dialog.getByLabel('Year').fill('')
+  await filters.getByLabel('Year').fill('')
   await dialog.getByLabel('Impact factor ≤').fill('20')
   const ceilingRows = await rows()
   console.log(`[panel-reading] impact factor ≤ 20 rows: ${JSON.stringify(ceilingRows)}`)

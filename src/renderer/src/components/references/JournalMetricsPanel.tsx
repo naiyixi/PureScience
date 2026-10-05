@@ -379,7 +379,10 @@ export function JournalMetricsPanel(): React.JSX.Element {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 text-xs">
+      <div
+        className="flex flex-wrap items-end gap-3 text-xs"
+        data-testid="journal-metrics-filters"
+      >
         <label className="flex flex-col gap-1">
           <span className="text-[10px] text-[var(--muted-foreground)]">
             {t('references.journalMetrics.filter.partition')}
