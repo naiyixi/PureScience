@@ -592,6 +592,10 @@ B 段已全部收口（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 按 §十�
 
 **提交 `796757bf`**（12 文件，+174/−12），已推送，`HEAD == origin/main`。
 
+**CI（收尾时已取到终态，双绿）**：`796757bf` 按完整 40 位 SHA —— `Nightly` **37256857057 success**
+（Resolve matrix / Verify / 四平台 build / **publish** 全绿）、`Windows Full Test` **37256856740 success**
+⇒ **双绿**。（本节的 docs 落档提交 `9a6438b4` 是纯 `docs/**` ⇒ `paths:` 过滤下 0 条 run，设计如此，不是漏跑。）
+
 **⏳ 真机读数未取（具名立案）**：开工时 swap **14.1 G / 15.36 G 已用**、空闲物理页一度只剩 ~4k
 ⇒ 不具备「重建 + 起 Electron」的安全余量，故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。
 **配方（下一轮内存宽松时一次跑完，只允许跑绿后提交该 spec）**：在 `journal-metrics-panel.spec.ts` 那条导入用例后接一条 ——
