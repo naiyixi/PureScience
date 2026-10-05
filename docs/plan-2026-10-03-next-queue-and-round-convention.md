@@ -749,3 +749,15 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 **重建 tag 后的终局（2026-10-05 21:4x）**：tag 重建到 `f562876c`（含修复与本节文档）。该提交**只改 markdown**（CHANGELOG + 本档）⇒ Nightly 与 Windows Full Test 按各自的 `paths-ignore` **正确地没有触发**（设计行为，不是缺跑）；**Release** 车道（无 paths 过滤）✅ success —— 页面 21 资产、`draft=false`、非预发布、正文 **17442** 字符（比首版 16952 多出修复那一段）、**Latest**。**代码级证明落在 `ec6ffa7e`**：Nightly ✅ success + Windows Full Test ✅ success（原红车道就此转绿）。⇒ 车道证明完整，且 tag 在其应触发的范围内全绿。
 
 **下一个未被认领的单元 = IC39**（取消排队 / 运行中的远程任务；当前只有 poller 超时后内部 kill）。
+
+## 十七、本轮追加（会话，2026-10-05 23:4x）—— 六个单元的 CI 判决与两条纪律
+
+**判决载体 = `190da5fd`**（一笔文档提交，但它**包含**本轮全部六个单元的改动 ⇒ 按「门禁只认当前 HEAD」的口径，它的车道就是本段唯一的判决）：
+
+- **Nightly ✅ success** —— 这条含 mac 认证 e2e 的车道覆盖了本轮的渲染层改动（IC51 / IC45 / IC44 / IC48 / IC50 的界面与 i18n；IC49 的读数 spec）。
+- **Windows Full Test ❌ failure —— 具名归因：既存抖动，与本批无关。** 作业 `Windows full test (3/8)` 第 6 步 `Test complete suite shard`，失败用例 `src/main/reviewer/orchestrator.test.ts > persists checks …`，原始两行：`Error: Test timed out in 120000ms.` + `Error: EBUSY: resource busy or locked, unlink 'C:\…\Temp\reviewer-orchestrator-test-*\purescience.db'`（Windows 上 SQLite 文件锁未释放）。**证据链**：该测试最后改动 `3acdc0fe`（2026-08-20）、其模块最后改动 `c370c41b`（2026-09-13）；本轮六笔提交 `--name-only | grep -c reviewer` = **0**。⇒ **不改产品代码去迁就**，下一笔自然推送时复核。
+- 早先几笔（IC51 / IC45 / IC44 / IC49）的车道**全被后一笔按 `cancel-in-progress` 顶掉**（`completed/cancelled`，无判决）⇒ 已入档：连续快推时**只有最后一笔**才是判决载体。
+
+**新入档两条纪律**（技能 `references/e2e-certification-lane.md`）：① 快推互相取消 ⇒ 认最后一笔、汇报时逐条点名"哪笔有判决／哪笔只是被取消"；② Windows `database` 分片 EBUSY 抖动的形态与判定顺序（先看失败文件的最后改动者；与本批无关则归因车道、**不改产品**）。
+
+**本段交付小结（会话，v1.86.0 之后）**：IC51 ✅ 真机 10.5s · IC45 ✅ 真机 11.6s · IC44 ✅ 真机 5.6s · IC49 ✅ 真机 6.9s（核实后按「架构已覆盖」结案）· IC48 ✅ 真机 11.4s · IC50 ✅ 渲染 52 passed（**真机读数具名立案**，未跑绿的 spec 已按仓规删除、未落树）。全段未触碰执行器在飞的 `src/main/compute/*`、`src/preload/*`、`src/shared/renderer-contract-catalog.ts`、`WorkspaceMessageScroller.tsx`。
