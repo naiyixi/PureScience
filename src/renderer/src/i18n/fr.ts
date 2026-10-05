@@ -4268,5 +4268,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Inactif tant que la liste d'autorisation réseau du notebook est active — c'est elle qui détient la route ; désactivez-la pour faire passer les processus enfants par ce proxy.",
   'remoteControl.savedAddressTitle': 'adresse de navigateur enregistrée',
   'remoteControl.savedAddressInactive':
-    "L'accès à distance est désactivé, cette adresse ne répond donc pas pour l'instant. Elle a été enregistrée lors de la dernière activation — réactivez l'accès pour l'utiliser."
+    "L'accès à distance est désactivé, cette adresse ne répond donc pas pour l'instant. Elle a été enregistrée lors de la dernière activation — réactivez l'accès pour l'utiliser.",
+  'sessionInfo.visionEvidence': "interprétations d'image ({count})",
+  'sessionInfo.visionExtractor': 'extracteur {digest}'
 }

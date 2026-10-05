@@ -197,6 +197,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('diagnostics', 'diagnostics', [
     ['reportRendererFailure', 'diagnostics:renderer-failure', SEND],
     ['exportSupportBundle', 'diagnostics:export-support-bundle', ELECTRON],
+    // Read-only: which image was translated by the vision model, under which extractor generation and evidence
+    // schema. Local-only (the cache lives in the local project database), hence ELECTRON rather than WEB.
+    ['listVisionEvidence', 'diagnostics:list-vision-evidence', ELECTRON],
   ]),
   group('github', 'github', [
     ['getStars', 'github:get-stars'],

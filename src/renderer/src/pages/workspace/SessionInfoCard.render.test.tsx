@@ -214,6 +214,64 @@ describe('session information card', () => {
       ;(window as unknown as { api: unknown }).api = previous
     }
   })
+  it('lists the images this session had translated, read-only and payload-free', async () => {
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = {
+      diagnostics: {
+        listVisionEvidence: vi.fn(async () => [
+          {
+            id: 'identity-1',
+            projectId: 'default',
+            sessionId: 'session-1',
+            sourceKind: 'upload-version',
+            mimeType: 'image/png',
+            imageChecksum: 'a'.repeat(64),
+            extractorFingerprint: 'b'.repeat(64),
+            evidenceSchemaVersion: 3,
+            createdAt: '2026-10-05T00:00:00.000Z',
+            updatedAt: '2026-10-05T00:00:00.000Z'
+          }
+        ])
+      }
+    }
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="session-info-vision-evidence"]')).not.toBeNull()
+      })
+
+      const item = container.querySelector('[data-slot="session-info-vision-evidence-item"]')
+      expect(item?.textContent).toContain('a'.repeat(12))
+      expect(item?.textContent).toContain('image/png')
+      expect(item?.textContent).toContain('b'.repeat(12))
+      expect(item?.textContent).toContain('v3')
+      // A statement about what happened, not a control: nothing to press, nothing to open.
+      expect(item?.querySelectorAll('button')).toHaveLength(0)
+      expect(item?.querySelectorAll('a')).toHaveLength(0)
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
+
+  it('shows no vision section when the read fails, instead of an empty list', async () => {
+    // "Not known" and "translated nothing" must not look the same: a failed read renders no section at all.
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = {
+      diagnostics: {
+        listVisionEvidence: vi.fn(async () => Promise.reject(new Error('unavailable')))
+      }
+    }
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(container.querySelector('[data-slot="session-info-vision-evidence"]')).toBeNull()
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
+
   it('offers the verification checklist even before this session has a review', async () => {
     // U18: the reviewer surface used to be reachable only from an existing review, so a session without
     // one could not be checked at all. The card's entry is the session itself, and it reports that it was

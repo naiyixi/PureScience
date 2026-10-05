@@ -4191,5 +4191,7 @@ export const en: Record<ZhKey, string> = {
     'Inactive while the notebook network allowlist is on — that allowlist owns the route, so turn it off to route child processes through this proxy.',
   'remoteControl.savedAddressTitle': 'Saved browser address',
   'remoteControl.savedAddressInactive':
-    'Remote access is off, so this address does not answer right now. It is the one saved the last time access was on — turn access on to use it again.'
+    'Remote access is off, so this address does not answer right now. It is the one saved the last time access was on — turn access on to use it again.',
+  'sessionInfo.visionEvidence': 'Vision translations ({count})',
+  'sessionInfo.visionExtractor': 'extractor {digest}'
 }

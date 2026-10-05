@@ -3855,5 +3855,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '筆記本網路白名單開啟期間它不生效 —— 那條白名單接管了路徑；想讓子行程走這個代理，請先關掉白名單。',
   'remoteControl.savedAddressTitle': '已儲存的瀏覽器位址',
   'remoteControl.savedAddressInactive':
-    '遠端存取已關閉，這個位址此刻不會回應。它是上次開啟時儲存下來的 —— 重新開啟遠端存取即可再次使用。'
+    '遠端存取已關閉，這個位址此刻不會回應。它是上次開啟時儲存下來的 —— 重新開啟遠端存取即可再次使用。',
+  'sessionInfo.visionEvidence': '視覺轉譯（{count}）',
+  'sessionInfo.visionExtractor': '擷取器 {digest}'
 }

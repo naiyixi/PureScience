@@ -4154,5 +4154,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'ノートブックのネットワーク許可リストが有効な間は機能しません。経路は許可リストが占有しているため、このプロキシを使うには許可リストをオフにしてください。',
   'remoteControl.savedAddressTitle': '保存済みのブラウザーアドレス',
   'remoteControl.savedAddressInactive':
-    'リモートアクセスがオフのため、このアドレスは現在応答しません。前回オンのときに保存されたもので、オンに戻せば再び使えます。'
+    'リモートアクセスがオフのため、このアドレスは現在応答しません。前回オンのときに保存されたもので、オンに戻せば再び使えます。',
+  'sessionInfo.visionEvidence': '画像の読み取り（{count}）',
+  'sessionInfo.visionExtractor': '抽出器 {digest}'
 }

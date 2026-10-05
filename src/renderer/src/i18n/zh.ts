@@ -3915,7 +3915,9 @@ export const zh = {
     '笔记本网络白名单开启期间它不生效 —— 那条白名单接管了链路；想让子进程走这个代理，先关掉白名单。',
   'remoteControl.savedAddressTitle': '已保存的浏览器地址',
   'remoteControl.savedAddressInactive':
-    '远程访问已关闭，这个地址此刻不会应答。它是上次开启时保存下来的 —— 重新开启远程访问即可再次使用。'
+    '远程访问已关闭，这个地址此刻不会应答。它是上次开启时保存下来的 —— 重新开启远程访问即可再次使用。',
+  'sessionInfo.visionEvidence': '视觉转译（{count}）',
+  'sessionInfo.visionExtractor': '提取器 {digest}'
 }
 
 export type ZhKey = keyof typeof zh

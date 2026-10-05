@@ -4088,5 +4088,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '노트북 네트워크 허용 목록이 켜져 있는 동안에는 적용되지 않습니다. 경로를 허용 목록이 차지하므로 이 프록시를 쓰려면 허용 목록을 끄십시오.',
   'remoteControl.savedAddressTitle': '저장된 브라우저 주소',
   'remoteControl.savedAddressInactive':
-    '원격 접속이 꺼져 있어 이 주소는 지금 응답하지 않습니다. 지난번 켰을 때 저장된 주소이며, 다시 켜면 사용할 수 있습니다.'
+    '원격 접속이 꺼져 있어 이 주소는 지금 응답하지 않습니다. 지난번 켰을 때 저장된 주소이며, 다시 켜면 사용할 수 있습니다.',
+  'sessionInfo.visionEvidence': '이미지 변환 ({count})',
+  'sessionInfo.visionExtractor': '추출기 {digest}'
 }

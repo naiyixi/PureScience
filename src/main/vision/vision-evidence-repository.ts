@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 
 import type { PrismaClient } from '@prisma/client'
 
+import type { VisionEvidenceSummary } from '../../shared/vision-evidence'
+
 // Vision-evidence persistence for the image relay (source port).
 //
 // When the active agent backend is text-only (no image input), image attachments are analyzed by a
@@ -39,6 +41,15 @@ type VisionEvidencePersistence = Readonly<{
   save(input: SaveVisionEvidenceInput): Promise<void>
 }>
 
+// The window's half of the same store: a bounded, payload-free projection. Kept apart from the cache contract
+// above on purpose — the cache's callers are the relay, this one's caller is a reader who must never receive the
+// evidence JSON.
+type VisionEvidenceReader = Readonly<{
+  list(
+    input?: Readonly<{ sessionId?: string; projectId?: string; limit?: number }>
+  ): Promise<VisionEvidenceSummary[]>
+}>
+
 // Only the vision-evidence delegate is needed; typing to this subset keeps the repository
 // unit-testable with a lightweight mock instead of a real (engine-backed) PrismaClient.
 type VisionEvidenceClient = Pick<PrismaClient, 'visionEvidence'>
@@ -47,7 +58,7 @@ type VisionEvidenceClientProvider = () => Promise<VisionEvidenceClient>
 
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex')
 
-class VisionEvidenceRepository implements VisionEvidencePersistence {
+class VisionEvidenceRepository implements VisionEvidencePersistence, VisionEvidenceReader {
   constructor(private readonly getClient: VisionEvidenceClientProvider) {}
 
   // Returns cached evidence JSON only when every fingerprint still matches the request. A mismatch
@@ -104,6 +115,36 @@ class VisionEvidenceRepository implements VisionEvidencePersistence {
     })
   }
 
+  // Read-only projection for the window: the newest rows for a session (or a project), without the evidence
+  // payload. Bounded, so a long-lived project cannot push an unbounded list across the boundary. No data-root
+  // lease on purpose: a read that took the write lease would block a data-root switch for nothing.
+  async list(
+    input: Readonly<{ sessionId?: string; projectId?: string; limit?: number }> = {}
+  ): Promise<VisionEvidenceSummary[]> {
+    const client = await this.getClient()
+    const limit = Math.min(Math.max(Math.trunc(input.limit ?? 50), 1), 200)
+    const rows = await client.visionEvidence.findMany({
+      where: {
+        ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+        ...(input.projectId ? { projectId: input.projectId } : {})
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: limit
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      projectId: row.projectId,
+      sessionId: row.sessionId,
+      sourceKind: row.sourceKind,
+      mimeType: row.mimeType,
+      imageChecksum: row.imageChecksum,
+      extractorFingerprint: row.extractorFingerprint,
+      evidenceSchemaVersion: row.evidenceSchemaVersion,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString()
+    }))
+  }
+
   // Deletes evidence rows for removed sessions (called when sessions are deleted so the cache does
   // not outlive the conversation that produced it).
   async deleteSessions(sessionIds: readonly string[]): Promise<void> {
@@ -128,5 +169,6 @@ export type {
   VisionEvidenceClient,
   VisionEvidenceClientProvider,
   VisionEvidencePersistence,
+  VisionEvidenceReader,
   VisionEvidenceSource
 }

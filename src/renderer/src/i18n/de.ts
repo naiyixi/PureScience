@@ -4281,5 +4281,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Inaktiv, solange die Netzwerk-Allowlist des Notebooks aktiv ist — sie besitzt die Route; schalte sie aus, um untergeordnete Prozesse über diesen Proxy zu leiten.',
   'remoteControl.savedAddressTitle': 'Gespeicherte Browser-Adresse',
   'remoteControl.savedAddressInactive':
-    'Der Fernzugriff ist aus, daher antwortet diese Adresse derzeit nicht. Sie wurde beim letzten Einschalten gespeichert — schalte den Zugriff wieder ein, um sie zu nutzen.'
+    'Der Fernzugriff ist aus, daher antwortet diese Adresse derzeit nicht. Sie wurde beim letzten Einschalten gespeichert — schalte den Zugriff wieder ein, um sie zu nutzen.',
+  'sessionInfo.visionEvidence': 'Bildauswertungen ({count})',
+  'sessionInfo.visionExtractor': 'Extraktor {digest}'
 }

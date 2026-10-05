@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/session-fork'
 import type { PersistedChatSession } from '../../../../shared/session-persistence'
 import type { ChatSession } from '@/stores/session-store'
+import type { VisionEvidenceSummary } from '../../../../shared/vision-evidence'
 
 // The session information card: what this conversation is, when it started and last moved, how much
 // it holds, and a way into its evidence. Counts are computed from the same messages the transcript
@@ -74,6 +75,25 @@ export function SessionInfoCard({
   // The pin is read once per mounted card; the mount site keys the card by session id, so switching
   // sessions remounts it rather than needing an effect to re-read the preference.
   const [pinned, setPinned] = useState(() => readPinned(session.id))
+  // IC36: which images this conversation had translated by the vision model, and under which extractor
+  // generation and evidence schema. Read-only and payload-free by construction (see `VisionEvidenceSummary`).
+  // `null` means "not known" — a failed read shows no section rather than an empty list that would read as
+  // "this session translated nothing".
+  const [visionEvidence, setVisionEvidence] = useState<VisionEvidenceSummary[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    void window.api?.diagnostics?.listVisionEvidence?.({ sessionId: session.id, limit: 20 })?.then(
+      (rows) => {
+        if (alive) setVisionEvidence(rows)
+      },
+      () => {
+        if (alive) setVisionEvidence(null)
+      }
+    )
+    return () => {
+      alive = false
+    }
+  }, [session.id])
   // Forking is a two-step act on purpose: measure, show the numbers, then copy. Nothing is written
   // until the reader has seen what the copy will hold and what it will leave behind. The measured
   // state is kept per session (see `forkStates`) so it survives the card being re-mounted.
@@ -216,6 +236,29 @@ export function SessionInfoCard({
           </div>
         ))}
       </dl>
+      {visionEvidence && visionEvidence.length > 0 ? (
+        <div className="mt-2" data-slot="session-info-vision-evidence">
+          <div className="text-[11px] font-medium text-text-300">
+            {t('sessionInfo.visionEvidence', { count: String(visionEvidence.length) })}
+          </div>
+          <ul className="mt-1 space-y-1">
+            {visionEvidence.map((entry) => (
+              <li
+                key={entry.id}
+                className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-text-300"
+                data-slot="session-info-vision-evidence-item"
+              >
+                <span className="font-mono text-text-000">{entry.imageChecksum.slice(0, 12)}</span>{' '}
+                · {entry.mimeType} ·{' '}
+                {t('sessionInfo.visionExtractor', {
+                  digest: entry.extractorFingerprint.slice(0, 12)
+                })}{' '}
+                · v{entry.evidenceSchemaVersion}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {onOpenEvidence ? (
         <button
           type="button"

@@ -136,7 +136,9 @@ const api: PureScienceAPI = {
   diagnostics: {
     reportRendererFailure: (report) =>
       electronRendererContracts.send('diagnostics.reportRendererFailure', report),
-    exportSupportBundle: () => electronRendererContracts.invoke('diagnostics.exportSupportBundle')
+    exportSupportBundle: () => electronRendererContracts.invoke('diagnostics.exportSupportBundle'),
+    listVisionEvidence: (request) =>
+      electronRendererContracts.invoke('diagnostics.listVisionEvidence', request)
   },
   acp: {
     getState: () => electronRendererContracts.invoke('acp.getState'),

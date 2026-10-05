@@ -55,6 +55,7 @@ const INSTALLED_BUT_NOT_DELIVERED_EVENTS = {
 const GENERATED_SOURCE_OMISSIONS = [
   'clipboard.writeText',
   'diagnostics.exportSupportBundle',
+  'diagnostics.listVisionEvidence',
   'diagnostics.reportRendererFailure',
   'getRuntimeVersions',
   'handoff.list',
@@ -298,7 +299,7 @@ describe('renderer surface inventory', () => {
     // 463 with the session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): the preload bridge exposes one method per contract, so the preload
     // inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(468)
+    expect(electronPaths).toHaveLength(469)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

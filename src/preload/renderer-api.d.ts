@@ -17,6 +17,7 @@ import type {
 import type { SessionCatalogResult } from '../shared/session-catalog-summary'
 import type { ReviewEvidenceRequest, ReviewEvidenceResponse } from '../shared/review-evidence'
 import type { ElicitationRequestView, ElicitationRespondRequest } from '../shared/elicitation'
+import type { VisionEvidenceSummary } from '../shared/vision-evidence'
 import type {
   AddReferenceResult,
   CollectionItem,
@@ -463,6 +464,11 @@ export interface PureScienceAPI {
   diagnostics?: {
     reportRendererFailure(report: RendererFailureReport): void
     exportSupportBundle(): Promise<ExportSupportBundleResult>
+    listVisionEvidence(request?: {
+      sessionId?: string
+      projectId?: string
+      limit?: number
+    }): Promise<VisionEvidenceSummary[]>
   }
   acp: {
     getState(): Promise<AcpStateSnapshot>

@@ -108,6 +108,11 @@ import {
   registerSupportBundleIpcHandlers,
   resolveDefaultSaveDirectory
 } from './diagnostics/support-bundle-ipc'
+import {
+  createVisionEvidenceCommandOwner,
+  registerVisionEvidenceIpcHandlers
+} from './vision/vision-evidence-ipc'
+import { VisionEvidenceRepository } from './vision/vision-evidence-repository'
 import { registerNetworkIpcHandlers } from './network-ipc'
 import { registerWindowIpcHandlers } from './window-ipc'
 import { registerWindowFindIpcHandlers } from './window-find-ipc'
@@ -2036,10 +2041,14 @@ const createApplicationModules = async (
     getDefaultDir: () => resolveDefaultSaveDirectory((name) => app.getPath(name)),
     log: createLogger('diagnostics')
   })
+  const visionEvidenceCommandOwner = createVisionEvidenceCommandOwner(
+    new VisionEvidenceRepository(() => getProjectDbClient(resolveStorageRoot()))
+  )
   declareElectronAdapter('desktop-utilities', () => {
     registerFileSaveHandlers({ resolveManagedFilePath, resolveSessionArtifactFilePath })
     registerLogsIpcHandlers(logsCommandOwner)
     registerSupportBundleIpcHandlers(supportBundleCommandOwner)
+    registerVisionEvidenceIpcHandlers(visionEvidenceCommandOwner)
     registerGithubIpcHandlers({}, githubCommandOwner)
     registerNetworkIpcHandlers()
     registerCliInstallIpcHandlers(cliCommandOwner)
