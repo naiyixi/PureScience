@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import { cp, mkdir, readFile, readdir, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { cp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 
 import { test } from '../fixtures/electron-app'
 import {
@@ -161,4 +161,71 @@ test('exports a project from the interface into a crate that validates on disk',
   const keptCrate = testInfo.outputPath('crate')
   await mkdir(keptCrate, { recursive: true })
   await cp(crateDir, keptCrate, { recursive: true })
+})
+
+/** Finds the one stored file the app published, wherever the durable layout put it. */
+const findStoredFile = async (root: string, fileName: string): Promise<string> => {
+  const walk = async (dir: string): Promise<string | undefined> => {
+    for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        const found = await walk(path)
+        if (found !== undefined) return found
+      } else if (entry.name === fileName) {
+        return path
+      }
+    }
+    return undefined
+  }
+  const found = await walk(root)
+  if (found === undefined) throw new Error(`${fileName} was not found under ${root}`)
+  return found
+}
+
+// IC45: a refusal is not one generic sentence. The writer already says WHICH Versions it refused and why —
+// their bytes no longer hash to what the record holds — and that list has to reach the person, or "every
+// version was refused" leaves them with nothing to check. The tamper below is what makes it happen for
+// real: the bytes are changed after publication, so the writer's own verification refuses the version.
+test('names the refusal and lists every version it would not export', async ({ app }) => {
+  let page = await app.completeOnboarding()
+  page = await app.configureFakeAgent()
+  await createProject(page, 'RO-Crate refusal evidence')
+  await sendPrompt(
+    page,
+    'Create a provenance artifact.',
+    'Artifact provenance verified for session',
+    90_000
+  )
+
+  // The writer reads each published Version's OWN directory: `content` sits beside `evidence.json`, and the
+  // refusal happens when that file's bytes no longer hash to the checksum the evidence recorded. Breaking a
+  // copy elsewhere (the artifact message's file) changes nothing — the earlier attempt proved that.
+  const evidenceFile = await findStoredFile(app.storageRoot, 'evidence.json')
+  const stored = join(dirname(evidenceFile), 'content')
+  console.log(`[ic45] the published version's content is at ${stored}`)
+  await writeFile(stored, 'artifact provenance e2e — tampered after publication', 'utf8')
+
+  const exportDir = await app.createTestDirectory('ro-crate-refusal')
+  const crateDir = join(exportDir, 'crate')
+  await app.stubSaveDialog(crateDir)
+  await page.getByRole('button', { name: 'Switch project' }).click()
+  await page.getByTestId('export-ro-crate').click()
+
+  const dialog = page.getByRole('dialog', { name: 'Export project as RO-Crate' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByTestId('ro-crate-export-submit').click()
+
+  const refusal = dialog.getByTestId('ro-crate-export-failure')
+  await expect(refusal).toBeVisible({ timeout: 60_000 })
+  console.log(`[ic45] the named refusal: "${(await refusal.innerText()).trim()}"`)
+
+  // The list is the point: one row per refused Version, each naming the reason in words.
+  const list = dialog.getByTestId('ro-crate-export-refused-list')
+  await expect(list).toBeVisible()
+  const items = await list.locator('li').allInnerTexts()
+  console.log(`[ic45] refused versions on screen: ${JSON.stringify(items)}`)
+  expect(items.length).toBeGreaterThan(0)
+  expect(items.join(' ')).toContain('no longer hash to what was recorded')
+  // A refusal is not a partial success: no result block may appear beside it.
+  await expect(dialog.getByTestId('ro-crate-export-result')).toHaveCount(0)
 })

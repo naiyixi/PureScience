@@ -189,7 +189,7 @@
 | ---- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | IC43 | 记忆溯源**补生产者**：写 `supersededBy`（取代链）与 `lastSurfacedAt`（recall 注入时回写）；面板给「本会话回忆自记忆」只读列表 | `shared/settings.ts:450-452`（现只声明 + 持久化校验，零写入方）；`memory-recall.ts:27` |
 | IC44 | 记忆笔记**搜索/过滤**（文案已承诺 searchable）                                                                                | `MemoryPanel.tsx`；`i18n/en.ts:746`                                                    |
-| IC45 | RO-Crate 失败**说得清哪条 MUST 没过** + 拒收清单展开                                                                          | `shared/ro-crate.ts:636-1032`；`RoCrateExportDialog.tsx:105-132`                       |
+| IC45 | RO-Crate 失败**说得清哪条 MUST 没过** + 拒收清单展开 | ✅ **已落地 + 真机读数已取（会话，2026-10-05）**：对话框此前只把失败码渲染成一句通用话，而主进程**早已在发** `detail`（形如 `RO-Crate validation failed: <assertion-id> (<level>): <detail>`，逐条规则）与 `refused[]`（每条的 `versionId` 与四种原因码）。现按「**点名码在前、规则级明细与拒收清单在后**」呈现（类型注释已写明 `detail` 属自由文本、**绝不作唯一内容**）；成功面也从只报计数改为展开同一份清单。5 键 ×9 语。**渲染套件 11 passed**（含新增两条：拒收清单逐项、规则级 detail）。**真机 `e2e/certification/ro-crate-export.spec.ts` 追加一条 1 passed (11.6s)**：假 agent 发布一个带 provenance 的版本 → **篡改该版本自己的 `content`**（`…/artifacts/<p>/.provenance/<a>/versions/<v>/content`）→ 真入口导出 ⇒ 点名句 `"Every published version was refused: their recorded provenance no longer matches the stored bytes."` + 清单 `["09c25ff3-… — refused: Its bytes no longer hash to what was recorded."]`，且结果块不出现。**一次错误目标的实测记录（写进 spec 注释）**：先改的是 artifact 消息那份 `provenance-evidence.txt` ⇒ **不触发**拒收 —— 写入器只比对**版本自己目录**里的 `content` 与 `evidence.json` 记录的校验和。 |
 
 ### 批次 10 · v1.89.0 —— 拍板项与死面清理（6 条）
 
