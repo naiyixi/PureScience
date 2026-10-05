@@ -728,3 +728,20 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 ② 树干净（除那 2 张非我产生的 evidence PNG）且无 dev/build/test 进程 ⇒ 按 §十三 顺序取**下一个未被认领的单元 = IC35**（迁移 `staleEvidence` 明细展开；`shared/storage.ts:66-78` 已带 kind/path/两个 digest/runId/project/session，弹窗只印条数 ⇒ 纯 UI、零新通道）；仍脏 / 仍活跃（**大概率如此——会话正在推 IC37 的收尾**）⇒ 继续旁路取证（只读，不改树，可顺手核 IC32/IC33/IC38 的缺口是否仍成立）；
 ③ 按**完整 40 位 SHA** 复查 CI：`dc34bfd5` 两条车道**已被取消、无判决**（见上），改查 `24730be1`（Nightly 37293071065 / Windows 37293070554）及其后继的终态；红了先读**作业级注解**归因，不要重跑单个 job；
 ④ 内存宽松时补 **IC27 / IC28 / IC30** 真机读数（配方见 §十一、§十、§十二）。
+
+## 十六、本轮追加（发版窗口，2026-10-05 18:0x–）——批次 7 收口 + v1.86.0 发版
+
+**本窗口由会话执行**（执行器 `2be4405e5dc6` 已暂停）。批次 7 八条至此全部有终局：
+
+- **IC31** ✅ 已落地 + **前提读数已取**（`e2e/certification/egress-settings-read-failure.spec.ts` **1 passed (8.2s)**）。
+  **⚠️ §十五 遗留的探针问题在此得到答案**：「坏 `settings.json` 时主进程是拒绝还是兜底？」⇒ **兜底**。三条读数原文：
+  `[ic31] Settings entries after a corrupt store: 0`（存储退化为空值 ⇒ 连"已引导"标记都丢 ⇒ 应用回到引导页）、
+  `[ic31] the allowlist section with the store degraded: "Notebook internet access …"`（该节照常渲染）、
+  `[ic31] named read failure: false (retry buttons: 0)`（读路径**从未拒绝**）。
+  ⇒ 原计划的"真机读到拒绝态"**取不到**（与 IC34 同形）：错误态属**预防性**，其错误+重试半以 `NetworkPanel.render.test.tsx`（jsdom）为证，**不冒充真机**。
+- **IC32** ✅ 真机 `1 passed (4.6s)`；**IC34** ✅ `1 passed (9.8s)`；**IC35** ✅ `3 passed (47.6s)`；**IC36** ✅ `1 passed (15.3s)`（六处 pin 按失败原文逐个追平，`gen:web-api-map` 生成物未变佐证档位为 ELECTRON）；**IC37** ✅ `1 passed (5.5s)`；**IC38** ✅ `1 passed (6.6s)`。
+- **IC33** ⚠️ 实现落地、**真机读数具名立案**：要抬出真审批卡需"真被拦的子进程请求"这条夹具（应用事件总线不暴露给测试）。配方见排期档该行。
+
+**门禁**：全量单测 **1204 文件 / 15663 passed（196 skipped，零失败）**、双 typecheck 净、仓规五查通过（仅"v1.86.0 尚未发布"这条不阻断提醒）。
+
+**下一个未被认领的单元 = IC39**（取消排队 / 运行中的远程任务；当前只有 poller 超时后内部 kill）。
