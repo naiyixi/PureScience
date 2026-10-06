@@ -1,6 +1,6 @@
 # 施工单 · 筛选失败类别的具名上屏（`failureKind`）—— 2026-10-04
 
-**状态**：侦察完成、判据三条全过、**代码未动**（下一轮照本单一次做完并验证）。
+**状态**：✅ **已落地**（`db647e2a`，2026-10-04）。**本条更正了原先那句「代码未动」——它已过期**（执行器 2026-10-06 按机制名核源码 + `git log -S` 核提交后更正）：四处改动全在树上——`ScreeningRunView.failureKinds`（`src/shared/references-screening.ts:245`）、`buildRunView` 里按条目 `failureKind` 计数（`src/main/references/screening-service.ts:646-659`）、面板 `FAILURE_KIND_LABEL` 与 `data-testid="screening-run-failure-kinds"` 那行（`src/renderer/src/components/references/ReferencesScreeningPanel.tsx:83-86,1293-1296`）、3 键 ×9 语（`src/renderer/src/i18n/en.ts:3957-3959`）。读数（main 16 passed / 渲染 21 passed / zh 词表三键 / translation-quality 42 passed / 双 typecheck / lint 0）与**仍未取的那一条**（真窗口里一次「有失败」的筛选运行）见 `docs/evidence/2026-10-04-screening-failure-kinds.md`。**下一轮不要再按本单重做**。
 
 ## 一、缺口（三判已过）
 

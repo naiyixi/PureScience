@@ -15,16 +15,17 @@ import { createProject } from './helpers'
 // with `defaultKind` set imports one row, the row carries that kind, and the outcome carries
 // `journalMatch: 'by-issn'` and `journalCreated: true`. That is IC27's store contract and IC30's data contract.
 //
-// NOT CERTIFIED — measured defect (test 2, fixme): the window's own import area never renders its result.
-// Measured on this machine in this instance: the textbox IS filled (read back with `inputValue()`), the Import
-// button IS enabled (`isDisabled() === false`), the click lands, the renderer emits no error — and none of the
-// four result nodes ever appear (`journal-metrics-import-summary` / `-error` / `-imported` / `-attribution`),
-// while the panel's text still ends at "Import metrics Paste a publisher table (CSV/TSV)… Import". The code IS
-// in the running bundle (`out/renderer/assets/index-lwOwGRux.js` contains
-// `journal-metrics-import-attribution` and `defaultKind`), so this is not a stale build. Two probes ruled out
-// my own mistakes: the same text through the bridge imports fine (so the table, the format and the kind are
-// right), and the field is still filled after the click (so the component did not remount and lose its state).
-// What remains is inside the window's handling of that click — that is where the follow-up starts.
+// NOT CERTIFIED (test 2, fixme) — AND NO LONGER A MEASURED DEFECT: the earlier reading ("the window's import
+// area never renders its result") is explained by the LOCATOR, not by the product. `getByRole('button',
+// { name: 'Import' })` matches by SUBSTRING, and the Reference library toolbar renders before the journal
+// metrics panel: `references.importCsl` ("Import CSL style", ReferencesLibraryDialog.tsx:1008) and
+// `references.pdfImport.open` ("Import PDFs", :1038) both contain "Import" and both precede the panel (:1141)
+// ⇒ `.first()` clicks "Import CSL style", whose handler opens a hidden file input — the native chooser
+// dismisses, nothing is imported, the textbox keeps its text, no result node appears and no error is logged.
+// That is exactly the shape that was measured, including the two probes that ruled out a remount. So the
+// product was never at fault; the submit is located below by its own anchor
+// (`[data-slot="journal-metrics-import-submit"]`). This test stays `fixme` until it has been RUN GREEN: an
+// unrun spec under `e2e/certification/**` is a gate that has never passed.
 test.setTimeout(180_000)
 
 test('a kind-less table imports under the request kind and lands attributed (IC27 + IC30)', async ({
@@ -132,7 +133,9 @@ test.fixme('the window renders the import outcome and its attribution (IC30 wind
       'Journal of Import Evidence,9012-3456,7.3,2024,Publisher table'
     ].join('\n')
   )
-  await dialog.getByRole('button', { name: 'Import' }).first().click()
+  // The submit is located by its own anchor: `getByRole('button', { name: 'Import' })` matches by substring and
+  // the toolbar's "Import CSL style" button precedes it in the DOM (see the header).
+  await dialog.locator('[data-slot="journal-metrics-import-submit"]').click()
 
   const summary = dialog.locator('[data-slot="journal-metrics-import-summary"]').first()
   await expect(summary).toBeVisible({ timeout: 60_000 })
