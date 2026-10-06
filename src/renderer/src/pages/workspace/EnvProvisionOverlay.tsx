@@ -18,14 +18,17 @@ const EnvProvisionOverlay = ({
   const { t } = useLanguage()
   if (ui.kind === 'ready') return null
 
+  // The four standing titles are visible copy, so they come from the nine dictionaries (this overlay
+  // is the first thing a non-English user sees on a first run). The error branch shares its title with
+  // the global status banner.
   const title =
     ui.kind === 'error'
-      ? 'Environment setup needs attention'
+      ? t('ui.environmentSetupNeedsAttention')
       : ui.scope === 'r'
-        ? 'Preparing R environment (~1GB, first time only)…'
+        ? t('ui.preparingREnvironment')
         : ui.scope === 'upgrade'
-          ? 'Updating the notebook environment…'
-          : 'Preparing Python environment…'
+          ? t('ui.updatingNotebookEnvironment')
+          : t('ui.preparingPythonEnvironment')
 
   return (
     <div
@@ -77,7 +80,7 @@ const EnvProvisionOverlay = ({
               onClick={onRetry}
               className="rounded border border-border-100 px-3 py-1 text-xs text-text-100 hover:bg-bg-300"
             >
-              Retry
+              {t('common.retry')}
             </button>
           ) : null}
         </>

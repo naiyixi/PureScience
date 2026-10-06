@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { LanguageProvider } from '@/i18n'
 import { EnvStatusBanner } from './EnvStatusBanner'
 
 let container: HTMLDivElement
@@ -156,5 +157,43 @@ describe('EnvStatusBanner', () => {
   it('is hidden when ready', () => {
     act(() => root.render(<EnvStatusBanner ui={{ kind: 'ready' }} />))
     expect(container.querySelector('[data-testid="env-status-banner"]')).toBeNull()
+  })
+})
+
+// The banner renders globally (App), so its standing line is the first thing every screen shows while
+// the runtime is rewritten: it must speak the user's language, and the percent substitution has to
+// happen in the component (a suite rendered outside the provider must not print `{percent}` at anyone).
+describe('EnvStatusBanner copy comes from the dictionaries', () => {
+  const renderZh = (element: React.JSX.Element): void => {
+    window.localStorage.setItem('purescience-language', 'zh')
+    act(() => root.render(<LanguageProvider>{element}</LanguageProvider>))
+  }
+
+  beforeEach(() => window.localStorage.clear())
+  afterEach(() => window.localStorage.clear())
+
+  it('shows the updating line and its percent in the user’s language', () => {
+    renderZh(
+      <EnvStatusBanner
+        ui={{
+          kind: 'preparing',
+          scope: 'upgrade',
+          phase: 'install',
+          message: 'Updating…',
+          progress: 0.42
+        }}
+      />
+    )
+    const text = container.querySelector('[data-testid="env-status-banner"]')?.textContent ?? ''
+    expect(text).toContain('正在更新笔记本环境…… 42%')
+    expect(text).not.toContain('{percent}')
+  })
+
+  it('localises the retry affordance on the failure banner', () => {
+    renderZh(
+      <EnvStatusBanner ui={{ kind: 'error', message: 'offline' }} onRetry={() => undefined} />
+    )
+    const button = container.querySelector('[data-testid="env-status-banner-retry"]')
+    expect(button?.textContent).toBe('重试')
   })
 })

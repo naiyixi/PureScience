@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { NotebookEnvironmentStatus, NotebookRunRecord } from '../../../../shared/notebook'
 import type { ProvisionStatus } from '../../../../shared/notebook-env'
+import { LanguageProvider } from '@/i18n'
 import { createInitialNotebookEnvState, useNotebookEnvStore } from '../../stores/notebook-env-store'
 import { EnvProvisionOverlay } from './EnvProvisionOverlay'
 import { NotebookPreview, type NotebookPreviewItem } from './NotebookPreview'
@@ -101,6 +102,52 @@ describe('EnvProvisionOverlay', () => {
     act(() => root.render(<EnvProvisionOverlay ui={ui} />))
     expect(container.querySelector('[data-testid="notebook-env-gate"]')).not.toBeNull()
     expect(container.querySelector('[data-testid="notebook-env-cancel"]')).toBeNull()
+  })
+})
+
+// The overlay is the first surface a new user meets (workspace gate on a first run) and it is also
+// what an additive upgrade shows, so its four standing titles and its retry label are user copy, not
+// internals. These tests render through the real provider in a non-English language: keying the copy
+// is not enough, the screen has to change.
+describe('EnvProvisionOverlay copy comes from the dictionaries', () => {
+  const renderZh = (element: React.JSX.Element): void => {
+    window.localStorage.setItem('purescience-language', 'zh')
+    act(() => root.render(<LanguageProvider>{element}</LanguageProvider>))
+  }
+
+  beforeEach(() => window.localStorage.clear())
+  afterEach(() => window.localStorage.clear())
+
+  it('titles an R first-run preparation in the user’s language', () => {
+    const ui = deriveProvisionUi(
+      { pythonReady: true, rReady: false, version: 3, provisioning: true },
+      'r',
+      { phase: 'fetch-r', message: 'Fetching managed R runtime', progress: 0.2, scope: 'r' },
+      undefined
+    )
+    renderZh(<EnvProvisionOverlay ui={ui} />)
+    const text = container.querySelector('[data-testid="notebook-env-gate"]')?.textContent ?? ''
+    expect(text).toContain('正在准备 R 环境')
+    expect(text).not.toContain('Preparing R environment')
+  })
+
+  it('titles an additive upgrade in the user’s language, still with no Cancel', () => {
+    const ui = deriveProvisionUi(
+      { pythonReady: true, rReady: false, version: 3, provisioning: true },
+      undefined,
+      { phase: 'upgrade', message: 'Updating default packages…', progress: 0.1, scope: 'upgrade' },
+      undefined
+    )
+    renderZh(<EnvProvisionOverlay ui={ui} />)
+    const gate = container.querySelector('[data-testid="notebook-env-gate"]')
+    expect(gate?.textContent).toContain('正在更新笔记本环境')
+    expect(container.querySelector('[data-testid="notebook-env-cancel"]')).toBeNull()
+  })
+
+  it('localises the retry affordance on the failure state', () => {
+    renderZh(<EnvProvisionOverlay ui={{ kind: 'error', message: 'offline' }} onRetry={() => {}} />)
+    const button = container.querySelector('[data-testid="notebook-env-retry"]')
+    expect(button?.textContent).toBe('重试')
   })
 })
 
@@ -432,6 +479,17 @@ describe('NotebookPreview per-kernel tabs', () => {
     const switcher = container.querySelector('[data-testid="kernel-switcher"]') as HTMLElement
     expect(switcher.querySelector('[data-testid="kernel-switcher-repl"]')).toBeNull()
     expect(switcher.querySelector('[data-testid="kernel-switcher-bash"]')).toBeNull()
+  })
+
+  it('labels the kernel terminal from the dictionaries rather than a hardcoded English line', async () => {
+    await mountWithRuns([makeRun({ runId: 'p1', kernelKind: 'python' })])
+
+    // Both halves of the divider (what the terminal is, and whether the kernel is busy) are user copy:
+    // resolving them through `t` is what lets the pane speak the user's language.
+    const divider = container.querySelector('[data-testid="notebook-terminal-divider"]')
+    expect(divider).not.toBeNull()
+    expect(divider?.textContent).toContain('Python kernel · shared with the agent')
+    expect(divider?.textContent).toContain('idle')
   })
 
   it("shows only the active kind's cells, and switches on tab click", async () => {

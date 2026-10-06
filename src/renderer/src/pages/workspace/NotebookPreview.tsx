@@ -1104,9 +1104,9 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
           data-testid="notebook-terminal-divider"
           role="separator"
         >
-          <span>Python kernel · shared with the agent</span>
+          <span>{t('ws.notebookKernelSharedWithAgent')}</span>
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-1 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-border-100 opacity-60 transition duration-150 group-hover:opacity-100" />
-          <span>{isNotebookBusy ? 'running' : 'idle'}</span>
+          <span>{isNotebookBusy ? t('ws.notebookKernelRunning') : t('ws.notebookKernelIdle')}</span>
         </div>
 
         <div className="min-h-0 flex-[1_1_0]" data-testid="notebook-terminal-panel">
