@@ -4275,5 +4275,19 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': 'Инструмент',
   'settings.approvalArgs': 'Аргументы',
   'common.deny': 'Отклонить',
-  'settings.alwaysScope': 'Всегда'
+  'settings.alwaysScope': 'Всегда',
+  'references.journalMetrics.aliasUnbind.title': 'Псевдонимы, оставленные объединением',
+  'references.journalMetrics.aliasUnbind.hint':
+    'Каждое имя здесь разрешается в журнал рядом. Освобождается только имя.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': 'разрешается в {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'Освободить это имя',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    'После этого «{name}» больше не будет разрешаться в {journal}. Показатели и ссылки, перемещённые объединением, останутся на месте — обратно ничего не переносится — и ни один журнал, показатель или источник не удаляется.',
+  'references.journalMetrics.aliasUnbind.confirm': 'Освободить',
+  'references.journalMetrics.aliasUnbind.cancel': 'Оставить',
+  'references.journalMetrics.aliasUnbind.releasing': 'Освобождение…',
+  'references.journalMetrics.aliasUnbind.done':
+    '«{name}» освобождено — имя больше не разрешается в {journal}.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    'Это написание больше не псевдоним.'
 }

@@ -4349,5 +4349,18 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': 'Herramienta',
   'settings.approvalArgs': 'Argumentos',
   'common.deny': 'Denegar',
-  'settings.alwaysScope': 'Siempre'
+  'settings.alwaysScope': 'Siempre',
+  'references.journalMetrics.aliasUnbind.title': 'Alias que dejó una combinación',
+  'references.journalMetrics.aliasUnbind.hint':
+    'Cada nombre de aquí se resuelve en la revista que figura al lado. Liberar solo libera el nombre.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': 'se resuelve en {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'Liberar este nombre',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    'A partir de ahora, «{name}» dejará de resolverse en {journal}. Las métricas y referencias que movió la combinación se quedan donde las dejó (no se devuelven) y no se elimina ninguna revista, cifra ni referencia.',
+  'references.journalMetrics.aliasUnbind.confirm': 'Liberar',
+  'references.journalMetrics.aliasUnbind.cancel': 'Conservar',
+  'references.journalMetrics.aliasUnbind.releasing': 'Liberando…',
+  'references.journalMetrics.aliasUnbind.done':
+    'Se liberó «{name}»: ya no se resuelve en {journal}.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': 'Esa grafía ya no es un alias.'
 }

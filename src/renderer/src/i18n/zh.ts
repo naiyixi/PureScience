@@ -4006,7 +4006,19 @@ export const zh = {
   'settings.approvalTool': '工具',
   'settings.approvalArgs': '参数',
   'common.deny': '拒绝',
-  'settings.alwaysScope': '始终'
+  'settings.alwaysScope': '始终',
+  'references.journalMetrics.aliasUnbind.title': '合并留下的别名',
+  'references.journalMetrics.aliasUnbind.hint':
+    '这里的每个名字都会解析到它旁边的刊物。解除只解除这个名字。',
+  'references.journalMetrics.aliasUnbind.resolvesTo': '解析到 {journal}',
+  'references.journalMetrics.aliasUnbind.release': '解除这个旧写法',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    '此后「{name}」不再解析到 {journal}。合并时改归属的指标与文献会留在合并后的刊物下——不会被退回——也不会删除任何刊物、指标或文献。',
+  'references.journalMetrics.aliasUnbind.confirm': '确认解除',
+  'references.journalMetrics.aliasUnbind.cancel': '保留',
+  'references.journalMetrics.aliasUnbind.releasing': '正在解除…',
+  'references.journalMetrics.aliasUnbind.done': '已解除「{name}」——它不再解析到 {journal}。',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '这个写法已经不是别名了。'
 }
 
 export type ZhKey = keyof typeof zh

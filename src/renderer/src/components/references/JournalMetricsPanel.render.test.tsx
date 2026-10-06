@@ -47,7 +47,21 @@ vi.mock('@/i18n', () => {
     'references.journalMetrics.conflictBadge': 'also {count}',
     'references.journalMetrics.conflictBadgeTitle':
       'The same year holds more than one value from different sources; all are listed below.',
-    'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})'
+    'references.journalMetrics.conflictLine': 'also {value} ({year} · {source})',
+    'references.journalMetrics.aliasUnbind.title': 'Aliases a merge left behind',
+    'references.journalMetrics.aliasUnbind.hint':
+      'Each name here resolves to the journal beside it. Releasing one releases the name only.',
+    'references.journalMetrics.aliasUnbind.resolvesTo': 'resolves to {journal}',
+    'references.journalMetrics.aliasUnbind.release': 'Release this name',
+    'references.journalMetrics.aliasUnbind.confirmDetail':
+      'After this, “{name}” will no longer resolve to {journal}. The metrics and references the merge moved stay where it put them — nothing is moved back — and no journal, number or reference is deleted.',
+    'references.journalMetrics.aliasUnbind.confirm': 'Release it',
+    'references.journalMetrics.aliasUnbind.cancel': 'Keep it',
+    'references.journalMetrics.aliasUnbind.releasing': 'Releasing…',
+    'references.journalMetrics.aliasUnbind.done':
+      'Released “{name}” — it no longer resolves to {journal}.',
+    'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+      'That spelling is no longer an alias.'
   }
 
   return {
@@ -64,7 +78,11 @@ vi.mock('@/i18n', () => {
   }
 })
 
-import { JournalMergeControls, JournalMetricsPanel, JournalMetricsTable } from './JournalMetricsPanel'
+import {
+  JournalMergeControls,
+  JournalMetricsPanel,
+  JournalMetricsTable
+} from './JournalMetricsPanel'
 
 let container: HTMLDivElement
 let root: Root
@@ -488,5 +506,163 @@ describe('journal metrics panel range filters', () => {
     expect(filtered).toHaveLength(1)
     expect(filtered[0]).toContain('16.6')
     expect(filtered.join(' ')).not.toContain('64.8')
+  })
+})
+
+// The merge's other half. These drive the real panel (not the component alone) because the failure this
+// guards against is a section that never gets mounted, or a control that sends a name other than the one it
+// drew — both of which a component-only test would report as green.
+describe('journal alias release', () => {
+  const journals = [
+    { id: 'j-nature', normalizedName: 'nature', displayName: 'Nature', issn: '0028-0836' },
+    {
+      id: 'j-comms',
+      normalizedName: 'nature communications',
+      displayName: 'Nature Communications',
+      issn: '2041-1723'
+    }
+  ]
+
+  const libraryWithAliases = {
+    journals,
+    claims: [],
+    aliases: [
+      { normalizedName: 'nature london', journalId: 'j-nature', createdVia: 'merge' },
+      { normalizedName: 'nat. commun.', journalId: 'j-comms', createdVia: 'merge' }
+    ]
+  }
+
+  const libraryWithoutAliases = { journals, claims: [], aliases: [] }
+
+  const flush = async (): Promise<void> => {
+    await act(async () => {
+      await Promise.resolve()
+    })
+  }
+
+  const renderPanel = async (): Promise<void> => {
+    await act(async () => {
+      root.render(<JournalMetricsPanel />)
+    })
+    await flush()
+  }
+
+  const aliasRows = (): HTMLElement[] => [
+    ...container.querySelectorAll<HTMLElement>('[data-slot="journal-alias-release-row"]')
+  ]
+
+  const rowContaining = (text: string): HTMLElement => {
+    const row = aliasRows().find((candidate) => (candidate.textContent ?? '').includes(text))
+    if (!row) throw new Error(`no alias row mentioning ${text}`)
+    return row
+  }
+
+  const click = (scope: HTMLElement, slot: string): void => {
+    const button = scope.querySelector<HTMLButtonElement>(`[data-slot="${slot}"]`)
+    if (!button) throw new Error(`no ${slot} inside the alias row`)
+    act(() => button.click())
+  }
+
+  const removeJournalAlias = vi.fn()
+
+  beforeEach(() => {
+    removeJournalAlias.mockReset()
+    window.api = {
+      references: {
+        listJournalMetrics: vi
+          .fn()
+          .mockResolvedValueOnce(libraryWithAliases)
+          .mockResolvedValue(libraryWithoutAliases),
+        listJournalClaims: vi.fn().mockResolvedValue([]),
+        appendJournalMetric: vi.fn().mockResolvedValue({ id: 'claim-1' }),
+        removeJournalAlias
+      }
+    } as unknown as typeof window.api
+  })
+
+  it('says what a release does and does not do before sending the row’s own key', async () => {
+    removeJournalAlias.mockResolvedValue({
+      ok: true,
+      normalizedName: 'nat. commun.',
+      journalId: 'j-comms'
+    })
+
+    await renderPanel()
+
+    // Both spellings are on screen with the journal each one resolves to — the control is not offered for a
+    // name the reader cannot identify.
+    expect(aliasRows()).toHaveLength(2)
+    expect(rowContaining('nature london').textContent).toContain('resolves to Nature')
+
+    // The control is reachable, not merely drawn: a disabled button would be the dead affordance.
+    const row = rowContaining('nat. commun.')
+    const open = row.querySelector<HTMLButtonElement>('[data-slot="journal-alias-release-open"]')
+    expect(open?.disabled).toBe(false)
+
+    click(row, 'journal-alias-release-open')
+
+    // Nothing has been sent yet, and the confirmation states the two halves: the name stops resolving, and the
+    // numbers stay where the merge put them.
+    expect(removeJournalAlias).not.toHaveBeenCalled()
+    const confirm = rowContaining('nat. commun.').querySelector(
+      '[data-slot="journal-alias-release-confirm"]'
+    )
+    expect(confirm?.textContent).toContain('no longer resolve to Nature Communications')
+    expect(confirm?.textContent).toContain('nothing is moved back')
+
+    click(rowContaining('nat. commun.'), 'journal-alias-release-confirm-yes')
+
+    // The request carries the STORED key of the row that was clicked — not the other row's, and not a
+    // re-derivation from what is displayed.
+    expect(removeJournalAlias).toHaveBeenCalledTimes(1)
+    expect(removeJournalAlias).toHaveBeenCalledWith({ normalizedName: 'nat. commun.' })
+
+    // The table is re-read from the store rather than patched locally: with the stub no longer holding any
+    // alias, the spelling is gone — while the report of what happened stays on screen, because it is the only
+    // place that explains the row that just disappeared.
+    await flush()
+    expect(container.textContent).toContain('Released “nat. commun.”')
+    expect(aliasRows()).toHaveLength(0)
+    expect(container.querySelector('[data-slot="journal-alias-release"]')).not.toBeNull()
+  })
+
+  it('changes nothing when the confirmation is declined', async () => {
+    await renderPanel()
+
+    const row = rowContaining('nature london')
+    click(row, 'journal-alias-release-open')
+    expect(
+      rowContaining('nature london').querySelector('[data-slot="journal-alias-release-confirm"]')
+    ).not.toBeNull()
+
+    click(rowContaining('nature london'), 'journal-alias-release-confirm-no')
+
+    expect(removeJournalAlias).not.toHaveBeenCalled()
+    expect(
+      rowContaining('nature london').querySelector('[data-slot="journal-alias-release-confirm"]')
+    ).toBeNull()
+  })
+
+  it('prints the store’s named refusal beside its own sentence, and keeps the row', async () => {
+    removeJournalAlias.mockResolvedValue({
+      ok: false,
+      reason: 'alias-not-found',
+      detail: 'no alias named nature london'
+    })
+    // A refusal changed nothing, so the library still holds the alias after the re-read.
+    vi.mocked(window.api.references.listJournalMetrics).mockResolvedValue(libraryWithAliases)
+
+    await renderPanel()
+    click(rowContaining('nature london'), 'journal-alias-release-open')
+    click(rowContaining('nature london'), 'journal-alias-release-confirm-yes')
+    await flush()
+
+    const refusal = container.querySelector('[data-slot="journal-alias-release-refusal"]')
+    expect(refusal?.getAttribute('role')).toBe('alert')
+    expect(refusal?.textContent).toContain('That spelling is no longer an alias.')
+    expect(refusal?.textContent).toContain('no alias named nature london')
+    // A refusal changed nothing, so the spelling is still listed instead of vanishing as if released.
+    expect(container.querySelector('[data-slot="journal-alias-release-done"]')).toBeNull()
+    expect(aliasRows()).toHaveLength(2)
   })
 })

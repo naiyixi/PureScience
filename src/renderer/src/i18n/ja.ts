@@ -4260,5 +4260,19 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': 'ツール',
   'settings.approvalArgs': '引数',
   'common.deny': '拒否',
-  'settings.alwaysScope': '常に'
+  'settings.alwaysScope': '常に',
+  'references.journalMetrics.aliasUnbind.title': '統合が残した別名',
+  'references.journalMetrics.aliasUnbind.hint':
+    'ここにある名前はすべて、隣の雑誌に解決されます。解除しても名前だけが解除されます。',
+  'references.journalMetrics.aliasUnbind.resolvesTo': '→ {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'この名前を解除する',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    '以降、「{name}」は {journal} に解決されなくなります。統合で所属が変わった指標と文献はそのまま残り（元には戻さず）、雑誌・数値・文献は削除されません。',
+  'references.journalMetrics.aliasUnbind.confirm': '解除する',
+  'references.journalMetrics.aliasUnbind.cancel': 'そのまま残す',
+  'references.journalMetrics.aliasUnbind.releasing': '解除しています…',
+  'references.journalMetrics.aliasUnbind.done':
+    '「{name}」を解除しました。もう {journal} には解決されません。',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    'その綴りはもう別名ではありません。'
 }

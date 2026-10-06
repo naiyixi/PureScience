@@ -34,7 +34,12 @@ import type {
   JournalMetricImportResult
 } from '../../shared/journal-metrics'
 import type { JournalMetricLibrary } from '../../shared/journal-metrics-overview'
-import type { JournalMergeRequest, JournalMergeResult } from '../../shared/journal-merge'
+import type {
+  JournalAliasUnbindRequest,
+  JournalAliasUnbindResult,
+  JournalMergeRequest,
+  JournalMergeResult
+} from '../../shared/journal-merge'
 import { fetchReferenceByIdentifier, type IdentifierKind } from './service'
 import { createPdfDoiImportOwner, type PdfDocumentPorts } from './pdf-doi-owner'
 import type { PdfDoiImportResult } from './pdf-doi-import'
@@ -77,6 +82,10 @@ export type ReferencesHandlers = {
   // Aliases and the explicit merge (R2-U4): merging two journals re-attributes their metrics and references
   // and keeps the source's spelling as an alias — never a fuzzy/automatic merge, and every refusal is named.
   mergeJournals(input: JournalMergeRequest): Promise<JournalMergeResult>
+  // The merge's other half, and only that half: a spelling a merge created can be released again, so the
+  // name stops resolving here and can be used afresh. The metrics and references the merge moved stay where
+  // it put them — the row carries no former owner to move back — and the result says so.
+  removeJournalAlias(input: JournalAliasUnbindRequest): Promise<JournalAliasUnbindResult>
   // IC29: a reader's own correction is an append, not an edit — the table is append-only so that what the
   // source originally said stays readable beside the correction (and the repository enforces the doctrine:
   // a missing value is not a zero, and an undated or unsourced number is refused outright).
@@ -247,6 +256,9 @@ export const createReferencesIpcModule = (
     // The merge is the store's own write: no owner layer sits between the user's decision and the rewrite, so
     // there is nowhere for a second interpretation of "the same journal" to creep in.
     mergeJournals: (input) => journalRepository.mergeJournals(input),
+    // Straight to the store, like the merge above: releasing a name is the user's decision, and there is no
+    // owner layer that could reinterpret which alias was meant.
+    removeJournalAlias: (input) => journalRepository.removeJournalAlias(input),
     appendJournalMetric: (input) => journalRepository.appendMetric(input),
     listJournalClaims: async (journalId) =>
       (await journalRepository.listMetrics(journalId)).map((claim) => ({
@@ -343,6 +355,9 @@ export const installReferencesIpcHandlers = (
     ipcMainHandle('references:list-journal-metrics', () => handlers.listJournalMetrics())
     ipcMainHandle('references:merge-journals', (_event, input: JournalMergeRequest) =>
       handlers.mergeJournals(input)
+    )
+    ipcMainHandle('references:remove-journal-alias', (_event, input: JournalAliasUnbindRequest) =>
+      handlers.removeJournalAlias(input)
     )
     ipcMainHandle(
       'references:append-journal-metric',

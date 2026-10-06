@@ -699,6 +699,10 @@ const api: PureScienceAPI = {
     // The explicit merge (R2-U4): the merged journal's spelling survives as an alias, so the older name keeps
     // resolving to the surviving record instead of registering a second identity for one venue.
     mergeJournals: (input) => electronRendererContracts.invoke('references.mergeJournals', input),
+    // The merge's other half: releasing a spelling it created. Writes exactly one alias row — the metrics and
+    // references the merge moved stay where it put them, and the surface says so before the user confirms.
+    removeJournalAlias: (input) =>
+      electronRendererContracts.invoke('references.removeJournalAlias', input),
     detachPdf: (referenceId) =>
       electronRendererContracts.invoke('references.detachPdf', referenceId),
     // Citation-style layer (v1.65): imported CSL styles are application-wide, so they carry no

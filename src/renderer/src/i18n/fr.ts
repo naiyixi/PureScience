@@ -4378,5 +4378,19 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': 'Outil',
   'settings.approvalArgs': 'Arguments',
   'common.deny': 'Refuser',
-  'settings.alwaysScope': 'Toujours'
+  'settings.alwaysScope': 'Toujours',
+  'references.journalMetrics.aliasUnbind.title': 'Alias laissés par une fusion',
+  'references.journalMetrics.aliasUnbind.hint':
+    'Chaque nom ici renvoie à la revue indiquée à côté. La dissociation ne porte que sur le nom.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': 'renvoie à {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'Dissocier ce nom',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    'Ensuite, « {name} » ne renverra plus à {journal}. Les métriques et références déplacées par la fusion restent là où elles ont été placées — rien n’est remis en arrière — et aucune revue, valeur ni référence n’est supprimée.',
+  'references.journalMetrics.aliasUnbind.confirm': 'Dissocier',
+  'references.journalMetrics.aliasUnbind.cancel': 'Conserver',
+  'references.journalMetrics.aliasUnbind.releasing': 'Dissociation…',
+  'references.journalMetrics.aliasUnbind.done':
+    '« {name} » a été dissocié : ce nom ne renvoie plus à {journal}.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    'Cette graphie n’est plus un alias.'
 }

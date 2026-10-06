@@ -1,6 +1,6 @@
 # 新功能工作单：解除期刊别名（合并的"拆分"入口）
 
-> 立案：2026-10-06（会话）。来源：IC49 核实结论「合并不可逆的文案**早已在位**，缺的只是**可撤销/拆分入口**」⇒ 作为**新功能单独立项**（不在 IC49 原行里假装已有）。状态：**待开工**。
+> 立案：2026-10-06（会话）。来源：IC49 核实结论「合并不可逆的文案**早已在位**，缺的只是**可撤销/拆分入口**」⇒ 作为**新功能单独立项**（不在 IC49 原行里假装已有）。状态：**已落地（执行器，2026-10-07，提交见下 §7）**；真机读数未取（内存不足，已具名立案 + 配方）。
 
 ## 1. 这个功能到底是什么（先划界，避免做成假功能）
 
@@ -52,3 +52,33 @@
 - IC49（已结案，明写不可逆在位）：排期档该行 + `e2e/certification/journal-merge-irreversibility.spec.ts`
 - 合并实现与其拒绝语义：`src/main/references/journal-repository.ts:203+`、`src/shared/journal-merge.ts`
 - 通道与 pin 的完整连锁：技能 `references/adding-an-ipc-channel.md`
+
+## 7. 落地记录（执行器，2026-10-07）
+
+**落地面**（§2 的六处全齐 + §3 的文案）：
+
+| 落点 | 改动 |
+| --- | --- |
+| `src/main/references/ipc.ts` | `ReferencesHandlers.removeJournalAlias` + 处理器映射（**直通仓库**，与合并同形）+ 路由 `references:remove-journal-alias` |
+| `src/main/references/application-commands.ts` | **四处登记**：`Pick` 联合、`defineApplicationCommand`、组成员数组、`scope.registerGroup` 的处理器（缺第四处会以「Application command handler is missing」在启动路径抛 ⇒ 窗口永不出现） |
+| `src/shared/renderer-contract-catalog.ts` | references 组加一条（默认 Web 档 ⇒ 三处合成计数同动） |
+| `src/preload/index.ts` + `renderer-api.d.ts` | 同形包装与声明 |
+| `src/shared/web-api-map.generated.ts` | `gen:web-api-map` 重跑后 +1 行（与手改逐字一致） |
+| 渲染层 | 新组件 `JournalAliasRelease.tsx`（每别名一行 + **二次确认**）；面板按「库里有别名 **或** 有结果」挂载 ⇒ 结果行不会随最后一条别名消失 |
+| i18n | **10 键 × 9 语**（zh ≠ en、zh-Hant 纯繁体；拒绝标签键与共享层的键名逐字一致） |
+
+**契约 pin（按失败原文逐个追平，未预判）**：目录 468→469、Web 安装集 393→394、Web invoke 投影 363→364、表面清单 468→469、preload 可调用清单 468→469、核心契约 231→232（requests 193→194）、本地 Web 可调用面 393→394、references 族通道 29→30（`screening-ipc.test.ts`）、合成计数内部 357→358 / 本地 Web 355→356 / 远程 Web 调度 231→232（**fail-closed 124 不变**：该通道是普通窗口写，与合并同档，不是本地专用）。
+
+**证据**：新增 3 条渲染用例（走**整个面板**，含「请求带的是被点那一行的存储键」与「结果行在最后一条别名消失后仍在屏」）；定向套件 **153 文件 / 1754 passed | 1 skipped**；逐条读数见 `docs/evidence/2026-10-07-journal-alias-release.md`。
+
+**⏳ 真机读数未取（具名立案）**：开工时本机 swap 8.99 G / 10.24 G 已用、空闲物理页 ~3.8k（≈60 MB）⇒ 无 `build:e2e`（8 GB 堆）+ Electron 的安全余量，**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝一道从未通过的闸门）。
+**配方（内存宽松时一次跑完，只允许跑绿后提交该 spec）**：以 `e2e/certification/journal-merge-irreversibility.spec.ts` 为骨架 —— 它已含「桥接导入两刊 → 走表单真合并 ⇒ 结果行留别名 `also known as <名>`」这条造数路径：
+① 合并完成后，在同一个面板底部读到 `[data-slot="journal-alias-release-row"]` 一行，其文本含规范化名与 `resolves to <目标刊>`；
+② 点该行 `[data-slot="journal-alias-release-open"]` ⇒ 断言确认块（`[data-slot="journal-alias-release-confirm"]`）**在屏**且含「不再解析」与「不会被退回」两句；
+③ 点 `…-confirm-yes` ⇒ 断言 `[data-slot="journal-alias-release-done"]` 的文案例句，并**从存储回读**（`listJournalMetrics` 的 `aliases` 不再含该规范化名 —— 不是只看界面）；
+④ **判据 4（不越界）**：解除前后各读一次 `listJournalMetrics` 的 `claims`，断言逐条主张的 `journalId` 集合**没有变化**（解除 ≠ 撤销合并）；
+⑤ 点 `…-confirm-no` 那条路径断言磁盘态不变（二次确认的负向）。
+**只允许跑绿之后提交该 spec**；尚未取到的部分在证据档第三节逐条具名。
+
+**未做（本单原文之外，未假装已有）**：不提供「撤销合并」（数据层没有原归属可回放 —— 见 §1 与 §5）；不做别名的手工新增。
+

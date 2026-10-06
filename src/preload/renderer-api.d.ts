@@ -961,6 +961,11 @@ export interface PureScienceAPI {
     mergeJournals(
       input: import('../shared/journal-merge').JournalMergeRequest
     ): Promise<import('../shared/journal-merge').JournalMergeResult>
+    // Releasing an alias a merge created (the merge's other half): the name stops resolving here. Metrics and
+    // references the merge moved are NOT moved back, and the result reports what was released.
+    removeJournalAlias(
+      input: import('../shared/journal-merge').JournalAliasUnbindRequest
+    ): Promise<import('../shared/journal-merge').JournalAliasUnbindResult>
     // Citation-style layer (v1.65): imported CSL styles, validated and stored with their licence.
     listCitationStyles(): Promise<import('../shared/citation/csl').ImportedCitationStyle[]>
     importCitationStyle(input: {

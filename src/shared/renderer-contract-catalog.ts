@@ -288,6 +288,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
     ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['importCitationStyle', 'references:import-citation-style'], ['importJournalMetrics', 'references:import-journal-metrics'], ['list', 'references:list'],
     ['listCitationStyles', 'references:list-citation-styles'], ['listCollections', 'references:list-collections'], ['listJournalMetrics', 'references:list-journal-metrics'], ['merge', 'references:merge'], ['mergeJournals', 'references:merge-journals'],
+ ['removeJournalAlias', 'references:remove-journal-alias'],
  ['appendJournalMetric', 'references:append-journal-metric'],
  ['listJournalClaims', 'references:list-journal-claims'], ['remove', 'references:remove'],
     ['removeCitationStyle', 'references:remove-citation-style'], ['removeFromCollection', 'references:remove-from-collection'],

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { JournalMetricsImport } from './JournalMetricsImport'
 import { JournalClaimEditor } from './JournalClaimEditor'
+import { JournalAliasRelease, type JournalAliasReleaseOutcome } from './JournalAliasRelease'
 import { KIND_LABEL_KEYS } from './journal-metric-kind-labels'
 import {
   buildJournalMetricsOverview,
@@ -14,6 +15,7 @@ import {
 import {
   JOURNAL_MERGE_REFUSAL_LABEL_KEYS,
   isJournalMergeOutcome,
+  type JournalAliasUnbindResult,
   type JournalMergeResult
 } from '../../../../shared/journal-merge'
 
@@ -269,6 +271,8 @@ export function JournalMetricsPanel(): React.JSX.Element {
   const [year, setYear] = useState('')
   const [merging, setMerging] = useState(false)
   const [mergeResult, setMergeResult] = useState<JournalMergeResult | null>(null)
+  const [releasing, setReleasing] = useState(false)
+  const [releaseResult, setReleaseResult] = useState<JournalAliasReleaseOutcome | null>(null)
   const alive = useRef(true)
 
   // One reader for both the mount and the merge: a merge changes the very rows on screen, and re-reading the
@@ -323,6 +327,30 @@ export function JournalMetricsPanel(): React.JSX.Element {
     [readLibrary]
   )
 
+  // The merge's other half. Same shape as the merge above — one store call, then a re-read, because releasing
+  // a name changes the chips the table draws and the only honest source for them is the store.
+  const releaseAlias = useCallback(
+    (normalizedName: string): void => {
+      setReleasing(true)
+      setReleaseResult(null)
+      window.api.references
+        .removeJournalAlias({ normalizedName })
+        .then(async (result: JournalAliasUnbindResult) => {
+          if (!alive.current) return
+          setReleaseResult({ normalizedName, result })
+          await readLibrary()
+        })
+        .catch((releaseError: unknown) => {
+          if (!alive.current) return
+          setError(releaseError instanceof Error ? releaseError.message : String(releaseError))
+        })
+        .finally(() => {
+          if (alive.current) setReleasing(false)
+        })
+    },
+    [readLibrary]
+  )
+
   const journalCount = library?.journals.length ?? 0
   // The partitions offered are the ones the library actually holds. A fixed list of "一区/二区" would be a
   // vocabulary this code invented, and it would silently filter against values no source uses.
@@ -370,6 +398,13 @@ export function JournalMetricsPanel(): React.JSX.Element {
     [library]
   )
 
+  // The alias section names the journal each spelling resolves to, from the same id→name list the merge and
+  // the import form already draw on — a second mapping would be a second answer to the same question.
+  const journalNames = useMemo(
+    () => new Map(mergeChoices.map((journal) => [journal.id, journal.name] as const)),
+    [mergeChoices]
+  )
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
       <div>
@@ -379,10 +414,7 @@ export function JournalMetricsPanel(): React.JSX.Element {
         </p>
       </div>
 
-      <div
-        className="flex flex-wrap items-end gap-3 text-xs"
-        data-testid="journal-metrics-filters"
-      >
+      <div className="flex flex-wrap items-end gap-3 text-xs" data-testid="journal-metrics-filters">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] text-[var(--muted-foreground)]">
             {t('references.journalMetrics.filter.partition')}
@@ -494,6 +526,21 @@ export function JournalMetricsPanel(): React.JSX.Element {
           journals={mergeChoices}
           onMerge={mergeJournals}
           result={mergeResult}
+        />
+      ) : null}
+
+      {/* The other half of a merge. It mounts on the aliases the library actually holds — not on the merge
+          controls' condition — because a name left behind stays releasable even when there is nothing left to
+          merge (that is exactly the state a merge leaves the library in). It STAYS mounted after the last
+          alias is gone when there is a result to read: the report is the only place that explains the row
+          that just changed, so unmounting would swallow the answer on success. */}
+      {library !== null && (library.aliases.length > 0 || releaseResult !== null) ? (
+        <JournalAliasRelease
+          aliases={library.aliases}
+          busy={releasing}
+          journalNames={journalNames}
+          lastResult={releaseResult}
+          onRelease={releaseAlias}
         />
       ) : null}
     </div>

@@ -4297,5 +4297,19 @@ export const en: Record<ZhKey, string> = {
   'settings.approvalTool': 'Tool',
   'settings.approvalArgs': 'Args',
   'common.deny': 'Deny',
-  'settings.alwaysScope': 'Always'
+  'settings.alwaysScope': 'Always',
+  'references.journalMetrics.aliasUnbind.title': 'Aliases a merge left behind',
+  'references.journalMetrics.aliasUnbind.hint':
+    'Each name here resolves to the journal beside it. Releasing one releases the name only.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': 'resolves to {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'Release this name',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    'After this, “{name}” will no longer resolve to {journal}. The metrics and references the merge moved stay where it put them — nothing is moved back — and no journal, number or reference is deleted.',
+  'references.journalMetrics.aliasUnbind.confirm': 'Release it',
+  'references.journalMetrics.aliasUnbind.cancel': 'Keep it',
+  'references.journalMetrics.aliasUnbind.releasing': 'Releasing…',
+  'references.journalMetrics.aliasUnbind.done':
+    'Released “{name}” — it no longer resolves to {journal}.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    'That spelling is no longer an alias.'
 }

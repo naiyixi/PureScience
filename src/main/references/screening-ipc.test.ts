@@ -160,6 +160,7 @@ describe('references IPC: the screening surface', () => {
         'references:remove',
         'references:remove-citation-style',
         'references:remove-from-collection',
+        'references:remove-journal-alias',
         'references:set-screening-override',
         'references:set-screening-overrides',
         'references:start-screening-run'

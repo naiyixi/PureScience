@@ -4394,5 +4394,19 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': 'Werkzeug',
   'settings.approvalArgs': 'Argumente',
   'common.deny': 'Ablehnen',
-  'settings.alwaysScope': 'Immer'
+  'settings.alwaysScope': 'Immer',
+  'references.journalMetrics.aliasUnbind.title': 'Von einer Zusammenführung hinterlassene Aliase',
+  'references.journalMetrics.aliasUnbind.hint':
+    'Jeder Name hier verweist auf die danebenstehende Zeitschrift. Aufgelöst wird nur der Name.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': 'verweist auf {journal}',
+  'references.journalMetrics.aliasUnbind.release': 'Diesen Namen auflösen',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    'Danach verweist „{name}“ nicht mehr auf {journal}. Die bei der Zusammenführung umgehängten Kennzahlen und Literaturangaben bleiben, wo sie sind – zurückgehängt wird nichts – und es wird keine Zeitschrift, Zahl oder Angabe gelöscht.',
+  'references.journalMetrics.aliasUnbind.confirm': 'Auflösen',
+  'references.journalMetrics.aliasUnbind.cancel': 'Behalten',
+  'references.journalMetrics.aliasUnbind.releasing': 'Wird aufgelöst…',
+  'references.journalMetrics.aliasUnbind.done':
+    '„{name}“ aufgelöst – der Name verweist nicht mehr auf {journal}.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    'Diese Schreibweise ist kein Alias mehr.'
 }

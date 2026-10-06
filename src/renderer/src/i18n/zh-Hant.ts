@@ -3946,5 +3946,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': '工具',
   'settings.approvalArgs': '參數',
   'common.deny': '拒絕',
-  'settings.alwaysScope': '始終'
+  'settings.alwaysScope': '始終',
+  'references.journalMetrics.aliasUnbind.title': '合併留下的別名',
+  'references.journalMetrics.aliasUnbind.hint':
+    '這裡的每個名字都會指向它旁邊的刊物。解除只解除這個名字。',
+  'references.journalMetrics.aliasUnbind.resolvesTo': '指向 {journal}',
+  'references.journalMetrics.aliasUnbind.release': '解除這個舊寫法',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    '此後「{name}」不再指向 {journal}。合併時改歸屬的指標與文獻會留在合併後的刊物下——不會被退回——也不會刪除任何刊物、指標或文獻。',
+  'references.journalMetrics.aliasUnbind.confirm': '確認解除',
+  'references.journalMetrics.aliasUnbind.cancel': '保持原樣',
+  'references.journalMetrics.aliasUnbind.releasing': '解除中…',
+  'references.journalMetrics.aliasUnbind.done': '已解除「{name}」——它不再指向 {journal}。',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '這個寫法已經不是別名了。'
 }

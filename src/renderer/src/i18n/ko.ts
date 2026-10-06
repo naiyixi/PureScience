@@ -4194,5 +4194,19 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.approvalTool': '도구',
   'settings.approvalArgs': '인수',
   'common.deny': '거부',
-  'settings.alwaysScope': '항상'
+  'settings.alwaysScope': '항상',
+  'references.journalMetrics.aliasUnbind.title': '병합이 남긴 별칭',
+  'references.journalMetrics.aliasUnbind.hint':
+    '여기의 모든 이름은 옆에 있는 저널로 해석됩니다. 해제는 이름만 해제합니다.',
+  'references.journalMetrics.aliasUnbind.resolvesTo': '{journal}(으)로 해석',
+  'references.journalMetrics.aliasUnbind.release': '이 이름 해제',
+  'references.journalMetrics.aliasUnbind.confirmDetail':
+    '이후 “{name}”은(는) {journal}(으)로 해석되지 않습니다. 병합으로 소속이 바뀐 지표와 문헌은 그대로 남고(되돌리지 않습니다), 어떤 저널·수치·문헌도 삭제되지 않습니다.',
+  'references.journalMetrics.aliasUnbind.confirm': '해제',
+  'references.journalMetrics.aliasUnbind.cancel': '그대로 두기',
+  'references.journalMetrics.aliasUnbind.releasing': '해제 중…',
+  'references.journalMetrics.aliasUnbind.done':
+    '“{name}”을(를) 해제했습니다. 더 이상 {journal}(으)로 해석되지 않습니다.',
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
+    '그 표기는 더 이상 별칭이 아닙니다.'
 }

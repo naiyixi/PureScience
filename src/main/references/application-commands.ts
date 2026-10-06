@@ -39,6 +39,7 @@ type ReferencesCommandOwner = Pick<
   | 'importJournalMetrics'
   | 'listJournalMetrics'
   | 'mergeJournals'
+  | 'removeJournalAlias'
   | 'appendJournalMetric'
   | 'listJournalClaims'
   | 'listCitationStyles'
@@ -125,6 +126,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'mergeJournals'>,
     OwnerResult<ReferencesCommandOwner, 'mergeJournals'>
   >('references:merge-journals'),
+  removeJournalAlias: defineApplicationCommand<
+    'references:remove-journal-alias',
+    OwnerArgs<ReferencesCommandOwner, 'removeJournalAlias'>,
+    OwnerResult<ReferencesCommandOwner, 'removeJournalAlias'>
+  >('references:remove-journal-alias'),
   appendJournalMetric: defineApplicationCommand<
     'references:append-journal-metric',
     OwnerArgs<ReferencesCommandOwner, 'appendJournalMetric'>,
@@ -222,6 +228,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.importJournalMetrics,
   referencesApplicationCommands.listJournalMetrics,
   referencesApplicationCommands.mergeJournals,
+  referencesApplicationCommands.removeJournalAlias,
   referencesApplicationCommands.appendJournalMetric,
   referencesApplicationCommands.listJournalClaims,
   referencesApplicationCommands.attachPdf,
@@ -269,6 +276,8 @@ const registerReferencesApplicationCommands = (
         dependencies.references.importJournalMetrics(args[0]),
       'references:list-journal-metrics': () => dependencies.references.listJournalMetrics(),
       'references:merge-journals': ({ args }) => dependencies.references.mergeJournals(args[0]),
+      'references:remove-journal-alias': ({ args }) =>
+        dependencies.references.removeJournalAlias(args[0]),
       'references:append-journal-metric': ({ args }) =>
         dependencies.references.appendJournalMetric(args[0]),
       'references:list-journal-claims': ({ args }) =>
