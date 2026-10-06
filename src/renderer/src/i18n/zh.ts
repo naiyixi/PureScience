@@ -518,6 +518,9 @@ export const zh = {
   'ws.notebookVariablesRefreshing': '刷新中…',
   'ws.notebookStale': '已过期',
   'ws.notebookRunError': '错误',
+  'ws.notebookKernelIdle': '空闲',
+  'ws.notebookKernelRunning': '运行中',
+  'ws.notebookKernelSharedWithAgent': 'Python 内核 · 与智能体共享',
   'ws.notebookRunErrorAtLine': '错误（第 {line} 行）',
   'ws.notebookRunTimeout': '超时',
   'ws.notebookRunInterrupted': '已中断',
@@ -2084,6 +2087,11 @@ export const zh = {
   'ui.nopreviewcontent': '没有可预览的内容',
   'ui.openpreviews': '打开预览',
   'ui.environmentupdatefailed': '环境更新失败',
+  'ui.environmentSetupNeedsAttention': '环境准备需要处理',
+  'ui.preparingPythonEnvironment': '正在准备 Python 环境……',
+  'ui.preparingREnvironment': '正在准备 R 环境（约 1GB，仅首次）……',
+  'ui.updatingNotebookEnvironment': '正在更新笔记本环境……',
+  'ui.updatingNotebookEnvironmentPercent': '正在更新笔记本环境…… {percent}%',
   'ui.conversationsstillboundto': '对话仍绑定到',
   'ui.chooseauthorizationscope': '选择授权范围',
   'ui.reportenvironment': '报告环境',
@@ -3977,7 +3985,14 @@ export const zh = {
   'sessionInfo.replayStepsMore': '显示 {shown} / 共 {total}',
   'sessionInfo.replayFiles': '{count} 个文件',
   'sessionInfo.replayExit': '退出码 {code}',
-  'sessionInfo.replayArtifacts': '{count} 个产物'
+  'sessionInfo.replayArtifacts': '{count} 个产物',
+  'sessionInfo.replayAsk': '就某一步提问',
+  'sessionInfo.replayAskStep': '步骤',
+  'sessionInfo.replayAskQuestion': '你的问题',
+  'sessionInfo.replayAskSubmit': '提问',
+  'sessionInfo.replayAskUnanswered': '这一步自己的记录答不了这个问题。',
+  'sessionInfo.replayAskNotRecorded': '未记录',
+  'sessionInfo.replayAskFrom': '出处：{source}'
 }
 
 export type ZhKey = keyof typeof zh

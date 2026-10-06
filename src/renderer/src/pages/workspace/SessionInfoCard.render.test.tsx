@@ -51,6 +51,14 @@ const session = (overrides: Partial<ChatSession> = {}): ChatSession =>
 
 const roots: Array<() => void> = []
 
+// React tracks a controlled input's value on the element, so assigning `.value` alone never fires the
+// element's change handler — the native setter has to be used and the element's own event dispatched.
+const setNativeValue = (element: HTMLInputElement | HTMLSelectElement, value: string): void => {
+  const prototype =
+    element instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype
+  Object.getOwnPropertyDescriptor(prototype, 'value')?.set?.call(element, value)
+}
+
 const mount = (element: React.JSX.Element): HTMLElement => {
   const container = document.createElement('div')
   document.body.appendChild(container)
@@ -399,6 +407,121 @@ describe('session information card', () => {
       })
       expect(container.querySelector('[data-slot="session-info-card"]')).not.toBeNull()
       expect(container.querySelector('[data-slot="session-replay-steps"]')).toBeNull()
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
+
+  // IC52 stage 2: asking about one step is answered from that step's own record, every fact naming the field
+  // it was read from — and a question the record cannot answer is said, not answered around.
+  it('answers a question about a step from that step’s record, naming the field', async () => {
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<unknown> => ({
+          messages: [
+            { id: 'm1', role: 'user', content: 'do the thing', status: 'complete', eventIds: [] }
+          ],
+          activities: [
+            {
+              id: 'a1',
+              kind: 'tool',
+              title: 'Run python',
+              promptMessageId: 'm1',
+              status: 'completed',
+              sortIndex: 0,
+              eventIds: [],
+              providerToolName: 'run_python',
+              toolLocations: [{ path: '/tmp/out.csv' }],
+              createdAt: 1
+            }
+          ]
+        }),
+        saveSession: async (): Promise<void> => undefined
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
+      })
+
+      const select = container.querySelector(
+        '[data-slot="session-replay-ask"] select'
+      ) as HTMLSelectElement
+      setNativeValue(select, 'tool:a1')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      const input = container.querySelector(
+        '[data-slot="session-replay-ask"] input'
+      ) as HTMLInputElement
+      setNativeValue(input, 'which files did it touch?')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="session-replay-ask-submit"]')
+          ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+
+      const facts = [...container.querySelectorAll('[data-slot="replay-answer-fact"]')]
+      expect(facts).toHaveLength(1)
+      // The value the session recorded, and the field it came from.
+      expect(facts[0]?.textContent).toContain('1')
+      expect(facts[0]?.textContent).toContain('toolLocations')
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
+
+  it('says so when the step’s record cannot answer the question', async () => {
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<unknown> => ({
+          messages: [
+            { id: 'm1', role: 'user', content: 'do the thing', status: 'complete', eventIds: [] }
+          ],
+          activities: [
+            {
+              id: 'a1',
+              kind: 'tool',
+              title: 'Run python',
+              promptMessageId: 'm1',
+              status: 'completed',
+              sortIndex: 0,
+              eventIds: [],
+              createdAt: 1
+            }
+          ]
+        }),
+        saveSession: async (): Promise<void> => undefined
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
+      })
+
+      const select = container.querySelector(
+        '[data-slot="session-replay-ask"] select'
+      ) as HTMLSelectElement
+      setNativeValue(select, 'tool:a1')
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      const input = container.querySelector(
+        '[data-slot="session-replay-ask"] input'
+      ) as HTMLInputElement
+      setNativeValue(input, 'is this statistically significant?')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="session-replay-ask-submit"]')
+          ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+
+      expect(container.querySelector('[data-slot="session-replay-ask-unanswered"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="session-replay-ask-answer"]')).toBeNull()
     } finally {
       ;(window as unknown as { api: unknown }).api = previous
     }

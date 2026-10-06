@@ -1283,6 +1283,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ui.desiredoutputs': 'Sorties souhaitées',
   'ui.environmentrequirements': 'Exigences d’environnement',
   'ui.environmentupdatefailed': 'Échec de la mise à jour de l’environnement',
+  'ui.environmentSetupNeedsAttention': 'La préparation de l’environnement demande une intervention',
+  'ui.preparingPythonEnvironment': 'Préparation de l’environnement Python…',
+  'ui.preparingREnvironment':
+    'Préparation de l’environnement R (environ 1 Go, première fois seulement)…',
+  'ui.updatingNotebookEnvironment': 'Mise à jour de l’environnement du notebook…',
+  'ui.updatingNotebookEnvironmentPercent': 'Mise à jour de l’environnement du notebook… {percent}%',
   'ui.foldedcontext': 'Contexte replié',
   'ui.hideoutput': 'Masquer la sortie',
   'ui.interactingwithtools': 'Interaction avec les outils',
@@ -3365,6 +3371,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Échec de l’hydratation de la référence du notebook',
   'ws.notebookStale': 'obsolète',
   'ws.notebookRunError': 'erreur',
+  'ws.notebookKernelIdle': 'inactif',
+  'ws.notebookKernelRunning': 'en cours',
+  'ws.notebookKernelSharedWithAgent': 'Noyau Python · partagé avec l’agent',
   'ws.notebookRunErrorAtLine': 'erreur (ligne {line})',
   'ws.notebookRunTimeout': 'délai dépassé',
   'ws.notebookRunInterrupted': 'interrompu',
@@ -4347,5 +4356,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayStepsMore': '{shown} sur {total} affichées',
   'sessionInfo.replayFiles': '{count} fichier(s)',
   'sessionInfo.replayExit': 'code de sortie {code}',
-  'sessionInfo.replayArtifacts': '{count} artefact(s)'
+  'sessionInfo.replayArtifacts': '{count} artefact(s)',
+  'sessionInfo.replayAsk': 'Poser une question sur une étape',
+  'sessionInfo.replayAskStep': 'étape',
+  'sessionInfo.replayAskQuestion': 'votre question',
+  'sessionInfo.replayAskSubmit': 'Demander',
+  'sessionInfo.replayAskUnanswered': 'Le relevé de cette étape ne répond pas à cela.',
+  'sessionInfo.replayAskNotRecorded': 'non consigné',
+  'sessionInfo.replayAskFrom': 'issu de {source}'
 }

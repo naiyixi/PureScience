@@ -10,6 +10,7 @@ import {
   type SessionForkManifest
 } from '../../../../shared/session-fork'
 import type { PersistedChatSession } from '../../../../shared/session-persistence'
+import { answerStepQuestion, type StepAnswer } from '../../../../shared/session-replay-answers'
 import { buildSessionReplay, type SessionReplayStep } from '../../../../shared/session-replay-steps'
 import type { ChatSession } from '@/stores/session-store'
 import type { VisionEvidenceSummary } from '../../../../shared/vision-evidence'
@@ -129,6 +130,12 @@ export function SessionInfoCard({
       alive = false
     }
   }, [session.id, session.projectId])
+  // IC52 stage 2: asking about one step. The answer is assembled locally from that step's own record (see
+  // `answerStepQuestion`) — no model is consulted, so no answer can be invented — and a question the record
+  // cannot answer is shown as exactly that instead of a plausible sentence.
+  const [askStepId, setAskStepId] = useState('')
+  const [askQuestion, setAskQuestion] = useState('')
+  const [askAnswer, setAskAnswer] = useState<StepAnswer | null>(null)
   // Forking is a two-step act on purpose: measure, show the numbers, then copy. Nothing is written
   // until the reader has seen what the copy will hold and what it will leave behind. The measured
   // state is kept per session (see `forkStates`) so it survives the card being re-mounted.
@@ -340,6 +347,76 @@ export function SessionInfoCard({
                 total: String(replaySteps.length)
               })}
             </div>
+          ) : null}
+        </div>
+      ) : null}
+      {replaySteps && replaySteps.length > 0 ? (
+        <div className="mt-2" data-slot="session-replay-ask">
+          <div className="text-[11px] font-medium text-text-300">{t('sessionInfo.replayAsk')}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            <select
+              aria-label={t('sessionInfo.replayAskStep')}
+              className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+              value={askStepId}
+              onChange={(event) => {
+                setAskStepId(event.target.value)
+                setAskAnswer(null)
+              }}
+            >
+              <option value="">{t('sessionInfo.replayAskStep')}</option>
+              {replaySteps.map((step) => (
+                <option key={step.id} value={step.id}>
+                  {step.kind === 'prompt'
+                    ? t('sessionInfo.replayPrompt')
+                    : (step.toolName ?? step.title)}
+                </option>
+              ))}
+            </select>
+            <input
+              aria-label={t('sessionInfo.replayAskQuestion')}
+              placeholder={t('sessionInfo.replayAskQuestion')}
+              className="min-w-0 flex-1 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+              value={askQuestion}
+              onChange={(event) => setAskQuestion(event.target.value)}
+            />
+            <button
+              type="button"
+              data-slot="session-replay-ask-submit"
+              className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] hover:text-text-000 disabled:opacity-50"
+              disabled={askStepId === '' || askQuestion.trim() === ''}
+              onClick={() => {
+                const target = replaySteps.find((step) => step.id === askStepId)
+                setAskAnswer(target ? answerStepQuestion(target, askQuestion) : null)
+              }}
+            >
+              {t('sessionInfo.replayAskSubmit')}
+            </button>
+          </div>
+          {askAnswer ? (
+            askAnswer.topic === null ? (
+              <p
+                className="mt-1 text-[10px] text-text-400"
+                data-slot="session-replay-ask-unanswered"
+              >
+                {t('sessionInfo.replayAskUnanswered')}
+              </p>
+            ) : (
+              <ul className="mt-1 space-y-0.5" data-slot="session-replay-ask-answer">
+                {askAnswer.facts.map((entry) => (
+                  <li
+                    key={entry.source}
+                    className="text-[10px] text-text-300"
+                    data-slot="replay-answer-fact"
+                  >
+                    {entry.recorded ? entry.value : t('sessionInfo.replayAskNotRecorded')}
+                    {' · '}
+                    <span className="font-mono text-text-400">
+                      {t('sessionInfo.replayAskFrom', { source: entry.source })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : null}
         </div>
       ) : null}
