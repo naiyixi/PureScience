@@ -4377,5 +4377,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': 'Fragen',
   'sessionInfo.replayAskUnanswered': 'Der eigene Eintrag dieses Schritts beantwortet das nicht.',
   'sessionInfo.replayAskNotRecorded': 'nicht aufgezeichnet',
-  'sessionInfo.replayAskFrom': 'aus {source}'
+  'sessionInfo.replayAskFrom': 'aus {source}',
+  'sessionInfo.replayNoRecord':
+    'Dieser Schritt hat keinen lesbaren Eintrag darüber hinterlassen, was er getan hat.'
 }

@@ -4283,5 +4283,6 @@ export const en: Record<ZhKey, string> = {
   'sessionInfo.replayAskSubmit': 'Ask',
   'sessionInfo.replayAskUnanswered': 'This step’s own record does not answer that.',
   'sessionInfo.replayAskNotRecorded': 'not recorded',
-  'sessionInfo.replayAskFrom': 'from {source}'
+  'sessionInfo.replayAskFrom': 'from {source}',
+  'sessionInfo.replayNoRecord': 'This step left no readable record of what it did.'
 }

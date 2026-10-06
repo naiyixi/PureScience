@@ -4260,5 +4260,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': 'Спросить',
   'sessionInfo.replayAskUnanswered': 'Собственная запись этого шага не отвечает на это.',
   'sessionInfo.replayAskNotRecorded': 'не записано',
-  'sessionInfo.replayAskFrom': 'из {source}'
+  'sessionInfo.replayAskFrom': 'из {source}',
+  'sessionInfo.replayNoRecord': 'Этот шаг не оставил читаемой записи о том, что он сделал.'
 }

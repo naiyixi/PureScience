@@ -22,6 +22,17 @@ const REPLAY_STEP_LIMIT = 12
 // How much of a step's recorded terminal output the card shows; the full text belongs to the transcript.
 const REPLAY_OUTPUT_EXCERPT = 80
 
+// A tool step that recorded nothing beyond its title and status has nothing to show about what it did.
+// Saying so is the difference between "this step left no readable record" and a row that looks empty for
+// no stated reason — the same rule the rest of the surface follows.
+const hasNoRecordedDetail = (step: SessionReplayStep): boolean =>
+  step.kind === 'tool' &&
+  !step.toolName &&
+  !step.toolKind &&
+  !step.terminalOutput &&
+  step.terminalExitCode === undefined &&
+  !(step.locations && step.locations.length > 0)
+
 // The session information card: what this conversation is, when it started and last moved, how much
 // it holds, and a way into its evidence. Counts are computed from the same messages the transcript
 // renders and are labelled as such, so the card can never disagree with what the reader sees.
@@ -335,6 +346,11 @@ export function SessionInfoCard({
                 {step.terminalOutput ? (
                   <span className="mt-0.5 block truncate font-mono text-text-400">
                     {step.terminalOutput.slice(0, REPLAY_OUTPUT_EXCERPT)}
+                  </span>
+                ) : null}
+                {hasNoRecordedDetail(step) ? (
+                  <span className="mt-0.5 block text-text-400" data-slot="replay-step-no-record">
+                    {t('sessionInfo.replayNoRecord')}
                   </span>
                 ) : null}
               </li>

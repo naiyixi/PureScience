@@ -4332,5 +4332,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': 'Preguntar',
   'sessionInfo.replayAskUnanswered': 'El registro de este paso no responde a eso.',
   'sessionInfo.replayAskNotRecorded': 'sin registrar',
-  'sessionInfo.replayAskFrom': 'desde {source}'
+  'sessionInfo.replayAskFrom': 'desde {source}',
+  'sessionInfo.replayNoRecord': 'Este paso no dejó ningún registro legible de lo que hizo.'
 }

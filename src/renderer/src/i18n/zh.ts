@@ -3992,7 +3992,8 @@ export const zh = {
   'sessionInfo.replayAskSubmit': '提问',
   'sessionInfo.replayAskUnanswered': '这一步自己的记录答不了这个问题。',
   'sessionInfo.replayAskNotRecorded': '未记录',
-  'sessionInfo.replayAskFrom': '出处：{source}'
+  'sessionInfo.replayAskFrom': '出处：{source}',
+  'sessionInfo.replayNoRecord': '这一步没有留下它做了什么的可读记录。'
 }
 
 export type ZhKey = keyof typeof zh

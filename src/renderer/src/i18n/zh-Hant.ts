@@ -3932,5 +3932,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': '提問',
   'sessionInfo.replayAskUnanswered': '這一步自己的紀錄答不了這個問題。',
   'sessionInfo.replayAskNotRecorded': '未記錄',
-  'sessionInfo.replayAskFrom': '出處：{source}'
+  'sessionInfo.replayAskFrom': '出處：{source}',
+  'sessionInfo.replayNoRecord': '這一步沒有留下它做了什麼的可讀紀錄。'
 }

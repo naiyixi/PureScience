@@ -313,6 +313,7 @@ describe('session information card', () => {
   // itself wrote — one per user prompt, plus one per recorded tool activity — and nothing in the section
   // can change anything.
   it('lists the session steps read-only, naming a tool call that is not attached to a prompt', async () => {
+    const saveSession = vi.fn(async (): Promise<void> => undefined)
     const api = {
       sessions: {
         readDocument: async (): Promise<unknown> => ({
@@ -353,7 +354,7 @@ describe('session information card', () => {
             }
           ]
         }),
-        saveSession: async (): Promise<void> => undefined
+        saveSession
       }
     }
     const previous = (window as unknown as { api?: unknown }).api
@@ -381,6 +382,15 @@ describe('session information card', () => {
       expect(steps[0]?.textContent).toContain('1 artifact')
       // A step whose prompt is gone is still listed, and says so instead of being dropped.
       expect(steps[2]?.textContent).toContain('not attached')
+      // That same step recorded nothing beyond its title, so it says so rather than looking blank.
+      expect(steps[2]?.querySelector('[data-slot="replay-step-no-record"]')).not.toBeNull()
+      // And the recorded step does not claim it: a step with detail has no such line.
+      expect(steps[1]?.querySelector('[data-slot="replay-step-no-record"]')).toBeNull()
+
+      // Read-only by the channel it reaches for: rendering the card writes nothing — the only channel the
+      // replay surface calls is the document read. `saveSession` exists on the stub but is not touched
+      // until the reader acts on the fork control.
+      expect(saveSession).not.toHaveBeenCalled()
 
       const section = container.querySelector('[data-slot="session-replay-steps"]')
       expect(section?.querySelectorAll('button, input, select, textarea')).toHaveLength(0)

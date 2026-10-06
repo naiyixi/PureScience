@@ -4363,5 +4363,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': 'Demander',
   'sessionInfo.replayAskUnanswered': 'Le relevé de cette étape ne répond pas à cela.',
   'sessionInfo.replayAskNotRecorded': 'non consigné',
-  'sessionInfo.replayAskFrom': 'issu de {source}'
+  'sessionInfo.replayAskFrom': 'issu de {source}',
+  'sessionInfo.replayNoRecord': 'Cette étape n’a laissé aucun relevé lisible de ce qu’elle a fait.'
 }

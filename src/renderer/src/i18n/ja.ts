@@ -4245,5 +4245,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': '質問する',
   'sessionInfo.replayAskUnanswered': 'この手順の記録だけではその質問には答えられません。',
   'sessionInfo.replayAskNotRecorded': '記録なし',
-  'sessionInfo.replayAskFrom': '出典: {source}'
+  'sessionInfo.replayAskFrom': '出典: {source}',
+  'sessionInfo.replayNoRecord': 'この手順は何をしたかの読める記録を残していません。'
 }

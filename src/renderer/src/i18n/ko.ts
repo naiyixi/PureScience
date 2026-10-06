@@ -4179,5 +4179,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskSubmit': '질문하기',
   'sessionInfo.replayAskUnanswered': '이 단계의 기록만으로는 그 질문에 답할 수 없습니다.',
   'sessionInfo.replayAskNotRecorded': '기록 없음',
-  'sessionInfo.replayAskFrom': '출처: {source}'
+  'sessionInfo.replayAskFrom': '출처: {source}',
+  'sessionInfo.replayNoRecord':
+    '이 단계는 무엇을 했는지에 대한 읽을 수 있는 기록을 남기지 않았습니다.'
 }
