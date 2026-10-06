@@ -760,7 +760,13 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **新入档两条纪律**（技能 `references/e2e-certification-lane.md`）：① 快推互相取消 ⇒ 认最后一笔、汇报时逐条点名"哪笔有判决／哪笔只是被取消"；② Windows `database` 分片 EBUSY 抖动的形态与判定顺序（先看失败文件的最后改动者；与本批无关则归因车道、**不改产品**）。
 
-**本段交付小结（会话，v1.86.0 之后）**：IC51 ✅ 真机 10.5s · IC45 ✅ 真机 11.6s · IC44 ✅ 真机 5.6s · IC49 ✅ 真机 6.9s（核实后按「架构已覆盖」结案）· IC48 ✅ 真机 11.4s · IC50 ✅ 渲染 52 passed（**真机读数具名立案**，未跑绿的 spec 已按仓规删除、未落树）。全段未触碰执行器在飞的 `src/main/compute/*`、`src/preload/*`、`src/shared/renderer-contract-catalog.ts`、`WorkspaceMessageScroller.tsx`。
+**本段交付小结（会话，v1.86.0 之后）**：IC51 ✅ 真机 10.5s · IC45 ✅ 真机 11.6s · IC44 ✅ 真机 5.6s · IC49 ✅ 真机 6.9s（核实后按「架构已覆盖」结案）· IC48 ✅ 真机 11.4s · IC50 ✅ 渲染 52 passed（**真机读数具名立案**，未跑绿的 spec 已按仓规删除、未落树）· IC46 ✅ pin 五套件 97 passed · IC47 ✅ 审计归档（零代码）。全段未触碰执行器在飞的 `src/main/compute/*`、`src/preload/*`、`src/shared/renderer-contract-catalog.ts`、`WorkspaceMessageScroller.tsx`。
+
+## 二十、发版窗口（会话，2026-10-06 08:3x）—— v1.87.0 与一条「给执行器」的提醒
+
+**v1.87.0 首发两条车道红，根因在会话自己这边**：`build / Verify` 报 3 个 lint error，全在 `src/preload/renderer-api.d.ts` —— IC46 删掉 `handoff.list`/`handoff.retry` 声明后，`HandoffEventsRequest`/`HandoffLifecycleEvent`/`HandoffRetryRequest` 成了未使用的**类型导入**。**教训**：`typecheck:node` 对 `.d.ts` 里未使用的类型导入**不报**，只有 `eslint` 报 ⇒ 发版门禁**必须**把 `npx eslint --no-cache .` 列入（本轮门禁清单曾漏，已补）。修后按既定做法**删 tag 重建**（不重跑单 job）。
+
+**⚠️ 给执行器（下一轮开工前必读）**：你**在飞的未提交文件** `src/renderer/src/pages/settings/EngineMatrixSection.tsx` 在本机 `npx eslint --no-cache .` 下报 **3 个 error**（`react-refresh/only-export-components`：同一文件既导出组件又导出常量/函数，行 31 / 42 / 49）⇒ 这会让你的提交过不了车道。按 lint 自己的建议修：把常量/函数挪进独立模块（你已有 `engine-matrix-copy.test.ts`，建 `engine-matrix-copy.ts` 最顺手）再从组件 import。**该文件未进 v1.87.0 的提交**（发版门禁已确认），所以只影响你的下一笔。
 
 ## 十八、本轮追加（执行器，2026-10-06 02:0x–）——IC39 远程任务取消落地（批次 8 首条）
 
