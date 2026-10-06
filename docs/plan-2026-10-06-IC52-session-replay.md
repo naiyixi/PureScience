@@ -58,6 +58,21 @@
 2. **段 2（对某一步提问）**：本地组装回答 + 每句带出处；真机读数 = 提问后逐条追溯成立 + 「未记录」具名路径。
 3. **段 3（只读守卫 + 空态）**：只读断言、空态、以及排期档/CHANGELOG 的收口。
 
+## 6.5 进度与续做配方（2026-10-06，会话）
+
+**已完成（可核对）**：
+
+- **段 1 的一部分：步骤投影** —— `src/shared/session-replay-steps.ts`（纯函数 `buildSessionReplay({messages, activities})` ⇒ `SessionReplayStep[]`），提交 `0f863476`。测试 `src/shared/session-replay-steps.test.ts` **5 passed**（排序 / 孤儿活动不被吞 / 不编造未记录字段 / 空会话），`typecheck:node` 净。
+  - 输入形状（已核实）：会话文档带 `messages: PersistedChatMessage[]`（`role: 'user' | 'agent'`、`artifactIds?`）与 `activities?: PersistedToolActivity[]`（`promptMessageId?` / `sortIndex` / `status` / `providerToolName?` / `toolKind?` / `toolContent?` / `toolLocations?` / `createdAt`），见 `src/shared/session-persistence.ts:61-64,144-172,222-240,342`。
+  - **同名不同物，勿误判**：`src/shared/session-history-replay.ts` 讲的是「把会话历史重放进**续跑 agent 的 prompt**」（消费者 `src/main/acp/interrupted-turn-continuation.ts`），**不是**本单元的「给人看的逐步重放」⇒ 将来**不许**以它为由把 IC52 判成「架构已覆盖」结案。
+
+**段 1 剩下的（逐步照做）**：
+
+1. **只读通道**：在 `sessions` 组加一条只读项（建议名 `replaySteps` → `sessions:replay-steps`，`ELECTRON` 档），主进程装配点读会话文档 ⇒ 调 `buildSessionReplay`。**加契约条目必跑全量单测**（pin 分散五族：契约目录 / 前载可调用清单 / 本地 Web 计数 / 两个 Web 契约面 / 该家族 IPC 适配器与 local-only 集）—— 见技能 `references/adding-an-ipc-channel.md` §3f。
+2. **渲染层逐步列表**：新面板（可挂在会话信息卡/侧栏），列表项用 `data-slot="replay-step"`；**只读**：面板内零改变性控件，测试钉住控件集合。
+3. **真机读数（段 1 的验收）**：`e2e/certification/session-replay-steps.spec.ts` —— 打开一个**真实跑过的**会话 ⇒ 逐步走 ⇒ 断言某步的「工具名 / 状态 / 锚点」与索引档一致（不是手写数字）。
+4. **段 2（对某一步提问）**与**段 3（只读守卫 + 空态）**见上文。
+
 ## 7. 需要拍板的一处（会影响做法）
 
 **「对某一步提问」由谁回答**：① **本地组装**（推荐，先做）：答案只从该步的记录拼出、逐句给出处，**不调用模型**，因此**不可能编造**；② 交给 agent 回合回答（更灵活，但会引入"模型自己的话"与不可追溯的风险，且需要新通道与权限面）。
