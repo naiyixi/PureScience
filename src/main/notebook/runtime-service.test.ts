@@ -5136,6 +5136,80 @@ describe('v4 runtime bindings & agent tools', () => {
     expect(afterBind.runtimes.find((r) => r.runtimeId === managedPy.envId)?.bound).toBe(false)
   })
 
+  // IC14: a runtime can disappear OUT OF BAND while the session is live. Reloading a session from disk
+  // already re-judged that case, but a live window kept calling the binding 'active' and the next run
+  // died inside the kernel instead of being refused by name. The read path re-judges it now.
+  it('re-judges a LIVE binding: a runtime deleted out of band turns unavailable/missing on the next read', async () => {
+    const root = await createStorageRoot()
+    const vanished: DiscoveredInterpreter = {
+      language: 'python',
+      provenance: 'user-own',
+      // A path that cannot exist on any host, so this case never depends on the runner's own filesystem.
+      envId: '/opt/vanished-py/bin/python3',
+      interpreterPath: '/opt/vanished-py/bin/python3',
+      label: '/opt/vanished-py/bin/python3',
+      version: '3.9.0',
+      runnable: true
+    }
+    // Same object across both reads: `discoverRuntimes` reads `options.discovered` per call, so mutating it
+    // is exactly "the environment was deleted while this session stayed live" (no reload in between).
+    const options = {
+      discovered: [managedPy, vanished],
+      enablement: { enabled: { [vanished.envId]: true }, installAuthorized: {} }
+    }
+    const service = bindingService(root, options)
+
+    await service.bindRuntime({
+      sessionId: 's',
+      workspaceCwd: root,
+      language: 'python',
+      runtimeId: vanished.envId
+    })
+    const before = await service.listRuntimes({ sessionId: 's', workspaceCwd: root })
+    expect(before.bindings.python?.status).toBe('active')
+
+    options.discovered = [managedPy]
+    const after = await service.listRuntimes({ sessionId: 's', workspaceCwd: root })
+    expect(after.bindings.python).toMatchObject({
+      runtimeId: vanished.envId,
+      status: 'unavailable',
+      reason: 'missing'
+    })
+    // The row is gone with the environment, so the window cannot offer it as a usable choice either.
+    expect(after.runtimes.map((r) => r.runtimeId)).toEqual([managedPy.envId])
+  })
+
+  it('keeps a healthy binding when discovery degrades: a hiccup alone never invalidates it', async () => {
+    const root = await createStorageRoot()
+    // `discover()` swallows any internal failure and returns an empty list, so "discovery does not report
+    // it" is not enough on its own. This binding's interpreter really is on disk (node's own binary is
+    // guaranteed to exist on every host), so it must survive an empty discovery result.
+    const live: DiscoveredInterpreter = {
+      language: 'python',
+      provenance: 'user-own',
+      envId: process.execPath,
+      interpreterPath: process.execPath,
+      label: 'live interpreter',
+      version: '3.12.0',
+      runnable: true
+    }
+    const options = {
+      discovered: [managedPy, live],
+      enablement: { enabled: { [live.envId]: true }, installAuthorized: {} }
+    }
+    const service = bindingService(root, options)
+
+    await service.bindRuntime({
+      sessionId: 's',
+      workspaceCwd: root,
+      language: 'python',
+      runtimeId: live.envId
+    })
+    options.discovered = []
+    const listed = await service.listRuntimes({ sessionId: 's', workspaceCwd: root })
+    expect(listed.bindings.python?.status).toBe('active')
+  })
+
   it('refuses binding a disabled or unknown runtime IN THE MAIN process', async () => {
     const root = await createStorageRoot()
     const service = bindingService(root)

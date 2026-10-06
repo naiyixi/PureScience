@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+
 import type { NotebookLanguage } from '../../shared/notebook'
 import {
   isEnvEnabled,
@@ -158,12 +160,20 @@ export class NotebookRuntimeBindingOwner {
   }> {
     const runtimes: NotebookRuntimeListing[] = []
     for (const language of ['python', 'r'] as const) {
+      const { discovered, enabled } = await this.discoverWithEnablement(language)
+      // IC14: this read is also a REVALIDATION point. A bound runtime can vanish while the session is
+      // live (its env directory removed, its interpreter moved out from under us), and only reloading a
+      // session from disk re-judged that case — so a live window kept showing the runtime as usable and
+      // the next run died inside the kernel instead of being refused by name. Persist only when the
+      // judgement actually changed, so an ordinary read stays a read.
+      if (this.revalidateExplicitBinding(session, language, discovered)) await this.persist(session)
+      // Read AFTER the revalidation: a concurrent bind may have replaced the binding while discovery ran.
       const explicit = session.runtimeBinding(language)
       // Which runtime is IN USE. With no explicit binding the session still resolves to the app-managed
       // default for this language, and leaving every row unmarked would hide that from the window — so the
       // default is reported as the binding until the session actually switches away from it.
       const defaultEnvName = language === 'r' ? DEFAULT_R_ENV : DEFAULT_PY_ENV
-      for (const env of await this.listEnabledInterpreters(language)) {
+      for (const env of enabled) {
         const binding = this.toInternalBinding(env)
         // The app-managed default is identified by name when discovery reported one and by its prefix
         // otherwise — hand-built discovery fixtures carry no `condaEnv`, and the window must still be told
@@ -360,9 +370,43 @@ export class NotebookRuntimeBindingOwner {
   private async listEnabledInterpreters(
     language: NotebookLanguage
   ): Promise<DiscoveredInterpreter[]> {
+    return (await this.discoverWithEnablement(language)).enabled
+  }
+
+  // One discovery pass plus the enablement that decides which of its results are usable. The read path
+  // needs BOTH halves (the rows come from the enabled half, the revalidation judgement needs the whole
+  // picture, since a disabled runtime is still detected), and the resolution path needs only the enabled
+  // half — one discovery per call either way.
+  private async discoverWithEnablement(language: NotebookLanguage): Promise<{
+    discovered: DiscoveredInterpreter[]
+    enabled: DiscoveredInterpreter[]
+  }> {
     const settings = await this.runtimeSettingsSnapshot(language)
     const discovered = await this.discover(language, settings?.manualInterpreters ?? [])
-    return discovered.filter((env) => isEnvEnabled(env, settings?.runtimeEnablement))
+    return {
+      discovered,
+      enabled: discovered.filter((env) => isEnvEnabled(env, settings?.runtimeEnablement))
+    }
+  }
+
+  // IC14: re-judge a LIVE explicit binding against the filesystem. `reload()` already does this for a
+  // session read back from disk; a live read must do the same, or the window keeps reporting a runtime
+  // that is gone (and the next run fails inside the kernel rather than being refused by name).
+  // Two independent signals must BOTH say "gone": discovery no longer reports the env AND its recorded
+  // interpreter path is not on disk. `discover()` degrades to an empty list on any internal failure, so
+  // one hiccup must never invalidate a healthy binding — and a merely DISABLED runtime is still detected
+  // (that case is settled elsewhere, by the revoke that disabling performs).
+  private revalidateExplicitBinding(
+    session: RuntimeBindingSession,
+    language: NotebookLanguage,
+    discovered: readonly DiscoveredInterpreter[]
+  ): boolean {
+    const binding = session.runtimeBinding(language)
+    if (!binding || binding.status === 'unavailable') return false
+    if (discovered.some((env) => env.envId === binding.runtimeId)) return false
+    if (existsSync(binding.interpreterPath)) return false
+    session.setRuntimeBinding(language, { ...binding, status: 'unavailable', reason: 'missing' })
+    return true
   }
 
   private async resolveEnabledRuntime(
