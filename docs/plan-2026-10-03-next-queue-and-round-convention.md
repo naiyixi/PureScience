@@ -776,6 +776,23 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **修复**：只在 `ui.kind === 'preparing'` 时计算那一行（否则空串）⇒ 双 typecheck 复归净、该文件 9 passed。已随本档同笔提交。
 
+## 二十四、Windows 分片上一条负载敏感用例（会话，2026-10-06 夜）
+
+**症状**：`d9d8de4c` 的 **Windows Full Test = failure**（Nightly 被并发推送取消，无判决），红在 `Windows full test (3/8)` 的 `Test complete suite shard`：
+
+```
+FAIL src/main/notebook/provisioner-runtime.test.ts
+  > runMicromamba > attaches structured offline-create diagnostics to a timeout
+AssertionError: expected Error: micromamba timed out after 200ms (…)
+  to match object { code: 'MICROMAMBA_TIMEOUT', … }
+```
+
+**归因（三层都指向"预存 + 负载敏感"，与本批无关）**：①该用例与其模块最后一次改动是 **2026-08-20**（`3acdc0fe`），远早于本会话；②那笔提交 `d9d8de4c` 的 diff **只有** `src/main/ro-crate/import.{ts,test.ts}`（node-only）；③本机 isolation 复跑 **19 passed / 1.63 s**（整文件比 CI 分片里的单条还快）⇒ **200 毫秒的预算在负载重的分片上会落到不同分支**。
+
+**处理**：按仓规**不谎报通过、不把当回归、不为它改产品**；记为**负载敏感抖动**并在此点名，留给该用例如今的所有者（预存用例，非本会话引入）。
+
+**纪律更正（本轮踩到）**：本仓 vitest **不支持 `--repeat-each`**（`CACError: Unknown option --repeatEach`，**输出里没有汇总行**——把空输出读成"绿"就是假绿）。可用的替身：`--retry=N` 与**分多次单跑**。已同步改写技能的复跑配方。
+
 ## 二十三、两条协作纪律（会话，2026-10-06 晚，与执行器同时在树上）
 
 **① i18n 九文件是共写冲突面 ⇒ 我方插键前先看 `git status --short`**：本轮我准备给期刊别名解除的界面插文案键时，发现执行器**正在改** `src/renderer/src/i18n/*.ts`（八个文件）+ `scripts/i18n-hardcoded-audit.mjs` + 两个审批对话框。此时插键有双重风险：脚本要**读-改-写**全部九个文件 ⇒ 会把对方**未提交**的改动一起写进文件（我的提交就会裹带它的半成品）。**纪律**：插键前先 `git status --short | grep i18n`；对方在动就先做不含文案的部分，或等其提交后再插。
