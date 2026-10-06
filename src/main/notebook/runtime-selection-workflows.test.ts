@@ -223,6 +223,17 @@ describe('runtime selection workflows', () => {
   it('persists a disabled runtime before revoking it and preserves that state on revoke failure', async () => {
     const order: string[] = []
     const settingsService = fakeSettingsService()
+    // The window only ever names an env discovery reported, so the fixture must contain that env.
+    discoveryState.python = [
+      {
+        language: 'python',
+        provenance: 'app-managed',
+        envId: '/managed/python',
+        interpreterPath: '/managed/python',
+        label: 'Managed Python',
+        runnable: true
+      }
+    ]
     const persist = settingsService.setEnvironmentEnabled
     settingsService.setEnvironmentEnabled = async (language, envId, enabled) => {
       order.push('persist-disabled')
@@ -256,6 +267,16 @@ describe('runtime selection workflows', () => {
 
   it('does not revoke a runtime when enabling it', async () => {
     const settingsService = fakeSettingsService()
+    discoveryState.python = [
+      {
+        language: 'python',
+        provenance: 'user-own',
+        envId: '/user/python',
+        interpreterPath: '/user/python',
+        label: 'User Python',
+        runnable: true
+      }
+    ]
     const onRuntimeDisabled = vi.fn()
     const workflows = createRuntimeSelectionWorkflows({
       settingsService,
@@ -272,6 +293,53 @@ describe('runtime selection workflows', () => {
 
     expect(result.enabled['/user/python']).toBe(true)
     expect(onRuntimeDisabled).not.toHaveBeenCalled()
+  })
+
+  it('refuses an env id that is neither discovered nor already addressed, by name (IC14-①)', async () => {
+    const settingsService = fakeSettingsService()
+    const onRuntimeDisabled = vi.fn()
+    const workflows = createRuntimeSelectionWorkflows({
+      settingsService,
+      runtimeRoot: () => '/data/runtime',
+      registry: fakeRegistry(),
+      onRuntimeDisabled
+    })
+
+    // A session-bound runtime is identified by a `runtimeId` (a different vocabulary from a discovered
+    // `envId`). Persisting it would write a key nothing reads: the call would answer with a fresh map,
+    // the row would look switched, and no environment would have changed.
+    await expect(
+      workflows.setEnvironmentEnabled({
+        language: 'python',
+        envId: 'conda:default-python',
+        enabled: false
+      })
+    ).rejects.toThrow('Unknown python environment: conda:default-python')
+    expect(settingsService.enablement.get('python')).toBeUndefined()
+    expect(onRuntimeDisabled).not.toHaveBeenCalled()
+  })
+
+  it('still toggles an already-persisted key while discovery reports nothing (degraded probe)', async () => {
+    const settingsService = fakeSettingsService()
+    settingsService.enablement.set('python', {
+      enabled: { '/user/python': true },
+      installAuthorized: {}
+    })
+    const workflows = createRuntimeSelectionWorkflows({
+      settingsService,
+      runtimeRoot: () => '/data/runtime',
+      registry: fakeRegistry()
+    })
+
+    // discoveryState.python is [] here (beforeEach): discovery's own probe failing must not turn into
+    // "you cannot disable this runtime", so an id the app has addressed before still goes through.
+    const result = await workflows.setEnvironmentEnabled({
+      language: 'python',
+      envId: '/user/python',
+      enabled: false
+    })
+
+    expect(result.enabled['/user/python']).toBe(false)
   })
 
   it('discovers both languages from one manual-catalog and runtime-root snapshot', async () => {

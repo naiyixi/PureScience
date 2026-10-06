@@ -170,6 +170,14 @@ const findDiscoveredEnvironment = (
       sameEnvironmentPath(candidate.interpreterPath, envId)
   )
 
+// A key the app has ADDRESSED before — enabled true or false, or install-authorized — is proof the id
+// names a real environment even while discovery cannot see it (discovery degrades to an empty list when
+// its own probe fails, and refusing a known environment on that basis would turn a transient failure
+// into "you cannot disable this runtime").
+const isPersistedEnvironmentKey = (enablement: RuntimeEnablement, envId: string): boolean =>
+  Object.prototype.hasOwnProperty.call(enablement.enabled, envId) ||
+  Object.prototype.hasOwnProperty.call(enablement.installAuthorized, envId)
+
 const createRuntimeSelectionWorkflows = (
   deps: RuntimeSelectionWorkflowDeps
 ): RuntimeSelectionWorkflows => {
@@ -311,6 +319,22 @@ const createRuntimeSelectionWorkflows = (
       return buildSurvey(request.language)
     },
     setEnvironmentEnabled: async (request) => {
+      // IC14-①: only an environment this app can ADDRESS may be toggled. The window names one by the
+      // `envId` discovery reported; the runtimes a session binds to carry a `runtimeId`, which is a
+      // DIFFERENT vocabulary. A stale or foreign id used to be persisted as a key nothing reads — the
+      // call answered with a fresh map, the row looked switched, and no environment had changed. The
+      // same principle IC13 applied to the package dialog: refuse by name rather than silently apply
+      // the request somewhere it was not meant to land.
+      const addressed =
+        findDiscoveredEnvironment(await discoverLanguageEnvs(request.language), request.envId) !==
+          undefined ||
+        isPersistedEnvironmentKey(
+          await deps.settingsService.getRuntimeEnablement(request.language),
+          request.envId
+        )
+      if (!addressed) {
+        throw new Error(`Unknown ${request.language} environment: ${request.envId}`)
+      }
       const next = await deps.settingsService.setEnvironmentEnabled(
         request.language,
         request.envId,
