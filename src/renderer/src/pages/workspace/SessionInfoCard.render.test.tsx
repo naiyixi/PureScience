@@ -309,7 +309,14 @@ describe('session information card', () => {
       sessions: {
         readDocument: async (): Promise<unknown> => ({
           messages: [
-            { id: 'm1', role: 'user', content: 'do the thing', status: 'complete', eventIds: [] }
+            {
+              id: 'm1',
+              role: 'user',
+              content: 'do the thing',
+              status: 'complete',
+              eventIds: [],
+              artifactIds: ['artifact-1']
+            }
           ],
           activities: [
             {
@@ -321,6 +328,9 @@ describe('session information card', () => {
               sortIndex: 0,
               eventIds: [],
               providerToolName: 'run_python',
+              toolLocations: [{ path: '/tmp/out.csv' }],
+              terminalExitCode: 0,
+              terminalOutput: 'wrote 12 rows',
               createdAt: 1
             },
             {
@@ -355,6 +365,12 @@ describe('session information card', () => {
       // The recorded provider tool name is what a reader recognises; the status is the session's own.
       expect(steps[1]?.textContent).toContain('run_python')
       expect(steps[1]?.textContent).toContain('completed')
+      // The angles this step was recorded with: the files it touched, its exit code, its output excerpt.
+      expect(steps[1]?.textContent).toContain('1 file')
+      expect(steps[1]?.textContent).toContain('exit 0')
+      expect(steps[1]?.textContent).toContain('wrote 12 rows')
+      // And the prompt carries its artifact references.
+      expect(steps[0]?.textContent).toContain('1 artifact')
       // A step whose prompt is gone is still listed, and says so instead of being dropped.
       expect(steps[2]?.textContent).toContain('not attached')
 

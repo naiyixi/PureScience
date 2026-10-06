@@ -3916,5 +3916,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayUnattached': '未掛在任何提示上',
   'sessionInfo.replayStepsMore': '顯示 {shown} / 共 {total}',
   'sessionInfo.replayFiles': '{count} 個檔案',
-  'sessionInfo.replayExit': '結束碼 {code}'
+  'sessionInfo.replayExit': '結束碼 {code}',
+  'sessionInfo.replayArtifacts': '{count} 個產物'
 }

@@ -4229,5 +4229,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayUnattached': 'プロンプトに紐づいていません',
   'sessionInfo.replayStepsMore': '{total} 件中 {shown} 件を表示',
   'sessionInfo.replayFiles': 'ファイル {count} 件',
-  'sessionInfo.replayExit': '終了コード {code}'
+  'sessionInfo.replayExit': '終了コード {code}',
+  'sessionInfo.replayArtifacts': '成果物 {count} 件'
 }

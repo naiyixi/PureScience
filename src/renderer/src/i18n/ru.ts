@@ -4244,5 +4244,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayUnattached': 'не привязан к запросу',
   'sessionInfo.replayStepsMore': 'показано {shown} из {total}',
   'sessionInfo.replayFiles': 'файлов: {count}',
-  'sessionInfo.replayExit': 'код выхода {code}'
+  'sessionInfo.replayExit': 'код выхода {code}',
+  'sessionInfo.replayArtifacts': 'артефактов: {count}'
 }

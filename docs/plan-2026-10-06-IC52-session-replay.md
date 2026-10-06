@@ -76,7 +76,7 @@
 ## 6.6 真机读数已取（2026-10-06，会话）
 
 - **读数**：`e2e/certification/session-replay-steps.spec.ts` **1 passed (15.4s)** —— `[ic52] the card lists 1 step(s): ["prompt"]`；小节内可交互控件计数为 0。证据档：`docs/evidence/2026-10-06-ic52-replay-steps-reading.md`（含本轮**没**证到什么）。提交：界面部分 `88d92039`、spec `444af7ec`。
-- **按 §5 判据自评**：①真入口 ✅ 已取；②「四项里至少三项可读」🚧 **未满足**（当前只有工具调用一项可读，**写审计 / 运行标记 / 产物引用三项的展示还没做**）；③对某一步提问 ⬜；④只读守卫 ✅（真机 + 渲染两处断言）；⑤证据归档 ✅（本轮已落 `docs/evidence/`）。
+- **按 §5 判据自评（更新于 2026-10-06 第二批）**：①真入口 ✅ 已取；②「四项里至少三项可读」✅ **已满足** —— 工具步可读四件事：调用与状态（`providerToolName`/`status`）、碰了哪些文件（`toolLocations`）、运行输出与退出码（`terminalOutput` 截 80 字 / `terminalExitCode`）、提示步的产物引用（`artifactIds`）。**写审计按结构豁免并具名**：`WriteAuditPanel` 是 `session-level file audit`（其头注即如此写），**无法按步归因** ⇒ 按步展示只能是会话级数字充数，故不做。③对某一步提问 ⬜（段 2）；④只读守卫 ✅（真机 + 渲染两处断言）；⑤证据归档 ✅（`docs/evidence/2026-10-06-ic52-replay-steps-reading.md`，三块式）。**真机覆盖边界（具名）**：夹具 agent 只回文本、不产生工具活动 ⇒ 「文件 / 输出 / 退出码」三个角度由渲染套件承担真机文档形状的断言，真机读数覆盖提示步 + 产物引用 + 只读守卫。
 - ⇒ **IC52 段 1 尚未完成**，不得写成已完成。下一步：把写审计（`WriteAuditPanel` 的同一来源）与运行标记（`RunMarksRail` 的来源）接进小节，产物引用按 `artifactIds` 展示 ⇒ 再取一次读数 ⇒ 才谈段 1 收口。
 
 ## 7. 需要拍板的一处（会影响做法）

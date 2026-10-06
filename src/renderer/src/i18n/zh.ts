@@ -3976,7 +3976,8 @@ export const zh = {
   'sessionInfo.replayUnattached': '未挂在任何提示上',
   'sessionInfo.replayStepsMore': '显示 {shown} / 共 {total}',
   'sessionInfo.replayFiles': '{count} 个文件',
-  'sessionInfo.replayExit': '退出码 {code}'
+  'sessionInfo.replayExit': '退出码 {code}',
+  'sessionInfo.replayArtifacts': '{count} 个产物'
 }
 
 export type ZhKey = keyof typeof zh

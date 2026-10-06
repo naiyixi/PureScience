@@ -316,6 +316,9 @@ export function SessionInfoCard({
                 {step.kind === 'tool' && !step.promptMessageId
                   ? ` · ${t('sessionInfo.replayUnattached')}`
                   : ''}
+                {step.artifactIds.length > 0
+                  ? ` · ${t('sessionInfo.replayArtifacts', { count: String(step.artifactIds.length) })}`
+                  : ''}
                 {step.locations && step.locations.length > 0
                   ? ` · ${t('sessionInfo.replayFiles', { count: String(step.locations.length) })}`
                   : ''}
