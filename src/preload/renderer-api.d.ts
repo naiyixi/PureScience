@@ -104,12 +104,7 @@ import type {
   SessionDeletedEvent,
   SessionUpsertEvent
 } from '../shared/lifecycle-events'
-import type {
-  HandoffEventsRequest,
-  HandoffLifecycleChange,
-  HandoffLifecycleEvent,
-  HandoffRetryRequest
-} from '../shared/handoff-lifecycle'
+import type { HandoffLifecycleChange } from '../shared/handoff-lifecycle'
 import type {
   PermissionGrantMutationView,
   PermissionGrantRestoreRequest,
