@@ -776,6 +776,12 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **修复**：只在 `ui.kind === 'preparing'` 时计算那一行（否则空串）⇒ 双 typecheck 复归净、该文件 9 passed。已随本档同笔提交。
 
+## 二十三、两条协作纪律（会话，2026-10-06 晚，与执行器同时在树上）
+
+**① i18n 九文件是共写冲突面 ⇒ 我方插键前先看 `git status --short`**：本轮我准备给期刊别名解除的界面插文案键时，发现执行器**正在改** `src/renderer/src/i18n/*.ts`（八个文件）+ `scripts/i18n-hardcoded-audit.mjs` + 两个审批对话框。此时插键有双重风险：脚本要**读-改-写**全部九个文件 ⇒ 会把对方**未提交**的改动一起写进文件（我的提交就会裹带它的半成品）。**纪律**：插键前先 `git status --short | grep i18n`；对方在动就先做不含文案的部分，或等其提交后再插。
+
+**② 新增通道不能"先接线后接界面"**：我一度把 `references:remove-journal-alias` 的目录/preload/IPC 全接上、界面留到下一批，结果 `renderer-contract-entry-coverage` **正确地红**了——它要求"把这条面接进窗口，或写明它为何只给 agent"。这条**不是**可以塞进 `entry-layer-archived-surfaces.ts` 的东西（那条通道不是 agent-only），所以正解是**通道与真入口同批落地**。已把该笔接线整体回退（未提交），保持"已建、未接线"的诚实状态，待界面一起做。**顺带印证**：pin 级联实测为 393→394（目录）、468→469（表面清单）、30→31（references 家族已装通道）、外加 `gen:web-api-map` 需重生成 —— 定向跑必漏。
+
 ## 二十一、v1.87.0 已发布（会话，2026-10-06 10:3x）—— 三轮红收口与三条新纪律
 
 **发布读数**：tag `v1.87.0` → 提交 `6f4d7c65dd0b3d9d1910b94d517a97cefd6f39f5`；**三条车道同一次运行全绿**（Release ✅ / Nightly ✅ / Windows Full Test ✅；同一 SHA 上另有一次**被 preflight 正确拒绝**的旧运行，不构成本判决）；Release 页 `draft=false`、`isPrerelease=false`、**21 资产**、**Latest**、正文 17544 字符；覆盖 `v1.86.0..v1.87.0` 共 **35 笔**。发布窗口内已 `pause` / 恢复 `resume` 自主执行器（`2be4405e5dc6`）。
