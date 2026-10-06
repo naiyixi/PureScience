@@ -236,6 +236,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['provision', 'notebook-env:provision', LOCAL], ['repair', 'notebook-env:repair', LOCAL],
   ]),
   group('notifications', 'notifications', [
+    ['clearAll', 'notifications:clear-all', ELECTRON], ['deleteItems', 'notifications:delete-items', ELECTRON],
     ['getSnapshot', 'notifications:get-snapshot', ELECTRON], ['markAllRead', 'notifications:mark-all-read', ELECTRON],
     ['markRead', 'notifications:mark-read', ELECTRON], ['markSessionCompletionsRead', 'notifications:mark-session-completions-read', ELECTRON],
     ['onChanged', 'notifications:changed', ELECTRON_EVENT],

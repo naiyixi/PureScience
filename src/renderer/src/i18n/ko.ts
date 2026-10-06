@@ -4208,5 +4208,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.done':
     '“{name}”을(를) 해제했습니다. 더 이상 {journal}(으)로 해석되지 않습니다.',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    '그 표기는 더 이상 별칭이 아닙니다.'
+    '그 표기는 더 이상 별칭이 아닙니다.',
+  'notifications.clearAll': '모두 지우기',
+  'notifications.clearAllWarning':
+    '여기에 나열된 메시지를 지웁니다. 대화 자체는 삭제되지 않습니다. 이 작업은 되돌릴 수 없습니다.',
+  'notifications.clearAllConfirm': '모두 삭제',
+  'notifications.deleteItem': '알림 삭제: {title}'
 }

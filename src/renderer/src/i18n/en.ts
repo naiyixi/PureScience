@@ -4311,5 +4311,10 @@ export const en: Record<ZhKey, string> = {
   'references.journalMetrics.aliasUnbind.done':
     'Released “{name}” — it no longer resolves to {journal}.',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    'That spelling is no longer an alias.'
+    'That spelling is no longer an alias.',
+  'notifications.clearAll': 'Clear all',
+  'notifications.clearAllWarning':
+    'This clears the messages listed here. Your conversations are not deleted. It cannot be undone.',
+  'notifications.clearAllConfirm': 'Delete all',
+  'notifications.deleteItem': 'Delete notification: {title}'
 }

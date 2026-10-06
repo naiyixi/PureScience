@@ -1,4 +1,6 @@
 import type {
+  NotificationClearRequest,
+  NotificationDeleteRequest,
   NotificationMarkAllReadRequest,
   NotificationMarkReadRequest,
   NotificationMarkSessionCompletionsReadRequest
@@ -46,7 +48,35 @@ const requireNotificationMarkSessionCompletionsReadRequest = (
   return value as NotificationMarkSessionCompletionsReadRequest
 }
 
+const requireNotificationDeleteRequest = (value: unknown): NotificationDeleteRequest => {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !Array.isArray((value as { ids?: unknown }).ids) ||
+    !(value as { ids: unknown[] }).ids.every((id) => typeof id === 'string')
+  ) {
+    throw new Error('Invalid notifications:delete-items request.')
+  }
+  return value as NotificationDeleteRequest
+}
+
+const requireNotificationClearRequest = (value: unknown): NotificationClearRequest => {
+  const throughSequence = (value as { throughSequence?: unknown } | null)?.throughSequence
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    typeof throughSequence !== 'number' ||
+    !Number.isSafeInteger(throughSequence) ||
+    throughSequence < 0
+  ) {
+    throw new Error('Invalid notifications:clear-all request.')
+  }
+  return value as NotificationClearRequest
+}
+
 export {
+  requireNotificationClearRequest,
+  requireNotificationDeleteRequest,
   requireNotificationMarkAllReadRequest,
   requireNotificationMarkReadRequest,
   requireNotificationMarkSessionCompletionsReadRequest

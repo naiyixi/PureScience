@@ -68,3 +68,11 @@ export type NotificationMarkAllReadRequest = Readonly<{ throughSequence: number 
 export type NotificationMarkSessionCompletionsReadRequest = Readonly<{
   sessionIds: readonly string[]
 }>
+
+// Removing a card from the centre is not deleting what it points at: the conversation, project and
+// anything the card was reporting all stay. Main only forgets the inbox row.
+export type NotificationDeleteRequest = Readonly<{ ids: readonly string[] }>
+
+// Clearing stops at the sequence the reader was looking at, so a notice that arrives while the
+// confirmation is on screen is not swept away by an action the reader never saw it in.
+export type NotificationClearRequest = Readonly<{ throughSequence: number }>

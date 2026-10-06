@@ -512,6 +512,9 @@ const api: PureScienceAPI = {
     revealInFolder: () => electronRendererContracts.invoke('logs.revealInFolder')
   },
   notifications: {
+    clearAll: (request) => electronRendererContracts.invoke('notifications.clearAll', request),
+    deleteItems: (request) =>
+      electronRendererContracts.invoke('notifications.deleteItems', request),
     getSnapshot: () => electronRendererContracts.invoke('notifications.getSnapshot'),
     markAllRead: (request) =>
       electronRendererContracts.invoke('notifications.markAllRead', request),

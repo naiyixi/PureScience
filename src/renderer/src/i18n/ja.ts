@@ -4274,5 +4274,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.done':
     '「{name}」を解除しました。もう {journal} には解決されません。',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    'その綴りはもう別名ではありません。'
+    'その綴りはもう別名ではありません。',
+  'notifications.clearAll': 'すべて消去',
+  'notifications.clearAllWarning':
+    'ここに並んでいるメッセージを消去します。会話そのものは削除されません。この操作は取り消せません。',
+  'notifications.clearAllConfirm': 'すべて削除',
+  'notifications.deleteItem': '通知を削除: {title}'
 }

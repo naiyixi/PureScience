@@ -4362,5 +4362,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.releasing': 'Liberando…',
   'references.journalMetrics.aliasUnbind.done':
     'Se liberó «{name}»: ya no se resuelve en {journal}.',
-  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': 'Esa grafía ya no es un alias.'
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': 'Esa grafía ya no es un alias.',
+  'notifications.clearAll': 'Vaciar todo',
+  'notifications.clearAllWarning':
+    'Borra los mensajes que aparecen aquí. Tus conversaciones no se eliminan. Esta acción no se puede deshacer.',
+  'notifications.clearAllConfirm': 'Borrar todo',
+  'notifications.deleteItem': 'Eliminar la notificación: {title}'
 }

@@ -102,6 +102,7 @@ const DATABASE_TEST_GLOBS = [
   'src/main/acp/runtime.test.ts',
   'src/main/notifications/unread-task-repository.test.ts',
   'src/main/notifications/task-notification-runtime.test.ts',
+  'src/main/notifications/notification-inbox-clear.test.ts',
   'src/main/session-persistence/deletion-integration.test.ts',
   'src/main/session-persistence/coordinator.test.ts',
   'src/main/session-persistence/artifact-finalization-recovery.integration.test.ts'

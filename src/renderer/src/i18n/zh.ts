@@ -4018,7 +4018,11 @@ export const zh = {
   'references.journalMetrics.aliasUnbind.cancel': '保留',
   'references.journalMetrics.aliasUnbind.releasing': '正在解除…',
   'references.journalMetrics.aliasUnbind.done': '已解除「{name}」——它不再解析到 {journal}。',
-  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '这个写法已经不是别名了。'
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '这个写法已经不是别名了。',
+  'notifications.clearAll': '全部清除',
+  'notifications.clearAllWarning': '这里列出的消息会被清除；会话本身不会被删除。此操作无法撤销。',
+  'notifications.clearAllConfirm': '全部删除',
+  'notifications.deleteItem': '删除通知：{title}'
 }
 
 export type ZhKey = keyof typeof zh

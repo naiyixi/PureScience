@@ -1,6 +1,8 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 import type { NotificationInboxController } from './notification-inbox-controller'
 import {
+  requireNotificationClearRequest,
+  requireNotificationDeleteRequest,
   requireNotificationMarkAllReadRequest,
   requireNotificationMarkReadRequest,
   requireNotificationMarkSessionCompletionsReadRequest
@@ -8,7 +10,12 @@ import {
 
 type NotificationInboxIpcOwner = Pick<
   NotificationInboxController,
-  'getSnapshot' | 'markAllRead' | 'markRead' | 'markSessionCompletionsRead'
+  | 'getSnapshot'
+  | 'markAllRead'
+  | 'markRead'
+  | 'markSessionCompletionsRead'
+  | 'deleteItems'
+  | 'clearAll'
 >
 
 // Electron retains direct IPC adapters while local/remote Web dispatch through the application
@@ -26,6 +33,14 @@ const registerNotificationInboxIpcAdapter = (owner: NotificationInboxIpcOwner): 
   ipcMainHandle('notifications:mark-session-completions-read', (_event, input: unknown) => {
     const request = requireNotificationMarkSessionCompletionsReadRequest(input)
     return owner.markSessionCompletionsRead(request.sessionIds)
+  })
+  ipcMainHandle('notifications:delete-items', (_event, input: unknown) => {
+    const request = requireNotificationDeleteRequest(input)
+    return owner.deleteItems(request.ids)
+  })
+  ipcMainHandle('notifications:clear-all', (_event, input: unknown) => {
+    const request = requireNotificationClearRequest(input)
+    return owner.clearAll(request.throughSequence)
   })
 }
 

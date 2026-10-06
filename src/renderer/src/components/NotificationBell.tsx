@@ -2,7 +2,7 @@
  * states: default · hover · focus · active · disabled · loading · error · success
  * contrast: pass (40–41) · pre-emit critique: P5 H5 E5 S5 R5 V4
  */
-import { Bell, CheckCheck, CircleAlert, CircleCheck, ShieldCheck, X } from 'lucide-react'
+import { Bell, CheckCheck, CircleAlert, CircleCheck, ShieldCheck, Trash2, X } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import {
@@ -58,6 +58,22 @@ const actionLabel = (item: NotificationInboxItem): string | undefined => {
   return undefined
 }
 
+// Main records the canonical English card titles; the renderer maps them to the interface language at
+// render time (see shared/notifications.ts). One table, so the row text and the delete control's
+// accessible name cannot drift apart.
+const titleKeys: Readonly<Record<string, Parameters<Translate>[0]>> = {
+  'Previous task update': 'notifications.previousTaskUpdate',
+  'Task completed': 'notifications.taskCompleted',
+  'Task failed': 'notifications.taskFailed',
+  'Authorization required': 'notifications.authorizationRequired',
+  [BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE]: 'notifications.deliveryNeedsAttention'
+}
+
+const displayTitle = (item: NotificationInboxItem, t: Translate): string => {
+  const key = titleKeys[item.title]
+  return key === undefined ? item.title : t(key)
+}
+
 const VIEWPORT_MARGIN = 8
 const PANEL_GAP = 8
 const PANEL_MAX_WIDTH = 368
@@ -70,6 +86,8 @@ const clamp = (value: number, minimum: number, maximum: number): number =>
 // 保留 pending 状态的展示; 点击已读等行为在下方处理。
 const replayPendingApproval = async (): Promise<boolean> => false
 
+type Translate = ReturnType<typeof useLanguage>['t']
+
 // One shared entry point for Home, desktop Workspace, and the always-visible mobile conversation
 // header. The backend owns read state, so multiple rendered bells always converge after one action.
 const NotificationBell = ({
@@ -80,6 +98,7 @@ const NotificationBell = ({
 }: NotificationBellProps): React.JSX.Element => {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
   const isMobile = useMediaQuery(MOBILE_MESSAGE_CENTER_QUERY)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -99,6 +118,15 @@ const NotificationBell = ({
     (state) => state.markSessionCompletionsRead
   )
   const markAllRead = useNotificationInboxStore((state) => state.markAllRead)
+  const deleteItems = useNotificationInboxStore((state) => state.deleteItems)
+  const clearAll = useNotificationInboxStore((state) => state.clearAll)
+
+  // Closing the panel drops the pending confirmation with it: a half-answered "clear everything?"
+  // must not be waiting when the bell is opened again.
+  const closePanel = useCallback((): void => {
+    setOpen(false)
+    setConfirmingClear(false)
+  }, [])
 
   const updatePanelPosition = useCallback((): void => {
     if (isMobile) return
@@ -177,11 +205,11 @@ const NotificationBell = ({
     if (!open) return
     const closeOutside = (event: PointerEvent): void => {
       const target = event.target as Node
-      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false)
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) closePanel()
     }
     const closeWithEscape = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
-      setOpen(false)
+      closePanel()
       // Escape puts focus back on the bell instead of dropping it on the body.
       triggerRef.current?.focus()
     }
@@ -196,7 +224,7 @@ const NotificationBell = ({
       window.removeEventListener('resize', reposition)
       window.removeEventListener('scroll', reposition, true)
     }
-  }, [open, updatePanelPosition])
+  }, [closePanel, open, updatePanelPosition])
 
   const openItem = async (item: NotificationInboxItem): Promise<void> => {
     if (item.readAt === undefined) await markRead([item.id])
@@ -208,12 +236,12 @@ const NotificationBell = ({
       // (this action only clears completions).
       await markSessionCompletionsRead([item.sessionId])
       useNavigationStore.getState().openSessionById(item.sessionId, 'notification')
-      setOpen(false)
+      closePanel()
     } else if (item.projectId) {
       useNavigationStore.getState().openProject(item.projectId, 'notification')
-      setOpen(false)
+      closePanel()
     } else if (replayedApproval) {
-      setOpen(false)
+      closePanel()
     }
   }
 
@@ -230,6 +258,7 @@ const NotificationBell = ({
         onClick={() => {
           const nextOpen = !open
           setOpen(nextOpen)
+          setConfirmingClear(false)
           if (nextOpen) {
             onOpen?.()
             void refresh()
@@ -255,7 +284,7 @@ const NotificationBell = ({
                 <button
                   type="button"
                   aria-label={t('notif.dismiss')}
-                  onClick={() => setOpen(false)}
+                  onClick={closePanel}
                   className="fixed inset-0 z-[80] bg-black/45 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200 active:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:animate-none"
                 />
               ) : null}
@@ -292,7 +321,7 @@ const NotificationBell = ({
                         type="button"
                         aria-label={t('notif.close')}
                         onClick={() => {
-                          setOpen(false)
+                          closePanel()
                           triggerRef.current?.focus()
                         }}
                         className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-text-300 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-text-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000"
@@ -311,19 +340,76 @@ const NotificationBell = ({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={unreadCount === 0}
-                    onClick={() => void markAllRead()}
-                    className={cn(
-                      'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-text-100 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-text-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000 disabled:cursor-default disabled:opacity-40',
-                      isMobile ? 'h-11 text-sm' : 'h-8 text-xs'
-                    )}
-                  >
-                    <CheckCheck className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                    {t('notifications.markAllRead')}
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={unreadCount === 0}
+                      onClick={() => void markAllRead()}
+                      className={cn(
+                        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-text-100 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-text-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000 disabled:cursor-default disabled:opacity-40',
+                        isMobile ? 'h-11 text-sm' : 'h-8 text-xs'
+                      )}
+                    >
+                      <CheckCheck className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                      {t('notifications.markAllRead')}
+                    </button>
+                    <button
+                      type="button"
+                      data-slot="notifications-clear-all"
+                      disabled={items.length === 0}
+                      aria-expanded={confirmingClear}
+                      onClick={() => setConfirmingClear(true)}
+                      className={cn(
+                        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-text-100 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-danger-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000 disabled:cursor-default disabled:opacity-40',
+                        isMobile ? 'h-11 text-sm' : 'h-8 text-xs'
+                      )}
+                    >
+                      <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                      {t('notifications.clearAll')}
+                    </button>
+                  </div>
                 </div>
+
+                {confirmingClear ? (
+                  <div
+                    data-slot="notifications-clear-confirm"
+                    className="shrink-0 border-b border-border-200/60 bg-bg-100/70 px-3 py-2.5"
+                  >
+                    <p
+                      data-slot="notifications-clear-warning"
+                      className={cn('text-text-100', isMobile ? 'text-sm' : 'text-xs')}
+                    >
+                      {t('notifications.clearAllWarning')}
+                    </p>
+                    <div className="mt-2 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        data-slot="notifications-clear-cancel"
+                        onClick={() => setConfirmingClear(false)}
+                        className={cn(
+                          'inline-flex shrink-0 items-center rounded-md px-2 text-text-100 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-text-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000',
+                          isMobile ? 'h-11 text-sm' : 'h-8 text-xs'
+                        )}
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        data-slot="notifications-clear-confirm-button"
+                        onClick={() => {
+                          setConfirmingClear(false)
+                          void clearAll()
+                        }}
+                        className={cn(
+                          'inline-flex shrink-0 items-center rounded-md bg-danger-000/10 px-2 font-medium text-danger-000 transition-colors duration-150 ease-out hover:bg-danger-000/20 active:bg-danger-000/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000',
+                          isMobile ? 'h-11 text-sm' : 'h-8 text-xs'
+                        )}
+                      >
+                        {t('notifications.clearAllConfirm')}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div
                   className={cn(
@@ -344,89 +430,97 @@ const NotificationBell = ({
                   ) : (
                     items.map((item) => {
                       const label = actionLabel(item)
+                      const title = displayTitle(item, t)
                       return (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          onClick={() => void openItem(item)}
                           className={cn(
-                            'group flex w-full items-start gap-2.5 rounded-lg px-2.5 text-left transition-colors duration-150 ease-out hover:bg-bg-300 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
-                            isMobile ? 'py-3' : 'py-2.5',
+                            'flex w-full items-start gap-0.5 rounded-lg',
                             item.readAt === undefined && 'bg-bg-100/70'
                           )}
                         >
-                          <span
+                          <button
+                            type="button"
+                            data-slot="notification-item-open"
+                            onClick={() => void openItem(item)}
                             className={cn(
-                              'mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-bg-300 text-text-100',
-                              item.kind === 'authorization.required' && 'text-session-waiting',
-                              item.kind === 'task.completed' && 'text-success-000',
-                              item.kind === 'task.failed' && 'text-danger-000'
+                              'flex min-w-0 flex-1 items-start gap-2.5 rounded-lg px-2.5 text-left transition-colors duration-150 ease-out hover:bg-bg-300 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                              isMobile ? 'py-3' : 'py-2.5'
                             )}
                           >
-                            {iconFor(item)}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-start gap-2">
-                              <span
-                                className={cn(
-                                  'min-w-0 flex-1 truncate font-semibold text-text-000',
-                                  isMobile ? 'text-sm' : 'text-xs'
-                                )}
-                              >
-                                {item.title === 'Previous task update'
-                                  ? t('notifications.previousTaskUpdate')
-                                  : item.title === 'Task completed'
-                                    ? t('notifications.taskCompleted')
-                                    : item.title === 'Task failed'
-                                      ? t('notifications.taskFailed')
-                                      : item.title === 'Authorization required'
-                                        ? t('notifications.authorizationRequired')
-                                        : item.title ===
-                                            BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE
-                                          ? t('notifications.deliveryNeedsAttention')
-                                          : item.title}
-                              </span>
-                              <span
-                                className={cn(
-                                  'shrink-0 tabular-nums text-text-300',
-                                  isMobile ? 'text-xs' : 'text-[10px]'
-                                )}
-                              >
-                                {formatRelativeTime(item.createdAt)}
-                              </span>
-                            </span>
                             <span
                               className={cn(
-                                'mt-0.5 line-clamp-2 block text-text-100',
-                                isMobile ? 'text-sm leading-5' : 'text-[11px] leading-4'
+                                'mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-bg-300 text-text-100',
+                                item.kind === 'authorization.required' && 'text-session-waiting',
+                                item.kind === 'task.completed' && 'text-success-000',
+                                item.kind === 'task.failed' && 'text-danger-000'
                               )}
                             >
-                              {item.summary ===
-                              'A task update was waiting before the message center upgrade.'
-                                ? t('notifications.previousTaskUpdateDesc')
-                                : item.summary ===
-                                    BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY
-                                  ? t('notifications.deliveryNeedsAttentionDesc')
-                                  : item.summary}
+                              {iconFor(item)}
                             </span>
-                            {label ? (
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-start gap-2">
+                                <span
+                                  className={cn(
+                                    'min-w-0 flex-1 truncate font-semibold text-text-000',
+                                    isMobile ? 'text-sm' : 'text-xs'
+                                  )}
+                                >
+                                  {title}
+                                </span>
+                                <span
+                                  className={cn(
+                                    'shrink-0 tabular-nums text-text-300',
+                                    isMobile ? 'text-xs' : 'text-[10px]'
+                                  )}
+                                >
+                                  {formatRelativeTime(item.createdAt)}
+                                </span>
+                              </span>
                               <span
                                 className={cn(
-                                  'mt-1 inline-flex rounded bg-bg-300 px-1.5 py-0.5 text-text-100',
-                                  isMobile ? 'text-xs' : 'text-[10px]'
+                                  'mt-0.5 line-clamp-2 block text-text-100',
+                                  isMobile ? 'text-sm leading-5' : 'text-[11px] leading-4'
                                 )}
                               >
-                                {label}
+                                {item.summary ===
+                                'A task update was waiting before the message center upgrade.'
+                                  ? t('notifications.previousTaskUpdateDesc')
+                                  : item.summary === BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY
+                                    ? t('notifications.deliveryNeedsAttentionDesc')
+                                    : item.summary}
                               </span>
+                              {label ? (
+                                <span
+                                  className={cn(
+                                    'mt-1 inline-flex rounded bg-bg-300 px-1.5 py-0.5 text-text-100',
+                                    isMobile ? 'text-xs' : 'text-[10px]'
+                                  )}
+                                >
+                                  {label}
+                                </span>
+                              ) : null}
+                            </span>
+                            {item.readAt === undefined ? (
+                              <span
+                                className="mt-2 size-1.5 shrink-0 rounded-full bg-destructive"
+                                aria-hidden="true"
+                              />
                             ) : null}
-                          </span>
-                          {item.readAt === undefined ? (
-                            <span
-                              className="mt-2 size-1.5 shrink-0 rounded-full bg-destructive"
-                              aria-hidden="true"
-                            />
-                          ) : null}
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            data-slot="notification-item-delete"
+                            aria-label={t('notifications.deleteItem').replace('{title}', title)}
+                            onClick={() => void deleteItems([item.id])}
+                            className={cn(
+                              'mr-1 mt-1 inline-flex shrink-0 items-center justify-center rounded-md text-text-300 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-danger-000 active:bg-bg-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-000',
+                              isMobile ? 'size-11' : 'size-7'
+                            )}
+                          >
+                            <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                          </button>
+                        </div>
                       )
                     })
                   )}

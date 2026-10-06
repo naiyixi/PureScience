@@ -45,6 +45,8 @@ type NotificationInboxController = Readonly<{
   settleAction(dedupeKey: string, actionState: NotificationActionState): Promise<void>
   markRead(ids: readonly string[]): Promise<void>
   markAllRead(throughSequence: number): Promise<void>
+  deleteItems(ids: readonly string[]): Promise<void>
+  clearAll(throughSequence: number): Promise<void>
   markSessionsRead(sessionIds: readonly string[]): Promise<void>
   markSessionCompletionsRead(sessionIds: readonly string[]): Promise<void>
   deleteSessions(sessionIds: readonly string[]): Promise<void>
@@ -231,6 +233,14 @@ export const createNotificationInboxController = (
   const markSessionCompletionsRead = (sessionIds: readonly string[]): Promise<void> =>
     mutate(() => dependencies.repository.markSessionCompletionsRead(sessionIds, now()))
 
+  // Unlike `deleteSessions`, neither of these remembers the target as deleted: a reader tidying their
+  // own inbox must not silence the next notice for the same conversation.
+  const deleteItems = (ids: readonly string[]): Promise<void> =>
+    mutate(() => dependencies.repository.deleteItems(ids))
+
+  const clearAll = (throughSequence: number): Promise<void> =>
+    mutate(() => dependencies.repository.clearAll(throughSequence))
+
   const deleteSessions = async (sessionIds: readonly string[]): Promise<void> => {
     for (const sessionId of sessionIds) {
       const normalized = sessionId.trim()
@@ -268,6 +278,8 @@ export const createNotificationInboxController = (
     settleAction,
     markRead,
     markAllRead,
+    deleteItems,
+    clearAll,
     markSessionsRead,
     markSessionCompletionsRead,
     deleteSessions,

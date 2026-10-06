@@ -34,7 +34,10 @@ describe('renderer contract catalog', () => {
     // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
     // local-Web installation set each move by three while the remote-Web set grows by the same three.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(469)
+    // 471 with the message-centre reader deletions (notifications.clearAll /
+    // notifications.deleteItems): two desktop-only channels, so the catalog and the preload inventory
+    // move by two while neither Web map moves at all.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(471)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -85,7 +88,7 @@ describe('renderer contract catalog', () => {
     })
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(75)
+    ).toHaveLength(77)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(124)

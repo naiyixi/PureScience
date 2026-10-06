@@ -96,6 +96,13 @@ import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
 import type { ExportSupportBundleResult, RendererFailureReport } from '../shared/diagnostics'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type {
+  NotificationClearRequest,
+  NotificationDeleteRequest,
+  NotificationInboxChanged,
+  NotificationInboxSnapshot,
+  NotificationMarkAllReadRequest,
+  NotificationMarkReadRequest,
+  NotificationMarkSessionCompletionsReadRequest,
   OpenSessionFromNotificationRequest,
   UnreadTaskViewState
 } from '../shared/notifications'
@@ -777,6 +784,8 @@ export interface PureScienceAPI {
     revealInFolder(): Promise<RevealLogFileResult>
   }
   notifications: {
+    clearAll(request: NotificationClearRequest): Promise<void>
+    deleteItems(request: NotificationDeleteRequest): Promise<void>
     getSnapshot(): Promise<NotificationInboxSnapshot>
     markAllRead(request: NotificationMarkAllReadRequest): Promise<void>
     markRead(request: NotificationMarkReadRequest): Promise<void>

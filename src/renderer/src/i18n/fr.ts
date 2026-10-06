@@ -4392,5 +4392,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.done':
     '« {name} » a été dissocié : ce nom ne renvoie plus à {journal}.',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    'Cette graphie n’est plus un alias.'
+    'Cette graphie n’est plus un alias.',
+  'notifications.clearAll': 'Tout effacer',
+  'notifications.clearAllWarning':
+    'Efface les messages listés ici. Vos conversations ne sont pas supprimées. Cette action est irréversible.',
+  'notifications.clearAllConfirm': 'Tout supprimer',
+  'notifications.deleteItem': 'Supprimer la notification : {title}'
 }

@@ -234,6 +234,38 @@ export class NotificationInboxDbRepository {
     })
   }
 
+  // The reader's own deletions. Deliberately narrower than `deleteSessions`: it removes rows the user
+  // pointed at and nothing else — the conversations, projects and reports they reference are untouched,
+  // and no session id is remembered as deleted (that would suppress the NEXT notice for that session).
+  deleteItems(ids: readonly string[]): Promise<NotificationRepositoryState> {
+    const normalized = normalizeIds(ids).slice(0, MAX_NOTIFICATION_INBOX_ITEMS)
+    if (normalized.length === 0) return this.currentState()
+    return this.enqueue(async () => {
+      const client = await this.getClient()
+      return client.$transaction(async (transaction) => {
+        const count = await mutateInChunks(normalized, (chunk) =>
+          transaction.notificationInboxItem.deleteMany({ where: { id: { in: chunk } } })
+        )
+        return stateFor(transaction, count > 0)
+      })
+    })
+  }
+
+  // Bounded by sequence so a notice that arrived after the reader confirmed survives the sweep.
+  clearAll(throughSequence: number): Promise<NotificationRepositoryState> {
+    const boundary = Number.isSafeInteger(throughSequence) ? Math.max(0, throughSequence) : 0
+    if (boundary === 0) return this.currentState()
+    return this.enqueue(async () => {
+      const client = await this.getClient()
+      return client.$transaction(async (transaction) => {
+        const result = await transaction.notificationInboxItem.deleteMany({
+          where: { sequence: { lte: boundary } }
+        })
+        return stateFor(transaction, result.count > 0)
+      })
+    })
+  }
+
   deleteSessions(sessionIds: readonly string[]): Promise<NotificationRepositoryState> {
     const normalized = normalizeIds(sessionIds)
     if (normalized.length === 0) return this.currentState()

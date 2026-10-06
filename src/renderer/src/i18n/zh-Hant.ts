@@ -3958,5 +3958,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.cancel': '保持原樣',
   'references.journalMetrics.aliasUnbind.releasing': '解除中…',
   'references.journalMetrics.aliasUnbind.done': '已解除「{name}」——它不再指向 {journal}。',
-  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '這個寫法已經不是別名了。'
+  'references.journalMetrics.aliasUnbind.refusal.aliasNotFound': '這個寫法已經不是別名了。',
+  'notifications.clearAll': '全部清除',
+  'notifications.clearAllWarning':
+    '這裡列出的訊息會被清除；工作階段本身不會被刪除。此操作無法復原。',
+  'notifications.clearAllConfirm': '全部刪除',
+  'notifications.deleteItem': '刪除通知：{title}'
 }

@@ -4408,5 +4408,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.done':
     '„{name}“ aufgelöst – der Name verweist nicht mehr auf {journal}.',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    'Diese Schreibweise ist kein Alias mehr.'
+    'Diese Schreibweise ist kein Alias mehr.',
+  'notifications.clearAll': 'Alle löschen',
+  'notifications.clearAllWarning':
+    'Löscht die hier aufgeführten Nachrichten. Ihre Unterhaltungen werden nicht gelöscht. Das lässt sich nicht rückgängig machen.',
+  'notifications.clearAllConfirm': 'Endgültig löschen',
+  'notifications.deleteItem': 'Benachrichtigung löschen: {title}'
 }

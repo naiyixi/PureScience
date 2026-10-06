@@ -61,6 +61,8 @@ const GENERATED_SOURCE_OMISSIONS = [
   'handoff.onChanged',
   'network.checkConnectivity',
   'network.getInfo',
+  'notifications.clearAll',
+  'notifications.deleteItems',
   'notifications.getSnapshot',
   'notifications.markAllRead',
   'notifications.markRead',
@@ -299,7 +301,9 @@ describe('renderer surface inventory', () => {
     // 463 with the session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): the preload bridge exposes one method per contract, so the preload
     // inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(469)
+    // 471 with the message-centre reader deletions (notifications.clearAll / notifications.deleteItems):
+    // two desktop-only channels, so the preload bridge and the catalog move together.
+    expect(electronPaths).toHaveLength(471)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

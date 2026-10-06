@@ -351,6 +351,8 @@ describe('preload bridge — public surface inventory', () => {
       'notebookEnv.onProgress',
       'notebookEnv.provision',
       'notebookEnv.repair',
+      'notifications.clearAll',
+      'notifications.deleteItems',
       'notifications.getSnapshot',
       'notifications.markAllRead',
       'notifications.markRead',
@@ -830,7 +832,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     ])
     // 223 with the journal metric import (references.importJournalMetrics): one core contract beside the
     // other reference-library methods.
-    expect(coreContracts).toHaveLength(232)
+    // 234 with the message-centre reader deletions (notifications.clearAll / notifications.deleteItems):
+    // two desktop-only core request contracts beside the other inbox methods.
+    expect(coreContracts).toHaveLength(234)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -842,7 +846,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 194, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 196, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -851,7 +855,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(194)
+    expect(requestContracts).toHaveLength(196)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

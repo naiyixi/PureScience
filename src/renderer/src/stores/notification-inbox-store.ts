@@ -9,6 +9,8 @@ type NotificationInboxStore = NotificationInboxSnapshot & {
   markRead: (ids: readonly string[]) => Promise<void>
   markAllRead: () => Promise<void>
   markSessionCompletionsRead: (sessionIds: readonly string[]) => Promise<void>
+  deleteItems: (ids: readonly string[]) => Promise<void>
+  clearAll: () => Promise<void>
   listen: () => () => void
 }
 
@@ -70,6 +72,38 @@ export const useNotificationInboxStore = create<NotificationInboxStore>((set, ge
     const mark = window.api?.notifications?.markSessionCompletionsRead
     if (!mark) return
     await mark({ sessionIds: normalized })
+    await get().refresh()
+  },
+
+  // Deleting a card never deletes what it points at. A refused deletion must not look like a silent
+  // no-op, so the failure lands in the panel's existing error state instead of an unhandled rejection.
+  deleteItems: async (ids) => {
+    const normalized = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]
+    if (normalized.length === 0) return
+    const remove = window.api?.notifications?.deleteItems
+    if (!remove) return
+    try {
+      await remove({ ids: normalized })
+    } catch (error) {
+      set({ status: 'error', error: errorMessage(error) })
+      return
+    }
+    await get().refresh()
+  },
+
+  // Bound to the sequence on screen when the action is confirmed, so a notice that arrives afterwards
+  // survives the sweep (the same boundary `markAllRead` uses).
+  clearAll: async () => {
+    const throughSequence = get().latestSequence
+    if (throughSequence <= 0 || get().items.length === 0) return
+    const clear = window.api?.notifications?.clearAll
+    if (!clear) return
+    try {
+      await clear({ throughSequence })
+    } catch (error) {
+      set({ status: 'error', error: errorMessage(error) })
+      return
+    }
     await get().refresh()
   },
 

@@ -4289,5 +4289,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.journalMetrics.aliasUnbind.done':
     '«{name}» освобождено — имя больше не разрешается в {journal}.',
   'references.journalMetrics.aliasUnbind.refusal.aliasNotFound':
-    'Это написание больше не псевдоним.'
+    'Это написание больше не псевдоним.',
+  'notifications.clearAll': 'Очистить всё',
+  'notifications.clearAllWarning':
+    'Удаляет сообщения из этого списка. Ваши беседы не удаляются. Это действие нельзя отменить.',
+  'notifications.clearAllConfirm': 'Удалить всё',
+  'notifications.deleteItem': 'Удалить уведомление: {title}'
 }
