@@ -42,4 +42,25 @@ test("the session card lists the session's own steps, read-only", async ({ app }
 
   // Read-only: nothing in the section can be pressed.
   await expect(section.locator('button, input, select, textarea')).toHaveCount(0)
+
+  // Stage 2: asking about a step. The answer is assembled from that step's own record and every fact names
+  // the field it was read from — and a question the record cannot answer is said rather than answered around.
+  const ask = card.locator('[data-slot="session-replay-ask"]')
+  await expect(ask).toBeVisible({ timeout: 30_000 })
+  await ask.locator('select').selectOption({ index: 1 })
+  await ask.locator('input').fill('which prompt does this step belong to?')
+  await ask.locator('[data-slot="session-replay-ask-submit"]').click()
+
+  const facts = ask.locator('[data-slot="replay-answer-fact"]')
+  await expect(facts.first()).toBeVisible({ timeout: 15_000 })
+  const answerText = (await facts.first().innerText()).trim()
+  console.log(`[ic52] the answer says: "${answerText}"`)
+  expect(answerText).toContain('promptMessageId')
+
+  await ask.locator('input').fill('is this statistically significant?')
+  await ask.locator('[data-slot="session-replay-ask-submit"]').click()
+  await expect(ask.locator('[data-slot="session-replay-ask-unanswered"]')).toBeVisible({
+    timeout: 15_000
+  })
+  console.log('[ic52] a question the step record cannot answer is said, not answered')
 })

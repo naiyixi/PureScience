@@ -27,3 +27,23 @@
 ## 清理
 
 - 隔离工作树 `/tmp/ps-ic52` 用完即删（`git worktree remove --force`）；`test-results/` 属构建产物，不入库。
+
+## 段 2（对某一步提问）的读数（2026-10-06，第二批）
+
+**真实事实**：同一条 spec 其后追加了提问流程；本轮在**新建立**的隔离工作树（`165509b5`）里 `build:e2e` 后重跑。
+
+**本轮观测值**：
+
+```
+[ic52] the card lists 1 step(s): ["prompt"]
+[ic52] the answer says: "message-1791285972208-1 · from promptMessageId"
+[ic52] a question the step record cannot answer is said, not answered
+ 1 passed (9.1s)
+```
+
+- 选中那一步、问「which prompt does this step belong to?」⇒ 答案同时给出**值**（该步的提示消息 id）与**出处字段**（`promptMessageId`）⇒「每句带出处」在真机上成立。
+- 再问「is this statistically significant?」⇒ 走到「这一步自己的记录答不了这个问题。」的具名路径，而不是一句看起来合理的废话。
+
+**一项方法学更正（本轮踩到，值得留档）**：真机取证必须**新建**工作树，**不要复用旧路径**——我复用了上一轮的工作树，其 `out/` 仍是旧构建，于是跑出「ask 小节不存在」的**假红**；判据是 `out/` 的构建时间与当次提交对不上，不是产品问题。
+
+**本轮没证到什么**：与本文件上一节相同（夹具 agent 不产生工具活动 ⇒ 工具步的三角度由渲染套件承担）；提问的键盘可达性不在本单元判据内，未测。
