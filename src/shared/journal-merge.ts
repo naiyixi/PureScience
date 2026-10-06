@@ -64,6 +64,52 @@ export const JOURNAL_MERGE_REFUSAL_LABEL_KEYS: Readonly<Record<JournalMergeRefus
     'alias-conflict': 'references.journalMetrics.merge.refusal.aliasConflict'
   })
 
+// Releasing a name a merge created. This is the merge's other half and ONLY that half: the alias exists
+// because a person asked for a merge, so a person can ask for the name back.
+//
+// What it cannot do is stated here rather than discovered later. The alias carries `mergedFromJournalId`, so
+// the journal it came from is known — but the metrics and references the merge moved were re-attributed row by
+// row and carry no record of their former journal, so there is nothing to move back. The result therefore
+// reports what was released and, when known, where it came from; the surface says both, and says that the
+// numbers stay where the merge put them.
+export const JOURNAL_ALIAS_UNBIND_REFUSALS = ['alias-not-found'] as const
+
+export type JournalAliasUnbindRefusal = (typeof JOURNAL_ALIAS_UNBIND_REFUSALS)[number]
+
+export type JournalAliasUnbindRequest = {
+  /** The alias's stored key: a normalized name, never the display spelling. */
+  normalizedName: string
+}
+
+export type JournalAliasUnbindOutcome = {
+  ok: true
+  normalizedName: string
+  /** The journal the name resolved to until now. */
+  journalId: string
+  /** Provenance of the MERGE that wrote this alias, when it recorded one. Not a per-row attribution. */
+  mergedFromJournalId?: string
+}
+
+export type JournalAliasUnbindRefusalResult = {
+  ok: false
+  reason: JournalAliasUnbindRefusal
+  detail: string
+}
+
+export type JournalAliasUnbindResult = JournalAliasUnbindOutcome | JournalAliasUnbindRefusalResult
+
+export const isJournalAliasUnbindOutcome = (
+  result: JournalAliasUnbindResult
+): result is JournalAliasUnbindOutcome => result.ok
+
+// Exhaustive, like the merge's: a refusal added without a label fails to compile instead of reaching the
+// window as an untranslated code.
+export const JOURNAL_ALIAS_UNBIND_REFUSAL_LABEL_KEYS: Readonly<
+  Record<JournalAliasUnbindRefusal, string>
+> = Object.freeze({
+  'alias-not-found': 'references.journalMetrics.aliasUnbind.refusal.aliasNotFound'
+})
+
 // The name a surface shows for a journal: the source's own spelling when the record has one, otherwise the
 // normalized form. Never an empty string — a record with no name at all would be a record the store refuses
 // to create.

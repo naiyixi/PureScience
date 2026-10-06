@@ -170,7 +170,13 @@ const stubClient = (seed: JournalRow[] = [], referenceSeed: ReferenceRow[] = [])
 
           return { count: affected.length }
         }
-      )
+      ),
+      delete: vi.fn(async ({ where }: { where: { normalizedName: string } }) => {
+        const index = aliases.findIndex((row) => row.normalizedName === where.normalizedName)
+        if (index < 0) throw new Error('alias not found')
+
+        return { ...aliases.splice(index, 1)[0] }
+      })
     },
     reference: {
       updateMany: vi.fn(
@@ -517,6 +523,67 @@ describe('aliases (R2-U4)', () => {
       /alias/
     )
     expect(client.journals).toHaveLength(0)
+  })
+})
+
+describe('removeJournalAlias (the merge’s other half)', () => {
+  const merged = async (): Promise<{ client: StubClient; repository: JournalRepository }> => {
+    const built = build(
+      [
+        row({ id: 'j-nature', normalizedName: 'nature', displayName: 'Nature', issn: '0028-0836' }),
+        row({ id: 'j-london', normalizedName: 'nature london', displayName: 'Nature (London)' })
+      ],
+      [{ id: 'r1', journalId: 'j-london', journalMatch: 'by-normalized-name' }]
+    )
+    await built.repository.appendMetric({
+      journalId: 'j-london',
+      kind: 'impact-factor',
+      value: '64.8',
+      year: 2023,
+      source: 'JCR'
+    })
+    await built.repository.mergeJournals({
+      sourceJournalId: 'j-london',
+      targetJournalId: 'j-nature'
+    })
+    return built
+  }
+
+  it('releases the name and says which journal it came from', async () => {
+    const { client, repository } = await merged()
+
+    const result = await repository.removeJournalAlias({ normalizedName: 'nature london' })
+
+    expect(result).toEqual({
+      ok: true,
+      normalizedName: 'nature london',
+      journalId: 'j-nature',
+      // The alias records the merge that wrote it, so the surface can name where the name came from.
+      mergedFromJournalId: 'j-london'
+    })
+    expect(client.aliases).toEqual([])
+  })
+
+  it('refuses by name when there is no such alias', async () => {
+    const { repository } = await merged()
+
+    expect(await repository.removeJournalAlias({ normalizedName: 'never merged' })).toEqual({
+      ok: false,
+      reason: 'alias-not-found',
+      detail: 'no alias named never merged'
+    })
+  })
+
+  it('leaves the numbers where the merge put them — releasing a name is not undoing a merge', async () => {
+    const { client, repository } = await merged()
+
+    await repository.removeJournalAlias({ normalizedName: 'nature london' })
+
+    // The merge re-attributed these rows and recorded no former journal on them, so there is nothing to move
+    // back. A "split" that quietly moved them would be inventing an attribution nobody ever recorded.
+    expect(client.metrics[0]?.journalId).toBe('j-nature')
+    expect(client.references[0]?.journalId).toBe('j-nature')
+    expect(client.journals.map((entry) => entry.id)).toEqual(['j-nature'])
   })
 })
 

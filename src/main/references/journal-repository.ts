@@ -1,7 +1,12 @@
 import type { PrismaClient } from '@prisma/client'
 
 import type { JournalMetricLibrary } from '../../shared/journal-metrics-overview'
-import type { JournalMergeRequest, JournalMergeResult } from '../../shared/journal-merge'
+import type {
+  JournalAliasUnbindRequest,
+  JournalAliasUnbindResult,
+  JournalMergeRequest,
+  JournalMergeResult
+} from '../../shared/journal-merge'
 import { normalizeIssn, normalizeJournalName } from '../../shared/journal-identity'
 
 // The name rule lives in shared because the import path has to judge a row's identity before the repository
@@ -197,6 +202,41 @@ export class JournalRepository {
   // explicit user decision, and every refusal is NAMED — this operation re-attributes numbers that belong to
   // a journal, so guessing which two rows are "really" the same is not an option.
   //
+  // Releasing a name a merge created (the merge's other half, and only that half). One transaction like the
+  // merge: a half-released alias would be a name that resolves nowhere.
+  //
+  // It deliberately touches nothing else. The metrics and references the merge moved were re-attributed row by
+  // row and carry no record of their former journal, so there is nothing to move back — the caller is told
+  // what was released (and, when the alias recorded it, which journal it came from) and the surface says
+  // plainly that the numbers stay where the merge put them.
+  async removeJournalAlias(input: JournalAliasUnbindRequest): Promise<JournalAliasUnbindResult> {
+    const client = await this.getClient()
+
+    return client.$transaction(async (tx): Promise<JournalAliasUnbindResult> => {
+      const alias = await tx.journalAlias.findUnique({
+        where: { normalizedName: input.normalizedName },
+        select: { normalizedName: true, journalId: true, mergedFromJournalId: true }
+      })
+
+      if (!alias) {
+        return {
+          ok: false,
+          reason: 'alias-not-found',
+          detail: `no alias named ${input.normalizedName}`
+        }
+      }
+
+      await tx.journalAlias.delete({ where: { normalizedName: alias.normalizedName } })
+
+      return {
+        ok: true,
+        normalizedName: alias.normalizedName,
+        journalId: alias.journalId,
+        ...(alias.mergedFromJournalId ? { mergedFromJournalId: alias.mergedFromJournalId } : {})
+      }
+    })
+  }
+
   // The rewrite runs in ONE transaction: a half-applied merge (metrics moved but the alias not written, or the
   // source row deleted before its claims moved) would leave the library asserting something the user never
   // asked for, and nothing later could tell which half had happened.
