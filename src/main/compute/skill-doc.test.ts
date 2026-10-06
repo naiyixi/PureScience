@@ -164,6 +164,10 @@ describe('engine availability projection', () => {
     expect(block).toContain('do not ask the user to allow a download')
     expect(block).toContain('not')
     expect(block).toContain('computed: <what> — requires <engine or host>')
+    // The whole block is the agent's instruction text and is never localised: a CJK character here
+    // means a shared verdict/reason string leaked into the English doc (the defect this replaced —
+    // "needs user consent: <中文 reason>").
+    expect(block).not.toMatch(/[\u3400-\u4dbf\u4e00-\u9fff]/)
   })
 
   it('only claims a GPU when a probed host actually reported one', () => {

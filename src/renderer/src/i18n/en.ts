@@ -4220,5 +4220,46 @@ export const en: Record<ZhKey, string> = {
   'settings.memorySupersedeNone': 'Not superseded',
   'notifications.deliveryNeedsAttention': 'Background result needs attention',
   'notifications.deliveryNeedsAttentionDesc':
-    'A finished background result could not be delivered to its conversation.'
+    'A finished background result could not be delivered to its conversation.',
+  'settings.enginesTitle': 'Engines',
+  'settings.enginesIntro':
+    'What this build can actually run, and why the rest cannot. A prediction is never presented as a measurement.',
+  'settings.enginesGpuRule':
+    'A GPU counts only when a probed host reported one; this machine never claims a GPU it has not proven.',
+  'engines.status.ready': 'Available',
+  'engines.status.needsConsent': 'Needs your approval to download',
+  'engines.status.needsHost': 'Needs a compute host',
+  'engines.status.unavailable': 'Unavailable here: no GPU proven',
+  'engines.output.measured': 'Experimental measurement',
+  'engines.output.lookup': 'Database prediction',
+  'engines.output.predicted': 'Prediction (not a measurement)',
+  'engines.weights.notNeeded': 'No weight download needed',
+  'engines.weights.unpublished':
+    'No published checksum is on file for this build, so the download is impossible ({size} of weights).',
+  'engines.weights.awaitingConsent':
+    'A published checksum is on file; {size} of weights are downloaded only after you approve.',
+  'engines.weights.ready': 'You approved this download in this build',
+  'engines.licenseRestricted': 'Commercial use restricted',
+  'engines.alphafold-db.label': 'AlphaFold DB (database prediction)',
+  'engines.alphafold-db.summary':
+    'Fetches an existing predicted structure by UniProt accession; it is not an experimental structure.',
+  'engines.pdb.label': 'PDB (experimental structures)',
+  'engines.pdb.summary':
+    'Structures solved experimentally; they must never be mixed with predictions without that label.',
+  'engines.esmfold.label': 'ESMFold (local structure prediction)',
+  'engines.esmfold.summary':
+    'Single-sequence end-to-end folding; the weights are several GB, need a GPU, and are fetched on demand.',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2 (remote structure prediction)',
+  'engines.colabfold.summary':
+    'The classic MSA-based folding pipeline; best on a remote host with a GPU.',
+  'engines.ddg-cpu-predictor.label': 'ΔΔG CPU predictor',
+  'engines.ddg-cpu-predictor.summary':
+    'Gives a stabilising/destabilising tendency in seconds; a prediction only, and it must carry an uncertainty.',
+  'engines.openmm-fep.label': 'OpenMM FEP (physics ΔΔG)',
+  'engines.openmm-fep.summary':
+    'Free-energy perturbation, GPU and days-long; runs only on a remote host and needs convergence criteria.',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (empirical ΔΔG)',
+  'engines.rosetta-ddg.summary':
+    'Empirical force-field ΔΔG; free for non-commercial use, commercial use needs a licence.',
+  'engines.status.weightsUnavailable': 'Unavailable: no downloadable weights in this build'
 }

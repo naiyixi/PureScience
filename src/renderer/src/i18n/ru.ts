@@ -4197,5 +4197,46 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memorySupersedeNone': 'Не заменена',
   'notifications.deliveryNeedsAttention': 'Результат фоновой задачи требует внимания',
   'notifications.deliveryNeedsAttentionDesc':
-    'Завершённый результат фоновой задачи не удалось доставить в его диалог.'
+    'Завершённый результат фоновой задачи не удалось доставить в его диалог.',
+  'settings.enginesTitle': 'Движки',
+  'settings.enginesIntro':
+    'Что эта сборка действительно может запустить и почему остальное — нет. Прогноз никогда не подаётся как измерение.',
+  'settings.enginesGpuRule':
+    'GPU учитывается, только если опрошенный узел о нём сообщил; эта машина не заявляет непроверенный ускоритель.',
+  'engines.status.ready': 'Доступен',
+  'engines.status.needsConsent': 'Требуется ваше согласие на загрузку',
+  'engines.status.needsHost': 'Нужен вычислительный узел',
+  'engines.status.unavailable': 'Здесь недоступно: ускоритель не подтверждён',
+  'engines.output.measured': 'Экспериментальное измерение',
+  'engines.output.lookup': 'Прогноз из базы данных',
+  'engines.output.predicted': 'Прогноз (не измерение)',
+  'engines.weights.notNeeded': 'Загрузка весов не требуется',
+  'engines.weights.unpublished':
+    'Для этой сборки нет опубликованной контрольной суммы, поэтому загрузка весов ({size}) невозможна.',
+  'engines.weights.awaitingConsent':
+    'Опубликованная контрольная сумма есть; веса ({size}) загружаются только после вашего согласия.',
+  'engines.weights.ready': 'Вы одобрили эту загрузку в данной сборке',
+  'engines.licenseRestricted': 'Коммерческое использование ограничено',
+  'engines.alphafold-db.label': 'AlphaFold DB (прогноз из базы данных)',
+  'engines.alphafold-db.summary':
+    'Загружает готовую прогнозную структуру по номеру UniProt; это не экспериментальная структура.',
+  'engines.pdb.label': 'PDB (экспериментальные структуры)',
+  'engines.pdb.summary':
+    'Структуры, определённые экспериментально; их нельзя смешивать с прогнозами без пометки.',
+  'engines.esmfold.label': 'ESMFold (локальный прогноз структуры)',
+  'engines.esmfold.summary':
+    'Сквозное сворачивание одной последовательности; веса — несколько ГБ, нужен GPU, загружаются по требованию.',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2 (удалённый прогноз структуры)',
+  'engines.colabfold.summary':
+    'Классический конвейер сворачивания на основе MSA; лучше всего на удалённом узле с GPU.',
+  'engines.ddg-cpu-predictor.label': 'CPU-прогноз ΔΔG',
+  'engines.ddg-cpu-predictor.summary':
+    'За секунды даёт тенденцию к стабилизации или дестабилизации; это лишь прогноз и обязательно с неопределённостью.',
+  'engines.openmm-fep.label': 'OpenMM FEP (физический ΔΔG)',
+  'engines.openmm-fep.summary':
+    'Возмущение свободной энергии, GPU и дни; только на удалённом узле и с критериями сходимости.',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (эмпирический ΔΔG)',
+  'engines.rosetta-ddg.summary':
+    'ΔΔG эмпирического силового поля; бесплатно для некоммерческого использования, для коммерческого нужна лицензия.',
+  'engines.status.weightsUnavailable': 'Недоступно: в этой сборке нет загружаемых весов'
 }

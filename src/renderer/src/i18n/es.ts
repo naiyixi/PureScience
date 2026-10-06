@@ -4269,5 +4269,46 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.memorySupersedeNone': 'Sin reemplazo',
   'notifications.deliveryNeedsAttention': 'Un resultado en segundo plano requiere atención',
   'notifications.deliveryNeedsAttentionDesc':
-    'Un resultado en segundo plano terminado no se pudo entregar a su conversación.'
+    'Un resultado en segundo plano terminado no se pudo entregar a su conversación.',
+  'settings.enginesTitle': 'Motores',
+  'settings.enginesIntro':
+    'Lo que esta versión puede ejecutar de verdad y por qué el resto no. Una predicción nunca se presenta como una medición.',
+  'settings.enginesGpuRule':
+    'Una GPU solo cuenta si un host sondeado la ha reportado; esta máquina no reclama ninguna GPU no comprobada.',
+  'engines.status.ready': 'Disponible',
+  'engines.status.needsConsent': 'Requiere tu aprobación para descargar',
+  'engines.status.needsHost': 'Necesita un host de cálculo',
+  'engines.status.unavailable': 'No disponible aquí: ninguna GPU comprobada',
+  'engines.output.measured': 'Medición experimental',
+  'engines.output.lookup': 'Predicción de base de datos',
+  'engines.output.predicted': 'Predicción (no es una medición)',
+  'engines.weights.notNeeded': 'No hace falta descargar pesos',
+  'engines.weights.unpublished':
+    'Esta versión no tiene ninguna suma de comprobación publicada, así que no se pueden descargar los pesos ({size}).',
+  'engines.weights.awaitingConsent':
+    'Hay una suma de comprobación publicada; los pesos ({size}) solo se descargan tras tu aprobación.',
+  'engines.weights.ready': 'Has aprobado esta descarga en esta versión',
+  'engines.licenseRestricted': 'Uso comercial restringido',
+  'engines.alphafold-db.label': 'AlphaFold DB (predicción de base de datos)',
+  'engines.alphafold-db.summary':
+    'Obtiene una estructura predicha existente por el número UniProt; no es una estructura experimental.',
+  'engines.pdb.label': 'PDB (estructuras experimentales)',
+  'engines.pdb.summary':
+    'Estructuras resueltas experimentalmente; nunca deben mezclarse con predicciones sin esa etiqueta.',
+  'engines.esmfold.label': 'ESMFold (predicción estructural local)',
+  'engines.esmfold.summary':
+    'Plegado de secuencia única de extremo a extremo; los pesos ocupan varios GB, requieren GPU y se descargan a petición.',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2 (predicción estructural remota)',
+  'engines.colabfold.summary':
+    'La clásica pipeline de plegado basada en MSA; mejor en un host remoto con GPU.',
+  'engines.ddg-cpu-predictor.label': 'Predictor ΔΔG en CPU',
+  'engines.ddg-cpu-predictor.summary':
+    'Da en segundos una tendencia a estabilizar o desestabilizar; solo una predicción, siempre con incertidumbre.',
+  'engines.openmm-fep.label': 'OpenMM FEP (ΔΔG físico)',
+  'engines.openmm-fep.summary':
+    'Perturbación de energía libre, GPU y días; solo en un host remoto y con criterios de convergencia.',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (ΔΔG empírico)',
+  'engines.rosetta-ddg.summary':
+    'ΔΔG de campo de fuerzas empírico; gratis para uso no comercial, con licencia para uso comercial.',
+  'engines.status.weightsUnavailable': 'No disponible: no hay pesos descargables en esta versión'
 }

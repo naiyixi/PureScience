@@ -4182,5 +4182,46 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.memorySupersedeNone': '置き換えなし',
   'notifications.deliveryNeedsAttention': 'バックグラウンド結果の確認が必要',
   'notifications.deliveryNeedsAttentionDesc':
-    '完了したバックグラウンド結果を、その会話に届けられませんでした。'
+    '完了したバックグラウンド結果を、その会話に届けられませんでした。',
+  'settings.enginesTitle': 'エンジン',
+  'settings.enginesIntro':
+    'このビルドで実際に動かせるエンジンと、それ以外が動かない理由。予測値は測定値として扱いません。',
+  'settings.enginesGpuRule':
+    'GPU は、プローブ済みホストが報告した場合のみ有効です。本機は確認できていない GPU を主張しません。',
+  'engines.status.ready': '利用可能',
+  'engines.status.needsConsent': 'ダウンロードには承認が必要',
+  'engines.status.needsHost': '計算ホストが必要',
+  'engines.status.unavailable': '本機では利用不可（GPU 未確認）',
+  'engines.output.measured': '実験による測定',
+  'engines.output.lookup': 'データベース予測',
+  'engines.output.predicted': '予測値（測定値ではありません）',
+  'engines.weights.notNeeded': '重みのダウンロードは不要',
+  'engines.weights.unpublished':
+    'このビルドには公開されたチェックサムがないため、重み（{size}）をダウンロードできません。',
+  'engines.weights.awaitingConsent':
+    '公開されたチェックサムがあります。承認後にのみ重み（{size}）をダウンロードします。',
+  'engines.weights.ready': 'このビルドでこのダウンロードを承認済み',
+  'engines.licenseRestricted': '商用利用に制限あり',
+  'engines.alphafold-db.label': 'AlphaFold DB（データベース予測）',
+  'engines.alphafold-db.summary':
+    'UniProt のアクセッションで既存の予測構造を取得します。実験構造ではありません。',
+  'engines.pdb.label': 'PDB（実験構造）',
+  'engines.pdb.summary': '実験で決定された構造。予測構造と並べる際は必ず区別を明示します。',
+  'engines.esmfold.label': 'ESMFold（ローカル構造予測）',
+  'engines.esmfold.summary':
+    '単一配列のエンドツーエンド折りたたみ。重みは数 GB で GPU が必要、オンデマンドで取得します。',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2（リモート構造予測）',
+  'engines.colabfold.summary':
+    '定番の MSA ベース折りたたみパイプライン。GPU のあるリモートホストに最適です。',
+  'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 予測器',
+  'engines.ddg-cpu-predictor.summary':
+    '安定化／不安定化の傾向を秒単位で示します。予測にすぎず、不確かさを必ず添えます。',
+  'engines.openmm-fep.label': 'OpenMM FEP（物理 ΔΔG）',
+  'engines.openmm-fep.summary':
+    '自由エネルギー摂動法。GPU と数日を要し、リモートホスト専用で収束判定が必要です。',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer（経験的 ΔΔG）',
+  'engines.rosetta-ddg.summary':
+    '経験的力場による ΔΔG。非商用は無料、商用にはライセンスが必要です。',
+  'engines.status.weightsUnavailable':
+    'このビルドにはダウンロード可能な重みがなく、有効化できません'
 }

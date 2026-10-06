@@ -1,7 +1,11 @@
 import { chmod, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { ENGINE_CATALOG, evaluateEngineAvailability } from '../../shared/engine-catalog'
+import {
+  describeEngineAvailabilityEnglish,
+  ENGINE_CATALOG,
+  evaluateEngineAvailability
+} from '../../shared/engine-catalog'
 import {
   describeEngineWeightGate,
   renderEngineWeightGateEnglish,
@@ -119,13 +123,7 @@ export const renderEngineAvailability = (hosts: readonly ComputeHost[]): string 
           : 'PREDICTED (must be labelled, never presented as a measurement)'
     const status = weightGateBlocksEngine(gate)
       ? 'unavailable: its weights have no publisher checksum in this build, so approving a download cannot enable it'
-      : availability.status === 'ready'
-        ? 'available'
-        : availability.status === 'needs-consent'
-          ? `needs user consent: ${availability.reason}`
-          : availability.status === 'needs-host'
-            ? `needs a compute host: ${availability.reason}`
-            : `unavailable: ${availability.reason}`
+      : describeEngineAvailabilityEnglish(availability)
     lines.push(
       `  - ${engine.id} (${engine.label}) — ${output} — ${status} — ${renderEngineWeightGateEnglish(gate)}`
     )

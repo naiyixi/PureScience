@@ -4313,5 +4313,47 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.memorySupersedeNone': 'Nicht ersetzt',
   'notifications.deliveryNeedsAttention': 'Hintergrund-Ergebnis erfordert Aufmerksamkeit',
   'notifications.deliveryNeedsAttentionDesc':
-    'Ein fertiges Hintergrund-Ergebnis konnte nicht in sein Gespräch zugestellt werden.'
+    'Ein fertiges Hintergrund-Ergebnis konnte nicht in sein Gespräch zugestellt werden.',
+  'settings.enginesTitle': 'Engine-Matrix',
+  'settings.enginesIntro':
+    'Was dieser Build wirklich ausführen kann — und warum der Rest nicht. Eine Vorhersage wird nie als Messwert ausgegeben.',
+  'settings.enginesGpuRule':
+    'Eine GPU zählt nur, wenn ein geprüfter Host eine gemeldet hat; diese Maschine behauptet keine unbestätigte GPU.',
+  'engines.status.ready': 'Verfügbar',
+  'engines.status.needsConsent': 'Erfordert deine Zustimmung zum Herunterladen',
+  'engines.status.needsHost': 'Benötigt einen Rechen-Host',
+  'engines.status.unavailable': 'Hier nicht verfügbar: keine bestätigte GPU',
+  'engines.output.measured': 'Experimentelle Messung',
+  'engines.output.lookup': 'Datenbank-Vorhersage',
+  'engines.output.predicted': 'Vorhersage (kein Messwert)',
+  'engines.weights.notNeeded': 'Kein Gewichts-Download nötig',
+  'engines.weights.unpublished':
+    'Für diesen Build liegt keine veröffentlichte Prüfsumme vor, daher ist der Download der Gewichte ({size}) nicht möglich.',
+  'engines.weights.awaitingConsent':
+    'Eine veröffentlichte Prüfsumme liegt vor; die Gewichte ({size}) werden erst nach deiner Zustimmung geladen.',
+  'engines.weights.ready': 'Du hast diesen Download in diesem Build genehmigt',
+  'engines.licenseRestricted': 'Kommerzielle Nutzung eingeschränkt',
+  'engines.alphafold-db.label': 'AlphaFold DB (Datenbank-Vorhersage)',
+  'engines.alphafold-db.summary':
+    'Holt eine vorhandene vorhergesagte Struktur über die UniProt-Nummer; keine experimentelle Struktur.',
+  'engines.pdb.label': 'PDB (experimentelle Strukturen)',
+  'engines.pdb.summary':
+    'Experimentell gelöste Strukturen; sie dürfen nie ungekennzeichnet neben Vorhersagen stehen.',
+  'engines.esmfold.label': 'ESMFold (lokale Strukturvorhersage)',
+  'engines.esmfold.summary':
+    'End-to-End-Faltung einer einzelnen Sequenz; die Gewichte sind mehrere GB groß, brauchen eine GPU und werden bei Bedarf geladen.',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2 (Strukturvorhersage auf entferntem Host)',
+  'engines.colabfold.summary':
+    'Die klassische MSA-basierte Faltungspipeline; am besten auf einem entfernten Host mit GPU.',
+  'engines.ddg-cpu-predictor.label': 'ΔΔG-Vorhersage auf der CPU',
+  'engines.ddg-cpu-predictor.summary':
+    'Liefert die Tendenz zu Stabilisierung/Destabilisierung in Sekunden; nur eine Vorhersage, stets mit Unsicherheit.',
+  'engines.openmm-fep.label': 'OpenMM FEP (physikalisches ΔΔG)',
+  'engines.openmm-fep.summary':
+    'Freie-Energie-Perturbation, GPU und tagelang; läuft nur auf einem entfernten Host und braucht Konvergenzkriterien.',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (empirisches ΔΔG)',
+  'engines.rosetta-ddg.summary':
+    'Empirisches Kraftfeld-ΔΔG; nichtkommerziell kostenlos, kommerziell nur mit Lizenz.',
+  'engines.status.weightsUnavailable':
+    'Nicht verfügbar: keine herunterladbaren Gewichte in diesem Build'
 }

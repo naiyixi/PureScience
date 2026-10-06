@@ -4115,5 +4115,47 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memorySupersedeNone': '대체되지 않음',
   'notifications.deliveryNeedsAttention': '백그라운드 결과 확인 필요',
   'notifications.deliveryNeedsAttentionDesc':
-    '완료된 백그라운드 결과를 해당 대화로 전달하지 못했습니다.'
+    '완료된 백그라운드 결과를 해당 대화로 전달하지 못했습니다.',
+  'settings.enginesTitle': '엔진',
+  'settings.enginesIntro':
+    '이 빌드에서 실제로 실행할 수 있는 엔진과 나머지가 안 되는 이유. 예측값은 측정값으로 제시하지 않습니다.',
+  'settings.enginesGpuRule':
+    'GPU는 프로브한 호스트가 보고한 경우에만 인정합니다. 이 컴퓨터는 확인되지 않은 GPU를 주장하지 않습니다.',
+  'engines.status.ready': '사용 가능',
+  'engines.status.needsConsent': '다운로드하려면 승인이 필요합니다',
+  'engines.status.needsHost': '컴퓨트 호스트가 필요합니다',
+  'engines.status.unavailable': '이 컴퓨터에서는 사용할 수 없음(GPU 미확인)',
+  'engines.output.measured': '실험 측정값',
+  'engines.output.lookup': '데이터베이스 예측',
+  'engines.output.predicted': '예측값(측정값 아님)',
+  'engines.weights.notNeeded': '가중치 다운로드가 필요 없습니다',
+  'engines.weights.unpublished':
+    '이 빌드에는 공개된 체크섬이 없어 가중치({size})를 내려받을 수 없습니다.',
+  'engines.weights.awaitingConsent':
+    '공개된 체크섬이 있습니다. 승인한 뒤에만 가중치({size})를 내려받습니다.',
+  'engines.weights.ready': '이 빌드에서 이 다운로드를 승인했습니다',
+  'engines.licenseRestricted': '상업적 사용 제한',
+  'engines.alphafold-db.label': 'AlphaFold DB(데이터베이스 예측)',
+  'engines.alphafold-db.summary':
+    'UniProt 접근번호로 이미 있는 예측 구조를 가져옵니다. 실험 구조가 아닙니다.',
+  'engines.pdb.label': 'PDB(실험 구조)',
+  'engines.pdb.summary':
+    '실험으로 규명된 구조입니다. 예측 구조와 나란히 둘 때는 반드시 구분을 표시합니다.',
+  'engines.esmfold.label': 'ESMFold(로컬 구조 예측)',
+  'engines.esmfold.summary':
+    '단일 서열 엔드투엔드 폴딩입니다. 가중치는 수 GB이고 GPU가 필요하며 필요할 때 받습니다.',
+  'engines.colabfold.label': 'ColabFold / AlphaFold2(원격 구조 예측)',
+  'engines.colabfold.summary':
+    '고전적인 MSA 기반 폴딩 파이프라인입니다. GPU가 있는 원격 호스트에 적합합니다.',
+  'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 예측기',
+  'engines.ddg-cpu-predictor.summary':
+    '초 단위로 안정화/불안정화 경향을 제시합니다. 예측일 뿐이며 불확실도를 반드시 포함합니다.',
+  'engines.openmm-fep.label': 'OpenMM FEP(물리 ΔΔG)',
+  'engines.openmm-fep.summary':
+    '자유 에너지 섭동법입니다. GPU와 며칠이 걸리며 원격 호스트에서만 실행되고 수렴 기준이 필요합니다.',
+  'engines.rosetta-ddg.label': 'Rosetta ddg_monomer(경험적 ΔΔG)',
+  'engines.rosetta-ddg.summary':
+    '경험적 역장 ΔΔG입니다. 비상업적 사용은 무료이며 상업적 사용에는 라이선스가 필요합니다.',
+  'engines.status.weightsUnavailable':
+    '이 빌드에는 내려받을 수 있는 가중치가 없어 사용할 수 없습니다'
 }

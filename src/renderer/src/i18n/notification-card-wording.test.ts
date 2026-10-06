@@ -12,9 +12,7 @@ import { en } from './en'
 // is stored and another way on screen — and the drift is invisible, because both sides render something.
 describe('message-centre card wording', () => {
   it('renders the canonical English card strings verbatim', () => {
-    expect(en['notifications.deliveryNeedsAttention']).toBe(
-      BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE
-    )
+    expect(en['notifications.deliveryNeedsAttention']).toBe(BACKGROUND_RESULT_NEEDS_ATTENTION_TITLE)
     expect(en['notifications.deliveryNeedsAttentionDesc']).toBe(
       BACKGROUND_RESULT_NEEDS_ATTENTION_SUMMARY
     )

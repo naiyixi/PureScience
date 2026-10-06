@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ENGINE_CATALOG,
   ENGINE_CATALOG_SCHEMA_VERSION,
+  describeEngineAvailabilityEnglish,
   describeEngineProvenance,
   evaluateEngineAvailability,
   findEngine,
@@ -37,6 +38,10 @@ describe('engine catalog', () => {
     expect(describeEngineProvenance(findEngine('esmfold')!)).toContain('预测')
     expect(describeEngineProvenance(findEngine('esmfold')!)).toContain('非实验值')
     expect(describeEngineProvenance(findEngine('alphafold-db')!)).toContain('数据库查询')
+    // Provenance carries the id, not the display label: the label belongs to whichever surface is
+    // speaking (the window says it through `labelKey`), so a number can be audited without it.
+    expect(describeEngineProvenance(findEngine('esmfold')!)).toContain('esmfold')
+    expect(describeEngineProvenance(findEngine('esmfold')!)).not.toContain('ESMFold (local')
   })
 
   it('states honestly that a GPU engine cannot run on a host without a GPU and without a remote', () => {
@@ -99,9 +104,50 @@ describe('engine catalog', () => {
     expect(structures.ready.map((engine) => engine.id).sort()).toEqual(['alphafold-db', 'pdb'])
   })
 
-  it('formats weight sizes readably', () => {
-    expect(formatWeightSize(0)).toBe('无需权重')
-    expect(formatWeightSize(15_000_000_000)).toBe('约 15 GB')
-    expect(formatWeightSize(200_000_000)).toBe('约 200 MB')
+  it('formats weight sizes without committing to a language', () => {
+    // Locale-neutral on purpose: each surface interpolates the number into a sentence of its own
+    // language (the window through a dictionary key, the agent surfaces in English).
+    expect(formatWeightSize(0)).toBe('none')
+    expect(formatWeightSize(15_000_000_000)).toBe('15 GB')
+    expect(formatWeightSize(200_000_000)).toBe('200 MB')
+  })
+
+  it('gives the agent an English verdict for every state, with no localised text in it', () => {
+    const cjk = /[\u3400-\u4dbf\u4e00-\u9fff]/
+    const verdicts = [
+      evaluateEngineAvailability(findEngine('pdb')!, laptop),
+      evaluateEngineAvailability(findEngine('ddg-cpu-predictor')!, laptop),
+      evaluateEngineAvailability(findEngine('openmm-fep')!, laptop),
+      evaluateEngineAvailability(findEngine('esmfold')!, laptop)
+    ]
+    expect(verdicts.map((verdict) => verdict.status)).toEqual([
+      'ready',
+      'needs-consent',
+      'needs-host',
+      'unavailable'
+    ])
+    for (const verdict of verdicts) {
+      const english = describeEngineAvailabilityEnglish(verdict)
+      expect(english.length).toBeGreaterThan(5)
+      expect(english).not.toMatch(cjk)
+    }
+    // The two refusal states must name what is missing rather than going vague.
+    expect(describeEngineAvailabilityEnglish(verdicts[1])).toContain("the user's approval")
+    expect(describeEngineAvailabilityEnglish(verdicts[1])).toContain('200 MB')
+    expect(describeEngineAvailabilityEnglish(verdicts[2])).toContain('compute host')
+    expect(describeEngineAvailabilityEnglish(verdicts[3])).toContain('GPU')
+  })
+
+  it('keeps the shared display copy English and the window copy keyed', () => {
+    // The shared catalog is read by the agent-facing surfaces, which are never localised; the window
+    // renders labelKey/summaryKey through the dictionaries. A CJK literal in label/summary would
+    // either leak into the English agent doc or become untranslatable UI copy — both are regressions.
+    const cjk = /[\u3400-\u4dbf\u4e00-\u9fff]/
+    for (const engine of ENGINE_CATALOG) {
+      expect(engine.label).not.toMatch(cjk)
+      expect(engine.summary).not.toMatch(cjk)
+      expect(engine.labelKey).toBe(`engines.${engine.id}.label`)
+      expect(engine.summaryKey).toBe(`engines.${engine.id}.summary`)
+    }
   })
 })
