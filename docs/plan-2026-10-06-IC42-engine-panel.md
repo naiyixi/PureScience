@@ -68,9 +68,31 @@
 - **许可可见**：`license.commercialRestricted` 逐行呈现（商用受限的引擎在科研机构之外使用前必须看得见）；
 - **不谎报能力**：不可用的原因具名（缺 GPU / 缺主机 / 无清单），且界面与 agent 面**用同一条 GPU 规则**。
 
-## 5. 本轮未做与解锁条件
+## 5. 实现与未做（2026-10-06 更新）
 
-- 本轮**未实现**（本档是立项与现状核实）：面板与文案结构化、权重门形态、九语键、真机读数。
+**已落地（执行器，提交 `8b8111dc`）**：§2 的三条路线全部按本档执行 ——
+面板（`EngineMatrixSection`，设置 → 算力，零新通道）、文案结构化成「shared 发键与参数 + 渲染层单点翻译」
+（九语 +30 键、覆盖率 3683 ×9 = 100%）、`skill-doc.ts` 的中文 reason 进英文文档的既有失真同批修掉
+（新增 `describeEngineAvailabilityEnglish()` + 「整块 agent 文档零 CJK」守卫）；权重门按 §2.4 的「先有形态」
+落地四态单一来源，当前一律 `unpublished` 且**不渲染按钮**。§3 的判据 1–3 已由本机门禁满足
+（定向 177 文件 / 1887 passed；pin 八套件 133 passed；`check:web-api-map` 通过；双 typecheck 净；`eslint --no-cache .` 0 error）。
+§3 的判据 4（真机读数）**未取**，见下。
+
+### 5.1 真机读数（未取，具名立案 + 配方）
+
+开工时 swap **10.32 G / 11.26 G 已用**、空闲物理页 ~4.1k（≈65 MB）⇒ 不具备 `build:e2e` + Electron 的安全余量，
+故**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。配方（下一轮内存宽松时一次跑完）：
+
+1. 隔离实例三件齐：`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT`（**同时**把 `settings.dataRoot` 指到隔离目录）+ 独立端口；
+2. 打开 **设置 → 算力**，读回 `[data-slot="engine-matrix"]` 的矩阵原文：7 行（`[data-engine-id]`）、
+   每行的 `data-engine-status` 与 `data-weight-state`、输出类型徽标（`Predicted` 行必须带「非实验值」语义）、
+   商用受限徽标只在 `ddg-cpu-predictor` / `rosetta-ddg` 上出现；
+3. **无主机**时断言 `openmm-fep` / `colabfold` 行为 `needs-host`，且 GPU 规则那句说明在屏上；
+4. **换语言再读**（如切到 zh）⇒ 行文案与状态文案真的跟着变 —— 这条同时挡住「键铺了但界面读字面量」，
+   是本单元真机读数的关键一半；
+5. 断言**界面上没有下载按钮**（`engine-matrix` 内 `button` 计数为 0），把「无清单 ⇒ 不渲染按钮」这条纪律钉在真机上；
+6. 列数（7 引擎 × 4 行）在真机上不溢出。
+
 - **解锁前置**（权重半）：按 `docs/plan-2026-10-03-M2-blocker-and-deferral.md` §3 的三个前置（拍板发布方与托管位置 →
   产出随应用发布的 manifest（`id/revision/url/sha256(64hex)/bytes/license`）→ 才能做校验式获取与接入）。
 - 面板（矩阵）半**不依赖**上述前置，可先做 —— 它呈现的是「本机/已注册主机现在能服务什么」，本来就不该等权重清单。

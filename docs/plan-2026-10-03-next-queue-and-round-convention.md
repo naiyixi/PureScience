@@ -857,3 +857,44 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 **设计约束（下一步必须遵守，防造死控件）**：矩阵与「同意门」用真实上下文（GPU / 已注册主机 / 持久化的同意设置）计算，同意开关必须**真的翻转矩阵状态**；
 **权重下载不得做成一个永远被拒的按钮**——M2 的清单尚不存在，因此下载半只能以**明写现状**（"无已发布校验值 ⇒ 按设计不可下载"）呈现，
 按钮留到清单落地那天再接，并在计划档具名立案。
+
+## 二十二、本轮追加（执行器，2026-10-06 10:3x–11:0x）—— IC42 引擎面板落地（批次 8 收口；真机读数具名立案）
+
+**开工判定（防重做）**：`HEAD == origin/main == 90ab0f11`（v1.87.0 已发布、三车道全绿）。§二十 明确点名
+「执行器的在飞文件 `src/renderer/src/pages/settings/EngineMatrixSection.tsx` 在本机 `eslint --no-cache .` 下报 3 个
+`react-refresh/only-export-components` error（行 31/42/49）⇒ 会让提交过不了车道；把常量/函数挪进独立模块」
+⇒ 本轮就是**收口上一轮留在工作区的 IC42 半成品**，不是新起单元。
+
+**并发实测（本轮）**：会话在我工作期间往同一棵树的 `main` 上推了 4 笔（`fa5b352e` / `a2e69df0` / `018ba9f3` / `2520fd28`，
+都是 IC50/IC10 的读数与落档），并另开了两个 worktree（`/private/tmp/ps-tag`、`/private/tmp/ps-rel3`，均停在 tag 提交 `6f4d7c65`）
+在**跑全量 vitest** 复核发布位点。我的提交 `8b8111dc` 落在 `2520fd28` 之上 —— **线性、无重写、无 force-push**；
+提交时只 `git add` 了 IC42 的 19 个路径（**未用 `-A`**）。
+
+**落地（`8b8111dc`，19 文件 / +942 −49，零新通道）**
+
+| 面 | 内容 |
+| --- | --- |
+| 代码结构 | 修掉 §二十 点名的 3 个 lint error：把 `STATUS_KEYS` / `BLOCKED_BY_WEIGHTS_KEY` / `WEIGHT_KEYS` / `OUTPUT_KEYS` 挪进新 `engine-matrix-copy.ts`（组件文件此后**只导出组件**），`engine-matrix-copy.test.ts` 改从它 import |
+| 文案契约 | `engine-catalog.ts` 的 label/summary 改英文（agent 面专用）+ 新增 `labelKey`/`summaryKey`；`formatWeightSize` 改语言中立；新增 `describeEngineAvailabilityEnglish()`；`skill-doc.ts` 的「中文 reason 拼进英文 agent 文档」同批修掉，并加「整块 agent 文档零 CJK」守卫 |
+| 面板 | `EngineMatrixSection.tsx`（设置 → 算力，`ComputePanel` 接线）：输出类型徽标（预测显式标「非实验值」）/ 可用性四态与具名原因 / 许可商用限制 / 权重门态；GPU 只认「已探测主机上报」 |
+| 权重门 | 按 M2 纪律「先有形态」：四态单一来源，当前一律 `unpublished` ⇒ **不渲染按钮**（必然被拒的按钮比没有按钮更坏） |
+| 九语 | +30 键，覆盖率 **3683 键 ×9 语 = 100%**，zh ≠ en、zh-Hant 纯繁体 |
+
+**门禁（全部实跑，读数即结论）**：定向 vitest **177 文件 / 1887 passed | 1 skipped**（`pages/settings` + `i18n` + `shared` + `main/compute/skill-doc` + `renderer/web`）；
+`src/main/{engines,compute}` **30 文件 / 565 passed | 5 skipped**；契约 pin 八套件 **133 passed**；`check:web-api-map` 通过（本单元不加通道 ⇒ 应有的 no-op）；
+**双 typecheck 净** —— `typecheck:web` 首跑抓到新渲染用例的夹具缺 `ProbeResult` 的 `probedAt`/`exitCode`/`errorTail`（补 `probe()` 造数函数；这正是「夹具必须与线上形状同步」那条纪律）；
+`eslint --no-cache .` **0 error / 124 warning**（我引入的 9 条 prettier warning 已就地修掉；124 是既有基线）；`pre-push-checks.sh` 全过。
+
+**CI**：`8b8111dc` 触发 `Nightly`（run 37405996816）与 `Windows Full Test`（run 37405996584），推送时均为 pending ⇒ **判决见下一轮**
+（按**完整 40 位 SHA** 查；取消 ≠ 绿）。
+
+**⏳ 真机读数未取（具名立案 + 配方）**：开工时 swap **10.32 G / 11.26 G 已用**、空闲物理页 ~4.1k（≈65 MB）⇒ 无 `build:e2e` + Electron 的安全余量，
+**未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。配方见 `docs/plan-2026-10-06-IC42-engine-panel.md` §5.1
+（隔离实例三件齐 + **换语言复读**挡「键铺了但界面读字面量」+ 断言面板内 `button` 计数为 0）。
+
+**版本位点台账（供下一轮取号）**：Latest = **v1.87.0**（tag `6f4d7c65`、21 资产、三车道全绿）；`package.json` = 1.87.0。
+本轮的 IC42 是 **v1.87.0 之后的第一笔功能提交** ⇒ 下一个版本边界（v1.88.0）应含它 + 批次 9（IC43/IC44/IC45/IC49/IC50/IC51 会话已落地、各有读数或立案）。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，先按提交把会话已完成的单元划掉（防重做）；
+② 按**完整 40 位 SHA `8b8111dc`** 查 `Nightly` + `Windows Full Test` 终态，红了先读**作业级注解**归因（**不要重跑单个 job**），绿则入档；
+③ 内存宽松时取本单元真机读数（配方见 IC42 计划档 §5.1），或按排期进批次 9；④ **批次 8（IC39/IC40/IC42）至此三条全部落地**，v1.88.0 的版本边界已可用（下一条功能提交前先核位点）。
