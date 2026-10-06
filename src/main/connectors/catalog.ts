@@ -81,8 +81,18 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     description:
       '基因/蛋白质身份与本体术语，以及基因集富集——mygene.info、UniProt、OLS4 本体、GO 注释、Reactome 通路、g:Profiler 富集（本地可复算）。',
     useWhen:
-      'Use when you need to resolve gene symbols/identifiers (mygene.info), fetch UniProt protein records, look up or search ontology terms (EFO, GO, CL, ChEBI, MONDO via OLS4), retrieve GO annotations for a protein (QuickGO), map genes to Reactome pathways, or ask what a gene list is enriched for (g:Profiler, with the p-values recomputed locally and the background and correction stated in the result).',
-    sources: ['MyGene', 'UniProt', 'OLS', 'QuickGO', 'Reactome', 'g:Profiler'],
+      'Use when you need to resolve gene symbols/identifiers (mygene.info), fetch UniProt protein records, look up or search ontology terms (EFO, GO, CL, ChEBI, MONDO via OLS4), retrieve GO annotations for a protein (QuickGO), map genes to Reactome pathways, or ask what a gene list is enriched for (g:Profiler, with the p-values recomputed locally and the background and correction stated in the result). Also Pathway Commons for BioPAX pathway/interaction search, the Alliance of Genome Resources for cross-species gene search, and Monarch for phenotype associations with their evidence codes.',
+    sources: [
+      'MyGene',
+      'UniProt',
+      'OLS',
+      'QuickGO',
+      'Reactome',
+      'g:Profiler',
+      'Pathway Commons',
+      'Alliance of Genome Resources',
+      'Monarch Initiative'
+    ],
     termsUrl: 'https://www.uniprot.org/help/license',
     requiresNcbi: false
   },
@@ -103,8 +113,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     description:
       '人类遗传变异——gnomAD 群体频率/约束、ClinVar 记录/搜索（NCBI 直连）、dbSNP、CADD 危害评分、结构变异和线粒体变异。',
     useWhen:
-      'Use when you need human genetic-variant data — gnomAD population allele frequencies, gene constraint (pLI/LOEUF), structural or mitochondrial variants, and build liftover; ClinVar clinical significance (gnomAD mirror or direct NCBI search/records by accession or rsID); dbSNP RefSNP records and region lookups; or CADD deleteriousness scores (PHRED/raw) for SNVs.',
-    sources: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD'],
+      'Use when you need human genetic-variant data — gnomAD population allele frequencies, gene constraint (pLI/LOEUF), structural or mitochondrial variants, and build liftover; ClinVar clinical significance (gnomAD mirror or direct NCBI search/records by accession or rsID); dbSNP RefSNP records and region lookups; or CADD deleteriousness scores (PHRED/raw) for SNVs. Also MaveDB for published deep-mutational-scanning score sets — metadata and variant counts only, explicitly without per-variant scores.',
+    sources: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD', 'MaveDB'],
     termsUrl: 'https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/',
     requiresNcbi: true
   },
@@ -167,9 +177,9 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'drug_regulatory',
     displayName: '药物监管',
-    description: '通过 openFDA 获取 Drugs@FDA 申请、标签和语料统计。',
+    description: '通过 openFDA 获取 Drugs@FDA 申请、标签、语料统计，以及 FAERS 不良事件报告。',
     useWhen:
-      'Use when you need FDA drug regulatory data — searching or fetching Drugs@FDA applications (NDA/ANDA/BLA) by brand, generic, ingredient, sponsor, marketing status, or pharmacologic class; aggregate/corpus statistics; generic equivalents of a brand; or product label (SPL) sections such as indications and boxed warnings. Sourced from openFDA (Drugs@FDA + drug labels).',
+      'Use when you need FDA drug regulatory data — searching or fetching Drugs@FDA applications (NDA/ANDA/BLA) by brand, generic, ingredient, sponsor, marketing status, or pharmacologic class; aggregate/corpus statistics; generic equivalents of a brand; or product label (SPL) sections such as indications and boxed warnings. Sourced from openFDA (Drugs@FDA + drug labels). Also FAERS adverse-event report search — report counts and individual reports, with no exposure denominator, so a count is not an incidence rate.',
     sources: ['openFDA'],
     termsUrl: 'https://open.fda.gov/terms/',
     requiresNcbi: false
@@ -191,8 +201,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     description:
       '通过 GTEx 门户获取人类组织表达和 eQTL 数据；PanglaoDB 规范标记基因（离线）用于单细胞注释。',
     useWhen:
-      'Use for GTEx tissue expression and eQTL evidence — listing tissue sites or dataset releases, resolving gene symbols to versioned GENCODE ids, median or per-sample expression (TPM) by tissue, top-expressed genes per tissue, sample/donor metadata, and cis-eQTLs (eGenes, single-tissue, multi-tissue METASOFT, or on-the-fly calculation) for a gene or variant. Sourced from GTEx. Also use for single-cell annotation — canonical marker genes per cell type (PanglaoDB set, offline) and reverse marker lookup.',
-    sources: ['GTEx', 'PanglaoDB'],
+      'Use for GTEx tissue expression and eQTL evidence — listing tissue sites or dataset releases, resolving gene symbols to versioned GENCODE ids, median or per-sample expression (TPM) by tissue, top-expressed genes per tissue, sample/donor metadata, and cis-eQTLs (eGenes, single-tissue, multi-tissue METASOFT, or on-the-fly calculation) for a gene or variant. Sourced from GTEx. Also use for single-cell annotation — canonical marker genes per cell type (PanglaoDB set, offline) and reverse marker lookup. Also Bgee for cross-species expression calls, with each call carrying the expression score and state the service reports.',
+    sources: ['GTEx', 'PanglaoDB', 'Bgee'],
     termsUrl: 'https://gtexportal.org/home/license',
     requiresNcbi: false
   },
@@ -212,8 +222,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     displayName: '癌症模型',
     description: '通过 cBioPortal REST API 获取癌症基因组学研究记录；DepMap 癌细胞系依赖性评分。',
     useWhen:
-      "Use when you need cancer genomics data from cBioPortal — listing or looking up cancer studies (cancer type, sample counts, citation), the mutations of a gene in a study (recurrent protein changes, mutation types), a gene's mutation frequency across several studies, discrete copy-number alterations (deletions/amplifications) of a gene, or a study's clinical attributes and survival endpoints. Also use for DepMap cancer dependency data — searching cancer cell lines and gene dependency scores (Chronos) across cell lines.",
-    sources: ['cBioPortal', 'DepMap'],
+      "Use when you need cancer genomics data from cBioPortal — listing or looking up cancer studies (cancer type, sample counts, citation), the mutations of a gene in a study (recurrent protein changes, mutation types), a gene's mutation frequency across several studies, discrete copy-number alterations (deletions/amplifications) of a gene, or a study's clinical attributes and survival endpoints. Also use for DepMap cancer dependency data — searching cancer cell lines and gene dependency scores (Chronos) across cell lines. Also Cellosaurus for cell-line identity — resolving accession to name and back — together with its problematic-line and STR-conflict quality flags.",
+    sources: ['cBioPortal', 'DepMap', 'Cellosaurus'],
     termsUrl: 'https://www.cbioportal.org/faq',
     requiresNcbi: false
   },
@@ -247,8 +257,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     description:
       '组学数据档案——表达（ArrayExpress、GEO）、代谢组学（MetaboLights）、宏基因组学（MGnify）和蛋白质组学（PRIDE）。',
     useWhen:
-      'Use when finding or looking up omics datasets across the major archives — functional-genomics / expression experiments in ArrayExpress (BioStudies) or NCBI GEO series (by keyword, organism, assay, or accession, with per-sample metadata); metabolomics studies and data files in MetaboLights (MTBLS); metagenomics studies and analyses in MGnify (MGYS, by free text or biome lineage); or proteomics projects and proteins in PRIDE Archive (PXD, by keyword/organism/instrument/disease, or protein↔project). Sourced from ArrayExpress, GEO, MetaboLights, MGnify and PRIDE.',
-    sources: ['ArrayExpress', 'GEO', 'MetaboLights', 'MGnify', 'PRIDE'],
+      'Use when finding or looking up omics datasets across the major archives — functional-genomics / expression experiments in ArrayExpress (BioStudies) or NCBI GEO series (by keyword, organism, assay, or accession, with per-sample metadata); metabolomics studies and data files in MetaboLights (MTBLS); metagenomics studies and analyses in MGnify (MGYS, by free text or biome lineage); or proteomics projects and proteins in PRIDE Archive (PXD, by keyword/organism/instrument/disease, or protein↔project). Sourced from ArrayExpress, GEO, MetaboLights, MGnify, PRIDE and Metabolomics Workbench. For a GEO series, matrix and supplementary file discovery lists the files the archive directory declares, with their declared bytes and roles — it does not download or verify them.',
+    sources: ['ArrayExpress', 'GEO', 'MetaboLights', 'MGnify', 'PRIDE', 'Metabolomics Workbench'],
     termsUrl: 'https://www.ebi.ac.uk/about/terms-of-use',
     requiresNcbi: true
   },
@@ -257,8 +267,8 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     displayName: 'CellGuide',
     description: '通过 CELLxGENE CellGuide 获取细胞类型身份、标记基因、来源数据集和组织。',
     useWhen:
-      'Use for cell-type biology from CELLxGENE CellGuide — searching cell types by name/synonym, or (by Cell Ontology id or name) getting identity/description, computational or canonical marker genes, contributing source datasets/publications, and the anatomical tissues a cell type is found in.',
-    sources: ['CELLxGENE'],
+      'Use for cell-type biology from CELLxGENE CellGuide — searching cell types by name/synonym, or (by Cell Ontology id or name) getting identity/description, computational or canonical marker genes, contributing source datasets/publications, and the anatomical tissues a cell type is found in. Also CELLxGENE Discover for browsing public collections and the datasets each one holds.',
+    sources: ['CELLxGENE CellGuide', 'CELLxGENE Discover'],
     termsUrl: 'https://cellxgene.cziscience.com/',
     requiresNcbi: false
   },
