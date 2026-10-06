@@ -1,4 +1,5 @@
 import type { ToolContext, ToolDescriptor } from '../types'
+import { EXPRESSION_BGEE_TOOLS } from './expression-bgee'
 import { EXPRESSION_PANGLAODB_TOOLS } from './expression-panglaodb'
 
 const GTEX = 'https://gtexportal.org/api/v2'
@@ -84,6 +85,7 @@ function geneRecord(g: Record<string, unknown>): Record<string, unknown> {
 // (offline) are appended as the single-cell annotation surface of the same connector.
 export const EXPRESSION_TOOLS: ToolDescriptor[] = [
   ...EXPRESSION_PANGLAODB_TOOLS,
+  ...EXPRESSION_BGEE_TOOLS,
   {
     id: 'gtex_tissue_sites',
     connector: 'expression',

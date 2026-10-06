@@ -20,7 +20,8 @@ const EXPECTED_IDS = [
   'dbsnp_get_rsids',
   'dbsnp_search_by_region',
   'cadd_score_variant',
-  'cadd_score_at_position'
+  'cadd_score_at_position',
+  'mavedb_search_score_sets'
 ]
 
 describe('variants / aggregate', () => {

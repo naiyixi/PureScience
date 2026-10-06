@@ -4,6 +4,7 @@ import type { ToolContext, ToolDescriptor } from '../types'
 // anonymous rate limits apply (the engine retries 429/5xx). openFDA envelope: { meta, results }.
 const APPLICATIONS = 'https://api.fda.gov/drug/drugsfda.json'
 const LABELS = 'https://api.fda.gov/drug/label.json'
+const EVENTS = 'https://api.fda.gov/drug/event.json'
 
 // openFDA can only page while skip+limit stays under ~26k; larger result sets must be narrowed first.
 const MAX_PAGEABLE = 26_000
@@ -62,6 +63,30 @@ type OpenFdaMeta = {
   results?: { total?: number; skip?: number; limit?: number }
 }
 type OpenFdaResults<T> = { meta?: OpenFdaMeta; results?: T[] }
+
+// FAERS (drug/event) report shape. Verified live: an event record carries patientsex (1/2/0),
+// reaction[].reactionmeddrapt/outcome, drug[].medicinalproduct/characterization/openfda, and a
+// top-level serious code (1 = serious, 2 = non-serious); there is no seriousness* field on all rows.
+type EventReaction = { reactionmeddrapt?: string; reactionoutcome?: string }
+type EventDrug = {
+  medicinalproduct?: string
+  drugcharacterization?: string
+}
+type EventPatient = {
+  patientsex?: number
+  patientonsetage?: string
+  patientonsetageunit?: string
+  reaction?: EventReaction[]
+  drug?: EventDrug[]
+}
+type EventRecord = {
+  safetyreportid?: string
+  receivedate?: string
+  // openFDA returns this as a number on some records and a string ("1"/"2") on others — normalised.
+  serious?: number | string
+  occurcountry?: string
+  patient?: EventPatient
+}
 
 // openFDA answers a zero-hit search with HTTP 404; the engine surfaces that as an "HTTP 404" error.
 function isNotFound(err: unknown): boolean {
@@ -302,6 +327,72 @@ function sectionLabelRecord(r: LabelRecord, sections: string[]): Record<string, 
     brand_name: of.brand_name ?? [],
     generic_name: of.generic_name ?? [],
     sections: Object.fromEntries(sections.map((s) => [s, joinText(r[s])]))
+  }
+}
+
+// FAERS sex codes (1 male / 2 female / 0 unknown).
+const SEX_LABEL: Record<number, string> = { 0: 'unknown', 1: 'male', 2: 'female' }
+
+// Builds the receivedate:[from TO to] range clause for FAERS (YYYYMMDD); a missing side is left wide.
+function eventDateRange(from: unknown, to: unknown): string {
+  if (from == null && to == null) return ''
+  const f = from != null ? String(from).replace(/-/g, '') : '19690101'
+  const t = to != null ? String(to).replace(/-/g, '') : '30001231'
+  return `receivedate:[${f} TO ${t}]`
+}
+
+// Assembles the FAERS search= expression: raw_search overrides the mapped filters; the receive-date
+// range is always ANDed on. seriousness maps onto openFDA's serious code (1 serious / 2 non-serious).
+function eventSearchExpr(a: Record<string, unknown>): string {
+  const range = eventDateRange(a.receivedate_from, a.receivedate_to)
+  if (a.raw_search != null && a.raw_search !== '') {
+    const raw = String(a.raw_search)
+    return range ? `(${raw}) AND ${range}` : raw
+  }
+  const clauses: string[] = []
+  if (a.drug != null && a.drug !== '') {
+    clauses.push(`patient.drug.medicinalproduct:${phrase(a.drug)}`)
+  }
+  if (a.reaction != null && a.reaction !== '') {
+    clauses.push(`patient.reaction.reactionmeddrapt:${phrase(a.reaction)}`)
+  }
+  const seriousness = String(a.seriousness ?? 'any').toLowerCase()
+  if (seriousness === 'serious') clauses.push('serious:1')
+  else if (seriousness === 'non-serious') clauses.push('serious:2')
+  if (a.country != null && a.country !== '') clauses.push(`occurcountry:${phrase(a.country)}`)
+  const expr = clauses.join(' AND ')
+  if (!range) return expr
+  return expr ? `(${expr}) AND ${range}` : range
+}
+
+// Reduces one FAERS report to its identity, seriousness, patient summary, drugs and reactions.
+// openFDA sometimes returns `serious` as a string ("1"/"2"), so it is coerced with Number() before
+// the 1 = serious / 2 = non-serious test. The per-drug openfda harmonisation block is omitted: it
+// aggregates every product sharing the name (hundreds of brand strings) and is not report data.
+const MAX_LIST = 25
+function shapeAdverseEvent(r: EventRecord): Record<string, unknown> {
+  const p = r.patient ?? {}
+  const seriousCode = r.serious == null ? undefined : Number(r.serious)
+  return {
+    safety_report_id: r.safetyreportid,
+    receive_date: r.receivedate,
+    country: r.occurcountry,
+    serious: seriousCode === 1,
+    seriousness_code: seriousCode,
+    patient: {
+      sex: p.patientsex != null ? (SEX_LABEL[p.patientsex] ?? 'unknown') : undefined,
+      age: p.patientonsetage,
+      age_unit: p.patientonsetageunit,
+      n_drugs: (p.drug ?? []).length,
+      n_reactions: (p.reaction ?? []).length
+    },
+    drugs: (p.drug ?? []).slice(0, MAX_LIST).map((d) => ({
+      medicinal_product: d.medicinalproduct,
+      characterization: d.drugcharacterization
+    })),
+    reactions: (p.reaction ?? [])
+      .slice(0, MAX_LIST)
+      .map((x) => ({ term: x.reactionmeddrapt, outcome: x.reactionoutcome }))
   }
 }
 
@@ -662,6 +753,73 @@ export const DRUG_REGULATORY_TOOLS: ToolDescriptor[] = [
         records: records.map((r) =>
           sections ? sectionLabelRecord(r, sections) : defaultLabelRecord(r)
         )
+      }
+    }
+  },
+  {
+    id: 'search_drug_adverse_events',
+    connector: 'drug_regulatory',
+    description:
+      "Search openFDA FAERS drug adverse-event reports (drug/event) — the pharmacovigilance side of openFDA, separate from Drugs@FDA applications and labels. Filters: suspected drug (patient.drug.medicinalproduct), reaction (patient.reaction.reactionmeddrapt, a MedDRA preferred term), seriousness (serious/non-serious), report receive-date range, and report country (occurcountry). Returns each report's seriousness, patient summary, reported drugs and reactions, with the true API total and a truncation flag. Note: FAERS counts are spontaneous report counts — there is no exposure denominator, so they are not incidence rates.",
+    input: {
+      type: 'object',
+      properties: {
+        drug: {
+          type: 'string',
+          description: 'Reported medicinal product (patient.drug.medicinalproduct), e.g. "ASPIRIN"'
+        },
+        reaction: {
+          type: 'string',
+          description: 'MedDRA preferred term (patient.reaction.reactionmeddrapt), e.g. "NAUSEA"'
+        },
+        seriousness: {
+          type: 'string',
+          enum: ['any', 'serious', 'non-serious'],
+          default: 'any',
+          description: 'Filter by report seriousness (openFDA serious code 1/2).'
+        },
+        receivedate_from: {
+          type: 'string',
+          description: 'Earliest report receive date (inclusive), YYYY-MM-DD; ANDed onto the query.'
+        },
+        receivedate_to: {
+          type: 'string',
+          description: 'Latest report receive date (inclusive), YYYY-MM-DD; ANDed onto the query.'
+        },
+        country: {
+          type: 'string',
+          description: 'Two-letter report country code (occurcountry), e.g. "US".'
+        },
+        raw_search: {
+          type: 'string',
+          description:
+            'Verbatim openFDA Lucene query; when set, overrides every mapped filter above.'
+        },
+        max_records: { type: 'integer', default: 25 }
+      }
+    },
+    returns:
+      "`{ search (expr), total (API meta count), n_returned, truncated, last_updated, note, events: [ { safety_report_id, receive_date, country, serious, seriousness_code, patient: { sex, age, age_unit, n_drugs, n_reactions }, drugs: [ { medicinal_product, characterization } ], reactions: [ { term, outcome } ] } ] }`. Drug/reaction lists are capped at 25 per report; the per-drug openfda harmonisation block (hundreds of brand strings) is intentionally omitted. `serious` is true when openFDA's serious code is 1 (the code is coerced from the string form openFDA sometimes returns). A zero-hit search returns total 0 and no events. Counts are spontaneous-report counts without a denominator.",
+    example:
+      'const result = await host.mcp("drug_regulatory", "search_drug_adverse_events", {"drug": "ASPIRIN", "reaction": "NAUSEA", "max_records": 10})',
+    run: async (ctx, a) => {
+      const expr = eventSearchExpr(a)
+      const maxRecords = Math.max(1, Number(a.max_records ?? 25))
+      const { total, lastUpdated, records } = await fetchPaged<EventRecord>(
+        ctx,
+        EVENTS,
+        expr,
+        maxRecords,
+        false
+      )
+      return {
+        search: expr,
+        total,
+        n_returned: records.length,
+        truncated: records.length < total,
+        last_updated: lastUpdated,
+        note: 'FAERS reports have no exposure denominator — these are report counts, not incidence rates.',
+        events: records.map(shapeAdverseEvent)
       }
     }
   }

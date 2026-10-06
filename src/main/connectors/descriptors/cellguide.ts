@@ -1,4 +1,5 @@
 import type { ToolContext, ToolDescriptor } from '../types'
+import { CELLXGENE_DISCOVER_TOOLS } from './discover-cellxgene'
 
 // CellGuide (CELLxGENE) serves static, snapshot-versioned JSON blobs from this CDN — no live
 // query/search API. Everything is a GET of a snapshot-scoped blob keyed by Cell Ontology (CL) id,
@@ -168,7 +169,9 @@ function refList(refs: OntologyRef[] | undefined): Array<{ id?: string; label?: 
 // CellGuide CDN tools: cell-type identity/description, client-side name search, canonical or
 // computational marker genes, source datasets/publications, and the anatomical tissues a cell type
 // is observed in (aggregated from the source collections, since there is no per-cell tissue blob).
+// CELLxGENE Discover (the dataset catalogue, a different service from CellGuide) is added on top.
 export const CELLGUIDE_TOOLS: ToolDescriptor[] = [
+  ...CELLXGENE_DISCOVER_TOOLS,
   {
     id: 'get_cell_type_info',
     connector: 'cellguide',

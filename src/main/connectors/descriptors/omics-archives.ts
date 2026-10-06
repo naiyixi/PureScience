@@ -12,6 +12,8 @@ const ACC_CGI = 'https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi'
 const METABOLIGHTS = 'https://www.ebi.ac.uk/metabolights/ws'
 const MGNIFY = 'https://www.ebi.ac.uk/metagenomics/api/v1'
 const PRIDE = 'https://www.ebi.ac.uk/pride/ws/archive/v2'
+const METABOLOMICS_WORKBENCH = 'https://www.metabolomicsworkbench.org/rest'
+const GEO_FTP_SERIES = 'https://ftp.ncbi.nlm.nih.gov/geo/series'
 
 // ---------------------------------------------------------------------------
 // small generic helpers
@@ -1737,8 +1739,281 @@ export const OMICS_ARCHIVES_TOOLS: ToolDescriptor[] = [
         )
       return { query_accession: proteinAccession, n_records: records.length, records }
     }
+  },
+  // ---- Metabolomics Workbench (REST) ----
+  {
+    id: 'metabolomics_workbench_search_studies',
+    connector: 'omics_archives',
+    description:
+      'Search Metabolomics Workbench studies through its REST API. `input` is the server-side search field and `value` the term: study_title, institute, last_name (PI), metabolite_id, kegg_id, refmet_name, or study_id (direct fetch, one study). The service answers with a NON-self-describing JSON object keyed by row index ("1","2",...), which is repacked here in numeric order and counted — the service reports no separate total, so `count` is the number of rows it returned. Row shape follows the input: study_title/institute/last_name give full study summaries (with study_id, study_title, species, institute, analysis_type, number_of_samples, dates, license, study_url); the metabolite-linked inputs (metabolite_id/kegg_id/refmet_name) give compact {refmet_name, kegg_id, study_id} rows. Returns {input, value, count, returned, truncated, studies:[...]}.',
+    input: {
+      type: 'object',
+      properties: {
+        input: {
+          type: 'string',
+          enum: [
+            'study_title',
+            'institute',
+            'last_name',
+            'metabolite_id',
+            'kegg_id',
+            'refmet_name',
+            'study_id'
+          ],
+          description: 'Server-side search field.'
+        },
+        value: {
+          type: 'string',
+          description: 'Search term (study title, institute, PI surname, ...).'
+        },
+        limit: { type: 'integer', default: 100 }
+      },
+      required: ['input', 'value']
+    },
+    required: ['input', 'value'],
+    returns:
+      '{input, value, count (rows the service returned), returned, truncated, studies:[...]}. Full-summary rows: {study_id, study_title, species, institute, analysis_type, number_of_samples, submission_date, release_date, version, revision_no, license, study_url}. Metabolite-linked rows: {refmet_name, kegg_id, study_id}. An unknown `input` is rejected by name with the valid list.',
+    example:
+      'const result = await host.mcp("omics_archives", "metabolomics_workbench_search_studies", {"input": "study_title", "value": "cancer", "limit": 20})',
+    run: async (ctx, a) => {
+      const input = String(a.input).trim()
+      const allowed = [
+        'study_title',
+        'institute',
+        'last_name',
+        'metabolite_id',
+        'kegg_id',
+        'refmet_name',
+        'study_id'
+      ]
+      if (!allowed.includes(input))
+        throw new Error(
+          `unknown Metabolomics Workbench input '${input}'. Valid: ${allowed.join(', ')}`
+        )
+      const value = String(a.value).trim()
+      if (!value) throw new Error('value must be a non-empty search term')
+      const limit = mwbClamp(a.limit, 100, 5000)
+
+      const payload = await ctx.fetchJson(
+        `${METABOLOMICS_WORKBENCH}/study/${input}/${encodeURIComponent(value)}/summary`
+      )
+      const all = mwbRows(payload)
+      const studies = all.slice(0, limit)
+      return {
+        input,
+        value,
+        count: all.length,
+        returned: studies.length,
+        truncated: all.length > studies.length,
+        studies
+      }
+    }
+  },
+  // ---- GEO matrix-file discovery & preflight (FTP directory index) ----
+  {
+    id: 'geo_discover_matrix_files',
+    connector: 'omics_archives',
+    description:
+      'Discover the matrix and supplementary files of NCBI GEO series (GSE accessions) from their FTP directories, and preflight each one from the archive\'s own directory index — file name, role (series_matrix, processed_matrix, raw_data_archive, expression_object, table, document, archive, other), the DECLARED size and last-modified date, and the download URL. No data file is downloaded or checksummed (the `downloaded:false` / `size_source:"ftp_directory_index"` fields say so), matching the connector\'s rule of reporting what the archive declares rather than fetching it. Malformed accessions are rejected by name with the offending character and its position; a directory that is absent (404) is reported as present:false. Args: accessions (GSE, e.g. ["GSE131907"]); include_supplementary (default true). Returns {n_requested, n_found, records:[{accession, ftp_dir, matrix:{present,n_files,files}, supplementary:{present,n_files,files}|null, total_declared_bytes_approx}], invalid:[{accession,reason}], errors:[{accession,error}], downloaded:false, size_source, notes}.',
+    input: {
+      type: 'object',
+      properties: {
+        accessions: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'GEO series accessions, e.g. ["GSE131907"].'
+        },
+        include_supplementary: { type: 'boolean', default: true }
+      },
+      required: ['accessions']
+    },
+    required: ['accessions'],
+    returns:
+      '{n_requested, n_found, records:[{accession, ftp_dir, matrix:{present, n_files, files:[{name, role:"series_matrix", url, declared_size, declared_size_bytes_approx, last_modified, downloaded:false}]}, supplementary:{present, n_files, files:[{name, role, url, declared_size, declared_size_bytes_approx, last_modified, downloaded:false}]}|null, total_declared_bytes_approx}], invalid:[{accession, reason}], errors:[{accession, error}], downloaded:false, size_source:"ftp_directory_index", notes:[str]}. Sizes marked `_approx` are decoded from the archive\'s human-readable index (K=1024); they are the archive\'s declaration, not a byte count we measured.',
+    example:
+      'const result = await host.mcp("omics_archives", "geo_discover_matrix_files", {"accessions": ["GSE131907"]})',
+    run: async (ctx, a) => {
+      const requested = asArr(a.accessions).map(String)
+      const includeSupp = a.include_supplementary !== false
+      const records: Obj[] = []
+      const invalid: Obj[] = []
+      const errors: Obj[] = []
+      for (const raw of requested) {
+        const acc = raw.trim().toUpperCase()
+        const problem = geoAccessionProblem(acc)
+        if (problem) {
+          invalid.push({ accession: raw, reason: problem })
+          continue
+        }
+        const dir = geoFtpDir(acc)
+        const base = `${GEO_FTP_SERIES}/${dir}/${acc}`
+        try {
+          const matrix = await listGeoDir(ctx, `${base}/matrix/`)
+          const suppl = includeSupp ? await listGeoDir(ctx, `${base}/suppl/`) : null
+          const matrixFiles = matrix.files.map((f) => geoFileRow(f, 'series_matrix', base))
+          const supplFiles = (suppl?.files ?? []).map((f) =>
+            geoFileRow(f, classifyGeoSuppl(f.name), base)
+          )
+          const bytes = [...matrixFiles, ...supplFiles].reduce(
+            (sum, f) =>
+              sum +
+              (typeof f.declared_size_bytes_approx === 'number' ? f.declared_size_bytes_approx : 0),
+            0
+          )
+          records.push({
+            accession: acc,
+            ftp_dir: base,
+            matrix: { present: matrix.present, n_files: matrixFiles.length, files: matrixFiles },
+            supplementary: includeSupp
+              ? { present: suppl?.present ?? false, n_files: supplFiles.length, files: supplFiles }
+              : null,
+            total_declared_bytes_approx: bytes
+          })
+        } catch (err) {
+          errors.push({
+            accession: acc,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
+      }
+      return {
+        n_requested: requested.length,
+        n_found: records.length,
+        records,
+        invalid,
+        errors,
+        downloaded: false,
+        size_source: 'ftp_directory_index',
+        notes: [
+          "sizes are the archive directory index's own declarations (human-readable, K=1024 when approximate); this tool downloads and checksums no data file",
+          "a `matrix/` directory holding *_series_matrix.txt.gz is the series-level matrix; files under `suppl/` are the study's supplementary data"
+        ]
+      }
+    }
   }
 ]
+
+// ---- Metabolomics Workbench helpers -------------------------------------------------------
+// MWB accepts a positive row cap; clamp into [1, hi] with a default.
+function mwbClamp(v: unknown, def: number, hi: number): number {
+  const n = typeof v === 'number' ? v : Number(v)
+  const base = Number.isFinite(n) && v != null && v !== '' ? Math.trunc(n) : def
+  return Math.min(hi, Math.max(1, base))
+}
+
+// MWB answers a search with a JSON object keyed by row index ("1","2",...), a single study object for
+// a study_id lookup, or occasionally an empty array. Normalise all three to an ordered object list.
+function mwbRows(payload: unknown): Obj[] {
+  if (Array.isArray(payload)) return payload.map(asObj)
+  const obj = asObj(payload)
+  if ('study_id' in obj && 'study_title' in obj) return [obj]
+  return Object.keys(obj)
+    .filter((k) => /^\d+$/.test(k))
+    .sort((x, y) => Number(x) - Number(y))
+    .map((k) => asObj(obj[k]))
+}
+
+// ---- GEO FTP directory-index helpers ------------------------------------------------------
+// Validate a GSE accession; return a named problem (offending character + 1-based position) or null.
+function geoAccessionProblem(acc: string): string | null {
+  if (!acc.startsWith('GSE'))
+    return `not a GEO series accession ${JSON.stringify(acc)}: expected the "GSE" prefix`
+  const digits = acc.slice(3)
+  if (!digits)
+    return `not a GEO series accession ${JSON.stringify(acc)}: missing the numeric part after "GSE"`
+  const bad = [...digits].findIndex((c) => !/[0-9]/.test(c))
+  if (bad >= 0)
+    return `not a GEO series accession ${JSON.stringify(acc)}: character ${JSON.stringify(digits[bad])} at position ${bad + 4} is not a digit (accessions are "GSE" followed by digits)`
+  return null
+}
+
+// GEO groups series by their leading digits: GSE131907 -> GSE131nnn, GSE1000 -> GSE1nnn, GSE100 -> GSEnnn.
+function geoFtpDir(acc: string): string {
+  const digits = acc.slice(3)
+  const group = digits.length > 3 ? digits.slice(0, -3) : ''
+  return `GSE${group}nnn`
+}
+
+type GeoListingRow = {
+  name: string
+  href: string
+  last_modified: string | null
+  declared_size: string
+  declared_size_bytes_approx: number | null
+}
+
+// Parses an Apache-style directory index (<a href="…">name</a>  date  size) into rows, skipping the
+// parent-directory entry and directory rows (size "-"). Separators are spaces/tabs only, so a row
+// cannot bleed across the newline into the next file's anchor.
+function parseGeoListing(html: string): GeoListingRow[] {
+  const rows: GeoListingRow[] = []
+  const re = /<a href="([^"]+)">([^<]*)<\/a>[ \t]+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}|-)[ \t]+(\S+)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    const href = m[1]
+    const name = decodeURIComponent(m[2] || href)
+    if (href.endsWith('/') || name.includes('Parent Directory')) continue
+    if (m[4] === '-') continue // directory
+    rows.push({
+      name,
+      href,
+      last_modified: m[3] === '-' ? null : m[3],
+      declared_size: m[4],
+      declared_size_bytes_approx: humanSizeToBytes(m[4])
+    })
+  }
+  return rows
+}
+
+// Decodes the index's human-readable size ("2.9G", "826M", "19K", "6300") to an approximate byte count.
+function humanSizeToBytes(s: string): number | null {
+  const m = /^([\d.]+)([KMGT])?$/i.exec(s.trim())
+  if (!m) return null
+  const n = Number(m[1])
+  if (!Number.isFinite(n)) return null
+  const mult = m[2] ? 1024 ** ('KMGT'.indexOf(m[2].toUpperCase()) + 1) : 1
+  return Math.round(n * mult)
+}
+
+// Classifies a supplementary file's role from its name.
+function classifyGeoSuppl(name: string): string {
+  const n = name.toLowerCase()
+  if (/_raw\.tar(\.gz)?$/.test(n)) return 'raw_data_archive'
+  if (/matrix/.test(n)) return 'processed_matrix'
+  if (/\.(rds|h5ad|mtx)(\.gz)?$/.test(n)) return 'expression_object'
+  if (/\.(txt|csv|tsv)(\.gz)?$/.test(n)) return 'table'
+  if (/\.(xlsx?|pdf|docx?|zip)$/.test(n)) return 'document'
+  if (/\.tar(\.gz)?$/.test(n)) return 'archive'
+  return 'other'
+}
+
+function geoFileRow(f: GeoListingRow, role: string, base: string): Obj {
+  return {
+    name: f.name,
+    role,
+    url: `${base}/${role === 'series_matrix' ? 'matrix' : 'suppl'}/${f.href}`,
+    declared_size: f.declared_size,
+    declared_size_bytes_approx: f.declared_size_bytes_approx,
+    last_modified: f.last_modified,
+    downloaded: false
+  }
+}
+
+// Fetch + parse one GEO FTP directory index; a 404/403 means the directory does not exist for this
+// series (reported as present:false) rather than a hard failure.
+async function listGeoDir(
+  ctx: ToolContext,
+  url: string
+): Promise<{ present: boolean; files: GeoListingRow[] }> {
+  let html: string
+  try {
+    html = await ctx.fetchText(url)
+  } catch (err) {
+    if (isNotFound(err)) return { present: false, files: [] }
+    throw err
+  }
+  return { present: true, files: parseGeoListing(html) }
+}
 
 // Shared MetaboLights data-file glob search (used by both the standalone tool and get_study_files).
 async function searchMetabolightsDataFiles(

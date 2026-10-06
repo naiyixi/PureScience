@@ -11,7 +11,10 @@ const EXPECTED_IDS = [
   'get_go_annotations',
   'get_uniprot_entries',
   'map_uniprot_ids',
-  'map_reactome_pathways'
+  'map_reactome_pathways',
+  'alliance_search_genes',
+  'monarch_phenotype_associations',
+  'search_pathway_commons'
 ]
 
 describe('genes / aggregate', () => {

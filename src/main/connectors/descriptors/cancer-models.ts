@@ -1,4 +1,5 @@
 import type { ToolContext, ToolDescriptor } from '../types'
+import { CELLOSAURUS_TOOLS } from './cellosaurus'
 
 const CBIOPORTAL = 'https://www.cbioportal.org/api'
 // cBioPortal exposes no total-count in the JSON body (only in a header we can't read), so every
@@ -68,6 +69,25 @@ type CBioMutation = {
   refseqMrnaId?: string
 }
 type CBioCna = { sampleId?: string; patientId?: string; alteration?: number }
+type CBioStructuralVariant = {
+  molecularProfileId?: string
+  sampleId?: string
+  patientId?: string
+  studyId?: string
+  site1EntrezGeneId?: number
+  site1HugoSymbol?: string
+  site1Chromosome?: string
+  site1Position?: number
+  site2EntrezGeneId?: number
+  site2HugoSymbol?: string
+  site2Chromosome?: string
+  site2Position?: number
+  ncbiBuild?: string
+  eventInfo?: string
+  svStatus?: string
+  tumorSplitReadCount?: number
+  tumorPairedEndReadCount?: number
+}
 type CBioClinicalAttr = {
   clinicalAttributeId?: string
   displayName?: string
@@ -202,7 +222,7 @@ const mapMutation = (m: CBioMutation): Record<string, unknown> => ({
 // cBioPortal public REST API (keyless): read-only cancer-genomics studies, mutations, CNA, and
 // clinical-attribute lookups. Profile/sample-list ids are never assumed — always resolved from the
 // study's own /molecular-profiles and /sample-lists collections.
-export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
+const CANCER_MODELS_BASE_TOOLS: ToolDescriptor[] = [
   {
     id: 'cbioportal_list_studies',
     connector: 'cancer_models',
@@ -572,6 +592,89 @@ export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
     }
   },
   {
+    id: 'cbioportal_structural_variants_in_gene',
+    connector: 'cancer_models',
+    description:
+      'Structural variants / gene fusions involving one gene in a cBioPortal study: the per-sample fusion events with both partner genes resolved (Hugo symbol + Entrez id), plus a deduplicated list of fusion partners with their event counts. Resolves the study\'s STRUCTURAL_VARIANT molecular profile itself, so no profile id is needed.',
+    input: {
+      type: 'object',
+      properties: {
+        gene_symbol: { type: 'string', description: 'HUGO gene symbol, e.g. ALK, RET, EGFR' },
+        study_id: { type: 'string' },
+        max_records: { type: 'integer', default: 100 }
+      },
+      required: ['gene_symbol', 'study_id']
+    },
+    required: ['gene_symbol', 'study_id'],
+    returns:
+      '`{ gene: { symbol, entrez_gene_id }, study_id, molecular_profile_id, total_events, altered_sample_count, distinct_fusions, truncated, fusions: [ { fusion, count } ], events: [ { sample_id, patient_id, site1_gene, site1_entrez_gene_id, site2_gene, site2_entrez_gene_id, fusion, sv_status, chromosome1, position1, chromosome2, position2, ncbi_build } ] }` — `fusions` counts each distinct partner pair (sorted by descending count); `events` is capped at `max_records`. Unknown gene throws "Gene not found"; a study without structural-variant data throws, listing its alteration types.',
+    example:
+      'const result = await host.mcp("cancer_models", "cbioportal_structural_variants_in_gene", {"gene_symbol": "ALK", "study_id": "nsclc_mskcc_2015"})',
+    run: async (ctx, a) => {
+      const symbol = String(a.gene_symbol)
+      const studyId = String(a.study_id)
+      const maxRecords = Math.max(1, Number(a.max_records ?? 100))
+
+      const gene = await resolveGene(ctx, symbol)
+      const profiles = await fetchProfiles(ctx, studyId)
+      const profile = pickProfile(profiles, 'STRUCTURAL_VARIANT')
+      if (!profile?.molecularProfileId) {
+        throw new Error(
+          `Study ${studyId} has no structural-variant data. Available alteration types: ${
+            alterationTypes(profiles).join(', ') || 'none'
+          }`
+        )
+      }
+
+      // The GET routes carry no per-gene SV listing; POST /structural-variant/fetch accepts a gene
+      // filter server-side (read-only) and returns the gene's own fusion records.
+      const rows =
+        ((await ctx.postJson(`${CBIOPORTAL}/structural-variant/fetch`, {
+          molecularProfileIds: [profile.molecularProfileId],
+          entrezGeneIds: [gene.entrezGeneId]
+        })) as CBioStructuralVariant[]) ?? []
+
+      // Prefer the service's eventInfo ("ARAP1-IGF2 fusion"); fall back to SITE1-SITE2.
+      const fusionLabel = (r: CBioStructuralVariant): string => {
+        const info = (r.eventInfo ?? '').trim()
+        if (info && info.toUpperCase() !== 'NA') {
+          return info.replace(/\s*fusion$/i, '').replace(/\s+/g, '-')
+        }
+        return `${r.site1HugoSymbol ?? '?'}-${r.site2HugoSymbol ?? '?'}`
+      }
+      const fusionCounts = countBy(rows.map(fusionLabel))
+      const fusions = Object.entries(fusionCounts)
+        .map(([fusion, count]) => ({ fusion, count }))
+        .sort((x, y) => y.count - x.count || x.fusion.localeCompare(y.fusion))
+
+      return {
+        gene: { symbol: gene.hugoGeneSymbol, entrez_gene_id: gene.entrezGeneId },
+        study_id: studyId,
+        molecular_profile_id: profile.molecularProfileId,
+        total_events: rows.length,
+        altered_sample_count: new Set(rows.map((r) => r.sampleId)).size,
+        distinct_fusions: fusions.length,
+        truncated: rows.length > maxRecords,
+        fusions,
+        events: rows.slice(0, maxRecords).map((r) => ({
+          sample_id: r.sampleId,
+          patient_id: r.patientId,
+          site1_gene: r.site1HugoSymbol,
+          site1_entrez_gene_id: r.site1EntrezGeneId,
+          site2_gene: r.site2HugoSymbol,
+          site2_entrez_gene_id: r.site2EntrezGeneId,
+          fusion: fusionLabel(r),
+          sv_status: r.svStatus,
+          chromosome1: r.site1Chromosome,
+          position1: r.site1Position,
+          chromosome2: r.site2Chromosome,
+          position2: r.site2Position,
+          ncbi_build: r.ncbiBuild
+        }))
+      }
+    }
+  },
+  {
     id: 'cbioportal_clinical_attributes',
     connector: 'cancer_models',
     description:
@@ -756,4 +859,11 @@ export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
       }
     }
   }
+]
+
+// Connector display order: cBioPortal / DepMap tools first, then the Cellosaurus cell-line
+// identity/quality surface.
+export const CANCER_MODELS_TOOLS: ToolDescriptor[] = [
+  ...CANCER_MODELS_BASE_TOOLS,
+  ...CELLOSAURUS_TOOLS
 ]

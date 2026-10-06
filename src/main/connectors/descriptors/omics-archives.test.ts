@@ -27,19 +27,21 @@ const engine = (fetchImpl: typeof fetch): ParserEngine =>
   new ParserEngine({ fetchImpl, retries: 0 })
 
 describe('omics_archives tool set', () => {
-  it('exposes exactly the 17 source tools, all on connector omics_archives', () => {
+  it('exposes exactly the 19 source tools, all on connector omics_archives', () => {
     expect(OMICS_ARCHIVES_TOOLS.map((t) => t.id).sort()).toEqual(
       [
         'arrayexpress_get_experiment',
         'arrayexpress_get_experiment_files',
         'arrayexpress_get_experiment_samples',
         'arrayexpress_search_experiments',
+        'geo_discover_matrix_files',
         'geo_get_series',
         'geo_search_series',
         'metabolights_get_studies',
         'metabolights_get_study_files',
         'metabolights_list_studies',
         'metabolights_search_data_files',
+        'metabolomics_workbench_search_studies',
         'mgnify_get_studies',
         'mgnify_get_study_analyses',
         'mgnify_search_studies',
