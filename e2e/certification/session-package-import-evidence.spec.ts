@@ -184,13 +184,28 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   )
   expect(run.started).toBe(true)
 
-  const sourceReviews = await page.evaluate(
-    async (request) => {
-      const bridge = globalThis as unknown as Bridge
-      return bridge.api.reviewer.getForSession(request)
-    },
-    { projectId: sourceProjectId, appSessionId: source.sessionId }
-  )
+  const readSourceReviews = (): Promise<
+    Array<{ id: string; lifecycle?: string; outcome?: string | null; checks?: unknown[] }>
+  > =>
+    page.evaluate(
+      async (request) => {
+        const bridge = globalThis as unknown as Bridge
+        return bridge.api.reviewer.getForSession(request)
+      },
+      { projectId: sourceProjectId, appSessionId: source.sessionId }
+    )
+
+  // The app runs its own review at turn end, and a review stays `running` until it settles. Reading the
+  // counts while one is still running snapshots a set that is about to change — the mac lane caught exactly
+  // that (`Error: source reviews=running/null:0` against a landed set that no longer matched, while the same
+  // spec locally read `error/null`). Poll until every review has left `running`, then read once: the
+  // comparison is then against the sender's settled set instead of a transient one.
+  await expect
+    .poll(async () => (await readSourceReviews()).map((review) => review.lifecycle ?? 'none'), {
+      timeout: 60_000
+    })
+    .not.toContain('running')
+  const sourceReviews = await readSourceReviews()
   expect(sourceReviews.length).toBeGreaterThan(0)
   const sourceReviewId = sourceReviews[0].id
 

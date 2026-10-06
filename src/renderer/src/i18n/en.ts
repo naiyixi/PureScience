@@ -4265,5 +4265,7 @@ export const en: Record<ZhKey, string> = {
   'sessionInfo.replaySteps': 'Replay steps ({count})',
   'sessionInfo.replayPrompt': 'prompt',
   'sessionInfo.replayUnattached': 'not attached to a prompt',
-  'sessionInfo.replayStepsMore': 'showing {shown} of {total}'
+  'sessionInfo.replayStepsMore': 'showing {shown} of {total}',
+  'sessionInfo.replayFiles': '{count} file(s)',
+  'sessionInfo.replayExit': 'exit {code}'
 }

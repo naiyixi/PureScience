@@ -4344,5 +4344,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replaySteps': 'Étapes de relecture ({count})',
   'sessionInfo.replayPrompt': 'invite',
   'sessionInfo.replayUnattached': 'non rattachée à une invite',
-  'sessionInfo.replayStepsMore': '{shown} sur {total} affichées'
+  'sessionInfo.replayStepsMore': '{shown} sur {total} affichées',
+  'sessionInfo.replayFiles': '{count} fichier(s)',
+  'sessionInfo.replayExit': 'code de sortie {code}'
 }

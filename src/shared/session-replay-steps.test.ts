@@ -87,4 +87,32 @@ describe('buildSessionReplay', () => {
   it('returns an empty sequence for a session with no messages', () => {
     expect(buildSessionReplay({ messages: [] })).toEqual([])
   })
+
+  it('carries the angles a step was recorded with, and stays silent about the ones it was not', () => {
+    const steps = buildSessionReplay({
+      messages: [message({ id: 'u1' })],
+      activities: [
+        activity({
+          id: 'rich',
+          promptMessageId: 'u1',
+          sortIndex: 0,
+          toolLocations: [{ path: '/tmp/out.csv' } as never],
+          terminalExitCode: 0,
+          terminalOutput: 'wrote 12 rows'
+        }),
+        activity({ id: 'bare', promptMessageId: 'u1', sortIndex: 1 })
+      ]
+    })
+
+    const rich = steps.find((step) => step.id === 'tool:rich')
+    expect(rich?.locations).toHaveLength(1)
+    expect(rich?.terminalExitCode).toBe(0)
+    expect(rich?.terminalOutput).toBe('wrote 12 rows')
+
+    // Nothing was recorded for this one, so nothing is claimed about it.
+    const bare = steps.find((step) => step.id === 'tool:bare')
+    expect(bare?.locations).toBeUndefined()
+    expect(bare?.terminalExitCode).toBeUndefined()
+    expect(bare?.terminalOutput).toBeUndefined()
+  })
 })

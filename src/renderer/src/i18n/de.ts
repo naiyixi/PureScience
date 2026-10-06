@@ -4359,5 +4359,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replaySteps': 'Wiedergabeschritte ({count})',
   'sessionInfo.replayPrompt': 'Eingabe',
   'sessionInfo.replayUnattached': 'an keine Eingabe gebunden',
-  'sessionInfo.replayStepsMore': '{shown} von {total} angezeigt'
+  'sessionInfo.replayStepsMore': '{shown} von {total} angezeigt',
+  'sessionInfo.replayFiles': '{count} Datei(en)',
+  'sessionInfo.replayExit': 'Exit-Code {code}'
 }

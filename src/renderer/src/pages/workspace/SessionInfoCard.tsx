@@ -18,6 +18,9 @@ import type { VisionEvidenceSummary } from '../../../../shared/vision-evidence'
 // and a long session would otherwise push everything else out of it.
 const REPLAY_STEP_LIMIT = 12
 
+// How much of a step's recorded terminal output the card shows; the full text belongs to the transcript.
+const REPLAY_OUTPUT_EXCERPT = 80
+
 // The session information card: what this conversation is, when it started and last moved, how much
 // it holds, and a way into its evidence. Counts are computed from the same messages the transcript
 // renders and are labelled as such, so the card can never disagree with what the reader sees.
@@ -313,6 +316,17 @@ export function SessionInfoCard({
                 {step.kind === 'tool' && !step.promptMessageId
                   ? ` · ${t('sessionInfo.replayUnattached')}`
                   : ''}
+                {step.locations && step.locations.length > 0
+                  ? ` · ${t('sessionInfo.replayFiles', { count: String(step.locations.length) })}`
+                  : ''}
+                {step.terminalExitCode === undefined
+                  ? ''
+                  : ` · ${t('sessionInfo.replayExit', { code: String(step.terminalExitCode) })}`}
+                {step.terminalOutput ? (
+                  <span className="mt-0.5 block truncate font-mono text-text-400">
+                    {step.terminalOutput.slice(0, REPLAY_OUTPUT_EXCERPT)}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ol>

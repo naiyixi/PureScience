@@ -4161,5 +4161,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replaySteps': '재생 단계 ({count})',
   'sessionInfo.replayPrompt': '프롬프트',
   'sessionInfo.replayUnattached': '프롬프트에 연결되지 않음',
-  'sessionInfo.replayStepsMore': '{total}개 중 {shown}개 표시'
+  'sessionInfo.replayStepsMore': '{total}개 중 {shown}개 표시',
+  'sessionInfo.replayFiles': '파일 {count}개',
+  'sessionInfo.replayExit': '종료 코드 {code}'
 }

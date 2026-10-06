@@ -1,4 +1,8 @@
-import type { PersistedChatMessage, PersistedToolActivity } from './session-persistence'
+import type {
+  PersistedChatMessage,
+  PersistedToolActivity,
+  PersistedToolCallLocation
+} from './session-persistence'
 
 // IC52, stage 1: the read-only step sequence a session replay view walks. A step is what the session
 // itself recorded — a user prompt, or one tool call the agent made while answering it. Nothing here
@@ -20,6 +24,12 @@ export type SessionReplayStep = {
   toolName?: string
   toolKind?: string
   createdAt?: number
+  /** Files this step touched, as the session recorded them (the "what did it write" angle). */
+  locations?: readonly PersistedToolCallLocation[]
+  /** The terminal exit code when this step ran something; absent when nothing was recorded. */
+  terminalExitCode?: number | null
+  /** A bounded excerpt of the terminal output, only when the session recorded any. */
+  terminalOutput?: string
   /** Artifact versions this step's prompt links to (session-level file records are not duplicated here). */
   artifactIds: string[]
 }
@@ -68,6 +78,15 @@ export const buildSessionReplay = (source: SessionReplaySource): SessionReplaySt
       ...(activity.providerToolName ? { toolName: activity.providerToolName } : {}),
       ...(activity.toolKind ? { toolKind: activity.toolKind } : {}),
       createdAt: activity.createdAt,
+      // The angles a step can be inspected from, each present only when the session recorded it: the files
+      // it touched, and what running it printed. A step that recorded none of these stays silent about them.
+      ...(activity.toolLocations && activity.toolLocations.length > 0
+        ? { locations: activity.toolLocations }
+        : {}),
+      ...(activity.terminalExitCode === undefined
+        ? {}
+        : { terminalExitCode: activity.terminalExitCode }),
+      ...(activity.terminalOutput ? { terminalOutput: activity.terminalOutput } : {}),
       artifactIds: []
     }
   })
