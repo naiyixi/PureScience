@@ -3933,5 +3933,18 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskUnanswered': '這一步自己的紀錄答不了這個問題。',
   'sessionInfo.replayAskNotRecorded': '未記錄',
   'sessionInfo.replayAskFrom': '出處：{source}',
-  'sessionInfo.replayNoRecord': '這一步沒有留下它做了什麼的可讀紀錄。'
+  'sessionInfo.replayNoRecord': '這一步沒有留下它做了什麼的可讀紀錄。',
+  'ws.permissionAllow': '允許',
+  'ws.permissionScopeOnce': '僅此一次',
+  'ws.approvalScopeNone': '此請求沒有可用的批准範圍。',
+  'ws.approvalScopeOnce': '批准僅對本次呼叫有效。',
+  'ws.approvalScopeProject': '批准適用於本專案內相符的呼叫。',
+  'ws.approvalScopeGlobal': '批准適用於每個專案中相符的呼叫。',
+  'ws.approvalScopeSessionRuntime': '批准涵蓋此對話中後續的 {runtime} 呼叫。',
+  'ws.approvalScopeSession': '批准在重新啟動後仍附於此對話。',
+  'settings.approvalHost': '主機',
+  'settings.approvalTool': '工具',
+  'settings.approvalArgs': '參數',
+  'common.deny': '拒絕',
+  'settings.alwaysScope': '始終'
 }

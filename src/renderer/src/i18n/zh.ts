@@ -3993,7 +3993,20 @@ export const zh = {
   'sessionInfo.replayAskUnanswered': '这一步自己的记录答不了这个问题。',
   'sessionInfo.replayAskNotRecorded': '未记录',
   'sessionInfo.replayAskFrom': '出处：{source}',
-  'sessionInfo.replayNoRecord': '这一步没有留下它做了什么的可读记录。'
+  'sessionInfo.replayNoRecord': '这一步没有留下它做了什么的可读记录。',
+  'ws.permissionAllow': '允许',
+  'ws.permissionScopeOnce': '仅此一次',
+  'ws.approvalScopeNone': '此请求没有可用的批准范围。',
+  'ws.approvalScopeOnce': '批准仅对本次调用有效。',
+  'ws.approvalScopeProject': '批准适用于本项目内匹配的调用。',
+  'ws.approvalScopeGlobal': '批准适用于每个项目中匹配的调用。',
+  'ws.approvalScopeSessionRuntime': '批准涵盖此会话中后续的 {runtime} 调用。',
+  'ws.approvalScopeSession': '批准在重启后仍附于此会话。',
+  'settings.approvalHost': '主机',
+  'settings.approvalTool': '工具',
+  'settings.approvalArgs': '参数',
+  'common.deny': '拒绝',
+  'settings.alwaysScope': '始终'
 }
 
 export type ZhKey = keyof typeof zh

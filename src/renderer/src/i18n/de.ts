@@ -4379,5 +4379,20 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskNotRecorded': 'nicht aufgezeichnet',
   'sessionInfo.replayAskFrom': 'aus {source}',
   'sessionInfo.replayNoRecord':
-    'Dieser Schritt hat keinen lesbaren Eintrag darüber hinterlassen, was er getan hat.'
+    'Dieser Schritt hat keinen lesbaren Eintrag darüber hinterlassen, was er getan hat.',
+  'ws.permissionAllow': 'Erlauben',
+  'ws.permissionScopeOnce': 'einmal',
+  'ws.approvalScopeNone': 'Für diese Anfrage ist kein Genehmigungsbereich verfügbar.',
+  'ws.approvalScopeOnce': 'Die Genehmigung gilt nur für diesen Aufruf.',
+  'ws.approvalScopeProject': 'Die Genehmigung gilt für passende Aufrufe in diesem Projekt.',
+  'ws.approvalScopeGlobal': 'Die Genehmigung gilt für passende Aufrufe in jedem Projekt.',
+  'ws.approvalScopeSessionRuntime':
+    'Die Genehmigung umfasst spätere {runtime}-Aufrufe in dieser Sitzung.',
+  'ws.approvalScopeSession':
+    'Die Genehmigung bleibt nach einem Neustart an diese Sitzung gebunden.',
+  'settings.approvalHost': 'Rechner',
+  'settings.approvalTool': 'Werkzeug',
+  'settings.approvalArgs': 'Argumente',
+  'common.deny': 'Ablehnen',
+  'settings.alwaysScope': 'Immer'
 }

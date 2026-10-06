@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ComputeApprovalRequest } from '../../../../shared/compute'
 import { resolveExecutionProtection } from '../../../../shared/execution-protection'
+import { LanguageProvider } from '@/i18n'
 import { createInitialComputeState, useComputeStore } from '@/stores/compute-store'
 import { ComputeApprovalDialog } from './ComputeApprovalDialog'
 
@@ -175,5 +176,34 @@ describe('ComputeApprovalDialog — protection level', () => {
 
     expect(document.body.querySelector('[data-slot="compute-approval-protection"]')).toBeNull()
     expect(findButton('Always')).toBeDefined()
+  })
+})
+
+// This dialog blocks a remote command until the user decides, and it used to say "Host"/"Deny"/"Once"/
+// "Always" in English while the rest of the settings page followed the UI language. Rendering through
+// the real provider is what proves the screen changed - asserting the keys exist would not.
+describe('ComputeApprovalDialog in the user’s language', () => {
+  afterEach(() => window.localStorage.clear())
+
+  it('shows the host label and every decision button in the stored language', () => {
+    window.localStorage.setItem('purescience-language', 'zh')
+    useComputeStore.setState({ pendingApprovals: [request] })
+    act(() =>
+      root.render(
+        <LanguageProvider>
+          <ComputeApprovalDialog />
+        </LanguageProvider>
+      )
+    )
+
+    const text = document.body.textContent ?? ''
+    // The label is translated; the host's own name is data and must stay untouched.
+    expect(text).toContain('主机')
+    expect(text).toContain('Research cluster')
+    expect(findButton('拒绝')).toBeDefined()
+    expect(findButton('一次')).toBeDefined()
+    expect(findButton('始终')).toBeDefined()
+    expect(findButton('Deny')).toBeUndefined()
+    expect(findButton('Always')).toBeUndefined()
   })
 })

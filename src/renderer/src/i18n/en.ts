@@ -4284,5 +4284,18 @@ export const en: Record<ZhKey, string> = {
   'sessionInfo.replayAskUnanswered': 'This step’s own record does not answer that.',
   'sessionInfo.replayAskNotRecorded': 'not recorded',
   'sessionInfo.replayAskFrom': 'from {source}',
-  'sessionInfo.replayNoRecord': 'This step left no readable record of what it did.'
+  'sessionInfo.replayNoRecord': 'This step left no readable record of what it did.',
+  'ws.permissionAllow': 'Allow',
+  'ws.permissionScopeOnce': 'once',
+  'ws.approvalScopeNone': 'No approval scope is available for this request.',
+  'ws.approvalScopeOnce': 'Approval applies to this call only.',
+  'ws.approvalScopeProject': 'Approval applies to matching calls in this project.',
+  'ws.approvalScopeGlobal': 'Approval applies to matching calls in every project.',
+  'ws.approvalScopeSessionRuntime': 'Approval covers later {runtime} calls in this session.',
+  'ws.approvalScopeSession': 'Approval remains attached to this session across restarts.',
+  'settings.approvalHost': 'Host',
+  'settings.approvalTool': 'Tool',
+  'settings.approvalArgs': 'Args',
+  'common.deny': 'Deny',
+  'settings.alwaysScope': 'Always'
 }

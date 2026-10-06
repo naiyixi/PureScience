@@ -616,11 +616,15 @@ const PermissionApprovalControls = ({
   const presentation = describePermissionRequest(request)
   const allowOptionId = getAllowOptionId(request.options, effectiveScope)
   const denyOptionId = getDenyOptionId(request.options)
+  // The Allow button reads "Allow" + one of these scope words, so "once"/"globally" were the last two
+  // English words left on a blocking decision prompt: the session/project halves were already keyed.
+  // "globally" reuses the scope word the broad-scope confirmation dialog shows, so the two surfaces
+  // cannot drift into different words for the same scope.
   const scopeLabel: Record<PermissionScope, string> = {
-    once: 'once',
+    once: t('ws.permissionScopeOnce'),
     session: t('ws.forThisSession'),
     project: t('ws.forThisProject'),
-    global: 'globally'
+    global: t('permissionScope.scopeGlobal')
   }
   const notebookRuntimeLabel: Partial<Record<NotebookRuntime, string>> = {
     python: 'Python',
@@ -628,17 +632,22 @@ const PermissionApprovalControls = ({
     js: 'JavaScript REPL',
     bash: 'notebook shell'
   }
+  // The tooltip under the info affordance. Interpolation stays here (some suites render with a
+  // non-interpolating fallback dictionary), matching PermissionScopeConfirmationDialog's own usage.
   const scopeDescription = !allowOptionId
-    ? 'No approval scope is available for this request.'
+    ? t('ws.approvalScopeNone')
     : effectiveScope === 'once'
-      ? 'Approval applies to this call only.'
+      ? t('ws.approvalScopeOnce')
       : effectiveScope === 'project'
-        ? 'Approval applies to matching calls in this project.'
+        ? t('ws.approvalScopeProject')
         : effectiveScope === 'global'
-          ? 'Approval applies to matching calls in every project.'
+          ? t('ws.approvalScopeGlobal')
           : presentation.notebookRuntime
-            ? `Approval covers later ${notebookRuntimeLabel[presentation.notebookRuntime]} calls in this session.`
-            : 'Approval remains attached to this session across restarts.'
+            ? t('ws.approvalScopeSessionRuntime').replace(
+                '{runtime}',
+                notebookRuntimeLabel[presentation.notebookRuntime] ?? ''
+              )
+            : t('ws.approvalScopeSession')
   const hasScopePicker = availableScopes.size > 1
   const isSubmitting = submittingRequestId === request.requestId
   const respondOnce = (optionId?: string, broadScopeConfirmed = false): void => {
@@ -876,10 +885,10 @@ const PermissionApprovalControls = ({
               }}
             >
               {isDeleteRequest ? (
-                <span className="font-semibold">Delete</span>
+                <span className="font-semibold">{t('common.delete')}</span>
               ) : (
                 <>
-                  <span className="font-semibold">Allow</span>{' '}
+                  <span className="font-semibold">{t('ws.permissionAllow')}</span>{' '}
                   <span className="font-normal">{scopeLabel[effectiveScope]}</span>
                 </>
               )}
@@ -944,7 +953,7 @@ const PermissionApprovalControls = ({
           disabled={isSubmitting}
           onClick={() => respondOnce(denyOptionId)}
         >
-          Deny
+          {t('common.deny')}
         </Button>
       </div>
       <PermissionScopeConfirmationDialog

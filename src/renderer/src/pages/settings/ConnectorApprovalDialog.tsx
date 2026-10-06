@@ -80,11 +80,15 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
               <span className="min-w-0 truncate font-medium text-foreground">{displayName}</span>
             </div>
             <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">Tool</span>
+              <span className="w-16 shrink-0 text-muted-foreground">
+                {t('settings.approvalTool')}
+              </span>
               <span className="min-w-0 truncate font-mono text-foreground">{request.method}</span>
             </div>
             <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">Args</span>
+              <span className="w-16 shrink-0 text-muted-foreground">
+                {t('settings.approvalArgs')}
+              </span>
               <span className="min-w-0 break-all font-mono text-muted-foreground">
                 {request.argsPreview}
               </span>
@@ -93,7 +97,7 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="destructive" onClick={deny}>
-              Deny
+              {t('common.deny')}
             </Button>
             {availableScopes.includes('session') ? (
               <Button type="button" variant="outline" onClick={() => allow('session')}>
@@ -107,7 +111,7 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
             ) : null}
             {availableScopes.includes('global') ? (
               <Button type="button" variant="outline" onClick={() => allow('global')}>
-                Global
+                {t('ws.global')}
               </Button>
             ) : null}
             <Button type="button" onClick={() => allow('once')}>

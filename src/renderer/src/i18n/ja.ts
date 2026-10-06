@@ -4246,5 +4246,19 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskUnanswered': 'この手順の記録だけではその質問には答えられません。',
   'sessionInfo.replayAskNotRecorded': '記録なし',
   'sessionInfo.replayAskFrom': '出典: {source}',
-  'sessionInfo.replayNoRecord': 'この手順は何をしたかの読める記録を残していません。'
+  'sessionInfo.replayNoRecord': 'この手順は何をしたかの読める記録を残していません。',
+  'ws.permissionAllow': '許可',
+  'ws.permissionScopeOnce': '1 回のみ',
+  'ws.approvalScopeNone': 'このリクエストで利用できる承認範囲がありません。',
+  'ws.approvalScopeOnce': '承認は今回の呼び出しにのみ適用されます。',
+  'ws.approvalScopeProject': '承認はこのプロジェクト内の一致する呼び出しに適用されます。',
+  'ws.approvalScopeGlobal': '承認はすべてのプロジェクトで一致する呼び出しに適用されます。',
+  'ws.approvalScopeSessionRuntime':
+    '承認はこのセッションで以降の {runtime} 呼び出しを対象にします。',
+  'ws.approvalScopeSession': '承認は再起動後もこのセッションに紐づきます。',
+  'settings.approvalHost': 'ホスト',
+  'settings.approvalTool': 'ツール',
+  'settings.approvalArgs': '引数',
+  'common.deny': '拒否',
+  'settings.alwaysScope': '常に'
 }

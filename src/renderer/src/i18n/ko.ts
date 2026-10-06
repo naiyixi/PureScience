@@ -4181,5 +4181,18 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskNotRecorded': '기록 없음',
   'sessionInfo.replayAskFrom': '출처: {source}',
   'sessionInfo.replayNoRecord':
-    '이 단계는 무엇을 했는지에 대한 읽을 수 있는 기록을 남기지 않았습니다.'
+    '이 단계는 무엇을 했는지에 대한 읽을 수 있는 기록을 남기지 않았습니다.',
+  'ws.permissionAllow': '허용',
+  'ws.permissionScopeOnce': '이번 한 번만',
+  'ws.approvalScopeNone': '이 요청에 사용할 수 있는 승인 범위가 없습니다.',
+  'ws.approvalScopeOnce': '승인은 이번 호출에만 적용됩니다.',
+  'ws.approvalScopeProject': '승인은 이 프로젝트의 일치하는 호출에 적용됩니다.',
+  'ws.approvalScopeGlobal': '승인은 모든 프로젝트의 일치하는 호출에 적용됩니다.',
+  'ws.approvalScopeSessionRuntime': '승인은 이 세션에서 이후의 {runtime} 호출을 포함합니다.',
+  'ws.approvalScopeSession': '승인은 재시작 후에도 이 세션에 유지됩니다.',
+  'settings.approvalHost': '호스트',
+  'settings.approvalTool': '도구',
+  'settings.approvalArgs': '인수',
+  'common.deny': '거부',
+  'settings.alwaysScope': '항상'
 }

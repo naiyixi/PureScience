@@ -4333,5 +4333,21 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskUnanswered': 'El registro de este paso no responde a eso.',
   'sessionInfo.replayAskNotRecorded': 'sin registrar',
   'sessionInfo.replayAskFrom': 'desde {source}',
-  'sessionInfo.replayNoRecord': 'Este paso no dejó ningún registro legible de lo que hizo.'
+  'sessionInfo.replayNoRecord': 'Este paso no dejó ningún registro legible de lo que hizo.',
+  'ws.permissionAllow': 'Permitir',
+  'ws.permissionScopeOnce': 'una vez',
+  'ws.approvalScopeNone': 'No hay ningún alcance de aprobación disponible para esta solicitud.',
+  'ws.approvalScopeOnce': 'La aprobación se aplica solo a esta llamada.',
+  'ws.approvalScopeProject':
+    'La aprobación se aplica a las llamadas coincidentes en este proyecto.',
+  'ws.approvalScopeGlobal':
+    'La aprobación se aplica a las llamadas coincidentes en todos los proyectos.',
+  'ws.approvalScopeSessionRuntime':
+    'La aprobación cubre las llamadas {runtime} posteriores en esta sesión.',
+  'ws.approvalScopeSession': 'La aprobación permanece vinculada a esta sesión tras reiniciar.',
+  'settings.approvalHost': 'Equipo',
+  'settings.approvalTool': 'Herramienta',
+  'settings.approvalArgs': 'Argumentos',
+  'common.deny': 'Denegar',
+  'settings.alwaysScope': 'Siempre'
 }

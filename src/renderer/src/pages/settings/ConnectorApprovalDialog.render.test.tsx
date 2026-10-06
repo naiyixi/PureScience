@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConnectorApprovalDialog } from './ConnectorApprovalDialog'
+import { LanguageProvider } from '@/i18n'
 import { createInitialSettingsState, useSettingsStore } from '@/stores/settings-store'
 
 let container: HTMLDivElement
@@ -148,6 +149,41 @@ describe('ConnectorApprovalDialog', () => {
 
     expect(useSettingsStore.getState().respondApproval).toHaveBeenCalledWith('r1', scope)
     expect(useSettingsStore.getState().setConnectorAutoAllow).not.toHaveBeenCalled()
+  })
+
+  // The field labels and the two unconditional buttons were the last hardcoded English on this card; a
+  // zh user read "Tool / Args / Deny" in the middle of their own language. Keying is not the deliverable
+  // — the screen changing is — so this renders through the real provider and asserts what is on screen.
+  it('reads Tool, Args, Deny and Global in the user’s language', () => {
+    useSettingsStore.setState({
+      pendingApprovals: [
+        {
+          id: 'r1',
+          connector: 'biomart',
+          method: 'get_data',
+          argsPreview: '{}',
+          availableScopes: ['once', 'session', 'project', 'global']
+        }
+      ]
+    })
+    window.localStorage.setItem('purescience-language', 'zh')
+    act(() =>
+      root.render(
+        <LanguageProvider>
+          <ConnectorApprovalDialog />
+        </LanguageProvider>
+      )
+    )
+
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('工具')
+    expect(text).toContain('参数')
+    expect(button('拒绝')?.getAttribute('data-variant')).toBe('destructive')
+    expect(button('全局')).toBeDefined()
+    // The English words the card used to print are gone, not merely accompanied by a translation.
+    expect(text).not.toContain('Tool')
+    expect(text).not.toContain('Args')
+    expect(button('Deny')).toBeUndefined()
   })
 
   it('Deny responds deny', () => {

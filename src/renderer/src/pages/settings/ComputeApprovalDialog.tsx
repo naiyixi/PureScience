@@ -101,7 +101,9 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
 
           <div className="mt-3 space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 text-xs">
             <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">Host</span>
+              <span className="w-16 shrink-0 text-muted-foreground">
+                {t('settings.approvalHost')}
+              </span>
               <span className="min-w-0 truncate font-medium text-foreground">
                 {dialogRequest.provider_name}
               </span>
@@ -184,10 +186,10 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
 
           <div className={cn(dialogFooterClassName, 'mt-4 flex-wrap')}>
             <Button type="button" variant="destructive" onClick={deny}>
-              Deny
+              {t('common.deny')}
             </Button>
             <Button type="button" variant="outline" onClick={approveOnce}>
-              Once
+              {t('ws.once')}
             </Button>
             {/* Remembered scopes are hidden for an unprotected run (see the note above the label):
                 only an explicit opt-in in settings makes such a grant effective. */}
@@ -204,7 +206,7 @@ export function ComputeApprovalDialog(): React.JSX.Element | null {
                   {t('settings.thisProjectScope')}
                 </Button>
                 <Button type="button" onClick={() => setPendingBroadScope('global')}>
-                  Always
+                  {t('settings.alwaysScope')}
                 </Button>
               </>
             )}

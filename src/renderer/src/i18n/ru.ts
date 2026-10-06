@@ -4261,5 +4261,19 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessionInfo.replayAskUnanswered': 'Собственная запись этого шага не отвечает на это.',
   'sessionInfo.replayAskNotRecorded': 'не записано',
   'sessionInfo.replayAskFrom': 'из {source}',
-  'sessionInfo.replayNoRecord': 'Этот шаг не оставил читаемой записи о том, что он сделал.'
+  'sessionInfo.replayNoRecord': 'Этот шаг не оставил читаемой записи о том, что он сделал.',
+  'ws.permissionAllow': 'Разрешить',
+  'ws.permissionScopeOnce': 'один раз',
+  'ws.approvalScopeNone': 'Для этого запроса нет доступной области одобрения.',
+  'ws.approvalScopeOnce': 'Одобрение действует только для этого вызова.',
+  'ws.approvalScopeProject': 'Одобрение действует для подходящих вызовов в этом проекте.',
+  'ws.approvalScopeGlobal': 'Одобрение действует для подходящих вызовов во всех проектах.',
+  'ws.approvalScopeSessionRuntime':
+    'Одобрение охватывает последующие вызовы {runtime} в этой сессии.',
+  'ws.approvalScopeSession': 'Одобрение остаётся привязанным к этой сессии после перезапуска.',
+  'settings.approvalHost': 'Хост',
+  'settings.approvalTool': 'Инструмент',
+  'settings.approvalArgs': 'Аргументы',
+  'common.deny': 'Отклонить',
+  'settings.alwaysScope': 'Всегда'
 }
