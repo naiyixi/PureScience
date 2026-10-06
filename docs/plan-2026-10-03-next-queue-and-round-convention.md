@@ -885,8 +885,13 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 **双 typecheck 净** —— `typecheck:web` 首跑抓到新渲染用例的夹具缺 `ProbeResult` 的 `probedAt`/`exitCode`/`errorTail`（补 `probe()` 造数函数；这正是「夹具必须与线上形状同步」那条纪律）；
 `eslint --no-cache .` **0 error / 124 warning**（我引入的 9 条 prettier warning 已就地修掉；124 是既有基线）；`pre-push-checks.sh` 全过。
 
-**CI**：`8b8111dc` 触发 `Nightly`（run 37405996816）与 `Windows Full Test`（run 37405996584），推送时均为 pending ⇒ **判决见下一轮**
-（按**完整 40 位 SHA** 查；取消 ≠ 绿）。
+**CI（已取终态，双绿）**：`8b8111dc` 按**完整 40 位 SHA** 查 —— `Windows Full Test` run **37405996584 success**；
+`Nightly` run **37405996816 success**（`build / Verify (lint + typecheck + test + package)` success、`Resolve platform matrix` success、
+四平台 build 全 success、mac `Run P0 Electron certification` + 视觉回归 + 三平台 smoke + `Enforce platform certification` 全过）。
+⇒ **两条车道双绿，IC42 的 CI 判决已闭合**。（本次**无需** `cancel-in-progress` 归因：该 SHA 上两车道都拿到了终态。）
+落档提交 `683c693c` 是纯 `docs/**` ⇒ 两条车道都有 `paths:` 过滤、**0 条 run**（设计如此，不是漏跑）。
+另核：`e2e/visual-regression.spec.ts` 的基准只覆盖 `settings-general.png`（General/Appearance 页），**不含算力面板**
+⇒ 本单元新增的「引擎」分区不触及任何视觉基准（这条是开工时主动核过的，不是等 CI 报）。
 
 **⏳ 真机读数未取（具名立案 + 配方）**：开工时 swap **10.32 G / 11.26 G 已用**、空闲物理页 ~4.1k（≈65 MB）⇒ 无 `build:e2e` + Electron 的安全余量，
 **未改 `e2e/certification/**`**（未跑过的 spec 进仓＝留一道从未通过的闸门）。配方见 `docs/plan-2026-10-06-IC42-engine-panel.md` §5.1
@@ -896,5 +901,6 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 本轮的 IC42 是 **v1.87.0 之后的第一笔功能提交** ⇒ 下一个版本边界（v1.88.0）应含它 + 批次 9（IC43/IC44/IC45/IC49/IC50/IC51 会话已落地、各有读数或立案）。
 
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，先按提交把会话已完成的单元划掉（防重做）；
-② 按**完整 40 位 SHA `8b8111dc`** 查 `Nightly` + `Windows Full Test` 终态，红了先读**作业级注解**归因（**不要重跑单个 job**），绿则入档；
-③ 内存宽松时取本单元真机读数（配方见 IC42 计划档 §5.1），或按排期进批次 9；④ **批次 8（IC39/IC40/IC42）至此三条全部落地**，v1.88.0 的版本边界已可用（下一条功能提交前先核位点）。
+② 内存宽松时取本单元真机读数（配方见 IC42 计划档 §5.1），或按排期进入**批次 9（v1.88.0）**取未被会话认领者；
+③ **批次 8（IC39/IC40/IC42）至此三条全部落地且 CI 双绿**；v1.88.0 的版本边界已可用（下一条功能提交前先核位点：
+Latest = v1.87.0）。
