@@ -768,6 +768,22 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **⚠️ 给执行器（下一轮开工前必读）**：你**在飞的未提交文件** `src/renderer/src/pages/settings/EngineMatrixSection.tsx` 在本机 `npx eslint --no-cache .` 下报 **3 个 error**（`react-refresh/only-export-components`：同一文件既导出组件又导出常量/函数，行 31 / 42 / 49）⇒ 这会让你的提交过不了车道。按 lint 自己的建议修：把常量/函数挪进独立模块（你已有 `engine-matrix-copy.test.ts`，建 `engine-matrix-copy.ts` 最顺手）再从组件 import。**该文件未进 v1.87.0 的提交**（发版门禁已确认），所以只影响你的下一笔。
 
+## 二十一、v1.87.0 已发布（会话，2026-10-06 10:3x）—— 三轮红收口与三条新纪律
+
+**发布读数**：tag `v1.87.0` → 提交 `6f4d7c65dd0b3d9d1910b94d517a97cefd6f39f5`；**三条车道同一次运行全绿**（Release ✅ / Nightly ✅ / Windows Full Test ✅；同一 SHA 上另有一次**被 preflight 正确拒绝**的旧运行，不构成本判决）；Release 页 `draft=false`、`isPrerelease=false`、**21 资产**、**Latest**、正文 17544 字符；覆盖 `v1.86.0..v1.87.0` 共 **35 笔**。发布窗口内已 `pause` / 恢复 `resume` 自主执行器（`2be4405e5dc6`）。
+
+**三轮红，三条不同根因，全部属会话自己；每次都是删 tag 重建，从不重跑单个 job**：
+
+1. `build / Verify`（Release + Nightly）：IC46 删掉死面后 `src/preload/renderer-api.d.ts` 留下**未使用的类型导入**（`HandoffEventsRequest` / `HandoffLifecycleEvent` / `HandoffRetryRequest`）⇒ **`typecheck:node` 对 `.d.ts` 里未使用的类型导入不报，只有 `eslint` 报**。修：删导入。
+2. `Enforce platform certification`：IC46 删的 `handoff.list` / `handoff.retry` 是**死通道**（主进程从未注册；目录里的真名是 `handoff-lifecycle:list` / `:retry`，而那一对也没有 registrar）⇒ 认证应落在**活面** `specialist.getHandoffEvents` / `specialist.retryHandoff`。修：`e2e/certification/handoff-seam.spec.ts` 改指活面，**保留原意断言**（"接缝在生产生命周期上有应答、不是 `No handler registered`"），**只换面不放松**；真机 `1 passed (9.9s)`；同时确认 `handoff.retry*` 那批 i18n 键**不是死键**（活着的 `HandoffLifecycleStatus.tsx` 在用）。
+3. `Release preflight: Verify release commit is on main`：两笔修复**只提交没推**，tag 指向了远端 main 上不存在的提交 ⇒ **门禁行为正确**，错在漏 `git push`。
+
+**三条新纪律**：
+
+1. **发版门禁必须显式包含 `npx eslint --no-cache .`** —— "全量单测 + 双 typecheck + pre-push 五查"这套集合里**没有 lint**，三样全绿而车道因 lint error 翻红是真实形状（本轮实测）。
+2. **删接口 / 删面时，核对范围必须含 `e2e/`** —— 只查渲染层"零引用"不够：`src/renderer/web/api-installer.test.ts` 里那句 `handoff.list is ELECTRON` 是**注释**而非调用，真调用在 `e2e/certification/handoff-seam.spec.ts`。
+3. **打 tag 前必须核实 tag 提交已在远端 main 上**：先 `git push origin main`，再 `git merge-base --is-ancestor "$(git rev-parse '<tag>^{commit}')" origin/main` 成真才推 tag —— `Verify release commit is on main` 就是为此设的闸。
+
 ## 十八、本轮追加（执行器，2026-10-06 02:0x–）——IC39 远程任务取消落地（批次 8 首条）
 
 **开局判定（防重做）**：`HEAD == origin/main == 43d743d7`；会话已推 IC41（`a15f41fa` + 读数 `49aeb883`）与 IC43–IC51（§十七）；
