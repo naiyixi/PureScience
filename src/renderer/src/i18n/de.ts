@@ -4355,5 +4355,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.summary':
     'Empirisches Kraftfeld-ΔΔG; nichtkommerziell kostenlos, kommerziell nur mit Lizenz.',
   'engines.status.weightsUnavailable':
-    'Nicht verfügbar: keine herunterladbaren Gewichte in diesem Build'
+    'Nicht verfügbar: keine herunterladbaren Gewichte in diesem Build',
+  'sessionInfo.replaySteps': 'Wiedergabeschritte ({count})',
+  'sessionInfo.replayPrompt': 'Eingabe',
+  'sessionInfo.replayUnattached': 'an keine Eingabe gebunden',
+  'sessionInfo.replayStepsMore': '{shown} von {total} angezeigt'
 }

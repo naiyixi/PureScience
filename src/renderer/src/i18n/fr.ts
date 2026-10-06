@@ -4340,5 +4340,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.summary':
     'ΔΔG par champ de forces empirique ; gratuit en non commercial, licence requise en commercial.',
   'engines.status.weightsUnavailable':
-    'Indisponible : aucun poids téléchargeable dans cette version'
+    'Indisponible : aucun poids téléchargeable dans cette version',
+  'sessionInfo.replaySteps': 'Étapes de relecture ({count})',
+  'sessionInfo.replayPrompt': 'invite',
+  'sessionInfo.replayUnattached': 'non rattachée à une invite',
+  'sessionInfo.replayStepsMore': '{shown} sur {total} affichées'
 }

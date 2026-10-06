@@ -4238,5 +4238,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (эмпирический ΔΔG)',
   'engines.rosetta-ddg.summary':
     'ΔΔG эмпирического силового поля; бесплатно для некоммерческого использования, для коммерческого нужна лицензия.',
-  'engines.status.weightsUnavailable': 'Недоступно: в этой сборке нет загружаемых весов'
+  'engines.status.weightsUnavailable': 'Недоступно: в этой сборке нет загружаемых весов',
+  'sessionInfo.replaySteps': 'Шаги воспроизведения ({count})',
+  'sessionInfo.replayPrompt': 'запрос',
+  'sessionInfo.replayUnattached': 'не привязан к запросу',
+  'sessionInfo.replayStepsMore': 'показано {shown} из {total}'
 }

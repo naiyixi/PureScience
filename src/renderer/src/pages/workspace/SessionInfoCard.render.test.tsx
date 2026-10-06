@@ -165,7 +165,13 @@ describe('session information card', () => {
       await vi.waitFor(() => {
         expect(order).toContain('read')
       })
-      expect(order).toEqual(['drain', 'flush', 'read'])
+      // IC52: the card also reads the document once at mount for its read-only replay section. The
+      // property this case pins is about the MEASUREMENT — whatever else reads, the measurement's read
+      // must come after both the drain and the flush — so the sequence is asserted as: the card's own
+      // read first, then the measurement's read behind drain + flush. Naming the extra read keeps this
+      // exact rather than merely tolerant.
+      expect(order[0]).toBe('read')
+      expect(order.slice(1)).toEqual(['drain', 'flush', 'read'])
     } finally {
       ;(window as unknown as { api: unknown }).api = previous
     }
@@ -293,5 +299,92 @@ describe('session information card', () => {
 
     expect(onOpenReview).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  // IC52 stage 1: the card lists the session's own steps, read-only. Steps come from the document the app
+  // itself wrote — one per user prompt, plus one per recorded tool activity — and nothing in the section
+  // can change anything.
+  it('lists the session steps read-only, naming a tool call that is not attached to a prompt', async () => {
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<unknown> => ({
+          messages: [
+            { id: 'm1', role: 'user', content: 'do the thing', status: 'complete', eventIds: [] }
+          ],
+          activities: [
+            {
+              id: 'a1',
+              kind: 'tool',
+              title: 'Run python',
+              promptMessageId: 'm1',
+              status: 'completed',
+              sortIndex: 0,
+              eventIds: [],
+              providerToolName: 'run_python',
+              createdAt: 1
+            },
+            {
+              id: 'a2',
+              kind: 'tool',
+              title: 'Orphaned call',
+              promptMessageId: 'm-gone',
+              status: 'failed',
+              sortIndex: 1,
+              eventIds: [],
+              createdAt: 2
+            }
+          ]
+        }),
+        saveSession: async (): Promise<void> => undefined
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="session-replay-steps"]')).not.toBeNull()
+      })
+
+      const steps = [...container.querySelectorAll('[data-slot="replay-step"]')]
+      expect(steps.map((step) => step.getAttribute('data-replay-step-kind'))).toEqual([
+        'prompt',
+        'tool',
+        'tool'
+      ])
+      // The recorded provider tool name is what a reader recognises; the status is the session's own.
+      expect(steps[1]?.textContent).toContain('run_python')
+      expect(steps[1]?.textContent).toContain('completed')
+      // A step whose prompt is gone is still listed, and says so instead of being dropped.
+      expect(steps[2]?.textContent).toContain('not attached')
+
+      const section = container.querySelector('[data-slot="session-replay-steps"]')
+      expect(section?.querySelectorAll('button, input, select, textarea')).toHaveLength(0)
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
+  })
+
+  // "Not known" must not look like "nothing": a document that is not there shows no section at all,
+  // rather than an empty list that would read as "this session did nothing".
+  it('shows no replay section when the session document is not there', async () => {
+    const api = {
+      sessions: {
+        readDocument: async (): Promise<undefined> => undefined,
+        saveSession: async (): Promise<void> => undefined
+      }
+    }
+    const previous = (window as unknown as { api?: unknown }).api
+    ;(window as unknown as { api: unknown }).api = api
+    try {
+      const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(container.querySelector('[data-slot="session-info-card"]')).not.toBeNull()
+      expect(container.querySelector('[data-slot="session-replay-steps"]')).toBeNull()
+    } finally {
+      ;(window as unknown as { api: unknown }).api = previous
+    }
   })
 })

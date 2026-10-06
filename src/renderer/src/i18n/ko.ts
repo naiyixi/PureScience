@@ -4157,5 +4157,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.summary':
     '경험적 역장 ΔΔG입니다. 비상업적 사용은 무료이며 상업적 사용에는 라이선스가 필요합니다.',
   'engines.status.weightsUnavailable':
-    '이 빌드에는 내려받을 수 있는 가중치가 없어 사용할 수 없습니다'
+    '이 빌드에는 내려받을 수 있는 가중치가 없어 사용할 수 없습니다',
+  'sessionInfo.replaySteps': '재생 단계 ({count})',
+  'sessionInfo.replayPrompt': '프롬프트',
+  'sessionInfo.replayUnattached': '프롬프트에 연결되지 않음',
+  'sessionInfo.replayStepsMore': '{total}개 중 {shown}개 표시'
 }

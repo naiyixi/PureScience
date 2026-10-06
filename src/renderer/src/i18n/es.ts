@@ -4310,5 +4310,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (ΔΔG empírico)',
   'engines.rosetta-ddg.summary':
     'ΔΔG de campo de fuerzas empírico; gratis para uso no comercial, con licencia para uso comercial.',
-  'engines.status.weightsUnavailable': 'No disponible: no hay pesos descargables en esta versión'
+  'engines.status.weightsUnavailable': 'No disponible: no hay pesos descargables en esta versión',
+  'sessionInfo.replaySteps': 'Pasos de reproducción ({count})',
+  'sessionInfo.replayPrompt': 'indicación',
+  'sessionInfo.replayUnattached': 'sin vincular a una indicación',
+  'sessionInfo.replayStepsMore': 'mostrando {shown} de {total}'
 }

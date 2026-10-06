@@ -3970,7 +3970,11 @@ export const zh = {
   'engines.openmm-fep.summary': '自由能微扰，需 GPU、以天计；只在远程主机上运行，结果需收敛判据。',
   'engines.rosetta-ddg.label': 'Rosetta ddg_monomer（经验力场 ΔΔG）',
   'engines.rosetta-ddg.summary': '经验力场 ΔΔG；非商用免费，商用需购买许可。',
-  'engines.status.weightsUnavailable': '本版没有可下载的权重，无法启用'
+  'engines.status.weightsUnavailable': '本版没有可下载的权重，无法启用',
+  'sessionInfo.replaySteps': '重放步骤（{count}）',
+  'sessionInfo.replayPrompt': '提示',
+  'sessionInfo.replayUnattached': '未挂在任何提示上',
+  'sessionInfo.replayStepsMore': '显示 {shown} / 共 {total}'
 }
 
 export type ZhKey = keyof typeof zh

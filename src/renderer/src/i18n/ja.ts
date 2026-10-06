@@ -4223,5 +4223,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'engines.rosetta-ddg.summary':
     '経験的力場による ΔΔG。非商用は無料、商用にはライセンスが必要です。',
   'engines.status.weightsUnavailable':
-    'このビルドにはダウンロード可能な重みがなく、有効化できません'
+    'このビルドにはダウンロード可能な重みがなく、有効化できません',
+  'sessionInfo.replaySteps': 'リプレイ手順（{count}）',
+  'sessionInfo.replayPrompt': 'プロンプト',
+  'sessionInfo.replayUnattached': 'プロンプトに紐づいていません',
+  'sessionInfo.replayStepsMore': '{total} 件中 {shown} 件を表示'
 }

@@ -10,8 +10,13 @@ import {
   type SessionForkManifest
 } from '../../../../shared/session-fork'
 import type { PersistedChatSession } from '../../../../shared/session-persistence'
+import { buildSessionReplay, type SessionReplayStep } from '../../../../shared/session-replay-steps'
 import type { ChatSession } from '@/stores/session-store'
 import type { VisionEvidenceSummary } from '../../../../shared/vision-evidence'
+
+// How many steps the card lists before it says how many more there are: this is an at-a-glance surface,
+// and a long session would otherwise push everything else out of it.
+const REPLAY_STEP_LIMIT = 12
 
 // The session information card: what this conversation is, when it started and last moved, how much
 // it holds, and a way into its evidence. Counts are computed from the same messages the transcript
@@ -94,6 +99,33 @@ export function SessionInfoCard({
       alive = false
     }
   }, [session.id])
+  // IC52 stage 1: the session's own steps, walked read-only. `null` means "not known" — a failed or
+  // absent read shows no list rather than an empty one, which would read as "this session did nothing".
+  const [replaySteps, setReplaySteps] = useState<SessionReplayStep[] | null>(null)
+  useEffect(() => {
+    let alive = true
+    void window.api?.sessions
+      ?.readDocument?.({ projectId: session.projectId, sessionId: session.id })
+      ?.then(
+        (document) => {
+          if (!alive) return
+          setReplaySteps(
+            document
+              ? buildSessionReplay({
+                  messages: document.messages,
+                  activities: document.activities
+                })
+              : null
+          )
+        },
+        () => {
+          if (alive) setReplaySteps(null)
+        }
+      )
+    return () => {
+      alive = false
+    }
+  }, [session.id, session.projectId])
   // Forking is a two-step act on purpose: measure, show the numbers, then copy. Nothing is written
   // until the reader has seen what the copy will hold and what it will leave behind. The measured
   // state is kept per session (see `forkStates`) so it survives the card being re-mounted.
@@ -257,6 +289,41 @@ export function SessionInfoCard({
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+      {replaySteps && replaySteps.length > 0 ? (
+        <div className="mt-2" data-slot="session-replay-steps">
+          <div className="text-[11px] font-medium text-text-300">
+            {t('sessionInfo.replaySteps', { count: String(replaySteps.length) })}
+          </div>
+          <ol className="mt-1 space-y-1" data-slot="session-replay-step-list">
+            {replaySteps.slice(0, REPLAY_STEP_LIMIT).map((step) => (
+              <li
+                key={step.id}
+                className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-text-300"
+                data-slot="replay-step"
+                data-replay-step-kind={step.kind}
+              >
+                <span className="text-text-000">
+                  {step.kind === 'prompt'
+                    ? t('sessionInfo.replayPrompt')
+                    : (step.toolName ?? step.title)}
+                </span>
+                {step.status ? ` · ${step.status}` : ''}
+                {step.kind === 'tool' && !step.promptMessageId
+                  ? ` · ${t('sessionInfo.replayUnattached')}`
+                  : ''}
+              </li>
+            ))}
+          </ol>
+          {replaySteps.length > REPLAY_STEP_LIMIT ? (
+            <div className="mt-1 text-[10px] text-text-300" data-slot="session-replay-steps-more">
+              {t('sessionInfo.replayStepsMore', {
+                shown: String(REPLAY_STEP_LIMIT),
+                total: String(replaySteps.length)
+              })}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {onOpenEvidence ? (

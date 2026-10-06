@@ -4261,5 +4261,9 @@ export const en: Record<ZhKey, string> = {
   'engines.rosetta-ddg.label': 'Rosetta ddg_monomer (empirical ΔΔG)',
   'engines.rosetta-ddg.summary':
     'Empirical force-field ΔΔG; free for non-commercial use, commercial use needs a licence.',
-  'engines.status.weightsUnavailable': 'Unavailable: no downloadable weights in this build'
+  'engines.status.weightsUnavailable': 'Unavailable: no downloadable weights in this build',
+  'sessionInfo.replaySteps': 'Replay steps ({count})',
+  'sessionInfo.replayPrompt': 'prompt',
+  'sessionInfo.replayUnattached': 'not attached to a prompt',
+  'sessionInfo.replayStepsMore': 'showing {shown} of {total}'
 }

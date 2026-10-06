@@ -3910,5 +3910,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'engines.openmm-fep.summary': '自由能微擾，需 GPU、以天計；只在遠端主機上執行，結果需收斂判據。',
   'engines.rosetta-ddg.label': 'Rosetta ddg_monomer（經驗力場 ΔΔG）',
   'engines.rosetta-ddg.summary': '經驗力場 ΔΔG；非商用免費，商用需購買授權。',
-  'engines.status.weightsUnavailable': '本版沒有可下載的權重，無法啟用'
+  'engines.status.weightsUnavailable': '本版沒有可下載的權重，無法啟用',
+  'sessionInfo.replaySteps': '重放步驟（{count}）',
+  'sessionInfo.replayPrompt': '提示',
+  'sessionInfo.replayUnattached': '未掛在任何提示上',
+  'sessionInfo.replayStepsMore': '顯示 {shown} / 共 {total}'
 }
