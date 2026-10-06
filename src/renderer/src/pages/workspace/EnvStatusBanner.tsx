@@ -28,6 +28,17 @@ const EnvStatusBanner = ({
   // (provisioner-runtime.briefTail); full diagnostics also live in the logs.
   const isError = ui.kind === 'error'
 
+  // The standing line is visible copy: it comes from the nine dictionaries so a non-English user does
+  // not read English at the top of every screen while the runtime is rewritten. The interpolation
+  // stays here (some suites render with a non-interpolating fallback dictionary), and the English
+  // value keeps the exact wording this banner has always shown.
+  // `progress` exists only on the in-flight variant: a blocking error carries no percentage, and reading
+  // one off it is what put `typecheck:web` into TS2339. Compute the line only where there is progress.
+  const updatePercentText =
+    ui.kind === 'preparing'
+      ? t('ui.updatingNotebookEnvironmentPercent', { percent: Math.round(ui.progress * 100) })
+      : ''
+
   return (
     <div
       data-testid="env-status-banner"
@@ -52,7 +63,7 @@ const EnvStatusBanner = ({
               onClick={onRetry}
               className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-xs text-foreground hover:bg-muted"
             >
-              Retry
+              {t('common.retry')}
             </button>
           ) : null}
         </>
@@ -60,11 +71,11 @@ const EnvStatusBanner = ({
         // Task 8: keep the existing overall provision phase text (with its percent), and render the
         // shared DownloadProgressLine (speed/ETA + resume bar) BELOW it — not a second overall bar.
         <div className="flex min-w-56 flex-col text-left">
-          <span>Updating the notebook environment… {Math.round(ui.progress * 100)}%</span>
+          <span>{updatePercentText}</span>
           <DownloadProgressLine progress={ui.download} />
         </div>
       ) : (
-        <span>Updating the notebook environment… {Math.round(ui.progress * 100)}%</span>
+        <span>{updatePercentText}</span>
       )}
     </div>
   )

@@ -768,6 +768,14 @@ dev/build/test 进程 ⇒ 按排期进入**批次 7（v1.87.0）**、先取 **IC
 
 **⚠️ 给执行器（下一轮开工前必读）**：你**在飞的未提交文件** `src/renderer/src/pages/settings/EngineMatrixSection.tsx` 在本机 `npx eslint --no-cache .` 下报 **3 个 error**（`react-refresh/only-export-components`：同一文件既导出组件又导出常量/函数，行 31 / 42 / 49）⇒ 这会让你的提交过不了车道。按 lint 自己的建议修：把常量/函数挪进独立模块（你已有 `engine-matrix-copy.test.ts`，建 `engine-matrix-copy.ts` 最顺手）再从组件 import。**该文件未进 v1.87.0 的提交**（发版门禁已确认），所以只影响你的下一笔。
 
+## 二十二、main 上一处类型错的归因与修复（会话，2026-10-06）
+
+**症状**：`typecheck:web` 在 `src/renderer/src/pages/workspace/EnvStatusBanner.tsx:36` 报 `TS2339: Property 'progress' does not exist on type '{ kind: "error"; … }'` ⇒ **main 当时是红的**（会连带把并发者的车道弄红）。
+
+**归因**：`ProvisionUiState` 的 `error` 变体没有 `progress`（只有 `preparing` 有），而那一行**无条件**读 `ui.progress` ⇒ 来自 IC16 那笔（`1e32bcac`）的类型收敛。**关键点**：该文件本身最近两次改动都是仓库早期提交 ⇒ 这是**契约变更的涟漪**——改的是类型，红在**未改动的消费方**；`typecheck` 只有按**全仓**口径跑才看得见（定向跑改动的文件必漏）。
+
+**修复**：只在 `ui.kind === 'preparing'` 时计算那一行（否则空串）⇒ 双 typecheck 复归净、该文件 9 passed。已随本档同笔提交。
+
 ## 二十一、v1.87.0 已发布（会话，2026-10-06 10:3x）—— 三轮红收口与三条新纪律
 
 **发布读数**：tag `v1.87.0` → 提交 `6f4d7c65dd0b3d9d1910b94d517a97cefd6f39f5`；**三条车道同一次运行全绿**（Release ✅ / Nightly ✅ / Windows Full Test ✅；同一 SHA 上另有一次**被 preflight 正确拒绝**的旧运行，不构成本判决）；Release 页 `draft=false`、`isPrerelease=false`、**21 资产**、**Latest**、正文 17544 字符；覆盖 `v1.86.0..v1.87.0` 共 **35 笔**。发布窗口内已 `pause` / 恢复 `resume` 自主执行器（`2be4405e5dc6`）。
