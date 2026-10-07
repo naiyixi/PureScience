@@ -17,8 +17,9 @@
 同一面板对**本次运行自己写出的 crate** 判「全部通过」；故意违规的 crate 逐条点名 8 条规则（含层级词与明细），
 条数与同一份文档经 `validateRoCrate` 算出的失败集合**逐条相符**，且检查前后元数据**逐字节相等**。
 **取证过程本身抓到一条会红的缺陷并当批修掉**：spec 第一版用了 `getByTestId`，而输入是 `data-slot` ⇒ 真机超时失败而渲染套件全绿。
-**一条设计边界**：只读检核不重算 payload 字节 ⇒ 依赖 payload 的三条断言在这条路上不出现（导出态 30 条 / 检核态 27 条），
-文案按「本应用**能套用**的检查」如实写；把 payload 复算接上是一条**独立的后续单元**。
+**一条设计边界（已由下一笔关闭，2026-10-07）**：彼时只读检核不重算 payload 字节 ⇒ 依赖 payload 的三条断言在那条路上不出现（导出态 30 条 / 检核态 27 条）。
+**现已补齐**：只读侧遍历 payload 目录并流式复算 sha256/大小、把两个 payload 输入交给同一份 `validateRoCrate` ⇒ 两侧规则面相同；
+落地与读数（单测 27 passed、真机 `2 passed (33.4s)`）见 `docs/evidence/2026-10-07-ro-crate-inspect-payload-bytes.md`。
 读数、配方与没证到的部分见 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`。
 
 **现状（已核实）**：`validateRoCrate` 存在且用于**本应用写出的每一个** crate；外来 crate **没有入口** ⇒ 界面上已**明写**「Export only — an external crate cannot be imported or checked here yet.」（IC48 落地）。

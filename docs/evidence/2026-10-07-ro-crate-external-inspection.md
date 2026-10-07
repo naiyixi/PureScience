@@ -77,11 +77,12 @@
 
 ## 四、本轮没证到什么（具名，不冒充）
 
-- **一条设计边界（不是缺陷，但必须写明）**：只读检核读的是 `ro-crate-metadata.json`，**不重算 payload 字节** ⇒
-  依赖 `payloadPaths` / `payloadDigests` 的**三条断言**（`file-sha256-matches-copied-bytes` /
-  `file-content-size-matches-copied-bytes` / `every-payload-described`）在这一路上**不会出现**，
-  所以同一份 crate 在「导出态」是 30 条、在「只读检核」是 27 条。文案按「本应用**能套用**的检查」如实表述，
-  **没有**把它说成 30 条。把 payload 复算接上是一条**独立的后续单元**（它会让外来 crate 的检核更强，也让 27 与 30 一致）。
+- **原先的一条设计边界（已由下一笔关闭，2026-10-07）**：彼时只读检核读的是 `ro-crate-metadata.json`、
+  **不重算 payload 字节** ⇒ 依赖 `payloadPaths` / `payloadDigests` 的三条断言（`file-sha256-matches-copied-bytes` /
+  `file-content-size-matches-copied-bytes` / `every-payload-described`）在那条路上不出现（导出态 30 条 / 检核态 27 条）。
+  **现已补齐**：只读侧也遍历 payload 目录、流式复算 sha256/大小，并把两个 payload 输入交给同一份
+  `validateRoCrate` ⇒ 两侧规则面**相同**。落地与读数见
+  `docs/evidence/2026-10-07-ro-crate-inspect-payload-bytes.md`。
 - **「不导入任何项目」这半边**：由**代码读证**（`src/main/ro-crate/import.ts` 无写入调用）与
   「检查前后 crate 元数据逐字节相等」的真机断言共同承担；「项目侧的产物/文件计数不变」这条更强的读数**未取**
   —— 它需要一次「检查外来 crate 前后对比项目文件清单」的夹具，本轮没铺。

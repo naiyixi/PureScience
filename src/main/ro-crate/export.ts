@@ -12,7 +12,6 @@
 // The pure builder and the compliance assertions live in `src/shared/ro-crate.ts`; this module only
 // does bytes, and it re-validates the document it just wrote before reporting success.
 
-import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -32,6 +31,7 @@ import {
   type RoCratePayloadDigest,
   type RoCrateValidationReport
 } from '../../shared/ro-crate'
+import { sha256Hex } from './digest'
 
 // Same segment name the Artifact Provenance repository writes its published Versions into.
 const PROVENANCE_DIR = '.provenance'
@@ -40,8 +40,6 @@ const CONTENT_FILENAME = 'content'
 const EVIDENCE_FILENAME = 'evidence.json'
 
 const SHA256_HEX = /^[a-f0-9]{64}$/
-
-const sha256Hex = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
 const isEnoent = (error: unknown): boolean =>
   typeof error === 'object' &&

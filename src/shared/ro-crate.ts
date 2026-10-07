@@ -583,7 +583,8 @@ export type RoCratePayloadDigest = { sizeBytes: number; sha256: string }
 
 export type RoCrateValidationInput = {
   document: RoCrateMetadataDocument
-  /** Crate-relative paths of the payload files actually written under the crate root. */
+  /** Crate-relative paths of the payload files the crate holds under its root. The export side passes what
+   * it just wrote; the read-only side passes what a crate this app did not write actually contains. */
   payloadPaths?: readonly string[]
   /** Recounted byte length and sha256 of each payload, keyed by its crate-relative path. */
   payloadDigests?: ReadonlyMap<string, RoCratePayloadDigest>

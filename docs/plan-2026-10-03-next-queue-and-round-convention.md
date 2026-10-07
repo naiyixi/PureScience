@@ -1098,3 +1098,65 @@ Latest = v1.87.0）。
 
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，**先按提交把会话已完成的单元划掉**（防重做；会话在做 IC52 段 2）；② 本单元**已无未取读数**（真机 `2 passed`）⇒ 若可见余量，顺手跑绿 §二十五 那条收紧版 `e2e/certification/skill-imported-copy.spec.ts`（若尚未），并清理 `out/` 里本轮为取证而重建的产物；③ 否则按排期取**未被会话认领**的单元，或挑一条「已立案未修」的（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审；只读检核的 payload 复算也是一条）；④ 按**完整 40 位 SHA** 看本轮提交的两条车道，红了先读**作业级注解**归因（`cancelled` 不算绿）。
 **发版连带（不许丢）**：v1.88.0 发版时 README 首屏横幅（`README.md` + `README.en.md` 头部块**逐字一致**，pre-push 会拦）里有两句已过期 —— `an imported skill stays the imported copy with no way to fork it yet`（工作单 ③ 已交付）与 `this build writes crates but does not read one back in`（本单元已交付只读检核）；CHANGELOG 的 v1.88.0 段落要把它们从「新功能立项 / 明确没做」移出，并**双向**复核成熟度块（已交付的不许留在 🗺️、半截的不许写成 ✅）。
+
+## 二十七、本轮追加（执行器，2026-10-07 18:3x–）——① 收口上轮 WIP 并把 mac 认证车道那条红修上；② 只读检核补齐 payload 字节复算（新工作单一笔）
+
+**开工判定（防重做）**：`HEAD == origin/main == 7bf42dab`（会话 18:28 的提交）；`git status --short` 是**我上一轮留在工作区的 5 个文件**
+（上轮被迭代上限截断的收尾：`docs/evidence/2026-10-07-ro-crate-external-inspection.md` 的真机读数段、IC48 行、队列档、新功能工作单 ② 的读数回收，
+外加 `e2e/certification/ro-crate-export.spec.ts` 的 `data-slot` 定位修复 —— 该修复**上轮已在真机上验过 `2 passed`，但没提交**）。
+进程表**无** `electron-vite` / `playwright` / `vitest` ⇒ 本轮先收口这笔 WIP，再起一个新单元。
+
+**CI 核对（按完整 40 位 SHA，读数即结论；取消 ≠ 绿）**：
+
+| 提交 | Nightly | Windows Full Test | 判读 |
+| --- | --- | --- | --- |
+| `066eda46`（我上轮的 RO-Crate 只读检核） | **37593997176 failure** | 37593996482 success | 红在作业 `build / Build macos-arm64`，`P0_OUTCOME=failure` |
+| `7bf42dab`（会话 18:28 修导入证据 spec） | 37607605284 cancelled（被我本笔顶掉，**无判决**） | 37607604961 cancelled | 不计绿 |
+| `a55e5fcd`（本笔第一笔） | 已触发（pending → in_progress） | 同 | 见下 |
+
+**那条红的作业级归因（读日志，不猜）**：`gh api .../actions/jobs/112706309325/logs` 里
+`TimeoutError: locator.fill: Timeout 30000ms exceeded` / `waiting for getByRole('dialog', { name: 'Export project as RO-Crate' }).getByTestId('ro-crate-inspect-path')`
+`at e2e/certification/ro-crate-export.spec.ts:144`（该次 `83 passed`，1 红、重试也红）——
+**正是我上一轮在汇报里点名会红的那条**：spec 用 `getByTestId` 定位一个实际标的是 `data-slot` 的输入。
+⇒ 第一笔的动作就是把那条修复推上去（`a55e5fcd`），以及上轮的读数落档。
+
+**第二笔（本单元）：只读检核也复算 payload 字节 —— 关掉「导出态 30 条 / 检核态 27 条」这条边界**
+
+- **真因（对源）**：`inspectExternalRoCrate` 调 `validateRoCrate({ document })`，而 `src/shared/ro-crate.ts:945` / `:974` 两个 `if` 以「调用方有没有传 payload 输入」为门
+  ⇒ 不传就连规则都不生成。27/30 不是文案差异，是**规则面少了一截**：payload 已被改坏的 crate 在只读侧会得到「全部通过」。
+- **落地**：新增 `src/main/ro-crate/digest.ts`（`sha256Hex` 单一来源 + `digestOfFile` 流式哈希、`lstat` 先判类型、**符号链接不跟随**）；
+  `src/main/ro-crate/import.ts` 补 `listPayloadPaths`（遍历 `<crate>/files/**`、跳过符号链接）/ `declaredPayloadIds` / `insideContentRoot`（**逃逸路径一律不读**）；
+  `export.ts` 删掉自带的 `sha256Hex` 改引共用模块；`src/shared/ro-crate.ts` 的 `payloadPaths` 注释改成两侧都成立的说法。
+  **零新通道 / 零新命令 / 零新 i18n 键 ⇒ 零 pin 级联**。
+- **e2e 同步收紧（只紧不放）**：① 自家 crate 那一半现在断言屏上摘要 === **spec 自己从磁盘算出的** `{passed} of {total} checks passed`
+  （此前只断言 `0 not met`）——只读侧若仍少判 3 条，这条必红；② 违规 crate 那一半的**屏上计数逐字**等于 spec 用同一份文档 + 同一组 payload 输入算出的那句。
+
+| 门禁 | 读数 |
+| --- | --- |
+| `vitest run src/main/ro-crate`（import 套件 4 → **10 条**） | **27 passed｜1 skipped**（skip 是既有 `evidence.capture.test.ts` 的 `describe.skipIf(!ENABLED)`） |
+| `vitest run src/main/ro-crate + RoCrateExportDialog.render.test.tsx` | **45 passed｜1 skipped**（5 文件） |
+| 双 typecheck（node / web） | **exit 0** |
+| `./node_modules/.bin/eslint --no-cache .` | **0 error / 124 warning**（本单元新引入的 2 条 prettier warning 已当批改掉；触碰文件 0 problem） |
+
+**✅ 真机读数已取（本单元，不是立案）**：`rm -rf out/main out/preload` → `npm run build:e2e`（**exit 0**）→
+`./node_modules/.bin/playwright test e2e/certification/ro-crate-export.spec.ts --workers=1` ⇒ **2 passed (33.4s)**，`E2E_EXIT=0`。
+① 自家 crate 那一半现在读的是「**30 条全过**」的屏上计数（与 spec 从磁盘算出来的那个数逐字相等）⇒ payload 三条断言**真的在只读侧生效**；
+② 违规 crate 仍逐条点名 8 条规则、计数逐字相符；③ 顺带把**上一笔遗留的最后一条读数**取掉了：
+`e2e/certification/skill-imported-copy.spec.ts`（§二十五 收紧版）**1 passed (14.0s)** —— 屏上原话
+「Kept as imported: this copy is compared against what you imported. Duplicate it to get a skill of your own that you can edit.」+
+副本真落到磁盘 `<存储根>/skills/personal/seeded-import`。
+
+**本轮新增的 6 条单测（`src/main/ro-crate/import.test.ts`）**：① 规则面与写侧相等且三条 payload 规则通过；② 篡改字节被点名；
+③ 声明了却没有的文件被**字节比较**那条点名（不是「未描述」那条）；④ 未描述的多余文件被点名；
+⑤ **绝不读到 crate 之外**（声明 `files/../outside.txt` 并照抄外部文件真实摘要 ⇒ 会跟随就必通过，实测**失败并点名**）；
+⑥ 符号链接不跟随（`skipIf(win32)` 具名跳过）。
+
+**未取 / 边界（具名）**：真机只覆盖「干净 crate / 元数据坏 crate」两种输入，篡改/缺件/多余/逃逸/符号链接五种**由单测用真 crate 覆盖**（不冒充真机）；
+`payloadPaths` 遍历**没有显式上限**（与仓内既有遍历一致，病态目录会变慢，**未测**）；macOS 的 `.DS_Store` 会被 `every-payload-described` 如实点名为「未描述的 payload」（已知边界，未做取舍）；
+超大 payload 的端到端耗时**未测**（哈希本身是流式的）。详见 `docs/evidence/2026-10-07-ro-crate-inspect-payload-bytes.md` §三。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`（**先按提交把会话已完成的单元划掉**，会话在做 IC52 段 2）；
+② 按**完整 40 位 SHA** 看 `a55e5fcd` 的 `Nightly`（重点：`build / Build macos-arm64` 的 P0 作业是否转绿）与 `Windows Full Test`；`7bf42dab` 无判决（被顶掉），不计绿；
+③ 红了先读**作业级**注解归因（先判「失败文件是否被本笔碰过」）；④ 内存宽松时按排期取 v1.88.0 里**未被会话认领**的单元（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审）。
+
+**版本位点台账（不变）**：Latest = **v1.87.0**（tag `6f4d7c65`、21 资产、三车道全绿）；`package.json` = 1.87.0；本轮**未发版**。

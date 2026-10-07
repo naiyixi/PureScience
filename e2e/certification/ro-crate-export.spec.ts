@@ -147,6 +147,12 @@ test('exports a project from the interface into a crate that validates on disk',
 
   // ① the app's own crate, read back through the foreign-crate path.
   await expect(dialog.getByTestId('ro-crate-inspect-all-passed')).toBeVisible({ timeout: 30_000 })
+  // The panel reports the SAME surface the export side is judged on: the count below is the one the spec
+  // itself computed from the bytes on disk, so a read-only half that judged fewer rules (say, a document
+  // without its payloads) could not quietly call a crate clean here.
+  await expect(dialog.getByTestId('ro-crate-inspect-summary')).toContainText(
+    `${report.passed} of ${report.assertions.length} checks passed`
+  )
   await expect(dialog.getByTestId('ro-crate-inspect-summary')).toContainText('0 not met')
   await expect(dialog.getByTestId('ro-crate-inspect-metadata-path')).toContainText(
     join(crateDir, 'ro-crate-metadata.json')
@@ -154,7 +160,8 @@ test('exports a project from the interface into a crate that validates on disk',
   console.log('[ic48] the read-only half judged this run’s own crate clean')
 
   // ② a crate that breaks a MUST. The verdict expected on screen is computed from the same document
-  // through the app's own rules, so the panel cannot quietly disagree with them.
+  // through the app's own rules AND the same payload inputs the reader passes (this crate has no payload
+  // folder at all) — so the panel cannot quietly disagree with them about either the rules or the count.
   const brokenDir = join(exportDir, 'broken-crate')
   await mkdir(brokenDir, { recursive: true })
   const brokenDocument = {
@@ -166,9 +173,12 @@ test('exports a project from the interface into a crate that validates on disk',
     JSON.stringify(brokenDocument, null, 2),
     'utf8'
   )
-  const expectedFailures = failedRoCrateAssertions(
-    validateRoCrate({ document: brokenDocument as unknown as RoCrateMetadataDocument })
-  )
+  const brokenReport = validateRoCrate({
+    document: brokenDocument as unknown as RoCrateMetadataDocument,
+    payloadPaths: [],
+    payloadDigests: new Map()
+  })
+  const expectedFailures = failedRoCrateAssertions(brokenReport)
   expect(expectedFailures.length).toBeGreaterThan(0)
 
   await cratePathField.fill(brokenDir)
@@ -179,6 +189,10 @@ test('exports a project from the interface into a crate that validates on disk',
   console.log(`[ic48] rules named on screen: ${JSON.stringify(named)}`)
   expect(named.length).toBe(expectedFailures.length)
   for (const assertion of expectedFailures) expect(named.join('\n')).toContain(assertion.id)
+  // The counts on screen are the ones those rules produce — checked line by line, not just "something failed".
+  await expect(dialog.getByTestId('ro-crate-inspect-summary')).toContainText(
+    `${brokenReport.passed} of ${brokenReport.assertions.length} checks passed — ${brokenReport.failed} not met.`
+  )
   // The level word is what keeps a foreign crate's author from being told their file breaks RO-Crate
   // when the rule was only this app's own expectation of the crates it writes.
   expect(named.join('\n')).toContain('required by RO-Crate 1.1')
