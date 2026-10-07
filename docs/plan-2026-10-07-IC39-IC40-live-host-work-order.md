@@ -88,3 +88,28 @@
 - IC39 只证「能送到」那半不算完：**「送不到 ⇒ 拒绝且不改行」是这条的存在理由**，必须两半都有。
 - IC40 必须同时证**读**（卡在）与**清**（点开后清零、且卡从列表消失）。
 - 红线不变：**跑不绿的不落树**；不许为了绿删掉拒绝读数或放宽断言。
+
+## 五、提交那一环：**不需要真模型回合**（2026-10-08 读源，下一次直接照做）
+
+上一轮是"用应用自己的控制面 REPL 提交"，读起来像必须有一个真 agent 回合。**不是**：那个 REPL 是**笔记本 MCP 的一个工具** ——
+`repl_execute`（`src/main/notebook/mcp-server.ts:885`，MCP 名 `purescience-notebook`），而 E2E 的假 agent 夹具**早就在用这条通道真跑东西**：
+
+- `e2e/fixtures/fake-opencode.mjs` 的 `withMcpClient(sessionId, 'purescience-notebook', client => …)` +
+  `client.callTool({ name: 'bash_execute' | 'notebook_execute', … })`：`runPythonNotebookCell`（IC14 真跑一个 python 单元格）、
+  `attemptBlockedEgress`（IC33 真发一次被拦的出网请求）都是这么取到读数的 —— **夹具的分支是真执行，不是只报 tool_call**。
+- ⇒ 下一次照此新增一个 prompt 分支（如 `const SUBMIT_REMOTE_JOB_PROMPT = 'Submit a long remote job.'`），分支里：
+
+  ```js
+  await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
+    const submitted = toolResult('repl_execute', await client.callTool({
+      name: 'repl_execute',
+      arguments: { code: "const c = host.compute.create('ssh:<alias>'); const job = await c.submit_job('e2e long run', 'sleep 300', {}); globalThis.__e2eJob = job; return job" }
+    }))
+    agentLog(`remote job -> ${JSON.stringify(submitted).slice(0, 200)}`) // 供 spec 读 job_id
+  })
+  ```
+
+- 「**送不到 ⇒ 拒绝且不改行**」那半：任务 `running` 之后**把替身 sshd 停掉**（或一开始就指到一个死端口），再点「取消任务」
+  ⇒ 逐字断言 `jobDetail.cancelRefusedHostUnreachable` 那句**且该行仍为 `running`**。
+- 三个前置缺一不可：§二.1–8 的端点与会话顺序、§一之三 的**策略改成 `Ask every time`**、以及每次取证前
+  `npm run build:e2e`（e2e 跑的是构建产物）。
