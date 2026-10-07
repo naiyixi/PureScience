@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { DownloadProgress } from '../../../shared/download-progress'
 import type { ProvisionProgress, ProvisionStatus } from '../../../shared/notebook-env'
 import { notebookGated } from '../pages/workspace/provisioning-view'
 import { createInitialNotebookEnvState, useNotebookEnvStore } from './notebook-env-store'
@@ -283,6 +284,42 @@ describe('notebook-env-store', () => {
     expect(byLang.r).toMatchObject({ preparing: true, progress: { progress: 0.5, language: 'r' } })
     // Python's slot is untouched by an R event.
     expect(byLang.python).toBeUndefined()
+  })
+
+  it('carries the nested download detail into both slots the two surfaces read', async () => {
+    // Why this is pinned here: IC17's filed gap claimed the rich `download` field "does not survive to
+    // the store in this flow", which would make the Settings card fall back to its bare bar. The field
+    // and the `Downloading managed … (N%)` message are emitted on ONE object literal in
+    // src/main/notebook/language-pack-fetch.ts, so a card showing the percent is necessarily holding
+    // the detail — but only this store half cannot regress silently. The Settings card reads the
+    // per-language slot; the workspace banner/overlay read the derived `ui`.
+    const { emit } = installApi()
+    await useNotebookEnvStore.getState().init()
+    const download: DownloadProgress = {
+      phase: 'downloading',
+      transferred: 24_000,
+      total: 16_777_216,
+      percent: 2,
+      bytesPerSecond: 63_800,
+      etaSeconds: 257,
+      attempt: 0
+    }
+
+    await emit({
+      phase: 'fetch-python',
+      message: 'Downloading managed python runtime (2%)',
+      progress: 0.1,
+      language: 'python',
+      scope: 'python',
+      download
+    })
+
+    const state = useNotebookEnvStore.getState()
+    expect(state.byLang.python?.progress?.download).toEqual(download)
+    expect(state.progress?.download).toEqual(download)
+    // Only the preparing view carries the detail; the other variants have no such field.
+    if (state.ui.kind !== 'preparing') throw new Error(`expected preparing, got ${state.ui.kind}`)
+    expect(state.ui.download).toEqual(download)
   })
 
   it('settles a language byLang slot on its done/error event', async () => {

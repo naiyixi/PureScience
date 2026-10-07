@@ -1160,3 +1160,39 @@ Latest = v1.87.0）。
 ③ 红了先读**作业级**注解归因（先判「失败文件是否被本笔碰过」）；④ 内存宽松时按排期取 v1.88.0 里**未被会话认领**的单元（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审）。
 
 **版本位点台账（不变）**：Latest = **v1.87.0**（tag `6f4d7c65`、21 资产、三车道全绿）；`package.json` = 1.87.0；本轮**未发版**。
+
+## 二十八、本轮追加（执行器，2026-10-07 21:0x–）——IC16/IC17 那条「富字段未达渲染端」的立案经查是**记录失真**，改成分两半各自断言的读数
+
+**开工判定（防重做）**：`HEAD == origin/main == 46d8eaed`（会话 21:03 的纯文档提交，距今 8 分钟）、`git status --short` **干净**、进程表无 `electron-vite` / `playwright` / `vitest` ⇒ **不重做会话已在做的单元**（会话当天在做 IC39/IC40/IC42 的读数尝试），本轮取一条**会话没在碰、且不新开通道**的单元。
+
+**CI 核对（按完整 40 位 SHA，读数即结论；`cancelled` 不算绿）**：
+
+| 提交 | Nightly | Windows Full Test | 判读 |
+| --- | --- | --- | --- |
+| `a55e5fcd`（上轮把 mac P0 那条红修上） | **37608239520 success** | **376082356**… success | **双绿** ⇒ `ro-crate-export.spec.ts` 的 `data-slot` 定位修复**真的把 mac 认证作业修绿了**（上轮只拿到 in_progress） |
+| `31598cc5`（payload 字节复算，**我上轮的提交**） | **无 run**（不是红） | 同 | 它从未成为任何一次推送的 tip ⇒ **没有自己的 run**；会话 19:35 那次推送（tip = `b67b4628`）把它一并带上去了 ⇒ 判决由 `b67b4628` 那次覆盖 |
+| `b67b4628`（通知清空读数，**会话的提交**；该次推送同时带上了我的 `31598cc5`） | success | success | 双绿（⇒ `31598cc5` 也在这次运行里被验证） |
+| `f41580d8`（A7 下载路径读数） | success | success | 双绿 |
+| `efc71c29`（IC42 引擎面板读数） | **in_progress** | success | 判决**待出**；`46d8eaed` / `1b7870d7` 是纯 `docs/**` ⇒ 两条车道都**没有 run**（`paths:` 过滤，设计如此），不是红 |
+
+**本单元：验证一条 2 天前落档的「缺口」，结论是记录站不住 —— 并把读数改成可判定的。**
+
+- **原记录**（排期档 IC16/IC17 行 + 交接档 §2.2）：① 「主进程的 provision **进度广播未送达渲染端 store**」；② 「同一批 tick 里的富字段 `download`（速度/大小/ETA）没有到达渲染端（`hasSpeed=false`，30 秒内始终缺席）⇒ 设置页只能显示粗百分比」。
+- **归因（读源 + 单测，不猜）**：链条从头到尾是完整的一条 —— `language-pack-fetch.ts` 的下载回调产出 `download` → 装配器把它与 message **放进同一个对象字面量**（`:257-261`）→ 生命周期与 `runLoggedRuntimeOperation` 用展开运算符原样带过 → `broadcastNotebookEnvProgress`（`env-ipc.ts:9`）→ preload 的 `subscribe` **原样透传**（`electron-renderer-contract-adapter.ts:142`）→ store 的 `applyProgress` 同时写 `ui` 与 `byLang` 槽。
+- **反证**：① 遮罩侧**确实出现过**富字段行（IC16 自己的读数 `63.8 KB/s · 24.0 KB / 16.0 MB · ~4m 17s`），而遮罩读 `ui.download`，它由**同一条广播**投影（`provisioning-view.ts:55`）⇒「广播没到渲染端」被它自己的读数否掉（当年被修掉的是 `deriveProvisionUi` 的**门控**：它曾要求 `status.provisioning`，而该标志按设计不逐 tick 重读）。② 设置页那条 `hasSpeed=false` **只在 `i === 0` 采样**（点完 Retry 的第一瞬间，此时还没有任何下载 tick），而它同时报的「百分比 1→7 逐格推进」恰恰是**带 `download` 的那类事件**的 message —— `Downloading managed <lang> runtime (N%)` 全仓**只有一个生产者**（`language-pack-fetch.ts:253`，已 grep 确认渲染层与 main 都无第二处），且它与 `download` 是同一字面量的两个字段 ⇒ **同一对象在结构化克隆里不可能一个到一个不到**。
+- **落地（把「不可判定」变成「可判定」）**：
+  1. `src/renderer/src/stores/notebook-env-store.test.ts`：新用例钉住「嵌套 `download` detail 同时落进 `byLang` 槽与派生的 `ui`」—— 这是原缺口最直接的那半，此前**没有任何用例覆盖富字段的路由**（旧用例只把 `'download'` 当 phase 名用）。
+  2. `e2e/certification/settings-download-detail.spec.ts`：从「只在第一瞬间打一行日志」改成**两半分别断言** —— ① **投递半**：在页内从 `window.api.notebookEnv.onProgress` 装探针（**先于 Retry 装**，自证读数通道），读回渲染端**实收**的广播里有几条带嵌套 `download`；② **渲染半**：与百分比**同一次采样**里卡片是否真的渲染了共享行（`/s` 标记 + `formatProgressLine` 的 `·` 分隔）。红时点名是哪一半。
+- **门禁（实跑读数见文末「本轮门禁」）**：store 套件 **36 passed**（新增 1 条）；`typecheck:web` 本轮**真抓到一条我自己写的错**（`ProvisionUiState` 的 `ready` 变体没有 `download` ⇒ 先收窄再断言，已修）。
+- **未取 / 边界（具名）**：**这条收紧后的 spec 的机器判决未取** —— 本机空闲物理页 ≈6.1k（≈100 MB）、swap 已用 9.8 G/11.26 G，而会话**正在同一棵树上取证**（`build:e2e` 共享 `out/` 且吃 8 GB 堆）⇒ 本轮**不**动 `build:e2e`（两条硬理由：并发会破坏会话在跑的取证；本机有堆把机器打崩的前例）。判决将由**下一次 mac 认证车道的运行**给出（`test:e2e:p0` 跑 `e2e/certification/` 全目录，本 spec 在其中）。我判断它会过（上面的反证是结构性的），但**判断不是读数**：若它红，证据会直接分成「投递缺失」与「渲染缺失」两种，按哪一种修。
+
+**本轮门禁（全部实跑，读数即结论）**：
+
+| 门禁 | 读数 |
+| --- | --- |
+| `vitest run src/renderer/src/stores/notebook-env-store.test.ts` | **36 passed**（+1 条新用例） |
+| `vitest run src/main/notebook src/renderer/src/stores/notebook-env-store.test.ts src/renderer/src/pages/settings src/renderer/src/pages/workspace src/shared` | **417 files passed ｜ 8 skipped（425）**；**5037 passed ｜ 100 skipped（5137）**；91.02 s；**exit 0** |
+| 双 typecheck（node / web） | **exit 0**（`NODE_OPTIONS=--max-old-space-size=4096`；`typecheck:node` 覆盖 `e2e/**/*`，本轮那个 spec 的 `page.evaluate` 也过了它） |
+| `./node_modules/.bin/eslint --no-cache .` | **0 error ｜ 123 warning**（本单元触碰的两个文件单独跑 **0 problem**） |
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`（会话自 21:03 后可能又推了；**先按提交划掉它做过的**）；② 按完整 40 位 SHA 读本笔的两条车道 + 补读 `efc71c29` 的 `Nightly` 判决；③ 内存宽松（空闲页 ≥ 数万）**且会话不在取证**时，按 `settings-download-detail.spec.ts` 的配方在隔离工作树上跑一次，把 IC16/IC17 的读数真正收掉；④ 其余候选不变：IC33 真审批夹具 / IC13 窗口卸载路径（需安全评审）。

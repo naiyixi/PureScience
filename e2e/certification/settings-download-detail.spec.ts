@@ -14,6 +14,16 @@ import { test } from '../fixtures/electron-app'
 // download read two different ways. This drives a real provision against the same stub CDN and reads the
 // panel's line, which is now the SHARED formatter's output (`formatProgressLine`), the same one the
 // workspace banner and the update dialog use.
+//
+// MEASUREMENT CORRECTION (why the first version of this spec was wrong to stay a log). Its header filed
+// the missing speed/size/ETA as a pipeline defect — "the rich `download` field does not survive to the
+// store in this flow" — on the strength of ONE sample taken at i === 0, i.e. immediately after the retry
+// click and therefore before any download tick exists. That reading cannot be generalised: the `(N%)`
+// message and the `download` detail are fields of ONE object literal (src/main/notebook/language-pack-fetch.ts),
+// so a card displaying the percent is necessarily holding the detail, and Electron's structured clone
+// cannot keep one field while dropping its sibling. The spec now measures the two halves separately and
+// asserts both, so a red run names WHICH half is missing (transit vs rendering) instead of leaving it to
+// prose: the raw broadcast the renderer receives, and the card's rendered line.
 const STALL_PORT = 41998
 process.env.PURESCIENCE_ENV_CDN_BASE = `http://127.0.0.1:${STALL_PORT}`
 process.env.PURESCIENCE_MICROMAMBA_BIN = join(
@@ -99,33 +109,70 @@ test('the Settings setup card shows the same live download detail the workspace 
   // dripping pack. Both paths are the real provisioner, not a simulated state.
   const retry = settings.getByRole('button', { name: /retry/i }).first()
   await expect(retry).toBeVisible({ timeout: 120_000 })
+
+  // TRANSIT HALF. Subscribe to the same broadcast channel the store uses, from the page, and record what
+  // the renderer was actually HANDED (the nested detail included). Installing it before the retry means
+  // every download tick is observed. Read back after the sampling loop.
+  await page.evaluate(() => {
+    const scope = globalThis as unknown as {
+      __ic17raw: Array<{ phase: string; message: string; hasDownload: boolean; speed?: number }>
+      api: { notebookEnv: { onProgress: (listener: (p: unknown) => void) => () => void } }
+    }
+    scope.__ic17raw = []
+    scope.api.notebookEnv.onProgress((p) => {
+      const event = p as {
+        phase?: string
+        message?: string
+        download?: { bytesPerSecond?: number }
+      }
+      scope.__ic17raw.push({
+        phase: String(event.phase),
+        message: String(event.message),
+        hasDownload: event.download != null,
+        speed: event.download?.bytesPerSecond
+      })
+    })
+  })
+
   await retry.click()
 
-  // WHAT THIS SPEC CAN AND CANNOT PROVE TODAY.
-  //
-  // The settings card now renders `DownloadProgressLine` — the same component and formatter the workspace
-  // banner and the update dialog use — and the render suite asserts its text against `formatProgressLine`'s
-  // own output. What the REAL app shows during a pack download is the percent advancing
-  // ("Downloading managed python runtime (1%) … (6%)") with NO speed/size/ETA line: the progress ticks
-  // reach the renderer, but the rich `download` field does not survive to the store in this flow. That is
-  // a defect in the progress pipeline, recorded as its own finding rather than papered over here — so this
-  // reading asserts the advance it can see and LOGS the missing detail instead of asserting it away.
-  const seen = new Set<string>()
+  // RENDERING HALF. The message carries the percent only during a pack download
+  // (`Downloading managed <lang> runtime (N%)` — language-pack-fetch.ts is its ONLY producer), so the
+  // same sample that shows a percent is a sample in which the card was holding a download tick, and the
+  // shared line must be on screen with it (`formatSpeed`'s `/s` suffix is the marker).
+  const percents = new Set<string>()
+  let cardShowedSharedLine = false
   for (let i = 0; i < 8; i += 1) {
     const section = (await settings.getByTestId('runtimes-cards-python').innerText()).replace(
       /\s+/g,
       ' '
     )
     const percent = /\((\d+)%\)/.exec(section)?.[1]
-    if (percent) seen.add(percent)
-    if (i === 0) {
-      console.log(
-        `[ic17-panel] hasSpeed=${section.includes('/s')} (filed gap when false) :: ${section.slice(0, 200)}`
-      )
-    }
+    if (percent) percents.add(percent)
+    if (percent && section.includes('/s')) cardShowedSharedLine = true
+    if (i === 0) console.log(`[ic17-panel] first sample :: ${section.slice(0, 200)}`)
     await page.waitForTimeout(4_000)
   }
-  console.log(`[ic17] panel percent samples: ${[...seen].join(', ')}`)
+
+  const raw = await page.evaluate(
+    () =>
+      (
+        globalThis as unknown as {
+          __ic17raw: Array<{ phase: string; message: string; hasDownload: boolean; speed?: number }>
+        }
+      ).__ic17raw
+  )
+  const withDetail = raw.filter((event) => event.hasDownload)
+  console.log(
+    `[ic17] renderer received ${raw.length} broadcast(s); ${withDetail.length} carried the nested download detail; sample ${JSON.stringify(withDetail[0] ?? raw[0] ?? null)}`
+  )
+  console.log(
+    `[ic17] panel percent samples: ${[...percents].join(', ')}; shared line rendered: ${cardShowedSharedLine}`
+  )
+
+  expect(raw.length).toBeGreaterThan(0)
+  expect(withDetail.length).toBeGreaterThan(0)
   // The card is live: a stuck renderer would show one value (or none) for thirty seconds.
-  expect(seen.size).toBeGreaterThan(1)
+  expect(percents.size).toBeGreaterThan(1)
+  expect(cardShowedSharedLine).toBe(true)
 })
