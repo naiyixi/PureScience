@@ -1324,3 +1324,16 @@ ceiling, that is a finding to chase, not a number to tune down.**」
 （分片内串行，但复跑能确认是不是「同文件内多条用例互相拖累」）；② 若单文件绿 ⇒ 把该文件在分片里的**位置/邻居**记录下来，
 查是不是「前一条留下未释放的 SQLite 句柄」；③ 真因若是产品侧的锁等待，修法应落在**事务的锁等待预算/释放顺序**并配一条
 能在 Windows 复现的探针；**四条候选里没有一条是「调超时」**。本项**立为 v1.89.0 的 CI 健康项**，本批一个字节都没碰那个分片。
+
+## 三十一、另一条车道红要按它自己的性质归因：Nightly 的 `Build windows-x64` 是**打包超时**，不是测试红
+
+`e3b1da0f` 的 Nightly（run `37638766618`）**failure**，但作业级注解与日志都指向同一句话：
+
+```
+Error: zerolink-purescience-1.88.0-nightly.ge3b1da0-win-x64-setup.exe timed out after 120000ms.
+```
+
+即 **electron-builder 打 Windows 安装包那一步超时（120s）** ⇒ `publish` 按设计 **skipped**（任一平台 build 失败，
+聚合就不上传）。**与本批代码无关**（`Verify` 在本提交上是 success；同一份代码的 Release 车道已全绿并发布成功）。
+⇒ 归因写法：Nightly 的 Windows 打包超时是**基础设施抖动**，不要当成「测试红」去改测试，也不要当成产品缺陷去改代码；
+下一次推送若同一作业再红，才按「同作业连续多轮」升级为门禁健康项处理。
