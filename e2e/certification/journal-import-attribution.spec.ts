@@ -15,17 +15,25 @@ import { createProject } from './helpers'
 // with `defaultKind` set imports one row, the row carries that kind, and the outcome carries
 // `journalMatch: 'by-issn'` and `journalCreated: true`. That is IC27's store contract and IC30's data contract.
 //
-// NOT CERTIFIED (test 2, fixme) — AND NO LONGER A MEASURED DEFECT: the earlier reading ("the window's import
-// area never renders its result") is explained by the LOCATOR, not by the product. `getByRole('button',
-// { name: 'Import' })` matches by SUBSTRING, and the Reference library toolbar renders before the journal
-// metrics panel: `references.importCsl` ("Import CSL style", ReferencesLibraryDialog.tsx:1008) and
-// `references.pdfImport.open` ("Import PDFs", :1038) both contain "Import" and both precede the panel (:1141)
-// ⇒ `.first()` clicks "Import CSL style", whose handler opens a hidden file input — the native chooser
-// dismisses, nothing is imported, the textbox keeps its text, no result node appears and no error is logged.
-// That is exactly the shape that was measured, including the two probes that ruled out a remount. So the
-// product was never at fault; the submit is located below by its own anchor
-// (`[data-slot="journal-metrics-import-submit"]`). This test stays `fixme` until it has been RUN GREEN: an
-// unrun spec under `e2e/certification/**` is a gate that has never passed.
+// CERTIFIED (test 2): run green on 2026-10-07 — `2 passed (13.1s)` — the window renders the outcome AND the
+// attribution:
+//     [ic30] claims in the store: [{"kind":"impact-factor","value":"7.3"}]
+//     [ic30] the attribution on screen: "landed in Journal of Import Evidence · matched by ISSN · new journal identity"
+//
+// HISTORY — why this sat as a `fixme` for a while, and why that was never a product defect. The earlier reading
+// ("the window's import area never renders its result") was a LOCATOR self-inflicted wound, in two places:
+//   ① the submit: `getByRole('button', { name: 'Import' })` matches by SUBSTRING, and the Reference library
+//      toolbar renders before the journal metrics panel (`references.importCsl` = "Import CSL style",
+//      ReferencesLibraryDialog.tsx:1008; `references.pdfImport.open` = "Import PDFs", :1038; panel at :1141)
+//      ⇒ `.first()` clicked "Import CSL style", whose handler opens a hidden native file chooser: it dismisses,
+//      nothing is imported, the textbox keeps its text, no result node appears and nothing is logged. That is
+//      exactly the shape that was measured, including the two probes that had already ruled out a remount.
+//   ② the field: this panel's title, the textarea's aria-label AND its placeholder all read "Import metrics",
+//      so a name/placeholder locator can land beside it — and an EMPTY textarea plus `submit`'s first line
+//      (`if (text.trim() === '') return`) is silence too: no result, no error, and a click that "landed".
+//      The placeholder still being on screen is the tell.
+// Both are located by their own slots below. The lesson is the one this file had to learn twice: when a click
+// "does nothing", name the ELEMENT and the VALUE before believing anything about the product.
 test.setTimeout(180_000)
 
 test('a kind-less table imports under the request kind and lands attributed (IC27 + IC30)', async ({
@@ -104,7 +112,7 @@ test('a kind-less table imports under the request kind and lands attributed (IC2
 
 // Hung up, not deleted: the window half has a measured defect — see the file header for the evidence and the
 // two probes that ruled my own mistakes out.
-test.fixme('the window renders the import outcome and its attribution (IC30 window half)', async ({
+test('the window renders the import outcome and its attribution (IC30 window half)', async ({
   app
 }) => {
   const page = await app.completeOnboarding()
@@ -125,8 +133,13 @@ test.fixme('the window renders the import outcome and its attribution (IC30 wind
   // The kind control is an input with a suggestion list, not a <select>; the import field is the textbox the
   // panel names after itself ("Import metrics") — locating it by its placeholder can land on the suggestion
   // input beside it, and then the field is empty and the button's guard returns without a word.
-  await dialog.getByLabel('Metric kind for tables without one').fill('impact-factor')
-  const textarea = dialog.getByRole('textbox', { name: 'Import metrics' }).first()
+  await dialog.locator('[data-slot="journal-metrics-import-default-kind"]').fill('impact-factor')
+  // The import field is located by its own slot, not by accessible name: this panel's title, the textarea's
+  // aria-label AND its placeholder all read like "Import metrics", so a name/placeholder locator can land on
+  // the wrong element, leaving the textarea empty — and then `submit`'s first line (`if (text.trim() === '')
+  // return`) returns without a word: no result, no error, and a click that "landed". That silence is exactly
+  // what the IC30 window-half立案 was built on; the placeholder still being on screen is the tell.
+  const textarea = dialog.locator('[data-slot="journal-metrics-import-text"]')
   await textarea.fill(
     [
       'journal,issn,value,year,source',
