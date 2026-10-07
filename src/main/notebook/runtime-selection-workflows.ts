@@ -380,13 +380,15 @@ const createRuntimeSelectionWorkflows = (
       // fails here by name instead of retargeting the mutation at whatever happens to be the default.
       const discovered = await discoverLanguageEnvs(request.language)
       const discoveredEnv = findDiscoveredEnvironment(discovered, request.envId)
-      // A NAMED environment is not a discovery entry — the panel's cards come from discovery, which only
-      // classifies the app-managed defaults — yet it is the only place the app's own rules allow a
-      // removal or a downgrade (the default environment is additive-only). So a request naming one is
-      // served by name, through the same service call and the same admission as everything else.
+      // A named environment reaches here two ways: as the row the panel's dialog was opened from
+      // (`request.envId` matches its interpreter path or its name), or as a DISCOVERY entry — the app
+      // classifies agent-created environments too and reports them with their conda env name. The app's
+      // own registry is what decides whether a name may be addressed at all, so it is consulted for both.
+      const namedList =
+        (await deps.manageNamedEnvironments?.({ action: 'list' }))?.environments ?? []
       const named = discoveredEnv
         ? undefined
-        : (await deps.manageNamedEnvironments?.({ action: 'list' }))?.environments.find(
+        : namedList.find(
             (candidate) =>
               candidate.language === request.language &&
               (candidate.interpreterPath === request.envId || candidate.name === request.envId)
@@ -428,7 +430,21 @@ const createRuntimeSelectionWorkflows = (
         (discoveredEnv?.provenance === 'app-managed' && !discoveredEnv?.condaEnv) ||
         discoveredEnv?.condaEnv === DEFAULT_PY_ENV ||
         discoveredEnv?.condaEnv === DEFAULT_R_ENV
-      if (!addressesDefault && !named) {
+      // IC13: a request-supplied name is addressable exactly when the app's OWN registry lists it for
+      // this language and it is not the app-managed default (whose prefix is additive-only). The
+      // admission re-checks that same name before mutating, so a name which cannot be addressed can
+      // never be applied to the default instead.
+      const addressableNamed =
+        environmentName !== undefined &&
+        namedList.some(
+          (candidate) =>
+            candidate.language === request.language &&
+            candidate.name === environmentName &&
+            !candidate.isDefault
+        )
+          ? environmentName
+          : undefined
+      if (!addressesDefault && !addressableNamed) {
         return {
           ok: false,
           needsRestart: false,
@@ -443,7 +459,7 @@ const createRuntimeSelectionWorkflows = (
         language: request.language,
         packages: [...request.packages],
         operation: request.operation ?? 'install',
-        ...(named ? { environment: named.name } : {}),
+        ...(addressableNamed ? { environment: addressableNamed } : {}),
         ...(request.usePip ? { usePip: true } : {})
       })
     }

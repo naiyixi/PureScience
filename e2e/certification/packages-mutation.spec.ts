@@ -309,10 +309,9 @@ test('the Packages dialog installs and removes through the app admission', async
   ).toHaveCount(1, { timeout: 120_000 })
   console.log('[ic13] installed=true importable=true listed=true')
 
-  // 5. REMOVAL IS NOT AVAILABLE IN THIS SURFACE, and the reading says so in the app's own words. The
-  //    default environment is additive-only by design, and the admission resolves the target from a
-  //    session binding the window does not have — so the window can only ever ask the default env, where
-  //    a removal is refused. Asserted verbatim; nothing here rewords it.
+  // 5. A REMOVAL IS REFUSED IN THIS SURFACE — the DEFAULT environment's dialog always asks for the
+  //    default env (its request carries no environment name), and that env is additive-only by design.
+  //    Asserted verbatim; nothing here rewords it.
   const removeDialog = dialog
   await removeDialog
     .getByTestId('runtime-package-row')
@@ -329,11 +328,29 @@ test('the Packages dialog installs and removes through the app admission', async
   // Fail-closed: the refused click changed nothing.
   expect(canImport(interpreter, REMOVE_PACKAGE)).toBe(true)
 
-  // 6. A NAMED environment must be refused BY NAME, never silently applied to the default — the
-  //    mis-target this resolution exists to prevent. The dialog is read-only for such an env, and the
-  //    reading proves the default env did NOT receive the request.
+  // 6. A NAMED environment IS addressable BY NAME from the window (IC13) — the only place the app's own
+  //    rules allow a removal, since the app-managed default is additive-only. Two readings, each
+  //    verified against the environments themselves rather than the strings the UI printed: a real
+  //    install into the named env (its own interpreter can then import it) and a real removal from it
+  //    (the inventory the dialog re-reads no longer lists it). Neither may touch the default env, so its
+  //    inventory is snapshotted and compared — a silent mis-target would move a row there.
   const managedClose = removeDialog.getByRole('button', { name: 'Close' })
   if (await managedClose.count()) await managedClose.click()
+
+  const defaultInventory = async (): Promise<string[]> => {
+    await card.getByTestId('runtime-packages-button').click()
+    const reopened = page.getByTestId('runtime-packages-dialog')
+    await expect(reopened).toBeVisible({ timeout: 60_000 })
+    await expect(reopened.getByTestId('runtime-package-row').first()).toBeVisible({
+      timeout: 120_000
+    })
+    const rows = await reopened.getByTestId('runtime-package-row').allInnerTexts()
+    const close = reopened.getByRole('button', { name: 'Close' })
+    if (await close.count()) await close.click()
+    return rows
+  }
+  const defaultInventoryBefore = await defaultInventory()
+
   const namedRow = settings.locator('[data-testid="named-env-row"]', { hasText: REMOVE_ENV })
   await expect(namedRow).toBeVisible({ timeout: 60_000 })
   await namedRow.getByTestId('named-env-packages').click()
@@ -342,26 +359,68 @@ test('the Packages dialog installs and removes through the app admission', async
   await expect(namedDialog.getByTestId('runtime-package-row').first()).toBeVisible({
     timeout: 120_000
   })
+
+  // 6a. INSTALL into the named env: the dialog asks, the admission honours the name it resolved, and pip
+  //     has to actually produce it.
+  expect(canImport(namedInterpreter!, PROBE_MODULE)).toBe(false)
   await namedDialog.getByTestId('runtime-package-use-pip').click()
   await namedDialog.getByTestId('runtime-package-spec').fill(PROBE_DIST)
   await namedDialog.getByTestId('runtime-package-install').click()
-  await expect(namedDialog.getByTestId('runtime-package-error')).toContainText(
-    'manages the app-managed default environment',
-    { timeout: 120_000 }
+  await expect(namedDialog.getByTestId('runtime-package-notice')).toContainText(PROBE_DIST, {
+    timeout: 300_000
+  })
+  console.log(
+    `[ic13] named install notice: ${(await namedDialog.getByTestId('runtime-package-notice').innerText()).replace(/\s+/g, ' ')}`
   )
-  const namedRefusal = await namedDialog.getByTestId('runtime-package-error').innerText()
-  console.log(`[ic13] named env refused: ${namedRefusal.replace(/\s+/g, ' ')}`)
-  expect(namedRefusal).toContain(REMOVE_ENV)
-  // The independent check for the safety property: the named env did not get anything, AND the default
-  // env was not touched on its behalf.
-  expect(canImport(namedInterpreter!, PROBE_MODULE)).toBe(false)
+  expect(canImport(namedInterpreter!, PROBE_MODULE)).toBe(true)
+  console.log('[ic13] named env addressable=true installed=true importable=true')
+
+  // 6b. REMOVAL from the named env — the reading IC13 exists for. The row is identified by its own text
+  //     (the filter is a SUBSTRING match, so `matplotlib` would also match `matplotlib-base`: the name the
+  //     app then reports is what the absence assertion must use).
+  const removeRow = namedDialog
+    .getByTestId('runtime-package-row')
+    .filter({ hasText: REMOVE_PACKAGE })
+    .first()
+  const removeRowText = (await removeRow.innerText()).replace(/\s+/g, ' ')
+  const removeName = removeRowText.split(' ')[0]!
+  console.log(`[ic13] named removal target: ${removeRowText} (name=${removeName})`)
+  await removeRow.getByTestId('runtime-package-uninstall').click()
+  await expect(namedDialog.getByTestId('runtime-package-notice')).toContainText(removeName, {
+    timeout: 300_000
+  })
+  console.log(
+    `[ic13] named removal notice: ${(await namedDialog.getByTestId('runtime-package-notice').innerText()).replace(/\s+/g, ' ')}`
+  )
+  // The dialog re-reads the environment's OWN inventory. That re-read has to have LANDED before an
+  // absence means anything — during it the list is empty for the wrong reason (the probe caught exactly
+  // that: `Listing packages…` with zero rows). So the list is awaited back first, and only then is the
+  // removed row asserted absent.
+  await expect(namedDialog.getByTestId('runtime-package-row').first()).toBeVisible({
+    timeout: 180_000
+  })
+  await expect(
+    namedDialog.getByTestId('runtime-package-row').filter({ hasText: removeName })
+  ).toHaveCount(0, { timeout: 120_000 })
+  const namedRowsAfter = await namedDialog.getByTestId('runtime-package-row').allInnerTexts()
+  console.log(
+    `[ic13] named removal listed=false (re-read shows ${namedRowsAfter.length} rows, still has probe=${namedRowsAfter.some((row) => row.includes(PROBE_DIST))})`
+  )
+
+  // 6c. The safety property: the default environment's inventory is untouched by either reading, and it
+  //     still holds what section 4 installed into it.
+  await page.keyboard.press('Escape')
+  await expect(namedDialog).toBeHidden({ timeout: 60_000 })
+  const defaultInventoryAfter = await defaultInventory()
+  expect([...defaultInventoryAfter].sort()).toEqual([...defaultInventoryBefore].sort())
+  console.log(`[ic13] default env untouched: ${defaultInventoryAfter.length} rows`)
   expect(canImport(interpreter, PROBE_MODULE)).toBe(true)
 
   // 7. The default environment's INSTALL side has its own rule, and it answers without needing any
   //    precondition from this spec: only a bare name or an exact `name==version` pin is additive. A
   //    version range is refused by the app, in its own words.
-  const namedClose = namedDialog.getByRole('button', { name: 'Close' })
-  if (await namedClose.count()) await namedClose.click()
+  // The named environment's dialog was closed above (Escape + toBeHidden), so the default env's own
+  // dialog is opened straight from its card — no second close attempt on an already-hidden node.
   await card.getByTestId('runtime-packages-button').click()
   const gateDialog = page.getByTestId('runtime-packages-dialog')
   await expect(gateDialog).toBeVisible({ timeout: 60_000 })

@@ -1241,17 +1241,24 @@ against a separate data root」30s 超时 + `EBUSY: resource busy or locked, unl
 （`typecheck:node` **真抓到**我自己新 stub 里 `method:'micromamba'` 不在并集 ⇒ 改 `'conda'`）；`eslint --no-cache .` **0 error**，
 触碰文件 0 problem。**变异验证**：把放宽那段回退 ⇒ 新用例**红**（1 failed | 15 passed），恢复 ⇒ 16 passed。
 
-**具名立案（未取）**：IC13 的**真机读数** —— 需在隔离实例里走应用自己的入口建一个具名环境、装一个真包，再从面板
-具名环境行点 Packages **卸载**，断言存储里该环境少一个包且**默认环境清单逐字节未变**（配方见
-`docs/plan-2026-10-07-IC13-window-uninstall.md` §五）。**本机内存是闸门**：写本节时空闲物理页 ≈3.9k（≈62 MB）、
-swap 已用 9.86 G / 11.26 G ⇒ **不做 `build:e2e`**（本机有堆把机器打崩的前例），不冒充通过。
-本单元的 e2e 段**尚未写进 spec**（跑不绿不落树）；由认证车道给出判决前，不声称已实机验过。
+**具名立案 → 已取（2026-10-07 深夜）**：IC13 的**真机读数已拿到** —— `e2e/certification/packages-mutation.spec.ts`
+**1 passed (53.5s)**：具名环境里真装（`Done: purescience-probe.`，**环境自己的解释器能 import**）真卸
+（`Done: matplotlib-base.`，重读清单 82 行、那一行没了而刚装进去的那条还在），默认环境清单操作前后**逐行相等（83 行）**，
+既有两条拒绝（默认环境 additive-only / 范围规格）一字未变。逐字读数、没证到的边界（R 语言、外部解释器、内核占用）
+见 `docs/evidence/2026-10-07-ic13-window-uninstall.md`。
 
-**下一轮第一步**：① Release 页核对（资产数 / Latest / 非草稿非预发布 / 正文）→ **`hermes cron resume 2be4405e5dc6`**；
-② `git push origin main`（把 `6c9c254d` 推上去，让 IC13 进入车道）；③ 内存宽松**且没有别人在取证**时，给
-`e2e/certification/packages-mutation.spec.ts` 追加 IC13 那一段（probe-first：先 dump 面板真实 DOM 再写断言），
-在**新建**隔离工作树上跑绿后落树；④ 其余候选不变：IC39/IC40 真机读数（工作单已写好两条路线）/
-IC16·IC17 收紧后 spec 的机器判决（本版认证车道会给）/ IC33 之外的 Windows `database` 分片抖动（测试侧清理重试）。
+**取证又抓到两处真问题（都已修、都进用例）**：① 地址性判据写窄了 —— 第一版用「面板那一行是否解析到」判定可寻址，
+而应用自己的 discovery **会把具名环境也列进来**（`agent-created` + `condaEnv`），真实窗口的请求走的正是那条路
+⇒ 真机直接弹出我新写的那句拒绝；改成按**名字在应用自己的登记册里核对**（排除托管默认）并补单测钉住这个形状。
+② **「列表为空」会被误读成「卸载成功」** —— 卸载后面板重读清单，重读期间列表是空的（`Listing packages…`），
+此时断言「那一行不见了」是**假绿**（我第一版就是这么写的，读数把 `still 0 rows` 打了出来）；改成先等清单**回来**、
+再断言那一行不在，并顺带断言刚装进去的那条仍在。
+
+**下一轮第一步（① ② ③ 已完成，见文末补记）**：① Release 页核对 → **`hermes cron resume 2be4405e5dc6`**（✅ 均已做）；
+② `git push origin main`（✅ IC13 已进主干）；③ 给 `e2e/certification/packages-mutation.spec.ts` 追加 IC13 那一段
+（✅ **已跑绿并落树**：`1 passed (53.5s)`，见 `docs/evidence/2026-10-07-ic13-window-uninstall.md`）；
+④ 其余候选不变：IC39/IC40 真机读数（执行器在做，已走通 7 步、卡在计算授权那一步）/
+IC16·IC17 的机器判决（✅ 本版认证车道已给：两半都绿）/ Windows `database` 分片（见 §三十，需 Windows 车道判决）。
 
 ### 三、发版结果（Release 页真实读数）
 

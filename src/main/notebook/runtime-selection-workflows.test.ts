@@ -671,6 +671,64 @@ describe('runtime selection workflows · package target resolution (IC13)', () =
     })
   })
 
+  it('passes a DISCOVERED named environment through by name too (the shape the real window sends)', async () => {
+    // The real panel opens the dialog from a named row, and the app's discovery classifies that same
+    // environment as `agent-created` with its conda env name — so the request arrives with a DISCOVERED
+    // entry, not an unresolved one. Both routes must end at the same addressable name (this is the case
+    // the real-window probe caught: gating on the row lookup alone refused a perfectly addressable env).
+    discoveryState.python = [
+      {
+        language: 'python',
+        provenance: 'agent-created',
+        envId: '/data/runtime/envs/my-env/bin/python3.12',
+        interpreterPath: '/data/runtime/envs/my-env/bin/python',
+        label: 'conda: my-env',
+        runnable: true,
+        condaEnv: 'my-env'
+      }
+    ]
+    const managePackages = vi.fn(async () => ({
+      ok: true,
+      needsRestart: false,
+      log: '',
+      method: 'conda' as const,
+      attempts: [],
+      fallbackUsed: false
+    }))
+    const workflows = createRuntimeSelectionWorkflows({
+      settingsService: fakeSettingsService(),
+      runtimeRoot: () => '/data/runtime',
+      registry: fakeRegistry(),
+      manageNamedEnvironments: vi.fn(async () => ({
+        environments: [
+          {
+            name: 'my-env',
+            language: 'python' as const,
+            ready: true,
+            isDefault: false,
+            interpreterPath: '/data/runtime/envs/my-env/bin/python'
+          }
+        ]
+      })),
+      managePackages
+    })
+
+    const result = await workflows.managePackages({
+      language: 'python',
+      envId: '/data/runtime/envs/my-env/bin/python',
+      packages: ['matplotlib'],
+      operation: 'uninstall'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(managePackages).toHaveBeenCalledWith({
+      language: 'python',
+      packages: ['matplotlib'],
+      operation: 'uninstall',
+      environment: 'my-env'
+    })
+  })
+
   it('keeps refusing an environment that is neither the default nor a named one', async () => {
     discoveryState.python = [
       {
