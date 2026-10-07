@@ -1084,9 +1084,17 @@ Latest = v1.87.0）。
 
 **本轮 `tsc` 结构性抓到的一条真错（vitest 看不见）**：`src/preload/index.test.ts` 那份**测试自备的桥接子集类型**只有 `roCrate.exportProject`，新用例调了 `a.roCrate.inspectExternal` ⇒ `TS2339`。修法 = **把新方法补进夹具的类型**（不是把断言改弱、也不是改成可选）——与「夹具缺必需属性要补桩」同一条纪律。
 
-**⏳ 真机读数未取（具名立案）**：开工时 swap **9277.75 M / 10240 M 已用**、空闲物理页 7415（≈116 MB）⇒ 不具备「`build:e2e`（8 GB 堆）+ 起 Electron」的安全余量（本机有堆把机器打崩的前例）。**认证 spec 已改但本机未跑绿**；下一轮内存宽松时**第一条跑它**（配方见证据档 §四）。
+**✅ 真机读数已取（本单元不再是「未取」项）**：`rm -rf out/main out/preload` → `npm run build:e2e`（**built in 35.50 s**、exit 0）→
+`./node_modules/.bin/playwright test e2e/certification/ro-crate-export.spec.ts --workers=1` ⇒ **2 passed (21.9s)**，`E2E_EXIT=0`。
+三行读数：① 那句「外来 crate 也能在这里只读检查、且不会被导入任何项目」是屏上原话；② 同一面板对本次运行**自己写出的 crate** 判「全部通过」；
+③ 故意违规的 crate 逐条点名 **8 条**规则（含层级词与明细），条数与同一份文档经 `validateRoCrate` 算出的失败集合**逐条相符**；
+另加两条断言：检查前后 `ro-crate-metadata.json` **逐字节相等**、违规 crate 旁边**不出现**「全部通过」。
+（开工时 swap 9.28 G/10.24 G、空闲页 7415 ≈116 MB；清掉 `out/main`+`out/preload` 并跑完全量单测后**空闲页涨到 9.7 万 ≈1.5 GB** ⇒ 重建有余量才动的手。）
+**⚠️ 取证过程本身抓到一条会红的缺陷（已当批修掉）**：spec 第一版用了 `getByTestId('ro-crate-inspect-path')`，而组件给那个输入的是 **`data-slot`**
+⇒ 真机 `locator.fill` **超时 30 s 失败**（`1 failed | 1 passed`），而**渲染套件全绿** ⇒ 改成 `dialog.locator('[data-slot="ro-crate-inspect-path"]')` 后 `2 passed`。
+**这就是「未跑过的 spec 不许当已验」的实证 —— 它会在 CI 的 mac 认证作业里红。**
 
 **一条设计边界（不是缺陷，必须写明）**：只读检核读的是 `ro-crate-metadata.json`，**不重算 payload 字节** ⇒ 依赖 `payloadPaths` / `payloadDigests` 的三条断言在这条路上不出现（导出态 30 条 / 检核态 27 条），文案按「本应用**能套用**的检查」如实写；**把 payload 复算接上**是一条独立的后续单元（它会让外来 crate 的检核更强，也让两个数一致）。
 
-**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，**先按提交把会话已完成的单元划掉**（防重做；会话在做 IC52 段 2）；② 内存宽松 ⇒ 按证据档 §四跑绿 `e2e/certification/ro-crate-export.spec.ts`（本单元唯一未取的读数），顺带把 §二十五 那条 `skill-imported-copy.spec.ts` 的收紧版也跑绿（若尚未）；③ 否则按排期取**未被会话认领**的单元，或挑一条「已立案未修」的（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审）；④ 按**完整 40 位 SHA** 看本轮提交的两条车道，红了先读**作业级注解**归因（`cancelled` 不算绿）。
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，**先按提交把会话已完成的单元划掉**（防重做；会话在做 IC52 段 2）；② 本单元**已无未取读数**（真机 `2 passed`）⇒ 若可见余量，顺手跑绿 §二十五 那条收紧版 `e2e/certification/skill-imported-copy.spec.ts`（若尚未），并清理 `out/` 里本轮为取证而重建的产物；③ 否则按排期取**未被会话认领**的单元，或挑一条「已立案未修」的（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审；只读检核的 payload 复算也是一条）；④ 按**完整 40 位 SHA** 看本轮提交的两条车道，红了先读**作业级注解**归因（`cancelled` 不算绿）。
 **发版连带（不许丢）**：v1.88.0 发版时 README 首屏横幅（`README.md` + `README.en.md` 头部块**逐字一致**，pre-push 会拦）里有两句已过期 —— `an imported skill stays the imported copy with no way to fork it yet`（工作单 ③ 已交付）与 `this build writes crates but does not read one back in`（本单元已交付只读检核）；CHANGELOG 的 v1.88.0 段落要把它们从「新功能立项 / 明确没做」移出，并**双向**复核成熟度块（已交付的不许留在 🗺️、半截的不许写成 ✅）。

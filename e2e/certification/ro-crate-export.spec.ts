@@ -141,7 +141,8 @@ test('exports a project from the interface into a crate that validates on disk',
   // deliberately broken — where the point is that the failing RULE is named, not that it says "no".
   const metadataBefore = await readFile(join(crateDir, 'ro-crate-metadata.json'))
 
-  await dialog.getByTestId('ro-crate-inspect-path').fill(crateDir)
+  const cratePathField = dialog.locator('[data-slot="ro-crate-inspect-path"]')
+  await cratePathField.fill(crateDir)
   await dialog.getByTestId('ro-crate-inspect-submit').click()
 
   // ① the app's own crate, read back through the foreign-crate path.
@@ -170,7 +171,7 @@ test('exports a project from the interface into a crate that validates on disk',
   )
   expect(expectedFailures.length).toBeGreaterThan(0)
 
-  await dialog.getByTestId('ro-crate-inspect-path').fill(brokenDir)
+  await cratePathField.fill(brokenDir)
   await dialog.getByTestId('ro-crate-inspect-submit').click()
   const failedList = dialog.getByTestId('ro-crate-inspect-failed-list')
   await expect(failedList).toBeVisible({ timeout: 30_000 })

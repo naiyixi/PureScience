@@ -13,10 +13,13 @@
 新通道 `ro-crate:inspect-external`（桌面档）+ 导出对话框内的检核段（路径输入 / 既有 `storage.pickDirectory` / 「开始检查」）、
 **报告逐条列出未满足的规则码与层级**（`spec-must` / `spec-should` / `export-contract` 各自译成人话）、三种拒绝码具名上屏、
 `roCrate.export.exportOnly` 那句失真文案**同批改写（9 语）**。**通道与真入口同批** ⇒ `check:web-api-map` 通过。
-**仍未取**：扩写后的 `e2e/certification/ro-crate-export.spec.ts` 的**真机读数**（本机 swap 已用 9.3 G/10.2 G，无 `build:e2e` 余量）
-—— **下一轮内存宽松时第一条跑它**（配方见上面那份证据档 §四）。
+**✅ 真机读数已取**（`e2e/certification/ro-crate-export.spec.ts`：**2 passed (21.9s)**）：屏上原话 = 「外来 crate 也能在这里只读检查、且不会被导入任何项目」；
+同一面板对**本次运行自己写出的 crate** 判「全部通过」；故意违规的 crate 逐条点名 8 条规则（含层级词与明细），
+条数与同一份文档经 `validateRoCrate` 算出的失败集合**逐条相符**，且检查前后元数据**逐字节相等**。
+**取证过程本身抓到一条会红的缺陷并当批修掉**：spec 第一版用了 `getByTestId`，而输入是 `data-slot` ⇒ 真机超时失败而渲染套件全绿。
 **一条设计边界**：只读检核不重算 payload 字节 ⇒ 依赖 payload 的三条断言在这条路上不出现（导出态 30 条 / 检核态 27 条），
 文案按「本应用**能套用**的检查」如实写；把 payload 复算接上是一条**独立的后续单元**。
+读数、配方与没证到的部分见 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`。
 
 **现状（已核实）**：`validateRoCrate` 存在且用于**本应用写出的每一个** crate；外来 crate **没有入口** ⇒ 界面上已**明写**「Export only — an external crate cannot be imported or checked here yet.」（IC48 落地）。
 
@@ -75,7 +78,7 @@
 | 项 | 提交 | 真机读数 | 备注 |
 | --- | --- | --- | --- |
 | ① 期刊别名解除 | `16fdafab` | ✅ `journal-alias-release.spec.ts` **1 passed (6.6s)**：存储回读 `aliases=[]`、刊表快照逐字相等（不越界）；确认句逐字读到两件事 | 证据档 `docs/evidence/2026-10-07-journal-alias-release.md` §五 |
-| ② RO-Crate 外来 crate 只读检核 | 执行器 2026-10-07（本档 §一） | ⏳ **未取**：`e2e/certification/ro-crate-export.spec.ts` 已按验收①②扩写，**本机 swap 无余量未跑** | 证据档 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`（含配方 §四）；**下一轮第一条跑它** |
+| ② RO-Crate 外来 crate 只读检核 | 执行器 2026-10-07（本档 §一） | ✅ `ro-crate-export.spec.ts` **2 passed (21.9s)**：自家 crate 判「全部通过」；违规 crate 逐条点名 8 条规则（与 `validateRoCrate` 的失败集合逐条相符）；检查前后元数据逐字节相等 | 证据档 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`；**取证过程抓到 spec 自己的定位缺陷（`getByTestId` 对 `data-slot`）并当批修掉**——不跑真机就会红在 CI 的 mac 认证作业 |
 | ③ 技能导入版分叉 | `42dd7855` | ✅ `skill-imported-copy.spec.ts` **1 passed (9.3s)**：原句已改写成"Duplicate it to get a skill of your own that you can edit."；副本**真落到磁盘** `skills/personal/seeded-import` | 读数是**目录回读**，不是界面自陈 |
 | ④ 通知单条删除 / 一键清空 | `9bd516a1` | ✅ `notification-inbox-clear.spec.ts`（**本轮新写**）**1 passed (13.5s)**：警告句逐字读到「Your conversations are not deleted. It cannot be undone.」；单条删除后 **存储** `items=0`；空箱时面板说 "No messages yet." | **清空（clear-all）那半未真机验**：它需要**跨会话的多条通知**（通知按会话记，实测两条 prompt 只出一条），本读数不铺这个夹具 ⇒ 该半仍由单元 + 渲染套件承担，**具名**不冒充 |
 

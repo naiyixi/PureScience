@@ -38,32 +38,58 @@
 | `./node_modules/.bin/eslint --no-cache .` | **0 error / 122 warning**（本单元触碰的文件 **0 problem**） |
 | `npm run check:web-api-map` | **exit 0** |
 | `bash scripts/pre-push-checks.sh` | **全部通过**（敏感词扫描 / README 版本 / CHANGELOG / 双语同步） |
+| **真机读数** `e2e/certification/ro-crate-export.spec.ts` | **2 passed (21.9s)**，`E2E_EXIT=0`；日志三行见 §三 |
 
 **本轮抓到并当批修掉的一条真错**（vitest 看不见、只有 `tsc` 结构性拦得住）：
 `src/preload/index.test.ts` 里这份测试自备的桥接子集类型只有 `roCrate.exportProject`，而新用例调了 `a.roCrate.inspectExternal`
 ⇒ `TS2339`。**修法是把新方法补进那份夹具的类型**（不是把断言改弱、也不是改成可选）—— 与「py 夹具缺必需属性要补桩」同一条纪律。
 
-## 三、本轮没证到什么（具名，不冒充）
+## 三、真机读数（**已取**）
 
-- **真机读数未取**。开工时 swap **9277.75 M / 10240 M 已用**、空闲物理页 7415（≈116 MB）⇒ 不具备
-  「`npm run build:e2e`（8 GB 堆）+ 起 Electron」的安全余量（本机有堆把机器打崩的前例）。
-  因此本轮**没有**在本机跑过 `e2e/certification/ro-crate-export.spec.ts`。
-- **认证 spec 已按工作单的验收①②扩写**（既有那条用例内，按「只紧不放」补断言，不是新开文件）：
-  ① 用这次运行**自己刚导出**的 crate 当输入 ⇒ 断言「全部通过」+ 摘要含 `0 not met` + 判的是哪份文档；
-  ② 造一个**故意违规**的 crate（缺 Metadata File Descriptor）⇒ 断言屏上逐条列出的规则**与**同一份文档经
-  `validateRoCrate` 算出的失败集合**逐条相符**，且层级词出现、且不出现「全部通过」；
-  另外把「只读」也钉住：检查前后 `ro-crate-metadata.json` **逐字节相等**。
-  同一条用例里 IC48 的旧句断言已按事实改写（`Export only — an external crate cannot be imported or checked here yet.` → 新句）。
-  **这份 spec 仍属「已改但本机未跑绿」**：下一轮内存宽松时第一件事是 `npm run build:e2e` → 跑它，跑绿后才算收口。
+命令与前置：`rm -rf out/main out/preload` → `npm run build:e2e`（**built in 35.50 s**、exit 0）→
+`./node_modules/.bin/playwright test e2e/certification/ro-crate-export.spec.ts --workers=1 --reporter=line`
+（e2e 实例读的是 e2e 产物；开工时 swap 已用 9.3 G，期间空闲物理页涨到 9.7 万页 ≈1.5 GB，具备重建余量）。
+
+**结果：`2 passed (21.9s)`，`E2E_EXIT=0`**（既有那条导出用例 + IC45 的拒收用例一起跑，两条都不是新开文件）。三行读数（原文）：
+
+```
+[ic48] the dialog states what it does with a crate from elsewhere
+[ic48] the read-only half judged this run’s own crate clean
+[ic48] rules named on screen: ["metadata-file-descriptor-present· required by RO-Crate 1.1\nno CreativeWork with a RO-Crate conformsTo",
+ "metadata-descriptor-id· required by RO-Crate 1.1\ndescriptor @id: undefined",
+ "metadata-descriptor-type· required by RO-Crate 1.1",
+ "root-date-published-iso8601· required by RO-Crate 1.1\ndatePublished: undefined",
+ "root-name-and-description· recommended by RO-Crate 1.1",
+ "metadata-descriptor-about-root· required by RO-Crate 1.1\nabout: undefined",
+ "metadata-descriptor-conforms-to-profile· recommended by RO-Crate 1.1\nconformsTo: undefined",
+ "crate-describes-at-least-one-payload· expected by this app of its own crates\npayloads: 0, actions: 0, software: 0"]
+```
+
+**这三行各证明什么**：① 那句「外来 crate 也能在这里只读检查、且不会被导入任何项目」**在真窗口里是原话**；
+② 同一份面板对**本次运行自己写出的 crate** 判「全部通过」——「外来路径能读通自家产物」这半边成立；
+③ 故意违规的 crate 在屏上**逐条点名**规则码 + 层级 + 明细，且条数与同一份文档经 `validateRoCrate` 算出的失败集合**逐条相符**
+（spec 里就是这么断言的），另加两条：检查前后 `ro-crate-metadata.json` **逐字节相等**（只读）、违规 crate 旁边**不出现**「全部通过」。
+
+**⚠️ 取证过程本身抓到一条会红的缺陷（已当批修掉）**：spec 第一版把路径输入写成了 `getByTestId('ro-crate-inspect-path')`，
+而组件给那个输入的是 **`data-slot`**（本仓 `data-testid` 与 `data-slot` 混用＝「元素不存在」）⇒ 真机 `locator.fill` **超时 30 s 失败**
+（那一次 `1 failed | 1 passed`），而**渲染套件全绿**。改为 `dialog.locator('[data-slot="ro-crate-inspect-path"]')` 后 `2 passed`。
+⇒ 这条正是「未跑过的 spec 不许当已验」的实证：**它会在 CI 的 mac 认证作业里红**。
+
+## 四、本轮没证到什么（具名，不冒充）
+
 - **一条设计边界（不是缺陷，但必须写明）**：只读检核读的是 `ro-crate-metadata.json`，**不重算 payload 字节** ⇒
   依赖 `payloadPaths` / `payloadDigests` 的**三条断言**（`file-sha256-matches-copied-bytes` /
   `file-content-size-matches-copied-bytes` / `every-payload-described`）在这一路上**不会出现**，
   所以同一份 crate 在「导出态」是 30 条、在「只读检核」是 27 条。文案按「本应用**能套用**的检查」如实表述，
   **没有**把它说成 30 条。把 payload 复算接上是一条**独立的后续单元**（它会让外来 crate 的检核更强，也让 27 与 30 一致）。
-- **「不导入任何项目」这半边**：本轮只由**代码读证**（`src/main/ro-crate/import.ts` 无写入调用）与
-  「检查前后 crate 目录字节相等」的真机断言共同承担；「项目侧的产物/文件计数不变」这条更强的读数**未取**。
+- **「不导入任何项目」这半边**：由**代码读证**（`src/main/ro-crate/import.ts` 无写入调用）与
+  「检查前后 crate 元数据逐字节相等」的真机断言共同承担；「项目侧的产物/文件计数不变」这条更强的读数**未取**
+  —— 它需要一次「检查外来 crate 前后对比项目文件清单」的夹具，本轮没铺。
+- **只读检核的三种拒绝码**（`no-metadata-file` / `unreadable` / `unparseable`）在本轮真机上**只由渲染套件覆盖**：
+  e2e 里没有造这三种坏路径（`unreadable` 在真机上要 root/权限配合，本机 `readFile` 对目录的错误码随平台而异）
+  ⇒ **不冒充已由真机验证**。
 
-## 四、下一轮取真机读数的配方（一次跑完）
+## 五、复跑命令（照抄即可）
 
 ```bash
 cd /Users/totota/purescience
@@ -73,5 +99,5 @@ npm run build:e2e                      # e2e 实例读的是 e2e 产物，只跑
   --workers=1 --reporter=line
 ```
 
-判定：`1 passed` ⇒ 收口；红则先读**失败的是哪条断言**（`[ic48]` 前缀的 console 行会给出屏上原文），
+判定：`2 passed` ⇒ 收口；红则先读**失败的是哪条断言**（`[ic48]` 前缀的 console 行给出屏上原文），
 按「失败文件是否被本笔碰过」判真伪，**不许把 jsdom 读数写成真机读数**。
