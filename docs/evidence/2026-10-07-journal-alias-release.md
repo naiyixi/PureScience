@@ -30,3 +30,14 @@
 1. **真机读数未取**：开工时本机 swap 8.99 G / 10.24 G 已用、空闲物理页 ~3.8k（≈60 MB）⇒ 不具备 `npm run build:e2e`（8 GB 堆）+ 起 Electron 的安全余量（本机有堆把机器打崩的前例）。⇒ 「真窗口里点一次、磁盘上的 `journalAlias` 行真的没了」这一半**尚未取证**，界面目前只有渲染层证据。
 2. **验收判据 3（旧写法不再解析）与判据 4（解除前后指标/文献归属不变）**只有**仓库层**证据（`journal-repository.test.ts` 的 `removeJournalAlias` 用例组），**没有**真机证据。
 3. 解除后**该名字可再次用于新建**：数据层自然成立（别名行没了），但**未**在界面上验过。
+
+## 四、会话侧复核（2026-10-06/07，另一执行体）
+
+对上面这份实现做的**独立复核**（不采信提交信息，自己跑）：
+
+- **测试**：`npx vitest run src/renderer/src/components/references src/main/references` ⇒ **28 文件 / 367 passed**（含新增的 3 条整面板用例）。
+- **通道链在位**：`grep -c removeJournalAlias` ⇒ 目录 1 / `main/references/ipc.ts` 3 / `preload/index.ts` 2（声明 + 包装各一）⇒ 与它报的 pin 追平一致。
+- **一处过程性事故（我造成、已回退）**：我在不知道已实现的情况下"重新接线"，因**未先核实**而写出**重复条目**（目录同键两行、preload 同键两个包装、ipc 两条同通道 handler）。已 `git checkout` 整笔回退，未提交。**教训**：动一个"以为缺"的缺口前，先 `grep -rn "<通道名>" src/preload src/main src/shared src/renderer` 全树核对 —— 这正是本仓"补缺口前先在代码里确认它真的缺"那条规矩，我这次跳过了。
+
+**仍未取证（同第三节，且阻塞原因相同）**：真机读数。复核时本机 **swap 9367.88M / 10240M 已用、空闲物理页 5278（≈84 MB）**，重进程 WorkBuddy 1.9G / Hermes 1.8G / 两个 Electron 各 ≈1.4G ⇒ 与执行器开工时（8.99G/10.24G、≈60 MB）同一堵墙。本机 8 GB 内存 + 大堆有**硬崩（SIGTRAP）**前例 ⇒ **不硬上**，等机器空闲时按第三节配方取证。
+
