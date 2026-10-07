@@ -1212,10 +1212,17 @@ Latest = v1.87.0）。
 | 正文口径（双向复核） | 上一版正文里两句过期话（技能不可分叉 / crates 只写不读）**随横幅重写消失**；成熟度块里「journal-import 面板不渲染逐行结果」那句（IC30 已跑绿 13.1s）**从 🚧 移进 ✅**；`check-readme-sync` 绿（徽章/引言/横幅/DOI 逐字一致） |
 | 车道 | Release run `37632394963`：preflight ✅ / matrix ✅ / **Verify ✅** / 四平台 build 在跑。**Release 页尚未核对**（本节写下时） |
 
-**一条必须在汇报里点名的既存红**：`Windows Full Test` 在 `db06590c` 上 **failure**，作业级注解指向
+**一条必须在汇报里点名的既存红（后经三条读数补全，见下）**：`Windows Full Test` 在 `db06590c` 上 **failure**，作业级注解指向
 `src/main/storage/provenance-migration-validation.test.ts` 的「validates the fixed config-root SQLite authority
-against a separate data root」30s 超时 + `EBUSY: resource busy or locked, unlink '…\\purescience.db'`
-—— 即档里记的 **`database` 分片既存抖动**（负载敏感），**本批没碰那个文件**，不是本批引入。
+against a separate data root」30s 超时 + `EBUSY: resource busy or locked, unlink '…\\purescience.db'`。
+**补全的真实形状（三条读数）**：① 同一份代码在发版提交 `c15bbc1c` 上，`Windows Full Test` **success**；
+② 在执行器的 `e3b1da0f` 上又 **failure**，但换成了**另一条** `database` 分片的用例 ——
+`src/main/reviewer/repository.test.ts`「rolls back …」**120000ms 超时**（`Test Files 1 failed | 143 passed`）；
+③ 三条提交里 `database` 分片涉及的**都是本批没碰过的文件**。
+⇒ 结论：这不是「某条用例坏了」，是 **Windows `database` 分片被 CPU 饿住**（同一分片里多条重 SQLite 用例在
+两核 runner 上并行，谁超时看当次负载），**间歇而非确定**。**修法不许是加超时**（技能明文禁止用「加大超时」收这类红）——
+候选：降低该分片的 worker 数 / 把重用例挪出该分片 / 削减每条的建表成本。**本条立为 v1.89.0 的 CI 健康项**，
+本批不动它（本批一个字节都没碰那个分片）。
 
 ### 二、IC13 窗口卸载（v1.89.0 的第一个单元）
 
@@ -1265,3 +1272,17 @@ IC16·IC17 收紧后 spec 的机器判决（本版认证车道会给）/ IC33 �
 - `[ic16] gate while preparing: Preparing Python environment… Downloading managed python runtime (1%) **43.1 KB/s · 104.0 KB / 16.0 MB · 1% · ~6m 18s** Cancel` ⇒ 遮罩侧的富字段行也照旧在场。
 
 ⇒ **IC16/IC17 这条立案可以结**：结论是「原记录失真 + 收紧后的读数两半各自成立」，机器判决绿。**已发布的 v1.88.0 CHANGELOG/正文那段「判决由认证车道给出」现在有了答案**；按「已发布记录不改写」的口径，结论落在本档与 v1.89.0 的正文里。
+
+### 五、发版窗口里执行器仍在一轮里 —— `pause` 挡不住**已经开跑的那一轮**（本轮实测）
+
+- 21:45 `hermes cron pause` 之后，**已经在跑的那一轮执行器**继续工作：它在 **22:40** 与 **22:53** 各提交并推送了一笔
+  （`docs(IC39/IC40 工作单)` ×2），而且它那两笔是**坐在我 22:14 的两笔之上**的 ⇒ 它一次推送把**我的两笔一并带上去了**
+  （`origin/main` 从 `100f9733` 快进到我的 `e2092c25`）。**tag 驱动的 Release 不受影响**（不同 workflow，已 success），
+  但主干车道被顶掉过（`Nightly | c15bbc1c | cancelled`）。
+- ⇒ **下一次开窗口前的核对清单多一条**：除了 `git status --short` 与 `pause`，还要看**执行器最近一次 run 是否仍在跑**
+  （`hermes cron list` 的 `Last run` 时间 + 工作区里有没有它未提交的路径），或**接受**这个事实并只以 tag 驱动的
+  Release 为发版判据。
+- **它的这轮工作有价值**：把 IC39/IC40 的路线 A **实测跑通**了（用户态 `/usr/sbin/sshd` 跑 `127.0.0.1:2222`，
+  零安装零系统改动），并**对源纠正**了任务提交路径（真正 `submitJob` 的是领域连接器 `sequence-tools.ts:388/565`，
+  不是笔记本/Shell 工具）⇒ 两条读数现在**本机可解**。**工作区此刻有它未提交的在制品**（`e2e/fixtures/fake-opencode.mjs`、
+  新 spec `e2e/certification/remote-job-cancel-unreachable.spec.ts`）⇒ **本会话不碰这两个文件，也不把 IC39/IC40 据为己有**。
