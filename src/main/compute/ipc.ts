@@ -356,7 +356,10 @@ const createComputeHandlers = (
         externalDispatch,
         // Protection evidence for the remote surfaces: the card shows it before the decision, the job
         // row persists it, and call_command returns it with its result.
-        (surface, remote) => executionProtection.snapshot(surface, remote)
+        (surface, remote) => executionProtection.snapshot(surface, remote),
+        // The named-refusal port: read through the same service the approval broker uses, so the two
+        // can never disagree about which policy is in force.
+        () => executionProtection.remoteUnprotectedPolicy()
       )
     })()
 

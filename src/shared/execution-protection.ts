@@ -321,6 +321,35 @@ export type RemoteUnprotectedExecutionPolicy =
 
 export const DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY: RemoteUnprotectedExecutionPolicy = 'deny'
 
+// Where a user changes that policy, and the option labels, as they read in the panel. Single source:
+// the refusal message below quotes them, and `protection-policy-labels.test.ts` pins the panel's
+// English labels to these strings, so renaming an option in the dictionary fails a test instead of
+// leaving a refusal that points at a setting nobody can find. The message itself stays English (this
+// text travels to the agent as instructions, and agent-facing text is not localized).
+export const REMOTE_UNPROTECTED_SETTING_PATH =
+  'Settings → Execution protection → "Remote execution without protection"'
+
+export const REMOTE_UNPROTECTED_POLICY_LABELS: Readonly<
+  Record<RemoteUnprotectedExecutionPolicy, string>
+> = {
+  confirm: 'Ask every time',
+  remembered: 'Let remembered approvals cover it',
+  deny: 'Refuse unprotected remote execution'
+}
+
+/**
+ * The refusal a caller gets when the policy — not a user's answer — is what stopped the run. It names
+ * the policy, says plainly that no approval was requested, and points at the one setting that changes
+ * the outcome, because a bare "denied" is what sends an operator hunting for a grant that would not
+ * have helped: the policy is consulted before any grant or card.
+ */
+export const remoteUnprotectedRefusalMessage = (hostName: string): string =>
+  `Remote execution on "${hostName}" was refused by the execution-protection policy ` +
+  `("${REMOTE_UNPROTECTED_POLICY_LABELS.deny}" is in force): a remote run cannot be isolated by this ` +
+  `machine, so nothing was submitted and no approval was requested. To allow it, open ` +
+  `${REMOTE_UNPROTECTED_SETTING_PATH} and choose "${REMOTE_UNPROTECTED_POLICY_LABELS.confirm}" or ` +
+  `"${REMOTE_UNPROTECTED_POLICY_LABELS.remembered}". Do not retry until the user changes that setting.`
+
 export type ExecutionProtectionMatrix = {
   platform: string
   capturedAt: number

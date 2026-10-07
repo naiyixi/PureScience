@@ -17,10 +17,12 @@ import type {
 } from '../../shared/compute'
 import { DETAILS_DOC_MAX_LENGTH, isTerminalComputeJobStatus } from '../../shared/compute'
 import {
+  remoteUnprotectedRefusalMessage,
   unresolvedExecutionProtectionSnapshot,
   type ExecutionProtectionSnapshot,
   type ExecutionSurface,
-  type RemoteExecutionTarget
+  type RemoteExecutionTarget,
+  type RemoteUnprotectedExecutionPolicy
 } from '../../shared/execution-protection'
 import type { DirListing, DownloadDest, LocalFile, RemoteFsError } from '../../shared/remote-fs'
 import { classifyRemoteError, parseFindListing } from '../../shared/remote-fs'
@@ -342,9 +344,34 @@ export class ComputeService {
     private readonly resolveExecutionProtection?: (
       surface: ExecutionSurface,
       remote: RemoteExecutionTarget
-    ) => Promise<ExecutionProtectionSnapshot>
+    ) => Promise<ExecutionProtectionSnapshot>,
+    // The policy for a remote run that cannot be isolated. Optional: when it is not wired, nothing
+    // changes — the approval broker still applies the same policy on its own (it reads the same
+    // setting), a refused run simply comes back as a plain `deny`. Wiring it here is what lets the
+    // refusal be *named* for what it is instead of being reported as an approval the user denied.
+    private readonly readRemoteUnprotectedPolicy?: () => Promise<
+      RemoteUnprotectedExecutionPolicy | undefined
+    >
   ) {
     this.scpRunner = scpRunner ?? new SystemScpRunner()
+  }
+
+  // The named refusal for a remote operation the execution-protection policy rejects outright, or
+  // undefined when the run may proceed to the approval gate.
+  //
+  // This is not a second policy implementation: `deny` is the same answer the broker reaches, and the
+  // broker's own gate stays in force (defense in depth). What changes is only the report — the caller
+  // is told a setting refused the run, not that a question was answered. No card is ever broadcast on
+  // this path, so "approval denied" was never a true statement about it.
+  private async protectionRefusalReason(
+    protection: ExecutionProtectionSnapshot | undefined,
+    host: { displayName: string }
+  ): Promise<string | undefined> {
+    if (!this.readRemoteUnprotectedPolicy) return undefined
+    if (protection?.level !== 'unprotected') return undefined
+    const policy = await this.readRemoteUnprotectedPolicy()
+    if (policy !== 'deny') return undefined
+    return remoteUnprotectedRefusalMessage(host.displayName)
   }
 
   // The protection snapshot for one remote operation, or undefined when no resolver was wired. A
@@ -769,6 +796,20 @@ export class ComputeService {
     // not an approval. `protectionFor` never invents a level (a failing resolver degrades to
     // "unresolved", which reads as unprotected).
     const protection = await this.protectionFor('remote-host', host)
+
+    // A run the policy refuses is not a question: name it before the gate, so the caller is not told
+    // an approval was denied when no card was ever sent.
+    const policyRefusal = await this.protectionRefusalReason(protection, host)
+    if (policyRefusal) {
+      const err = new Error(policyRefusal) as Error & { computeCallError: ComputeCallError }
+      err.computeCallError = {
+        error_code: 'protection_refused',
+        message: policyRefusal,
+        retry_after_user_action: false
+      }
+      throw err
+    }
+
     const approvalInfo = {
       provider_id: host.providerId,
       provider_name: host.displayName,
@@ -943,13 +984,21 @@ export class ComputeService {
         throw new Error('ComputeApprovalBroker is required for session-cache downloads.')
       }
 
+      const protection = await this.protectionFor('remote-host', host)
+      const policyRefusal = await this.protectionRefusalReason(protection, host)
+      if (policyRefusal) {
+        const err = new Error(policyRefusal) as Error & { code: string }
+        err.code = 'protection_refused'
+        throw err
+      }
+
       const approvalInfo = {
         provider_id: host.providerId,
         provider_name: host.displayName,
         shape: host.shape,
         intent: 'Download remote file to session workspace',
         remote_path: remotePath,
-        protection: await this.protectionFor('remote-host', host)
+        protection
       }
 
       // Use grant-aware requestWithContext when session/project context is available.
@@ -1330,6 +1379,20 @@ export class ComputeService {
     // The requested protection level for this submission, resolved before the card so the user
     // approves a known level, and reused for the job row so the evidence and the card agree.
     const protection = await this.protectionFor('background-job', host)
+
+    // The policy is consulted before the card, exactly as the broker does — so a refused submission is
+    // reported as a policy refusal rather than as an approval the user denied.
+    const policyRefusal = await this.protectionRefusalReason(protection, host)
+    if (policyRefusal) {
+      const err = new Error(policyRefusal) as Error & { computeCallError: ComputeCallError }
+      err.computeCallError = {
+        error_code: 'protection_refused',
+        message: policyRefusal,
+        retry_after_user_action: false
+      }
+      throw err
+    }
+
     const approvalInfo = {
       provider_id: host.providerId,
       provider_name: host.displayName,

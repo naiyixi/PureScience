@@ -154,7 +154,12 @@ export type ExecResult = {
 // retry_after_user_action=true means the system will NOT retry automatically — the user must fix
 // an external condition first (e.g. SSH connectivity).
 export type ComputeCallError = {
-  error_code: 'host_unreachable' | 'timeout' | 'approval_denied' | 'queue_full'
+  // `approval_denied` means a card was shown and the user said no. `protection_refused` means the
+  // app's execution-protection policy refused the run outright — nobody was asked, so reporting it as
+  // a denied approval would tell the caller a question was answered that never existed (and sends it
+  // looking for a missing grant instead of for the setting that refuses the run).
+  error_code:
+    'host_unreachable' | 'timeout' | 'approval_denied' | 'protection_refused' | 'queue_full'
   message: string
   retry_after_user_action: boolean
 }

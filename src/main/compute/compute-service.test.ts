@@ -14,6 +14,10 @@ import type { ResolvedSshTarget, SshRunner } from './ssh-runner'
 import type { ScpRunner } from './scp-runner'
 import type { ConcurrencyManager } from './concurrency-manager'
 import { resolveExecutionProtection } from '../../shared/execution-protection'
+import {
+  remoteUnprotectedRefusalMessage,
+  type RemoteUnprotectedExecutionPolicy
+} from '../../shared/execution-protection'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -3109,5 +3113,163 @@ describe('ComputeService.cancelJob', () => {
     await expect(service.cancelJob('job-cancel-1')).rejects.toThrow(
       'ComputeJobRepository is required to cancel a job.'
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ComputeService — a policy refusal is named for what it is, not as a denied approval
+// ---------------------------------------------------------------------------
+//
+// The app's execution-protection policy can refuse a remote run outright, and it is consulted BEFORE
+// any grant or card — so on that path nobody is ever asked. Reporting it as "approval denied" told a
+// caller that a question had been answered, which is how a reading gets misdiagnosed as "a grant is
+// missing" when no grant could have helped (`docs/plan-2026-10-07-IC39-IC40-live-host-work-order.md`
+// carries that history). These cases pin the honest report, and pin that the normal paths are intact.
+
+describe('ComputeService — the policy refusal is named', () => {
+  // The real resolver's answer for a remote surface: `unprotected` by construction, because nothing on
+  // this machine can isolate a remote run. That is the condition under which the policy applies.
+  const unprotectedSnapshot = resolveExecutionProtection({
+    surface: 'remote-host',
+    platform: 'linux',
+    networkAllowlistEnabled: true,
+    osWriteGuardAvailable: true
+  })
+
+  const buildService = (options: {
+    broker: ComputeApprovalBroker
+    policy?: RemoteUnprotectedExecutionPolicy
+    // false ⇒ the port is not wired, i.e. the behavior isolated constructions had before it existed.
+    withPolicyPort?: boolean
+    jobRepo?: unknown
+    scpRunner?: ScpRunner
+  }): ComputeService => {
+    const runner = makeFakeRunner({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo } = makeRepo()
+    return new ComputeService(
+      runner,
+      repo,
+      options.broker,
+      options.scpRunner,
+      undefined,
+      options.jobRepo as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      // Positional slot 12: the protection port (the real resolver's remote answer).
+      (async () => unprotectedSnapshot) as never,
+      // Positional slot 13: the policy port.
+      options.withPolicyPort === false ? undefined : ((async () => options.policy) as never)
+    )
+  }
+
+  it('call_command: names the policy, says nobody was asked, and never arms a card', async () => {
+    const request = vi.fn(() => Promise.resolve('once' as const))
+    const requestWithContext = vi.fn(() => Promise.resolve('once' as const))
+    const broker = {
+      request,
+      requestWithContext,
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+    const service = buildService({ broker, policy: 'deny' })
+
+    const err = await service
+      .callCommand('ssh:biowulf', 'echo hi', 'probe', true, undefined, {
+        sessionId: 's1',
+        projectId: 'p1'
+      })
+      .catch((e) => e)
+
+    expect(err.computeCallError?.error_code).toBe('protection_refused')
+    expect(err.computeCallError?.message).toBe(remoteUnprotectedRefusalMessage('biowulf'))
+    expect(err.computeCallError?.message).toContain('no approval was requested')
+    // It has to point at the setting by the label the user reads there, or the operator is sent
+    // hunting for a grant that the policy never consulted.
+    expect(err.computeCallError?.message).toContain('Ask every time')
+    expect(err.computeCallError?.retry_after_user_action).toBe(false)
+    expect(request).not.toHaveBeenCalled()
+    expect(requestWithContext).not.toHaveBeenCalled()
+  })
+
+  it('submit_job: names the policy and writes no job row', async () => {
+    const requestWithContext = vi.fn(() => Promise.resolve('once' as const))
+    const broker = {
+      request: vi.fn(() => Promise.resolve('once' as const)),
+      requestWithContext,
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+    const { repo: jobRepo, createCalls } = makeJobRepo()
+    const service = buildService({ broker, policy: 'deny', jobRepo })
+
+    const err = await service
+      .submitJob('ssh:biowulf', 'long run', 'sleep 300', {}, { sessionId: 's1', projectId: 'p1' })
+      .catch((e) => e)
+
+    expect(err.computeCallError?.error_code).toBe('protection_refused')
+    expect(err.computeCallError?.message).toBe(remoteUnprotectedRefusalMessage('biowulf'))
+    expect(createCalls).not.toHaveBeenCalled()
+    expect(requestWithContext).not.toHaveBeenCalled()
+  })
+
+  it('session-cache download: names the policy and never runs scp', async () => {
+    const copy = vi.fn()
+    const scpRunner = { copy } as unknown as ScpRunner
+    const broker = {
+      request: vi.fn(() => Promise.resolve('once' as const)),
+      requestWithContext: vi.fn(() => Promise.resolve('once' as const)),
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+    const service = buildService({ broker, policy: 'deny', scpRunner })
+
+    const err = await service
+      .download('ssh:biowulf', '/remote/secret.key', { kind: 'session-cache' })
+      .catch((e) => e)
+
+    // The download path reports through `code` (not `computeCallError`); the name has to match.
+    expect(err.code).toBe('protection_refused')
+    expect(err.message).toBe(remoteUnprotectedRefusalMessage('biowulf'))
+    expect(copy).not.toHaveBeenCalled()
+  })
+
+  it('an `Ask every time` policy still asks: the refusal must not swallow the normal path', async () => {
+    const requestWithContext = vi.fn(() => Promise.resolve('once' as const))
+    const broker = {
+      request: vi.fn(() => Promise.resolve('once' as const)),
+      requestWithContext,
+      respond: vi.fn()
+    } as unknown as ComputeApprovalBroker
+    const { repo: jobRepo, createCalls } = makeJobRepo()
+    const service = buildService({ broker, policy: 'confirm', jobRepo })
+
+    const result = await service.submitJob(
+      'ssh:biowulf',
+      'long run',
+      'sleep 300',
+      {},
+      { sessionId: 's1', projectId: 'p1' }
+    )
+
+    expect(result.status).toBe('submitted')
+    expect(requestWithContext).toHaveBeenCalledOnce()
+    expect(createCalls).toHaveBeenCalledOnce()
+  })
+
+  it('without the policy port the previous behavior is unchanged (the broker decides)', async () => {
+    // Legacy isolated construction: the broker still applies the same policy on its own, so the run is
+    // still refused — it just comes back as a plain `deny`, exactly as before this port existed.
+    const broker = makeApprovalBroker('deny')
+    const service = buildService({ broker, withPolicyPort: false })
+
+    const err = await service.callCommand('ssh:biowulf', 'echo hi', 'probe').catch((e) => e)
+
+    expect(err.computeCallError?.error_code).toBe('approval_denied')
   })
 })

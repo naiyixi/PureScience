@@ -59,7 +59,7 @@ const activeHosts = await host.compute.list_compute()
 // Create a handle to a specific host (no network call)
 const c = host.compute.create('ssh:<alias>')
 
-// Run a short remote command (throws on approval_denied / host_unreachable / timeout)
+// Run a short remote command (throws on approval_denied / protection_refused / host_unreachable / timeout)
 const result = await c.call_command('<shell command>', '<one-line intent for the approval card>', {
   login_shell: true, // default: true — runs login profiles, then readable ~/.bashrc, before this command
   timeout_seconds: 60 // optional — the host applies its own default (60s) when omitted
@@ -301,7 +301,12 @@ try {
   if (code === 'host_unreachable') {
     // SSH connectivity issue — needs user action (VPN, key, etc.); e.retry_after_user_action is true
   } else if (code === 'approval_denied') {
-    // User declined the approval card
+    // User declined the approval card. Do not retry; the user has answered.
+  } else if (code === 'protection_refused') {
+    // The app's execution-protection policy refused the remote run outright: a remote run cannot be
+    // isolated by this machine, and Settings → Execution protection is set to refuse it. Nobody was
+    // asked, so this is NOT a declined approval and no grant would change it. Tell the user which
+    // setting decides this and let them choose; do not retry in this turn.
   } else if (code === 'timeout') {
     // Command exceeded timeout_seconds
   }
