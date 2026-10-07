@@ -415,32 +415,35 @@ const createRuntimeSelectionWorkflows = (
             'it. Use the app-managed environment, or manage this one yourself.'
         }
       }
-      // The admission resolves the environment from the SESSION BINDING, never from `request.environment`
-      // (package-admission.ts: `binding?.source === 'managed' && binding.envName ? … : default`), and the
-      // window has no session. So the only environment a window request can actually act on is the
-      // app-managed default — and a request that names anything else must be refused HERE, by name,
-      // instead of being silently applied to the default (the mis-target this resolution exists to
-      // prevent). A named environment is still reachable for the agent, which does have a binding.
+      // The admission resolves an environment BY NAME (`request.environment`) and falls back to the
+      // language's managed default when none is given. Since IC13 a window request MAY name a NAMED
+      // environment — it is the only place the app's own rules allow a removal or a downgrade, because
+      // the default prefix is additive-only — and the admission re-checks that name against the same
+      // registry this resolution used, so a stale or foreign id still fails there by name and can never
+      // be applied to the default. Anything resolving to neither the default nor a named environment is
+      // refused HERE, by name, instead of being silently applied to the default (the mis-target this
+      // resolution exists to prevent).
       const addressesDefault =
         !environmentName ||
         (discoveredEnv?.provenance === 'app-managed' && !discoveredEnv?.condaEnv) ||
         discoveredEnv?.condaEnv === DEFAULT_PY_ENV ||
         discoveredEnv?.condaEnv === DEFAULT_R_ENV
-      if (!addressesDefault) {
+      if (!addressesDefault && !named) {
         return {
           ok: false,
           needsRestart: false,
           log: '',
           error:
-            'The Settings package dialog manages the app-managed default environment. Managing "' +
-            `${environmentName ?? request.envId}" needs a notebook session bound to it — ask the ` +
-            'assistant, or manage that environment yourself.'
+            'The Settings package dialog manages the app-managed default environment and the named ' +
+            `environments it created. "${environmentName ?? request.envId}" is neither, so the app ` +
+            'cannot install into it — use the app-managed environment, or manage this one yourself.'
         }
       }
       return run({
         language: request.language,
         packages: [...request.packages],
         operation: request.operation ?? 'install',
+        ...(named ? { environment: named.name } : {}),
         ...(request.usePip ? { usePip: true } : {})
       })
     }

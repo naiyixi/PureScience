@@ -622,3 +622,92 @@ describe('package-listing workflows', () => {
     expect(counts).toEqual({ '/managed/a': 1, '/usr/bin/python3': null })
   })
 })
+
+// IC13: the Settings package dialog addresses an environment BY NAME. A resolved NAMED environment is
+// passed through by name (it is the only place the app's rules allow a removal); anything that resolves to
+// neither the default nor a named environment stays refused by name.
+describe('runtime selection workflows · package target resolution (IC13)', () => {
+  it('passes a RESOLVED named environment through by name', async () => {
+    discoveryState.python = []
+    const managePackages = vi.fn(async () => ({
+      ok: true,
+      needsRestart: false,
+      log: '',
+      method: 'conda' as const,
+      attempts: [],
+      fallbackUsed: false
+    }))
+    const workflows = createRuntimeSelectionWorkflows({
+      settingsService: fakeSettingsService(),
+      runtimeRoot: () => '/data/runtime',
+      registry: fakeRegistry(),
+      manageNamedEnvironments: vi.fn(async () => ({
+        environments: [
+          {
+            name: 'my-env',
+            language: 'python' as const,
+            ready: true,
+            isDefault: false,
+            interpreterPath: '/data/runtime/envs/my-env/bin/python'
+          }
+        ]
+      })),
+      managePackages
+    })
+
+    const result = await workflows.managePackages({
+      language: 'python',
+      envId: '/data/runtime/envs/my-env/bin/python',
+      packages: ['numpy'],
+      operation: 'uninstall'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(managePackages).toHaveBeenCalledWith({
+      language: 'python',
+      packages: ['numpy'],
+      operation: 'uninstall',
+      environment: 'my-env'
+    })
+  })
+
+  it('keeps refusing an environment that is neither the default nor a named one', async () => {
+    discoveryState.python = [
+      {
+        language: 'python',
+        provenance: 'user-own',
+        envId: '/opt/other/bin/python',
+        interpreterPath: '/opt/other/bin/python',
+        label: 'Other',
+        runnable: true,
+        condaEnv: 'other-env'
+      }
+    ]
+    const managePackages = vi.fn(async () => ({
+      ok: true,
+      needsRestart: false,
+      log: '',
+      method: 'conda' as const,
+      attempts: [],
+      fallbackUsed: false
+    }))
+    const workflows = createRuntimeSelectionWorkflows({
+      settingsService: fakeSettingsService(),
+      runtimeRoot: () => '/data/runtime',
+      registry: fakeRegistry(),
+      manageNamedEnvironments: vi.fn(async () => ({ environments: [] })),
+      managePackages
+    })
+
+    const result = await workflows.managePackages({
+      language: 'python',
+      envId: '/opt/other/bin/python',
+      packages: ['numpy'],
+      operation: 'install'
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('"other-env" is neither')
+    expect(managePackages).not.toHaveBeenCalled()
+  })
+})

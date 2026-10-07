@@ -452,6 +452,10 @@ class NotebookRuntimeService {
       resolveRuntimeEnablement: (language) => this.resolveRuntimeEnablement(language),
       isDefaultEnvironmentDisabled: (language, candidateRuntimeRoot) =>
         this.isDefaultEnvDisabled(language, candidateRuntimeRoot),
+      // IC13: the window's Packages dialog addresses a named environment BY NAME; the same owner that
+      // guards removal decides what counts as one, so the panel and the admission can never disagree.
+      resolveNamedEnvironment: (language, name) =>
+        this.environmentManagement.resolveNamedEnvironment(language, name),
       repairPolicy: this.repairPolicy,
       runtimeRepair: this.runtimeRepair,
       environmentOperations: this.environmentOperations,

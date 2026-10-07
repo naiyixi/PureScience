@@ -90,6 +90,8 @@ const harness = (
     notifyChanged: vi.fn(),
     resolveRuntimeEnablement: vi.fn().mockResolvedValue(undefined),
     isDefaultEnvironmentDisabled: vi.fn().mockResolvedValue(false),
+    // IC13: no request-supplied name resolves here, so every case below keeps pinning to the default.
+    resolveNamedEnvironment: vi.fn().mockResolvedValue(undefined),
     repairPolicy: new NotebookRuntimeRepairPolicy(runtimeRoot),
     runtimeRepair: {
       quarantineProtectedIdentity: vi.fn().mockResolvedValue(undefined),

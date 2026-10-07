@@ -23,6 +23,10 @@ type NotebookPackageAdmissionOwnerOptions = {
     language: NotebookLanguage,
     runtimeRoot: string
   ) => Promise<boolean>
+  // IC13: resolves a request-supplied environment NAME against the app's own named environments, or
+  // undefined so admission refuses BY NAME (never a silent fallback to the default). Consulted ONLY when
+  // no session binding decides the target — a bound session is never retargeted by a request.
+  resolveNamedEnvironment: (language: NotebookLanguage, name: string) => Promise<string | undefined>
   repairPolicy: Pick<
     NotebookRuntimeRepairPolicy,
     'blockKey' | 'markerKey' | 'registryKeys' | 'requirement' | 'runtimeId'
@@ -80,11 +84,22 @@ class NotebookPackageAdmissionOwner {
     if (session.status === 'refused') return session
 
     const binding = session.value?.runtimeBinding(request.language)
-    const environmentName =
-      binding?.source === 'managed' && binding.envName
-        ? binding.envName
-        : defaultEnvironment(request.language)
     const runtimeRoot = this.options.runtimeRoot
+    const defaultName = defaultEnvironment(request.language)
+    const boundName = binding?.source === 'managed' && binding.envName ? binding.envName : undefined
+    const requested = request.environment?.trim()
+    // IC13: a request-supplied environment NAME is honoured ONLY when it resolves to a named environment
+    // this app manages — and only when no session binding decides the target. Two long-standing rules are
+    // deliberately kept: a bound session always wins (a caller's string can never retarget it), and a name
+    // that cannot be honoured keeps pinning to the managed default instead of being applied blindly (see
+    // the "pins every mutation target" cases below). The default prefix stays additive-only either way, so
+    // a name that cannot be honoured can never reach a removal; the window path refuses such a name before
+    // it gets here (runtime-selection-workflows.ts resolves it against the same registry).
+    const resolvedNamedName =
+      !binding && requested && requested !== defaultName
+        ? await this.options.resolveNamedEnvironment(request.language, requested)
+        : undefined
+    const environmentName = resolvedNamedName ?? boundName ?? defaultName
     const repair = this.options.repairPolicy.requirement(request.language, environmentName, binding)
     const repairRefusal = this.protectedRepairRefusal(
       { request, environmentName, binding },

@@ -1228,9 +1228,10 @@ const RuntimesPanel = ({
                         size="sm"
                         data-testid="named-env-packages"
                         onClick={() => {
-                          // The dialog is a READ view for a named environment: the package admission
-                          // resolves its target from a session binding the window does not have, so a
-                          // request naming this env is refused by name rather than applied to the default.
+                          // IC13: the dialog is WRITABLE for a named environment — the admission accepts a
+                          // request that names one (no session binding decides the target from the
+                          // window) and re-checks the name against the same registry this row came from.
+                          // The app-managed DEFAULT stays additive-only, so it remains a read view.
                           openPackagesDialog({
                             language: env.language,
                             provenance: 'app-managed',

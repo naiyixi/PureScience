@@ -113,6 +113,27 @@ class NotebookEnvironmentManagementOwner {
     }
   }
 
+  // IC13: the Settings package dialog addresses an environment BY NAME. Only a NAMED environment the
+  // app's own rules allow mutations in is addressable this way — the defaults (and the app-managed
+  // versioned environments) are not, because the default prefix is additive-only by policy. Returns the
+  // canonical name, or undefined so the caller refuses BY NAME instead of falling back to a default.
+  async resolveNamedEnvironment(
+    language: NotebookLanguage,
+    name: string
+  ): Promise<string | undefined> {
+    const trimmed = name.trim()
+    if (!trimmed || isAppManagedEnvironment(trimmed)) return undefined
+    const manager = this.manager
+    if (!manager) return undefined
+    const match = manager
+      .listEnvironments()
+      .find(
+        (candidate) =>
+          candidate.language === language && candidate.name === trimmed && !candidate.isDefault
+      )
+    return match?.name
+  }
+
   // A7 external-lock import. Same validation and mutation ordering as `create`, but the result is a
   // discriminated union: a lock entry that cannot be verified yields { status:'incomplete' } with the
   // NAMED per-entry reasons (and NO prefix), so the window never has to parse an error string.

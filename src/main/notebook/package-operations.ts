@@ -59,6 +59,9 @@ type NotebookPackageOperationsOptions = {
     language: NotebookLanguage,
     runtimeRoot: string
   ) => Promise<boolean>
+  // IC13: the named-environment resolver the Settings package dialog needs so a window request can
+  // address a named environment by name (see package-admission.ts).
+  resolveNamedEnvironment: (language: NotebookLanguage, name: string) => Promise<string | undefined>
   repairPolicy: NotebookRuntimeRepairPolicy
   runtimeRepair: Pick<
     NotebookRuntimeRepairOwner,
@@ -110,6 +113,7 @@ class NotebookPackageOperations {
       findSession: options.findSession,
       resolveRuntimeEnablement: options.resolveRuntimeEnablement,
       isDefaultEnvironmentDisabled: options.isDefaultEnvironmentDisabled,
+      resolveNamedEnvironment: options.resolveNamedEnvironment,
       repairPolicy: options.repairPolicy,
       environmentOperations: options.environmentOperations,
       recovery: options.recovery,

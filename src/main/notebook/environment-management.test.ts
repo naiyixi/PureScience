@@ -125,6 +125,32 @@ describe('NotebookEnvironmentManagementOwner', () => {
     })
   })
 
+  // IC13: the Settings package dialog addresses an environment BY NAME. This owner is the single source of
+  // what counts as one, so the panel and the package admission can never disagree about it.
+  it('resolves a named environment by name and refuses the app-managed prefixes (IC13)', async () => {
+    const configured = manager()
+    vi.mocked(configured.listEnvironments).mockReturnValue([
+      { name: 'my-env', language: 'python', ready: true, isDefault: false },
+      { name: 'default-python', language: 'python', ready: true, isDefault: true },
+      { name: 'my-env', language: 'r', ready: true, isDefault: false }
+    ])
+    const { owner } = harness({ manager: configured })
+
+    // A named environment is addressable, with surrounding whitespace tolerated.
+    await expect(owner.resolveNamedEnvironment('python', 'my-env')).resolves.toBe('my-env')
+    await expect(owner.resolveNamedEnvironment('python', ' my-env ')).resolves.toBe('my-env')
+    // The app-managed default and versioned prefixes are NOT (their prefixes are additive-only)…
+    await expect(owner.resolveNamedEnvironment('python', 'default-python')).resolves.toBeUndefined()
+    await expect(
+      owner.resolveNamedEnvironment('python', 'default-python-2')
+    ).resolves.toBeUndefined()
+    // …a name never crosses languages…
+    await expect(owner.resolveNamedEnvironment('python', 'my-env-r')).resolves.toBeUndefined()
+    // …and an unknown name resolves to nothing, so the caller refuses BY NAME instead of falling back.
+    await expect(owner.resolveNamedEnvironment('python', 'nope')).resolves.toBeUndefined()
+    await expect(owner.resolveNamedEnvironment('python', '  ')).resolves.toBeUndefined()
+  })
+
   it('validates and creates under recovery and the environment mutation slot', async () => {
     const order: string[] = []
     const configured = manager()

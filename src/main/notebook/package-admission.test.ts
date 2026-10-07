@@ -56,6 +56,9 @@ const ownerHarness = (
       installAuthorized: binding ? { [binding.runtimeId]: true } : {}
     })),
     isDefaultEnvironmentDisabled: vi.fn(async () => false),
+    // IC13: by default no request-supplied name resolves, so the pinning cases below keep their meaning;
+    // the named-environment cases override this with their own registry double.
+    resolveNamedEnvironment: vi.fn(async () => undefined),
     repairPolicy: new NotebookRuntimeRepairPolicy(runtimeRoot),
     environmentOperations: { isRepairBlocked: vi.fn(() => false) },
     recovery: {
@@ -100,6 +103,77 @@ describe('NotebookPackageAdmissionOwner', () => {
         repairMarkerKey: managedRepairRegistryKey('default-python', 'python'),
         journalTarget: envPrefix('/runtime', 'default-python')
       })
+    })
+  })
+
+  // IC13: the Settings package dialog is the only producer of a request-supplied environment name. It is
+  // honoured exactly when it resolves to a named environment this app manages — that is the only place the
+  // app's own rules allow a removal (the default prefix is additive-only).
+  it('honours a request-named environment that resolves to a named one (IC13)', async () => {
+    const { owner, options } = ownerHarness(undefined)
+    options.resolveNamedEnvironment = vi.fn(async () => 'my-env')
+
+    const admission = await owner.admit({
+      language: 'python',
+      packages: ['numpy'],
+      operation: 'uninstall',
+      environment: 'my-env'
+    })
+
+    expect(options.resolveNamedEnvironment).toHaveBeenCalledWith('python', 'my-env')
+    expect(admission).toEqual({
+      status: 'admitted',
+      target: expect.objectContaining({
+        request: expect.objectContaining({ environment: 'my-env' }),
+        environmentName: 'my-env',
+        environmentCaptureTarget: expect.objectContaining({ environmentName: 'my-env' }),
+        journalTarget: envPrefix('/runtime', 'my-env')
+      })
+    })
+  })
+
+  it('keeps pinning to the default when a request-named environment does not resolve (IC13)', async () => {
+    const { owner, options } = ownerHarness(undefined)
+    options.resolveNamedEnvironment = vi.fn(async () => undefined)
+
+    const admission = await owner.admit({
+      language: 'python',
+      packages: ['numpy'],
+      operation: 'uninstall',
+      environment: 'not-a-real-env'
+    })
+
+    // The long-standing pinning rule still holds: an unhonourable name is never applied blindly, and the
+    // additive-only policy of the default it lands on then refuses the removal by name.
+    expect(admission).toEqual({
+      status: 'admitted',
+      target: expect.objectContaining({
+        request: expect.objectContaining({ environment: 'default-python' }),
+        environmentName: 'default-python'
+      })
+    })
+  })
+
+  it('never lets a request-named environment retarget a bound session (IC13)', async () => {
+    const binding = managedBinding()
+    const { owner, options } = ownerHarness(binding)
+    options.resolveNamedEnvironment = vi.fn(async () => 'my-env')
+
+    const admission = await owner.admit({
+      language: 'python',
+      packages: ['numpy'],
+      operation: 'uninstall',
+      sessionId: 'session-1',
+      workspaceCwd: '/workspace',
+      projectName: 'project-1',
+      environment: 'my-env'
+    })
+
+    // The registry is not even consulted: a bound session decides the target, full stop.
+    expect(options.resolveNamedEnvironment).not.toHaveBeenCalled()
+    expect(admission).toEqual({
+      status: 'admitted',
+      target: expect.objectContaining({ environmentName: binding.envName })
     })
   })
 
