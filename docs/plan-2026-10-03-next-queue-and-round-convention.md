@@ -1196,3 +1196,52 @@ Latest = v1.87.0）。
 | `./node_modules/.bin/eslint --no-cache .` | **0 error ｜ 123 warning**（本单元触碰的两个文件单独跑 **0 problem**） |
 
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`（会话自 21:03 后可能又推了；**先按提交划掉它做过的**）；② 按完整 40 位 SHA 读本笔的两条车道 + 补读 `efc71c29` 的 `Nightly` 判决；③ 内存宽松（空闲页 ≥ 数万）**且会话不在取证**时，按 `settings-download-detail.spec.ts` 的配方在隔离工作树上跑一次，把 IC16/IC17 的读数真正收掉；④ 其余候选不变：IC33 真审批夹具 / IC13 窗口卸载路径（需安全评审）。
+
+## 二十九、发版窗口（会话，2026-10-07 21:4x–）—— v1.88.0 发版 + IC13 结构性边界收口
+
+**开窗口前的两次「别抢」核对**：`git status --short` 空（执行器 21:22 那轮已落定、工作区干净）；
+`hermes cron pause 2be4405e5dc6`（发版窗口不许并发推送，Release 页核对完再 resume）。
+
+### 一、v1.88.0
+
+| 项 | 读数 |
+| --- | --- |
+| 发版提交 | `c15bbc1c`（**只碰四个发版文件**：`CHANGELOG.md` / `README.md` / `README.en.md` / `package.json`；自 `v1.87.0` 起 **62 笔**） |
+| tag | 附注 tag `v1.88.0`（对象 `501a61ca` → **提交** `c15bbc1c`）；打 tag 前已 `git push origin main` 并核 `merge-base --is-ancestor` **为真** |
+| 门禁（隔离工作树，被测提交 `013572a0`） | `eslint --no-cache .` **0 error**（128 warning）· 双 typecheck **净** · 全量 **1227 文件通过（16 跳过）/ 15848 passed（204 skipped，零失败）** · 仓规五查通过。被测提交与 tag 提交的差量**只有那四个发版文件**（已在 CHANGELOG 里逐字写明） |
+| 正文口径（双向复核） | 上一版正文里两句过期话（技能不可分叉 / crates 只写不读）**随横幅重写消失**；成熟度块里「journal-import 面板不渲染逐行结果」那句（IC30 已跑绿 13.1s）**从 🚧 移进 ✅**；`check-readme-sync` 绿（徽章/引言/横幅/DOI 逐字一致） |
+| 车道 | Release run `37632394963`：preflight ✅ / matrix ✅ / **Verify ✅** / 四平台 build 在跑。**Release 页尚未核对**（本节写下时） |
+
+**一条必须在汇报里点名的既存红**：`Windows Full Test` 在 `db06590c` 上 **failure**，作业级注解指向
+`src/main/storage/provenance-migration-validation.test.ts` 的「validates the fixed config-root SQLite authority
+against a separate data root」30s 超时 + `EBUSY: resource busy or locked, unlink '…\\purescience.db'`
+—— 即档里记的 **`database` 分片既存抖动**（负载敏感），**本批没碰那个文件**，不是本批引入。
+
+### 二、IC13 窗口卸载（v1.89.0 的第一个单元）
+
+**落地**（提交 `6c9c254d`，**本地提交、未推送**——发版窗口冻结推送）：权限只放宽一处 —— 准入在**无会话绑定**时
+接受一个**能解析到具名环境**的名字（解析器 = `environmentManagement.resolveNamedEnvironment`，与面板**同一份登记册**），
+有绑定则请求里的名字一律不生效；窗口侧（`runtime-selection-workflows.ts`）把解析到的具名环境**按名透传**，解析不到的仍按名拒绝。
+零新通道 / 零新键 / 零 pin 级联。
+
+**踩到并记下的坑（值得后人复读）**：我第一版把准入写成「解析不到就**具名拒绝**」，被本模块**既有两条钉定用例**
+（`pins every mutation target to it` / `pins a managed named target instead of trusting the request`）当场否掉 ⇒
+**保持既有钉定语义**（解析不到仍钉默认；默认的 additive-only 策略随后按名拒绝那次卸载）。
+教训与「改判定语义前先跑该模块既有测试」同一条：**这次是测试先拦住了我**。
+
+**证据**：定向四套件 **50 passed**（新增 6 条：准入 3 / 工作流 2 / 环境管理 1）；模块目录 `src/main/notebook`
+**82 文件 / 1378 passed | 99 skipped、零失败**；渲染设置套件 **63 文件 / 664 passed**；双 typecheck 净
+（`typecheck:node` **真抓到**我自己新 stub 里 `method:'micromamba'` 不在并集 ⇒ 改 `'conda'`）；`eslint --no-cache .` **0 error**，
+触碰文件 0 problem。**变异验证**：把放宽那段回退 ⇒ 新用例**红**（1 failed | 15 passed），恢复 ⇒ 16 passed。
+
+**具名立案（未取）**：IC13 的**真机读数** —— 需在隔离实例里走应用自己的入口建一个具名环境、装一个真包，再从面板
+具名环境行点 Packages **卸载**，断言存储里该环境少一个包且**默认环境清单逐字节未变**（配方见
+`docs/plan-2026-10-07-IC13-window-uninstall.md` §五）。**本机内存是闸门**：写本节时空闲物理页 ≈3.9k（≈62 MB）、
+swap 已用 9.86 G / 11.26 G ⇒ **不做 `build:e2e`**（本机有堆把机器打崩的前例），不冒充通过。
+本单元的 e2e 段**尚未写进 spec**（跑不绿不落树）；由认证车道给出判决前，不声称已实机验过。
+
+**下一轮第一步**：① Release 页核对（资产数 / Latest / 非草稿非预发布 / 正文）→ **`hermes cron resume 2be4405e5dc6`**；
+② `git push origin main`（把 `6c9c254d` 推上去，让 IC13 进入车道）；③ 内存宽松**且没有别人在取证**时，给
+`e2e/certification/packages-mutation.spec.ts` 追加 IC13 那一段（probe-first：先 dump 面板真实 DOM 再写断言），
+在**新建**隔离工作树上跑绿后落树；④ 其余候选不变：IC39/IC40 真机读数（工作单已写好两条路线）/
+IC16·IC17 收紧后 spec 的机器判决（本版认证车道会给）/ IC33 之外的 Windows `database` 分片抖动（测试侧清理重试）。
