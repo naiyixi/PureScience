@@ -1356,3 +1356,84 @@ Error: zerolink-purescience-1.88.0-nightly.ge3b1da0-win-x64-setup.exe timed out 
 **顺带记一条纪律**：`gh workflow run` 的按需运行与推送运行**共享同一 concurrency group** ⇒ 指派会取消在同 ref 上
 正在跑的推送运行（实测 `Windows Full Test | push | c2971b60 | cancelled`）；要拿某一笔的判决就**别在同一 ref 上叠运行**，
 叠了就以最后那一笔为准。
+
+## 三十三、本轮追加（执行器，2026-10-08 01:0x–01:4x）——IC39/IC40 那个「问了却自动拒绝、不弹框」的谜题解开了：**策略在卡片之前就拒了**（并同批把误导人的报错改成事实）
+
+**开工核对（防重做）**：`HEAD == origin/main == 81c66ad1`（会话 **01:04** 的文档提交，距开工 **1 分钟** ⇒ 会话刚活动过、
+但工作区**干净**、进程表无 `electron-vite`/`playwright`/`vitest`）；B 段（A7/S3）已收口、M2 ⛔ 卡产品决定；
+排期档 IC1–IC56 逐行核对后**只剩 IC39/IC40 的读数**与 IC54 未闭 ⇒ 本轮取**执行器自己的那条未闭读数线**。
+**防重做核对**：`e2e/certification/` 里没有 `remote-job-cancel-unreachable.spec.ts`（前两轮按仓规删过），
+`e2e/fixtures/fake-opencode.mjs` 的最后改动是 `db06590c`（会话的），**都不是未提交的在制品**。
+
+**CI 核对（按完整 40 位 SHA，读数即结论；取消 ≠ 绿）**：`81c66ad1` / `a7be1986` 是纯 `docs/**` ⇒ **0 条 run**
+（两条车道都有 `paths:` 过滤，设计如此）；`4a7dec43` 的按需指派**双绿**（`Nightly` **37649259742 success** /
+`Windows Full Test` **37649266075 success**，§三十二 已记）；`c2971b60` 的推送运行 `Nightly` success、
+`Windows Full Test` **cancelled**（被同 ref 的按需指派顶掉，**无判决**）。
+**版本位点**：`gh release list` 的 Latest = **v1.88.0**（2026-10-07T14:57Z）、`package.json` = **1.88.0**（一致）；
+其上另有一条 nightly 预发布 tag `nightly`（Nightly 工作流自己发的，不是发布）。
+
+**本轮产物 = ① 一个 2 天前的谜题的定论；② 一处误导性报错的修复。**
+
+### 一、那两轮 IC39/IC40 取证卡住的真因（读源，逐条 file:line）
+
+工作单 §7 把「提交真发起、**审批真的被问过**、然后自动拒绝且没弹框」记成一个未定性的 (a)/(b) 二选一
+（(a) 策略默认需要先有 grant / (b) 审批请求没投递到渲染端）。**两者都不成立**：
+
+| 事实 | 落点 |
+| --- | --- |
+| 远程面**按构造恒为 `unprotected`**（本机无法隔离远程执行） | `shared/execution-protection.ts` `resolveExecutionProtection()` |
+| 该情形的策略**默认是 `deny`** | 同文件 `DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY = 'deny'` |
+| broker 在**任何 grant、任何卡片之前**读它并 `return 'deny'` | `compute-approval-broker.ts` `requestWithContextOperation()`；注释逐字：`Under deny there is no card: the run is refused outright` |
+| 该行为**是设计且有用例钉住** | `compute-approval-broker.test.ts:705`「refuses an unprotected remote run under the default policy, **with no card and no grant**」 |
+
+⇒ **没有任何审批请求被广播过**（"问了"是误读），**grant 那条路根本没跑到**（不是 (a)），
+**也不是投递失败**（不是 (b)）。**补 grant 不会有任何帮助** —— 这正是那两轮把方向定错的地方。
+**夹具的唯一前置**：先把策略改成 `Ask every time`（或 `Let remembered approvals cover it`）——
+应用自己的入口是 **Settings → Execution protection → "Remote execution without protection"** 三个单选
+（`ExecutionProtectionPanel`，`data-slot="protection-policy-*"`），通道面是 `settings.executionProtection`
+的 `{ action: 'set-remote-policy', policy }`。工作单 §一之三 / §二 已按此改写并加了「开工第一件事」的警示。
+
+### 二、同批修复：把「没人被问过」报成「审批被拒」的文案（`e1a62d75`）
+
+- **为什么算真缺陷**：`error_code: 'approval_denied'` + 文案「Approval denied for submit_job on <host>」出现在一条
+  **从未问过任何人**的路径上 —— 它让调用者（和本仓自己的两次取证、一份工作单）去找一个**本来也不会有用**的
+  grant。事实层面就是错的陈述，不是措辞问题。
+- **改法**：`shared/compute.ts` 新增 `error_code: 'protection_refused'`（与 `approval_denied`「用户真答过」分开）；
+  `shared/execution-protection.ts` 加**单一来源**的拒绝文案（`remoteUnprotectedRefusalMessage()`）与设置路径 / 三个选项标签常量；
+  `compute-service.ts` 三条远程闸门（`call_command` / `submit_job` / session-cache `download`）在审批闸门**之前**
+  按策略具名拒绝、**不广播卡片**；`compute/ipc.ts` 用**与 broker 同一个 reader** 接线（两处不可能对策略给出不同答案）；
+  agent 面技能文档 `resources/skills/remote-compute-ssh/SKILL.md` 补 `protection_refused` 分支（不是用户拒绝、
+  任何 grant 都改不了它、本回合不要重试）。
+- **不越权**：策略口未接线时**行为不变**（broker 仍按同一策略拒为 plain `deny`），broker 自身闸门保留（防两条路不一致）。
+- **零新通道 / 零新 i18n 键 / 零契约计数涟漪**（文案是 agent 面英文，按仓规不本地化）。
+
+### 三、门禁（全部实跑，读数即结论）
+
+| 门禁 | 读数 |
+| --- | --- |
+| `vitest run src/main/compute/compute-service.test.ts`（+5 用例） | **140 passed** |
+| 定向 + 契约族（`src/main/compute` + `src/renderer/src/i18n` + `src/shared` + `src/preload` + `src/main/settings` + `src/renderer/web`） | **232 files passed ｜ 2 skipped（234）**、**3284 passed ｜ 8 skipped（3292）**、20.92 s、exit 0 |
+| 双 typecheck（node / web） | **exit 0** |
+| `./node_modules/.bin/eslint --no-cache .` | **0 error ／ 130 warning**（我引入的 2 条 prettier warning 已当批改掉；触碰的 6 个文件 **0 problem**） |
+| 提交信息 / 品牌扫描 | `✓ 提交信息零命中` |
+
+**新用例（5 + 3）**：三条路径各自具名拒绝且**从未调用 broker**（call_command / submit_job 无 job 行 / download 不走 scp）；
+「`Ask every time` 仍照常询问并落 job 行」与「未接线策略口时行为不变（仍是 `approval_denied`）」两条**反向守卫**；
+`i18n/protection-policy-labels.test.ts` 把拒绝文案引用的**选项名与设置标题钉在 en 字典上**（改字典里的名字即红，
+而不是留下一个指向不存在设置名的文案）。
+
+### 四、未取 / 边界（具名）
+
+- **真机读数：本轮未取**（开工 swap **10.88 G / 12.28 G 已用**、空闲物理页 8744 ≈137 MB ⇒ 无 `build:e2e` 的安全余量；
+  且会话 1 分钟前刚提交过、`build:e2e` 会共享 `out/`）。本改动的真机读数**就是 IC39/IC40 那两条读数的一部分**：
+  按 §一之三 的先置改好策略后，真机应报 `protection_refused`（原先是"Approval denied"）而**不是**弹卡片 —— 已写进工作单。
+- **Windows 车道那条 `database` 分片红**：仍只能由 Windows 车道判决（会话的 `docs/plan-2026-10-08-windows-database-shard-triage.md` 是复跑规程），本轮不碰。
+- 未改任何 `.github/workflows/**`（受保护）、未新增通道、未动 9 语字典。
+
+**下一轮第一步**：① `git status --short` + `git log --oneline origin/main -3`（会话可能又推了；**先按提交划掉它做过的**）；
+② 内存宽松（空闲页 ≥ 数万）**且会话不在取证**时，按工作单 §二 走路线 A（**第一件事是改策略**）取 IC39/IC40 的真机读数
+—— 这是**最后一条未闭的读数线**；③ 否则按排期复查还有无未被认领的单元（当前 IC1–IC56 只剩 IC39/IC40 读数与 IC54 卡产品决定）；
+④ 按**完整 40 位 SHA** 看本轮 `e1a62d75` 的 `Nightly` + `Windows Full Test`，红了先读**作业级注解**归因（`cancelled` 不算绿）。
+
+**版本位点台账（不变）**：Latest = **v1.88.0**（21 资产、三车道全绿）；`package.json` = 1.88.0；本轮**未发版** ⇒ 下一个版本边界 **v1.89.0**。
+

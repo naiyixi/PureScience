@@ -36,10 +36,26 @@
    ```
    ⇒ **REPL 看得见这台主机（报错里点着它的名字）、提交真的发起了、审批真的被问过**，然后**被自动拒绝**（屏幕上**没有**出现审批框，尽管 `settings.allowRemoteCommand` = "Allow remote command?" 那个对话框存在）。**因此下一条前提是「计算授权」**：`settings.computeGrants`（`settings/repository.ts` 的 `addComputeGrant`/`hasComputeGrant`/`listComputeGrants`）与 `PermissionGrantRegistry`（`compute/permission-grant-adapter`）；渲染端那一侧的应答通道是 `compute:respond-approval`。
    **⚠️ 一个尚未定性的问题（不要当成产品缺陷写）**：在没有授权的情况下，这次是"**问了以后自动拒绝且不弹框**"。到底是（a）该配置下的策略默认（需要先有 grant）、还是（b）审批请求**没有投递到渲染端**（与本仓已知的"订阅装了但 hub 不投"那一类同形），**本轮没有区分**——下一手先把 grant 种上/授上再提交，若**仍然**没有框且被拒，才按 (b) 立一条产品问题，并把当时的主进程日志一并附上。
+   **✅ 已定性（2026-10-08，执行器读源）：见 §一之三 —— 既不是 (a) 也不是 (b)。** 真正的关口是**执行保护策略默认 `deny`**：远程面按构造恒为 `unprotected`，broker 在**任何 grant、任何卡片之前**就返回 `deny`（「问了」是误读：**从来没有请求被广播过**；grant 那条路**根本没跑到**）。⇒ **补 grant 不会有任何帮助**；要做的是先把策略改成 `Ask every time`（§一之三 给了位置与判据）。那笔误导性的报错文案（把"没人被问过"报成"审批被拒"）已同批修掉 `e1a62d75`。
 
-**本轮的净产出**：上表 1–7 全是实测事实；`remote-job-cancel-unreachable.spec.ts` 已按仓规**删除**（从未入库），夹具里为它加的提交分支也**一并回退**（无人使用＝半截不留树）。下一次只需照 §二.4 的字段注册主机、按 §5 的顺序准备会话、把 §7 的授权补上，就能走到"任务 running ⇒ 点取消"那一步。
+**本轮的净产出**：上表 1–7 全是实测事实；`remote-job-cancel-unreachable.spec.ts` 已按仓规**删除**（从未入库），夹具里为它加的提交分支也**一并回退**（无人使用＝半截不留树）。下一次只需照 §二.4 的字段注册主机、按 §5 的顺序准备会话、**先按 §一之三 把策略改成 `Ask every time`**，就能走到"任务 running ⇒ 点取消"那一步。
+
+## 一之三、第三次核对（执行器，2026-10-08）：§7 那个"尚未定性的问题"有答案了 —— **既不是 (a) 也不是 (b)**
+
+**结论（读源，不是推断）**：那次「提交真发起了、审批真的被问过、然后被自动拒绝且不弹框」，**没有任何审批请求被广播过**。真正的关口是**执行保护策略**：
+
+- `protected` 那一侧的事实：**远程面按构造恒为 `unprotected`**（`shared/execution-protection.ts` 的 `resolveExecutionProtection`：远程执行在本机无法隔离，直接返回 `level: 'unprotected'`）。
+- 而策略默认值是 **`deny`**：`DEFAULT_REMOTE_UNPROTECTED_EXECUTION_POLICY = 'deny'`（同文件）。
+- 审批 broker 在**任何 grant、任何卡片之前**读该策略并直接返回 `deny`：`compute-approval-broker.ts` 的 `requestWithContextOperation` 里 `policyDeniesUnprotectedExecution(policy, 'unprotected') ⇒ return 'deny'`，注释逐字写着「Under `deny` there is no card: the run is refused outright」。
+- ⇒ **不是 (a)「该配置下的策略默认（需要先有 grant）」的先决条件判断错**：grant **根本不在那条路上**（策略先返回，grant 检查根本没跑到）；**也不是 (b)**：审批请求不是"投递失败"，而是**从未产生**。
+- 行为本身是**设计且有用例钉住的**：`src/main/compute/compute-approval-broker.test.ts:705`「refuses an unprotected remote run under the default policy, with no card and no grant」。⇒ **不要再按"审批没投递"去立案**。
+
+**由此得到的下一条前提（写进 §二 的前置）**：夹具必须先把策略改成 `Ask every time`（或 `Let remembered approvals cover it`），否则 `call_command` / `submit_job` / 会话缓存下载三条路都会在**卡片之前**被拒。改法是应用自己的入口：**Settings → Execution protection → "Remote execution without protection"** 那三个单选（`ExecutionProtectionPanel`，`data-slot="protection-policy-confirm|remembered|deny"`）；通道面是 `settings.executionProtection` 的 `{ action: 'set-remote-policy', policy }`。
+
+**同批修掉一处误导（2026-10-08，`e1a62d75`）**：那条拒绝旧文案叫「Approval denied for submit_job on …」——**把"没人被问过"报成了"审批被拒"**，正是它把本单 §7 引向了"补 grant"。现在：`error_code = 'protection_refused'`（与 `approval_denied` 分开），文案里写明"没有提交任何东西、没有询问过任何人"，并指名去哪改（设置路径与选项名有**单一来源常量** + 一条把它钉在 en 字典上的守卫测试）。三条远程闸门都在卡片之前具名拒绝；策略口未接线时行为不变。
 
 **路线 A（推荐，最省）—— 本机起一台「活的主机」**
+> ⚠️ **开工第一件事（2026-10-08 追加，此前两次都栽在这里）**：把 **Settings → Execution protection → "Remote execution without protection"** 从默认的 `Refuse unprotected remote execution` 改成 **`Ask every time`**（或 `Let remembered approvals cover it`）。默认策略下 `submit_job` / `call_command` / 会话缓存下载都会在**审批卡之前**被拒（报 `protection_refused`），界面上不会有任何审批框 —— 这不是"审批没投递"，也不是"缺 grant"（见 §一之三）。
 **✅ 已在本机实测跑通（2026-10-07，零安装、零系统改动、无需 docker/sudo）**：用**用户态 sshd 跑高位端口**即可得到一台真 SSH 端点。配方（全部落在 `/tmp/ps-ssh`，不动系统）：
 1. 造两把密钥：`ssh-keygen -q -t ed25519 -N '' -f /tmp/ps-ssh/id_ed25519`（客户端用）与 `…/ssh_host_ed25519_key`（主机用）；把客户端公钥拷成 `authorized_keys`。
 2. 写 sshd 配置：`Port 2222` / `ListenAddress 127.0.0.1` / `HostKey <主机密钥>` / `PidFile` / `AuthorizedKeysFile <那个 authorized_keys>` / `PasswordAuthentication no` / `KbdInteractiveAuthentication no` / `UsePAM no` / `StrictModes no` / `LogLevel VERBOSE`。
