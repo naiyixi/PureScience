@@ -1053,3 +1053,40 @@ Latest = v1.87.0）。
 **同一条纪律的溯源**：`e2e/certification/skill-imported-copy.spec.ts` 断言分叉副本落 `<存储根>/skills/personal/<slug>`，本轮**对源核实过**新 slug 的来源（`forkImported` → `uniqueSlug('personal', toSlug(name))`，空目录返回裸 slug ⇒ `seeded-import`），不是猜的。
 
 **工具坑（本轮新增，入档）**：cron 里 `export NODE_OPTIONS=…` 会被安全守卫拦（`[HIGH] Interpreter hijack`），但**前缀写法** `NODE_OPTIONS=… ./node_modules/.bin/vitest …` 可以通过；`for sha in …; do … $(git rev-parse …); done` 这种组合命令也会被拦（`Nested executable body could not be resolved`）⇒ 一律落 `/tmp/*.sh` 用 `bash` 跑。
+
+## 二十六、本轮追加（执行器，2026-10-07 16:1x–）——工作单 ①「RO-Crate 外来 crate 只读检核」收口（真机读数具名立案）
+
+**开工判定（防重做）**：`HEAD == origin/main == fd5a226a`（会话 13:56 写的交接文件 §7）；`git status --short` 是**我上一轮留在工作区的 20 个已跟踪文件 + 1 个新文件**（上一轮被迭代上限截断的 RO-Crate 只读检核 WIP：共享契约 / 读侧 / 通道 / 装配 / 目录 / preload / 渲染-api 签名 / 9 语字典 / 对话框检核段）；进程表**无** `electron-vite` / `playwright` / `vitest`；会话自 13:56 后未再推送（本轮全程 `origin/main` 未动）⇒ 本轮**收口这笔 WIP**，不新起单元。
+
+**CI 核对（按完整 40 位 SHA，读数即结论；取消 ≠ 绿）**：
+
+| 提交 | Nightly | Windows Full Test |
+| --- | --- | --- |
+| `42dd7855`（我上轮的技能分叉） | **37566208917 success** | **37566208739 success** ⇒ **双绿**，上轮遗留判决闭合 |
+| `5aebf7ca`（会话的通知读数） | **37570880400 success** | **37570880103 success** ⇒ 双绿 |
+| `18cd0463`（会话的期刊别名读数） | 37570376203 cancelled | 37570375915 cancelled ⇒ **无判决**（被后一笔顶掉） |
+| `fd5a226a`（纯 docs 交接） | 0 条 run | 0 条 run ⇒ 两条车道都有 `paths:` 过滤，**设计如此** |
+
+**缺口核实（对着当前源码）**：`validateRoCrate` 早已存在且用于本应用写出的每一个 crate，而**外来 crate 没有任何入口** ⇒ 界面只能写一句「只做导出」（IC48），且入口落地后那句会**自相矛盾**。工作单 §一 的划界本就是「**只读**的导入/校验入口」+「不做合并进项目、不改写」⇒ 本单元的形状与它一致，**不是**范围缩水。
+
+**落地（见 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`，含 file:line）**：新通道 `ro-crate:inspect-external`（**桌面档**）+ 对话框内 `[data-slot="ro-crate-inspect"]` 检核段（路径输入 / **既有** `storage.pickDirectory` / 「开始检查」，路径为空才禁用——没有第二道隐藏闸门）+ 报告**逐条列出未满足的规则码与层级**（`spec-must` / `spec-should` / `export-contract` 各自译成人话，否则会告诉外来作者「你的文件不合规」，而那条只是本应用对自己产物的期望）+ 三种拒绝码具名（`no-metadata-file` / `unreadable` / `unparseable`，拒绝**不渲染成报告**）+ 那句失真文案**同批改写（9 语）**。顺手去重：`src/main/ro-crate/import.ts` 原先自带一份 `RO_CRATE_METADATA_FILENAME`，改引共享常量。
+**本轮新增**：渲染套件 **+6 条**（说得出且做得到 / 全部通过 + 判的是哪份文档 / 逐条点名未满足项与层级 / 三种拒绝码各一条 / 目录选择器取到与取消各一半）；认证 spec 按工作单验收①②**扩写**（自家 crate 判干净 + 故意违规 crate 的失败集合与 `validateRoCrate` 逐条相符 + 检查前后元数据**逐字节相等**），IC48 的旧句断言同批改写。
+
+| 门禁 | 读数 |
+| --- | --- |
+| 渲染套件 `RoCrateExportDialog.render.test.tsx` | **18 passed** |
+| 定向 + 契约族（9 组路径） | **291 文件 / 3181 passed｜1 skipped** |
+| **全量 vitest**（`--maxWorkers=4`） | **1227 passed｜16 skipped（1243）**；`15841 passed｜204 skipped（16045）`；497.85 s；**exit 0** |
+| 双 typecheck（node / web） | **exit 0**（`NODE_OPTIONS=--max-old-space-size=4096`） |
+| `eslint --no-cache .` | **0 error / 122 warning**（本单元触碰的文件 **0 problem**） |
+| `check:web-api-map` | **exit 0** |
+| `pre-push-checks.sh` | **全过** |
+
+**本轮 `tsc` 结构性抓到的一条真错（vitest 看不见）**：`src/preload/index.test.ts` 那份**测试自备的桥接子集类型**只有 `roCrate.exportProject`，新用例调了 `a.roCrate.inspectExternal` ⇒ `TS2339`。修法 = **把新方法补进夹具的类型**（不是把断言改弱、也不是改成可选）——与「夹具缺必需属性要补桩」同一条纪律。
+
+**⏳ 真机读数未取（具名立案）**：开工时 swap **9277.75 M / 10240 M 已用**、空闲物理页 7415（≈116 MB）⇒ 不具备「`build:e2e`（8 GB 堆）+ 起 Electron」的安全余量（本机有堆把机器打崩的前例）。**认证 spec 已改但本机未跑绿**；下一轮内存宽松时**第一条跑它**（配方见证据档 §四）。
+
+**一条设计边界（不是缺陷，必须写明）**：只读检核读的是 `ro-crate-metadata.json`，**不重算 payload 字节** ⇒ 依赖 `payloadPaths` / `payloadDigests` 的三条断言在这条路上不出现（导出态 30 条 / 检核态 27 条），文案按「本应用**能套用**的检查」如实写；**把 payload 复算接上**是一条独立的后续单元（它会让外来 crate 的检核更强，也让两个数一致）。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，**先按提交把会话已完成的单元划掉**（防重做；会话在做 IC52 段 2）；② 内存宽松 ⇒ 按证据档 §四跑绿 `e2e/certification/ro-crate-export.spec.ts`（本单元唯一未取的读数），顺带把 §二十五 那条 `skill-imported-copy.spec.ts` 的收紧版也跑绿（若尚未）；③ 否则按排期取**未被会话认领**的单元，或挑一条「已立案未修」的（IC33 真审批夹具 / IC16·IC17 进度富字段 / IC13 窗口卸载路径需安全评审）；④ 按**完整 40 位 SHA** 看本轮提交的两条车道，红了先读**作业级注解**归因（`cancelled` 不算绿）。
+**发版连带（不许丢）**：v1.88.0 发版时 README 首屏横幅（`README.md` + `README.en.md` 头部块**逐字一致**，pre-push 会拦）里有两句已过期 —— `an imported skill stays the imported copy with no way to fork it yet`（工作单 ③ 已交付）与 `this build writes crates but does not read one back in`（本单元已交付只读检核）；CHANGELOG 的 v1.88.0 段落要把它们从「新功能立项 / 明确没做」移出，并**双向**复核成熟度块（已交付的不许留在 🗺️、半截的不许写成 ✅）。

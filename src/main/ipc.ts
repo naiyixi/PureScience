@@ -215,7 +215,12 @@ import {
   createConversationExportService,
   registerConversationExportIpcHandler
 } from './session-persistence/conversation-export'
-import { createRoCrateExportOwner, registerRoCrateExportIpcHandlers } from './ro-crate/ipc'
+import {
+  createRoCrateExportOwner,
+  createRoCrateInspectOwner,
+  registerRoCrateExportIpcHandlers,
+  registerRoCrateInspectIpcHandlers
+} from './ro-crate/ipc'
 import { RO_CRATE_EXPORT_SOFTWARE } from '../shared/ro-crate-export'
 import { createProjectFilesHandlers, registerProjectFilesIpcHandlers } from './project-files/ipc'
 import { createSearchIpcHandlers, registerSearchIpcHandlers } from './search/ipc'
@@ -2915,6 +2920,9 @@ const createApplicationModules = async (
         log: createLogger('ro-crate')
       })
     )
+  )
+  declareElectronAdapter('ro-crate-inspect', () =>
+    registerRoCrateInspectIpcHandlers(createRoCrateInspectOwner())
   )
   declareElectronAdapter('permission-grants', () =>
     registerPermissionGrantIpcAdapter(permissionGrantProjection)

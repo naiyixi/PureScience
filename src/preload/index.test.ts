@@ -46,6 +46,7 @@ type PreloadApi = {
   }
   roCrate: {
     exportProject: (request: unknown) => unknown
+    inspectExternal: (request: unknown) => unknown
   }
   sessions: {
     loadAll: () => unknown
@@ -463,6 +464,7 @@ describe('preload bridge — public surface inventory', () => {
       'reviewer.onUpdated',
       'reviewer.run',
       'roCrate.exportProject',
+      'roCrate.inspectExternal',
       'routine.listAll',
       'routine.remove',
       'routine.setEnabled',
@@ -835,7 +837,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // other reference-library methods.
     // 234 with the message-centre reader deletions (notifications.clearAll / notifications.deleteItems):
     // two desktop-only core request contracts beside the other inbox methods.
-    expect(coreContracts).toHaveLength(234)
+    // 235 with the read-only external crate inspection (roCrate.inspectExternal): one more desktop-only
+    // request contract, which is why the request count below moves with it and the Web maps do not.
+    expect(coreContracts).toHaveLength(235)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -847,7 +851,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 196, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 197, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -856,7 +860,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(196)
+    expect(requestContracts).toHaveLength(197)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()
@@ -1211,6 +1215,14 @@ const cases: ForwardingCase[] = [
     invoke: (a) => a.roCrate.exportProject(sampleRoCrateExport),
     channel: 'ro-crate:export-project',
     args: [sampleRoCrateExport]
+  },
+  {
+    // The read-only half of the RO-Crate surface. It crosses the same bridge, so it is pinned the same
+    // way: the folder the window chose travels as the request, and nothing else does.
+    name: 'roCrate.inspectExternal → ro-crate:inspect-external',
+    invoke: (a) => a.roCrate.inspectExternal({ cratePath: '/tmp/external-crate' }),
+    channel: 'ro-crate:inspect-external',
+    args: [{ cratePath: '/tmp/external-crate' }]
   },
   // agent-framework / opencode settings additions
   {

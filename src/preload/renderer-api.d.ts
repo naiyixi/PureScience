@@ -194,6 +194,7 @@ import type {
   UpdateProjectRequest
 } from '../shared/projects'
 import type { RoCrateExportRequest, RoCrateExportResult } from '../shared/ro-crate-export'
+import type { RoCrateInspectRequest, RoCrateInspectResult } from '../shared/ro-crate-inspect'
 import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
@@ -847,6 +848,14 @@ export interface PureScienceAPI {
      * no-exportable-version / destination-unwritable / validation-failed / write-failed).
      */
     exportProject(request: RoCrateExportRequest): Promise<RoCrateExportResult>
+    /**
+     * Reads a crate this app did NOT write — the folder named by `cratePath` — and returns the app's own
+     * rules' verdict on its metadata document. Read-only: nothing is written into the folder and nothing is
+     * imported into a project. A refusal is named (no-metadata-file / unreadable / unparseable) and is kept
+     * apart from a REPORT, which always carries every assertion, passed or failed, so the window can name
+     * the rule that was not met. Desktop only: the folder is on this machine.
+     */
+    inspectExternal(request: RoCrateInspectRequest): Promise<RoCrateInspectResult>
   }
   projectFiles: {
     getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>

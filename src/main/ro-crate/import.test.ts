@@ -4,7 +4,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { inspectExternalRoCrate, RO_CRATE_METADATA_FILENAME } from './import'
+import { RO_CRATE_METADATA_FILENAME } from '../../shared/ro-crate'
+import { inspectExternalRoCrate } from './import'
 
 const crateWith = async (contents: string | null): Promise<string> => {
   const dir = await mkdtemp(join(tmpdir(), 'external-crate-'))

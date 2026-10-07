@@ -283,6 +283,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     // One Project as an interoperable research object. Desktop-only: the crate is a folder on the
     // machine, and a native dialogue is the only honest way to obtain its destination.
     ['exportProject', 'ro-crate:export-project', ELECTRON],
+    // The read-only half of the same surface: a crate this app did NOT write is read and judged by the
+    // app's own assertions — never imported into a project, never rewritten. Desktop-only for the same
+    // reason: the folder is on this machine.
+    ['inspectExternal', 'ro-crate:inspect-external', ELECTRON],
   ]),
   group('references', 'references', [
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'], ['setNotes', 'references:set-notes'],

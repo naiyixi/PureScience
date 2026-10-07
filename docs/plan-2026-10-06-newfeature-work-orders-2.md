@@ -8,6 +8,16 @@
 
 ## 一、RO-Crate：导入外来 crate（IC48 的另一半）
 
+**✅ 已落地（自主执行器，2026-10-07；实现与门禁读数见 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`）。**
+落地形状 = **只读检核**（工作单这一节本就写的「只读的导入/校验入口」+ 划界「不做合并进项目、不改写」）：
+新通道 `ro-crate:inspect-external`（桌面档）+ 导出对话框内的检核段（路径输入 / 既有 `storage.pickDirectory` / 「开始检查」）、
+**报告逐条列出未满足的规则码与层级**（`spec-must` / `spec-should` / `export-contract` 各自译成人话）、三种拒绝码具名上屏、
+`roCrate.export.exportOnly` 那句失真文案**同批改写（9 语）**。**通道与真入口同批** ⇒ `check:web-api-map` 通过。
+**仍未取**：扩写后的 `e2e/certification/ro-crate-export.spec.ts` 的**真机读数**（本机 swap 已用 9.3 G/10.2 G，无 `build:e2e` 余量）
+—— **下一轮内存宽松时第一条跑它**（配方见上面那份证据档 §四）。
+**一条设计边界**：只读检核不重算 payload 字节 ⇒ 依赖 payload 的三条断言在这条路上不出现（导出态 30 条 / 检核态 27 条），
+文案按「本应用**能套用**的检查」如实写；把 payload 复算接上是一条**独立的后续单元**。
+
 **现状（已核实）**：`validateRoCrate` 存在且用于**本应用写出的每一个** crate；外来 crate **没有入口** ⇒ 界面上已**明写**「Export only — an external crate cannot be imported or checked here yet.」（IC48 落地）。
 
 **要做什么**：给外来 crate 一条**只读**的导入/校验入口 —— 选一个 crate（文件或目录），按**已有的** `validateRoCrate` 校验，把结果按 IC45 的体例呈现（**点名码在前、规则级明细与拒收清单在后**）。
@@ -65,6 +75,7 @@
 | 项 | 提交 | 真机读数 | 备注 |
 | --- | --- | --- | --- |
 | ① 期刊别名解除 | `16fdafab` | ✅ `journal-alias-release.spec.ts` **1 passed (6.6s)**：存储回读 `aliases=[]`、刊表快照逐字相等（不越界）；确认句逐字读到两件事 | 证据档 `docs/evidence/2026-10-07-journal-alias-release.md` §五 |
+| ② RO-Crate 外来 crate 只读检核 | 执行器 2026-10-07（本档 §一） | ⏳ **未取**：`e2e/certification/ro-crate-export.spec.ts` 已按验收①②扩写，**本机 swap 无余量未跑** | 证据档 `docs/evidence/2026-10-07-ro-crate-external-inspection.md`（含配方 §四）；**下一轮第一条跑它** |
 | ③ 技能导入版分叉 | `42dd7855` | ✅ `skill-imported-copy.spec.ts` **1 passed (9.3s)**：原句已改写成"Duplicate it to get a skill of your own that you can edit."；副本**真落到磁盘** `skills/personal/seeded-import` | 读数是**目录回读**，不是界面自陈 |
 | ④ 通知单条删除 / 一键清空 | `9bd516a1` | ✅ `notification-inbox-clear.spec.ts`（**本轮新写**）**1 passed (13.5s)**：警告句逐字读到「Your conversations are not deleted. It cannot be undone.」；单条删除后 **存储** `items=0`；空箱时面板说 "No messages yet." | **清空（clear-all）那半未真机验**：它需要**跨会话的多条通知**（通知按会话记，实测两条 prompt 只出一条），本读数不铺这个夹具 ⇒ 该半仍由单元 + 渲染套件承担，**具名**不冒充 |
 

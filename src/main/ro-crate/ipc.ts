@@ -22,6 +22,11 @@ import {
   type RoCrateExportRequest,
   type RoCrateExportResult
 } from '../../shared/ro-crate-export'
+import {
+  RO_CRATE_INSPECT_CHANNEL,
+  type RoCrateInspectRequest,
+  type RoCrateInspectResult
+} from '../../shared/ro-crate-inspect'
 import { ipcMainHandle } from '../ipc-handler-registry'
 import { createLogger, errorLogFields } from '../logger'
 import { showSettingsSaveDialog } from '../settings/save-dialog'
@@ -31,6 +36,7 @@ import {
   writeRoCrateExport,
   type RoCrateSkippedVersion
 } from './export'
+import { inspectExternalRoCrate } from './import'
 
 /** The Project facts the crate needs. A missing Project is `null`, never an invented name. */
 export type RoCrateProjectIdentity = Readonly<{ id: string; name: string; description: string }>
@@ -229,5 +235,61 @@ export const createRoCrateExportOwner = (deps: RoCrateExportOwnerDeps): RoCrateE
 export const registerRoCrateExportIpcHandlers = (owner: RoCrateExportOwner): void => {
   ipcMainHandle(RO_CRATE_EXPORT_CHANNEL, (event, request: RoCrateExportRequest) =>
     owner.exportProject(request, event.sender)
+  )
+}
+
+// --- the read-only half: checking a crate this app did NOT write -------------------------------
+//
+// The reader (`./import`) answers in two shapes that must stay apart on the wire: a CODE for the three ways
+// a path fails before any rule is judged, and a REPORT for a crate that was judged (every assertion, passed
+// or failed). Summarising either one here would take away the only thing the window can honestly show —
+// which rule was not met.
+//
+// This adapter does not touch the filesystem, does not open a dialogue (the window picks the folder through
+// the existing storage picker, so a cancellation there never reaches this channel), and never writes: an
+// external crate is input, and nothing in this app imports it into a project.
+export type RoCrateInspectOwnerDeps = Readonly<{
+  inspect?: typeof inspectExternalRoCrate
+}>
+
+export type RoCrateInspectOwner = Readonly<{
+  inspectExternal: (request: RoCrateInspectRequest) => Promise<RoCrateInspectResult>
+}>
+
+const assertInspectRequest = (request: RoCrateInspectRequest): RoCrateInspectRequest => {
+  if (
+    typeof request !== 'object' ||
+    request === null ||
+    typeof request.cratePath !== 'string' ||
+    request.cratePath.trim().length === 0
+  ) {
+    throw new Error('Invalid RO-Crate inspection request.')
+  }
+  return { cratePath: request.cratePath }
+}
+
+export const createRoCrateInspectOwner = (
+  deps: RoCrateInspectOwnerDeps = {}
+): RoCrateInspectOwner => {
+  const inspect = deps.inspect ?? inspectExternalRoCrate
+  return Object.freeze({
+    inspectExternal: async (rawRequest: RoCrateInspectRequest): Promise<RoCrateInspectResult> => {
+      const request = assertInspectRequest(rawRequest)
+      const inspection = await inspect(request.cratePath)
+      return inspection.ok
+        ? {
+            ok: true,
+            cratePath: request.cratePath,
+            metadataPath: inspection.metadataPath,
+            report: inspection.report
+          }
+        : { ok: false, error: inspection.reason, detail: inspection.detail }
+    }
+  })
+}
+
+export const registerRoCrateInspectIpcHandlers = (owner: RoCrateInspectOwner): void => {
+  ipcMainHandle(RO_CRATE_INSPECT_CHANNEL, (_event, request: RoCrateInspectRequest) =>
+    owner.inspectExternal(request)
   )
 }

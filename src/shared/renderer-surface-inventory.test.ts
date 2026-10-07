@@ -75,6 +75,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'officePreview.open',
   'officePreview.reportState',
   'roCrate.exportProject',
+  'roCrate.inspectExternal',
   'sessions.exportPackage',
   'sessions.importPackage',
   'sessions.importPosture',
@@ -305,7 +306,8 @@ describe('renderer surface inventory', () => {
     // two desktop-only channels, so the preload bridge and the catalog move together.
     // 472 with the skill fork (settings.forkImportedSkill, work order 二): the preload bridge exposes one
     // method per contract, so the preload inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(472)
+    // 473 with the read-only external crate inspection (roCrate.inspectExternal): same, one method.
+    expect(electronPaths).toHaveLength(473)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

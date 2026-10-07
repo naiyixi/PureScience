@@ -4210,7 +4210,8 @@ export const en: Record<ZhKey, string> = {
   'settings.memoryNoteFilterPlaceholder': 'Filter notes…',
   'settings.memoryNoteFilterEmpty': 'No note here matches that filter.',
   'roCrate.export.exportOnly':
-    'Export only — an external crate cannot be imported or checked here yet.',
+    'Writes crates. A crate from elsewhere can also be checked here, read-only, and is never imported into a project.',
+
   'settings.skillImportedKept':
     'Kept as imported: this copy is compared against what you imported. Duplicate it to get a skill of your own that you can edit.',
   'settings.memoryLastSurfaced': 'Last recalled {when}',
@@ -4318,5 +4319,21 @@ export const en: Record<ZhKey, string> = {
   'notifications.clearAllConfirm': 'Delete all',
   'notifications.deleteItem': 'Delete notification: {title}',
   'settings.skillForkAction': 'Duplicate as my skill',
-  'settings.skillForkFailed': 'Could not duplicate this skill: {reason}'
+  'settings.skillForkFailed': 'Could not duplicate this skill: {reason}',
+  'roCrate.inspect.heading': 'Check a crate from elsewhere',
+  'roCrate.inspect.scopeNote':
+    'Read-only: the folder is not modified and nothing is imported into a project. Passing means every rule this app can apply held — not that the crate is scientifically right. A row marked export-contract is this app’s own expectation of the crates it writes.',
+  'roCrate.inspect.pathLabel': 'Crate folder',
+  'roCrate.inspect.chooseFolder': 'Choose folder…',
+  'roCrate.inspect.run': 'Check it',
+  'roCrate.inspect.running': 'Checking…',
+  'roCrate.inspect.summary': '{passed} of {total} checks passed — {failed} not met.',
+  'roCrate.inspect.allPassed': 'Every check this app can apply passed.',
+  'roCrate.inspect.failedHeading': 'Checks that were not met',
+  'roCrate.inspect.level.spec-must': 'required by RO-Crate 1.1',
+  'roCrate.inspect.level.spec-should': 'recommended by RO-Crate 1.1',
+  'roCrate.inspect.level.export-contract': 'expected by this app of its own crates',
+  'roCrate.inspect.failure.no-metadata-file': 'That folder holds no ro-crate-metadata.json.',
+  'roCrate.inspect.failure.unreadable': 'ro-crate-metadata.json in that folder could not be read.',
+  'roCrate.inspect.failure.unparseable': 'ro-crate-metadata.json in that folder is not valid JSON.'
 }

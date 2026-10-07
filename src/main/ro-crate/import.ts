@@ -2,10 +2,11 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
+  RO_CRATE_METADATA_FILENAME,
   validateRoCrate,
-  type RoCrateMetadataDocument,
-  type RoCrateValidationReport
+  type RoCrateMetadataDocument
 } from '../../shared/ro-crate'
+import type { ExternalRoCrateInspection } from '../../shared/ro-crate-inspect'
 
 // Reading a crate this app did not write — IC48's other half, granted read-only.
 //
@@ -18,16 +19,9 @@ import {
 // ways a path fails BEFORE any rule is judged: no metadata document, an unreadable one, an unparseable one. A
 // crate whose JSON-LD parses but breaks the rules comes back as a REPORT with `ok: false` inside — that is
 // exactly what the report is for, and collapsing it into a refusal would hide which rules failed.
-export const EXTERNAL_RO_CRATE_REFUSALS = ['no-metadata-file', 'unreadable', 'unparseable'] as const
-
-export type ExternalRoCrateRefusal = (typeof EXTERNAL_RO_CRATE_REFUSALS)[number]
-
-export const RO_CRATE_METADATA_FILENAME = 'ro-crate-metadata.json'
-
-export type ExternalRoCrateInspection =
-  | { ok: true; metadataPath: string; report: RoCrateValidationReport }
-  | { ok: false; reason: ExternalRoCrateRefusal; detail: string }
-
+//
+// The codes and the inspection shape live in `shared/ro-crate-inspect.ts` because they cross the process
+// boundary: the window and this reader must be reading one list, not two copies that can drift apart.
 const describe = (error: unknown): string => String((error as Error)?.message ?? error)
 
 export const inspectExternalRoCrate = async (

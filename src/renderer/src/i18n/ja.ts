@@ -4172,7 +4172,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusedEntry': '{version} — 除外：{reason}',
   'settings.memoryNoteFilterPlaceholder': 'メモを絞り込む…',
   'settings.memoryNoteFilterEmpty': 'この絞り込みに一致するメモはありません。',
-  'roCrate.export.exportOnly': '書き出し専用 — 外部の crate はまだ取り込めず、検証もできません。',
+  'roCrate.export.exportOnly':
+    'ここでは crate を書き出します。他所の crate もここで読み取り専用に検証でき、プロジェクトに取り込まれることはありません。',
+
   'settings.skillImportedKept':
     '取り込んだまま保持されます。この内容は取り込み時と照合されます。複製すると、自分で編集できる自分のスキルが得られます。',
   'settings.memoryLastSurfaced': '最後に想起された日時 {when}',
@@ -4281,5 +4283,24 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': 'すべて削除',
   'notifications.deleteItem': '通知を削除: {title}',
   'settings.skillForkAction': '自分のスキルとして複製',
-  'settings.skillForkFailed': 'このスキルを複製できませんでした：{reason}'
+  'settings.skillForkFailed': 'このスキルを複製できませんでした：{reason}',
+  'roCrate.inspect.heading': '他所の crate を検証する',
+  'roCrate.inspect.scopeNote':
+    '読み取り専用です。フォルダは変更されず、プロジェクトへの取り込みもありません。「合格」は本アプリが適用できるすべての規則が成立したという意味で、crate が科学的に正しいという意味ではありません。export-contract と付いた行は、本アプリが自分の書き出す crate に求める条件です。',
+  'roCrate.inspect.pathLabel': 'crate のフォルダ',
+  'roCrate.inspect.chooseFolder': 'フォルダを選択…',
+  'roCrate.inspect.run': '検証する',
+  'roCrate.inspect.running': '検証中…',
+  'roCrate.inspect.summary': '{total} 件中 {passed} 件が合格、{failed} 件が未達です。',
+  'roCrate.inspect.allPassed': '本アプリが適用できる検査はすべて合格しました。',
+  'roCrate.inspect.failedHeading': '満たされなかった検査',
+  'roCrate.inspect.level.spec-must': 'RO-Crate 1.1 の必須要件',
+  'roCrate.inspect.level.spec-should': 'RO-Crate 1.1 の推奨要件',
+  'roCrate.inspect.level.export-contract': '本アプリが自分の crate に求める条件',
+  'roCrate.inspect.failure.no-metadata-file':
+    'そのフォルダに ro-crate-metadata.json がありません。',
+  'roCrate.inspect.failure.unreadable':
+    'そのフォルダの ro-crate-metadata.json を読み取れませんでした。',
+  'roCrate.inspect.failure.unparseable':
+    'そのフォルダの ro-crate-metadata.json は有効な JSON ではありません。'
 }

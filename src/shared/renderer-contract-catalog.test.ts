@@ -39,7 +39,10 @@ describe('renderer contract catalog', () => {
     // move by two while neither Web map moves at all.
     // 472 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel,
     // so the catalog, the invoke map, the preload inventory and both Web installation sets move by one.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(472)
+    // 473 with the read-only external crate inspection (roCrate.inspectExternal): a desktop-only channel,
+    // so the catalog and the preload inventory move by one while neither Web map moves at all — and the
+    // local-Web set below grows by the same one, for the same reason.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(473)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -92,7 +95,7 @@ describe('renderer contract catalog', () => {
     })
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(77)
+    ).toHaveLength(78)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(124)

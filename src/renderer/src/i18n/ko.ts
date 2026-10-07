@@ -4106,7 +4106,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusedEntry': '{version} — 제외됨: {reason}',
   'settings.memoryNoteFilterPlaceholder': '메모 필터…',
   'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.',
-  'roCrate.export.exportOnly': '내보내기 전용 — 외부 crate는 아직 가져오거나 검사할 수 없습니다.',
+  'roCrate.export.exportOnly':
+    '여기서는 crate를 내보냅니다. 다른 곳의 crate도 여기서 읽기 전용으로 검사할 수 있으며, 프로젝트로 가져오지는 않습니다.',
+
   'settings.skillImportedKept':
     '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교됩니다. 복제하면 직접 편집할 수 있는 내 스킬이 됩니다.',
   'settings.memoryLastSurfaced': '마지막으로 불러온 시각 {when}',
@@ -4215,5 +4217,22 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': '모두 삭제',
   'notifications.deleteItem': '알림 삭제: {title}',
   'settings.skillForkAction': '내 스킬로 복제',
-  'settings.skillForkFailed': '이 스킬을 복제하지 못했습니다: {reason}'
+  'settings.skillForkFailed': '이 스킬을 복제하지 못했습니다: {reason}',
+  'roCrate.inspect.heading': '다른 곳의 crate 검사',
+  'roCrate.inspect.scopeNote':
+    '읽기 전용입니다. 폴더는 수정되지 않고 프로젝트로 가져오지도 않습니다. "통과"는 이 앱이 적용할 수 있는 모든 규칙이 성립했다는 뜻이며, crate가 과학적으로 옳다는 뜻은 아닙니다. export-contract로 표시된 행은 이 앱이 자신이 내보내는 crate에 요구하는 조건입니다.',
+  'roCrate.inspect.pathLabel': 'crate 폴더',
+  'roCrate.inspect.chooseFolder': '폴더 선택…',
+  'roCrate.inspect.run': '검사하기',
+  'roCrate.inspect.running': '검사 중…',
+  'roCrate.inspect.summary': '{total}개 검사 중 {passed}개 통과, {failed}개 미충족.',
+  'roCrate.inspect.allPassed': '이 앱이 적용할 수 있는 검사는 모두 통과했습니다.',
+  'roCrate.inspect.failedHeading': '충족되지 않은 검사',
+  'roCrate.inspect.level.spec-must': 'RO-Crate 1.1 필수 요건',
+  'roCrate.inspect.level.spec-should': 'RO-Crate 1.1 권장 요건',
+  'roCrate.inspect.level.export-contract': '이 앱이 자체 crate에 요구하는 조건',
+  'roCrate.inspect.failure.no-metadata-file': '그 폴더에 ro-crate-metadata.json이 없습니다.',
+  'roCrate.inspect.failure.unreadable': '그 폴더의 ro-crate-metadata.json을 읽을 수 없습니다.',
+  'roCrate.inspect.failure.unparseable':
+    '그 폴더의 ro-crate-metadata.json은 올바른 JSON이 아닙니다.'
 }

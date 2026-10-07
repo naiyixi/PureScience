@@ -4259,7 +4259,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterPlaceholder': 'Filtrar notas…',
   'settings.memoryNoteFilterEmpty': 'Ninguna nota coincide con ese filtro.',
   'roCrate.export.exportOnly':
-    'Solo exportación: aquí todavía no se puede importar ni verificar un crate externo.',
+    'Aquí se escriben crates; un crate de otro sitio también puede comprobarse aquí en modo de solo lectura, y nunca se importa a un proyecto.',
+
   'settings.skillImportedKept':
     'Se conserva tal como se importó: esta copia se compara con lo importado. Duplícala para obtener un skill propio que puedas editar.',
   'settings.memoryLastSurfaced': 'Última recuperación el {when}',
@@ -4369,5 +4370,24 @@ export const es: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': 'Borrar todo',
   'notifications.deleteItem': 'Eliminar la notificación: {title}',
   'settings.skillForkAction': 'Duplicar como skill propio',
-  'settings.skillForkFailed': 'No se pudo duplicar este skill: {reason}'
+  'settings.skillForkFailed': 'No se pudo duplicar este skill: {reason}',
+  'roCrate.inspect.heading': 'Comprobar un crate de otro sitio',
+  'roCrate.inspect.scopeNote':
+    'Solo lectura: la carpeta no se modifica y nada se importa a un proyecto. «Correcto» significa que se cumple cada regla que esta aplicación puede aplicar, no que el crate sea científicamente correcto. Una fila marcada como export-contract es una expectativa de esta aplicación sobre los crates que escribe.',
+  'roCrate.inspect.pathLabel': 'Carpeta del crate',
+  'roCrate.inspect.chooseFolder': 'Elegir carpeta…',
+  'roCrate.inspect.run': 'Comprobar',
+  'roCrate.inspect.running': 'Comprobando…',
+  'roCrate.inspect.summary': '{passed} de {total} comprobaciones correctas — {failed} sin cumplir.',
+  'roCrate.inspect.allPassed':
+    'Se cumplen todas las comprobaciones que esta aplicación puede aplicar.',
+  'roCrate.inspect.failedHeading': 'Comprobaciones sin cumplir',
+  'roCrate.inspect.level.spec-must': 'exigido por RO-Crate 1.1',
+  'roCrate.inspect.level.spec-should': 'recomendado por RO-Crate 1.1',
+  'roCrate.inspect.level.export-contract': 'esperado por esta aplicación en sus propios crates',
+  'roCrate.inspect.failure.no-metadata-file':
+    'Esa carpeta no contiene ningún ro-crate-metadata.json.',
+  'roCrate.inspect.failure.unreadable': 'No se pudo leer el ro-crate-metadata.json de esa carpeta.',
+  'roCrate.inspect.failure.unparseable':
+    'El ro-crate-metadata.json de esa carpeta no es JSON válido.'
 }

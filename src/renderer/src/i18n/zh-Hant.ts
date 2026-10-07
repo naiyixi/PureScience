@@ -3873,7 +3873,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
   'settings.memoryNoteFilterPlaceholder': '篩選筆記…',
   'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。',
-  'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。',
+  'roCrate.export.exportOnly':
+    '這裡負責寫出 crate；外來的 crate 也能在這裡做唯讀檢核，而且不會被匯入任何專案。',
+
   'settings.skillImportedKept':
     '依匯入原樣保留：這份副本會與匯入時的內容比對。複製一份即可得到屬於你自己、可以編輯的技能。',
   'settings.memoryLastSurfaced': '最近被回憶：{when}',
@@ -3965,5 +3967,21 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': '全部刪除',
   'notifications.deleteItem': '刪除通知：{title}',
   'settings.skillForkAction': '複製為我的技能',
-  'settings.skillForkFailed': '無法複製這份技能：{reason}'
+  'settings.skillForkFailed': '無法複製這份技能：{reason}',
+  'roCrate.inspect.heading': '檢核外來的 crate',
+  'roCrate.inspect.scopeNote':
+    '唯讀：不會更動來源目錄，也不會把 crate 匯入任何專案。「通過」只表示本應用能套用的每條規則都成立，不代表它在科學上正確；標為 export-contract 的規則，是本應用對自己寫出的 crate 的要求。',
+  'roCrate.inspect.pathLabel': 'crate 目錄',
+  'roCrate.inspect.chooseFolder': '選擇目錄…',
+  'roCrate.inspect.run': '開始檢核',
+  'roCrate.inspect.running': '檢核中…',
+  'roCrate.inspect.summary': '{total} 項檢核中通過 {passed} 項，未滿足 {failed} 項。',
+  'roCrate.inspect.allPassed': '本應用能套用的檢核全部通過。',
+  'roCrate.inspect.failedHeading': '未滿足的檢核',
+  'roCrate.inspect.level.spec-must': 'RO-Crate 1.1 強制要求',
+  'roCrate.inspect.level.spec-should': 'RO-Crate 1.1 建議要求',
+  'roCrate.inspect.level.export-contract': '本應用對自己寫出的 crate 的要求',
+  'roCrate.inspect.failure.no-metadata-file': '那個目錄裡沒有 ro-crate-metadata.json。',
+  'roCrate.inspect.failure.unreadable': '讀不到那個目錄裡的 ro-crate-metadata.json。',
+  'roCrate.inspect.failure.unparseable': '那個目錄裡的 ro-crate-metadata.json 不是有效的 JSON。'
 }

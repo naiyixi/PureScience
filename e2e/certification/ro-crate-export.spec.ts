@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path'
 
 import { test } from '../fixtures/electron-app'
 import {
+  RO_CRATE_CONTEXT_URL,
+  failedRoCrateAssertions,
   validateRoCrate,
   type RoCrateMetadataDocument,
   type RoCrateValidationReport
@@ -89,12 +91,13 @@ test('exports a project from the interface into a crate that validates on disk',
   await expect(dialog).toBeVisible()
   await dialog.getByTestId('ro-crate-export-submit').click()
 
-  // What this surface does NOT do is stated up front — an external crate has no way in, so it is never
-  // validated either. Saying it here is the difference between a limitation and a mystery.
+  // What this surface does with a crate from elsewhere is stated up front: it can be CHECKED here,
+  // read-only, and it is never imported into a project. Saying it is the difference between a
+  // limitation and a mystery — and the entry below is what makes the sentence true.
   await expect(dialog.locator('[data-slot="ro-crate-export-only"]')).toContainText(
-    'Export only — an external crate cannot be imported or checked here yet.'
+    'A crate from elsewhere can also be checked here, read-only, and is never imported into a project.'
   )
-  console.log('[ic48] the dialog states it is export-only')
+  console.log('[ic48] the dialog states what it does with a crate from elsewhere')
 
   // The panel reports a result a person can check: how many files, where, and the validation verdict.
   const result = dialog.getByTestId('ro-crate-export-result')
@@ -131,6 +134,60 @@ test('exports a project from the interface into a crate that validates on disk',
   expect(payload?.['sha256']).toBe(sha256(Buffer.from('artifact provenance e2e')))
   // The provenance the app recorded is named, so the copy can be traced back to its Version.
   expect(String(payload?.['identifier'])).toMatch(/^artifact-version:/)
+
+  // --- the same panel's read-only half, on crates this app did NOT write ----------------------
+  // The sentence above promises an external crate can be checked here. Two are put through it: the
+  // crate this run just wrote (which the writer itself judged clean), and one whose metadata is
+  // deliberately broken — where the point is that the failing RULE is named, not that it says "no".
+  const metadataBefore = await readFile(join(crateDir, 'ro-crate-metadata.json'))
+
+  await dialog.getByTestId('ro-crate-inspect-path').fill(crateDir)
+  await dialog.getByTestId('ro-crate-inspect-submit').click()
+
+  // ① the app's own crate, read back through the foreign-crate path.
+  await expect(dialog.getByTestId('ro-crate-inspect-all-passed')).toBeVisible({ timeout: 30_000 })
+  await expect(dialog.getByTestId('ro-crate-inspect-summary')).toContainText('0 not met')
+  await expect(dialog.getByTestId('ro-crate-inspect-metadata-path')).toContainText(
+    join(crateDir, 'ro-crate-metadata.json')
+  )
+  console.log('[ic48] the read-only half judged this run’s own crate clean')
+
+  // ② a crate that breaks a MUST. The verdict expected on screen is computed from the same document
+  // through the app's own rules, so the panel cannot quietly disagree with them.
+  const brokenDir = join(exportDir, 'broken-crate')
+  await mkdir(brokenDir, { recursive: true })
+  const brokenDocument = {
+    '@context': [RO_CRATE_CONTEXT_URL],
+    '@graph': [{ '@id': './', '@type': 'Dataset', name: 'Not one of this app’s crates' }]
+  }
+  await writeFile(
+    join(brokenDir, 'ro-crate-metadata.json'),
+    JSON.stringify(brokenDocument, null, 2),
+    'utf8'
+  )
+  const expectedFailures = failedRoCrateAssertions(
+    validateRoCrate({ document: brokenDocument as unknown as RoCrateMetadataDocument })
+  )
+  expect(expectedFailures.length).toBeGreaterThan(0)
+
+  await dialog.getByTestId('ro-crate-inspect-path').fill(brokenDir)
+  await dialog.getByTestId('ro-crate-inspect-submit').click()
+  const failedList = dialog.getByTestId('ro-crate-inspect-failed-list')
+  await expect(failedList).toBeVisible({ timeout: 30_000 })
+  const named = await failedList.locator('li').allInnerTexts()
+  console.log(`[ic48] rules named on screen: ${JSON.stringify(named)}`)
+  expect(named.length).toBe(expectedFailures.length)
+  for (const assertion of expectedFailures) expect(named.join('\n')).toContain(assertion.id)
+  // The level word is what keeps a foreign crate's author from being told their file breaks RO-Crate
+  // when the rule was only this app's own expectation of the crates it writes.
+  expect(named.join('\n')).toContain('required by RO-Crate 1.1')
+  // A judged crate is a report, never a success: no all-passed line beside failing rules.
+  await expect(dialog.getByTestId('ro-crate-inspect-all-passed')).toHaveCount(0)
+
+  // Read-only means read-only: the crate that was checked is byte-for-byte what it was before.
+  expect((await readFile(join(crateDir, 'ro-crate-metadata.json'))).equals(metadataBefore)).toBe(
+    true
+  )
 
   // --- the longest copy must not break the panel --------------------------------------------
   // Chinese is the densest dictionary here, and the success block carries a full absolute path. The

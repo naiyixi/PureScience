@@ -3933,7 +3933,9 @@ export const zh = {
   'roCrate.export.refusedEntry': '{version} — 已拒收：{reason}',
   'settings.memoryNoteFilterPlaceholder': '筛选笔记…',
   'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。',
-  'roCrate.export.exportOnly': '仅支持导出 —— 目前还不能把外部的 crate 导入进来或对它做校验。',
+  'roCrate.export.exportOnly':
+    '这里负责写出 crate；外来的 crate 也能在这里做只读检查，而且不会被导入任何项目。',
+
   'settings.skillImportedKept':
     '按导入原样保留：这份副本会与导入时的内容比对。复制一份即可得到属于你自己、可以编辑的技能。',
   'settings.memoryLastSurfaced': '最近被回忆：{when}',
@@ -4024,7 +4026,23 @@ export const zh = {
   'notifications.clearAllConfirm': '全部删除',
   'notifications.deleteItem': '删除通知：{title}',
   'settings.skillForkAction': '复制为我的技能',
-  'settings.skillForkFailed': '无法复制这份技能：{reason}'
+  'settings.skillForkFailed': '无法复制这份技能：{reason}',
+  'roCrate.inspect.heading': '检查外来的 crate',
+  'roCrate.inspect.scopeNote':
+    '只读：不会改动来源目录，也不会把 crate 导入任何项目。「通过」只表示本应用能套用的每条规则都成立，不代表它在科学上正确；标为 export-contract 的规则，是本应用对自己写出的 crate 的要求。',
+  'roCrate.inspect.pathLabel': 'crate 目录',
+  'roCrate.inspect.chooseFolder': '选择目录…',
+  'roCrate.inspect.run': '开始检查',
+  'roCrate.inspect.running': '正在检查…',
+  'roCrate.inspect.summary': '{total} 项检查中通过 {passed} 项，未满足 {failed} 项。',
+  'roCrate.inspect.allPassed': '本应用能套用的检查全部通过。',
+  'roCrate.inspect.failedHeading': '未满足的检查',
+  'roCrate.inspect.level.spec-must': 'RO-Crate 1.1 强制要求',
+  'roCrate.inspect.level.spec-should': 'RO-Crate 1.1 建议要求',
+  'roCrate.inspect.level.export-contract': '本应用对自己写出的 crate 的要求',
+  'roCrate.inspect.failure.no-metadata-file': '那个目录里没有 ro-crate-metadata.json。',
+  'roCrate.inspect.failure.unreadable': '读不到那个目录里的 ro-crate-metadata.json。',
+  'roCrate.inspect.failure.unparseable': '那个目录里的 ro-crate-metadata.json 不是合法的 JSON。'
 }
 
 export type ZhKey = keyof typeof zh

@@ -4187,7 +4187,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterPlaceholder': 'Фильтр заметок…',
   'settings.memoryNoteFilterEmpty': 'Ни одна заметка не соответствует этому фильтру.',
   'roCrate.export.exportOnly':
-    'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.',
+    'Здесь записываются crate; crate из другого места тоже можно проверить здесь — только для чтения, и он никогда не импортируется в проект.',
+
   'settings.skillImportedKept':
     'Хранится как импортированное: эта копия сверяется с импортом. Дублируйте её, чтобы получить собственный навык, который можно редактировать.',
   'settings.memoryLastSurfaced': 'Последний раз использовано: {when}',
@@ -4296,5 +4297,22 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': 'Удалить всё',
   'notifications.deleteItem': 'Удалить уведомление: {title}',
   'settings.skillForkAction': 'Дублировать как мой навык',
-  'settings.skillForkFailed': 'Не удалось дублировать этот навык: {reason}'
+  'settings.skillForkFailed': 'Не удалось дублировать этот навык: {reason}',
+  'roCrate.inspect.heading': 'Проверить crate из другого места',
+  'roCrate.inspect.scopeNote':
+    'Только чтение: папка не изменяется, и ничего не импортируется в проект. «Пройдено» означает, что выполнены все правила, которые это приложение умеет применять, — а не то, что crate научно верен. Строка с export-contract — это требование приложения к тем crate, которые оно само записывает.',
+  'roCrate.inspect.pathLabel': 'Папка crate',
+  'roCrate.inspect.chooseFolder': 'Выбрать папку…',
+  'roCrate.inspect.run': 'Проверить',
+  'roCrate.inspect.running': 'Проверка…',
+  'roCrate.inspect.summary': '{passed} из {total} проверок пройдено — {failed} не выполнено.',
+  'roCrate.inspect.allPassed': 'Пройдены все проверки, которые умеет выполнять это приложение.',
+  'roCrate.inspect.failedHeading': 'Невыполненные проверки',
+  'roCrate.inspect.level.spec-must': 'требуется RO-Crate 1.1',
+  'roCrate.inspect.level.spec-should': 'рекомендуется RO-Crate 1.1',
+  'roCrate.inspect.level.export-contract': 'требование приложения к своим crate',
+  'roCrate.inspect.failure.no-metadata-file': 'В этой папке нет ro-crate-metadata.json.',
+  'roCrate.inspect.failure.unreadable': 'Не удалось прочитать ro-crate-metadata.json в этой папке.',
+  'roCrate.inspect.failure.unparseable':
+    'ro-crate-metadata.json в этой папке не является корректным JSON.'
 }

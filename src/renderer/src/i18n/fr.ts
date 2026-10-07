@@ -4289,7 +4289,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterPlaceholder': 'Filtrer les notes…',
   'settings.memoryNoteFilterEmpty': 'Aucune note ne correspond à ce filtre.',
   'roCrate.export.exportOnly':
-    'Export uniquement — un crate externe ne peut pas encore être importé ni vérifié ici.',
+    'Ici, on écrit des crates ; un crate venu d’ailleurs peut aussi y être vérifié en lecture seule, et il n’est jamais importé dans un projet.',
+
   'settings.skillImportedKept':
     'Conservé tel qu’importé : cette copie est comparée à ce qui a été importé. Dupliquez-la pour obtenir un skill personnel que vous pouvez modifier.',
   'settings.memoryLastSurfaced': 'Dernière récupération le {when}',
@@ -4399,5 +4400,26 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllConfirm': 'Tout supprimer',
   'notifications.deleteItem': 'Supprimer la notification : {title}',
   'settings.skillForkAction': 'Dupliquer comme skill personnel',
-  'settings.skillForkFailed': 'Impossible de dupliquer ce skill : {reason}'
+  'settings.skillForkFailed': 'Impossible de dupliquer ce skill : {reason}',
+  'roCrate.inspect.heading': 'Vérifier un crate venu d’ailleurs',
+  'roCrate.inspect.scopeNote':
+    'Lecture seule : le dossier n’est pas modifié et rien n’est importé dans un projet. « Vérifié » signifie que toutes les règles que cette application peut appliquer sont satisfaites — pas que le crate soit scientifiquement correct. Une ligne marquée export-contract est une attente de cette application envers les crates qu’elle écrit.',
+  'roCrate.inspect.pathLabel': 'Dossier du crate',
+  'roCrate.inspect.chooseFolder': 'Choisir un dossier…',
+  'roCrate.inspect.run': 'Vérifier',
+  'roCrate.inspect.running': 'Vérification…',
+  'roCrate.inspect.summary':
+    '{passed} vérifications sur {total} ont réussi — {failed} non satisfaites.',
+  'roCrate.inspect.allPassed':
+    'Toutes les vérifications que cette application peut appliquer ont réussi.',
+  'roCrate.inspect.failedHeading': 'Vérifications non satisfaites',
+  'roCrate.inspect.level.spec-must': 'exigé par RO-Crate 1.1',
+  'roCrate.inspect.level.spec-should': 'recommandé par RO-Crate 1.1',
+  'roCrate.inspect.level.export-contract': 'attendu par cette application de ses propres crates',
+  'roCrate.inspect.failure.no-metadata-file':
+    'Ce dossier ne contient pas de ro-crate-metadata.json.',
+  'roCrate.inspect.failure.unreadable':
+    'Le ro-crate-metadata.json de ce dossier n’a pas pu être lu.',
+  'roCrate.inspect.failure.unparseable':
+    'Le ro-crate-metadata.json de ce dossier n’est pas un JSON valide.'
 }
