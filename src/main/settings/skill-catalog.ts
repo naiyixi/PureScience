@@ -9,6 +9,8 @@ import type {
   AgentHomeSkillView,
   CreateSkillRequest,
   DeleteSkillRequest,
+  ForkImportedSkillRequest,
+  ForkImportedSkillResult,
   ImportSkillRequest,
   ImportSkillResult,
   ImportAgentHomeSkillsRequest,
@@ -326,6 +328,14 @@ class SkillCatalogModule {
       references: request.references
     })
     return this.listSkills()
+  }
+
+  // Copies an imported skill into a personal one. The new id is returned alongside the refreshed
+  // catalog: the caller opens the copy for editing, and the id it is handed has to be the one the
+  // catalog will show, not one derived again on the renderer side.
+  async forkImportedSkill(request: ForkImportedSkillRequest): Promise<ForkImportedSkillResult> {
+    const id = await this.userSkills.forkImported(request.id)
+    return { id, skills: await this.listSkills() }
   }
 
   async deleteSkill(

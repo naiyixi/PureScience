@@ -8,11 +8,16 @@ import type {
 } from '../../../../shared/settings'
 import { isSkillAlwaysOn } from '../../../../shared/skill-activation'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
+import { Button } from '@/components/ui/button'
 import { useSettingsStore } from '@/stores/settings-store'
 import { SettingsToggle } from './SettingsLayout'
 
 type SkillDetailViewProps = {
   skillId: string
+  // Opens the personal copy a fork produced. The fork action is only ever offered where the caller can
+  // take the user to it, so this is required rather than optional: a button that duplicates a skill and
+  // then strands the user would be worse than no button.
+  onForked: (skillId: string) => void
 }
 
 // Formats an ISO date as a coarse "Updated N days ago" string for the detail header.
@@ -55,11 +60,14 @@ const DEDICATED_METADATA_KEYS = new Set([
 // Read-only detail view for one bundled skill: header (name + badge + updated + description), the
 // rendered SKILL.md under "Files", and frontmatter metadata under "Details". The breadcrumb and back
 // control live in the settings header, not here.
-const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element => {
+const SkillDetailView = ({ skillId, onForked }: SkillDetailViewProps): React.JSX.Element => {
   const { t } = useLanguage()
   const skill = useSettingsStore((state) => state.skills.find((item) => item.id === skillId))
   const setSkillEnabled = useSettingsStore((state) => state.setSkillEnabled)
+  const forkImportedSkill = useSettingsStore((state) => state.forkImportedSkill)
   const [detail, setDetail] = useState<SkillDetail | null>(null)
+  const [forking, setForking] = useState(false)
+  const [forkError, setForkError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -70,6 +78,19 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
       active = false
     }
   }, [skillId])
+
+  // Duplicates the imported skill and opens the copy. The id comes back from the fork itself — deriving
+  // it here a second time (name to slug, collision suffix) is exactly how the two would drift apart.
+  const fork = (): void => {
+    setForking(true)
+    setForkError(null)
+    void forkImportedSkill(skillId)
+      .then((newSkillId) => onForked(newSkillId))
+      .catch((error: unknown) => {
+        setForkError(error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => setForking(false))
+  }
 
   const enabled = skill?.enabled ?? detail?.enabled ?? false
   const name = skill?.name ?? detail?.name ?? ''
@@ -129,13 +150,34 @@ const SkillDetailView = ({ skillId }: SkillDetailViewProps): React.JSX.Element =
         </p>
       ) : null}
 
-      {/* And what an imported skill is NOT: it stays the imported copy. Saying it here is the difference
-          between a limitation and something the reader has to discover by looking for a fork action that
-          does not exist. */}
+      {/* And what an imported skill is NOT: it stays the imported copy, and duplicating it is how you get
+          one you can edit. Saying both here is the difference between a limitation and something the
+          reader has to discover by looking for an action that does not exist. */}
       {detail?.source === 'imported' ? (
-        <p className="mt-2 text-xs text-muted-foreground" data-slot="skill-imported-kept">
-          {t('settings.skillImportedKept')}
-        </p>
+        <>
+          <p className="mt-2 text-xs text-muted-foreground" data-slot="skill-imported-kept">
+            {t('settings.skillImportedKept')}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-slot="skill-fork"
+              disabled={forking}
+              onClick={fork}
+            >
+              {t('settings.skillForkAction')}
+            </Button>
+          </div>
+          {/* A fork that failed must say so and leave the user where they are: navigating to an editor for
+              a copy that was never created would look exactly like success. */}
+          {forkError ? (
+            <p role="alert" className="mt-2 text-xs text-destructive" data-slot="skill-fork-error">
+              {t('settings.skillForkFailed').replace('{reason}', forkError)}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {/* Trigger quality: pure local rules, scored at read time, so the number is one the user can

@@ -25,6 +25,8 @@ export type SettingsSkillsActions = {
   setSkillEnabled: (id: string, enabled: boolean) => Promise<void>
   createSkill: (request: CreateSkillRequest) => Promise<void>
   updateSkill: (request: UpdateSkillRequest) => Promise<void>
+  // Returns the new personal skill's id — the copy the caller should open for editing.
+  forkImportedSkill: (id: string) => Promise<string>
   deleteSkill: (id: string) => Promise<void>
   importSkill: (url: string) => Promise<ImportSkillResult>
   importSkillZip: (
@@ -50,6 +52,7 @@ type SettingsSkillsCommands = Pick<
   | 'setSkillEnabled'
   | 'createSkill'
   | 'updateSkill'
+  | 'forkImportedSkill'
   | 'deleteSkill'
   | 'importSkill'
   | 'importSkillZip'
@@ -116,6 +119,8 @@ export const createSettingsSkillsSlice = ({
     },
     createSkill: (request) => reconcileCatalog(() => getCommands().createSkill(request)),
     updateSkill: (request) => reconcileCatalog(() => getCommands().updateSkill(request)),
+    forkImportedSkill: async (id) =>
+      (await reconcileImport(() => getCommands().forkImportedSkill({ id }))).id,
     deleteSkill: (id) => reconcileCatalog(() => getCommands().deleteSkill({ id })),
     importSkill: (url) => reconcileImport(() => getCommands().importSkill({ url })),
     importSkillZip: (dataBase64, opts) =>

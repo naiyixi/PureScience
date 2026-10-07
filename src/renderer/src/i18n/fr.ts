@@ -4291,7 +4291,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly':
     'Export uniquement — un crate externe ne peut pas encore être importé ni vérifié ici.',
   'settings.skillImportedKept':
-    'Conservé tel qu’importé : cette copie est comparée à ce qui a été importé, et il n’existe pas encore de moyen d’en dériver un skill personnel.',
+    'Conservé tel qu’importé : cette copie est comparée à ce qui a été importé. Dupliquez-la pour obtenir un skill personnel que vous pouvez modifier.',
   'settings.memoryLastSurfaced': 'Dernière récupération le {when}',
   'jobDetail.cancelJob': 'Interrompre le job',
   'jobDetail.cancelling': 'Arrêt en cours …',
@@ -4397,5 +4397,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllWarning':
     'Efface les messages listés ici. Vos conversations ne sont pas supprimées. Cette action est irréversible.',
   'notifications.clearAllConfirm': 'Tout supprimer',
-  'notifications.deleteItem': 'Supprimer la notification : {title}'
+  'notifications.deleteItem': 'Supprimer la notification : {title}',
+  'settings.skillForkAction': 'Dupliquer comme skill personnel',
+  'settings.skillForkFailed': 'Impossible de dupliquer ce skill : {reason}'
 }

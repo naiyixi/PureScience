@@ -32,7 +32,10 @@ import { parseSkillProvenance, SKILL_TRUST_KEY } from '../../shared/skill-proven
 import { readSkillFile } from './skill-files'
 import { selectSkillManifestRoots } from './skill-bundle-paths'
 import { extractZip, extractZipLenient } from './zip-extract'
-import { readSpecialistPackageSkillMetadata } from './specialist-package-adapter'
+import {
+  readSpecialistPackageSkillMetadata,
+  SPECIALIST_PACKAGE_SKILL_METADATA
+} from './specialist-package-adapter'
 import { type SkillMutationOwner, skillMutationOwnerFor } from './skill-mutation-owner'
 
 const log = createLogger('skills')
@@ -558,6 +561,92 @@ class UserSkillRepository {
     if (!parsed || parsed.source !== 'personal') throw new Error(`Not a personal skill id: ${id}`)
 
     await this.runExclusive(() => this.writeSkill('personal', parsed.slug, input))
+  }
+
+  // Forks an imported skill into a personal one, returning the new id. A fork is a one-time copy and
+  // not a link back: the imported skill keeps its bytes (the imported-skill promise), and the copy
+  // carries `forked-from` frontmatter so its origin stays readable offline. Every file travels with it
+  // except each side's own bookkeeping — the import record and the specialist package ownership
+  // manifest — because a fork is the user's own skill and may inherit neither. Its SKILL.md is emitted
+  // through the same writer the personal editor uses, so from here on it is a personal skill like any
+  // other. Refusing a symlink or hard link keeps a fork from carrying content the skill does not own.
+  async forkImported(id: string): Promise<string> {
+    return this.runExclusive(async () => {
+      await this.doRecoverImportedTransactions()
+      const parsed = await this.resolveSkillId(id)
+      if (parsed.source !== 'imported') throw new Error(`Not an imported skill id: ${id}`)
+
+      const dir = this.skillDir('imported', parsed.slug)
+      const { fields, body } = await readSkillFile(dir)
+      const packageMetadata = await readSpecialistPackageSkillMetadata(dir)
+      const sourceId = packageMetadata?.id ?? `imported-${parsed.slug}`
+
+      const name = fields.name?.trim() || parsed.slug
+      const auxiliary = await this.readAuxiliaryFiles(dir)
+      const slug = await this.uniqueSlug('personal', toSlug(name) || 'skill')
+
+      await this.writeSkill('personal', slug, {
+        name,
+        description: fields.description ?? '',
+        body,
+        // The imported skill's own frontmatter travels with the copy (writeSkill drops name/description
+        // and re-derives them), plus the provenance field this fork is.
+        metadata: { ...fields, 'forked-from': sourceId }
+      })
+      await this.writeAuxiliaryFiles(this.skillDir('personal', slug), auxiliary)
+
+      return `personal-${slug}`
+    })
+  }
+
+  // Every file under a skill directory except the ones that belong to bookkeeping rather than content:
+  // the SKILL.md (re-emitted by the caller), the import record, and the specialist package manifest.
+  private async readAuxiliaryFiles(
+    dir: string
+  ): Promise<Array<{ relativePath: string; content: Buffer }>> {
+    const files: Array<{ relativePath: string; content: Buffer }> = []
+    const walk = async (current: string, prefix: string): Promise<void> => {
+      for (const entry of await readdir(current, { withFileTypes: true })) {
+        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name
+        if (
+          relativePath === SOURCE_MANIFEST ||
+          relativePath === 'SKILL.md' ||
+          entry.name === SPECIALIST_PACKAGE_SKILL_METADATA
+        ) {
+          continue
+        }
+        const target = join(current, entry.name)
+        const stats = await lstat(target)
+        if (stats.isSymbolicLink() || (stats.isFile() && stats.nlink > 1)) {
+          throw new Error(`Refusing to copy unexpected skill entry: ${relativePath}`)
+        }
+        if (stats.isDirectory()) {
+          await walk(target, relativePath)
+          continue
+        }
+        if (stats.isFile()) files.push({ relativePath, content: await readFile(target) })
+      }
+    }
+
+    await walk(dir, '')
+
+    return files
+  }
+
+  // Writes copied files beneath a skill directory, refusing any path that would leave it.
+  private async writeAuxiliaryFiles(
+    dir: string,
+    files: ReadonlyArray<{ relativePath: string; content: Buffer }>
+  ): Promise<void> {
+    const root = resolve(dir)
+    for (const file of files) {
+      const target = resolve(dir, file.relativePath)
+      if (target === root || !target.startsWith(root + sep)) {
+        throw new Error(`Refusing to write skill file outside its directory: ${file.relativePath}`)
+      }
+      await mkdir(dirname(target), { recursive: true })
+      await writeFile(target, file.content)
+    }
   }
 
   // Deletes a personal or imported skill directory.

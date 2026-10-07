@@ -303,7 +303,9 @@ describe('renderer surface inventory', () => {
     // inventory and the catalog move together.
     // 471 with the message-centre reader deletions (notifications.clearAll / notifications.deleteItems):
     // two desktop-only channels, so the preload bridge and the catalog move together.
-    expect(electronPaths).toHaveLength(471)
+    // 472 with the skill fork (settings.forkImportedSkill, work order 二): the preload bridge exposes one
+    // method per contract, so the preload inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(472)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -313,7 +315,7 @@ describe('renderer surface inventory', () => {
     // channels, so the invoke map moves with them.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(364)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(365)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   AgentHomeSkillRef,
   AgentHomeSkillView,
+  ForkImportedSkillResult,
   ImportAgentHomeSkillsResult,
   ImportSkillResult,
   ImportSkillZipBatchResult,
@@ -50,6 +51,10 @@ const createCommands = (): SkillCommands => ({
   setSkillEnabled: vi.fn(async () => []),
   createSkill: vi.fn(async () => []),
   updateSkill: vi.fn(async () => []),
+  forkImportedSkill: vi.fn(async (): Promise<ForkImportedSkillResult> => ({
+    id: 'personal-forked',
+    skills: []
+  })),
   deleteSkill: vi.fn(async () => []),
   importSkill: vi.fn(async (): Promise<ImportSkillResult> => ({
     status: 'imported',
@@ -208,6 +213,21 @@ describe('settings Skills slice', () => {
       replaceId: 'old'
     })
     expect(store.getState().skills).toEqual(zipResult.skills)
+  })
+
+  it('returns the id of the copy a skill fork created and reconciles its catalog', async () => {
+    const result: ForkImportedSkillResult = {
+      id: 'personal-copy',
+      skills: [skill('personal-copy')]
+    }
+    vi.mocked(commands.forkImportedSkill).mockResolvedValue(result)
+
+    // The caller opens the copy main actually created: re-deriving the id here (name to slug, collision
+    // suffix) is exactly how the two would drift apart.
+    await expect(store.getState().forkImportedSkill('imported-demo')).resolves.toBe('personal-copy')
+
+    expect(commands.forkImportedSkill).toHaveBeenCalledWith({ id: 'imported-demo' })
+    expect(store.getState().skills).toEqual(result.skills)
   })
 
   it('returns batch import results and reconciles their catalogs', async () => {

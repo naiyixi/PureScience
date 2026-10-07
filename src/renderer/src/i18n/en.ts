@@ -4212,7 +4212,7 @@ export const en: Record<ZhKey, string> = {
   'roCrate.export.exportOnly':
     'Export only — an external crate cannot be imported or checked here yet.',
   'settings.skillImportedKept':
-    'Kept as imported: this copy is compared against what you imported, and there is no way to fork it into a skill of your own yet.',
+    'Kept as imported: this copy is compared against what you imported. Duplicate it to get a skill of your own that you can edit.',
   'settings.memoryLastSurfaced': 'Last recalled {when}',
   'jobDetail.cancelJob': 'Cancel job',
   'jobDetail.cancelling': 'Stopping…',
@@ -4316,5 +4316,7 @@ export const en: Record<ZhKey, string> = {
   'notifications.clearAllWarning':
     'This clears the messages listed here. Your conversations are not deleted. It cannot be undone.',
   'notifications.clearAllConfirm': 'Delete all',
-  'notifications.deleteItem': 'Delete notification: {title}'
+  'notifications.deleteItem': 'Delete notification: {title}',
+  'settings.skillForkAction': 'Duplicate as my skill',
+  'settings.skillForkFailed': 'Could not duplicate this skill: {reason}'
 }

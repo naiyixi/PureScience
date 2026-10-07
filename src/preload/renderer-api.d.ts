@@ -282,6 +282,8 @@ import type {
   SkillView,
   CreateSkillRequest,
   UpdateSkillRequest,
+  ForkImportedSkillRequest,
+  ForkImportedSkillResult,
   DeleteSkillRequest,
   ExportSkillRequest,
   ExportSkillResult,
@@ -668,6 +670,7 @@ export interface PureScienceAPI {
     setSkillEnabled(request: SetSkillEnabledRequest): Promise<SkillView[]>
     createSkill(request: CreateSkillRequest): Promise<SkillView[]>
     updateSkill(request: UpdateSkillRequest): Promise<SkillView[]>
+    forkImportedSkill(request: ForkImportedSkillRequest): Promise<ForkImportedSkillResult>
     deleteSkill(request: DeleteSkillRequest): Promise<SkillView[]>
     importSkill(request: ImportSkillRequest): Promise<ImportSkillResult>
     importSkillZip(request: ImportSkillZipRequest): Promise<ImportSkillResult>

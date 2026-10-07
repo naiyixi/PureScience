@@ -3875,7 +3875,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterEmpty': '這個篩選條件下沒有符合的筆記。',
   'roCrate.export.exportOnly': '僅支援匯出 —— 目前還不能把外部的 crate 匯入進來或對它做檢核。',
   'settings.skillImportedKept':
-    '依匯入原樣保留：這份副本會與匯入時的內容比對，目前還不能把它分叉成屬於你自己的技能。',
+    '依匯入原樣保留：這份副本會與匯入時的內容比對。複製一份即可得到屬於你自己、可以編輯的技能。',
   'settings.memoryLastSurfaced': '最近被回憶：{when}',
   'jobDetail.cancelJob': '取消任務',
   'jobDetail.cancelling': '正在停止…',
@@ -3963,5 +3963,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllWarning':
     '這裡列出的訊息會被清除；工作階段本身不會被刪除。此操作無法復原。',
   'notifications.clearAllConfirm': '全部刪除',
-  'notifications.deleteItem': '刪除通知：{title}'
+  'notifications.deleteItem': '刪除通知：{title}',
+  'settings.skillForkAction': '複製為我的技能',
+  'settings.skillForkFailed': '無法複製這份技能：{reason}'
 }

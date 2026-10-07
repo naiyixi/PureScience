@@ -4189,7 +4189,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly':
     'Только экспорт — импортировать и проверять чужой crate здесь пока нельзя.',
   'settings.skillImportedKept':
-    'Хранится как импортированное: эта копия сверяется с импортом, и отделить из неё собственный навык пока нельзя.',
+    'Хранится как импортированное: эта копия сверяется с импортом. Дублируйте её, чтобы получить собственный навык, который можно редактировать.',
   'settings.memoryLastSurfaced': 'Последний раз использовано: {when}',
   'jobDetail.cancelJob': 'Остановить задание',
   'jobDetail.cancelling': 'Останавливаем…',
@@ -4294,5 +4294,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllWarning':
     'Удаляет сообщения из этого списка. Ваши беседы не удаляются. Это действие нельзя отменить.',
   'notifications.clearAllConfirm': 'Удалить всё',
-  'notifications.deleteItem': 'Удалить уведомление: {title}'
+  'notifications.deleteItem': 'Удалить уведомление: {title}',
+  'settings.skillForkAction': 'Дублировать как мой навык',
+  'settings.skillForkFailed': 'Не удалось дублировать этот навык: {reason}'
 }

@@ -37,14 +37,16 @@ describe('renderer contract catalog', () => {
     // 471 with the message-centre reader deletions (notifications.clearAll /
     // notifications.deleteItems): two desktop-only channels, so the catalog and the preload inventory
     // move by two while neither Web map moves at all.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(471)
+    // 472 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel,
+    // so the catalog, the invoke map, the preload inventory and both Web installation sets move by one.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(472)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(projection.invoke)).toHaveLength(364)
+    expect(Object.keys(projection.invoke)).toHaveLength(365)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -56,9 +58,11 @@ describe('renderer contract catalog', () => {
     // 388 with stopping a remote job (compute.jobsCancel, IC39): a LOCAL-only compute channel, so the
     // catalog, the invoke map and the local-Web installation set each move by one while the remote-Web
     // set grows by the rejecting stub it gets for being local-only.
+    // 395 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel,
+    // so the local-Web installation set moves with it while the remote-Web one gains the same channel.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(394)
+    ).toHaveLength(395)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

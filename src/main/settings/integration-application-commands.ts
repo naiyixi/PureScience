@@ -21,6 +21,7 @@ type SkillIntegrationWorkflows = Pick<
   | 'setSkillEnabled'
   | 'createSkill'
   | 'updateSkill'
+  | 'forkImportedSkill'
   | 'deleteSkill'
   | 'importSkill'
   | 'importSkillZip'
@@ -83,6 +84,11 @@ const settingsIntegrationApplicationCommands = Object.freeze({
     OwnerArgs<SkillIntegrationWorkflows, 'updateSkill'>,
     OwnerResult<SkillIntegrationWorkflows, 'updateSkill'>
   >('settings:update-skill'),
+  forkImportedSkill: defineApplicationCommand<
+    'settings:fork-imported-skill',
+    OwnerArgs<SkillIntegrationWorkflows, 'forkImportedSkill'>,
+    OwnerResult<SkillIntegrationWorkflows, 'forkImportedSkill'>
+  >('settings:fork-imported-skill'),
   deleteSkill: defineApplicationCommand<
     'settings:delete-skill',
     OwnerArgs<SkillIntegrationWorkflows, 'deleteSkill'>,
@@ -190,6 +196,7 @@ const settingsSkillApplicationCommandGroup = defineApplicationCommandGroup('sett
   settingsIntegrationApplicationCommands.setSkillEnabled,
   settingsIntegrationApplicationCommands.createSkill,
   settingsIntegrationApplicationCommands.updateSkill,
+  settingsIntegrationApplicationCommands.forkImportedSkill,
   settingsIntegrationApplicationCommands.deleteSkill,
   settingsIntegrationApplicationCommands.importSkill,
   settingsIntegrationApplicationCommands.importSkillZip,
@@ -246,6 +253,7 @@ const registerIntegrationSettingsApplicationCommands = (
       'settings:set-skill-enabled': ({ args }) => dependencies.skills.setSkillEnabled(args[0]),
       'settings:create-skill': ({ args }) => dependencies.skills.createSkill(args[0]),
       'settings:update-skill': ({ args }) => dependencies.skills.updateSkill(args[0]),
+      'settings:fork-imported-skill': ({ args }) => dependencies.skills.forkImportedSkill(args[0]),
       'settings:delete-skill': ({ args }) => dependencies.skills.deleteSkill(args[0]),
       'settings:import-skill': ({ args }) => dependencies.skills.importSkill(args[0]),
       'settings:import-skill-zip': ({ args }) => dependencies.skills.importSkillZip(args[0]),

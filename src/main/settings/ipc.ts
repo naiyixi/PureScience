@@ -25,6 +25,7 @@ import {
   type DeleteSkillRequest,
   type ExportSkillRequest,
   type ExportSkillResult,
+  type ForkImportedSkillRequest,
   type ImportAgentHomeSkillsRequest,
   type ImportSkillRequest,
   type ImportSkillZipRequest,
@@ -435,6 +436,9 @@ const registerSettingsIpcHandlers = ({
   )
   ipcMainHandle('settings:update-skill', (_event, request: UpdateSkillRequest) =>
     workflows.skills.updateSkill(request)
+  )
+  ipcMainHandle('settings:fork-imported-skill', (_event, request: ForkImportedSkillRequest) =>
+    workflows.skills.forkImportedSkill(request)
   )
   ipcMainHandle('settings:delete-skill', (_event, request: DeleteSkillRequest) =>
     workflows.skills.deleteSkill(request)

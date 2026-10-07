@@ -3935,7 +3935,7 @@ export const zh = {
   'settings.memoryNoteFilterEmpty': '这个筛选条件下没有匹配的笔记。',
   'roCrate.export.exportOnly': '仅支持导出 —— 目前还不能把外部的 crate 导入进来或对它做校验。',
   'settings.skillImportedKept':
-    '按导入原样保留：这份副本会与导入时的内容比对，目前还不能把它分叉成属于你自己的技能。',
+    '按导入原样保留：这份副本会与导入时的内容比对。复制一份即可得到属于你自己、可以编辑的技能。',
   'settings.memoryLastSurfaced': '最近被回忆：{when}',
   'jobDetail.cancelJob': '取消任务',
   'jobDetail.cancelling': '正在停止…',
@@ -4022,7 +4022,9 @@ export const zh = {
   'notifications.clearAll': '全部清除',
   'notifications.clearAllWarning': '这里列出的消息会被清除；会话本身不会被删除。此操作无法撤销。',
   'notifications.clearAllConfirm': '全部删除',
-  'notifications.deleteItem': '删除通知：{title}'
+  'notifications.deleteItem': '删除通知：{title}',
+  'settings.skillForkAction': '复制为我的技能',
+  'settings.skillForkFailed': '无法复制这份技能：{reason}'
 }
 
 export type ZhKey = keyof typeof zh

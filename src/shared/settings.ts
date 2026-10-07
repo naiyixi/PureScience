@@ -1058,6 +1058,18 @@ export type DeleteSkillRequest = {
   id: string
 }
 
+// Fork an imported skill into a personal one. A one-time copy, not a link: the imported skill keeps
+// its bytes, and the copy's frontmatter records where it came from (`forked-from`).
+export type ForkImportedSkillRequest = {
+  id: string
+}
+
+// The new personal skill's id, plus the refreshed catalog so the caller does not have to re-list.
+export type ForkImportedSkillResult = {
+  id: string
+  skills: SkillView[]
+}
+
 // Import a single skill from a public GitHub URL.
 export type ImportSkillRequest = {
   url: string

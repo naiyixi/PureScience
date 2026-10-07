@@ -175,16 +175,22 @@ const GROUP_COUNT = 39
 // an alias a merge created (references:remove-journal-alias) is the overwrite of a library row, exactly like
 // the merge that wrote it — a window action reachable from the remote surface too, so the dispatch count
 // moves with it.
-const INTERNAL_COMMAND_COUNT = 358
+// +1 each on internal, local Web and the remote Web dispatch, and nothing on the fail-closed set: the
+// skill fork (settings:fork-imported-skill) duplicates an imported skill into this machine's own skill
+// root exactly like the create / update / import channels beside it, so it carries no local-only flag
+// and both Web surfaces move with it.
+const INTERNAL_COMMAND_COUNT = 359
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
 // +3 each on internal, local Web and the remote rejections: the saved-search-filter-set channels are
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
-const LOCAL_WEB_COMMAND_COUNT = 356
+// One more for the skill fork (settings:fork-imported-skill): a plain Web request profile like the
+// skill writes it sits beside, so it lands on both Web surfaces and not in the fail-closed set.
+const LOCAL_WEB_COMMAND_COUNT = 357
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 232
+const REMOTE_WEB_COMMAND_COUNT = 233
 const REMOTE_REJECTED_COMMAND_COUNT = 124
 const TASK_COMMAND_COUNT = 11
 

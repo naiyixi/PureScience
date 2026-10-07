@@ -527,6 +527,7 @@ describe('preload bridge — public surface inventory', () => {
       'settings.exportCustomServerTemplate',
       'settings.exportMcpServers',
       'settings.exportSkill',
+      'settings.forkImportedSkill',
       'settings.functionModels',
       'settings.getAutoApply',
       'settings.getConnectorDetail',
@@ -720,7 +721,7 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(237)
+    expect(runtimeContracts).toHaveLength(238)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

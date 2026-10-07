@@ -321,7 +321,14 @@ const SkillsPanel = ({
   }
 
   if (view.kind === 'detail') {
-    return <SkillDetailView skillId={view.id} />
+    // A fork lands in the personal editor: the copy exists so it can be made yours, and editing it is the
+    // next thing the user came here to do.
+    return (
+      <SkillDetailView
+        skillId={view.id}
+        onForked={(skillId) => onNavigate({ kind: 'edit', id: skillId })}
+      />
+    )
   }
   if (view.kind === 'create') {
     return (

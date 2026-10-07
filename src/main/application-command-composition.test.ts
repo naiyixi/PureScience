@@ -180,7 +180,9 @@ describe('application command composition', () => {
     // the named-environment surface it sits beside.
     // One more for stopping a remote job (compute:jobs:cancel, IC39): asking THIS machine to kill a job
     // it launched is local-only by nature, so it joins the local Web surface and the rejection set.
-    expect(composition.localWeb.commandNames()).toHaveLength(356)
+    // One more for the skill fork (settings:fork-imported-skill, work order 二): a plain Web request
+    // profile, so the local Web surface moves with it while the rejection set does not.
+    expect(composition.localWeb.commandNames()).toHaveLength(357)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -199,7 +201,9 @@ describe('application command composition', () => {
     // the plain Web request profile, which is mapped on both Web surfaces), so remote dispatch grows with
     // local. The fail-closed rejection set is unchanged — neither channel is a rejection stub. Same +1 for
     // project-files:list-kinds, which carries no surface flag.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(232)
+    // One more here too: the skill fork is a plain Web request profile, so it is mapped on the remote
+    // Web surface as well. The fail-closed rejection set is unchanged.
+    expect(composition.remoteWeb.commandNames()).toHaveLength(233)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(124)
     await expect(

@@ -1,5 +1,6 @@
 import {
   chmod,
+  link,
   mkdtemp,
   mkdir,
   readdir,
@@ -545,6 +546,88 @@ describe('UserSkillRepository', () => {
     // import at all.
     expect(await repo.contentIntegrity('personal-mine')).toBe('unverified')
     expect(await repo.contentIntegrity('demo')).toBe('unverified')
+  })
+
+  it('forks an imported skill into a personal one and leaves the imported copy byte-identical', async () => {
+    const storage = await makeStorage()
+    const repo = new UserSkillRepository(storage)
+    const zip = buildZip([
+      {
+        path: 'demo/SKILL.md',
+        content: Buffer.from(
+          '---\nname: Demo\ndescription: Imported demo.\nlicense: MIT\n---\nbody'
+        )
+      },
+      { path: 'demo/scripts/run.py', content: Buffer.from('print(1)') },
+      { path: 'demo/references/notes.md', content: Buffer.from('# Notes') }
+    ])
+    expect(await repo.importFromZip(zip)).toEqual({ status: 'imported', id: 'imported-demo' })
+
+    const importedDir = join(storage, 'skills', 'imported', 'demo')
+    const before = {
+      skill: await readFile(join(importedDir, 'SKILL.md')),
+      script: await readFile(join(importedDir, 'scripts', 'run.py')),
+      notes: await readFile(join(importedDir, 'references', 'notes.md')),
+      manifest: await readFile(join(importedDir, '.source.json'))
+    }
+
+    expect(await repo.forkImported('imported-demo')).toBe('personal-demo')
+
+    // A real personal skill on disk: its own body, and every auxiliary file the imported one carried.
+    const copyDir = join(storage, 'skills', 'personal', 'demo')
+    expect(await repo.body('personal-demo')).toContain('body')
+    expect(await readFile(join(copyDir, 'scripts', 'run.py'), 'utf8')).toBe('print(1)')
+    expect(await readFile(join(copyDir, 'references', 'notes.md'), 'utf8')).toBe('# Notes')
+
+    // Where it came from is recorded in the copy's own frontmatter, readable offline.
+    const copied = await readFile(join(copyDir, 'SKILL.md'), 'utf8')
+    expect(copied).toContain('forked-from')
+    expect(copied).toContain('imported-demo')
+    expect(copied).toContain('name: Demo')
+
+    // The copy is the user's own skill, so it inherits neither the import record that makes the imported
+    // copy comparable nor a specialist package's ownership manifest.
+    await expect(stat(join(copyDir, '.source.json'))).rejects.toThrow()
+    await expect(stat(join(copyDir, '.specialist-package.json'))).rejects.toThrow()
+    // …and the copy is a personal skill to the catalog, which is what makes it editable.
+    expect((await repo.list()).find((skill) => skill.id === 'personal-demo')?.source).toBe(
+      'personal'
+    )
+
+    // The imported original is untouched, byte for byte: a fork is a copy, never a move.
+    expect(await readFile(join(importedDir, 'SKILL.md'))).toEqual(before.skill)
+    expect(await readFile(join(importedDir, 'scripts', 'run.py'))).toEqual(before.script)
+    expect(await readFile(join(importedDir, 'references', 'notes.md'))).toEqual(before.notes)
+    expect(await readFile(join(importedDir, '.source.json'))).toEqual(before.manifest)
+  })
+
+  it('refuses to fork anything that is not an imported skill', async () => {
+    const storage = await makeStorage()
+    const repo = new UserSkillRepository(storage)
+    await repo.createPersonal({ name: 'Mine', description: 'd', body: 'body' })
+
+    // A personal id is not an imported one, and neither is an id that resolves to nothing: both are
+    // refused by name rather than silently forking whatever happens to be there.
+    await expect(repo.forkImported('personal-mine')).rejects.toThrow('Not an imported skill id')
+    await expect(repo.forkImported('imported-missing')).rejects.toThrow()
+    expect((await repo.list()).map((skill) => skill.id)).toEqual(['personal-mine'])
+  })
+
+  it('refuses to copy an imported skill whose files are linked rather than owned', async () => {
+    const storage = await makeStorage()
+    const dir = join(storage, 'skills', 'imported', 'linked')
+    await mkdir(join(dir, 'scripts'), { recursive: true })
+    await writeFile(join(dir, 'SKILL.md'), '---\nname: Linked\n---\nbody', 'utf8')
+    const outside = join(storage, 'outside.py')
+    await writeFile(outside, 'print(0)', 'utf8')
+    await link(outside, join(dir, 'scripts', 'run.py'))
+
+    // Copying a hard-linked file would hand the copy content that a second owner can still change, so the
+    // fork refuses by name instead of quietly producing a skill that is not really its own.
+    await expect(new UserSkillRepository(storage).forkImported('imported-linked')).rejects.toThrow(
+      'Refusing to copy unexpected skill entry: scripts/run.py'
+    )
+    expect(await readdir(join(storage, 'skills', 'personal')).catch(() => [])).toEqual([])
   })
 
   it('imports only the selected sub-skill from a multi-root bundle via subPath', async () => {

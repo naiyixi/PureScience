@@ -22,6 +22,9 @@
 
 ## 二、技能：导入版分叉为个人技能（IC50 的另一半）
 
+**✅ 已落地（自主执行器，2026-10-07；实现与门禁读数见队列档 `plan-2026-10-03-next-queue-and-round-convention.md` §二十五）。**
+**仍未取**：收紧后的认证 spec `e2e/certification/skill-imported-copy.spec.ts` 的**真机读数**（内存不足，见 §二十五 末）。**唯一未落项**，下一轮内存宽松时第一条跑它。
+
 **现状（已核实）**：`SkillDetailView` 对 `source === 'imported'` 的技能显示「Kept as imported: …no way to fork it into a skill of your own yet.」；**编辑加载器只服务 personal 技能**（其自身注释即如此写）。
 
 **要做什么**：把"导入版"**分叉**成一份 personal 技能（新 id、来源记为 `forked-from:<原 id>`），此后按 personal 走既有编辑路径。

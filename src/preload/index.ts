@@ -24,6 +24,7 @@ import type {
   CreateSkillRequest,
   DeleteSkillRequest,
   ExportSkillRequest,
+  ForkImportedSkillRequest,
   ImportAgentHomeSkillsRequest,
   ImportSkillRequest,
   ImportSkillZipBatchRequest,
@@ -348,6 +349,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('settings.createSkill', request),
     updateSkill: (request: UpdateSkillRequest) =>
       electronRendererContracts.invoke('settings.updateSkill', request),
+    // Copies an imported skill into a personal one and hands back the new id, so the caller opens the
+    // copy the catalog will show rather than one it derives again on this side.
+    forkImportedSkill: (request: ForkImportedSkillRequest) =>
+      electronRendererContracts.invoke('settings.forkImportedSkill', request),
     deleteSkill: (request: DeleteSkillRequest) =>
       electronRendererContracts.invoke('settings.deleteSkill', request),
     importSkill: (request: ImportSkillRequest) =>

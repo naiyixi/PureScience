@@ -4305,7 +4305,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'roCrate.export.exportOnly':
     'Nur Export — ein fremdes Crate kann hier noch nicht eingelesen oder geprüft werden.',
   'settings.skillImportedKept':
-    'Bleibt wie importiert: Diese Fassung wird mit dem Importierten verglichen, und sie lässt sich noch nicht in einen eigenen Skill abzweigen.',
+    'Bleibt wie importiert: Diese Fassung wird mit dem Importierten verglichen. Dupliziere sie, um einen eigenen Skill zu erhalten, den du bearbeiten kannst.',
   'settings.memoryLastSurfaced': 'Zuletzt abgerufen am {when}',
   'jobDetail.cancelJob': 'Auftrag abbrechen',
   'jobDetail.cancelling': 'Wird gestoppt …',
@@ -4413,5 +4413,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllWarning':
     'Löscht die hier aufgeführten Nachrichten. Ihre Unterhaltungen werden nicht gelöscht. Das lässt sich nicht rückgängig machen.',
   'notifications.clearAllConfirm': 'Endgültig löschen',
-  'notifications.deleteItem': 'Benachrichtigung löschen: {title}'
+  'notifications.deleteItem': 'Benachrichtigung löschen: {title}',
+  'settings.skillForkAction': 'Als eigenen Skill duplizieren',
+  'settings.skillForkFailed': 'Dieser Skill konnte nicht dupliziert werden: {reason}'
 }

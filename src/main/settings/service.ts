@@ -19,6 +19,8 @@ import type {
   CreateSkillRequest,
   DeleteSkillRequest,
   EnvironmentCheckResult,
+  ForkImportedSkillRequest,
+  ForkImportedSkillResult,
   ImportAgentHomeSkillsRequest,
   ImportAgentHomeSkillsResult,
   InstallClaudeRequest,
@@ -1318,6 +1320,12 @@ class SettingsService {
   // Updates an existing personal skill in place, returning the refreshed list.
   async updateSkill(request: UpdateSkillRequest): Promise<SkillView[]> {
     return this.skills.updateSkill(request)
+  }
+
+  // Copies an imported skill into a personal one, returning the new id and the refreshed list. The
+  // imported original is left as it is — a fork is a copy, never a move.
+  async forkImportedSkill(request: ForkImportedSkillRequest): Promise<ForkImportedSkillResult> {
+    return this.skills.forkImportedSkill(request)
   }
 
   // Deletes a personal or imported skill, returning the refreshed list.

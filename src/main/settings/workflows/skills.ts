@@ -1,6 +1,7 @@
 import type {
   CreateSkillRequest,
   DeleteSkillRequest,
+  ForkImportedSkillRequest,
   ImportAgentHomeSkillsRequest,
   ImportSkillRequest,
   ImportSkillZipBatchRequest,
@@ -17,6 +18,7 @@ type SkillSettingsWorkflowStore = Pick<
   | 'setSkillEnabled'
   | 'createSkill'
   | 'updateSkill'
+  | 'forkImportedSkill'
   | 'deleteSkill'
   | 'importSkill'
   | 'importSkillZip'
@@ -57,6 +59,10 @@ class SkillSettingsWorkflows {
 
   async updateSkill(request: UpdateSkillRequest): WorkflowResult<'updateSkill'> {
     return this.afterSkillsChanged(() => this.settings.updateSkill(request))
+  }
+
+  async forkImportedSkill(request: ForkImportedSkillRequest): WorkflowResult<'forkImportedSkill'> {
+    return this.afterSkillsChanged(() => this.settings.forkImportedSkill(request))
   }
 
   async deleteSkill(request: DeleteSkillRequest): WorkflowResult<'deleteSkill'> {

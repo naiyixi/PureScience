@@ -4108,7 +4108,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.memoryNoteFilterEmpty': '이 필터와 일치하는 메모가 없습니다.',
   'roCrate.export.exportOnly': '내보내기 전용 — 외부 crate는 아직 가져오거나 검사할 수 없습니다.',
   'settings.skillImportedKept':
-    '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교되며, 아직 내 스킬로 분기할 수 없습니다.',
+    '가져온 그대로 유지됩니다. 이 사본은 가져올 당시와 비교됩니다. 복제하면 직접 편집할 수 있는 내 스킬이 됩니다.',
   'settings.memoryLastSurfaced': '마지막으로 불러온 시각 {when}',
   'jobDetail.cancelJob': '작업 중지',
   'jobDetail.cancelling': '중지하는 중…',
@@ -4213,5 +4213,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'notifications.clearAllWarning':
     '여기에 나열된 메시지를 지웁니다. 대화 자체는 삭제되지 않습니다. 이 작업은 되돌릴 수 없습니다.',
   'notifications.clearAllConfirm': '모두 삭제',
-  'notifications.deleteItem': '알림 삭제: {title}'
+  'notifications.deleteItem': '알림 삭제: {title}',
+  'settings.skillForkAction': '내 스킬로 복제',
+  'settings.skillForkFailed': '이 스킬을 복제하지 못했습니다: {reason}'
 }

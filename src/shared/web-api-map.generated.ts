@@ -246,6 +246,7 @@ export const WEB_INVOKE_CHANNELS = {
   'settings.detectOpencode': 'settings:detect-opencode',
   'settings.executionProtection': 'settings:execution-protection',
   'settings.exportMcpServers': 'settings:export-mcp-servers',
+  'settings.forkImportedSkill': 'settings:fork-imported-skill',
   'settings.functionModels': 'settings:function-models',
   'settings.getAutoApply': 'settings:get-auto-apply',
   'settings.getConnectorDetail': 'settings:get-connector-detail',
