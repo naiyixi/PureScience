@@ -7,6 +7,12 @@ import { createProject, sendPrompt } from './helpers'
 // (the implementation shipped with a unit test and a render suite) — this is the true-machine reading, and it
 // judges the STORED inbox rather than the panel: a notice that vanished from the list but stayed in the store
 // is the failure this is here to catch.
+//
+// TWO notices from ONE session, which does not need a second project: a turn that finishes writes a
+// `task.completed` notice, and a turn that asks the app for permission writes an authorization notice (the
+// fixture's own `Request fixture permission.` prompt drives exactly that; the app settles the request, but the
+// notice it created stays). Two SESSIONS would need the project switcher, and "back to the home screen → New
+// project" is not reachable from inside a conversation — measured, so this reading seeds around it.
 test.setTimeout(240_000)
 
 type InboxSnapshot = { unreadCount: number; items: Array<{ id: string; kind: string }> }
@@ -23,11 +29,11 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Notification inbox clearing')
-  // ONE notice, and the reading follows it all the way to empty: cancelling changes nothing, one delete really
-  // removes that row, and the panel then says the inbox is empty. (A second notice would have to come from a
-  // second SESSION — notices are per session, measured — which this reading does not stage; that is why the
-  // clear-all half is named as not true-machine-verified in the evidence doc.)
   await sendPrompt(page, 'Finish a task so a completion notice exists.', 'Deterministic reply:')
+  // The fixture answers 'Fixture permission allowed.' or '… denied.' depending on the app's own permission
+  // policy (measured: denied, so the reply text must not be pinned to one of them) — what writes the notice is
+  // the REQUEST itself (`runtime-composition.ts` creates `authorization.required` keyed by session+request).
+  await sendPrompt(page, 'Request fixture permission.', 'Fixture permission')
 
   const seeded = await readInbox(page)
   console.log(
@@ -36,8 +42,8 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
   // A spec that proceeds without the fixture it needs reports success for work it never did.
   expect(
     seeded.items.length,
-    `no notice was seeded, so the clearing has nothing to prove: ${JSON.stringify(seeded.items.map((item) => item.kind))}`
-  ).toBeGreaterThan(0)
+    `two notices are needed for this reading: ${JSON.stringify(seeded.items.map((item) => item.kind))}`
+  ).toBeGreaterThan(1)
 
   // The trigger is the bell itself: its accessible name is "Messages, N unread". "Message center" is the
   // PANEL's name (role=dialog) — the first attempt looked for that as a button and never found it.
@@ -71,14 +77,17 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
   )
   expect(afterOne.items.length).toBe(seeded.items.length - 1)
 
-  // With the last notice gone the panel says so — and the clear-all control goes with it, because an empty
-  // inbox has nothing to clear. Clear-all's own true-machine path therefore needs MULTIPLE notices across two
-  // sessions, which this reading does not stage: that half stays covered by the unit test and the panel's
-  // render suite, and is named as not true-machine-verified in the evidence doc rather than implied here.
-  await expect(page.getByText('No messages yet.')).toBeVisible({ timeout: 15_000 })
-  const afterLast = await readInbox(page)
+  // Now clear what is left, through the confirmation — the half that needs more than one notice.
+  await page.locator('[data-slot="notifications-clear-all"]').click()
+  await page.locator('[data-slot="notifications-clear-confirm-button"]').click()
+
+  await expect
+    .poll(async () => (await readInbox(page)).items.length, { timeout: 30_000 })
+    .toBe(0)
+  const cleared = await readInbox(page)
   console.log(
-    `[notifclear] after deleting the last notice: items=${afterLast.items.length}, and the panel says the inbox is empty`
+    `[notifclear] after clearing all: items=${cleared.items.length}, unread=${cleared.unreadCount}`
   )
-  expect(afterLast.unreadCount).toBe(0)
+  expect(cleared.unreadCount).toBe(0)
+  await expect(page.getByText('No messages yet.')).toBeVisible({ timeout: 15_000 })
 })
