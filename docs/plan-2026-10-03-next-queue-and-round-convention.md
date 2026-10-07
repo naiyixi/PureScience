@@ -1245,3 +1245,23 @@ swap 已用 9.86 G / 11.26 G ⇒ **不做 `build:e2e`**（本机有堆把机器�
 `e2e/certification/packages-mutation.spec.ts` 追加 IC13 那一段（probe-first：先 dump 面板真实 DOM 再写断言），
 在**新建**隔离工作树上跑绿后落树；④ 其余候选不变：IC39/IC40 真机读数（工作单已写好两条路线）/
 IC16·IC17 收紧后 spec 的机器判决（本版认证车道会给）/ IC33 之外的 Windows `database` 分片抖动（测试侧清理重试）。
+
+### 三、发版结果（Release 页真实读数）
+
+| 项 | 读数 |
+| --- | --- |
+| Release 页 | `v1.88.0`：**draft=false / pre=false / 21 资产 / isLatest=true**（mac arm64·x64 的 dmg+zip+blockmap、win setup.exe+zip+blockmap、linux AppImage+deb，加 `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `latest*.yml` / `version.json` / `arm64-mac.yml` / `x64-mac.yml`） |
+| 正文 | 逐字取自 `README.en.md` 的成熟度块 —— 本版那句「**This version inspects what arrives from elsewhere…**」与 🚧 段里「**Two things remain unshipped**」都在页上（双向复核生效） |
+| mac 认证车道 | **P0 Electron certification: success**（suite 自报 **88 passed (35.2m)**）；视觉回归 ✅、macOS 包 smoke ✅、**Developer ID 签名门 ✅** |
+| 公证 | **具名跳过，不是失败**：`SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)`（`notarize-mac` 两条），与「作业绿 ≠ 做了事」的口径一致 |
+| 其余 | `publish: success`；`windows-upgrade-smoke` 在跑（Smoke job 不否定已发布资产） |
+
+### 四、IC16/IC17 的机器判决已出 —— **两个半边都绿**（此前只有推理，现在有读数）
+
+认证车道真跑了收紧后的那支 spec（suite 第 `[89/99]` 项），日志逐字：
+
+- `[ic17] renderer received 162 broadcast(s); **160 carried the nested download detail**` ⇒ **渲染端确实收到了带嵌套 `download` 的广播**；原记「富字段未达渲染端」**已被真机读数否掉**（不是靠推理否掉的）。
+- `[ic17] panel percent samples: 1, 2, 3, 4, 5, 6, 7; **shared line rendered: true**` ⇒ 渲染半也成立（与百分比同一次采样里共享行真的画出来了）。
+- `[ic16] gate while preparing: Preparing Python environment… Downloading managed python runtime (1%) **43.1 KB/s · 104.0 KB / 16.0 MB · 1% · ~6m 18s** Cancel` ⇒ 遮罩侧的富字段行也照旧在场。
+
+⇒ **IC16/IC17 这条立案可以结**：结论是「原记录失真 + 收紧后的读数两半各自成立」，机器判决绿。**已发布的 v1.88.0 CHANGELOG/正文那段「判决由认证车道给出」现在有了答案**；按「已发布记录不改写」的口径，结论落在本档与 v1.89.0 的正文里。
