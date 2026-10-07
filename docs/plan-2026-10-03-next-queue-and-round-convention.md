@@ -1286,3 +1286,34 @@ IC16·IC17 收紧后 spec 的机器判决（本版认证车道会给）/ IC33 �
   零安装零系统改动），并**对源纠正**了任务提交路径（真正 `submitJob` 的是领域连接器 `sequence-tools.ts:388/565`，
   不是笔记本/Shell 工具）⇒ 两条读数现在**本机可解**。**工作区此刻有它未提交的在制品**（`e2e/fixtures/fake-opencode.mjs`、
   新 spec `e2e/certification/remote-job-cancel-unreachable.spec.ts`）⇒ **本会话不碰这两个文件，也不把 IC39/IC40 据为己有**。
+
+## 三十、Windows `database` 分片那条红：本轮查到的与**没**查到的（2026-10-07 夜）
+
+**先纠正我自己的一个错判**：上一节我写「分片被 CPU 饿住（并行重 SQLite 用例）」——**不成立**。看工作流原文
+（`.github/workflows/windows-full-test.yml:73`）：
+
+```
+npm test -- --shard=<n>/8 --maxWorkers=1 --testTimeout=120000 --hookTimeout=120000 …
+```
+
+**该分片本来就是串行的（`--maxWorkers=1`）**，而且那条注释是仓里自己写的口径：
+「Files stay serial on Windows, and the 120-second budgets are kept deliberately … **if a suite still needs the
+ceiling, that is a finding to chase, not a number to tune down.**」
+⇒ 所以「提高超时」既被技能明文禁止、也被仓里的注释明确否掉；**能超掉 120 秒的串行用例是一条待查的发现**。
+
+**本轮实测（macOS 侧，能做的都做了）**：
+
+| 项 | 读数 |
+| --- | --- |
+| `vitest run src/main/reviewer/repository.test.ts`（就是超时那条所在文件） | **27 passed，3.13s**（含那条 `rolls back every finding disposition …`） |
+| `commitFindingDispositions` 的实现形状 | **单个 `client.$transaction(...)`**（`src/main/reviewer/repository.ts:721`）——**没有重试循环、没有退避** ⇒ 排除「重试风暴把 120s 烧光」 |
+| 三条车道读数 | 同一份代码：`c15bbc1c` **success** / `db06590c` failure（`provenance-migration-validation` 30s + EBUSY）/ `e3b1da0f` failure（换成了 `reviewer/repository` 的 **120s**）⇒ **间歇、且换用例** |
+
+**结论（诚实的边界）**：这不是并行争用，也不是重试风暴；两条红都**只在 Windows 上、且带文件锁味道**
+（一条是 `unlink …purescience.db` 的 EBUSY，一条是事务式写入超时）。**我无法在本机验证任何修法**
+（macOS 上 POSIX 允许删打开中的文件、也没有 Windows 的文件锁语义）⇒ 按仓规**不猜着改**。
+
+**下一步（要给 Windows 车道的判决，不是本机）**：① 在 Windows 上给这两条各跑一次带 `--maxWorkers=1` 的**单文件复跑**
+（分片内串行，但复跑能确认是不是「同文件内多条用例互相拖累」）；② 若单文件绿 ⇒ 把该文件在分片里的**位置/邻居**记录下来，
+查是不是「前一条留下未释放的 SQLite 句柄」；③ 真因若是产品侧的锁等待，修法应落在**事务的锁等待预算/释放顺序**并配一条
+能在 Windows 复现的探针；**四条候选里没有一条是「调超时」**。本项**立为 v1.89.0 的 CI 健康项**，本批一个字节都没碰那个分片。
