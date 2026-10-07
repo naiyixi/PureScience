@@ -57,3 +57,15 @@
 - 新文案 9 语（脚本自带九文件齐平 + 写后自证；**不得与英文逐字相同**）
 - 证据落 `docs/evidence/`（三块式：真实事实 / 本轮观测值 / 本轮**没**证到什么）
 - 排期档对应行与 CHANGELOG「明确没做」段**同步改正**（做过的不许留着"未做"）
+
+## 读数回收（2026-10-07，会话；实施者=自主执行器，读数=会话）
+
+三项由执行器落地后，**真机读数由会话补齐**（内存阻塞解除后：`build:e2e` 23–25 s 成功）：
+
+| 项 | 提交 | 真机读数 | 备注 |
+| --- | --- | --- | --- |
+| ① 期刊别名解除 | `16fdafab` | ✅ `journal-alias-release.spec.ts` **1 passed (6.6s)**：存储回读 `aliases=[]`、刊表快照逐字相等（不越界）；确认句逐字读到两件事 | 证据档 `docs/evidence/2026-10-07-journal-alias-release.md` §五 |
+| ③ 技能导入版分叉 | `42dd7855` | ✅ `skill-imported-copy.spec.ts` **1 passed (9.3s)**：原句已改写成"Duplicate it to get a skill of your own that you can edit."；副本**真落到磁盘** `skills/personal/seeded-import` | 读数是**目录回读**，不是界面自陈 |
+| ④ 通知单条删除 / 一键清空 | `9bd516a1` | ✅ `notification-inbox-clear.spec.ts`（**本轮新写**）**1 passed (13.5s)**：警告句逐字读到「Your conversations are not deleted. It cannot be undone.」；单条删除后 **存储** `items=0`；空箱时面板说 "No messages yet." | **清空（clear-all）那半未真机验**：它需要**跨会话的多条通知**（通知按会话记，实测两条 prompt 只出一条），本读数不铺这个夹具 ⇒ 该半仍由单元 + 渲染套件承担，**具名**不冒充 |
+
+**一条夹具事实（本轮实测，值得留档）**：通知是**按会话**记的 ⇒ 同一会话里连发两条 prompt 仍只有一条 `task.completed`；要两条就得两个会话，而 `createProject` 在会话工作区内点不到 "New project"（需先回首页）。
