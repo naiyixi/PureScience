@@ -217,6 +217,29 @@ const runPythonNotebookCell = async (sessionId, prompt) => {
   return 'Python cell ran.'
 }
 
+// IC33: the fixture's only outbound request. The app hands every kernel/shell subprocess the egress proxy env
+// (`egressProxyEnv()` at `kernel-executor.ts:700` and `shell-process.ts:93`), so a request from this command
+// reaches the proxy — and for a host nobody allowed, that is what raises the approval card. `urllib` and NOT
+// node's `http`: node's core client ignores `http_proxy`, so it would never reach the proxy at all.
+const EGRESS_APPROVAL_PROMPT = 'Request a blocked outbound connection.'
+const EGRESS_APPROVAL_REPLY = 'Blocked outbound request attempted.'
+
+const attemptBlockedEgress = async (sessionId) => {
+  await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
+    toolResult(
+      'bash_execute',
+      await client.callTool({
+        name: 'bash_execute',
+        arguments: {
+          command:
+            'python3 -c "import urllib.request; urllib.request.urlopen(\'http://egress-approval-e2e.invalid\', timeout=30)"'
+        }
+      })
+    )
+  })
+  return EGRESS_APPROVAL_REPLY
+}
+
 const createProvenanceArtifact = async (sessionId) => {
   const producerRunId = await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
     const execution = toolResult(
@@ -595,6 +618,8 @@ if (process.argv.includes('--version')) {
             permission.outcome.optionId === 'allow-once'
               ? 'Fixture permission allowed.'
               : 'Fixture permission denied.'
+        } else if (prompt.includes(EGRESS_APPROVAL_PROMPT)) {
+          reply = await attemptBlockedEgress(context.params.sessionId)
         }
       } catch (error) {
         reply = `E2E fixture failure: ${error instanceof Error ? error.message : String(error)}`
