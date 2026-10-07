@@ -195,16 +195,28 @@ test('a package’s evidence becomes rows on the machine that imports it', async
       { projectId: sourceProjectId, appSessionId: source.sessionId }
     )
 
-  // The app runs its own review at turn end, and a review stays `running` until it settles. Reading the
-  // counts while one is still running snapshots a set that is about to change — the mac lane caught exactly
-  // that (`Error: source reviews=running/null:0` against a landed set that no longer matched, while the same
-  // spec locally read `error/null`). Poll until every review has left `running`, then read once: the
-  // comparison is then against the sender's settled set instead of a transient one.
+  // The app runs its own review at turn end, and this spec adds a second one of its own. A read that lands
+  // while either is still being written sees a SMALLER set than the import then moves, so the landed count
+  // and the source count disagree — measured, same code: locally 2/2 (17.5s, green) and on the mac lane 1/2
+  // (red). The earlier wait here was a NEGATIVE one ("no review is `running`") and a negative predicate is
+  // satisfied by a snapshot the app never settled into; what this needs is a POSITIVE one, so it polls until
+  // two consecutive reads agree on the same set (id + lifecycle), then reads once.
+  let previousFingerprint = ''
   await expect
-    .poll(async () => (await readSourceReviews()).map((review) => review.lifecycle ?? 'none'), {
-      timeout: 60_000
-    })
-    .not.toContain('running')
+    .poll(
+      async () => {
+        const reviews = await readSourceReviews()
+        const fingerprint = reviews
+          .map((review) => `${review.id}:${review.lifecycle ?? 'none'}`)
+          .sort()
+          .join('|')
+        const settled = reviews.length > 0 && fingerprint === previousFingerprint
+        previousFingerprint = fingerprint
+        return settled
+      },
+      { timeout: 60_000 }
+    )
+    .toBe(true)
   const sourceReviews = await readSourceReviews()
   expect(sourceReviews.length).toBeGreaterThan(0)
   const sourceReviewId = sourceReviews[0].id
