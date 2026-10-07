@@ -128,3 +128,20 @@
 - IC42 立项：`docs/plan-2026-10-06-IC42-engine-panel.md`；M2 顺延：`docs/plan-2026-10-03-M2-blocker-and-deferral.md`
 - 失败类别那单（已实现，勿重做）：`docs/plan-2026-10-04-failure-kind-work-order.md`
 - 技能（大量可复用规程：e2e 定位、通道登记面、发版与 CI 纪律等）：`~/.hermes/skills/software-development/` 下对应目录。
+
+## 7. 会话续做（2026-10-07）—— 本文件此刻的真实状态
+
+**上面 §2「未完成的任务」已被本会话推进，以本节为准**：
+
+| 项 | 状态 |
+| --- | --- |
+| v1.87.0 | ✅ 已发布（tag `6f4d7c65`、21 资产、Latest、三车道全绿） |
+| IC10 / IC50 / IC53 / IC55 / IC56 | ✅ 全部收口（含三例「陈旧记录」核实、12 个连接器、标题栏菜单、增量索引与技能详情读数） |
+| IC52 会话重放 | ✅ 三段全落地（只读投影 / 卡片只读小节 / 对某一步提问），真机 6.6–15.4s；立项 `docs/plan-2026-10-06-IC52-session-replay.md` |
+| 新功能 ①③④ | ✅ 实现（执行器）+ **真机读数**（会话）：期刊别名解除 6.6s / 技能分叉 9.3s（副本真落盘）/ 通知单条删除 13.5s |
+| 新功能 ② RO-Crate 导入外来 crate | 🔶 **唯一空白**：只读检视后端已落（`d9d8de4c` 的 `src/main/ro-crate/import.ts` + 4 条测试），**通道 + 界面未做**；接缝/划界/验收见 `docs/plan-2026-10-06-newfeature-work-orders-2.md` 第一节 |
+| 具名立案 | ④ 一键清空的真机读数（需跨会话两条通知；`home.newProject` = "New project"，在会话工作区内不可达）· 一条负载敏感用例（`provisioner-runtime.test.ts`，预存）· IC54（等官方 SHA256） |
+
+**做 ② 时注意（全部为本会话实测）**：通道与真入口**必须同批**（`renderer-contract-entry-coverage` 会拦）；新增通道触发五族 pin，实测 **目录 393→394 / 表面清单 468→469 / references 家族已装通道 30→31** + `npm run gen:web-api-map`；真机取证**新建**工作树（复用旧树会因旧 `out/` 假红）；i18n 插键前先 `git status --short | grep i18n`（九文件是共写冲突面，插键脚本读-改-写全部九个）。
+
+**本会话最该复用的两条方法论**：① **动一个「以为缺」的缺口前先全树 grep 该能力名**（我因跳过它写出过重复接线，已回退）；② **真机驳回时改自己的假设，不改断言**（本轮三次：别名的名称、铃铛的可访问名 `Messages, N unread`（"Message center" 是面板 dialog 的名字）、通知按会话记）。
