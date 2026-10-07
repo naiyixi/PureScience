@@ -25,7 +25,12 @@
 2. 写 sshd 配置：`Port 2222` / `ListenAddress 127.0.0.1` / `HostKey <主机密钥>` / `PidFile` / `AuthorizedKeysFile <那个 authorized_keys>` / `PasswordAuthentication no` / `KbdInteractiveAuthentication no` / `UsePAM no` / `StrictModes no` / `LogLevel VERBOSE`。
 3. 起它：`/usr/sbin/sshd -f <配置> -E <日志>`，然后验证：`ssh -o BatchMode=yes -o StrictHostKeyChecking=no -i /tmp/ps-ssh/id_ed25519 -p 2222 "$(whoami)@127.0.0.1" 'echo SSH_OK'` ⇒ 实测回 `SSH_OK from <host>`，长命令（`sleep 5; echo LONG_DONE`）也照常返回。**本机现状**：无 docker、22 端口无 sshd、`~/.ssh` 里没有密钥对也没有 authorized_keys（所以别指望现成的，自己造）。
 4. 在隔离实例里注册该主机：走应用自己的入口（设置 → 算力 → 添加主机），字段是 `compute-alias`=**`127.0.0.1`** + 高级覆盖 `compute-user`=（当前用户）/ **`compute-port`=2222** / **`compute-identity`=`/tmp/ps-ssh/id_ed25519`**；或走通道 `compute:create`。**添加后应用会自动 `compute:probe`** ⇒ 探测结果本身就是"应用真连上了"的前置读数，先断言它 ok 再往下走。
-5. **⚠️ 提交任务的真实路径（2026-10-07 对源纠正）**：任务**不是**由笔记本/Shell 命令产生的 —— 应用给 agent 的 MCP 工具里没有计算类（`app-mcp-names.ts` 只有 activity/artifacts/notebook/skills/plan/memory），真正调用 `submitJob` 的是**领域连接器**（`src/main/connectors/descriptors/sequence-tools.ts:388` 与 `:565`）。所以夹具要**驱动那条连接器工具**（先读它的工具名与入参形状，再决定用什么最小入参能让它走完 submit），随后才会出现一条真 `running` 且**有活派发**的 `ComputeJob`。
+5. **⚠️ 提交任务的真实路径（2026-10-07 对源逐层纠正 —— 我此前两版都写错过，别再走弯路）**：
+   - ✗ **不是**领域连接器：`sequence-tools.ts` 里那个 `submitJob` 是**同名不同物**（它 `POST ${base}/run` 到一个远端 HTTP 服务，与 `ComputeJob` 无关）。
+   - ✗ **不是**笔记本/Shell 命令自动产生：应用给 agent 的 MCP 工具里**没有计算类**（`app-mcp-names.ts` 只有 activity/artifacts/notebook/skills/plan/memory）。
+   - ✅ **真正的提交点**：笔记本 **Local RPC 的一个 op** —— `op === 'submit_job'`（`src/main/notebook/local-rpc-server.ts:1819-1852`），参数形状 `{ provider_id, intent, command, resources?, inputs?, outputs?, harvest?, timeout_seconds?, workspace_cwd? }`，内部调 `this.computeService.submitJob(providerId, intent, command, options, { sessionId, projectId })`。该分支的 catch 会把错误转成结构化对象**"供 JS shim 解析"** ⇒ 即**调用方是笔记本运行时里的 JS 垫片**。
+   - 另一条产品纪律（`skill-doc.ts:144,160`）：agent **从不自动提交**，必须"提议并等用户批准"；审批在 `ComputeService.submitJob()` 内、**任何 DB 写入或 SSH 之前**触发。
+   - **⇒ 下一手只需这一步**：查清那个 JS 垫片在单元格里暴露的调用面（notebook 运行时里怎么触发这个 op），用它提交一条长命令（`sleep 300`）⇒ 就会得到一条真 `running`、**有活派发**的 `ComputeJob`，IC39 的两半即可取证；IC40 则让同一条任务跑完（或失败）以触发一次真投递落定。
 6. **IC39 的两半**：
    - 「**能送到**」：提交一个长任务（如 `sleep 300`）⇒ 等它 `running` ⇒ 点「取消任务」⇒ 断言主进程答复「已取消」+ 回读该行为 `cancelled` + 远端进程真的没了（在替身里 `pgrep`）。
    - 「**送不到**」：把替身的 sshd 停掉（或指到一个死端口）⇒ 再取一条运行中的任务点取消 ⇒ **断言那句逐字拒绝** `The host could not be reached, so the job was not stopped and is still running.` **且该行仍为 `running`**（这条才是"绝不为没人停的进程写 cancelled"的真机证据）。
