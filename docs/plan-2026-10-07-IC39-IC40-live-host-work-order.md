@@ -17,7 +17,27 @@
 - 尝试②：改种 `waiting-result` + `claimToken` + `claimExpiresAt=datetime('now','-1 hour')`（过期认领）⇒ 重启后回读**仍是 `waiting-result`、`reason` 为空** ⇒ 恢复扫描也**没接管**它。
 - spec 两次都按仓规删除（从未入库）。
 
-## 二、需要什么（二选一，任一条即可解两单）
+## 一之二、第二次尝试（会话，2026-10-07）：又走通 6 步，并找到下一条前提
+
+这次不再"种行"，而是**真给机器一台 SSH 端点**（用户态 sshd）并让应用自己去连。**已跑通的每一步与它教的东西**：
+
+1. **端点建起来了**：用户态 sshd + 自造主机/客户端密钥 ⇒ `ssh … 'echo SSH_OK'` 回 `SSH_OK` ✅。
+   坑：**非 root 的 sshd 只能认证它自己运行的那个用户** ⇒ 用户名不能用 `process.env.USER`（在 Playwright 进程里可能为空）⇒ 用 `os.userInfo().username`。
+2. **`sshd` 是守护化的**：父进程立刻返回 0，所以"启动成功"**不是**"在服务"的证据。实测：上一轮遗留的 `sshd`（`lsof` 指到 `sshd 94077 … 127.0.0.1:2222 LISTEN`）占着端口、用着它自己的 `authorized_keys`，于是新密钥被拒而启动看起来正常。⇒ **起之前先清端口占用者，再用一次真连接去证端点。**
+3. **注册主机的真实前提：主机密钥必须已被应用认识。** 应用的 ssh **不跳主机密钥校验**（实测 `compute:probe` 回 `{"ok":false,"exitCode":255,"errorTail":"Host key verification failed."}`）⇒ 端点主机密钥要先被认识（`ssh-keyscan -p 2222 127.0.0.1 >> ~/.ssh/known_hosts`；删：`ssh-keygen -R '[127.0.0.1]:2222'`）。**这是本读数唯一动到临时目录之外的东西。**
+4. **应用真的连上了**（这是本次拿到的硬读数）：`compute:probe` 回
+   `{"ok":true,"exitCode":0,"os":"Darwin","cpus":8,"detectedScheduler":"none"}` ⇒ 主机注册走 `compute:create({sshAlias:'127.0.0.1', sshOverrides:{user, port:2222, identityFile}})` 后，探测是应用**自己去连**的结果。
+5. **顺序：会话 → id → 主机 → 提交。** 全新工程此刻**还没有会话**（`sessions.loadAll()` 轮询 60 s 仍为空）⇒ 必须先发一条无害 prompt 把会话落出来，再读 id；主机是按 **sessionId** 启用的（`compute:enabled-hosts:set(sessionId,[provider])`）。
+6. **作曲器是 contenteditable**：`inputValue()` 对它无意义（报 `Node is not an <input>…`）⇒ 用 `innerText()` 读它。诊断"点击没发出去"要用：点击前读 `innerText()` + 发送钮 `isDisabled()`，点击后再读一次（清空 = 真发出去了）。
+
+7. **提交这一环：链条是通的，但被审批拦下（下一条前提）。** 用应用自己的控制面 REPL 提交（`repl_execute({code})` 里 `host.compute.create('ssh:127.0.0.1').submit_job(intent, command, options)`），REPL 的答复是：
+   ```
+   {"status":"failed","traceback":"Error: Approval denied for submit_job on E2E local sshd.\n    at computeError (…/resources/notebook/repl_loop.js:1093:19) …"}
+   ```
+   ⇒ **REPL 看得见这台主机（报错里点着它的名字）、提交真的发起了、审批真的被问过**，然后**被自动拒绝**（屏幕上**没有**出现审批框，尽管 `settings.allowRemoteCommand` = "Allow remote command?" 那个对话框存在）。**因此下一条前提是「计算授权」**：`settings.computeGrants`（`settings/repository.ts` 的 `addComputeGrant`/`hasComputeGrant`/`listComputeGrants`）与 `PermissionGrantRegistry`（`compute/permission-grant-adapter`）；渲染端那一侧的应答通道是 `compute:respond-approval`。
+   **⚠️ 一个尚未定性的问题（不要当成产品缺陷写）**：在没有授权的情况下，这次是"**问了以后自动拒绝且不弹框**"。到底是（a）该配置下的策略默认（需要先有 grant）、还是（b）审批请求**没有投递到渲染端**（与本仓已知的"订阅装了但 hub 不投"那一类同形），**本轮没有区分**——下一手先把 grant 种上/授上再提交，若**仍然**没有框且被拒，才按 (b) 立一条产品问题，并把当时的主进程日志一并附上。
+
+**本轮的净产出**：上表 1–7 全是实测事实；`remote-job-cancel-unreachable.spec.ts` 已按仓规**删除**（从未入库），夹具里为它加的提交分支也**一并回退**（无人使用＝半截不留树）。下一次只需照 §二.4 的字段注册主机、按 §5 的顺序准备会话、把 §7 的授权补上，就能走到"任务 running ⇒ 点取消"那一步。
 
 **路线 A（推荐，最省）—— 本机起一台「活的主机」**
 **✅ 已在本机实测跑通（2026-10-07，零安装、零系统改动、无需 docker/sudo）**：用**用户态 sshd 跑高位端口**即可得到一台真 SSH 端点。配方（全部落在 `/tmp/ps-ssh`，不动系统）：
