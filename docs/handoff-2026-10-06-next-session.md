@@ -140,7 +140,7 @@
 | IC52 会话重放 | ✅ 三段全落地（只读投影 / 卡片只读小节 / 对某一步提问），真机 6.6–15.4s；立项 `docs/plan-2026-10-06-IC52-session-replay.md` |
 | 新功能 ①③④ | ✅ 实现（执行器）+ **真机读数**（会话）：期刊别名解除 6.6s / 技能分叉 9.3s（副本真落盘）/ 通知单条删除 13.5s |
 | 新功能 ② RO-Crate 导入外来 crate | 🔶 **唯一空白**：只读检视后端已落（`d9d8de4c` 的 `src/main/ro-crate/import.ts` + 4 条测试），**通道 + 界面未做**；接缝/划界/验收见 `docs/plan-2026-10-06-newfeature-work-orders-2.md` 第一节 |
-| 具名立案 | ④ 一键清空的真机读数（需跨会话两条通知；`home.newProject` = "New project"，在会话工作区内不可达）· 一条负载敏感用例（`provisioner-runtime.test.ts`，预存）· IC54（等官方 SHA256） |
+| 具名立案 | 一条负载敏感用例（`provisioner-runtime.test.ts`，预存）· IC54（等官方 SHA256）。**④ 一键清空已结案**：真机 `notification-inbox-clear.spec.ts` **1 passed (27.4s)**（同一会话里两条通知即可——正常完成给 `task.completed`、请求权限给 `authorization.required`），`home.newProject` 在会话工作区内不可达这条障碍**已绕开**，不需跨会话 |
 
 **做 ② 时注意（全部为本会话实测）**：通道与真入口**必须同批**（`renderer-contract-entry-coverage` 会拦）；新增通道触发五族 pin，实测 **目录 393→394 / 表面清单 468→469 / references 家族已装通道 30→31** + `npm run gen:web-api-map`；真机取证**新建**工作树（复用旧树会因旧 `out/` 假红）；i18n 插键前先 `git status --short | grep i18n`（九文件是共写冲突面，插键脚本读-改-写全部九个）。
 
