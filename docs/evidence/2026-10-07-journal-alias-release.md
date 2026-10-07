@@ -41,3 +41,22 @@
 
 **仍未取证（同第三节，且阻塞原因相同）**：真机读数。复核时本机 **swap 9367.88M / 10240M 已用、空闲物理页 5278（≈84 MB）**，重进程 WorkBuddy 1.9G / Hermes 1.8G / 两个 Electron 各 ≈1.4G ⇒ 与执行器开工时（8.99G/10.24G、≈60 MB）同一堵墙。本机 8 GB 内存 + 大堆有**硬崩（SIGTRAP）**前例 ⇒ **不硬上**，等机器空闲时按第三节配方取证。
 
+## 五、真机读数已取（2026-10-07，会话；此处更正上面两节的"未取证"）
+
+阻塞解除后（`build:e2e` 25.5 s 成功），按第三节配方取证：新建工作树于当时 HEAD（`42dd7855`）→ `npm run build:e2e` → 只跑 `e2e/certification/journal-alias-release.spec.ts`（**本条 spec 为本轮新写**）。
+
+```
+[ic56alias] import result: {"imported":2,"skipped":0,"journalsCreated":2, …}
+[ic56alias] the stores carry the alias after the merge: [{"normalizedName":"nature","journalId":"…","createdVia":"explicit-merge"}] — releasing "nature"
+[ic56alias] the confirm says: "After this, “nature” will no longer resolve to Nature (London). The metrics and references the merge moved stay where it put them — nothing is moved back — and no journal, number or reference is deleted."
+[ic56alias] the panel reports the name released
+[ic56alias] after the release: aliases=[] journals=["cmuxlcyza0003wfwbiicw8ii3"]
+ 1 passed (6.6s)
+```
+
+逐条对应判据：①**真入口**——经表单真合并（`source` 索引 1 → `target` 索引 2）；②**解除生效**——重读存储后 `aliases=[]`，别名行**真的没了**（不是只看界面）；③**确认句两件事都在**（原句见上，逐字匹配 `/no longer resolve to/` 与 `/stay where it put them|nothing is moved back/`）；④**不越界**——解除前后刊表快照 `JSON.stringify` **逐字相等**（没有任何归属被搬动，这正是本单元最要紧的一条）。
+
+**一条本轮的自我纠正**（留档）：spec 首跑断言"合并后的别名是 `nature london`"⇒ 真机回 `{"normalizedName":"nature"}`（合并写入的是**源刊**的规范化名，下拉索引让"Nature"成了源）⇒ 说明**我猜了名字**。改法是**读出来**（先断言存在别名、再取名字用于后续比对），不是放宽断言。
+
+**仍未取证**：判据③里"该名字可再次用于新建"这一半没在本条 spec 里验（数据层自然成立）；渲染层的键盘可达性不在本单元判据内。
+
