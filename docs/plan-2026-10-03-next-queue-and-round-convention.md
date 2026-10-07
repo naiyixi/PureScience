@@ -1337,3 +1337,22 @@ Error: zerolink-purescience-1.88.0-nightly.ge3b1da0-win-x64-setup.exe timed out 
 聚合就不上传）。**与本批代码无关**（`Verify` 在本提交上是 success；同一份代码的 Release 车道已全绿并发布成功）。
 ⇒ 归因写法：Nightly 的 Windows 打包超时是**基础设施抖动**，不要当成「测试红」去改测试，也不要当成产品缺陷去改代码；
 下一次推送若同一作业再红，才按「同作业连续多轮」升级为门禁健康项处理。
+
+## 三十二、IC13 的 **CI 判决已落**：Nightly + Windows 双绿（含认证车道里那支 spec）
+
+推送 `c2971b60` 后我随即推了一笔 docs（§三十一），把同 ref 在跑的推送运行顶成了 `cancelled` ⇒ 按技能里
+「只在发布后才会跑的路道要改成可按需 dispatch」的口径，**按需指派**了
+`nightly.yml`（run **37649259742**）与 `windows-full-test.yml`（run **37649266075**）对 `--ref main`。判决：
+
+| 车道 | 读数 |
+| --- | --- |
+| Nightly（`4a7dec43`） | **completed / success** —— 四个平台 build 全绿（含平时爱抖的 `Build windows-x64`）+ **publish success** |
+| Windows Full Test（`4a7dec43`） | **completed / success** |
+| macos-arm64 作业内 | 第 14 步 **`Run P0 Electron certification`：success**；第 18 步 **Developer ID 签名门：success**；第 23 步 **`Enforce platform certification`：success** |
+| 认证 suite 里的那支 spec | `[46/99] e2e/certification/packages-mutation.spec.ts:179:5 › the Packages dialog installs and removes through the app admission` ⇒ suite 自报 **87 passed (29.6m)** ⇒ **我改的那支 spec 在 CI 的真 macOS runner 上绿** |
+
+⇒ IC13 这条单元**可以结**：本机真机 `1 passed (53.5s)`（逐字读数见
+`docs/evidence/2026-10-07-ic13-window-uninstall.md`）+ **CI 认证车道绿**（本条）两层都在。
+**顺带记一条纪律**：`gh workflow run` 的按需运行与推送运行**共享同一 concurrency group** ⇒ 指派会取消在同 ref 上
+正在跑的推送运行（实测 `Windows Full Test | push | c2971b60 | cancelled`）；要拿某一笔的判决就**别在同一 ref 上叠运行**，
+叠了就以最后那一笔为准。
