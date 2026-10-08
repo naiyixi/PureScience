@@ -218,6 +218,18 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'immune_epitopes',
+    displayName: '免疫表位',
+    aliases: ['IEDB', 'epitope', 'MHC restriction', 'T-cell assay', 'B-cell assay', '免疫表位'],
+    description:
+      'IEDB 的已审定、已发表免疫表位证据——哪个肽段被测过、针对什么来源抗原与宿主、限制性 MHC 等位、在哪种测定方法下、以及背后的那篇文献。',
+    useWhen:
+      'Use when you need curated immune-epitope evidence from IEDB — which peptide was assayed, against which source antigen and host organism, under which MHC allele/restriction, what the assay description and qualitative measure were, and the publication behind it (PubMed id, journal, title). Reach for it for an epitope inventory (iedb_search_epitopes) or for the assay- and reference-level detail behind one epitope (iedb_search_assays, with t-cell and b-cell evidence counted separately). It holds only published, curated assays, so "no curated evidence found" is NOT "no immune response", and a receptor family that returned nothing is named as such rather than folded into the answer.',
+    sources: ['IEDB'],
+    termsUrl: 'https://www.iedb.org/',
+    requiresNcbi: false
+  },
+  {
     id: 'cancer_models',
     displayName: '癌症模型',
     description: '通过 cBioPortal REST API 获取癌症基因组学研究记录；DepMap 癌细胞系依赖性评分。',

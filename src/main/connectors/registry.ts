@@ -15,6 +15,7 @@ import { GENES_TOOLS } from './descriptors/genes'
 import { GENOMES_NCBI_TOOLS } from './descriptors/genomes-ncbi'
 import { GENOMES_TOOLS } from './descriptors/genomes'
 import { HUMAN_GENETICS_TOOLS } from './descriptors/human-genetics'
+import { IMMUNE_EPITOPES_TOOLS } from './descriptors/immune-epitopes'
 import { LITERATURE_TOOLS } from './descriptors/literature'
 import { MOLECULE_TOOLS } from './descriptors/molecule'
 import { OMICS_ARCHIVES_TOOLS } from './descriptors/omics-archives'
@@ -48,6 +49,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...GENOMES_NCBI_TOOLS,
   ...GENOMES_TOOLS,
   ...HUMAN_GENETICS_TOOLS,
+  ...IMMUNE_EPITOPES_TOOLS,
   ...LITERATURE_TOOLS,
   ...MOLECULE_TOOLS,
   ...OMICS_ARCHIVES_TOOLS,
