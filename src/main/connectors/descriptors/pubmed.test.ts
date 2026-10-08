@@ -393,3 +393,66 @@ describe('pubmed connector (7 tools)', () => {
     })
   })
 })
+
+describe('pubmed search_articles: Chinese queries', () => {
+  const esearchOk = (): Response =>
+    jsonRes({
+      esearchresult: { count: '17', idlist: ['1'], querytranslation: 'aspirin[All Fields]' }
+    })
+
+  it('sends the English term of record and reports the rewrite instead of the raw Chinese', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(esearchOk())
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('search_articles'),
+      { query: '阿司匹林治疗高血压', max_results: 5 },
+      {}
+    )) as Record<string, unknown>
+
+    const url = String(fetchImpl.mock.calls[0][0])
+    expect(new URL(url).searchParams.get('term')).toBe('aspirin hypertension')
+    // The caller still sees the query it asked for; the rewritten string is named separately.
+    expect(out.query).toBe('阿司匹林治疗高血压')
+    expect(out.zh_terms).toEqual({
+      matched: [
+        { from: '阿司匹林', term: '阿司匹林', kind: 'drug', english: 'aspirin' },
+        { from: '高血压', term: '高血压', kind: 'indication', english: 'hypertension' }
+      ],
+      removed: ['治疗'],
+      query_sent: 'aspirin hypertension'
+    })
+  })
+
+  it('reports nothing extra for a query with no Chinese in it', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(esearchOk())
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('search_articles'),
+      { query: 'aspirin hypertension' },
+      {}
+    )) as Record<string, unknown>
+    expect(out).not.toHaveProperty('zh_terms')
+    expect(new URL(String(fetchImpl.mock.calls[0][0])).searchParams.get('term')).toBe(
+      'aspirin hypertension'
+    )
+  })
+
+  it('refuses unmappable Chinese by name and sends no request at all', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(esearchOk())
+    await expect(
+      new ParserEngine({ fetchImpl }).call(
+        tool('search_articles'),
+        { query: '阿司匹林用于晚期肺癌' },
+        {}
+      )
+    ).rejects.toThrow(/晚期/)
+    // The whole point: no request is made, so a zero-match answer can never be read as "no evidence".
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('refuses a query that is only Chinese function words', async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(esearchOk())
+    await expect(
+      new ParserEngine({ fetchImpl }).call(tool('search_articles'), { query: '治疗' }, {})
+    ).rejects.toThrow(/function words only/)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})

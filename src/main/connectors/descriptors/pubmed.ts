@@ -1,4 +1,5 @@
 import { DOMParser } from '@xmldom/xmldom'
+import { planChineseQuery } from '../../../shared/chinese-terms'
 import { ncbiEtiquette } from '../engine'
 import type { ToolContext, ToolDescriptor } from '../types'
 
@@ -515,7 +516,7 @@ export const PUBMED_TOOLS: ToolDescriptor[] = [
     id: 'search_articles',
     connector: 'pubmed',
     description:
-      'Search PubMed (biomedical & life-sciences literature via NCBI esearch) for articles matching a query. Returns the total match count plus a page of PMIDs. Supports PubMed field tags ([Title], [Author], [Journal], [MeSH Terms], ...), Boolean operators, date filtering and sort. PubMed does not index physics / CS / math / pure-chemistry papers.',
+      'Search PubMed (biomedical & life-sciences literature via NCBI esearch) for articles matching a query. Returns the total match count plus a page of PMIDs. Supports PubMed field tags ([Title], [Author], [Journal], [MeSH Terms], ...), Boolean operators, date filtering and sort. PubMed does not index physics / CS / math / pure-chemistry papers. A Chinese query is mapped to English via the app’s Chinese term table and the mapping comes back in `zh_terms`; Chinese the table cannot map is refused by name, not sent.',
     input: {
       type: 'object',
       properties: {
@@ -534,11 +535,39 @@ export const PUBMED_TOOLS: ToolDescriptor[] = [
     },
     required: ['query'],
     returns:
-      '`{ "pmids": [str], "total_count": int, "returned_count": int, "query": str, "query_translation": str|null, "has_more": bool }` — `pmids` is one page (`max_results`, default 20) starting at `retstart`; `total_count` is the full PubMed match count. Feed PMIDs to `get_article_metadata`.',
+      '`{ "pmids": [str], "total_count": int, "returned_count": int, "query": str, "query_translation": str|null, "has_more": bool }` — `pmids` is one page (`max_results`, default 20) starting at `retstart`; `total_count` is the full PubMed match count. Feed PMIDs to `get_article_metadata`. A Chinese `query` also returns `zh_terms`.',
     example:
       'const result = await host.mcp("pubmed", "search_articles", {"query": "CRISPR gene editing", "max_results": 10})',
     run: async (ctx, a) => {
-      const query = String(a.query)
+      // Chinese input goes through the shared term table before anything is sent. Two facts drive this:
+      // PubMed indexes Latin text (verified against the live service: `term=阿司匹林` returns count 0
+      // and `No items found.`), and a query that can only be answered in part would come back as a
+      // result set that looks like an answer to the whole question. So: rewrite what the table covers,
+      // report the rewrite, and REFUSE BY NAME when any Chinese text is left unaccounted for.
+      const requested = String(a.query)
+      const plan = planChineseQuery(requested)
+      if (plan.cjk && plan.unmapped.length > 0) {
+        const mapped = plan.applied
+          .filter((s) => s.to && s.entry.kind !== 'connective')
+          .map((s) => `${s.from}→${s.entry.kind === 'connective' ? '' : s.entry.english}`)
+          .filter((line) => !line.endsWith('→'))
+        throw new Error(
+          `query contains Chinese text this tool has no mapping for: ${plan.unmapped.join('、')}. ` +
+            'PubMed indexes Latin text, so a Chinese query returns zero matches whether or not the ' +
+            'evidence exists — sending it would report a search that was never really run. ' +
+            'Nothing was sent. Rephrase those terms in English (or the query in Latin) and retry; ' +
+            (mapped.length
+              ? `these parts did map: ${mapped.join(', ')}.`
+              : 'no part of this query mapped.')
+        )
+      }
+      if (plan.cjk && !plan.query) {
+        throw new Error(
+          `query is Chinese function words only (${plan.applied.map((s) => s.from).join('、')}), so it ` +
+            'names nothing to search for. Name a drug, an indication, an institution or a journal.'
+        )
+      }
+      const query = plan.cjk ? plan.query : requested
       const retstart = Number(a.retstart ?? 0)
       const maxResults = Number(a.max_results ?? 20)
       const params = new URLSearchParams({
@@ -562,9 +591,27 @@ export const PUBMED_TOOLS: ToolDescriptor[] = [
         pmids: window,
         total_count: count,
         returned_count: window.length,
-        query,
+        query: requested,
         query_translation: res?.querytranslation ?? null,
-        has_more: retstart + window.length < count
+        has_more: retstart + window.length < count,
+        ...(plan.cjk
+          ? {
+              // The rewrite in full, so a reader can reproduce the request by hand: what was
+              // recognised, what was dropped as a function word, and the exact string that was sent.
+              zh_terms: {
+                matched: plan.applied
+                  .filter((s) => s.to)
+                  .map((s) => ({
+                    from: s.from,
+                    term: s.to,
+                    kind: s.entry.kind,
+                    english: s.entry.kind === 'connective' ? null : s.entry.english
+                  })),
+                removed: plan.applied.filter((s) => !s.to).map((s) => s.from),
+                query_sent: query
+              }
+            }
+          : {})
       }
     }
   },
