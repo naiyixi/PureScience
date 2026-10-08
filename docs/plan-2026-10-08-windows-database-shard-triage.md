@@ -59,3 +59,37 @@
 
 一条读数即可结案：**「在 Windows 上，`database` 分片连续 N 次复跑全绿，且这 N 次里目标两条与它前后的邻居都在同一分片」**，
 或**「定位到具体机制 + 修法 + 一条能在 Windows 复现的探针，且修后该分片连续 N 次绿」**。N ≥ 3（本仓对负载敏感类用例的口径）。
+
+## 六、2026-10-09 追加：同一族里出现**第二支文件**，且红的是**另一片**（`4/8`）
+
+发版提交 `cfdb8aff` 的 `Windows Full Test` run **37815532157** 两片红（`4/8` + `5/8`），
+而同一份代码在上一提交 `7c1dd58c` 的 run 975 是 **success**（该发版提交只改 CHANGELOG/README/`package.json` 版本位）
+⇒ 仍然是「同一份代码时绿时红」。**这条工作单的适用范围比文件名写的宽**：它治的是「Windows 分片里
+建库/建表/落盘类用例顶到天花板」这一族，不限于 `database` 那一片。
+
+### 6.1 已经收口的一半（片 `5/8`）
+
+失败在 `src/main/agents/completion-gate.execute-control.integration.test.ts` 等「审批请求被发出」的
+`vi.waitFor`：**vitest 4 的默认窗是 1000 ms**（`node_modules/vitest/dist/chunks/test.DNmyFkvJ.js:3361`），
+本仓 `vitest.config.ts` 从未设过它。收法是文件内单一来源常量 `APPROVAL_REQUEST_BUDGET_MS = 10_000`
++ 两处 `vi.waitFor` 带上它，**断言一字未改**。⚠️ **这条必须由 Windows 车道验收**：若同一处在 10 s 窗下仍红，
+读数指向真缺陷（Windows 特有停顿），届时按作业级日志再定性，**不得再加窗**。
+
+### 6.2 仍然待定的一支（片 `4/8`，本轮只归属、不改）
+
+```
+Error: Hook timed out in 60000ms.
+ ❯ src/main/project-files/repository.test.ts:42:3
+```
+
+- `:42` = 该文件的 `beforeEach`（`mkdtemp` → `createProjectDbClient` → `ensureProjectSchema` ≈ 40 条裸 DDL，
+  逐条存在性检查），**每个用例重来一遍**（39 例）。
+- **本机成本读数**：整文件 **39 passed / 6.11 s（tests 5.60 s）** ⇒ 每例约 **144 ms** ⇒ 60 s 不是这条成本的
+  线性放大，是 runner 那次**停顿**（同族的老读数也支持「自身慢」这条被排除）。
+- **一条只记录、不作修法的事实**：该文件钩子写的是显式 `60_000`，覆盖车道传的 `--hookTimeout=120000`
+  ——日志里响的是 60 s。**加大超时是本仓明文否掉的收口方式**（本文 §三），所以不计入修法。
+- **下一步形状（沿用本单 §二 的规程，不许用加大超时/跳过文件收口）**：先按本文 §二 第 1–3 步在 Windows 上
+  单跑/成对复跑这支文件，量 `ensureProjectSchema` 在它自己的走时里占多少、是否出现锁等待；方向仍是
+  **共享 schema 初始化 / 降建表成本**。
+- **本机不能给出分片成员**：`vitest list --shard=4/8` 在本机给出 149 个文件、目标文件**不在其中**
+  ⇒ 分片成员以 **CI 作业名**为准，不要按本机 list 推断邻居。判决仍只能由 Windows 车道给，N ≥ 3。

@@ -182,6 +182,62 @@ describe('the GB/T path stays byte-stable for records without the new fields', (
   })
 })
 
+// The electronic-resource block is the shape a Chinese evidence item takes: an issuing body, a year,
+// a retrieval date and the path it was read from. GB/T 7714-2015 prints 出版者 before 出版年, and the
+// dated block closes before the path ("2021[2026-10-09]. https://…"), the same way the legacy
+// formatter does. This branch had no coverage before; these three cases pin it.
+describe('the GB/T [EB/OL] block carries the issuing body', () => {
+  const guideline = {
+    title: '中国2型糖尿病防治指南（2020年版）',
+    authors: [{ name: '中华医学会糖尿病学分会' }],
+    publisher: '中华医学会',
+    url: 'https://www.cma.org.cn/guideline',
+    year: 2021
+  }
+
+  it('prints 出版者 ahead of the year', () => {
+    const text = formatCitation(citationItemFromReference(guideline), 'gbt7714-2015', {
+      retrievedAt: '2026-10-09'
+    }).text
+    expect(text).toBe(
+      '中华医学会糖尿病学分会. 中国2型糖尿病防治指南（2020年版）[EB/OL]. 中华医学会, 2021[2026-10-09]. https://www.cma.org.cn/guideline'
+    )
+  })
+
+  it('omits the slot for a record that carries no publisher, keeping the dated block', () => {
+    const { publisher: _dropped, ...withoutPublisher } = guideline
+    const text = formatCitation(
+      citationItemFromReference({ ...withoutPublisher, pages: '1-46' }),
+      'gbt7714-2015',
+      { retrievedAt: '2026-10-09' }
+    ).text
+    expect(text).toBe(
+      '中华医学会糖尿病学分会. 中国2型糖尿病防治指南（2020年版）[EB/OL]. 2021[2026-10-09]. https://www.cma.org.cn/guideline'
+    )
+    expect(text).not.toContain('中华医学会,')
+  })
+
+  it('closes the dated block before the path, and reads as a bare path with no date', () => {
+    const noYear = formatCitation(
+      citationItemFromReference({ ...guideline, year: undefined }),
+      'gbt7714-2015',
+      { retrievedAt: '2026-10-09' }
+    ).text
+    expect(noYear).toBe(
+      '中华医学会糖尿病学分会. 中国2型糖尿病防治指南（2020年版）[EB/OL]. 中华医学会[2026-10-09]. https://www.cma.org.cn/guideline'
+    )
+
+    const bare = formatCitation(
+      citationItemFromReference({ ...guideline, year: undefined, url: undefined, doi: '10.3760/x' }),
+      'gbt7714-2015'
+    )
+    expect(bare.text).toBe(
+      '中华医学会糖尿病学分会. 中国2型糖尿病防治指南（2020年版）[EB/OL]. 中华医学会. https://doi.org/10.3760/x'
+    )
+    expect(bare.warnings).not.toContain('style:no-locator')
+  })
+})
+
 describe('comparison and list rendering', () => {
   it('renders one entry per requested style, in the requested order', () => {
     const compared = compareCitationStyles(journalItem(), ['mla-9', 'apa-7', 'gbt7714-2015'])

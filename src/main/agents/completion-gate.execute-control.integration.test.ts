@@ -39,6 +39,16 @@ import {
   type ToolCompletionEnvelope
 } from './completion-gate'
 
+// The approval request is emitted by the pipeline this file drives (a cold repl child plus a switch
+// round-trip), so it arrives late rather than never. Vitest's own `vi.waitFor` window is 1000ms, which
+// a Windows runner can miss: the `Windows full test (5/8)` job failed on exactly that, with
+// `AssertionError: expected [] to have a length of 1 but got +0` on the `opencode … declined handoff`
+// certification, while the same commit was green on the serial shard one commit earlier. The budget
+// below clears the measured fixture floor (73-79ms quiet, "grows several-fold under contention") by an
+// order of magnitude; it relaxes nothing that is asserted — the length check is unchanged, and a
+// request that truly never arrives still fails, just later.
+const APPROVAL_REQUEST_BUDGET_MS = 10_000
+
 type ExecuteControlHarness = {
   calls: string[]
   continuations: CapturedHandoff[]
@@ -290,7 +300,9 @@ const createProductionExecuteControlHarness = async (
         ? "await host.agents.switch('Approved Specialist'); return host.mcp('test', 'race')"
         : "return await host.agents.switch('Approved Specialist')"
     )
-    await vi.waitFor(() => expect(emitted).toHaveLength(1))
+    await vi.waitFor(() => expect(emitted).toHaveLength(1), {
+      timeout: APPROVAL_REQUEST_BUDGET_MS
+    })
     await broker.respond({
       requestId: emitted[0].requestId,
       optionId: emitted[0].options.find(
@@ -377,7 +389,9 @@ describe('completion gate through the real host.agents SDK and executeControl se
       const execution = harness.executeControl(
         "return await host.agents.switch('Approved Specialist')"
       )
-      await vi.waitFor(() => expect(emitted).toHaveLength(1))
+      await vi.waitFor(() => expect(emitted).toHaveLength(1), {
+        timeout: APPROVAL_REQUEST_BUDGET_MS
+      })
       await expect(lifecycle.getEvents('trusted-session')).resolves.toMatchObject([
         { phase: 'awaiting-approval', target: 'Approved Specialist' }
       ])

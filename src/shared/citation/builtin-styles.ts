@@ -117,15 +117,20 @@ const formatGbt7714Style = (
     )
   }
 
-  // Online / preprint / unknown: 出版年[引用日期]. 获取路径.
+  // Online / preprint / unknown: 出版者, 出版年[引用日期]. 获取路径.
+  // GB/T 7714-2015 lists the issuing body (出版者) ahead of the year for electronic resources, and this
+  // is the record shape a Chinese evidence item actually takes ("中华医学会, 2021"). The slot opens only
+  // when the record carries a publisher, so a record that has none keeps its exact bytes.
+  const issuer = item.publisher?.trim()
   const year = item.year ? String(item.year) : ''
+  const issued = joinSegments([issuer, year], ', ')
   const retrieved = context.retrievedAt ? `[${context.retrievedAt}]` : ''
+  const dated = `${issued}${retrieved}`
   const locator = locatorFor(item)
-  const closing = item.year || context.retrievedAt ? '.' : ''
-  return result(
-    `${lead}. ${joinSegments([year, retrieved, closing ? `${closing} ${locator}`.trim() : locator])}`,
-    locator ? warnings : [...warnings, 'style:no-locator']
-  )
+  // The year and the retrieval date are one dated block ("2021[2026-10-09]."), which is the shape the
+  // legacy formatter already produced for the same record — the two paths must not read differently.
+  const block = dated ? `${dated}.${locator ? ` ${locator}` : ''}` : locator
+  return result(`${lead}. ${block}`, locator ? warnings : [...warnings, 'style:no-locator'])
 }
 
 // ---- Vancouver (NLM / Elsevier) ------------------------------------------------------------

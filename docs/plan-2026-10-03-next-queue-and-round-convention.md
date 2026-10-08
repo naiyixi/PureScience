@@ -1634,3 +1634,89 @@ spec 现在**两半一起拿**（`stopSshd()` + `closeMux()`），并**先自证
 
 **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`（**先按提交划掉会话做过的**）；② 按 `docs/plan-2026-10-08-batch-2-three-batches.md` 继续批次 ① 的差异化点 ④（中文结论的出处按仓内既有 **GB/T 7714** 层输出）——**先核实该层是否已覆盖**：`src/shared/citation/builtin-styles.ts` 与 `src/shared/references-gbt.test.ts` 已在树里，若已覆盖即按「架构已覆盖」结案并附 file:line，**不新造第二套**；③ 或接会话批次 ②（溯源全域）核实结论里**未被认领**的单元；④ 按完整 40 位 SHA 看本轮推送的 `Nightly` + `Windows Full Test`，红了先读**作业级注解**归因（`cancelled` 不算绿）。
 
+## 三十八、本轮追加（执行器，2026-10-09 02:2x–）——批次 ① 的「出处格式 + 发布机构」补上；发版提交上 Windows 两条红的归属与一处收口
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 开工时 `HEAD == origin/main == cfdb8aff`（v1.92.0 发版提交）。**工作树当时不干净，但那批路径不是本轮的**：
+  9 个已修改 + 2 个未跟踪全属**正在跑的桌面会话**（`connectors/reading-journal.ts`+`.test.ts`（新）、
+  `connectors/service.ts`、`artifacts/provenance-repository.ts`+两测试、`ipc.ts`、`shared/artifact-provenance.ts`、
+  `ArtifactProvenancePanel.render.test.tsx`、`reproducibility-*`），进程表里正有它的
+  `vitest run …provenance-repository.test.ts …reading-journal.test.ts`（02:22:51 起）⇒ 那是**批次 ② 差异化点 ③**
+  （档内当时写着「未实施」），本轮**一个字节都不碰**。会话随后自己提交并推送 **`3d01bf7a`**
+  （`feat(provenance): 从产物版本走回读数 —— 会话读数日志 + 投影里的 readings 段`）⇒ **本轮的提交落在它之上**，
+  它的 CI 判决由「包含它的下一次绿色运行」给出（见 §二）。
+- 防重做：批次 ① 的 ③（术语归一化）已由会话 `f2dac485` + 本执行器 `857b57cf` 交付、② 由 IEDB 连接器
+  `903ee4fa` 承接 ⇒ 本轮只做 **④ 出处格式**与 **① 发布机构**这两半。
+
+### 一 本单元：GB/T 7714 的电子资源（[EB/OL]）块**此前结构性地丢掉「发布机构」**
+
+差异化点 ① 要「每条中文证据带**发布机构** + 年份 + 原文出处」、④ 要这份出处走**仓内既有 GB/T 7714 层**。
+逐处核实后，发布机构在这条链上**中途被丢掉**：
+
+| 事实 | 落点 |
+| --- | --- |
+| `publisher` 确实被带进引用项 | `src/shared/citation/format.ts:59-74` |
+| 有 publisher 的记录走 rich 分支（不再走旧实现） | 同文件 `:171-173` `hasRichBibliographicFields()` |
+| 而 rich 分支的电子资源格**从不输出 publisher** | `src/shared/citation/builtin-styles.ts` 的 `// Online / preprint / unknown:` 段 |
+| 「有 url、无刊名」正好判成 `web` ⇒ 命中该格 | 同文件 `:51-57` `inferCitationItemType()` |
+
+⇒ 一条中文网络证据（发布机构「中华医学会」+ 年份 + 路径）导出/复制成 GB/T 7714 时**发布机构一个字符都不出**。
+**同格此前零用例**（`grep "EB/OL"` 在测试里只命中 `references-gbt.test.ts:51/67/92`，那三条**直接调旧
+`formatGbt7714`**，根本不经过这个分支）。**改法**：该格只开一个条件槽（`issuer`，仅在记录真带 publisher 时打开），
+并把日期块收紧成旧实现本来的形状（`2021[2026-10-09]. 路径`）——两条路对同一份记录不该读起来不一样；
+**没有发布机构的记录输出逐字节不变**（委派分支未动，`format.ts:137-158` 的「逐字节稳定」范围不被越过）。
+新增 3 条用例（含「不出现该槽」与两种收尾形状）；**变异验证**：把 `issued` 换回 `year` ⇒ `2 failed | 1 passed`
+（第三条按设计不依赖该槽、正确地仍绿），恢复后 `21 passed` 且与备份逐字节相同。**读数**：
+`vitest run src/shared/citation src/shared/references-gbt.test.ts` = **4 文件 / 53 passed**。
+
+### 二 CI 判决（按完整 40 位 SHA；`cancelled` 不算绿）
+
+| 提交 | Windows Full Test | Nightly | 备注 |
+| --- | --- | --- | --- |
+| `857b57cf`（本执行器上一轮：zh_medical_terms） | run 972 **success** | run 977 **cancelled**（被后续推送顶掉） | 上轮的 Nightly 无判决，由后续绿色 Nightly 覆盖 |
+| `7c1dd58c`（会话：审批卡写路径标记） | run 975 **success** | run 980 **success** | 双绿 |
+| `3d01bf7a`（会话：readings 日志 + 投影） | run 977 **cancelled** | run 982 **in_progress → 被本轮推送顶掉** | 无判决；**由包含它的下一次运行（本轮提交）给出** |
+| **`cfdb8aff`（v1.92.0 发版）** | run **37815532157 failure**（片 `4/8` + `5/8`） | run 981 **success** | Release run 175 success ⇒ 页与资产未受影响 |
+
+**发版提交上那两片红的归属**：同一份**代码**在上一提交 `7c1dd58c` 的 Windows 车道是 **success**
+（发版提交只改 CHANGELOG / README / `package.json` 版本位）⇒ **间歇**，不是本笔引入的回归。逐片读数：
+
+1. **片 `5/8`（已收口）**：`completion-gate.execute-control.integration.test.ts` 的
+   `durably certifies the opencode provider projection for an ACP declined handoff` 报
+   `AssertionError: expected [] to have a length of 1 but got +0`（`Test Files 1 failed | 125 passed`）。
+   失败点是等「审批请求被发出」的 `vi.waitFor`，而 **vitest 4 的默认窗是 1000 ms**
+   （`node_modules/vitest/dist/chunks/test.DNmyFkvJ.js:3361`；本仓 `vitest.config.ts` 从未设过它）——
+   该文件**本仓自己就列在「默认并行下会超时」的 11 个文件里**，文件注释也自述夹具地板 quiet 上 73-79 ms、
+   拥塞下涨好几倍 ⇒ 冷启动 + runner 慢把 1 s 顶穿。收法：文件内单一来源常量
+   `APPROVAL_REQUEST_BUDGET_MS = 10_000` + 两处 `vi.waitFor` 带上它，**断言一字未改**；
+   本机 `22 passed`。**这条必须由 Windows 车道验收**：同一处在 10 s 窗下仍红 ⇒ 指向真缺陷，不得再加窗。
+2. **片 `4/8`（本轮只归属、不改）**：`Error: Hook timed out in 60000ms` @ `src/main/project-files/repository.test.ts:42:3`
+   （`beforeEach`：`mkdtemp` → `createProjectDbClient` → `ensureProjectSchema` ≈ 40 条裸 DDL，**每例重来一遍**，39 例）。
+   本机成本读数 **39 passed / 6.11 s（tests 5.60 s）⇒ 每例约 144 ms** ⇒ 60 s 不是这条成本的线性放大，是 runner 停顿。
+   已并入 `docs/plan-2026-10-08-windows-database-shard-triage.md` §六（同一族第二支文件；方向=共享 schema 初始化 /
+   降建表成本，**不是**调超时；本机 `vitest list --shard=4/8` 复现不出 CI 分片成员 ⇒ 分片成员以 CI 作业名为准）。
+
+### 三 门禁（隔离工作树 `/tmp/ps-gt`：基线 `3d01bf7a` + 本轮 3 个代码路径，等于提交后的树）
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .`（全仓、CI 同口径） | **0 error / 119 warning**（含会话新提交的代码；本轮触碰的文件 0 problem） |
+| 双 typecheck（node / web） | **exit 0 / exit 0** |
+| 全量 vitest `--maxWorkers=4` | **1234 文件通过 ｜ 16 skipped（1250）／15964 passed ｜ 207 skipped（16171），零失败**，exit 0，405.67 s |
+| `scripts/pre-push-checks.sh` | **全过**（品牌扫描 / README 双语同步 / CHANGELOG v1.92.0 / 发布提醒） |
+| 真机（真窗口/e2e） | **未取**（本轮改动无窗口入口；`build:e2e` 会与会话抢 `out/` 且本机 8 GB）——具名立案 |
+
+### 四 版本位点台账
+
+Latest = **v1.92.0**（`gh release view` 复核：`draft=false / isPrerelease=false / 21 资产`）；`package.json` = 1.92.0；
+本轮**未发版**、**未改 `package.json` / 未动 9 语字典 / 未新增通道 / 未改 `.github/workflows/**`** ⇒
+下一版本边界仍是 **v1.93.0**（会话的 `3d01bf7a` + 本轮是本批未发布内容）。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读**本轮提交**的 `Windows Full Test` + `Nightly`；**特别看片 `5/8` 那条在 10 s 窗下是否仍红**
+（仍红 = 真缺陷，按作业级日志再定性，**不许再加窗**）；② 片 `4/8` 的 `project-files` 停顿按工作单 §六 取 Windows 判决；
+③ 批次 ① 只剩「中文源」那一半——本机 2026-10-09 02:2x 复测四源仍全部只回 `text/html`（`chictr` 34719 B /
+`nmpa` 54789 B / `cde` 86080 B / `cma` 89215 B，无机器可读契约）⇒ 维持挂账，等有文档的接口再启。
+
