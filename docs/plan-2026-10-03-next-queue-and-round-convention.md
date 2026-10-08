@@ -1357,6 +1357,51 @@ Error: zerolink-purescience-1.88.0-nightly.ge3b1da0-win-x64-setup.exe timed out 
 正在跑的推送运行（实测 `Windows Full Test | push | c2971b60 | cancelled`）；要拿某一笔的判决就**别在同一 ref 上叠运行**，
 叠了就以最后那一笔为准。
 
+## 三十四、发版窗口（会话，2026-10-08 09:0x–10:0x）—— **v1.89.0 已发布**，以及一条关于执行器的硬约束
+
+### 一、开窗口前的核对与做法（这轮的特殊之处：树是脏的，但脏的不是我的）
+
+`git status --short` 里有**执行器的 12 个未提交在制品**（`src/main/compute/{job-dispatcher,job-repository,remote-job-kill}`、
+`src/shared/compute.ts`、`ConversationPanel.tsx` + 两支测试、`e2e/fixtures/fake-opencode.mjs`、
+新 spec `e2e/certification/remote-job-cancel.spec.ts`）。按仓规「打 tag 前除四个发版文件外必须干净」，
+这一次**不可能**满足字面条件（也不能 stash、不能替它提交）。最终做法：
+
+- **只 `git add` 那四个发版文件**（提交前贴出 `git diff --cached --stat` 自证），执行器的 12 个路径**一个字节没动、也没进本版**；
+- 门禁在**隔离工作树**里对**要打 tag 的那个提交**（`281af891`，最后一个干净提交）跑 ⇒ 它的在制品**不影响本版门禁**；
+- `cron pause` 挡在它两轮之间（它 08:16 那轮已结束、下一轮 10:16）⇒ 窗口期**没有并发推送**。
+
+### 二、读数（逐项）
+
+| 项 | 读数 |
+| --- | --- |
+| 门禁（隔离工作树，被测提交 `281af891`） | `eslint --no-cache .` **0 error**（128 warning）· 双 typecheck **净** · 全量 **1228 文件通过（16 跳过）/ 15863 passed（204 skipped，零失败）** · 仓规五查通过 |
+| 发版提交 | `441d5e1e`（**只碰四个发版文件**，自 `v1.88.0` 起 **16 笔**） |
+| tag | 附注 tag `v1.89.0`（对象 `e80ae82d` → **提交** `441d5e1e`）；推 main 后核祖先**为真**再推 tag |
+| Release 车道（run `37711588353`） | **completed / success**：preflight ✅ / matrix ✅ / Verify ✅ / 四平台 build ✅ / `publish` ✅ / `windows-upgrade-smoke` ✅；公证两条**具名跳过**（无凭据） |
+| Release 页 | **draft=false / pre=false / 21 资产 / isLatest=true**；正文 = 成熟度块（含本版新句） |
+| 主干车道（`441d5e1e`） | `Windows Full Test` **success**；`Nightly` 在跑（**若被后续 docs 推送顶掉则无判决**，见下） |
+
+### 三、本版内容（两项，运行时行为改动）
+
+**① IC13**：窗口里够不着的「卸载具名环境的包」补上了（本机真机 `1 passed (53.5s)` + CI 认证车道绿：按需指派 Nightly 的 macos-arm64
+第 14 步 `Run P0 Electron certification` success，套件 `[46/99]` 正是那支 spec，自报 `87 passed (29.6m)`）。
+**② 按事实命名**：执行保护策略拒绝 ≠ 审批被拒（新增 `error_code: 'protection_refused'`、文案单一来源、
+三条远程闸门在审批卡之前具名拒绝）——`Nightly` + `Windows Full Test` 双绿。
+
+### 四、一条关于执行器的硬约束（本轮实测，值得后人复读）
+
+**它的批次会横跨多轮、且轮次结束时会把在制品留在树上**：03:04 那轮结束于 ~06:01（**未提交**，7 个路径）→
+08:0x 那轮结束于 08:16（**仍未提交**，扩到 **12 个路径**，含产品代码 + 两支测试 + 一支新 spec）。这条对本仓的
+「发版窗口要求树干净」构成**硬约束**。三种处理方式与取舍：
+
+1. **只提交自己的四个发版文件**（本轮采用）—— 窗口能开出去，但**本版不含它的在制品**，且要接受「树是脏的」这个事实并写进证据；
+2. **替它提交**（不采用）—— 那是在替别人决定半成品能不能上主干，且它下一轮会继续改同一批文件；
+3. **等它落笔**（不采用，因为已等了两轮、跨 6 小时）。
+
+⇒ 下一轮第一步：① 看它是否落笔那 12 个路径（落笔即按 IC39/IC40 的读数验收）；
+② 若**继续**不落笔，把「执行器的在制品如何落地」提升为**要用户拍板**的一条（取舍：谁来决定半成品上不上主干）；
+③ Windows `database` 分片按 `docs/plan-2026-10-08-windows-database-shard-triage.md` 取 Windows 判决。
+
 ## 三十三、本轮追加（执行器，2026-10-08 01:0x–01:4x）——IC39/IC40 那个「问了却自动拒绝、不弹框」的谜题解开了：**策略在卡片之前就拒了**（并同批把误导人的报错改成事实）
 
 **开工核对（防重做）**：`HEAD == origin/main == 81c66ad1`（会话 **01:04** 的文档提交，距开工 **1 分钟** ⇒ 会话刚活动过、
