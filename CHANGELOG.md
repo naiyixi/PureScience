@@ -1,5 +1,34 @@
 # PureScience 更新日记
 
+## v1.90.0 — 2026-10-08（停不掉的停止不再谎报；缺工具的主机也跑得起来；免疫表位源带出处）
+
+**成熟度自陈**：本版三件事，全是**运行时行为**的改动 —— ① 把「从窗口里停掉一台远程任务」这条路的**诚实性**补齐：停止命令**送不到**主机时，窗口不再说「已停止」、那一行也不再被写成 `cancelled`，而是把 ssh 自己的话与退出码照实给出、行保持 `running`；真送达时停的是**整个任务进程组**（不只是启动器）。② 让**缺 `timeout(1)` / `setsid` 的主机**也能派发（改为运行期阶梯，而不是硬依赖），主机上没有墙钟限制器时**在 stderr 具名说出来**，由应用侧轮询器的同一预算兜底；记录到的 pid 也先自证还活着，否则给具名派发失败。③ 连接器新增 **IEDB 免疫表位**（26→**27 个连接器** / 269→**271 个工具**），每条证据带**测定方法 + MHC 限制 + 定量结果 + PubMed/期刊/标题**。✅ 已交付即下面逐条（每条都带真机读数或明确证据等级）；🚧 部分交付与 🗺️ 未做在文末「明确没做」里逐条具名。
+
+**你现在能看到的**：任务行上的「停止」只说它真做到的事 —— 主机够不着时，窗口报**停止命令没能送达**（连 ssh 自己的那句话和退出码一起给出），那一行**保持 `running`**；够得着时主机上的**整个任务进程组**被停掉，行读 `cancelled`、重读仍是 `cancelled`。一台既没有 `timeout` 也没有 `gtimeout` 的主机（stock macOS）**不再让任务直接跑不起来**：任务照跑，主机 stderr 上留一行具名说明。连接器里多了 **IEDB 免疫表位**：按序列或表位 IRI 检索，结果逐条带**测定方法与文献**；查不到时明写「本次查询没有已审定证据 —— 这不是无免疫反应」，并**只点名空了的那一族**；生效的过滤条件随结果上屏；截断判定由「多要一行」得出（该服务不报总数 ⇒ 不印 total）。
+
+### 本版交付
+
+- **IC39/IC40 真机读数 ✅**（`e2e/certification/remote-job-cancel.spec.ts`，**1 passed (18.2s)**）：用**用户态 sshd** 做真 SSH 端点（零安装、零系统改动），四步逐字读数 —— ① 默认策略（Refuse）下提交：工具回 `… was refused by the execution-protection policy … nothing wa[s submitted]`、**无卡片、零 job 行**；② 改 `Ask every time` + 卡片「Once」：真派发，行 `running`、主机上真有 1 个 `sleep 300` 且 `job.pid` alive；③ 窗口点停止：横幅 `Stop requested — the job is now cancelled.`、行 `cancelled`、主机 `sleeps=0`；④ **把主机拿走后再点停止**：横幅 = 窗口文案 + `The stop command to "127.0.0.1" failed (exit code 255): ssh: connect to host 127.0.0.1 port 2222: Connection refused`，行**仍 `running`**。收尾 `leftover workloads on the host after cleanup: 0`。
+- **真机当场抓出的第二处缺陷（已修）**：第一跑在 ④ 失败 —— **主机不可达，窗口却报「已停止」并把行写成 `cancelled`**。根因链：`SystemSshRunner.run()` **从不 reject**（把 ssh 失败当返回值：`exitCode: 255` / `timedOut`；只有 spawn 失败才给 `exitCode: null`），而 `cancelJob` 只读 `try/catch` 里的异常 ⇒ catch 永不触发；旧单测钉的正是**不可能的形态**（用 `Promise.reject` 模拟失败），全绿而真机撒谎。修法：`remote-job-kill.ts` 新增 `killDeliveryFailed()` / `describeKillDeliveryFailure()` 单一来源，`cancelJob` 按结果判定、拒为 `host-unreachable` 且**不写行**。**变异验证**：换回旧写法 ⇒ **只有新增的 3 条用例红**（`3 failed | 152 passed`），恢复即绿。同批修掉 spec 自己的仪器 —— **杀监听 ≠ 把主机拿走**（应用用 `ControlMaster=auto`/`ControlPersist=60` 复用连接）⇒ 现在两半一起拿（`stopSshd()` + `closeMux()`）并**先自证端口不可达**再点停止。
+- **派发阶梯：缺 `timeout(1)` / `setsid` 的主机也能派发 ✅**（真机 stderr 逐字为证）：墙钟限制器改为运行期解析（`timeout` → `gtimeout` → 无限制 + **具名 stderr 行**）；后台启动同样走阶梯（`setsid` → perl `POSIX::setsid` → `nohup`），并在同一次往返里**停一拍确认启动器仍在**，否则给具名派发失败。旧写法在 stock macOS 上 `timeout: command not found` ⇒ 退 127、任务根本跑不起来；真机逐字：`purescience: no timeout(1) on this host - running without a remote wall-clock limit; the app stops the job at the same budget`。
+- **同批两处只在真机可见的偏差**：① 停止改为**按进程组**（先 `kill -TERM -<pid>` 再落回 pid 形态 —— 实测单杀 pid 只停启动器、workload 还在）；② **状态读回归一**：`ComputeJobStatus` 含 `cancelled`，而读回用的是一份**手抄短名单**（无 `cancelled`）⇒ 写进去 `cancelled`、读回来 `error`，真机上表现为「已经结束了，没什么可停的」；改为按共享 `COMPUTE_JOB_STATUSES` 归一 + **编译期双向自检**，用例跑应用同一套 sqlite 存储逐个状态读回恒等。
+- **任务徽标跟随任务变更重渲** ✅：`ConversationPanel` 之前订阅的是 store 里**引用恒定**的查询函数，会话 hydrate 之后新建的任务不会让徽标出现（徽标是进任务列表与停止按钮的**唯一入口**）；改为订阅返回布尔的 selector。
+- **IEDB 免疫表位连接器 ✅**（真机探针为证）：新连接器 `immune_epitopes`（两份 README 同批改计数），两个工具 `iedb_search_epitopes`（按序列或表位 IRI）与 `iedb_search_assays`（按族读测定级证据）。每条带**测定方法 + MHC 限制 + 定量结果 + PubMed/期刊/标题**；空结果明写「本查询没有已审定证据，这不是无免疫反应」且**只点名空了的那一族**；**生效的过滤条件**随结果上屏；输入形态先归一化（FASTA 头行/折行/大小写）再按 20 字母表校验，**不符即具名拒绝且不发请求**。真机读数：`IEDB_EPITOPE:31803` ⇒ t-cell **5** 行 / b-cell **0** 行；`max_rows=1` ⇒ `truncated.tcell = true`；第 0 行 `IEDB_ASSAY:29` / **PMID 15448372** / J Gen Virol。**真机抓到两处 mock 单测发现不了的产品级错**（`tcell_search` 的 select 带 `bcell_id` ⇒ 42703；`bcell_search` 的 select 带 `mhc_restriction` ⇒ 42703）⇒ select 列表改为**按族生成**并写成回归用例。证据：`docs/evidence/2026-10-08-iedb-connector-probe.md`。
+
+### 质量与证据口径
+
+- 门禁对**要打 tag 的那个提交**（`0d1fa31c`，与 tag 提交的差量只有本版四个发版文件）在**隔离工作树**里跑。读数：`eslint --no-cache .` **0 error**（128 warning）· `typecheck:node` / `typecheck:web` **净** · 全量单测 **1229 文件通过 / 15892 passed（204 skipped，零失败）** · 仓规五查通过。
+- 本版各项**各有真机证据**：IC39/IC40 与派发阶梯 = 用户态 sshd 端点上的认证 spec（读数逐字进档，见 `docs/plan-2026-10-03-next-queue-and-round-convention.md` §三十五）；IEDB = 一次性真机探针（跑完即删，读数进 `docs/evidence/2026-10-08-iedb-connector-probe.md`）。连接器目录门禁：`src/main/connectors` **81 文件 / 910 passed | 50 skipped**。
+- **取证过程本身进档**：真机 ④ 之所以第一跑看起来像产品缺陷，其实是**仪器没生效**（杀监听 ≠ 把主机拿走，应用复用了已建立的 SSH 连接，kill 真的送达了）；spec 改成「两半一起拿 + 先自证端口不可达」之后读数才可信。
+
+### 明确没做（本版不承诺）
+
+- **Windows `database` 分片时绿时红**：同一份代码在不同提交上绿/红、且换用例（30s 与 120s 两处超时，都是本批没碰过的文件），只在 Windows 上、带文件锁味道。**修法不许是加大超时**（技能与仓内注释双重否掉）；定性规程见 `docs/plan-2026-10-08-windows-database-shard-triage.md`（判决只能由 Windows 车道给）。
+- **IEDB 的两条边界（具名）**：本版只做**已审定（curated）**表位与测定级证据，不做原文全文抓取；「被排除的命中」在该服务上不可得 ⇒ 以「已应用的阈值 + 截断计数」如实表达，**不造一份看起来更全的被排除清单**。
+- **三条新能力面在开工（本版不含）**：中文医学场景 / 全域溯源 / 权限门 —— 已按拍板顺序立项（`docs/plan-2026-10-08-batch-2-three-batches.md`），本版不含其中任何一条。
+- **IC54 本地解析模型资产**：继续等官方 SHA256 —— 无已发布校验和的权重不下载，不是代码缺口。
+- **Windows 代码签名**：按拍板本版不做，下载页与成熟度块明写未签名（含未知发布者警告与 `SHA256SUMS.txt` 核对指引）。
+
 ## v1.89.0 — 2026-10-08（窗口里够不着的那个动作补上了；报错按事实命名）
 
 **成熟度自陈**：本版两件事，都是**运行时行为**的改动 —— ① 把「窗口里的卸载包」这条结构性死路修通（上一版只能在界面上写明做不到，这一版做成真入口，并逐条验过「没有被静默改指」）；② 把一条**事实层面就是错的**报错改对：远程执行被**执行保护策略**拒绝时，旧文案说「审批被拒」，而那条路上**从没有人被问过**。✅ 已交付即下面逐条；🚧 部分交付与 🗺️ 未做在文末「明确没做」里逐条具名。
