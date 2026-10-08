@@ -14,6 +14,7 @@
 | 复现重执行计划 | `src/shared/reproducibility-reexecution.ts` | `ReproducibilityReexecutionRefusal` + `planRecipeReexecution()` |
 | 产物 sha256 单一来源 | `src/shared/ro-crate.ts:40` | `RO_CRATE_SHA256_TERM_IRI` |
 | 既有的 sha256 **格式**词汇 | `src/shared/permission-grants.ts:10` | `EXACT_PERMISSION_QUALIFIER_PATTERN = /^sha256:v1:[a-f0-9]{64}$/` —— 全仓唯一共享的指纹写法 |
+| **最接近的既有帧：指纹 + 已发布配方 + 校验判决** | `src/shared/search-evidence.ts` | 头注释逐字："a captured line carries a fingerprint computed from the block as it is stored, and **the recipe is published here: anyone holding the block can recompute it**"；`SEARCH_EVIDENCE_HASH_RECIPE = 'purescience-search-evidence-v1'`（**配方是常量、可外部复算**）、`SearchEvidenceVerificationResult`（校验判决）、`SearchEvidenceReason`（拒绝理由）；且刻意 **"Nothing here touches node:crypto — this module is shared with the renderer, which never hashes."**。生产消费方：`GlobalSearchDialog.tsx`、`HumanEvidenceSection.tsx`、`review-evidence.ts` |
 | 重放/校验词汇 | `src/shared/artifact-replay.ts`、`replay-verification.ts` | `reproduced`/`differs` 与 `intact`/`changed` 分开，**"not checked" 从不读成 match** |
 
 ## 二、缺口（连接器读数侧，file:line）
@@ -28,12 +29,15 @@
 
 ## 三、下一步形状（不新建第二套）
 
-1. **单一来源**：新增的指纹一律走 `sha256:v1:<64 hex>` 这一既有格式，且**只加一份共享助手**（放在 `src/shared/`），不再添第 5 份局部 `createHash('sha256')`；主进程那 4 份**本批不动**（收敛它们属另一个单元，避免把本批撑成重构）。
-2. **扩展点**：`engine.ts` 的 `call()` —— 它是所有连接器读数的**唯一咽喉**，在这里取 `descriptor.connector` + `descriptor.id` + 实际请求 URL（经既有 `redactUrl` 脱敏）+ 响应体字节，算出指纹；**接线落在返回信封上**（不是模块里躺着）。
+1. **复用的帧不是 `permission-grants` 的格式串，而是 `search-evidence.ts` 的整套帧**（先按源码核过再定，别照文档里写的旧结论动手）：**指纹 + 已发布的可复算配方常量 + 校验判决 + 具名拒绝理由**，且共享层不碰 `node:crypto`（摘要只在主进程算，共享层只持有配方与判决）。新配方的常量名沿用 `purescience-<域>-v1` 形态。
+2. **扩展点**：`engine.ts` —— 必须落在 **`makeContext()` 的四个 fetch 包装**上，不是 `call()` 的 `url()/parse()` 分支：`engine.ts:70` 显示 `run()` 型 descriptor（现代连接器几乎全是，如 `pubmed.search_articles`）**根本不经 `url()/parse()`**，只在 `call()` 上挂钩会漏掉它们，做出一个"看起来覆盖全、实际只覆盖一半"的指纹。
 3. **判据（可写成断言）**：
-   - 每条读数带 `{ service, tool, request, response: { sha256, bytes } }`；
-   - 指纹可由**任何人离线复算**（给同一份响应字节，`sha256:v1:` 前缀后逐字符相同）；
+   - 每条读数带 `{ service, tool, request: { method, url(脱敏) }, response: { status, bytes, sha256 } }`；
+   - 指纹可由**任何人离线复算**（给同一份响应字节 + 已发布配方，逐字符相同）；
    - 产物 ↔ 读数引用链**可遍历**（从产物版本能查到生成它的读数指纹）；
-   - **缺指纹时明说没记**（沿用 `ReproducibilityGapReason` 的写法：具名 `not-recorded`，**不填 0、不填 unknown**）。
-4. **预先声明的风险**：`call()` 是所有连接器的咽喉 ⇒ 改返回信封会撞**连接器目录的契约 pin 与各 descriptor 的用例**。动之前先数落点——用**本技能自带的** `find-contract-pins.sh`（在该技能的 `scripts/` 下，**仓库里没有这份脚本**，按仓库路径调用会立刻 `No such file or directory`）；形状选择要**可加不可改**（新增可选字段而非改既有语义），并把「无指纹」与「指纹为空」在类型上分开。
-5. **不做**：不给没有读数的能力造指纹字段（沿用 G3 先例：为不存在的能力加 UI/字段不成立）；不碰 `src/main/connectors/descriptors/**` 与 `catalog.ts`/`registry.ts`（同批自主执行器正在那片在编）。
+   - **缺指纹时明说没记**（具名 `not-recorded`，**不填 0、不填 unknown**）。
+4. **已核实的爆炸半径（这条决定单元怎么切）**：读数要送到调用方，只有两条自然出口 ——
+   ① **agent 看到的工具返回值**：`local-rpc-server.ts:1730` 的 `mcpCall` 直接 `return this.connectorService.call(...)`，而该结果形状被 **7+ 套件**钉住（含 `src/main/notebook/e2e.certification.test.ts` 这支认证 spec）；
+   ② **持久的工具活动记录**：`session-persistence.ts:222-242`（还牵动恢复与投影）。
+   ⇒ 两者都不是"顺手加一个字段"，**必须先声明形状再动手**；且 `ConnectorServiceDeps` 目前**没有 logger/telemetry 缝**（`service.ts:27-45`），所以也没有"只记日志、不碰契约"的第三条轻路。
+5. **不做**：不给没有读数的能力造指纹字段（沿用 G3 先例）；不碰 `src/main/connectors/descriptors/**` 与 `catalog.ts`/`registry.ts`（同批自主执行器正在那片在编）。
