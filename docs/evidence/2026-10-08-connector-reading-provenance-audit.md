@@ -41,3 +41,47 @@
    ② **持久的工具活动记录**：`session-persistence.ts:222-242`（还牵动恢复与投影）。
    ⇒ 两者都不是"顺手加一个字段"，**必须先声明形状再动手**；且 `ConnectorServiceDeps` 目前**没有 logger/telemetry 缝**（`service.ts:27-45`），所以也没有"只记日志、不碰契约"的第三条轻路。
 5. **不做**：不给没有读数的能力造指纹字段（沿用 G3 先例）；不碰 `src/main/connectors/descriptors/**` 与 `catalog.ts`/`registry.ts`（同批自主执行器正在那片在编）。
+
+---
+
+## 四、单元已交付（提交 `fbf41b61`）
+
+| 落点 | 内容 |
+| --- | --- |
+| `src/shared/reading-fingerprint.ts`（新） | 已发布配方常量 `purescience-connector-reading-v1`（recipe / method / url / status 各一行，再拼**响应字节**）、`ConnectorReadingFingerprint`、`verifyConnectorReadingFingerprint()`（`verified` / `not-recorded` / `malformed-fingerprint` / `fingerprint-mismatch` + `fingerprintNow`）、`attachReadingFingerprints()`、`readingsFromConnectorResult()`。**不碰 `node:crypto`**，与 `search-evidence.ts` 同规矩 |
+| `src/main/connectors/engine.ts` | 挂点在 **`makeContext()` 的四个 fetch 包装**上（`engine.ts:99+`）；URL 先过既有 `redactUrl` 才进指纹 |
+| `src/main/connectors/service.ts` | 读数随结果带回（`reading_fingerprints`），`callBundled` 一处接线 |
+| `src/shared/reading-fingerprint.test.ts`、`src/main/connectors/engine.test.ts` | 30 个用例：配方**手写独立实现**复算、四个判决分支、POST 与 GET 的摘要不可互换、凭据脱敏、无字节视图时**一个指纹都不记** |
+
+### 真机读数（走真正接线的引擎打真 PubMed，一次性探针跑完即删）
+
+```
+recorded  : pubmed/search_articles  GET  200  bytes=1118
+            sha256:5b026c46688db63391615a647897c329273ec2b064f75ba97d9d2b952303d96d
+outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
+            sha256:5b026c46688db63391615a647897c329273ec2b064f75ba97d9d2b952303d96d
+            identical = true
+```
+
+⇒ ②「指纹可由**任何人离线复算**」由**外部人**（不 import 本仓任何摘要助手，按配方描述手写）在真服务上逐字符验证通过。
+
+### 门禁（隔离工作树 `/tmp/rf-gate`，被测提交 `fbf41b61`）
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**，零输出 |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0**，零输出 |
+| `npx eslint --no-cache .`（全仓） | **0 error ／ 128 warning**（= 既有基线） |
+| `vitest run src/main/connectors src/shared --maxWorkers=4` | **191 文件通过 ｜ 2126 passed ｜ 53 skipped（2179）** |
+
+### 过程中被源码与测试纠正的三处（都不是拍脑袋定的）
+
+1. **挂点差点选错**：`engine.ts:70` 的 `if (descriptor.run)` ⇒ 现代连接器（含 pubmed 工具）根本不走 `url()/parse()`。只挂 `call()` 会做出"看起来覆盖全、实际覆盖一半"的指纹。
+2. **差点撞 67 个测试替身**：全仓 **67 个文件**用假 `Response`，只有 **5 个**实现 `arrayBuffer()`。⇒ 引擎只在**真拿到响应字节**时记录；其余走替身自己的 `json()/text()`（与改动前逐字一致），**一个指纹都不记**——绝不把重新序列化的结果当响应摘要（那对不上服务端真发的字节）。
+3. **`cellguide.test.ts` 14 条红**揪出第 2 条的反面：我最初让引擎优先用 `text`，而那个替身把 `text` 桩成空串、只有 `json()` 是真的。修法是**收紧规则**（只认 `arrayBuffer`），不是改那 14 条用例。
+
+### 边界（具名）
+
+- **③「产物 ↔ 读数引用链可遍历」未做**：读数现在随**工具结果**回到调用方，但还没有从产物版本反查生成它的读数的那条链。要接 `artifact-provenance.ts` 的 `ArtifactVersionEvidence`，属下一个单元。
+- **只覆盖 HTTP 读数**：不走 HTTP 的本地工具处理器（`localToolHandlers`）没有读数，因此不带指纹——按仓规不给不存在的能力造字段。
+
