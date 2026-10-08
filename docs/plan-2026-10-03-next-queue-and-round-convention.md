@@ -1600,3 +1600,37 @@ spec 现在**两半一起拿**（`stopSshd()` + `closeMux()`），并**先自证
 3. Windows `database` 分片那条红仍只能由 Windows 车道判决（`docs/plan-2026-10-08-windows-database-shard-triage.md`）。
 4. 发版窗口期 `cron pause` 已恢复（`hermes cron list` 显示 `[active]`、`Next run` 正常）。
 
+## 三十七、本轮追加（执行器，2026-10-08 20:1x–）——批次 ① 首件落树：中文术语跨语连接器 `zh_medical_terms`（上一轮被迭代上限截断，本轮修完 lint 收口）
+
+**开工核对（防重做）**：`HEAD == origin/main == cef6d8f3`（会话 19:52 的批次 ② 核实提交）；`git status --short` = **上一轮被迭代上限截断的在制品 7 个路径**（`README.md` / `README.en.md`、`catalog.ts`、`registry.ts`、新 `descriptors/zh-medical-terms.ts` + `.test.ts`、新证据档）；进程表无 `electron-vite` / `playwright` / `vitest`（会话自 19:52 起空闲）⇒ 本轮**收口这笔 WIP**，不新起单元，也不碰会话路径。
+
+**CI 核对（按完整 40 位 SHA，读数即结论；取消 ≠ 绿）**：
+
+| 提交 | Nightly | Windows Full Test | 判读 |
+| --- | --- | --- | --- |
+| `f2dac485`（会话：中文术语单一来源表 + PubMed 接线） | 无自己的 run | 同 | 它从不是任何一次推送的 tip（与 `1f2f5fd3` 同一次推送）⇒ 判决由后者覆盖 |
+| `1f2f5fd3`（会话证据档；该次推送 tip，**含 `f2dac485` 的代码**） | **37764627505 success** | **37764627266 success** | **双绿**；另 `Scheduled Regression` **37765124460 success** ⇒ 批次 ① 会话那半的 CI 证据闭合 |
+| `cef6d8f3`（纯 `docs/**`） | 0 条 run | 0 条 run | `paths:` 过滤，**设计如此**，不是漏跑 |
+
+**本轮修的是上一轮自己留下的红（不修就过不了车道）**：`zh-medical-terms.test.ts` 有 **5 个** `@typescript-eslint/no-explicit-any`（上一轮只改了 1 处）⇒ 把其余 4 处 `as Record<string, any>` 换成 `as ResolveResult` / `as CrosswalkResult`（`CrosswalkResult` 因此从「定义了没用」变成真被消费），再 `prettier --write` 清掉自己引入的 **8 条** prettier warning ⇒ 这两个文件 `eslint --no-cache` **0 problem**。
+
+**门禁（隔离工作树 `/tmp/ps-zh-gate`：`git worktree add HEAD` + 软链 `node_modules` + **注入本轮这 7 个路径**，等于提交后的树；读数即结论）**：
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .`（全仓、CI 同口径） | **0 error / 128 warning**（既有基线；本单元触碰的文件 0 problem） |
+| 双 typecheck（node / web） | **exit 0 / exit 0** |
+| 全量 vitest `--maxWorkers=4` | **1231 文件通过（16 skipped）／15931 passed（207 skipped）**，零失败，exit 0 |
+| `scripts/pre-push-checks.sh` | **全过**（品牌扫描 / README 双语同步 / CHANGELOG 已有 v1.90.0 条目 / 发布提醒 ✓） |
+| 连接器目录 `vitest run src/main/connectors` | **82 文件通过 / 930 passed（53 skipped）** |
+| 定向 + 契约族（connectors + shared + preload + settings + renderer/web + 两个 application-command 套件） | **285 文件通过（1 skipped）/ 3637 passed（56 skipped）**，17.0 s，exit 0 |
+| README 连接器计数 | `readme-connector-count.test.ts` 由注册表派生 ⇒ 两份 README 同步为 **28 connectors (273 tools)** |
+
+**真机（LIVE）重跑读数（诚实边界）**：`LIVE_API=1` 跑本连接器，20:18 第一跑 **18 passed / 1 failed**、20:18 第二跑 **16 passed / 3 failed**，失败全部是 `fetch failed … ConnectTimeoutError`（连不到 Wikidata，10 s 预算）。⇒ 这是**本机到该站点的网络抖动**（描述符头部在写它之前就记过同类 SSL / 连接超时），不是代码回归；`LIVE_API` 用例默认 skip，CI 不受影响。**证据档 §2.1 的逐字读数取自网络通达时**，本轮既没有推翻它，也没有拿这两次超时冒充读数。
+
+**防重复的分工（写给会话与下一轮）**：会话 `f2dac485` 交付的是**共享层的单一来源表**（`src/shared/chinese-terms.ts`：217 词条 / 285 键，已知中文术语的规范中文→英文对照 + PubMed 发查询前归一化，不可映射即具名拒答）；本连接器交付的是**表里没有的术语**——解析成什么实体（QID）、匹配在 label 还是 alias、这条读数从哪来（实体 URL + 修订号 + CC0）、英文标签是什么。两件事**不是同一件**，也**没有**长出第二份词表（描述符头部写明「本连接器不带术语表」）；接口是「表命中 → 直接映射；表未命中 → 交给本连接器解析成 QID 再取英文标签」。
+
+**版本位点台账**：Latest = **v1.90.0**（tag `1b757189`、21 资产、三车道全绿）；`package.json` = 1.90.0；本轮**未发版** ⇒ 下一个版本边界 **v1.91.0**（本连接器是 tag 以来第一笔未发布内容）。
+
+**下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`（**先按提交划掉会话做过的**）；② 按 `docs/plan-2026-10-08-batch-2-three-batches.md` 继续批次 ① 的差异化点 ④（中文结论的出处按仓内既有 **GB/T 7714** 层输出）——**先核实该层是否已覆盖**：`src/shared/citation/builtin-styles.ts` 与 `src/shared/references-gbt.test.ts` 已在树里，若已覆盖即按「架构已覆盖」结案并附 file:line，**不新造第二套**；③ 或接会话批次 ②（溯源全域）核实结论里**未被认领**的单元；④ 按完整 40 位 SHA 看本轮推送的 `Nightly` + `Windows Full Test`，红了先读**作业级注解**归因（`cancelled` 不算绿）。
+

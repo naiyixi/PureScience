@@ -325,5 +325,17 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     sources: ['ZINC'],
     termsUrl: 'https://zinc.docking.org/',
     requiresNcbi: false
+  },
+  {
+    id: 'zh_medical_terms',
+    displayName: '中文术语',
+    aliases: ['Wikidata', '术语归一化', '中文医学术语', 'Chinese term', 'cross-lingual', 'QID'],
+    description:
+      '中文医学术语的可引用归一化——把中文药名、疾病名、适应证、机构名落到一个有 id、有出处、可离线复算的实体上，并给出英文标签，好让文献与化学类连接器答得上来。',
+    useWhen:
+      'Use when a question arrives in Chinese and has to be carried onto the identifier space the other connectors index — a Chinese drug, disease, indication or institution name resolved to a citable entity (ranked candidates with the label-or-alias field each one matched, and every normalisation step reported: a trailing dosage form is stripped, full-width characters folded), then that entity\'s Chinese labels, Chinese aliases and English label read back out (zh_term_crosswalk) so PubMed, OpenAlex, PubChem, ChEMBL or a trial registry can be queried in the wording they actually index. The ranking is returned as a list and never collapsed into one answer, and a query that matches nothing is reported as "not found in Wikidata" rather than as a term that does not exist. Sourced from Wikidata (CC0).',
+    sources: ['Wikidata'],
+    termsUrl: 'https://www.wikidata.org/wiki/Wikidata:Licensing',
+    requiresNcbi: false
   }
 ]
