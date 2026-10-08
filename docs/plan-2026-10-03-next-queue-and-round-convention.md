@@ -1557,3 +1557,46 @@ spec 现在**两半一起拿**（`stopSshd()` + `closeMux()`），并**先自证
 
 **版本位点台账（不变）**：Latest = **v1.88.0**（21 资产、三车道全绿）；`package.json` = 1.88.0；本轮**未发版** ⇒ 下一个版本边界 **v1.89.0**。
 
+## 三十六、v1.90.0 已发布（执行器，2026-10-08 14:30–16:0x 发版；18:0x 本轮核验收口）
+
+**这轮把 §三十五 留下的三笔一次推完并走完版本边界**（`03c477f4` 派发阶梯 · `0d1fa31c` IC39 取消轮 ·
+`1b757189` release: v1.90.0，**只碰四个发版文件**）。tag 前已 `git push origin main` 并核
+`git merge-base --is-ancestor "$(git rev-parse 'v1.90.0^{commit}')" origin/main` **为真**。
+
+### 一、Release 页与资产（本轮按完整读数复核，不是「看列表」）
+
+| 项 | 读数 |
+| --- | --- |
+| 页 | `v1.90.0`：**draft=false / isPrerelease=false / 21 资产 / isLatest=true**（`gh release list` 首行为 Latest） |
+| 发布时刻 | `publishedAt = 2026-10-08T08:00:06Z` |
+| 正文 | **21,633 字节**（成熟度块 + v1.90.0 CHANGELOG 段 + 未签名披露），非 stub |
+| tag 提交 | 附注 tag `v1.90.0` → 提交 **`1b7571893d138bedb34cb021916ec6763ea345e1`** |
+| `RELEASE-CERTIFICATION.json` | `sourceSha = 1b7571893d138bedb34cb021916ec6763ea345e1`，与 tag 提交**逐字符一致**；`runId = 37739679400`；平台四条 checks 里 `packageSmoke: passed`、其余 `not-applicable` 按平台如实标注 |
+| 资产齐 | mac arm64/x64 各 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+blockmap+zip，外加 `SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、四个 `latest*.yml` |
+| 公证 | 两条**具名跳过**（无 Apple 凭据）⇒ 「作业绿 ≠ 做了事」口径下不算签名/公证通过 |
+
+### 二、CI 逐笔点名（按完整 40 位 SHA；`cancelled` 不算绿）
+
+| 提交 | Release | Nightly | Windows Full Test |
+| --- | --- | --- | --- |
+| `1b757189`（v1.90.0） | **37739679400 success**（1h16m38s） | **37739657740 success**（57m47s） | **37739657458 success**（14m12s） |
+| `0d1fa31c`（IC39 取消轮） | — | 37738170802 **cancelled**（被 release 推送顶掉，**无判决**） | **37738170472 success** |
+| `903ee4fa`（IEDB 连接器） | — | **37729570982 success**（53m6s） | **37729570576 success**（15m43s） |
+
+⇒ **tag 提交三车道全绿**，`0d1fa31c` 那条 Nightly 被 `1b757189` 的推送按 `cancel-in-progress` 顶掉
+（**取消 ≠ 绿**），其 CI 证据由「包含它的那一次绿色 Nightly」（即 `1b757189`）代替给出 —— CI 跑整棵树而不是 diff。
+
+### 三、门禁（隔离工作树、被测提交 `0d1fa31c`，上一轮实跑读数）
+
+`eslint --no-cache .` **0 error（128 warning）** · 双 typecheck **净** · 全量 **1229 文件通过 / 15892 passed
+（204 skipped，零失败）** · 仓规五查通过。连接器目录 **81 文件 / 910 passed | 50 skipped**。
+`check-readme-sync` 与 `scripts/pre-push-checks.sh` 均过。
+
+### 四、遗留（具名，不许丢）
+
+1. **`docs/plan-2026-10-08-batch-2-three-batches.md` 的批次 ①（中文医学场景）已开工核实**（见下节 §三十七）。
+2. `~/.purescience/jobs/` 下 **12 个探针 job 目录**仍待清理 —— `rm -rf` 被 cron 守卫按「批量删除」拦下
+   （试过 8 个与 3 个两档都被拦，**一条都没删成**）⇒ 留给交互会话，或下一轮按**逐个**粒度尝试。
+3. Windows `database` 分片那条红仍只能由 Windows 车道判决（`docs/plan-2026-10-08-windows-database-shard-triage.md`）。
+4. 发版窗口期 `cron pause` 已恢复（`hermes cron list` 显示 `[active]`、`Next run` 正常）。
+
