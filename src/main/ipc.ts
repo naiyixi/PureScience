@@ -372,6 +372,7 @@ import {
   type ElectronRuntimeAdapterInterfaces,
   type NamedElectronSurfaceAdapter
 } from './runtime-electron-wiring'
+import { recordSessionReadings } from './connectors/reading-journal'
 import { ConversationSkillImporter, SkillImportApprovalBroker } from './skills/conversation-import'
 import { SkillCreator } from './skills/skill-creator'
 import type { ConversationSkillImportApprovalResponse } from '../shared/settings'
@@ -1167,6 +1168,11 @@ const createApplicationModules = async (
       } catch {
         return undefined
       }
+    },
+    // Readings are recorded beside the data root, which this service has no business knowing about:
+    // the root is resolved here and the write is fire-and-forget (see reading-journal.ts).
+    recordReadings: ({ sessionId, readings }) => {
+      void recordSessionReadings(resolveDataRoot(), sessionId, readings)
     },
     localToolHandlers: { 'molecule/preview_molecule': moleculePreviewHandler },
     subAgent: (request) =>

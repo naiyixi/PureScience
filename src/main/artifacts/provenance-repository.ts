@@ -54,6 +54,7 @@ import { startDbCanary } from '../diagnostics/db-queue-probe'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
+import { readSessionReadings } from '../connectors/reading-journal'
 import type {
   NotebookEnvironmentManifest,
   NotebookEnvironmentPackage,
@@ -3702,7 +3703,7 @@ class ArtifactProvenanceRepository {
 
   async getVersionProvenance(
     request: GetArtifactVersionProvenanceRequest,
-    sections: { execution: boolean; messages: boolean; review: boolean } = {
+    sections: { execution: boolean; messages: boolean; review: boolean; readings?: boolean } = {
       execution: true,
       messages: true,
       review: true
@@ -3993,13 +3994,34 @@ class ArtifactProvenanceRepository {
       }
     }
 
+    // Walked from the Version back to the bytes: the readings recorded in this session. The
+    // attribution is stated on the value because that is the honest limit of what the connector layer
+    // can know — session and time, not which run was derived from which reading.
+    let readings: ArtifactVersionProvenance['readings'] = {
+      state: 'unavailable',
+      reason: 'not-loaded'
+    }
+    if (sections.readings !== false) {
+      const journal = await readSessionReadings(this.options.storageRoot, appSessionId)
+      readings =
+        journal.state === 'available'
+          ? {
+              state: 'available',
+              attribution: 'session-window',
+              items: journal.entries.map((entry) => entry.reading),
+              dropped: journal.dropped
+            }
+          : { state: 'unavailable', reason: journal.reason }
+    }
+
     return {
       descriptor: await this.toDescriptor(version, projectId, version.artifact.sessionId),
       contentStatus,
       evidence,
       execution,
       messages,
-      review
+      review,
+      readings
     }
   }
 
@@ -4059,7 +4081,10 @@ class ArtifactProvenanceRepository {
     return this.getVersionProvenance(request, {
       execution: false,
       messages: false,
-      review: false
+      review: false,
+      // Core projections are read in bulk (one per card); the journal is a file read per session, so
+      // the listing path says so explicitly rather than paying it.
+      readings: false
     })
   }
 

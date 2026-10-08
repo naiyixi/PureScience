@@ -18,6 +18,7 @@ import type { ArtifactVersionFile } from '../../shared/artifact-provenance'
 import { createLinearConversationGraph } from '../../shared/conversation-graph'
 import type { NotebookEnvironmentManifest } from '../../shared/notebook'
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import { recordSessionReadings } from '../connectors/reading-journal'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import { NotebookRunRepository } from '../notebook/repository'
 import { createPngBytes, createPngInlineSource } from './artifact-test-fixtures'
@@ -1803,7 +1804,6 @@ describe('artifact provenance repository', () => {
     expect(sealed).toContain('"producerRunEarlierTurn":true')
     expect(sealed).toContain('promptMessageId')
     expect(sealed).toContain('runtimeSegmentId')
-
   })
 
   it('does not infer an omitted producer from source mtime alone', async () => {
@@ -4238,5 +4238,86 @@ describe('artifact provenance repository', () => {
     await writeFile(contentPath, 'x')
     await repository.deleteProjectProvenance('project-1')
     await expect(client.uploadFile.count({ where: { projectId: 'project-1' } })).resolves.toBe(0)
+  })
+
+  it('walks from a Version back to the readings recorded in its session', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-readings-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client)
+    })
+    const contentStorageKey = 'artifacts/project-1/session-1/.provenance/versions/version-1/content'
+    const contentPath = join(storageRoot, ...contentStorageKey.split('/'))
+    await mkdir(dirname(contentPath), { recursive: true })
+    await writeFile(contentPath, 'artifact bytes')
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'plot.png',
+        filename: 'plot.png'
+      }
+    })
+    await client.artifactVersion.create({
+      data: {
+        id: 'version-1',
+        artifactId: 'artifact-1',
+        versionNumber: 1,
+        filename: 'plot.png',
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'root-1',
+        agentFrameId: 'agent-1',
+        messageBranchId: 'branch-1',
+        runtimeSegmentId: 'segment-1',
+        promptMessageId: 'prompt-1',
+        state: 'finalized',
+        contentStorageKey,
+        evidenceStorageKey:
+          'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
+        sizeBytes: BigInt(14),
+        checksum: 'a'.repeat(64),
+        evidenceJson: '{}',
+        // The repository verifies the mirror against this checksum, so the fixture computes it.
+        evidenceChecksum: createHash('sha256').update('{}').digest('hex')
+      }
+    })
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    }
+
+    // Nothing recorded for this session yet: the section names the gap instead of showing an empty list.
+    const before = await repository.getVersionProvenance(request)
+    expect(before.readings).toEqual({ state: 'unavailable', reason: 'not-recorded' })
+
+    const reading = {
+      service: 'pubmed',
+      tool: 'search_articles',
+      request: { method: 'GET' as const, url: 'https://example.test/esearch?term=aspirin' },
+      response: { status: 200, bytes: 1118, sha256: `sha256:${'c'.repeat(64)}` }
+    }
+    await recordSessionReadings(storageRoot as string, 'session-1', [reading])
+
+    const after = await repository.getVersionProvenance(request)
+    // The attribution is carried on the value: session and time window, not per-run causality.
+    expect(after.readings).toEqual({
+      state: 'available',
+      attribution: 'session-window',
+      items: [reading],
+      dropped: 0
+    })
+
+    // The listing path says it did not load rather than claiming nothing was recorded.
+    const core = await repository.getVersionCore(request)
+    expect(core.readings).toEqual({ state: 'unavailable', reason: 'not-loaded' })
   })
 })

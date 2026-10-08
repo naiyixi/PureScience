@@ -13,6 +13,7 @@ import type {
   PersistedMessageRole,
   PersistedToolActivity
 } from './session-persistence'
+import type { ConnectorReadingFingerprint } from './reading-fingerprint'
 import type { ArtifactVersionReviewProjection } from './reviewer'
 
 export type CreateArtifactVersionRequest = {
@@ -435,6 +436,28 @@ export type ArtifactVersionProvenance = {
     | {
         state: 'unavailable'
         reason: 'not-loaded' | 'not-triggered' | 'source-session-unavailable'
+      }
+  /**
+   * The connector readings recorded in this Version's session, so a number in a report can be walked
+   * back to the bytes it came from instead of ending at the tool result.
+   *
+   * Read the attribution literally: it is SESSION + TIME WINDOW, not per-run causality. The connector
+   * service knows which session called it and nothing finer — a run id reaching that layer would have
+   * come from RPC parameters, which are not authority — so an item here was read in the same session
+   * before this Version was written. That is a real link to check, and it is NOT a claim that this
+   * Version was derived from that reading.
+   */
+  readings:
+    | {
+        state: 'available'
+        attribution: 'session-window'
+        items: ConnectorReadingFingerprint[]
+        /** Entries the journal dropped to stay inside its cap, so a short list is explainable. */
+        dropped: number
+      }
+    | {
+        state: 'unavailable'
+        reason: 'not-loaded' | 'not-recorded' | 'unreadable'
       }
 }
 

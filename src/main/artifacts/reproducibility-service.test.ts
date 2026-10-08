@@ -16,6 +16,9 @@ const VERSION_SHA = 'a'.repeat(64)
 const INPUT_SHA = 'c'.repeat(64)
 
 const provenance = (): ArtifactVersionProvenance => ({
+  // This fixture carries no connector reading journal; the projection says so by name rather than
+  // omitting the section, so a reader cannot mistake an absent field for an unread one.
+  readings: { state: 'unavailable', reason: 'not-recorded' },
   descriptor: {
     id: 'version-1',
     artifactId: 'artifact-1',

@@ -52,6 +52,13 @@ type ConnectorServiceDeps = {
     availableScopes: ConnectorApprovalScope[]
     persistsOnService?: boolean
   }) => Promise<ApprovalDecision>
+  // Records the readings a call took, so a later reader can walk from an artifact Version back to the
+  // bytes. Injected (rather than reached for) because the store lives beside the data root, which this
+  // service has no business knowing. A failure to record is swallowed and becomes `not-recorded`.
+  recordReadings?: (input: {
+    sessionId: string
+    readings: readonly ConnectorReadingFingerprint[]
+  }) => void
   // Handlers for bundled tools that run privileged local code (e.g. write an artifact, open a preview)
   // instead of the read-only HTTP ParserEngine. Keyed by `${connector}/${method}`; invoked after the
   // same enable/policy/approval gate as any other bundled call. The call context carries the id of the
@@ -331,6 +338,16 @@ export class ConnectorService {
       this.credentials(authorizedConnectors),
       (reading) => readings.push(reading)
     )
+    // Recorded against the session that made the call. No run id: it would have to come from RPC
+    // parameters, and those are not authority (see ConnectorCallContext). A failure to record is
+    // swallowed — this is evidence about a call that already succeeded, not part of the call.
+    if (readings.length > 0 && context.sessionId) {
+      try {
+        this.deps.recordReadings?.({ sessionId: context.sessionId, readings })
+      } catch {
+        // Swallowed on purpose: the absence surfaces later as `not-recorded`.
+      }
+    }
     return attachReadingFingerprints(value, readings)
   }
 
