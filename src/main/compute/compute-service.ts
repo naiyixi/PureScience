@@ -48,6 +48,8 @@ import { computeRemoteWorkdir, dispatchJob, hashCommand } from './job-dispatcher
 import { sharedDispatchTracker } from './dispatch-tracker'
 import {
   buildRemoteKillCommand,
+  describeKillDeliveryFailure,
+  killDeliveryFailed,
   parseRemoteHandle,
   REMOTE_KILL_MAX_OUTPUT_BYTES,
   REMOTE_KILL_TIMEOUT_MS
@@ -1586,20 +1588,36 @@ export class ComputeService {
         }
       }
 
+      let delivery: Awaited<ReturnType<SshRunner['run']>>
       try {
-        await this.runner.run(target, buildRemoteKillCommand(handle), {
+        delivery = await this.runner.run(target, buildRemoteKillCommand(handle), {
           timeoutMs: REMOTE_KILL_TIMEOUT_MS,
           loginShell: false,
           maxOutputBytes: REMOTE_KILL_MAX_OUTPUT_BYTES
         })
       } catch (error) {
-        // The kill never got there. Leave the row alone: it is still running remotely.
+        // A runner that reports the transport failure by rejecting. The real one does not — it
+        // resolves with ssh's exit status — so the result is read below as well.
         return {
           job_id: job.job_id,
           outcome: 'refused',
           refusal: 'host-unreachable',
           status: job.status,
           detail: error instanceof Error ? error.message : String(error)
+        }
+      }
+
+      // The kill never got there. Leave the row alone: it is still running remotely. Without this
+      // reading, an unreachable host was answered with a stop that never happened — the live run that
+      // caught it: the window said "Stop requested — the job is now cancelled." while the row it wrote
+      // was `cancelled` for a host whose listener was down.
+      if (killDeliveryFailed(delivery)) {
+        return {
+          job_id: job.job_id,
+          outcome: 'refused',
+          refusal: 'host-unreachable',
+          status: job.status,
+          detail: describeKillDeliveryFailure(delivery, host.sshAlias)
         }
       }
     }

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { ComputeJobRepository } from './job-repository'
+import { COMPUTE_JOB_STATUSES } from '../../shared/compute'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 
 // Verifies ComputeJob schema migration is purely additive (CLAUDE.md requirement):
@@ -98,6 +99,51 @@ describe('ComputeJob schema migration (integration)', () => {
 
     // hasActiveJobsForProvider.
     expect(await repo.hasActiveJobsForProvider('ssh:biowulf')).toBe(false)
+  })
+
+  // The window's cancel writes 'cancelled' and immediately re-reads the row to decide what to report.
+  // A reader that normalized the stored value against its own shorter list turned that row into
+  // 'error' and answered "this job had already finished" for a job it had just stopped. Pinned here
+  // against the same sqlite storage the app uses, not against an in-memory fake (which is why the
+  // unit tests around the cancel path all passed while the live window lied).
+  it("reads a stored 'cancelled' back as cancelled", async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-jobs-cancelled-'))
+
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+    const repo = new ComputeJobRepository(() => Promise.resolve(client))
+
+    await repo.create({
+      id: 'job-cancel-1',
+      providerId: 'ssh:test',
+      shape: 'direct_ssh',
+      sessionId: 's1',
+      projectId: 'p1',
+      intent: 'long remote run',
+      command: 'sleep 300',
+      commandHash: 'hash-cancel'
+    })
+    await repo.update('job-cancel-1', { status: 'running' })
+
+    const cancelled = await repo.update('job-cancel-1', {
+      status: 'cancelled',
+      finishedAt: new Date()
+    })
+    expect(cancelled.status).toBe('cancelled')
+    expect((await repo.get('job-cancel-1'))?.status).toBe('cancelled')
+
+    // Cancelled is terminal: it is not polled again, and it is deliberately not queued for harvest.
+    expect(await repo.findNonTerminal()).toEqual([])
+    expect(await repo.findTerminalUnharvested()).toEqual([])
+
+    // Every declared status survives the read-back unchanged — the list a reader validates against is
+    // the shared one, so a status can no longer be stored by one side and rewritten by the other.
+    for (const status of COMPUTE_JOB_STATUSES) {
+      await repo.update('job-cancel-1', { status })
+      expect((await repo.get('job-cancel-1'))?.status).toBe(status)
+    }
   })
 
   it('findNonTerminalByProvider returns only jobs for the given provider', async () => {

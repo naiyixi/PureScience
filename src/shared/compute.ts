@@ -203,6 +203,31 @@ export type ComputeApprovalRequest = {
 export type ComputeJobStatus =
   'queued' | 'submitted' | 'running' | 'success' | 'failed' | 'timeout' | 'error' | 'cancelled'
 
+// Every status a stored job row can hold, named once. A reader that has to validate a value coming
+// out of the database must normalize against THIS list (see `asStatus` in the compute job
+// repository): a hand-maintained copy is how a stored 'cancelled' was read back as 'error', which
+// turned a real cancellation into "this job had already finished, so there was nothing to stop".
+export const COMPUTE_JOB_STATUSES = [
+  'queued',
+  'submitted',
+  'running',
+  'success',
+  'failed',
+  'timeout',
+  'error',
+  'cancelled'
+] as const
+
+// Compile-time proof that the list above still matches the union in both directions: adding a status
+// to ComputeJobStatus without listing it here (or listing one that is not in the union) is a type
+// error on this line, so no reader can quietly fall behind the union again.
+type ComputeJobStatusDrift =
+  | Exclude<ComputeJobStatus, (typeof COMPUTE_JOB_STATUSES)[number]>
+  | Exclude<(typeof COMPUTE_JOB_STATUSES)[number], ComputeJobStatus>
+export const COMPUTE_JOB_STATUSES_ARE_EXHAUSTIVE: ComputeJobStatusDrift extends never
+  ? true
+  : never = true
+
 // Every status a job can rest in: it will never be polled again and can no longer be cancelled.
 // Declared once so a new terminal status cannot be honoured by one consumer (the poller's query, the
 // concurrency manager's queue release, the timeline's completed-job card) and forgotten by another.

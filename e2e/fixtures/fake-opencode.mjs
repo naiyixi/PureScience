@@ -240,6 +240,42 @@ const attemptBlockedEgress = async (sessionId) => {
   return EGRESS_APPROVAL_REPLY
 }
 
+// IC39/IC40: a genuine remote job, submitted the way the product submits one. `repl_execute` is the
+// notebook MCP tool that is the app's ONLY submission path (there is no renderer channel for it), and
+// the fixture drives it exactly as the notebook's own JS shim does — through `host.compute`, which
+// speaks to the main process over the app-local computeCall RPC. The reply carries the tool's own
+// answer (accepted, or the structured refusal) so the spec reads which gate answered instead of an
+// assumed success.
+const IC39_SUBMIT_PROMPT = 'Submit a long remote job.'
+const IC39_JOB_COMMAND = 'sleep 300'
+
+const submitRemoteLongJob = async (sessionId) => {
+  const alias = process.env.PURESCIENCE_IC39_ALIAS || '127.0.0.1'
+  const outcome = await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
+    const raw = await client.callTool({
+      name: 'repl_execute',
+      arguments: {
+        code:
+          `const c = host.compute.create(${JSON.stringify(`ssh:${alias}`)}); ` +
+          `const job = await c.submit_job('ic39 long remote run', ${JSON.stringify(IC39_JOB_COMMAND)}, {}); ` +
+          `return job`
+      }
+    })
+    const text = (raw.content ?? [])
+      .filter((item) => item.type === 'text')
+      .map((item) => item.text)
+      .join('\n')
+    return { isError: Boolean(raw.isError), text }
+  })
+  const oneLine = outcome.text.replaceAll(/\s+/g, ' ').slice(0, 520)
+  // The notebook REPL reports a refused submission as an ordinary result whose payload carries
+  // `"status": "failed"` — the tool result is NOT flagged as an MCP error — so the refusal is read
+  // from the payload as well as from `isError`.
+  const refused = outcome.isError || /"status"\s*:\s*"failed"/.test(outcome.text)
+  agentLog(`ic39 submit -> refused=${refused} ${oneLine}`)
+  return refused ? `Remote submit refused: ${oneLine}` : `Remote submit accepted: ${oneLine}`
+}
+
 const createProvenanceArtifact = async (sessionId) => {
   const producerRunId = await withMcpClient(sessionId, 'purescience-notebook', async (client) => {
     const execution = toolResult(
@@ -620,6 +656,8 @@ if (process.argv.includes('--version')) {
               : 'Fixture permission denied.'
         } else if (prompt.includes(EGRESS_APPROVAL_PROMPT)) {
           reply = await attemptBlockedEgress(context.params.sessionId)
+        } else if (prompt.includes(IC39_SUBMIT_PROMPT)) {
+          reply = await submitRemoteLongJob(context.params.sessionId)
         }
       } catch (error) {
         reply = `E2E fixture failure: ${error instanceof Error ? error.message : String(error)}`

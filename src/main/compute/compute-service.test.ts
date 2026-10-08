@@ -2911,7 +2911,15 @@ describe('ComputeService.cancelJob', () => {
     ...overrides
   })
 
-  const okResult = {
+  // `exitCode` is nullable by contract: SystemSshRunner resolves with null when ssh could not be
+  // spawned at all, and the cancel path must refuse on that shape too.
+  const okResult: {
+    exitCode: number | null
+    stdout: string
+    stderr: string
+    truncated: boolean
+    timedOut: boolean
+  } = {
     exitCode: 0,
     stdout: '',
     stderr: '',
@@ -2962,7 +2970,11 @@ describe('ComputeService.cancelJob', () => {
     expect(result).toEqual({ job_id: job.job_id, outcome: 'cancelled', status: 'cancelled' })
     expect(run).toHaveBeenCalledTimes(1)
     expect(run.mock.calls[0]?.[0]).toEqual(fakeTarget)
-    expect(run.mock.calls[0]?.[1]).toContain('kill 4242')
+    // The kill addresses this job's process group first (the launcher runs detached, so it is a
+    // session leader): stopping only the recorded pid leaves the workload running on the host.
+    const killCmd = run.mock.calls[0]?.[1] as string
+    expect(killCmd).toContain('kill -TERM -4242')
+    expect(killCmd).toContain('kill -KILL 4242')
     expect(updateCalls).toHaveBeenCalledWith(
       job.job_id,
       expect.objectContaining({ status: 'cancelled', finishedAt: expect.any(Date) })
@@ -3004,6 +3016,77 @@ describe('ComputeService.cancelJob', () => {
     expect(updateCalls).not.toHaveBeenCalled()
     expect(jobs.get(job.job_id)?.status).toBe('running')
     expect(onJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('leaves a job running when the real runner reports the host as unreachable (exit 255, no rejection)', async () => {
+    // The shape `SystemSshRunner.run` actually produces: it never rejects, so a caller that only reads
+    // a thrown error answers an unreachable host with a stop that never happened. Two live runs were
+    // needed to see it fall into the `cancelled` write.
+    const job = jobRow()
+    const { runner, run } = makeRunner(async () => ({
+      exitCode: 255,
+      stdout: '',
+      stderr: 'ssh: connect to host 127.0.0.1 port 2222: Connection refused',
+      truncated: false,
+      timedOut: false
+    }))
+    const onJobUpdated = vi.fn()
+    const { service, updateCalls, jobs } = makeService({ job, runner, onJobUpdated })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toMatchObject({
+      outcome: 'refused',
+      refusal: 'host-unreachable',
+      status: 'running'
+    })
+    expect(result.detail).toContain('exit code 255')
+    expect(result.detail).toContain('Connection refused')
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(updateCalls).not.toHaveBeenCalled()
+    expect(jobs.get(job.job_id)?.status).toBe('running')
+    expect(onJobUpdated).not.toHaveBeenCalled()
+  })
+
+  it('leaves a job running when the stop command was abandoned at the kill budget', async () => {
+    const job = jobRow()
+    const { runner } = makeRunner(async () => ({
+      exitCode: null,
+      stdout: '',
+      stderr: '',
+      truncated: false,
+      timedOut: true
+    }))
+    const { service, updateCalls, jobs } = makeService({ job, runner })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toMatchObject({
+      outcome: 'refused',
+      refusal: 'host-unreachable',
+      status: 'running'
+    })
+    expect(result.detail).toContain('did not answer within 10 seconds')
+    expect(updateCalls).not.toHaveBeenCalled()
+    expect(jobs.get(job.job_id)?.status).toBe('running')
+  })
+
+  it('leaves a job running when ssh could not be spawned at all (no exit status)', async () => {
+    const job = jobRow()
+    const { runner } = makeRunner(async () => ({
+      exitCode: null,
+      stdout: '',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    }))
+    const { service, updateCalls } = makeService({ job, runner })
+
+    const result = await service.cancelJob(job.job_id)
+
+    expect(result).toMatchObject({ outcome: 'refused', refusal: 'host-unreachable' })
+    expect(result.detail).toContain('no exit status')
+    expect(updateCalls).not.toHaveBeenCalled()
   })
 
   it('refuses when the host record is gone instead of claiming a stop', async () => {

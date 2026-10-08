@@ -1,4 +1,5 @@
 import type { ComputeJob as PrismaComputeJob, PrismaClient } from '@prisma/client'
+import { COMPUTE_JOB_STATUSES } from '../../shared/compute'
 import type { ComputeJob, ComputeJobStatus } from '../../shared/compute'
 import type { ExecutionProtectionSnapshot } from '../../shared/execution-protection'
 
@@ -6,18 +7,14 @@ import type { ExecutionProtectionSnapshot } from '../../shared/execution-protect
 type ComputeJobClient = Pick<PrismaClient, 'computeJob'>
 type ComputeJobClientProvider = () => Promise<ComputeJobClient>
 
-const asStatus = (value: string): ComputeJobStatus => {
-  const valid: ComputeJobStatus[] = [
-    'queued',
-    'submitted',
-    'running',
-    'success',
-    'failed',
-    'timeout',
-    'error'
-  ]
-  return valid.includes(value as ComputeJobStatus) ? (value as ComputeJobStatus) : 'error'
-}
+// Normalizes a status read out of the database against the shared list, so a value the writer can
+// store is never silently rewritten on read. An unknown value still becomes 'error' — but 'cancelled'
+// (which this list used to omit) no longer does: reading it back as 'error' made a real cancellation
+// look like a job that had already finished.
+const asStatus = (value: string): ComputeJobStatus =>
+  (COMPUTE_JOB_STATUSES as readonly string[]).includes(value)
+    ? (value as ComputeJobStatus)
+    : 'error'
 
 // Reads the stored protection snapshot. A malformed value is dropped rather than guessed at: an
 // unreadable snapshot must not become a plausible-looking level.

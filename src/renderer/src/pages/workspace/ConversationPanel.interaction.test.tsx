@@ -5,6 +5,7 @@ import type { PropsWithChildren } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConversationPanel } from './ConversationPanel'
+import * as sessionJobStore from '@/stores/session-job-store'
 import { emptyDoc } from './composer/composer-doc'
 
 import {
@@ -69,22 +70,58 @@ vi.mock('./ComposerAgentControlsMenu', () => ({
 }))
 
 // session-job-store mock: controls whether the active session has running/finished jobs.
-// Default: no jobs. Override mockHasRunningJobs / mockAllJobs per test.
+// Default: no jobs. Override mockHasRunningJobs / mockAllJobs per test, then `syncMockJobs()` to
+// push the change in (as a broadcast would).
+//
+// It is a real (tiny) store rather than a selector answered once per render, because the panel's
+// badge gate has to RE-RENDER when the job feed changes: a mock that is re-evaluated on every render
+// cannot tell a live subscription from a read of a stable query function — which is exactly the
+// defect that kept the badge (and with it the window's only stop control) invisible for a job
+// submitted after the session had been hydrated. The query functions keep the same reference on
+// every state, as the real store's do.
 let mockHasRunningJobs = false
 let mockAllJobs: unknown[] = []
 
-vi.mock('@/stores/session-job-store', () => ({
-  useSessionJobStore: (
-    selector: (s: {
-      runningJobsForSession: (id: string) => unknown[]
-      allJobsForSession: (id: string) => unknown[]
-    }) => unknown
-  ) =>
-    selector({
-      runningJobsForSession: () => (mockHasRunningJobs ? [{ job_id: 'job-1' }] : []),
-      allJobsForSession: () => mockAllJobs
-    })
-}))
+vi.mock('@/stores/session-job-store', async () => {
+  const { createStore } = await import('zustand/vanilla')
+  const { useStore } = await import('zustand')
+
+  // The initial state is deliberately empty: this factory runs while the mocked module is first
+  // imported, so it must not touch the mock variables above (they are still in their TDZ then).
+  const store = createStore((): Record<string, unknown> => ({}))
+
+  // Defined here (not at module scope) so the factory's own execution never reads the mock
+  // variables; these bodies read them lazily, at render time.
+  const mockRunningJobsForSession = (): unknown[] =>
+    mockHasRunningJobs ? [{ job_id: 'job-1' }] : []
+  const mockAllJobsForSession = (): unknown[] => mockAllJobs
+
+  // The query functions are handed to the selector at call time, with the same reference for every
+  // state, exactly as the real store's are — so a consumer that subscribes to `allJobsForSession`
+  // itself (rather than to the feed) is not re-rendered by an update, which is what the panel test
+  // must be able to tell apart.
+  const withQueries = (s: Record<string, unknown>): Record<string, unknown> => ({
+    ...s,
+    jobsById: new Map(mockAllJobs.map((job) => [(job as { job_id: string }).job_id, job])),
+    hydratedSessionId: 'session-bar',
+    isLoaded: true,
+    hydrate: async (): Promise<void> => undefined,
+    applyUpdate: (): void => undefined,
+    runningJobsForSession: mockRunningJobsForSession,
+    allJobsForSession: mockAllJobsForSession
+  })
+
+  return {
+    useSessionJobStore: (selector: (s: Record<string, unknown>) => unknown) =>
+      useStore(store, (s) => selector(withQueries(s))),
+    // Pushes the current mockAllJobs / mockHasRunningJobs into the store, the way a job broadcast
+    // would, so a test can tell a subscribing consumer apart from one that reads once.
+    __syncMockJobs: (): void => store.setState({})
+  }
+})
+
+const syncMockJobs = (): void =>
+  (sessionJobStore as unknown as { __syncMockJobs: () => void }).__syncMockJobs()
 
 // RemoteJobBadge renders a sentinel element when a sessionId is provided so tests can assert presence.
 vi.mock('@/components/RemoteJobBadge', () => ({
@@ -1350,6 +1387,25 @@ describe('ConversationPanel notebook bar', () => {
 
     expect(handleOpenJobList).toHaveBeenCalledTimes(1)
     expect(handleOpenJobList).toHaveBeenCalledWith('session-bar')
+  })
+
+  it('re-renders the badge in when a job arrives after the panel is already mounted', () => {
+    // Every remote job is submitted *after* the session is on screen, and this badge is the window's
+    // only way into the job list (and thus into the stop control). A gate that reads the feed once
+    // instead of subscribing to it leaves the user with no way to see or stop the job they just
+    // started.
+    mockHasRunningJobs = false
+    mockAllJobs = []
+    renderPanel({ activeSession: session, notebookReference: undefined })
+    expect(container.querySelector('[data-testid="remote-job-badge"]')).toBeNull()
+
+    act(() => {
+      mockHasRunningJobs = true
+      mockAllJobs = [{ job_id: 'job-1', status: 'running', created_at: Date.now() }]
+      syncMockJobs()
+    })
+
+    expect(container.querySelector('[data-testid="remote-job-badge"]')).not.toBeNull()
   })
 })
 

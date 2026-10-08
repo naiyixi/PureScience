@@ -1402,6 +1402,81 @@ Error: zerolink-purescience-1.88.0-nightly.ge3b1da0-win-x64-setup.exe timed out 
 ② 若**继续**不落笔，把「执行器的在制品如何落地」提升为**要用户拍板**的一条（取舍：谁来决定半成品上不上主干）；
 ③ Windows `database` 分片按 `docs/plan-2026-10-08-windows-database-shard-triage.md` 取 Windows 判决。
 
+## 三十五、IC39 的真机读数取到了（执行器，2026-10-08 12:0x–12:4x）—— 真机当场抓出**第二处**产品缺陷，并把卡了多轮的 12 个在制品一次落树
+
+### 〇、开工核对（防重做）与这轮的特殊性
+
+- `HEAD == origin/main == 11ec81ba`（会话 10:08 的 §三十四）；`git status --short` = **我上一轮（08:16）留下的 12 个在制品**，
+  会话的 §三十四 §四 已把「执行器的在制品怎么落地」点成一条硬约束。
+- **本轮不清空、不重做，而是把这条线验完并落树**：它是唯一还挂着的未闭读数线（IC1–IC56 只剩 IC39/IC40 读数与 IC54 卡产品决定）。
+- 端点仍在位：用户态 sshd `127.0.0.1:2222`（`/tmp/ps-ic39-ssh/sshd_config`）在监听、主机密钥可解析；内存允许 `build:e2e`（空闲页 5763 ≈ 90 MB、swap 9.3 G/10.2 G，构建成功）。
+
+### 一、四步读数（`e2e/certification/remote-job-cancel.spec.ts`，最终 **1 passed (18.2s)**）
+
+| 步骤 | 逐字读数 |
+| --- | --- |
+| ① 默认策略（Refuse）下的提交 | 工具回 `… was refused by the execution-protection policy ("Refuse unprotected remote execution" is in force): a remote run cannot be isolated by this machine, so nothing wa[s submitted]`；**无卡片**；**零 job 行** |
+| ② 改成 `Ask every time` + 卡片「Once」 | 真派发：行 `status: running`；主机 `job.pid` **alive**、主机上真有 **1** 个 `sleep 300` |
+| ③ 窗口里点停止 | 横幅 `Stop requested — the job is now cancelled.`；同一行 **`status: cancelled`**；主机 `sleeps=0` |
+| ④ 把主机拿走后再点停止 | 横幅 = 窗口文案 + **`The stop command to "127.0.0.1" failed (exit code 255): ssh: connect to host 127.0.0.1 port 2222: Connection refused`**；行**仍是 `running`**（没被写成已取消） |
+
+### 二、真机抓到的第二处产品缺陷（本轮的实质收获）
+
+第一跑（12:08）在 ④ 失败：**主机不可达，窗口却报「已停止」并把行写成 `cancelled`**。根因链：
+
+| 事实 | 落点 |
+| --- | --- |
+| `SystemSshRunner.run()` **从不 reject** —— 它把 ssh 的失败**当成返回值**（`exitCode: 255` + `timedOut`；只有 spawn 失败才给 `exitCode: null`） | `src/main/compute/ssh-runner.ts` 的 `child.on('close', …) → resolve({…})` |
+| 而 `cancelJob` 只把 `run()` 包在 **try/catch** 里读「异常」 | `src/main/compute/compute-service.ts:1591-1606` ⇒ **catch 永不触发** |
+| 单测钉的正是**不可能的形态**：用 `Promise.reject(new Error('… Operation timed out'))` 模拟失败 | `compute-service.test.ts`「leaves a job running when the kill never reached the host」⇒ 全绿而真机撒谎 |
+
+**同仓早就有正确写法**：`timedOut || exitCode === 255` 出现在 **7 处**（`job-poller.ts:379`、`job-dispatcher.ts:345/573`、
+`compute-service.ts:451/475/705/896/1225`）⇒ 取消这条路是**漏了**，不是新语义。
+**修法**：`remote-job-kill.ts` 新增 `killDeliveryFailed(result)`（`timedOut || exitCode !== 0`；停止命令以 `; true` 收尾 ⇒ 送达必为 0）
+与 `describeKillDeliveryFailure(result, alias)`（把 ssh 自己的那句话与退出码写给用户看）；`cancelJob` 在 try/catch **之后**按结果判定，拒为 `host-unreachable` 且**不写行**。
+
+**同时修了 spec 自己的仪器**：第一跑之所以像产品缺陷，是因为**杀监听 ≠ 把主机拿走**——应用用
+`ControlMaster=auto`/`ControlPersist=60` 复用连接（`controlMasterArgs`），监听死后已建立的会话仍在，下一次 `ssh` 复用它、
+**kill 真的送达了**（实测：主机上 `sleep 300` 确实没了、`exit_code` 文件没写 ⇒ 进程组被整体杀掉）。
+spec 现在**两半一起拿**（`stopSshd()` + `closeMux()`），并**先自证端口真的不可达**（`expect.poll(hostUnreachable)`）再点停止——
+仪器先自证，避免把「模拟没生效」读成产品缺陷。
+
+### 三、同批落地的另三处修复（均在真机上被读到）
+
+1. **缺 `timeout(1)` 的主机上仍能派发**：本机 `command -v timeout gtimeout setsid` **全无**（只有 perl）。派发脚本改为运行期阶梯
+   （timeout → gtimeout → 无限制 + **具名 stderr 行**）、detach 阶梯（setsid → perl `POSIX::setsid` → nohup）。真机 stderr 逐字：
+   `purescience: no timeout(1) on this host - running without a remote wall-clock limit; the app stops the job at the same budget`
+   （旧写法在这里会 `timeout: command not found` ⇒ 退 127、任务根本跑不起来）。
+2. **停止按进程组**：`buildRemoteKillCommand` 先 `kill -TERM -<pid>`（进程组）再落回 pid 形态——实时读数：单杀 pid 只停启动器、workload 还在。
+3. **读回不再改写 `cancelled`**：`ComputeJobStatus` 含 `cancelled`，而 `asStatus()` 用的是**手抄短名单**（无 `cancelled`）⇒ 写进去 `cancelled`、读回来 `error`
+   （③ 之前的表现就是「已经结束了，没什么可停的」）。改为按共享 `COMPUTE_JOB_STATUSES` 归一 + **编译期双向自检** `COMPUTE_JOB_STATUSES_ARE_EXHAUSTIVE`；
+   `job-repository.test.ts` 跑**应用同一套 sqlite 存储**逐个状态读回恒等。
+4. **任务徽标跟随任务变更重渲**：`ConversationPanel` 之前订阅的是 store 里**引用恒定**的查询函数 ⇒ 会话 hydrate 之后新建的任务不会让徽标出现
+   （徽标是进任务列表与停止按钮的唯一入口）。
+
+### 四、门禁（全部实跑，读数即结论）
+
+| 门禁 | 读数 |
+| --- | --- |
+| 真机 spec | **1 passed (18.2s)**；收尾 `leftover workloads on the host after cleanup: 0` |
+| 变异验证 | 把取消路的修复换回「只读异常」⇒ **只有新增的 3 条用例红**（`3 failed | 152 passed`），恢复即绿 |
+| `src/main/compute` 定向 | 28 files passed / 1 skipped、**572 passed** |
+| 定向 + 契约族（compute + shared + preload + main/settings + renderer/web + i18n） | **232 files passed（2 skipped）**、**3297 passed（8 skipped）** |
+| 双 typecheck | node **exit 0** / web **exit 0** |
+| `eslint --no-cache .` | **0 error / 128 warning**（本批新增的两处 prettier warning 已当批修掉） |
+| `scripts/pre-push-checks.sh` | 全过 |
+
+### 五、未取 / 收尾 / 下一步
+
+- **收尾复核**：sshd(2222) 无监听、无 `sshd -f /tmp/ps-ic39-*` 进程、`/tmp/ps-ic39-ssh` 已删、`~/.ssh/ctrl/` 无残留 socket、
+  e2e 的 Electron/Playwright 进程 **0**、真实配置根 `~/.purescience-project` **今天零改动**（`find -newermt` 为空）。
+- **未清干净的一处（具名）**：`~/.purescience/jobs/` 下 12 个探针 job 目录还在——本轮 6 个
+  （`b56e717f`/`27975a14`/`37d4db67`/`9ffc294f`/`b89f68e4`/`9bf4a3cc`）加早前 2 个（`3575fa10`/`ccff7980`）本应清掉，
+  但 `rm -rf` 被 cron 会话的守卫按「批量删除」拦下（试了 8 个与 3 个两档都被拦，**一条都没删成、目录仍在**）⇒ 留给交互会话按需清。
+- Windows `database` 分片那条红仍只能由 Windows 车道判决（`docs/plan-2026-10-08-windows-database-shard-triage.md`）。
+- **版本位点**：Latest = **v1.89.0**（21 资产、三车道全绿）、`package.json` = 1.89.0；本批是**运行时行为改动**且已在真机验证 ⇒
+  下一个版本边界 **v1.90.0**（本批不含发版文件，未打 tag）。发版窗口留给下一个窗口/会话（需先冻结并发推送）。
+
 ## 三十三、本轮追加（执行器，2026-10-08 01:0x–01:4x）——IC39/IC40 那个「问了却自动拒绝、不弹框」的谜题解开了：**策略在卡片之前就拒了**（并同批把误导人的报错改成事实）
 
 **开工核对（防重做）**：`HEAD == origin/main == 81c66ad1`（会话 **01:04** 的文档提交，距开工 **1 分钟** ⇒ 会话刚活动过、

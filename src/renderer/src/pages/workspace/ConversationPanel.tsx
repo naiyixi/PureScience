@@ -356,8 +356,16 @@ const ConversationPanel = ({
   }
 
   // Unconditional hook: check if the active session has any jobs (running or finished).
-  const allJobsForSession = useSessionJobStore((s) => s.allJobsForSession)
-  const hasAnyJobs = activeSession !== undefined && allJobsForSession(activeSession.id).length > 0
+  //
+  // This is a store *selector*, not a read of the store's query helper: `allJobsForSession` is a
+  // stable function, so subscribing to it directly never fired on a job update and this panel — the
+  // only parent of the badge — never re-rendered when a job was created after the session had been
+  // hydrated. The badge (the window's only way into the job list and its stop control) then stayed
+  // invisible until some unrelated re-render happened to recompute the gate. Returning the boolean
+  // keeps the subscription stable while the filter itself stays in the store's single implementation.
+  const hasAnyJobs = useSessionJobStore(
+    (state) => activeSession !== undefined && state.allJobsForSession(activeSession.id).length > 0
+  )
   const activeBranchPlan = selectActiveBranchPlan(activeSession)
   const activePendingPlan = activeBranchPlan?.approval === 'pending' ? activeBranchPlan : undefined
   const activePendingPlanKey = activePendingPlan
