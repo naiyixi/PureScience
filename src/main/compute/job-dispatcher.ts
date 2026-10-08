@@ -36,16 +36,32 @@ export type RemoteHandle = {
 }
 
 // Builds the launcher.sh script content for a given job.
-// Uses timeout(1) with SIGTERM then SIGKILL after 30s grace. The login shell loads profile
-// configuration, then attempts to source a readable .bashrc (non-interactive bash does not do so
-// itself). A missing .bashrc is a no-op; a source failure returns through the normal exit-code
-// lifecycle. A .bashrc may deliberately return early for non-interactive shells. exec then replaces
-// the initialized shell with the user workload shell.
+//
+// Wall-clock limit: `timeout(1)` is coreutils, and a stock macOS host has neither it nor `gtimeout`
+// (Homebrew's copy is not on the PATH an sshd session gets). The limiter is therefore resolved at run
+// time instead of assumed: when both are missing the workload still runs and the missing remote cap is
+// NAMED on stderr, so the job relies on the app-side poller budget (same seconds — see job-poller's
+// fallback kill) instead of dying at `timeout: command not found` with exit code 127.
+//
+// The workload runs under a login shell that sources a readable .bashrc (non-interactive bash does not
+// source one itself). A missing .bashrc is a no-op; a source failure returns through the normal
+// exit-code lifecycle; a .bashrc may deliberately return early for non-interactive shells. exec then
+// replaces the initialized shell with the user workload shell, so the workload's exit code — not the
+// initializer's — reaches the job lifecycle.
 // exit_code is written via a tmp→rename atomic pattern so the poller never reads a partial value.
 export const buildLauncherScript = (timeoutSeconds: number): string => {
+  const workload =
+    "bash -l -c 'if [ -r ~/.bashrc ]; then . ~/.bashrc || exit $?; fi; exec bash command.sh'"
   return (
     '#!/usr/bin/env bash\n' +
-    `timeout -s TERM -k 30s ${timeoutSeconds} bash -l -c 'if [ -r ~/.bashrc ]; then . ~/.bashrc || exit $?; fi; exec bash command.sh' > stdout 2> stderr\n` +
+    'if command -v timeout >/dev/null 2>&1; then\n' +
+    `  timeout -s TERM -k 30s ${timeoutSeconds} ${workload} > stdout 2> stderr\n` +
+    'elif command -v gtimeout >/dev/null 2>&1; then\n' +
+    `  gtimeout -s TERM -k 30s ${timeoutSeconds} ${workload} > stdout 2> stderr\n` +
+    'else\n' +
+    '  echo "purescience: no timeout(1) on this host - running without a remote wall-clock limit; the app stops the job at the same budget" > stderr\n' +
+    `  ${workload} > stdout 2>> stderr\n` +
+    'fi\n' +
     'echo $? > exit_code.tmp && mv exit_code.tmp exit_code\n'
   )
 }
@@ -502,6 +518,25 @@ async function dispatchJobInner(jobId: string, deps: DispatcherDeps): Promise<vo
   // One SSH command: mkdir workdir, write scripts via base64 pipes, launch detached, echo pid.
   // Stdout = the pid (we echo it last).
   const quotedWorkdir = quoteRemotePath(workdir)
+  // Detached launch, resolved at run time so the job survives the SSH channel closing. A hard-coded
+  // `nohup setsid …` is dead on a host without setsid — stock macOS — where the recorded pid is a
+  // process that never started (`setsid: command not found`). Ladder: setsid (util-linux) → perl's
+  // POSIX::setsid (macOS ships a system perl) → nohup alone as the last resort. Every branch
+  // backgrounds its command, so `$!` below is that command's pid; in the perl branch exec keeps the
+  // pid stable into the launcher. No `nohup` wraps the perl branch on purpose: each exec between the
+  // fork and `setsid()` is time the sshd session cleanup can use — measured under zsh, `nohup perl …`
+  // lost that race while `perl …` won it.
+  // Detaching is also what makes the group stop in `remote-job-kill` work: the launcher becomes its
+  // own session and process-group leader.
+  const detachLauncher = [
+    'if command -v setsid >/dev/null 2>&1; then',
+    'nohup setsid bash launcher.sh >/dev/null 2>&1 </dev/null &',
+    'elif command -v perl >/dev/null 2>&1; then',
+    "perl -e 'use POSIX qw(setsid); setsid(); exec @ARGV or exit 9' bash launcher.sh >/dev/null 2>&1 </dev/null &",
+    'else',
+    'nohup bash launcher.sh >/dev/null 2>&1 </dev/null &',
+    'fi'
+  ].join('\n')
   const dispatchCmd = [
     `mkdir -p ${quotedWorkdir}`,
     `cd ${quotedWorkdir}`,
@@ -509,11 +544,22 @@ async function dispatchJobInner(jobId: string, deps: DispatcherDeps): Promise<vo
     `printf '%s' ${JSON.stringify(commandB64)} | base64 -d > command.sh`,
     `printf '%s' ${JSON.stringify(launcherB64)} | base64 -d > launcher.sh`,
     `chmod +x command.sh launcher.sh`,
-    // Detached launch: nohup + setsid so the process survives SSH disconnect.
-    `nohup setsid bash launcher.sh >/dev/null 2>&1 &`,
+    detachLauncher,
     // Write pid to file AND echo it so we can read it back in this round-trip.
     `LAUNCHED_PID=$!`,
     `echo $LAUNCHED_PID > job.pid`,
+    // Hold the channel open for a moment so the escape lands. sshd kills this session's process group
+    // when the channel closes, and the launcher is only out of that group once setsid() has run inside
+    // the child — measured under zsh: returning immediately recorded a pid that was already dead while
+    // the job row read `running` and the workload never ran.
+    `sleep 1`,
+    // A launcher that is already gone with no exit_code never started: say so and let the dispatcher
+    // record a named dispatch failure, instead of handing the poller a pid it would soon call
+    // "vanished" with no cause (this is also the shape a host with neither setsid nor perl produces).
+    `if ! kill -0 $LAUNCHED_PID 2>/dev/null && [ ! -f exit_code ]; then`,
+    `echo "the detached job launcher is not running on this host (no setsid, no perl, or the shell was not allowed to fork)" >&2`,
+    `exit 1`,
+    `fi`,
     `echo $LAUNCHED_PID`
   ].join('\n')
 

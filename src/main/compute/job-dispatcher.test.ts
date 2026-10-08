@@ -1,4 +1,12 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -128,7 +136,8 @@ afterEach(() => {
 
 const runLauncher = (
   command: string,
-  bashrc?: string
+  bashrc?: string,
+  options: { limiter?: 'installed' | 'gtimeout' | 'none' } = {}
 ): { result: ReturnType<typeof spawnSync>; exitCode: string; stdout: string; stderr: string } => {
   const workdir = mkdtempSync(join(tmpdir(), 'purescience-job-launcher-'))
   launcherFixtures.push(workdir)
@@ -138,10 +147,39 @@ const runLauncher = (
   mkdirSync(bin)
 
   // Keep this test portable to hosts without GNU timeout while exercising the generated script's
-  // command and exit-code lifecycle. The production launcher still invokes timeout(1).
+  // command and exit-code lifecycle.
   const timeoutShim = join(bin, 'timeout')
   writeFileSync(timeoutShim, '#!/usr/bin/env bash\nshift 5\nexec "$@"\n')
   chmodSync(timeoutShim, 0o755)
+
+  // The limiter ladder is resolved at run time, so the branch under test is chosen by what resolves
+  // on PATH. `minPath` holds only what the launcher itself needs (the interpreter it execs and `mv`
+  // for the atomic exit_code write) — no timeout(1), no gtimeout — so "host without coreutils" can be
+  // asserted deterministically on a Linux runner that does have /usr/bin/timeout.
+  const minPath = join(workdir, 'minpath')
+  mkdirSync(minPath)
+  const resolveBinary = (name: string): string =>
+    spawnSync('sh', ['-c', `command -v ${name}`], { encoding: 'utf8' }).stdout.trim()
+  for (const name of ['bash', 'mv']) {
+    const real = resolveBinary(name)
+    if (!real) throw new Error(`could not resolve ${name} for the restricted-PATH fixture`)
+    symlinkSync(real, join(minPath, name))
+  }
+
+  const limiter = options.limiter ?? 'installed'
+  if (limiter === 'gtimeout') {
+    const gShim = join(bin, 'gtimeout')
+    writeFileSync(gShim, '#!/usr/bin/env bash\nshift 5\nexec "$@"\n')
+    chmodSync(gShim, 0o755)
+    rmSync(timeoutShim)
+  }
+  if (limiter === 'none') rmSync(timeoutShim)
+  const path =
+    limiter === 'installed'
+      ? `${bin}:${process.env.PATH ?? ''}`
+      : limiter === 'gtimeout'
+        ? `${bin}:${minPath}`
+        : minPath
 
   if (bashrc !== undefined) writeFileSync(join(home, '.bashrc'), bashrc)
   writeFileSync(join(workdir, 'command.sh'), command)
@@ -153,7 +191,7 @@ const runLauncher = (
     env: {
       ...process.env,
       HOME: home,
-      PATH: `${bin}:${process.env.PATH ?? ''}`,
+      PATH: path,
       BASH_ENV: ''
     }
   })
@@ -188,6 +226,41 @@ describe('buildLauncherScript', () => {
     // The initialized shell execs the workload so its exit code reaches the normal job lifecycle.
     expect(script).toContain('exec bash command.sh')
     expect(script).toContain('if [ -r ~/.bashrc ]; then . ~/.bashrc || exit $?; fi')
+  })
+
+  it('resolves the wall-clock limiter at run time and names its absence instead of dying', () => {
+    const script = buildLauncherScript(3600)
+    // A host without coreutils must not turn every job into `timeout: command not found` (exit 127).
+    expect(script).toContain('if command -v timeout >/dev/null 2>&1; then')
+    expect(script).toContain('elif command -v gtimeout >/dev/null 2>&1; then')
+    expect(script).toContain('no timeout(1) on this host')
+    // The atomic write stays outside the ladder, so every branch records its code.
+    expect(script.trimEnd().endsWith('echo $? > exit_code.tmp && mv exit_code.tmp exit_code')).toBe(
+      true
+    )
+  })
+
+  pit('runs the workload through gtimeout when only Homebrew coreutils is present', () => {
+    const { exitCode, stdout, stderr } = runLauncher("printf '%s' ran-via-gtimeout", undefined, {
+      limiter: 'gtimeout'
+    })
+
+    expect(exitCode).toBe('0\n')
+    expect(stdout).toBe('ran-via-gtimeout')
+    // A present limiter must not print the "no timeout(1)" notice.
+    expect(stderr).not.toContain('no timeout(1)')
+  })
+
+  pit('runs the workload and names the absent remote cap when the host has no limiter', () => {
+    const { exitCode, stdout, stderr } = runLauncher("printf '%s' ran-without-limiter", undefined, {
+      limiter: 'none'
+    })
+
+    // The job still runs (this is the stock-macOS host shape), and the missing remote wall-clock cap
+    // is named on the job's own stderr rather than silently relied upon.
+    expect(exitCode).toBe('0\n')
+    expect(stdout).toContain('ran-without-limiter')
+    expect(stderr).toContain('no timeout(1) on this host')
   })
 
   pit('sources a readable .bashrc before the user command runs', () => {
@@ -406,6 +479,49 @@ describe('dispatchJob', () => {
     expect(dispatchCmd).toContain("cd ~/'.purescience/jobs/job-1'")
     // Regression guard: never emit a double-quoted tilde.
     expect(dispatchCmd).not.toContain('"~/')
+  })
+
+  it('resolves the detacher at run time so a host without setsid still launches the job', async () => {
+    const job = makeJob()
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: '12345\n',
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+    const { repo, update } = makeJobRepo(job)
+
+    await dispatchJob(job.job_id, {
+      runner,
+      hostRepository: makeHostRepo(sampleHost()) as unknown as ComputeHostRepository,
+      jobRepository: repo as unknown as ComputeJobRepository
+    })
+
+    const dispatchCmd = (runner.run as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string
+    // A hard-coded `nohup setsid …` is dead on stock macOS (`setsid: command not found`), where the
+    // recorded pid is then a process that never started. The ladder must offer the perl detacher.
+    expect(dispatchCmd).toContain('if command -v setsid >/dev/null 2>&1; then')
+    expect(dispatchCmd).toContain('nohup setsid bash launcher.sh >/dev/null 2>&1 </dev/null &')
+    expect(dispatchCmd).toContain('elif command -v perl >/dev/null 2>&1; then')
+    expect(dispatchCmd).toContain('setsid(); exec @ARGV or exit 9')
+    expect(dispatchCmd).toContain('nohup bash launcher.sh >/dev/null 2>&1 </dev/null &')
+    // Every branch redirects stdin, so a detached launcher cannot hold the SSH channel open.
+    expect(dispatchCmd.match(/<\/dev\/null &/g)?.length).toBe(3)
+    // The perl detacher must NOT be wrapped in nohup: each exec between the fork and setsid() is time
+    // the sshd session cleanup can use (measured under zsh: `nohup perl …` lost that race).
+    expect(dispatchCmd).not.toContain('nohup perl')
+    // The handshake: hold the channel open for the escape, then refuse to report a pid that is already
+    // gone — otherwise the row reads `running` while the launcher never ran a line.
+    expect(dispatchCmd).toContain('\nsleep 1\n')
+    expect(dispatchCmd).toContain(
+      'if ! kill -0 $LAUNCHED_PID 2>/dev/null && [ ! -f exit_code ]; then'
+    )
+    expect(dispatchCmd).toContain('the detached job launcher is not running on this host')
+    expect(dispatchCmd).toContain('exit 1')
+    // The pid read stays the last thing the remote shell prints.
+    expect(dispatchCmd.trimEnd().endsWith('echo $LAUNCHED_PID')).toBe(true)
+    expect(update).toHaveBeenCalledWith('job-1', expect.objectContaining({ status: 'running' }))
   })
 
   it('transitions to error with host_unreachable when SSH fails (exit 255)', async () => {
