@@ -43,6 +43,12 @@ export type ToolDescriptor = {
   // License gate: when true, this tool fails closed unless the user declared non-commercial use.
   // Mark sources whose terms restrict commercial use (e.g. CADD: free for non-commercial only).
   noncommercialOnly?: boolean
+  // Declare this ONLY for a tool that creates state on the service which outlives the request — the
+  // approval card then says so. Never set it for a POST that merely carries a query: most POST-only
+  // APIs in this repo (GraphQL and /fetch endpoints) are reads, and marking them would teach the user
+  // to ignore the line. The declaring set is pinned by a test on purpose, so adding or removing one is
+  // a deliberate act rather than a side effect of an edit.
+  persistsOnService?: boolean
   url?: (args: Record<string, unknown>) => string
   parse?: (raw: unknown, args: Record<string, unknown>) => unknown
   run?: (ctx: ToolContext, args: Record<string, unknown>) => Promise<unknown>

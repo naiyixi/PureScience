@@ -4421,5 +4421,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.unreadable':
     'Le ro-crate-metadata.json de ce dossier n’a pas pu être lu.',
   'roCrate.inspect.failure.unparseable':
-    'Le ro-crate-metadata.json de ce dossier n’est pas un JSON valide.'
+    'Le ro-crate-metadata.json de ce dossier n’est pas un JSON valide.',
+  'settings.approvalPersistence': 'Effet',
+  'settings.approvalPersistenceValue':
+    "Cet appel crée aussi une entrée sur les serveurs du service. Cette entrée subsiste après l'appel et ne peut pas être supprimée d'ici."
 }

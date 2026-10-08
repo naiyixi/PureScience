@@ -12,6 +12,8 @@ export type ApprovalInfo = {
   // can open that conversation.
   sessionId?: string
   availableScopes?: ConnectorApprovalScope[]
+  /** Forwarded to the renderer's card; see ConnectorApprovalRequest.persistsOnService. */
+  persistsOnService?: boolean
 }
 
 type ApprovalBrokerDeps = {

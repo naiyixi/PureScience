@@ -3983,5 +3983,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.level.export-contract': '本應用對自己寫出的 crate 的要求',
   'roCrate.inspect.failure.no-metadata-file': '那個目錄裡沒有 ro-crate-metadata.json。',
   'roCrate.inspect.failure.unreadable': '讀不到那個目錄裡的 ro-crate-metadata.json。',
-  'roCrate.inspect.failure.unparseable': '那個目錄裡的 ro-crate-metadata.json 不是有效的 JSON。'
+  'roCrate.inspect.failure.unparseable': '那個目錄裡的 ro-crate-metadata.json 不是有效的 JSON。',
+  'settings.approvalPersistence': '影響',
+  'settings.approvalPersistenceValue':
+    '這次呼叫還會在服務方的伺服器上建立一筆記錄；該記錄會在本次呼叫結束後繼續存在，且無法從這裡刪除。'
 }

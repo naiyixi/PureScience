@@ -1152,13 +1152,14 @@ const createApplicationModules = async (
     resolveApiKey: (ref) => tryDecryptKey(ref),
     mcpClientManager,
     permissionGrantRegistry,
-    requestApproval: ({ connector, method, args, sessionId, availableScopes }) =>
+    requestApproval: ({ connector, method, args, sessionId, availableScopes, persistsOnService }) =>
       approvalBroker.request({
         connector,
         method,
         argsPreview: previewArgs(args),
         ...(sessionId ? { sessionId } : {}),
-        availableScopes
+        availableScopes,
+        ...(persistsOnService ? { persistsOnService: true } : {})
       }),
     resolveSpecialistProfile: async (specialistId) => {
       try {

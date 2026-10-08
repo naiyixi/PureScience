@@ -50,6 +50,7 @@ type ConnectorServiceDeps = {
     // open the right conversation.
     sessionId?: string
     availableScopes: ConnectorApprovalScope[]
+    persistsOnService?: boolean
   }) => Promise<ApprovalDecision>
   // Handlers for bundled tools that run privileged local code (e.g. write an artifact, open a preview)
   // instead of the read-only HTTP ParserEngine. Keyed by `${connector}/${method}`; invoked after the
@@ -305,7 +306,15 @@ export class ConnectorService {
 
     const authorizedConnectors = access.bypassMainPolicy
       ? undefined
-      : await this.ensureAuthorized(connector, connector, [connector], method, args, context)
+      : await this.ensureAuthorized(
+          connector,
+          connector,
+          [connector],
+          method,
+          args,
+          context,
+          descriptor.persistsOnService
+        )
 
     // Bundled tools that need privileged local behavior run here, after the same gate, instead of the
     // read-only HTTP engine.
@@ -472,7 +481,9 @@ export class ConnectorService {
     policyIds: readonly string[],
     method: string,
     args: Record<string, unknown>,
-    context: ConnectorCallContext
+    context: ConnectorCallContext,
+    // Carried from the descriptor to the card: whether this call leaves state on the service.
+    persistsOnService?: boolean
   ): Promise<StoredConnectors | undefined> {
     let requireApprovalSatisfied = false
     for (;;) {
@@ -483,15 +494,18 @@ export class ConnectorService {
           `connector not enabled: ${connectorLabel}`
         )
       }
-      const request = this.authorizationRequest(
-        connectorLabel,
-        capabilityServerId,
-        policyIds,
-        method,
-        args,
-        context,
-        connectors
-      )
+      const request = {
+        ...this.authorizationRequest(
+          connectorLabel,
+          capabilityServerId,
+          policyIds,
+          method,
+          args,
+          context,
+          connectors
+        ),
+        ...(persistsOnService ? { persistsOnService: true } : {})
+      }
       const policyDecision = this.permissionBroker.preflight(request)
       if (policyDecision === 'allow' || requireApprovalSatisfied) return connectors
 

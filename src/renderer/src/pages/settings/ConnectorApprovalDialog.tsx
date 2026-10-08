@@ -93,6 +93,18 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
                 {request.argsPreview}
               </span>
             </div>
+            {request.persistsOnService ? (
+              // Only for a tool that creates state on the service. The scope wording says how long the
+              // APPROVAL lasts, which reads as how long the call's effect lasts — this row closes that.
+              <div className="flex gap-2">
+                <span className="w-16 shrink-0 text-muted-foreground">
+                  {t('settings.approvalPersistence')}
+                </span>
+                <span className="min-w-0 text-amber-600 [text-wrap:pretty]">
+                  {t('settings.approvalPersistenceValue')}
+                </span>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">

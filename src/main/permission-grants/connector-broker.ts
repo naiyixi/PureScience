@@ -12,6 +12,8 @@ type ConnectorPermissionPrompt = (info: {
   args: Record<string, unknown>
   sessionId?: string
   availableScopes: ConnectorApprovalScope[]
+  // Passed through to the card so the reader can tell a query from something that outlives the call.
+  persistsOnService?: boolean
 }) => Promise<ApprovalDecision>
 
 type ConnectorPolicyInput = {
@@ -28,6 +30,8 @@ type ConnectorPermissionRequest = {
   method: string
   args: Record<string, unknown>
   policy: ConnectorPolicyInput
+  /** True only for a tool that creates state on the service (see ToolDescriptor.persistsOnService). */
+  persistsOnService?: boolean
 }
 
 type ConnectorPolicyDecision = 'allow' | 'require_approval'
@@ -81,7 +85,8 @@ class ConnectorPermissionBroker {
       method: request.method,
       args: request.args,
       ...(request.context.sessionId ? { sessionId: request.context.sessionId } : {}),
-      availableScopes
+      availableScopes,
+      ...(request.persistsOnService ? { persistsOnService: true } : {})
     })
     if (decision === 'deny' || !availableScopes.includes(decision)) {
       throw new Error(

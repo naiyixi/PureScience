@@ -204,3 +204,31 @@ describe('ConnectorApprovalDialog', () => {
     expect(useSettingsStore.getState().respondApproval).toHaveBeenCalledWith('r1', 'deny')
   })
 })
+
+describe('ConnectorApprovalDialog persistence line', () => {
+  const show = (extras: Record<string, unknown>): void => {
+    useSettingsStore.setState({
+      pendingApprovals: [
+        {
+          id: 'r1',
+          connector: 'biomart',
+          method: 'get_data',
+          argsPreview: '{}',
+          availableScopes: ['once'],
+          ...extras
+        }
+      ]
+    })
+    act(() => root.render(<ConnectorApprovalDialog />))
+  }
+
+  it('says the call leaves an entry behind when the tool declares it', () => {
+    show({ persistsOnService: true })
+    expect(document.body.textContent).toContain("creates an entry on the service's own servers")
+  })
+
+  it('says nothing about persistence for a tool that only reads', () => {
+    show({})
+    expect(document.body.textContent).not.toContain('own servers')
+  })
+})

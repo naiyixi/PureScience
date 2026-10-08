@@ -1572,6 +1572,12 @@ export type ConnectorApprovalRequest = {
   sessionId?: string
   // Missing only when talking to an older main process during development; renderer falls back to Once.
   availableScopes?: ConnectorApprovalScope[]
+  // Set only when the call leaves something behind ON THE SERVICE — it creates state the caller cannot
+  // take back (a list registered on someone else's server, a job queued on a remote host) — as opposed
+  // to sending a query. The card has to say so where the decision is made: the scope wording ("applies
+  // to this call only") describes how long the APPROVAL lasts, which a reader can mistake for how long
+  // the call's effect lasts. Absent for every tool that only reads.
+  persistsOnService?: boolean
 }
 export type ConnectorApprovalScope = 'once' | 'session' | 'project' | 'global'
 export type ApprovalDecision = ConnectorApprovalScope | 'deny'

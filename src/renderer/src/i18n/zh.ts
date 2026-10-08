@@ -4042,7 +4042,10 @@ export const zh = {
   'roCrate.inspect.level.export-contract': '本应用对自己写出的 crate 的要求',
   'roCrate.inspect.failure.no-metadata-file': '那个目录里没有 ro-crate-metadata.json。',
   'roCrate.inspect.failure.unreadable': '读不到那个目录里的 ro-crate-metadata.json。',
-  'roCrate.inspect.failure.unparseable': '那个目录里的 ro-crate-metadata.json 不是合法的 JSON。'
+  'roCrate.inspect.failure.unparseable': '那个目录里的 ro-crate-metadata.json 不是合法的 JSON。',
+  'settings.approvalPersistence': '影响',
+  'settings.approvalPersistenceValue':
+    '这次调用还会在服务方的服务器上建立一条记录；该记录会在本次调用结束后继续存在，且无法从这里删除。'
 }
 
 export type ZhKey = keyof typeof zh

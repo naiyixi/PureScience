@@ -4302,5 +4302,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.unreadable':
     'そのフォルダの ro-crate-metadata.json を読み取れませんでした。',
   'roCrate.inspect.failure.unparseable':
-    'そのフォルダの ro-crate-metadata.json は有効な JSON ではありません。'
+    'そのフォルダの ro-crate-metadata.json は有効な JSON ではありません。',
+  'settings.approvalPersistence': '影響',
+  'settings.approvalPersistenceValue':
+    'この呼び出しは、サービス側のサーバーにもエントリを作成します。そのエントリは呼び出し後も残り、ここからは削除できません。'
 }

@@ -4234,5 +4234,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.no-metadata-file': '그 폴더에 ro-crate-metadata.json이 없습니다.',
   'roCrate.inspect.failure.unreadable': '그 폴더의 ro-crate-metadata.json을 읽을 수 없습니다.',
   'roCrate.inspect.failure.unparseable':
-    '그 폴더의 ro-crate-metadata.json은 올바른 JSON이 아닙니다.'
+    '그 폴더의 ro-crate-metadata.json은 올바른 JSON이 아닙니다.',
+  'settings.approvalPersistence': '영향',
+  'settings.approvalPersistenceValue':
+    '이 호출은 서비스 자체 서버에도 항목을 만듭니다. 그 항목은 호출이 끝난 뒤에도 남으며 여기서 삭제할 수 없습니다.'
 }

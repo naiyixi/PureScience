@@ -4335,5 +4335,8 @@ export const en: Record<ZhKey, string> = {
   'roCrate.inspect.level.export-contract': 'expected by this app of its own crates',
   'roCrate.inspect.failure.no-metadata-file': 'That folder holds no ro-crate-metadata.json.',
   'roCrate.inspect.failure.unreadable': 'ro-crate-metadata.json in that folder could not be read.',
-  'roCrate.inspect.failure.unparseable': 'ro-crate-metadata.json in that folder is not valid JSON.'
+  'roCrate.inspect.failure.unparseable': 'ro-crate-metadata.json in that folder is not valid JSON.',
+  'settings.approvalPersistence': 'Effect',
+  'settings.approvalPersistenceValue':
+    "This call also creates an entry on the service's own servers. That entry outlives the call and cannot be removed from here."
 }

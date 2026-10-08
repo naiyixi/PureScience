@@ -4436,5 +4436,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.unreadable':
     'Die ro-crate-metadata.json in diesem Ordner konnte nicht gelesen werden.',
   'roCrate.inspect.failure.unparseable':
-    'Die ro-crate-metadata.json in diesem Ordner ist kein gültiges JSON.'
+    'Die ro-crate-metadata.json in diesem Ordner ist kein gültiges JSON.',
+  'settings.approvalPersistence': 'Auswirkung',
+  'settings.approvalPersistenceValue':
+    'Dieser Aufruf legt zusätzlich einen Eintrag auf den Servern des Dienstes an. Der Eintrag besteht nach dem Aufruf weiter und lässt sich von hier nicht entfernen.'
 }

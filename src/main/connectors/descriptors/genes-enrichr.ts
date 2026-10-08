@@ -120,9 +120,9 @@ const readTerms = (
   const rows = (payload as Record<string, unknown>)[library]
   if (!Array.isArray(rows)) {
     throw new Error(
-      `the ${library} lookup did not carry a term list for that library (keys: ${Object.keys(
-        (payload ?? {}) as Record<string, unknown>
-      ).join(', ') || 'none'})`
+      `the ${library} lookup did not carry a term list for that library (keys: ${
+        Object.keys((payload ?? {}) as Record<string, unknown>).join(', ') || 'none'
+      })`
     )
   }
 
@@ -165,9 +165,13 @@ const readTerms = (
 export const GENES_ENRICHR_TOOLS: ToolDescriptor[] = [
   {
     id: 'gene_set_enrichment_libraries',
+    // The only step in this tool that leaves something behind: `POST /addList` registers the gene list
+    // on Enrichr's own servers and hands back a `userListId` that later requests address. The rest of
+    // the tool (`/enrich?userListId=…`) only reads.
+    persistsOnService: true,
     connector: 'genes',
     description:
-      'Ranked gene-set enrichment for a gene list against curated library services, one library per call group (default GO_Biological_Process_2023). The service returns the p-value, adjusted p-value, z-score, combined score and overlapping genes for each term, and this tool reports them as the service reports them: it does not recompute the tail probability, because the service publishes no set sizes, and every term says `recomputed: false` with that reason. It does verify the one thing it can locally — the overlapping genes it accepts must all be genes you submitted, otherwise the answer belongs to a different list and the call fails by name. Terms are filtered by `alpha` against the service\'s adjusted p-value and counted, never dropped silently.',
+      "Ranked gene-set enrichment for a gene list against curated library services, one library per call group (default GO_Biological_Process_2023). The service returns the p-value, adjusted p-value, z-score, combined score and overlapping genes for each term, and this tool reports them as the service reports them: it does not recompute the tail probability, because the service publishes no set sizes, and every term says `recomputed: false` with that reason. It does verify the one thing it can locally — the overlapping genes it accepts must all be genes you submitted, otherwise the answer belongs to a different list and the call fails by name. Terms are filtered by `alpha` against the service's adjusted p-value and counted, never dropped silently.",
     input: {
       type: 'object',
       properties: {
@@ -177,8 +181,14 @@ export const GENES_ENRICHR_TOOLS: ToolDescriptor[] = [
           items: { type: 'string' },
           description: 'One to five library names, default ["GO_Biological_Process_2023"].'
         },
-        alpha: { type: 'number', description: 'Keep terms at or below this adjusted p-value. Default 0.05.' },
-        min_overlap: { type: 'number', description: 'Skip terms with fewer overlapping genes. Default 1.' },
+        alpha: {
+          type: 'number',
+          description: 'Keep terms at or below this adjusted p-value. Default 0.05.'
+        },
+        min_overlap: {
+          type: 'number',
+          description: 'Skip terms with fewer overlapping genes. Default 1.'
+        },
         max_terms: { type: 'number', description: 'Cap kept terms per library. Default 50.' }
       },
       required: ['genes']
@@ -259,17 +269,21 @@ export const GENES_ENRICHR_TOOLS: ToolDescriptor[] = [
 
       const failed = perLibrary.filter((entry) => entry.error !== undefined)
       const notes = [
-        'These p-values are the service\'s own: neither the term sizes nor the background size are published, so nothing here can be recomputed locally.',
+        "These p-values are the service's own: neither the term sizes nor the background size are published, so nothing here can be recomputed locally.",
         'Every kept term says recomputed:false for that reason; the local engine is the tool to use when a recomputable tail probability matters.',
         ...(filtered > 0
-          ? [`${filtered} term(s) were filtered out by alpha or min_overlap and are counted, not dropped silently.`]
+          ? [
+              `${filtered} term(s) were filtered out by alpha or min_overlap and are counted, not dropped silently.`
+            ]
           : []),
         ...(truncated > 0 ? [`${truncated} term(s) were cut by the per-library cap.`] : []),
         ...(truncationNote === undefined ? [] : [truncationNote]),
         ...(failed.length > 0
-          ? [`${failed.length} library lookup(s) failed and are named in perLibrary: ${failed
-              .map((entry) => entry.library)
-              .join(', ')}.`]
+          ? [
+              `${failed.length} library lookup(s) failed and are named in perLibrary: ${failed
+                .map((entry) => entry.library)
+                .join(', ')}.`
+            ]
           : [])
       ]
 

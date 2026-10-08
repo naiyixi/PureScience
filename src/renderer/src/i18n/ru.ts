@@ -4314,5 +4314,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.no-metadata-file': 'В этой папке нет ro-crate-metadata.json.',
   'roCrate.inspect.failure.unreadable': 'Не удалось прочитать ro-crate-metadata.json в этой папке.',
   'roCrate.inspect.failure.unparseable':
-    'ro-crate-metadata.json в этой папке не является корректным JSON.'
+    'ro-crate-metadata.json в этой папке не является корректным JSON.',
+  'settings.approvalPersistence': 'Эффект',
+  'settings.approvalPersistenceValue':
+    'Этот вызов также создаёт запись на серверах самого сервиса. Запись сохранится после вызова, и удалить её отсюда нельзя.'
 }
