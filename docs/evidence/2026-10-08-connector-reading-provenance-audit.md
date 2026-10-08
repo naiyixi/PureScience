@@ -85,3 +85,25 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 - **③「产物 ↔ 读数引用链可遍历」未做**：读数现在随**工具结果**回到调用方，但还没有从产物版本反查生成它的读数的那条链。要接 `artifact-provenance.ts` 的 `ArtifactVersionEvidence`，属下一个单元。
 - **只覆盖 HTTP 读数**：不走 HTTP 的本地工具处理器（`localToolHandlers`）没有读数，因此不带指纹——按仓规不给不存在的能力造字段。
 
+---
+
+## 五、③「产物 ↔ 读数引用链可遍历」的形状（已核到落点，**未实施**）
+
+**这一节是核实结论，不是「做了一半」。本单元只交付了 ①②④；③ 一个字都还没写。**
+
+现状：读数**没有落盘**（全树只有 `service.ts:334` 一处 `attachReadingFingerprints`，随工具结果回到调用方，之后就没了）⇒ 「可遍历」缺的不是查询，是**承载体**。
+
+已核实的接法（每一端都有落点）：
+
+| 端 | 落点 / 事实 |
+| --- | --- |
+| 写侧（记录） | `ConnectorCallContext.sessionId` **已经在手**（`service.ts` 的 `callBundled` 拿得到）；落盘照抄会话范围 JSON 的既有先例 `src/main/settings/bookmark-repository.ts`（每会话一个 JSON、原子 temp+rename、主进程独占写） |
+| 读侧（遍历） | `ArtifactProvenanceRepository` 构造时就持有 `options.storageRoot`（`provenance-repository.ts:1363`）⇒ **不需要新 DI**；投影在 `getVersionProvenance()`（`:3703`）组装，`appSessionId` 已在 `:3713` 断言可用 ⇒ 连接键现成 |
+| 形状 | 照抄同函数里 `review` 的既有口径：`{ state: 'available', items } \| { state: 'unavailable', reason }`，reason 取 `not-recorded` / `unreadable`（**缺就说没记**，与指纹判决同一口径） |
+
+**必须先声明的两点（不许含糊）**：
+
+1. **这是会话+时间窗的归属，不是「哪次 run 因果生成了它」。** 连接器服务只拿得到 `sessionId`，**拿不到 run id**；而 run id 若来自 RPC 参数就是不可信输入（`ConnectorCallContext` 的注释写明这类字段只能由主进程登记册填）。⇒ 投影里必须把归属口径**写出来**（available 时附 `attribution: 'session-window'`），不许让它读起来像逐 run 的因果链。
+2. **`sections` 签名**：`getVersionProvenance(request, sections)` 的 `sections` 是**必传全量字面量**（`{execution, messages, review}`）。加一个 `readings` 段会让既有调用点静默不加载 ⇒ 要么**同批改所有调用点**，要么**无条件加载**（一次小文件读，该函数本来就有多次 DB 查询与文件读）。这是本次手术真正的风险面，动之前先数调用点。
+
+
