@@ -1,3 +1,10 @@
+import { createHash } from 'node:crypto'
+
+import {
+  READING_FINGERPRINT_HASH_RECIPE,
+  READING_FINGERPRINT_PREFIX,
+  type ConnectorReadingFingerprint
+} from '../../shared/reading-fingerprint'
 import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
 
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -61,12 +68,15 @@ export class ParserEngine {
   async call(
     descriptor: ToolDescriptor,
     args: Record<string, unknown>,
-    credentials: ConnectorCredentials
+    credentials: ConnectorCredentials,
+    // Receives one fingerprint per HTTP response this call read. Optional, so a caller that only wants
+    // the value pays nothing and behaves exactly as before.
+    onReading?: (reading: ConnectorReadingFingerprint) => void
   ): Promise<unknown> {
     for (const key of descriptor.required ?? []) {
       if (args[key] == null) throw new Error(`missing required arg: ${key}`)
     }
-    const ctx = this.makeContext(credentials)
+    const ctx = this.makeContext(credentials, descriptor, onReading)
     if (descriptor.run) return descriptor.run(ctx, args)
     if (!descriptor.url || !descriptor.parse) {
       throw new Error(`descriptor ${descriptor.id} needs either run() or url()+parse()`)
@@ -76,7 +86,11 @@ export class ParserEngine {
     return descriptor.parse(raw, args)
   }
 
-  private makeContext(credentials: ConnectorCredentials): ToolContext {
+  private makeContext(
+    credentials: ConnectorCredentials,
+    descriptor: ToolDescriptor,
+    onReading?: (reading: ConnectorReadingFingerprint) => void
+  ): ToolContext {
     // Delay before the next attempt: honour a numeric Retry-After (seconds, capped), else exponential
     // backoff with jitter off the configured base.
     const nextDelay = (attempt: number, retryAfter: string | null): number => {
@@ -85,7 +99,39 @@ export class ParserEngine {
       return Math.min(this.backoffMs * 2 ** attempt, 4_000) + Math.random() * this.backoffMs
     }
 
-    const doFetch = async (url: string, accept: string, init?: RequestInit): Promise<Response> => {
+    // The response body AS BYTES, when the transport can hand them over — which a real fetch always can
+    // and a test double usually cannot. `undefined` is not a failure: it means this transport has no byte
+    // view, so no fingerprint can be taken and the caller keeps using the transport's own json()/text(),
+    // exactly as before this module existed.
+    type ReadBody = { bytes: Uint8Array; text: string }
+
+    const readBody = async (res: Response): Promise<ReadBody | undefined> => {
+      if (typeof (res as { arrayBuffer?: unknown }).arrayBuffer !== 'function') return undefined
+      const bytes = new Uint8Array(await res.arrayBuffer())
+      return { bytes, text: new TextDecoder().decode(bytes) }
+    }
+
+    // sha256 over the published recipe, the request, and the response bytes — the same composition a
+    // verifier outside the app reproduces (see shared/reading-fingerprint.ts).
+    const fingerprintBytes = (
+      url: string,
+      method: 'GET' | 'POST',
+      status: number,
+      bytes: Uint8Array
+    ): string => {
+      const digest = createHash('sha256')
+        .update(`${READING_FINGERPRINT_HASH_RECIPE}\n${method}\n${redactUrl(url)}\n${status}\n`)
+        .update(bytes)
+        .digest('hex')
+      return `${READING_FINGERPRINT_PREFIX}${digest}`
+    }
+
+    const doFetch = async (
+      url: string,
+      accept: string,
+      init?: RequestInit
+    ): Promise<{ res: Response; body: ReadBody | undefined }> => {
+      const method: 'GET' | 'POST' = init?.method === 'POST' ? 'POST' : 'GET'
       for (let attempt = 0; ; attempt++) {
         const controller = new AbortController()
         // Deadline wins even if the transport ignores the abort signal: a stalled request must
@@ -126,7 +172,25 @@ export class ParserEngine {
         } finally {
           clearTimeout(timer)
         }
-        if (res.ok) return res
+        if (res.ok) {
+          const body = await readBody(res)
+          // Recorded only from the received bytes. A transport that handed us no bytes gets no reading:
+          // a digest of a re-serialisation would not reproduce against what the service actually sent,
+          // and the verifier reports the absence as `not-recorded` rather than as a pass.
+          if (onReading && body) {
+            onReading({
+              service: descriptor.connector,
+              tool: descriptor.id,
+              request: { method, url: redactUrl(url) },
+              response: {
+                status: res.status,
+                bytes: body.bytes.byteLength,
+                sha256: fingerprintBytes(url, method, res.status, body.bytes)
+              }
+            })
+          }
+          return { res, body }
+        }
         // Retry only transient source statuses; client errors (4xx except 429) fail fast.
         if (attempt < this.retries && RETRYABLE_STATUS.has(res.status)) {
           await sleep(nextDelay(attempt, res.headers?.get?.('retry-after') ?? null))
@@ -135,23 +199,42 @@ export class ParserEngine {
         throw new Error(`HTTP ${res.status} for ${redactUrl(url)}`)
       }
     }
+
+    // Without a byte view the transport's own accessors are used, which is what every call did before
+    // this module existed — so a transport that cannot be fingerprinted still behaves identically.
+    const bodyText = async ({
+      res,
+      body
+    }: {
+      res: Response
+      body: ReadBody | undefined
+    }): Promise<string> => (body ? body.text : res.text())
+
+    const bodyJson = async ({
+      res,
+      body
+    }: {
+      res: Response
+      body: ReadBody | undefined
+    }): Promise<unknown> => (body ? JSON.parse(body.text) : res.json())
+
     return {
       credentials,
       runSubAgent: this.subAgent,
-      fetchJson: async (url) => (await doFetch(url, 'application/json')).json(),
+      fetchJson: async (url) => bodyJson(await doFetch(url, 'application/json')),
       fetchJsonWithHeaders: async (url) => {
-        const res = await doFetch(url, 'application/json')
-        return { body: await res.json(), headers: res.headers }
+        const fetched = await doFetch(url, 'application/json')
+        return { body: await bodyJson(fetched), headers: fetched.res.headers }
       },
-      fetchText: async (url) => (await doFetch(url, 'text/plain, application/xml, */*')).text(),
+      fetchText: async (url) => bodyText(await doFetch(url, 'text/plain, application/xml, */*')),
       postJson: async (url, body) =>
-        (
+        bodyJson(
           await doFetch(url, 'application/json', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(body)
           })
-        ).json()
+        )
     }
   }
 }

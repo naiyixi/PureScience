@@ -14,6 +14,10 @@ import type { PermissionGrantScope } from '../../shared/permission-grants'
 import type { ApprovalDecision, ConnectorApprovalScope } from '../../shared/settings'
 import type { SpecialistProfileView } from '../../shared/specialist'
 import { customConnectorSlug } from '../../shared/custom-connector'
+import {
+  attachReadingFingerprints,
+  type ConnectorReadingFingerprint
+} from '../../shared/reading-fingerprint'
 
 type McpClientManagerLike = {
   listTools(config: CustomMcpServerConfig): Promise<Array<{ name: string }>>
@@ -308,7 +312,17 @@ export class ConnectorService {
     const localHandler = this.deps.localToolHandlers?.[`${connector}/${method}`]
     if (localHandler) return localHandler(args, context)
 
-    return this.engine.call(descriptor, args, this.credentials(authorizedConnectors))
+    // Every reading this call takes from an external service is carried out on the result, so a number
+    // in a later report can be traced to the bytes it came from. Recorded here rather than in the RPC
+    // layer because this is the one place that has both the descriptor and the engine.
+    const readings: ConnectorReadingFingerprint[] = []
+    const value = await this.engine.call(
+      descriptor,
+      args,
+      this.credentials(authorizedConnectors),
+      (reading) => readings.push(reading)
+    )
+    return attachReadingFingerprints(value, readings)
   }
 
   private async callCustom(
