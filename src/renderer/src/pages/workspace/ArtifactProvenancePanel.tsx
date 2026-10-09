@@ -34,6 +34,8 @@ import type {
 } from '../../../../shared/artifact-code-reconstruction'
 import type { PersistedToolActivity } from '../../../../shared/session-persistence'
 import type { GoToTranscriptIntent, ReviewUpdateEvent } from '../../../../shared/reviewer'
+import { READING_FINGERPRINT_HASH_RECIPE } from '../../../../shared/reading-fingerprint'
+import { formatBytes } from '../../../../shared/update'
 import {
   createPreviewFileItemForArtifactVersion,
   resolveArtifactVersionDescriptor
@@ -48,7 +50,8 @@ import { createConversationItems } from './workspace-conversation-items'
 import { groupConversationItems } from './workspace-tool-activity-groups'
 import { ArtifactReplaySection } from './ArtifactReplaySection'
 
-type ProvenanceTab = 'code' | 'execution' | 'messages' | 'environment' | 'review' | 'replay'
+type ProvenanceTab =
+  'code' | 'execution' | 'messages' | 'environment' | 'review' | 'readings' | 'replay'
 type DeferredProvenanceTab = Extract<ProvenanceTab, 'execution' | 'messages' | 'review'>
 type DeferredSection =
   | Pick<ArtifactVersionProvenance, 'execution'>
@@ -80,6 +83,9 @@ const tabs: Array<{ id: ProvenanceTab; label: TranslationKey }> = [
   { id: 'messages', label: 'ws.messages' },
   { id: 'environment', label: 'ws.environment' },
   { id: 'review', label: 'ws.review' },
+  // The readings travel with the Version's own projection (no separate fetch): a reading that a report
+  // number came from has to be readable in the window, and the journal is one small file read.
+  { id: 'readings', label: 'ws.readings' },
   // Runs on demand: a replay executes the recorded version, so it never fires on tab selection.
   { id: 'replay', label: 'ws.replay' }
 ]
@@ -1545,6 +1551,65 @@ const ArtifactProvenancePanel = ({
               </div>
             </section>
           )
+        ) : null}
+        {provenance && activeTab === 'readings' ? (
+          <section className="space-y-3 p-5 text-sm" data-testid="artifact-readings">
+            {provenance.readings.state === 'available' ? (
+              <>
+                <p className="text-xs text-text-300">{t('ws.readingsIntro')}</p>
+                <p className="text-xs text-text-300" data-testid="artifact-readings-recipe">
+                  {t('ws.readingsRecipe').replace('{recipe}', READING_FINGERPRINT_HASH_RECIPE)}
+                </p>
+                {provenance.readings.items.length === 0 ? (
+                  <p className="text-text-300" data-testid="artifact-readings-empty">
+                    {t('ws.readingsEmpty')}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {provenance.readings.items.map((reading, index) => (
+                      <li
+                        key={`${reading.service}:${reading.tool}:${reading.response.sha256}:${index}`}
+                        className="space-y-1 rounded-md border border-border-300/60 px-3 py-2"
+                        data-testid="artifact-readings-item"
+                      >
+                        <p className="text-text-000">
+                          {reading.service} · {reading.tool}
+                        </p>
+                        {/* The request URL is the engine's own redacted form; the fingerprint is computed
+                            over exactly this string, so it must not be shortened here. */}
+                        <p
+                          className="truncate font-mono text-xs text-text-300"
+                          title={`${reading.request.method} ${reading.request.url}`}
+                        >
+                          {reading.request.method} {reading.request.url}
+                        </p>
+                        <p className="font-mono text-xs text-text-300">
+                          {reading.response.status} · {formatBytes(reading.response.bytes)} ·{' '}
+                          {reading.response.sha256}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {provenance.readings.dropped > 0 ? (
+                  <p className="text-xs text-text-300" data-testid="artifact-readings-dropped">
+                    {t('ws.readingsDropped').replace(
+                      '{count}',
+                      String(provenance.readings.dropped)
+                    )}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-text-300" data-testid="artifact-readings-gap">
+                {provenance.readings.reason === 'not-recorded'
+                  ? t('ws.readingsNotRecorded')
+                  : provenance.readings.reason === 'unreadable'
+                    ? t('ws.readingsUnreadable')
+                    : t('ws.readingsNotLoaded')}
+              </p>
+            )}
+          </section>
         ) : null}
       </div>
     </div>

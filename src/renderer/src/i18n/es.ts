@@ -4392,5 +4392,16 @@ export const es: Partial<Record<ZhKey, string>> = {
     'El ro-crate-metadata.json de esa carpeta no es JSON válido.',
   'settings.approvalPersistence': 'Efecto',
   'settings.approvalPersistenceValue':
-    'Esta llamada también crea un registro en los servidores del propio servicio. Ese registro sobrevive a la llamada y no puede eliminarse desde aquí.'
+    'Esta llamada también crea un registro en los servidores del propio servicio. Ese registro sobrevive a la llamada y no puede eliminarse desde aquí.',
+  'ws.readings': 'Lecturas',
+  'ws.readingsIntro':
+    'Lo que esta sesión leyó de otros servicios antes de escribir esta versión: la atribución es la sesión y la ventana de tiempo, no una causalidad por ejecución.',
+  'ws.readingsRecipe':
+    'Receta publicada {recipe}: sha256 sobre la línea de receta, el método de la petición, la URL censurada y el estado, y después sobre los bytes de respuesta tal como se recibieron.',
+  'ws.readingsEmpty': 'No se registró ninguna lectura de conector en esta sesión.',
+  'ws.readingsDropped':
+    'Se descartaron {count} lecturas anteriores para no superar el límite del registro.',
+  'ws.readingsNotRecorded': 'No existe un registro de lecturas para esta sesión.',
+  'ws.readingsNotLoaded': 'No se cargaron las lecturas para esta vista.',
+  'ws.readingsUnreadable': 'No se pudo leer el registro de lecturas.'
 }

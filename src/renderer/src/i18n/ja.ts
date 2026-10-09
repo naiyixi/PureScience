@@ -4305,5 +4305,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'そのフォルダの ro-crate-metadata.json は有効な JSON ではありません。',
   'settings.approvalPersistence': '影響',
   'settings.approvalPersistenceValue':
-    'この呼び出しは、サービス側のサーバーにもエントリを作成します。そのエントリは呼び出し後も残り、ここからは削除できません。'
+    'この呼び出しは、サービス側のサーバーにもエントリを作成します。そのエントリは呼び出し後も残り、ここからは削除できません。',
+  'ws.readings': '読み取り',
+  'ws.readingsIntro':
+    'このバージョンが書き込まれる前に、このセッションが他のサービスから読み取った内容です。ひも付けはセッションと時間枠であり、実行単位の因果関係ではありません。',
+  'ws.readingsRecipe':
+    '公開済みのレシピ {recipe}：レシピ行、リクエストのメソッド、伏せ字にした URL、ステータスに対して sha256 を取り、続けて受信したままのレスポンス本文を対象にします。',
+  'ws.readingsEmpty': 'このセッションではコネクターの読み取りが記録されていません。',
+  'ws.readingsDropped': 'ログの上限に収めるため、古い読み取り {count} 件が破棄されました。',
+  'ws.readingsNotRecorded': 'このセッションには読み取りログがありません。',
+  'ws.readingsNotLoaded': 'この表示では読み取りが読み込まれていません。',
+  'ws.readingsUnreadable': '読み取りログを読み取れませんでした。'
 }

@@ -4424,5 +4424,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Le ro-crate-metadata.json de ce dossier n’est pas un JSON valide.',
   'settings.approvalPersistence': 'Effet',
   'settings.approvalPersistenceValue':
-    "Cet appel crée aussi une entrée sur les serveurs du service. Cette entrée subsiste après l'appel et ne peut pas être supprimée d'ici."
+    "Cet appel crée aussi une entrée sur les serveurs du service. Cette entrée subsiste après l'appel et ne peut pas être supprimée d'ici.",
+  'ws.readings': 'Lectures',
+  'ws.readingsIntro':
+    'Ce que cette session a lu d’autres services avant l’écriture de cette version — le rattachement est la session et la fenêtre temporelle, pas une causalité par exécution.',
+  'ws.readingsRecipe':
+    'Recette publiée {recipe} : sha256 sur la ligne de recette, la méthode de requête, l’URL expurgée et le statut, puis sur les octets de réponse tels que reçus.',
+  'ws.readingsEmpty': 'Aucune lecture de connecteur n’a été enregistrée dans cette session.',
+  'ws.readingsDropped':
+    '{count} lectures plus anciennes ont été supprimées pour rester sous la limite du journal.',
+  'ws.readingsNotRecorded': 'Aucun journal de lectures n’existe pour cette session.',
+  'ws.readingsNotLoaded': 'Les lectures n’ont pas été chargées pour cette vue.',
+  'ws.readingsUnreadable': 'Le journal des lectures n’a pas pu être lu.'
 }

@@ -4338,5 +4338,15 @@ export const en: Record<ZhKey, string> = {
   'roCrate.inspect.failure.unparseable': 'ro-crate-metadata.json in that folder is not valid JSON.',
   'settings.approvalPersistence': 'Effect',
   'settings.approvalPersistenceValue':
-    "This call also creates an entry on the service's own servers. That entry outlives the call and cannot be removed from here."
+    "This call also creates an entry on the service's own servers. That entry outlives the call and cannot be removed from here.",
+  'ws.readings': 'Readings',
+  'ws.readingsIntro':
+    'What this session read from other services before this version was written — the attribution is session and time window, not per-run causality.',
+  'ws.readingsRecipe':
+    'Published recipe {recipe}: sha256 over the recipe line, the request method, the redacted URL and the status, then the response bytes as received.',
+  'ws.readingsEmpty': 'No connector readings were recorded in this session.',
+  'ws.readingsDropped': '{count} older readings were dropped to stay inside the journal cap.',
+  'ws.readingsNotRecorded': 'No readings journal exists for this session.',
+  'ws.readingsNotLoaded': 'Readings were not loaded for this view.',
+  'ws.readingsUnreadable': 'The readings journal could not be read.'
 }

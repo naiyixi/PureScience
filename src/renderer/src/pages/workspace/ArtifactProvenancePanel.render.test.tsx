@@ -1049,4 +1049,127 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.textContent).toContain('save cancelled')
     expect(container.querySelector('[data-testid="notebook-run"]')).not.toBeNull()
   })
+
+  // The three readings states are three different statements, and the panel has to keep them apart:
+  // a journal that does not exist, one that could not be read, one that exists and is empty. Presenting
+  // any of them as an empty list is what the projection's own vocabulary exists to prevent.
+  it('names a missing readings journal instead of showing an empty list', async () => {
+    await clickTab('Readings')
+
+    expect(container.querySelector('[data-testid="artifact-readings-gap"]')?.textContent).toBe(
+      'No readings journal exists for this session.'
+    )
+    expect(container.querySelector('[data-testid="artifact-readings-item"]')).toBeNull()
+    expect(container.querySelector('[data-testid="artifact-readings-empty"]')).toBeNull()
+  })
+
+  it('separates an unreadable journal from a missing one', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: { state: 'unavailable', reason: 'unreadable' }
+    })
+
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    expect(container.querySelector('[data-testid="artifact-readings-gap"]')?.textContent).toBe(
+      'The readings journal could not be read.'
+    )
+  })
+
+  it('says a journal with no entries is empty rather than naming a gap', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: { state: 'available', attribution: 'session-window', items: [], dropped: 0 }
+    })
+
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    expect(container.querySelector('[data-testid="artifact-readings-empty"]')?.textContent).toBe(
+      'No connector readings were recorded in this session.'
+    )
+    expect(container.querySelector('[data-testid="artifact-readings-gap"]')).toBeNull()
+    // No dropped line when nothing was dropped — a "0 dropped" line would read as a check that ran.
+    expect(container.querySelector('[data-testid="artifact-readings-dropped"]')).toBeNull()
+  })
+
+  it('walks a reader back to what the session read, recipe and window included', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    const digest = `sha256:${'5'.repeat(64)}`
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: {
+        state: 'available',
+        attribution: 'session-window',
+        dropped: 3,
+        items: [
+          {
+            service: 'pubmed',
+            tool: 'search_articles',
+            request: {
+              method: 'GET',
+              url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?term=aspirin'
+            },
+            response: { status: 200, bytes: 1118, sha256: digest }
+          },
+          {
+            service: 'uniprot',
+            tool: 'fetch_entry',
+            request: { method: 'GET', url: 'https://rest.uniprot.org/uniprotkb/P00533' },
+            response: { status: 200, bytes: 2048, sha256: `sha256:${'a'.repeat(64)}` }
+          }
+        ]
+      }
+    })
+
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    const items = [...container.querySelectorAll('[data-testid="artifact-readings-item"]')]
+    expect(items).toHaveLength(2)
+    expect(items[0].textContent).toContain('pubmed · search_articles')
+    expect(items[0].textContent).toContain(
+      'GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?term=aspirin'
+    )
+    expect(items[0].textContent).toContain('200')
+    expect(items[0].textContent).toContain('1.1 KB')
+    expect(items[0].textContent).toContain(digest)
+    // The recipe is read from the published constant, not hand-copied into the copy: a second spelling
+    // would let the sentence and the digest drift apart.
+    expect(
+      container.querySelector('[data-testid="artifact-readings-recipe"]')?.textContent
+    ).toContain('purescience-connector-reading-v1')
+    // The attribution is stated, never left for the reader to assume per-run causality.
+    expect(container.textContent).toContain('not per-run causality')
+    expect(
+      container.querySelector('[data-testid="artifact-readings-dropped"]')?.textContent
+    ).toContain('3 older readings were dropped')
+  })
 })

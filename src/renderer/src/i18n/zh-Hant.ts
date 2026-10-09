@@ -3986,5 +3986,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'roCrate.inspect.failure.unparseable': '那個目錄裡的 ro-crate-metadata.json 不是有效的 JSON。',
   'settings.approvalPersistence': '影響',
   'settings.approvalPersistenceValue':
-    '這次呼叫還會在服務方的伺服器上建立一筆記錄；該記錄會在本次呼叫結束後繼續存在，且無法從這裡刪除。'
+    '這次呼叫還會在服務方的伺服器上建立一筆記錄；該記錄會在本次呼叫結束後繼續存在，且無法從這裡刪除。',
+  'ws.readings': '讀數',
+  'ws.readingsIntro':
+    '本次工作階段在本版本寫入前從其他服務讀到的內容 —— 歸屬是工作階段與時間窗，不是逐 run 的因果。',
+  'ws.readingsRecipe':
+    '已發布的配方 {recipe}：先對配方列、請求方法、去識別化後的網址與狀態碼取 sha256，再對原樣收到的回應位元組取摘要。',
+  'ws.readingsEmpty': '本次工作階段沒有記錄任何連接器讀數。',
+  'ws.readingsDropped': '為保持在日誌上限內，較早的 {count} 條讀數已被捨棄。',
+  'ws.readingsNotRecorded': '本次工作階段沒有讀數日誌。',
+  'ws.readingsNotLoaded': '此檢視未載入讀數。',
+  'ws.readingsUnreadable': '讀數日誌無法讀取。'
 }

@@ -591,6 +591,36 @@ describe('artifact IPC handlers', () => {
     expect(codeReconstruction.generate).toHaveBeenCalledWith(request)
   })
 
+  it('answers the window Version read with the readings, not the bulk core read', async () => {
+    // The provenance panel asks once per Version, and the readings have to arrive in that answer: the
+    // journal is only reachable through the projection, and `getVersionCore` (read in bulk, one call per
+    // card) refuses it on purpose. A handler that quietly went back to the core read would leave the
+    // panel's readings section permanently saying `not-loaded` while every unit test stayed green.
+    const version = { readings: { state: 'unavailable', reason: 'not-recorded' } }
+    const provenance = {
+      getVersionProvenance: vi.fn(async () => version),
+      getVersionCore: vi.fn()
+    }
+    const handlers = createArtifactHandlers({} as ArtifactRepository, new ArtifactRunRegistry(), {
+      provenance: provenance as never
+    })
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    }
+
+    await expect(handlers.getVersionProvenance(request)).resolves.toEqual(version)
+    expect(provenance.getVersionProvenance).toHaveBeenCalledWith(request, {
+      execution: false,
+      messages: false,
+      review: false,
+      readings: true
+    })
+    expect(provenance.getVersionCore).not.toHaveBeenCalled()
+  })
+
   it('opens only files inside the managed artifact root', async () => {
     const repository = new ArtifactRepository(await createStorageRoot())
     const openPath = vi.fn().mockResolvedValue('')

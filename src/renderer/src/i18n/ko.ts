@@ -4237,5 +4237,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '그 폴더의 ro-crate-metadata.json은 올바른 JSON이 아닙니다.',
   'settings.approvalPersistence': '영향',
   'settings.approvalPersistenceValue':
-    '이 호출은 서비스 자체 서버에도 항목을 만듭니다. 그 항목은 호출이 끝난 뒤에도 남으며 여기서 삭제할 수 없습니다.'
+    '이 호출은 서비스 자체 서버에도 항목을 만듭니다. 그 항목은 호출이 끝난 뒤에도 남으며 여기서 삭제할 수 없습니다.',
+  'ws.readings': '읽기 기록',
+  'ws.readingsIntro':
+    '이 버전이 작성되기 전에 이 세션이 다른 서비스에서 읽은 내용입니다. 연결 기준은 세션과 시간 창이며, 실행 단위의 인과관계가 아닙니다.',
+  'ws.readingsRecipe':
+    '공개된 레시피 {recipe}: 레시피 줄, 요청 메서드, 가린 URL, 상태 코드에 sha256을 적용한 뒤 받은 그대로의 응답 바이트를 대상으로 합니다.',
+  'ws.readingsEmpty': '이 세션에는 커넥터 읽기 기록이 없습니다.',
+  'ws.readingsDropped': '로그 상한을 지키기 위해 오래된 읽기 {count}건이 삭제되었습니다.',
+  'ws.readingsNotRecorded': '이 세션에는 읽기 로그가 없습니다.',
+  'ws.readingsNotLoaded': '이 보기에서는 읽기 기록을 불러오지 않았습니다.',
+  'ws.readingsUnreadable': '읽기 로그를 읽을 수 없습니다.'
 }

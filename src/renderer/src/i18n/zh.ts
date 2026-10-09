@@ -4045,7 +4045,17 @@ export const zh = {
   'roCrate.inspect.failure.unparseable': '那个目录里的 ro-crate-metadata.json 不是合法的 JSON。',
   'settings.approvalPersistence': '影响',
   'settings.approvalPersistenceValue':
-    '这次调用还会在服务方的服务器上建立一条记录；该记录会在本次调用结束后继续存在，且无法从这里删除。'
+    '这次调用还会在服务方的服务器上建立一条记录；该记录会在本次调用结束后继续存在，且无法从这里删除。',
+  'ws.readings': '读数',
+  'ws.readingsIntro':
+    '本次会话在本版本写入前从其他服务读到的内容 —— 归属是会话与时间窗，不是逐 run 的因果。',
+  'ws.readingsRecipe':
+    '已发布的配方 {recipe}：先对配方行、请求方法、脱敏后的 URL 与状态码取 sha256，再对原样收到的响应字节取摘要。',
+  'ws.readingsEmpty': '本次会话没有记录任何连接器读数。',
+  'ws.readingsDropped': '为保持在日志上限内，较早的 {count} 条读数已被丢弃。',
+  'ws.readingsNotRecorded': '本次会话没有读数日志。',
+  'ws.readingsNotLoaded': '此视图未加载读数。',
+  'ws.readingsUnreadable': '读数日志无法读取。'
 }
 
 export type ZhKey = keyof typeof zh

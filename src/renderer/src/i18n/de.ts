@@ -4439,5 +4439,16 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die ro-crate-metadata.json in diesem Ordner ist kein gültiges JSON.',
   'settings.approvalPersistence': 'Auswirkung',
   'settings.approvalPersistenceValue':
-    'Dieser Aufruf legt zusätzlich einen Eintrag auf den Servern des Dienstes an. Der Eintrag besteht nach dem Aufruf weiter und lässt sich von hier nicht entfernen.'
+    'Dieser Aufruf legt zusätzlich einen Eintrag auf den Servern des Dienstes an. Der Eintrag besteht nach dem Aufruf weiter und lässt sich von hier nicht entfernen.',
+  'ws.readings': 'Lesevorgänge',
+  'ws.readingsIntro':
+    'Was diese Sitzung vor dem Schreiben dieser Version aus anderen Diensten gelesen hat — die Zuordnung ist Sitzung und Zeitfenster, nicht Ursache pro Lauf.',
+  'ws.readingsRecipe':
+    'Veröffentlichtes Rezept {recipe}: sha256 über die Rezeptzeile, die Anfragemethode, die entschärfte URL und den Status, danach über die empfangenen Antwortbytes.',
+  'ws.readingsEmpty': 'In dieser Sitzung wurden keine Connector-Lesevorgänge aufgezeichnet.',
+  'ws.readingsDropped':
+    '{count} ältere Lesevorgänge wurden entfernt, um innerhalb der Obergrenze des Protokolls zu bleiben.',
+  'ws.readingsNotRecorded': 'Für diese Sitzung gibt es kein Leseprotokoll.',
+  'ws.readingsNotLoaded': 'Für diese Ansicht wurden keine Lesevorgänge geladen.',
+  'ws.readingsUnreadable': 'Das Leseprotokoll konnte nicht gelesen werden.'
 }

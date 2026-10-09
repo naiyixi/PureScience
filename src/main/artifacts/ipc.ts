@@ -254,9 +254,7 @@ const createArtifactHandlers = (
       const managedSources = new Set(['artifact', 'upload', 'notebook-input'])
       const valid = items.filter(
         (item): item is (typeof items)[number] =>
-          typeof item?.path === 'string' &&
-          item.path.length > 0 &&
-          managedSources.has(item.source)
+          typeof item?.path === 'string' && item.path.length > 0 && managedSources.has(item.source)
       )
       const unique = [...new Map(valid.map((item) => [item.path, item])).values()]
       if (unique.length > MAX_ARTIFACT_AVAILABILITY_PATHS) {
@@ -331,7 +329,16 @@ const createArtifactHandlers = (
     },
     getVersionProvenance: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
-      return dependencies.provenance.getVersionCore(request)
+      // One Version, read by the window's provenance panel. The readings travel with this answer: a
+      // number in a report has to be walkable back to the bytes in the window, not only inside the
+      // repository — the projection said so and nothing rendered it. `getVersionCore` (read in bulk, one
+      // call per card) keeps refusing the journal for exactly that reason; here it is one file read.
+      return dependencies.provenance.getVersionProvenance(request, {
+        execution: false,
+        messages: false,
+        review: false,
+        readings: true
+      })
     },
     getVersionExecution: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')
