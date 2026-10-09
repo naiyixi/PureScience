@@ -22,7 +22,8 @@
 
 ### 明确没做
 
-- 🗺️ **「读数」分区的真机读数仍未取**（②③ 界面半边唯一缺的证据）：本机空闲物理页 **3,994 ≈ 60 MB**（swap 仅余 646 MB，另有长期驻留的无关 Electron 应用占用），**起不了 `build:e2e` + Electron** ⇒ 判据与配方已写在 `docs/handoff-2026-10-09-next-session.md` §四第 1 项，等空闲页上到数万再取。**没有据此声称界面已实机跑通。**
+- ✅ **「读数」分区的真机读数：已在 CI 的认证车道上取到，且是绿的**（更正本节此前的说法 —— 我一度把它写成"未取"，那是**把已交付的写成未做**，同样是失真）。证据：`e2e/certification/artifact-provenance.spec.ts`（`9a3bfef7` 引入，已在本版 tag 提交的树里）在 Release 运行的 `macos-arm64` 认证步骤里执行 —— 真窗口、真点击路径（File actions → Provenance → Readings），运行时逐字打印读数：条目屏上为 `pubmed · search_articles` + `GET https://eutils.ncbi.nlm.nih.gov/…/esearch.fcgi?term=aspirin` + `200 · 1.1 KB · sha256:5555…5555`，配方行 `Published recipe purescience-connector-reading-v1: …`；同批 `electron_p0=passed  visual_regression=passed  package_smoke=passed`。
+  **覆盖面要说准**：这条覆盖的是**显示半边**（面板把服务/工具、请求、状态·字节·摘要、配方常量渲染出来，且缺态三态各有自己的文案与用例）。**真服务半边**由更早的真机探针覆盖（走真正接线的引擎打真 PubMed：1118 字节、摘要 `5b026c46…d96d`、外部人手写实现复算 **identical = true**）。两半合起来才是完整证据，任何一半都不单独称为"界面已跑通"。
 - 🗺️ **读数归属仍只到会话+时间窗**：逐 run 因果需要一条**可信**的 run id 通道（RPC 参数不算权威）。
 - 🗺️ **校验器未回挂**：把「核对一个已记录的读数」做成界面动作（重发同一请求比摘要）需要一个主进程通道，属下一个单元。
 - 🗺️ **中文源连接器仍挂账**：四源实测仍只回 `text/html`，**无机读契约**，不写只读抓取器。

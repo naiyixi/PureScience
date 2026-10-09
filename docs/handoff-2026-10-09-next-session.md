@@ -36,7 +36,7 @@
 
 | # | 项 | 判据 | blocked-by |
 | --- | --- | --- | --- |
-| 1 | **「读数」面板分区的真机读数** | 真机打开产物溯源 → 读数分区渲染配方常量 + 逐条读数；三种缺态分别渲染 | **内存**（92 MB 空闲，起不了 `build:e2e` + Electron）。**这是 ②③ 界面半边唯一缺的证据**，已立案 |
+| 1 | ~~「读数」面板分区的真机读数~~ **已闭（2026-10-09 更正）** | 真机打开产物溯源 → 读数分区渲染配方常量 + 逐条读数 | **不是缺项**：`e2e/certification/artifact-provenance.spec.ts` 已在 Release 运行的 `macos-arm64` 认证步骤里跑过并绿（真窗口 + 真点击路径，运行时打印条目与配方行；同批 `electron_p0=passed`）。覆盖**显示半边**；真服务半边由真 PubMed 探针覆盖（1118 字节、复算 `identical = true`）。**我一度把这条写成"未取"，那是把已交付的写成未做 —— 已更正** |
 | 2 | **读数归属细化到逐 run** | 产物版本的 `producer_run_id` 与读数条目精确对上（现在只到**会话+时间窗**） | **投影 `src/main/artifacts/provenance-repository.ts` 正被另一轮改**；且需要一条**可信**的 run id 通道（RPC 参数不算权威）|
 | 3 | **校验器回挂**（把「核对一个已记录的读数」做成界面动作：重发同一请求比摘要） | 需要主进程通道 | **`src/main/ipc.ts` 同上被占** |
 | 4 | **Windows `database` 分片家族** | 只能由 Windows 车道判决；**修法不许是加大超时**（仓规与仓内注释双重否掉）| 需要 Windows 车道；分诊档 `docs/plan-2026-10-08-windows-database-shard-triage.md` |

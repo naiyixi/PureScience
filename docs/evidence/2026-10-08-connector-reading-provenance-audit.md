@@ -125,4 +125,12 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 
 **不变的部分**：`READING_FINGERPRINT_HASH_RECIPE`（配方）、`sha256:<64hex>` 格式、`ConnectorReadingFingerprint` 形状、`attachReadingFingerprints()`（`service.ts` 在用）。② 的四条判据**不受影响** —— 其中「可由任何人离线复算」靠的是**已发布的配方 + 记录在案的摘要**，本轮真机读数（外部人手写实现复算 `identical = true`）仍然是它的证据。
 
+### 3. 更正：界面半边的真机读数**已经取过**，我一度写成"未取"（同为失真）
+
+我在 v1.94.0 的 CHANGELOG 与交接档里写着「读数分区的真机读数仍未取」。**这是错的**：`e2e/certification/artifact-provenance.spec.ts`（由 `9a3bfef7` 引入，已在 v1.94.0 tag 提交的树里）会在 Release 运行的 **`macos-arm64` 认证步骤**（P0 那一步）里执行，并且它**逐字打印运行时读数** —— 真窗口 + 真点击路径（File actions → Provenance → Readings），条目屏上为 `pubmed · search_articles` / `GET …esearch.fcgi?term=aspirin` / `200 · 1.1 KB · sha256:5555…5555`，配方行 `Published recipe purescience-connector-reading-v1: …`；同批 `electron_p0=passed  visual_regression=passed  package_smoke=passed`（运行 37901559289 的 `Build macos-arm64`，89 passed / 31.3m）。
+
+**覆盖面（不许含糊）**：这条覆盖**显示半边** —— 面板把服务·工具、请求、状态·字节·摘要、配方常量渲染出来，缺态三态各有自己的文案与用例。**真服务半边**由更早的一次性探针覆盖（走真正接线的引擎打真 PubMed：1118 字节、摘要 `5b026c46…d96d`、外部人手写实现复算 **identical = true**）。**两半合起来才是完整证据**，任何一半都不单独称为"界面已跑通"。
+
+**教训**：把**已交付**的写成未做，与把半截写成已完成，是同一种失真。此后凡是"某能力缺证据"的结论，**先去 CI 的认证车道按 spec 名与它自己打印的读数行核一遍**，再决定要不要立案。
+
 
