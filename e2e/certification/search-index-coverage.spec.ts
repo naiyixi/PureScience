@@ -116,7 +116,40 @@ test('the index reports what it covers, is current after a tick, survives a rest
     const notMeasured = await from('gs-index-not-measured', 'not-measured')
     if (notMeasured !== undefined) return notMeasured
     const absent = await from('gs-index-absent', 'measured-no-index')
-    return absent ?? '(no empty-index notice on screen)'
+    if (absent !== undefined) return absent
+    // NEITHER sentence on screen. That is its own product state, and by itself it cannot be told apart
+    // from a probe that looked before the reading arrived — so the reading also asks the main process,
+    // through the app's own search channel, what the response carried in `index`. "Block absent while the
+    // response carried an index" names a UI gap; "no index on the response at all" names a reading that
+    // never existed. They must not be reported as the same sentence.
+    const block = await dialog.locator('[data-slot="gs-index-summary"]').count()
+    const served = await page.evaluate(
+      async ({ query, projectId: id }) => {
+        try {
+          const bridge = globalThis as unknown as {
+            api: {
+              search: {
+                query: (request: {
+                  query: string
+                  projectId?: string
+                }) => Promise<{ index?: unknown }>
+              }
+            }
+          }
+          const response = await bridge.api.search.query({
+            query,
+            ...(id ? { projectId: id } : {})
+          })
+          return JSON.stringify(response.index ?? null)
+        } catch (error: unknown) {
+          return `(the probe's own query failed: ${error instanceof Error ? error.message : String(error)})`
+        }
+      },
+      { query: KEYWORD, projectId }
+    )
+    return block === 0
+      ? `(no empty-index notice on screen — the summary block itself was absent; the search response carried index=${served})`
+      : `(summary block present, no notice inside it; the search response carried index=${served})`
   }
   const emptyNoticeText = await emptyIndexNotice()
   console.log(`[s3-reading] before any tick — hits ${hitCount}`)
