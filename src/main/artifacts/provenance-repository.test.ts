@@ -4251,6 +4251,8 @@ describe('artifact provenance repository', () => {
     })
     const contentStorageKey = 'artifacts/project-1/session-1/.provenance/versions/version-1/content'
     const contentPath = join(storageRoot, ...contentStorageKey.split('/'))
+    const evidenceStorageKey =
+      'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json'
     await mkdir(dirname(contentPath), { recursive: true })
     await writeFile(contentPath, 'artifact bytes')
     await client.fileOriginSession.create({
@@ -4279,8 +4281,7 @@ describe('artifact provenance repository', () => {
         promptMessageId: 'prompt-1',
         state: 'finalized',
         contentStorageKey,
-        evidenceStorageKey:
-          'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
+        evidenceStorageKey,
         sizeBytes: BigInt(14),
         checksum: 'a'.repeat(64),
         // The window is read off the evidence's own created_at, so the fixture carries a real one:
@@ -4345,13 +4346,20 @@ describe('artifact provenance repository', () => {
 
     // No readable creation time on the evidence ⇒ the window cannot be enforced at all, so the record
     // reports the weaker, honest claim (`session`) instead of a window it never applied.
+    // The stored evidence lives in two places — the row and its mirror file beside the content — and
+    // the repository verifies them against each other, so a change has to move both. Moving only the
+    // row is (correctly) reported as corruption, which would be a different failure than the one here.
+    const emptyEvidence = '{}'
     await client.artifactVersion.update({
       where: { id: 'version-1' },
       data: {
-        evidenceJson: '{}',
-        evidenceChecksum: createHash('sha256').update('{}').digest('hex')
+        evidenceJson: emptyEvidence,
+        evidenceChecksum: createHash('sha256').update(emptyEvidence).digest('hex')
       }
     })
+    const evidencePath = join(storageRoot as string, ...evidenceStorageKey.split('/'))
+    await mkdir(dirname(evidencePath), { recursive: true })
+    await writeFile(evidencePath, emptyEvidence, 'utf8')
     const noWindow = await repository.getVersionProvenance(request)
     expect(noWindow.readings).toMatchObject({ attribution: 'session', afterWindow: 0 })
 
