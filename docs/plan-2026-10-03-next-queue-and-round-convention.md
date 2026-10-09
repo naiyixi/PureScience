@@ -1720,3 +1720,94 @@ Latest = **v1.92.0**（`gh release view` 复核：`draft=false / isPrerelease=fa
 ③ 批次 ① 只剩「中文源」那一半——本机 2026-10-09 02:2x 复测四源仍全部只回 `text/html`（`chictr` 34719 B /
 `nmpa` 54789 B / `cde` 86080 B / `cma` 89215 B，无机器可读契约）⇒ 维持挂账，等有文档的接口再启。
 
+
+## 三十九、本轮追加（执行器，2026-10-09 13:1x–）——v1.93.1 发布核验收口 + Windows 片 `4/8`·`5/8` 达 **N=4** 结案 + 读数日志只在会返回它的读上付代价
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 开工时 `HEAD == origin/main == 9dbd4a1c`（会话 12:57 的交接档提交）。`git status --short` = **7 个已修改路径**，
+  全部是**上一轮执行器被迭代上限截断的在制品**（`src/main/artifacts/provenance-repository.ts` / `code-reconstruction.ts` /
+  `reproducibility-service.ts` 三个 `.ts` 与各自 `.test.ts`、`src/main/ipc.ts`）；进程表里没有
+  `electron-vite` / `playwright` / `vitest` / `node … electron`（会话自 12:57 起空闲）⇒ 本轮**只收口这笔在制品**，
+  不新起单元、一个字节都不碰会话路径。
+- **防重做**：`git log --oneline --since="3 days ago"` 逐笔核过 —— 会话 `ba65d723`（撤掉没有消费方的判决器 +
+  形状守卫改挂到日志读取路径，落 `src/main/connectors/reading-journal.ts`、`src/shared/reading-fingerprint.ts`）
+  与 `9dbd4a1c`（交接档）**都不碰**本轮这 7 个路径；本档「已完成（别再重做）」清单里也没有本单元 ⇒ 不重复劳动。
+- **并发写入者中途落笔（本轮的实测形状）**：13:48:23 会话在 `src/main/connectors/reading-journal.ts` + `.test.ts` 上
+  提交并留下 `9ee97fe8`（同一会话并发读数「读—改—写」会静默丢条目 ⇒ 写入按日志路径串行），
+  **与本轮这 7 个路径不相交**。本轮提交因此落在它之上，且**本轮这次推送会把它一并带上**（推送区间 = 它的 1 笔 +
+  本轮的 docs 与代码 2 笔）——汇报里逐笔点名归属。它那笔的独立读数：该两个文件 `eslint --no-cache` **0 problem**、
+  定向 `reading-journal.test.ts` **9 passed**。
+
+### 一 v1.93.1 发布核验（上一轮遗留的第一步，本回合完成）
+
+| 项 | 读数（实取） |
+| --- | --- |
+| Release 页 | `v1.93.1`：`draft=false` / `isPrerelease=false` / **21 资产** / `gh release list` 首行 = **Latest** |
+| 资产齐 | mac arm64·x64 各 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+blockmap+zip，外加 `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / `latest*.yml` / `arm64-mac.yml` / `x64-mac.yml` |
+| 页 ↔ 提交绑死 | `RELEASE-CERTIFICATION.json.sourceSha = e2590ab065a2f21c7e015e66bd711c645c03d665`，与 `git rev-parse 'v1.93.1^{commit}'` **逐字符一致**（附注 tag，`cat-file -t` = `tag`） |
+| 发布页正文 | **25,129 字节**，无 `release-notes:` 噪声行；与本地 `release:notes --print --certification` 输出逐行一致（唯一差异是「mac 未签名披露」行的位置，release.yml 合成时放在末尾） |
+
+### 二 CI 判决（按**完整 40 位 SHA**；`cancelled` 不算绿）—— `4/8`·`5/8` 两支到此**达 N=4**
+
+| 提交 | Windows Full Test | Nightly | 备注 |
+| --- | --- | --- | --- |
+| `395d3e17c527c03270612b1ea6ad76481c6f0b61`（执行器：`APPROVAL_REQUEST_BUDGET_MS` 10 s 窗） | run **37825846029 success**（8/8 片，含 `4/8`·`5/8`） | run 37825846572 **success** | 修法首次落树的读数 |
+| `9a3bfef7fcc96ef29b435b655e3e8d35c7da2e88`（会话：溯源面板读数分区） | run **37866542307 success**（8/8） | run 37866542328 **cancelled**（被后续推送顶掉） | Nightly 无判决，由后续绿色 Nightly 覆盖 |
+| `e2590ab065a2f21c7e015e66bd711c645c03d665`（= tag `v1.93.1` 发版提交） | run **37867733052 success**（8/8） | run 37867733439 **success** | 双绿；Release run 37867750795 success |
+| `ba65d723c8ecedb26f77d183a2019e988b8a1f0e`（会话：撤死代码 + 形状守卫） | run **37882462504 success**（8/8） | run 37882463045 **success** | 双绿（`build/Verify` + 四平台 build + publish 全 success） |
+| `9dbd4a1c5e8fb894f86a0a11018afbcd63fbcc02`（纯 `docs/**`） | 0 条 run | 0 条 run | `paths:` 过滤，**设计如此**，不是漏跑 |
+
+⇒ **Windows 两条老红的结案判据已超**：片 `5/8`（`APPROVAL_REQUEST_BUDGET_MS = 10_000`，断言一字未改）与
+片 `4/8`（`project-files/repository.test.ts` 钩子停顿，只归属未改）自修法/归属起**各有 4 条绿色 Windows 读数**，
+全部 8/8 分片 success，远超本仓对负载敏感项的 **N ≥ 3** 口径。结论落 `docs/plan-2026-10-08-windows-database-shard-triage.md` §七。
+
+### 三 本单元：v1.93.1 正文承诺的「只有会返回读数的那条读才付读数的代价」在代码里没有守住
+
+v1.93.1 的对外契约是：读数日志是**一次文件读**，只有**答案里能装下读数**的那条读才付它。逐处核实后，
+仓储的 `sections` 默认**不含 `readings` 键**，而判据是 `sections.readings !== false`（`provenance-repository.ts:4008`）
+⇒ `undefined !== false` 为真 ⇒ **所有走默认或未点名 `readings` 的调用点都会白读一遍读数日志**，再把结果丢掉。
+
+| 文件 | 改动 |
+| --- | --- |
+| `src/main/artifacts/provenance-repository.ts` | 默认 sections **显式写出 `readings: true`**（把「默认加载」写进契约而不是靠 `undefined` 兜）；`getVersionExecution` / `getVersionMessages` / `getVersionReview` 三条**只返回单一段**的读各补 `readings: false` |
+| `src/main/artifacts/code-reconstruction.ts` | 重建只取 execution 段 ⇒ 补 `readings: false` |
+| `src/main/artifacts/reproducibility-service.ts` | 复现判定只读 descriptor/evidence/execution（见 `buildSealedReproducibilityRecipe`）⇒ 端口加可选 `sections` 并传 `{execution:true, messages:false, review:false, readings:false}` |
+| `src/main/ipc.ts` | 复现服务的装配 lambda 必须把 `sections` **透传**到仓储（不透传等于没改） |
+| 三个测试文件 | 仓储侧 **+1 条用例**（spy 断言三条片段读都带 `readings:false`）；复现服务 **+1 条用例**（断言四段参数逐字）；代码重建 **+1 条断言**（加强既有用例）。都是**断言调用形状**的行为断言，不是源码文本扫描 |
+
+**没有改动的消费方也逐点核过**：`getVersionCore`（批量卡片路径）**本来就**显式传 `readings: false`（`:4085-4091`）；
+窗口面板那条读在 `src/main/artifacts/ipc.ts:333-341` 显式传 `readings: true` 并附理由（「一个版本，一次文件读」）
+⇒ 面板仍拿得到读数，本单元只去掉「答案里装不下读数却照读一遍」的那 5 处。
+
+### 四 门禁（冻结树：隔离工作树 = `9ee97fe8` + 本轮 9 个路径，逐个 `diff` 校验与提交内容逐字节相同）
+
+**为什么用隔离工作树**：本轮跑到一半时**会话在 13:48:23 提交了 `9ee97fe8`**（`reading-journal.*`，与本轮路径不相交），
+主工作树上的全量读数在后半段**混进了它的在途改动** —— 实测同一棵树上先后得到 `15967` 与 `15968`，差的正是它新增的
+那条并发写入用例 ⇒ 按本仓「读数必须绑到具体提交」的口径，本节读数**全部取自隔离工作树**
+（`git worktree add --detach /tmp/ps-r6-wt 9ee97fe8` + 软链 `node_modules` + 注入本轮 9 个路径）。
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .`（全仓、CI 同口径） | **0 error / 118 warning**（本单元 7 个文件 0 problem；清掉上一轮遗留的 2 条 prettier warning：120 → 118） |
+| 双 typecheck（node / web） | **exit 0 / exit 0** |
+| 全量 vitest `--maxWorkers=4` | **1234 文件通过（16 skipped，共 1250）／15968 passed（207 skipped，共 16175）**，零失败，exit 0，409.23 s |
+| `scripts/pre-push-checks.sh` | 全过（品牌扫描 / README 双语同步 / CHANGELOG 条目 / 发布提醒） |
+| 定向 `vitest run src/main/artifacts` | **20 文件 / 273 passed**，exit 0（主工作树跑，文件内容与冻结树逐字节相同） |
+| 真机（真窗口 / e2e） | **未取**（本单元无窗口入口；`build:e2e` 会与会话抢 `out/` 且本机 8 GB、swap 已用 9.8 G/11.3 G）——具名立案，见 §六 |
+
+### 五 版本位点台账
+
+Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=false / 21 资产`）；`package.json` = **1.93.1**；
+本轮**未发版**、未改 `package.json` / 未动 9 语字典 / 未新增通道 / 未改 `.github/workflows/**`
+⇒ 本单元是 tag `v1.93.1` 以来**第一笔未发布内容**，下一个版本边界是 **v1.94.0**。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 看**本轮推送 tip** 的 `Windows Full Test` + `Nightly`（tip 若是纯 `docs/**` 前缀提交，
+   注意 `paths:` 过滤的读法：看**整次推送的改动集合**是否命中，命中则 run 的 `head_sha` = 推送 tip）；
+② 队列 B 段（A7 / S3 / M2）与批次 ①–③ 已耗尽 ⇒ 下一轮需从**新能力面**自拟单元（可离线判、差异化点能写成断言），
+   批次 ① 的「中文源连接器」继续挂账（四源只回 `text/html`，无机器可读契约）；
+③ 本单元**未取真机读数**（理由见 §四）：GB/T 7714 电子资源块的**真机导出路径**与 IC33 真审批夹具仍未取证，
+   内存有余量时优先补这两处；
+④ 8 GB 机内存仍是硬约束（本轮开工时空闲 ~112 MB、swap 9.8 G/11.3 G）⇒ 起 Electron 前先 `vm_stat` 判余量。
