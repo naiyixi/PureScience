@@ -1556,7 +1556,13 @@ const ArtifactProvenancePanel = ({
           <section className="space-y-3 p-5 text-sm" data-testid="artifact-readings">
             {provenance.readings.state === 'available' ? (
               <>
-                <p className="text-xs text-text-300">{t('ws.readingsIntro')}</p>
+                <p className="text-xs text-text-300">
+                  {/* The window is only promised when it was enforced: with no parseable `created_at`
+                      on the evidence the panel says so instead of claiming a window it never applied. */}
+                  {provenance.readings.attribution === 'session-window'
+                    ? t('ws.readingsIntro')
+                    : t('ws.readingsSessionOnly')}
+                </p>
                 <p className="text-xs text-text-300" data-testid="artifact-readings-recipe">
                   {t('ws.readingsRecipe').replace('{recipe}', READING_FINGERPRINT_HASH_RECIPE)}
                 </p>

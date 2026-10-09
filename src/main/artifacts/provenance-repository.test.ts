@@ -4341,6 +4341,18 @@ describe('artifact provenance repository', () => {
     const withLater = await repository.getVersionProvenance(request)
     expect(withLater.readings).toMatchObject({ items: [reading], afterWindow: 1 })
 
+    // No readable creation time on the evidence ⇒ the window cannot be enforced at all, so the record
+    // reports the weaker, honest claim (`session`) instead of a window it never applied.
+    await client.artifactVersion.update({
+      where: { id: 'version-1' },
+      data: {
+        evidenceJson: '{}',
+        evidenceChecksum: createHash('sha256').update('{}').digest('hex')
+      }
+    })
+    const noWindow = await repository.getVersionProvenance(request)
+    expect(noWindow.readings).toMatchObject({ attribution: 'session', afterWindow: 0 })
+
     // The listing path says it did not load rather than claiming nothing was recorded.
     const core = await repository.getVersionCore(request)
     expect(core.readings).toEqual({ state: 'unavailable', reason: 'not-loaded' })

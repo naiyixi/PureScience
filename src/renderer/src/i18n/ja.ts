@@ -4318,5 +4318,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.readingsNotLoaded': 'この表示では読み取りが読み込まれていません。',
   'ws.readingsUnreadable': '読み取りログを読み取れませんでした。',
   'ws.readingsAfterWindow':
-    'このセッションの残り {count} 件の読み取りは、この版の作成後に記録されたため上に表示していません。'
+    'このセッションの残り {count} 件の読み取りは、この版の作成後に記録されたため上に表示していません。',
+  'ws.readingsSessionOnly':
+    'このセッションが他のサービスから読み取った内容です。この版の記録には読み取り可能な作成時刻がないため、以下の読み取りはセッション全体にわたり、この版より前に限られません。'
 }

@@ -4351,5 +4351,7 @@ export const en: Record<ZhKey, string> = {
   'ws.readingsNotLoaded': 'Readings were not loaded for this view.',
   'ws.readingsUnreadable': 'The readings journal could not be read.',
   'ws.readingsAfterWindow':
-    '{count} later readings in this session were taken after this version was written and are not listed above.'
+    '{count} later readings in this session were taken after this version was written and are not listed above.',
+  'ws.readingsSessionOnly':
+    "What this session read from other services. This version's record carries no readable creation time, so the readings below are the whole session's and are NOT limited to what happened before it."
 }

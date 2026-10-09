@@ -4407,5 +4407,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.readingsNotLoaded': 'No se cargaron las lecturas para esta vista.',
   'ws.readingsUnreadable': 'No se pudo leer el registro de lecturas.',
   'ws.readingsAfterWindow':
-    'Otras {count} lecturas de esta sesión se registraron después de escribir esta versión y no figuran arriba.'
+    'Otras {count} lecturas de esta sesión se registraron después de escribir esta versión y no figuran arriba.',
+  'ws.readingsSessionOnly':
+    'Lo que esta sesión leyó de otros servicios. El registro de esta versión no incluye una hora de creación legible, así que las lecturas siguientes son de toda la sesión y NO se limitan a lo anterior a ella.'
 }

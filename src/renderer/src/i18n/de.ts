@@ -4453,5 +4453,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.readingsNotLoaded': 'Für diese Ansicht wurden keine Lesevorgänge geladen.',
   'ws.readingsUnreadable': 'Das Leseprotokoll konnte nicht gelesen werden.',
   'ws.readingsAfterWindow':
-    '{count} spätere Messwerte dieser Sitzung wurden nach dieser Version aufgezeichnet und sind oben nicht aufgeführt.'
+    '{count} spätere Messwerte dieser Sitzung wurden nach dieser Version aufgezeichnet und sind oben nicht aufgeführt.',
+  'ws.readingsSessionOnly':
+    'Was diese Sitzung von anderen Diensten gelesen hat. Der Datensatz dieser Version enthält keine lesbare Erstellungszeit, daher umfassen die folgenden Messwerte die gesamte Sitzung und sind NICHT auf die Zeit davor begrenzt.'
 }

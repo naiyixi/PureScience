@@ -4016,15 +4016,21 @@ class ArtifactProvenanceRepository {
         // so parsing them is exact; a stamp that will not parse is treated as outside the window and
         // counted, never silently promoted into `items`.
         const writtenAt = Date.parse(evidence.created_at)
+        // No parseable `created_at` on the evidence means the window cannot be enforced at all. The
+        // record is then reported as `session` — the honest, weaker claim — instead of `session-window`,
+        // so a surface cannot print "before this version was written" over a set it never filtered.
+        const windowKnown = Number.isFinite(writtenAt)
         const items: ConnectorReadingFingerprint[] = []
         let afterWindow = 0
         for (const entry of journal.entries) {
           const recordedAt = Date.parse(entry.recordedAt)
-          if (Number.isFinite(writtenAt) && Number.isFinite(recordedAt) && recordedAt > writtenAt) {
+          if (!Number.isFinite(recordedAt)) {
+            // An unparseable stamp cannot be placed in the window, so it is counted as outside rather
+            // than quietly promoted into the list.
             afterWindow += 1
             continue
           }
-          if (!Number.isFinite(recordedAt)) {
+          if (windowKnown && recordedAt > writtenAt) {
             afterWindow += 1
             continue
           }
@@ -4032,7 +4038,7 @@ class ArtifactProvenanceRepository {
         }
         readings = {
           state: 'available',
-          attribution: 'session-window',
+          attribution: windowKnown ? 'session-window' : 'session',
           items,
           dropped: journal.dropped,
           afterWindow

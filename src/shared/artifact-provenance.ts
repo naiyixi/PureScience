@@ -453,7 +453,13 @@ export type ArtifactVersionProvenance = {
   readings:
     | {
         state: 'available'
-        attribution: 'session-window'
+        /**
+         * `session-window` when the window could be enforced (the Version's evidence carries a
+         * parseable `created_at`); `session` when it could NOT, in which case every reading of the
+         * session is listed and the surface must say that the window is missing rather than print a
+         * promise it cannot keep.
+         */
+        attribution: 'session-window' | 'session'
         /** Readings recorded at or before this Version's `created_at`. */
         items: ConnectorReadingFingerprint[]
         /** Entries the journal dropped to stay inside its cap, so a short list is explainable. */

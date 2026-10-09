@@ -4250,5 +4250,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.readingsNotLoaded': '이 보기에서는 읽기 기록을 불러오지 않았습니다.',
   'ws.readingsUnreadable': '읽기 로그를 읽을 수 없습니다.',
   'ws.readingsAfterWindow':
-    '이 세션의 나머지 {count}개 읽기는 이 버전이 작성된 뒤에 기록되어 위에 표시되지 않습니다.'
+    '이 세션의 나머지 {count}개 읽기는 이 버전이 작성된 뒤에 기록되어 위에 표시되지 않습니다.',
+  'ws.readingsSessionOnly':
+    '이 세션이 다른 서비스에서 읽은 내용입니다. 이 버전의 기록에 읽을 수 있는 생성 시각이 없어, 아래 읽기는 세션 전체에 해당하며 이 버전 이전으로 한정되지 않습니다.'
 }

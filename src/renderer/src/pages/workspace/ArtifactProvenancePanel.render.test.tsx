@@ -1153,6 +1153,36 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.querySelector('[data-testid="artifact-readings-after-window"]')).toBeNull()
   })
 
+  it('drops the window promise when the version carries no readable creation time', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: {
+        state: 'available',
+        attribution: 'session',
+        items: [],
+        dropped: 0,
+        afterWindow: 0
+      }
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    const intro = container.querySelector('[data-testid="artifact-readings"]')?.textContent ?? ''
+    expect(intro).toContain('no readable creation time')
+    expect(intro).toContain("the whole session's")
+    // The window sentence must not appear: it would promise a filter that was never applied.
+    expect(intro).not.toContain('before this version was written')
+  })
+
   it('walks a reader back to what the session read, recipe and window included', async () => {
     act(() => root.unmount())
     container.replaceChildren()
