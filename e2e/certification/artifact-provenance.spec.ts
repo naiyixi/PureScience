@@ -71,7 +71,7 @@ test('the provenance panel shows what the session read, recipe and window includ
 }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
-  await createProject(page, 'Artifact readings evidence')
+  const readingsProjectId = await createProject(page, 'Artifact readings evidence')
   await sendPrompt(
     page,
     'Create a provenance artifact.',
@@ -84,7 +84,36 @@ test('the provenance panel shows what the session read, recipe and window includ
     /^Artifact provenance verified for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )
   if (!identity) throw new Error(`Invalid Artifact provenance receipt: ${receipt}`)
-  const [, appSessionId, artifactId] = identity
+  const [, appSessionId, artifactId, versionId] = identity
+
+  // The run that produced this Version, asked of the app itself (never hardcoded): the seeded reading
+  // below carries the same id, so the panel's run attribution can be asserted on a real window.
+  const producerRunId = await page.evaluate(
+    async (request) => {
+      const bridge = globalThis as unknown as {
+        api: {
+          artifacts: {
+            getVersionProvenance: (r: {
+              projectId: string
+              appSessionId: string
+              artifactId: string
+              versionId: string
+            }) => Promise<{ evidence?: { producer?: { producer_run_id?: string } } }>
+          }
+        }
+      }
+      const provenance = await bridge.api.artifacts.getVersionProvenance(request)
+      return provenance.evidence?.producer?.producer_run_id ?? null
+    },
+    {
+      projectId: readingsProjectId,
+      appSessionId: appSessionId!,
+      artifactId: artifactId!,
+      versionId: versionId!
+    }
+  )
+  console.log(`[readings] producer run for this version: ${String(producerRunId)}`)
+  if (!producerRunId) throw new Error('Expected the Version to name its producer run.')
 
   // The journal is seeded at the exact path the app's own write path uses
   // (`<storage root>/.connector-readings/<sessionId>.json`), so this reading covers the display half on
@@ -120,6 +149,7 @@ test('the provenance panel shows what the session read, recipe and window includ
           // `created_at`, so a seed stamped "now" (after the Version exists) would — correctly — not be
           // listed. A fixed past stamp keeps this entry in the window on any runner.
           recordedAt: new Date(Date.now() - 3_600_000).toISOString(),
+          runId: producerRunId,
           reading: {
             service: 'pubmed',
             tool: 'search_articles',
@@ -175,6 +205,9 @@ test('the provenance panel shows what the session read, recipe and window includ
   // in-window one) and the later one is reported by count rather than silently missing.
   await expect(page.getByTestId('artifact-readings-item')).toHaveCount(1)
   await expect(page.getByTestId('artifact-readings-after-window')).toContainText('1 later reading')
+  // The run attribution is a promise on screen as well: the seeded entry carries this Version's own
+  // producer run id, so exactly that reading is marked — and the id came from the app, not a constant.
+  await expect(page.getByTestId('artifact-readings-same-run')).toHaveCount(1)
   console.log(
     `[readings] recipe line: ${await page.getByTestId('artifact-readings-recipe').innerText()}`
   )
