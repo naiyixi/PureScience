@@ -20,7 +20,10 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { ConnectorReadingFingerprint } from '../../shared/reading-fingerprint'
+import {
+  isReadingFingerprint,
+  type ConnectorReadingFingerprint
+} from '../../shared/reading-fingerprint'
 
 export const CONNECTOR_READINGS_DIR = '.connector-readings'
 
@@ -77,13 +80,23 @@ export const readSessionReadings = async (
     if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.entries)) {
       return { state: 'unavailable', reason: 'unreadable' }
     }
-    const entries = parsed.entries.filter(
-      (entry): entry is SessionReadingEntry =>
-        typeof entry === 'object' &&
-        entry !== null &&
-        typeof (entry as SessionReadingEntry).recordedAt === 'string' &&
-        typeof (entry as SessionReadingEntry).reading === 'object'
-    )
+    const entries: SessionReadingEntry[] = []
+    for (const entry of parsed.entries) {
+      if (typeof entry !== 'object' || entry === null) {
+        return { state: 'unavailable', reason: 'unreadable' }
+      }
+      const candidate = entry as SessionReadingEntry
+      if (typeof candidate.recordedAt !== 'string') {
+        return { state: 'unavailable', reason: 'unreadable' }
+      }
+      // A digest that is not a well-formed fingerprint cannot be recomputed by anyone, so serving it
+      // as a reading would advertise a check that cannot be performed. Fail closed instead: the
+      // projection already says `unreadable` for exactly this.
+      if (!isReadingFingerprint(candidate.reading)) {
+        return { state: 'unavailable', reason: 'unreadable' }
+      }
+      entries.push(candidate)
+    }
     return {
       state: 'available',
       entries,

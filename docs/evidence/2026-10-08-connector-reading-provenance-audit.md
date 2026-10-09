@@ -106,4 +106,23 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 1. **这是会话+时间窗的归属，不是「哪次 run 因果生成了它」。** 连接器服务只拿得到 `sessionId`，**拿不到 run id**；而 run id 若来自 RPC 参数就是不可信输入（`ConnectorCallContext` 的注释写明这类字段只能由主进程登记册填）。⇒ 投影里必须把归属口径**写出来**（available 时附 `attribution: 'session-window'`），不许让它读起来像逐 run 的因果链。
 2. **`sections` 签名**：`getVersionProvenance(request, sections)` 的 `sections` 是**必传全量字面量**（`{execution, messages, review}`）。加一个 `readings` 段会让既有调用点静默不加载 ⇒ 要么**同批改所有调用点**，要么**无条件加载**（一次小文件读，该函数本来就有多次 DB 查询与文件读）。这是本次手术真正的风险面，动之前先数调用点。
 
+---
+
+## 六、事后自查（2026-10-09）：我自己留下的两处，逐条处理
+
+### 1. v1.93.0 的对外文案**越前于界面** —— 已由执行器补齐，不是我的功劳
+
+我在 v1.93.0 的横幅与 CHANGELOG「你现在能看到的」里写了「打开产物溯源，读数那一段不再是空的」。**当时没有任何界面画它**：投影字段有了，**界面半边没有** —— 正是仓规点名的那一类失真（能力本体在、界面上找不到）。执行器抓到并补了：提交 `9a3bfef7`（面板新增「读数」分区，渲染配方常量 + 逐条读数）+ **v1.93.1 已发布**（`draft=false` / `isPrerelease=false` / 21 资产 / 正文自称"补齐 v1.93.0 正文承诺的界面半边"）。
+
+**教训（写给下一次）**：一个投影字段等于「能力」这个判断是错的 —— 本轮我自己就在 ②③ 里写过"读数随结果回到调用方"却**没有落盘**，说明"数据存在于某一层"与"用户能看见/能用"是两件事。**带界面的能力，验收必须走一遍真机 UI 路径**（本轮没走，因为当时判断"这是投影不是界面"，这个判断本身就是错的）。
+
+### 2. 我留下了**没有消费方的导出**（死代码）—— 本轮收掉
+
+`verifyConnectorReadingFingerprint()`（四态判决）、`readingsFromConnectorResult()`、`READING_FINGERPRINT_GAPS` / `ReadingFingerprintGap` / `ReadingFingerprintVerdict` 在全树**没有任何生产消费方**（面板只 import 了配方常量 `READING_FINGERPRINT_HASH_RECIPE`）。按仓规「**提交里不留死代码**」，本轮：
+
+- **撤掉**上述判决器与结果读取器（含它们的用例），并在模块头写明**为什么撤**：本模块的承诺是「**配方已发布，任何人（含仓外）都能复算**」，界面把配方常量与摘要一起渲染出来正是为了这个；再发一个**没人调用**的校验器，与"没人读的字段"是同一个错。
+- **保留并接上** `isReadingFingerprint()`：日志读取路径现在用它做**形状守卫** —— 摘要不是合法指纹时整份日志报 `unreadable`（**fail-closed**），而不是把一个**谁也复算不了**的摘要当读数端上屏（那等于宣称一次做不到的核对）。新增用例钉住这一条。
+
+**不变的部分**：`READING_FINGERPRINT_HASH_RECIPE`（配方）、`sha256:<64hex>` 格式、`ConnectorReadingFingerprint` 形状、`attachReadingFingerprints()`（`service.ts` 在用）。② 的四条判据**不受影响** —— 其中「可由任何人离线复算」靠的是**已发布的配方 + 记录在案的摘要**，本轮真机读数（外部人手写实现复算 `identical = true`）仍然是它的证据。
+
 

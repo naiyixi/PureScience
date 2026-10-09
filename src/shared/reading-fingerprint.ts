@@ -15,8 +15,11 @@
 //    worth recording.
 // 3. "No fingerprint was recorded" is a NAMED gap (`not-recorded`), never an empty string, a zero or an
 //    `unknown` that a reader could mistake for a check that ran and passed.
-// 4. The verifier returns a verdict, not a boolean: `verified` carries the fingerprint that matched,
-//    `unavailable` names why it could not be checked and, on a mismatch, what the bytes hash to NOW.
+// 4. There is deliberately NO in-app verifier. One was written (four verdicts: verified /
+//    not-recorded / malformed / mismatch) and then withdrawn, because nothing called it: the promise
+//    this module makes is that anyone — inside the app or not — can recompute the digest from the
+//    published recipe, and the surface renders the recipe and the digest for exactly that. Shipping a
+//    checker nobody invokes would be the same mistake as a field nobody reads.
 //
 // Nothing here touches node:crypto — this module is shared with the renderer, which never hashes. The
 // digest is computed in the main process; the shared layer owns the recipe, the shape and the verdict.
@@ -33,22 +36,6 @@ export const READING_FINGERPRINT_HASH_RECIPE = 'purescience-connector-reading-v1
 export const READING_FINGERPRINT_PREFIX = 'sha256:'
 
 export const READING_FINGERPRINT_PATTERN = /^sha256:[a-f0-9]{64}$/
-
-/**
- * Why a reading carries no fingerprint, or cannot be checked. Named on purpose: `not-recorded` says the
- * app never took one (an older session, a call that never left the process), which is a different
- * statement from `fingerprint-mismatch` — the bytes are there and they are not what was recorded.
- */
-export const READING_FINGERPRINT_GAPS = [
-  // No fingerprint was recorded for this reading. Reported, never treated as a match.
-  'not-recorded',
-  // A fingerprint is present but is not a well-formed digest, so nothing can be checked against it.
-  'malformed-fingerprint',
-  // The bytes on hand hash to something else than the recorded fingerprint.
-  'fingerprint-mismatch'
-] as const
-
-export type ReadingFingerprintGap = (typeof READING_FINGERPRINT_GAPS)[number]
 
 export type ConnectorReadingFingerprint = {
   /** The connector the reading came from, e.g. `pubmed`. */
@@ -67,18 +54,6 @@ export type ConnectorReadingFingerprint = {
     sha256: string
   }
 }
-
-export type ReadingFingerprintVerdict =
-  | { status: 'verified'; fingerprint: string }
-  | {
-      status: 'unavailable'
-      reason: ReadingFingerprintGap
-      /**
-       * Present for `fingerprint-mismatch`: what the bytes hash to now. So the reader can see that the
-       * bytes changed rather than that the check was skipped.
-       */
-      fingerprintNow?: string
-    }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -100,32 +75,6 @@ export const isReadingFingerprint = (value: unknown): value is ConnectorReadingF
     typeof response.sha256 === 'string' &&
     READING_FINGERPRINT_PATTERN.test(response.sha256)
   )
-}
-
-/**
- * Check a recorded reading against the bytes someone else has.
- *
- * `recomputed` is what the caller worked out with the published recipe — this function never hashes, so
- * it can be shared with the renderer, which is exactly the point: it can only confirm a value the caller
- * derived, never invent one.
- */
-export const verifyConnectorReadingFingerprint = (
-  recorded: ConnectorReadingFingerprint | undefined,
-  recomputed: string | undefined
-): ReadingFingerprintVerdict => {
-  if (!recorded) return { status: 'unavailable', reason: 'not-recorded' }
-  const expected = recorded.response.sha256
-  if (!READING_FINGERPRINT_PATTERN.test(expected)) {
-    return { status: 'unavailable', reason: 'malformed-fingerprint' }
-  }
-  if (typeof recomputed !== 'string' || !READING_FINGERPRINT_PATTERN.test(recomputed)) {
-    // No recomputation was supplied: nothing was compared, so nothing is verified.
-    return { status: 'unavailable', reason: 'not-recorded' }
-  }
-  if (recomputed !== expected) {
-    return { status: 'unavailable', reason: 'fingerprint-mismatch', fingerprintNow: recomputed }
-  }
-  return { status: 'verified', fingerprint: expected }
 }
 
 /**
@@ -153,14 +102,4 @@ export const attachReadingFingerprints = <T>(
   if (!isRecord(value)) return value
   if (readings.length === 0) return value
   return { ...value, [CONNECTOR_READING_RESULT_KEY]: readings } as T
-}
-
-/** The readings a connector result carries, or an empty list. Never throws on a foreign shape. */
-export const readingsFromConnectorResult = (
-  value: unknown
-): readonly ConnectorReadingFingerprint[] => {
-  if (!isRecord(value)) return []
-  const raw = value[CONNECTOR_READING_RESULT_KEY]
-  if (!Array.isArray(raw)) return []
-  return raw.filter(isReadingFingerprint)
 }

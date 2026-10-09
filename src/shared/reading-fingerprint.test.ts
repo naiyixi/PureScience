@@ -12,8 +12,6 @@ import {
   READING_FINGERPRINT_SCHEMA_VERSION,
   attachReadingFingerprints,
   isReadingFingerprint,
-  readingsFromConnectorResult,
-  verifyConnectorReadingFingerprint,
   type ConnectorReadingFingerprint
 } from './reading-fingerprint'
 
@@ -46,10 +44,9 @@ describe('the published recipe can be recomputed outside the app', () => {
     expect(r.response.sha256).toBe(
       recompute('GET', 'https://example.test/esearch?term=aspirin', 200, '{"count":"80708"}')
     )
-    expect(verifyConnectorReadingFingerprint(r, r.response.sha256)).toEqual({
-      status: 'verified',
-      fingerprint: r.response.sha256
-    })
+    // No in-app verifier to call: the recipe IS the contract, and the surface renders it with the
+    // digest so a reader recomputes it themselves. See the module header for why one was withdrawn.
+    expect(isReadingFingerprint(r)).toBe(true)
   })
 
   it('separates the method, the url and the status into the digest', () => {
@@ -58,40 +55,6 @@ describe('the published recipe can be recomputed outside the app', () => {
     expect(recompute('GET', 'https://example.test/b', 200, 'x')).not.toBe(base)
     expect(recompute('GET', 'https://example.test/a', 404, 'x')).not.toBe(base)
     expect(recompute('GET', 'https://example.test/a', 200, 'y')).not.toBe(base)
-  })
-})
-
-describe('a missing fingerprint is a named gap, never a pass', () => {
-  it('says `not-recorded` when there is no reading at all', () => {
-    expect(verifyConnectorReadingFingerprint(undefined, undefined)).toEqual({
-      status: 'unavailable',
-      reason: 'not-recorded'
-    })
-  })
-
-  it('says `not-recorded` when nothing was recomputed — an unchecked reading is not a verified one', () => {
-    expect(verifyConnectorReadingFingerprint(reading(), undefined)).toEqual({
-      status: 'unavailable',
-      reason: 'not-recorded'
-    })
-  })
-
-  it('names a malformed digest instead of comparing against it', () => {
-    const broken = reading({ response: { status: 200, bytes: 1, sha256: 'sha256:not-hex' } })
-    expect(verifyConnectorReadingFingerprint(broken, broken.response.sha256)).toEqual({
-      status: 'unavailable',
-      reason: 'malformed-fingerprint'
-    })
-  })
-
-  it('reports a mismatch together with what the bytes hash to now', () => {
-    const r = reading()
-    const now = recompute('GET', r.request.url, 200, '{"count":"0"}')
-    expect(verifyConnectorReadingFingerprint(r, now)).toEqual({
-      status: 'unavailable',
-      reason: 'fingerprint-mismatch',
-      fingerprintNow: now
-    })
   })
 })
 
@@ -110,14 +73,6 @@ describe('shape guards refuse a fingerprint that could not be recomputed', () =>
     expect(isReadingFingerprint({ ...reading(), request: { method: 'DELETE', url: 'x' } })).toBe(
       false
     )
-  })
-
-  it('reads back only the entries that are well-formed', () => {
-    expect(
-      readingsFromConnectorResult({ [CONNECTOR_READING_RESULT_KEY]: [reading(), { junk: true }] })
-    ).toEqual([reading()])
-    expect(readingsFromConnectorResult({ [CONNECTOR_READING_RESULT_KEY]: 'nope' })).toEqual([])
-    expect(readingsFromConnectorResult(null)).toEqual([])
   })
 })
 

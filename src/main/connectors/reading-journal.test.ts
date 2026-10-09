@@ -106,6 +106,23 @@ describe('the connector reading journal', () => {
     })
   })
 
+  it('refuses a journal whose digest is not a well-formed fingerprint, rather than serving it', async () => {
+    await recordSessionReadings(root, 'session-1', [reading('first')])
+    const { readFile, writeFile } = await import('node:fs/promises')
+    const path = join(root, CONNECTOR_READINGS_DIR, 'session-1.json')
+    const journal = JSON.parse(await readFile(path, 'utf8')) as {
+      entries: { reading: { response: { sha256: string } } }[]
+    }
+    // A digest nobody could recompute: presenting it as a reading would advertise a check that cannot
+    // be performed, so the whole journal is reported unreadable instead.
+    journal.entries[0].reading.response.sha256 = 'not-a-fingerprint'
+    await writeFile(path, JSON.stringify(journal), 'utf8')
+    expect(await readSessionReadings(root, 'session-1')).toEqual({
+      state: 'unavailable',
+      reason: 'unreadable'
+    })
+  })
+
   it('records nothing for an empty reading list, so no empty journal appears', async () => {
     expect(await recordSessionReadings(root, 'session-1', [])).toBe(false)
     expect(await readSessionReadings(root, 'session-1')).toEqual({
