@@ -4267,6 +4267,10 @@ describe('artifact provenance repository', () => {
         filename: 'plot.png'
       }
     })
+    // ONE evaluation of the clock for both the row's bytes and its checksum: two `Date.now()` calls
+    // straddling a millisecond boundary would mint a checksum that disagrees with the row by one
+    // character, and the repository would (correctly) report the fixture as corrupt evidence.
+    const evidenceCreatedAt = new Date(Date.now() - 3_600_000).toISOString()
     await client.artifactVersion.create({
       data: {
         id: 'version-1',
@@ -4286,11 +4290,9 @@ describe('artifact provenance repository', () => {
         checksum: 'a'.repeat(64),
         // The window is read off the evidence's own created_at, so the fixture carries a real one:
         // an empty evidence object would leave the window unknowable and the read would fail open.
-        evidenceJson: JSON.stringify({
-          created_at: new Date(Date.now() - 3_600_000).toISOString()
-        }),
+        evidenceJson: JSON.stringify({ created_at: evidenceCreatedAt }),
         evidenceChecksum: createHash('sha256')
-          .update(JSON.stringify({ created_at: new Date(Date.now() - 3_600_000).toISOString() }))
+          .update(JSON.stringify({ created_at: evidenceCreatedAt }))
           .digest('hex')
       }
     })
