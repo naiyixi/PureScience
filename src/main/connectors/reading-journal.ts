@@ -13,9 +13,14 @@
 //    window, never left to assume per-run causality.
 // 2. Recording NEVER throws into the call path. A connector call that succeeded must not fail because a
 //    journal write did, so every failure here is swallowed and the absence surfaces later as
-//    `not-recorded` — the same gap vocabulary the fingerprint verdict uses.
+//    `not-recorded`. (One consequence, stated rather than hidden: a failed write is indistinguishable
+//    from a session that read nothing. Recording is best-effort by construction and the rule above is
+//    why.)
 // 3. Bounded, and it says so. The journal answers "what was read in this session", so it keeps the
 //    newest entries and reports how many it dropped instead of growing without limit.
+// 4. One writer at a time per journal. Parallel connector calls in one session are ordinary, and a
+//    plain read-modify-write loses every entry but the last — silently, with `dropped` still reporting
+//    0. That is the failure this whole module exists to prevent, so writes are serialised (below).
 
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -61,6 +66,26 @@ const isSafeSegment = (value: string): boolean =>
 
 const journalPath = (root: string, sessionId: string): string =>
   join(root, CONNECTOR_READINGS_DIR, `${sessionId}.json`)
+
+// The tail of the write chain per journal path. Main is the only writer (see the header), so an
+// in-process queue is enough: no lock file, and no second process to coordinate with.
+const journalWriteTails = new Map<string, Promise<void>>()
+
+const serialisePerJournal = <T>(key: string, work: () => Promise<T>): Promise<T> => {
+  const previous = journalWriteTails.get(key) ?? Promise.resolve()
+  // Run whether or not the previous write settled well: one failed write must not block the rest.
+  const run = previous.then(work, work)
+  const tail = run.then(
+    () => undefined,
+    () => undefined
+  )
+  journalWriteTails.set(key, tail)
+  // Drop the entry once this is the last write in the chain, so the map does not grow per session.
+  void tail.then(() => {
+    if (journalWriteTails.get(key) === tail) journalWriteTails.delete(key)
+  })
+  return run
+}
 
 /** Read a session's journal. A missing file is `not-recorded` — never an empty success. */
 export const readSessionReadings = async (
@@ -123,29 +148,31 @@ export const recordSessionReadings = async (
 ): Promise<boolean> => {
   if (readings.length === 0) return false
   if (!isSafeSegment(sessionId)) return false
-  try {
-    const existing = await readSessionReadings(root, sessionId)
-    const previous = existing.state === 'available' ? existing.entries : []
-    const droppedBefore = existing.state === 'available' ? existing.dropped : 0
-    const stamp = now().toISOString()
-    const appended = [...previous, ...readings.map((reading) => ({ recordedAt: stamp, reading }))]
-    const overflow = Math.max(0, appended.length - MAX_SESSION_READINGS)
-    const journal: SessionReadingJournal = {
-      schemaVersion: 1,
-      sessionId,
-      entries: overflow > 0 ? appended.slice(overflow) : appended,
-      dropped: droppedBefore + overflow
-    }
+  const target = journalPath(root, sessionId)
+  return serialisePerJournal(target, async () => {
+    try {
+      const existing = await readSessionReadings(root, sessionId)
+      const previous = existing.state === 'available' ? existing.entries : []
+      const droppedBefore = existing.state === 'available' ? existing.dropped : 0
+      const stamp = now().toISOString()
+      const appended = [...previous, ...readings.map((reading) => ({ recordedAt: stamp, reading }))]
+      const overflow = Math.max(0, appended.length - MAX_SESSION_READINGS)
+      const journal: SessionReadingJournal = {
+        schemaVersion: 1,
+        sessionId,
+        entries: overflow > 0 ? appended.slice(overflow) : appended,
+        dropped: droppedBefore + overflow
+      }
 
-    const directory = join(root, CONNECTOR_READINGS_DIR)
-    await mkdir(directory, { recursive: true })
-    // Atomic: a reader never sees a half-written journal, and a crash mid-write leaves the old one.
-    const target = journalPath(root, sessionId)
-    const temporary = `${target}.${process.pid}.tmp`
-    await writeFile(temporary, JSON.stringify(journal), 'utf8')
-    await rename(temporary, target)
-    return true
-  } catch {
-    return false
-  }
+      const directory = join(root, CONNECTOR_READINGS_DIR)
+      await mkdir(directory, { recursive: true })
+      // Atomic: a reader never sees a half-written journal, and a crash mid-write leaves the old one.
+      const temporary = `${target}.${process.pid}.tmp`
+      await writeFile(temporary, JSON.stringify(journal), 'utf8')
+      await rename(temporary, target)
+      return true
+    } catch {
+      return false
+    }
+  })
 }

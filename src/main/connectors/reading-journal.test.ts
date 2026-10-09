@@ -131,3 +131,24 @@ describe('the connector reading journal', () => {
     })
   })
 })
+
+describe('the journal under concurrent writes', () => {
+  it('keeps every reading when connector calls overlap in one session', async () => {
+    // Parallel tool calls happen in a real session. If the read-modify-write races, one call's entries
+    // are dropped while `dropped` still reports 0 — a loss that reads as completeness, which is the
+    // exact failure this journal exists to prevent.
+    const calls = Array.from({ length: 8 }, (_, index) => [reading(`p${index}`)])
+    await Promise.all(calls.map((readings) => recordSessionReadings(root, 'session-1', readings)))
+
+    const result = await readSessionReadings(root, 'session-1')
+    expect(result.state).toBe('available')
+    if (result.state !== 'available') return
+    expect(result.entries.map((entry) => entry.reading.tool).sort()).toEqual(
+      calls
+        .flat()
+        .map((r) => r.tool)
+        .sort()
+    )
+    expect(result.dropped).toBe(0)
+  })
+})
