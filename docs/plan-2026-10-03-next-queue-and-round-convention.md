@@ -1811,3 +1811,98 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 ③ 本单元**未取真机读数**（理由见 §四）：GB/T 7714 电子资源块的**真机导出路径**与 IC33 真审批夹具仍未取证，
    内存有余量时优先补这两处；
 ④ 8 GB 机内存仍是硬约束（本轮开工时空闲 ~112 MB、swap 9.8 G/11.3 G）⇒ 起 Electron 前先 `vm_stat` 判余量。
+
+## 四十、本轮追加（执行器，2026-10-09 20:2x–）—— 索引读数的两种「空」分了名；v1.94.1 首发红在 `Build macos-x64`（抖动）⇒ 删 tag 重建后已发布
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 开工时 `HEAD == origin/main == ad9c9b42`（**会话 19:29 的 v1.94.1 发版提交**）。`git status --short` **干净**，
+  进程表无 `electron-vite` / `vitest` / `playwright` ⇒ 开工时会话空闲（它在本轮中途又两次落笔，见 §一、§五）。
+- **防重做**：逐笔核过 `git log` —— 会话已把 v1.94.0（`5ba82978`）与 v1.94.1（`ad9c9b42`）两次发版做完，
+  并更正了交接档里「读数分区真机读数未取」那处失真（`c002876e`）；B 段（A7 / S3 / M2）与批次 ①–③
+  按档内复核**均无未开工条目**（`plan-2026-10-08-batch-convergence.md` 逐条结论 + 批次 2 档）⇒
+  本轮从**新能力面自拟单元**（口径：可离线判、差异化点能写成断言），**避开**会话正在做的溯源/读数线。
+
+### 一 v1.94.1 首发红在 `Build macos-x64`：基础设施抖动 ⇒ 删 tag 重建（无页可保）
+
+| 项 | 读数 |
+| --- | --- |
+| 首发 run | `37924685035`：`Release preflight` success ／ `Verify (lint+typecheck+test+package)` success ／ windows-x64 success ／ linux-x64 success ／ **`Build macos-x64` failure** |
+| 失败原文 | `⨯ Timeout awaiting 'request' for 600000ms`（`failedTask=build`，出自 `got` 的 `timed-out.js`，紧跟在 electron 工具链下载之后）⇒ **取工具链的下载超时＝基础设施抖动**，不是代码、也不是被测产品 |
+| 当时的页 | `gh release view v1.94.1` = **release not found**（`publish` 的 `if:` 要求 `needs.build.result == 'success'` ⇒ 必然 skipped，页与资产都不落） |
+| 本轮动作 | 20:26 删远端 tag 并**重建附注 tag**：提交仍是 `ad9c9b42`、原 tag 消息逐字复用（`git for-each-ref --format='%(contents)'` 取回）、pre-push 全过 ⇒ 全新 tag 事件 run `37930088445` |
+| **会话同批也重建了一次** | 会话在 20:28:49 又推了一次同名 tag（远端 tag 对象 `724db7d8` → **`e2f8a312`**，peeled commit 仍 = `ad9c9b42`）⇒ 本轮那条 run 被它按 `cancel-in-progress` 取消，**在跑的 run 变成 `37930294683`**。两边效果相同（全新 tag 创建事件 + 同一提交），归属如实记此：**最终判决取 `37930294683`** |
+| 抖动定性有读数支撑 | 重建 run 里**同一提交**的 `Build macos-x64` = **success**（21:08 读数），四个平台随后全 success ✅ ⇒ 首发那次是抖动，**不是**推断 |
+| `ad9c9b42` 的 Nightly | run `37924670881` = **failure**，作业级读数与首发 Release **同因**（`Build macos-x64` failure、`publish` skipped）⇒ 同一笔抖动；它不否定任何已发布资产 |
+
+### 二 v1.94.1 发布核验（21:29 实取，按「发布核验」常驻口径）
+
+| 项 | 读数 |
+| --- | --- |
+| Release 页 | `v1.94.1`：`draft=false` / `isPrerelease=false` / **21 资产** / `gh release list` 首行 = **Latest**（`publishedAt 2026-10-09T13:25:45Z`） |
+| 资产齐 | mac arm64·x64 各 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+blockmap+zip，外加 `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / `latest.yml` / `latest-linux.yml` / `latest-mac.yml` / `arm64-mac.yml` / `x64-mac.yml` |
+| 页 ↔ 提交绑死 | `RELEASE-CERTIFICATION.json` 的 `sourceSha = ad9c9b42354eeade114e5ef5919b412f3c138342`，与 `git rev-parse 'v1.94.1^{commit}'` **逐字符一致** |
+| 发布页正文 | **26,379 字节**、`release-notes:` 噪声行 **0** |
+| 签名/公证 | 两条 mac 记录 `macSignature: unsigned` + `credentialsPresent: false`；`notarize-mac` 两条作业是**具名 skipped**（作业名逐字写着 `SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)`）⇒ **不声称已签名/已公证** |
+| 发布后 smoke | `windows-upgrade-smoke` = **success**（若它曾超时，口径是先 `gh run rerun <id> --failed` 判抖动，不重打 tag） |
+
+### 三 本单元：面板把两种不同的「空」合成了一句话（说了比知道的多）
+
+索引读数的共享类型本来就带着一对字段 —— `present`（索引到底在不在）与 `measuredAt`（**哪一次测量得出的**）——
+而面板只用了前者：只要 `present` 为假就印「尚未建立索引，检索会现场扫描文件」（en：`No index built yet - …`）。
+真实形状是：**本次启动还没有跑过任何一次测量时，读数根本没有时间戳**，此时那句「尚未建立索引」是对**世界**的断言，
+而读数并不知道（索引可能存在，只是这次启动还没读过它）——`snapshot` 的初值正是 `present:false` + 无 `measuredAt`。
+触发面是真实的：查询路径把 tick 当 fire-and-forget 发出去，而响应里的读数取自**此刻**的快照 ⇒
+应用启动后的第一次检索拿到的就是「未测量」的那一份。
+
+| 文件 | 改动 |
+| --- | --- |
+| `src/renderer/src/components/global-search/GlobalSearchDialog.tsx` | `present === false` 时按 `measuredAt` 分岔：缺席 ⇒ 新槽 `gs-index-not-measured`；有 ⇒ 保留原槽 `gs-index-absent`。`present === true` 一路与改前**逐字一致**；两种「空」都**不印任何数字** |
+| `src/renderer/src/i18n/{en,zh,zh-Hant,ja,ko,de,es,fr,ru}.ts` | 新键 `gs.indexNotMeasured`（各 1 条；zh ≠ en、zh-Hant 全繁体）：en「No index reading yet - searching scans the live files」／zh「尚未读取索引读数，检索会现场扫描文件」 |
+| `GlobalSearchDialog.test.tsx` | 既有那条用例的夹具**补上 `measuredAt`** —— 它本来要测的就是「跑过一次、确实没有索引」，补上之后才真的在测那一句；另**新增一条**「未测量」用例；两条各带**反向断言**（另一句不得出现、计数槽不得出现）⇒ 只紧不放 |
+| `e2e/certification/search-index-coverage.spec.ts` | 那条真机读数此前只在 absent 槽上取文案，改后若不点就会退化成 `(absent notice not shown)`（**等于把一条读数弄丢**）⇒ 改成**点名**屏幕上出现的是哪一句（`not-measured: …` / `measured-no-index: …`） |
+
+**零新增状态、零新增通道、零契约计数涟漪** —— 用的就是共享类型上已有、且渲染层早就读过一次的那个字段
+（《索引更新于 N 分钟前》读的就是 `measuredAt`）。
+
+### 四 门禁（隔离工作树 = 提交 `8cb92e2a`：`git worktree add --detach` + 软链 `node_modules`）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（`src/renderer/src/components/global-search` + `src/renderer/src/i18n`） | **11 文件 / 131 passed**，exit 0 |
+| 单条复核（`-t "not measured yet"`） | **1 passed / 38 skipped**（新用例确实在跑） |
+| `typecheck:node` / `typecheck:web` | **exit 0 / exit 0** |
+| `eslint --no-cache`（本单元 12 个触碰文件） | **0 problem** |
+| `node scripts/i18n-coverage.mjs --min 99.5` | **九语各 3762 键 / 100.0%**，OK |
+| 全量 vitest `--maxWorkers=4`（隔离工作树） | **1234 文件通过（16 skipped，共 1250）／15970 passed（207 skipped，共 16177）**，零失败，exit 0，499.81 s |
+| `scripts/pre-push-checks.sh`（推送时由 hook 实跑） | 全过（品牌扫描零命中 / README 双语一致 / 版本横幅 v1.94.1 / CHANGELOG 条目） |
+| 真机（真窗口 / e2e） | **未取**：本机空闲物理页 4675（≈73 MB）、swap 已用 5.16 G / 6.14 G ⇒ 起动 `build:e2e` + Electron 无余量 ⇒ **具名立案**（见 §六 遗留 1） |
+
+### 五 CI 逐笔点名（按完整 40 位 SHA；`cancelled` 不算绿）
+
+| 提交 | 判决 |
+| --- | --- |
+| **`8cb92e2a`（本轮，代码）** | `Windows Full Test` run `37931763534` = **success，8/8 分片全 success**（含 `4/8`、`5/8` ⇒ 那两支又各多一条连续绿读数）；`Nightly` run `37931764214` = **cancelled**（见下条），**无判决** |
+| `2ca32b4c`（**会话**，21:32:45 推：`fix(provenance)` 窗不可强制时不再印那句承诺） | run `37937604528`(Nightly) / `37937604257`(Windows) **in_progress** ⇒ **下一轮第一件事就是读它**；**它就是包含 `8cb92e2a` 的那一笔**（`8cb92e2a` 是它的父提交）⇒ 本轮提交的 CI 证据由它的双绿给出（CI 跑整棵树而不是 diff） |
+| `ad9c9b42`（会话：v1.94.1 发版提交） | Windows `37924670450` success；Nightly `37924670881` **failure**（= §一 同因抖动）；Release `37930294683` **success** ⇒ 页与 21 资产已落（§二） |
+| 本次推送取消了谁 | **没有取消任何人的判决**：推送前主干两车道都没有在跑的 run（`ad9c9b42` 的 Nightly 12:0x 已落定 failure、Windows 已 success）；被取消的那条 Release run 是**会话重建 tag** 时取消的（12:28:49 < 本次推送 12:5x），不是本次推送所为 |
+
+**并发写入者的归属（本轮两笔都不是我的）**：① 20:28:49 会话重建 tag（使本轮那条 Release run 被取消）；
+② 21:32:45 会话推 `2ca32b4c`（使本轮 `8cb92e2a` 的 Nightly 被取消）。⇒ 本轮的文档提交坐在它之上，
+且**它的两条车道在飞时不许推送**（推了就把覆盖本轮提交的那次判决顶掉）——这正是本轮文档提交**只落本地不推**的原因。
+
+### 六 版本位点台账 / 遗留（逐条带 blocked-by）
+
+- Latest = **v1.94.1**（`gh release list` 首行、21 资产、`draft=false`）；`package.json` = 1.94.1（一致）；
+  未发布内容 = `8cb92e2a`（本单元）+ `2ca32b4c`（会话）⇒ 下一个版本边界 **v1.95.0**。
+- **遗留 1（本轮新立）**：`e2e/certification/search-index-coverage.spec.ts` 的**新读数未取**。
+  blocked-by：该 spec 只在 `macos-arm64` 的构建作业里跑（P0 步骤带 `matrix.name == 'macos-arm64'` 条件），
+  而本机内存不足以起 `build:e2e` + Electron。解封条件＝下一次 Release / 按需 `gh workflow run` 的 macos-arm64 车道跑完；
+  判据＝日志里出现 `[s3-reading] before any tick — empty-index notice: not-measured: …` 或 `measured-no-index: …`
+  （两者都是合格读数，点得出是哪一句即可）。
+- **遗留 2 已结案**：`~/.purescience/jobs` 下那批探针 job 目录**已清空**（本轮实读 `ls ~/.purescience/jobs | wc -l` = **0**）⇒ 移出遗留清单。
+- **遗留 3（跨轮不变）**：Windows `database` 分片家族（只能由 Windows 车道判决，修法不许是加超时）、
+  中文源四家连接器（四源只回 `text/html`，无机器可读契约）、M2 本地解析模型资产（卡产品决定：无已发布 SHA256 的权重不下载）。
+- **遗留 4（过程性）**：本轮文档提交**未推送**（原因见 §五 末段）。**下一轮第一件事**：
+  读 `2ca32b4c` 的两条车道 → 绿则 `git push origin main` 把 `8cb92e2a` 之后的文档提交推上去（纯 `docs/**` 不新建 run，
+  但**必须在对方车道跑完后推**）。
