@@ -2062,3 +2062,94 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 - 遗留 C：8 GB 机内存是硬约束 ⇒ 起 Electron 前先 `vm_stat` 判余量。
 - 版本位点台账：Latest = **v1.95.0**（21 资产、isLatest）；`package.json` = 1.95.0；本轮**未发版**、未改 `package.json` / 未动 9 语字典 /
   未新增通道 / 未改 `.github/workflows/**`。
+
+## 四十三、本轮追加（执行器，2026-10-10 05:2x–）—— 遗留 A **结案**（CI 逐字读数）+ 把「先去认证车道日志核读数」做成一条命令
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- `HEAD == origin/main == df7038d6`（远端以 `gh api repos/…/commits/main` 取 sha，与本地**逐字符相同**）；本轮开工时主干两条车道
+  **均为 completed**（`df7038d6` 的 `Nightly` / `Windows Full Test` **双绿**）⇒ 本次推送**没有取消任何人的判决**。
+- `git status --short` 不干净，**但那批不是本轮的**：28 个已修改 + 2 个未跟踪（新 `src/main/connectors/reading-verifier.ts`(+`.test.ts`)、
+  `src/main/connectors/engine.ts`、`src/main/artifacts/ipc.ts`、`src/main/ipc.ts`、`src/preload/*`、`ArtifactProvenancePanel.tsx`、
+  `src/shared/reading-fingerprint.ts`、契约目录 / `web-api-map.generated.ts`、9 语字典…），mtime **01:36–01:39**（查证时刻 05:26）
+  ⇒ 是**桌面会话**的在制品，且**正是交接档 §四 第 2/3 条**（产物↔读数引用链 + 校验器回挂）——它认领的活，本轮**一个字节未碰**、
+  不替它提交、不据它声称任何读数。
+- 进程表：只有常驻的 headless 服务（launchd，`electron-vite dev -- --purescience-headless`，起于 01:33），**无**构建 / `playwright` / `vitest`。
+- 内存：空闲物理页 **7079（≈116 MB）**、swap 已用 **2758 M / 4096 M** ⇒ 仍无 `build:e2e` + Electron 的余量 ⇒ **本轮不起 Electron**，
+  下文读数全部取自 CI 作业日志（与 §四十一起 的「读日志清账」同一条路）。
+
+### 一 遗留 A 结案：那句话**确实上屏了**（判据满足，且上一轮的抢答结论被证实）
+
+来源：`df7038d6` 的 `Nightly` run **`37981148686`**、作业 `Build macos-arm64` = **`113997176358`**（success）。逐字：
+
+```
+[s3-reading] before any tick — hits 3 (option rows on screen: 4)
+[s3-reading] before any tick — index summary: No index reading yet - searching scans the live files Index now
+[s3-reading] before any tick — empty-index notice: not-measured: No index reading yet - searching scans the live files
+```
+
+- §四十二 定的判据是「`empty-index notice:` 后面**不再是**指向块缺席的模糊句」。现在读到的是 `not-measured:` + **屏上原话**
+  ⇒ **不是界面缺口**；上一轮「块缺席」确系**探针抢答**（`hits` 从 1 变 3、且新打印的 `option rows on screen: 4` 与内容命中 3 分开）
+  ⇒ 探针改动生效，**遗留 A 结案**。
+- 该作业整体：**89 passed / 12 skipped (25.3m)**、`electron_p0=passed`、`visual_regression=passed`、`package_smoke=passed`、`failed=0`。
+
+### 二 本轮唯一代码改动：`scripts/ci/harvest-certification-readings.mjs`（新，工作树内本单元只有这一份）
+
+**为什么做它**：§四十一 一次从认证作业日志里关掉六条挂账读数，本轮又用它结案遗留 A —— 这说明「读数『未取』」的头号成因
+**不是没跑，是没人去核**。而每次都要手搓 `gh api …/logs` + `grep`（还踩过短 SHA、日志前缀、GitHub 自己的 `[group]` 标记三个坑）。
+本工具把这一步变成**一条命令**，并把纪律**写死进它的拒绝路径**：
+
+```
+node scripts/ci/harvest-certification-readings.mjs                       # 默认取 origin/main 尖端
+node scripts/ci/harvest-certification-readings.mjs --sha <40 位十六进制>
+node scripts/ci/harvest-certification-readings.mjs --run <run id> | --job <job id>
+  选项：--lane <作业名子串，默认 macos-arm64>  --tag <读数标签>  --spec <文件名子串>  --repo <owner/name>  --no-truncate
+```
+
+- 打印四段：**平台判决行**（`electron_p0=` / `visual_regression=` / `package_smoke=` / `failed=`）、**跑过的 spec 清单**、
+  **run 汇总**（`N passed / M skipped`）、**按标签分组的读数**；末尾一行 `HARVESTED specs=… readings=… tags=… job=… sha=…`
+  （空结果会**显式打印**「no tagged reading lines」，不让空当成干净）。
+- **短 SHA 具名拒绝**（`exit 2`）：`head_sha` 只匹配**完整 40 位**，8 位永远返回空列表、读起来像「没触发」——这正是本仓反复咬人的坑，
+  所以让它**不可能**被静默传进去。
+- GitHub 自己的日志标记（`[group]` / `[command]` / `[debug]` …）已从读数里剔除。
+
+**实测（本机，全部实跑；读数即结论）**：
+
+| 环 | 读数 |
+| --- | --- |
+| `prettier --check`（该文件） | `All matched files use Prettier code style!`（首跑 4 条 prettier warning，用 `eslint --fix` 只对该文件修掉） |
+| `eslint`（该文件，非缓存） | **0 problem** |
+| `node … --sha df7038d6…（40 位）--tag s3-reading` | 打印 **11** 条 `[s3-reading]`（= §一 那三行所在的那一组） |
+| `node … --tag ic33` | 打印 **6** 条 `[ic33]`（倒计时 `expires in 60s` → `59s`；到点那句具名解释；过期卡里按钮 **0**） |
+| `node … --sha df7038d6`（8 位） | 具名拒绝 + **exit 2**（未把短 id 传下去） |
+| 整份日志的规模 | **specs=102 / readings=200 / tags=49**（作业 `113997176358`） |
+
+### 三 开项清点（第二轮）：把整份认证日志对着「未取」清单核过
+
+- **仍然在「未取」的只有四项，且全部是被环境挡住、不是没人做**：IC39 / IC40（该作业里两支 spec 被 `test.skip(!endpointReachable())`
+  **跳过**，日志里**零** `[ic39]` / `[ic40]` 行 ⇒ **不能拿车道绿当它跑过**）、IC6「已收割」（需一台真算力主机）、A7 的**下载路径**（需真 URL + 校验后建环境）。
+- **其余全部能在日志里读到逐字读数**（含 IC33 的倒计时、IC17 的 162 广播/160 带富字段、IC49 的别名解绑、IC52 的重放步骤…）
+  ⇒ 排期档里那些行**不需要再动**；**IC33 行已由会话在 2026-10-07 写全**，本轮复核与日志**逐字一致** ⇒ **不要重做**。
+- **并发防重做**：桌面会话此刻在做的是**产物↔读数引用链 + 校验器回挂**（交接档 §四 第 2/3 条）；
+  本轮只碰 `scripts/ci/` 与 `docs/` ⇒ 路径不相交，不需要让位。
+
+### 四 版本位点台账
+
+Latest = **v1.95.0**（21 资产、`isLatest=true`、`draft=false`）；`package.json` = 1.95.0；tag 以来未发布的内容 =
+`0841e14f`（存储证据夹具修复）+ `0f73a332` / `3663a7cf` / `a362f671` / `df7038d6`（文档 + 认证 spec 探针）⇒ **全是测试/文档类**，
+按仓规**不占号**；下一个版本边界仍是 **v1.96.0**（等会话的溯源/校验器那条落地后一并走）。
+
+### 五 遗留（逐条带 blocked-by）
+
+- **遗留 B（跨轮不变）**：IC39/IC40 真机读数 —— blocked-by **一台可 SSH 的替身主机 + 起 Electron 的内存**
+  （配方已写全：`docs/plan-2026-10-07-IC39-IC40-live-host-work-order.md`，含「先按 §一之三 把执行保护策略改成 `Ask every time`」这条必做前置）；
+  IC6 broad 收割读数（需真算力主机）；A7 下载路径（需真 URL）。
+- **遗留 C（内存）**：8 GB 机是硬约束 ⇒ 起 Electron 前先 `vm_stat` 判余量（本轮 116 MB / swap 2.7 G 已用 ⇒ 不起）。
+- **遗留 D（新，过程性）**：桌面会话的在制品**横跨数小时**（01:36 起、05:26 仍未见落笔）⇒ 下一轮开工仍要按「先看 `git status` 认领归属」处理；
+  **不要**替它提交、不要 `git add -A`。
+
+### 六 下一轮第一步
+
+① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：**先按提交把会话已完成的单元划掉**（防重做）；
+② 内存宽松（空闲页上到数万）⇒ 取 IC39/IC40 的真机读数（按上单 §二 的配方，先改策略）；否则按 §三 的清单挑一条**未被认领**的；
+③ 需要「某条读数到底取了没有」时，**先跑** `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` 再决定要不要立案。
