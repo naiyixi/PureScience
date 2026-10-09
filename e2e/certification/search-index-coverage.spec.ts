@@ -97,9 +97,28 @@ test('the index reports what it covers, is current after a tick, survives a rest
   const dialog = page.getByTestId('global-search-dialog')
   await dialog.getByRole('combobox').fill(KEYWORD)
   const results = dialog.locator('[role="listbox"] [role="option"]')
-  await expect.poll(async () => results.count(), { timeout: 30_000 }).toBeGreaterThan(0)
-  const hitCount = await results.count()
+  // Wait until the palette has ANSWERED before reading anything below. `results` is a superset: the same
+  // listbox also carries artifact rows, session rows and "show more" buttons, so a count over every
+  // `role="option"` can be satisfied while the content query is still in flight. A notice read at that
+  // instant says "nothing is on screen" about a panel that has simply not answered yet — that is a race,
+  // and it must never be reported as a UI gap. Each of these three is rendered only from a landed
+  // response (the summary block even carries the response's own `index`), so any one of them means the
+  // palette has answered. The wait is bounded (30s) and what it waited for is printed, so a genuine
+  // "the block never renders" gap still shows up as a gap instead of being waited away.
+  const contentRows = dialog.locator('[data-testid="global-search-content-row"]')
+  const contentEmpty = dialog.locator('[data-testid="global-search-content-empty"]')
   const summarySlot = dialog.locator('[data-slot="gs-index-summary"]')
+  await expect
+    .poll(
+      async () =>
+        (await contentRows.count()) + (await contentEmpty.count()) + (await summarySlot.count()),
+      { timeout: 30_000 }
+    )
+    .toBeGreaterThan(0)
+  const optionRowCount = await results.count()
+  // What the corpus claim rests on is the CONTENT rows — not every option row in the listbox, which
+  // would count an artifact or a session as if the phrase had been found in the corpus.
+  const hitCount = await contentRows.count()
   const summaryVisible = (await summarySlot.count()) > 0
   const summaryText = summaryVisible
     ? (await summarySlot.innerText()).replace(/\s+/g, ' ').trim()
@@ -117,11 +136,12 @@ test('the index reports what it covers, is current after a tick, survives a rest
     if (notMeasured !== undefined) return notMeasured
     const absent = await from('gs-index-absent', 'measured-no-index')
     if (absent !== undefined) return absent
-    // NEITHER sentence on screen. That is its own product state, and by itself it cannot be told apart
-    // from a probe that looked before the reading arrived — so the reading also asks the main process,
-    // through the app's own search channel, what the response carried in `index`. "Block absent while the
-    // response carried an index" names a UI gap; "no index on the response at all" names a reading that
-    // never existed. They must not be reported as the same sentence.
+    // NEITHER sentence on screen. The palette has ANSWERED by this point — that is what the wait above
+    // bought: the content rows are already on screen from a landed response, and a landed response
+    // carries an `index` block whenever the index is wired. So "the palette answered and the block is
+    // still absent" names a UI gap, and it is no longer confusable with a probe that looked early. The
+    // probe also asks the app, through its own search channel, what the answer carried — so "the palette
+    // never rendered it" and "the answer never carried one" are never reported as the same sentence.
     const block = await dialog.locator('[data-slot="gs-index-summary"]').count()
     const served = await page.evaluate(
       async ({ query, projectId: id }) => {
@@ -148,11 +168,13 @@ test('the index reports what it covers, is current after a tick, survives a rest
       { query: KEYWORD, projectId }
     )
     return block === 0
-      ? `(no empty-index notice on screen — the summary block itself was absent; the search response carried index=${served})`
-      : `(summary block present, no notice inside it; the search response carried index=${served})`
+      ? `(no empty-index notice on screen — the palette had answered (content rows: ${hitCount}) and the summary block was still absent: UI gap; the app's own search answered index=${served})`
+      : `(summary block present, no notice inside it; the app's own search answered index=${served})`
   }
   const emptyNoticeText = await emptyIndexNotice()
-  console.log(`[s3-reading] before any tick — hits ${hitCount}`)
+  console.log(
+    `[s3-reading] before any tick — hits ${hitCount} (option rows on screen: ${optionRowCount})`
+  )
   console.log(`[s3-reading] before any tick — index summary: ${summaryText}`)
   console.log(`[s3-reading] before any tick — empty-index notice: ${emptyNoticeText}`)
   // The result set comes from the live scan and is NOT empty: the corpus is findable without the index.
