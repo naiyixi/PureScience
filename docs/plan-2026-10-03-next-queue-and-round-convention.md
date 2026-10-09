@@ -1984,9 +1984,9 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 
 | 提交 | 判决 |
 | --- | --- |
-| `0841e14f`（会话，开工时 `origin/main`） | `Windows Full Test` run `3795874625` = **success**；`Nightly` run `3795874672` = **success**（含 §三 那个认证作业）⇒ 本轮开工时**没有任何在飞车道** |
+| `0841e14f`（会话，开工时 `origin/main`） | `Windows Full Test` run `37958746255` = **success**；`Nightly` run `37958746727` = **success**（含 §三 那个认证作业）⇒ 本轮开工时**没有任何在飞车道** |
 | `2de23ab5`（v1.95.0 的 tag 提交） | Windows success；Nightly **failure**（与已发布资产无关：发版链路由 tag 驱动的 `Release` run `3795297457` = success 决定），随后被 `0841e14f` 的修复取代 |
-| 本次推送取消了谁 | 推前查过主干两条车道均为 completed ⇒ 见文末「本轮推送的 CI 归属」 |
+| 本轮推送（tip `0f73a3323bb9bd77a2742a1f4948a6e9aab9e86e`） | 推前 `gh run list --limit 6` 显示主干两条车道**均为 completed** ⇒ **本次推送没有取消任何人的判决**；推送后两条车道（`Windows Full Test` + `Nightly`）`in_progress` ⇒ **判决不在本轮**：已交后台看门脚本写 `/tmp/ps-r7-verdict.txt`，**下一轮第一件事是读它**。注意本轮的 spec 只在 `macos-arm64` 构建作业里跑 ⇒ **真正的读数在 `Nightly` 车道** |
 
 ### 六 版本位点台账 / 遗留（逐条带 blocked-by）
 
