@@ -457,4 +457,23 @@ describe('createArtifactReproducibilityService', () => {
       )
     ).rejects.toThrow('At most 200 reproduced files may be compared in one check.')
   })
+
+  it('reads only the sections a reproducibility verdict grades', async () => {
+    // The verdict grades the descriptor, evidence and execution sections. Messages, review and the
+    // readings journal take no part in it, so the read asks for them off rather than paying for the
+    // journal file (v1.93.1's contract: only the reads that can carry readings pay for them).
+    const getVersionProvenance = vi.fn(async (_request: unknown, _sections?: unknown) =>
+      provenance()
+    )
+    const { service } = harness({ getVersionProvenance })
+
+    await service.check(request())
+
+    expect(getVersionProvenance.mock.calls[0]?.[1]).toEqual({
+      execution: true,
+      messages: false,
+      review: false,
+      readings: false
+    })
+  })
 })

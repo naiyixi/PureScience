@@ -4320,4 +4320,35 @@ describe('artifact provenance repository', () => {
     const core = await repository.getVersionCore(request)
     expect(core.readings).toEqual({ state: 'unavailable', reason: 'not-loaded' })
   })
+
+  it('pays for the readings journal only on the reads that can carry it', async () => {
+    // v1.93.1's contract: the journal is one file read, and only the reads whose answer can carry the
+    // readings pay it. A section-slice read (`getVersionMessages` and friends) returns one section and
+    // drops the rest, and the reproducibility check grades the descriptor/evidence/execution only — so
+    // every one of them must pass `readings: false` rather than silently reading the journal for nothing.
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-sections-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client)
+    })
+    const spy = vi.spyOn(repository, 'getVersionProvenance').mockResolvedValue({} as never)
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    }
+
+    await repository.getVersionExecution(request)
+    await repository.getVersionMessages(request)
+    await repository.getVersionReview(request)
+
+    expect(spy).toHaveBeenCalledTimes(3)
+    for (const [, sections] of spy.mock.calls) {
+      expect(sections).toMatchObject({ readings: false })
+    }
+  })
 })

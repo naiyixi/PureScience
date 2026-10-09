@@ -3706,7 +3706,11 @@ class ArtifactProvenanceRepository {
     sections: { execution: boolean; messages: boolean; review: boolean; readings?: boolean } = {
       execution: true,
       messages: true,
-      review: true
+      review: true,
+      // The full projection is what the panel and the web read want, and the journal is one small file
+      // read per session, so it defaults on. `readings: false` is opt-out: every read that returns a
+      // single section (or none) passes it, so only the reads that can carry readings pay for the file.
+      readings: true
     }
   ): Promise<ArtifactVersionProvenance> {
     const projectId = assertSafeSegment(request.projectId, 'project id')
@@ -4134,7 +4138,8 @@ class ArtifactProvenanceRepository {
     const value = await this.getVersionProvenance(request, {
       execution: true,
       messages: false,
-      review: false
+      review: false,
+      readings: false
     })
     return { execution: value.execution }
   }
@@ -4145,7 +4150,8 @@ class ArtifactProvenanceRepository {
     const value = await this.getVersionProvenance(request, {
       execution: false,
       messages: true,
-      review: false
+      review: false,
+      readings: false
     })
     return { messages: value.messages }
   }
@@ -4156,7 +4162,8 @@ class ArtifactProvenanceRepository {
     const value = await this.getVersionProvenance(request, {
       execution: false,
       messages: false,
-      review: true
+      review: true,
+      readings: false
     })
     return { review: value.review }
   }

@@ -492,7 +492,9 @@ export class ArtifactCodeReconstructionService {
       await this.options.provenance.getVersionProvenance(request, {
         execution: true,
         messages: false,
-        review: false
+        review: false,
+        // Source for a reconstruction: the execution section only, so the readings journal is not read.
+        readings: false
       })
     )
   }

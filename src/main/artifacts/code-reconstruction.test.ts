@@ -171,7 +171,9 @@ const provenance = (): ArtifactVersionProvenance => ({
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const makeHarness = (value = provenance()) => {
   let cache: string | undefined
-  const getVersionProvenance = vi.fn(async () => value)
+  const getVersionProvenance = vi.fn(
+    async (_request: unknown, _sections?: unknown): Promise<ArtifactVersionProvenance> => value
+  )
   const readCodeReconstructionCache = vi.fn(async () => cache)
   const writeCodeReconstructionCache = vi.fn(
     async (_request: typeof request, serialized: string) => {
@@ -240,6 +242,9 @@ describe('ArtifactCodeReconstructionService', () => {
     expect(harness.captureTarget.mock.invocationCallOrder[0]).toBeLessThan(
       harness.getVersionProvenance.mock.invocationCallOrder.at(-1)!
     )
+    // A reconstruction reads the execution section to build the source envelope; the readings journal
+    // is not part of that answer, so this read must not pay for it.
+    expect(harness.getVersionProvenance.mock.calls[0]?.[1]).toMatchObject({ readings: false })
     expect(harness.run.mock.calls[0]?.[0]).toContain('<artifact_execution_evidence>')
     expect(harness.run.mock.calls[0]?.[0]).toContain('groups.csv')
     expect(harness.run.mock.calls[0]?.[0]).toContain('saved cos.png')

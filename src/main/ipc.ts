@@ -1926,8 +1926,8 @@ const createApplicationModules = async (
           const dataRoot = resolveDataRoot()
 
           return createArtifactReproducibilityService({
-            getVersionProvenance: (query) =>
-              artifactProvenanceRepository.getVersionProvenance(query),
+            getVersionProvenance: (query, sections) =>
+              artifactProvenanceRepository.getVersionProvenance(query, sections),
             observeFile: createReproductionFileObserver({
               allowedImportRoots: request.allowedImportRoots,
               relativeBaseDirs: request.relativeBaseDirs ?? []
