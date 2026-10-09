@@ -1906,3 +1906,92 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 - **遗留 4（过程性）**：本轮文档提交**未推送**（原因见 §五 末段）。**下一轮第一件事**：
   读 `2ca32b4c` 的两条车道 → 绿则 `git push origin main` 把 `8cb92e2a` 之后的文档提交推上去（纯 `docs/**` 不新建 run，
   但**必须在对方车道跑完后推**）。
+
+## 四十一、本轮追加（执行器，2026-10-10 01:1x–02:0x）—— 开项清点：八处「未做」经核是**已交付**（记录失真就地更正）；认证车道的读数一次关闭六条挂账
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 开工时 `HEAD == origin/main == 0841e14f`，`git status --short` **干净**；会话在 00:23（`0841e14f`）之后未再落笔。
+  进程表里没有 `electron-vite` / `vitest` / `playwright`（`ps` 只余一个与本任务无关的桌面 Electron 应用）。
+- **防重做**：逐笔核过 `git log --since="3 days ago"` —— 会话已把 **v1.95.0** 发完（`fb48e1d9` 发版提交、`2de23ab5` 回填门禁读数、`0841e14f` 修存储证据夹具），
+  本轮**不碰**溯源 / 读数那条线（它是会话的），也不重做任何已发布内容。
+- **内存现状（决定本轮不能起 Electron）**：`vm_stat` 空闲物理页 **7551（≈118 MB）**、`vm.swapusage` 已用 **12348 M / 13312 M** ⇒
+  `build:e2e` + Electron 无余量 ⇒ 本轮**不取任何本机真机读数**（下文的读数全部取自 CI 认证车道的作业日志，不是本机）。
+
+### 一 v1.95.0 发布核验（按「发布核验」常驻口径；全部实取）
+
+| 项 | 读数 |
+| --- | --- |
+| Release 页 | `draft=false` / `isPrerelease=false` / **21 资产**；`gh release list --json isLatest` ⇒ **`v1.95.0 isLatest=true`**（`nightly` 预发布 `isLatest=false`） |
+| 页 ↔ 提交绑死 | `RELEASE-CERTIFICATION.json.sourceSha = 2de23ab574ebc9537b1f6ceeae06c7e15495a4f4`，与 `git rev-parse 'v1.95.0^{commit}'` **逐字符一致**；资产里四处 `ref: refs/tags/v1.95.0` + 同一 `runId 37952974570` |
+| 发布页正文 | **27,215 字节**；`release-notes:` 噪声行 **0** |
+| 资产齐 | mac arm64·x64 各 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+blockmap+zip，外加 `SHA256SUMS.txt`（**8 条**）/ `RELEASE-CERTIFICATION.json` / `version.json` / `latest*.yml` 与每架构 `*-mac.yml` |
+| 车道 | `2de23ab5` 的 `Release` run `3795297457` = **success**；Windows `3795295594` success |
+
+### 二 开项清点：**八处「未做」经核是已交付**（失真就地更正，写在排期档行内）
+
+`docs/plan-2026-10-03-interaction-closure-schedule.md` 的**批次 1 / 批次 2 表里八行没有 ✅**，
+读起来像「IC1/IC2/IC3/IC4/IC5/IC6/IC7/IC9 都还没做」。**逐条对着源码与证据档核过之后，八条全部已交付** ——
+这正是仓规里那句「计划文档的『待做』是写时的意图、不是当前状态」的又一实例（此前已有两例）。逐条判据：
+
+| 行 | 核到的落点（判据） |
+| --- | --- |
+| IC1 | `src/shared/journal-metrics-overview.ts:162-197`（`selectClaimWithAlternatives`：被隐藏的另一条值 + 来源一并交给面板）、`JournalMetricsPanel` 渲染 `journal-metric-conflict` / `journal-metric-alternative`；渲染用例 2 条（有冲突 / 单值无标记）；证据 `docs/evidence/2026-10-03-journal-metric-conflict.md` + 同目录截图 |
+| IC2 | 证据档 §五 标题即「三种具名拒绝的真机读数：复核后归档」 |
+| IC3 | 认证 spec `egress-approval-countdown.spec.ts` 的复跑读数（见 §三） |
+| IC4 | 队列档 §A5 第 5 条：实测 **4.144:1**（前景换纯白也仅 4.330:1）⇒ 原定修法不可行，**已转拍板项** |
+| IC5 | 队列档 §A5 第 9 条：**IC5 全闭**（26 键 ×9 语、覆盖率 100%） |
+| IC6 | `FeaturedOutputs` 已落地（渲染 14 passed）；仅**「已收割」的真机读数**仍立案（需一台真算力主机） |
+| IC7 | `src/renderer/src/App.tsx:97,314` 真调 `listen()`；认证 spec `notification-arrival.spec.ts` 读数见 §三 |
+| IC9 | `5fe6d1eb`；认证 spec `artifact-open-actions.spec.ts` 读数见 §三 |
+
+**已按「就地更正」把 ✅ 与判据写进那八行**（表格结构未动，只改单元格内容）。IC54 保持未勾：它**确实**卡在产品决定（无已发布 SHA256 的权重不下载）。
+> 记这条的意义不在文档本身：`IC1/IC6/IC7/IC9` 这样的行如果留在「未做」，下一个执行体就会**重做已交付的东西**（＝白烧一整轮）。
+
+### 三 认证车道一次关闭六条挂账读数（来源：`0841e14f` 的 `Nightly` run `37958746727`、作业 `Build macos-arm64` = `113921968580`；**89 passed / 12 skipped (29.4m)**）
+
+这一条是本轮最省力也最值钱的一步：那些读数**早就躺在 CI 的作业日志里**，只是没人去核（仓规：「标注『未取』之前先去认证车道的作业日志核一遍」）。逐条：
+
+| 挂账项 | 日志里的读数（逐字） |
+| --- | --- |
+| 上一轮遗留 1：`search-index-coverage.spec.ts` 的新读数 | `[s3-reading] before any tick — hits 1` / `index summary: (no index summary on screen)` / `empty-index notice: (no empty-index notice on screen)`；`after "Index now" — coverage block: {"present":true,"indexed":3,"pending":0,"capped":false,…}`；重启后仍 `indexed:3`；删索引目录后 `{"hits":3,…}` ⇒ **四条主张有读数**，但主张①那句通知**没上屏**（见 §四，已立案并硬化探针） |
+| IC7 通知红点 | `[ic7] bell before the turn: Messages, no unread messages` → `[ic7] bell after a finished turn: Messages, 1 unread`（铃铛**自己**亮） |
+| IC8「在用内核时拒绝移除」 | `[39/101] named-env-kernel-in-use.spec.ts:91:5 › a live kernel on a named environment is refused, and the status table says which case this is` ⇒ 该 spec **通过**（它断言的正是那句拒绝） |
+| IC17 收紧后的机器判决 | `[ic17] renderer received 162 broadcast(s); 160 carried the nested download detail; sample {"phase":"fetch-python",…,"hasDownload":true}` + `[ic17] panel percent samples: 1, 2, 3, 4, 5, 6, 7; shared line rendered: true` ⇒ **两半都绿**（实收广播含富字段 **且** 同一次采样里卡片渲染了共享行） |
+| IC49 别名解绑的真机读数（此前记「未取」） | `[ic56alias] the confirm says: "After this, “nature” will no longer resolve to Nature (London). The metrics and references the merge moved stay where it put them — nothing is moved back — and no journal, number or reference is deleted."` → `after the release: aliases=[] journals=["…"]` |
+| IC50 技能导入版 | 文案**已演进**为可复制：`[ic50] the detail says: "Kept as imported: this copy is compared against what you imported. Duplicate it to get a skill of your own that you can edit."` + `the copy entry reads: "Duplicate as my skill"` ⇒ 排期档 IC50 行里那句「no way to fork it yet」的描述**已过期** |
+| D2-5 会话包随包证据 | `[ic10] source: citations=1 …` → `[ic10] landed: {"citations":1,"reviews":2,"reviewFindings":0,"verificationRecords":1,"skipped":[]}` |
+| D2-6 导入会话姿态可见 | `[ic11] posture: {…"posture":{"readOnly":true,"executeAllowed":false,"continueAllowed":false,…}}` + 横幅原话（「Imported session — read-only … every conclusion is the sender's assertion」） |
+| IC39（远程任务取消） | `[76/101] remote-job-cancel.spec.ts:253:5 › IC39: …` 在该作业里**只跑了 9 秒**且无任何 `[ic39]` 行 ⇒ 它带 `test.skip(!endpointReachable(), …)`（CI 里没有用户态 sshd）⇒ **该读数仍然未取**，本行**不作关闭**（这正是「车道绿 ≠ 某支 spec 跑了」） |
+
+**两处读数的归属都绑到完整 40 位 SHA `0841e14f2024acc93a98e0df0690ff4bbaccac8d`**（Nightly run `37958746727`，作业 `113921968580`），不是「某条车道大概绿过」。
+
+### 四 本轮唯一的代码改动：把那条**会静默退化的读数**改成不可能退化（`e2e/certification/search-index-coverage.spec.ts`）
+
+**发现（读的是逐字日志，不是推断）**：主张①要证的是「索引没见过的语料会**说出来**（带数字），而不是把结果集变小」，
+可这一轮的读数打的是 `empty-index notice: (no empty-index notice on screen)` —— 连**承载那句话的整个 summary 块**都不在屏上。
+于是同一条读数可能对应**两种完全不同的世界**：① 探针看早了（那次响应还没把 `index` 带回来）；② 产品根本没把这块画出来。
+旧写法把两者糊成同一句，属于仓规点名的「读数静默退化」。
+
+**改法（只加读数，不放宽断言）**：三态各自具名 —— `not-measured: …` / `measured-no-index: …` / **都不在时**分清「summary 块整块缺席」与「块在、里面没有说话」，
+并且**再向主进程问一次**：走应用自己的检索通道读回那次响应携带的 `index`（`page.evaluate` + 同一请求形状；自带 try/catch，探针自己失败也如实打出来）。
+两者合起来就能判：**块缺席而响应带着 index ⇒ 界面缺口**；**响应压根没有 index ⇒ 那条读数从来不存在**。
+
+**为什么这不是「把断言改松」**：主张①的断言（`hitCount > 0`，语料不靠索引也能搜到）一字未动；本轮只让**中间那条读数**不可能再以一句模糊话收场。
+它自带一条零成本判决：这条 spec 只在 `macos-arm64` 的构建作业里跑，下一次 Nightly 或 Release 就会把新读数打出来。
+
+### 五 门禁与 CI 逐笔点名（完整 40 位 SHA；`cancelled` 不算绿）
+
+| 提交 | 判决 |
+| --- | --- |
+| `0841e14f`（会话，开工时 `origin/main`） | `Windows Full Test` run `3795874625` = **success**；`Nightly` run `3795874672` = **success**（含 §三 那个认证作业）⇒ 本轮开工时**没有任何在飞车道** |
+| `2de23ab5`（v1.95.0 的 tag 提交） | Windows success；Nightly **failure**（与已发布资产无关：发版链路由 tag 驱动的 `Release` run `3795297457` = success 决定），随后被 `0841e14f` 的修复取代 |
+| 本次推送取消了谁 | 推前查过主干两条车道均为 completed ⇒ 见文末「本轮推送的 CI 归属」 |
+
+### 六 版本位点台账 / 遗留（逐条带 blocked-by）
+
+- Latest = **v1.95.0**（`isLatest=true`、21 资产、`draft=false`）；`package.json` = 1.95.0；本轮**未发版**、未改 `package.json` / 未动 9 语字典 / 未新增通道 / 未改 `.github/workflows/**` ⇒ 本轮内容是 tag `v1.95.0` 以来的**第一笔未发布内容**，下一个版本边界 **v1.96.0**（一条 e2e spec + 文档，**按仓规可能不占号**）。
+- **遗留 A（本轮新立）**：认证读数「索引读数的两种空到底上不上屏」——blocked-by：`macos-arm64` 的认证车道（`search-index-coverage.spec.ts` 带 P0 条件，只在那个作业里跑）。
+  解封＝下一次 Nightly/Release 跑完；判据＝`[s3-reading] before any tick — empty-index notice:` 后面**不再是**指向块缺席的模糊句。
+- **遗留 B（跨轮不变）**：IC39「主机不可达 ⇒ 拒绝且不改行」与 IC40 needs-attention 卡的真机读数（需一台可 SSH 的替身主机；CI 里那支 spec 因无 sshd **被 skip**，不能拿车道绿当它跑过）；IC6「已收割」读数（同因）；Windows `database` 分片家族；中文源四家连接器（只回 `text/html`）；M2（卡产品决定）。
+- **遗留 C（内存）**：本机 8 GB 是硬约束（空闲页 7551 / swap 12.3 G 已用）⇒ 本轮一律不起 Electron。
