@@ -15,7 +15,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：受影响簇 **<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：受影响簇 **1234 文件通过 ｜ 15973 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 118 warning**；`pre-push-checks.sh` 五查全过。
 - **CI 逐笔点名（`cancelled` 不算绿）**：`ac565350`（逐 run 归属）**Nightly success ／ Windows Full Test success**；`2ca32b4c`（窗降级）**双绿**。
 - **两处类型错由 `tsc` 抓到**（本地数组类型没跟着换成 `RecordedConnectorReading`、一个导入变成未使用）—— vitest 只转译，这两条只有 `tsc` 拦得住。
 - **一处归类要说明**：`ad9c9b42` 的 Nightly 曾红在 `Build macos-x64`（`electron-builder did not write feed` ⇒ 签名观测门禁按「未观测不得记为通过」而拒）。判据不是推断：**同一提交的 macos-x64 在 Release 车道里 success**，且**包含它全部内容的 `2ca32b4c` 的 Nightly 是绿的** ⇒ 属打包/签名观测的基础设施家族。
