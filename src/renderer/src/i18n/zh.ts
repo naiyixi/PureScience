@@ -4059,7 +4059,8 @@ export const zh = {
   'ws.readingsUnreadable': '读数日志无法读取。',
   'ws.readingsAfterWindow': '本会话中还有 {count} 条读数是在本版本写入之后记录的，故未列在上方。',
   'ws.readingsSessionOnly':
-    '本会话从其他服务读到的内容。本版本的记录里没有可读的创建时间，因此下列读数是整个会话的，**不限于**本版本之前发生的那部分。'
+    '本会话从其他服务读到的内容。本版本的记录里没有可读的创建时间，因此下列读数是整个会话的，**不限于**本版本之前发生的那部分。',
+  'ws.readingsSameRun': '由产出本版本的那次运行所记录。'
 }
 
 export type ZhKey = keyof typeof zh

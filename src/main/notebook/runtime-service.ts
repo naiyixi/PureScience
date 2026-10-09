@@ -829,6 +829,12 @@ class NotebookRuntimeService {
     return this.sessionReadModel.peekHandoffContext(sessionId)
   }
 
+  // The run a session is executing right now, for callers that must attribute something to it (the
+  // connector layer records which run a reading was taken in). Absent when idle.
+  activeRunIdFor(sessionId: string): string | undefined {
+    return this.sessionReadModel.activeRunIdFor(sessionId)
+  }
+
   // Returns the current in-memory cells plus the complete persisted run history.
   async state(
     request: NotebookSessionRequest

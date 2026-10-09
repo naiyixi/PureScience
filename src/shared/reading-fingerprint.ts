@@ -82,6 +82,13 @@ export const isReadingFingerprint = (value: unknown): value is ConnectorReadingF
  *
  * Snake_case, like every other connector result field, because the agent reads these.
  */
+/**
+ * A reading as RECORDED for a session: the fingerprint plus the run it was taken in, when the notebook
+ * runtime could name one. The engine never sets `runId` — it is added by the journal, from the main
+ * process's own session state.
+ */
+export type RecordedConnectorReading = ConnectorReadingFingerprint & { runId?: string }
+
 export const CONNECTOR_READING_RESULT_KEY = 'reading_fingerprints'
 
 /**

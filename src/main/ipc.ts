@@ -1171,9 +1171,11 @@ const createApplicationModules = async (
     },
     // Readings are recorded beside the data root, which this service has no business knowing about:
     // the root is resolved here and the write is fire-and-forget (see reading-journal.ts).
-    recordReadings: ({ sessionId, readings }) => {
-      void recordSessionReadings(resolveDataRoot(), sessionId, readings)
+    recordReadings: ({ sessionId, readings, runId }) => {
+      void recordSessionReadings(resolveDataRoot(), sessionId, readings, undefined, runId)
     },
+    // The run comes from the notebook runtime's own state, not from the connector call's arguments.
+    resolveActiveRunId: (sessionId) => notebookService.activeRunIdFor(sessionId),
     localToolHandlers: { 'molecule/preview_molecule': moleculePreviewHandler },
     subAgent: (request) =>
       subAgentRef.current

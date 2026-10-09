@@ -1153,6 +1153,49 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.querySelector('[data-testid="artifact-readings-after-window"]')).toBeNull()
   })
 
+  it('marks the reading taken by the run that produced this version, and only that one', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [
+          {
+            service: 'pubmed',
+            tool: 'search_articles',
+            request: { method: 'GET', url: 'https://example.test/e?term=x' },
+            response: { status: 200, bytes: 10, sha256: `sha256:${'a'.repeat(64)}` },
+            runId: 'notebook-run-2'
+          },
+          {
+            service: 'pubmed',
+            tool: 'search_articles',
+            request: { method: 'GET', url: 'https://example.test/e?term=x' },
+            response: { status: 200, bytes: 10, sha256: `sha256:${'a'.repeat(64)}` },
+            runId: 'some-other-run'
+          }
+        ],
+        dropped: 0,
+        afterWindow: 0
+      }
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    // Exactly the matching one is marked: the producer run id is 'notebook-run-2' in this fixture.
+    expect(container.querySelectorAll('[data-testid="artifact-readings-item"]')).toHaveLength(2)
+    expect(container.querySelectorAll('[data-testid="artifact-readings-same-run"]')).toHaveLength(1)
+  })
+
   it('drops the window promise when the version carries no readable creation time', async () => {
     act(() => root.unmount())
     container.replaceChildren()

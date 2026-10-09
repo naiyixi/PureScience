@@ -58,7 +58,15 @@ type ConnectorServiceDeps = {
   recordReadings?: (input: {
     sessionId: string
     readings: readonly ConnectorReadingFingerprint[]
+    /** The run executing in that session, when the notebook runtime could name one. */
+    runId?: string
   }) => void
+  /**
+   * Resolves the run a session is executing, from the main process's own state. Injected rather than
+   * reached for, and never taken from the call's own arguments: a run id that arrived over RPC would
+   * not be authority for run identity.
+   */
+  resolveActiveRunId?: (sessionId: string) => string | undefined
   // Handlers for bundled tools that run privileged local code (e.g. write an artifact, open a preview)
   // instead of the read-only HTTP ParserEngine. Keyed by `${connector}/${method}`; invoked after the
   // same enable/policy/approval gate as any other bundled call. The call context carries the id of the
@@ -343,7 +351,12 @@ export class ConnectorService {
     // swallowed — this is evidence about a call that already succeeded, not part of the call.
     if (readings.length > 0 && context.sessionId) {
       try {
-        this.deps.recordReadings?.({ sessionId: context.sessionId, readings })
+        const runId = this.deps.resolveActiveRunId?.(context.sessionId)
+        this.deps.recordReadings?.({
+          sessionId: context.sessionId,
+          readings,
+          ...(runId ? { runId } : {})
+        })
       } catch {
         // Swallowed on purpose: the absence surfaces later as `not-recorded`.
       }

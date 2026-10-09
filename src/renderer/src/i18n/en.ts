@@ -4353,5 +4353,6 @@ export const en: Record<ZhKey, string> = {
   'ws.readingsAfterWindow':
     '{count} later readings in this session were taken after this version was written and are not listed above.',
   'ws.readingsSessionOnly':
-    "What this session read from other services. This version's record carries no readable creation time, so the readings below are the whole session's and are NOT limited to what happened before it."
+    "What this session read from other services. This version's record carries no readable creation time, so the readings below are the whole session's and are NOT limited to what happened before it.",
+  'ws.readingsSameRun': 'Taken by the run that produced this version.'
 }

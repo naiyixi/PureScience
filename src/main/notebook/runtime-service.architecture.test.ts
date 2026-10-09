@@ -222,6 +222,10 @@ describe('Notebook runtime facade architecture', () => {
   it('keeps the established public facade surface', () => {
     expect(facadeMethods('public')).toEqual(
       [
+        // Added deliberately: the connector layer must be able to attribute a reading to the run that
+        // was executing, and this is the narrowest session-scoped read that answers it (the facade
+        // already exposes peekHandoffContext / getSessionReference in the same shape).
+        'activeRunIdFor',
         'appendCodeCell',
         'beginCodeCell',
         'bindRuntime',

@@ -4001,5 +4001,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.readingsAfterWindow':
     '本工作階段中還有 {count} 筆讀數是在本版本寫入之後記錄的，故未列在上方。',
   'ws.readingsSessionOnly':
-    '本工作階段從其他服務讀到的內容。本版本的記錄沒有可讀的建立時間，因此下列讀數是整個工作階段的，**不限於**本版本之前發生的部分。'
+    '本工作階段從其他服務讀到的內容。本版本的記錄沒有可讀的建立時間，因此下列讀數是整個工作階段的，**不限於**本版本之前發生的部分。',
+  'ws.readingsSameRun': '由產出本版本的那次執行所記錄。'
 }

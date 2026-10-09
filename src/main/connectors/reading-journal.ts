@@ -39,6 +39,13 @@ export type SessionReadingEntry = {
   /** When the reading was taken (ISO 8601), so a Version's window can be compared against it. */
   recordedAt: string
   reading: ConnectorReadingFingerprint
+  /**
+   * The run that was executing in this session when the reading was taken, when the notebook runtime
+   * could name one. It comes from the main process's own session state (`activeRunIdFor`) — never from
+   * an RPC argument — so it may be attached to a claim. Absent means the run was not known (an idle
+   * session, or a call that did not come through a running cell), and nothing is inferred from that.
+   */
+  runId?: string
 }
 
 export type SessionReadingJournal = {
@@ -144,7 +151,8 @@ export const recordSessionReadings = async (
   root: string,
   sessionId: string,
   readings: readonly ConnectorReadingFingerprint[],
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
+  runId?: string
 ): Promise<boolean> => {
   if (readings.length === 0) return false
   if (!isSafeSegment(sessionId)) return false
@@ -155,7 +163,14 @@ export const recordSessionReadings = async (
       const previous = existing.state === 'available' ? existing.entries : []
       const droppedBefore = existing.state === 'available' ? existing.dropped : 0
       const stamp = now().toISOString()
-      const appended = [...previous, ...readings.map((reading) => ({ recordedAt: stamp, reading }))]
+      const appended = [
+        ...previous,
+        ...readings.map((reading) => ({
+          recordedAt: stamp,
+          reading,
+          ...(runId ? { runId } : {})
+        }))
+      ]
       const overflow = Math.max(0, appended.length - MAX_SESSION_READINGS)
       const journal: SessionReadingJournal = {
         schemaVersion: 1,

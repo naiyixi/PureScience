@@ -64,6 +64,17 @@ type NotebookSessionReadModelOptions<Session extends NotebookSessionReadSource> 
 class NotebookSessionReadModel<Session extends NotebookSessionReadSource> {
   constructor(private readonly options: NotebookSessionReadModelOptions<Session>) {}
 
+  /**
+   * The run this session is executing right now, or undefined when it is idle.
+   *
+   * Read from the live aggregate this model projects — never from disk, never creating a session, and
+   * never from a caller-supplied parameter: a run id that arrived as an RPC argument is not authority
+   * for run identity (see ConnectorCallContext). Callers that need one ask here.
+   */
+  activeRunIdFor(sessionId: string): string | undefined {
+    return this.options.findSession(sessionId)?.snapshot().activeRunId
+  }
+
   // A handoff peek must never create a Session or read disk: absent/non-actionable live state is absent.
   peekHandoffContext(sessionId: string): NotebookHandoffContext | undefined {
     const session = this.options.findSession(sessionId)

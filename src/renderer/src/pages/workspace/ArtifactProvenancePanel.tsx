@@ -1581,6 +1581,18 @@ const ArtifactProvenancePanel = ({
                         <p className="text-text-000">
                           {reading.service} · {reading.tool}
                         </p>
+                        {/* Marked only when the run that took this reading is the run that produced
+                            this Version — both ids are on screen, and neither is inferred. */}
+                        {reading.runId &&
+                        provenance.evidence.producer.state === 'available' &&
+                        reading.runId === provenance.evidence.producer.producer_run_id ? (
+                          <p
+                            className="text-xs text-text-300"
+                            data-testid="artifact-readings-same-run"
+                          >
+                            {t('ws.readingsSameRun')}
+                          </p>
+                        ) : null}
                         {/* The request URL is the engine's own redacted form; the fingerprint is computed
                             over exactly this string, so it must not be shortened here. */}
                         <p

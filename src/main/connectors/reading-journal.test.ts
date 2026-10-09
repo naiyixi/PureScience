@@ -123,6 +123,18 @@ describe('the connector reading journal', () => {
     })
   })
 
+  it('carries the run that was executing, and claims nothing when none was named', async () => {
+    await recordSessionReadings(root, 'session-1', [reading('in-run')], undefined, 'run-1')
+    await recordSessionReadings(root, 'session-1', [reading('idle')])
+
+    const result = await readSessionReadings(root, 'session-1')
+    expect(result.state).toBe('available')
+    if (result.state !== 'available') return
+    expect(result.entries[0].runId).toBe('run-1')
+    // No run known: the entry carries no id at all — an absent attribution, not a guessed one.
+    expect(result.entries[1]).not.toHaveProperty('runId')
+  })
+
   it('records nothing for an empty reading list, so no empty journal appears', async () => {
     expect(await recordSessionReadings(root, 'session-1', [])).toBe(false)
     expect(await readSessionReadings(root, 'session-1')).toEqual({

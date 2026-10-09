@@ -55,7 +55,7 @@ import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/even
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import { readSessionReadings } from '../connectors/reading-journal'
-import type { ConnectorReadingFingerprint } from '../../shared/reading-fingerprint'
+import type { RecordedConnectorReading } from '../../shared/reading-fingerprint'
 import type {
   NotebookEnvironmentManifest,
   NotebookEnvironmentPackage,
@@ -4020,7 +4020,7 @@ class ArtifactProvenanceRepository {
         // record is then reported as `session` — the honest, weaker claim — instead of `session-window`,
         // so a surface cannot print "before this version was written" over a set it never filtered.
         const windowKnown = Number.isFinite(writtenAt)
-        const items: ConnectorReadingFingerprint[] = []
+        const items: RecordedConnectorReading[] = []
         let afterWindow = 0
         for (const entry of journal.entries) {
           const recordedAt = Date.parse(entry.recordedAt)
@@ -4034,7 +4034,7 @@ class ArtifactProvenanceRepository {
             afterWindow += 1
             continue
           }
-          items.push(entry.reading)
+          items.push(entry.runId ? { ...entry.reading, runId: entry.runId } : entry.reading)
         }
         readings = {
           state: 'available',

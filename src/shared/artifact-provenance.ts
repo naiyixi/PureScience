@@ -13,7 +13,7 @@ import type {
   PersistedMessageRole,
   PersistedToolActivity
 } from './session-persistence'
-import type { ConnectorReadingFingerprint } from './reading-fingerprint'
+import type { RecordedConnectorReading } from './reading-fingerprint'
 import type { ArtifactVersionReviewProjection } from './reviewer'
 
 export type CreateArtifactVersionRequest = {
@@ -461,7 +461,7 @@ export type ArtifactVersionProvenance = {
          */
         attribution: 'session-window' | 'session'
         /** Readings recorded at or before this Version's `created_at`. */
-        items: ConnectorReadingFingerprint[]
+        items: RecordedConnectorReading[]
         /** Entries the journal dropped to stay inside its cap, so a short list is explainable. */
         dropped: number
         /** Readings in the journal that fall AFTER this Version was written, hence not listed above. */

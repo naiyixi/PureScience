@@ -4315,7 +4315,8 @@ describe('artifact provenance repository', () => {
       storageRoot as string,
       'session-1',
       [reading],
-      () => new Date(Date.now() - 4_200_000)
+      () => new Date(Date.now() - 4_200_000),
+      'notebook-run-1'
     )
 
     const after = await repository.getVersionProvenance(request)
@@ -4323,7 +4324,8 @@ describe('artifact provenance repository', () => {
     expect(after.readings).toEqual({
       state: 'available',
       attribution: 'session-window',
-      items: [reading],
+      // The run the reading was taken in travels with it, so a surface can say which run it was.
+      items: [{ ...reading, runId: 'notebook-run-1' }],
       dropped: 0,
       afterWindow: 0
     })

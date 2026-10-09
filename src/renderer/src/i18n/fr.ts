@@ -4441,5 +4441,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.readingsAfterWindow':
     "{count} lectures ultérieures de cette session ont été enregistrées après l'écriture de cette version et ne figurent pas ci-dessus.",
   'ws.readingsSessionOnly':
-    "Ce que cette session a lu auprès d'autres services. L'enregistrement de cette version ne comporte pas d'heure de création lisible ; les lectures ci-dessous couvrent donc toute la session et ne se limitent PAS à ce qui précède."
+    "Ce que cette session a lu auprès d'autres services. L'enregistrement de cette version ne comporte pas d'heure de création lisible ; les lectures ci-dessous couvrent donc toute la session et ne se limitent PAS à ce qui précède.",
+  'ws.readingsSameRun': "Enregistrée par l'exécution qui a produit cette version."
 }
