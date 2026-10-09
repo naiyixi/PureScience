@@ -1995,3 +1995,70 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
   解封＝下一次 Nightly/Release 跑完；判据＝`[s3-reading] before any tick — empty-index notice:` 后面**不再是**指向块缺席的模糊句。
 - **遗留 B（跨轮不变）**：IC39「主机不可达 ⇒ 拒绝且不改行」与 IC40 needs-attention 卡的真机读数（需一台可 SSH 的替身主机；CI 里那支 spec 因无 sshd **被 skip**，不能拿车道绿当它跑过）；IC6「已收割」读数（同因）；Windows `database` 分片家族；中文源四家连接器（只回 `text/html`）；M2（卡产品决定）。
 - **遗留 C（内存）**：本机 8 GB 是硬约束（空闲页 7551 / swap 12.3 G 已用）⇒ 本轮一律不起 Electron。
+
+## 四十二、本轮追加（执行器，2026-10-10 03:2x–）—— 上一轮那条「块缺席」的读数经查是**探针抢答**：列表里还有产物行与会话行；探针改成先等面板回答再读
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 开工时 `HEAD == 3663a7cf`（我上一轮**未推**的 docs 提交）、`origin/main == 0f73a332`。**两条车道已在 02:17 全绿**：
+  `/tmp/ps-r7-verdict.txt` 的终态行 `FINAL windows=completed|success nightly=completed|success`（tip `0f73a332`）。
+  ⇒ 按上一轮记事本的第一步把它推上去：`0f73a332..3663a7cf`，**推前主干两条车道均为 completed ⇒ 本次推送没有取消任何人的判决**。
+- `git status --short` 不干净，**但那批不是本轮的**：28 个已修改 + 2 个未跟踪（新 `src/main/connectors/reading-verifier.ts`(+`.test.ts`)、
+  `src/shared/reading-fingerprint.ts`、`src/main/connectors/engine.ts`、`ArtifactProvenancePanel.tsx`(+render 测试)、9 语字典、
+  preload、契约目录…），mtime **01:36–01:39** ⇒ 是**桌面会话**的「读数指纹 / 校验器」在制品，本轮**一个字节未碰**、不替它提交。
+- 内存：空闲物理页 **5125（≈80 MB）**、swap 已用 **12,224 M / 13,312 M** ⇒ 一律不起 Electron；本轮读数全部取自 CI 作业日志。
+
+### 一 上一轮遗留 A 的读数取到了，但它指向的**不是产品缺陷**（三条独立事实合起来只有一个解释）
+
+来源：`0f73a332` 的 `Nightly` run **`37965968885`**、作业 `Build macos-arm64` = **`113947904244`**（七个作业全 success）。逐字：
+
+```
+[s3-reading] before any tick — hits 1
+[s3-reading] before any tick — index summary: (no index summary on screen)
+[s3-reading] before any tick — empty-index notice: (no empty-index notice on screen — the summary block itself was absent; the search response carried index={"present":false,"indexed":0,"pending":0,"capped":false})
+[s3-reading] after "Index now" — counts: Indexed 3 · 0 pending
+```
+
+1. 那次读数的 `hits` 是 **1**，而**同一支 spec** 在 ④ 段用应用自己的检索通道打同一条查询得到 `{"hits":3,…,"uploads":3}` ⇒ 屏上那 1 行**不是内容命中**。
+2. 报「块缺席」的 `18:08:25.984` 与「块在」（它读到了 counts 槽并点了按钮）的 `18:08:26.118` 只隔 **134 ms** ⇒ 块出现在探针读完**之后**。
+3. 代码上索引块没有第二道闸：`handlers.ts:269` 每条响应都带 `index`（`ipc.ts:1365` 已接线），`GlobalSearchDialog.tsx:1711` 只要
+   `indexSummary` 为真就渲染 ⇒ **一次已落地的响应必然带块**。
+
+⇒ 探针的 `results` 定位器（`[role="listbox"] [role="option"]`）是**超集**：同一个 listbox 里还有产物行（`renderArtifactRow`）、
+会话行（`renderSessionRow`）与「显示更多」按钮 ⇒ 「有任意一行」可以在**内容查询还在飞**时成立。探针在面板尚未回答时读了那三个断言，
+把「还没回答」读成了「屏上没有」。**上一轮那句 hardened 的话本身是误导**（它读起来像界面缺口）——这正是仓规点名的「读数退化」的另一种形态：
+句子更具体了，但它描述的是一个探针抢答的瞬间。
+
+### 二 本轮改动（改的是**探针**，不是产品）
+
+`e2e/certification/search-index-coverage.spec.ts`：
+
+- 读断言**之前**加一条**有界等待**（30 s）：内容行 `[data-testid="global-search-content-row"]`、内容空态 `…-content-empty`、或索引块
+  `[data-slot="gs-index-summary"]` 三者**任一**出现即视为「面板已回答」（三者都只能由一次**已落地**的响应渲染出来——索引块本身就携带着响应里的
+  `index`）。等待**有界且被打印**，所以「块从不渲染」这类**真缺口仍以缺口形式出现**，不会被等没了。
+- **命中数改为只数内容行**（原先是数 listbox 里所有 option，等于把产物行/会话行也算成「命中了语料」）；打印里同时给出 option 行总数，两个数一起看。
+- 结论句改写：区分「面板已回答而块仍缺席（⇒ 界面缺口）」与「面板还没回答」，不再让二者用同一句话收场。
+- **断言一字未放宽**：`expect(hitCount).toBeGreaterThan(0)` 仍在，且现在真的在断言**内容命中**（比原先更强）。
+
+### 三 门禁（隔离工作树 = HEAD + 本文件；读数即结论）
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .`（隔离树、CI 同口径） | **0 error / 118 warning**（与既有基线同） |
+| 双 typecheck（node / web） | **exit 0 / exit 0** |
+| `scripts/pre-push-checks.sh` | **全过**（品牌扫描 / README 双语 / CHANGELOG / 发布提醒） |
+| 真机（真窗口） | **未取**：本机空闲 ≈80 MB、swap 12.2 G/13.3 G ⇒ 无 `build:e2e` + Electron 余量；本单元读数由**本次推送**触发的 `macos-arm64` 认证作业给出 |
+
+**主工作树的全仓 eslint 报 1 error + 140 warning** —— 归因：**并发会话的未提交在制品**（同一份 `eslint --no-cache .` 在隔离树上是
+0 error / 118 warning，即证）。本轮未碰、未修、**不据它声称任何读数**。
+
+### 四 遗留与下一轮第一步
+
+- **遗留 A 的判据现在可判定了**：本次推送触发的 `Nightly`（`macos-arm64` 作业）里，`[s3-reading] before any tick — empty-index notice:`
+  后面应当是 **`not-measured: …`**（面板已回答 + 响应带 index ⇒ 产品确实说了那句）。若仍报「块缺席」，那**才是**界面缺口。
+  判据从「下一次认证车道跑完」变成「**本次推送的 Nightly 跑完**」。
+- 遗留 B（跨轮不变）：IC39/IC40 真机读数（需可 SSH 的替身主机，CI 里该 spec 被 skip）、IC6「已收割」读数、Windows `database` 分片家族
+  （只能由 Windows 车道判决，修法不许是加超时）、中文源四家连接器（只回 `text/html`）、M2（卡产品决定）。
+- 遗留 C：8 GB 机内存是硬约束 ⇒ 起 Electron 前先 `vm_stat` 判余量。
+- 版本位点台账：Latest = **v1.95.0**（21 资产、isLatest）；`package.json` = 1.95.0；本轮**未发版**、未改 `package.json` / 未动 9 语字典 /
+  未新增通道 / 未改 `.github/workflows/**`。
