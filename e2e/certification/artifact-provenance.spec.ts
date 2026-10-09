@@ -116,7 +116,10 @@ test('the provenance panel shows what the session read, recipe and window includ
       dropped: 2,
       entries: [
         {
-          recordedAt: new Date().toISOString(),
+          // INSIDE the window: `items` are only the readings recorded at or before the Version's
+          // `created_at`, so a seed stamped "now" (after the Version exists) would — correctly — not be
+          // listed. A fixed past stamp keeps this entry in the window on any runner.
+          recordedAt: new Date(Date.now() - 3_600_000).toISOString(),
           reading: {
             service: 'pubmed',
             tool: 'search_articles',
@@ -125,6 +128,20 @@ test('the provenance panel shows what the session read, recipe and window includ
               url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?term=aspirin'
             },
             response: { status: 200, bytes: 1118, sha256: digest }
+          }
+        },
+        {
+          // OUTSIDE the window: recorded after the Version was written, so it must NOT be listed above
+          // — the panel says how many of these there are instead of letting their absence be inferred.
+          recordedAt: new Date().toISOString(),
+          reading: {
+            service: 'pubmed',
+            tool: 'get_article_metadata',
+            request: {
+              method: 'GET',
+              url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed'
+            },
+            response: { status: 200, bytes: 64, sha256: digest }
           }
         }
       ]
@@ -154,6 +171,10 @@ test('the provenance panel shows what the session read, recipe and window includ
     'purescience-connector-reading-v1'
   )
   await expect(page.getByTestId('artifact-readings-dropped')).toContainText('2 older readings')
+  // The window is a promise on screen, so it is asserted on screen: exactly one reading is listed (the
+  // in-window one) and the later one is reported by count rather than silently missing.
+  await expect(page.getByTestId('artifact-readings-item')).toHaveCount(1)
+  await expect(page.getByTestId('artifact-readings-after-window')).toContainText('1 later reading')
   console.log(
     `[readings] recipe line: ${await page.getByTestId('artifact-readings-recipe').innerText()}`
   )

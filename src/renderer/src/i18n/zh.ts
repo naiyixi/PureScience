@@ -4055,7 +4055,8 @@ export const zh = {
   'ws.readingsDropped': '为保持在日志上限内，较早的 {count} 条读数已被丢弃。',
   'ws.readingsNotRecorded': '本次会话没有读数日志。',
   'ws.readingsNotLoaded': '此视图未加载读数。',
-  'ws.readingsUnreadable': '读数日志无法读取。'
+  'ws.readingsUnreadable': '读数日志无法读取。',
+  'ws.readingsAfterWindow': '本会话中还有 {count} 条读数是在本版本写入之后记录的，故未列在上方。'
 }
 
 export type ZhKey = keyof typeof zh

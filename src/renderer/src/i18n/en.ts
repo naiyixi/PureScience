@@ -4348,5 +4348,7 @@ export const en: Record<ZhKey, string> = {
   'ws.readingsDropped': '{count} older readings were dropped to stay inside the journal cap.',
   'ws.readingsNotRecorded': 'No readings journal exists for this session.',
   'ws.readingsNotLoaded': 'Readings were not loaded for this view.',
-  'ws.readingsUnreadable': 'The readings journal could not be read.'
+  'ws.readingsUnreadable': 'The readings journal could not be read.',
+  'ws.readingsAfterWindow':
+    '{count} later readings in this session were taken after this version was written and are not listed above.'
 }

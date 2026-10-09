@@ -4315,5 +4315,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.readingsDropped': 'ログの上限に収めるため、古い読み取り {count} 件が破棄されました。',
   'ws.readingsNotRecorded': 'このセッションには読み取りログがありません。',
   'ws.readingsNotLoaded': 'この表示では読み取りが読み込まれていません。',
-  'ws.readingsUnreadable': '読み取りログを読み取れませんでした。'
+  'ws.readingsUnreadable': '読み取りログを読み取れませんでした。',
+  'ws.readingsAfterWindow':
+    'このセッションの残り {count} 件の読み取りは、この版の作成後に記録されたため上に表示していません。'
 }

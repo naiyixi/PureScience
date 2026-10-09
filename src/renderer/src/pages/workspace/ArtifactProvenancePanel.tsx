@@ -1599,6 +1599,16 @@ const ArtifactProvenancePanel = ({
                     )}
                   </p>
                 ) : null}
+                {provenance.readings.afterWindow > 0 ? (
+                  // Readings taken after this Version was written are not listed above; saying how many
+                  // keeps the window from reading as "these were everything the session read".
+                  <p className="text-xs text-text-300" data-testid="artifact-readings-after-window">
+                    {t('ws.readingsAfterWindow').replace(
+                      '{count}',
+                      String(provenance.readings.afterWindow)
+                    )}
+                  </p>
+                ) : null}
               </>
             ) : (
               <p className="text-text-300" data-testid="artifact-readings-gap">

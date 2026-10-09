@@ -443,17 +443,23 @@ export type ArtifactVersionProvenance = {
    *
    * Read the attribution literally: it is SESSION + TIME WINDOW, not per-run causality. The connector
    * service knows which session called it and nothing finer — a run id reaching that layer would have
-   * come from RPC parameters, which are not authority — so an item here was read in the same session
-   * before this Version was written. That is a real link to check, and it is NOT a claim that this
-   * Version was derived from that reading.
+   * come from RPC parameters, which are not authority.
+   *
+   * "Window" is ENFORCED, not implied: `items` are the readings recorded at or before this Version's
+   * `created_at`. Readings taken later in the same session belong to later work and are NOT listed —
+   * they are counted in `afterWindow` so their absence is stated rather than left to be inferred. That
+   * makes an item a real link to check, and still NOT a claim that this Version was derived from it.
    */
   readings:
     | {
         state: 'available'
         attribution: 'session-window'
+        /** Readings recorded at or before this Version's `created_at`. */
         items: ConnectorReadingFingerprint[]
         /** Entries the journal dropped to stay inside its cap, so a short list is explainable. */
         dropped: number
+        /** Readings in the journal that fall AFTER this Version was written, hence not listed above. */
+        afterWindow: number
       }
     | {
         state: 'unavailable'

@@ -4283,9 +4283,14 @@ describe('artifact provenance repository', () => {
           'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
         sizeBytes: BigInt(14),
         checksum: 'a'.repeat(64),
-        evidenceJson: '{}',
-        // The repository verifies the mirror against this checksum, so the fixture computes it.
-        evidenceChecksum: createHash('sha256').update('{}').digest('hex')
+        // The window is read off the evidence's own created_at, so the fixture carries a real one:
+        // an empty evidence object would leave the window unknowable and the read would fail open.
+        evidenceJson: JSON.stringify({
+          created_at: new Date(Date.now() - 3_600_000).toISOString()
+        }),
+        evidenceChecksum: createHash('sha256')
+          .update(JSON.stringify({ created_at: new Date(Date.now() - 3_600_000).toISOString() }))
+          .digest('hex')
       }
     })
     const request = {
@@ -4305,7 +4310,13 @@ describe('artifact provenance repository', () => {
       request: { method: 'GET' as const, url: 'https://example.test/esearch?term=aspirin' },
       response: { status: 200, bytes: 1118, sha256: `sha256:${'c'.repeat(64)}` }
     }
-    await recordSessionReadings(storageRoot as string, 'session-1', [reading])
+    // Stamped BEFORE the Version was written: `items` are only the readings inside the window.
+    await recordSessionReadings(
+      storageRoot as string,
+      'session-1',
+      [reading],
+      () => new Date(Date.now() - 4_200_000)
+    )
 
     const after = await repository.getVersionProvenance(request)
     // The attribution is carried on the value: session and time window, not per-run causality.
@@ -4313,8 +4324,22 @@ describe('artifact provenance repository', () => {
       state: 'available',
       attribution: 'session-window',
       items: [reading],
-      dropped: 0
+      dropped: 0,
+      afterWindow: 0
     })
+
+    // A reading taken AFTER this Version was written belongs to later work: it is not listed, and the
+    // number of such readings is carried so their absence is stated rather than inferred.
+    // A clear gap from the Version's own `created_at` (the fixture row is created "now"), so the
+    // comparison is unambiguous rather than a same-millisecond coin toss.
+    await recordSessionReadings(
+      storageRoot as string,
+      'session-1',
+      [{ ...reading, tool: 'later_tool' }],
+      () => new Date(Date.now() + 60_000)
+    )
+    const withLater = await repository.getVersionProvenance(request)
+    expect(withLater.readings).toMatchObject({ items: [reading], afterWindow: 1 })
 
     // The listing path says it did not load rather than claiming nothing was recorded.
     const core = await repository.getVersionCore(request)

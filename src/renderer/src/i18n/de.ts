@@ -4450,5 +4450,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     '{count} ältere Lesevorgänge wurden entfernt, um innerhalb der Obergrenze des Protokolls zu bleiben.',
   'ws.readingsNotRecorded': 'Für diese Sitzung gibt es kein Leseprotokoll.',
   'ws.readingsNotLoaded': 'Für diese Ansicht wurden keine Lesevorgänge geladen.',
-  'ws.readingsUnreadable': 'Das Leseprotokoll konnte nicht gelesen werden.'
+  'ws.readingsUnreadable': 'Das Leseprotokoll konnte nicht gelesen werden.',
+  'ws.readingsAfterWindow':
+    '{count} spätere Messwerte dieser Sitzung wurden nach dieser Version aufgezeichnet und sind oben nicht aufgeführt.'
 }

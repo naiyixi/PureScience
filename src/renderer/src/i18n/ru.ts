@@ -4327,5 +4327,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.readingsDropped': 'Чтобы уложиться в предел журнала, более старых чтений отброшено: {count}.',
   'ws.readingsNotRecorded': 'Для этой сессии журнала чтений нет.',
   'ws.readingsNotLoaded': 'Для этого представления чтения не загружены.',
-  'ws.readingsUnreadable': 'Не удалось прочитать журнал чтений.'
+  'ws.readingsUnreadable': 'Не удалось прочитать журнал чтений.',
+  'ws.readingsAfterWindow':
+    'Ещё {count} чтений в этой сессии были записаны после создания этой версии и выше не указаны.'
 }

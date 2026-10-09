@@ -1095,7 +1095,13 @@ describe('ArtifactProvenancePanel', () => {
       execution: undefined,
       messages: { state: 'unavailable', reason: 'not-loaded' },
       review: { state: 'unavailable', reason: 'not-loaded' },
-      readings: { state: 'available', attribution: 'session-window', items: [], dropped: 0 }
+      readings: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [],
+        dropped: 0,
+        afterWindow: 0
+      }
     })
 
     await act(async () =>
@@ -1110,6 +1116,41 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.querySelector('[data-testid="artifact-readings-gap"]')).toBeNull()
     // No dropped line when nothing was dropped — a "0 dropped" line would read as a check that ran.
     expect(container.querySelector('[data-testid="artifact-readings-dropped"]')).toBeNull()
+  })
+
+  it('says how many readings fell after this version instead of letting the gap be inferred', async () => {
+    const renderWith = async (afterWindow: number): Promise<void> => {
+      act(() => root.unmount())
+      container.replaceChildren()
+      root = createRoot(container)
+      getVersionProvenance.mockResolvedValue({
+        ...provenance(),
+        execution: undefined,
+        messages: { state: 'unavailable', reason: 'not-loaded' },
+        review: { state: 'unavailable', reason: 'not-loaded' },
+        readings: {
+          state: 'available',
+          attribution: 'session-window',
+          items: [],
+          dropped: 0,
+          afterWindow
+        }
+      })
+      await act(async () =>
+        root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+      )
+      await flush()
+      await clickTab('Readings')
+    }
+
+    await renderWith(2)
+    expect(
+      container.querySelector('[data-testid="artifact-readings-after-window"]')?.textContent
+    ).toContain('2 later readings')
+
+    // Nothing later: no line at all, so a zero count cannot read as a check that ran.
+    await renderWith(0)
+    expect(container.querySelector('[data-testid="artifact-readings-after-window"]')).toBeNull()
   })
 
   it('walks a reader back to what the session read, recipe and window included', async () => {

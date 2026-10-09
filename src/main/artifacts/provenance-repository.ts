@@ -55,6 +55,7 @@ import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/even
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import { readSessionReadings } from '../connectors/reading-journal'
+import type { ConnectorReadingFingerprint } from '../../shared/reading-fingerprint'
 import type {
   NotebookEnvironmentManifest,
   NotebookEnvironmentPackage,
@@ -4007,15 +4008,38 @@ class ArtifactProvenanceRepository {
     }
     if (sections.readings !== false) {
       const journal = await readSessionReadings(this.options.storageRoot, appSessionId)
-      readings =
-        journal.state === 'available'
-          ? {
-              state: 'available',
-              attribution: 'session-window',
-              items: journal.entries.map((entry) => entry.reading),
-              dropped: journal.dropped
-            }
-          : { state: 'unavailable', reason: journal.reason }
+      if (journal.state === 'available') {
+        // The window is ENFORCED here rather than implied in a comment: a reading taken after this
+        // Version was written belongs to later work, so listing it under "session-window" would say
+        // more than the record supports. Both stamps are `Date.prototype.toISOString()` output
+        // (the journal writes `now().toISOString()`, the evidence writes `createdAt.toISOString()`),
+        // so parsing them is exact; a stamp that will not parse is treated as outside the window and
+        // counted, never silently promoted into `items`.
+        const writtenAt = Date.parse(evidence.created_at)
+        const items: ConnectorReadingFingerprint[] = []
+        let afterWindow = 0
+        for (const entry of journal.entries) {
+          const recordedAt = Date.parse(entry.recordedAt)
+          if (Number.isFinite(writtenAt) && Number.isFinite(recordedAt) && recordedAt > writtenAt) {
+            afterWindow += 1
+            continue
+          }
+          if (!Number.isFinite(recordedAt)) {
+            afterWindow += 1
+            continue
+          }
+          items.push(entry.reading)
+        }
+        readings = {
+          state: 'available',
+          attribution: 'session-window',
+          items,
+          dropped: journal.dropped,
+          afterWindow
+        }
+      } else {
+        readings = { state: 'unavailable', reason: journal.reason }
+      }
     }
 
     return {

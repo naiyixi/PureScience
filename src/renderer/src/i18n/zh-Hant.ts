@@ -3996,5 +3996,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.readingsDropped': '為保持在日誌上限內，較早的 {count} 條讀數已被捨棄。',
   'ws.readingsNotRecorded': '本次工作階段沒有讀數日誌。',
   'ws.readingsNotLoaded': '此檢視未載入讀數。',
-  'ws.readingsUnreadable': '讀數日誌無法讀取。'
+  'ws.readingsUnreadable': '讀數日誌無法讀取。',
+  'ws.readingsAfterWindow':
+    '本工作階段中還有 {count} 筆讀數是在本版本寫入之後記錄的，故未列在上方。'
 }

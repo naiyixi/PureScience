@@ -4403,5 +4403,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Se descartaron {count} lecturas anteriores para no superar el límite del registro.',
   'ws.readingsNotRecorded': 'No existe un registro de lecturas para esta sesión.',
   'ws.readingsNotLoaded': 'No se cargaron las lecturas para esta vista.',
-  'ws.readingsUnreadable': 'No se pudo leer el registro de lecturas.'
+  'ws.readingsUnreadable': 'No se pudo leer el registro de lecturas.',
+  'ws.readingsAfterWindow':
+    'Otras {count} lecturas de esta sesión se registraron después de escribir esta versión y no figuran arriba.'
 }

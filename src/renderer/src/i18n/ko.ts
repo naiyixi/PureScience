@@ -4247,5 +4247,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.readingsDropped': '로그 상한을 지키기 위해 오래된 읽기 {count}건이 삭제되었습니다.',
   'ws.readingsNotRecorded': '이 세션에는 읽기 로그가 없습니다.',
   'ws.readingsNotLoaded': '이 보기에서는 읽기 기록을 불러오지 않았습니다.',
-  'ws.readingsUnreadable': '읽기 로그를 읽을 수 없습니다.'
+  'ws.readingsUnreadable': '읽기 로그를 읽을 수 없습니다.',
+  'ws.readingsAfterWindow':
+    '이 세션의 나머지 {count}개 읽기는 이 버전이 작성된 뒤에 기록되어 위에 표시되지 않습니다.'
 }

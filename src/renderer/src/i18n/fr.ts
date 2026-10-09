@@ -4435,5 +4435,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     '{count} lectures plus anciennes ont été supprimées pour rester sous la limite du journal.',
   'ws.readingsNotRecorded': 'Aucun journal de lectures n’existe pour cette session.',
   'ws.readingsNotLoaded': 'Les lectures n’ont pas été chargées pour cette vue.',
-  'ws.readingsUnreadable': 'Le journal des lectures n’a pas pu être lu.'
+  'ws.readingsUnreadable': 'Le journal des lectures n’a pas pu être lu.',
+  'ws.readingsAfterWindow':
+    "{count} lectures ultérieures de cette session ont été enregistrées après l'écriture de cette version et ne figurent pas ci-dessus."
 }
