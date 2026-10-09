@@ -623,6 +623,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'gs.indexNow': 'Индексировать сейчас',
   'gs.indexing': 'Индексация…',
   'gs.indexAbsent': 'Индекс ещё не построен - поиск просматривает файлы напрямую',
+  'gs.indexNotMeasured': 'Измерение индекса ещё не выполнено - поиск просматривает файлы напрямую',
   'gs.indexCapped': 'Индекс достиг предела хранилища - часть файлов не проиндексирована',
   'gs.contentScopeArtifact': 'Созданный файл',
   'gs.contentScopeLiterature': 'Литература',

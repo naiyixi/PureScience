@@ -2877,6 +2877,7 @@ export const zh = {
   'gs.indexNow': '立即索引',
   'gs.indexing': '正在索引…',
   'gs.indexAbsent': '尚未建立索引，检索会现场扫描文件',
+  'gs.indexNotMeasured': '尚未读取索引读数，检索会现场扫描文件',
   'gs.indexCapped': '索引已达存储上限，部分文件未建索引',
   'gs.contentScopeArtifact': '生成文件',
   'gs.contentScopeLiterature': '文献',

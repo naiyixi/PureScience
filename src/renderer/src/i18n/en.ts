@@ -3096,6 +3096,7 @@ export const en: Record<ZhKey, string> = {
   'gs.indexNow': 'Index now',
   'gs.indexing': 'Indexing…',
   'gs.indexAbsent': 'No index built yet - searching scans the live files',
+  'gs.indexNotMeasured': 'No index reading yet - searching scans the live files',
   'gs.indexCapped': 'The index reached its storage limit - some files are not indexed',
   'gs.contentScopeArtifact': 'Generated file',
   'gs.contentScopeLiterature': 'Literature',

@@ -619,6 +619,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gs.indexNow': '지금 색인',
   'gs.indexing': '색인 중…',
   'gs.indexAbsent': '아직 색인이 없습니다 - 검색은 파일을 직접 훑습니다',
+  'gs.indexNotMeasured': '아직 색인 측정값이 없습니다 - 검색은 파일을 직접 훑습니다',
   'gs.indexCapped': '색인이 저장 한도에 도달했습니다 - 일부 파일은 색인되지 않았습니다',
   'gs.contentScopeArtifact': '생성된 파일',
   'gs.contentScopeLiterature': '문헌',

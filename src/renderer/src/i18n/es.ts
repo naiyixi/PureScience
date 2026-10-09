@@ -634,6 +634,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gs.indexNow': 'Indexar ahora',
   'gs.indexing': 'Indexando…',
   'gs.indexAbsent': 'Todavía no hay índice: la búsqueda examina los archivos en vivo',
+  'gs.indexNotMeasured':
+    'Todavía sin medición del índice: la búsqueda examina los archivos en vivo',
   'gs.indexCapped':
     'El índice alcanzó su límite de almacenamiento: algunos archivos no están indexados',
   'gs.contentScopeArtifact': 'Archivo generado',

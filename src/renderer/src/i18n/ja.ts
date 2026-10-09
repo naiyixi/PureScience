@@ -623,6 +623,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gs.indexNow': '今すぐ索引',
   'gs.indexing': '索引中…',
   'gs.indexAbsent': 'インデックスは未作成です - 検索はファイルを直接走査します',
+  'gs.indexNotMeasured': 'インデックスの測定値はまだありません - 検索はファイルを直接走査します',
   'gs.indexCapped': 'インデックスが保存上限に達しました - 一部のファイルは索引されていません',
   'gs.contentScopeArtifact': '生成されたファイル',
   'gs.contentScopeLiterature': '文献',

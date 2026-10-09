@@ -1989,13 +1989,39 @@ describe('GlobalSearchDialog — advanced filters and evidence verification', ()
 
     it('says no index has been built instead of reporting zero entries', async () => {
       vi.mocked(window.api.search.query).mockResolvedValue(
-        indexResponse({ present: false, indexed: 0, pending: 0, capped: false }) as never
+        indexResponse({
+          present: false,
+          indexed: 0,
+          pending: 0,
+          capped: false,
+          // A tick ran and found no index — that measurement is what lets this sentence be said at all.
+          measuredAt: new Date().toISOString()
+        }) as never
       )
 
       await renderPaletteAndSearch('zzz')
 
       expect(document.body.querySelector('[data-slot="gs-index-absent"]')).not.toBeNull()
+      expect(document.body.querySelector('[data-slot="gs-index-not-measured"]')).toBeNull()
       expect(document.body.querySelector('[data-slot="gs-index-counts"]')).toBeNull()
+    })
+
+    it('says the reading is not measured yet instead of claiming no index exists', async () => {
+      // The reading before any tick has run: `present` is false because nothing was MEASURED, and the
+      // absent `measuredAt` is exactly what says so. "No index built yet" here would state something the
+      // reading does not know — an index may exist and simply not have been read in this app run.
+      vi.mocked(window.api.search.query).mockResolvedValue(
+        indexResponse({ present: false, indexed: 0, pending: 0, capped: false }) as never
+      )
+
+      await renderPaletteAndSearch('zzz')
+
+      const summary = document.body.querySelector('[data-slot="gs-index-summary"]')
+      expect(summary?.querySelector('[data-slot="gs-index-not-measured"]')?.textContent).toContain(
+        'No index reading yet'
+      )
+      expect(summary?.querySelector('[data-slot="gs-index-absent"]')).toBeNull()
+      expect(summary?.querySelector('[data-slot="gs-index-counts"]')).toBeNull()
     })
 
     it('flags a capped index rather than presenting its count as the whole corpus', async () => {

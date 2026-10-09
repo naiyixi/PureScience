@@ -537,6 +537,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'gs.indexNow': '立即索引',
   'gs.indexing': '正在索引…',
   'gs.indexAbsent': '尚未建立索引，檢索會現場掃描檔案',
+  'gs.indexNotMeasured': '尚未讀取索引讀數，檢索會現場掃描檔案',
   'gs.indexCapped': '索引已達儲存上限，部分檔案未建立索引',
   'gs.contentScopeArtifact': '產生的檔案',
   'gs.contentScopeLiterature': '文獻',

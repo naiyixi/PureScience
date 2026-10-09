@@ -104,15 +104,24 @@ test('the index reports what it covers, is current after a tick, survives a rest
   const summaryText = summaryVisible
     ? (await summarySlot.innerText()).replace(/\s+/g, ' ').trim()
     : '(no index summary on screen)'
-  const absentText =
-    (await dialog.locator('[data-slot="gs-index-absent"]').count()) > 0
-      ? (await dialog.locator('[data-slot="gs-index-absent"]').innerText())
-          .replace(/\s+/g, ' ')
-          .trim()
-      : '(absent notice not shown)'
+  // The notice the panel shows when it has nothing measured to report. Two DIFFERENT statements live
+  // here — "not measured yet" (no tick has run in this app run) and "no index built yet" (a tick ran and
+  // found none) — so the reading names which one was actually on screen rather than collapsing them.
+  const emptyIndexNotice = async (): Promise<string> => {
+    const from = async (slot: string, wording: string): Promise<string | undefined> => {
+      const locator = dialog.locator(`[data-slot="${slot}"]`)
+      if ((await locator.count()) === 0) return undefined
+      return `${wording}: ${(await locator.innerText()).replace(/\s+/g, ' ').trim()}`
+    }
+    const notMeasured = await from('gs-index-not-measured', 'not-measured')
+    if (notMeasured !== undefined) return notMeasured
+    const absent = await from('gs-index-absent', 'measured-no-index')
+    return absent ?? '(no empty-index notice on screen)'
+  }
+  const emptyNoticeText = await emptyIndexNotice()
   console.log(`[s3-reading] before any tick — hits ${hitCount}`)
   console.log(`[s3-reading] before any tick — index summary: ${summaryText}`)
-  console.log(`[s3-reading] before any tick — absent notice: ${absentText}`)
+  console.log(`[s3-reading] before any tick — empty-index notice: ${emptyNoticeText}`)
   // The result set comes from the live scan and is NOT empty: the corpus is findable without the index.
   expect(hitCount).toBeGreaterThan(0)
 

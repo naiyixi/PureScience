@@ -1732,6 +1732,13 @@ export const GlobalSearchDialog = ({
                                 </span>
                               ) : null}
                             </>
+                          ) : contentSearch.indexSummary.measuredAt === undefined ? (
+                            // A reading with no timestamp has never been MEASURED. "No index built yet"
+                            // would be a claim about the world that this reading does not make — the
+                            // index may exist and simply not have been read yet in this app run.
+                            <span data-slot="gs-index-not-measured">
+                              {t('gs.indexNotMeasured')}
+                            </span>
                           ) : (
                             <span data-slot="gs-index-absent">{t('gs.indexAbsent')}</span>
                           )}
