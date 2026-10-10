@@ -21,7 +21,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15994 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - 受影响簇（分片前本地）：**194 文件 / 2156 passed / 53 skipped**；触碰文件 eslint 干净。
 - **读数复测独立于原记录**：三条连接器读数由本版重新取过，与执行器档里所记**逐字相同**；同时更正了我自己探针里一处误导性字段名（`query` 是回显的原始请求，真正发出的是 `zh_terms.query_sent`）。
 
