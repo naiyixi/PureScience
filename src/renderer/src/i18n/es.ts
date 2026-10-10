@@ -4410,5 +4410,10 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Otras {count} lecturas de esta sesión se registraron después de escribir esta versión y no figuran arriba.',
   'ws.readingsSessionOnly':
     'Lo que esta sesión leyó de otros servicios. El registro de esta versión no incluye una hora de creación legible, así que las lecturas siguientes son de toda la sesión y NO se limitan a lo anterior a ella.',
-  'ws.readingsSameRun': 'Registrada por la ejecución que produjo esta versión.'
+  'ws.readingsSameRun': 'Registrada por la ejecución que produjo esta versión.',
+  'ws.readingsVerify': 'Volver a pedir y comprobar',
+  'ws.readingsVerifyPending': 'Reenviando la petición…',
+  'ws.readingsVerifyMatched': 'Coincide: la misma petición devolvió los mismos bytes (HTTP {status}).',
+  'ws.readingsVerifyMismatch': 'Difiere: la misma petición devolvió otros bytes (HTTP {status}) — registrado {recorded}, ahora {recomputed}.',
+  'ws.readingsVerifyRefused': 'Sin comprobar, el motivo está nombrado:',
 }

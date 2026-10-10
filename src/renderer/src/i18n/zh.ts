@@ -4060,7 +4060,12 @@ export const zh = {
   'ws.readingsAfterWindow': '本会话中还有 {count} 条读数是在本版本写入之后记录的，故未列在上方。',
   'ws.readingsSessionOnly':
     '本会话从其他服务读到的内容。本版本的记录里没有可读的创建时间，因此下列读数是整个会话的，**不限于**本版本之前发生的那部分。',
-  'ws.readingsSameRun': '由产出本版本的那次运行所记录。'
+  'ws.readingsSameRun': '由产出本版本的那次运行所记录。',
+  'ws.readingsVerify': '重新请求并核对',
+  'ws.readingsVerifyPending': '正在重新请求…',
+  'ws.readingsVerifyMatched': '一致：重发同一请求返回了相同字节（HTTP {status}）。',
+  'ws.readingsVerifyMismatch': '不一致：重发同一请求返回了不同字节（HTTP {status}）—— 记录 {recorded}，现在 {recomputed}。',
+  'ws.readingsVerifyRefused': '未核对，原因具名：',
 }
 
 export type ZhKey = keyof typeof zh

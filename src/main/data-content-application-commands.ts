@@ -169,6 +169,9 @@ const dataContentApplicationCommands = Object.freeze({
     'getVersionProvenance'
   ),
   artifactGetVersionReview: artifactCommand('artifacts:get-version-review', 'getVersionReview'),
+  // Re-issuing a reading asks THIS machine to repeat a request it recorded: local-only by nature, like
+  // stopping a job this machine launched — a paired browser does not get to make this host egress.
+  artifactVerifyReading: artifactCommand('artifacts:verify-reading', 'verifyReading'),
   artifactListProjectFiles: artifactCommand('artifacts:list-project-files', 'listProjectFiles'),
   artifactOpenFile: artifactCommand('artifacts:open-file', 'openFile'),
   // The second OS handoff for the same resolved file: show it in the file manager instead of opening it.
@@ -290,6 +293,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.artifactGetVersionMessages,
     dataContentApplicationCommands.artifactGetVersionProvenance,
     dataContentApplicationCommands.artifactGetVersionReview,
+    dataContentApplicationCommands.artifactVerifyReading,
     dataContentApplicationCommands.artifactListProjectFiles,
     dataContentApplicationCommands.artifactOpenFile,
     dataContentApplicationCommands.artifactRevealFile,
@@ -426,6 +430,7 @@ const registerDataContentApplicationCommands = (
         dependencies.artifacts.getVersionProvenance(args[0]),
       'artifacts:get-version-review': ({ args }) =>
         dependencies.artifacts.getVersionReview(args[0]),
+      'artifacts:verify-reading': ({ args }) => dependencies.artifacts.verifyReading(args[0]),
       'artifacts:list-project-files': ({ args }) =>
         dependencies.artifacts.listProjectFiles(args[0]),
       'artifacts:open-file': (invocation) => {

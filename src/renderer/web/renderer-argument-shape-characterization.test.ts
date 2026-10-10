@@ -205,7 +205,9 @@ describe('renderer argument-shape characterization', () => {
     // at dispatch in the Web profile but still a CALLABLE path on the Web surface.
     // 395 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel, a
     // callable path on the Web surface like the skill writes it sits beside.
-    expect(actualPaths).toHaveLength(395)
+    // 396 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, one
+    // more callable path here.
+    expect(actualPaths).toHaveLength(396)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

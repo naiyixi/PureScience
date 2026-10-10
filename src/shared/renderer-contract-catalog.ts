@@ -175,6 +175,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['finalizeRunArtifacts', 'artifacts:finalize-run'], ['generateCodeReconstruction', 'artifacts:generate-code-reconstruction'], ['getCodeReconstruction', 'artifacts:get-code-reconstruction'],
     ['getLineage', 'artifacts:get-lineage'], ['getVersionExecution', 'artifacts:get-version-execution'],
     ['getVersionMessages', 'artifacts:get-version-messages'], ['getVersionProvenance', 'artifacts:get-version-provenance'],
+    ['verifyReading', 'artifacts:verify-reading', LOCAL],
     ['getVersionReview', 'artifacts:get-version-review'], ['listProjectFiles', 'artifacts:list-project-files'], ['openFile', 'artifacts:open-file', LOCAL],
     ['revealFile', 'artifacts:reveal-file', LOCAL],
     ['readPreview', 'artifacts:read-preview'], ['probeAvailability', 'artifacts:probe-availability'], ['reconcilePendingArtifacts', 'artifacts:reconcile-pending'],

@@ -28,6 +28,7 @@ import type {
 } from '../shared/references'
 import type { IdentifierKind } from '../main/references/service'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../shared/artifact-replay'
+import type { ReadingVerification, VerifyReadingRequest } from '../shared/reading-fingerprint'
 import type {
   FolderGrant,
   FolderGrantRequest,
@@ -1053,6 +1054,11 @@ export interface PureScienceAPI {
     getVersionProvenance(
       request: GetArtifactVersionProvenanceRequest
     ): Promise<ArtifactVersionProvenance>
+    /**
+     * Re-issue a reading this app recorded and report what came back. The request names a session and a
+     * digest, never a URL: what may be re-issued is decided in the main process, against its own record.
+     */
+    verifyReading(request: VerifyReadingRequest): Promise<ReadingVerification>
     getVersionExecution(
       request: GetArtifactVersionProvenanceRequest
     ): Promise<ArtifactVersionExecutionProvenance>

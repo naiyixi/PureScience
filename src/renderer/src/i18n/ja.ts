@@ -4321,5 +4321,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このセッションの残り {count} 件の読み取りは、この版の作成後に記録されたため上に表示していません。',
   'ws.readingsSessionOnly':
     'このセッションが他のサービスから読み取った内容です。この版の記録には読み取り可能な作成時刻がないため、以下の読み取りはセッション全体にわたり、この版より前に限られません。',
-  'ws.readingsSameRun': 'この版を作成した実行による記録です。'
+  'ws.readingsSameRun': 'この版を作成した実行による記録です。',
+  'ws.readingsVerify': '再リクエストして照合',
+  'ws.readingsVerifyPending': '再リクエスト中…',
+  'ws.readingsVerifyMatched': '一致：同じリクエストが同じバイト列を返しました（HTTP {status}）。',
+  'ws.readingsVerifyMismatch': '不一致：同じリクエストが異なるバイト列を返しました（HTTP {status}）—— 記録 {recorded}、現在 {recomputed}。',
+  'ws.readingsVerifyRefused': '未照合。理由は明示：',
 }

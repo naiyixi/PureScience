@@ -4002,5 +4002,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '本工作階段中還有 {count} 筆讀數是在本版本寫入之後記錄的，故未列在上方。',
   'ws.readingsSessionOnly':
     '本工作階段從其他服務讀到的內容。本版本的記錄沒有可讀的建立時間，因此下列讀數是整個工作階段的，**不限於**本版本之前發生的部分。',
-  'ws.readingsSameRun': '由產出本版本的那次執行所記錄。'
+  'ws.readingsSameRun': '由產出本版本的那次執行所記錄。',
+  'ws.readingsVerify': '重新請求並核對',
+  'ws.readingsVerifyPending': '正在重新請求…',
+  'ws.readingsVerifyMatched': '一致：重發同一請求回傳了相同位元組（HTTP {status}）。',
+  'ws.readingsVerifyMismatch': '不一致：重發同一請求回傳了不同位元組（HTTP {status}）—— 紀錄 {recorded}，現在 {recomputed}。',
+  'ws.readingsVerifyRefused': '未核對，原因具名：',
 }

@@ -224,7 +224,14 @@ describe('ParserEngine records a fingerprint of every reading it takes', () => {
       {
         service: 'pubmed',
         tool: 'search_articles',
-        request: { method: 'GET', url: 'https://example.test/esearch?term=aspirin' },
+        request: {
+          method: 'GET',
+          url: 'https://example.test/esearch?term=aspirin',
+          // Recorded even when empty: "checked, nothing removed" must not read the same as "this record
+          // predates the field" (which is what a re-issuer has to refuse on).
+          credentials_stripped: [],
+          accept: 'application/json'
+        },
         response: {
           status: 200,
           bytes: 12,
@@ -277,7 +284,12 @@ describe('ParserEngine records a fingerprint of every reading it takes', () => {
 
     await engine.call(desc, {}, {}, (r) => readings.push(r))
 
-    expect(readings[0].request).toEqual({ method: 'POST', url: 'https://example.test/graphql' })
+    expect(readings[0].request).toEqual({
+      method: 'POST',
+      url: 'https://example.test/graphql',
+      credentials_stripped: [],
+      accept: 'application/json'
+    })
     expect(readings[0].response.sha256).toBe(
       recompute('POST', 'https://example.test/graphql', 200, '{"ok":true}')
     )
@@ -300,6 +312,10 @@ describe('ParserEngine records a fingerprint of every reading it takes', () => {
 
     expect(readings[0].request.url).not.toContain('SECRET')
     expect(readings[0].request.url).not.toContain('a%40b.com')
+    // The NAMES that were removed are recorded — never the values. Without them a verifier cannot tell
+    // that the recorded URL is not the request that was sent, and would re-issue the remainder and call
+    // the answer a reproduction.
+    expect(readings[0].request.credentials_stripped).toEqual(['email', 'api_key'])
     expect(readings[0].response.sha256).toBe(recompute('GET', readings[0].request.url, 200, '{}'))
   })
 

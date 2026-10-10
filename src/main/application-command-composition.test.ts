@@ -182,7 +182,9 @@ describe('application command composition', () => {
     // it launched is local-only by nature, so it joins the local Web surface and the rejection set.
     // One more for the skill fork (settings:fork-imported-skill, work order 二): a plain Web request
     // profile, so the local Web surface moves with it while the rejection set does not.
-    expect(composition.localWeb.commandNames()).toHaveLength(357)
+    // One more for verifying a recorded reading (artifacts:verify-reading): a plain Web request profile,
+    // so the local Web surface moves with it while the rejection set does not.
+    expect(composition.localWeb.commandNames()).toHaveLength(358)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -205,7 +207,9 @@ describe('application command composition', () => {
     // Web surface as well. The fail-closed rejection set is unchanged.
     expect(composition.remoteWeb.commandNames()).toHaveLength(233)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(124)
+    // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
+    // the fail-closed set takes it and the remote dispatch count stays.
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(125)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

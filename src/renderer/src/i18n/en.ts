@@ -4354,5 +4354,10 @@ export const en: Record<ZhKey, string> = {
     '{count} later readings in this session were taken after this version was written and are not listed above.',
   'ws.readingsSessionOnly':
     "What this session read from other services. This version's record carries no readable creation time, so the readings below are the whole session's and are NOT limited to what happened before it.",
-  'ws.readingsSameRun': 'Taken by the run that produced this version.'
+  'ws.readingsSameRun': 'Taken by the run that produced this version.',
+  'ws.readingsVerify': 'Re-issue and check',
+  'ws.readingsVerifyPending': 'Re-issuing the request…',
+  'ws.readingsVerifyMatched': 'Matched: the same request returned the same bytes (HTTP {status}).',
+  'ws.readingsVerifyMismatch': 'Different: the same request returned different bytes (HTTP {status}) — recorded {recorded}, now {recomputed}.',
+  'ws.readingsVerifyRefused': 'Not checked, and the reason is named:',
 }

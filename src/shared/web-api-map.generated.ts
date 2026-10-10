@@ -36,6 +36,7 @@ export const WEB_INVOKE_CHANNELS = {
   'artifacts.replayVersion': 'artifacts:replay-version',
   'artifacts.resolveVersionDescriptors': 'artifacts:resolve-version-descriptors',
   'artifacts.revealFile': 'artifacts:reveal-file',
+  'artifacts.verifyReading': 'artifacts:verify-reading',
   'artifacts.writeUserEditedVersion': 'artifacts:write-user-edited-version',
   'bookmark.list': 'bookmark:list',
   'bookmark.remove': 'bookmark:remove',

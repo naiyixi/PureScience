@@ -34,6 +34,7 @@ import type {
 } from '../../../../shared/artifact-code-reconstruction'
 import type { PersistedToolActivity } from '../../../../shared/session-persistence'
 import type { GoToTranscriptIntent, ReviewUpdateEvent } from '../../../../shared/reviewer'
+import type { ReadingVerification } from '../../../../shared/reading-fingerprint'
 import { READING_FINGERPRINT_HASH_RECIPE } from '../../../../shared/reading-fingerprint'
 import { formatBytes } from '../../../../shared/update'
 import {
@@ -462,6 +463,32 @@ const ArtifactProvenancePanel = ({
     error?: string
   }>()
   const [activeTab, setActiveTab] = useState<ProvenanceTab>('code')
+  // Keyed by the reading's digest: the same reading can be listed under more than one version, and a
+  // re-issue is about that reading, not about where it happens to be displayed.
+  const [readingVerdicts, setReadingVerdicts] = useState<
+    Record<string, ReadingVerification | 'pending'>
+  >({})
+
+  // Re-issue a recorded reading and show what came back. The request names a session and a digest — the
+  // URL never leaves the main process, which looks the reading up in its own record. Every outcome is
+  // shown as itself: a pass, a difference with both digests, or a refusal that names its reason.
+  const verifyReading = async (digest: string): Promise<void> => {
+    setReadingVerdicts((current) => ({ ...current, [digest]: 'pending' }))
+    try {
+      const verdict = await window.api.artifacts.verifyReading({
+        appSessionId: item.sessionId,
+        digest
+      })
+      setReadingVerdicts((current) => ({ ...current, [digest]: verdict }))
+    } catch {
+      // The channel failed, which is not an answer from the source: report the re-issue as untaken
+      // rather than leaving the row looking like a check nobody ran.
+      setReadingVerdicts((current) => ({
+        ...current,
+        [digest]: { state: 'unavailable', reason: 'request-failed' }
+      }))
+    }
+  }
   const [deferredSectionResults, setDeferredSectionResults] = useState<
     Record<string, DeferredSectionResult>
   >({})
@@ -1601,6 +1628,52 @@ const ArtifactProvenancePanel = ({
                         >
                           {reading.request.method} {reading.request.url}
                         </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid="artifact-readings-verify"
+                            disabled={readingVerdicts[reading.response.sha256] === 'pending'}
+                            onClick={() => void verifyReading(reading.response.sha256)}
+                          >
+                            {t('ws.readingsVerify')}
+                          </Button>
+                          {readingVerdicts[reading.response.sha256] === 'pending' ? (
+                            <p
+                              className="text-xs text-text-300"
+                              data-testid="artifact-readings-verify-pending"
+                            >
+                              {t('ws.readingsVerifyPending')}
+                            </p>
+                          ) : null}
+                          {readingVerdicts[reading.response.sha256] &&
+                          readingVerdicts[reading.response.sha256] !== 'pending' ? (
+                            <p
+                              className="text-xs text-text-300"
+                              data-testid="artifact-readings-verify-verdict"
+                            >
+                              {(() => {
+                                const verdict = readingVerdicts[reading.response.sha256]
+                                if (verdict === 'pending' || !verdict) return null
+                                if (verdict.state === 'matched') {
+                                  return t('ws.readingsVerifyMatched', {
+                                    status: String(verdict.status)
+                                  })
+                                }
+                                if (verdict.state === 'mismatch') {
+                                  return t('ws.readingsVerifyMismatch', {
+                                    status: String(verdict.status),
+                                    recorded: `${verdict.recorded.slice(0, 18)}…`,
+                                    recomputed: `${verdict.recomputed.slice(0, 18)}…`
+                                  })
+                                }
+                                // The reason is a name the main process chose; it is shown verbatim
+                                // rather than dressed up, so it stays greppable.
+                                return `${t('ws.readingsVerifyRefused')} ${verdict.reason}`
+                              })()}
+                            </p>
+                          ) : null}
+                        </div>
                         <p className="font-mono text-xs text-text-300">
                           {reading.response.status} · {formatBytes(reading.response.bytes)} ·{' '}
                           {reading.response.sha256}

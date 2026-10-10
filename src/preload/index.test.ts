@@ -265,6 +265,7 @@ describe('preload bridge — public surface inventory', () => {
       'artifacts.replayVersion',
       'artifacts.resolveVersionDescriptors',
       'artifacts.revealFile',
+      'artifacts.verifyReading',
       'artifacts.writeUserEditedVersion',
       'bookmark.list',
       'bookmark.remove',
@@ -839,7 +840,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // two desktop-only core request contracts beside the other inbox methods.
     // 235 with the read-only external crate inspection (roCrate.inspectExternal): one more desktop-only
     // request contract, which is why the request count below moves with it and the Web maps do not.
-    expect(coreContracts).toHaveLength(235)
+    // 236 with verifying a recorded reading (artifacts.verifyReading): a local-only request contract, so
+    // the core request count below moves with it while neither Web map does.
+    expect(coreContracts).toHaveLength(236)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -851,7 +854,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 197, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 198, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -860,7 +863,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(197)
+    expect(requestContracts).toHaveLength(198)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

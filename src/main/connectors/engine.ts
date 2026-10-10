@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 
 import {
-  READING_FINGERPRINT_HASH_RECIPE,
   READING_FINGERPRINT_PREFIX,
+  readingDigestInput,
   type ConnectorReadingFingerprint
 } from '../../shared/reading-fingerprint'
 import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
@@ -19,7 +19,9 @@ const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504])
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Some public APIs (e.g. AlphaFold EBI) reject requests without a User-Agent; send a stable one.
-const USER_AGENT =
+// Exported so a re-issue sends the SAME request the reading came from: a different agent can get a
+// different body, which would be reported as a mismatch that is not the source's doing.
+export const USER_AGENT =
   'Mozilla/5.0 (compatible; PureScience/1.0; +https://github.com/zerolink/purescience)'
 
 // Builds the NCBI E-utilities etiquette query suffix; empty when unset (calls still work).
@@ -31,15 +33,22 @@ export function ncbiEtiquette(credentials: ConnectorCredentials): string {
 }
 
 // Strips credential query params (NCBI email/api_key) from a URL before it can land in an error
-// message or log. Falls back to the raw string if it doesn't parse as a URL.
-function redactUrl(url: string): string {
+// message, a log or a recorded reading. Returns the NAMES it removed as well: the names are not
+// secrets, and a reading whose URL was stripped is not the request that was sent, so a verifier has to
+// know that rather than re-issue the remainder and call the answer a reproduction. The removed values
+// never travel. Falling back to the raw string if it doesn't parse as a URL removes nothing.
+function redactUrl(url: string): { url: string; stripped: string[] } {
   try {
     const parsed = new URL(url)
-    parsed.searchParams.delete('email')
-    parsed.searchParams.delete('api_key')
-    return parsed.toString()
+    const stripped: string[] = []
+    for (const name of ['email', 'api_key']) {
+      if (!parsed.searchParams.has(name)) continue
+      parsed.searchParams.delete(name)
+      stripped.push(name)
+    }
+    return { url: parsed.toString(), stripped }
   } catch {
-    return url
+    return { url, stripped: [] }
   }
 }
 
@@ -120,7 +129,7 @@ export class ParserEngine {
       bytes: Uint8Array
     ): string => {
       const digest = createHash('sha256')
-        .update(`${READING_FINGERPRINT_HASH_RECIPE}\n${method}\n${redactUrl(url)}\n${status}\n`)
+        .update(readingDigestInput(method, redactUrl(url).url, status))
         .update(bytes)
         .digest('hex')
       return `${READING_FINGERPRINT_PREFIX}${digest}`
@@ -143,7 +152,7 @@ export class ParserEngine {
             controller.abort()
             reject(
               new Error(
-                `Request timed out after ${this.timeoutMs}ms for ${redactUrl(url)} (deadline reached; not retried)`
+                `Request timed out after ${this.timeoutMs}ms for ${redactUrl(url).url} (deadline reached; not retried)`
               )
             )
           }, this.timeoutMs)
@@ -178,10 +187,18 @@ export class ParserEngine {
           // a digest of a re-serialisation would not reproduce against what the service actually sent,
           // and the verifier reports the absence as `not-recorded` rather than as a pass.
           if (onReading && body) {
+            const recorded = redactUrl(url)
             onReading({
               service: descriptor.connector,
               tool: descriptor.id,
-              request: { method, url: redactUrl(url) },
+              request: {
+                method,
+                url: recorded.url,
+                // Always recorded, even when empty: "checked, nothing removed" and "this record predates
+                // the field" are different facts, and the second one must not read as the first.
+                credentials_stripped: recorded.stripped,
+                accept
+              },
               response: {
                 status: res.status,
                 bytes: body.bytes.byteLength,
@@ -196,7 +213,7 @@ export class ParserEngine {
           await sleep(nextDelay(attempt, res.headers?.get?.('retry-after') ?? null))
           continue
         }
-        throw new Error(`HTTP ${res.status} for ${redactUrl(url)}`)
+        throw new Error(`HTTP ${res.status} for ${redactUrl(url).url}`)
       }
     }
 

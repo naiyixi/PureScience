@@ -148,7 +148,7 @@ const WEB_UNAVAILABLE_CHANNELS = [
 ] as const
 
 const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
-  artifacts: ['open-file', 'reveal-file', 'write-user-edited-version'],
+  artifacts: ['open-file', 'reveal-file', 'verify-reading', 'write-user-edited-version'],
   cli: ['install', 'uninstall'],
   // 'jobs:cancel' keeps its own colon: this group's prefix is the capability, so the expanded channel
   // is compute:jobs:cancel (not compute:jobs-cancel).
@@ -307,7 +307,8 @@ describe('renderer surface inventory', () => {
     // 472 with the skill fork (settings.forkImportedSkill, work order 二): the preload bridge exposes one
     // method per contract, so the preload inventory and the catalog move together.
     // 473 with the read-only external crate inspection (roCrate.inspectExternal): same, one method.
-    expect(electronPaths).toHaveLength(473)
+    // 474 with verifying a recorded reading (artifacts.verifyReading): same, one method.
+    expect(electronPaths).toHaveLength(474)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -317,7 +318,9 @@ describe('renderer surface inventory', () => {
     // channels, so the invoke map moves with them.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(365)
+    // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
+    // channel.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(366)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -353,7 +356,9 @@ describe('renderer surface inventory', () => {
     const expectedRemoteLocalOnly = expand(REMOTE_LOCAL_ONLY_CHANNELS, ':')
 
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
-    expect(expectedRemoteLocalOnly).toHaveLength(124)
+    // 125 with verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so it
+    // is refused on the remote surface and counted in the fail-closed set.
+    expect(expectedRemoteLocalOnly).toHaveLength(125)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

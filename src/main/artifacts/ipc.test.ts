@@ -960,7 +960,8 @@ describe('artifact IPC handler registration', () => {
       getVersionReview: vi.fn(),
       getCodeReconstruction: vi.fn(),
       generateCodeReconstruction: vi.fn(),
-      resolveVersionDescriptors: vi.fn()
+      resolveVersionDescriptors: vi.fn(),
+      verifyReading: vi.fn()
     }
     registrationFailure.channel = 'artifacts:finalize-run'
     registrationFailure.error = failure

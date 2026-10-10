@@ -4253,5 +4253,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 세션의 나머지 {count}개 읽기는 이 버전이 작성된 뒤에 기록되어 위에 표시되지 않습니다.',
   'ws.readingsSessionOnly':
     '이 세션이 다른 서비스에서 읽은 내용입니다. 이 버전의 기록에 읽을 수 있는 생성 시각이 없어, 아래 읽기는 세션 전체에 해당하며 이 버전 이전으로 한정되지 않습니다.',
-  'ws.readingsSameRun': '이 버전을 만든 실행이 기록했습니다.'
+  'ws.readingsSameRun': '이 버전을 만든 실행이 기록했습니다.',
+  'ws.readingsVerify': '다시 요청해 대조',
+  'ws.readingsVerifyPending': '요청을 다시 보내는 중…',
+  'ws.readingsVerifyMatched': '일치: 같은 요청이 같은 바이트를 반환했습니다(HTTP {status}).',
+  'ws.readingsVerifyMismatch': '불일치: 같은 요청이 다른 바이트를 반환했습니다(HTTP {status}) — 기록 {recorded}, 현재 {recomputed}.',
+  'ws.readingsVerifyRefused': '대조하지 않음, 이유는 명시:',
 }

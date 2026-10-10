@@ -42,14 +42,18 @@ describe('renderer contract catalog', () => {
     // 473 with the read-only external crate inspection (roCrate.inspectExternal): a desktop-only channel,
     // so the catalog and the preload inventory move by one while neither Web map moves at all — and the
     // local-Web set below grows by the same one, for the same reason.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(473)
+    // 474 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, so the
+    // catalog, the invoke map, the preload inventory and both Web installation sets move by one.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(474)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
     // both are local-only invoke channels, so the invoke map and the local-only set move together.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
-    expect(Object.keys(projection.invoke)).toHaveLength(365)
+    // 366 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, so the
+    // invoke map and the local-only set move together.
+    expect(Object.keys(projection.invoke)).toHaveLength(366)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -63,9 +67,10 @@ describe('renderer contract catalog', () => {
     // set grows by the rejecting stub it gets for being local-only.
     // 395 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel,
     // so the local-Web installation set moves with it while the remote-Web one gains the same channel.
+    // 396 with verifying a recorded reading (artifacts.verifyReading): the same profile, one more method.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(395)
+    ).toHaveLength(396)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -98,7 +103,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(78)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(124)
+    ).toHaveLength(125)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

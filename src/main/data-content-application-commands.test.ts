@@ -80,6 +80,7 @@ const createDependencies = () => {
     getVersionExecution: vi.fn(),
     getVersionMessages: vi.fn(),
     getVersionReview: vi.fn(),
+    verifyReading: vi.fn(),
     getCodeReconstruction: vi.fn(),
     generateCodeReconstruction: vi.fn(),
     resolveVersionDescriptors: vi.fn(async () => []),
@@ -252,7 +253,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 53 current data and content invoke channels', () => {
+  it('owns exactly the 54 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -263,6 +264,7 @@ describe('Data and content application commands', () => {
         'artifacts:get-version-messages',
         'artifacts:get-version-provenance',
         'artifacts:get-version-review',
+        'artifacts:verify-reading',
         'artifacts:list-project-files',
         'artifacts:open-file',
         'artifacts:reveal-file',
@@ -376,6 +378,11 @@ describe('Data and content application commands', () => {
         key: 'artifactGetVersionReview',
         args: [request('version-review')],
         owner: deps.artifacts.getVersionReview
+      },
+      {
+        key: 'artifactVerifyReading',
+        args: [request('version-provenance')],
+        owner: deps.artifacts.verifyReading
       },
       {
         key: 'artifactListProjectFiles',

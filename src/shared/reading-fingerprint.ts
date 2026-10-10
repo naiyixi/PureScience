@@ -37,6 +37,56 @@ export const READING_FINGERPRINT_PREFIX = 'sha256:'
 
 export const READING_FINGERPRINT_PATTERN = /^sha256:[a-f0-9]{64}$/
 
+/**
+ * The exact string a fingerprint's digest is computed over, before the response bytes are appended.
+ *
+ * Shared so that the recorder and anyone re-issuing the request compose it identically, and so a reader
+ * can see the composition here instead of inferring it from a behaviour.
+ */
+export const readingDigestInput = (method: 'GET' | 'POST', url: string, status: number): string =>
+  `${READING_FINGERPRINT_HASH_RECIPE}\n${method}\n${url}\n${status}\n`
+
+/**
+ * Why a recorded reading could not be re-issued here. Machine-readable names, never prose: a surface
+ * renders the name it received rather than a sentence invented at the call site.
+ *
+ * - `not-recorded` — the record predates the fields a faithful re-issue needs (accept / stripped list)
+ * - `credentials-stripped` — credential parameters were removed before the URL was recorded, so the
+ *   recorded URL is NOT the request that was sent and re-issuing it would fetch something else
+ * - `not-a-read` — the recorded request was not a GET, so replaying it could repeat a write
+ * - `service-unknown` — no connector by that name, so nothing here can re-issue it
+ * - `request-failed` — the re-issue did not produce bytes to compare (transport failure, or a transport
+ *   with no byte view)
+ */
+export type ReadingVerificationRefusal =
+  'not-recorded' | 'credentials-stripped' | 'not-a-read' | 'service-unknown' | 'request-failed'
+
+/**
+ * What re-issuing a recorded reading produced. `matched`/`mismatch` carry BOTH digests and the status
+ * the re-issue returned, so a surface can show what was compared and a reader can see a changed status
+ * rather than having to guess why the digests differ. `unavailable` carries a name and never a
+ * comparison that did not happen.
+ */
+export type ReadingVerification =
+  | { state: 'matched'; recorded: string; recomputed: string; status: number }
+  | { state: 'mismatch'; recorded: string; recomputed: string; status: number }
+  | { state: 'unavailable'; reason: ReadingVerificationRefusal }
+
+/**
+ * What the renderer asks to have re-issued: a session and the digest of a reading it is looking at.
+ *
+ * Deliberately no URL: if the renderer could name one, this channel would be an outbound fetcher for
+ * whatever the renderer liked, wearing the app's user-agent. Instead the main process looks the digest
+ * up among the readings IT recorded for that session, and re-issues what it finds — so the capability
+ * is exactly "re-verify a reading this app took", and nothing wider.
+ */
+export type VerifyReadingRequest = {
+  /** The session whose journal holds the reading. */
+  appSessionId: string
+  /** `response.sha256` of the reading to re-issue. */
+  digest: string
+}
+
 export type ConnectorReadingFingerprint = {
   /** The connector the reading came from, e.g. `pubmed`. */
   service: string
@@ -46,6 +96,20 @@ export type ConnectorReadingFingerprint = {
     method: 'GET' | 'POST'
     /** The request URL with credentials redacted, exactly as the engine logged it. */
     url: string
+    /**
+     * The NAMES of the query parameters removed before this URL was recorded — never their values.
+     * Recorded (possibly as an empty list, meaning nothing was removed) because a stripped URL is no
+     * longer the request that was sent: a verifier that re-issued it would fetch something else, so it
+     * has to be able to say so instead. Absent means the record predates this field, and nothing can be
+     * concluded about stripping.
+     */
+    credentials_stripped?: string[]
+    /**
+     * The Accept header the request was sent with, so a re-issue can be the same request: a different
+     * Accept can return a different body, which would surface as a mismatch that is not the source's
+     * doing. Absent means the record predates this field.
+     */
+    accept?: string
   }
   response: {
     status: number

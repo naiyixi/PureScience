@@ -179,7 +179,11 @@ const GROUP_COUNT = 39
 // skill fork (settings:fork-imported-skill) duplicates an imported skill into this machine's own skill
 // root exactly like the create / update / import channels beside it, so it carries no local-only flag
 // and both Web surfaces move with it.
-const INTERNAL_COMMAND_COUNT = 359
+// +1 each on internal, local Web and the remote rejections for verifying a recorded reading
+// (artifacts:verify-reading): asking THIS machine to repeat a request it recorded is local-only by
+// nature — a paired browser does not get to make this host egress — so the dispatch count stays and the
+// fail-closed set takes it.
+const INTERNAL_COMMAND_COUNT = 360
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -187,11 +191,15 @@ const INTERNAL_COMMAND_COUNT = 359
 // reachable from the window locally and are refused on the remote surface, which is where they are counted.
 // One more for the skill fork (settings:fork-imported-skill): a plain Web request profile like the
 // skill writes it sits beside, so it lands on both Web surfaces and not in the fail-closed set.
-const LOCAL_WEB_COMMAND_COUNT = 357
+// One more for verifying a recorded reading (artifacts:verify-reading): same profile again — a plain
+// Web request channel, counted on both Web surfaces and not in the fail-closed set.
+const LOCAL_WEB_COMMAND_COUNT = 358
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 233
-const REMOTE_REJECTED_COMMAND_COUNT = 124
+// +1 for verifying a recorded reading (artifacts:verify-reading): local-only by nature, so it lands in
+// the fail-closed set instead of the remote dispatch count.
+const REMOTE_REJECTED_COMMAND_COUNT = 125
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

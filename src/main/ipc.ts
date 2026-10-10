@@ -372,7 +372,9 @@ import {
   type ElectronRuntimeAdapterInterfaces,
   type NamedElectronSurfaceAdapter
 } from './runtime-electron-wiring'
-import { recordSessionReadings } from './connectors/reading-journal'
+import type { VerifyReadingRequest } from '../shared/reading-fingerprint'
+import { readSessionReadings, recordSessionReadings } from './connectors/reading-journal'
+import { verifyRecordedReading } from './connectors/reading-verifier'
 import { ConversationSkillImporter, SkillImportApprovalBroker } from './skills/conversation-import'
 import { SkillCreator } from './skills/skill-creator'
 import type { ConversationSkillImportApprovalResponse } from '../shared/settings'
@@ -1988,6 +1990,18 @@ const createApplicationModules = async (
   notebookService.setMcpRpcConnectionResolver(({ sessionId, projectId }) =>
     notebookRpcServer.issueControlConnection(sessionId, projectId)
   )
+  // Re-issuing a recorded reading is a fresh outbound request, so it is declared where the app's
+  // outbound surface is declared rather than folded into a read-only adapter. No approval card: this is
+  // a read the user asked for by name — the same URL, the same Accept, no credentials — and the reading
+  // has to be one this process recorded (looked up by digest in the session's own journal), so the
+  // channel cannot be used to fetch an arbitrary URL.
+  declareElectronAdapter('connector-reading-verification', () => {
+    ipcMainHandle(
+      'artifacts:verify-reading',
+      (_event, request: VerifyReadingRequest) => artifactHandlers.verifyReading(request)
+    )
+  })
+
   // The renderer's approval card responds here; the broker resolves the held connector call.
   declareElectronAdapter('connector-approvals', () => {
     ipcMainHandle('connectors:approval-respond', (_event, request: RespondApprovalRequest) => {
@@ -2837,6 +2851,21 @@ const createApplicationModules = async (
       bindNotebookRuntime: (request) => notebookService.bindRuntime(request),
       shutdownNotebookSession: (request) => notebookCommands.shutdown(request)
     }),
+    // Re-issuing a recorded reading needs the journal, which lives beside the data root: the lookup is
+    // here, where that root is known, and the reading must be one THIS process recorded — never one the
+    // caller described. That is what keeps the channel from being an outbound fetcher for a URL.
+    verifyReading: async (request) => {
+      const journal = await readSessionReadings(resolveDataRoot(), request.appSessionId)
+      if (journal.state !== 'available') return { state: 'unavailable', reason: 'not-recorded' }
+      const entry = journal.entries.find(
+        (candidate) => candidate.reading.response.sha256 === request.digest
+      )
+      if (!entry) return { state: 'unavailable', reason: 'not-recorded' }
+
+      return verifyRecordedReading(entry.reading, {
+        hasService: (service) => ALL_CONNECTOR_IDS.includes(service)
+      })
+    },
     withSessionMutation: (projectId, sessionId, mutation) =>
       sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
   })

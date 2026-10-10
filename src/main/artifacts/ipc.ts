@@ -31,6 +31,10 @@ import type {
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
 import type {
+  ReadingVerification,
+  VerifyReadingRequest
+} from '../../shared/reading-fingerprint'
+import type {
   FinalizeRunArtifactsRequest,
   ListProjectArtifactsRequest,
   OpenArtifactFileRequest,
@@ -72,6 +76,12 @@ type ArtifactHandlers = {
   getVersionProvenance: (
     request: GetArtifactVersionProvenanceRequest
   ) => Promise<ArtifactVersionProvenance>
+  /**
+   * Re-issue a reading this process recorded and report what came back. Supplied by the composition,
+   * which owns the data root the readings live under — this factory owns Version rows, not the
+   * connector journal.
+   */
+  verifyReading: (request: VerifyReadingRequest) => Promise<ReadingVerification>
   getVersionExecution: (
     request: GetArtifactVersionProvenanceRequest
   ) => Promise<ArtifactVersionExecutionProvenance>
@@ -119,6 +129,7 @@ type ArtifactHandlerDependencies = {
     | 'resolveVersionPaths'
     | 'listUnpublishedProjectVersions'
   >
+  verifyReading?: (request: VerifyReadingRequest) => Promise<ReadingVerification>
   codeReconstruction?: {
     get(request: GetArtifactCodeReconstructionRequest): Promise<ArtifactCodeReconstructionState>
     generate(
@@ -326,6 +337,10 @@ const createArtifactHandlers = (
       return dependencies.withSessionMutation
         ? dependencies.withSessionMutation(request.projectId, request.appSessionId, write)
         : write()
+    },
+    verifyReading: (request) => {
+      if (!dependencies.verifyReading) throw new Error('Reading verification is not configured.')
+      return dependencies.verifyReading(request)
     },
     getVersionProvenance: (request) => {
       if (!dependencies.provenance) throw new Error('Artifact Provenance is not configured.')

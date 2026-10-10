@@ -794,6 +794,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('artifacts.writeUserEditedVersion', request),
     getVersionProvenance: (request) =>
       electronRendererContracts.invoke('artifacts.getVersionProvenance', request),
+    // The renderer sends a session and a digest, never a URL: what may be re-issued is decided in the
+    // main process, against the readings it actually recorded.
+    verifyReading: (request) =>
+      electronRendererContracts.invoke('artifacts.verifyReading', request),
     getVersionExecution: (request) =>
       electronRendererContracts.invoke('artifacts.getVersionExecution', request),
     getVersionMessages: (request) =>

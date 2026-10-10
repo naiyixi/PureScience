@@ -4456,5 +4456,10 @@ export const de: Partial<Record<ZhKey, string>> = {
     '{count} spätere Messwerte dieser Sitzung wurden nach dieser Version aufgezeichnet und sind oben nicht aufgeführt.',
   'ws.readingsSessionOnly':
     'Was diese Sitzung von anderen Diensten gelesen hat. Der Datensatz dieser Version enthält keine lesbare Erstellungszeit, daher umfassen die folgenden Messwerte die gesamte Sitzung und sind NICHT auf die Zeit davor begrenzt.',
-  'ws.readingsSameRun': 'Von dem Lauf aufgezeichnet, der diese Version erzeugt hat.'
+  'ws.readingsSameRun': 'Von dem Lauf aufgezeichnet, der diese Version erzeugt hat.',
+  'ws.readingsVerify': 'Erneut anfragen und prüfen',
+  'ws.readingsVerifyPending': 'Anfrage wird erneut gesendet…',
+  'ws.readingsVerifyMatched': 'Stimmt: dieselbe Anfrage lieferte dieselben Bytes (HTTP {status}).',
+  'ws.readingsVerifyMismatch': 'Abweichung: dieselbe Anfrage lieferte andere Bytes (HTTP {status}) — aufgezeichnet {recorded}, jetzt {recomputed}.',
+  'ws.readingsVerifyRefused': 'Nicht geprüft, der Grund ist benannt:',
 }

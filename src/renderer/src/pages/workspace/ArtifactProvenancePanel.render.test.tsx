@@ -373,6 +373,7 @@ let getVersionExecution: ReturnType<typeof vi.fn>
 let getVersionMessages: ReturnType<typeof vi.fn>
 let getVersionReview: ReturnType<typeof vi.fn>
 let getCodeReconstruction: ReturnType<typeof vi.fn>
+let verifyReading: ReturnType<typeof vi.fn>
 let generateCodeReconstruction: ReturnType<typeof vi.fn>
 let saveBlobFile: ReturnType<typeof vi.fn>
 
@@ -439,6 +440,7 @@ beforeEach(async () => {
         getVersionMessages,
         getVersionReview,
         getCodeReconstruction,
+        verifyReading,
         generateCodeReconstruction
       },
       reviewer: { onUpdated: vi.fn().mockReturnValue(() => undefined) },
@@ -465,6 +467,7 @@ describe('ArtifactProvenancePanel', () => {
     container.replaceChildren()
     root = createRoot(container)
     vi.mocked(window.api.artifacts.getLineage).mockResolvedValue(undefined)
+    verifyReading = vi.fn().mockResolvedValue({ state: 'unavailable', reason: 'not-recorded' })
     getVersionProvenance.mockClear()
 
     await act(async () =>
@@ -1151,6 +1154,103 @@ describe('ArtifactProvenancePanel', () => {
     // Nothing later: no line at all, so a zero count cannot read as a check that ran.
     await renderWith(0)
     expect(container.querySelector('[data-testid="artifact-readings-after-window"]')).toBeNull()
+  })
+
+  it('re-issues a reading on request and shows what came back', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    const digest = `sha256:${'a'.repeat(64)}`
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [
+          {
+            service: 'pubmed',
+            tool: 'search_articles',
+            request: {
+              method: 'GET',
+              url: 'https://example.test/e?term=x',
+              credentials_stripped: [],
+              accept: 'application/json'
+            },
+            response: { status: 200, bytes: 10, sha256: digest }
+          }
+        ],
+        dropped: 0,
+        afterWindow: 0
+      }
+    })
+    verifyReading.mockResolvedValue({
+      state: 'matched',
+      recorded: digest,
+      recomputed: digest,
+      status: 200
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    // The request names a session and a digest. If a URL ever travels on this channel the panel would
+    // be an outbound fetcher for whatever it liked, so the shape is asserted, not just the effect.
+    const button = container.querySelector('[data-testid="artifact-readings-verify"]')
+    expect(button).not.toBeNull()
+    await act(async () => (button as HTMLButtonElement).click())
+    await flush()
+
+    expect(verifyReading).toHaveBeenCalledWith({ appSessionId: 'session-1', digest })
+    const verdict = container.querySelector('[data-testid="artifact-readings-verify-verdict"]')
+    expect(verdict?.textContent ?? '').toContain('Matched')
+    expect(verdict?.textContent ?? '').toContain('200')
+  })
+
+  it('shows a refusal as the name it was given, never as a check that ran', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    const digest = `sha256:${'b'.repeat(64)}`
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      readings: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [
+          {
+            service: 'pubmed',
+            tool: 'search_articles',
+            request: { method: 'GET', url: 'https://example.test/e?term=x' },
+            response: { status: 200, bytes: 10, sha256: digest }
+          }
+        ],
+        dropped: 0,
+        afterWindow: 0
+      }
+    })
+    verifyReading.mockResolvedValue({ state: 'unavailable', reason: 'not-recorded' })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Readings')
+
+    const button = container.querySelector('[data-testid="artifact-readings-verify"]')
+    await act(async () => (button as HTMLButtonElement).click())
+    await flush()
+
+    const verdict = container.querySelector('[data-testid="artifact-readings-verify-verdict"]')
+    expect(verdict?.textContent ?? '').toContain('Not checked')
+    // The reason is the name the main process chose, shown verbatim so it stays greppable.
+    expect(verdict?.textContent ?? '').toContain('not-recorded')
   })
 
   it('marks the reading taken by the run that produced this version, and only that one', async () => {
