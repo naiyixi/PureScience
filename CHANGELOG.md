@@ -15,7 +15,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15995 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - **反向核对**：`node scripts/verify-mesh-sources.mjs` ⇒ **100/100 行**与各自 MeSH 描述符一致（47 method + 20 procedure + 33 topic）。
 - 受影响簇（分片前本地）：**194 文件 / 2157 passed / 53 skipped**；触碰文件 eslint 干净。
 - 三条连接器读数为**实际发出的请求**（`zh_terms.query_sent`／`search_query`），非回显的原始输入。
