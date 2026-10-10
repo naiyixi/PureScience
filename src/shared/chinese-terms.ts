@@ -33,6 +33,10 @@ export const CHINESE_TERM_KINDS = [
   'indication',
   'institution',
   'journal',
+  // Study design, statistics and evidence type: what a clinical question is ASKED with, not what it is
+  // about. A Chinese query is usually a design word plus a subject ("随机对照试验 阿司匹林"), and without
+  // these the design half of it was refused.
+  'method',
   'connective'
 ] as const
 
@@ -54,6 +58,17 @@ export type ChineseTermEntry = {
   kind: ChineseDenotingKind
   variants?: readonly string[]
   english: string
+  /**
+   * Where the ENGLISH side came from, when it was looked up rather than chosen here.
+   *
+   * A wrong mapping is worse than a missing one: it silently sends a different question. So a term added
+   * under this discipline carries the identifier of the authority it was read from — for `method`
+   * entries that is the MeSH descriptor (`mesh:D016449`), which anyone can resolve at
+   * `https://id.nlm.nih.gov/mesh/D016449` and check the English term against. The read-source test
+   * requires it for every `method` row, and cross-checks the table against the evidence note that lists
+   * the pairs, so neither can drift without the test failing.
+   */
+  source?: string
 }
 
 export type ChineseConnectiveEntry = {
@@ -76,6 +91,27 @@ const entry = (
 // query can reach is coverage on paper only. The acronym is what a term normalises TO, not FROM. The
 // read-source test asserts exactly this reachability property rather than a character class, so
 // "301医院" and "II型糖尿病" stay legal while a pure-Latin spelling does not.
+
+/**
+ * A row whose English side was READ from a MeSH descriptor rather than translated here.
+ *
+ * `descriptor` is the descriptor's own id (`D016449`); it is stored as `mesh:<id>` so the provenance is
+ * a string a reader can act on. The Chinese side stays the term as Chinese medical literature writes it —
+ * that half is not MeSH's, and the evidence note says so per row.
+ */
+const meshEntry = (
+  canonical: string,
+  kind: ChineseDenotingKind,
+  english: string,
+  descriptor: string,
+  variants: readonly string[] = []
+): ChineseTermEntry => ({
+  canonical,
+  kind,
+  english,
+  source: `mesh:${descriptor}`,
+  ...(variants.length ? { variants } : {})
+})
 
 const connective = (
   canonical: string,
@@ -365,11 +401,50 @@ const CONNECTIVES: readonly ChineseConnectiveEntry[] = [
   connective('比较', ['对比'])
 ]
 
+// Study design / statistics / evidence type. Every English term below was fetched from MeSH's own
+// lookup service on 2026-10-10 (`/mesh/lookup/descriptor?label=…&match=exact`) and the descriptor id it
+// returned is recorded per row; the evidence note lists the same pairs. Variants are added only where
+// the alternative spelling names the SAME thing (a bare "基因表达" is gene expression, not profiling,
+// so it is deliberately not a variant of it).
+const METHODS: readonly ChineseTermEntry[] = [
+  meshEntry('荟萃分析', 'method', 'meta-analysis', 'D017418', ['元分析']),
+  meshEntry('随机对照试验', 'method', 'randomized controlled trial', 'D016449', ['随机对照']),
+  meshEntry('队列研究', 'method', 'cohort studies', 'D015331'),
+  meshEntry('病例对照研究', 'method', 'case-control studies', 'D016022'),
+  meshEntry('横断面研究', 'method', 'cross-sectional studies', 'D003430', ['现况研究']),
+  meshEntry('系统评价', 'method', 'systematic review', 'D000078182', ['系统综述']),
+  meshEntry('前瞻性研究', 'method', 'prospective studies', 'D011446'),
+  meshEntry('回顾性研究', 'method', 'retrospective studies', 'D012189'),
+  meshEntry('随访研究', 'method', 'follow-up studies', 'D005500'),
+  meshEntry('纵向研究', 'method', 'longitudinal studies', 'D008137'),
+  meshEntry('双盲法', 'method', 'double-blind method', 'D004311', ['双盲']),
+  meshEntry('生存分析', 'method', 'survival analysis', 'D016019'),
+  meshEntry('预后', 'method', 'prognosis', 'D011379'),
+  meshEntry('危险因素', 'method', 'risk factors', 'D012307', ['风险因素']),
+  meshEntry('比值比', 'method', 'odds ratio', 'D016017'),
+  meshEntry('置信区间', 'method', 'confidence intervals', 'D016001', ['可信区间']),
+  meshEntry('动物模型', 'method', 'disease models, animal', 'D004195'),
+  meshEntry('全基因组关联研究', 'method', 'genome-wide association study', 'D055106'),
+  meshEntry('免疫组织化学', 'method', 'immunohistochemistry', 'D007150', ['免疫组化']),
+  meshEntry('聚合酶链反应', 'method', 'polymerase chain reaction', 'D016133'),
+  meshEntry('机器学习', 'method', 'machine learning', 'D000069550'),
+  meshEntry('深度学习', 'method', 'deep learning', 'D000077321'),
+  meshEntry('列线图', 'method', 'nomograms', 'D049451'),
+  meshEntry('孟德尔随机化', 'method', 'mendelian randomization analysis', 'D057182'),
+  meshEntry('倾向性评分', 'method', 'propensity score', 'D057216', ['倾向评分']),
+  meshEntry('中介分析', 'method', 'mediation analysis', 'D000081983'),
+  meshEntry('转录组', 'method', 'transcriptome', 'D059467'),
+  meshEntry('基因表达谱', 'method', 'gene expression profiling', 'D020869'),
+  meshEntry('单细胞分析', 'method', 'single-cell analysis', 'D059010'),
+  meshEntry('蛋白质组学', 'method', 'proteomics', 'D040901')
+]
+
 export const CHINESE_TERMS: readonly ChineseTableEntry[] = Object.freeze([
   ...DRUGS,
   ...INDICATIONS,
   ...INSTITUTIONS,
   ...JOURNALS,
+  ...METHODS,
   ...CONNECTIVES
 ])
 

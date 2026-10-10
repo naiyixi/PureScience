@@ -91,15 +91,15 @@ describe('openalex_search_works — Chinese input', () => {
   it('searches Chinese the table cannot map as typed, and names it, instead of refusing', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonRes({ meta: { count: 1 }, results: [] }))
 
-    const out = (await run('openalex_search_works', { query: '阿司匹林 机器学习' }, fetchImpl)) as {
+    const out = (await run('openalex_search_works', { query: '阿司匹林 量子纠缠' }, fetchImpl)) as {
       query: string
       zh_terms: { unmapped: string[]; query_sent: string }
     }
 
     // Not refused: this source answers Chinese, so the run stays in the request and in the report.
-    expect(out.query).toBe('aspirin 机器学习')
-    expect(out.zh_terms.unmapped).toEqual(['机器学习'])
-    expect(out.zh_terms.query_sent).toBe('aspirin 机器学习')
+    expect(out.query).toBe('aspirin 量子纠缠')
+    expect(out.zh_terms.unmapped).toEqual(['量子纠缠'])
+    expect(out.zh_terms.query_sent).toBe('aspirin 量子纠缠')
   })
 
   it('refuses a query that is nothing but Chinese function words, without sending it', async () => {

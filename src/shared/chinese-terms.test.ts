@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 // Read-source tests for the Chinese term table.
 //
 // These do not test a behaviour of the normaliser so much as the DATA it ships: every row must be
@@ -24,7 +27,7 @@ const everyKey = (row: (typeof CHINESE_TERMS)[number]): string[] => [
 ]
 
 describe('the Chinese term table (read from source)', () => {
-  it('covers all five kinds, with a table big enough to be load-bearing', () => {
+  it('covers all six kinds, with a table big enough to be load-bearing', () => {
     const byKind = Object.fromEntries(
       CHINESE_TERM_KINDS.map((kind) => [
         kind,
@@ -36,11 +39,49 @@ describe('the Chinese term table (read from source)', () => {
     expect(byKind.indication).toBeGreaterThanOrEqual(80)
     expect(byKind.institution).toBeGreaterThanOrEqual(15)
     expect(byKind.journal).toBeGreaterThanOrEqual(17)
+    expect(byKind.method).toBeGreaterThanOrEqual(25)
     expect(byKind.connective).toBeGreaterThanOrEqual(10)
     expect(CHINESE_TERMS.length).toBeGreaterThanOrEqual(200)
-    expect(byKind.drug + byKind.indication + byKind.institution + byKind.journal).toBe(
-      denoting.length
+    expect(
+      byKind.drug + byKind.indication + byKind.institution + byKind.journal + byKind.method
+    ).toBe(denoting.length)
+  })
+
+  it('records where each method term came from, and matches the note that lists those pairs', () => {
+    const methods = CHINESE_TERMS.filter((row) => row.kind === 'method')
+    expect(methods.length).toBeGreaterThanOrEqual(25)
+
+    // An English side that was looked up rather than chosen must say where. Nothing here is inferred: a
+    // `method` row without a MeSH descriptor would be a translation wearing an authority's clothes.
+    for (const row of methods) {
+      expect(row.source, `${row.canonical} has no source`).toMatch(/^mesh:D\d{6,}$/)
+      if (row.kind !== 'method') continue
+      expect(row.english.length).toBeGreaterThan(0)
+    }
+
+    // The evidence note is the other half of the record, so the two are cross-checked in BOTH
+    // directions: a row missing from either side fails, and a row that disagrees on the English term or
+    // the descriptor fails. Neither can drift alone.
+    const note = readFileSync(
+      join(__dirname, '../../docs/evidence/2026-10-10-chinese-method-terms.md'),
+      'utf8'
     )
+    const documented = new Map<string, { english: string; source: string }>()
+    // Padding-tolerant on purpose: the repo formats markdown, and a table formatter pads every cell, so
+    // an exact-spacing parser would silently read four rows out of thirty and call the rest missing.
+    for (const match of note.matchAll(
+      /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(mesh:D\d{6,})\s*\|\s*$/gm
+    )) {
+      documented.set(match[1].trim(), { english: match[2].trim(), source: match[3].trim() })
+    }
+    expect(documented.size).toBe(methods.length)
+
+    for (const row of methods) {
+      const entry = documented.get(row.canonical)
+      expect(entry, `${row.canonical} is not in the note`).toBeDefined()
+      expect(entry?.english, `${row.canonical} disagrees on the English term`).toBe(row.english)
+      expect(entry?.source, `${row.canonical} disagrees on the descriptor`).toBe(row.source)
+    }
   })
 
   it('writes every spelling so the normaliser can reach it, and every English term in Latin', () => {
@@ -182,23 +223,23 @@ describe('every row in the table is reachable', () => {
     // A function word becomes the space it stood for, so the two terms never fuse into one token.
     expect(rewriteChineseTermsInPlace('阿司匹林治疗高血压').query).toBe('aspirin hypertension')
     // And it names what it could not reach, exactly like the plan does.
-    const gap = rewriteChineseTermsInPlace('all:阿司匹林 OR 机器学习')
-    expect(gap.unmapped).toEqual(['机器学习'])
-    expect(gap.query).toBe('all:aspirin OR 机器学习')
+    const gap = rewriteChineseTermsInPlace('all:阿司匹林 OR 量子纠缠')
+    expect(gap.unmapped).toEqual(['量子纠缠'])
+    expect(gap.query).toBe('all:aspirin OR 量子纠缠')
   })
 
   it('keeps unaccounted-for Chinese only when the caller asks for it, naming it either way', () => {
     // The default is the mapped question ONLY, so `query` can never pass for the whole question — which
     // is what a caller that refuses by name needs.
-    const refuse = planChineseQuery('阿司匹林用于机器学习')
-    expect(refuse.unmapped).toEqual(['机器学习'])
+    const refuse = planChineseQuery('阿司匹林用于量子纠缠')
+    expect(refuse.unmapped).toEqual(['量子纠缠'])
     expect(refuse.query).toBe('aspirin')
 
     // `keep` is for a caller whose source answers Chinese (measured per source): dropping the run would
     // remove a search that works, so it stays as typed and the caller reports it.
-    const keep = planChineseQuery('阿司匹林用于机器学习', { unmapped: 'keep' })
-    expect(keep.unmapped).toEqual(['机器学习'])
-    expect(keep.query).toBe('aspirin 机器学习')
+    const keep = planChineseQuery('阿司匹林用于量子纠缠', { unmapped: 'keep' })
+    expect(keep.unmapped).toEqual(['量子纠缠'])
+    expect(keep.query).toBe('aspirin 量子纠缠')
   })
 })
 

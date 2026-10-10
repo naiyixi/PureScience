@@ -314,10 +314,10 @@ describe('arxiv_search — Chinese input', () => {
     await expect(
       new ParserEngine({ fetchImpl: mock as unknown as typeof fetch }).call(
         tool('arxiv_search'),
-        { query: 'all:阿司匹林 OR 机器学习' },
+        { query: 'all:阿司匹林 OR 量子纠缠' },
         {}
       )
-    ).rejects.toThrow(/no mapping for: 机器学习/)
+    ).rejects.toThrow(/no mapping for: 量子纠缠/)
     expect(mock).not.toHaveBeenCalled()
   })
 
