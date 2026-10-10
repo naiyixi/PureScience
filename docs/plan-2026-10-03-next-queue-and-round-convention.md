@@ -2641,3 +2641,73 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（准入判
 3. 跨轮不变：IC40 needs-attention 读数（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 4. 判"某条读数取没取"仍是两条命令：`node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` + `--in-repo <tag>`。
 
+## 五十、本轮追加（执行器，2026-10-11 05:2x–）—— P0-6 前半：范围围栏的三类误伤
+
+### 〇 开工核对（防重做 + 并发写入者）
+
+- 起点 `HEAD == origin/main == c6dde377`；**上一轮那两条车道的判决本轮取到了**：`Nightly` run **38080470874** success +
+  `Windows Full Test` run **38080470651** success（按完整 40 位 SHA `c6dde377…` 查）⇒ P0-7 那一笔**完整收口**。
+- 会话本轮未再推送；树上那 **84 份** `docs/evidence/*.md` 仍是**别人的**表格重排（22:06 起、未提交）
+  ⇒ 一位未碰、未提交、未暂存；本轮只动 `src/main/settings/path-guard-hook.{ts,test.ts}` 与我自己新建的一份证据档。
+- 内存：空闲物理页 **6277（约 98 MB）** / swap 已用 **5028 M of 6144 M** ⇒ **不起 Electron**；本单元的真读数全部来自
+  **用户自己机器上的围栏决策日志与会话转写**（不需要窗口）。
+
+### 一 缺口核实（对源，不靠计划里的措辞）
+
+计划 P0-6 的修法是「数据根自身与**权重缓存进白名单**」。对源之后**前半句是错的**：
+roots 由 `agent-runtime-manager.ts:727` 传入 `{ roots: [dataRoot, storageRoot], hint: dataRoot }`，
+本机打包版实际写出的 `path-guard-roots.json` 就是 `{"roots": ["/Users/totota/.purescience"], "hint": "…"}`。
+真机那条"根被拒"的原文是 `{"tool":"Bash","target":"/Users/totota/.purescience;","resolved":"…/.purescience;"}`
+—— **分词器把 `;` 留在了 token 里**，于是「根 + 一个字符」既不等于根、也不是任何已存在的祖先，按越界拒绝。
+⇒ 修法在**分词**，不在白名单（照白名单修等于给症状打补丁，下一个标点还会复发）。
+
+### 二 交付（`ab0a017b`，3 文件）
+
+| 面 | 内容 |
+| --- | --- |
+| 分词 | token 按空白与 shell 分隔符（`; \| & ( ) < >`）切开、去掉尾巴上的 `,` ⇒ 判位置不判标点（切分只会**增加**被判 token） |
+| 正则程序 | 新增 `looksLikePattern()`：**首段**以 `(`/`^`/`{`/`\|`/`+` 开头即视为模式（Windows 盘符与 UNC 显式排除） |
+| 权重缓存 | 新增 `RUNTIME_CACHE_PREFIXES` + `underRuntimeCache()`（两条**具名**命名空间，不是 `~/.cache/**`），在系统前缀之后放行 |
+| 文件工具同一类 | `targets()` 的 `pattern` 字段同样过 `looksLikePattern`（Grep 的 `/^ATOM/` 以前也被判成位置） |
+| 证据档 | 新建 `docs/evidence/2026-10-11-path-guard-false-refusals.md`（真机分类表 + 提权论证 + before/after 对照） |
+
+### 三 真机读数（用户自己的打包版，不是压测）
+
+`~/.purescience/claude/hooks/path-guard-decisions.jsonl`（mtime 2026-10-10 21:47，**662 行 / 36 条拒绝**）：
+正则或通配 **6**、权重缓存 **6**、标点粘连 **2**、agent 临时件 **2**、工具链 **1**、根或家目录 **16**、其它 **3**。
+命令原文从会话转写里逐字取到（`cd /Users/totota/.purescience; …`、`du -sh ~/.cache/torch/hub/checkpoints/ …`、
+`find / -maxdepth 6 -iname "*LigandMPNN*" …`）。
+
+**前后对照**（同一批真 payload、两个真 node 进程）：before = 机器上**正在跑的那份产物**（只把它内嵌的两个路径改到隔离目录），
+after = 本仓 writer 现在写出的那份。三类误伤 before `deny` → after `allow`；五条负向对照
+（`~/.ssh/id_rsa` / `find /` / 他人家目录通配 / 兄弟缓存 / `/tmp`）两边都 `deny`；before 那条决策记录与用户日志里的记录**逐字符相同**。
+
+### 四 验证（读数即结论）
+
+| 环 | 读数 |
+| --- | --- |
+| `path-guard-hook.test.ts`（含 3 条新用例 + Grep 分支） | **14 passed (14)** |
+| 模块目录 `src/main/settings` | **Test Files 86 passed \| 1 skipped (87)** / **Tests 1392 passed \| 3 skipped (1395)** |
+| `eslint --no-cache .`（全仓，CI 同口径） | **0 error / 140 warning**（与 v1.102.0 基线同数 ⇒ 本单元零新增告警） |
+| 双 `tsc`（node / web，`--composite false`） | **exit 0 / exit 0**（输出均 0 字节） |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（`[pre-push] 全部通过。`） |
+
+### 五 刻意的边界（不许读成"已做"）
+
+1. `agent` 自己的临时件（`/private/tmp/claude-501/…/tasks/*.output`）**仍被拒**：临时目录不在 roots 是刻意设计 ⇒ **产品决策项**，具名留档。
+2. `~/.local/bin/python` 这类**用户工具链**仍被拒（1 次）⇒ 同类产品决策项，未动。
+3. **首段没有正则元字符的模式仍会被当路径**（真机 6 条里没有这种形状）——这是刻意收窄的代价：宁可少修一例，也不让通配逃出围栏。
+4. **本单元没有 Electron 窗口读数**，也不假装有：读数是「真 payload + 真 node 进程 + 应用自己的 writer 产物」。
+5. **P0-6 后半（工具注册名两侧一致）立案**：真机 `No such tool available` **25 次**且两种拼写都有人猜错（连字符那份是**真存在**的工具，下划线那份报不存在；反向也发生）⇒ 根因是同一个应用里**两套命名约定并存**；计数 **164 行 / 44 文件**，属改名连锁与 agent 面向身份变更，单独立项。
+
+### 六 版本位点台账
+
+Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（围栏判定）⇒ 占一个版本位，并入下一个版本边界（v2.0.0 P0 批）。本轮不打 tag、不抬号。
+
+### 七 遗留与下一轮第一步
+
+1. **P0 批还剩两条未认领**：P0-9（权限询问密度 2,128 次 / 68 会话）、P0-10（内容存储 14.28 GB / 290,495 文件）；
+   另加本档 §五.5 已立案的**工具注册名一致**（带计数）。P0-6 前半本轮已交付，不要再按 ⬜ 重做。
+2. **CI 判决**：本轮提交的 run id 本轮结束前若未落定，**下一轮第一件事就是按完整 40 位 SHA 查终态**（`cancelled` 不算绿）。
+3. 跨轮不变：IC40 needs-attention（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+4. 内存：起 Electron 前先 `vm_stat`（本轮空闲物理页 ~98 MB ⇒ 未起）。
