@@ -16,7 +16,8 @@ import {
   normaliseTerm,
   planChineseQuery,
   rewriteChineseTermsInPlace,
-  normaliseQueryPunctuation
+  normaliseQueryPunctuation,
+  type ChineseTermEntry
 } from './chinese-terms'
 
 const denoting = CHINESE_TERMS.filter((row) => row.kind !== 'connective')
@@ -48,14 +49,15 @@ describe('the Chinese term table (read from source)', () => {
   })
 
   it('records where each method term came from, and matches the note that lists those pairs', () => {
-    const methods = CHINESE_TERMS.filter((row) => row.kind === 'method')
+    // Narrowed by predicate, not by assertion: `source` and `english` live on the denoting branch of the
+    // table's union, and a cast would only have hidden that from the typechecker.
+    const methods = CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'method')
     expect(methods.length).toBeGreaterThanOrEqual(25)
 
     // An English side that was looked up rather than chosen must say where. Nothing here is inferred: a
     // `method` row without a MeSH descriptor would be a translation wearing an authority's clothes.
     for (const row of methods) {
       expect(row.source, `${row.canonical} has no source`).toMatch(/^mesh:D\d{6,}$/)
-      if (row.kind !== 'method') continue
       expect(row.english.length).toBeGreaterThan(0)
     }
 
