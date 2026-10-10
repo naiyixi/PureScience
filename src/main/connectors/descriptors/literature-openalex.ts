@@ -1,3 +1,4 @@
+import { planChineseQuery } from '../../../shared/chinese-terms'
 import type { ToolContext, ToolDescriptor } from '../types'
 
 // OpenAlex REST API (all disciplines, ~250M works). Per source etiquette this connector sends
@@ -460,7 +461,22 @@ export const searchOpenAlexWorks = async (
   records_truncated: boolean
   records: unknown[]
 }> => {
-  const query = a.query != null && a.query.trim() !== '' ? a.query : null
+  // Chinese input goes through the shared term table before anything is sent, with the policy THIS
+  // source justifies — measured, not assumed: OpenAlex indexes and answers Chinese text (live probe
+  // 2026-10-10: `search=阿司匹林` → 11,867 works, `search=高血压` → 47,119), so unaccounted-for Chinese is
+  // KEPT and searched as typed rather than refused; removing it would take away a search that works.
+  // What the table does know is still rewritten, because the English term of record is far better
+  // covered (same probe: `search=aspirin` → 443,778, ~37× the Chinese hit count) — and the rewrite is
+  // reported (`zh_terms`) so a thin result reads as thin instead of as evidence of absence.
+  const requested = a.query != null && a.query.trim() !== '' ? a.query : null
+  const plan = requested === null ? undefined : planChineseQuery(requested, { unmapped: 'keep' })
+  if (plan?.cjk && plan.query.trim() === '') {
+    throw new Error(
+      `query is Chinese function words only (${plan.applied.map((s) => s.from).join('、')}), so it names ` +
+        'nothing to search for. Name a molecule, a disease, an institution or a journal.'
+    )
+  }
+  const query = plan?.cjk ? plan.query : requested
   const sort = String(a.sort ?? 'relevance')
   const maxRecords = clampInt(a.maxRecords ?? 50, 50, 1, 500)
   const includeAbstracts = a.includeAbstracts === true
@@ -511,7 +527,27 @@ export const searchOpenAlexWorks = async (
     api_total: count,
     n_records_returned: records.length,
     records_truncated: count > records.length,
-    records
+    records,
+    ...(plan?.cjk
+      ? {
+          // The rewrite in full, so a reader can reproduce the request by hand: what was recognised,
+          // what was dropped as a function word, what the table could not account for (and therefore
+          // searched in Chinese), and the exact string that was sent.
+          zh_terms: {
+            matched: plan.applied
+              .filter((s) => s.to)
+              .map((s) => ({
+                from: s.from,
+                term: s.to,
+                kind: s.entry.kind,
+                english: s.entry.kind === 'connective' ? null : s.entry.english
+              })),
+            removed: plan.applied.filter((s) => !s.to).map((s) => s.from),
+            unmapped: plan.unmapped,
+            query_sent: query
+          }
+        }
+      : {})
   }
 }
 
@@ -520,7 +556,7 @@ export const OPENALEX_LITERATURE_TOOLS: ToolDescriptor[] = [
     id: 'openalex_search_works',
     connector: 'literature',
     description:
-      'Search OpenAlex scholarly works (all disciplines, ~250M records) with year/type/OA/venue filters. Args: query (free-text over title+abstract+fulltext; optional if a filter is set), year_from, year_to (inclusive years), work_type (article/review/preprint/book-chapter/dataset/dissertation), open_access_only, venue (S-id, openalex.org URL, ISSN, or a plain name resolved to the top sources hit — surfaced in venue_resolved; pass an exact ID to skip resolution), sort (relevance default / cited_by_count / publication_date), max_records (default 50, hard ceiling 500; pages of 200), include_abstracts (reconstructed from the inverted index, but ONLY for verified-open licenses — cc-by/cc-by-sa/cc0/public-domain; others get abstract=null + abstract_policy note + abstract_license; adds bulk). Returns {query, filters, sort, api_total, n_records_returned, records_truncated, records}; each record is the lean work shape (openalex_id, doi, pmid, title, publication_year/date, type, language, is_retracted, authors[...], source{...}, biblio, cited_by_count, fwci, referenced_works_count, open_access{...}, best_oa_pdf_url, primary_topic, keywords).',
+      'Search OpenAlex scholarly works (all disciplines, ~250M records) with year/type/OA/venue filters. Args: query (free-text over title+abstract+fulltext; optional if a filter is set), year_from, year_to (inclusive years), work_type (article/review/preprint/book-chapter/dataset/dissertation), open_access_only, venue (S-id, openalex.org URL, ISSN, or a plain name resolved to the top sources hit — surfaced in venue_resolved; pass an exact ID to skip resolution), sort (relevance default / cited_by_count / publication_date), max_records (default 50, hard ceiling 500; pages of 200), include_abstracts (reconstructed from the inverted index, but ONLY for verified-open licenses — cc-by/cc-by-sa/cc0/public-domain; others get abstract=null + abstract_policy note + abstract_license; adds bulk). Returns {query, filters, sort, api_total, n_records_returned, records_truncated, records}; each record is the lean work shape (openalex_id, doi, pmid, title, publication_year/date, type, language, is_retracted, authors[...], source{...}, biblio, cited_by_count, fwci, referenced_works_count, open_access{...}, best_oa_pdf_url, primary_topic, keywords). A Chinese `query` is rewritten through the app’s Chinese term table before it is sent and the rewrite comes back in `zh_terms` — that rewrite is what raises coverage (the English term of record matches far more works than its Chinese form: `aspirin` 443,778 vs `阿司匹林` 11,867, measured 2026-10-10). Terms the table cannot map are NOT refused here: this source indexes Chinese text and answers it (`search=高血压` → 47,119), so they are searched as typed and named in `zh_terms.unmapped`, which keeps a thin result readable as thin rather than as evidence of absence.',
     input: {
       type: 'object',
       properties: {

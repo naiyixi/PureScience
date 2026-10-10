@@ -513,9 +513,10 @@ export type ChineseQueryPlan = {
   /** Every table term found, longest match first. */
   applied: readonly TermSubstitution[]
   /**
-   * The query to send: matched terms replaced by their English term of record, function words removed,
-   * and Chinese text the table does not account for removed as well. It is the *mapped* question only,
-   * which is why it may be sent on one condition alone — see `unmapped`.
+   * The query to send: matched terms replaced by their English term of record, function words removed.
+   * What happens to Chinese the table does not account for depends on the policy the caller asked for —
+   * under the default (`refuse`) it is removed as well, so this is the *mapped* question only, which is
+   * why it may be sent on one condition alone (see `unmapped`); under `keep` it stays exactly as typed.
    */
   query: string
   /**
@@ -533,7 +534,28 @@ export type ChineseQueryPlan = {
  * Pure and total — it never throws and never sends anything. The decision to refuse is the caller's, but
  * the plan makes that decision mechanical: `unmapped.length > 0` means the query cannot be mapped.
  */
-export const planChineseQuery = (raw: unknown): ChineseQueryPlan => {
+/**
+ * How a caller wants Chinese the table cannot map to be treated.
+ *
+ * Two sources in this app answer Chinese differently, so this is a named choice with a measured reason
+ * rather than a habit:
+ *
+ * - `'refuse'` (default): `query` carries the mapped part only. A caller that refuses by name when
+ *   `unmapped` is non-empty must use this — sending `query` would answer a fraction of the question and
+ *   let the result pass for an answer to all of it. (PubMed indexes Latin text: `term=阿司匹林` returns
+ *   zero matches whether or not the evidence exists.)
+ * - `'keep'`: `query` keeps the unaccounted-for Chinese exactly as typed. For a source that indexes
+ *   Chinese and answers it — measured per source, never assumed — dropping it would remove a search
+ *   that works; the caller reports `unmapped` alongside the result so a thin answer stays readable as
+ *   thin rather than as absent evidence.
+ */
+export type ChineseUnmappedPolicy = 'refuse' | 'keep'
+
+export const planChineseQuery = (
+  raw: unknown,
+  options: { unmapped?: ChineseUnmappedPolicy } = {}
+): ChineseQueryPlan => {
+  const policy = options.unmapped ?? 'refuse'
   const text = String(raw ?? '')
   if (!hasCjkScript(text)) {
     return { cjk: false, applied: [], query: normaliseQueryPunctuation(text), unmapped: [] }
@@ -549,9 +571,10 @@ export const planChineseQuery = (raw: unknown): ChineseQueryPlan => {
   const flushPlain = (): void => {
     if (!plain) return
     gaps.push(plain)
-    // Chinese the table does not know is not part of the mapped question: it is named in `unmapped`
-    // and kept out of `query`, so `query` can never pass for the whole question.
-    pieces.push(plain.replace(HAN_RUN, ' '))
+    // Under `refuse` (the default) Chinese the table does not know is not part of the mapped question:
+    // it is named in `unmapped` and kept out of `query`, so `query` can never pass for the whole
+    // question. Under `keep` it stays, because the caller has established that its source answers it.
+    pieces.push(policy === 'keep' ? plain : plain.replace(HAN_RUN, ' '))
     plain = ''
   }
 

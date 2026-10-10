@@ -63,6 +63,55 @@ const workW1 = {
   keywords: [{ display_name: 'crispr' }, { keyword: 'editing' }]
 }
 
+describe('openalex_search_works — Chinese input', () => {
+  // The policy here is the OPPOSITE of the PubMed connector's, and the reason is a measurement rather
+  // than a preference: PubMed indexes Latin text (`term=阿司匹林` → 0 whether or not the evidence
+  // exists) while OpenAlex answers Chinese (2026-10-10: `search=阿司匹林` → 11,867, `search=高血压` →
+  // 47,119). So this connector rewrites what the table knows — the English term of record is far better
+  // covered (`aspirin` → 443,778) — and searches the rest as typed, naming it.
+  it('rewrites what the table knows and reports the rewrite', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonRes({ meta: { count: 3 }, results: [] }))
+
+    const out = (await run(
+      'openalex_search_works',
+      { query: '阿司匹林用于高血压' },
+      fetchImpl
+    )) as {
+      query: string
+      zh_terms: { matched: unknown[]; removed: string[]; unmapped: string[]; query_sent: string }
+    }
+
+    expect(out.query).toBe('aspirin hypertension')
+    expect(out.zh_terms.query_sent).toBe('aspirin hypertension')
+    expect(out.zh_terms.removed).toEqual(['用于'])
+    expect(out.zh_terms.unmapped).toEqual([])
+    expect(String(fetchImpl.mock.calls[0][0])).toContain('search=aspirin%20hypertension')
+  })
+
+  it('searches Chinese the table cannot map as typed, and names it, instead of refusing', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(jsonRes({ meta: { count: 1 }, results: [] }))
+
+    const out = (await run('openalex_search_works', { query: '阿司匹林 机器学习' }, fetchImpl)) as {
+      query: string
+      zh_terms: { unmapped: string[]; query_sent: string }
+    }
+
+    // Not refused: this source answers Chinese, so the run stays in the request and in the report.
+    expect(out.query).toBe('aspirin 机器学习')
+    expect(out.zh_terms.unmapped).toEqual(['机器学习'])
+    expect(out.zh_terms.query_sent).toBe('aspirin 机器学习')
+  })
+
+  it('refuses a query that is nothing but Chinese function words, without sending it', async () => {
+    const fetchImpl = vi.fn()
+
+    await expect(run('openalex_search_works', { query: '的与用于在' }, fetchImpl)).rejects.toThrow(
+      /function words only/
+    )
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
+
 describe('openalex_search_works', () => {
   it('assembles year/type/oa filters, maps sort, paginates with cap and lean records', async () => {
     const fetchImpl = vi

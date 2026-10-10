@@ -170,6 +170,20 @@ describe('every row in the table is reachable', () => {
     expect(planChineseQuery('急性髓系白血病').query).toBe('acute myeloid leukemia')
     expect(planChineseQuery('高血压病').query).toBe('hypertension')
   })
+
+  it('keeps unaccounted-for Chinese only when the caller asks for it, naming it either way', () => {
+    // The default is the mapped question ONLY, so `query` can never pass for the whole question — which
+    // is what a caller that refuses by name needs.
+    const refuse = planChineseQuery('阿司匹林用于机器学习')
+    expect(refuse.unmapped).toEqual(['机器学习'])
+    expect(refuse.query).toBe('aspirin')
+
+    // `keep` is for a caller whose source answers Chinese (measured per source): dropping the run would
+    // remove a search that works, so it stays as typed and the caller reports it.
+    const keep = planChineseQuery('阿司匹林用于机器学习', { unmapped: 'keep' })
+    expect(keep.unmapped).toEqual(['机器学习'])
+    expect(keep.query).toBe('aspirin 机器学习')
+  })
 })
 
 describe('planChineseQuery: whole queries', () => {
