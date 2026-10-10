@@ -2390,12 +2390,18 @@ Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 
 
 | 环 | 读数 |
 | --- | --- |
-| 工作树内差异 | <DIFF46> |
+| 工作树内差异（`git status --short \| wc -l`） | **0** |
 | 定向 vitest（`src/main/connectors src/shared`） | `Test Files 194 passed (194)` / `Tests 2155 passed | 53 skipped (2208)` |
-| `eslint --no-cache .`（全仓） | <ESLINT46> |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | <TSCNODE46> |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | <TSCWEB46> |
-| `bash scripts/pre-push-checks.sh` | <PREPUSH46> |
+| `eslint --no-cache .`（全仓，CI 同口径） | **exit 0 / 0 error / 141 warning** |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（`全部通过。`） |
+
+> 补记（第五十/四十七轮）：上表除 vitest 一行外，读数由**后一轮**在同一提交 `a3eb34bf` 的隔离工作树
+> `/tmp/ps-r46` 上补齐（`git status --short` = 0，脚本 `/tmp/r47-topic/gate46.sh`）。**141 warning 里多出的
+> 那一条已定位**：`src/shared/chinese-terms.ts:454:85` 的 `prettier/prettier`（`['二代测序']` 该折行），
+> 即本提交把全仓 warning 从基线 140 顶到 141 的那一行；对应的一行折行修正随**被并发写入者回滚的那一笔**
+> 一并丢了，见 §四十七。
 
 - **版本位点**：这是**运行时行为改动**（新增 23 条中文映射，命中即改写）⇒ **占一个版本位**；
   本轮**不打 tag、不抬号**（发版窗口与并发推送纪律：会话今天已连发四版，且窗口要先冻结推送）
@@ -2405,8 +2411,72 @@ Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 
 
 1. **先读两个提交的双车道判决**：`4ac73726`（4 文档+工具）与本轮的词表提交；按**完整 40 位 SHA** 查，
    `cancelled` 不算绿；注意后一笔推送会取消前一笔的在飞车道（那时按「包含它的后一笔」取证据并写明替代关系）。
-2. **主题词 kind 立项**（若下一轮要做，先按 §二 的消费点清单逐点确认；本轮的词表**不含**主题词，别按旧行重做）。
+2. **主题词 kind**：已由 §四十七 接手（该批读数已实测、表侧未落地；重放配方见证据档 `2026-10-10-chinese-topic-terms.md` §七），
+   别按本行的旧语气当成「还没开始」。若下一轮要做，**先按 §二 的消费点清单逐点确认**，且先确认没有并发写入者占着同一文件。
 3. 跨轮不变：IC40 needs-attention 读数（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 4. **扩表的下一批**：`单臂试验` 一类尚未核对；核到权威出处再加，门槛与两条钉子不变。
-   <!-- 占位符：本轮收尾时替换 -->
-   <!-- DIFF46 ESLINT46 TSCNODE46 TSCWEB46 PREPUSH46 -->
+## 四十七、本轮追加（执行器，2026-10-10 19:3x–）—— 与**并发写入者撞在同一个文件**上 ⇒ 让位；补 §四十六 门禁读数、把被回滚那一批的实测读数与重放配方落档
+
+### 〇 开工核对（含一次真实的并发碰撞）
+
+- 起点 `HEAD == origin/main == a3eb34bf`。**两条车道的终态本轮可读**（按**完整 40 位 SHA**）：
+  - `a3eb34bf`：`Nightly` run `38042040871` = **success**、`Windows Full Test` run `38042040698` = **success**、
+    `Scheduled Regression` run `38043170292` = **success**；
+  - `4ac73726`：两条车道均 **cancelled**（被我自己后一笔推送顶掉，**不算绿**）⇒ 引 `a3eb34bf` 的双绿作它的证据
+    （`git merge-base --is-ancestor 4ac73726 a3eb34bf` 成立，CI 跑的是整棵树）。
+- 本轮按队列「B 段与批次已耗尽 ⇒ 从新能力面自拟单元」取了**上一轮证据档自己具名立案的那一条**：
+  **中文表第四种 denoting kind（`topic`，主题词）**。做到一半（约 5 分钟后）发现共享树被人动过：
+  - 我写进 `src/shared/chinese-terms.ts` 的改动**被回滚**（该文件逐字节回到 `a3eb34bf`，`grep -c topic` = 0）；
+  - 同一时刻树上出现**不是我写的**新文件 `scripts/verify-mesh-sources.mjs`（19:43 落盘），
+    随后 `docs/evidence/2026-10-10-chinese-method-terms.md` 也在 19:47 被改（新增 §二之二「任何人都能重跑这一步核对」）。
+  ⇒ 判定：**另一个写入者正在同一时刻改同一批文件**，它的单元是「把 MeSH 来源核对做成可跑的工具 + 落档」，
+  与我的是**同一批的姊妹单元**（都在中文表这条线上，且都动了 `chinese-terms.ts` 的邻域）。
+- 按常驻纪律「**桌面活跃即让位；勿与在跑桌面会话同改一批文件**」⇒ 本轮**让位**：
+  把我在制品的共享树足迹清干净（`git checkout -- src/shared/chinese-terms.test.ts`、把新证据档移出仓库再按「无表侧支撑的档」重新落回），
+  **不碰**它的 `scripts/verify-mesh-sources.mjs` 与它正在改的那份 method 档。
+- 内存：空闲物理页 **8099（≈130 MB）** / swap **3504.94 M used of 4096 M** ⇒ 未起 Electron；真读数走
+  「应用自己的连接器 + 一次真实网络请求」的一次性探针（不需要窗口）。
+
+### 一 让位后仍完成的一件事：§四十六 的门禁读数补齐（隔离工作树 `/tmp/ps-r46`，非共享树）
+
+见 §四十六 表下的补记：`git status --short` = 0、`eslint --no-cache .` **exit 0 / 0 error / 141 warning**、
+双 `tsc` **exit 0**、`pre-push-checks.sh` **exit 0**。多出的那条 warning 已定位到 `chinese-terms.ts:454:85`。
+
+### 二 被让位那一批：读数**已实测**、表侧未落地（下一轮照此重放，别从零重做）
+
+证据档：`docs/evidence/2026-10-10-chinese-topic-terms.md`（**词表 33 行在 §二**，重放步骤在 §七，
+档首已标注「表侧尚未落地」）。原始探针与读数落盘在 `/tmp/r47-topic/`（`mesh-topic-verify.mjs`、
+`ps-topic-{live,before}-readings.json`、`chinese-terms.test.ts.diff`，均为一次性件，**不进提交**）。
+
+**已取得的三组读数（都是真跑，不是断言）**：
+
+| 读数 | 内容 |
+| --- | --- |
+| 反向核对（拿英文侧回问 MeSH、要求它回的号就是表里记的号） | 首轮抓到一处**我手写的错号**（`自噬体` 记成 `D000071183`，真值 `D000071182`）⇒ 改后 **rows=33 matched=33 mismatch=0** |
+| 改前 / 改后对照（都经应用自己的连接器，一次性探针） | 改前（`a3eb34bf` 隔离工作树，`grep -c topic`=0）：`细胞凋亡 肺癌`、`自噬 二甲双胍` **均具名拒答、`http_calls`=0**；改后：`细胞凋亡 肺癌` → 实发 `apoptosis lung cancer` = **31,551**（1 次 HTTP、`zh_terms.matched` 同时带 `kind:"topic"` 与 `kind:"indication"`）、`自噬 二甲双胍` → `autophagy metformin` = **946**、arXiv `all:铁死亡` → 实发 `all:ferroptosis`（前缀原地保留）= **6** |
+| 拒答仍按名（两条都是 0 次请求） | `炎症因子 量子纠缠` → 点名 `量子纠缠` 并列出已映射部分 `炎症因子→inflammation mediators`；`免疫逃逸 肺癌` → 点名 `免疫逃逸`（刻意未收的词），行为与改前完全一致 |
+
+**刻意未收 3 条**（理由在证据档 §三）：`分子机制`（MeSH `match=exact` 零命中）、`免疫逃逸`（最近描述符 `tumor escape` 比中文词窄）、
+`信号通路`（`signal transduction` 是过程、通路是结构）。
+
+**同一批的姊妹件**：并发写入者落下的 `scripts/verify-mesh-sources.mjs` 与我要手写的那件事**是同一件**（它做的是
+「拿表里的号去问 NLM 要首选标签」的反方向）⇒ **不要新造第二套**，重放时直接用它核对 `topic` 新增行
+（它的行正则对 `kind` 不敏感，天然覆盖）。
+
+### 三 版本位点台账
+
+- Latest 仍 = **v1.99.0**，本轮**无运行时行为改动**（只有两份文档 + 让位动作）⇒ 按仓规**不占号**。
+- 被让位那一批（`topic` 33 条）**是运行时行为改动**，落地时占一个版本位（建议并入下一个窗口）。
+
+### 四 遗留与下一轮第一步（每条带 blocked-by）
+
+1. **`topic` 批次重放**：blocked-by = **并发写入者正占着 `src/shared/chinese-terms.ts`**（它的在制品
+   `scripts/verify-mesh-sources.mjs` 与 method 档改动仍在树上，未提交）。解封条件 = 该文件的在制品落定
+   （`git status --short` 里不再有它未提交的 `chinese-terms.ts`/`method-terms.md`）⇒ 然后按
+   证据档 §七 的 5 步重放，并**重跑**反向核对 + 连接器读数 + 门禁。**不要**在它未落定时抢同一文件。
+2. **§四十六 的 vitest 一行**是**同一提交**（`a3eb34bf`）在 `/tmp/ps-r46` 上跑出来的读数，已在表内；
+   若后续要发版，按发版门禁在**要打 tag 的那个提交**上重跑全量。
+3. 跨轮不变：IC40 needs-attention 读数（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+4. **扩表的下一批**：`单臂试验` 一类尚未核对；核到权威出处再加，门槛与两条钉子不变。
+5. **判「某条读数取没取」仍是两条命令**：`node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` +
+   `--in-repo <tag>`；别只跑一条。
