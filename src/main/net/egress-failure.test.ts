@@ -34,10 +34,9 @@ describe('describeEgressFailure', () => {
 
     for (const entry of observed) {
       const described = describeEgressFailure(new Error(entry.error))
-      expect(
-        { error: entry.error, family: described.family },
-        `family for ${entry.error}`
-      ).toEqual({ error: entry.error, family: entry.family })
+      expect({ error: entry.error, family: described.family }, `family for ${entry.error}`).toEqual(
+        { error: entry.error, family: entry.family }
+      )
       expect(described.reason.length).toBeGreaterThan(0)
       expect(described.action.length).toBeGreaterThan(0)
     }
@@ -68,7 +67,10 @@ describe('describeEgressFailure', () => {
 
   it('lets the innermost real code win over an outer transport wrapper', () => {
     const inner = Object.assign(new Error('connect ETIMEDOUT'), { code: 'ETIMEDOUT' })
-    const wrapped = Object.assign(new Error('socket error'), { code: 'UND_ERR_SOCKET', cause: inner })
+    const wrapped = Object.assign(new Error('socket error'), {
+      code: 'UND_ERR_SOCKET',
+      cause: inner
+    })
 
     expect(describeEgressFailure(wrapped)).toMatchObject({ family: 'timeout', code: 'ETIMEDOUT' })
   })
@@ -91,7 +93,9 @@ describe('describeEgressFailure', () => {
     const http = new Error(
       'Proxy response (403) !== 200 when HTTP Tunneling PureScience egress allowlist: host not permitted'
     )
-    const tunnel = new Error('PureScience egress proxy: egress blocked failure reaching x.test: the outbound allowlist blocked this destination. Ask the user.')
+    const tunnel = new Error(
+      'PureScience egress proxy: egress blocked failure reaching x.test: the outbound allowlist blocked this destination. Ask the user.'
+    )
 
     expect(describeEgressFailure(http).family).toBe('blocked')
     expect(describeEgressFailure(tunnel).family).toBe('blocked')
@@ -126,7 +130,9 @@ describe('describeEgressFailure', () => {
         throw new Error('trap')
       }
     }
-    expect(['unknown', ...EGRESS_FAILURE_FAMILIES]).toContain(describeEgressFailure(throwing).family)
+    expect(['unknown', ...EGRESS_FAILURE_FAMILIES]).toContain(
+      describeEgressFailure(throwing).family
+    )
     // Non-error inputs must not explode on the way to a log line.
     for (const input of [null, undefined, 42, 'plain string failure', { code: 429 }]) {
       expect(describeEgressFailure(input).reason.length).toBeGreaterThan(0)
@@ -152,7 +158,9 @@ describe('annotateEgressFailure', () => {
 
     // Existing matchers (`/fetch failed/`) and the reading-fingerprint path keep working.
     expect(annotated.message).toMatch(/^fetch failed — /)
-    expect(annotated.message).toContain('egress dns failure reaching https://files.rcsb.org/download/1abc.pdb')
+    expect(annotated.message).toContain(
+      'egress dns failure reaching https://files.rcsb.org/download/1abc.pdb'
+    )
     expect(annotated.message).toContain('(ENOTFOUND)')
     expect(annotated.cause).toBe(original)
   })

@@ -38,7 +38,9 @@ export type EgressFailure = {
   action: string
 }
 
-const CODES_BY_FAMILY: Readonly<Record<Exclude<EgressFailureFamily, 'unknown'>, readonly string[]>> = {
+const CODES_BY_FAMILY: Readonly<
+  Record<Exclude<EgressFailureFamily, 'unknown'>, readonly string[]>
+> = {
   dns: ['ENOTFOUND', 'EAI_AGAIN', 'EAI_NODATA', 'ENODATA'],
   timeout: [
     'ETIMEDOUT',
@@ -69,12 +71,17 @@ const REASON_BY_FAMILY: Readonly<Record<EgressFailureFamily, string>> = {
 
 const ACTION_BY_FAMILY: Readonly<Record<EgressFailureFamily, string>> = {
   dns: 'Check this machine’s DNS or proxy for that host, or use a mirror of the source; repeating the same request will keep failing.',
-  timeout: 'Retry later or raise the timeout for this source; a repeated timeout means the path is slow or blocked, not busy.',
-  refused: 'The service is not accepting connections on that port — verify the endpoint, not the network.',
-  reset: 'The peer or a middlebox dropped the connection — retry once, then treat the source as unreachable.',
-  unreachable: 'No route from this machine to that host — check the network or proxy before retrying.',
+  timeout:
+    'Retry later or raise the timeout for this source; a repeated timeout means the path is slow or blocked, not busy.',
+  refused:
+    'The service is not accepting connections on that port — verify the endpoint, not the network.',
+  reset:
+    'The peer or a middlebox dropped the connection — retry once, then treat the source as unreachable.',
+  unreachable:
+    'No route from this machine to that host — check the network or proxy before retrying.',
   tls: 'The certificate or protocol was refused — check the system clock, proxy interception, or the endpoint.',
-  blocked: 'This destination is not on the outbound allowlist — ask the user to approve it instead of retrying.',
+  blocked:
+    'This destination is not on the outbound allowlist — ask the user to approve it instead of retrying.',
   unknown: 'Record the message and host; retrying without a named cause is a guess.'
 }
 
@@ -97,7 +104,7 @@ const safeText = (value: unknown): string | null => {
   return trimmed.length > MAX_MESSAGE_LENGTH ? `${trimmed.slice(0, MAX_MESSAGE_LENGTH)}…` : trimmed
 }
 
-const readField = (value: unknown, key: 'code' | 'name' | 'message'): unknown => {
+const readField = (value: unknown, key: 'code' | 'name' | 'message' | 'cause'): unknown => {
   try {
     if (typeof value !== 'object' || value === null) return undefined
     return (value as Record<string, unknown>)[key]
@@ -122,7 +129,9 @@ const errorChain = (error: unknown): unknown[] => {
 
 const familyFromText = (text: string): EgressFailureFamily | null => {
   const lower = text.toLowerCase()
-  if (/getaddrinfo|name or service not known|nodename nor servname|no address associated/.test(lower)) {
+  if (
+    /getaddrinfo|name or service not known|nodename nor servname|no address associated/.test(lower)
+  ) {
     return 'dns'
   }
   if (/socket has been ended by the other party|socket hang up|premature close/.test(lower)) {
@@ -135,7 +144,9 @@ const familyFromText = (text: string): EgressFailureFamily | null => {
   if (/econnrefused/.test(lower)) return 'refused'
   if (/econnreset|epipe|econnaborted/.test(lower)) return 'reset'
   if (/enetunreach|ehostunreach|enetdown|eaddrnotavail/.test(lower)) return 'unreachable'
-  if (/certificate|self[- ]signed|unable to verify|wrong version number|\btls\b|\bssl\b/.test(lower)) {
+  if (
+    /certificate|self[- ]signed|unable to verify|wrong version number|\btls\b|\bssl\b/.test(lower)
+  ) {
     return 'tls'
   }
   return null
@@ -145,7 +156,8 @@ const familyForCode = (code: string): EgressFailureFamily | null => {
   for (const [family, codes] of Object.entries(CODES_BY_FAMILY)) {
     if (codes.includes(code)) return family as EgressFailureFamily
   }
-  if (code.startsWith('CERT_') || code.startsWith('ERR_TLS') || code.startsWith('ERR_SSL')) return 'tls'
+  if (code.startsWith('CERT_') || code.startsWith('ERR_TLS') || code.startsWith('ERR_SSL'))
+    return 'tls'
   return null
 }
 
@@ -155,7 +167,9 @@ const familyForCode = (code: string): EgressFailureFamily | null => {
 export const describeEgressFailure = (error: unknown): EgressFailure => {
   try {
     const chain = errorChain(error)
-    const codes = chain.map((entry) => safeCode(readField(entry, 'code'))).filter((code): code is string => code !== null)
+    const codes = chain
+      .map((entry) => safeCode(readField(entry, 'code')))
+      .filter((code): code is string => code !== null)
     for (const code of codes) {
       const family = familyForCode(code)
       if (family) {
@@ -167,7 +181,12 @@ export const describeEgressFailure = (error: unknown): EgressFailure => {
       .map((entry) => safeText(readField(entry, 'name')))
       .filter((name): name is string => name !== null)
     if (names.includes('TimeoutError') || names.includes('AbortError')) {
-      return { family: 'timeout', code: null, reason: REASON_BY_FAMILY.timeout, action: ACTION_BY_FAMILY.timeout }
+      return {
+        family: 'timeout',
+        code: null,
+        reason: REASON_BY_FAMILY.timeout,
+        action: ACTION_BY_FAMILY.timeout
+      }
     }
 
     const messages = chain
@@ -182,7 +201,12 @@ export const describeEgressFailure = (error: unknown): EgressFailure => {
     for (const message of messages) {
       const family = familyFromText(message)
       if (family) {
-        return { family, code: null, reason: REASON_BY_FAMILY[family], action: ACTION_BY_FAMILY[family] }
+        return {
+          family,
+          code: null,
+          reason: REASON_BY_FAMILY[family],
+          action: ACTION_BY_FAMILY[family]
+        }
       }
     }
 

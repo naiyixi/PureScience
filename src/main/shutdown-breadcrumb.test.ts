@@ -50,7 +50,7 @@ describe('shutdown breadcrumb: durable record', () => {
     expect(readShutdownBreadcrumb(dir)?.phase).toBe('database-release')
   })
 
-  it('reports a write failure instead of throwing', async () => {
+  it('reports a write failure instead of throwing, and names the step that failed', async () => {
     // The parent path is a FILE, so the directory cannot be created and the write must fail cleanly.
     const blocker = join(dir, 'not-a-directory')
     await writeFile(blocker, 'x')
@@ -58,6 +58,11 @@ describe('shutdown breadcrumb: durable record', () => {
     const outcome = writeShutdownBreadcrumbSync(join(blocker, 'logs'), baseRecord)
 
     expect(outcome.written).toBe(false)
+    // A bare 'Error' identifies nothing — the Windows lane cost a whole round trip for exactly that.
+    if (!outcome.written) {
+      expect(outcome.reason).not.toBe('Error')
+      expect(outcome.reason).toMatch(/[A-Z]/)
+    }
   })
 })
 

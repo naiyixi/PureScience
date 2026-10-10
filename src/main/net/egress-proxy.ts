@@ -171,7 +171,9 @@ export class EgressProxy {
       res.writeHead(status, { 'content-type': 'text/plain' })
       res.end(message)
     } else {
-      res.end(`HTTP/1.1 ${status} ${status === 502 ? 'Bad Gateway' : 'Forbidden'}\r\n\r\n${message}`)
+      res.end(
+        `HTTP/1.1 ${status} ${status === 502 ? 'Bad Gateway' : 'Forbidden'}\r\n\r\n${message}`
+      )
     }
   }
 

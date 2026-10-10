@@ -89,9 +89,14 @@ export const writeShutdownBreadcrumbSync = (
     const temporary = `${target}.tmp`
     const bytes = `${JSON.stringify(record)}\n`
     writeFileSync(temporary, bytes)
-    // fsync the file first, then the directory, so a rename-then-power-loss ordering cannot leave a
-    // directory entry pointing at unwritten bytes.
-    const fileHandle = openSync(temporary, 'r')
+    // fsync the file first, then (best-effort) the directory, so a rename-then-power-loss ordering cannot
+    // leave a directory entry pointing at unwritten bytes.
+    //
+    // The handle is opened READ-WRITE on purpose: Windows implements fsync as FlushFileBuffers, which
+    // FAILS on a read-only handle, so `openSync(temporary, 'r')` throws there and a successful write would
+    // be reported as a failure (observed: the whole file's cases red on the Windows lane with
+    // `written: false, reason: 'Error'`). 'r+' is valid on POSIX too.
+    const fileHandle = openSync(temporary, 'r+')
     try {
       fsyncSync(fileHandle)
     } finally {
@@ -114,6 +119,13 @@ export const writeShutdownBreadcrumbSync = (
     }
     return { written: true }
   } catch (error) {
+    // Name the failing step (code + syscall), not just the error class: the Windows-lane failure reported
+    // `reason: 'Error'`, which identified nothing and cost a whole round trip to learn almost nothing.
+    const failure = error as { code?: unknown; syscall?: unknown } | undefined
+    const parts = [failure?.code, failure?.syscall].filter(
+      (part): part is string => typeof part === 'string'
+    )
+    if (parts.length > 0) return { written: false, reason: parts.join(':') }
     return { written: false, reason: error instanceof Error ? error.name : 'unknown' }
   }
 }

@@ -329,7 +329,9 @@ describe('EgressProxy', () => {
     const response = await new Promise<string>((resolve) => {
       const socket = tcpConnect({ host: '127.0.0.1', port })
       socket.on('connect', () => {
-        socket.write(`CONNECT 127.0.0.1:${deadPort} HTTP/1.1\r\nHost: 127.0.0.1:${deadPort}\r\n\r\n`)
+        socket.write(
+          `CONNECT 127.0.0.1:${deadPort} HTTP/1.1\r\nHost: 127.0.0.1:${deadPort}\r\n\r\n`
+        )
       })
       let data = ''
       socket.on('data', (chunk) => {
