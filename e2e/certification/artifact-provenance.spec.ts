@@ -121,6 +121,9 @@ test('the provenance panel shows what the session read, recipe and window includ
   // The write half — a journal entry produced by a real connector call — is the recording path's own
   // evidence (a live probe against the real service, recorded in the evidence note), not this spec.
   const digest = `sha256:${'5'.repeat(64)}`
+  // The reading below carries no `accept` and no `credentials_stripped`: it is seeded as a record made
+  // BEFORE those fields existed, which is exactly the shape the verifier has to refuse by name rather
+  // than re-issue approximately.
   // The journal lives beside the app's DATA root, which is NOT the root the harness hands out:
   // `PURESCIENCE_E2E_STORAGE_ROOT` pins the config root, and the data root is derived from it by the
   // app's own rules (`<root>/PureScience-DEV` unpackaged, `<root>/PureScience` packaged). The main
@@ -208,6 +211,17 @@ test('the provenance panel shows what the session read, recipe and window includ
   // The run attribution is a promise on screen as well: the seeded entry carries this Version's own
   // producer run id, so exactly that reading is marked — and the id came from the app, not a constant.
   await expect(page.getByTestId('artifact-readings-same-run')).toHaveCount(1)
+  // Re-issuing is a promise on screen too, and the seeded record deliberately predates the fields a
+  // faithful re-issue needs, so the answer here is the NAMED refusal — deterministic, and it proves the
+  // round trip (button → main process → the journal it recorded → a verdict rendered back) on a real
+  // window. The re-issue itself (a matching or differing second answer) is covered by the verifier's own
+  // unit tests, where the response is under control; asserting a live third-party body here would make
+  // the lane depend on what a public service happens to return that minute.
+  await page.getByTestId('artifact-readings-verify').first().click()
+  const verdict = page.getByTestId('artifact-readings-verify-verdict')
+  await expect(verdict).toBeVisible()
+  await expect(verdict).toContainText('not-recorded')
+  console.log(`[readings] verify verdict on screen: ${JSON.stringify(await verdict.innerText())}`)
   console.log(
     `[readings] recipe line: ${await page.getByTestId('artifact-readings-recipe').innerText()}`
   )
