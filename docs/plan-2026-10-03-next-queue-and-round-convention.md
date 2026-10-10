@@ -2480,3 +2480,164 @@ Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 
 4. **扩表的下一批**：`单臂试验` 一类尚未核对；核到权威出处再加，门槛与两条钉子不变。
 5. **判「某条读数取没取」仍是两条命令**：`node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` +
    `--in-repo <tag>`；别只跑一条。
+
+## 四十八、本轮追加（执行器，2026-10-11 01:1x–）—— v2.0.0 的 P0-8 前半：出网失败给具名原因（真读数 + 两处刻意的边界）
+
+### 〇 开工核对（防重做 + 并发写入者）
+
+- `HEAD == origin/main == 0e839723`（00:55，会话修 Windows 车道红的 fsync 那条）。
+- **上一轮（§四十七）的两条遗留都已闭合**：① `topic` 第四种 denoting kind **已随会话落地**（`src/shared/chinese-terms.ts`
+  的 `CHINESE_TERM_KINDS` 现含 `topic`，且 `procedure` 也落了）⇒ 那批**不要重放**；② `92a10ea7` 的车道已被后来的
+  `v1.100.0/v1.101.0/v1.102.0` 三次发布覆盖（Latest = **v1.102.0**，`fix` 后 `d0af18b6` 为 v1.102.0 提交）。
+- **本轮的任务来源**：§四十六/四十七 的"B 段与批次已耗尽 ⇒ 从新能力面自拟单元"已由会话给出新面 ——
+  `docs/plan-2026-10-10-v2-line-schedule.md` §二·补 的 **P0 批 10 项**（九天真机日志抽出）。会话已交付
+  P0-1/P0-2/P0-4/P0-5（+P0-3 的证据档），**P0-6…P0-10 六项未开工** ⇒ 本轮取 **P0-8**（与其他路径不相交：`src/main/net/**`）。
+- 并发写入者：`git status --short` 是 **83 个 `docs/evidence/*.md` 的表格重排**（不是我的；本轮只**新建**一份证据档，
+  不碰它那 83 份）。它的在制品与本轮路径不相交。
+
+### 一 缺口核实（对源，不靠计划里的措辞）
+
+- 隧道失败：`egress-proxy.ts` 的 `targetConn.on('error')` 只 `socket.destroy()` ⇒ 客户端拿到的是**匿名 hang up**，
+  与"连接被中途切断"完全同形；
+- plain-HTTP 失败：`sourceReq.on('error', () => …)` **把 error 丢掉**、回一句 `target unreachable`，
+  而且状态码是 **403**（把"目标不可达"写成"授权被拒"）；
+- 连接器边界（agent 看到的那面）：`engine.ts` 抛出的是裸 `fetch failed`（真因藏在 `cause` 里）⇒ 重试只能靠猜。
+
+### 二 交付（`60333ac9`，6 文件 +592/−10，零新通道 / 零 i18n 键）
+
+| 面 | 内容 |
+| --- | --- |
+| 新模块 | `src/main/net/egress-failure.ts`：单一来源的失败族词表 `dns/timeout/refused/reset/unreachable/tls/blocked/unknown` + 每族的 `reason`/`action`；走 undici 的 `cause` 链取真正的 socket 码；只接受**标识符形状**的系统码（与 logger 的 `diagnosticErrorFields` 同一套防注入规矩）；永不为空（认不出也有族 + 原文） |
+| 代理 | 隧道目标失败**先作答 502 + 具名原因再断开**；plain-HTTP 目标失败**记 warn（带 `family`/`code`）+ 回 502**（此前不记、回 403）；白名单拒绝仍是 403 |
+| agent 面 | 连接器 fetch 最终失败包一层具名原因，**原消息逐字保留在前** ⇒ `/fetch failed/` 等既有匹配与读数指纹路径不变 |
+
+### 三 真机读数（无需 Electron：应用自己的模块 + 真 socket；探针在 `/tmp/ps-r48-probe/`，不进仓）
+
+- **真实 socket 失败** → 应用自己的分类器：DNS（`ENOTFOUND`）、拒连（`ECONNREFUSED`）逐条具名；
+  `fetch('http://10.255.255.1/x', AbortSignal.timeout(1500))` 的 chain 是 `TypeError('fetch failed')
+  → Error('connect ECONNREFUSED 10.255.255.1:80')` ⇒ 族 `refused`。⚠️ **我按直觉给它标的"超时"是错的，是读数纠正了标签**（已记入证据档）。
+- **应用自己的 `EgressProxy`**：客户端逐字读到 `HTTP/1.1 502 Bad Gateway` + 具名原因（隧道两种：拒连 / 不可解析）；
+  plain-HTTP 读到 `status=502` + 具名原因；白名单拒绝仍是 403 + 原措辞。
+- **日志真的落盘**：三条 `warn`（`egress tunnel target failed` ×2 + `egress target failed` ×1，后者**在改动前不存在**），
+  每条带 `family`/`code`。
+- **回放九天真机日志 203 条**：`reset 147 / dns 38 / timeout 13 / unreachable 1 / unknown 4（全是空串）`
+  ⇒ **199 条具名、0 条无名**；4 条的原文就是 `""`（原日志本身无描述）。
+  用例把这 199 条里的**每种字符串连同出现次数**做成夹具（`src/main/net/egress-failure.test.ts`，11 条）。
+
+### 四 刻意的边界（不许读成"已做"）
+
+1. **镜像回退未做**（P0-8 的后半，需逐来源决定镜像与校验）⇒ 已在 v2 排期档 P0-8 行具名立案，
+   并写明 **v2.0.0 的 CHANGELOG「明确没做」段必须包含它**。
+2. **客户端能读到什么取决于客户端**：状态行 502 一定可见；正文只有会显示正文的客户端能看到。
+   本档只声称"代理确实作答了具名原因"（逐字读到的字节为证）。
+3. **`egress decision ignored` 263 次未归因**（`egress-runtime.ts:70`，`reason: 'no pending request'`）⇒ 单列，不并入本单元。
+
+### 五 门禁（隔离工作树 `/tmp/ps-r48` = 提交 `60333ac9` 的内容；读数于本轮（§四十九）回读当年那批落盘结果）
+
+| 环 | 读数 |
+| --- | --- |
+| 工作树内差异（`git status --short \| wc -l`） | **0**（工作树 HEAD = `8befea4a`，其树与 `3d7ca25b` 逐字节相同） |
+| `eslint --no-cache .` | **exit 0 / 0 error / 140 warning**（与 v1.102.0 基线同数） |
+| 双 `tsc`（node/web，`--composite false`） | **当年未取到**（`/tmp/ps-r48-probe/tsc-node.txt` 与 `tsc-web.txt` 均为 **0 字节** ⇒ 进程未出汇总行）。**本轮已补取**：两条均 **exit 0**（见 §四十九） |
+| `vitest run src/main/net src/main/connectors --maxWorkers=4` | **Test Files 92 passed (92)** / **Tests 1040 passed \| 53 skipped (1093)** |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（`[pre-push] 全部通过。`） |
+
+### 六 CI 判决与遗留
+
+- `60333ac9` 的两条车道：**本笔自己没有任何 run** —— 它从未成为一次推送的 tip（会话随后在同一序列里推了 `3d7ca25b`），
+  按完整 40 位 SHA 查 `head_sha=60333ac9…` 回 **0 条**（这与"没触发"同形，成因是它不在 tip 上，不是 paths 过滤）。
+  **证据改由包含它的后一笔给出**：`git merge-base --is-ancestor 60333ac9 3d7ca25b` 成立 ⇒ 引 `3d7ca25b` 的双绿：
+  `Nightly` run **38071337529** success + `Windows Full Test` run **38071336756** success（CI 跑整棵树而不是 diff）。
+- 下一轮第一步：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`，
+  **先按提交把会话已完成的单元划掉**；② 内存宽松时取本单元的真机读数补充（本单元已有真读数，无需补）；
+  ③ 否则按 P0 批取**下一条未被会话认领者**（P0-6 需权限门评审、P0-7 令牌生命周期、P0-9 询问密度、P0-10 存储清理），
+  或按 v2 批 D/A；④ **镜像回退**（P0-8 后半）可作独立单元，但动前要先定"哪个来源用哪个镜像 + 怎么校验"。
+
+## 四十九、本轮追加（执行器，2026-10-11 03:2x–）—— P0-7 产物能力令牌的生命周期跟着回合走（真机日志四次复现）
+
+### 〇 开工核对（防重做 + 并发写入者）
+
+- 起点 `HEAD == origin/main == 32c78cc0`（会话 02:19 写的 v2 排期 P0 行回填）。
+- **§四十八 的三条遗留本轮全部闭合**：① 双 `tsc` 已补取（本轮在 `/tmp/ps-r48` 上跑，两条均 exit 0 ⇒ 上轮那条"未取"不再挂账）；
+  ② §四十八 的占位符已填成真实读数（含"当年 tsc 为何是未取"的物证：那两个输出文件是 0 字节）；
+  ③ `60333ac9` 的 CI 证据按「包含它的后一笔」取到（本笔自己 0 条 run，`3d7ca25b` 双绿）。
+- 会话本轮**未再推送**（`origin/main` 全程停在 `32c78cc0`）；树上那 83 份 `docs/evidence/*.md` 仍是**别人的**表格重排
+  （22:06 起、未提交）⇒ 一位未碰、未提交、未暂存。本轮只动 `src/main/notebook/**` 与我自己新建的那一份证据档。
+- 内存：空闲物理页 **7707（≈120 MB）** / swap 已用 **5250 M of 6144 M** ⇒ 不起 Electron；本单元的真读数取自
+  **用户自己的打包版日志**（`~/Library/Logs/PureScience/main*.log`，不需要窗口）。
+
+### 一 缺口核实（对源，不靠计划里的措辞）
+
+计划里 P0-7 的措辞是"令牌过早失效"。**先按机制名核**，得到的是一条更精确的结论：
+
+- 寿命写死在 `local-rpc-server.ts:264`（**2 小时**），在 `issueArtifactRunCapability`(`:401`) / `extendArtifactRunCapability`(`:440`) 里
+  `expiresAt = now + ttlMs`；而 **`extend` 只在回合"开"的那一刻被调用**（`artifact-turn-owner.ts:182`）⇒ 回合中途不刷新。
+- `acquireArtifactRpcRequest` 改前的判定顺序是「令牌不在表里 → **过期** → 方法白名单 → 回合作用域匹配」——
+  过期排在匹配之前 ⇒ **"这个回合还开着"这件事从来没有机会被考虑**。
+- 而"回合还开着"的判据**本来就在手边**：`turnScopes` 由回合开时登记、**封存时移除**（`retireArtifactRunCapabilityScope`）⇒
+  **"有匹配的 scope" ≡ 主进程在说这个回合还开着**。
+- "可行动指令"那一半**早已做过**（`f9842d6c`，2026-09-21 把措辞改成"重试同一个能力不可能成功"），
+  但真机上 agent **照样重试了 6–7 次** ⇒ 那句话没告诉它"那我现在该做什么"。
+
+### 二 交付（`67bba067`，3 文件 +217/−24，零新通道 / 零 i18n 键 / 零契约计数涟漪）
+
+| 面 | 内容 |
+| --- | --- |
+| 准入判定 | 改为 `!matchedTurnScope && capability.expiresAt <= now()` 才关闭准入——**没有活回合在问时**时钟仍然关闭它；匹配到 scope 的请求照常准入 |
+| 续期 | 准入通过后给该回合续期（每个寿命窗口至多一行 `log.info('artifact RPC capability renewed for a turn that is still open', { artifactRunId })`）⇒ 下一次长回合**在日志里可解释**，不再像"从没发过令牌" |
+| 文案 | 两句失效文案改成可行动：`expired` 那句追加 **with no live turn holding it**（它现在只在这个条件下出现）；缺失那句点名"停止重试这次调用、请用户再发一条消息，在新回合里写文件" |
+| 证据档 | 新建 `docs/evidence/2026-10-11-artifact-capability-turn-lifetime.md`（真机四条 episode 的完整表 + 原文 + file:line + 配方） |
+
+### 三 真机读数（用户自己的九天真机日志，当场逐条扫，不是压测）
+
+`purescience-artifacts/*` 工具行 **268** 条，能力类失败 **24** 条（`expired` 4 · `issued for an earlier turn` 13 · 旧版措辞 7），
+**落在 4 个 session 上、零散落**：
+
+| 第一次被拒 | 进入该回合几分钟 | 回合结束 | 构成 |
+| --- | --- | --- | --- |
+| 2026-08-27T04:01:42Z | **965 min（16.1 h）** | +50 s | 1 expired + 5 |
+| 2026-09-21T02:40:30Z | **589 min（9.8 h）** | +29 s | 1 expired + 2 |
+| 2026-10-03T03:55:33Z | **692 min（11.5 h）** | +24 s | 1 expired + 6 |
+| 2026-10-04T15:55:45Z | **192 min（3.2 h）** | +6.8 min | 1 expired + 7 |
+
+**四条全在 2 小时之后**；三条在最后一枪后 **24–50 秒**回合就结束了（agent 放弃了那件事）。
+
+### 四 验证（读数即结论）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向单测 `src/main/notebook/local-rpc-server.test.ts` | **31 passed (31)** |
+| **变异验证**（把续期分支回退成旧语义） | 新用例**当场红**：`AssertionError: expected 401 to be 200` —— 与真机那一枪**同形**；随后已还原源码（`git diff --stat` 35+/16−） |
+| 模块目录 `src/main/notebook` + `src/main/acp` | **Test Files 169 passed \| 8 skipped (177)** / **Tests 2790 passed \| 99 skipped (2889)** |
+| `eslint --no-cache .`（全仓，CI 同口径） | **exit 0 / 0 error / 140 warning**（回到 v1.102.0 基线；我自己引入的那条 `prettier/prettier` 已就地修掉，未留在树上） |
+| 双 `tsc`（node / web，`--composite false`） | **exit 0 / exit 0** |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（`[pre-push] 全部通过。`） |
+| **§四十八 当年那笔的双 `tsc`**（在 `/tmp/ps-r48` = 该提交上补取） | **exit 0 / exit 0** |
+
+**用例的两条方向（只紧不放）**：新增「11.5 小时的长回合写入必须 200、**封存后**同一调用才被拒且判词为 `cannot be admitted`」；
+改写两条旧用例——`revokes new Artifact requests while draining one already-authorized write` 的拒因从**时钟**换成**吊销**（它自己的主题），
+`rejects expired and revoked Artifact run capabilities` 先 `retire` 掉 scope 再让时钟过期（钉新契约下的过期分支）。
+
+### 五 刻意的边界（不许读成"已做"）
+
+1. **没有给令牌加总体寿命上限**：一个回合只要还开着，它的能力就一直续期；取代时钟的是回合封存（`closeWrites`）与会话释放
+   （`releaseSessionCapability`，`artifact-turn-owner.ts:444`）这两道。"**开放回合被抛弃后能力一直活着**"这条残余风险
+   **具名记在证据档**，不声称已消除（要消除得引入回合心跳/超时这条**新**语义，属独立单元）。
+2. **跨回合的既有拒绝未放松**：命名已封存回合的写入仍是 403「belongs to an earlier turn」（该用例仍在跑）。
+3. **本单元没有 Electron 真机读数**，也**不假装有**：证据是**用户真机日志的四个 episode** + 进程内真 HTTP 往返的单测；
+   要在真机上"复现一次 11.5 小时回合"不现实（配方写在证据档 §六）。
+
+### 六 版本位点台账
+
+Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（准入判定）⇒ 占一个版本位，**并入下一个版本边界 v2.0.0**（P0 批）。
+本轮不打 tag、不抬号。
+
+### 七 遗留与下一轮第一步
+
+1. **P0 批还剩三条未认领**：P0-6（范围拒绝误伤，**动前必读权限门参考并写成可复查的提权论证**）、P0-9（询问密度 2,128 次）、
+   P0-10（存储体积与版本解析成本）。**P0-7 本轮已交付**，不要再按 ⬜ 重做。
+2. **CI 判决**：本轮提交的两条车道按**完整 40 位 SHA** 查（`cancelled` 不算绿）；推前先 `gh run list --limit 6` 看有没有在飞的车道
+   （有就点名会顶掉谁，没有就明说"本次推送没有取消任何人的判决"）。
+3. 跨轮不变：IC40 needs-attention 读数（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+4. 判"某条读数取没取"仍是两条命令：`node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` + `--in-repo <tag>`。
+
