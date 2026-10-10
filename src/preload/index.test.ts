@@ -790,7 +790,14 @@ describe('preload bridge — runtime renderer contract catalog', () => {
 })
 
 describe('preload bridge — core renderer contract catalog', () => {
-  it('pins the exact 35-group, 209-contract T1d complement', () => {
+  // The counts are pinned in the body, where the assertions enforce them (with the ledger comments that
+  // say what each move was). A title carrying its own copy of the numbers is a second source of truth
+  // that nothing checks: the previous one still said 35 groups and 209 contracts long after the list had
+  // grown to 37 and the count to 236 — and that 209 never matched the assertion here, even when it was
+  // written. Removed rather than updated, because updating would have invented a meaning for it.
+  // "T1d" is left as it stands: I could not resolve what it names, and guessing at it would be worse than
+  // leaving it.
+  it('pins the T1d complement: every core capability, and the contract counts by dispatch', () => {
     expect(coreContractGroups.map(({ capability }) => capability)).toEqual([
       'artifacts',
       'cli',
