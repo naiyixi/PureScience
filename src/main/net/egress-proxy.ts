@@ -17,6 +17,7 @@ import type { Duplex } from 'node:stream'
 
 import { isHostAllowed, isHostDenied } from '../../shared/egress'
 import { createLogger } from '../logger'
+import { describeEgressFailure, formatEgressFailure } from './egress-failure'
 
 const log = createLogger('egress-proxy')
 
@@ -159,12 +160,18 @@ export class EgressProxy {
     )
   }
 
-  private refuse(res: ServerResponse | Duplex, message: string): void {
+  private refuse(res: ServerResponse | Duplex, message: string, status = 403): void {
     if ('writeHead' in res) {
-      res.writeHead(403, { 'content-type': 'text/plain' })
+      // The response may already be streaming a source body when the source fails; the status line is
+      // then already on the wire, so all that is left is to drop the connection.
+      if (res.headersSent) {
+        res.destroy()
+        return
+      }
+      res.writeHead(status, { 'content-type': 'text/plain' })
       res.end(message)
     } else {
-      res.end(`HTTP/1.1 403 Forbidden\r\n\r\n${message}`)
+      res.end(`HTTP/1.1 ${status} ${status === 502 ? 'Bad Gateway' : 'Forbidden'}\r\n\r\n${message}`)
     }
   }
 
@@ -191,8 +198,8 @@ export class EgressProxy {
             sourceRes.pipe(res)
           }
         )
-        sourceReq.on('error', () => {
-          this.refuse(res, 'PureScience egress proxy: target unreachable')
+        sourceReq.on('error', (error: Error) => {
+          this.refuseTargetFailure(res, host, error)
         })
         req.pipe(sourceReq)
       }
@@ -224,10 +231,32 @@ export class EgressProxy {
         sourceRes.pipe(res)
       }
     )
-    sourceReq.on('error', () => {
-      this.refuse(res, 'PureScience egress proxy: target unreachable')
+    sourceReq.on('error', (error: Error) => {
+      this.refuseTargetFailure(res, host, error)
     })
     req.pipe(sourceReq)
+  }
+
+  // A failure of the *source*, not of the allowlist: it is logged with the named family (the log used
+  // to answer a generic string while discarding the error, so these failures left no trace at all) and
+  // answered as 502 — a 403 would mislabel a dead source as an authorization decision.
+  private refuseTargetFailure(
+    res: ServerResponse | Duplex,
+    host: string,
+    error: Error,
+    port?: number
+  ): void {
+    const failure = describeEgressFailure(error)
+    // The tunnel keeps its historical message name so the existing log-grep recipes (and any reading
+    // taken before this change) still join across it; `family` is the field that is new.
+    log.warn(port === undefined ? 'egress target failed' : 'egress tunnel target failed', {
+      host,
+      ...(port === undefined ? {} : { port }),
+      family: failure.family,
+      code: failure.code,
+      error: error.message
+    })
+    this.refuse(res, `PureScience egress proxy: ${formatEgressFailure(failure, host)}`, 502)
   }
 
   // HTTPS CONNECT tunnel: open a raw TCP tunnel to the target if allowed, or ask first.
@@ -238,7 +267,10 @@ export class EgressProxy {
       log.info('egress tunnel opening', { host, port })
       const targetConn = tcpConnect({ host, port })
       targetConn.on('error', (error: Error) => {
-        log.warn('egress tunnel target failed', { host, port, error: error.message })
+        // Answer before dropping the tunnel. A bare destroy reaches the client as an anonymous socket
+        // hang up, exactly like a connection that was cut mid-flight, so the reason never leaves this
+        // process — which is how 86 of these became unanswerable "failed to reach the target" reports.
+        this.refuseTargetFailure(socket, host, error, port)
         socket.destroy()
       })
       targetConn.on('connect', () => {

@@ -162,6 +162,16 @@ describe('EgressProxy', () => {
   let peer: Server
   let proxy: EgressProxy
 
+  // A loopback port with nothing listening: binding and closing a server yields a port that is free
+  // (so a real connection to it is refused, not blocked by a firewall) for the lifetime of the test.
+  const closedLoopbackPort = async (): Promise<number> => {
+    const probe = createServer()
+    await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve))
+    const port = (probe.address() as { port: number }).port
+    await new Promise<void>((resolve) => probe.close(() => resolve()))
+    return port
+  }
+
   beforeEach(async () => {
     peer = createServer((_req, res) => {
       res.writeHead(200, { 'content-type': 'text/plain' })
@@ -303,6 +313,87 @@ describe('EgressProxy', () => {
       socket.on('error', () => resolve({ ok: false }))
     })
     expect(result.ok).toBe(false)
+  })
+
+  // A target the proxy cannot reach used to end as a bare `socket.destroy()` on the tunnel and as a
+  // generic "target unreachable" 403 on the plain-HTTP path — with the error discarded, so neither the
+  // client nor the log could say why. Both now answer with the named family.
+  it('names the reason a tunnel target failed instead of dropping the tunnel silently', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    const port = await proxy.start()
+    // A port with nothing behind it: the loopback peer that was closed in this test is exactly the
+    // real "connection refused" the log recorded (`read ECONNRESET` / refused targets).
+    const deadPort = await closedLoopbackPort()
+
+    const response = await new Promise<string>((resolve) => {
+      const socket = tcpConnect({ host: '127.0.0.1', port })
+      socket.on('connect', () => {
+        socket.write(`CONNECT 127.0.0.1:${deadPort} HTTP/1.1\r\nHost: 127.0.0.1:${deadPort}\r\n\r\n`)
+      })
+      let data = ''
+      socket.on('data', (chunk) => {
+        data += chunk.toString()
+      })
+      socket.on('close', () => resolve(data))
+      socket.on('error', () => resolve(data))
+    })
+
+    expect(response).toContain('502 Bad Gateway')
+    expect(response).toContain('egress refused failure reaching 127.0.0.1')
+    expect(response).toContain('ECONNREFUSED')
+  })
+
+  it('answers a plain HTTP target failure with the named family and a 502, not a 403', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    const port = await proxy.start()
+    const deadPort = await closedLoopbackPort()
+
+    const answered = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port,
+          path: '/probe',
+          headers: { host: `127.0.0.1:${deadPort}` }
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => (body += chunk.toString()))
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    // A dead source is not an authorization decision: 403 would have told the caller to ask for
+    // permission for something the allowlist already allowed.
+    expect(answered.status).toBe(502)
+    expect(answered.body).toContain('egress refused failure reaching 127.0.0.1')
+  })
+
+  it('keeps allowlist denials at 403 with their own wording', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['allowed.test'])
+    const port = await proxy.start()
+
+    const answered = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+      const req = httpRequest(
+        { hostname: '127.0.0.1', port, path: '/probe', headers: { host: '169.254.169.254' } },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => (body += chunk.toString()))
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
+        }
+      )
+      req.on('error', reject)
+      req.end()
+    })
+
+    expect(answered.status).toBe(403)
+    expect(answered.body).toContain('allowlist')
   })
 
   it('routes blocked non-deny destinations through the approval handler and honors allow once', async () => {

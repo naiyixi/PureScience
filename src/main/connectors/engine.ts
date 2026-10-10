@@ -6,6 +6,7 @@ import {
   type ConnectorReadingFingerprint
 } from '../../shared/reading-fingerprint'
 import type { ConnectorCredentials, ToolContext, ToolDescriptor } from './types'
+import { annotateEgressFailure } from '../net/egress-failure'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
@@ -171,13 +172,17 @@ export class ParserEngine {
           // A stalled request fails fast (deadline above); transient network errors (connection
           // refused, DNS, etc.) still retry with backoff.
           if (err instanceof Error && /timed out after/.test(err.message)) {
-            throw err
+            throw annotateEgressFailure(err, redactUrl(url).url)
           }
           if (attempt < this.retries) {
             await sleep(nextDelay(attempt, null))
             continue
           }
-          throw err
+          // The failure the agent sees must carry the cause: `fetch failed` alone cannot distinguish a
+          // source this machine cannot resolve from a source that refused the connection, so every
+          // retry was a guess. The original message is kept verbatim in front (existing matchers and
+          // the reading fingerprint path are unaffected).
+          throw annotateEgressFailure(err, redactUrl(url).url)
         } finally {
           clearTimeout(timer)
         }

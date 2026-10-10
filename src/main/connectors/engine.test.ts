@@ -130,6 +130,68 @@ describe('ParserEngine declarative path', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
+  // The agent's view of a failed connector call. `fetch failed` on its own cannot tell a source this
+  // machine cannot resolve from one that refused the connection, so the tool result now carries the
+  // named family — and keeps the original message so existing matchers and reading records hold.
+  it('names the network cause when a connector call cannot reach its source', async () => {
+    const inner = Object.assign(new Error('getaddrinfo ENOTFOUND ftp.ncbi.nlm.nih.gov'), {
+      code: 'ENOTFOUND'
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new TypeError('fetch failed'), { cause: inner }))
+    const engine = new ParserEngine({ fetchImpl, retries: 0, retryBackoffMs: 0 })
+    const desc: ToolDescriptor = {
+      id: 't',
+      connector: 'c',
+      description: '',
+      input: {},
+      url: () => 'https://ftp.ncbi.nlm.nih.gov/genomes/x',
+      parse: (r) => r
+    }
+
+    await expect(engine.call(desc, {}, {})).rejects.toThrow(
+      /fetch failed — egress dns failure reaching https:\/\/ftp\.ncbi\.nlm\.nih\.gov\/genomes\/x: the name did not resolve \(ENOTFOUND\)/
+    )
+  })
+
+  it('names a refused connection differently from a DNS failure', async () => {
+    const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:9'), {
+      code: 'ECONNREFUSED'
+    })
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new TypeError('fetch failed'), { cause: refused }))
+    const engine = new ParserEngine({ fetchImpl, retries: 0, retryBackoffMs: 0 })
+    const desc: ToolDescriptor = {
+      id: 't',
+      connector: 'c',
+      description: '',
+      input: {},
+      url: () => 'https://127.0.0.1:9/x',
+      parse: (r) => r
+    }
+
+    await expect(engine.call(desc, {}, {})).rejects.toThrow(/egress refused failure/)
+  })
+
+  it('leaves the deadline message intact and adds the timeout family to it', async () => {
+    const fetchImpl = vi.fn(() => new Promise<Response>(() => {}))
+    const engine = new ParserEngine({ fetchImpl, retryBackoffMs: 0, timeoutMs: 40 })
+    const desc: ToolDescriptor = {
+      id: 't',
+      connector: 'c',
+      description: '',
+      input: {},
+      url: () => 'https://x.test',
+      parse: (r) => r
+    }
+
+    await expect(engine.call(desc, {}, {})).rejects.toThrow(
+      /timed out after 40ms.*egress timeout failure/s
+    )
+  })
+
   it('postJson sends a POST with a JSON body and parses the response', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({ data: { ok: true } }))
     const engine = new ParserEngine({ fetchImpl })
