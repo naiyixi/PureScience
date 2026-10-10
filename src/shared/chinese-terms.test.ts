@@ -28,7 +28,7 @@ const everyKey = (row: (typeof CHINESE_TERMS)[number]): string[] => [
 ]
 
 describe('the Chinese term table (read from source)', () => {
-  it('covers all six kinds, with a table big enough to be load-bearing', () => {
+  it('covers every declared kind, with a table big enough to be load-bearing', () => {
     const byKind = Object.fromEntries(
       CHINESE_TERM_KINDS.map((kind) => [
         kind,
@@ -41,49 +41,77 @@ describe('the Chinese term table (read from source)', () => {
     expect(byKind.institution).toBeGreaterThanOrEqual(15)
     expect(byKind.journal).toBeGreaterThanOrEqual(17)
     expect(byKind.method).toBeGreaterThanOrEqual(25)
+    expect(byKind.topic).toBeGreaterThanOrEqual(20)
     expect(byKind.connective).toBeGreaterThanOrEqual(10)
     expect(CHINESE_TERMS.length).toBeGreaterThanOrEqual(200)
     expect(
-      byKind.drug + byKind.indication + byKind.institution + byKind.journal + byKind.method
+      byKind.drug +
+        byKind.indication +
+        byKind.institution +
+        byKind.journal +
+        byKind.method +
+        byKind.topic
     ).toBe(denoting.length)
   })
 
-  it('records where each method term came from, and matches the note that lists those pairs', () => {
-    // Narrowed by predicate, not by assertion: `source` and `english` live on the denoting branch of the
-    // table's union, and a cast would only have hidden that from the typechecker.
-    const methods = CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'method')
-    expect(methods.length).toBeGreaterThanOrEqual(25)
-
-    // An English side that was looked up rather than chosen must say where. Nothing here is inferred: a
-    // `method` row without a MeSH descriptor would be a translation wearing an authority's clothes.
-    for (const row of methods) {
-      expect(row.source, `${row.canonical} has no source`).toMatch(/^mesh:D\d{6,}$/)
-      expect(row.english.length).toBeGreaterThan(0)
-    }
-
-    // The evidence note is the other half of the record, so the two are cross-checked in BOTH
-    // directions: a row missing from either side fails, and a row that disagrees on the English term or
-    // the descriptor fails. Neither can drift alone.
-    const note = readFileSync(
-      join(__dirname, '../../docs/evidence/2026-10-10-chinese-method-terms.md'),
-      'utf8'
-    )
+  // The note is the other half of the record, so the two are cross-checked in BOTH directions: a row
+  // missing from either side fails, and a row that disagrees on the English term or the descriptor
+  // fails. Neither can drift alone. Shared by every kind that carries a source rather than copied, so a
+  // new sourced kind cannot land with a weaker check than the ones beside it: the assertions are
+  // identical by construction, not merely similar.
+  const documentedPairs = (noteFile: string): Map<string, { english: string; source: string }> => {
+    const note = readFileSync(join(__dirname, `../../docs/evidence/${noteFile}`), 'utf8')
     const documented = new Map<string, { english: string; source: string }>()
     // Padding-tolerant on purpose: the repo formats markdown, and a table formatter pads every cell, so
     // an exact-spacing parser would silently read four rows out of thirty and call the rest missing.
+    // `mesh:D\d{6,}` in the third column is what marks a row as a documented pair, so the notes can
+    // carry other tables (deliberate omissions, readings) without this parser collecting them.
     for (const match of note.matchAll(
       /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(mesh:D\d{6,})\s*\|\s*$/gm
     )) {
       documented.set(match[1].trim(), { english: match[2].trim(), source: match[3].trim() })
     }
-    expect(documented.size).toBe(methods.length)
+    return documented
+  }
 
-    for (const row of methods) {
+  const expectRowsMatchNote = (
+    rows: readonly ChineseTermEntry[],
+    noteFile: string,
+    floor: number
+  ): void => {
+    expect(rows.length).toBeGreaterThanOrEqual(floor)
+    // An English side that was looked up rather than chosen must say where. Nothing here is inferred: a
+    // sourced row without a MeSH descriptor would be a translation wearing an authority's clothes.
+    for (const row of rows) {
+      expect(row.source, `${row.canonical} has no source`).toMatch(/^mesh:D\d{6,}$/)
+      expect(row.english.length).toBeGreaterThan(0)
+    }
+    const documented = documentedPairs(noteFile)
+    expect(documented.size).toBe(rows.length)
+    for (const row of rows) {
       const entry = documented.get(row.canonical)
       expect(entry, `${row.canonical} is not in the note`).toBeDefined()
       expect(entry?.english, `${row.canonical} disagrees on the English term`).toBe(row.english)
       expect(entry?.source, `${row.canonical} disagrees on the descriptor`).toBe(row.source)
     }
+  }
+
+  it('records where each method term came from, and matches the note that lists those pairs', () => {
+    // Narrowed by predicate, not by assertion: `source` and `english` live on the denoting branch of the
+    // table's union, and a cast would only have hidden that from the typechecker.
+    expectRowsMatchNote(
+      CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'method'),
+      '2026-10-10-chinese-method-terms.md',
+      25
+    )
+  })
+
+  it('records where each topic term came from, to the same standard as the method rows', () => {
+    expectRowsMatchNote(
+      CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'topic'),
+      '2026-10-10-chinese-topic-terms.md',
+      20
+    )
   })
 
   it('writes every spelling so the normaliser can reach it, and every English term in Latin', () => {

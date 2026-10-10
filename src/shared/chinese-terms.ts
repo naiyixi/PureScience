@@ -37,6 +37,11 @@ export const CHINESE_TERM_KINDS = [
   // about. A Chinese query is usually a design word plus a subject ("随机对照试验 阿司匹林"), and without
   // these the design half of it was refused.
   'method',
+  // The subject matter a question is about, when it is neither a disease nor a way of asking
+  // ("细胞凋亡 肺癌", "自噬 二甲双胍"): the mechanics of a disease, not its name. Deliberately NOT folded
+  // into `method` — a method is what you ask WITH, a topic is what you ask ABOUT — and a wrong mapping
+  // silently swaps the question.
+  'topic',
   'connective'
 ] as const
 
@@ -451,7 +456,9 @@ const METHODS: readonly ChineseTermEntry[] = [
     '酶联免疫吸附试验'
   ]),
   meshEntry('质谱分析', 'method', 'mass spectrometry', 'D013058', ['质谱']),
-  meshEntry('高通量测序', 'method', 'high-throughput nucleotide sequencing', 'D059014', ['二代测序']),
+  meshEntry('高通量测序', 'method', 'high-throughput nucleotide sequencing', 'D059014', [
+    '二代测序'
+  ]),
   meshEntry('全基因组测序', 'method', 'whole genome sequencing', 'D000073336'),
   meshEntry('空间转录组学', 'method', 'spatial transcriptomics', 'D000099285'),
   meshEntry('类器官', 'method', 'organoids', 'D009940'),
@@ -467,12 +474,57 @@ const METHODS: readonly ChineseTermEntry[] = [
   meshEntry('生物信息学', 'method', 'computational biology', 'D019295')
 ]
 
+// Subject-matter topics: how a disease works rather than what it is called. Same discipline as METHODS:
+// every English side was fetched with MeSH's own lookup service and the descriptor id it returned is
+// recorded per row; the evidence note (2026-10-10-chinese-topic-terms.md) lists the same pairs and the
+// read-source test cross-checks both directions. Three terms are deliberately NOT in here, with reasons
+// in that note's §三 — a wrong mapping is worse than a missing one.
+//
+// Replayed from that note by the desktop session after a concurrent stand-down rolled this batch out of
+// the shared tree; the rows, descriptors and the three variants are the note's, unaltered.
+const TOPICS: readonly ChineseTermEntry[] = [
+  meshEntry('细胞凋亡', 'topic', 'apoptosis', 'D017209', ['凋亡']),
+  meshEntry('自噬', 'topic', 'autophagy', 'D001343'),
+  meshEntry('氧化应激', 'topic', 'oxidative stress', 'D018384'),
+  meshEntry('生物标志物', 'topic', 'biomarkers', 'D015415'),
+  meshEntry('免疫治疗', 'topic', 'immunotherapy', 'D007167'),
+  meshEntry('血管生成', 'topic', 'angiogenesis', 'D000096482'),
+  meshEntry('细胞增殖', 'topic', 'cell proliferation', 'D049109'),
+  meshEntry('细胞周期', 'topic', 'cell cycle', 'D002453'),
+  meshEntry('细胞衰老', 'topic', 'cellular senescence', 'D016922'),
+  meshEntry('细胞焦亡', 'topic', 'pyroptosis', 'D000069292'),
+  meshEntry('铁死亡', 'topic', 'ferroptosis', 'D000079403'),
+  meshEntry('自噬体', 'topic', 'autophagosomes', 'D000071182'),
+  meshEntry('肿瘤转移', 'topic', 'neoplasm metastasis', 'D009362'),
+  meshEntry('肿瘤微环境', 'topic', 'tumor microenvironment', 'D059016'),
+  meshEntry('抗药性', 'topic', 'drug resistance', 'D004351', ['耐药性']),
+  meshEntry('炎症', 'topic', 'inflammation', 'D007249'),
+  meshEntry('炎症因子', 'topic', 'inflammation mediators', 'D018836'),
+  meshEntry('细胞因子', 'topic', 'cytokines', 'D016207'),
+  meshEntry('肠道菌群', 'topic', 'gastrointestinal microbiome', 'D000069196'),
+  meshEntry('基因突变', 'topic', 'mutation', 'D009154', ['突变']),
+  meshEntry('基因表达', 'topic', 'gene expression', 'D015870'),
+  meshEntry('DNA损伤', 'topic', 'DNA damage', 'D004249'),
+  meshEntry('信号转导', 'topic', 'signal transduction', 'D015398'),
+  meshEntry('内质网应激', 'topic', 'endoplasmic reticulum stress', 'D059865'),
+  meshEntry('上皮间质转化', 'topic', 'epithelial-mesenchymal transition', 'D058750'),
+  meshEntry('干细胞', 'topic', 'stem cells', 'D013234'),
+  meshEntry('外泌体', 'topic', 'exosomes', 'D055354'),
+  meshEntry('甲基化', 'topic', 'methylation', 'D008745'),
+  meshEntry('泛素化', 'topic', 'ubiquitination', 'D054875'),
+  meshEntry('磷酸化', 'topic', 'phosphorylation', 'D010766'),
+  meshEntry('糖基化', 'topic', 'glycosylation', 'D006031'),
+  meshEntry('微小RNA', 'topic', 'microRNAs', 'D035683'),
+  meshEntry('长链非编码RNA', 'topic', 'RNA, long noncoding', 'D062085')
+]
+
 export const CHINESE_TERMS: readonly ChineseTableEntry[] = Object.freeze([
   ...DRUGS,
   ...INDICATIONS,
   ...INSTITUTIONS,
   ...JOURNALS,
   ...METHODS,
+  ...TOPICS,
   ...CONNECTIVES
 ])
 
