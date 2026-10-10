@@ -96,6 +96,16 @@ const sha256 = (value: string): string => createHash('sha256').update(value).dig
 const isTerminalStepStatus = (status: SessionPlanStepStatus): boolean =>
   status === 'completed' || status === 'blocked' || status === 'skipped'
 
+// The statuses that may follow the current one. Derived from the transition table in updateStepStatus so
+// a refusal can name the call the caller should make instead of only saying the change was invalid.
+const allowedStepStatuses = (
+  previous: SessionPlanStepStatus | undefined
+): SessionPlanStepStatus[] => {
+  if (previous === undefined) return ['in_progress', 'skipped']
+  if (previous === 'in_progress') return ['in_progress', 'completed', 'blocked']
+  return []
+}
+
 const runtimeStatusFor = (
   plan: SessionPlanRuntimeContext,
   title: string
@@ -297,7 +307,26 @@ class PlanService {
     const valid =
       startsStep ||
       (previous === 'in_progress' && ['in_progress', 'completed', 'blocked'].includes(input.status))
-    if (!valid) throw new PlanCommandError('invalid-transition', 'Invalid Plan step transition.')
+    if (!valid) {
+      // The refusal names the current status and what may follow it: 37 recorded calls failed here while
+      // the message named nothing, so the agent could only retry the same change blindly.
+      //
+      // 'blocked' stays terminal here on purpose — the shared contract classifies it as terminal and the
+      // plan lifecycle derives "blocked, needs an explicit continuation" from it. Letting a blocked step
+      // move again is a contract change with lifecycle/authorization ripples, so this unit says so
+      // instead of quietly widening the state machine.
+      const allowed = allowedStepStatuses(previous)
+      throw new PlanCommandError(
+        'invalid-transition',
+        previous === 'blocked'
+          ? `Invalid Plan step transition: "${input.title}" is blocked; the plan needs an explicit ` +
+              'continuation authorized by the user before this step can change.'
+          : allowed.length === 0
+            ? `Invalid Plan step transition: "${input.title}" is already ${previous} and cannot be changed.`
+            : `Invalid Plan step transition: "${input.title}" is ${previous ?? 'not started'}; ` +
+              `from there the only statuses that may be set are ${allowed.join(', ')}.`
+      )
+    }
     if (startsStep) this.requireStartDependencies(document, plan, input.title)
     const updated: SessionPlanRuntimeContext = {
       ...plan,
@@ -504,9 +533,35 @@ class PlanService {
       !priorPhasesSatisfied ||
       (blockedTitle !== undefined && !delegationStartedBeforeBlock)
     ) {
+      // Actionable on purpose: the recorded failures show 38 calls refused here with a message that named
+      // nothing, so the agent could not tell which prerequisite was missing and retried blindly.
+      const missingSteps = delegation.steps
+        .slice(0, stepIndex)
+        .filter((step) => !isNormallyFinished(step.title))
+        .map((step) => `"${step.title}"`)
+      const missingPhases = document.phases
+        .slice(0, phaseIndex)
+        .filter((priorPhase) =>
+          priorPhase.delegations.some((priorDelegation) =>
+            priorDelegation.steps.some((step) => !isNormallyFinished(step.title))
+          )
+        )
+        .map((priorPhase) => `"${priorPhase.name}"`)
+      const reasons = [
+        missingSteps.length > 0
+          ? `earlier steps in this delegation are not finished: ${missingSteps.join(', ')}`
+          : undefined,
+        missingPhases.length > 0
+          ? `earlier phases are not finished: ${missingPhases.join(', ')}`
+          : undefined,
+        blockedTitle !== undefined && !delegationStartedBeforeBlock
+          ? `the plan is blocked on "${blockedTitle}" and this delegation has not started yet`
+          : undefined
+      ].filter((reason): reason is string => reason !== undefined)
+
       throw new PlanCommandError(
         'dependency-not-satisfied',
-        'The Plan step dependencies are not satisfied.'
+        `The Plan step dependencies are not satisfied: ${reasons.join('; ')}.`
       )
     }
   }

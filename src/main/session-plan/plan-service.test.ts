@@ -846,6 +846,109 @@ describe('PlanService', () => {
     ).rejects.toMatchObject({ code: 'dependency-not-satisfied' })
   })
 
+  it('names the unmet prerequisite instead of only refusing the call', async () => {
+    const { service, identity, approved } = await approveExecutionPlan()
+
+    // 38 recorded calls failed on this refusal while the message named nothing.
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: approved.projection.revision,
+        title: 'Compare cohorts',
+        status: 'in_progress'
+      })
+    ).rejects.toThrow('earlier steps in this delegation are not finished: "Validate cohorts"')
+  })
+
+  it('names the unfinished earlier phases when a later phase starts early', async () => {
+    const { service, identity, approved } = await approveExecutionPlan()
+    const cohortRunning = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: approved.projection.revision,
+      title: 'Validate cohorts',
+      status: 'in_progress'
+    })
+    const evidenceRunning = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: cohortRunning.projection.revision,
+      title: 'Find evidence',
+      status: 'in_progress'
+    })
+
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: evidenceRunning.projection.revision,
+        title: 'Draft report',
+        status: 'in_progress'
+      })
+    ).rejects.toThrow('earlier phases are not finished: "Parallel analysis"')
+  })
+
+  it('states which statuses may follow instead of only saying the change is invalid', async () => {
+    const { service, identity, approved } = await approveExecutionPlan()
+
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: approved.projection.revision,
+        title: 'Audit findings',
+        status: 'completed'
+      })
+    ).rejects.toThrow(
+      '"Audit findings" is not started; from there the only statuses that may be set are in_progress, skipped.'
+    )
+
+    const running = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: approved.projection.revision,
+      title: 'Audit findings',
+      status: 'in_progress'
+    })
+    const completed = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: running.projection.revision,
+      title: 'Audit findings',
+      status: 'completed'
+    })
+
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: completed.projection.revision,
+        title: 'Audit findings',
+        status: 'blocked'
+      })
+    ).rejects.toThrow('"Audit findings" is already completed and cannot be changed.')
+  })
+
+  it('points a blocked step at the explicit continuation it actually needs', async () => {
+    const { service, identity, approved } = await approveExecutionPlan()
+    const running = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: approved.projection.revision,
+      title: 'Validate cohorts',
+      status: 'in_progress'
+    })
+    const blocked = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: running.projection.revision,
+      title: 'Validate cohorts',
+      status: 'blocked',
+      notes: 'Cohort boundaries are missing.'
+    })
+
+    // 'blocked' stays terminal by contract; the refusal must say what unblocks it rather than "invalid".
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: blocked.projection.revision,
+        title: 'Validate cohorts',
+        status: 'completed'
+      })
+    ).rejects.toThrow('is blocked; the plan needs an explicit continuation authorized by the user')
+  })
+
   it('lets an already-started peer delegation settle after a block and then completes cleanly blocked', async () => {
     const { service, identity, approved } = await approveExecutionPlan()
     const cohortRunning = await service.updateStepStatus({
