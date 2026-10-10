@@ -5,7 +5,7 @@ import type { RendererSessionPersistenceFlushOutcome } from './session-persisten
 import type { ShutdownStepOutcome } from './lifecycle-shutdown'
 import { flushDiagnosticsWithTimeout } from './diagnostics/flush'
 import { diagnosticErrorFields, type Logger } from './logger'
-import { startDiagnosticOperation } from './diagnostics/operation'
+import { startDiagnosticOperation, type DiagnosticFields } from './diagnostics/operation'
 import {
   clearApplicationShutdownRequested,
   clearApplicationShutdownTrigger,
@@ -43,6 +43,14 @@ export type AppLifecycleDeps = {
   createTray: (handlers: TrayHandlers) => Tray | undefined
   // Bounded, best-effort backend teardown (agent tree + notebook kernels); never throws.
   shutdownBackends: () => Promise<ShutdownStepOutcome | void>
+  // Releases the project database's native query engine once the backends are gone and before the
+  // process exits (v2.0.0 P0-1). Optional so dependency-injected hosts without a database — and the
+  // existing lifecycle tests — stay valid without a new fixture field.
+  releaseDatabaseHandles?: () => Promise<ShutdownStepOutcome | void>
+  // Records each quit phase durably so the NEXT launch can name the phase a process died in (v2.0.0
+  // P0-1). Called alongside the log phases and required to be synchronous: an abort after the last
+  // write must still leave a record behind.
+  onShutdownPhase?: (phase: string, fields?: DiagnosticFields) => void
   // Requests active ACP turns to cancel, then waits a bounded interval for terminal usage events.
   prepareForQuit: () => Promise<ShutdownStepOutcome | void>
   // Drains renderer runtime events and its ordered Session write queue before the window disappears.
@@ -257,6 +265,7 @@ export const installAppLifecycle = (
 
     event.preventDefault()
     shutdownStarted = true
+    deps.onShutdownPhase?.('started', { trigger })
     void (async () => {
       const diagnostics = deps.log
         ? startDiagnosticOperation(deps.log, {
@@ -264,58 +273,84 @@ export const installAppLifecycle = (
             fields: { trigger }
           })
         : undefined
+      // One call site per phase feeds BOTH sinks: the async rotating log (context for a normal exit) and
+      // the synchronous breadcrumb (the only one that survives an abort mid-teardown).
+      const phase = (name: string, fields?: DiagnosticFields): void => {
+        diagnostics?.phase(name, fields)
+        deps.onShutdownPhase?.(name, fields)
+      }
       let usageDrainResult: ShutdownStepOutcome
       let rendererFlushOutcome: RendererSessionPersistenceFlushOutcome
       let rendererFlushResult: ShutdownStepOutcome
       let backendTeardownResult: ShutdownStepOutcome
+      let databaseReleaseResult: ShutdownStepOutcome
       try {
-        diagnostics?.phase('usage-drain')
+        phase('usage-drain')
         try {
           usageDrainResult = normalizeStepOutcome(await deps.prepareForQuit())
-          diagnostics?.phase('usage-drain', { result: usageDrainResult })
+          phase('usage-drain', { result: usageDrainResult })
         } catch (error) {
           usageDrainResult = 'failed'
-          diagnostics?.phase('usage-drain', {
+          phase('usage-drain', {
             result: usageDrainResult,
             ...diagnosticErrorFields(error)
           })
         }
 
-        diagnostics?.phase('renderer-session-flush')
+        phase('renderer-session-flush')
         try {
           rendererFlushOutcome = (await deps.flushSessionPersistence()) ?? 'completed'
           rendererFlushResult = rendererStepOutcome(rendererFlushOutcome)
-          diagnostics?.phase('renderer-session-flush', { result: rendererFlushResult })
+          phase('renderer-session-flush', { result: rendererFlushResult })
         } catch (error) {
           rendererFlushOutcome = 'send-failed'
           rendererFlushResult = 'failed'
-          diagnostics?.phase('renderer-session-flush', {
+          phase('renderer-session-flush', {
             result: rendererFlushResult,
             ...diagnosticErrorFields(error)
           })
         }
 
-        diagnostics?.phase('backend-teardown')
+        phase('backend-teardown')
         try {
           backendTeardownResult = normalizeStepOutcome(await deps.shutdownBackends())
-          diagnostics?.phase('backend-teardown', { result: backendTeardownResult })
+          phase('backend-teardown', { result: backendTeardownResult })
         } catch (error) {
           backendTeardownResult = 'failed'
-          diagnostics?.phase('backend-teardown', {
+          phase('backend-teardown', {
             result: backendTeardownResult,
             ...diagnosticErrorFields(error)
           })
         }
+
+        // Runs after the backends are gone (so no new database work can start) and before the process
+        // tears down: the database's native query engine must be closed explicitly, otherwise Node's
+        // environment cleanup can resume its pending thread-pool work and abort the process.
+        phase('database-release')
+        try {
+          databaseReleaseResult = normalizeStepOutcome(await deps.releaseDatabaseHandles?.())
+          phase('database-release', { result: databaseReleaseResult })
+        } catch (error) {
+          databaseReleaseResult = 'failed'
+          phase('database-release', {
+            result: databaseReleaseResult,
+            ...diagnosticErrorFields(error)
+          })
+        }
+
         const degraded =
           usageDrainResult !== 'completed' ||
           rendererFlushResult !== 'completed' ||
-          backendTeardownResult !== 'completed'
+          backendTeardownResult !== 'completed' ||
+          databaseReleaseResult !== 'completed'
+        phase('completed', { degraded })
         diagnostics?.complete({
           degraded,
           usageDrainResult,
           rendererFlushResult,
           rendererFlushOutcome,
-          backendTeardownResult
+          backendTeardownResult,
+          databaseReleaseResult
         })
 
         if (deps.flushLogs) {

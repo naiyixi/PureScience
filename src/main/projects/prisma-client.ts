@@ -1208,9 +1208,27 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
 }
 
 let clientPromise: Promise<PrismaClient> | undefined
+// Latched once the quit path has released the query engine. Creating a new client afterwards would
+// re-open the exact native state the release exists to remove (see releaseProjectDbForShutdown).
+let releasedForShutdown = false
+
+/**
+ * Thrown when a project-database read arrives after the quit path released the engine. Named rather
+ * than silent: work still running during teardown is a defect worth seeing, and reconnecting would
+ * restore the native state the release removes.
+ */
+export class ProjectDbReleasedError extends Error {
+  readonly name = 'ProjectDbReleasedError'
+
+  constructor() {
+    super('The project database was released for application shutdown.')
+  }
+}
 
 // Production singleton: ensures the storage dir exists, connects, and applies the schema.
 const getProjectDbClient = (storageRoot: string): Promise<PrismaClient> => {
+  if (releasedForShutdown) return Promise.reject(new ProjectDbReleasedError())
+
   if (!clientPromise) {
     const pending = (async () => {
       await mkdir(storageRoot, { recursive: true })
@@ -1254,4 +1272,68 @@ const disconnectProjectDbClient = async (): Promise<void> => {
   await client?.$disconnect()
 }
 
-export { createProjectDbClient, disconnectProjectDbClient, ensureProjectSchema, getProjectDbClient }
+/** Outcome vocabulary for the quit-path release; each state is named so a log line is unambiguous. */
+export type ProjectDbReleaseOutcome =
+  | { released: true; reason: 'no-client' | 'never-connected' | 'disconnected' }
+  | { released: false; reason: 'timeout' | 'failed' }
+
+// How long the quit path waits for the engine to close before giving up on it. The engine has no
+// outstanding work by this point (backend teardown already ran), so this is a stall guard, not a
+// work budget.
+const PROJECT_DB_RELEASE_TIMEOUT_MS = 3000
+
+/**
+ * Releases the Prisma query engine for application shutdown (v2.0.0 P0-1).
+ *
+ * Real evidence, 2026-10-10: a packaged 1.97.0 run aborted (SIGABRT) about five seconds AFTER every
+ * shutdown phase had reported `completed`. The faulting stack is `abort()` inside
+ * `libquery_engine-darwin-arm64.dylib.node`, reached from `uv_run` → `node::Environment::CleanupHandles()`
+ * → `node::Environment::RunCleanup()` → `node::FreeEnvironment()`: the engine's pending thread-pool work
+ * resumed while Node was already tearing the environment down. Nothing in the quit path ever called
+ * `$disconnect()` (it appeared only in tests), so the engine was always still open at teardown.
+ *
+ * This closes it explicitly, bounded so a wedged engine cannot hang quit, and latches so nothing can
+ * reconnect behind it. Bounded on purpose: an unclosed engine is worse than a slow exit, so the caller
+ * reports the timeout instead of pretending the release happened.
+ */
+const releaseProjectDbForShutdown = async (
+  timeoutMs: number = PROJECT_DB_RELEASE_TIMEOUT_MS
+): Promise<ProjectDbReleaseOutcome> => {
+  releasedForShutdown = true
+
+  const pending = clientPromise
+  if (!pending) return { released: true, reason: 'no-client' }
+
+  clientPromise = undefined
+  const client = await pending.catch(() => undefined)
+  if (!client) return { released: true, reason: 'never-connected' }
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), timeoutMs)
+    timer.unref?.()
+  })
+  const closing = client
+    .$disconnect()
+    .then((): 'disconnected' | 'failed' => 'disconnected')
+    .catch((): 'disconnected' | 'failed' => 'failed')
+
+  const result = await Promise.race([closing, deadline])
+  if (timer) clearTimeout(timer)
+
+  if (result === 'timeout') return { released: false, reason: 'timeout' }
+  if (result === 'failed') return { released: false, reason: 'failed' }
+  return { released: true, reason: 'disconnected' }
+}
+
+/** True once the quit path released the engine; later clients are refused by name. */
+const isProjectDbReleased = (): boolean => releasedForShutdown
+
+export {
+  createProjectDbClient,
+  disconnectProjectDbClient,
+  ensureProjectSchema,
+  getProjectDbClient,
+  isProjectDbReleased,
+  releaseProjectDbForShutdown
+}

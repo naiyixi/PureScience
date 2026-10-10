@@ -39,6 +39,9 @@ import {
   reportApplicationStartupFailure
 } from './diagnostics/startup'
 import { createLogger, diagnosticErrorFields, flushLogs } from './logger'
+import { createProcessFailureCapture } from './crash-diagnostics'
+import { classifyPreviousShutdown, createShutdownBreadcrumbWriter } from './shutdown-breadcrumb'
+import { randomUUID } from 'node:crypto'
 import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
 import { sweepDuplicateContent } from './storage/dedupe-sweep'
 import {
@@ -208,12 +211,37 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
   // Register process-level failure capture before loading the application modules. Keep renderer
   // diagnostics on a separate, one-way channel while the central IPC registry is being refactored.
   installChildProcessGoneLogging((listener) => app.on('child-process-gone', listener), log)
-  process.on('uncaughtException', (error) =>
-    log.error('uncaughtException', diagnosticErrorFields(error))
-  )
-  process.on('unhandledRejection', (reason) =>
-    log.error('unhandledRejection', diagnosticErrorFields(reason))
-  )
+  // P0-2: the old handlers recorded `errorCategory` alone, so 1,481 real failures (1,344 of them network,
+  // 604 inside a single hour) were undiagnosable and unfolder. The capture keeps the same message names
+  // and the same category vocabulary, and adds a redacted message + first stack frame + occurrence count
+  // with windowed folding so a burst converges instead of evicting the rest of the log.
+  const captureProcessFailure = createProcessFailureCapture({ log: createLogger('main') })
+  process.on('uncaughtException', (error) => captureProcessFailure(error, 'uncaughtException'))
+  process.on('unhandledRejection', (reason) => captureProcessFailure(reason, 'unhandledRejection'))
+  // A quitting process must not lose the failures it folded: flush the open windows before the logger's
+  // write queue is drained for the last time.
+  process.on('exit', () => {
+    captureProcessFailure.flush()
+  })
+
+  // P0-1: name the phase the PREVIOUS process died in. The breadcrumb is written synchronously at every
+  // quit phase, so "completed" and "never recorded completion" stay different facts instead of being
+  // guessed from an async log whose tail may simply be missing.
+  const shutdownBreadcrumb = createShutdownBreadcrumbWriter({
+    logDir: app.getPath('logs'),
+    runId: randomUUID()
+  })
+  const previousShutdown = classifyPreviousShutdown(app.getPath('logs'))
+  if (previousShutdown.kind === 'incomplete') {
+    log.warn('previous shutdown did not record completion', {
+      lastPhase: previousShutdown.phase,
+      phaseAt: previousShutdown.phaseAt,
+      startedAt: previousShutdown.startedAt,
+      trigger: previousShutdown.trigger
+    })
+  } else if (previousShutdown.kind === 'unreadable') {
+    log.warn('previous shutdown record is unreadable', { reason: previousShutdown.reason })
+  }
   registerRendererDiagnosticsIpc(
     ipcMain,
     createRendererFailureReporter({ log: createLogger('renderer') })
@@ -628,7 +656,22 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
             onAppearanceChanged: (appearance) =>
               ctx.appIconControllerBox.current?.setAppearance(appearance),
             log: ctx.log,
-            flushLogs
+            flushLogs,
+            // P0-1: after the backends are gone, close the project database's native query engine before
+            // the process tears down. Loaded lazily so the Prisma client keeps its existing startup
+            // ordering (it is deliberately not part of the eager main-process import graph).
+            releaseDatabaseHandles: async () => {
+              const { releaseProjectDbForShutdown } = await import('./projects/prisma-client')
+              const outcome = await releaseProjectDbForShutdown()
+              createLogger('shutdown').info('project database release', {
+                released: outcome.released,
+                reason: outcome.reason
+              })
+              return outcome.released ? 'completed' : 'failed'
+            },
+            // P0-1: durable, synchronous per-phase record so the next launch can name this run's last
+            // phase even if the process aborts inside native teardown.
+            onShutdownPhase: (phase, fields) => shutdownBreadcrumb(phase, fields)
           },
           {
             // Application composition owns the one bounded ACP/Notebook shutdown. Remaining surfaces

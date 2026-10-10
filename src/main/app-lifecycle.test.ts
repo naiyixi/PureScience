@@ -147,6 +147,8 @@ const setup = (
       | 'platform'
       | 'createInitialWindow'
       | 'onAppearanceChanged'
+      | 'releaseDatabaseHandles'
+      | 'onShutdownPhase'
     >
   > & {
     trayHost?: boolean
@@ -188,6 +190,8 @@ const setup = (
     shutdownBackends,
     prepareForQuit,
     flushSessionPersistence,
+    releaseDatabaseHandles: overrides.releaseDatabaseHandles,
+    onShutdownPhase: overrides.onShutdownPhase,
     log: overrides.log,
     flushLogs: overrides.flushLogs,
     logFlushTimeoutMs: overrides.logFlushTimeoutMs,
@@ -507,6 +511,81 @@ describe('installAppLifecycle', () => {
         usageDrainResult: 'timeout',
         rendererFlushResult: 'failed',
         backendTeardownResult: 'degraded'
+      })
+    )
+  })
+
+  it('releases the database after the backends are gone and records every phase durably', async () => {
+    const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const order: string[] = []
+    const phases: string[] = []
+    const { app, closeOpts } = setup({
+      log,
+      shutdownBackends: vi.fn(async () => {
+        order.push('backends')
+        return 'completed' as const
+      }),
+      releaseDatabaseHandles: vi.fn(async () => {
+        order.push('database')
+        return 'completed' as const
+      }),
+      onShutdownPhase: (phase) => phases.push(phase)
+    })
+    closeOpts[0].requestQuit()
+
+    app.emit('before-quit')
+    await flush()
+
+    // Ordering is the whole point: the engine is closed only once no new database work can start.
+    expect(order).toEqual(['backends', 'database'])
+    // The durable record must name every phase the run reached, including the terminal one.
+    expect(phases).toEqual([
+      'started',
+      'usage-drain',
+      'usage-drain',
+      'renderer-session-flush',
+      'renderer-session-flush',
+      'backend-teardown',
+      'backend-teardown',
+      'database-release',
+      'database-release',
+      'completed'
+    ])
+    expect(log.info).toHaveBeenCalledWith(
+      'operation completed',
+      expect.objectContaining({
+        operation: 'application-shutdown',
+        degraded: false,
+        databaseReleaseResult: 'completed'
+      })
+    )
+  })
+
+  it('never reports a failed database release as a clean shutdown', async () => {
+    const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const { app, closeOpts } = setup({
+      log,
+      releaseDatabaseHandles: vi.fn(async () => {
+        throw new Error('engine refused to close')
+      })
+    })
+    closeOpts[0].requestQuit()
+
+    app.emit('before-quit')
+    await flush()
+
+    // Phase records go through the shared diagnostic operation, which logs every phase at info level and
+    // carries the verdict in `result`; the failure is still named, and the completed record is degraded.
+    expect(log.info).toHaveBeenCalledWith(
+      'operation phase',
+      expect.objectContaining({ phase: 'database-release', result: 'failed' })
+    )
+    expect(log.info).toHaveBeenCalledWith(
+      'operation completed',
+      expect.objectContaining({
+        operation: 'application-shutdown',
+        degraded: true,
+        databaseReleaseResult: 'failed'
       })
     )
   })
