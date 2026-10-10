@@ -98,11 +98,19 @@ export const writeShutdownBreadcrumbSync = (
       closeSync(fileHandle)
     }
     renameSync(temporary, target)
-    const dirHandle = openSync(logDir, 'r')
+    // Directory fsync is POSIX-only: Windows cannot open a directory for this. It is a durability
+    // nicety (ordering the directory entry), not a correctness requirement — the file's own bytes are
+    // already fsync'd above and the rename is atomic — so it is best-effort and must never turn a
+    // successful write into a reported failure. Observed on the Windows lane: `openSync(dir, 'r')`
+    // threw, the outer catch reported `written: false`, and the record was silently considered absent.
+    let dirHandle: number | undefined
     try {
+      dirHandle = openSync(logDir, 'r')
       fsyncSync(dirHandle)
+    } catch {
+      // Platform without directory fsync (Windows), or a filesystem that refuses it.
     } finally {
-      closeSync(dirHandle)
+      if (dirHandle !== undefined) closeSync(dirHandle)
     }
     return { written: true }
   } catch (error) {
