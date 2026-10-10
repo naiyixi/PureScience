@@ -41,6 +41,11 @@
 - 因此①的准确表述应为：**「首次搜索不谎报覆盖（宁可不说）；一旦有测量，未覆盖量以 `pending` 给出」**。
 - **顺带立一条可选项**：面板在"索引已接但尚未测量"时可以显示一句「尚未测量」（而不是整块不出现）。
   这属于界面文案层，未在本片做，记在此处免得下次又被当成"已覆盖"。
+  **✅ 已交付（2026-10-10 执行器核实，就地更正）**：该句已在上屏 —— 九语字典键 `gs.indexNotMeasured`
+  （`src/renderer/src/i18n/en.ts:3099` = `No index reading yet - searching scans the live files`），
+  消费点 `src/renderer/src/components/global-search/GlobalSearchDialog.tsx:1740`，另有渲染用例
+  `GlobalSearchDialog.test.tsx:2021`；认证车道的真机读数也读到同一句（队列档 §四十三 §一）。
+  ⇒ **这一行不再是未做项，不要按它重做。**
 
 ## 3. 过程中修掉的两处**我自己的**错误（写下来避免重犯）
 

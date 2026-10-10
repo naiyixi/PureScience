@@ -68,6 +68,17 @@
    按标签分组的读数；**短 SHA 被具名拒绝**（`head_sha` 只匹配完整 40 位，8 位读起来像「没触发」）。
    实测规模：整份日志 **specs=102 / readings=200 / tags=49**（队列档 §四十三）。结案例：队列档 §四十一、§四十三。
 
+9. **本机 git 到不了远端时的推送会静默改掉提交身份（2026-10-10 实测）**：代理没起 / `github.com:443` 被挡时走 Git Database API 是可行的，
+   但 `POST /git/commits` **必须显式传 `author`/`committer`**，否则 GitHub 用**账号身份**写提交（`PureScience <…noreply>`），
+   而作业、页面、断言全绿、**没有任何地方报错** —— 发现方式只有回读 `gh api repos/…/git/commits/<sha>` 的 author 字段。
+   另外：`curl https://github.com` 不能当通路判据（同一分钟内一次 200、随后又超时）；本地 fetch 不了时远端提交可用
+   「字节重建 + `git hash-object -t commit -w --stdin` 自证 sha 相等」变成本地对象再 `update-ref` 对齐（GitHub 会给 message 补一个换行，
+   本地孪生因此 sha 不同）。整套配方与判据见本技能 `ci-monitoring-and-push-discipline.md`「推送路径」一节。
+
+10. **夹具里的时间戳要**读一次**（2026-10-10）**：`new Date(Date.now() - N).toISOString()` 写两遍（一遍进被测行、一遍算摘要）
+    会在跨毫秒时造出「行与摘要差一个字符」，被产品自己的完整性闸门（正确地）判成损坏 —— Windows 片 `3/8` 上一片红就是这个，
+    机制已用假时钟端到端复现（队列档 §四十四）。修法 = 提成 `const`、两处共用、断言一字不动。
+
 ## 六、下一步建议（按可动手程度排序）
 
 1. ~~补 §四 第 1 项的界面真机读数~~ **已闭**（`artifact-provenance.spec.ts` 在同一作业的 `macos-arm64` 认证步骤里跑过并绿，见 §四 第 1 行）

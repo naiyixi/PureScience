@@ -2153,3 +2153,89 @@ Latest = **v1.95.0**（21 资产、`isLatest=true`、`draft=false`）；`package
 ① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：**先按提交把会话已完成的单元划掉**（防重做）；
 ② 内存宽松（空闲页上到数万）⇒ 取 IC39/IC40 的真机读数（按上单 §二 的配方，先改策略）；否则按 §三 的清单挑一条**未被认领**的；
 ③ 需要「某条读数到底取了没有」时，**先跑** `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>` 再决定要不要立案。
+
+## 四十四、本轮追加（执行器，2026-10-10 07:5x–）—— Windows 片 3/8 那条「证据损坏」的根因是**夹具把时钟读了两次**（机制已端到端复现）+ 一处**推送身份**事故与收口
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- `HEAD == origin/main == 0117698e`（远端以 `gh api repos/…/commits/main` 取，逐字符相同）。开工时该提交两条干道都已 completed：
+  **`Nightly` run `37994740647` = success**；**`Windows Full Test` run `37994740152` = failure**（片 `3/8`）⇒ 本轮第一件就是修红（红了不累积）。
+- `git status --short` 仍是 **30 条在制**（28 改 + 2 未跟踪：`src/main/connectors/reading-verifier.ts`(+`.test.ts`)、`ArtifactProvenancePanel.tsx`、
+  `src/shared/reading-fingerprint.ts`、9 语字典…），mtime **01:36–01:39**（07:56 复查未变）⇒ 桌面会话的在制品（交接档 §四 第 2/3 条），**一位未碰、不替它提交**。
+- 内存：空闲物理页 **7656（≈119 MB）**、swap 已用 **3088 M / 4096 M** ⇒ 不起 Electron；本轮读数全部取自 CI 作业日志。
+
+### 一 归因：那片红**不是产品缺陷**，是夹具自己造的两条时间
+
+片 `3/8` 作业 **`114037778023`** 日志逐字（`gh api repos/…/actions/jobs/114037778023/logs`）：
+
+```
+FAIL database src/main/artifacts/provenance-repository.test.ts > artifact provenance repository >
+     walks from a Version back to the readings recorded in its session
+Error: Artifact Version evidence is corrupt: version-1
+ ❯ ArtifactProvenanceRepository.readCanonicalMirror src/main/artifacts/provenance-repository.ts:2315:47
+ ❯ ArtifactProvenanceRepository.getVersionProvenance  src/main/artifacts/provenance-repository.ts:3754:39
+ ❯ src/main/artifacts/provenance-repository.test.ts:4305:20
+Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 passed | 149 skipped (2249)
+```
+
+- 夹具（`provenance-repository.test.ts:4289-4294`）把 `new Date(Date.now() - 3_600_000).toISOString()` **求值两次**：一次写进 `evidenceJson`、
+  一次算 `evidenceChecksum`。两次之间跨过 1 毫秒时，行与摘要差**一个字符** ⇒ `readCanonicalMirror` 的 `sha256(canonical) !== checksum`
+  （产品行为**正确**）当场抛。同一 src 树在 `df7038d6` 的 Windows 车道上绿 ⇒ 竞态，不是回归。
+- 全仓自查（同时含哈希构造与 `Date.now()` 的测试文件，逐个看摘要输入是否又读了一次时钟）：**只此一处**。
+
+### 二 本单元（唯一代码改动）：夹具读一次时钟、两处共用
+
+`src/main/artifacts/provenance-repository.test.ts`：`const evidenceCreatedAt = new Date(Date.now() - 3_600_000).toISOString()`，
+行与摘要共用它；**断言一字未动**（只紧不放）。
+
+**机制端到端复现（临时探针，不入库；文件已删）**：把时钟换成「每读一次前进 1ms」的假实现 —
+① 用**旧夹具形状**经真实读路径（本仓自己的 `getVersionProvenance`）⇒ 复现出 CI 那句原文 `Artifact Version evidence is corrupt: version-1`；
+② 用**新夹具形状**跑同一路径 ⇒ 不抛。两支 **2 passed（565ms）** ⇒ 「机制就是它」与「修法真的把它去掉」各自有读数。
+
+### 三 门禁（隔离工作树 `/tmp/ps-r44` = `0117698e` + 本文件一份；读数即结论）
+
+| 环 | 读数 |
+| --- | --- |
+| 工作树内差异 | **只有** `src/main/artifacts/provenance-repository.test.ts` 一份（`git status --short` 1 行） |
+| 定向 vitest | `Test Files 1 passed (1)` / `Tests 39 passed (39)`（5.55s） |
+| `prettier --check`（该文件） | `All matched files use Prettier code style!` |
+| `eslint --no-cache`（该文件） | **0 problem**（无输出 + exit 0） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit **0**（`NODE_OPTIONS=--max-old-space-size=4096`） |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | exit **0** |
+| `scripts/pre-push-checks.sh`（推送前实跑） | **全部通过**（敏感词零命中 / README 横幅 v1.95.0 / CHANGELOG 有 v1.95.0 / 已发布 / 双语头部一致） |
+
+### 四 推送：git 到不了远端 ⇒ Git Database API（含一处**身份事故**与收口）
+
+- 事实（均为实取）：`lsof -nP -iTCP:7897 -sTCP:LISTEN` **无监听**；git 里挂着 `http.proxy=http://127.0.0.1:7897` ⇒ 首次 `git push` 报
+  `Failed to connect to 127.0.0.1 port 7897`；清空代理后直连报 `Failed to connect to github.com port 443 after 75004 ms`。
+  **`curl https://github.com` 不能当通路判据**：同一分钟内它一次回 `http=200 t=0.747`、随后同一个 curl 又超时（`Connection timed out after 12137 ms`）。
+  `api.github.com` 稳定可用 ⇒ 走 Git Database API（blob → tree(`base_tree`=父树) → commit → `PATCH refs/heads/main`，**每一步比对后才动 ref**：
+  blob sha == 本地 `git rev-parse <提交>:<path>`、tree sha == 本地 `^{tree}`、推送后回读 ref）。
+- **身份事故（新，已收口）**：第一次 API 推送**漏传 `author`/`committer`** ⇒ GitHub 用**账号身份**写了提交 `c05f88a6`
+  （`PureScience <71830733+naiyixi@users.noreply.github.com>`，与本仓约定 `zerolink <naiyixi@gmail.com>` 不符）。
+  **它是静默的**：作业照跑、页面照对、没有任何地方报错；发现方式是回读 `gh api repos/…/git/commits/<sha>` 的 `author` 字段。
+  收口 = 用**同一个 tree、同一个父提交、同一条 message + 显式身份**重建提交 **`47de6229`**（`PATCH refs/heads/main`，`force: true`，只动**自己刚推的那一个 tip**），
+  并用**字节重建自证**把远端提交变成本地对象（拼 `tree/parent/author/committer/空行/message` → `git hash-object -t commit -w --stdin`
+  ⇒ sha 与 API 返回**逐字符相同**才 `update-ref`）：`refs/heads/main` 与 `refs/remotes/origin/main` 均已对齐到 **`47de6229`**。
+- **两个哈希、同一棵树（如实点名）**：GitHub 给 message 末尾**补了一个换行**，本地孪生 `9631a5ad` 与远端 `47de6229` 的 sha 因此不同（内容相同）；
+  被取代的 `c05f88a6` 与本地 `9631a5ad` 此后只存在于 reflog。
+- **推送取消点名**：本次（含身份收口的那次 ref 改写）取消的是**我自己的** `c05f88a6` 那两条在跑 run；推前已查
+  （`df7038d6` / `0117698e` 的车道均 completed）⇒ **没有取消任何别人的判决**。
+
+### 五 版本位点台账
+
+- Latest = **v1.95.0**（21 资产、`isLatest`）不动；本轮只有**测试夹具**改动 ⇒ 按仓规**不占号**；下一个版本边界仍是 **v1.96.0**。
+
+### 六 遗留与下一轮第一步
+
+1. **先读 `47de6229` 的双车道判决**（`Nightly` + `Windows Full Test`；本轮已把看门脚本留成后台进程写 `/tmp/ps-r44-verdict.txt`）——
+   **`cancelled` 不算绿**；红了按作业级日志归因（片号 + 失败文件是否本批碰过）。
+2. **顺手更正一处陈旧记录（零代码）**：S3 证据档里那条「面板显示『尚未测量』属未做」经核**已交付** ——
+   九语键 `gs.indexNotMeasured`（`src/renderer/src/i18n/en.ts:3099`）+ 消费点 `GlobalSearchDialog.tsx:1740` + 渲染用例
+   `GlobalSearchDialog.test.tsx:2021`，认证车道真机读数亦读到同一句（§四十三 §一）⇒ 已在原档就地标注，**不要重做**。
+3. **未取的真机读数（跨轮不变，逐条带 blocked-by）**：IC39/IC40（**替身主机 + 起 Electron 的内存**）、IC6 收割（真算力主机）、
+   A7 下载路径（真 URL）、IC17 收紧后 spec 的机器判决（Windows/内存）、IC49 别名解绑真机读数、IC16 逐 tick 屏上读数、
+   D1.3「在用内核时拒绝移除」（需活内核）；IC54/M2 卡**产品决定**；中文源四家卡**外部条件**。
+4. **桌面会话的在制品（30 条，01:36 起）不要碰**：`git status --short` 里那批路径就是它的答案；需要「某条读数取没取」时先跑
+   `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>`。
+5. **推送通路未恢复**：`github.com:443` 仍不通 ⇒ 下一轮若还这样，照 §四 的 API 配方推，**并记得显式传 `author`/`committer`**。
