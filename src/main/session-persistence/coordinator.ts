@@ -32,6 +32,14 @@ import {
 } from '../artifacts/provenance-message-snapshot'
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
+
+// `sessions:save-session` is the most frequent slow handler in nine days of real-machine logs (4,282 calls,
+// p95 939 ms, max 50.0 s) and the router's line for it names the channel but not the phase. A median of
+// 100 ms beside a 50 s maximum is what queueing looks like, not writing — so the tail reports its own
+// split and the difference can be attributed without a profiler. The threshold sits above the router's
+// (50 ms) on purpose: the whole population already gets one line per slow call, and a second line for the
+// median would just be noise.
+const SLOW_SESSION_SAVE_THRESHOLD_MS = 200
 import { repairHistoricalArtifactAliases } from './artifact-alias-repair'
 import { startDiagnosticOperation } from '../diagnostics/operation'
 import {
@@ -1035,7 +1043,12 @@ class SessionPersistenceCoordinator {
     session: PersistedChatSession,
     options: SaveSessionOptions = {}
   ): Promise<PersistedChatSession> {
+    // Measured from the CALL, not from inside the queued task: the wait for the queue is precisely what a
+    // 50 s maximum beside a 100 ms median looks like, and it is invisible if the clock starts after
+    // dequeuing. Every phase below is captured on the way past, so a slow save can say where it went.
+    const requestedAt = Date.now()
     return this.enqueue(async () => {
+      const startedAt = Date.now()
       if (this.deletedProjects.has(session.projectId)) {
         throw new Error('Cannot save a session whose project has been deleted.')
       }
@@ -1050,6 +1063,7 @@ class SessionPersistenceCoordinator {
         session.projectId,
         session.id
       )
+      const readAt = Date.now()
       if (authoritative.status === 'unreadable') {
         throw new Error(
           'Cannot save Session projection because main-owned runtime context is unreadable.'
@@ -1116,8 +1130,10 @@ class SessionPersistenceCoordinator {
             : await validateFinalizedArtifactBindings(this.provenance, durableSession, this.log)
         if (bindingValidation.status === 'conflict') throw bindingValidation.error
       }
+      const preparedAt = Date.now()
       await this.repository.saveSession(durableSession)
       this.upsertSessionMetadata(durableSession)
+      const writtenAt = Date.now()
       // Cache only confirmed topology. A transient validation failure keeps the old fingerprint so
       // the next autosave retries the narrow lookup instead of silently treating it as acknowledged.
       if (bindingValidation.status === 'valid') {
@@ -1146,8 +1162,37 @@ class SessionPersistenceCoordinator {
           kind: 'upsert'
         })
       }
+      this.reportSlowSessionSave({ requestedAt, startedAt, readAt, preparedAt, writtenAt })
       return durableSession
     })
+  }
+
+  /**
+   * One line for the slow tail of `saveSession`, naming each phase. Best-effort, on the same rule the
+   * repository reads follow: a diagnostic must never replace the result it is describing.
+   */
+  private reportSlowSessionSave(times: {
+    requestedAt: number
+    startedAt: number
+    readAt: number
+    preparedAt: number
+    writtenAt: number
+  }): void {
+    const finishedAt = Date.now()
+    const totalMs = finishedAt - times.requestedAt
+    if (totalMs < SLOW_SESSION_SAVE_THRESHOLD_MS) return
+    try {
+      this.log.warn('session save was slow', {
+        queuedMs: times.startedAt - times.requestedAt,
+        authorityMs: times.readAt - times.startedAt,
+        prepareMs: times.preparedAt - times.readAt,
+        writeMs: times.writtenAt - times.preparedAt,
+        aftermathMs: finishedAt - times.writtenAt,
+        totalMs
+      })
+    } catch {
+      // Best-effort: a logging failure must not fail a save whose bytes are already durable.
+    }
   }
 
   // Specialist switching reads the latest durable Session and changes only this safe binding. Keep

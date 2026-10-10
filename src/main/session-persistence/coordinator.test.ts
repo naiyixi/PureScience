@@ -3846,3 +3846,53 @@ const flushMicrotasks = async (): Promise<void> => {
   await Promise.resolve()
   await Promise.resolve()
 }
+
+describe('session save diagnostics', () => {
+  it('names the phase a slow save spent its time in, and stays quiet when it is fast', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    // The clock is the only thing being controlled, because it is the only thing the threshold reads. A
+    // fast save reports nothing; then one whose QUEUE WAIT alone crosses the threshold — which is the
+    // shape the real readings show (median 100 ms beside a 50 s maximum).
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+
+    await coordinator.saveSession(createSession({ title: 'Fast' }))
+    expect(log.warn).not.toHaveBeenCalled()
+
+    now = 2_000_000
+    const pending = coordinator.saveSession(createSession({ title: 'Slow' }))
+    // The task body runs in a later microtask, so moving the clock here is exactly "it waited in the queue".
+    now += 5_000
+    await pending
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, number>]
+    expect(message).toBe('session save was slow')
+    expect(fields).toMatchObject({ queuedMs: 5_000, totalMs: 5_000 })
+    // Every phase is named, so a slow save can be attributed without a profiler.
+    for (const phase of [
+      'queuedMs',
+      'authorityMs',
+      'prepareMs',
+      'writeMs',
+      'aftermathMs',
+      'totalMs'
+    ]) {
+      expect(Object.keys(fields)).toContain(phase)
+    }
+    clock.mockRestore()
+  })
+})
