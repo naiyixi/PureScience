@@ -2314,3 +2314,99 @@ Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 
 3. **B 段已耗尽**（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔），批次 ①–③ 亦已耗尽 ⇒ 下一轮从**新能力面**自拟单元（可离线判、差异化点能写成断言）。
 4. 判「某条读数取没取」现在是**两条命令**，缺一条就会把已交付读成未做：
    `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>`（车道侧）+ `--in-repo <tag>`（仓内侧 + 守卫清单）。
+
+## 四十六、本轮追加（执行器，2026-10-10 17:2x–）—— ① 上一轮那批「读数清账」落树并推送；② 中文词表第二批 23 条（方法/检测技术，英文侧逐条取自 MeSH）
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- 起点 `HEAD == origin/main == 06880e12`；工作区只有**执行器自己上一轮的 8 条在制品**（上一轮把改动写好了，缺门禁与提交）；
+  桌面会话的在制品已全部落笔并随 v1.96.0–v1.99.0 发布。
+- 已按队列要求核对「已完成（别再重做）」清单 + `git log --oneline --since="3 days ago"`：**B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔）与批次 ①–③ 全部耗尽**，
+  A 段无 ≥3 天无人动的项 ⇒ 第二件按队列自己的结论「从**新能力面**自拟单元（可离线判、差异化点能写成断言）」取，
+  并与会话今天最后两笔（中文研究方法词 30 条、arXiv 中文查询）**不重复** —— 那两笔已在上面的提交里。
+- 内存：空闲物理页 **6532（≈102 MB）** / swap 3080 M ⇒ **不起 Electron**。本轮的真读数走
+  「**应用自己的连接器 + 一次真实网络请求**」的一次性探针（不需要窗口），其余取自 CI 日志与本机只读命令。
+
+### 一 第一件（上一轮遗留）：落树 + 推送（`4ac73726`）
+
+隔离工作树 `/tmp/ps-r45`（= 该提交，`git status` 干净）：
+
+| 环 | 读数 |
+| --- | --- |
+| 工作树内差异 | `worktree_files_changed=0` |
+| `node --check` + `prettier --check`（`scripts/ci/harvest-certification-readings.mjs`） | exit **0** / `All matched files use Prettier code style!` |
+| `node scripts/ci/harvest-certification-readings.mjs --in-repo v1.99.0` | exit **0**（`IN-REPO tag=v1.99.0 hits=0` + 12 条守卫逐条打印） |
+| `eslint --no-cache .`（全仓，CI 同口径） | **0 error / 140 warning**（与 v1.99.0 记录的基线同数） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit **0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | exit **0** |
+| `bash scripts/pre-push-checks.sh` | exit **0**（全部通过） |
+
+- **推送**：`HUSKY=0 git push origin main` **成功** —— 本机代理 `127.0.0.1:7897` 这一次**在监听**（`lsof` 有 LISTEN），
+  与上一轮「代理没起 ⇒ 只能走 Git Database API」不同。远端回读 `gh api repos/…/commits/main` = **`4ac73726…`**，与本地逐字符一致。
+- **取消点名**：推前查 `gh run list --limit 6`，最近的 run 全部 `completed` ⇒ **本次推送没有取消任何人的判决**。
+- 版本位点：文档 + 一个 CI 脚本 ⇒ 按仓规**不占号**。
+
+### 二 第二件（新单元）：中文词表第二批 —— 方法/检测技术 **23 条**
+
+**为什么取它**：`docs/evidence/2026-10-10-chinese-terms-per-source-policy.md` §三 自己写明「扩大覆盖面 = 扩表，是**另一个单元**」，
+且第一批 30 条只盖「设计词」；中文临床问题常用的另一半是**检测/组学技术**与**统计/证据类型**
+（「流式细胞术 急性髓系白血病」「影像组学 肺结节」「网络荟萃分析 阿司匹林」），这些词今天在 PubMed/arXiv 上是**整句具名拒答**。
+
+**门槛与做法（沿用第一批的两条钉子，不放宽）**：英文侧**逐条取自 MeSH 的查询服务**
+（`https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&limit=1`，**命中才收**），
+写成 `meshEntry(…)`；表 ↔ 证据档**双向互核**由读源测试钉住（`documented.size === methods.length`，两边任一处漂了就红）。
+
+**本轮实测（逐条真取，descriptor 即 MeSH 返回的那个号）**：
+`网络荟萃分析`→network meta-analysis `D000099094`、`多中心研究`→multicenter study `D016448`、
+`病例报告`→case reports `D002363`、`交叉试验`→cross-over studies `D018592`、`影像组学`→radiomics `D000097188`、
+`流式细胞术`→flow cytometry `D005434`、`免疫印迹法`→blotting, western `D015153`、
+`酶联免疫吸附测定`→enzyme-linked immunosorbent assay `D004797`、`质谱分析`→mass spectrometry `D013058`、
+`高通量测序`→high-throughput nucleotide sequencing `D059014`、`全基因组测序`→whole genome sequencing `D000073336`、
+`空间转录组学`→spatial transcriptomics `D000099285`、`类器官`→organoids `D009940`、`代谢组学`→metabolomics `D055432`、
+`表观基因组学`→epigenomics `D057890`、`分子对接模拟`→molecular docking simulation `D062105`、
+`分子动力学模拟`→molecular dynamics simulation `D056004`、`网络药理学`→network pharmacology `D000091484`、
+`基因敲除`→gene knockout techniques `D055786`、`基因敲低`→gene knockdown techniques `D055785`、
+`免疫荧光技术`→fluorescent antibody technique `D005455`、`蛋白质互作网络`→protein interaction maps `D060066`、
+`生物信息学`→computational biology `D019295`。
+
+**刻意未收的三条（宁可缺不要错）**：`敏感性分析` / `亚组分析` / `真实世界研究` 在 MeSH 里 `match=exact` **零命中**
+⇒ 没有可核对的英文侧，**不进表**（错映射比缺映射更糟：它会悄悄把问题换成另一个问题）。
+
+**真读数（经应用自己的连接器 + 一次真实请求，一次性探针，跑完即删；同一配方见证据档 §三之二）**：
+
+| 连接器 | 请求               | 实际发出                    | 结果        |
+| ------ | ------------------ | --------------------------- | ----------- |
+| PubMed | `影像组学 肺癌`    | `radiomics lung cancer`     | **2,847**   |
+| arXiv  | `all:网络荟萃分析` | `all:network meta-analysis` | **338,772** |
+| PubMed | `敏感性分析 肺癌`  | **什么都没发**（具名拒答）  | 报错点名该词，并列出已映射部分（`肺癌→lung cancer`） |
+
+**新的具名开项（本轮只立案、不动手）**：纯**主题词**（细胞凋亡/自噬/氧化应激/生物标志物/免疫治疗/药代动力学……）
+在中文临床问题里出现频率极高，但它们**不属于现有任何一个 `kind`** —— `method` 是「拿什么去问」、
+`indication` 是疾病，把它们塞进任一边都是**错映射**。正解是**第四种 denoting kind**（如 `topic`），
+但那是一次跨进程枚举变更（`CHINESE_TERM_KINDS` + 互核测试的 kind 覆盖 + 各连接器 `zh_terms.kind` 的消费/展示）
+⇒ 按仓规「**加值前先逐个消费点确认**」，本轮**只立案**，低风险路径 = 不塞、不动枚举。
+
+**门禁（隔离工作树 `/tmp/ps-r46` = 本提交）**：
+
+| 环 | 读数 |
+| --- | --- |
+| 工作树内差异 | <DIFF46> |
+| 定向 vitest（`src/main/connectors src/shared`） | `Test Files 194 passed (194)` / `Tests 2155 passed | 53 skipped (2208)` |
+| `eslint --no-cache .`（全仓） | <ESLINT46> |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | <TSCNODE46> |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | <TSCWEB46> |
+| `bash scripts/pre-push-checks.sh` | <PREPUSH46> |
+
+- **版本位点**：这是**运行时行为改动**（新增 23 条中文映射，命中即改写）⇒ **占一个版本位**；
+  本轮**不打 tag、不抬号**（发版窗口与并发推送纪律：会话今天已连发四版，且窗口要先冻结推送）
+  ⇒ 留给下一个窗口，建议并入 **v1.100.0**，CHANGELOG 段与 README 成熟度块由那次窗口写。
+
+### 三 遗留与下一轮第一步
+
+1. **先读两个提交的双车道判决**：`4ac73726`（4 文档+工具）与本轮的词表提交；按**完整 40 位 SHA** 查，
+   `cancelled` 不算绿；注意后一笔推送会取消前一笔的在飞车道（那时按「包含它的后一笔」取证据并写明替代关系）。
+2. **主题词 kind 立项**（若下一轮要做，先按 §二 的消费点清单逐点确认；本轮的词表**不含**主题词，别按旧行重做）。
+3. 跨轮不变：IC40 needs-attention 读数（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+4. **扩表的下一批**：`单臂试验` 一类尚未核对；核到权威出处再加，门槛与两条钉子不变。
+   <!-- 占位符：本轮收尾时替换 -->
+   <!-- DIFF46 ESLINT46 TSCNODE46 TSCWEB46 PREPUSH46 -->

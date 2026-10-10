@@ -436,7 +436,35 @@ const METHODS: readonly ChineseTermEntry[] = [
   meshEntry('转录组', 'method', 'transcriptome', 'D059467'),
   meshEntry('基因表达谱', 'method', 'gene expression profiling', 'D020869'),
   meshEntry('单细胞分析', 'method', 'single-cell analysis', 'D059010'),
-  meshEntry('蛋白质组学', 'method', 'proteomics', 'D040901')
+  meshEntry('蛋白质组学', 'method', 'proteomics', 'D040901'),
+  // Second batch (2026-10-10): designs/statistics and assay or omics techniques. Same discipline — the
+  // English side is the MeSH descriptor's own label, read from the lookup service, and every row is
+  // listed in the evidence note the read-source test cross-checks against.
+  meshEntry('网络荟萃分析', 'method', 'network meta-analysis', 'D000099094', ['网状荟萃分析']),
+  meshEntry('多中心研究', 'method', 'multicenter study', 'D016448'),
+  meshEntry('病例报告', 'method', 'case reports', 'D002363'),
+  meshEntry('交叉试验', 'method', 'cross-over studies', 'D018592'),
+  meshEntry('影像组学', 'method', 'radiomics', 'D000097188'),
+  meshEntry('流式细胞术', 'method', 'flow cytometry', 'D005434'),
+  meshEntry('免疫印迹法', 'method', 'blotting, western', 'D015153', ['蛋白印迹法']),
+  meshEntry('酶联免疫吸附测定', 'method', 'enzyme-linked immunosorbent assay', 'D004797', [
+    '酶联免疫吸附试验'
+  ]),
+  meshEntry('质谱分析', 'method', 'mass spectrometry', 'D013058', ['质谱']),
+  meshEntry('高通量测序', 'method', 'high-throughput nucleotide sequencing', 'D059014', ['二代测序']),
+  meshEntry('全基因组测序', 'method', 'whole genome sequencing', 'D000073336'),
+  meshEntry('空间转录组学', 'method', 'spatial transcriptomics', 'D000099285'),
+  meshEntry('类器官', 'method', 'organoids', 'D009940'),
+  meshEntry('代谢组学', 'method', 'metabolomics', 'D055432'),
+  meshEntry('表观基因组学', 'method', 'epigenomics', 'D057890'),
+  meshEntry('分子对接模拟', 'method', 'molecular docking simulation', 'D062105', ['分子对接']),
+  meshEntry('分子动力学模拟', 'method', 'molecular dynamics simulation', 'D056004', ['分子动力学']),
+  meshEntry('网络药理学', 'method', 'network pharmacology', 'D000091484'),
+  meshEntry('基因敲除', 'method', 'gene knockout techniques', 'D055786'),
+  meshEntry('基因敲低', 'method', 'gene knockdown techniques', 'D055785'),
+  meshEntry('免疫荧光技术', 'method', 'fluorescent antibody technique', 'D005455'),
+  meshEntry('蛋白质互作网络', 'method', 'protein interaction maps', 'D060066'),
+  meshEntry('生物信息学', 'method', 'computational biology', 'D019295')
 ]
 
 export const CHINESE_TERMS: readonly ChineseTableEntry[] = Object.freeze([
