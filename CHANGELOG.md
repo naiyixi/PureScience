@@ -15,7 +15,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15992 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - 受影响簇（分片前本地）：**194 文件 / 2154 passed / 53 skipped**；触碰文件 eslint 干净。
 - 用例：共享层就地改写四条（前缀保真、运算符保真、虚词让位**不粘连**、未映射点名）+ arXiv 三条（重写并回带 `zh_terms`、不可映射**具名拒答且没发请求**、纯虚词**具名拒答且没发请求**）。
 
