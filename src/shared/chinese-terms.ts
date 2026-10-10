@@ -37,6 +37,12 @@ export const CHINESE_TERM_KINDS = [
   // about. A Chinese query is usually a design word plus a subject ("随机对照试验 阿司匹林"), and without
   // these the design half of it was refused.
   'method',
+  // How something was EXAMINED or MEASURED — imaging, endoscopy, biopsy, pathology, assays and lab
+  // techniques. Kept apart from `method` because the two halves answer different questions: `method` is
+  // how a study was designed, `procedure` is what was done to the patient or the sample
+  // ("磁共振成像 脑卒中"). A row's kind is shown to the agent in `zh_terms.matched[].kind`, so the split
+  // has to mean what it says.
+  'procedure',
   // The subject matter a question is about, when it is neither a disease nor a way of asking
   // ("细胞凋亡 肺癌", "自噬 二甲双胍"): the mechanics of a disease, not its name. Deliberately NOT folded
   // into `method` — a method is what you ask WITH, a topic is what you ask ABOUT — and a wrong mapping
@@ -450,15 +456,6 @@ const METHODS: readonly ChineseTermEntry[] = [
   meshEntry('病例报告', 'method', 'case reports', 'D002363'),
   meshEntry('交叉试验', 'method', 'cross-over studies', 'D018592'),
   meshEntry('影像组学', 'method', 'radiomics', 'D000097188'),
-  meshEntry('流式细胞术', 'method', 'flow cytometry', 'D005434'),
-  meshEntry('免疫印迹法', 'method', 'blotting, western', 'D015153', ['蛋白印迹法']),
-  meshEntry('酶联免疫吸附测定', 'method', 'enzyme-linked immunosorbent assay', 'D004797', [
-    '酶联免疫吸附试验'
-  ]),
-  meshEntry('质谱分析', 'method', 'mass spectrometry', 'D013058', ['质谱']),
-  meshEntry('高通量测序', 'method', 'high-throughput nucleotide sequencing', 'D059014', [
-    '二代测序'
-  ]),
   meshEntry('全基因组测序', 'method', 'whole genome sequencing', 'D000073336'),
   meshEntry('空间转录组学', 'method', 'spatial transcriptomics', 'D000099285'),
   meshEntry('类器官', 'method', 'organoids', 'D009940'),
@@ -469,7 +466,6 @@ const METHODS: readonly ChineseTermEntry[] = [
   meshEntry('网络药理学', 'method', 'network pharmacology', 'D000091484'),
   meshEntry('基因敲除', 'method', 'gene knockout techniques', 'D055786'),
   meshEntry('基因敲低', 'method', 'gene knockdown techniques', 'D055785'),
-  meshEntry('免疫荧光技术', 'method', 'fluorescent antibody technique', 'D005455'),
   meshEntry('蛋白质互作网络', 'method', 'protein interaction maps', 'D060066'),
   meshEntry('生物信息学', 'method', 'computational biology', 'D019295')
 ]
@@ -518,12 +514,51 @@ const TOPICS: readonly ChineseTermEntry[] = [
   meshEntry('长链非编码RNA', 'topic', 'RNA, long noncoding', 'D062085')
 ]
 
+// How something was examined or measured. Same sourcing discipline as METHODS: every English side was
+// fetched from MeSH's own lookup service on 2026-10-10 and the descriptor id it returned is recorded per
+// row, with the pairs listed in docs/evidence/2026-10-10-chinese-procedure-terms.md for the read-source
+// test to cross-check. Six of these rows were landed under `method` by the autonomous executor and are
+// reclassified here, where the table's own `method` comment says they belong: they measure, they do not
+// design.
+const PROCEDURES: readonly ChineseTermEntry[] = [
+  meshEntry('磁共振成像', 'procedure', 'magnetic resonance imaging', 'D008279', ['核磁共振']),
+  meshEntry('计算机断层扫描', 'procedure', 'tomography, x-ray computed', 'D014057', [
+    'CT检查',
+    'CT扫描'
+  ]),
+  meshEntry('超声检查', 'procedure', 'ultrasonography', 'D014463', ['超声']),
+  meshEntry('超声心动图', 'procedure', 'echocardiography', 'D004452', ['心脏超声']),
+  meshEntry('内镜检查', 'procedure', 'endoscopy', 'D004724', ['内镜']),
+  meshEntry('活组织检查', 'procedure', 'biopsy', 'D001706', ['活检']),
+  meshEntry('病理学', 'procedure', 'pathology', 'D010336', ['病理']),
+  meshEntry('心电图', 'procedure', 'electrocardiography', 'D004562', ['心电图检查']),
+  meshEntry('血管造影', 'procedure', 'angiography', 'D000792'),
+  meshEntry('正电子发射断层显像', 'procedure', 'positron-emission tomography', 'D049268', [
+    '正电子发射断层扫描'
+  ]),
+  meshEntry('免疫印迹法', 'procedure', 'blotting, western', 'D015153', ['蛋白印迹法']),
+  meshEntry('流式细胞术', 'procedure', 'flow cytometry', 'D005434'),
+  meshEntry('酶联免疫吸附测定', 'procedure', 'enzyme-linked immunosorbent assay', 'D004797', [
+    '酶联免疫吸附试验'
+  ]),
+  meshEntry('质谱分析', 'procedure', 'mass spectrometry', 'D013058', ['质谱']),
+  meshEntry('色谱法', 'procedure', 'chromatography', 'D002845', ['层析']),
+  meshEntry('细胞培养技术', 'procedure', 'cell culture techniques', 'D018929', ['细胞培养']),
+  meshEntry('高通量测序', 'procedure', 'high-throughput nucleotide sequencing', 'D059014', [
+    '二代测序'
+  ]),
+  meshEntry('免疫荧光技术', 'procedure', 'fluorescent antibody technique', 'D005455'),
+  meshEntry('原位杂交', 'procedure', 'in situ hybridization', 'D017403'),
+  meshEntry('放射治疗', 'procedure', 'radiotherapy', 'D011878', ['放疗'])
+]
+
 export const CHINESE_TERMS: readonly ChineseTableEntry[] = Object.freeze([
   ...DRUGS,
   ...INDICATIONS,
   ...INSTITUTIONS,
   ...JOURNALS,
   ...METHODS,
+  ...PROCEDURES,
   ...TOPICS,
   ...CONNECTIVES
 ])

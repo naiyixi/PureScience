@@ -41,6 +41,7 @@ describe('the Chinese term table (read from source)', () => {
     expect(byKind.institution).toBeGreaterThanOrEqual(15)
     expect(byKind.journal).toBeGreaterThanOrEqual(17)
     expect(byKind.method).toBeGreaterThanOrEqual(25)
+    expect(byKind.procedure).toBeGreaterThanOrEqual(18)
     expect(byKind.topic).toBeGreaterThanOrEqual(20)
     expect(byKind.connective).toBeGreaterThanOrEqual(10)
     expect(CHINESE_TERMS.length).toBeGreaterThanOrEqual(200)
@@ -50,6 +51,7 @@ describe('the Chinese term table (read from source)', () => {
         byKind.institution +
         byKind.journal +
         byKind.method +
+        byKind.procedure +
         byKind.topic
     ).toBe(denoting.length)
   })
@@ -103,6 +105,14 @@ describe('the Chinese term table (read from source)', () => {
       CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'method'),
       '2026-10-10-chinese-method-terms.md',
       25
+    )
+  })
+
+  it('records where each procedure term came from, to the same standard as the method rows', () => {
+    expectRowsMatchNote(
+      CHINESE_TERMS.filter((row): row is ChineseTermEntry => row.kind === 'procedure'),
+      '2026-10-10-chinese-procedure-terms.md',
+      18
     )
   })
 

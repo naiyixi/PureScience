@@ -65,31 +65,25 @@ GET https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&li
 「影像组学 肺结节」），以及**统计/证据类型**（网络荟萃分析、交叉试验）。这批 23 条按同一门槛收：
 英文侧**逐条取自 MeSH 的查询服务**（`match=exact` 命中才收），取数时间 **2026-10-10**。
 
-| 中文（canonical） | english                               | source          |
-| ----------------- | ------------------------------------- | --------------- |
-| 网络荟萃分析      | network meta-analysis                 | mesh:D000099094 |
-| 多中心研究        | multicenter study                     | mesh:D016448    |
-| 病例报告          | case reports                          | mesh:D002363    |
-| 交叉试验          | cross-over studies                    | mesh:D018592    |
-| 影像组学          | radiomics                             | mesh:D000097188 |
-| 流式细胞术        | flow cytometry                        | mesh:D005434    |
-| 免疫印迹法        | blotting, western                     | mesh:D015153    |
-| 酶联免疫吸附测定  | enzyme-linked immunosorbent assay     | mesh:D004797    |
-| 质谱分析          | mass spectrometry                     | mesh:D013058    |
-| 高通量测序        | high-throughput nucleotide sequencing | mesh:D059014    |
-| 全基因组测序      | whole genome sequencing               | mesh:D000073336 |
-| 空间转录组学      | spatial transcriptomics               | mesh:D000099285 |
-| 类器官            | organoids                             | mesh:D009940    |
-| 代谢组学          | metabolomics                          | mesh:D055432    |
-| 表观基因组学      | epigenomics                           | mesh:D057890    |
-| 分子对接模拟      | molecular docking simulation          | mesh:D062105    |
-| 分子动力学模拟    | molecular dynamics simulation         | mesh:D056004    |
-| 网络药理学        | network pharmacology                  | mesh:D000091484 |
-| 基因敲除          | gene knockout techniques              | mesh:D055786    |
-| 基因敲低          | gene knockdown techniques             | mesh:D055785    |
-| 免疫荧光技术      | fluorescent antibody technique        | mesh:D005455    |
-| 蛋白质互作网络    | protein interaction maps              | mesh:D060066    |
-| 生物信息学        | computational biology                 | mesh:D019295    |
+| 中文（canonical） | english                       | source          |
+| ----------------- | ----------------------------- | --------------- |
+| 网络荟萃分析      | network meta-analysis         | mesh:D000099094 |
+| 多中心研究        | multicenter study             | mesh:D016448    |
+| 病例报告          | case reports                  | mesh:D002363    |
+| 交叉试验          | cross-over studies            | mesh:D018592    |
+| 影像组学          | radiomics                     | mesh:D000097188 |
+| 全基因组测序      | whole genome sequencing       | mesh:D000073336 |
+| 空间转录组学      | spatial transcriptomics       | mesh:D000099285 |
+| 类器官            | organoids                     | mesh:D009940    |
+| 代谢组学          | metabolomics                  | mesh:D055432    |
+| 表观基因组学      | epigenomics                   | mesh:D057890    |
+| 分子对接模拟      | molecular docking simulation  | mesh:D062105    |
+| 分子动力学模拟    | molecular dynamics simulation | mesh:D056004    |
+| 网络药理学        | network pharmacology          | mesh:D000091484 |
+| 基因敲除          | gene knockout techniques      | mesh:D055786    |
+| 基因敲低          | gene knockdown techniques     | mesh:D055785    |
+| 蛋白质互作网络    | protein interaction maps      | mesh:D060066    |
+| 生物信息学        | computational biology         | mesh:D019295    |
 
 **两条口径没变**：① 中文词形不是 MeSH 给的（它的描述符是英文的），这一半是本表的、`source` **只承诺英文侧**；
 ② 变体只收**指同一件事**的异写（`质谱` = 质谱分析、`二代测序` = 高通量测序、`分子对接` = 分子对接模拟），
@@ -112,7 +106,7 @@ node scripts/verify-mesh-sources.mjs 磁共振成像  # 只查指定的几行
 ```
 
 它逐条向 NLM 取描述符、把 **NLM 的首选标签**与该行**实际发出去的英文**比对，不一致就非零退出。
-**本档落定当天对全表（含后来加入的方法/检测技术类，共 53 行）跑过：53/53 一致。**
+**本档落定当天对全表（含后来加入的检测技术类，共 47 行）跑过：47/47 一致。**
 刻意不接进 CI —— 它要联网，而"因为第三方慢就红"的车道只会教人忽略它。
 
 **它比的是首选标签，不是"唯一正确"**：若某行的英文刻意用的是 MeSH 的 entry term（例：`生物信息学`
