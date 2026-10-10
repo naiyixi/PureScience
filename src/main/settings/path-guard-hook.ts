@@ -16,6 +16,15 @@ import { join } from 'node:path'
 //  - It fences *paths*, not commands. A tool input it cannot parse (no path at all) is allowed, and
 //    paths under a system prefix the command needs to run at all (interpreters, libraries, devices,
 //    TLS material) are allowed too — otherwise ordinary work would break.
+//  - Two shapes measured on a real machine read as a location without being one, and both are handled
+//    where the token is built rather than by widening the fence: shell punctuation glued to a path
+//    (`cd <data root>;` was refused *as the root itself*, one character off), and a quoted
+//    regular-expression program (`awk '/^ATOM/{print}'` was refused as `/^ATOM/{print`). The decision
+//    log the guard writes is where those were found — it is the surface to read after a real turn.
+//  - Model-weight caches are their own named list (see RUNTIME_CACHE_PREFIXES): the app's own notebook
+//    runtime downloads weights there and reads them back, they hold no project data, and refusing them
+//    protected nothing while a script that computes the same path stayed out of the hook's reach by
+//    design.
 //  - Every refusal names the path and points at the project's own folder, so the agent can correct
 //    itself in the same turn instead of retrying blindly.
 //
@@ -70,6 +79,19 @@ const SYSTEM_PREFIXES = [
   process.env.SystemRoot, process.env.windir, process.env.ProgramFiles,
   process.env['ProgramFiles(x86)'], process.env.ProgramData
 ].filter((prefix) => typeof prefix === 'string' && prefix.trim())
+
+// Downloaded model weights, not project data: the frameworks the app's own notebook runtime ships
+// (torch, transformers) fetch their weights into these namespaces and load them back from there, and
+// the weights carry no user project content and no credentials. Measured on a real machine: a running
+// ESM2/ProteinMPNN job had its cache path refused, while the same bytes stayed reachable from any
+// script that computes the path — this hook only judges paths a tool input spells out, so the refusal
+// cost real work and protected nothing. Each entry below is a literal namespace, never a wildcard over
+// ~/.cache; the Windows spellings are deliberately absent because no reading on that platform says
+// where those frameworks put them, and a guess would be a fence that looks wider than it is.
+const RUNTIME_CACHE_PREFIXES = [
+  path.join(os.homedir(), '.cache', 'torch', 'hub', 'checkpoints'),
+  path.join(os.homedir(), '.cache', 'huggingface')
+].filter((prefix) => prefix.trim())
 
 const record = (entry) => {
   try {
@@ -140,6 +162,11 @@ const underSystemPrefix = (target) =>
     (prefix) => normalize(target) === normalize(prefix) || normalize(target).startsWith(normalize(prefix) + path.sep)
   )
 
+const underRuntimeCache = (target) =>
+  RUNTIME_CACHE_PREFIXES.some(
+    (prefix) => normalize(target) === normalize(prefix) || normalize(target).startsWith(normalize(prefix) + path.sep)
+  )
+
 // A path a tool input spells out: a POSIX absolute path, a home-relative or parent-escaping one, a
 // Windows drive path, or a UNC share. On Windows a drive path that is not recognized here would never be
 // judged at all, which would leave the fence open. The backslash is built from its character code on
@@ -160,18 +187,37 @@ const looksLikePath = (value) =>
   isDrivePath(value) ||
   isUncPath(value)
 
-// Absolute, home-relative and parent-escaping tokens written anywhere in a shell command. Quoting and
-// KEY=value prefixes are stripped; a bare filename or a flag is not a path and stays out.
+// Absolute, home-relative and parent-escaping tokens written anywhere in a shell command. Quoting,
+// KEY=value prefixes and the shell's own separators are stripped; a bare filename or a flag is not a
+// path and stays out. The separators matter: measured on a real machine, a command that changed into
+// the install's own root and then listed it was refused because the semicolon travelled inside the
+// token, so the decision was recorded against a path one character off the root itself. Splitting on
+// them can only add tokens to judge, so this tightens the tokenizer rather than widening the fence.
 const commandPaths = (command) =>
   String(command)
-    .split(/\\s+/)
+    .split(/[\\s;|&()<>]+/)
     .map((token) =>
       token
         .replace(/^['"]+/, '')
         .replace(/['"]+$/, '')
         .replace(/^[A-Za-z_][A-Za-z0-9_]*=/, '')
+        .replace(/,+$/, '')
     )
-    .filter((token) => token && (looksLikePath(token) || token.startsWith('..')))
+    .filter(
+      (token) =>
+        token && !looksLikePattern(token) && (looksLikePath(token) || token.startsWith('..'))
+    )
+
+// A regular-expression program is not a location. Measured on a real machine: an awk program anchored
+// with a caret was refused because its text was read as a path and judged as the whole disk. The test is
+// deliberately narrow - only the first component, and only the metacharacters that can open a regular
+// expression - so a glob stays fenced: a star pattern under another user's home is still refused,
+// because enumerating a directory outside the roots is what this hook exists for. Windows drive paths
+// are excluded outright: their separator is a backslash. A pattern whose first component carries no such
+// metacharacter still reads as a path; that residual is named in the module comment.
+const REGEX_COMPONENT_HEAD = /^[~/]*[(^{|+]/
+const looksLikePattern = (value) =>
+  !isDrivePath(value) && !isUncPath(value) && REGEX_COMPONENT_HEAD.test(value)
 
 const targets = (input) => {
   const out = []
@@ -179,7 +225,7 @@ const targets = (input) => {
     const value = input ? input[key] : undefined
     if (typeof value !== 'string' || !value.trim()) continue
     if (key === 'command') out.push(...commandPaths(value))
-    else if (looksLikePath(value)) out.push(value)
+    else if (looksLikePath(value) && !looksLikePattern(value)) out.push(value)
   }
   return out
 }
@@ -203,6 +249,7 @@ const main = () => {
     const absolute = realPath(path.resolve(cwd, expanded))
     if (inside(absolute, loaded.roots)) continue
     if (underSystemPrefix(absolute)) continue
+    if (underRuntimeCache(absolute)) continue
 
     const reason =
       'Refused: ' + absolute + ' is outside this project scope. Project files are read from the ' +

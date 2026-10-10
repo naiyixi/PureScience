@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -304,6 +304,139 @@ describe('agent path guard hook', () => {
 
     expect(status).toBe(0)
     expect(stdout).toBe('')
+  })
+
+  it('does not read shell punctuation as part of the path', async () => {
+    const configDir = await makeRoot()
+    const dataRoot = join(configDir, 'data')
+    await writePathGuard(configDir, [dataRoot], dataRoot)
+    const script = pathGuardScriptPath(configDir)
+
+    // Measured on a real machine: a command that changed into the install's own root and listed it was
+    // refused, with the decision recorded against that root plus a trailing semicolon — the app's own
+    // folder, one character off. The location the command names is the root itself, which is in scope.
+    const inside = runGuard(script, {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: `cd ${dataRoot}; ls -la; echo done` },
+      cwd: dataRoot
+    })
+    expect(inside.status).toBe(0)
+    expect(inside.stdout).toBe('')
+
+    // The separator must not become a way out either: the same shape pointing outside is still refused,
+    // and the log names the location rather than the punctuation-carrying spelling of it.
+    const outside = join(configDir, 'outside')
+    await mkdir(outside, { recursive: true })
+    const refused = runGuard(script, {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_input: { command: `cd ${outside}; ls` },
+      cwd: dataRoot
+    })
+    expect(JSON.parse(refused.stdout).hookSpecificOutput.permissionDecision).toBe('deny')
+    expect((await decisions(configDir)).at(-1)).toMatchObject({
+      tool: 'Bash',
+      decision: 'deny',
+      target: outside
+    })
+  })
+
+  it('reads a regular-expression program as a pattern, not as a location', async () => {
+    const configDir = await makeRoot()
+    const dataRoot = join(configDir, 'data')
+    await mkdir(join(dataRoot, 'notebooks'), { recursive: true })
+    await writePathGuard(configDir, [dataRoot], dataRoot)
+    const script = pathGuardScriptPath(configDir)
+    const run = (command: string): { status: number; stdout: string } =>
+      runGuard(script, {
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Bash',
+        tool_input: { command },
+        cwd: join(dataRoot, 'notebooks')
+      })
+
+    // The real refusal: a quoted awk program anchored with a caret was judged as the disk root, so an
+    // ordinary structure-cleaning command was refused.
+    expect(run(`awk '/^ATOM|^HETATM/{print}' receptor.pdb > clean.pdb`).stdout).toBe('')
+
+    // The carve-out must not become a detector bypass: a glob is a real search of a real directory and
+    // stays fenced, and a pattern beside an outside path does not hide it.
+    const outside = join(configDir, 'outside')
+    await mkdir(outside, { recursive: true })
+    expect(JSON.parse(run(`find ${join(outside, '*')} -iname '*.pdb'`).stdout)).toMatchObject({
+      hookSpecificOutput: { permissionDecision: 'deny' }
+    })
+    expect(
+      JSON.parse(run(`awk '/^ATOM/{print}' ${join(outside, 'secret.pdb')}`).stdout)
+    ).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } })
+
+    // The same class reaches the file tools: a search pattern is spelled in the Grep tool's own field,
+    // and a caret-anchored one was judged as a location there too.
+    expect(
+      runGuard(script, {
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Grep',
+        tool_input: { pattern: '/^ATOM/' },
+        cwd: join(dataRoot, 'notebooks')
+      }).stdout
+    ).toBe('')
+    expect(
+      JSON.parse(
+        runGuard(script, {
+          hook_event_name: 'PreToolUse',
+          tool_name: 'Grep',
+          tool_input: { pattern: '/^ATOM/', path: outside },
+          cwd: join(dataRoot, 'notebooks')
+        }).stdout
+      )
+    ).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } })
+  })
+
+  it('reaches the model-weight caches a notebook runtime downloads into, and nothing wider', async () => {
+    const configDir = await makeRoot()
+    const dataRoot = join(configDir, 'data')
+    await writePathGuard(configDir, [dataRoot], dataRoot)
+    const script = pathGuardScriptPath(configDir)
+    const bash = (command: string): { status: number; stdout: string } =>
+      runGuard(script, {
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Bash',
+        tool_input: { command },
+        cwd: dataRoot
+      })
+
+    // Measured on a real machine: a running ESM2/ProteinMPNN job had these two refused.
+    expect(bash('du -sh ~/.cache/torch/hub/checkpoints/').stdout).toBe('')
+    expect(bash('ls -la ~/.cache/huggingface/hub').stdout).toBe('')
+
+    // The list is literal namespaces, never a wildcard over the cache directory: a sibling cache in the
+    // same parent stays refused, as does a read of anything else under it.
+    expect(JSON.parse(bash('ls ~/.cache/other-tool/data').stdout)).toMatchObject({
+      hookSpecificOutput: { permissionDecision: 'deny' }
+    })
+    expect(
+      JSON.parse(
+        runGuard(script, {
+          hook_event_name: 'PreToolUse',
+          tool_name: 'Read',
+          tool_input: { file_path: join(homedir(), '.cache', 'other-tool', 'data.csv') },
+          cwd: dataRoot
+        }).stdout
+      )
+    ).toMatchObject({ hookSpecificOutput: { permissionDecision: 'deny' } })
+
+    // A weights file read through the named namespace is allowed, on every platform the guard runs on.
+    expect(
+      runGuard(script, {
+        hook_event_name: 'PreToolUse',
+        tool_name: 'Read',
+        tool_input: {
+          file_path: join(homedir(), '.cache', 'huggingface', 'hub', 'models--x', 'config.json')
+        },
+        cwd: dataRoot
+      }).stdout
+    ).toBe('')
   })
 
   it('writes the roots file the guard enforces, and the entry that runs it', async () => {
