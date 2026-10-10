@@ -14,7 +14,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15993 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 141 warning**；`pre-push-checks.sh` 五查全过。
 - **本版不动词表**：表这条线正由自主执行器作业（它已推 `a3eb34bf`：新增 `topic` 类 23 条、三车道全绿）。我原备的 20 条影像/检验词（`procedure` 类，MeSH 全部精确命中）在发现**与它同改一批文件**后**主动撤回未提交**，等它放开再落 —— 不让两边的改动在同一批文件上相撞。
 
 ### 明确没做
