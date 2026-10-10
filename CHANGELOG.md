@@ -15,7 +15,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15988 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - 受影响簇（分片前本地）：**194 文件 / 2150 passed / 53 skipped**；触碰文件 eslint 干净。
 - 用例：共享层两条（`keep` 保留未映射、默认剔除，两者都**点名**）+ OpenAlex 三条（重写并回带、未映射按原样搜并点名、纯虚词具名拒答且**请求没发出去**）。
 
@@ -41,7 +41,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15988 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - **钉子按它们自己的注释体例更新 12 处**（目录 474、invoke 映射 366、local-Web 安装集 396、局部命令 358、内部 360、**远端拒绝集 125**、手写 local-only 清单、preload 路径清单逐条补入、preload 计数 236/198）—— 这些清单的存在就是为了让"多一条命令"必须被显式承认。
 - 过程中我自己踩的两处**由类型检查拦下并已修**：把 `verifyReading` 误加进两处 `Pick<ArtifactProvenanceRepository,…>` 的键联合（那是仓库方法名，不是处理器清单）；以及全仓 eslint 抓到我测试里一个函数缺显式返回类型。
 
