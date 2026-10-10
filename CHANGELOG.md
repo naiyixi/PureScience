@@ -15,7 +15,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交见下）：**<GATE_FILES> 文件通过 ｜ <GATE_PASSED> passed ｜ <GATE_SKIPPED> skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ <GATE_WARN> warning**；`pre-push-checks.sh` 五查全过。
+- 门禁（隔离工作树，被测提交见下）：**1235 文件通过 ｜ 15993 passed ｜ 207 skipped**；双 typecheck **exit 0**；全仓 `eslint --no-cache .` **0 error ／ 140 warning**；`pre-push-checks.sh` 五查全过。
 - 受影响簇（分片前本地）：**194 文件 / 2155 passed / 53 skipped**；触碰文件 eslint 干净。
 - **两处我自己踩到并当场收掉的**（都留了读数）：① 我先前拿 `机器学习` 当"未映射"的用例样本，本版之后它**被覆盖** ⇒ 三条用例立刻变红 —— 这红本身就是新条目生效的证据；换成真正未映射的 `量子纠缠`。② 我的"表↔档互核"用例被 **prettier 的表格填充**打败（只匹到 30 行里的 4 行）⇒ 解析器改成**容忍填充**，因为禁掉格式化才是错的方向。
 
