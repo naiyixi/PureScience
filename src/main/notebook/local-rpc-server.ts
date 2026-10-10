@@ -1042,24 +1042,17 @@ class NotebookLocalRpcServer {
   ): { params: Record<string, unknown>; release: () => void } {
     const capability = this.artifactRpcCapabilities.get(token)
     if (!capability) {
-      // Two ways to get here, and both of them are spend-once: the token belongs to an earlier turn, or it was
-      // already revoked on expiry. In either case a retry presents the same token and fails the same way, so
-      // the message has to say that instead of inviting another attempt. The files stay on disk in the
-      // workspace; what is missing is a capability the current turn never issued to this server.
+      // Two ways to get here, and both of them are spend-once: the token belongs to a turn that has finished,
+      // or it was already revoked (on expiry, or when its session released it). In either case a retry presents
+      // the same token and fails the same way, so the message has to name the only action that can work
+      // instead of inviting another attempt. The files stay on disk in the workspace; what is missing is a
+      // capability the current turn never issued to this server.
       throw new RpcHttpError(
         401,
-        'Artifact RPC capability is not valid for this turn: it was issued for an earlier turn (or already spent). ' +
-          'Retrying with the same capability cannot succeed — the run must be retried from a new turn.'
-      )
-    }
-    if (capability.expiresAt <= this.now()) {
-      // Expiry closes admission just like an explicit runtime revoke. Keep the shared drain promise
-      // reachable so a later turn teardown still waits for requests that acquired before expiry.
-      void this.revokeArtifactRunCapability(token)
-      throw new RpcHttpError(
-        401,
-        'Artifact RPC capability expired and was revoked; a retry with it cannot be admitted. ' +
-          'The write needs a capability issued by a new turn.'
+        'Artifact RPC capability is not valid for this turn: it is not registered for any live turn ' +
+          '(the turn that issued it has finished, or the artifact server was restarted since). ' +
+          'Retrying with the same capability cannot succeed — stop retrying this call and ask the user to ' +
+          'send a new message; the file can only be written from a turn that holds a live capability.'
       )
     }
     if (!capability.allowedMethods.has(method)) {
@@ -1096,6 +1089,23 @@ class NotebookLocalRpcServer {
     const matchedTurnScope = capability.turnScopes.find((scope) =>
       boundTurnFields.every((field) => params[field] === scope[field])
     )
+    if (!matchedTurnScope && capability.expiresAt <= this.now()) {
+      // The clock closes admission only when no live turn of this capability is asking. A scope is registered
+      // when a turn opens and retired when that turn seals, so a matching scope is the main process saying
+      // "this turn is still open" — and a turn can legitimately outlive the capability's lifetime (measured
+      // live on 2026-10-03: an 11.5-hour turn lost its capability at the two-hour mark, the first write came
+      // back "expired and was revoked", and every retry after it was refused as spent). Closing a live turn's
+      // admission on the clock is a false refusal; the turn's own seal is what has to end its authority.
+      // Expiry still closes a capability that no live turn holds. Keep the shared drain promise reachable so a
+      // later turn teardown still waits for requests that acquired before expiry.
+      void this.revokeArtifactRunCapability(token)
+      throw new RpcHttpError(
+        401,
+        'Artifact RPC capability expired with no live turn holding it, and was revoked; a retry with it ' +
+          'cannot be admitted. The write needs a capability issued by a new turn — ask the user to send a ' +
+          'new message and write the file in that turn.'
+      )
+    }
     if (boundTurnFields.length > 0 && !matchedTurnScope) {
       // A turn-scoped field can only disagree in one way that matters: the capability was issued for one of
       // this session's turns, and the call carries the identities of another (or of a turn that has since
@@ -1160,6 +1170,15 @@ class NotebookLocalRpcServer {
         : {})
     }
     capability.inFlightRequests += 1
+    if (matchedTurnScope && capability.expiresAt <= this.now()) {
+      // Every check above passed for a turn that is still open, so the lifetime that ran out was the clock's,
+      // not the turn's. Renew it and say so once per window, so the next long turn is diagnosable from the log
+      // instead of looking like a capability that was never issued.
+      capability.expiresAt = this.now() + DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS
+      log.info('artifact RPC capability renewed for a turn that is still open', {
+        artifactRunId: matchedTurnScope.artifactRunId
+      })
+    }
     let released = false
     return {
       params: trustedParams,

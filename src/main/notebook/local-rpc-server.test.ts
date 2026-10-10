@@ -781,11 +781,9 @@ describe('notebook local RPC server', () => {
     })
     const createStarted = createDeferred()
     const releaseCreate = createDeferred()
-    let now = 1_000
     const server = new NotebookLocalRpcServer(service, {
       transport: 'tcp',
       token: 'secret-token',
-      now: () => now,
       artifactProvenance: {
         createVersion: async () => {
           createStarted.resolve()
@@ -833,12 +831,6 @@ describe('notebook local RPC server', () => {
     try {
       const acceptedRequest = call()
       await createStarted.promise
-      now = 1_101
-      const expiredRequest = await call()
-      expect(expiredRequest.status).toBe(401)
-      await expect(expiredRequest.json()).resolves.toEqual({
-        error: expect.stringContaining('cannot be admitted')
-      })
 
       let drained = false
       const firstDrain = Promise.resolve(server.revokeArtifactRunCapability(token)).then(() => {
@@ -848,8 +840,14 @@ describe('notebook local RPC server', () => {
       await Promise.resolve()
       expect(drained).toBe(false)
 
+      // Revocation is what closes admission while an already-authorized write is still landing — not the clock:
+      // a lifetime that runs out inside an open turn is renewed, so the shape that has to be refused here is the
+      // one whose capability is gone.
       const rejectedRequest = await call()
       expect(rejectedRequest.status).toBe(401)
+      await expect(rejectedRequest.json()).resolves.toEqual({
+        error: expect.stringContaining('Retrying with the same capability cannot succeed')
+      })
 
       releaseCreate.resolve()
       await expect(acceptedRequest.then((response) => response.status)).resolves.toBe(200)
@@ -1050,6 +1048,13 @@ describe('notebook local RPC server', () => {
     })
     const connection = await server.ensureStarted()
     const expiredToken = server.issueArtifactRunCapability(artifactCapabilityBinding, 100)
+    // Expiry closes admission for a capability that no live turn is asking through. The turn's authority is
+    // ended by its seal (the scope is retired), so the lifetime running out with a scope still registered is
+    // not a refusal any more — see the long-turn test below, which is the shape measured on a real machine.
+    await server.retireArtifactRunCapabilityScope(
+      expiredToken,
+      artifactCapabilityBinding.artifactRunId
+    )
     now = 1_101
 
     const call = (token: string): Promise<Response> =>
@@ -1140,6 +1145,67 @@ describe('notebook local RPC server', () => {
 
       expect(response.status).toBe(200)
       expect(createVersion).toHaveBeenCalledOnce()
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('renews the Artifact capability of a turn that is still open instead of refusing it', async () => {
+    const root = await createStorageRoot()
+    let now = 1_000
+    const service = new NotebookRuntimeService({
+      configRoot: root,
+      dataRoot: root,
+      projectName: 'default-project',
+      repository: new NotebookRunRepository(root)
+    })
+    const createVersion = vi.fn().mockResolvedValue({ versionId: 'version-1' })
+    const server = new NotebookLocalRpcServer(service, {
+      transport: 'tcp',
+      token: 'secret-token',
+      now: () => now,
+      artifactProvenance: { createVersion }
+    })
+    const connection = await server.ensureStarted()
+    const token = server.issueArtifactRunCapability(artifactCapabilityBinding)
+    const call = (writeOperationId: string): Promise<Response> =>
+      fetch(connection.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `${ARTIFACT_AUTH_SCHEME} ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'artifactCreateVersion',
+          params: {
+            ...artifactCapabilityBinding,
+            writeOperationId,
+            writeRequestChecksum: 'a'.repeat(64),
+            filename: 'sin.png'
+          }
+        })
+      })
+
+    try {
+      // 11.5 hours is longer than the capability's lifetime and still inside one open turn. The user's own log
+      // has this exact shape: turn opened 2026-10-02T16:23:46Z, first write 2026-10-03T03:55:33Z, refused.
+      now += Math.round(11.5 * 60 * 60 * 1_000)
+      expect((await call('write-long-turn-1')).status).toBe(200)
+      // A later write beyond another whole lifetime, same open turn: still admitted.
+      now += 3 * 60 * 60 * 1_000
+      expect((await call('write-long-turn-2')).status).toBe(200)
+      expect(createVersion).toHaveBeenCalledTimes(2)
+
+      // The turn's seal is what ends its authority. With the scope retired and the lifetime long gone, the same
+      // call is refused — and the verdict names the only action that can work instead of inviting a retry.
+      await server.retireArtifactRunCapabilityScope(token, artifactCapabilityBinding.artifactRunId)
+      now += 3 * 60 * 60 * 1_000
+      const afterSeal = await call('write-after-seal')
+      expect(afterSeal.status).toBe(401)
+      await expect(afterSeal.json()).resolves.toEqual({
+        error: expect.stringContaining('cannot be admitted')
+      })
+      expect(createVersion).toHaveBeenCalledTimes(2)
     } finally {
       await server.close()
     }
