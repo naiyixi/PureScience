@@ -287,3 +287,50 @@ describe('arxiv_get_papers', () => {
     expect(res.not_found).toEqual(['garbage!!'])
   })
 })
+
+describe('arxiv_search — Chinese input', () => {
+  // The policy is justified by measurement, not analogy: arXiv indexes Latin text, so a Chinese query
+  // comes back empty whether or not the work exists (live probe through this connector 2026-10-10:
+  // `all:阿司匹林` → api_total 0, `all:aspirin` → 42). Hence rewrite-and-refuse — like the PubMed
+  // connector, and unlike OpenAlex, which answers Chinese and therefore keeps it.
+  it('rewrites a Chinese query in place and reports the rewrite', async () => {
+    const { out, url } = await run(
+      'arxiv_search',
+      { query: 'ti:阿司匹林 AND abs:高血压' },
+      SEARCH_FEED
+    )
+
+    // In place: the field prefixes stay attached to the terms they apply to.
+    expect(decodeURIComponent(url)).toContain('search_query=ti:aspirin AND abs:hypertension')
+    expect((out as { zh_terms?: unknown }).zh_terms).toMatchObject({
+      query_sent: 'ti:aspirin AND abs:hypertension',
+      removed: []
+    })
+  })
+
+  it('refuses Chinese the table cannot map, and sends nothing', async () => {
+    const mock = vi.fn()
+
+    await expect(
+      new ParserEngine({ fetchImpl: mock as unknown as typeof fetch }).call(
+        tool('arxiv_search'),
+        { query: 'all:阿司匹林 OR 机器学习' },
+        {}
+      )
+    ).rejects.toThrow(/no mapping for: 机器学习/)
+    expect(mock).not.toHaveBeenCalled()
+  })
+
+  it('refuses a query that is nothing but function words, and sends nothing', async () => {
+    const mock = vi.fn()
+
+    await expect(
+      new ParserEngine({ fetchImpl: mock as unknown as typeof fetch }).call(
+        tool('arxiv_search'),
+        { query: '的与在' },
+        {}
+      )
+    ).rejects.toThrow(/function words only/)
+    expect(mock).not.toHaveBeenCalled()
+  })
+})

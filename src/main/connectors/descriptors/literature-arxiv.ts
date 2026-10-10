@@ -1,4 +1,5 @@
 import { DOMParser, type Document as XmlDocument, type Element as XmlElement } from '@xmldom/xmldom'
+import { rewriteChineseTermsInPlace } from '../../../shared/chinese-terms'
 import type { ToolContext, ToolDescriptor } from '../types'
 
 const ARXIV_API = 'https://export.arxiv.org/api/query'
@@ -188,8 +189,30 @@ export const searchArxiv = async (
   if (!query && !category && !dateFrom && !dateTo) {
     throw new Error('arxiv_search needs at least one of: query, category, date_from, date_to')
   }
+  // Chinese input goes through the shared term table, with the policy THIS source justifies by
+  // measurement rather than by analogy: arXiv indexes Latin text, so a Chinese query comes back empty
+  // whether or not the work exists (live probe through this connector 2026-10-10: `all:阿司匹林` →
+  // api_total 0, `all:aspirin` → 42). The rewrite is done IN PLACE, because an arXiv query carries
+  // meaning in punctuation: composing it from space-joined pieces would turn `ti:阿司匹林` into
+  // `ti: aspirin`, moving the prefix off the term it applies to and asking a different question.
+  const rewrite = query ? rewriteChineseTermsInPlace(query) : undefined
+  if (rewrite && rewrite.unmapped.length > 0) {
+    throw new Error(
+      `query contains Chinese text this tool has no mapping for: ${rewrite.unmapped.join('、')}. ` +
+        'arXiv indexes Latin text, so a Chinese query returns zero matches whether or not the work ' +
+        'exists — sending it would report a search that was never really run. Nothing was sent. ' +
+        'Rephrase those terms in English and retry.'
+    )
+  }
+  if (rewrite && rewrite.query === '') {
+    throw new Error(
+      `query is Chinese function words only (${rewrite.applied.map((s) => s.from).join('、')}), so it ` +
+        'names nothing to search for. Name a topic, an author, a title term or a category.'
+    )
+  }
+  const sentQuery = rewrite ? rewrite.query : query
   const terms: string[] = []
-  if (query) terms.push(query)
+  if (sentQuery) terms.push(sentQuery)
   if (category) terms.push(`cat:${category}`)
   if (dateFrom || dateTo) {
     const from = dateFrom ? dateFrom.replace(/-/g, '') : '19910101'
@@ -216,6 +239,24 @@ export const searchArxiv = async (
     records_truncated: apiTotal > startIndex + records.length,
     sort_by: sortBy,
     sort_order: sortOrder,
+    ...(rewrite?.applied.length
+      ? {
+          // The rewrite in full, so a reader can reproduce the request by hand: what was recognised,
+          // what was dropped as a function word, and the exact string that was sent.
+          zh_terms: {
+            matched: rewrite.applied
+              .filter((s) => s.to)
+              .map((s) => ({
+                from: s.from,
+                term: s.to,
+                kind: s.entry.kind,
+                english: s.entry.kind === 'connective' ? null : s.entry.english
+              })),
+            removed: rewrite.applied.filter((s) => !s.to).map((s) => s.from),
+            query_sent: searchQuery
+          }
+        }
+      : {}),
     records
   }
 }
@@ -226,7 +267,7 @@ export const ARXIV_LITERATURE_TOOLS: ToolDescriptor[] = [
     id: 'arxiv_search',
     connector: 'literature',
     description:
-      "Search arXiv preprints (physics, math, CS, stats, q-bio, ...) via the official Atom API. Args: query (arXiv query string; plain terms search all fields, field prefixes ti:/au:/abs: and booleans AND/OR/ANDNOT work; optional if category or a date range is set), category (arXiv code AND-ed in, e.g. q-bio.GN, cs.LG, stat.ML), date_from / date_to (submission date YYYY-MM-DD, inclusive), start (0-based paging offset; the API paces ~3s between requests — page politely), max_results (default 25, max 100 per call), sort_by (relevance default / submittedDate / lastUpdatedDate), sort_order (descending default / ascending). Returns {search_query (the exact query sent), api_total (arXiv's total match count), start_index, n_records_returned, records_truncated, sort_by, sort_order, records}; each record {arxiv_id, version, id_versioned, title, abstract, authors, published, updated, primary_category, categories, doi, journal_ref, comment, abs_url, pdf_url}. doi/journal_ref appear only after journal publication. Malformed queries raise an error (arXiv's HTTP-200 error feed is detected, never returned as data).",
+      "Search arXiv preprints (physics, math, CS, stats, q-bio, ...) via the official Atom API. Args: query (arXiv query string; plain terms search all fields, field prefixes ti:/au:/abs: and booleans AND/OR/ANDNOT work; optional if category or a date range is set), category (arXiv code AND-ed in, e.g. q-bio.GN, cs.LG, stat.ML), date_from / date_to (submission date YYYY-MM-DD, inclusive), start (0-based paging offset; the API paces ~3s between requests — page politely), max_results (default 25, max 100 per call), sort_by (relevance default / submittedDate / lastUpdatedDate), sort_order (descending default / ascending). Returns {search_query (the exact query sent), api_total (arXiv's total match count), start_index, n_records_returned, records_truncated, sort_by, sort_order, records}; each record {arxiv_id, version, id_versioned, title, abstract, authors, published, updated, primary_category, categories, doi, journal_ref, comment, abs_url, pdf_url}. doi/journal_ref appear only after journal publication. Malformed queries raise an error (arXiv's HTTP-200 error feed is detected, never returned as data). A Chinese `query` is rewritten IN PLACE through the app’s Chinese term table before it is sent (the rewrite comes back in `zh_terms`; field prefixes and operators stay exactly as typed), and Chinese the table cannot map is refused by name with nothing sent — arXiv indexes Latin text, so a Chinese query returns zero matches whether or not the work exists (`all:阿司匹林` → 0 vs `all:aspirin` → 42, measured through this connector).",
     input: {
       type: 'object',
       properties: {

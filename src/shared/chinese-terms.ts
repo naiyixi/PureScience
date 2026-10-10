@@ -535,6 +535,67 @@ export type ChineseQueryPlan = {
  * the plan makes that decision mechanical: `unmapped.length > 0` means the query cannot be mapped.
  */
 /**
+ * Rewrite the table's terms IN PLACE, leaving every other character exactly as typed — field prefixes
+ * (`all:`, `ti:`, `au:`), operators (`AND`, `OR`, `ANDNOT`) and punctuation included.
+ *
+ * `planChineseQuery` composes its answer from pieces joined by spaces, which is right for a plain-prose
+ * query and WRONG for a source whose query language carries meaning in punctuation: joining `all:` and
+ * the term it applies to would move the prefix off the term it belongs to and send a different question.
+ * A caller in that position uses this instead: matched terms are swapped where they stand, function
+ * words become the space they separated, and everything else is untouched.
+ *
+ * `unmapped` means the same as it does on the plan: the query cannot be asked in full, so a caller that
+ * refuses by name must refuse. Nothing here decides that.
+ */
+export const rewriteChineseTermsInPlace = (
+  raw: unknown
+): { query: string; applied: readonly TermSubstitution[]; unmapped: readonly string[] } => {
+  const source = normaliseQueryPunctuation(String(raw ?? ''))
+  if (!hasCjkScript(source)) return { query: source, applied: [], unmapped: [] }
+
+  const applied: TermSubstitution[] = []
+  const out: string[] = []
+  const unmapped: string[] = []
+  let cursor = 0
+  let plain = ''
+
+  const flushPlain = (): void => {
+    if (!plain) return
+    out.push(plain)
+    for (const run of hanRuns(plain)) unmapped.push(run)
+    plain = ''
+  }
+
+  while (cursor < source.length) {
+    let matched: { entry: ChineseTableEntry; key: string } | undefined
+    for (const key of INDEX.keys) {
+      if (key.length <= source.length - cursor && source.startsWith(key, cursor)) {
+        matched = INDEX.byKey.get(key)
+        break
+      }
+    }
+    if (!matched) {
+      plain += source[cursor]
+      cursor += 1
+      continue
+    }
+    flushPlain()
+    if (matched.entry.kind === 'connective') {
+      applied.push({ from: matched.key, to: '', entry: matched.entry })
+      // A function word becomes the space it stood for, so two terms it separated never fuse.
+      out.push(' ')
+    } else {
+      applied.push({ from: matched.key, to: matched.entry.canonical, entry: matched.entry })
+      out.push(matched.entry.english)
+    }
+    cursor += matched.key.length
+  }
+  flushPlain()
+
+  return { query: out.join('').replace(/\s+/g, ' ').trim(), applied, unmapped }
+}
+
+/**
  * How a caller wants Chinese the table cannot map to be treated.
  *
  * Two sources in this app answer Chinese differently, so this is a named choice with a measured reason

@@ -39,13 +39,27 @@ PubMed 的理由成立（"中文查询必返 0，发了只能换来看起来像�
 **非医学部分多数会落进 `unmapped`** —— 它们会被搜、会被点名，但不会被重写成英文（表里没有）。
 扩大覆盖面 = 扩表，是**另一个单元**，不在本笔。
 
-## 四、arXiv：本轮**未接**，原因是缺一条必须的读数（立案）
+## 四、arXiv：先 429、再撞上一个**读数陷阱**，最后按两条读数定为 `refuse`
 
-要接 arXiv 就要知道它对中文的行为（决定 `refuse` 还是 `keep`）。探它时
-`export.arxiv.org` 连续回 **HTTP 429 `Rate exceeded.`**（间隔数分钟后仍是 429）⇒ **这条读数今天取不到**。
-按仓规不替它编政策、也不把"没测"写成"不需要" —— 立案，等能取到读数再定。
+接 arXiv 要先知道它对中文的行为（决定 `refuse` 还是 `keep`）。过程按时间记，因为它有两处值得留：
 
-**下一轮取它的一步**：`curl -s -o /tmp/a.xml -w '%{http_code}' 'https://export.arxiv.org/api/query?search_query=all:阿司匹林&max_results=0'`，
-读 `totalResults`；非零 ⇒ 用 `keep`，为 0 ⇒ 用 `refuse`（与 PubMed 同政策），两种都照本档的写法落。
+1. **密集探测被限流**：`export.arxiv.org` 连续回 **HTTP 429 `Rate exceeded.`**（隔数分钟仍是）⇒ 当时取不到读数，
+   按仓规**不替它编政策**，立案。**教训**：这个端点对密集探测敏感，一次只取一个读数。
+2. **撞上"看起来像答案的 1"**：稍后单探一次，回的是 **HTTP 500**，体重却是一份**合法 Atom feed**，
+   `totalResults=1` —— 那一份其实是**错误 feed**（`<id>https://arxiv.org/api/errors</id>`、`<title>Error</title>`、
+   summary「server encountered an internal error」），**那个 1 数的是错误条目本身**。
+   只看 `totalResults` 会得出"中文查询命中 1 条"这种**假读数**。
+   **好消息是这个陷阱仓库里已经防住了**：`parseFeed` 认 `/api/errors` 的 feed id 并**抛出具名错误**
+   （工具描述里就写着"HTTP-200/500 错误 feed 会被识别、绝不当作数据返回"）。
+3. **决定性读数（经连接器取，两条对照）**：`all:阿司匹林` → **api_total 0**（是**真的 0**，不是错误 feed ——
+   错误 feed 会抛），`all:aspirin` → **api_total 42**。⇒ arXiv **索引拉丁文**，与 PubMed 同形 ⇒ 政策 = **`refuse`**。
 
-**另注（给下一轮的自己）**：`export.arxiv.org` 对**密集探测**敏感 —— 不要连着打；一次取一个读数。
+**接线方式与别的来源不同：就地改写（in place）**。arXiv 的查询语言**在标点里有语义**
+（`ti:` / `all:` / `au:` / `AND`），而共享规划器是按**空格拼词**的 ⇒ 若用它，`ti:阿司匹林` 会变成
+`ti: aspirin`，**把前缀从它修饰的词上挪走，等于问另一个问题**。所以共享层加了
+`rewriteChineseTermsInPlace()`：命中的词**原地替换**、虚词变成它让出的那个空格、其余一字不动
+（`ti:阿司匹林 AND abs:高血压` → `ti:aspirin AND abs:hypertension`，逐字保住前缀与运算符）。
+这条危险不是推演出来的假设：聚合工具 `literature_review_search` 就是按 `all:<query>` 下发的。
+
+**顺带说明覆盖面**：`literature_review_search` 把同一条 query 分别交给 arXiv 与 OpenAlex，
+所以本轮之后聚合路径也自动吃到两种政策（OpenAlex 在其核心函数里改写并保留未映射；arXiv 在**它的**核心函数里就地改写并具名拒答）。

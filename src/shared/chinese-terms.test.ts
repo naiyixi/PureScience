@@ -12,6 +12,7 @@ import {
   CHINESE_TERM_KINDS,
   normaliseTerm,
   planChineseQuery,
+  rewriteChineseTermsInPlace,
   normaliseQueryPunctuation
 } from './chinese-terms'
 
@@ -169,6 +170,21 @@ describe('every row in the table is reachable', () => {
     expect(planChineseQuery('低分子肝素').query).toBe('low molecular weight heparin')
     expect(planChineseQuery('急性髓系白血病').query).toBe('acute myeloid leukemia')
     expect(planChineseQuery('高血压病').query).toBe('hypertension')
+  })
+
+  it('rewrites in place, so a field prefix stays attached to the term it applies to', () => {
+    // The composed plan joins its pieces with spaces, which would turn `ti:阿司匹林` into `ti: aspirin` —
+    // a different question. In-place rewriting leaves everything but the term alone.
+    expect(rewriteChineseTermsInPlace('ti:阿司匹林').query).toBe('ti:aspirin')
+    expect(rewriteChineseTermsInPlace('all:阿司匹林 AND au:Smith').query).toBe(
+      'all:aspirin AND au:Smith'
+    )
+    // A function word becomes the space it stood for, so the two terms never fuse into one token.
+    expect(rewriteChineseTermsInPlace('阿司匹林治疗高血压').query).toBe('aspirin hypertension')
+    // And it names what it could not reach, exactly like the plan does.
+    const gap = rewriteChineseTermsInPlace('all:阿司匹林 OR 机器学习')
+    expect(gap.unmapped).toEqual(['机器学习'])
+    expect(gap.query).toBe('all:aspirin OR 机器学习')
   })
 
   it('keeps unaccounted-for Chinese only when the caller asks for it, naming it either way', () => {
