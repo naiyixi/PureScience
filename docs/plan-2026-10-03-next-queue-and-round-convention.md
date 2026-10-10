@@ -61,11 +61,16 @@ RuntimesPanel 导入对话框 + 9 语种 13 键 + 契约计数连锁 + 真机读
 「Imported “lock-import-env” — 82 packages (82 from cache, 0 downloaded)」+ 失败路径具名原因上屏；
 这一跑额外揪出并修掉三个单测漏掉的真缺陷（启动自检计数 344→345 导致应用 fail-fast、对话框页脚越界、
 管理器丢 `this`）。
-**⚠️ A7 仅剩一条读数（已立案，见 evidence §5.2）**：**下载路径**（`allowDownload:true` 从锁 URL 取包 + 校验后建成环境）未实测；
-另记一条产品决策（具名环境不出现于 Settings→Runtimes 卡片列表，实测如此，未声称已覆盖）·
+**✅ A7 两条读数后来都取到了（2026-10-04；本条原写「仅剩一条读数未实测」，已就地更正）**：**下载路径**
+（`allowDownload:true` 从锁 URL 取包 + md5 校验后建成环境）已取 —— 提交 `f41580d8`、spec
+`e2e/certification/lock-import-download.spec.ts` **3 passed (46.2s)**，读数 `Imported “download-env” — 82 packages
+(81 from cache, 1 downloaded).` / 关下载具名报缺 / 坏一字节整份拒绝（证据 `docs/evidence/2026-10-04-v5-lock-import-download.md`）。
+另一处产品决策（具名环境不出现于 Settings→Runtimes 卡片列表）已由下面的 D1.3 收口（面板新增「具名环境」分组）·
 **D1.3 具名环境的列表/移除/用作运行时**（通道与面板 `d726882a` + 列表刷新修复与真窗口读数 `b7feabd4`：
 A7 导入的环境不再是死路——服务端列表含它、面板「具名环境」分组显示它、二次确认移除后 `envs/<name>` 目录消失；
-读数见 evidence §6。**仍未取**：在用内核时拒绝移除的真窗口读数，已立案）。
+读数见 evidence §6。**✅ 这条「仍未取」后来也取到了（2026-10-04）**：spec `e2e/certification/named-env-kernel-in-use.spec.ts`
+**1 passed (1.3m)** —— 状态表里该环境为 `idle` ⇒ 移除被逐字拒绝、环境目录仍在（读数与两版弯路见
+`docs/evidence/2026-10-04-v6-kernel-in-use-recipe-refuted.md` §第三版））。
 **S3 增量全文索引的 S1/S2 两片**（持久层 `6f4d579b` + 查询合流 `a2f9217d`：指纹计划 / 续跑单调 checkpoint（磁盘权威）/
 存储上限具名拒绝 / 删目录即「空覆盖」；查询 = 索引 ∪ 现场有界扫描 ⇒ 索引只让命中变多，
 coverage 报 indexed/pending/stale/capped。自测先红抓出真缺陷一条：原实现只接受「批次」不接受「计划」，
@@ -113,7 +118,8 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
 
 1. ~~**A7 外部锁导入**~~ ✅ **已完成（会话）**：立项 `docs/plan-2026-10-03-A7-external-lock-import.md`；
    S1 `cd2bd978`、S2/S3 `83a2cdbc`；真机读数见 `docs/evidence/2026-10-03-A7-external-lock-import.md`。
-   **遗留两条读数列案**：下载路径未实测、真窗口点动读数未取（该档 §3）。
+   **✅ 原「遗留两条读数」都已收口（2026-10-04，本条就地更正）**：下载路径已取（`f41580d8`，3 passed）；
+   真窗口点动读数**早已取**（`e2e/certification/lock-import.spec.ts` passed，见上面「A7 真窗口读数已取」）。
 2. ~~**S3 增量全文索引**~~ ✅ **已完成（含 S4 真机读数）**：S1 持久层 `6f4d579b`、S2 查询合流 `a2f9217d`、
    S1b 填充/持有/接线 `ed58229b`+`d06b51dd`+`dd9ff596`、S3 界面读数 `0b2b220a`、
    **S4 真机四条断言 `2ac54c6f`**（认证 spec `e2e/certification/search-index-coverage.spec.ts`；
@@ -150,7 +156,7 @@ Build/notarize-mac/publish 全 skipped ⇒ **连发布页都没有**，同一批
    新通道 `runtime:manage-named-environments`（`list`/`remove`）+ 面板「具名环境」分组；移除二次确认、
    **在用内核时拒绝且理由逐字上屏**；「用作笔记本运行时」走既有 `register→enable→select`（不新造后端）。
    真窗口读数：`serviceNamedEnvs=["lock-import-env"]` / `namedEnvRows=1` / `namedEnvRemoved=true dirGone=true`。
-   **仍未取**：在用内核时拒绝移除的真窗口读数。
+   **✅ 该「仍未取」已取（2026-10-04，本条就地更正）**：`e2e/certification/named-env-kernel-in-use.spec.ts` **1 passed (1.3m)**。
 4. **产物用系统程序打开**：`artifacts:open-file` 后端 + preload 全齐，`artifacts.openFile` 渲染层 0 命中。
    在 `PreviewFileSurface` 头部加「用系统程序打开 / 在文件夹中显示」。
 
@@ -1962,7 +1968,7 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 | IC50 技能导入版 | 文案**已演进**为可复制：`[ic50] the detail says: "Kept as imported: this copy is compared against what you imported. Duplicate it to get a skill of your own that you can edit."` + `the copy entry reads: "Duplicate as my skill"` ⇒ 排期档 IC50 行里那句「no way to fork it yet」的描述**已过期** |
 | D2-5 会话包随包证据 | `[ic10] source: citations=1 …` → `[ic10] landed: {"citations":1,"reviews":2,"reviewFindings":0,"verificationRecords":1,"skipped":[]}` |
 | D2-6 导入会话姿态可见 | `[ic11] posture: {…"posture":{"readOnly":true,"executeAllowed":false,"continueAllowed":false,…}}` + 横幅原话（「Imported session — read-only … every conclusion is the sender's assertion」） |
-| IC39（远程任务取消） | `[76/101] remote-job-cancel.spec.ts:253:5 › IC39: …` 在该作业里**只跑了 9 秒**且无任何 `[ic39]` 行 ⇒ 它带 `test.skip(!endpointReachable(), …)`（CI 里没有用户态 sshd）⇒ **该读数仍然未取**，本行**不作关闭**（这正是「车道绿 ≠ 某支 spec 跑了」） |
+| IC39（远程任务取消） | `[76/101] remote-job-cancel.spec.ts:253:5 › IC39: …` 在该作业里**只跑了 9 秒**且无任何 `[ic39]` 行 ⇒ 它带 `test.skip(!endpointReachable(), …)`（CI 里没有用户态 sshd）⇒ **该读数仍然未取**，本行**不作关闭**（这正是「车道绿 ≠ 某支 spec 跑了」）。**⚠️ 2026-10-10 就地更正：对的那一半是「车道侧未取」，不是「没取过」** —— 本机真机读数**早已取到**（`0d1fa31c`，spec `1 passed (18.2s)`，四步读数在 §三十五）；本轮新增的 `--in-repo` 正是为了不再把这两件事混成一件（台账：`docs/evidence/2026-10-10-certification-readings-ledger.md`） |
 
 **两处读数的归属都绑到完整 40 位 SHA `0841e14f2024acc93a98e0df0690ff4bbaccac8d`**（Nightly run `37958746727`，作业 `113921968580`），不是「某条车道大概绿过」。
 
@@ -1994,6 +2000,7 @@ Latest = **v1.93.1**（`gh release view` 复核：`draft=false / isPrerelease=fa
 - **遗留 A（本轮新立）**：认证读数「索引读数的两种空到底上不上屏」——blocked-by：`macos-arm64` 的认证车道（`search-index-coverage.spec.ts` 带 P0 条件，只在那个作业里跑）。
   解封＝下一次 Nightly/Release 跑完；判据＝`[s3-reading] before any tick — empty-index notice:` 后面**不再是**指向块缺席的模糊句。
 - **遗留 B（跨轮不变）**：IC39「主机不可达 ⇒ 拒绝且不改行」与 IC40 needs-attention 卡的真机读数（需一台可 SSH 的替身主机；CI 里那支 spec 因无 sshd **被 skip**，不能拿车道绿当它跑过）；IC6「已收割」读数（同因）；Windows `database` 分片家族；中文源四家连接器（只回 `text/html`）；M2（卡产品决定）。
+  **⚠️ 2026-10-10 就地更正**：这一行把 IC39 与 A7 两件事说成未取，**是错的** —— IC39 的读数本机已取（`0d1fa31c`，1 passed (18.2s)，四步读数在 §三十五），A7 下载路径也已取（`f41580d8`，3 passed）；车道上没有它们＝12 个 `test.skip()` 守卫按设计跳过。台账见 `docs/evidence/2026-10-10-certification-readings-ledger.md`。
 - **遗留 C（内存）**：本机 8 GB 是硬约束（空闲页 7551 / swap 12.3 G 已用）⇒ 本轮一律不起 Electron。
 
 ## 四十二、本轮追加（执行器，2026-10-10 03:2x–）—— 上一轮那条「块缺席」的读数经查是**探针抢答**：列表里还有产物行与会话行；探针改成先等面板回答再读
@@ -2126,7 +2133,14 @@ node scripts/ci/harvest-certification-readings.mjs --run <run id> | --job <job i
 
 ### 三 开项清点（第二轮）：把整份认证日志对着「未取」清单核过
 
-- **仍然在「未取」的只有四项，且全部是被环境挡住、不是没人做**：IC39 / IC40（该作业里两支 spec 被 `test.skip(!endpointReachable())`
+- **⚠️ 2026-10-10 就地更正：这份「四项」里有两项早已取到，真正的余量是两项**。仍然未取的只有
+  **IC40 needs-attention**（全树没有这支 spec：`grep -rn "needs-attention" e2e/` 零命中 ⇒ 需一条真的后台投递 + 真算力主机）
+  与 **IC6「已收割」**（`grep -rn "featured\|harvest" e2e/certification/*.ts` 零命中 ⇒ 需真算力主机）。
+  被本段记成未取、实际已取的：**A7 下载路径**（本机真机 `f41580d8`，3 passed，证据 `docs/evidence/2026-10-04-v5-lock-import-download.md`）
+  与 **IC39**（本机真机 `0d1fa31c`，1 passed (18.2s)，四步读数在 §三十五）—— 这两条车道上确实没有读数，
+  但那是 12 个 `test.skip()` 守卫按设计跳过的结果（本轮实测：车道 12 skipped ↔ 仓内 12 条守卫，逐条见
+  `docs/evidence/2026-10-10-certification-readings-ledger.md` §2）。**车道侧未取 ≠ 没取过。**
+- （原判断，保留以供回看）仍然在「未取」的只有四项，且全部是被环境挡住、不是没人做：IC39 / IC40（该作业里两支 spec 被 `test.skip(!endpointReachable())`
   **跳过**，日志里**零** `[ic39]` / `[ic40]` 行 ⇒ **不能拿车道绿当它跑过**）、IC6「已收割」（需一台真算力主机）、A7 的**下载路径**（需真 URL + 校验后建环境）。
 - **其余全部能在日志里读到逐字读数**（含 IC33 的倒计时、IC17 的 162 广播/160 带富字段、IC49 的别名解绑、IC52 的重放步骤…）
   ⇒ 排期档里那些行**不需要再动**；**IC33 行已由会话在 2026-10-07 写全**，本轮复核与日志**逐字一致** ⇒ **不要重做**。
@@ -2141,9 +2155,9 @@ Latest = **v1.95.0**（21 资产、`isLatest=true`、`draft=false`）；`package
 
 ### 五 遗留（逐条带 blocked-by）
 
-- **遗留 B（跨轮不变）**：IC39/IC40 真机读数 —— blocked-by **一台可 SSH 的替身主机 + 起 Electron 的内存**
-  （配方已写全：`docs/plan-2026-10-07-IC39-IC40-live-host-work-order.md`，含「先按 §一之三 把执行保护策略改成 `Ask every time`」这条必做前置）；
-  IC6 broad 收割读数（需真算力主机）；A7 下载路径（需真 URL）。
+- **遗留 B（跨轮不变）**：IC40 needs-attention 卡的真机读数（需**一条真的后台投递** + 真算力主机；手种的行不会被应用自己的机器认领）；IC6 broad 收割读数（需真算力主机）。
+  **⚠️ 2026-10-10 就地更正**：本行原先还列着「IC39 真机读数」与「A7 下载路径」——两条**早已取到**（IC39 本机真机 `0d1fa31c` 1 passed (18.2s)；
+  A7 下载路径 `f41580d8` 3 passed），车道上没有它们只是那 12 个 `test.skip()` 守卫按设计跳过（台账 `docs/evidence/2026-10-10-certification-readings-ledger.md`）。
 - **遗留 C（内存）**：8 GB 机是硬约束 ⇒ 起 Electron 前先 `vm_stat` 判余量（本轮 116 MB / swap 2.7 G 已用 ⇒ 不起）。
 - **遗留 D（新，过程性）**：桌面会话的在制品**横跨数小时**（01:36 起、05:26 仍未见落笔）⇒ 下一轮开工仍要按「先看 `git status` 认领归属」处理；
   **不要**替它提交、不要 `git add -A`。
@@ -2233,9 +2247,70 @@ Test Files  1 failed | 143 passed | 8 skipped (152)      Tests  1 failed | 2099 
 2. **顺手更正一处陈旧记录（零代码）**：S3 证据档里那条「面板显示『尚未测量』属未做」经核**已交付** ——
    九语键 `gs.indexNotMeasured`（`src/renderer/src/i18n/en.ts:3099`）+ 消费点 `GlobalSearchDialog.tsx:1740` + 渲染用例
    `GlobalSearchDialog.test.tsx:2021`，认证车道真机读数亦读到同一句（§四十三 §一）⇒ 已在原档就地标注，**不要重做**。
-3. **未取的真机读数（跨轮不变，逐条带 blocked-by）**：IC39/IC40（**替身主机 + 起 Electron 的内存**）、IC6 收割（真算力主机）、
-   A7 下载路径（真 URL）、IC17 收紧后 spec 的机器判决（Windows/内存）、IC49 别名解绑真机读数、IC16 逐 tick 屏上读数、
-   D1.3「在用内核时拒绝移除」（需活内核）；IC54/M2 卡**产品决定**；中文源四家卡**外部条件**。
+3. **未取的真机读数（跨轮不变，逐条带 blocked-by）**：IC40 needs-attention（**一条真的后台投递** + 真算力主机）、
+   IC6 收割（真算力主机）；中文源四家卡**外部条件**；IC54/M2 卡**产品决定**。
+   **⚠️ 2026-10-10 就地更正**：本行原先还列着 IC39/IC40 两台、A7 下载路径（真 URL）、IC17 收紧后 spec 的机器判决、
+   IC49 别名解绑、IC16 逐 tick 屏上读数、D1.3「在用内核时拒绝移除」——**除 IC40/IC6 外，其余全部已取**：
+   IC17/IC49/IC16 在**车道日志**里就有逐字读数；A7 下载路径（`f41580d8` 3 passed）、D1.3（`named-env-kernel-in-use.spec.ts` 1 passed (1.3m)）、
+   IC39（`0d1fa31c` 1 passed (18.2s)）是**本机真机**读数、车道上因 12 个 `test.skip()` 守卫而跳过。
+   逐条判据与出处：`docs/evidence/2026-10-10-certification-readings-ledger.md`；下一轮**不要再按本行取这几条**。
 4. **桌面会话的在制品（30 条，01:36 起）不要碰**：`git status --short` 里那批路径就是它的答案；需要「某条读数取没取」时先跑
    `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>`。
 5. **推送通路未恢复**：`github.com:443` 仍不通 ⇒ 下一轮若还这样，照 §四 的 API 配方推，**并记得显式传 `author`/`committer`**。
+
+## 四十五、本轮追加（执行器，2026-10-10 10:5x–17:xx）—— 上一轮那批「读数清账」落树（台账立档 + 7 处就地更正 + 工具补上仓内那一半）
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- `HEAD == origin/main == 06880e12`（本地与远端逐字符相同）。
+- 桌面会话在本轮之前把 **v1.96.0–v1.99.0 四版**连发（tag 四个都在），每一版三车道均 success ——
+  本轮实取：`06880e12` 三条 run（`Release` / `Nightly` / `Windows Full Test`）全 success，时间戳 06:31Z = 14:31 CST；
+  `4cf97b2d` 的 `Windows` 被同批后一笔取消、其 `Nightly` 红 ⇒ 该笔无判决，判决由包含它的后一笔给出。
+- `git status --short` 只剩 **8 条在制品，全部是执行器自己上一轮的**（7 改 + 1 新）：6 份活档 + 新增台账档 +
+  `scripts/ci/harvest-certification-readings.mjs`。桌面会话的在制品**已全部落笔并发布**（交接档 §四 第 3 项那批含
+  `reading-verifier.ts`，本轮开工时已不在树上、且已随 v1.96.0–v1.99.0 之一落树）⇒ 不再需要「绕开它那批路径」。
+- 内存：空闲物理页 **6532（≈102 MB）** / swap 已用 **3080 M / 4096 M**；另有两个长期驻留的 Electron（无关应用 WorkBuddy RSS ≈110 MB、
+  本仓自己的 dev:headless 实例 13.6 h RSS ≈20 MB）⇒ **仍不起 Electron**；本轮读数全部来自 CI 日志与本机只读命令。
+
+### 一 本单元：把「已交付被记成未做」的清账落树（上一轮写好、本轮补门禁与提交）
+
+1. **新台账档** `docs/evidence/2026-10-10-certification-readings-ledger.md`（90 行）：12 条主张逐条列「出处 → 核到的状态 → 判据」，
+   并带一节「本轮没证到什么」（`--in-repo` 只证明「仓里记着这条读数」，**不判读数真假**；「12 skipped ↔ 12 守卫」是**计数对上**、
+   不是逐条名单，因为那个作业没上传 Playwright 报告）。
+2. **就地更正 7 处**（保留原判断的痕迹、只加更正句，便于回看是谁在什么时候改的）：队列档 ¶64/¶68/¶116/¶153、
+   §四十一 §三末行与 §六、§四十三 §三与 §五、§四十四 §六第 3 条；排期档 **IC8 / IC39** 两行；证据档 A7（开头 + §3 + §5.2 + 末尾）、
+   `entry-layer-and-interaction-closure-audit`、`notebook-crash-recovery-contract`；交接档 §四 第 2 项（逐 run 归属由 v1.95.0 `ac565350` 交付）、§六 建议重排。
+3. **工具补上仓内那一半**：`scripts/ci/harvest-certification-readings.mjs` 新增 `--in-repo [tag]` —— 打印判据行
+   `IN-REPO tag=… hits=…`，并**每次打印仓内全部 12 条 `test.skip(...)` 守卫**（9 个文件）。守卫清单是**当场扫仓**得到的，不是第二份手工清单。
+
+### 二 门禁（隔离工作树 = 本提交；读数即结论）
+
+| 环 | 读数 |
+| --- | --- |
+| 工作树内差异 | <DIFF> |
+| `node --check` + `prettier --check`（`scripts/ci/harvest-certification-readings.mjs`） | <PRETTY> |
+| `node scripts/ci/harvest-certification-readings.mjs --in-repo v1.99.0` | `IN-REPO tag=v1.99.0 hits=0` + 12 条守卫逐条打印（exit 0） |
+| `eslint --no-cache .`（全仓，CI 同口径） | <ESLINT> |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | <TSCNODE> |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | <TSCWEB> |
+| `scripts/pre-push-checks.sh` | <PREPUSH> |
+
+- **本轮不跑全量 vitest**（如实记，不当已验）：改动集合是 6 份文档 + 1 份新文档 + 1 个 `scripts/ci/*.mjs`，
+  这一份既不在两份 `tsconfig` 的 include 里、也没有用例覆盖它 ⇒ **受影响套件为空**；单测的判决由推送后的 CI 车道给。
+
+### 三 推送与取消点名
+
+<PUSH>
+
+### 四 版本位点台账
+
+- Latest = **v1.99.0** 不动。本轮只有文档 + 一个 CI 脚本 ⇒ 按仓规**不占号**；下一个版本边界是 **v2.0.0**（含运行时行为改动时）。
+
+### 五 遗留与下一轮第一步
+
+1. **先读本提交的双车道判决**（按**完整 40 位 SHA** 查；`cancelled` 不算绿），红了按作业级日志归因（片号 + 失败文件是否本批碰过）。
+2. **真正未取的读数只剩两条 + 两条被挡住的**：IC40 needs-attention（需**一条真的后台投递**）、IC6 收割（需真算力主机）、
+   中文源四家（外部条件：只回 `text/html`）、M2/IC54（产品决定）。其余全部已取，**逐条判据在台账档**，不要再按旧行重取。
+3. **B 段已耗尽**（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔），批次 ①–③ 亦已耗尽 ⇒ 下一轮从**新能力面**自拟单元（可离线判、差异化点能写成断言）。
+4. 判「某条读数取没取」现在是**两条命令**，缺一条就会把已交付读成未做：
+   `node scripts/ci/harvest-certification-readings.mjs --sha <40 位>`（车道侧）+ `--in-repo <tag>`（仓内侧 + 守卫清单）。

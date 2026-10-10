@@ -12,6 +12,8 @@
 //   node scripts/ci/harvest-certification-readings.mjs --sha <40 hex>      # newest run for one commit
 //   node scripts/ci/harvest-certification-readings.mjs --run <run id>      # a specific run
 //   node scripts/ci/harvest-certification-readings.mjs --job <job id>      # a specific job
+//   node scripts/ci/harvest-certification-readings.mjs --in-repo [tag]     # the OTHER half: what the repo
+//                                                                          # itself already records
 //   options: --lane <job name substring> (default macos-arm64) --tag <name> --spec <substring>
 //            --repo <owner/name> --no-truncate
 //
@@ -19,11 +21,20 @@
 // returns an empty run list, which reads exactly like "nothing was triggered" — so a short id is
 // refused by name here instead of being passed through.
 //
+// The second discipline is why `--in-repo` exists. A lane log with zero `[tag]` lines has TWO causes that
+// look identical: nobody took the reading, or the spec that prints it did not run on that machine. Every
+// certification spec that needs a machine-local prerequisite guards itself with `test.skip(...)` — the
+// curated runtime pack, the scanned-PDF fixture, a user-mode sshd — and a skipped test prints nothing.
+// (Measured 2026-10-10: the lane reported exactly 12 skipped, and the tree held exactly 12 such guards.)
+// So `--in-repo` scans the repository for the tag and prints the guard inventory next to it: a tag that
+// IS recorded in `docs/evidence/` but absent from the lane log is a reading taken on a prepared machine,
+// not a missing one. Check both halves before recording anything as "not taken".
+//
 // Exit codes: 0 ok, 1 fetch failure, 2 usage error.
 import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 
 const DEFAULT_REPO = 'naiyixi/PureScience'
 const LINE_WIDTH = 220
@@ -49,7 +60,14 @@ const parseArgs = (argv) => {
     else if (arg === '--spec') out.spec = value()
     else if (arg === '--repo') out.repo = value()
     else if (arg === '--no-truncate') out.truncate = false
-    else {
+    else if (arg === '--in-repo') {
+      out.inRepo = true
+      const next = argv[i + 1]
+      if (next !== undefined && !next.startsWith('--')) {
+        out.inRepoTag = next
+        i += 1
+      }
+    } else {
       console.error(`error: unknown option ${arg} (see the header of this file)`)
       process.exit(2)
     }
@@ -61,6 +79,150 @@ const ghJson = (path) => JSON.parse(execFileSync('gh', ['api', path], { encoding
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
 
+// Directories that never carry a recorded reading; skipping them keeps the walk instant and quiet.
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  'out',
+  'dist',
+  'web-dist',
+  'test-results',
+  'coverage',
+  'release'
+])
+
+const walk = (dir, out = []) => {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      if (!SKIP_DIRS.has(entry)) walk(full, out)
+    } else {
+      out.push(full)
+    }
+  }
+  return out
+}
+
+const TAG_IN_TEXT = /\[([a-z0-9][a-z0-9-]{1,24})\]/g
+
+// The other half of the question: what does the REPOSITORY already record? A lane that prints nothing
+// under a tag is not the same as a reading nobody took — the specs that need a machine-local
+// prerequisite skip themselves, and a skipped test prints nothing at all.
+const repoSearch = (args) => {
+  const root = process.cwd()
+  const files = [
+    ...walk(join(root, 'docs')),
+    ...walk(join(root, 'e2e')),
+    ...['CHANGELOG.md', 'README.md', 'README.en.md']
+      .map((name) => join(root, name))
+      .filter((path) => {
+        try {
+          return statSync(path).isFile()
+        } catch {
+          return false
+        }
+      })
+  ]
+
+  const byTag = new Map()
+  const push = (tag, file, line, text) => {
+    const list = byTag.get(tag) ?? []
+    list.push({ file: file.slice(root.length + 1), line, text: text.trim() })
+    byTag.set(tag, list)
+  }
+
+  for (const file of files) {
+    let content
+    try {
+      content = readFileSync(file, 'utf8')
+    } catch {
+      continue
+    }
+    if (!content.includes('[')) continue
+    content.split('\n').forEach((text, index) => {
+      TAG_IN_TEXT.lastIndex = 0
+      const local = new Set()
+      let match = TAG_IN_TEXT.exec(text)
+      while (match) {
+        local.add(match[1])
+        match = TAG_IN_TEXT.exec(text)
+      }
+      for (const tag of local) push(tag, file, index + 1, text)
+    })
+  }
+
+  const wanted = args.inRepoTag
+  // In the listing mode, only tags the SUITE itself prints are interesting — Markdown links and regex
+  // fragments in prose also match the bracket shape and would bury the real ones.
+  const printedBySuite = new Set(
+    [...byTag.entries()]
+      .filter(([, hits]) =>
+        hits.some((hit) => hit.file.startsWith('e2e/') && hit.text.includes('console.log'))
+      )
+      .map(([tag]) => tag)
+  )
+  const tags = (wanted ? [...byTag.keys()] : [...printedBySuite]).sort()
+
+  if (!wanted) {
+    console.log(`\n## tags the suite prints and the repo records (${tags.length})\n`)
+    for (const tag of tags) console.log(`  [${tag}]  ${byTag.get(tag).length} hit(s)`)
+    console.log(
+      '\nRun again with `--in-repo <tag>` to see where a tag is recorded, and read it next to the lane\n' +
+        'harvest: a tag recorded in docs/evidence/ but absent from the lane log is a reading taken on a\n' +
+        'prepared machine, NOT a missing one.'
+    )
+  } else {
+    const hits = byTag.get(wanted) ?? []
+    console.log(`\n## repo-side record for tag "${wanted}" (${hits.length} hit(s))\n`)
+    for (const hit of hits) {
+      const text =
+        args.truncate && hit.text.length > LINE_WIDTH
+          ? `${hit.text.slice(0, LINE_WIDTH)}…`
+          : hit.text
+      console.log(`  ${hit.file}:${hit.line}  ${text}`)
+    }
+    const filesWithHits = new Set(hits.map((hit) => hit.file))
+    const docsHits = hits.filter((hit) => hit.file.startsWith('docs/')).length
+    const e2eHits = hits.filter((hit) => hit.file.startsWith('e2e/')).length
+    console.log(
+      hits.length === 0
+        ? `\nIN-REPO tag=${wanted} hits=0 — nothing in this repository records a reading under that tag.` +
+            '\n(That, plus zero lane lines, is what "not taken" actually looks like.)'
+        : `\nIN-REPO tag=${wanted} hits=${hits.length} files=${filesWithHits.size} ` +
+            `docs=${docsHits} e2e=${e2eHits}`
+    )
+  }
+
+  // The guard inventory: this is the reason a lane can be silent about a taken reading.
+  const certDir = join(root, 'e2e/certification')
+  let guards = []
+  try {
+    for (const name of readdirSync(certDir)
+      .filter((entry) => entry.endsWith('.spec.ts'))
+      .sort()) {
+      readFileSync(join(certDir, name), 'utf8')
+        .split('\n')
+        .forEach((text, index) => {
+          if (text.includes('test.skip(')) {
+            guards.push({ file: `e2e/certification/${name}`, line: index + 1, text: text.trim() })
+          }
+        })
+    }
+  } catch {
+    guards = []
+  }
+  const guardFiles = new Set(guards.map((guard) => guard.file))
+  console.log(
+    `\n## lane guards in e2e/certification — a guarded spec prints NOTHING on a lane that lacks its prerequisite` +
+      ` (${guards.length} guard(s) across ${guardFiles.size} file(s))\n`
+  )
+  for (const guard of guards) console.log(`  ${guard.file}:${guard.line}  ${guard.text}`)
+  console.log(
+    '\nPair this with the lane harvest before calling a reading untaken. Conversely, a lane line that says a' +
+      '\nspec ran proves nothing about a reading the spec never printed.'
+  )
+}
+
 const pickRun = (runs) => {
   if (runs.length === 0) return undefined
   const nightly = runs.filter((run) => /nightly/i.test(run.name))
@@ -70,6 +232,11 @@ const pickRun = (runs) => {
 const main = () => {
   const args = parseArgs(process.argv.slice(2))
   const repo = args.repo
+
+  if (args.inRepo) {
+    repoSearch(args)
+    return
+  }
 
   let run
   let job

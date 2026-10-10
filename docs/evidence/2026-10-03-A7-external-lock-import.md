@@ -14,6 +14,12 @@
   —— **82 条 `@EXPLICIT` 锁 + 全部 tar 包**（75 MB，逐条 md5 齐）。因此夹具用它。
 - 诚实边界：该锁来自应用随包资产（本机唯一的完整归档集），**不是从别的机器导出的第三方锁**；
   被测代码只消费**调用方传入的锁文本**，故代码路径与「外部锁」完全一致。**下载路径本片未实测**（见 §3）。
+  **⚠️ 2026-10-10 就地更正**：**「下载路径」与「在用内核时拒绝移除」两条读数此后都取到了**（2026-10-04）——
+  下载路径：提交 `f41580d8`、spec `e2e/certification/lock-import-download.spec.ts` **3 passed (46.2s)**（证据
+  `docs/evidence/2026-10-04-v5-lock-import-download.md`）；内核在用拒绝移除：spec `e2e/certification/named-env-kernel-in-use.spec.ts`
+  **1 passed (1.3m)**（证据 `docs/evidence/2026-10-04-v6-kernel-in-use-recipe-refuted.md`）。两条在本文件下文
+  §3 第 1 条、§5.2 与末尾那处「仍未取」也已就地更正；认证车道上这两支 spec 因守卫 `test.skip(!existsSync(PACK_LOCK))`
+  而跳过（车道侧没有它们的读数，见 `docs/evidence/2026-10-10-certification-readings-ledger.md` §2）。
 
 ## 1. 用例一：离线导入真锁 → 建成环境 → 解释器真跑
 
@@ -48,10 +54,10 @@
 
 ## 3. 本轮**没取到**的读数（不许当已验）
 
-1. **下载路径**（`allowDownload:true` 时从锁里的 URL 取包 + md5 校验后落缓存）：本机未实测。
+1. **下载路径**（`allowDownload:true` 时从锁里的 URL 取包 + md5 校验后落缓存）：本机未实测。**⚠️ 2026-10-10 更正：已取（见本文件开头的更正块与 `docs/evidence/2026-10-04-v5-lock-import-download.md`；`f41580d8`，3 passed）。**
    原因：完整闭包缺失 274 个包（≈1 GB 级），且锁 URL 指向 `conda.anaconda.org`（本机在 CN 很慢）；
    单包锁虽能证明「取回 + 校验」，但建前缀会因缺解释器在 `verify` 处具名失败，不是一条完整的成功读数。
-   ⇒ **立案：下一轮用「小闭包 + 已发布 md5」的锁测下载路径**（或加镜像重写后再测）。
+   ⇒ **立案：下一轮用「小闭包 + 已发布 md5」的锁测下载路径**（或加镜像重写后再测）。（**该立案已由 2026-10-04 那一轮按「只铺 81 条、故意漏一条 + 本地 `node:http` 供应」的配方收口**）
 2. **真窗口（点得动）读数**：本片 S3 的界面只有渲染测试（jsdom + mock 桥）与真机主进程读数；
    **还没在打包/开发版窗口里点过**。⇒ 立案：按 `e2e/certification/` 的方式补一条真窗口读数。
 3. 本机 `default-python` 的锁（350 条）**未**作为夹具（归档不全）；它只用于证明「本机缓存不全」这一事实。
@@ -104,7 +110,14 @@ commands, received 345`）。修正三处计数（internal 345 / local Web 343 /
 
 ### 5.2 仍未取的读数（不许当已验）
 
-- **下载路径**（`allowDownload:true` 时从锁 URL 取包 + md5 校验后落缓存）：仍**未实测**。本片两条用例
+> **⚠️ 2026-10-10 就地更正：本小节第 1 条已不再是「未取」。** 下载路径的读数在 2026-10-04 取到：
+> 提交 `f41580d8`、spec `e2e/certification/lock-import-download.spec.ts` **3 passed (46.2s)**，
+> 三支读数逐字在 `docs/evidence/2026-10-04-v5-lock-import-download.md`（下载成功且过校验并建成环境 /
+> 关下载具名报缺 / 坏一字节整份拒绝且不建环境）。**只在车道上它是空的**——该 spec 带
+> `test.skip(!lockExists())` 守卫（本机才有那套 curated pack），跳过时不打印任何行。
+> 台账与判据：`docs/evidence/2026-10-10-certification-readings-ledger.md`。
+
+- **下载路径**（`allowDownload:true` 时从锁 URL 取包 + md5 校验后落缓存）：本片**未实测**（**后已于 2026-10-04 取到，见上**）。本片两条用例
   刻意关掉下载以保证确定性；真机一次「开着下载」的运行观察到它确实走下载分支并如实报不匹配，
   但**没有**取到「下载成功且校验通过、环境建成」这条读数。⇒ 立案。
 - **具名环境是否应出现在 Settings→Runtimes 的卡片列表**：实测**不出现**（那些卡片来自解释器发现，
@@ -139,3 +152,6 @@ commands, received 345`）。修正三处计数（internal 345 / local Web 343 /
 
 **仍未取**：「在用内核时拒绝移除」的**真窗口**读数——需要一条活的笔记本内核；本片只有渲染层用例
 逐字断言了服务端拒绝理由的上屏路径。⇒ 立案。
+**⚠️ 2026-10-10 就地更正：该读数已取（2026-10-04）**：`e2e/certification/named-env-kernel-in-use.spec.ts` **1 passed (1.3m)**——
+状态表里 `python:lock-import-env` 为 `idle` ⇒ 移除被逐字拒绝、环境目录仍在；两版弯路与读数在
+`docs/evidence/2026-10-04-v6-kernel-in-use-recipe-refuted.md`。车道上该 spec 因守卫 `test.skip(!existsSync(PACK_LOCK))` 而跳过。

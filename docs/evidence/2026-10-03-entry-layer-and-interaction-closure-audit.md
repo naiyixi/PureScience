@@ -148,6 +148,9 @@ done
 - 「能力存在」一侧的判定来自域审计的 `file:line` 引用，未逐条打开复核。
 - 反例（明确不计入缺口）：`NetworkPanel.tsx:39-40` 注释仍称出网白名单「intentionally not built here」，与已实现事实不符，属**注释漂移**，非用户可感知缺口。
 - 已知既有挂账不重复报：按会话诊断包导出（域审计确认仍只支持整机）、官方技能/专才目录不可达、A7 下载路径与真窗口点动两条读数。
+  **⚠️ 2026-10-10 更正**：末尾那两条**早已不是挂账**——A7 的真窗口点动读数在 `9b0496f1` 就取了；**下载路径**在 2026-10-04 取到
+  （`f41580d8`，spec `e2e/certification/lock-import-download.spec.ts` 3 passed，证据 `docs/evidence/2026-10-04-v5-lock-import-download.md`）。
+  逐条判据见 `docs/evidence/2026-10-10-certification-readings-ledger.md`。
 
 ---
 

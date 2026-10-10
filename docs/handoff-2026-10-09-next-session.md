@@ -37,8 +37,8 @@
 | # | 项 | 判据 | blocked-by |
 | --- | --- | --- | --- |
 | 1 | ~~「读数」面板分区的真机读数~~ **已闭（2026-10-09 更正）** | 真机打开产物溯源 → 读数分区渲染配方常量 + 逐条读数 | **不是缺项**：`e2e/certification/artifact-provenance.spec.ts` 已在 Release 运行的 `macos-arm64` 认证步骤里跑过并绿（真窗口 + 真点击路径，运行时打印条目与配方行；同批 `electron_p0=passed`）。覆盖**显示半边**；真服务半边由真 PubMed 探针覆盖（1118 字节、复算 `identical = true`）。**我一度把这条写成"未取"，那是把已交付的写成未做 —— 已更正** |
-| 2 | **读数归属细化到逐 run** | 产物版本的 `producer_run_id` 与读数条目精确对上（现在只到**会话+时间窗**） | **投影 `src/main/artifacts/provenance-repository.ts` 正被另一轮改**；且需要一条**可信**的 run id 通道（RPC 参数不算权威）|
-| 3 | **校验器回挂**（把「核对一个已记录的读数」做成界面动作：重发同一请求比摘要） | 需要主进程通道 | **`src/main/ipc.ts` 同上被占** |
+| 2 | ~~**读数归属细化到逐 run**~~ **已交付（2026-10-10 更正：本行原写「blocked-by 投影正被另一轮改」）** | 产物版本的 `producer_run_id` 与读数条目精确对上 | 不再是缺项：**v1.95.0**（提交 `ac565350`，CHANGELOG v1.95.0 §「逐 run 归属 ✅」；认证 spec 侧断言 `c30c209f`）。权威源是主进程自己的会话聚合，**不接受 RPC 自报**；拿不到 run 的条目不带该字段（不写空串、不猜） |
+| 3 | **校验器回挂**（把「核对一个已记录的读数」做成界面动作：重发同一请求比摘要） | 需要主进程通道 | **`src/main/ipc.ts` 同上被占** —— 2026-10-10 复核：仍在飞（工作区那 30 条在制品含 `src/main/connectors/reading-verifier.ts`(+`.test.ts`)）⇒ 不是缺项，等它落定 |
 | 4 | **Windows `database` 分片家族** | 只能由 Windows 车道判决；**修法不许是加大超时**（仓规与仓内注释双重否掉）| 需要 Windows 车道；分诊档 `docs/plan-2026-10-08-windows-database-shard-triage.md` |
 | 5 | **中文源四家连接器** | — | **外部条件**：执行器 2026-10-09 02:2x 复测，四源仍全部只回 `text/html`（chictr 34719 B / nmpa 54789 B / cde 86080 B / cma 89215 B），**无机器可读契约** ⇒ 维持挂账，不写只读抓取器 |
 
@@ -79,10 +79,26 @@
     会在跨毫秒时造出「行与摘要差一个字符」，被产品自己的完整性闸门（正确地）判成损坏 —— Windows 片 `3/8` 上一片红就是这个，
     机制已用假时钟端到端复现（队列档 §四十四）。修法 = 提成 `const`、两处共用、断言一字不动。
 
+11. **「某条读数没取」要两条命令都空才算数（2026-10-10）**：认证车道上有一批 spec 带 `test.skip(...)` 守卫
+    （需要本机前置：curated runtime pack / scanned fixture / 用户态 sshd），**跳过时不打印任何行** ⇒
+    「车道日志零 `[tag]` 行」对应两种世界。本轮实测：车道报告 **12 skipped** ↔ 仓内正好 **12 条守卫**（数目相同），
+    而 A7 下载路径 / D1.3「在用内核时拒绝移除」/ IC39 三条**本机早就取到了**，活档却把它们逐轮记成未取。
+    现在有仓内那一半：`node scripts/ci/harvest-certification-readings.mjs --in-repo <tag>`（顺带打印守卫清单）。
+    **判据：车道空 + 仓内空 ⇒ 未取；只有车道空 ⇒ 先看它是不是被守卫跳过了。** 台账 `docs/evidence/2026-10-10-certification-readings-ledger.md`。
+
 ## 六、下一步建议（按可动手程度排序）
 
 1. ~~补 §四 第 1 项的界面真机读数~~ **已闭**（`artifact-provenance.spec.ts` 在同一作业的 `macos-arm64` 认证步骤里跑过并绿，见 §四 第 1 行）
    ⇒ **不要按它重做**。
-2. 等 `artifacts/**` + `ipc.ts` 落定后做 §四 第 2、3 项（逐 run 归属 / 校验器回挂）：动手前先 `git status --short` 认领归属，那批路径正在被改时不要碰。
+2. ~~等 `artifacts/**` + `ipc.ts` 落定后做 §四 第 2、3 项~~ **只剩第 3 项**（第 2 项逐 run 归属已在 v1.95.0 交付，见 §四 第 2 行）：
+   动手前先 `git status --short` 认领归属，那批路径（含 `reading-verifier.ts`）正在被改时不要碰。
 3. 有 Windows 车道判决时再动 §四 第 4 项；§四 第 5 项（中文源四家连接器）维持挂账（外部条件）。
 4. 任何「某条读数没取」的判断，先跑 §五 第 8 条那条命令核一遍 CI 日志。
+5. **2026-10-10 追加：判「某条读数取没取」现在是两条命令，别只跑一条**（`--in-repo` 是本轮新增的仓内那一半）：
+   ```
+   node scripts/ci/harvest-certification-readings.mjs --sha <完整 40 位>   # 车道侧（含 12 条守卫会跳过的 spec）
+   node scripts/ci/harvest-certification-readings.mjs --in-repo <tag>     # 仓内侧 + 守卫清单
+   ```
+   两条都空 ⇒ 才是「未取」。本轮的实例：A7 下载路径 / D1.3 / IC39 三条**早已取到**（分别由 `f41580d8`、`named-env-kernel-in-use.spec.ts`、
+   `0d1fa31c` 承担），却被活档记成未取并逐轮挂账 —— 成因就是只跑了第一条。逐条台账：
+   `docs/evidence/2026-10-10-certification-readings-ledger.md`（**真的余量只有 IC40 / IC6 / 中文源四家 / M2**）。
