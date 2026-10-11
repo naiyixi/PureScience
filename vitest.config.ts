@@ -75,6 +75,7 @@ const PROCESS_TEST_GLOBS = [
  */
 const DATABASE_TEST_GLOBS = [
   'src/main/projects/prisma-client.test.ts',
+  'src/main/projects/prisma-client-journal-mode.test.ts',
   'src/main/projects/preview-repository.test.ts',
   'src/main/compute/prisma-client.test.ts',
   'src/main/compute/job-repository.test.ts',
