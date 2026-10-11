@@ -362,7 +362,7 @@ describe('artifact MCP server', () => {
     })
 
     expect(config).toEqual({
-      name: 'purescience-artifacts',
+      name: 'purescience_artifacts',
       command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
       args: ['/app/out/main/index.js', '--purescience-artifact-mcp'],
       env: [

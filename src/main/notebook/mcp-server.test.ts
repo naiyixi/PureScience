@@ -121,7 +121,7 @@ describe('notebook MCP server config', () => {
       'The notebook runtime does not classify files for you'
     )
     expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('write_artifact_file')
-    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('purescience-artifacts')
+    expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).toContain('purescience_artifacts')
     expect(NOTEBOOK_SYSTEM_PROMPT_APPEND).not.toContain(
       '`purescience-artifacts.write_artifact_file`'
     )

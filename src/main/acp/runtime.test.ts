@@ -1543,7 +1543,7 @@ describe('ACP runtime session management', () => {
 
       expect(
         fakeAgent.newSessions[0].mcpServers.map((server) => (server as { name: string }).name)
-      ).toEqual(['purescience-artifacts', 'purescience_notebook', 'purescience-skills'])
+      ).toEqual(['purescience_artifacts', 'purescience_notebook', 'purescience_skills'])
       expect(fakeAgent.newSessions[1].mcpServers).toEqual([reviewerServer])
       expect(reviewer.role).toBe('reviewer')
 
@@ -1573,7 +1573,7 @@ describe('ACP runtime session management', () => {
       'Do not describe a tool-backed action as future work'
     )
     expect(fakeAgent.prompts[0].text).not.toContain(
-      'mcp__purescience-activity__begin_activity_group'
+      'mcp__purescience_activity__begin_activity_group'
     )
     expect(fakeAgent.prompts[0].text).not.toContain('Before each coherent tool group this turn')
 
@@ -2684,7 +2684,7 @@ describe('ACP runtime session management', () => {
     expect(planPrompt).toContain('complete revised plan')
     expect(planPrompt).toContain('creates a new immutable plan and re-requests approval')
     expect(planPrompt).toContain(
-      'Do NOT run code without an approved plan. Always call `mcp__purescience-plan__generate_plan` first.'
+      'Do NOT run code without an approved plan. Always call `mcp__purescience_plan__generate_plan` first.'
     )
     for (const forbidden of [
       'search_skills',
@@ -6709,12 +6709,12 @@ describe('ACP runtime session management', () => {
 
     // OpenCode's model-facing identity is classified as MCP but logged with the canonical identity.
     expect(dataFor('tool-mcp').isMcp).toBe(true)
-    expect(dataFor('tool-mcp').tool).toBe('purescience-artifacts/write_artifact_file')
+    expect(dataFor('tool-mcp').tool).toBe('purescience_artifacts/write_artifact_file')
     expect(dataFor('tool-fetch').isMcp).toBe(false)
 
     const failureAudit = warnLogSpy.mock.calls.find(([message]) => message === 'tool call failed')
     expect(failureAudit?.[1]).toMatchObject({
-      tool: 'purescience-artifacts/write_artifact_file',
+      tool: 'purescience_artifacts/write_artifact_file',
       toolCallId: 'tool-failed'
     })
 
@@ -6722,7 +6722,7 @@ describe('ACP runtime session management', () => {
       ([message]) => message === 'permission request failed'
     )
     expect(errorAudit?.[1]).toMatchObject({
-      tool: 'purescience-artifacts/delete_artifact',
+      tool: 'purescience_artifacts/delete_artifact',
       toolCallId: 'tool-error'
     })
 
@@ -7306,7 +7306,7 @@ describe('ACP runtime session management', () => {
       toolTitle: 'unused-by-sparse-codex-approval',
       sparseCodexMcpApproval: true,
       codexMcpIdentity: {
-        server: 'purescience-artifacts',
+        server: 'purescience_artifacts',
         tool: 'write_artifact_file',
         arguments: {
           filename: 'results.md',
@@ -7357,7 +7357,7 @@ describe('ACP runtime session management', () => {
     { name: 'without the Codex MCP marker', codexMcpMarker: false },
     {
       name: 'with a mismatched qualified title',
-      codexMcpTitle: 'mcp.purescience-artifacts.unrelated_tool'
+      codexMcpTitle: 'mcp.purescience_artifacts.unrelated_tool'
     }
   ])('does not auto-allow a Codex Artifact save $name', async (probeOptions) => {
     const process = new FakeAgentProcess()
@@ -7369,7 +7369,7 @@ describe('ACP runtime session management', () => {
       toolTitle: 'unused-by-sparse-codex-approval',
       sparseCodexMcpApproval: true,
       codexMcpIdentity: {
-        server: 'purescience-artifacts',
+        server: 'purescience_artifacts',
         tool: 'write_artifact_file'
       },
       ...probeOptions,
@@ -7417,7 +7417,7 @@ describe('ACP runtime session management', () => {
     startPermissionProbeAgent(process, {
       newSessionId: 'claude-artifact-session',
       toolCallId: 'call_00_artifact_save',
-      toolTitle: 'mcp__purescience-artifacts__write_artifact_file',
+      toolTitle: 'mcp__purescience_artifacts__write_artifact_file',
       toolKind: 'other',
       toolRawInput: { localPath: 'sin.png', filename: 'sin.png', mimeType: 'image/png' },
       announceToolCall: true,
@@ -8086,7 +8086,7 @@ describe('ACP runtime session management', () => {
     startPermissionProbeAgent(process, {
       newSessionId: 'unused-new-session',
       toolCallId: 'resumed-mcp',
-      toolTitle: 'purescience-artifacts_write_artifact_file',
+      toolTitle: 'purescience_artifacts_write_artifact_file',
       resume: 'ok'
     })
     const root = await createTemporaryRoot()
@@ -8114,7 +8114,7 @@ describe('ACP runtime session management', () => {
     await runtime.sendPrompt({ sessionId: 'resumed-session', text: 'continue resumed session' })
 
     expect(auditedIsMcp('resumed-mcp')).toBe(true)
-    expect(mcpServerNamesFor(runtime, 'resumed-session')).toEqual(['purescience-artifacts'])
+    expect(mcpServerNamesFor(runtime, 'resumed-session')).toEqual(['purescience_artifacts'])
   })
 
   it('records MCP server names when adopting a fresh session after an unresumable resume', async () => {
@@ -8125,7 +8125,7 @@ describe('ACP runtime session management', () => {
     startPermissionProbeAgent(process, {
       newSessionId: 'adopted-session-1',
       toolCallId: 'adopted-mcp',
-      toolTitle: 'purescience-artifacts_write_artifact_file',
+      toolTitle: 'purescience_artifacts_write_artifact_file',
       resume: 'notFound'
     })
     const root = await createTemporaryRoot()
@@ -8158,7 +8158,7 @@ describe('ACP runtime session management', () => {
     // The adopted session recorded its MCP names under the app-facing id, so the relabeled permission
     // request audits as MCP.
     expect(auditedIsMcp('adopted-mcp')).toBe(true)
-    expect(mcpServerNamesFor(runtime, 'switched-session')).toEqual(['purescience-artifacts'])
+    expect(mcpServerNamesFor(runtime, 'switched-session')).toEqual(['purescience_artifacts'])
   })
 
   it('returns an explicit reviewer role while preserving MCP audit routing', async () => {
@@ -10931,7 +10931,7 @@ describe('ACP runtime session management', () => {
     })
 
     const session = await runtime.createSession({ cwd: '/workspace' })
-    expect(mcpServerNamesFor(runtime, session.sessionId)).toEqual(['purescience-artifacts'])
+    expect(mcpServerNamesFor(runtime, session.sessionId)).toEqual(['purescience_artifacts'])
 
     await runtime.deleteSession({ sessionId: session.sessionId })
 
@@ -11010,7 +11010,7 @@ describe('ACP runtime session management', () => {
     })
 
     const session = await runtime.createSession({ cwd: '/workspace' })
-    expect(mcpServerNamesFor(runtime, session.sessionId)).toEqual(['purescience-artifacts'])
+    expect(mcpServerNamesFor(runtime, session.sessionId)).toEqual(['purescience_artifacts'])
 
     await runtime.disconnect()
 
@@ -12569,7 +12569,7 @@ describe('ACP runtime session management', () => {
     const counter: TokenCounter = {
       count: (text) => {
         if (text.includes('mcp__purescience_activity__begin_activity_group')) return 101
-        if (text.includes('mcp.purescience-activity.begin_activity_group')) return 17
+        if (text.includes('mcp.purescience_activity.begin_activity_group')) return 17
         return 0
       }
     }
@@ -15038,7 +15038,7 @@ describe('ACP runtime session management', () => {
     expect(createdSession.sessionId).toBe('remote-session-1')
     expect(fakeAgent.newSessions[0].mcpServers).toHaveLength(1)
     expect(fakeAgent.newSessions[0].mcpServers[0]).toMatchObject({
-      name: 'purescience-artifacts',
+      name: 'purescience_artifacts',
       command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
       args: ['/app/out/main/index.js', '--purescience-artifact-mcp']
     })
@@ -15240,7 +15240,7 @@ describe('ACP runtime session management', () => {
 
     expect(fakeAgent.newSessions[0].mcpServers).toHaveLength(1)
     expect(fakeAgent.newSessions[0].mcpServers[0]).toMatchObject({
-      name: 'purescience-skills',
+      name: 'purescience_skills',
       command: '/Applications/PureScience.app/Contents/MacOS/PureScience',
       args: ['/app/out/main/index.js', '--purescience-skill-import-mcp']
     })
@@ -15252,7 +15252,7 @@ describe('ACP runtime session management', () => {
     expect(getRpcConnection).toHaveBeenCalledWith({ sessionId: aliasSessionId })
     expect(aliases).toEqual([{ aliasSessionId, sessionId: createdSession.sessionId }])
     expect(JSON.stringify(fakeAgent.newSessions[0]._meta)).toContain(
-      'mcp__purescience-skills__request_skill_import'
+      'mcp__purescience_skills__request_skill_import'
     )
   })
 
@@ -15314,7 +15314,7 @@ describe('ACP runtime session management', () => {
         (server) =>
           typeof server === 'object' && server !== null && 'name' in server && server.name === name
       )
-    const artifactServer = byName('purescience-artifacts')
+    const artifactServer = byName('purescience_artifacts')
     const notebookServer = byName('purescience_notebook')
 
     if (!artifactServer || !notebookServer) {

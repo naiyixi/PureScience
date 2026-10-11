@@ -1379,7 +1379,7 @@ describe('WorkspaceActivityGroup header summaries', () => {
           createActivity({
             id: 'plan-1',
             title: 'generate_plan',
-            providerToolName: 'mcp__purescience-plan__generate_plan',
+            providerToolName: 'mcp__purescience_plan__generate_plan',
             sortIndex: 3,
             createdAt: 1710000000002,
             rawInput: {

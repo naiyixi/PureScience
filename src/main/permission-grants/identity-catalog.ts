@@ -28,12 +28,12 @@ const PRE_REGISTERED_PERMISSION_IDENTITIES: Readonly<
     'mcp:purescience_notebook/inspect_packages',
     'mcp:purescience_notebook/manage_packages',
     'mcp:purescience_notebook/manage_environments',
-    'mcp:purescience-artifacts/write_artifact_file',
-    'mcp:purescience-activity/begin_activity_group',
-    'mcp:purescience-skills/request_skill_import',
-    'mcp:purescience-plan/generate_plan',
-    'mcp:purescience-plan/update_step_status',
-    'mcp:purescience-memory/memory_save_note'
+    'mcp:purescience_artifacts/write_artifact_file',
+    'mcp:purescience_activity/begin_activity_group',
+    'mcp:purescience_skills/request_skill_import',
+    'mcp:purescience_plan/generate_plan',
+    'mcp:purescience_plan/update_step_status',
+    'mcp:purescience_memory/memory_save_note'
   ],
   execution: ['exec:local/python', 'exec:local/bash'],
   file_operation: [

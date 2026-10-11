@@ -21,7 +21,7 @@ import {
 
 describe('figure MCP server contract', () => {
   it('names the server and the tool', () => {
-    expect(FIGURE_MCP_SERVER_NAME).toBe('purescience-figure')
+    expect(FIGURE_MCP_SERVER_NAME).toBe('purescience_figure')
     expect(FIGURE_MCP_SERVER_ARG).toBe('--purescience-figure-mcp')
     expect(FIGURE_REVIEW_TOOL_NAME).toBe('figure_review')
   })
@@ -44,7 +44,7 @@ describe('figure MCP server contract', () => {
       sessionId: 'session-9',
       projectId: 'project-1'
     })
-    expect(config.name).toBe('purescience-figure')
+    expect(config.name).toBe('purescience_figure')
     expect(config.args).toEqual(['/app/out/main/index.js', '--purescience-figure-mcp'])
     const env = Object.fromEntries((config.env ?? []).map((entry) => [entry.name, entry.value]))
     expect(env.PURESCIENCE_FIGURE_RPC_ENDPOINT).toBe('http://127.0.0.1:8642')

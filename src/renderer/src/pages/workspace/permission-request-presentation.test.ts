@@ -129,9 +129,9 @@ describe('describePermissionRequest', () => {
     expect(
       describePermissionRequest(
         request({
-          title: 'mcp__purescience-artifacts__write_artifact_file',
+          title: 'mcp__purescience_artifacts__write_artifact_file',
           isMcp: true,
-          mcpIdentity: 'purescience-artifacts/write_artifact_file'
+          mcpIdentity: 'purescience_artifacts/write_artifact_file'
         })
       )
     ).toMatchObject({
@@ -144,9 +144,9 @@ describe('describePermissionRequest', () => {
     expect(
       describePermissionRequest(
         request({
-          title: 'mcp__purescience-plan__generate_plan',
+          title: 'mcp__purescience_plan__generate_plan',
           isMcp: true,
-          mcpIdentity: 'purescience-plan/generate_plan'
+          mcpIdentity: 'purescience_plan/generate_plan'
         })
       )
     ).toMatchObject({
@@ -162,9 +162,9 @@ describe('describePermissionRequest', () => {
     expect(
       describePermissionRequest(
         request({
-          title: 'mcp__purescience-plan__update_step_status',
+          title: 'mcp__purescience_plan__update_step_status',
           isMcp: true,
-          mcpIdentity: 'purescience-plan/update_step_status'
+          mcpIdentity: 'purescience_plan/update_step_status'
         })
       )
     ).toMatchObject({
@@ -179,7 +179,7 @@ describe('describePermissionRequest', () => {
     expect(
       describePermissionRequest(
         request({
-          title: 'mcp__purescience-artifacts__write_artifact_file',
+          title: 'mcp__purescience_artifacts__write_artifact_file',
           isMcp: true
         })
       ).categoryLabel

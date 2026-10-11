@@ -129,7 +129,7 @@ describe('Skill import MCP server', () => {
     )
     expect(SKILL_IMPORT_SYSTEM_PROMPT_APPEND).toContain('install-skill-from-github.py')
     expect(SKILL_IMPORT_SYSTEM_PROMPT_APPEND).toContain('do not write to codex/skills')
-    expect(SKILL_IMPORT_MCP_SERVER_NAME).toBe('purescience-skills')
+    expect(SKILL_IMPORT_MCP_SERVER_NAME).toBe('purescience_skills')
 
     await client.close()
     await server.close()

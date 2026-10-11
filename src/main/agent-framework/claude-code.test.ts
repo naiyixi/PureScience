@@ -83,7 +83,7 @@ describe('claudeCodeFramework', () => {
     const setup = claudeCodeFramework.buildSessionSetup({
       systemPromptAppends: [
         NOTEBOOK_SYSTEM_PROMPT_APPEND,
-        'Save final files with `write_artifact_file` from `purescience-artifacts`.'
+        'Save final files with `write_artifact_file` from `purescience_artifacts`.'
       ]
     })
     const systemPrompt = setup.meta?.systemPrompt as { append: string }
@@ -92,9 +92,9 @@ describe('claudeCodeFramework', () => {
     expect(systemPrompt.append).toContain('`mcp__purescience_notebook__repl_execute`')
     expect(systemPrompt.append).toContain('`mcp__purescience_notebook__inspect_packages`')
     expect(systemPrompt.append).toContain('`mcp__purescience_notebook__manage_packages`')
-    expect(systemPrompt.append).toContain('`mcp__purescience-artifacts__write_artifact_file`')
+    expect(systemPrompt.append).toContain('`mcp__purescience_artifacts__write_artifact_file`')
     expect(systemPrompt.append).not.toContain(
-      'purescience-artifacts.mcp__purescience-artifacts__write_artifact_file'
+      'purescience-artifacts.mcp__purescience_artifacts__write_artifact_file'
     )
     expect(systemPrompt.append).not.toMatch(/`notebook_execute`/)
     expect(systemPrompt.append).not.toMatch(/`write_artifact_file`/)
@@ -140,7 +140,7 @@ describe('claudeCodeFramework', () => {
     })
 
     expect(setup.promptPrefix).toBe(
-      'First call `mcp__purescience-activity__begin_activity_group` with a purpose title.'
+      'First call `mcp__purescience_activity__begin_activity_group` with a purpose title.'
     )
   })
 })

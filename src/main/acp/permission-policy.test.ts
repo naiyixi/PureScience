@@ -96,16 +96,16 @@ describe('permission policy', () => {
 
   it('recognizes MCP tool names across frameworks', () => {
     const servers = [
-      'purescience-activity',
-      'purescience-artifacts',
+      'purescience_activity',
+      'purescience_artifacts',
       'purescience_notebook',
-      'purescience-skills'
+      'purescience_skills'
     ]
 
     // Claude namespaces MCP tools mcp__<server>__<tool> — matched by prefix regardless of server list.
     expect(isMcpToolName('mcp__pencil__batch_get', [])).toBe(true)
     // opencode joins them <server>_<tool> — matched only against the session's known server names.
-    expect(isMcpToolName('purescience-artifacts_write_artifact_file', servers)).toBe(true)
+    expect(isMcpToolName('purescience_artifacts_write_artifact_file', servers)).toBe(true)
     expect(isMcpToolName('purescience_activity_begin_activity_group', servers)).toBe(true)
     expect(isMcpToolName('purescience_artifacts_write_artifact_file', servers)).toBe(true)
     expect(isMcpToolName('purescience_notebook_notebook_execute', servers)).toBe(true)
@@ -122,13 +122,13 @@ describe('permission policy', () => {
 
   it('recognizes Codex ACP leaf names for app-owned MCP tools', () => {
     expect(isMcpToolName('execute', ['purescience_notebook'])).toBe(true)
-    expect(isMcpToolName('write', ['purescience-artifacts'])).toBe(true)
+    expect(isMcpToolName('write', ['purescience_artifacts'])).toBe(true)
     expect(isMcpToolName('execute', ['some-other-server'])).toBe(false)
     expect(resolveMcpProviderLeafIdentity('execute', ['purescience_notebook'])).toBe(
       'purescience_notebook/notebook_execute'
     )
-    expect(resolveMcpProviderLeafIdentity('write', ['purescience-artifacts'])).toBe(
-      'purescience-artifacts/write_artifact_file'
+    expect(resolveMcpProviderLeafIdentity('write', ['purescience_artifacts'])).toBe(
+      'purescience_artifacts/write_artifact_file'
     )
     expect(resolveMcpProviderLeafIdentity('execute', ['some-other-server'])).toBeUndefined()
   })
@@ -139,10 +139,10 @@ describe('permission policy', () => {
     expect(
       canConservativelyAutoApprove(
         createPermissionRequest('edit', [{ path: 'results/output.csv' }], {
-          title: 'purescience-artifacts_write_artifact_file'
+          title: 'purescience_artifacts_write_artifact_file'
         }),
         '/workspace/project',
-        ['purescience-artifacts', 'purescience_notebook']
+        ['purescience_artifacts', 'purescience_notebook']
       )
     ).toBe(false)
   })
@@ -152,7 +152,7 @@ describe('permission policy', () => {
       canConservativelyAutoApprove(
         createPermissionRequest('edit', [{ path: 'results/output.csv' }], { title: 'Edit' }),
         '/workspace/project',
-        ['purescience-artifacts', 'purescience_notebook']
+        ['purescience_artifacts', 'purescience_notebook']
       )
     ).toBe(true)
   })
@@ -167,38 +167,38 @@ describe('permission policy', () => {
         profile: 'auto',
         autoReviewStrategy: 'conservative',
         cwd: '/workspace/project',
-        mcpServerNames: ['purescience-artifacts', 'purescience_notebook']
+        mcpServerNames: ['purescience_artifacts', 'purescience_notebook']
       })
     ).toBeUndefined()
   })
 
   it('auto-approves the declaration-only activity group tool under Ask', () => {
     const request = createPermissionRequest('other', undefined, {
-      title: 'mcp__purescience-activity__begin_activity_group'
+      title: 'mcp__purescience_activity__begin_activity_group'
     })
 
     expect(
       resolveAutomaticPermission(request, {
         profile: 'ask',
-        mcpServerNames: ['purescience-activity']
+        mcpServerNames: ['purescience_activity']
       })
     ).toBe('allow')
-    expect(isMcpToolName('begin_activity_group', ['purescience-activity'])).toBe(true)
+    expect(isMcpToolName('begin_activity_group', ['purescience_activity'])).toBe(true)
 
     expect(
       resolveAutomaticPermission(
         createPermissionRequest('other', undefined, { title: 'begin_activity_group' }),
-        { profile: 'ask', mcpServerNames: ['purescience-activity'] }
+        { profile: 'ask', mcpServerNames: ['purescience_activity'] }
       )
     ).toBeUndefined()
   })
 
   it('auto-approves only the server-qualified Artifact save capability without prompting', () => {
     for (const providerToolName of [
-      'mcp__purescience-artifacts__write_artifact_file',
       'mcp__purescience_artifacts__write_artifact_file',
-      'mcp.purescience-artifacts.write_artifact_file',
-      'purescience-artifacts_write_artifact_file',
+      'mcp__purescience_artifacts__write_artifact_file',
+      'mcp.purescience_artifacts.write_artifact_file',
+      'purescience_artifacts_write_artifact_file',
       'purescience_artifacts_write_artifact_file',
       'write'
     ]) {
@@ -207,7 +207,7 @@ describe('permission policy', () => {
           createPermissionRequest('other', undefined, { providerToolName }),
           {
             profile: 'ask',
-            mcpServerNames: ['purescience-artifacts']
+            mcpServerNames: ['purescience_artifacts']
           }
         )
       ).toBe('allow')
@@ -218,14 +218,14 @@ describe('permission policy', () => {
         createPermissionRequest('other', undefined, {
           providerToolName: 'write_artifact_file'
         }),
-        { profile: 'ask', mcpServerNames: ['purescience-artifacts'] }
+        { profile: 'ask', mcpServerNames: ['purescience_artifacts'] }
       )
     ).toBeUndefined()
 
     expect(
       resolveAutomaticPermission(
         createPermissionRequest('other', undefined, { title: 'write_artifact_file' }),
-        { profile: 'ask', mcpServerNames: ['purescience-artifacts'] }
+        { profile: 'ask', mcpServerNames: ['purescience_artifacts'] }
       )
     ).toBeUndefined()
 
@@ -234,19 +234,19 @@ describe('permission policy', () => {
     expect(
       resolveAutomaticPermission(
         createPermissionRequest('other', undefined, {
-          title: 'mcp__purescience-artifacts__write_artifact_file'
+          title: 'mcp__purescience_artifacts__write_artifact_file'
         }),
-        { profile: 'ask', mcpServerNames: ['purescience-artifacts'] }
+        { profile: 'ask', mcpServerNames: ['purescience_artifacts'] }
       )
     ).toBeUndefined()
 
     expect(
       resolveAutomaticPermission(
         createPermissionRequest('other', undefined, {
-          title: 'mcp__purescience-artifacts__write_artifact_file',
+          title: 'mcp__purescience_artifacts__write_artifact_file',
           providerToolName: 'mcp__third-party__write_artifact_file'
         }),
-        { profile: 'ask', mcpServerNames: ['purescience-artifacts'] }
+        { profile: 'ask', mcpServerNames: ['purescience_artifacts'] }
       )
     ).toBeUndefined()
   })
@@ -255,7 +255,7 @@ describe('permission policy', () => {
     const spoofedBuiltIn = createPermissionRequest('execute', undefined, {
       title: 'Bash',
       rawInput: {
-        server: 'purescience-activity',
+        server: 'purescience_activity',
         tool: 'begin_activity_group',
         arguments: { title: 'Spoofed declaration' }
       }
@@ -264,7 +264,7 @@ describe('permission policy', () => {
     expect(
       resolveAutomaticPermission(spoofedBuiltIn, {
         profile: 'ask',
-        mcpServerNames: ['purescience-activity']
+        mcpServerNames: ['purescience_activity']
       })
     ).toBeUndefined()
   })
@@ -352,7 +352,7 @@ describe('permission policy', () => {
 
   it('does not use an activity declaration remember option as a Full access fallback', () => {
     const onlyAlways = createPermissionRequest('other', undefined, {
-      title: 'mcp__purescience-activity__begin_activity_group',
+      title: 'mcp__purescience_activity__begin_activity_group',
       options: [
         { optionId: 'always', name: 'Allow always', kind: 'allow_always' },
         { optionId: 'reject', name: 'Reject', kind: 'reject_once' }
@@ -362,7 +362,7 @@ describe('permission policy', () => {
     expect(
       resolveAutomaticPermission(onlyAlways, {
         profile: 'full',
-        mcpServerNames: ['purescience-activity']
+        mcpServerNames: ['purescience_activity']
       })
     ).toBeUndefined()
   })

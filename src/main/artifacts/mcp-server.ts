@@ -31,7 +31,7 @@ import { ARTIFACT_MCP_SERVER_ARG } from '../mcp-server-args'
 import { fetchLocalRpc } from '../local-rpc-transport'
 import { ArtifactRepository } from './repository'
 
-const ARTIFACT_MCP_SERVER_NAME = 'purescience-artifacts'
+const ARTIFACT_MCP_SERVER_NAME = 'purescience_artifacts'
 
 type ArtifactMcpEnvironment = {
   storageRoot: string

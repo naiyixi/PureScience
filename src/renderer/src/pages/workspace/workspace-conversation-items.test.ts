@@ -94,13 +94,13 @@ describe('workspace conversation items', () => {
       activities: [
         createActivity({
           id: 'plan-generate',
-          providerToolName: 'mcp__purescience-plan__generate_plan',
+          providerToolName: 'mcp__purescience_plan__generate_plan',
           status: 'pending',
           sortIndex: 1
         }),
         createActivity({
           id: 'plan-status',
-          providerToolName: 'mcp.purescience-plan.update_step_status',
+          providerToolName: 'mcp.purescience_plan.update_step_status',
           sortIndex: 2
         }),
         createActivity({

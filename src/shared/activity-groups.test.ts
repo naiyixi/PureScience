@@ -8,10 +8,10 @@ import {
 
 describe('activity group tool events', () => {
   it.each([
-    'mcp__purescience-activity__begin_activity_group',
-    'purescience-activity_begin_activity_group',
     'mcp__purescience_activity__begin_activity_group',
-    'mcp.purescience-activity.begin_activity_group',
+    'purescience_activity_begin_activity_group',
+    'mcp__purescience_activity__begin_activity_group',
+    'mcp.purescience_activity.begin_activity_group',
     'purescience_activity_begin_activity_group'
   ])('recognizes framework tool identity %s', (providerToolName) => {
     expect(isActivityGroupToolEvent({ providerToolName })).toBe(true)
@@ -20,14 +20,14 @@ describe('activity group tool events', () => {
   it('extracts native and Codex-wrapped arguments', () => {
     expect(
       getActivityGroupTitleFromToolEvent({
-        providerToolName: 'mcp__purescience-activity__begin_activity_group',
+        providerToolName: 'mcp__purescience_activity__begin_activity_group',
         rawInput: { title: 'Inspect the implementation.' }
       })
     ).toBe('Inspect the implementation')
     expect(
       getActivityGroupTitleFromToolEvent({
         rawInput: {
-          server: 'purescience-activity',
+          server: 'purescience_activity',
           tool: 'begin_activity_group',
           arguments: { title: 'Apply the focused change' }
         }
@@ -39,7 +39,7 @@ describe('activity group tool events', () => {
     expect(isActivityGroupToolEvent({ providerToolName: 'begin_activity_group' })).toBe(false)
     expect(
       isActivityGroupToolEvent({
-        providerToolName: 'mcp__purescience-activity__begin_activity_group'
+        providerToolName: 'mcp__purescience_activity__begin_activity_group'
       })
     ).toBe(true)
   })

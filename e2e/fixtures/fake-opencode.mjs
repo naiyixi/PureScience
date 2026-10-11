@@ -302,7 +302,7 @@ const createProvenanceArtifact = async (sessionId) => {
     }
     return run.runId
   })
-  const stored = await withMcpClient(sessionId, 'purescience-artifacts', async (client) =>
+  const stored = await withMcpClient(sessionId, 'purescience_artifacts', async (client) =>
     toolResult(
       'write_artifact_file',
       await client.callTool({
@@ -457,7 +457,7 @@ const rotatedTablePdf = () => {
 }
 
 const createPdfTableArtifact = async (sessionId) =>
-  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+  withMcpClient(sessionId, 'purescience_artifacts', async (client) => {
     const stored = toolResult(
       'write_artifact_file',
       await client.callTool({
@@ -478,7 +478,7 @@ const createPdfTableArtifact = async (sessionId) =>
 
 // Stores one hand-built PDF for the session and returns the receipt line the spec waits for.
 const writePdfArtifact = async (sessionId, filename, content, label) =>
-  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+  withMcpClient(sessionId, 'purescience_artifacts', async (client) => {
     const stored = toolResult(
       'write_artifact_file',
       await client.callTool({
@@ -499,7 +499,7 @@ const createPdfRotatedTableArtifact = async (sessionId) =>
   writePdfArtifact(sessionId, 'rotated-table-evidence.pdf', rotatedTablePdf(), 'Rotated table')
 
 const createPdfAnnotatedArtifact = async (sessionId) =>
-  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+  withMcpClient(sessionId, 'purescience_artifacts', async (client) => {
     const stored = toolResult(
       'write_artifact_file',
       await client.callTool({
@@ -519,7 +519,7 @@ const createPdfAnnotatedArtifact = async (sessionId) =>
   })
 
 const createPdfRegionArtifact = async (sessionId) =>
-  withMcpClient(sessionId, 'purescience-artifacts', async (client) => {
+  withMcpClient(sessionId, 'purescience_artifacts', async (client) => {
     const stored = toolResult(
       'write_artifact_file',
       await client.callTool({

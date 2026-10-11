@@ -3,7 +3,7 @@
 // when a session reveals a fact that matches a category's save guidance, the model calls
 // memory_save_note and the application owns the persistence (sanitized, deduped, bounded).
 
-export const MEMORY_MCP_SERVER_NAME = 'purescience-memory'
+export const MEMORY_MCP_SERVER_NAME = 'purescience_memory'
 
 export const MEMORY_SAVE_NOTE_TOOL_NAME = 'memory_save_note'
 

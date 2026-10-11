@@ -817,7 +817,7 @@ describe('ACP permission broker with durable grants', () => {
     const context = {
       profile: 'ask' as const,
       projectId: 'project-1',
-      mcpServerNames: ['purescience-plan']
+      mcpServerNames: ['purescience_plan']
     }
 
     const generate = broker.requestPermission(
@@ -869,7 +869,7 @@ describe('ACP permission broker with durable grants', () => {
       expect.objectContaining({
         capability: {
           kind: 'mcp_tool',
-          key: 'mcp:purescience-plan/generate_plan'
+          key: 'mcp:purescience_plan/generate_plan'
         },
         scope: { kind: 'session', projectId: 'project-1', sessionId: 'session-plan' }
       })

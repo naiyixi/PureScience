@@ -67,8 +67,8 @@ const MCP_TOOL_PREFIX = 'mcp__'
 const CODEX_MCP_TOOL_PREFIX = 'mcp.'
 const MCP_PROVIDER_LEAF_ALIASES: Record<string, Readonly<Record<string, string>>> = {
   purescience_notebook: { execute: 'notebook_execute' },
-  'purescience-artifacts': { write: 'write_artifact_file' },
-  'purescience-activity': { begin_activity_group: 'begin_activity_group' }
+  purescience_artifacts: { write: 'write_artifact_file' },
+  purescience_activity: { begin_activity_group: 'begin_activity_group' }
 }
 
 // Resolves provider leaf aliases only when the configured server set identifies exactly one app-owned
@@ -175,7 +175,7 @@ const isArtifactSaveTool = (
   params: RequestPermissionRequest,
   mcpServerNames: readonly string[]
 ): boolean => {
-  if (!mcpServerNames.map(canonicalAppMcpServerName).includes('purescience-artifacts')) return false
+  if (!mcpServerNames.map(canonicalAppMcpServerName).includes('purescience_artifacts')) return false
 
   // title is presentation text controlled by the Agent and cannot prove which provider capability
   // ACP is asking to execute. Only framework metadata supplied with the tool call may claim the
@@ -186,11 +186,11 @@ const isArtifactSaveTool = (
   const trustedMcpIdentity = trustedMcpToolIdentity(params)
 
   return (
-    trustedMcpIdentity === 'purescience-artifacts/write_artifact_file' ||
+    trustedMcpIdentity === 'purescience_artifacts/write_artifact_file' ||
     resolveCanonicalMcpToolIdentity(providerToolName, mcpServerNames) ===
-      'purescience-artifacts/write_artifact_file' ||
+      'purescience_artifacts/write_artifact_file' ||
     resolveMcpProviderLeafIdentity(providerToolName, mcpServerNames) ===
-      'purescience-artifacts/write_artifact_file'
+      'purescience_artifacts/write_artifact_file'
   )
 }
 

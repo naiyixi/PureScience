@@ -634,7 +634,7 @@ describe('workspace tool activity details', () => {
 
   it('matches the artifact-write tool by name even when MCP-namespaced', () => {
     const activity = createActivity({
-      providerToolName: 'mcp__purescience-artifacts__write_artifact_file',
+      providerToolName: 'mcp__purescience_artifacts__write_artifact_file',
       toolKind: 'other',
       rawInput: { filename: 'data.csv', content: 'a,b\n1,2', encoding: 'utf8' }
     })
@@ -677,7 +677,7 @@ describe('workspace tool activity details', () => {
     }
     const activity = createActivity({
       toolKind: 'execute',
-      title: 'mcp.purescience-artifacts.write_artifact_file',
+      title: 'mcp.purescience_artifacts.write_artifact_file',
       rawOutput: {
         result: {
           content: [{ type: 'text', text: JSON.stringify(artifactReceipt) }],

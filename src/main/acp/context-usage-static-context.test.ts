@@ -82,7 +82,7 @@ describe('contextUsageMcpSections', () => {
     })
 
     expect(sections.map(({ sectionId }) => sectionId)).toEqual([
-      'mcp-schema:purescience-artifacts',
+      'mcp-schema:purescience_artifacts',
       'mcp-schema:purescience_notebook'
     ])
     expect(sections.map(({ text }) => text).join('\n')).toContain(

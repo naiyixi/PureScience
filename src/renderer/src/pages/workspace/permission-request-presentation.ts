@@ -215,10 +215,10 @@ const specialistDeletePresentation = (
   }
 }
 
-const ARTIFACT_SERVER_SEGMENT = 'purescience-artifacts'
+const ARTIFACT_SERVER_SEGMENT = 'purescience_artifacts'
 const ARTIFACT_WRITE_TOOL = 'write_artifact_file'
-const PLAN_GENERATE_IDENTITY = 'purescience-plan/generate_plan'
-const PLAN_UPDATE_STEP_STATUS_IDENTITY = 'purescience-plan/update_step_status'
+const PLAN_GENERATE_IDENTITY = 'purescience_plan/generate_plan'
+const PLAN_UPDATE_STEP_STATUS_IDENTITY = 'purescience_plan/update_step_status'
 
 const isArtifactWriteToolName = (toolName: string | undefined): boolean => {
   const name = toolName?.trim().toLowerCase() ?? ''
@@ -227,13 +227,15 @@ const isArtifactWriteToolName = (toolName: string | undefined): boolean => {
   const segments = name.split(/__|\.|\//u)
   if (segments.length >= 2) {
     const tool = segments[segments.length - 1]
-    const server = segments[segments.length - 2].replace(/_/gu, '-')
+    // Requests recorded before the servers were renamed carry the hyphenated spelling, so compare on a
+    // separator-insensitive form rather than assuming one convention.
+    const server = segments[segments.length - 2].replace(/[-_]/gu, '_')
     if (server === ARTIFACT_SERVER_SEGMENT && tool === ARTIFACT_WRITE_TOOL) return true
   }
 
   return (
     name === `${ARTIFACT_SERVER_SEGMENT}_${ARTIFACT_WRITE_TOOL}` ||
-    name === `purescience_artifacts_${ARTIFACT_WRITE_TOOL}`
+    name === 'purescience-artifacts_write_artifact_file'
   )
 }
 

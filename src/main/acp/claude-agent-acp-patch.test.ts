@@ -21,17 +21,17 @@ describe('claude-agent-acp MCP readiness patch', () => {
     const mcpServerStatus = vi
       .fn<McpStatusQuery['mcpServerStatus']>()
       .mockResolvedValueOnce([
-        status('purescience-activity', 'connected'),
+        status('purescience_activity', 'connected'),
         status('purescience-notebook', 'pending')
       ])
       .mockResolvedValueOnce([
-        status('purescience-activity', 'connected'),
+        status('purescience_activity', 'connected'),
         status('purescience-notebook', 'connected')
       ])
 
     const query = queryWithStatus(mcpServerStatus)
 
-    await waitForMcpServers(query, ['purescience-activity', 'purescience-notebook'], 500)
+    await waitForMcpServers(query, ['purescience_activity', 'purescience-notebook'], 500)
 
     expect(mcpServerStatus).toHaveBeenCalledTimes(2)
     expect(query.close).not.toHaveBeenCalled()

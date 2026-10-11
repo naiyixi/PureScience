@@ -80,7 +80,7 @@ describe('AcpContextUsagePolicy', () => {
 
     expect(resolved.estimateInput.persistentSystemPrompt).toEqual(['provider instructions'])
     expect(resolved.estimateInput.persistentSections?.map(({ sectionId }) => sectionId)).toEqual([
-      'mcp-schema:purescience-artifacts'
+      'mcp-schema:purescience_artifacts'
     ])
     expect(resolved.selectedWindow).toBe(200_000)
   })

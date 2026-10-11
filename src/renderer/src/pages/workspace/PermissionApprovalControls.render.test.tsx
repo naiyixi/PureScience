@@ -162,10 +162,10 @@ describe('PermissionApprovalControls', () => {
         requests={[
           {
             ...permissionRequest,
-            title: 'mcp.purescience-artifacts.write_artifact_file',
+            title: 'mcp.purescience_artifacts.write_artifact_file',
             providerToolName: 'write_artifact_file',
             isMcp: true,
-            mcpIdentity: 'purescience-artifacts/write_artifact_file',
+            mcpIdentity: 'purescience_artifacts/write_artifact_file',
             toolKind: 'execute'
           }
         ]}
@@ -184,10 +184,10 @@ describe('PermissionApprovalControls', () => {
         requests={[
           {
             ...permissionRequest,
-            title: 'mcp.purescience-artifacts.write_artifact_file',
+            title: 'mcp.purescience_artifacts.write_artifact_file',
             providerToolName: 'write_artifact_file',
             isMcp: true,
-            mcpIdentity: 'purescience-artifacts/write_artifact_file',
+            mcpIdentity: 'purescience_artifacts/write_artifact_file',
             toolKind: 'execute',
             rawInput: undefined
           }
@@ -204,7 +204,7 @@ describe('PermissionApprovalControls', () => {
   })
 
   it('does not treat an unclassified raw MCP title as an artifact save', () => {
-    const rawTitle = 'mcp__purescience-artifacts__write_artifact_file'
+    const rawTitle = 'mcp__purescience_artifacts__write_artifact_file'
     const html = renderToStaticMarkup(
       <PermissionApprovalControls
         requests={[
@@ -256,9 +256,9 @@ describe('PermissionApprovalControls', () => {
         requests={[
           {
             ...permissionRequest,
-            title: 'mcp__purescience-artifacts__write_artifact_file',
+            title: 'mcp__purescience_artifacts__write_artifact_file',
             isMcp: true,
-            mcpIdentity: 'purescience-artifacts/write_artifact_file',
+            mcpIdentity: 'purescience_artifacts/write_artifact_file',
             toolKind: 'edit',
             toolLocations: [{ path: 'report.md' }],
             rawInput: { value: 'updated' }

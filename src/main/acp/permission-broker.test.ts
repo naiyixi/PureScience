@@ -1443,13 +1443,13 @@ describe('ACP permission broker', () => {
   it('classifies an opencode-named MCP tool as MCP, not shell, even when it reports kind execute', async () => {
     const emitted: EmittedPermissionRequest[] = []
     const broker = new AcpPermissionBroker((request) => emitted.push(request))
-    const mcpServerNames = ['purescience-artifacts', 'purescience_notebook']
+    const mcpServerNames = ['purescience_artifacts', 'purescience_notebook']
 
     // opencode renames the MCP tool <server>_<tool> and may report kind:execute; without MCP-aware
     // classification it would be grouped under the shared Bash category and mislabeled as shell.
     const grant = broker.requestPermission(
       createToolPermissionRequest({
-        title: 'purescience-artifacts_delete_artifact',
+        title: 'purescience_artifacts_delete_artifact',
         kind: 'execute',
         rawInput: {}
       }),
@@ -1460,9 +1460,9 @@ describe('ACP permission broker', () => {
 
     expect(broker.listGrants('session-1')).toEqual([
       {
-        categoryKey: 'mcp:purescience-artifacts/delete_artifact',
+        categoryKey: 'mcp:purescience_artifacts/delete_artifact',
         kind: 'mcp',
-        label: 'purescience-artifacts/delete_artifact',
+        label: 'purescience_artifacts/delete_artifact',
         scope: 'session'
       }
     ])
@@ -1470,7 +1470,7 @@ describe('ACP permission broker', () => {
     // The same MCP tool is now allowed for this Agent session and no longer prompts.
     void broker.requestPermission(
       createToolPermissionRequest({
-        title: 'purescience-artifacts_delete_artifact',
+        title: 'purescience_artifacts_delete_artifact',
         kind: 'execute',
         rawInput: {}
       }),

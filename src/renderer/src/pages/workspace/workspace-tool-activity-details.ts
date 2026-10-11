@@ -383,14 +383,16 @@ const ARTIFACT_WRITE_ACTIVITY_IDENTITIES = new Set([
   'write_artifact_file',
   'write artifact file',
   'save_artifacts',
+  // Activity recorded before the servers were renamed carries the hyphenated spelling.
   'mcp__purescience-artifacts__write_artifact_file',
   'mcp__purescience_artifacts__write_artifact_file',
   'mcp.purescience-artifacts.write_artifact_file',
+  'mcp.purescience_artifacts.write_artifact_file',
   'purescience-artifacts_write_artifact_file',
   'purescience_artifacts_write_artifact_file'
 ])
 
-// Detects the managed artifact-writing MCP tool (purescience-artifacts / write_artifact_file).
+// Detects the managed artifact-writing MCP tool (purescience_artifacts / write_artifact_file).
 const isArtifactWriteActivity = (activity: ToolActivity): boolean => {
   const providerName = trimDetail(activity.providerToolName)?.toLowerCase() ?? ''
   const title = trimDetail(activity.title)?.toLowerCase() ?? ''

@@ -88,7 +88,7 @@ const TURN_CONTINUITY_SYSTEM_PROMPT_APPEND = [
 
 const ARTIFACT_FILE_SYSTEM_PROMPT_APPEND = [
   '<purescience_artifact_instructions>',
-  'When this turn creates or saves local user-facing files such as images, documents, reports, data exports, XML, SVG, HTML, CSV, PDF, or archives, you MUST save them through the MCP tool `write_artifact_file` from the `purescience-artifacts` server.',
+  'When this turn creates or saves local user-facing files such as images, documents, reports, data exports, XML, SVG, HTML, CSV, PDF, or archives, you MUST save them through the MCP tool `write_artifact_file` from the `purescience_artifacts` server.',
   'Do not save generated user-facing files directly into the workspace or current directory unless the user explicitly asks to modify project files.',
   'Pass the filename, MIME type, and either inline content or a local source path to `write_artifact_file`; the app assigns the project, session, Artifact run, and final message location.',
   'If a Notebook, REPL, or shell execution produced the file, also pass `producerRunId` with the exact `runId` returned by the execution that created or last modified it. Omit `producerRunId` only when no Notebook execution produced the file; never use the Artifact run ID as the producer.',

@@ -7,7 +7,7 @@ const createActivity = (overrides: Partial<ToolActivity> = {}): ToolActivity => 
   id: 'plan-1',
   kind: 'tool',
   title: 'generate_plan',
-  providerToolName: 'mcp__purescience-plan__generate_plan',
+  providerToolName: 'mcp__purescience_plan__generate_plan',
   status: 'completed',
   eventIds: [],
   sortIndex: 1,

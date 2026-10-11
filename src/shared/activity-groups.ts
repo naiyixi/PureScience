@@ -1,4 +1,4 @@
-export const ACTIVITY_GROUP_MCP_SERVER_NAME = 'purescience-activity'
+export const ACTIVITY_GROUP_MCP_SERVER_NAME = 'purescience_activity'
 export const BEGIN_ACTIVITY_GROUP_TOOL_NAME = 'begin_activity_group'
 export const MAX_ACTIVITY_GROUP_TITLE_LENGTH = 80
 

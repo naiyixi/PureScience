@@ -15,7 +15,7 @@ import type { SessionPlanStepStatus } from '../../shared/session-persistence'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
 import { PLAN_MCP_SERVER_ARG } from '../mcp-server-args'
 
-const PLAN_MCP_SERVER_NAME = 'purescience-plan'
+const PLAN_MCP_SERVER_NAME = 'purescience_plan'
 
 const generatePlanToolSchema = {
   session_id: z.never().optional(),

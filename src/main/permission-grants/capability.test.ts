@@ -247,9 +247,9 @@ describe('capabilityFromLegacyCategory', () => {
   it.each(['generate_plan', 'update_step_status'])(
     'admits the registered Session Plan method %s to remembered permission scopes',
     (method) => {
-      expect(capabilityFromLegacyCategory(`mcp:purescience-plan/${method}`)).toMatchObject({
+      expect(capabilityFromLegacyCategory(`mcp:purescience_plan/${method}`)).toMatchObject({
         kind: 'mcp_tool',
-        key: `mcp:purescience-plan/${method}`
+        key: `mcp:purescience_plan/${method}`
       })
     }
   )

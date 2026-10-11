@@ -16,13 +16,15 @@ type AppMcpServerDefinition = {
 // only at the agent-facing seam so permissions, grants, policy, and diagnostics keep one stable key.
 const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
   {
-    canonicalName: 'purescience-activity',
+    canonicalName: 'purescience_activity',
     openCodeName: 'purescience_activity',
+    legacyNames: ['purescience-activity'],
     tools: ['begin_activity_group']
   },
   {
-    canonicalName: 'purescience-artifacts',
+    canonicalName: 'purescience_artifacts',
     openCodeName: 'purescience_artifacts',
+    legacyNames: ['purescience-artifacts'],
     tools: ['write_artifact_file']
   },
   {
@@ -45,18 +47,21 @@ const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
     ]
   },
   {
-    canonicalName: 'purescience-skills',
+    canonicalName: 'purescience_skills',
     openCodeName: 'purescience_skills',
+    legacyNames: ['purescience-skills'],
     tools: ['request_skill_import']
   },
   {
-    canonicalName: 'purescience-plan',
+    canonicalName: 'purescience_plan',
     openCodeName: 'purescience_plan',
+    legacyNames: ['purescience-plan'],
     tools: ['generate_plan', 'update_step_status']
   },
   {
-    canonicalName: 'purescience-memory',
+    canonicalName: 'purescience_memory',
     openCodeName: 'purescience_memory',
+    legacyNames: ['purescience-memory'],
     tools: ['memory_save_note']
   }
 ]
@@ -74,6 +79,10 @@ const APP_MCP_SERVER_BY_LEGACY_NAME = new Map(
 )
 
 const frameworkSafeMcpServerName = (name: string): string => name.replace(/[^a-zA-Z0-9_]/g, '_')
+
+// The spelling a server carried before the app settled on a separator-free convention. Frameworks render
+// a hyphen in a server name as one underscore or two, so every name has to answer to both spellings.
+const hyphenatedMcpServerName = (name: string): string => name.replace(/_/g, '-')
 
 const canonicalAppMcpServerName = (name: string): string =>
   APP_MCP_SERVER_BY_OPENCODE_NAME.get(name)?.canonicalName ??
@@ -95,7 +104,14 @@ const appMcpServerAliases = (name: string): readonly string[] => {
     ...new Set(
       definition
         ? [definition.canonicalName, definition.openCodeName, ...(definition.legacyNames ?? [])]
-        : [canonicalName, frameworkSafeMcpServerName(canonicalName)]
+        : // Servers the app does not declare here (the figure server, user-configured ones) still have to
+          // keep answering to the spelling a grant or a config wrote down before the naming change, so
+          // the hyphen variant is accepted alongside the canonical name.
+          [
+            canonicalName,
+            frameworkSafeMcpServerName(canonicalName),
+            hyphenatedMcpServerName(canonicalName)
+          ]
     )
   ]
 }

@@ -143,7 +143,7 @@ describe('workspace runtime events', () => {
         id: 'group-event-1',
         kind: 'tool',
         toolCallId: 'group-call-1',
-        providerToolName: 'mcp__purescience-activity__begin_activity_group',
+        providerToolName: 'mcp__purescience_activity__begin_activity_group',
         rawInput: { title: 'Inspect the implementation' },
         status: 'pending'
       })
@@ -288,7 +288,7 @@ describe('workspace runtime events', () => {
         kind: 'tool',
         promptMessageId: originMessageId,
         toolCallId: 'continuation-group',
-        providerToolName: 'mcp__purescience-activity__begin_activity_group',
+        providerToolName: 'mcp__purescience_activity__begin_activity_group',
         rawInput: { title: 'Continue after handoff' },
         status: 'pending'
       })
@@ -1953,7 +1953,9 @@ describe('workspace runtime events', () => {
       throw race
     })
 
-    await applyWorkspaceRuntimeEvent(createEvent({ id: 'stop-before-race-exhausted', kind: 'stop' }))
+    await applyWorkspaceRuntimeEvent(
+      createEvent({ id: 'stop-before-race-exhausted', kind: 'stop' })
+    )
 
     await expect(
       applyWorkspaceRuntimeEvent(

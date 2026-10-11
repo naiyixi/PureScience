@@ -7,7 +7,7 @@
 // threading, chart-by-data-shape, and a render-then-verify self-check. Pure rules, no external
 // model, fully testable.
 
-export const FIGURE_MCP_SERVER_NAME = 'purescience-figure'
+export const FIGURE_MCP_SERVER_NAME = 'purescience_figure'
 
 export const FIGURE_REVIEW_TOOL_NAME = 'figure_review'
 

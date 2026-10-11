@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
+import { ACTIVITY_GROUP_MCP_SERVER_NAME } from '../../../shared/activity-groups'
+import { FIGURE_MCP_SERVER_NAME } from '../../../shared/figure'
+import { MEMORY_MCP_SERVER_NAME } from '../../../shared/memory-mcp'
+import { SKILL_IMPORT_MCP_SERVER_NAME } from '../../../shared/skill-import'
+import { ARTIFACT_MCP_SERVER_NAME } from '../../artifacts/mcp-server'
+import { NOTEBOOK_MCP_SERVER_NAME } from '../../notebook/mcp-server'
+import { PLAN_MCP_SERVER_NAME } from '../../session-plan/plan-mcp-server'
 import { PRE_REGISTERED_PERMISSION_IDENTITIES } from '../permission-grants/identity-catalog'
 import { SESSION_PLAN_SYSTEM_PROMPT_APPEND } from '../session-plan/guidance'
 import {
@@ -53,8 +60,8 @@ describe('resolveCanonicalMcpToolIdentity', () => {
   it.each([
     [
       'claude-code',
-      'mcp__purescience-plan__generate_plan',
-      'mcp__purescience-plan__update_step_status'
+      'mcp__purescience_plan__generate_plan',
+      'mcp__purescience_plan__update_step_status'
     ],
     ['codex', 'generate_plan', 'update_step_status'],
     ['opencode', 'purescience_plan_generate_plan', 'purescience_plan_update_step_status']
@@ -128,5 +135,50 @@ describe('resolveCanonicalMcpToolIdentity', () => {
         'custom_server'
       ])
     ).toBeUndefined()
+  })
+
+  // A hyphen in a server name is rendered as one underscore by one framework and as two by another, so
+  // the agent was handed two different callable names for the same tool and guessed wrong: the real log
+  // shows 18 failed calls whose only difference from a real tool was the separator.
+  it('keeps every app-owned MCP server name separator-free', () => {
+    const declared = appMcpToolIdentities().map((identity) =>
+      identity.slice(0, identity.indexOf('/'))
+    )
+    expect(declared.filter((name) => name.includes('-'))).toEqual([])
+    expect(FIGURE_MCP_SERVER_NAME).not.toContain('-')
+  })
+
+  it('registers each app-owned MCP server under the name this module declares', () => {
+    const declared = new Set(
+      appMcpToolIdentities().map((identity) => identity.slice(0, identity.indexOf('/')))
+    )
+    for (const registered of [
+      ACTIVITY_GROUP_MCP_SERVER_NAME,
+      ARTIFACT_MCP_SERVER_NAME,
+      MEMORY_MCP_SERVER_NAME,
+      NOTEBOOK_MCP_SERVER_NAME,
+      PLAN_MCP_SERVER_NAME,
+      SKILL_IMPORT_MCP_SERVER_NAME
+    ]) {
+      expect(declared.has(registered)).toBe(true)
+    }
+  })
+
+  it('resolves a spelling written before the rename to the same identity', () => {
+    for (const identity of appMcpToolIdentities()) {
+      const separator = identity.indexOf('/')
+      const server = identity.slice(0, separator)
+      const tool = identity.slice(separator + 1)
+      const legacyServer = server.replace(/_/gu, '-')
+
+      expect(appMcpServerAliases(server)).toContain(legacyServer)
+      expect(resolveCanonicalMcpToolIdentity(`mcp__${legacyServer}__${tool}`, [server])).toBe(
+        identity
+      )
+    }
+  })
+
+  it('keeps answering to the hyphen spelling of a server it does not declare here', () => {
+    expect(appMcpServerAliases(FIGURE_MCP_SERVER_NAME)).toContain('purescience-figure')
   })
 })

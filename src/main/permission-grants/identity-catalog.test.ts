@@ -19,8 +19,8 @@ describe('permission identity catalog', () => {
   it('admits both Session Plan capabilities to remembered permission scopes', () => {
     expect(PRE_REGISTERED_PERMISSION_IDENTITIES.mcp_tool).toEqual(
       expect.arrayContaining([
-        'mcp:purescience-plan/generate_plan',
-        'mcp:purescience-plan/update_step_status'
+        'mcp:purescience_plan/generate_plan',
+        'mcp:purescience_plan/update_step_status'
       ])
     )
   })

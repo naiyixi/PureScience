@@ -3,7 +3,7 @@ const SESSION_PLAN_SYSTEM_PROMPT_APPEND = [
   'Generate a Session Plan only for genuinely multi-stage work where the user benefits from reviewing phases, independent work tracks, or execution scope before work begins.',
   'Do not generate a Plan for simple lookups, single computations, basic file inspection, or other straightforward tasks.',
   'For work that may need a Plan, discover applicable skills before generating it.',
-  'When a Plan is useful, generation supplies all four Plan fields (`task_summary`, `phases`, `desired_outputs`, and `feasibility`) in one call to `generate_plan` from the `purescience-plan` server.',
+  'When a Plan is useful, generation supplies all four Plan fields (`task_summary`, `phases`, `desired_outputs`, and `feasibility`) in one call to `generate_plan` from the `purescience_plan` server.',
   'After generating a Plan, wait inside the `generate_plan` call until PureScience returns the user response. Do not report the Plan separately or execute any Plan step while waiting.',
   'Every text entered into the Plan card returns as `kind: feedback` and is a normal user Message, never an automatic Plan decision. Interpret the full meaning yourself: for an unambiguous approval or dismissal, call `generate_plan` again with only `decision: "approved"` or `decision: "rejected"`; for requested changes, revise and regenerate the Plan; for ambiguous or conditional language, do not grant execution authority.',
   'After `kind: feedback`, if the Message is not an unambiguous decision, address it and call `generate_plan` again when a fresh Plan review interaction is appropriate.',

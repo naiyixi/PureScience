@@ -430,7 +430,7 @@ describe('AcpSessionUpdateProjector', () => {
       eventId: 'event-tool',
       visible: true,
       reconnectPending: false,
-      mcpServerNames: ['purescience-artifacts']
+      mcpServerNames: ['purescience_artifacts']
     })
 
     expect(effects.map((effect) => effect.kind)).toEqual([
@@ -442,7 +442,7 @@ describe('AcpSessionUpdateProjector', () => {
     expect(effects[0]).toMatchObject({ observation: { toolCategory: 'mcp' } })
     expect(effects[2]).toEqual({
       kind: 'tool-failure-diagnostic',
-      tool: 'purescience-artifacts/write_artifact_file',
+      tool: 'purescience_artifacts/write_artifact_file',
       toolCallId: 'tool-1',
       sessionId: 'session-1',
       reason: 'Unable to save the artifact.'

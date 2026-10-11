@@ -32,8 +32,8 @@ const createOwner = (
 
 describe('ACP session capability owner', () => {
   it.each([
-    [claudeCodeFramework, 'purescience-plan'],
-    [codexFramework, 'purescience-plan'],
+    [claudeCodeFramework, 'purescience_plan'],
+    [codexFramework, 'purescience_plan'],
     [opencodeFramework, 'purescience_plan']
   ] as const)('projects the same Session Plan tools for %s', async (framework, modelFacingName) => {
     const release = vi.fn()
@@ -63,7 +63,7 @@ describe('ACP session capability owner', () => {
     expect(provision.descriptor).toMatchObject({
       transport: 'stdio',
       capabilities: ['plan'],
-      canonicalMcpServerNames: ['purescience-plan'],
+      canonicalMcpServerNames: ['purescience_plan'],
       modelFacingMcpServerNames: [modelFacingName]
     })
     provision.commit('session-1')
@@ -599,9 +599,9 @@ describe('ACP session capability owner', () => {
       'purescience_skills'
     ])
     expect(primary.descriptor.canonicalMcpServerNames).toEqual([
-      'purescience-artifacts',
+      'purescience_artifacts',
       'purescience_notebook',
-      'purescience-skills'
+      'purescience_skills'
     ])
     expect(primary.descriptor.controlRpcMethods).toEqual(['mcpCall', 'computeCall', 'agentsCall'])
     expect(reviewer.mcpServers).toEqual([])

@@ -1227,7 +1227,7 @@ describe('AcpRuntimeCoordinator', () => {
     })
 
     // The draining Codex turn still owns the session until Claude Code adopts it.
-    created[0].emitEvent(toolEvent('owner-tool', 'mcp.purescience-artifacts.write_artifact_file'))
+    created[0].emitEvent(toolEvent('owner-tool', 'mcp.purescience_artifacts.write_artifact_file'))
     expect(forwardedEvents.map((event) => event.id)).toEqual([
       expect.stringMatching(runtimeEventId(1, 'owner-tool'))
     ])
@@ -1241,7 +1241,7 @@ describe('AcpRuntimeCoordinator', () => {
     await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
 
     created[0].emitEvent(
-      toolEvent('late-codex-tool', 'mcp.purescience-artifacts.write_artifact_file')
+      toolEvent('late-codex-tool', 'mcp.purescience_artifacts.write_artifact_file')
     )
     created[0].emitEvent({
       id: 'late-codex-stop',
@@ -1324,7 +1324,7 @@ describe('AcpRuntimeCoordinator', () => {
       artifacts: []
     })
     created[1].emitEvent(
-      toolEvent('fresh-claude-tool', 'mcp__purescience-artifacts__write_artifact_file')
+      toolEvent('fresh-claude-tool', 'mcp__purescience_artifacts__write_artifact_file')
     )
     expect(forwardedEvents.map((event) => event.id)).toEqual([
       expect.stringMatching(runtimeEventId(1, 'owner-tool')),
