@@ -4387,5 +4387,7 @@ export const en: Record<ZhKey, string> = {
   'home.projectDeletedRunDataKept':
     '{name} was deleted, but some of its run data could not be removed.',
   'common.deleting': 'Deleting…',
-  'home.projectDeletedNotMeasured': '{name} was deleted.'
+  'home.projectDeletedNotMeasured': '{name} was deleted.',
+  'runtimes.namedEnvSizeLabel': '{size} on disk',
+  'runtimes.namedEnvRemovedWithSize': 'Removed “{name}” — freed {size}.'
 }

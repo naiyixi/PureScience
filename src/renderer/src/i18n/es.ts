@@ -4444,5 +4444,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedRunDataKept':
     'Se eliminó «{name}», pero algunos datos de ejecución no se pudieron quitar.',
   'common.deleting': 'Eliminando…',
-  'home.projectDeletedNotMeasured': 'Se eliminó «{name}».'
+  'home.projectDeletedNotMeasured': 'Se eliminó «{name}».',
+  'runtimes.namedEnvSizeLabel': '{size} en disco',
+  'runtimes.namedEnvRemovedWithSize': 'Se eliminó «{name}» — se liberaron {size}.'
 }

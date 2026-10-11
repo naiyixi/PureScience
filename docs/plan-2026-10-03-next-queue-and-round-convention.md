@@ -3027,3 +3027,87 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 
 **本单元只让 20 条真文案「可见」，未处理它们**（清单与样例在证据档第五节）——即下一单元：
 一次 9 语插键 + 渲染断言（集中在设置/工作台的面板载入态与确认框）。
+
+## 五十五、本轮追加（执行器，2026-10-12 07:0x–）—— P0-10(b) 的**窗口半边**：具名环境的体积读数与「移除释放了多少」上屏
+
+### 〇 开工核对（防重做 + 上一轮判决）
+
+1. **上一轮（§五十四）的两笔双车道终态已读到**：`34a6e85f` 按完整 40 位 SHA —— `Nightly` **38174397779 success**、
+   `Windows Full Test` **38174397522 success** ⇒ **双绿**。（`e8a4352d` 的 Nightly 被 `34a6e85f` 顶掉属既有形状：
+   cancelled 不算绿，它的证据由「包含它的下一次绿色 Nightly」给出。）
+2. 树上 83 份 `docs/evidence/*.md` 是**并发写入者的表格重排在制品** ⇒ 一位未碰，本轮只 `git add` 我自己的路径。
+3. 已发布位点：`gh release list` 的 Latest 仍 = **v1.102.0**；`HEAD == origin/main == 34a6e85f`。
+4. B 段（大件）仍处「已耗尽」（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 按 §五十四 的指路取 P0-10 的下一件。
+
+### 一 缺口核实（先核源码，**并纠正上一轮清单里的一条陈旧记录**）
+
+**上一轮把「`removeEnvironment` 回报回收字节」列为剩余候选——它其实已经交付了。** 对源复核：
+
+- `src/main/notebook/environment-management.ts` 的 `case 'remove'` 里，**删除之前**用存储 walker 测量前缀并
+  `return { environments, freedBytes }`；同文件 `withSizes()` 给列表的每个前缀填 `sizeBytes`（量不到就**不填**）；
+- `src/main/notebook/mcp-server.ts` 的 `compactManageEnvironmentsResult` 把 `sizeBytes` 与 `freedBytes`
+  **一路带出**（注释自指 P0-10b）——即 **agent 那一面早在消费这两个读数**（`2af5e324`）；
+- 契约 `src/shared/notebook-env.ts` 里 `ManageEnvironmentsResult.freedBytes?` 与 `EnvironmentInfo.sizeBytes?` 都在，
+  且窗口那条通道的结果类型就是它（`NamedEnvironmentResult = ManageEnvironmentsResult`），链路
+  `runtime-ipc.ts` → `runtime-selection-workflows.ts` → `runtime-service.ts` → `ipc.ts` 全齐。
+
+**⇒ 真缺口只剩窗口那一面**（本仓点过名的「契约里有了、渲染端没有任何消费方」）：
+
+| # | 缺口 | 旧代码 |
+| --- | --- | --- |
+| 1 | 移除回执把 `freedBytes` 丢掉 | `RuntimesPanel.tsx` 的 `confirmRemoveNamedEnv` 只取 `result.environments`，回执照旧句「Removed “X”.」 |
+| 2 | 具名环境行从不读 `sizeBytes` | 同行只印 name / language / ready / interpreterPath（组件里 `sizeBytes` 0 命中） |
+
+**纯渲染层 ⇒ 零新通道、零契约计数涟漪、零新 pin。** 已同批把 v2 排期档 P0-10 行里那句「确认不报回收字节 ⇒ 真缺口」
+**就地更正**（写成已交付 + 两侧落点），因为它会误导下一轮重做。
+
+### 二 交付（11 文件：1 改源码 + 1 改用例 + 9 语字典；另 1 份证据档 + 2 份计划档）
+
+- `RuntimesPanel.tsx`：行上新增 `[data-testid="named-env-size"]`，**只在该环境确有读数时渲染**；
+  移除回执按返回值分两态 —— `freedBytes` 为**正数**时用新键报出释放量，否则沿用原句。
+  **0 与缺失一律按「没有读数」处理**（生产侧把「量不了」折成了 0，窗口若印「freed 0 B」就是替一个没人做过的
+  测量背书——与本仓「未测量时一个字节都不声称」同一条口径）。
+- **2 键 × 9 语**（`runtimes.namedEnvSizeLabel` / `runtimes.namedEnvRemovedWithSize`），走技能自带
+  `scripts/add-i18n-keys.py`（九文件齐平预检 + 写后按 key 反查自证）：zh ≠ en、zh-Hant 纯繁体、未新增 pending 条目。
+- 渲染用例 **+3 改 1**：既有那条兼断言行上 `1 KB` 与回执里 `2 KB`；另加「回执不带 `freedBytes` ⇒ 屏上零字节声明」、
+  「`freedBytes: 0` ⇒ 不得印 `0 B`」、「`sizeBytes` 缺失 ⇒ 整行不渲染」。
+- 证据档 `docs/evidence/2026-10-12-named-env-size-and-freed-bytes.md`。
+
+### 三 门禁读数（全部实跑；数字取自**最后一次改动之后**的运行）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（`RuntimesPanel.render.test.tsx` + `src/renderer/src/i18n`） | 5 文件 / **96 passed** |
+| `prettier --check`（本单元 11 文件） | 首跑 11 文件全 `[warn]` ⇒ 核对 `HEAD` 版本**全部 CLEAN**，证明漂移是本单元引入的；只对本单元文件 `--write`，复跑 `All matched files use Prettier code style!` |
+| `eslint --no-cache .`（全仓，CI 同口径） | **0 error / 122 warning**，exit 0；本单元 11 文件 **0 warning**（122 是既有基线，逐条在别的文件） |
+| `tsc` node / web（`--composite false`） | exit 0 / exit 0 |
+| 全量 `vitest run --maxWorkers=4` | **1247 passed \| 16 skipped（1263 文件）**、**16114 passed \| 207 skipped（16321 条）**，exit 0，206 s（上一轮 16111 ⇒ +3 恰为本单元新增用例） |
+| `bash scripts/pre-push-checks.sh` | exit 0 |
+
+**不触碰的基准与认证车道都核过**（不是等 CI 报）：`e2e/visual-regression.spec.ts` 的基准只有
+`home-empty` / `project-create-dialog` / `workspace-empty` / `settings-general` ⇒ 本页不在任何基准里；
+三个会点「移除具名环境」的认证 spec（`lock-import` / `named-env-kernel-in-use` / `packages-mutation`）
+**都不断言那句回执文案**（断言的是行数、目录是否还在、拒绝语原文）⇒ 不会被本单元弄红。
+
+### 四 刻意的边界（不许读成「已做」）
+
+1. **没有真机窗口读数**：内存闸门仍关（空闲物理页 ≈ 121 MB / swap 已用 5.0 G of 6.0 G），起不了 `build:e2e` + Electron；
+   界面那半边由渲染用例作证，**不冒充窗口读数**。配方（内存宽松时一次跑完，只允许跑绿后提交）：
+   `e2e/certification/lock-import.spec.ts` 已走完「导入 → 行 → 移除」，在移除前加
+   `expect(namedRow.getByTestId('named-env-size')).toBeVisible()`、移除后读 `runtimes-notice` 原文即可拿到两条读数。
+2. **0 与「没量到」在窗口侧同形**（生产侧折成 0，本单元未改生产）⇒ 要让两态在屏上分开，需要主进程先分态。**立案**，
+   不在本单元。
+3. 行上显示的是「这个前缀在盘上占多少」，**不是可回收量**，文案不承诺总量会掉 N。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **本轮提交的双车道终态**（完整 40 位 SHA；`cancelled` 不算绿）：`blocked-by` = 本轮推送；解封 = run 落定。
+   注意并发写入者随时可能再推（会带上我的提交、也可能顶掉我的 run）⇒ 按 SHA 逐笔点名。
+2. **P0-10 剩下的候选**：① 「0 与没量到分态」（本档 §四.2，本地可核）；② 「按会话清理入口」——
+   **已由 v2 排期档进展行标注为已勘察**（`48c290f6` 交付了删除侧 + `freedBytes` 日志；未做半边是**界面显示释放字节**与
+   「会话体积可见」，落点与设计都在那份档里）⇒ 动手前先读那份进展行，**别再按「缺删除路径」重做**。
+   `blocked-by` = 无（本地可核）。
+3. **P0-9 的用户可见密度**（渲染层审批卡计数）：`blocked-by` = 需真机窗口读数（起 Electron 前先 `vm_stat`）。
+4. **i18n 那 20 条新摊开的真文案**（上轮 §五十四·补记第五节的清单；渲染层 15 条是真缺口）：
+   `blocked-by` = 无，但**动手前先按当前树复核清单是否仍成立**（并发写入者随时可能已插键）。
+5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。

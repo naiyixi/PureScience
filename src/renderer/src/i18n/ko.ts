@@ -4284,5 +4284,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedRunDataKept':
     '"{name}"을(를) 삭제했지만 일부 실행 데이터는 제거하지 못했습니다.',
   'common.deleting': '삭제 중…',
-  'home.projectDeletedNotMeasured': '"{name}"을(를) 삭제했습니다.'
+  'home.projectDeletedNotMeasured': '"{name}"을(를) 삭제했습니다.',
+  'runtimes.namedEnvSizeLabel': '디스크 사용량 {size}',
+  'runtimes.namedEnvRemovedWithSize': '“{name}”을(를) 제거했습니다 — {size}을(를) 확보했습니다.'
 }

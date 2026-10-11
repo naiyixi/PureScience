@@ -4032,5 +4032,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedNothingStored': '已刪除「{name}」，未發現它佔用的儲存資料。',
   'home.projectDeletedRunDataKept': '已刪除「{name}」，但部分執行資料未能移除。',
   'common.deleting': '正在刪除…',
-  'home.projectDeletedNotMeasured': '已刪除「{name}」。'
+  'home.projectDeletedNotMeasured': '已刪除「{name}」。',
+  'runtimes.namedEnvSizeLabel': '磁碟佔用 {size}',
+  'runtimes.namedEnvRemovedWithSize': '已移除「{name}」，釋放了 {size}。'
 }

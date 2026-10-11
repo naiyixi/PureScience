@@ -4477,5 +4477,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedRunDataKept':
     "« {name} » a été supprimé, mais certaines données d'exécution n'ont pas pu être retirées.",
   'common.deleting': 'Suppression…',
-  'home.projectDeletedNotMeasured': '« {name} » a été supprimé.'
+  'home.projectDeletedNotMeasured': '« {name} » a été supprimé.',
+  'runtimes.namedEnvSizeLabel': '{size} sur le disque',
+  'runtimes.namedEnvRemovedWithSize': '« {name} » supprimé — {size} libérés.'
 }

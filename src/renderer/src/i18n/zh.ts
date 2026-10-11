@@ -4090,7 +4090,9 @@ export const zh = {
   'home.projectDeletedNothingStored': '已删除"{name}"，未发现它占用的存储数据。',
   'home.projectDeletedRunDataKept': '已删除"{name}"，但部分运行数据未能移除。',
   'common.deleting': '正在删除…',
-  'home.projectDeletedNotMeasured': '已删除"{name}"。'
+  'home.projectDeletedNotMeasured': '已删除"{name}"。',
+  'runtimes.namedEnvSizeLabel': '磁盘占用 {size}',
+  'runtimes.namedEnvRemovedWithSize': '已移除“{name}”，释放了 {size}。'
 }
 
 export type ZhKey = keyof typeof zh

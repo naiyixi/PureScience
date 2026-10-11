@@ -1188,13 +1188,17 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
 
   it('lists a named environment, removes it after confirmation, and reports the removal', async () => {
     manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
-      request.action === 'list' ? { environments: [namedEnv] } : { environments: [] }
+      request.action === 'list'
+        ? { environments: [namedEnv] }
+        : { environments: [], freedBytes: 2048 }
     )
     await render()
 
     const row = container.querySelector('[data-testid="named-env-row"]')
     expect(row?.textContent).toContain('lock-import-env')
     expect(row?.textContent).toContain(namedEnv.interpreterPath)
+    // P0-10(b): the list path sizes each prefix and the row shows the reading (1024 B → "1 KB").
+    expect(row?.querySelector('[data-testid="named-env-size"]')?.textContent).toContain('1 KB')
 
     // Removal is confirmed first — it deletes files and cannot be undone.
     await click(row?.querySelector('[data-testid="named-env-remove"]') ?? null)
@@ -1208,8 +1212,63 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
     })
     const notice = container.querySelector('[data-testid="runtimes-notice"]')
     expect(notice?.textContent).toContain('lock-import-env')
+    // The removal measured the prefix before deleting it and the reading reaches the screen — the whole
+    // point of the field: a user who frees space is told how much.
+    expect(notice?.textContent).toContain('2 KB')
     // The list reflects the refreshed set the service returned (empty here).
     expect(container.querySelector('[data-testid="named-env-row"]')).toBeNull()
+  })
+
+  it('claims no bytes when the removal reported no reading at all', async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list' ? { environments: [namedEnv] } : { environments: [] }
+    )
+    await render()
+
+    await click(
+      container.querySelector('[data-testid="named-env-row"] [data-testid="named-env-remove"]')
+    )
+    await click(document.querySelector('[data-testid="named-env-remove-confirm"]'))
+    await flush()
+
+    const notice = container.querySelector('[data-testid="runtimes-notice"]')
+    expect(notice?.textContent).toContain('lock-import-env')
+    // No reading reached the window ⇒ no byte count on screen. "Not measured" must not read as a size.
+    expect(notice?.textContent).not.toMatch(/\d+\s?(B|KB|MB)\b/)
+  })
+
+  it('treats a zero reading as no reading rather than printing "freed 0 B"', async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list' ? { environments: [namedEnv] } : { environments: [], freedBytes: 0 }
+    )
+    await render()
+
+    await click(
+      container.querySelector('[data-testid="named-env-row"] [data-testid="named-env-remove"]')
+    )
+    await click(document.querySelector('[data-testid="named-env-remove-confirm"]'))
+    await flush()
+
+    const notice = container.querySelector('[data-testid="runtimes-notice"]')
+    expect(notice?.textContent).toContain('lock-import-env')
+    // The producer folds "could not measure" into 0, so 0 is not a reading this window may print.
+    expect(notice?.textContent).not.toContain('0 B')
+    expect(notice?.textContent).not.toMatch(/\d+\s?(B|KB|MB)\b/)
+  })
+
+  it('renders no size line at all when an environment carries no size', async () => {
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list'
+        ? { environments: [{ ...namedEnv, sizeBytes: undefined }] }
+        : { environments: [] }
+    )
+    await render()
+
+    const row = container.querySelector('[data-testid="named-env-row"]')
+    expect(row).not.toBeNull()
+    // An unmeasurable prefix gets no line — never "0 B", which would be a claim nothing made.
+    expect(row?.querySelector('[data-testid="named-env-size"]')).toBeNull()
+    expect(row?.textContent).not.toContain('0 B')
   })
 
   it("shows the service's refusal verbatim when a live kernel holds the environment", async () => {

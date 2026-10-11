@@ -4354,5 +4354,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedRunDataKept':
     '「{name}」を削除しましたが、一部の実行データを削除できませんでした。',
   'common.deleting': '削除中…',
-  'home.projectDeletedNotMeasured': '「{name}」を削除しました。'
+  'home.projectDeletedNotMeasured': '「{name}」を削除しました。',
+  'runtimes.namedEnvSizeLabel': 'ディスク上 {size}',
+  'runtimes.namedEnvRemovedWithSize': '「{name}」を削除しました — {size} を解放しました。'
 }

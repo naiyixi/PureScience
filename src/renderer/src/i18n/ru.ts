@@ -4365,5 +4365,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.projectDeletedNothingStored': '«{name}» удалён. Сохранённых данных не найдено.',
   'home.projectDeletedRunDataKept': '«{name}» удалён, но часть данных запусков удалить не удалось.',
   'common.deleting': 'Удаление…',
-  'home.projectDeletedNotMeasured': '«{name}» удалён.'
+  'home.projectDeletedNotMeasured': '«{name}» удалён.',
+  'runtimes.namedEnvSizeLabel': '{size} на диске',
+  'runtimes.namedEnvRemovedWithSize': '«{name}» удалено — освобождено {size}.'
 }

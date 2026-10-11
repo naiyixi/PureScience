@@ -28,7 +28,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
+import { cn, formatByteSize } from '@/lib/utils'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { DEFAULT_EGRESS_SETTINGS, type EgressSettings } from '../../../../shared/egress'
 import type {
@@ -705,7 +705,22 @@ const RuntimesPanel = ({
     try {
       const result = await window.api.runtime.manageNamedEnvironments({ action: 'remove', name })
       setNamedEnvs(result.environments)
-      setNotice(t('runtimes.namedEnvRemoved').replace('{name}', name))
+      // P0-10(b): the removal path measures the prefix BEFORE deleting it and the reading rides the
+      // result (the agent's mapper already carries it through). Claim bytes ONLY for a positive reading:
+      // the producer folds "could not measure" into 0, so a 0/absent value gets the plain notice rather
+      // than an invented "freed 0 B".
+      const freedLabel = formatByteSize(
+        typeof result.freedBytes === 'number' && result.freedBytes > 0
+          ? result.freedBytes
+          : undefined
+      )
+      setNotice(
+        freedLabel === undefined
+          ? t('runtimes.namedEnvRemoved').replace('{name}', name)
+          : t('runtimes.namedEnvRemovedWithSize')
+              .replace('{name}', name)
+              .replace('{size}', freedLabel)
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -1199,78 +1214,92 @@ const RuntimesPanel = ({
               {t('runtimes.namedEnvsEmpty')}
             </p>
           ) : (
-            namedEnvs.map((env) => (
-              <div
-                key={env.name}
-                data-testid="named-env-row"
-                className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{env.name}</span>
-                    <Badge variant="secondary">{env.language}</Badge>
-                    <Badge variant={env.ready ? 'secondary' : 'destructive'}>
-                      {env.ready ? t('settings.ready') : t('settings.notRunnable')}
-                    </Badge>
+            namedEnvs.map((env) => {
+              // P0-10(b): the list path sizes each prefix and the reading rides this row; show it when
+              // there IS one. An absent or non-finite size prints nothing at all, so "could not look"
+              // never reads on screen as "0 B".
+              const sizeLabel = formatByteSize(env.sizeBytes)
+              return (
+                <div
+                  key={env.name}
+                  data-testid="named-env-row"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">{env.name}</span>
+                      <Badge variant="secondary">{env.language}</Badge>
+                      <Badge variant={env.ready ? 'secondary' : 'destructive'}>
+                        {env.ready ? t('settings.ready') : t('settings.notRunnable')}
+                      </Badge>
+                    </div>
+                    {env.interpreterPath ? (
+                      <code className="mt-1 block truncate text-xs text-muted-foreground">
+                        {env.interpreterPath}
+                      </code>
+                    ) : null}
+                    {sizeLabel === undefined ? null : (
+                      <span
+                        data-testid="named-env-size"
+                        className="mt-1 block text-xs text-muted-foreground"
+                      >
+                        {t('runtimes.namedEnvSizeLabel').replace('{size}', sizeLabel)}
+                      </span>
+                    )}
                   </div>
-                  {env.interpreterPath ? (
-                    <code className="mt-1 block truncate text-xs text-muted-foreground">
-                      {env.interpreterPath}
-                    </code>
-                  ) : null}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {env.language === 'python' && env.interpreterPath ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid="named-env-packages"
+                          onClick={() => {
+                            // IC13: the dialog is WRITABLE for a named environment — the admission accepts a
+                            // request that names one (no session binding decides the target from the
+                            // window) and re-checks the name against the same registry this row came from.
+                            // The app-managed DEFAULT stays additive-only, so it remains a read view.
+                            openPackagesDialog({
+                              language: env.language,
+                              provenance: 'app-managed',
+                              envId: env.interpreterPath ?? env.name,
+                              interpreterPath: env.interpreterPath ?? env.name,
+                              label: env.name,
+                              runnable: true,
+                              condaEnv: env.name
+                            })
+                          }}
+                        >
+                          <Package aria-hidden="true" />
+                          Packages
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-testid="named-env-use"
+                          disabled={busy}
+                          onClick={() => void applyNamedEnvAsRuntime(env)}
+                        >
+                          <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
+                        </Button>
+                      </>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      data-testid="named-env-remove"
+                      disabled={busy}
+                      onClick={() => setNamedEnvAction({ name: env.name })}
+                    >
+                      <Trash2 aria-hidden="true" /> {t('runtimes.removeNamedEnv')}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {env.language === 'python' && env.interpreterPath ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid="named-env-packages"
-                        onClick={() => {
-                          // IC13: the dialog is WRITABLE for a named environment — the admission accepts a
-                          // request that names one (no session binding decides the target from the
-                          // window) and re-checks the name against the same registry this row came from.
-                          // The app-managed DEFAULT stays additive-only, so it remains a read view.
-                          openPackagesDialog({
-                            language: env.language,
-                            provenance: 'app-managed',
-                            envId: env.interpreterPath ?? env.name,
-                            interpreterPath: env.interpreterPath ?? env.name,
-                            label: env.name,
-                            runnable: true,
-                            condaEnv: env.name
-                          })
-                        }}
-                      >
-                        <Package aria-hidden="true" />
-                        Packages
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        data-testid="named-env-use"
-                        disabled={busy}
-                        onClick={() => void applyNamedEnvAsRuntime(env)}
-                      >
-                        <CheckCircle2 aria-hidden="true" /> {t('runtimes.useNamedEnv')}
-                      </Button>
-                    </>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    data-testid="named-env-remove"
-                    disabled={busy}
-                    onClick={() => setNamedEnvAction({ name: env.name })}
-                  >
-                    <Trash2 aria-hidden="true" /> {t('runtimes.removeNamedEnv')}
-                  </Button>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </SettingsSection>
