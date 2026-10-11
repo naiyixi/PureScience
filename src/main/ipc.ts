@@ -129,6 +129,7 @@ import {
 } from './notifications/electron-wiring'
 import { createLogger, diagnosticErrorFields, errorLogFields, getLogFilePath } from './logger'
 import { startDiagnosticOperation } from './diagnostics/operation'
+import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
   createNotebookApplicationModule,
@@ -473,18 +474,31 @@ const createApplicationModules = async (
     installRendererBroadcastEventHub,
     createApplicationEventModule
   )
+  // P0-3: attribute the startup window. The real record shows `compose-runtime` at 11:51:31.445 and
+  // `data root resolved` at 11:51:57.083 with nothing in between — 25.6 s nobody could explain, while the
+  // same version and data root also started in 1.0 s. Every awaited step below is timed; a slow step names
+  // itself, and one summary line closes the window.
+  const composeSteps = createComposeStepRecorder({ log: createLogger('startup') })
   // One settings service backs both the settings IPC and the ACP spawn config (single source of truth).
-  const settingsService = await modules.add(undefined, () => ({
-    capability: createDefaultSettingsService()
-  }))
-  const storedSettings = await settingsService.getStoredSettings()
+  const settingsService = await composeSteps.step('settings-service', () =>
+    modules.add(undefined, () => ({
+      capability: createDefaultSettingsService()
+    }))
+  )
+  // Reading stored settings decrypts the provider key through the OS secret store, so this is a prime
+  // suspect for a multi-second stall and must be timed in its own right.
+  const storedSettings = await composeSteps.step('read-stored-settings', () =>
+    settingsService.getStoredSettings()
+  )
   const storageLog = createLogger('storage')
   // Prime the data-root cache from settings before any data repository is constructed below. A change
   // to this value only takes effect after a restart, so reading it once here is sufficient.
   initDataRoot(storedSettings.dataRoot)
   // Re-apply persisted child-process network controls (egress allowlist + manual proxy) so a
   // restart keeps the previous session's restrictions/route without requiring a settings edit.
-  await settingsService.hydrateChildProxyRuntime(storedSettings)
+  await composeSteps.step('hydrate-child-proxy-runtime', () =>
+    settingsService.hydrateChildProxyRuntime(storedSettings)
+  )
   const notificationInbox = createNotificationInboxController({
     headless,
     repository: new NotificationInboxDbRepository(() => getProjectDbClient(resolveStorageRoot())),
@@ -492,7 +506,9 @@ const createApplicationModules = async (
     onError: (error) =>
       createLogger('notifications').warn('message center operation failed', errorLogFields(error))
   })
-  await notificationInbox.restore()
+  // First database touch of the run: it opens the client and applies the schema guards.
+  await composeSteps.step('restore-notification-inbox', () => notificationInbox.restore())
+  composeSteps.logSummary()
   // Record only the location class. Absolute paths (including reversible code-point renderings) can
   // expose usernames and folder names in a support bundle.
   storageLog.info('data root resolved', {
