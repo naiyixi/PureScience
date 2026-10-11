@@ -207,7 +207,10 @@ describe('renderer argument-shape characterization', () => {
     // callable path on the Web surface like the skill writes it sits beside.
     // 396 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, one
     // more callable path here.
-    expect(actualPaths).toHaveLength(396)
+    // 397 with the on-demand duplicate reclaim (storage.sweepDuplicateContent, P0-10): LOCAL-only and
+    // refused at dispatch in the Web profile, but it still appears as a callable path on this surface —
+    // the same profile as the runtime environment channels above.
+    expect(actualPaths).toHaveLength(397)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
