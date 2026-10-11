@@ -55,6 +55,7 @@ import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/even
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import { readSessionReadings } from '../connectors/reading-journal'
+import { dirSize } from '../storage/usage'
 import type { RecordedConnectorReading } from '../../shared/reading-fingerprint'
 import type {
   NotebookEnvironmentManifest,
@@ -4328,7 +4329,13 @@ class ArtifactProvenanceRepository {
 
   // Project deletion is the terminal provenance boundary. Session deletion intentionally keeps this
   // graph; deleting the Project removes every SQLite authority row plus immutable managed bytes.
-  async deleteProjectProvenance(projectIdValue: string): Promise<void> {
+  // Deleting a Project removes its Upload bytes plus the whole `artifacts/<projectId>` tree. Both are
+  // measured BEFORE they go, so the caller can tell the user what the deletion released instead of asking
+  // them to take it on faith (see `ProjectDeletionOutcome`). Anything that cannot be measured contributes
+  // nothing — a guessed size would be a claim the user cannot check.
+  async deleteProjectProvenance(
+    projectIdValue: string
+  ): Promise<{ artifactBytes: number; uploadBytes: number; freedBytes: number }> {
     const projectId = assertSafeSegment(projectIdValue, 'project id')
     const client = await this.options.getClient()
     const uploadVersions = await client.uploadVersion.findMany({
@@ -4338,10 +4345,13 @@ class ArtifactProvenanceRepository {
 
     // Delete managed Upload bytes while their authority rows still make the operation replayable.
     // Any failure leaves the Project deletion intent and storage keys available for a later retry.
+    let uploadBytes = 0
     for (const version of uploadVersions) {
-      await rm(resolveStorageKey(this.options.storageRoot, version.contentStorageKey), {
-        force: true
-      })
+      const managedPath = resolveStorageKey(this.options.storageRoot, version.contentStorageKey)
+      uploadBytes += await stat(managedPath)
+        .then((info) => (info.isFile() ? info.size : 0))
+        .catch(() => 0)
+      await rm(managedPath, { force: true })
     }
 
     await client.$transaction(async (tx) => {
@@ -4359,10 +4369,14 @@ class ArtifactProvenanceRepository {
       await tx.fileOriginSession.deleteMany({ where: { projectId } })
     })
 
-    await rm(resolveStorageKey(this.options.storageRoot, storageKey('artifacts', projectId)), {
-      recursive: true,
-      force: true
-    })
+    const artifactRoot = resolveStorageKey(
+      this.options.storageRoot,
+      storageKey('artifacts', projectId)
+    )
+    const artifactBytes = await dirSize(artifactRoot, new Set())
+    await rm(artifactRoot, { recursive: true, force: true })
+
+    return { artifactBytes, uploadBytes, freedBytes: artifactBytes + uploadBytes }
   }
 
   private async toArtifactVersionFile(

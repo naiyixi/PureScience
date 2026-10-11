@@ -200,8 +200,7 @@ export const en: Record<ZhKey, string> = {
   'onboarding.testAndContinue': 'Test & continue',
   'onboarding.providerChangedDuringTesting': 'The provider changed during testing. Try again.',
   'home.deleteProjectTitle': 'Delete project?',
-  'home.deleteProjectHint':
-    "Files in the project's working folder are not deleted. This action cannot",
+  'home.deleteProjectHint': "Files in the project's working folder are not deleted.",
   'home.couldNotDeleteProject': 'Could not delete the project. Please try again.',
   'home.example': 'Example',
   'home.archive': 'Archive',
@@ -4371,8 +4370,22 @@ export const en: Record<ZhKey, string> = {
     'This walks your content folders and looks for files whose bytes are already stored under another name. Those names are linked to the existing copy — no file is deleted and no content changes. On a large library it can take a moment.',
   'settings.storageSweepReclaimed': 'Reclaimed {size} from {count} duplicate copies.',
   'settings.storageSweepNothing': 'No duplicate copies found — nothing to reclaim.',
-  'settings.storageSweepPackageCache': 'Shared package cache: freed {size} across {count} redundant copies; kept {leftAlone} (the last copy of each file).',
+  'settings.storageSweepPackageCache':
+    'Shared package cache: freed {size} across {count} redundant copies; kept {leftAlone} (the last copy of each file).',
   'settings.storageSweepFailed':
     'Could not reclaim duplicate copies. The reason is in the app log.',
-  'settings.storageSweepConfirmAction': 'Reclaim'
+  'settings.storageSweepConfirmAction': 'Reclaim',
+  'home.deleteProjectOneSession': 'This deletes its saved conversation too.',
+  'home.deleteProjectSessions': 'This deletes its {count} saved conversations too.',
+  'home.deleteProjectUnloadedSessions':
+    'This deletes all of its saved conversations, including any that could not be loaded during recovery.',
+  'home.deleteProjectManagedData':
+    'Generated artifacts and uploaded files stored by PureScience will also be deleted.',
+  'home.projectDeletedReleased':
+    '{name} was deleted. {size} of its stored data was removed from this machine.',
+  'home.projectDeletedNothingStored': '{name} was deleted. No stored data was found for it.',
+  'home.projectDeletedRunDataKept':
+    '{name} was deleted, but some of its run data could not be removed.',
+  'common.deleting': 'Deleting…',
+  'home.projectDeletedNotMeasured': '{name} was deleted.'
 }

@@ -3667,8 +3667,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.webPreviewUnsupported': 'Solo los enlaces HTTP(S) pueden previsualizarse en la aplicación.',
   'ws.whatWillYouResearch': '¿Qué te gustaría investigar en PureScience?',
   'ws.yourUploads': 'Tus subidas',
-  'home.deleteProjectHint':
-    'Los archivos de la carpeta de trabajo del proyecto no se eliminan. Esta acción no se puede deshacer.',
+  'home.deleteProjectHint': 'Los archivos de la carpeta de trabajo del proyecto no se eliminan.',
   'onboarding.signInBrowserClaude':
     'Inicia sesión con tu navegador para conectar tu suscripción de Claude. Abriremos Claude en tu navegador para autorizar la conexión y luego te devolveremos aquí.',
   'settings.activeRuntimeCannotUninstall':
@@ -4428,8 +4427,22 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Recorre tus carpetas de contenido buscando archivos cuyos bytes ya están guardados con otro nombre. Esos nombres se enlazarán a la copia existente: no se elimina ningún archivo ni cambia ningún contenido. En una biblioteca grande puede tardar un momento.',
   'settings.storageSweepReclaimed': 'Se recuperaron {size} de {count} copias duplicadas.',
   'settings.storageSweepNothing': 'No se encontraron copias duplicadas: nada que recuperar.',
-  'settings.storageSweepPackageCache': 'Caché de paquetes compartida: {size} liberados en {count} copias redundantes; {leftAlone} conservados (última copia de cada archivo).',
+  'settings.storageSweepPackageCache':
+    'Caché de paquetes compartida: {size} liberados en {count} copias redundantes; {leftAlone} conservados (última copia de cada archivo).',
   'settings.storageSweepFailed':
     'No se pudieron recuperar las copias duplicadas. El motivo está en el registro de la aplicación.',
-  'settings.storageSweepConfirmAction': 'Recuperar'
+  'settings.storageSweepConfirmAction': 'Recuperar',
+  'home.deleteProjectOneSession': 'La conversación guardada también se elimina.',
+  'home.deleteProjectSessions': 'Las {count} conversaciones guardadas también se eliminan.',
+  'home.deleteProjectUnloadedSessions':
+    'Todas las conversaciones guardadas también se eliminan, incluidas las que no se pudieron cargar durante la recuperación.',
+  'home.deleteProjectManagedData':
+    'Los artefactos y archivos subidos que guarda PureScience también se eliminarán.',
+  'home.projectDeletedReleased':
+    'Se eliminó «{name}» y se quitaron {size} de datos almacenados de este equipo.',
+  'home.projectDeletedNothingStored': 'Se eliminó «{name}». No se encontraron datos almacenados.',
+  'home.projectDeletedRunDataKept':
+    'Se eliminó «{name}», pero algunos datos de ejecución no se pudieron quitar.',
+  'common.deleting': 'Eliminando…',
+  'home.projectDeletedNotMeasured': 'Se eliminó «{name}».'
 }

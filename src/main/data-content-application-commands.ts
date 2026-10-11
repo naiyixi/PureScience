@@ -179,10 +179,7 @@ const dataContentApplicationCommands = Object.freeze({
   artifactReadPreview: artifactCommand('artifacts:read-preview', 'readPreview'),
   // Availability for many paths in one round-trip: a transcript card asked this question one file at a time,
   // and each ask resolved (and checksummed) the whole file to answer yes/no.
-  artifactProbeAvailability: artifactCommand(
-    'artifacts:probe-availability',
-    'probeAvailability'
-  ),
+  artifactProbeAvailability: artifactCommand('artifacts:probe-availability', 'probeAvailability'),
   artifactReconcilePending: artifactCommand(
     'artifacts:reconcile-pending',
     'reconcilePendingArtifacts'
@@ -247,7 +244,7 @@ const dataContentApplicationCommands = Object.freeze({
   projectDelete: defineApplicationCommand<
     'projects:delete',
     readonly [request: Projects.DeleteProjectRequest],
-    void
+    Projects.ProjectDeletionOutcome
   >('projects:delete'),
   projectGet: projectCommand('projects:get', 'get'),
   projectList: projectCommand('projects:list', 'list'),
@@ -487,10 +484,11 @@ const registerDataContentApplicationCommands = (
         return project
       },
       'projects:delete': async ({ args }) => {
-        await dependencies.projects.delete(args[0].id)
+        const outcome = await dependencies.projects.delete(args[0].id)
         publishLifecycle(dependencies.events, LIFECYCLE_CHANNELS.projectDeleted, {
           projectId: args[0].id
         })
+        return outcome
       },
       'projects:get': ({ args }) => dependencies.projects.get(args[0]),
       'projects:list': () => dependencies.projects.list(),

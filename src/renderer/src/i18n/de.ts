@@ -3699,8 +3699,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'In der App können nur HTTP(S)-Links in der Vorschau angezeigt werden.',
   'ws.whatWillYouResearch': 'Was möchten Sie in PureScience erforschen?',
   'ws.yourUploads': 'Ihre Uploads',
-  'home.deleteProjectHint':
-    'Dateien im Arbeitsordner des Projekts werden nicht gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.',
+  'home.deleteProjectHint': 'Dateien im Arbeitsordner des Projekts werden nicht gelöscht.',
   'onboarding.signInBrowserClaude':
     'Melden Sie sich in Ihrem Browser an, um Ihr Claude-Abonnement zu verbinden. Wir öffnen Claude in Ihrem Browser zur Autorisierung und bringen Sie anschließend direkt zurück.',
   'settings.activeRuntimeCannotUninstall':
@@ -4473,8 +4472,24 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Durchsucht deine Inhaltsordner nach Dateien, deren Bytes bereits unter einem anderen Namen gespeichert sind. Diese Namen werden mit der vorhandenen Kopie verknüpft — es wird keine Datei gelöscht und kein Inhalt geändert. Bei einer großen Bibliothek kann das einen Moment dauern.',
   'settings.storageSweepReclaimed': 'Aus {count} doppelten Kopien wurden {size} zurückgewonnen.',
   'settings.storageSweepNothing': 'Keine doppelten Kopien gefunden — nichts zu tun.',
-  'settings.storageSweepPackageCache': 'Gemeinsamer Paket-Cache: {size} über {count} redundante Kopien freigegeben; {leftAlone} beibehalten (letzte Kopie je Datei).',
+  'settings.storageSweepPackageCache':
+    'Gemeinsamer Paket-Cache: {size} über {count} redundante Kopien freigegeben; {leftAlone} beibehalten (letzte Kopie je Datei).',
   'settings.storageSweepFailed':
     'Doppelte Kopien konnten nicht verknüpft werden. Der Grund steht im App-Protokoll.',
-  'settings.storageSweepConfirmAction': 'Verknüpfen'
+  'settings.storageSweepConfirmAction': 'Verknüpfen',
+  'home.deleteProjectOneSession': 'Die gespeicherte Unterhaltung wird ebenfalls gelöscht.',
+  'home.deleteProjectSessions':
+    'Die {count} gespeicherten Unterhaltungen werden ebenfalls gelöscht.',
+  'home.deleteProjectUnloadedSessions':
+    'Alle gespeicherten Unterhaltungen werden ebenfalls gelöscht, auch die, die während der Wiederherstellung nicht geladen werden konnten.',
+  'home.deleteProjectManagedData':
+    'Von PureScience gespeicherte Artefakte und hochgeladene Dateien werden ebenfalls gelöscht.',
+  'home.projectDeletedReleased':
+    '„{name}“ wurde gelöscht. {size} der gespeicherten Daten wurden von diesem Rechner entfernt.',
+  'home.projectDeletedNothingStored':
+    '„{name}“ wurde gelöscht. Es wurden keine gespeicherten Daten gefunden.',
+  'home.projectDeletedRunDataKept':
+    '„{name}“ wurde gelöscht, aber einige Ausführungsdaten konnten nicht entfernt werden.',
+  'common.deleting': 'Löschen…',
+  'home.projectDeletedNotMeasured': '„{name}“ wurde gelöscht.'
 }

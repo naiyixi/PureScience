@@ -8,7 +8,8 @@ import {
   Search,
   Settings,
   Trash2,
-  FileUp
+  FileUp,
+  X
 } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useEffect, useMemo, useState } from 'react'
@@ -32,7 +33,8 @@ import { ThemePreferenceMenu } from '@/components/ThemeControls'
 import { NotificationBell } from '@/components/NotificationBell'
 import { UpdateCapsule } from '@/components/UpdateCapsule'
 import { APP } from '../../../../shared/app-config'
-import type { Project } from '../../../../shared/projects'
+import type { Project, ProjectDeletionOutcome } from '../../../../shared/projects'
+import { formatBytes } from '../../../../shared/update'
 import type { EnvironmentCheckItem, EnvironmentCheckResult } from '../../../../shared/settings'
 import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 
@@ -108,7 +110,7 @@ const HomePage = ({
   canDeleteProjects,
   hasCompleteSessionCatalog
 }: HomePageProps): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const projects = useProjectStore((state) => state.projects)
   const projectsLoaded = useProjectStore((state) => state.isLoaded)
   const loadError = useProjectStore((state) => state.loadError)
@@ -146,6 +148,11 @@ const HomePage = ({
     'function'
   const [isDeletingProject, setIsDeletingProject] = useState(false)
   const [deleteProjectError, setDeleteProjectError] = useState<string | undefined>(undefined)
+  // What the last completed deletion removed from this machine. The deletion measured it on its way out, so
+  // the user reads a figure the action itself produced instead of a promise that something happened.
+  const [deletedProjectNotice, setDeletedProjectNotice] = useState<
+    { name: string; outcome: ProjectDeletionOutcome } | undefined
+  >(undefined)
   const [archivingProjectIds, setArchivingProjectIds] = useState<Set<string>>(() => new Set())
   const [archiveProjectError, setArchiveProjectError] = useState<string | undefined>(undefined)
   // projectId -> up-to-N distinct file-type chips (MD/DOCX/…) from the project Files catalog.
@@ -346,6 +353,7 @@ const HomePage = ({
     if (!canDeleteProjects || !projectToDelete || isDeletingProject) return
 
     const projectId = projectToDelete.id
+    const projectName = projectToDelete.name
 
     // Deletion is an explicit user takeover even though it does not immediately navigate. Advance
     // the navigation revision before the async mutation so deferred startup intents cannot reopen a
@@ -355,8 +363,9 @@ const HomePage = ({
     setDeleteProjectError(undefined)
 
     void deleteProject(projectId)
-      .then(() => {
+      .then((outcome) => {
         useSessionStore.getState().removeSessionsForProject(projectId)
+        setDeletedProjectNotice({ name: projectName, outcome })
         setProjectToDelete(undefined)
       })
       .catch((error: unknown) => {
@@ -465,6 +474,41 @@ const HomePage = ({
               <Archive className="size-4 text-text-100" strokeWidth={2} aria-hidden="true" />
               {t('home.projects')}
             </h2>
+            {deletedProjectNotice ? (
+              // role=status, not alert: this reports a completed action rather than a failure, and it stays
+              // until dismissed so the figure is readable at the user's pace.
+              <div
+                className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-border-200/70 bg-card px-4 py-3 text-sm text-text-100"
+                role="status"
+                data-slot="home-project-deleted"
+              >
+                <span>
+                  {deletedProjectNotice.outcome.runData === 'refused'
+                    ? t('home.projectDeletedRunDataKept', { name: deletedProjectNotice.name })
+                    : deletedProjectNotice.outcome.freedBytes > 0
+                      ? t('home.projectDeletedReleased', {
+                          name: deletedProjectNotice.name,
+                          size: formatBytes(deletedProjectNotice.outcome.freedBytes, lang)
+                        })
+                      : deletedProjectNotice.outcome.runData === 'not-attempted'
+                        ? // Nothing was measured here (another window, or a replay this call did not run). The
+                          // honest receipt states the deletion and claims nothing about bytes.
+                          t('home.projectDeletedNotMeasured', { name: deletedProjectNotice.name })
+                        : t('home.projectDeletedNothingStored', {
+                            name: deletedProjectNotice.name
+                          })}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('common.close')}
+                  onClick={() => setDeletedProjectNotice(undefined)}
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </Button>
+              </div>
+            ) : null}
             {archiveProjectError ? (
               <div
                 className="mb-3 rounded-2xl border border-danger-000/30 px-4 py-3 text-sm text-danger-000"

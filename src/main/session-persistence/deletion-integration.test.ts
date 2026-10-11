@@ -208,7 +208,7 @@ describe('managed-file deletion integration', () => {
         })
         recoveredImmutableAuthority =
           version?.state === 'ready' && (await readFile(uploadPath, 'utf8')) === 'upload bytes'
-        await provenanceRepository.deleteProjectProvenance(projectId)
+        return provenanceRepository.deleteProjectProvenance(projectId)
       })
     }
     const projectDeletion = new ProjectDeletionCoordinator(

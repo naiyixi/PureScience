@@ -3601,8 +3601,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.webPreviewUnsupported': 'В приложении можно просматривать только ссылки HTTP(S).',
   'ws.whatWillYouResearch': 'Что вы хотите исследовать в PureScience?',
   'ws.yourUploads': 'Ваши загрузки',
-  'home.deleteProjectHint':
-    'Файлы в рабочей папке проекта не удаляются. Это действие нельзя отменить.',
+  'home.deleteProjectHint': 'Файлы в рабочей папке проекта не удаляются.',
   'onboarding.signInBrowserClaude':
     'Войдите через браузер, чтобы подключить вашу подписку Claude. Мы откроем Claude в вашем браузере для авторизации, а затем вернём вас обратно.',
   'settings.activeRuntimeCannotUninstall':
@@ -4350,8 +4349,21 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Просматривает папки с содержимым и ищет файлы, байты которых уже сохранены под другим именем. Эти имена будут связаны с существующей копией — ни один файл не удаляется и содержимое не меняется. В большой библиотеке это может занять некоторое время.',
   'settings.storageSweepReclaimed': 'Возвращено {size} из {count} дубликатов.',
   'settings.storageSweepNothing': 'Дубликаты не найдены — возвращать нечего.',
-  'settings.storageSweepPackageCache': 'Общий кэш пакетов: освобождено {size} ({count} избыточных копий); сохранено {leftAlone} (последняя копия каждого файла).',
+  'settings.storageSweepPackageCache':
+    'Общий кэш пакетов: освобождено {size} ({count} избыточных копий); сохранено {leftAlone} (последняя копия каждого файла).',
   'settings.storageSweepFailed':
     'Не удалось вернуть дубликаты. Причина указана в журнале приложения.',
-  'settings.storageSweepConfirmAction': 'Вернуть'
+  'settings.storageSweepConfirmAction': 'Вернуть',
+  'home.deleteProjectOneSession': 'Сохранённый диалог также будет удалён.',
+  'home.deleteProjectSessions': 'Сохранённые диалоги ({count}) также будут удалены.',
+  'home.deleteProjectUnloadedSessions':
+    'Все сохранённые диалоги также будут удалены, включая те, что не удалось загрузить при восстановлении.',
+  'home.deleteProjectManagedData':
+    'Созданные артефакты и загруженные файлы, сохранённые PureScience, также будут удалены.',
+  'home.projectDeletedReleased':
+    '«{name}» удалён. С этого компьютера удалено {size} сохранённых данных.',
+  'home.projectDeletedNothingStored': '«{name}» удалён. Сохранённых данных не найдено.',
+  'home.projectDeletedRunDataKept': '«{name}» удалён, но часть данных запусков удалить не удалось.',
+  'common.deleting': 'Удаление…',
+  'home.projectDeletedNotMeasured': '«{name}» удалён.'
 }

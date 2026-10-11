@@ -3531,8 +3531,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.webPreviewUnsupported': '앱 내에서 HTTP(S) 링크만 미리 볼 수 있습니다.',
   'ws.whatWillYouResearch': 'PureScience에서 무엇을 연구하고 싶으신가요?',
   'ws.yourUploads': '내 업로드',
-  'home.deleteProjectHint':
-    '프로젝트 작업 폴더의 파일은 삭제되지 않습니다. 이 작업은 되돌릴 수 없습니다.',
+  'home.deleteProjectHint': '프로젝트 작업 폴더의 파일은 삭제되지 않습니다.',
   'onboarding.signInBrowserClaude':
     '브라우저로 로그인하여 Claude 구독을 연결하세요. Claude를 엽니다.',
   'settings.activeRuntimeCannotUninstall':
@@ -4270,7 +4269,20 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '콘텐츠 폴더를 살펴보며 같은 바이트가 다른 이름으로 이미 저장된 파일을 찾습니다. 그 이름들은 기존 사본을 가리키게 되고, 파일이 삭제되거나 내용이 바뀌지는 않습니다. 라이브러리가 크면 잠시 걸릴 수 있습니다.',
   'settings.storageSweepReclaimed': '중복 사본 {count}개에서 {size}를 회수했습니다.',
   'settings.storageSweepNothing': '중복 사본이 없습니다. 회수할 것이 없습니다.',
-  'settings.storageSweepPackageCache': '공유 패키지 캐시: 중복 사본 {count}개에서 {size}를 회수했고, {leftAlone}은 유지했습니다(각 파일의 마지막 사본).',
+  'settings.storageSweepPackageCache':
+    '공유 패키지 캐시: 중복 사본 {count}개에서 {size}를 회수했고, {leftAlone}은 유지했습니다(각 파일의 마지막 사본).',
   'settings.storageSweepFailed': '중복 사본을 회수하지 못했습니다. 이유는 앱 로그에 있습니다.',
-  'settings.storageSweepConfirmAction': '회수'
+  'settings.storageSweepConfirmAction': '회수',
+  'home.deleteProjectOneSession': '저장된 대화도 삭제됩니다.',
+  'home.deleteProjectSessions': '저장된 대화 {count}개도 삭제됩니다.',
+  'home.deleteProjectUnloadedSessions':
+    '저장된 대화가 모두 삭제됩니다(복구 중 불러오지 못한 대화 포함).',
+  'home.deleteProjectManagedData': 'PureScience가 저장한 산출물과 업로드한 파일도 삭제됩니다.',
+  'home.projectDeletedReleased':
+    '"{name}"을(를) 삭제하고 저장 데이터 {size}를 이 컴퓨터에서 제거했습니다.',
+  'home.projectDeletedNothingStored': '"{name}"을(를) 삭제했습니다. 저장된 데이터는 없습니다.',
+  'home.projectDeletedRunDataKept':
+    '"{name}"을(를) 삭제했지만 일부 실행 데이터는 제거하지 못했습니다.',
+  'common.deleting': '삭제 중…',
+  'home.projectDeletedNotMeasured': '"{name}"을(를) 삭제했습니다.'
 }

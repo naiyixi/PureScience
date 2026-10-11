@@ -191,7 +191,7 @@ export const zh = {
   'onboarding.testAndContinue': '测试并继续',
   'onboarding.providerChangedDuringTesting': '测试期间提供商已更改。请重试。',
   'home.deleteProjectTitle': '删除项目？',
-  'home.deleteProjectHint': '项目工作文件夹中的文件不会被删除。此操作无法撤销。',
+  'home.deleteProjectHint': '项目工作文件夹中的文件不会被删除。',
   'home.couldNotDeleteProject': '无法删除项目。请重试。',
   'home.example': '示例',
   'home.archive': '归档',
@@ -4077,9 +4077,20 @@ export const zh = {
     '会遍历你的内容目录，找出字节已经存在、只是名字不同的文件，把这些名字指向已有的那一份 —— 不删除文件，也不改内容。内容多时可能要等一会儿。',
   'settings.storageSweepReclaimed': '已回收 {size}（{count} 个重复副本）。',
   'settings.storageSweepNothing': '没有发现重复副本，无需回收。',
-  'settings.storageSweepPackageCache': '共享包缓存：回收 {size}（{count} 份冗余副本）；保留 {leftAlone}（每个文件的最后一份）。',
+  'settings.storageSweepPackageCache':
+    '共享包缓存：回收 {size}（{count} 份冗余副本）；保留 {leftAlone}（每个文件的最后一份）。',
   'settings.storageSweepFailed': '未能回收重复副本，原因见应用日志。',
-  'settings.storageSweepConfirmAction': '回收'
+  'settings.storageSweepConfirmAction': '回收',
+  'home.deleteProjectOneSession': '它保存的对话将一并删除。',
+  'home.deleteProjectSessions': '它保存的 {count} 个对话将一并删除。',
+  'home.deleteProjectUnloadedSessions':
+    '它保存的全部对话都会一并删除，包括恢复期间无法加载的对话。',
+  'home.deleteProjectManagedData': 'PureScience 保存的产物与上传文件也会一并删除。',
+  'home.projectDeletedReleased': '已删除"{name}"，并从本机移除了 {size} 的存储数据。',
+  'home.projectDeletedNothingStored': '已删除"{name}"，未发现它占用的存储数据。',
+  'home.projectDeletedRunDataKept': '已删除"{name}"，但部分运行数据未能移除。',
+  'common.deleting': '正在删除…',
+  'home.projectDeletedNotMeasured': '已删除"{name}"。'
 }
 
 export type ZhKey = keyof typeof zh

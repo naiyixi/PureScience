@@ -70,21 +70,25 @@ const DeleteProjectDialog = ({
                 {t('home.deleteProjectTitle')}
               </AlertDialog.Title>
               <AlertDialog.Description className={dialogDescriptionClassName}>
-                {t('home.deleteProjectConfirm').replace('{name}', dialogProject?.name ?? '')}
+                {t('home.deleteProjectConfirm', { name: dialogProject?.name ?? '' })}
                 {dialogHasCompleteSessionCatalog
                   ? dialogSessionCount > 0
-                    ? ` and its ${dialogSessionCount} ${dialogSessionCount === 1 ? 'session' : 'sessions'}`
+                    ? ` ${t(
+                        dialogSessionCount === 1
+                          ? 'home.deleteProjectOneSession'
+                          : 'home.deleteProjectSessions',
+                        { count: dialogSessionCount }
+                      )}`
                     : ''
-                  : ' and all of its saved conversations, including any that could not be loaded during recovery'}
-                . Generated artifacts and uploaded files stored by PureScience will also be deleted.
-                {t('home.deleteProjectHint')} be undone.
+                  : ` ${t('home.deleteProjectUnloadedSessions')}`}{' '}
+                {t('home.deleteProjectManagedData')} {t('home.deleteProjectHint')}
               </AlertDialog.Description>
             </div>
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Close"
+              aria-label={t('common.close')}
               className={dialogCloseButtonClassName}
               disabled={isDeleting}
               onClick={onCancel}
@@ -100,7 +104,7 @@ const DeleteProjectDialog = ({
           <div className={dialogFooterClassName}>
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="outline" disabled={isDeleting}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </AlertDialog.Cancel>
             {/* Async confirmation owns dialog closure so a failed deletion remains visible. */}
@@ -110,7 +114,7 @@ const DeleteProjectDialog = ({
               disabled={!canDelete || isDeleting}
               onClick={onConfirmDelete}
             >
-              {isDeleting ? 'Deleting…' : 'Delete'}
+              {isDeleting ? t('common.deleting') : t('common.delete')}
             </Button>
           </div>
         </AlertDialog.Content>

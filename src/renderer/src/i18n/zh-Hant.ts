@@ -3332,7 +3332,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.webPreviewUnsupported': '僅能在應用程式內預覽 HTTP(S) 連結。',
   'ws.whatWillYouResearch': '你想在 PureScience 裡研究什麼？',
   'ws.yourUploads': '你的上傳內容',
-  'home.deleteProjectHint': '不會刪除專案工作資料夾中的檔案。此操作無法復原。',
+  'home.deleteProjectHint': '不會刪除專案工作資料夾中的檔案。',
   'onboarding.signInBrowserClaude': '使用瀏覽器登入以連接你的 Claude 訂閱。我們將開啟 Claude',
   'settings.activeRuntimeCannotUninstall': '使用中的執行環境無法解除安裝——請先切換到另一個。',
   'settings.agentFrameworkDesc':
@@ -4019,7 +4019,18 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '會走訪你的內容目錄，找出位元組已經存在、只是名稱不同的檔案，把這些名稱指向已有的那一份 —— 不會刪除檔案，也不會變更內容。內容較多時可能需要一點時間。',
   'settings.storageSweepReclaimed': '已回收 {size}（{count} 個重複副本）。',
   'settings.storageSweepNothing': '沒有發現重複副本，無需回收。',
-  'settings.storageSweepPackageCache': '共享套件快取：回收 {size}（{count} 份冗餘副本）；保留 {leftAlone}（每個檔案的最後一份）。',
+  'settings.storageSweepPackageCache':
+    '共享套件快取：回收 {size}（{count} 份冗餘副本）；保留 {leftAlone}（每個檔案的最後一份）。',
   'settings.storageSweepFailed': '無法回收重複副本，原因請見應用程式日誌。',
-  'settings.storageSweepConfirmAction': '回收'
+  'settings.storageSweepConfirmAction': '回收',
+  'home.deleteProjectOneSession': '它儲存的對話將一併刪除。',
+  'home.deleteProjectSessions': '它儲存的 {count} 個對話將一併刪除。',
+  'home.deleteProjectUnloadedSessions':
+    '它儲存的全部對話都會一併刪除，包括復原期間無法載入的對話。',
+  'home.deleteProjectManagedData': 'PureScience 儲存的產物與上傳檔案也會一併刪除。',
+  'home.projectDeletedReleased': '已刪除「{name}」，並從本機移除了 {size} 的儲存資料。',
+  'home.projectDeletedNothingStored': '已刪除「{name}」，未發現它佔用的儲存資料。',
+  'home.projectDeletedRunDataKept': '已刪除「{name}」，但部分執行資料未能移除。',
+  'common.deleting': '正在刪除…',
+  'home.projectDeletedNotMeasured': '已刪除「{name}」。'
 }

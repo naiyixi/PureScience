@@ -3597,8 +3597,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.webPreviewUnsupported': 'アプリ内でプレビューできるのは HTTP(S) リンクのみです。',
   'ws.whatWillYouResearch': 'PureScience で何を研究しますか？',
   'ws.yourUploads': 'あなたのアップロード',
-  'home.deleteProjectHint':
-    'プロジェクトの作業フォルダ内のファイルは削除されません。この操作は元に戻せません。',
+  'home.deleteProjectHint': 'プロジェクトの作業フォルダ内のファイルは削除されません。',
   'onboarding.signInBrowserClaude':
     'ブラウザでサインインして Claude サブスクリプションに接続します。Claude を開きます',
   'settings.activeRuntimeCannotUninstall':
@@ -4338,7 +4337,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'コンテンツ フォルダーを走査し、同じバイトが別の名前ですでに保存されているファイルを探します。それらの名前は既存のコピーを指すようになり、ファイルは削除されず内容も変わりません。大きなライブラリでは少し時間がかかります。',
   'settings.storageSweepReclaimed': '{count} 個の重複コピーから {size} を回収しました。',
   'settings.storageSweepNothing': '重複コピーは見つかりませんでした。回収するものはありません。',
-  'settings.storageSweepPackageCache': '共有パッケージキャッシュ：{size}（重複コピー {count} 個）を回収、{leftAlone} は保持（各ファイルの最後の 1 つ）。',
+  'settings.storageSweepPackageCache':
+    '共有パッケージキャッシュ：{size}（重複コピー {count} 個）を回収、{leftAlone} は保持（各ファイルの最後の 1 つ）。',
   'settings.storageSweepFailed': '重複コピーを回収できませんでした。理由はアプリのログにあります。',
-  'settings.storageSweepConfirmAction': '回収'
+  'settings.storageSweepConfirmAction': '回収',
+  'home.deleteProjectOneSession': '保存されている会話も削除されます。',
+  'home.deleteProjectSessions': '保存されている {count} 件の会話も削除されます。',
+  'home.deleteProjectUnloadedSessions':
+    '保存されている会話はすべて削除されます（復旧時に読み込めなかったものも含みます）。',
+  'home.deleteProjectManagedData':
+    'PureScience が保存した成果物とアップロード済みファイルも削除されます。',
+  'home.projectDeletedReleased':
+    '「{name}」を削除し、保存データ {size} をこのコンピューターから削除しました。',
+  'home.projectDeletedNothingStored':
+    '「{name}」を削除しました。保存データは見つかりませんでした。',
+  'home.projectDeletedRunDataKept':
+    '「{name}」を削除しましたが、一部の実行データを削除できませんでした。',
+  'common.deleting': '削除中…',
+  'home.projectDeletedNotMeasured': '「{name}」を削除しました。'
 }

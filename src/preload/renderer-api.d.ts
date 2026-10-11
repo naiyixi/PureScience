@@ -191,6 +191,7 @@ import type {
   CreateProjectRequest,
   DeleteProjectRequest,
   Project,
+  ProjectDeletionOutcome,
   UpdateProjectArchiveRequest,
   UpdateProjectRequest
 } from '../shared/projects'
@@ -836,7 +837,11 @@ export interface PureScienceAPI {
     create(request: CreateProjectRequest): Promise<Project>
     update(request: UpdateProjectRequest): Promise<Project>
     updateArchive(request: UpdateProjectArchiveRequest): Promise<Project>
-    delete(request: DeleteProjectRequest): Promise<void>
+    /**
+     * Deletes the project and everything this app stored for it, and resolves with what that removal
+     * actually freed on disk (measured before each removal, so the number can be shown to the user).
+     */
+    delete(request: DeleteProjectRequest): Promise<ProjectDeletionOutcome>
     onCreated(listener: AcpListener<Project>): RemoveListener
     onUpdated(listener: AcpListener<Project>): RemoveListener
     onDeleted(listener: AcpListener<ProjectDeletedEvent>): RemoveListener

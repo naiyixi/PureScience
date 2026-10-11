@@ -3,7 +3,8 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Project } from '../../../../shared/projects'
+import type { Project, ProjectDeletionOutcome } from '../../../../shared/projects'
+import { formatBytes } from '../../../../shared/update'
 import { useNavigationStore } from '@/stores/navigation-store'
 import { createInitialProjectState, useProjectStore } from '@/stores/project-store'
 import { createInitialSessionState, useSessionStore } from '@/stores/session-store'
@@ -80,6 +81,19 @@ const project: Project = {
   updatedAt: 1
 }
 
+// The deletion reports what it measured on its way out, so every stub has to answer with a real outcome:
+// the surface reads those figures, and an `undefined` stub would exercise a shape the app never produces.
+const deletionOutcome = (
+  overrides: Partial<ProjectDeletionOutcome> = {}
+): ProjectDeletionOutcome => ({
+  freedBytes: 0,
+  runDataBytes: 0,
+  artifactBytes: 0,
+  uploadBytes: 0,
+  runData: 'absent',
+  ...overrides
+})
+
 describe('HomePage persistence recovery', () => {
   let container: HTMLDivElement
   let root: Root
@@ -89,7 +103,7 @@ describe('HomePage persistence recovery', () => {
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
-    deleteProject = vi.fn().mockResolvedValue(undefined)
+    deleteProject = vi.fn().mockResolvedValue(deletionOutcome())
     useProjectStore.setState({
       ...createInitialProjectState(),
       projects: [project],
@@ -209,11 +223,69 @@ describe('HomePage persistence recovery', () => {
     )
     expect(useProjectStore.getState().projects).toContainEqual(project)
 
-    deleteProject.mockResolvedValueOnce(undefined)
+    deleteProject.mockResolvedValueOnce(deletionOutcome())
     await act(async () => confirm?.click())
 
     expect(deleteProject).toHaveBeenCalledTimes(2)
     expect(confirm?.dataset.hasProject).toBe('false')
     expect(container.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  // The deletion is irreversible, so the result the user is left holding has to be the deletion's own
+  // measurement rather than a generic "done". These three cases are the three states the outcome can be in.
+  const runDelete = async (outcome: ProjectDeletionOutcome): Promise<void> => {
+    deleteProject.mockResolvedValueOnce(outcome)
+    await act(async () => root.render(<HomePage canDeleteProjects hasCompleteSessionCatalog />))
+
+    const deleteAction = [...container.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === 'Delete'
+    )
+    await act(async () => deleteAction?.click())
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[data-testid="confirm-project-delete"]')?.click()
+    )
+  }
+
+  it('reports the bytes the deletion freed and lets the user dismiss the receipt', async () => {
+    await runDelete(deletionOutcome({ freedBytes: 7168, runDataBytes: 4096, artifactBytes: 3072 }))
+
+    const receipt = container.querySelector('[data-slot="home-project-deleted"]')
+    expect(receipt?.getAttribute('role')).toBe('status')
+    expect(receipt?.textContent).toContain(project.name)
+    expect(receipt?.textContent).toContain(formatBytes(7168, 'en'))
+
+    const dismiss = receipt?.querySelector<HTMLButtonElement>('button')
+    await act(async () => dismiss?.click())
+    expect(container.querySelector('[data-slot="home-project-deleted"]')).toBeNull()
+  })
+
+  it('says nothing was stored instead of reporting a release of zero bytes', async () => {
+    await runDelete(deletionOutcome())
+
+    const receipt = container.querySelector('[data-slot="home-project-deleted"]')
+    expect(receipt?.textContent).toBe(
+      `${project.name} was deleted. No stored data was found for it.`
+    )
+  })
+
+  it('states the deletion without a byte claim when nothing was measured', async () => {
+    await runDelete(deletionOutcome({ runData: 'not-attempted' }))
+
+    const receipt = container.querySelector('[data-slot="home-project-deleted"]')
+    // 'not-attempted' means nothing was measured here — never "there was none". Reporting a zero-byte
+    // release, or worse "no stored data was found", would be a claim this call cannot support.
+    expect(receipt?.textContent).toBe(`${project.name} was deleted.`)
+  })
+
+  it('keeps a refused run-data cleanup visible above the release figure', async () => {
+    await runDelete(deletionOutcome({ freedBytes: 3072, runData: 'refused' }))
+
+    const receipt = container.querySelector('[data-slot="home-project-deleted"]')
+    // The refusal matters more than the partial total: the user is told some bytes survived, so the
+    // receipt must not read as a clean success.
+    expect(receipt?.textContent).toBe(
+      `${project.name} was deleted, but some of its run data could not be removed.`
+    )
+    expect(receipt?.textContent).not.toContain(formatBytes(3072, 'en'))
   })
 })

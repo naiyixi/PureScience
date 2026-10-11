@@ -10,6 +10,7 @@ import type {
   CreateProjectRequest,
   DeleteProjectRequest,
   Project,
+  ProjectDeletionOutcome,
   UpdateProjectArchiveRequest,
   UpdateProjectRequest
 } from '../../shared/projects'
@@ -27,7 +28,8 @@ type ProjectHandlers = {
   create: (request: CreateProjectRequest) => Promise<Project>
   update: (request: UpdateProjectRequest) => Promise<Project>
   updateArchive: (request: UpdateProjectArchiveRequest) => Promise<Project>
-  delete: (id: string) => Promise<void>
+  // Resolves with what the deletion removed from disk, so the confirmation surface can report it.
+  delete: (id: string) => Promise<ProjectDeletionOutcome>
 }
 
 // Production repositories backed by the SQLite database under the (dev-aware) storage root. The client is
@@ -81,7 +83,7 @@ const createProjectHandlers = (
   },
   delete: async (id) => {
     await deletionCoordinator.recoverPendingDeletions()
-    await deletionCoordinator.deleteProject(id)
+    return deletionCoordinator.deleteProject(id)
   }
 })
 
@@ -110,8 +112,9 @@ const registerProjectIpcHandlers = (
     return project
   })
   ipcMainHandle('projects:delete', async (_event, request: DeleteProjectRequest) => {
-    await handlers.delete(request.id)
+    const outcome = await handlers.delete(request.id)
     broadcastLifecycleEvent(LIFECYCLE_CHANNELS.projectDeleted, { projectId: request.id })
+    return outcome
   })
 
   ipcMainHandle(

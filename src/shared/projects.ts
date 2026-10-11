@@ -37,3 +37,21 @@ export type UpdateProjectArchiveRequest = {
   // Project after another window has already changed it.
   expectedArchivedAt: number | null
 }
+
+// What a finished Project deletion actually removed from this machine. Every figure is measured on the
+// filesystem BEFORE the removal — afterwards it could only be remembered rather than read — so the surface
+// can show a number the deletion itself produced instead of an estimate. This is the readable half of
+// "deletion has to mean deletion": the bytes are gone AND the user can see how many.
+export type ProjectDeletionOutcome = {
+  /** Sum of the parts below: everything this deletion removed from project-scoped storage. */
+  freedBytes: number
+  /** Run data (the project's notebook session directories). */
+  runDataBytes: number
+  /** Project-scoped artifact and provenance files. */
+  artifactBytes: number
+  /** Uploaded file versions the project owned. */
+  uploadBytes: number
+  // What happened to the run data. 'not-attempted' means this call never measured it (no run-data cleaner
+  // wired, or the Project row was already gone) — never read it as "there was none".
+  runData: 'removed' | 'absent' | 'refused' | 'not-attempted'
+}

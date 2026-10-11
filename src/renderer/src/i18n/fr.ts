@@ -3688,8 +3688,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Seuls les liens HTTP(S) peuvent être prévisualisés dans l’application.',
   'ws.whatWillYouResearch': 'Que souhaitez-vous rechercher dans PureScience ?',
   'ws.yourUploads': 'Vos téléversements',
-  'home.deleteProjectHint':
-    'Les fichiers du dossier de travail du projet ne sont pas supprimés. Cette action ne peut pas être annulée.',
+  'home.deleteProjectHint': 'Les fichiers du dossier de travail du projet ne sont pas supprimés.',
   'onboarding.signInBrowserClaude':
     'Connectez-vous via votre navigateur pour associer votre abonnement Claude. Nous ouvrirons Claude dans votre navigateur pour autoriser la connexion, puis nous vous ramènerons ici.',
   'settings.activeRuntimeCannotUninstall':
@@ -4460,8 +4459,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Parcourt tes dossiers de contenu à la recherche de fichiers dont les octets sont déjà stockés sous un autre nom. Ces noms seront liés à la copie existante — aucun fichier n'est supprimé et aucun contenu ne change. Sur une grande bibliothèque, cela peut prendre un moment.",
   'settings.storageSweepReclaimed': '{size} récupérés sur {count} copies en double.',
   'settings.storageSweepNothing': 'Aucune copie en double trouvée — rien à récupérer.',
-  'settings.storageSweepPackageCache': 'Cache de paquets partagé : {size} libérés sur {count} copies redondantes ; {leftAlone} conservés (dernière copie de chaque fichier).',
+  'settings.storageSweepPackageCache':
+    'Cache de paquets partagé : {size} libérés sur {count} copies redondantes ; {leftAlone} conservés (dernière copie de chaque fichier).',
   'settings.storageSweepFailed':
     "Impossible de récupérer les copies en double. La raison figure dans le journal de l'application.",
-  'settings.storageSweepConfirmAction': 'Récupérer'
+  'settings.storageSweepConfirmAction': 'Récupérer',
+  'home.deleteProjectOneSession': 'La conversation enregistrée est également supprimée.',
+  'home.deleteProjectSessions': 'Les {count} conversations enregistrées sont également supprimées.',
+  'home.deleteProjectUnloadedSessions':
+    "Toutes les conversations enregistrées sont également supprimées, y compris celles qui n'ont pas pu être chargées lors de la récupération.",
+  'home.deleteProjectManagedData':
+    'Les artefacts et les fichiers importés conservés par PureScience seront également supprimés.',
+  'home.projectDeletedReleased':
+    '« {name} » a été supprimé. {size} de données stockées ont été retirées de cet ordinateur.',
+  'home.projectDeletedNothingStored':
+    "« {name} » a été supprimé. Aucune donnée stockée n'a été trouvée.",
+  'home.projectDeletedRunDataKept':
+    "« {name} » a été supprimé, mais certaines données d'exécution n'ont pas pu être retirées.",
+  'common.deleting': 'Suppression…',
+  'home.projectDeletedNotMeasured': '« {name} » a été supprimé.'
 }

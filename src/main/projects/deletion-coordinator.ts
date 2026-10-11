@@ -1,4 +1,4 @@
-import type { Project } from '../../shared/projects'
+import type { Project, ProjectDeletionOutcome } from '../../shared/projects'
 import type { ProjectSessionDeletionResult } from '../session-persistence/coordinator'
 import type { ProjectSessionDeletionState } from '../session-persistence/repository'
 import { withDataRootWrite } from '../storage/migration-state'
@@ -32,7 +32,11 @@ type ProjectReviewDeletion = {
 }
 
 type ProjectProvenanceDeletion = {
-  deleteProjectProvenance(projectId: string): Promise<void>
+  // Returns the bytes it measured before removing them (`ProjectDeletionOutcome`): the deletion reports what
+  // it freed rather than asserting that it freed something.
+  deleteProjectProvenance(
+    projectId: string
+  ): Promise<{ artifactBytes: number; uploadBytes: number; freedBytes: number }>
 }
 
 type ProjectNotebookDataDeletion = {
@@ -48,12 +52,26 @@ type ProjectPermissionGrantDeletion = {
   finalizeOwnerDeletion?(owner: { kind: 'project'; projectId: string }): Promise<void>
 }
 
+// A deletion that removed nothing this call: no bytes were measured, and nothing is claimed about the run
+// data (the Project row was already gone, so the recovery pass — not this call — owns any leftover bytes).
+const notAttemptedDeletionOutcome = (): ProjectDeletionOutcome => ({
+  freedBytes: 0,
+  runDataBytes: 0,
+  artifactBytes: 0,
+  uploadBytes: 0,
+  runData: 'not-attempted'
+})
+
 // Persists deletion intent so a crash cannot strand an absent project with active session data. The
 // same sticky recovery gate is shared by project CRUD, session persistence, and Files queries.
 class ProjectDeletionCoordinator {
   private operationQueue: Promise<void> = Promise.resolve()
   private recoveryPromise: Promise<void> | undefined
   private isRecoveryComplete = false
+  // Outcomes measured by the CURRENT recovery pass, keyed by project. A retained intent is replayed before
+  // this class looks for the row, so on a retry the recovery — not the online path — is what removed the
+  // bytes; without this the confirmation would report "nothing stored" for gigabytes it had just freed.
+  private readonly recoveryOutcomes = new Map<string, ProjectDeletionOutcome>()
 
   constructor(
     private readonly projects: ProjectDeletionRepository,
@@ -67,21 +85,31 @@ class ProjectDeletionCoordinator {
 
   // Enqueues before yielding so two callers in the same event-loop turn cannot publish competing
   // recovery promises. The queue tail swallows failures only to keep later recovery work runnable.
-  deleteProject(projectId: string): Promise<void> {
+  // Resolves with what this call removed from disk (`ProjectDeletionOutcome`), so the surface that asked for
+  // an irreversible action can show the user what it actually released.
+  deleteProject(projectId: string): Promise<ProjectDeletionOutcome> {
     const deletion = this.operationQueue.then(() =>
       withDataRootWrite(async () => {
         await this.recoverPendingDeletionsNow()
         this.isRecoveryComplete = false
         try {
-          await this.runDeletion(projectId)
+          const outcome = await this.runDeletion(projectId)
           this.isRecoveryComplete = true
+          // A replayed intent can be what completed this deletion; its measurement is the honest answer.
+          return outcome.runData === 'not-attempted'
+            ? (this.takeRecoveryOutcome(projectId) ?? outcome)
+            : outcome
         } catch (error) {
           this.isRecoveryComplete = false
           throw error
         }
       })
     )
-    this.operationQueue = deletion.catch(() => undefined)
+    // The queue tail must not carry the outcome (nor a rejection): later work only needs the ordering.
+    this.operationQueue = deletion.then(
+      () => undefined,
+      () => undefined
+    )
     return deletion
   }
 
@@ -97,6 +125,9 @@ class ProjectDeletionCoordinator {
   private async recoverPendingDeletionsNow(): Promise<void> {
     if (this.recoveryPromise) return this.recoveryPromise
     if (this.isRecoveryComplete) return
+
+    // Outcomes belong to one pass: a stale entry must never be read as this pass's measurement.
+    this.recoveryOutcomes.clear()
 
     const recovery = this.runPendingDeletionRecovery().then((retainedProjectIds) =>
       this.adoptLegacyProjectSessionTombstones(retainedProjectIds)
@@ -115,9 +146,9 @@ class ProjectDeletionCoordinator {
 
   // The intent is durable before session/index deletion starts. If that reversible phase fails, the
   // intent is removed because the project record is still authoritative and visible.
-  private async runDeletion(projectId: string): Promise<void> {
+  private async runDeletion(projectId: string): Promise<ProjectDeletionOutcome> {
     const project = await this.projects.get(projectId)
-    if (!project) return
+    if (!project) return notAttemptedDeletionOutcome()
 
     await this.projects.createDeletionIntent(projectId)
     try {
@@ -134,7 +165,7 @@ class ProjectDeletionCoordinator {
       throw error
     }
 
-    await this.finishDeletion(projectId)
+    return this.finishDeletion(projectId)
   }
 
   // Replays intents serially so crash recovery follows the same ordering as an online deletion.
@@ -208,7 +239,7 @@ class ProjectDeletionCoordinator {
   // The Project row is removed only after every fallible authority cleanup succeeds. Keeping both
   // the row and deletion intent through Permission Grant pruning lets the renderer contract report
   // the failure without publishing a false success; replaying this tail is idempotent.
-  private async finishDeletion(projectId: string): Promise<void> {
+  private async finishDeletion(projectId: string): Promise<ProjectDeletionOutcome> {
     // Prune is transactional and idempotent. Run it before the hard delete so a Registry/database
     // failure retains the visible Project plus its durable intent for an explicit or startup retry.
     await this.permissionGrants?.prune({ kind: 'project', projectId })
@@ -230,12 +261,13 @@ class ProjectDeletionCoordinator {
     // Session deletion retains provenance, but Project deletion is terminal. This tail is replayed
     // from the durable intent after a crash, so both SQLite rows and immutable bytes are eventually
     // removed even if the Project row is already gone.
-    await this.provenance?.deleteProjectProvenance(projectId)
+    const provenance = await this.provenance?.deleteProjectProvenance(projectId)
 
     // Same class of fact as provenance: bytes this project owned. Not swallowed — a failure retains the
-    // durable intent, and the existing retry that replays this tail covers it. The cleanup itself logs the
-    // bytes it freed (it owns the measurement), so a deletion that frees 1.1 GB says so.
-    await this.notebookData?.deleteProjectNotebookData(projectId)
+    // durable intent, and the existing retry that replays this tail covers it. Both cleanups own their own
+    // measurement (taken before they remove anything), and this call hands the sum back to the caller so the
+    // surface that asked for an irreversible action can say what it released.
+    const notebookData = await this.notebookData?.deleteProjectNotebookData(projectId)
 
     // The marked Session tombstone is the durable phase boundary. Remove it only after every Project
     // tail has completed, and keep the intent if physical cleanup fails so recovery retries it.
@@ -243,6 +275,29 @@ class ProjectDeletionCoordinator {
 
     // Keep the intent until all derived and tombstone cleanup has completed.
     await this.projects.deleteDeletionIntent(projectId)
+
+    const outcome: ProjectDeletionOutcome = {
+      freedBytes: (provenance?.freedBytes ?? 0) + (notebookData?.freedBytes ?? 0),
+      runDataBytes: notebookData?.freedBytes ?? 0,
+      artifactBytes: provenance?.artifactBytes ?? 0,
+      uploadBytes: provenance?.uploadBytes ?? 0,
+      runData: notebookData?.state ?? 'not-attempted'
+    }
+    this.recordRecoveryOutcome(projectId, outcome)
+    return outcome
+  }
+
+  // Records this pass's measurement for `projectId` and hands it over exactly once. Every path through
+  // `finishDeletion` records — the online delete consumes it immediately, and a caller whose own row was
+  // already gone (the recovery replays it first) reads the replay's figure instead of reporting zero.
+  private recordRecoveryOutcome(projectId: string, outcome: ProjectDeletionOutcome): void {
+    this.recoveryOutcomes.set(projectId, outcome)
+  }
+
+  private takeRecoveryOutcome(projectId: string): ProjectDeletionOutcome | undefined {
+    const outcome = this.recoveryOutcomes.get(projectId)
+    this.recoveryOutcomes.delete(projectId)
+    return outcome
   }
 }
 

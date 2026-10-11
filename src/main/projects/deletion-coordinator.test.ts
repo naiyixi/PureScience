@@ -35,7 +35,11 @@ describe('ProjectDeletionCoordinator', () => {
     const sessions = createSessions()
     const preview = { delete: vi.fn().mockResolvedValue(undefined) }
     const reviews = { deleteReviewsForProject: vi.fn().mockResolvedValue(undefined) }
-    const provenance = { deleteProjectProvenance: vi.fn().mockResolvedValue(undefined) }
+    const provenance = {
+      deleteProjectProvenance: vi
+        .fn()
+        .mockResolvedValue({ artifactBytes: 0, uploadBytes: 0, freedBytes: 0 })
+    }
     const permissionGrants = {
       prune: vi.fn().mockResolvedValue([]),
       finalizeOwnerDeletion: vi.fn().mockResolvedValue(undefined)
@@ -72,6 +76,109 @@ describe('ProjectDeletionCoordinator', () => {
     expect(vi.mocked(projects.delete).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(permissionGrants.finalizeOwnerDeletion).mock.invocationCallOrder[0]
     )
+  })
+
+  it('reports the bytes each cleanup measured, keeping the slices apart', async () => {
+    // The point of the outcome is that the deletion reports figures it measured rather than asserting that
+    // something was freed. Provenance (uploads + artifacts) and run data are separate owners with separate
+    // measurements, so a refusal in one of them must stay visible instead of being folded into a total.
+    const provenance = {
+      deleteProjectProvenance: vi
+        .fn()
+        .mockResolvedValue({ artifactBytes: 2048, uploadBytes: 1024, freedBytes: 3072 })
+    }
+    const notebookData = {
+      deleteProjectNotebookData: vi
+        .fn()
+        .mockResolvedValue({ freedBytes: 4096, state: 'removed' as const })
+    }
+    const coordinator = new ProjectDeletionCoordinator(
+      createProjects(),
+      createSessions(),
+      { delete: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      provenance,
+      undefined,
+      notebookData
+    )
+
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 7168,
+      runDataBytes: 4096,
+      artifactBytes: 2048,
+      uploadBytes: 1024,
+      runData: 'removed'
+    })
+  })
+
+  it('says a deletion measured nothing when the Project row was already gone', async () => {
+    // Recovery, not this call, owns whatever bytes are left behind once the row is absent — so the outcome
+    // must not read as "there was nothing stored".
+    const projects = createProjects()
+    projects.get = vi.fn().mockResolvedValue(null)
+    const coordinator = new ProjectDeletionCoordinator(projects, createSessions(), {
+      delete: vi.fn().mockResolvedValue(undefined)
+    })
+
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 0,
+      runDataBytes: 0,
+      artifactBytes: 0,
+      uploadBytes: 0,
+      runData: 'not-attempted'
+    })
+  })
+
+  it('reports what a retry freed even though the recovery pass removed it, not the retry', async () => {
+    // A failed attempt keeps the deletion intent; the retry replays that intent BEFORE it looks for the row.
+    // The retry therefore finds no Project — and must not answer "nothing was stored" for bytes the same
+    // call just removed.
+    let projectExists = true
+    let intentExists = false
+    const projects = createProjects()
+    projects.get = vi.fn(async () => (projectExists ? project : null))
+    projects.delete = vi.fn(async () => {
+      projectExists = false
+    })
+    projects.createDeletionIntent = vi.fn(async () => {
+      intentExists = true
+    })
+    projects.deleteDeletionIntent = vi.fn(async () => {
+      intentExists = false
+    })
+    projects.listDeletionIntents = vi.fn(async () => (intentExists ? ['project-1'] : []))
+    const permissionGrants = {
+      prune: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('permission registry unavailable'))
+        .mockResolvedValueOnce([])
+    }
+    const notebookData = {
+      deleteProjectNotebookData: vi
+        .fn()
+        .mockResolvedValue({ freedBytes: 4096, state: 'removed' as const })
+    }
+    const coordinator = new ProjectDeletionCoordinator(
+      projects,
+      createSessions(),
+      { delete: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      undefined,
+      permissionGrants,
+      notebookData
+    )
+
+    await expect(coordinator.deleteProject('project-1')).rejects.toThrow(
+      'permission registry unavailable'
+    )
+
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 4096,
+      runDataBytes: 4096,
+      artifactBytes: 0,
+      uploadBytes: 0,
+      runData: 'removed'
+    })
   })
 
   it('retains the Project and deletion intent when grant pruning fails, then resumes idempotently', async () => {
@@ -114,7 +221,13 @@ describe('ProjectDeletionCoordinator', () => {
     expect(projects.delete).not.toHaveBeenCalled()
     expect(sessions.completeProjectSessionDeletion).not.toHaveBeenCalled()
 
-    await expect(coordinator.deleteProject('project-1')).resolves.toBeUndefined()
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 0,
+      runDataBytes: 0,
+      artifactBytes: 0,
+      uploadBytes: 0,
+      runData: 'not-attempted'
+    })
 
     expect(permissionGrants.prune).toHaveBeenCalledTimes(2)
     expect(sessions.deleteProjectSessions).toHaveBeenCalledTimes(2)
@@ -140,7 +253,13 @@ describe('ProjectDeletionCoordinator', () => {
       permissionGrants
     )
 
-    await expect(coordinator.deleteProject('project-1')).resolves.toBeUndefined()
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 0,
+      runDataBytes: 0,
+      artifactBytes: 0,
+      uploadBytes: 0,
+      runData: 'not-attempted'
+    })
 
     expect(projects.delete).toHaveBeenCalledWith('project-1')
     expect(sessions.completeProjectSessionDeletion).toHaveBeenCalledWith('project-1')
@@ -222,6 +341,7 @@ describe('ProjectDeletionCoordinator', () => {
     const provenance = {
       deleteProjectProvenance: vi.fn(async () => {
         order.push('provenance-removed')
+        return { artifactBytes: 0, uploadBytes: 0, freedBytes: 0 }
       })
     }
     const coordinator = new ProjectDeletionCoordinator(
@@ -442,6 +562,7 @@ describe('ProjectDeletionCoordinator', () => {
       {
         deleteProjectProvenance: vi.fn(async () => {
           order.push('provenance')
+          return { artifactBytes: 0, uploadBytes: 0, freedBytes: 0 }
         })
       }
     )
