@@ -102,6 +102,22 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 > - **落地形状（建议）**：镜像表写成**纯数据模块**（host → 候选 + 每个候选的同一性证明方式），回退逻辑放在
 > **内容取数那一层**（不是每个 connector 各写一遍），返回结果里带上**实际来源标记**（`via: origin | mirror:<host>`），
 > 并且这个标记要**上屏 / 入证据** —— 否则用户拿到镜像来的数据却以为来自原始来源。
+
+> **进展（2026-10-11）—— 后半第一版已交付并双绿**：`d4de3915`（镜像表 + 回退包装 + 接进带 digest 的 `language-pack-fetch`）、
+> `3476e2bd`（`via` 随产物上行；真消费方=供应过程的**进度文案**：非 origin 时显示 `Downloaded <file> from <host>`）。
+> 判决：`d4de3915` 与 `3476e2bd` 的 `Windows Full Test` / `Nightly` 均 success。
+> **真机读数**：候选端点同一性（`docs/evidence/2026-10-11-mirror-candidate-identity-probe.md`）+
+> **回退那一跳**（`docs/evidence/2026-10-11-mirror-fallback-live-path.md`，`via=hf-mirror.com` / 落地 sha 与预期逐字符相同）。
+> 附带读数：`raw.githubusercontent.com` 的**超时是间歇性的**（同路径另一次 `via=origin` 且校验通过）⇒ 回退形态必须是
+> 「**先试原始端点、失败才换源**」，不是「检测到网络环境就换源」。
+>
+> **仍未做（具名，且已核过它到底要动什么）**：
+> 1. **`via` 进入持久溯源**：`FetchedBundle` 只有 `{ lockPath, pathBudget? }`、`provisioner` 无 logger ⇒
+>    这一步实际是**给 env 记录加一个来源字段**（schema 演化 + 迁移口径），属**独立单元**，不是顺手一笔；
+>    当前用户可见面只有进度文案（已上线并实测）。
+> 2. **单连接读池**（P0-10③ 的根因）未开工：需 WAL + 读池 + "运行时约束要求同一物理连接"的迁移口径，独立设计。
+> 3. **RCSB / NCBI 两族维持具名失败、不回退** —— 实测结论（`ftp.wwpdb.org` 本机 DNS 不解析；`ftp.ncbi` 与 `eutils` 服务不同内容），不是遗漏。
+> 4. `ftp.wwpdb.org` 这一行**不作回退**，但保留在证据档里：它对**别的网络**可能可用，问题是本机解析不了。
  |
 | **CI 判决（本批）** | ✅ **两条车道全绿** | `3d7ca25b`：`Windows Full Test = success`、`Nightly = success`。**两个中途红 SHA 具名留档**：`02bcebf4` / `0e839723`（Windows 红，成因是同一处跨平台缺陷：文件 fsync 落在只读句柄上 —— Windows 的 FlushFileBuffers 要求句柄可写），修后前进、未改历史 |
 | P0-3 启动串行慢探针 | 🟡 **埋点已交付；分步读数待真机** | 空档被夹死在**一个阶段之内**：`compose-runtime` @11:51:31.445 → `data root resolved` @11:51:57.083，**25.6 秒零归因**。假设 A（schema 校验）**实测否掉**（真库副本 `client_ms=1 / ensure_ms=25 / tables=40`）；假设 B（固定开销）被 137 次启动分布否掉（min/median/p90 = 0.6/12.5/61.5 s；同版本同根 **1.0 s 与 26.4 s 并存** ⇒ 机器侧主导）。**埋点已交付** `46d10584`：`createComposeStepRecorder`（慢步骤点名 ≥250 ms、失败带类别、窗口关闭一行汇总），接线到 `settings-service` / `read-stored-settings`（经系统密钥库解密，首要嫌疑）/ `hydrate-child-proxy-runtime` / `restore-notification-inbox` 四个 await；`Windows Full Test = success`。**下一步**：真机跑一次读"哪一步慢"（卡内存闸门：空闲物理页 ≈111 MB，配方见证据档第四节） |
