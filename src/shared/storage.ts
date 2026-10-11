@@ -40,6 +40,12 @@ export type DuplicateSweepResult = {
   /** Verified duplicates whose replacement failed (e.g. cross-device); left exactly as they were. */
   unlinked: number
   elapsedMs: number
+  // P0-10: the same on-demand action also reclaims the SHARED PACKAGE CACHE names whose bytes another
+  // link still holds (the cache only ever grew before this). Counts from what was actually removed; a
+  // last-link cache file is never touched, and its size is reported as left alone.
+  cacheFreedBytes?: number
+  cacheFreedFiles?: number
+  cacheLeftAloneBytes?: number
 }
 
 // A user-triggered maintenance call reports failure as data rather than as a bare rejection, so the

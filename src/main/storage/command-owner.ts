@@ -39,7 +39,7 @@ import {
   validateNewDataRoot,
   type ValidateResult
 } from './migration-service'
-import { availableBytes, computeStorageUsage } from './usage'
+import { availableBytes, computeStorageUsage, reclaimRedundantPackageCache } from './usage'
 import { createStorageUsageCache, type StorageUsageCache } from './usage-cache'
 import {
   sweepDuplicateContent as defaultSweepDuplicateContent,
@@ -213,12 +213,22 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     const run = (async (): Promise<DuplicateSweepOutcome> => {
       try {
         const swept: SweepResult = await sweep.run({ storageRoot: resolveDataRoot() })
-        const result: DuplicateSweepResult = { ...swept, elapsedMs: Date.now() - startedAt }
+        // P0-10: the same click also reclaims the shared package cache's provably redundant names. Safe by
+        // construction — only a file whose link count is > 1 is removed (another name still holds those
+        // bytes), re-checked at delete time; last-link files are left exactly as they were and reported.
+        const cache = await reclaimRedundantPackageCache(resolveDataRoot())
+        const result: DuplicateSweepResult = {
+          ...swept,
+          elapsedMs: Date.now() - startedAt,
+          cacheFreedBytes: cache.freedBytes,
+          cacheFreedFiles: cache.freedFiles,
+          cacheLeftAloneBytes: cache.leftAloneBytes
+        }
         // The cached reading predates the bytes we just reclaimed; dropping it makes the panel's next
         // read re-walk the root instead of serving numbers the user can see are stale. Only when bytes
         // actually moved: a walk that found nothing to do leaves the existing reading true, and
         // invalidating it would cost a multi-gigabyte re-walk for identical numbers.
-        if (result.bytes > 0) usageCache.clear()
+        if (result.bytes > 0 || cache.freedBytes > 0) usageCache.clear()
         logger.info('content duplicates reclaimed on request', {
           scanned: result.scanned,
           linked: result.linked,
@@ -226,7 +236,12 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
           alreadyShared: result.alreadyShared,
           unreadable: result.unreadable,
           unlinked: result.unlinked,
-          elapsedMs: result.elapsedMs
+          elapsedMs: result.elapsedMs,
+          cacheFreedBytes: cache.freedBytes,
+          cacheFreedFiles: cache.freedFiles,
+          cacheLeftAloneBytes: cache.leftAloneBytes,
+          cacheLeftAloneFiles: cache.leftAloneFiles,
+          cacheSkippedFiles: cache.skippedFiles
         })
         return { ok: true, ...result }
       } catch (err) {

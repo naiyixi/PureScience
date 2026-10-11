@@ -1,4 +1,4 @@
-import { lstat, readdir, stat, statfs } from 'node:fs/promises'
+import { lstat, readdir, stat, statfs, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { logicalEnvNameFromDirectory } from '../notebook/runtime-paths'
@@ -204,6 +204,72 @@ export const measurePackageCacheRedundancy = async (
     }
   }
   await walk(pkgsDir)
+  return result
+}
+
+// The reclaim action built on the reading above: removes the cache names whose bytes another link still
+// holds. The rule is deliberately one-sided — a file whose link count is 1 is NEVER touched, because that
+// name is the last one for its bytes and removing it would destroy data the reading does not claim to
+// understand. Link count is re-checked at delete time (not trusted from the earlier walk), and the freed
+// size is summed from the files actually removed, so "freed N" is a count of what happened, not an estimate.
+export type PackageCacheReclaim = {
+  freedBytes: number
+  freedFiles: number
+  /** Last-link files left exactly as they were: the sizes the action refused to touch. */
+  leftAloneBytes: number
+  leftAloneFiles: number
+  /** Files that could not be inspected/removed mid-walk; nothing is claimed about them. */
+  skippedFiles: number
+  elapsedMs: number
+}
+
+export const reclaimRedundantPackageCache = async (
+  dataRoot: string
+): Promise<PackageCacheReclaim> => {
+  const pkgsDir = join(dataRoot, 'runtime', 'pkgs')
+  const startedAt = Date.now()
+  const result: PackageCacheReclaim = {
+    freedBytes: 0,
+    freedFiles: 0,
+    leftAloneBytes: 0,
+    leftAloneFiles: 0,
+    skippedFiles: 0,
+    elapsedMs: 0
+  }
+
+  const walk = async (dir: string): Promise<void> => {
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await walk(path)
+        continue
+      }
+      if (!entry.isFile()) continue
+      try {
+        const before = await lstat(path)
+        if (before.nlink <= 1) {
+          result.leftAloneBytes += before.size
+          result.leftAloneFiles += 1
+          continue
+        }
+        await unlink(path)
+        result.freedBytes += before.size
+        result.freedFiles += 1
+      } catch {
+        result.skippedFiles += 1
+      }
+    }
+  }
+
+  await walk(pkgsDir)
+  result.elapsedMs = Date.now() - startedAt
   return result
 }
 

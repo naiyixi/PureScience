@@ -1,9 +1,9 @@
-import { link, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { measurePackageCacheRedundancy } from './usage'
+import { measurePackageCacheRedundancy, reclaimRedundantPackageCache } from './usage'
 
 let root: string
 
@@ -75,5 +75,32 @@ describe('package cache redundancy readout', () => {
       soleLinkFiles: 0,
       maxLinkCount: 0
     })
+  })
+})
+
+describe('package cache reclaim (built on the same reading)', () => {
+  it('removes only the names whose bytes another link still holds', async () => {
+    const cached = await writeSized('runtime/pkgs/pkg-a/lib.so', 2048)
+    const envDir = join(root, 'runtime', 'envs', 'mine')
+    await mkdir(envDir, { recursive: true })
+    await link(cached, join(envDir, 'lib.so'))
+    const sole = await writeSized('runtime/pkgs/pkg-b/only.bin', 1024)
+
+    const reclaim = await reclaimRedundantPackageCache(root)
+
+    expect(reclaim.freedBytes).toBe(2048)
+    expect(reclaim.freedFiles).toBe(1)
+    // The last-link file must still be there: this action never destroys the only name for bytes.
+    expect(reclaim.leftAloneBytes).toBe(1024)
+    expect(reclaim.leftAloneFiles).toBe(1)
+    expect(await readFile(sole)).toHaveLength(1024)
+    // And the environment's own copy survived: only the cache's second name was removed.
+    expect(await readFile(join(envDir, 'lib.so'))).toHaveLength(2048)
+  })
+
+  it('reports a measured zero on a cache that is already gone', async () => {
+    const reclaim = await reclaimRedundantPackageCache(root)
+
+    expect(reclaim).toMatchObject({ freedBytes: 0, freedFiles: 0, skippedFiles: 0 })
   })
 })
