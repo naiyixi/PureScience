@@ -26,7 +26,11 @@ const CATEGORY_KEYS: UsageCategoryKey[] = [
 // independent buckets pass their own fresh `seen`; the runtime breakdown shares ONE `seen` across
 // conda+envs so the shared inodes are attributed to conda (counted first) and not re-counted per env.
 // Missing dirs contribute 0; symlinks are skipped (not followed) to avoid cycles and double-counting.
-const dirSize = async (dir: string, seen: Set<string>, shared?: SharedBytes): Promise<number> => {
+export const dirSize = async (
+  dir: string,
+  seen: Set<string>,
+  shared?: SharedBytes
+): Promise<number> => {
   let entries
   try {
     entries = await readdir(dir, { withFileTypes: true })

@@ -60,7 +60,12 @@ export type ManageEnvironmentsRequest =
   | { action: 'remove'; name: string }
 
 // create/list/remove all return the full current env set so the caller/UI can refresh in one shot.
-export type ManageEnvironmentsResult = { environments: EnvironmentInfo[] }
+// `freedBytes` rides only on `remove`: the prefix's size measured BEFORE the deletion, so "removed 1.2 GB"
+// is a reading rather than a claim (the removal path previously reported only the refreshed list).
+export type ManageEnvironmentsResult = {
+  environments: EnvironmentInfo[]
+  freedBytes?: number
+}
 
 // Renderer-facing named-environment management (A7 follow-up, entry-layer audit P0-8). Deliberately
 // NARROWER than the agent's ManageEnvironmentsRequest: the window may list and remove a named env, but

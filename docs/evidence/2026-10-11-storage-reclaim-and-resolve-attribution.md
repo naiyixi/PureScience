@@ -103,6 +103,14 @@
 | 双 `tsc`（`typecheck:node` / `typecheck:web`，均 `--composite false`） | **exit 0 / exit 0**，两份日志各只含 npm 横幅（94 / 92 字节，零诊断） |
 | `bash scripts/pre-push-checks.sh` | **exit 0**（`[pre-push] 全部通过。`，五查逐条 ✓） |
 
+**Windows 车道抓到一处我漏跑的 pin**（`3f1fa7e1` 的 `Windows full test (8/8)`：`expected …396… to have a length of 396
+but got 397`；已就地修，`cd865873`）：本仓的**本地 Web 可调用面**在 `src/renderer/web/renderer-argument-shape-characterization.test.ts`
+里还另有一份自己的计数。我第一轮只跑了 `src/main` 与 `src/shared` 那几族 ⇒ 本机全绿、只有跑全量的车道才现形。
+已按「只改计数、不改判据」修（396→397 + 一行说明它与 runtime 环境通道同型），并把 `src/renderer/web` 与
+`src/main/web-service` 并入本单元的补跑集合（**227 passed | 1 skipped (228)** / **3056 passed | 3 skipped (3059)**）。
+同一 run 里那几条 `##[error] mac update feed …` **不是失败**：它们出自 `scripts/merge-mac-feed.test.ts` 自己的负向用例输出
+（该文件 `✓ 21 tests`），该作业唯一的失败断言就是上面这条。
+
 **契约 pin 的连锁**（加一个通道要改的五处，全部改动后为 85/85/57）：契约目录 `toHaveLength(85)`、
 `dispatcher.commandNames()` `toHaveLength(85)`、本地专有清单 `toHaveLength(57)`、应用命令组合器的
 `INTERNAL_COMMAND_COUNT 360→361` / `LOCAL_WEB_COMMAND_COUNT 358→359` / `REMOTE_REJECTED_COMMAND_COUNT 125→126`

@@ -2762,9 +2762,20 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（围栏判
 | 环 | 读数 |
 | --- | --- |
 | 定向单测（含 i18n 质量门） | **Test Files 22 passed (22)** / **Tests 447 passed (447)**，exit 0 |
+| 波及族补跑（`src/renderer/web` 这一族我第一轮漏了，见下） | **227 passed \| 1 skipped (228)** / **3056 passed \| 3 skipped (3059)**，exit 0 |
 | `eslint --no-cache .`（全仓，CI 同口径） | **exit 0**，**0 error / 122 warning**（基线 140 的差额来自 prettier 折行**既有**超长行，非本单元修掉） |
 | 双 `tsc --composite false` | **exit 0 / exit 0**（两份日志只含 npm 横幅，零诊断） |
-| `bash scripts/pre-push-checks.sh` | **exit 0**（五查逐条 ✓） |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（五查逐条 ✓），提交后复跑仍 exit 0 |
+
+**Windows 车道抓到一处我漏跑的 pin（`3f1fa7e1` 的 `Windows full test (8/8)` 判红，已就地修，`cd865873`）**：
+`src/renderer/web/renderer-argument-shape-characterization.test.ts` 报 `expected [ 'acp.cancel', …(396) ] to have a
+length of 396 but got 397`——本仓的**本地 Web 可调用面**还另有一份自己的计数（与 `src/shared` / `src/preload`
+那几份不同源），加一个渲染端可见命令会一起把它顶掉。我第一轮只跑了 `src/main` 与 `src/shared` 那几族
+（`src/main/host-application-commands.test.ts`、契约目录、面清单、preload），**漏了 `src/renderer/web`** ⇒
+本机与定向门禁全绿、只有在 Windows 车道上才现形。已按「只改计数、不改判据」修（396→397 + 一行说明它与
+runtime 环境通道同型：LOCAL、Web 面拒答但仍是可调用路径），并把 `src/renderer/web` 与 `src/main/web-service`
+并入本单元的补跑集合（227 文件 / 3056 用例）。**同一 run 里那几条 `##[error] mac update feed …` 不是失败**：
+它们出自 `scripts/merge-mac-feed.test.ts` 自己的负向用例输出，该文件 `✓ 21 tests`；该作业的唯一失败断言就是上面这条。
 
 契约 pin 连锁（加一个 LOCAL 通道）：契约目录 85、`dispatcher.commandNames()` 85、本地专有清单 **57**、
 组合器 `INTERNAL 360→361` / `LOCAL_WEB 358→359` / `REMOTE_REJECTED 125→126`，外加面清单与 preload 面各 +1。

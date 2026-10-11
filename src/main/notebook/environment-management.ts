@@ -1,3 +1,5 @@
+import { stat } from 'node:fs/promises'
+
 import type { NotebookKernelMetadata, NotebookLanguage } from '../../shared/notebook'
 import type {
   EnvironmentInfo,
@@ -10,6 +12,7 @@ import type {
 } from '../../shared/notebook-env'
 import type { NotebookEnvironmentOperations } from './environment-operations'
 import { ImportLockIncompleteError } from './provisioner'
+import { dirSize } from '../storage/usage'
 import { assertSafeEnvName, DEFAULT_PY_ENV, DEFAULT_R_ENV, envPrefix } from './runtime-paths'
 import type { NotebookRuntimeRepairOwner } from './runtime-repair'
 
@@ -87,7 +90,7 @@ class NotebookEnvironmentManagementOwner {
         })
       }
       case 'list':
-        return { environments: manager.listEnvironments() }
+        return { environments: await this.withSizes(manager.listEnvironments()) }
       case 'remove': {
         const name = assertSafeEnvName(request.name)
         if (isAppManagedEnvironment(name)) {
@@ -105,12 +108,44 @@ class NotebookEnvironmentManagementOwner {
         await this.options.ensureRecovered()
         this.options.assertPrefixRecoverable(envPrefix(this.options.runtimeRoot, name))
         return this.options.environmentOperations.runMutation(name, async () => {
+          // P0-10(b): measure the prefix BEFORE removing it. The removal path reported only a refreshed
+          // list, so a user who freed 1.2 GB was told nothing — and "N bytes recovered" cannot be
+          // reconstructed afterwards. Reuses the storage walker (inode-aware) instead of a second one.
+          const prefix = envPrefix(this.options.runtimeRoot, name)
+          const freedBytes = await dirSize(prefix, new Set()).catch(() => 0)
           const environments = manager.removeEnvironment(name)
           this.options.runtimeRepair.completeRemovedManagedEnvironment(name)
-          return { environments }
+          return { environments, freedBytes }
         })
       }
     }
+  }
+
+  // P0-10(b): `EnvironmentInfo.sizeBytes` has existed in the contract and been surfaced by the agent
+  // tool's result mapper, but nothing ever WROTE it — a read-side field with no producer, so both the
+  // agent and the window showed nothing. Filled here, on the readout path only, by reusing the storage
+  // walker (inode-aware) instead of a second one. A prefix that cannot be measured is left absent rather
+  // than reported as zero: "could not look" and "nothing there" must not read alike.
+  private async withSizes(environments: EnvironmentInfo[]): Promise<EnvironmentInfo[]> {
+    const measured = await Promise.all(
+      environments.map(async (environment) => {
+        const prefix = envPrefix(this.options.runtimeRoot, environment.name)
+        try {
+          // Existence first: the walker answers 0 for a directory that is not there, and 0-byte is a
+          // different fact from a prefix that could not be looked at. Only a prefix that exists is sized.
+          await stat(prefix)
+        } catch {
+          return environment
+        }
+        try {
+          const bytes = await dirSize(prefix, new Set())
+          return { ...environment, sizeBytes: bytes }
+        } catch {
+          return environment
+        }
+      })
+    )
+    return measured
   }
 
   // IC13: the Settings package dialog addresses an environment BY NAME. Only a NAMED environment the

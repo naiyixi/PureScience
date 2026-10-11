@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { NotebookKernelMetadata } from '../../shared/notebook'
@@ -276,8 +279,13 @@ describe('NotebookEnvironmentManagementOwner', () => {
       }
     })
 
-    await expect(owner.manage({ action: 'remove', name: 'analysis' })).resolves.toEqual({
-      environments: remaining
+    const removed = await owner.manage({ action: 'remove', name: 'analysis' })
+
+    expect(removed).toEqual({
+      environments: remaining,
+      // P0-10(b): the prefix in this fixture does not exist on disk, so the recovered size is a measured
+      // zero rather than an absent field — "nothing was there" and "we did not look" must not look alike.
+      freedBytes: 0
     })
 
     expect(order).toEqual([
@@ -302,6 +310,37 @@ describe('NotebookEnvironmentManagementOwner', () => {
     )
 
     expect(options.runtimeRepair.completeRemovedManagedEnvironment).not.toHaveBeenCalled()
+  })
+
+  it('reports the bytes actually recovered by a removal (P0-10b)', async () => {
+    const runtimeRoot = await mkdtemp(join(tmpdir(), 'env-remove-'))
+    try {
+      const prefix = envPrefix(runtimeRoot, 'analysis')
+      await mkdir(join(prefix, 'lib'), { recursive: true })
+      await writeFile(join(prefix, 'lib', 'big.so'), Buffer.alloc(4096, 3))
+      await writeFile(join(prefix, 'env-ready'), 'ok')
+
+      const configured = manager()
+      vi.mocked(configured.removeEnvironment).mockImplementation(() => [])
+      const { owner } = harness({
+        manager: configured,
+        runtimeRoot,
+        sessions: () => [session([['python:analysis', 'terminated']])],
+        ensureRecovered: vi.fn(async () => undefined),
+        assertPrefixRecoverable: vi.fn(() => undefined),
+        environmentOperations: {
+          runMutation: vi.fn(async (_environment, operation) => operation())
+        },
+        runtimeRepair: { completeRemovedManagedEnvironment: vi.fn() }
+      })
+
+      const result = await owner.manage({ action: 'remove', name: 'analysis' })
+
+      // 4096 + 2 bytes of "ok": measured from the prefix itself, not guessed.
+      expect(result.freedBytes).toBe(4098)
+    } finally {
+      await rm(runtimeRoot, { recursive: true, force: true })
+    }
   })
 
   describe('importLock (A7)', () => {

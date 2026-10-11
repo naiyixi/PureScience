@@ -818,10 +818,14 @@ const compactManageEnvironmentsResult = (raw: unknown, input: unknown = {}): unk
     const item = asRecord(environment)
     return item ? [pickDefined(item, ['name', 'language', 'ready', 'isDefault', 'sizeBytes'])] : []
   })
+  // `freedBytes` is carried through when the removal path measured one: a field the producer fills but
+  // the result mapper drops is the same defect as a field nothing writes (P0-10b).
+  const freedBytes = typeof record.freedBytes === 'number' ? record.freedBytes : undefined
   return {
     environmentCount: source.length,
     offset,
     environments,
+    ...(freedBytes === undefined ? {} : { freedBytes }),
     ...(offset + pageSource.length < source.length
       ? { nextOffset: offset + pageSource.length }
       : {})
