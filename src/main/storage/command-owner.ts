@@ -248,7 +248,10 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
           cacheFreedFiles: cache.freedFiles,
           cacheLeftAloneBytes: cache.leftAloneBytes,
           cacheLeftAloneFiles: cache.leftAloneFiles,
-          cacheSkippedFiles: cache.skippedFiles
+          cacheSkippedFiles: cache.skippedFiles,
+          // How long the cache pass took, in the one place that reports it: a reclaim that frees 2.7 GB has
+          // to be answerable for its cost, and this field otherwise had no reader at all.
+          cacheElapsedMs: cache.elapsedMs
         })
         return { ok: true, ...result }
       } catch (err) {

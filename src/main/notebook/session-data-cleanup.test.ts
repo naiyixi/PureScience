@@ -40,10 +40,18 @@ describe('deleting a project really releases its notebook data', () => {
     })
   })
 
-  it('names "absent" instead of claiming zero bytes freed', async () => {
-    const result = await deleteProjectNotebookData({ dataRoot: root }, 'cmnosuchproject00000000000')
+  it('names "absent" instead of claiming zero bytes freed, and says so in the log', async () => {
+    const log = { info: vi.fn() }
+    const result = await deleteProjectNotebookData(
+      { dataRoot: root, log },
+      'cmnosuchproject00000000000'
+    )
 
     expect(result).toEqual({ freedBytes: 0, state: 'absent' })
+    // The log line is what keeps "nothing was there" distinguishable from "the removal did not happen".
+    expect(log.info).toHaveBeenCalledWith('project notebook data absent', {
+      projectId: 'cmnosuchproject00000000000'
+    })
   })
 
   it('refuses an id that could escape the notebooks directory, and touches nothing', async () => {

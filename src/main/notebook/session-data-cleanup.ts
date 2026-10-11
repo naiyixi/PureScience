@@ -47,8 +47,14 @@ export const deleteProjectNotebookData = async (
   const root = join(options.dataRoot, 'notebooks', projectId)
   try {
     const info = await stat(root)
-    if (!info.isDirectory()) return { freedBytes: 0, state: 'absent' }
+    if (!info.isDirectory()) {
+      // Named, not silent: "this project had no notebook data" and "the removal quietly did not happen"
+      // must not look the same in a log — the second one is the failure this whole path exists to avoid.
+      options.log?.info('project notebook data absent', { projectId })
+      return { freedBytes: 0, state: 'absent' }
+    }
   } catch {
+    options.log?.info('project notebook data absent', { projectId })
     return { freedBytes: 0, state: 'absent' }
   }
 

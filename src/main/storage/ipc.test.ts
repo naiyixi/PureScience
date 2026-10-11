@@ -300,7 +300,15 @@ describe('storage IPC handlers', () => {
     // What it did is in the log, so a success the user does not see is still attributable.
     expect(logger.info).toHaveBeenCalledWith(
       'content duplicates reclaimed on request',
-      expect.objectContaining({ bytes: 2048, linked: 2 })
+      expect.objectContaining({
+        bytes: 2048,
+        linked: 2,
+        // The cache pass reports what it freed and what it left alone, and how long it took — the same
+        // reading the panel shows, so a log reader and a user see the same facts.
+        cacheFreedBytes: expect.any(Number),
+        cacheLeftAloneBytes: expect.any(Number),
+        cacheElapsedMs: expect.any(Number)
+      })
     )
   })
 
