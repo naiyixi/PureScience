@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
-import { ACTIVITY_GROUP_MCP_SERVER_NAME } from '../../../shared/activity-groups'
-import { FIGURE_MCP_SERVER_NAME } from '../../../shared/figure'
-import { MEMORY_MCP_SERVER_NAME } from '../../../shared/memory-mcp'
-import { SKILL_IMPORT_MCP_SERVER_NAME } from '../../../shared/skill-import'
-import { ARTIFACT_MCP_SERVER_NAME } from '../../artifacts/mcp-server'
-import { NOTEBOOK_MCP_SERVER_NAME } from '../../notebook/mcp-server'
-import { PLAN_MCP_SERVER_NAME } from '../../session-plan/plan-mcp-server'
+import {
+  ACTIVITY_GROUP_MCP_SERVER_NAME,
+  BEGIN_ACTIVITY_GROUP_TOOL_NAME,
+  getActivityGroupTitleFromToolEvent,
+  isActivityGroupToolEvent
+} from '../../shared/activity-groups'
+import { FIGURE_MCP_SERVER_NAME } from '../../shared/figure'
+import { MEMORY_MCP_SERVER_NAME } from '../../shared/memory-mcp'
+import { SKILL_IMPORT_MCP_SERVER_NAME } from '../../shared/skill-import'
+import { ARTIFACT_MCP_SERVER_NAME } from '../artifacts/mcp-server'
+import { NOTEBOOK_MCP_SERVER_NAME } from '../notebook/mcp-server'
+import { PLAN_MCP_SERVER_NAME } from '../session-plan/plan-mcp-server'
 import { PRE_REGISTERED_PERMISSION_IDENTITIES } from '../permission-grants/identity-catalog'
 import { SESSION_PLAN_SYSTEM_PROMPT_APPEND } from '../session-plan/guidance'
 import {
@@ -139,7 +144,7 @@ describe('resolveCanonicalMcpToolIdentity', () => {
 
   // A hyphen in a server name is rendered as one underscore by one framework and as two by another, so
   // the agent was handed two different callable names for the same tool and guessed wrong: the real log
-  // shows 18 failed calls whose only difference from a real tool was the separator.
+  // has failed calls whose only difference from a real tool was the separator.
   it('keeps every app-owned MCP server name separator-free', () => {
     const declared = appMcpToolIdentities().map((identity) =>
       identity.slice(0, identity.indexOf('/'))
@@ -180,5 +185,32 @@ describe('resolveCanonicalMcpToolIdentity', () => {
 
   it('keeps answering to the hyphen spelling of a server it does not declare here', () => {
     expect(appMcpServerAliases(FIGURE_MCP_SERVER_NAME)).toContain('purescience-figure')
+  })
+
+  // The activity-group matcher lives in shared/ and carries its own copy of the old spelling, because
+  // shared code cannot import this module. These assertions are what keep that copy a reflection of the
+  // alias list instead of a second guess: the legacy name is taken from here, and the matcher has to
+  // accept it — a rename that silently dropped the old spelling would stop recognising activity the
+  // user already has.
+  it('still recognises an activity group call made under the pre-rename server spelling', () => {
+    const legacyServer = appMcpServerAliases(ACTIVITY_GROUP_MCP_SERVER_NAME).find((alias) =>
+      alias.includes('-')
+    )
+    expect(legacyServer).toBeDefined()
+
+    expect(
+      isActivityGroupToolEvent({
+        providerToolName: `mcp__${legacyServer}__${BEGIN_ACTIVITY_GROUP_TOOL_NAME}`
+      })
+    ).toBe(true)
+    expect(
+      getActivityGroupTitleFromToolEvent({
+        rawInput: {
+          server: legacyServer,
+          tool: BEGIN_ACTIVITY_GROUP_TOOL_NAME,
+          arguments: { title: 'Recorded before the rename' }
+        }
+      })
+    ).toBe('Recorded before the rename')
   })
 })
