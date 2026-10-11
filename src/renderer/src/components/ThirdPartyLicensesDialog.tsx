@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Dialog } from 'radix-ui'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -34,9 +34,17 @@ const ThirdPartyLicensesDialog = ({
   const [entries, setEntries] = useState<ThirdPartyLicenseEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // One request per opening. The effect used to depend on `entries.length` and `loading`, so an EMPTY
+  // result could never satisfy its own guard: setEntries([]) + setLoading(false) re-triggered the
+  // effect and asked again — a loop that hammered the main process (real log: 371 collection runs in
+  // 0.228 s from a single open dialog, `main*.log` 2026-09-18, each one logging a failed read). The
+  // ref keeps the request count independent of the answer, and is cleared on failure so reopening the
+  // dialog retries instead of showing the error forever.
+  const requestedRef = useRef(false)
 
   useEffect(() => {
-    if (!open || entries.length > 0 || loading) return
+    if (!open || requestedRef.current) return
+    requestedRef.current = true
     void (async () => {
       setLoading(true)
       try {
@@ -44,12 +52,13 @@ const ThirdPartyLicensesDialog = ({
         setEntries(result)
         setError(null)
       } catch {
+        requestedRef.current = false
         setError(t('settings.thirdPartyLicensesFailed'))
       } finally {
         setLoading(false)
       }
     })()
-  }, [open, entries.length, loading, t])
+  }, [open, t])
 
   // Closing this dialog used to drop focus on <body>: there is no Dialog.Trigger, and the page
   // unmounts the layer instead of closing it. The hook captures the opener on open and hands focus
