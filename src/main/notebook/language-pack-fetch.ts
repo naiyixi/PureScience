@@ -45,7 +45,9 @@ export type LanguagePackFetchDeps = {
     destPath: string,
     onProgress?: (p: DownloadProgress) => void,
     expected?: { sha256?: string; size?: number }
-  ) => Promise<void>
+    // May return where the bytes came from ('origin' or a mirror host). Fakes that return nothing are
+    // treated as origin, which is what a test double stands for.
+  ) => Promise<string | void>
   // sha256 hex of a file; injectable for tests, defaults to the streaming sha256File.
   sha256?: (path: string) => Promise<string>
 }
@@ -83,7 +85,7 @@ const downloadFile = async (
   onProgress: (p: DownloadProgress) => void = () => undefined,
   external?: AbortSignal,
   expected?: { sha256?: string; size?: number }
-): Promise<void> => {
+): Promise<string> => {
   // P0-8: the same call, now with the measured mirror table as a second hop. The digest above is what makes
   // this safe — a mirror serving different bytes fails the same checksum an origin would, so a fallback can
   // never turn a loud failure into quiet wrong data. Without a digest the helper does not fall back at all.
@@ -95,10 +97,10 @@ const downloadFile = async (
     onProgress,
     deps: { fetchImpl: netFetchStandard }
   })
-  // `via` names where the bytes actually came from ('origin' or the mirror host). Surfacing it in the pack's
-  // result/provenance is the remaining half of this unit: this module has no logger of its own, so the value
-  // is deliberately not swallowed into a log line here — it must travel with the artifact instead.
-  void via
+  // `via` names where the bytes actually came from ('origin' or the mirror host). It travels up with the
+  // fetch result so a mirrored pack can never read as an origin one — a silent fallback would make the two
+  // indistinguishable, which is exactly what this whole mechanism must not do.
+  return via
 }
 
 // The result of a successful pack fetch: the resolved id/entry and where the verified file landed.
@@ -107,6 +109,8 @@ export type FetchedLanguagePack = {
   entry: PackEntry
   filePath: string
   manifest: BundleManifest
+  /** Where the bytes came from: 'origin', or the mirror host that served them. Always present. */
+  via: string
 }
 
 // Fetches + verifies the single pack for (language, version). Throws (fail-closed) when the manifest
@@ -144,14 +148,14 @@ export const fetchLanguagePack = async (
     )
   }
   const filePath = join(destDir, canonicalFile)
-  await deps.download(
+  const via = (await deps.download(
     packUrl(cdnBase, version, subdir, entry.file),
     filePath,
     // Fill in the manifest's pack size when the response omits Content-Length, so the UI still shows
     // a meaningful total/percent instead of an unknown-size bar.
     (p) => onDownloadProgress(p.total != null ? p : { ...p, total: entry.size }),
     { sha256: entry.sha256, size: entry.size }
-  )
+  )) as string | undefined
   // Defense-in-depth: an independent post-download size+sha256 verification, separate from the inline
   // check the resilient core already performed while streaming. See verifyPackChecksum — this is a
   // required second integrity gate for a large executed artifact, not redundant work.
@@ -160,7 +164,7 @@ export const fetchLanguagePack = async (
     { sha256: entry.sha256, size: entry.size },
     { sha256: deps.sha256 }
   )
-  return { id: packId(language, packVersion), entry, filePath, manifest }
+  return { id: packId(language, packVersion), entry, filePath, manifest, via: via ?? 'origin' }
 }
 
 export type FetchBundleAdapterDeps = Partial<LanguagePackFetchDeps> & {
@@ -271,7 +275,12 @@ export const createFetchBundleAdapter = (
       )
       onProgress({
         phase: `fetch-${spec.language}`,
-        message: `Downloaded ${fetched.entry.file}`,
+        // A mirrored download says so where the user already reads the progress line — the source is part of
+        // the fact, not an implementation detail. Origin downloads keep the message they always had.
+        message:
+          fetched.via === 'origin'
+            ? `Downloaded ${fetched.entry.file}`
+            : `Downloaded ${fetched.entry.file} from ${fetched.via}`,
         progress: 0.35
       })
 
