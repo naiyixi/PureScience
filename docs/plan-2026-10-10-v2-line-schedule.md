@@ -83,7 +83,23 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 | **P0-2** 1,481 次异常只有分类 | ✅ **已交付** | `6c24323d`：脱敏消息 + 首个调用帧 + 稳定签名 + 次数，60 s 窗口折叠连发、指数退避（上限 8 分钟）、退出 flush |
 | **P0-4** 慢保存归因 | ✅ **已交付（执行器）** | `a2209532`：`sessions:save-session` 慢调用点名到阶段（4,282 次 / max 50.0 s）—— 归因那一半 |
 | **P0-5** 计划状态机拒绝不可行动 | ✅ **已交付** | `a523583c`：两条拒绝点名**缺哪一步/哪个阶段**与**当前状态允许设置的状态集合**；blocked 保持契约终态（放宽属契约变更，已具名说明不顺手改） |
-| **P0-8** 出网目标失败 86 次 | 🚧 **前半已交付（执行器 `60333ac9`）；后半未做** | `60333ac9`：单一来源的失败族词表（`src/main/net/egress-failure.ts`）+ 代理对目标失败**先作答 502 具名原因再断开**（此前隧道裸 destroy、HTTP 路径把错误整个丢掉且回 403）+ 连接器边界把族带进 agent 看到的错误。真读数 `docs/evidence/2026-10-11-egress-failure-families.md`（回放九天真机日志 **203 条 → 199 条具名 / 0 条无名**，4 条是原日志的空串）。**未做**：科研来源**镜像回退**（需逐来源决定镜像与校验，属独立单元）⇒ **v2.0.0 的 CHANGELOG「明确没做」段必须写明这半未做** |
+| **P0-8** 出网目标失败 86 次 | 🚧 **前半已交付（执行器 `60333ac9`）；后半未做** | `60333ac9`：单一来源的失败族词表（`src/main/net/egress-failure.ts`）+ 代理对目标失败**先作答 502 具名原因再断开**（此前隧道裸 destroy、HTTP 路径把错误整个丢掉且回 403）+ 连接器边界把族带进 agent 看到的错误。真读数 `docs/evidence/2026-10-11-egress-failure-families.md`（回放九天真机日志 **203 条 → 199 条具名 / 0 条无名**，4 条是原日志的空串）。**未做**：科研来源**镜像回退**（需逐来源决定镜像与校验，属独立单元）⇒ **v2.0.0 的 CHANGELOG「明确没做」段必须写明这半未做**
+> **后半开工前的勘察（2026-10-11）—— 结构事实与来源清单已具名**：
+> - **既有能力（已核）**：`src/main/net/resilient-download.ts` 已有重试 / 校验和 / 停滞检测，被 update 下载、
+> notebook provisioner、language-pack 三处消费，**但它没有「镜像」这个概念**；连接器各自经自己的 `ctx` 取数，
+> **全树没有任何连接器带镜像回退**（grep 到的 `mirror` 全是散文）。⇒ 这是**新机制**，不是把既有开关打开。
+> - **来源清单按「能否证明换源后内容相同」分三类**（这决定策略，不是喜好）：
+>   1. **同一组织的第二条官方端点**（可放心回退）：`files.rcsb.org` ↔ `ftp.wwpdb.org`（同属 wwPDB 体系）、
+> `ftp.ncbi.nlm.nih.gov` ↔ `eutils.ncbi.nlm.nih.gov`（NCBI 自己的两条路）。日志里正是这两族在失败（各 11 / 1 次）。
+>   2. **第三方镜像 / CDN**（可用，但**必须按校验和证明同一性**）：`huggingface.co` ↔ `hf-mirror.com`（文件级 sha256 可得）、
+> `raw.githubusercontent.com` ↔ jsDelivr（内容可能被缓存或改写 ⇒ 要么有仓内已知哈希、要么改从 API 取）。
+>   3. **不该有镜像**：`api.anthropic.com` / `api.deepseek.com`（认证与计费端点，换源等于把凭据发给第三方，**永不回退**）。
+> - **硬判据（建议写进设计）**：换源**必须同时给出「内容同一性」的证据**（校验和，或同组织的第二条官方端点）；
+> 给不出就宁可按**具名失败**报错 —— 对科研工具而言，「静默换了源、拿到的东西不确定」**比失败更糟**。
+> - **落地形状（建议）**：镜像表写成**纯数据模块**（host → 候选 + 每个候选的同一性证明方式），回退逻辑放在
+> **内容取数那一层**（不是每个 connector 各写一遍），返回结果里带上**实际来源标记**（`via: origin | mirror:<host>`），
+> 并且这个标记要**上屏 / 入证据** —— 否则用户拿到镜像来的数据却以为来自原始来源。
+ |
 | **CI 判决（本批）** | ✅ **两条车道全绿** | `3d7ca25b`：`Windows Full Test = success`、`Nightly = success`。**两个中途红 SHA 具名留档**：`02bcebf4` / `0e839723`（Windows 红，成因是同一处跨平台缺陷：文件 fsync 落在只读句柄上 —— Windows 的 FlushFileBuffers 要求句柄可写），修后前进、未改历史 |
 | P0-3 启动串行慢探针 | 🟡 **埋点已交付；分步读数待真机** | 空档被夹死在**一个阶段之内**：`compose-runtime` @11:51:31.445 → `data root resolved` @11:51:57.083，**25.6 秒零归因**。假设 A（schema 校验）**实测否掉**（真库副本 `client_ms=1 / ensure_ms=25 / tables=40`）；假设 B（固定开销）被 137 次启动分布否掉（min/median/p90 = 0.6/12.5/61.5 s；同版本同根 **1.0 s 与 26.4 s 并存** ⇒ 机器侧主导）。**埋点已交付** `46d10584`：`createComposeStepRecorder`（慢步骤点名 ≥250 ms、失败带类别、窗口关闭一行汇总），接线到 `settings-service` / `read-stored-settings`（经系统密钥库解密，首要嫌疑）/ `hydrate-child-proxy-runtime` / `restore-notification-inbox` 四个 await；`Windows Full Test = success`。**下一步**：真机跑一次读"哪一步慢"（卡内存闸门：空闲物理页 ≈111 MB，配方见证据档第四节） |
 | P0-6 范围拒绝误伤 | ✅ **两半都已交付（前半 `ab0a017b`、后半 `63ebc76b`）** | 对源纠正了修法口径：**数据根一直在 roots 里**（`agent-runtime-manager.ts:727` 传 `{roots:[dataRoot, storageRoot]}`，本机实际 roots 文件就是那一个目录），真机那条"根被拒"的原文是 `"target":"/Users/totota/.purescience;"`，即**分词器把 `;` 留在 token 里**（根 + 一个字符），所以「加白名单」是对着症状修、机制修法在分词。真机读数 `docs/evidence/2026-10-11-path-guard-false-refusals.md`：用户自己的围栏决策日志 **662 行 / 36 条拒绝**（正则或通配 6、权重缓存 6、标点粘连 2、agent 临时件 2、工具链 1、根或家目录 16、其它 3）；同一批真 payload 的 before/after 对照（before = 机器上正在跑的那份产物，after = 应用自己的 writer 新写出的那份）三类误伤转 allow，五条负向对照（凭据 / 整盘搜索 / 他人家目录通配 / 兄弟缓存 / 临时目录）逐条仍 deny；`/` 未被放宽。**未做（已立案）**：P0-6 后半 = **工具注册名两侧一致** —— 真机 `No such tool available` 累计 25 次且**两种拼写都有人猜错**（`mcp__purescience-plan__generate_plan` 是真存在的工具，那次失败是入参 JSON 解析失败；下划线的 `mcp__purescience_plan__update_step_status` 报不存在；反向也有 `mcp__purescience-notebook__…` 报不存在），根因是**同一个应用里两套命名约定并存**（notebook 下划线，plan/figure/artifacts/activity/skills 连字符）；**✅ 后半已交付（执行器 `63ebc76b`，2026-10-11）**：工具注册名两侧一致 —— `activity`/`artifacts`/`skills`/`plan`/`memory` 五个服务的 `canonicalName` 去连字符（notebook 此前已由 `f41f176e` 改）、旧拼写进 `legacyNames`、**未在此声明的服务（figure、用户自建）也继续应答旧拼写**；身份目录 / 权限策略（含 Codex 叶子别名）/ agent 文案 / 渲染层身份与活动识别 / e2e 夹具连锁 **42 文件**，另加 **4 条回归守卫**（所有声明名无连字符 · 注册常量等于声明值 · 旧拼写解析到同一身份 · 未声明服务保旧拼写）。**真机读数就地更正**：三份 `main*.log` **全量**是 **31 条**（不是本行原记的 25 条——那是当时一个窗口的数），逐条分类为 **12 条「猜测名 = 应用今天渲染的名字」**（`purescience_plan` 8 · `purescience_figure` 4，最近一条 2026-10-10T13:46Z）**⇒ 本改动直接修**；6 条「模型自己猜连字符」（notebook，其注册名在 `f41f176e` 之后早已无连字符）**本改动不修、已立案待新窗口复测**；5 条模型编造叶子名；8 条非本应用服务。取数脚本已入库可复跑 `scripts/audit-mcp-tool-name-failures.mjs`，读数与边界见 `docs/evidence/2026-10-11-app-mcp-server-name-consistency.md`。 |
