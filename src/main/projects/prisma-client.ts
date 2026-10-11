@@ -13,6 +13,8 @@ const PROJECT_DB_FILE = 'purescience.db'
 // before entering its rebuild transaction, so this client must keep both operations on one physical
 // connection. A single writer also avoids unnecessary SQLITE_BUSY contention for the local Project DB.
 const PROJECT_DB_CONNECTION_LIMIT = 1
+// A brief lock (a checkpoint, another process closing) should wait rather than fail the query outright.
+const PROJECT_DB_BUSY_TIMEOUT_MS = 5000
 
 // Exact DDL Prisma generates for the Project model (verified via `prisma migrate diff`). Applying it as
 // CREATE TABLE IF NOT EXISTS lets a packaged app create its schema without shipping the migrate engine,
@@ -971,6 +973,16 @@ const addColumnIfMissing = async (
 
 // Creates the schema if missing. Idempotent; no projects are seeded, so a fresh install starts empty.
 const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
+  // P0-10③ first step. `journal_mode` is a FILE-level property (unlike `foreign_keys`, which is
+  // connection-scoped), so setting it here covers every later connection to this database. WAL stops a
+  // writer's journal lock from blocking readers — which is exactly the shape of the slow `SELECT 1` canary
+  // (median 47 ms, p90 346 ms with an idle event loop) — and `busy_timeout` keeps a brief lock from failing a
+  // query outright. Both go through `$queryRawUnsafe`: PRAGMA statements return a row, which `$executeRaw`
+  // rejects. The single-connection limit is NOT relaxed here: the runtime constraint migration still needs
+  // its `foreign_keys = OFF` and its rebuild transaction on one physical connection.
+  // Design and acceptance readings: docs/evidence/2026-10-11-single-connection-read-pool-design.md
+  await client.$queryRawUnsafe('PRAGMA journal_mode = WAL')
+  await client.$queryRawUnsafe(`PRAGMA busy_timeout = ${PROJECT_DB_BUSY_TIMEOUT_MS}`)
   await client.$executeRawUnsafe(PROJECT_TABLE_DDL)
   await addColumnIfMissing(client, 'Project', 'archivedAt', PROJECT_ADD_ARCHIVED_AT_DDL)
   await client.$executeRawUnsafe(PERMISSION_GRANT_TABLE_DDL)
