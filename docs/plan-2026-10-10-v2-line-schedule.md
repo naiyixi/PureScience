@@ -118,6 +118,23 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 > 2. **> **读池设计已产出（2026-10-11，`docs/evidence/2026-10-11-single-connection-read-pool-design.md`）**：在源码注释里核对到 limit=1 的**两条**理由（硬约束=运行时约束迁移要在同一物理连接上先关 `foreign_keys`；软理由=避免 SQLITE_BUSY），并据此把实施拆成**先小后大**两步 —— 
 > **第一步**（推荐先做）：在**现有那一条**连接上开 `journal_mode=WAL` + `busy_timeout`（WAL 是**文件级** PRAGMA，不需要读池就能上），代价是出现 `-wal`/`-shm` 伴随文件 ⇒ **删除协调器 / 存储用量走查 / 任何拷 .db 的写法都要核**（只拷 `.db` 会丢掉未 checkpoint 的内容）；
 > **第二步**（仅当第一步读数不足）：独立**只读**连接承载读查询，写与迁移仍留在 limit=1 那条；内存增量必须实测（本机 8 GB，这一项可能是否决项）。两步的验收都要求**真机改前/改后对照读数**，当前被内存闸门挡住。
+
+> **进展（2026-10-11）—— 第一步已落地，两处连带面已用可复跑用例钉住**：
+> `860f106d` 在现有那**一条**连接上开 `journal_mode=WAL` + `busy_timeout=5000`（`ensureProjectSchema` 最前面，
+> 走 `$queryRawUnsafe`；`PROJECT_DB_CONNECTION_LIMIT` **保持 1**，迁移那条硬约束未动）。
+> `fe0a9b13` 把 WAL 引出的两处连带面各钉一条用例：① **存储面板数字不动**（`computeStorageUsage` 只走那五个类别目录，
+> 库文件与其伴随文件在数据根顶层 ⇒ 断言类别总量不受影响、且不会冒出以库文件名命名的类别）；
+> ② **关闭即 checkpoint**（`$disconnect()` 后 `purescience.db-wal` 消失 —— 若哪天不再成立，必须由退出路径 P0-1 显式处理）。
+> 新增的真 SQLite 套件已登记进 `vitest.config.ts` 的 `DATABASE_TEST_GLOBS`（`24d6e979`）。
+>
+> **教训（已入技能）**：`860f106d` 首推时**双车道同时红**，两个车道**只有同一条**失败 ——
+> `test/vitest-project-partition.test.ts > keeps real-SQLite suites out of the unbounded parallel pool`
+> （`expected [ Array(1) ] to deeply equal []`）。**新增用例一旦 import `createProjectDbClient`/`ensureProjectSchema` 就必须登记进分区**，
+> 并按该文件自己的要求**改配置、不改断言**。诊断法：两车道只有同一支分区守卫失败 ⇒ 直接去配置补登记，别从产品代码查起。
+>
+> **仍未做**：真机改前/改后对照读数（同一 `dbCanaryMs` 探针的 p50/p90/max）—— 卡内存闸门（空闲物理页 ≈111 MB），**未取就是未取**；
+> **只读连接（第二步）只有在真机读数证明 WAL 不足时才做**（多一个 PrismaClient 实例的内存增量在 8 GB 机器上可能是否决项）。
+
 单连接读池**（P0-10③ 的根因）未开工：需 WAL + 读池 + "运行时约束要求同一物理连接"的迁移口径，独立设计。
 > 3. **RCSB / NCBI 两族维持具名失败、不回退** —— 实测结论（`ftp.wwpdb.org` 本机 DNS 不解析；`ftp.ncbi` 与 `eutils` 服务不同内容），不是遗漏。
 > 4. `ftp.wwpdb.org` 这一行**不作回退**，但保留在证据档里：它对**别的网络**可能可用，问题是本机解析不了。
