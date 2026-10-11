@@ -2806,3 +2806,153 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（新通道
    （内存门槛：起 Electron 前先 `vm_stat`）。
 5. 跨轮不变：IC40 needs-attention（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 6. 内存：本轮未起 Electron（上一轮读数：空闲物理页 ~217 MB / swap 5,400 M of 6,144 M）。
+
+## 五十二、本轮追加（执行器，2026-10-11 16:3x–）—— P0-6 后半：应用自有 MCP 服务名两侧一致（真机日志 31 条逐条分类 + 两处自伤当批修）
+
+### 〇 开工核对（防重做 + 接手上一轮）
+
+1. **上一轮的断点不在树里**：上一轮的 P0-6 后半全部改动留在隔离工作树 `/tmp/ps-r52`（**42 文件、门禁在树上全绿、未提交**），
+   共享树当时只有并发写入者的 83 份 `docs/evidence/*.md` 表格重排在制品（**一位未碰**）。本轮把它整体搬回共享树：
+   `git apply` 42 文件零冲突（与并发写入者 4 笔提交的文件集合**交集为空**，已用 `comm` 对过）。
+2. 并发写入者已交付 P0-10⑥（包缓存回收动作并入「回收」按钮，`1382bdd0`），其**双车道已绿**（`Nightly` 38125405523 /
+   `Windows Full Test` 38125405377）；`2af5e324` 双绿；其更早的三笔按 paths/取消规则不计判决。
+3. **上一轮自陈的「双 tsc exit 0」是不可靠读数**：本轮在**已提交的树**上重跑，`typecheck:node` 报
+   `TS2307 Cannot find module` ×7 —— 上一轮新增守卫的 7 个 import 各多了一层 `../`。见 §三.①。这正是
+   「门禁数字必须来自**最后一次改动之后**的那次运行」要拦的形状（vitest 不做类型检查，只跑定向测试看不出来）。
+
+### 一 交付（2 笔提交）
+
+| 提交 | 内容 |
+| --- | --- |
+| `63ebc76b` | P0-6 后半本体：`activity`/`artifacts`/`skills`/`plan`/`memory` 五个服务的 `canonicalName` 去连字符（notebook 此前已由 `f41f176e` 改），旧拼写进 `legacyNames`；未在此声明的服务（figure、用户自建）继续应答旧拼写；身份目录/权限策略（含 Codex 叶子别名）/agent 文案/渲染层身份与活动识别/e2e 夹具连锁；新增 4 条回归守卫。**42 文件，+229/−155** |
+| `06cb5403` | 当批修掉两处自伤：① 上述 7 个 import 的深度（`typecheck:node` 报 `TS2307`）；② `shared/activity-groups.ts` 里**连字符拼写被改名后从识别集合里悄悄消失**（旧会话/旧 history 将不再被识别）⇒ 改「规范名 + 旧名」两份派生，并加守卫钉住「旧拼写仍被识别」（旧名取自命名模块别名表，shared 不写第二份名单）。**2 文件，+65/−17** |
+
+另入库一件可复跑工具：`scripts/audit-mcp-tool-name-failures.mjs`（读应用自己的命名模块 + 用户日志做分类，见 §二）。
+
+### 二 真机读数（用户自己的三份 `main*.log` 全量）
+
+`~/Library/Logs/PureScience/{main,main.1,main.2}.log`，窗口 **2026-09-16T08:13Z → 2026-10-10T13:46Z**，
+`No such tool available` **31 条**（并发写入者早前记的「25 次」是**当时一个窗口**的数，本轮就地更正）：
+
+| 类 | 条数 | 判读 |
+| --- | --- | --- |
+| `callable-now`（猜测名 = 应用今天渲染的名字） | **12** | **本改动直接修**：`purescience_plan/update_step_status` 8 条（2026-10-04）+ `purescience_figure/figure_review` 4 条（最近一条 **2026-10-10T13:46Z**，即开工前最近一次） |
+| `wrong-separator`（模型自猜连字符，而注册名本来就没有连字符） | 6 | **本改动不修**（notebook；其无连字符名 2026-09-21 01:52 就已落地，其中 5 条发生在那之后）⇒ 已立案待新窗口复测 |
+| `no-such-leaf`（模型编的叶子名） | 5 | 与本单元无关 |
+| `not-app-server`（别的服务 / 名字被拆成两段） | 8 | 与本单元无关 |
+
+证据档：`docs/evidence/2026-10-11-app-mcp-server-name-consistency.md`（含每一类的逐条名字与时间戳）。
+
+### 三 门禁读数（本轮末共享树，被测代码 = `b5cbedf8` + 本轮第三方许可证修复）
+
+（判读口径：每一环必须以**它自己的汇总行**为准。并发写入者的 84 份 `docs/evidence/*.md`
+表格重排当时还在树里，**不参与编译**，不影响本节任何一环。）
+
+| 环 | 读数 |
+| --- | --- |
+| eslint（全仓 `--no-cache .`，CI 同口径） | **0 error / 130 warning**，exit 0（修红前的中途读数 134 warning 含本批 4 条 prettier 漂移，已 `--fix` 本批文件清掉） |
+| typecheck:node / typecheck:web | `EXIT_NODE=0` / `EXIT_WEB=0`（`--composite false`，`NODE_OPTIONS=--max-old-space-size=8192`） |
+| 全量 vitest `--maxWorkers=4` | **`Test Files 1244 passed | 16 skipped (1260)` / `Tests 16090 passed | 207 skipped (16297)`**，exit 0，237.31 s |
+| 定向族（本单元补跑集合） | `192 files / 3025 tests passed`（`src/main/agent-framework` + `src/shared` + `src/main/acp` + `src/main/permission-grants`，exit 0） |
+| `scripts/pre-push-checks.sh`（单独跑、读退出码） | **`EXIT=0`**（敏感词扫描零命中 / README 横幅 v1.102.0 / CHANGELOG 有 v1.102.0 条目 / README 头部锚点双语一致，五节全过） |
+
+### 四 刻意的边界（不许读成「已做」）
+
+1. `wrong-separator` 那 6 条（模型自猜连字符）**不被本改动修**；本改动只把**混合约定的来源**清零。
+   「模型今后不再猜连字符」**没有读数**，不许声称 ⇒ 立案，判据 = 新窗口里 `wrong-separator` 归零。
+2. 本单元**没有 Electron 窗口读数**，也不假装有（改的是「交给框架的名字」与身份解析，界面无新增入口）。
+3. 没有迁移任何持久化记录里的旧键、没有放宽任何闸门；旧拼写只在**识别**面继续有效（有守卫钉住）。
+4. `reviewer` 服务有意不改（其 agent 面向名经桥接本就是下划线，真机 2,180 次调用全成功）。
+
+### 五 推送与 CI 的一处意外（如实记档，别把它读成我的推送）
+
+**并发写入者在 2026-10-11T09:18Z 推了一次 `main`，把我已提交未推送的 `63ebc76b` 一并带上去了**
+（共享工作树的老形状）⇒ `Nightly`（381…）与 `Windows Full Test` 在 `63ebc76b` 上被触发，
+而那一笔**带着 §三.① 的 `TS2307`**（本轮门禁已抓住、修法在本地的 `06cb5403`）。
+因此「先红后修」这一对判决要**逐笔点名**：`63ebc76b` 注定红在 `Verify` 的 typecheck 上，`06cb5403`（含后续 docs 提交）是它的修复笔。
+本地已按「冻结推送、只推一次」执行：**验证全绿后一次推送**，并在此后停止推送等判决。
+
+### 六 版本位点台账
+
+Latest = **v1.102.0** 不动；本单元是**运行时行为改动**（agent 面向的工具命名与身份解析）⇒ 占一个版本位，
+并入下一个版本边界（v2.0.0 P0 批）。本轮**未打 tag、未抬号**。
+
+### 七 遗留与下一轮第一步（每条带 blocked-by）
+
+1. **`wrong-separator` 归零的复测**：`blocked-by` = 需要一段**在本改动跑到用户机器之后**产生的新日志；
+   解封条件 = 用户新 `main*.log` 出现该形状（或一周无该形状）⇒ 用 `scripts/audit-mcp-tool-name-failures.mjs` 复跑回填。
+2. **本轮两笔提交的双车道终态**：`blocked-by` = 本轮推送；解封条件 = `Nightly` + `Windows Full Test` 在**完整 40 位 SHA** 上落定。
+   注意并发写入者随时可能再推一次（会把我的提交一起带上、也可能顶掉我的 run）⇒ 判读时**按 SHA 逐笔点名**，`cancelled` 不算绿。
+3. **P0-10 剩余候选**（包缓存回收动作已由并发写入者 `1382bdd0` 交付 ⇒ 该行不再是「等拍板」）；
+   剩下的 `removeEnvironment` 回报回收字节与「按会话清理」：`blocked-by` = 无（本地可核），动手前先核源码。
+4. **P0-9 用户可见密度**（渲染层审批卡计数）：`blocked-by` = 需真机窗口读数（起 Electron 前先 `vm_stat`）。
+5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+
+## 五十三、本轮追加（执行器，2026-10-11 21:3x–）—— 打包态「第三方许可证」空清单 + 对话框无限重取（从用户自己的日志取证）
+
+### 〇 开工核对（防重做 + 接手上一轮）
+
+1. **上一轮的断点在树里、未提交**（它被迭代上限截断在「跑门禁 → 提交」之前）：`git status` 里
+   `src/main/third-party-licenses.ts` / `src/renderer/src/components/ThirdPartyLicensesDialog.tsx` 两处改动 +
+   两个新测试文件 + 上一轮遗留的计划档 §五十二 与 `scripts/audit-mcp-tool-name-failures.mjs`。
+   本轮**先把上一轮的门禁跑完并落树**（口径：门禁数字必须来自**最后一次改动之后**的那次运行）。
+2. 并发写入者的 84 份 `docs/evidence/*.md` 表格重排仍在树里 ⇒ **一位未碰**，本轮只 `git add` 我自己的路径。
+3. 已发布位点：`gh release list` 的 Latest 仍是 **v1.102.0**；HEAD 当时 = `b5cbedf8`（其 Windows 车道已绿、Nightly 在跑）。
+4. B 段（大件）已耗尽：A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定，见 §B.3）⇒ 本轮按「先量再改」在用户自己的
+   `main*.log` 上取数，从真实读数里取单元（与上一轮同一方法）。
+
+### 一 根因（对源，逐条 file:line）
+
+| # | 位置 | 错在哪 |
+| --- | --- | --- |
+| 1 | `src/main/third-party-licenses.ts:39`（旧） | 清单路径 = `join(process.cwd(), 'package.json')`。**打包产物由 Finder 启动时 `process.cwd()` 是 `/`** ⇒ 读失败 ⇒ `return []`，视图永远空 |
+| 2 | `ThirdPartyLicensesDialog.tsx:39,52`（旧） | effect 守卫 `entries.length > 0 \|\| loading`，而依赖数组**也含** `entries.length` 与 `loading` ⇒ 空结果反过来满足自己的守卫 ⇒ **无限重取** |
+| 3 | 两者互为因果 | **只有空结果才触发循环**，而打包态的结果必然是空的 ⇒ 只有用户那台打包版会中；开发态（cwd = 仓库根、结果非空）两种症状都看不见 |
+
+### 二 交付（2 笔提交）
+
+| 提交 | 内容 |
+| --- | --- |
+| `af541e6f` | 上一轮遗留的取证两件：`scripts/audit-mcp-tool-name-failures.mjs` + `docs/evidence/2026-10-11-app-mcp-server-name-consistency.md`（2 文件，+209） |
+| `d732eccb` | 本单元本体：根解析改为「应用路径 → 模块目录上溯 → 兜底 cwd」三规则（`resolveDependencyRoot`，返回 `rootSource` 供日志自证）+ 采集逐项计数（`missingPackageJson`/`missingLicense`/`unreadable`，不许静默丢）+ 对话框改「一次打开只请求一次」的 ref（失败清掉以便重开重试）+ 2 个测试文件（main 8 条 / 渲染 4 条）+ 取数脚本 `scripts/audit-third-party-licenses.mjs`（5 文件，+547/−11） |
+
+### 三 真机读数（全部实跑，无需窗口）
+
+| 读数 | 值 | 来源 |
+| --- | --- | --- |
+| 循环：一次打开对话框的采集次数 | **371 次 / 0.228 s**（≈1,627 次/秒），单突发 | 用户自己的 `~/Library/Logs/PureScience/main.2.log`，`2026-09-18T04:36:05.039Z→.267Z` |
+| 独立期望（**脚本自己解 asar 算，不走应用代码**） | 声明 **23** · 有 `package.json` **22** · 有 LICENSE **20** ⇒ **期望 20 条** | `node scripts/audit-third-party-licenses.mjs`，对象 = `/Applications/PureScience.app/.../app.asar`（264,994,191 字节，= 已发布 v1.102.0） |
+| 旧代码在打包条件下运行（Electron 真运行时，`cwd=/`） | **count 0** + 具名警告 ⇒ **复现空清单** | 无窗口 Electron 探针（本轮复跑，源码现场重建 CJS 副本） |
+| 新代码在**已安装打包版自己的 asar** 上运行 | **count 20**，`allHaveLicense:true`，首条样文 `Apache License` ⇒ **与独立期望逐数吻合** | 同上 |
+| 新解析规则 | `resolveDependencyRoot(<asar>/out/main, <asar>)` → `{root:'…/app.asar', source:'app-path'}`，结果同为 **20** | 同上 |
+| 采集器自证日志行（实跑样文） | `dependencies: 23, listed: 20, missingPackageJson: 1, missingLicense: 2, unreadable: 0` | 同上（与独立解析的 `@prisma/client` / `@bokuweb/zstd-wasm` / `js-tiktoken` 逐项对上） |
+| 变异核对（组件回退到旧 effect） | **新用例当场红**（空态即死循环，60 s 超时）⇒ 守卫不是空壳 | `git stash` 单文件回退 + 重跑，已恢复 |
+
+### 四 门禁读数（本轮末共享树，被测代码 = `b5cbedf8` + 本单元修复）
+
+| 环 | 读数 |
+| --- | --- |
+| eslint（全仓 `--no-cache .`，CI 同口径） | **0 error / 130 warning**，exit 0 |
+| typecheck:node / typecheck:web | `EXIT_NODE=0` / `EXIT_WEB=0` |
+| 全量 vitest `--maxWorkers=4` | **`1244 passed \| 16 skipped (1260)` / `16090 passed \| 207 skipped (16297)`**，exit 0，237.31 s |
+| `scripts/pre-push-checks.sh`（单独跑、读退出码） | **`EXIT=0`** |
+
+### 五 刻意的边界（不许读成「已做」）
+
+1. **没有窗口截图读数**：本轮不开 Electron 窗口（内存闸门）。界面那一半的证据是渲染套件 4 条 + 用户日志里的循环读数，**不冒充**窗口读数。
+2. **`app.getAppPath()` 在真打包主进程里的返回值未直接取证**：探针是把打包锚点**显式喂给**应用自己的函数；补取办法 = 下一次发版产物上开一次「关于 → 第三方许可证」，看是否列出 20 条。
+3. **失败行的文件落盘读数只取到一半**：探针的 `collectorLogLines` 读回为空（日志异步落盘未及读出），但同批日志行出现在探针 stdout 里 ⇒ 「失败行自证」有实跑样文，「应用自己的日志文件里也落了这几行」未取。
+4. **用户的修复效果要等发版**：这一版回到用户手里之前，他机器上的「第三方许可证」仍是空的、对话框仍会空转。
+
+### 六 版本位点台账
+
+Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一个版本位，并入下一个版本边界（v2.0.0 P0 批）。
+本轮**未打 tag、未抬号**。
+
+### 七 遗留与下一轮第一步（每条带 blocked-by）
+
+1. **发版后的窗口读数**（许可证列表真的列出 20 条）：`blocked-by` = 需要一次发版后的产物；解封条件 = 下一个版本发布后开一次对话框取证。
+2. **本轮两笔提交的双车道终态**：`blocked-by` = 本轮推送；解封条件 = `Nightly` + `Windows Full Test` 在**完整 40 位 SHA** 上落定；`cancelled` 不算绿，并发写入者随时可能再推一次（会带上我的提交、也可能顶掉我的 run）⇒ 按 SHA 逐笔点名。
+3. **P0-10 剩余候选**：`removeEnvironment` 回报回收字节、「按会话清理」；`blocked-by` = 无（本地可核），动手前先核源码。
+4. **P0-9 用户可见密度**（渲染层审批卡计数）：`blocked-by` = 需真机窗口读数（起 Electron 前先 `vm_stat`）。
+5. 跨轮不变：IC40 needs-attention（需真后台投递）、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
