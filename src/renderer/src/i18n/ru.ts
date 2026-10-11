@@ -2874,6 +2874,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': 'Инструменты',
   'settings.total': 'Итого',
   'settings.storageSharedLabel': 'Общее с другими файлами',
+  'settings.storageByProject': 'По проектам',
   'settings.storageSharedTitle':
     'Эти байты существуют на диске в одном экземпляре, но используются несколькими файлами, поэтому считаются один раз.',
   'settings.totalArtifacts': 'Всего артефактов',

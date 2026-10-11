@@ -2958,6 +2958,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': 'Tools',
   'settings.total': 'Gesamt',
   'settings.storageSharedLabel': 'Mit anderen Dateien geteilt',
+  'settings.storageByProject': 'Nach Projekt',
   'settings.storageSharedTitle':
     'Diese Bytes liegen einmal auf der Platte, werden aber von mehreren Dateien genutzt und zählen daher nur einmal.',
   'settings.totalArtifacts': 'Artefakte gesamt',

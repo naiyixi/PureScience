@@ -1118,4 +1118,35 @@ describe('StoragePanel', () => {
     )
     expect(button?.disabled).toBe(false)
   })
+
+  it('names each project with its own title and size — from the payload, not the dictionary', async () => {
+    ;(
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo.mockResolvedValue({
+      dataRoot: '/home/u/.purescience',
+      isDefault: true,
+      usage: {
+        categories: [{ key: 'notebooks', bytes: 1_200_000_000 }],
+        totalBytes: 1_200_000_000,
+        projects: [
+          { id: 'p1', name: 'Mpro docking', bytes: 1_100_000_000 },
+          { id: 'p2', name: 'GSE331003', bytes: 100_000_000 }
+        ]
+      },
+      availableBytes: 530_600_000_000
+    })
+
+    await act(async () => root.render(<StoragePanel />))
+
+    const rows = container.querySelector('[data-testid="storage-project-rows"]')
+    expect(rows).not.toBeNull()
+    // Both titles are dynamic values: a dictionary key could never hold them, so they appear verbatim.
+    expect(rows?.textContent).toContain('Mpro docking')
+    expect(rows?.textContent).toContain('GSE331003')
+    // Each row is asserted as a NAME+SIZE pair, so a row that lost its number cannot pass. The number is
+    // formatted with the active locale (1.1 GB for 1_100_000_000), which is why it is matched here rather
+    // than compared against a locale-less formatBytes() call.
+    expect(rows?.textContent).toMatch(/Mpro docking\s*1\.1 GB/)
+    expect(rows?.textContent).toMatch(/GSE331003\s*100\.0 MB/)
+  })
 })

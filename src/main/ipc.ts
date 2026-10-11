@@ -2837,7 +2837,14 @@ const createApplicationModules = async (
     runtime,
     notebook: notebookService,
     getActivePromptSessions: () => runtime.getActivePromptSessions(),
-    settingsService
+    settingsService,
+    // P0-10③: attribute the walk's bytes to the projects that own them, so "which project uses how much"
+    // is answerable from the same reading the panel already shows. Best-effort: a failing list leaves the
+    // categories intact and simply omits the per-project rows (absent, never a false zero).
+    listProjects: async () => {
+      const projects = await projectRepository.list()
+      return projects.map((project) => ({ id: project.id, name: project.name }))
+    }
   })
   declareElectronAdapter('storage', () =>
     registerStorageIpcHandlers(

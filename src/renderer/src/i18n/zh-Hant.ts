@@ -2657,6 +2657,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': '工具',
   'settings.total': '總計',
   'settings.storageSharedLabel': '與其它檔案共享同一份位元組',
+  'settings.storageByProject': '按專案',
   'settings.storageSharedTitle':
     '這些位元組在磁碟上只有一份，但被多個檔案使用，因此在總計裡只算了一次。',
   'settings.totalArtifacts': '產物總計',

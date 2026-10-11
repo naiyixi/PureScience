@@ -5,6 +5,14 @@ export type UsageCategoryKey = 'artifacts' | 'uploads' | 'runtime' | 'notebooks'
 export type SharedBytes = { bytes: number; files: number }
 export type UsageChild = { name: string; bytes: number }
 export type UsageCategory = { key: UsageCategoryKey; bytes: number; children?: UsageChild[] }
+export type StorageProjectUsage = {
+  id: string
+  bytes: number
+  // The project's own title, carried as text: project names are dynamic values, so they can never be
+  // dictionary keys. The renderer shows this when present instead of looking one up.
+  name?: string
+}
+
 export type StorageUsage = {
   categories: UsageCategory[]
   totalBytes: number
@@ -13,6 +21,10 @@ export type StorageUsage = {
   // not track it (older payloads) — never "nothing was saved".
   sharedBytes?: number
   sharedFiles?: number
+  // Per-project bytes, largest first. Absent means the caller did not supply a project list (older payloads,
+  // or no projects yet) — never "no project uses space". Kept OUT of `categories` on purpose: category keys
+  // are a literal union that CATEGORY_COLORS/CATEGORY_LABELS index by, so a dynamic key would break both.
+  projects?: StorageProjectUsage[]
   // True when these numbers are a placeholder while the first walk of the root is still running. Reading usage
   // is a full disk walk (measured 13.7 s on a real 7 GB root), so a cold cache answers with this instead of
   // blocking the caller for the length of the walk. Callers must render it as "still measuring" — never as a

@@ -2875,6 +2875,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': 'ツール',
   'settings.total': '合計',
   'settings.storageSharedLabel': '他のファイルと共有している分',
+  'settings.storageByProject': 'プロジェクト別',
   'settings.storageSharedTitle':
     'ディスク上に 1 つだけ存在し、複数のファイルから使われているため、合計では 1 回だけ数えています。',
   'settings.totalArtifacts': '成果物合計',

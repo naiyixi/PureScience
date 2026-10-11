@@ -186,3 +186,35 @@ describe('availableBytes', () => {
     expect(bytes).toBeGreaterThan(0)
   })
 })
+
+describe('per-project attribution (optional input, no database dependency here)', () => {
+  it('reports both rows when asked, without changing the category walk', async () => {
+    await mkdir(join(dataRoot, 'notebooks', 'p1'), { recursive: true })
+    await writeFile(join(dataRoot, 'notebooks', 'p1', 'run.json'), Buffer.alloc(600, 1))
+    await mkdir(join(dataRoot, 'artifacts', 'p1'), { recursive: true })
+    await writeFile(join(dataRoot, 'artifacts', 'p1', 'model.pt'), Buffer.alloc(400, 1))
+    await mkdir(join(dataRoot, 'notebooks', 'p2'), { recursive: true })
+    await writeFile(join(dataRoot, 'notebooks', 'p2', 'run.json'), Buffer.alloc(100, 1))
+
+    const withProjects = await computeStorageUsage(dataRoot, [
+      { id: 'p1', name: 'Mpro docking' },
+      { id: 'p2', name: 'GSE331003' }
+    ])
+    const withoutProjects = await computeStorageUsage(dataRoot)
+
+    expect(withProjects.projects).toEqual([
+      { id: 'p1', name: 'Mpro docking', bytes: 1000 },
+      { id: 'p2', name: 'GSE331003', bytes: 100 }
+    ])
+    // Absent means the caller did not ask — never "no project uses space".
+    expect(withoutProjects.projects).toBeUndefined()
+    expect(withProjects.categories).toEqual(withoutProjects.categories)
+    expect(withProjects.totalBytes).toBe(withoutProjects.totalBytes)
+  })
+
+  it('names no rows for a project whose directories are gone', async () => {
+    const usage = await computeStorageUsage(dataRoot, [{ id: 'never-existed', name: 'x' }])
+
+    expect(usage.projects).toEqual([{ id: 'never-existed', name: 'x', bytes: 0 }])
+  })
+})

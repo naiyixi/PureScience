@@ -273,7 +273,10 @@ export const reclaimRedundantPackageCache = async (
   return result
 }
 
-export const computeStorageUsage = async (dataRoot: string): Promise<StorageUsage> => {
+export const computeStorageUsage = async (
+  dataRoot: string,
+  projects?: { id: string; name?: string }[]
+): Promise<StorageUsage> => {
   const categories: UsageCategory[] = []
   // One accumulator for the whole walk. Every hard link that spares a second count adds its size here, so
   // the panel can say what sharing saved — a number read off the same walk, not a claim about dedup.
@@ -289,7 +292,29 @@ export const computeStorageUsage = async (dataRoot: string): Promise<StorageUsag
     }
   }
   const totalBytes = categories.reduce((sum, c) => sum + c.bytes, 0)
-  return { categories, totalBytes, sharedBytes: shared.bytes, sharedFiles: shared.files }
+  // Per-project rows, computed ONLY when the caller names the projects (the walk itself stays directory-only:
+  // this module has no database dependency and does not grow one). A project's space is what its notebook runs
+  // and its artifacts occupy; each project gets its own dedup set, since links do not cross project boundaries.
+  const projectRows = projects?.length
+    ? (
+        await Promise.all(
+          projects.map(async (project) => ({
+            id: project.id,
+            name: project.name,
+            bytes:
+              (await dirSize(join(dataRoot, 'notebooks', project.id), new Set()).catch(() => 0)) +
+              (await dirSize(join(dataRoot, 'artifacts', project.id), new Set()).catch(() => 0))
+          }))
+        )
+      ).sort((a, b) => b.bytes - a.bytes)
+    : undefined
+  return {
+    categories,
+    totalBytes,
+    sharedBytes: shared.bytes,
+    sharedFiles: shared.files,
+    ...(projectRows ? { projects: projectRows } : {})
+  }
 }
 
 export const availableBytes = async (targetPath: string): Promise<number> => {

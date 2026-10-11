@@ -2933,6 +2933,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': 'Herramientas',
   'settings.total': 'Total',
   'settings.storageSharedLabel': 'Compartido con otros archivos',
+  'settings.storageByProject': 'Por proyecto',
   'settings.storageSharedTitle':
     'Estos bytes existen una sola vez en el disco pero los usan varios archivos, así que se cuentan una sola vez.',
   'settings.totalArtifacts': 'Total de artefactos',

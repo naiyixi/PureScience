@@ -676,6 +676,29 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
             </div>
           </div>
 
+          {/* Per-project attribution, from the same walk as the numbers above. Project names are dynamic
+              VALUES, so the row text comes from the payload — there is deliberately no dictionary lookup here. */}
+          {(info?.usage.projects?.length ?? 0) > 0 ? (
+            <div className="mt-3 border-t border-border pt-3" data-testid="storage-project-rows">
+              <p className="text-xs font-medium text-foreground">
+                {t('settings.storageByProject')}
+              </p>
+              <div className="mt-1.5 space-y-1">
+                {info?.usage.projects?.map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between text-xs text-muted-foreground"
+                  >
+                    <span className="truncate" title={project.name ?? project.id}>
+                      {project.name ?? project.id}
+                    </span>
+                    <span className="shrink-0 tabular-nums">{formatBytes(project.bytes)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* The action behind the "shared" row above: it links names whose bytes are identical, so the
               next walk counts those bytes once. It always says what it did — a silent success would look
               exactly like a button that never ran. */}

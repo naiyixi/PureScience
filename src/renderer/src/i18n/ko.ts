@@ -2824,6 +2824,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.toolsTitle': '도구',
   'settings.total': '합계',
   'settings.storageSharedLabel': '다른 파일과 공유 중인 용량',
+  'settings.storageByProject': '프로젝트별',
   'settings.storageSharedTitle':
     '디스크에 하나만 존재하지만 여러 파일이 사용하므로 합계에서 한 번만 계산됩니다.',
   'settings.totalArtifacts': '산출물 합계',

@@ -93,6 +93,8 @@ type StorageCommandOwnerDeps = {
   // Injectable so the disk-usage read (a full walk of the root, seconds on a real one) can be controlled in
   // tests instead of depending on how much is on disk.
   usageCache?: StorageUsageCache
+  // Optional: who to attribute bytes to. Without it the walk still returns every category, just no per-project rows.
+  listProjects?: () => Promise<{ id: string; name?: string }[]>
   // Injectable so the duplicate sweep can be driven in tests without hashing a real tree; the production
   // default is the same walker the startup maintenance uses.
   sweepDuplicateContent?: (options: { storageRoot: string }) => Promise<SweepResult>
@@ -133,7 +135,12 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
   }
   // The Storage panel asks for disk usage every time it opens, and a walk of a multi-gigabyte root
   // takes ~15s; serve the last reading and refresh it behind the user's back.
-  const usageCache = deps.usageCache ?? createStorageUsageCache({ compute: computeStorageUsage })
+  // Projects are resolved per walk (a deletion between two walks must not keep reporting the old rows).
+  const usageCache =
+    deps.usageCache ??
+    createStorageUsageCache({
+      compute: async (dataRoot) => computeStorageUsage(dataRoot, await deps.listProjects?.())
+    })
   const sweep = { run: deps.sweepDuplicateContent ?? defaultSweepDuplicateContent }
 
   const getInfo = async (): Promise<StorageInfo> => {
