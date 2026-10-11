@@ -342,10 +342,17 @@ export class ReviewerSessionOwner {
       })
       return { outcome: { outcome: 'cancelled' } }
     }
-    log.debug('approving scope-bounded reviewer MCP tool call', {
+    // Logged at info, not debug (P0-9): the request line is `info` while this decision was `debug`, so a
+    // normal log showed 2,128 "permission request received" lines and almost no decisions — which reads as
+    // "the user was asked 2,128 times" when in fact the app approves each one itself within the same
+    // millisecond. Measured on real logs: 906 requests ↔ 856 of these in one file, each at +0.00 s with the
+    // same toolCallId. A decision made on the user's behalf belongs in the record at the same level as the
+    // request it answers, so the pair can be joined and the user-facing density can be told apart.
+    log.info('approving scope-bounded reviewer MCP tool call', {
       sessionId: params.sessionId,
       toolCallId: params.toolCall?.toolCallId,
-      optionId: allowOption.optionId
+      optionId: allowOption.optionId,
+      rule: 'scope-bounded-reviewer-mcp'
     })
     return { outcome: { outcome: 'selected', optionId: allowOption.optionId } }
   }
