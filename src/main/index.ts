@@ -43,6 +43,7 @@ import { createProcessFailureCapture } from './crash-diagnostics'
 import { classifyPreviousShutdown, createShutdownBreadcrumbWriter } from './shutdown-breadcrumb'
 import { randomUUID } from 'node:crypto'
 import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
+import { measurePackageCacheRedundancy } from './storage/usage'
 import { sweepDuplicateContent } from './storage/dedupe-sweep'
 import {
   createRendererFailureReporter,
@@ -475,6 +476,19 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
             totalBytes: space.totalBytes,
             files: space.files,
             linkedFiles: space.linkedFiles
+          })
+
+          // P0-10: the shared package cache only grows (nothing reclaims it), and reclaiming it blind is not
+          // safe — micromamba hard-links package files into the envs, so a cache path may be the second name
+          // for an inode an environment still uses. Report what is provably redundant (another link exists)
+          // and what exists once (last link, deleting would destroy data) BEFORE anything is removed.
+          const cache = await measurePackageCacheRedundancy(storageRoot)
+          log.info('package cache redundancy', {
+            redundantBytes: cache.redundantBytes,
+            redundantFiles: cache.redundantFiles,
+            soleLinkBytes: cache.soleLinkBytes,
+            soleLinkFiles: cache.soleLinkFiles,
+            maxLinkCount: cache.maxLinkCount
           })
 
           // Content stored twice before the content store existed is only reclaimed by walking what is

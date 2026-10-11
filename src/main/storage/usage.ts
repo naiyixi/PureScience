@@ -1,4 +1,4 @@
-import { readdir, stat, statfs } from 'node:fs/promises'
+import { lstat, readdir, stat, statfs } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { logicalEnvNameFromDirectory } from '../notebook/runtime-paths'
@@ -138,6 +138,73 @@ const runtimeUsage = async (
   children.sort((a, b) => b.bytes - a.bytes)
   const bytes = looseBytes + children.reduce((sum, child) => sum + child.bytes, 0)
   return { bytes, children }
+}
+
+// What the SHARED package cache holds that is provably redundant (v2.0.0 P0-10).
+//
+// Real evidence, 2026-10-11: the data root carries `runtime/pkgs` at 2.8 GB, and nothing in the app ever
+// reclaims it (`micromamba-cache.ts:211` only removes a directory that same call had created and then
+// rejected) — so the cache only grows. But reclaiming it blindly is not safe either: micromamba
+// HARD-LINKS package files into the environments it builds, so a cache path and an env path are two names
+// for one inode. Removing the cache name is data-safe exactly when another link exists; a file whose link
+// count is 1 is the last name for its bytes.
+//
+// This is the reading that a reclamation has to be built on, so it is measured BEFORE anything is deleted:
+// bytes whose cache copy has another link (provably redundant), and bytes that exist once (last link —
+// deleting those would destroy data). `maxLinkCount` is kept as the evidence behind the split: it is the
+// link count actually observed, not a claim about what the numbers mean.
+export type PackageCacheRedundancy = {
+  redundantBytes: number
+  redundantFiles: number
+  soleLinkBytes: number
+  soleLinkFiles: number
+  maxLinkCount: number
+}
+
+export const measurePackageCacheRedundancy = async (
+  dataRoot: string
+): Promise<PackageCacheRedundancy> => {
+  const pkgsDir = join(dataRoot, 'runtime', 'pkgs')
+  const result: PackageCacheRedundancy = {
+    redundantBytes: 0,
+    redundantFiles: 0,
+    soleLinkBytes: 0,
+    soleLinkFiles: 0,
+    maxLinkCount: 0
+  }
+  const walk = async (dir: string): Promise<void> => {
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        await walk(path)
+        continue
+      }
+      if (!entry.isFile()) continue
+      let info
+      try {
+        info = await lstat(path)
+      } catch {
+        continue
+      }
+      result.maxLinkCount = Math.max(result.maxLinkCount, info.nlink)
+      if (info.nlink > 1) {
+        result.redundantBytes += info.size
+        result.redundantFiles += 1
+      } else {
+        result.soleLinkBytes += info.size
+        result.soleLinkFiles += 1
+      }
+    }
+  }
+  await walk(pkgsDir)
+  return result
 }
 
 export const computeStorageUsage = async (dataRoot: string): Promise<StorageUsage> => {
