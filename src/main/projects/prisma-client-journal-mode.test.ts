@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createProjectDbClient, ensureProjectSchema } from './prisma-client'
+import { computeStorageUsage } from '../storage/usage'
 
 let root: string
 
@@ -35,5 +36,35 @@ describe('project database journal mode', () => {
     expect(existsSync(join(root, 'purescience.db-wal'))).toBe(true)
 
     await client.$disconnect()
+  })
+})
+
+describe('WAL and the two things it touches beside the database', () => {
+  it('does not move the storage panel numbers: root files are outside every category', async () => {
+    const client = createProjectDbClient(root)
+    await ensureProjectSchema(client)
+    const withWal = await computeStorageUsage(root)
+    const walBytes = withWal.categories.reduce((sum, c) => sum + c.bytes, 0)
+
+    // The panel walks the category directories only, and the database (with its -wal/-shm sidecars) sits at
+    // the data root — so switching the journal mode cannot change what the panel reports. Pinned because the
+    // opposite would be a silent regression in a number users read.
+    expect(walBytes).toBe(0)
+    expect(withWal.categories.map((c) => c.key)).not.toContain('purescience.db')
+
+    await client.$disconnect()
+  })
+
+  it('checkpoints on close, so the sidecar does not outlive the connection', async () => {
+    const client = createProjectDbClient(root)
+    await ensureProjectSchema(client)
+    const walPath = join(root, 'purescience.db-wal')
+    expect(existsSync(walPath)).toBe(true)
+
+    await client.$disconnect()
+
+    // SQLite checkpoints and removes the sidecar when the last connection closes; if this ever stops being
+    // true, the shutdown path (P0-1) is what has to do it explicitly instead of assuming it happened.
+    expect(existsSync(walPath)).toBe(false)
   })
 })
