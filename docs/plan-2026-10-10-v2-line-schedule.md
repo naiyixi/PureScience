@@ -89,7 +89,10 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 > notebook provisioner、language-pack 三处消费，**但它没有「镜像」这个概念**；连接器各自经自己的 `ctx` 取数，
 > **全树没有任何连接器带镜像回退**（grep 到的 `mirror` 全是散文）。⇒ 这是**新机制**，不是把既有开关打开。
 > - **来源清单按「能否证明换源后内容相同」分三类**（这决定策略，不是喜好）：
->   1. **同一组织的第二条官方端点**（可放心回退）：`files.rcsb.org` ↔ `ftp.wwpdb.org`（同属 wwPDB 体系）、
+>   ⚠️ **本表已被实测改写（2026-10-11，读数见 `docs/evidence/2026-10-11-mirror-candidate-identity-probe.md`）**：`ftp.wwpdb.org` 在本机**连 DNS 都不解析**、`ftp.ncbi` 与 `eutils` **服务不同内容** ⇒ 我原先写的"同一组织即可放心回退"**不成立**；
+>   真正在本机成立、且拿得出同一性证据的只有两条：`huggingface.co → hf-mirror.com`（原始超时 / 镜像 200）与
+>   `raw.githubusercontent.com → cdn.jsdelivr.net/gh/<owner>/<repo>@<ref>/<path>`（镜像 sha 与仓内已知内容逐字节相同）。**每一行镜像都必须有实测**，不能靠组织归属推理。
+>   1. （原判，已被上条修正）**同一组织的第二条官方端点**：`files.rcsb.org` ↔ `ftp.wwpdb.org`（同属 wwPDB 体系）、
 > `ftp.ncbi.nlm.nih.gov` ↔ `eutils.ncbi.nlm.nih.gov`（NCBI 自己的两条路）。日志里正是这两族在失败（各 11 / 1 次）。
 >   2. **第三方镜像 / CDN**（可用，但**必须按校验和证明同一性**）：`huggingface.co` ↔ `hf-mirror.com`（文件级 sha256 可得）、
 > `raw.githubusercontent.com` ↔ jsDelivr（内容可能被缓存或改写 ⇒ 要么有仓内已知哈希、要么改从 API 取）。
