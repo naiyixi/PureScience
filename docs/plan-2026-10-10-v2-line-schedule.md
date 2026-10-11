@@ -132,7 +132,10 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 > （`expected [ Array(1) ] to deeply equal []`）。**新增用例一旦 import `createProjectDbClient`/`ensureProjectSchema` 就必须登记进分区**，
 > 并按该文件自己的要求**改配置、不改断言**。诊断法：两车道只有同一支分区守卫失败 ⇒ 直接去配置补登记，别从产品代码查起。
 >
-> **仍未做**：真机改前/改后对照读数（同一 `dbCanaryMs` 探针的 p50/p90/max）—— 卡内存闸门（空闲物理页 ≈111 MB），**未取就是未取**；
+> > **真机读数（2026-10-12，`docs/evidence/2026-10-12-wal-live-reading.md`）**：把常驻 dev 实例重启到含本改动的代码后，**应用自己**把真实库从 `delete` 切成 `wal` 并生成 `-wal`/`-shm`（`~/.purescience-project/purescience.db`，87.85 MB）⇒ 第一步的机制在生产上成立。同一次回读还**生产实证**了设计里那条 PRAGMA 语义：CLI（另一条连接）读到 `busy_timeout = 0`，而应用自己那条连接是 5000 —— `journal_mode` 文件级、`busy_timeout` 连接级。
+> **纠正一条根假设**：`~/.purescience/purescience.db`（117 MB，仍是 `delete`）是**打包版**的库；常驻 dev 用的是 `~/.purescience-project`。打包版的库要等**下一次发版运行新代码**之后才会切 WAL ⇒ 发版后应复核这一项。
+> 同一次启动里，`f7a23c2c` 那套存储读数也在真数据根上跑出来了：`redundantBytes 2,818,211,369 / 74,393 files`、`soleLinkBytes 1,544,122,744 / 11,683 files`、`maxLinkCount 5`（与更早那次 `find -links` 的数不同 —— 树期间被改动过，两次读数必须各自带时刻引用）。
+**仍未做**：真机改前/改后对照读数（同一 `dbCanaryMs` 探针的 p50/p90/max）—— 卡内存闸门（空闲物理页 ≈111 MB），**未取就是未取**；
 > **只读连接（第二步）只有在真机读数证明 WAL 不足时才做**（多一个 PrismaClient 实例的内存增量在 8 GB 机器上可能是否决项）。
 
 单连接读池**（P0-10③ 的根因）未开工：需 WAL + 读池 + "运行时约束要求同一物理连接"的迁移口径，独立设计。
