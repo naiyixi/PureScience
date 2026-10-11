@@ -89,6 +89,17 @@ beforeEach(() => {
         .fn()
         .mockResolvedValue({ kind: 'move', dataRoot: '/mnt/data/PureScience' }),
       setDataRootAndRelaunch: vi.fn().mockResolvedValue({ ok: true }),
+      sweepDuplicateContent: vi.fn().mockResolvedValue({
+        ok: true,
+        scanned: 0,
+        linked: 0,
+        bytes: 0,
+        distinct: 0,
+        alreadyShared: 0,
+        unreadable: 0,
+        unlinked: 0,
+        elapsedMs: 1
+      }),
       detectActive: vi.fn().mockResolvedValue([]),
       migrate: vi.fn().mockResolvedValue({ ok: true }),
       cancelMigrate: vi.fn().mockResolvedValue(undefined),
@@ -958,5 +969,153 @@ describe('StoragePanel', () => {
       (window as unknown as { api: { storage: { detectActive: ReturnType<typeof vi.fn> } } }).api
         .storage.detectActive
     ).toHaveBeenCalled()
+  })
+
+  it('reclaims duplicate copies through the confirm step, says what came back, and re-reads the total', async () => {
+    const sweep = (
+      window as unknown as {
+        api: { storage: { sweepDuplicateContent: ReturnType<typeof vi.fn> } }
+      }
+    ).api.storage.sweepDuplicateContent
+    const getInfo = (
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo
+    const reclaimed = {
+      ok: true as const,
+      scanned: 5,
+      linked: 2,
+      bytes: 2048,
+      distinct: 3,
+      alreadyShared: 1,
+      unreadable: 0,
+      unlinked: 0,
+      elapsedMs: 12
+    }
+    // Held open so the in-flight state can be read: a maintenance call that walks the content store has
+    // to say it is working rather than look like a button that did nothing.
+    let release: (() => void) | undefined
+    sweep.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(reclaimed)
+        })
+    )
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // The entry lives with the reading it changes, and it confirms before touching anything.
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-duplicates"]')?.click()
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain('Reclaim duplicate copies?')
+
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-confirm"]')?.click()
+      await Promise.resolve()
+    })
+    expect(sweep).toHaveBeenCalledTimes(1)
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-slot="storage-sweep-duplicates"]'
+    )
+    expect(button?.textContent).toContain('Checking for duplicates')
+    expect(button?.disabled).toBe(true)
+
+    await act(async () => {
+      release?.()
+      await Promise.resolve()
+    })
+
+    // The action reports its own numbers instead of succeeding silently…
+    const result = document.querySelector('[data-slot="storage-sweep-reclaimed"]')
+    expect(result?.textContent).toContain('2.0 KB')
+    expect(result?.textContent).toContain('2')
+    expect(button?.disabled).toBe(false)
+    // …and the reading above is re-taken: the bytes it just reclaimed are exactly what that reading no
+    // longer accounts for, so leaving the old number on screen would be knowingly showing a stale one.
+    expect(getInfo).toHaveBeenCalledTimes(2)
+  })
+
+  it('says nothing was found, and does not re-walk the root for numbers that did not change', async () => {
+    const sweep = (
+      window as unknown as {
+        api: { storage: { sweepDuplicateContent: ReturnType<typeof vi.fn> } }
+      }
+    ).api.storage.sweepDuplicateContent
+    const getInfo = (
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo
+    sweep.mockResolvedValue({
+      ok: true,
+      scanned: 2,
+      linked: 0,
+      bytes: 0,
+      distinct: 2,
+      alreadyShared: 0,
+      unreadable: 0,
+      unlinked: 0,
+      elapsedMs: 4
+    })
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-duplicates"]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-confirm"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('[data-slot="storage-sweep-nothing"]')).not.toBeNull()
+    expect(document.querySelector('[data-slot="storage-sweep-reclaimed"]')).toBeNull()
+    // A no-op walk must not cost another full disk walk of the same root.
+    expect(getInfo).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a failed reclaim instead of leaving the action looking dead', async () => {
+    const sweep = (
+      window as unknown as {
+        api: { storage: { sweepDuplicateContent: ReturnType<typeof vi.fn> } }
+      }
+    ).api.storage.sweepDuplicateContent
+    const getInfo = (
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo
+    sweep.mockRejectedValue(new Error('EACCES: permission denied'))
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-duplicates"]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-confirm"]')?.click()
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('[data-slot="storage-sweep-error"]')).not.toBeNull()
+    expect(container.textContent).toContain('Could not reclaim duplicate copies')
+    expect(getInfo).toHaveBeenCalledTimes(1)
+    // A transient failure must not leave the control disabled — the user has to be able to try again.
+    const button = document.querySelector<HTMLButtonElement>(
+      '[data-slot="storage-sweep-duplicates"]'
+    )
+    expect(button?.disabled).toBe(false)
   })
 })

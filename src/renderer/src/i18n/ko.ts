@@ -4257,6 +4257,18 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.readingsVerify': '다시 요청해 대조',
   'ws.readingsVerifyPending': '요청을 다시 보내는 중…',
   'ws.readingsVerifyMatched': '일치: 같은 요청이 같은 바이트를 반환했습니다(HTTP {status}).',
-  'ws.readingsVerifyMismatch': '불일치: 같은 요청이 다른 바이트를 반환했습니다(HTTP {status}) — 기록 {recorded}, 현재 {recomputed}.',
+  'ws.readingsVerifyMismatch':
+    '불일치: 같은 요청이 다른 바이트를 반환했습니다(HTTP {status}) — 기록 {recorded}, 현재 {recomputed}.',
   'ws.readingsVerifyRefused': '대조하지 않음, 이유는 명시:',
+  'settings.storageSweepAction': '중복 사본 회수',
+  'settings.storageSweepHint':
+    '내용이 다른 파일과 완전히 같은 파일은 그 사본 하나를 가리키도록 연결되어, 같은 바이트가 한 번만 저장됩니다. 파일은 삭제되지 않습니다.',
+  'settings.storageSweepRunning': '중복을 확인하는 중…',
+  'settings.storageSweepConfirmTitle': '중복 사본을 회수할까요?',
+  'settings.storageSweepConfirmBody':
+    '콘텐츠 폴더를 살펴보며 같은 바이트가 다른 이름으로 이미 저장된 파일을 찾습니다. 그 이름들은 기존 사본을 가리키게 되고, 파일이 삭제되거나 내용이 바뀌지는 않습니다. 라이브러리가 크면 잠시 걸릴 수 있습니다.',
+  'settings.storageSweepReclaimed': '중복 사본 {count}개에서 {size}를 회수했습니다.',
+  'settings.storageSweepNothing': '중복 사본이 없습니다. 회수할 것이 없습니다.',
+  'settings.storageSweepFailed': '중복 사본을 회수하지 못했습니다. 이유는 앱 로그에 있습니다.',
+  'settings.storageSweepConfirmAction': '회수'
 }

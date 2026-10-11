@@ -336,6 +336,7 @@ import type {
   ActiveSessionInfo,
   DataRootInspection,
   DataRootValidationResult,
+  DuplicateSweepOutcome,
   MigrationOutcome,
   MigrationProgress,
   RevealAppStorageResult,
@@ -1247,6 +1248,10 @@ export interface PureScienceAPI {
     discardMigratedCopy(parent: string): Promise<void>
     // Marks the one-time legacy-data-move prompt as answered (declined / keep-here) so it's not shown again.
     dismissLegacyMovePrompt(): Promise<void>
+    // P0-10: reclaims bytes held by names that duplicate content already on disk (same walker the startup
+    // maintenance uses, run on demand). The result carries the reclaimed byte count so the panel can show
+    // it beside the disk reading instead of asking the user to take a silence for an answer.
+    sweepDuplicateContent(): Promise<DuplicateSweepOutcome>
     onProgress(listener: AcpListener<MigrationProgress>): RemoveListener
   }
   reviewer: {

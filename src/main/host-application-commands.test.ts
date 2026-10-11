@@ -418,7 +418,20 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     cancelMigrate: vi.fn(() => undefined),
     commitAndRelaunch: vi.fn(async () => ({ ok: true as const })),
     discardMigratedCopy: vi.fn(async () => undefined),
-    dismissLegacyMovePrompt: vi.fn(async () => undefined)
+    dismissLegacyMovePrompt: vi.fn(async () => undefined),
+    // P0-10: the on-demand duplicate reclaim. The fixture supplies the shape the command owner needs;
+    // what the reclaim does is asserted in the storage owner's own suite.
+    sweepDuplicateContent: vi.fn(async () => ({
+      ok: true as const,
+      scanned: 0,
+      linked: 0,
+      bytes: 0,
+      distinct: 0,
+      alreadyShared: 0,
+      unreadable: 0,
+      unlinked: 0,
+      elapsedMs: 0
+    }))
   },
   update: {
     getAppInfo: vi.fn(() => ({ name: 'PureScience', version: '1.0.0', copyright: 'Zerolink' })),
@@ -468,8 +481,9 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     }))
 
-    // 84 with the seven PDF annotation channels (the store, the import, and the two export channels).
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(84)
+    // 85 with the seven PDF annotation channels (the store, the import, and the two export channels) and
+    // the on-demand duplicate reclaim.
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(85)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -487,7 +501,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(84)
+    expect(router.dispatcher.commandNames()).toHaveLength(85)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -752,6 +766,10 @@ describe('Host application commands', () => {
       invocation([root])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.storage.sweepDuplicateContent,
+      invocation([])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.storage.validateDataRoot,
       invocation([parent])
     )
@@ -866,6 +884,8 @@ describe('Host application commands', () => {
     expect(dependencies.query.run).toHaveBeenCalledWith('project-1', querySql)
     expect(dependencies.storage.commitAndRelaunch).toHaveBeenCalledWith(parent)
     expect(dependencies.storage.setDataRootAndRelaunch).toHaveBeenCalledWith(root)
+    // No arguments: the reclaim takes its root from main, never from the caller.
+    expect(dependencies.storage.sweepDuplicateContent).toHaveBeenCalledWith()
 
     const ownerMethods = Object.values(dependencies).flatMap((owner) => Object.values(owner))
     expect(
@@ -951,9 +971,11 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    // 56 with the PDF annotation channels (including the two export channels), 49 with the
+    // 57 with the PDF annotation channels (including the two export channels), 49 with the
     // saved-search-filter-set channels: all of them are local-only like the bookmarks beside them.
-    expect(localOnlyChannels).toHaveLength(56)
+    // The on-demand duplicate reclaim joins them: main resolves the root it walks, so a paired
+    // browser never gets to point the sweep at a directory of its choosing.
+    expect(localOnlyChannels).toHaveLength(57)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

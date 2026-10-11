@@ -4337,6 +4337,19 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.readingsVerify': 'Запросить снова и сверить',
   'ws.readingsVerifyPending': 'Повторный запрос…',
   'ws.readingsVerifyMatched': 'Совпадает: тот же запрос вернул те же байты (HTTP {status}).',
-  'ws.readingsVerifyMismatch': 'Расходится: тот же запрос вернул другие байты (HTTP {status}) — записано {recorded}, сейчас {recomputed}.',
+  'ws.readingsVerifyMismatch':
+    'Расходится: тот же запрос вернул другие байты (HTTP {status}) — записано {recorded}, сейчас {recomputed}.',
   'ws.readingsVerifyRefused': 'Не сверялось, причина названа:',
+  'settings.storageSweepAction': 'Вернуть дубликаты',
+  'settings.storageSweepHint':
+    'Файлы, содержимое которых уже есть под другим именем, связываются с этой копией, поэтому одни и те же байты хранятся один раз. Ничего не удаляется.',
+  'settings.storageSweepRunning': 'Проверка дубликатов…',
+  'settings.storageSweepConfirmTitle': 'Вернуть дубликаты?',
+  'settings.storageSweepConfirmBody':
+    'Просматривает папки с содержимым и ищет файлы, байты которых уже сохранены под другим именем. Эти имена будут связаны с существующей копией — ни один файл не удаляется и содержимое не меняется. В большой библиотеке это может занять некоторое время.',
+  'settings.storageSweepReclaimed': 'Возвращено {size} из {count} дубликатов.',
+  'settings.storageSweepNothing': 'Дубликаты не найдены — возвращать нечего.',
+  'settings.storageSweepFailed':
+    'Не удалось вернуть дубликаты. Причина указана в журнале приложения.',
+  'settings.storageSweepConfirmAction': 'Вернуть'
 }

@@ -339,7 +339,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         { bindUnreadTaskDeletionRuntime },
         { registerUnreadTaskIpc },
         { getProjectDbClient },
-        { resolveStorageRoot }
+        { resolveStorageRoot, resolveDataRoot }
       ] = await Promise.all([
         import('./ipc'),
         import('./windows'),
@@ -465,7 +465,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       void (async () => {
         const log = createLogger('storage')
         try {
-          const storageRoot = resolveStorageRoot()
+          const storageRoot = resolveDataRoot()
           const pruned = await pruneUnreferencedContent({ storageRoot })
           const space = await measureSpace({ storageRoot })
           log.info('content storage', {

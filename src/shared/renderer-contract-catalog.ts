@@ -464,6 +464,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['inspectDataRoot', 'storage:inspect-data-root', LOCAL, STORAGE_PARENT], ['migrate', 'storage:migrate', LOCAL, STORAGE_PARENT],
     ['onProgress', 'storage:migrate-progress', EVENT], ['pickDirectory', 'storage:pick-directory', LOCAL],
     ['revealAppStorage', 'storage:reveal-app-storage', LOCAL], ['setDataRootAndRelaunch', 'storage:set-data-root-and-relaunch', LOCAL, STORAGE_ROOT],
+    ['sweepDuplicateContent', 'storage:sweep-duplicate-content', LOCAL],
     ['validateDataRoot', 'storage:validate-data-root', LOCAL, STORAGE_PARENT],
   ]),
   group('update', 'update', [

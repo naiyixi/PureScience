@@ -29,6 +29,7 @@ import type {
   ActiveSessionInfo,
   DataRootInspection,
   DataRootValidationResult,
+  DuplicateSweepOutcome,
   MigrationOutcome,
   RevealAppStorageResult,
   StorageInfo
@@ -295,6 +296,13 @@ const storageCommands = Object.freeze({
     readonly [request: StorageRootRequest],
     DataRootValidationResult
   >('storage:set-data-root-and-relaunch'),
+  // P0-10: the on-demand duplicate sweep. LOCAL, no arguments: main resolves the root it walks, so the
+  // renderer can never point the sweep at a directory of its choosing.
+  sweepDuplicateContent: defineApplicationCommand<
+    'storage:sweep-duplicate-content',
+    readonly [],
+    DuplicateSweepOutcome
+  >('storage:sweep-duplicate-content'),
   validateDataRoot: defineApplicationCommand<
     'storage:validate-data-root',
     readonly [request: StorageParentRequest],
@@ -614,6 +622,7 @@ type HostApplicationCommandDependencies = Readonly<{
     commitAndRelaunch: (request: StorageParentRequest) => Promise<MigrationOutcome>
     discardMigratedCopy: (request: StorageParentRequest) => Promise<void>
     dismissLegacyMovePrompt: () => Promise<void>
+    sweepDuplicateContent: () => Promise<DuplicateSweepOutcome>
   }>
   update: UpdateCommandOwner
 }>
@@ -865,6 +874,10 @@ const registerHostApplicationCommands = (
       'storage:set-data-root-and-relaunch': ({ args, callerContext }) =>
         localCommand(callerContext, 'storage:set-data-root-and-relaunch', () =>
           dependencies.storage.setDataRootAndRelaunch(args[0])
+        ),
+      'storage:sweep-duplicate-content': ({ callerContext }) =>
+        localCommand(callerContext, 'storage:sweep-duplicate-content', () =>
+          dependencies.storage.sweepDuplicateContent()
         ),
       'storage:validate-data-root': ({ args, callerContext }) =>
         localCommand(callerContext, 'storage:validate-data-root', () =>

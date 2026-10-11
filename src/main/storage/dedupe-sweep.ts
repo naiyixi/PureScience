@@ -34,15 +34,15 @@ const digestOf = async (path: string): Promise<string | undefined> => {
   return hash.digest('hex')
 }
 
-type Candidate = { path: string; size: number }
+type Candidate = { path: string; size: number; category: string }
 
-const collect = async (dir: string, into: Candidate[]): Promise<number> => {
+const collect = async (dir: string, category: string, into: Candidate[]): Promise<number> => {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => [])
   let alreadyShared = 0
   for (const entry of entries) {
     const target = join(dir, entry.name)
     if (entry.isDirectory()) {
-      alreadyShared += await collect(target, into)
+      alreadyShared += await collect(target, category, into)
       continue
     }
     if (!entry.isFile()) continue
@@ -54,7 +54,7 @@ const collect = async (dir: string, into: Candidate[]): Promise<number> => {
       alreadyShared += 1
       continue
     }
-    into.push({ path: target, size: info.size })
+    into.push({ path: target, size: info.size, category })
   }
   return alreadyShared
 }
@@ -69,16 +69,21 @@ export const sweepDuplicateContent = async (options: {
   const candidates: Candidate[] = []
   let alreadyShared = 0
   for (const dir of dirs) {
-    alreadyShared += await collect(join(options.storageRoot, dir), candidates)
+    alreadyShared += await collect(join(options.storageRoot, dir), dir, candidates)
   }
 
   // Equal size is a necessary condition for equal content, so only same-size files are ever hashed. On a
   // many-gigabyte root this is the difference between reading a handful of files and reading all of them.
-  const bySize = new Map<number, Candidate[]>()
+  // Candidates are grouped WITHIN their content category and never across two of them: the storage reading
+  // walks each category with its own dedup set (on the stated assumption that hard links do not cross
+  // categories), so a link between two categories would leave the panel's total exactly where it was and
+  // make the byte count reported here unverifiable against the number on screen.
+  const bySize = new Map<string, Candidate[]>()
   for (const candidate of candidates) {
-    const group = bySize.get(candidate.size)
-    if (group) group.push(candidate)
-    else bySize.set(candidate.size, [candidate])
+    const group = `${candidate.category}\u0000${candidate.size}`
+    const bucket = bySize.get(group)
+    if (bucket) bucket.push(candidate)
+    else bySize.set(group, [candidate])
   }
 
   const progress: SweepProgress = { scanned: 0, linked: 0, bytes: 0 }

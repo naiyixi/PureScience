@@ -259,10 +259,131 @@ describe('storage IPC handlers', () => {
       'storage:validate-data-root',
       'storage:inspect-data-root',
       'storage:set-data-root-and-relaunch',
+      'storage:sweep-duplicate-content',
       'storage:dismiss-legacy-move-prompt'
     ]) {
       expect(handlers.has(channel)).toBe(true)
     }
+  })
+
+  it('sweep-duplicate-content walks the data root and reports the bytes it reclaimed', async () => {
+    initDataRoot(dataRoot)
+    const clear = vi.fn()
+    const usageCache = { read: vi.fn(), warm: vi.fn(), clear } as never
+    const sweep = vi.fn().mockResolvedValue({
+      scanned: 4,
+      linked: 2,
+      bytes: 2048,
+      distinct: 2,
+      alreadyShared: 1,
+      unreadable: 0,
+      unlinked: 0
+    })
+    const logger = fakeDiagnosticLogger()
+    const owner = createStorageCommandOwner(
+      fakeDeps({ logger, usageCache, sweepDuplicateContent: sweep })
+    )
+    registerStorageIpcHandlers(fakeDeps(), owner)
+
+    await expect(invoke('storage:sweep-duplicate-content')).resolves.toMatchObject({
+      ok: true,
+      scanned: 4,
+      linked: 2,
+      bytes: 2048
+    })
+    // The root is main's own decision — the renderer sends no path and therefore cannot point the walk
+    // anywhere, and the walk covers the same root the panel's totals are measured on.
+    expect(sweep).toHaveBeenCalledWith({ storageRoot: dataRoot })
+    // The cached reading predates the bytes just reclaimed: the next panel read must re-walk instead of
+    // serving numbers the user can see are stale.
+    expect(clear).toHaveBeenCalledTimes(1)
+    // What it did is in the log, so a success the user does not see is still attributable.
+    expect(logger.info).toHaveBeenCalledWith(
+      'content duplicates reclaimed on request',
+      expect.objectContaining({ bytes: 2048, linked: 2 })
+    )
+  })
+
+  it('joins a second sweep to the one already running instead of walking the tree twice', async () => {
+    initDataRoot(dataRoot)
+    const result = {
+      scanned: 1,
+      linked: 1,
+      bytes: 8,
+      distinct: 1,
+      alreadyShared: 0,
+      unreadable: 0,
+      unlinked: 0
+    }
+    let releaseSweep: (() => void) | undefined
+    const sweep = vi.fn(
+      () =>
+        new Promise<typeof result>((resolve) => {
+          releaseSweep = () => resolve(result)
+        })
+    )
+    const owner = createStorageCommandOwner(fakeDeps({ sweepDuplicateContent: sweep }))
+    registerStorageIpcHandlers(fakeDeps(), owner)
+
+    const first = invoke('storage:sweep-duplicate-content')
+    const second = invoke('storage:sweep-duplicate-content')
+    releaseSweep?.()
+
+    await expect(first).resolves.toMatchObject({ ok: true, bytes: 8 })
+    await expect(second).resolves.toMatchObject({ ok: true, bytes: 8 })
+    expect(sweep).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the cached reading when the sweep reclaimed nothing', async () => {
+    initDataRoot(dataRoot)
+    const clear = vi.fn()
+    const sweep = vi.fn().mockResolvedValue({
+      scanned: 2,
+      linked: 0,
+      bytes: 0,
+      distinct: 2,
+      alreadyShared: 0,
+      unreadable: 0,
+      unlinked: 0
+    })
+    const owner = createStorageCommandOwner(
+      fakeDeps({
+        usageCache: { read: vi.fn(), warm: vi.fn(), clear } as never,
+        sweepDuplicateContent: sweep
+      })
+    )
+    registerStorageIpcHandlers(fakeDeps(), owner)
+
+    await expect(invoke('storage:sweep-duplicate-content')).resolves.toMatchObject({
+      ok: true,
+      bytes: 0
+    })
+    // Nothing on disk changed, so the reading the panel already holds is still true. Invalidating it
+    // would make the next read re-walk a multi-gigabyte root for the same numbers.
+    expect(clear).not.toHaveBeenCalled()
+  })
+
+  it('answers a failed sweep with the reason, and a later attempt runs again', async () => {
+    initDataRoot(dataRoot)
+    const sweep = vi.fn().mockRejectedValue(new Error('EACCES: permission denied'))
+    const logger = fakeDiagnosticLogger()
+    const owner = createStorageCommandOwner(fakeDeps({ logger, sweepDuplicateContent: sweep }))
+    registerStorageIpcHandlers(fakeDeps(), owner)
+
+    // Failure crosses the IPC boundary as data, not as a rejection: the panel has something to say
+    // either way, and the caller can tell "nothing to reclaim" from "could not run".
+    await expect(invoke('storage:sweep-duplicate-content')).resolves.toEqual({
+      ok: false,
+      error: 'EACCES: permission denied'
+    })
+    expect(logger.warn).toHaveBeenCalledWith('on-demand duplicate sweep failed', expect.anything())
+
+    // …and the in-flight gate is released on failure, so a retry after a transient error is not wedged.
+    await expect(invoke('storage:sweep-duplicate-content')).resolves.toEqual({
+      ok: false,
+      error: 'EACCES: permission denied'
+    })
+    expect(sweep).toHaveBeenCalledTimes(2)
   })
 
   it('reveals the main-resolved config root without accepting a renderer path', async () => {

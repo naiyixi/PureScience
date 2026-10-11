@@ -242,6 +242,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'pick-directory',
     'reveal-app-storage',
     'set-data-root-and-relaunch',
+    'sweep-duplicate-content',
     'validate-data-root'
   ],
   update: ['apply', 'cancel', 'download'],
@@ -308,7 +309,7 @@ describe('renderer surface inventory', () => {
     // method per contract, so the preload inventory and the catalog move together.
     // 473 with the read-only external crate inspection (roCrate.inspectExternal): same, one method.
     // 474 with verifying a recorded reading (artifacts.verifyReading): same, one method.
-    expect(electronPaths).toHaveLength(474)
+    expect(electronPaths).toHaveLength(475)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -320,7 +321,7 @@ describe('renderer surface inventory', () => {
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
     // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
     // channel.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(366)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(367)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -358,7 +359,7 @@ describe('renderer surface inventory', () => {
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
     // 125 with verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so it
     // is refused on the remote surface and counted in the fail-closed set.
-    expect(expectedRemoteLocalOnly).toHaveLength(125)
+    expect(expectedRemoteLocalOnly).toHaveLength(126)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

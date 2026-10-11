@@ -4006,6 +4006,18 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.readingsVerify': '重新請求並核對',
   'ws.readingsVerifyPending': '正在重新請求…',
   'ws.readingsVerifyMatched': '一致：重發同一請求回傳了相同位元組（HTTP {status}）。',
-  'ws.readingsVerifyMismatch': '不一致：重發同一請求回傳了不同位元組（HTTP {status}）—— 紀錄 {recorded}，現在 {recomputed}。',
+  'ws.readingsVerifyMismatch':
+    '不一致：重發同一請求回傳了不同位元組（HTTP {status}）—— 紀錄 {recorded}，現在 {recomputed}。',
   'ws.readingsVerifyRefused': '未核對，原因具名：',
+  'settings.storageSweepAction': '回收重複副本',
+  'settings.storageSweepHint':
+    '內容與另一個檔案完全相同的檔案會改為指向那一份，同樣的位元組只存一次。不會刪除任何檔案。',
+  'settings.storageSweepRunning': '正在檢查重複…',
+  'settings.storageSweepConfirmTitle': '要回收重複副本嗎？',
+  'settings.storageSweepConfirmBody':
+    '會走訪你的內容目錄，找出位元組已經存在、只是名稱不同的檔案，把這些名稱指向已有的那一份 —— 不會刪除檔案，也不會變更內容。內容較多時可能需要一點時間。',
+  'settings.storageSweepReclaimed': '已回收 {size}（{count} 個重複副本）。',
+  'settings.storageSweepNothing': '沒有發現重複副本，無需回收。',
+  'settings.storageSweepFailed': '無法回收重複副本，原因請見應用程式日誌。',
+  'settings.storageSweepConfirmAction': '回收'
 }

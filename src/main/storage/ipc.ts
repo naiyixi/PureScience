@@ -29,6 +29,7 @@ const registerStorageIpcHandlers = (
   ipcMainHandle('storage:set-data-root-and-relaunch', (_event, request) =>
     owner.setDataRootAndRelaunch(request)
   )
+  ipcMainHandle('storage:sweep-duplicate-content', () => owner.sweepDuplicateContent())
 }
 
 export { registerStorageIpcHandlers }

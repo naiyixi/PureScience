@@ -4413,7 +4413,21 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.readingsSameRun': 'Registrada por la ejecución que produjo esta versión.',
   'ws.readingsVerify': 'Volver a pedir y comprobar',
   'ws.readingsVerifyPending': 'Reenviando la petición…',
-  'ws.readingsVerifyMatched': 'Coincide: la misma petición devolvió los mismos bytes (HTTP {status}).',
-  'ws.readingsVerifyMismatch': 'Difiere: la misma petición devolvió otros bytes (HTTP {status}) — registrado {recorded}, ahora {recomputed}.',
+  'ws.readingsVerifyMatched':
+    'Coincide: la misma petición devolvió los mismos bytes (HTTP {status}).',
+  'ws.readingsVerifyMismatch':
+    'Difiere: la misma petición devolvió otros bytes (HTTP {status}) — registrado {recorded}, ahora {recomputed}.',
   'ws.readingsVerifyRefused': 'Sin comprobar, el motivo está nombrado:',
+  'settings.storageSweepAction': 'Recuperar copias duplicadas',
+  'settings.storageSweepHint':
+    'Los archivos cuyo contenido ya existe con otro nombre se enlazan a esa copia, de modo que los mismos bytes se guardan una sola vez. No se elimina nada.',
+  'settings.storageSweepRunning': 'Comprobando duplicados…',
+  'settings.storageSweepConfirmTitle': '¿Recuperar las copias duplicadas?',
+  'settings.storageSweepConfirmBody':
+    'Recorre tus carpetas de contenido buscando archivos cuyos bytes ya están guardados con otro nombre. Esos nombres se enlazarán a la copia existente: no se elimina ningún archivo ni cambia ningún contenido. En una biblioteca grande puede tardar un momento.',
+  'settings.storageSweepReclaimed': 'Se recuperaron {size} de {count} copias duplicadas.',
+  'settings.storageSweepNothing': 'No se encontraron copias duplicadas: nada que recuperar.',
+  'settings.storageSweepFailed':
+    'No se pudieron recuperar las copias duplicadas. El motivo está en el registro de la aplicación.',
+  'settings.storageSweepConfirmAction': 'Recuperar'
 }

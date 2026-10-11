@@ -20,6 +20,34 @@ export type StorageUsage = {
   pending?: boolean
 }
 
+// P0-10: what an on-demand duplicate sweep did. `bytes` is the total size of the names that were
+// replaced by a hard link to an identical copy already on disk — the same bytes the panel's own walk
+// moves out of `totalBytes` and into `sharedBytes`, so the reading and the action can be checked
+// against each other instead of believed. Every field is a count taken from the filesystem walk.
+export type DuplicateSweepResult = {
+  /** Same-size candidates whose bytes were hashed to decide whether they were duplicates. */
+  scanned: number
+  /** Names replaced by a link to a verified identical copy. */
+  linked: number
+  /** Bytes reclaimed by those replacements (the replaced file's own size). */
+  bytes: number
+  /** Distinct contents found among the hashed candidates. */
+  distinct: number
+  /** Files already sharing their bytes with another name, left alone. */
+  alreadyShared: number
+  /** Candidates whose bytes could not be read, so nothing is claimed about them. */
+  unreadable: number
+  /** Verified duplicates whose replacement failed (e.g. cross-device); left exactly as they were. */
+  unlinked: number
+  elapsedMs: number
+}
+
+// A user-triggered maintenance call reports failure as data rather than as a bare rejection, so the
+// panel can say what went wrong instead of showing nothing.
+export type DuplicateSweepOutcome =
+  | ({ ok: true } & DuplicateSweepResult)
+  | { ok: false; error: string }
+
 export type StorageInfo = {
   dataRoot: string
   isDefault: boolean

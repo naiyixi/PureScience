@@ -4460,6 +4460,19 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.readingsVerify': 'Erneut anfragen und prüfen',
   'ws.readingsVerifyPending': 'Anfrage wird erneut gesendet…',
   'ws.readingsVerifyMatched': 'Stimmt: dieselbe Anfrage lieferte dieselben Bytes (HTTP {status}).',
-  'ws.readingsVerifyMismatch': 'Abweichung: dieselbe Anfrage lieferte andere Bytes (HTTP {status}) — aufgezeichnet {recorded}, jetzt {recomputed}.',
+  'ws.readingsVerifyMismatch':
+    'Abweichung: dieselbe Anfrage lieferte andere Bytes (HTTP {status}) — aufgezeichnet {recorded}, jetzt {recomputed}.',
   'ws.readingsVerifyRefused': 'Nicht geprüft, der Grund ist benannt:',
+  'settings.storageSweepAction': 'Doppelte Kopien verknüpfen',
+  'settings.storageSweepHint':
+    'Dateien, deren Inhalt bereits unter einem anderen Namen vorliegt, werden mit dieser Kopie verknüpft, sodass dieselben Bytes nur einmal gespeichert sind. Es wird nichts gelöscht.',
+  'settings.storageSweepRunning': 'Doppelte Kopien werden geprüft…',
+  'settings.storageSweepConfirmTitle': 'Doppelte Kopien verknüpfen?',
+  'settings.storageSweepConfirmBody':
+    'Durchsucht deine Inhaltsordner nach Dateien, deren Bytes bereits unter einem anderen Namen gespeichert sind. Diese Namen werden mit der vorhandenen Kopie verknüpft — es wird keine Datei gelöscht und kein Inhalt geändert. Bei einer großen Bibliothek kann das einen Moment dauern.',
+  'settings.storageSweepReclaimed': 'Aus {count} doppelten Kopien wurden {size} zurückgewonnen.',
+  'settings.storageSweepNothing': 'Keine doppelten Kopien gefunden — nichts zu tun.',
+  'settings.storageSweepFailed':
+    'Doppelte Kopien konnten nicht verknüpft werden. Der Grund steht im App-Protokoll.',
+  'settings.storageSweepConfirmAction': 'Verknüpfen'
 }

@@ -4358,6 +4358,19 @@ export const en: Record<ZhKey, string> = {
   'ws.readingsVerify': 'Re-issue and check',
   'ws.readingsVerifyPending': 'Re-issuing the request…',
   'ws.readingsVerifyMatched': 'Matched: the same request returned the same bytes (HTTP {status}).',
-  'ws.readingsVerifyMismatch': 'Different: the same request returned different bytes (HTTP {status}) — recorded {recorded}, now {recomputed}.',
+  'ws.readingsVerifyMismatch':
+    'Different: the same request returned different bytes (HTTP {status}) — recorded {recorded}, now {recomputed}.',
   'ws.readingsVerifyRefused': 'Not checked, and the reason is named:',
+  'settings.storageSweepAction': 'Reclaim duplicate copies',
+  'settings.storageSweepHint':
+    'Files whose content already exists under another name are linked to that copy, so the same bytes are stored once. Nothing is deleted.',
+  'settings.storageSweepRunning': 'Checking for duplicates…',
+  'settings.storageSweepConfirmTitle': 'Reclaim duplicate copies?',
+  'settings.storageSweepConfirmBody':
+    'This walks your content folders and looks for files whose bytes are already stored under another name. Those names are linked to the existing copy — no file is deleted and no content changes. On a large library it can take a moment.',
+  'settings.storageSweepReclaimed': 'Reclaimed {size} from {count} duplicate copies.',
+  'settings.storageSweepNothing': 'No duplicate copies found — nothing to reclaim.',
+  'settings.storageSweepFailed':
+    'Could not reclaim duplicate copies. The reason is in the app log.',
+  'settings.storageSweepConfirmAction': 'Reclaim'
 }

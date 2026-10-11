@@ -8,6 +8,8 @@ import { app, dialog, shell } from 'electron'
 import type {
   ActiveSessionInfo,
   DataRootInspection,
+  DuplicateSweepOutcome,
+  DuplicateSweepResult,
   MigrationOutcome,
   MigrationProgress,
   RevealAppStorageResult,
@@ -39,6 +41,10 @@ import {
 } from './migration-service'
 import { availableBytes, computeStorageUsage } from './usage'
 import { createStorageUsageCache, type StorageUsageCache } from './usage-cache'
+import {
+  sweepDuplicateContent as defaultSweepDuplicateContent,
+  type SweepResult
+} from './dedupe-sweep'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
@@ -87,6 +93,9 @@ type StorageCommandOwnerDeps = {
   // Injectable so the disk-usage read (a full walk of the root, seconds on a real one) can be controlled in
   // tests instead of depending on how much is on disk.
   usageCache?: StorageUsageCache
+  // Injectable so the duplicate sweep can be driven in tests without hashing a real tree; the production
+  // default is the same walker the startup maintenance uses.
+  sweepDuplicateContent?: (options: { storageRoot: string }) => Promise<SweepResult>
 }
 
 type StorageParentRequest = Readonly<{ parent: string }>
@@ -125,6 +134,7 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
   // The Storage panel asks for disk usage every time it opens, and a walk of a multi-gigabyte root
   // takes ~15s; serve the last reading and refresh it behind the user's back.
   const usageCache = deps.usageCache ?? createStorageUsageCache({ compute: computeStorageUsage })
+  const sweep = { run: deps.sweepDuplicateContent ?? defaultSweepDuplicateContent }
 
   const getInfo = async (): Promise<StorageInfo> => {
     const startedAt = Date.now()
@@ -190,6 +200,46 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
       usage,
       availableBytes: available
     }
+  }
+
+  // P0-10: the same duplicate tidy-up the startup maintenance runs, on demand. It walks the DATA root —
+  // the root the panel's own totals are measured on — so the bytes reported here are the bytes the next
+  // reading will have moved from `totalBytes` into `sharedBytes`. One sweep at a time: a second click
+  // joins the running one instead of starting a competing walk over the same tree.
+  let activeSweep: Promise<DuplicateSweepOutcome> | undefined
+  const sweepDuplicateContent = async (): Promise<DuplicateSweepOutcome> => {
+    if (activeSweep) return activeSweep
+    const startedAt = Date.now()
+    const run = (async (): Promise<DuplicateSweepOutcome> => {
+      try {
+        const swept: SweepResult = await sweep.run({ storageRoot: resolveDataRoot() })
+        const result: DuplicateSweepResult = { ...swept, elapsedMs: Date.now() - startedAt }
+        // The cached reading predates the bytes we just reclaimed; dropping it makes the panel's next
+        // read re-walk the root instead of serving numbers the user can see are stale. Only when bytes
+        // actually moved: a walk that found nothing to do leaves the existing reading true, and
+        // invalidating it would cost a multi-gigabyte re-walk for identical numbers.
+        if (result.bytes > 0) usageCache.clear()
+        logger.info('content duplicates reclaimed on request', {
+          scanned: result.scanned,
+          linked: result.linked,
+          bytes: result.bytes,
+          alreadyShared: result.alreadyShared,
+          unreadable: result.unreadable,
+          unlinked: result.unlinked,
+          elapsedMs: result.elapsedMs
+        })
+        return { ok: true, ...result }
+      } catch (err) {
+        logger.warn('on-demand duplicate sweep failed', diagnosticErrorFields(err))
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      } finally {
+        // Only this path ever sets the gate, and a second caller returns without touching it, so this
+        // can only clear this run's own entry — no identity check needed.
+        activeSweep = undefined
+      }
+    })()
+    activeSweep = run
+    return run
   }
 
   const revealAppStorage = async (): Promise<RevealAppStorageResult> => {
@@ -560,7 +610,8 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     commitAndRelaunch,
     validateDataRoot,
     inspectDataRoot,
-    setDataRootAndRelaunch
+    setDataRootAndRelaunch,
+    sweepDuplicateContent
   })
 }
 

@@ -62,4 +62,27 @@ describe('sweepDuplicateContent', () => {
     // The already-shared name is reported, not silently skipped: the count says what the pass saw.
     expect(secondPass.alreadyShared).toBeGreaterThanOrEqual(1)
   })
+
+  it('reclaims duplicates inside a category but never links across two of them', async () => {
+    // The storage reading walks every category with its OWN dedup set (its stated assumption is that hard
+    // links do not cross data-category boundaries), so a link from uploads to artifacts would save bytes
+    // the panel's total never credits: the user would read a reclaimed count the number above it cannot
+    // confirm. Keeping the link inside one category is what makes the two numbers checkable against each
+    // other, which is why the reclaim is reported in the first place.
+    const uploadsCopy = await write('uploads/p/s/one.bin', 'cross-category payload')
+    const artifactsCopy = await write('artifacts/same.bin', 'cross-category payload')
+    const twinA = await write('artifacts/twin-a.bin', 'twinned inside one category')
+    const twinB = await write('artifacts/twin-b.bin', 'twinned inside one category')
+
+    const result = await sweepDuplicateContent({ storageRoot })
+
+    // Inside one category: reclaimed in the same pass…
+    expect(result.linked).toBe(1)
+    expect(result.bytes).toBe('twinned inside one category'.length)
+    expect((await stat(twinB)).ino).toBe((await stat(twinA)).ino)
+    // …across two categories: left exactly as it was, still readable under both names.
+    expect((await stat(artifactsCopy)).ino).not.toBe((await stat(uploadsCopy)).ino)
+    await expect(readFile(uploadsCopy, 'utf8')).resolves.toBe('cross-category payload')
+    await expect(readFile(artifactsCopy, 'utf8')).resolves.toBe('cross-category payload')
+  })
 })

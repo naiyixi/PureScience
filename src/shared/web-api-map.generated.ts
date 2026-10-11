@@ -347,6 +347,7 @@ export const WEB_INVOKE_CHANNELS = {
   'storage.pickDirectory': 'storage:pick-directory',
   'storage.revealAppStorage': 'storage:reveal-app-storage',
   'storage.setDataRootAndRelaunch': 'storage:set-data-root-and-relaunch',
+  'storage.sweepDuplicateContent': 'storage:sweep-duplicate-content',
   'storage.validateDataRoot': 'storage:validate-data-root',
   'update.apply': 'update:apply',
   'update.cancel': 'update:cancel',

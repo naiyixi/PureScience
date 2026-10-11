@@ -4064,8 +4064,20 @@ export const zh = {
   'ws.readingsVerify': '重新请求并核对',
   'ws.readingsVerifyPending': '正在重新请求…',
   'ws.readingsVerifyMatched': '一致：重发同一请求返回了相同字节（HTTP {status}）。',
-  'ws.readingsVerifyMismatch': '不一致：重发同一请求返回了不同字节（HTTP {status}）—— 记录 {recorded}，现在 {recomputed}。',
+  'ws.readingsVerifyMismatch':
+    '不一致：重发同一请求返回了不同字节（HTTP {status}）—— 记录 {recorded}，现在 {recomputed}。',
   'ws.readingsVerifyRefused': '未核对，原因具名：',
+  'settings.storageSweepAction': '回收重复副本',
+  'settings.storageSweepHint':
+    '内容与另一个文件完全相同的文件会改为指向那一份，同样的字节只存一次。不会删除任何文件。',
+  'settings.storageSweepRunning': '正在检查重复…',
+  'settings.storageSweepConfirmTitle': '要回收重复副本吗？',
+  'settings.storageSweepConfirmBody':
+    '会遍历你的内容目录，找出字节已经存在、只是名字不同的文件，把这些名字指向已有的那一份 —— 不删除文件，也不改内容。内容多时可能要等一会儿。',
+  'settings.storageSweepReclaimed': '已回收 {size}（{count} 个重复副本）。',
+  'settings.storageSweepNothing': '没有发现重复副本，无需回收。',
+  'settings.storageSweepFailed': '未能回收重复副本，原因见应用日志。',
+  'settings.storageSweepConfirmAction': '回收'
 }
 
 export type ZhKey = keyof typeof zh

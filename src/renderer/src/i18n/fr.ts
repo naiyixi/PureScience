@@ -4445,7 +4445,21 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.readingsSameRun': "Enregistrée par l'exécution qui a produit cette version.",
   'ws.readingsVerify': 'Redemander et vérifier',
   'ws.readingsVerifyPending': 'Nouvelle requête en cours…',
-  'ws.readingsVerifyMatched': 'Identique : la même requête a renvoyé les mêmes octets (HTTP {status}).',
-  'ws.readingsVerifyMismatch': 'Différent : la même requête a renvoyé d\'autres octets (HTTP {status}) — enregistré {recorded}, maintenant {recomputed}.',
+  'ws.readingsVerifyMatched':
+    'Identique : la même requête a renvoyé les mêmes octets (HTTP {status}).',
+  'ws.readingsVerifyMismatch':
+    "Différent : la même requête a renvoyé d'autres octets (HTTP {status}) — enregistré {recorded}, maintenant {recomputed}.",
   'ws.readingsVerifyRefused': 'Non vérifié, la raison est nommée :',
+  'settings.storageSweepAction': 'Récupérer les copies en double',
+  'settings.storageSweepHint':
+    "Les fichiers dont le contenu existe déjà sous un autre nom sont liés à cette copie : les mêmes octets ne sont stockés qu'une fois. Rien n'est supprimé.",
+  'settings.storageSweepRunning': 'Recherche des doublons…',
+  'settings.storageSweepConfirmTitle': 'Récupérer les copies en double ?',
+  'settings.storageSweepConfirmBody':
+    "Parcourt tes dossiers de contenu à la recherche de fichiers dont les octets sont déjà stockés sous un autre nom. Ces noms seront liés à la copie existante — aucun fichier n'est supprimé et aucun contenu ne change. Sur une grande bibliothèque, cela peut prendre un moment.",
+  'settings.storageSweepReclaimed': '{size} récupérés sur {count} copies en double.',
+  'settings.storageSweepNothing': 'Aucune copie en double trouvée — rien à récupérer.',
+  'settings.storageSweepFailed':
+    "Impossible de récupérer les copies en double. La raison figure dans le journal de l'application.",
+  'settings.storageSweepConfirmAction': 'Récupérer'
 }

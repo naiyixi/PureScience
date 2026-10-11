@@ -4325,6 +4325,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.readingsVerify': '再リクエストして照合',
   'ws.readingsVerifyPending': '再リクエスト中…',
   'ws.readingsVerifyMatched': '一致：同じリクエストが同じバイト列を返しました（HTTP {status}）。',
-  'ws.readingsVerifyMismatch': '不一致：同じリクエストが異なるバイト列を返しました（HTTP {status}）—— 記録 {recorded}、現在 {recomputed}。',
+  'ws.readingsVerifyMismatch':
+    '不一致：同じリクエストが異なるバイト列を返しました（HTTP {status}）—— 記録 {recorded}、現在 {recomputed}。',
   'ws.readingsVerifyRefused': '未照合。理由は明示：',
+  'settings.storageSweepAction': '重複コピーを回収',
+  'settings.storageSweepHint':
+    '内容が別のファイルとまったく同じファイルは、その 1 つを指すように置き換えられ、同じバイトは 1 回だけ保存されます。ファイルは削除されません。',
+  'settings.storageSweepRunning': '重複を確認しています…',
+  'settings.storageSweepConfirmTitle': '重複コピーを回収しますか？',
+  'settings.storageSweepConfirmBody':
+    'コンテンツ フォルダーを走査し、同じバイトが別の名前ですでに保存されているファイルを探します。それらの名前は既存のコピーを指すようになり、ファイルは削除されず内容も変わりません。大きなライブラリでは少し時間がかかります。',
+  'settings.storageSweepReclaimed': '{count} 個の重複コピーから {size} を回収しました。',
+  'settings.storageSweepNothing': '重複コピーは見つかりませんでした。回収するものはありません。',
+  'settings.storageSweepFailed': '重複コピーを回収できませんでした。理由はアプリのログにあります。',
+  'settings.storageSweepConfirmAction': '回収'
 }

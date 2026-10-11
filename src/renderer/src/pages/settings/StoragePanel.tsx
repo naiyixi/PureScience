@@ -5,6 +5,7 @@ import {
   ChevronRight,
   FolderInput,
   FolderOpen,
+  Layers,
   RefreshCw,
   TriangleAlert
 } from 'lucide-react'
@@ -24,6 +25,7 @@ import { useSettingsStore } from '@/stores/settings-store'
 import type {
   DataRootInspection,
   DataRootKind,
+  DuplicateSweepOutcome,
   StorageInfo,
   UsageCategoryKey
 } from '../../../../shared/storage'
@@ -113,6 +115,13 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   const inspectRequestRef = useRef(0)
   const focusRestoreWarn = useDialogFocusRestore(warnOpen)
   const focusRestoreAdopt = useDialogFocusRestore(adoptConfirmOpen)
+  // P0-10: the on-demand duplicate reclaim. `sweepOutcome` is the action's own report — kept as the
+  // shared union rather than a boolean so "nothing to reclaim" and "could not run" cannot collapse
+  // into the same silence.
+  const [sweepConfirmOpen, setSweepConfirmOpen] = useState(false)
+  const [isSweeping, setIsSweeping] = useState(false)
+  const [sweepOutcome, setSweepOutcome] = useState<DuplicateSweepOutcome | null>(null)
+  const focusRestoreSweep = useDialogFocusRestore(sweepConfirmOpen)
   // A read failure used to leave `info` null forever, which this panel renders as "Loading" — so a single
   // failed read disabled the whole data-location section, including the only entry to the move flow, with no
   // reason and no way out. Three states, and a retry that can actually get back to the content.
@@ -139,6 +148,30 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
   const retryStorageInfo = (): void => {
     setInfoState('loading')
     setInfoReloadToken((token) => token + 1)
+  }
+
+  // P0-10: asks main to reclaim the bytes that are currently stored twice, then re-reads the usage above.
+  // The re-read is the point: the reclaimed bytes are exactly the bytes the next walk moves out of the
+  // total, so keeping the pre-sweep reading on screen would show a number the app already knows is stale.
+  // A rejected call is reported the same way a refused one is — as data the panel can render.
+  const handleSweepDuplicates = async (): Promise<void> => {
+    setSweepConfirmOpen(false)
+    setIsSweeping(true)
+    setSweepOutcome(null)
+    let outcome: DuplicateSweepOutcome
+    try {
+      outcome = await window.api.storage.sweepDuplicateContent()
+    } catch (error) {
+      outcome = {
+        ok: false,
+        error: error instanceof Error ? error.message : t('settings.storageSweepFailed')
+      }
+    }
+    setIsSweeping(false)
+    setSweepOutcome(outcome)
+    // Only a reclaim that moved bytes makes the reading above stale; a no-op walk leaves it true, and
+    // re-reading anyway would trigger a full re-walk of a multi-gigabyte root for identical numbers.
+    if (outcome.ok && outcome.bytes > 0) setInfoReloadToken((token) => token + 1)
   }
 
   const storageCheck = environmentCheck?.checks.find((check) => check.id === 'storage')
@@ -642,6 +675,51 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
               <span className="tabular-nums">{formatBytes(info.availableBytes)}</span>
             </div>
           </div>
+
+          {/* The action behind the "shared" row above: it links names whose bytes are identical, so the
+              next walk counts those bytes once. It always says what it did — a silent success would look
+              exactly like a button that never ran. */}
+          <div className="mt-3 border-t border-border pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-slot="storage-sweep-duplicates"
+              disabled={isSweeping}
+              onClick={() => setSweepConfirmOpen(true)}
+            >
+              <Layers className={cn('size-4', isSweeping && 'animate-pulse')} aria-hidden="true" />
+              {isSweeping ? t('settings.storageSweepRunning') : t('settings.storageSweepAction')}
+            </Button>
+            <p className="mt-1.5 text-xs text-muted-foreground">{t('settings.storageSweepHint')}</p>
+            {sweepOutcome ? (
+              !sweepOutcome.ok ? (
+                <p
+                  className="mt-1.5 text-xs text-destructive"
+                  role="alert"
+                  data-slot="storage-sweep-error"
+                >
+                  {t('settings.storageSweepFailed')}
+                </p>
+              ) : sweepOutcome.linked > 0 ? (
+                <p
+                  className="mt-1.5 text-xs text-muted-foreground"
+                  data-slot="storage-sweep-reclaimed"
+                >
+                  {t('settings.storageSweepReclaimed')
+                    .replace('{size}', formatBytes(sweepOutcome.bytes))
+                    .replace('{count}', String(sweepOutcome.linked))}
+                </p>
+              ) : (
+                <p
+                  className="mt-1.5 text-xs text-muted-foreground"
+                  data-slot="storage-sweep-nothing"
+                >
+                  {t('settings.storageSweepNothing')}
+                </p>
+              )
+            ) : null}
+          </div>
         </SettingsSection>
       ) : null}
 
@@ -715,6 +793,40 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
               <AlertDialog.Action asChild>
                 <Button type="button" onClick={() => void handleAdopt()}>
                   {t('settings.useThisFolder')}
+                </Button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+
+      <AlertDialog.Root open={sweepConfirmOpen} onOpenChange={setSweepConfirmOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className={dialogOverlayClassName} />
+          <AlertDialog.Content
+            className={dialogPanelClassName('w-[min(440px,calc(100vw-2rem))]')}
+            onOpenAutoFocus={focusRestoreSweep.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestoreSweep.onCloseAutoFocus}
+          >
+            <AlertDialog.Title className={dialogTitleClassName}>
+              {t('settings.storageSweepConfirmTitle')}
+            </AlertDialog.Title>
+            <AlertDialog.Description className={cn(dialogDescriptionClassName, 'mt-3')}>
+              {t('settings.storageSweepConfirmBody')}
+            </AlertDialog.Description>
+            <div className="mt-6 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <Button type="button" variant="outline">
+                  {t('common.cancel')}
+                </Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button
+                  type="button"
+                  data-slot="storage-sweep-confirm"
+                  onClick={() => void handleSweepDuplicates()}
+                >
+                  {t('settings.storageSweepConfirmAction')}
                 </Button>
               </AlertDialog.Action>
             </div>

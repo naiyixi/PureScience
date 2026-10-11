@@ -981,6 +981,8 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('storage.discardMigratedCopy', parent),
     dismissLegacyMovePrompt: () =>
       electronRendererContracts.invoke('storage.dismissLegacyMovePrompt'),
+    sweepDuplicateContent: () =>
+      electronRendererContracts.invoke('storage.sweepDuplicateContent'),
     onProgress: (listener) => electronRendererContracts.subscribe('storage.onProgress', listener)
   },
   reviewer: {
