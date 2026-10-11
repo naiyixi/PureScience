@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import type { DownloadProgress } from '../../shared/download-progress'
 import { netFetchStandard } from '../skills/net-fetch'
-import { resilientDownload } from '../net/resilient-download'
+import { downloadWithMirrorFallback } from '../net/source-mirrors'
 
 import {
   manifestUrl,
@@ -84,7 +84,10 @@ const downloadFile = async (
   external?: AbortSignal,
   expected?: { sha256?: string; size?: number }
 ): Promise<void> => {
-  await resilientDownload(url, destPath, {
+  // P0-8: the same call, now with the measured mirror table as a second hop. The digest above is what makes
+  // this safe — a mirror serving different bytes fails the same checksum an origin would, so a fallback can
+  // never turn a loud failure into quiet wrong data. Without a digest the helper does not fall back at all.
+  const { via } = await downloadWithMirrorFallback(url, destPath, {
     expectedSha256: expected?.sha256,
     expectedSize: expected?.size,
     stallTimeoutMs: PACK_STALL_TIMEOUT_MS,
@@ -92,6 +95,10 @@ const downloadFile = async (
     onProgress,
     deps: { fetchImpl: netFetchStandard }
   })
+  // `via` names where the bytes actually came from ('origin' or the mirror host). Surfacing it in the pack's
+  // result/provenance is the remaining half of this unit: this module has no logger of its own, so the value
+  // is deliberately not swallowed into a log line here — it must travel with the artifact instead.
+  void via
 }
 
 // The result of a successful pack fetch: the resolved id/entry and where the verified file landed.
