@@ -128,6 +128,7 @@ import {
   buildTaskNotificationShow
 } from './notifications/electron-wiring'
 import { createLogger, diagnosticErrorFields, errorLogFields, getLogFilePath } from './logger'
+import { deleteProjectNotebookData } from './notebook/session-data-cleanup'
 import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
@@ -675,13 +676,23 @@ const createApplicationModules = async (
       sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
   })
   const reviewRepository = createDefaultReviewRepository()
+  // P0-10③: deleting a project now also releases its notebook session data, and says how much that freed.
+  // The data root is resolved per call so a mid-session root change cannot point the removal at a stale tree.
+  const projectNotebookDataDeletion = {
+    deleteProjectNotebookData: (projectId: string) =>
+      deleteProjectNotebookData(
+        { dataRoot: resolveDataRoot(), log: createLogger('notebook') },
+        projectId
+      )
+  }
   const projectDeletionCoordinator = new ProjectDeletionCoordinator(
     projectRepository,
     sessionPersistenceCoordinator,
     previewStateRepository,
     reviewRepository,
     artifactProvenanceRepository,
-    permissionGrantRegistry
+    permissionGrantRegistry,
+    projectNotebookDataDeletion
   )
   const detectArchiveBlockingSessions = (): ReturnType<typeof detectActiveSessions> =>
     detectActiveSessions({

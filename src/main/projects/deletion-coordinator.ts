@@ -35,6 +35,14 @@ type ProjectProvenanceDeletion = {
   deleteProjectProvenance(projectId: string): Promise<void>
 }
 
+type ProjectNotebookDataDeletion = {
+  // P0-10: the project's notebook session data is physical project bytes, exactly like provenance — and
+  // nothing removed it until now (a deleted project kept its run data; one held 1.1 GB of results).
+  deleteProjectNotebookData(
+    projectId: string
+  ): Promise<{ freedBytes: number; state: 'removed' | 'absent' | 'refused' }>
+}
+
 type ProjectPermissionGrantDeletion = {
   prune(owner: { kind: 'project'; projectId: string }): Promise<unknown>
   finalizeOwnerDeletion?(owner: { kind: 'project'; projectId: string }): Promise<void>
@@ -53,7 +61,8 @@ class ProjectDeletionCoordinator {
     private readonly preview: PreviewDeletion,
     private readonly reviews?: ProjectReviewDeletion,
     private readonly provenance?: ProjectProvenanceDeletion,
-    private readonly permissionGrants?: ProjectPermissionGrantDeletion
+    private readonly permissionGrants?: ProjectPermissionGrantDeletion,
+    private readonly notebookData?: ProjectNotebookDataDeletion
   ) {}
 
   // Enqueues before yielding so two callers in the same event-loop turn cannot publish competing
@@ -222,6 +231,11 @@ class ProjectDeletionCoordinator {
     // from the durable intent after a crash, so both SQLite rows and immutable bytes are eventually
     // removed even if the Project row is already gone.
     await this.provenance?.deleteProjectProvenance(projectId)
+
+    // Same class of fact as provenance: bytes this project owned. Not swallowed — a failure retains the
+    // durable intent, and the existing retry that replays this tail covers it. The cleanup itself logs the
+    // bytes it freed (it owns the measurement), so a deletion that frees 1.1 GB says so.
+    await this.notebookData?.deleteProjectNotebookData(projectId)
 
     // The marked Session tombstone is the durable phase boundary. Remove it only after every Project
     // tail has completed, and keep the intent if physical cleanup fails so recovery retries it.
