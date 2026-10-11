@@ -4019,6 +4019,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '會走訪你的內容目錄，找出位元組已經存在、只是名稱不同的檔案，把這些名稱指向已有的那一份 —— 不會刪除檔案，也不會變更內容。內容較多時可能需要一點時間。',
   'settings.storageSweepReclaimed': '已回收 {size}（{count} 個重複副本）。',
   'settings.storageSweepNothing': '沒有發現重複副本，無需回收。',
+  'settings.storageSweepPackageCache': '共享套件快取：回收 {size}（{count} 份冗餘副本）；保留 {leftAlone}（每個檔案的最後一份）。',
   'settings.storageSweepFailed': '無法回收重複副本，原因請見應用程式日誌。',
   'settings.storageSweepConfirmAction': '回收'
 }

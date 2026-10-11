@@ -1149,4 +1149,52 @@ describe('StoragePanel', () => {
     expect(rows?.textContent).toMatch(/Mpro docking\s*1\.1 GB/)
     expect(rows?.textContent).toMatch(/GSE331003\s*100\.0 MB/)
   })
+
+  it('reports what the package-cache reclaim freed, and what it refused to touch', async () => {
+    const sweep = (
+      window as unknown as {
+        api: { storage: { sweepDuplicateContent: ReturnType<typeof vi.fn> } }
+      }
+    ).api.storage.sweepDuplicateContent
+    sweep.mockResolvedValue({
+      ok: true,
+      scanned: 3,
+      linked: 0,
+      bytes: 0,
+      distinct: 3,
+      alreadyShared: 0,
+      unreadable: 0,
+      unlinked: 0,
+      elapsedMs: 9,
+      cacheFreedBytes: 1_073_741_824,
+      cacheFreedFiles: 12345,
+      cacheLeftAloneBytes: 2_147_483_648
+    })
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-duplicates"]')?.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-slot="storage-sweep-confirm"]')?.click()
+      await Promise.resolve()
+    })
+
+    // A second, independent fact from the same click: redundant cache NAMES, not duplicate content. It
+    // says both what it freed and what it left alone — a reclaim that silently ate last-copy files would
+    // otherwise look exactly like one that behaved.
+    const line = document.querySelector('[data-slot="storage-sweep-package-cache"]')
+    expect(line).not.toBeNull()
+    expect(line?.textContent).toMatch(/1\.1 GB/)
+    expect(line?.textContent).toMatch(/12345/)
+    expect(line?.textContent).toMatch(/2\.1 GB/)
+    // The duplicate sweep still reports its own (empty) result alongside it.
+    expect(document.querySelector('[data-slot="storage-sweep-nothing"]')).not.toBeNull()
+  })
 })

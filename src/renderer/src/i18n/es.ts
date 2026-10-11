@@ -4428,6 +4428,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Recorre tus carpetas de contenido buscando archivos cuyos bytes ya están guardados con otro nombre. Esos nombres se enlazarán a la copia existente: no se elimina ningún archivo ni cambia ningún contenido. En una biblioteca grande puede tardar un momento.',
   'settings.storageSweepReclaimed': 'Se recuperaron {size} de {count} copias duplicadas.',
   'settings.storageSweepNothing': 'No se encontraron copias duplicadas: nada que recuperar.',
+  'settings.storageSweepPackageCache': 'Caché de paquetes compartida: {size} liberados en {count} copias redundantes; {leftAlone} conservados (última copia de cada archivo).',
   'settings.storageSweepFailed':
     'No se pudieron recuperar las copias duplicadas. El motivo está en el registro de la aplicación.',
   'settings.storageSweepConfirmAction': 'Recuperar'

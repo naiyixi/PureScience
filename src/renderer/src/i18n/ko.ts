@@ -4270,6 +4270,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '콘텐츠 폴더를 살펴보며 같은 바이트가 다른 이름으로 이미 저장된 파일을 찾습니다. 그 이름들은 기존 사본을 가리키게 되고, 파일이 삭제되거나 내용이 바뀌지는 않습니다. 라이브러리가 크면 잠시 걸릴 수 있습니다.',
   'settings.storageSweepReclaimed': '중복 사본 {count}개에서 {size}를 회수했습니다.',
   'settings.storageSweepNothing': '중복 사본이 없습니다. 회수할 것이 없습니다.',
+  'settings.storageSweepPackageCache': '공유 패키지 캐시: 중복 사본 {count}개에서 {size}를 회수했고, {leftAlone}은 유지했습니다(각 파일의 마지막 사본).',
   'settings.storageSweepFailed': '중복 사본을 회수하지 못했습니다. 이유는 앱 로그에 있습니다.',
   'settings.storageSweepConfirmAction': '회수'
 }

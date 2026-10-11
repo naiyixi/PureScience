@@ -4371,6 +4371,7 @@ export const en: Record<ZhKey, string> = {
     'This walks your content folders and looks for files whose bytes are already stored under another name. Those names are linked to the existing copy — no file is deleted and no content changes. On a large library it can take a moment.',
   'settings.storageSweepReclaimed': 'Reclaimed {size} from {count} duplicate copies.',
   'settings.storageSweepNothing': 'No duplicate copies found — nothing to reclaim.',
+  'settings.storageSweepPackageCache': 'Shared package cache: freed {size} across {count} redundant copies; kept {leftAlone} (the last copy of each file).',
   'settings.storageSweepFailed':
     'Could not reclaim duplicate copies. The reason is in the app log.',
   'settings.storageSweepConfirmAction': 'Reclaim'

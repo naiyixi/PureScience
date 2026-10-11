@@ -4338,6 +4338,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'コンテンツ フォルダーを走査し、同じバイトが別の名前ですでに保存されているファイルを探します。それらの名前は既存のコピーを指すようになり、ファイルは削除されず内容も変わりません。大きなライブラリでは少し時間がかかります。',
   'settings.storageSweepReclaimed': '{count} 個の重複コピーから {size} を回収しました。',
   'settings.storageSweepNothing': '重複コピーは見つかりませんでした。回収するものはありません。',
+  'settings.storageSweepPackageCache': '共有パッケージキャッシュ：{size}（重複コピー {count} 個）を回収、{leftAlone} は保持（各ファイルの最後の 1 つ）。',
   'settings.storageSweepFailed': '重複コピーを回収できませんでした。理由はアプリのログにあります。',
   'settings.storageSweepConfirmAction': '回収'
 }

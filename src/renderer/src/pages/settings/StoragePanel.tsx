@@ -742,6 +742,20 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
                 </p>
               )
             ) : null}
+            {/* P0-10: the same click also reclaims shared package-cache names whose bytes another link still
+                holds. Reported separately from the duplicate sweep above because it is a different fact
+                (redundant cache NAMES, not duplicate content), and it says what it refused to touch. */}
+            {sweepOutcome?.ok && (sweepOutcome.cacheFreedBytes ?? 0) > 0 ? (
+              <p
+                className="mt-1.5 text-xs text-muted-foreground"
+                data-slot="storage-sweep-package-cache"
+              >
+                {t('settings.storageSweepPackageCache')
+                  .replace('{size}', formatBytes(sweepOutcome.cacheFreedBytes ?? 0))
+                  .replace('{count}', String(sweepOutcome.cacheFreedFiles ?? 0))
+                  .replace('{leftAlone}', formatBytes(sweepOutcome.cacheLeftAloneBytes ?? 0))}
+              </p>
+            ) : null}
           </div>
         </SettingsSection>
       ) : null}

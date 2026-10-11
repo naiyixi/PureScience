@@ -4473,6 +4473,7 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Durchsucht deine Inhaltsordner nach Dateien, deren Bytes bereits unter einem anderen Namen gespeichert sind. Diese Namen werden mit der vorhandenen Kopie verknüpft — es wird keine Datei gelöscht und kein Inhalt geändert. Bei einer großen Bibliothek kann das einen Moment dauern.',
   'settings.storageSweepReclaimed': 'Aus {count} doppelten Kopien wurden {size} zurückgewonnen.',
   'settings.storageSweepNothing': 'Keine doppelten Kopien gefunden — nichts zu tun.',
+  'settings.storageSweepPackageCache': 'Gemeinsamer Paket-Cache: {size} über {count} redundante Kopien freigegeben; {leftAlone} beibehalten (letzte Kopie je Datei).',
   'settings.storageSweepFailed':
     'Doppelte Kopien konnten nicht verknüpft werden. Der Grund steht im App-Protokoll.',
   'settings.storageSweepConfirmAction': 'Verknüpfen'

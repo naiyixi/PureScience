@@ -4077,6 +4077,7 @@ export const zh = {
     '会遍历你的内容目录，找出字节已经存在、只是名字不同的文件，把这些名字指向已有的那一份 —— 不删除文件，也不改内容。内容多时可能要等一会儿。',
   'settings.storageSweepReclaimed': '已回收 {size}（{count} 个重复副本）。',
   'settings.storageSweepNothing': '没有发现重复副本，无需回收。',
+  'settings.storageSweepPackageCache': '共享包缓存：回收 {size}（{count} 份冗余副本）；保留 {leftAlone}（每个文件的最后一份）。',
   'settings.storageSweepFailed': '未能回收重复副本，原因见应用日志。',
   'settings.storageSweepConfirmAction': '回收'
 }

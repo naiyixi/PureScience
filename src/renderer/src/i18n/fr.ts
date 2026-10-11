@@ -4460,6 +4460,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Parcourt tes dossiers de contenu à la recherche de fichiers dont les octets sont déjà stockés sous un autre nom. Ces noms seront liés à la copie existante — aucun fichier n'est supprimé et aucun contenu ne change. Sur une grande bibliothèque, cela peut prendre un moment.",
   'settings.storageSweepReclaimed': '{size} récupérés sur {count} copies en double.',
   'settings.storageSweepNothing': 'Aucune copie en double trouvée — rien à récupérer.',
+  'settings.storageSweepPackageCache': 'Cache de paquets partagé : {size} libérés sur {count} copies redondantes ; {leftAlone} conservés (dernière copie de chaque fichier).',
   'settings.storageSweepFailed':
     "Impossible de récupérer les copies en double. La raison figure dans le journal de l'application.",
   'settings.storageSweepConfirmAction': 'Récupérer'
