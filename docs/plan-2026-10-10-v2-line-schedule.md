@@ -306,7 +306,20 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 **第二半（远程结构加载）落点勘明（2026-10-12，下一窗口直接开工）**：① **不许让渲染端点名目标** —— 出网通道只收**身份**：渲染层只送一个 PDB id（**固定模板** `https://files.rcsb.org/view/<ID>.pdb` 在主进程拼），渲染端永远不送 host、也不送整条 URL（能点名目标等于把主进程的出网能力借给渲染层，而写路径的闸门拦不住一条读）。
 ② **判据复用**：`EXECUTION_PROTECTION_LEVELS` 三态 + `shared/egress.ts` 的 `isHostAllowed`（allowlist=undefined 表示不限制）⇒ 不在白名单 ⇒ **拒**并给出 `egress-failure.ts` 那族具名原因；`unprotected` ⇒ **问卡**（沿用同一张卡的应用动作变体）；`os-sandbox`/`network-allowlist` 且在白名单 ⇒ 允许。
 ③ **代价已知**：主进程侧要一条**新通道**（渲染可见）⇒ 按本仓实测 ≈**15–20 文件**（目录/preload/.d.ts/应用命令/`application-command-composition.ts` 三常量/多处 pin）⇒ 排一个完整窗口，别在窗口尾部硬开；通道名与参数形状照 `references/adding-an-ipc-channel.md`，落点用技能自带的 `scripts/find-contract-pins.sh <族> <兄弟通道>` 打全。
-④ 渲染层入口：视图头部的「按 PDB ID 加载」一行；失败/被拒**具名上屏**（不静默）。 |
+④ 渲染层入口：视图头部的「按 PDB ID 加载」一行；失败/被拒**具名上屏**（不静默）。
+**界面接法已定（2026-10-12 勘明；下一窗口按它建整条竖直，别重新发现）**：结构视图消费的是**字符串内容**（`content` prop），
+而 `PreviewFileItem` 只带 `path`（内容由主进程按路径读）⇒ 两条路：**(a)** 取回的内容**落到会话工作区**
+（应用自有目录 `workspaces/<sessionId>`）再按普通文件开页签 —— 好处是「加载会**留下什么**」正好有话可说：
+卡面写「会在本次会话的工作区留一份副本」，与本条「标注会留下什么」同一主题；代价是要走数据根写入 + 一个文件项。
+**(b)** 给预览项加一个新种类（`type:'remote'`）承载内存内容 —— 要动项模型 / 内容解析路径 / 持久化排除规则，连锁更大。
+**推荐 (a)**（连锁最小且卡面有真话可说）。**照的先例**：本仓已有运行期 web 标签（`PreviewWebItem = { type:'web'; url }`，
+**明确不进持久化**，理由是「恢复一个 web 标签会在用户早已不看的很久之后静默重发外部请求」）—— 但结构文件**不能**走 web 标签，
+那是给沙箱 iframe 的 HTML 面，PDB 要在 3Dmol 里看。
+**卡片复用已交付的 appAction 变体**（`77992fbf`）：`surface:'structure-view'` / `action:'load-remote-structure'` /
+`writes:[{ kind:'structure-file', fileName:'<ID>.pdb' }]` —— 需要时把 `action` 联合扩一个成员（同族小改）。
+**通道形状**：入参只收 `{ pdbId }`（主进程按 `^[0-9][A-Za-z0-9]{3}$` 校验），响应是判别联合
+（成功给内容 + 文件名；失败给具名取值：`invalid-id` / `not-allowlisted` / `approval-denied` / `not-found` / `too-large`），
+**绝不**让渲染端送 host 或整条 URL。 |
 | **A1–A7** 中文文献翻译 | ⬜ 未开工（A1 段落级检查点是其余各项的前提） | — |
 | **P0-1…P0-10** 稳定性批次 | ✅ **已交付**（我 8 项 + 执行器 6 项，均带真机读数） | `6c24323d`…`67febe74` 区间；读数散见 `docs/evidence/2026-10-1*.md` |
 
