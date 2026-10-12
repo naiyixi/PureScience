@@ -4157,5 +4157,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': '觀察日誌存在但讀不出來。',
   'ws.structureObservationsAfterWindow': '{count} 筆記錄於這個版本寫出之後',
   'ws.structureObservationsDropped': '{count} 筆更早的記錄因超出上限被丟棄',
-  'ws.structureObservationsUndated': '{count} 筆記錄的時間戳讀不出來'
+  'ws.structureObservationsUndated': '{count} 筆記錄的時間戳讀不出來',
+  'preview.structureSelectionLabel': '選區名稱',
+  'preview.structureSelectionLabelPlaceholder': '給這段起個名字',
+  'preview.structureSelectionColor': '標記色 {color}',
+  'preview.structureSelectionLabelRemove': '移除名稱與顏色'
 }

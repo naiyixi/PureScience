@@ -1,5 +1,12 @@
 // D2（v2.0.0 结构工作台）：结构选择的**模型 + 可复算指纹 + 会话上下文块**。
 //
+// 唯一的一处依赖：同样是**无依赖纯函数**的同族模块（D4 的名字/颜色）。除此之外本模块什么都不 import。
+import {
+  structureSelectionLabelSentence,
+  type StructureSelectionLabel
+} from './structure-selection-label'
+
+//
 // 为什么单独成模块、且必须是无依赖的纯函数：
 //  1. 「同一选择复算出同一指纹」是一条**只有单测能钉住**的判定（D3 会把这个指纹带进溯源面板），
 //     写进 3D 视图组件里就只能靠肉眼；
@@ -331,10 +338,16 @@ const structureContextSentence = (selection: StructureSelection): string => {
   }
 }
 
-export const buildStructureContextBlock = (selection: StructureSelection): string =>
+export const buildStructureContextBlock = (
+  selection: StructureSelection,
+  // D4：这一段的名字/颜色（可选）。名字单独一句给模型，区域本身仍在同一个块的 JSON 里 —— 模型既要能
+  // 对齐「用户说的那个活性位点」，也要能拿到可复算的那一段。
+  label?: StructureSelectionLabel
+): string =>
   [
     '<purescience_structure_context>',
     structureContextSentence(selection),
+    ...(label && label.name ? [structureSelectionLabelSentence(label)] : []),
     JSON.stringify({
       schemaVersion: selection.schemaVersion,
       structureId: selection.structureId,
@@ -358,6 +371,14 @@ export const buildStructureContextBlock = (selection: StructureSelection): strin
         : {}),
       scope: structureSelectionScope(selection),
       range: structureSelectionRangeLabel(selection),
+      ...(label
+        ? {
+            label: {
+              ...(label.name ? { name: label.name } : {}),
+              ...(label.color ? { color: label.color } : {})
+            }
+          }
+        : {}),
       view: { style: selection.view.style, colorScheme: selection.view.colorScheme },
       fingerprint: structureSelectionFingerprint(selection)
     }),

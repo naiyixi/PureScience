@@ -4577,5 +4577,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsAfterWindow': '{count} registrados después de escribir esta versión',
   'ws.structureObservationsDropped':
     '{count} entradas más antiguas se descartaron al alcanzar el límite',
-  'ws.structureObservationsUndated': '{count} entradas no tienen marca temporal legible'
+  'ws.structureObservationsUndated': '{count} entradas no tienen marca temporal legible',
+  'preview.structureSelectionLabel': 'Nombre de la región',
+  'preview.structureSelectionLabelPlaceholder': 'Nombrar esta región',
+  'preview.structureSelectionColor': 'Color de marca {color}',
+  'preview.structureSelectionLabelRemove': 'Quitar el nombre y el color'
 }

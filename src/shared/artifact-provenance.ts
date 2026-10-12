@@ -10,6 +10,7 @@ import type {
 import type { AgentFrameworkId } from './settings'
 import type { StructureMeasurement } from './structure-measurement'
 import type { StructureSelection } from './structure-selection'
+import type { StructureSelectionLabel } from './structure-selection-label'
 import type {
   PersistedActivityGroup,
   PersistedMessageRole,
@@ -420,6 +421,8 @@ export type RecordedStructureObservation = {
   kind: 'selection' | 'measurement'
   selection?: StructureSelection
   measurement?: StructureMeasurement
+  /** D4: what the user called that region, as it was at that moment (normalised at the recording point). */
+  label?: StructureSelectionLabel
 }
 
 export type ArtifactVersionProvenance = {

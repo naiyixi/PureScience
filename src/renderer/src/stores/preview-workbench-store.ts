@@ -2,6 +2,10 @@ import { create } from 'zustand'
 
 import type { NotebookSessionReference } from '../../../shared/notebook'
 import type { StructureSelection } from '../../../shared/structure-selection'
+import {
+  normalizeStructureSelectionLabel,
+  type StructureSelectionLabel
+} from '../../../shared/structure-selection-label'
 import type { StructureMeasurement } from '../../../shared/structure-measurement'
 import type { ProjectFileOriginSession } from '../../../shared/project-files'
 import type { FindingLocator } from '../../../shared/reviewer'
@@ -114,6 +118,11 @@ type PreviewWorkbenchStoreData = PreviewSlice & {
   // D3: the geometry each structure tab currently has measured (distance/angle), keyed by tab id.
   // Transient like the selections above: it describes what is on screen right now.
   structureMeasurements: Record<string, StructureMeasurement>
+  // D4: the name (and marker colour) the user gave the region on a structure tab, keyed by tab id.
+  // It lives NEXT TO the selection rather than inside it on purpose: the name is not part of the region's
+  // recomputable identity (the fingerprint), and a name that outlived its region would point at the wrong
+  // residues. So the two are set and dropped together — see setStructureSelection / setStructureSelectionLabel.
+  structureSelectionLabels: Record<string, StructureSelectionLabel>
 }
 
 type PreviewWorkbenchStore = PreviewWorkbenchStoreData & {
@@ -122,6 +131,13 @@ type PreviewWorkbenchStore = PreviewWorkbenchStoreData & {
   setStructureSelection: (itemId: string, selection: StructureSelection | undefined) => void
   /** The selection that applies to a turn on `sessionId`, or undefined when there is none to send. */
   activeStructureSelection: (sessionId: string) => StructureSelection | undefined
+  /**
+   * Names (or re-colours) the region of one preview tab; `undefined` clears the name.
+   * Refused when that tab has no selection: a name with nothing to name is not a state worth having.
+   */
+  setStructureSelectionLabel: (itemId: string, label: StructureSelectionLabel | undefined) => void
+  /** The name that applies to a turn on `sessionId`, or undefined when the region is unnamed. */
+  activeStructureSelectionLabel: (sessionId: string) => StructureSelectionLabel | undefined
   /** Records (or clears, with `undefined`) the measurement of one preview tab. */
   setStructureMeasurement: (itemId: string, measurement: StructureMeasurement | undefined) => void
   /** The measurement that applies to a turn on `sessionId`, or undefined when there is none. */
@@ -152,6 +168,7 @@ export const createInitialPreviewWorkbenchState = (): PreviewWorkbenchStoreData 
   expandedToolItemId: null,
   fileDialogItem: undefined,
   structureSelections: {},
+  structureSelectionLabels: {},
   structureMeasurements: {}
 })
 
@@ -399,9 +416,17 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
   setStructureSelection: (itemId, selection) => {
     set((state) => {
       if (!selection) {
-        if (!(itemId in state.structureSelections)) return state
+        if (!(itemId in state.structureSelections) && !(itemId in state.structureSelectionLabels)) {
+          return state
+        }
+        // The name goes with the region: a name left behind would describe a region that is no longer
+        // selected (and the chip would show a name over nothing).
         return {
-          structureSelections: withoutEntries(state.structureSelections, new Set([itemId]))
+          structureSelections: withoutEntries(state.structureSelections, new Set([itemId])),
+          structureSelectionLabels: withoutEntries(
+            state.structureSelectionLabels,
+            new Set([itemId])
+          )
         }
       }
 
@@ -409,8 +434,55 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
       // Same value twice (a re-render, a repeated click on the same residue) must not churn the map.
       if (previous && JSON.stringify(previous) === JSON.stringify(selection)) return state
 
-      return { structureSelections: { ...state.structureSelections, [itemId]: selection } }
+      // A different region means the old name no longer describes what is selected, so it is dropped
+      // rather than silently re-pointed at other residues.
+      return {
+        structureSelections: { ...state.structureSelections, [itemId]: selection },
+        structureSelectionLabels: withoutEntries(state.structureSelectionLabels, new Set([itemId]))
+      }
     })
+  },
+
+  // Names the region of one tab. Normalised here (not only at the input): an empty name is the same
+  // thing as no name, and the store is the single place that decides that for every caller.
+  setStructureSelectionLabel: (itemId, label) => {
+    const normalized = normalizeStructureSelectionLabel(label)
+    set((state) => {
+      const previous = state.structureSelectionLabels[itemId]
+      const clearing = normalized === undefined
+
+      if (!clearing && !(itemId in state.structureSelections)) {
+        // A name with nothing to name would render as a chip over an empty region.
+        return state
+      }
+      if (clearing) {
+        if (!previous) return state
+        return {
+          structureSelectionLabels: withoutEntries(
+            state.structureSelectionLabels,
+            new Set([itemId])
+          )
+        }
+      }
+      // Same value twice must not churn the map (every write on this path is reference-stable).
+      if (previous && JSON.stringify(previous) === JSON.stringify(normalized)) return state
+      return {
+        structureSelectionLabels: { ...state.structureSelectionLabels, [itemId]: normalized }
+      }
+    })
+  },
+
+  activeStructureSelectionLabel: (sessionId) => {
+    const state = get()
+    const activeItemId = state.activeItemId
+    if (!activeItemId) return undefined
+
+    const item = state.items.find((candidate) => candidate.id === activeItemId)
+    if (!item || item.type !== 'file' || item.sessionId !== sessionId) return undefined
+
+    // No region, no name: the two are one thing on screen even though they are stored separately.
+    if (!state.structureSelections[activeItemId]) return undefined
+    return state.structureSelectionLabels[activeItemId]
   },
 
   // Same shape as the selection above, for a measured distance/angle.
@@ -519,6 +591,7 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
         expandedToolItemId: state.expandedToolItemId === itemId ? null : state.expandedToolItemId,
         fileDialogItem: itemId === PROJECT_FILES_PREVIEW_ID ? undefined : state.fileDialogItem,
         structureSelections: withoutEntries(state.structureSelections, new Set([itemId])),
+        structureSelectionLabels: withoutEntries(state.structureSelectionLabels, new Set([itemId])),
         structureMeasurements: withoutEntries(state.structureMeasurements, new Set([itemId]))
       }
     })
@@ -543,6 +616,7 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
         items,
         activeItemId,
         structureSelections: withoutEntries(state.structureSelections, removedItemIds),
+        structureSelectionLabels: withoutEntries(state.structureSelectionLabels, removedItemIds),
         structureMeasurements: withoutEntries(state.structureMeasurements, removedItemIds),
         // A session-scoped tool tab could own the expanded surface; clear it when its tab is gone.
         panelState: items.length > 0 ? state.panelState : 'collapsed',

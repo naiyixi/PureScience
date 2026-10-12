@@ -10,7 +10,11 @@ import type {
 import type { PermissionProfileId } from '../../../../shared/permission-profiles'
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 
-import { turnStructureMeasurement, turnStructureSelection } from './turn-structure-selection'
+import {
+  turnStructureMeasurement,
+  turnStructureSelection,
+  turnStructureSelectionLabel
+} from './turn-structure-selection'
 
 // Provides a stable renderer fallback before the first main-process snapshot arrives.
 const emptyAcpState: AcpStateSnapshot = {
@@ -309,6 +313,7 @@ const useAcpRuntime = (): {
       annotations?: AcpPromptRequest['annotations']
     ) => {
       const currentStructureSelection = turnStructureSelection(sessionId)
+      const currentStructureLabel = turnStructureSelectionLabel(sessionId)
       const currentStructureMeasurement = turnStructureMeasurement(sessionId)
 
       return runSendPromptAction(() =>
@@ -334,6 +339,7 @@ const useAcpRuntime = (): {
           // application context. Read at send time from the tab that is in front — the model is told what
           // the user is looking at *now*, and an ordinary turn (no structure tab open) sends nothing.
           ...(currentStructureSelection ? { structureSelection: currentStructureSelection } : {}),
+          ...(currentStructureLabel ? { structureSelectionLabel: currentStructureLabel } : {}),
           ...(currentStructureMeasurement
             ? { structureMeasurement: currentStructureMeasurement }
             : {})

@@ -17,6 +17,7 @@ import { createLogger, errorLogFields } from '../logger'
 
 import type { StructureMeasurement } from '../../shared/structure-measurement'
 import type { StructureSelection } from '../../shared/structure-selection'
+import type { StructureSelectionLabel } from '../../shared/structure-selection-label'
 
 export const STRUCTURE_OBSERVATIONS_DIR = '.structure-observations'
 
@@ -30,6 +31,12 @@ export type StructureObservationEntry = {
   /** 二者按 kind 只有一个存在（判别联合在这里用可选字段表达，便于直接 JSON 往返）。 */
   selection?: StructureSelection
   measurement?: StructureMeasurement
+  /**
+   * D4：用户给这一段起的名字/上的色（**规范化后的**，录制点已经当作不信输入过一遍）。
+   * 它随观察一起落盘，所以「这个产物是在哪次命名下产出的」在证据链里是可查的 —— 名字是人对区域的
+   * 称呼，不进指纹（指纹只回答「这是哪一段」）。
+   */
+  label?: StructureSelectionLabel
 }
 
 /**
@@ -141,7 +148,8 @@ export const recordStructureObservation = async (
           recordedAt: entry.recordedAt ?? new Date().toISOString(),
           kind: entry.kind,
           ...(entry.selection ? { selection: entry.selection } : {}),
-          ...(entry.measurement ? { measurement: entry.measurement } : {})
+          ...(entry.measurement ? { measurement: entry.measurement } : {}),
+          ...(entry.label ? { label: entry.label } : {})
         }
         const all = [...entries, recorded]
         const overflow = Math.max(0, all.length - MAX_SESSION_OBSERVATIONS)

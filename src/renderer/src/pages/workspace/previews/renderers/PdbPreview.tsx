@@ -8,6 +8,12 @@ import { sha256Text } from '@/lib/text-digest'
 import { cn } from '@/lib/utils'
 
 import {
+  SELECTION_LABEL_COLORS,
+  normalizeStructureSelectionLabel,
+  type SelectionLabelColor,
+  type StructureSelectionLabel
+} from '../../../../../../shared/structure-selection-label'
+import {
   structureSelectionFingerprint,
   structureSelectionRangeLabel,
   type StructureSelection
@@ -112,9 +118,20 @@ const plddtSpec = (rep: 'cartoon' | 'stick' | 'sphere' | 'line'): Record<string,
 
 // D2 选区的可见标记：选中之后用户必须**看得见自己选了什么**（否则「这段是什么」问的是哪一段无从核对）。
 // 用主色（brand 蓝 #4D6BFE）与既有风格族，不改默认观感。
-const SELECTION_HIGHLIGHT = {
-  stick: { radius: 0.24, color: '#4D6BFE' },
-  sphere: { scale: 0.26, color: '#4D6BFE' }
+const SELECTION_HIGHLIGHT_COLOR = '#4D6BFE'
+// D4：用户给这段上的色要**真的画在视图里** —— 否则那个色只是面板上的一个装饰，等于骗人。
+// 没上色时落回主色（不写假默认值）。
+const selectionHighlight = (
+  color: string | undefined
+): {
+  stick: { radius: number; color: string }
+  sphere: { scale: number; color: string }
+} => {
+  const resolved = color ?? SELECTION_HIGHLIGHT_COLOR
+  return {
+    stick: { radius: 0.24, color: resolved },
+    sphere: { scale: 0.26, color: resolved }
+  }
 }
 
 const PDB_STYLE_SPECS = {
@@ -163,7 +180,9 @@ const applyPdbStyle = (
   colors: StructureColorScheme,
   shouldZoom: boolean,
   shouldRenderSurface?: () => boolean,
-  selection?: StructureSelection
+  selection?: StructureSelection,
+  // D4：这段的标记色（用户在面板上选的），缺省用主色。
+  labelColor?: string
 ): void => {
   viewer.removeAllSurfaces()
 
@@ -204,7 +223,7 @@ const applyPdbStyle = (
   // One selector per chain: a neighborhood's members can span chains, and one selector can only name
   // residues on a single chain.
   for (const selector of selection ? structureSelectionSelectors(selection) : []) {
-    viewer.addStyle(selector, SELECTION_HIGHLIGHT)
+    viewer.addStyle(selector, selectionHighlight(labelColor))
   }
 
   if (shouldZoom) viewer.zoomTo()
@@ -223,6 +242,13 @@ const PdbPreviewViewer = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const setStructureSelection = usePreviewWorkbenchStore((state) => state.setStructureSelection)
+  const setStructureSelectionLabel = usePreviewWorkbenchStore(
+    (state) => state.setStructureSelectionLabel
+  )
+  // D4：这个名字/颜色住在 store 里（页签关掉就没了），组件这边只镜像一份给 3D 回调读最新值。
+  const storedLabel = usePreviewWorkbenchStore(
+    (state) => state.structureSelectionLabels[structureId]
+  )
   const setStructureMeasurement = usePreviewWorkbenchStore((state) => state.setStructureMeasurement)
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
@@ -245,6 +271,8 @@ const PdbPreviewViewer = ({
     { content: string; value: StructureSelection } | undefined
   >(undefined)
   const selectionRef = useRef<StructureSelection | undefined>(undefined)
+  // 与 selectionRef 同一形状：3D 的样式回调读 ref，不在渲染路径上读 store（避免重建视图/相机被重置）。
+  const labelRef = useRef<StructureSelectionLabel | undefined>(storedLabel)
   const selectionAnchorRef = useRef<StructureAtomRef | undefined>(undefined)
   // 双击同一残基＝把相机对准它（D1 余项：相机/焦点）。用时间戳比较，不额外起定时器。
   const lastClickRef = useRef<{ key: string; at: number } | undefined>(undefined)
@@ -294,7 +322,8 @@ const PdbPreviewViewer = ({
       colorsRef.current,
       shouldZoom,
       () => viewerStateRef.current?.viewer === viewerState.viewer && styleRef.current === 'surface',
-      selectionRef.current
+      selectionRef.current,
+      labelRef.current?.color
     )
     pendingRenderRef.current = false
     if (shouldZoom) pendingZoomRef.current = false
@@ -313,14 +342,44 @@ const PdbPreviewViewer = ({
   const publishSelection = useCallback(
     (next: StructureSelection | undefined) => {
       selectionRef.current = next
+      // 换区域或清空时 store 都会丢掉名字（名字属于那一段），ref 跟着走，别让旧色留在视图里。
+      labelRef.current = undefined
       setSelection(next ? { content, value: next } : undefined)
       setStructureSelection(structureId, next)
     },
     [content, setStructureSelection, structureId]
   )
 
+  // D4：写名字 / 上色 / 移除。store 是唯一来源（空名字与非法颜色都由它统一规范化），
+  // 写完**立刻**把颜色画到视图上：用户点一下就该看见，不等下一轮整树重绘。
+  const applyLabel = useCallback(
+    (name: string, color?: SelectionLabelColor) => {
+      if (!selectionRef.current) return
+      const next = normalizeStructureSelectionLabel({ name, color })
+      labelRef.current = next
+      setStructureSelectionLabel(structureId, next)
+
+      const viewerState = viewerStateRef.current
+      if (viewerState) {
+        applyPdbStyle(
+          viewerState.viewer,
+          viewerState.threeDmol,
+          styleRef.current,
+          colorsRef.current,
+          false,
+          () => false,
+          selectionRef.current,
+          next?.color
+        )
+      }
+    },
+    [setStructureSelectionLabel, structureId]
+  )
+
   // 这一帧真正生效的选择/测量：只有还在看的那份内容上的那些才算数。
   const activeSelection = selection?.content === content ? selection.value : undefined
+  // 上屏的名字/颜色：只有这一帧真的有选区时才算数（没有选区就没有可命名的东西）。
+  const activeLabel = activeSelection ? storedLabel : undefined
   const activeMeasurement = measurement?.content === content ? measurement.value : undefined
 
   const publishMeasurement = useCallback(
@@ -786,8 +845,51 @@ const PdbPreviewViewer = ({
                 data-slot="structure-selection"
                 title={structureSelectionFingerprint(activeSelection)}
               >
+                {activeLabel?.name ? `${activeLabel.name} · ` : ''}
                 {structureSelectionRangeLabel(activeSelection)}
               </span>
+              {/* D4：命名 / 上色 / 检查 / 移除。名字与颜色同住 store，页签关掉一起消失。 */}
+              <input
+                key={activeLabel?.name ?? 'structure-selection-unnamed'}
+                data-slot="structure-selection-label"
+                aria-label={t('preview.structureSelectionLabel')}
+                placeholder={t('preview.structureSelectionLabelPlaceholder')}
+                defaultValue={activeLabel?.name ?? ''}
+                className="w-28 rounded-sm bg-bg-200 px-1 py-0.5 text-[11px]"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter')
+                    applyLabel(event.currentTarget.value, activeLabel?.color)
+                }}
+                onBlur={(event) => applyLabel(event.currentTarget.value, activeLabel?.color)}
+              />
+              {SELECTION_LABEL_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  data-slot="structure-selection-color"
+                  data-color={color}
+                  aria-label={t('preview.structureSelectionColor').replace('{color}', color)}
+                  title={color}
+                  className={cn(
+                    'size-3 rounded-full ring-1 ring-border-300',
+                    activeLabel?.color === color && 'ring-2 ring-primary'
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => applyLabel(activeLabel?.name ?? '', color)}
+                />
+              ))}
+              {activeLabel ? (
+                <button
+                  type="button"
+                  data-slot="structure-selection-label-remove"
+                  aria-label={t('preview.structureSelectionLabelRemove')}
+                  title={t('preview.structureSelectionLabelRemove')}
+                  className="rounded-sm p-0.5 transition-colors hover:bg-bg-300"
+                  onClick={() => applyLabel('')}
+                >
+                  <X className="size-3" aria-hidden="true" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 data-slot="structure-focus-selection"

@@ -4610,5 +4610,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': "Le journal d'observations est présent mais illisible.",
   'ws.structureObservationsAfterWindow': "{count} enregistrés après l'écriture de cette version",
   'ws.structureObservationsDropped': '{count} entrées plus anciennes ont été écartées à la limite',
-  'ws.structureObservationsUndated': "{count} entrées n'ont pas d'horodatage lisible"
+  'ws.structureObservationsUndated': "{count} entrées n'ont pas d'horodatage lisible",
+  'preview.structureSelectionLabel': 'Nom de la région',
+  'preview.structureSelectionLabelPlaceholder': 'Nommer cette région',
+  'preview.structureSelectionColor': 'Couleur de marque {color}',
+  'preview.structureSelectionLabelRemove': 'Retirer le nom et la couleur'
 }

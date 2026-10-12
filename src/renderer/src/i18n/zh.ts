@@ -4215,7 +4215,11 @@ export const zh = {
   'ws.structureObservationsUnreadable': '观察日志存在但读不出来。',
   'ws.structureObservationsAfterWindow': '{count} 条记录于这个版本写出之后',
   'ws.structureObservationsDropped': '{count} 条更早的记录因超出上限被丢弃',
-  'ws.structureObservationsUndated': '{count} 条记录的时间戳读不出来'
+  'ws.structureObservationsUndated': '{count} 条记录的时间戳读不出来',
+  'preview.structureSelectionLabel': '选区名称',
+  'preview.structureSelectionLabelPlaceholder': '给这段起个名字',
+  'preview.structureSelectionColor': '标记色 {color}',
+  'preview.structureSelectionLabelRemove': '移除名称与颜色'
 }
 
 export type ZhKey = keyof typeof zh

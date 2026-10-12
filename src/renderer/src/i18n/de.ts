@@ -4623,5 +4623,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': 'Das Beobachtungsjournal ist vorhanden, aber nicht lesbar.',
   'ws.structureObservationsAfterWindow': '{count} nach dem Schreiben dieser Version aufgezeichnet',
   'ws.structureObservationsDropped': '{count} ältere Einträge wurden an der Obergrenze verworfen',
-  'ws.structureObservationsUndated': '{count} Einträge haben keinen lesbaren Zeitstempel'
+  'ws.structureObservationsUndated': '{count} Einträge haben keinen lesbaren Zeitstempel',
+  'preview.structureSelectionLabel': 'Name des Bereichs',
+  'preview.structureSelectionLabelPlaceholder': 'Diesen Bereich benennen',
+  'preview.structureSelectionColor': 'Markierungsfarbe {color}',
+  'preview.structureSelectionLabelRemove': 'Namen und Farbe entfernen'
 }

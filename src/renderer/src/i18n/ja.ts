@@ -4481,5 +4481,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': '観察ジャーナルは存在しますが読み取れません。',
   'ws.structureObservationsAfterWindow': '{count} 件はこのバージョンの書き出し後に記録',
   'ws.structureObservationsDropped': '{count} 件の古い記録は上限を超えて破棄されました',
-  'ws.structureObservationsUndated': '{count} 件はタイムスタンプを読み取れません'
+  'ws.structureObservationsUndated': '{count} 件はタイムスタンプを読み取れません',
+  'preview.structureSelectionLabel': '領域の名前',
+  'preview.structureSelectionLabelPlaceholder': 'この領域に名前を付ける',
+  'preview.structureSelectionColor': '標識色 {color}',
+  'preview.structureSelectionLabelRemove': '名前と色を削除'
 }

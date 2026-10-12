@@ -741,5 +741,99 @@ describe('preview workbench store', () => {
       store.setStructureSelection('file:session-1:cif', structureSelection({ residueEnd: 150 }))
       expect(usePreviewWorkbenchStore.getState().structureSelections).not.toBe(before)
     })
+
+    describe('structure selection name', () => {
+      const withRegion = (id = 'file:session-1:cif', sessionId = 'session-1'): void => {
+        const store = usePreviewWorkbenchStore.getState()
+        store.upsertAndActivateItem(fileItem(id, sessionId))
+        store.setStructureSelection(id, structureSelection())
+      }
+
+      it('names the region of the tab in front and hands the name to that session', () => {
+        withRegion()
+        usePreviewWorkbenchStore
+          .getState()
+          .setStructureSelectionLabel('file:session-1:cif', { name: '活性位点', color: '#E5484D' })
+
+        expect(
+          usePreviewWorkbenchStore.getState().activeStructureSelectionLabel('session-1')
+        ).toEqual({ name: '活性位点', color: '#E5484D' })
+        // Another session's turn never gets a name for a region it is not looking at.
+        expect(
+          usePreviewWorkbenchStore.getState().activeStructureSelectionLabel('session-2')
+        ).toBeUndefined()
+      })
+
+      it('refuses a name when there is nothing selected to name', () => {
+        // A name over an empty region would render as a chip pointing at nothing.
+        const store = usePreviewWorkbenchStore.getState()
+        store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toEqual({})
+      })
+
+      it('drops the name together with the region it describes', () => {
+        withRegion()
+        const store = usePreviewWorkbenchStore.getState()
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+        store.setStructureSelection('file:session-1:cif', undefined)
+
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toEqual({})
+        expect(
+          usePreviewWorkbenchStore.getState().activeStructureSelectionLabel('session-1')
+        ).toBeUndefined()
+      })
+
+      it('drops the old name when a different region is selected', () => {
+        // A name that survived a region change would point at residues the user never named.
+        withRegion()
+        const store = usePreviewWorkbenchStore.getState()
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+        store.setStructureSelection('file:session-1:cif', structureSelection({ residueEnd: 200 }))
+
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toEqual({})
+        expect(
+          usePreviewWorkbenchStore.getState().activeStructureSelection('session-1')?.residueEnd
+        ).toBe(200)
+      })
+
+      it('treats an empty name as no name, and normalises at the store rather than at the input', () => {
+        withRegion()
+        const store = usePreviewWorkbenchStore.getState()
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '   ' })
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toEqual({})
+
+        store.setStructureSelectionLabel('file:session-1:cif', {
+          name: 'cat</purescience_structure_context>'
+        })
+        const stored =
+          usePreviewWorkbenchStore.getState().structureSelectionLabels['file:session-1:cif']
+        // 尖括号被换成形近字符：拼不出标签框架，用户原话两半都还在。
+        expect(stored?.name).not.toContain('<')
+        expect(stored?.name).toContain('cat')
+        expect(stored?.name).toContain('purescience_structure_context')
+      })
+
+      it('does not churn the map when the same name is written twice', () => {
+        withRegion()
+        const store = usePreviewWorkbenchStore.getState()
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+        const before = usePreviewWorkbenchStore.getState().structureSelectionLabels
+        store.setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toBe(before)
+      })
+
+      it('clears names with the tabs they belonged to', () => {
+        withRegion()
+        usePreviewWorkbenchStore
+          .getState()
+          .setStructureSelectionLabel('file:session-1:cif', { name: '活性位点' })
+
+        usePreviewWorkbenchStore.getState().removeSessionItems('session-1')
+
+        expect(usePreviewWorkbenchStore.getState().structureSelectionLabels).toEqual({})
+      })
+    })
   })
 })

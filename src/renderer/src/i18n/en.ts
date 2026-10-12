@@ -4514,5 +4514,9 @@ export const en: Record<ZhKey, string> = {
   'ws.structureObservationsUnreadable': 'The observation journal is present but could not be read.',
   'ws.structureObservationsAfterWindow': '{count} recorded after this Version was written',
   'ws.structureObservationsDropped': '{count} older entries were dropped at the cap',
-  'ws.structureObservationsUndated': '{count} entries carry no readable timestamp'
+  'ws.structureObservationsUndated': '{count} entries carry no readable timestamp',
+  'preview.structureSelectionLabel': 'Region name',
+  'preview.structureSelectionLabelPlaceholder': 'Name this region',
+  'preview.structureSelectionColor': 'Mark colour {color}',
+  'preview.structureSelectionLabelRemove': 'Remove name and colour'
 }

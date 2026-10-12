@@ -4495,5 +4495,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsAfterWindow': '{count} записано после записи этой версии',
   'ws.structureObservationsDropped':
     '{count} более старых записей отброшено при достижении предела',
-  'ws.structureObservationsUndated': '{count} записей без читаемой отметки времени'
+  'ws.structureObservationsUndated': '{count} записей без читаемой отметки времени',
+  'preview.structureSelectionLabel': 'Название области',
+  'preview.structureSelectionLabelPlaceholder': 'Назвать эту область',
+  'preview.structureSelectionColor': 'Цвет метки {color}',
+  'preview.structureSelectionLabelRemove': 'Удалить название и цвет'
 }

@@ -9,6 +9,7 @@ import type { ArtifactFile, FileReference } from './artifacts'
 import type { UploadedAttachment } from './uploads'
 import type { ConversationAnnotation } from './annotations'
 import type { StructureSelection } from './structure-selection'
+import type { StructureSelectionLabel } from './structure-selection-label'
 import type { StructureMeasurement } from './structure-measurement'
 import type { PermissionProfileId, SessionPermissionProfileState } from './permission-profiles'
 import type { AgentFrameworkId } from './settings'
@@ -744,6 +745,11 @@ export type AcpPromptRequest = {
   // user's own message is recorded from), and the main process normalizes it before trusting it —
   // a renderer cannot hand the agent a half-formed selection.
   structureSelection?: StructureSelection
+  /**
+   * D4：用户给这一段起的名字（可带标记色）。与 `structureSelection` 分开送：
+   * 名字**不进**选择的指纹（指纹回答「这是哪一段」），但它要能进上下文块与证据链。
+   */
+  structureSelectionLabel?: StructureSelectionLabel
   // D3: a geometry the user measured in the viewer (distance between two atoms, or the angle across
   // three), travelling the same way as the selection — application context in the provider content,
   // never appended to `text`. Normalized in the main process before it is trusted.

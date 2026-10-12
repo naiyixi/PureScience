@@ -4412,5 +4412,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': '관찰 저널이 있지만 읽을 수 없습니다.',
   'ws.structureObservationsAfterWindow': '{count}건은 이 버전 작성 이후에 기록됨',
   'ws.structureObservationsDropped': '{count}건의 오래된 기록은 상한을 넘어 버려졌습니다',
-  'ws.structureObservationsUndated': '{count}건은 타임스탬프를 읽을 수 없습니다'
+  'ws.structureObservationsUndated': '{count}건은 타임스탬프를 읽을 수 없습니다',
+  'preview.structureSelectionLabel': '영역 이름',
+  'preview.structureSelectionLabelPlaceholder': '이 영역에 이름 붙이기',
+  'preview.structureSelectionColor': '표시 색 {color}',
+  'preview.structureSelectionLabelRemove': '이름과 색 제거'
 }

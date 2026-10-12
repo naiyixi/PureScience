@@ -6,6 +6,7 @@
 //  2. 这段文字走 prepared.content（既有 notice 缝），**绝不进 request.text** —— 那是记录用户说了什么
 //     的字段，把应用文本写进去等于伪造用户的话。
 //  3. 纯函数、无 IO：判定（有没有选择 / 选择是否成立 / 块长什么样）全部可单测。
+import { normalizeStructureSelectionLabel } from '../../shared/structure-selection-label'
 import type { AcpPromptRequest } from '../../shared/acp'
 import {
   buildStructureContextBlock,
@@ -18,10 +19,16 @@ import {
 
 /** 没有选择、或选择不合格时返回 ''（调用方据此保持内容不变）。 */
 export const structureSelectionNotice = (
-  request: Pick<AcpPromptRequest, 'structureSelection'>
+  request: Pick<AcpPromptRequest, 'structureSelection' | 'structureSelectionLabel'>
 ): string => {
   const selection = normalizeStructureSelection(request.structureSelection)
-  return selection ? buildStructureContextBlock(selection) : ''
+  if (!selection) return ''
+  // 名字与区域一样是**渲染层送来的不可信输入**：这里再规范化一次（截断/折行/中和尖括号都在那一层），
+  // 规范不出来就当没名字 —— 绝不把一段原样文本拼进标记块。
+  return buildStructureContextBlock(
+    selection,
+    normalizeStructureSelectionLabel(request.structureSelectionLabel)
+  )
 }
 
 /** D3 测量：同一条口径 —— 重建不出来就不注入（半截的测量比没有更糟）。 */

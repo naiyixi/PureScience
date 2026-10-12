@@ -1631,7 +1631,18 @@ const ArtifactProvenancePanel = ({
                           className="space-y-1 rounded-sm border border-border-300/50 p-3"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{label}</span>
+                            {/* D4：用户给这段起的名字/上的色 —— 证据链里「用户当时怎么称呼它」是可查的。 */}
+                            {entry.label?.color ? (
+                              <span
+                                aria-hidden="true"
+                                className="size-2.5 rounded-full ring-1 ring-border-300"
+                                style={{ backgroundColor: entry.label.color }}
+                              />
+                            ) : null}
+                            <span className="font-medium">
+                              {entry.label?.name ? `${entry.label.name} · ` : ''}
+                              {label}
+                            </span>
                             <span className="text-xs text-text-300">{entry.recordedAt}</span>
                             <button
                               type="button"

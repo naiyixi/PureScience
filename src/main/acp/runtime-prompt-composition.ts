@@ -4,6 +4,7 @@ import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
 import { createInputNoticeResolver } from './input-notice'
 import { structureMeasurementNotice, structureSelectionNotice } from './structure-context'
 import { createLogger, errorLogFields } from '../logger'
+import { normalizeStructureSelectionLabel } from '../../shared/structure-selection-label'
 import { AcpPromptPreparationOwner, type SelectBridgeSkills } from './prompt-preparation-owner'
 import {
   AcpPromptTurnWorkflow,
@@ -239,11 +240,14 @@ const composeAcpRuntimePromptOwners = (
             sessionId: request.sessionId
           })
         }
+        // 名字与区域一样是渲染层送来的不信输入：规范化一次再落盘（截断/折行/中和尖括号都在那一层）。
+        const label = normalizeStructureSelectionLabel(request.structureSelectionLabel)
         options.onStructureObservation?.({
           sessionId: request.sessionId,
           recordedAt: new Date().toISOString(),
           kind: 'selection',
-          selection: request.structureSelection
+          selection: request.structureSelection,
+          ...(label ? { label } : {})
         })
       }
       return structureSelectionNotice(request)
