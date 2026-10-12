@@ -36,6 +36,7 @@ import {
   type PdfPlacedTextItem,
   type PdfTextMatrix
 } from '../../shared/pdf-page-rotation'
+import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -511,10 +512,11 @@ const parsePdf = async (
         // Images are best-effort: a page whose operators cannot be read still yields its text.
       }
       imagesPerPage.push(placements)
-      const pageText = content.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join('')
-        .trim()
+      // The page text is assembled from the SAME pass, but from every run pdfjs reported — including the
+      // whitespace-only runs the positioned list above drops, because a space is its own item and dropping it
+      // would glue words together. `hasEOL` is what carries the line ends (see `assemblePdfPageText`); without
+      // it this page used to come out as one run-on string.
+      const pageText = assemblePdfPageText(pdfTextRunsFromItems(content.items)).trim()
       pages.push(pageText)
     }
 

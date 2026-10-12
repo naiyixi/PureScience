@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module'
 import { readFile, stat } from 'node:fs/promises'
 import { stripImageMetadata } from '../../shared/image-metadata'
+import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import { createLogger } from '../logger'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -286,10 +287,7 @@ export const extractPdfText = async (filePath: string): Promise<PdfTextResult> =
       const content = await page.getTextContent()
       page.cleanup()
 
-      const pageText = content.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join('')
-        .trim()
+      const pageText = assemblePdfPageText(pdfTextRunsFromItems(content.items)).trim()
 
       // Skip empty pages so a scanned/image-only PDF yields no text and hits the caller's fallback.
       if (!pageText) continue

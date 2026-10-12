@@ -37,14 +37,20 @@ vi.mock('electron', () => ({
   }
 }))
 
-// A fake pdfjs document so text extraction is deterministic and does not parse a real PDF.
-let fakePdf: { numPages: number; pages: string[][] }
+// A fake pdfjs document so text extraction is deterministic and does not parse a real PDF. An entry is a run:
+// a bare string is a run with no geometry, an object carries the shape pdfjs really reports (transform, sizes,
+// end-of-line marker).
+type FakePdfItem =
+  string | { str: string; transform?: number[]; width?: number; height?: number; hasEOL?: boolean }
+let fakePdf: { numPages: number; pages: FakePdfItem[][] }
 const getDocument = vi.fn(() => ({
   promise: Promise.resolve({
     numPages: fakePdf.numPages,
     getPage: async (pageNumber: number) => ({
       getTextContent: async () => ({
-        items: (fakePdf.pages[pageNumber - 1] ?? []).map((str) => ({ str }))
+        items: (fakePdf.pages[pageNumber - 1] ?? []).map((item) =>
+          typeof item === 'string' ? { str: item } : item
+        )
       }),
       cleanup: () => {}
     }),
@@ -292,6 +298,43 @@ describe('extractPdfText', () => {
 
     expect(result.pageCount).toBe(1)
     expect(result.text).toBe('')
+  })
+
+  it('keeps the lines of a page that reports where they end', async () => {
+    // The shape pdfjs really reports: one run per word, spaces as their own runs, `hasEOL` on the run that ends
+    // the line. The previous `join('')` glued every line together ("it.Receptor"), which is what the attachment
+    // text handed to the model used to look like.
+    const run = (
+      str: string,
+      y: number,
+      options: { width?: number; hasEOL?: boolean } = {}
+    ): FakePdfItem => ({
+      str,
+      transform: [12, 0, 0, 12, 16.6, y],
+      width: options.width ?? 30,
+      height: 12,
+      ...(options.hasEOL === true ? { hasEOL: true } : {})
+    })
+    fakePdf = {
+      numPages: 1,
+      pages: [
+        [
+          run('Methods', 700, { hasEOL: true }),
+          run('We ', 676),
+          run('ran ', 676),
+          run('it.', 676, { hasEOL: true }),
+          run('Receptor ', 664),
+          run('preparation.', 664, { hasEOL: true })
+        ]
+      ]
+    }
+    const filePath = join(root, 'lines.pdf')
+    await writeFile(filePath, Buffer.from('%PDF-1.4 fake'))
+
+    const result = await extractPdfText(filePath)
+
+    expect(result.text).toBe('--- Page 1 ---\nMethods\n\nWe ran it. Receptor preparation.')
+    expect(result.text).not.toContain('it.Receptor')
   })
 })
 
