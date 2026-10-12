@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   MAX_SESSION_OBSERVATIONS,
   STRUCTURE_OBSERVATIONS_DIR,
+  projectStructureObservationWindow,
   readSessionStructureObservations,
   recordStructureObservation
 } from './structure-observation-journal'
@@ -132,6 +133,52 @@ describe('structure-observation-journal', () => {
         selection: selection(1)
       })
     ).resolves.toBeUndefined()
+  })
+
+  it('drops entries newer than the Version and reports how many', () => {
+    const window = projectStructureObservationWindow(
+      [
+        { kind: 'selection', selection: selection(1), recordedAt: '2026-10-12T09:00:00.000Z' },
+        { kind: 'selection', selection: selection(2), recordedAt: '2026-10-12T11:00:00.000Z' }
+      ],
+      '2026-10-12T10:00:00.000Z'
+    )
+    expect(window.windowKnown).toBe(true)
+    expect(window.items.map((entry) => entry.selection?.residueStart)).toEqual([1])
+    expect(window.afterWindow).toBe(1)
+    expect(window.undated).toBe(0)
+  })
+
+  it('lists everything when the Version carries no parseable write time, and says so', () => {
+    // No timestamp on the evidence means the window could not be enforced. Silently listing everything as
+    // if it had been applied is the failure this asserts against.
+    const entries = [
+      {
+        kind: 'selection' as const,
+        selection: selection(1),
+        recordedAt: '2026-10-12T09:00:00.000Z'
+      }
+    ]
+    expect(projectStructureObservationWindow(entries, undefined).windowKnown).toBe(false)
+    expect(projectStructureObservationWindow(entries, 'not a timestamp').windowKnown).toBe(false)
+    for (const writtenAt of [undefined, 'not a timestamp']) {
+      const window = projectStructureObservationWindow(entries, writtenAt)
+      expect(window.items).toHaveLength(1)
+      expect(window.afterWindow).toBe(0)
+    }
+  })
+
+  it('never lets an unparseable stamp pass as inside the window', () => {
+    const window = projectStructureObservationWindow(
+      [
+        { kind: 'selection', selection: selection(1), recordedAt: 'whenever' },
+        { kind: 'selection', selection: selection(2), recordedAt: '2026-10-12T09:00:00.000Z' }
+      ],
+      '2026-10-12T10:00:00.000Z'
+    )
+    expect(window.items.map((entry) => entry.selection?.residueStart)).toEqual([2])
+    expect(window.undated).toBe(1)
+    expect(window.afterWindow).toBe(0)
   })
 
   it('writes valid JSON (the panel reads this file through the Version projection)', async () => {

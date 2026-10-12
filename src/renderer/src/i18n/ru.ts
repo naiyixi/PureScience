@@ -4493,5 +4493,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Эта сессия не записала ни области структуры, ни измерения.',
   'ws.structureObservationsUnreadable': 'Журнал наблюдений есть, но прочитать его не удалось.',
   'ws.structureObservationsAfterWindow': '{count} записано после записи этой версии',
-  'ws.structureObservationsDropped': '{count} более старых записей отброшено при достижении предела'
+  'ws.structureObservationsDropped':
+    '{count} более старых записей отброшено при достижении предела',
+  'ws.structureObservationsUndated': '{count} записей без читаемой отметки времени'
 }

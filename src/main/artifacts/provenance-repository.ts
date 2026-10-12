@@ -55,8 +55,10 @@ import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/even
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import { readSessionReadings } from '../connectors/reading-journal'
-import { readSessionStructureObservations } from '../structure/structure-observation-journal'
-import type { RecordedStructureObservation } from '../../shared/artifact-provenance'
+import {
+  projectStructureObservationWindow,
+  readSessionStructureObservations
+} from '../structure/structure-observation-journal'
 import { dirSize } from '../storage/usage'
 import type { RecordedConnectorReading } from '../../shared/reading-fingerprint'
 import type {
@@ -4020,28 +4022,16 @@ class ArtifactProvenanceRepository {
     if (sections.structureObservations !== false) {
       const journal = await readSessionStructureObservations(this.options.storageRoot, appSessionId)
       if (journal.state === 'available') {
-        const writtenAt = Date.parse(evidence.created_at)
-        const windowKnown = Number.isFinite(writtenAt)
-        const items: RecordedStructureObservation[] = []
-        let afterWindow = 0
-        for (const entry of journal.entries) {
-          const recordedAt = Date.parse(entry.recordedAt)
-          if (!Number.isFinite(recordedAt)) {
-            afterWindow += 1
-            continue
-          }
-          if (windowKnown && recordedAt > writtenAt) {
-            afterWindow += 1
-            continue
-          }
-          items.push(entry)
-        }
+        // The window rule itself is a pure function next to the journal, so it is pinned by unit tests
+        // rather than only by whatever data a reader happens to have.
+        const window = projectStructureObservationWindow(journal.entries, evidence.created_at)
         structureObservations = {
           state: 'available',
-          attribution: windowKnown ? 'session-window' : 'session',
-          items,
+          attribution: window.windowKnown ? 'session-window' : 'session',
+          items: window.items,
           dropped: journal.dropped,
-          afterWindow
+          afterWindow: window.afterWindow,
+          undated: window.undated
         }
       } else {
         structureObservations = { state: 'unavailable', reason: journal.reason }

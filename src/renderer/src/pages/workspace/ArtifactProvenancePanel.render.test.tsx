@@ -578,7 +578,8 @@ describe('ArtifactProvenancePanel', () => {
         attribution: 'session-window',
         items: [{ recordedAt: '2026-07-27T20:04:00.000Z', kind: 'selection', selection }],
         dropped: 2,
-        afterWindow: 3
+        afterWindow: 3,
+        undated: 1
       }
     })
     await act(async () =>
@@ -594,11 +595,18 @@ describe('ArtifactProvenancePanel', () => {
     expect(list?.textContent).toContain(structureSelectionFingerprint(selection))
     // The window and the cap are stated on screen, never silently applied.
     expect(
-      container.querySelector('[data-testid="artifact-structure-observations-after-window"]')?.textContent
+      container.querySelector('[data-testid="artifact-structure-observations-after-window"]')
+        ?.textContent
     ).toContain('3')
     expect(
-      container.querySelector('[data-testid="artifact-structure-observations-dropped"]')?.textContent
+      container.querySelector('[data-testid="artifact-structure-observations-dropped"]')
+        ?.textContent
     ).toContain('2')
+    // An entry whose stamp cannot be parsed is neither inside the window nor after it: named separately.
+    expect(
+      container.querySelector('[data-testid="artifact-structure-observations-undated"]')
+        ?.textContent
+    ).toContain('1')
 
     const jump = container.querySelector(
       '[data-testid="artifact-structure-observations-jump"]'

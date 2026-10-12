@@ -463,7 +463,10 @@ export type ArtifactVersionProvenance = {
         attribution: 'session-window' | 'session'
         items: RecordedStructureObservation[]
         dropped: number
+        /** 有时间戳、但写在版本写出之后 ⇒ 不在窗口内，数量如实报出。 */
         afterWindow: number
+        /** 时间戳无法解析 ⇒ 既不能说在窗口内、也不能说晚于版本，单独具名。 */
+        undated: number
       }
     | {
         state: 'unavailable'

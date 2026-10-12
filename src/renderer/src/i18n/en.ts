@@ -4513,5 +4513,6 @@ export const en: Record<ZhKey, string> = {
     'This session recorded no structure region or measurement.',
   'ws.structureObservationsUnreadable': 'The observation journal is present but could not be read.',
   'ws.structureObservationsAfterWindow': '{count} recorded after this Version was written',
-  'ws.structureObservationsDropped': '{count} older entries were dropped at the cap'
+  'ws.structureObservationsDropped': '{count} older entries were dropped at the cap',
+  'ws.structureObservationsUndated': '{count} entries carry no readable timestamp'
 }

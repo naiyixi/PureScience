@@ -4576,5 +4576,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsUnreadable': 'El diario de observaciones existe pero no se pudo leer.',
   'ws.structureObservationsAfterWindow': '{count} registrados después de escribir esta versión',
   'ws.structureObservationsDropped':
-    '{count} entradas más antiguas se descartaron al alcanzar el límite'
+    '{count} entradas más antiguas se descartaron al alcanzar el límite',
+  'ws.structureObservationsUndated': '{count} entradas no tienen marca temporal legible'
 }

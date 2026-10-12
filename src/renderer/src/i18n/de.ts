@@ -4622,5 +4622,6 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Diese Sitzung hat weder einen Strukturbereich noch eine Messung aufgezeichnet.',
   'ws.structureObservationsUnreadable': 'Das Beobachtungsjournal ist vorhanden, aber nicht lesbar.',
   'ws.structureObservationsAfterWindow': '{count} nach dem Schreiben dieser Version aufgezeichnet',
-  'ws.structureObservationsDropped': '{count} ältere Einträge wurden an der Obergrenze verworfen'
+  'ws.structureObservationsDropped': '{count} ältere Einträge wurden an der Obergrenze verworfen',
+  'ws.structureObservationsUndated': '{count} Einträge haben keinen lesbaren Zeitstempel'
 }

@@ -1670,6 +1670,17 @@ const ArtifactProvenancePanel = ({
                     )}
                   </p>
                 ) : null}
+                {provenance.structureObservations.undated > 0 ? (
+                  <p
+                    className="text-xs text-text-300"
+                    data-testid="artifact-structure-observations-undated"
+                  >
+                    {t('ws.structureObservationsUndated').replace(
+                      '{count}',
+                      String(provenance.structureObservations.undated)
+                    )}
+                  </p>
+                ) : null}
                 {provenance.structureObservations.dropped > 0 ? (
                   <p
                     className="text-xs text-text-300"

@@ -30,6 +30,48 @@ export type StructureObservationEntry = {
   measurement?: StructureMeasurement
 }
 
+/**
+ * 把一次会话的观察记录裁进「版本写出之前」这个窗口 —— **纯函数**，所以在没有库、没有产物的前提下
+ * 也能把时间窗的语义钉死（本仓不认"看起来对"的窗口）。
+ *
+ * 三种缺态分开计数，绝不互相冒充：
+ *  - `afterWindow`：**有**可解析的时间戳，且在版本写出之后（写在值上，不是"不予显示"）；
+ *  - `undated`：时间戳无法解析（更早的写入方可能没写戳）⇒ 不能声称它属于窗口内，也不能说它晚于版本；
+ *  - `windowKnown`：版本自己有没有可解析的写出时刻。**没有 ⇒ 窗口没法强制**，调用方必须把这件事
+ *    写在值上（attribution 换成会话级），而不是假装窗生效了。
+ */
+export type StructureObservationWindow = {
+  items: StructureObservationEntry[]
+  afterWindow: number
+  undated: number
+  windowKnown: boolean
+}
+
+export const projectStructureObservationWindow = (
+  entries: StructureObservationEntry[],
+  writtenAtIso: string | undefined
+): StructureObservationWindow => {
+  const writtenAt = writtenAtIso === undefined ? Number.NaN : Date.parse(writtenAtIso)
+  const windowKnown = Number.isFinite(writtenAt)
+
+  const items: StructureObservationEntry[] = []
+  let afterWindow = 0
+  let undated = 0
+  for (const entry of entries) {
+    const recordedAt = Date.parse(entry.recordedAt)
+    if (!Number.isFinite(recordedAt)) {
+      undated += 1
+      continue
+    }
+    if (windowKnown && recordedAt > writtenAt) {
+      afterWindow += 1
+      continue
+    }
+    items.push(entry)
+  }
+  return { items, afterWindow, undated, windowKnown }
+}
+
 export type StructureObservationJournal =
   | { state: 'available'; entries: StructureObservationEntry[]; dropped: number }
   | { state: 'unavailable'; reason: 'not-recorded' | 'unreadable' }

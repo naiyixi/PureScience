@@ -4156,5 +4156,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsNotRecorded': '本次工作階段沒有記錄任何結構選區或量測。',
   'ws.structureObservationsUnreadable': '觀察日誌存在但讀不出來。',
   'ws.structureObservationsAfterWindow': '{count} 筆記錄於這個版本寫出之後',
-  'ws.structureObservationsDropped': '{count} 筆更早的記錄因超出上限被丟棄'
+  'ws.structureObservationsDropped': '{count} 筆更早的記錄因超出上限被丟棄',
+  'ws.structureObservationsUndated': '{count} 筆記錄的時間戳讀不出來'
 }

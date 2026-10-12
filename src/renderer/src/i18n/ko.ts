@@ -4411,5 +4411,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 세션은 구조 선택 영역이나 측정값을 기록하지 않았습니다.',
   'ws.structureObservationsUnreadable': '관찰 저널이 있지만 읽을 수 없습니다.',
   'ws.structureObservationsAfterWindow': '{count}건은 이 버전 작성 이후에 기록됨',
-  'ws.structureObservationsDropped': '{count}건의 오래된 기록은 상한을 넘어 버려졌습니다'
+  'ws.structureObservationsDropped': '{count}건의 오래된 기록은 상한을 넘어 버려졌습니다',
+  'ws.structureObservationsUndated': '{count}건은 타임스탬프를 읽을 수 없습니다'
 }

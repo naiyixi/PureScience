@@ -4480,5 +4480,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsNotRecorded': 'このセッションは構造の選択範囲も測定も記録していません。',
   'ws.structureObservationsUnreadable': '観察ジャーナルは存在しますが読み取れません。',
   'ws.structureObservationsAfterWindow': '{count} 件はこのバージョンの書き出し後に記録',
-  'ws.structureObservationsDropped': '{count} 件の古い記録は上限を超えて破棄されました'
+  'ws.structureObservationsDropped': '{count} 件の古い記録は上限を超えて破棄されました',
+  'ws.structureObservationsUndated': '{count} 件はタイムスタンプを読み取れません'
 }

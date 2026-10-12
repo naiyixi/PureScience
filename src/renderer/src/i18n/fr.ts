@@ -4609,5 +4609,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Cette session n'a enregistré ni région ni mesure de structure.",
   'ws.structureObservationsUnreadable': "Le journal d'observations est présent mais illisible.",
   'ws.structureObservationsAfterWindow': "{count} enregistrés après l'écriture de cette version",
-  'ws.structureObservationsDropped': '{count} entrées plus anciennes ont été écartées à la limite'
+  'ws.structureObservationsDropped': '{count} entrées plus anciennes ont été écartées à la limite',
+  'ws.structureObservationsUndated': "{count} entrées n'ont pas d'horodatage lisible"
 }

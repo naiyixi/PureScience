@@ -4214,7 +4214,8 @@ export const zh = {
   'ws.structureObservationsNotRecorded': '本次会话没有记录任何结构选区或测量。',
   'ws.structureObservationsUnreadable': '观察日志存在但读不出来。',
   'ws.structureObservationsAfterWindow': '{count} 条记录于这个版本写出之后',
-  'ws.structureObservationsDropped': '{count} 条更早的记录因超出上限被丢弃'
+  'ws.structureObservationsDropped': '{count} 条更早的记录因超出上限被丢弃',
+  'ws.structureObservationsUndated': '{count} 条记录的时间戳读不出来'
 }
 
 export type ZhKey = keyof typeof zh
