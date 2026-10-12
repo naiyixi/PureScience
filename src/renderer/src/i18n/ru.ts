@@ -4478,5 +4478,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': 'Остатки в радиусе',
   'preview.structureMeasureDistance': 'Расстояние',
   'preview.structureMeasureAngle': 'Угол',
-  'preview.structureClearMeasurement': 'Снять измерение'
+  'preview.structureClearMeasurement': 'Снять измерение',
+  'preview.structureInstructionLabel': 'Описать выделение по-китайски',
+  'preview.structureInstructionPlaceholder': 'Например: остатки в пределах 5 Å от остатка 145',
+  'preview.structureInstructionApply': 'Применить описание'
 }

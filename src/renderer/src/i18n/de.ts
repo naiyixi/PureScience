@@ -4605,5 +4605,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': 'Reste im Radius',
   'preview.structureMeasureDistance': 'Abstand',
   'preview.structureMeasureAngle': 'Winkel',
-  'preview.structureClearMeasurement': 'Messung aufheben'
+  'preview.structureClearMeasurement': 'Messung aufheben',
+  'preview.structureInstructionLabel': 'Auswahl auf Chinesisch beschreiben',
+  'preview.structureInstructionPlaceholder':
+    'Zum Beispiel: die Reste innerhalb von 5 Å um Rest 145',
+  'preview.structureInstructionApply': 'Beschreibung anwenden'
 }

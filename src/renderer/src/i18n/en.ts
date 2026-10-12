@@ -4498,5 +4498,8 @@ export const en: Record<ZhKey, string> = {
   'preview.structureSelectWithin': 'Residues within radius',
   'preview.structureMeasureDistance': 'Distance',
   'preview.structureMeasureAngle': 'Angle',
-  'preview.structureClearMeasurement': 'Clear measurement'
+  'preview.structureClearMeasurement': 'Clear measurement',
+  'preview.structureInstructionLabel': 'Describe a selection in Chinese',
+  'preview.structureInstructionPlaceholder': 'For example: the residues within 5 Å of residue 145',
+  'preview.structureInstructionApply': 'Apply description'
 }

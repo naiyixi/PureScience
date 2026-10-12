@@ -4143,5 +4143,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': '半徑內的殘基',
   'preview.structureMeasureDistance': '距離',
   'preview.structureMeasureAngle': '角度',
-  'preview.structureClearMeasurement': '清除測量'
+  'preview.structureClearMeasurement': '清除測量',
+  'preview.structureInstructionLabel': '用中文描述選取',
+  'preview.structureInstructionPlaceholder': '例如：145 號半胱氨酸 5 埃以內的殘基',
+  'preview.structureInstructionApply': '執行描述'
 }

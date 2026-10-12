@@ -4592,5 +4592,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureMeasureDistance': 'Écart',
   // 同理：法语的「角度」与英语同形 ⇒ 写成带单位的说法（值本来就是度）。
   'preview.structureMeasureAngle': 'Angle en degrés',
-  'preview.structureClearMeasurement': 'Effacer la mesure'
+  'preview.structureClearMeasurement': 'Effacer la mesure',
+  'preview.structureInstructionLabel': 'Décrire une sélection en chinois',
+  'preview.structureInstructionPlaceholder':
+    'Par exemple : les résidus à moins de 5 Å du résidu 145',
+  'preview.structureInstructionApply': 'Appliquer la description'
 }

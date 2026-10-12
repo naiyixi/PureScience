@@ -30,9 +30,18 @@ const neighborhoodAtoms = [
   { chain: 'A', resi: 2, resn: 'GLY' },
   { chain: 'B', resi: 30, resn: 'ALA' }
 ]
-const selectedAtoms = vi.fn((selector?: unknown) =>
-  selector && typeof selector === 'object' && 'within' in selector ? neighborhoodAtoms : chainAtoms
-)
+const allAtoms = [...chainAtoms, { chain: 'B', resi: 30, resn: 'ALA' }]
+const selectedAtoms = vi.fn((selector?: unknown) => {
+  if (!selector || typeof selector !== 'object') return allAtoms
+  if ('within' in selector) return neighborhoodAtoms
+  const query = selector as { chain?: string; resi?: number }
+  if (Object.keys(query).length === 0) return allAtoms
+  return allAtoms.filter(
+    (atom) =>
+      (query.chain === undefined || atom.chain === query.chain) &&
+      (query.resi === undefined || atom.resi === query.resi)
+  )
+})
 const renderViewer = vi.fn()
 const resizeViewer = vi.fn()
 const clearViewer = vi.fn()
@@ -1200,6 +1209,73 @@ describe('PreviewFileContent', () => {
       expect(
         usePreviewWorkbenchStore.getState().activeStructureMeasurement(item.sessionId)
       ).toBeUndefined()
+    })
+
+    it('applies a Chinese description and shows the parameters it actually used (D5)', async () => {
+      const pdbContent = [
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',
+        'ATOM      2  CA  MET A   1      21.567  34.361  27.100  1.00 44.13           C',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const item = createFileItem({ format: 'pdb' as PreviewFileItem['format'], name: 'cn.pdb' })
+      usePreviewWorkbenchStore.setState(createInitialPreviewWorkbenchState())
+      usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+
+      await renderFile(item)
+      const typeInstruction = async (text: string): Promise<void> => {
+        await act(async () => {
+          const input = container.querySelector<HTMLInputElement>(
+            '[data-slot="structure-instruction"]'
+          )
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+          setter?.call(input, text)
+          input?.dispatchEvent(new Event('input', { bubbles: true }))
+        })
+        await act(async () => {
+          container
+            .querySelector<HTMLButtonElement>('[data-slot="structure-instruction-apply"]')
+            ?.click()
+        })
+      }
+
+      // A phrase that names a residue that exists: applied, and the parameter line says what ran.
+      await typeInstruction('A 链 1 号甲硫氨酸')
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+        ).toBe('已执行 · 单残基：链 A 残基 1 (MET)')
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+          'chain A residue 1'
+        )
+      })
+
+      // A phrase naming a residue this structure does not have: nothing is applied, and the reason is
+      // on screen — no silent no-op and no "close enough" substitution.
+      await typeInstruction('A 链 145 号半胱氨酸')
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+        ).toContain('未执行 · 链 A 上没有残基 145')
+      })
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
+      ).toMatchObject({ residueStart: 1, residueEnd: 1 })
+
+      // An unresolvable word is refused by the parser itself, with its own wording.
+      await typeInstruction('A 链 1 号硒代半胱氨酸')
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+        ).toContain('不在本模块的 20 种标准氨基酸表里')
+      })
     })
 
     it('focuses the camera when the same residue is clicked twice (D1 camera/focus)', async () => {

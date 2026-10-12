@@ -13,6 +13,10 @@ import {
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
 import {
+  parseStructureInstruction,
+  structureInstructionParameterLine
+} from '../../../../../../shared/structure-instruction'
+import {
   STRUCTURE_MEASUREMENT_SCHEMA_VERSION,
   structureMeasurementAtomCount,
   structureMeasurementFingerprint,
@@ -230,6 +234,7 @@ const PdbPreviewViewer = ({
   const pendingZoomRef = useRef(false)
   const cartoonUnavailableDescriptionId = useId()
   const neighborhoodRadiusInputId = useId()
+  const instructionInputId = useId()
   const [selectedStyle, setSelectedStyle] = useState<PdbStyle | undefined>(undefined)
   const [selectedColors, setSelectedColors] = useState<StructureColorScheme | undefined>(undefined)
   const [viewerError, setViewerError] = useState<string | undefined>(undefined)
@@ -338,6 +343,9 @@ const PdbPreviewViewer = ({
 
   // D3：整链与空间邻域两种选择。半径是用户输入（Å），空/非正数就不动作。
   const [neighborhoodRadius, setNeighborhoodRadius] = useState('5')
+  // D5：中文口语 → 选择。输入与「实际执行了什么」的那一行都留在组件里（解析结果必须上屏）。
+  const [instructionText, setInstructionText] = useState('')
+  const [instructionNote, setInstructionNote] = useState<string | undefined>(undefined)
 
   const publishBuiltSelection = useCallback(
     (build: (digest: string) => StructureSelection) => {
@@ -424,6 +432,158 @@ const PdbPreviewViewer = ({
       })
     )
   }, [format, name, neighborhoodRadius, publishBuiltSelection, structureId])
+
+  /**
+   * D5：把一句中文落实成选择。
+   * 两条铁律：① 解析不出来就**如实上屏拒绝原因**，不做任何"近似"动作；② 解析出来的编号/链必须在
+   * **这份结构里真实存在**（问视图要原子），否则拒绝 —— 不把不存在的残基当成"差不多是它"。
+   */
+  const applyInstruction = useCallback(() => {
+    const parsed = parseStructureInstruction(instructionText)
+    if (!parsed.ok) {
+      setInstructionNote(`未执行 · ${parsed.detail}`)
+      return
+    }
+
+    const viewerState = viewerStateRef.current
+    if (!viewerState) return
+    const viewer = viewerState.viewer
+
+    const chainsInViewer = [
+      ...new Set(
+        viewer
+          .selectedAtoms({})
+          .map((atom) => toStructureAtomRef(atom)?.chain)
+          .filter((chain): chain is string => Boolean(chain))
+      )
+    ]
+    const resolveChain = (requested: string | undefined): string | undefined =>
+      requested ? (chainsInViewer.includes(requested) ? requested : undefined) : undefined
+
+    if (parsed.kind === 'chain') {
+      const requested = resolveChain(parsed.chain)
+      if (parsed.chain && !requested) {
+        setInstructionNote(`未执行 · 这份结构里没有链 ${parsed.chain}。`)
+        return
+      }
+      if (!requested && chainsInViewer.length !== 1) {
+        setInstructionNote(
+          `未执行 · 这份结构有 ${chainsInViewer.length} 条链，请指明是哪一条（例如「A 链整条链」）。`
+        )
+        return
+      }
+      const chain = requested ?? chainsInViewer[0]
+      const extent = chainResidueExtent(viewer.selectedAtoms({ chain }), chain)
+      if (!extent) {
+        setInstructionNote(`未执行 · 链 ${chain} 在这份结构里没有原子。`)
+        return
+      }
+      publishBuiltSelection((digest) =>
+        buildStructureSelection({
+          structureId,
+          name,
+          format,
+          contentDigest: digest,
+          start: extent.start,
+          end: extent.end,
+          view: { style: styleRef.current, colorScheme: colorsRef.current },
+          kind: 'chain'
+        })
+      )
+      setInstructionNote(`已执行 · ${structureInstructionParameterLine(parsed)}`)
+      return
+    }
+
+    const reference = parsed.kind === 'neighborhood' ? parsed.reference : parsed.residue
+    const chain =
+      resolveChain(reference.chain) ?? (chainsInViewer.length === 1 ? chainsInViewer[0] : undefined)
+    if (!chain) {
+      setInstructionNote(
+        reference.chain
+          ? `未执行 · 这份结构里没有链 ${reference.chain}。`
+          : `未执行 · 这份结构有 ${chainsInViewer.length} 条链，请指明是哪一条。`
+      )
+      return
+    }
+
+    const residueNumbers: number[] = []
+    for (let resi = reference.residueStart; resi <= reference.residueEnd; resi += 1) {
+      residueNumbers.push(resi)
+    }
+    const present = residueNumbers.filter(
+      (resi) => viewer.selectedAtoms({ chain, resi }).length > 0
+    )
+    if (present.length === 0) {
+      setInstructionNote(
+        `未执行 · 链 ${chain} 上没有残基 ${reference.residueStart}${
+          reference.residueEnd === reference.residueStart ? '' : `-${reference.residueEnd}`
+        }。`
+      )
+      return
+    }
+
+    if (parsed.kind === 'neighborhood') {
+      const members = collectResidueRefs(
+        viewer.selectedAtoms({
+          within: {
+            distance: parsed.radiusAngstrom,
+            sel: { chain, resi: `${present[0]}-${present[present.length - 1]}` }
+          }
+        })
+      )
+      if (members.length === 0) {
+        setInstructionNote('未执行 · 半径内没有找到任何残基。')
+        return
+      }
+      const start = Math.min(
+        ...members.filter((member) => member.chain === chain).map((m) => m.resi),
+        present[0]
+      )
+      const end = Math.max(
+        ...members.filter((member) => member.chain === chain).map((m) => m.resi),
+        present[present.length - 1]
+      )
+      publishBuiltSelection((digest) =>
+        buildStructureSelection({
+          structureId,
+          name,
+          format,
+          contentDigest: digest,
+          start: { chain, resi: start },
+          end: { chain, resi: end },
+          view: { style: styleRef.current, colorScheme: colorsRef.current },
+          kind: 'neighborhood',
+          neighborhood: {
+            radiusAngstrom: parsed.radiusAngstrom,
+            ofChain: chain,
+            ofStart: reference.residueStart,
+            ofEnd: reference.residueEnd
+          },
+          memberResidues: members
+        })
+      )
+      setInstructionNote(
+        `已执行 · ${structureInstructionParameterLine(parsed)} · 命中的链 ${[
+          ...new Set(members.map((member) => member.chain))
+        ].join(',')} · ${members.length} 个残基`
+      )
+      return
+    }
+
+    publishBuiltSelection((digest) =>
+      buildStructureSelection({
+        structureId,
+        name,
+        format,
+        contentDigest: digest,
+        start: { chain, resi: present[0] },
+        end: { chain, resi: present[present.length - 1] },
+        // 不给 kind：'residue' 与 'range' 由端点推导（相等 ⇒ 单残基），只有整链与邻域必须显式说出来。
+        view: { style: styleRef.current, colorScheme: colorsRef.current }
+      })
+    )
+    setInstructionNote(`已执行 · ${structureInstructionParameterLine(parsed)}`)
+  }, [instructionText, format, name, publishBuiltSelection, structureId])
 
   // 内容换了（同一页签换了文件或版本）⇒ 旧选择不再对应屏幕上看到的那份结构：清掉，别留进上下文。
   // 只动 ref 与 store（组件状态由上面的派生收口），所以不需要在 effect 里同步 setState。
@@ -826,6 +986,40 @@ const PdbPreviewViewer = ({
             >
               <X className="size-3" aria-hidden="true" />
             </button>
+          </span>
+        ) : null}
+      </div>
+      {/* D5：中文口语 → 选择。解析结果（参数行）或**拒绝原因**必须上屏 —— 否则用户不知道发生了什么。 */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2 text-[12px] text-text-300">
+        <label htmlFor={instructionInputId} className="sr-only">
+          {t('preview.structureInstructionLabel')}
+        </label>
+        <input
+          id={instructionInputId}
+          data-slot="structure-instruction"
+          aria-label={t('preview.structureInstructionLabel')}
+          placeholder={t('preview.structureInstructionPlaceholder')}
+          value={instructionText}
+          onChange={(event) => setInstructionText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              applyInstruction()
+            }
+          }}
+          className="h-6 min-w-0 flex-1 rounded-md border border-border-300 bg-bg-000 px-2 text-[12px] text-text-000"
+        />
+        <button
+          type="button"
+          data-slot="structure-instruction-apply"
+          className="h-6 shrink-0 rounded-md px-2 text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000"
+          onClick={applyInstruction}
+        >
+          {t('preview.structureInstructionApply')}
+        </button>
+        {instructionNote ? (
+          <span data-slot="structure-instruction-note" className="min-w-0 truncate">
+            {instructionNote}
           </span>
         ) : null}
       </div>

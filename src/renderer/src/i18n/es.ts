@@ -4558,5 +4558,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': 'Residuos en el radio',
   'preview.structureMeasureDistance': 'Distancia',
   'preview.structureMeasureAngle': 'Ángulo',
-  'preview.structureClearMeasurement': 'Borrar la medición'
+  'preview.structureClearMeasurement': 'Borrar la medición',
+  'preview.structureInstructionLabel': 'Describir una selección en chino',
+  'preview.structureInstructionPlaceholder':
+    'Por ejemplo: los residuos a menos de 5 Å del residuo 145',
+  'preview.structureInstructionApply': 'Aplicar la descripción'
 }

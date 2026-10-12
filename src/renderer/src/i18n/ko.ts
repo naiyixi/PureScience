@@ -4396,5 +4396,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': '반경 내 잔기',
   'preview.structureMeasureDistance': '거리',
   'preview.structureMeasureAngle': '각도',
-  'preview.structureClearMeasurement': '측정 지우기'
+  'preview.structureClearMeasurement': '측정 지우기',
+  'preview.structureInstructionLabel': '중국어로 선택 영역 지정',
+  'preview.structureInstructionPlaceholder': '예: 145번 잔기에서 5 Å 이내의 잔기',
+  'preview.structureInstructionApply': '설명 실행'
 }

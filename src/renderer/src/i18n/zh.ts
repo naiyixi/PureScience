@@ -4201,7 +4201,10 @@ export const zh = {
   'preview.structureSelectWithin': '半径内的残基',
   'preview.structureMeasureDistance': '距离',
   'preview.structureMeasureAngle': '角度',
-  'preview.structureClearMeasurement': '清除测量'
+  'preview.structureClearMeasurement': '清除测量',
+  'preview.structureInstructionLabel': '用中文描述选区',
+  'preview.structureInstructionPlaceholder': '例如：145 号半胱氨酸 5 埃以内的残基',
+  'preview.structureInstructionApply': '执行描述'
 }
 
 export type ZhKey = keyof typeof zh

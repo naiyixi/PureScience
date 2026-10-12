@@ -4466,5 +4466,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectWithin': '半径内の残基',
   'preview.structureMeasureDistance': '距離',
   'preview.structureMeasureAngle': '角度',
-  'preview.structureClearMeasurement': '測定を解除'
+  'preview.structureClearMeasurement': '測定を解除',
+  'preview.structureInstructionLabel': '中国語で選択範囲を指定',
+  'preview.structureInstructionPlaceholder': '例：145 番の残基から 5 オングストローム以内の残基',
+  'preview.structureInstructionApply': '記述を実行'
 }
