@@ -75,6 +75,31 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 **排期含义**：P0 里的 P0-1/P0-2 属"**数据完整性/信任**"级（静默吞异常与退出崩溃会让用户对"跑完了没"没有把握），
 排在旗舰之前；P0-3/P0-4/P0-9 直接对应"**卡、不如对标流畅**"这条用户反馈，与旗舰同版交付（旗舰的流畅度就是它们的验收场景）。
 
+### P0-11（2026-10-12 由 D2 的真机读数抓到，立案）
+
+**现象**：agent 的范围根与真实数据根**不是同一个解析结果** ⇒ **agent 读不到自己的会话工作区与自己的 notebook 产物**。
+
+**真实读数（同日日志，同形拒绝 6 次，其中 4 次是用户自己的真实会话）**：
+`Refused: /Users/totota/PureScience-DEV/workspaces/<sessionId> is outside this project scope.`
+`Project files are read from the project folder itself (/Users/totota/.purescience-project);`
+被拒目标的 4 条属用户真实会话 `750c63b0…` / `980c1262…`（项目 `cmuh0axy5…`）：
+`notebooks/<projectId>/<sessionId>/data/figC_pmf_hysteresis.png`、
+`…/umbrella_sampling_orthogonal_hysteresis_sim.py`、`…/gpcr_msm_disconnect_4panel.png`、
+`workspaces/<sessionId>/gpcr_msm_kinetics_disconnect_sim.py`。
+
+**三条互相矛盾的读数（都取自应用自己）**：
+1. 闸门权威文件 `~/.purescience-project/claude/hooks/path-guard-roots.json`（2026-10-12 19:34 写）
+   = `{"roots":["/Users/totota/.purescience-project"],"hint":"/Users/totota/.purescience-project"}` —— 只有一个根，且是**配置根**；
+2. `storage:get-info` 自报 `dataRoot=/Users/totota/PureScience-DEV`（`isDefault: true`），而会话工作区与 notebook 数据**确实**建在它下面；
+3. 写入点 `src/main/settings/agent-runtime-manager.ts:706`
+   `const dataRoot = settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot` 与 `:722`
+   `{ roots: [dataRoot, this.storageRoot], hint: dataRoot }`。
+
+**修法方向（不是放宽根）**：让闸门的根取自**与存储层同一处的解析**（单一来源），而不是把 `[dataRoot, storageRoot]`
+写宽。放宽属安全面 ⇒ 按仓规先写成可复查的提权论证（谁本来就有更强权力 / 可达面是否变化 / 每条 fail-closed 规则各配一个用例）。
+**定性前提**：打包版两者同根（`~/.purescience`），需在打包版上再核一次，才能判「产品缺陷」还是「dev 配置不一致」。
+读数与完整取证见 `docs/evidence/2026-10-12-d2-live-structure-selection.md` 第 4 节。
+
 ### 交付进度（按提交，勿重复做）
 
 | # | 状态 | 提交 / 证据 |
@@ -212,10 +237,16 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 | ③ 注入接线 | `AcpPromptPreparationOwnerOptions.selectionNotice`（与 D5 的 `inputNotice` 同缝） | 进 `prepared.content`、**不进 `request.text`**；空串时内容逐字节不变；**顺带修掉既有缺陷**：视觉中继原先被喂 notice 之前的 content ⇒ text-only 后端上 D5/D2 的块被静默丢掉（已改，并用变异测试确认新用例真会红） |
 | ④ 范围上屏 + 渲染层上行 | `PdbPreview.tsx`（点残基选中、同链 Shift 扩区间、跨链不编、主色高亮、头部上屏区间、清除按钮）、`preview-workbench-store`（按页签记选择，清除/关页签/删会话/换内容即清）、`turn-structure-selection.ts`（渲染层唯一读法，只认在前的结构页签 + 同一会话） | 组件用例走完「点残基 → 上屏 `chain A residue 1` → Shift 点 → `chain A residues 1-2` → store 里同一份 → 高亮 → 清除后两处皆空」 |
 
-**本单元未取（具名）**：端到端**真机读数**（真窗口点残基 → 真回合 → agent 回答引用该区间）**未取** ——
-本机内存闸门紧（空闲物理页 ≈ 60 MB / swap 5.29G:6.0G 已用），Electron 路径本轮走不通。
-计划的低成本取法（下一步）：重启常驻 dev 实例 → Web RPC 带 `structureSelection` 发一轮 → 读主日志确认
-块进了 provider 内容；界面半边走 CDP（浏览器，不启 Electron）。
+**真机读数（2026-10-12，已取得）**：常驻 dev 实例重启到含本改动的代码（自证：`out/main/ipc-DzGie4oB.js`
+含只有本改动才有的 `purescience_structure_context`）→ Web RPC 带 `structureSelection` 发一轮**真回合**
+（真 provider、真 `Bash` 工具调用、`stopReason: end_turn`）。三条读数：① 主日志
+`prompt start { textLength: 117 }` 正是用户原文长度 ⇒ **块没进 `request.text`**；② agent 的回答**逐字复述**
+了注入块的字段与值（`structureId`、摘要前缀、`scope: "range"`、链 A / 22–26 / PRO…CYS），并明确答
+"**是你选中的一段**，不是整条链" ⇒ **本单元验收判据达成**；③ 它**拒绝编造**区间中间的残基名并具名说出缺口。
+读数与配方见 `docs/evidence/2026-10-12-d2-live-structure-selection.md`。
+
+**仍未取（具名）**：真机**点击**链路（在真视图里点残基 → 上屏 → 上行）—— 本轮走 RPC 无窗口，那一半由组件用例
+（点残基 → 上屏 → store 同一份 → 高亮 → 清除）覆盖，真机点击需 CDP 驱动 Web UI，下次补；对照轮（不带选择的同题回合）未发。
 
 **仍待 D3 接手**：D1 余项「焦点/选区相机」（选区已由本单元引入 ⇒ 现在就能做）、以及把选择指纹接进溯源面板。
 
