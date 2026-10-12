@@ -4189,5 +4189,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'translation.page.untranslated': '尚未翻譯',
   'translation.page.partial': '部分已譯',
   'translation.page.translated': '已翻譯',
-  'translation.page.failed': '翻譯失敗'
+  'translation.page.failed': '翻譯失敗',
+  'translation.mode.source': '原文',
+  'translation.mode.translated': '譯文',
+  'translation.mode.contrast': '對照',
+  'translation.cell.missing': '本段尚無譯文',
+  'translation.cell.failed': '未譯（失敗）',
+  'translation.cell.kept': '原文保留（參考文獻不翻譯）',
+  'translation.reason.missing': '未說明原因',
+  'translation.source.missing': '原文缺失',
+  'translation.contrast.export': '匯出對照件',
+  'translation.terminology.deviation': '術語偏離：{term}（應用 {accepted}）'
 }

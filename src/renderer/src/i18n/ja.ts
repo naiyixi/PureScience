@@ -4514,5 +4514,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'translation.page.untranslated': '未翻訳',
   'translation.page.partial': '一部翻訳済み',
   'translation.page.translated': '翻訳済み',
-  'translation.page.failed': '翻訳に失敗'
+  'translation.page.failed': '翻訳に失敗',
+  'translation.mode.source': '原文',
+  'translation.mode.translated': '訳文',
+  'translation.mode.contrast': '対照',
+  'translation.cell.missing': 'この段落は未翻訳',
+  'translation.cell.failed': '翻訳に失敗',
+  'translation.cell.kept': '原文のまま（参考文献は翻訳しません）',
+  'translation.reason.missing': '理由が記録されていません',
+  'translation.source.missing': '原文がありません',
+  'translation.contrast.export': '対照版を書き出す',
+  'translation.terminology.deviation': '用語が表と不一致：{term}（{accepted} を使用）'
 }

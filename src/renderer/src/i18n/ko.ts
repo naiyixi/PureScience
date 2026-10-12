@@ -4445,5 +4445,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'translation.page.untranslated': '아직 번역되지 않음',
   'translation.page.partial': '일부 번역됨',
   'translation.page.translated': '번역됨',
-  'translation.page.failed': '번역 실패'
+  'translation.page.failed': '번역 실패',
+  'translation.mode.source': '원문',
+  'translation.mode.translated': '번역문',
+  'translation.mode.contrast': '대조',
+  'translation.cell.missing': '이 단락은 아직 번역되지 않았습니다',
+  'translation.cell.failed': '번역 실패',
+  'translation.cell.kept': '원문 유지(참고문헌은 번역하지 않음)',
+  'translation.reason.missing': '이유가 기록되지 않음',
+  'translation.source.missing': '원문 없음',
+  'translation.contrast.export': '대조본 내보내기',
+  'translation.terminology.deviation': '용어가 표와 다름: {term} ({accepted} 사용)'
 }

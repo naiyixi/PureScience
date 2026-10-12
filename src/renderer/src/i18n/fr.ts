@@ -4644,5 +4644,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'translation.page.untranslated': 'pas encore traduite',
   'translation.page.partial': 'partiellement traduite',
   'translation.page.translated': 'traduite',
-  'translation.page.failed': 'échec de la traduction'
+  'translation.page.failed': 'échec de la traduction',
+  'translation.mode.source': 'Texte source',
+  'translation.mode.translated': 'Traduction',
+  'translation.mode.contrast': 'Côte à côte',
+  'translation.cell.missing': 'pas encore de traduction pour ce paragraphe',
+  'translation.cell.failed': 'échec de la traduction',
+  'translation.cell.kept': 'conservé tel quel (les références ne sont pas traduites)',
+  'translation.reason.missing': 'raison non enregistrée',
+  'translation.source.missing': "texte d'origine manquant",
+  'translation.contrast.export': 'Exporter la comparaison',
+  'translation.terminology.deviation': 'terminologie hors table : {term} (utiliser {accepted})'
 }

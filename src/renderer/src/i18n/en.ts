@@ -4548,5 +4548,15 @@ export const en: Record<ZhKey, string> = {
   'translation.page.untranslated': 'not translated yet',
   'translation.page.partial': 'partly translated',
   'translation.page.translated': 'translated',
-  'translation.page.failed': 'translation failed'
+  'translation.page.failed': 'translation failed',
+  'translation.mode.source': 'Original',
+  'translation.mode.translated': 'Translation',
+  'translation.mode.contrast': 'Side by side',
+  'translation.cell.missing': 'no translation for this paragraph yet',
+  'translation.cell.failed': 'translation failed',
+  'translation.cell.kept': 'kept as the original (references are not translated)',
+  'translation.reason.missing': 'reason not recorded',
+  'translation.source.missing': 'original text missing',
+  'translation.contrast.export': 'Export side by side',
+  'translation.terminology.deviation': 'terminology off the table: {term} (use {accepted})'
 }

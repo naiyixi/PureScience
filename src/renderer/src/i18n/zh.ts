@@ -4247,7 +4247,17 @@ export const zh = {
   'translation.page.untranslated': '尚未翻译',
   'translation.page.partial': '部分已译',
   'translation.page.translated': '已翻译',
-  'translation.page.failed': '翻译失败'
+  'translation.page.failed': '翻译失败',
+  'translation.mode.source': '原文',
+  'translation.mode.translated': '译文',
+  'translation.mode.contrast': '对照',
+  'translation.cell.missing': '本段尚无译文',
+  'translation.cell.failed': '未译（失败）',
+  'translation.cell.kept': '原文保留（参考文献不翻译）',
+  'translation.reason.missing': '未说明原因',
+  'translation.source.missing': '原文缺失',
+  'translation.contrast.export': '导出对照件',
+  'translation.terminology.deviation': '术语偏离：{term}（应用 {accepted}）'
 }
 
 export type ZhKey = keyof typeof zh

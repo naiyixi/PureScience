@@ -4530,5 +4530,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'translation.page.untranslated': 'ещё не переведено',
   'translation.page.partial': 'переведено частично',
   'translation.page.translated': 'переведено',
-  'translation.page.failed': 'перевод не удался'
+  'translation.page.failed': 'перевод не удался',
+  'translation.mode.source': 'Оригинал',
+  'translation.mode.translated': 'Перевод',
+  'translation.mode.contrast': 'Сопоставление',
+  'translation.cell.missing': 'для этого абзаца перевода ещё нет',
+  'translation.cell.failed': 'перевод не удался',
+  'translation.cell.kept': 'оставлено как в оригинале (список литературы не переводится)',
+  'translation.reason.missing': 'причина не записана',
+  'translation.source.missing': 'исходный текст отсутствует',
+  'translation.contrast.export': 'Экспорт сопоставления',
+  'translation.terminology.deviation': 'термин вне таблицы: {term} (используйте {accepted})'
 }
