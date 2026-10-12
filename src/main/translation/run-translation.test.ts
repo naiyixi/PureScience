@@ -53,7 +53,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  const runner = (overrides: Partial<TranslationRunnerDeps> = {}) =>
+  const runner = (overrides: Partial<TranslationRunnerDeps> = {}): ReturnType<typeof createTranslationRunner> =>
     createTranslationRunner({
       storageRoot: () => root,
       target: () => ({ ok: true, target }),
