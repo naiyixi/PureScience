@@ -259,6 +259,37 @@ describe('SkillImportApprovalDialog', () => {
     expect(document.body.textContent).not.toContain('stale.skill')
   })
 
+  it('renders the Invert action in the user’s language', () => {
+    // The control itself (not just the sentence around it) has to be readable in the user's language:
+    // a Chinese UI with an English "Invert" button was the defect this sweep closes.
+    window.localStorage.setItem('purescience-language', 'zh')
+    useSkillImportStore.getState().enqueue({
+      id: 'approval-zh-invert',
+      sessionId: 'session-1',
+      source: { kind: 'attachment', label: 'many.zip' },
+      previews: [
+        importCandidate('first', 'First Skill'),
+        importCandidate('second', 'Second Skill')
+      ],
+      skipped: []
+    })
+
+    act(() =>
+      root.render(
+        <LanguageProvider>
+          <SkillImportApprovalDialog />
+        </LanguageProvider>
+      )
+    )
+
+    expect(button('反选')).toBeDefined()
+    expect(button('Invert')).toBeUndefined()
+    act(() => button('反选')?.click())
+    expect(
+      document.body.querySelector<HTMLInputElement>('[aria-label="Select Second Skill"]')?.checked
+    ).toBe(true)
+  })
+
   it('reads the request sentence above the candidate list in the user’s language', () => {
     // The sentence that explains WHERE an import came from is the one a user needs before approving
     // it; it used to be hardcoded English in both halves. Asserted in zh through the real provider so

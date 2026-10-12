@@ -287,7 +287,7 @@ export function ComputeHostDetail({
             onClick={() => void handleRemove()}
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
-            Remove
+            {t('common.remove')}
           </Button>
         </div>
       </div>
@@ -576,9 +576,12 @@ export function ComputeHostDetail({
               {host.scratchRoot}
             </span>
             {host.scratchPinned ? (
-              <Badge variant="secondary" className="flex items-center gap-1 py-0 text-[10px]">
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 py-0 text-[10px] uppercase"
+              >
                 <Pin className="size-3" aria-hidden="true" />
-                PINNED
+                {t('common.pinned')}
               </Badge>
             ) : null}
           </div>
@@ -693,7 +696,7 @@ export function ComputeHostDetail({
           >
             <option value="direct_ssh">{t('settings.directSsh')}</option>
             <option value="slurm" disabled={probed?.detectedScheduler !== 'slurm'}>
-              Slurm
+              {t('computeHost.slurmOption')}
             </option>
           </select>
           {probed?.detectedScheduler === 'slurm' ? (

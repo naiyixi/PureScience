@@ -1296,7 +1296,7 @@ export function ReferencesLibraryDialog({
                                     if (projectId) openPdfPicker(projectId, reference.id)
                                   }}
                                 >
-                                  PDF
+                                  {t('settings.fileTypePdf')}
                                 </button>
                               )}
                               <button

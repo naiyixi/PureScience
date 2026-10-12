@@ -1366,6 +1366,34 @@ describe('RuntimesPanel reads its own copy in the user’s language', () => {
     expect(dialog?.textContent).not.toContain('Listing packages')
   })
 
+  it('shows the named-environment Packages action in zh', async () => {
+    // The row's action opens the packages dialog for that environment. It sat in English in every
+    // language until the short-label sweep; asserted through the real provider so the check is "the
+    // screen changed", not "the dictionary has the value".
+    manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
+      request.action === 'list'
+        ? {
+            environments: [
+              {
+                name: 'lock-import-env',
+                language: 'python' as const,
+                ready: true,
+                isDefault: false,
+                sizeBytes: 1024,
+                interpreterPath: '/data/runtime/envs/lock-import-env/bin/python'
+              }
+            ]
+          }
+        : { environments: [] }
+    )
+    await renderInChinese()
+    await flush()
+
+    const packages = container.querySelector('[data-testid="named-env-packages"]')
+    expect(packages?.textContent?.trim()).toBe('软件包')
+    expect(packages?.textContent?.trim()).not.toBe('Packages')
+  })
+
   it('shows the finishing-setup button in zh while the environment refresh is pending', async () => {
     let resolveRefresh:
       ((value: { python: DiscoveredInterpreter[]; r: DiscoveredInterpreter[] }) => void) | undefined

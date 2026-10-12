@@ -134,7 +134,7 @@ const ExportConversationDialog = ({
                   checked={format === 'markdown'}
                   onChange={() => setFormat('markdown')}
                 />
-                Markdown
+                {t('settings.fileTypeMarkdown')}
               </label>
               <label className="flex cursor-pointer items-center gap-1.5 text-sm text-foreground">
                 <input
@@ -143,7 +143,7 @@ const ExportConversationDialog = ({
                   checked={format === 'pdf'}
                   onChange={() => setFormat('pdf')}
                 />
-                PDF
+                {t('settings.fileTypePdf')}
               </label>
             </div>
           </fieldset>

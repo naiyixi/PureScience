@@ -247,7 +247,7 @@ const ReportErrorDialog = ({
                 className="underline hover:text-text-000"
                 onClick={(event) => event.stopPropagation()}
               >
-                Privacy Statement
+                {t('ws.privacyStatement')}
               </a>
               .
             </span>
@@ -295,7 +295,7 @@ const ReportErrorDialog = ({
               }`}
             >
               <ExternalLink className="size-4" aria-hidden="true" />
-              Open GitHub issue
+              {t('ws.openGithubIssue')}
             </a>
           </div>
         </Dialog.Content>

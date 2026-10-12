@@ -627,7 +627,7 @@ export function FileBrowserModal({
           {/* Header: host chips + close */}
           <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mr-1">
-              Host
+              {t('common.host')}
             </span>
             {hosts.map((h) => (
               <button
@@ -747,7 +747,7 @@ export function FileBrowserModal({
                     <>
                       <div className="my-1 border-t border-border" />
                       <p className="px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Bookmarks
+                        {t('common.bookmarks')}
                       </p>
                       {bookmarks.map((bm) => (
                         <div key={bm} className="flex items-center gap-1">

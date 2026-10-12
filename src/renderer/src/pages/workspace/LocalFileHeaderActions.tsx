@@ -118,7 +118,7 @@ export const LocalFileHeaderActions = ({
           className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-text-100"
         >
           <Check className="size-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          Saved
+          {t('common.saved')}
         </span>
       ) : null}
       {onReload ? (
@@ -174,11 +174,11 @@ export const LocalFileHeaderActions = ({
             {copied ? 'Copied' : 'Copy path'}
           </DropdownMenuItem>
           <DropdownMenuLabel className="px-1 text-[10px] font-medium uppercase tracking-wider">
-            On this machine
+            {t('ws.onThisMachine')}
           </DropdownMenuLabel>
           <DropdownMenuItem onSelect={() => void download()} className="gap-2">
             <Download className="size-4" aria-hidden="true" />
-            Download
+            {t('common.download')}
           </DropdownMenuItem>
           {canSaveAsArtifact ? (
             <DropdownMenuItem

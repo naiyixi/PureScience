@@ -1135,7 +1135,7 @@ const ArtifactProvenancePanel = ({
                     className="h-auto whitespace-nowrap px-0 py-0 text-sm"
                     onClick={() => setActiveTab('execution')}
                   >
-                    Execution Log
+                    {t('ws.executionLog')}
                   </Button>
                   <span>{t('artifact.reconstructionSuffix')}</span>
                 </div>
@@ -1206,7 +1206,7 @@ const ArtifactProvenancePanel = ({
                         onClick={() => void downloadProducerCode()}
                       >
                         <Download aria-hidden="true" />
-                        Download
+                        {t('common.download')}
                       </Button>
                     </div>
                   ) : null}

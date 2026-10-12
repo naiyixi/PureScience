@@ -108,7 +108,7 @@ const RenameSessionDialog = ({
                 {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={dialogRenameDraft.trim().length === 0}>
-                Rename
+                {t('common.rename')}
               </Button>
             </div>
           </form>

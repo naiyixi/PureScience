@@ -110,7 +110,7 @@ describe('ComputeHostDetail', () => {
     expect(container.textContent).toContain('Concurrent job limit')
   })
 
-  it('shows PINNED badge when scratchPinned is true', () => {
+  it('shows the pinned badge when scratchPinned is true', () => {
     useComputeStore.setState({
       hosts: [host({ scratchRoot: '/my/scratch', scratchPinned: true })],
       isLoaded: true
@@ -120,7 +120,9 @@ describe('ComputeHostDetail', () => {
       root.render(<ComputeHostDetail providerId="ssh:biowulf" onRemoved={vi.fn()} />)
     })
 
-    expect(container.textContent).toContain('PINNED')
+    // The label is the dictionary's now (`common.pinned`) and the all-caps look is CSS, so the badge
+    // reads in the user's language instead of being an English literal baked into the markup.
+    expect(container.textContent).toContain('Pinned')
   })
 
   it('shows (default) when concurrencyLimit is not set', () => {

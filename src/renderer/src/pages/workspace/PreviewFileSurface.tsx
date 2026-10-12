@@ -330,7 +330,7 @@ const PreviewFileHeader = ({
               <DropdownMenuContent align="end" className="z-[70] min-w-36">
                 <DropdownMenuItem onSelect={onOpenProvenance}>
                   <GitBranch className="mr-2 size-4" aria-hidden="true" />
-                  Provenance
+                  {t('preview.provenance')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

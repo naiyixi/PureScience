@@ -243,7 +243,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
                 onClick={invertSelection}
                 disabled={isScanning || selectable.length === 0 || importing}
               >
-                Invert
+                {t('skillUpload.invert')}
               </Button>
             </div>
             <Button

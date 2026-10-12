@@ -177,7 +177,7 @@ const WorkspacePlanCard = ({
             }}
           >
             <label className="sr-only" htmlFor={`plan-response-${projection.artifactVersionId}`}>
-              Respond to Plan
+              {t('sessionPlan.respondLabel')}
             </label>
             <div className="flex items-center gap-2">
               <span aria-hidden="true">✎</span>
@@ -191,7 +191,7 @@ const WorkspacePlanCard = ({
                 onChange={(event) => setResponseText(event.target.value)}
               />
               <Button type="submit" disabled={decisionBusy || responseText.trim().length === 0}>
-                Send
+                {t('common.send')}
               </Button>
             </div>
             {decisionError ? (
@@ -298,7 +298,7 @@ const PlanPreviewSurface = ({
             onClick={() => void download()}
           >
             <Download className="size-4" aria-hidden="true" />
-            Download
+            {t('common.download')}
           </Button>
           {planDocument && !stale && projection.approval === 'pending' && onRespond ? (
             <>
@@ -306,7 +306,7 @@ const PlanPreviewSurface = ({
                 {t('common.dismiss')}
               </Button>
               <Button type="button" onClick={() => void onRespond('approved')}>
-                Approve
+                {t('plan.approve')}
               </Button>
             </>
           ) : null}

@@ -189,7 +189,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
               </p>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="compute-user" className="text-sm font-medium text-foreground">
-                  User
+                  {t('computeAdd.userLabel')}
                 </label>
                 <Input
                   id="compute-user"
@@ -203,7 +203,7 @@ export function ComputeAddForm({ onCreated, onCancel }: ComputeAddFormProps): Re
               </div>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="compute-port" className="text-sm font-medium text-foreground">
-                  Port
+                  {t('computeAdd.portLabel')}
                 </label>
                 <Input
                   id="compute-port"

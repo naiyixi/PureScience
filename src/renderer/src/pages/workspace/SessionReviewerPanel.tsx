@@ -195,7 +195,7 @@ const ReviewerLogRow = ({ entry }: { entry: ReviewerLogEntry }): React.JSX.Eleme
           {entry.rawInput ? (
             <div>
               <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-400">
-                Input
+                {t('reviewer.inputLabel')}
               </div>
               <pre className="overflow-auto rounded border border-border-200 bg-bg-100 p-1.5 text-[10px] leading-[1.5] text-text-300 whitespace-pre-wrap break-words max-h-36">
                 {entry.rawInput}
@@ -205,7 +205,7 @@ const ReviewerLogRow = ({ entry }: { entry: ReviewerLogEntry }): React.JSX.Eleme
           {entry.rawOutput ? (
             <div>
               <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-400">
-                Output
+                {t('reviewer.outputLabel')}
               </div>
               <pre className="overflow-auto rounded border border-border-200 bg-bg-100 p-1.5 text-[10px] leading-[1.5] text-text-300 whitespace-pre-wrap break-words max-h-36">
                 {entry.rawOutput}

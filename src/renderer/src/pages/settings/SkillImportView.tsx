@@ -431,7 +431,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                     </span>
                     {skill.alreadyImported ? (
                       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Imported
+                        {t('settings.imported')}
                       </span>
                     ) : null}
                   </button>

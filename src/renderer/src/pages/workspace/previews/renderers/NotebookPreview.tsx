@@ -112,7 +112,7 @@ export const NotebookPreviewRenderer = ({ item }: PreviewFileRendererProps): Rea
               return (
                 <div key={key} className="rounded-lg border border-border-200 bg-bg-000 px-4 py-3">
                   <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-300">
-                    Markdown
+                    {t('settings.fileTypeMarkdown')}
                   </div>
                   <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-text-100">
                     {joinSource(cell.source)}

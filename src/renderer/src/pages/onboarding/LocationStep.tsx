@@ -214,7 +214,7 @@ const LocationStep = ({
           {t('common.back')}
         </Button>
         <Button type="button" onClick={() => void handleFinishLocation()} className="px-4">
-          Finish
+          {t('common.finish')}
         </Button>
       </CardFooter>
 

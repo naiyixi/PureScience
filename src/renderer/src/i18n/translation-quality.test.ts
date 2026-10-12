@@ -38,6 +38,8 @@ const KEPT_IN_ENGLISH = new Set<string>([
   'Open Science',
   'Remote.It',
   'GitHub',
+  // 2026-10 短标签批次：社区入口的品牌名（与 GitHub 同类，不可译）
+  'Discord',
   'AWS',
   'Google Cloud',
   'Azure',
@@ -87,6 +89,8 @@ const KEPT_IN_ENGLISH = new Set<string>([
   'FFmpeg',
   'sbatch',
   'qsub',
+  // 2026-10 短标签批次：调度器名（与 sbatch/qsub 同类，是命令族的名字而非可译词）
+  'Slurm',
   'bash',
   'pip',
   'conda',

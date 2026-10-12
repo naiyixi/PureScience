@@ -1272,7 +1272,7 @@ const RuntimesPanel = ({
                           }}
                         >
                           <Package aria-hidden="true" />
-                          Packages
+                          {t('common.packages')}
                         </Button>
                         <Button
                           type="button"

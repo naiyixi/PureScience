@@ -115,7 +115,7 @@ const ConnectorDetailView = ({
               {detail.displayName}
             </h1>
             <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-              Featured
+              {t('settings.featured')}
             </span>
           </div>
         </div>

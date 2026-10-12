@@ -62,7 +62,7 @@ const SwitchFrameworkDialog = ({
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
               <Button type="button" onClick={onConfirm}>
-                Switch
+                {t('common.switch')}
               </Button>
             </AlertDialog.Action>
           </div>

@@ -349,7 +349,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
           <h3 className="mt-4 text-lg font-semibold">{t('settings.templateSaved')}</h3>
           <p className="mt-2 text-sm text-muted-foreground">{t('settings.templateZipReady')}</p>
           <Button type="button" className="mt-5" onClick={() => setTemplateSaved(false)}>
-            Done
+            {t('settings.done')}
           </Button>
         </div>
       </div>
@@ -390,7 +390,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 onNavigate({ kind: 'list' })
               }}
             >
-              Done
+              {t('settings.done')}
             </Button>
           </div>
         </div>
@@ -1627,7 +1627,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   })()
                 }}
               >
-                Delete Specialist
+                {t('specialist.deleteAction')}
               </Button>
             </div>
           </AlertDialog.Content>

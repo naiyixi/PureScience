@@ -169,7 +169,7 @@ const GoToMenu = ({
         {bookmarks.length > 0 ? (
           <>
             <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wide">
-              Pinned
+              {t('common.pinned')}
             </DropdownMenuLabel>
             {bookmarks.map((path) => (
               <DropdownMenuItem

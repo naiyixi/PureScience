@@ -14,11 +14,14 @@ describe('app display branding', () => {
     const rendererHtmlSource = readFileSync(resolve(projectRoot, 'src/renderer/index.html'), 'utf8')
     const builderSource = readFileSync(resolve(projectRoot, 'electron-builder.yml'), 'utf8')
     const packageSource = readFileSync(resolve(projectRoot, 'package.json'), 'utf8')
-    // The product name now anchors the home screen brand (the workspace sidebar shows the project).
+    // The product name anchors the home screen brand (the workspace sidebar shows the project). The
+    // surface renders it from the shared single source rather than repeating the literal, so the
+    // guard pins both ends: the source holds the name, the surface binds to that source.
     const homePageSource = readFileSync(
       resolve(projectRoot, 'src/renderer/src/pages/home/HomePage.tsx'),
       'utf8'
     )
+    const appConfigSource = readFileSync(resolve(projectRoot, 'src/shared/app-config.ts'), 'utf8')
 
     expect(mainSource).toContain(`const APP_NAME = '${displayName}'`)
     expect(windowsSource).toContain(`title: '${displayName}'`)
@@ -27,7 +30,8 @@ describe('app display branding', () => {
     expect(builderSource).toContain(`CFBundleName: ${displayName}`)
     expect(builderSource).toContain(`CFBundleDisplayName: ${displayName}`)
     expect(packageSource).toContain(`"productName": "${displayName}"`)
-    expect(homePageSource).toContain(displayName)
+    expect(appConfigSource).toContain(`name: '${displayName}'`)
+    expect(homePageSource).toContain('{APP.name}')
   })
 
   it('uses the Zerolink app identifier for packaged and window integration metadata', () => {

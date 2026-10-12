@@ -186,12 +186,12 @@ const ClaudeIsolatedSignInModalBody = ({
                   {copied ? (
                     <>
                       <Check className="size-3.5" aria-hidden="true" />
-                      Copied
+                      {t('ws.copied')}
                     </>
                   ) : (
                     <>
                       <Copy className="size-3.5" aria-hidden="true" />
-                      Copy
+                      {t('settings.copy')}
                     </>
                   )}
                 </Button>

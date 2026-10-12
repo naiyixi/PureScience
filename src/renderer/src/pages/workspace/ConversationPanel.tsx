@@ -774,7 +774,7 @@ const ConversationPanel = ({
                           onClick={() => onOpenNotebook(notebookReference)}
                         >
                           <BookOpen className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                          Notebook
+                          {t('ws.notebookLabel')}
                         </button>
                       ) : null}
                       <div className="flex-1" />

@@ -766,7 +766,7 @@ const SpecialistEditor = ({
               </div>
               <div>
                 <label htmlFor="sp-specialist-id" className="mb-1.5 block text-xs font-semibold">
-                  Specialist ID
+                  {t('specialistEditor.idLabel')}
                 </label>
                 <Input id="sp-specialist-id" value={editSpecialist.id} readOnly />
               </div>
@@ -844,7 +844,7 @@ const SpecialistEditor = ({
               <span className="flex items-center gap-2 text-[13px] font-semibold">
                 {t('settings.fullAccess')}
                 <span className="rounded bg-primary px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wide text-primary-foreground">
-                  Default
+                  {t('common.default')}
                 </span>
               </span>
               <span className="mt-0.5 block text-[11.5px] leading-snug text-muted-foreground">

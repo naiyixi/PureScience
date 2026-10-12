@@ -298,7 +298,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Write
+                  {t('skillEditor.modeWrite')}
                 </button>
                 <button
                   type="button"
@@ -311,7 +311,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Upload
+                  {t('skillEditor.modeUpload')}
                 </button>
               </div>
             </div>
@@ -355,7 +355,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
                       aria-label={t('settings.clearSkillMetadata')}
                       onClick={() => setMetadata(undefined)}
                     >
-                      Clear
+                      {t('common.clear')}
                     </Button>
                   </div>
                 ) : null}

@@ -298,7 +298,7 @@ const TurnTokenUsage = ({
               strokeWidth={2}
               aria-hidden="true"
             />
-            Usage
+            {t('ws.usageLabel')}
           </button>
         </span>
       </PopoverAnchor>
@@ -1017,7 +1017,7 @@ const WorkspaceMessageItemImpl = ({
                     disabled={!canEditMessage || docIsEmpty(editDoc)}
                     onClick={handleConfirmEdit}
                   >
-                    Send
+                    {t('common.send')}
                   </button>
                 </div>
               </div>

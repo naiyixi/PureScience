@@ -427,7 +427,7 @@ const GeneralPanel = (): React.JSX.Element => {
             className={socialLinkClassName}
           >
             <DiscordMark className="size-4" />
-            Discord
+            {t('settings.socialDiscord')}
           </a>
           <a
             href={APP.links.x}
@@ -446,7 +446,7 @@ const GeneralPanel = (): React.JSX.Element => {
             className={socialLinkClassName}
           >
             <Globe className="size-4" strokeWidth={2} aria-hidden="true" />
-            Website
+            {t('settings.socialWebsite')}
           </a>
         </div>
       </SettingsSection>

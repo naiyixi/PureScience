@@ -536,7 +536,7 @@ const ComposerAgentControlsMenu = ({
                   {sshHosts.length > 0 ? (
                     <>
                       <DropdownMenuLabel className="text-[10.5px] font-normal uppercase tracking-wide text-text-300">
-                        SSH
+                        {t('ws.sshHostsSection')}
                       </DropdownMenuLabel>
                       <DropdownMenuGroup>
                         {sshHosts.map((host) => {
@@ -648,7 +648,7 @@ const ComposerAgentControlsMenu = ({
                   className="bg-amber-600 text-white hover:bg-amber-700"
                   onClick={() => onProfileChange('full')}
                 >
-                  Enable
+                  {t('common.enable')}
                 </Button>
               </AlertDialog.Action>
             </div>

@@ -128,7 +128,7 @@ const SkillImportApprovalRequestDialog = ({
                   {t('settings.selectAll')}
                 </label>
                 <Button type="button" variant="ghost" size="sm" onClick={invertSelection}>
-                  Invert
+                  {t('skillUpload.invert')}
                 </Button>
               </div>
 
@@ -184,7 +184,7 @@ const SkillImportApprovalRequestDialog = ({
                         })
                       }
                     >
-                      Preview
+                      {t('common.preview')}
                     </Button>
                   </li>
                 ))}

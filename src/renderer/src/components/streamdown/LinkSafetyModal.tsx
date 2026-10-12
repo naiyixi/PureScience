@@ -162,7 +162,7 @@ const LinkSafetyModal = ({
                 {copied && isOpen ? (
                   <>
                     <Check className="size-3.5" aria-hidden />
-                    Copied
+                    {t('ws.copied')}
                   </>
                 ) : (
                   <>
