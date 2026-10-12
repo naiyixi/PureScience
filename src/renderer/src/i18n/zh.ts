@@ -4176,7 +4176,12 @@ export const zh = {
   'aria.openSkill': '打开技能 {name}',
   'aria.openSession': '打开会话 {name}',
   'aria.previewOf': '{name} 的预览',
-  'aria.structurePreview': '{name} 的结构预览'
+  'aria.structurePreview': '{name} 的结构预览',
+  'preview.structureColor': '配色',
+  'preview.structureColorSpectrum': '光谱',
+  'preview.structureColorChain': '按链',
+  'preview.structureColorPlddt': 'pLDDT 置信度',
+  'preview.structureResetView': '重置视角'
 }
 
 export type ZhKey = keyof typeof zh

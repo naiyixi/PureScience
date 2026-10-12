@@ -4118,5 +4118,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'aria.openSkill': '開啟技能 {name}',
   'aria.openSession': '開啟工作階段 {name}',
   'aria.previewOf': '{name} 的預覽',
-  'aria.structurePreview': '{name} 的結構預覽'
+  'aria.structurePreview': '{name} 的結構預覽',
+  'preview.structureColor': '配色',
+  'preview.structureColorSpectrum': '光譜',
+  'preview.structureColorChain': '按鏈',
+  'preview.structureColorPlddt': 'pLDDT 信賴度',
+  'preview.structureResetView': '重設視角'
 }

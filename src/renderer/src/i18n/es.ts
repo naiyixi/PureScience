@@ -4531,5 +4531,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'aria.openSkill': 'Abrir la habilidad {name}',
   'aria.openSession': 'Abrir la sesión {name}',
   'aria.previewOf': 'Vista previa de {name}',
-  'aria.structurePreview': 'Vista previa de la estructura de {name}'
+  'aria.structurePreview': 'Vista previa de la estructura de {name}',
+  'preview.structureColor': 'Color',
+  'preview.structureColorSpectrum': 'Espectro',
+  'preview.structureColorChain': 'Por cadena',
+  'preview.structureColorPlddt': 'Confianza pLDDT',
+  'preview.structureResetView': 'Restablecer vista'
 }

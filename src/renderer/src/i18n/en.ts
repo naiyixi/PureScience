@@ -4473,5 +4473,10 @@ export const en: Record<ZhKey, string> = {
   'aria.openSkill': 'Open skill {name}',
   'aria.openSession': 'Open session {name}',
   'aria.previewOf': 'Preview of {name}',
-  'aria.structurePreview': 'Structure preview of {name}'
+  'aria.structurePreview': 'Structure preview of {name}',
+  'preview.structureColor': 'Colour',
+  'preview.structureColorSpectrum': 'Spectrum',
+  'preview.structureColorChain': 'By chain',
+  'preview.structureColorPlddt': 'pLDDT',
+  'preview.structureResetView': 'Reset view'
 }

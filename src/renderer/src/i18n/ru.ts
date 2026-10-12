@@ -4452,5 +4452,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'aria.openSkill': 'Открыть навык {name}',
   'aria.openSession': 'Открыть сеанс {name}',
   'aria.previewOf': 'Просмотр {name}',
-  'aria.structurePreview': 'Просмотр структуры {name}'
+  'aria.structurePreview': 'Просмотр структуры {name}',
+  'preview.structureColor': 'Цвет',
+  'preview.structureColorSpectrum': 'Спектр',
+  'preview.structureColorChain': 'По цепям',
+  'preview.structureColorPlddt': 'Достоверность pLDDT',
+  'preview.structureResetView': 'Сбросить вид'
 }

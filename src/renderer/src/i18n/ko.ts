@@ -4371,5 +4371,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'aria.openSkill': '스킬 {name} 열기',
   'aria.openSession': '세션 {name} 열기',
   'aria.previewOf': '{name} 미리보기',
-  'aria.structurePreview': '{name} 구조 미리보기'
+  'aria.structurePreview': '{name} 구조 미리보기',
+  'preview.structureColor': '색상',
+  'preview.structureColorSpectrum': '스펙트럼',
+  'preview.structureColorChain': '체인별',
+  'preview.structureColorPlddt': 'pLDDT 신뢰도',
+  'preview.structureResetView': '시점 초기화'
 }

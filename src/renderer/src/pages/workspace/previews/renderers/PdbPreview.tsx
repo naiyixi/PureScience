@@ -5,6 +5,14 @@ import type { GLViewer } from '3dmol'
 
 import { cn } from '@/lib/utils'
 
+import {
+  availableColorSchemes,
+  detectStructureFormat,
+  looksLikeAlphaFoldModel,
+  plddtColorFor,
+  type StructureColorScheme
+} from './structure-view'
+
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
@@ -47,6 +55,28 @@ const PROTEIN_RESIDUE_NAMES = new Set([
 ])
 
 const NUCLEIC_ACID_RESIDUE_NAMES = new Set(['A', 'C', 'G', 'T', 'U', 'DA', 'DC', 'DG', 'DT'])
+
+// 非默认配色单独给规格：默认（spectrum）继续走下面的原规格，**默认观感一字不动**；这里只加两条新路。
+// chain 用 3Dmol 的 colorscheme；plddt 必须走 colorfunc（它是按 B-factor 的**数值**上色，没有现成 scheme）。
+const chainSpec = (rep: 'cartoon' | 'stick' | 'sphere' | 'line'): Record<string, unknown> => {
+  if (rep === 'cartoon')
+    return {
+      cartoon: { color: 'chain' },
+      stick: { colorscheme: 'chain', opacity: 0.22, radius: 0.035 }
+    }
+  if (rep === 'stick') return { stick: { radius: 0.18, colorscheme: 'chain' } }
+  if (rep === 'sphere') return { sphere: { scale: 0.32, colorscheme: 'chain' } }
+  return { line: { colorscheme: 'chain' } }
+}
+
+const plddtSpec = (rep: 'cartoon' | 'stick' | 'sphere' | 'line'): Record<string, unknown> => {
+  const colorfunc = (atom: { b: number }): string => plddtColorFor(atom.b)
+  if (rep === 'cartoon')
+    return { cartoon: { colorfunc }, stick: { colorfunc, opacity: 0.22, radius: 0.035 } }
+  if (rep === 'stick') return { stick: { radius: 0.18, colorfunc } }
+  if (rep === 'sphere') return { sphere: { scale: 0.32, colorfunc } }
+  return { line: { colorfunc } }
+}
 
 const PDB_STYLE_SPECS = {
   cartoon: {
@@ -91,6 +121,7 @@ const applyPdbStyle = (
   viewer: GLViewer,
   threeDmol: ThreeDmolModule,
   style: PdbStyle,
+  colors: StructureColorScheme,
   shouldZoom: boolean,
   shouldRenderSurface?: () => boolean
 ): void => {
@@ -120,6 +151,10 @@ const applyPdbStyle = (
         }
       )
     }
+  } else if (colors === 'chain') {
+    viewer.setStyle({}, chainSpec(style))
+  } else if (colors === 'plddt') {
+    viewer.setStyle({}, plddtSpec(style))
   } else {
     viewer.setStyle({}, PDB_STYLE_SPECS[style])
   }
@@ -142,13 +177,21 @@ const PdbPreviewViewer = ({
     undefined
   )
   const styleRef = useRef<PdbStyle>('cartoon')
+  const colorsRef = useRef<StructureColorScheme>('spectrum')
   const pendingRenderRef = useRef(false)
   const pendingZoomRef = useRef(false)
   const cartoonUnavailableDescriptionId = useId()
   const [selectedStyle, setSelectedStyle] = useState<PdbStyle | undefined>(undefined)
+  const [selectedColors, setSelectedColors] = useState<StructureColorScheme | undefined>(undefined)
   const [viewerError, setViewerError] = useState<string | undefined>(undefined)
   const atomCount = useMemo(() => countPdbAtoms(content), [content])
   const supportsCartoon = useMemo(() => hasCartoonBackbone(content), [content])
+  // D1：认得出这是什么（mmCIF / AlphaFold 产物），再决定给哪些表示与配色。
+  const format = useMemo(() => detectStructureFormat(name, content), [name, content])
+  const isAlphaFold = useMemo(() => looksLikeAlphaFoldModel(name, content), [name, content])
+  const colorSchemes = useMemo(() => availableColorSchemes(isAlphaFold), [isAlphaFold])
+  const colors =
+    selectedColors && colorSchemes.includes(selectedColors) ? selectedColors : 'spectrum'
   const defaultStyle: PdbStyle = supportsCartoon ? 'cartoon' : 'stick'
   const style =
     selectedStyle && (supportsCartoon || selectedStyle !== 'cartoon') ? selectedStyle : defaultStyle
@@ -171,6 +214,7 @@ const PdbPreviewViewer = ({
       viewerState.viewer,
       viewerState.threeDmol,
       styleRef.current,
+      colorsRef.current,
       shouldZoom,
       () => viewerStateRef.current?.viewer === viewerState.viewer && styleRef.current === 'surface'
     )
@@ -185,6 +229,12 @@ const PdbPreviewViewer = ({
     pendingRenderRef.current = true
     renderCurrentStyle(false)
   }, [renderCurrentStyle, style])
+
+  useEffect(() => {
+    colorsRef.current = colors
+    pendingRenderRef.current = true
+    renderCurrentStyle(false)
+  }, [colors, renderCurrentStyle])
 
   useEffect(() => {
     let canceled = false
@@ -202,7 +252,7 @@ const PdbPreviewViewer = ({
         if (canceled) return
 
         const viewer = threeDmol.createViewer(viewerElement, { backgroundColor: 'white' })
-        viewer.addModel(content, 'pdb', {
+        viewer.addModel(content, format, {
           assignBonds: true,
           noComputeSecondaryStructure: false
         })
@@ -222,7 +272,7 @@ const PdbPreviewViewer = ({
       viewerStateRef.current = undefined
       viewerElement.replaceChildren()
     }
-  }, [content, renderCurrentStyle])
+  }, [content, format, renderCurrentStyle])
 
   useEffect(() => {
     const viewerElement = viewerElementRef.current
@@ -259,8 +309,21 @@ const PdbPreviewViewer = ({
             {t('preview.viewerPdb')}
           </span>
         </div>
-        <div className="shrink-0 text-[12px] text-text-300">
-          {t('preview.atomCount').replace('{n}', atomCount.toLocaleString())}
+        <div className="flex shrink-0 items-center gap-2 text-[12px] text-text-300">
+          <button
+            type="button"
+            data-slot="structure-reset-view"
+            className="h-6 rounded-md px-2 text-[12px] text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000"
+            onClick={() => {
+              const viewerState = viewerStateRef.current
+              if (!viewerState) return
+              viewerState.viewer.zoomTo()
+              viewerState.viewer.render()
+            }}
+          >
+            {t('preview.structureResetView')}
+          </button>
+          <span>{t('preview.atomCount').replace('{n}', atomCount.toLocaleString())}</span>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2">
@@ -296,6 +359,40 @@ const PdbPreviewViewer = ({
                 }}
               >
                 {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2">
+        <span className="text-[12px] text-text-300">{t('preview.structureColor')}</span>
+        <div
+          className="flex min-w-0 flex-wrap items-center gap-1"
+          data-slot="structure-color-schemes"
+        >
+          {colorSchemes.map((scheme) => {
+            const isActive = colors === scheme
+            const label =
+              scheme === 'spectrum'
+                ? t('preview.structureColorSpectrum')
+                : scheme === 'chain'
+                  ? t('preview.structureColorChain')
+                  : t('preview.structureColorPlddt')
+            return (
+              <button
+                key={scheme}
+                type="button"
+                aria-pressed={isActive}
+                data-slot={`structure-color-${scheme}`}
+                title={label}
+                className={cn(
+                  'h-6 rounded-md px-2.5 text-[12px] text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000',
+                  isActive &&
+                    'bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground'
+                )}
+                onClick={() => setSelectedColors(scheme)}
+              >
+                {label}
               </button>
             )
           })}

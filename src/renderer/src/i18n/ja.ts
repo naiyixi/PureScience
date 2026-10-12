@@ -4441,5 +4441,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'aria.openSkill': 'スキル {name} を開く',
   'aria.openSession': 'セッション {name} を開く',
   'aria.previewOf': '{name} のプレビュー',
-  'aria.structurePreview': '{name} の構造プレビュー'
+  'aria.structurePreview': '{name} の構造プレビュー',
+  'preview.structureColor': '配色',
+  'preview.structureColorSpectrum': 'スペクトル',
+  'preview.structureColorChain': '鎖ごと',
+  'preview.structureColorPlddt': 'pLDDT 信頼度',
+  'preview.structureResetView': '視点をリセット'
 }
