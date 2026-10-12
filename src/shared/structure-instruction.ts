@@ -303,6 +303,136 @@ export const parseStructureInstruction = (raw: string): StructureInstructionResu
   return refusal('no-selection-expressed', '这句话里没有可以落实成选择的信息。')
 }
 
+// ── D5 余项：中文口令 → **测量**（距离/角度） ──────────────────────────────────────────────
+//
+// 与选择同一条口径：解析不出来就**具名拒绝**、把原因上屏，绝不静默、绝不替用户挑。
+// 这里有一条额外的诚实规则：**残基级距离必须拒绝**。只说「145 号和 160 号之间」时，量哪个原子
+// （CA？SG？任意最近对？）是一个歧义 —— 挑一个看起来合理的原子等于替用户编了一个他没有的意图，
+// 所以要求写出原子名（如 CA），说不出来就说清楚要怎么写。
+
+export const STRUCTURE_MEASUREMENT_INSTRUCTION_REFUSALS = [
+  /** 没听出要量距离还是角度。 */
+  'measurement-kind-not-stated',
+  /** 一个原子都没解析出来。 */
+  'measurement-no-atoms-expressed',
+  /** 说了编号但没说原子名（如 CA）⇒ 残基级距离有歧义，不替用户挑原子。 */
+  'measurement-atom-missing',
+  /** 距离要两个原子（第三个顶点不存在）。 */
+  'measurement-needs-two-atoms',
+  /** 角度要三个原子，中间那个是顶点。 */
+  'measurement-needs-three-atoms'
+] as const
+
+export type StructureMeasurementInstructionRefusal =
+  (typeof STRUCTURE_MEASUREMENT_INSTRUCTION_REFUSALS)[number]
+
+export type StructureMeasurementAtomSelector = {
+  /** 链（可缺）：apply 时按「在这份结构里唯一」解析，与选择同一条规则。 */
+  chain?: string
+  resi: number
+  /** 原子名（CA/SG/N…）：**必填**，见上面那条诚实规则。 */
+  atomName: string
+}
+
+export type StructureMeasurementInstruction =
+  | {
+      ok: true
+      kind: 'distance'
+      atoms: [StructureMeasurementAtomSelector, StructureMeasurementAtomSelector]
+    }
+  | {
+      ok: true
+      kind: 'angle'
+      atoms: [
+        StructureMeasurementAtomSelector,
+        StructureMeasurementAtomSelector,
+        StructureMeasurementAtomSelector
+      ]
+    }
+
+export type StructureMeasurementInstructionResult =
+  | StructureMeasurementInstruction
+  | { ok: false; reason: StructureMeasurementInstructionRefusal; detail: string }
+
+// 「[链 A] 145 号 CA」这一种写法：**编号在前、原子名在后**（中文语序）。只支持这一种并在拒绝里
+// 写清楚要怎么写 —— 同时猜多种语序会让「145 号 A 链」这种句子被读成原子名 A、链 145。
+const ATOM_REFERENCE_PATTERN =
+  /(?:(?:链\s*([A-Za-z]))|([A-Za-z])\s*链)?\s*(\d+)\s*号?\s*([A-Za-z]{1,3})/g
+
+const DIGIT_PATTERN = /\d/
+
+export const parseStructureMeasurementInstruction = (
+  raw: string
+): StructureMeasurementInstructionResult => {
+  const text = normaliseQueryPunctuation(raw ?? '').trim()
+  const wantsDistance = /距离|间距|多远/.test(text)
+  const wantsAngle = /角度|夹角/.test(text)
+  if (!wantsDistance && !wantsAngle) {
+    return {
+      ok: false,
+      reason: 'measurement-kind-not-stated',
+      detail: '没听出要量什么：说「距离」（两个原子）或「角度」（三个原子，中间是顶点）。'
+    }
+  }
+
+  const atoms: StructureMeasurementAtomSelector[] = []
+  for (const match of text.matchAll(ATOM_REFERENCE_PATTERN)) {
+    const chain = match[1] ?? match[2]
+    const resi = Number(match[3])
+    const atomName = match[4]
+    atoms.push({ ...(chain ? { chain } : {}), resi, atomName })
+  }
+
+  if (atoms.length === 0) {
+    // 有编号却一个原子都没解析出来 ⇒ 就是把残基编号当成了要量的东西。
+    return DIGIT_PATTERN.test(text)
+      ? {
+          ok: false,
+          reason: 'measurement-atom-missing',
+          detail:
+            '只说到残基编号，没说原子名：残基之间的距离是有歧义的（量哪对原子？），请写成「145 号 CA 与 160 号 CA 之间的距离」。'
+        }
+      : {
+          ok: false,
+          reason: 'measurement-no-atoms-expressed',
+          detail: '没有听到要量哪几个原子，例如「145 号 CA 与 160 号 CA 之间的距离」。'
+        }
+  }
+
+  if (wantsAngle) {
+    if (atoms.length !== 3) {
+      const detail =
+        atoms.length < 3
+          ? `角度要三个原子（现在只解析出 ${atoms.length} 个）：中间那个是顶点，例如「145 号 CA 与 155 号 CA 与 160 号 CA 之间的夹角」。`
+          : `角度只要三个原子（现在解析出 ${atoms.length} 个）—— 多出来的编号说不清哪个是顶点。`
+      return { ok: false, reason: 'measurement-needs-three-atoms', detail }
+    }
+    return { ok: true, kind: 'angle', atoms: [atoms[0]!, atoms[1]!, atoms[2]!] }
+  }
+
+  if (atoms.length !== 2) {
+    return {
+      ok: false,
+      reason: 'measurement-needs-two-atoms',
+      detail:
+        atoms.length < 2
+          ? `距离要两个原子（现在只解析出 ${atoms.length} 个），例如「145 号 CA 与 160 号 CA 之间的距离」。`
+          : `距离只要两个原子（现在解析出 ${atoms.length} 个）—— 请说清楚量哪两个。`
+    }
+  }
+  return { ok: true, kind: 'distance', atoms: [atoms[0]!, atoms[1]!] }
+}
+
+export const structureMeasurementInstructionParameterLine = (
+  instruction: StructureMeasurementInstruction
+): string => {
+  const atom = (selector: StructureMeasurementAtomSelector): string =>
+    `${selector.chain ? `${selector.chain} 链 ` : ''}${selector.resi} 号 ${selector.atomName}`
+  return instruction.kind === 'distance'
+    ? `距离：${atom(instruction.atoms[0])} — ${atom(instruction.atoms[1])}`
+    : `角度：${atom(instruction.atoms[0])} — ${atom(instruction.atoms[1])}（顶点）— ${atom(instruction.atoms[2])}`
+}
+
 /** 把解析结果写成**参数行**（界面要上屏的就是它：用户得看见"实际发出去的是什么"）。 */
 export const structureInstructionParameterLine = (instruction: StructureInstruction): string => {
   if (instruction.kind === 'chain') {

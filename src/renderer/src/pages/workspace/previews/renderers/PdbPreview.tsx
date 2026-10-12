@@ -19,8 +19,10 @@ import {
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
 import {
+  parseStructureMeasurementInstruction,
   parseStructureInstruction,
-  structureInstructionParameterLine
+  structureInstructionParameterLine,
+  structureMeasurementInstructionParameterLine
 } from '../../../../../../shared/structure-instruction'
 import {
   STRUCTURE_MEASUREMENT_SCHEMA_VERSION,
@@ -541,6 +543,68 @@ const PdbPreviewViewer = ({
    * **这份结构里真实存在**（问视图要原子），否则拒绝 —— 不把不存在的残基当成"差不多是它"。
    */
   const applyInstruction = useCallback(() => {
+    // D5 余项：中文口令也能**量**（距离/角度）。句子里出现量测词就说明用户要的是量而不是选：
+    // 两条路各自具名拒绝，谁都不静默，也绝不把量测句塞进选择解析器去猜。
+    if (/距离|间距|多远|角度|夹角/.test(instructionText)) {
+      const parsedMeasurement = parseStructureMeasurementInstruction(instructionText)
+      if (!parsedMeasurement.ok) {
+        setInstructionNote(`未执行 · ${parsedMeasurement.detail}`)
+        return
+      }
+      const measurementViewerState = viewerStateRef.current
+      if (!measurementViewerState) return
+      const measurementViewer = measurementViewerState.viewer
+
+      const picks: StructureAtomPick[] = []
+      for (const selector of parsedMeasurement.atoms) {
+        const where = `${selector.chain ? `${selector.chain} 链 ` : ''}${selector.resi} 号 ${selector.atomName}`
+        const candidates = measurementViewer.selectedAtoms({
+          ...(selector.chain ? { chain: selector.chain } : {}),
+          resi: selector.resi,
+          atom: selector.atomName
+        })
+        // 找不到、或不止一个（多链未指明）⇒ 具名拒绝：不替用户挑一个原子。
+        if (candidates.length !== 1) {
+          setInstructionNote(
+            `未执行 · ${where} 在这份结构里${
+              candidates.length === 0 ? '不存在' : `有 ${candidates.length} 个（请指明链）`
+            }。`
+          )
+          return
+        }
+        const pick = toStructureAtomPick(candidates[0])
+        if (!pick) {
+          setInstructionNote(`未执行 · ${where} 读不出坐标。`)
+          return
+        }
+        picks.push(pick)
+      }
+
+      const measured = measureGeometry(parsedMeasurement.kind, picks)
+      const parameterLine = structureMeasurementInstructionParameterLine(parsedMeasurement)
+      void sha256Text(content).then((digest) => {
+        if (!mountedRef.current) return
+        publishMeasurement({
+          schemaVersion: STRUCTURE_MEASUREMENT_SCHEMA_VERSION,
+          structureId,
+          name,
+          format,
+          contentDigest: digest ?? '',
+          kind: parsedMeasurement.kind,
+          atoms: picks.map(toMeasurementAtom),
+          // 坐标不全 ⇒ undefined ⇒ 如实不写量值（不写 0 冒充）。
+          ...(measured === undefined ? {} : { value: measured })
+        })
+        // 量值**上屏**：用户必须能核对「量的是哪几个原子、量到多少」。
+        setInstructionNote(
+          measured === undefined
+            ? `已执行 · ${parameterLine}（读不出量值）`
+            : `已执行 · ${parameterLine} · ${measured}${parsedMeasurement.kind === 'distance' ? ' Å' : '°'}`
+        )
+      })
+      return
+    }
+
     const parsed = parseStructureInstruction(instructionText)
     if (!parsed.ok) {
       setInstructionNote(`未执行 · ${parsed.detail}`)
@@ -685,7 +749,17 @@ const PdbPreviewViewer = ({
       })
     )
     setInstructionNote(`已执行 · ${structureInstructionParameterLine(parsed)}`)
-  }, [instructionText, format, name, publishBuiltSelection, structureId])
+    // content 与 publishMeasurement 是量测那一路的依赖（指纹要按**这一份内容**算、量测要发到同一个通道）：
+    // 少写它们会让闭包里的两者停在旧值上（量测挂到旧内容的摘要上）。
+  }, [
+    instructionText,
+    format,
+    name,
+    publishBuiltSelection,
+    structureId,
+    content,
+    publishMeasurement
+  ])
 
   // 内容换了（同一页签换了文件或版本）⇒ 旧选择不再对应屏幕上看到的那份结构：清掉，别留进上下文。
   // 只动 ref 与 store（组件状态由上面的派生收口），所以不需要在 effect 里同步 setState。

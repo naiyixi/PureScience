@@ -3,11 +3,98 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  parseStructureMeasurementInstruction,
   parseStructureInstruction,
   resolveResidueCode,
   residueCodeForDisplay,
-  structureInstructionParameterLine
+  structureInstructionParameterLine,
+  structureMeasurementInstructionParameterLine
 } from './structure-instruction'
+
+describe('中文口令 → 测量（距离/角度）', () => {
+  it('把「145 号 CA 与 160 号 CA 之间的距离」解析成两个原子', () => {
+    const result = parseStructureMeasurementInstruction('145 号 CA 与 160 号 CA 之间的距离')
+    expect(result).toEqual({
+      ok: true,
+      kind: 'distance',
+      atoms: [
+        { resi: 145, atomName: 'CA' },
+        { resi: 160, atomName: 'CA' }
+      ]
+    })
+  })
+
+  it('链可以写在编号前面，只作用于它自己那个原子', () => {
+    const result = parseStructureMeasurementInstruction('链 A 145 号 CA 与 160 号 CA 之间的距离')
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error('expected a measurement')
+    expect(result.atoms[0]).toEqual({ chain: 'A', resi: 145, atomName: 'CA' })
+    // 第二个原子没写链 ⇒ 交给 apply 时按「在这份结构里唯一」解析（与选择同一条规则）。
+    expect(result.atoms[1]).toEqual({ resi: 160, atomName: 'CA' })
+  })
+
+  it('三个原子的夹角，中间那个是顶点', () => {
+    const result = parseStructureMeasurementInstruction(
+      '145 号 CA 与 155 号 CA 与 160 号 CA 之间的夹角'
+    )
+    expect(result).toEqual({
+      ok: true,
+      kind: 'angle',
+      atoms: [
+        { resi: 145, atomName: 'CA' },
+        { resi: 155, atomName: 'CA' },
+        { resi: 160, atomName: 'CA' }
+      ]
+    })
+  })
+
+  it('只说残基编号时**拒绝**，不替用户挑原子', () => {
+    // 量哪对原子（CA？SG？最近对？）是歧义：挑一个看起来合理的等于替用户编一个他没有的意图。
+    const result = parseStructureMeasurementInstruction('145 号和 160 号之间的距离')
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected a refusal')
+    expect(result.reason).toBe('measurement-atom-missing')
+    expect(result.detail).toContain('CA')
+  })
+
+  it('没听出要量什么 / 没听到原子，各自具名', () => {
+    const notStated = parseStructureMeasurementInstruction('把这段标出来')
+    expect(notStated.ok).toBe(false)
+    if (!notStated.ok) expect(notStated.reason).toBe('measurement-kind-not-stated')
+
+    const noAtoms = parseStructureMeasurementInstruction('量个距离')
+    expect(noAtoms.ok).toBe(false)
+    if (!noAtoms.ok) expect(noAtoms.reason).toBe('measurement-no-atoms-expressed')
+  })
+
+  it('原子数与种类对不上时分别拒绝（距离三个 / 角度两个都说不清）', () => {
+    const tooManyForDistance = parseStructureMeasurementInstruction(
+      '145 号 CA 与 155 号 CA 与 160 号 CA 之间的距离'
+    )
+    expect(tooManyForDistance.ok).toBe(false)
+    if (!tooManyForDistance.ok)
+      expect(tooManyForDistance.reason).toBe('measurement-needs-two-atoms')
+
+    const tooFewForAngle = parseStructureMeasurementInstruction('145 号 CA 与 160 号 CA 之间的夹角')
+    expect(tooFewForAngle.ok).toBe(false)
+    if (!tooFewForAngle.ok) expect(tooFewForAngle.reason).toBe('measurement-needs-three-atoms')
+  })
+
+  it('参数行把实际要量的东西写清楚（顶点要标出来）', () => {
+    const distance = parseStructureMeasurementInstruction('145 号 CA 与 160 号 CA 之间的距离')
+    if (!distance.ok) throw new Error('expected a measurement')
+    expect(structureMeasurementInstructionParameterLine(distance)).toBe(
+      '距离：145 号 CA — 160 号 CA'
+    )
+
+    const angle = parseStructureMeasurementInstruction(
+      '链 A 145 号 CA 与 155 号 CA 与 160 号 CA 之间的夹角'
+    )
+    if (!angle.ok) throw new Error('expected a measurement')
+    expect(structureMeasurementInstructionParameterLine(angle)).toContain('（顶点）')
+    expect(structureMeasurementInstructionParameterLine(angle)).toContain('A 链 145 号 CA')
+  })
+})
 
 describe('残基名解析', () => {
   it('中文名 / 三字母 / 单字母都能落到 PDB 三字母码', () => {
@@ -102,7 +189,10 @@ describe('一句中文 → 选择意图', () => {
 
 describe('解析不出来就具名拒绝（不静默什么都不发生）', () => {
   it('没有选择信息', () => {
-    expect(parseStructureInstruction('')).toMatchObject({ ok: false, reason: 'no-selection-expressed' })
+    expect(parseStructureInstruction('')).toMatchObject({
+      ok: false,
+      reason: 'no-selection-expressed'
+    })
     expect(parseStructureInstruction('看一下这个结构')).toMatchObject({
       ok: false,
       reason: 'no-selection-expressed'
