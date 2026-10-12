@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -172,7 +172,11 @@ describe('远程结构加载（主进程）', () => {
     if (!tooLargeResult.ok) expect(tooLargeResult.reason).toBe('too-large')
 
     // 落盘失败必须自成一类：把它说成网络失败会让人去查网络（而网是通的）。
-    const writeFails = harness({ workspaceFor: () => '/dev/null/not-a-directory' })
+    // 用一个**文件**当目录（writeFile 占位）而不是 `/dev/null/...`：`/dev/null` 是 POSIX 字面量，
+    // 在 Windows 上 `mkdir(recursive)` 会照着路径把它真的建出来 ⇒ 这条用例在 Windows 上会假绿/假红。
+    const blocker = join(root, 'blocker')
+    await writeFile(blocker, 'not a directory')
+    const writeFails = harness({ workspaceFor: () => join(blocker, 'nested') })
     const writeResult = await writeFails.loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
     expect(writeResult.ok).toBe(false)
     if (!writeResult.ok) expect(writeResult.reason).toBe('write-failed')

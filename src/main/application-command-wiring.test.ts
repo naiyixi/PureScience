@@ -50,7 +50,9 @@ describe('production application command wiring', () => {
       ],
       [
         'projectHandlers',
-        'projectDeletionCoordinator, projectHandlers )',
+        // 不钉闭合括号：这条断言要守的是「projectHandlers 传给了 legacy 适配器」，
+        // 而 D6 之后那次调用多了一个参数（远程结构加载器）⇒ 钉 `, projectHandlers )` 会因为多一个实参而假红。
+        'projectDeletionCoordinator, projectHandlers',
         'projects: projectHandlers'
       ],
       [
