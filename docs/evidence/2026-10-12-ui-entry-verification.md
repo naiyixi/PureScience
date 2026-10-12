@@ -1,0 +1,62 @@
+# 带界面入口的真机验收：两处 UI 改动在真窗口里读到了（2026-10-12）
+
+> 目的：此前这两处只有 **jsdom 渲染用例**，属于"未取真机读数"。本文件给出**真窗口 + 真点击 + 真数据**的读数。
+> 做法：在**独立工作树**里构建（`/tmp/ps-ui-read`，用 `git worktree` + 软链 `node_modules`），因此
+> **主树的 `out/renderer`（Oct 9）与 `out/web`（Oct 5）都没被动**，用户正在跑的实例不受影响。
+
+## 隔离三件齐（缺一件就会污染用户环境）
+
+| 项 | 值 |
+|---|---|
+| 配置根 | `PURESCIENCE_STORAGE_ROOT=/tmp/ps-ui-root` |
+| **数据根** | 同目录 `settings.json` 里写 `dataRoot=/tmp/ps-ui-data`（**只搬配置根不够**：受管文件会落进用户真实数据根） |
+| 端口 / 档案 / CDP | `PURESCIENCE_WEB_PORT=44155` + `--user-data-dir=/tmp/ps-ui-profile` + `--remote-debugging-port=9229` |
+
+夹具（刻意造两态）：`runtime/pkgs/pkg-a/lib.so`（有第二条链 ⇒ **可证冗余**）+ `runtime/envs/mine/lib.so`（同 inode 的第二条链）
++ `runtime/pkgs/pkg-b/only.bin`（**最后一条链**）；另经渲染端自己的 API 建项目 `ui-read-probe` 并在
+`notebooks/<id>/run-1/data/results.h5ad` 写 4 MiB。
+
+## 读数一：「按项目」一节真的渲染（真窗口）
+
+```
+[probe] 按项目一节（重载后）= {"exists":true,"text":"按项目\n\nui-read-probe\n4.2 MB"}
+```
+
+- `data-testid="storage-project-rows"` 存在，且行里是**项目名 + 该项目的字节数**；
+- **项目名是动态值**：它原样上屏（这正是"项目名是值不是文案 ⇒ 不进字典"的设计在界面上的表现，也是本单元不需要 9 语扩张的原因）；
+- 收尾解释：**第一次读是 `null`** —— 不是缺陷。那次读发生在夹具数据落盘之前 / 用量缓存里还是"建项目之前"的快照；
+  重载后（重新走查）即出现。**判据**：先看用量缓存的产生时刻，再决定要不要报缺陷（本轮没有报，因为解释成立且可复现）。
+
+## 读数二：包缓存回收那一行真的渲染（含"保留"那一半）
+
+```
+[probe] 回收结果 = {
+  "nothing": "没有发现重复副本，无需回收。",
+  "reclaimed": null,
+  "packageCache": "共享包缓存：回收 2.1 MB（1 份冗余副本）；保留 1.0 MB（每个文件的最后一份）。"
+}
+```
+
+- 去重扫自己那行照旧独立出现（"没有发现重复副本"），**两件事没有被合并成一句**；
+- 包缓存那行同时报出**回收了什么**与**拒绝碰什么** —— 后者正是安全性的可视面。
+
+## 读数三：安全声明在磁盘上核对（同一夹具）
+
+```
+pkg-a/lib.so（冗余副本）      → 已删 ✓
+envs/mine/lib.so（另一条链）  → 仍在 ✓
+pkg-b/only.bin（最后一条链）  → 仍在 ✓   ← 这是本单元的安全红线
+```
+
+## 收尾（按纪律做净，数字可复核）
+
+- 停实例后按 `--user-data-dir` 匹配清残留：**6 个游离进程 → 计数 0**；
+- `rm -rf` 掉的工作树用 `git worktree prune` 收掉元数据（清单回到 3 条真实工作树）；
+- 临时目录 `/tmp/ps-ui-{root,data,profile,read}` 与探针脚本已删；
+- **用户环境未受影响**：用户真实数据根 `~/PureScience-DEV/notebooks` 条目数 **115**、用户库 `~/.purescience-project/purescience.db` 仍在、
+  用户实例 `http://127.0.0.1:44100/?token=…` → **302**（正常服务）。
+
+## 仍未取（具名）
+
+**打包版（dist/已安装）界面截图**：本轮验的是**隔离的 dev 窗口**（同一份源码、`build:e2e` 产物）。
+打包版要等下一次发版产物，届时可复用同一套驱动脚本。
