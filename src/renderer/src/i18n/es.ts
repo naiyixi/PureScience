@@ -4548,5 +4548,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureViewerError': 'El visor 3D no pudo iniciarse: {error}',
   'preview.structureHint':
     'Arrastrar para girar · rueda para ampliar · Mayús + arrastrar para desplazar',
-  'preview.structureAriaLabel': 'Vista previa 3D de {name}'
+  'preview.structureAriaLabel': 'Vista previa 3D de {name}',
+  'preview.structureClearSelection': 'Borrar la selección',
+  'preview.structureSelectHint':
+    'Haz clic en un residuo para seleccionarlo en la conversación · Mayús+clic en otro residuo de la misma cadena amplía el rango'
 }

@@ -10,6 +10,8 @@ import type {
 import type { PermissionProfileId } from '../../../../shared/permission-profiles'
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 
+import { turnStructureSelection } from './turn-structure-selection'
+
 // Provides a stable renderer fallback before the first main-process snapshot arrives.
 const emptyAcpState: AcpStateSnapshot = {
   status: 'idle',
@@ -305,8 +307,10 @@ const useAcpRuntime = (): {
       planContinuation?: AcpPromptRequest['planContinuation'],
       turnIntent?: AcpPromptRequest['turnIntent'],
       annotations?: AcpPromptRequest['annotations']
-    ) =>
-      runSendPromptAction(() =>
+    ) => {
+      const currentStructureSelection = turnStructureSelection(sessionId)
+
+      return runSendPromptAction(() =>
         window.api.acp.sendPrompt({
           sessionId,
           text,
@@ -324,9 +328,14 @@ const useAcpRuntime = (): {
           ...(contextReset ? { contextReset: true } : {}),
           ...(planContinuation ? { planContinuation } : {}),
           ...(turnIntent ? { turnIntent } : {}),
-          ...(annotations && annotations.length > 0 ? { annotations } : {})
+          ...(annotations && annotations.length > 0 ? { annotations } : {}),
+          // D2: the region the user has selected in the structure viewer rides with the turn as
+          // application context. Read at send time from the tab that is in front — the model is told what
+          // the user is looking at *now*, and an ordinary turn (no structure tab open) sends nothing.
+          ...(currentStructureSelection ? { structureSelection: currentStructureSelection } : {})
         })
-      ),
+      )
+    },
     [runSendPromptAction]
   )
 

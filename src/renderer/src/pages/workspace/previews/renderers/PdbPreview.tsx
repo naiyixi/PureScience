@@ -1,15 +1,28 @@
 import { useLanguage } from '@/i18n'
-import { Box } from 'lucide-react'
+import { Box, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { GLViewer } from '3dmol'
 
+import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
+import { sha256Text } from '@/lib/text-digest'
 import { cn } from '@/lib/utils'
 
 import {
+  structureSelectionFingerprint,
+  structureSelectionRangeLabel,
+  type StructureSelection
+} from '../../../../../../shared/structure-selection'
+
+import {
   availableColorSchemes,
+  buildStructureSelection,
   detectStructureFormat,
   looksLikeAlphaFoldModel,
   plddtColorFor,
+  resolveStructureSelectionRange,
+  structureSelectionSelector,
+  toStructureAtomRef,
+  type StructureAtomRef,
   type StructureColorScheme
 } from './structure-view'
 
@@ -78,6 +91,13 @@ const plddtSpec = (rep: 'cartoon' | 'stick' | 'sphere' | 'line'): Record<string,
   return { line: { colorfunc } }
 }
 
+// D2 选区的可见标记：选中之后用户必须**看得见自己选了什么**（否则「这段是什么」问的是哪一段无从核对）。
+// 用主色（brand 蓝 #4D6BFE）与既有风格族，不改默认观感。
+const SELECTION_HIGHLIGHT = {
+  stick: { radius: 0.24, color: '#4D6BFE' },
+  sphere: { scale: 0.26, color: '#4D6BFE' }
+}
+
 const PDB_STYLE_SPECS = {
   cartoon: {
     cartoon: { color: 'spectrum' },
@@ -123,7 +143,8 @@ const applyPdbStyle = (
   style: PdbStyle,
   colors: StructureColorScheme,
   shouldZoom: boolean,
-  shouldRenderSurface?: () => boolean
+  shouldRenderSurface?: () => boolean,
+  selection?: StructureSelection
 ): void => {
   viewer.removeAllSurfaces()
 
@@ -159,6 +180,10 @@ const applyPdbStyle = (
     viewer.setStyle({}, PDB_STYLE_SPECS[style])
   }
 
+  // The selection marker is added AFTER the base style: setStyle replaces the style of the atoms it
+  // touches, so a highlight applied earlier would be wiped by any style or color change.
+  if (selection) viewer.addStyle(structureSelectionSelector(selection), SELECTION_HIGHLIGHT)
+
   if (shouldZoom) viewer.zoomTo()
 
   viewer.render()
@@ -166,12 +191,15 @@ const applyPdbStyle = (
 
 const PdbPreviewViewer = ({
   content,
-  name
+  name,
+  structureId
 }: {
   content: string
   name: string
+  structureId: string
 }): React.JSX.Element => {
   const { t } = useLanguage()
+  const setStructureSelection = usePreviewWorkbenchStore((state) => state.setStructureSelection)
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
     undefined
@@ -184,6 +212,16 @@ const PdbPreviewViewer = ({
   const [selectedStyle, setSelectedStyle] = useState<PdbStyle | undefined>(undefined)
   const [selectedColors, setSelectedColors] = useState<StructureColorScheme | undefined>(undefined)
   const [viewerError, setViewerError] = useState<string | undefined>(undefined)
+  // D2：用户在视图里选中的区间。它同时是「上屏的那一句」和「上行给主进程的那一份」。
+  // 与**做选择时的那份内容**一起存：内容换了以后旧选择会自动不再生效（派生，而不是在 effect 里
+  // 同步改 state —— 那是本仓 error 级门禁 `react-hooks/set-state-in-effect` 明确拦下的写法）。
+  const [selection, setSelection] = useState<
+    { content: string; value: StructureSelection } | undefined
+  >(undefined)
+  const selectionRef = useRef<StructureSelection | undefined>(undefined)
+  const selectionAnchorRef = useRef<StructureAtomRef | undefined>(undefined)
+  // 组件在屏上的期间才允许把选择写进 store（卸载后落一笔等于给一个已经不存在的页签留状态）。
+  const mountedRef = useRef(true)
   const atomCount = useMemo(() => countPdbAtoms(content), [content])
   const supportsCartoon = useMemo(() => hasCartoonBackbone(content), [content])
   // D1：认得出这是什么（mmCIF / AlphaFold 产物），再决定给哪些表示与配色。
@@ -216,7 +254,8 @@ const PdbPreviewViewer = ({
       styleRef.current,
       colorsRef.current,
       shouldZoom,
-      () => viewerStateRef.current?.viewer === viewerState.viewer && styleRef.current === 'surface'
+      () => viewerStateRef.current?.viewer === viewerState.viewer && styleRef.current === 'surface',
+      selectionRef.current
     )
     pendingRenderRef.current = false
     if (shouldZoom) pendingZoomRef.current = false
@@ -224,6 +263,61 @@ const PdbPreviewViewer = ({
     return true
   }, [])
 
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  // 选择落到三处：组件状态（上屏）、refs（3D 回调里要读最新值）、store（上行给主进程）。
+  const publishSelection = useCallback(
+    (next: StructureSelection | undefined) => {
+      selectionRef.current = next
+      setSelection(next ? { content, value: next } : undefined)
+      setStructureSelection(structureId, next)
+    },
+    [content, setStructureSelection, structureId]
+  )
+
+  // 这一帧真正生效的选择：只有还在看的那份内容上的选择才算数。
+  const activeSelection = selection?.content === content ? selection.value : undefined
+
+  // 内容换了（同一页签换了文件或版本）⇒ 旧选择不再对应屏幕上看到的那份结构：清掉，别留进上下文。
+  // 只动 ref 与 store（组件状态由上面的派生收口），所以不需要在 effect 里同步 setState。
+  useEffect(() => {
+    selectionAnchorRef.current = undefined
+    selectionRef.current = undefined
+    setStructureSelection(structureId, undefined)
+  }, [content, setStructureSelection, structureId])
+
+  // 3Dmol 的命中回调：点一个残基 = 选它；同链上按 Shift 再点 = 把它拉成连续区间。
+  // 摘要在这里按需算（内容就是用户看到的那些字节）：算不出来就记 not-recorded，不编一个值。
+  const handleAtomClick = useCallback(
+    (atom: unknown, extend: boolean) => {
+      const clicked = toStructureAtomRef(atom)
+      if (!clicked) return
+
+      const range = resolveStructureSelectionRange(selectionAnchorRef.current, clicked, { extend })
+      selectionAnchorRef.current = range.anchor
+      void sha256Text(content).then((digest) => {
+        if (!mountedRef.current) return
+        publishSelection(
+          buildStructureSelection({
+            structureId,
+            name,
+            format,
+            contentDigest: digest ?? '',
+            start: range.start,
+            end: range.end,
+            view: { style: styleRef.current, colorScheme: colorsRef.current }
+          })
+        )
+        renderCurrentStyle(false)
+      })
+    },
+    [content, format, name, publishSelection, renderCurrentStyle, structureId]
+  )
   useEffect(() => {
     styleRef.current = style
     pendingRenderRef.current = true
@@ -256,6 +350,16 @@ const PdbPreviewViewer = ({
           assignBonds: true,
           noComputeSecondaryStructure: false
         })
+        // D2：点残基就选中它（Shift 再点 = 扩成同链连续区间）。命中回调挂在模型上，
+        // 它读的是 refs，所以换表示/配色不会让选择失效。
+        viewer.setClickable({}, true, (atom: unknown, _viewer: unknown, event?: unknown) => {
+          handleAtomClick(
+            atom,
+            Boolean(
+              event && typeof event === 'object' && (event as { shiftKey?: unknown }).shiftKey
+            )
+          )
+        })
         viewerStateRef.current = { viewer, threeDmol }
         renderCurrentStyle(true)
       })
@@ -272,7 +376,7 @@ const PdbPreviewViewer = ({
       viewerStateRef.current = undefined
       viewerElement.replaceChildren()
     }
-  }, [content, format, renderCurrentStyle])
+  }, [content, format, handleAtomClick, renderCurrentStyle])
 
   useEffect(() => {
     const viewerElement = viewerElementRef.current
@@ -324,6 +428,31 @@ const PdbPreviewViewer = ({
             {t('preview.structureResetView')}
           </button>
           <span>{t('preview.atomCount').replace('{n}', atomCount.toLocaleString())}</span>
+          {/* D2：选中的区间**上屏**——用户必须能核对「我问 agent 的是哪一段」；指纹放 title 里备查。 */}
+          {activeSelection ? (
+            <span className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] text-text-000">
+              <span
+                data-slot="structure-selection"
+                title={structureSelectionFingerprint(activeSelection)}
+              >
+                {structureSelectionRangeLabel(activeSelection)}
+              </span>
+              <button
+                type="button"
+                data-slot="structure-clear-selection"
+                aria-label={t('preview.structureClearSelection')}
+                title={t('preview.structureClearSelection')}
+                className="rounded-sm p-0.5 transition-colors hover:bg-bg-300"
+                onClick={() => {
+                  selectionAnchorRef.current = undefined
+                  publishSelection(undefined)
+                  renderCurrentStyle(false)
+                }}
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2">
@@ -411,8 +540,10 @@ const PdbPreviewViewer = ({
           aria-label={t('preview.structureAriaLabel').replace('{name}', name)}
         />
       </div>
-      <div className="flex shrink-0 items-center border-t border-border-300 bg-bg-000 px-3 py-1.5 text-[11px] leading-4 text-text-300">
-        {t('preview.structureHint')}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-2 border-t border-border-300 bg-bg-000 px-3 py-1.5 text-[11px] leading-4 text-text-300">
+        <span>{t('preview.structureHint')}</span>
+        <span aria-hidden="true">·</span>
+        <span>{t('preview.structureSelectHint')}</span>
       </div>
     </div>
   )
@@ -437,5 +568,10 @@ export const PdbPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JS
     return <SourcePreviewContent content={state.preview.content} pagination={state.pagination} />
   }
 
-  return <PdbPreviewViewer content={state.preview.content} name={item.name} />
+  // 结构身份：页签 id（同一份文件两次打开是同一个值）+ 显示的版本（同一页签换版本就是另一份内容）。
+  const structureId = item.selectedVersionId ? `${item.id}@${item.selectedVersionId}` : item.id
+
+  return (
+    <PdbPreviewViewer content={state.preview.content} name={item.name} structureId={structureId} />
+  )
 }

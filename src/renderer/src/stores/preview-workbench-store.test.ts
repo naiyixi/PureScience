@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getUploadedAttachmentPath } from '../../../shared/uploads'
+import type { StructureSelection } from '../../../shared/structure-selection'
 
 import {
   createNotebookPreviewItem,
@@ -14,6 +15,19 @@ import {
 type PreviewItemInput = Parameters<
   ReturnType<typeof usePreviewWorkbenchStore.getState>['upsertAndActivateItem']
 >[0]
+
+const structureSelection = (overrides: Partial<StructureSelection> = {}): StructureSelection => ({
+  schemaVersion: 1,
+  structureId: 'file:session-1:/workspace/project/7VH8.cif',
+  name: '7VH8.cif',
+  format: 'cif',
+  contentDigest: 'sha256:aa',
+  chain: 'A',
+  residueStart: 145,
+  residueEnd: 160,
+  view: { style: 'cartoon', colorScheme: 'chain' },
+  ...overrides
+})
 
 describe('preview workbench store', () => {
   // Reset transient preview state so each assertion starts from an empty workbench.
@@ -630,5 +644,102 @@ describe('preview workbench store', () => {
     store.removeSessionItems('session-1')
 
     expect(usePreviewWorkbenchStore.getState().items).toHaveLength(0)
+  })
+
+  // D2: what a turn on a session should carry as its structure selection.
+  describe('structure selection', () => {
+    const fileItem = (id: string, sessionId: string): PreviewItemInput => ({
+      id,
+      sessionId,
+      type: 'file' as const,
+      title: '7VH8.cif',
+      path: `/workspace/project/${id}.cif`,
+      format: 'pdb' as const,
+      name: '7VH8.cif'
+    })
+
+    it('carries the selection of the structure tab that is in front', () => {
+      const store = usePreviewWorkbenchStore.getState()
+      store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+
+      expect(usePreviewWorkbenchStore.getState().activeStructureSelection('session-1')).toEqual(
+        structureSelection()
+      )
+      // Another session's turn never gets a selection it is not looking at.
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection('session-2')
+      ).toBeUndefined()
+    })
+
+    it('says nothing when the tab in front is not the structure', () => {
+      const store = usePreviewWorkbenchStore.getState()
+      store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+      store.upsertAndActivateItem({
+        id: 'tool:session-1:notebook',
+        sessionId: 'session-1',
+        type: 'tool',
+        toolKind: 'notebook',
+        title: 'Notebook'
+      })
+
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection('session-1')
+      ).toBeUndefined()
+    })
+
+    it('falls back to nothing when the tab in front has no selection', () => {
+      usePreviewWorkbenchStore
+        .getState()
+        .upsertAndActivateItem(fileItem('file:session-1:report', 'session-1'))
+
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection('session-1')
+      ).toBeUndefined()
+    })
+
+    it('clears the selection when the user clears it or the tab closes', () => {
+      const store = usePreviewWorkbenchStore.getState()
+      store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+      store.setStructureSelection('file:session-1:cif', undefined)
+      expect(usePreviewWorkbenchStore.getState().structureSelections).toEqual({})
+
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+      store.removeItem('file:session-1:cif')
+      expect(usePreviewWorkbenchStore.getState().structureSelections).toEqual({})
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection('session-1')
+      ).toBeUndefined()
+    })
+
+    it('drops the selections of a deleted session', () => {
+      const store = usePreviewWorkbenchStore.getState()
+      store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+      store.upsertItem(fileItem('file:session-2:cif', 'session-2'))
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+      store.setStructureSelection('file:session-2:cif', structureSelection())
+
+      store.removeSessionItems('session-1')
+
+      expect(Object.keys(usePreviewWorkbenchStore.getState().structureSelections)).toEqual([
+        'file:session-2:cif'
+      ])
+    })
+
+    it('keeps the map identity when the same selection is recorded twice', () => {
+      const store = usePreviewWorkbenchStore.getState()
+      store.upsertAndActivateItem(fileItem('file:session-1:cif', 'session-1'))
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+      const before = usePreviewWorkbenchStore.getState().structureSelections
+
+      store.setStructureSelection('file:session-1:cif', structureSelection())
+
+      // A repeated click on the same residue must not churn every subscriber of the store.
+      expect(usePreviewWorkbenchStore.getState().structureSelections).toBe(before)
+      store.setStructureSelection('file:session-1:cif', structureSelection({ residueEnd: 150 }))
+      expect(usePreviewWorkbenchStore.getState().structureSelections).not.toBe(before)
+    })
   })
 })

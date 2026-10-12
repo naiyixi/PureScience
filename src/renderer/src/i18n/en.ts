@@ -4488,5 +4488,8 @@ export const en: Record<ZhKey, string> = {
   'preview.structureCartoonUnavailable': 'Cartoon requires a protein or nucleic-acid backbone',
   'preview.structureViewerError': '3D viewer could not start: {error}',
   'preview.structureHint': 'Drag to rotate · Scroll to zoom · Shift + drag to pan',
-  'preview.structureAriaLabel': '3D preview of {name}'
+  'preview.structureAriaLabel': '3D preview of {name}',
+  'preview.structureClearSelection': 'Clear selection',
+  'preview.structureSelectHint':
+    'Click a residue to select it for the conversation · Shift-click another residue on the same chain to extend the range'
 }

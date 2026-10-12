@@ -3,7 +3,11 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { PreviewFileItem } from '@/stores/preview-workbench-store'
+import {
+  createInitialPreviewWorkbenchState,
+  usePreviewWorkbenchStore,
+  type PreviewFileItem
+} from '@/stores/preview-workbench-store'
 import { PreviewFileContent } from './PreviewFileContent'
 
 const highlightSpy = vi.hoisted(() => vi.fn())
@@ -12,12 +16,16 @@ const setStyle = vi.fn()
 const addSurface = vi.fn()
 const removeAllSurfaces = vi.fn()
 const zoomTo = vi.fn()
+const addStyle = vi.fn()
+const setClickable = vi.fn()
 const renderViewer = vi.fn()
 const resizeViewer = vi.fn()
 const clearViewer = vi.fn()
 const createViewer = vi.fn(() => ({
   addModel,
   setStyle,
+  addStyle,
+  setClickable,
   addSurface,
   removeAllSurfaces,
   zoomTo,
@@ -922,6 +930,83 @@ describe('PreviewFileContent', () => {
 
       expect(resizeViewer).toHaveBeenCalled()
       expect(renderViewer).toHaveBeenCalled()
+    })
+
+    it('turns a residue click into a selection the conversation carries (D2)', async () => {
+      const pdbContent = [
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',
+        'ATOM      2  CA  MET A   1      21.567  34.361  27.100  1.00 44.13           C',
+        'ATOM      3  N   GLY A   2      22.154  35.198  27.426  1.00 45.22           N',
+        'ATOM      4  CA  GLY A   2      23.567  35.361  27.100  1.00 44.13           C',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const item = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: 'protein.pdb'
+      })
+      // The preview pane and the workbench store are separate owners: seed the tab that is in front so
+      // the store can answer what a turn on this session should carry.
+      usePreviewWorkbenchStore.setState(createInitialPreviewWorkbenchState())
+      usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+
+      await renderFile(item)
+
+      // Click residue 1, then Shift-click residue 2 on the same chain: the selection is the range.
+      const click = setClickable.mock.calls.at(-1)?.[2] as
+        ((atom: unknown, viewer: unknown, event?: unknown) => void) | undefined
+      expect(click).toBeTypeOf('function')
+      await act(async () => {
+        click?.({ chain: 'A', resi: 1, resn: 'MET', icode: '' }, undefined, { shiftKey: false })
+      })
+      // The click handler hashes the content before publishing, so the chip appears a tick later.
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+          'chain A residue 1'
+        )
+      })
+      await act(async () => {
+        click?.({ chain: 'A', resi: 2, resn: 'GLY', icode: '' }, undefined, { shiftKey: true })
+      })
+
+      // What the user sees on screen is exactly what a turn on this session would carry.
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+          'chain A residues 1-2'
+        )
+      })
+      const selection = usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
+      expect(selection).toMatchObject({
+        structureId: 'file-1',
+        name: 'protein.pdb',
+        format: 'pdb',
+        chain: 'A',
+        residueStart: 1,
+        residueEnd: 2,
+        startResidue: 'MET',
+        endResidue: 'GLY',
+        view: { style: 'cartoon', colorScheme: 'spectrum' }
+      })
+      // The digest is either the real sha256 of the content or a recorded absence — never invented.
+      expect(typeof selection?.contentDigest).toBe('string')
+
+      // The selection is highlighted in the viewer with the pane's own colour.
+      expect(addStyle).toHaveBeenCalledWith({ chain: 'A', resi: '1-2' }, expect.anything())
+
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="structure-clear-selection"]')
+          ?.click()
+      })
+      expect(container.querySelector('[data-slot="structure-selection"]')).toBeNull()
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
+      ).toBeUndefined()
     })
   })
 

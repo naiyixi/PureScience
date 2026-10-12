@@ -2,11 +2,20 @@ import { describe, expect, it } from 'vitest'
 
 import {
   availableColorSchemes,
+  buildStructureSelection,
   detectStructureFormat,
   looksLikeAlphaFoldModel,
   plddtColorFor,
-  PLDDT_BANDS
+  resolveStructureSelectionRange,
+  structureSelectionSelector,
+  toStructureAtomRef,
+  PLDDT_BANDS,
+  type StructureAtomRef
 } from './structure-view'
+import {
+  structureSelectionRangeLabel,
+  type StructureSelection
+} from '../../../../../../shared/structure-selection'
 
 // 造一条 ATOM 行：B-factor 落在 PDB 规范的 61–66 列（0-based slice(60,66)）
 const atomLine = (bFactor: string, serial = 1, resName = 'ALA'): string => {
@@ -81,5 +90,97 @@ describe('配色', () => {
     expect(plddtColorFor(89.9)).toBe('#65CBF3')
     expect(plddtColorFor(50)).toBe('#FFDB13')
     expect(plddtColorFor(10)).toBe('#FF7D45')
+  })
+})
+
+describe('点击 → 选择（D2）', () => {
+  const cys145: StructureAtomRef = { chain: 'A', resi: 145, resn: 'CYS' }
+  const gly160: StructureAtomRef = { chain: 'A', resi: 160, resn: 'GLY' }
+  const otherChain: StructureAtomRef = { chain: 'B', resi: 30, resn: 'ALA' }
+
+  const build = (start: StructureAtomRef, end: StructureAtomRef): StructureSelection =>
+    buildStructureSelection({
+      structureId: 'artifact:abc',
+      name: '7VH8.cif',
+      format: 'cif' as const,
+      contentDigest: 'sha256:aa',
+      start,
+      end,
+      view: { style: 'cartoon', colorScheme: 'chain' }
+    })
+
+  it('3Dmol 的 atom 只认带链带编号的：其余的返回 undefined，不猜', () => {
+    expect(toStructureAtomRef({ chain: 'A', resi: 145, resn: 'CYS', icode: ' ' })).toEqual(cys145)
+    expect(toStructureAtomRef({ chain: 'A', resi: 145, resn: 'CYS', icode: 'B' })).toEqual({
+      ...cys145,
+      icode: 'B'
+    })
+    expect(toStructureAtomRef({ resi: 145 })).toBeUndefined()
+    expect(toStructureAtomRef({ chain: 'A' })).toBeUndefined()
+    expect(toStructureAtomRef({ chain: 'A', resi: 1.5 })).toBeUndefined()
+    expect(toStructureAtomRef(null)).toBeUndefined()
+  })
+
+  it('第一次点击（或没有按 shift）＝ 单残基', () => {
+    expect(resolveStructureSelectionRange(undefined, cys145, { extend: false })).toEqual({
+      start: cys145,
+      end: cys145,
+      anchor: cys145
+    })
+    expect(resolveStructureSelectionRange(cys145, gly160, { extend: false })).toEqual({
+      start: gly160,
+      end: gly160,
+      anchor: gly160
+    })
+  })
+
+  it('同链按 shift ＝ 连续区间，且**倒着选也对**（端点与残基名一起规整）', () => {
+    // 先点 160 再 shift 点 145：start 必须是 145 且名字取 145 那个原子的。
+    const backwards = resolveStructureSelectionRange(gly160, cys145, { extend: true })
+    expect(backwards.start).toEqual(cys145)
+    expect(backwards.end).toEqual(gly160)
+    expect(backwards.anchor).toEqual(cys145)
+    expect(structureSelectionRangeLabel(build(backwards.start, backwards.end))).toBe(
+      'chain A residues 145-160'
+    )
+  })
+
+  it('跨链的 shift 点击退回单残基 —— 跨链不是一段连续区间，不编一个出来', () => {
+    expect(resolveStructureSelectionRange(cys145, otherChain, { extend: true })).toEqual({
+      start: otherChain,
+      end: otherChain,
+      anchor: otherChain
+    })
+  })
+
+  it('组出来的选择带链、区间、残基名与视图参数', () => {
+    const selection = build(cys145, gly160)
+    expect(selection).toEqual({
+      schemaVersion: 1,
+      structureId: 'artifact:abc',
+      name: '7VH8.cif',
+      format: 'cif',
+      contentDigest: 'sha256:aa',
+      chain: 'A',
+      residueStart: 145,
+      residueEnd: 160,
+      startResidue: 'CYS',
+      endResidue: 'GLY',
+      view: { style: 'cartoon', colorScheme: 'chain' }
+    })
+    expect(build(cys145, cys145)).toMatchObject({
+      residueStart: 145,
+      residueEnd: 145,
+      startResidue: 'CYS',
+      endResidue: 'CYS'
+    })
+  })
+
+  it('高亮的选区是一个编号或一段编号，不自己拼数组', () => {
+    expect(structureSelectionSelector(build(cys145, cys145))).toEqual({ chain: 'A', resi: 145 })
+    expect(structureSelectionSelector(build(cys145, gly160))).toEqual({
+      chain: 'A',
+      resi: '145-160'
+    })
   })
 })

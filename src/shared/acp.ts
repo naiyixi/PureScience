@@ -8,6 +8,7 @@ import type {
 import type { ArtifactFile, FileReference } from './artifacts'
 import type { UploadedAttachment } from './uploads'
 import type { ConversationAnnotation } from './annotations'
+import type { StructureSelection } from './structure-selection'
 import type { PermissionProfileId, SessionPermissionProfileState } from './permission-profiles'
 import type { AgentFrameworkId } from './settings'
 
@@ -737,6 +738,11 @@ export type AcpPromptRequest = {
   // Transient prompt-boundary signal: the provider context was replaced, so live application state
   // must be handed off even when there are no replayable transcript turns. Never persisted.
   contextReset?: boolean
+  // D2: the structure region the user had selected in the viewer when this turn was sent. It is
+  // application context: it rides in the provider content (never appended to `text`, which is what the
+  // user's own message is recorded from), and the main process normalizes it before trusting it —
+  // a renderer cannot hand the agent a half-formed selection.
+  structureSelection?: StructureSelection
   // Prepared by the renderer for an internal skill-triggered reconnect. Used only if that reconnect
   // cannot resume the agent session and must adopt a fresh one.
   resumeFallback?: {

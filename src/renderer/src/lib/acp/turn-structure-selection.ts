@@ -1,0 +1,10 @@
+// D2：渲染层**唯一**一处「把当前的结构选择读出来给这一回合用」的地方。
+//
+// 为什么单独成模块、而不把 store 读法散在调用点：上行的那一份必须是**同一份**状态 —— 视图页签在前的
+// 那条结构 + 同一会话（用户切走页签后，那段选择已不再是他正在看的东西，此时不该再当作上下文）。
+// 判定住在这里，组件与 send 路径都只是调用它。
+import type { StructureSelection } from '../../../../shared/structure-selection'
+import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
+
+export const turnStructureSelection = (sessionId: string): StructureSelection | undefined =>
+  usePreviewWorkbenchStore.getState().activeStructureSelection(sessionId)

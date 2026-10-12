@@ -1,3 +1,4 @@
+import type { ContentBlock } from '@agentclientprotocol/sdk'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { AcpPromptRequest } from '../../shared/acp'
@@ -39,7 +40,17 @@ const contextTurn = (): TestContextTurn => {
   return handle
 }
 
-const setup = (inputNotice?: (request: AcpPromptRequest) => string): Fixture => {
+// A double that behaves like the real vision relay where it matters here: image blocks are translated,
+// every other block passes through untouched. That pass-through is the property under test.
+type ImageRelayDouble = {
+  prepare: (input: { content: string | ContentBlock[] }) => Promise<string | ContentBlock[]>
+}
+
+const setup = (
+  inputNotice?: (request: AcpPromptRequest) => string,
+  selectionNotice?: (request: AcpPromptRequest) => string,
+  imageInputCompatibility?: ImageRelayDouble
+): Fixture => {
   const turn = contextTurn()
   const promptContent = {
     prepare: vi.fn(async () => ({
@@ -67,6 +78,8 @@ const setup = (inputNotice?: (request: AcpPromptRequest) => string): Fixture => 
     selectBridgeSkills: vi.fn(async () => []),
     authorizeReferencedUploads,
     ...(inputNotice ? { inputNotice } : {}),
+    ...(selectionNotice ? { selectionNotice } : {}),
+    ...(imageInputCompatibility ? { imageInputCompatibility } : {}),
     notebook: {
       peekHandoffContext: vi.fn(() => ({
         executionCount: 1,
@@ -278,5 +291,79 @@ describe('AcpPromptPreparationOwner', () => {
     expect(handle.status).toBe('ready')
     if (handle.status !== 'ready') throw new Error('expected a ready prompt')
     expect(handle.content).toBe('provider-content')
+  })
+
+  it('puts the structure selection in the provider content, not in the user text', async () => {
+    const seen: string[] = []
+    const fixture = setup(undefined, (request) => {
+      seen.push(request.text)
+      return '<purescience_structure_context>\nchain A residues 145-160\n</purescience_structure_context>'
+    })
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    // The model is told which region is selected; `request.text` is what the transcript records the user
+    // as having said, so the notice must never be folded into it.
+    expect(JSON.stringify(handle.content)).toContain('<purescience_structure_context>')
+    expect(seen).toEqual(['Analyze the result.'])
+  })
+
+  it('leaves the content byte-identical when the turn carries no selection', async () => {
+    const fixture = setup(undefined, () => '')
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    expect(handle.content).toBe('provider-content')
+  })
+
+  it('keeps the selection notice when a text-only backend is served by the vision relay', async () => {
+    // Regression: the relay was handed the PRE-notice content, so on a text-only backend every notice
+    // (D5's missing inputs and D2's selection) was silently dropped from what the model received.
+    const relay: ImageRelayDouble = {
+      prepare: async (input) =>
+        typeof input.content === 'string'
+          ? input.content
+          : input.content.map((block) =>
+              block.type === 'image' ? { type: 'text' as const, text: 'IMAGE EVIDENCE' } : block
+            )
+    }
+    const fixture = setup(
+      () => '<missing_inputs>sim_a.csv does not exist.</missing_inputs>',
+      () =>
+        '<purescience_structure_context>chain A residues 145-160</purescience_structure_context>',
+      relay
+    )
+    fixture.promptContent.prepare.mockResolvedValueOnce({
+      content: [
+        { type: 'image', mimeType: 'image/png', data: 'aGk=' },
+        { type: 'text', text: 'provider body' }
+      ],
+      turnInputs: { uploads: [], references: [] }
+    })
+
+    const handle = await fixture.prepare({
+      backend: {
+        framework: codexFramework,
+        session: { modelRequired: false },
+        prompt: { systemPromptAppends: [], persistentSystemPrompt: 'baked instructions' },
+        context: { window: 100_000, supportsImageInput: false },
+        adapter: { nativeMcpEnabled: true, bridgeMcpAliasesEnabled: false, codexHome: '/codex' }
+      }
+    })
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    const blocks = handle.content as ContentBlock[]
+    const text = JSON.stringify(blocks)
+    expect(text).toContain('<missing_inputs>')
+    expect(text).toContain('<purescience_structure_context>')
+    expect(text).toContain('IMAGE EVIDENCE')
+    expect(text).toContain('provider body')
+    // The image block itself is gone: translation happened, and it happened to the notices' content.
+    expect(blocks.some((block) => block.type === 'image')).toBe(false)
   })
 })

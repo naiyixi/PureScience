@@ -4580,5 +4580,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureViewerError': "La visionneuse 3D n'a pas pu démarrer : {error}",
   'preview.structureHint':
     'Glisser pour pivoter · molette pour zoomer · Maj + glisser pour déplacer',
-  'preview.structureAriaLabel': 'Aperçu 3D de {name}'
+  'preview.structureAriaLabel': 'Aperçu 3D de {name}',
+  'preview.structureClearSelection': 'Effacer la sélection',
+  'preview.structureSelectHint':
+    'Cliquez sur un résidu pour le sélectionner dans la conversation · Maj+clic sur un autre résidu de la même chaîne étend la plage'
 }

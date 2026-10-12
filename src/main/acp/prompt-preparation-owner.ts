@@ -67,6 +67,9 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // injected into the content the model receives and never into request.text, because that text is what
   // the user's own message is recorded from — this is application context, not the user's words.
   inputNotice?: (request: AcpPromptRequest) => string
+  // The structure-selection notice (D2): returns '' when the turn carries no selection. Same seam and
+  // same rule as the input pre-check above — the region the user has selected is context, not their words.
+  selectionNotice?: (request: AcpPromptRequest) => string
   emitState: () => void
 }>
 type AcpPromptPreparationInput = Readonly<{
@@ -247,14 +250,19 @@ class AcpPromptPreparationOwner {
       // images (replay) degrade to omission markers when the relay is unavailable; current images
       // surface the configuration error instead of silently dropping user input.
       let preparedContent = prepared.content
-      // Input pre-check (D5): tell the model which named inputs are not there, before it plans. In the
-      // content, not in request.text — see the option's comment.
-      const inputNotice = this.options.inputNotice?.(input.request) ?? ''
-      if (inputNotice.length > 0) {
+      // Application context blocks ride in the content the model receives, never in request.text: the D5
+      // input pre-check (which named inputs are not there) and the D2 structure selection. Both return ''
+      // for an ordinary turn, so such a turn stays byte-identical to what it was before this seam existed.
+      const notices = [
+        this.options.inputNotice?.(input.request),
+        this.options.selectionNotice?.(input.request)
+      ].filter((notice): notice is string => typeof notice === 'string' && notice.length > 0)
+      if (notices.length > 0) {
+        const noticeText = notices.join('\n\n')
         preparedContent =
           typeof preparedContent === 'string'
-            ? `${inputNotice}\n\n${preparedContent}`
-            : [{ type: 'text' as const, text: inputNotice }, ...preparedContent]
+            ? `${noticeText}\n\n${preparedContent}`
+            : [{ type: 'text' as const, text: noticeText }, ...preparedContent]
       }
       if (this.options.imageInputCompatibility && !input.backend.context.supportsImageInput) {
         const historyImageCount = input.request.historyImages?.length ?? 0
@@ -269,8 +277,11 @@ class AcpPromptPreparationOwner {
               : undefined
           )
         ]
+        // Feed the relay what the content is NOW, not the pre-notice original: its own text pass-through
+        // returns non-image blocks unchanged, so passing the original silently dropped every notice above
+        // on a text-only backend (the relay only rewrites image blocks — it never adds context).
         preparedContent = await this.options.imageInputCompatibility.prepare({
-          content: prepared.content,
+          content: preparedContent,
           supportsImageInput: false,
           projectId: input.projectId,
           sessionId: input.request.sessionId,

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import type { NotebookSessionReference } from '../../../shared/notebook'
+import type { StructureSelection } from '../../../shared/structure-selection'
 import type { ProjectFileOriginSession } from '../../../shared/project-files'
 import type { FindingLocator } from '../../../shared/reviewer'
 import type { UploadedAttachment } from '../../../shared/uploads'
@@ -105,10 +106,18 @@ type PreviewWorkbenchStoreData = PreviewSlice & {
   // A one-off file preview stays outside the tab list so Files and Global Search can open the same
   // dialog without creating a durable workbench tab.
   fileDialogItem: PreviewFileItem | undefined
+  // D2: the structure region each open preview tab currently has selected, keyed by tab id.
+  // Transient view state, never persisted: it describes what is on screen right now, and the tab that
+  // owned it drops its entry when it closes (a stale selection must not ride into a later turn).
+  structureSelections: Record<string, StructureSelection>
 }
 
 type PreviewWorkbenchStore = PreviewWorkbenchStoreData & {
   activateProject: (projectId: string, restored?: RestoredPreviewSlice) => void
+  /** Records (or clears, with `undefined`) the structure selection of one preview tab. */
+  setStructureSelection: (itemId: string, selection: StructureSelection | undefined) => void
+  /** The selection that applies to a turn on `sessionId`, or undefined when there is none to send. */
+  activeStructureSelection: (sessionId: string) => StructureSelection | undefined
   reconcileFinalizedUploads: (uploads: UploadedAttachment[]) => void
   upsertItem: (item: PreviewItem) => void
   upsertAndActivateItem: (item: PreviewItem) => void
@@ -133,7 +142,8 @@ export const createInitialPreviewWorkbenchState = (): PreviewWorkbenchStoreData 
   activeProjectId: undefined,
   byProject: {},
   expandedToolItemId: null,
-  fileDialogItem: undefined
+  fileDialogItem: undefined,
+  structureSelections: {}
 })
 
 // The empty slice a project starts from before any preview tabs are opened.
@@ -258,6 +268,20 @@ export const createWebPreviewItem = (
   }
 }
 
+// Drops the selection entries of tabs that no longer exist. Object identity is preserved when nothing
+// changes, so a removal that carries no structure tab does not wake every subscriber.
+const withoutStructureSelections = (
+  selections: Record<string, StructureSelection>,
+  removedItemIds: ReadonlySet<string>
+): Record<string, StructureSelection> => {
+  const kept = Object.keys(selections).filter((itemId) => !removedItemIds.has(itemId))
+  if (kept.length === Object.keys(selections).length) return selections
+
+  const next: Record<string, StructureSelection> = {}
+  for (const itemId of kept) next[itemId] = selections[itemId]
+  return next
+}
+
 // Chooses a stable fallback tab when the active preview item is removed.
 const getRepairedActiveItemId = (
   items: StoredPreviewItem[],
@@ -361,6 +385,41 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
     })
   },
 
+  // Records the region a structure tab currently has selected; `undefined` clears it (the pane closed,
+  // or the file it was showing was replaced).
+  setStructureSelection: (itemId, selection) => {
+    set((state) => {
+      if (!selection) {
+        if (!(itemId in state.structureSelections)) return state
+        return {
+          structureSelections: withoutStructureSelections(
+            state.structureSelections,
+            new Set([itemId])
+          )
+        }
+      }
+
+      const previous = state.structureSelections[itemId]
+      // Same value twice (a re-render, a repeated click on the same residue) must not churn the map.
+      if (previous && JSON.stringify(previous) === JSON.stringify(selection)) return state
+
+      return { structureSelections: { ...state.structureSelections, [itemId]: selection } }
+    })
+  },
+
+  // The selection a turn on this session should carry: only when the structure tab is the one in front
+  // (a selection the user has navigated away from is no longer what they are looking at).
+  activeStructureSelection: (sessionId) => {
+    const state = get()
+    const activeItemId = state.activeItemId
+    if (!activeItemId) return undefined
+
+    const item = state.items.find((candidate) => candidate.id === activeItemId)
+    if (!item || item.type !== 'file' || item.sessionId !== sessionId) return undefined
+
+    return state.structureSelections[activeItemId]
+  },
+
   // Inserts a preview item or refreshes the existing tab without changing focus.
   upsertItem: (item) => {
     set((state) => {
@@ -424,7 +483,11 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
         activeItemId,
         panelState: items.length > 0 ? state.panelState : 'collapsed',
         expandedToolItemId: state.expandedToolItemId === itemId ? null : state.expandedToolItemId,
-        fileDialogItem: itemId === PROJECT_FILES_PREVIEW_ID ? undefined : state.fileDialogItem
+        fileDialogItem: itemId === PROJECT_FILES_PREVIEW_ID ? undefined : state.fileDialogItem,
+        structureSelections: withoutStructureSelections(
+          state.structureSelections,
+          new Set([itemId])
+        )
       }
     })
   },
@@ -440,10 +503,14 @@ export const usePreviewWorkbenchStore = create<PreviewWorkbenchStore>((set, get)
       const activeItemId = items.some((item) => item.id === state.activeItemId)
         ? state.activeItemId
         : getRepairedActiveItemId(items, firstRemovedIndex)
+      const removedItemIds = new Set(
+        state.items.filter((item) => item.sessionId === sessionId).map((item) => item.id)
+      )
 
       return {
         items,
         activeItemId,
+        structureSelections: withoutStructureSelections(state.structureSelections, removedItemIds),
         // A session-scoped tool tab could own the expanded surface; clear it when its tab is gone.
         panelState: items.length > 0 ? state.panelState : 'collapsed',
         expandedToolItemId: items.some((item) => item.id === state.expandedToolItemId)

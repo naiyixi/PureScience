@@ -2,6 +2,7 @@ import type { AcpPromptRequest } from '../../shared/acp'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
 import { createInputNoticeResolver } from './input-notice'
+import { structureSelectionNotice } from './structure-context'
 import { createLogger, errorLogFields } from '../logger'
 import { AcpPromptPreparationOwner, type SelectBridgeSkills } from './prompt-preparation-owner'
 import {
@@ -226,6 +227,8 @@ const composeAcpRuntimePromptOwners = (
     imageInputCompatibility: options.imageInputCompatibility,
     inputNotice: (request) =>
       inputNoticeResolver.forTurn(request.text ?? '', sessionCwd(request.sessionId)),
+    // D2: the region the user has selected in the structure viewer, when the turn carries one.
+    selectionNotice: (request) => structureSelectionNotice(request),
     ...(options.notebook
       ? {
           notebook: {

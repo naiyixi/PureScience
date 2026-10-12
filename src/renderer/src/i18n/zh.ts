@@ -4191,7 +4191,10 @@ export const zh = {
   'preview.structureCartoonUnavailable': '卡通需要蛋白质或核酸主链',
   'preview.structureViewerError': '3D 查看器无法启动：{error}',
   'preview.structureHint': '拖动旋转 · 滚轮缩放 · Shift + 拖动平移',
-  'preview.structureAriaLabel': '{name} 的 3D 预览'
+  'preview.structureAriaLabel': '{name} 的 3D 预览',
+  'preview.structureClearSelection': '清除选择',
+  'preview.structureSelectHint':
+    '点击残基即选中它（作为对话上下文）· 按住 Shift 再点同链残基可扩成连续区间'
 }
 
 export type ZhKey = keyof typeof zh

@@ -4468,5 +4468,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureViewerError': 'Не удалось запустить 3D-просмотр: {error}',
   'preview.structureHint':
     'Перетаскивание вращает · колесо масштабирует · Shift + перетаскивание сдвигает',
-  'preview.structureAriaLabel': '3D-просмотр {name}'
+  'preview.structureAriaLabel': '3D-просмотр {name}',
+  'preview.structureClearSelection': 'Снять выделение',
+  'preview.structureSelectHint':
+    'Щёлкните остаток, чтобы выбрать его для диалога · Shift+щелчок по другому остатку той же цепи расширяет диапазон'
 }

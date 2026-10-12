@@ -4386,5 +4386,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureCartoonUnavailable': '카툰은 단백질 또는 핵산 골격이 필요합니다',
   'preview.structureViewerError': '3D 뷰어를 시작할 수 없습니다: {error}',
   'preview.structureHint': '드래그로 회전 · 스크롤로 확대 · Shift+드래그로 이동',
-  'preview.structureAriaLabel': '{name}의 3D 미리보기'
+  'preview.structureAriaLabel': '{name}의 3D 미리보기',
+  'preview.structureClearSelection': '선택 해제',
+  'preview.structureSelectHint':
+    '잔기를 클릭하면 대화 맥락으로 선택됩니다 · 같은 체인의 다른 잔기를 Shift+클릭하면 범위가 확장됩니다'
 }

@@ -4593,5 +4593,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureCartoonUnavailable': 'Cartoon benötigt ein Protein- oder Nukleinsäure-Rückgrat',
   'preview.structureViewerError': '3D-Ansicht konnte nicht starten: {error}',
   'preview.structureHint': 'Ziehen dreht · Scrollen zoomt · Shift + Ziehen verschiebt',
-  'preview.structureAriaLabel': '3D-Vorschau von {name}'
+  'preview.structureAriaLabel': '3D-Vorschau von {name}',
+  'preview.structureClearSelection': 'Auswahl aufheben',
+  'preview.structureSelectHint':
+    'Klicken Sie auf einen Rest, um ihn für das Gespräch auszuwählen · Umschalt+Klick auf einen weiteren Rest derselben Kette erweitert den Bereich'
 }

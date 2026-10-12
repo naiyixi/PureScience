@@ -4133,5 +4133,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureCartoonUnavailable': '卡通需要蛋白質或核酸主鏈',
   'preview.structureViewerError': '3D 檢視器無法啟動：{error}',
   'preview.structureHint': '拖曳旋轉 · 滾輪縮放 · Shift + 拖曳平移',
-  'preview.structureAriaLabel': '{name} 的 3D 預覽'
+  'preview.structureAriaLabel': '{name} 的 3D 預覽',
+  'preview.structureClearSelection': '清除選取',
+  'preview.structureSelectHint':
+    '點擊殘基即選取它（作為對話上下文）· 按住 Shift 再點同鏈殘基可擴成連續區間'
 }

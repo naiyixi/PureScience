@@ -4456,5 +4456,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureCartoonUnavailable': 'カートゥーンにはタンパク質または核酸の主鎖が必要です',
   'preview.structureViewerError': '3D ビューアーを起動できません：{error}',
   'preview.structureHint': 'ドラッグで回転 · スクロールでズーム · Shift+ドラッグで平行移動',
-  'preview.structureAriaLabel': '{name} の 3D プレビュー'
+  'preview.structureAriaLabel': '{name} の 3D プレビュー',
+  'preview.structureClearSelection': '選択を解除',
+  'preview.structureSelectHint':
+    '残基をクリックすると会話の文脈として選択されます · 同じ鎖の別の残基を Shift+クリックで範囲を拡張'
 }
