@@ -132,6 +132,7 @@ export const WEB_INVOKE_CHANNELS = {
   'permissions.revoke': 'permissions:revoke',
   'preview.delete': 'preview:delete',
   'preview.load': 'preview:load',
+  'preview.loadRemoteStructure': 'preview:load-remote-structure',
   'preview.save': 'preview:save',
   'previewResources.acquire': 'preview-resources:acquire',
   'previewResources.readRange': 'preview-resources:read-range',

@@ -751,6 +751,8 @@ const api: PureScienceAPI = {
   preview: {
     // Per-project preview panel state, persisted alongside projects in SQLite.
     load: (request) => electronRendererContracts.invoke('preview.load', request),
+    loadRemoteStructure: (request) =>
+      electronRendererContracts.invoke('preview.loadRemoteStructure', request),
     save: (request) => electronRendererContracts.invoke('preview.save', request),
     delete: (request) => electronRendererContracts.invoke('preview.delete', request)
   },

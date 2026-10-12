@@ -4171,5 +4171,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': '匯出視圖 PNG',
   'preview.structureExportDone': '已匯出 {name}',
   'preview.structureExportRefused': '已拒絕匯出 —— 沒有寫出任何檔案',
-  'preview.structureExportFailed': '匯出失敗'
+  'preview.structureExportFailed': '匯出失敗',
+  'preview.structureLoadRemote': '按 PDB ID 載入',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID（如 1CRN）',
+  'preview.structureRemoteLoaded': '已載入 {name}（{bytes} 位元組）',
+  'preview.structureRemoteNoSession': '這個頁籤沒有工作階段，無法在這裡載入'
 }

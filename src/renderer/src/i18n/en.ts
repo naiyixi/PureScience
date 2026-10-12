@@ -4528,5 +4528,9 @@ export const en: Record<ZhKey, string> = {
   'preview.structureExportImage': 'Export view as PNG',
   'preview.structureExportDone': 'Exported {name}',
   'preview.structureExportRefused': 'Export refused — nothing was written',
-  'preview.structureExportFailed': 'Export failed'
+  'preview.structureExportFailed': 'Export failed',
+  'preview.structureLoadRemote': 'Load by PDB ID',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID (e.g. 1CRN)',
+  'preview.structureRemoteLoaded': 'loaded {name} ({bytes} bytes)',
+  'preview.structureRemoteNoSession': 'this tab has no session, so nothing can be loaded here'
 }

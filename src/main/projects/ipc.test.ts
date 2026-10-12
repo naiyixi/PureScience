@@ -132,8 +132,17 @@ describe('createProjectHandlers', () => {
       'projects:delete',
       'preview:load',
       'preview:save',
-      'preview:delete'
+      'preview:delete',
+      'preview:load-remote-structure'
     ])
+
+    // 没有注入加载器时**照样注册**：回一个具名拒绝（not-configured），而不是运行期的「没有 handler」。
+    await expect(
+      ipcHandlers.get('preview:load-remote-structure')?.(undefined, {
+        sessionId: 'session-1',
+        pdbId: '1CRN'
+      })
+    ).resolves.toMatchObject({ ok: false, reason: 'not-configured' })
 
     const createRequest = { name: 'Project' }
     const updateRequest = { id: 'project-1', name: 'Renamed' }

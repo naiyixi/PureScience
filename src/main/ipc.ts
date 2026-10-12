@@ -57,6 +57,7 @@ import {
 } from './artifacts/reproduction-runtime-scope'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
+import { createRemoteStructureLoader } from './preview/remote-structure-loader'
 import { createComputeIpcModule } from './compute/ipc'
 import {
   createReferencesIpcModule,
@@ -3015,12 +3016,23 @@ const createApplicationModules = async (
   )
   // Backs the "This computer" browser; shares localFsService with the managed-preview resolver.
   declareElectronAdapter('local-fs', () => registerLocalFsIpcHandlers(localFsService))
+  // D6 第二半：远程结构加载器。装配处是唯一同时握有这几样东西的地方：出网设置、保护级别、
+  // 审批卡、会话工作区。渲染端只送 PDB id，URL 由共享层的**固定模板**拼（渲染端点不了名）。
+  const remoteStructureLoader = createRemoteStructureLoader({
+    egressSettings: () => settingsService.getEgress(),
+    // 应用**自己**的出网请求没有隔离可言 ⇒ 这条路径的保护级别就是 unprotected，判决因此转成
+    // 「问用户」；只有白名单**命中**时才算有强制力（那是机器自己的策略，不是这一层能给的）。
+    protection: () => 'unprotected',
+    workspaceFor: (sessionId) => join(resolveDataRoot(), 'workspaces', sessionId),
+    approvals: approvalBroker
+  })
   declareElectronAdapter('projects', () =>
     registerProjectIpcHandlers(
       projectRepository,
       previewStateRepository,
       projectDeletionCoordinator,
-      projectHandlers
+      projectHandlers,
+      (request) => remoteStructureLoader.load(request)
     )
   )
   declareElectronAdapter('lifecycle', () => registerLifecycleIpcHandlers())
@@ -3272,7 +3284,9 @@ const createApplicationModules = async (
       preview: {
         load: (request) => previewStateRepository.get(request.projectId),
         save: (request) => previewStateRepository.save(request.projectId, request.state),
-        delete: (request) => previewStateRepository.delete(request.projectId)
+        delete: (request) => previewStateRepository.delete(request.projectId),
+        // 同一个加载器实例：窗口那条路（projects/ipc.ts）与这条路不各写一套实现。
+        loadRemoteStructure: (request) => remoteStructureLoader.load(request)
       },
       projectFiles: projectFilesHandlers,
       projects: projectHandlers,

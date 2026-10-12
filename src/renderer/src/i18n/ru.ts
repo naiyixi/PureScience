@@ -4509,5 +4509,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': 'Экспорт вида в PNG',
   'preview.structureExportDone': '{name} экспортирован',
   'preview.structureExportRefused': 'Экспорт отклонён — ничего не записано',
-  'preview.structureExportFailed': 'Экспорт не удался'
+  'preview.structureExportFailed': 'Экспорт не удался',
+  'preview.structureLoadRemote': 'Загрузить по PDB ID',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID (например, 1CRN)',
+  'preview.structureRemoteLoaded': '{name} загружен ({bytes} байт)',
+  'preview.structureRemoteNoSession': 'у этой вкладки нет сессии, загрузить сюда нельзя'
 }

@@ -4495,5 +4495,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': 'ビューを PNG で書き出す',
   'preview.structureExportDone': '{name} を書き出しました',
   'preview.structureExportRefused': '書き出しは拒否されました — 何も書き出していません',
-  'preview.structureExportFailed': '書き出しに失敗しました'
+  'preview.structureExportFailed': '書き出しに失敗しました',
+  'preview.structureLoadRemote': 'PDB ID で読み込む',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID（例 1CRN）',
+  'preview.structureRemoteLoaded': '{name} を読み込みました（{bytes} バイト）',
+  'preview.structureRemoteNoSession': 'このタブにはセッションがないため読み込めません'
 }

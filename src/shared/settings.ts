@@ -1591,7 +1591,7 @@ export type ConnectorApprovalRequest = {
    */
   appAction?: {
     surface: 'structure-view'
-    action: 'export-view-image' | 'export-structure-file'
+    action: 'export-view-image' | 'export-structure-file' | 'load-remote-structure'
     /** What the action leaves behind on disk. Empty is not a valid value — an export writes something. */
     writes: { kind: 'image' | 'structure-file'; fileName: string; extension: string }[]
     /** True when the bytes carry the region the user named/selected (so the card can say exactly that). */

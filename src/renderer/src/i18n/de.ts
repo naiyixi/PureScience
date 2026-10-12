@@ -4637,5 +4637,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': 'Ansicht als PNG exportieren',
   'preview.structureExportDone': '{name} exportiert',
   'preview.structureExportRefused': 'Export abgelehnt — es wurde nichts geschrieben',
-  'preview.structureExportFailed': 'Export fehlgeschlagen'
+  'preview.structureExportFailed': 'Export fehlgeschlagen',
+  'preview.structureLoadRemote': 'Nach PDB-ID laden',
+  'preview.structureRemoteIdPlaceholder': 'PDB-ID (z. B. 1CRN)',
+  'preview.structureRemoteLoaded': '{name} geladen ({bytes} Bytes)',
+  'preview.structureRemoteNoSession':
+    'dieser Tab hat keine Sitzung, hier kann nichts geladen werden'
 }

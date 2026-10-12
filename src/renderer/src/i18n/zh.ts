@@ -4229,7 +4229,11 @@ export const zh = {
   'preview.structureExportImage': '导出视图 PNG',
   'preview.structureExportDone': '已导出 {name}',
   'preview.structureExportRefused': '已拒绝导出 —— 没有写出任何文件',
-  'preview.structureExportFailed': '导出失败'
+  'preview.structureExportFailed': '导出失败',
+  'preview.structureLoadRemote': '按 PDB ID 加载',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID（如 1CRN）',
+  'preview.structureRemoteLoaded': '已加载 {name}（{bytes} 字节）',
+  'preview.structureRemoteNoSession': '这个页签没有会话，无法在这里加载'
 }
 
 export type ZhKey = keyof typeof zh

@@ -184,7 +184,7 @@ describe('application command composition', () => {
     // profile, so the local Web surface moves with it while the rejection set does not.
     // One more for verifying a recorded reading (artifacts:verify-reading): a plain Web request profile,
     // so the local Web surface moves with it while the rejection set does not.
-    expect(composition.localWeb.commandNames()).toHaveLength(359)
+    expect(composition.localWeb.commandNames()).toHaveLength(360)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -209,7 +209,7 @@ describe('application command composition', () => {
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(126)
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(127)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

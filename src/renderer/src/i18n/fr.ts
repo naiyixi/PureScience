@@ -4624,5 +4624,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': 'Exporter la vue en PNG',
   'preview.structureExportDone': '{name} exporté',
   'preview.structureExportRefused': "Export refusé — rien n'a été écrit",
-  'preview.structureExportFailed': "Échec de l'export"
+  'preview.structureExportFailed': "Échec de l'export",
+  'preview.structureLoadRemote': 'Charger par identifiant PDB',
+  'preview.structureRemoteIdPlaceholder': 'Identifiant PDB (ex. 1CRN)',
+  'preview.structureRemoteLoaded': '{name} chargé ({bytes} octets)',
+  'preview.structureRemoteNoSession': "cet onglet n'a pas de session, rien ne peut y être chargé"
 }

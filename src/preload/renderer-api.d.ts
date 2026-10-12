@@ -168,6 +168,7 @@ import type {
   RuntimeSelection,
   RuntimeSurvey
 } from '../shared/notebook-runtime'
+import type { StructureRemoteLoadResult } from '../shared/structure-remote-source'
 import type {
   DeletePreviewStateRequest,
   LoadPreviewStateRequest,
@@ -1030,6 +1031,15 @@ export interface PureScienceAPI {
     ): Promise<import('../shared/references-screening').ClearScreeningOverrideResult>
   }
   preview: {
+    /**
+     * D6: loads a structure from the fixed public source by PDB id (the renderer never names a host).
+     * Local-only: the answer carries a refusal name when the destination is blocked, the user declines,
+     * or the source has nothing under that id.
+     */
+    loadRemoteStructure(request: {
+      sessionId: string
+      pdbId: string
+    }): Promise<StructureRemoteLoadResult>
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>
     save(request: SavePreviewStateRequest): Promise<void>
     delete(request: DeletePreviewStateRequest): Promise<void>

@@ -210,7 +210,7 @@ describe('renderer argument-shape characterization', () => {
     // 397 with the on-demand duplicate reclaim (storage.sweepDuplicateContent, P0-10): LOCAL-only and
     // refused at dispatch in the Web profile, but it still appears as a callable path on this surface —
     // the same profile as the runtime environment channels above.
-    expect(actualPaths).toHaveLength(397)
+    expect(actualPaths).toHaveLength(398)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

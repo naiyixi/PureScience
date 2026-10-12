@@ -17,6 +17,8 @@ import type {
 import { LIFECYCLE_CHANNELS } from '../../shared/lifecycle-events'
 import { broadcastLifecycleEvent } from '../lifecycle-broadcast'
 import type { ProjectDeletionCoordinator } from './deletion-coordinator'
+import type { StructureRemoteLoadResult } from '../../shared/structure-remote-source'
+import type { RemoteStructureRequest } from '../preview/remote-structure-loader'
 import { PreviewStateRepository } from './preview-repository'
 import { getProjectDbClient } from './prisma-client'
 import { ProjectRepository } from './repository'
@@ -92,7 +94,10 @@ const registerProjectIpcHandlers = (
   repository: ProjectRepository,
   previewRepository: PreviewStateRepository,
   deletionCoordinator: ProjectDeleteHandler,
-  handlers: ProjectHandlers = createProjectHandlers(repository, deletionCoordinator)
+  handlers: ProjectHandlers = createProjectHandlers(repository, deletionCoordinator),
+  // D6 第二半：远程结构加载（装配处提供 —— 它握有出网设置、保护级别、审批卡与会话工作区）。
+  // 缺省时**照样注册**：让渲染端拿到一个具名拒绝，而不是运行期的「没有 handler」。
+  loadRemoteStructure?: (request: RemoteStructureRequest) => Promise<StructureRemoteLoadResult>
 ): void => {
   ipcMainHandle('projects:list', () => handlers.list())
   ipcMainHandle('projects:get', (_event, id: string) => handlers.get(id))
@@ -127,6 +132,17 @@ const registerProjectIpcHandlers = (
   )
   ipcMainHandle('preview:delete', (_event, request: DeletePreviewStateRequest) =>
     previewRepository.delete(request.projectId)
+  )
+  ipcMainHandle(
+    'preview:load-remote-structure',
+    (_event, request: RemoteStructureRequest): Promise<StructureRemoteLoadResult> =>
+      loadRemoteStructure
+        ? loadRemoteStructure(request)
+        : Promise.resolve({
+            ok: false,
+            reason: 'not-configured',
+            detail: '这个实例里没有配置远程结构加载器。'
+          })
   )
 }
 

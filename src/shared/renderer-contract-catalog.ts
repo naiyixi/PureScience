@@ -264,7 +264,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['saveSessionArtifacts', 'file:save-session-artifacts', MAPPED_ELECTRON],
   ]),
   group('preview', 'preview', [
-    ['delete', 'preview:delete'], ['load', 'preview:load'], ['save', 'preview:save'],
+    ['delete', 'preview:delete'], ['load', 'preview:load'],
+    // D6 第二半：按 PDB id 从固定主机取一份结构文本。**local-only**：远端 Web 调用者绝不能让这台机器
+    // 代为出网（本族的其它成员是纯本地状态读写，没有出网面）。
+    ['loadRemoteStructure', 'preview:load-remote-structure', LOCAL], ['save', 'preview:save'],
   ]),
   group('preview-resources', 'previewResources', [
     ['acquire', 'preview-resources:acquire'], ['readRange', 'preview-resources:read-range'], ['release', 'preview-resources:release'],

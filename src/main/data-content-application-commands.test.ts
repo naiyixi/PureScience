@@ -104,7 +104,12 @@ const createDependencies = () => {
     register: vi.fn(),
     release: vi.fn()
   }
-  const preview = { load: vi.fn(), save: vi.fn(), delete: vi.fn() }
+  const preview = {
+    load: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
+    loadRemoteStructure: vi.fn()
+  }
   const search = {
     query: vi.fn(),
     evidence: vi.fn()
@@ -253,7 +258,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 54 current data and content invoke channels', () => {
+  it('owns exactly the 55 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -277,6 +282,7 @@ describe('Data and content application commands', () => {
         'lifecycle:client-id',
         'preview:delete',
         'preview:load',
+        'preview:load-remote-structure',
         'preview:save',
         'preview-resources:acquire',
         'preview-resources:read-range',
@@ -416,6 +422,11 @@ describe('Data and content application commands', () => {
       },
       { key: 'previewDelete', args: [request('preview-delete')], owner: deps.preview.delete },
       { key: 'previewLoad', args: [request('preview-load')], owner: deps.preview.load },
+      {
+        key: 'previewLoadRemoteStructure',
+        args: [request('preview-load-remote-structure')],
+        owner: deps.preview.loadRemoteStructure
+      },
       { key: 'previewSave', args: [request('preview-save')], owner: deps.preview.save },
       {
         key: 'previewResourceAcquire',

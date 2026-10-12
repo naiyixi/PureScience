@@ -251,6 +251,12 @@ const PdbPreviewViewer = ({
   const storedLabel = usePreviewWorkbenchStore(
     (state) => state.structureSelectionLabels[structureId]
   )
+  // D6 第二半：本页签归属的会话（`.find` 返回的是**既有对象引用**，选择器不会每次返回新对象），
+  // 以及开新页签要用的 store 动作。
+  const sessionId = usePreviewWorkbenchStore(
+    (state) => state.items.find((candidate) => candidate.id === structureId)?.sessionId
+  )
+  const upsertAndActivateItem = usePreviewWorkbenchStore((state) => state.upsertAndActivateItem)
   const setStructureMeasurement = usePreviewWorkbenchStore((state) => state.setStructureMeasurement)
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
@@ -382,6 +388,44 @@ const PdbPreviewViewer = ({
     },
     [setStructureSelectionLabel, structureId]
   )
+
+  // D6 第二半：按 PDB id 从**固定主机**加载一份结构。渲染层只送 id —— URL 由主进程的固定模板拼。
+  // 失败一律具名上屏（白名单拦住 / 用户拒绝 / 源上没有 / 太大 / 落盘失败各是一句话，不糊成「加载失败」）。
+  const [remotePdbId, setRemotePdbId] = useState('')
+  const [remoteNote, setRemoteNote] = useState<string | undefined>(undefined)
+  const loadRemoteStructure = useCallback(async (): Promise<void> => {
+    if (!sessionId) {
+      setRemoteNote(`未执行 · ${t('preview.structureRemoteNoSession')}`)
+      return
+    }
+    try {
+      const result = await window.api.preview.loadRemoteStructure({
+        sessionId,
+        pdbId: remotePdbId
+      })
+      if (!result.ok) {
+        setRemoteNote(`未执行 · ${result.detail}`)
+        return
+      }
+      setRemoteNote(
+        `已加载 · ${t('preview.structureRemoteLoaded')
+          .replace('{name}', result.fileName)
+          .replace('{bytes}', String(result.bytes))}`
+      )
+      // 落进会话工作区后按普通文件开页签：内容由主进程按路径读，不在渲染端搬字节。
+      upsertAndActivateItem({
+        id: `file:${sessionId}:${result.path}`,
+        sessionId,
+        type: 'file',
+        title: result.fileName,
+        path: result.path,
+        format: 'pdb',
+        name: result.fileName
+      })
+    } catch (error) {
+      setRemoteNote(`未执行 · ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }, [remotePdbId, sessionId, t, upsertAndActivateItem])
 
   // D6：把当前视图导出成 PNG —— **要过审批卡**（这是本条的验收判据：导出触发审批卡），
   // 拒绝时主进程不写任何文件，这里只如实上屏「没有写出任何文件」。
@@ -966,6 +1010,33 @@ const PdbPreviewViewer = ({
           >
             {t('preview.structureExportImage')}
           </button>
+          {/* D6 第二半：按 PDB id 加载（过三态判决 + 需要时过审批卡）。 */}
+          <input
+            data-slot="structure-remote-id"
+            aria-label={t('preview.structureLoadRemote')}
+            placeholder={t('preview.structureRemoteIdPlaceholder')}
+            value={remotePdbId}
+            onChange={(event) => setRemotePdbId(event.currentTarget.value)}
+            className="w-20 rounded-sm bg-bg-200 px-1 py-0.5 text-[11px]"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void loadRemoteStructure()
+            }}
+          />
+          <button
+            type="button"
+            data-slot="structure-load-remote"
+            className="rounded-sm px-1.5 py-0.5 transition-colors hover:bg-bg-300"
+            onClick={() => {
+              void loadRemoteStructure()
+            }}
+          >
+            {t('preview.structureLoadRemote')}
+          </button>
+          {remoteNote ? (
+            <span data-slot="structure-remote-result" className="text-text-300">
+              {remoteNote}
+            </span>
+          ) : null}
           {exportStatus ? (
             <span
               data-slot="structure-export-result"

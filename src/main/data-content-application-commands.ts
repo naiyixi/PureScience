@@ -63,12 +63,22 @@ const invocationCommandFor =
     >(name)
   }
 
+import type {
+  StructureRemoteLoadResult,
+  RemoteStructureRequest
+} from './preview/remote-structure-loader'
+
 type PreviewApplicationCommandOwner = Readonly<{
   load(
     request: PreviewState.LoadPreviewStateRequest
   ): Promise<PreviewState.PersistedPreviewState | null>
   save(request: PreviewState.SavePreviewStateRequest): Promise<void>
   delete(request: PreviewState.DeletePreviewStateRequest): Promise<void>
+  /**
+   * D6 第二半：按 PDB id 从**固定主机**取一份结构文本并落进会话工作区。
+   * 实现放在装配处（它需要出网设置、保护级别、审批卡与会话工作区），这里只是它的应用命令面。
+   */
+  loadRemoteStructure(request: RemoteStructureRequest): Promise<StructureRemoteLoadResult>
 }>
 
 type SessionApplicationCommandOwner = SessionPersistenceHandlers
@@ -199,6 +209,10 @@ const dataContentApplicationCommands = Object.freeze({
   ),
   previewDelete: previewCommand('preview:delete', 'delete'),
   previewLoad: previewCommand('preview:load', 'load'),
+  previewLoadRemoteStructure: previewCommand(
+    'preview:load-remote-structure',
+    'loadRemoteStructure'
+  ),
   previewSave: previewCommand('preview:save', 'save'),
   previewResourceAcquire: defineApplicationCommand<
     'preview-resources:acquire',
@@ -307,6 +321,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('preview', [
     dataContentApplicationCommands.previewDelete,
     dataContentApplicationCommands.previewLoad,
+    dataContentApplicationCommands.previewLoadRemoteStructure,
     dataContentApplicationCommands.previewSave
   ] as const),
   defineApplicationCommandGroup('preview-resources', [
@@ -455,6 +470,8 @@ const registerDataContentApplicationCommands = (
     scope.registerGroup(dataContentApplicationCommandGroups[2], {
       'preview:delete': ({ args }) => dependencies.preview.delete(args[0]),
       'preview:load': ({ args }) => dependencies.preview.load(args[0]),
+      'preview:load-remote-structure': ({ args }) =>
+        dependencies.preview.loadRemoteStructure(args[0]),
       'preview:save': ({ args }) => dependencies.preview.save(args[0])
     })
     scope.registerGroup(dataContentApplicationCommandGroups[3], {

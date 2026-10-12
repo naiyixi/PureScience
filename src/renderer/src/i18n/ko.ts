@@ -4426,5 +4426,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureExportImage': '보기를 PNG로 내보내기',
   'preview.structureExportDone': '{name} 내보냄',
   'preview.structureExportRefused': '내보내기가 거부되었습니다 — 아무것도 기록되지 않았습니다',
-  'preview.structureExportFailed': '내보내기 실패'
+  'preview.structureExportFailed': '내보내기 실패',
+  'preview.structureLoadRemote': 'PDB ID로 불러오기',
+  'preview.structureRemoteIdPlaceholder': 'PDB ID(예: 1CRN)',
+  'preview.structureRemoteLoaded': '{name} 불러옴({bytes} 바이트)',
+  'preview.structureRemoteNoSession': '이 탭에는 세션이 없어 불러올 수 없습니다'
 }
