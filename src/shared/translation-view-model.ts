@@ -48,7 +48,8 @@ export type TranslationViewModel = {
   contrast: ContrastDocument
   rows: ReadingRow[]
   pageStatuses: TranslationPageStatus[]
-  deviations: TerminologyDeviation[]
+  /** 只读：判据层回的就是只读数组，这里不复制一份可变的（复制一份等于允许两处各自改）。 */
+  deviations: readonly TerminologyDeviation[]
   summary: {
     pages: number
     pageCount: number
