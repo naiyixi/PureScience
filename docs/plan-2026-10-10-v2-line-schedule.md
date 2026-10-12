@@ -276,7 +276,15 @@ dev 实例的根是**配置根** `~/.purescience-project`，而工作区/noteboo
 ④ 面板新页签（`ProvenanceTab` 联合 + `tabs` 数组 + 一个渲染分支 + i18n 键）里列出指纹/人话/时间 + **回跳**
 （打开该版本的预览页签并把选择/测量放回去 —— 复用 `preview-workbench-store` 的 setter 与 `turn-structure-selection` 的读法）。
 
-**真机读数（2026-10-12，未取，原因已定到一处）**：运行实例已重启并确认加载本批代码
+**真机读数（2026-10-12，写半场已取 + 读半场已取，读数落 `docs/evidence/2026-10-12-d3-live-structure-observations.md`）**：
+探针先在日志里点出**真缺陷**（`structure observation: a selection arrived but no recorder is wired`）——
+装配处把录制器放进了模块依赖字面量，而 `createAcpRuntime` 是显式解构自己那份字段清单的 ⇒ 不认识的键在这一层被丢；
+修法是在 `runtime-composition.ts` 就地接线（那里就有同一个 `resolveDataRoot()`），并删掉装配处那个空转字段。
+修后同一探针：观察日志落盘（646 字节 / 1 条 / `dropped` 0）、**九项字段与发出去的那份逐字一致**、
+诊断行 `structure observation recorded` 出现；读半场用一条**真实成品版本**只读读取，
+返回键里确有 `structureObservations`（值 `not-recorded`，与同次读取的 `readings` 一致）。
+**仍未取**：同会话端到端的版本面板读数（需在沙盒会话里真正定版一个产物）与真机点击链路（需窗口 + CDP）。
+**以下是最初的归因记录（保留）**：运行实例已重启并确认加载本批代码
 （`out/main/ipc-qgozkx2v.js` 里 6 处 `onStructureObservation`，含装配处的
 `void recordStructureObservation(resolveDataRoot(), entry.sessionId, entry)` 与组合处两个 notice thunk）；
 但三次 `/rpc/acp:send-prompt` 带 `structureSelection` 的真回合之后，`<dataRoot>/.structure-observations/`

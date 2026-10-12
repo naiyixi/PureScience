@@ -13,6 +13,8 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { createLogger, errorLogFields } from '../logger'
+
 import type { StructureMeasurement } from '../../shared/structure-measurement'
 import type { StructureSelection } from '../../shared/structure-selection'
 
@@ -75,6 +77,8 @@ export const projectStructureObservationWindow = (
 export type StructureObservationJournal =
   | { state: 'available'; entries: StructureObservationEntry[]; dropped: number }
   | { state: 'unavailable'; reason: 'not-recorded' | 'unreadable' }
+
+const log = createLogger('structure-observations')
 
 const journalPath = (storageRoot: string, sessionId: string): string =>
   join(storageRoot, STRUCTURE_OBSERVATIONS_DIR, `${sessionId}.json`)
@@ -150,8 +154,20 @@ export const recordStructureObservation = async (
           'utf8'
         )
         await rename(temporary, path)
-      } catch {
-        // 录制是尽力而为：这里吞掉，绝不让一次成功的回合因为日志写失败而失败。
+        // 记一行「真的落盘了」：盘上有文件是给读侧看的，这行是给排查的人看的（两者要能对上）。
+        log.info('structure observation recorded', {
+          sessionId,
+          kind: recorded.kind,
+          entries: kept.length,
+          dropped: droppedBase + overflow
+        })
+      } catch (error) {
+        // 录制是尽力而为：这里吞掉，绝不让一次成功的回合因为日志写失败而失败 —— 但**不静默**，
+        // 否则「没录过」与「录了没成功」在日志里同形。
+        log.warn('structure observation recording failed; the turn is unaffected', {
+          sessionId,
+          ...errorLogFields(error)
+        })
       }
     })
   writeChains.set(path, next)

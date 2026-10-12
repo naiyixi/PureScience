@@ -39,6 +39,7 @@ import { createStateSnapshotEventsTrimmer } from './state-snapshot-events'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
 import { AcpRuntime, type AcpRuntimeCallbacks, type AcpRuntimeOptions } from './runtime'
+import { recordStructureObservation } from '../structure/structure-observation-journal'
 import { composeAcpRuntimeBaseOwners } from './runtime-base-composition'
 import { AcpRuntimeCoordinator } from './runtime-coordinator'
 import { composeAcpRuntimeSessionOwners } from './runtime-session-composition'
@@ -262,6 +263,12 @@ const createAcpRuntime = ({
         resolveBackend: async (context) =>
           settingsService.resolveAgentBackend(await selection, context),
         imageInputCompatibility: visionOwner,
+        // D3: what each turn carried in the way of structure context (a selected region / a measured
+        // distance) is journalled here. The root is resolved RIGHT HERE — the same `dataRoot` the
+        // provenance repository reads from — because handing a root down through option objects is
+        // exactly how a writer and a reader end up looking in two different places.
+        onStructureObservation: (entry) =>
+          void recordStructureObservation(dataRoot, entry.sessionId, entry),
         mcpHttpHost: new AgentMcpHttpHost(),
         skills: {
           needForceLoad: (ids) => settingsService.skillsNeedingForceLoad(ids),

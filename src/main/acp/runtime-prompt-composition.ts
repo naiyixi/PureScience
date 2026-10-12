@@ -232,6 +232,13 @@ const composeAcpRuntimePromptOwners = (
     // The recorder is injected by the assembly and is best-effort by construction (see the journal).
     selectionNotice: (request) => {
       if (request.structureSelection) {
+        // 这条路径是静默的（录制永不影响回合）：没有这一行，「录制没落盘」与「选择根本没到」在日志里
+        // 完全同形，而两者的修法相反。字段到达却没有录制器时**具名告警**，不静默。
+        if (!options.onStructureObservation) {
+          log.warn('structure observation: a selection arrived but no recorder is wired', {
+            sessionId: request.sessionId
+          })
+        }
         options.onStructureObservation?.({
           sessionId: request.sessionId,
           recordedAt: new Date().toISOString(),
@@ -244,6 +251,11 @@ const composeAcpRuntimePromptOwners = (
     // D3: the distance/angle the user measured, when the turn carries one.
     measurementNotice: (request) => {
       if (request.structureMeasurement) {
+        if (!options.onStructureObservation) {
+          log.warn('structure observation: a measurement arrived but no recorder is wired', {
+            sessionId: request.sessionId
+          })
+        }
         options.onStructureObservation?.({
           sessionId: request.sessionId,
           recordedAt: new Date().toISOString(),
