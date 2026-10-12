@@ -97,8 +97,12 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 
 **修法方向（不是放宽根）**：让闸门的根取自**与存储层同一处的解析**（单一来源），而不是把 `[dataRoot, storageRoot]`
 写宽。放宽属安全面 ⇒ 按仓规先写成可复查的提权论证（谁本来就有更强权力 / 可达面是否变化 / 每条 fail-closed 规则各配一个用例）。
-**定性前提**：打包版两者同根（`~/.purescience`），需在打包版上再核一次，才能判「产品缺陷」还是「dev 配置不一致」。
-读数与完整取证见 `docs/evidence/2026-10-12-d2-live-structure-selection.md` 第 4 节。
+**定性（2026-10-12 已核，不再挂在「待核」上）**：打包版 `~/.purescience/claude/hooks/path-guard-roots.json`
+的根 = `~/.purescience`，而它的工作区就在 `~/.purescience/workspaces/`（76 项）⇒ **打包版两者一致、闸门行为正确**；
+dev 实例的根是**配置根** `~/.purescience-project`，而工作区/notebook 在 `PureScience-DEV`（306 项）⇒ 不一致。
+⇒ 定性为**「同一个概念（数据根）在两条路径上被解析成两个值」**（agent 侧 `settings.dataRoot ?? storageRoot`
+落到配置根，存储层用另一个默认），影响面 = **数据根与配置根被分开的安装**；产品侧仍应立案（单一来源）。
+读数与完整取证见 `docs/evidence/2026-10-12-d2-live-structure-selection.md` 第 4 / 4b 节。
 
 ### 交付进度（按提交，勿重复做）
 

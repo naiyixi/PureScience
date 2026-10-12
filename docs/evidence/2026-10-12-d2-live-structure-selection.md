@@ -87,7 +87,21 @@ Project files are read from the project folder itself (/Users/totota/.purescienc
 `settings.json` 里并没有 `dataRoot` 键（实测），所以 agent 侧那条 `?? this.storageRoot` 回落到配置根，
 而存储层用的是另一套默认（`PureScience-DEV`）。
 
+### 4b. 定性读数（同日补）：打包版两者一致 ⇒ 影响面收窄到「两套解析不一致的安装」
+
+| 安装 | 闸门权威文件里的根 | 会话工作区实际所在 | 一致？ |
+|---|---|---|---|
+| **打包版**（`~/.purescience`） | `{"roots":["/Users/totota/.purescience"]}` | `~/.purescience/workspaces/`（**76** 项） | ✅ **同根** ⇒ 闸门行为正确 |
+| **dev 常驻实例**（配置根 `~/.purescience-project`） | `{"roots":["/Users/totota/.purescience-project"]}` | `<dataRoot=/Users/totota/PureScience-DEV>/workspaces/`（**306** 项） | ❌ 不同根 ⇒ 用户真实会话被拒 |
+
+⇒ **定性**：这不是「闸门策略本身错」，而是**同一个概念（数据根）在两条路径上被解析成了两个值**：
+agent 侧走 `settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot`（本机落到**配置根**），
+而存储层（工作区、notebook、`storage:get-info` 自报）用的是**另一个默认**（`PureScience-DEV`）。
+打包版上两条路径恰好同根，所以症状不现形；**影响面 = 数据根与配置根被分开的安装**（本机 dev 实例即一例，
+用户真实会话已实际受损）。
+产品侧仍应立案：**「数据根」只能有一处解析**（单一来源），否则任何一处改了根、另一处都会静默地
+把 agent 关在自己的工作区外面。
+
 **未做（具名）**：修法与判据都还没落。方向是让闸门的根来自**与存储层同一处**的解析（单一来源），
 而不是把根放宽（放宽属于安全面，按仓规要先写成可复查的提权论证：谁本来就有更强权力、可达面是否变化、
-以及每条 fail-closed 规则各配一个用例）。打包版两者同根（`~/.purescience`），所以此缺陷更可能只在
-数据根被改过的 dev 配置上现形 —— 这一点**要在打包版上再核一次**才能定性。
+以及每条 fail-closed 规则各配一个用例）。
