@@ -4501,5 +4501,17 @@ export const en: Record<ZhKey, string> = {
   'preview.structureClearMeasurement': 'Clear measurement',
   'preview.structureInstructionLabel': 'Describe a selection in Chinese',
   'preview.structureInstructionPlaceholder': 'For example: the residues within 5 Å of residue 145',
-  'preview.structureInstructionApply': 'Apply description'
+  'preview.structureInstructionApply': 'Apply description',
+  'ws.structureObservations': 'Structure context',
+  'ws.structureObservationsIntro':
+    'The structure regions and measurements this session carried when the Version was written.',
+  'ws.structureObservationsSessionOnly':
+    'This Version has no timestamp, so the window could not be enforced. Everything this session recorded is listed.',
+  'ws.structureObservationsEmpty': 'No structure region or measurement was carried in this window.',
+  'ws.structureObservationsJump': 'Show it in the viewer',
+  'ws.structureObservationsNotRecorded':
+    'This session recorded no structure region or measurement.',
+  'ws.structureObservationsUnreadable': 'The observation journal is present but could not be read.',
+  'ws.structureObservationsAfterWindow': '{count} recorded after this Version was written',
+  'ws.structureObservationsDropped': '{count} older entries were dropped at the cap'
 }

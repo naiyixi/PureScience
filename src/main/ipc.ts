@@ -57,6 +57,7 @@ import {
 } from './artifacts/reproduction-runtime-scope'
 import { ProvenanceMessageSnapshotRepository } from './artifacts/provenance-message-snapshot'
 import { ArtifactRunRegistry } from './artifacts/run-registry'
+import { recordStructureObservation } from './structure/structure-observation-journal'
 import { createComputeIpcModule } from './compute/ipc'
 import {
   createReferencesIpcModule,
@@ -2173,7 +2174,13 @@ const createApplicationModules = async (
       initializationBarrier: initialConnectorSkillsReady,
       profileService,
       sessionPersistenceCoordinator,
-      contextSummaryCapture
+      contextSummaryCapture,
+      // D3: structure observations are journalled under the SAME root the provenance repository reads
+      // from (`resolveDataRoot()`, see artifactProvenanceRepository above) so writer and reader can never
+      // disagree about where the file is.
+      onStructureObservation: (entry) => {
+        void recordStructureObservation(resolveDataRoot(), entry.sessionId, entry)
+      }
     },
     (options) => {
       const runtime = createAcpRuntime(options)

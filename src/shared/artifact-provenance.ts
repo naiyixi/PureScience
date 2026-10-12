@@ -8,6 +8,8 @@ import type {
   NotebookRunStatus
 } from './notebook'
 import type { AgentFrameworkId } from './settings'
+import type { StructureMeasurement } from './structure-measurement'
+import type { StructureSelection } from './structure-selection'
 import type {
   PersistedActivityGroup,
   PersistedMessageRole,
@@ -411,6 +413,15 @@ export type ArtifactExecutionSnapshot = Omit<PersistedArtifactExecutionSnapshot,
   inputFiles: ProvenanceExecutionInputFile[]
 }
 
+/** One structure observation as it was recorded at turn time (see the journal in src/main/structure). */
+export type RecordedStructureObservation = {
+  /** ISO 8601, the moment the turn carrying it was prepared. */
+  recordedAt: string
+  kind: 'selection' | 'measurement'
+  selection?: StructureSelection
+  measurement?: StructureMeasurement
+}
+
 export type ArtifactVersionProvenance = {
   descriptor: ArtifactVersionDescriptor
   contentStatus:
@@ -436,6 +447,27 @@ export type ArtifactVersionProvenance = {
     | {
         state: 'unavailable'
         reason: 'not-loaded' | 'not-triggered' | 'source-session-unavailable'
+      }
+  /**
+   * The structure observations (a selected region, a measured distance/angle) recorded in this Version's
+   * session. Same shape and the same honest limits as `readings` below: attribution is SESSION + TIME
+   * WINDOW and the window is ENFORCED, not implied.
+   *
+   * The payload travels with the record (not just a fingerprint) because the point of this section is to
+   * be able to jump back to the observation: the renderer recomputes the fingerprint from the payload with
+   * the shared functions, so the two can never drift apart.
+   */
+  structureObservations:
+    | {
+        state: 'available'
+        attribution: 'session-window' | 'session'
+        items: RecordedStructureObservation[]
+        dropped: number
+        afterWindow: number
+      }
+    | {
+        state: 'unavailable'
+        reason: 'not-loaded' | 'not-recorded' | 'unreadable'
       }
   /**
    * The connector readings recorded in this Version's session, so a number in a report can be walked

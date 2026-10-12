@@ -37,7 +37,13 @@ export type ArtifactReproducibilityServiceOptions = {
     // The service asks for the descriptor/evidence/execution sections only, so the caller's read skips
     // the messages, review and readings sections it never grades. Optional so a caller that has no
     // section control still satisfies the port.
-    sections?: { execution: boolean; messages: boolean; review: boolean; readings?: boolean }
+    sections?: {
+      execution: boolean
+      messages: boolean
+      review: boolean
+      readings?: boolean
+      structureObservations?: boolean
+    }
   ) => Promise<ArtifactVersionProvenance | undefined>
   // Resolves the path (allow-root checked) and returns its size + SHA-256. Never throws for a
   // rejected path: an unreadable file must become a `not-compared` outcome, not a failed check.
@@ -109,7 +115,13 @@ export const createArtifactReproducibilityService = (
         // The check reads the descriptor, evidence and execution sections only (see
         // buildSealedReproducibilityRecipe); messages, review and the readings journal are not part of
         // a reproducibility verdict, so this read does not pay for them.
-        { execution: true, messages: false, review: false, readings: false }
+        {
+          execution: true,
+          messages: false,
+          review: false,
+          readings: false,
+          structureObservations: false
+        }
       )
       if (!provenance) {
         throw new Error('Artifact Version not found in this Project and Session.')

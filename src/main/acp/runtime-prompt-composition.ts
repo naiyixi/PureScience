@@ -228,9 +228,31 @@ const composeAcpRuntimePromptOwners = (
     inputNotice: (request) =>
       inputNoticeResolver.forTurn(request.text ?? '', sessionCwd(request.sessionId)),
     // D2: the region the user has selected in the structure viewer, when the turn carries one.
-    selectionNotice: (request) => structureSelectionNotice(request),
+    // These two callbacks run exactly once per prepared prompt, so the evidence recording rides here.
+    // The recorder is injected by the assembly and is best-effort by construction (see the journal).
+    selectionNotice: (request) => {
+      if (request.structureSelection) {
+        options.onStructureObservation?.({
+          sessionId: request.sessionId,
+          recordedAt: new Date().toISOString(),
+          kind: 'selection',
+          selection: request.structureSelection
+        })
+      }
+      return structureSelectionNotice(request)
+    },
     // D3: the distance/angle the user measured, when the turn carries one.
-    measurementNotice: (request) => structureMeasurementNotice(request),
+    measurementNotice: (request) => {
+      if (request.structureMeasurement) {
+        options.onStructureObservation?.({
+          sessionId: request.sessionId,
+          recordedAt: new Date().toISOString(),
+          kind: 'measurement',
+          measurement: request.structureMeasurement
+        })
+      }
+      return structureMeasurementNotice(request)
+    },
     ...(options.notebook
       ? {
           notebook: {

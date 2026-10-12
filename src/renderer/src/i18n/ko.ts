@@ -4399,5 +4399,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureClearMeasurement': '측정 지우기',
   'preview.structureInstructionLabel': '중국어로 선택 영역 지정',
   'preview.structureInstructionPlaceholder': '예: 145번 잔기에서 5 Å 이내의 잔기',
-  'preview.structureInstructionApply': '설명 실행'
+  'preview.structureInstructionApply': '설명 실행',
+  'ws.structureObservations': '구조 컨텍스트',
+  'ws.structureObservationsIntro':
+    '이 버전이 작성될 당시 이 세션이 가지고 있던 구조 선택 영역과 측정값.',
+  'ws.structureObservationsSessionOnly':
+    '이 버전에는 타임스탬프가 없어 시간 범위를 강제할 수 없습니다. 이 세션이 기록한 모든 항목을 표시합니다.',
+  'ws.structureObservationsEmpty': '이 시간 범위에는 구조 선택 영역이나 측정값이 없습니다.',
+  'ws.structureObservationsJump': '뷰어에서 보기',
+  'ws.structureObservationsNotRecorded':
+    '이 세션은 구조 선택 영역이나 측정값을 기록하지 않았습니다.',
+  'ws.structureObservationsUnreadable': '관찰 저널이 있지만 읽을 수 없습니다.',
+  'ws.structureObservationsAfterWindow': '{count}건은 이 버전 작성 이후에 기록됨',
+  'ws.structureObservationsDropped': '{count}건의 오래된 기록은 상한을 넘어 버려졌습니다'
 }

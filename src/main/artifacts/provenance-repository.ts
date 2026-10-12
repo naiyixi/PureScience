@@ -55,6 +55,8 @@ import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/even
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
 import { readSessionReadings } from '../connectors/reading-journal'
+import { readSessionStructureObservations } from '../structure/structure-observation-journal'
+import type { RecordedStructureObservation } from '../../shared/artifact-provenance'
 import { dirSize } from '../storage/usage'
 import type { RecordedConnectorReading } from '../../shared/reading-fingerprint'
 import type {
@@ -3705,14 +3707,23 @@ class ArtifactProvenanceRepository {
 
   async getVersionProvenance(
     request: GetArtifactVersionProvenanceRequest,
-    sections: { execution: boolean; messages: boolean; review: boolean; readings?: boolean } = {
+    sections: {
+      execution: boolean
+      messages: boolean
+      review: boolean
+      readings?: boolean
+      structureObservations?: boolean
+    } = {
       execution: true,
       messages: true,
       review: true,
       // The full projection is what the panel and the web read want, and the journal is one small file
       // read per session, so it defaults on. `readings: false` is opt-out: every read that returns a
       // single section (or none) passes it, so only the reads that can carry readings pay for the file.
-      readings: true
+      readings: true,
+      // D3: the structure-observation journal is the same shape of file read ⇒ same default and same
+      // opt-out, so a single-section read does not pay for it either.
+      structureObservations: true
     }
   ): Promise<ArtifactVersionProvenance> {
     const projectId = assertSafeSegment(request.projectId, 'project id')
@@ -4000,6 +4011,43 @@ class ArtifactProvenanceRepository {
       }
     }
 
+    // D3: the structure observations (a selected region / a measured distance) recorded in this session,
+    // walked the same way as the readings below — same enforced window, same honest attribution.
+    let structureObservations: ArtifactVersionProvenance['structureObservations'] = {
+      state: 'unavailable',
+      reason: 'not-loaded'
+    }
+    if (sections.structureObservations !== false) {
+      const journal = await readSessionStructureObservations(this.options.storageRoot, appSessionId)
+      if (journal.state === 'available') {
+        const writtenAt = Date.parse(evidence.created_at)
+        const windowKnown = Number.isFinite(writtenAt)
+        const items: RecordedStructureObservation[] = []
+        let afterWindow = 0
+        for (const entry of journal.entries) {
+          const recordedAt = Date.parse(entry.recordedAt)
+          if (!Number.isFinite(recordedAt)) {
+            afterWindow += 1
+            continue
+          }
+          if (windowKnown && recordedAt > writtenAt) {
+            afterWindow += 1
+            continue
+          }
+          items.push(entry)
+        }
+        structureObservations = {
+          state: 'available',
+          attribution: windowKnown ? 'session-window' : 'session',
+          items,
+          dropped: journal.dropped,
+          afterWindow
+        }
+      } else {
+        structureObservations = { state: 'unavailable', reason: journal.reason }
+      }
+    }
+
     // Walked from the Version back to the bytes: the readings recorded in this session. The
     // attribution is stated on the value because that is the honest limit of what the connector layer
     // can know — session and time, not which run was derived from which reading.
@@ -4056,7 +4104,8 @@ class ArtifactProvenanceRepository {
       execution,
       messages,
       review,
-      readings
+      readings,
+      structureObservations
     }
   }
 
@@ -4119,7 +4168,8 @@ class ArtifactProvenanceRepository {
       review: false,
       // Core projections are read in bulk (one per card); the journal is a file read per session, so
       // the listing path says so explicitly rather than paying it.
-      readings: false
+      readings: false,
+      structureObservations: false
     })
   }
 
@@ -4170,7 +4220,8 @@ class ArtifactProvenanceRepository {
       execution: true,
       messages: false,
       review: false,
-      readings: false
+      readings: false,
+      structureObservations: false
     })
     return { execution: value.execution }
   }
@@ -4182,7 +4233,8 @@ class ArtifactProvenanceRepository {
       execution: false,
       messages: true,
       review: false,
-      readings: false
+      readings: false,
+      structureObservations: false
     })
     return { messages: value.messages }
   }
@@ -4194,7 +4246,8 @@ class ArtifactProvenanceRepository {
       execution: false,
       messages: false,
       review: true,
-      readings: false
+      readings: false,
+      structureObservations: false
     })
     return { review: value.review }
   }

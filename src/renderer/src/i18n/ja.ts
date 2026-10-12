@@ -4469,5 +4469,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureClearMeasurement': '測定を解除',
   'preview.structureInstructionLabel': '中国語で選択範囲を指定',
   'preview.structureInstructionPlaceholder': '例：145 番の残基から 5 オングストローム以内の残基',
-  'preview.structureInstructionApply': '記述を実行'
+  'preview.structureInstructionApply': '記述を実行',
+  'ws.structureObservations': '構造コンテキスト',
+  'ws.structureObservationsIntro':
+    'このバージョンが書き出された時点で、このセッションが保持していた構造の選択範囲と測定。',
+  'ws.structureObservationsSessionOnly':
+    'このバージョンにはタイムスタンプがないため、時間枠を適用できません。このセッションが記録したすべてを表示します。',
+  'ws.structureObservationsEmpty': 'この時間枠では構造の選択範囲も測定も保持されていません。',
+  'ws.structureObservationsJump': 'ビューアで表示',
+  'ws.structureObservationsNotRecorded': 'このセッションは構造の選択範囲も測定も記録していません。',
+  'ws.structureObservationsUnreadable': '観察ジャーナルは存在しますが読み取れません。',
+  'ws.structureObservationsAfterWindow': '{count} 件はこのバージョンの書き出し後に記録',
+  'ws.structureObservationsDropped': '{count} 件の古い記録は上限を超えて破棄されました'
 }

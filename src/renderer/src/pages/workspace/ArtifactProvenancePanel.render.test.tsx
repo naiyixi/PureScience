@@ -9,6 +9,10 @@ import {
   usePreviewWorkbenchStore
 } from '@/stores/preview-workbench-store'
 import type { ArtifactVersionProvenance } from '../../../../shared/artifact-provenance'
+import {
+  structureSelectionFingerprint,
+  type StructureSelection
+} from '../../../../shared/structure-selection'
 
 const reviewerCardSpy = vi.hoisted(() => vi.fn())
 const workspaceMessageItemSpy = vi.hoisted(() => vi.fn())
@@ -139,6 +143,7 @@ const provenance = (): ArtifactVersionProvenance => ({
   // This fixture carries no connector reading journal; the projection says so by name rather than
   // omitting the section, so a reader cannot mistake an absent field for an unread one.
   readings: { state: 'unavailable', reason: 'not-recorded' },
+  structureObservations: { state: 'unavailable', reason: 'not-recorded' },
   descriptor,
   contentStatus: { state: 'available' },
   evidence: {
@@ -543,6 +548,63 @@ describe('ArtifactProvenancePanel', () => {
     )
     expect(container.textContent).toContain('v3')
     expect(container.textContent).not.toContain('The selected Artifact version is unavailable.')
+  })
+
+  it('lists the structure observations the Version carries and jumps back to that exact state', async () => {
+    // The tab is the read side of the turn-time journal: a region a claim was made about has to be
+    // readable next to the Version, and the fingerprint on screen must be the recomputed one.
+    const selection: StructureSelection = {
+      schemaVersion: 2,
+      structureId: 'artifact:artifact-1',
+      name: 'crambin.pdb',
+      format: 'pdb',
+      contentDigest: `sha256:${'a'.repeat(64)}`,
+      chain: 'A',
+      residueStart: 22,
+      residueEnd: 26,
+      kind: 'range',
+      view: { style: 'cartoon', colorScheme: 'spectrum' }
+    }
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    vi.mocked(window.api.artifacts.getVersionProvenance).mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      structureObservations: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [{ recordedAt: '2026-07-27T20:04:00.000Z', kind: 'selection', selection }],
+        dropped: 2,
+        afterWindow: 3
+      }
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+
+    await clickTab('Structure context')
+    await flush()
+
+    const list = container.querySelector('[data-testid="artifact-structure-observations-list"]')
+    expect(list?.textContent).toContain('chain A residues 22-26')
+    expect(list?.textContent).toContain(structureSelectionFingerprint(selection))
+    // The window and the cap are stated on screen, never silently applied.
+    expect(
+      container.querySelector('[data-testid="artifact-structure-observations-after-window"]')?.textContent
+    ).toContain('3')
+    expect(
+      container.querySelector('[data-testid="artifact-structure-observations-dropped"]')?.textContent
+    ).toContain('2')
+
+    const jump = container.querySelector(
+      '[data-testid="artifact-structure-observations-jump"]'
+    ) as HTMLButtonElement
+    await act(async () => jump.click())
+    expect(usePreviewWorkbenchStore.getState().structureSelections[item.id]).toEqual(selection)
   })
 
   it('loads tab-specific evidence only when that tab is opened', async () => {

@@ -19,6 +19,7 @@ const provenance = (): ArtifactVersionProvenance => ({
   // This fixture carries no connector reading journal; the projection says so by name rather than
   // omitting the section, so a reader cannot mistake an absent field for an unread one.
   readings: { state: 'unavailable', reason: 'not-recorded' },
+  structureObservations: { state: 'unavailable', reason: 'not-recorded' },
   descriptor: {
     id: 'version-1',
     artifactId: 'artifact-1',
@@ -473,7 +474,10 @@ describe('createArtifactReproducibilityService', () => {
       execution: true,
       messages: false,
       review: false,
-      readings: false
+      readings: false,
+      // D3: the structure-observation journal is a per-session file read like the readings, so the
+      // verdict's read says so explicitly as well instead of paying for it implicitly.
+      structureObservations: false
     })
   })
 })

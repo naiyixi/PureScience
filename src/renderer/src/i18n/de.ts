@@ -4609,5 +4609,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureInstructionLabel': 'Auswahl auf Chinesisch beschreiben',
   'preview.structureInstructionPlaceholder':
     'Zum Beispiel: die Reste innerhalb von 5 Å um Rest 145',
-  'preview.structureInstructionApply': 'Beschreibung anwenden'
+  'preview.structureInstructionApply': 'Beschreibung anwenden',
+  'ws.structureObservations': 'Strukturkontext',
+  'ws.structureObservationsIntro':
+    'Die Strukturbereiche und Messungen, die diese Sitzung beim Schreiben der Version mitführte.',
+  'ws.structureObservationsSessionOnly':
+    'Diese Version hat keinen Zeitstempel, das Fenster konnte daher nicht erzwungen werden. Alles, was die Sitzung aufgezeichnet hat, wird aufgeführt.',
+  'ws.structureObservationsEmpty':
+    'In diesem Fenster wurde kein Strukturbereich und keine Messung mitgeführt.',
+  'ws.structureObservationsJump': 'Im Betrachter anzeigen',
+  'ws.structureObservationsNotRecorded':
+    'Diese Sitzung hat weder einen Strukturbereich noch eine Messung aufgezeichnet.',
+  'ws.structureObservationsUnreadable': 'Das Beobachtungsjournal ist vorhanden, aber nicht lesbar.',
+  'ws.structureObservationsAfterWindow': '{count} nach dem Schreiben dieser Version aufgezeichnet',
+  'ws.structureObservationsDropped': '{count} ältere Einträge wurden an der Obergrenze verworfen'
 }

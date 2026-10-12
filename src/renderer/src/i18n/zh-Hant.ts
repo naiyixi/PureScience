@@ -4146,5 +4146,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureClearMeasurement': '清除測量',
   'preview.structureInstructionLabel': '用中文描述選取',
   'preview.structureInstructionPlaceholder': '例如：145 號半胱氨酸 5 埃以內的殘基',
-  'preview.structureInstructionApply': '執行描述'
+  'preview.structureInstructionApply': '執行描述',
+  'ws.structureObservations': '結構上下文',
+  'ws.structureObservationsIntro': '這個版本寫出時，本次工作階段帶著的結構選區與量測。',
+  'ws.structureObservationsSessionOnly':
+    '這個版本沒有時間戳，時間窗無法強制。這裡列出本次工作階段記錄的全部內容。',
+  'ws.structureObservationsEmpty': '這個時間窗內沒有攜帶任何結構選區或量測。',
+  'ws.structureObservationsJump': '在工作台中開啟',
+  'ws.structureObservationsNotRecorded': '本次工作階段沒有記錄任何結構選區或量測。',
+  'ws.structureObservationsUnreadable': '觀察日誌存在但讀不出來。',
+  'ws.structureObservationsAfterWindow': '{count} 筆記錄於這個版本寫出之後',
+  'ws.structureObservationsDropped': '{count} 筆更早的記錄因超出上限被丟棄'
 }

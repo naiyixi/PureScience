@@ -35,6 +35,14 @@ import type {
 import type { PersistedToolActivity } from '../../../../shared/session-persistence'
 import type { GoToTranscriptIntent, ReviewUpdateEvent } from '../../../../shared/reviewer'
 import type { ReadingVerification } from '../../../../shared/reading-fingerprint'
+import {
+  structureSelectionFingerprint,
+  structureSelectionRangeLabel
+} from '../../../../shared/structure-selection'
+import {
+  structureMeasurementFingerprint,
+  structureMeasurementLabel
+} from '../../../../shared/structure-measurement'
 import { READING_FINGERPRINT_HASH_RECIPE } from '../../../../shared/reading-fingerprint'
 import { formatBytes } from '../../../../shared/update'
 import {
@@ -52,7 +60,7 @@ import { groupConversationItems } from './workspace-tool-activity-groups'
 import { ArtifactReplaySection } from './ArtifactReplaySection'
 
 type ProvenanceTab =
-  'code' | 'execution' | 'messages' | 'environment' | 'review' | 'readings' | 'replay'
+  'code' | 'execution' | 'messages' | 'environment' | 'review' | 'readings' | 'structure' | 'replay'
 type DeferredProvenanceTab = Extract<ProvenanceTab, 'execution' | 'messages' | 'review'>
 type DeferredSection =
   | Pick<ArtifactVersionProvenance, 'execution'>
@@ -87,6 +95,11 @@ const tabs: Array<{ id: ProvenanceTab; label: TranslationKey }> = [
   // The readings travel with the Version's own projection (no separate fetch): a reading that a report
   // number came from has to be readable in the window, and the journal is one small file read.
   { id: 'readings', label: 'ws.readings' },
+  // D3: what this Version's session was looking at in the viewer — the regions it selected and the
+  // distances/angles it measured — each with the fingerprint that makes it recomputable, and a way back
+  // into the viewer at that very state. Travels with the Version projection, like the readings above,
+  // for the same reason: a structure a claim was made about has to be readable in the same window.
+  { id: 'structure', label: 'ws.structureObservations' },
   // Runs on demand: a replay executes the recorded version, so it never fires on tab selection.
   { id: 'replay', label: 'ws.replay' }
 ]
@@ -1578,6 +1591,108 @@ const ArtifactProvenancePanel = ({
               </div>
             </section>
           )
+        ) : null}
+        {provenance && activeTab === 'structure' ? (
+          <section className="space-y-3 p-5 text-sm" data-testid="artifact-structure-observations">
+            {provenance.structureObservations.state === 'available' ? (
+              <>
+                <p className="text-xs text-text-300">
+                  {/* Same rule as the readings tab: the window is only promised when it was enforced.
+                      With no parseable timestamp on the evidence the panel says so instead of claiming a
+                      window it never applied. */}
+                  {provenance.structureObservations.attribution === 'session-window'
+                    ? t('ws.structureObservationsIntro')
+                    : t('ws.structureObservationsSessionOnly')}
+                </p>
+                {provenance.structureObservations.items.length === 0 ? (
+                  <p className="text-text-300" data-testid="artifact-structure-observations-empty">
+                    {t('ws.structureObservationsEmpty')}
+                  </p>
+                ) : (
+                  <ul className="space-y-2" data-testid="artifact-structure-observations-list">
+                    {provenance.structureObservations.items.map((entry, index) => {
+                      const selection = entry.selection
+                      const measurement = entry.measurement
+                      // Recomputed here with the same shared functions the viewer sends with, so the value
+                      // on screen cannot drift from the one that travelled with the turn.
+                      const fingerprint = selection
+                        ? structureSelectionFingerprint(selection)
+                        : measurement
+                          ? structureMeasurementFingerprint(measurement)
+                          : ''
+                      const label = selection
+                        ? structureSelectionRangeLabel(selection)
+                        : measurement
+                          ? structureMeasurementLabel(measurement)
+                          : ''
+                      return (
+                        <li
+                          key={`${entry.recordedAt}:${fingerprint}:${index}`}
+                          className="space-y-1 rounded-sm border border-border-300/50 p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{label}</span>
+                            <span className="text-xs text-text-300">{entry.recordedAt}</span>
+                            <button
+                              type="button"
+                              className="ml-auto shrink-0 text-xs underline"
+                              data-testid="artifact-structure-observations-jump"
+                              onClick={() => {
+                                // Jump back INTO the viewer at that exact state: the selection (or the
+                                // measurement) goes back into the workbench store under this very preview
+                                // item, then the item is activated so the tab is on screen to see it.
+                                const workbench = usePreviewWorkbenchStore.getState()
+                                if (selection) workbench.setStructureSelection(item.id, selection)
+                                if (measurement)
+                                  workbench.setStructureMeasurement(item.id, measurement)
+                                workbench.activateItem(item.id)
+                              }}
+                            >
+                              {t('ws.structureObservationsJump')}
+                            </button>
+                          </div>
+                          <code className="block break-all text-xs text-text-300">
+                            {fingerprint}
+                          </code>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {provenance.structureObservations.afterWindow > 0 ? (
+                  <p
+                    className="text-xs text-text-300"
+                    data-testid="artifact-structure-observations-after-window"
+                  >
+                    {t('ws.structureObservationsAfterWindow').replace(
+                      '{count}',
+                      String(provenance.structureObservations.afterWindow)
+                    )}
+                  </p>
+                ) : null}
+                {provenance.structureObservations.dropped > 0 ? (
+                  <p
+                    className="text-xs text-text-300"
+                    data-testid="artifact-structure-observations-dropped"
+                  >
+                    {t('ws.structureObservationsDropped').replace(
+                      '{count}',
+                      String(provenance.structureObservations.dropped)
+                    )}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p
+                className="text-text-300"
+                data-testid="artifact-structure-observations-unavailable"
+              >
+                {provenance.structureObservations.reason === 'unreadable'
+                  ? t('ws.structureObservationsUnreadable')
+                  : t('ws.structureObservationsNotRecorded')}
+              </p>
+            )}
+          </section>
         ) : null}
         {provenance && activeTab === 'readings' ? (
           <section className="space-y-3 p-5 text-sm" data-testid="artifact-readings">

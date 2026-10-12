@@ -4596,5 +4596,18 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureInstructionLabel': 'Décrire une sélection en chinois',
   'preview.structureInstructionPlaceholder':
     'Par exemple : les résidus à moins de 5 Å du résidu 145',
-  'preview.structureInstructionApply': 'Appliquer la description'
+  'preview.structureInstructionApply': 'Appliquer la description',
+  'ws.structureObservations': 'Contexte de structure',
+  'ws.structureObservationsIntro':
+    "Les régions et mesures de structure que cette session portait lors de l'écriture de la version.",
+  'ws.structureObservationsSessionOnly':
+    "Cette version n'a pas d'horodatage, la fenêtre n'a donc pas pu être appliquée. Tout ce que la session a enregistré est affiché.",
+  'ws.structureObservationsEmpty':
+    "Aucune région ni mesure de structure n'a été portée dans cette fenêtre.",
+  'ws.structureObservationsJump': 'Afficher dans la visionneuse',
+  'ws.structureObservationsNotRecorded':
+    "Cette session n'a enregistré ni région ni mesure de structure.",
+  'ws.structureObservationsUnreadable': "Le journal d'observations est présent mais illisible.",
+  'ws.structureObservationsAfterWindow': "{count} enregistrés après l'écriture de cette version",
+  'ws.structureObservationsDropped': '{count} entrées plus anciennes ont été écartées à la limite'
 }

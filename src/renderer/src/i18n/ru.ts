@@ -4481,5 +4481,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureClearMeasurement': 'Снять измерение',
   'preview.structureInstructionLabel': 'Описать выделение по-китайски',
   'preview.structureInstructionPlaceholder': 'Например: остатки в пределах 5 Å от остатка 145',
-  'preview.structureInstructionApply': 'Применить описание'
+  'preview.structureInstructionApply': 'Применить описание',
+  'ws.structureObservations': 'Контекст структуры',
+  'ws.structureObservationsIntro':
+    'Области структуры и измерения, которые несла эта сессия к моменту записи версии.',
+  'ws.structureObservationsSessionOnly':
+    'У этой версии нет отметки времени, поэтому окно не удалось применить. Показано всё, что записала сессия.',
+  'ws.structureObservationsEmpty': 'В этом окне не было ни области структуры, ни измерения.',
+  'ws.structureObservationsJump': 'Показать в просмотрщике',
+  'ws.structureObservationsNotRecorded':
+    'Эта сессия не записала ни области структуры, ни измерения.',
+  'ws.structureObservationsUnreadable': 'Журнал наблюдений есть, но прочитать его не удалось.',
+  'ws.structureObservationsAfterWindow': '{count} записано после записи этой версии',
+  'ws.structureObservationsDropped': '{count} более старых записей отброшено при достижении предела'
 }

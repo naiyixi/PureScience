@@ -139,6 +139,9 @@ export type AcpRuntimeCallbacks = {
   onRetired?: () => void
 }
 
+import type { StructureMeasurement } from '../../shared/structure-measurement'
+import type { StructureSelection } from '../../shared/structure-selection'
+
 type AcpRuntimeOptions = {
   appVersion: string
   // Function-level model slots: what a narrow call will use, and where its outcome is recorded. Optional so
@@ -176,6 +179,17 @@ type AcpRuntimeOptions = {
   // Optional hook called after a context compaction completes, so the app can persist the
   // folded-away window as an immutable summary chunk. Injected by the app runtime assembly.
   contextSummaryCapture?: (input: { sessionId: string; reason: string }) => Promise<void> | void
+  // D3: the app records what each turn carried in the way of structure context (a selected region or a
+  // measured distance/angle) so a Version can later be walked back to the observation that produced it.
+  // The ROOT is deliberately not passed here: the assembly owns the single data-root resolution, and the
+  // writer and the provenance reader must agree on it (two resolutions is how a journal becomes unreadable).
+  onStructureObservation?: (entry: {
+    sessionId: string
+    recordedAt: string
+    kind: 'selection' | 'measurement'
+    selection?: StructureSelection
+    measurement?: StructureMeasurement
+  }) => void
   // App-owned structured clarification (ACP elicitation): when present, agent
   // `elicitation/create` requests are projected to the renderer and block until the user
   // answers. Absent ⇒ requests fail closed with `cancel` so the agent never hangs.

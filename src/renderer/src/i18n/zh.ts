@@ -4204,7 +4204,17 @@ export const zh = {
   'preview.structureClearMeasurement': '清除测量',
   'preview.structureInstructionLabel': '用中文描述选区',
   'preview.structureInstructionPlaceholder': '例如：145 号半胱氨酸 5 埃以内的残基',
-  'preview.structureInstructionApply': '执行描述'
+  'preview.structureInstructionApply': '执行描述',
+  'ws.structureObservations': '结构上下文',
+  'ws.structureObservationsIntro': '这个版本写出时，本次会话带着的结构选区和测量。',
+  'ws.structureObservationsSessionOnly':
+    '这个版本没有时间戳，时间窗无法强制。这里列出本次会话记录的全部内容。',
+  'ws.structureObservationsEmpty': '这个时间窗内没有携带任何结构选区或测量。',
+  'ws.structureObservationsJump': '在工作台里打开',
+  'ws.structureObservationsNotRecorded': '本次会话没有记录任何结构选区或测量。',
+  'ws.structureObservationsUnreadable': '观察日志存在但读不出来。',
+  'ws.structureObservationsAfterWindow': '{count} 条记录于这个版本写出之后',
+  'ws.structureObservationsDropped': '{count} 条更早的记录因超出上限被丢弃'
 }
 
 export type ZhKey = keyof typeof zh

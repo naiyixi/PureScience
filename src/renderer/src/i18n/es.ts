@@ -4562,5 +4562,19 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureInstructionLabel': 'Describir una selección en chino',
   'preview.structureInstructionPlaceholder':
     'Por ejemplo: los residuos a menos de 5 Å del residuo 145',
-  'preview.structureInstructionApply': 'Aplicar la descripción'
+  'preview.structureInstructionApply': 'Aplicar la descripción',
+  'ws.structureObservations': 'Contexto de estructura',
+  'ws.structureObservationsIntro':
+    'Las regiones y mediciones de estructura que esta sesión llevaba al escribirse la versión.',
+  'ws.structureObservationsSessionOnly':
+    'Esta versión no tiene marca temporal, así que la ventana no pudo aplicarse. Se lista todo lo que registró la sesión.',
+  'ws.structureObservationsEmpty':
+    'No se llevó ninguna región ni medición de estructura en esta ventana.',
+  'ws.structureObservationsJump': 'Mostrar en el visor',
+  'ws.structureObservationsNotRecorded':
+    'Esta sesión no registró ninguna región ni medición de estructura.',
+  'ws.structureObservationsUnreadable': 'El diario de observaciones existe pero no se pudo leer.',
+  'ws.structureObservationsAfterWindow': '{count} registrados después de escribir esta versión',
+  'ws.structureObservationsDropped':
+    '{count} entradas más antiguas se descartaron al alcanzar el límite'
 }
