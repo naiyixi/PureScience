@@ -25,6 +25,7 @@ import {
   type StructureArtifactFact
 } from '../../../../../../shared/structure-artifact-facts'
 import { formatWeightSize } from '../../../../../../shared/engine-catalog'
+import type { PngProvenanceText } from '../../../../../../shared/image-metadata'
 import {
   parseStructureMeasurementInstruction,
   parseStructureInstruction,
@@ -292,9 +293,9 @@ const PdbPreviewViewer = ({
     { content: string; value: StructureSelection } | undefined
   >(undefined)
   // D6 导出结果（上屏一句话：成功给文件名；被拒绝明说没写出任何文件；失败明说失败）。
-  const [exportStatus, setExportStatus] = useState<'done' | 'refused' | 'failed' | undefined>(
-    undefined
-  )
+  const [exportStatus, setExportStatus] = useState<
+    'done' | 'done-without-facts' | 'refused' | 'failed' | undefined
+  >(undefined)
   const [exportedName, setExportedName] = useState<string | undefined>(undefined)
   const selectionRef = useRef<StructureSelection | undefined>(undefined)
   // 与 selectionRef 同一形状：3D 的样式回调读 ref，不在渲染路径上读 store（避免重建视图/相机被重置）。
@@ -457,10 +458,29 @@ const PdbPreviewViewer = ({
         bytes[index] = binary.charCodeAt(index)
       }
       const fileName = `${name.replace(/\.[^.]+$/, '') || 'structure'}-view.png`
+      // 导出后标签仍在：把这**这一块区域**的名字与指纹写进图里（同上那半剥除器是故意的一对 ——
+      // 它离开应用之后仍然说明自己是什么，而交给模型之前那一类文本块会被剥掉）。
+      // 没名字就不写名字那一行（空正文按纯函数的口径**具名跳过**，不往文件里塞一句空话）。
+      const imageFacts: PngProvenanceText[] = []
+      const markedSelection = selectionRef.current
+      if (markedSelection) {
+        imageFacts.push({
+          keyword: 'PureScience-Region',
+          text: structureSelectionFingerprint(markedSelection)
+        })
+        const markedLabel = labelRef.current
+        if (markedLabel?.name) {
+          imageFacts.push({ keyword: 'PureScience-Label', text: markedLabel.name })
+        }
+        if (markedLabel?.color) {
+          imageFacts.push({ keyword: 'PureScience-Mark-Color', text: markedLabel.color })
+        }
+      }
       const result = await window.api.saveBlobFile({
         suggestedName: fileName,
         mimeType: 'image/png',
         data: buffer,
+        ...(imageFacts.length > 0 ? { imageFacts } : {}),
         approval: {
           surface: 'structure-view',
           action: 'export-view-image',
@@ -470,7 +490,13 @@ const PdbPreviewViewer = ({
         }
       })
       setExportStatus(
-        result.saved ? 'done' : result.refused === 'approval-denied' ? 'refused' : undefined
+        result.saved
+          ? result.factsEmbedded === false
+            ? 'done-without-facts'
+            : 'done'
+          : result.refused === 'approval-denied'
+            ? 'refused'
+            : undefined
       )
       if (result.saved) setExportedName(fileName)
     } catch {
@@ -1104,9 +1130,11 @@ const PdbPreviewViewer = ({
             >
               {exportStatus === 'done'
                 ? t('preview.structureExportDone', { name: exportedName ?? '' })
-                : exportStatus === 'refused'
-                  ? t('preview.structureExportRefused')
-                  : t('preview.structureExportFailed')}
+                : exportStatus === 'done-without-facts'
+                  ? t('preview.structureExportDoneWithoutFacts', { name: exportedName ?? '' })
+                  : exportStatus === 'refused'
+                    ? t('preview.structureExportRefused')
+                    : t('preview.structureExportFailed')}
             </span>
           ) : null}
           {/* D2：选中的区间**上屏**——用户必须能核对「我问 agent 的是哪一段」；指纹放 title 里备查。 */}

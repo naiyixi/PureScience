@@ -4540,5 +4540,7 @@ export const en: Record<ZhKey, string> = {
   'preview.structureFactOutputMeasured': 'experimental / measured structure',
   'preview.structureFactLicense': 'licence {license}',
   'preview.structureFactLicenseRestricted': 'licence {license} — commercial use restricted',
-  'preview.structureFactWeights': 'weights {size}'
+  'preview.structureFactWeights': 'weights {size}',
+  'preview.structureExportDoneWithoutFacts':
+    'exported {name} — the marked region could not be written into the file'
 }

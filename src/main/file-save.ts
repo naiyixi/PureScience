@@ -3,6 +3,7 @@ import { BrowserWindow, app, dialog, type OpenDialogOptions } from 'electron'
 import { ipcMainHandle } from './ipc-handler-registry'
 import type { ApprovalInfo } from './connectors/approval-broker'
 import type { ApprovalDecision } from '../shared/settings'
+import { insertPngProvenanceText } from '../shared/image-metadata'
 import { constants } from 'node:fs'
 import { open, rm, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
@@ -213,8 +214,19 @@ const registerFileSaveHandlers = (options: RegisterFileSaveHandlersOptions = {})
         return { saved: false }
       }
 
-      await writeFile(filePath, Buffer.from(request.data))
-      return { saved: true, filePath }
+      // 导出带着自己的事实：写进去的文本块与 egress 侧剥除器是**同一类**（image-metadata 里两半互相钉住）。
+      // 事实没写进去（非 PNG / 结构坏 / 全被跳过）时导出照样成功，但如实回一句 factsEmbedded: false。
+      const bytes = new Uint8Array(request.data)
+      const factsRequested = (request.imageFacts?.length ?? 0) > 0
+      const insertion =
+        factsRequested && request.mimeType === 'image/png'
+          ? insertPngProvenanceText(bytes, request.imageFacts ?? [])
+          : undefined
+
+      await writeFile(filePath, Buffer.from(insertion?.bytes ?? bytes))
+      return factsRequested
+        ? { saved: true, filePath, factsEmbedded: (insertion?.inserted.length ?? 0) > 0 }
+        : { saved: true, filePath }
     }
   )
 

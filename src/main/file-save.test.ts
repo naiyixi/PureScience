@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { crc32 as zlibCrc32 } from 'node:zlib'
 
 const downloadsPath = join('/Users/example', 'Downloads')
 
@@ -82,6 +83,150 @@ describe('file save IPC handlers', () => {
       const result = await handlers.get('file:save-blob')!({ sender: {} }, appActionExport)
       expect(result).toEqual({ saved: true, filePath: destinationPath })
       await expect(readFile(destinationPath)).resolves.toBeDefined()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  // ---- 导出带着这段区域的事实（D4「导出后标签仍在」）--------------------------------------
+  // 判据是**写出来的字节**：独立走一遍块结构 + 用 node:zlib 的 crc32 核，而不是信实现自己的返回值。
+  const pngChunkBytes = (type: string, payload: number[]): number[] => [
+    (payload.length >>> 24) & 0xff,
+    (payload.length >>> 16) & 0xff,
+    (payload.length >>> 8) & 0xff,
+    payload.length & 0xff,
+    ...[...type].map((character) => character.charCodeAt(0)),
+    ...payload,
+    0,
+    0,
+    0,
+    0
+  ]
+
+  const pngBytes = (): Uint8Array =>
+    Uint8Array.from([
+      0x89,
+      0x50,
+      0x4e,
+      0x47,
+      0x0d,
+      0x0a,
+      0x1a,
+      0x0a,
+      ...pngChunkBytes('IHDR', [0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0]),
+      ...pngChunkBytes('IDAT', [0x78, 0x9c]),
+      ...pngChunkBytes('IEND', [])
+    ])
+
+  const readPngTextChunks = (
+    bytes: Uint8Array
+  ): { type: string; keyword: string; text: string }[] => {
+    const found: { type: string; keyword: string; text: string }[] = []
+    let offset = 8
+    while (offset + 12 <= bytes.length) {
+      const length =
+        ((bytes[offset] << 24) |
+          (bytes[offset + 1] << 16) |
+          (bytes[offset + 2] << 8) |
+          bytes[offset + 3]) >>>
+        0
+      const end = offset + 12 + length
+      if (end > bytes.length) break
+      const type = String.fromCharCode(
+        bytes[offset + 4],
+        bytes[offset + 5],
+        bytes[offset + 6],
+        bytes[offset + 7]
+      )
+      const stored =
+        ((bytes[end - 4] << 24) |
+          (bytes[end - 3] << 16) |
+          (bytes[end - 2] << 8) |
+          bytes[end - 1]) >>>
+        0
+      const body = Uint8Array.from([
+        ...[...type].map((character) => character.charCodeAt(0)),
+        ...bytes.subarray(offset + 8, offset + 8 + length)
+      ])
+      if (type === 'iTXt') {
+        // 只核**写进去的那几块**的 CRC，且用 node:zlib 的独立实现核 —— 新增的块必须结构完好。
+        // （夹具自带的几块用占位 CRC，就像共享层那支夹具一样；它们不是这轮要证明的东西。）
+        expect(stored).toBe(zlibCrc32(body))
+        const data = bytes.subarray(offset + 8, offset + 8 + length)
+        const keywordEnd = data.indexOf(0)
+        const languageEnd = data.indexOf(0, keywordEnd + 3)
+        const translatedEnd = data.indexOf(0, languageEnd + 1)
+        found.push({
+          type,
+          keyword: Buffer.from(data.subarray(0, keywordEnd)).toString('latin1'),
+          text: new TextDecoder().decode(data.subarray(translatedEnd + 1))
+        })
+      }
+      offset = end
+    }
+    return found
+  }
+
+  it('writes the marked region and its name into the exported PNG', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-save-facts-'))
+    const destinationPath = join(root, 'marked.png')
+    const source = pngBytes()
+    const approvalBroker = { request: vi.fn().mockResolvedValue('once') }
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: destinationPath })
+    registerFileSaveHandlers({ approvalBroker } as never)
+
+    try {
+      const result = await handlers.get('file:save-blob')!(
+        { sender: {} },
+        {
+          ...appActionExport,
+          data: source.buffer.slice(0) as ArrayBuffer,
+          imageFacts: [
+            { keyword: 'PureScience-Region', text: 'structure-selection:v2-3f2a1b0c' },
+            { keyword: 'PureScience-Label', text: '活性位点' }
+          ]
+        }
+      )
+
+      expect(result).toEqual({ saved: true, filePath: destinationPath, factsEmbedded: true })
+      const written = new Uint8Array(await readFile(destinationPath))
+      // 文件里真的有这两条事实，而且中文名字逐字回得来。
+      expect(readPngTextChunks(written)).toEqual([
+        { type: 'iTXt', keyword: 'PureScience-Region', text: 'structure-selection:v2-3f2a1b0c' },
+        { type: 'iTXt', keyword: 'PureScience-Label', text: '活性位点' }
+      ])
+      // 只加了元数据：原图那几块一个字节没动。
+      expect([...written.subarray(0, 8)]).toEqual([...source.subarray(0, 8)])
+      expect([...written.subarray(written.length - 12)]).toEqual([
+        ...source.subarray(source.length - 12)
+      ])
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('says so when the marked region cannot be written into the file', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-save-no-facts-'))
+    const destinationPath = join(root, 'not-a-png.png')
+    // 声明的 MIME 说是 PNG，字节却不是 ⇒ 不许硬塞，也不许把「我以为写了」说成「文件里有」。
+    const notPng = Uint8Array.from([0x00, 0x01, 0x02, 0x03, 0x04])
+    const approvalBroker = { request: vi.fn().mockResolvedValue('once') }
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: destinationPath })
+    registerFileSaveHandlers({ approvalBroker } as never)
+
+    try {
+      const result = await handlers.get('file:save-blob')!(
+        { sender: {} },
+        {
+          ...appActionExport,
+          data: notPng.buffer.slice(0) as ArrayBuffer,
+          imageFacts: [{ keyword: 'PureScience-Region', text: 'structure-selection:v2-x' }]
+        }
+      )
+
+      // 导出**成功**（文件是好的），但如实回一句「事实没写进去」。
+      expect(result).toEqual({ saved: true, filePath: destinationPath, factsEmbedded: false })
+      expect([...(await readFile(destinationPath))]).toEqual([...notPng])
     } finally {
       await rm(root, { recursive: true, force: true })
     }

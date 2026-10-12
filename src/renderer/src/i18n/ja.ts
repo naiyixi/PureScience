@@ -4506,5 +4506,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureFactOutputMeasured': '実験（実測）構造',
   'preview.structureFactLicense': 'ライセンス {license}',
   'preview.structureFactLicenseRestricted': 'ライセンス {license} — 商用利用に制限',
-  'preview.structureFactWeights': '重み {size}'
+  'preview.structureFactWeights': '重み {size}',
+  'preview.structureExportDoneWithoutFacts':
+    '{name} を書き出しました — マークした領域の情報はファイルに書き込めませんでした'
 }

@@ -4182,5 +4182,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureFactOutputMeasured': '實驗（實測）結構',
   'preview.structureFactLicense': '授權 {license}',
   'preview.structureFactLicenseRestricted': '授權 {license} —— 商用受限',
-  'preview.structureFactWeights': '權重 {size}'
+  'preview.structureFactWeights': '權重 {size}',
+  'preview.structureExportDoneWithoutFacts': '已匯出 {name} —— 這段區域的資訊沒能寫進檔案'
 }

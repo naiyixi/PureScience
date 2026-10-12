@@ -4240,7 +4240,8 @@ export const zh = {
   'preview.structureFactOutputMeasured': '实验（实测）结构',
   'preview.structureFactLicense': '许可 {license}',
   'preview.structureFactLicenseRestricted': '许可 {license} —— 商用受限',
-  'preview.structureFactWeights': '权重 {size}'
+  'preview.structureFactWeights': '权重 {size}',
+  'preview.structureExportDoneWithoutFacts': '已导出 {name} —— 这段区域的信息没能写进文件'
 }
 
 export type ZhKey = keyof typeof zh

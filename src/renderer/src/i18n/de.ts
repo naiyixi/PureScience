@@ -4650,5 +4650,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureFactOutputMeasured': 'experimentelle (gemessene) Struktur',
   'preview.structureFactLicense': 'Lizenz {license}',
   'preview.structureFactLicenseRestricted': 'Lizenz {license} — kommerzielle Nutzung eingeschränkt',
-  'preview.structureFactWeights': 'Gewichte {size}'
+  'preview.structureFactWeights': 'Gewichte {size}',
+  'preview.structureExportDoneWithoutFacts':
+    '{name} exportiert — der markierte Bereich konnte nicht in die Datei geschrieben werden'
 }

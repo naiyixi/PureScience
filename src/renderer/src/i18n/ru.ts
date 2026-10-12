@@ -4522,5 +4522,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureFactLicense': 'лицензия {license}',
   'preview.structureFactLicenseRestricted':
     'лицензия {license} — коммерческое использование ограничено',
-  'preview.structureFactWeights': 'веса {size}'
+  'preview.structureFactWeights': 'веса {size}',
+  'preview.structureExportDoneWithoutFacts':
+    '{name} экспортирован — помеченную область не удалось записать в файл'
 }
