@@ -9,6 +9,8 @@
 // published as constants plus `translationSourceHashInput`, and the main process performs the digest. Anyone
 // holding a unit can therefore recompute the same hash outside the app.
 
+import { pdfPageTextParagraphs } from './pdf-page-text'
+
 export const TRANSLATION_RECORD_SCHEMA_VERSION = 1
 
 // Published recipe: sha256 over UTF-8 of
@@ -88,6 +90,11 @@ const splitLongParagraph = (text: string, maxChars: number): string[] => {
 /**
  * Splits one page's text layer into paragraph units. A page with no text yields zero units — that is a fact
  * about the page (no text layer) and is reported as such by the caller, never as an empty translation.
+ *
+ * The paragraph boundary rule is not repeated here: an assembled page already names its own paragraphs
+ * (`pdfPageTextParagraphs`, blank lines between them), and a unit is exactly one of those. Splitting again would
+ * be a second boundary rule that can drift from the one the reader is shown — and then a paragraph the user
+ * sees would be two units, or one, depending on which code ran.
  */
 export const segmentPageIntoTranslationUnits = (
   page: number,
@@ -96,8 +103,7 @@ export const segmentPageIntoTranslationUnits = (
 ): TranslationUnit[] => {
   if (maxChars < 1) throw new Error('maxChars must be at least 1')
   const units: TranslationUnit[] = []
-  const paragraphs = text
-    .split(/\n\s*\n/)
+  const paragraphs = pdfPageTextParagraphs(text)
     .map((paragraph) => normalizeTranslationSource(paragraph))
     .filter((paragraph) => paragraph !== '')
 

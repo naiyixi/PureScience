@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto'
 
 import { describe, expect, it } from 'vitest'
 
+// The paragraph boundary rule the units must follow comes from this module — the pairing below is the point.
+import { assemblePdfPageText, pdfPageTextParagraphs } from './pdf-page-text'
 import {
   TRANSLATION_RECORD_SCHEMA_VERSION,
   TRANSLATION_SOURCE_HASH_RECIPE,
@@ -50,6 +52,21 @@ describe('translation units', () => {
     expect(units.every((unit) => unit.page === 7)).toEqual(true)
     expect(units.map((unit) => unit.paragraph)).toEqual([1, 2, 3])
     expect(units.every((unit) => unit.part === undefined)).toEqual(true)
+  })
+
+  it('takes its paragraphs from the page-text layer instead of splitting the page a second time', () => {
+    // One boundary rule, not two: the paragraphs of an assembled page come from the page-text module, and a
+    // unit is exactly one of them (normalised). If either side changes its rule, this pairing breaks — which
+    // is the point: a user-visible paragraph must not be two units in one code path and one in another.
+    const pageText = assemblePdfPageText([
+      { text: 'Abstract', x: 1, y: 100, width: 40, height: 10, hasEol: true },
+      { text: 'We report a pipeline.', x: 1, y: 90, width: 120, height: 10, hasEol: true },
+      // A 50 pt drop is a paragraph break on a page whose own line pitch is 10 pt.
+      { text: 'Methods', x: 1, y: 40, width: 50, height: 10, hasEol: true }
+    ])
+    expect(segmentPageIntoTranslationUnits(1, pageText).map((unit) => unit.text)).toEqual(
+      pdfPageTextParagraphs(pageText)
+    )
   })
 
   it('normalizes line wrapping away, so a re-extracted page is not mistaken for an edit', () => {

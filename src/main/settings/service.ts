@@ -151,6 +151,7 @@ import {
   type FunctionModels
 } from '../../shared/function-models'
 import { getAppClaudeConfigDir, getUserClaudeConfigDir } from './provider-env'
+import { openAiChatCompletionsUrl } from './base-url'
 import { SettingsRepository } from './repository'
 import { SettingsPreferencesModule, toSettingsPreferencesSnapshot } from './preferences'
 import { NotebookRuntimeSettingsModule } from './notebook-runtime-settings'
@@ -940,6 +941,34 @@ class SettingsService {
         model: resolution.override.model
       }
     }
+  }
+
+  /**
+   * The OpenAI-compatible chat target an auxiliary main-process call uses (the PDF translation tool): the
+   * provider and model the user is actually running, resolved to an exact `/chat/completions` endpoint plus
+   * the key. Undefined — never a guessed default — when no provider or model is configured, so the caller
+   * reports a named failure instead of calling a made-up endpoint.
+   */
+  async resolveAuxiliaryChatTarget(): Promise<
+    { url: string; model: string; key?: string } | undefined
+  > {
+    const settings = await this.repository.getSettings()
+    const providerId = settings.activeProviderId
+    if (!providerId) return undefined
+
+    const stored = settings.providers.find((provider) => provider.id === providerId)
+    if (!stored) return undefined
+
+    // The model the active selection actually resolves to (same resolver the runtime uses), never a
+    // hand-picked fallback: a translation must name the model that answered it.
+    const model = this.providers.resolveActiveModel(stored, settings.activeModel)
+    if (!model) return undefined
+
+    const resolved = this.providers.resolveProvider(stored, model)
+    const url = openAiChatCompletionsUrl(resolved)
+    if (!url) return undefined
+
+    return { url, model, ...(resolved.key ? { key: resolved.key } : {}) }
   }
 
   // The protection level a surface will run at, resolved from live capability plus settings. Used by

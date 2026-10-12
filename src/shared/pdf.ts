@@ -19,6 +19,7 @@ export const PDF_OUTLINE_TOOL_NAME = 'pdf_outline'
 export const PDF_SCAN_TOOL_NAME = 'pdf_scan'
 export const PDF_TABLES_TOOL_NAME = 'pdf_tables'
 export const PDF_FIGURES_TOOL_NAME = 'pdf_figures'
+export const PDF_TRANSLATE_TOOL_NAME = 'pdf_translate'
 
 export const PDF_OPEN_TOOL_DESCRIPTION =
   'Registers a PDF for layered reading: parses the file, extracts selectable text, persists ' +
@@ -44,6 +45,16 @@ export const PDF_SCAN_TOOL_DESCRIPTION =
   'frequency (case-insensitive word overlap, title words weighted). Each hit shows the page ' +
   'number, a relevance score, and a snippet of the best-matching line. Use it to locate ' +
   'specific content (a dataset name, a metric, a formula term) without reading the whole document.'
+
+export const PDF_TRANSLATE_TOOL_DESCRIPTION =
+  'Translates a registered PDF into a target language, PARAGRAPH BY PARAGRAPH, and returns every ' +
+  'paragraph with its stable id (p<page>#<paragraph>), its source text, and either its translation or ' +
+  'the named reason it failed. Each paragraph is stored as it completes, keyed by its own source hash, ' +
+  'so the work survives an interruption: call it again and paragraphs already translated from unchanged ' +
+  'text are reused instead of re-sent (the result reports how many were reused), while an edited or new ' +
+  'paragraph is translated again. An untranslated paragraph is never rendered as an empty string — it ' +
+  'carries a status and a named reason. Pages with no text layer (a scanned PDF) contribute no ' +
+  'paragraphs and are listed in emptyPages. The default target language is Simplified Chinese.'
 
 // Hard bounds for a registered PDF.
 export const PDF_MAX_PAGE_TEXT_CHARS = 6000 // per page (pages beyond this are truncated)
@@ -182,6 +193,58 @@ export type PdfScanResult = {
   hits: PdfPageScanHit[]
 }
 
+/** One paragraph of a translated page: its identity, its source, and what was (or was not) produced for it. */
+export type PdfTranslatedParagraph = {
+  /** Stable across runs: `p<page>#<paragraph>` (plus `.<part>` when a long paragraph was split). */
+  id: string
+  page: number
+  paragraph: number
+  status: 'translated' | 'failed'
+  source: string
+  /** Present only when status is 'translated': an empty translation is stored as a failure, never as text. */
+  translation?: string
+  /** Present only when status is 'failed': the named reason (provider error, or `not-attempted` when a stopped run never reached it). */
+  reason?: string
+}
+
+export type PdfTranslatedPage = {
+  page: number
+  paragraphs: PdfTranslatedParagraph[]
+}
+
+/** What the run found on disk before it started, so "no translation yet" is never confused with "read failed". */
+export type PdfTranslationRestored =
+  | {
+      state: 'none'
+      /**
+       * One of `no-checkpoint` / `source-document-changed` / `source-content-changed` / `unreadable`. The last
+       * one means a checkpoint file existed but could not be used — see `detail` for which way it failed.
+       */
+      reason: string
+      /** Present only for `unreadable`: the named way the file failed to load. */
+      detail?: string
+    }
+  | { state: 'partial'; records: number }
+
+export type PdfTranslateResult = {
+  docId: string
+  targetLanguage: string
+  /** Pages that contributed paragraphs, in page order. Pages with no text layer are named in emptyPages. */
+  pages: PdfTranslatedPage[]
+  paragraphCount: number
+  translated: number
+  reused: number
+  failed: readonly { id: string; reason: string }[]
+  /** Planned paragraphs a stopped run never reached. 0 here is a measured fact, not a missing reading. */
+  skipped: number
+  stopped: 'requested' | 'repeated-failures' | null
+  restored: PdfTranslationRestored
+  /** 1-based pages whose text layer is empty: they produce no paragraphs, and they are listed rather than silent. */
+  emptyPages: readonly number[]
+  /** Where the per-paragraph records live, so a reading can name the file it came from. */
+  checkpointPath: string
+}
+
 // Rendered into the session prompt when the PDF MCP is available.
 export const PDF_MCP_SYSTEM_PROMPT_APPEND = [
   '<purescience_pdf_instructions>',
@@ -193,6 +256,11 @@ export const PDF_MCP_SYSTEM_PROMPT_APPEND = [
   'Recommended flow: pdf_open → pdf_outline → pdf_scan for the specific content you need → ' +
     'pdf_pages to read the relevant range. Read the abstract/introduction page first, then ' +
     'jump to methods/results via the outline — do not read a 50-page PDF page-by-page.',
+  'To read a paper in another language, pdf_translate(doc_id, target_language) translates it ' +
+    'paragraph by paragraph and returns one entry per paragraph with its stable id. It resumes: ' +
+    'paragraphs already translated from unchanged source text are reused, so a re-run after an ' +
+    'interruption only translates what is still missing. A long document is stored as it goes, so ' +
+    'calling it again continues rather than starting over.',
   'Scanned PDFs without a text layer return empty pages; if pdf_scan shows no hits and pages ' +
     'are empty, tell the user the PDF is image-only and suggest OCR.',
   '</purescience_pdf_instructions>'

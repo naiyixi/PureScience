@@ -95,4 +95,45 @@ describe('SettingsService provider facade', () => {
       now.mockRestore()
     }
   })
+
+  // The auxiliary chat target is what an app-side call (the PDF translation tool) asks for before it talks to
+  // a model. Two things have to hold: the endpoint is the exact `/chat/completions` URL of the provider the
+  // user is actually running, and "nothing is configured" answers with nothing — never a guessed endpoint.
+  it('resolves the auxiliary chat target from the running provider, and nothing when none is configured', async () => {
+    expect(await service.resolveAuxiliaryChatTarget()).toBeUndefined()
+
+    await repository.upsertProvider({
+      id: 'p_deepseek',
+      type: 'official',
+      vendorId: 'deepseek',
+      name: 'DeepSeek',
+      model: 'deepseek-v4-flash',
+      keyRef: `plain:${Buffer.from('sk-test-key', 'utf8').toString('base64')}`,
+      keyMask: 'sk-t•••••ey'
+    })
+    await repository.setActiveProvider('p_deepseek', 'deepseek-v4-flash')
+
+    expect(await service.resolveAuxiliaryChatTarget()).toEqual({
+      url: 'https://api.deepseek.com/v1/chat/completions',
+      model: 'deepseek-v4-flash',
+      key: 'sk-test-key'
+    })
+
+    // A custom gateway's root becomes `<root>/v1/chat/completions` (the same rule the chat client uses), and a
+    // provider stored without a key simply does not carry one.
+    await repository.upsertProvider({
+      id: 'p_gateway',
+      type: 'custom',
+      name: 'Gateway',
+      baseUrl: 'https://gw.example.com',
+      model: 'gw-model',
+      apiEndpoints: ['openai']
+    })
+    await repository.setActiveProvider('p_gateway', 'gw-model')
+
+    expect(await service.resolveAuxiliaryChatTarget()).toEqual({
+      url: 'https://gw.example.com/v1/chat/completions',
+      model: 'gw-model'
+    })
+  })
 })

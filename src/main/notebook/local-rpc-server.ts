@@ -189,6 +189,12 @@ type NotebookLocalRpcServerOptions = {
     scan(sessionId: string, projectId: string, docId: string, query: string): Promise<unknown>
     tables(sessionId: string, projectId: string, docId: string, page?: number): Promise<unknown>
     figures(sessionId: string, projectId: string, docId: string, page?: number): Promise<unknown>
+    translate(
+      sessionId: string,
+      projectId: string,
+      docId: string,
+      request: { targetLanguage?: string }
+    ): Promise<unknown>
   }
   planService?: {
     call(input: {
@@ -277,7 +283,8 @@ const PDF_RPC_METHODS = new Set([
   'pdfOutline',
   'pdfScan',
   'pdfTables',
-  'pdfFigures'
+  'pdfFigures',
+  'pdfTranslate'
 ])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
@@ -1651,6 +1658,27 @@ class NotebookLocalRpcServer {
         throw new Error('PDF scan RPC params must include sessionId, projectId, docId, and query.')
       }
       return this.pdf.scan(params.sessionId, params.projectId, params.docId, params.query)
+    }
+
+    if (method === 'pdfTranslate') {
+      if (!this.pdf) throw new Error('PDF handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.projectId !== 'string' ||
+        typeof params.docId !== 'string'
+      ) {
+        throw new Error('PDF translate RPC params must include sessionId, projectId, and docId.')
+      }
+      // Optional fields are validated, never coerced: a blank target language must not fall back to a
+      // language the caller did not ask for.
+      const request: { targetLanguage?: string } = {}
+      if (params.targetLanguage !== undefined) {
+        if (typeof params.targetLanguage !== 'string' || params.targetLanguage.trim() === '') {
+          throw new Error('PDF translate targetLanguage must be a non-empty string when given.')
+        }
+        request.targetLanguage = params.targetLanguage
+      }
+      return this.pdf.translate(params.sessionId, params.projectId, params.docId, request)
     }
 
     if (method === 'pdfTables') {

@@ -10,6 +10,7 @@ import {
   PDF_OUTLINE_TOOL_NAME,
   PDF_PAGES_TOOL_NAME,
   PDF_SCAN_TOOL_NAME,
+  PDF_TRANSLATE_TOOL_NAME,
   createPdfMcpServer,
   createPdfMcpServerConfig
 } from './pdf-mcp-server'
@@ -49,6 +50,34 @@ const makeHandler = (): PdfMcpHandler => ({
     figures: [],
     skippedSmall: 0,
     withoutCaption: 0
+  })),
+  translate: vi.fn(async () => ({
+    docId: 'doc-1',
+    targetLanguage: 'Simplified Chinese',
+    pages: [
+      {
+        page: 1,
+        paragraphs: [
+          {
+            id: 'p1#1',
+            page: 1,
+            paragraph: 1,
+            status: 'translated' as const,
+            source: 'Abstract',
+            translation: '摘要'
+          }
+        ]
+      }
+    ],
+    paragraphCount: 1,
+    translated: 1,
+    reused: 0,
+    failed: [],
+    skipped: 0,
+    stopped: null,
+    restored: { state: 'none' as const, reason: 'no-checkpoint' },
+    emptyPages: [],
+    checkpointPath: '/data/translations/abc.json'
   }))
 })
 
@@ -60,6 +89,7 @@ describe('PDF MCP server contract', () => {
     expect(PDF_PAGES_TOOL_NAME).toBe('pdf_pages')
     expect(PDF_OUTLINE_TOOL_NAME).toBe('pdf_outline')
     expect(PDF_SCAN_TOOL_NAME).toBe('pdf_scan')
+    expect(PDF_TRANSLATE_TOOL_NAME).toBe('pdf_translate')
   })
 
   it('registers the tools with their handler wiring', () => {
@@ -67,7 +97,7 @@ describe('PDF MCP server contract', () => {
     const server = createPdfMcpServer(handler)
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
       ._registeredTools
-    expect(Object.keys(tools)).toHaveLength(6)
+    expect(Object.keys(tools)).toHaveLength(7)
     expect(handler.open).not.toHaveBeenCalled()
   })
 
@@ -100,5 +130,31 @@ describe('PDF MCP server contract', () => {
     const result = await openTool.handler({ path: '/data/paper.pdf' })
     expect(handler.open).toHaveBeenCalledWith('/data/paper.pdf')
     expect(result.content[0]?.text).toContain('docId')
+  })
+
+  it('passes only the translate options the caller actually gave', async () => {
+    const handler = makeHandler()
+    const server = createPdfMcpServer(handler)
+    const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
+      ._registeredTools
+    const translateTool = tools[PDF_TRANSLATE_TOOL_NAME] as {
+      handler: (
+        input: Record<string, unknown>
+      ) => Promise<{ content: { type: string; text: string }[] }>
+    }
+
+    const minimal = await translateTool.handler({ doc_id: 'doc-1' })
+    // Absent options must stay absent: a default the caller did not ask for here would translate a page
+    // range nobody requested.
+    expect(handler.translate).toHaveBeenCalledWith('doc-1', {})
+    expect(minimal.content[0]?.text).toContain('p1#1')
+
+    await translateTool.handler({
+      doc_id: 'doc-1',
+      target_language: 'French'
+    })
+    expect(handler.translate).toHaveBeenLastCalledWith('doc-1', {
+      targetLanguage: 'French'
+    })
   })
 })

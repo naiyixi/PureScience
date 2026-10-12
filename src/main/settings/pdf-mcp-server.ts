@@ -21,8 +21,11 @@ import {
   PDF_SCAN_TOOL_NAME,
   PDF_FIGURES_TOOL_NAME,
   PDF_TABLES_TOOL_NAME,
+  PDF_TRANSLATE_TOOL_DESCRIPTION,
+  PDF_TRANSLATE_TOOL_NAME,
   type PdfFiguresResult,
-  type PdfTablesResult
+  type PdfTablesResult,
+  type PdfTranslateResult
 } from '../../shared/pdf'
 import type {
   PdfOpenResult,
@@ -127,6 +130,27 @@ const pdfScanToolDefinition = {
   inputSchema: pdfScanToolSchema
 }
 
+const pdfTranslateToolSchema = {
+  doc_id: z.string().min(1).describe('Document id from pdf_open.'),
+  target_language: z
+    .string()
+    .min(1)
+    .max(80)
+    .optional()
+    .describe(
+      'Language to translate into, as the user named it (e.g. "Simplified Chinese"). Defaults to Simplified Chinese.'
+    )
+}
+const pdfTranslateToolDefinition = {
+  title: 'Translate a PDF paragraph by paragraph',
+  description: PDF_TRANSLATE_TOOL_DESCRIPTION,
+  inputSchema: pdfTranslateToolSchema
+}
+
+export type PdfTranslateRequest = {
+  targetLanguage?: string
+}
+
 export type PdfMcpEnvironment = {
   endpoint: string
   socketPath?: string
@@ -147,6 +171,7 @@ type PdfMcpHandler = {
   scan: (docId: string, query: string) => Promise<PdfScanResult>
   tables: (docId: string, page?: number) => Promise<PdfTablesResult>
   figures: (docId: string, page?: number) => Promise<PdfFiguresResult>
+  translate: (docId: string, request: PdfTranslateRequest) => Promise<PdfTranslateResult>
 }
 
 type PdfMcpServerConfigRequest = PdfMcpEnvironment & {
@@ -155,7 +180,13 @@ type PdfMcpServerConfigRequest = PdfMcpEnvironment & {
 }
 
 type RpcResponse = {
-  result?: PdfOpenResult | PdfPagesResult | PdfOutlineResult | PdfScanResult | PdfTablesResult
+  result?:
+    | PdfOpenResult
+    | PdfPagesResult
+    | PdfOutlineResult
+    | PdfScanResult
+    | PdfTablesResult
+    | PdfTranslateResult
   error?: string
 }
 
@@ -202,6 +233,15 @@ const createPdfMcpServer = (handler: PdfMcpHandler): ModelContextProtocolServer 
 
   server.registerTool(PDF_SCAN_TOOL_NAME, pdfScanToolDefinition, async (input) => {
     const result = await handler.scan(input.doc_id, input.query)
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(PDF_TRANSLATE_TOOL_NAME, pdfTranslateToolDefinition, async (input) => {
+    const result = await handler.translate(input.doc_id, {
+      ...(input.target_language !== undefined ? { targetLanguage: input.target_language } : {})
+    })
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
@@ -304,7 +344,12 @@ const runPdfMcpServer = async (
       callPdfRpc(environment, 'pdfFigures', {
         docId,
         ...(page !== undefined ? { page } : {})
-      }) as unknown as Promise<PdfFiguresResult>
+      }) as unknown as Promise<PdfFiguresResult>,
+    translate: (docId, request) =>
+      callPdfRpc(environment, 'pdfTranslate', {
+        docId,
+        ...(request.targetLanguage !== undefined ? { targetLanguage: request.targetLanguage } : {})
+      }) as unknown as Promise<PdfTranslateResult>
   })
   await server.connect(new StdioServerTransport())
 }
@@ -318,12 +363,14 @@ export {
   PDF_SCAN_TOOL_NAME,
   PDF_FIGURES_TOOL_NAME,
   PDF_TABLES_TOOL_NAME,
+  PDF_TRANSLATE_TOOL_NAME,
   pdfFiguresToolDefinition,
   pdfTablesToolDefinition,
   pdfOpenToolDefinition,
   pdfPagesToolDefinition,
   pdfOutlineToolDefinition,
   pdfScanToolDefinition,
+  pdfTranslateToolDefinition,
   createPdfMcpEnvironmentFromProcess,
   createPdfMcpServer,
   createPdfMcpServerConfig,

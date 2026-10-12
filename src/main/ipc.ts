@@ -195,6 +195,7 @@ import { SearchPinRepository } from './settings/search-pin-repository'
 import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { PdfService } from './settings/pdf-service'
+import { runDocumentTranslation } from './translation/document-translation'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
 import { reviewFigure } from './settings/figure-review-service'
 import {
@@ -1923,7 +1924,43 @@ const createApplicationModules = async (
         outline: (_sessionId, _projectId, docId) => pdfService.outline(docId),
         scan: (_sessionId, _projectId, docId, query) => pdfService.scan(docId, query),
         tables: (_sessionId, _projectId, docId, page) => pdfService.tables(docId, page),
-        figures: (_sessionId, _projectId, docId, page) => pdfService.figures(docId, page)
+        figures: (_sessionId, _projectId, docId, page) => pdfService.figures(docId, page),
+        // 翻译需要三样别处不需要的东西：用户**正在跑**的模型端点、一个检查点存储、以及段落引擎。
+        // 端点由装配处解析（服务层与运行器只收「一个目标或一条具名拒绝」，不自己猜端点）。
+        translate: async (_sessionId, _projectId, docId, request) => {
+          // 整份文档是这次运行的工作单元（理由写在 document-translation.ts 头注释）：检查点按文档
+          // 正文取哈希、计划覆盖每一段 ⇒ 只读一部分既会让续传失效，也会丢掉没读到那几页的记录。
+          const outline = await pdfService.outline(docId)
+          const read =
+            outline.pageCount > 0
+              ? await pdfService.pages(docId, 1, outline.pageCount)
+              : { docId, start: 1, end: 0, pages: [] }
+          const targetLanguage = request.targetLanguage?.trim() || 'Simplified Chinese'
+          const outcome = await runDocumentTranslation({
+            docId,
+            documentPages: read.pages.map((page) => ({ page: page.page, text: page.text })),
+            // 与 PDF 存储同一个根：一个写入者，检查点就住在它所描述的那份文档旁边。
+            storageRoot: resolveDataRoot(),
+            targetLanguage,
+            // 每次都重新解析（不是捕获一次）：用户在设置里改完，下一次翻译就该用新的端点。
+            target: async () => {
+              const target = await settingsService.resolveAuxiliaryChatTarget()
+              return target
+                ? { ok: true, target }
+                : {
+                    ok: false,
+                    detail:
+                      'No provider and model are configured for translation. Select a provider with an OpenAI-compatible endpoint in Settings, then translate again.'
+                  }
+            }
+          })
+          // 拒绝是拒绝：拿不出端点、或者这一份里一个段落都没有时，必须把**具名原因**报出去，
+          // 而不是回一份「0 段已翻译」的结果（那会让「没有文本层」看起来像「已经翻好了」）。
+          if (!outcome.ok) {
+            throw new Error(`Translation did not start (${outcome.reason}): ${outcome.detail}`)
+          }
+          return outcome.result
+        }
       },
       figure: {
         review: (_sessionId, _projectId, request) => {
