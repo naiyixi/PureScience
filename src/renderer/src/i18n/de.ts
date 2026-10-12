@@ -4627,5 +4627,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': 'Name des Bereichs',
   'preview.structureSelectionLabelPlaceholder': 'Diesen Bereich benennen',
   'preview.structureSelectionColor': 'Markierungsfarbe {color}',
-  'preview.structureSelectionLabelRemove': 'Namen und Farbe entfernen'
+  'preview.structureSelectionLabelRemove': 'Namen und Farbe entfernen',
+  'settings.appActionTitle': 'Diesen Export genehmigen?',
+  'settings.appActionDescription':
+    'Die App schreibt gleich eine Datei aus dieser Sitzung heraus. Bis zur Freigabe wird nichts geschrieben.',
+  'settings.appActionWrites': 'Schreibt',
+  'settings.appActionCarries': 'Enthält',
+  'settings.appActionCarriesMarked': 'der von dir markierte Bereich',
+  'preview.structureExportImage': 'Ansicht als PNG exportieren',
+  'preview.structureExportDone': '{name} exportiert',
+  'preview.structureExportRefused': 'Export abgelehnt — es wurde nichts geschrieben',
+  'preview.structureExportFailed': 'Export fehlgeschlagen'
 }

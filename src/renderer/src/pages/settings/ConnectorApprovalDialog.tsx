@@ -27,6 +27,9 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
 
   if (!request) return null
   const availableScopes = request.availableScopes ?? ['once']
+  // D6: an app action (a structure-view export) is worded from its own block. Printing the surface id in
+  // the connector row would put a false label on the very card the user decides on.
+  const appAction = request.appAction
 
   const displayName =
     connectors.find((c) => c.id === request.connector)?.displayName ??
@@ -63,37 +66,73 @@ export function ConnectorApprovalDialog(): React.JSX.Element | null {
             <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-500" aria-hidden="true" />
             <div className="min-w-0">
               <Dialog.Title className="text-sm font-semibold text-foreground">
-                {t('settings.allowExternalRequest')}
+                {appAction ? t('settings.appActionTitle') : t('settings.allowExternalRequest')}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-muted-foreground [text-wrap:pretty]">
-                {t('settings.connectorSendsExternal')}
-                {t('settings.approveOnlyIfTrustConnector')}
+                {appAction ? (
+                  t('settings.appActionDescription')
+                ) : (
+                  <>
+                    {t('settings.connectorSendsExternal')}
+                    {t('settings.approveOnlyIfTrustConnector')}
+                  </>
+                )}
               </Dialog.Description>
             </div>
           </div>
 
           <div className="mt-3 space-y-1.5 rounded-lg border border-border bg-muted/40 p-3 text-xs">
-            <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">
-                {t('settings.connectorLabel')}
-              </span>
-              <span className="min-w-0 truncate font-medium text-foreground">{displayName}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">
-                {t('settings.approvalTool')}
-              </span>
-              <span className="min-w-0 truncate font-mono text-foreground">{request.method}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="w-16 shrink-0 text-muted-foreground">
-                {t('settings.approvalArgs')}
-              </span>
-              <span className="min-w-0 break-all font-mono text-muted-foreground">
-                {request.argsPreview}
-              </span>
-            </div>
-            {request.persistsOnService ? (
+            {appAction ? (
+              <>
+                <div className="flex gap-2" data-slot="approval-app-action-writes">
+                  <span className="w-16 shrink-0 text-muted-foreground">
+                    {t('settings.appActionWrites')}
+                  </span>
+                  <span className="min-w-0 break-all font-mono text-foreground">
+                    {appAction.writes.map((write) => write.fileName).join(', ')}
+                  </span>
+                </div>
+                {appAction.carriesMarkedRegion ? (
+                  <div className="flex gap-2" data-slot="approval-app-action-carries">
+                    <span className="w-16 shrink-0 text-muted-foreground">
+                      {t('settings.appActionCarries')}
+                    </span>
+                    <span className="min-w-0 text-amber-600 [text-wrap:pretty]">
+                      {t('settings.appActionCarriesMarked')}
+                    </span>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {appAction ? null : (
+              <>
+                <div className="flex gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">
+                    {t('settings.connectorLabel')}
+                  </span>
+                  <span className="min-w-0 truncate font-medium text-foreground">
+                    {displayName}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">
+                    {t('settings.approvalTool')}
+                  </span>
+                  <span className="min-w-0 truncate font-mono text-foreground">
+                    {request.method}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="w-16 shrink-0 text-muted-foreground">
+                    {t('settings.approvalArgs')}
+                  </span>
+                  <span className="min-w-0 break-all font-mono text-muted-foreground">
+                    {request.argsPreview}
+                  </span>
+                </div>
+              </>
+            )}
+            {!appAction && request.persistsOnService ? (
               // Only for a tool that creates state on the service. The scope wording says how long the
               // APPROVAL lasts, which reads as how long the call's effect lasts — this row closes that.
               <div className="flex gap-2">

@@ -23,6 +23,17 @@ vi.mock('electron', () => ({
 
 const { registerFileSaveHandlers } = await import('./file-save')
 
+const appActionExport = {
+  suggestedName: 'crambin-view.png',
+  mimeType: 'image/png',
+  data: new ArrayBuffer(4),
+  approval: {
+    surface: 'structure-view' as const,
+    action: 'export-view-image' as const,
+    writes: [{ kind: 'image' as const, fileName: 'crambin-view.png', extension: 'png' }]
+  }
+}
+
 describe('file save IPC handlers', () => {
   beforeEach(() => {
     handlers.clear()
@@ -30,6 +41,87 @@ describe('file save IPC handlers', () => {
     getAppPath.mockReturnValue(downloadsPath)
     showOpenDialog.mockReset()
     showSaveDialog.mockReset()
+  })
+
+  it('asks the approval card before an app-action export, and writes nothing when it is refused', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-save-refused-'))
+    const destinationPath = join(root, 'refused.png')
+    const approvalBroker = { request: vi.fn().mockResolvedValue('deny') }
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: destinationPath })
+    registerFileSaveHandlers({ approvalBroker } as never)
+
+    try {
+      const result = await handlers.get('file:save-blob')!({ sender: {} }, appActionExport)
+
+      // 拒绝的产物必须是「什么都没有」：不写文件、连保存对话框都不弹。
+      // （注意这条用例的 event 是故意给的：拒绝发生在碰 event.sender **之前**。）
+      expect(result).toEqual({ saved: false, refused: 'approval-denied' })
+      expect(showSaveDialog).not.toHaveBeenCalled()
+      await expect(readFile(destinationPath)).rejects.toThrow()
+      // 卡面拿到的是**应用动作**那一段（不是连接器语），并且只给一次性的授予。
+      expect(approvalBroker.request).toHaveBeenCalledTimes(1)
+      expect(approvalBroker.request.mock.calls[0]?.[0]).toMatchObject({
+        connector: 'structure-view',
+        method: 'export-view-image',
+        availableScopes: ['once'],
+        appAction: { surface: 'structure-view', action: 'export-view-image' }
+      })
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('writes the file once the card allows it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-save-allowed-'))
+    const destinationPath = join(root, 'allowed.png')
+    const approvalBroker = { request: vi.fn().mockResolvedValue('once') }
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: destinationPath })
+    registerFileSaveHandlers({ approvalBroker } as never)
+
+    try {
+      const result = await handlers.get('file:save-blob')!({ sender: {} }, appActionExport)
+      expect(result).toEqual({ saved: true, filePath: destinationPath })
+      await expect(readFile(destinationPath)).resolves.toBeDefined()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('never asks the card for an ordinary save, and refuses a gated save with no card wired', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-save-ordinary-'))
+    const destinationPath = join(root, 'ordinary.png')
+    const approvalBroker = { request: vi.fn().mockResolvedValue('once') }
+    showSaveDialog.mockResolvedValue({ canceled: false, filePath: destinationPath })
+    registerFileSaveHandlers({ approvalBroker } as never)
+
+    try {
+      // 普通保存（不带 approval 标记）走过门而不问卡：既有行为逐字节不变。
+      const ordinary = await handlers.get('file:save-blob')!(
+        { sender: {} },
+        {
+          suggestedName: 'ordinary.png',
+          mimeType: 'image/png',
+          data: new ArrayBuffer(4)
+        }
+      )
+      expect(ordinary).toEqual({ saved: true, filePath: destinationPath })
+      expect(approvalBroker.request).not.toHaveBeenCalled()
+
+      // 带标记但没有卡片可问 ⇒ 拒（fail-closed）：「没人能被问」不能读成「没问题」。
+      showSaveDialog.mockClear()
+      registerFileSaveHandlers({} as never)
+      const gated = await handlers.get('file:save-blob')!(
+        { sender: {} },
+        {
+          ...appActionExport,
+          suggestedName: 'gated.png'
+        }
+      )
+      expect(gated).toEqual({ saved: false, refused: 'approval-denied' })
+      expect(showSaveDialog).not.toHaveBeenCalled()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   it('exports one selected Session Artifact through Save As', async () => {

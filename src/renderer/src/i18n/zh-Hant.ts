@@ -4161,5 +4161,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': '選區名稱',
   'preview.structureSelectionLabelPlaceholder': '給這段起個名字',
   'preview.structureSelectionColor': '標記色 {color}',
-  'preview.structureSelectionLabelRemove': '移除名稱與顏色'
+  'preview.structureSelectionLabelRemove': '移除名稱與顏色',
+  'settings.appActionTitle': '批准這次匯出？',
+  'settings.appActionDescription':
+    '應用即將把本次工作階段的內容寫成一個檔案。你允許之前不會寫出任何東西。',
+  'settings.appActionWrites': '寫出',
+  'settings.appActionCarries': '帶走',
+  'settings.appActionCarriesMarked': '你標記的那一段',
+  'preview.structureExportImage': '匯出視圖 PNG',
+  'preview.structureExportDone': '已匯出 {name}',
+  'preview.structureExportRefused': '已拒絕匯出 —— 沒有寫出任何檔案',
+  'preview.structureExportFailed': '匯出失敗'
 }

@@ -4485,5 +4485,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': '領域の名前',
   'preview.structureSelectionLabelPlaceholder': 'この領域に名前を付ける',
   'preview.structureSelectionColor': '標識色 {color}',
-  'preview.structureSelectionLabelRemove': '名前と色を削除'
+  'preview.structureSelectionLabelRemove': '名前と色を削除',
+  'settings.appActionTitle': 'この書き出しを承認しますか？',
+  'settings.appActionDescription':
+    'アプリはこのセッションの内容をファイルとして書き出そうとしています。許可するまで何も書き出しません。',
+  'settings.appActionWrites': '書き出す',
+  'settings.appActionCarries': '持ち出す',
+  'settings.appActionCarriesMarked': 'あなたが印を付けた範囲',
+  'preview.structureExportImage': 'ビューを PNG で書き出す',
+  'preview.structureExportDone': '{name} を書き出しました',
+  'preview.structureExportRefused': '書き出しは拒否されました — 何も書き出していません',
+  'preview.structureExportFailed': '書き出しに失敗しました'
 }

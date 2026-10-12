@@ -4581,5 +4581,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': 'Nombre de la región',
   'preview.structureSelectionLabelPlaceholder': 'Nombrar esta región',
   'preview.structureSelectionColor': 'Color de marca {color}',
-  'preview.structureSelectionLabelRemove': 'Quitar el nombre y el color'
+  'preview.structureSelectionLabelRemove': 'Quitar el nombre y el color',
+  'settings.appActionTitle': '¿Aprobar esta exportación?',
+  'settings.appActionDescription':
+    'La aplicación va escribir un archivo de esta sesión. No se escribe nada hasta que lo permitas.',
+  'settings.appActionWrites': 'Escribe',
+  'settings.appActionCarries': 'Incluye',
+  'settings.appActionCarriesMarked': 'la región que marcaste',
+  'preview.structureExportImage': 'Exportar la vista como PNG',
+  'preview.structureExportDone': '{name} exportado',
+  'preview.structureExportRefused': 'Exportación rechazada: no se escribió nada',
+  'preview.structureExportFailed': 'La exportación falló'
 }

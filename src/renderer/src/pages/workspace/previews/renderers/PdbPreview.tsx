@@ -270,6 +270,11 @@ const PdbPreviewViewer = ({
   const [selection, setSelection] = useState<
     { content: string; value: StructureSelection } | undefined
   >(undefined)
+  // D6 导出结果（上屏一句话：成功给文件名；被拒绝明说没写出任何文件；失败明说失败）。
+  const [exportStatus, setExportStatus] = useState<'done' | 'refused' | 'failed' | undefined>(
+    undefined
+  )
+  const [exportedName, setExportedName] = useState<string | undefined>(undefined)
   const selectionRef = useRef<StructureSelection | undefined>(undefined)
   // 与 selectionRef 同一形状：3D 的样式回调读 ref，不在渲染路径上读 store（避免重建视图/相机被重置）。
   const labelRef = useRef<StructureSelectionLabel | undefined>(storedLabel)
@@ -375,6 +380,44 @@ const PdbPreviewViewer = ({
     },
     [setStructureSelectionLabel, structureId]
   )
+
+  // D6：把当前视图导出成 PNG —— **要过审批卡**（这是本条的验收判据：导出触发审批卡），
+  // 拒绝时主进程不写任何文件，这里只如实上屏「没有写出任何文件」。
+  const exportViewImage = useCallback(async (): Promise<void> => {
+    const viewerState = viewerStateRef.current
+    if (!viewerState) return
+    try {
+      const dataUrl = viewerState.viewer.pngURI()
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+      // 手动解 base64，不用 `fetch(data:)`：那条路受 CSP 的 connect-src 约束，
+      // 被拦下时会表现成一个与导出毫无关系的网络错误（排查方向整个跑偏）。
+      const binary = atob(base64)
+      const buffer = new ArrayBuffer(binary.length)
+      const bytes = new Uint8Array(buffer)
+      for (let index = 0; index < binary.length; index += 1) {
+        bytes[index] = binary.charCodeAt(index)
+      }
+      const fileName = `${name.replace(/\.[^.]+$/, '') || 'structure'}-view.png`
+      const result = await window.api.saveBlobFile({
+        suggestedName: fileName,
+        mimeType: 'image/png',
+        data: buffer,
+        approval: {
+          surface: 'structure-view',
+          action: 'export-view-image',
+          writes: [{ kind: 'image', fileName, extension: 'png' }],
+          // 屏幕上有选区时，导出的图里带着它 —— 卡面要如实说这一句。
+          ...(selectionRef.current ? { carriesMarkedRegion: true } : {})
+        }
+      })
+      setExportStatus(
+        result.saved ? 'done' : result.refused === 'approval-denied' ? 'refused' : undefined
+      )
+      if (result.saved) setExportedName(fileName)
+    } catch {
+      setExportStatus('failed')
+    }
+  }, [name])
 
   // 这一帧真正生效的选择/测量：只有还在看的那份内容上的那些才算数。
   const activeSelection = selection?.content === content ? selection.value : undefined
@@ -838,6 +881,30 @@ const PdbPreviewViewer = ({
             {t('preview.structureResetView')}
           </button>
           <span>{t('preview.atomCount').replace('{n}', atomCount.toLocaleString())}</span>
+          {/* D6：导出当前视图（PNG）。过审批卡；被拒绝时下面那行会明说没有写出任何文件。 */}
+          <button
+            type="button"
+            data-slot="structure-export-image"
+            className="rounded-sm px-1.5 py-0.5 transition-colors hover:bg-bg-300"
+            onClick={() => {
+              void exportViewImage()
+            }}
+          >
+            {t('preview.structureExportImage')}
+          </button>
+          {exportStatus ? (
+            <span
+              data-slot="structure-export-result"
+              data-status={exportStatus}
+              className="text-text-300"
+            >
+              {exportStatus === 'done'
+                ? t('preview.structureExportDone', { name: exportedName ?? '' })
+                : exportStatus === 'refused'
+                  ? t('preview.structureExportRefused')
+                  : t('preview.structureExportFailed')}
+            </span>
+          ) : null}
           {/* D2：选中的区间**上屏**——用户必须能核对「我问 agent 的是哪一段」；指纹放 title 里备查。 */}
           {activeSelection ? (
             <span className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] text-text-000">

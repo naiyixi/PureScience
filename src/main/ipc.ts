@@ -2109,7 +2109,12 @@ const createApplicationModules = async (
     new VisionEvidenceRepository(() => getProjectDbClient(resolveStorageRoot()))
   )
   declareElectronAdapter('desktop-utilities', () => {
-    registerFileSaveHandlers({ resolveManagedFilePath, resolveSessionArtifactFilePath })
+    // D6: the structure-view export gate asks the same approval card the connector calls use.
+    registerFileSaveHandlers({
+      resolveManagedFilePath,
+      resolveSessionArtifactFilePath,
+      approvalBroker
+    })
     registerLogsIpcHandlers(logsCommandOwner)
     registerSupportBundleIpcHandlers(supportBundleCommandOwner)
     registerVisionEvidenceIpcHandlers(visionEvidenceCommandOwner)

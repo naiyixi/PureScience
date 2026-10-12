@@ -4499,5 +4499,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': 'Название области',
   'preview.structureSelectionLabelPlaceholder': 'Назвать эту область',
   'preview.structureSelectionColor': 'Цвет метки {color}',
-  'preview.structureSelectionLabelRemove': 'Удалить название и цвет'
+  'preview.structureSelectionLabelRemove': 'Удалить название и цвет',
+  'settings.appActionTitle': 'Разрешить этот экспорт?',
+  'settings.appActionDescription':
+    'Приложение собирается записать файл из этой сессии. До вашего разрешения ничего не записывается.',
+  'settings.appActionWrites': 'Записывает',
+  'settings.appActionCarries': 'Включает',
+  'settings.appActionCarriesMarked': 'отмеченную вами область',
+  'preview.structureExportImage': 'Экспорт вида в PNG',
+  'preview.structureExportDone': '{name} экспортирован',
+  'preview.structureExportRefused': 'Экспорт отклонён — ничего не записано',
+  'preview.structureExportFailed': 'Экспорт не удался'
 }

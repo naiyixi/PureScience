@@ -4219,7 +4219,17 @@ export const zh = {
   'preview.structureSelectionLabel': '选区名称',
   'preview.structureSelectionLabelPlaceholder': '给这段起个名字',
   'preview.structureSelectionColor': '标记色 {color}',
-  'preview.structureSelectionLabelRemove': '移除名称与颜色'
+  'preview.structureSelectionLabelRemove': '移除名称与颜色',
+  'settings.appActionTitle': '批准这次导出？',
+  'settings.appActionDescription':
+    '应用即将把本次会话的内容写成一个文件。你允许之前不会写出任何东西。',
+  'settings.appActionWrites': '写出',
+  'settings.appActionCarries': '带走',
+  'settings.appActionCarriesMarked': '你标记的那一段',
+  'preview.structureExportImage': '导出视图 PNG',
+  'preview.structureExportDone': '已导出 {name}',
+  'preview.structureExportRefused': '已拒绝导出 —— 没有写出任何文件',
+  'preview.structureExportFailed': '导出失败'
 }
 
 export type ZhKey = keyof typeof zh

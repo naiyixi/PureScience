@@ -4518,5 +4518,15 @@ export const en: Record<ZhKey, string> = {
   'preview.structureSelectionLabel': 'Region name',
   'preview.structureSelectionLabelPlaceholder': 'Name this region',
   'preview.structureSelectionColor': 'Mark colour {color}',
-  'preview.structureSelectionLabelRemove': 'Remove name and colour'
+  'preview.structureSelectionLabelRemove': 'Remove name and colour',
+  'settings.appActionTitle': 'Approve this export?',
+  'settings.appActionDescription':
+    'The app is about to write a file out of this session. Nothing is written until you allow it.',
+  'settings.appActionWrites': 'Writes',
+  'settings.appActionCarries': 'Carries',
+  'settings.appActionCarriesMarked': 'the region you marked',
+  'preview.structureExportImage': 'Export view as PNG',
+  'preview.structureExportDone': 'Exported {name}',
+  'preview.structureExportRefused': 'Export refused — nothing was written',
+  'preview.structureExportFailed': 'Export failed'
 }

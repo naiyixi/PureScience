@@ -14,6 +14,12 @@ export type ApprovalInfo = {
   availableScopes?: ConnectorApprovalScope[]
   /** Forwarded to the renderer's card; see ConnectorApprovalRequest.persistsOnService. */
   persistsOnService?: boolean
+  /**
+   * D6: set when the thing being approved is an action of the app itself (a structure-view export) rather
+   * than a connector call. Forwarded verbatim to the card, which words itself from it instead of naming a
+   * connector. Absent for every real connector call.
+   */
+  appAction?: NonNullable<ConnectorApprovalRequest['appAction']>
 }
 
 type ApprovalBrokerDeps = {

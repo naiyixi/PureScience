@@ -1578,6 +1578,25 @@ export type ConnectorApprovalRequest = {
   // to this call only") describes how long the APPROVAL lasts, which a reader can mistake for how long
   // the call's effect lasts. Absent for every tool that only reads.
   persistsOnService?: boolean
+  /**
+   * Set when what is being approved is an action of the APP itself rather than a connector call
+   * (today: exporting the structure view). The card must then be worded from this block — it must NOT
+   * print `connector`/`method` as if a connector were about to be called, because for an app action that
+   * would be a false label on the very surface the user decides on. In that case `connector` carries the
+   * app surface id (`structure-view`) and `method` the action id, purely so older readers have something
+   * to show; the wording comes from here. Absent for every real connector call (unchanged behaviour).
+   *
+   * Wording is NOT carried as prose: the payload holds the facts (what it writes, whether it carries the
+   * region the user marked) and the card words them with the user's own language.
+   */
+  appAction?: {
+    surface: 'structure-view'
+    action: 'export-view-image' | 'export-structure-file'
+    /** What the action leaves behind on disk. Empty is not a valid value — an export writes something. */
+    writes: { kind: 'image' | 'structure-file'; fileName: string; extension: string }[]
+    /** True when the bytes carry the region the user named/selected (so the card can say exactly that). */
+    carriesMarkedRegion?: boolean
+  }
 }
 export type ConnectorApprovalScope = 'once' | 'session' | 'project' | 'global'
 export type ApprovalDecision = ConnectorApprovalScope | 'deny'

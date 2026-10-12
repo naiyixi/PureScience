@@ -4416,5 +4416,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureSelectionLabel': '영역 이름',
   'preview.structureSelectionLabelPlaceholder': '이 영역에 이름 붙이기',
   'preview.structureSelectionColor': '표시 색 {color}',
-  'preview.structureSelectionLabelRemove': '이름과 색 제거'
+  'preview.structureSelectionLabelRemove': '이름과 색 제거',
+  'settings.appActionTitle': '이 내보내기를 승인할까요?',
+  'settings.appActionDescription':
+    '앱이 이 세션의 내용을 파일로 내보내려 합니다. 허용하기 전에는 아무것도 기록되지 않습니다.',
+  'settings.appActionWrites': '기록할 파일',
+  'settings.appActionCarries': '포함',
+  'settings.appActionCarriesMarked': '표시한 영역',
+  'preview.structureExportImage': '보기를 PNG로 내보내기',
+  'preview.structureExportDone': '{name} 내보냄',
+  'preview.structureExportRefused': '내보내기가 거부되었습니다 — 아무것도 기록되지 않았습니다',
+  'preview.structureExportFailed': '내보내기 실패'
 }

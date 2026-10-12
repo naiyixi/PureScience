@@ -1,6 +1,8 @@
 import { BrowserWindow, app, dialog, type OpenDialogOptions } from 'electron'
 
 import { ipcMainHandle } from './ipc-handler-registry'
+import type { ApprovalInfo } from './connectors/approval-broker'
+import type { ApprovalDecision } from '../shared/settings'
 import { constants } from 'node:fs'
 import { open, rm, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
@@ -16,6 +18,12 @@ import type {
 } from '../shared/file-save'
 
 type RegisterFileSaveHandlersOptions = {
+  /**
+   * D6: the approval card a gated app action (a structure-view export) is held on. Absent in hosts that
+   * have no card wired — in that case a save that ASKS for approval is refused rather than written
+   * un-approved, because "no one could be asked" must not read as "it was fine".
+   */
+  approvalBroker?: { request: (info: ApprovalInfo) => Promise<ApprovalDecision> }
   resolveManagedFilePath?: (
     source: SaveManagedFileRequest['source'],
     request: { path: string }
@@ -171,6 +179,24 @@ const registerFileSaveHandlers = (options: RegisterFileSaveHandlersOptions = {})
   ipcMainHandle(
     'file:save-blob',
     async (event, request: SaveBlobFileRequest): Promise<SaveBlobFileResult> => {
+      // D6: an app action whose bytes must be approved before they leave the app. The card is asked
+      // BEFORE anything else happens: a refusal writes no file, opens no save dialog and leaves no
+      // artifact behind (the acceptance criterion for this gate).
+      if (request.approval) {
+        if (!options.approvalBroker) return { saved: false, refused: 'approval-denied' }
+        const decision = await options.approvalBroker.request({
+          // For an app action these two carry the surface and action ids; the card words itself from
+          // `appAction` and never prints them as a connector call.
+          connector: request.approval.surface,
+          method: request.approval.action,
+          argsPreview: request.approval.writes.map((write) => write.fileName).join(', '),
+          appAction: request.approval,
+          // An app action is approved for this one action: the broader scopes belong to connector calls.
+          availableScopes: ['once']
+        })
+        if (decision === 'deny') return { saved: false, refused: 'approval-denied' }
+      }
+
       const parentWindow = BrowserWindow.fromWebContents(event.sender)
       const extension = extensionForMime(request.mimeType)
       const dialogOptions = {

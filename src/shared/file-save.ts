@@ -1,13 +1,23 @@
+import type { ConnectorApprovalRequest } from './settings'
+
 type SaveBlobFileRequest = {
   suggestedName: string
   mimeType: string
   /** Raw file bytes from the renderer process. */
   data: ArrayBuffer
+  /**
+   * Present when the bytes were produced by an app action that has to be approved before they leave the
+   * app (structure-view exports). The handler asks the approval card FIRST and writes nothing when it is
+   * refused. Absent for every ordinary save ⇒ unchanged behaviour, no extra dialog.
+   */
+  approval?: NonNullable<ConnectorApprovalRequest['appAction']>
 }
 
 type SaveBlobFileResult = {
   saved: boolean
   filePath?: string
+  /** Why nothing was written. `approval-denied` means the user refused at the approval card. */
+  refused?: 'approval-denied'
 }
 
 type SaveManagedFileRequest = {

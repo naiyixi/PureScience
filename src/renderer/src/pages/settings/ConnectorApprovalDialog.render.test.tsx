@@ -50,6 +50,61 @@ describe('ConnectorApprovalDialog', () => {
     expect(document.body.querySelector('[role="dialog"]')).toBeNull()
   })
 
+  it('words an app action from its own block instead of naming a connector', () => {
+    // 导出的卡上出现「连接器 BioMart / 工具 get_data」就是把假话印在用户做决定的那张面上。
+    useSettingsStore.setState({
+      pendingApprovals: [
+        {
+          id: 'r-app',
+          connector: 'structure-view',
+          method: 'export-view-image',
+          argsPreview: 'crambin-view.png',
+          availableScopes: ['once'],
+          appAction: {
+            surface: 'structure-view',
+            action: 'export-view-image',
+            writes: [{ kind: 'image', fileName: 'crambin-view.png', extension: 'png' }],
+            carriesMarkedRegion: true
+          }
+        }
+      ]
+    })
+    act(() => root.render(<ConnectorApprovalDialog />))
+
+    expect(document.body.textContent).toContain('Approve this export?')
+    // 写出什么说清楚了，带走什么也说清楚了。
+    expect(
+      document.body.querySelector('[data-slot="approval-app-action-writes"]')?.textContent
+    ).toContain('crambin-view.png')
+    expect(
+      document.body.querySelector('[data-slot="approval-app-action-carries"]')?.textContent
+    ).toContain('the region you marked')
+    // 连接器那几行必须**不在**（不是藏起来）：卡面没有一处说自己在调连接器。
+    expect(document.body.textContent).not.toContain('BioMart')
+    expect(document.body.textContent).not.toContain('structure-view')
+    expect(document.body.textContent).not.toContain('get_data')
+  })
+
+  it('still names the connector and tool for a real connector call', () => {
+    // 反向：真正的连接器调用一个字都没变（应用动作那一段只在它出现时才改卡面）。
+    useSettingsStore.setState({
+      pendingApprovals: [
+        {
+          id: 'r1',
+          connector: 'biomart',
+          method: 'get_data',
+          argsPreview: '{"x":1}',
+          availableScopes: ['once']
+        }
+      ]
+    })
+    act(() => root.render(<ConnectorApprovalDialog />))
+
+    expect(document.body.textContent).toContain('BioMart')
+    expect(document.body.textContent).toContain('get_data')
+    expect(document.body.querySelector('[data-slot="approval-app-action-writes"]')).toBeNull()
+  })
+
   it('shows the oldest request with the resolved connector name and tool', () => {
     useSettingsStore.setState({
       pendingApprovals: [

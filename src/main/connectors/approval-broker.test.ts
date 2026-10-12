@@ -22,6 +22,42 @@ const makeTimer = (): {
 }
 
 describe('ApprovalBroker', () => {
+  it('forwards an app-action block to the card verbatim', async () => {
+    // 卡面唯一的措辞来源：broker 必须原样把它送出去，不能只挑连接器那几个字段。
+    const timer = makeTimer()
+    let broadcast: ConnectorApprovalRequest | undefined
+    const broker = new ApprovalBroker({
+      generateId: () => 'id-app',
+      broadcast: (r) => {
+        broadcast = r
+      },
+      setTimer: timer.set,
+      clearTimer: timer.clear
+    })
+
+    const decision = broker.request({
+      connector: 'structure-view',
+      method: 'export-view-image',
+      argsPreview: 'crambin-view.png',
+      availableScopes: ['once'],
+      appAction: {
+        surface: 'structure-view',
+        action: 'export-view-image',
+        writes: [{ kind: 'image', fileName: 'crambin-view.png', extension: 'png' }],
+        carriesMarkedRegion: true
+      }
+    })
+
+    expect(broadcast?.appAction).toEqual({
+      surface: 'structure-view',
+      action: 'export-view-image',
+      writes: [{ kind: 'image', fileName: 'crambin-view.png', extension: 'png' }],
+      carriesMarkedRegion: true
+    })
+    broker.respond('id-app', 'deny')
+    await expect(decision).resolves.toBe('deny')
+  })
+
   it('broadcasts a request and resolves with the renderer decision', async () => {
     const timer = makeTimer()
     let broadcast: ConnectorApprovalRequest | undefined
