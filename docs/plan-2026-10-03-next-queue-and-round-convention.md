@@ -3373,3 +3373,80 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 6. 并发写入者那 83 份 `docs/evidence/` 表格重排仍在树里（自 10-10 22:06 未提交）⇒ 下一轮开工仍按
    「不是我的、不提交、不 stash」处理；若它自己落树，正常顺延。
+
+## 六十、本轮追加（执行器，2026-10-12 22:1x–）—— 批 A 前置：PDF 页文本恢复行与段落（真缺陷修复 + 两个生产消费点接线）
+
+> 证据档：`docs/evidence/2026-10-12-pdf-page-text-lines-and-paragraphs.md`（含真 PDF 的旧/新逐字读数、变异读数、刻意没做的四项）。
+> 单元来源：上一轮（§五十九）留在工作区的 `src/shared/pdf-page-text.{ts,test.ts}` 未提交件 + 上一轮汇报点名的「同一形状第二处」。
+
+### 〇 开工核对（先收口上一轮 + 防重做）
+
+- 起步态：`HEAD == origin/main == 88b865b0`，但 `git fetch` 后 `origin/main` 实为 **`dc0089ca`**；本地领先 **3 笔，全是并发写入者（桌面会话）的 D3 提交**（`169d1c60` / `a6d22aa3` / `88b865b0`），我未推送。
+- **上一轮遗留先清掉**：4 个临时探针件（`__probe_a1_*` ×3 + `__probe_paras`，其中两个是故意失败的）已删 —— 不删则全量套件红。
+- **并发写入者本轮在飞**：`src/main/acp/runtime-composition.ts`、`src/main/acp/runtime-prompt-composition.ts`、`src/main/ipc.ts`、`src/main/structure/structure-observation-journal.ts`（D3 收尾），且有一个 `electron-vite dev --purescience-headless` 实例在跑 ⇒ 本轮全程避开这批路径；提交按**显式路径** `git add`，并自证进索引的只有我的文件。
+- **CI 判决（按完整 40 位 SHA，读数即结论）**：
+
+  | 提交 | Nightly | Windows Full Test |
+  | --- | --- | --- |
+  | `e7412b29`（上一轮计划档） | 38231189883 **cancelled** | 38231189646 **success** |
+  | **`dc0089ca`（= origin/main）** | **success** | **success** |
+
+  上一轮 notepad 里那条 `pending` 的 Nightly 最终判 **cancelled**（被后续推送顶掉）⇒ **取消 ≠ 绿**；`dc0089ca` 双绿 ⇒ 它**包含**我前几轮的全部提交（`ec0f493e` / `680c10ca` / `429b3bec` 都是它的祖先），这些提交的 CI 证据由**它**给出（CI 跑整棵树而不是 diff）。
+  **推送前查过在飞车道**：`gh run list --limit 5` 全为 `completed` ⇒ **本次推送没有取消任何人的判决**（这句话来自那次查询，不是感觉）。
+- **内存闸门**：开工 空闲物理页 **4,447（≈69 MB）** / swap 已用 **5,551 MB of 6,144 MB**；门禁跑期间 3,886（≈61 MB）/ 7,215 MB of 8,192 MB（并发写入者的 dev 实例在跑）⇒ **不具备 `build:e2e` + Electron 的余量**，本轮**未改 `e2e/certification/**`**、未取真窗口读数。
+
+### 一 本单元：页文本拼装不再丢行（真缺陷，两个生产消费点）
+
+缺陷与机制（对源核实）：`pdf-service.ts` 与 `attachment-media.ts` 各有一处
+`content.items.map((i) => ('str' in i ? i.str : '')).join('').trim()` —— 而 pdfjs 用 `hasEOL` 标记行尾、把**空格单独作为 item** 发出。
+**`hasEOL` 在这棵树里此前一个读取点都没有**（`git grep hasEOL 88b865b0 -- src e2e` 为空，已取读数）。
+
+- 后果：整页被压成一行、行尾词与下一行首词粘住（真 PDF 实测 `SARS-CoV-2with`、`ofthe`）；段落单元 / 句边界 / **文本式表格候选**（按行内 2+ 空格聚列）全部失去输入。
+- 修复：新增 `src/shared/pdf-page-text.ts`（无 `node:crypto` / 无 Electron ⇒ 主进程与渲染层都可用）——
+  `pdfTextRunsFromItems`（**唯一**知道 pdfjs item 形状的地方，两处调用点不再各写一份转换）+
+  `assemblePdfPageText`（**只重插断点，不改写 run**：`hasEOL` 优先、缺它按基线回退；行内间距逐字保留、只丢行尾空白因此接合处不会双空格；同基线续 run 直接相接；段落间距取**该页自己最紧行距** × 1.5；CJK 两行之间不插空格）。
+  两个生产站点接上它；**定位用** items（表格/图形提取）一个字段未动。
+- 第三处 `getTextContent` 消费者（`pdf-embedded-annotation-reader.ts:167`）与渲染层 `PdfPreview.tsx:362` **不是同类**：前者保留坐标 items 做引文定位、后者只把 run 摆成可选文本层的 span，都不做整页拼装 ⇒ 刻意不动（换掉会改选择行为）。
+
+### 二 真数据读数（真 PDF + 应用自己的解析函数 + 持久化读回）
+
+夹具由 `/usr/sbin/cupsfilter -m application/pdf` 生成，解析走 **`PdfService` 的默认（未注入）`parsePdf`**，再经 `pages()` 从**临时隔离工作根**的持久化文件读回：
+
+| 页 | 旧 `join('')` | 新（本模块） |
+| --- | --- | --- |
+| 英文 + 对齐列（1 页 / 125 run / 10 个行尾标记） | `AbstractWe report … of SARS-CoV-2with an explicit solvent model. … within 0.35 nm ofthe reference crystal pose.ResultsSite Value Uncertaintycontrol 12.4 0.3treated …` | `Abstract\n\nWe report … of SARS-CoV-2 with an explicit solvent model. …\n\nResults\n\nSite Value Uncertainty control 12.4 0.3 treated …\n\nThe table above summarises the three measurements.`；段落 **5** 个；**粘词消失** |
+| 中文（1 页 / 34 run / 4 个行尾标记） | `摘要我们报告了⼀条…结合模式。该流程将⼝袋定构象附近。⽅法受体制备使⽤…` | `摘要\n\n我们报告了…\n\n⽅法\n\n受体制备使⽤…`；段落 **4** 个；**汉字之间未被插入空格**（CJK 接合规则生效），`SARS-CoV-2` 两侧拉丁空格保留 |
+
+- `service text equals shared assembly: true`（服务产出的页文本与共享模块逐字相同 ⇒ 接线到位、没有第二份算法）。
+- **如实说明**：本夹具的列间距**不是**空白 run（`runsWith2PlusSpaces = 0`）⇒ 文本式表格候选旧/新**都是 0**；「保留行内空白」是**契约正确性**（不替来源改写文本），不是本轮拿到的收益，别写成收益。表格主路径是带坐标的聚类，本页不受影响。
+- **同页发现（与本改动无关，先记不算立案）**：夹具中文 PDF 的字体 ToUnicode 把若干汉字映射成康熙部首码位（`⼀`/`⽤`/`⽅`/`⼝`/`⽔` 一类），新旧拼装都一样；中文检索若命中率异常，这里是第一个该看的地方（先量再说）。
+
+### 三 门禁读数（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 `vitest`（pdf-page-text + pdf 服务两个套件 + 附件媒体） | **4 文件 / 54 passed**，exit 0 |
+| 全量 `vitest run --maxWorkers=4` | **1276 文件（1260 passed \| 16 skipped）**、**16485 条（16278 passed \| 207 skipped）**，exit **0**，369.5 s |
+| `tsc` node / web（`--composite false`） | **exit 0 / exit 0**（各自单独取退出码，不走管道） |
+| `eslint --no-cache .` | **0 error / 127 warning**，exit 0；**我的 6 个文件单独跑零输出**（127 条全在他人/既有文件里；比 §五十九 记的 122 多出的那几条不在本单元文件内，如实点名、不当作本单元的改动） |
+| `prettier --check`（本轮 6 文件） | CLEAN（首跑 3 个新/改测试文件未格式化 ⇒ `--write` 后就地修掉） |
+| `bash scripts/pre-push-checks.sh` | **exit 0** |
+| **变异验证**（把两处接线回退成 `join('')`） | 服务侧 `expected 'AbstractWe report a pipeline.It runs …' to be 'Abstract\n\n…'` ⇒ 2 failed；附件侧 `expected '--- Page 1 ---\nMethodsWe ran it.Rece…'` ⇒ 1 failed ⇒ 新用例不是空跑 |
+
+### 四 提交与 CI
+
+- 一笔：`src/shared/pdf-page-text.{ts,test.ts}`（新）+ `src/main/settings/pdf-service.ts` + `src/main/settings/pdf-service.page-text.test.ts`（新）+ `src/main/uploads/attachment-media.{ts,test.ts}` + 证据档；计划档（本节）**另一笔**。
+- 并发写入者的 4 个在制品与 83 份 `docs/evidence/` **一个字节都没进提交**（显式路径 `git add`）。
+- 本次推送会**带上并发写入者的 3 笔 D3 提交**（`169d1c60` / `a6d22aa3` / `88b865b0`）—— 共享工作树的固有行为，汇报里点名归属。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **按审计器清单逐个形状收口 i18n**（§五十九 五.1）：`jsx prose line`（10）/ `jsx-text`（9）/ `jsx-text before interpolation`（4）；
+   `blocked-by` = 无；**动手前先按当前树重扫**（数量以扫描为准）。`dquote`（70）需先按文件分桶判性质（`src/main/**` 的 agent 指令文本固定英文，非缺口）。
+2. **批 A 下一片（建议）：段落单元接上真消费方**。本轮把页文本修到「有行、有段落」，`pdfPageTextParagraphs` 目前**只有测试**在用；
+   把它接成 A1 的段落记录（`src/main/translation/*` 已有段落切分与指纹，改用页文本的真实段落来源即可，别再切一次）——
+   `blocked-by` = 无（离线可判）。**动手前先核** `translation-units.ts` 现在的切分输入来自哪里，避免两套切分并存。
+3. **P0-10 最后一条「0 与『没量到』在主进程侧同形」**：`blocked-by` = 无（本地可核）。
+4. **批 D / 批 A 的真机验收（v2.0.0）**：`blocked-by` = 需要在真窗口跑（内存闸门，读数见本节〇）；同时点名的**真窗口 PDF 读数**（打开一份真 PDF → `pdf_pages` 读回带段落的文本）也归这一类，内存宽松时补。
+5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+6. 并发写入者那 83 份 `docs/evidence/` 表格重排仍在树里 ⇒ 下一轮开工仍按「不是我的、不提交、不 stash」处理。
