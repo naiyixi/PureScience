@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Zap, ChevronRight } from 'lucide-react'
 
+import { useLanguage } from '@/i18n'
 import type { JobSummary } from '../../../shared/compute'
 import { formatDuration, jobElapsedMs } from './remote-job-badge-utils'
 
@@ -15,6 +16,7 @@ type RemoteJobRowProps = {
 }
 
 export function RemoteJobRow({ job, onOpen }: RemoteJobRowProps): React.JSX.Element {
+  const { t } = useLanguage()
   const [now, setNow] = useState(() => Date.now())
 
   // Tick every second while the job is still running so elapsed time stays fresh.
@@ -36,7 +38,7 @@ export function RemoteJobRow({ job, onOpen }: RemoteJobRowProps): React.JSX.Elem
       data-testid="remote-job-row"
       className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
       onClick={() => onOpen(job)}
-      aria-label={`Remote job: ${job.intent}`}
+      aria-label={t('aria.remoteJob').replace('{name}', job.intent)}
     >
       <Zap
         size={12}

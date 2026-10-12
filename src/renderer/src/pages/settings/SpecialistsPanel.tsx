@@ -1322,7 +1322,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                                     variant="ghost"
                                     size="icon"
                                     disabled={exportingId === item.id}
-                                    aria-label={`Actions for ${item.displayName ?? item.name}`}
+                                    aria-label={t('aria.actionsFor').replace(
+                                      '{name}',
+                                      item.displayName ?? item.name
+                                    )}
                                   >
                                     {exportingId === item.id ? (
                                       <span
@@ -1429,7 +1432,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                       <button
                         type="button"
                         onClick={() => onNavigate({ kind: 'builtin', id: item.id })}
-                        aria-label={`View ${item.displayName ?? item.name}`}
+                        aria-label={t('aria.viewItem').replace(
+                          '{name}',
+                          item.displayName ?? item.name
+                        )}
                         className="flex w-full cursor-pointer items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         <SpecialistAvatar iconKey={item.iconKey} colorKey={item.colorKey} />

@@ -311,7 +311,7 @@ const RemoteOfficePreviewContent = ({
         <iframe
           ref={frameRef}
           data-office-preview-frame
-          title={`Preview of ${item.name}`}
+          title={t('aria.previewOf').replace('{name}', item.name)}
           src={frame.url}
           onLoad={() => {
             // A same-document frame reload needs a fresh process check and start capability.

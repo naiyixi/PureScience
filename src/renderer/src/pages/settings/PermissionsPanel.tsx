@@ -127,6 +127,7 @@ const PermissionRow = ({
   onOpenConnector?: (serverId: string) => void
   onOpenSession?: (sessionId: string) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const sessionId = grant.scopeKind === 'session' ? grant.sessionId : undefined
   const scopeClassName =
     'col-start-1 row-start-2 max-w-full justify-self-start truncate rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground sm:col-start-2 sm:row-start-1 sm:max-w-80'
@@ -164,7 +165,7 @@ const PermissionRow = ({
         <button
           type="button"
           title={grant.scopeLabel}
-          aria-label={`Open ${grant.scopeLabel}`}
+          aria-label={t('aria.openItem').replace('{name}', grant.scopeLabel)}
           className={`${scopeClassName} cursor-pointer transition-colors duration-150 motion-reduce:transition-none outline-none hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50`}
           onClick={() => onOpenSession(sessionId)}
         >

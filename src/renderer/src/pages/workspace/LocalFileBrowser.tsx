@@ -194,7 +194,7 @@ const GoToMenu = ({
                       e.stopPropagation()
                       onRemoveBookmark(path)
                     }}
-                    aria-label={`Unpin ${path}`}
+                    aria-label={t('aria.unpinItem').replace('{name}', path)}
                     className="flex size-6 shrink-0 items-center justify-center self-center rounded-md text-muted-foreground transition-colors hover:bg-surface-control-hover hover:text-text-000"
                   >
                     <PinOff className="size-3.5" strokeWidth={1.5} />

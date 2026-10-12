@@ -764,7 +764,7 @@ export function FileBrowserModal({
                           </button>
                           <button
                             type="button"
-                            aria-label={`Remove bookmark ${bm}`}
+                            aria-label={t('aria.removeBookmark').replace('{name}', bm)}
                             className="mr-1 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-destructive"
                             onClick={() => void handleRemoveBookmark(bm)}
                           >

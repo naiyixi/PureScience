@@ -815,7 +815,7 @@ const RuntimesPanel = ({
             enabled={enabled}
             onToggle={() => void toggleEnabled(language, env)}
             disabled={busy}
-            aria-label={`Enable ${env.label}`}
+            aria-label={t('aria.enableItem').replace('{name}', env.label)}
           />
         </div>
 
@@ -1117,7 +1117,7 @@ const RuntimesPanel = ({
                               <div
                                 className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted"
                                 role="progressbar"
-                                aria-label={`Setting up ${label} runtime`}
+                                aria-label={t('aria.settingUpRuntime').replace('{name}', label)}
                                 aria-valuenow={Math.round(progress * 100)}
                                 aria-valuemin={0}
                                 aria-valuemax={100}

@@ -588,7 +588,7 @@ const HomePage = ({
                         <button
                           type="button"
                           className={rowActionClassName}
-                          aria-label={`Open actions for ${project.name}`}
+                          aria-label={t('aria.openActionsFor').replace('{name}', project.name)}
                         >
                           <MoreVertical className="size-3.5" strokeWidth={2} aria-hidden="true" />
                         </button>

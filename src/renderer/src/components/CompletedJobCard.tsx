@@ -1,5 +1,6 @@
 import { Zap, ChevronRight } from 'lucide-react'
 
+import { useLanguage } from '@/i18n'
 import type { JobSummary } from '../../../shared/compute'
 
 // CompletedJobCard appears in the conversation timeline as an independent card.
@@ -30,6 +31,7 @@ function getStatusDisplay(job: JobSummary): { label: string; colorClass: string 
 }
 
 export function CompletedJobCard({ job, onOpen }: CompletedJobCardProps): React.JSX.Element {
+  const { t } = useLanguage()
   const { label, colorClass } = getStatusDisplay(job)
 
   const intentDisplay = job.intent.length > 70 ? `${job.intent.slice(0, 67)}…` : job.intent
@@ -40,7 +42,7 @@ export function CompletedJobCard({ job, onOpen }: CompletedJobCardProps): React.
       data-testid="completed-job-card"
       className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-3.5 py-2.5 text-left text-[12px] hover:bg-muted/50 transition-colors"
       onClick={() => onOpen(job)}
-      aria-label={`Completed remote job: ${job.intent}`}
+      aria-label={t('aria.completedRemoteJob').replace('{name}', job.intent)}
     >
       <Zap size={13} className={colorClass} aria-hidden="true" style={{ flexShrink: 0 }} />
       <span className="text-[11px] text-muted-foreground shrink-0">{job.display_name}</span>

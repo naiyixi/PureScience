@@ -122,7 +122,7 @@ const SkillDetailView = ({ skillId, onForked }: SkillDetailViewProps): React.JSX
         </div>
         <SettingsToggle
           enabled={enabled}
-          aria-label={`Toggle ${name}`}
+          aria-label={t('aria.toggleItem').replace('{name}', name)}
           disabled={alwaysOn}
           title={alwaysOn ? t('settings.skillAlwaysOn') : undefined}
           onToggle={() => void setSkillEnabled(skillId, !enabled)}

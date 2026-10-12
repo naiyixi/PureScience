@@ -285,9 +285,12 @@ describe('SkillImportApprovalDialog', () => {
     expect(button('反选')).toBeDefined()
     expect(button('Invert')).toBeUndefined()
     act(() => button('反选')?.click())
+    // The checkbox's own screen-reader name is localized as well: a Chinese UI that announces
+    // "Select Second Skill" was the same defect the visible label had.
     expect(
-      document.body.querySelector<HTMLInputElement>('[aria-label="Select Second Skill"]')?.checked
+      document.body.querySelector<HTMLInputElement>('[aria-label="选择 Second Skill"]')?.checked
     ).toBe(true)
+    expect(document.body.querySelector('[aria-label="Select Second Skill"]')).toBeNull()
   })
 
   it('reads the request sentence above the candidate list in the user’s language', () => {

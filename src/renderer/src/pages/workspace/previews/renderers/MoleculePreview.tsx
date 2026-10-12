@@ -121,7 +121,7 @@ const MoleculePreviewCanvas = ({
             'absolute inset-0 flex items-center justify-center p-3 [&>svg]:max-h-full [&>svg]:max-w-full',
             error && 'opacity-20'
           )}
-          aria-label={`Structure preview of ${name}`}
+          aria-label={t('aria.structurePreview').replace('{name}', name)}
         />
       </div>
     </div>

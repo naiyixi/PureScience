@@ -265,7 +265,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
                 <li key={skillKey(skill)} className="flex items-center gap-3 py-2.5">
                   <input
                     type="checkbox"
-                    aria-label={`Select ${skill.name}`}
+                    aria-label={t('aria.selectItem').replace('{name}', skill.name)}
                     checked={selected.has(skillKey(skill))}
                     onChange={() => toggle(skill)}
                     disabled={isScanning || skill.alreadyImported || importing}
@@ -273,7 +273,7 @@ const AgentHomeImportView = ({ onImported }: AgentHomeImportViewProps): React.JS
                   />
                   <button
                     type="button"
-                    aria-label={`Preview ${skill.name}`}
+                    aria-label={t('aria.previewItem').replace('{name}', skill.name)}
                     onClick={() =>
                       candidatePreview.openPreview(() =>
                         previewAgentHomeSkill({ source: skill.source, slug: skill.slug })

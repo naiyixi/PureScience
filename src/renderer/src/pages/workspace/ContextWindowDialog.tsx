@@ -147,17 +147,26 @@ const UsageCallsSection = ({
                   <div
                     className="h-full bg-amber-400"
                     style={{ width: `${(record.inputTokens / maxTotal) * 100}%` }}
-                    title={`Input ${formatTokens(record.inputTokens)}`}
+                    title={t('aria.inputTokens').replace(
+                      '{name}',
+                      formatTokens(record.inputTokens)
+                    )}
                   />
                   <div
                     className="h-full bg-cyan-400"
                     style={{ width: `${(record.cacheTokens / maxTotal) * 100}%` }}
-                    title={`Cache ${formatTokens(record.cacheTokens)}`}
+                    title={t('aria.cacheTokens').replace(
+                      '{name}',
+                      formatTokens(record.cacheTokens)
+                    )}
                   />
                   <div
                     className="h-full bg-emerald-500"
                     style={{ width: `${(record.outputTokens / maxTotal) * 100}%` }}
-                    title={`Output ${formatTokens(record.outputTokens)}`}
+                    title={t('aria.outputTokens').replace(
+                      '{name}',
+                      formatTokens(record.outputTokens)
+                    )}
                   />
                 </div>
               </div>

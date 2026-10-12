@@ -900,7 +900,10 @@ const ConversationPanel = ({
                                     type="button"
                                     className={attachmentRemoveButtonClassName}
                                     disabled={!canEditDraft}
-                                    aria-label={`Remove attachment ${attachmentName}`}
+                                    aria-label={t('aria.removeAttachment').replace(
+                                      '{name}',
+                                      attachmentName
+                                    )}
                                     onClick={() => onRemoveAttachment(attachment)}
                                   >
                                     <X className="size-3.5" strokeWidth={2.2} aria-hidden="true" />
@@ -959,7 +962,10 @@ const ConversationPanel = ({
                                       <div
                                         className="mt-1 h-0.5 overflow-hidden rounded-full bg-bg-300"
                                         role="progressbar"
-                                        aria-label={`Uploading ${transfer.name}`}
+                                        aria-label={t('aria.uploadingItem').replace(
+                                          '{name}',
+                                          transfer.name
+                                        )}
                                         aria-valuemin={0}
                                         aria-valuemax={100}
                                         aria-valuenow={percent}

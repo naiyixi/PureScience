@@ -290,7 +290,10 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                             type="button"
                             variant="outline"
                             size="sm"
-                            aria-label={`Scan ${repository.fullName} for skills`}
+                            aria-label={t('aria.scanForSkills').replace(
+                              '{name}',
+                              repository.fullName
+                            )}
                             aria-pressed={scannedRepo === repository.fullName}
                             disabled={busy}
                             aria-busy={
@@ -346,7 +349,10 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
         ) : null}
 
         {scanned && scanned.length > 0 ? (
-          <section aria-label={`Skills found in ${scannedRepo}`} className="mt-5">
+          <section
+            aria-label={t('aria.skillsFoundIn').replace('{name}', scannedRepo ?? '')}
+            className="mt-5"
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <h3 className="truncate text-sm font-semibold text-foreground">
@@ -409,7 +415,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                   <span className="flex size-4 shrink-0 items-center justify-center [@media(pointer:coarse)]:size-11">
                     <input
                       type="checkbox"
-                      aria-label={`Select ${skill.name}`}
+                      aria-label={t('aria.selectItem').replace('{name}', skill.name)}
                       checked={selected.has(skill.url)}
                       onChange={() => toggle(skill.url)}
                       className="size-4 shrink-0"
@@ -417,7 +423,7 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                   </span>
                   <button
                     type="button"
-                    aria-label={`Preview ${skill.name}`}
+                    aria-label={t('aria.previewItem').replace('{name}', skill.name)}
                     onClick={() =>
                       candidatePreview.openPreview(() => previewGitHubSkill(skill.url))
                     }

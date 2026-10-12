@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/i18n'
 import { MANAGED_PREVIEW_LOAD_ERROR } from '../../../../../../shared/preview-resources'
 
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
@@ -44,6 +45,7 @@ const HtmlSourceContent = ({
 }
 
 export const HtmlPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const [mode, setMode] = useState<HtmlPreviewMode>('render')
   const requestKey = createPreviewResourceKey(item)
   const [failedRequestKey, setFailedRequestKey] = useState<string | undefined>(undefined)
@@ -115,7 +117,7 @@ export const HtmlPreviewRenderer = ({ item }: PreviewFileRendererProps): React.J
       {modeToggle}
       <iframe
         ref={iframeRef}
-        title={`Preview of ${item.name}`}
+        title={t('aria.previewOf').replace('{name}', item.name)}
         sandbox="allow-scripts"
         referrerPolicy="no-referrer"
         src={resourceState.resource.url}

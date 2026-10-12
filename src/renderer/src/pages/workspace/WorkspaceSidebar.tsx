@@ -465,7 +465,7 @@ const WorkspaceSidebar = ({
                             <button
                               type="button"
                               className={cn(sessionRowActionClassName, isActive && 'opacity-100')}
-                              aria-label={`Open actions for ${session.title}`}
+                              aria-label={t('aria.openActionsFor').replace('{name}', session.title)}
                               onPointerDown={closeHoverCard}
                             >
                               <span

@@ -1057,7 +1057,7 @@ const ArtifactProvenancePanel = ({
         {provenance && deferredTabLabel && deferredSectionLoading ? (
           <div
             className="flex h-full items-center justify-center gap-2 text-sm text-text-300"
-            aria-label={`Loading ${deferredTabLabel}`}
+            aria-label={t('aria.loadingItem').replace('{name}', deferredTabLabel)}
           >
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
             Loading {deferredTabLabel}

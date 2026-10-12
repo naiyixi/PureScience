@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n'
 import type { ChatSession } from '@/stores/session-store'
 import { File, FileArchive, FileCode2, FileImage, FileSpreadsheet, FileText } from 'lucide-react'
 import { parse } from 'papaparse'
@@ -278,6 +279,7 @@ const ManagedImageThumbnail = ({
   sessionId?: string
   enabled: boolean
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const requestKey = createPreviewResourceKey({
     projectId,
     sessionId,
@@ -308,7 +310,7 @@ const ManagedImageThumbnail = ({
   return (
     <img
       src={resourceState.resource.url}
-      alt={`Preview of ${name}`}
+      alt={t('aria.previewOf').replace('{name}', name)}
       className="size-full object-cover object-top"
       loading="lazy"
       decoding="async"

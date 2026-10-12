@@ -137,7 +137,7 @@ const SkillImportApprovalRequestDialog = ({
                   <li key={candidate.subPath} className="flex items-center gap-3 py-2.5">
                     <input
                       type="checkbox"
-                      aria-label={`Select ${candidate.name}`}
+                      aria-label={t('aria.selectItem').replace('{name}', candidate.name)}
                       checked={selected.has(candidate.subPath)}
                       onChange={() => toggle(candidate.subPath)}
                       className="size-4 shrink-0"

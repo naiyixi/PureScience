@@ -121,7 +121,7 @@ const ConnectorDetailView = ({
         </div>
         <SettingsToggle
           enabled={enabled}
-          aria-label={`Toggle ${detail.displayName}`}
+          aria-label={t('aria.toggleItem').replace('{name}', detail.displayName)}
           onToggle={() => void setConnectorEnabled(id, !enabled)}
         />
       </div>

@@ -374,6 +374,7 @@ const PreviewTab = ({
   onClose: (id: string) => void
   onKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const removeItem = usePreviewWorkbenchStore((state) => state.removeItem)
   const [menu, setMenu] = useState<{ x: number; y: number; returnTo: HTMLElement | null } | null>(
     null
@@ -444,7 +445,7 @@ const PreviewTab = ({
           isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         )}
         onClick={() => onClose(tab.id)}
-        aria-label={`Close preview of ${tab.title}`}
+        aria-label={t('aria.closePreviewOf').replace('{name}', tab.title)}
       >
         <X className="size-3.5" aria-hidden="true" />
       </button>

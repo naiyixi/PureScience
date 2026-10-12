@@ -321,7 +321,10 @@ const SessionNotebookContent = ({
                       onClick={() => void handleExportAll()}
                       data-testid="session-notebook-export-all"
                       className="flex items-center justify-center gap-1.5 rounded px-2 py-1 text-xs text-text-200 hover:bg-bg-200 hover:text-text-000 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label={`Download separate notebooks by kernel (${exportAllCount})`}
+                      aria-label={t('aria.downloadByKernel').replace(
+                        '{name}',
+                        String(exportAllCount)
+                      )}
                     >
                       {exportingAll ? (
                         <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />

@@ -328,8 +328,8 @@ const TurnTokenUsage = ({
                   <span
                     data-slot="turn-runtime-framework"
                     role="img"
-                    aria-label={`Agent framework: ${frameworkName}`}
-                    title={`Agent framework: ${frameworkName}`}
+                    aria-label={t('aria.agentFramework').replace('{name}', frameworkName)}
+                    title={t('aria.agentFramework').replace('{name}', frameworkName)}
                     className="inline-flex size-5 items-center justify-center rounded-full border border-border bg-background"
                   >
                     <AgentFrameworkIcon frameworkId={runtimeIdentity.frameworkId} size={12} />
@@ -509,6 +509,7 @@ const MessageImageList = memo(function MessageImageList({
   images: MessageImage[]
   onAnnotateImage?: (image: AnnotationImageRef, region: AnnotationRegion) => void
 }): React.JSX.Element | null {
+  const { t } = useLanguage()
   if (images.length === 0) return null
 
   return (
@@ -518,7 +519,7 @@ const MessageImageList = memo(function MessageImageList({
           <img
             key={image.id}
             src={`data:${image.mimeType};base64,${image.data}`}
-            alt={`Agent-generated image ${index + 1}`}
+            alt={t('aria.agentGeneratedImage').replace('{name}', String(index + 1))}
             className="max-h-[40rem] w-auto max-w-full rounded-lg border border-border-200 bg-bg-000 object-contain"
             loading="lazy"
             decoding="async"
@@ -585,6 +586,7 @@ const ArtifactCard = ({
   artifact: MessageArtifact
   onPreviewArtifact: (artifact: MessageArtifact) => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const artifactName = getArtifactName(artifact)
   const sizeLabel = formatByteSize(artifact.size) ?? ''
   const [setElement, isNearViewport] = useNearViewport<HTMLButtonElement>()
@@ -608,7 +610,7 @@ const ArtifactCard = ({
       onClick={() => {
         onPreviewArtifact(artifact)
       }}
-      aria-label={`Preview generated file ${artifactName}`}
+      aria-label={t('aria.previewGeneratedFile').replace('{name}', artifactName)}
       title={artifact.path}
     >
       <div className={cn('relative', artifactPreviewClassName)}>
@@ -712,6 +714,7 @@ const MessageUploadAttachmentList = ({
   attachments: MessageUploadAttachment[]
   onPreviewUploadAttachment: (attachment: MessageUploadAttachment) => void
 }): React.JSX.Element | null => {
+  const { t } = useLanguage()
   if (attachments.length === 0) return null
 
   return (
@@ -729,7 +732,7 @@ const MessageUploadAttachmentList = ({
             onClick={() => {
               onPreviewUploadAttachment(attachment)
             }}
-            aria-label={`Preview uploaded attachment ${attachmentName}`}
+            aria-label={t('aria.previewUploadedAttachment').replace('{name}', attachmentName)}
             title={attachment.path}
           >
             <Icon className="h-3.5 w-3.5 shrink-0 text-text-300" aria-hidden="true" />
@@ -754,99 +757,102 @@ const MessagePartsContent = ({
   onOpenSkillMention: (skillId: string, name: string) => void
   onPreviewMentionArtifact: (part: ArtifactMentionPart) => void
   onOpenSessionMention: (sessionId: string) => void
-}): React.JSX.Element => (
-  <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-    {parts.map((part, index) => {
-      if (part.type === 'skill') {
-        if (isStatic || !('id' in part)) {
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  return (
+    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+      {parts.map((part, index) => {
+        if (part.type === 'skill') {
+          if (isStatic || !('id' in part)) {
+            return (
+              <span
+                key={index}
+                className={cn(mentionPillClassName, 'bg-skill-chip text-skill-chip-foreground')}
+              >
+                /{part.name}
+              </span>
+            )
+          }
           return (
-            <span
+            <button
               key={index}
-              className={cn(mentionPillClassName, 'bg-skill-chip text-skill-chip-foreground')}
+              type="button"
+              className={cn(
+                mentionPillClassName,
+                mentionButtonClassName,
+                'bg-skill-chip text-skill-chip-foreground'
+              )}
+              onClick={() => onOpenSkillMention(part.id, part.name)}
+              aria-label={t('aria.openSkill').replace('{name}', part.name)}
             >
               /{part.name}
-            </span>
+            </button>
           )
         }
-        return (
-          <button
-            key={index}
-            type="button"
-            className={cn(
-              mentionPillClassName,
-              mentionButtonClassName,
-              'bg-skill-chip text-skill-chip-foreground'
-            )}
-            onClick={() => onOpenSkillMention(part.id, part.name)}
-            aria-label={`Open skill ${part.name}`}
-          >
-            /{part.name}
-          </button>
-        )
-      }
-      if (part.type === 'session') {
-        if (isStatic || !('id' in part)) {
+        if (part.type === 'session') {
+          if (isStatic || !('id' in part)) {
+            return (
+              <span
+                key={index}
+                className={cn(mentionPillClassName, 'bg-session-chip text-session-chip-foreground')}
+              >
+                #{part.title}
+              </span>
+            )
+          }
           return (
-            <span
+            <button
               key={index}
-              className={cn(mentionPillClassName, 'bg-session-chip text-session-chip-foreground')}
+              type="button"
+              className={cn(
+                mentionPillClassName,
+                mentionButtonClassName,
+                'bg-session-chip text-session-chip-foreground'
+              )}
+              onClick={() => onOpenSessionMention(part.id)}
+              aria-label={t('aria.openSession').replace('{name}', part.title)}
             >
               #{part.title}
-            </span>
+            </button>
           )
         }
-        return (
-          <button
-            key={index}
-            type="button"
-            className={cn(
-              mentionPillClassName,
-              mentionButtonClassName,
-              'bg-session-chip text-session-chip-foreground'
-            )}
-            onClick={() => onOpenSessionMention(part.id)}
-            aria-label={`Open session ${part.title}`}
-          >
-            #{part.title}
-          </button>
-        )
-      }
-      if (part.type === 'artifact') {
-        if (isStatic || !('source' in part)) {
+        if (part.type === 'artifact') {
+          if (isStatic || !('source' in part)) {
+            return (
+              <span
+                key={index}
+                className={cn(mentionPillClassName, 'bg-mention-chip text-mention-chip-foreground')}
+              >
+                @{part.name}
+              </span>
+            )
+          }
           return (
-            <span
+            <button
               key={index}
-              className={cn(mentionPillClassName, 'bg-mention-chip text-mention-chip-foreground')}
+              type="button"
+              className={cn(
+                artifactMentionPillClassName,
+                mentionButtonClassName,
+                'bg-mention-chip text-mention-chip-foreground'
+              )}
+              onClick={() => onPreviewMentionArtifact(part)}
+              aria-label={t('aria.previewItem').replace('{name}', part.name)}
             >
-              @{part.name}
-            </span>
+              @<ExtensionPreservingFileName name={part.name} />
+            </button>
           )
         }
-        return (
-          <button
-            key={index}
-            type="button"
-            className={cn(
-              artifactMentionPillClassName,
-              mentionButtonClassName,
-              'bg-mention-chip text-mention-chip-foreground'
-            )}
-            onClick={() => onPreviewMentionArtifact(part)}
-            aria-label={`Preview ${part.name}`}
-          >
-            @<ExtensionPreservingFileName name={part.name} />
-          </button>
-        )
-      }
 
-      return (
-        <span key={index} className="whitespace-pre-wrap">
-          {part.text}
-        </span>
-      )
-    })}
-  </p>
-)
+        return (
+          <span key={index} className="whitespace-pre-wrap">
+            {part.text}
+          </span>
+        )
+      })}
+    </p>
+  )
+}
 
 // Renders one chat message with user bubbles and full-width assistant markdown surfaces.
 const WorkspaceMessageItemImpl = ({

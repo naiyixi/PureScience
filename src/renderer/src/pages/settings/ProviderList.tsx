@@ -247,13 +247,15 @@ const ProviderList = ({
                         <TooltipTrigger asChild>
                           <span
                             className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-                            aria-label={`Speaks the ${endpoint.full}`}
+                            aria-label={t('aria.speaksEndpoint').replace('{name}', endpoint.full)}
                           >
                             <Route className="size-3" strokeWidth={2} aria-hidden="true" />
                             {endpoint.path}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent>Speaks the {endpoint.full}</TooltipContent>
+                        <TooltipContent>
+                          {t('aria.speaksEndpoint').replace('{name}', endpoint.full)}
+                        </TooltipContent>
                       </Tooltip>
                     ) : null}
                     {isBusy ? (

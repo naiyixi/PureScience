@@ -423,7 +423,7 @@ const GeneralPanel = (): React.JSX.Element => {
             href={APP.links.discord}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Join the ${APP.name} community on Discord`}
+            aria-label={t('aria.joinDiscord').replace('{name}', APP.name)}
             className={socialLinkClassName}
           >
             <DiscordMark className="size-4" />
@@ -433,7 +433,7 @@ const GeneralPanel = (): React.JSX.Element => {
             href={APP.links.x}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Follow ${APP.name} on X`}
+            aria-label={t('aria.followOnX').replace('{name}', APP.name)}
             className={socialLinkClassName}
           >
             <XMark className="size-4" />X
@@ -442,7 +442,7 @@ const GeneralPanel = (): React.JSX.Element => {
             href={APP.links.website}
             target="_blank"
             rel="noreferrer"
-            aria-label={`Open the ${APP.name} website`}
+            aria-label={t('aria.openWebsite').replace('{name}', APP.name)}
             className={socialLinkClassName}
           >
             <Globe className="size-4" strokeWidth={2} aria-hidden="true" />

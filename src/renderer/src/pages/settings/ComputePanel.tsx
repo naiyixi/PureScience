@@ -132,7 +132,7 @@ const HostCard = ({
               variant="ghost"
               size="icon-sm"
               onClick={onDelete}
-              aria-label={`Remove ${host.displayName}`}
+              aria-label={t('aria.removeItem').replace('{name}', host.displayName)}
               className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
               <X className="size-4" aria-hidden="true" />

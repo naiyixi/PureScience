@@ -1212,10 +1212,10 @@ describe('SpecialistsPanel', () => {
       )
     })
 
-    // The trigger's accessible name is a template literal (still English); the menu item's copy is
-    // translated, so it is found by the zh label.
+    // Both the trigger's accessible name and the menu item's copy are localized; the trigger is
+    // found by its zh name (an English aria-label inside a Chinese UI was the same defect).
     openRadixMenu(
-      document.body.querySelector<HTMLButtonElement>('[aria-label="Actions for RNA Reviewer"]')
+      document.body.querySelector<HTMLButtonElement>('[aria-label="RNA Reviewer 的操作"]')
     )
     const exportItem = Array.from(
       document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
@@ -1273,7 +1273,7 @@ describe('SpecialistsPanel', () => {
     })
 
     openRadixMenu(
-      document.body.querySelector<HTMLButtonElement>('[aria-label="Actions for RNA Reviewer"]')
+      document.body.querySelector<HTMLButtonElement>('[aria-label="RNA Reviewer 的操作"]')
     )
     const deleteItem = Array.from(
       document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')

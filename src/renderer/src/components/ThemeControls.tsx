@@ -85,8 +85,8 @@ export const ThemePreferenceMenu = ({ className }: ThemePreferenceMenuProps): Re
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`Theme: ${active.label}`}
-          title={`Theme: ${active.label}`}
+          aria-label={t('aria.theme').replace('{name}', active.label)}
+          title={t('aria.theme').replace('{name}', active.label)}
           className={cn(
             'inline-flex size-9 items-center justify-center rounded-lg text-text-300 transition-colors duration-150 ease-out hover:bg-bg-300 hover:text-text-000',
             className

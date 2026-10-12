@@ -322,7 +322,7 @@ const PreviewFileHeader = ({
                   variant="ghost"
                   size="icon-xs"
                   className="text-text-100 hover:text-text-000"
-                  aria-label={`File actions for ${item.title}`}
+                  aria-label={t('aria.fileActionsFor').replace('{name}', item.title)}
                 >
                   <MoreHorizontal aria-hidden="true" />
                 </Button>
@@ -346,7 +346,7 @@ const PreviewFileHeader = ({
                 variant="ghost"
                 size="icon-xs"
                 className="text-text-100 hover:text-text-000"
-                aria-label={`Open full screen preview of ${item.title}`}
+                aria-label={t('aria.openFullScreenPreview').replace('{name}', item.title)}
                 onClick={onOpenFullScreen}
               >
                 <Maximize2 aria-hidden="true" />
@@ -366,7 +366,7 @@ const PreviewFileHeader = ({
               variant="ghost"
               size="icon-xs"
               className="text-text-100 hover:text-text-000"
-              aria-label={`Close preview of ${item.title}`}
+              aria-label={t('aria.closePreviewOf').replace('{name}', item.title)}
               onClick={onClose}
             >
               <X aria-hidden="true" />

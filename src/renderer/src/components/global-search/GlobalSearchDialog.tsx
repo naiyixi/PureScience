@@ -1132,7 +1132,7 @@ export const GlobalSearchDialog = ({
                         size="icon-xs"
                         tabIndex={-1}
                         className="cursor-pointer"
-                        aria-label={`Mention ${artifact.name}`}
+                        aria-label={t('aria.mentionItem').replace('{name}', artifact.name)}
                         disabled={!canMention}
                         onClick={(event) => {
                           event.stopPropagation()
@@ -1156,7 +1156,7 @@ export const GlobalSearchDialog = ({
                     size="icon-xs"
                     tabIndex={-1}
                     className="cursor-pointer"
-                    aria-label={`Open ${artifact.name}`}
+                    aria-label={t('aria.openItem').replace('{name}', artifact.name)}
                     onClick={(event) => {
                       event.stopPropagation()
                       previewArtifact(artifact)

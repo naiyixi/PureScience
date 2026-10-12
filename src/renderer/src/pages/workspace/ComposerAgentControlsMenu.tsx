@@ -469,7 +469,7 @@ const ComposerAgentControlsMenu = ({
                         <button
                           type="button"
                           className="flex size-5 shrink-0 items-center justify-center rounded text-text-300 hover:bg-bg-200 hover:text-text-000 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-300"
-                          aria-label={`Revoke session grant for ${grant.label}`}
+                          aria-label={t('aria.revokeSessionGrant').replace('{name}', grant.label)}
                           disabled={grantActionsReadOnly}
                           onClick={(event) => {
                             event.preventDefault()

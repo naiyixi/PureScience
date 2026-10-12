@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react'
 
 import type { AcquireManagedPreviewRequest } from '../../../../../../shared/preview-resources'
 import type { ManagedPreviewResource } from '../../../../../../shared/preview-resources'
+import { useLanguage } from '@/i18n'
 import type { PreviewFileSource } from '@/stores/preview-workbench-store'
 
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
@@ -279,6 +280,7 @@ export const PdfThumbnail = ({
   size?: number
   mtimeMs?: number
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const requestKey = createPreviewResourceKey({
     projectId,
     sessionId,
@@ -330,7 +332,7 @@ export const PdfThumbnail = ({
       {cached ? (
         <img
           src={cached.url}
-          alt={`Preview of ${name}`}
+          alt={t('aria.previewOf').replace('{name}', name)}
           className="size-full object-cover object-top"
           loading="lazy"
           decoding="async"

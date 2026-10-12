@@ -580,7 +580,7 @@ const FileActionButtons = ({
               variant="outline"
               size="icon-sm"
               className="cursor-pointer bg-bg-000/95 text-text-100 shadow-sm"
-              aria-label={`Open ${name} in split view beside the session`}
+              aria-label={t('aria.openInSplitView').replace('{name}', name)}
               disabled={disabled}
               onClick={onOpenInPanel}
             >

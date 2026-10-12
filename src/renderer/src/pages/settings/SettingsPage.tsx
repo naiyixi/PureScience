@@ -1220,7 +1220,10 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                       <button
                         type="button"
                         onClick={() => navigate(breadcrumb.rootTo)}
-                        aria-label={`Back to ${breadcrumb.rootLabel.toLowerCase()}`}
+                        aria-label={t('aria.backTo').replace(
+                          '{name}',
+                          breadcrumb.rootLabel.toLowerCase()
+                        )}
                         className="shrink-0 text-muted-foreground transition-colors motion-reduce:transition-none hover:text-foreground"
                       >
                         {breadcrumb.rootLabel}
