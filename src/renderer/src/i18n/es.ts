@@ -4446,5 +4446,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'common.deleting': 'Eliminando…',
   'home.projectDeletedNotMeasured': 'Se eliminó «{name}».',
   'runtimes.namedEnvSizeLabel': '{size} en disco',
-  'runtimes.namedEnvRemovedWithSize': 'Se eliminó «{name}» — se liberaron {size}.'
+  'runtimes.namedEnvRemovedWithSize': 'Se eliminó «{name}» — se liberaron {size}.',
+  'settings.listingPackages': 'Listando los paquetes…',
+  'settings.exportSavedNoLocation': 'Se guardó {name}. La ubicación no se muestra aquí.',
+  'settings.noAdditionalSkillsDeleted': 'No se eliminarán más habilidades.',
+  'settings.skillImportReviewPrompt':
+    'Revisa y elige exactamente lo que PureScience puede instalar.',
+  'settings.loadingPreview': 'Cargando la vista previa…',
+  'settings.skillImportRequestedFrom': 'El agente solicitó una importación desde'
 }

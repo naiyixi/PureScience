@@ -4356,5 +4356,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'common.deleting': '削除中…',
   'home.projectDeletedNotMeasured': '「{name}」を削除しました。',
   'runtimes.namedEnvSizeLabel': 'ディスク上 {size}',
-  'runtimes.namedEnvRemovedWithSize': '「{name}」を削除しました — {size} を解放しました。'
+  'runtimes.namedEnvRemovedWithSize': '「{name}」を削除しました — {size} を解放しました。',
+  'settings.listingPackages': 'パッケージを一覧表示しています…',
+  'settings.exportSavedNoLocation': '{name} を保存しました。保存先はここには表示されません。',
+  'settings.noAdditionalSkillsDeleted': 'これ以上スキルは削除されません。',
+  'settings.skillImportReviewPrompt':
+    'PureScience がインストールしてよい内容を確認して選択してください。',
+  'settings.loadingPreview': 'プレビューを読み込み中…',
+  'settings.skillImportRequestedFrom': 'エージェントが次の場所からインポートを要求しました'
 }

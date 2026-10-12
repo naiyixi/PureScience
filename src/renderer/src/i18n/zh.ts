@@ -4092,7 +4092,13 @@ export const zh = {
   'common.deleting': '正在删除…',
   'home.projectDeletedNotMeasured': '已删除"{name}"。',
   'runtimes.namedEnvSizeLabel': '磁盘占用 {size}',
-  'runtimes.namedEnvRemovedWithSize': '已移除“{name}”，释放了 {size}。'
+  'runtimes.namedEnvRemovedWithSize': '已移除“{name}”，释放了 {size}。',
+  'settings.listingPackages': '正在列出软件包…',
+  'settings.exportSavedNoLocation': '已保存 {name}。此处不显示位置。',
+  'settings.noAdditionalSkillsDeleted': '不会再删除其他技能。',
+  'settings.skillImportReviewPrompt': '请核对并选择允许 PureScience 安装的内容。',
+  'settings.loadingPreview': '正在载入预览…',
+  'settings.skillImportRequestedFrom': '智能体请求从以下来源导入'
 }
 
 export type ZhKey = keyof typeof zh

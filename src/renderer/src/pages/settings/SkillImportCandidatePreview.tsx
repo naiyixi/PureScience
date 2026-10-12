@@ -85,7 +85,7 @@ const SkillImportCandidatePreview = ({
                   className="size-4 animate-spin motion-reduce:animate-none"
                   aria-hidden
                 />
-                Loading preview…
+                {t('settings.loadingPreview')}
               </div>
             ) : error ? (
               <div

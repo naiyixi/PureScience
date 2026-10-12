@@ -4286,5 +4286,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'common.deleting': '삭제 중…',
   'home.projectDeletedNotMeasured': '"{name}"을(를) 삭제했습니다.',
   'runtimes.namedEnvSizeLabel': '디스크 사용량 {size}',
-  'runtimes.namedEnvRemovedWithSize': '“{name}”을(를) 제거했습니다 — {size}을(를) 확보했습니다.'
+  'runtimes.namedEnvRemovedWithSize': '“{name}”을(를) 제거했습니다 — {size}을(를) 확보했습니다.',
+  'settings.listingPackages': '패키지를 나열하는 중…',
+  'settings.exportSavedNoLocation':
+    '{name}을(를) 저장했습니다. 저장 위치는 여기에 표시되지 않습니다.',
+  'settings.noAdditionalSkillsDeleted': '추가로 삭제되는 스킬은 없습니다.',
+  'settings.skillImportReviewPrompt': 'PureScience가 설치할 수 있는 항목을 확인하고 선택하십시오.',
+  'settings.loadingPreview': '미리보기를 불러오는 중…',
+  'settings.skillImportRequestedFrom': '에이전트가 다음 위치에서 가져오기를 요청했습니다'
 }

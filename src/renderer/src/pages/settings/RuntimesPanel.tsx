@@ -1161,7 +1161,7 @@ const RuntimesPanel = ({
                             className="shrink-0"
                             disabled
                           >
-                            Finishing setup…
+                            {t('settings.finishingSetup')}
                           </Button>
                         ) : (
                           <Button
@@ -1537,7 +1537,7 @@ const RuntimesPanel = ({
                     </div>
                   ) : packages === null ? (
                     <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      Listing packages…
+                      {t('settings.listingPackages')}
                     </p>
                   ) : (
                     <table className="w-full border-collapse text-[13px]">

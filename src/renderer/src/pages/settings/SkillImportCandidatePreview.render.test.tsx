@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { LanguageProvider } from '@/i18n'
 import { SkillImportCandidatePreview } from './SkillImportCandidatePreview'
 import { useSkillImportCandidatePreview } from './useSkillImportCandidatePreview'
 
@@ -27,6 +28,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  window.localStorage.clear()
 })
 
 describe('SkillImportCandidatePreview', () => {
@@ -174,5 +176,29 @@ describe('SkillImportCandidatePreview', () => {
 
     expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Good body')
     expect(document.body.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  it('shows the loading line in the user’s language', () => {
+    // Keying the copy is not the deliverable — the screen changing is. The loading line is the state
+    // a user stares at while a remote candidate is fetched, so it is asserted in zh off the real
+    // provider, not against the dictionary file.
+    window.localStorage.setItem('purescience-language', 'zh')
+    act(() => {
+      root.render(
+        <LanguageProvider>
+          <SkillImportCandidatePreview
+            open
+            onOpenChange={vi.fn()}
+            loading
+            error={null}
+            content={null}
+          />
+        </LanguageProvider>
+      )
+    })
+
+    const dialog = document.body.querySelector('[role="dialog"]')
+    expect(dialog?.textContent).toContain('正在载入预览…')
+    expect(dialog?.textContent).not.toContain('Loading preview')
   })
 })

@@ -4479,5 +4479,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'common.deleting': 'Suppression…',
   'home.projectDeletedNotMeasured': '« {name} » a été supprimé.',
   'runtimes.namedEnvSizeLabel': '{size} sur le disque',
-  'runtimes.namedEnvRemovedWithSize': '« {name} » supprimé — {size} libérés.'
+  'runtimes.namedEnvRemovedWithSize': '« {name} » supprimé — {size} libérés.',
+  'settings.listingPackages': 'Liste des paquets…',
+  'settings.exportSavedNoLocation': '{name} a été enregistré. L’emplacement n’est pas indiqué ici.',
+  'settings.noAdditionalSkillsDeleted': 'Aucune autre compétence ne sera supprimée.',
+  'settings.skillImportReviewPrompt':
+    'Vérifiez et choisissez exactement ce que PureScience peut installer.',
+  'settings.loadingPreview': 'Chargement de l’aperçu…',
+  'settings.skillImportRequestedFrom': 'L’agent a demandé un import depuis'
 }

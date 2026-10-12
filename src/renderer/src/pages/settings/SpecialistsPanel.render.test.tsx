@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SpecialistsPanel } from './SpecialistsPanel'
 import { clickRadixMenuItem, openRadixMenu } from './test-utils'
+import { LanguageProvider } from '@/i18n'
 import { useProjectStore } from '@/stores/project-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
@@ -116,6 +117,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  window.localStorage.clear()
   useSpecialistStore.setState(initialStore, true)
   delete (window as unknown as { api?: unknown }).api
 })
@@ -1187,6 +1189,101 @@ describe('SpecialistsPanel', () => {
     })
 
     expect(deleteMock).toHaveBeenCalledWith('rna-reviewer', 1, ['personal-exclusive'])
+  })
+
+  it('reads the export receipt in the user’s language', async () => {
+    // The receipt is the only place the app answers "where did my export go?" — it has to answer in
+    // the user's language. `exportSaved` is component state, so the flow is driven for real: open the
+    // action menu, take the (translated) export item, then the panel switches to the receipt view.
+    const preview = exportPreviewFixture()
+    useSpecialistStore.setState({
+      ...useSpecialistStore.getState(),
+      previewExport: makePreviewExportMock(preview),
+      exportSpecialist: vi.fn().mockResolvedValue({ saved: true })
+    })
+    window.localStorage.setItem('purescience-language', 'zh')
+    const onNavigate = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <LanguageProvider>
+          <SpecialistsPanel view={{ kind: 'list' }} onNavigate={onNavigate} />
+        </LanguageProvider>
+      )
+    })
+
+    // The trigger's accessible name is a template literal (still English); the menu item's copy is
+    // translated, so it is found by the zh label.
+    openRadixMenu(
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Actions for RNA Reviewer"]')
+    )
+    const exportItem = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('导出 ZIP'))
+    expect(exportItem, 'the zh export menu item must be reachable').toBeDefined()
+    await act(async () => clickRadixMenuItem(exportItem))
+
+    await act(async () => {
+      root.render(
+        <LanguageProvider>
+          <SpecialistsPanel view={{ kind: 'export', id: 'rna-reviewer' }} onNavigate={onNavigate} />
+        </LanguageProvider>
+      )
+    })
+
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('已保存')
+    expect(text).toContain('purescience-specialist-rna-reviewer-v0.1.0.zip')
+    expect(text).toContain('此处不显示位置')
+    expect(text).not.toContain('was saved. No location is shown here.')
+  })
+
+  it('says in the user’s language that no other Skill is deleted', async () => {
+    // The reassurance line is the whole answer to "what else am I about to lose?" — it only appears
+    // when every related Skill is kept, and nothing else in the suite asserted it (not even in en).
+    const previewDelete = vi.fn().mockResolvedValue({
+      specialistId: 'rna-reviewer',
+      specialistName: 'RNA Reviewer',
+      expectedRevision: 1,
+      skills: [
+        {
+          id: 'builtin-tool',
+          displayName: 'Built-in Tool',
+          source: 'featured',
+          kind: 'builtin',
+          deletable: false,
+          reasons: [{ code: 'builtin', specialistIds: [] }]
+        }
+      ]
+    })
+    useSpecialistStore.setState({
+      ...useSpecialistStore.getState(),
+      previewDelete,
+      delete: vi.fn().mockResolvedValue({ status: 'deleted' }),
+      load: vi.fn().mockResolvedValue(undefined)
+    })
+    window.localStorage.setItem('purescience-language', 'zh')
+
+    await act(async () => {
+      root.render(
+        <LanguageProvider>
+          <SpecialistsPanel view={{ kind: 'list' }} onNavigate={vi.fn()} />
+        </LanguageProvider>
+      )
+    })
+
+    openRadixMenu(
+      document.body.querySelector<HTMLButtonElement>('[aria-label="Actions for RNA Reviewer"]')
+    )
+    const deleteItem = Array.from(
+      document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')
+    ).find((item) => item.textContent?.includes('删除'))
+    expect(deleteItem, 'the zh delete menu item must be reachable').toBeDefined()
+    await act(async () => clickRadixMenuItem(deleteItem))
+
+    const dialog = document.body.querySelector('[role="alertdialog"]')
+    expect(dialog?.textContent).toContain('不会再删除其他技能。')
+    expect(dialog?.textContent).not.toContain('No additional Skills will be deleted.')
   })
 })
 

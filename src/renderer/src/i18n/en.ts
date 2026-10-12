@@ -4389,5 +4389,11 @@ export const en: Record<ZhKey, string> = {
   'common.deleting': 'Deleting…',
   'home.projectDeletedNotMeasured': '{name} was deleted.',
   'runtimes.namedEnvSizeLabel': '{size} on disk',
-  'runtimes.namedEnvRemovedWithSize': 'Removed “{name}” — freed {size}.'
+  'runtimes.namedEnvRemovedWithSize': 'Removed “{name}” — freed {size}.',
+  'settings.listingPackages': 'Listing packages…',
+  'settings.exportSavedNoLocation': '{name} was saved. No location is shown here.',
+  'settings.noAdditionalSkillsDeleted': 'No additional Skills will be deleted.',
+  'settings.skillImportReviewPrompt': 'Review and choose exactly what PureScience may install.',
+  'settings.loadingPreview': 'Loading preview…',
+  'settings.skillImportRequestedFrom': 'The agent requested an import from'
 }

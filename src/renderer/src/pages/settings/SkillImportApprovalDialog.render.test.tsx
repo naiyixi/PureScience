@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { SkillBundlePreview } from '../../../../shared/settings'
+import { LanguageProvider } from '@/i18n'
 import { SkillImportApprovalDialog } from './SkillImportApprovalDialog'
 import { createInitialSkillImportState, useSkillImportStore } from '@/stores/skill-import-store'
 
@@ -35,6 +36,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  window.localStorage.clear()
 })
 
 const button = (text: string): HTMLButtonElement | undefined =>
@@ -255,5 +257,34 @@ describe('SkillImportApprovalDialog', () => {
     expect(document.body.textContent).toContain('next.skill')
     expect(document.body.textContent).toContain('Next Skill')
     expect(document.body.textContent).not.toContain('stale.skill')
+  })
+
+  it('reads the request sentence above the candidate list in the user’s language', () => {
+    // The sentence that explains WHERE an import came from is the one a user needs before approving
+    // it; it used to be hardcoded English in both halves. Asserted in zh through the real provider so
+    // the check is "the screen changed", not "the dictionary has the value".
+    window.localStorage.setItem('purescience-language', 'zh')
+    useSkillImportStore.getState().enqueue({
+      id: 'approval-zh',
+      sessionId: 'session-1',
+      source: { kind: 'attachment', label: 'paper-finder.skill' },
+      previews: [importCandidate('paper-finder', 'Paper Finder')],
+      skipped: []
+    })
+
+    act(() =>
+      root.render(
+        <LanguageProvider>
+          <SkillImportApprovalDialog />
+        </LanguageProvider>
+      )
+    )
+
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('智能体请求从以下来源导入')
+    expect(text).toContain('请核对并选择允许 PureScience 安装的内容')
+    expect(text).toContain('paper-finder.skill')
+    expect(text).not.toContain('The agent requested an import from')
+    expect(text).not.toContain('Review and choose exactly what PureScience may install')
   })
 })

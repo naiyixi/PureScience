@@ -4034,5 +4034,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'common.deleting': '正在刪除…',
   'home.projectDeletedNotMeasured': '已刪除「{name}」。',
   'runtimes.namedEnvSizeLabel': '磁碟佔用 {size}',
-  'runtimes.namedEnvRemovedWithSize': '已移除「{name}」，釋放了 {size}。'
+  'runtimes.namedEnvRemovedWithSize': '已移除「{name}」，釋放了 {size}。',
+  'settings.listingPackages': '正在列出套件…',
+  'settings.exportSavedNoLocation': '已儲存 {name}。此處不顯示位置。',
+  'settings.noAdditionalSkillsDeleted': '不會再刪除其他技能。',
+  'settings.skillImportReviewPrompt': '請檢核並選擇允許 PureScience 安裝的內容。',
+  'settings.loadingPreview': '正在載入預覽…',
+  'settings.skillImportRequestedFrom': '智能體請求從以下來源匯入'
 }

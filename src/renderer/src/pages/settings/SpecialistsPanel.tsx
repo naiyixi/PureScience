@@ -380,7 +380,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             </div>
             <h2 className="mt-4 text-lg font-semibold">{t('settings.exportComplete')}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {exportPreview.fileName} was saved. No location is shown here.
+              {t('settings.exportSavedNoLocation').replace('{name}', exportPreview.fileName)}
             </p>
             <Button
               type="button"
@@ -1567,7 +1567,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 })
               ) : (
                 <p className="py-3 text-xs text-muted-foreground">
-                  No additional Skills will be deleted.
+                  {t('settings.noAdditionalSkillsDeleted')}
                 </p>
               )}
             </div>

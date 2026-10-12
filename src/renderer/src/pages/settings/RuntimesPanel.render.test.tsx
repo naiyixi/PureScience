@@ -11,6 +11,7 @@ import type {
 } from '../../../../shared/notebook-runtime'
 import { createInitialNotebookEnvState, useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { formatProgressLine } from '../../../../shared/download-progress'
+import { LanguageProvider } from '@/i18n'
 import { RuntimesPanel } from './RuntimesPanel'
 
 let container: HTMLDivElement
@@ -160,6 +161,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  window.localStorage.clear()
   delete (window as unknown as { api?: unknown }).api
 })
 
@@ -179,6 +181,25 @@ const click = async (el: Element | null): Promise<void> => {
   await act(async () => {
     el?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
   })
+}
+
+// Same mount as `render()`, but through the real language provider with zh stored — the copy this
+// panel renders is only "translated" if the screen changes, and the dictionary file proves nothing
+// about that.
+const renderInChinese = async (): Promise<void> => {
+  window.localStorage.setItem('purescience-language', 'zh')
+  await act(async () => {
+    root.render(
+      <LanguageProvider>
+        <RuntimesPanel
+          title="Notebook runtimes"
+          description="Enable the environments each notebook language may run in."
+        />
+      </LanguageProvider>
+    )
+  })
+  await act(async () => {})
+  await act(async () => {})
 }
 
 describe('RuntimesPanel', () => {
@@ -1315,5 +1336,62 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
       'python',
       '/data/runtime/envs/lock-import-env/bin/python'
     )
+  })
+})
+
+describe('RuntimesPanel reads its own copy in the user’s language', () => {
+  const flush = async (): Promise<void> => {
+    await act(async () => {})
+    await act(async () => {})
+  }
+
+  const cardWith = (text: string): Element | undefined =>
+    Array.from(container.querySelectorAll('[data-testid="runtime-card"]')).find((card) =>
+      card.textContent?.includes(text)
+    )
+
+  it('shows the packages listing line in zh while the listing is pending', async () => {
+    // Never resolves: the dialog is genuinely mid-listing, which is the state a user reads the line in.
+    listPackages.mockImplementation(() => new Promise<EnvPackage[]>(() => {}))
+    await renderInChinese()
+    await flush()
+
+    const button = cardWith('Python 3.12 (managed)')?.querySelector(
+      '[data-testid="runtime-packages-button"]'
+    )
+    await click(button ?? null)
+
+    const dialog = document.querySelector('[data-testid="runtime-packages-dialog"]')
+    expect(dialog?.textContent).toContain('正在列出软件包…')
+    expect(dialog?.textContent).not.toContain('Listing packages')
+  })
+
+  it('shows the finishing-setup button in zh while the environment refresh is pending', async () => {
+    let resolveRefresh:
+      ((value: { python: DiscoveredInterpreter[]; r: DiscoveredInterpreter[] }) => void) | undefined
+    provision.mockResolvedValue(undefined)
+    listEnvironments.mockResolvedValueOnce({ python: pythonEnvs, r: rEnvs }).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve
+        })
+    )
+    await renderInChinese()
+
+    // Located by the zh label for the same action the English suite clicks as "Download and set up".
+    const setupButton = Array.from(container.querySelectorAll('button')).find((button) =>
+      (button.textContent ?? '').includes('下载并设置')
+    )
+    await click(setupButton ?? null)
+
+    const finishingText = Array.from(container.querySelectorAll('button'))
+      .map((button) => (button.textContent ?? '').trim())
+      .find((text) => text === '正在完成设置…')
+
+    resolveRefresh?.({ python: pythonEnvs, r: rEnvs })
+    await act(async () => {})
+
+    expect(finishingText).toBe('正在完成设置…')
+    expect(container.textContent).not.toContain('Finishing setup')
   })
 })

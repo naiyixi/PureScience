@@ -103,11 +103,11 @@ const SkillImportApprovalRequestDialog = ({
                     : t('settings.importSkillPackage')}
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-xs leading-5 text-muted-foreground">
-                  The agent requested an import from{' '}
+                  {t('settings.skillImportRequestedFrom')}{' '}
                   <span className="break-all font-medium text-foreground">
                     {request.source.label}
                   </span>
-                  . Review and choose exactly what PureScience may install.
+                  . {t('settings.skillImportReviewPrompt')}
                 </Dialog.Description>
               </div>
             </div>

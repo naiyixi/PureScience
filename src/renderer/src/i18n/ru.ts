@@ -4367,5 +4367,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'common.deleting': 'Удаление…',
   'home.projectDeletedNotMeasured': '«{name}» удалён.',
   'runtimes.namedEnvSizeLabel': '{size} на диске',
-  'runtimes.namedEnvRemovedWithSize': '«{name}» удалено — освобождено {size}.'
+  'runtimes.namedEnvRemovedWithSize': '«{name}» удалено — освобождено {size}.',
+  'settings.listingPackages': 'Список пакетов…',
+  'settings.exportSavedNoLocation': '{name} сохранён. Место сохранения здесь не показано.',
+  'settings.noAdditionalSkillsDeleted': 'Дополнительные навыки удалены не будут.',
+  'settings.skillImportReviewPrompt':
+    'Проверьте и выберите, что именно PureScience может установить.',
+  'settings.loadingPreview': 'Загрузка предпросмотра…',
+  'settings.skillImportRequestedFrom': 'Агент запросил импорт из'
 }
