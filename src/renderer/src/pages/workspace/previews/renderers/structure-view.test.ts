@@ -33,6 +33,19 @@ describe('detectStructureFormat', () => {
     expect(detectStructureFormat('download (4)', 'ATOM      1  CA  ALA A   1\n')).toBe('pdb')
   })
 
+  it('头部很长、_atom_site 出现在 4 KB 之后也认得出来（真 RCSB mmCIF 的形状）', () => {
+    // 实测 1CRN.cif 69,506 B：head 里 `_atom_site.` 落在 4 KB 之后 ⇒ 曾经被判成 pdb。
+    // 这条用例把真实形状钉住：头部塞满 _cell./_entity./_struct. 字段，loop_ 与 _atom_site. 放在最后。
+    const padding = Array.from(
+      { length: 200 },
+      (_, i) => `_struct_conf.id ${i}\n_struct_conf.conf_type_id HELIX_P`
+    ).join('\n')
+    const cif = `data_1CRN\n#\n${padding}\n#\nloop_\n_atom_site.group_PDB\n_atom_site.id\nATOM 1\n`
+    expect(cif.length).toBeGreaterThan(4096)
+    expect(cif.indexOf('_atom_site.')).toBeGreaterThan(4096)
+    expect(detectStructureFormat('download', cif)).toBe('cif')
+  })
+
   it('认不出就回落到 pdb —— 与改动前一致，不让"认不出"变成新失败路径', () => {
     expect(detectStructureFormat('mystery.bin', 'nonsense')).toBe('pdb')
   })

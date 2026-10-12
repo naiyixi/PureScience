@@ -17,9 +17,10 @@ export const detectStructureFormat = (name: string, content: string): StructureF
   if (CIF_EXTENSIONS.some((ext) => lower.endsWith(ext))) return 'cif'
   if (lower.endsWith('.pdb') || lower.endsWith('.ent')) return 'pdb'
 
-  // mmCIF 的数据块以 `data_` 开头，且字段行形如 `_atom_site.Cartn_x`
-  const head = content.slice(0, 4096)
-  if (/^\s*data_/m.test(head) && /_atom_site\./i.test(head)) return 'cif'
+  // mmCIF：数据块以 `data_` 开头，字段行形如 `_atom_site.Cartn_x`。
+  // **不要只扫首部窗口**：真 RCSB mmCIF 的头部（`_cell.` / `_entity.` / `_struct.` …）很容易超过几 KB，
+  // 而 `_atom_site.` 出现在后面的 loop_ 里 —— 实测 1CRN.cif（69,506 B）用 4096 字节窗口会判成 pdb（真机数据抓到的）。
+  if (/^\s*data_/m.test(content) && content.includes('_atom_site.')) return 'cif'
   return 'pdb'
 }
 
