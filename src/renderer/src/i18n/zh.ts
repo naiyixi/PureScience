@@ -4195,7 +4195,10 @@ export const zh = {
   'preview.structureClearSelection': '清除选择',
   'preview.structureSelectHint':
     '点击残基即选中它（作为对话上下文）· 按住 Shift 再点同链残基可扩成连续区间',
-  'preview.structureFocusSelection': '聚焦到选区'
+  'preview.structureFocusSelection': '聚焦到选区',
+  'preview.structureSelectChain': '整条链',
+  'preview.structureNeighborhoodRadius': '半径（Å）',
+  'preview.structureSelectWithin': '半径内的残基'
 }
 
 export type ZhKey = keyof typeof zh

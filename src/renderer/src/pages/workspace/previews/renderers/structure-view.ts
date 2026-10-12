@@ -6,6 +6,9 @@
 
 import {
   STRUCTURE_SELECTION_SCHEMA_VERSION,
+  structureSelectionScope,
+  type StructureNeighborhood,
+  type StructureResidueRef,
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
 
@@ -142,6 +145,10 @@ export const buildStructureSelection = (input: {
   start: StructureAtomRef
   end: StructureAtomRef
   view: { style: string; colorScheme: string }
+  /** v2 种类：整链与邻域都必须显式说出来（否则会被读成一段区间）。 */
+  kind?: 'chain' | 'neighborhood'
+  neighborhood?: StructureNeighborhood
+  memberResidues?: StructureResidueRef[]
 }): StructureSelection => {
   const ordered = orderResidueRefs(input.start, input.end)
   const selection: StructureSelection = {
@@ -159,8 +166,85 @@ export const buildStructureSelection = (input: {
   if (ordered.end.resn) selection.endResidue = ordered.end.resn
   if (ordered.start.icode) selection.startInsertion = ordered.start.icode
   if (ordered.end.icode) selection.endInsertion = ordered.end.icode
+  if (input.kind) selection.kind = input.kind
+  if (input.kind === 'neighborhood' && input.neighborhood && input.memberResidues) {
+    selection.neighborhood = input.neighborhood
+    selection.memberResidues = input.memberResidues
+  }
   return selection
 }
+
+/**
+ * 3Dmol 给的原子列表 → 去重的 {链, 编号} 成员表（邻域选择用它落成员）。
+ * 认不出身份（没链 / 没编号）的原子**直接丢掉**：编一个残基进去等于伪造选择。
+ */
+export const collectResidueRefs = (atoms: readonly unknown[]): StructureResidueRef[] => {
+  const byKey = new Map<string, StructureResidueRef>()
+  for (const atom of atoms) {
+    const ref = toStructureAtomRef(atom)
+    if (!ref) continue
+    byKey.set(`${ref.chain}:${ref.resi}`, { chain: ref.chain, resi: ref.resi })
+  }
+  return [...byKey.values()].sort((a, b) =>
+    a.chain === b.chain ? a.resi - b.resi : a.chain.localeCompare(b.chain)
+  )
+}
+
+/** 一条链的编号外沿（整链选择用它落端点）；没有该链的原子时 undefined（不猜端点）。 */
+export const chainResidueExtent = (
+  atoms: readonly unknown[],
+  chain: string
+): { start: StructureAtomRef; end: StructureAtomRef } | undefined => {
+  const onChain = atoms
+    .map(toStructureAtomRef)
+    .filter((ref): ref is StructureAtomRef => ref !== undefined && ref.chain === chain)
+  if (onChain.length === 0) return undefined
+  const ordered = onChain.reduce((low, ref) => (ref.resi < low.resi ? ref : low))
+  const high = onChain.reduce((top, ref) => (ref.resi > top.resi ? ref : top))
+  return { start: ordered, end: high }
+}
+
+/**
+ * 3Dmol 的高亮选区：**一个选择器一条链**。
+ * 为什么是数组而不是单个选择器：邻域的成员可能跨链（配体口袋），而 3Dmol 的一个选择器只能选一条链上的
+ * 一段编号或一组编号 —— 拼成一个选择器就等于把别的链的成员丢掉。
+ */
+export const structureSelectionSelectors = (
+  selection: StructureSelection
+): { chain: string; resi?: number | `${number}-${number}` | number[] }[] => {
+  const scope = structureSelectionScope(selection)
+
+  if (scope === 'neighborhood') {
+    const byChain = new Map<string, number[]>()
+    for (const member of selection.memberResidues ?? []) {
+      byChain.set(member.chain, [...(byChain.get(member.chain) ?? []), member.resi])
+    }
+    return [...byChain.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([chain, residueNumbers]) => ({
+        chain,
+        resi: [...residueNumbers].sort((a, b) => a - b)
+      }))
+  }
+
+  if (scope === 'chain') return [{ chain: selection.chain }]
+
+  return [structureSelectionSelector(selection)]
+}
+
+/**
+ * 相机一次只能对准一个选择器 ⇒ 聚焦用**包住整个选择的那个区间**（成员跨链时它仍是包含所有成员的外沿）。
+ * 高亮照旧逐链精确 —— 两者用途不同，别混用。
+ */
+export const structureSelectionFocusSelector = (
+  selection: StructureSelection
+): { chain: string; resi: number | `${number}-${number}` } => ({
+  chain: selection.chain,
+  resi:
+    selection.residueStart === selection.residueEnd
+      ? selection.residueStart
+      : `${selection.residueStart}-${selection.residueEnd}`
+})
 
 /**
  * 3Dmol 的选区：整条链上的一段编号或单个编号（`resi` 两种都收，别自己拼数组）。

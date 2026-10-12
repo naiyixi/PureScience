@@ -4492,5 +4492,8 @@ export const en: Record<ZhKey, string> = {
   'preview.structureClearSelection': 'Clear selection',
   'preview.structureSelectHint':
     'Click a residue to select it for the conversation · Shift-click another residue on the same chain to extend the range',
-  'preview.structureFocusSelection': 'Focus selection'
+  'preview.structureFocusSelection': 'Focus selection',
+  'preview.structureSelectChain': 'Whole chain',
+  'preview.structureNeighborhoodRadius': 'Radius (Å)',
+  'preview.structureSelectWithin': 'Residues within radius'
 }

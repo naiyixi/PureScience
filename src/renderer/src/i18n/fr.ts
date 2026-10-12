@@ -4584,5 +4584,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': 'Effacer la sélection',
   'preview.structureSelectHint':
     'Cliquez sur un résidu pour le sélectionner dans la conversation · Maj+clic sur un autre résidu de la même chaîne étend la plage',
-  'preview.structureFocusSelection': 'Centrer sur la sélection'
+  'preview.structureFocusSelection': 'Centrer sur la sélection',
+  'preview.structureSelectChain': 'Chaîne entière',
+  'preview.structureNeighborhoodRadius': 'Rayon (Å)',
+  'preview.structureSelectWithin': 'Résidus dans le rayon'
 }

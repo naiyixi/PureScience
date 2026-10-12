@@ -4552,5 +4552,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': 'Borrar la selección',
   'preview.structureSelectHint':
     'Haz clic en un residuo para seleccionarlo en la conversación · Mayús+clic en otro residuo de la misma cadena amplía el rango',
-  'preview.structureFocusSelection': 'Centrar en la selección'
+  'preview.structureFocusSelection': 'Centrar en la selección',
+  'preview.structureSelectChain': 'Cadena completa',
+  'preview.structureNeighborhoodRadius': 'Radio (Å)',
+  'preview.structureSelectWithin': 'Residuos en el radio'
 }

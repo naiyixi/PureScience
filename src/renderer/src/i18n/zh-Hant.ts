@@ -4137,5 +4137,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': '清除選取',
   'preview.structureSelectHint':
     '點擊殘基即選取它（作為對話上下文）· 按住 Shift 再點同鏈殘基可擴成連續區間',
-  'preview.structureFocusSelection': '聚焦到選取'
+  'preview.structureFocusSelection': '聚焦到選取',
+  'preview.structureSelectChain': '整條鏈',
+  'preview.structureNeighborhoodRadius': '半徑（Å）',
+  'preview.structureSelectWithin': '半徑內的殘基'
 }

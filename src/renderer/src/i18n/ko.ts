@@ -4390,5 +4390,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': '선택 해제',
   'preview.structureSelectHint':
     '잔기를 클릭하면 대화 맥락으로 선택됩니다 · 같은 체인의 다른 잔기를 Shift+클릭하면 범위가 확장됩니다',
-  'preview.structureFocusSelection': '선택 영역에 초점'
+  'preview.structureFocusSelection': '선택 영역에 초점',
+  'preview.structureSelectChain': '전체 체인',
+  'preview.structureNeighborhoodRadius': '반경 (Å)',
+  'preview.structureSelectWithin': '반경 내 잔기'
 }

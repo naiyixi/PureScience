@@ -4460,5 +4460,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': '選択を解除',
   'preview.structureSelectHint':
     '残基をクリックすると会話の文脈として選択されます · 同じ鎖の別の残基を Shift+クリックで範囲を拡張',
-  'preview.structureFocusSelection': '選択範囲にフォーカス'
+  'preview.structureFocusSelection': '選択範囲にフォーカス',
+  'preview.structureSelectChain': '鎖全体',
+  'preview.structureNeighborhoodRadius': '半径（Å）',
+  'preview.structureSelectWithin': '半径内の残基'
 }

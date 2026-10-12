@@ -24,7 +24,9 @@ const recompute = (components: readonly string[]): string => {
     hash ^= joined.charCodeAt(index)
     hash = Math.imul(hash, 0x01000193) >>> 0
   }
-  return `structure-selection:v1-${hash.toString(16).padStart(8, '0')}`
+  // Hard-coded the way the recipe states it (v2 since the component list grew) — do NOT read the
+  // module's constant here, or this stops being an independent implementation.
+  return `structure-selection:v2-${hash.toString(16).padStart(8, '0')}`
 }
 
 // The block is a tag, one prose sentence, then a JSON payload line: find the payload by shape rather
@@ -54,14 +56,18 @@ describe('the selection fingerprint is recomputable from its components', () => 
   it('matches a value written out by hand from the recipe', () => {
     const s = selection()
     expect(structureSelectionComponents(s)).toEqual([
-      'structure-selection:v1',
+      'structure-selection:v2',
       'file:/tmp/1crn.cif',
       'sha256:0f1e2d',
       'A',
       '145',
       '160',
       'cartoon',
-      'chain'
+      'chain',
+      // v2 components, always present so the list length carries no ambiguity.
+      'derived',
+      'no-neighborhood',
+      'no-members'
     ])
     expect(structureSelectionFingerprint(s)).toBe(recompute(structureSelectionComponents(s)))
   })
@@ -174,6 +180,167 @@ describe('normalizing untrusted renderer input', () => {
     expect(normalized && buildStructureContextBlock(normalized)).toContain(
       '"contentDigest":"not-recorded"'
     )
+  })
+})
+
+describe('whole-chain and spatial-neighborhood selections (v2 kinds)', () => {
+  const chainWide = selection({ kind: 'chain' as const })
+  const members = [
+    { chain: 'A', resi: 10 },
+    { chain: 'A', resi: 11 },
+    { chain: 'A', resi: 12 },
+    { chain: 'A', resi: 145 },
+    { chain: 'A', resi: 160 }
+  ]
+  const neighborhood = selection({
+    kind: 'neighborhood' as const,
+    residueStart: 10,
+    residueEnd: 160,
+    neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 145, ofEnd: 160 },
+    memberResidues: members
+  })
+
+  it('says an entire chain as an entire chain, not as a 1-46 range', () => {
+    expect(structureSelectionScope(chainWide)).toBe('chain')
+    expect(structureSelectionRangeLabel(chainWide)).toBe('chain A (entire chain)')
+    expect(buildStructureContextBlock(chainWide)).toContain('selected an ENTIRE chain')
+  })
+
+  it('describes a neighborhood by its member list, never by its outer bounds', () => {
+    expect(structureSelectionScope(neighborhood)).toBe('neighborhood')
+    expect(structureSelectionRangeLabel(neighborhood)).toBe(
+      '5 residues within 5 Å of chain A residue 145-160'
+    )
+    const block = buildStructureContextBlock(neighborhood)
+    expect(block).toContain('NOT a contiguous range')
+    const payload = payloadOf(block)
+    expect(payload.memberResidues).toEqual(members)
+    expect(payload.memberResidueCount).toBe(5)
+    expect(payload.neighborhood).toEqual({
+      radiusAngstrom: 5,
+      ofChain: 'A',
+      ofStart: 145,
+      ofEnd: 160
+    })
+    expect(payload.scope).toBe('neighborhood')
+  })
+
+  it('fingerprints two neighborhoods at the same radius with different members differently', () => {
+    // This is the whole reason the member list is a fingerprint component: same radius, same
+    // reference, different residues is a DIFFERENT selection.
+    const other = selection({
+      kind: 'neighborhood' as const,
+      residueStart: 10,
+      residueEnd: 160,
+      neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 145, ofEnd: 160 },
+      memberResidues: [
+        { chain: 'A', resi: 10 },
+        { chain: 'A', resi: 11 },
+        { chain: 'A', resi: 12 },
+        { chain: 'A', resi: 145 },
+        { chain: 'A', resi: 159 }
+      ]
+    })
+    expect(structureSelectionFingerprint(other)).not.toBe(
+      structureSelectionFingerprint(neighborhood)
+    )
+    // A different radius over the same members is different too.
+    expect(
+      structureSelectionFingerprint(
+        selection({
+          kind: 'neighborhood' as const,
+          residueStart: 10,
+          residueEnd: 160,
+          neighborhood: { radiusAngstrom: 8, ofChain: 'A', ofStart: 145, ofEnd: 160 },
+          memberResidues: members
+        })
+      )
+    ).not.toBe(structureSelectionFingerprint(neighborhood))
+  })
+
+  it('refuses a neighborhood without its member list, and members on a non-neighborhood', () => {
+    const noMembers = normalizeStructureSelection({
+      ...neighborhood,
+      memberResidues: undefined
+    })
+    expect(noMembers).toBeUndefined()
+    const noReference = normalizeStructureSelection({
+      ...neighborhood,
+      neighborhood: undefined
+    })
+    expect(noReference).toBeUndefined()
+    const contradictory = normalizeStructureSelection({
+      ...selection(),
+      memberResidues: [{ chain: 'A', resi: 1 }]
+    })
+    expect(contradictory).toBeUndefined()
+    // A member list that is not a list of {chain, resi} refs is refused, not silently dropped —
+    // a half-formed member list is exactly the input that would otherwise be read as "no members".
+    const malformed = normalizeStructureSelection({ ...neighborhood, memberResidues: [10, 145] })
+    expect(malformed).toBeUndefined()
+  })
+
+  it('sorts and de-duplicates members on the way in', () => {
+    const normalized = normalizeStructureSelection({
+      ...neighborhood,
+      memberResidues: [
+        { chain: 'A', resi: 160 },
+        { chain: 'A', resi: 10 },
+        { chain: 'A', resi: 145 },
+        { chain: 'A', resi: 10 }
+      ]
+    })
+    expect(normalized?.memberResidues).toEqual([
+      { chain: 'A', resi: 10 },
+      { chain: 'A', resi: 145 },
+      { chain: 'A', resi: 160 }
+    ])
+    expect(normalized?.kind).toBe('neighborhood')
+  })
+
+  it('keeps members of OTHER chains — a pocket spanning two chains is not one chain', () => {
+    const crossChain = selection({
+      kind: 'neighborhood' as const,
+      residueStart: 10,
+      residueEnd: 160,
+      neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 145, ofEnd: 145 },
+      memberResidues: [
+        { chain: 'A', resi: 145 },
+        { chain: 'B', resi: 30 }
+      ]
+    })
+    expect(structureSelectionRangeLabel(crossChain)).toBe(
+      '2 residues within 5 Å of chain A residue 145 (chains A, B)'
+    )
+    // Two members is not one member, and the other chain changes the fingerprint.
+    expect(structureSelectionFingerprint(crossChain)).not.toBe(
+      structureSelectionFingerprint(
+        selection({
+          kind: 'neighborhood' as const,
+          residueStart: 10,
+          residueEnd: 160,
+          neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 145, ofEnd: 145 },
+          memberResidues: [{ chain: 'A', resi: 145 }]
+        })
+      )
+    )
+    const normalized = normalizeStructureSelection({
+      ...crossChain,
+      memberResidues: [
+        { chain: 'B', resi: 30 },
+        { chain: 'A', resi: 145 },
+        { chain: 'A', resi: 145 }
+      ]
+    })
+    expect(normalized?.memberResidues).toEqual([
+      { chain: 'A', resi: 145 },
+      { chain: 'B', resi: 30 }
+    ])
+  })
+
+  it('keeps a D2-era record (no kind) derived, and hashes it as derived', () => {
+    expect(structureSelectionScope(selection())).toBe('range')
+    expect(structureSelectionComponents(selection())[8]).toBe('derived')
   })
 })
 

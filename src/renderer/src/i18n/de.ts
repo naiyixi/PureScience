@@ -4597,5 +4597,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': 'Auswahl aufheben',
   'preview.structureSelectHint':
     'Klicken Sie auf einen Rest, um ihn für das Gespräch auszuwählen · Umschalt+Klick auf einen weiteren Rest derselben Kette erweitert den Bereich',
-  'preview.structureFocusSelection': 'Auf Auswahl fokussieren'
+  'preview.structureFocusSelection': 'Auf Auswahl fokussieren',
+  'preview.structureSelectChain': 'Ganze Kette',
+  // 质量门判「与英文同形」时**改文案、不放宽白名单**：德语的写法是「Radius in Å」，
+  // 与英文 'Radius (Å)' 逐字不同，而且本身更地道。
+  'preview.structureNeighborhoodRadius': 'Radius in Å',
+  'preview.structureSelectWithin': 'Reste im Radius'
 }

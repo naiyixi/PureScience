@@ -18,6 +18,21 @@ const removeAllSurfaces = vi.fn()
 const zoomTo = vi.fn()
 const addStyle = vi.fn()
 const setClickable = vi.fn()
+// D3: whole-chain and neighborhood selections ask the viewer which atoms exist. The double answers by
+// shape so a test can tell the two paths apart (a `within` selector is a neighborhood query).
+const chainAtoms = [
+  { chain: 'A', resi: 1, resn: 'MET' },
+  { chain: 'A', resi: 2, resn: 'GLY' },
+  { chain: 'A', resi: 9, resn: 'CYS' }
+]
+const neighborhoodAtoms = [
+  { chain: 'A', resi: 1, resn: 'MET' },
+  { chain: 'A', resi: 2, resn: 'GLY' },
+  { chain: 'B', resi: 30, resn: 'ALA' }
+]
+const selectedAtoms = vi.fn((selector?: unknown) =>
+  selector && typeof selector === 'object' && 'within' in selector ? neighborhoodAtoms : chainAtoms
+)
 const renderViewer = vi.fn()
 const resizeViewer = vi.fn()
 const clearViewer = vi.fn()
@@ -26,6 +41,7 @@ const createViewer = vi.fn(() => ({
   setStyle,
   addStyle,
   setClickable,
+  selectedAtoms,
   addSurface,
   removeAllSurfaces,
   zoomTo,
@@ -1017,6 +1033,94 @@ describe('PreviewFileContent', () => {
       expect(
         usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
       ).toBeUndefined()
+    })
+
+    it('selects the whole chain and a radius neighborhood from the current selection (D3)', async () => {
+      const pdbContent = [
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',
+        'ATOM      2  CA  GLY A   2      21.567  34.361  27.100  1.00 44.13           C',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const item = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: 'pocket.pdb'
+      })
+      usePreviewWorkbenchStore.setState(createInitialPreviewWorkbenchState())
+      usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+
+      await renderFile(item)
+
+      // Both controls are inert until there is a selection to start from.
+      const chainButton = container.querySelector<HTMLButtonElement>(
+        '[data-slot="structure-select-chain"]'
+      )
+      const withinButton = container.querySelector<HTMLButtonElement>(
+        '[data-slot="structure-select-within"]'
+      )
+      expect(chainButton?.disabled).toBe(true)
+      expect(withinButton?.disabled).toBe(true)
+
+      const click = setClickable.mock.calls.at(-1)?.[2] as
+        ((atom: unknown, viewer: unknown, event?: unknown) => void) | undefined
+      await act(async () => {
+        click?.({ chain: 'A', resi: 1, resn: 'MET', icode: '' }, undefined, { shiftKey: false })
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
+      })
+
+      // Whole chain: the extent comes from the atoms the viewer actually has.
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>('[data-slot="structure-select-chain"]')?.click()
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+          'chain A (entire chain)'
+        )
+      })
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
+      ).toMatchObject({ kind: 'chain', chain: 'A', residueStart: 1, residueEnd: 9 })
+
+      // Radius neighborhood: members come from the viewer's `within` query, chains and all.
+      await act(async () => {
+        const input = container.querySelector<HTMLInputElement>(
+          '[data-slot="structure-neighborhood-radius"]'
+        )
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+        setter?.call(input, '5')
+        input?.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>('[data-slot="structure-select-within"]')?.click()
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+          // The reference is whatever was selected when the radius query ran — here the whole chain
+          // (1-9), because that is the button the test pressed just before. The label says so.
+          '3 residues within 5 Å of chain A residue 1-9 (chains A, B)'
+        )
+      })
+      expect(selectedAtoms).toHaveBeenCalledWith(
+        expect.objectContaining({ within: expect.objectContaining({ distance: 5 }) })
+      )
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
+      ).toMatchObject({
+        kind: 'neighborhood',
+        neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 1, ofEnd: 9 },
+        memberResidues: [
+          { chain: 'A', resi: 1 },
+          { chain: 'A', resi: 2 },
+          { chain: 'B', resi: 30 }
+        ]
+      })
     })
 
     it('focuses the camera when the same residue is clicked twice (D1 camera/focus)', async () => {

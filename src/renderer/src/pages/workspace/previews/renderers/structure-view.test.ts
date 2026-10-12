@@ -3,16 +3,21 @@ import { describe, expect, it } from 'vitest'
 import {
   availableColorSchemes,
   buildStructureSelection,
+  chainResidueExtent,
+  collectResidueRefs,
   detectStructureFormat,
   looksLikeAlphaFoldModel,
   plddtColorFor,
   resolveStructureSelectionRange,
+  structureSelectionFocusSelector,
+  structureSelectionSelectors,
   structureSelectionSelector,
   toStructureAtomRef,
   PLDDT_BANDS,
   type StructureAtomRef
 } from './structure-view'
 import {
+  STRUCTURE_SELECTION_SCHEMA_VERSION,
   structureSelectionRangeLabel,
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
@@ -93,6 +98,74 @@ describe('配色', () => {
   })
 })
 
+describe('整链 / 邻域 的纯函数层（D3）', () => {
+  const atoms = [
+    { chain: 'A', resi: 1, resn: 'MET' },
+    { chain: 'A', resi: 1, resn: 'MET' },
+    { chain: 'A', resi: 2, resn: 'GLY' },
+    { chain: 'A', resi: 9, resn: 'CYS' },
+    { chain: 'B', resi: 30, resn: 'ALA' },
+    { resi: 7 } // 认不出身份：必须被丢掉，而不是编一个残基进去
+  ]
+
+  it('collects distinct {chain, resi} members, sorted, dropping atoms it cannot name', () => {
+    expect(collectResidueRefs(atoms)).toEqual([
+      { chain: 'A', resi: 1 },
+      { chain: 'A', resi: 2 },
+      { chain: 'A', resi: 9 },
+      { chain: 'B', resi: 30 }
+    ])
+    expect(collectResidueRefs([])).toEqual([])
+  })
+
+  it('takes a chain extent from the atoms that exist, and refuses to guess one', () => {
+    const extent = chainResidueExtent(atoms, 'A')
+    expect(extent?.start.resi).toBe(1)
+    expect(extent?.end.resi).toBe(9)
+    expect(chainResidueExtent(atoms, 'Z')).toBeUndefined()
+  })
+
+  it('gives one 3Dmol selector per chain for a neighborhood, and the extent for the camera', () => {
+    const neighborhood = buildStructureSelection({
+      structureId: 'artifact:abc',
+      name: '7VH8.cif',
+      format: 'cif',
+      contentDigest: 'sha256:aa',
+      start: { chain: 'A', resi: 1 },
+      end: { chain: 'A', resi: 9 },
+      view: { style: 'cartoon', colorScheme: 'chain' },
+      kind: 'neighborhood',
+      neighborhood: { radiusAngstrom: 5, ofChain: 'A', ofStart: 1, ofEnd: 2 },
+      memberResidues: [
+        { chain: 'A', resi: 9 },
+        { chain: 'B', resi: 30 },
+        { chain: 'A', resi: 1 }
+      ]
+    })
+
+    expect(structureSelectionSelectors(neighborhood)).toEqual([
+      { chain: 'A', resi: [1, 9] },
+      { chain: 'B', resi: [30] }
+    ])
+    expect(structureSelectionFocusSelector(neighborhood)).toEqual({ chain: 'A', resi: '1-9' })
+  })
+
+  it('selects a whole chain with a bare chain selector, not a 1-N range', () => {
+    const chainWide = buildStructureSelection({
+      structureId: 'artifact:abc',
+      name: '7VH8.cif',
+      format: 'cif',
+      contentDigest: 'sha256:aa',
+      start: { chain: 'A', resi: 1 },
+      end: { chain: 'A', resi: 46 },
+      view: { style: 'cartoon', colorScheme: 'chain' },
+      kind: 'chain'
+    })
+    expect(structureSelectionSelectors(chainWide)).toEqual([{ chain: 'A' }])
+    expect(chainWide.kind).toBe('chain')
+  })
+})
+
 describe('点击 → 选择（D2）', () => {
   const cys145: StructureAtomRef = { chain: 'A', resi: 145, resn: 'CYS' }
   const gly160: StructureAtomRef = { chain: 'A', resi: 160, resn: 'GLY' }
@@ -156,7 +229,7 @@ describe('点击 → 选择（D2）', () => {
   it('组出来的选择带链、区间、残基名与视图参数', () => {
     const selection = build(cys145, gly160)
     expect(selection).toEqual({
-      schemaVersion: 1,
+      schemaVersion: STRUCTURE_SELECTION_SCHEMA_VERSION,
       structureId: 'artifact:abc',
       name: '7VH8.cif',
       format: 'cif',

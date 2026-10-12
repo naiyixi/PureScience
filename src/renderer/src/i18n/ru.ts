@@ -4472,5 +4472,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureClearSelection': 'Снять выделение',
   'preview.structureSelectHint':
     'Щёлкните остаток, чтобы выбрать его для диалога · Shift+щелчок по другому остатку той же цепи расширяет диапазон',
-  'preview.structureFocusSelection': 'Приблизить к выделению'
+  'preview.structureFocusSelection': 'Приблизить к выделению',
+  'preview.structureSelectChain': 'Вся цепь',
+  'preview.structureNeighborhoodRadius': 'Радиус (Å)',
+  'preview.structureSelectWithin': 'Остатки в радиусе'
 }

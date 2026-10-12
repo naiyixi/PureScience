@@ -16,11 +16,14 @@ import {
 import {
   availableColorSchemes,
   buildStructureSelection,
+  chainResidueExtent,
+  collectResidueRefs,
   detectStructureFormat,
   looksLikeAlphaFoldModel,
   plddtColorFor,
   resolveStructureSelectionRange,
-  structureSelectionSelector,
+  structureSelectionFocusSelector,
+  structureSelectionSelectors,
   toStructureAtomRef,
   type StructureAtomRef,
   type StructureColorScheme
@@ -182,7 +185,11 @@ const applyPdbStyle = (
 
   // The selection marker is added AFTER the base style: setStyle replaces the style of the atoms it
   // touches, so a highlight applied earlier would be wiped by any style or color change.
-  if (selection) viewer.addStyle(structureSelectionSelector(selection), SELECTION_HIGHLIGHT)
+  // One selector per chain: a neighborhood's members can span chains, and one selector can only name
+  // residues on a single chain.
+  for (const selector of selection ? structureSelectionSelectors(selection) : []) {
+    viewer.addStyle(selector, SELECTION_HIGHLIGHT)
+  }
 
   if (shouldZoom) viewer.zoomTo()
 
@@ -209,6 +216,7 @@ const PdbPreviewViewer = ({
   const pendingRenderRef = useRef(false)
   const pendingZoomRef = useRef(false)
   const cartoonUnavailableDescriptionId = useId()
+  const neighborhoodRadiusInputId = useId()
   const [selectedStyle, setSelectedStyle] = useState<PdbStyle | undefined>(undefined)
   const [selectedColors, setSelectedColors] = useState<StructureColorScheme | undefined>(undefined)
   const [viewerError, setViewerError] = useState<string | undefined>(undefined)
@@ -290,9 +298,99 @@ const PdbPreviewViewer = ({
   const focusSelection = useCallback((target: StructureSelection) => {
     const viewerState = viewerStateRef.current
     if (!viewerState) return
-    viewerState.viewer.zoomTo(structureSelectionSelector(target), 600)
+    // The camera takes one selector, so it frames the extent that contains every member.
+    viewerState.viewer.zoomTo(structureSelectionFocusSelector(target), 600)
     viewerState.viewer.render()
   }, [])
+
+  // D3：整链与空间邻域两种选择。半径是用户输入（Å），空/非正数就不动作。
+  const [neighborhoodRadius, setNeighborhoodRadius] = useState('5')
+
+  const publishBuiltSelection = useCallback(
+    (build: (digest: string) => StructureSelection) => {
+      void sha256Text(content).then((digest) => {
+        if (!mountedRef.current) return
+        publishSelection(build(digest ?? ''))
+        renderCurrentStyle(false)
+      })
+    },
+    [content, publishSelection, renderCurrentStyle]
+  )
+
+  // 整链：端点从**视图里真实存在的原子**上取（不在代码里猜 1..N）。
+  const selectWholeChain = useCallback(() => {
+    const viewerState = viewerStateRef.current
+    const reference = selectionRef.current
+    if (!viewerState || !reference) return
+
+    const extent = chainResidueExtent(
+      viewerState.viewer.selectedAtoms({ chain: reference.chain }),
+      reference.chain
+    )
+    if (!extent) return
+
+    publishBuiltSelection((digest) =>
+      buildStructureSelection({
+        structureId,
+        name,
+        format,
+        contentDigest: digest,
+        start: extent.start,
+        end: extent.end,
+        view: { style: styleRef.current, colorScheme: colorsRef.current },
+        kind: 'chain'
+      })
+    )
+  }, [format, name, publishBuiltSelection, structureId])
+
+  // 邻域：成员表直接来自 3Dmol 的 within 选择器（成员可以跨链）。
+  const selectNeighborhood = useCallback(() => {
+    const viewerState = viewerStateRef.current
+    const reference = selectionRef.current
+    if (!viewerState || !reference) return
+
+    const radius = Number(neighborhoodRadius.trim())
+    if (!Number.isFinite(radius) || radius <= 0) return
+
+    const members = collectResidueRefs(
+      viewerState.viewer.selectedAtoms({
+        within: { distance: radius, sel: structureSelectionFocusSelector(reference) }
+      })
+    )
+    if (members.length === 0) return
+
+    // 外沿只用来高亮/对焦：取参考链上的成员范围（`residueStart/End` 的语义见 shared 层注释）。
+    const onReferenceChain = members.filter((member) => member.chain === reference.chain)
+    const extentSource = onReferenceChain.length > 0 ? onReferenceChain : members
+    const start = extentSource.reduce(
+      (low, member) => (member.resi < low ? member.resi : low),
+      Infinity
+    )
+    const end = extentSource.reduce(
+      (top, member) => (member.resi > top ? member.resi : top),
+      -Infinity
+    )
+
+    publishBuiltSelection((digest) =>
+      buildStructureSelection({
+        structureId,
+        name,
+        format,
+        contentDigest: digest,
+        start: { chain: reference.chain, resi: start },
+        end: { chain: reference.chain, resi: end },
+        view: { style: styleRef.current, colorScheme: colorsRef.current },
+        kind: 'neighborhood',
+        neighborhood: {
+          radiusAngstrom: radius,
+          ofChain: reference.chain,
+          ofStart: reference.residueStart,
+          ofEnd: reference.residueEnd
+        },
+        memberResidues: members
+      })
+    )
+  }, [format, name, neighborhoodRadius, publishBuiltSelection, structureId])
 
   // 内容换了（同一页签换了文件或版本）⇒ 旧选择不再对应屏幕上看到的那份结构：清掉，别留进上下文。
   // 只动 ref 与 store（组件状态由上面的派生收口），所以不需要在 effect 里同步 setState。
@@ -557,6 +655,51 @@ const PdbPreviewViewer = ({
             )
           })}
         </div>
+      </div>
+      {/* D3：整链 / 空间邻域两种选择 —— 都以「当前选区」为出发点，所以没有选区时它们不可动作。 */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2 text-[12px] text-text-300">
+        <button
+          type="button"
+          data-slot="structure-select-chain"
+          disabled={!activeSelection}
+          className={cn(
+            'h-6 rounded-md px-2 transition-colors',
+            activeSelection
+              ? 'text-text-300 hover:bg-bg-300 hover:text-text-000'
+              : 'cursor-not-allowed opacity-45'
+          )}
+          onClick={selectWholeChain}
+        >
+          {t('preview.structureSelectChain')}
+        </button>
+        <span className="flex items-center gap-1">
+          <label htmlFor={neighborhoodRadiusInputId} className="sr-only">
+            {t('preview.structureNeighborhoodRadius')}
+          </label>
+          <input
+            id={neighborhoodRadiusInputId}
+            data-slot="structure-neighborhood-radius"
+            aria-label={t('preview.structureNeighborhoodRadius')}
+            inputMode="decimal"
+            value={neighborhoodRadius}
+            onChange={(event) => setNeighborhoodRadius(event.target.value)}
+            className="h-6 w-14 rounded-md border border-border-300 bg-bg-000 px-2 text-[12px] text-text-000"
+          />
+          <button
+            type="button"
+            data-slot="structure-select-within"
+            disabled={!activeSelection}
+            className={cn(
+              'h-6 rounded-md px-2 transition-colors',
+              activeSelection
+                ? 'text-text-300 hover:bg-bg-300 hover:text-text-000'
+                : 'cursor-not-allowed opacity-45'
+            )}
+            onClick={selectNeighborhood}
+          >
+            {t('preview.structureSelectWithin')}
+          </button>
+        </span>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-bg-000">
         {viewerError ? (
