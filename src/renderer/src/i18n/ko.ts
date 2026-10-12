@@ -4430,5 +4430,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': 'PDB ID로 불러오기',
   'preview.structureRemoteIdPlaceholder': 'PDB ID(예: 1CRN)',
   'preview.structureRemoteLoaded': '{name} 불러옴({bytes} 바이트)',
-  'preview.structureRemoteNoSession': '이 탭에는 세션이 없어 불러올 수 없습니다'
+  'preview.structureRemoteNoSession': '이 탭에는 세션이 없어 불러올 수 없습니다',
+  'preview.structureFactEngine': '엔진 {engine}',
+  'preview.structureFactOutputPredicted': '예측 — 실험 구조가 아닙니다',
+  'preview.structureFactOutputLookup': '데이터베이스 예측(조회) — 실험 구조가 아닙니다',
+  'preview.structureFactOutputMeasured': '실험(실측) 구조',
+  'preview.structureFactLicense': '라이선스 {license}',
+  'preview.structureFactLicenseRestricted': '라이선스 {license} — 상업적 사용 제한',
+  'preview.structureFactWeights': '가중치 {size}'
 }

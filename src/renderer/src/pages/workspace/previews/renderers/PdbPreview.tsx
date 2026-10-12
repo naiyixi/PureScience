@@ -19,6 +19,13 @@ import {
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
 import {
+  describeStructureArtifactFacts,
+  engineForPredictionPath,
+  structureArtifactFactsAreHonest,
+  type StructureArtifactFact
+} from '../../../../../../shared/structure-artifact-facts'
+import { formatWeightSize } from '../../../../../../shared/engine-catalog'
+import {
   parseStructureMeasurementInstruction,
   parseStructureInstruction,
   structureInstructionParameterLine,
@@ -257,6 +264,12 @@ const PdbPreviewViewer = ({
     (state) => state.items.find((candidate) => candidate.id === structureId)?.sessionId
   )
   const upsertAndActivateItem = usePreviewWorkbenchStore((state) => state.upsertAndActivateItem)
+  // D7：本页签的落点路径（字符串，选择器返回的仍是既有值）。引擎身份**只从应用自己的路径约定**解析，
+  // 解析不到就什么也不显示 —— 不按文件名像不像去认引擎。
+  const previewPath = usePreviewWorkbenchStore((state) => {
+    const item = state.items.find((candidate) => candidate.id === structureId)
+    return item?.type === 'file' ? item.path : undefined
+  })
   const setStructureMeasurement = usePreviewWorkbenchStore((state) => state.setStructureMeasurement)
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
@@ -464,6 +477,39 @@ const PdbPreviewViewer = ({
       setExportStatus('failed')
     }
   }, [name])
+
+  // D7：这份产物由哪个引擎产出、输出算什么、许可有什么约束 —— 事实全部来自引擎目录（单一来源）。
+  // **收尾门**：没有「输出性质」这一行就不上屏（不合格的产物说明不许当证据显示）。
+  const artifactFacts = useMemo(() => {
+    const engine = engineForPredictionPath(previewPath)
+    if (!engine) return undefined
+    const facts = describeStructureArtifactFacts(engine)
+    return structureArtifactFactsAreHonest(facts) ? facts : undefined
+  }, [previewPath])
+
+  const artifactFactWording = useCallback(
+    (fact: StructureArtifactFact): string => {
+      if (fact.kind === 'engine') {
+        return t('preview.structureFactEngine').replace('{engine}', fact.engineLabel)
+      }
+      if (fact.kind === 'output') {
+        return fact.outputKind === 'predicted'
+          ? t('preview.structureFactOutputPredicted')
+          : fact.outputKind === 'lookup'
+            ? t('preview.structureFactOutputLookup')
+            : t('preview.structureFactOutputMeasured')
+      }
+      if (fact.kind === 'license') {
+        return (
+          fact.commercialRestricted
+            ? t('preview.structureFactLicenseRestricted')
+            : t('preview.structureFactLicense')
+        ).replace('{license}', fact.licenseId)
+      }
+      return t('preview.structureFactWeights').replace('{size}', formatWeightSize(fact.weightBytes))
+    },
+    [t]
+  )
 
   // 这一帧真正生效的选择/测量：只有还在看的那份内容上的那些才算数。
   const activeSelection = selection?.content === content ? selection.value : undefined
@@ -1010,6 +1056,19 @@ const PdbPreviewViewer = ({
           >
             {t('preview.structureExportImage')}
           </button>
+          {/* D7：产物事实条 —— 引擎 / 输出性质 / 许可 / 权重。没有引擎身份的产物**不显示**这一条。 */}
+          {artifactFacts ? (
+            <span
+              data-slot="structure-artifact-facts"
+              className="flex items-center gap-2 rounded-md bg-bg-200/70 px-2 py-0.5 text-[11px] text-text-300"
+            >
+              {artifactFacts.map((fact) => (
+                <span key={fact.kind} data-slot={`structure-artifact-fact-${fact.kind}`}>
+                  {artifactFactWording(fact)}
+                </span>
+              ))}
+            </span>
+          ) : null}
           {/* D6 第二半：按 PDB id 加载（过三态判决 + 需要时过审批卡）。 */}
           <input
             data-slot="structure-remote-id"

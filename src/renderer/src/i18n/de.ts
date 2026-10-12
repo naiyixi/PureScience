@@ -4642,5 +4642,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureRemoteIdPlaceholder': 'PDB-ID (z. B. 1CRN)',
   'preview.structureRemoteLoaded': '{name} geladen ({bytes} Bytes)',
   'preview.structureRemoteNoSession':
-    'dieser Tab hat keine Sitzung, hier kann nichts geladen werden'
+    'dieser Tab hat keine Sitzung, hier kann nichts geladen werden',
+  'preview.structureFactEngine': 'Engine {engine}',
+  'preview.structureFactOutputPredicted': 'vorhergesagt — keine experimentelle Struktur',
+  'preview.structureFactOutputLookup':
+    'Datenbankvorhersage (Abfrage) — keine experimentelle Struktur',
+  'preview.structureFactOutputMeasured': 'experimentelle (gemessene) Struktur',
+  'preview.structureFactLicense': 'Lizenz {license}',
+  'preview.structureFactLicenseRestricted': 'Lizenz {license} — kommerzielle Nutzung eingeschränkt',
+  'preview.structureFactWeights': 'Gewichte {size}'
 }

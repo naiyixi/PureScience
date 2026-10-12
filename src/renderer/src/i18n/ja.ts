@@ -4499,5 +4499,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': 'PDB ID で読み込む',
   'preview.structureRemoteIdPlaceholder': 'PDB ID（例 1CRN）',
   'preview.structureRemoteLoaded': '{name} を読み込みました（{bytes} バイト）',
-  'preview.structureRemoteNoSession': 'このタブにはセッションがないため読み込めません'
+  'preview.structureRemoteNoSession': 'このタブにはセッションがないため読み込めません',
+  'preview.structureFactEngine': 'エンジン {engine}',
+  'preview.structureFactOutputPredicted': '予測 — 実験構造ではありません',
+  'preview.structureFactOutputLookup': 'データベース予測（照会）— 実験構造ではありません',
+  'preview.structureFactOutputMeasured': '実験（実測）構造',
+  'preview.structureFactLicense': 'ライセンス {license}',
+  'preview.structureFactLicenseRestricted': 'ライセンス {license} — 商用利用に制限',
+  'preview.structureFactWeights': '重み {size}'
 }

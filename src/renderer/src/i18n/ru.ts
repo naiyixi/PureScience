@@ -4513,5 +4513,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': 'Загрузить по PDB ID',
   'preview.structureRemoteIdPlaceholder': 'PDB ID (например, 1CRN)',
   'preview.structureRemoteLoaded': '{name} загружен ({bytes} байт)',
-  'preview.structureRemoteNoSession': 'у этой вкладки нет сессии, загрузить сюда нельзя'
+  'preview.structureRemoteNoSession': 'у этой вкладки нет сессии, загрузить сюда нельзя',
+  'preview.structureFactEngine': 'движок {engine}',
+  'preview.structureFactOutputPredicted': 'предсказание — не экспериментальная структура',
+  'preview.structureFactOutputLookup':
+    'предсказание из базы (запрос) — не экспериментальная структура',
+  'preview.structureFactOutputMeasured': 'экспериментальная структура',
+  'preview.structureFactLicense': 'лицензия {license}',
+  'preview.structureFactLicenseRestricted':
+    'лицензия {license} — коммерческое использование ограничено',
+  'preview.structureFactWeights': 'веса {size}'
 }

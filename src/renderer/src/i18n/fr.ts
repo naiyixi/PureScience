@@ -4628,5 +4628,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': 'Charger par identifiant PDB',
   'preview.structureRemoteIdPlaceholder': 'Identifiant PDB (ex. 1CRN)',
   'preview.structureRemoteLoaded': '{name} chargé ({bytes} octets)',
-  'preview.structureRemoteNoSession': "cet onglet n'a pas de session, rien ne peut y être chargé"
+  'preview.structureRemoteNoSession': "cet onglet n'a pas de session, rien ne peut y être chargé",
+  'preview.structureFactEngine': 'moteur {engine}',
+  'preview.structureFactOutputPredicted': 'prédit — pas une structure expérimentale',
+  'preview.structureFactOutputLookup':
+    'prédiction de base de données (requête) — pas une structure expérimentale',
+  'preview.structureFactOutputMeasured': 'structure expérimentale (mesurée)',
+  'preview.structureFactLicense': 'sous licence {license}',
+  'preview.structureFactLicenseRestricted': 'licence {license} — usage commercial restreint',
+  'preview.structureFactWeights': 'poids {size}'
 }

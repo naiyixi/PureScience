@@ -4175,5 +4175,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': '按 PDB ID 載入',
   'preview.structureRemoteIdPlaceholder': 'PDB ID（如 1CRN）',
   'preview.structureRemoteLoaded': '已載入 {name}（{bytes} 位元組）',
-  'preview.structureRemoteNoSession': '這個頁籤沒有工作階段，無法在這裡載入'
+  'preview.structureRemoteNoSession': '這個頁籤沒有工作階段，無法在這裡載入',
+  'preview.structureFactEngine': '引擎 {engine}',
+  'preview.structureFactOutputPredicted': '預測 —— 不是實驗結構',
+  'preview.structureFactOutputLookup': '資料庫預測（查詢所得）—— 不是實驗結構',
+  'preview.structureFactOutputMeasured': '實驗（實測）結構',
+  'preview.structureFactLicense': '授權 {license}',
+  'preview.structureFactLicenseRestricted': '授權 {license} —— 商用受限',
+  'preview.structureFactWeights': '權重 {size}'
 }

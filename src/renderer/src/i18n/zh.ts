@@ -4233,7 +4233,14 @@ export const zh = {
   'preview.structureLoadRemote': '按 PDB ID 加载',
   'preview.structureRemoteIdPlaceholder': 'PDB ID（如 1CRN）',
   'preview.structureRemoteLoaded': '已加载 {name}（{bytes} 字节）',
-  'preview.structureRemoteNoSession': '这个页签没有会话，无法在这里加载'
+  'preview.structureRemoteNoSession': '这个页签没有会话，无法在这里加载',
+  'preview.structureFactEngine': '引擎 {engine}',
+  'preview.structureFactOutputPredicted': '预测 —— 不是实验结构',
+  'preview.structureFactOutputLookup': '数据库预测（查询所得）—— 不是实验结构',
+  'preview.structureFactOutputMeasured': '实验（实测）结构',
+  'preview.structureFactLicense': '许可 {license}',
+  'preview.structureFactLicenseRestricted': '许可 {license} —— 商用受限',
+  'preview.structureFactWeights': '权重 {size}'
 }
 
 export type ZhKey = keyof typeof zh

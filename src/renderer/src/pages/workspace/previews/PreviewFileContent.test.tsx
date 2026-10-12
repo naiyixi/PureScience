@@ -721,6 +721,60 @@ describe('PreviewFileContent', () => {
       expect(container.querySelector('[data-testid="source-line-number"]')).not.toBeNull()
     })
 
+    it('shows the engine facts for a prediction artifact, and nothing for a plain file (D7)', async () => {
+      const pdbContent = [
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+
+      const prediction = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: '1abc.pdb',
+        path: '/data/workspaces/session-1/predictions/esmfold/1abc.pdb'
+      })
+      // 事实条要能从 store 里认出这一页签的落点（引擎身份**只**从应用自己的路径约定解析）。
+      usePreviewWorkbenchStore.getState().activateProject('project-1')
+      usePreviewWorkbenchStore.getState().upsertItem(prediction)
+      await renderFile(prediction)
+
+      const strip = container.querySelector('[data-slot="structure-artifact-facts"]')
+      expect(strip).not.toBeNull()
+      // 输出性质**必须**写在屏上（预测 ≠ 实验结构），许可与权重也随产物带出来。
+      expect(strip?.textContent).toContain('predicted — not an experimental structure')
+      expect(strip?.textContent).toContain('ESMFold')
+      expect(strip?.textContent).toContain('MIT-weights-terms')
+      expect(strip?.textContent).toContain('weights')
+    })
+
+    it('shows no facts at all when the file carries no engine identity (D7)', async () => {
+      const pdbContent =
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N\n'
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+
+      // 一份**普通**的 PDB（路径里没有 predictions/<引擎> 这一层）⇒ 一个字都不显示。
+      // 「不知道它是谁产的」不许被写成「未知引擎」的许可。
+      const plain = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: 'plain.pdb'
+      })
+      usePreviewWorkbenchStore.getState().activateProject('project-1')
+      usePreviewWorkbenchStore.getState().upsertItem(plain)
+      await renderFile(plain)
+
+      expect(container.querySelector('[data-slot="structure-artifact-facts"]')).toBeNull()
+    })
+
     it('renders PDB previews with 3Dmol style controls and model metadata', async () => {
       const pdbContent = [
         'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',

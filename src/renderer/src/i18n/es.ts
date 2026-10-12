@@ -4595,5 +4595,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureLoadRemote': 'Cargar por ID PDB',
   'preview.structureRemoteIdPlaceholder': 'ID PDB (p. ej. 1CRN)',
   'preview.structureRemoteLoaded': '{name} cargado ({bytes} bytes)',
-  'preview.structureRemoteNoSession': 'esta pestaña no tiene sesión, no se puede cargar nada aquí'
+  'preview.structureRemoteNoSession': 'esta pestaña no tiene sesión, no se puede cargar nada aquí',
+  'preview.structureFactEngine': 'motor {engine}',
+  'preview.structureFactOutputPredicted': 'predicho — no es una estructura experimental',
+  'preview.structureFactOutputLookup':
+    'predicción de base de datos (consulta) — no es una estructura experimental',
+  'preview.structureFactOutputMeasured': 'estructura experimental (medida)',
+  'preview.structureFactLicense': 'licencia {license}',
+  'preview.structureFactLicenseRestricted': 'licencia {license} — uso comercial restringido',
+  'preview.structureFactWeights': 'pesos {size}'
 }

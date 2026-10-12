@@ -4532,5 +4532,13 @@ export const en: Record<ZhKey, string> = {
   'preview.structureLoadRemote': 'Load by PDB ID',
   'preview.structureRemoteIdPlaceholder': 'PDB ID (e.g. 1CRN)',
   'preview.structureRemoteLoaded': 'loaded {name} ({bytes} bytes)',
-  'preview.structureRemoteNoSession': 'this tab has no session, so nothing can be loaded here'
+  'preview.structureRemoteNoSession': 'this tab has no session, so nothing can be loaded here',
+  'preview.structureFactEngine': 'engine {engine}',
+  'preview.structureFactOutputPredicted': 'predicted — not an experimental structure',
+  'preview.structureFactOutputLookup':
+    'database prediction (lookup) — not an experimental structure',
+  'preview.structureFactOutputMeasured': 'experimental / measured structure',
+  'preview.structureFactLicense': 'licence {license}',
+  'preview.structureFactLicenseRestricted': 'licence {license} — commercial use restricted',
+  'preview.structureFactWeights': 'weights {size}'
 }
