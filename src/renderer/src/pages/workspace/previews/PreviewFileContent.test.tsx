@@ -752,6 +752,81 @@ describe('PreviewFileContent', () => {
       expect(strip?.textContent).toContain('weights')
     })
 
+    it('picks a structure source and sends an identity, never a URL (D7)', async () => {
+      const pdbContent =
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N\n'
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const load = vi.fn().mockResolvedValue({
+        ok: true,
+        id: 'P00533',
+        source: 'alphafold-db',
+        fileName: 'AF-P00533-F1-model_v4.pdb',
+        host: 'alphafold.ebi.ac.uk',
+        path: '/data/workspaces/session-1/predictions/alphafold-db/AF-P00533-F1-model_v4.pdb',
+        bytes: pdbContent.length
+      })
+      // 这套 jsdom 夹具只装了用到的命名空间 ⇒ 这里自己补上 preview（其余成员保持不动）。
+      const api = window.api as { preview?: Record<string, unknown> }
+      api.preview = { ...(api.preview ?? {}), loadRemoteStructure: load }
+
+      const item = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: '1abc.pdb',
+        path: '/data/workspaces/session-1/1abc.pdb',
+        sessionId: 'session-1'
+      })
+      usePreviewWorkbenchStore.getState().activateProject('project-1')
+      usePreviewWorkbenchStore.getState().upsertItem(item)
+      await renderFile(item)
+
+      const input = container.querySelector('[data-slot="structure-remote-id"]') as HTMLInputElement
+      // 默认＝PDB（实验结构），占位符说的是 PDB id 的形状。
+      expect(
+        container
+          .querySelector('[data-slot="structure-remote-source-pdb"]')
+          ?.getAttribute('data-selected')
+      ).toBe('true')
+      expect(input.getAttribute('placeholder')).toContain('PDB ID')
+
+      // **先填 id、再切来源**：这个顺序才钉得住「加载回调的依赖里有没有 remoteSource」
+      // （少了它，先填后切会带着上一个来源去取 —— 往错的主机要东西）。
+      const setValue = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set
+      await act(async () => {
+        setValue?.call(input, 'P00533')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+
+      // 切到 AlphaFold DB（数据库预测）：占位符立刻改成 UniProt 编号的形状。
+      await act(async () => {
+        ;(
+          container.querySelector(
+            '[data-slot="structure-remote-source-alphafold-db"]'
+          ) as HTMLButtonElement
+        ).click()
+      })
+      expect(input.getAttribute('placeholder')).toContain('UniProt')
+      await act(async () => {
+        ;(
+          container.querySelector('[data-slot="structure-load-remote"]') as HTMLButtonElement
+        ).click()
+      })
+      await act(async () => {})
+
+      expect(load).toHaveBeenCalledTimes(1)
+      const request = load.mock.calls[0]?.[0] as Record<string, unknown>
+      // 送的是**身份 + 来源**：渲染端从头到尾拿不到 host，也拼不出 URL。
+      expect(request).toEqual({ sessionId: 'session-1', id: 'P00533', source: 'alphafold-db' })
+      expect(JSON.stringify(request)).not.toContain('http')
+    })
+
     it('shows no facts at all when the file carries no engine identity (D7)', async () => {
       const pdbContent =
         'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N\n'

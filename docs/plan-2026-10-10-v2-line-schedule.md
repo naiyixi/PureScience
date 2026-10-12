@@ -329,7 +329,7 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 兼容投影 398、组合三常量 362/360/127、家族命令 55 与 owner 块、家族 IPC 注册顺序、本地 Web 参数形状 398）。
 **未取（具名）**：真机上「点一下 → 卡弹出 → 落在会话工作区并被 3D 视图打开」需要窗口 + CDP；
 本轮读到的是主进程层（判据/审批/取回/落盘/具名拒绝全有用例，落地路径与网络失败分开断言）。 |
-| D7 第二片（预测产物**写**出来的那一步） | ⬜ 未开工：引擎 glue 把预测结构落进 `predictions/<engineId>/…`（共享层的 `STRUCTURE_PREDICTION_DIRECTORY` 就是那份约定），落点约定一旦真被写入，视图的事实条自动生效 | — |
+| **D7 第二片** 预测产物**真**落盘（来源登记表 + 写读同一条约定） | ✅ **已交付**：`STRUCTURE_REMOTE_SOURCES` 登记两个来源 —— `pdb`（实验结构，落工作区根）与 `alphafold-db`（**数据库预测**，落 `predictions/alphafold-db/…`）；渲染端只送**身份 + 来源**（永远送不出 host/URL）；id 形状按来源各判（PDB 4 位 / UniProt 6 或 10 位，**不截断**）；`unknown-source` 具名拒绝且**不回落**；写侧与读侧共用 `STRUCTURE_PREDICTION_DIRECTORY` 一处约定 —— 用例同时钉住「预测来源的落点被 `engineForPredictionPath` 认回该引擎」与「实验来源落工作区根 ⇒ 事实条一个字都不给」 | 一次预测产物 → 视图打开 → 许可事实可见 |
 | **A1–A7** 中文文献翻译 | ⬜ 未开工（A1 段落级检查点是其余各项的前提） | — |
 | **P0-1…P0-10** 稳定性批次 | ✅ **已交付**（我 8 项 + 执行器 6 项，均带真机读数） | `6c24323d`…`67febe74` 区间；读数散见 `docs/evidence/2026-10-1*.md` |
 

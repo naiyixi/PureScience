@@ -27,6 +27,11 @@ import {
 import { formatWeightSize } from '../../../../../../shared/engine-catalog'
 import type { PngProvenanceText } from '../../../../../../shared/image-metadata'
 import {
+  STRUCTURE_REMOTE_SOURCES,
+  STRUCTURE_REMOTE_SOURCE_IDS,
+  type StructureRemoteSourceId
+} from '../../../../../../shared/structure-remote-source'
+import {
   parseStructureMeasurementInstruction,
   parseStructureInstruction,
   structureInstructionParameterLine,
@@ -406,6 +411,14 @@ const PdbPreviewViewer = ({
   // D6 第二半：按 PDB id 从**固定主机**加载一份结构。渲染层只送 id —— URL 由主进程的固定模板拼。
   // 失败一律具名上屏（白名单拦住 / 用户拒绝 / 源上没有 / 太大 / 落盘失败各是一句话，不糊成「加载失败」）。
   const [remotePdbId, setRemotePdbId] = useState('')
+  // D7 第二片：从**登记表**里挑来源（不是自动猜 id 是哪一种 —— 猜错会把「实验结构」和「数据库预测」
+  // 说成同一件事）。默认 PDB＝既有行为逐字不变。
+  const [remoteSource, setRemoteSource] = useState<StructureRemoteSourceId>('pdb')
+  // 按钮上的名字直接用引擎目录的标签（不再新造一套措辞）；写成字面量联合，`t()` 才认得出键。
+  const REMOTE_SOURCE_LABEL_KEYS = {
+    pdb: 'engines.pdb.label',
+    'alphafold-db': 'engines.alphafold-db.label'
+  } as const
   const [remoteNote, setRemoteNote] = useState<string | undefined>(undefined)
   const loadRemoteStructure = useCallback(async (): Promise<void> => {
     if (!sessionId) {
@@ -415,7 +428,8 @@ const PdbPreviewViewer = ({
     try {
       const result = await window.api.preview.loadRemoteStructure({
         sessionId,
-        pdbId: remotePdbId
+        id: remotePdbId,
+        source: remoteSource
       })
       if (!result.ok) {
         setRemoteNote(`未执行 · ${result.detail}`)
@@ -439,7 +453,8 @@ const PdbPreviewViewer = ({
     } catch (error) {
       setRemoteNote(`未执行 · ${error instanceof Error ? error.message : String(error)}`)
     }
-  }, [remotePdbId, sessionId, t, upsertAndActivateItem])
+    // `remoteSource` 必须在这里：少了它，先填 id 再切来源会带着**上一个来源**去取（往错的主机要东西）。
+  }, [remotePdbId, remoteSource, sessionId, t, upsertAndActivateItem])
 
   // D6：把当前视图导出成 PNG —— **要过审批卡**（这是本条的验收判据：导出触发审批卡），
   // 拒绝时主进程不写任何文件，这里只如实上屏「没有写出任何文件」。
@@ -1095,11 +1110,33 @@ const PdbPreviewViewer = ({
               ))}
             </span>
           ) : null}
-          {/* D6 第二半：按 PDB id 加载（过三态判决 + 需要时过审批卡）。 */}
+          {/* D7 第二片：来源登记表（PDB＝实验结构，AlphaFold DB＝数据库预测）。两者落点不同 ——
+              预测类进 predictions/<engineId>/，视图的事实条据此把「不是实验结构」写在屏上。 */}
+          <span data-slot="structure-remote-source" className="flex items-center gap-1">
+            {STRUCTURE_REMOTE_SOURCE_IDS.map((sourceId) => (
+              <button
+                key={sourceId}
+                type="button"
+                data-slot={`structure-remote-source-${sourceId}`}
+                data-selected={sourceId === remoteSource}
+                className={`rounded-sm px-1.5 py-0.5 transition-colors ${
+                  sourceId === remoteSource ? 'bg-bg-300' : 'hover:bg-bg-300'
+                }`}
+                onClick={() => setRemoteSource(sourceId)}
+              >
+                {t(REMOTE_SOURCE_LABEL_KEYS[STRUCTURE_REMOTE_SOURCES[sourceId].engineId])}
+              </button>
+            ))}
+          </span>
+          {/* D6 第二半：按身份加载（过三态判决 + 需要时过审批卡）。 */}
           <input
             data-slot="structure-remote-id"
             aria-label={t('preview.structureLoadRemote')}
-            placeholder={t('preview.structureRemoteIdPlaceholder')}
+            placeholder={
+              remoteSource === 'pdb'
+                ? t('preview.structureRemoteIdPlaceholder')
+                : t('preview.structureRemoteUniProtPlaceholder')
+            }
             value={remotePdbId}
             onChange={(event) => setRemotePdbId(event.currentTarget.value)}
             className="w-20 rounded-sm bg-bg-200 px-1 py-0.5 text-[11px]"

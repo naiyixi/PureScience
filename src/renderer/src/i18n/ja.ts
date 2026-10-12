@@ -4508,5 +4508,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureFactLicenseRestricted': 'ライセンス {license} — 商用利用に制限',
   'preview.structureFactWeights': '重み {size}',
   'preview.structureExportDoneWithoutFacts':
-    '{name} を書き出しました — マークした領域の情報はファイルに書き込めませんでした'
+    '{name} を書き出しました — マークした領域の情報はファイルに書き込めませんでした',
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 番号（例: P00533）'
 }

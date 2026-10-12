@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EGRESS_DOMAIN_GROUPS, type EgressSettings } from '../../shared/egress'
+import { engineForPredictionPath } from '../../shared/structure-artifact-facts'
 import {
   STRUCTURE_REMOTE_MAX_BYTES,
   structureRemoteFileName,
@@ -62,7 +63,7 @@ describe('远程结构加载（主进程）', () => {
     const approvals = { request: vi.fn().mockResolvedValue('once') }
     const { loader, deps } = harness({ approvals, egressSettings: () => undefined })
 
-    const result = await loader.load({ sessionId: 'session-1', pdbId: 'nope' })
+    const result = await loader.load({ sessionId: 'session-1', id: 'nope' })
 
     expect(result).toEqual({
       ok: false,
@@ -78,7 +79,7 @@ describe('远程结构加载（主进程）', () => {
       egressSettings: () => closedEveryGroupBut('example.org')
     })
 
-    const result = await loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const result = await loader.load({ sessionId: 'session-1', id: '1CRN' })
 
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('expected a refusal')
@@ -90,13 +91,13 @@ describe('远程结构加载（主进程）', () => {
     const approvals = { request: vi.fn() }
     const { loader, deps } = harness({ approvals })
 
-    const result = await loader.load({ sessionId: 'session-1', pdbId: '1crn' })
+    const result = await loader.load({ sessionId: 'session-1', id: '1crn' })
 
     expect(approvals.request).not.toHaveBeenCalled()
     expect(deps.fetchText).toHaveBeenCalledWith(structureRemoteUrl('1CRN'))
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error('expected a load')
-    expect(result.pdbId).toBe('1CRN')
+    expect(result.id).toBe('1CRN')
     expect(result.fileName).toBe(structureRemoteFileName('1CRN'))
     expect(result.path).toBe(join(root, structureRemoteFileName('1CRN')))
     await expect(readFile(result.path, 'utf8')).resolves.toBe(loaded)
@@ -108,7 +109,7 @@ describe('远程结构加载（主进程）', () => {
       approvals: undefined
     })
 
-    const result = await loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const result = await loader.load({ sessionId: 'session-1', id: '1CRN' })
 
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('expected a refusal')
@@ -125,7 +126,7 @@ describe('远程结构加载（主进程）', () => {
       approvals
     })
 
-    const result = await loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const result = await loader.load({ sessionId: 'session-1', id: '1CRN' })
 
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error('expected a refusal')
@@ -143,11 +144,79 @@ describe('远程结构加载（主进程）', () => {
     })
   })
 
+  it('不认识来源 ⇒ 具名拒绝，且**不回落**到 PDB（不回一次网）', async () => {
+    const { loader, deps } = harness()
+    const result = await loader.load({
+      sessionId: 'session-1',
+      id: '1CRN',
+      source: 'made-up' as never
+    })
+    expect(result.ok).toBe(false)
+    expect(result.ok === false && result.reason).toBe('unknown-source')
+    expect(deps.fetchText).not.toHaveBeenCalled()
+  })
+
+  it('预测来源落进 predictions/<engineId>/，视图侧事实条正靠这条认出引擎（写读同一条约定）', async () => {
+    const { loader, deps } = harness({
+      egressSettings: () => ({
+        enabled: true,
+        groups: {},
+        customDomains: ['alphafold.ebi.ac.uk']
+      })
+    })
+    const result = await loader.load({
+      sessionId: 'session-1',
+      id: 'p00533',
+      source: 'alphafold-db'
+    })
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error('unreachable')
+    // 身份规范化成大写、**不截断**；文件名与落点都来自登记表。
+    expect(result.id).toBe('P00533')
+    expect(result.source).toBe('alphafold-db')
+    expect(result.host).toBe('alphafold.ebi.ac.uk')
+    expect(result.fileName).toBe('AF-P00533-F1-model_v4.pdb')
+    expect(
+      result.path.endsWith(join('predictions', 'alphafold-db', 'AF-P00533-F1-model_v4.pdb'))
+    ).toBe(true)
+    // **这一条才是打通**：视图侧按路径解析出的引擎，正是这份产物的来源。
+    expect(engineForPredictionPath(result.path)?.id).toBe('alphafold-db')
+    expect(deps.fetchText).toHaveBeenCalledWith(
+      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v4.pdb'
+    )
+  })
+
+  it('实验来源（PDB）落工作区根 ⇒ 视图侧**不**给它预测事实（实验不能被说成预测）', async () => {
+    const { loader } = harness()
+    const result = await loader.load({ sessionId: 'session-1', id: '1CRN' })
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error('unreachable')
+    expect(result.source).toBe('pdb')
+    // 实验类落**工作区根**（夹具的工作区就是那个临时目录），没有 predictions 那一层。
+    expect(result.path).toBe(join(root, '1CRN.pdb'))
+    expect(result.path.includes('predictions')).toBe(false)
+    expect(engineForPredictionPath(result.path)).toBeUndefined()
+  })
+
+  it('id 形状不对时说清楚该长什么样（每种来源各说各的）', async () => {
+    const { loader, deps } = harness()
+    const result = await loader.load({
+      sessionId: 'session-1',
+      id: 'P0053',
+      source: 'alphafold-db'
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('unreachable')
+    expect(result.reason).toBe('invalid-id')
+    expect(result.detail).toContain('UniProt')
+    expect(deps.fetchText).not.toHaveBeenCalled()
+  })
+
   it('取回结果与网络失败分开命名（404 / 连接失败 / 超限 / 落盘失败各是各的）', async () => {
     const notFound = harness({
       fetchText: vi.fn().mockResolvedValue({ ok: false, reason: 'not-found', detail: 'HTTP 404' })
     })
-    const notFoundResult = await notFound.loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const notFoundResult = await notFound.loader.load({ sessionId: 'session-1', id: '1CRN' })
     expect(notFoundResult.ok).toBe(false)
     if (!notFoundResult.ok) expect(notFoundResult.reason).toBe('not-found')
 
@@ -156,7 +225,7 @@ describe('远程结构加载（主进程）', () => {
         .fn()
         .mockResolvedValue({ ok: false, reason: 'network-failed', detail: 'ECONNRESET' })
     })
-    const networkResult = await network.loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const networkResult = await network.loader.load({ sessionId: 'session-1', id: '1CRN' })
     expect(networkResult.ok).toBe(false)
     if (!networkResult.ok) expect(networkResult.reason).toBe('network-failed')
 
@@ -167,7 +236,7 @@ describe('远程结构加载（主进程）', () => {
         detail: `${STRUCTURE_REMOTE_MAX_BYTES} 上限`
       })
     })
-    const tooLargeResult = await tooLarge.loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const tooLargeResult = await tooLarge.loader.load({ sessionId: 'session-1', id: '1CRN' })
     expect(tooLargeResult.ok).toBe(false)
     if (!tooLargeResult.ok) expect(tooLargeResult.reason).toBe('too-large')
 
@@ -177,7 +246,7 @@ describe('远程结构加载（主进程）', () => {
     const blocker = join(root, 'blocker')
     await writeFile(blocker, 'not a directory')
     const writeFails = harness({ workspaceFor: () => join(blocker, 'nested') })
-    const writeResult = await writeFails.loader.load({ sessionId: 'session-1', pdbId: '1CRN' })
+    const writeResult = await writeFails.loader.load({ sessionId: 'session-1', id: '1CRN' })
     expect(writeResult.ok).toBe(false)
     if (!writeResult.ok) expect(writeResult.reason).toBe('write-failed')
   })

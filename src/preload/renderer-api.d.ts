@@ -1032,13 +1032,16 @@ export interface PureScienceAPI {
   }
   preview: {
     /**
-     * D6: loads a structure from the fixed public source by PDB id (the renderer never names a host).
-     * Local-only: the answer carries a refusal name when the destination is blocked, the user declines,
-     * or the source has nothing under that id.
+     * D6/D7: loads a structure from a fixed public source **by identity** — the renderer never names a
+     * host, and the source decides both the host and where the file lands (prediction sources land under
+     * the prediction directory so the view can label them as not experimental). Local-only: the answer
+     * carries a refusal name when the destination is blocked, the user declines, or the source has
+     * nothing under that id.
      */
     loadRemoteStructure(request: {
       sessionId: string
-      pdbId: string
+      id: string
+      source?: 'pdb' | 'alphafold-db'
     }): Promise<StructureRemoteLoadResult>
     load(request: LoadPreviewStateRequest): Promise<PersistedPreviewState | null>
     save(request: SavePreviewStateRequest): Promise<void>

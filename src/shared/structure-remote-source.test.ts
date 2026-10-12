@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
+import { isHostDenied } from './egress'
+import { engineForPredictionPath } from './structure-artifact-facts'
 import {
   STRUCTURE_REMOTE_HOST,
   STRUCTURE_REMOTE_MAX_BYTES,
+  STRUCTURE_REMOTE_SOURCES,
   decideStructureRemoteLoad,
   normalizeStructureRemotePdbId,
+  normalizeStructureRemoteUniProtId,
+  structureRemoteAlphaFoldFileName,
+  structureRemoteAlphaFoldUrl,
   structureRemoteFileName,
+  structureRemoteRelativeDirectory,
+  structureRemoteSource,
   structureRemoteUrl
 } from './structure-remote-source'
 
@@ -86,5 +94,55 @@ describe('远程结构加载：三态判决（复用既有词汇）', () => {
 
   it('把上限与拒绝词表摆出来，别让调用方自己编一个数', () => {
     expect(STRUCTURE_REMOTE_MAX_BYTES).toBe(8 * 1024 * 1024)
+  })
+})
+
+// --- D7 第二片：来源登记表 -------------------------------------------------------------------
+describe('结构来源登记表：写侧与读侧由同一条约定钉住', () => {
+  it('每个**预测**来源的落点，视图侧的事实条都认得出引擎；实验来源则一个字的事实都不给', () => {
+    for (const source of Object.values(STRUCTURE_REMOTE_SOURCES)) {
+      const directory = structureRemoteRelativeDirectory(source)
+      const path = `/workspaces/s1/${directory ? `${directory}/` : ''}${source.fileName('X')}`
+      const engine = engineForPredictionPath(path)
+      if (source.predicted) {
+        // 写进去的，视图一定读得出来 —— 这就是「打通」的全部保证。
+        expect(engine?.id).toBe(source.engineId)
+      } else {
+        // 实验结构落工作区根：视图**不许**把它当成预测产物（实验与预测不能混为一谈）。
+        expect(engine).toBeUndefined()
+      }
+    }
+  })
+
+  it('每个来源的主机都不是禁运目的地（否则界面上那条路永远只剩一个拒）', () => {
+    for (const source of Object.values(STRUCTURE_REMOTE_SOURCES)) {
+      expect(isHostDenied(source.host)).toBe(false)
+    }
+    expect(STRUCTURE_REMOTE_SOURCES.pdb.host).toBe(STRUCTURE_REMOTE_HOST)
+  })
+
+  it('来源 id 不认识就是 undefined（调用方据此判 unknown-source，不回落）', () => {
+    expect(structureRemoteSource('pdb')?.id).toBe('pdb')
+    expect(structureRemoteSource('alphafold-db')?.id).toBe('alphafold-db')
+    expect(structureRemoteSource('made-up')).toBeUndefined()
+    expect(structureRemoteSource(undefined)).toBeUndefined()
+    expect(structureRemoteSource(7)).toBeUndefined()
+  })
+
+  it('UniProt 登录号：6 位与 10 位都认，形状不对不认（**绝不截断**）', () => {
+    expect(normalizeStructureRemoteUniProtId('p00533')).toBe('P00533')
+    expect(normalizeStructureRemoteUniProtId(' A0A123B4C5 ')).toBe('A0A123B4C5')
+    expect(normalizeStructureRemoteUniProtId('P0053')).toBeUndefined()
+    expect(normalizeStructureRemoteUniProtId('1CRN')).toBeUndefined()
+    expect(normalizeStructureRemoteUniProtId('')).toBeUndefined()
+    expect(normalizeStructureRemoteUniProtId(42)).toBeUndefined()
+  })
+
+  it('AlphaFold 的固定模板与文件名（版本号是数据库的约定，不是调用方挑的）', () => {
+    expect(structureRemoteAlphaFoldUrl('P00533')).toBe(
+      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v4.pdb'
+    )
+    expect(structureRemoteAlphaFoldFileName('P00533')).toBe('AF-P00533-F1-model_v4.pdb')
+    expect(STRUCTURE_REMOTE_SOURCES['alphafold-db'].host).toBe('alphafold.ebi.ac.uk')
   })
 })

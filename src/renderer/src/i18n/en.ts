@@ -4542,5 +4542,6 @@ export const en: Record<ZhKey, string> = {
   'preview.structureFactLicenseRestricted': 'licence {license} — commercial use restricted',
   'preview.structureFactWeights': 'weights {size}',
   'preview.structureExportDoneWithoutFacts':
-    'exported {name} — the marked region could not be written into the file'
+    'exported {name} — the marked region could not be written into the file',
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt accession (e.g. P00533)'
 }

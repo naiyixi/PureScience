@@ -17,13 +17,12 @@ import type { EgressSettings } from '../../shared/egress'
 import { resolveEgressAllowlist } from '../../shared/egress'
 import type { ExecutionProtectionLevel } from '../../shared/execution-protection'
 import {
-  STRUCTURE_REMOTE_HOST,
   STRUCTURE_REMOTE_MAX_BYTES,
   decideStructureRemoteLoad,
-  normalizeStructureRemotePdbId,
-  structureRemoteFileName,
-  structureRemoteUrl,
-  type StructureRemoteLoadResult
+  structureRemoteRelativeDirectory,
+  structureRemoteSource,
+  type StructureRemoteLoadResult,
+  type StructureRemoteSourceId
 } from '../../shared/structure-remote-source'
 import type { ApprovalInfo } from '../connectors/approval-broker'
 import type { ApprovalDecision } from '../../shared/settings'
@@ -53,7 +52,16 @@ export type RemoteStructureLoaderDeps = {
   fetchText?: (url: string) => Promise<RemoteStructureFieldFetch>
 }
 
-export type RemoteStructureRequest = { sessionId: string; pdbId: string }
+export type RemoteStructureRequest = {
+  sessionId: string
+  /**
+   * 这次的**身份**：PDB id（如 1CRN）或 UniProt 登录号（如 P00533）。渲染端永远只送身份 ——
+   * 主机与 URL 由登记表里的**固定模板**在下面拼。缺 `source` 时按 PDB 处理（既有行为逐字不变）。
+   */
+  id: string
+  /** 登记表里的来源；不认识 ⇒ `unknown-source`（**不回落**到 PDB）。 */
+  source?: StructureRemoteSourceId
+}
 
 const fetchWithAppNetworkStack = async (url: string): Promise<RemoteStructureFieldFetch> => {
   try {
@@ -108,18 +116,29 @@ export const createRemoteStructureLoader = (
 
   return {
     async load(request: RemoteStructureRequest): Promise<StructureRemoteLoadResult> {
-      const pdbId = normalizeStructureRemotePdbId(request.pdbId)
-      if (!pdbId) {
+      // 来源必须先认出来：不认识的来源**不回落**到 PDB（回落等于把「你点名的那件事」换成另一件）。
+      const source = structureRemoteSource(request.source ?? 'pdb')
+      if (!source) {
+        return {
+          ok: false,
+          reason: 'unknown-source',
+          detail: `「${String(request.source ?? '')}」不在结构来源登记表里，没有回落项。`
+        }
+      }
+
+      const id = source.normalize(request.id)
+      if (!id) {
         return {
           ok: false,
           reason: 'invalid-id',
-          detail: `「${String(request.pdbId ?? '')}」不是 4 位 PDB id（形如 1CRN、7VH8）。`
+          detail: `「${String(request.id ?? '')}」不是${source.idDescription}。`
         }
       }
 
       const decision = decideStructureRemoteLoad({
         allowlist: resolveEgressAllowlist(await Promise.resolve(deps.egressSettings())),
-        protection: deps.protection()
+        protection: deps.protection(),
+        host: source.host
       })
       if (decision.decision === 'deny') {
         return { ok: false, reason: decision.reason, detail: decision.detail }
@@ -133,11 +152,11 @@ export const createRemoteStructureLoader = (
             detail: `${decision.detail} 这次没有可用的审批卡，因此不放行。`
           }
         }
-        const fileName = structureRemoteFileName(pdbId)
+        const fileName = source.fileName(id)
         const approved = await deps.approvals.request({
           connector: 'structure-view',
           method: 'load-remote-structure',
-          argsPreview: pdbId,
+          argsPreview: id,
           availableScopes: ['once'],
           appAction: {
             surface: 'structure-view',
@@ -154,19 +173,25 @@ export const createRemoteStructureLoader = (
         }
       }
 
-      const url = structureRemoteUrl(pdbId)
+      const url = source.url(id)
       const fetched = await fetchText(url)
       if (!fetched.ok) return { ok: false, reason: fetched.reason, detail: fetched.detail }
 
-      const fileName = structureRemoteFileName(pdbId)
-      const directory = deps.workspaceFor(request.sessionId)
+      const fileName = source.fileName(id)
+      // 落点由登记表决定：**预测类**进 predictions/<engineId>/（视图侧的事实条就靠这条认出引擎），
+      // 实验类落工作区根。写侧与读侧共用同一个常量（shared 里那一处）。
+      const directory = join(
+        deps.workspaceFor(request.sessionId),
+        structureRemoteRelativeDirectory(source)
+      )
       const path = join(directory, fileName)
       try {
         await mkdir(directory, { recursive: true })
         await writeFile(path, fetched.text, 'utf8')
       } catch (error) {
         log.warn('remote structure could not be written into the session workspace', {
-          pdbId,
+          id,
+          source: source.id,
           ...errorLogFields(error)
         })
         return {
@@ -179,8 +204,8 @@ export const createRemoteStructureLoader = (
       }
 
       const bytes = Buffer.byteLength(fetched.text)
-      log.info('remote structure loaded', { pdbId, host: STRUCTURE_REMOTE_HOST, bytes })
-      return { ok: true, pdbId, fileName, host: STRUCTURE_REMOTE_HOST, path, bytes }
+      log.info('remote structure loaded', { id, source: source.id, host: source.host, bytes })
+      return { ok: true, id, source: source.id, fileName, host: source.host, path, bytes }
     }
   }
 }

@@ -4439,5 +4439,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureFactLicenseRestricted': '라이선스 {license} — 상업적 사용 제한',
   'preview.structureFactWeights': '가중치 {size}',
   'preview.structureExportDoneWithoutFacts':
-    '{name} 내보냄 — 선택 영역 정보를 파일에 쓰지 못했습니다'
+    '{name} 내보냄 — 선택 영역 정보를 파일에 쓰지 못했습니다',
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 번호(예: P00533)'
 }

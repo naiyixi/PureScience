@@ -4605,5 +4605,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureFactLicenseRestricted': 'licencia {license} — uso comercial restringido',
   'preview.structureFactWeights': 'pesos {size}',
   'preview.structureExportDoneWithoutFacts':
-    '{name} exportado — la región marcada no se pudo escribir en el archivo'
+    '{name} exportado — la región marcada no se pudo escribir en el archivo',
+  'preview.structureRemoteUniProtPlaceholder': 'identificador UniProt (p. ej. P00533)'
 }
