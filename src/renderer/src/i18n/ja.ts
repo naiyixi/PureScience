@@ -4509,5 +4509,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureFactWeights': '重み {size}',
   'preview.structureExportDoneWithoutFacts':
     '{name} を書き出しました — マークした領域の情報はファイルに書き込めませんでした',
-  'preview.structureRemoteUniProtPlaceholder': 'UniProt 番号（例: P00533）'
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 番号（例: P00533）',
+  'translation.page.noTextLayer': 'このページにはテキスト層がありません — 未翻訳',
+  'translation.page.untranslated': '未翻訳',
+  'translation.page.partial': '一部翻訳済み',
+  'translation.page.translated': '翻訳済み',
+  'translation.page.failed': '翻訳に失敗'
 }

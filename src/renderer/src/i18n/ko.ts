@@ -4440,5 +4440,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureFactWeights': '가중치 {size}',
   'preview.structureExportDoneWithoutFacts':
     '{name} 내보냄 — 선택 영역 정보를 파일에 쓰지 못했습니다',
-  'preview.structureRemoteUniProtPlaceholder': 'UniProt 번호(예: P00533)'
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 번호(예: P00533)',
+  'translation.page.noTextLayer': '이 페이지에는 텍스트 레이어가 없습니다 — 번역하지 않음',
+  'translation.page.untranslated': '아직 번역되지 않음',
+  'translation.page.partial': '일부 번역됨',
+  'translation.page.translated': '번역됨',
+  'translation.page.failed': '번역 실패'
 }

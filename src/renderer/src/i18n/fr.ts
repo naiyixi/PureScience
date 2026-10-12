@@ -4639,5 +4639,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureFactWeights': 'poids {size}',
   'preview.structureExportDoneWithoutFacts':
     '{name} exporté — la région marquée n’a pas pu être écrite dans le fichier',
-  'preview.structureRemoteUniProtPlaceholder': 'identifiant UniProt (ex. P00533)'
+  'preview.structureRemoteUniProtPlaceholder': 'identifiant UniProt (ex. P00533)',
+  'translation.page.noTextLayer': "cette page n'a pas de couche texte — non traduite",
+  'translation.page.untranslated': 'pas encore traduite',
+  'translation.page.partial': 'partiellement traduite',
+  'translation.page.translated': 'traduite',
+  'translation.page.failed': 'échec de la traduction'
 }

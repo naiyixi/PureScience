@@ -4525,5 +4525,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureFactWeights': 'веса {size}',
   'preview.structureExportDoneWithoutFacts':
     '{name} экспортирован — помеченную область не удалось записать в файл',
-  'preview.structureRemoteUniProtPlaceholder': 'идентификатор UniProt (например, P00533)'
+  'preview.structureRemoteUniProtPlaceholder': 'идентификатор UniProt (например, P00533)',
+  'translation.page.noTextLayer': 'на этой странице нет текстового слоя — не переведено',
+  'translation.page.untranslated': 'ещё не переведено',
+  'translation.page.partial': 'переведено частично',
+  'translation.page.translated': 'переведено',
+  'translation.page.failed': 'перевод не удался'
 }

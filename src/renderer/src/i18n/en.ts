@@ -4543,5 +4543,10 @@ export const en: Record<ZhKey, string> = {
   'preview.structureFactWeights': 'weights {size}',
   'preview.structureExportDoneWithoutFacts':
     'exported {name} — the marked region could not be written into the file',
-  'preview.structureRemoteUniProtPlaceholder': 'UniProt accession (e.g. P00533)'
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt accession (e.g. P00533)',
+  'translation.page.noTextLayer': 'no text layer on this page — not translated',
+  'translation.page.untranslated': 'not translated yet',
+  'translation.page.partial': 'partly translated',
+  'translation.page.translated': 'translated',
+  'translation.page.failed': 'translation failed'
 }

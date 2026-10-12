@@ -4242,7 +4242,12 @@ export const zh = {
   'preview.structureFactLicenseRestricted': '许可 {license} —— 商用受限',
   'preview.structureFactWeights': '权重 {size}',
   'preview.structureExportDoneWithoutFacts': '已导出 {name} —— 这段区域的信息没能写进文件',
-  'preview.structureRemoteUniProtPlaceholder': 'UniProt 编号（如 P00533）'
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 编号（如 P00533）',
+  'translation.page.noTextLayer': '该页没有文本层，未翻译',
+  'translation.page.untranslated': '尚未翻译',
+  'translation.page.partial': '部分已译',
+  'translation.page.translated': '已翻译',
+  'translation.page.failed': '翻译失败'
 }
 
 export type ZhKey = keyof typeof zh

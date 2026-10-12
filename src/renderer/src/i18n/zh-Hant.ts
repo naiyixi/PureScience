@@ -4184,5 +4184,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureFactLicenseRestricted': '授權 {license} —— 商用受限',
   'preview.structureFactWeights': '權重 {size}',
   'preview.structureExportDoneWithoutFacts': '已匯出 {name} —— 這段區域的資訊沒能寫進檔案',
-  'preview.structureRemoteUniProtPlaceholder': 'UniProt 編號（如 P00533）'
+  'preview.structureRemoteUniProtPlaceholder': 'UniProt 編號（如 P00533）',
+  'translation.page.noTextLayer': '該頁沒有文字層，未翻譯',
+  'translation.page.untranslated': '尚未翻譯',
+  'translation.page.partial': '部分已譯',
+  'translation.page.translated': '已翻譯',
+  'translation.page.failed': '翻譯失敗'
 }
