@@ -76,7 +76,7 @@ A6「具名缺态」同一条原则，先落在工具面。
 | 文档文本改了 | `restored={state:'none', reason:'source-content-changed'}`（具名「没有续跑及其原因」），两段都重发 |
 | 换 docId 同内容 | `restored={state:'none', reason:'no-checkpoint'}`、`reused=0` ⇒ checkpoint 按文档身份隔离 |
 | 中途停机 | `stopped='requested'`、`skipped=2`，未触及的两段各带 `status='failed'` + `reason='not-attempted'` |
-| 失败段落 | `failed=[{id:'p1#1',reason:'http-error (500): upstream unavailable'}]`，下次重跑**重新发它** |
+| 失败段落 | `failed=[{id:'p1#1',reason:'http-error (500): model endpoint unavailable'}]`，下次重跑**重新发它** |
 | 空文本层页 | `emptyPages=[2]`、该页不产出段落 |
 | checkpoint 存在但读不出 | `restored={state:'none', reason:'unreadable', detail:'invalid-json'}` ⇒「读失败」与「还没翻」分开命名，并当轮重译修好 |
 | **拒绝**：没有模型端点 | `{ok:false, reason:'not-configured'}`、**一次请求都没发**、盘上**没有**任何文件（不是一个空 checkpoint） |

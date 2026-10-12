@@ -214,16 +214,16 @@ describe('document translation', () => {
   })
 
   it('keeps a failed paragraph by name and re-sends it on the next run', async () => {
-    const broken = failingFetch(500, 'upstream unavailable')
+    const broken = failingFetch(500, 'model endpoint unavailable')
     const first = await run(pagesOf('Alpha.'), broken)
     if (!first.ok) throw new Error(`unreachable: ${first.detail}`)
 
     expect(first.result.failed).toEqual([
-      { id: 'p1#1', reason: 'http-error (500): upstream unavailable' }
+      { id: 'p1#1', reason: 'http-error (500): model endpoint unavailable' }
     ])
     expect(first.result.pages[0]?.paragraphs[0]).toMatchObject({
       status: 'failed',
-      reason: 'http-error (500): upstream unavailable'
+      reason: 'http-error (500): model endpoint unavailable'
     })
 
     const retry = makeFetch(() => '译')
