@@ -132,7 +132,8 @@ CHANGELOG 的新段只覆盖本版内容。落款为 **1.x 收官版**。
 > （`expected [ Array(1) ] to deeply equal []`）。**新增用例一旦 import `createProjectDbClient`/`ensureProjectSchema` 就必须登记进分区**，
 > 并按该文件自己的要求**改配置、不改断言**。诊断法：两车道只有同一支分区守卫失败 ⇒ 直接去配置补登记，别从产品代码查起。
 >
-> > **真机读数（2026-10-12，`docs/evidence/2026-10-12-wal-live-reading.md`）**：把常驻 dev 实例重启到含本改动的代码后，**应用自己**把真实库从 `delete` 切成 `wal` 并生成 `-wal`/`-shm`（`~/.purescience-project/purescience.db`，87.85 MB）⇒ 第一步的机制在生产上成立。同一次回读还**生产实证**了设计里那条 PRAGMA 语义：CLI（另一条连接）读到 `busy_timeout = 0`，而应用自己那条连接是 5000 —— `journal_mode` 文件级、`busy_timeout` 连接级。
+> > ⚠️ **口径更正（2026-10-12，两次对照实验的负结果）**：本文件先前把"读被写者的日志锁挡住"写成 WAL 的理由，**实验不支持**——写者停在 `BEGIN IMMEDIATE` 时两模式都 0 阻塞（RESERVED 锁允许读）；把提交拉到 **120,000 行 / 77–158 ms 窗口**后，读者 737k 次读**依然 0 阻塞**（`delete` p99 0.016 ms、`wal` 0.014 ms）。⇒ 慢 `SELECT 1`（中位 47 / p90 346 ms）最合身的解释仍是**应用侧单连接池排队**（=`PROJECT_DB_CONNECTION_LIMIT = 1`，本设计的第二步）；WAL 的定位**降级为"读池的前置条件"**，不再是"已对症"的修法；它是否真的改善那 273 次慢解析，**只能由真实使用时段的出现率对照回答，不预设结论**。实验细节与范围（sqlite3 两线程对照，非应用的 Prisma 池）见 `docs/evidence/2026-10-11-single-connection-read-pool-design.md` 末节。
+> **真机读数（2026-10-12，`docs/evidence/2026-10-12-wal-live-reading.md`）**：把常驻 dev 实例重启到含本改动的代码后，**应用自己**把真实库从 `delete` 切成 `wal` 并生成 `-wal`/`-shm`（`~/.purescience-project/purescience.db`，87.85 MB）⇒ 第一步的机制在生产上成立。同一次回读还**生产实证**了设计里那条 PRAGMA 语义：CLI（另一条连接）读到 `busy_timeout = 0`，而应用自己那条连接是 5000 —— `journal_mode` 文件级、`busy_timeout` 连接级。
 > **纠正一条根假设**：`~/.purescience/purescience.db`（117 MB，仍是 `delete`）是**打包版**的库；常驻 dev 用的是 `~/.purescience-project`。打包版的库要等**下一次发版运行新代码**之后才会切 WAL ⇒ 发版后应复核这一项。
 > 同一次启动里，`f7a23c2c` 那套存储读数也在真数据根上跑出来了：`redundantBytes 2,818,211,369 / 74,393 files`、`soleLinkBytes 1,544,122,744 / 11,683 files`、`maxLinkCount 5`（与更早那次 `find -links` 的数不同 —— 树期间被改动过，两次读数必须各自带时刻引用）。
 **仍未做**：真机改前/改后对照读数（同一 `dbCanaryMs` 探针的 p50/p90/max）—— 卡内存闸门（空闲物理页 ≈111 MB），**未取就是未取**；
