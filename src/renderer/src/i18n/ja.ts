@@ -4446,5 +4446,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': 'スペクトル',
   'preview.structureColorChain': '鎖ごと',
   'preview.structureColorPlddt': 'pLDDT 信頼度',
-  'preview.structureResetView': '視点をリセット'
+  'preview.structureResetView': '視点をリセット',
+  'preview.structureStyle': '表示',
+  'preview.structureStyleCartoon': 'カートゥーン',
+  'preview.structureStyleStick': 'スティック',
+  'preview.structureStyleSphere': '球',
+  'preview.structureStyleSurface': '表面',
+  'preview.structureStyleLine': '線',
+  'preview.structureCartoonUnavailable': 'カートゥーンにはタンパク質または核酸の主鎖が必要です',
+  'preview.structureViewerError': '3D ビューアーを起動できません：{error}',
+  'preview.structureHint': 'ドラッグで回転 · スクロールでズーム · Shift+ドラッグで平行移動',
+  'preview.structureAriaLabel': '{name} の 3D プレビュー'
 }

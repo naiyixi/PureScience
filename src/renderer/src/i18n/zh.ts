@@ -4181,7 +4181,17 @@ export const zh = {
   'preview.structureColorSpectrum': '光谱',
   'preview.structureColorChain': '按链',
   'preview.structureColorPlddt': 'pLDDT 置信度',
-  'preview.structureResetView': '重置视角'
+  'preview.structureResetView': '重置视角',
+  'preview.structureStyle': '表示',
+  'preview.structureStyleCartoon': '卡通',
+  'preview.structureStyleStick': '棒状',
+  'preview.structureStyleSphere': '球状',
+  'preview.structureStyleSurface': '表面',
+  'preview.structureStyleLine': '线框',
+  'preview.structureCartoonUnavailable': '卡通需要蛋白质或核酸主链',
+  'preview.structureViewerError': '3D 查看器无法启动：{error}',
+  'preview.structureHint': '拖动旋转 · 滚轮缩放 · Shift + 拖动平移',
+  'preview.structureAriaLabel': '{name} 的 3D 预览'
 }
 
 export type ZhKey = keyof typeof zh

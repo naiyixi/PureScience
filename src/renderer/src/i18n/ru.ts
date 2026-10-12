@@ -4457,5 +4457,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': 'Спектр',
   'preview.structureColorChain': 'По цепям',
   'preview.structureColorPlddt': 'Достоверность pLDDT',
-  'preview.structureResetView': 'Сбросить вид'
+  'preview.structureResetView': 'Сбросить вид',
+  'preview.structureStyle': 'Представление',
+  'preview.structureStyleCartoon': 'Лента',
+  'preview.structureStyleStick': 'Стержни',
+  'preview.structureStyleSphere': 'Сферы',
+  'preview.structureStyleSurface': 'Поверхность',
+  'preview.structureStyleLine': 'Линии',
+  'preview.structureCartoonUnavailable': 'Лента требует белковый или нуклеиновый остов',
+  'preview.structureViewerError': 'Не удалось запустить 3D-просмотр: {error}',
+  'preview.structureHint':
+    'Перетаскивание вращает · колесо масштабирует · Shift + перетаскивание сдвигает',
+  'preview.structureAriaLabel': '3D-просмотр {name}'
 }

@@ -4478,5 +4478,15 @@ export const en: Record<ZhKey, string> = {
   'preview.structureColorSpectrum': 'Spectrum',
   'preview.structureColorChain': 'By chain',
   'preview.structureColorPlddt': 'pLDDT',
-  'preview.structureResetView': 'Reset view'
+  'preview.structureResetView': 'Reset view',
+  'preview.structureStyle': 'Style',
+  'preview.structureStyleCartoon': 'Cartoon',
+  'preview.structureStyleStick': 'Stick',
+  'preview.structureStyleSphere': 'Sphere',
+  'preview.structureStyleSurface': 'Surface',
+  'preview.structureStyleLine': 'Line',
+  'preview.structureCartoonUnavailable': 'Cartoon requires a protein or nucleic-acid backbone',
+  'preview.structureViewerError': '3D viewer could not start: {error}',
+  'preview.structureHint': 'Drag to rotate · Scroll to zoom · Shift + drag to pan',
+  'preview.structureAriaLabel': '3D preview of {name}'
 }

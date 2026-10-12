@@ -21,15 +21,15 @@ import { SourcePreviewContent } from './SourcePreview'
 type ThreeDmolModule = typeof import('3dmol')
 type PdbStyle = 'cartoon' | 'stick' | 'sphere' | 'surface' | 'line'
 
-const PDB_STYLE_OPTIONS: { id: PdbStyle; label: string }[] = [
-  { id: 'cartoon', label: 'Cartoon' },
-  { id: 'stick', label: 'Stick' },
-  { id: 'sphere', label: 'Sphere' },
-  { id: 'surface', label: 'Surface' },
-  { id: 'line', label: 'Line' }
-]
-
-const CARTOON_UNAVAILABLE_MESSAGE = 'Cartoon requires a protein or nucleic-acid backbone'
+// 用户可见文案一律走字典（9 语产品里不该有只懂英文的控件）——label 存 key，渲染时再译。
+// `as const` 不是为了不可变：字典的 t() 收的是**键的联合类型**，写成 string 会丢字面量而报 TS2345。
+const PDB_STYLE_OPTIONS = [
+  { id: 'cartoon', labelKey: 'preview.structureStyleCartoon' },
+  { id: 'stick', labelKey: 'preview.structureStyleStick' },
+  { id: 'sphere', labelKey: 'preview.structureStyleSphere' },
+  { id: 'surface', labelKey: 'preview.structureStyleSurface' },
+  { id: 'line', labelKey: 'preview.structureStyleLine' }
+] as const
 
 const PROTEIN_RESIDUE_NAMES = new Set([
   'ALA',
@@ -327,10 +327,10 @@ const PdbPreviewViewer = ({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 border-b border-border-300 bg-bg-000 px-3 py-2">
-        <span className="text-[12px] text-text-300">Style:</span>
+        <span className="text-[12px] text-text-300">{t('preview.structureStyle')}</span>
         {!supportsCartoon ? (
           <span id={cartoonUnavailableDescriptionId} className="sr-only">
-            {CARTOON_UNAVAILABLE_MESSAGE}
+            {t('preview.structureCartoonUnavailable')}
           </span>
         ) : null}
         <div className="flex min-w-0 flex-wrap items-center gap-1">
@@ -342,10 +342,11 @@ const PdbPreviewViewer = ({
               <button
                 key={option.id}
                 type="button"
+                data-slot={`structure-style-${option.id}`}
                 aria-pressed={isActive}
                 aria-disabled={isDisabled || undefined}
                 aria-describedby={isDisabled ? cartoonUnavailableDescriptionId : undefined}
-                title={isDisabled ? CARTOON_UNAVAILABLE_MESSAGE : option.label}
+                title={isDisabled ? t('preview.structureCartoonUnavailable') : t(option.labelKey)}
                 className={cn(
                   'h-6 rounded-md px-2.5 text-[12px] text-text-300 transition-colors hover:bg-bg-300 hover:text-text-000',
                   isActive &&
@@ -358,7 +359,7 @@ const PdbPreviewViewer = ({
                   setSelectedStyle(option.id)
                 }}
               >
-                {option.label}
+                {t(option.labelKey)}
               </button>
             )
           })}
@@ -401,17 +402,17 @@ const PdbPreviewViewer = ({
       <div className="relative min-h-0 flex-1 overflow-hidden bg-bg-000">
         {viewerError ? (
           <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-[12px] text-danger-000">
-            PDB viewer could not be initialized: {viewerError}
+            {t('preview.structureViewerError').replace('{error}', viewerError)}
           </div>
         ) : null}
         <div
           ref={viewerElementRef}
           className={cn('absolute inset-0', viewerError && 'opacity-20')}
-          aria-label={`3D preview of ${name}`}
+          aria-label={t('preview.structureAriaLabel').replace('{name}', name)}
         />
       </div>
       <div className="flex shrink-0 items-center border-t border-border-300 bg-bg-000 px-3 py-1.5 text-[11px] leading-4 text-text-300">
-        Drag to rotate · Scroll to zoom · Shift + drag to pan
+        {t('preview.structureHint')}
       </div>
     </div>
   )

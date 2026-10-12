@@ -4376,5 +4376,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': '스펙트럼',
   'preview.structureColorChain': '체인별',
   'preview.structureColorPlddt': 'pLDDT 신뢰도',
-  'preview.structureResetView': '시점 초기화'
+  'preview.structureResetView': '시점 초기화',
+  'preview.structureStyle': '표현',
+  'preview.structureStyleCartoon': '카툰',
+  'preview.structureStyleStick': '스틱',
+  'preview.structureStyleSphere': '구',
+  'preview.structureStyleSurface': '표면',
+  'preview.structureStyleLine': '선',
+  'preview.structureCartoonUnavailable': '카툰은 단백질 또는 핵산 골격이 필요합니다',
+  'preview.structureViewerError': '3D 뷰어를 시작할 수 없습니다: {error}',
+  'preview.structureHint': '드래그로 회전 · 스크롤로 확대 · Shift+드래그로 이동',
+  'preview.structureAriaLabel': '{name}의 3D 미리보기'
 }

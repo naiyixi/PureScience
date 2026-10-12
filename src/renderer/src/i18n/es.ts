@@ -4536,5 +4536,17 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': 'Espectro',
   'preview.structureColorChain': 'Por cadena',
   'preview.structureColorPlddt': 'Confianza pLDDT',
-  'preview.structureResetView': 'Restablecer vista'
+  'preview.structureResetView': 'Restablecer vista',
+  'preview.structureStyle': 'Representación',
+  'preview.structureStyleCartoon': 'Caricatura',
+  'preview.structureStyleStick': 'Varillas',
+  'preview.structureStyleSphere': 'Esferas',
+  'preview.structureStyleSurface': 'Superficie',
+  'preview.structureStyleLine': 'Líneas',
+  'preview.structureCartoonUnavailable':
+    'La caricatura requiere una cadena proteica o de ácido nucleico',
+  'preview.structureViewerError': 'El visor 3D no pudo iniciarse: {error}',
+  'preview.structureHint':
+    'Arrastrar para girar · rueda para ampliar · Mayús + arrastrar para desplazar',
+  'preview.structureAriaLabel': 'Vista previa 3D de {name}'
 }

@@ -4569,5 +4569,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': 'Spectre',
   'preview.structureColorChain': 'Par chaîne',
   'preview.structureColorPlddt': 'Confiance pLDDT',
-  'preview.structureResetView': 'Réinitialiser la vue'
+  'preview.structureResetView': 'Réinitialiser la vue',
+  'preview.structureStyle': 'Représentation',
+  'preview.structureStyleCartoon': 'Ruban',
+  'preview.structureStyleStick': 'Bâtonnets',
+  'preview.structureStyleSphere': 'Sphères',
+  'preview.structureStyleSurface': 'Surface moléculaire',
+  'preview.structureStyleLine': 'Lignes',
+  'preview.structureCartoonUnavailable': 'Le mode ruban exige un squelette protéique ou nucléique',
+  'preview.structureViewerError': "La visionneuse 3D n'a pas pu démarrer : {error}",
+  'preview.structureHint':
+    'Glisser pour pivoter · molette pour zoomer · Maj + glisser pour déplacer',
+  'preview.structureAriaLabel': 'Aperçu 3D de {name}'
 }

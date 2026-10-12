@@ -4583,5 +4583,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': 'Spektrum',
   'preview.structureColorChain': 'Nach Kette',
   'preview.structureColorPlddt': 'pLDDT-Konfidenz',
-  'preview.structureResetView': 'Ansicht zurücksetzen'
+  'preview.structureResetView': 'Ansicht zurücksetzen',
+  'preview.structureStyle': 'Darstellung',
+  'preview.structureStyleCartoon': 'Banddarstellung',
+  'preview.structureStyleStick': 'Stäbe',
+  'preview.structureStyleSphere': 'Kugeln',
+  'preview.structureStyleSurface': 'Oberfläche',
+  'preview.structureStyleLine': 'Linien',
+  'preview.structureCartoonUnavailable': 'Cartoon benötigt ein Protein- oder Nukleinsäure-Rückgrat',
+  'preview.structureViewerError': '3D-Ansicht konnte nicht starten: {error}',
+  'preview.structureHint': 'Ziehen dreht · Scrollen zoomt · Shift + Ziehen verschiebt',
+  'preview.structureAriaLabel': '3D-Vorschau von {name}'
 }

@@ -4123,5 +4123,15 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureColorSpectrum': '光譜',
   'preview.structureColorChain': '按鏈',
   'preview.structureColorPlddt': 'pLDDT 信賴度',
-  'preview.structureResetView': '重設視角'
+  'preview.structureResetView': '重設視角',
+  'preview.structureStyle': '表示',
+  'preview.structureStyleCartoon': '卡通',
+  'preview.structureStyleStick': '棒狀',
+  'preview.structureStyleSphere': '球狀',
+  'preview.structureStyleSurface': '表面',
+  'preview.structureStyleLine': '線框',
+  'preview.structureCartoonUnavailable': '卡通需要蛋白質或核酸主鏈',
+  'preview.structureViewerError': '3D 檢視器無法啟動：{error}',
+  'preview.structureHint': '拖曳旋轉 · 滾輪縮放 · Shift + 拖曳平移',
+  'preview.structureAriaLabel': '{name} 的 3D 預覽'
 }
