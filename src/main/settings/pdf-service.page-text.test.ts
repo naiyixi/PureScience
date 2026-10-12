@@ -7,7 +7,7 @@
 
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -79,7 +79,11 @@ let pdfPath: string
 const serviceForRealParser = (): PdfService =>
   new PdfService({
     storageRoot: root,
-    resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path))
+    // isAbsolute 而不是 `path.startsWith('/')`：Windows 上的绝对路径以盘符开头（`C:\\...`），
+    // 用 POSIX 的字面量去判会把一个绝对路径当成相对路径，join 之后变成
+    // `C:\...\Temp\x\C:\...\Temp\x\paper.pdf` 这种双拼路径 ⇒ ENOENT，而这一条只有
+    // Windows 车道抓得到（macOS 上车道上绿，本地也绿）。
+    resolvePath: async (path) => (isAbsolute(path) ? path : join(root, path))
   })
 
 beforeEach(() => {
