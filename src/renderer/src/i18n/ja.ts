@@ -4459,5 +4459,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureAriaLabel': '{name} の 3D プレビュー',
   'preview.structureClearSelection': '選択を解除',
   'preview.structureSelectHint':
-    '残基をクリックすると会話の文脈として選択されます · 同じ鎖の別の残基を Shift+クリックで範囲を拡張'
+    '残基をクリックすると会話の文脈として選択されます · 同じ鎖の別の残基を Shift+クリックで範囲を拡張',
+  'preview.structureFocusSelection': '選択範囲にフォーカス'
 }

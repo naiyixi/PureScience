@@ -4136,5 +4136,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureAriaLabel': '{name} 的 3D 預覽',
   'preview.structureClearSelection': '清除選取',
   'preview.structureSelectHint':
-    '點擊殘基即選取它（作為對話上下文）· 按住 Shift 再點同鏈殘基可擴成連續區間'
+    '點擊殘基即選取它（作為對話上下文）· 按住 Shift 再點同鏈殘基可擴成連續區間',
+  'preview.structureFocusSelection': '聚焦到選取'
 }

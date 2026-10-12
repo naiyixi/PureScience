@@ -4583,5 +4583,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureAriaLabel': 'Aperçu 3D de {name}',
   'preview.structureClearSelection': 'Effacer la sélection',
   'preview.structureSelectHint':
-    'Cliquez sur un résidu pour le sélectionner dans la conversation · Maj+clic sur un autre résidu de la même chaîne étend la plage'
+    'Cliquez sur un résidu pour le sélectionner dans la conversation · Maj+clic sur un autre résidu de la même chaîne étend la plage',
+  'preview.structureFocusSelection': 'Centrer sur la sélection'
 }

@@ -998,6 +998,16 @@ describe('PreviewFileContent', () => {
       // The selection is highlighted in the viewer with the pane's own colour.
       expect(addStyle).toHaveBeenCalledWith({ chain: 'A', resi: '1-2' }, expect.anything())
 
+      // D1 (camera/focus): the focus control aims the camera at the SAME selector the highlight uses,
+      // so "what the camera is looking at" and "what the chip says" can never be two different regions.
+      zoomTo.mockClear()
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="structure-focus-selection"]')
+          ?.click()
+      })
+      expect(zoomTo).toHaveBeenCalledWith({ chain: 'A', resi: '1-2' }, 600)
+
       await act(async () => {
         container
           .querySelector<HTMLButtonElement>('[data-slot="structure-clear-selection"]')
@@ -1007,6 +1017,50 @@ describe('PreviewFileContent', () => {
       expect(
         usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
       ).toBeUndefined()
+    })
+
+    it('focuses the camera when the same residue is clicked twice (D1 camera/focus)', async () => {
+      const pdbContent = [
+        'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',
+        'ATOM      2  CA  MET A   1      21.567  34.361  27.100  1.00 44.13           C',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const item = createFileItem({
+        format: 'pdb' as PreviewFileItem['format'],
+        name: 'crambin.pdb'
+      })
+      usePreviewWorkbenchStore.setState(createInitialPreviewWorkbenchState())
+      usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+
+      await renderFile(item)
+
+      const click = setClickable.mock.calls.at(-1)?.[2] as
+        ((atom: unknown, viewer: unknown, event?: unknown) => void) | undefined
+      const residueOne = { chain: 'A', resi: 1, resn: 'MET', icode: '' }
+      // The viewer's own initial framing is not what this test is about — start from a clean counter so
+      // "a single click does not move the camera" is a real assertion rather than a vacuous one.
+      zoomTo.mockClear()
+      await act(async () => {
+        click?.(residueOne, undefined, { shiftKey: false })
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
+      })
+      expect(zoomTo).not.toHaveBeenCalled()
+
+      // The second click on the SAME residue (within the double-click window) focuses it.
+      await act(async () => {
+        click?.(residueOne, undefined, { shiftKey: false })
+      })
+      await vi.waitFor(() => {
+        expect(zoomTo).toHaveBeenCalledWith({ chain: 'A', resi: 1 }, 600)
+      })
     })
   })
 

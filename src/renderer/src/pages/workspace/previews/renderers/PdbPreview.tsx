@@ -1,5 +1,5 @@
 import { useLanguage } from '@/i18n'
-import { Box, X } from 'lucide-react'
+import { Box, Focus, X } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { GLViewer } from '3dmol'
 
@@ -220,6 +220,8 @@ const PdbPreviewViewer = ({
   >(undefined)
   const selectionRef = useRef<StructureSelection | undefined>(undefined)
   const selectionAnchorRef = useRef<StructureAtomRef | undefined>(undefined)
+  // 双击同一残基＝把相机对准它（D1 余项：相机/焦点）。用时间戳比较，不额外起定时器。
+  const lastClickRef = useRef<{ key: string; at: number } | undefined>(undefined)
   // 组件在屏上的期间才允许把选择写进 store（卸载后落一笔等于给一个已经不存在的页签留状态）。
   const mountedRef = useRef(true)
   const atomCount = useMemo(() => countPdbAtoms(content), [content])
@@ -283,6 +285,15 @@ const PdbPreviewViewer = ({
   // 这一帧真正生效的选择：只有还在看的那份内容上的选择才算数。
   const activeSelection = selection?.content === content ? selection.value : undefined
 
+  // D1 余项（相机/焦点）：把相机对准一段选择。用的是**与高亮同一个选择器**（`structureSelectionSelector`），
+  // 所以「相机对准的那段」与「界面上写着的那段」永远不会是两个东西。
+  const focusSelection = useCallback((target: StructureSelection) => {
+    const viewerState = viewerStateRef.current
+    if (!viewerState) return
+    viewerState.viewer.zoomTo(structureSelectionSelector(target), 600)
+    viewerState.viewer.render()
+  }, [])
+
   // 内容换了（同一页签换了文件或版本）⇒ 旧选择不再对应屏幕上看到的那份结构：清掉，别留进上下文。
   // 只动 ref 与 store（组件状态由上面的派生收口），所以不需要在 effect 里同步 setState。
   useEffect(() => {
@@ -300,23 +311,29 @@ const PdbPreviewViewer = ({
 
       const range = resolveStructureSelectionRange(selectionAnchorRef.current, clicked, { extend })
       selectionAnchorRef.current = range.anchor
+      // 同一个残基在 400 ms 内被点第二次＝双击：选中它并把相机对准它。
+      const key = `${clicked.chain}:${clicked.resi}${clicked.icode ?? ''}`
+      const previous = lastClickRef.current
+      const isRepeat = previous?.key === key && Date.now() - previous.at < 400
+      lastClickRef.current = { key, at: Date.now() }
+
       void sha256Text(content).then((digest) => {
         if (!mountedRef.current) return
-        publishSelection(
-          buildStructureSelection({
-            structureId,
-            name,
-            format,
-            contentDigest: digest ?? '',
-            start: range.start,
-            end: range.end,
-            view: { style: styleRef.current, colorScheme: colorsRef.current }
-          })
-        )
+        const next = buildStructureSelection({
+          structureId,
+          name,
+          format,
+          contentDigest: digest ?? '',
+          start: range.start,
+          end: range.end,
+          view: { style: styleRef.current, colorScheme: colorsRef.current }
+        })
+        publishSelection(next)
         renderCurrentStyle(false)
+        if (isRepeat) focusSelection(next)
       })
     },
-    [content, format, name, publishSelection, renderCurrentStyle, structureId]
+    [content, focusSelection, format, name, publishSelection, renderCurrentStyle, structureId]
   )
   useEffect(() => {
     styleRef.current = style
@@ -437,6 +454,19 @@ const PdbPreviewViewer = ({
               >
                 {structureSelectionRangeLabel(activeSelection)}
               </span>
+              <button
+                type="button"
+                data-slot="structure-focus-selection"
+                aria-label={t('preview.structureFocusSelection')}
+                title={t('preview.structureFocusSelection')}
+                className="rounded-sm p-0.5 transition-colors hover:bg-bg-300"
+                onClick={() => {
+                  const current = selectionRef.current
+                  if (current) focusSelection(current)
+                }}
+              >
+                <Focus className="size-3" aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 data-slot="structure-clear-selection"

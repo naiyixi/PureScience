@@ -4491,5 +4491,6 @@ export const en: Record<ZhKey, string> = {
   'preview.structureAriaLabel': '3D preview of {name}',
   'preview.structureClearSelection': 'Clear selection',
   'preview.structureSelectHint':
-    'Click a residue to select it for the conversation · Shift-click another residue on the same chain to extend the range'
+    'Click a residue to select it for the conversation · Shift-click another residue on the same chain to extend the range',
+  'preview.structureFocusSelection': 'Focus selection'
 }

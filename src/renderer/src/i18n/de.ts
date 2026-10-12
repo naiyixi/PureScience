@@ -4596,5 +4596,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.structureAriaLabel': '3D-Vorschau von {name}',
   'preview.structureClearSelection': 'Auswahl aufheben',
   'preview.structureSelectHint':
-    'Klicken Sie auf einen Rest, um ihn für das Gespräch auszuwählen · Umschalt+Klick auf einen weiteren Rest derselben Kette erweitert den Bereich'
+    'Klicken Sie auf einen Rest, um ihn für das Gespräch auszuwählen · Umschalt+Klick auf einen weiteren Rest derselben Kette erweitert den Bereich',
+  'preview.structureFocusSelection': 'Auf Auswahl fokussieren'
 }

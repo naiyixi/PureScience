@@ -4194,7 +4194,8 @@ export const zh = {
   'preview.structureAriaLabel': '{name} 的 3D 预览',
   'preview.structureClearSelection': '清除选择',
   'preview.structureSelectHint':
-    '点击残基即选中它（作为对话上下文）· 按住 Shift 再点同链残基可扩成连续区间'
+    '点击残基即选中它（作为对话上下文）· 按住 Shift 再点同链残基可扩成连续区间',
+  'preview.structureFocusSelection': '聚焦到选区'
 }
 
 export type ZhKey = keyof typeof zh

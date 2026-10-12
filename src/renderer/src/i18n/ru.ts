@@ -4471,5 +4471,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureAriaLabel': '3D-просмотр {name}',
   'preview.structureClearSelection': 'Снять выделение',
   'preview.structureSelectHint':
-    'Щёлкните остаток, чтобы выбрать его для диалога · Shift+щелчок по другому остатку той же цепи расширяет диапазон'
+    'Щёлкните остаток, чтобы выбрать его для диалога · Shift+щелчок по другому остатку той же цепи расширяет диапазон',
+  'preview.structureFocusSelection': 'Приблизить к выделению'
 }
