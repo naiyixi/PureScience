@@ -9,6 +9,7 @@ import type { ArtifactFile, FileReference } from './artifacts'
 import type { UploadedAttachment } from './uploads'
 import type { ConversationAnnotation } from './annotations'
 import type { StructureSelection } from './structure-selection'
+import type { StructureMeasurement } from './structure-measurement'
 import type { PermissionProfileId, SessionPermissionProfileState } from './permission-profiles'
 import type { AgentFrameworkId } from './settings'
 
@@ -743,6 +744,10 @@ export type AcpPromptRequest = {
   // user's own message is recorded from), and the main process normalizes it before trusting it —
   // a renderer cannot hand the agent a half-formed selection.
   structureSelection?: StructureSelection
+  // D3: a geometry the user measured in the viewer (distance between two atoms, or the angle across
+  // three), travelling the same way as the selection — application context in the provider content,
+  // never appended to `text`. Normalized in the main process before it is trusted.
+  structureMeasurement?: StructureMeasurement
   // Prepared by the renderer for an internal skill-triggered reconnect. Used only if that reconnect
   // cannot resume the agent session and must adopt a fresh one.
   resumeFallback?: {

@@ -4,7 +4,12 @@
 // 那条结构 + 同一会话（用户切走页签后，那段选择已不再是他正在看的东西，此时不该再当作上下文）。
 // 判定住在这里，组件与 send 路径都只是调用它。
 import type { StructureSelection } from '../../../../shared/structure-selection'
+import type { StructureMeasurement } from '../../../../shared/structure-measurement'
 import { usePreviewWorkbenchStore } from '@/stores/preview-workbench-store'
 
 export const turnStructureSelection = (sessionId: string): StructureSelection | undefined =>
   usePreviewWorkbenchStore.getState().activeStructureSelection(sessionId)
+
+/** D3：这一回合该带上的测量（同样只认在前的结构页签 + 同一会话）。 */
+export const turnStructureMeasurement = (sessionId: string): StructureMeasurement | undefined =>
+  usePreviewWorkbenchStore.getState().activeStructureMeasurement(sessionId)

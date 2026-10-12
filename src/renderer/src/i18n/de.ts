@@ -4602,5 +4602,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   // 质量门判「与英文同形」时**改文案、不放宽白名单**：德语的写法是「Radius in Å」，
   // 与英文 'Radius (Å)' 逐字不同，而且本身更地道。
   'preview.structureNeighborhoodRadius': 'Radius in Å',
-  'preview.structureSelectWithin': 'Reste im Radius'
+  'preview.structureSelectWithin': 'Reste im Radius',
+  'preview.structureMeasureDistance': 'Abstand',
+  'preview.structureMeasureAngle': 'Winkel',
+  'preview.structureClearMeasurement': 'Messung aufheben'
 }

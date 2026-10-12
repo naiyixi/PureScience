@@ -12,6 +12,14 @@ import {
   structureSelectionRangeLabel,
   type StructureSelection
 } from '../../../../../../shared/structure-selection'
+import {
+  STRUCTURE_MEASUREMENT_SCHEMA_VERSION,
+  structureMeasurementAtomCount,
+  structureMeasurementFingerprint,
+  structureMeasurementLabel,
+  type StructureMeasurement,
+  type StructureMeasurementKind
+} from '../../../../../../shared/structure-measurement'
 
 import {
   availableColorSchemes,
@@ -21,10 +29,14 @@ import {
   detectStructureFormat,
   looksLikeAlphaFoldModel,
   plddtColorFor,
+  measureGeometry,
   resolveStructureSelectionRange,
   structureSelectionFocusSelector,
   structureSelectionSelectors,
+  toMeasurementAtom,
   toStructureAtomRef,
+  toStructureAtomPick,
+  type StructureAtomPick,
   type StructureAtomRef,
   type StructureColorScheme
 } from './structure-view'
@@ -207,6 +219,7 @@ const PdbPreviewViewer = ({
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const setStructureSelection = usePreviewWorkbenchStore((state) => state.setStructureSelection)
+  const setStructureMeasurement = usePreviewWorkbenchStore((state) => state.setStructureMeasurement)
   const viewerElementRef = useRef<HTMLDivElement | null>(null)
   const viewerStateRef = useRef<{ viewer: GLViewer; threeDmol: ThreeDmolModule } | undefined>(
     undefined
@@ -230,6 +243,17 @@ const PdbPreviewViewer = ({
   const selectionAnchorRef = useRef<StructureAtomRef | undefined>(undefined)
   // 双击同一残基＝把相机对准它（D1 余项：相机/焦点）。用时间戳比较，不额外起定时器。
   const lastClickRef = useRef<{ key: string; at: number } | undefined>(undefined)
+  // D3 测量：armed 的种类 + 已经拾起的原子（凑齐 2 个量距离 / 3 个量角度）。
+  const [measureKind, setMeasureKind] = useState<StructureMeasurementKind | undefined>(undefined)
+  const measurePicksRef = useRef<StructureAtomPick[]>([])
+  // 已拾起的原子数（要显示给用户看：量角度要连点三个原子，没有反馈就没人知道点到第几个了）。
+  const [measurePickCount, setMeasurePickCount] = useState(0)
+  // 命中回调用 ref 读「是否武装」，**不**把 measureKind 放进它的依赖：放进去会让每次武装/解除都换一次
+  // 回调身份 ⇒ 视图重建 ⇒ 用户的相机被重置（真机上手会立刻发现）。
+  const measureKindRef = useRef<StructureMeasurementKind | undefined>(undefined)
+  const [measurement, setMeasurement] = useState<
+    { content: string; value: StructureMeasurement } | undefined
+  >(undefined)
   // 组件在屏上的期间才允许把选择写进 store（卸载后落一笔等于给一个已经不存在的页签留状态）。
   const mountedRef = useRef(true)
   const atomCount = useMemo(() => countPdbAtoms(content), [content])
@@ -290,8 +314,17 @@ const PdbPreviewViewer = ({
     [content, setStructureSelection, structureId]
   )
 
-  // 这一帧真正生效的选择：只有还在看的那份内容上的选择才算数。
+  // 这一帧真正生效的选择/测量：只有还在看的那份内容上的那些才算数。
   const activeSelection = selection?.content === content ? selection.value : undefined
+  const activeMeasurement = measurement?.content === content ? measurement.value : undefined
+
+  const publishMeasurement = useCallback(
+    (next: StructureMeasurement | undefined) => {
+      setMeasurement(next ? { content, value: next } : undefined)
+      setStructureMeasurement(structureId, next)
+    },
+    [content, setStructureMeasurement, structureId]
+  )
 
   // D1 余项（相机/焦点）：把相机对准一段选择。用的是**与高亮同一个选择器**（`structureSelectionSelector`），
   // 所以「相机对准的那段」与「界面上写着的那段」永远不会是两个东西。
@@ -397,16 +430,50 @@ const PdbPreviewViewer = ({
   useEffect(() => {
     selectionAnchorRef.current = undefined
     selectionRef.current = undefined
+    measurePicksRef.current = []
     setStructureSelection(structureId, undefined)
-  }, [content, setStructureSelection, structureId])
+    setStructureMeasurement(structureId, undefined)
+  }, [content, setStructureSelection, setStructureMeasurement, structureId])
 
   // 3Dmol 的命中回调：点一个残基 = 选它；同链上按 Shift 再点 = 把它拉成连续区间。
   // 摘要在这里按需算（内容就是用户看到的那些字节）：算不出来就记 not-recorded，不编一个值。
   const handleAtomClick = useCallback(
     (atom: unknown, extend: boolean) => {
       const clicked = toStructureAtomRef(atom)
-      if (!clicked) return
 
+      // 测量中被武装时，点击是「拾一个原子」，不是改选择。
+      const armedKind = measureKindRef.current
+      if (armedKind) {
+        const pick = toStructureAtomPick(atom)
+        if (!pick) return
+        const needed = structureMeasurementAtomCount(armedKind)
+        const picks = [...measurePicksRef.current, pick].slice(0, needed)
+        if (picks.length < needed) {
+          measurePicksRef.current = picks
+          setMeasurePickCount(picks.length)
+          return
+        }
+        measurePicksRef.current = []
+        setMeasurePickCount(0)
+        const value = measureGeometry(armedKind, picks)
+        void sha256Text(content).then((digest) => {
+          if (!mountedRef.current) return
+          publishMeasurement({
+            schemaVersion: STRUCTURE_MEASUREMENT_SCHEMA_VERSION,
+            structureId,
+            name,
+            format,
+            contentDigest: digest ?? '',
+            kind: armedKind,
+            atoms: picks.map(toMeasurementAtom),
+            // 坐标不全会得到 undefined ⇒ 如实不写量值（不写 0 冒充）。
+            ...(value === undefined ? {} : { value })
+          })
+        })
+        return
+      }
+
+      if (!clicked) return
       const range = resolveStructureSelectionRange(selectionAnchorRef.current, clicked, { extend })
       selectionAnchorRef.current = range.anchor
       // 同一个残基在 400 ms 内被点第二次＝双击：选中它并把相机对准它。
@@ -431,7 +498,16 @@ const PdbPreviewViewer = ({
         if (isRepeat) focusSelection(next)
       })
     },
-    [content, focusSelection, format, name, publishSelection, renderCurrentStyle, structureId]
+    [
+      content,
+      focusSelection,
+      format,
+      name,
+      publishMeasurement,
+      publishSelection,
+      renderCurrentStyle,
+      structureId
+    ]
   )
   useEffect(() => {
     styleRef.current = style
@@ -700,6 +776,58 @@ const PdbPreviewViewer = ({
             {t('preview.structureSelectWithin')}
           </button>
         </span>
+        {/* D3：测量。armed 之后再点原子才是「拾原子」，因此这两个按钮同时是模式开关与状态显示。 */}
+        <span className="flex items-center gap-1">
+          {(['distance', 'angle'] as const).map((kind) => {
+            const armed = measureKind === kind
+            return (
+              <button
+                key={kind}
+                type="button"
+                data-slot={`structure-measure-${kind}`}
+                aria-pressed={armed}
+                className={cn(
+                  'h-6 rounded-md px-2 transition-colors',
+                  armed
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/80'
+                    : 'text-text-300 hover:bg-bg-300 hover:text-text-000'
+                )}
+                onClick={() => {
+                  const next = armed ? undefined : kind
+                  measurePicksRef.current = []
+                  setMeasurePickCount(0)
+                  measureKindRef.current = next
+                  setMeasureKind(next)
+                }}
+              >
+                {kind === 'distance'
+                  ? t('preview.structureMeasureDistance')
+                  : t('preview.structureMeasureAngle')}
+                {armed ? ` ${measurePickCount}/${structureMeasurementAtomCount(kind)}` : ''}
+              </button>
+            )
+          })}
+        </span>
+        {activeMeasurement ? (
+          <span className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[11px] text-text-000">
+            <span
+              data-slot="structure-measurement"
+              title={structureMeasurementFingerprint(activeMeasurement)}
+            >
+              {structureMeasurementLabel(activeMeasurement)}
+            </span>
+            <button
+              type="button"
+              data-slot="structure-clear-measurement"
+              aria-label={t('preview.structureClearMeasurement')}
+              title={t('preview.structureClearMeasurement')}
+              className="rounded-sm p-0.5 transition-colors hover:bg-bg-300"
+              onClick={() => publishMeasurement(undefined)}
+            >
+              <X className="size-3" aria-hidden="true" />
+            </button>
+          </span>
+        ) : null}
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden bg-bg-000">
         {viewerError ? (

@@ -70,6 +70,8 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // The structure-selection notice (D2): returns '' when the turn carries no selection. Same seam and
   // same rule as the input pre-check above — the region the user has selected is context, not their words.
   selectionNotice?: (request: AcpPromptRequest) => string
+  // The structure-measurement notice (D3): '' when the turn carries no measurement.
+  measurementNotice?: (request: AcpPromptRequest) => string
   emitState: () => void
 }>
 type AcpPromptPreparationInput = Readonly<{
@@ -255,7 +257,8 @@ class AcpPromptPreparationOwner {
       // for an ordinary turn, so such a turn stays byte-identical to what it was before this seam existed.
       const notices = [
         this.options.inputNotice?.(input.request),
-        this.options.selectionNotice?.(input.request)
+        this.options.selectionNotice?.(input.request),
+        this.options.measurementNotice?.(input.request)
       ].filter((notice): notice is string => typeof notice === 'string' && notice.length > 0)
       if (notices.length > 0) {
         const noticeText = notices.join('\n\n')

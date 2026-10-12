@@ -4495,5 +4495,8 @@ export const en: Record<ZhKey, string> = {
   'preview.structureFocusSelection': 'Focus selection',
   'preview.structureSelectChain': 'Whole chain',
   'preview.structureNeighborhoodRadius': 'Radius (Å)',
-  'preview.structureSelectWithin': 'Residues within radius'
+  'preview.structureSelectWithin': 'Residues within radius',
+  'preview.structureMeasureDistance': 'Distance',
+  'preview.structureMeasureAngle': 'Angle',
+  'preview.structureClearMeasurement': 'Clear measurement'
 }

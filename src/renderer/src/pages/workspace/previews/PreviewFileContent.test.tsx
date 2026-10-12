@@ -1123,6 +1123,85 @@ describe('PreviewFileContent', () => {
       })
     })
 
+    it('measures a distance from two picked atoms and reads it back (D3 measurement)', async () => {
+      const pdbContent = [
+        'ATOM      1  CA  MET A   1       0.000   0.000   0.000  1.00 45.22           C',
+        'ATOM      2  CA  GLY A   2       3.000   4.000   0.000  1.00 44.13           C',
+        'END'
+      ].join('\n')
+      vi.mocked(window.api.artifacts.readPreview).mockResolvedValue({
+        content: pdbContent,
+        encoding: 'utf8',
+        size: pdbContent.length,
+        truncated: false
+      })
+      const item = createFileItem({ format: 'pdb' as PreviewFileItem['format'], name: 'geo.pdb' })
+      usePreviewWorkbenchStore.setState(createInitialPreviewWorkbenchState())
+      usePreviewWorkbenchStore.getState().upsertAndActivateItem(item)
+
+      await renderFile(item)
+      const click = setClickable.mock.calls.at(-1)?.[2] as
+        ((atom: unknown, viewer: unknown, event?: unknown) => void) | undefined
+
+      // Arm the distance mode: the button reports how many atoms are still needed.
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="structure-measure-distance"]')
+          ?.click()
+      })
+      expect(
+        container.querySelector('[data-slot="structure-measure-distance"]')?.textContent
+      ).toContain('0/2')
+
+      // While armed, clicks pick atoms — they do not change the selection.
+      await act(async () => {
+        click?.(
+          { chain: 'A', resi: 1, resn: 'MET', atom: 'CA', serial: 1, x: 0, y: 0, z: 0 },
+          undefined,
+          { shiftKey: false }
+        )
+      })
+      expect(
+        container.querySelector('[data-slot="structure-measure-distance"]')?.textContent
+      ).toContain('1/2')
+      expect(container.querySelector('[data-slot="structure-selection"]')).toBeNull()
+
+      await act(async () => {
+        click?.(
+          { chain: 'A', resi: 2, resn: 'GLY', atom: 'CA', serial: 2, x: 3, y: 4, z: 0 },
+          undefined,
+          { shiftKey: false }
+        )
+      })
+
+      // 3-4-0 from the origin is exactly 5 Å, and the readout names both atoms.
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-slot="structure-measurement"]')?.textContent).toBe(
+          'MET1.CA — GLY2.CA: 5 Å'
+        )
+      })
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureMeasurement(item.sessionId)
+      ).toMatchObject({
+        kind: 'distance',
+        value: 5,
+        atoms: [
+          { chain: 'A', resi: 1, resiName: 'MET', atomName: 'CA', serial: 1 },
+          { chain: 'A', resi: 2, resiName: 'GLY', atomName: 'CA', serial: 2 }
+        ]
+      })
+
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>('[data-slot="structure-clear-measurement"]')
+          ?.click()
+      })
+      expect(container.querySelector('[data-slot="structure-measurement"]')).toBeNull()
+      expect(
+        usePreviewWorkbenchStore.getState().activeStructureMeasurement(item.sessionId)
+      ).toBeUndefined()
+    })
+
     it('focuses the camera when the same residue is clicked twice (D1 camera/focus)', async () => {
       const pdbContent = [
         'ATOM      1  N   MET A   1      20.154  34.198  27.426  1.00 45.22           N',

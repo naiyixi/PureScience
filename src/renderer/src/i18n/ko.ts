@@ -4393,5 +4393,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': '선택 영역에 초점',
   'preview.structureSelectChain': '전체 체인',
   'preview.structureNeighborhoodRadius': '반경 (Å)',
-  'preview.structureSelectWithin': '반경 내 잔기'
+  'preview.structureSelectWithin': '반경 내 잔기',
+  'preview.structureMeasureDistance': '거리',
+  'preview.structureMeasureAngle': '각도',
+  'preview.structureClearMeasurement': '측정 지우기'
 }

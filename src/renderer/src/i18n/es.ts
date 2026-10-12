@@ -4555,5 +4555,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': 'Centrar en la selección',
   'preview.structureSelectChain': 'Cadena completa',
   'preview.structureNeighborhoodRadius': 'Radio (Å)',
-  'preview.structureSelectWithin': 'Residuos en el radio'
+  'preview.structureSelectWithin': 'Residuos en el radio',
+  'preview.structureMeasureDistance': 'Distancia',
+  'preview.structureMeasureAngle': 'Ángulo',
+  'preview.structureClearMeasurement': 'Borrar la medición'
 }

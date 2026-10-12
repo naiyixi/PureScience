@@ -4140,5 +4140,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': '聚焦到選取',
   'preview.structureSelectChain': '整條鏈',
   'preview.structureNeighborhoodRadius': '半徑（Å）',
-  'preview.structureSelectWithin': '半徑內的殘基'
+  'preview.structureSelectWithin': '半徑內的殘基',
+  'preview.structureMeasureDistance': '距離',
+  'preview.structureMeasureAngle': '角度',
+  'preview.structureClearMeasurement': '清除測量'
 }

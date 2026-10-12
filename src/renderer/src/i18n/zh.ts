@@ -4198,7 +4198,10 @@ export const zh = {
   'preview.structureFocusSelection': '聚焦到选区',
   'preview.structureSelectChain': '整条链',
   'preview.structureNeighborhoodRadius': '半径（Å）',
-  'preview.structureSelectWithin': '半径内的残基'
+  'preview.structureSelectWithin': '半径内的残基',
+  'preview.structureMeasureDistance': '距离',
+  'preview.structureMeasureAngle': '角度',
+  'preview.structureClearMeasurement': '清除测量'
 }
 
 export type ZhKey = keyof typeof zh

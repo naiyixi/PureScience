@@ -11,6 +11,10 @@ import {
   buildStructureContextBlock,
   normalizeStructureSelection
 } from '../../shared/structure-selection'
+import {
+  buildStructureMeasurementBlock,
+  normalizeStructureMeasurement
+} from '../../shared/structure-measurement'
 
 /** 没有选择、或选择不合格时返回 ''（调用方据此保持内容不变）。 */
 export const structureSelectionNotice = (
@@ -18,4 +22,12 @@ export const structureSelectionNotice = (
 ): string => {
   const selection = normalizeStructureSelection(request.structureSelection)
   return selection ? buildStructureContextBlock(selection) : ''
+}
+
+/** D3 测量：同一条口径 —— 重建不出来就不注入（半截的测量比没有更糟）。 */
+export const structureMeasurementNotice = (
+  request: Pick<AcpPromptRequest, 'structureMeasurement'>
+): string => {
+  const measurement = normalizeStructureMeasurement(request.structureMeasurement)
+  return measurement ? buildStructureMeasurementBlock(measurement) : ''
 }

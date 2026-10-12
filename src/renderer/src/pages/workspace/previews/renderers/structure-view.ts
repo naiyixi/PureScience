@@ -4,6 +4,10 @@
 // 判定写在那里就只能靠肉眼。计划书对 D1 的要求是「PDB/mmCIF/AlphaFold 产物加载；表示与配色；相机/焦点」——
 // 本模块负责前两项里"认得出是什么"的部分。
 
+import type {
+  StructureMeasurementAtom,
+  StructureMeasurementKind
+} from '../../../../../../shared/structure-measurement'
 import {
   STRUCTURE_SELECTION_SCHEMA_VERSION,
   structureSelectionScope,
@@ -175,7 +179,88 @@ export const buildStructureSelection = (input: {
 }
 
 /**
- * 3Dmol 给的原子列表 → 去重的 {链, 编号} 成员表（邻域选择用它落成员）。
+ * 测量用的原子：**带坐标与原子名**。
+ * 为什么不能只留 {链, 编号}：同一个残基里不同原子对的距离可以差好几埃 —— 只说「145 与 160 的距离」
+ * 是一句没有确定含义的话。
+ */
+export type StructureAtomPick = {
+  ref: StructureAtomRef
+  x: number
+  y: number
+  z: number
+  atomName?: string
+  serial?: number
+}
+
+/** 从 3Dmol 的 atom 取一个**可测量**的原子（坐标必须是有限数，否则不量）。 */
+export const toStructureAtomPick = (atom: unknown): StructureAtomPick | undefined => {
+  const ref = toStructureAtomRef(atom)
+  if (!ref) return undefined
+  const candidate = atom as {
+    x?: unknown
+    y?: unknown
+    z?: unknown
+    atom?: unknown
+    serial?: unknown
+  }
+  const { x, y, z } = candidate
+  if (
+    typeof x !== 'number' ||
+    typeof y !== 'number' ||
+    typeof z !== 'number' ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(z)
+  ) {
+    return undefined
+  }
+
+  const pick: StructureAtomPick = { ref, x, y, z }
+  const atomName = typeof candidate.atom === 'string' ? candidate.atom.trim() : ''
+  if (atomName) pick.atomName = atomName
+  if (typeof candidate.serial === 'number' && Number.isInteger(candidate.serial)) {
+    pick.serial = candidate.serial
+  }
+  return pick
+}
+
+const distanceBetween = (a: StructureAtomPick, b: StructureAtomPick): number =>
+  Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2)
+
+/** 单位：距离 Å、角度 度（顶点是第二个原子）。原子数不符时 undefined —— 不猜一个值出来。 */
+export const measureGeometry = (
+  kind: StructureMeasurementKind,
+  picks: readonly StructureAtomPick[]
+): number | undefined => {
+  if (kind === 'distance') {
+    if (picks.length !== 2) return undefined
+    return distanceBetween(picks[0], picks[1])
+  }
+  if (picks.length !== 3) return undefined
+
+  const [first, vertex, last] = picks
+  const toFirst = [first.x - vertex.x, first.y - vertex.y, first.z - vertex.z]
+  const toLast = [last.x - vertex.x, last.y - vertex.y, last.z - vertex.z]
+  const dot = toFirst[0] * toLast[0] + toFirst[1] * toLast[1] + toFirst[2] * toLast[2]
+  const magFirst = Math.hypot(...toFirst)
+  const magLast = Math.hypot(...toLast)
+  if (magFirst === 0 || magLast === 0) return undefined
+  const cosine = Math.min(1, Math.max(-1, dot / (magFirst * magLast)))
+  return (Math.acos(cosine) * 180) / Math.PI
+}
+
+/** 把拾取的原子变成测量记录里的原子身份（写全：链、编号、插入码、残基名、原子名、serial）。 */
+export const toMeasurementAtom = (pick: StructureAtomPick): StructureMeasurementAtom => {
+  const atom: StructureMeasurementAtom = { chain: pick.ref.chain, resi: pick.ref.resi }
+  if (pick.ref.icode) atom.resiInsertion = pick.ref.icode
+  if (pick.ref.resn) atom.resiName = pick.ref.resn
+  if (pick.atomName) atom.atomName = pick.atomName
+  if (pick.serial !== undefined) atom.serial = pick.serial
+  return atom
+}
+
+/**
+ * 收集 3Dmol 给的原子列表 → 去重的 {链, 编号} 成员表（邻域选择用它落成员）。
  * 认不出身份（没链 / 没编号）的原子**直接丢掉**：编一个残基进去等于伪造选择。
  */
 export const collectResidueRefs = (atoms: readonly unknown[]): StructureResidueRef[] => {

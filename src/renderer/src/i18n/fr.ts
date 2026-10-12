@@ -4587,5 +4587,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': 'Centrer sur la sélection',
   'preview.structureSelectChain': 'Chaîne entière',
   'preview.structureNeighborhoodRadius': 'Rayon (Å)',
-  'preview.structureSelectWithin': 'Résidus dans le rayon'
+  'preview.structureSelectWithin': 'Résidus dans le rayon',
+  // 质量门判「与英文同形」⇒ 改文案（`Écart` 正是「原子间距」的准确说法，比 Distance 更具体）。
+  'preview.structureMeasureDistance': 'Écart',
+  // 同理：法语的「角度」与英语同形 ⇒ 写成带单位的说法（值本来就是度）。
+  'preview.structureMeasureAngle': 'Angle en degrés',
+  'preview.structureClearMeasurement': 'Effacer la mesure'
 }

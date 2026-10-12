@@ -4475,5 +4475,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': 'Приблизить к выделению',
   'preview.structureSelectChain': 'Вся цепь',
   'preview.structureNeighborhoodRadius': 'Радиус (Å)',
-  'preview.structureSelectWithin': 'Остатки в радиусе'
+  'preview.structureSelectWithin': 'Остатки в радиусе',
+  'preview.structureMeasureDistance': 'Расстояние',
+  'preview.structureMeasureAngle': 'Угол',
+  'preview.structureClearMeasurement': 'Снять измерение'
 }

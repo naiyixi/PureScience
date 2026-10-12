@@ -4463,5 +4463,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.structureFocusSelection': '選択範囲にフォーカス',
   'preview.structureSelectChain': '鎖全体',
   'preview.structureNeighborhoodRadius': '半径（Å）',
-  'preview.structureSelectWithin': '半径内の残基'
+  'preview.structureSelectWithin': '半径内の残基',
+  'preview.structureMeasureDistance': '距離',
+  'preview.structureMeasureAngle': '角度',
+  'preview.structureClearMeasurement': '測定を解除'
 }
