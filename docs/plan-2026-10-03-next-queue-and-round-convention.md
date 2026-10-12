@@ -3111,3 +3111,187 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 4. **i18n 那 20 条新摊开的真文案**（上轮 §五十四·补记第五节的清单；渲染层 15 条是真缺口）：
    `blocked-by` = 无，但**动手前先按当前树复核清单是否仍成立**（并发写入者随时可能已插键）。
 5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+
+## 五十六、本轮追加（执行器，2026-10-12 11:5x–）—— 上一单元收口：设置页那批硬编码英文（6 键 × 9 语）+ `e61cca63` 的双车道判决归档
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- `HEAD == origin/main == e61cca63` 起步；树上 96 个改动里 **83 份 `docs/evidence/*.md` 是并发写入者的
+  表格重排在制品**（mtime 全为 10-10 22:06、diff 逐行都是 markdown 表格填充，一位未碰），
+  另外 13 个是**上一轮被迭代上限截断的设置页文案单元**（9 字典 + 4 组件 + 4 用例 + 1 证据档）。
+- **`e61cca63` 的双车道判到**（上一轮 §五十五 五节第 1 条遗留的读数，本轮闭合）：
+  `Windows Full Test` **success**；`Nightly` **failure** → 作业级日志归因落在 `build / Build macos-x64`，
+  原文 `• downloaded label=electron progress=100%` 紧跟 `⏯ Timeout awaiting 'request' for 600000ms`
+  （electron-builder 取工具链的下载超时），同 run 的 `Verify`（lint+typecheck+test）与另外三个平台打包**全绿**
+  ⇒ 基础设施抖动，非代码；`gh run rerun 38183596440 --failed` 零代码改动复跑 **success**，抖动归因独立坐实。
+
+### 一 本单元：设置页 7 处文案改走字典（6 新键 × 9 语 + 1 处复用既有键）
+
+| 界面（file:line） | 键 | 英文（旧：硬编码） | 中文（读屏值） |
+| --- | --- | --- | --- |
+| `RuntimesPanel.tsx` | `settings.finishingSetup`（**既有键，复用**） | `Finishing setup…` | `正在完成设置…` |
+| `RuntimesPanel.tsx` | `settings.listingPackages` | `Listing packages…` | `正在列出软件包…` |
+| `SpecialistsPanel.tsx` | `settings.exportSavedNoLocation` | `{name} was saved. No location is shown here.` | `已保存 {name}。此处不显示位置。` |
+| `SpecialistsPanel.tsx` | `settings.noAdditionalSkillsDeleted` | `No additional Skills will be deleted.` | `不会再删除其他技能。` |
+| `SkillImportApprovalDialog.tsx` | `settings.skillImportRequestedFrom` | `The agent requested an import from` | `智能体请求从以下来源导入` |
+| `SkillImportApprovalDialog.tsx` | `settings.skillImportReviewPrompt` | `Review and choose exactly what PureScience may install.` | `请核对并选择允许 PureScience 安装的内容。` |
+| `SkillImportCandidatePreview.tsx` | `settings.loadingPreview` | `Loading preview…` | `正在载入预览…` |
+
+- 插键走技能自带 `scripts/add-i18n-keys.py` + 一份 `key\tlang\tvalue` 的 TSV（九文件齐平预检 + 写后按 key 反查自证）；
+  抽查九语全部有值、无一与英文同形、`{name}` 插值九语都在。**插值留在组件内**
+  （`.replace('{name}', …)`，与本仓既有写法一致，因为本仓有套件走不插值的 fallback 字典）。
+- **6 条中文复读用例**（真 `LanguageProvider` + `localStorage zh`，断言译文在屏且英文原文不在屏）：
+  请求句、载入预览、包清单载入中（`listPackages` 永不落定 = 真停在列出中）、完成设置按钮（真走 provision + 重读挂起）、
+  导出回执（真按菜单把 `exportSaved` 走到回执页）、删除确认的保证句。**后两条是顺带补的覆盖**——
+  这两句此前**连英文断言都没有**（全树 grep 只命中字典文件）。
+
+### 二 门禁读数（本轮到岗后重跑，数字取自最后一次改动之后）
+
+| 环 | 读数 | 退出码 |
+| --- | --- | --- |
+| 定向 `vitest`（4 个设置页用例文件） | **97 passed**（上一轮记 96，第 6 条用例补上后为 97） | 0 |
+| `prettier --check`（9 字典 + 4 组件 + 4 用例） | 首跑 9 个字典 warn（插键脚本尾逗号与 prettier 期望不同）⇒ 只对那 9 个 `--write`，复跑 **CLEAN** | 0 |
+| `eslint --no-cache .` | **0 error / 122 warning** | 0 |
+| `tsc` node / web（`--composite false`） | 无输出 | 0 / 0 |
+| 全量 `vitest run --maxWorkers=4` | **1247 passed \| 16 skipped（1263 文件）**、**16120 passed \| 207 skipped（16327 条）**（上一版 16114 ⇒ 本单元 +6 用例） | 0 |
+| `bash scripts/pre-push-checks.sh` | 五查全过 | 0 |
+
+### 三 CI 判决（按**完整 40 位 SHA**；`cancelled` 不算绿）
+
+- 本单元提交 `809adb33`，与下一单元 `80dbda97` **同一次推送**（`80dbda97` 是 `809adb33` 的直接后继）
+  ⇒ 判决取 `80dbda97` 那对：**Nightly success / Windows Full Test success**（`80dbda97…`，逐笔见 §五十七）。
+- 推送前查询：当时**没有在飞的车道**（全部 `completed`）⇒ 本次推送**没有取消任何人的判决**。
+
+### 四 刻意的边界
+
+1. **没有真机窗口读数**（内存闸门关，开工读数见 §五十七 三节）⇒ 界面那半边由渲染用例作证。
+2. 本单元**没有**动工作台那 9 处真文案，也**没有**为「0 与没量到分态」做生产侧改动。
+3. 并发写入者那 83 份 `docs/evidence/` 的表格重排**原样留在树里未提交**（不是我的在制品，按纪律不碰、不带入提交）。
+
+## 五十七、本轮追加（执行器，2026-10-12 12:0x–）—— 整行短文案收口（45 处 → 既有 `common.*` 键）+ 审计器补上两种漏检形状
+
+> 本单元 = **上一单元自己记下的仪器缺口**（`docs/evidence/2026-10-12-settings-copy-i18n-zh-reread.md`
+> 第六节第 2 条）：`Cancel` 这类整行短标签、`aria-label={\`…\${…}\`}` 这类模板字面量读屏名，
+> `scripts/i18n-hardcoded-audit.mjs` 两种都看不见。
+
+### 一 先量再动（缺口的规模）
+
+| 形状 | 旧扫描器为什么看不见 | 量出来的规模 |
+| --- | --- | --- |
+| 整行短标签 | 短词被 prettier 折到自己一行 ⇒ 该行既没有 `>text<`（`>` 在上一行），也够不到 `jsx prose line`（那条要求 ≥10 字符且句末标点） | **101 处 / 55 个词**（判据：前一非空行以 `>` 结尾、后一非空行以 `</` 开头） |
+| 模板字面量属性值 | 既不是字符串字面量（attr 形状要引号），也不是 `>text<` | **59 处 / 36 文件**（逐条过目全是真文案：`Theme: ${active.label}` / `Remove ${host.displayName}` / `Mention ${artifact.name}` …） |
+
+### 二 交付（三类）
+
+1. **45 处整行短标签改走既有 `common.*` 键**（零新键、零新通道、零契约计数涟漪）：Cancel 22、Retry 8、
+   Back 5、Edit 3、Close/Delete/Dismiss 各 2、Open 1，**共 31 个文件**。逐处预检（该行 `strip()` 后必须
+   恰好是裸词 + 所在组件体已绑定 `t`，45/45 全过）；键名是否真存在由 **`tsc` 的 `ZhKey` 联合**兜底。
+2. **屏上真的换了字**（不是只有字典里有值）：专才删除确认框那条中文复读用例就地加强——除保证句外，
+   再断言该框自己的取消控件读到 **`取消`** 且**不再出现 `Cancel`**（真按「操作菜单 → 删除」打开 `alertdialog`）。
+3. **审计器补两种形状 + 一个可复跑的重放入口**：`jsx short label line`（**邻居判据** + 保留大写起首——
+   小写变体在同一判据下全树 **0 命中**，放宽只会加噪声）、`attr template literal`（值须以字母开头、
+   插值两侧只有散文字符 ⇒ 以 `${` 开头的 CSS 工具类模板天然排除）；新增
+   `scripts/i18n-audit-replay.sh <rev> <路径…>`（把某提交下路径的副本物化到临时目录再跑审计，支持目录）。
+   **两条判据连同「是量出来的」都写进脚本注释**，防后人顺手放宽；邻居形状**不改动既有形状的过滤器**。
+
+### 三 读数（全部实跑）
+
+| 读数 | 值 |
+| --- | --- |
+| 已知坏版本重放（`809adb33` 的四个目录） | 392 文件 / **192 命中**；`jsx short label line` **100**、`attr template literal` **58** |
+| 修复后同批路径 | 短标签 **55**（= 100 − 45 ✓）、模板 58（本单元未动） |
+| 八个目标词残留 | **0** |
+| 全树（改前扫描器 / 改后扫描器） | **100 → 215 命中**；差值 **+115** 恰等于两种新形状命中数（56 + 59）⇒ 无旧命中被吃掉 |
+| 门禁 | 定向 23 文件 / **411 passed**；全量 **1247 files / 16120 passed \| 207 skipped**；双 `tsc` exit 0；`eslint --no-cache .` **0 error / 122 warning**（本单元 35 文件 **0 warning**）；`pre-push` exit 0 |
+| 内存闸门（起 Electron 前读数） | 空闲物理页 7,593 ≈ **119 MB** / swap 已用 **4,793.69 MB of 6,144 MB** ⇒ **未起 Electron，无真机窗口读数** |
+
+### 四 CI 判决（按**完整 40 位 SHA**；`cancelled` 不算绿）
+
+- 推送 `80dbda97d36de5ad79d7c649703b869867370a69`（带上 `809adb33` 一笔，共两笔）：
+  **Nightly success / Windows Full Test success**。推送前查过：无在飞车道 ⇒ 未取消任何人的判决。
+  真机/认证车道那一半（P0 认证 spec 只在 macos-arm64 构建作业里跑）**不在**这两条车道的覆盖里，
+  本单元也没有触碰它们依赖的路径。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. ~~**整行短标签第二批**~~ ✅ **已交付（执行器 §五十八，2026-10-12）**：全树 56 处 / 47 词**清零**
+   （18 处复用既有键 + 38 处走 35 个新键 × 9 语），审计器同形状读数 56 → 0，证据档
+   `docs/evidence/2026-10-12-short-labels-sweep-zero.md`。**下面的探索记录保留作说明，别再按它开工。**
+   原读数（历史）：审计器摊开的**其余 47 个词 / 55 处**（点位表已存
+   `~/.hermes/cache/scratch/ps-next-batch-shortlabels.txt`）。`blocked-by` = 无，但**每个词先定用哪个键**：
+   约 27 个词已有同值键（`Download`→`settings.download`、`Copied`→`ws.copied`、`Default`→`modelPicker.defaultEffort` …）
+   但**语义要按站点核**（例如 `Remove` 有 6 个键、zh 分别是 移出/删除/移除，不能盲选）；
+   另 20 个词（`Rename` / `Upload` / `Write` / `User` / `Switch` / `Update` / `PINNED` …）**没有键**，
+   要 9 语新键，属独立批次。**PDF / Markdown / Notebook / SSH / Slurm / PureScience** 这类专名要单独拍板
+   （本仓已有 `settings.fileTypePdf` 这类**保留英文**的键，说明"专名也进字典、值各语言相同"是本仓既有惯例）。
+2. **模板字面量读屏名 59 处 / 36 文件**（`attr template literal`）：全部需要 9 语新键（带插值），独立批次。
+3. 跨轮不变：P0-10 剩下的「0 与没量到分态」、P0-9 用户可见密度（需真机窗口读数）、
+   IC40 needs-attention、IC6 收割、中文源四家（外部条件）、M2/IC54（产品决定）。
+4. **并发写入者的 83 份 `docs/evidence/` 表格重排仍在树里**（自 10-10 22:06 起未提交）⇒ 下一轮开工
+   仍按「不是我的、不提交、不 stash」处理；若它自己落树，正常顺延。
+
+## 五十八、本轮追加（执行器，2026-10-12 14:5x–）—— i18n「整行短标签」形状清零（56 → 0）+ 35 个新键 × 9 语
+
+> 本单元 = 上一轮 §五十七「下一轮第一步」第 1 条（同形状的第二批）。
+> 证据档：`docs/evidence/2026-10-12-short-labels-sweep-zero.md`（含逐站点位、复用/新开键的判据、两条回归的收法）。
+
+### 〇 开工核对（防重做 + 并发执行体）
+
+- `HEAD == origin/main == 03972643` 起步。**B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）仍是耗尽状态** ⇒ 按 §五十七 的指路取同形状第二批。
+- 树上 84 个改动：**83 份 `docs/evidence/*.md` 是并发写入者的表格重排在制品**（mtime 全为 10-10 22:06、diff 逐行只有 markdown 表格填充，一位未碰）；
+  另 1 份是**我上一轮 §五十六/§五十七 未提交的计划档**（本轮同批提交，见第四节）。
+- **会话（人 + 助手）今日已落地 5 笔**（`182edace` → `03972643`）：P0-10 的三条真机读数（慢解析出现率、「会话体积可见」55 条真项目、按需回收三者逐字节吻合）
+  + **带界面入口的真机窗口验收**（`80284536`，两处 UI 改动在真窗口里读到）+ 口径对账（`03972643`，SI(1000) 换算）。
+  ⇒ P0-10 只剩「0 与『没量到』在主进程侧同形」一条（v2 排期档已就地更正为「不再是未做缺口」），本轮**不碰**它以免与它撞同一批文件。
+- **批 D（结构工作台 D1–D7）与批 A（中文文献翻译 A1–A7）全未开工** —— 它们是 v2.0.0 的大件；D1 的真机验收判据要求真窗口
+  （需 `build:e2e` + Electron），本机内存闸门仍紧（开工读数：空闲物理页 ≈ 111 MB / swap 已用 4.0 GB of 5.1 GB），
+  ⇒ 本单元**故意**选**离线可判**的那一类，避免把大件做成半截。
+
+### 一 本单元交付（47 个源文件 + 1 份证据档 + 本档）
+
+1. **整行短标签 56 处 / 47 个词全部清零**（审计器同一形状读数 **56 → 0**）：
+   18 处复用既有键（逐站点核语义）、38 处走 **35 个新键 × 9 语 = 315 条值**、2 处品牌名改走 `APP.name`（`HomePage` / `OnboardingWizard`）。
+2. **35 个新键**经本技能自带 `scripts/add-i18n-keys.py` 写入（九文件齐平预检 + 写后按 key 反查自证）；
+   值**凡该词已有既有译文就逐语言抄自那个键**（同一术语在两种语境不会译成两个词），其余 20 个词逐语手写。
+3. **两处白名单扩充**（都是「不可译的名字」，非放宽质量门）：`Discord`（品牌）、`Slurm`（调度器名，与既有 `sbatch`/`qsub` 同类），
+   条目旁写明依据；未动 `LATIN_COGNATES`、未改任何既有译文。
+4. **三条中文复读用例**（真语言提供器）：命名环境「Packages」→ **软件包**；技能导入审批「Invert」→ **反选**（且点它**真的**反转选择）；
+   计算主机 pinned 徽标（就地加强，全大写移入 CSS）。
+5. 顺手修掉同组件的一条模板字面量读屏名（`UpdateCapsule` 的 `aria-label`，新键 `update.availableAria`，插值留在组件内）。
+
+### 二 首跑抓到的两条真实回归 —— 两条收法都是**收紧**判据，不是放宽
+
+| 红 | 真凶 | 收法 |
+| --- | --- | --- |
+| `src/main/app-branding.test.ts`「home 面必须出现产品名」 | 该守卫**按字面量**扫 `HomePage.tsx`；改成 `{APP.name}` 后它红了（守卫想守的事没变，判据过时） | **双端钉住**：加「`src/shared/app-config.ts` 里 `name: 'PureScience'`」+ 断言 home 面绑定 `{APP.name}` ⇒ 该面从此**不可能**与产品名漂移（强于原断言） |
+| `ComputeHostDetail.render.test.tsx` 断言 `PINNED` | 文案进字典后大写不再写在字面量里 | **把全大写做成 CSS**（`uppercase`）：视觉不变、中文可读、断言仍守「徽标出现」 |
+
+### 三 门禁读数（全部实跑，数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 审计器（`jsx short label line`，全树） | **56 → 0** |
+| `vitest src/renderer/src/i18n`（含翻译质量门） | 4 文件 / **52 passed** |
+| 全量 `vitest run --maxWorkers=4` | **1247 passed \| 16 skipped（1263 文件）**、**16122 passed \| 207 skipped（16329 条）**（首跑 16120 ⇒ +2 恰为新增用例），exit 0，275 s |
+| `tsc` node / web（`--composite false`） | exit 0 / exit 0 |
+| `eslint --no-cache .` | **0 error / 122 warning**（122 为既有基线；单跑本轮 47 文件无输出） |
+| `prettier --check` | CLEAN |
+| `bash scripts/pre-push-checks.sh` | exit 0（品牌禁用词扫描无命中） |
+
+### 四 提交与 CI
+
+- 两笔：① 本单元（src/** + 证据档）② 本档（§五十六–§五十八 三轮记录）——同一次推送。
+  并发写入者那 83 份 `docs/evidence/` 在制品**一个字节都没进提交**（按路径显式 `git add`）。
+- CI 判决见本轮汇报（按完整 40 位 SHA 逐笔点名；`cancelled` 不算绿）。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **模板字面量读屏名（形状 `attr template literal`，59 处 / 36 文件）**：全部需要 9 语新键（带插值）。
+   `blocked-by` = 无；**动手前先按当前树重扫**（数量以扫描为准），插值一律留在组件内用 `.replace(...)`。
+2. **其余形状**（`jsx prose line` / `attr literal` / 中文字面量如 `NotebookPreview` 的 `{n} 个 Markdown 单元`）按审计器清单继续，
+   逐形状收口；每形状收口后同样留一条可复跑读数。
+3. **P0-10 最后一条「0 与『没量到』在主进程侧同形」**：`blocked-by` = 无（本地可核）；点位见 v2 排期档 P0-10 行末句与 §五十五 四节第 2 条。
+4. **批 D / 批 A（v2.0.0 大件）**：`blocked-by` = **真机验收需要在真窗口跑（内存闸门）**；其中**可离线做的半边**（如结构文件解析与选择指纹的数据层）
+   没有真消费方 ⇒ **不单独开工**（本仓不留死代码），等 D1 的视图内核一起做。
+5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
+6. 并发写入者那 83 份 `docs/evidence/` 表格重排仍在树里（自 10-10 22:06 未提交）⇒ 下一轮开工仍按「不是我的、不提交、不 stash」处理。
