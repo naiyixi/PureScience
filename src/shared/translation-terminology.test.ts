@@ -128,12 +128,11 @@ describe('A4 译文术语一致性（判据＝仓库唯一那张中文术语表�
   })
 
   it('认可的写法来自表本身，且去重（canonical 在前）', () => {
-    const row = CHINESE_TERMS.find(
-      (entry): entry is { canonical: string; kind: string; english: string; variants?: string[] } =>
-        'english' in entry && entry.english === 'aspirin'
-    )
-    expect(row).toBeDefined()
-    expect(acceptedSpellings(row as never)).toEqual(['阿司匹林', '乙酰水杨酸'])
+    // `'english' in entry` 是 TS 原生的联合收窄（不要写自定义类型谓词 —— 它对不上联合的成员类型，
+    // 报 TS2677，而 `vitest` 不做类型检查，只有 `tsc` 看得见）。
+    const row = CHINESE_TERMS.find((entry) => 'english' in entry && entry.english === 'aspirin')
+    if (!row || !('english' in row)) throw new Error('表里应当有 aspirin 这一行')
+    expect(acceptedSpellings(row)).toEqual(['阿司匹林', '乙酰水杨酸'])
     expect(chineseSpellingPresent('阿司匹林', '每天服用 阿司匹林 一次')).toBe(true)
     expect(chineseSpellingPresent('阿司匹林', '每天服用布洛芬')).toBe(false)
   })

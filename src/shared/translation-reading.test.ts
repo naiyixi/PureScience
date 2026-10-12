@@ -123,6 +123,22 @@ describe('A2/A3 三模式阅读：行、列与回跳锚', () => {
     expect(readingRowIndexForUnit(rows, '')).toBeUndefined()
   })
 
+  it('A5 保留（参考文献）的段落：译文格子是 kept 而不是 missing', () => {
+    const doc = buildTranslationContrast({
+      sourceId: 'paper-1',
+      sourceContentHash: 'hash-1',
+      units: [units[0] as TranslationUnit],
+      records: { 'p1#1': translated('p1#1', 1, '第一段。') },
+      sourcePages: 1,
+      kept: [{ page: 1, paragraph: 2, text: '[1] Foo A. Title. 2001;12: 3-9.' }]
+    })
+    const rows = buildReadingRows(doc)
+    expect(rows[1]?.translation).toEqual({ kind: 'kept' })
+    expect(rows[1]?.source).toContain('[1] Foo A.')
+    // 对照模式下这一行的原文格子照样有内容（保留＝只显示原文）。
+    expect(readingCellsForMode(rows[1]!, 'contrast').source).toContain('[1] Foo A.')
+  })
+
   it('原文缺失的段落仍占一行，但不编原文', () => {
     const noSourceUnits: TranslationUnit[] = [{ id: 'p1#1', page: 1, paragraph: 1, text: '' }]
     const doc = buildTranslationContrast({

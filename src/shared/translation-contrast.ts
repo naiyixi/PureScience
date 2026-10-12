@@ -37,6 +37,8 @@ export type TranslationContrastLabels = {
   translatedLabel: string
   failedText: string
   missingText: string
+  keptLabel: string
+  keptText: string
   sourceMissingText: string
   reasonMissingText: string
   pageHeading: (page: number) => string
@@ -56,12 +58,23 @@ export const DEFAULT_TRANSLATION_CONTRAST_LABELS: TranslationContrastLabels = {
   translatedLabel: '译文',
   failedText: '**未译（失败）**',
   missingText: '**本段尚无译文**（记录里没有这一段）',
+  keptLabel: '原样保留',
+  keptText: '**原文保留**（参考文献不翻译）',
   sourceMissingText: '（原文缺失）',
   reasonMissingText: '未说明原因',
   pageHeading: (page) => `第 ${page} 页`
 }
 
-export type ContrastParagraphStatus = 'translated' | 'failed' | 'missing'
+export type ContrastParagraphStatus =
+  | 'translated'
+  | 'failed'
+  | 'missing'
+  /**
+   * **原样保留**（A5：参考文献不翻译）。与 `missing` 分开是有意的：
+   * 「这一条我们**决定不翻**」和「这一条**还没翻**」是两件事 —— 前者是完成状态，后者是待办。
+   * 合成一态会让读者把「有意保留」读成「漏掉了」。
+   */
+  | 'kept'
 
 export type ContrastParagraph = {
   unitId: string
@@ -79,6 +92,9 @@ export type ContrastParagraph = {
 
 export type ContrastPage = { page: number; paragraphs: ContrastParagraph[] }
 
+/** 原样保留的段落（参考文献区）：不进翻译单元，但要出现在对照件里、按原位排。 */
+export type ContrastKeptParagraph = { page: number; paragraph: number; text: string }
+
 export type ContrastCounts = {
   /** 对照件里真的出现的页数与段落数（就是下面两个数组的长度）。 */
   pages: number
@@ -86,6 +102,8 @@ export type ContrastCounts = {
   translated: number
   failed: number
   missing: number
+  /** 原样保留（参考文献）的段落数。与「未译」分开。 */
+  kept: number
   /** 调用方声明的源页数，用来判「有没有整页没进来」。 */
   sourcePages: number
   /** 有页、但一个段落都没有的页（例如没有文本层）—— 具名列出，不装作没有。 */
@@ -108,6 +126,8 @@ export type ContrastInput = {
   records: Readonly<Record<string, TranslationRecord>>
   /** 源页数（用来报「有页没进来」）。缺省取出现过的最大页码。 */
   sourcePages?: number
+  /** 原样保留的段落（参考文献）。出现在原位、参与计数，但状态是 `kept` 而不是 `missing`。 */
+  kept?: readonly ContrastKeptParagraph[]
 }
 
 export const buildTranslationContrast = ({
@@ -115,9 +135,23 @@ export const buildTranslationContrast = ({
   sourceContentHash,
   units,
   records,
-  sourcePages
+  sourcePages,
+  kept
 }: ContrastInput): ContrastDocument => {
   const byPage = new Map<number, ContrastParagraph[]>()
+
+  for (const entry of kept ?? []) {
+    const page = byPage.get(entry.page) ?? []
+    page.push({
+      // 保留段落的 id 说明它属于哪一页哪一段，并在前缀上与翻译单元区分开（它本来就不是单元）。
+      unitId: `kept-p${entry.page}#${entry.paragraph}`,
+      page: entry.page,
+      paragraph: entry.paragraph,
+      status: 'kept',
+      source: entry.text
+    })
+    byPage.set(entry.page, page)
+  }
 
   for (const unit of units) {
     const record = records[unit.id]
@@ -173,6 +207,7 @@ export const buildTranslationContrast = ({
       translated: all.filter((paragraph) => paragraph.status === 'translated').length,
       failed: all.filter((paragraph) => paragraph.status === 'failed').length,
       missing: all.filter((paragraph) => paragraph.status === 'missing').length,
+      kept: all.filter((paragraph) => paragraph.status === 'kept').length,
       sourcePages: declaredSourcePages,
       pagesWithoutParagraphs
     }
@@ -196,7 +231,7 @@ export const renderTranslationContrastMarkdown = (
     `- ${labels.recipeLabel}：${document.recipe}`,
     `- ${labels.sourceHashLabel}：${document.sourceContentHash}`,
     `- ${labels.pagesLabel}：${counts.pages} / ${counts.sourcePages}`,
-    `- ${labels.paragraphsLabel}：${counts.paragraphs}（${labels.translatedWord} ${counts.translated} · ${labels.failedWord} ${counts.failed} · ${labels.missingWord} ${counts.missing}）${
+    `- ${labels.paragraphsLabel}：${counts.paragraphs}（${labels.translatedWord} ${counts.translated} · ${labels.failedWord} ${counts.failed} · ${labels.missingWord} ${counts.missing} · ${labels.keptLabel} ${counts.kept}）${
       counts.pagesWithoutParagraphs.length > 0
         ? ` · ${labels.pagesWithoutParagraphsLabel}：${counts.pagesWithoutParagraphs.join('、')}`
         : ''
@@ -221,6 +256,9 @@ export const renderTranslationContrastMarkdown = (
           `- ${labels.translatedLabel}：${labels.failedText} —— ${escapeCell(paragraph.reason ?? labels.reasonMissingText)}`,
           ''
         )
+      } else if (paragraph.status === 'kept') {
+        // 有意保留：原文**逐字**在这里，并明说这一条不翻译。
+        lines.push(`- ${labels.translatedLabel}：${labels.keptText}`, '')
       } else {
         // 未译的段落**留在原位**：删掉它会让读者以为全文都翻过了。
         lines.push(`- ${labels.translatedLabel}：${labels.missingText}`, '')

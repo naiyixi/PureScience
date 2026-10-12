@@ -26,6 +26,9 @@ const makeFetch = (): ReturnType<typeof vi.fn> =>
     }
   })
 
+/** mock 不是 `fetch`：三处实参都要显式收窄（`vitest` 不做类型检查，只有 tsc 看得见这个错）。 */
+const asFetch = (mock: ReturnType<typeof vi.fn>): typeof fetch => mock as unknown as typeof fetch
+
 const units: TranslationUnit[] = [
   { id: 'p1#1', page: 1, paragraph: 1, text: 'First paragraph.' },
   { id: 'p1#2', page: 1, paragraph: 2, text: 'Second paragraph.' },
@@ -53,18 +56,20 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  const runner = (overrides: Partial<TranslationRunnerDeps> = {}): ReturnType<typeof createTranslationRunner> =>
+  const runner = (
+    overrides: Partial<TranslationRunnerDeps> = {}
+  ): ReturnType<typeof createTranslationRunner> =>
     createTranslationRunner({
       storageRoot: () => root,
       target: () => ({ ok: true, target }),
-      fetchImpl: makeFetch() as unknown as typeof fetch,
+      fetchImpl: asFetch(makeFetch()),
       now: () => 1_700_000_000_000,
       ...overrides
     })
 
   it('首次运行：每段一次请求，记录里带段落 id + 页码 + 原文哈希', async () => {
     const fetchImpl = makeFetch()
-    const subject = runner({ fetchImpl })
+    const subject = runner({ fetchImpl: asFetch(fetchImpl) })
     const reply = await subject.run({ source, units })
 
     expect(reply.ok).toBe(true)
@@ -94,7 +99,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
 
   it('续传：同一份再跑一次，已完成段落**一次都不重发**', async () => {
     const fetchImpl = makeFetch()
-    const subject = runner({ fetchImpl })
+    const subject = runner({ fetchImpl: asFetch(fetchImpl) })
 
     await subject.run({ source, units })
     expect(fetchImpl).toHaveBeenCalledTimes(3)
@@ -113,7 +118,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
 
   it('改了一段：只重翻那一段，其余复用', async () => {
     const fetchImpl = makeFetch()
-    const subject = runner({ fetchImpl })
+    const subject = runner({ fetchImpl: asFetch(fetchImpl) })
     await subject.run({ source, units })
 
     const edited = units.map((unit, index) =>
@@ -130,7 +135,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
 
   it('换了一份内容（contentHash 变了）：一条记录都不复用', async () => {
     const fetchImpl = makeFetch()
-    const subject = runner({ fetchImpl })
+    const subject = runner({ fetchImpl: asFetch(fetchImpl) })
     await subject.run({ source, units })
 
     const third = await subject.run({
@@ -160,7 +165,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
     expect(first.report.translated).toBe(1)
 
     // 接上：已完成的那一段复用，剩下两段才发请求（这一次不中断）。
-    const resumed = await runner({ fetchImpl }).run({ source, units })
+    const resumed = await runner({ fetchImpl: asFetch(fetchImpl) }).run({ source, units })
     expect(resumed.ok).toBe(true)
     if (!resumed.ok) throw new Error('unreachable')
     expect(resumed.report.reused).toBe(1)
@@ -185,7 +190,7 @@ describe('翻译运行器（A1：段落级记录 + 续传不重翻）', () => {
 
   it('源里没有段落 ⇒ 具名 empty-source（没有文本层不是「已翻译 0 段」），不落盘', async () => {
     const fetchImpl = makeFetch()
-    const subject = runner({ fetchImpl })
+    const subject = runner({ fetchImpl: asFetch(fetchImpl) })
     const reply = await subject.run({ source, units: [] })
 
     expect(reply.ok).toBe(false)

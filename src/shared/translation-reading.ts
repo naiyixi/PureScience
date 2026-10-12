@@ -31,7 +31,11 @@ export const TRANSLATION_READING_COLUMNS: Record<
 }
 
 export type ReadingTranslationCell =
-  { kind: 'translated'; text: string } | { kind: 'failed'; reason: string } | { kind: 'missing' }
+  | { kind: 'translated'; text: string }
+  | { kind: 'failed'; reason: string }
+  | { kind: 'missing' }
+  /** 原样保留（参考文献）：不是「没译」，是**有意不译**。 */
+  | { kind: 'kept' }
 
 export type ReadingRow = {
   /** 在整份对照件里的行号（两列共用；A3 的回跳目标就是它）。 */
@@ -50,6 +54,7 @@ const cellOf = (paragraph: ContrastParagraph): ReadingTranslationCell => {
     return { kind: 'translated', text: paragraph.translated ?? '' }
   if (paragraph.status === 'failed')
     return { kind: 'failed', reason: paragraph.reason ?? '未说明原因' }
+  if (paragraph.status === 'kept') return { kind: 'kept' }
   return { kind: 'missing' }
 }
 

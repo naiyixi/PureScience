@@ -54,6 +54,7 @@ describe('A7 对照件（原文 / 译文 并列 + 可复算配方）', () => {
       translated: 3,
       failed: 0,
       missing: 0,
+      kept: 0,
       sourcePages: 2,
       pagesWithoutParagraphs: []
     })
@@ -196,6 +197,43 @@ describe('A7 对照件（原文 / 译文 并列 + 可复算配方）', () => {
     expect(english).toContain('- Original：First paragraph.')
     expect(english).toContain('- Translation：第一段。')
     expect(english).not.toContain('对照件')
+  })
+
+  it('A5 参考文献：原样保留的段落出现在原位、原文逐字、并与「未译」分开计数', () => {
+    const reference = '[1] Smith J. A trial of aspirin. N Engl J Med. 2001;345(3): 245-253.'
+    const document = buildTranslationContrast({
+      sourceId: 'paper-1',
+      sourceContentHash: 'hash-1',
+      units: [units[0] as TranslationUnit],
+      records: { 'p1#1': record('p1#1', '第一段。') },
+      sourcePages: 1,
+      kept: [{ page: 1, paragraph: 2, text: reference }]
+    })
+
+    // 计入 paragraphs 与 kept，**不计入** missing ——「有意不译」不是「还没译」。
+    expect(document.counts).toMatchObject({ paragraphs: 2, translated: 1, kept: 1, missing: 0 })
+    const keptParagraph = document.pages[0]?.paragraphs[1]
+    expect(keptParagraph).toMatchObject({ status: 'kept', paragraph: 2, source: reference })
+
+    const markdown = renderTranslationContrastMarkdown(document)
+    // 导出件里参考文献**仍是原文**（逐字），并明说这一条不翻译。
+    expect(markdown).toContain(reference)
+    expect(markdown).toContain('**原文保留**（参考文献不翻译）')
+    expect(markdown).toContain('原样保留 1')
+  })
+
+  it('A5 保留段落不参与翻译单元的哈希与记录（它压根不是单元）', () => {
+    const document = buildTranslationContrast({
+      sourceId: 'paper-1',
+      sourceContentHash: 'hash-1',
+      units: [],
+      records: {},
+      sourcePages: 1,
+      kept: [{ page: 1, paragraph: 1, text: '[1] Foo A. Title. 2001;12: 3-9.' }]
+    })
+    expect(document.counts).toMatchObject({ paragraphs: 1, kept: 1, missing: 0 })
+    // 保留段落的 id 与翻译单元区分开（前缀 kept-），所以它永远不会被当成「有记录但缺译文」。
+    expect(document.pages[0]?.paragraphs[0]?.unitId.startsWith('kept-')).toBe(true)
   })
 
   it('译文里的竖线与换行不会把对照件拆坏', () => {
