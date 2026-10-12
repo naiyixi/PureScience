@@ -74,8 +74,53 @@ const patterns = [
     re: /`( [A-Za-z][A-Za-z0-9 ,.&/'’…–-]{4,})\$\{/g,
     minWords: 2,
     allowLowercaseStart: true
+  },
+  // A screen-reader name assembled from a template literal: `aria-label={`Open ${skill.name}`}`. The
+  // value is neither a string literal (the attr shapes above) nor `>text<` (the jsx shapes), so every
+  // one of them was invisible. The body must START with a letter and hold only prose characters around
+  // its interpolation — that is what keeps CSS utility templates (which begin with `${`) and test ids
+  // (letters plus `-`, no interpolation in the value) out of the list.
+  {
+    name: 'attr template literal',
+    re: /(?:aria-label|title|placeholder|alt)=\{`([A-Za-z][A-Za-z0-9 ,.&/():'’…_%+–-]*\$\{[^}]*\}[A-Za-z0-9 ,.&/():'’…_%+–-]*)`\}/g
   }
 ]
+
+// A whole-line ONE-WORD label: prettier puts a short label on its own line, so the `>` lives on the
+// line above and the `</` on the line below — neither `>text<` nor `>text{` appears anywhere on it.
+// Measured tree-wide when this shape was added: 56 hits, and requiring BOTH neighbours (previous
+// non-empty line ends with `>`, next starts with `</`) is what keeps free-standing identifiers out —
+// without the neighbour rule the same file set yields hundreds of code lines. Requiring a capital
+// first letter is not a whitelist: the lowercase variant measures 0 hits tree-wide (again with the
+// neighbour rule), so allowing it would only add noise. Keep both rules when widening this.
+const SHORT_LABEL_RE = /^\s*([A-Z][A-Za-z '’.-]{1,40})\s*$/
+
+// Shapes whose hit is decided by a line's NEIGHBOURS rather than by the line itself. They are kept
+// outside `patterns` (whose filters are line-local by construction) so that adding them cannot
+// perturb the existing shapes' behaviour.
+const neighbourShapes = [
+  {
+    name: 'jsx short label line',
+    reportTexts: true,
+    test: (lines, i) => {
+      const m = SHORT_LABEL_RE.exec(lines[i])
+      if (!m) return null
+      const prev = nearestNonEmpty(lines, i, -1)
+      const next = nearestNonEmpty(lines, i, +1)
+      if (!prev.endsWith('>') || !next.startsWith('</')) return null
+      return m[1]
+    }
+  }
+]
+
+// The nearest non-empty line in `step` direction — the label's bracket may be several blank lines
+// away (comments, conditional wrappers), and stopping at blank lines would silently drop those hits.
+function nearestNonEmpty(lines, i, step) {
+  for (let j = i + step; j >= 0 && j < lines.length; j += step) {
+    if (lines[j].trim() !== '') return lines[j].trim()
+  }
+  return ''
+}
 
 const skip = /(test|spec)\.(ts|tsx)$/
 // The nine dictionaries ARE the translations: every value in them matches these patterns, so without
@@ -123,6 +168,20 @@ for (const root of roots) {
           kindCounts.set(pat.name, (kindCounts.get(pat.name) ?? 0) + 1)
         }
       }
+      // Neighbour-dependent shapes: same line-level ignore rule, but the hit comes from the neighbours.
+      if (!ignored) {
+        for (const shape of neighbourShapes) {
+          const text = shape.test(lines, i)
+          if (text === null || text === undefined) continue
+          hits.push({
+            file: target,
+            line: i + 1,
+            kind: shape.name,
+            text: String(text).slice(0, 90)
+          })
+          kindCounts.set(shape.name, (kindCounts.get(shape.name) ?? 0) + 1)
+        }
+      }
     })
   }
   visit(root)
@@ -149,3 +208,20 @@ for (const [name, count] of [...kindCounts.entries()].sort((a, b) => b[1] - a[1]
 }
 console.log('\n--- sample 40 (file:line kind | text) ---')
 hits.slice(0, 40).forEach((h) => console.log(`${h.file}:${h.line} [${h.kind}] ${h.text}`))
+
+// A shape marked `reportTexts` is a WORD backlog, not a line backlog: the same label appears in many
+// files, and counting lines makes 56 findings look like 56 jobs. The distinct-text table is the view
+// that says what actually has to be keyed.
+for (const shape of [...patterns, ...neighbourShapes]) {
+  if (!shape.reportTexts) continue
+  const texts = new Map()
+  for (const h of hits) if (h.kind === shape.name) texts.set(h.text, (texts.get(h.text) ?? 0) + 1)
+  console.log(
+    `\n--- distinct texts in "${shape.name}" (lines: ${kindCounts.get(shape.name) ?? 0}) ---`
+  )
+  for (const [text, n] of [...texts.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  )) {
+    console.log(`${String(n).padStart(3)}  ${text}`)
+  }
+}

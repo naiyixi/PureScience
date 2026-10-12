@@ -99,7 +99,7 @@ function SessionJobsList({
       {/* Footer */}
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-4 py-3">
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          Close
+          {t('common.close')}
         </Button>
       </div>
     </>
@@ -213,7 +213,7 @@ function JobDetailView({ job, onBack, onOpenFileBrowser }: JobDetailViewProps): 
           onClick={onBack}
         >
           <ArrowLeft size={13} aria-hidden="true" />
-          Back
+          {t('common.back')}
         </button>
         <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{latestJob.intent}</span>
         {/* The one place a running job can be stopped. Refused (already finished / host unreachable /

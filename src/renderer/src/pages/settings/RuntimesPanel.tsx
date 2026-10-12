@@ -1151,7 +1151,7 @@ const RuntimesPanel = ({
                             disabled={busy}
                             onClick={() => void cancelProvision(id)}
                           >
-                            Cancel
+                            {t('common.cancel')}
                           </Button>
                         ) : finishing ? (
                           <Button
@@ -1532,7 +1532,7 @@ const RuntimesPanel = ({
                           setPackagesRetryNonce((nonce) => nonce + 1)
                         }}
                       >
-                        Retry
+                        {t('common.retry')}
                       </Button>
                     </div>
                   ) : packages === null ? (
@@ -1615,7 +1615,7 @@ const RuntimesPanel = ({
                 <div className="mt-4 flex justify-end">
                   <Dialog.Close asChild>
                     <Button type="button" variant="outline" size="sm">
-                      Close
+                      {t('common.close')}
                     </Button>
                   </Dialog.Close>
                 </div>

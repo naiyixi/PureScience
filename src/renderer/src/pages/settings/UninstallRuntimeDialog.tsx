@@ -76,7 +76,7 @@ const UninstallRuntimeDialog = ({
                 className={cancelButtonClassName}
                 disabled={dialogIsUninstalling}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
             </AlertDialog.Cancel>
             <Button

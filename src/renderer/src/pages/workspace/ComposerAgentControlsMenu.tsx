@@ -638,7 +638,7 @@ const ComposerAgentControlsMenu = ({
                   variant="outline"
                   className="border-border-200 bg-bg-000 text-text-000 hover:bg-bg-200 hover:text-text-000"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </AlertDialog.Cancel>
               <AlertDialog.Action asChild>

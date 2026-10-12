@@ -57,7 +57,7 @@ const SwitchFrameworkDialog = ({
           <div className="mt-6 flex justify-end gap-2">
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="outline">
-                Cancel
+                {t('common.cancel')}
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>

@@ -1284,6 +1284,11 @@ describe('SpecialistsPanel', () => {
     const dialog = document.body.querySelector('[role="alertdialog"]')
     expect(dialog?.textContent).toContain('不会再删除其他技能。')
     expect(dialog?.textContent).not.toContain('No additional Skills will be deleted.')
+    // The dialog's own dismiss control belongs to the same read: a one-word label sitting alone on its
+    // line was invisible to the copy audit for months, and a dictionary value proves nothing about what
+    // reaches the screen — only this assertion does.
+    expect(dialog?.textContent).toContain('取消')
+    expect(dialog?.textContent).not.toContain('Cancel')
   })
 })
 

@@ -502,7 +502,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                   onNavigate({ kind: 'list' })
                 }}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"
@@ -872,7 +872,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 variant="outline"
                 onClick={() => void cancelPackage().then(() => onNavigate({ kind: 'list' }))}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"
@@ -976,7 +976,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                     <div className="mt-6 flex justify-end gap-2">
                       <AlertDialog.Cancel asChild>
                         <Button type="button" variant="outline">
-                          Cancel
+                          {t('common.cancel')}
                         </Button>
                       </AlertDialog.Cancel>
                       <Button
@@ -1582,7 +1582,7 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
             <div className="mt-6 flex justify-end gap-2">
               <AlertDialog.Cancel asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </AlertDialog.Cancel>
               <Button

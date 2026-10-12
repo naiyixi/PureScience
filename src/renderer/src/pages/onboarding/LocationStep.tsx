@@ -211,7 +211,7 @@ const LocationStep = ({
       </CardContent>
       <CardFooter className="mt-auto justify-end gap-2 rounded-b-lg border-border-200 bg-bg-10 px-6 py-3">
         <Button type="button" variant="outline" onClick={onBack}>
-          Back
+          {t('common.back')}
         </Button>
         <Button type="button" onClick={() => void handleFinishLocation()} className="px-4">
           Finish

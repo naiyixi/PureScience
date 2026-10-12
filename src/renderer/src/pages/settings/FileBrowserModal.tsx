@@ -829,7 +829,7 @@ export function FileBrowserModal({
                       className="text-xs"
                       onClick={handleRefresh}
                     >
-                      Retry
+                      {t('common.retry')}
                     </Button>
                     {roots?.home && (
                       <Button

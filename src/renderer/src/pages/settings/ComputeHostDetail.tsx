@@ -404,7 +404,7 @@ export function ComputeHostDetail({
               onClick={() => setIsEditingDetails(true)}
               className="shrink-0"
             >
-              Edit
+              {t('common.edit')}
             </Button>
           ) : null}
         </div>
@@ -441,7 +441,7 @@ export function ComputeHostDetail({
                   onClick={handleDetailsCancel}
                   disabled={detailsSaving}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   type="button"
@@ -522,7 +522,7 @@ export function ComputeHostDetail({
               onClick={handleScratchEdit}
               className="shrink-0"
             >
-              Edit
+              {t('common.edit')}
             </Button>
           ) : null}
         </div>
@@ -557,7 +557,7 @@ export function ComputeHostDetail({
                 }}
                 disabled={scratchSaving}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"
@@ -608,7 +608,7 @@ export function ComputeHostDetail({
               onClick={handleConcurrencyEdit}
               className="shrink-0"
             >
-              Edit
+              {t('common.edit')}
             </Button>
           ) : null}
         </div>
@@ -645,7 +645,7 @@ export function ComputeHostDetail({
                 }}
                 disabled={concurrencySaving}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"

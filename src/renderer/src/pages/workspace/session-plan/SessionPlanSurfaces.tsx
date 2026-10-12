@@ -122,7 +122,7 @@ const WorkspacePlanCard = ({
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onOpen}>
-              Open
+              {t('common.open')}
             </Button>
             {decisionPending ? (
               <>
@@ -132,7 +132,7 @@ const WorkspacePlanCard = ({
                   disabled={decisionBusy}
                   onClick={() => void respond('rejected')}
                 >
-                  Dismiss
+                  {t('common.dismiss')}
                 </Button>
                 <Button
                   type="button"
@@ -303,7 +303,7 @@ const PlanPreviewSurface = ({
           {planDocument && !stale && projection.approval === 'pending' && onRespond ? (
             <>
               <Button type="button" variant="outline" onClick={() => void onRespond('rejected')}>
-                Dismiss
+                {t('common.dismiss')}
               </Button>
               <Button type="button" onClick={() => void onRespond('approved')}>
                 Approve

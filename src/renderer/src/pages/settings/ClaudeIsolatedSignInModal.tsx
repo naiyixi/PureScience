@@ -224,7 +224,7 @@ const ClaudeIsolatedSignInModalBody = ({
         <div className={dialogFooterClassName}>
           <AlertDialog.Cancel asChild>
             <Button type="button" variant="outline" disabled={isSubmitting}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </AlertDialog.Cancel>
           <Button

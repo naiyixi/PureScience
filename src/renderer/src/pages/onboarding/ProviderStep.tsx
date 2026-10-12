@@ -380,7 +380,7 @@ const ProviderStep = ({
           </Button>
         ) : (
           <Button type="button" variant="outline" onClick={onBack}>
-            Back
+            {t('common.back')}
           </Button>
         )}
         <Button

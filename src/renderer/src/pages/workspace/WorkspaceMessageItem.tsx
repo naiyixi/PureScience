@@ -1009,7 +1009,7 @@ const WorkspaceMessageItemImpl = ({
                     className={editCancelButtonClassName}
                     onClick={handleCancelEdit}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="button"

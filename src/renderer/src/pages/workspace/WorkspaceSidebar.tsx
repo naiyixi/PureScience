@@ -574,7 +574,7 @@ const WorkspaceSidebar = ({
                               <span className={sessionMenuIconClassName}>
                                 <Trash2 className="size-4" strokeWidth={2} aria-hidden="true" />
                               </span>
-                              Delete
+                              {t('common.delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

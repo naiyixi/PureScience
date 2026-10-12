@@ -176,7 +176,7 @@ const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Elem
         onClick={() => setSessionToDelete(session)}
       >
         <Trash2 className="size-3.5" aria-hidden="true" />
-        Delete
+        {t('common.delete')}
       </Button>
     </div>
   )

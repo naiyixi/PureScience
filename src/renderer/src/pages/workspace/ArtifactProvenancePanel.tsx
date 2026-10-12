@@ -1113,7 +1113,7 @@ const ArtifactProvenancePanel = ({
                       : retryCodeReconstructionLookup()
                   }
                 >
-                  Retry
+                  {t('common.retry')}
                 </Button>
               ) : codeReconstructionState?.state === 'unavailable' ? (
                 <Button type="button" size="sm" className="shrink-0 whitespace-nowrap" disabled>

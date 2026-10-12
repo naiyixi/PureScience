@@ -42,7 +42,7 @@ const SessionPersistenceAlert = ({
           onClick={onRetry}
           className="shrink-0"
         >
-          Retry
+          {t('common.retry')}
         </Button>
       ) : null}
       {onDismiss ? (

@@ -212,7 +212,7 @@ const SkillImportApprovalRequestDialog = ({
                 variant="outline"
                 onClick={() => void respond({ id: request.id, cancelled: true })}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"

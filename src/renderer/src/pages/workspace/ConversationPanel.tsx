@@ -821,7 +821,7 @@ const ConversationPanel = ({
                               onClick={onReconfigureRetry}
                               className="flex h-6 items-center rounded px-2 text-[11px] font-medium text-red-300 hover:bg-red-500/15 border border-red-500/30"
                             >
-                              Retry
+                              {t('common.retry')}
                             </button>
                             <button
                               type="button"

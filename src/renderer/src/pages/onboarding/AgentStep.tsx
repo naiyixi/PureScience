@@ -46,7 +46,7 @@ const AgentStep = ({ onBack, onContinue }: AgentStepProps): React.JSX.Element =>
         </p>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={onBack}>
-            Back
+            {t('common.back')}
           </Button>
           <Button type="button" onClick={onContinue} disabled={!environmentReady} className="px-4">
             {t('onboarding.continue')}

@@ -1477,7 +1477,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                     ) : null}
                     <div className="mt-6 flex justify-end gap-2">
                       <Button type="button" variant="ghost" onClick={closeForm} disabled={isSaving}>
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                       <Button type="button" onClick={() => void handleSave()} disabled={!canSave}>
                         {isSaving ? t('common.saving') : t('common.save')}

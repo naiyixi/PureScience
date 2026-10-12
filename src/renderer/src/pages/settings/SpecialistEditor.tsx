@@ -1177,7 +1177,7 @@ const SpecialistEditor = ({
         {/* Footer actions */}
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onCancel} disabled={isSaving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"

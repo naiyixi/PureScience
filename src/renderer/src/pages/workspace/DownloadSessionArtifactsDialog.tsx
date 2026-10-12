@@ -225,7 +225,7 @@ const DownloadSessionArtifactsDialog = ({
                   variant="outline"
                   onClick={() => setRetryVersion((v) => v + 1)}
                 >
-                  Retry
+                  {t('common.retry')}
                 </Button>
               </div>
             ) : artifacts.length === 0 ? (

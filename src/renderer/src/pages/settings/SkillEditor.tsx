@@ -439,7 +439,7 @@ const SkillEditor = ({ initial, onCancel, onSave }: SkillEditorProps): React.JSX
 
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-5 py-3">
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button type="button" onClick={() => void handleSave()} disabled={!canSave}>
           {saving ? t('settings.saving') : initial.id ? t('settings.save') : t('settings.publish')}

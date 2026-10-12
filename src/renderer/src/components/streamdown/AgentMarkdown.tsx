@@ -90,7 +90,7 @@ const MermaidErrorPanel = ({ chart, error, retry }: MermaidErrorPanelProps): Rea
         className="mt-2 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-[12px] text-amber-950 hover:bg-amber-100/80 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/40"
         onClick={retry}
       >
-        Retry
+        {t('common.retry')}
       </button>
     </div>
   )

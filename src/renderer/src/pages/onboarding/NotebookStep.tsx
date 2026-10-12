@@ -39,7 +39,7 @@ const NotebookStep = ({ onBack, onContinue }: NotebookStepProps): React.JSX.Elem
         </p>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={onBack} disabled={envProvisioning}>
-            Back
+            {t('common.back')}
           </Button>
           <Button
             type="button"

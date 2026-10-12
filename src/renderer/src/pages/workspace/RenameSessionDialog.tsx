@@ -105,7 +105,7 @@ const RenameSessionDialog = ({
             </div>
             <div className={dialogFooterClassName}>
               <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={dialogRenameDraft.trim().length === 0}>
                 Rename

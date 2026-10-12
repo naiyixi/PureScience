@@ -189,7 +189,7 @@ export const PreviewFallbackCard = ({
               onClick={runtime.retry}
             >
               <RefreshCw aria-hidden />
-              Retry
+              {t('common.retry')}
             </Button>
           ) : null}
           {action}

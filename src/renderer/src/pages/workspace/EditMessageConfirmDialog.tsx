@@ -57,7 +57,7 @@ const EditMessageConfirmDialog = ({
           <div className={dialogFooterClassName}>
             <AlertDialog.Cancel asChild>
               <Button type="button" variant="outline" className={cancelButtonClassName}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
