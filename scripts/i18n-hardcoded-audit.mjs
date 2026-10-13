@@ -122,6 +122,51 @@ function nearestNonEmpty(lines, i, step) {
   return ''
 }
 
+
+// Comment ranges over the whole source. A comment is allowed to NAME a label — the composer's
+// "Request review", the notebook's "Download all (N)" — and those mentions were being reported as
+// copy that still needs a key (5 of the 19 renderer-side `dquote` hits were exactly this). Filtering
+// by offset rather than by rewriting the line keeps every other shape byte-identical, and string
+// literals are skipped while scanning so a `//` inside one is not mistaken for a comment.
+const commentRanges = (source) => {
+  const ranges = []
+  let i = 0
+  while (i < source.length) {
+    const ch = source[i]
+    if (ch === '/' && source[i + 1] === '/') {
+      const end = source.indexOf('\n', i)
+      ranges.push([i, end === -1 ? source.length : end])
+      i = end === -1 ? source.length : end
+      continue
+    }
+    if (ch === '/' && source[i + 1] === '*') {
+      const end = source.indexOf('*/', i + 2)
+      ranges.push([i, end === -1 ? source.length : end + 2])
+      i = end === -1 ? source.length : end + 2
+      continue
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const quote = ch
+      i += 1
+      while (i < source.length) {
+        if (source[i] === '\\') {
+          i += 2
+          continue
+        }
+        if (source[i] === quote) {
+          i += 1
+          break
+        }
+        i += 1
+      }
+      continue
+    }
+    i += 1
+  }
+  return ranges
+}
+const inComment = (ranges, offset) => ranges.some(([start, end]) => offset >= start && offset < end)
+
 const skip = /(test|spec)\.(ts|tsx)$/
 // The nine dictionaries ARE the translations: every value in them matches these patterns, so without
 // this the backlog list leads with en.ts/fr.ts instead of the components that still bypass t().
@@ -148,7 +193,15 @@ for (const root of roots) {
     }
     if (!EXT.has(extname(target)) || skip.test(target) || isDictionary(target)) return
     filesScanned += 1
-    const lines = readFileSync(target, 'utf8').split('\n')
+    const source = readFileSync(target, 'utf8')
+    const lines = source.split('\n')
+    const comments = commentRanges(source)
+    const lineStart = []
+    let cursor = 0
+    for (const ln of lines) {
+      lineStart.push(cursor)
+      cursor += ln.length + 1
+    }
     lines.forEach((ln, i) => {
       const ignored = ignoreLine(ln)
       for (const pat of patterns) {
@@ -164,6 +217,8 @@ for (const root of roots) {
           const text = raw.trim()
           if (raw.split(' ').length < (pat.minWords ?? 2) && raw.length < 7) continue
           if (/^[a-z]/.test(text) && !pat.allowLowercaseStart) continue
+          // A hit that only exists inside a comment is a comment naming a label, not copy.
+          if (inComment(comments, lineStart[i] + m.index)) continue
           hits.push({ file: target, line: i + 1, kind: pat.name, text: text.slice(0, 90) })
           kindCounts.set(pat.name, (kindCounts.get(pat.name) ?? 0) + 1)
         }
@@ -171,6 +226,7 @@ for (const root of roots) {
       // Neighbour-dependent shapes: same line-level ignore rule, but the hit comes from the neighbours.
       if (!ignored) {
         for (const shape of neighbourShapes) {
+          if (inComment(comments, lineStart[i])) continue
           const text = shape.test(lines, i)
           if (text === null || text === undefined) continue
           hits.push({
