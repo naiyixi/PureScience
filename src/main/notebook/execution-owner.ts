@@ -532,7 +532,13 @@ class NotebookExecutionOwner {
       session,
       runningRun,
       invoke: async () => {
-        const workingFileObservation = await startWorkingFileObservation(session)
+        // workspaceCwd is what makes a before hash possible at all: the observer hashes the session workspace
+        // at run start, so a file changed in this run can name the bytes it changed FROM.
+        const workingFileObservation = await startWorkingFileObservation({
+          dataRoot: session.dataRoot,
+          notebookSessionRoot: session.notebookSessionRoot,
+          workspaceCwd: session.cwd
+        })
         let workingFiles: NotebookWorkingFile[] = []
         let fileCapture: NotebookFileCapture | undefined
         const blockedMutation = detectManagedRuntimeMutation({

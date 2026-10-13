@@ -19,6 +19,9 @@ import type { NotebookFileContentState, NotebookWorkingFileContent } from '../..
 type WorkingFileObservationRequest = {
   dataRoot: string
   notebookSessionRoot: string
+  // The session workspace a run works in. Its pre-run bytes are hashed at observation start so a change
+  // here can show a REAL before hash (see captureBeforeContent); absent means every before side is named.
+  workspaceCwd?: string
 }
 
 // 'capture' is the shared write-axis vocabulary, so the observer's own honesty rule (a list that is
@@ -118,6 +121,67 @@ const MAX_DIGEST_BYTES = 4 * 1024 * 1024
  * throws: an oversized or unreadable file gets a named state, because failing the observation would
  * lose the change itself.
  */
+// The run-start walk is bounded twice: by entry count and by TOTAL bytes read, so a directory of many large
+// files cannot turn "record a before hash" into an unbounded read at the start of every run. Whatever the
+// budget does not reach keeps a NAMED state instead of a guess.
+const MAX_BEFORE_WALK_BYTES = 64 * 1024 * 1024
+
+// v2.1.0 (B3): the before side, observed at run start. Only the session's own working directory is walked;
+// everything else a run may touch keeps a NAMED before state rather than an inferred one — a before-hash is
+// only ever recorded from bytes read here.
+const captureBeforeContent = async (
+  workspaceRoot: string,
+  dataRoot: string,
+  logicalDataRoot: string
+): Promise<Map<string, { state: NotebookFileContentState; hash?: string }>> => {
+  const captured = new Map<string, { state: NotebookFileContentState; hash?: string }>()
+  if (!isPathInside(dataRoot, workspaceRoot)) return captured
+
+  const budget = { entries: MAX_FALLBACK_SNAPSHOT_ENTRIES, bytes: MAX_BEFORE_WALK_BYTES }
+  const visit = async (directory: string): Promise<void> => {
+    if (budget.entries <= 0) return
+    let entries
+    try {
+      entries = await readdir(directory, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (budget.entries <= 0) return
+      budget.entries -= 1
+      if (entry.isSymbolicLink()) continue
+      const candidatePath = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        await visit(candidatePath)
+        continue
+      }
+      if (!entry.isFile()) continue
+
+      const logicalPath = resolve(logicalDataRoot, relative(dataRoot, candidatePath))
+      try {
+        const metadata = await stat(candidatePath)
+        if (metadata.size > MAX_DIGEST_BYTES || metadata.size > budget.bytes) {
+          captured.set(logicalPath, {
+            state: metadata.size > MAX_DIGEST_BYTES ? 'too-large' : 'not-recorded'
+          })
+          continue
+        }
+        budget.bytes -= metadata.size
+        const bytes = await readFile(candidatePath)
+        captured.set(logicalPath, {
+          state: 'recorded',
+          hash: createHash('sha256').update(bytes).digest('hex')
+        })
+      } catch {
+        captured.set(logicalPath, { state: 'unreadable' })
+      }
+    }
+  }
+
+  await visit(workspaceRoot)
+  return captured
+}
+
 const observeFileContent = async (
   realPath: string,
   changeKind: NotebookWorkingFile['changeKind'],
@@ -156,7 +220,6 @@ const resolveChangedFile = async (
     if (!isPathInside(dataRoot, canonicalPath)) return undefined
     const metadata = await stat(canonicalPath)
     if (!metadata.isFile()) return undefined
-    const content = await observeFileContent(canonicalPath, undefined, metadata.size)
     const logicalPath = resolve(logicalDataRoot, relative(dataRoot, canonicalPath))
 
     return {
@@ -165,8 +228,7 @@ const resolveChangedFile = async (
       kind: 'other',
       size: metadata.size,
       mtimeMs: metadata.mtimeMs,
-      ctimeMs: metadata.ctimeMs,
-      content
+      ctimeMs: metadata.ctimeMs
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
@@ -174,19 +236,35 @@ const resolveChangedFile = async (
   }
 }
 
-// v2.1.0 (B3): attaches the observed content identity to changed files. The diff is metadata-only, so
-// the bytes are read here — once per changed file, and skipped for entries that already carry an
-// observation (the watcher path resolves its own paths and hashes them there).
+// v2.1.0 (B3): the single place that turns changed files into content identity. The after side is read here
+// (where the change was observed); the before side comes from the run-start walk when the file was in the
+// session's own working directory and is otherwise a NAMED state — never a hash inferred from an earlier
+// run, whose bytes something this app never saw may have changed.
 const attachObservedContent = async (
   files: readonly NotebookWorkingFile[],
   dataRoot: string,
-  logicalDataRoot: string
+  logicalDataRoot: string,
+  beforeContent: ReadonlyMap<string, { state: NotebookFileContentState; hash?: string }>
 ): Promise<NotebookWorkingFile[]> =>
   Promise.all(
     files.map(async (file) => {
-      if (file.content) return file
       const realPath = resolve(dataRoot, relative(logicalDataRoot, file.path))
-      return { ...file, content: await observeFileContent(realPath, file.changeKind, file.size) }
+      const observed = await observeFileContent(realPath, file.changeKind, file.size)
+      const before = beforeContent.get(file.path)
+
+      return {
+        ...file,
+        content: {
+          hashes: {
+            ...(observed.hashes.after === undefined ? {} : { after: observed.hashes.after }),
+            ...(before?.hash === undefined ? {} : { before: before.hash })
+          },
+          states: {
+            before: before ? before.state : observed.states.before,
+            after: observed.states.after
+          }
+        }
+      }
     })
   )
 
@@ -295,8 +373,10 @@ const captureFallbackSnapshot = async (
 const startFallbackObservation = async (
   dataRoot: string,
   logicalDataRoot: string,
-  logicalSessionRoot: string
+  logicalSessionRoot: string,
+  workspaceRoot: string
 ): Promise<WorkingFileObservation> => {
+  const beforeContent = await captureBeforeContent(workspaceRoot, dataRoot, logicalDataRoot)
   const active: ActiveObservation = { conflicted: false }
   const unregister = registerObservation(dataRoot, active)
   const before = await captureFallbackSnapshot(dataRoot, logicalDataRoot, logicalSessionRoot)
@@ -331,7 +411,8 @@ const startFallbackObservation = async (
           files: await attachObservedContent(
             diffSnapshots(before.files, after.files),
             dataRoot,
-            logicalDataRoot
+            logicalDataRoot,
+            beforeContent
           ),
           capture: capturedWriteEvidence()
         }
@@ -354,6 +435,11 @@ const startWorkingFileObservation = async (
       realpath(request.notebookSessionRoot)
     ])
     if (!isPathInside(sessionRoot, dataRoot)) return unavailableObservation()
+
+    const beforeWalkRoot = await realpath(
+      request.workspaceCwd ?? request.notebookSessionRoot
+    ).catch(() => sessionRoot)
+    const beforeContent = await captureBeforeContent(beforeWalkRoot, dataRoot, logicalDataRoot)
 
     const maxChangedPaths = dependencies.maxChangedPaths ?? MAX_CHANGED_PATHS
     const active: ActiveObservation = { conflicted: false }
@@ -402,7 +488,7 @@ const startWorkingFileObservation = async (
         }
       )
     } catch {
-      return startFallbackObservation(dataRoot, logicalDataRoot, logicalSessionRoot)
+      return startFallbackObservation(dataRoot, logicalDataRoot, logicalSessionRoot, beforeWalkRoot)
     }
     watcher.on('error', () => {
       failureReason ??= 'observation-unavailable'
@@ -410,7 +496,7 @@ const startWorkingFileObservation = async (
     await waitForWatcherReady()
     if (failureReason) {
       watcher.close()
-      return startFallbackObservation(dataRoot, logicalDataRoot, logicalSessionRoot)
+      return startFallbackObservation(dataRoot, logicalDataRoot, logicalSessionRoot, beforeWalkRoot)
     }
     // Recursive watchers can replay pre-existing paths while their initial scan settles. Execution
     // has not started yet, so those events cannot prove this run created or changed the files.
@@ -481,7 +567,7 @@ const startWorkingFileObservation = async (
             finishedResult = {
               files: active.conflicted
                 ? []
-                : await attachObservedContent(diffed, dataRoot, logicalDataRoot),
+                : await attachObservedContent(diffed, dataRoot, logicalDataRoot, beforeContent),
               capture: captureFrom(
                 dropped,
                 active.conflicted,
@@ -494,7 +580,7 @@ const startWorkingFileObservation = async (
           finishedResult = {
             files: active.conflicted
               ? []
-              : await attachObservedContent(changedFiles, dataRoot, logicalDataRoot),
+              : await attachObservedContent(changedFiles, dataRoot, logicalDataRoot, beforeContent),
             capture: captureFrom(
               dropped,
               active.conflicted,

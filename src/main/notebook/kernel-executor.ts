@@ -391,7 +391,10 @@ class NotebookKernelExecutor implements NotebookExecutor {
         throw new Error('Notebook execution is already running.')
       }
 
-      workingFileObservation = await startWorkingFileObservation(request)
+      workingFileObservation = await startWorkingFileObservation({
+        ...request,
+        workspaceCwd: request.cwd
+      })
       const reqId = randomUUID()
       const { response, timedOut } = await this.sendRequest(proc, reqId, request)
       const observation = await workingFileObservation.finish()
