@@ -3695,3 +3695,43 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 1. **`main/**` 的 `dquote` 桶（53 条里 50 条）**：`main/connectors` 35 / `main/reviewer` 6 / `main/settings` 5 / `main/notebook` 3 / 其余 3 ⇒ 按既有 `lib/remote-error-catalog.ts` 模式（精确 EN → 键 + `localizeRemoteMessage` 透传未命中）成批键控；先分「会直达 UI 的」与「只在日志/诊断里出现的」——后者不许键控（键控掉反而丢失诊断信息）。`blocked-by` = 无人在改 `main/connectors/**`、`main/reviewer/**`、`main/settings/**`（执行器当前在制的是 `session-persistence` 那 7 个文件，不重叠）。
 2. **执行器 P0-10(c) 落定后评审**（照 §六十四·五·2 的口径）；它下一轮 17:35 起。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮峰值仍 ~66 MB 空闲）。
+
+## 六十六、本轮追加（会话，2026-10-13）—— `main/**` 的 dquote 桶（≈50 条）：逐类判定，真上屏只有 4 处
+
+### 一 判定结果（每条都有两侧证据：抛点/返回值 + 谁显示它）
+
+**A. 保留英文（agent 面向的 schema/prompt，共 ≈44 条）** —— 与仓库既有口径一致（连接器 `useWhen`
+保留英文以保 agent 匹配；工具 `.describe()` 是 agent 读的）：
+
+| 位置 | 条数 | 性质（证据） |
+| --- | --- | --- |
+| `main/connectors/descriptors/**`（18 文件） | 35 | 工具参数描述与示例值（`Homo sapiens`、`Mayo Clinic`、`Jennifer Doudna`、`Study not found`、示例查询串）⇒ agent 读的 schema |
+| `main/reviewer/{rubric,correction,host-sdk}.ts` | 6 | 评审 agent 的 rubric 正文与工具描述（`"Agent never opened the source" alone is not a finding.`）；**renderer 全仓 grep 无引用** |
+| `main/{references/screening-prompt,settings/memory-recall}.ts` | 2 | 送给模型的提示正文 |
+| `main/{notebook/mcp-server,settings/pdf-mcp-server}.ts` | 2 | 工具 `.describe()` 文本（pdf 的 `'Simplified Chinese'` 是参数示例） |
+| `main/remote-access/pairing-page.ts:185` | 1 | **假阳**：内联 `<style>` 里的字体栈 `Times New Roman` |
+
+**B. 必须键控（真上屏，4 处 / 6 条）**：
+
+| 位置 | 串 | 上屏证据 |
+| --- | --- | --- |
+| `main/storage/migration-service.ts`（Windows 路径过长） | `This location's path is too long for Windows. …` | 以 `kind:'invalid'` 的 `error` 字段返回，`StorageMigrationModal` 有「shows the error … when migration fails outright」用例 |
+| `main/notebook/runtime-selection-workflows.ts:300` | `That interpreter can't be used as a notebook runtime (not a runnable Python 3).`（另一支拼 `readiness.detail`） | `throw new Error(...)` 直达 renderer 错误面 |
+| `main/notebook/package-admission.ts`（refusal 文案） | `Installing packages into your own <lang> environment is not authorized. Turn on "Allow package install" …` | `refusal(...)` 结果被 Runtimes 面板显示（同面板用例钉着相邻措辞） |
+| `main/settings/claude-isolated-auth.ts`（3 条） | `Browser sign-in timed out. … use "Use setup token" instead.` / `Sign-in cancelled.` / `Browser sign-in did not return a token. …` | 作为登录结果的 `message` 返回，ProviderList 显示（其用例按 `Use setup token` 定位按钮，该标签**已在字典** `settings.useSetupToken`） |
+
+### 二 机制（下一步照此落地，不必新发明）
+
+仓库已有 `src/renderer/src/lib/remote-error-catalog.ts`（66 行，`REMOTE_ERROR_KEYS` + `localizeRemoteMessage`，
+未命中原样透传）+ 3 条单测。B 组四处的形状相同（main 组英文句 → 渲染端映射回键）⇒ 按同一模式扩一个
+**结果文案目录**（或把该文件扩成多族目录并在注释里写明新增族的来源），逐句建键 ×9，并在各自渲染汇点调用。
+注意 `package-admission` 那句含运行时语言（python/r）⇒ 建键时用占位符或按语言分键（现状 main 侧拼字符串，
+键控要点名这一处）。
+
+### 三 下一轮第一步（带 blocked-by）
+
+1. **B 组 4 处 → 目录 + 6–8 键 ×9**（首选）；`blocked-by` = 无人正在改 `main/storage/**`、`main/notebook/**`、
+   `main/settings/claude-isolated-auth.ts`、`lib/remote-error-catalog.ts`。**注意**：执行器当前在制
+   `src/main/ipc.ts` 与 `src/main/session-persistence/**`（与上列不重叠，但 `ipc.ts` 是它的在制品 ⇒ 我这一批不碰 `ipc.ts`）。
+2. 执行器 P0-10(c) 落定后评审（照 §六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB）。
