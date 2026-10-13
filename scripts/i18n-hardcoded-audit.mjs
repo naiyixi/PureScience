@@ -44,6 +44,19 @@ const patterns = [
     re: />\{[^}]+\} ([A-Za-z][A-Za-z0-9 ,.&/():'’_%+–-]{5,})</g
   },
   { name: 'dquote', re: /"([A-Z][a-z]+ [A-Za-z0-9 ,.&/():'’_%+–-]{6,})"/g },
+  // A single-quoted SENTENCE a renderer function hands back — copy that is about to be displayed, and
+  // which the double-quoted shapes above miss entirely (prettier keeps both quote styles in this tree).
+  // A first attempt with no `onlyIn` and no `return` requirement matched 1827 lines tree-wide; this one
+  // was measured at zero false positives on a fixture holding a dictionary key, an identifier, a path
+  // and a catalog entry beside one real sentence, and it reports the two Office messages that were
+  // found by hand before this shape existed.
+  {
+    name: 'single-quoted returned sentence',
+    re: /\breturn '([A-Z][A-Za-z0-9 ,.&/():;'"’_%+–-]{12,}[.!?…])'/g,
+    minWords: 3,
+    onlyIn: /^src\/renderer\//
+  },
+
   // A JSX text line of its own: prettier wraps long copy onto its own line, so neither `>text<` nor
   // `>text{` appears anywhere on it — the `>` sits on the line above (`<AlertDialog.Description>`).
   // Requiring sentence-final punctuation is what keeps this from reading statements as copy.
@@ -171,6 +184,11 @@ const skip = /(test|spec)\.(ts|tsx)$/
 // The nine dictionaries ARE the translations: every value in them matches these patterns, so without
 // this the backlog list leads with en.ts/fr.ts instead of the components that still bypass t().
 const isDictionary = (file) => /\/i18n\/(en|zh|zh-Hant|ja|ko|de|fr|es|ru)\.ts$/.test(file)
+// A message catalog is a map whose WHOLE PURPOSE is holding the English sentence beside the key
+// that localizes it (remote-error-catalog.ts and main-message-catalog.ts). Counting those lines as
+// untranslated copy made the dquote shape lead with the very file that fixes the problem: measured
+// 57 hits before this exclusion, of which the overwhelming majority were catalog entries.
+const isCatalog = (file) => /\/[a-z-]*catalog\.ts$/.test(file)
 const ignoreLine = (ln) =>
   /t\(|useLanguage|eslint-disable|aria-hidden|console\.|\.css|import |require\(|http|https|\/\/|language.*'|style=/.test(
     ln
@@ -191,7 +209,9 @@ for (const root of roots) {
       for (const e of readdirSync(target)) visit(join(target, e))
       return
     }
-    if (!EXT.has(extname(target)) || skip.test(target) || isDictionary(target)) return
+    if (!EXT.has(extname(target)) || skip.test(target) || isDictionary(target) || isCatalog(target)) {
+      return
+    }
     filesScanned += 1
     const source = readFileSync(target, 'utf8')
     const lines = source.split('\n')
@@ -205,6 +225,7 @@ for (const root of roots) {
     lines.forEach((ln, i) => {
       const ignored = ignoreLine(ln)
       for (const pat of patterns) {
+        if (pat.onlyIn && !pat.onlyIn.test(target)) continue
         // `runsWhenLineLooksLikeCode` marks the shapes whose hit IS the residual text of a line that
         // looks like code (the surviving fragment of a t() interpolation); the line filter below is
         // about the line, but those shapes are about what the line leaves over.
