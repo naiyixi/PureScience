@@ -3776,3 +3776,34 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    **先证明它在已知坏夹具上抓得住**再进仓（形状进门的纪律同 §六十六·五）。
 2. **执行器 P0-10(c) 落定后评审**（§六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
+
+## 六十八、本轮追加（会话，2026-10-13）—— 审计新增「单引号 returned 文案」形状（带钳制与证明）
+
+### 一 交付（本笔提交）
+
+`scripts/i18n-hardcoded-audit.mjs` 两处改进，均**先测后进**：
+
+1. **新形状 `single-quoted returned sentence`**：`return '<大写开头的句子>…[.!?…]'`，且限定在 `src/renderer/**`。
+   - 第一种写法（树级、无 `return` 要求）实测 **1827 命中** ⇒ 按仓库纪律「flood 说明形状要收紧」**不进门**；
+   - 收紧后**今日树 0 命中**（因为上一单元已把那两处真漏修掉）⇒ 于是用**仓内夹具**证明它抓得住：
+     夹具含 1 条真句（`return 'This Office file is damaged or unsupported. Download it to view.'`）+
+     4 个对照（字典键 / 标识符 `'INVALID_PACKAGE'` / 路径 / 目录条目）；
+     **进门前的仪器 0 命中**（看不见这处真漏）、**新形状 1 命中**（正是那句），4 个对照**全部未误报** ✓
+2. **排除消息目录文件**（`/[a-z-]*catalog.ts`）：它们**按设计**就是把英文句与键放在一起（`remote-error-catalog.ts`、
+   新建的 `main-message-catalog.ts`）⇒ 把它们算成「未翻译文案」会让 `dquote` 形状以「修问题的那个文件」领先。实测 `dquote 57 → 53`。
+
+### 二 读数与边界（不许读成「还有 53 个待办」）
+
+- 全量复扫：`dquote 53`（其中 ≈50 在 `src/main`：连接器 descriptors 工具 schema 35、评审 agent rubric/工具描述 6、
+  提示正文 2、工具 `.describe()` 2 —— **均已于 §六十六 具名判定为有意保留英文**）、
+  `jsx prose line 3`（同在 main：支持包文本文件 ×2 + agent 指令 ×1）、`jsx-text 1`（品牌名）、
+  `jsx-text before interpolation 3`（`Versions` 技术版本前缀）；新形状 **0**（今日树无此类真漏，咬合已由夹具证明）。
+- 夹具用完即删（`git status` 我的路径只剩该脚本本身）。
+
+### 三 下一轮第一步（带 blocked-by）
+
+1. **B 组已完成后的自然延续**：把「`main/**` 里 verdict 类句子」当作一族系统性检查一遍——
+   口径＝「这句会不会被渲染端逐字显示？」（`RuntimesPanel` 的注释、`ProvidersPanel` 的 `providerTestError` 是本轮找到的两个汇点形状），
+   找到新的汇点就照 `main-message-catalog.ts` 的模式加族；**不要**为了让形状数字好看去动 agent 面向的文本。
+2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
