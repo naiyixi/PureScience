@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+import type { NotebookRunRiskRuleId } from '../../shared/notebook'
+
 // Per-run risk review for notebook cells. Pure: it reads the source text and says what it found, with
 // no filesystem, no process and no clock — so the verdict is reproducible from the same cell text, and
 // the receipt below can be recomputed by anyone holding the published recipe.
@@ -9,7 +11,9 @@ import { createHash } from 'node:crypto'
 // Anything a rule cannot decide from the text alone (how large a file will actually become, whether a
 // path exists) is NOT guessed at here: those belong to the admission path, which has the real environment.
 
-export type RunRiskRuleId = 'fs-delete' | 'fs-overwrite' | 'shell-exec' | 'large-allocation'
+// The rule ids live in the shared contract (the persisted receipt and the approval card both name
+// them), so a second declaration here would be a place for the two to drift apart.
+export type RunRiskRuleId = NotebookRunRiskRuleId
 
 export type RunRiskHit = {
   ruleId: RunRiskRuleId
