@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto'
 
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
 import {
@@ -133,6 +133,49 @@ export class PdfService {
     const temp = `${target}.${crypto.randomUUID()}.tmp`
     await writeFile(temp, JSON.stringify(doc), { encoding: 'utf8', flag: 'wx' })
     await rename(temp, target)
+  }
+
+  /**
+   * The doc id for a file this service has already registered, else a fresh registration.
+   *
+   * A doc id is minted from `path + Date.now()`, so opening the same file twice yields two identities —
+   * and everything keyed by the id (a translation checkpoint, for one) then describes a document that
+   * no longer exists, or is silently lost. Callers that come back to the same file (a reader pressing
+   * "translate" again, a second open of the same attachment) must therefore go through here.
+   *
+   * Matching is on the caller's own path string plus the project: the same file registered under two
+   * projects is two registrations on purpose, because a document's readers are per project.
+   */
+  async ensureDoc(
+    path: string,
+    projectId = '',
+    sessionId?: string
+  ): Promise<{ docId: string; pageCount: number; reused: boolean }> {
+    const existing = await this.findDocByPath(path, projectId)
+    if (existing) {
+      return { docId: existing.docId, pageCount: existing.pageCount, reused: true }
+    }
+    const opened = await this.open(path, projectId, sessionId)
+    return { docId: opened.doc.docId, pageCount: opened.doc.pageCount, reused: false }
+  }
+
+  /** The newest registration for this path in this project, or null. Unreadable files are skipped, not thrown. */
+  private async findDocByPath(path: string, projectId: string): Promise<RegisteredPdf | null> {
+    let entries: string[]
+    try {
+      entries = await readdir(join(this.options.storageRoot, PDFS_DIR))
+    } catch {
+      return null
+    }
+    let newest: RegisteredPdf | null = null
+    for (const entry of entries) {
+      if (!entry.endsWith('.json')) continue
+      const doc = await this.readDoc(entry.slice(0, -'.json'.length))
+      if (!doc) continue
+      if (doc.sourcePath !== path || doc.projectId !== projectId) continue
+      if (!newest || doc.createdAt > newest.createdAt) newest = doc
+    }
+    return newest
   }
 
   // Opens (parses + persists) a PDF. Returns the outline-level summary; page text stays on disk.

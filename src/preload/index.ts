@@ -93,6 +93,7 @@ import type {
   PdfAnnotationRemoveRequest
 } from '../shared/pdf-annotation-surface'
 import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
+import type { PdfTranslationWindowRequest } from '../shared/pdf'
 import type { FigureReviewRequest } from '../shared/figure'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -983,8 +984,7 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('storage.discardMigratedCopy', parent),
     dismissLegacyMovePrompt: () =>
       electronRendererContracts.invoke('storage.dismissLegacyMovePrompt'),
-    sweepDuplicateContent: () =>
-      electronRendererContracts.invoke('storage.sweepDuplicateContent'),
+    sweepDuplicateContent: () => electronRendererContracts.invoke('storage.sweepDuplicateContent'),
     onProgress: (listener) => electronRendererContracts.subscribe('storage.onProgress', listener)
   },
   reviewer: {
@@ -1075,7 +1075,11 @@ const api: PureScienceAPI = {
     tables: (request: { projectId: string; docId: string; page?: number }) =>
       electronRendererContracts.invoke('pdf.tables', request),
     figures: (request: { projectId: string; docId: string; page?: number }) =>
-      electronRendererContracts.invoke('pdf.figures', request)
+      electronRendererContracts.invoke('pdf.figures', request),
+    // The window's translation entry: it names the reader's own file, and the main process resolves the
+    // registration (so pressing translate twice addresses the same document and its stored paragraphs).
+    translation: (request: PdfTranslationWindowRequest) =>
+      electronRendererContracts.invoke('pdf.translation', request)
   },
   // PDF annotations (文档标注层 A3/A4): the reader's own markup on one file version, and the two export
   // channels that take it out of the app. Renderer-only by design, like the session bookmarks above —

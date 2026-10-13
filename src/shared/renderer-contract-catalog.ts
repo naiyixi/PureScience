@@ -345,6 +345,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['outline', 'pdf:outline', LOCAL], ['scan', 'pdf:scan', LOCAL],
     ['tables', 'pdf:tables', LOCAL],
     ['figures', 'pdf:figures', LOCAL],
+    ['translation', 'pdf:translation', LOCAL],
   ]),
   group('pdfAnnotations', 'pdfAnnotations', [
     ['create', 'pdf-annotations:create', LOCAL], ['exportAnnotated', 'pdf-annotations:export-annotated', LOCAL],

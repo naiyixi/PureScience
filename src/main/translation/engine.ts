@@ -17,7 +17,7 @@ import {
   type TranslationUnit
 } from '../../shared/translation-units'
 import {
-  checkpointAppliesTo,
+  resolveCheckpointLoad,
   type TranslationCheckpointStore,
   type TranslationCheckpointUnreadableReason,
   type TranslationSourceIdentity
@@ -88,28 +88,20 @@ export const runTranslation = async ({
   onProgress
 }: TranslationRunOptions): Promise<TranslationRunResult> => {
   const checkpointPath = store.pathFor(source)
-  const loaded = await store.read(source)
+  const resolved = resolveCheckpointLoad(await store.read(source), source)
 
-  let records: Record<string, TranslationRecord> = {}
-  let restored: TranslationRestoredState
-
-  if (loaded.state === 'absent') {
-    restored = { state: 'none', reason: 'no-checkpoint' }
-  } else if (loaded.state === 'unreadable') {
-    restored = { state: 'none', reason: 'unreadable', detail: loaded.reason }
-  } else {
-    const applicable = checkpointAppliesTo(loaded.checkpoint, source)
-    if (!applicable.applies) {
-      restored = { state: 'none', reason: applicable.reason }
-    } else {
-      records = loaded.checkpoint.records
-      restored = {
-        state: 'partial',
-        records: Object.keys(records).length,
-        droppedRecordIds: loaded.droppedRecordIds
-      }
-    }
-  }
+  // A checkpoint that exists but does not apply (another document, or changed text) is a different
+  // fact from "nothing was stored yet" — the resolution keeps the four apart, and the report has to
+  // be able to say which one it was.
+  const records: Record<string, TranslationRecord> = resolved.state === 'ok' ? resolved.records : {}
+  const restored: TranslationRestoredState =
+    resolved.state === 'ok'
+      ? {
+          state: 'partial',
+          records: Object.keys(resolved.records).length,
+          droppedRecordIds: resolved.droppedRecordIds
+        }
+      : resolved
 
   const plan = planTranslation([...units], records, translationSourceHash)
   // Only records for the units in this plan are carried forward: a record whose paragraph is gone would

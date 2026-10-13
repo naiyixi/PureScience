@@ -163,7 +163,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   bookmark: ['list', 'remove', 'set', 'update-note'],
   'search-pins': ['list', 'remove', 'save'],
   annotation: ['list', 'remove', 'set'],
-  pdf: ['figures', 'open', 'outline', 'pages', 'scan', 'tables'],
+  pdf: ['figures', 'open', 'outline', 'pages', 'scan', 'tables', 'translation'],
   'pdf-annotations': [
     'create',
     'export-annotated',
@@ -310,7 +310,9 @@ describe('renderer surface inventory', () => {
     // method per contract, so the preload inventory and the catalog move together.
     // 473 with the read-only external crate inspection (roCrate.inspectExternal): same, one method.
     // 474 with verifying a recorded reading (artifacts.verifyReading): same, one method.
-    expect(electronPaths).toHaveLength(476)
+    // 477 with the window's PDF translation entry (pdf.translation): one method per contract, so the
+    // preload inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(477)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -322,7 +324,7 @@ describe('renderer surface inventory', () => {
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
     // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
     // channel.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(368)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(369)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -360,7 +362,9 @@ describe('renderer surface inventory', () => {
     expectSameSet(REMOTE_LOCAL_ONLY_RPC_CHANNELS, expectedRemoteLocalOnly)
     // 125 with verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so it
     // is refused on the remote surface and counted in the fail-closed set.
-    expect(expectedRemoteLocalOnly).toHaveLength(127)
+    // 128 with the window's PDF translation entry (pdf:translation, LOCAL): one more local-only channel
+    // in the fail-closed set.
+    expect(expectedRemoteLocalOnly).toHaveLength(128)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

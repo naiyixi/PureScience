@@ -215,5 +215,36 @@ export const translationSourceContentHash = (pages: readonly string[]): string =
     .update(pages.map((page) => `${page.length}\u0000${page}`).join('\u0001'), 'utf8')
     .digest('hex')
 
+/**
+ * What the checkpoint on disk means for a source, decided in one place.
+ *
+ * Both the engine's run and the window's read-only view have to answer "is there anything here I may
+ * use?" — and they must answer it the *same* way, or the window would show a translation the run
+ * refuses to reuse (or the reverse). So both call this instead of each mapping a load themselves.
+ *
+ * Three of the four answers are different facts that a single "no records" would fuse: nothing was
+ * ever stored, the stored checkpoint describes a different document, or the file exists and could not
+ * be read. Only the last one means the work may still be there.
+ */
+export type TranslationCheckpointResolution =
+  | { state: 'ok'; records: Record<string, TranslationRecord>; droppedRecordIds: string[] }
+  | {
+      state: 'none'
+      reason: 'no-checkpoint' | 'source-document-changed' | 'source-content-changed'
+    }
+  | { state: 'none'; reason: 'unreadable'; detail: TranslationCheckpointUnreadableReason }
+
+export const resolveCheckpointLoad = (
+  load: TranslationCheckpointLoad,
+  source: TranslationSourceIdentity
+): TranslationCheckpointResolution => {
+  if (load.state === 'absent') return { state: 'none', reason: 'no-checkpoint' }
+  if (load.state === 'unreadable')
+    return { state: 'none', reason: 'unreadable', detail: load.reason }
+  const applicable = checkpointAppliesTo(load.checkpoint, source)
+  if (!applicable.applies) return { state: 'none', reason: applicable.reason }
+  return { state: 'ok', records: load.checkpoint.records, droppedRecordIds: load.droppedRecordIds }
+}
+
 /** Convenience for callers that hold units rather than pages (used by the service layer). */
 export const translationRecordKey = (unit: TranslationUnit): string => unit.id

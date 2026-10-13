@@ -22,9 +22,11 @@ import type {
 import {
   segmentPageIntoTranslationUnits,
   TRANSLATION_UNIT_MAX_CHARS,
+  type TranslationRecord,
   type TranslationUnit
 } from '../../shared/translation-units'
 import {
+  resolveCheckpointLoad,
   TranslationCheckpointStore,
   translationSourceContentHash,
   type TranslationSourceIdentity
@@ -33,11 +35,21 @@ import type { TranslationRestoredState } from './engine'
 import {
   createTranslationRunner,
   type TranslationRunnerRefusal,
+  type TranslationRunReport,
   type TranslationTargetLookup
 } from './run-translation'
 
 export type PdfTranslationOutcome =
-  | { ok: true; result: PdfTranslateResult }
+  | {
+      ok: true
+      result: PdfTranslateResult
+      /**
+       * The runner's own report for this run — the model it actually asked, and the words it counted in.
+       * Carried beside `result` because `result` is the agent-facing paragraph list, which does not name
+       * the model; a window that has to say which model ran reads it from here.
+       */
+      report: TranslationRunReport
+    }
   | { ok: false; reason: TranslationRunnerRefusal; detail: string }
 
 export type DocumentTranslationInput = {
@@ -73,6 +85,9 @@ const mapRestored = (restored: TranslationRestoredState): PdfTranslationRestored
         ...('detail' in restored ? { detail: restored.detail } : {})
       }
 
+/** The wire shape of a restored state, shared by the run path and the read-only one. */
+export const toPdfTranslationRestored = mapRestored
+
 const paragraphOf = (
   unit: TranslationUnit,
   record: { status: 'translated' | 'failed'; text?: string; reason?: string } | undefined
@@ -99,6 +114,67 @@ const paragraphOf = (
   }
 }
 
+/** Pages in page order: both halves of this seam work on the same ordering, so it is decided once. */
+const orderedPages = (
+  pages: readonly { page: number; text: string }[]
+): { page: number; text: string }[] => [...pages].sort((left, right) => left.page - right.page)
+
+/**
+ * The identity a document's records are keyed by — one recipe, so a run and a read address the same
+ * file. The content hash is what catches a different document reusing an old id.
+ */
+const sourceIdentityOf = (
+  docId: string,
+  ordered: readonly { page: number; text: string }[]
+): TranslationSourceIdentity => ({
+  kind: 'pdf',
+  id: docId,
+  contentHash: translationSourceContentHash(ordered.map((page) => page.text))
+})
+
+/**
+ * The records already stored for this document, without running anything — what the window shows when
+ * a document is opened, and what a run is measured against. It shares the identity recipe and the
+ * load resolution with the run, so a document the agent translated shows up in the window and the
+ * other way round, and "the file could not be read" cannot read as "nothing was translated yet".
+ */
+export type DocumentTranslationRead = {
+  /** The source fingerprint these records are keyed by — the same recipe the run stores under. */
+  contentHash: string
+  records: Readonly<Record<string, TranslationRecord>>
+  /** What was on disk: `partial` with a record count, or `none` with a named reason. */
+  restored: PdfTranslationRestored
+}
+
+export const readDocumentTranslation = async ({
+  docId,
+  documentPages,
+  storageRoot,
+  now
+}: {
+  docId: string
+  documentPages: readonly { page: number; text: string }[]
+  storageRoot: string
+  now?: () => number
+}): Promise<DocumentTranslationRead> => {
+  const ordered = orderedPages(documentPages)
+  const source = sourceIdentityOf(docId, ordered)
+  const store = new TranslationCheckpointStore({ root: storageRoot, ...(now ? { now } : {}) })
+  const resolved = resolveCheckpointLoad(await store.read(source), source)
+  if (resolved.state !== 'ok') {
+    return {
+      contentHash: source.contentHash,
+      records: {},
+      restored: toPdfTranslationRestored(resolved)
+    }
+  }
+  return {
+    contentHash: source.contentHash,
+    records: resolved.records,
+    restored: { state: 'partial', records: Object.keys(resolved.records).length }
+  }
+}
+
 export const runDocumentTranslation = async ({
   docId,
   documentPages,
@@ -111,15 +187,11 @@ export const runDocumentTranslation = async ({
   maxChars = TRANSLATION_UNIT_MAX_CHARS,
   onProgress
 }: DocumentTranslationInput): Promise<PdfTranslationOutcome> => {
-  const ordered = [...documentPages].sort((left, right) => left.page - right.page)
+  const ordered = orderedPages(documentPages)
   const units = ordered.flatMap((page) =>
     segmentPageIntoTranslationUnits(page.page, page.text, { maxChars })
   )
-  const source: TranslationSourceIdentity = {
-    kind: 'pdf',
-    id: docId,
-    contentHash: translationSourceContentHash(ordered.map((page) => page.text))
-  }
+  const source = sourceIdentityOf(docId, ordered)
 
   const runner = createTranslationRunner({
     storageRoot: () => storageRoot,
@@ -148,6 +220,7 @@ export const runDocumentTranslation = async ({
 
   return {
     ok: true,
+    report: reply.report,
     result: {
       docId,
       targetLanguage: targetLanguage ?? 'Simplified Chinese',

@@ -52,7 +52,9 @@ import type {
   PdfOutlineResult,
   PdfScanResult,
   PdfFiguresResult,
-  PdfTablesResult
+  PdfTablesResult,
+  PdfTranslationWindowRequest,
+  PdfTranslationWindowResult
 } from '../shared/pdf'
 import type { PdfCommandOwner } from './settings/pdf-ipc'
 import type { PdfAnnotationCommandOwner } from './references/pdf-annotation-ipc'
@@ -454,7 +456,14 @@ const pdfCommands = Object.freeze({
     'pdf:figures',
     readonly [request: { projectId: string; docId: string; page?: number }],
     PdfFiguresResult
-  >('pdf:figures')
+  >('pdf:figures'),
+  // The window's translation entry: it addresses the *file* (the reader's own path) and the main process
+  // resolves the registration, so a second press addresses the same document instead of a new one.
+  translation: defineApplicationCommand<
+    'pdf:translation',
+    readonly [request: PdfTranslationWindowRequest],
+    PdfTranslationWindowResult
+  >('pdf:translation')
 })
 
 // Declared in the same order the contract catalogue lists them, which for this group is the channel
@@ -827,6 +836,10 @@ const registerHostApplicationCommands = (
       'pdf:tables': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:tables', () =>
           dependencies.pdf.tables(args[0].projectId, args[0].docId, args[0].page)
+        ),
+      'pdf:translation': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:translation', () =>
+          dependencies.pdf.translation(args[0].projectId, args[0])
         )
     })
     scope.registerGroup(hostApplicationCommandGroups[12], {

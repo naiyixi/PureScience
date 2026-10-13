@@ -10,7 +10,9 @@ import type {
   PdfOutlineResult,
   PdfPagesResult,
   PdfScanResult,
-  PdfTablesResult
+  PdfTablesResult,
+  PdfTranslationWindowRequest,
+  PdfTranslationWindowResult
 } from '../../shared/pdf'
 
 export const PDF_IPC = {
@@ -19,8 +21,28 @@ export const PDF_IPC = {
   OUTLINE: 'pdf:outline',
   SCAN: 'pdf:scan',
   TABLES: 'pdf:tables',
-  FIGURES: 'pdf:figures'
+  FIGURES: 'pdf:figures',
+  TRANSLATION: 'pdf:translation'
 } as const
+
+/**
+ * The window's translation entry. Its dependencies are not all the PDF service's (a model endpoint and a
+ * checkpoint root are the composition site's), so the whole call is supplied there rather than composed out
+ * of service methods here.
+ */
+export type PdfTranslationHandler = (
+  projectId: string,
+  request: PdfTranslationWindowRequest
+) => Promise<PdfTranslationWindowResult>
+
+export type PdfCommandOwnerOptions = {
+  /**
+   * Absent ⇒ the channel refuses by name. That is deliberate: a window command that silently answers
+   * "nothing was translated" when nothing is wired would read as an empty document rather than as a
+   * surface that was never connected.
+   */
+  translation?: PdfTranslationHandler
+}
 
 export type PdfCommandOwner = {
   open: (projectId: string, path: string, sessionId?: string) => Promise<PdfOpenResult>
@@ -29,15 +51,27 @@ export type PdfCommandOwner = {
   scan: (projectId: string, docId: string, query: string) => Promise<PdfScanResult>
   tables: (projectId: string, docId: string, page?: number) => Promise<PdfTablesResult>
   figures: (projectId: string, docId: string, page?: number) => Promise<PdfFiguresResult>
+  translation: (
+    projectId: string,
+    request: PdfTranslationWindowRequest
+  ) => Promise<PdfTranslationWindowResult>
 }
 
-export const createPdfCommandOwner = (service: PdfService): PdfCommandOwner => ({
+export const createPdfCommandOwner = (
+  service: PdfService,
+  options: PdfCommandOwnerOptions = {}
+): PdfCommandOwner => ({
   open: (projectId, path, sessionId) => service.open(path, projectId, sessionId),
   pages: (_projectId, docId, start, end) => service.pages(docId, start, end),
   outline: (_projectId, docId) => service.outline(docId),
   scan: (_projectId, docId, query) => service.scan(docId, query),
   tables: (_projectId, docId, page) => service.tables(docId, page),
-  figures: (_projectId, docId, page) => service.figures(docId, page)
+  figures: (_projectId, docId, page) => service.figures(docId, page),
+  translation: (projectId, request) => {
+    const handler = options.translation
+    if (!handler) throw new Error('pdf:translation is not configured.')
+    return handler(projectId, request)
+  }
 })
 
 export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner => {
@@ -69,6 +103,9 @@ export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner 
     (_event, request: { projectId: string; docId: string; page?: number }) =>
       owner.figures(request.projectId, request.docId, request.page)
   )
+  ipcMainHandle(PDF_IPC.TRANSLATION, (_event, request: PdfTranslationWindowRequest) =>
+    owner.translation(request.projectId, request)
+  )
   return owner
 }
 
@@ -78,5 +115,7 @@ export type {
   PdfOutlineResult,
   PdfPagesResult,
   PdfScanResult,
-  PdfTablesResult
+  PdfTablesResult,
+  PdfTranslationWindowRequest,
+  PdfTranslationWindowResult
 }

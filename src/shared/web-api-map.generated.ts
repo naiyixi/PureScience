@@ -118,6 +118,7 @@ export const WEB_INVOKE_CHANNELS = {
   'pdf.pages': 'pdf:pages',
   'pdf.scan': 'pdf:scan',
   'pdf.tables': 'pdf:tables',
+  'pdf.translation': 'pdf:translation',
   'pdfAnnotations.create': 'pdf-annotations:create',
   'pdfAnnotations.exportAnnotated': 'pdf-annotations:export-annotated',
   'pdfAnnotations.exportNotes': 'pdf-annotations:export-notes',

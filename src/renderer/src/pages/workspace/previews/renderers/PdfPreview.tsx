@@ -1,5 +1,6 @@
 import {
   Highlighter,
+  Languages,
   List,
   Maximize2,
   SquareDashed,
@@ -26,6 +27,7 @@ import type { PdfAnnotationExportChannel } from '../../../../../../shared/pdf-an
 import { resolveBookmarkVersionIdentity } from '../../bookmark-version-identity'
 
 import { PdfAnnotationMarks } from './PdfAnnotationMarks'
+import { PdfTranslationPanel } from './PdfTranslationPanel'
 import {
   PdfAnnotationPanel,
   type PdfAnnotationExportView,
@@ -510,6 +512,12 @@ export const PdfPreviewContent = ({
   const [annotationReload, setAnnotationReload] = useState(0)
   const [annotationStatus, setAnnotationStatus] = useState<string | undefined>(undefined)
   const [panelOpen, setPanelOpen] = useState(false)
+  // A1 第三片：窗口侧的翻译入口。它要的是**读者正在看的那个文件**与项目（通道按文件寻址，注册由主进程
+  // 负责），所以能翻的条件比标注松：不需要会话、不需要产物版本 —— 只要在项目里看着一个 PDF。
+  const canTranslate = Boolean(
+    projectId && path && typeof window.api?.pdf?.translation === 'function'
+  )
+  const [translationOpen, setTranslationOpen] = useState(false)
   const [importer, setImporter] = useState<PdfAnnotationImportView>({ kind: 'idle' })
   const [exporter, setExporter] = useState<PdfAnnotationExportView>({ kind: 'idle' })
   const [pendingNote, setPendingNote] = useState<
@@ -987,7 +995,7 @@ export const PdfPreviewContent = ({
           </div>
         ) : null}
       </div>
-      {document && (canRegionBookmark || canAnnotate) ? (
+      {document && (canRegionBookmark || canAnnotate || canTranslate) ? (
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-md border border-border-300/50 bg-bg-000/90 p-1 shadow-sm backdrop-blur">
           <TooltipProvider delayDuration={300}>
             {canAnnotate
@@ -1056,6 +1064,24 @@ export const PdfPreviewContent = ({
                 <TooltipContent>{t('pdfAnnotation.panel.title')}</TooltipContent>
               </Tooltip>
             ) : null}
+            {canTranslate ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    data-slot="pdf-translation-toggle"
+                    aria-expanded={translationOpen}
+                    aria-label={t('pdfTranslation.panel.title')}
+                    onClick={() => setTranslationOpen((open) => !open)}
+                  >
+                    <Languages aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('pdfTranslation.panel.title')}</TooltipContent>
+              </Tooltip>
+            ) : null}
           </TooltipProvider>
         </div>
       ) : null}
@@ -1099,6 +1125,17 @@ export const PdfPreviewContent = ({
           onExportAnnotated={() => runExport('annotated-pdf')}
           onExportNotes={() => runExport('notes')}
           onClose={() => setPanelOpen(false)}
+        />
+      ) : null}
+      {document && canTranslate && translationOpen && projectId ? (
+        <PdfTranslationPanel
+          // 换文件/换版本就重挂载：面板的复位（loading、导出提示）交给挂载，而不是在一个 effect 里
+          // 再 set 一次状态。
+          key={requestKey}
+          path={path}
+          projectId={projectId}
+          {...(sessionId ? { sessionId } : {})}
+          onClose={() => setTranslationOpen(false)}
         />
       ) : null}
       {/* The pane's text overlays — the hint, this status line and the region status below it — are words,

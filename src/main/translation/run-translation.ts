@@ -28,6 +28,22 @@ export type TranslationTargetLookup =
   /** 拿不出来时的**具名**原因（由装配处给出，例如「没有配置可用的模型供应商」）。 */
   | { ok: false; detail: string }
 
+/**
+ * The wording for "there is no endpoint to translate with" — one constant, because the window's surface and
+ * the agent's tool must say the same thing about the same missing setting (two copies drift, and then two
+ * readings of the same installation disagree).
+ */
+export const TRANSLATION_TARGET_UNCONFIGURED_DETAIL =
+  'No provider and model are configured for translation. Select a provider with an OpenAI-compatible endpoint in Settings, then translate again.'
+
+/** Turns the settings service's answer into the lookup this runner takes: an endpoint, or why there is none. */
+export const translationTargetLookup = (
+  resolved: TranslationProviderTarget | undefined
+): TranslationTargetLookup =>
+  resolved
+    ? { ok: true, target: resolved }
+    : { ok: false, detail: TRANSLATION_TARGET_UNCONFIGURED_DETAIL }
+
 export type TranslationRunnerDeps = {
   /** 存储根（装配处解析一次，读侧共用同一个）。 */
   storageRoot: () => string

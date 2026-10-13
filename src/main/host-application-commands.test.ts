@@ -21,6 +21,8 @@ import type {
   PdfAnnotationReattachResult,
   PdfAnnotationRemoveResult
 } from '../shared/pdf-annotation-surface'
+import type { PdfTranslationWindowResult } from '../shared/pdf'
+import { buildTranslationViewModel } from '../shared/translation-view-model'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import { RENDERER_CONTRACT_GROUPS } from '../shared/renderer-contract-catalog'
@@ -322,6 +324,20 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       figures: [],
       skippedSmall: 0,
       withoutCaption: 0
+    })),
+    // The window's translation entry. The view is built by the real builder rather than written out:
+    // a hand-written view fixture drifts from the shape the panel renders, and then the fixture — not the
+    // product — decides what "a view" looks like. An empty document with nothing stored is the honest
+    // default for a fixture that never wired a provider.
+    translation: vi.fn(async (): Promise<PdfTranslationWindowResult> => ({
+      ran: false,
+      restored: { state: 'none', reason: 'no-checkpoint' },
+      view: buildTranslationViewModel({
+        sourceId: 'doc-1',
+        sourceContentHash: 'nothing-stored-yet',
+        pages: [],
+        records: {}
+      })
     }))
   },
   pdfAnnotations: {
@@ -483,7 +499,8 @@ describe('Host application commands', () => {
 
     // 85 with the seven PDF annotation channels (the store, the import, and the two export channels) and
     // the on-demand duplicate reclaim.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(85)
+    // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(86)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -501,7 +518,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(85)
+    expect(router.dispatcher.commandNames()).toHaveLength(86)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -704,6 +721,10 @@ describe('Host application commands', () => {
       invocation([{ projectId: 'project-1', docId: 'doc-1', page: 2 }])
     )
     await router.dispatcher.invoke(
+      hostApplicationCommands.pdf.translation,
+      invocation([{ projectId: 'project-1', path: pdfPath, run: true }])
+    )
+    await router.dispatcher.invoke(
       hostApplicationCommands.pdfAnnotations.create,
       invocation([{ ...pdfAnnotationAnchor, kind: 'highlight', selector: { version: 1 } }])
     )
@@ -856,6 +877,13 @@ describe('Host application commands', () => {
     expect(dependencies.pdf.scan).toHaveBeenCalledWith('project-1', 'doc-1', 'attention')
     expect(dependencies.pdf.tables).toHaveBeenCalledWith('project-1', 'doc-1', 2)
     expect(dependencies.pdf.figures).toHaveBeenCalledWith('project-1', 'doc-1', 2)
+    // The window's translation entry is addressed by the reader's own file, and the project comes from the
+    // caller: main resolves the registration itself.
+    expect(dependencies.pdf.translation).toHaveBeenCalledWith('project-1', {
+      projectId: 'project-1',
+      path: pdfPath,
+      run: true
+    })
     expect(dependencies.pdfAnnotations.create).toHaveBeenCalledWith({
       ...pdfAnnotationAnchor,
       kind: 'highlight',
@@ -971,11 +999,11 @@ describe('Host application commands', () => {
         .filter((channel): channel is string => channel !== null)
     )
 
-    // 57 with the PDF annotation channels (including the two export channels), 49 with the
+    // 58 with the window's PDF translation entry, 57 with the PDF annotation channels (including the two export channels), 49 with the
     // saved-search-filter-set channels: all of them are local-only like the bookmarks beside them.
     // The on-demand duplicate reclaim joins them: main resolves the root it walks, so a paired
     // browser never gets to point the sweep at a directory of its choosing.
-    expect(localOnlyChannels).toHaveLength(57)
+    expect(localOnlyChannels).toHaveLength(58)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

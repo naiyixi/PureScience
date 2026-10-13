@@ -194,8 +194,10 @@ import {
 import { SearchPinRepository } from './settings/search-pin-repository'
 import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
+import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
 import { runDocumentTranslation } from './translation/document-translation'
+import { translationTargetLookup } from './translation/run-translation'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
 import { reviewFigure } from './settings/figure-review-service'
 import {
@@ -1861,6 +1863,22 @@ const createApplicationModules = async (
         .join('\n')
     }
   })
+  // 窗口与本地 Web 面共用的翻译入口。接在这一层是因为三样依赖都在这里：注册（pdfService）、用户**正在跑**
+  // 的模型端点（settingsService）、检查点根（数据根）。逐层传递「根」是本仓已记过的坑（上层解构多少键就丢
+  // 多少键，静默失效）⇒ 就地接线，不塞进选项对象。
+  const windowTranslation = createWindowTranslation({
+    ensureDoc: (path, projectId, sessionId) => pdfService.ensureDoc(path, projectId, sessionId),
+    readPages: async (docId, pageCount) => {
+      // 0 页是一份合法答案（没有文本层的扫描件也走这里），而不是一次越界读取。
+      if (pageCount === 0) return []
+      const read = await pdfService.pages(docId, 1, pageCount)
+      return read.pages.map((page) => ({ page: page.page, text: page.text }))
+    },
+    storageRoot: resolveDataRoot,
+    // 每次都重新解析（不是捕获一次）：用户在设置里改完，下一次翻译就该用新的端点。
+    resolveTarget: async () =>
+      translationTargetLookup(await settingsService.resolveAuxiliaryChatTarget())
+  })
   const hostQueryService = new HostQueryService({
     getClient: () => getProjectDbClient(resolveStorageRoot())
   })
@@ -1943,16 +1961,8 @@ const createApplicationModules = async (
             storageRoot: resolveDataRoot(),
             targetLanguage,
             // 每次都重新解析（不是捕获一次）：用户在设置里改完，下一次翻译就该用新的端点。
-            target: async () => {
-              const target = await settingsService.resolveAuxiliaryChatTarget()
-              return target
-                ? { ok: true, target }
-                : {
-                    ok: false,
-                    detail:
-                      'No provider and model are configured for translation. Select a provider with an OpenAI-compatible endpoint in Settings, then translate again.'
-                  }
-            }
+            target: async () =>
+              translationTargetLookup(await settingsService.resolveAuxiliaryChatTarget())
           })
           // 拒绝是拒绝：拿不出端点、或者这一份里一个段落都没有时，必须把**具名原因**报出去，
           // 而不是回一份「0 段已翻译」的结果（那会让「没有文本层」看起来像「已经翻好了」）。
@@ -2061,9 +2071,8 @@ const createApplicationModules = async (
   // has to be one this process recorded (looked up by digest in the session's own journal), so the
   // channel cannot be used to fetch an arbitrary URL.
   declareElectronAdapter('connector-reading-verification', () => {
-    ipcMainHandle(
-      'artifacts:verify-reading',
-      (_event, request: VerifyReadingRequest) => artifactHandlers.verifyReading(request)
+    ipcMainHandle('artifacts:verify-reading', (_event, request: VerifyReadingRequest) =>
+      artifactHandlers.verifyReading(request)
     )
   })
 
@@ -3235,7 +3244,7 @@ const createApplicationModules = async (
   })
   declareElectronAdapter('pdf', () => {
     registerClipboardIpcHandlers()
-    registerPdfIpcHandlers(createPdfCommandOwner(pdfService))
+    registerPdfIpcHandlers(createPdfCommandOwner(pdfService, { translation: windowTranslation }))
   })
   declareElectronAdapter('pdfAnnotations', () => {
     registerPdfAnnotationIpcHandlers(
@@ -3349,7 +3358,7 @@ const createApplicationModules = async (
       annotation: createAnnotationCommandOwner(annotationRepository),
       bookmark: createBookmarkCommandOwner(bookmarkRepository),
       searchPins: createSearchPinCommandOwner(searchPinRepository),
-      pdf: createPdfCommandOwner(pdfService),
+      pdf: createPdfCommandOwner(pdfService, { translation: windowTranslation }),
       pdfAnnotations: createPdfAnnotationCommandOwner(
         pdfAnnotationService,
         pdfAnnotationExportService

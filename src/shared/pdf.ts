@@ -10,6 +10,7 @@
 
 import type { PdfTableRejection } from './pdf-table-extraction'
 import type { AxisAlignedRotation } from './pdf-page-rotation'
+import type { TranslationViewModel } from './translation-view-model'
 
 export const PDF_MCP_SERVER_NAME = 'purescience-pdf'
 
@@ -243,6 +244,50 @@ export type PdfTranslateResult = {
   emptyPages: readonly number[]
   /** Where the per-paragraph records live, so a reading can name the file it came from. */
   checkpointPath: string
+}
+
+// A window's translation request names the **file**, not a doc id: the reader is looking at a file, and the
+// main process is the side that owns the registration (see `PdfService.ensureDoc` — a doc id is minted from
+// `path + time`, so a caller that re-opened the file would silently address a different document).
+export type PdfTranslationWindowRequest = {
+  projectId: string
+  /** The reader's own path (absolute, or relative to the data root) — the same string the preview holds. */
+  path: string
+  sessionId?: string
+  targetLanguage?: string
+  /**
+   * false (or absent) ⇒ only rebuild the reading view from the records already stored: no model call, no
+   * write. true ⇒ run the engine first, then answer from what it stored.
+   */
+  run?: boolean
+}
+
+/** What a run did, in the run's own words. Present only when a run actually happened. */
+export type PdfTranslationWindowRun = {
+  /** The model actually asked. A run without an endpoint is a refusal, so this is always a real model. */
+  model: string
+  translated: number
+  reused: number
+  failed: number
+  skipped: number
+  stopped: PdfTranslateResult['stopped']
+  checkpointPath: string
+}
+
+export type PdfTranslationWindowResult = {
+  /** false ⇒ nothing ran: the view was rebuilt from what was already stored. */
+  ran: boolean
+  run?: PdfTranslationWindowRun
+  /** What was on disk before this call. "Read failed" keeps its own name (`unreadable`). */
+  restored: PdfTranslationRestored
+  /**
+   * A named reason no run started. `not-configured` (no model endpoint) and `empty-source` (no paragraphs
+   * at all) are different facts — the first is fixable in Settings, the second is a property of the file;
+   * `invalid-request` is the runner's own refusal for a request it cannot act on.
+   */
+  refusal?: { reason: 'not-configured' | 'empty-source' | 'invalid-request'; detail: string }
+  /** The reading view the panel renders: rows, per-page statuses, terminology deviations, the contrast document. */
+  view: TranslationViewModel
 }
 
 // Rendered into the session prompt when the PDF MCP is available.

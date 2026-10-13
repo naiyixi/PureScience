@@ -395,7 +395,9 @@ import type {
   PdfOutlineResult,
   PdfPagesResult,
   PdfScanResult,
-  PdfTablesResult
+  PdfTablesResult,
+  PdfTranslationWindowRequest,
+  PdfTranslationWindowResult
 } from '../shared/pdf'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
@@ -1385,6 +1387,12 @@ export interface PureScienceAPI {
     outline(request: { projectId: string; docId: string }): Promise<PdfOutlineResult>
     // Scans pages for a query, ranked by relevance.
     scan(request: { projectId: string; docId: string; query: string }): Promise<PdfScanResult>
+    /**
+     * The reading surface's translation entry. `run: false` only rebuilds the view from the records already
+     * stored; `run: true` translates first and then answers from what the run stored. The document is
+     * addressed by the reader's own path — the main process owns the registration.
+     */
+    translation(request: PdfTranslationWindowRequest): Promise<PdfTranslationWindowResult>
   }
   // PDF annotations (文档标注层 A3/A4): list / create / remove / re-anchor, the import channel, and the
   // two export channels — an annotated copy of the version's bytes, and a plain-text notes list. Every
