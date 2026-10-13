@@ -364,6 +364,22 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 7. **认证车道读数**（两条命令都要跑，缺一条会误判"未取"）：`node scripts/ci/harvest-certification-readings.mjs --sha <完整 40 位>` 与 `--in-repo <tag>`。
 8. **恢复并发**：Release 页核对完再 `hermes cron resume 2be4405e5dc6`。
 
+**v2.0.0 发版记录（2026-10-13，八步逐项读数）**
+
+1. **冻结并发** ✅：`hermes cron pause 2be4405e5dc6`；执行器 `Execution: completed`，无在跑轮次。
+2. **四文件** ✅：`e3fc8b0c`（`CHANGELOG.md` v2.0.0 段 + `package.json` 只抬版本位 1.102.0→2.0.0 + 两份 README 共享块逐字节一致，门禁数字先占位）→ `2e97de9d` 就地替换为真读数。
+3. **门禁** ✅（隔离工作树、对 `e3fc8b0c`）：`eslint --no-cache .` **0 error／120 warning**；双 typecheck **各 0 条 `error TS`**；全量 vitest **1276 文件（1260 passed｜16 skipped）、16436 条（16229 passed｜207 skipped）**，289.3 s exit 0；`bash scripts/pre-push-checks.sh` 五查全过。
+4. **推 main → 附注 tag** ✅：`78722582..2e97de9d` → `git merge-base --is-ancestor` 为真（`ANCESTOR_OK`）→ tag `v2.0.0` = `2e97de9da1a868b1091f06c274f3f0afed33c992` → 推 tag（触发 `release.yml`）。
+5. **发布核验** ✅：`draft=false`／`isPrerelease=false`／**21 件资产**（四平台 dmg/zip/blockmap/AppImage/deb/exe + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest.yml`/`latest-mac.yml`/`latest-linux.yml` + `arm64-mac.yml`/`x64-mac.yml`）；**`sourceSha` 与 `<tag>^{commit}` 逐字符 MATCH**；`gh release list` ⇒ `PureScience v2.0.0` = **Latest**（Nightly = Pre-release）。
+6. **正文** ✅：`node scripts/release-notes.mjs v2.0.0 --keep-generated --apply` 写入 **34,531 字符**；成熟度块 ✅ 段**前插本版头条 + 上一条改写为 `The previous version asked what examination was done`**（两份 README 同段**逐字节一致**，`52918d96` 推上 main）；第 13 行**未签名披露**在位（`macOS signing status: unsigned` + 手动安装指引）。
+7. **认证车道读数** ✅（两条都跑）：`harvest-certification-readings.mjs --sha 2e97de9da1a868b1091f06c274f3f0afed33c992` ⇒ `specs=102 readings=201 tags=49` **EXIT=0**；`--in-repo v2.0.0` ⇒ **EXIT=0**。线上认证文件 `schemaVersion=1`、`sourceSha` 同上、`platforms=4`。
+8. **恢复并发** ✅：`hermes cron resume 2be4405e5dc6` ⇒ `[active]`（Next run 14:40）。
+
+**本轮一次基础设施红（第一轮 `release.yml` run `38349881655`）**：`build / Build macos-x64` 第 10 步 `Build & package` 失败 —— 注解逐字：*the hosted runner lost communication with the server*（托管 runner 失联，环境问题；这解释了它跑了 50+ 分钟、日志 blob `BlobNotFound`、`publish` 因依赖失败被 skipped）。其余全绿：`Release preflight`、`Verify（lint + typecheck + test + package）`、`macos-arm64`（32 分钟，含 `Run P0 Electron certification` 与 `Enforce the macOS Developer ID signature gate`）、`linux-x64`、`windows-x64`。**处置**：`gh release view v2.0.0` ⇒ `release not found`（**无 Release 页**）⇒ 按队列档 §一.5「**不许重跑单个 job**（同名重复产物会让 `publish` 聚合报 `missing`）」走「**删 tag 重建**」：删本地/远端 tag → 同提交 `2e97de9d` 重建附注 tag → 核祖先 → 推 tag ⇒ 新一轮 run `38355968480` **全绿**。
+
+**本版签名口径（不得越线）**：两条 `notarize-mac` 作业因无 Apple 凭据**具名跳过**；认证文件里两个 mac 平台如实写 `macSignature=unsigned`、`macSignatureEvidence.credentialsPresent=False`；**本版不声称已签名或已公证**，Release 正文带未签名披露与手动安装指引。
+
+
 **评审：执行器 `21e2ec18`（pdf 缝）——判定为诚实且与我这批判据层一致（2026-10-13），逐条**：
 ① 工作单元＝**整份文档**（它的证据档写明理由：按页范围调用会让续传恒失效、并会删掉范围外那些页的记录）；
 ② 检查点与 PDF **同一个数据根**（`resolveDataRoot()`，一个写入者，检查点住在它所描述的那份文档旁边）；
