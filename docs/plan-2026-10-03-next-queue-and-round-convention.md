@@ -3942,3 +3942,34 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 
 **接受**。这一笔把 §六十二·五·1 那条「下一轮第一步」收口，且在三点上比我的口径更严：`failed` 独立成态、顺序理由说到回滚窗口、界面句子唯一来源。
 下一轮第一步（更新）：**执行器可继续取真机读数**（`blocked-by` = 内存闸门），或接 §七十一·四 的「谁拼的」判据扫其余结果族。
+
+## 七十三、本轮追加（会话，2026-10-13）—— 连接器族（我们自己拼的 6 句）键控 + 汇点包线
+
+### 一 交付（本笔）
+
+`ConnectorsPanel` 的 5 个 catch 汇点此前是**裸** `e.message`（未包目录）⇒ 本笔两件：
+
+1. **6 键 ×9 语**（`main/settings/connector-settings.ts` 的 9 处抛错、6 条唯一句）：
+   ID 形状（只允许小写字母/数字/连字符）、OAuth 仅限远程自定义连接器、OAuth 与静态请求头互斥、
+   自定义连接器配置无效、`mcpServers` 需为 JSON 对象（两条：外层与 `mcpServers` 键）。
+2. **目录 +6 精确条目；`ConnectorsPanel` 5 处汇点包进 `localizeMainMessage`**（4 处 `setAuthError`/`setError` + 1 处清单读入的 error 字段）。
+
+### 二 读数
+
+- `eslint --no-cache`（目录 + 面板）**0 问题**；web typecheck 本片 **0 条**；
+- `vitest`：目录用例（**新增 6 条自动纳入**「每个键都在字典里」的收尾门）+ i18n 全套 + `ConnectorsPanel.render` ⇒ **6 文件 / 72 条全绿**。
+
+### 三 判据的第二次应用（「这句是谁拼的？」）
+
+- `connector-settings.ts` 的 9 处是我们的抛错 ⇒ **翻**（本笔）。
+- **pdf / 全局搜索两族**：在 `src/main/pdf`、`src/main/search` 下**没有**匹配到我们拼的英文句（模块结构已变/消息来自别处）
+  ⇒ **本轮不动，具名保留**：这两族的 `error.message` 目前更可能承载**第三方或底层**文本（`String(error)` 那几处尤其是），
+  按同一判据应**不翻**；若后续确证是我们拼的句子，再按 §七十 的方式加条目（**目录模式加一族只花 1 轮**）。
+
+### 四 下一轮第一步（带 blocked-by）
+
+1. **`AgentPanel` / `SkillImportView` 两族的 main 侧**（§六十九 枚举里剩下未判的）：同法判「我们拼的 / 回显的」。
+   `blocked-by` = 无人在改 `src/main/settings/agent-runtime-manager.ts`、`pages/settings/SkillImportView.tsx`。
+2. 执行器 `ddbffd41` 已评审通过（§七十二）⇒ 它的下一步是真机读数（`blocked-by` = 内存闸门）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
+4. **拍板项仍挂**：A 续做 + B 只强制用于新写的 main→renderer 结果类型（§六十九 决策表）——我按建议在推进 A。
