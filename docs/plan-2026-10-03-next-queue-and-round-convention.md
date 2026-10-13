@@ -3617,3 +3617,43 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 1. **P0-10(c) 的会话半边**（口径见 §六十二·五）：删单个会话不释放该会话的 run 数据（`session-deletion-workflow.ts` 零 notebook 引用）；体量 1.5–2h ⇒ 需一整个窗口；`blocked-by` = 工作树干净 + 无人正在改 `src/main/acp/**` 与 `notebook/**`。
 2. **窗口侧点击读数三件**（本节三·1）+ **认证 spec 进仓**（三·2）：两件的 `blocked-by` 都是**内存闸门**；顺序建议先 spec（一次 `build:e2e` 后连跑），再补三条点击读数。
 3. **本版未取的窗口/远端项**若到下一版仍不可取，就按「显式顺延 + 理由」写进下一版 CHANGELOG 的「明确没做」段，不留无人认领的旧汇报。
+
+## 六十四、本轮追加（会话，2026-10-13）—— i18n 形状收口：主进程服务页（配对/OAuth）+ JSX prose 清零
+
+### 一 本轮交付（我，均已推）
+
+| 提交 | 内容 |
+| --- | --- |
+| `e6f58022` | **主进程服务页按应用语言出文案（9 语）**：新增 `src/main/native-locale.ts`（主进程唯一的 locale 级联 + `nativeStringsFor(map)`，map 类型 `Record<NativeLocaleCode, T>` ⇒ 少一种语言在**编译期**过不去）；配对页（`remote-access/pairing-page.ts`）与 OAuth 回跳页（`connectors/oauth-client.ts`）接上；`window-close-confirm.ts` 删掉本地重复级联（−920 字符）改用共享实现。新增 3 个测试文件（含「九语都不许静默回落英文」门与真 loopback + 真 fetch 的字节断言）|
+| `80ecd808` | **JSX prose 形状清零（renderer 侧）**：10 个键 ×9 语 + 12 处现场（10 文件）；`ComposerEditor` 保持 i18n-free（可选 props `historyDescription` + EN 兜底，由 `ConversationPanel`/`WorkspaceMessageItem` 注入）|
+
+### 二 门禁与复跑读数（全部实跑）
+
+- `e6f58022`：本片 6 文件 **64 条**全绿；`eslint --no-cache` **0 问题**；node typecheck 本片 **0 条**。
+- `80ecd808`：i18n 全套 **52 条** + 受影响组件 **9 文件 198 条** + `pages/settings` 与 `session-plan` 等 **67 文件 749 passed｜1 skipped** 全绿；`eslint --no-cache` **0 问题**；web typecheck 本片 **0 条**。
+- 两笔均 `bash scripts/pre-push-checks.sh` ⇒ **EXIT=0** 后推送；推后 `HEAD == origin/main`。
+
+### 三 收口读数（用审计工具自身作证，不是自陈）
+
+`node scripts/i18n-hardcoded-audit.mjs`（本机把 sample 上限拿掉跑全量）形状计数：
+
+| 形状 | 本轮前 | 本轮后 | 变化 |
+| --- | --- | --- | --- |
+| `jsx-text` | 9（全在 `src/main`：OAuth 回跳页 6 + 配对页 3） | **1** | 剩下 1 条＝配对页品牌名 `PureScience`（允许保留）|
+| `jsx prose line` | 10（renderer 7 + main 3） | **3** | 剩下 3 条**全在 `src/main`**：支持包写出的**文本文件** ×2（不是应用 UI）与 agent 指令 ×1（`guidance.ts`，翻了会破坏指令语义）|
+| `jsx prose after interpolation` | 1 | **0** | 已键控（证据截断整句）|
+| `jsx-text before interpolation` | 4 | **3** | 剩下 3 条＝`Versions.tsx` 的 `Electron v / Chromium v / Node v` 技术版本前缀（与「工具名/技术标识保留英文」同口径，判为保留）|
+
+### 四 具名判定（不许读成「已做」）
+
+1. `main/diagnostics/support-bundle.ts` 的两句：写进**用户选择的支持包文件**的说明文字，不是应用界面文案 ⇒ **有意保留英文**（若要翻，得先决定支持包是否固定英文，属产品口径）。
+2. `main/session-plan/guidance.ts:19`：给模型的 **agent 指令**，翻译会破坏指令语义 ⇒ **必须保留英文**（既有口径）。
+3. `Versions.tsx` 三行技术版本前缀 ⇒ **保留**。
+4. `dquote` 形状 **71 → 71**（本轮未动）：按目录分 **`main/connectors` 35 / `renderer/src` 19 / `main/reviewer` 6 / `main/settings` 5 / 其余 6**。其中 **renderer 侧 19 条是真 UI 文案**（preview renderers 的错误/空态 13 条 + `ReviewerCard`/`onboarding/AgentStep`/`ClaudeIsolatedSignInModal`/`SessionNotebookDialog`/`SessionReviewerPanel`/`WorkspaceMessageScroller` 各 1 条）⇒ **立为本单元的下一步**（见五）；`main/**` 那部分属「主进程串 → renderer catalog」另一条工作流，未在本轮动。
+5. 本轮**未取窗口侧读数**（内存闸门仍不足：写这段时空闲物理页 ≈66 MB）⇒ 「一切功能实机跑通」这一条对本轮的**界面文案**由组件渲染测试覆盖；真窗口抽查仍与 §六十三·三·1 的窗口项一并待取。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **`dquote` 的 renderer 侧 19 条键控**（首选）：13 条 preview renderers 的错误/空态 + 6 条面板文案；先按仓库既有做法确认这些叶子是否 i18n-free（若是，沿 `historyDescription` 的「可选 props + EN 兜底 + 父层注入」模式）；`blocked-by` = 无人正在改 `preview/renderers/**` 与 `pages/workspace/**`（执行器当前在制的是 `session-persistence` 那 7 个文件，不重叠）。
+2. 执行器 P0-10(c) 那一笔（它自做）落定后 ⇒ **评审**（照 `21e2ec18` pdf 缝那次的六条口径：真释放字节、具名三态、顺序（先落库删记录再删数据）、复用既有 wire 形状、用例钉得住、界面那句话 ×9 语）。
+3. 窗口侧读数三件与认证 spec 进仓：`blocked-by` = 内存闸门（空闲页 ≥ 约 400 MB 量级再起 `build:e2e`）。
