@@ -4222,3 +4222,31 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 2. **卡面 9 语**：命中行与标题的可见文案（现在标题是英文串，属决策层；上屏要走字典）。
 
 `blocked-by`：第 1 条 = 内存闸门（本轮实测空闲页 73 MB）；第 2 条可在无窗口时先做（字典 + 渲染用例）。
+
+## 八十一、v2.1.0（批 B）B1 第四片：卡面文案 9 语 + 呈现单点（会话，2026-10-13）
+
+### 一 交付（`i18n(notebook)` 一笔 + 本档）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 字典 | `notebookRisk.*` **9 键 ×9 语** | 4 条规则名（`删除文件`/`覆盖文件`/`执行 shell 命令`/`分配大数组` 等）、单/多规则标题、**每条规则一行**的模板、单/复数行号短语 |
+| 渲染端呈现 | `src/renderer/src/lib/notebook-risk-copy.ts` | `notebookRiskTitle(t, receipt)` / `notebookRiskLines(t, receipt)`：**呈现只留这一份**；机器规则 id 与译文**并排显示**（收据复算用的是 `fs-delete`，卡面必须点名同一件事）|
+| 主进程收窄 | `src/main/notebook/run-risk-receipt.ts` | 删掉我先前写的英文呈现（`describeLines`/`runRiskReceiptLines`/`notebookRunRiskApprovalTitle`）与其 5 条用例 —— **反向规则**：main 只给数据，句子由渲染端按 9 语组 |
+
+### 二 读数
+
+- 新模块 + i18n 全套：**58 条全绿**（含 zh 检查「标题是中文且不含未填 `{…}`」、以及逐语言「无未填占位符」门）；
+- 定向五文件 + i18n：**88 条里 3 条红 ⇒ 修后全绿**；双 typecheck 本片 0；`eslint --no-cache` 0 问题。
+
+### 三 被门禁抓到的一处真问题（记形状）
+
+`notebookRisk.line` 我在 **de/es/ru** 写成了与英文**逐字相同**（`{rule} ({ruleId}) — {where}: {excerpts}`）⇒ 翻译质量门的**同形词**判据红 3 条。
+修法不是放宽白名单，而是给这三种语言加上本族自然用词：`Regel …` / `Regla …` / `Правило …` ⇒ 既过门也更像人话。
+
+### 四 仍未做（B1 剩一件，具名）
+
+**`review` 判定 → 弹审批卡**：本轮查清 **notebook 执行路径今天不发起任何审批**（`grep permissionBroker|requestPermission` 在 `src/main/notebook/**` 零命中）
+⇒ 这不是「接上既有线」，而是**新增一条审批集成**，且要回答两个设计问题：
+1. 用哪种请求形状：既有卡吃 `AcpPermissionRequest`（`sessionId`/`toolCallId`/`options`，为 ACP 工具调用设计）——notebook 跑 cell 不是工具调用，需要么**复用该形状**（合成 toolCallId + 把命中行放进 `title`/新字段），要么给卡加一条**笔记本运行**分支；
+2. 拒绝后的语义：拒绝 ⇒ **不执行**且运行记录仍落一条（`status: 'cancelled'`？还是根本不建记录）——需与「记录进运行历史」的判据对齐。
+`blocked-by` = ① 上述设计（可离线定稿）② **真窗口读数**（弹卡 → 拒绝 → 记录一致），内存闸门本次实测空闲页 73 MB。
