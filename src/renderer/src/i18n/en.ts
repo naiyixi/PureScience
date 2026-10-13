@@ -4679,5 +4679,14 @@ export const en: Record<ZhKey, string> = {
   'mainMessage.githubNoSkillMd': 'No SKILL.md found at the linked location.',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub returned an invalid repository search response.',
-  'mainMessage.githubNoCommitSha': 'GitHub did not return a commit SHA for that ref.'
+  'mainMessage.githubNoCommitSha': 'GitHub did not return a commit SHA for that ref.',
+  'notebookRisk.ruleFsDelete': 'deletes files',
+  'notebookRisk.ruleFsOverwrite': 'overwrites files',
+  'notebookRisk.ruleShellExec': 'runs shell commands',
+  'notebookRisk.ruleLargeAllocation': 'allocates a large array',
+  'notebookRisk.titleOne': 'Review this notebook run: {rule} at {where}',
+  'notebookRisk.titleMany': 'Review this notebook run: {count} rules fired ({rules})',
+  'notebookRisk.line': '{rule} ({ruleId}) — {where}: {excerpts}',
+  'notebookRisk.oneLine': 'line {numbers}',
+  'notebookRisk.manyLines': 'lines {numbers}'
 }

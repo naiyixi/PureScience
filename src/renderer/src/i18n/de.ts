@@ -4808,5 +4808,14 @@ export const de: Partial<Record<ZhKey, string>> = {
   'mainMessage.githubNoSkillMd': 'Am verlinkten Ort wurde keine SKILL.md gefunden.',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub hat eine ungültige Antwort auf die Repository-Suche zurückgegeben.',
-  'mainMessage.githubNoCommitSha': 'GitHub hat für diesen Ref keinen Commit-SHA zurückgegeben.'
+  'mainMessage.githubNoCommitSha': 'GitHub hat für diesen Ref keinen Commit-SHA zurückgegeben.',
+  'notebookRisk.ruleFsDelete': 'löscht Dateien',
+  'notebookRisk.ruleFsOverwrite': 'überschreibt Dateien',
+  'notebookRisk.ruleShellExec': 'führt Shell-Befehle aus',
+  'notebookRisk.ruleLargeAllocation': 'belegt ein großes Array',
+  'notebookRisk.titleOne': 'Diesen Notebook-Lauf prüfen: {rule} bei {where}',
+  'notebookRisk.titleMany': 'Diesen Notebook-Lauf prüfen: {count} Regeln ausgelöst ({rules})',
+  'notebookRisk.line': 'Regel {rule} ({ruleId}) — {where}: {excerpts}',
+  'notebookRisk.oneLine': 'Zeile {numbers}',
+  'notebookRisk.manyLines': 'Zeilen {numbers}'
 }

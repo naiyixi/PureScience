@@ -4357,7 +4357,16 @@ export const zh = {
     '没有找到 PureScience 的 Codex ACP 适配器。请在设置里安装 Codex。',
   'mainMessage.githubNoSkillMd': '在链接指向的位置没有找到 SKILL.md。',
   'mainMessage.githubInvalidSearchResponse': 'GitHub 返回了无效的仓库搜索响应。',
-  'mainMessage.githubNoCommitSha': 'GitHub 没有为该 ref 返回提交 SHA。'
+  'mainMessage.githubNoCommitSha': 'GitHub 没有为该 ref 返回提交 SHA。',
+  'notebookRisk.ruleFsDelete': '删除文件',
+  'notebookRisk.ruleFsOverwrite': '覆盖文件',
+  'notebookRisk.ruleShellExec': '执行 shell 命令',
+  'notebookRisk.ruleLargeAllocation': '分配大数组',
+  'notebookRisk.titleOne': '审阅这次笔记本运行：{rule}，位置 {where}',
+  'notebookRisk.titleMany': '审阅这次笔记本运行：命中 {count} 条规则（{rules}）',
+  'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
+  'notebookRisk.oneLine': '第 {numbers} 行',
+  'notebookRisk.manyLines': '第 {numbers} 行'
 }
 
 export type ZhKey = keyof typeof zh

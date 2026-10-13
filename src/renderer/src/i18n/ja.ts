@@ -4646,5 +4646,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'mainMessage.githubNoSkillMd': 'リンク先に SKILL.md が見つかりません。',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub が無効なリポジトリ検索レスポンスを返しました。',
-  'mainMessage.githubNoCommitSha': 'GitHub がその ref のコミット SHA を返しませんでした。'
+  'mainMessage.githubNoCommitSha': 'GitHub がその ref のコミット SHA を返しませんでした。',
+  'notebookRisk.ruleFsDelete': 'ファイルを削除します',
+  'notebookRisk.ruleFsOverwrite': 'ファイルを上書きします',
+  'notebookRisk.ruleShellExec': 'シェルコマンドを実行します',
+  'notebookRisk.ruleLargeAllocation': '大きな配列を確保します',
+  'notebookRisk.titleOne': 'このノートブック実行を確認してください：{where} で {rule}',
+  'notebookRisk.titleMany':
+    'このノートブック実行を確認してください：{count} 件の規則に該当（{rules}）',
+  'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
+  'notebookRisk.oneLine': '{numbers} 行目',
+  'notebookRisk.manyLines': '{numbers} 行目'
 }

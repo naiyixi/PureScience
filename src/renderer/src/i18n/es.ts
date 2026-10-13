@@ -4752,5 +4752,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'mainMessage.githubNoSkillMd': 'No se encontró SKILL.md en la ubicación enlazada.',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub devolvió una respuesta de búsqueda de repositorios no válida.',
-  'mainMessage.githubNoCommitSha': 'GitHub no devolvió un SHA de commit para esa ref.'
+  'mainMessage.githubNoCommitSha': 'GitHub no devolvió un SHA de commit para esa ref.',
+  'notebookRisk.ruleFsDelete': 'borra archivos',
+  'notebookRisk.ruleFsOverwrite': 'sobrescribe archivos',
+  'notebookRisk.ruleShellExec': 'ejecuta comandos de shell',
+  'notebookRisk.ruleLargeAllocation': 'asigna una matriz grande',
+  'notebookRisk.titleOne': 'Revisa esta ejecución del notebook: {rule} en {where}',
+  'notebookRisk.titleMany':
+    'Revisa esta ejecución del notebook: {count} reglas activadas ({rules})',
+  'notebookRisk.line': 'Regla {rule} ({ruleId}) — {where}: {excerpts}',
+  'notebookRisk.oneLine': 'línea {numbers}',
+  'notebookRisk.manyLines': 'líneas {numbers}'
 }

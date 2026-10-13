@@ -4571,5 +4571,14 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'mainMessage.githubNoSkillMd': '링크된 위치에서 SKILL.md를 찾지 못했습니다.',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub가 유효하지 않은 저장소 검색 응답을 반환했습니다.',
-  'mainMessage.githubNoCommitSha': 'GitHub가 해당 ref의 커밋 SHA를 반환하지 않았습니다.'
+  'mainMessage.githubNoCommitSha': 'GitHub가 해당 ref의 커밋 SHA를 반환하지 않았습니다.',
+  'notebookRisk.ruleFsDelete': '파일을 삭제합니다',
+  'notebookRisk.ruleFsOverwrite': '파일을 덮어씁니다',
+  'notebookRisk.ruleShellExec': '셸 명령을 실행합니다',
+  'notebookRisk.ruleLargeAllocation': '큰 배열을 할당합니다',
+  'notebookRisk.titleOne': '이 노트북 실행을 검토하세요: {where}에서 {rule}',
+  'notebookRisk.titleMany': '이 노트북 실행을 검토하세요: 규칙 {count}개 해당({rules})',
+  'notebookRisk.line': '{rule}({ruleId}) — {where}: {excerpts}',
+  'notebookRisk.oneLine': '{numbers}행',
+  'notebookRisk.manyLines': '{numbers}행'
 }

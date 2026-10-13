@@ -4301,5 +4301,14 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '找不到 PureScience 的 Codex ACP 轉接器。請在設定中安裝 Codex。',
   'mainMessage.githubNoSkillMd': '在連結指向的位置找不到 SKILL.md。',
   'mainMessage.githubInvalidSearchResponse': 'GitHub 回傳了無效的儲存庫搜尋回應。',
-  'mainMessage.githubNoCommitSha': 'GitHub 沒有為該 ref 回傳提交 SHA。'
+  'mainMessage.githubNoCommitSha': 'GitHub 沒有為該 ref 回傳提交 SHA。',
+  'notebookRisk.ruleFsDelete': '刪除檔案',
+  'notebookRisk.ruleFsOverwrite': '覆寫檔案',
+  'notebookRisk.ruleShellExec': '執行 shell 命令',
+  'notebookRisk.ruleLargeAllocation': '配置大型陣列',
+  'notebookRisk.titleOne': '審閱這次筆記本執行：{rule}，位置 {where}',
+  'notebookRisk.titleMany': '審閱這次筆記本執行：命中 {count} 條規則（{rules}）',
+  'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
+  'notebookRisk.oneLine': '第 {numbers} 行',
+  'notebookRisk.manyLines': '第 {numbers} 行'
 }

@@ -4666,5 +4666,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'mainMessage.githubNoSkillMd': 'По указанной ссылке файл SKILL.md не найден.',
   'mainMessage.githubInvalidSearchResponse':
     'GitHub вернул некорректный ответ на поиск репозиториев.',
-  'mainMessage.githubNoCommitSha': 'GitHub не вернул SHA коммита для этой ссылки.'
+  'mainMessage.githubNoCommitSha': 'GitHub не вернул SHA коммита для этой ссылки.',
+  'notebookRisk.ruleFsDelete': 'удаляет файлы',
+  'notebookRisk.ruleFsOverwrite': 'перезаписывает файлы',
+  'notebookRisk.ruleShellExec': 'выполняет команды оболочки',
+  'notebookRisk.ruleLargeAllocation': 'выделяет большой массив',
+  'notebookRisk.titleOne': 'Проверьте этот запуск блокнота: {rule} в {where}',
+  'notebookRisk.titleMany': 'Проверьте этот запуск блокнота: сработало правил — {count} ({rules})',
+  'notebookRisk.line': 'Правило {rule} ({ruleId}) — {where}: {excerpts}',
+  'notebookRisk.oneLine': 'строка {numbers}',
+  'notebookRisk.manyLines': 'строки {numbers}'
 }
