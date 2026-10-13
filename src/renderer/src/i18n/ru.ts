@@ -4618,5 +4618,27 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Время входа через браузер истекло. Если браузер не открылся, используйте «Использовать токен настройки».',
   'mainMessage.signInCancelled': 'Вход отменён.',
   'mainMessage.signInNoToken':
-    'Вход через браузер не вернул токен. Если браузер не открылся, используйте «Использовать токен настройки».'
+    'Вход через браузер не вернул токен. Если браузер не открылся, используйте «Использовать токен настройки».',
+  'mainMessage.claudeExecutableMissing':
+    'Вход через браузер недоступен: исполняемый файл Claude не найден.',
+  'mainMessage.claudeKeychainLocked':
+    'Безопасное хранилище учётных данных недоступно. Разблокируйте системную связку ключей и повторите.',
+  'mainMessage.claudeSignInInProgress': 'Другой вход уже выполняется.',
+  'mainMessage.claudeStoredTokenUnreadable': 'Не удалось прочитать сохранённый токен Claude.',
+  'mainMessage.claudeBrowserSignInFailed': 'Вход через браузер не удался.',
+  'mainMessage.claudePasteTokenPrompt': 'Вставьте токен, который выводит `claude setup-token`.',
+  'mainMessage.claudeTokenSaveFailed': 'Не удалось сохранить токен Claude.',
+  'mainMessage.claudeTokenRereadFailed':
+    'Сохранённый токен не удалось перечитать. Вставьте его снова.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    'Сохранённый токен не прошёл проверку «туда и обратно». Вставьте его снова.',
+  'mainMessage.claudeStoredTokenRereadFailed': 'Сохранённый токен не удалось перечитать.',
+  'mainMessage.claudeTokenClearFailed': 'Не удалось удалить сохранённый токен Claude.',
+  'mainMessage.codexProfileNotImportable':
+    'В выбранном профиле Codex нет учётных данных для импорта.',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'Установленный codex-acp не поддерживает вход через ChatGPT.',
+  'mainMessage.codexStatusTimedOut': 'Проверка состояния Codex превысила время ожидания.',
+  'mainMessage.codexSignInInProgress': 'Вход в Codex уже выполняется.',
+  'mainMessage.codexSignOutTimedOut': 'Выход из Codex превысил время ожидания.'
 }

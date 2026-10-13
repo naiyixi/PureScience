@@ -4734,5 +4734,27 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'La connexion via le navigateur a expiré. Si votre navigateur ne s’est pas ouvert, utilisez plutôt « Utiliser le jeton de configuration ».',
   'mainMessage.signInCancelled': 'Connexion annulée.',
   'mainMessage.signInNoToken':
-    'La connexion via le navigateur n’a renvoyé aucun jeton. Si votre navigateur ne s’est pas ouvert, utilisez plutôt « Utiliser le jeton de configuration ».'
+    'La connexion via le navigateur n’a renvoyé aucun jeton. Si votre navigateur ne s’est pas ouvert, utilisez plutôt « Utiliser le jeton de configuration ».',
+  'mainMessage.claudeExecutableMissing':
+    'Connexion via le navigateur indisponible : l’exécutable Claude est introuvable.',
+  'mainMessage.claudeKeychainLocked':
+    'Le stockage sécurisé des identifiants est indisponible. Déverrouillez le trousseau du système et réessayez.',
+  'mainMessage.claudeSignInInProgress': 'Une autre connexion est déjà en cours.',
+  'mainMessage.claudeStoredTokenUnreadable': 'Le jeton Claude enregistré n’a pas pu être lu.',
+  'mainMessage.claudeBrowserSignInFailed': 'La connexion via le navigateur a échoué.',
+  'mainMessage.claudePasteTokenPrompt': 'Collez le jeton affiché par `claude setup-token`.',
+  'mainMessage.claudeTokenSaveFailed': 'Le jeton Claude n’a pas pu être enregistré.',
+  'mainMessage.claudeTokenRereadFailed':
+    'Le jeton enregistré n’a pas pu être relu. Collez-le à nouveau.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    'Le jeton enregistré n’a pas passé la vérification aller-retour. Collez-le à nouveau.',
+  'mainMessage.claudeStoredTokenRereadFailed': 'Le jeton stocké n’a pas pu être relu.',
+  'mainMessage.claudeTokenClearFailed': 'Le jeton Claude stocké n’a pas pu être effacé.',
+  'mainMessage.codexProfileNotImportable':
+    'Le profil Codex sélectionné ne contient pas d’identifiants importables.',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'Le codex-acp installé n’annonce pas la prise en charge de l’authentification ChatGPT.',
+  'mainMessage.codexStatusTimedOut': 'La vérification de l’état de Codex a expiré.',
+  'mainMessage.codexSignInInProgress': 'Une connexion Codex est déjà en cours.',
+  'mainMessage.codexSignOutTimedOut': 'La déconnexion de Codex a expiré.'
 }

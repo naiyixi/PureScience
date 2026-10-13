@@ -4321,7 +4321,23 @@ export const zh = {
     '不允许在你自己的 {language} 环境里安装软件包。请先在「设置 → 运行时」中为这个运行时打开“允许安装软件包”（安装会进入你自己的环境，而不是应用管理的存储）。',
   'mainMessage.signInTimedOut': '浏览器登录超时。如果浏览器没有打开，请改用“使用设置令牌”。',
   'mainMessage.signInCancelled': '登录已取消。',
-  'mainMessage.signInNoToken': '浏览器登录没有返回令牌。如果浏览器没有打开，请改用“使用设置令牌”。'
+  'mainMessage.signInNoToken': '浏览器登录没有返回令牌。如果浏览器没有打开，请改用“使用设置令牌”。',
+  'mainMessage.claudeExecutableMissing': '无法使用浏览器登录：没有找到 Claude 可执行文件。',
+  'mainMessage.claudeKeychainLocked': '无法使用安全凭据存储。请解锁系统钥匙串后重试。',
+  'mainMessage.claudeSignInInProgress': '已有另一个登录正在进行。',
+  'mainMessage.claudeStoredTokenUnreadable': '无法读取已保存的 Claude 令牌。',
+  'mainMessage.claudeBrowserSignInFailed': '浏览器登录失败。',
+  'mainMessage.claudePasteTokenPrompt': '粘贴 `claude setup-token` 打印出的令牌。',
+  'mainMessage.claudeTokenSaveFailed': '无法保存 Claude 令牌。',
+  'mainMessage.claudeTokenRereadFailed': '无法重新读取已保存的令牌。请重新粘贴。',
+  'mainMessage.claudeTokenRoundtripFailed': '保存的令牌未能完整往返校验。请重新粘贴。',
+  'mainMessage.claudeStoredTokenRereadFailed': '无法重新读取已存储的令牌。',
+  'mainMessage.claudeTokenClearFailed': '无法清除已存储的 Claude 令牌。',
+  'mainMessage.codexProfileNotImportable': '所选的 Codex 配置档案不含可导入的认证信息。',
+  'mainMessage.codexAcpNoChatGptAuth': '已安装的 codex-acp 未声明支持 ChatGPT 认证。',
+  'mainMessage.codexStatusTimedOut': 'Codex 状态检查超时。',
+  'mainMessage.codexSignInInProgress': '已有一个 Codex 登录正在进行。',
+  'mainMessage.codexSignOutTimedOut': 'Codex 退出登录超时。'
 }
 
 export type ZhKey = keyof typeof zh

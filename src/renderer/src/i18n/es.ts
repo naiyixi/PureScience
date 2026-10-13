@@ -4704,5 +4704,26 @@ export const es: Partial<Record<ZhKey, string>> = {
     'El inicio de sesión en el navegador agotó el tiempo. Si tu navegador no se abrió, usa «Usar el token de configuración» en su lugar.',
   'mainMessage.signInCancelled': 'Inicio de sesión cancelado.',
   'mainMessage.signInNoToken':
-    'El inicio de sesión en el navegador no devolvió ningún token. Si tu navegador no se abrió, usa «Usar el token de configuración» en su lugar.'
+    'El inicio de sesión en el navegador no devolvió ningún token. Si tu navegador no se abrió, usa «Usar el token de configuración» en su lugar.',
+  'mainMessage.claudeExecutableMissing':
+    'El inicio de sesión en el navegador no está disponible: no se encontró el ejecutable de Claude.',
+  'mainMessage.claudeKeychainLocked':
+    'El almacenamiento seguro de credenciales no está disponible. Desbloquea el llavero del sistema y vuelve a intentarlo.',
+  'mainMessage.claudeSignInInProgress': 'Ya hay otro inicio de sesión en curso.',
+  'mainMessage.claudeStoredTokenUnreadable': 'No se pudo leer el token de Claude guardado.',
+  'mainMessage.claudeBrowserSignInFailed': 'El inicio de sesión en el navegador falló.',
+  'mainMessage.claudePasteTokenPrompt': 'Pega el token que imprime `claude setup-token`.',
+  'mainMessage.claudeTokenSaveFailed': 'No se pudo guardar el token de Claude.',
+  'mainMessage.claudeTokenRereadFailed': 'No se pudo releer el token guardado. Vuelve a pegarlo.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    'El token guardado no superó la comprobación de ida y vuelta. Vuelve a pegarlo.',
+  'mainMessage.claudeStoredTokenRereadFailed': 'No se pudo releer el token almacenado.',
+  'mainMessage.claudeTokenClearFailed': 'No se pudo borrar el token de Claude almacenado.',
+  'mainMessage.codexProfileNotImportable':
+    'El perfil de Codex seleccionado no contiene credenciales importables.',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'El codex-acp instalado no admite la autenticación de ChatGPT.',
+  'mainMessage.codexStatusTimedOut': 'La comprobación de estado de Codex agotó el tiempo.',
+  'mainMessage.codexSignInInProgress': 'Ya hay un inicio de sesión de Codex en curso.',
+  'mainMessage.codexSignOutTimedOut': 'El cierre de sesión de Codex agotó el tiempo.'
 }

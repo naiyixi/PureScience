@@ -4600,5 +4600,29 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'ブラウザーでのサインインがタイムアウトしました。ブラウザーが開かない場合は、代わりに「セットアップトークンを使用」を使用してください。',
   'mainMessage.signInCancelled': 'サインインはキャンセルされました。',
   'mainMessage.signInNoToken':
-    'ブラウザーでのサインインでトークンが返りませんでした。ブラウザーが開かない場合は、代わりに「セットアップトークンを使用」を使用してください。'
+    'ブラウザーでのサインインでトークンが返りませんでした。ブラウザーが開かない場合は、代わりに「セットアップトークンを使用」を使用してください。',
+  'mainMessage.claudeExecutableMissing':
+    'ブラウザーでのサインインは利用できません：Claude の実行ファイルが見つかりません。',
+  'mainMessage.claudeKeychainLocked':
+    '安全な資格情報ストレージを利用できません。システムキーチェーンをロック解除して再試行してください。',
+  'mainMessage.claudeSignInInProgress': '別のサインインがすでに進行中です。',
+  'mainMessage.claudeStoredTokenUnreadable': '保存された Claude トークンを読み取れませんでした。',
+  'mainMessage.claudeBrowserSignInFailed': 'ブラウザーでのサインインに失敗しました。',
+  'mainMessage.claudePasteTokenPrompt':
+    '`claude setup-token` が出力したトークンを貼り付けてください。',
+  'mainMessage.claudeTokenSaveFailed': 'Claude トークンを保存できませんでした。',
+  'mainMessage.claudeTokenRereadFailed':
+    '保存されたトークンを再読み込みできませんでした。もう一度貼り付けてください。',
+  'mainMessage.claudeTokenRoundtripFailed':
+    '保存したトークンの往復確認が通りませんでした。もう一度貼り付けてください。',
+  'mainMessage.claudeStoredTokenRereadFailed':
+    '保存されているトークンを再読み込みできませんでした。',
+  'mainMessage.claudeTokenClearFailed': '保存されている Claude トークンを消去できませんでした。',
+  'mainMessage.codexProfileNotImportable':
+    '選択した Codex プロファイルには取り込める認証情報がありません。',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'インストール済みの codex-acp は ChatGPT 認証に対応していません。',
+  'mainMessage.codexStatusTimedOut': 'Codex の状態確認がタイムアウトしました。',
+  'mainMessage.codexSignInInProgress': 'Codex のサインインがすでに進行中です。',
+  'mainMessage.codexSignOutTimedOut': 'Codex のサインアウトがタイムアウトしました。'
 }

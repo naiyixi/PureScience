@@ -4634,5 +4634,26 @@ export const en: Record<ZhKey, string> = {
     'Browser sign-in timed out. If your browser did not open, use "Use setup token" instead.',
   'mainMessage.signInCancelled': 'Sign-in cancelled.',
   'mainMessage.signInNoToken':
-    'Browser sign-in did not return a token. If your browser did not open, use "Use setup token" instead.'
+    'Browser sign-in did not return a token. If your browser did not open, use "Use setup token" instead.',
+  'mainMessage.claudeExecutableMissing':
+    'Browser sign-in is unavailable: the Claude executable was not found.',
+  'mainMessage.claudeKeychainLocked':
+    'Secure credential storage is unavailable. Unlock the system keychain and retry.',
+  'mainMessage.claudeSignInInProgress': 'Another sign-in is already in progress.',
+  'mainMessage.claudeStoredTokenUnreadable': 'Stored Claude token could not be read.',
+  'mainMessage.claudeBrowserSignInFailed': 'Browser sign-in failed.',
+  'mainMessage.claudePasteTokenPrompt': 'Paste the token printed by `claude setup-token`.',
+  'mainMessage.claudeTokenSaveFailed': 'Could not save the Claude token.',
+  'mainMessage.claudeTokenRereadFailed': 'Saved token could not be re-read. Retry the paste.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    'Saved token did not roundtrip cleanly. Retry the paste.',
+  'mainMessage.claudeStoredTokenRereadFailed': 'Stored token could not be re-read.',
+  'mainMessage.claudeTokenClearFailed': 'Could not clear the stored Claude token.',
+  'mainMessage.codexProfileNotImportable':
+    'The selected Codex profile does not contain importable authentication.',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'The installed codex-acp does not advertise ChatGPT authentication.',
+  'mainMessage.codexStatusTimedOut': 'Codex status check timed out.',
+  'mainMessage.codexSignInInProgress': 'A Codex sign-in is already in progress.',
+  'mainMessage.codexSignOutTimedOut': 'Codex sign-out timed out.'
 }

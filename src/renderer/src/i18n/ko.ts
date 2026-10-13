@@ -4530,5 +4530,25 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '브라우저 로그인 시간이 초과되었습니다. 브라우저가 열리지 않으면 대신 ‘설정 토큰 사용’를 사용하세요.',
   'mainMessage.signInCancelled': '로그인이 취소되었습니다.',
   'mainMessage.signInNoToken':
-    '브라우저 로그인이 토큰을 반환하지 않았습니다. 브라우저가 열리지 않으면 대신 ‘설정 토큰 사용’를 사용하세요.'
+    '브라우저 로그인이 토큰을 반환하지 않았습니다. 브라우저가 열리지 않으면 대신 ‘설정 토큰 사용’를 사용하세요.',
+  'mainMessage.claudeExecutableMissing':
+    '브라우저 로그인을 사용할 수 없습니다: Claude 실행 파일을 찾지 못했습니다.',
+  'mainMessage.claudeKeychainLocked':
+    '보안 자격 증명 저장소를 사용할 수 없습니다. 시스템 키체인을 잠금 해제한 뒤 다시 시도하세요.',
+  'mainMessage.claudeSignInInProgress': '다른 로그인이 이미 진행 중입니다.',
+  'mainMessage.claudeStoredTokenUnreadable': '저장된 Claude 토큰을 읽을 수 없습니다.',
+  'mainMessage.claudeBrowserSignInFailed': '브라우저 로그인에 실패했습니다.',
+  'mainMessage.claudePasteTokenPrompt': '`claude setup-token`이 출력한 토큰을 붙여 넣으세요.',
+  'mainMessage.claudeTokenSaveFailed': 'Claude 토큰을 저장하지 못했습니다.',
+  'mainMessage.claudeTokenRereadFailed': '저장된 토큰을 다시 읽지 못했습니다. 다시 붙여 넣으세요.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    '저장된 토큰이 왕복 검증을 통과하지 못했습니다. 다시 붙여 넣으세요.',
+  'mainMessage.claudeStoredTokenRereadFailed': '저장된 토큰을 다시 읽을 수 없습니다.',
+  'mainMessage.claudeTokenClearFailed': '저장된 Claude 토큰을 지우지 못했습니다.',
+  'mainMessage.codexProfileNotImportable':
+    '선택한 Codex 프로필에 가져올 수 있는 인증 정보가 없습니다.',
+  'mainMessage.codexAcpNoChatGptAuth': '설치된 codex-acp가 ChatGPT 인증을 지원하지 않습니다.',
+  'mainMessage.codexStatusTimedOut': 'Codex 상태 확인 시간이 초과되었습니다.',
+  'mainMessage.codexSignInInProgress': 'Codex 로그인이 이미 진행 중입니다.',
+  'mainMessage.codexSignOutTimedOut': 'Codex 로그아웃 시간이 초과되었습니다.'
 }

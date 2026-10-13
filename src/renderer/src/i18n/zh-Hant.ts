@@ -4265,5 +4265,21 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'mainMessage.signInTimedOut': '瀏覽器登入逾時。如果瀏覽器沒有開啟，請改用「使用設定權杖」。',
   'mainMessage.signInCancelled': '登入已取消。',
   'mainMessage.signInNoToken':
-    '瀏覽器登入沒有回傳權杖。如果瀏覽器沒有開啟，請改用「使用設定權杖」。'
+    '瀏覽器登入沒有回傳權杖。如果瀏覽器沒有開啟，請改用「使用設定權杖」。',
+  'mainMessage.claudeExecutableMissing': '無法使用瀏覽器登入：找不到 Claude 執行檔。',
+  'mainMessage.claudeKeychainLocked': '無法使用安全憑證儲存空間。請解鎖系統鑰匙圈後重試。',
+  'mainMessage.claudeSignInInProgress': '已有另一個登入正在進行。',
+  'mainMessage.claudeStoredTokenUnreadable': '無法讀取已儲存的 Claude 權杖。',
+  'mainMessage.claudeBrowserSignInFailed': '瀏覽器登入失敗。',
+  'mainMessage.claudePasteTokenPrompt': '貼上 `claude setup-token` 印出的權杖。',
+  'mainMessage.claudeTokenSaveFailed': '無法儲存 Claude 權杖。',
+  'mainMessage.claudeTokenRereadFailed': '無法重新讀取已儲存的權杖。請重新貼上。',
+  'mainMessage.claudeTokenRoundtripFailed': '儲存的權杖未能完整往返驗證。請重新貼上。',
+  'mainMessage.claudeStoredTokenRereadFailed': '無法重新讀取已儲存的權杖。',
+  'mainMessage.claudeTokenClearFailed': '無法清除已儲存的 Claude 權杖。',
+  'mainMessage.codexProfileNotImportable': '所選的 Codex 設定檔不含可匯入的驗證資訊。',
+  'mainMessage.codexAcpNoChatGptAuth': '已安裝的 codex-acp 未宣告支援 ChatGPT 驗證。',
+  'mainMessage.codexStatusTimedOut': 'Codex 狀態檢查逾時。',
+  'mainMessage.codexSignInInProgress': '已有一個 Codex 登入正在進行。',
+  'mainMessage.codexSignOutTimedOut': 'Codex 登出逾時。'
 }

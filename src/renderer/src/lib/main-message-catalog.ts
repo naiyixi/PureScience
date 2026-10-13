@@ -4,6 +4,27 @@
 // Mapping the exact sentence back to a dictionary key keeps that property and still lets the reader
 // see it in their own language; anything the renderer does not recognise passes through unchanged.
 export const MAIN_MESSAGE_KEYS: Record<string, string> = {
+  'Browser sign-in is unavailable: the Claude executable was not found.':
+    'mainMessage.claudeExecutableMissing',
+  'Secure credential storage is unavailable. Unlock the system keychain and retry.':
+    'mainMessage.claudeKeychainLocked',
+  'Another sign-in is already in progress.': 'mainMessage.claudeSignInInProgress',
+  'Stored Claude token could not be read.': 'mainMessage.claudeStoredTokenUnreadable',
+  'Browser sign-in failed.': 'mainMessage.claudeBrowserSignInFailed',
+  'Paste the token printed by `claude setup-token`.': 'mainMessage.claudePasteTokenPrompt',
+  'Could not save the Claude token.': 'mainMessage.claudeTokenSaveFailed',
+  'Saved token could not be re-read. Retry the paste.': 'mainMessage.claudeTokenRereadFailed',
+  'Saved token did not roundtrip cleanly. Retry the paste.':
+    'mainMessage.claudeTokenRoundtripFailed',
+  'Stored token could not be re-read.': 'mainMessage.claudeStoredTokenRereadFailed',
+  'Could not clear the stored Claude token.': 'mainMessage.claudeTokenClearFailed',
+  'The selected Codex profile does not contain importable authentication.':
+    'mainMessage.codexProfileNotImportable',
+  'The installed codex-acp does not advertise ChatGPT authentication.':
+    'mainMessage.codexAcpNoChatGptAuth',
+  'Codex status check timed out.': 'mainMessage.codexStatusTimedOut',
+  'A Codex sign-in is already in progress.': 'mainMessage.codexSignInInProgress',
+  'Codex sign-out timed out.': 'mainMessage.codexSignOutTimedOut',
   "This location's path is too long for Windows. Choose a folder closer to the drive root so your files stay within Windows' 260-character path limit.":
     'mainMessage.pathTooLongForWindows',
   "That interpreter can't be used as a notebook runtime (not a runnable Python 3).":

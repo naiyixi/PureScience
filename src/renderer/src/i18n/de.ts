@@ -4754,5 +4754,30 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die Anmeldung im Browser ist abgelaufen. Wenn sich dein Browser nicht geöffnet hat, verwende stattdessen „Setup-Token verwenden“.',
   'mainMessage.signInCancelled': 'Anmeldung abgebrochen.',
   'mainMessage.signInNoToken':
-    'Die Anmeldung im Browser hat kein Token zurückgegeben. Wenn sich dein Browser nicht geöffnet hat, verwende stattdessen „Setup-Token verwenden“.'
+    'Die Anmeldung im Browser hat kein Token zurückgegeben. Wenn sich dein Browser nicht geöffnet hat, verwende stattdessen „Setup-Token verwenden“.',
+  'mainMessage.claudeExecutableMissing':
+    'Anmeldung im Browser nicht möglich: Die Claude-Anwendung wurde nicht gefunden.',
+  'mainMessage.claudeKeychainLocked':
+    'Der sichere Anmeldedatenspeicher ist nicht verfügbar. Entsperre den Systemschlüsselbund und versuche es erneut.',
+  'mainMessage.claudeSignInInProgress': 'Eine andere Anmeldung läuft bereits.',
+  'mainMessage.claudeStoredTokenUnreadable':
+    'Das gespeicherte Claude-Token konnte nicht gelesen werden.',
+  'mainMessage.claudeBrowserSignInFailed': 'Die Anmeldung im Browser ist fehlgeschlagen.',
+  'mainMessage.claudePasteTokenPrompt': 'Füge das von `claude setup-token` ausgegebene Token ein.',
+  'mainMessage.claudeTokenSaveFailed': 'Das Claude-Token konnte nicht gespeichert werden.',
+  'mainMessage.claudeTokenRereadFailed':
+    'Das gespeicherte Token konnte nicht erneut gelesen werden. Füge es erneut ein.',
+  'mainMessage.claudeTokenRoundtripFailed':
+    'Das gespeicherte Token hat die Gegenprobe nicht bestanden. Füge es erneut ein.',
+  'mainMessage.claudeStoredTokenRereadFailed':
+    'Das gespeicherte Token konnte nicht erneut gelesen werden.',
+  'mainMessage.claudeTokenClearFailed':
+    'Das gespeicherte Claude-Token konnte nicht gelöscht werden.',
+  'mainMessage.codexProfileNotImportable':
+    'Das ausgewählte Codex-Profil enthält keine importierbaren Anmeldedaten.',
+  'mainMessage.codexAcpNoChatGptAuth':
+    'Das installierte codex-acp unterstützt keine ChatGPT-Anmeldung.',
+  'mainMessage.codexStatusTimedOut': 'Die Codex-Statusprüfung ist abgelaufen.',
+  'mainMessage.codexSignInInProgress': 'Eine Codex-Anmeldung läuft bereits.',
+  'mainMessage.codexSignOutTimedOut': 'Die Codex-Abmeldung ist abgelaufen.'
 }
