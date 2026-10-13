@@ -3973,3 +3973,34 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 2. 执行器 `ddbffd41` 已评审通过（§七十二）⇒ 它的下一步是真机读数（`blocked-by` = 内存闸门）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
 4. **拍板项仍挂**：A 续做 + B 只强制用于新写的 main→renderer 结果类型（§六十九 决策表）——我按建议在推进 A。
+
+## 七十四、本轮追加（会话，2026-10-13）—— agent 安装族 + GitHub 技能导入族（5 键 ×9 + 两处汇点包线）
+
+### 一 交付（本笔）
+
+| 族 | 键 | main 侧来源（我们拼的） | 汇点 |
+| --- | --- | --- | --- |
+| agent 安装 | 2 | `agent-runtime-manager.ts` 的 `Could not reserve an OpenCode usage API port.` 与 `PureScience Codex ACP adapter not found. Install Codex in settings.` | `AgentPanel` 的 `setInstallActionError`（**此前裸 `error.message`**）|
+| GitHub 技能导入 | 3 | `skills/github-import.ts` 的 `No SKILL.md found at the linked location.`、`GitHub returned an invalid repository search response.`、`GitHub did not return a commit SHA for that ref.` | `SkillImportView` 的 `setMessage({kind:'error', text})`（**此前裸 `error.message`**）|
+
+目录 **+5 精确条目**；两处汇点包进 `localizeMainMessage`。
+
+### 二 读数
+
+- `eslint --no-cache`（目录 + 两个面板）**0 问题**；web typecheck 本片 **0 条**；
+- `vitest`：目录用例（新增 5 条自动纳入收尾门）+ i18n 全套 + **`pages/settings` 全目录** ⇒ **68 文件 / 740 passed｜1 skipped**。
+
+### 三 判据的第三次应用与**收口盘点**
+
+「这句是谁拼的？」已判族：**连接器 ✓（§七十三）、agent 安装 ✓、GitHub 技能导入 ✓（本笔）**、认证族 ✓（§七十）、provider 校验族 ✓（§七十一）、迁移与运行时 ✓（§六十七）。
+**具名保留族（不翻）**：pdf 三处、全局搜索三处（`src/main/pdf`、`src/main/search` 下**没有**我们拼的英文句；其 `String(error)` 更可能承载底层/第三方文本）；
+以及所有**网关/服务端回显**（`auth`/`unknown` 两支、`stderr` 透传、`(HTTP 403)`）。
+
+⇒ **§六十九 枚举出的「可判族」至此判完**。剩下的同类工作只有两类：① 新增代码按 B 口径写（不再拼整句）；
+② 若日后在 pdf/全局搜索确证有我们拼的句，按同法加族（目录模式加一族只花 1 轮）。
+
+### 四 下一轮第一步（带 blocked-by）
+
+1. **窗口侧读数三件 + 认证 spec 进仓**：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）——这是本版剩下的**唯一**取证类缺口（其余新能力都已按 §六十九/§七十/§七十一 的方式落地）。
+2. 执行器按自己的队列继续（它上一笔已评审通过）。
+3. **拍板项仍挂**：A 续做 + B 只强制用于新写的 main→renderer 结果类型（§六十九 决策表）——A 已按建议执行完毕，B 的强制点尚待你确认是否写入开发口径。
