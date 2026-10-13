@@ -4193,3 +4193,32 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 
 - **W1**：B1-1 ✅ / B1-2 ✅ / B1-3（接线）未做 ⇒ W1 未收口。
 - **W2**：B2 别名级血缘、B3 会话内文件变更审阅（开工先核前提）未开工。
+
+## 八十、v2.1.0（批 B）B1 第三片（数据半）已交付（会话，2026-10-13）
+
+### 一 交付（`feat(notebook)` 一笔 + 本档）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 共享契约 | `src/shared/notebook.ts` | 新增 `NotebookRunRiskRuleId/Hit/Receipt`（**唯一定义**，卡与记录共用一套名字）+ `NotebookRunRecord.riskReview?`（注释写明**缺席＝未评估，不等于无风险**）+ `sanitizeNotebookRunRiskReceipt`（读取侧**整条丢弃**，与 `sanitizeFileEvidence` 同法）|
+| 写入点 | `src/main/notebook/run-terminalization.ts:82-96` | 在执行前建记录那一刻从 `runningRun.script` 算出收据并附上；**终态记录改为 spread 已审阅的记录**（首版 spread 原始 `runningRun`，会把刚附上的收据覆盖掉 —— 用例当场抓到）|
+| 读取侧 | `src/main/notebook/repository.ts` `normalizeRun` | `riskReview: sanitizeNotebookRunRiskReceipt(run.riskReview)`（照 `fileEvidence` 先例）|
+
+### 二 读数（全部实跑）
+
+- 定向五文件 **52 条**全绿（含新增：收据随运行落盘、终态不丢收据、安全 cell 落 allow 收据、坏收据整条丢弃且运行仍在）；
+- **更宽的门**：`src/main/notebook` + `src/shared` 全目录 ⇒ **209 文件 / 2761 passed｜99 skipped**，无涟漪；
+- 双 typecheck：node 本片 0 条、**web 全清**；`eslint --no-cache` 三个改动文件 0 问题。
+
+### 三 本片自己踩的坑（记形状）
+
+1. **多行 import 块**：给 `repository.ts` 加 `sanitizeNotebookRunRiskReceipt` 时插进了多行 `import { … }` 块中间（`Parsing error: ',' expected`）——**第三次**踩同一类；锚点必须是**以 `from '…'` 收尾的完整语句**。
+2. **终态覆盖**：收据附在 append 的记录上，而终态记录是 `{...runningRun}` 另建 ⇒ 落盘后收据消失。**判据是我自己的用例**（它断言读回的记录里有收据）。
+3. **用例缺必需字段**：`NotebookRunRecord` 的 `text/outputs/artifacts/workingFiles` 是必需的，我只写了部分字段 ⇒ 运行期靠归一器容错过去了，**只有 tsc 抓住**（又一次印证「只跑 vitest 会漏」）。
+
+### 四 仍未做（B1 剩的两件，不许读成已完成）
+
+1. **`review` 判定 → 走审批卡**：`AcpPermissionRequest` 的 `title` 用 `notebookRunRiskApprovalTitle()`，卡面渲染 `runRiskReceiptLines()`（规则名 + 命中行）。**需要真窗口读数**（弹卡 → 拒绝 → 记录一致）。
+2. **卡面 9 语**：命中行与标题的可见文案（现在标题是英文串，属决策层；上屏要走字典）。
+
+`blocked-by`：第 1 条 = 内存闸门（本轮实测空闲页 73 MB）；第 2 条可在无窗口时先做（字典 + 渲染用例）。
