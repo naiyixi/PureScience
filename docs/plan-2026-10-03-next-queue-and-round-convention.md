@@ -3807,3 +3807,38 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    找到新的汇点就照 `main-message-catalog.ts` 的模式加族；**不要**为了让形状数字好看去动 agent 面向的文本。
 2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
+
+## 六十九、本轮追加（会话，2026-10-13）—— 上屏汇点的**系统性枚举**：103 处，这不是「逐条键控」的量级
+
+### 一 枚举方法（可复核，不是抽样）
+
+按「main 给的字符串会不会被逐字显示」找汇点，三种形状 grep 全量：
+
+1. **catch 里把 `error.message` 交给状态**：`grep -rn "instanceof Error ? e\.message|instanceof Error ? error\.message"` ⇒ **103 处**（`pages/settings/ProvidersPanel.tsx` 一个文件就有 10 处，
+   `SettingsPage`、`AgentPanel`、`SkillImportView`、`ConnectorsPanel`、`pdf/*`、`global-search/*` …）。
+2. **`result.message` / `failure.message` 直接进状态**：`ProvidersPanel` 6 处、`SettingsPage` 952–955、`validation-message.ts`（4 条分支原样返回 `result.message`）等。
+3. **状态变量直接塞进 JSX**：`{error}` / `{message}` / `{notice}` 形状十余处（`ConnectorImportView`、`ComputeAddForm`、`GeneralPanel`、`NetworkPanel`、`EndpointPanel`、`RuntimesPanel:972`…）。
+
+⇒ 本轮已键控的 4 族（7 键 + 目录）**只是这条路的第一段**：还有 ≈100 处会以 main 的英文原样上屏（当且仅当 main 那一支真的返回了句子而不是走 `?? t(...)` 兜底；
+**很多汇点的正常路径用的是 `t(...)` 兜底**，英文只在 main 真返回 message 时出现 ⇒ 实际的「必然英文」量小于 103，但**判据必须是「main 这支会不会返回句子」，不能凭汇点数**）。
+
+### 二 两个口径（**这是拍板项**，不要自行铺开）
+
+| 口径 | 做法 | 代价 | 收益 |
+| --- | --- | --- | --- |
+| **A. 目录补丁（现状延续）** | 每发现一族 main 句子就往 `main-message-catalog.ts` 加条目（精确 + 具名模板） | 每族 ≈1 轮；**永远滞后**：新增的 main 句子默认仍是英文，靠人发现；目录会持续膨胀 | 改动小、可控、可回退；对已存在的族立刻见效 |
+| **B. 架构收敛（教科书口径）** | 结果类型**只带数据**（code + 参数），句子由渲染端 `t` 组（技能 `i18n-sweep-playbook` §3 的「反向规则」正是这条）；main 不再拼整句 | 动的是 `src/shared/**` 的结果类型 + 每个 main 返回点 + 渲染端组句 ⇒ **跨 20+ 文件、需成批迁移**，且要防「迁移一半」 | 一次到位；此后新增 main 消息**结构上无法**再漏 |
+
+**我的建议**：**A 先做（已在做）＋ B 只在「新写的 main → renderer 结果类型」上强制**（老类型不动，避免半迁移）。
+依据：① 现有 103 处里大量是「异常兜底」路径（正常路径已 `t` 兜底），B 的收益主要在**新增**面；
+② B 的整体迁移量在本版窗口内不可控，且与执行器在制的 `session-persistence/**` 结果类型可能撞车；
+③ 技能里已有 B 的成文口径，新代码照它写即可，不需要先重写旧的。
+**请拍板**：是否接受「A 续做 + B 只管新类型」；若不接受，请指一条（例如「本版必须整体迁移 B」或「只做 A」）。
+
+### 三 下一轮第一步（带 blocked-by）
+
+1. **A 的第 2 段**（按「main 这支会不会返回句子」逐族核，**不按汇点数**）：优先 `ProvidersPanel` 的 10 处 catch 族
+   （Codex/xAI/Claude 登录登出 + 重导入）与 `SettingsPage` 的 2 处结果族——它们的 main 侧返回句子已存在（本轮已键控 claude 3 句）。
+   `blocked-by` = 无人在改 `pages/settings/ProvidersPanel.tsx`、`main/settings/**`。
+2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门。
