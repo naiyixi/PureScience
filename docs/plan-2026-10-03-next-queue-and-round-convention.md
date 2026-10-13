@@ -4391,3 +4391,29 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 
 **存在性守卫被自己的注释骗**：`if 'captureBeforeContent' not in file` 判「未插入」，而该名字在文件头注释里出现过 ⇒ 整块 `captureBeforeContent` **从未被插入**，脚本却打印了「已插入」（打印的是别的分支）。
 → 教训：**存在性守卫必须用代码字符串**（`const captureBeforeContent = async`），不能用**名字出现过**当判据；同族形状本轮已是第三次（「符号出现 ≠ 已导入」两次）。
+
+## 八十七、P0-11 结案：**已修，不是未修**（会话，2026-10-13）
+
+### 一 我先前汇报的失真（就地更正）
+
+早前汇报里写「P0-11（未修，产品侧）：agent 路径闸门根与存储层 `dataRoot` 不一致（dev 实例 `~/.purescience-project` vs `/Users/totota/PureScience-DEV`）」——**「未修」是错的**（把已交付的写成未做，与把半截的写成已完成是同一种失真）。
+
+### 二 证据（读源，逐字）
+
+`src/main/settings/agent-runtime-manager.ts:705-721`：闸门根已改为**向存储层自己的解析要**：
+```
+const dataRoot = resolveDataRoot()      // :721
+… { roots: [dataRoot, this.storageRoot], hint: dataRoot }   // :741
+```
+同一处的注释逐字记着这个缺陷与它的真机读数（与我会话里量到的一致）：
+
+> 旧表达式 `settings.dataRoot ?? this.storageRoot` 在「尚未挑过数据根」时**静默回落到 CONFIG 根** —— 栅栏于是点名一个装设置/skills/DB 的目录，而没点名任何装 projects/workspaces/notebook 数据的目录。真机实测：roots 文件里只有 `~/.purescience-project`，而应用自己的 `storage:get-info` 把数据根解析到 `~/PureScience-DEV`，闸门决策日志里记着对 `~/PureScience-DEV/workspaces/<sessionId>/…` 的**真实拒绝** —— agent 读不到自己的会话工作区与自己的笔记本产物。修法就是「在拥有这个概念的那一处问一次」`resolveDataRoot`（artifacts/uploads/reviewer/storage 早就在用同一个值）。
+
+### 三 残留扫描（本会话实跑）
+
+- `grep -rn "settings\.dataRoot ??" src/main` ⇒ **仅命中那句注释**，无残留 ✓
+- agent 侧唯一的 roots 构造点就是上面这处（`path-guard-hook.ts` 只负责序列化，不自己解析）✓
+
+### 四 结论
+
+**P0-11 关闭**：机制已修、无残留、修法与理由是代码注释里逐字记载的真机读数。留着它当「未修」会误导下一轮去改一处已经正确的代码。
