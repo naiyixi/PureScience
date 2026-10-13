@@ -26,6 +26,8 @@ const { SettingsRepository } = await import('./repository')
 const { getAppClaudeConfigDir } = await import('./provider-env')
 const { managedClaudeDir } = await import('./managed-claude')
 const { managedOpencodeDir } = await import('./managed-opencode')
+const { initDataRoot, resolveDataRoot } = await import('../storage-root')
+const { pathGuardRootsFile } = await import('./path-guard-hook')
 
 type Repository = InstanceType<typeof SettingsRepository>
 type ManagerOptions = ConstructorParameters<typeof AgentRuntimeManager>[0]
@@ -432,6 +434,57 @@ describe('AgentRuntimeManager', () => {
         CLAUDE_CODE_OAUTH_TOKEN: 'setup-token'
       })
     )
+  })
+
+  // P0-11. The fence's root list is app-owned resolution, and "data root" is a different concept from
+  // "config root" — an install may keep them in different folders (the dev layout here does).
+  it('fences the agent to the storage layer data root, never to the config root in its place', async () => {
+    manager = createManager()
+    const settings = await repository.getSettings()
+
+    await manager.provisionClaudeRuntimeConfig(settings)
+
+    // The regression this pins: with no picked data root, the old expression fell back to the CONFIG root,
+    // so the fence named the folder that holds settings/skills/DB and named nothing that holds projects,
+    // workspaces or notebook data. The guard then refused the agent's own session workspace.
+    const dataRoot = resolveDataRoot()
+    expect(dataRoot).not.toBe(storageRoot)
+    expect(provisionClaudeConfig.mock.calls.at(-1)?.[5]).toEqual({
+      roots: [dataRoot, storageRoot],
+      hint: dataRoot
+    })
+    // Stated as the user-visible consequence, not just as an array shape: the folder the app writes
+    // sessions and notebook outputs into is fenced, and the config root stays fenced too.
+    const roots = (provisionClaudeConfig.mock.calls.at(-1)?.[5] as { roots: string[] }).roots
+    expect(roots).toContain(dataRoot)
+    expect(roots).toContain(storageRoot)
+  })
+
+  it('fences to a data root the user picked, alongside the config root', async () => {
+    const picked = join(storageRoot, 'picked-data-root')
+    initDataRoot(picked)
+    try {
+      manager = createManager()
+      const settings = await repository.getSettings()
+
+      await manager.provisionClaudeRuntimeConfig(settings)
+
+      expect(provisionClaudeConfig.mock.calls.at(-1)?.[5]).toEqual({
+        roots: [picked, storageRoot],
+        hint: picked
+      })
+    } finally {
+      // The data root is cached module state (a change needs a restart), so restore the default for the
+      // rest of the file rather than leaking this case's root into every later provisioning pass.
+      initDataRoot(undefined)
+    }
+  })
+
+  it('writes the same fence file when both roots resolve to one folder', () => {
+    // The legacy/packaged layout resolves both concepts to the same folder (no separate PureScience data
+    // dir). The dedupe is what keeps this fix a no-op there: same roots, same hint, same bytes as before.
+    const same = join(storageRoot, 'legacy-root')
+    expect(pathGuardRootsFile([same, same], same)).toBe(pathGuardRootsFile([same], same))
   })
 
   it('synchronizes the Compute host projection after each Skill provisioning path', async () => {

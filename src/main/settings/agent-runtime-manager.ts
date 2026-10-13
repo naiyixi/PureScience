@@ -32,6 +32,7 @@ import { syncConnectorSkillDocs } from '../connectors/provision'
 import { ComputeHostRepository } from '../compute/repository'
 import { getProjectDbClient } from '../projects/prisma-client'
 import { hasCanonicalComputeSkillDoc, syncComputeSkillDoc } from '../compute/skill-doc'
+import { resolveDataRoot } from '../storage-root'
 import { writeAgentConfigFiles } from './agent-config-files'
 import { createDefaultDetectDeps, detectClaude, type ClaudeDetectDeps } from './claude-detect'
 import {
@@ -704,7 +705,20 @@ export class AgentRuntimeManager {
     // The agent's shell and file calls are fenced to this install's own folders: the data root (project
     // files, artifacts, uploads, runtime) and the config root (skills, hooks). Without this the fence
     // only allows the system temp dir, so both are passed on every provisioning pass.
-    const dataRoot = settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot
+    //
+    // The data root is asked of the storage layer's own resolution, not derived here. The two roots are
+    // separate concepts and an install may put them in different folders, and the expression that used
+    // to stand here (`settings.dataRoot ?? this.storageRoot`) silently fell back to the CONFIG root
+    // whenever no data root has been picked: the fence then named a folder that holds settings, skills
+    // and the DB while naming nothing that holds the projects, workspaces and notebook data the app
+    // writes. Measured on a real dev install: the roots file held only `~/.purescience-project` while
+    // the app's own `storage:get-info` resolved the data root to `~/PureScience-DEV`, and the guard's
+    // decision log recorded real refusals of `~/PureScience-DEV/workspaces/<sessionId>/…` — the agent
+    // could not read its own session workspace or its own notebook outputs. One resolution of the
+    // concept "data root", asked in the one place that owns it (`resolveDataRoot`, the same value
+    // artifacts/uploads/reviewer/storage already use), so the fence describes the install the storage
+    // layer actually writes to.
+    const dataRoot = resolveDataRoot()
     // The verification gate lives inside provisionClaudeConfig, so it applies here too; forced ids
     // (specialist flows that ask for a skill by id) still win over it.
     // The disabled set for THIS target: the global one minus the always-on skills, plus what this target
