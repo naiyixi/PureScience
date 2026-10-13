@@ -4558,5 +4558,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     '앱 소유 저장소에 Anthropic OAuth 토큰(setup-token)이 있으며 Claude Code만 사용할 수 있습니다. Claude Code로 전환하거나 다른 공급자를 선택하세요.',
   'mainMessage.providerIncompatibleGeneric':
-    '{framework}와 호환되지 않습니다: 필요한 것은 {needs}이지만 이 공급자가 사용하는 것은 {speaks}입니다. API 형식을 바꾸거나 에이전트 프레임워크를 전환하세요.'
+    '{framework}와 호환되지 않습니다: 필요한 것은 {needs}이지만 이 공급자가 사용하는 것은 {speaks}입니다. API 형식을 바꾸거나 에이전트 프레임워크를 전환하세요.',
+  'mainMessage.connectorIdShape': '커넥터 ID에는 소문자, 숫자, 하이픈만 사용할 수 있습니다',
+  'mainMessage.connectorOauthRemoteOnly': 'OAuth는 원격 사용자 지정 커넥터에서만 지원됩니다',
+  'mainMessage.connectorOauthHeaderConflict': 'OAuth와 정적 헤더는 함께 설정할 수 없습니다',
+  'mainMessage.connectorInvalidConfig': '사용자 지정 커넥터 구성이 유효하지 않습니다',
+  'mainMessage.connectorMcpServersNotObject': 'MCP 서버의 JSON 객체가 필요합니다',
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers`는 서버의 JSON 객체여야 합니다'
 }

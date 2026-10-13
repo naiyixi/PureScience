@@ -4345,7 +4345,13 @@ export const zh = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     '它在应用自己的存储里带着 Anthropic OAuth 令牌（setup-token），只有 Claude Code 能用它。请切换到 Claude Code，或另选一个服务商。',
   'mainMessage.providerIncompatibleGeneric':
-    '与 {framework} 不兼容：它需要 {needs}，而这个服务商使用的是 {speaks}。请修改 API 格式，或切换智能体框架。'
+    '与 {framework} 不兼容：它需要 {needs}，而这个服务商使用的是 {speaks}。请修改 API 格式，或切换智能体框架。',
+  'mainMessage.connectorIdShape': '连接器 ID 只能使用小写字母、数字和连字符',
+  'mainMessage.connectorOauthRemoteOnly': 'OAuth 只支持远程自定义连接器',
+  'mainMessage.connectorOauthHeaderConflict': 'OAuth 与静态请求头不能同时配置',
+  'mainMessage.connectorInvalidConfig': '自定义连接器配置无效',
+  'mainMessage.connectorMcpServersNotObject': '应为 MCP 服务器的 JSON 对象',
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 应为服务器的 JSON 对象'
 }
 
 export type ZhKey = keyof typeof zh

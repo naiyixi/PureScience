@@ -4632,5 +4632,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     'アプリ管理のストレージに Anthropic OAuth トークン（setup-token）があり、扱えるのは Claude Code だけです。Claude Code に切り替えるか、別のプロバイダーを選んでください。',
   'mainMessage.providerIncompatibleGeneric':
-    '{framework} と互換性がありません：必要なのは {needs} ですが、このプロバイダーが話すのは {speaks} です。API 形式を変更するか、エージェントフレームワークを切り替えてください。'
+    '{framework} と互換性がありません：必要なのは {needs} ですが、このプロバイダーが話すのは {speaks} です。API 形式を変更するか、エージェントフレームワークを切り替えてください。',
+  'mainMessage.connectorIdShape': 'コネクタ ID には小文字、数字、ハイフンのみ使用できます',
+  'mainMessage.connectorOauthRemoteOnly': 'OAuth はリモートのカスタムコネクタでのみ対応しています',
+  'mainMessage.connectorOauthHeaderConflict': 'OAuth と静的ヘッダーは同時に設定できません',
+  'mainMessage.connectorInvalidConfig': 'カスタムコネクタの構成が無効です',
+  'mainMessage.connectorMcpServersNotObject': 'MCP サーバーの JSON オブジェクトが必要です',
+  'mainMessage.connectorMcpServersKeyNotObject':
+    '`mcpServers` はサーバーの JSON オブジェクトである必要があります'
 }

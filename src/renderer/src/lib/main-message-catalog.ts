@@ -4,6 +4,15 @@
 // Mapping the exact sentence back to a dictionary key keeps that property and still lets the reader
 // see it in their own language; anything the renderer does not recognise passes through unchanged.
 export const MAIN_MESSAGE_KEYS: Record<string, string> = {
+  'Connector ID must use only lowercase letters, numbers, and hyphens':
+    'mainMessage.connectorIdShape',
+  'OAuth is only supported for remote custom connectors': 'mainMessage.connectorOauthRemoteOnly',
+  'OAuth and static headers cannot be configured together':
+    'mainMessage.connectorOauthHeaderConflict',
+  'Invalid custom connector configuration': 'mainMessage.connectorInvalidConfig',
+  'Expected a JSON object of MCP servers': 'mainMessage.connectorMcpServersNotObject',
+  'Expected `mcpServers` to be a JSON object of servers':
+    'mainMessage.connectorMcpServersKeyNotObject',
   'Carries an Anthropic OAuth token (setup-token) in app-owned storage, which only Claude Code can carry. Switch to Claude Code or pick another provider.':
     'mainMessage.providerIncompatibleClaudeIsolated',
   'Browser sign-in is unavailable: the Claude executable was not found.':

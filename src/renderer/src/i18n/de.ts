@@ -4789,5 +4789,16 @@ export const de: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     'Es trägt ein Anthropic-OAuth-Token (setup-token) im app-eigenen Speicher, das nur Claude Code verwenden kann. Wechsle zu Claude Code oder wähle einen anderen Anbieter.',
   'mainMessage.providerIncompatibleGeneric':
-    'Nicht kompatibel mit {framework}: Es braucht {needs}, dieser Anbieter spricht aber {speaks}. Ändere das API-Format oder wechsle das Agent-Framework.'
+    'Nicht kompatibel mit {framework}: Es braucht {needs}, dieser Anbieter spricht aber {speaks}. Ändere das API-Format oder wechsle das Agent-Framework.',
+  'mainMessage.connectorIdShape':
+    'Die Connector-ID darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten',
+  'mainMessage.connectorOauthRemoteOnly':
+    'OAuth wird nur für entfernte benutzerdefinierte Connectoren unterstützt',
+  'mainMessage.connectorOauthHeaderConflict':
+    'OAuth und statische Header lassen sich nicht gemeinsam konfigurieren',
+  'mainMessage.connectorInvalidConfig':
+    'Ungültige Konfiguration des benutzerdefinierten Connectors',
+  'mainMessage.connectorMcpServersNotObject': 'Erwartet wird ein JSON-Objekt mit MCP-Servern',
+  'mainMessage.connectorMcpServersKeyNotObject':
+    '`mcpServers` muss ein JSON-Objekt mit Servern sein'
 }

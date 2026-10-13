@@ -47,6 +47,7 @@ import { useSpecialistStore } from '@/stores/specialist-store'
 import { ConnectorGlyph } from './connector-icons'
 import { SettingsIconAction, SettingsSection, SettingsToggle } from './SettingsLayout'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 // The connectors panel sub-view, driven by the settings navigation history. The detail and add pages
 // are separate components owned by SettingsPage; this panel only renders the list + contact-email section.
@@ -245,7 +246,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
     try {
       await signOutCustomServer({ id })
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t('settings.oauthSignOutFailed'))
+      setAuthError(
+        error instanceof Error
+          ? localizeMainMessage(t, error.message)
+          : t('settings.oauthSignOutFailed')
+      )
     }
   }
 
@@ -259,7 +264,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
     } catch (error) {
       await loadConnectors().catch(() => undefined)
       if (attempt === authenticationAttempts.current.get(id)) {
-        setAuthError(error instanceof Error ? error.message : t('settings.oauthSignInFailed'))
+        setAuthError(
+          error instanceof Error
+            ? localizeMainMessage(t, error.message)
+            : t('settings.oauthSignInFailed')
+        )
       }
     } finally {
       if (attempt === authenticationAttempts.current.get(id)) {
@@ -278,7 +287,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
     try {
       await cancelCustomServerAuthentication({ id })
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t('settings.couldNotCancelOAuth'))
+      setAuthError(
+        error instanceof Error
+          ? localizeMainMessage(t, error.message)
+          : t('settings.couldNotCancelOAuth')
+      )
     } finally {
       setAuthenticatingIds((current) => {
         const next = new Set(current)
@@ -310,7 +323,9 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
       setRemoval(null)
     } catch (error) {
       setRemovalError(
-        error instanceof Error ? error.message : t('settings.couldNotRemoveConnector')
+        error instanceof Error
+          ? localizeMainMessage(t, error.message)
+          : t('settings.couldNotRemoveConnector')
       )
     } finally {
       setRemoving(false)
@@ -445,7 +460,7 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
             connector: server.name,
             enabled,
             changed: false,
-            error: error instanceof Error ? error.message : String(error)
+            error: error instanceof Error ? localizeMainMessage(t, error.message) : String(error)
           })
         }
       }

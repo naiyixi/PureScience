@@ -4734,5 +4734,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     'Lleva un token OAuth de Anthropic (setup-token) en el almacenamiento de la aplicación, que solo Claude Code puede usar. Cambia a Claude Code o elige otro proveedor.',
   'mainMessage.providerIncompatibleGeneric':
-    'No es compatible con {framework}: necesita {needs}, pero este proveedor habla {speaks}. Cambia el formato de la API o cambia de framework de agente.'
+    'No es compatible con {framework}: necesita {needs}, pero este proveedor habla {speaks}. Cambia el formato de la API o cambia de framework de agente.',
+  'mainMessage.connectorIdShape':
+    'El ID del conector solo puede llevar minúsculas, números y guiones',
+  'mainMessage.connectorOauthRemoteOnly':
+    'OAuth solo se admite en conectores personalizados remotos',
+  'mainMessage.connectorOauthHeaderConflict':
+    'OAuth y las cabeceras estáticas no se pueden configurar a la vez',
+  'mainMessage.connectorInvalidConfig': 'Configuración de conector personalizado no válida',
+  'mainMessage.connectorMcpServersNotObject': 'Se espera un objeto JSON de servidores MCP',
+  'mainMessage.connectorMcpServersKeyNotObject':
+    '`mcpServers` debe ser un objeto JSON de servidores'
 }

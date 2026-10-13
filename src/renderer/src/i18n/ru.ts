@@ -4648,5 +4648,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     'Он хранит токен OAuth Anthropic (setup-token) в хранилище приложения, а использовать его может только Claude Code. Переключитесь на Claude Code или выберите другого поставщика.',
   'mainMessage.providerIncompatibleGeneric':
-    'Несовместимо с {framework}: ему нужно {needs}, а этот поставщик говорит на {speaks}. Измените формат API или переключите фреймворк агента.'
+    'Несовместимо с {framework}: ему нужно {needs}, а этот поставщик говорит на {speaks}. Измените формат API или переключите фреймворк агента.',
+  'mainMessage.connectorIdShape':
+    'В идентификаторе коннектора допустимы только строчные буквы, цифры и дефисы',
+  'mainMessage.connectorOauthRemoteOnly':
+    'OAuth поддерживается только для удалённых пользовательских коннекторов',
+  'mainMessage.connectorOauthHeaderConflict':
+    'OAuth и статические заголовки нельзя настроить одновременно',
+  'mainMessage.connectorInvalidConfig': 'Недопустимая конфигурация пользовательского коннектора',
+  'mainMessage.connectorMcpServersNotObject': 'Ожидается объект JSON с серверами MCP',
+  'mainMessage.connectorMcpServersKeyNotObject':
+    '`mcpServers` должен быть объектом JSON с серверами'
 }

@@ -4663,5 +4663,14 @@ export const en: Record<ZhKey, string> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     'Carries an Anthropic OAuth token (setup-token) in app-owned storage, which only Claude Code can carry. Switch to Claude Code or pick another provider.',
   'mainMessage.providerIncompatibleGeneric':
-    'Not compatible with {framework}: it needs {needs}, but this provider speaks {speaks}. Change the API format or switch the agent framework.'
+    'Not compatible with {framework}: it needs {needs}, but this provider speaks {speaks}. Change the API format or switch the agent framework.',
+  'mainMessage.connectorIdShape':
+    'Connector ID must use only lowercase letters, numbers, and hyphens',
+  'mainMessage.connectorOauthRemoteOnly': 'OAuth is only supported for remote custom connectors',
+  'mainMessage.connectorOauthHeaderConflict':
+    'OAuth and static headers cannot be configured together',
+  'mainMessage.connectorInvalidConfig': 'Invalid custom connector configuration',
+  'mainMessage.connectorMcpServersNotObject': 'Expected a JSON object of MCP servers',
+  'mainMessage.connectorMcpServersKeyNotObject':
+    'Expected `mcpServers` to be a JSON object of servers'
 }

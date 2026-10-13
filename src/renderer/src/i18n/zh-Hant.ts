@@ -4289,5 +4289,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'mainMessage.providerIncompatibleClaudeIsolated':
     '它在應用程式自己的儲存空間裡帶著 Anthropic OAuth 權杖（setup-token），只有 Claude Code 能使用。請切換到 Claude Code，或改選另一個供應商。',
   'mainMessage.providerIncompatibleGeneric':
-    '與 {framework} 不相容：它需要 {needs}，而這個供應商使用的是 {speaks}。請修改 API 格式，或切換智能體框架。'
+    '與 {framework} 不相容：它需要 {needs}，而這個供應商使用的是 {speaks}。請修改 API 格式，或切換智能體框架。',
+  'mainMessage.connectorIdShape': '連接器 ID 只能使用小寫字母、數字和連字號',
+  'mainMessage.connectorOauthRemoteOnly': 'OAuth 僅支援遠端自訂連接器',
+  'mainMessage.connectorOauthHeaderConflict': 'OAuth 與靜態標頭不能同時設定',
+  'mainMessage.connectorInvalidConfig': '自訂連接器設定無效',
+  'mainMessage.connectorMcpServersNotObject': '應為 MCP 伺服器的 JSON 物件',
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 應為伺服器的 JSON 物件'
 }
