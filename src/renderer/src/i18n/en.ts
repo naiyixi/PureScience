@@ -4696,5 +4696,6 @@ export const en: Record<ZhKey, string> = {
   'writeAudit.contentMissing.did-not-exist': 'did not exist',
   'writeAudit.contentMissing.not-recorded': 'not recorded',
   'writeAudit.contentMissing.too-large': 'too large to hash',
-  'writeAudit.contentMissing.unreadable': 'unreadable'
+  'writeAudit.contentMissing.unreadable': 'unreadable',
+  'notebookRisk.declined': 'Notebook run declined: {rules} — no code was executed.'
 }

@@ -4684,5 +4684,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': 'не существовал',
   'writeAudit.contentMissing.not-recorded': 'не записан',
   'writeAudit.contentMissing.too-large': 'слишком велик для отпечатка',
-  'writeAudit.contentMissing.unreadable': 'не читается'
+  'writeAudit.contentMissing.unreadable': 'не читается',
+  'notebookRisk.declined': 'Запуск ноутбука отклонён: {rules} — код не выполнялся.'
 }

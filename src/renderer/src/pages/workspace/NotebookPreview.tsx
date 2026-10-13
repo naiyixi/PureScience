@@ -8,6 +8,9 @@ import {
   type NotebookStaleReason
 } from '../../../../shared/run-alias-lineage'
 import { notebookStaleReasonText } from '@/lib/notebook-stale-copy'
+import { notebookRunDeclinedNotice } from '@/lib/notebook-risk-copy'
+import { unwrapIpcEnvelope } from '@/lib/main-message-catalog'
+import type { Translate } from '@/i18n'
 import { Braces, FilePenLine, Power, RotateCw } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
@@ -77,9 +80,14 @@ type NotebookPreviewProps = {
   item: NotebookPreviewItem
 }
 
-// Converts any IPC failure into displayable text without losing non-Error values.
-const getErrorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
+// Converts any IPC failure into displayable text without losing non-Error values. The transport's
+// envelope is stripped, and a refused notebook run is said in the reader's language — main composes
+// that sentence in English only, so an unrecognised one would reach a Chinese reader verbatim.
+const getErrorMessage = (t: Translate, error: unknown): string => {
+  const message = unwrapIpcEnvelope(error instanceof Error ? error.message : String(error))
+
+  return notebookRunDeclinedNotice(t, message) ?? message
+}
 
 // Reuses the stable notebook routing fields for every renderer IPC request.
 const createNotebookRequest = (
@@ -591,7 +599,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       applyNotebookState(nextState)
       setActionError(null)
     } catch (error) {
-      setActionError(getErrorMessage(error))
+      setActionError(getErrorMessage(t, error))
     } finally {
       setIsLoading(false)
     }
@@ -641,7 +649,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       await loadNotebookState()
     } catch (error) {
       setTerminalCode(code)
-      setActionError(getErrorMessage(error))
+      setActionError(getErrorMessage(t, error))
     } finally {
       setIsSubmitting(false)
     }
@@ -676,7 +684,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       setRerunNotice(t('ws.notebookRerunDone').replace('{status}', summary.status) as string)
       await loadNotebookState()
     } catch (error) {
-      setActionError(getErrorMessage(error))
+      setActionError(getErrorMessage(t, error))
     }
   }
 
@@ -836,7 +844,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       applyNotebookState(next)
       setKernelNotice(t('ws.notebookKernelRestarted'))
     } catch (error) {
-      setActionError(getErrorMessage(error))
+      setActionError(getErrorMessage(t, error))
     } finally {
       setIsRestarting(false)
     }
@@ -854,7 +862,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
       setKernelNotice(t('ws.notebookKernelClosed'))
       await loadNotebookState()
     } catch (error) {
-      setActionError(getErrorMessage(error))
+      setActionError(getErrorMessage(t, error))
     } finally {
       setIsClosingKernel(false)
     }

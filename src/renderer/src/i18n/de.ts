@@ -4826,5 +4826,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': 'war nicht vorhanden',
   'writeAudit.contentMissing.not-recorded': 'nicht aufgezeichnet',
   'writeAudit.contentMissing.too-large': 'zu groß für den Hash',
-  'writeAudit.contentMissing.unreadable': 'nicht lesbar'
+  'writeAudit.contentMissing.unreadable': 'nicht lesbar',
+  'notebookRisk.declined': 'Notebook-Lauf abgelehnt: {rules} — es wurde kein Code ausgeführt.'
 }

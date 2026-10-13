@@ -4801,5 +4801,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': 'n’existait pas',
   'writeAudit.contentMissing.not-recorded': 'non consigné',
   'writeAudit.contentMissing.too-large': 'trop volumineux pour l’empreinte',
-  'writeAudit.contentMissing.unreadable': 'illisible'
+  'writeAudit.contentMissing.unreadable': 'illisible',
+  'notebookRisk.declined': "Exécution du notebook refusée : {rules} — aucun code n'a été exécuté."
 }

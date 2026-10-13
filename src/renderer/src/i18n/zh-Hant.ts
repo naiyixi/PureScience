@@ -4318,5 +4318,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': '原本不存在',
   'writeAudit.contentMissing.not-recorded': '未記錄',
   'writeAudit.contentMissing.too-large': '過大未算雜湊',
-  'writeAudit.contentMissing.unreadable': '讀不到'
+  'writeAudit.contentMissing.unreadable': '讀不到',
+  'notebookRisk.declined': '已拒絕這次筆記本執行：{rules} —— 未執行任何程式碼。'
 }

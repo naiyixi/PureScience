@@ -4771,5 +4771,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': 'no existía',
   'writeAudit.contentMissing.not-recorded': 'sin registrar',
   'writeAudit.contentMissing.too-large': 'demasiado grande para la huella',
-  'writeAudit.contentMissing.unreadable': 'ilegible'
+  'writeAudit.contentMissing.unreadable': 'ilegible',
+  'notebookRisk.declined':
+    'Ejecución del cuaderno rechazada: {rules} — no se ejecutó ningún código.'
 }

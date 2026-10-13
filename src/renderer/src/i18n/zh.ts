@@ -4374,7 +4374,8 @@ export const zh = {
   'writeAudit.contentMissing.did-not-exist': '原本不存在',
   'writeAudit.contentMissing.not-recorded': '未记录',
   'writeAudit.contentMissing.too-large': '过大未算哈希',
-  'writeAudit.contentMissing.unreadable': '读不到'
+  'writeAudit.contentMissing.unreadable': '读不到',
+  'notebookRisk.declined': '已拒绝这次笔记本运行：{rules} —— 未执行任何代码。'
 }
 
 export type ZhKey = keyof typeof zh

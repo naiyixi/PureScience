@@ -54,3 +54,28 @@ export const notebookRiskLines = (t: Translate, receipt: NotebookRunRiskReceipt)
       .replace('{where}', whereText(t, hit.lines))
       .replace('{excerpts}', hit.excerpts.join(' | '))
   )
+
+// A declared refusal is not a failure the reader has to decode. Main throws (and logs) exactly
+// `Notebook run declined: <rule ids>` — the class name is the only thing the transport adds, and the
+// ids are the only payload that survives the crossing. So this sentence is recognised and re-said in
+// the reader's language, with each rule named the way the approval card named it while keeping the
+// machine id inline (the receipt a third party recomputes uses that exact id).
+const DECLINED_SENTENCE = /^Notebook run declined: (.+)$/
+
+const ruleIdsText = (t: Translate, ids: string): string =>
+  ids
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .map((id) =>
+      id in RULE_NAME_KEYS ? `${ruleName(t, id as NotebookRunRiskRuleId)} (${id})` : id
+    )
+    .join(', ')
+
+/** The reader-facing sentence for a declined run, or undefined when this message is not that refusal. */
+export const notebookRunDeclinedNotice = (t: Translate, message: string): string | undefined => {
+  const match = DECLINED_SENTENCE.exec(message)
+  if (!match) return undefined
+
+  return translateKey(t, 'notebookRisk.declined').replace('{rules}', ruleIdsText(t, match[1]))
+}

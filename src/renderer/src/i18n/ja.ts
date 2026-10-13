@@ -4665,5 +4665,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': '存在しませんでした',
   'writeAudit.contentMissing.not-recorded': '記録なし',
   'writeAudit.contentMissing.too-large': '大きすぎて算出せず',
-  'writeAudit.contentMissing.unreadable': '読み取れません'
+  'writeAudit.contentMissing.unreadable': '読み取れません',
+  'notebookRisk.declined':
+    'ノートブックの実行を拒否しました：{rules} — コードは実行されていません。'
 }

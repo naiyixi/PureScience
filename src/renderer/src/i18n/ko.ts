@@ -4589,5 +4589,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.did-not-exist': '존재하지 않았습니다',
   'writeAudit.contentMissing.not-recorded': '기록되지 않음',
   'writeAudit.contentMissing.too-large': '너무 커서 계산 안 함',
-  'writeAudit.contentMissing.unreadable': '읽을 수 없음'
+  'writeAudit.contentMissing.unreadable': '읽을 수 없음',
+  'notebookRisk.declined': '노트북 실행을 거부했습니다: {rules} — 코드가 실행되지 않았습니다.'
 }

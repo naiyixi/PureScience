@@ -4,7 +4,11 @@ import { en } from '@/i18n/en'
 import { zh } from '@/i18n/zh'
 import type { NotebookRunRiskReceipt } from '../../../shared/notebook'
 
-import { notebookRiskLines, notebookRiskTitle } from './notebook-risk-copy'
+import {
+  notebookRunDeclinedNotice,
+  notebookRiskLines,
+  notebookRiskTitle
+} from './notebook-risk-copy'
 
 const translatorFor =
   (dictionary: Record<string, string>) =>
@@ -92,5 +96,34 @@ describe('notebook risk copy', () => {
       expect(notebookRiskTitle(t, many), name).not.toContain('{')
       for (const line of notebookRiskLines(t, many)) expect(line, name).not.toContain('{')
     }
+  })
+
+  it("re-says a declined run in the reader's words and names the rules like the card did", () => {
+    const t = translatorFor(en)
+    expect(notebookRunDeclinedNotice(t, 'Notebook run declined: fs-delete')).toBe(
+      'Notebook run declined: deletes files (fs-delete) — no code was executed.'
+    )
+  })
+
+  it('says it in Chinese and keeps every machine id in the line', () => {
+    const t = translatorFor(zh as unknown as Record<string, string>)
+    const notice = notebookRunDeclinedNotice(t, 'Notebook run declined: fs-delete, shell-exec')
+
+    expect(notice).toContain('笔记本')
+    expect(notice).toContain('fs-delete')
+    expect(notice).toContain('shell-exec')
+    expect(notice).not.toContain('{')
+  })
+
+  it('keeps a rule id it does not know rather than dropping it from the refusal', () => {
+    const t = translatorFor(en)
+    expect(notebookRunDeclinedNotice(t, 'Notebook run declined: some-future-rule')).toContain(
+      'some-future-rule'
+    )
+  })
+
+  it('has nothing to say about any other failure', () => {
+    const t = translatorFor(en)
+    expect(notebookRunDeclinedNotice(t, 'ENOENT: no such file or directory')).toBeUndefined()
   })
 })

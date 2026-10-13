@@ -97,3 +97,14 @@ export const localizeMainMessage = (translator: unknown, message: string): strin
 
   return message
 }
+
+// The transport wraps whatever main said before the interface sees it: Electron prefixes every rejected
+// `invoke` with `Error invoking remote method '<channel>': <ErrorName>: <cause>`, and the local Web RPC
+// client strips it down to `.message` (http-server.ts sends `error.message` verbatim). Both shapes are
+// unwrapped in ONE place so a sink can match the sentence main actually composed — a sentence that is
+// never recognised because of a wrapper is a sentence the reader gets in English.
+const IPC_ENVELOPE = /^Error invoking remote method '[^']*':\s*/i
+const ERROR_NAME_PREFIX = /^(?:Error|[A-Za-z]+Error):\s*/
+
+export const unwrapIpcEnvelope = (message: string): string =>
+  message.replace(IPC_ENVELOPE, '').replace(ERROR_NAME_PREFIX, '').trim()
