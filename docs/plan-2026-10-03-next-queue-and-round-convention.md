@@ -3657,3 +3657,41 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 1. **`dquote` 的 renderer 侧 19 条键控**（首选）：13 条 preview renderers 的错误/空态 + 6 条面板文案；先按仓库既有做法确认这些叶子是否 i18n-free（若是，沿 `historyDescription` 的「可选 props + EN 兜底 + 父层注入」模式）；`blocked-by` = 无人正在改 `preview/renderers/**` 与 `pages/workspace/**`（执行器当前在制的是 `session-persistence` 那 7 个文件，不重叠）。
 2. 执行器 P0-10(c) 那一笔（它自做）落定后 ⇒ **评审**（照 `21e2ec18` pdf 缝那次的六条口径：真释放字节、具名三态、顺序（先落库删记录再删数据）、复用既有 wire 形状、用例钉得住、界面那句话 ×9 语）。
 3. 窗口侧读数三件与认证 spec 进仓：`blocked-by` = 内存闸门（空闲页 ≥ 约 400 MB 量级再起 `build:e2e`）。
+
+## 六十五、本轮追加（会话，2026-10-13）—— 预览回退家族键控（25 键 ×9）+ 审计形状收紧
+
+### 一 本轮交付（我，均已推）
+
+| 提交 | 内容 |
+| --- | --- |
+| `8a8d15a4` | **审计形状收紧**：`scripts/i18n-hardcoded-audit.mjs` 按偏移量排除**注释内**的命中（19 条 renderer 侧 dquote 里 5 条其实是注释里提到的标签）。证明＝已知坏夹具：收紧前 `dquote=2`、收紧后 `=1`（真串仍在，`jsx-text` 计数不变）⇒ 分辨得开而非调瞎。全量 `dquote 71 → 66`，其余形状逐项不变 |
+| `f111fca7` | **预览回退家族键控**：25 键 ×9 语 + 15 文件。6 个原本 i18n-free 的 leaf 补 `useLanguage`（与 7 个已有 t 的兄弟一致）；`TiffPreview.getTiffPreviewErrorMessage`（reader 的 4 条诊断句原本逐字上屏）与 `OfficePreview.getDownloadOnlyErrorMessage`（按错误码返回键 union，类型即门）改为**返回键**、调用点再翻；顺手修 `FORMAT_LOADING_TITLES.word` 写死字面量而 `preview.loadingWord` 键早已存在的真缺陷（中文界面那一格此前显英文）|
+
+### 二 门禁与复跑读数
+
+- `8a8d15a4`：夹具前后对比（见上）+ 全量复扫。
+- `f111fca7`：**50 文件 / 470 条全绿**（`pages/workspace/previews` 全目录 + `pages/onboarding` + `i18n` 全套含质量门）；`eslint --no-cache` **0 问题**；web typecheck 本片 **0 条**；两笔均 `pre-push-checks.sh` EXIT=0 后推送，推后 `HEAD == origin/main`。
+
+### 三 收口读数（审计工具自身作证）
+
+| 形状 | §六十四后 | 本轮后 | 说明 |
+| --- | --- | --- | --- |
+| `dquote` | 66 | **53** | renderer 侧 19 → **1**（仅剩 `preview/office-package.ts:555` 的诊断串）|
+| `jsx prose line` | 3 | 3 | 全在 `src/main`（支持包文本文件 ×2、agent 指令 ×1，均有意保留）|
+| `jsx-text` / `jsx-text before interpolation` | 1 / 3 | 1 / 3 | 品牌名与 `Versions` 技术版本前缀（均判为保留）|
+
+### 四 事故与纠正（本轮自己踩的）
+
+1. **hook 插错非组件函数**：给 `HtmlPreview` 第二处补 `useLanguage` 时，自动插入按「最近一个 `=> {`」定位，落进了 `const handleMessage = (event: MessageEvent): void => {` —— 那是组件内的**普通函数**，加 hook 是违规。已退回并改加到 `HtmlPreviewRenderer` 本体；随后 tsc 报 `TS2451` 重复声明（该组件本来就有一处）⇒ 去重。**教训：自动补 hook 只能按「组件本体」定位（`export const X…Renderer = (…) => {` 这类），命中 `=> {` 就插是错的**；eslint 的 react-hooks 规则与 tsc 双向核对才抓住。
+2. **漏改一处字面量**：`TiffPreview` 的第三个 `fallbackMessage="TIFF couldn't be loaded for preview"` 不在我第一版补丁清单里（清单写的是「函数 + 2 个调用点」）⇒ 用「grep 所有 `fallbackMessage="`」作**收尾门**才发现并补掉。此后本片收尾门固定为：`grep -rn 'fallbackMessage="' src/renderer/src`（应为空）。
+
+### 五 具名判定（不许读成「已做」）
+
+- `preview/office-package.ts` 的校验串（`This isn't a valid legacy Excel file` 等）**不进 UI**：`OfficePreview.getDownloadOnlyErrorMessage` 是按**错误码**返回句子，UI 显示的是那句（已键控）⇒ 判为诊断串保留英文。**依据是两侧都读过**（抛点 + 消费点）。
+- 审计**形状盲区**（本轮实测，未扩大形状以免噪声）：`dquote` 要求首词为 `[A-Z][a-z]+` ⇒ 首词是缩写的串（CSV/PDB/HTML/JSON/TIFF/FASTA）**漏报**；单引号 `return '…'` 的可见文案也不在 `dquote` 覆盖面内（本轮 `OfficePreview` 那两句就是这样被漏掉的，靠人工 grep 找到）。⇒ 下一步可考虑加一个「单引号可见文案」形状，但**须先证明它在已知坏夹具上抓得住**。
+
+### 六 下一轮第一步（带 blocked-by）
+
+1. **`main/**` 的 `dquote` 桶（53 条里 50 条）**：`main/connectors` 35 / `main/reviewer` 6 / `main/settings` 5 / `main/notebook` 3 / 其余 3 ⇒ 按既有 `lib/remote-error-catalog.ts` 模式（精确 EN → 键 + `localizeRemoteMessage` 透传未命中）成批键控；先分「会直达 UI 的」与「只在日志/诊断里出现的」——后者不许键控（键控掉反而丢失诊断信息）。`blocked-by` = 无人在改 `main/connectors/**`、`main/reviewer/**`、`main/settings/**`（执行器当前在制的是 `session-persistence` 那 7 个文件，不重叠）。
+2. **执行器 P0-10(c) 落定后评审**（照 §六十四·五·2 的口径）；它下一轮 17:35 起。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮峰值仍 ~66 MB 空闲）。
