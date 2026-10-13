@@ -220,7 +220,7 @@ describe('WorkspacePage draft preservation', () => {
     runtime.sendMessage.mockResolvedValue({ sessionId: 'sess-a', messageId: 'm1' })
     runtime.deleteRuntimeSession.mockImplementation((id: string) => {
       useSessionStore.getState().deleteSession(id)
-      return Promise.resolve(true)
+      return Promise.resolve({ deleted: true })
     })
     deleteUpload.mockResolvedValue(undefined)
 
@@ -1045,7 +1045,7 @@ describe('WorkspacePage draft preservation', () => {
         new Promise((resolve) => {
           finishDeletion = () => {
             useSessionStore.getState().deleteSession(id)
-            resolve(true)
+            resolve({ deleted: true })
           }
         })
     )
@@ -1099,7 +1099,7 @@ describe('WorkspacePage draft preservation', () => {
         new Promise((resolve) => {
           finishDeletion = () => {
             useSessionStore.getState().deleteSession(id)
-            resolve(true)
+            resolve({ deleted: true })
           }
         })
     )
@@ -1135,7 +1135,7 @@ describe('WorkspacePage draft preservation', () => {
   it('ignores a duplicate deletion request while the same session deletion is pending', async () => {
     await renderPage()
 
-    const finishDeletions: Array<(deleted: boolean) => void> = []
+    const finishDeletions: Array<(result: { deleted: boolean }) => void> = []
     runtime.deleteRuntimeSession.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -1162,7 +1162,7 @@ describe('WorkspacePage draft preservation', () => {
     expect(runtime.deleteRuntimeSession).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      finishDeletions[0]?.(false)
+      finishDeletions[0]?.({ deleted: false })
       await Promise.resolve()
     })
   })
@@ -1177,7 +1177,7 @@ describe('WorkspacePage draft preservation', () => {
     const attachmentB = createAttachment('att-keep')
     await stageAttachment(attachmentB)
     await openSession('sess-a')
-    runtime.deleteRuntimeSession.mockResolvedValueOnce(false)
+    runtime.deleteRuntimeSession.mockResolvedValueOnce({ deleted: false })
 
     const sessionB = useSessionStore.getState().sessions.find((session) => session.id === 'sess-b')!
     await act(async () => {

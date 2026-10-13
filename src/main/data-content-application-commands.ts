@@ -523,8 +523,11 @@ const registerDataContentApplicationCommands = (
     scope.registerGroup(dataContentApplicationCommandGroups[6], {
       'sessions:delete-session': ({ args }) =>
         dependencies.withDataRootWrite(async () => {
-          await dependencies.sessions.deleteSession(args[0])
+          // The receipt (what the deletion released from disk) is returned, not swallowed: the caller
+          // that asked for an irreversible action gets the figure it can show.
+          const result = await dependencies.sessions.deleteSession(args[0])
           publishLifecycle(dependencies.events, LIFECYCLE_CHANNELS.sessionDeleted, args[0])
+          return result
         }),
       'sessions:export-conversation': (invocation) => {
         assertElectronCaller(

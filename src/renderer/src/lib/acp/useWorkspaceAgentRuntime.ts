@@ -23,7 +23,12 @@ import {
   type UploadedAttachment
 } from '../../../../shared/uploads'
 import type { FileReference } from '../../../../shared/artifacts'
-import type { MessagePart, PersistedChatSession } from '../../../../shared/session-persistence'
+import type {
+  DeleteSessionResult,
+  MessagePart,
+  PersistedChatSession,
+  SessionNotebookDataDeletion
+} from '../../../../shared/session-persistence'
 import { getActiveConversationContext } from '../../../../shared/conversation-graph'
 import type { AgentFrameworkId } from '../../../../shared/settings'
 import { resolveModelContextWindow } from '../../../../shared/provider-registry'
@@ -197,7 +202,18 @@ type WorkspacePermissionProfileRuntime = Pick<
   ReturnType<typeof useAcpRuntime>,
   'state' | 'setPermissionProfile'
 >
-type PersistSessionDeletion = (request: { projectId: string; sessionId: string }) => Promise<void>
+type PersistSessionDeletion = (request: {
+  projectId: string
+  sessionId: string
+}) => Promise<DeleteSessionResult>
+
+// What the window learns from one deletion: whether it happened at all, and — when the durable layer
+// answered — the run data it released. `notebookData` is absent when the durable deletion was never
+// attempted (the runtime layer refused), so the surface must not read absence as "nothing was stored".
+type WorkspaceSessionDeletion = {
+  deleted: boolean
+  notebookData?: SessionNotebookDataDeletion
+}
 
 type RuntimeEventApplier = (event: AcpRuntimeEvent) => Promise<boolean>
 
@@ -1940,18 +1956,19 @@ const deleteWorkspaceSession = async (
   runtime: WorkspaceDeletionRuntime,
   sessionId: string,
   persistDeletion: PersistSessionDeletion = window.api.sessions.deleteSession
-): Promise<boolean> => {
+): Promise<WorkspaceSessionDeletion> => {
   const session = useSessionStore.getState().sessions.find((item) => item.id === sessionId)
-  if (!session?.projectId) return false
+  if (!session?.projectId) return { deleted: false }
 
   const snapshot = await runtime.deleteSession(sessionId)
   if (!snapshot || snapshot.sessionIds.includes(sessionId)) {
     useSessionStore.getState().failRun(sessionId, 'Agent session deletion failed')
-    return false
+    return { deleted: false }
   }
 
+  let result: DeleteSessionResult
   try {
-    await persistDeletion({ projectId: session.projectId, sessionId })
+    result = await persistDeletion({ projectId: session.projectId, sessionId })
   } catch (error) {
     useSessionStore
       .getState()
@@ -1960,7 +1977,8 @@ const deleteWorkspaceSession = async (
   }
 
   useSessionStore.getState().deleteSession(sessionId)
-  return true
+  // Hand the receipt back instead of a bare boolean: the caller shows what the deletion released.
+  return { deleted: true, notebookData: result?.notebookData }
 }
 
 const useWorkspaceAgentRuntime = (): {
@@ -1983,7 +2001,7 @@ const useWorkspaceAgentRuntime = (): {
   cancelRun: (sessionId: string) => Promise<void>
   resumeInterruptedSession: (sessionId: string) => Promise<void>
   continueInterruptedSession: (sessionId: string) => Promise<void>
-  deleteRuntimeSession: (sessionId: string) => Promise<boolean>
+  deleteRuntimeSession: (sessionId: string) => Promise<WorkspaceSessionDeletion>
   respondToPermission: (requestId: string, optionId?: string) => Promise<void>
   setPermissionProfile: (sessionId: string, profile: PermissionProfileId) => Promise<boolean>
   revokePermissionGrant: (sessionId: string, categoryKey: string) => Promise<void>
@@ -2260,8 +2278,8 @@ const useWorkspaceAgentRuntime = (): {
 
   // Deletes the local session only after runtime state confirms it was removed.
   const deleteRuntimeSession = useCallback(
-    async (sessionId: string): Promise<boolean> => {
-      return deleteWorkspaceSession(runtime, sessionId).catch(() => false)
+    async (sessionId: string): Promise<WorkspaceSessionDeletion> => {
+      return deleteWorkspaceSession(runtime, sessionId).catch(() => ({ deleted: false }))
     },
     [runtime]
   )
@@ -2340,3 +2358,7 @@ export {
   syncWorkspaceContextUsage,
   useWorkspaceAgentRuntime
 }
+
+// The receipt a deletion hands back is part of this hook's public return shape, so the type is
+// nameable where the hook is consumed instead of being read off the return value.
+export type { WorkspaceSessionDeletion }

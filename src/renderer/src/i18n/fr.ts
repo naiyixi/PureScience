@@ -4715,5 +4715,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'previewFallback.tiffPageDimensionsTooLarge':
     'Les dimensions de la page TIFF sont trop grandes pour un aperçu sûr',
   'previewFallback.tiffPageTooLarge': 'La page TIFF est trop grande pour un aperçu sûr',
-  'previewFallback.tiffTooMuchMemory': 'La page TIFF demande trop de mémoire pour un aperçu sûr'
+  'previewFallback.tiffTooMuchMemory': 'La page TIFF demande trop de mémoire pour un aperçu sûr',
+  'ws.sessionDeletedReleased':
+    '{title} a été supprimé. {size} de données d’exécution ont été libérées.',
+  'ws.sessionDeletedNothingStored':
+    '{title} a été supprimé. Aucune donnée d’exécution n’était stockée.',
+  'ws.sessionDeletedRunDataKept':
+    '{title} a été supprimé, mais ses données d’exécution n’ont pas pu être libérées.'
 }

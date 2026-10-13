@@ -4602,5 +4602,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Размеры страницы TIFF слишком велики для безопасного предпросмотра',
   'previewFallback.tiffPageTooLarge': 'Страница TIFF слишком велика для безопасного предпросмотра',
   'previewFallback.tiffTooMuchMemory':
-    'Странице TIFF требуется слишком много памяти для безопасного предпросмотра'
+    'Странице TIFF требуется слишком много памяти для безопасного предпросмотра',
+  'ws.sessionDeletedReleased': '{title} удалён. Освобождено {size} данных выполнения.',
+  'ws.sessionDeletedNothingStored': '{title} удалён. Сохранённых данных выполнения не было.',
+  'ws.sessionDeletedRunDataKept': '{title} удалён, но данные выполнения освободить не удалось.'
 }

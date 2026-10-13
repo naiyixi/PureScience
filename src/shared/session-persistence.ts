@@ -1860,6 +1860,25 @@ export type DeleteSessionRequest = {
   sessionId: string
 }
 
+/**
+ * What deleting one session released from disk. `state` mirrors the Project-level removal vocabulary and
+ * adds one value the session path needs: the session record is already gone when this runs, so a removal
+ * that throws cannot be retried by the user — 'failed' names that outcome instead of letting it look like
+ * 'refused' (an id that never addressed anything) or 'absent' (nothing was ever stored).
+ */
+export type SessionNotebookDataDeletion = {
+  freedBytes: number
+  state: 'removed' | 'absent' | 'refused' | 'failed'
+}
+
+/**
+ * The receipt for one durable session deletion. The caller that asked for an irreversible action gets back
+ * the figure it can show, instead of the app claiming a deletion whose bytes stayed on disk.
+ */
+export type DeleteSessionResult = {
+  notebookData: SessionNotebookDataDeletion
+}
+
 export type UpdateSessionArchiveRequest = {
   projectId: string
   sessionId: string

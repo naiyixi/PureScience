@@ -591,11 +591,18 @@ describe('workspace session deletion', () => {
 
   it('removes the session only after runtime and durable deletion succeed', async () => {
     const runtime = { deleteSession: vi.fn().mockResolvedValue(createSnapshot()) }
-    const persistDelete = vi.fn().mockResolvedValue(undefined)
+    const persistDelete = vi
+      .fn()
+      .mockResolvedValue({ notebookData: { freedBytes: 4096, state: 'removed' } })
 
-    await deleteWorkspaceSession(runtime, 'session-1', persistDelete)
+    const result = await deleteWorkspaceSession(runtime, 'session-1', persistDelete)
 
     expect(persistDelete).toHaveBeenCalledWith({ projectId: 'project-1', sessionId: 'session-1' })
+    // The receipt the window renders is the durable layer's answer, handed back untouched.
+    expect(result).toEqual({
+      deleted: true,
+      notebookData: { freedBytes: 4096, state: 'removed' }
+    })
     expect(useSessionStore.getState().sessions).toEqual([])
   })
 

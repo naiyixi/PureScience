@@ -14,6 +14,7 @@
 import { rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import type { SessionNotebookDataDeletion } from '../../shared/session-persistence'
 import { dirSize } from '../storage/usage'
 
 export type ProjectNotebookDataCleanupResult = {
@@ -21,6 +22,10 @@ export type ProjectNotebookDataCleanupResult = {
   freedBytes: number
   state: 'removed' | 'absent' | 'refused'
 }
+
+// The session-level receipt is the wire shape the renderer renders, so this module returns that exact
+// type rather than a local twin that could drift from it.
+export type SessionNotebookDataCleanupResult = SessionNotebookDataDeletion
 
 type CleanupLogger = {
   info: (message: string, metadata: Record<string, unknown>) => void
@@ -31,15 +36,19 @@ export type ProjectNotebookDataCleanupOptions = {
   log?: CleanupLogger
 }
 
-// A project id is an opaque cuid. Anything with a separator, a parent reference, or an unexpected shape is
-// refused by name: this function deletes a directory recursively, so the id is a path-traversal boundary.
-const SAFE_PROJECT_ID = /^[A-Za-z0-9_-]{1,64}$/
+// The session-level removal takes the same inputs; the project and session ids are separate arguments.
+export type SessionNotebookDataCleanupOptions = ProjectNotebookDataCleanupOptions
+
+// A project id is an opaque cuid and a session id is a uuid. Anything with a separator, a parent
+// reference, or an unexpected shape is refused by name: these functions delete directories recursively,
+// so every segment they join is a path-traversal boundary.
+const SAFE_ID_SEGMENT = /^[A-Za-z0-9_-]{1,64}$/
 
 export const deleteProjectNotebookData = async (
   options: ProjectNotebookDataCleanupOptions,
   projectId: string
 ): Promise<ProjectNotebookDataCleanupResult> => {
-  if (!SAFE_PROJECT_ID.test(projectId)) {
+  if (!SAFE_ID_SEGMENT.test(projectId)) {
     options.log?.info('project notebook data refused', { reason: 'unsafe-project-id' })
     return { freedBytes: 0, state: 'refused' }
   }
@@ -62,5 +71,54 @@ export const deleteProjectNotebookData = async (
   const freedBytes = await dirSize(root, new Set()).catch(() => 0)
   await rm(root, { recursive: true, force: true })
   options.log?.info('project notebook data removed', { projectId, freedBytes })
+  return { freedBytes, state: 'removed' }
+}
+
+// Deleting ONE session releases the run data that session owned. It sits one level deeper than the
+// project's — `<dataRoot>/notebooks/<projectId>/<sessionId>` — and no deletion path named it: a session
+// whose results were 1.1 GB left every byte behind while the app said the session was deleted.
+//
+// The caller orders this AFTER the durable session record is gone. That order is the safety property: if
+// the session could not be deleted, its run data must never be the thing that disappeared first.
+export const deleteSessionNotebookData = async (
+  options: SessionNotebookDataCleanupOptions,
+  projectId: string,
+  sessionId: string
+): Promise<SessionNotebookDataCleanupResult> => {
+  if (!SAFE_ID_SEGMENT.test(projectId)) {
+    options.log?.info('session notebook data refused', { reason: 'unsafe-project-id' })
+    return { freedBytes: 0, state: 'refused' }
+  }
+  if (!SAFE_ID_SEGMENT.test(sessionId)) {
+    options.log?.info('session notebook data refused', { reason: 'unsafe-session-id' })
+    return { freedBytes: 0, state: 'refused' }
+  }
+
+  const root = join(options.dataRoot, 'notebooks', projectId, sessionId)
+  try {
+    const info = await stat(root)
+    if (!info.isDirectory()) {
+      options.log?.info('session notebook data absent', { projectId, sessionId })
+      return { freedBytes: 0, state: 'absent' }
+    }
+  } catch {
+    options.log?.info('session notebook data absent', { projectId, sessionId })
+    return { freedBytes: 0, state: 'absent' }
+  }
+
+  const freedBytes = await dirSize(root, new Set()).catch(() => 0)
+  try {
+    await rm(root, { recursive: true, force: true })
+  } catch (error) {
+    // The session record is already gone, so the user has no session left to retry from. Name the outcome
+    // instead of reporting bytes that are still on disk.
+    options.log?.info('session notebook data removal failed', {
+      projectId,
+      sessionId,
+      reason: error instanceof Error ? error.message : String(error)
+    })
+    return { freedBytes: 0, state: 'failed' }
+  }
+  options.log?.info('session notebook data removed', { projectId, sessionId, freedBytes })
   return { freedBytes, state: 'removed' }
 }

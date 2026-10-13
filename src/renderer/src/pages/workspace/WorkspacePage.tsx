@@ -77,6 +77,7 @@ import {
   type ComposerHistoryEntry
 } from './composer/composer-history'
 import { buildCustomizePrefillDoc } from '@/lib/customize-chat'
+import { sessionDeletionMessage, type SessionDeletionNotice } from '@/lib/session-deletion-notice'
 import { ConversationPanel } from './ConversationPanel'
 import { SessionImportPostureBanner } from '@/components/session-package/SessionImportPostureBanner'
 import { useRenderSessions } from './use-render-sessions'
@@ -503,7 +504,7 @@ const WorkspacePage = ({
   isSessionPersistenceReady,
   canDeleteConversations
 }: WorkspacePageProps): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [sidebarPanelState, setSidebarPanelState] = useState<'open' | 'collapsed'>('open')
   const sidebarToggleRef = useRef<HTMLButtonElement | null>(null)
   const previewToggleRef = useRef<HTMLButtonElement | null>(null)
@@ -889,6 +890,11 @@ const WorkspacePage = ({
     ChatSession | undefined
   >(undefined)
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | undefined>(undefined)
+  // What the last completed deletion released, held as the receipt (not as a pre-rendered sentence) so
+  // a language switch re-renders it instead of leaving the old wording on screen.
+  const [sessionDeletionNotice, setSessionDeletionNotice] = useState<
+    SessionDeletionNotice | undefined
+  >(undefined)
   const [sessionDeletionInProgressIds, setSessionDeletionInProgressIds] = useState<
     ReadonlySet<string>
   >(new Set())
@@ -2438,10 +2444,11 @@ const WorkspacePage = ({
     setSessionDeletionInProgressIds((current) => new Set(current).add(deletedSessionId))
 
     setSessionToDelete(undefined)
+    const deletedSessionTitle = sessionToDelete.title
     // Staged bytes and local draft state are owned by the session until runtime and durable deletion
     // both succeed. The store's successful deletion updates selection and lets the draft effect load
     // the fallback session without clearing that replacement draft here.
-    void deleteRuntimeSession(deletedSessionId).then((deleted) => {
+    void deleteRuntimeSession(deletedSessionId).then((result) => {
       const deletionCleanup = sessionDeletionCleanupRef.current[deletedSessionId]
       delete sessionDeletionCleanupRef.current[deletedSessionId]
       setSessionDeletionInProgressIds((current) => {
@@ -2449,7 +2456,14 @@ const WorkspacePage = ({
         next.delete(deletedSessionId)
         return next
       })
-      if (!deleted || !deletionCleanup) return
+      if (!result.deleted) return
+
+      // The receipt is reported where the session used to be. Deleting a session used to leave its run
+      // data on disk with nothing on screen mentioning it; this is the sentence that says what happened
+      // to those bytes (and, when they are still there, that they are).
+      setSessionDeletionNotice({ title: deletedSessionTitle, notebookData: result.notebookData })
+
+      if (!deletionCleanup) return
 
       delete composerDraftsRef.current[deletedSessionId]
       clearComposerHistory(deletedSessionId)
@@ -2468,6 +2482,15 @@ const WorkspacePage = ({
   const closeDeleteDialog = (): void => {
     setSessionToDelete(undefined)
   }
+
+  // One source for both sidebar instances (the desktop panel and the mobile drawer): a deletion that
+  // just happened reports what it released, wherever the list is rendered.
+  const sidebarSessionDeletionNotice = sessionDeletionNotice
+    ? {
+        message: sessionDeletionMessage(sessionDeletionNotice, lang, t),
+        onDismiss: () => setSessionDeletionNotice(undefined)
+      }
+    : undefined
 
   // Cancels the run for the currently visible session when one is selected. During an active fix
   // loop, also sends an abort signal to the main process to stop the loop and unlock the composer.
@@ -2885,6 +2908,7 @@ const WorkspacePage = ({
               setIsMobileSidebarOpen(false)
               openDeleteDialog(session)
             }}
+            sessionDeletionNotice={sidebarSessionDeletionNotice}
             onOpenSettings={() => {
               setIsMobileSidebarOpen(false)
               openSettings()
@@ -2958,6 +2982,7 @@ const WorkspacePage = ({
                   canArchiveSession={canArchiveSession}
                   onArchiveSession={archiveSession}
                   onDeleteSession={openDeleteDialog}
+                  sessionDeletionNotice={sidebarSessionDeletionNotice}
                   onOpenSettings={openSettings}
                 />
               </ResizablePanel>

@@ -4309,7 +4309,10 @@ export const zh = {
   'previewFallback.tiffFileTooLarge': 'TIFF 文件过大，无法安全预览',
   'previewFallback.tiffPageDimensionsTooLarge': 'TIFF 页面尺寸过大，无法安全预览',
   'previewFallback.tiffPageTooLarge': 'TIFF 页面过大，无法安全预览',
-  'previewFallback.tiffTooMuchMemory': 'TIFF 页面所需内存过多，无法安全预览'
+  'previewFallback.tiffTooMuchMemory': 'TIFF 页面所需内存过多，无法安全预览',
+  'ws.sessionDeletedReleased': '{title} 已删除，其运行数据已释放 {size}。',
+  'ws.sessionDeletedNothingStored': '{title} 已删除，其中没有存储运行数据。',
+  'ws.sessionDeletedRunDataKept': '{title} 已删除，但其运行数据未能释放。'
 }
 
 export type ZhKey = keyof typeof zh

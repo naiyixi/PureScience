@@ -4251,5 +4251,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'previewFallback.tiffFileTooLarge': 'TIFF 檔案過大，無法安全預覽',
   'previewFallback.tiffPageDimensionsTooLarge': 'TIFF 頁面尺寸過大，無法安全預覽',
   'previewFallback.tiffPageTooLarge': 'TIFF 頁面過大，無法安全預覽',
-  'previewFallback.tiffTooMuchMemory': 'TIFF 頁面所需記憶體過多，無法安全預覽'
+  'previewFallback.tiffTooMuchMemory': 'TIFF 頁面所需記憶體過多，無法安全預覽',
+  'ws.sessionDeletedReleased': '{title} 已刪除，其執行資料已釋放 {size}。',
+  'ws.sessionDeletedNothingStored': '{title} 已刪除，其中並未儲存執行資料。',
+  'ws.sessionDeletedRunDataKept': '{title} 已刪除，但其執行資料未能釋放。'
 }

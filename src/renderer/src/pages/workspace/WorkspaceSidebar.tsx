@@ -67,6 +67,9 @@ type WorkspaceSidebarProps = {
   canArchiveSession?: (session: ChatSession) => boolean
   onArchiveSession?: (session: ChatSession) => void
   onDeleteSession: (session: ChatSession) => void
+  // A completed deletion reports what it released. Optional: the sidebar renders nothing extra when the
+  // workspace has no receipt to show, so the list keeps its usual layout.
+  sessionDeletionNotice?: { message: string; onDismiss: () => void }
   onOpenSettings: () => void
   mobileMode?: boolean
   isMobileOpen?: boolean
@@ -135,6 +138,7 @@ const WorkspaceSidebar = ({
   canArchiveSession,
   onArchiveSession,
   onDeleteSession,
+  sessionDeletionNotice,
   onOpenSettings,
   mobileMode = false,
   isMobileOpen = false,
@@ -383,6 +387,27 @@ const WorkspaceSidebar = ({
           </div>
 
           <div className="mx-2 my-1 h-px bg-border-300/15" />
+
+          {sessionDeletionNotice ? (
+            // role=status, not alert: this reports a completed action. It stays until dismissed so the
+            // figure is readable at the user's pace, and it sits above the list where the deleted
+            // session used to be.
+            <div
+              className="mx-2 mb-1 flex items-start justify-between gap-2 rounded-lg border border-border-200/70 bg-card px-2.5 py-2 text-[11px] leading-relaxed text-text-100"
+              role="status"
+              data-slot="sidebar-session-deleted"
+            >
+              <span className="min-w-0 flex-1">{sessionDeletionNotice.message}</span>
+              <button
+                type="button"
+                className="cursor-pointer rounded p-0.5 text-text-100 hover:bg-bg-400 hover:text-text-000"
+                aria-label={t('common.close')}
+                onClick={sessionDeletionNotice.onDismiss}
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
 
           <div className="min-h-0 flex-1 overflow-y-auto py-1" onScroll={handleSessionListScroll}>
             {sections.map((section) => (

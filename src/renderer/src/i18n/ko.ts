@@ -4514,5 +4514,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     'TIFF 페이지 크기가 너무 커서 안전하게 미리 볼 수 없습니다',
   'previewFallback.tiffPageTooLarge': 'TIFF 페이지가 너무 커서 안전하게 미리 볼 수 없습니다',
   'previewFallback.tiffTooMuchMemory':
-    'TIFF 페이지가 메모리를 너무 많이 필요로 해 안전하게 미리 볼 수 없습니다'
+    'TIFF 페이지가 메모리를 너무 많이 필요로 해 안전하게 미리 볼 수 없습니다',
+  'ws.sessionDeletedReleased': '{title}을(를) 삭제했습니다. 실행 데이터 {size}를 확보했습니다.',
+  'ws.sessionDeletedNothingStored': '{title}을(를) 삭제했습니다. 저장된 실행 데이터가 없습니다.',
+  'ws.sessionDeletedRunDataKept': '{title}을(를) 삭제했지만 실행 데이터를 확보하지 못했습니다.'
 }

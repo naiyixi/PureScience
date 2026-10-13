@@ -1,10 +1,11 @@
 import { useLanguage } from '@/i18n'
-import { Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { Archive, RotateCcw, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { DeleteProjectDialog } from '@/pages/home/DeleteProjectDialog'
 import { DeleteSessionDialog } from '@/pages/workspace/DeleteSessionDialog'
+import { sessionDeletionMessage, type SessionDeletionNotice } from '@/lib/session-deletion-notice'
 import { useArchiveUndoStore } from '@/stores/archive-undo-store'
 import { useProjectStore } from '@/stores/project-store'
 import type { ChatSession } from '@/stores/session-store'
@@ -26,7 +27,7 @@ const describeError = (error: unknown, fallback: string): string =>
 
 // Archive recovery stays in Settings so active workspace surfaces only need to reason about active data.
 const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const projects = useProjectStore((state) => state.projects)
   const updateProjectArchive = useProjectStore((state) => state.updateProjectArchive)
   const deleteProject = useProjectStore((state) => state.deleteProject)
@@ -36,6 +37,9 @@ const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Elem
   const [sessionToDelete, setSessionToDelete] = useState<ChatSession | undefined>()
   const [busyKey, setBusyKey] = useState<string | undefined>()
   const [error, setError] = useState<string | undefined>()
+  // The receipt of the last archived-session deletion, held as the receipt (not pre-rendered) so it
+  // re-renders on a language switch. Same sentence as the workspace sidebar: one channel, one wording.
+  const [deletionNotice, setDeletionNotice] = useState<SessionDeletionNotice | undefined>()
 
   const archivedProjects = useMemo(
     () => projects.filter((project) => project.archivedAt !== undefined),
@@ -104,12 +108,15 @@ const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Elem
       if (state.sessionIds.includes(session.id)) {
         await window.api.acp.deleteSession({ sessionId: session.id })
       }
-      await window.api.sessions.deleteSession({
+      const result = await window.api.sessions.deleteSession({
         projectId: session.projectId,
         sessionId: session.id
       })
       useSessionStore.getState().deleteSession(session.id)
       useArchiveUndoStore.getState().dismissSession(session.id)
+      // The deletion used to report nothing about the run data it owned; the receipt is what the panel
+      // reports back, including when those bytes are still on disk.
+      setDeletionNotice({ title: session.title, notebookData: result.notebookData })
       setSessionToDelete(undefined)
     })()
       .catch((deleteError: unknown) =>
@@ -187,6 +194,25 @@ const ArchivedPanel = ({ view, onNavigate }: ArchivedPanelProps): React.JSX.Elem
         <p role="alert" className="text-sm text-danger-000">
           {error}
         </p>
+      ) : null}
+      {deletionNotice ? (
+        // role=status, not alert: the deletion completed. Dismissible so the figure stays readable.
+        <div
+          className="flex items-start justify-between gap-3 rounded-lg border border-border p-3 text-sm text-foreground"
+          role="status"
+          data-slot="archived-session-deleted"
+        >
+          <span className="min-w-0 flex-1">{sessionDeletionMessage(deletionNotice, lang, t)}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('common.close')}
+            onClick={() => setDeletionNotice(undefined)}
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       ) : null}
       {selectedProject ? (
         <>

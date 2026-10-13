@@ -4618,5 +4618,8 @@ export const en: Record<ZhKey, string> = {
   'previewFallback.tiffPageDimensionsTooLarge':
     'TIFF page dimensions are too large to preview safely',
   'previewFallback.tiffPageTooLarge': 'TIFF page is too large to preview safely',
-  'previewFallback.tiffTooMuchMemory': 'TIFF page needs too much memory to preview safely'
+  'previewFallback.tiffTooMuchMemory': 'TIFF page needs too much memory to preview safely',
+  'ws.sessionDeletedReleased': '{title} was deleted. {size} of run data was released.',
+  'ws.sessionDeletedNothingStored': '{title} was deleted. No run data was stored for it.',
+  'ws.sessionDeletedRunDataKept': '{title} was deleted, but its run data was not released.'
 }

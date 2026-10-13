@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ArtifactFile, ReconcilePendingArtifactsRequest } from '../../../../shared/artifacts'
 import type {
   DeleteSessionRequest,
+  DeleteSessionResult,
   LoadAllSessionsResult,
   PersistedChatSession,
   ReadSessionDocumentRequest,
@@ -34,7 +35,7 @@ type SessionPersistenceApi = {
     session: PersistedChatSession,
     options?: SaveSessionOptions
   ) => Promise<PersistedChatSession>
-  deleteSession: (request: DeleteSessionRequest) => Promise<void>
+  deleteSession: (request: DeleteSessionRequest) => Promise<DeleteSessionResult>
   saveManifest: (request: SaveSessionManifestRequest) => Promise<void>
 }
 

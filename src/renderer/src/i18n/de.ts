@@ -4735,5 +4735,11 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Die TIFF-Seitenabmessungen sind zu groß für eine sichere Vorschau',
   'previewFallback.tiffPageTooLarge': 'Die TIFF-Seite ist zu groß für eine sichere Vorschau',
   'previewFallback.tiffTooMuchMemory':
-    'Die TIFF-Seite braucht zu viel Speicher für eine sichere Vorschau'
+    'Die TIFF-Seite braucht zu viel Speicher für eine sichere Vorschau',
+  'ws.sessionDeletedReleased':
+    '{title} wurde gelöscht. {size} an Laufzeitdaten wurden freigegeben.',
+  'ws.sessionDeletedNothingStored':
+    '{title} wurde gelöscht. Es waren keine Laufzeitdaten gespeichert.',
+  'ws.sessionDeletedRunDataKept':
+    '{title} wurde gelöscht, aber die Laufzeitdaten konnten nicht freigegeben werden.'
 }

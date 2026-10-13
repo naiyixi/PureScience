@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { deleteProjectNotebookData } from './session-data-cleanup'
+import { deleteProjectNotebookData, deleteSessionNotebookData } from './session-data-cleanup'
 
 let root: string
 
@@ -70,5 +70,84 @@ describe('deleting a project really releases its notebook data', () => {
     // Both the target outside the notebooks tree and an unrelated project are untouched.
     await expect(access(join(victim, 'keep.txt'))).resolves.toBeUndefined()
     await expect(access(projectDir)).resolves.toBeUndefined()
+  })
+})
+
+const seedSession = async (
+  projectId: string,
+  sessionId: string,
+  bytes: number
+): Promise<string> => {
+  const dir = join(root, 'notebooks', projectId, sessionId, 'run-1', 'data')
+  await mkdir(dir, { recursive: true })
+  await writeFile(join(dir, 'results.h5ad'), Buffer.alloc(bytes, 7))
+  return join(root, 'notebooks', projectId, sessionId)
+}
+
+describe('deleting one session really releases the run data that session owned', () => {
+  it('removes only that session and reports the bytes it freed', async () => {
+    const projectId = 'cmutflcqb000fwfm931kvwz21'
+    const sessionId = '9f1c2f4a-1111-4a2b-8c3d-000000000001'
+    const siblingId = '9f1c2f4a-1111-4a2b-8c3d-000000000002'
+    const sessionDir = await seedSession(projectId, sessionId, 2048)
+    const siblingDir = await seedSession(projectId, siblingId, 512)
+    const log = { info: vi.fn() }
+
+    const result = await deleteSessionNotebookData({ dataRoot: root, log }, projectId, sessionId)
+
+    expect(result).toEqual({ freedBytes: 2048, state: 'removed' })
+    await expect(access(sessionDir)).rejects.toThrow()
+    // The session that was not deleted, and the project that contains both, are untouched.
+    await expect(access(join(siblingDir, 'run-1', 'data', 'results.h5ad'))).resolves.toBeUndefined()
+    await expect(access(join(root, 'notebooks', projectId))).resolves.toBeUndefined()
+    expect(log.info).toHaveBeenCalledWith('session notebook data removed', {
+      projectId,
+      sessionId,
+      freedBytes: 2048
+    })
+  })
+
+  it('names "absent" for a session that stored nothing, instead of claiming a release', async () => {
+    const log = { info: vi.fn() }
+
+    const result = await deleteSessionNotebookData(
+      { dataRoot: root, log },
+      'cmnosuchproject00000000000',
+      '9f1c2f4a-1111-4a2b-8c3d-000000000003'
+    )
+
+    expect(result).toEqual({ freedBytes: 0, state: 'absent' })
+    expect(log.info).toHaveBeenCalledWith('session notebook data absent', {
+      projectId: 'cmnosuchproject00000000000',
+      sessionId: '9f1c2f4a-1111-4a2b-8c3d-000000000003'
+    })
+  })
+
+  it('refuses an id that could escape the notebooks directory, and touches nothing', async () => {
+    const projectId = 'cmutflcqb000fwfm931kvwz21'
+    const insideDir = await seedSession(projectId, '9f1c2f4a-1111-4a2b-8c3d-000000000004', 128)
+    const log = { info: vi.fn() }
+
+    const escapedProject = await deleteSessionNotebookData(
+      { dataRoot: root, log },
+      '../../outside',
+      '9f1c2f4a-1111-4a2b-8c3d-000000000004'
+    )
+    const escapedSession = await deleteSessionNotebookData(
+      { dataRoot: root, log },
+      projectId,
+      '../9f1c2f4a-1111-4a2b-8c3d-000000000004'
+    )
+
+    expect(escapedProject).toEqual({ freedBytes: 0, state: 'refused' })
+    expect(escapedSession).toEqual({ freedBytes: 0, state: 'refused' })
+    expect(log.info).toHaveBeenCalledWith('session notebook data refused', {
+      reason: 'unsafe-project-id'
+    })
+    expect(log.info).toHaveBeenCalledWith('session notebook data refused', {
+      reason: 'unsafe-session-id'
+    })
+    // The session the second refusal addressed by traversal is still there, byte for byte.
+    await expect(access(join(insideDir, 'run-1', 'data', 'results.h5ad'))).resolves.toBeUndefined()
   })
 })

@@ -4687,5 +4687,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'previewFallback.tiffPageTooLarge':
     'La página TIFF es demasiado grande para una vista previa segura',
   'previewFallback.tiffTooMuchMemory':
-    'La página TIFF necesita demasiada memoria para una vista previa segura'
+    'La página TIFF necesita demasiada memoria para una vista previa segura',
+  'ws.sessionDeletedReleased': 'Se eliminó {title}. Se liberaron {size} de datos de ejecución.',
+  'ws.sessionDeletedNothingStored': 'Se eliminó {title}. No había datos de ejecución guardados.',
+  'ws.sessionDeletedRunDataKept':
+    'Se eliminó {title}, pero no se pudieron liberar sus datos de ejecución.'
 }

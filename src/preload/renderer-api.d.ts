@@ -213,6 +213,7 @@ import type {
 } from '../shared/project-files'
 import type {
   DeleteSessionRequest,
+  DeleteSessionResult,
   LoadAllSessionsResult,
   PersistedChatSession,
   ReadSessionDocumentRequest,
@@ -539,7 +540,7 @@ export interface PureScienceAPI {
       options?: SaveSessionOptions
     ): Promise<PersistedChatSession>
     updateArchive(request: UpdateSessionArchiveRequest): Promise<PersistedChatSession>
-    deleteSession(request: DeleteSessionRequest): Promise<void>
+    deleteSession(request: DeleteSessionRequest): Promise<DeleteSessionResult>
     saveManifest(request: SaveSessionManifestRequest): Promise<void>
     exportConversation(request: ExportConversationRequest): Promise<ExportConversationResult>
     /**

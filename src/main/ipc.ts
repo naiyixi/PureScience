@@ -129,7 +129,10 @@ import {
   buildTaskNotificationShow
 } from './notifications/electron-wiring'
 import { createLogger, diagnosticErrorFields, errorLogFields, getLogFilePath } from './logger'
-import { deleteProjectNotebookData } from './notebook/session-data-cleanup'
+import {
+  deleteProjectNotebookData,
+  deleteSessionNotebookData
+} from './notebook/session-data-cleanup'
 import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
@@ -689,6 +692,26 @@ const createApplicationModules = async (
         projectId
       )
   }
+  // P0-10③ session half: deleting ONE session releases the run data that session owned, and says how much
+  // that freed. Same shape as the project-level owner above (data root resolved per call), plus one
+  // property the session path needs: the session record is already gone when this runs, so a removal that
+  // fails is reported as 'failed' instead of failing the whole deletion — there is no session left for the
+  // user to retry from, and reporting bytes that are still on disk would be the exact lie this fixes.
+  const sessionNotebookDataDeletion = {
+    deleteSessionNotebookData: (projectId: string, sessionId: string) =>
+      deleteSessionNotebookData(
+        { dataRoot: resolveDataRoot(), log: createLogger('notebook') },
+        projectId,
+        sessionId
+      ).catch((error: unknown) => {
+        createLogger('notebook').info('session notebook data removal failed', {
+          projectId,
+          sessionId,
+          reason: error instanceof Error ? error.message : String(error)
+        })
+        return { freedBytes: 0, state: 'failed' as const }
+      })
+  }
   const projectDeletionCoordinator = new ProjectDeletionCoordinator(
     projectRepository,
     sessionPersistenceCoordinator,
@@ -779,9 +802,17 @@ const createApplicationModules = async (
     },
     deleteSession: async (projectId, sessionId) => {
       await projectDeletionCoordinator.recoverPendingDeletions()
-      const result = await sessionPersistenceCoordinator.deleteSession(projectId, sessionId)
+      await sessionPersistenceCoordinator.deleteSession(projectId, sessionId)
       await permissionGrantRegistry.prune({ kind: 'session', projectId, sessionId })
-      return result
+      // P0-10③ session half: the durable record is gone at this point, and its notebook run data under
+      // `<dataRoot>/notebooks/<projectId>/<sessionId>` was never named by any deletion path — a single
+      // session held 1.1 GB of real results while the app reported the session deleted. Ordered after the
+      // record on purpose: run data must never be the thing that disappears when the session did not.
+      const notebookData = await sessionNotebookDataDeletion.deleteSessionNotebookData(
+        projectId,
+        sessionId
+      )
+      return { notebookData }
     },
     saveManifest: async (request) => {
       await projectDeletionCoordinator.recoverPendingDeletions()
@@ -2626,8 +2657,9 @@ const createApplicationModules = async (
   const originalDeleteSession =
     sessionPersistenceBackend.deleteSession.bind(sessionPersistenceBackend)
   sessionPersistenceBackend.deleteSession = async (projectId, sessionId) => {
-    await originalDeleteSession(projectId, sessionId)
+    const result = await originalDeleteSession(projectId, sessionId)
     sessionBindingService.clearSession(sessionId)
+    return result
   }
   const sessionDocumentLoader = {
     loadSession: (projectId: string, sessionId: string) =>

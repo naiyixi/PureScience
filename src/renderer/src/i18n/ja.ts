@@ -4584,5 +4584,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'TIFF ページの寸法が大きすぎるため安全にプレビューできません',
   'previewFallback.tiffPageTooLarge': 'TIFF ページが大きすぎるため安全にプレビューできません',
   'previewFallback.tiffTooMuchMemory':
-    'TIFF ページのメモリ使用量が多すぎるため安全にプレビューできません'
+    'TIFF ページのメモリ使用量が多すぎるため安全にプレビューできません',
+  'ws.sessionDeletedReleased': '{title} を削除しました。実行データ {size} を解放しました。',
+  'ws.sessionDeletedNothingStored': '{title} を削除しました。保存された実行データはありません。',
+  'ws.sessionDeletedRunDataKept': '{title} を削除しましたが、実行データは解放できませんでした。'
 }

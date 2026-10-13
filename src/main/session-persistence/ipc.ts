@@ -3,6 +3,7 @@ import { ipcMainHandle } from '../ipc-handler-registry'
 import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type {
   DeleteSessionRequest,
+  DeleteSessionResult,
   LoadAllSessionsOptions,
   LoadAllSessionsResult,
   PersistedChatSession,
@@ -31,7 +32,9 @@ type SessionPersistenceBackend = {
     options?: SaveSessionOptions
   ) => Promise<{ created: boolean; session: PersistedChatSession }>
   updateArchive?: (request: UpdateSessionArchiveRequest) => Promise<PersistedChatSession>
-  deleteSession: (projectId: string, sessionId: string) => Promise<void>
+  // Returns what the deletion released: the session's own run data is physical bytes the user asked to be
+  // gone, and the surface that requested the irreversible action reports the figure it got back.
+  deleteSession: (projectId: string, sessionId: string) => Promise<DeleteSessionResult>
   saveManifest: (request: SaveSessionManifestRequest) => Promise<void>
 }
 
@@ -46,7 +49,7 @@ type SessionPersistenceHandlers = {
     options?: SaveSessionOptions
   ) => Promise<{ created: boolean; session: PersistedChatSession }>
   updateArchive: (request: UpdateSessionArchiveRequest) => Promise<PersistedChatSession>
-  deleteSession: (request: DeleteSessionRequest) => Promise<void>
+  deleteSession: (request: DeleteSessionRequest) => Promise<DeleteSessionResult>
   saveManifest: (request: SaveSessionManifestRequest) => Promise<void>
 }
 
@@ -250,12 +253,14 @@ const registerSessionPersistenceIpcHandlers = (
       return session
     })
   })
-  ipcMainHandle('sessions:delete-session', async (_event, request: DeleteSessionRequest) => {
-    await withDataRootWrite(async () => {
-      await handlers.deleteSession(request)
+  ipcMainHandle('sessions:delete-session', async (_event, request: DeleteSessionRequest) =>
+    withDataRootWrite(async () => {
+      const result = await handlers.deleteSession(request)
       broadcastLifecycleEvent(LIFECYCLE_CHANNELS.sessionDeleted, request)
+      // The receipt is returned, not discarded: the window that asked for the deletion shows what it freed.
+      return result
     })
-  })
+  )
   ipcMainHandle('sessions:save-manifest', (_event, request: SaveSessionManifestRequest) =>
     withDataRootWrite(() => handlers.saveManifest(request))
   )

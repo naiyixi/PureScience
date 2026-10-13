@@ -245,10 +245,12 @@ describe('session persistence IPC handlers', () => {
       handlers.deleteSession({ projectId: 'project-a', sessionId: 'session-1' })
     ).rejects.toThrow('repository failed')
 
-    repository.deleteSession.mockResolvedValueOnce(undefined)
+    repository.deleteSession.mockResolvedValueOnce({
+      notebookData: { freedBytes: 0, state: 'absent' }
+    })
     await expect(
       handlers.deleteSession({ projectId: 'project-a', sessionId: 'session-1' })
-    ).resolves.toBeUndefined()
+    ).resolves.toEqual({ notebookData: { freedBytes: 0, state: 'absent' } })
   })
 
   it('retains session review rows after the authoritative session deletion succeeds', async () => {
@@ -259,6 +261,7 @@ describe('session persistence IPC handlers', () => {
       saveSession: vi.fn().mockResolvedValue({ created: false, session: createSession() }),
       deleteSession: vi.fn(async () => {
         order.push('session')
+        return { notebookData: { freedBytes: 0, state: 'absent' as const } }
       }),
       saveManifest: vi.fn().mockResolvedValue(undefined)
     }

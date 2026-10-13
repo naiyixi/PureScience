@@ -734,4 +734,67 @@ describe('WorkspaceSidebar accessible render', () => {
 
     expect(container.textContent).not.toContain('No conversations yet')
   })
+
+  it('reports what a deletion released, and lets the reader dismiss it', () => {
+    const onDismiss = vi.fn()
+    const container = renderSidebarDom({
+      projectName: 'Example project',
+      sessions: [createSession({ id: 'session-a', title: 'Notebook review' })],
+      activeSessionId: 'session-a',
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: true,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onOpenExportDialog: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn(),
+      sessionDeletionNotice: {
+        message: 'Notebook review was deleted. 2.0 KB of run data was released.',
+        onDismiss
+      }
+    })
+
+    const notice = container.querySelector('[data-slot="sidebar-session-deleted"]')
+    expect(notice?.textContent).toContain('2.0 KB of run data was released.')
+
+    act(() => {
+      ;(notice?.querySelector('button') as HTMLButtonElement).click()
+    })
+    expect(onDismiss).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders no deletion notice when the workspace has no receipt', () => {
+    const container = renderSidebarDom({
+      projectName: 'Example project',
+      sessions: [createSession({ id: 'session-a', title: 'Notebook review' })],
+      activeSessionId: 'session-a',
+      canCreateConversation: true,
+      canMutateConversations: true,
+      canDeleteConversations: true,
+      onGoHome: vi.fn(),
+      onNewConversation: vi.fn(),
+      isFilesOpen: false,
+      onOpenFiles: vi.fn(),
+      onOpenSession: vi.fn(),
+      onRenameSession: vi.fn(),
+      canDownloadArtifacts: true,
+      onDownloadArtifacts: vi.fn(),
+      onViewNotebook: vi.fn(),
+      onOpenExportDialog: vi.fn(),
+      onTogglePin: vi.fn(),
+      onDeleteSession: vi.fn(),
+      onOpenSettings: vi.fn()
+    })
+
+    expect(container.querySelector('[data-slot="sidebar-session-deleted"]')).toBeNull()
+  })
 })
