@@ -2,6 +2,7 @@ import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
 import { SourcePreviewContent } from './SourcePreview'
+import { useLanguage } from '@/i18n'
 
 const formatJsonPreview = (content: string): { formatted: string; error?: string } => {
   try {
@@ -21,6 +22,7 @@ export const JsonPreviewBody = ({
   item: PreviewFileRendererProps['item']
   state: ReturnType<typeof usePreviewFileContent>
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   if (state.status === 'loading') return <PreviewLoadingContent />
 
   if (state.status === 'error' || state.preview.encoding !== 'utf8') {
@@ -28,7 +30,7 @@ export const JsonPreviewBody = ({
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="JSON couldn't be read for preview"
+        fallbackMessage={t('previewFallback.jsonReadFailed')}
       />
     )
   }

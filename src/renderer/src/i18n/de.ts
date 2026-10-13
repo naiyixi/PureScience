@@ -4700,5 +4700,40 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.tokenPrefix': 'Zugriffstoken:',
   'settings.expiresPrefix': 'Läuft ab',
   'ws.composerHistoryDescription':
-    'Am Anfang der Eingabe mit den Pfeiltasten Auf und Ab den Eingabeverlauf durchsehen.'
+    'Am Anfang der Eingabe mit den Pfeiltasten Auf und Ab den Eingabeverlauf durchsehen.',
+  'previewFallback.codeReadFailed': 'Der Code konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.markdownReadFailed': 'Markdown konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.csvReadFailed': 'CSV konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.htmlReadFailed': 'HTML konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.jsonReadFailed': 'JSON konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.pdbReadFailed': 'PDB konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.fastaReadFailed': 'FASTA konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.moleculeReadFailed':
+    'Die Strukturdatei konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.fileReadFailed': 'Die Datei konnte nicht für die Vorschau gelesen werden',
+  'previewFallback.imageLoadFailed': 'Das Bild konnte nicht für die Vorschau geladen werden',
+  'previewFallback.tiffLoadFailed': 'TIFF konnte nicht für die Vorschau geladen werden',
+  'previewFallback.pdfRenderFailed': 'Dieses PDF konnte nicht für die Vorschau gerendert werden',
+  'previewFallback.officeRenderFailed':
+    'Diese Office-Datei konnte nicht für die Vorschau gerendert werden',
+  'previewFallback.tiffUnsupported': 'Diese TIFF-Kodierung wird für die Vorschau nicht unterstützt',
+  'officePreview.tooLargeMessage':
+    'Diese Datei ist größer als 40 MB. Lade sie herunter, um sie anzusehen.',
+  'officePreview.openInDefaultApp':
+    'Öffne diese Office-Datei in deiner Standard-App, um sie anzusehen.',
+  'officePreview.desktopOnly':
+    'Die Office-Vorschau gibt es nur in der Desktop-App. Lade diese Datei herunter, um sie anzusehen.',
+  'officePreview.damagedDownloadOnly':
+    'Diese Office-Datei ist beschädigt oder wird nicht unterstützt. Lade sie herunter, um sie anzusehen.',
+  'officePreview.limitsDownloadOnly':
+    'Diese Office-Datei überschreitet die sicheren Vorschaugrenzen. Lade sie herunter, um sie anzusehen.',
+  'onboarding.agentStepDescription':
+    'Wähle den Agenten, den PureScience steuert, und installiere ihn. Nur dieser Agent muss installiert werden, um fortzufahren.',
+  'previewFallback.tiffDecodeFailed': 'TIFF konnte nicht für die Vorschau dekodiert werden',
+  'previewFallback.tiffFileTooLarge': 'Die TIFF-Datei ist zu groß für eine sichere Vorschau',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'Die TIFF-Seitenabmessungen sind zu groß für eine sichere Vorschau',
+  'previewFallback.tiffPageTooLarge': 'Die TIFF-Seite ist zu groß für eine sichere Vorschau',
+  'previewFallback.tiffTooMuchMemory':
+    'Die TIFF-Seite braucht zu viel Speicher für eine sichere Vorschau'
 }

@@ -129,6 +129,7 @@ const MoleculePreviewCanvas = ({
 }
 
 export const MoleculePreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent(item)
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -138,7 +139,7 @@ export const MoleculePreviewRenderer = ({ item }: PreviewFileRendererProps): Rea
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="Structure file couldn't be read for preview"
+        fallbackMessage={t('previewFallback.moleculeReadFailed')}
       />
     )
   }

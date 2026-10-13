@@ -4,6 +4,7 @@ import { getFileExtension } from '../../preview-support'
 import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
+import { useLanguage } from '@/i18n'
 
 const VISIBLE_ROWS = 100
 const VISIBLE_COLUMNS = 24
@@ -25,6 +26,7 @@ const parseCsvRows = (
 }
 
 export const CsvPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent(item)
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -34,7 +36,7 @@ export const CsvPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JS
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="CSV couldn't be read for preview"
+        fallbackMessage={t('previewFallback.csvReadFailed')}
       />
     )
   }

@@ -4588,5 +4588,35 @@ export const en: Record<ZhKey, string> = {
   'settings.tokenPrefix': 'Token:',
   'settings.expiresPrefix': 'Expires',
   'ws.composerHistoryDescription':
-    'At the start of the input, use Up and Down Arrow to browse prompt history.'
+    'At the start of the input, use Up and Down Arrow to browse prompt history.',
+  'previewFallback.codeReadFailed': "Code couldn't be read for preview",
+  'previewFallback.markdownReadFailed': "Markdown couldn't be read for preview",
+  'previewFallback.csvReadFailed': "CSV couldn't be read for preview",
+  'previewFallback.htmlReadFailed': "HTML couldn't be read for preview",
+  'previewFallback.jsonReadFailed': "JSON couldn't be read for preview",
+  'previewFallback.pdbReadFailed': "PDB couldn't be read for preview",
+  'previewFallback.fastaReadFailed': "FASTA couldn't be read for preview",
+  'previewFallback.moleculeReadFailed': "Structure file couldn't be read for preview",
+  'previewFallback.fileReadFailed': "File couldn't be read for preview",
+  'previewFallback.imageLoadFailed': "Image couldn't be loaded for preview",
+  'previewFallback.tiffLoadFailed': "TIFF couldn't be loaded for preview",
+  'previewFallback.pdfRenderFailed': "This PDF couldn't be rendered for preview",
+  'previewFallback.officeRenderFailed': "This Office file couldn't be rendered for preview",
+  'previewFallback.tiffUnsupported': "This TIFF encoding isn't supported for preview",
+  'officePreview.tooLargeMessage': 'This file is larger than 40 MB. Download it to view.',
+  'officePreview.openInDefaultApp': 'Open this Office file in your default app to view it.',
+  'officePreview.desktopOnly':
+    'Office preview is only available in the desktop app. Download this file to view it.',
+  'officePreview.damagedDownloadOnly':
+    'This Office file is damaged or unsupported. Download it to view.',
+  'officePreview.limitsDownloadOnly':
+    'This Office file exceeds the safe preview limits. Download it to view.',
+  'onboarding.agentStepDescription':
+    'Pick the agent PureScience drives, then install it. Only this agent needs to be installed to continue.',
+  'previewFallback.tiffDecodeFailed': "TIFF couldn't be decoded for preview",
+  'previewFallback.tiffFileTooLarge': 'TIFF file is too large to preview safely',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'TIFF page dimensions are too large to preview safely',
+  'previewFallback.tiffPageTooLarge': 'TIFF page is too large to preview safely',
+  'previewFallback.tiffTooMuchMemory': 'TIFF page needs too much memory to preview safely'
 }

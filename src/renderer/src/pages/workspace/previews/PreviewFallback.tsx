@@ -33,7 +33,7 @@ const FORMAT_LOADING_TITLES: Record<PreviewFileFormat, string> = {
   text: 'preview.loadingText',
   tiff: 'preview.loadingTiff',
   unknown: 'preview.loadingUnknown',
-  word: 'Preparing document'
+  word: 'preview.loadingWord'
 }
 
 const FORMAT_BADGES: Record<PreviewFileFormat, string> = {

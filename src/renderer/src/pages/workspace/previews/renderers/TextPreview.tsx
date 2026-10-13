@@ -4,6 +4,7 @@ import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
 import { SourcePreviewContent } from './SourcePreview'
+import { useLanguage } from '@/i18n'
 
 export const PreviewTextContent = ({
   path,
@@ -18,6 +19,7 @@ export const PreviewTextContent = ({
   projectId?: string
   sessionId?: string
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent({ path, source, projectId, sessionId })
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -27,7 +29,7 @@ export const PreviewTextContent = ({
       <PreviewErrorCard
         name={name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="File couldn't be read for preview"
+        fallbackMessage={t('previewFallback.fileReadFailed')}
       />
     )
   }

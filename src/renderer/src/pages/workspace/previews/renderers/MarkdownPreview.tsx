@@ -4,8 +4,10 @@ import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
 import { SourcePreviewContent } from './SourcePreview'
+import { useLanguage } from '@/i18n'
 
 export const MarkdownPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent(item)
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -15,7 +17,7 @@ export const MarkdownPreviewRenderer = ({ item }: PreviewFileRendererProps): Rea
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="Markdown couldn't be read for preview"
+        fallbackMessage={t('previewFallback.markdownReadFailed')}
       />
     )
   }

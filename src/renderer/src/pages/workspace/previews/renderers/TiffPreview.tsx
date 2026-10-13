@@ -25,28 +25,44 @@ type CachedTiffSession = {
   session: TiffDecodeSession
 }
 
-const getTiffPreviewErrorMessage = (error: Error): string => {
-  if (
-    error.message === 'TIFF file is too large to preview safely' ||
-    error.message === 'TIFF page dimensions are too large to preview safely' ||
-    error.message === 'TIFF page is too large to preview safely' ||
-    error.message === 'TIFF page needs too much memory to preview safely'
-  ) {
-    return error.message
+// The reader's own diagnostics are user-visible: the fallback card prints whatever this
+// returns, so each branch names a dictionary key instead of carrying an English sentence.
+// Returning a key keeps this module free of a translator; the two call sites resolve it.
+type TiffPreviewMessageKey =
+  | 'previewFallback.tiffFileTooLarge'
+  | 'previewFallback.tiffPageDimensionsTooLarge'
+  | 'previewFallback.tiffPageTooLarge'
+  | 'previewFallback.tiffTooMuchMemory'
+  | 'previewFallback.tiffLoadFailed'
+  | 'previewFallback.tiffUnsupported'
+  | 'previewFallback.tiffDecodeFailed'
+
+const getTiffPreviewErrorMessage = (error: Error): TiffPreviewMessageKey => {
+  if (error.message === 'TIFF file is too large to preview safely') {
+    return 'previewFallback.tiffFileTooLarge'
+  }
+  if (error.message === 'TIFF page dimensions are too large to preview safely') {
+    return 'previewFallback.tiffPageDimensionsTooLarge'
+  }
+  if (error.message === 'TIFF page is too large to preview safely') {
+    return 'previewFallback.tiffPageTooLarge'
+  }
+  if (error.message === 'TIFF page needs too much memory to preview safely') {
+    return 'previewFallback.tiffTooMuchMemory'
   }
 
   if (
     error.message.startsWith('TIFF preview read failed') ||
     error.message === 'TIFF file changed during the preview read'
   ) {
-    return "TIFF couldn't be loaded for preview"
+    return 'previewFallback.tiffLoadFailed'
   }
 
   if (error.message.startsWith('Unsupported ')) {
-    return "This TIFF encoding isn't supported for preview"
+    return 'previewFallback.tiffUnsupported'
   }
 
-  return "TIFF couldn't be decoded for preview"
+  return 'previewFallback.tiffDecodeFailed'
 }
 
 const TiffPageControls = ({
@@ -255,7 +271,7 @@ const TiffPreviewContent = ({
       <PreviewErrorCard
         name={name}
         error={resourceState.error}
-        fallbackMessage="TIFF couldn't be loaded for preview"
+        fallbackMessage={t('previewFallback.tiffLoadFailed')}
       />
     )
   }
@@ -269,7 +285,7 @@ const TiffPreviewContent = ({
       <PreviewErrorCard
         name={name}
         error={result.error}
-        fallbackMessage={getTiffPreviewErrorMessage(result.error)}
+        fallbackMessage={t(getTiffPreviewErrorMessage(result.error))}
       />
     )
   }
@@ -280,7 +296,7 @@ const TiffPreviewContent = ({
         <PreviewErrorCard
           name={name}
           error={result.error}
-          fallbackMessage={getTiffPreviewErrorMessage(result.error)}
+          fallbackMessage={t(getTiffPreviewErrorMessage(result.error))}
         />
         {result.pageCount > 1 ? (
           <TiffPageControls

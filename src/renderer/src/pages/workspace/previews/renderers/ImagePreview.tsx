@@ -7,6 +7,7 @@ import { createPreviewResourceKey } from '../preview-resource-key'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { useManagedPreviewResource } from '../useManagedPreviewResource'
 import { ZoomablePreview } from './ZoomablePreview'
+import { useLanguage } from '@/i18n'
 
 const ZoomableImage = ({
   url,
@@ -49,6 +50,7 @@ export const PreviewImageContent = ({
   size?: number
   mtimeMs?: number
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const requestKey = createPreviewResourceKey({
     projectId,
     sessionId,
@@ -74,7 +76,7 @@ export const PreviewImageContent = ({
       <PreviewErrorCard
         name={name}
         error={state.error}
-        fallbackMessage="Image couldn't be loaded for preview"
+        fallbackMessage={t('previewFallback.imageLoadFailed')}
       />
     )
   }
@@ -84,7 +86,7 @@ export const PreviewImageContent = ({
       <PreviewFallbackCard
         icon={ImageOff}
         name={name}
-        message="Image couldn't be loaded for preview"
+        message={t('previewFallback.imageLoadFailed')}
         retryable
       />
     )

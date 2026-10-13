@@ -4283,7 +4283,33 @@ export const zh = {
     '为节省存储空间，执行证据已做截断：省略了 {runs} 次较早的运行、{outputs} 份输出和 {inputs} 项输入。',
   'settings.tokenPrefix': '令牌：',
   'settings.expiresPrefix': '有效期至',
-  'ws.composerHistoryDescription': '在输入开头，用上下方向键浏览历史提示。'
+  'ws.composerHistoryDescription': '在输入开头，用上下方向键浏览历史提示。',
+  'previewFallback.codeReadFailed': '无法读取代码以预览',
+  'previewFallback.markdownReadFailed': '无法读取 Markdown 以预览',
+  'previewFallback.csvReadFailed': '无法读取 CSV 以预览',
+  'previewFallback.htmlReadFailed': '无法读取 HTML 以预览',
+  'previewFallback.jsonReadFailed': '无法读取 JSON 以预览',
+  'previewFallback.pdbReadFailed': '无法读取 PDB 以预览',
+  'previewFallback.fastaReadFailed': '无法读取 FASTA 以预览',
+  'previewFallback.moleculeReadFailed': '无法读取结构文件以预览',
+  'previewFallback.fileReadFailed': '无法读取文件以预览',
+  'previewFallback.imageLoadFailed': '无法加载图片以预览',
+  'previewFallback.tiffLoadFailed': '无法加载 TIFF 以预览',
+  'previewFallback.pdfRenderFailed': '无法渲染此 PDF 以预览',
+  'previewFallback.officeRenderFailed': '无法渲染此 Office 文件以预览',
+  'previewFallback.tiffUnsupported': '不支持此 TIFF 编码的预览',
+  'officePreview.tooLargeMessage': '此文件超过 40 MB，请下载后查看。',
+  'officePreview.openInDefaultApp': '在默认应用中打开此 Office 文件即可查看。',
+  'officePreview.desktopOnly': 'Office 预览仅在桌面应用中可用。下载此文件即可查看。',
+  'officePreview.damagedDownloadOnly': '此 Office 文件已损坏或不受支持。下载后即可查看。',
+  'officePreview.limitsDownloadOnly': '此 Office 文件超出安全预览上限。下载后即可查看。',
+  'onboarding.agentStepDescription':
+    '选择由 PureScience 驱动的智能体并安装它。只需安装这个智能体即可继续。',
+  'previewFallback.tiffDecodeFailed': '无法解码 TIFF 以预览',
+  'previewFallback.tiffFileTooLarge': 'TIFF 文件过大，无法安全预览',
+  'previewFallback.tiffPageDimensionsTooLarge': 'TIFF 页面尺寸过大，无法安全预览',
+  'previewFallback.tiffPageTooLarge': 'TIFF 页面过大，无法安全预览',
+  'previewFallback.tiffTooMuchMemory': 'TIFF 页面所需内存过多，无法安全预览'
 }
 
 export type ZhKey = keyof typeof zh

@@ -4570,5 +4570,37 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.tokenPrefix': 'Токен:',
   'settings.expiresPrefix': 'Истекает',
   'ws.composerHistoryDescription':
-    'В начале ввода используйте клавиши «вверх» и «вниз» для просмотра истории.'
+    'В начале ввода используйте клавиши «вверх» и «вниз» для просмотра истории.',
+  'previewFallback.codeReadFailed': 'Не удалось прочитать код для предпросмотра',
+  'previewFallback.markdownReadFailed': 'Не удалось прочитать Markdown для предпросмотра',
+  'previewFallback.csvReadFailed': 'Не удалось прочитать CSV для предпросмотра',
+  'previewFallback.htmlReadFailed': 'Не удалось прочитать HTML для предпросмотра',
+  'previewFallback.jsonReadFailed': 'Не удалось прочитать JSON для предпросмотра',
+  'previewFallback.pdbReadFailed': 'Не удалось прочитать PDB для предпросмотра',
+  'previewFallback.fastaReadFailed': 'Не удалось прочитать FASTA для предпросмотра',
+  'previewFallback.moleculeReadFailed': 'Не удалось прочитать файл структуры для предпросмотра',
+  'previewFallback.fileReadFailed': 'Не удалось прочитать файл для предпросмотра',
+  'previewFallback.imageLoadFailed': 'Не удалось загрузить изображение для предпросмотра',
+  'previewFallback.tiffLoadFailed': 'Не удалось загрузить TIFF для предпросмотра',
+  'previewFallback.pdfRenderFailed': 'Не удалось отобразить этот PDF для предпросмотра',
+  'previewFallback.officeRenderFailed': 'Не удалось отобразить этот файл Office для предпросмотра',
+  'previewFallback.tiffUnsupported': 'Эта кодировка TIFF не поддерживается для предпросмотра',
+  'officePreview.tooLargeMessage': 'Этот файл больше 40 МБ. Скачайте его, чтобы посмотреть.',
+  'officePreview.openInDefaultApp':
+    'Откройте этот файл Office в приложении по умолчанию, чтобы посмотреть его.',
+  'officePreview.desktopOnly':
+    'Предпросмотр Office доступен только в настольном приложении. Скачайте этот файл, чтобы посмотреть его.',
+  'officePreview.damagedDownloadOnly':
+    'Этот файл Office повреждён или не поддерживается. Скачайте его, чтобы посмотреть.',
+  'officePreview.limitsDownloadOnly':
+    'Этот файл Office превышает безопасные пределы предпросмотра. Скачайте его, чтобы посмотреть.',
+  'onboarding.agentStepDescription':
+    'Выберите агента, которым управляет PureScience, и установите его. Для продолжения нужен только он.',
+  'previewFallback.tiffDecodeFailed': 'Не удалось декодировать TIFF для предпросмотра',
+  'previewFallback.tiffFileTooLarge': 'Файл TIFF слишком велик для безопасного предпросмотра',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'Размеры страницы TIFF слишком велики для безопасного предпросмотра',
+  'previewFallback.tiffPageTooLarge': 'Страница TIFF слишком велика для безопасного предпросмотра',
+  'previewFallback.tiffTooMuchMemory':
+    'Странице TIFF требуется слишком много памяти для безопасного предпросмотра'
 }

@@ -3,8 +3,10 @@ import { PreviewErrorCard, PreviewLoadingContent } from '../PreviewFallback'
 import type { PreviewFileRendererProps } from '../preview-types'
 import { usePreviewFileContent } from '../usePreviewFileContent'
 import { SourcePreviewContent } from './SourcePreview'
+import { useLanguage } from '@/i18n'
 
 export const CodePreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent(item)
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -14,7 +16,7 @@ export const CodePreviewRenderer = ({ item }: PreviewFileRendererProps): React.J
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="Code couldn't be read for preview"
+        fallbackMessage={t('previewFallback.codeReadFailed')}
       />
     )
   }

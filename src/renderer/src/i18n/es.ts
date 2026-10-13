@@ -4651,5 +4651,41 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.tokenPrefix': 'Token de acceso:',
   'settings.expiresPrefix': 'Caduca el',
   'ws.composerHistoryDescription':
-    'Al inicio de la entrada, usa las flechas arriba y abajo para recorrer el historial.'
+    'Al inicio de la entrada, usa las flechas arriba y abajo para recorrer el historial.',
+  'previewFallback.codeReadFailed': 'No se pudo leer el código para la vista previa',
+  'previewFallback.markdownReadFailed': 'No se pudo leer el Markdown para la vista previa',
+  'previewFallback.csvReadFailed': 'No se pudo leer el CSV para la vista previa',
+  'previewFallback.htmlReadFailed': 'No se pudo leer el HTML para la vista previa',
+  'previewFallback.jsonReadFailed': 'No se pudo leer el JSON para la vista previa',
+  'previewFallback.pdbReadFailed': 'No se pudo leer el PDB para la vista previa',
+  'previewFallback.fastaReadFailed': 'No se pudo leer el FASTA para la vista previa',
+  'previewFallback.moleculeReadFailed':
+    'No se pudo leer el archivo de estructura para la vista previa',
+  'previewFallback.fileReadFailed': 'No se pudo leer el archivo para la vista previa',
+  'previewFallback.imageLoadFailed': 'No se pudo cargar la imagen para la vista previa',
+  'previewFallback.tiffLoadFailed': 'No se pudo cargar el TIFF para la vista previa',
+  'previewFallback.pdfRenderFailed': 'No se pudo representar este PDF para la vista previa',
+  'previewFallback.officeRenderFailed':
+    'No se pudo representar este archivo de Office para la vista previa',
+  'previewFallback.tiffUnsupported': 'Esta codificación TIFF no es compatible con la vista previa',
+  'officePreview.tooLargeMessage': 'Este archivo supera los 40 MB. Descárgalo para verlo.',
+  'officePreview.openInDefaultApp':
+    'Abre este archivo de Office en tu aplicación predeterminada para verlo.',
+  'officePreview.desktopOnly':
+    'La vista previa de Office solo está disponible en la aplicación de escritorio. Descarga este archivo para verlo.',
+  'officePreview.damagedDownloadOnly':
+    'Este archivo de Office está dañado o no es compatible. Descárgalo para verlo.',
+  'officePreview.limitsDownloadOnly':
+    'Este archivo de Office supera los límites seguros de vista previa. Descárgalo para verlo.',
+  'onboarding.agentStepDescription':
+    'Elige el agente que PureScience controla e instálalo. Solo hace falta instalar este agente para continuar.',
+  'previewFallback.tiffDecodeFailed': 'No se pudo decodificar el TIFF para la vista previa',
+  'previewFallback.tiffFileTooLarge':
+    'El archivo TIFF es demasiado grande para una vista previa segura',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'Las dimensiones de la página TIFF son demasiado grandes para una vista previa segura',
+  'previewFallback.tiffPageTooLarge':
+    'La página TIFF es demasiado grande para una vista previa segura',
+  'previewFallback.tiffTooMuchMemory':
+    'La página TIFF necesita demasiada memoria para una vista previa segura'
 }

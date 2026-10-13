@@ -90,12 +90,12 @@ const OfficeDownloadFallback = ({
 
 const getDownloadOnlyErrorMessage = (
   error: OfficePreviewErrorCode | undefined
-): string | undefined => {
+): 'officePreview.damagedDownloadOnly' | 'officePreview.limitsDownloadOnly' | undefined => {
   if (error === 'INVALID_PACKAGE') {
-    return 'This Office file is damaged or unsupported. Download it to view.'
+    return 'officePreview.damagedDownloadOnly'
   }
   if (error === 'RESOURCE_LIMIT_EXCEEDED') {
-    return 'This Office file exceeds the safe preview limits. Download it to view.'
+    return 'officePreview.limitsDownloadOnly'
   }
   return undefined
 }
@@ -276,19 +276,19 @@ const RemoteOfficePreviewContent = ({
         item={item}
         source={source}
         title={t('officePreview.tooLarge')}
-        message="This file is larger than 40 MB. Download it to view."
+        message={t('officePreview.tooLargeMessage')}
       />
     )
   }
   if (state.kind === 'error') {
-    const downloadOnlyMessage = getDownloadOnlyErrorMessage(state.error)
-    if (downloadOnlyMessage) {
+    const downloadOnlyKey = getDownloadOnlyErrorMessage(state.error)
+    if (downloadOnlyKey) {
       return (
         <OfficeDownloadFallback
           item={item}
           source={source}
           title={t('officePreview.unavailable')}
-          message={downloadOnlyMessage}
+          message={t(downloadOnlyKey)}
         />
       )
     }
@@ -296,7 +296,7 @@ const RemoteOfficePreviewContent = ({
       <PreviewFallbackCard
         icon={FileWarning}
         name={item.name}
-        message="This Office file couldn't be rendered for preview"
+        message={t('previewFallback.officeRenderFailed')}
         retryable={isRetryableOfficeError(state.error)}
       />
     )
@@ -347,7 +347,7 @@ export const OfficePreviewContent = ({
       <PreviewFallbackCard
         icon={FileWarning}
         name={item.name}
-        message="Open this Office file in your default app to view it."
+        message={t('officePreview.openInDefaultApp')}
         action={<LocalFileFallbackAction path={item.path} className="mt-3" />}
       />
     )
@@ -358,7 +358,7 @@ export const OfficePreviewContent = ({
         item={item}
         source={source}
         title={t('ui.previewunavailable54')}
-        message="Office preview is only available in the desktop app. Download this file to view it."
+        message={t('officePreview.desktopOnly')}
       />
     )
   }

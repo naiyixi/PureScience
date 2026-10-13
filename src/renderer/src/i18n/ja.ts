@@ -4551,5 +4551,38 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '保存容量のため実行証跡を制限しました：以前の実行 {runs} 件、出力 {outputs} 件、入力 {inputs} 件を省略しています。',
   'settings.tokenPrefix': 'トークン：',
   'settings.expiresPrefix': '有効期限',
-  'ws.composerHistoryDescription': '入力の先頭で、上下矢印キーを使って入力履歴を参照できます。'
+  'ws.composerHistoryDescription': '入力の先頭で、上下矢印キーを使って入力履歴を参照できます。',
+  'previewFallback.codeReadFailed': 'コードを読み込めなかったためプレビューできません',
+  'previewFallback.markdownReadFailed': 'Markdown を読み込めなかったためプレビューできません',
+  'previewFallback.csvReadFailed': 'CSV を読み込めなかったためプレビューできません',
+  'previewFallback.htmlReadFailed': 'HTML を読み込めなかったためプレビューできません',
+  'previewFallback.jsonReadFailed': 'JSON を読み込めなかったためプレビューできません',
+  'previewFallback.pdbReadFailed': 'PDB を読み込めなかったためプレビューできません',
+  'previewFallback.fastaReadFailed': 'FASTA を読み込めなかったためプレビューできません',
+  'previewFallback.moleculeReadFailed': '構造ファイルを読み込めなかったためプレビューできません',
+  'previewFallback.fileReadFailed': 'ファイルを読み込めなかったためプレビューできません',
+  'previewFallback.imageLoadFailed': '画像を読み込めなかったためプレビューできません',
+  'previewFallback.tiffLoadFailed': 'TIFF を読み込めなかったためプレビューできません',
+  'previewFallback.pdfRenderFailed': 'この PDF をレンダリングできなかったためプレビューできません',
+  'previewFallback.officeRenderFailed':
+    'この Office ファイルをレンダリングできなかったためプレビューできません',
+  'previewFallback.tiffUnsupported': 'この TIFF エンコードはプレビューに対応していません',
+  'officePreview.tooLargeMessage':
+    'このファイルは 40 MB を超えています。ダウンロードして表示してください。',
+  'officePreview.openInDefaultApp': '既定のアプリでこの Office ファイルを開くと表示できます。',
+  'officePreview.desktopOnly':
+    'Office のプレビューはデスクトップ アプリでのみ利用できます。このファイルをダウンロードして表示してください。',
+  'officePreview.damagedDownloadOnly':
+    'この Office ファイルは破損しているか未対応です。ダウンロードして表示してください。',
+  'officePreview.limitsDownloadOnly':
+    'この Office ファイルは安全なプレビュー上限を超えています。ダウンロードして表示してください。',
+  'onboarding.agentStepDescription':
+    'PureScience が操作するエージェントを選んでインストールします。続行するにはこのエージェントだけで十分です。',
+  'previewFallback.tiffDecodeFailed': 'TIFF をデコードできなかったためプレビューできません',
+  'previewFallback.tiffFileTooLarge': 'TIFF ファイルが大きすぎるため安全にプレビューできません',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'TIFF ページの寸法が大きすぎるため安全にプレビューできません',
+  'previewFallback.tiffPageTooLarge': 'TIFF ページが大きすぎるため安全にプレビューできません',
+  'previewFallback.tiffTooMuchMemory':
+    'TIFF ページのメモリ使用量が多すぎるため安全にプレビューできません'
 }

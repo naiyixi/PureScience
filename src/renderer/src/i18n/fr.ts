@@ -4684,5 +4684,36 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.tokenPrefix': 'Jeton :',
   'settings.expiresPrefix': 'Expire le',
   'ws.composerHistoryDescription':
-    'Au début de la saisie, utilisez les flèches haut et bas pour parcourir l’historique.'
+    'Au début de la saisie, utilisez les flèches haut et bas pour parcourir l’historique.',
+  'previewFallback.codeReadFailed': 'Le code n’a pas pu être lu pour l’aperçu',
+  'previewFallback.markdownReadFailed': 'Le Markdown n’a pas pu être lu pour l’aperçu',
+  'previewFallback.csvReadFailed': 'Le CSV n’a pas pu être lu pour l’aperçu',
+  'previewFallback.htmlReadFailed': 'Le HTML n’a pas pu être lu pour l’aperçu',
+  'previewFallback.jsonReadFailed': 'Le JSON n’a pas pu être lu pour l’aperçu',
+  'previewFallback.pdbReadFailed': 'Le PDB n’a pas pu être lu pour l’aperçu',
+  'previewFallback.fastaReadFailed': 'Le FASTA n’a pas pu être lu pour l’aperçu',
+  'previewFallback.moleculeReadFailed': 'Le fichier de structure n’a pas pu être lu pour l’aperçu',
+  'previewFallback.fileReadFailed': 'Le fichier n’a pas pu être lu pour l’aperçu',
+  'previewFallback.imageLoadFailed': 'L’image n’a pas pu être chargée pour l’aperçu',
+  'previewFallback.tiffLoadFailed': 'Le TIFF n’a pas pu être chargé pour l’aperçu',
+  'previewFallback.pdfRenderFailed': 'Ce PDF n’a pas pu être rendu pour l’aperçu',
+  'previewFallback.officeRenderFailed': 'Ce fichier Office n’a pas pu être rendu pour l’aperçu',
+  'previewFallback.tiffUnsupported': 'Cet encodage TIFF n’est pas pris en charge pour l’aperçu',
+  'officePreview.tooLargeMessage': 'Ce fichier dépasse 40 Mo. Téléchargez-le pour le consulter.',
+  'officePreview.openInDefaultApp':
+    'Ouvrez ce fichier Office dans votre application par défaut pour le consulter.',
+  'officePreview.desktopOnly':
+    'L’aperçu Office n’est disponible que dans l’application de bureau. Téléchargez ce fichier pour le consulter.',
+  'officePreview.damagedDownloadOnly':
+    'Ce fichier Office est endommagé ou non pris en charge. Téléchargez-le pour le consulter.',
+  'officePreview.limitsDownloadOnly':
+    'Ce fichier Office dépasse les limites d’aperçu sûres. Téléchargez-le pour le consulter.',
+  'onboarding.agentStepDescription':
+    'Choisissez l’agent piloté par PureScience, puis installez-le. Seul cet agent doit être installé pour continuer.',
+  'previewFallback.tiffDecodeFailed': 'Le TIFF n’a pas pu être décodé pour l’aperçu',
+  'previewFallback.tiffFileTooLarge': 'Le fichier TIFF est trop volumineux pour un aperçu sûr',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'Les dimensions de la page TIFF sont trop grandes pour un aperçu sûr',
+  'previewFallback.tiffPageTooLarge': 'La page TIFF est trop grande pour un aperçu sûr',
+  'previewFallback.tiffTooMuchMemory': 'La page TIFF demande trop de mémoire pour un aperçu sûr'
 }

@@ -35,7 +35,7 @@ const AgentStep = ({ onBack, onContinue }: AgentStepProps): React.JSX.Element =>
         <AgentPanel
           variant="onboarding"
           title={t('ui.setuptheagentruntime')}
-          description="Pick the agent PureScience drives, then install it. Only this agent needs to be installed to continue."
+          description={t('onboarding.agentStepDescription')}
         />
       </CardContent>
       <CardFooter className="mt-auto items-center justify-between gap-4 rounded-b-lg border-border-200 bg-bg-10 px-6 py-3">

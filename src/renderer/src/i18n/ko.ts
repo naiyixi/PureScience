@@ -4483,5 +4483,36 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.tokenPrefix': '토큰:',
   'settings.expiresPrefix': '만료',
   'ws.composerHistoryDescription':
-    '입력 시작 부분에서 위·아래 화살표 키로 입력 기록을 찾아볼 수 있습니다.'
+    '입력 시작 부분에서 위·아래 화살표 키로 입력 기록을 찾아볼 수 있습니다.',
+  'previewFallback.codeReadFailed': '코드를 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.markdownReadFailed': 'Markdown을 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.csvReadFailed': 'CSV를 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.htmlReadFailed': 'HTML을 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.jsonReadFailed': 'JSON을 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.pdbReadFailed': 'PDB를 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.fastaReadFailed': 'FASTA를 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.moleculeReadFailed': '구조 파일을 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.fileReadFailed': '파일을 읽지 못해 미리 볼 수 없습니다',
+  'previewFallback.imageLoadFailed': '이미지를 불러오지 못해 미리 볼 수 없습니다',
+  'previewFallback.tiffLoadFailed': 'TIFF를 불러오지 못해 미리 볼 수 없습니다',
+  'previewFallback.pdfRenderFailed': '이 PDF를 렌더링하지 못해 미리 볼 수 없습니다',
+  'previewFallback.officeRenderFailed': '이 Office 파일을 렌더링하지 못해 미리 볼 수 없습니다',
+  'previewFallback.tiffUnsupported': '이 TIFF 인코딩은 미리보기를 지원하지 않습니다',
+  'officePreview.tooLargeMessage': '이 파일은 40 MB를 넘습니다. 다운로드한 뒤 확인하세요.',
+  'officePreview.openInDefaultApp': '기본 앱에서 이 Office 파일을 열면 볼 수 있습니다.',
+  'officePreview.desktopOnly':
+    'Office 미리보기는 데스크톱 앱에서만 제공됩니다. 이 파일을 다운로드해 확인하세요.',
+  'officePreview.damagedDownloadOnly':
+    '이 Office 파일은 손상되었거나 지원되지 않습니다. 다운로드해 확인하세요.',
+  'officePreview.limitsDownloadOnly':
+    '이 Office 파일은 안전한 미리보기 한도를 넘습니다. 다운로드해 확인하세요.',
+  'onboarding.agentStepDescription':
+    'PureScience가 구동하는 에이전트를 선택해 설치하세요. 계속하려면 이 에이전트만 설치하면 됩니다.',
+  'previewFallback.tiffDecodeFailed': 'TIFF를 디코딩하지 못해 미리 볼 수 없습니다',
+  'previewFallback.tiffFileTooLarge': 'TIFF 파일이 너무 커서 안전하게 미리 볼 수 없습니다',
+  'previewFallback.tiffPageDimensionsTooLarge':
+    'TIFF 페이지 크기가 너무 커서 안전하게 미리 볼 수 없습니다',
+  'previewFallback.tiffPageTooLarge': 'TIFF 페이지가 너무 커서 안전하게 미리 볼 수 없습니다',
+  'previewFallback.tiffTooMuchMemory':
+    'TIFF 페이지가 메모리를 너무 많이 필요로 해 안전하게 미리 볼 수 없습니다'
 }

@@ -1483,6 +1483,7 @@ const PdbPreviewViewer = ({
 }
 
 export const PdbPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const state = usePreviewFileContent(item)
 
   if (state.status === 'loading') return <PreviewLoadingContent />
@@ -1492,7 +1493,7 @@ export const PdbPreviewRenderer = ({ item }: PreviewFileRendererProps): React.JS
       <PreviewErrorCard
         name={item.name}
         error={state.status === 'error' ? state.error : undefined}
-        fallbackMessage="PDB couldn't be read for preview"
+        fallbackMessage={t('previewFallback.pdbReadFailed')}
       />
     )
   }

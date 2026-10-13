@@ -924,7 +924,7 @@ export const PdfPreviewContent = ({
       <PreviewErrorCard
         name={name}
         error={currentDocumentState.error}
-        fallbackMessage="This PDF couldn't be rendered for preview"
+        fallbackMessage={t('previewFallback.pdfRenderFailed')}
       />
     )
   }
