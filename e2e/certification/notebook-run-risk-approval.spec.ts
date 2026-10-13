@@ -16,8 +16,10 @@ const PROBE_CODE = "import shutil\nshutil.rmtree('probe-dir')"
 test('a flagged notebook cell asks on the approval card, and declining means it never ran', async ({
   app
 }) => {
-  const page = await app.completeOnboarding()
-  await app.configureFakeAgent()
+  let page = await app.completeOnboarding()
+  // configureFakeAgent relaunches the app, so it hands back the NEW page: keeping the old handle here is
+  // what made the first version of this spec die with "page, context or browser has been closed".
+  page = await app.configureFakeAgent()
   await createProject(page, 'Notebook run risk')
   await sendPrompt(page, 'Create a provenance artifact.', 'Artifact provenance verified', 90_000)
 
@@ -28,8 +30,7 @@ test('a flagged notebook cell asks on the approval card, and declining means it 
       api: { sessions: { loadAll: () => Promise<unknown> } }
     }
     const loaded = (await bridge.api.sessions.loadAll()) as
-      | { sessions?: Array<{ id?: string; cwd?: string }> }
-      | Array<{ id?: string; cwd?: string }>
+      { sessions?: Array<{ id?: string; cwd?: string }> } | Array<{ id?: string; cwd?: string }>
     const list = Array.isArray(loaded) ? loaded : (loaded.sessions ?? [])
     const found = list.find((entry) => typeof entry.cwd === 'string' && entry.cwd !== '')
     return { id: found?.id ?? '', cwd: found?.cwd ?? '' }
@@ -78,7 +79,8 @@ test('a flagged notebook cell asks on the approval card, and declining means it 
   await expect(review).toBeVisible({ timeout: 60_000 })
   await expect(review).toContainText('deletes files')
   await expect(review).toContainText('fs-delete')
-  await expect(review).toContainText('line 1')
+  // Line 2, not 1: the cell starts with an import, and the review points at the line that acts.
+  await expect(review).toContainText('line 2')
   await expect(review).toContainText('shutil.rmtree')
 
   // Decline through the card's own control, as a user would.
@@ -92,7 +94,9 @@ test('a flagged notebook cell asks on the approval card, and declining means it 
       const bridge = globalThis as unknown as {
         api: {
           notebook: {
-            state: (request: Record<string, unknown>) => Promise<{ runs?: Array<{ script?: string }> }>
+            state: (
+              request: Record<string, unknown>
+            ) => Promise<{ runs?: Array<{ script?: string }> }>
           }
         }
       }
