@@ -48,6 +48,7 @@ import {
 import type { NotebookLanguage } from '../../../../shared/notebook'
 import { SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
 import { PythonIcon, RIcon } from './language-icons'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 // Localized prose for the disable-impact dialog; placeholders survive the
 // string-key translator (tests' `t` does not interpolate), so fill them here.
@@ -963,7 +964,7 @@ const RuntimesPanel = ({
         ) : null}
         {error !== null && (
           <p role="alert" className="text-sm text-destructive" data-testid="runtimes-error">
-            {error}
+            {localizeMainMessage(t, error)}
           </p>
         )}
         {notice !== null && (
@@ -1504,7 +1505,7 @@ const RuntimesPanel = ({
                     data-testid="runtime-package-error"
                     className="mt-2 text-[13px] text-destructive"
                   >
-                    {packageActionError}
+                    {localizeMainMessage(t, packageActionError)}
                   </p>
                 ) : packageNotice !== null ? (
                   <p
@@ -1512,7 +1513,7 @@ const RuntimesPanel = ({
                     data-testid="runtime-package-notice"
                     className="mt-2 text-[13px] text-muted-foreground"
                   >
-                    {packageNotice}
+                    {localizeMainMessage(t, packageNotice)}
                   </p>
                 ) : null}
 
@@ -1520,7 +1521,7 @@ const RuntimesPanel = ({
                   {packagesError !== null ? (
                     <div className="flex flex-col items-center gap-2 px-3 py-6">
                       <p role="alert" className="text-sm text-destructive">
-                        {packagesError}
+                        {localizeMainMessage(t, packagesError)}
                       </p>
                       <Button
                         type="button"

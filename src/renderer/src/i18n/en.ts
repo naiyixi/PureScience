@@ -4621,5 +4621,18 @@ export const en: Record<ZhKey, string> = {
   'previewFallback.tiffTooMuchMemory': 'TIFF page needs too much memory to preview safely',
   'ws.sessionDeletedReleased': '{title} was deleted. {size} of run data was released.',
   'ws.sessionDeletedNothingStored': '{title} was deleted. No run data was stored for it.',
-  'ws.sessionDeletedRunDataKept': '{title} was deleted, but its run data was not released.'
+  'ws.sessionDeletedRunDataKept': '{title} was deleted, but its run data was not released.',
+  'mainMessage.pathTooLongForWindows':
+    "This location's path is too long for Windows. Choose a folder closer to the drive root so your files stay within Windows' 260-character path limit.",
+  'mainMessage.notebookRuntimeUnusable':
+    "That interpreter can't be used as a notebook runtime (not a runnable Python 3).",
+  'mainMessage.notebookRuntimeUnusableDetail':
+    "That interpreter can't be used as a notebook runtime: {detail}",
+  'mainMessage.packageInstallNotAuthorized':
+    'Installing packages into your own {language} environment is not authorized. Turn on "Allow package install" for this runtime in Settings → Runtimes first (installs go into your own environment, not the app-managed storage).',
+  'mainMessage.signInTimedOut':
+    'Browser sign-in timed out. If your browser did not open, use "Use setup token" instead.',
+  'mainMessage.signInCancelled': 'Sign-in cancelled.',
+  'mainMessage.signInNoToken':
+    'Browser sign-in did not return a token. If your browser did not open, use "Use setup token" instead.'
 }

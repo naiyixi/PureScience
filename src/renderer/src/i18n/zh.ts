@@ -4312,7 +4312,16 @@ export const zh = {
   'previewFallback.tiffTooMuchMemory': 'TIFF 页面所需内存过多，无法安全预览',
   'ws.sessionDeletedReleased': '{title} 已删除，其运行数据已释放 {size}。',
   'ws.sessionDeletedNothingStored': '{title} 已删除，其中没有存储运行数据。',
-  'ws.sessionDeletedRunDataKept': '{title} 已删除，但其运行数据未能释放。'
+  'ws.sessionDeletedRunDataKept': '{title} 已删除，但其运行数据未能释放。',
+  'mainMessage.pathTooLongForWindows':
+    '此位置的路径对 Windows 来说过长。请选择更靠近驱动器根目录的文件夹，让文件保持在 Windows 的 260 字符路径长度以内。',
+  'mainMessage.notebookRuntimeUnusable': '此解释器不能用作笔记本运行时（不是可运行的 Python 3）。',
+  'mainMessage.notebookRuntimeUnusableDetail': '此解释器不能用作笔记本运行时：{detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    '不允许在你自己的 {language} 环境里安装软件包。请先在「设置 → 运行时」中为这个运行时打开“允许安装软件包”（安装会进入你自己的环境，而不是应用管理的存储）。',
+  'mainMessage.signInTimedOut': '浏览器登录超时。如果浏览器没有打开，请改用“使用设置令牌”。',
+  'mainMessage.signInCancelled': '登录已取消。',
+  'mainMessage.signInNoToken': '浏览器登录没有返回令牌。如果浏览器没有打开，请改用“使用设置令牌”。'
 }
 
 export type ZhKey = keyof typeof zh

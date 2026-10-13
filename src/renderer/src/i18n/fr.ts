@@ -4721,5 +4721,18 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedNothingStored':
     '{title} a été supprimé. Aucune donnée d’exécution n’était stockée.',
   'ws.sessionDeletedRunDataKept':
-    '{title} a été supprimé, mais ses données d’exécution n’ont pas pu être libérées.'
+    '{title} a été supprimé, mais ses données d’exécution n’ont pas pu être libérées.',
+  'mainMessage.pathTooLongForWindows':
+    'Le chemin de cet emplacement est trop long pour Windows. Choisissez un dossier plus près de la racine du disque pour que vos fichiers restent dans la limite de 260 caractères de Windows.',
+  'mainMessage.notebookRuntimeUnusable':
+    'Cet interpréteur ne peut pas servir d’environnement d’exécution de notebook (ce n’est pas un Python 3 exécutable).',
+  'mainMessage.notebookRuntimeUnusableDetail':
+    'Cet interpréteur ne peut pas servir d’environnement d’exécution de notebook : {detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    'L’installation de paquets dans votre propre environnement {language} n’est pas autorisée. Activez d’abord « Autoriser l’installation de paquets » pour cet environnement d’exécution dans Réglages → Exécutions (l’installation va dans votre propre environnement, pas dans le stockage géré par l’application).',
+  'mainMessage.signInTimedOut':
+    'La connexion via le navigateur a expiré. Si votre navigateur ne s’est pas ouvert, utilisez plutôt « Utiliser le jeton de configuration ».',
+  'mainMessage.signInCancelled': 'Connexion annulée.',
+  'mainMessage.signInNoToken':
+    'La connexion via le navigateur n’a renvoyé aucun jeton. Si votre navigateur ne s’est pas ouvert, utilisez plutôt « Utiliser le jeton de configuration ».'
 }

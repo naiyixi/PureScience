@@ -4587,5 +4587,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'TIFF ページのメモリ使用量が多すぎるため安全にプレビューできません',
   'ws.sessionDeletedReleased': '{title} を削除しました。実行データ {size} を解放しました。',
   'ws.sessionDeletedNothingStored': '{title} を削除しました。保存された実行データはありません。',
-  'ws.sessionDeletedRunDataKept': '{title} を削除しましたが、実行データは解放できませんでした。'
+  'ws.sessionDeletedRunDataKept': '{title} を削除しましたが、実行データは解放できませんでした。',
+  'mainMessage.pathTooLongForWindows':
+    'この場所のパスは Windows には長すぎます。ファイルが Windows の 260 文字のパス上限に収まるよう、ドライブのルートに近いフォルダーを選んでください。',
+  'mainMessage.notebookRuntimeUnusable':
+    'このインタープリターはノートブックのランタイムとして使えません（実行可能な Python 3 ではありません）。',
+  'mainMessage.notebookRuntimeUnusableDetail':
+    'このインタープリターはノートブックのランタイムとして使えません：{detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    '自分の {language} 環境へのパッケージのインストールは許可されていません。先に「設定 → ランタイム」でこのランタイムの「パッケージのインストールを許可」をオンにしてください（インストール先は自分の環境で、アプリ管理のストレージではありません）。',
+  'mainMessage.signInTimedOut':
+    'ブラウザーでのサインインがタイムアウトしました。ブラウザーが開かない場合は、代わりに「セットアップトークンを使用」を使用してください。',
+  'mainMessage.signInCancelled': 'サインインはキャンセルされました。',
+  'mainMessage.signInNoToken':
+    'ブラウザーでのサインインでトークンが返りませんでした。ブラウザーが開かない場合は、代わりに「セットアップトークンを使用」を使用してください。'
 }

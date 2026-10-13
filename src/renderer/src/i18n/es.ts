@@ -4691,5 +4691,18 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleased': 'Se eliminó {title}. Se liberaron {size} de datos de ejecución.',
   'ws.sessionDeletedNothingStored': 'Se eliminó {title}. No había datos de ejecución guardados.',
   'ws.sessionDeletedRunDataKept':
-    'Se eliminó {title}, pero no se pudieron liberar sus datos de ejecución.'
+    'Se eliminó {title}, pero no se pudieron liberar sus datos de ejecución.',
+  'mainMessage.pathTooLongForWindows':
+    'La ruta de esta ubicación es demasiado larga para Windows. Elige una carpeta más cerca de la raíz de la unidad para que tus archivos queden dentro del límite de 260 caracteres de Windows.',
+  'mainMessage.notebookRuntimeUnusable':
+    'Ese intérprete no se puede usar como entorno de ejecución de notebook (no es un Python 3 ejecutable).',
+  'mainMessage.notebookRuntimeUnusableDetail':
+    'Ese intérprete no se puede usar como entorno de ejecución de notebook: {detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    'No se permite instalar paquetes en tu propio entorno {language}. Activa primero «Permitir instalación de paquetes» para este entorno de ejecución en Ajustes → Entornos (la instalación va a tu propio entorno, no al almacenamiento gestionado por la aplicación).',
+  'mainMessage.signInTimedOut':
+    'El inicio de sesión en el navegador agotó el tiempo. Si tu navegador no se abrió, usa «Usar el token de configuración» en su lugar.',
+  'mainMessage.signInCancelled': 'Inicio de sesión cancelado.',
+  'mainMessage.signInNoToken':
+    'El inicio de sesión en el navegador no devolvió ningún token. Si tu navegador no se abrió, usa «Usar el token de configuración» en su lugar.'
 }

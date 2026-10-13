@@ -4517,5 +4517,18 @@ export const ko: Partial<Record<ZhKey, string>> = {
     'TIFF 페이지가 메모리를 너무 많이 필요로 해 안전하게 미리 볼 수 없습니다',
   'ws.sessionDeletedReleased': '{title}을(를) 삭제했습니다. 실행 데이터 {size}를 확보했습니다.',
   'ws.sessionDeletedNothingStored': '{title}을(를) 삭제했습니다. 저장된 실행 데이터가 없습니다.',
-  'ws.sessionDeletedRunDataKept': '{title}을(를) 삭제했지만 실행 데이터를 확보하지 못했습니다.'
+  'ws.sessionDeletedRunDataKept': '{title}을(를) 삭제했지만 실행 데이터를 확보하지 못했습니다.',
+  'mainMessage.pathTooLongForWindows':
+    '이 위치의 경로가 Windows에 너무 깁니다. 파일이 Windows의 260자 경로 제한 안에 있도록 드라이브 루트에 더 가까운 폴더를 선택하세요.',
+  'mainMessage.notebookRuntimeUnusable':
+    '이 인터프리터는 노트북 런타임으로 쓸 수 없습니다(실행 가능한 Python 3가 아닙니다).',
+  'mainMessage.notebookRuntimeUnusableDetail':
+    '이 인터프리터는 노트북 런타임으로 쓸 수 없습니다: {detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    '자신의 {language} 환경에 패키지를 설치하는 것은 허용되지 않습니다. 먼저 ‘설정 → 런타임’에서 이 런타임의 ‘패키지 설치 허용’를 켜세요(설치는 자신의 환경으로 들어가며, 앱이 관리하는 저장소가 아닙니다).',
+  'mainMessage.signInTimedOut':
+    '브라우저 로그인 시간이 초과되었습니다. 브라우저가 열리지 않으면 대신 ‘설정 토큰 사용’를 사용하세요.',
+  'mainMessage.signInCancelled': '로그인이 취소되었습니다.',
+  'mainMessage.signInNoToken':
+    '브라우저 로그인이 토큰을 반환하지 않았습니다. 브라우저가 열리지 않으면 대신 ‘설정 토큰 사용’를 사용하세요.'
 }

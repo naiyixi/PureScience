@@ -7,6 +7,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { resolveActiveSessionDisplay, truncateLabel } from '@/lib/active-session-display'
 import { cn } from '@/lib/utils'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 import type {
   ActiveSessionInfo,
   MigrationOutcome,
@@ -503,7 +504,7 @@ const StorageMigrationModal = ({
                     {ipcError
                       ? t('settings.somethingWentWrong')
                       : outcome && !outcome.ok
-                        ? outcome.error
+                        ? localizeMainMessage(t, outcome.error)
                         : null}
                   </Dialog.Description>
                 </div>

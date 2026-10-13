@@ -4741,5 +4741,18 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedNothingStored':
     '{title} wurde gelöscht. Es waren keine Laufzeitdaten gespeichert.',
   'ws.sessionDeletedRunDataKept':
-    '{title} wurde gelöscht, aber die Laufzeitdaten konnten nicht freigegeben werden.'
+    '{title} wurde gelöscht, aber die Laufzeitdaten konnten nicht freigegeben werden.',
+  'mainMessage.pathTooLongForWindows':
+    'Der Pfad dieses Ortes ist für Windows zu lang. Wähle einen Ordner näher am Laufwerksstamm, damit deine Dateien im 260-Zeichen-Pfadlimit von Windows bleiben.',
+  'mainMessage.notebookRuntimeUnusable':
+    'Dieser Interpreter kann nicht als Notebook-Laufzeit verwendet werden (kein ausführbares Python 3).',
+  'mainMessage.notebookRuntimeUnusableDetail':
+    'Dieser Interpreter kann nicht als Notebook-Laufzeit verwendet werden: {detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    'Das Installieren von Paketen in deine eigene {language}-Umgebung ist nicht erlaubt. Aktiviere zuerst „Paketinstallation erlauben“ für diese Laufzeit unter Einstellungen → Laufzeiten (die Installation landet in deiner eigenen Umgebung, nicht im app-verwalteten Speicher).',
+  'mainMessage.signInTimedOut':
+    'Die Anmeldung im Browser ist abgelaufen. Wenn sich dein Browser nicht geöffnet hat, verwende stattdessen „Setup-Token verwenden“.',
+  'mainMessage.signInCancelled': 'Anmeldung abgebrochen.',
+  'mainMessage.signInNoToken':
+    'Die Anmeldung im Browser hat kein Token zurückgegeben. Wenn sich dein Browser nicht geöffnet hat, verwende stattdessen „Setup-Token verwenden“.'
 }

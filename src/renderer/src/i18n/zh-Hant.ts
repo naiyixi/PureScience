@@ -4254,5 +4254,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'previewFallback.tiffTooMuchMemory': 'TIFF 頁面所需記憶體過多，無法安全預覽',
   'ws.sessionDeletedReleased': '{title} 已刪除，其執行資料已釋放 {size}。',
   'ws.sessionDeletedNothingStored': '{title} 已刪除，其中並未儲存執行資料。',
-  'ws.sessionDeletedRunDataKept': '{title} 已刪除，但其執行資料未能釋放。'
+  'ws.sessionDeletedRunDataKept': '{title} 已刪除，但其執行資料未能釋放。',
+  'mainMessage.pathTooLongForWindows':
+    '此位置的路徑對 Windows 來說過長。請選擇更靠近磁碟機根目錄的資料夾，讓檔案保持在 Windows 的 260 字元路徑限制內。',
+  'mainMessage.notebookRuntimeUnusable':
+    '此解譯器不能當作筆記本執行環境（不是可執行的 Python 3）。',
+  'mainMessage.notebookRuntimeUnusableDetail': '此解譯器不能當作筆記本執行環境：{detail}',
+  'mainMessage.packageInstallNotAuthorized':
+    '不允許在你自己的 {language} 環境中安裝套件。請先在「設定 → 執行環境」中為這個執行環境開啟「允許安裝套件」（安裝會進入你自己的環境，而不是應用程式管理的儲存空間）。',
+  'mainMessage.signInTimedOut': '瀏覽器登入逾時。如果瀏覽器沒有開啟，請改用「使用設定權杖」。',
+  'mainMessage.signInCancelled': '登入已取消。',
+  'mainMessage.signInNoToken':
+    '瀏覽器登入沒有回傳權杖。如果瀏覽器沒有開啟，請改用「使用設定權杖」。'
 }
