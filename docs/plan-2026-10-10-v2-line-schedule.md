@@ -380,6 +380,8 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 它与执行器的 `PdfTranslationPanel.tsx` 同功能，而后者接的是真通道 `pdf:translation` —— 同一件事不留两套实现。技能 i18n 规程已记两条教训
 （目录级 checkout 会替并发写入者回滚；删键要处理 prettier 折行的值行）。
 
+**下一手（等执行器提交后，按序）**：① 评审它的窗口接线（`pdf:translation` LOCAL 档位的计数级联 + `PdfPreview.tsx` 挂载）；② 树干净后重启常驻实例，取两条真机读数 —— A 线端到端（开 PDF → 面板 → `run:false` 只读 → `run:true` 一次真翻译）与 **D7 真网络取回**（见下条待办的三步）；③ 给窗口接缝补一条**认证 spec**（照仓库既有那一类写法：断言「有应答」而不是 `No handler registered`；`run` 缺省只读 ⇒ 不打网络、可无头确定性复现）——**注意**它必须与通道同批落地，否则认证车道会因为一条注定红的 spec 变红。
+
 **待办（2026-10-12 记）：D7 第二片的「真网络取回」读数** —— 常驻 dev Web 实例（`127.0.0.1:44100`）是 3 小时前启动的，**早于** D6 第二半/D7 的代码 ⇒ 它不认识 `preview:load-remote-structure`（实测 `method_not_found`；同一次自检里 `storage:get-info` 用同一 token 回 `ok:true`，所以不是 token 问题）。取这条读数**需要重启该实例**。**规则（2026-10-13 收紧）**：重启只在**工作树干净**时做 —— 常驻实例编的是**当时那棵树**，执行器在制（此刻 tsc 还红的 24 处）时重启会把半成品编进实例，两家都会读到一份假状态；另外它可能正在用这个实例做探针（实测日志 mtime 10:42 仍有人在用）。两个理由合起来 ⇒ 等它提交、树干净再重启。执行器空闲后照下面三步取：① `bash scripts/serve-headless.sh`（后台）② 从 `logs/headless.out.log` 取 token ③ `POST /rpc/preview:load-remote-structure?token=<token>`，body `{"protocolVersion":1,"args":[{"sessionId":"<真会话>","id":"P00533","source":"alphafold-db"}]}` ⇒ 期望 `ok:true`、`path` 落在 `predictions/alphafold-db/AF-P00533-F1-model_v4.pdb`，并核该路径被 `engineForPredictionPath` 认回 `alphafold-db`。RPC 信封/token/两种 `method_not_found` 的判据已写进技能 `references/web-rpc-api.md`。
 
 **具名跳过（不得声称）**：两条 `notarize-mac` 作业因无 Apple 凭据**具名跳过** ⇒ 不写"已签名/已公证"。
