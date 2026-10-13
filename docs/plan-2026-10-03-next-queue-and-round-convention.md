@@ -4593,3 +4593,29 @@ Error occurred in handler for 'notebook:execute': NotebookRunDeclinedError: Note
 ### 四 为什么先写草稿而不动仓库
 
 仓规：正文由 `release:notes --keep-generated --apply` 从 README 成熟度块生成 ⇒ 手工搬文字进 CHANGELOG 是**第二真源**。草稿的作用是**把事实与口径在等待期间定下来**（并让下一轮/下一个会话不必重新调研）；版本号、CHANGELOG 段与 README 成熟度块都等 B2 落地 + 文案补齐后再动。
+
+## 九十四、B1 **双读数齐**，B1 结项（会话，2026-10-13）
+
+### 一 车道读数（第二证据源，逐字）
+
+Nightly run `38420183858`（headSha `cf12ebb2`）⇒ **success**；`build / Build macos-arm64` 作业里：
+- 步骤 **`Run P0 Electron certification` = success**（`Build macos-x64` 的同一步骤 = **skipped** —— 与仓规一致：认证只在 macos-arm64 跑）；
+- 该作业日志 **2604 行**里我这支 spec 的逐字两行：
+```
+[44/102] e2e/certification/notebook-run-risk-approval.spec.ts:16:5 › a flagged notebook cell asks on the approval card, and declining means it never ran
+e2e/certification/notebook-run-risk-approval.spec.ts:16:5 › a flagged notebook cell asks on the approval card, and declining means it never ran
+```
+- 认证步骤汇总：`89 passed (37.5m)` ⇒ 我这支在 102 支里排第 44、**随步骤一起通过**（步骤 success 即无失败项）。
+
+### 二 两条独立读数（互不依赖）
+
+| 源 | 读数 | 说明 |
+| --- | --- | --- |
+| **本地真窗口** | `✓ 1 passed (11.9s)` | 卡点名规则/id/行号/代码行 → 卡自己的 `deny-button` 拒绝 → `state()` 零 `rmtree` 记录；应用日志留下 `NotebookRunDeclinedError: fs-delete` |
+| **macos-arm64 认证车道** | 步骤 success，spec 在 102 支里第 44 支通过，`89 passed (37.5m)` | 与本地同源同断言的第二次执行（不同机器、不同数据根）|
+
+### 三 结项
+
+**B1「可审阅的 Notebook 执行」在本版范围内的判据全部满足**：判定层/收据/两条运行路径的门/卡面呈现/拒绝语义/收据随运行落盘并读取侧净化/**真窗口读数**/**认证车道读数**/认证 spec 进仓。
+
+仍**不在** B1 内的（具名，不混算）：① 拒绝文案与缺态词的 **9 语**（等执行器 i18n 落定）；② `repl_execute` **有意**不覆盖（控制面 REPL）。
