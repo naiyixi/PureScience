@@ -10,6 +10,7 @@ import { useLanguage, type TranslationKey } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 import type {
+  NotebookFileContentState,
   NotebookFileEvidenceReason,
   NotebookReadFileKind,
   NotebookRunRecord
@@ -77,14 +78,44 @@ const formatTime = (mtimeMs: number | undefined): string => {
   return new Date(mtimeMs).toLocaleTimeString()
 }
 
-// The short form of a change's content identity: `before → after`, each side eight hex characters, or a
-// dash for a side the record did not hash. Undefined when NEITHER side has a hash — a row with nothing to
-// say about content stays quiet rather than printing two dashes (the panel's capture notices carry that).
-const identityLine = (row: NotebookWriteAuditRow): string | undefined => {
-  const before = shortContentHash(row.content?.hashes.before)
-  const after = shortContentHash(row.content?.hashes.after)
-  if (before === undefined && after === undefined) return undefined
-  return `${before ?? IDENTITY_DASH} → ${after ?? IDENTITY_DASH}`
+// One side of a change's content identity: eight hex characters when the bytes were hashed, otherwise the
+// NAMED reason they were not. The word matters — a dash would leave the reader unable to tell "nobody
+// recorded it" from "it could not be read", which are different promises.
+const contentSideLabel = (
+  t: (key: TranslationKey) => string,
+  hash: string | undefined,
+  state: NotebookFileContentState | undefined
+): string => {
+  const short = shortContentHash(hash)
+  if (short !== undefined) return short
+  if (state === undefined || state === 'recorded') return IDENTITY_DASH
+  return t(CONTENT_STATE_LABEL_KEYS[state])
+}
+
+// The whole identity, `before → after`. Undefined only when the record carries no content identity at all
+// (a row written before the field existed): that row stays quiet, and the panel's capture notices explain
+// why a run can lack it.
+const identityLine = (
+  t: (key: TranslationKey) => string,
+  row: NotebookWriteAuditRow
+): string | undefined => {
+  if (!row.content) return undefined
+  const before = contentSideLabel(t, row.content.hashes.before, row.content.states.before)
+  const after = contentSideLabel(t, row.content.hashes.after, row.content.states.after)
+  return `${before} → ${after}`
+}
+
+// Exhaustive by type over everything except 'recorded' (which means a hash EXISTS, so it has no word):
+// a new content state cannot be added without deciding what to call it, so the panel never shows a raw
+// state code at the user — the same rule the evidence reasons above follow.
+const CONTENT_STATE_LABEL_KEYS: Record<
+  Exclude<NotebookFileContentState, 'recorded'>,
+  TranslationKey
+> = {
+  'did-not-exist': 'writeAudit.contentMissing.did-not-exist',
+  'not-recorded': 'writeAudit.contentMissing.not-recorded',
+  'too-large': 'writeAudit.contentMissing.too-large',
+  unreadable: 'writeAudit.contentMissing.unreadable'
 }
 
 const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
@@ -195,12 +226,12 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
                     {/* Content identity as machine text on purpose: the recipe is sha256 and a third party
                         recomputes it from the file itself, so it needs no translation. A side without a hash
                         shows a dash — a NAMED state in the record, never an empty file (which still hashes). */}
-                    {identityLine(row) ? (
+                    {identityLine(t, row) ? (
                       <span
                         className="mt-0.5 block text-[10px] text-text-400"
                         data-testid="write-audit-identity"
                       >
-                        {identityLine(row)}
+                        {identityLine(t, row)}
                       </span>
                     ) : null}
                   </td>

@@ -4661,5 +4661,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     '「{variable}」は後続の実行でその場で変更されました（{line} 行目）',
   'notebookStale.aliasMutation':
-    '「{variable}」は後続の実行で別名「{via}」を通じてその場で変更されました（{line} 行目）'
+    '「{variable}」は後続の実行で別名「{via}」を通じてその場で変更されました（{line} 行目）',
+  'writeAudit.contentMissing.did-not-exist': '存在しませんでした',
+  'writeAudit.contentMissing.not-recorded': '記録なし',
+  'writeAudit.contentMissing.too-large': '大きすぎて算出せず',
+  'writeAudit.contentMissing.unreadable': '読み取れません'
 }

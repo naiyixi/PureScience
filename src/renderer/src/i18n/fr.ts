@@ -4797,5 +4797,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     '« {variable} » a été modifié sur place par une exécution ultérieure (ligne {line})',
   'notebookStale.aliasMutation':
-    '« {variable} » a été modifié sur place par une exécution ultérieure via l’alias « {via} » (ligne {line})'
+    '« {variable} » a été modifié sur place par une exécution ultérieure via l’alias « {via} » (ligne {line})',
+  'writeAudit.contentMissing.did-not-exist': 'n’existait pas',
+  'writeAudit.contentMissing.not-recorded': 'non consigné',
+  'writeAudit.contentMissing.too-large': 'trop volumineux pour l’empreinte',
+  'writeAudit.contentMissing.unreadable': 'illisible'
 }

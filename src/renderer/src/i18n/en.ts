@@ -4692,5 +4692,9 @@ export const en: Record<ZhKey, string> = {
   'notebookStale.rewrite': '“{variable}” was written again by a later run',
   'notebookStale.directMutation': '“{variable}” was changed in place by a later run (line {line})',
   'notebookStale.aliasMutation':
-    '“{variable}” was changed in place by a later run through the alias “{via}” (line {line})'
+    '“{variable}” was changed in place by a later run through the alias “{via}” (line {line})',
+  'writeAudit.contentMissing.did-not-exist': 'did not exist',
+  'writeAudit.contentMissing.not-recorded': 'not recorded',
+  'writeAudit.contentMissing.too-large': 'too large to hash',
+  'writeAudit.contentMissing.unreadable': 'unreadable'
 }

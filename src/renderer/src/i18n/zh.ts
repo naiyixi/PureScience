@@ -4369,7 +4369,12 @@ export const zh = {
   'notebookRisk.manyLines': '第 {numbers} 行',
   'notebookStale.rewrite': '「{variable}」已被后续运行重写',
   'notebookStale.directMutation': '「{variable}」已被后续运行就地修改（第 {line} 行）',
-  'notebookStale.aliasMutation': '「{variable}」已被后续运行经别名「{via}」就地修改（第 {line} 行）'
+  'notebookStale.aliasMutation':
+    '「{variable}」已被后续运行经别名「{via}」就地修改（第 {line} 行）',
+  'writeAudit.contentMissing.did-not-exist': '原本不存在',
+  'writeAudit.contentMissing.not-recorded': '未记录',
+  'writeAudit.contentMissing.too-large': '过大未算哈希',
+  'writeAudit.contentMissing.unreadable': '读不到'
 }
 
 export type ZhKey = keyof typeof zh

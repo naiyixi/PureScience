@@ -4822,5 +4822,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     '„{variable}“ wurde von einem späteren Lauf direkt verändert (Zeile {line})',
   'notebookStale.aliasMutation':
-    '„{variable}“ wurde von einem späteren Lauf über den Alias „{via}“ direkt verändert (Zeile {line})'
+    '„{variable}“ wurde von einem späteren Lauf über den Alias „{via}“ direkt verändert (Zeile {line})',
+  'writeAudit.contentMissing.did-not-exist': 'war nicht vorhanden',
+  'writeAudit.contentMissing.not-recorded': 'nicht aufgezeichnet',
+  'writeAudit.contentMissing.too-large': 'zu groß für den Hash',
+  'writeAudit.contentMissing.unreadable': 'nicht lesbar'
 }

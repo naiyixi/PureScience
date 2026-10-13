@@ -4313,5 +4313,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'notebookRisk.manyLines': '第 {numbers} 行',
   'notebookStale.rewrite': '「{variable}」已被後續執行重寫',
   'notebookStale.directMutation': '「{variable}」已被後續執行就地修改（第 {line} 行）',
-  'notebookStale.aliasMutation': '「{variable}」已被後續執行經別名「{via}」就地修改（第 {line} 行）'
+  'notebookStale.aliasMutation':
+    '「{variable}」已被後續執行經別名「{via}」就地修改（第 {line} 行）',
+  'writeAudit.contentMissing.did-not-exist': '原本不存在',
+  'writeAudit.contentMissing.not-recorded': '未記錄',
+  'writeAudit.contentMissing.too-large': '過大未算雜湊',
+  'writeAudit.contentMissing.unreadable': '讀不到'
 }

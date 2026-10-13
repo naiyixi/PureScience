@@ -4767,5 +4767,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     'Un run posterior modificó «{variable}» en el sitio (línea {line})',
   'notebookStale.aliasMutation':
-    'Un run posterior modificó «{variable}» en el sitio a través del alias «{via}» (línea {line})'
+    'Un run posterior modificó «{variable}» en el sitio a través del alias «{via}» (línea {line})',
+  'writeAudit.contentMissing.did-not-exist': 'no existía',
+  'writeAudit.contentMissing.not-recorded': 'sin registrar',
+  'writeAudit.contentMissing.too-large': 'demasiado grande para la huella',
+  'writeAudit.contentMissing.unreadable': 'ilegible'
 }

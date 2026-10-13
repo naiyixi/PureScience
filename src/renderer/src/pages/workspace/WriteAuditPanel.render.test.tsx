@@ -310,7 +310,7 @@ describe('WriteAuditPanel', () => {
     ])
 
     expect(container.querySelector('[data-testid="write-audit-identity"]')?.textContent).toBe(
-      `— → ${'c'.repeat(8)}`
+      `not recorded → ${'c'.repeat(8)}`
     )
   })
 

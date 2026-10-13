@@ -4680,5 +4680,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     '«{variable}» был изменён на месте последующим запуском (строка {line})',
   'notebookStale.aliasMutation':
-    '«{variable}» был изменён на месте последующим запуском через псевдоним «{via}» (строка {line})'
+    '«{variable}» был изменён на месте последующим запуском через псевдоним «{via}» (строка {line})',
+  'writeAudit.contentMissing.did-not-exist': 'не существовал',
+  'writeAudit.contentMissing.not-recorded': 'не записан',
+  'writeAudit.contentMissing.too-large': 'слишком велик для отпечатка',
+  'writeAudit.contentMissing.unreadable': 'не читается'
 }

@@ -4585,5 +4585,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'notebookStale.directMutation':
     '{variable}은(는) 이후 실행에서 제자리에서 변경되었습니다({line}행)',
   'notebookStale.aliasMutation':
-    '{variable}은(는) 이후 실행에서 별칭 {via}을(를) 통해 제자리에서 변경되었습니다({line}행)'
+    '{variable}은(는) 이후 실행에서 별칭 {via}을(를) 통해 제자리에서 변경되었습니다({line}행)',
+  'writeAudit.contentMissing.did-not-exist': '존재하지 않았습니다',
+  'writeAudit.contentMissing.not-recorded': '기록되지 않음',
+  'writeAudit.contentMissing.too-large': '너무 커서 계산 안 함',
+  'writeAudit.contentMissing.unreadable': '읽을 수 없음'
 }
