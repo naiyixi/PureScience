@@ -4504,3 +4504,27 @@ const dataRoot = resolveDataRoot()      // :721
 ### 四 与既有认证 spec 的关系
 
 驱动方式照抄仓内先例 `notebook-interrupted-run.spec.ts`（真会话 + `getReference` 取项目名 + `execute({source:'user'})`），差别只在本支要**拒绝**并验证「没跑」。不新增夹具、不新增通道。
+
+## 九十一、夹具补应用输出（§九十 立档第 1 项已交付）+ 本地 e2e 死因仍未命名（会话，2026-10-13）
+
+### 一 交付（`test(e2e)` 一笔 + 本档）
+
+`e2e/fixtures/electron-app.ts`：launch 后把应用进程的 stdout/stderr 落到 **`test-results/app-process.log`**（**刻意放在 per-test 隔离根之外** —— 夹具收尾会 `rm -rf` 那个根，日志放里面等于自删），并在夹具收尾时**打印该路径与字节数**。读日志失败绝不影响启动（整段 try/catch）。
+
+### 二 实战验证（本片的价值当场兑现）
+
+重跑认证 spec 后，`test-results/app-process.log` **259 行 / 9,804 字节**，读到了此前完全看不到的东西：
+- 启动正常（`compose runtime steps totalMs: 146`、`data root resolved location: 'default'`）；
+- 一条真告警：`Notebook environment provisioning unavailable: Error: micromamba binary not found`（本机 e2e 不带 micromamba ⇒ notebook provisioner 不可用，属预期，但此前完全不可见）；
+- **退出是 `trigger: 'quit'` 的优雅收尾**（`application-shutdown … outcome: 'completed'`），**不是崩溃**；日志里除上面那条外**没有 error/exception/gate**。
+
+### 三 死因仍未命名（具名）——已排除与待查
+
+- **已排除**：崩溃 / OOM（优雅 quit + 无 V8 痕迹）；单实例锁冲突（日志里是 `instance: 'primary'` ⇒ 拿到了锁）。
+- **待查（首要嫌疑）**：本机此刻同时跑着**用户自己的打包版 PureScience.app**（pid 36903）与**dev 无头实例**（44100 LISTEN）—— 带窗 e2e 实例在它们旁边启动后很快被要求退出，而失败快照停在 `Starting PureScience…`。
+- 取这条读数的两条路：① **等认证车道**（`build.yml` 的 macos-arm64 作业；我这笔的 Nightly 已在跑，看门挂在 `/tmp/ci-verdict-b1.txt`）；② 本地：需要**先让那些实例让位**（退打包版 / 停 dev 无头）——这动的是用户正在跑的产物，**须先问**（见会话里的提问）。
+
+### 四 下一步
+
+- 本条读数一到（无论来自车道还是本地），就按 §九十 的判据结项；
+- 若本地要跑：先 `osascript` 优雅退出打包版 + 停 dev 无头 → 起 e2e → 取读数 → **复原**（把用户的应用起回去）并在汇报里点名。
