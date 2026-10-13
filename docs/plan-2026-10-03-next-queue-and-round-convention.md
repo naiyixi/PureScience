@@ -4806,3 +4806,59 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
   `blocked-by`：① **并发推送**（Release 的 `cancel-in-progress` 会腰斩窗口）⇒ 开窗口前先看 `git status --short` 与
   会话是否刚落笔，且**只推一次**；② 门禁全绿（含 `eslint --no-cache .`）；③ 打 tag 前先 `git push origin main` 并核
   tag 提交是 `origin/main` 的祖先。B2 第三片排在发版之后（它是**本版之外**的加宽，不进 v2.1.0 范围）。
+
+## 九十九、B1 上屏文案的真窗口读数 + 认证 spec 进仓；顺带修掉一条车道红（执行器，2026-10-14 07:1x–07:3x）
+
+### 一 位点与逐笔判决（现取，不许混算）
+
+`git rev-parse HEAD` = `c8f35f8b`（= `origin/main`）。本波两笔**同一次推送**：
+
+| 提交       | 内容                                                                   | 车道                                                                  |
+| ---------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `bac0081e` | 修 `session-fork.spec.ts` 的按压脆弱（`edbf9ad8` 的 Nightly 红就是它） | 与 `c8f35f8b` 同推 ⇒ Nightly / Windows Full Test 两条 run，判决待落定 |
+| `c8f35f8b` | 上屏文案的认证 spec `notebook-declined-copy.spec.ts` + 证据档          | 同上                                                                  |
+
+- **上一笔（`edbf9ad8`）的判决（现取）**：Nightly = **failure**、Windows Full Test = **success**。红在哪逐字：
+  作业 `build / Build macos-arm64` 步骤 23 `Enforce platform certification`，环境读数 `P0_OUTCOME=failure`
+  （`PACKAGED_APP_OUTCOME/MACOS_SMOKE/VISUAL` 均 success）；失败点 `e2e/certification/session-fork.spec.ts:27:5`
+  → `Error: nothing to press`，重试 #1 同处再红。该 spec 最后改动是 2026-09-20，同一份 spec 在 2.5 小时前的
+  `60c4834b` 上是绿的 ⇒ 判定为**该 spec 自身的时序脆弱**（`boundingBox()` 在节点被替换的瞬间返回 `null`，
+  而它当场抛错、作废了自己那套三次重试），本轮按「修脆弱、不动断言」处理。
+- **本波判决的读法**：`gh api repos/naiyixi/PureScience/actions/runs?head_sha=<完整 40 位>`；认证车道是否**真的执行**了新 spec，
+  判据是作业日志里出现 `[b1-declined] the strip says:`（执行了）或 `1 skipped`（该类构建够不到），可一条命令收：
+  `node scripts/ci/harvest-certification-readings.mjs --sha <40 位> --spec declined-copy`。
+
+### 二 本单元交付（上屏文案的真窗口读数 + 它为什么需要一条 spec）
+
+- **机制（先说清「真窗口在哪一层被挡」）**：这句话只在 `NotebookPreview.tsx` 的 `getErrorMessage`（`:86-90`）里合成，
+  能触发它的入口只有面板**自己的**运行控件（终端 + Enter），它被 `notebookGated()`（`provisioning-view.ts:74-83`）
+  按 `status.pythonReady` 关着；而 `status` 有两种来源 —— 有 provisioner 时**读盘**（`pythonReady()`，`runtime-paths.ts:491`
+  = 就绪标记 + 解释器文件在），没有 provisioner 时由回落生命周期**写死 `false`**（`environment-lifecycle-workflows.ts:66-70`）
+  ⇒ 后一条路上**任何播种都打不开面板**（第一版 spec 正是这样红的）。
+- **做法**：spec 往**自己的隔离根**写那两样（就绪标记 + 占位解释器），重启后**先读出应用自报的状态并断言前提**，
+  再走真窗口四步（终端键入 → Enter → 卡面点名 → 点卡面自己的 `deny-button`），条带断言**两向**
+  （含卡面同一套规则名 / **不含** `NotebookRunDeclinedError` 与传输信封）；被拒不执行的判据独立成一条（只断言本格脚本无记录，
+  因为本 spec 借用的溯源夹具自己会留一条运行）。
+- **读数（本机，逐字）**：`1 passed (8.8s)`；`[b1-declined] the strip says: "Notebook run declined: deletes files (fs-delete) — no code was executed.\n>>>"`。
+  无 provisioner 支：`1 skipped`，挂起原因里带着应用自报的整份状态（两支形状由 `pythonRecoveryBlocked` / `rRecoveryBlocked`
+  区分，实测各一次）。证据档 `docs/evidence/2026-10-14-b1-declined-copy-real-window.md`。
+- **本地跑它的前置（具名）**：开发/未打包构建要 `PURESCIENCE_MICROMAMBA_BIN=<本机用户态 conda 里的 micromamba>`；
+  打包件不需要它（`electron-builder.yml` 的 mac 段把 `resources/bin/mac/${arch}/micromamba` 复制到 `Contents/Resources/micromamba`，
+  `resolveMicromamba()` 的第二个候选就是它）。
+
+### 三 具名未做（每条带 blocked-by）
+
+1. **本波两笔的车道判决** —— `blocked-by`：车道未落定（07:2x 两条 `in_progress`）。下一轮第一步读它，并确认认证车道执行了哪一支。
+2. **上屏文案的九语真窗口读数** —— 本机 e2e 面是英文；九语由 i18n 质量门与渲染用例覆盖。
+3. **v2.1.0 发版准备** —— 未开工。`blocked-by`：① 并发推送（开窗口前 `hermes cron pause 2be4405e5dc6` + 看 `git status --short` 与会话是否刚落笔）；
+   ② 门禁全绿（含 `eslint --no-cache .`）；③ 打 tag 前先推 main 并核 tag 提交是 `origin/main` 的祖先。正文草稿已就地复核
+   （清掉三条过期项：B2 已落地、9 语已落地、车道读数已到）：`~/.hermes/cache/scratch/v2.1.0-notes-draft.md`。
+4. **B2 第三片（接进产物/运行溯源面）** —— 立案，**不进 v2.1.0**。依据（本轮对源核实）：B2 的差异红线与完成判据取自本档 §七十八
+   （「同一产物经别名/变异后跨运行血缘可追」+「血缘行 = 内容哈希 + 别名链 + 变异点，可从运行记录复算」），两片已满足 ⇒
+   第三片是**加宽**而非缺口，排下一版首项。
+
+### 四 下一轮第一步
+
+读 `c8f35f8b` 的双车道判决 + 认证车道那两行（`[b1-declined]` / `1 skipped`）；两笔全绿即**开 v2.1.0 发版窗口**
+（先 `pause` 本执行器、核无并发在制 → 四文件 → 技能自带 `release-gate.sh <sha>` 五环 → 推 main + 附注 tag → 核 Release 页 → notes `--apply` → `resume`）。
+若那笔有红：按**作业级**日志归因（先看是不是本轮新加的那支 spec），当批修，**不带红进窗口**。
