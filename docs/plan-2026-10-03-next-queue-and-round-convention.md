@@ -3918,3 +3918,27 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    `blocked-by` = 无人在改对应 main 文件。
 2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
+
+## 七十二、评审执行器 `ddbffd41`（P0-10③ 会话半边：删单个会话真释放 run 数据）—— 六条口径全过（2026-10-13）
+
+评审口径同 §六十二（pdf 缝那次）六条，逐条给代码依据：
+
+| # | 口径 | 判定 | 依据（我亲自读的那一处） |
+| --- | --- | --- | --- |
+| ① | **真释放字节** | ✅ | `deleteSessionNotebookData()` 先 `stat(root)` → `dirSize(root, new Set())` 量出字节 → `rm(recursive)`；`rm` 抛错时返回 `freedBytes: 0` + `state:'failed'`（**不报一个还留在盘上的数字**）|
+| ② | **具名状态** | ✅（比要求更硬） | 四个态 `removed`/`absent`/`refused`/`failed`；两个 id 段**各自**按名拒绝（`unsafe-project-id`/`unsafe-session-id` 进日志）；共享类型里写明 `failed` 为何**不等同** `refused`（记录已删、用户无处重试）与 `absent`（从来没存过东西）|
+| ③ | **顺序（载荷安全属性）** | ✅（代码逐行核） | `src/main/ipc.ts:803-816`：恢复待删 → **删持久记录** → 剪权限 → **才删字节** → 返 `{ notebookData }`；注释把理由说到更硬一档：协调器有**软删令牌回滚窗口**，先删字节会在回滚时变成数据丢失 |
+| ④ | **复用既有 wire 形状** | ✅ | 返回类型是 `src/shared/session-persistence.ts` 的 `SessionNotebookDataDeletion`（注释明写「不用本地孪生类型以免漂移」）；回执经 `sessions:delete-session` → 应用命令面 → 桥 → 两个界面 |
+| ⑤ | **用例钉得住** | ✅ | `session-data-cleanup.test.ts`（会话 3 例：只删该会话且报字节 / `absent` / 两个 id 段都拒绝且**不动盘**）+ `session-data-cleanup.failure.test.ts`（`failed` 态，断言里明写「不是 refused 也不是 absent」并钉住那条日志）+ `session-deletion-notice.test.ts`（新）+ 侧栏渲染用例（+63 行）|
+| ⑥ | **界面那句话 ×9** | ✅（实测计数） | `ws.sessionDeletedReleased` / `ws.sessionDeletedNothingStored` / `ws.sessionDeletedRunDataKept` 三键，`grep -l` 计数各 **9/9**；句子唯一来源在 `lib/session-deletion-notice.ts`（两个界面共用，不是两处三元）|
+
+### 观察（不是缺陷，但值得留档）
+
+1. **面向上屏的句子把 `refused`/`failed`/无回执合并成「run data kept」** ⇒ 这是 **fail-closed** 的正确答案（未释放就绝不暗示释放过），但**原因只在日志里**。若要把原因也上屏，需再拆短语 ×9 键；当前口径是「宁可少说，不漏说」，我判为可接受。
+2. `freedBytes` 是 `rm` 之前的量测值 ⇒ 量测与删除之间树若变化，数字是估值（`absent`/`failed` 恒 0）。这与项目级路径**同一配方**，口径一致 ✓。
+3. 执行器自报门禁：全量 vitest 1281 文件 / 16460 条 exit 0、双 typecheck exit 0、`eslint --no-cache .` 0 error / 121 warning、`check:web-api-map` 无差异、`pre-push-checks.sh` exit 0；**真机读数未取**并已具名立案（内存闸门：空闲页 4144 ≈ 65 MB）——与我这一侧闸门读数一致 ✓（**它没有声称取过窗口读数**）。
+
+### 结论
+
+**接受**。这一笔把 §六十二·五·1 那条「下一轮第一步」收口，且在三点上比我的口径更严：`failed` 独立成态、顺序理由说到回滚窗口、界面句子唯一来源。
+下一轮第一步（更新）：**执行器可继续取真机读数**（`blocked-by` = 内存闸门），或接 §七十一·四 的「谁拼的」判据扫其余结果族。
