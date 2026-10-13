@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
+
 import { NotebookRunRepository, getNotebookSessionRoot } from './repository'
 
 let storageRoot: string | undefined
@@ -376,5 +378,90 @@ describe('notebook run repository', () => {
     // A subsequent reconcile is a no-op (already interrupted).
     const again = await repository.reconcileInterruptedRuns('default-project', 'session-1')
     expect(again.runs[0].status).toBe('interrupted')
+  })
+
+  it('stores the risk receipt with the run and re-validates it on read', async () => {
+    const root = await createStorageRoot()
+    const repository = new NotebookRunRepository(root)
+    await repository.loadOrCreate({
+      projectName: 'default-project',
+      sessionId: 'session-risk',
+      workspaceCwd: '/workspace'
+    })
+
+    const receipt: NotebookRunRiskReceipt = {
+      verdict: 'review',
+      ruleSetVersion: 'notebook-run-risk:v1',
+      codeHash: 'a'.repeat(64),
+      hits: [
+        {
+          ruleId: 'fs-delete',
+          ruleVersion: 'v1',
+          lines: [2],
+          excerpts: ["shutil.rmtree('/tmp/x')"]
+        }
+      ]
+    }
+
+    await repository.appendRun({
+      projectName: 'default-project',
+      sessionId: 'session-risk',
+      run: {
+        runId: 'run-with-receipt',
+        cellId: 'cell-1',
+        source: 'user',
+        kernelKind: 'python',
+        script: "shutil.rmtree('/tmp/x')",
+        status: 'completed',
+        startedAt: 1,
+        text: { stdout: '', stderr: '', traceback: '', plain: [] },
+        outputs: [],
+        artifacts: [],
+        workingFiles: [],
+        riskReview: receipt
+      }
+    })
+
+    const reloaded = await repository.findExisting('default-project', 'session-risk')
+    expect(reloaded?.runs[0].riskReview).toEqual(receipt)
+  })
+
+  it('drops a malformed receipt and keeps the run that carried it', async () => {
+    const root = await createStorageRoot()
+    const repository = new NotebookRunRepository(root)
+    await repository.loadOrCreate({
+      projectName: 'default-project',
+      sessionId: 'session-bad-risk',
+      workspaceCwd: '/workspace'
+    })
+
+    await repository.appendRun({
+      projectName: 'default-project',
+      sessionId: 'session-bad-risk',
+      run: {
+        runId: 'run-bad-receipt',
+        cellId: 'cell-1',
+        source: 'user',
+        kernelKind: 'python',
+        script: 'print(1)',
+        status: 'completed',
+        startedAt: 1,
+        text: { stdout: '', stderr: '', traceback: '', plain: [] },
+        outputs: [],
+        artifacts: [],
+        workingFiles: [],
+        // A review that names no rule is a lie about what it says: dropped whole, never half-trusted.
+        riskReview: {
+          verdict: 'review',
+          ruleSetVersion: 'notebook-run-risk:v1',
+          codeHash: 'not-a-hash',
+          hits: []
+        } as unknown as NotebookRunRiskReceipt
+      }
+    })
+
+    const reloaded = await repository.findExisting('default-project', 'session-bad-risk')
+    expect(reloaded?.runs[0].riskReview).toBeUndefined()
+    expect(reloaded?.runs[0].runId).toBe('run-bad-receipt')
   })
 })

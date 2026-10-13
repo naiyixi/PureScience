@@ -11,7 +11,8 @@ import {
   NOTEBOOK_PERSISTED_RUN_LIMIT,
   NOTEBOOK_RUN_FILE,
   NOTEBOOKS_DIR,
-  sanitizeFileEvidence
+  sanitizeFileEvidence,
+  sanitizeNotebookRunRiskReceipt
 } from '../../shared/notebook'
 import type { NotebookRuntimeBindings } from '../../shared/notebook-runtime'
 import { decodeRunDocumentDataPaths, encodeRunDocumentDataPaths } from './run-document-data-paths'
@@ -133,7 +134,10 @@ const normalizeRun = (sessionRoot: string, run: NotebookRunRecord): NotebookRunR
   workingFiles: normalizeWorkingFiles(sessionRoot, run.runId, run.workingFiles),
   inputFiles: (run.inputFiles ?? []).map((input) => ({ ...input })),
   // Re-validated on read: a record on disk is not trusted to have a well-formed evidence shape.
-  fileEvidence: sanitizeFileEvidence(run.fileEvidence)
+  fileEvidence: sanitizeFileEvidence(run.fileEvidence),
+  // Same doctrine as the line above: a persisted receipt is re-validated on read, and a malformed one
+  // is dropped ENTIRELY (absent = "not assessed", never "no risk found").
+  riskReview: sanitizeNotebookRunRiskReceipt(run.riskReview)
 })
 
 // Repairs or initializes a run document with canonical paths and kernel metadata.

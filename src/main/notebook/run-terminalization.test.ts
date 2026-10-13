@@ -426,4 +426,38 @@ describe('NotebookRunTerminalizationOwner', () => {
       write: { status: 'unavailable', reason: 'observation-unavailable' }
     })
   })
+
+  it('records the risk review with the run it reviewed', async () => {
+    const harness = createHarness()
+    const dangerous: NotebookRunRecord = {
+      ...runningRun('run-risk'),
+      script: "shutil.rmtree('/tmp/x')"
+    }
+
+    await harness.owner.run({
+      session,
+      runningRun: dangerous,
+      invoke: async () => completedResult()
+    })
+
+    const recorded = harness.document().runs[0]
+    expect(recorded?.riskReview?.verdict).toBe('review')
+    expect(recorded?.riskReview?.hits[0]).toMatchObject({ ruleId: 'fs-delete', lines: [1] })
+    expect(recorded?.riskReview?.ruleSetVersion).toBe('notebook-run-risk:v1')
+    expect(recorded?.riskReview?.codeHash).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it('records an allow receipt for a cell that asks for nothing on the list', async () => {
+    const harness = createHarness()
+    const safe: NotebookRunRecord = { ...runningRun('run-safe'), script: 'total = 1 + 1' }
+
+    await harness.owner.run({ session, runningRun: safe, invoke: async () => completedResult() })
+
+    expect(harness.document().runs[0]?.riskReview).toEqual({
+      verdict: 'allow',
+      ruleSetVersion: 'notebook-run-risk:v1',
+      codeHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      hits: []
+    })
+  })
 })

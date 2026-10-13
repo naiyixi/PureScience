@@ -14,6 +14,8 @@ import {
   unavailableWriteEvidence
 } from '../../shared/notebook'
 import type { NotebookRunRepository } from './repository'
+import { evaluateNotebookRunRisk } from './run-risk-rules'
+import { notebookRunRiskReceipt } from './run-risk-receipt'
 
 type NotebookRunIdentity = Readonly<{
   runId: string
@@ -80,10 +82,18 @@ class NotebookRunTerminalizationOwner {
     request: TerminalizeNotebookRunRequest<Result>
   ): Promise<{ run: NotebookRunRecord; result: Result }> {
     const { session, runningRun } = request
+    // v2.1.0: the record carries what the per-run risk review found, computed HERE — the one place that
+    // writes a run record — from the script that is about to execute. Attached to the record that already
+    // exists before execution, so the review travels with the run it reviewed; a run without a receipt is
+    // read as "not assessed", never as "no risk found" (see the shared contract's field comment).
+    const reviewedRun: NotebookRunRecord = {
+      ...runningRun,
+      riskReview: notebookRunRiskReceipt(evaluateNotebookRunRisk(runningRun.script))
+    }
     await this.options.repository.appendRun({
       projectName: session.projectName,
       sessionId: session.sessionId,
-      run: runningRun
+      run: reviewedRun
     })
     this.options.notifyChanged(session)
 
@@ -93,8 +103,10 @@ class NotebookRunTerminalizationOwner {
       (runningRun.kernelKind === 'python' || runningRun.kernelKind === 'r'
         ? { state: 'unavailable', reason: 'environment-capture-failed' }
         : { state: 'unavailable', reason: 'environment-not-supported' })
+    // Built from the reviewed record, not the raw one: the terminal write REPLACES the appended record,
+    // so spreading `runningRun` here would drop the receipt the appended record had just been given.
     const terminalRun: NotebookRunRecord = {
-      ...runningRun,
+      ...reviewedRun,
       status: result.status,
       endedAt: this.now(),
       cwdAfter: result.cwdAfter,

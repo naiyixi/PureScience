@@ -386,7 +386,12 @@ export type NotebookFileEvidenceUncapturedStatus = Exclude<
 // Classifies collected read paths against what the same run wrote. Kept pure so the rule is testable
 // without a kernel: a path in the written set is an intermediate step, everything else is an input.
 export const classifyReadFiles = (
-  readPaths: ReadonlyArray<{ path: string; relativePath: string; reads?: number; present?: boolean }>,
+  readPaths: ReadonlyArray<{
+    path: string
+    relativePath: string
+    reads?: number
+    present?: boolean
+  }>,
   writtenFiles: ReadonlyArray<{ path: string; relativePath: string }>
 ): NotebookReadFile[] => {
   const written = new Set(writtenFiles.map((file) => file.relativePath))
@@ -396,7 +401,11 @@ export const classifyReadFiles = (
     // A path that was not there outranks the classification: it cannot be an input this run used, and it
     // cannot be an intermediate step either — nothing was read.
     kind:
-      read.present === false ? 'missing' : written.has(read.relativePath) ? 'intermediate' : 'input',
+      read.present === false
+        ? 'missing'
+        : written.has(read.relativePath)
+          ? 'intermediate'
+          : 'input',
     ...(read.reads === undefined ? {} : { reads: read.reads })
   }))
 }
@@ -583,6 +592,57 @@ const sanitizeWriteAxis = (value: unknown): NotebookFileCapture | undefined => {
 // explicit user/app-initiated teardown. 'starting' and 'error' are reserved: proc spawn is transient
 // and internal to the executor, and a kernel-level failure currently surfaces as a run-level 'failed'
 // status rather than a distinct kernel state.
+// Re-validated on read, like file evidence: a record on disk is not trusted to hold a well-formed
+// receipt. The WHOLE receipt is dropped when any part of it is malformed — half a receipt still
+// claiming a verdict is worse than none, because a reader would recompute it and disagree with the
+// app about what it says. `undefined` here therefore means "not assessed", never "no risk found".
+const RUN_RISK_RULE_IDS: readonly NotebookRunRiskRuleId[] = [
+  'fs-delete',
+  'fs-overwrite',
+  'shell-exec',
+  'large-allocation'
+]
+
+export const sanitizeNotebookRunRiskReceipt = (
+  value: unknown
+): NotebookRunRiskReceipt | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const record = value as Record<string, unknown>
+  const verdict = record.verdict
+  if (verdict !== 'allow' && verdict !== 'review') return undefined
+  if (typeof record.ruleSetVersion !== 'string' || record.ruleSetVersion === '') return undefined
+  if (typeof record.codeHash !== 'string' || !/^[0-9a-f]{64}$/.test(record.codeHash))
+    return undefined
+  if (!Array.isArray(record.hits)) return undefined
+
+  const hits: NotebookRunRiskHit[] = []
+  for (const raw of record.hits) {
+    if (typeof raw !== 'object' || raw === null) return undefined
+    const hit = raw as Record<string, unknown>
+    if (!RUN_RISK_RULE_IDS.includes(hit.ruleId as NotebookRunRiskRuleId)) return undefined
+    if (typeof hit.ruleVersion !== 'string' || hit.ruleVersion === '') return undefined
+    if (!Array.isArray(hit.lines) || hit.lines.length === 0) return undefined
+    if (!Array.isArray(hit.excerpts)) return undefined
+    const lines = hit.lines.filter(
+      (line): line is number => typeof line === 'number' && Number.isInteger(line) && line > 0
+    )
+    if (lines.length !== hit.lines.length) return undefined
+    if (hit.excerpts.length !== lines.length) return undefined
+    if (!hit.excerpts.every((excerpt) => typeof excerpt === 'string')) return undefined
+    hits.push({
+      ruleId: hit.ruleId as NotebookRunRiskRuleId,
+      ruleVersion: hit.ruleVersion,
+      lines: [...lines],
+      excerpts: [...(hit.excerpts as string[])]
+    })
+  }
+
+  if (verdict === 'review' && hits.length === 0) return undefined
+  if (verdict === 'allow' && hits.length > 0) return undefined
+
+  return { verdict, ruleSetVersion: record.ruleSetVersion, codeHash: record.codeHash, hits }
+}
+
 export type NotebookKernelMetadata = {
   language: 'python'
   pythonPath?: string
@@ -594,6 +654,10 @@ export type NotebookKernelMetadata = {
 
 // Stores one durable notebook execution, including code, output, and generated-file references.
 export type NotebookRunRecord = {
+  // The risk review that ran before this cell executed (v2.1.0). Absent for runs recorded before the
+  // field existed; a run with no receipt is NOT read as "no risk was found" — it is read as "not
+  // assessed", which is why the field is optional rather than defaulting to an allow.
+  riskReview?: NotebookRunRiskReceipt
   runId: string
   cellId: string
   source: NotebookRunSource
@@ -649,6 +713,30 @@ export type NotebookRunRecord = {
 }
 
 // The complete JSON document persisted at each notebook session's run.json path.
+// Per-run risk review (v2.1.0): the rules a notebook cell tripped, with the lines to read, plus the
+// hash that lets a third party recompute the verdict from the cell text. Defined here — not in the
+// main process — because the receipt is persisted with the run AND rendered by the approval card, and
+// one definition is what keeps the two from naming the same rule differently.
+export type NotebookRunRiskRuleId = 'fs-delete' | 'fs-overwrite' | 'shell-exec' | 'large-allocation'
+
+export type NotebookRunRiskHit = {
+  ruleId: NotebookRunRiskRuleId
+  /** The rule version, so an old receipt stays recomputable after the rule set grows. */
+  ruleVersion: string
+  /** 1-based line numbers of the matching lines, in source order. */
+  lines: number[]
+  /** The matched line texts (trimmed), in the same order as `lines`. */
+  excerpts: string[]
+}
+
+export type NotebookRunRiskReceipt = {
+  verdict: 'allow' | 'review'
+  /** The rule set version in force when the cell was assessed. */
+  ruleSetVersion: string
+  /** sha256 of the cell source, under the published recipe. */
+  codeHash: string
+  hits: NotebookRunRiskHit[]
+}
 export type NotebookRunDocument = {
   version: 1
   projectName: string
