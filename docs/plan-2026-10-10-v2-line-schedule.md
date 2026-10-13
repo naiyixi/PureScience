@@ -388,8 +388,8 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 
 | 读数 | 结果 |
 | --- | --- |
-| 真文档（数据根里的 7 页报告）· 只读 | `HTTP=200 / 0.068 s`；`view.summary={pages:6, pageCount:7, paragraphs:39, translated:0, missing:39}`；逐页状态 `untranslated`。**第 7 页没有文本层**这一事实在真实数据里出现（`pages 6 < pageCount 7`）—— A6 的真机场景 ✓ |
-| 真跑一次（`run:true`，一次真模型调用） | `HTTP=200 / 20.0 s`；`translated:1`、`missing:0`、`terminologyChecked:4`；**抓到一条真偏离** `{unitId:'p1#1', english:'Lancet', accepted:['柳叶刀']}` —— 模型把正文译成中文（阿司匹林/随机对照试验/荟萃分析 都按表），但期刊名 `Lancet` 留了拉丁原文 ⇒ 判据如实标注（A4 的验收在真数据上自然发生，不是造出来的） |
+| 真文档（数据根里的 7 页报告，**316,351 字节**）· 只读 | `HTTP=200 / 0.068 s`；`view.summary={pages:6, pageCount:7, paragraphs:39, translated:0, missing:39}`；逐页段落数（真数据）：第 1 页 **4**、第 2 页 **17**、第 3 页 **4** …… 逐页状态 `untranslated`。**第 7 页没有文本层**这一事实在真实数据里出现（`pages 6 < pageCount 7`）—— A6 的真机场景 ✓ |
+| 真跑一次（`run:true`，一次真模型调用） | `HTTP=200 / 20.0 s`；**`run={model:'deepseek-v4-flash', translated:1, reused:0, failed:0, skipped:0, stopped:null, checkpointPath:'…/translations/a0ad5468….json'}`**（报告里带**真正用的模型名**与落点，这条规矩在真机上兑现）；`terminologyChecked:4`；**抓到一条真偏离** `{unitId:'p1#1', english:'Lancet', accepted:['柳叶刀']}` —— 模型把正文译成中文（阿司匹林/随机对照试验/荟萃分析 都按表），但期刊名 `Lancet` 留了拉丁原文 ⇒ 判据如实标注（A4 的验收在真数据上自然发生，不是造出来的） |
 | 落盘证据 | `/Users/totota/PureScience-DEV/translations/a0ad546861f0b253eb1642f9043846fa.json`（621 B）：`version:1`、`source={kind:'pdf', id:'a44b40bf7ad63f16', contentHash:'8416477f…'}`（文档身份哈希，不是路径）、记录 `p1#1`= `translated/page 1/sourceHash 1feceeda…/` 正文是真中文译文 ✓ |
 | 无副作用核对 | 落盘目录里没有 `predictions/**` 的结构文件 ⇒ 之前那条被拒的 D7 加载**确实没有留下东西** ✓（与「拒绝就是拒绝」一致） |
 

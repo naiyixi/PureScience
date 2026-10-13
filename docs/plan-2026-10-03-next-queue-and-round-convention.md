@@ -3510,3 +3510,81 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 
 它的**窗口接线 24 处在制品**（`ipc.ts`/`pdf-ipc`/`pdf-service`/`preload`/`renderer-api.d.ts`/契约目录 + 三个计数测试/参数形状/`PdfPreview.tsx`/我那几个 `src/main/translation/*`），我一个字节没碰；
 83 份 `docs/evidence/` 表格重排仍在树里（不是我的、不提交、不 stash）。
+
+## 六十二、本轮追加（执行器，2026-10-13 11:4x–）—— A1 第三片收口：窗口侧翻译入口（清掉上一轮被迭代上限截断的那半）
+
+### 〇 开工核对（先收口上一轮 + 防重做）
+
+- HEAD `8ecd3d85` 与 `origin/main` 一致；工作树里除会话的 83 份 `docs/evidence/*.md` 之外，只有**我上一轮
+  留下的 24 处在制品**（会话 §六十一 §七 已逐路径确认那是执行器的）⇒ 本轮第一件事就是收口它，不开任何新面。
+- 上一轮报告的精确断点（`setRunning` 只做了一半、`PdfTranslationPanel.tsx` 的按钮态不通电）按原样补齐，
+  没有重做任何「已完成」清单里的项。
+- A 段（会话负责）本轮**没有接手**：会话最后一轮（`8ecd3d85`，02:44Z 前后）刚动过，未满 3 天。
+
+### 一 本单元交付（1 笔提交 `f4359ce6`，24 路径）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 主进程缝 | `src/main/translation/window-translation.ts`（新） | 读与跑同一处；文件按**路径**寻址、主进程 `ensureDoc` 解析成稳定 doc id（doc id 由 `path + time` 铸出 ⇒ 每次按下重新注册会让「已翻段落会被复用」无声失真）；答复的段落来自**盘上记录** |
+| 判定共用 | `checkpoint-store.ts` 新增 `resolveCheckpointLoad()` | 跑与读共用同一判定；四态具名（从未存过 / 文档变了 / 读不出 / 可用记录）—— 「读失败」不许读成「还没翻」 |
+| 一句话共用 | `run-translation.ts` 新增 `TRANSLATION_TARGET_UNCONFIGURED_DETAIL` + `translationTargetLookup()` | 窗口面与 agent 工具面对同一个缺失设置必须说同一句话 |
+| 通道 | `settings/pdf-ipc.ts`、`src/main/ipc.ts`、装配 | handler 由装配处给；缺省**按名拒绝**（`pdf:translation is not configured.`），不静默回「0 段已翻译」 |
+| 渲染器桥 | `preload/index.ts`、`preload/renderer-api.d.ts` | `pdf.translation(request)` |
+| 面板 | `renderers/PdfTranslationPanel.tsx`（新） | **打开只读**（`run` 缺省不出现 ⇒ 不产生付费调用）；三拒绝各上各的屏且都不出现运行报告；报告带真模型与复用段数；导出走既有 `file:save-blob` |
+| 工具栏 | `renderers/PdfPreview.tsx` | `Languages` 图标 + `data-slot="pdf-translation-toggle"`；能翻的条件只要「在项目里看着一个 PDF」 |
+| 契约计数级联 | `application-command-composition.ts(+test)`、`host-application-commands.ts(+test)`、`preload/index.test.ts`、`renderer-contract-catalog.test.ts`、`renderer-surface-inventory.test.ts`、`renderer-argument-shape-characterization.test.ts`、`web-api-map.generated.ts` | 生产常量 363/361/128 不改会在启动时 `failInventory` fail-fast（产品缺陷，不是测试问题） |
+| 用例 | `PdfTranslationPanel.test.tsx`（新，5 例） | 两条调用的形状、行来自真构建器 `buildTranslationViewModel`、拒绝具名、无桥具名、导出文件名与被拒各一句 |
+
+证据档：`docs/evidence/2026-10-13-a1-window-translation-entry.md`（含五节：缺口核法 / 交付 / 门禁读数 /
+两条修法记录 / 未取项）。9 语 14 键不在本片 —— 由会话 `4ab09f2b` 落盘，本片用例断言的就是那批键。
+
+### 二 门禁读数（全部实跑，数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 `vitest`（translation/settings/preload/shared/renderer-web/两条命令面/ipc） | 225 文件 passed｜1 skipped、**2933 passed｜3 skipped**，exit 0 |
+| 面板簇 `previews/renderers` | 18 文件 / 163 passed |
+| `typecheck:node` / `typecheck:web`（**照仓库脚本带 `--composite false`**） | 两环各零条 `error TS`，exit 0（裸 `tsc -p …` 会喷一屏 `TS6307`，那是用法错） |
+| `npx eslint --no-cache .` | **0 error / 120 warning**，exit 0；本片 24 路径单独跑零输出 |
+| `npx prettier --check`（24 路径） | All matched files use Prettier code style |
+| `npm run check:web-api-map` | 无差异 |
+| `scripts/pre-push-checks.sh` | exit 0（敏感词扫描：git 跟踪范围零命中） |
+
+两条修法记录（**都不是放宽门禁**）：① `react-hooks/set-state-in-effect` 追进 `useCallback` ⇒ 把「这条桥
+在不在」改成**渲染期派生值**（桥不在就不出调用、直接上具名的话并禁用按钮），再照本仓既有先例
+（`EndpointPanel.tsx`/`RoutinePanel.tsx`/`AnnotationDialog.tsx` 同款措辞）给 fetch-on-mount 那一行加具名豁免
+—— 豁免此时为真（`ask()` 在任何 `setState` 之前先 `await`）；② 顺带把「正在翻译…/禁用」接活（`setRunning`
+移进点击处理器）—— 测试断言不看它，但**不通电的按钮态就是空壳**。
+
+### 三 CI 判决（按完整 40 位 SHA；`cancelled` 不算绿）
+
+- **上一轮我的推送 `76df7a6b` 无判决**：其 Nightly run `38264659250` 与 Windows Full Test run `38264658576`
+  **两条都 cancelled**。替代证据（代理关系写在这里，因为 CI 跑的是整棵树）：
+  `git merge-base --is-ancestor 76df7a6b 4ab09f2b` 为**真**，而 `4ab09f2b` 的两条车道**都是 success**
+  （各 02:44:18Z，`gh run list` 读数）。
+- **本笔 `f4359ce6`**：推送前查过 `gh run list --limit 8` —— 最近 8 条**全部 completed** ⇒ 本次推送
+  **没有取消任何人的判决**（这句话来自那次查询，不是感觉）。两车道已按该 SHA 入队，终态见本档下一轮追加。
+
+### 四 具名缺口（不许读成已做）
+
+1. **本片真机读数未取**：内存闸门紧（空闲页 4,099 ≈ 64 MB、swap 4774/6144 已用），常驻 dev 实例编的是
+   **13 小时前那棵树**（不含本片）⇒ 走 44100 的本地 Web RPC 也读不到这条通道；重启实例会在未干净的工作树上
+   重建（与会话 §六 第 2 步前置冲突）。**本片因此只算「实现已落、证据待补」。**
+2. **窗口接缝的认证 spec 未落**（`blocked-by` = 树干净后重启实例；断言「接缝有应答，而不是
+   `No handler registered`」，`run` 缺省 ⇒ 不打网络、可无头确定性复现）。
+3. 跨轮不变的老缺口：P0-10 最后一条、批 D/批 A 的内存闸门项、IC40/IC6/中文源四家、M2。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **取本片的真机读数**（Web RPC 或认证 spec 任一条）——`blocked-by` = 工作树干净（现在树里还有会话的
+   83 份 `docs/evidence/*.md` 在制品）+ 内存闸门放开；两条取不到就具名写进汇报，不许写成已验。
+2. **B 段大件**：A7 外部锁导入、S3 增量全文索引、M2 本地解析模型资产 —— 前两者在「已完成」清单里各有多片
+   已落地，接手前先按 B.2 的结论逐条核（`git log --oneline --since="3 days ago"`），别重做。
+3. 收口上一轮审计剩下的 i18n 形状（`jsx prose line` 10 / `jsx-text` 9 / `jsx-text before interpolation` 4）——
+   动手前按当前树重扫（会话这几轮都在动字典）。
+
+### 六 并发写入者状态（现取现写）
+
+- 会话 `8ecd3d85` 之后**未再提交**；`hermes cron list` 显示本执行器的上一轮 `Last run` 09:45 ok。
+- 树里 83 份 `docs/evidence/*.md` 的表格重排仍是**会话的在制品**（不是我的，不提交、不 stash、不据它们声称读数）。
+- 本轮我提交并推送的只有 `f4359ce6`（24 路径）与随后那份 docs 收口（本档 + 证据档）。
