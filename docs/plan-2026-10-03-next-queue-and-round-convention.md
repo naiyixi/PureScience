@@ -4528,3 +4528,41 @@ const dataRoot = resolveDataRoot()      // :721
 
 - 本条读数一到（无论来自车道还是本地），就按 §九十 的判据结项；
 - 若本地要跑：先 `osascript` 优雅退出打包版 + 停 dev 无头 → 起 e2e → 取读数 → **复原**（把用户的应用起回去）并在汇报里点名。
+
+## 九十二、B1 真窗口读数**已取到**（会话，2026-10-13）
+
+### 一 读数（本地，真窗口 + 真卡 + 真点击）
+
+```
+npx playwright test e2e/certification/notebook-run-risk-approval.spec.ts
+  ✓ 1 passed (11.9s)
+```
+
+**应用自己写下的那行（最硬的证据，取自 `test-results/app-process.log`）**：
+
+```
+Error occurred in handler for 'notebook:execute': NotebookRunDeclinedError: Notebook run declined: fs-delete
+```
+
+⇒ 应用在**自有运行入口**上拒绝了一次执行，并**点名规则** `fs-delete`。
+
+**spec 在真窗口里断言的四件事**（全部通过）：
+1. 审批卡渲染出 `notebook-risk-review` 且**点名**：`deletes files`（规则的人话名）/ `fs-delete`（收据用的机器 id）/ `line 2`（要读的那一行）/ `shutil.rmtree('probe-dir')`（该行代码）；
+2. 拒绝走**卡自己的** `deny-button`（点的是真界面）；
+3. 拒绝后 `notebook.state()` 里**没有任何** `rmtree` 运行记录 ⇒ 这个 cell 从未到过内核；
+4. 因此**审阅发生在 provision 之前**（被拒的 cell 连环境都不必准备）。
+
+### 二 取证前置与复原（经用户同意）
+
+- 前置：`osascript` 优雅退出打包版（约 25s 自行收尾，未 `pkill`）+ `launchctl bootout` 停 dev 无头；
+- **复原（已核）**：打包版 `open -a PureScience` ⇒ pid 75757 在跑；dev 无头 `launchctl kickstart -k` ⇒ `state = running`、`pid = 75868`。
+
+### 三 我自己踩的两处（都不是产品缺陷，都是我 spec 的错）
+
+1. **沿用旧 page 句柄**：`configureFakeAgent()` 会**重启应用并返回新的 page**，而我写成 `const page = await app.completeOnboarding(); await app.configureFakeAgent(); createProject(page, …)` ⇒ 症状是 `page.evaluate: Target page, context or browser has been closed`，而**我先前把它误判成「应用启动期即死」**（连着两轮在错的方向排查：先怀疑 OOM、再怀疑单实例锁/别的实例）。教训：**照抄先例要连句柄赋值方式一起照抄**（模板里是 `page = await app.configureFakeAgent()`）。
+2. **断言里的行号写错**：我断言 `line 1`，而代码第 1 行是 `import`、`rmtree` 在**第 2 行** ⇒ 断言必须取自代码本身，不能凭印象。
+- 附带一句：**§九十一 的夹具应用输出在这次定因里起了决定作用** —— 没有它，我会继续把测试侧的错当成应用的问题（那 217 行日志证明应用侧毫无错误）。
+
+### 四 仍未做
+
+- **车道读数**：本笔推送会取消在飞的 Nightly（它当时正跑这支 spec）；下一次 Nightly 会再跑一遍，届时可与本地读数互核（本地读数已足够结项，车道只是第二证据源）。
