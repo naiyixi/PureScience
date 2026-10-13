@@ -4674,3 +4674,29 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 2. **B3 文案**（会话）若已落地 ⇒ v2.1.0 三件齐 ⇒ 进发版准备（版本位点 2.0.0→2.1.0、CHANGELOG、README 成熟度块；
    正文草稿已在仓库之外的 `~/.hermes/cache/scratch/v2.1.0-notes-draft.md`）；`blocked-by` = B3 文案 + 三条真机读数（内存闸门）。
 3. 否则按「连锁最小」取 **B2 第三片**（产物/运行溯源面）：它只动 `artifacts/**` 与其投影，与 `notebook/**`、`i18n` 不相交。
+
+## 九十六、B3-2 缺态词 9 语（破折号 → 具名的话）（会话，2026-10-14 凌晨）
+
+> 章节号说明：本波原本要占 §九十五，与执行器的 §九十五（B2 两片 + 83 份证据档格式化）**撞号** ⇒ 顺延为 §九十六。执行器在它那节里明确记着「会话 §九十三 正等这 9 个 i18n 文件解锁 B3 文案」——两份档在互相读，撞号要当场让位。
+
+### 一 时机与前提
+
+执行器已提交 B2 第一片与第二片（`4108f3df` / `dcfdf838`）⇒ **i18n 十个文件已清空**，插键窗口打开。本波只碰 `i18n/*.ts` ×9 + `WriteAuditPanel.tsx` + 它的渲染用例（三者当时都不在执行器在制品清单里）。
+
+### 二 交付
+
+- 新键 `writeAudit.contentMissing.*` **4 键 × 9 语**：`did-not-exist` / `not-recorded` / `too-large` / `unreadable`（zh：「原本不存在 / 未记录 / 过大未算哈希 / 读不到」）。
+- 面板把 `—` 换成**具名的话**；映射表写成 `Record<Exclude<NotebookFileContentState, 'recorded'>, TranslationKey>` —— **类型穷尽**，新增缺态必须现场决定它叫什么；与同文件里证据原因**同一纪律：绝不让原始码上屏**。
+- 只要记录里有 `content` 就渲染整行（两侧各取「哈希前缀 或 缺态的话」）；只有完全没有内容身份（字段早于本版）才不渲染。
+- `recorded` 却没哈希这种不可能态（读取侧净化不变量已保证）不落词，退破折号。
+
+### 三 读数
+
+- `WriteAuditPanel.render.test.tsx` + `src/renderer/src/i18n` ⇒ **66 条全绿**（含 9 语质量门：与英文同形 / zh 术语 / 未填占位符）；
+- `tsc -p tsconfig.web.json` 0 条 `error TS`；`eslint --no-cache` 0 问题；
+- 单侧缺失那条用例的期望已从 `` `— → cccc…` `` 改 `` `not recorded → cccc…` ``（**断言的正是本波交付的事**）。
+
+### 四 本波自踩（**同一坑第三次**）
+
+「存在性守卫」被「名字出现过」骗到两次，都靠 `tsc` 抓到：① `if 'CONTENT_STATE_LABEL_KEYS' not in s` —— 该名字已出现在我刚插入的**使用处** ⇒ 整张映射表没插；② `if 'NotebookFileContentState,' not in s` —— 逗号形态已出现在 `Exclude<NotebookFileContentState, 'recorded'>` 里 ⇒ 类型 import 没插。
+**定法**：守卫判**定义/语句**本身（`const X: Record<` / `import type {\n  X,`），不判符号名出现过。
