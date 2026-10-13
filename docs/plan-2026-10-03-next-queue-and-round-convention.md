@@ -4738,3 +4738,71 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 - 它的测试读数（它自陈 43 passed / 变异测试 3 红）—— 我没跑它的套件；
 - 它 UI 上的 `data-*` 属性（`data-recipe/variable/via/alias-chain/later-run/mutation-kind/line/content-hash`）—— 我没读渲染；
 - 它的样本口径（142 vs 我的 77 会话，见 §二）。
+
+## 九十八、B1 拒绝文案 9 语落地 + 逐笔车道判决（含祖先替代）+ 看门脚本改写**已验证**（执行器，2026-10-14 凌晨）
+
+### 一 位点与逐笔判决（现取，不许混算）
+
+`git rev-parse HEAD` = `60c4834b5fb1d898be7f277cc52ee144f0e60bb6`（= `origin/main`）。逐笔点名：
+
+| 提交 | Nightly | Windows Full Test | 判决怎么来的 |
+| --- | --- | --- | --- |
+| `60c4834b` | success | success | **它自己的双绿**（`gh api …/runs?head_sha=60c4834b…` 两条 run 都 completed+success）|
+| `4108f3df` | **cancelled** | success | 无自己的判决；**引 `60c4834b` 的双绿**（`git merge-base --is-ancestor 4108f3df 60c4834b` = 真，CI 跑的是整棵树）|
+| `dcfdf838` | **cancelled** | **cancelled** | 同上，引 `60c4834b` 的双绿（祖先关系为真）|
+| `733f991f` | cancelled | cancelled | 同上 |
+| `00da6556`（纯 docs） | — | — | **不触发任何 run**（本轮以看门脚本第 3 次空响应判定，见 §二，非按记忆）|
+
+**取消 ≠ 红**：被 `cancel-in-progress` 顶掉的 run 没有判决。本表里「替换来的判决」一律写明是替代关系，
+**不是**那笔自己的判决。
+
+### 二 看门脚本（技能自带 `scripts/ci-run-watcher.sh`）的改写已验证（两支都冒烟）
+
+上一轮把「第一条车道落定就收工」改成「等**全部**目标车道」，当时**没能验证**（用来做冒烟的 `timeout` 本机不存在）。
+本轮两支都用真读数冒烟：
+
+1. **全落定支**（`60c4834b`，两车道都已 completed）⇒ 判决文件逐字：
+   `Windows Full Test|completed|success Nightly|completed|success` + `=== 全部目标车道已落定（第 1 次轮询） ===`
+   —— 它等到了**两条**，不再误收工。
+2. **空响应支**（`00da6556`，纯 docs）⇒ 逐字：`NO_RUNS_YET (streak=1/2/3)` 后
+   `=== 连续 3 次空响应 ⇒ 该 SHA 没有运行（索引延迟或本就是 docs-only 提交） ===`
+   —— 「没有运行」与「没跑完」被分开命名，且把 streak 写进判决文件。
+
+### 三 本单元交付（B1 最后一条具名缺口：拒绝文案 9 语）
+
+提交 `99b85ddd`（代码 + 测试 + 证据档一笔）。缺口与修法：
+
+- **缺口**：应用自有运行路径被用户拒绝时抛的 `NotebookRunDeclinedError` **只有英文** message
+  （`run-risk-receipt.ts:81-85`），渲染端把它**逐字上屏**、还带着 IPC 信封
+  （`NotebookPreview.tsx` 的 `setActionError`，5 处；渲染在 `:1161-1165`）⇒ 中文用户拒绝一次高风险运行，屏上是英文。
+- **修法三处（都是既有路线）**：`main-message-catalog.ts` 新增**单一来源**的 `unwrapIpcEnvelope`（Electron 信封 + Web 面裸 `.message`）；
+  `notebook-risk-copy.ts` 新增 `notebookRunDeclinedNotice`（**用卡面同一套规则名**重说，机器 id 留行内，不认识的 id 原样保留）；
+  `NotebookPreview.tsx` 的 `getErrorMessage(t, error)` 先剥信封再试拒绝句、其余**逐字透传**；`notebookRisk.declined` ×9 语。
+- **读数**：定向 68 passed；宽面（`main/notebook` + `main/acp` + 3 支 render 用例 + 卡面 i18n）**179 文件 / 2887 passed｜99 skipped**；
+  **变异测试 2 红**（裸 id ⇒ 1 红；识别正则永不匹配 ⇒ 3 红）；双 typecheck `REAL_EXIT=0`、0 条 `error TS`；
+  `eslint --no-cache .` **0 error / 120 warning**（与 v2.0.0 门禁同读数）；**全量 vitest 16,559 passed / `VITEST_EXIT=0`（311.4 s）**；`pre-push-checks.sh` EXIT=0。
+- 证据档：`docs/evidence/2026-10-14-b1-declined-copy-9-languages.md`。
+
+### 四 具名未做 / 立案（每条带 blocked-by）
+
+1. **B2 第三片（别名级血缘接进产物/运行溯源面）——立案**。目标面已勘查：`ArtifactVersionProvenance.execution` 带 notebook `runId`、
+   `ArtifactProvenancePanel.tsx`、主进程 `provenance-repository.ts`。**只动 `artifacts/**` 与其投影，与 `notebook/**` 不相交**。
+   `blocked-by`：① 会话在制的 9 个 i18n 文件**已由它自己落定**（`fab042ec`）、本轮工作树干净 ⇒ **插键窗口重新打开**；
+   ② 若要新增上屏文案 ⇒ 需 9 语键（与本笔同一批文件，本笔已落定）；③ 真机读数受内存闸门。
+2. **真机（真窗口）读数未取**（本笔与既有窗口项同批）：内存闸门实测空闲页 **5,011 ≈ 78 MB**、swap 已用 **6,677 / 8,192 MB**
+   ⇒ 不起 `build:e2e` + Electron。`blocked-by` = 内存闸门放开。
+3. **4 份同义的「剥信封」正则副本**（`SkillsPanel.tsx:71`、`SkillUploadView.tsx:93`、`useSkillImportCandidatePreview.ts:21`、
+   `useWorkspaceAgentRuntime.ts:251`）**未**折进本笔的单一来源（不把无关 hunk 卷进本笔）⇒ 单独立案，等一个只做这件事的窗口。
+4. **B2 的「真哈希」形态**要等 v2.1.0 之后的新运行（§九十七 的真发现：本机真数据 0 条带 B1 收据）。
+
+### 五 v2.1.0 位点与下一轮第一步
+
+- 位点（现取）：`package.json` = 2.0.0；CHANGELOG 顶端 = v2.0.0 段；`gh release list` **Latest = PureScience v2.0.0**
+  ⇒ v2.1.0 仍未起版（版本位点应从 2.0.0 抬到 2.1.0）。
+- **三件的文案缺口清零**（B1 拒绝文案 = 本笔；B3-2 缺态词 = `fab042ec`），剩下具名的只有真机读数与 B2 后验哈希。
+- **下一轮第一步**（按「连锁最小」自取，不摆成选项）：进 **v2.1.0 发版准备**——CHANGELOG 段 / README 成熟度块 /
+  版本位点 2.0.0→2.1.0 / `release-gate.sh`（技能自带）在**打 tag 的那个提交上**的隔离工作树里跑全量 /
+  正文由 `npm run release:notes -- v2.1.0 --keep-generated --apply` 生成后回读字节数。
+  `blocked-by`：① **并发推送**（Release 的 `cancel-in-progress` 会腰斩窗口）⇒ 开窗口前先看 `git status --short` 与
+  会话是否刚落笔，且**只推一次**；② 门禁全绿（含 `eslint --no-cache .`）；③ 打 tag 前先 `git push origin main` 并核
+  tag 提交是 `origin/main` 的祖先。B2 第三片排在发版之后（它是**本版之外**的加宽，不进 v2.1.0 范围）。
