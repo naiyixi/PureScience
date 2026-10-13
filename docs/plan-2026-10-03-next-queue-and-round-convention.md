@@ -3842,3 +3842,41 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    `blocked-by` = 无人在改 `pages/settings/ProvidersPanel.tsx`、`main/settings/**`。
 2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门。
+
+## 七十、本轮追加（会话，2026-10-13）—— 设置页认证族的 main 句子整族本地化（16 键 ×9，只加目录条目即生效）
+
+### 一 交付
+
+上一单元把**渲染汇点**包进了 `localizeMainMessage`（`ProvidersPanel` 的 `providerTestError`、`RuntimesPanel` 4 处、迁移弹窗 1 处）
+⇒ 本轮的活只剩「把 main 真会返回的句子登记进目录」：**16 键 ×9 语 + 目录 16 条精确条目**，全族立刻按界面语言出话。
+
+- **claude 隔离登录族 11 条**：可执行文件缺失 / 钥匙串未解锁 / 已有另一个登录 / 已存令牌读不出 / 浏览器登录失败 /
+  `claude setup-token` 粘贴提示 / 保存失败 / 重读失败 / 往返校验失败 / 已存令牌重读失败 / 清除失败。
+- **codex 族 5 条**：配置档案不可导入 / 已安装 codex-acp 未声明 ChatGPT 认证 / 状态检查超时 / 已有登录进行中 / 退出登录超时。
+
+### 二 读数
+
+- `eslint --no-cache`（目录 + 其用例）**0 问题**；web typecheck 本片 **0 条**；
+- `vitest`：目录用例 + i18n 全套 + `ProvidersPanel.race` ⇒ **6 文件 / 63 条全绿**。
+  其中目录用例里那条**收尾门**（每个键都必须在字典里）同时验证了这 16 个键真的落到了 9 个字典，而不是拼错后静默透传。
+
+### 三 方法学（值得复用）
+
+1. **先枚举汇点形状，再判「main 那一支会不会真返回句子」**（§六十九）——按汇点数会得出 103 的假工作量，按「真返回」才是可做的族。
+2. **汇点一次接线、全族受益**：这就是 A 口径（目录补丁）的复利——本族 16 句没有动任何渲染代码，只加了目录条目 + 字典键。
+3. 键的**英文值与 main 侧字面量逐字节一致**（逐字从源码取），否则目录精确匹配会失效（静默透传成英文）。
+
+### 四 具名保留（不许读成「全族已清」）
+
+- **动态尾巴不进目录**（无法逐字匹配，且松正则会改写读者要看的内容）：`loadResult.error`（原样是底层错误）、
+  ``setup-token exited with code ${code}``、`stderr.trim()` 透传、以及 `message:` 后跟拼接的几处（230/242/256/714 行）。
+- `ProvidersPanel` 其余 catch 族的 **main 侧句子尚未逐个核**（Codex/xAI 的 sign-in/out 已在本轮 codex 族里覆盖 5 条；
+  其余如 `settings:test-provider` 等的 main 返回未核）⇒ 下一段。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **`settings:test-provider` / `settings:save-provider` 两条结果族的 main 侧**：`validation-message.ts` 的 4 条分支原样返回 `result.message`，
+   其 main 侧在 `main/settings/backend-resolver.ts`（本轮已见 5 条 `throw new Error('…')`）与 provider 校验路径 ⇒ 按同法核完再加目录条目。
+   `blocked-by` = 无人在改 `main/settings/backend-resolver.ts`、`pages/settings/validation-message.ts`。
+2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
