@@ -18,7 +18,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交 `__GATE_SHA__`）：`eslint --no-cache .` **__LINT__**；`typecheck:node` / `typecheck:web` **__TSC__**；全量 `vitest --maxWorkers=4` **__VITEST__**；`scripts/pre-push-checks.sh` **__PREPUSH__**。
+- 门禁（隔离工作树，被测提交 `e3fc8b0cb531a90e5d7197c54eee33dc33a5a537`）：`eslint --no-cache .` **0 error ／ 120 warning**；`typecheck:node` / `typecheck:web` **两环原文各 0 条 `error TS`**；全量 `vitest --maxWorkers=4` **1276 文件（1260 passed ｜ 16 skipped）、16436 条（16229 passed ｜ 207 skipped）**，exit 0，289.3 s；`scripts/pre-push-checks.sh` **五查全过**（带一条不阻断的提醒：本版尚未发布）。
 - **逐环读原文，不采信汇总行**：本轮顺手修掉了门禁脚本自己的一处假绿（`out=$(cmd | tee file)` 里的 `$?` 取的是管道末端 `tee` 的退出码，恒 0 ⇒ 类型环的判据永不触发；实测同一份日志里两条 typecheck 都打了 `error TS`，汇总却写 OK）。修法两道（`pipefail` + 类型环硬看 `error TS` 标记）并做了**变异测试**：拿确实带着该类型错的提交跑修好的门禁 ⇒ 必报 FAIL。
 - 真机证据的取法写进了排期档与队列档：RPC 真机读数（不启窗口）、落盘记录、以及「拒绝就是拒绝」的副作用核对（被拒的那次没在盘上留下任何东西）。
 - **具名跳过**：两条 `notarize-mac` 作业因无 Apple 凭据**具名跳过** —— 本版**不声称**已签名或已公证。
