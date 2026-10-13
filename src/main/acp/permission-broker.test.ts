@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import { AcpPermissionBroker, ConversationPermissionGrantStore } from './permission-broker'
 import { withTrustedNativeToolIdentity } from './permission-policy'
+import { evaluateNotebookRunRisk } from '../notebook/run-risk-rules'
+import { notebookRunRiskReceipt } from '../notebook/run-risk-receipt'
 
 type EmittedPermissionRequest = Parameters<ConstructorParameters<typeof AcpPermissionBroker>[0]>[0]
 
@@ -1804,5 +1806,77 @@ describe('ACP permission broker', () => {
       { profile: 'ask', cwd: '/workspace' }
     )
     expect(emittedRequests).toHaveLength(countBeforeWrite + 1)
+  })
+
+  it('carries the notebook risk review on an app-owned approval when the caller ran it', async () => {
+    const emitted: EmittedPermissionRequest[] = []
+    const broker = new AcpPermissionBroker((request) => emitted.push(request))
+    const riskReview = notebookRunRiskReceipt(evaluateNotebookRunRisk("shutil.rmtree('/tmp/x')"))
+
+    const approved = broker.requestAppApproval({
+      sessionId: 'session-notebook',
+      title: 'Run this cell?',
+      rawInput: { code: "shutil.rmtree('/tmp/x')" },
+      riskReview
+    })
+
+    expect(emitted).toHaveLength(1)
+    expect(emitted[0].riskReview).toEqual(riskReview)
+    expect(emitted[0].riskReview?.verdict).toBe('review')
+    await broker.respond({
+      requestId: emitted[0].requestId,
+      optionId: emitted[0].options.find((option) => option.kind === 'allow_once')?.optionId
+    })
+    await expect(approved).resolves.toBe(true)
+  })
+
+  it('leaves the field off an app-owned approval that ran no review', async () => {
+    const emitted: EmittedPermissionRequest[] = []
+    const broker = new AcpPermissionBroker((request) => emitted.push(request))
+
+    broker.requestAppApproval({
+      sessionId: 'session-notebook',
+      title: 'Switch specialist?',
+      rawInput: { specialistApproval: { kind: 'switch' } }
+    })
+
+    expect(emitted[0].riskReview).toBeUndefined()
+    expect('riskReview' in emitted[0]).toBe(false)
+  })
+
+  it('reviews a notebook cell call and leaves every other tool unreviewed', async () => {
+    const notebookEmitted: EmittedPermissionRequest[] = []
+    const notebookBroker = new AcpPermissionBroker((request) => notebookEmitted.push(request))
+    const policy = {
+      profile: 'ask' as const,
+      cwd: '/workspace',
+      mcpServerNames: ['purescience_notebook']
+    }
+
+    notebookBroker.requestPermission(
+      createNotebookPermissionRequest(
+        'session-notebook',
+        'mcp__purescience_notebook__notebook_execute',
+        { code: "shutil.rmtree('/tmp/x')" }
+      ),
+      policy
+    )
+
+    expect(notebookEmitted[0].riskReview?.verdict).toBe('review')
+    expect(notebookEmitted[0].riskReview?.hits[0].ruleId).toBe('fs-delete')
+
+    const otherEmitted: EmittedPermissionRequest[] = []
+    const otherBroker = new AcpPermissionBroker((request) => otherEmitted.push(request))
+    otherBroker.requestPermission(
+      createToolPermissionRequest({
+        title: 'python train.py',
+        providerToolName: 'Bash',
+        kind: 'execute',
+        rawInput: { code: "shutil.rmtree('/tmp/x')" }
+      }),
+      policy
+    )
+
+    expect('riskReview' in otherEmitted[0]).toBe(false)
   })
 })

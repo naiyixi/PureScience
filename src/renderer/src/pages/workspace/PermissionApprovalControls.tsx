@@ -32,6 +32,7 @@ import {
 import { SpecialistDeleteDetail } from './SpecialistDeleteDetail'
 import { SpecialistSwitchDetail } from './SpecialistSwitchDetail'
 import { WorkspaceToolCodeBlock } from './WorkspaceToolCodeBlock'
+import { notebookRiskLines, notebookRiskTitle } from '@/lib/notebook-risk-copy'
 
 type PermissionApprovalControlsProps = {
   requests: AcpPermissionRequest[]
@@ -760,6 +761,11 @@ const PermissionApprovalControls = ({
     }
     return request.title !== headerName ? request.title : request.providerToolName
   })()
+  // v2.1.0: the notebook risk review, when this request is the gate for a cell run. The words come from
+  // the receipt, not from a sentence built in main, so the card reads in the reader's language.
+  const notebookRisk = request.riskReview
+  const riskTitle = notebookRisk ? notebookRiskTitle(t, notebookRisk) : undefined
+  const riskLines = notebookRisk ? notebookRiskLines(t, notebookRisk) : []
   const showInlineDetail =
     !isMcp && Boolean(titleDetail) && !permCode && !request.toolLocations?.length
   const closeScopeConfirmation = (): void => {
@@ -813,6 +819,21 @@ const PermissionApprovalControls = ({
           {request.toolLocations.map((location) => (
             <span key={location.path}>{location.path}</span>
           ))}
+        </div>
+      ) : null}
+
+      {/* What the review found, rule by rule: the name in the reader's words, the id the receipt uses,
+          and the line of the code block below to read. An allow has nothing to show and renders nothing. */}
+      {riskLines.length ? (
+        <div data-testid="notebook-risk-review" className="flex flex-col gap-0.5">
+          {riskTitle ? <p className="text-xs font-medium text-foreground">{riskTitle}</p> : null}
+          <ul className="flex flex-col gap-0.5">
+            {riskLines.map((line) => (
+              <li key={line} className="break-all text-xs text-muted-foreground">
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

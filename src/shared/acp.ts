@@ -13,6 +13,7 @@ import type { StructureSelectionLabel } from './structure-selection-label'
 import type { StructureMeasurement } from './structure-measurement'
 import type { PermissionProfileId, SessionPermissionProfileState } from './permission-profiles'
 import type { AgentFrameworkId } from './settings'
+import type { NotebookRunRiskReceipt } from './notebook'
 
 const ACP_MESSAGE_IMAGE_MIME_TYPES = [
   'image/avif',
@@ -576,6 +577,10 @@ export type AcpPermissionRequest = {
   // approval context only; permission grants persist an opaque digest instead of these tokens.
   commandPrefix?: string[]
   rawInput?: unknown
+  // v2.1.0: what the per-run notebook risk review found, when this request is the approval gate for a
+  // notebook cell run. Absent means the review did not run for this call — "not assessed", never
+  // "nothing found" (same note as NotebookRunRecord.riskReview, which stores the same receipt).
+  riskReview?: NotebookRunRiskReceipt
   options: AcpPermissionOption[]
 }
 

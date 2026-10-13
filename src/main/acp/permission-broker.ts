@@ -39,6 +39,9 @@ import {
   fetchHostFromTrustedInput
 } from '../../shared/fetch-authorization'
 import type { PermissionGrantRegistry } from '../permission-grants/registry'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
+import { evaluateNotebookRunRisk } from '../notebook/run-risk-rules'
+import { notebookRunRiskReceipt } from '../notebook/run-risk-receipt'
 
 type PendingPermission = {
   request: AcpPermissionRequest
@@ -129,6 +132,32 @@ const commandFromRawInput = (rawInput: unknown): string | undefined => {
   const command = (rawInput as Record<string, unknown>).command
 
   return typeof command === 'string' && command.trim() ? command : undefined
+}
+
+// The one notebook tool these rules were written and tested for: Python/R cells. `repl_execute` also
+// carries `code`, but it is the control-plane REPL, so the same rules would produce wrong verdicts
+// there — it stays outside the review on purpose rather than being guessed at.
+const NOTEBOOK_EXECUTE_IDENTITY = 'purescience_notebook/notebook_execute'
+
+const codeFromRawInput = (rawInput: unknown): string | undefined => {
+  if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return undefined
+
+  const code = (rawInput as Record<string, unknown>).code
+
+  return typeof code === 'string' && code.trim() ? code : undefined
+}
+
+// Runs the review only where it means something: a Python/R cell about to execute. Any other call gets
+// no receipt at all, which the card reads as "not assessed" — never as "clean".
+const notebookRiskReviewFor = (
+  mcpIdentity: string | undefined,
+  rawInput: unknown
+): NotebookRunRiskReceipt | undefined => {
+  if (mcpIdentity !== NOTEBOOK_EXECUTE_IDENTITY) return undefined
+
+  const code = codeFromRawInput(rawInput)
+
+  return code === undefined ? undefined : notebookRunRiskReceipt(evaluateNotebookRunRisk(code))
 }
 
 const startsVariableExpansion = (
@@ -821,6 +850,9 @@ class AcpPermissionBroker {
     sessionId: string
     title: string
     rawInput: unknown
+    // Set by a caller that has already run the notebook risk review, so the card can name the rules
+    // in the reader's language. Callers that have not run it pass nothing (see the field's note).
+    riskReview?: NotebookRunRiskReceipt
   }): Promise<boolean> {
     const requestId = randomUUID()
     const approveOptionId = `${requestId}:approve`
@@ -831,6 +863,7 @@ class AcpPermissionBroker {
       title: input.title,
       providerToolName: 'PureScience',
       rawInput: input.rawInput,
+      ...(input.riskReview ? { riskReview: input.riskReview } : {}),
       options: [
         { optionId: approveOptionId, name: 'Approve', kind: 'allow_once', scope: 'once' },
         { optionId: `${requestId}:decline`, name: 'Decline', kind: 'reject_once' }
@@ -874,6 +907,10 @@ class AcpPermissionBroker {
         resolveMcpToolIdentity(params.toolCall.title, mcpServerNames) ??
         resolveMcpToolIdentity(extractProviderToolName(params.toolCall), mcpServerNames))
       : undefined
+    const notebookRiskReview = notebookRiskReviewFor(
+      isMcp ? mcpIdentity : undefined,
+      params.toolCall.rawInput
+    )
     const projectedProviderOptions = projectPermissionOptions(params, policyContext, isMcp)
     const providerPermissionOptions = projectedProviderOptions.filter(
       (option) =>
@@ -940,6 +977,7 @@ class AcpPermissionBroker {
       toolLocations: params.toolCall.locations ?? undefined,
       ...(codexGroup ? { commandPrefix: codexGroup.commandPrefix } : {}),
       rawInput: params.toolCall.rawInput,
+      ...(notebookRiskReview ? { riskReview: notebookRiskReview } : {}),
       options: permissionOptions
     }
 
