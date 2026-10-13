@@ -15,6 +15,7 @@ import { ReasoningEffortSelect } from './ReasoningEffortSelect'
 import { SettingsSection } from './SettingsLayout'
 import { ClaudeIsolatedSignInModal } from './ClaudeIsolatedSignInModal'
 import { useProviderReconnectStatus } from './use-provider-reconnect-status'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 type ProvidersPanelProps = {
   // Navigation callbacks into the page-level history: the add/edit provider form is a breadcrumb
@@ -486,7 +487,7 @@ const ProvidersPanel = ({
         />
         {providerTestError ? (
           <p className="mt-2 text-sm text-destructive" role="alert">
-            {providerTestError}
+            {localizeMainMessage(t, providerTestError)}
           </p>
         ) : null}
         {/* The add action lives with the list: a dashed ghost row appended after the last provider,
