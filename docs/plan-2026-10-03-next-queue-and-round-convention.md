@@ -3585,3 +3585,35 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 - 会话 `8ecd3d85` 之后**未再提交**；`hermes cron list` 显示本执行器的上一轮 `Last run` 09:45 ok。
 - 树里 83 份 `docs/evidence/*.md` 的表格重排仍是**会话的在制品**（不是我的，不提交、不 stash、不据它们声称读数）。
 - 本轮我提交并推送的只有 `f4359ce6`（24 路径）与随后那份 docs 收口（本档 + 证据档）。
+
+## 六十三、本轮追加（会话，2026-10-13）—— **v2.0.0 已发布**（八步读数 + 一次基础设施红 + 本版未做的可认领项）
+
+### 一 发布事实（八步逐项读数，原文见排期档第三节末尾）
+
+- **tag** `v2.0.0` @ `2e97de9da1a868b1091f06c274f3f0afed33c992`（`^{commit}` 与 `RELEASE-CERTIFICATION.json` 的 `sourceSha` **逐字符相同**）；Release 页 `draft=false` / `prerelease=false`，**21 件资产**，`gh release list` ⇒ **Latest**。
+- 门禁（对 `e3fc8b0c`，隔离工作树）：`eslint --no-cache .` **0 error／120 warning**；双 typecheck **各 0 条 `error TS`**；全量 vitest **1276 文件（1260 passed｜16 skipped）、16436 条（16229 passed｜207 skipped）**，289.3 s exit 0；`pre-push-checks.sh` 五查全过。
+- 正文 `release:notes --keep-generated --apply` 写入 34,531 字符；成熟度块 ✅ 段**前插本版头条 + 上一条改写为 previous**（两份 README 同段**逐字节一致**，`52918d96`）；第 13 行**未签名披露**在位。
+- 认证车道两条读数都跑：`--sha 2e97de9d…` ⇒ `specs=102 readings=201 tags=49`；`--in-repo v2.0.0` ⇒ EXIT=0。
+- 本版**两条线**：**D 结构工作台（D1–D7）** + **A 中文文献翻译（A1–A7）**，均在 P0 之后；逐项判据/接线/读数见排期档对应行。
+
+### 二 本轮一次基础设施红（记形状，别重犯）
+
+第一轮 `release.yml`（run `38349881655`）红在 `build / Build macos-x64` 第 10 步 `Build & package`：作业日志 blob `BlobNotFound`，
+**读注解**得原文 *the hosted runner lost communication with the server* ⇒ **基础设施**（同 run 其余三个平台与 `Verify` 均 success；`publish` 因依赖失败 skipped）。
+处置：`gh release view v2.0.0` ⇒ `release not found`（无 Release 页）⇒ **删 tag 重建**（同一提交新建附注 tag）⇒ 新一轮 run `38355968480` **全绿**。**不许重跑单个 job**（同名重复产物会让 `publish` 报 `missing: <platform>`）。
+
+### 三 本版**未做**的项（可被认领，勿读成已做）
+
+1. **D4/D7/A 的「窗口侧点击」读数**（具名）：D4 导出按钮点击 → 保存对话框 → 审批卡、D7 来源按钮点击链路、A 线翻译面板点击。本轮取到的是**同一条链路的 RPC 真机读数**（闸门判决链、端到端翻译 20.0 s 落盘、预测结构加载被拒），窗口那一步 `blocked-by` = 内存闸门放开（起浏览器 + CDP）。
+2. **窗口翻译接缝的认证 spec 未进仓**（草稿在 `/tmp/pdf-translation-seam.spec.ts.draft`）：落地三件一起做 —— `npm run build:e2e` → `npx playwright test e2e/certification/pdf-translation-seam.spec.ts --workers=1` 绿 → 进仓；`blocked-by` = 空闲物理页足够。
+3. **应用内的那一次真远端取回未取**：需「有人点卡」或一个非 `unprotected` 的受保护配置（无头实例两样都没有）；同一 URL 本机实测 200 / 772,334 字节；落点应为 `predictions/alphafold-db/AF-P00533-F1-model_v4.pdb` 且被 `engineForPredictionPath` 认回。
+4. **`Nightly` 认证车道一条已立档的已知红**（`egress-settings-read-failure.spec.ts`，macos-arm64；88 passed/1 failed/12 skipped）：归因未定，本版不改它。
+5. **P0-11（产品侧）**：agent 路径闸门根与存储层 `dataRoot` 不一致（dev 实例 `~/.purescience-project` vs `/Users/totota/PureScience-DEV`）；打包版同根（正确）。
+6. **两条 `notarize-mac` 作业无 Apple 凭据 ⇒ 具名跳过**：本版**不声称**已签名/已公证（认证文件如实 `macSignature=unsigned`、`credentialsPresent=False`）。
+7. 跨轮不变的老缺口：中文源四家连接器、IC40/IC6、M2 权重校验值、P0-10(c) 会话半边。
+
+### 四 下一轮第一步（带 blocked-by）
+
+1. **P0-10(c) 的会话半边**（口径见 §六十二·五）：删单个会话不释放该会话的 run 数据（`session-deletion-workflow.ts` 零 notebook 引用）；体量 1.5–2h ⇒ 需一整个窗口；`blocked-by` = 工作树干净 + 无人正在改 `src/main/acp/**` 与 `notebook/**`。
+2. **窗口侧点击读数三件**（本节三·1）+ **认证 spec 进仓**（三·2）：两件的 `blocked-by` 都是**内存闸门**；顺序建议先 spec（一次 `build:e2e` 后连跑），再补三条点击读数。
+3. **本版未取的窗口/远端项**若到下一版仍不可取，就按「显式顺延 + 理由」写进下一版 CHANGELOG 的「明确没做」段，不留无人认领的旧汇报。
