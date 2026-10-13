@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { createHash } from 'node:crypto'
+
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -173,6 +175,18 @@ describe('NotebookPreview stale-run reason', () => {
     await mount([producingRun(), mutatingRun()])
 
     expect(reasonElement()?.getAttribute('data-content-hash')).toBe('not-recorded')
+  })
+
+  it('shows the hash a reader computed for a run that predates the receipt', async () => {
+    const script = 'df = load()'
+    // Hashed here the way a third party would, from the run's own source — not read back from the app.
+    const independent = createHash('sha256').update(script, 'utf8').digest('hex')
+    await mount([
+      producingRun({ sourceContentHash: { value: independent, provenance: 'computed-on-read' } }),
+      mutatingRun()
+    ])
+
+    expect(reasonElement()?.getAttribute('data-content-hash')).toBe(independent)
   })
 
   it('keeps the marker and stays silent when the change cannot be located', async () => {

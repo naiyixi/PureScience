@@ -1,9 +1,12 @@
+import { createHash } from 'node:crypto'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import { evaluateNotebookRunRisk, type NotebookRunRiskAssessment } from './run-risk-rules'
 import {
   NotebookRunDeclinedError,
   notebookRunRiskReceipt,
+  notebookRunSourceHash,
   resolveNotebookRunRiskGate
 } from './run-risk-receipt'
 
@@ -88,5 +91,22 @@ describe('run risk receipt', () => {
     expect(error.name).toBe('NotebookRunDeclinedError')
     expect(error.ruleIds).toEqual(['fs-delete', 'shell-exec'])
     expect(error.message).toContain('fs-delete')
+  })
+})
+
+// The read side needs the hash without a receipt (records written before receipts existed). It must be
+// the SAME value a receipt would carry — this test holds the two paths together by comparing them
+// against a hash computed here, the way a third party recomputing the published recipe would.
+describe('notebookRunSourceHash', () => {
+  const independent = (source: string): string =>
+    createHash('sha256').update(source, 'utf8').digest('hex')
+
+  it('equals the hash the receipt carries for the same cell source', () => {
+    const sources = ['df = load()', "shutil.rmtree('/tmp/run')", '注意：中文注释\nx = 1', '']
+    for (const source of sources) {
+      expect(notebookRunSourceHash(source)).toBe(independent(source))
+      expect(notebookRunSourceHash(source)).toBe(assess(source).codeHash)
+      expect(notebookRunSourceHash(source)).toBe(notebookRunRiskReceipt(assess(source)).codeHash)
+    }
   })
 })

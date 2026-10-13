@@ -1,8 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import type { NotebookRunRecord } from '../../shared/notebook'
 import { NotebookRunRepository, getNotebookRunJsonPath, getRuntimeRoot } from './repository'
 import { NotebookSessionReadModel, type NotebookSessionReadSource } from './session-read-model'
 import type { NotebookSessionSnapshot } from './session-aggregate'
@@ -218,5 +220,100 @@ describe('NotebookSessionReadModel', () => {
         workspaceCwd: join(storageRoot, 'ignored')
       })
     ).resolves.toBeNull()
+  })
+})
+
+const makeRunRecord = (overrides: Partial<NotebookRunRecord> = {}): NotebookRunRecord => ({
+  runId: 'run-1',
+  cellId: 'cell-1',
+  source: 'agent',
+  kernelKind: 'python',
+  script: 'df = load()',
+  status: 'completed',
+  startedAt: 100,
+  endedAt: 200,
+  text: { stdout: '', stderr: '', traceback: '', plain: [] },
+  outputs: [],
+  artifacts: [],
+  workingFiles: [],
+  ...overrides
+})
+
+const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
+
+// v2.1.0 batch B: a run recorded before the risk receipt existed still carries its source, so the
+// content hash the lineage recipe asks for is recomputable on read. These cases hold the two rules
+// that keep the completion honest: it equals the published recipe's value (hashed independently in
+// the test), and it is never persisted as if the run had been written with it.
+describe('read-side content hash for records that predate the receipt', () => {
+  const withRun = async (
+    run: NotebookRunRecord
+  ): Promise<{
+    state: Awaited<ReturnType<NotebookSessionReadModel<NotebookSessionReadSource>['state']>>
+    storageRoot: string
+    session: NotebookSessionReadSource
+  }> => {
+    const storageRoot = await createRoot()
+    const repository = new NotebookRunRepository(storageRoot)
+    const session = makeSession(storageRoot)
+    await repository.loadOrCreate({
+      projectName: session.projectName,
+      sessionId: session.sessionId,
+      workspaceCwd: session.cwd
+    })
+    await repository.appendRun({
+      projectName: session.projectName,
+      sessionId: session.sessionId,
+      run
+    })
+
+    return {
+      state: await makeReadModel(storageRoot, session, repository).state(session),
+      storageRoot,
+      session
+    }
+  }
+
+  it('derives the published recipe’s sha256, and keeps it off the persisted record', async () => {
+    const { state, storageRoot, session } = await withRun(makeRunRecord({ script: 'df = load()' }))
+
+    // Hashed here the way a third party would, from the recorded source.
+    expect(state.runs[0]?.sourceContentHash).toEqual({
+      value: sha256('df = load()'),
+      provenance: 'computed-on-read'
+    })
+    expect(state.recentRuns[0]?.sourceContentHash).toEqual(state.runs[0]?.sourceContentHash)
+
+    // Derived on read only: run.json stays free of it, so a computation is never mistaken for
+    // something the run was written with — and `riskReview` stays absent (this run was not assessed).
+    const onDisk = await readFile(
+      getNotebookRunJsonPath(storageRoot, session.projectName, session.sessionId),
+      'utf8'
+    )
+    expect(onDisk).not.toContain('sourceContentHash')
+    expect(onDisk).not.toContain('computed-on-read')
+    expect(onDisk).not.toContain('riskReview')
+  })
+
+  it('leaves the field off when the run carries its own receipt, so no run quotes two hashes', async () => {
+    const { state } = await withRun(
+      makeRunRecord({
+        riskReview: {
+          verdict: 'allow',
+          ruleSetVersion: 'notebook-run-risk:v1',
+          codeHash: sha256('df = load()'),
+          hits: []
+        }
+      })
+    )
+
+    expect(state.runs[0]?.sourceContentHash).toBeUndefined()
+    expect(state.runs[0]?.riskReview?.codeHash).toBe(sha256('df = load()'))
+  })
+
+  it('does not invent a hash for a record with no source to hash', async () => {
+    const { state } = await withRun(makeRunRecord({ script: '' }))
+
+    expect(state.runs[0]?.sourceContentHash).toBeUndefined()
   })
 })

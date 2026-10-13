@@ -4,13 +4,16 @@ import type {
   NotebookKernelMetadata,
   NotebookLanguage,
   NotebookRunRecord,
+  NotebookRunSourceHash,
   NotebookRunSummary,
   NotebookSessionReference,
   NotebookSessionRequest,
   NotebookSessionState
 } from '../../shared/notebook'
+import { isSha256Hex } from '../../shared/notebook'
 import type { NotebookRuntimeBinding, NotebookRuntimeBindings } from '../../shared/notebook-runtime'
 import { getNotebookRunJsonPath, getRuntimeRoot, NotebookRunRepository } from './repository'
+import { notebookRunSourceHash } from './run-risk-receipt'
 import type { NotebookSessionSnapshot } from './session-aggregate'
 
 type NotebookHandoffContext = {
@@ -226,7 +229,23 @@ class NotebookSessionReadModel<Session extends NotebookSessionReadSource> {
       delete publicInput.storageKey
       return publicInput
     })
-    return { ...run, inputFiles } as NotebookRunRecord
+    const sourceContentHash = this.readDerivedSourceHash(run)
+    return {
+      ...run,
+      inputFiles,
+      ...(sourceContentHash === undefined ? {} : { sourceContentHash })
+    } as NotebookRunRecord
+  }
+
+  // Read-side completion of a run's content hash, for records written before the risk receipt existed
+  // (v2.1.0, batch B): the run's source is on the record, so the hash the lineage recipe asks for is
+  // recomputable here — through the receipt's own hash path, never a second implementation. Skipped
+  // when a receipt already carries a hash, so no run carries two hashes claiming the same thing, and
+  // `riskReview` is never synthesized: a reader's hash must not read as "this run was assessed".
+  private readDerivedSourceHash(run: NotebookRunRecord): NotebookRunSourceHash | undefined {
+    if (isSha256Hex(run.riskReview?.codeHash)) return undefined
+    if (typeof run.script !== 'string' || run.script === '') return undefined
+    return { value: notebookRunSourceHash(run.script), provenance: 'computed-on-read' }
   }
 }
 

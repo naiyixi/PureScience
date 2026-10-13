@@ -631,7 +631,10 @@ const WORKING_FILE_CONTENT_STATES: readonly NotebookFileContentState[] = [
 const isContentState = (value: unknown): value is NotebookFileContentState =>
   typeof value === 'string' && (WORKING_FILE_CONTENT_STATES as readonly string[]).includes(value)
 
-const isSha256Hex = (value: unknown): value is string =>
+// The one place a 64-hex content hash is validated on the read side. Exported so the read-side
+// completion of a run's source hash (see NotebookRunSourceHash) accepts exactly what the receipt
+// sanitizer accepts — a second regex here would be a second definition of "is this a content hash".
+export const isSha256Hex = (value: unknown): value is string =>
   typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 
 /**
@@ -726,6 +729,10 @@ export type NotebookRunRecord = {
   // field existed; a run with no receipt is NOT read as "no risk was found" — it is read as "not
   // assessed", which is why the field is optional rather than defaulting to an allow.
   riskReview?: NotebookRunRiskReceipt
+  // Read-side completion of the hash above, for records that predate the receipt (v2.1.0, batch B).
+  // Attached by a reader (the notebook read model), never written to run.json. Absent whenever a
+  // receipt already carries a hash, so there are never two hashes claiming the same thing.
+  sourceContentHash?: NotebookRunSourceHash
   runId: string
   cellId: string
   source: NotebookRunSource
@@ -804,6 +811,19 @@ export type NotebookRunRiskReceipt = {
   /** sha256 of the cell source, under the published recipe. */
   codeHash: string
   hits: NotebookRunRiskHit[]
+}
+
+// A run's source hash as recomputed BY A READER, for records written before the risk receipt existed
+// (v2.1.0, batch B). The value is the same sha256 the receipt would have carried — computed with the
+// receipt's own hash function, never a second implementation — so a lineage row can carry a hash a
+// third party can check instead of 'not-recorded'. Two rules keep it honest:
+//   - it never replaces a receipt: `riskReview` stays absent on an unassessed run, because
+//     "not assessed" and "a reader hashed the source later" are different claims;
+//   - it is attached only on the read path and never persisted into run.json (the `provenance` field
+//     says which of the two this is, so a surface that shows it cannot present it as a stored fact).
+export type NotebookRunSourceHash = {
+  value: string
+  provenance: 'computed-on-read'
 }
 export type NotebookRunDocument = {
   version: 1

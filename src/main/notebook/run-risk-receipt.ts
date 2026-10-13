@@ -29,6 +29,16 @@ export const notebookRunRiskReceipt = (
 })
 
 /**
+ * The hash half of the receipt's recipe, for a reader that holds the cell source but no receipt (a run
+ * recorded before receipts existed). Deliberately the same call the receipt itself makes rather than a
+ * second sha256 in a second file: the recipe is published, so a second implementation is a second
+ * recipe waiting to drift. It runs the rule scan and keeps only the hash — the assessment it returns
+ * is discarded, and no receipt is written from it.
+ */
+export const notebookRunSourceHash = (source: string): string =>
+  evaluateNotebookRunRisk(source).codeHash
+
+/**
  * The gate a reviewed cell run resolves to. 'unreviewed' means a review was needed and no approver was
  * wired — a state the caller must make loud rather than treat as 'pass'.
  */

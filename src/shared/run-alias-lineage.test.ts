@@ -202,6 +202,53 @@ describe('computeNotebookStaleReasons', () => {
     ]
     expect(computeNotebookStaleReasons(runs)[0]?.producerContentHash).toBe('not-recorded')
   })
+
+  // The read model attaches this for records written before the receipt existed (v2.1.0, batch B). The
+  // test computes the hash itself, so a module that echoed or invented one could not pass.
+  it('reads the hash a reader recomputed for a record that predates the receipt', () => {
+    const script = 'a = [1, 2]'
+    const runs: AliasLineageRun[] = [
+      {
+        runId: 'r1',
+        status: 'completed',
+        script,
+        variablesWritten: ['a'],
+        sourceContentHash: { value: sha256(script) }
+      },
+      { runId: 'r2', status: 'completed', script: 'b = a\nb.append(3)', variablesWritten: ['b'] }
+    ]
+    expect(computeNotebookStaleReasons(runs)[0]?.producerContentHash).toBe(sha256(script))
+  })
+
+  it('prefers the run’s own receipt over a recomputed hash, so one row never quotes two hashes', () => {
+    const script = 'a = [1, 2]'
+    const runs: AliasLineageRun[] = [
+      {
+        runId: 'r1',
+        status: 'completed',
+        script,
+        variablesWritten: ['a'],
+        riskReview: { codeHash: sha256(script) },
+        sourceContentHash: { value: 'c'.repeat(64) }
+      },
+      { runId: 'r2', status: 'completed', script: 'b = a\nb.append(3)', variablesWritten: ['b'] }
+    ]
+    expect(computeNotebookStaleReasons(runs)[0]?.producerContentHash).toBe(sha256(script))
+  })
+
+  it('names a malformed recomputed hash as missing instead of echoing it', () => {
+    const runs: AliasLineageRun[] = [
+      {
+        runId: 'r1',
+        status: 'completed',
+        script: 'a = [1]',
+        variablesWritten: ['a'],
+        sourceContentHash: { value: 'not-a-hash' }
+      },
+      { runId: 'r2', status: 'completed', script: 'b = a\nb.append(2)', variablesWritten: ['b'] }
+    ]
+    expect(computeNotebookStaleReasons(runs)[0]?.producerContentHash).toBe('not-recorded')
+  })
 })
 
 describe('the published recipe is what the row actually carries', () => {

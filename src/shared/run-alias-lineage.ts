@@ -17,9 +17,11 @@
 //
 // Recomputation recipe (a third party holding run.json needs nothing else):
 //   - the producing run's content hash is the sha256 of its UTF-8 `script` — exactly the hash the
-//     run's persisted risk review already carries (`riskReview.codeHash`). Runs recorded before that
-//     receipt existed report 'not-recorded'; this module never hashes anything itself, because a
-//     second hashing place is a second recipe.
+//     run's persisted risk review carries (`riskReview.codeHash`), and exactly the one the notebook
+//     read model recomputes (`sourceContentHash`, provenance 'computed-on-read') for records written
+//     before that receipt existed. This module never hashes anything itself: a second hashing place
+//     is a second recipe. It reads whichever of the two the run carries and reports 'not-recorded'
+//     only when neither is there (no stored source, or a malformed value).
 //   - a reason is (producing run id, that hash, variable, alias chain, mutation point) under
 //     ALIAS_LINEAGE_RECIPE_VERSION, and every field is carried by the surface that shows it.
 //
@@ -27,7 +29,8 @@
 // and comments are skipped, and false positives are rare rather than impossible. It NEVER guesses:
 // `b = a.copy()` is a copy, not an alias, so mutating `b` flags nothing.
 
-import type { NotebookRunRiskReceipt } from './notebook'
+import type { NotebookRunRiskReceipt, NotebookRunSourceHash } from './notebook'
+import { isSha256Hex } from './notebook'
 import { extractVariablesWritten } from './run-dependencies'
 
 /** The rule set version a reason names, so an old reason stays readable after the rules grow. */
@@ -147,6 +150,8 @@ export type AliasLineageRun = {
   script?: string
   variablesWritten?: string[]
   riskReview?: Pick<NotebookRunRiskReceipt, 'codeHash'>
+  /** Recomputable content hash attached by a reader for runs that predate the receipt. */
+  sourceContentHash?: Pick<NotebookRunSourceHash, 'value'>
 }
 
 /**
@@ -313,10 +318,12 @@ const resolveRuns = (runs: readonly AliasLineageRun[]): ResolvedRun[] => {
   return resolved
 }
 
-/** Reads the content hash the run already carries. Absent hash is named, never re-derived here. */
+/** Reads the content hash the run carries: its own receipt, else the hash a reader recomputed. */
 export const aliasLineageContentHash = (run: AliasLineageRun): string | 'not-recorded' => {
-  const hash = run.riskReview?.codeHash
-  return typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash) ? hash : 'not-recorded'
+  const fromReceipt = run.riskReview?.codeHash
+  if (isSha256Hex(fromReceipt)) return fromReceipt
+  const computedOnRead = run.sourceContentHash?.value
+  return isSha256Hex(computedOnRead) ? computedOnRead : 'not-recorded'
 }
 
 /**
