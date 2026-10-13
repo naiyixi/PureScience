@@ -60,11 +60,35 @@ test('measures a fork before copying it, then creates a session that holds the e
   // person who sees nothing happen presses again; so does this. (An instantaneous synthesised click
   // loses the press every time, which is how this spec first failed, and a single held press still lost
   // it on the CI runner — the retry is what makes the press dependable rather than lucky.)
-  const press = async (target: typeof forkAction): Promise<void> => {
+  //
+  // The same window can also leave nothing to press at all: a box measured while the node that had just
+  // been resolved is replaced (or is briefly zero-sized) comes back `null`, and throwing there reports a
+  // re-mount as a product failure. That is what happened on a loaded runner — `boundingBox()` was null
+  // 400ms after a hover that had just succeeded, so the press was never even attempted. So the box is
+  // waited for, every wait is said out loud in the log, and a press that still has no box is simply
+  // another attempt (the loop below only ever stops on the outcome it is waiting for).
+  const card = page.locator('[data-slot="session-info-card"]')
+  const press = async (target: typeof forkAction, what: string): Promise<void> => {
+    if (!(await card.isVisible().catch(() => false))) {
+      console.log(
+        `[session-fork] the card was off screen before pressing ${what}; opening it again`
+      )
+      await page.getByTestId('conversation-title-button').click()
+      await card.waitFor({ state: 'visible' })
+      await page.waitForTimeout(400)
+    }
     await target.hover()
     await page.waitForTimeout(400)
-    const box = await target.boundingBox()
-    if (!box) throw new Error('nothing to press')
+    let box = await target.boundingBox()
+    for (let wait = 0; wait < 10 && !box; wait += 1) {
+      console.log(`[session-fork] the ${what} action has no box yet (wait ${wait + 1}/10)`)
+      await page.waitForTimeout(200)
+      box = await target.boundingBox()
+    }
+    if (!box) {
+      console.log(`[session-fork] the ${what} action still has no box; pressing again`)
+      return
+    }
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
     await page.waitForTimeout(60)
@@ -72,7 +96,7 @@ test('measures a fork before copying it, then creates a session that holds the e
   }
   const manifest = page.locator('[data-slot="session-fork-manifest"]')
   for (let attempt = 0; attempt < 3 && (await manifest.count()) === 0; attempt += 1) {
-    await press(forkAction)
+    await press(forkAction, 'fork')
     await page.waitForTimeout(500)
   }
   await expect(page.getByText('The copy will hold')).toBeVisible()
@@ -88,7 +112,7 @@ test('measures a fork before copying it, then creates a session that holds the e
   const created = page.getByText('The copy was created')
   const confirm = page.getByRole('button', { name: 'Create the copy' })
   for (let attempt = 0; attempt < 3 && (await created.count()) === 0; attempt += 1) {
-    await press(confirm)
+    await press(confirm, 'create the copy')
     await page.waitForTimeout(700)
   }
   await expect(created).toBeVisible()
