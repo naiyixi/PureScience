@@ -3563,25 +3563,22 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
   `git merge-base --is-ancestor 76df7a6b 4ab09f2b` 为**真**，而 `4ab09f2b` 的两条车道**都是 success**
   （各 02:44:18Z，`gh run list` 读数）。
 - **本笔 `f4359ce6`**：推送前查过 `gh run list --limit 8` —— 最近 8 条**全部 completed** ⇒ 本次推送
-  **没有取消任何人的判决**（这句话来自那次查询，不是感觉）。两车道已按该 SHA 入队，终态见本档下一轮追加。
+  **没有取消任何人的判决**（这句话来自那次查询，不是感觉）。终态：`Windows Full Test` = **success**；
+  `Nightly` = **cancelled** —— 取消它的是会话随后推的 **`78722582`**（`git merge-base --is-ancestor f4359ce6 78722582` 为**真**）。⇒ 本笔的 Nightly 判决**以 `78722582` 那条为替代**（CI 跑的是整棵树），
+  它的两车道在写这段时仍在跑（`gh run list` 读数：各 `in_progress`，04:05:09Z 入队），**落定前不许写「双绿」**。
 
 ### 四 具名缺口（不许读成已做）
 
-1. **本片真机读数未取**：内存闸门紧（空闲页 4,099 ≈ 64 MB、swap 4774/6144 已用），常驻 dev 实例编的是
-   **13 小时前那棵树**（不含本片）⇒ 走 44100 的本地 Web RPC 也读不到这条通道；重启实例会在未干净的工作树上
-   重建（与会话 §六 第 2 步前置冲突）。**本片因此只算「实现已落、证据待补」。**
-2. **窗口接缝的认证 spec 未落**（`blocked-by` = 树干净后重启实例；断言「接缝有应答，而不是
-   `No handler registered`」，`run` 缺省 ⇒ 不打网络、可无头确定性复现）。
-3. 跨轮不变的老缺口：P0-10 最后一条、批 D/批 A 的内存闸门项、IC40/IC6/中文源四家、M2。
+1. ~~**本片真机读数未取**~~ ✅ **已取到（会话，同一日；本条就地更正，不许再把已取到的写成未取）**：会话把常驻实例重启到 **`f4359ce6`**（＝本片）后走 RPC 实调 `pdf:translation`，两条读数进它自己的档
+   （`docs/plan-2026-10-10-v2-line-schedule.md`，`78722582`）：① 真 projectId + 真 PDF、只读 ⇒ `ok:true / ran:false`（**不点不跑模型**）、`HTTP 200 / 0.88 s`、行 / 逐页状态 / 偏离三样都从**生产装配那条链路**上来；② 真文档（7 页报告）+ `run:true` 一次真模型调用 ⇒ `HTTP 200 / 20.0 s`、`translated:1`、`terminologyChecked:4`，**抓到一条真偏离**（`Lancet → 柳叶刀` 未按表），落盘证据 `translations/a0ad5468….json`（文档**身份哈希**不是路径）。⇒ 本片的「实现已落、证据待补」**已经变成「实现已落、证据已取」**（证据归属：会话取的读数，我这一轮没取）。
+2. **窗口接缝的认证 spec 仍在草稿**（`/tmp/pdf-translation-seam.spec.ts.draft`，未进仓）：会话给的未进仓理由＝本地跑它要 `build:e2e` + Playwright 起 Electron，而空闲物理页 ≈63 MB ⇒ 按内存闸门不起；意图已由上面两条 RPC 真机读数在**真实例**上印证，**打包那一层**留给认证车道。要落地就一起做：`npm run build:e2e` → `npx playwright test e2e/certification/pdf-translation-seam.spec.ts --workers=1` 绿了再进仓。
+3. 跨轮不变的老缺口：P0-10 的**会话半边**（见下节第 1 条，核源后已收窄成一条具体单位）、批 D/批 A 的内存闸门项、IC40/IC6、中文源四家、M2。
 
 ### 五 下一轮第一步（带 blocked-by）
 
-1. **取本片的真机读数**（Web RPC 或认证 spec 任一条）——`blocked-by` = 工作树干净（现在树里还有会话的
-   83 份 `docs/evidence/*.md` 在制品）+ 内存闸门放开；两条取不到就具名写进汇报，不许写成已验。
-2. **B 段大件**：A7 外部锁导入、S3 增量全文索引、M2 本地解析模型资产 —— 前两者在「已完成」清单里各有多片
-   已落地，接手前先按 B.2 的结论逐条核（`git log --oneline --since="3 days ago"`），别重做。
-3. 收口上一轮审计剩下的 i18n 形状（`jsx prose line` 10 / `jsx-text` 9 / `jsx-text before interpolation` 4）——
-   动手前按当前树重扫（会话这几轮都在动字典）。
+1. **P0-10(c) 的会话半边**（本轮**核源后新收窄**的具体单位，取代原先那句含糊的「P0-10 最后一条」）：删**单个会话**不释放该会话的 run 数据。事实（本轮逐条读源取得）：项目半边**已交付**（`src/main/notebook/session-data-cleanup.ts:38` 的 `deleteProjectNotebookData()` → `ipc.ts:686` 装配 → `deletion-coordinator.ts:270` 并入 `runDataBytes` → `HomePage.tsx:486` 起界面按 `refused` / `not-attempted` 出话），而 `src/main/acp/session-deletion-workflow.ts`（122 行）**零 notebook 引用**（只动 contextUsage 与持久层）⇒ 单会话删除后它的 `<project>/<session>/<run>/…`（真结果，本机实测单个 1.1 GB 的 `.h5ad`）仍在盘上、界面对字节只字不提。形状：定位 `notebookSessionRoot` 的铸造点 → 会话级清理函数（照项目级：安全 id 校验 + 三态 + **真释放字节**）→ 接进删除回执 → 界面那句话（9 语）。**体量 1.5–2h ⇒ 需要一整个窗口，不要半途开工**；且 `blocked-by` = 工作树干净（现在树里有会话的 83 份 `docs/evidence/*.md` 在制品）。**不许**顺手改判成「自动清理会话数据」（那是用户的成果）。
+2. **（若第 1 条因工作树/内存不满足）** 取证类小件：本片与 A 线的读数**已由会话取到**，剩下的取证只有那条认证 spec，`blocked-by` = 内存闸门放开（空闲页 ≈63–65 MB 时不起 `build:e2e`）。
+3. 收口上一轮审计剩下的 i18n 形状（`jsx prose line` 10 / `jsx-text` 9 / `jsx-text before interpolation` 4）——动手前按当前树重扫（会话这几轮都在动字典，**字典文件是撞车热点**：写前先看该文件是否已在别人的在制品里）。
 
 ### 六 并发写入者状态（现取现写）
 
