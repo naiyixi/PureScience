@@ -4172,3 +4172,24 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 1. **B3 前提未复现** ⇒ 开工先验；若确认为新建面板，体量可能吃掉 W2 的一半以上（当场记档、必要时把 B3 的二半顺延并写明）。
 2. **真机验收**（弹卡、运行历史、审阅面板点击）**仍受内存闸门**（本轮实测空闲页 73 MB）⇒ 与既有窗口项同批补。
 3. 与执行器**在制面**不重叠：它当前在 `settings/agent-runtime-manager.ts` 一线（P0-11 刚收），B 批落在 `notebook/**` 与渲染层新面。
+
+## 七十九、v2.1.0（批 B）进度：B1 前两片已交付（会话，2026-10-13）
+
+| 片 | 提交 | 内容 | 读数 |
+| --- | --- | --- | --- |
+| **B1-1** | `3e967c01` | **判据层**（`run-risk-rules.ts`）：四条具名规则 + 逐条规则版本 + 命中行号/行文本；返回 `{verdict, hits, codeHash, ruleSetVersion}` 与可复算**配方** | 9/9 绿（用例抓到我自己两个 bug：嵌套括号形状被截断、`\b` 后的 `!` 分支永不成立）|
+| **B1-2** | （本笔）| **收据与卡面成型**（`run-risk-receipt.ts`）：`notebookRunRiskReceipt()`（**拷贝**，防事后被改）、`runRiskReceiptLines()`（每条规则一行：规则名 + 版本 + 行号 + 该行代码）、`notebookRunRiskApprovalTitle()`（单规则/多规则两种措辞；**allow 时返回 undefined**，不给一句安慰话——那会教读者跳过卡）| 17/17 绿（两片合跑）；eslint `--no-cache` 0 问题；node typecheck 本片 0 条 |
+
+### 下一片（B1-3）确切的落点与 blocked-by
+
+**接线**（本单元剩下的部分，需要一条 schema 链 + 真窗口读数）：
+
+1. **运行路径**：`src/main/notebook/execution-owner.ts:192`（`dataExecutionAdmission.admit(session, cell)` 之后、`runShared` 之前）调用判据；`verdict === 'review'` 时经既有权限门（`src/main/acp/permission-broker.ts`）发一条 `AcpPermissionRequest`，`title` 用 `notebookRunRiskApprovalTitle()`。
+2. **运行文档**：`src/main/notebook/repository.ts` 的 `normalizeRunDocument`（照 `fileEvidence` 的 sanitizer 先例）加一个 `riskReview` 字段存 `notebookRunRiskReceipt()` 的结果 ⇒ 满足判据「记录进运行历史 + 复算收据与记录一致」。
+3. **卡面**：`PermissionApprovalControls.tsx` 渲染 `runRiskReceiptLines()`（规则名 + 命中行）⇒ 需要**真窗口**读数（内存闸门），与既有窗口项同批补。
+4. `blocked-by`：W1 的 1–2 需要 `src/main/notebook/repository.ts` 不被他人占用（执行器当前在 `settings/**`，不冲突）；第 3 条 `blocked-by` = 内存闸门。
+
+### 两窗口进度
+
+- **W1**：B1-1 ✅ / B1-2 ✅ / B1-3（接线）未做 ⇒ W1 未收口。
+- **W2**：B2 别名级血缘、B3 会话内文件变更审阅（开工先核前提）未开工。
