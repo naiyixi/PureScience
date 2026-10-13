@@ -3576,7 +3576,7 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 
 ### 五 下一轮第一步（带 blocked-by）
 
-1. **P0-10(c) 的会话半边**（本轮**核源后新收窄**的具体单位，取代原先那句含糊的「P0-10 最后一条」）：删**单个会话**不释放该会话的 run 数据。事实（本轮逐条读源取得）：项目半边**已交付**（`src/main/notebook/session-data-cleanup.ts:38` 的 `deleteProjectNotebookData()` → `ipc.ts:686` 装配 → `deletion-coordinator.ts:270` 并入 `runDataBytes` → `HomePage.tsx:486` 起界面按 `refused` / `not-attempted` 出话），而 `src/main/acp/session-deletion-workflow.ts`（122 行）**零 notebook 引用**（只动 contextUsage 与持久层）⇒ 单会话删除后它的 `<project>/<session>/<run>/…`（真结果，本机实测单个 1.1 GB 的 `.h5ad`）仍在盘上、界面对字节只字不提。形状：定位 `notebookSessionRoot` 的铸造点 → 会话级清理函数（照项目级：安全 id 校验 + 三态 + **真释放字节**）→ 接进删除回执 → 界面那句话（9 语）。**体量 1.5–2h ⇒ 需要一整个窗口，不要半途开工**；且 `blocked-by` = 工作树干净（现在树里有会话的 83 份 `docs/evidence/*.md` 在制品）。**不许**顺手改判成「自动清理会话数据」（那是用户的成果）。
+1. ~~**P0-10(c) 的会话半边**~~ ✅ **已交付（执行器 `ddbffd41`，2026-10-13，见 §六十七；实现与回执上屏全部落地，真机读数因内存闸门仍未取并已具名立案）** —— 以下为当时的核源记录，保留备查：**P0-10(c) 的会话半边**（本轮**核源后新收窄**的具体单位，取代原先那句含糊的「P0-10 最后一条」）：删**单个会话**不释放该会话的 run 数据。事实（本轮逐条读源取得）：项目半边**已交付**（`src/main/notebook/session-data-cleanup.ts:38` 的 `deleteProjectNotebookData()` → `ipc.ts:686` 装配 → `deletion-coordinator.ts:270` 并入 `runDataBytes` → `HomePage.tsx:486` 起界面按 `refused` / `not-attempted` 出话），而 `src/main/acp/session-deletion-workflow.ts`（122 行）**零 notebook 引用**（只动 contextUsage 与持久层）⇒ 单会话删除后它的 `<project>/<session>/<run>/…`（真结果，本机实测单个 1.1 GB 的 `.h5ad`）仍在盘上、界面对字节只字不提。形状：定位 `notebookSessionRoot` 的铸造点 → 会话级清理函数（照项目级：安全 id 校验 + 三态 + **真释放字节**）→ 接进删除回执 → 界面那句话（9 语）。**体量 1.5–2h ⇒ 需要一整个窗口，不要半途开工**；且 `blocked-by` = 工作树干净（现在树里有会话的 83 份 `docs/evidence/*.md` 在制品）。**不许**顺手改判成「自动清理会话数据」（那是用户的成果）。
 2. **（若第 1 条因工作树/内存不满足）** 取证类小件：本片与 A 线的读数**已由会话取到**，剩下的取证只有那条认证 spec，`blocked-by` = 内存闸门放开（空闲页 ≈63–65 MB 时不起 `build:e2e`）。
 3. 收口上一轮审计剩下的 i18n 形状（`jsx prose line` 10 / `jsx-text` 9 / `jsx-text before interpolation` 4）——动手前按当前树重扫（会话这几轮都在动字典，**字典文件是撞车热点**：写前先看该文件是否已在别人的在制品里）。
 
@@ -3735,3 +3735,44 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
    `src/main/ipc.ts` 与 `src/main/session-persistence/**`（与上列不重叠，但 `ipc.ts` 是它的在制品 ⇒ 我这一批不碰 `ipc.ts`）。
 2. 执行器 P0-10(c) 落定后评审（照 §六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB）。
+
+## 六十七、本轮追加（会话，2026-10-13）—— 主进程逐字上屏文案改走目录映射（7 键 ×9，6 处汇点全接）
+
+### 一 交付（两笔提交，均已推）
+
+| 提交 | 内容 |
+| --- | --- |
+| `ef315958` | 新增 `src/renderer/src/lib/main-message-catalog.ts`（精确映射 + **具名占位符模板**两句；未命中原样透传）+ 4 条单测（逐条命中 / **每个键都在字典里**（收尾门）/ 两句模板取值 / 未识别透传）；7 键 ×9 语；接 `StorageMigrationModal`（1 处）与 `RuntimesPanel`（4 处）|
+| （本笔） | 接上 claude 隔离登录的汇点：`ProvidersPanel` 的 `providerTestError` 渲染处（1 处）⇒ 浏览器登录超时/取消/无令牌三句从此按界面语言出话 |
+
+**7 个键**：`mainMessage.pathTooLongForWindows`、`notebookRuntimeUnusable`、`notebookRuntimeUnusableDetail`（`{detail}`）、
+`packageInstallNotAuthorized`（`{language}`）、`signInTimedOut`、`signInCancelled`、`signInNoToken`。
+嵌入的按钮标签（Allow package install / Use setup token）取**字典自己的**译文（9 语逐语取自对应键），
+不另写一份——否则同一控件在两处显示不同措辞。
+
+### 二 读数
+
+- `ef315958`：6 文件 / 103 条（新目录用例 + `RuntimesPanel.render` + i18n 全套）＋ 迁移弹窗 16 条 全绿；
+  eslint `--no-cache` **0 问题**；web typecheck 本片 **0 条**。
+- 本笔：`src/renderer/src/pages/settings` 全目录 + i18n ⇒ **67 文件 / 736 passed｜1 skipped**；eslint/typecheck 本片 0。
+- `pre-push-checks.sh` 两笔均 **EXIT=0**；推后 `HEAD == origin/main`。
+
+### 三 本轮自己踩的坑（已修，记形状）
+
+**自动插 import 落进多行 `import type {` 块** ⇒ 整个文件解析失败（eslint `Parsing error: Identifier expected`、
+tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**以 `from '…'` 收尾的完整 import 语句**，
+不能是「最后一行以 import 开头的行」（多行块的首行也以 import 开头）。同一轮里 `HtmlPreview` 的 hook 误插
+非组件函数（见 §六十五·四）是同一类错误的两个面：**自动插入的锚点必须描述「我要插在谁的什么位置」，而不是「长得像的那一行」。**
+
+### 四 具名判定（不许读成「已做」）
+
+- `main/**` 的 dquote 桶里 44 条**有意保留英文**（连接器 descriptors 工具 schema 35、评审 agent rubric 与工具描述 6、
+  提示正文 2、工具 `.describe()` 2、字体栈假阳 1）：这些是 **agent 读的**内容，翻译会破坏 agent 匹配与指令语义（与既有 `useWhen` 口径一致）。
+- 目录只做**已知句**的映射：未识别消息逐字透传（有单测）⇒ 「诊断文本被改写」这条风险被钉住。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **审计的候选新形状**：加「单引号可见文案」形状（本轮 `OfficePreview` 两句就是这样被漏掉的）——
+   **先证明它在已知坏夹具上抓得住**再进仓（形状进门的纪律同 §六十六·五）。
+2. **执行器 P0-10(c) 落定后评审**（§六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
