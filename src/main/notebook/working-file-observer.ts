@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from 'node:fs'
-import { lstat, readdir, realpath, stat } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { lstat, readFile, readdir, realpath, stat } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 import type {
@@ -13,6 +14,7 @@ import {
   unattributedWriteEvidence,
   unavailableWriteEvidence
 } from '../../shared/notebook'
+import type { NotebookFileContentState, NotebookWorkingFileContent } from '../../shared/notebook'
 
 type WorkingFileObservationRequest = {
   dataRoot: string
@@ -106,6 +108,40 @@ const waitForWatcherReady = (): Promise<void> =>
 
 type SnapshotEntry = NotebookWorkingFile & { ctimeMs: number }
 
+// v2.1.0 (B3): the digest cap. Above it the bytes are not read at all — a bounded observation with a
+// named state ('too-large') beats an unbounded read that can stall a run's own bookkeeping.
+const MAX_DIGEST_BYTES = 4 * 1024 * 1024
+
+/**
+ * Content identity for a file that just changed. Reads the bytes HERE, where the change was observed —
+ * never inferred from an earlier run, and never re-serialized from something else. Nothing in here
+ * throws: an oversized or unreadable file gets a named state, because failing the observation would
+ * lose the change itself.
+ */
+const observeFileContent = async (
+  realPath: string,
+  changeKind: NotebookWorkingFile['changeKind'],
+  size: number | undefined
+): Promise<NotebookWorkingFileContent> => {
+  const before: NotebookFileContentState =
+    changeKind === 'created' ? 'did-not-exist' : 'not-recorded'
+  if (changeKind === 'removed') {
+    return { hashes: {}, states: { before, after: 'did-not-exist' } }
+  }
+  if (size !== undefined && size > MAX_DIGEST_BYTES) {
+    return { hashes: {}, states: { before, after: 'too-large' } }
+  }
+  try {
+    const bytes = await readFile(realPath)
+    return {
+      hashes: { after: createHash('sha256').update(bytes).digest('hex') },
+      states: { before, after: 'recorded' }
+    }
+  } catch {
+    return { hashes: {}, states: { before, after: 'unreadable' } }
+  }
+}
+
 const resolveChangedFile = async (
   dataRoot: string,
   logicalDataRoot: string,
@@ -120,6 +156,7 @@ const resolveChangedFile = async (
     if (!isPathInside(dataRoot, canonicalPath)) return undefined
     const metadata = await stat(canonicalPath)
     if (!metadata.isFile()) return undefined
+    const content = await observeFileContent(canonicalPath, undefined, metadata.size)
     const logicalPath = resolve(logicalDataRoot, relative(dataRoot, canonicalPath))
 
     return {
@@ -128,13 +165,30 @@ const resolveChangedFile = async (
       kind: 'other',
       size: metadata.size,
       mtimeMs: metadata.mtimeMs,
-      ctimeMs: metadata.ctimeMs
+      ctimeMs: metadata.ctimeMs,
+      content
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw error
   }
 }
+
+// v2.1.0 (B3): attaches the observed content identity to changed files. The diff is metadata-only, so
+// the bytes are read here — once per changed file, and skipped for entries that already carry an
+// observation (the watcher path resolves its own paths and hashes them there).
+const attachObservedContent = async (
+  files: readonly NotebookWorkingFile[],
+  dataRoot: string,
+  logicalDataRoot: string
+): Promise<NotebookWorkingFile[]> =>
+  Promise.all(
+    files.map(async (file) => {
+      if (file.content) return file
+      const realPath = resolve(dataRoot, relative(logicalDataRoot, file.path))
+      return { ...file, content: await observeFileContent(realPath, file.changeKind, file.size) }
+    })
+  )
 
 const diffSnapshots = (
   before: ReadonlyMap<string, SnapshotEntry>,
@@ -274,7 +328,11 @@ const startFallbackObservation = async (
         }
       } else {
         finishedResult = {
-          files: diffSnapshots(before.files, after.files),
+          files: await attachObservedContent(
+            diffSnapshots(before.files, after.files),
+            dataRoot,
+            logicalDataRoot
+          ),
           capture: capturedWriteEvidence()
         }
       }
@@ -421,7 +479,9 @@ const startWorkingFileObservation = async (
             }
             const diffed = diffSnapshots(before.files, after.files)
             finishedResult = {
-              files: active.conflicted ? [] : diffed,
+              files: active.conflicted
+                ? []
+                : await attachObservedContent(diffed, dataRoot, logicalDataRoot),
               capture: captureFrom(
                 dropped,
                 active.conflicted,
@@ -432,7 +492,9 @@ const startWorkingFileObservation = async (
           }
 
           finishedResult = {
-            files: active.conflicted ? [] : changedFiles,
+            files: active.conflicted
+              ? []
+              : await attachObservedContent(changedFiles, dataRoot, logicalDataRoot),
             capture: captureFrom(
               dropped,
               active.conflicted,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeNotebookRunRiskReceipt } from './notebook'
+import { sanitizeNotebookRunRiskReceipt, sanitizeNotebookWorkingFileContent } from './notebook'
 import type { NotebookLanguage, NotebookOutput, NotebookCell } from './notebook'
 
 describe('shared notebook types', () => {
@@ -87,5 +87,40 @@ describe('notebook run risk receipt sanitizing', () => {
       hits: []
     }
     expect(sanitizeNotebookRunRiskReceipt(allow)).toEqual(allow)
+  })
+
+  describe('notebook working file content sanitizing', () => {
+    const recorded = {
+      hashes: { after: 'a'.repeat(64) },
+      states: { before: 'did-not-exist' as const, after: 'recorded' as const }
+    }
+
+    it('keeps a recorded side together with its hash', () => {
+      expect(sanitizeNotebookWorkingFileContent(recorded)).toEqual(recorded)
+    })
+
+    it('drops any record whose state and hash disagree, in either direction', () => {
+      const cases: unknown[] = [
+        // A hash with a state that does not claim one.
+        {
+          hashes: { after: 'a'.repeat(64) },
+          states: { before: 'did-not-exist', after: 'too-large' }
+        },
+        // A state claiming a hash that is not there.
+        { hashes: {}, states: { before: 'did-not-exist', after: 'recorded' } },
+        { ...recorded, hashes: { after: 'not-a-hash' } },
+        { ...recorded, states: { before: 'not-recorded', after: 'made-up' } },
+        { ...recorded, states: { before: 'did-not-exist' } },
+        null,
+        'content',
+        { hashes: {} }
+      ]
+      for (const value of cases) {
+        expect(
+          sanitizeNotebookWorkingFileContent(value),
+          JSON.stringify(value)?.slice(0, 60)
+        ).toBeUndefined()
+      }
+    })
   })
 })

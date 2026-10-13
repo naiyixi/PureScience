@@ -16,6 +16,7 @@ import {
 } from '../../shared/notebook'
 import type { NotebookRuntimeBindings } from '../../shared/notebook-runtime'
 import { decodeRunDocumentDataPaths, encodeRunDocumentDataPaths } from './run-document-data-paths'
+import { sanitizeNotebookWorkingFileContent } from '../../shared/notebook'
 
 const SAFE_SEGMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 
@@ -117,6 +118,7 @@ const normalizeWorkingFiles = (
 
     return {
       ...file,
+      content: sanitizeNotebookWorkingFileContent(file.content),
       path: absolutePath,
       relativePath: file.relativePath || relativePath,
       createdByRunId: file.createdByRunId ?? runId

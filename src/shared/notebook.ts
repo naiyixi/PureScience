@@ -241,6 +241,20 @@ export const parseNotebookInputPreviewKey = (key: string): NotebookInputPreviewI
 }
 
 // Classifies files that are created inside the notebook session workspace.
+// v2.1.0 (B3): why a side of a file change has no content hash. Named, never blank: a blank must not
+// read as "unchanged", and a before-hash is NEVER inferred from an earlier run (an inference is not an
+// observation — the bytes may have been edited out of band between runs).
+export type NotebookFileContentState =
+  'recorded' | 'did-not-exist' | 'not-recorded' | 'too-large' | 'unreadable'
+
+/** Content identity of a change, as far as it was OBSERVED at capture time. */
+export type NotebookWorkingFileContent = {
+  // sha256 (hex) of the bytes read at observation time. `before` stays unset until something actually
+  // observes it — see the states below for why a side is missing.
+  hashes: { after?: string; before?: string }
+  states: { before: NotebookFileContentState; after: NotebookFileContentState }
+}
+
 export type NotebookWorkingFileKind =
   'raw-data' | 'processed-data' | 'cache' | 'script' | 'intermediate' | 'other'
 
@@ -292,6 +306,9 @@ export type NotebookWorkingFile = {
   size?: number
   mtimeMs?: number
   createdByRunId?: string
+  // v2.1.0 (B3): content identity of this change, as far as it was observed. Absent on records
+  // written before the field existed — and absent is NOT "unchanged" (see NotebookFileContentState).
+  content?: NotebookWorkingFileContent
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -602,6 +619,57 @@ const RUN_RISK_RULE_IDS: readonly NotebookRunRiskRuleId[] = [
   'shell-exec',
   'large-allocation'
 ]
+
+const WORKING_FILE_CONTENT_STATES: readonly NotebookFileContentState[] = [
+  'recorded',
+  'did-not-exist',
+  'not-recorded',
+  'too-large',
+  'unreadable'
+]
+
+const isContentState = (value: unknown): value is NotebookFileContentState =>
+  typeof value === 'string' && (WORKING_FILE_CONTENT_STATES as readonly string[]).includes(value)
+
+const isSha256Hex = (value: unknown): value is string =>
+  typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
+
+/**
+ * Reads back a persisted content identity. Malformed input is dropped WHOLE rather than partially: a
+ * half-trusted hash would let a reader compare against bytes nobody captured, and "no hash" is a state
+ * this shape can express honestly ('not-recorded') while "a hash I cannot verify" is not.
+ */
+export const sanitizeNotebookWorkingFileContent = (
+  value: unknown
+): NotebookWorkingFileContent | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+
+  const record = value as Record<string, unknown>
+  const hashes = record.hashes
+  const states = record.states
+  if (!hashes || typeof hashes !== 'object' || Array.isArray(hashes)) return undefined
+  if (!states || typeof states !== 'object' || Array.isArray(states)) return undefined
+
+  const hashRecord = hashes as Record<string, unknown>
+  const stateRecord = states as Record<string, unknown>
+  if (!isContentState(stateRecord.before) || !isContentState(stateRecord.after)) return undefined
+  if (hashRecord.after !== undefined && !isSha256Hex(hashRecord.after)) return undefined
+  if (hashRecord.before !== undefined && !isSha256Hex(hashRecord.before)) return undefined
+  // The state and the hash must AGREE: a side claiming 'recorded' with no hash (or a hash with any other
+  // state) is a record nobody can recompute, so it is dropped rather than half-trusted.
+  const afterRecorded = stateRecord.after === 'recorded'
+  const beforeRecorded = stateRecord.before === 'recorded'
+  if (afterRecorded !== (hashRecord.after !== undefined)) return undefined
+  if (beforeRecorded !== (hashRecord.before !== undefined)) return undefined
+
+  return {
+    hashes: {
+      ...(hashRecord.after === undefined ? {} : { after: hashRecord.after }),
+      ...(hashRecord.before === undefined ? {} : { before: hashRecord.before })
+    },
+    states: { before: stateRecord.before, after: stateRecord.after }
+  }
+}
 
 export const sanitizeNotebookRunRiskReceipt = (
   value: unknown
