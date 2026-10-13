@@ -28,9 +28,17 @@
 隔离实例（`PURESCIENCE_WEB_PORT=44156`、`PURESCIENCE_STORAGE_ROOT=/tmp/ps-upd-root`、CDP `9226`，未碰用户的 44100 与已安装应用），把 `package.json` 版本临时钉到 `1.67.0` 让应用"看到"可供更新，然后真发一次检查：
 
 ```json
-{ "found": "api", "beforeState": "available", "current": "1.67.0", "latest": "1.68.0",
-  "state": "available", "error": null, "notesType": "string", "notesChars": 1533,
-  "notesHead": "**`.science` 会话包开始携带文献库的 PDF——并且这一半是真机验证过才敢说的**\n\n- 包原本只带会话引用的引文，论文本身留在原地。现在文献库的 PDF 以 `references/…` 随包同行……" }
+{
+  "found": "api",
+  "beforeState": "available",
+  "current": "1.67.0",
+  "latest": "1.68.0",
+  "state": "available",
+  "error": null,
+  "notesType": "string",
+  "notesChars": 1533,
+  "notesHead": "**`.science` 会话包开始携带文献库的 PDF——并且这一半是真机验证过才敢说的**\n\n- 包原本只带会话引用的引文，论文本身留在原地。现在文献库的 PDF 以 `references/…` 随包同行……"
+}
 ```
 
 修复前同一次调用拿到的是 32 字符的占位串。取证后 `package.json` 已还原（`git checkout --`），工作区只留四处目标改动。

@@ -67,25 +67,25 @@ Running 2 tests using 1 worker
 
 写标注走的是**面板自己的工具条**（便签工具 → 点页面 → 输入 → 保存），不是直接调 API。
 
-| 读数                 | 本次真机值                                                                    |
-| -------------------- | ----------------------------------------------------------------------------- |
-| 标注种类             | `page-note`                                                                   |
-| 标注正文             | `"E2E sentinel: the effect is large."`（全项目只此一处）                     |
-| 版本（版本权威解析） | `b94a780f-18bb-4384-ac12-b2bac6e57b4b`                                        |
-| checksum             | `sha256:8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36`     |
-| 引文行 data-status   | `record`                                                                      |
-| 引文行 data-page     | `1`                                                                           |
-| 引文行 data-rect-count | `1`                                                                         |
-| 引文行 data-quote    | `""`（便签不引原文，记录如实为空而不是编一个）                                |
-| 检索（仅 `annotations` 作用域）命中 | 1                                                                  |
-| 命中的字段           | `body`                                                                        |
-| 命中的文件名         | `region-evidence.pdf`                                                         |
-| 命中携带的锚点       | 与面板显示的**同一版本、同一 checksum**（`true`）                             |
-| scan 报告            | `sessions=0 messages=0 files=0 references=0 annotations=1`                     |
-| 语料＝库内            | `1 vs 1` ⇒ `true`                                                            |
-| **负控制**：检索 PDF 文本层里的 `"Measured response"` | 命中 **0**，同一次扫描仍载入 **1** 条标注、`notes` 为空 |
-| 面板策略声明         | `"Annotations are used for search and citation only — they are never assembled into a model’s context."` |
-| 检索后库内           | `{current:1, versionChanged:0, checksumMismatch:0}`，锚点未变 `true`          |
+| 读数                                                  | 本次真机值                                                                                               |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 标注种类                                              | `page-note`                                                                                              |
+| 标注正文                                              | `"E2E sentinel: the effect is large."`（全项目只此一处）                                                 |
+| 版本（版本权威解析）                                  | `b94a780f-18bb-4384-ac12-b2bac6e57b4b`                                                                   |
+| checksum                                              | `sha256:8ab6d242d6445ff581f30994352b29e0a875546fcb095bf81b58fbd33a7abf36`                                |
+| 引文行 data-status                                    | `record`                                                                                                 |
+| 引文行 data-page                                      | `1`                                                                                                      |
+| 引文行 data-rect-count                                | `1`                                                                                                      |
+| 引文行 data-quote                                     | `""`（便签不引原文，记录如实为空而不是编一个）                                                           |
+| 检索（仅 `annotations` 作用域）命中                   | 1                                                                                                        |
+| 命中的字段                                            | `body`                                                                                                   |
+| 命中的文件名                                          | `region-evidence.pdf`                                                                                    |
+| 命中携带的锚点                                        | 与面板显示的**同一版本、同一 checksum**（`true`）                                                        |
+| scan 报告                                             | `sessions=0 messages=0 files=0 references=0 annotations=1`                                               |
+| 语料＝库内                                            | `1 vs 1` ⇒ `true`                                                                                        |
+| **负控制**：检索 PDF 文本层里的 `"Measured response"` | 命中 **0**，同一次扫描仍载入 **1** 条标注、`notes` 为空                                                  |
+| 面板策略声明                                          | `"Annotations are used for search and citation only — they are never assembled into a model’s context."` |
+| 检索后库内                                            | `{current:1, versionChanged:0, checksumMismatch:0}`，锚点未变 `true`                                     |
 
 **负控制之所以成立**：`"Measured response"` 是夹具 PDF 自己文本层里的图注（见 `e2e/fixtures/fake-opencode.mjs`
 的 `minimalPdfContent`），从未被存成标注。若语料由解析 PDF 得来，它必然命中；它没命中，而同一查询的
@@ -231,10 +231,10 @@ $ git add -A && bash scripts/pre-push-checks.sh
    的输入是调用方给的 `referenceId` + 分诊的 `ScreeningExportScope`。本轮**故意没有**把它接进
    `ReferencesScreeningPanel` 的导出：那会改写 S4 已冻结的导出文件内容（「不碰 screening-* 的已冻结语义」），
    也会把 A4 已冻结的「两条独立通道」变成三条——两者都是本片的硬约束。因此它现在是**可被调用的共享能力**
-   + **面板上一条引文行**（真机已断言）。真机上也没有跑「文献库 PDF 上画标注 → 导出引文」这条端到端
-   （需要先把 PDF 附到文献记录、再在预览里标注并进分诊集合）。
-   已核实**接线在渲染层是可行的**（`Reference.pdfManagedFileId` 是 `ProjectFileItem.id`，而 artifact 项的
-   `sourceFileId` / `sourceVersionId` 正是标注的锚点），所以补的是一个界面入口，不是新的数据通路。
+   - **面板上一条引文行**（真机已断言）。真机上也没有跑「文献库 PDF 上画标注 → 导出引文」这条端到端
+     （需要先把 PDF 附到文献记录、再在预览里标注并进分诊集合）。
+     已核实**接线在渲染层是可行的**（`Reference.pdfManagedFileId` 是 `ProjectFileItem.id`，而 artifact 项的
+     `sourceFileId` / `sourceVersionId` 正是标注的锚点），所以补的是一个界面入口，不是新的数据通路。
 5. **上界**：搜索语料上界 500 条（`GLOBAL_SEARCH_MAX_SCANNED_ANNOTATIONS`），锚点列表沿用项目文件索引的
    5 页 × 100（`GLOBAL_SEARCH_FILE_LIST_MAX_PAGES`）。超过时以 `annotations-bounded` 具名告知，
    但**没有做过 500 条以上的真机压测**。

@@ -25,11 +25,11 @@ PURESCIENCE_STORAGE_ROOT=/tmp/ps-q1-root PURESCIENCE_WEB_PORT=44185 npm run dev:
 
 `pdf:open` → `pdf:tables`（真 MCP 工具的同一条服务路径），三个文档**同一实例连续读**：
 
-| 文档（页） | 候选 | 读数 |
-| --- | --- | --- |
+| 文档（页）                              | 候选  | 读数                                                                                                                                                                                                                                                                   |
+| --------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `prose_then_blank.pdf`（散文段 / 空页） | **0** | `rejectedPages` **字段存在**：第 1 页 `reason='too-few-columns'`、`counts={columns:1, itemCount:5, rows:5, spanningRows:0}`；第 2 页 `reason='blank-page'`、`counts={columns:0, itemCount:0, rows:0, spanningRows:0}`；两页都带 `thresholds={minColumns:2, minRows:2}` |
-| `table_only.pdf`（1 页真表） | **1** | `page=1 method=text-layer-row-column-clustering rows=6 columns=4 confidence=high`；`rejectedPages` **字段不存在** |
-| `table_then_prose.pdf`（真表 + 散文页） | **1** | 同上 1 条候选且 `rejectedPages` **字段不存在**——扫描里确实有一页没出候选，但理由被**整段抑制**（不是空数组） |
+| `table_only.pdf`（1 页真表）            | **1** | `page=1 method=text-layer-row-column-clustering rows=6 columns=4 confidence=high`；`rejectedPages` **字段不存在**                                                                                                                                                      |
+| `table_then_prose.pdf`（真表 + 散文页） | **1** | 同上 1 条候选且 `rejectedPages` **字段不存在**——扫描里确实有一页没出候选，但理由被**整段抑制**（不是空数组）                                                                                                                                                           |
 
 判据（`VERDICTS`）：`{"prose_then_blank": true, "table_only": true, "table_then_prose": true}`。原始输出留存
 `/tmp/ps-q1/q1-probe.out.txt`。
@@ -44,10 +44,10 @@ PURESCIENCE_STORAGE_ROOT=/tmp/ps-q1-root PURESCIENCE_WEB_PORT=44185 npm run dev:
 
 ## 三、隔离证明（真实数据根全程未被写）
 
-| 位置 | 读数 |
-| --- | --- |
-| `/tmp/ps-q1/data/.pdfs/` | **3** 个文件（`ba5e5f4c21eb1ee7` / `9e33cadde4a3a388` / `27186c9f38786250`），时间戳均为本次 |
-| `~/PureScience-DEV/.pdfs/` | **18** 个（测前基线同为 **18**），最新一个仍是 **Sep 23 17:56**，本次未新增 |
+| 位置                       | 读数                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------- |
+| `/tmp/ps-q1/data/.pdfs/`   | **3** 个文件（`ba5e5f4c21eb1ee7` / `9e33cadde4a3a388` / `27186c9f38786250`），时间戳均为本次 |
+| `~/PureScience-DEV/.pdfs/` | **18** 个（测前基线同为 **18**），最新一个仍是 **Sep 23 17:56**，本次未新增                  |
 
 ## 四、没做与边界
 

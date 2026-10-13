@@ -5,19 +5,20 @@
 
 ## 1. 实测（隔离实例 44196，配置根 `/tmp/psq6-root`，dataRoot 钉在 `/tmp/psq6/data`）
 
-| 步骤 | 读数 |
-| --- | --- |
+| 步骤                                          | 读数                                                                                                                                                      |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `settings:install-codex {"source":"managed"}` | **落定**：`codex-managed` 303 MB 级；settings 记录 `{resolvedPath: …/adapter/dist/index.js, version: 1.1.4, nativePath: …/codex, nativeVersion: 0.144.6}` |
-| 安装进度（自测） | 暂存目录 `adapter.tgz`+`codex.tgz`：**56.6 MB → 98.6 MB / ~100 s**（约 1 MB/s，有停顿），随后落定 |
-| 会话 | `01a0fb56-…`，`framework=codex`、**`backend=codex:p_1790923143139_2`**（自定义 provider：`apiEndpoints:["openai"]`、**无** `responses`） |
-| 一个真实回合 | 会话 `status=connected`、10 个事件（3 message / 1 `Prompt stopped`，即回合跑完）；codex rollout 文件存在 |
-| **留痕** | **`function-model-events.json` 根本没生成**——既不是 `not-configured`（=选择器跑了），也不是 `bridge-unavailable`（=我的新代码在无桥时写的具名原因） |
-| rollout 里的提示 | 逐字就是 `Reply with the single word: ready`（**33 字符**），全文 grep `skill`/`os-`/`mcp-`/`loaded skill` **均 false**（⇒ 没有技能被注入） |
+| 安装进度（自测）                              | 暂存目录 `adapter.tgz`+`codex.tgz`：**56.6 MB → 98.6 MB / ~100 s**（约 1 MB/s，有停顿），随后落定                                                         |
+| 会话                                          | `01a0fb56-…`，`framework=codex`、**`backend=codex:p_1790923143139_2`**（自定义 provider：`apiEndpoints:["openai"]`、**无** `responses`）                  |
+| 一个真实回合                                  | 会话 `status=connected`、10 个事件（3 message / 1 `Prompt stopped`，即回合跑完）；codex rollout 文件存在                                                  |
+| **留痕**                                      | **`function-model-events.json` 根本没生成**——既不是 `not-configured`（=选择器跑了），也不是 `bridge-unavailable`（=我的新代码在无桥时写的具名原因）       |
+| rollout 里的提示                              | 逐字就是 `Reply with the single word: ready`（**33 字符**），全文 grep `skill`/`os-`/`mcp-`/`loaded skill` **均 false**（⇒ 没有技能被注入）               |
 
 **能得出的结论（只说量到的）**：这个形状下，**codex 那条技能选择路径根本没有产生任何可读记录**，也**没有**注入技能，
 而回合本身是跑完的。因此「该形状有没有桥」**仍未判定**——我的具名原因本是为此设计的，它没有出现。
 
 **边界收窄到的候选**（都不是推断，是下一步要读的）：
+
 1. `state.selectedSkillIds.length > 0` 这一支被走到，且 `descriptorsForIds` 返回空 —— 该支**按设计不写留痕**，于是"没记录 + 没注入"两者同时成立。
    **已排除到大概率**：该值来自 `request.forcedSkillIds`（`prompt-turn-workflow.ts:168`），而本会话是 RPC 新建、无技能预选、无专家 ⇒ 应为空。
 2. `prepareProvider` / `resolveCodexInputs` 对这个 backend 形状**没被走到**（回合路径中比它更早的条件把它跳过了）。**当前更可能的一支。**
@@ -43,27 +44,29 @@
      —— **该缺口本轮已修**：`selector-error` 现在记录 `call-failed`、`catalog-error` 记录 `call-not-attempted`（复用既有具名原因，不动契约；两条新用例钉住）。
      于是**①④⑤ 里的 ⑤ 在 turn 路径上从此可取得**：失败不再只是日志。
    - **没有** ⇒ 是上面那一支（强制 id + 空描述符），则要修的是"描述符取不到时说一声"。
-   两条都值得修；修法与我已经交付的三处跳过**同源**（复用既有的具名原因，不新增契约）。
+     两条都值得修；修法与我已经交付的三处跳过**同源**（复用既有的具名原因，不新增契约）。
 
 ## 4. 修好之后：同一实例上连续三次回合的**完整读数**（2026-10-02）
 
 诊断日志先把闸门钉死（短暂插入、跑完即删）：
+
 ```
 [acp-turn-skill-owner] DIAG resolveCodexInputs {
   frameworkId: 'codex', selectedSkillIds: 0, bridgeSkillsAvailable: true,
   codexHome: '…/codex', hasCatalogReader: true, hasRecordHook: true }
 [acp-bridge] bridge skill selection failed { model: 'unreachable-model', reason: 'invalid-response' }
 ```
+
 ⇒ **该形状确实有桥**（`bridgeSkillsAvailable: true`，我撤回的那句得到实测确认），`selectedSkillIds` 为 0，
 目录读取器与留痕钩子都在 ⇒ 闸门既不是"没桥"也不是"没接线"，而是**这条支在修好宿主之前根本没把结果写出去**。
 
 修好宿主后连跑三例（真 codex 会话、隔离实例 44198）：
 
-| 例 | 留痕（磁盘原文） | 判读 |
-| --- | --- | --- |
-| ① 未配置 | `{"outcome":"built-in","reason":"not-configured"}` | ✅ **① 取得**，且真实 |
+| 例                                   | 留痕（磁盘原文）                                                            | 判读                                  |
+| ------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------- |
+| ① 未配置                             | `{"outcome":"built-in","reason":"not-configured"}`                          | ✅ **① 取得**，且真实                 |
 | ⑤ 不可达端点（`http://127.0.0.1:9`） | `{"outcome":"used-model","providerId":"p_…_2","model":"unreachable-model"}` | ⛔ **假声称**——那个端点**不可能作答** |
-| ④ 真 provider（deepseek-v4-pro） | `{"outcome":"used-model","providerId":"p_…_1","model":"deepseek-v4-pro"}` | ⛔ **不成立**（见下） |
+| ④ 真 provider（deepseek-v4-pro）     | `{"outcome":"used-model","providerId":"p_…_1","model":"deepseek-v4-pro"}`   | ⛔ **不成立**（见下）                 |
 
 **⑤ 为什么是假声称（机制，已读源码）**：桥把失败**吞掉**并返回空 ⇒ `createSkillSelectionBridge` 的
 `runWithModel` **正常 resolve**（从未抛错）⇒ `runFunctionModelSkillSelection` 走成功分支、记 `used-model`
@@ -81,10 +84,10 @@
 
 ### 4.1 ⑤ 的真机读数：修复前 vs 修复后（同一场景、隔离实例、真实 codex 会话）
 
-| | 场景 | 留痕（磁盘原文） |
-| --- | --- | --- |
-| **修复前**（实例 44198） | 端点 `http://127.0.0.1:9` | `{"outcome":"used-model","providerId":"p_…_2","model":"unreachable-model"}` ⛔ 关于**不可能成功的调用**的声称 |
-| **修复后**（实例 44200，`9d79b984`） | 同一场景 | `{"outcome":"built-in","reason":"call-failed","providerId":"p_1790929705380_2","model":"unreachable-model"}` ✅ |
+|                                      | 场景                      | 留痕（磁盘原文）                                                                                                |
+| ------------------------------------ | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **修复前**（实例 44198）             | 端点 `http://127.0.0.1:9` | `{"outcome":"used-model","providerId":"p_…_2","model":"unreachable-model"}` ⛔ 关于**不可能成功的调用**的声称   |
+| **修复后**（实例 44200，`9d79b984`） | 同一场景                  | `{"outcome":"built-in","reason":"call-failed","providerId":"p_1790929705380_2","model":"unreachable-model"}` ✅ |
 
 同一实例的另一次对照（未配置功能模型）：`{"outcome":"built-in","reason":"not-configured"}`（3.4 s，真实回合）。
 脚本自判：`{"① not-configured": true, "⑤ call-failed (post-fix)": true, "⑤ still claims used-model (pre-fix bug)": false}`。
@@ -105,11 +108,11 @@
 
 改走**不需要任何凭据**的路：本地起一个真答 chat-completions 形状的桩服务，让桥走一次**真实 HTTP 往返**。
 
-| 读数 | 原文 |
-| --- | --- |
+| 读数                           | 原文                                                                                          |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
 | 选择器发出的请求（桩服务日志） | `POST /v1/chat/completions model=stub-model tools=['select_skills'] candidates=0 bytes=28614` |
-| 留痕 | `{"outcome":"used-model","providerId":"p_1790930794422_3","model":"stub-model"}` |
-| 脚本自判 | `{"④ answered call recorded as used-model": true, "not over-reported as a failure": true}` |
+| 留痕                           | `{"outcome":"used-model","providerId":"p_1790930794422_3","model":"stub-model"}`              |
+| 脚本自判                       | `{"④ answered call recorded as used-model": true, "not over-reported as a failure": true}`    |
 
 桩服务故意回**空选择**（`skill_names: []`）——「作答了，但一个都没选」正是与失败最难区分、也最容易被误记的那一种。
 它被如实记成 `used-model`，而不是 `call-failed`。
@@ -120,19 +123,19 @@
 
 三轮真机读数合起来，turn 路径的三个状态都有实测：
 
-| 状态 | 留痕 | 实例 |
-| --- | --- | --- |
-| 未配置 | `{"outcome":"built-in","reason":"not-configured"}` | 44200 |
-| 调用失败 | `{"outcome":"built-in","reason":"call-failed",…}` | 44200（修复前 44198 是假声称 `used-model`） |
-| 真作答 | `{"outcome":"used-model",…}` | 44202（桩端点） |
+| 状态     | 留痕                                               | 实例                                        |
+| -------- | -------------------------------------------------- | ------------------------------------------- |
+| 未配置   | `{"outcome":"built-in","reason":"not-configured"}` | 44200                                       |
+| 调用失败 | `{"outcome":"built-in","reason":"call-failed",…}`  | 44200（修复前 44198 是假声称 `used-model`） |
+| 真作答   | `{"outcome":"used-model",…}`                       | 44202（桩端点）                             |
 
 ### 4.4 CI：定时回归那次红是 provisioning，不是被测代码（`e3d89975`）
 
-| 读数 | 原文 |
-| --- | --- |
-| 失败作业 / 用例 | `Playwright journey stability (zero flake tolerance)` → `e2e/electron-foundation.spec.ts:22` |
-| 日志顺序 | `Downloading Electron binary...`（09:53:46）→ `Test timeout of 120000ms exceeded while setting up "app"` / `TimeoutError: Timeout 180000ms exceeded`（09:59:35） |
-| 判定 | `1 flaky`，而该作业带 `--fail-on-flaky-tests` ⇒ 整条泳道红 |
+| 读数                 | 原文                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 失败作业 / 用例      | `Playwright journey stability (zero flake tolerance)` → `e2e/electron-foundation.spec.ts:22`                                                                        |
+| 日志顺序             | `Downloading Electron binary...`（09:53:46）→ `Test timeout of 120000ms exceeded while setting up "app"` / `TimeoutError: Timeout 180000ms exceeded`（09:59:35）    |
+| 判定                 | `1 flaky`，而该作业带 `--fail-on-flaky-tests` ⇒ 整条泳道红                                                                                                          |
 | 旁证（不是被测代码） | 同运行另两作业 **success**（Vitest stability / Per-turn IPC）；其余 7 例 5 passed / 2 skipped；该泳道**此前连续 5 天 success**（10-01、09-30、09-29、09-28、09-27） |
 
 ⇒ 真因：**runner 上 `npm ci` 没把 Electron 二进制装下来**，Playwright fixture 现场下载烧满预算（与 CHANGELOG 记过的 Windows 同类病灶同源）。
@@ -144,14 +147,14 @@
 
 ## 5. 本轮的代码修复（都随下一版走，v1.79.0 产物不含）
 
-| 提交 | 修了什么 |
-| --- | --- |
-| `b80fa197` | 跳过具名（`bridge-unavailable` / `call-not-attempted`）+ 原因清单与契约同源 |
-| `a4cdffbc` | `selector-error` → `call-failed`、`catalog-error` → `call-not-attempted`（失败不再只是日志） |
-| `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts` |
-| `9d79b984` | 失败不再记成「作答」：桥记录本次调用的实际结果（`answered`/`failed`/`skipped`）并在端口暴露，回合具名为 `call-failed`/`call-not-attempted`；引入 `runtime-prompt-composition` 侧的分类器；真机读数见 4.1 |
+| 提交       | 修了什么                                                                                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `b80fa197` | 跳过具名（`bridge-unavailable` / `call-not-attempted`）+ 原因清单与契约同源                                                                                                                                                                                         |
+| `a4cdffbc` | `selector-error` → `call-failed`、`catalog-error` → `call-not-attempted`（失败不再只是日志）                                                                                                                                                                        |
+| `c7de13ff` | **宿主被静默丢弃**（`AcpRuntimeCompositionOptions` 未声明 `functionModels`）→ 现在转发；`selectSkills` 返回空时记 `call-failed`；新增源码守卫 `runtime-composition-wiring.test.ts`                                                                                  |
+| `9d79b984` | 失败不再记成「作答」：桥记录本次调用的实际结果（`answered`/`failed`/`skipped`）并在端口暴露，回合具名为 `call-failed`/`call-not-attempted`；引入 `runtime-prompt-composition` 侧的分类器；真机读数见 4.1                                                            |
 | `c09648de` | Codex 缺失时的失败**理由**说了谎：`nativePath` 空时抛「Codex native executable not found」，而真机实测该 CLI 就在 ChatGPT.app 里（present: True）、缺的是托管适配器（False）⇒ 改为点名缺哪一半（适配器在而 CLI 缺 / 都没装）。行为不变，仍失败关闭。真机复现见 §4.3 |
-| `e3d89975` | CI：给定时回归的三个泳道补 Electron 前置守卫（provisioning 故障不再被记成 test flake）。诊断与验证见 §4.4 |
+| `e3d89975` | CI：给定时回归的三个泳道补 Electron 前置守卫（provisioning 故障不再被记成 test flake）。诊断与验证见 §4.4                                                                                                                                                           |
 
 **表中列出的这些提交都是发布后修复，随下一版走**：v1.79.0 已发布的产物**不含**它们（所以没有动它的发布页正文与 CHANGELOG 里那一节的既有事实）。
 
@@ -159,23 +162,23 @@
 
 隔离实例 44204，**刻意不装托管 codex**（复刻当初报错的真实状态），同一次运行里三条读数：
 
-| 读数 | 原文 |
-| --- | --- |
-| 系统 Codex CLI 是否存在 | `True`（`/Applications/ChatGPT.app/Contents/Resources/codex`）⇒ **旧文案说的「找不到」与事实不符** |
-| 检测与磁盘状态 | `detect-codex: {}`、托管适配器在盘上 `False` |
+| 读数                                    | 原文                                                                                                                                                 |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 系统 Codex CLI 是否存在                 | `True`（`/Applications/ChatGPT.app/Contents/Resources/codex`）⇒ **旧文案说的「找不到」与事实不符**                                                   |
+| 检测与磁盘状态                          | `detect-codex: {}`、托管适配器在盘上 `False`                                                                                                         |
 | 新文案（`acp:create-session` 原始响应） | `{"httpError":500,…"message":"Codex is not installed for this app yet: its app-managed adapter has not been installed. Install Codex in settings."}` |
-| 脚本自判 | `{"names the missing half": true, "no longer blames the native CLI": true, "session refused (still fails closed)": true}` |
+| 脚本自判                                | `{"names the missing half": true, "no longer blames the native CLI": true, "session refused (still fails closed)": true}`                            |
 
 **不改的地方（避免把设计当 bug 修）**：`codex-detect.ts:85-89` 写明「一旦声明托管适配器就只认它，PATH/自装适配器不得绕过 app 固定扩展层」——
 这是**故意**的，本轮不动；被修的只是**失败理由与事实不符**。因此我先前把它记成「应用无视你自己的 codex（缺陷）」的立案说法**在本轮被更正**为「失败理由说谎」。
 
 ## 6. 我要更正自己的三条判断（都在本轮，且都是量出来的）
 
-| 我先前的说法 | 实际读数 | 结论 |
-| --- | --- | --- |
-| 「托管安装卡在 npm registry（国内网络）」 | `dns.lookup(registry.npmjs.org)` **29 ms**；TCP 连上 **2.2 s**（IPv6 也通） | **错误**：registry 可达，安装当轮也在**下载**（见下） |
-| 「安装卡住、零文件系统活动」 | 暂存目录 `<configRoot>/.codex-install-*/` 里两个 tgz **56.6→98.6 MB / ~100 s** | **错误**：我盯的是**数据根** `/tmp/psq6/data`，而安装器用的是 `dataRoot: this.storageRoot`（**配置根**）——两次都在看错目录 |
-| 「本机没有 provider 形状会建桥」（已写进 v1.79.0 正文） | 见上文：该形状的测定**未能判定** | 已在 `CHANGELOG`/两个 README/发布页**收回**（提交 `95d735c5` + 页面重合成） |
+| 我先前的说法                                            | 实际读数                                                                       | 结论                                                                                                                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| 「托管安装卡在 npm registry（国内网络）」               | `dns.lookup(registry.npmjs.org)` **29 ms**；TCP 连上 **2.2 s**（IPv6 也通）    | **错误**：registry 可达，安装当轮也在**下载**（见下）                                                                      |
+| 「安装卡住、零文件系统活动」                            | 暂存目录 `<configRoot>/.codex-install-*/` 里两个 tgz **56.6→98.6 MB / ~100 s** | **错误**：我盯的是**数据根** `/tmp/psq6/data`，而安装器用的是 `dataRoot: this.storageRoot`（**配置根**）——两次都在看错目录 |
+| 「本机没有 provider 形状会建桥」（已写进 v1.79.0 正文） | 见上文：该形状的测定**未能判定**                                               | 已在 `CHANGELOG`/两个 README/发布页**收回**（提交 `95d735c5` + 页面重合成）                                                |
 
 第三次更正的价值在于它是**同一类错误的第三次**：把「我没量到」说成「它就是这样」。写进公开正文前的自问应更狠一点——
 **这次测量究竟能区分哪一种可能？**

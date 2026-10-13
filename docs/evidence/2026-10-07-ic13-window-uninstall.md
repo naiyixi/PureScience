@@ -6,13 +6,13 @@
 
 ## 一、真实事实（对源核实，不是推断）
 
-| 事实 | 依据 |
-| --- | --- |
-| 准入此前**只**从会话绑定取目标环境，请求里的 `environment` 被覆盖 | `package-admission.ts`（`binding?.source === 'managed' && binding.envName ? … : default`） |
-| 具名环境**可以**卸载（只有托管默认环境是 additive-only） | `package-manager.ts:748-773`（`isDefaultEnv` 门） |
-| 窗口（无会话）此前**按名拒绝**具名环境 | 原 `runtime-selection-workflows.ts` 的 `addressesDefault` 门 |
-| 面板的具名环境行**早就有**「Packages」入口 | `RuntimesPanel.tsx`（`data-testid="named-env-packages"`） |
-| 面板列表与准入判定必须**同一份来源** | 现在两者都走 `NotebookEnvironmentManagementOwner.resolveNamedEnvironment` / `manage({action:'list'})` |
+| 事实                                                              | 依据                                                                                                  |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 准入此前**只**从会话绑定取目标环境，请求里的 `environment` 被覆盖 | `package-admission.ts`（`binding?.source === 'managed' && binding.envName ? … : default`）            |
+| 具名环境**可以**卸载（只有托管默认环境是 additive-only）          | `package-manager.ts:748-773`（`isDefaultEnv` 门）                                                     |
+| 窗口（无会话）此前**按名拒绝**具名环境                            | 原 `runtime-selection-workflows.ts` 的 `addressesDefault` 门                                          |
+| 面板的具名环境行**早就有**「Packages」入口                        | `RuntimesPanel.tsx`（`data-testid="named-env-packages"`）                                             |
+| 面板列表与准入判定必须**同一份来源**                              | 现在两者都走 `NotebookEnvironmentManagementOwner.resolveNamedEnvironment` / `manage({action:'list'})` |
 
 ## 二、本轮观测值（实跑读数即结论）
 
@@ -39,14 +39,14 @@
 
 ### 2.2 单测与门禁
 
-| 项 | 读数 |
-| --- | --- |
-| 定向四套件（准入 / 包操作 / 环境管理 / 工作流） | **50 passed**（新增 6 条：准入 3 / 工作流 2 / 环境管理 1） |
-| 模块目录 `src/main/notebook` | **82 文件 / 1378 passed ｜ 99 skipped**，零失败 |
-| 渲染设置套件 `src/renderer/src/pages/settings` | **63 文件 / 664 passed** |
-| 双 typecheck | 净（`typecheck:node` 覆盖 `e2e/**/*`，**抓到过两处真错**：新 stub 里 `method:'micromamba'` 不在并集；spec 里 `namedClose` 重复声明） |
-| `eslint --no-cache .` | **0 error**；触碰文件 0 problem |
-| 变异验证 | 把放宽那段回退 ⇒ 新用例**红**（1 failed ｜ 15 passed），恢复 ⇒ 16 passed |
+| 项                                              | 读数                                                                                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 定向四套件（准入 / 包操作 / 环境管理 / 工作流） | **50 passed**（新增 6 条：准入 3 / 工作流 2 / 环境管理 1）                                                                           |
+| 模块目录 `src/main/notebook`                    | **82 文件 / 1378 passed ｜ 99 skipped**，零失败                                                                                      |
+| 渲染设置套件 `src/renderer/src/pages/settings`  | **63 文件 / 664 passed**                                                                                                             |
+| 双 typecheck                                    | 净（`typecheck:node` 覆盖 `e2e/**/*`，**抓到过两处真错**：新 stub 里 `method:'micromamba'` 不在并集；spec 里 `namedClose` 重复声明） |
+| `eslint --no-cache .`                           | **0 error**；触碰文件 0 problem                                                                                                      |
+| 变异验证                                        | 把放宽那段回退 ⇒ 新用例**红**（1 failed ｜ 15 passed），恢复 ⇒ 16 passed                                                             |
 
 ## 三、本轮**没**证到什么（具名边界，不冒充）
 

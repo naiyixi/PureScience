@@ -24,6 +24,7 @@
 [panel-reading] partition=一区 rows: ["Nature 0028-0836 Unknown 一区(2024 · 中科院文献情报中心) Unknown 64.8(2023 · Journal Citation Reports) Unknown"]
 [panel-reading] year=2022 rows: ["Nature 0028-0836 Unknown Unknown Unknown 62.1(2022 · Journal Citation Reports) Unknown", …]
 ```
+
 ⇒ 面板显示**来源的原始写法**（`Nature` / `Nature Communications`），不再是规范化后的全小写。
 （顺带：筛选/年份三条读数在改名后仍全部成立。）
 
@@ -45,16 +46,17 @@
 
 逐条对上计划 §3 的验收口径：
 
-| 判据 | 读数 | 结论 |
-| --- | --- | --- |
-| **近似名不会被自动吞并** | 合并前两行、`aliases: 0` | ✅ 正向证据（两本近似刊各占一行） |
-| **显式合并生效** | `Moved 1 metrics and 0 references; … now resolves here.` + 表格两行→一行 + 库快照只剩 `["nature"]` | ✅ |
-| **旧名仍能解析** | 别名行存在且指向目标刊（`aliasTarget = 目标 id`） | ✅（别名解析的单测覆盖 `by-alias`） |
-| **无空壳** | 面板上有可选行 → 确认 → 具名结果文案（`merge result` 那句来自应用自己的返回） | ✅ |
+| 判据                     | 读数                                                                                               | 结论                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **近似名不会被自动吞并** | 合并前两行、`aliases: 0`                                                                           | ✅ 正向证据（两本近似刊各占一行）   |
+| **显式合并生效**         | `Moved 1 metrics and 0 references; … now resolves here.` + 表格两行→一行 + 库快照只剩 `["nature"]` | ✅                                  |
+| **旧名仍能解析**         | 别名行存在且指向目标刊（`aliasTarget = 目标 id`）                                                  | ✅（别名解析的单测覆盖 `by-alias`） |
+| **无空壳**               | 面板上有可选行 → 确认 → 具名结果文案（`merge result` 那句来自应用自己的返回）                      | ✅                                  |
 
 ## 三、本片**新发现**（我加的读数里冒出来的，未被该片覆盖，立案）
 
 **同一 kind + 同一 year 的两条主张合并后，视图静默挑了一条。**
+
 - 合并前：`Nature` 的影响因子是 **64.8 (2023)**；
 - 合并后：同一行显示 **16.6 (2023)**（来自被并入的 `Nature Communications`），而库里两条主张**都在**
   （`claims: [64.8, 16.6]`）。
@@ -88,11 +90,11 @@
 
 老账把这三种拒绝写成"真机未取、立案"。本轮**复核了这个理由是否成立**，结论是**该理由成立，应当归档而不是继续挂着**：
 
-| 拒绝 | 为什么**不能**从一个窗口诚实地造出来 | 现覆盖 |
-| --- | --- | --- |
-| `self-merge` | **UI 在 store 之前就挡住了**：源与目标同刊时确认键 `disabled`（本轮已读到 `confirmDisabled` 的真值），store 永远看不到这个请求 ⇒ 从窗口"驱动"它只能靠绕过界面，那就不是用户路径的读数 | jsdom：`JournalMetricsPanel.render.test.tsx:277`「refuses to merge a journal into itself, and never calls the store that way」 |
-| `alias-conflict` | 需要"目标刊的名字已经是另一个刊的别名"。而别名是合并写入的，一旦写成，**按该名字再导入不会再造出一个新刊**（会被别名解析回原刊）⇒ 单窗口无合法路径造出该状态 | jsdom：`:349`「prints a named refusal together with the store own sentence」（含 `already an alias of journal j-third`） |
-| `source-not-found` / `target-not-found` | 需要**第二个行为者**：在选好候选与确认之间，那本刊被并发删掉/合并掉 | jsdom：`:250`「stays inert once the journal it merged away is gone, and still prints the report」 |
+| 拒绝                                    | 为什么**不能**从一个窗口诚实地造出来                                                                                                                                                  | 现覆盖                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `self-merge`                            | **UI 在 store 之前就挡住了**：源与目标同刊时确认键 `disabled`（本轮已读到 `confirmDisabled` 的真值），store 永远看不到这个请求 ⇒ 从窗口"驱动"它只能靠绕过界面，那就不是用户路径的读数 | jsdom：`JournalMetricsPanel.render.test.tsx:277`「refuses to merge a journal into itself, and never calls the store that way」 |
+| `alias-conflict`                        | 需要"目标刊的名字已经是另一个刊的别名"。而别名是合并写入的，一旦写成，**按该名字再导入不会再造出一个新刊**（会被别名解析回原刊）⇒ 单窗口无合法路径造出该状态                          | jsdom：`:349`「prints a named refusal together with the store own sentence」（含 `already an alias of journal j-third`）       |
+| `source-not-found` / `target-not-found` | 需要**第二个行为者**：在选好候选与确认之间，那本刊被并发删掉/合并掉                                                                                                                   | jsdom：`:250`「stays inert once the journal it merged away is gone, and still prints the report」                              |
 
 **判定**：这三条**不是"该取未取的读数"，而是"按当前 UI 不可能从单窗口合法到达的状态"**。
 按本项目口径（能取真机读数就取，取不到就具名立案），此处**具名结论 = 由 jsdom 驱动 + 理由已复核**，

@@ -11,10 +11,10 @@
 **已修，并取了真机读数；而且读数命中的正是当初发现该问题的那条路径（别名合并）。**
 两次读数都在同一支认证 spec 里、同一台机器、同一个隔离实例上取得：
 
-| 读数 | 通道/路径 | 窗口原文 |
-| --- | --- | --- |
-| ① 别名合并（原发现场景） | 真实合并 → 面板重读 | `Naturealso known as nature communications 0028-0836 Unknown Unknown Unknown 16.6 (2023 · Journal Citation Reports) also 1 also 64.8 (2023 · Journal Citation Reports) Unknown` |
-| ② 同刊同源冲突（新增用例） | 走用户导入路径造两条同年主张 | `Nature 0028-0836 Unknown Unknown Unknown 16.6 (2023 · CAS journal metrics) also 1 also 64.8 (2023 · Journal Citation Reports) Unknown` |
+| 读数                       | 通道/路径                    | 窗口原文                                                                                                                                                                        |
+| -------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ① 别名合并（原发现场景）   | 真实合并 → 面板重读          | `Naturealso known as nature communications 0028-0836 Unknown Unknown Unknown 16.6 (2023 · Journal Citation Reports) also 1 also 64.8 (2023 · Journal Citation Reports) Unknown` |
+| ② 同刊同源冲突（新增用例） | 走用户导入路径造两条同年主张 | `Nature 0028-0836 Unknown Unknown Unknown 16.6 (2023 · CAS journal metrics) also 1 also 64.8 (2023 · Journal Citation Reports) Unknown`                                         |
 
 两处都**同时**出现两个值 + 各自的 source，并带冲突标记 `also 1`（`data-testid="journal-metric-conflict"`，
 备选行 `data-testid="journal-metric-alternative"` 计数 1）。辅证：真实库里合并后

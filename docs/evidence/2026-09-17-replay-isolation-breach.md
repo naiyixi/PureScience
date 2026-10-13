@@ -18,6 +18,7 @@ replay-owner.execute({code, cwd=隔离目录})
 ```
 
 两个关键事实：
+
 1. `session-lifecycle.ts` 给会话的 `cwd` 是 **`document.dataRoot`**，不是请求里的 `workspaceCwd`；
 2. `repository.normalizeDocument` 里 `dataRoot = getNotebookDataRoot(storageRoot, projectName, sessionId)` —— **永远由存储根派发**，与 `workspaceCwd` 无关（`workspaceCwd: request.workspaceCwd ?? document.workspaceCwd` 只是记一笔）。
 
@@ -150,4 +151,3 @@ file:       replay_probe.csv match
 ### 7.4 本轮新提交
 
 `d6fde32`（composition 夹具测试）· `d5576ab`（补 lint）· `c7a303f`（证据）· 本轮隔离真修（见提交信息）。
-

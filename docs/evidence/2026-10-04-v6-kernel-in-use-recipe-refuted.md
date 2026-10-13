@@ -23,13 +23,13 @@ Removed 'lock-import-env'.
 
 **这句推理的后半段是错的。** 真机读数：
 
-| 步骤 | 读数 |
-|---|---|
-| 导入（复用 `lock-import.spec.ts` 的锁 + 缓存） | `Imported "lock-import-env" — 82 packages (82 from cache, 0 downloaded).` |
-| 造真会话 | `sessions=1 id=e2e-session-1 cwd=…/PureScience-DEV/workspaces/<uuid>` |
-| **直传 environment 起内核** | **`ok=true`**，返回真 `runId=notebook-run-…`、`cellId=…`、`kernelKind=python` |
-| 打开设置 → 具名环境行可见 | ✅ |
-| 点移除 → 确认 | **成功**：`Removed "lock-import-env".`，**无 error，无拒绝** |
+| 步骤                                           | 读数                                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| 导入（复用 `lock-import.spec.ts` 的锁 + 缓存） | `Imported "lock-import-env" — 82 packages (82 from cache, 0 downloaded).`     |
+| 造真会话                                       | `sessions=1 id=e2e-session-1 cwd=…/PureScience-DEV/workspaces/<uuid>`         |
+| **直传 environment 起内核**                    | **`ok=true`**，返回真 `runId=notebook-run-…`、`cellId=…`、`kernelKind=python` |
+| 打开设置 → 具名环境行可见                      | ✅                                                                            |
+| 点移除 → 确认                                  | **成功**：`Removed "lock-import-env".`，**无 error，无拒绝**                  |
 
 ⇒ 「在这个环境上执行过代码」**不等于**「这个环境被 `isLive` 认作在用」。两者之间还有一环没走通。
 
@@ -42,6 +42,7 @@ Removed 'lock-import-env'.
 
 **分辨配方**（下轮直接执行）：`execute` 之后立刻读
 `window.api.notebook.state({ sessionId, workspaceCwd })` 并把 `kernelStatusEntries` 逐条打印——
+
 - 有条目且 `status !== 'terminated'` 但**后缀 ≠ `lock-import-env`** ⇒ 成因 2（键名），这是**产品缺陷**，
   该修的是键名而不是测试；
 - 条目已 `terminated`/不存在 ⇒ 成因 1，取证要**让内核在移除那一刻仍活着**（走界面把该环境绑成会话
@@ -147,4 +148,3 @@ spec 里这四段在真机上**全部验证通过**，下轮照用：
    「哪天内核起不来了」而假装通过——那种情况会走另一支并如实报出来。
 
 **立案档 V6 一行据此标记完成**（读数已取，配方已证）。
-

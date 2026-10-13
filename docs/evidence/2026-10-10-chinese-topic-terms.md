@@ -37,52 +37,52 @@ GET https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&li
 
 ## 二、逐条（表 ↔ 本档互核）
 
-| 中文（canonical） | english                          | source          |
-| ----------------- | -------------------------------- | --------------- |
-| 细胞凋亡          | apoptosis                        | mesh:D017209    |
-| 自噬              | autophagy                        | mesh:D001343    |
-| 氧化应激          | oxidative stress                 | mesh:D018384    |
-| 生物标志物        | biomarkers                       | mesh:D015415    |
-| 免疫治疗          | immunotherapy                    | mesh:D007167    |
-| 血管生成          | angiogenesis                     | mesh:D000096482 |
-| 细胞增殖          | cell proliferation               | mesh:D049109    |
-| 细胞周期          | cell cycle                       | mesh:D002453    |
-| 细胞衰老          | cellular senescence              | mesh:D016922    |
-| 细胞焦亡          | pyroptosis                       | mesh:D000069292 |
-| 铁死亡            | ferroptosis                      | mesh:D000079403 |
-| 自噬体            | autophagosomes                   | mesh:D000071182 |
-| 肿瘤转移          | neoplasm metastasis              | mesh:D009362    |
-| 肿瘤微环境        | tumor microenvironment           | mesh:D059016    |
-| 抗药性            | drug resistance                  | mesh:D004351    |
-| 炎症              | inflammation                     | mesh:D007249    |
-| 炎症因子          | inflammation mediators           | mesh:D018836    |
-| 细胞因子          | cytokines                        | mesh:D016207    |
-| 肠道菌群          | gastrointestinal microbiome      | mesh:D000069196 |
-| 基因突变          | mutation                         | mesh:D009154    |
-| 基因表达          | gene expression                  | mesh:D015870    |
-| DNA损伤           | DNA damage                       | mesh:D004249    |
-| 信号转导          | signal transduction              | mesh:D015398    |
-| 内质网应激        | endoplasmic reticulum stress     | mesh:D059865    |
+| 中文（canonical） | english                           | source          |
+| ----------------- | --------------------------------- | --------------- |
+| 细胞凋亡          | apoptosis                         | mesh:D017209    |
+| 自噬              | autophagy                         | mesh:D001343    |
+| 氧化应激          | oxidative stress                  | mesh:D018384    |
+| 生物标志物        | biomarkers                        | mesh:D015415    |
+| 免疫治疗          | immunotherapy                     | mesh:D007167    |
+| 血管生成          | angiogenesis                      | mesh:D000096482 |
+| 细胞增殖          | cell proliferation                | mesh:D049109    |
+| 细胞周期          | cell cycle                        | mesh:D002453    |
+| 细胞衰老          | cellular senescence               | mesh:D016922    |
+| 细胞焦亡          | pyroptosis                        | mesh:D000069292 |
+| 铁死亡            | ferroptosis                       | mesh:D000079403 |
+| 自噬体            | autophagosomes                    | mesh:D000071182 |
+| 肿瘤转移          | neoplasm metastasis               | mesh:D009362    |
+| 肿瘤微环境        | tumor microenvironment            | mesh:D059016    |
+| 抗药性            | drug resistance                   | mesh:D004351    |
+| 炎症              | inflammation                      | mesh:D007249    |
+| 炎症因子          | inflammation mediators            | mesh:D018836    |
+| 细胞因子          | cytokines                         | mesh:D016207    |
+| 肠道菌群          | gastrointestinal microbiome       | mesh:D000069196 |
+| 基因突变          | mutation                          | mesh:D009154    |
+| 基因表达          | gene expression                   | mesh:D015870    |
+| DNA损伤           | DNA damage                        | mesh:D004249    |
+| 信号转导          | signal transduction               | mesh:D015398    |
+| 内质网应激        | endoplasmic reticulum stress      | mesh:D059865    |
 | 上皮间质转化      | epithelial-mesenchymal transition | mesh:D058750    |
-| 干细胞            | stem cells                       | mesh:D013234    |
-| 外泌体            | exosomes                         | mesh:D055354    |
-| 甲基化            | methylation                      | mesh:D008745    |
-| 泛素化            | ubiquitination                   | mesh:D054875    |
-| 磷酸化            | phosphorylation                  | mesh:D010766    |
-| 糖基化            | glycosylation                    | mesh:D006031    |
-| 微小RNA           | microRNAs                        | mesh:D035683    |
-| 长链非编码RNA     | RNA, long noncoding              | mesh:D062085    |
+| 干细胞            | stem cells                        | mesh:D013234    |
+| 外泌体            | exosomes                          | mesh:D055354    |
+| 甲基化            | methylation                       | mesh:D008745    |
+| 泛素化            | ubiquitination                    | mesh:D054875    |
+| 磷酸化            | phosphorylation                   | mesh:D010766    |
+| 糖基化            | glycosylation                     | mesh:D006031    |
+| 微小RNA           | microRNAs                         | mesh:D035683    |
+| 长链非编码RNA     | RNA, long noncoding               | mesh:D062085    |
 
 表的行数与本档的行数由读源测试**双向**钉住（`documented.size === topics.length` + 逐行比对
 `english`/`source`）：任一边漂了、或两边一起改了其中一个字段，测试都红。
 
 ## 三、刻意未收（宁可缺不要错）
 
-| 词       | 为什么不收                                                                |
-| -------- | ------------------------------------------------------------------------- |
-| 分子机制 | MeSH `match=exact` **零命中** ⇒ 没有可核对的英文侧                        |
-| 免疫逃逸 | 最近的描述符是 `tumor escape`，**比中文词窄**（中文也指病原体免疫逃逸）    |
-| 信号通路 | `signal transduction` 是**过程**，通路是它跑的那个**结构**，不是一回事     |
+| 词       | 为什么不收                                                              |
+| -------- | ----------------------------------------------------------------------- |
+| 分子机制 | MeSH `match=exact` **零命中** ⇒ 没有可核对的英文侧                      |
+| 免疫逃逸 | 最近的描述符是 `tumor escape`，**比中文词窄**（中文也指病原体免疫逃逸） |
+| 信号通路 | `signal transduction` 是**过程**，通路是它跑的那个**结构**，不是一回事  |
 
 前两条与 method 批的处置一致（零命中不收）；第三条是「同形不同物」那一类，按前一批的判据
 （`基因表达` 不是 `基因表达谱` 的变体）**不做**。
@@ -100,11 +100,11 @@ GET https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&li
 
 **改后**（本批已进表）：
 
-| 连接器 | 请求              | 实际发出                | 回带 `kind` | 结果          |
-| ------ | ----------------- | ----------------------- | ----------- | ------------- |
-| PubMed | `细胞凋亡 肺癌`   | `apoptosis lung cancer` | `topic`+`indication` | **31,551** |
-| PubMed | `自噬 二甲双胍`   | `autophagy metformin`   | `topic`+`drug`       | **946**    |
-| arXiv  | `all:铁死亡`      | `all:ferroptosis`       | `topic`（前缀原地保留） | **6**   |
+| 连接器 | 请求            | 实际发出                | 回带 `kind`             | 结果       |
+| ------ | --------------- | ----------------------- | ----------------------- | ---------- |
+| PubMed | `细胞凋亡 肺癌` | `apoptosis lung cancer` | `topic`+`indication`    | **31,551** |
+| PubMed | `自噬 二甲双胍` | `autophagy metformin`   | `topic`+`drug`          | **946**    |
+| arXiv  | `all:铁死亡`    | `all:ferroptosis`       | `topic`（前缀原地保留） | **6**      |
 
 - 第一条把两件事同时钉住：新加的 **topic** 词与既有 **indication** 词在**同一次**改写里各自出现，
   `query_sent` 与真发出去的字符串逐字相同，且只发了 **1 次** HTTP。
@@ -121,10 +121,10 @@ PubMed 自噬 二甲双胍   → 具名拒答（点名 自噬），    http_call
 
 **拒答仍然按名，且新收的词不许把剩下的中文带过去**（两条都是 0 次请求）：
 
-| 请求                | 结果                                                                     |
-| ------------------- | ------------------------------------------------------------------------ |
+| 请求                | 结果                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------- |
 | `炎症因子 量子纠缠` | 拒答，点名 `量子纠缠`，并列出**这句里已经映射**的部分 `炎症因子→inflammation mediators` |
-| `免疫逃逸 肺癌`     | 拒答，点名 `免疫逃逸`（本批刻意未收的词），列出 `肺癌→lung cancer`        |
+| `免疫逃逸 肺癌`     | 拒答，点名 `免疫逃逸`（本批刻意未收的词），列出 `肺癌→lung cancer`                      |
 
 第二条是「未收 ≠ 阴性」的可跑证据：未收的主题词与改前**行为完全一致**（按名拒答、一个请求都不发）。
 

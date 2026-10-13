@@ -14,13 +14,13 @@
 
 八次里前七次失败的成因**全部落在探针侧**，逐条记下来免得重踩：
 
-| # | 现象 | 真因 |
-| --- | --- | --- |
-| 1–2 | 重启后 `runs: []` | 我**没传 `projectName`**；运行历史按 `(storageRoot, projectName, sessionId)` 解析（`repository.ts:80-85`），少一个字段就读到另一个根的空白历史 |
-| 3–4 | 单元格「在跑」这个前提从没成立 | 我在**默认环境还在准备**时就发单元格——应用自己报的原文：「The Python environment is still being prepared — retry shortly.」 |
-| 5 | `Invalid notebook path segment: Interrupted run` | 我的项目名**带空格**，被路径段校验拒 |
-| 6 | 等环境就绪等到超时 | 我盯的是 `notebook.state.environments`——而它**在首次运行前按设计就是空的**（V6 诊断量到过 `BEFORE any run: []`） |
-| 7 | 默认环境 15 次「still being prepared」 | 隔离实例的**默认环境要下载**才能就绪，本机网络到不了那些源；改走**缓存包导入具名环境**（本会话 V6 已验证单元格真能跑） |
+| #   | 现象                                             | 真因                                                                                                                                           |
+| --- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1–2 | 重启后 `runs: []`                                | 我**没传 `projectName`**；运行历史按 `(storageRoot, projectName, sessionId)` 解析（`repository.ts:80-85`），少一个字段就读到另一个根的空白历史 |
+| 3–4 | 单元格「在跑」这个前提从没成立                   | 我在**默认环境还在准备**时就发单元格——应用自己报的原文：「The Python environment is still being prepared — retry shortly.」                    |
+| 5   | `Invalid notebook path segment: Interrupted run` | 我的项目名**带空格**，被路径段校验拒                                                                                                           |
+| 6   | 等环境就绪等到超时                               | 我盯的是 `notebook.state.environments`——而它**在首次运行前按设计就是空的**（V6 诊断量到过 `BEFORE any run: []`）                               |
+| 7   | 默认环境 15 次「still being prepared」           | 隔离实例的**默认环境要下载**才能就绪，本机网络到不了那些源；改走**缓存包导入具名环境**（本会话 V6 已验证单元格真能跑）                         |
 
 **第 8 次**：前提终于被**实测**站住（`attempt 1: running=true statuses=["completed","running"]`），
 然后读数是：
@@ -44,6 +44,7 @@
 **由此可推、但尚未实测的一环**（这正是契约的触发条件）：
 恢复只在「新进程里**首次加载**该会话」时跑（`repository.ts:271`）。而我的读法（`sessions.loadAll()` +
 `notebook.state`）**明显没有触发那次加载**（否则读到的不会是空）。所以：
+
 - 我**不能**说「崩溃恢复坏了」——**那次恢复很可能压根没跑**；
 - 我也**不能**说「契约没问题」——因为我读到的盘上内容与契约不符。
 
@@ -128,13 +129,11 @@ runForUpdateGate(...) → this.deps.notebook.shutdownAll()   // ← 只有更新
 **验证路径已就绪**：脚手架（227 行）已能跑到 `runJsonPath` + 盘读；修复后盘上那格必须是
 `interrupted` + `app-terminated`。这条断言就是验收，不需要新造夹具。
 
-
 1. **测覆盖假设**：把盘读那一行加上 traceback —— 若那格 `failed` 的 traceback 是**内核/传输错误**
    （而非用户代码的错），即证「收内核的抛错覆盖了改写」，真修法方向即为「终态写入带 quitting 信号」；
 2. **测状态读异常**：重启后**先用 UI 打开该会话的笔记本**，再读 `notebook.state` 与盘，比较两者；
 3. 脚手架 `~/.hermes/cache/scratch/comp/notebook-interrupted-run.spec.ts`（227 行）**已跑通到
    `runJsonPath` 那一步**（导入+绑定+真跑+实测前提+盘读全可用），补上面任一读数只需改一行。
-
 
 - **脚手架不落树**（跑不绿的不算验收）：227 行的 spec
   `~/.hermes/cache/scratch/comp/notebook-interrupted-run.spec.ts` —— 缓存包导入 → 绑定 → 真跑单元格 →
@@ -213,11 +212,11 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 
 三轮 trace 取证（临时 `quit-trace` 打点，已删）说明前两轮**测的根本不是这条路径**：
 
-| 观测 | 事实 |
-| --- | --- |
-| `+0ms runForQuit:enter … sessions=0` | 这个退出属于**onboarding 之前的那个实例**（`completeOnboarding()`/`configureFakeAgent()` 各自会重启应用）：它的注册表**从来没有会话**，所以关停无事可拒 |
-| `+2999ms runtimeService:constructed tag=rt1` / `+8367ms registry:session-created` | 真正跑单元格的实例在**那个退出之后**才起来（两个进程的 tag 计数都从 rt1 开始，正说明"两个进程"） |
-| 该实例的 trace 里**完全没有** `runForQuit`／`runtime.dispose` | 跑单元格的那个实例**从未走自己的退出路径**：fixture 的 `application.close()` 优雅窗口超时后**按进程树强杀**，内核子进程先死、主进程还活着 ⇒ `child.on('exit')` 走意外退出分支 ⇒ 写下 `failed` + `Notebook kernel process exited.` |
+| 观测                                                                              | 事实                                                                                                                                                                                                                              |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `+0ms runForQuit:enter … sessions=0`                                              | 这个退出属于**onboarding 之前的那个实例**（`completeOnboarding()`/`configureFakeAgent()` 各自会重启应用）：它的注册表**从来没有会话**，所以关停无事可拒                                                                           |
+| `+2999ms runtimeService:constructed tag=rt1` / `+8367ms registry:session-created` | 真正跑单元格的实例在**那个退出之后**才起来（两个进程的 tag 计数都从 rt1 开始，正说明"两个进程"）                                                                                                                                  |
+| 该实例的 trace 里**完全没有** `runForQuit`／`runtime.dispose`                     | 跑单元格的那个实例**从未走自己的退出路径**：fixture 的 `application.close()` 优雅窗口超时后**按进程树强杀**，内核子进程先死、主进程还活着 ⇒ `child.on('exit')` 走意外退出分支 ⇒ 写下 `failed` + `Notebook kernel process exited.` |
 
 ⇒ 前两轮的 `failed` 是**夹具强杀的产物**，不是用户退出路径的读数；也因此"照形状改一处"看不出变化——**不是修复无效，是那两轮没触发这条路径**。
 另：`requestMainWindowClose()` 在 macOS 上按 `windows.ts` 的分类是 **'hide'（最小化到托盘）**，不会退出、也不会弹确认框——这是第一次改动没取到读数的原因。
@@ -337,10 +336,10 @@ run.json on disk: [["notebook-run-…-1","completed",null],
 
 ⇒ 最终形状是**拆两半**（两条约束同时成立）：
 
-| 阶段 | 调用 | 时机 | 保证 |
-| --- | --- | --- | --- |
-| 拒绝 | `executor.refuseInflightRuns({interruptionReason})` | **同步**，队列之前 | 退出预算耗尽也能落下中断；内核已被移出路由 map ⇒ 其退出不再是"意外崩溃" |
-| 收尾 | `executor.shutdown({interruptionReason})` | 生命周期队列**之后** | 排队中的持久化写不被中途打断；只收 `refuseInflightRuns` 记下的那些 loop（`refusedProcs`，避免泄漏） |
+| 阶段 | 调用                                                | 时机                 | 保证                                                                                                |
+| ---- | --------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------- |
+| 拒绝 | `executor.refuseInflightRuns({interruptionReason})` | **同步**，队列之前   | 退出预算耗尽也能落下中断；内核已被移出路由 map ⇒ 其退出不再是"意外崩溃"                             |
+| 收尾 | `executor.shutdown({interruptionReason})`           | 生命周期队列**之后** | 排队中的持久化写不被中途打断；只收 `refuseInflightRuns` 记下的那些 loop（`refusedProcs`，避免泄漏） |
 
 接口上 `refuseInflightRuns` 是**可选**的：不会拆的 executor（测试替身等）继续走单次 `shutdown` 的顺序。
 kernel-executor 内部 `shutdown()` 仍会先调一次 `refuseInflightRuns()`（幂等），所以内核重启那条路行为不变。
@@ -389,7 +388,3 @@ kernel-executor 内部 `shutdown()` 仍会先调一次 `refuseInflightRuns()`（
 **但仍不能只加"读不写"开关**：只读路径若在**没有权威项目名**（省略、按 sessionId 解析）时就**创建聚合**，
 会把该 session 的项目身份**钉错**，之后真正的写路径会把 run 写进那个幻影路径。
 所以 ② 必须**先有权威项目名、再决定是否落档**，并与 ① 视为同一处读路径的一次改动、一次复验。
-
-
-
-

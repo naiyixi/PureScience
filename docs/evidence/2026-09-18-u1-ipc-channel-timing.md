@@ -12,28 +12,28 @@
 
 **启动窗口**（30 条 slow 报告）
 
-| 通道 | 次数 | 中位 | 最大 |
-|---|---|---|---|
-| `settings:get-preflight` | 1 | 808 ms | 808 ms |
-| **`sessions:list-catalog`** | **2** | 489 ms | **489 ms** |
-| `settings:npm-available` | 1 | 422 ms | 422 ms |
-| `storage:get-info` | 1 | 216 ms | 216 ms |
-| `settings:get-settings` | 1 | 212 ms | 212 ms |
-| `project-files:list-files` | **23** | 131 ms | 137 ms |
-| `settings:set-ui-language` | 1 | 103 ms | 103 ms |
+| 通道                        | 次数   | 中位   | 最大       |
+| --------------------------- | ------ | ------ | ---------- |
+| `settings:get-preflight`    | 1      | 808 ms | 808 ms     |
+| **`sessions:list-catalog`** | **2**  | 489 ms | **489 ms** |
+| `settings:npm-available`    | 1      | 422 ms | 422 ms     |
+| `storage:get-info`          | 1      | 216 ms | 216 ms     |
+| `settings:get-settings`     | 1      | 212 ms | 212 ms     |
+| `project-files:list-files`  | **23** | 131 ms | 137 ms     |
+| `settings:set-ui-language`  | 1      | 103 ms | 103 ms     |
 
 **交互窗口**（105 条 slow 报告）
 
-| 通道 | 次数 | 中位 | 最大 |
-|---|---|---|---|
-| `settings:check-environment` | 2 | 2760 ms | 2760 ms |
-| `network:check-connectivity` | 2 | 2096 ms | 2096 ms |
-| `settings:get-preflight` | 3 | 595 ms | 604 ms |
-| **`preview-resources:acquire`** | **5** | 368 ms | **375 ms** |
-| `sessions:list-catalog` | 2 | 268 ms | 268 ms |
-| `settings:list-skills` | 2 | 228 ms | 228 ms |
-| `settings:npm-available` | 3 | 139 ms | 199 ms |
-| **`project-files:list-files`** | **79** | 95 ms | 148 ms |
+| 通道                            | 次数   | 中位    | 最大       |
+| ------------------------------- | ------ | ------- | ---------- |
+| `settings:check-environment`    | 2      | 2760 ms | 2760 ms    |
+| `network:check-connectivity`    | 2      | 2096 ms | 2096 ms    |
+| `settings:get-preflight`        | 3      | 595 ms  | 604 ms     |
+| **`preview-resources:acquire`** | **5**  | 368 ms  | **375 ms** |
+| `sessions:list-catalog`         | 2      | 268 ms  | 268 ms     |
+| `settings:list-skills`          | 2      | 228 ms  | 228 ms     |
+| `settings:npm-available`        | 3      | 139 ms  | 199 ms     |
+| **`project-files:list-files`**  | **79** | 95 ms   | 148 ms     |
 
 **合计**：这趟（几乎什么都没干）里，主进程有 **135 次 ≥50 ms 的 IPC 调用，累计 25.3 s**。
 

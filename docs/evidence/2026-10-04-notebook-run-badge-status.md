@@ -19,10 +19,10 @@
 
 `NotebookPreview.tsx` 的问题徽章改成**按真实状态分说**（`data-testid="notebook-cell-problem"`）：
 
-| 状态 | 徽章 |
-| --- | --- |
-| `failed` | `error` / `error (line N)`（危险底色不变，仍是实心强调） |
-| `timeout` | `timed out`（**不是** error） |
+| 状态          | 徽章                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| `failed`      | `error` / `error (line N)`（危险底色不变，仍是实心强调）                                                    |
+| `timeout`     | `timed out`（**不是** error）                                                                               |
 | `interrupted` | `interrupted — <具名原因>`，原因来自 `run.interruptionReason`（`app-terminated` ⇒「应用在跑完之前被关闭」） |
 
 顺带：徽章文案原先**硬编码英文**，本轮一并收进九语种。

@@ -27,16 +27,16 @@ PURESCIENCE_WEB_PORT=44152 PURESCIENCE_STORAGE_ROOT=/tmp/ps-verify-root \
 
 ## 2. 取证链路与数字
 
-| 环节 | 实物 | 结果 |
-|---|---|---|
-| 项目 | `zz-verify-science-pkg` | 建项目 → 上传真论文 PDF `attention-is-all-you-need.pdf`（arXiv 1706.03762，**2 215 244 B**）→ 文献库记录 `Attention Is All You Need` 挂上该 PDF（`pdfContentHash` = `sha256:bdfaa68d…:2215244`） |
-| 真会话 | `ae46e45b-d806-4e6c-9219-a2e92cc176c4` | UI 真发送（`[role="textbox"]` 聚焦 → 输入 → `Escape` 关历史浮层 → `button[aria-label="发送消息"]`），**真 agent 回合 1m18s**，agent 用内置 PDF 工具读满 15 页并核对摘要里的 BLEU 数字 |
-| 导出 | `zz-verify-full-v2.science` | **1 160 875 B**，`counts.referenceFiles = 1`；包内成员 `references/Attention Is All You Need.pdf` 2 215 244 B |
-| 导出（精简） | `zz-verify-essential-v2.science` | 16 040 B，具名 `reference-pdfs-not-requested:1`（不读字节就报数） |
-| 独立复核 | python `zipfile` 逐条重算 | **29/29 全过**：每条 sha256/字节数与 manifest 一致；`references/…pdf` 与源论文**逐字节相同**；与应用自己记录的 `ManagedFile.checksum`、磁盘上的源文件**三方一致**；文献指纹（前 4 MiB sha256 + 精确字节数）独立重算一致；manifest 不含自身条目；`assertion.locallyVerified === false` |
-| 导入 | `85293f16-…` | `ok`、posture `readOnly/executeAllowed:false/continueAllowed:false`；读回 7 条消息完整转录、`createdAt` 保留来源机值 1 790 013 637 748 |
-| 只读强制 | 同上 | `acp.resumeSession` **被拒**（具名句）；对照组：本机自己的会话 `ae46e45b` 照常 resume 成功 |
-| 扫描存活 | 同上 | 导入后连做两次 `sessions.loadAll()`：`diagnostics.warnings = []`，只读记录 `85293f16-….import.json` 仍在原处 |
+| 环节         | 实物                                   | 结果                                                                                                                                                                                                                                                                                  |
+| ------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 项目         | `zz-verify-science-pkg`                | 建项目 → 上传真论文 PDF `attention-is-all-you-need.pdf`（arXiv 1706.03762，**2 215 244 B**）→ 文献库记录 `Attention Is All You Need` 挂上该 PDF（`pdfContentHash` = `sha256:bdfaa68d…:2215244`）                                                                                      |
+| 真会话       | `ae46e45b-d806-4e6c-9219-a2e92cc176c4` | UI 真发送（`[role="textbox"]` 聚焦 → 输入 → `Escape` 关历史浮层 → `button[aria-label="发送消息"]`），**真 agent 回合 1m18s**，agent 用内置 PDF 工具读满 15 页并核对摘要里的 BLEU 数字                                                                                                 |
+| 导出         | `zz-verify-full-v2.science`            | **1 160 875 B**，`counts.referenceFiles = 1`；包内成员 `references/Attention Is All You Need.pdf` 2 215 244 B                                                                                                                                                                         |
+| 导出（精简） | `zz-verify-essential-v2.science`       | 16 040 B，具名 `reference-pdfs-not-requested:1`（不读字节就报数）                                                                                                                                                                                                                     |
+| 独立复核     | python `zipfile` 逐条重算              | **29/29 全过**：每条 sha256/字节数与 manifest 一致；`references/…pdf` 与源论文**逐字节相同**；与应用自己记录的 `ManagedFile.checksum`、磁盘上的源文件**三方一致**；文献指纹（前 4 MiB sha256 + 精确字节数）独立重算一致；manifest 不含自身条目；`assertion.locallyVerified === false` |
+| 导入         | `85293f16-…`                           | `ok`、posture `readOnly/executeAllowed:false/continueAllowed:false`；读回 7 条消息完整转录、`createdAt` 保留来源机值 1 790 013 637 748                                                                                                                                                |
+| 只读强制     | 同上                                   | `acp.resumeSession` **被拒**（具名句）；对照组：本机自己的会话 `ae46e45b` 照常 resume 成功                                                                                                                                                                                            |
+| 扫描存活     | 同上                                   | 导入后连做两次 `sessions.loadAll()`：`diagnostics.warnings = []`，只读记录 `85293f16-….import.json` 仍在原处                                                                                                                                                                          |
 
 ## 3. 三处缺陷 + 一处连带缺陷（均已修复）
 
@@ -85,11 +85,11 @@ PURESCIENCE_WEB_PORT=44152 PURESCIENCE_STORAGE_ROOT=/tmp/ps-verify-root \
 
 ## 4. 单元 10 其余子项：查证后零代码结案（附实机证据）
 
-| 子项 | 现状 | 实机证据 |
-|---|---|---|
+| 子项                  | 现状                                                                                                                                                                                                              | 实机证据                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NCBI 参考工具（§3.5） | **已交付**：`src/main/connectors/descriptors/genomes-ncbi.ts` 的 `ncbi_reference_sequence` / `ncbi_reference_region`，SHA-256 对**收到的原始字节**、字节数与碱基数、`assembly` 断言 fail-closed、超限截断如实标注 | agent 走应用内连接器取 `NM_000546.6`：返回 `sha256 070de27f7b9df05889c79d148333fb9f939c974cef697719656004f936827b4c` / `bytes 2626` / `length_bases 2512` / `identifier NM_000546.6`，与 python 独立重算**逐字一致**；带 `assembly: GRCh38` 的调用对转录本记录**按设计拒绝**（"Refusing rather than labelling a sequence with an assembly it was not fetched from."） |
-| 连接器批量启停 | **已交付**：`SetConnectorsEnabled*` 契约 + `settings:set-connectors-enabled`，逐项返回 `changed/error` 与 `changed/unchanged/failed` 计数 + `appliedAt` | 隔离实例实调：25 个连接器上一次性提交三项（改一个 / 一个已同态 / 一个不存在的 id）→ `changed 1 / unchanged 1 / failed 1`，失败项带 `unknown connector: zz-no-such-connector`；探针已把改动复原 |
-| CLI `init` / `doctor` | **已交付**：`packages/purescience/doctor.mjs`（`runInit`/`runDoctor`/`formatInit`/`formatDoctor`）+ `cli.mjs` 两个子命令 | 真跑：`init` 在隔离根创建 0700 目录、不写任何设置；`doctor` 报 `config_root / service_state / web_token / app_binary / node` 实测事实，**明确拒绝做就绪判定**（"就绪判定不在这里：`purescience ready` 会给出应用侧的就绪结论"） |
+| 连接器批量启停        | **已交付**：`SetConnectorsEnabled*` 契约 + `settings:set-connectors-enabled`，逐项返回 `changed/error` 与 `changed/unchanged/failed` 计数 + `appliedAt`                                                           | 隔离实例实调：25 个连接器上一次性提交三项（改一个 / 一个已同态 / 一个不存在的 id）→ `changed 1 / unchanged 1 / failed 1`，失败项带 `unknown connector: zz-no-such-connector`；探针已把改动复原                                                                                                                                                                        |
+| CLI `init` / `doctor` | **已交付**：`packages/purescience/doctor.mjs`（`runInit`/`runDoctor`/`formatInit`/`formatDoctor`）+ `cli.mjs` 两个子命令                                                                                          | 真跑：`init` 在隔离根创建 0700 目录、不写任何设置；`doctor` 报 `config_root / service_state / web_token / app_binary / node` 实测事实，**明确拒绝做就绪判定**（"就绪判定不在这里：`purescience ready` 会给出应用侧的就绪结论"）                                                                                                                                       |
 
 ## 5. 本轮未取证 / 边界
 

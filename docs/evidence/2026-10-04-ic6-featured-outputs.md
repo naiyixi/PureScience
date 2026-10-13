@@ -5,8 +5,12 @@
 `JobDetailModal.tsx:225` 原样躺着一行**注释掉的占位**：
 
 ```tsx
-{/* 3b placeholder: featured outputs / left-on-remote — hidden until harvest data exists */}
-{/* <FeaturedOutputs job={latestJob} /> */}
+{
+  /* 3b placeholder: featured outputs / left-on-remote — hidden until harvest data exists */
+}
+{
+  /* <FeaturedOutputs job={latestJob} /> */
+}
 ```
 
 而数据**早就在**：`JobSummary`（`src/shared/compute.ts:304-333`）已带
@@ -20,13 +24,13 @@
 
 `src/renderer/src/components/FeaturedOutputs.tsx`（新，挂回上面那个占位处）：
 
-| 状态 | 呈现 |
-|---|---|
-| 重点产出 | 文件逐条列出（workspace 相对路径），带 `featured_file_count` 计数 |
-| 留在远端 | 每条**带自己的原因**（`uri · N MB · reason`）——没有原因的清单是读者无法据以行动的清单 |
-| **计数大于清单** | 明说「另有 N 个未在结果里列出」，**不静默只显示子集**（那会读成「留下的只有这些」） |
-| 收割失败 | `harvest_error` 原话上屏，**并把 `remote_workdir` 并排给出**——那是失败时唯一的取回路径，不能用工整的话盖掉 |
-| 无收割数据 | 面板整体不出现（不留空标题） |
+| 状态             | 呈现                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| 重点产出         | 文件逐条列出（workspace 相对路径），带 `featured_file_count` 计数                                          |
+| 留在远端         | 每条**带自己的原因**（`uri · N MB · reason`）——没有原因的清单是读者无法据以行动的清单                      |
+| **计数大于清单** | 明说「另有 N 个未在结果里列出」，**不静默只显示子集**（那会读成「留下的只有这些」）                        |
+| 收割失败         | `harvest_error` 原话上屏，**并把 `remote_workdir` 并排给出**——那是失败时唯一的取回路径，不能用工整的话盖掉 |
+| 无收割数据       | 面板整体不出现（不留空标题）                                                                               |
 
 ## 验证
 

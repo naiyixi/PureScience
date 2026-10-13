@@ -9,13 +9,13 @@ Radix 关闭对话框时靠聚焦它自己的 `Dialog.Trigger` 归还焦点；�
 
 ## 普查读数（改动前，`grep`/脚本统计非测试文件）
 
-| 口径 | 数量 |
-| --- | --- |
-| 含 `Dialog.Content` 的 `.tsx` | 49 |
-| 其中没有 Trigger / 受控开关注入点 | 23 |
-| 其中既无 `Dialog.Close` 也无 `onCloseAutoFocus`（候选面） | **22** |
-| 已修好的先例 | 5（`GlobalSearchDialog`、`KeyboardShortcutsDialog`、`FolderGrantsPanel`、`AnnotationDialog`、`SessionBookmarksDialog`） |
-| **未纳入本单元**：含 `AlertDialog.Content` 的文件 | 21，其中 **20** 同样无 Trigger/归还处理 |
+| 口径                                                      | 数量                                                                                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 含 `Dialog.Content` 的 `.tsx`                             | 49                                                                                                                      |
+| 其中没有 Trigger / 受控开关注入点                         | 23                                                                                                                      |
+| 其中既无 `Dialog.Close` 也无 `onCloseAutoFocus`（候选面） | **22**                                                                                                                  |
+| 已修好的先例                                              | 5（`GlobalSearchDialog`、`KeyboardShortcutsDialog`、`FolderGrantsPanel`、`AnnotationDialog`、`SessionBookmarksDialog`） |
+| **未纳入本单元**：含 `AlertDialog.Content` 的文件         | 21，其中 **20** 同样无 Trigger/归还处理                                                                                 |
 
 ## 改动
 

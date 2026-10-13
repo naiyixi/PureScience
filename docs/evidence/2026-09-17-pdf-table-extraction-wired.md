@@ -6,14 +6,14 @@
 
 ## 二、接线内容
 
-| 环节 | 改动 |
-|---|---|
-| 解析层 | 采集每页**带坐标的条目**（`x/y/width/height`），随 `pages` 一起返回；**纯文本路径一字未改**（参考文献导入不受影响） |
-| 服务层 | `PdfService.tables(docId, page?)`：几何优先、无坐标时退到纯文本法，每条候选带 method/confidence/markdown/tsv/warnings，上限 8 条 |
-| 契约 | `PDF_TABLES_TOOL_NAME='pdf_tables'`、`PdfTablesResult`/`PdfTableCandidateForAgent` |
-| agent 入口 | MCP 工具 `pdf_tables`（schema + definition + registerTool + RPC） |
-| 全链 | `pdf:tables` 通道 → 应用命令 → host 处理器 → local RPC 分支 → ipc 适配器 → **preload 方法 + 类型** |
-| 契约级联 | 目录条目 + `npm run gen:web-api-map` + 各处 count pin（catalog/surface-inventory/preload/命令清单/参数形态） |
+| 环节       | 改动                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 解析层     | 采集每页**带坐标的条目**（`x/y/width/height`），随 `pages` 一起返回；**纯文本路径一字未改**（参考文献导入不受影响）              |
+| 服务层     | `PdfService.tables(docId, page?)`：几何优先、无坐标时退到纯文本法，每条候选带 method/confidence/markdown/tsv/warnings，上限 8 条 |
+| 契约       | `PDF_TABLES_TOOL_NAME='pdf_tables'`、`PdfTablesResult`/`PdfTableCandidateForAgent`                                               |
+| agent 入口 | MCP 工具 `pdf_tables`（schema + definition + registerTool + RPC）                                                                |
+| 全链       | `pdf:tables` 通道 → 应用命令 → host 处理器 → local RPC 分支 → ipc 适配器 → **preload 方法 + 类型**                               |
+| 契约级联   | 目录条目 + `npm run gen:web-api-map` + 各处 count pin（catalog/surface-inventory/preload/命令清单/参数形态）                     |
 
 ## 三、真机过程中抓到的两个缺陷
 

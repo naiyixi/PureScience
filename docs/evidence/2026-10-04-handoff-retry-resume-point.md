@@ -24,10 +24,10 @@
 
 `HandoffLifecycleStatus.integration.test.tsx` —— **3 passed**，两相各自断言且互斥：
 
-| 夹具 | 断言 |
-| --- | --- |
-| `retryFrom: 'reconfiguring'` | 行内出现 `retry resumes at reconfiguring Data analyst`（在既有「无法续跑 + 原文 message」断言之后新增） |
-| `retryFrom: 'continuation-start'` | 行内出现 `retry resumes at the continuation`，且**不出现** `retry resumes at reconfiguring` |
+| 夹具                              | 断言                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `retryFrom: 'reconfiguring'`      | 行内出现 `retry resumes at reconfiguring Data analyst`（在既有「无法续跑 + 原文 message」断言之后新增） |
+| `retryFrom: 'continuation-start'` | 行内出现 `retry resumes at the continuation`，且**不出现** `retry resumes at reconfiguring`             |
 
 其他：`translation-quality` **42 passed**；`typecheck:web` **0**；`eslint` 0 problems。
 

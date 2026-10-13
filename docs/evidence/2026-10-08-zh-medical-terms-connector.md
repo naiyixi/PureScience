@@ -8,18 +8,18 @@
 
 `curl -m 12/15`，本机直连（无代理），2026-10-08：
 
-| 源 | 探测 URL | HTTP | 体积 / 类型 | 判读 |
-| --- | --- | --- | --- | --- |
-| 中国临床试验注册中心 | `https://www.chictr.org.cn/` | **200** | 34,719 B `text/html` | 首页是服务端渲染 + jQuery；页面装载 `crypto-js` / `jsencrypt` / `uuid` / 阿里 `antidom` ⇒ 检索参数**加密 + 反爬** |
-| 同上（检索页） | `…/searchproj.html?title=…&page=1` | **405** | 2,657 B `text/html` | GET 不被接受（需 POST + 加密载荷） |
-| 同上（猜的 JSON 面） | `…/api/searchproj`、`…/searchproj` | **404** | 103 B / 99 B **JSON** | 后端是 Spring（错误体 `{timestamp,status,error,path}`），但**没有公开的检索 API** |
-| 国家药监局 | `https://www.nmpa.gov.cn/` | **200** | 54,789 B `text/html` | 首页可达 |
-| 同上（数据查询） | `…/datasearch/home-index.html`、`…/datasearch/search-result.html` | **412** | 2.5 KB `text/html` | **WAF 前置条件失败**（412），需浏览器上下文/令牌 |
-| 药审中心 | `https://www.cde.org.cn/` | **200** | 85,983 B `text/html` | 首页可达 |
-| 中华医学会 | `https://www.cma.org.cn/` | **200** | 89,215 B `text/html` | 首页可达 |
-| 药物临床试验登记平台 | `https://www.chinadrugtrials.org.cn/` | **200** | 43,227 B `text/html` | 首页可达 |
-| 同上（猜的 JSON 面） | `…/api/clinicaltrials/search`（GET **与** POST） | **202** | 25 KB **`text/html`** | 202 + HTML 挑战页 ⇒ 反爬中间件；**不是** JSON 接口 |
-| WHO ICTRP | `https://trialsearch.who.int/` | **200** | 40,472 B `text/html` | ASP 表单站，无公开 API |
+| 源                   | 探测 URL                                                          | HTTP    | 体积 / 类型           | 判读                                                                                                              |
+| -------------------- | ----------------------------------------------------------------- | ------- | --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 中国临床试验注册中心 | `https://www.chictr.org.cn/`                                      | **200** | 34,719 B `text/html`  | 首页是服务端渲染 + jQuery；页面装载 `crypto-js` / `jsencrypt` / `uuid` / 阿里 `antidom` ⇒ 检索参数**加密 + 反爬** |
+| 同上（检索页）       | `…/searchproj.html?title=…&page=1`                                | **405** | 2,657 B `text/html`   | GET 不被接受（需 POST + 加密载荷）                                                                                |
+| 同上（猜的 JSON 面） | `…/api/searchproj`、`…/searchproj`                                | **404** | 103 B / 99 B **JSON** | 后端是 Spring（错误体 `{timestamp,status,error,path}`），但**没有公开的检索 API**                                 |
+| 国家药监局           | `https://www.nmpa.gov.cn/`                                        | **200** | 54,789 B `text/html`  | 首页可达                                                                                                          |
+| 同上（数据查询）     | `…/datasearch/home-index.html`、`…/datasearch/search-result.html` | **412** | 2.5 KB `text/html`    | **WAF 前置条件失败**（412），需浏览器上下文/令牌                                                                  |
+| 药审中心             | `https://www.cde.org.cn/`                                         | **200** | 85,983 B `text/html`  | 首页可达                                                                                                          |
+| 中华医学会           | `https://www.cma.org.cn/`                                         | **200** | 89,215 B `text/html`  | 首页可达                                                                                                          |
+| 药物临床试验登记平台 | `https://www.chinadrugtrials.org.cn/`                             | **200** | 43,227 B `text/html`  | 首页可达                                                                                                          |
+| 同上（猜的 JSON 面） | `…/api/clinicaltrials/search`（GET **与** POST）                  | **202** | 25 KB **`text/html`** | 202 + HTML 挑战页 ⇒ 反爬中间件；**不是** JSON 接口                                                                |
+| WHO ICTRP            | `https://trialsearch.who.int/`                                    | **200** | 40,472 B `text/html`  | ASP 表单站，无公开 API                                                                                            |
 
 **结论（按该档红线办）**：五个候选源**没有一个**提供公开、机器可读、可引用的接口；能到达的只有 HTML 页面，
 并且其中两家（ChiCTR 的检索、NMPA 的数据查询）明确带**加密参数 / WAF 挑战**。本仓红线是「服务方的 HTML 不是
@@ -34,10 +34,10 @@
 真正索引的那种写法）。连接器**不自带术语表**（那是共享层的单一来源），只做「这个词是什么、id 是什么、这条读数
 从哪来」。
 
-| 工具 | 作用 |
-| --- | --- |
-| `zh_term_resolve` | 中文术语 → **服务排序的候选列表**（每条带 QID / 中文标签 / 描述 / **匹配在 label 还是 alias** / 实体 URL）；归一化步骤逐条上报（去空白、折叠空白、全角→半角、剥离剂型后缀）；归一化后为空则**按原样重试一次** |
-| `zh_term_crosswalk` | QID → 中文标签（zh / zh-hans / zh-hant）、中文别名、**英文标签**、中英文维基链接、**出处**（实体 URL + 修订号 + 实际请求 URL + CC0）；缺哪一语言就列进 `missing` |
+| 工具                | 作用                                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `zh_term_resolve`   | 中文术语 → **服务排序的候选列表**（每条带 QID / 中文标签 / 描述 / **匹配在 label 还是 alias** / 实体 URL）；归一化步骤逐条上报（去空白、折叠空白、全角→半角、剥离剂型后缀）；归一化后为空则**按原样重试一次** |
+| `zh_term_crosswalk` | QID → 中文标签（zh / zh-hans / zh-hant）、中文别名、**英文标签**、中英文维基链接、**出处**（实体 URL + 修订号 + 实际请求 URL + CC0）；缺哪一语言就列进 `missing`                                              |
 
 ### 2.1 真机读数（走应用自己的引擎 `ParserEngine` + 真实服务，不是 mock）
 
@@ -45,15 +45,15 @@
 `wbgetentities` 的字段形状、空结果形状、200+错误体、429 与 SSL 超时。随后由**连接器自己的 `run()`**
 经 `ParserEngine` 真跑，读数如下（一次性探针文件已删，`/tmp/ps-zh-live-readings.txt` 为原始落盘）：
 
-| 输入 | 实际发出的检索串 | 归一化步骤 | 候选（逐字） |
-| --- | --- | --- | --- |
-| `二甲双胍` | `二甲双胍` | 无 | 1 条：`Q19484:二甲双胍(label)` |
-| `阿司匹林肠溶片` | `阿司匹林` | `stripped the dosage-form suffix "肠溶片"` | 3 条：`Q18216:阿司匹林(label)` · `Q134866761:阿司匹林药片空瓶(label)` · `Q98989723:阿司匹林抗癌作用的分子生物学机制(label)` |
-| `非小细胞肺癌` | `非小细胞肺癌` | 无 | 3 条：**`Q356033:腺癌(alias)`** · `Q3658562:非小細胞肺癌(alias)` · `Q98943085:…术后不宜放疗(label)` |
-| `乙肝` | `乙肝` | 无 | 3 条：**`Q3144978:乙肝歧视(label)`** · `Q72588151:乙肝疫苗接种前筛检指标的探讨(label)` · `Q72588143:乙肝基因工程疫苗阻断HBV母婴传播的效果观察(label)` |
-| `拜阿司匹灵`（品牌名） | `拜阿司匹灵` | 无 | **0 条**（`notes` 给出「matched no Wikidata entity」+ 这不是「该术语不存在」） |
-| `完全不存在的词条XYZ` | 同输入 | 无 | 0 条（同上） |
-| `zh_term_crosswalk(Q18216)` | — | — | `labels={zh:阿司匹林, zh-hans:阿司匹林, zh-hant:阿司匹林, en:aspirin}`；`aliases.zh` 8 条（含 `阿士匹靈`/`阿司匹灵`/`阿斯匹灵`/`乙酰水杨酸`）；`zhwiki=https://zh.wikipedia.org/wiki/%E4%B9%99%E9%85%B0%E6%B0%B4%E6%9D%A8%E9%85%B8`；`lastrevid=2538572110`；`missing=[]` |
+| 输入                        | 实际发出的检索串 | 归一化步骤                                 | 候选（逐字）                                                                                                                                                                                                                                                              |
+| --------------------------- | ---------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `二甲双胍`                  | `二甲双胍`       | 无                                         | 1 条：`Q19484:二甲双胍(label)`                                                                                                                                                                                                                                            |
+| `阿司匹林肠溶片`            | `阿司匹林`       | `stripped the dosage-form suffix "肠溶片"` | 3 条：`Q18216:阿司匹林(label)` · `Q134866761:阿司匹林药片空瓶(label)` · `Q98989723:阿司匹林抗癌作用的分子生物学机制(label)`                                                                                                                                               |
+| `非小细胞肺癌`              | `非小细胞肺癌`   | 无                                         | 3 条：**`Q356033:腺癌(alias)`** · `Q3658562:非小細胞肺癌(alias)` · `Q98943085:…术后不宜放疗(label)`                                                                                                                                                                       |
+| `乙肝`                      | `乙肝`           | 无                                         | 3 条：**`Q3144978:乙肝歧视(label)`** · `Q72588151:乙肝疫苗接种前筛检指标的探讨(label)` · `Q72588143:乙肝基因工程疫苗阻断HBV母婴传播的效果观察(label)`                                                                                                                     |
+| `拜阿司匹灵`（品牌名）      | `拜阿司匹灵`     | 无                                         | **0 条**（`notes` 给出「matched no Wikidata entity」+ 这不是「该术语不存在」）                                                                                                                                                                                            |
+| `完全不存在的词条XYZ`       | 同输入           | 无                                         | 0 条（同上）                                                                                                                                                                                                                                                              |
+| `zh_term_crosswalk(Q18216)` | —                | —                                          | `labels={zh:阿司匹林, zh-hans:阿司匹林, zh-hant:阿司匹林, en:aspirin}`；`aliases.zh` 8 条（含 `阿士匹靈`/`阿司匹灵`/`阿斯匹灵`/`乙酰水杨酸`）；`zhwiki=https://zh.wikipedia.org/wiki/%E4%B9%99%E9%85%B0%E6%B0%B4%E6%9D%A8%E9%85%B8`；`lastrevid=2538572110`；`missing=[]` |
 
 ### 2.2 这些读数定下的三条设计（都有真机依据，不是推断）
 
@@ -84,13 +84,13 @@
 
 ## 四、门禁
 
-| 门禁 | 读数 |
-| --- | --- |
-| 连接器目录 `vitest run src/main/connectors` | **82 文件通过 / 930 passed, 53 skipped**（含本单元 16 条 mock 用例；3 条 LIVE 用例在 `LIVE_API=1` 下另跑，见下） |
-| 定向 + 契约族（connectors + shared + preload + settings + renderer/web + 两个 application-command 套件） | **285 文件通过（1 skipped）/ 3637 passed（56 skipped）**，17.0 s，exit 0 |
-| 全量门禁（隔离工作树、注入本单元 7 个路径后的树，CI 同口径） | `eslint --no-cache .` **0 error / 128 warning** · 双 typecheck **exit 0** · 全量 vitest **1231 文件通过（16 skipped）/ 15931 passed（207 skipped），零失败** · `scripts/pre-push-checks.sh` **全过** |
-| README 连接器计数 | `readme-connector-count.test.ts` 由注册表派生 ⇒ 两份 README 同步为 **28 connectors (273 tools)** |
-| `LIVE_API=1` 实跑（本机 2026-10-08 20:18，两跑） | 第一跑 **18 passed / 1 failed**、第二跑 **16 passed / 3 failed**，失败全部是 `fetch failed … ConnectTimeoutError`（10 s 预算内连不到 Wikidata）⇒ **本机网络抖动**，不是代码回归；`LIVE_API` 用例默认 skip，CI 不受影响。§2.1 的逐字读数取自网络通达时，**本轮没有推翻它、也没有拿这两次超时冒充读数** |
+| 门禁                                                                                                     | 读数                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 连接器目录 `vitest run src/main/connectors`                                                              | **82 文件通过 / 930 passed, 53 skipped**（含本单元 16 条 mock 用例；3 条 LIVE 用例在 `LIVE_API=1` 下另跑，见下）                                                                                                                                                                                      |
+| 定向 + 契约族（connectors + shared + preload + settings + renderer/web + 两个 application-command 套件） | **285 文件通过（1 skipped）/ 3637 passed（56 skipped）**，17.0 s，exit 0                                                                                                                                                                                                                              |
+| 全量门禁（隔离工作树、注入本单元 7 个路径后的树，CI 同口径）                                             | `eslint --no-cache .` **0 error / 128 warning** · 双 typecheck **exit 0** · 全量 vitest **1231 文件通过（16 skipped）/ 15931 passed（207 skipped），零失败** · `scripts/pre-push-checks.sh` **全过**                                                                                                  |
+| README 连接器计数                                                                                        | `readme-connector-count.test.ts` 由注册表派生 ⇒ 两份 README 同步为 **28 connectors (273 tools)**                                                                                                                                                                                                      |
+| `LIVE_API=1` 实跑（本机 2026-10-08 20:18，两跑）                                                         | 第一跑 **18 passed / 1 failed**、第二跑 **16 passed / 3 failed**，失败全部是 `fetch failed … ConnectTimeoutError`（10 s 预算内连不到 Wikidata）⇒ **本机网络抖动**，不是代码回归；`LIVE_API` 用例默认 skip，CI 不受影响。§2.1 的逐字读数取自网络通达时，**本轮没有推翻它、也没有拿这两次超时冒充读数** |
 
 ## 五、与共享层的关系（防重复造表）
 

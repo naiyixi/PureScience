@@ -21,14 +21,14 @@
 
 ## 二、判定为安全的（逐类说明，不是"没看"）
 
-| 位置 | 为什么安全 |
-|---|---|
-| `stores/session-store-*-owner.ts` 的 `sessions.map` / `find` | 全部**按 id 定位**后只替换目标会话；遍历本身只做 id 比较，不读内容 |
-| `navigation-store.ts:91/173` | 只读 `lastReadAt`/id 等**元数据** |
+| 位置                                                                                                                 | 为什么安全                                                                             |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `stores/session-store-*-owner.ts` 的 `sessions.map` / `find`                                                         | 全部**按 id 定位**后只替换目标会话；遍历本身只做 id 比较，不读内容                     |
+| `navigation-store.ts:91/173`                                                                                         | 只读 `lastReadAt`/id 等**元数据**                                                      |
 | `WorkspaceActivityGroup.tsx` · `workspace-conversation-items.ts` · `WorkspaceMessageScroller.tsx`（读 `activities`） | 渲染的是**当前选中会话**（由工作区页面作为 prop 传入），而选中会话正是被按需读全的那个 |
-| `lib/acp/workspace-events.ts`（`activities`/`eventIds`） | 事件只作用于**当前运行中的会话** |
-| `pages/workspace/context-window-trend.ts`（`conversationGraph`） | 只算当前选中会话 |
-| 全局搜索命中 | 命中数据由主进程**从磁盘**构建，不经 store |
+| `lib/acp/workspace-events.ts`（`activities`/`eventIds`）                                                             | 事件只作用于**当前运行中的会话**                                                       |
+| `pages/workspace/context-window-trend.ts`（`conversationGraph`）                                                     | 只算当前选中会话                                                                       |
+| 全局搜索命中                                                                                                         | 命中数据由主进程**从磁盘**构建，不经 store                                             |
 
 ## 三、审计结论
 

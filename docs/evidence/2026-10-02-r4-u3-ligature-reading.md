@@ -16,10 +16,10 @@ reader 只能从 CMap 学到这些码位的含义 —— 正是这个单元关�
 
 同一份夹具、同一个 pdfjs（`node_modules/pdfjs-dist/legacy/build/pdf.mjs`）：
 
-| 调用 | `Con<0x81>rmation` 的码位 | `p.Val<0x83>600<0x83>Glu` |
-| --- | --- | --- |
-| `page.getTextContent()`（**应用当前用的就是这一支**，`pdf-service.ts:449` 无参数） | `C o n f i r m a t i o n` —— U+FB01 **已展开成 f+i** | `p.Val600Glu` —— U+00AD **已丢弃** |
-| `page.getTextContent({ disableNormalization: true })` | `C o n U+FB01 r m a t i o n` —— **码位原样送达** | `p.Val600Glu` —— U+00AD **仍然被丢弃**（两种模式都丢） |
+| 调用                                                                               | `Con<0x81>rmation` 的码位                            | `p.Val<0x83>600<0x83>Glu`                              |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------ |
+| `page.getTextContent()`（**应用当前用的就是这一支**，`pdf-service.ts:449` 无参数） | `C o n f i r m a t i o n` —— U+FB01 **已展开成 f+i** | `p.Val600Glu` —— U+00AD **已丢弃**                     |
+| `page.getTextContent({ disableNormalization: true })`                              | `C o n U+FB01 r m a t i o n` —— **码位原样送达**     | `p.Val600Glu` —— U+00AD **仍然被丢弃**（两种模式都丢） |
 
 第二行是**夹具有效性证明**：连字码位确实进了 PDF、确实到了 reader；第一行说明**连字的展开发生在 reader 内部**
 （pdf.js 的 Unicode 归一化），而不是我们哪一层。第三格说明软连字符更彻底：**关掉归一化也不出现在字符串里**

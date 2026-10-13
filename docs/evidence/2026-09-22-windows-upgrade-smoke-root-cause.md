@@ -43,8 +43,8 @@ windows-updater-certification.log
 
 历史同名签名（同一 job、同一句报错，说明不是某版引入）：
 
-| 版本 | 报错 | reason |
-|---|---|---|
+| 版本    | 报错                                              | reason                              |
+| ------- | ------------------------------------------------- | ----------------------------------- |
 | v1.68.0 | `Timed out waiting for installed version 1.68.0.` | `updater=failure,installer=success` |
 | v1.67.1 | `Timed out waiting for installed version 1.67.1.` | `updater=failure,installer=success` |
 | v1.65.0 | `Timed out waiting for installed version 1.65.0.` | `updater=failure,installer=success` |

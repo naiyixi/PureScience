@@ -9,11 +9,11 @@
 
 ## 1. 发现一：应用内的 codex 检测**不接受**用户自己装的适配器（A8 的覆盖范围比队列以为的窄）
 
-| 读数 | 值 |
-| --- | --- |
-| `settings:detect-codex` | `codex: {}`（**空**，尽管 `~/.local/bin/codex-acp` 在、`/Applications/ChatGPT.app/Contents/Resources/codex` 在、版本 0.154.0-alpha.6.2） |
-| `acp:create-session`（framework=codex） | 500 `Codex native executable not found. Re-detect or install Codex in settings.` |
-| 真实配置根 | `~/.purescience-project/codex-managed/` **不存在**（本机从未装过托管 codex） |
+| 读数                                    | 值                                                                                                                                       |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings:detect-codex`                 | `codex: {}`（**空**，尽管 `~/.local/bin/codex-acp` 在、`/Applications/ChatGPT.app/Contents/Resources/codex` 在、版本 0.154.0-alpha.6.2） |
+| `acp:create-session`（framework=codex） | 500 `Codex native executable not found. Re-detect or install Codex in settings.`                                                         |
+| 真实配置根                              | `~/.purescience-project/codex-managed/` **不存在**（本机从未装过托管 codex）                                                             |
 
 根因可复核：应用把 `managedAdapterPath` 指向自己的托管位置（`src/main/settings/agent-runtime-manager.ts:299-313`：
 `managedCodexAdapterEntry(storageRoot)`），而检测在**声明了托管适配器时只把这一条当候选**
@@ -27,17 +27,18 @@
 settings:install-codex {"source":"managed"}   # 装在隔离根里，机器未被改动；npm 源会跑全局 npm install ⇒ 未用
 -> {"installId":"install-codex-1790908493747-2","ok":true}     # codex-managed 303 MB
 ```
+
 装完检测记录为 `{resolvedPath: …/codex-managed/adapter/dist/index.js, version 1.1.4, nativeVersion 0.144.6}`，
 `acp:create-session` 随即返回 **`frameworkId=codex`、`backendId=codex:builtin-codex-isolated`、sessionId `01a0fa79-…`**。
 ⇒ 真 codex 会话可复现，配方即上面两行（隔离根内，可重复）。
 
 ## 3. 发现三：两次"换 provider 形状"各跑 3 个真实回合，**留痕都是空的**
 
-| 会话 | provider 形状 | 3 个真实回合耗时 | `function-model-events.json` | 技能活动事件 |
-| --- | --- | --- | --- | --- |
-| `01a0fa79-…` | `codex:builtin-codex-isolated`（订阅/隔离，自带后端） | 147.4s / 135.6s / 135.2s | **一条也没有**（`[]`） | 0 |
-| `01a0fa80-…` | `codex:p_1786100000000_1`（API-key provider 走应用 Responses 桥） | 121.4s / 120.9s / ~121s | **一条也没有**（`[]`） | 0 |
-| `01a0fa89-…` | `codex:p_1790909688055_5`（**自定义 chat-completions-only** provider，即 `requiresChatCompletionsBridge` 该为真的那种形状） | 120.7s / 120.4s | **一条也没有**（`[]`） | 0 |
+| 会话         | provider 形状                                                                                                               | 3 个真实回合耗时         | `function-model-events.json` | 技能活动事件 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ---------------------------- | ------------ |
+| `01a0fa79-…` | `codex:builtin-codex-isolated`（订阅/隔离，自带后端）                                                                       | 147.4s / 135.6s / 135.2s | **一条也没有**（`[]`）       | 0            |
+| `01a0fa80-…` | `codex:p_1786100000000_1`（API-key provider 走应用 Responses 桥）                                                           | 121.4s / 120.9s / ~121s  | **一条也没有**（`[]`）       | 0            |
+| `01a0fa89-…` | `codex:p_1790909688055_5`（**自定义 chat-completions-only** provider，即 `requiresChatCompletionsBridge` 该为真的那种形状） | 120.7s / 120.4s          | **一条也没有**（`[]`）       | 0            |
 
 三次回合的 function model 分别是：① `{}`（未配置）、④ `{skill-selection: deepseek-v4-pro}`、⑤ 不可达端点
 （`http://127.0.0.1:9`，临时 provider 用完即删）；每次 `acp:get-state` 都报 `status=connected`、`lastError=null`，
@@ -49,6 +50,7 @@ settings:install-codex {"source":"managed"}   # 装在隔离根里，机器未�
 
 第二轮换到 API-key provider 后仍为空，因此闸门在 `src/main/acp/turn-skill-owner.ts:139-170` 之内，而**不是**空目录：
 codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`、`codex-subscription/skills` 各 625）。余下的候选闸门：
+
 1. `state.selectedSkillIds.length > 0` ⇒ 直接返回描述符、**不调选择器**（会话预选/always-on 技能会走这条）；
 2. `codex?.bridgeSkillsAvailable` 在该组合下仍为 false。
 
@@ -93,14 +95,15 @@ codex 技能根已物化 **625 个 `SKILL.md`**（`/tmp/ps-q3-root/codex/skills`
 （与 A3 的 ✅ 不矛盾——A3 走的是 `settings:function-models` 的**探针**路径，不是 turn 路径，这正是 Q3 存在的理由。）
 
 **下一步（2026-10-02 更新：第 1 步已交付，剩下的只有第 2 步）**：
+
 1. ~~把 `bridgeSkillsAvailable` 的取值做成**回合侧可读**~~ ✅ **已交付**（提交 `b80fa197`）：新增具名原因
    `bridge-unavailable`，真机回合实测写出并回读该条目；见 `docs/evidence/2026-10-02-q3-turn-side-reason.md`。
 2. **在下一次真机回合里读那条原因**，用它把闸门钉死：本机以**自定义 chat-completions provider**（`apiEndpoints:["openai"]`、无 `responses`）
    起 codex 会话跑一个回合——
    - 留痕是 `not-configured` ⇒ 选择器**跑了**（该形状有桥），④⑤ 只是还没配模型/端点，接着配 ④ 真模型与 ⑤ 不可达端点即可取得；
    - 留痕是 `bridge-unavailable` ⇒ **需要桥却没建桥**，那才是具名缺陷（`target.needsChatResponsesBridge` 为真而 `bridgeLease` 缺席）。
-   本轮曾尝试这一测定（隔离实例 44194），**卡在托管安装**：`settings:install-codex {"source":"managed"}` 这次从 npm registry
-   下载**无进展**（>9 分钟零字节；上一次同样操作 ~3 分钟装完 303 MB）⇒ 未取得读数，实例与临时目录已清。
+     本轮曾尝试这一测定（隔离实例 44194），**卡在托管安装**：`settings:install-codex {"source":"managed"}` 这次从 npm registry
+     下载**无进展**（>9 分钟零字节；上一次同样操作 ~3 分钟装完 303 MB）⇒ 未取得读数，实例与临时目录已清。
 
 **实例现状（2026-10-02 13:2x 更新）**：当时那个 44190 实例**已停**，`/tmp/ps-q3-root`（含 303 MB 托管 codex）与 `/tmp/ps-q1` 夹具
 **已删**（13:2x 的收尾轮完成，端口 44190/44192/44194 均无监听，`/private/tmp` 回到 26M）；本轮又一次测定用的 44194 实例

@@ -5,14 +5,14 @@
 
 ## 一、真实事实（对源核实，不是推断）
 
-| 事实 | 依据（file:line） |
-| --- | --- |
-| 合并是**单事务**的三件事：指标/文献改归属、写一条别名（规范化名 → 目标刊）、删源刊行 | `src/main/references/journal-repository.ts` `mergeJournals`（R2-U4） |
-| 别名行**只**由合并写入，键是**规范化名**（`normalizedName`），并记下 `mergedFromJournalId` | `src/main/references/journal-repository.ts` `journalAlias.findUnique`；`src/shared/journal-metrics-overview.ts:40-44`（`JournalAliasRow`） |
-| 合并**没有**记录被改归属行的原主人 ⇒ 「撤销合并」在数据层不可能，只有「解除别名」可做 | 同上：`updateMany` 只换 `journalId`，行上没有 former-journal 字段 |
-| 解除别名不触碰指标与文献（仓库实现只 `journalAlias.delete` 一次） | `src/main/references/journal-repository.ts` `removeJournalAlias` |
-| 拒绝是**具名**的（`alias-not-found`），且带一句可上屏的 `detail` | `src/shared/journal-merge.ts` `JOURNAL_ALIAS_UNBIND_REFUSALS` / `JOURNAL_ALIAS_UNBIND_REFUSAL_LABEL_KEYS` |
-| 本单元之前，渲染层**没有任何**入口能读或写这条别名（`grep -rn "removeJournalAlias" src/renderer` 零命中） | 本轮前的树 |
+| 事实                                                                                                      | 依据（file:line）                                                                                                                          |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 合并是**单事务**的三件事：指标/文献改归属、写一条别名（规范化名 → 目标刊）、删源刊行                      | `src/main/references/journal-repository.ts` `mergeJournals`（R2-U4）                                                                       |
+| 别名行**只**由合并写入，键是**规范化名**（`normalizedName`），并记下 `mergedFromJournalId`                | `src/main/references/journal-repository.ts` `journalAlias.findUnique`；`src/shared/journal-metrics-overview.ts:40-44`（`JournalAliasRow`） |
+| 合并**没有**记录被改归属行的原主人 ⇒ 「撤销合并」在数据层不可能，只有「解除别名」可做                     | 同上：`updateMany` 只换 `journalId`，行上没有 former-journal 字段                                                                          |
+| 解除别名不触碰指标与文献（仓库实现只 `journalAlias.delete` 一次）                                         | `src/main/references/journal-repository.ts` `removeJournalAlias`                                                                           |
+| 拒绝是**具名**的（`alias-not-found`），且带一句可上屏的 `detail`                                          | `src/shared/journal-merge.ts` `JOURNAL_ALIAS_UNBIND_REFUSALS` / `JOURNAL_ALIAS_UNBIND_REFUSAL_LABEL_KEYS`                                  |
+| 本单元之前，渲染层**没有任何**入口能读或写这条别名（`grep -rn "removeJournalAlias" src/renderer` 零命中） | 本轮前的树                                                                                                                                 |
 
 ## 二、本轮观测值（全部本机实跑；读数即结论）
 
@@ -59,4 +59,3 @@
 **一条本轮的自我纠正**（留档）：spec 首跑断言"合并后的别名是 `nature london`"⇒ 真机回 `{"normalizedName":"nature"}`（合并写入的是**源刊**的规范化名，下拉索引让"Nature"成了源）⇒ 说明**我猜了名字**。改法是**读出来**（先断言存在别名、再取名字用于后续比对），不是放宽断言。
 
 **仍未取证**：判据③里"该名字可再次用于新建"这一半没在本条 spec 里验（数据层自然成立）；渲染层的键盘可达性不在本单元判据内。
-

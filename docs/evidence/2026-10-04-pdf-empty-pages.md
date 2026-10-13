@@ -2,11 +2,11 @@
 
 ## 先记本轮的三判结果（两个假阳性 + 一个真缺口）
 
-| 候选 | 判定 | 依据 |
-| --- | --- | --- |
-| `validationFailed`（功能模型提供方事实） | **假缺口，划掉** | 它被当成**解析的输入**：`shared/function-models.ts:110-111` —— `if (provider.validationFailed) return { override: null, unusable: ['provider-unverified'] }` ⇒ 事实以**具名理由** `provider-unverified` 上屏（面板本就在印这一档）。布尔本身是内部输入，渲染层不读是对的 |
-| `boundConversationsUnavailable`（专才删除卡载荷） | **假缺口，划掉** | 两处产出点**恒为 `true`**（`specialist-approval-presentation.ts:32`、`specialist-approval-gateway.ts:85`，注释写明「绑定会话一律解析为不可用，且不静默切到主 Agent」）⇒ 是**常量**而非逐实例事实，读不读没有差别 |
-| **`emptyPageCount`（PDF 打开结果）** | **真缺口** | 见下 |
+| 候选                                              | 判定             | 依据                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `validationFailed`（功能模型提供方事实）          | **假缺口，划掉** | 它被当成**解析的输入**：`shared/function-models.ts:110-111` —— `if (provider.validationFailed) return { override: null, unusable: ['provider-unverified'] }` ⇒ 事实以**具名理由** `provider-unverified` 上屏（面板本就在印这一档）。布尔本身是内部输入，渲染层不读是对的 |
+| `boundConversationsUnavailable`（专才删除卡载荷） | **假缺口，划掉** | 两处产出点**恒为 `true`**（`specialist-approval-presentation.ts:32`、`specialist-approval-gateway.ts:85`，注释写明「绑定会话一律解析为不可用，且不静默切到主 Agent」）⇒ 是**常量**而非逐实例事实，读不读没有差别                                                         |
+| **`emptyPageCount`（PDF 打开结果）**              | **真缺口**       | 见下                                                                                                                                                                                                                                                                     |
 
 > 这是普查里抓到的**第三、第四个假阳性**（前两个：`deferredReason`、以及更早那次）。**教训固定下来**：
 > 「渲染层零读」只说明**字段**没被读，**不说明事实没上屏**——先查这个字段有没有被折进一个
@@ -67,4 +67,3 @@ PdfExplorePanel.render.test.tsx + PdfTablePanel.render.test.tsx   →  2 passed 
 **仍未取的只剩显示层那一步**：把这份扫描件送进 `PdfExplorePanel`/`PdfTablePanel` 的**真窗口**读数
 （需要走参考文献库的 PDF 选择器把文件纳入项目）。显示层行为由两个面板的渲染测试覆盖（19 passed），
 事实层由本条真机读数覆盖。
-

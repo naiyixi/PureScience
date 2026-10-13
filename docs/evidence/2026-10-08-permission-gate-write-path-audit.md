@@ -7,25 +7,25 @@
 
 **先纠一个最容易犯的错：`POST` 不等于「写」。** 本仓 20+ 个 descriptor 用 POST，逐个看上下文后，绝大多数是 **POST-as-query** —— 服务只提供 POST 端点，语义纯粹是读：
 
-| 落点 | 实际语义 |
-| --- | --- |
+| 落点                                                                                                                                                                                                                                                                                                                                                                                        | 实际语义                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | `cancer-models.ts:563,632`（cBioPortal `fetch`）／`clinical-genomics.ts:317,522`（CIVIC、OpenTargets GraphQL）／`variants-gnomad.ts:453`（gnomAD GraphQL）／`genes-proteins.ts:53`（MyGene query）／`genes-gprofiler.ts:148`／`structures-pdb.ts:468,586`（PDB 检索）／`variants-mavedb.ts:155`／`rna.ts:462`（Rfam `search/sequence`）／`genes-reactome.ts:74`／`research-resources.ts:72` | **读**：把查询条件放进 body，不建持久状态 |
 
 **真正的写路径只有两处：**
 
-| # | 落点 | 为什么是写 |
-| --- | --- | --- |
-| 1 | `genes-enrichr.ts:77` → `POST https://maayanlab.cloud/Enrichr/addList`，回带 `userListId`（`:91`）供后续 `enrich?userListId=…`（`:98-99`）使用 | **在第三方服务上建立持久条目**：用户的基因列表被登记到对方的服务器上，并由一个 id 引用；这不是「把查询发出去」，是「留下东西」 |
-| 2 | `job-transport.ts:100`（`method: 'POST'`）—— 远程作业提交/传输 | 在**远程主机**上创建作业与文件 |
+| #   | 落点                                                                                                                                           | 为什么是写                                                                                                                     |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `genes-enrichr.ts:77` → `POST https://maayanlab.cloud/Enrichr/addList`，回带 `userListId`（`:91`）供后续 `enrich?userListId=…`（`:98-99`）使用 | **在第三方服务上建立持久条目**：用户的基因列表被登记到对方的服务器上，并由一个 id 引用；这不是「把查询发出去」，是「留下东西」 |
+| 2   | `job-transport.ts:100`（`method: 'POST'`）—— 远程作业提交/传输                                                                                 | 在**远程主机**上创建作业与文件                                                                                                 |
 
 ## 二、批次 ③ 的四个判据，逐条对既有机制核实（file:line）
 
-| 判据 | 读数 | 落点 |
-| --- | --- | --- |
-| ① **默认拒绝**（不是默认允许后提示） | ✅ 卡片**无人应答即自动拒绝**（"Unanswered requests are auto-denied after `timeoutMs` so a call can never hang the kernel indefinitely"）；且**审批通道缺席时 fail-closed**（"a call that is neither pre-allowed nor skip-approved fails closed when this transport is absent"） | `src/main/connectors/approval-broker.ts:28-38`；`src/main/connectors/service.ts:38-41` |
-| ② **具名拒绝** | ⚠️ **部分**：闸门有具名码（`connector_unavailable` / `connector_disabled` …），但**拒绝的理由里没有「这次调用会写」这一条**——见第四节 | `src/main/connectors/service.ts`（`ConnectorGateError`） |
-| ③ **面板可见 + 就地撤销** | ✅ 授权面板在位，且有渲染测试；注册表提供 `revoke()` 并返回被移除的行 | `src/renderer/src/pages/settings/PermissionsPanel.tsx`（+ `.render.test.tsx`）；`src/renderer/src/pages/settings/ConnectorDetailView.tsx`；`src/main/permission-grants/registry.ts:57,420-450` |
-| ④ **没有可写路径的工具不加门** | ✅ **无需新增任何门**：连接器闸门覆盖**每一次**连接器调用（不只是写），所以「为写路径再加一层」本身就是多余的门 | 同上 `service.ts` |
+| 判据                                 | 读数                                                                                                                                                                                                                                                                             | 落点                                                                                                                                                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ① **默认拒绝**（不是默认允许后提示） | ✅ 卡片**无人应答即自动拒绝**（"Unanswered requests are auto-denied after `timeoutMs` so a call can never hang the kernel indefinitely"）；且**审批通道缺席时 fail-closed**（"a call that is neither pre-allowed nor skip-approved fails closed when this transport is absent"） | `src/main/connectors/approval-broker.ts:28-38`；`src/main/connectors/service.ts:38-41`                                                                                                         |
+| ② **具名拒绝**                       | ⚠️ **部分**：闸门有具名码（`connector_unavailable` / `connector_disabled` …），但**拒绝的理由里没有「这次调用会写」这一条**——见第四节                                                                                                                                            | `src/main/connectors/service.ts`（`ConnectorGateError`）                                                                                                                                       |
+| ③ **面板可见 + 就地撤销**            | ✅ 授权面板在位，且有渲染测试；注册表提供 `revoke()` 并返回被移除的行                                                                                                                                                                                                            | `src/renderer/src/pages/settings/PermissionsPanel.tsx`（+ `.render.test.tsx`）；`src/renderer/src/pages/settings/ConnectorDetailView.tsx`；`src/main/permission-grants/registry.ts:57,420-450` |
+| ④ **没有可写路径的工具不加门**       | ✅ **无需新增任何门**：连接器闸门覆盖**每一次**连接器调用（不只是写），所以「为写路径再加一层」本身就是多余的门                                                                                                                                                                  | 同上 `service.ts`                                                                                                                                                                              |
 
 **远程作业那一条（#2）不算缺口**：它已被 **compute 侧**的审批闸门 + 执行保护策略覆盖 —— 策略在审批卡之前就按 `deny` 具名拒绝（v1.90.0 交付的 `protection_refused`，见 `shared/execution-protection.ts` 与 `compute-approval-broker.ts`），有面板（`ExecutionProtectionPanel`，`data-slot="protection-policy-*"`）且策略可改。
 

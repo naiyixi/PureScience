@@ -15,13 +15,13 @@
 不传就**连规则都不生成**。所以 27/30 不是文案问题，是**规则面本身少了一截**：一个 payload 早已被改坏的
 crate，在只读那一侧会得到「本应用能套用的检查全部通过」。
 
-| 面 | 内容 |
-| --- | --- |
-| 新增（单一来源） | `src/main/ro-crate/digest.ts`：`sha256Hex`（写侧原本私有在 `export.ts:44`，现两侧共用）与 `digestOfFile`（**流式**哈希，`lstat` 先判类型，**符号链接不跟随**、读不到即返回 `undefined`） |
-| 读侧补齐 | `src/main/ro-crate/import.ts`：`listPayloadPaths`（走 `<crate>/files/**`，跳过符号链接）+ `declaredPayloadIds`（文档声明的 `files/**`）+ `insideContentRoot`（**逃逸路径一律不读**）⇒ 现在调 `validateRoCrate({ document, payloadPaths, payloadDigests })` |
-| 写侧去重 | `src/main/ro-crate/export.ts` 删掉自带的 `sha256Hex`，改引 `./digest` —— 两侧必须对「文件的 sha256」是同一件事，比较才成立 |
-| 共享注释更正 | `src/shared/ro-crate.ts` 的 `payloadPaths` 注释原写「actually written（实际写出的）」⇒ 改为「写侧传自己刚写的、只读侧传外来 crate 真正持有的」 |
-| 无契约涟漪 | **零新通道、零新命令、零新 i18n 键**：三条规则码早已在共享校验器里，界面按「规则码 + 层级」渲染（层级译成人话），所以没有 pin 级联 |
+| 面               | 内容                                                                                                                                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 新增（单一来源） | `src/main/ro-crate/digest.ts`：`sha256Hex`（写侧原本私有在 `export.ts:44`，现两侧共用）与 `digestOfFile`（**流式**哈希，`lstat` 先判类型，**符号链接不跟随**、读不到即返回 `undefined`）                                                                   |
+| 读侧补齐         | `src/main/ro-crate/import.ts`：`listPayloadPaths`（走 `<crate>/files/**`，跳过符号链接）+ `declaredPayloadIds`（文档声明的 `files/**`）+ `insideContentRoot`（**逃逸路径一律不读**）⇒ 现在调 `validateRoCrate({ document, payloadPaths, payloadDigests })` |
+| 写侧去重         | `src/main/ro-crate/export.ts` 删掉自带的 `sha256Hex`，改引 `./digest` —— 两侧必须对「文件的 sha256」是同一件事，比较才成立                                                                                                                                 |
+| 共享注释更正     | `src/shared/ro-crate.ts` 的 `payloadPaths` 注释原写「actually written（实际写出的）」⇒ 改为「写侧传自己刚写的、只读侧传外来 crate 真正持有的」                                                                                                             |
+| 无契约涟漪       | **零新通道、零新命令、零新 i18n 键**：三条规则码早已在共享校验器里，界面按「规则码 + 层级」渲染（层级译成人话），所以没有 pin 级联                                                                                                                         |
 
 **三条新出现的断言的语义（对读侧而言）**：
 
@@ -32,13 +32,13 @@ crate，在只读那一侧会得到「本应用能套用的检查全部通过」
 
 ## 二、本轮观测值（全部实跑，读数即结论）
 
-| 门禁 | 读数 |
-| --- | --- |
-| `vitest run src/main/ro-crate`（本轮 import 套件 4 → **10 条**） | **27 passed｜1 skipped**（skipped 是既有 `evidence.capture.test.ts` 的 `describe.skipIf(!ENABLED)`） |
-| `vitest run src/main/ro-crate + RoCrateExportDialog.render.test.tsx` | **45 passed｜1 skipped**（5 文件） |
-| 双 typecheck（node / web） | **exit 0** |
-| `./node_modules/.bin/eslint --no-cache .` | **0 error / 124 warning**（本轮新增的 2 条 prettier warning 已当批改掉；触碰文件 0 problem） |
-| **真机读数** `e2e/certification/ro-crate-export.spec.ts` | **2 passed (33.4s)**，`E2E_EXIT=0`（`npm run build:e2e` → built、exit 0） |
+| 门禁                                                                 | 读数                                                                                                 |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `vitest run src/main/ro-crate`（本轮 import 套件 4 → **10 条**）     | **27 passed｜1 skipped**（skipped 是既有 `evidence.capture.test.ts` 的 `describe.skipIf(!ENABLED)`） |
+| `vitest run src/main/ro-crate + RoCrateExportDialog.render.test.tsx` | **45 passed｜1 skipped**（5 文件）                                                                   |
+| 双 typecheck（node / web）                                           | **exit 0**                                                                                           |
+| `./node_modules/.bin/eslint --no-cache .`                            | **0 error / 124 warning**（本轮新增的 2 条 prettier warning 已当批改掉；触碰文件 0 problem）         |
+| **真机读数** `e2e/certification/ro-crate-export.spec.ts`             | **2 passed (33.4s)**，`E2E_EXIT=0`（`npm run build:e2e` → built、exit 0）                            |
 
 **本轮新增的 6 条用例（`src/main/ro-crate/import.test.ts`）**，其中 5 条拿**应用自己刚导出的真 crate**
 当输入（`writeDurableVersion` + `writeRoCrateExport`，不是手搓文档）：

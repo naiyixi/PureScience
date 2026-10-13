@@ -9,9 +9,9 @@
 
 把 77 条按错误类型拆开（这步是关键，否则会把级联当成"很多坏测试"）：
 
-| 类型 | 条数 | 说明 |
-|---|---|---|
-| **真的等到超时**（`Test timed out in 15000ms` ×15、`Hook timed out in 10000ms` ×2） | **17** | 上限被负载顶穿 |
+| 类型                                                                                                                | 条数   | 说明                                             |
+| ------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------ |
+| **真的等到超时**（`Test timed out in 15000ms` ×15、`Hook timed out in 10000ms` ×2）                                 | **17** | 上限被负载顶穿                                   |
 | **级联断言**（`expected [] to have a length of 4 but got 0`、`vi.fn()` 未被调用、`expected null not to be null` …） | **58** | 同文件里跟在那 17 条后面的下游失败，不是独立缺陷 |
 
 那 17 条分布在 **11 个文件**：`ProjectFilesView(3)`、`WorkspaceMessageScroller.interaction(2)`、`WorkspaceMessageScroller.render(2)`、`PreviewFileContent(2)`、`main/storage/ipc(2)`，以及 `main/artifacts/provenance-repository`、`main/agents/completion-gate.execute-control.integration`、`main/acp/runtime`、`main/session-persistence/artifact-finalization-recovery.integration`、`main/session-persistence/deletion-integration`、`main/settings/service` 各 1。

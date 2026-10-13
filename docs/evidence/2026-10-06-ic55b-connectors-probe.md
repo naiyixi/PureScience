@@ -7,22 +7,22 @@
 
 ## 真实事实（raw curl，落盘再读）
 
-| 服务 | 端点 | HTTP 证据 |
-|---|---|---|
-| CELLxGENE Discover | `GET https://api.cellxgene.cziscience.com/curation/v1/collections?visibility=PUBLIC` | `http=200 type=application/json size=3171289` |
-| CELLxGENE Discover | `GET …/curation/v1/collections/{uuid}` | `http=200 application/json size=21606`（datasets 带 `cell_count` 等富字段；catalogue 里的 datasets 只是预览，无 title/cell_count） |
-| Alliance | `GET https://www.alliancegenome.org/api/search?q=BRCA1&category=gene_search_result&limit=2` | `http=200 application/json size=16092`；响应 `{total:136, aggregations:[…], results:[…]}` |
-| Alliance | `GET /api/gene/HGNC:1100` | `http=200 size=46199`（`gene.primaryExternalId="HGNC:1100"`）；注意 `NCBIGene:672` 直接 `400 No gene found` |
-| MaveDB | `POST https://api.mavedb.org/api/v1/score-sets/search` body `{"targets":["BRCA1"],"limit":3}` | `http=200 application/json`；`{scoreSets:[…], numScoreSets:7}` |
-| MaveDB | `GET /api/v1/score-sets/?urns=urn:mavedb:00000001-a-1[,…]` | `http=200`，逗号分隔有效；不带 `urns` 的 GET 回 `422`（字段必填）；`GET …/score-sets/search` 回 `404`（只认 POST） |
-| Metabolomics Workbench | `GET https://www.metabolomicsworkbench.org/rest/study/study_title/cancer/summary` | `http=200 application/json size=184089`（对象按行号 `"1","2",…` 键控） |
-| Metabolomics Workbench | `GET /rest/study/study_id/ST000001/summary` | `http=200 application/json size=524`（**单个对象**，非行号键控） |
-| Monarch | `GET https://api.monarchinitiative.org/v3/api/association?subject=MONDO:0007947&category=biolink:DiseaseToPhenotypicFeatureAssociation&limit=2` | `http=200 application/json size=22086`；`category` 是**固定枚举**（`biolink:GeneToDiseaseAssociation` 被 `422` 拒） |
-| Monarch | `GET /v3/api/search?q=Marfan&limit=3` | `http=200 application/json size=5593` |
-| GEO FTP | `GET https://ftp.ncbi.nlm.nih.gov/geo/series/GSE131nnn/GSE131907/matrix/` | `http=200 text/html size=603`（Apache 目录索引） |
-| GEO FTP | `GET …/GSE131907/suppl/` | `http=200 text/html size=1392` |
-| GEO FTP | `HEAD …/matrix/GSE131907_series_matrix.txt.gz` | `http=200 type=application/x-gzip`，`Content-Length: 6300`，`Accept-Ranges: bytes` |
-| GEO FTP | `GET …/GSE131907/suppl/filelist.txt` | `http=404`（该 series 无此文件；目录索引本身即发现来源） |
+| 服务                   | 端点                                                                                                                                            | HTTP 证据                                                                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| CELLxGENE Discover     | `GET https://api.cellxgene.cziscience.com/curation/v1/collections?visibility=PUBLIC`                                                            | `http=200 type=application/json size=3171289`                                                                                      |
+| CELLxGENE Discover     | `GET …/curation/v1/collections/{uuid}`                                                                                                          | `http=200 application/json size=21606`（datasets 带 `cell_count` 等富字段；catalogue 里的 datasets 只是预览，无 title/cell_count） |
+| Alliance               | `GET https://www.alliancegenome.org/api/search?q=BRCA1&category=gene_search_result&limit=2`                                                     | `http=200 application/json size=16092`；响应 `{total:136, aggregations:[…], results:[…]}`                                          |
+| Alliance               | `GET /api/gene/HGNC:1100`                                                                                                                       | `http=200 size=46199`（`gene.primaryExternalId="HGNC:1100"`）；注意 `NCBIGene:672` 直接 `400 No gene found`                        |
+| MaveDB                 | `POST https://api.mavedb.org/api/v1/score-sets/search` body `{"targets":["BRCA1"],"limit":3}`                                                   | `http=200 application/json`；`{scoreSets:[…], numScoreSets:7}`                                                                     |
+| MaveDB                 | `GET /api/v1/score-sets/?urns=urn:mavedb:00000001-a-1[,…]`                                                                                      | `http=200`，逗号分隔有效；不带 `urns` 的 GET 回 `422`（字段必填）；`GET …/score-sets/search` 回 `404`（只认 POST）                 |
+| Metabolomics Workbench | `GET https://www.metabolomicsworkbench.org/rest/study/study_title/cancer/summary`                                                               | `http=200 application/json size=184089`（对象按行号 `"1","2",…` 键控）                                                             |
+| Metabolomics Workbench | `GET /rest/study/study_id/ST000001/summary`                                                                                                     | `http=200 application/json size=524`（**单个对象**，非行号键控）                                                                   |
+| Monarch                | `GET https://api.monarchinitiative.org/v3/api/association?subject=MONDO:0007947&category=biolink:DiseaseToPhenotypicFeatureAssociation&limit=2` | `http=200 application/json size=22086`；`category` 是**固定枚举**（`biolink:GeneToDiseaseAssociation` 被 `422` 拒）                |
+| Monarch                | `GET /v3/api/search?q=Marfan&limit=3`                                                                                                           | `http=200 application/json size=5593`                                                                                              |
+| GEO FTP                | `GET https://ftp.ncbi.nlm.nih.gov/geo/series/GSE131nnn/GSE131907/matrix/`                                                                       | `http=200 text/html size=603`（Apache 目录索引）                                                                                   |
+| GEO FTP                | `GET …/GSE131907/suppl/`                                                                                                                        | `http=200 text/html size=1392`                                                                                                     |
+| GEO FTP                | `HEAD …/matrix/GSE131907_series_matrix.txt.gz`                                                                                                  | `http=200 type=application/x-gzip`，`Content-Length: 6300`，`Accept-Ranges: bytes`                                                 |
+| GEO FTP                | `GET …/GSE131907/suppl/filelist.txt`                                                                                                            | `http=404`（该 series 无此文件；目录索引本身即发现来源）                                                                           |
 
 ## 本轮观测值（`/tmp/ic55b-live.json`，走实际工具）
 

@@ -2,7 +2,6 @@
 
 > 技能目录名本身在本仓品牌扫描的禁用词表内 ⇒ 本文件**只写路径与结论、不写其名**（与队列档同一口径）。
 
-
 **为什么做**：技能本体 **99,997 字符**（162,432 字节）——距 `skill_manage` 的 **100,000 字符上限只差 3 个字符**，
 所以"把新教训写进本体"这一步会被拒（上一轮就发生过，只能退而挂指针）。references 侧同时有 **307 个文件 / 3.35 MB**，
 被判定为"像 per-session 日志"，会稀释"该读哪一份"的判断。
@@ -11,10 +10,10 @@
 
 ## 1. 本体（SKILL.md）的第一刀：抽出最大一节，保住内容
 
-| 事实 | 数字 |
-| --- | --- |
-| 本体现状 | 99,997 字符（上限 100,000） |
-| 最大一节 | `## 每轮都生效的硬规矩`（第 66 行 → 下一个标题在第 200 行）≈ **134 行**，占本体的大头 |
+| 事实     | 数字                                                                                                                                                                                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 本体现状 | 99,997 字符（上限 100,000）                                                                                                                                                                                                                                      |
+| 最大一节 | `## 每轮都生效的硬规矩`（第 66 行 → 下一个标题在第 200 行）≈ **134 行**，占本体的大头                                                                                                                                                                            |
 | 其余标题 | `Local layout`(200) / `Run`(212) / `First-run setup`(226) / `Persistent service`(249) / `Push fork`(253) / `de-branding`(268) / `modifications landed/PORT PENDING`(300) / `OOM corrected fix`(311) / `docking`(335) / `Web RPC API`(348) / `notifications`(364) |
 
 **做法**：把那节的"叙述与例子"移进 `references/per-round-hard-rules.md`，本体只留**可勾选清单**
@@ -25,14 +24,14 @@
 
 ## 2. references 侧的合并簇（按文件名前缀统计，只读）
 
-| 簇 | 现有文件数（示例） | 合并目标 |
-| --- | --- | --- |
-| i18n / 本地化 | `i18n-sweep-*`×7、`i18n-localization-*`×3、`i18n-copy-*`×2、`i18n-batch-*`×2、`i18n-keys-wave`、`i18n-sweep-wave`、`settings-zh-*`×6 | **1 份** `i18n-and-localization.md`（+ 1 份 dated 归档） |
-| 发布 / 资产 / CI-CDN | `release-and-*`×6、`release-mechanics.md`(72KB)、`release-publishing.md`(20KB)、`release-asset-*`×2、`ui-release-lessons-2026-09`、`2026-09-i18n-ci-release-cdn-ops.md`(33KB) | **1 份** `release-and-distribution.md` |
-| CI / 门禁 / 监视 | `ci-watch-loop-and-lint-gates.md`(32KB)、`ci-gates-and-measurement-discipline.md`(31KB)、`ci-monitoring-and-push-discipline.md`(30KB)、`ci-budget-contract-and-watcher-2026-09.md`、`pr-gate-*`×2 | **1 份** `ci-gates-and-discipline.md` |
-| 入口层 | `entry-layer-*`×6（含 `entry-layer-audit.md` 33KB、`entry-layer-wiring.md` 32KB） | **1 份** `entry-layer.md` |
-| 会话 | `session-forensics*`×2、`session-summary-*`×2、`session-package-*`×3、`session-inspection`、`per-session-*`×2、`two-tier-session-catalog`、`long-session-sidechat` | **2 份**：`session-lifecycle.md`、`session-forensics-and-packages.md` |
-| 带日期的（16 个） | `debrand-2026-08`、`fork-work-2026-08`、`update-plan-2026-09-*`×2、`inline-recipes-archive-2026-09.md`(73KB) 等 | **1 份** `archive-2026-08-09.md`（或按主题并进上面各份） |
+| 簇                   | 现有文件数（示例）                                                                                                                                                                                | 合并目标                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| i18n / 本地化        | `i18n-sweep-*`×7、`i18n-localization-*`×3、`i18n-copy-*`×2、`i18n-batch-*`×2、`i18n-keys-wave`、`i18n-sweep-wave`、`settings-zh-*`×6                                                              | **1 份** `i18n-and-localization.md`（+ 1 份 dated 归档）              |
+| 发布 / 资产 / CI-CDN | `release-and-*`×6、`release-mechanics.md`(72KB)、`release-publishing.md`(20KB)、`release-asset-*`×2、`ui-release-lessons-2026-09`、`2026-09-i18n-ci-release-cdn-ops.md`(33KB)                     | **1 份** `release-and-distribution.md`                                |
+| CI / 门禁 / 监视     | `ci-watch-loop-and-lint-gates.md`(32KB)、`ci-gates-and-measurement-discipline.md`(31KB)、`ci-monitoring-and-push-discipline.md`(30KB)、`ci-budget-contract-and-watcher-2026-09.md`、`pr-gate-*`×2 | **1 份** `ci-gates-and-discipline.md`                                 |
+| 入口层               | `entry-layer-*`×6（含 `entry-layer-audit.md` 33KB、`entry-layer-wiring.md` 32KB）                                                                                                                 | **1 份** `entry-layer.md`                                             |
+| 会话                 | `session-forensics*`×2、`session-summary-*`×2、`session-package-*`×3、`session-inspection`、`per-session-*`×2、`two-tier-session-catalog`、`long-session-sidechat`                                | **2 份**：`session-lifecycle.md`、`session-forensics-and-packages.md` |
+| 带日期的（16 个）    | `debrand-2026-08`、`fork-work-2026-08`、`update-plan-2026-09-*`×2、`inline-recipes-archive-2026-09.md`(73KB) 等                                                                                   | **1 份** `archive-2026-08-09.md`（或按主题并进上面各份）              |
 
 **预期**：307 → 约 **140–160** 份；被标"像 per-session 日志"的名字随之消失（合并后按主题命名）。
 
@@ -61,11 +60,11 @@
 
 ### 5.1 合并结果
 
-| 簇 | 合并前 | 合并后 | 内容 |
-| --- | --- | --- | --- |
-| settings / 应用级 zh 清扫 | 6 份 | **1 份** `settings-zh-sweep.md`（42,746 字节，6 个小节齐全） | 全保 |
-| i18n 清扫 playbook | 22 份 + 目标自身 | **1 份** `i18n-sweep-playbook.md`（133,664 字节 / 90,093 字符，22 个小节齐全） | 源 88,358 字符 → 90,093 字符（+1.9% 小节标题开销），措辞未改 |
-| references 总数 | **308** | **280** | −28 份 |
+| 簇                        | 合并前           | 合并后                                                                         | 内容                                                         |
+| ------------------------- | ---------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| settings / 应用级 zh 清扫 | 6 份             | **1 份** `settings-zh-sweep.md`（42,746 字节，6 个小节齐全）                   | 全保                                                         |
+| i18n 清扫 playbook        | 22 份 + 目标自身 | **1 份** `i18n-sweep-playbook.md`（133,664 字节 / 90,093 字符，22 个小节齐全） | 源 88,358 字符 → 90,093 字符（+1.9% 小节标题开销），措辞未改 |
+| references 总数           | **308**          | **280**                                                                        | −28 份                                                       |
 
 ### 5.2 事故：合并器把"目标文件"当源删了
 
@@ -92,14 +91,14 @@
 
 ### 5.5 分批推进结果（每批都是：树外备份 + 记 H1 清单 → 合并 → 验证目标在盘且小节齐全 → 才删源）
 
-| 批次 | 簇 | 源份数 | 落点 | 落点字节 | references 总数 |
-| --- | --- | --- | --- | --- | --- |
-| 0 | i18n 清扫 playbook + settings zh | 22 + 6 | 2 份（`i18n-sweep-playbook.md` 133,664 / `settings-zh-sweep.md` 42,746） | 见左 | 308 → 280 |
-| 1 | 发布 / CI / CDN（含 `release-mechanics.md` 本体） | 26 | 5 份（`release-mechanics.md` 130,289 · `release-publishing.md` 67,089 · `ci-gates-and-discipline.md` 84,405（新）· `ci-monitoring-and-push-discipline.md` 72,893 · `pr-gate-diagnosis.md` 21,182） | 见左 | 280 → 255 |
-| 2 | 入口层 / 会话 / 带日期的会话沉淀 | 28 | 4 份（`entry-layer-audit.md` 101,540 · `session-forensics-and-packages.md` 46,845（新）· `session-lifecycle-and-controls.md` 33,685（新）· `archive-2026-08-09-session-logs.md` 134,972（新）） | 见左 | 255 → 230 |
-| 3 | 运行时/DDL、渲染层、设置面板、IPC、产物 | 28 | 5 份（`runtime-and-schema-evolution.md` 35,762 · `renderer-development-and-testing.md` 56,066 · `settings-panels-and-gates.md` 37,264 · `ipc-surface-and-contracts.md` 48,257 · `artifact-lifecycle-and-provenance.md` 54,191，全部新建） | 见左 | 230 → 207 |
-| 4 | 验证/契约门禁、agent 面（MCP/ACP/框架）、无头与 CDP、真机探针、参考产品研究 | 50 | 5 份（`verification-and-contract-gates.md` 124,012 · `agent-surfaces-mcp-and-acp.md` 72,525 · `headless-and-cdp-driving.md` 40,887 · `real-machine-probing.md` 97,527 · `reference-product-research.md` 164,439，全部新建） | 见左 | 207 → **162** |
-| — | **合计** | **160 份并入 21 个主题落点** | — | — | **308 → 162（净 −146）** |
+| 批次 | 簇                                                                          | 源份数                       | 落点                                                                                                                                                                                                                                      | 落点字节 | references 总数          |
+| ---- | --------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------ |
+| 0    | i18n 清扫 playbook + settings zh                                            | 22 + 6                       | 2 份（`i18n-sweep-playbook.md` 133,664 / `settings-zh-sweep.md` 42,746）                                                                                                                                                                  | 见左     | 308 → 280                |
+| 1    | 发布 / CI / CDN（含 `release-mechanics.md` 本体）                           | 26                           | 5 份（`release-mechanics.md` 130,289 · `release-publishing.md` 67,089 · `ci-gates-and-discipline.md` 84,405（新）· `ci-monitoring-and-push-discipline.md` 72,893 · `pr-gate-diagnosis.md` 21,182）                                        | 见左     | 280 → 255                |
+| 2    | 入口层 / 会话 / 带日期的会话沉淀                                            | 28                           | 4 份（`entry-layer-audit.md` 101,540 · `session-forensics-and-packages.md` 46,845（新）· `session-lifecycle-and-controls.md` 33,685（新）· `archive-2026-08-09-session-logs.md` 134,972（新））                                           | 见左     | 255 → 230                |
+| 3    | 运行时/DDL、渲染层、设置面板、IPC、产物                                     | 28                           | 5 份（`runtime-and-schema-evolution.md` 35,762 · `renderer-development-and-testing.md` 56,066 · `settings-panels-and-gates.md` 37,264 · `ipc-surface-and-contracts.md` 48,257 · `artifact-lifecycle-and-provenance.md` 54,191，全部新建） | 见左     | 230 → 207                |
+| 4    | 验证/契约门禁、agent 面（MCP/ACP/框架）、无头与 CDP、真机探针、参考产品研究 | 50                           | 5 份（`verification-and-contract-gates.md` 124,012 · `agent-surfaces-mcp-and-acp.md` 72,525 · `headless-and-cdp-driving.md` 40,887 · `real-machine-probing.md` 97,527 · `reference-product-research.md` 164,439，全部新建）               | 见左     | 207 → **162**            |
+| —    | **合计**                                                                    | **160 份并入 21 个主题落点** | —                                                                                                                                                                                                                                         | —        | **308 → 162（净 −146）** |
 
 - 每批的**源副本 + H1 清单**在 `~/.hermes/skill-merges/2026-10-04/`（5 个批次目录 + 4 份批次定义 JSON，共 160 份源副本 / 1.9 MB；scratch 下的同名副本只是工作区，**持久件在这里**）。
 - 校验口径（脚本 `verify_batch.py` 可重放）：合并后逐份 grep `\n## <源名>\n`，**四批 0 缺失**才算通过；落点文件必须在盘且 ≥ 源字符数×0.95 才允许删源。

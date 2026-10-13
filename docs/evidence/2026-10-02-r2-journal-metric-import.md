@@ -30,19 +30,19 @@ python3 probe.py http://127.0.0.1:44199 /tmp/psq8-root/web-token <mode>
             "imported","malformed-row","name-missing","imported"]}
 ```
 
-| 行 | 结果 | 读数 |
-| --- | --- | --- |
-| 2 | imported | `by-issn`，`created=True`（ISSN `0028-0836` → Nature） |
-| 3 | duplicate | `metric … already records impact-factor 64.8 (2023, Journal Citation Reports)` |
-| 4 | imported | `jcr-quartile Q1 2023`，`created=False`（同一期刊第二条指标） |
-| 5 | imported | `by-issn`，`created=True`（Nature Communications，**未**与 Nature 合并） |
-| 6 | no-year | `year null is not a four-digit year` |
-| 7 | no-source | `no source: a number whose source is unknown cannot be checked or cited` |
-| 8 | no-value | `no value: a blank cell is a missing measurement, not a zero` |
-| 9 | imported | `by-normalized-name`（该行 ISSN 为 `1234-567X`，见 §六边界） |
-| 10 | malformed-row | `the table has 7 columns but this line has 3 fields` |
-| 11 | name-missing | `neither an ISSN nor a journal name: a metric belongs to a journal, not to a row` |
-| 12 | imported | `by-normalized-name`，`created=True`（名字唯一的期刊） |
+| 行  | 结果          | 读数                                                                              |
+| --- | ------------- | --------------------------------------------------------------------------------- |
+| 2   | imported      | `by-issn`，`created=True`（ISSN `0028-0836` → Nature）                            |
+| 3   | duplicate     | `metric … already records impact-factor 64.8 (2023, Journal Citation Reports)`    |
+| 4   | imported      | `jcr-quartile Q1 2023`，`created=False`（同一期刊第二条指标）                     |
+| 5   | imported      | `by-issn`，`created=True`（Nature Communications，**未**与 Nature 合并）          |
+| 6   | no-year       | `year null is not a four-digit year`                                              |
+| 7   | no-source     | `no source: a number whose source is unknown cannot be checked or cited`          |
+| 8   | no-value      | `no value: a blank cell is a missing measurement, not a zero`                     |
+| 9   | imported      | `by-normalized-name`（该行 ISSN 为 `1234-567X`，见 §六边界）                      |
+| 10  | malformed-row | `the table has 7 columns but this line has 3 fields`                              |
+| 11  | name-missing  | `neither an ISSN nor a journal name: a metric belongs to a journal, not to a row` |
+| 12  | imported      | `by-normalized-name`，`created=True`（名字唯一的期刊）                            |
 
 **每行恰好一条结果、按序、零静默丢弃**：11 行 ⇒ 11 条 outcome。
 
@@ -56,11 +56,11 @@ python3 probe.py http://127.0.0.1:44199 /tmp/psq8-root/web-token <mode>
 读数（`append.out.txt`）：同一期刊＋同一 `kind`＋同一 `year`＋同一 `source`、**不同 value** ⇒ `imported:1`。
 库里该组合下**三行并存**（`nature` / `impact-factor` / 2023 / Journal Citation Reports）：
 
-| id | value | 来源 |
-| --- | --- | --- |
-| `cmur0enbf0001wfqr2izzo0yj` | 64.8 | 主用例第 2 行 |
-| `cmur0enbk0005wfqrdw25qfto` | 1.0 | 主用例第 9 行 |
-| `cmur0ex0p0008wfqrnv91rchq` | 99.9 | append 那次 |
+| id                          | value | 来源          |
+| --------------------------- | ----- | ------------- |
+| `cmur0enbf0001wfqr2izzo0yj` | 64.8  | 主用例第 2 行 |
+| `cmur0enbk0005wfqrdw25qfto` | 1.0   | 主用例第 9 行 |
+| `cmur0ex0p0008wfqrnv91rchq` | 99.9  | append 那次   |
 
 第一条的 id 与主用例读数**逐字符相同** ⇒ 旧行未被 UPDATE。
 
@@ -92,29 +92,29 @@ detail 均为 `upsertByNormalizedName requires a usable venue name`。
 
 ## 四、十个结果面逐一在真机走过
 
-| 用例 | 读数 | 原文 |
-| --- | --- | --- |
-| 正常入库 | `imported` ＋ `journalId`/`journalMatch`/`journalCreated` | `main.out.txt` |
-| 重复行 | `duplicate` ＋已存在 metric 的 id | `main.out.txt` 第 3 行 |
-| 值缺失 | `no-value` | `main.out.txt` 第 8 行 |
-| 年份缺失 | `no-year` | `main.out.txt` 第 6 行 |
-| 来源缺失 | `no-source` | `main.out.txt` 第 7 行 |
-| kind 缺失 | `no-kind` | `nokind.out.txt` |
-| ISSN 形状非法 | `bad-issn`（`1234-567`，修复未被"修好"） | `badissn.out.txt` |
-| 名字缺失 | `name-missing` | `main.out.txt` 第 11 行 |
-| 名字歧义 | `name-ambiguous`（`journal "Nature" matches more than one journal`） | `ambiguous.out.txt` |
-| 字段数不符 | `malformed-row` | `main.out.txt` 第 10 行 |
+| 用例          | 读数                                                                 | 原文                    |
+| ------------- | -------------------------------------------------------------------- | ----------------------- |
+| 正常入库      | `imported` ＋ `journalId`/`journalMatch`/`journalCreated`            | `main.out.txt`          |
+| 重复行        | `duplicate` ＋已存在 metric 的 id                                    | `main.out.txt` 第 3 行  |
+| 值缺失        | `no-value`                                                           | `main.out.txt` 第 8 行  |
+| 年份缺失      | `no-year`                                                            | `main.out.txt` 第 6 行  |
+| 来源缺失      | `no-source`                                                          | `main.out.txt` 第 7 行  |
+| kind 缺失     | `no-kind`                                                            | `nokind.out.txt`        |
+| ISSN 形状非法 | `bad-issn`（`1234-567`，修复未被"修好"）                             | `badissn.out.txt`       |
+| 名字缺失      | `name-missing`                                                       | `main.out.txt` 第 11 行 |
+| 名字歧义      | `name-ambiguous`（`journal "Nature" matches more than one journal`） | `ambiguous.out.txt`     |
+| 字段数不符    | `malformed-row`                                                      | `main.out.txt` 第 10 行 |
 
 **请求级失败（不伪装成"导入了 0 行"）**：表头只有 `ISSN,Journal,Value` ⇒ HTTP 500
 `handler_error`：`Journal metric import table is missing required column(s): year, source, kind (or defaultKind). Headers found: ISSN | Journal | Value`（`badheader.out.txt`）。
 
 ## 五、隔离证明
 
-| 位置 | 读数 |
-| --- | --- |
-| 真实配置根 `~/.purescience-project/purescience.db` | **无 `Journal` 表**（0），mtime `Oct 1 20:25:15`（本次未写） |
-| 真实数据根 `~/PureScience-DEV/.pdfs` | **18**（开工前基线同为 18） |
-| 隔离库 `/tmp/psq8-root/purescience.db` | 本次全部工作在此：`Journal` 5 行、`JournalMetric` 8 行、`Reference` 0 行，mtime 本次 |
+| 位置                                               | 读数                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 真实配置根 `~/.purescience-project/purescience.db` | **无 `Journal` 表**（0），mtime `Oct 1 20:25:15`（本次未写）                         |
+| 真实数据根 `~/PureScience-DEV/.pdfs`               | **18**（开工前基线同为 18）                                                          |
+| 隔离库 `/tmp/psq8-root/purescience.db`             | 本次全部工作在此：`Journal` 5 行、`JournalMetric` 8 行、`Reference` 0 行，mtime 本次 |
 
 > 5 个期刊 = 导入建立的 4 个（Nature / Nature Communications / Journal of Test Metrics / 中国科学 生命科学）＋ 为测 `name-ambiguous` 直接 seed 的 1 个（`seed-second-nature`，`issn` 为 NULL —— SQLite 唯一索引对多行 NULL 不冲突，与设计相符）。
 

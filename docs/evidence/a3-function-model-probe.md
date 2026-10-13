@@ -7,11 +7,11 @@
 
 ## 三项判据（同一实例、连续三跑）
 
-| 判据 | 结果 | 读数 |
-| --- | --- | --- |
-| ① 不配模型时功能仍工作，且留痕说明走的是内置路径 | ✅ | `outcome='built-in'`、`reason='not-configured'`、`elapsedMs=2`、`selected=[]`；返回的留痕最新条目就是本次（`built-in` + `not-configured`） |
-| ④ 配置的模型**真的**被用上（真实往返 + 真实选择） | ✅ | `outcome='used-model'`、`model='deepseek-v4-pro'`、**`elapsedMs=5198`**、`selectedSkillIds=["expression-data-prep","科学可视化","出版级图表正确性"]`；留痕记 `used-model` + providerId + model |
-| ⑤ 模型不可达时回落内置且留痕具名，调用方仍正常结束 | ✅ | `outcome='built-in'`、**`reason='call-failed'`**、`model='unreachable-model'`；留痕条目带 `reason='call-failed'` |
+| 判据                                               | 结果 | 读数                                                                                                                                                                                           |
+| -------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ① 不配模型时功能仍工作，且留痕说明走的是内置路径   | ✅   | `outcome='built-in'`、`reason='not-configured'`、`elapsedMs=2`、`selected=[]`；返回的留痕最新条目就是本次（`built-in` + `not-configured`）                                                     |
+| ④ 配置的模型**真的**被用上（真实往返 + 真实选择）  | ✅   | `outcome='used-model'`、`model='deepseek-v4-pro'`、**`elapsedMs=5198`**、`selectedSkillIds=["expression-data-prep","科学可视化","出版级图表正确性"]`；留痕记 `used-model` + providerId + model |
+| ⑤ 模型不可达时回落内置且留痕具名，调用方仍正常结束 | ✅   | `outcome='built-in'`、**`reason='call-failed'`**、`model='unreachable-model'`；留痕条目带 `reason='call-failed'`                                                                               |
 
 留痕与本次调用**同步**（每跑一次，返回的历史最新条目就是该次），不再慢一条。
 

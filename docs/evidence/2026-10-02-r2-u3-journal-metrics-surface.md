@@ -23,13 +23,13 @@ python3 probe9.py http://127.0.0.1:44210 /tmp/psq9-root/web-token read     # 走
 导入读数：`{"imported":8,"skipped":0,"journalsCreated":4}`；另**直接 seed 一个没有任何指标的期刊**
 （`seed-no-metrics`）——那是真实库里本来就存在的状态（引用解析出了期刊，但没人导入过它的指标），也正是「未知」口径要覆盖的对象。
 
-| 期刊 | 库里的名字 | 指标 |
-| --- | --- | --- |
-| Nature | `nature` | 影响因子 64.8 (2023) ＋ 62.1 (2022)；分区 一区 (2024) |
-| Nature Communications | `nature communications` | 影响因子 16.6 (2023)；分区 二区 (2024)；录用率 `n/a` (2023) |
-| 中华医学杂志 | `中华医学杂志` | 分区 一区 (2024)（无 ISSN，按精确规范化名登记） |
-| Journal With A Non Numeric Factor | `journal with a non numeric factor` | 影响因子 **`n/a`** (2023)——值不是数字 |
-| Journal With No Metrics | `journal with no metrics` | **一条都没有** |
+| 期刊                              | 库里的名字                          | 指标                                                        |
+| --------------------------------- | ----------------------------------- | ----------------------------------------------------------- |
+| Nature                            | `nature`                            | 影响因子 64.8 (2023) ＋ 62.1 (2022)；分区 一区 (2024)       |
+| Nature Communications             | `nature communications`             | 影响因子 16.6 (2023)；分区 二区 (2024)；录用率 `n/a` (2023) |
+| 中华医学杂志                      | `中华医学杂志`                      | 分区 一区 (2024)（无 ISSN，按精确规范化名登记）             |
+| Journal With A Non Numeric Factor | `journal with a non numeric factor` | 影响因子 **`n/a`** (2023)——值不是数字                       |
+| Journal With No Metrics           | `journal with no metrics`           | **一条都没有**                                              |
 
 ## 三、四条视图读数（出厂纯函数在真库上算出）
 
@@ -80,11 +80,11 @@ counts {"total":5,"matched":5,"missingMetric":0,"valueNotNumeric":0,"notMatching
 
 ## 四、隔离证明
 
-| 位置 | 读数 |
-| --- | --- |
-| 真实配置根 `~/.purescience-project/purescience.db` | **无 `Journal` 表**（本次未写） |
-| 真实数据根 `~/PureScience-DEV/.pdfs` | **18**（与开工前基线同） |
-| 隔离库 `/tmp/psq9-root/purescience.db` | 本次全部工作在此（5 期刊 / 8 主张） |
+| 位置                                               | 读数                                |
+| -------------------------------------------------- | ----------------------------------- |
+| 真实配置根 `~/.purescience-project/purescience.db` | **无 `Journal` 表**（本次未写）     |
+| 真实数据根 `~/PureScience-DEV/.pdfs`               | **18**（与开工前基线同）            |
+| 隔离库 `/tmp/psq9-root/purescience.db`             | 本次全部工作在此（5 期刊 / 8 主张） |
 
 ## 五、没取到的（具名，不假装）
 

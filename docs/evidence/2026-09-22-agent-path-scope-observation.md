@@ -7,7 +7,7 @@ to the project's Files panel.
 
 ## What happened
 
-**Turn 1** (prompt: *"Read `egfr_t790m_merged.csv` from this project files panel…"*). The agent's first
+**Turn 1** (prompt: _"Read `egfr_t790m_merged.csv` from this project files panel…"_). The agent's first
 move was a filesystem search:
 
 ```
@@ -23,10 +23,10 @@ minutes (`find <home>/PureScience-DEV -newermt '-30 minutes'` returned nothing),
 read-only, and the turn's writes all landed inside the isolated root
 (`<isolated-root>/data/PureScience-DEV/notebooks/<project-id>/…`).
 
-**Turn 2** (prompt explicitly scoped: *"Read `kras_g12c_inhibitors.csv` from this project Files panel only
-(do not search the filesystem)…"*). The agent still began with shell searches, then tried to read **another
-project's** upload tree — and the application denied it. The agent's own next line: *"That denial is fair —
-I overreached into other projects' upload trees. Scoping back to this project only:"*. It then completed
+**Turn 2** (prompt explicitly scoped: _"Read `kras_g12c_inhibitors.csv` from this project Files panel only
+(do not search the filesystem)…"_). The agent still began with shell searches, then tried to read **another
+project's** upload tree — and the application denied it. The agent's own next line: _"That denial is fair —
+I overreached into other projects' upload trees. Scoping back to this project only:"_. It then completed
 the task from the project's own copy and produced `kras_g12c_ic50_ranking.png` (70 KB) plus
 `plot_kras_ranking.py`.
 
@@ -54,7 +54,7 @@ and "the search never reached it".
 ## Repro
 
 - Instance: `PURESCIENCE_WEB_PORT=<port> PURESCIENCE_STORAGE_ROOT=/tmp/<root> npx electron-vite dev --
-  --user-data-dir=/tmp/<profile> --remote-debugging-port=<cdp> --disable-gpu` (windowed: the desktop
+--user-data-dir=/tmp/<profile> --remote-debugging-port=<cdp> --disable-gpu` (windowed: the desktop
   channels are Electron-only), `settings.dataRoot=/tmp/<root>/data/PureScience-DEV`, one provider copied
   from a working settings file, `defaultPermissionProfile: auto`.
 - Data: `docs/demo-verification/egfr_t790m_merged.csv` and `docs/demo-verification/kras_g12c_inhibitors.csv`

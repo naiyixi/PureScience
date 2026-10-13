@@ -4,11 +4,11 @@
 
 ## 1. 用户字节的写点（核实：file:line）
 
-| 写点 | 位置 | 性质 | 是否已是"一份内容一份字节" |
-|---|---|---|---|
-| 产物版本正文 | `src/main/artifacts/provenance-repository.ts:1559`、`:1887` `copyFile(pendingFile.path, stagingContentPath)` | 每个版本一次**完整复制**到 `.provenance/.staging/versions/<versionId>/content`，再落到 `contentStorageKey` | 否：同内容多版本 = 多份字节 |
-| 上传文件（发布） | 见下方更正 | **已经是硬链接优先**，不是复制 | 已优化（但仍按"每次上传一份"存在同内容多份） |
-| 会话/溯源快照、证据、执行快照 | `provenance-message-snapshot.ts:572/767`、`provenance-repository.ts:1655/2118/2126/2288/4163` | 均为 **JSON 元数据**写入（`writeFile`，含 `flag: 'wx'` 的原子写） | 不适用（去重目标是用户内容，不是元数据） |
+| 写点                          | 位置                                                                                                         | 性质                                                                                                       | 是否已是"一份内容一份字节"                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 产物版本正文                  | `src/main/artifacts/provenance-repository.ts:1559`、`:1887` `copyFile(pendingFile.path, stagingContentPath)` | 每个版本一次**完整复制**到 `.provenance/.staging/versions/<versionId>/content`，再落到 `contentStorageKey` | 否：同内容多版本 = 多份字节                  |
+| 上传文件（发布）              | 见下方更正                                                                                                   | **已经是硬链接优先**，不是复制                                                                             | 已优化（但仍按"每次上传一份"存在同内容多份） |
+| 会话/溯源快照、证据、执行快照 | `provenance-message-snapshot.ts:572/767`、`provenance-repository.ts:1655/2118/2126/2288/4163`                | 均为 **JSON 元数据**写入（`writeFile`，含 `flag: 'wx'` 的原子写）                                          | 不适用（去重目标是用户内容，不是元数据）     |
 
 **结论 1**：用户内容有两处真正的字节写点（产物版本、上传），两者都是"来一份复制一份"，没有任何内容摘要参与落盘决策。
 

@@ -11,11 +11,11 @@
 用一次性探针在真窗口直呼四个候选通道，**传一个不存在的路径**——具名拒绝算应答，
 `No handler registered` 才算死（上一轮 `settings:*` 三个通道就是这么判出来的）：
 
-| 通道 | 结果 | 读数 |
-|---|---|---|
-| `localFs.reveal` | ALIVE | `resolved: undefined` |
-| `localFs.openPath` | ALIVE | `resolved: "Failed to open path"` |
-| `artifacts.openFile` | ALIVE | `Artifact file is outside artifact storage.` |
+| 通道                     | 结果  | 读数                                          |
+| ------------------------ | ----- | --------------------------------------------- |
+| `localFs.reveal`         | ALIVE | `resolved: undefined`                         |
+| `localFs.openPath`       | ALIVE | `resolved: "Failed to open path"`             |
+| `artifacts.openFile`     | ALIVE | `Artifact file is outside artifact storage.`  |
 | `compute.revealInFolder` | ALIVE | TypeError（我把参数形状造错了，通道本身应答） |
 
 ⇒ 选定 **`artifacts.openFile`**（而不是 `localFs.openPath`）：它先走 repository 解析

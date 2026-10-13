@@ -18,15 +18,15 @@
 
 ## 二、读数（逐字，来自真实运行的 DOM）
 
-| 断言 | 实测文本 / 值 |
-| --- | --- |
-| 散文页空结果行 | `No table candidate in the 1 page(s) scanned.` |
-| 散文页具名理由行（`pdf-table-rejection-1`） | `Page 1: too-few-columns — rows 5, columns 1, rows spanning the columns 0; the shape test needs 2+ rows and 2+ columns.` |
-| 散文页候选数 | `0`（`pdf-table-candidate` 计数 0 —— 有理由时不出候选，抑制规则在界面上同样成立） |
-| 旋转页形态行（`pdf-table-shape`） | `6 rows x 4 columns`（含 `6 rows x 4 columns` 断言；缺陷形态是 4 行 1 列） |
-| 旋转页坐标提示（`pdf-table-rotated-1`） | `Page 1: its content stream is rotated 90°, so the coordinates below were normalized to upright — they will not line up with the page as displayed.` |
-| 旋转页表头行（`pdf-table-row-0` 的 `<td>` 文本） | `["Gene","log2FC","p-value","adjP"]` |
-| 旋转页不得同时报「没有表」 | `pdf-table-rejections` 计数 `0`、`pdf-table-empty` 计数 `0` |
+| 断言                                             | 实测文本 / 值                                                                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 散文页空结果行                                   | `No table candidate in the 1 page(s) scanned.`                                                                                                       |
+| 散文页具名理由行（`pdf-table-rejection-1`）      | `Page 1: too-few-columns — rows 5, columns 1, rows spanning the columns 0; the shape test needs 2+ rows and 2+ columns.`                             |
+| 散文页候选数                                     | `0`（`pdf-table-candidate` 计数 0 —— 有理由时不出候选，抑制规则在界面上同样成立）                                                                    |
+| 旋转页形态行（`pdf-table-shape`）                | `6 rows x 4 columns`（含 `6 rows x 4 columns` 断言；缺陷形态是 4 行 1 列）                                                                           |
+| 旋转页坐标提示（`pdf-table-rotated-1`）          | `Page 1: its content stream is rotated 90°, so the coordinates below were normalized to upright — they will not line up with the page as displayed.` |
+| 旋转页表头行（`pdf-table-row-0` 的 `<td>` 文本） | `["Gene","log2FC","p-value","adjP"]`                                                                                                                 |
+| 旋转页不得同时报「没有表」                       | `pdf-table-rejections` 计数 `0`、`pdf-table-empty` 计数 `0`                                                                                          |
 
 判定口径与代码里的判定**同源**：散文页的 `rows 5 / columns 1` 就是 `measureTableShape` 量出来的数字，
 `2+ rows / 2+ columns` 就是抽取器自己的下限（`DEFAULTS.minRows/minColumns`）——面板没有第二份判定。

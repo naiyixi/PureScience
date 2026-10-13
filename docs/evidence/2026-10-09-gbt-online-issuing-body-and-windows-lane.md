@@ -22,12 +22,12 @@
 **为什么算真缺口（不是措辞）**：批次 ① 差异化点 ① 要求「每条中文证据带**发布机构** + 年份 + 原文出处」，
 差异化点 ④ 要求这份出处**按仓内既有 GB/T 7714 层**输出。而这条链上，发布机构在中途被丢掉：
 
-| 事实 | 落点 |
-| --- | --- |
-| 记录里的 `publisher` **确实被带进**引用项 | `src/shared/citation/format.ts:59-74`（`citationItemFromReference` 的 `publisher: reference.publisher?.trim() \|\| undefined`） |
-| 有 publisher 的记录走 **rich 分支**，不再走旧实现 | 同文件 `:171-173` `hasRichBibliographicFields()` 把 `publisher` 计入 |
-| 而 rich 分支的电子资源格**从不输出 publisher** | `src/shared/citation/builtin-styles.ts` 的 `// Online / preprint / unknown:` 段（改前只出 `年` + `[引用日期]` + 路径） |
-| `itemType` 对「有 url、无刊名」的记录判为 `web` ⇒ 正好命中该格 | 同文件 `:51-57` `inferCitationItemType()` |
+| 事实                                                           | 落点                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 记录里的 `publisher` **确实被带进**引用项                      | `src/shared/citation/format.ts:59-74`（`citationItemFromReference` 的 `publisher: reference.publisher?.trim() \|\| undefined`） |
+| 有 publisher 的记录走 **rich 分支**，不再走旧实现              | 同文件 `:171-173` `hasRichBibliographicFields()` 把 `publisher` 计入                                                            |
+| 而 rich 分支的电子资源格**从不输出 publisher**                 | `src/shared/citation/builtin-styles.ts` 的 `// Online / preprint / unknown:` 段（改前只出 `年` + `[引用日期]` + 路径）          |
+| `itemType` 对「有 url、无刊名」的记录判为 `web` ⇒ 正好命中该格 | 同文件 `:51-57` `inferCitationItemType()`                                                                                       |
 
 ⇒ 一条**中文网络证据**（例：发布机构「中华医学会」、年份 2021、原文路径）导出成 GB/T 7714 时，
 **发布机构一个字符都不出现**——恰是差异化点 ① 要的那一条信息。
@@ -37,11 +37,11 @@
 
 **改法（只开一个条件槽 + 让日期块与旧实现同形）**
 
-| 记录形状 | 改前 | 改后 |
-| --- | --- | --- |
+| 记录形状                   | 改前                                 | 改后                                           |
+| -------------------------- | ------------------------------------ | ---------------------------------------------- |
 | 有发布机构 + 年 + 引用日期 | `…[EB/OL]. 2021 [2026-10-09] . 路径` | `…[EB/OL]. 中华医学会, 2021[2026-10-09]. 路径` |
-| 无发布机构 + 年 + 引用日期 | `…[EB/OL]. 2021 [2026-10-09] . 路径` | `…[EB/OL]. 2021[2026-10-09]. 路径` |
-| 无发布机构（无 rich 字段） | 仍走旧实现（委派分支未动） | **逐字节不变** |
+| 无发布机构 + 年 + 引用日期 | `…[EB/OL]. 2021 [2026-10-09] . 路径` | `…[EB/OL]. 2021[2026-10-09]. 路径`             |
+| 无发布机构（无 rich 字段） | 仍走旧实现（委派分支未动）           | **逐字节不变**                                 |
 
 - 槽只在记录真带 publisher 时打开 ⇒ 没有发布机构的记录输出不变；**日期块与路径之间的间距**同一批
   收紧成旧实现本来的形状（`2021[2026-10-09]. 路径`）——旧 `formatGbt7714` 早就是这个形状，两条路
@@ -128,13 +128,14 @@ Error: Hook timed out in 60000ms.
 2. **批次 ① 差异化点 ① 的「中文源」那一半仍是挂账（不是本轮造成的）**：本机 2026-10-09 02:2x 复测
    四个候选源，全部只回 `text/html`、无机器可读契约 ⇒ 与 2026-10-08 的判定一致：
 
-   | 源 | 读数（`curl -m 12`，2026-10-09） |
-   | --- | --- |
-   | `https://www.chictr.org.cn/` | http=200 bytes=34719 `text/html;charset=UTF-8` time=0.287 s |
-   | `https://www.nmpa.gov.cn/` | http=200 bytes=54789 `text/html` time=0.439 s |
-   | `https://www.cde.org.cn/` | http=200 bytes=86080 `text/html` time=0.241 s |
-   | `https://www.cma.org.cn/` | http=200 bytes=89215 `text/html; charset=UTF-8` time=0.276 s |
+   | 源                           | 读数（`curl -m 12`，2026-10-09）                             |
+   | ---------------------------- | ------------------------------------------------------------ |
+   | `https://www.chictr.org.cn/` | http=200 bytes=34719 `text/html;charset=UTF-8` time=0.287 s  |
+   | `https://www.nmpa.gov.cn/`   | http=200 bytes=54789 `text/html` time=0.439 s                |
+   | `https://www.cde.org.cn/`    | http=200 bytes=86080 `text/html` time=0.241 s                |
+   | `https://www.cma.org.cn/`    | http=200 bytes=89215 `text/html; charset=UTF-8` time=0.276 s |
 
    ⇒ 本仓红线（服务方 HTML 不是稳定契约）下**不写只读抓取器**；等有文档的接口再启。
+
 3. **会话路径一个字节未动**（批次 ② ③ 的在制品），本轮提交只含自己的 6 个路径。
 4. **未改任何 `.github/workflows/**`**（受保护）、未新增通道、未动 9 语字典、未改 `package.json`。

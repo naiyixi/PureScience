@@ -22,12 +22,12 @@
 
 ## 1. 四条断言的真机读数（逐字）
 
-| 判据 | 读数 | 判定 |
-| --- | --- | --- |
-| ① 新导入后立即搜索出现**未覆盖提示与数量** | 首次搜索：面板 `index summary: (no index summary on screen)`、`absent notice: (absent notice not shown)`；命中 **1**（现场扫描找到，不依赖索引） | ⚠️ **部分成立，见 §2** |
-| ② 索引完成后同一查询**由索引见证为最新** | 点「立即索引」后：面板 `Indexed 3 · 0 pending`；契约块 `{"present":true,"indexed":3,"pending":0,"capped":false,"measuredAt":"2026-10-03T11:30:32.963Z"}` | ✅ |
-| ③ **中断续跑不回退** | 重启进程后同一查询：`{"present":true,"indexed":3,"pending":0,...,"measuredAt":"…11:30:39.528Z"}` ⇒ `indexed` **不回退**（磁盘 checkpoint 权威） | ✅ |
-| ④ 删掉索引目录 ⇒ 覆盖读数为「空」而**不是**「没有结果」 | 删 `<dataRoot>/search-index/` 后：覆盖块 `{"present":true,"indexed":0,"pending":3,…}`（**空覆盖**）；同一次查询 `{"hits":3,"counts":{"uploads":3,"sessions":0,"messages":0,"artifacts":0,"literature":0,"annotations":0}}`（**结果非空**） | ✅ |
+| 判据                                                    | 读数                                                                                                                                                                                                                                       | 判定                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- |
+| ① 新导入后立即搜索出现**未覆盖提示与数量**              | 首次搜索：面板 `index summary: (no index summary on screen)`、`absent notice: (absent notice not shown)`；命中 **1**（现场扫描找到，不依赖索引）                                                                                           | ⚠️ **部分成立，见 §2** |
+| ② 索引完成后同一查询**由索引见证为最新**                | 点「立即索引」后：面板 `Indexed 3 · 0 pending`；契约块 `{"present":true,"indexed":3,"pending":0,"capped":false,"measuredAt":"2026-10-03T11:30:32.963Z"}`                                                                                   | ✅                     |
+| ③ **中断续跑不回退**                                    | 重启进程后同一查询：`{"present":true,"indexed":3,"pending":0,...,"measuredAt":"…11:30:39.528Z"}` ⇒ `indexed` **不回退**（磁盘 checkpoint 权威）                                                                                            | ✅                     |
+| ④ 删掉索引目录 ⇒ 覆盖读数为「空」而**不是**「没有结果」 | 删 `<dataRoot>/search-index/` 后：覆盖块 `{"present":true,"indexed":0,"pending":3,…}`（**空覆盖**）；同一次查询 `{"hits":3,"counts":{"uploads":3,"sessions":0,"messages":0,"artifacts":0,"literature":0,"annotations":0}}`（**结果非空**） | ✅                     |
 
 判据④是这一片最要紧的一条：`indexed:0` 与 `hits:3` **同时**成立，才说明"索引没了"没有被讲成"什么都没有"。
 

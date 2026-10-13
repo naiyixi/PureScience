@@ -11,34 +11,34 @@
 
 **这次补上的是「只读的那一半」**（工作单 §一 的划界：不做合并进项目、不做导入后改写）：
 
-| 面 | 内容 |
-| --- | --- |
-| 共享契约 | 新增 `src/shared/ro-crate-inspect.ts`：通道 `ro-crate:inspect-external`、三种拒绝码 `EXTERNAL_RO_CRATE_REFUSALS`（`no-metadata-file` / `unreadable` / `unparseable`）、请求与结果形状。**报告带全部断言**（`RoCrateValidationReport.assertions`），不摘要 |
-| 读侧（主进程） | `src/main/ro-crate/import.ts`：只 `readFile(join(cratePath, 'ro-crate-metadata.json'))` 后交给 `validateRoCrate`。**不写、不复制、不导入项目、不开原生对话框**。拒绝码与「已判过的报告」在线上分开 —— 把两者压成一个会**藏掉到底哪条规则没过**，而那正是报告的全部意义 |
-| 通道 | `src/main/ro-crate/ipc.ts` 新增 `createRoCrateInspectOwner` / `registerRoCrateInspectIpcHandlers`（具名拒绝非法请求：路径必须是非空字符串）；`src/main/ipc.ts` 装配 `declareElectronAdapter('ro-crate-inspect', …)` |
-| 档位 | 目录条目 `['inspectExternal', 'ro-crate:inspect-external', ELECTRON]` —— **桌面档**：crate 是**这台机器**上的一个文件夹 |
-| 真入口 | `src/renderer/src/pages/workspace/RoCrateExportDialog.tsx` 的 `[data-slot="ro-crate-inspect"]` 段：路径输入（`data-slot="ro-crate-inspect-path"`）+ 「选择目录…」（`data-testid="ro-crate-inspect-choose"`，走**既有** `storage.pickDirectory`，**不新增原生接缝**）+ 「开始检查」（`data-testid="ro-crate-inspect-submit"`，路径为空时禁用 —— 这是唯一的前置条件，没有第二道隐藏闸门） |
-| 报告的呈现 | 摘要 `{passed} of {total} checks passed — {failed} not met.` + **判的是哪份文档**（`ro-crate-inspect-metadata-path`，路径不是译文）+ 未满足项逐条（`ro-crate-inspect-failed-list`：**规则码 + 层级 + 明细**）。层级译成人话（`spec-must` / `spec-should` / `export-contract`）—— 否则会告诉外来 crate 的作者「你的文件不合规」，而那条只是**本应用对自己写出的 crate 的期望** |
-| 三种拒绝 | 各自具名（`no-metadata-file` / `unreadable` / `unparseable`），`role="alert"`，读侧原文留在下一行；拒绝**不渲染成报告**（`ro-crate-inspect-result` 不出现） |
-| 失真文案同批改写 | `roCrate.export.exportOnly`（**9 语全改**）：从「仅支持导出 —— 还不能导入或校验外来 crate」改为「这里负责写出 crate；外来的 crate 也能在这里做**只读**检查，而且不会被导入任何项目」 |
-| 去重（顺手） | `src/main/ro-crate/import.ts` 原先自带一份 `RO_CRATE_METADATA_FILENAME`，而 `src/shared/ro-crate.ts:35` 早有同名常量 ⇒ 改引共享那一份；原先三份自备的类型也收敛到共享模块 |
-| 九语 | `roCrate.inspect.*` **15 键 × 9 语** + 改写 1 键；覆盖 **3750 键 × 9 语 = 100.0%**，zh ≠ en、繁体无简体残留、未新增 pending 条目 |
+| 面               | 内容                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 共享契约         | 新增 `src/shared/ro-crate-inspect.ts`：通道 `ro-crate:inspect-external`、三种拒绝码 `EXTERNAL_RO_CRATE_REFUSALS`（`no-metadata-file` / `unreadable` / `unparseable`）、请求与结果形状。**报告带全部断言**（`RoCrateValidationReport.assertions`），不摘要                                                                                                                               |
+| 读侧（主进程）   | `src/main/ro-crate/import.ts`：只 `readFile(join(cratePath, 'ro-crate-metadata.json'))` 后交给 `validateRoCrate`。**不写、不复制、不导入项目、不开原生对话框**。拒绝码与「已判过的报告」在线上分开 —— 把两者压成一个会**藏掉到底哪条规则没过**，而那正是报告的全部意义                                                                                                                  |
+| 通道             | `src/main/ro-crate/ipc.ts` 新增 `createRoCrateInspectOwner` / `registerRoCrateInspectIpcHandlers`（具名拒绝非法请求：路径必须是非空字符串）；`src/main/ipc.ts` 装配 `declareElectronAdapter('ro-crate-inspect', …)`                                                                                                                                                                     |
+| 档位             | 目录条目 `['inspectExternal', 'ro-crate:inspect-external', ELECTRON]` —— **桌面档**：crate 是**这台机器**上的一个文件夹                                                                                                                                                                                                                                                                 |
+| 真入口           | `src/renderer/src/pages/workspace/RoCrateExportDialog.tsx` 的 `[data-slot="ro-crate-inspect"]` 段：路径输入（`data-slot="ro-crate-inspect-path"`）+ 「选择目录…」（`data-testid="ro-crate-inspect-choose"`，走**既有** `storage.pickDirectory`，**不新增原生接缝**）+ 「开始检查」（`data-testid="ro-crate-inspect-submit"`，路径为空时禁用 —— 这是唯一的前置条件，没有第二道隐藏闸门） |
+| 报告的呈现       | 摘要 `{passed} of {total} checks passed — {failed} not met.` + **判的是哪份文档**（`ro-crate-inspect-metadata-path`，路径不是译文）+ 未满足项逐条（`ro-crate-inspect-failed-list`：**规则码 + 层级 + 明细**）。层级译成人话（`spec-must` / `spec-should` / `export-contract`）—— 否则会告诉外来 crate 的作者「你的文件不合规」，而那条只是**本应用对自己写出的 crate 的期望**           |
+| 三种拒绝         | 各自具名（`no-metadata-file` / `unreadable` / `unparseable`），`role="alert"`，读侧原文留在下一行；拒绝**不渲染成报告**（`ro-crate-inspect-result` 不出现）                                                                                                                                                                                                                             |
+| 失真文案同批改写 | `roCrate.export.exportOnly`（**9 语全改**）：从「仅支持导出 —— 还不能导入或校验外来 crate」改为「这里负责写出 crate；外来的 crate 也能在这里做**只读**检查，而且不会被导入任何项目」                                                                                                                                                                                                    |
+| 去重（顺手）     | `src/main/ro-crate/import.ts` 原先自带一份 `RO_CRATE_METADATA_FILENAME`，而 `src/shared/ro-crate.ts:35` 早有同名常量 ⇒ 改引共享那一份；原先三份自备的类型也收敛到共享模块                                                                                                                                                                                                               |
+| 九语             | `roCrate.inspect.*` **15 键 × 9 语** + 改写 1 键；覆盖 **3750 键 × 9 语 = 100.0%**，zh ≠ en、繁体无简体残留、未新增 pending 条目                                                                                                                                                                                                                                                        |
 
 **契约 pin（按失败原文逐个追平，不预猜）**：目录 `472→473`、本地 Web 不可用档 `77→78`、preload 可调用面清单 `+1`（`roCrate.inspectExternal`）、
 核心契约 `234→235`（其中 requests `196→197`）、`generated-source-omissions` `+1`；`check:web-api-map` 通过。
 
 ## 二、本轮观测值（全部实跑，读数即结论）
 
-| 门禁 | 读数 |
-| --- | --- |
-| 渲染套件 `RoCrateExportDialog.render.test.tsx`（本轮 +6 条，共 18 条） | **18 passed** |
-| 定向 + 契约族（`src/main/ro-crate` · `src/preload` · `src/shared` · `src/renderer/web` · `pages/workspace` · `src/main/web-service` · 两个 composition 套件 · `runtime-ipc`） | **291 文件 / 3181 passed｜1 skipped** |
-| **全量 vitest**（`--maxWorkers=4`） | **1227 passed｜16 skipped（1243）**；`15841 passed｜204 skipped（16045）`；497.85 s；**exit 0** |
-| 双 typecheck（node / web） | **exit 0**（`NODE_OPTIONS=--max-old-space-size=4096`；本机内存吃紧下的工具进程堆上限） |
-| `./node_modules/.bin/eslint --no-cache .` | **0 error / 122 warning**（本单元触碰的文件 **0 problem**） |
-| `npm run check:web-api-map` | **exit 0** |
-| `bash scripts/pre-push-checks.sh` | **全部通过**（敏感词扫描 / README 版本 / CHANGELOG / 双语同步） |
-| **真机读数** `e2e/certification/ro-crate-export.spec.ts` | **2 passed (21.9s)**，`E2E_EXIT=0`；日志三行见 §三 |
+| 门禁                                                                                                                                                                          | 读数                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 渲染套件 `RoCrateExportDialog.render.test.tsx`（本轮 +6 条，共 18 条）                                                                                                        | **18 passed**                                                                                   |
+| 定向 + 契约族（`src/main/ro-crate` · `src/preload` · `src/shared` · `src/renderer/web` · `pages/workspace` · `src/main/web-service` · 两个 composition 套件 · `runtime-ipc`） | **291 文件 / 3181 passed｜1 skipped**                                                           |
+| **全量 vitest**（`--maxWorkers=4`）                                                                                                                                           | **1227 passed｜16 skipped（1243）**；`15841 passed｜204 skipped（16045）`；497.85 s；**exit 0** |
+| 双 typecheck（node / web）                                                                                                                                                    | **exit 0**（`NODE_OPTIONS=--max-old-space-size=4096`；本机内存吃紧下的工具进程堆上限）          |
+| `./node_modules/.bin/eslint --no-cache .`                                                                                                                                     | **0 error / 122 warning**（本单元触碰的文件 **0 problem**）                                     |
+| `npm run check:web-api-map`                                                                                                                                                   | **exit 0**                                                                                      |
+| `bash scripts/pre-push-checks.sh`                                                                                                                                             | **全部通过**（敏感词扫描 / README 版本 / CHANGELOG / 双语同步）                                 |
+| **真机读数** `e2e/certification/ro-crate-export.spec.ts`                                                                                                                      | **2 passed (21.9s)**，`E2E_EXIT=0`；日志三行见 §三                                              |
 
 **本轮抓到并当批修掉的一条真错**（vitest 看不见、只有 `tsc` 结构性拦得住）：
 `src/preload/index.test.ts` 里这份测试自备的桥接子集类型只有 `roCrate.exportProject`，而新用例调了 `a.roCrate.inspectExternal`

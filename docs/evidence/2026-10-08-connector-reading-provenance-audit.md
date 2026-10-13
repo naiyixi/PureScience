@@ -5,25 +5,25 @@
 
 ## 一、已覆盖（产物/执行侧，file:line）
 
-| 能力 | 落点 | 说明 |
-| --- | --- | --- |
-| 产物版本身份 / 血缘 / 证据 | `src/shared/artifact-provenance.ts` | `ArtifactVersionIdentity`、`ArtifactLineageProvenance`、`ArtifactVersionEvidence`、写入侧 `writeRequestChecksum` |
-| 密封复现配方（逐文件 sha256） | `src/shared/reproducibility.ts` | `ReproducibilityRecipeFile { filename, sha256, sizeBytes }`；`buildSealedReproducibilityRecipe()` |
-| **缺失具名**（本批要沿用的口径） | 同上 `ReproducibilityGapReason` | **15 条具名缺口**：`artifact-content-unavailable`、`no-re-execution-evidence`、`reproduction-not-hashed`… —— 缺什么就点什么是哪一条 |
-| 「没比过」不得读成「一致」 | 同上 `compareReproducedFile()` / `ReproducibilityFileOutcome` | 判据写在模块头：**用户自报的字节相同只报 `bytes-match`**；上界截断报 `not-compared`；不完整配方不给部分credit |
-| 复现重执行计划 | `src/shared/reproducibility-reexecution.ts` | `ReproducibilityReexecutionRefusal` + `planRecipeReexecution()` |
-| 产物 sha256 单一来源 | `src/shared/ro-crate.ts:40` | `RO_CRATE_SHA256_TERM_IRI` |
-| 既有的 sha256 **格式**词汇 | `src/shared/permission-grants.ts:10` | `EXACT_PERMISSION_QUALIFIER_PATTERN = /^sha256:v1:[a-f0-9]{64}$/` —— 全仓唯一共享的指纹写法 |
-| **最接近的既有帧：指纹 + 已发布配方 + 校验判决** | `src/shared/search-evidence.ts` | 头注释逐字："a captured line carries a fingerprint computed from the block as it is stored, and **the recipe is published here: anyone holding the block can recompute it**"；`SEARCH_EVIDENCE_HASH_RECIPE = 'purescience-search-evidence-v1'`（**配方是常量、可外部复算**）、`SearchEvidenceVerificationResult`（校验判决）、`SearchEvidenceReason`（拒绝理由）；且刻意 **"Nothing here touches node:crypto — this module is shared with the renderer, which never hashes."**。生产消费方：`GlobalSearchDialog.tsx`、`HumanEvidenceSection.tsx`、`review-evidence.ts` |
-| 重放/校验词汇 | `src/shared/artifact-replay.ts`、`replay-verification.ts` | `reproduced`/`differs` 与 `intact`/`changed` 分开，**"not checked" 从不读成 match** |
+| 能力                                             | 落点                                                          | 说明                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 产物版本身份 / 血缘 / 证据                       | `src/shared/artifact-provenance.ts`                           | `ArtifactVersionIdentity`、`ArtifactLineageProvenance`、`ArtifactVersionEvidence`、写入侧 `writeRequestChecksum`                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 密封复现配方（逐文件 sha256）                    | `src/shared/reproducibility.ts`                               | `ReproducibilityRecipeFile { filename, sha256, sizeBytes }`；`buildSealedReproducibilityRecipe()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **缺失具名**（本批要沿用的口径）                 | 同上 `ReproducibilityGapReason`                               | **15 条具名缺口**：`artifact-content-unavailable`、`no-re-execution-evidence`、`reproduction-not-hashed`… —— 缺什么就点什么是哪一条                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 「没比过」不得读成「一致」                       | 同上 `compareReproducedFile()` / `ReproducibilityFileOutcome` | 判据写在模块头：**用户自报的字节相同只报 `bytes-match`**；上界截断报 `not-compared`；不完整配方不给部分credit                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 复现重执行计划                                   | `src/shared/reproducibility-reexecution.ts`                   | `ReproducibilityReexecutionRefusal` + `planRecipeReexecution()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 产物 sha256 单一来源                             | `src/shared/ro-crate.ts:40`                                   | `RO_CRATE_SHA256_TERM_IRI`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 既有的 sha256 **格式**词汇                       | `src/shared/permission-grants.ts:10`                          | `EXACT_PERMISSION_QUALIFIER_PATTERN = /^sha256:v1:[a-f0-9]{64}$/` —— 全仓唯一共享的指纹写法                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **最接近的既有帧：指纹 + 已发布配方 + 校验判决** | `src/shared/search-evidence.ts`                               | 头注释逐字："a captured line carries a fingerprint computed from the block as it is stored, and **the recipe is published here: anyone holding the block can recompute it**"；`SEARCH_EVIDENCE_HASH_RECIPE = 'purescience-search-evidence-v1'`（**配方是常量、可外部复算**）、`SearchEvidenceVerificationResult`（校验判决）、`SearchEvidenceReason`（拒绝理由）；且刻意 **"Nothing here touches node:crypto — this module is shared with the renderer, which never hashes."**。生产消费方：`GlobalSearchDialog.tsx`、`HumanEvidenceSection.tsx`、`review-evidence.ts` |
+| 重放/校验词汇                                    | `src/shared/artifact-replay.ts`、`replay-verification.ts`     | `reproduced`/`differs` 与 `intact`/`changed` 分开，**"not checked" 从不读成 match**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ## 二、缺口（连接器读数侧，file:line）
 
-| 事实 | 落点 |
-| --- | --- |
-| 连接器调用**只返回解析后的值**：URL、入参、响应字节一概不落 | `src/main/connectors/engine.ts:61-76`（`call()` 末尾 `return descriptor.parse(raw, args)`） |
-| 工具活动记录里**没有服务/请求/指纹字段** | `src/shared/session-persistence.ts:222-242`（`PersistedToolActivity` 只有 `rawInput` / `rawOutput` / `toolContent`，无 URL、无 sha256、无字节数） |
-| 无共享 sha256 助手，主进程内有 **4 份局部实现** | `src/main/artifacts/code-reconstruction.ts:121`、`provenance-message-snapshot.ts:42`、`provenance-repository.ts:483`、`mcp-server.ts:432` |
+| 事实                                                        | 落点                                                                                                                                              |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 连接器调用**只返回解析后的值**：URL、入参、响应字节一概不落 | `src/main/connectors/engine.ts:61-76`（`call()` 末尾 `return descriptor.parse(raw, args)`）                                                       |
+| 工具活动记录里**没有服务/请求/指纹字段**                    | `src/shared/session-persistence.ts:222-242`（`PersistedToolActivity` 只有 `rawInput` / `rawOutput` / `toolContent`，无 URL、无 sha256、无字节数） |
+| 无共享 sha256 助手，主进程内有 **4 份局部实现**             | `src/main/artifacts/code-reconstruction.ts:121`、`provenance-message-snapshot.ts:42`、`provenance-repository.ts:483`、`mcp-server.ts:432`         |
 
 ⇒ 批次 ② 的四条差异化点里，①②③④ 在**连接器读数**这一侧**一条都没有**；在产物侧 ②（可离线复算）与 ④（缺失明说）已经成立。
 
@@ -46,12 +46,12 @@
 
 ## 四、单元已交付（提交 `fbf41b61`）
 
-| 落点 | 内容 |
-| --- | --- |
-| `src/shared/reading-fingerprint.ts`（新） | 已发布配方常量 `purescience-connector-reading-v1`（recipe / method / url / status 各一行，再拼**响应字节**）、`ConnectorReadingFingerprint`、`verifyConnectorReadingFingerprint()`（`verified` / `not-recorded` / `malformed-fingerprint` / `fingerprint-mismatch` + `fingerprintNow`）、`attachReadingFingerprints()`、`readingsFromConnectorResult()`。**不碰 `node:crypto`**，与 `search-evidence.ts` 同规矩 |
-| `src/main/connectors/engine.ts` | 挂点在 **`makeContext()` 的四个 fetch 包装**上（`engine.ts:99+`）；URL 先过既有 `redactUrl` 才进指纹 |
-| `src/main/connectors/service.ts` | 读数随结果带回（`reading_fingerprints`），`callBundled` 一处接线 |
-| `src/shared/reading-fingerprint.test.ts`、`src/main/connectors/engine.test.ts` | 30 个用例：配方**手写独立实现**复算、四个判决分支、POST 与 GET 的摘要不可互换、凭据脱敏、无字节视图时**一个指纹都不记** |
+| 落点                                                                           | 内容                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/reading-fingerprint.ts`（新）                                      | 已发布配方常量 `purescience-connector-reading-v1`（recipe / method / url / status 各一行，再拼**响应字节**）、`ConnectorReadingFingerprint`、`verifyConnectorReadingFingerprint()`（`verified` / `not-recorded` / `malformed-fingerprint` / `fingerprint-mismatch` + `fingerprintNow`）、`attachReadingFingerprints()`、`readingsFromConnectorResult()`。**不碰 `node:crypto`**，与 `search-evidence.ts` 同规矩 |
+| `src/main/connectors/engine.ts`                                                | 挂点在 **`makeContext()` 的四个 fetch 包装**上（`engine.ts:99+`）；URL 先过既有 `redactUrl` 才进指纹                                                                                                                                                                                                                                                                                                            |
+| `src/main/connectors/service.ts`                                               | 读数随结果带回（`reading_fingerprints`），`callBundled` 一处接线                                                                                                                                                                                                                                                                                                                                                |
+| `src/shared/reading-fingerprint.test.ts`、`src/main/connectors/engine.test.ts` | 30 个用例：配方**手写独立实现**复算、四个判决分支、POST 与 GET 的摘要不可互换、凭据脱敏、无字节视图时**一个指纹都不记**                                                                                                                                                                                                                                                                                         |
 
 ### 真机读数（走真正接线的引擎打真 PubMed，一次性探针跑完即删）
 
@@ -67,11 +67,11 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 
 ### 门禁（隔离工作树 `/tmp/rf-gate`，被测提交 `fbf41b61`）
 
-| 环 | 读数 |
-| --- | --- |
-| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0**，零输出 |
-| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0**，零输出 |
-| `npx eslint --no-cache .`（全仓） | **0 error ／ 128 warning**（= 既有基线） |
+| 环                                                         | 读数                                                  |
+| ---------------------------------------------------------- | ----------------------------------------------------- |
+| `tsc --noEmit -p tsconfig.node.json --composite false`     | **exit 0**，零输出                                    |
+| `tsc --noEmit -p tsconfig.web.json --composite false`      | **exit 0**，零输出                                    |
+| `npx eslint --no-cache .`（全仓）                          | **0 error ／ 128 warning**（= 既有基线）              |
 | `vitest run src/main/connectors src/shared --maxWorkers=4` | **191 文件通过 ｜ 2126 passed ｜ 53 skipped（2179）** |
 
 ### 过程中被源码与测试纠正的三处（都不是拍脑袋定的）
@@ -95,11 +95,11 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 
 已核实的接法（每一端都有落点）：
 
-| 端 | 落点 / 事实 |
-| --- | --- |
-| 写侧（记录） | `ConnectorCallContext.sessionId` **已经在手**（`service.ts` 的 `callBundled` 拿得到）；落盘照抄会话范围 JSON 的既有先例 `src/main/settings/bookmark-repository.ts`（每会话一个 JSON、原子 temp+rename、主进程独占写） |
+| 端           | 落点 / 事实                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 写侧（记录） | `ConnectorCallContext.sessionId` **已经在手**（`service.ts` 的 `callBundled` 拿得到）；落盘照抄会话范围 JSON 的既有先例 `src/main/settings/bookmark-repository.ts`（每会话一个 JSON、原子 temp+rename、主进程独占写）    |
 | 读侧（遍历） | `ArtifactProvenanceRepository` 构造时就持有 `options.storageRoot`（`provenance-repository.ts:1363`）⇒ **不需要新 DI**；投影在 `getVersionProvenance()`（`:3703`）组装，`appSessionId` 已在 `:3713` 断言可用 ⇒ 连接键现成 |
-| 形状 | 照抄同函数里 `review` 的既有口径：`{ state: 'available', items } \| { state: 'unavailable', reason }`，reason 取 `not-recorded` / `unreadable`（**缺就说没记**，与指纹判决同一口径） |
+| 形状         | 照抄同函数里 `review` 的既有口径：`{ state: 'available', items } \| { state: 'unavailable', reason }`，reason 取 `not-recorded` / `unreadable`（**缺就说没记**，与指纹判决同一口径）                                     |
 
 **必须先声明的两点（不许含糊）**：
 
@@ -132,5 +132,3 @@ outsider  : 按配方手写实现独立复算同一 URL  →  bytes=1118
 **覆盖面（不许含糊）**：这条覆盖**显示半边** —— 面板把服务·工具、请求、状态·字节·摘要、配方常量渲染出来，缺态三态各有自己的文案与用例。**真服务半边**由更早的一次性探针覆盖（走真正接线的引擎打真 PubMed：1118 字节、摘要 `5b026c46…d96d`、外部人手写实现复算 **identical = true**）。**两半合起来才是完整证据**，任何一半都不单独称为"界面已跑通"。
 
 **教训**：把**已交付**的写成未做，与把半截写成已完成，是同一种失真。此后凡是"某能力缺证据"的结论，**先去 CI 的认证车道按 spec 名与它自己打印的读数行核一遍**，再决定要不要立案。
-
-
