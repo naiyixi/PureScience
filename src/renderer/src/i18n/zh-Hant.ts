@@ -4214,5 +4214,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'pdfTranslation.refusal.notConfigured': '沒有設定可用的模型端點，因此沒有翻譯（{detail}）',
   'pdfTranslation.refusal.emptySource':
     '這一份裡沒有可翻譯的段落（可能整篇都沒有文字層）（{detail}）',
-  'pdfTranslation.refusal.other': '這次請求沒說清要翻哪一份（{detail}）'
+  'pdfTranslation.refusal.other': '這次請求沒說清要翻哪一份（{detail}）',
+  'common.generating': '產生中…',
+  'ws.loadingArtifacts': '正在載入產物…',
+  'ws.resendOnNewBranch': '在新分支上重送？',
+  'ws.enableFullAccessQuestion': '啟用完整存取？',
+  'ws.createNewSpecialist': '新建…',
+  'ws.invalidPlanDocument': '計畫文件無效，無法顯示此預覽。',
+  'ws.boundedEvidenceNotice':
+    '為節省儲存空間，執行證據已做截斷：省略了 {runs} 次較早的執行、{outputs} 份輸出和 {inputs} 項輸入。',
+  'settings.tokenPrefix': '權杖：',
+  'settings.expiresPrefix': '有效期限至',
+  'ws.composerHistoryDescription': '在輸入開頭，用上下方向鍵瀏覽歷史提示。'
 }

@@ -4688,5 +4688,17 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdfTranslation.refusal.emptySource':
     'dieses Dokument hat keine übersetzbaren Absätze (vielleicht keine Textebene) ({detail})',
   'pdfTranslation.refusal.other':
-    'die Anfrage nennt nicht, welches Dokument übersetzt werden soll ({detail})'
+    'die Anfrage nennt nicht, welches Dokument übersetzt werden soll ({detail})',
+  'common.generating': 'Wird erstellt…',
+  'ws.loadingArtifacts': 'Artefakte werden geladen…',
+  'ws.resendOnNewBranch': 'In einem neuen Zweig erneut senden?',
+  'ws.enableFullAccessQuestion': 'Vollzugriff aktivieren?',
+  'ws.createNewSpecialist': 'Neu erstellen…',
+  'ws.invalidPlanDocument': 'Ungültiges Plan-Dokument. Diese Vorschau kann nicht angezeigt werden.',
+  'ws.boundedEvidenceNotice':
+    'Ausführungsnachweise wurden für die Speicherung begrenzt: {runs} frühere Läufe, {outputs} Ausgaben und {inputs} Eingaben ausgelassen.',
+  'settings.tokenPrefix': 'Zugriffstoken:',
+  'settings.expiresPrefix': 'Läuft ab',
+  'ws.composerHistoryDescription':
+    'Am Anfang der Eingabe mit den Pfeiltasten Auf und Ab den Eingabeverlauf durchsehen.'
 }

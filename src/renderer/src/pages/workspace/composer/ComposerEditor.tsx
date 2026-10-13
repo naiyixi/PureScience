@@ -42,6 +42,8 @@ type ComposerEditorProps = {
   allowedSkillIds?: readonly string[]
   isHistoryBrowsing?: boolean
   historyStatus?: string
+  // Injected by the parent (this module stays i18n-free, like the other transcript leaves).
+  historyDescription?: string
   // Id of the active session; excluded from the # picker so a session cannot reference itself.
   sessionId?: string
   // Draft undo/redo (Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z) — completed by the parent's draft history.
@@ -167,6 +169,7 @@ export const ComposerEditor = ({
   allowedSkillIds,
   isHistoryBrowsing = false,
   historyStatus = '',
+  historyDescription,
   // Id of the active session; excluded from the # picker so a session cannot reference itself.
   sessionId,
   onUndo,
@@ -345,7 +348,8 @@ export const ComposerEditor = ({
         }}
       />
       <span id={historyDescriptionId} className="sr-only">
-        At the start of the input, use Up and Down Arrow to browse prompt history.
+        {historyDescription ??
+          'At the start of the input, use Up and Down Arrow to browse prompt history.'}
       </span>
       <span id={historyStatusId} role="status" aria-live="polite" className="sr-only">
         {historyStatus}

@@ -216,7 +216,7 @@ const SpecialistSubmenu = ({
             className="items-center gap-2 px-2 py-1.5 text-[13px] text-text-200"
             data-testid="specialist-option-create"
           >
-            Create new…
+            {t('ws.createNewSpecialist')}
           </DropdownMenuItem>
         </DropdownMenuSubContent>
       ) : null}

@@ -610,7 +610,7 @@ const ComposerAgentControlsMenu = ({
                 </span>
                 <div className="min-w-0">
                   <AlertDialog.Title className={dialogTitleClassName}>
-                    Enable Full access?
+                    {t('ws.enableFullAccessQuestion')}
                   </AlertDialog.Title>
                   <AlertDialog.Description className={dialogDescriptionClassName}>
                     The agent can run commands, change files, execute notebook code, and make

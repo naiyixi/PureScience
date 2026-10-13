@@ -4672,5 +4672,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'aucun point de terminaison de modèle n’est configuré — rien n’a été traduit ({detail})',
   'pdfTranslation.refusal.emptySource':
     'ce document n’a aucun paragraphe traduisible (peut-être pas de couche texte) ({detail})',
-  'pdfTranslation.refusal.other': 'la demande n’indique pas quel document traduire ({detail})'
+  'pdfTranslation.refusal.other': 'la demande n’indique pas quel document traduire ({detail})',
+  'common.generating': 'Génération…',
+  'ws.loadingArtifacts': 'Chargement des artefacts…',
+  'ws.resendOnNewBranch': 'Renvoyer sur une nouvelle branche ?',
+  'ws.enableFullAccessQuestion': 'Activer l’accès complet ?',
+  'ws.createNewSpecialist': 'Créer…',
+  'ws.invalidPlanDocument': 'Document de plan non valide. Cet aperçu ne peut pas être affiché.',
+  'ws.boundedEvidenceNotice':
+    'Les preuves d’exécution ont été limitées pour le stockage : {runs} exécutions antérieures, {outputs} sorties et {inputs} entrées omises.',
+  'settings.tokenPrefix': 'Jeton :',
+  'settings.expiresPrefix': 'Expire le',
+  'ws.composerHistoryDescription':
+    'Au début de la saisie, utilisez les flèches haut et bas pour parcourir l’historique.'
 }

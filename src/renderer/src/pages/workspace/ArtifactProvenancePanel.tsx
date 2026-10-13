@@ -1104,7 +1104,7 @@ const ArtifactProvenancePanel = ({
                     className="animate-spin motion-reduce:animate-none"
                     aria-hidden="true"
                   />
-                  Generating…
+                  {t('common.generating')}
                 </Button>
               ) : codeReconstructionState?.state === 'ready' ? (
                 <Button
@@ -1252,10 +1252,10 @@ const ArtifactProvenancePanel = ({
             <div>
               {executionTruncation ? (
                 <p className="border-b border-warning-100/50 bg-warning-100/10 px-4 py-2 text-xs text-text-200">
-                  Execution evidence was bounded for storage: omitted{' '}
-                  {executionTruncation.omittedLeadingRunCount} earlier runs,{' '}
-                  {executionTruncation.omittedOutputCount} outputs, and{' '}
-                  {executionTruncation.omittedInputCount} inputs.
+                  {t('ws.boundedEvidenceNotice')
+                    .replace('{runs}', String(executionTruncation.omittedLeadingRunCount))
+                    .replace('{outputs}', String(executionTruncation.omittedOutputCount))
+                    .replace('{inputs}', String(executionTruncation.omittedInputCount))}
                 </p>
               ) : null}
               <div className={tabActionBarClassName}>

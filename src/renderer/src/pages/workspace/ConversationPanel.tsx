@@ -1010,6 +1010,7 @@ const ConversationPanel = ({
                             onRedo={onComposerRedo}
                             isHistoryBrowsing={isHistoryBrowsing}
                             historyStatus={historyStatus}
+                            historyDescription={t('ws.composerHistoryDescription')}
                             onNavigateHistory={onNavigateHistory}
                           />
                         </div>

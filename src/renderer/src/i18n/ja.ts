@@ -4540,5 +4540,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '利用できるモデル端点が未設定のため翻訳していません（{detail}）',
   'pdfTranslation.refusal.emptySource':
     'この文書に翻訳可能な段落がありません（テキスト層が無い可能性）（{detail}）',
-  'pdfTranslation.refusal.other': 'どの文書を翻訳するか指定されていません（{detail}）'
+  'pdfTranslation.refusal.other': 'どの文書を翻訳するか指定されていません（{detail}）',
+  'common.generating': '生成しています…',
+  'ws.loadingArtifacts': '成果物を読み込んでいます…',
+  'ws.resendOnNewBranch': '新しいブランチで再送信しますか？',
+  'ws.enableFullAccessQuestion': 'フルアクセスを有効にしますか？',
+  'ws.createNewSpecialist': '新規作成…',
+  'ws.invalidPlanDocument': '計画ドキュメントが無効なため、このプレビューを表示できません。',
+  'ws.boundedEvidenceNotice':
+    '保存容量のため実行証跡を制限しました：以前の実行 {runs} 件、出力 {outputs} 件、入力 {inputs} 件を省略しています。',
+  'settings.tokenPrefix': 'トークン：',
+  'settings.expiresPrefix': '有効期限',
+  'ws.composerHistoryDescription': '入力の先頭で、上下矢印キーを使って入力履歴を参照できます。'
 }

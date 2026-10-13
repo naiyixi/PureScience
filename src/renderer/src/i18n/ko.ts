@@ -4471,5 +4471,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '사용할 수 있는 모델 엔드포인트가 없어 번역하지 않았습니다({detail})',
   'pdfTranslation.refusal.emptySource':
     '이 문서에는 번역할 단락이 없습니다(텍스트 레이어가 없을 수 있음)({detail})',
-  'pdfTranslation.refusal.other': '어떤 문서를 번역할지 지정되지 않았습니다({detail})'
+  'pdfTranslation.refusal.other': '어떤 문서를 번역할지 지정되지 않았습니다({detail})',
+  'common.generating': '생성 중…',
+  'ws.loadingArtifacts': '산출물을 불러오는 중…',
+  'ws.resendOnNewBranch': '새 브랜치에서 다시 보낼까요?',
+  'ws.enableFullAccessQuestion': '전체 액세스를 사용할까요?',
+  'ws.createNewSpecialist': '새로 만들기…',
+  'ws.invalidPlanDocument': '계획 문서가 유효하지 않아 이 미리보기를 표시할 수 없습니다.',
+  'ws.boundedEvidenceNotice':
+    '저장 공간을 위해 실행 증거를 제한했습니다: 이전 실행 {runs}개, 출력 {outputs}개, 입력 {inputs}개를 생략했습니다.',
+  'settings.tokenPrefix': '토큰:',
+  'settings.expiresPrefix': '만료',
+  'ws.composerHistoryDescription':
+    '입력 시작 부분에서 위·아래 화살표 키로 입력 기록을 찾아볼 수 있습니다.'
 }

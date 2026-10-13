@@ -314,10 +314,12 @@ const ProviderList = ({
                       // setup-token lifetime visible on the card.
                       provider.maskedKey ? (
                         <>
-                          <div className="font-mono">Token: {provider.maskedKey}</div>
+                          <div className="font-mono">
+                            {t('settings.tokenPrefix')} {provider.maskedKey}
+                          </div>
                           {provider.expiresAt !== undefined ? (
                             <div>
-                              Expires{' '}
+                              {t('settings.expiresPrefix')}{' '}
                               <time dateTime={new Date(provider.expiresAt).toISOString()}>
                                 {new Date(provider.expiresAt).toLocaleDateString()}
                               </time>

@@ -47,7 +47,7 @@ const EditMessageConfirmDialog = ({
           onCloseAutoFocus={focusRestore.onCloseAutoFocus}
         >
           <AlertDialog.Title className={dialogTitleClassName}>
-            Resend on a new branch?
+            {t('ws.resendOnNewBranch')}
           </AlertDialog.Title>
           <AlertDialog.Description className={dialogDescriptionClassName}>
             Sending this edited prompt starts a new branch from here. The {subsequentTurns}{' '}

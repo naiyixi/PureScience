@@ -4638,5 +4638,18 @@ export const es: Partial<Record<ZhKey, string>> = {
     'no hay un endpoint de modelo configurado — no se tradujo nada ({detail})',
   'pdfTranslation.refusal.emptySource':
     'este documento no tiene párrafos traducibles (puede que no haya capa de texto) ({detail})',
-  'pdfTranslation.refusal.other': 'la solicitud no indica qué documento traducir ({detail})'
+  'pdfTranslation.refusal.other': 'la solicitud no indica qué documento traducir ({detail})',
+  'common.generating': 'Generando…',
+  'ws.loadingArtifacts': 'Cargando artefactos…',
+  'ws.resendOnNewBranch': '¿Reenviar en una rama nueva?',
+  'ws.enableFullAccessQuestion': '¿Activar el acceso completo?',
+  'ws.createNewSpecialist': 'Crear uno nuevo…',
+  'ws.invalidPlanDocument':
+    'El documento del plan no es válido. Esta vista previa no se puede mostrar.',
+  'ws.boundedEvidenceNotice':
+    'La evidencia de ejecución se acotó para el almacenamiento: se omitieron {runs} ejecuciones anteriores, {outputs} salidas y {inputs} entradas.',
+  'settings.tokenPrefix': 'Token de acceso:',
+  'settings.expiresPrefix': 'Caduca el',
+  'ws.composerHistoryDescription':
+    'Al inicio de la entrada, usa las flechas arriba y abajo para recorrer el historial.'
 }

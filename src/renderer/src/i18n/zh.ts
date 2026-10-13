@@ -4272,7 +4272,18 @@ export const zh = {
   'pdfTranslation.refusal.notConfigured': '没有配置可用的模型端点，因此没有翻译（{detail}）',
   'pdfTranslation.refusal.emptySource':
     '这一份里没有可翻译的段落（可能整篇都没有文本层）（{detail}）',
-  'pdfTranslation.refusal.other': '这次请求没说清要翻哪一份（{detail}）'
+  'pdfTranslation.refusal.other': '这次请求没说清要翻哪一份（{detail}）',
+  'common.generating': '生成中…',
+  'ws.loadingArtifacts': '正在加载产物…',
+  'ws.resendOnNewBranch': '在新分支上重发？',
+  'ws.enableFullAccessQuestion': '启用完全访问？',
+  'ws.createNewSpecialist': '新建…',
+  'ws.invalidPlanDocument': '计划文档无效，无法显示此预览。',
+  'ws.boundedEvidenceNotice':
+    '为节省存储空间，执行证据已做截断：省略了 {runs} 次较早的运行、{outputs} 份输出和 {inputs} 项输入。',
+  'settings.tokenPrefix': '令牌：',
+  'settings.expiresPrefix': '有效期至',
+  'ws.composerHistoryDescription': '在输入开头，用上下方向键浏览历史提示。'
 }
 
 export type ZhKey = keyof typeof zh

@@ -452,7 +452,7 @@ const PlanPreviewSurface = ({
             role="alert"
             className="max-w-sm rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
           >
-            Invalid Plan document. This preview cannot be displayed.
+            {t('ws.invalidPlanDocument')}
           </div>
         </div>
       )}

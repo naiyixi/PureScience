@@ -1008,6 +1008,7 @@ const WorkspaceMessageItemImpl = ({
                   onPaste={ignoreEditPaste}
                   placeholder={t('wsMessage.editYourMessage')}
                   ariaLabel={t('wsMessage.editMessage')}
+                  historyDescription={t('ws.composerHistoryDescription')}
                 />
                 <div className="flex items-center justify-end gap-1">
                   <button

@@ -4576,5 +4576,17 @@ export const en: Record<ZhKey, string> = {
     'No model endpoint is configured — nothing was translated ({detail})',
   'pdfTranslation.refusal.emptySource':
     'no paragraphs to translate in this document (it may have no text layer) ({detail})',
-  'pdfTranslation.refusal.other': 'the request did not say which document to translate ({detail})'
+  'pdfTranslation.refusal.other': 'the request did not say which document to translate ({detail})',
+  'common.generating': 'Generating…',
+  'ws.loadingArtifacts': 'Loading artifacts…',
+  'ws.resendOnNewBranch': 'Resend on a new branch?',
+  'ws.enableFullAccessQuestion': 'Enable Full access?',
+  'ws.createNewSpecialist': 'Create new…',
+  'ws.invalidPlanDocument': 'Invalid Plan document. This preview cannot be displayed.',
+  'ws.boundedEvidenceNotice':
+    'Execution evidence was bounded for storage: omitted {runs} earlier runs, {outputs} outputs, and {inputs} inputs.',
+  'settings.tokenPrefix': 'Token:',
+  'settings.expiresPrefix': 'Expires',
+  'ws.composerHistoryDescription':
+    'At the start of the input, use Up and Down Arrow to browse prompt history.'
 }

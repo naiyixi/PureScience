@@ -4558,5 +4558,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'конечная точка модели не настроена — перевод не выполнялся ({detail})',
   'pdfTranslation.refusal.emptySource':
     'в этом документе нет переводимых абзацев (возможно, нет текстового слоя) ({detail})',
-  'pdfTranslation.refusal.other': 'в запросе не указано, какой документ переводить ({detail})'
+  'pdfTranslation.refusal.other': 'в запросе не указано, какой документ переводить ({detail})',
+  'common.generating': 'Формируется…',
+  'ws.loadingArtifacts': 'Загрузка артефактов…',
+  'ws.resendOnNewBranch': 'Отправить заново в новой ветке?',
+  'ws.enableFullAccessQuestion': 'Включить полный доступ?',
+  'ws.createNewSpecialist': 'Создать…',
+  'ws.invalidPlanDocument': 'Недопустимый документ плана. Этот предпросмотр нельзя показать.',
+  'ws.boundedEvidenceNotice':
+    'Доказательства выполнения урезаны для хранения: пропущено {runs} прошлых запусков, {outputs} выводов и {inputs} входных данных.',
+  'settings.tokenPrefix': 'Токен:',
+  'settings.expiresPrefix': 'Истекает',
+  'ws.composerHistoryDescription':
+    'В начале ввода используйте клавиши «вверх» и «вниз» для просмотра истории.'
 }

@@ -213,7 +213,7 @@ const DownloadSessionArtifactsDialog = ({
             {status === 'loading' ? (
               <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
                 <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                Loading artifacts…
+                {t('ws.loadingArtifacts')}
               </div>
             ) : status === 'error' ? (
               <div className="flex min-h-32 flex-col items-center justify-center gap-3 px-6 text-center">
