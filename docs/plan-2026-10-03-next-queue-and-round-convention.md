@@ -3880,3 +3880,41 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    `blocked-by` = 无人在改 `main/settings/backend-resolver.ts`、`pages/settings/validation-message.ts`。
 2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
 3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
+
+## 七十一、本轮追加（会话，2026-10-13）—— provider 校验族与受限历史文案（6 键 ×9，含三槽模板）
+
+### 一 交付（2 笔）
+
+| 提交 | 内容 |
+| --- | --- |
+| `df379d19` | 认证族 16 键（见 §七十）|
+| （本笔） | **6 键 ×9 + 目录 2 条（1 精确 + 1 三槽模板）+ 两处渲染接线** |
+
+**本轮抓到的三处真漏**（都不是审计现有形状抓到的，是逐链读出来的）：
+
+1. `SettingsPage.tsx:952`：`` `Loaded ${n} models from the vendor.` `` —— **渲染端拼的英文整句**（非键控）⇒ 键 `settings.loadedModelsFromVendor`（`{count}`）。
+2. `ArtifactProvenancePanel.tsx:1415-1417`：受限历史的两句 —— `` `${n} earlier operation(s) omitted…` ``（**复数靠三元拼 `s`**）与
+   `` ` Retained entries begin ${date}.` `` ⇒ 拆成 `ws.boundedHistoryOmittedOne/Many`（复数两键，仓库既有 `…TurnOne/Many` 口径）与 `ws.boundedHistoryRetainedFrom`（`{date}`）。
+3. `main/settings/provider-accounts.ts:1342-1349` 的 `incompatible` 消息两支：claude-isolated 支**稳定句**（精确条目）、
+   通用支**三槽句子**（`{framework}`/`{needs}`/`{speaks}` ⇒ 目录新增具名三槽模板）。`describeValidation` 会把这两支原样返回，
+   而它**不是**第三方文本（是我们自己拼的）⇒ 必须键控；反过来 `auth`/`unknown` 两支里的 `result.message` 是**网关原文**（如 `Insufficient Balance`）⇒ **有意不翻**。
+
+### 二 读数
+
+- `eslint --no-cache`（目录、`SettingsPage`、`ArtifactProvenancePanel`）**0 问题**；web typecheck 本片 **0 条**；
+- `vitest`：目录用例 + `ArtifactProvenancePanel.render`（**它钉着受限历史那两句的整句**，EN 逐字一致故原样通过）+ `pages/settings` 全目录 + i18n ⇒ **69 文件 / 775 passed｜1 skipped**。
+
+### 三 判据（可复用）
+
+**「这句是谁拼的？」** 决定翻不翻：
+- 我们自己拼的英文（渲染端模板、main 侧 `message` 组装）⇒ 必须键控；
+- **第三方/网关回显的原文**（`Insufficient Balance`、HTTP 状态、底层 `stderr`）⇒ 有意不翻（翻了会把服务端的原话改成我们的措辞，读者反而查不到）。
+这条判据本轮在同一个文件里**两个方向都用到了**（`incompatible` 翻、`auth`/`unknown` 不翻）。
+
+### 四 下一轮第一步（带 blocked-by）
+
+1. **把「谁拼的」判据跑一遍其余结果族**（`ProvidersPanel` 其余 catch、`SkillImportView`、`ConnectorsPanel`、`AgentPanel`、
+   `pdf/*`、`global-search/*` —— §六十九 已枚举）：每族只需判「main 那支是我们拼的还是回显的」，前者加目录条目 + 键、后者具名保留。
+   `blocked-by` = 无人在改对应 main 文件。
+2. 执行器 P0-10(c) 落定后评审（§六十四·五·2 口径）。
+3. 窗口侧读数三件 + 认证 spec 进仓：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）。
