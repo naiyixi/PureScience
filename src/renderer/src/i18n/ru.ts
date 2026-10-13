@@ -4640,5 +4640,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Установленный codex-acp не поддерживает вход через ChatGPT.',
   'mainMessage.codexStatusTimedOut': 'Проверка состояния Codex превысила время ожидания.',
   'mainMessage.codexSignInInProgress': 'Вход в Codex уже выполняется.',
-  'mainMessage.codexSignOutTimedOut': 'Выход из Codex превысил время ожидания.'
+  'mainMessage.codexSignOutTimedOut': 'Выход из Codex превысил время ожидания.',
+  'settings.loadedModelsFromVendor': 'Загружено моделей от поставщика: {count}.',
+  'ws.boundedHistoryOmittedOne': 'Одна прежняя операция опущена в этой ограниченной истории.',
+  'ws.boundedHistoryOmittedMany': 'В этой ограниченной истории опущено прежних операций: {count}.',
+  'ws.boundedHistoryRetainedFrom': 'Сохранённые записи начинаются с {date}.',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    'Он хранит токен OAuth Anthropic (setup-token) в хранилище приложения, а использовать его может только Claude Code. Переключитесь на Claude Code или выберите другого поставщика.',
+  'mainMessage.providerIncompatibleGeneric':
+    'Несовместимо с {framework}: ему нужно {needs}, а этот поставщик говорит на {speaks}. Измените формат API или переключите фреймворк агента.'
 }

@@ -4756,5 +4756,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Le codex-acp installé n’annonce pas la prise en charge de l’authentification ChatGPT.',
   'mainMessage.codexStatusTimedOut': 'La vérification de l’état de Codex a expiré.',
   'mainMessage.codexSignInInProgress': 'Une connexion Codex est déjà en cours.',
-  'mainMessage.codexSignOutTimedOut': 'La déconnexion de Codex a expiré.'
+  'mainMessage.codexSignOutTimedOut': 'La déconnexion de Codex a expiré.',
+  'settings.loadedModelsFromVendor': '{count} modèles chargés depuis le fournisseur.',
+  'ws.boundedHistoryOmittedOne': 'Une opération antérieure a été omise de cet historique limité.',
+  'ws.boundedHistoryOmittedMany':
+    '{count} opérations antérieures ont été omises de cet historique limité.',
+  'ws.boundedHistoryRetainedFrom': 'Les entrées conservées commencent le {date}.',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    'Il porte un jeton OAuth Anthropic (setup-token) dans le stockage propre à l’application, que seul Claude Code peut utiliser. Passez à Claude Code ou choisissez un autre fournisseur.',
+  'mainMessage.providerIncompatibleGeneric':
+    'Incompatible avec {framework} : il lui faut {needs}, alors que ce fournisseur parle {speaks}. Modifiez le format d’API ou changez de framework d’agent.'
 }

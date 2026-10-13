@@ -4624,5 +4624,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'インストール済みの codex-acp は ChatGPT 認証に対応していません。',
   'mainMessage.codexStatusTimedOut': 'Codex の状態確認がタイムアウトしました。',
   'mainMessage.codexSignInInProgress': 'Codex のサインインがすでに進行中です。',
-  'mainMessage.codexSignOutTimedOut': 'Codex のサインアウトがタイムアウトしました。'
+  'mainMessage.codexSignOutTimedOut': 'Codex のサインアウトがタイムアウトしました。',
+  'settings.loadedModelsFromVendor': 'ベンダーから {count} 個のモデルを読み込みました。',
+  'ws.boundedHistoryOmittedOne': 'この上限付き履歴では以前の操作 {count} 件を省略しました。',
+  'ws.boundedHistoryOmittedMany': 'この上限付き履歴では以前の操作 {count} 件を省略しました。',
+  'ws.boundedHistoryRetainedFrom': '保持されている項目は {date} から始まります。',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    'アプリ管理のストレージに Anthropic OAuth トークン（setup-token）があり、扱えるのは Claude Code だけです。Claude Code に切り替えるか、別のプロバイダーを選んでください。',
+  'mainMessage.providerIncompatibleGeneric':
+    '{framework} と互換性がありません：必要なのは {needs} ですが、このプロバイダーが話すのは {speaks} です。API 形式を変更するか、エージェントフレームワークを切り替えてください。'
 }

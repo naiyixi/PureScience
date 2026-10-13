@@ -4779,5 +4779,15 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Das installierte codex-acp unterstützt keine ChatGPT-Anmeldung.',
   'mainMessage.codexStatusTimedOut': 'Die Codex-Statusprüfung ist abgelaufen.',
   'mainMessage.codexSignInInProgress': 'Eine Codex-Anmeldung läuft bereits.',
-  'mainMessage.codexSignOutTimedOut': 'Die Codex-Abmeldung ist abgelaufen.'
+  'mainMessage.codexSignOutTimedOut': 'Die Codex-Abmeldung ist abgelaufen.',
+  'settings.loadedModelsFromVendor': '{count} Modelle vom Anbieter geladen.',
+  'ws.boundedHistoryOmittedOne':
+    'Eine frühere Operation wurde aus dieser begrenzten Historie ausgelassen.',
+  'ws.boundedHistoryOmittedMany':
+    '{count} frühere Operationen wurden aus dieser begrenzten Historie ausgelassen.',
+  'ws.boundedHistoryRetainedFrom': 'Die behaltenen Einträge beginnen am {date}.',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    'Es trägt ein Anthropic-OAuth-Token (setup-token) im app-eigenen Speicher, das nur Claude Code verwenden kann. Wechsle zu Claude Code oder wähle einen anderen Anbieter.',
+  'mainMessage.providerIncompatibleGeneric':
+    'Nicht kompatibel mit {framework}: Es braucht {needs}, dieser Anbieter spricht aber {speaks}. Ändere das API-Format oder wechsle das Agent-Framework.'
 }

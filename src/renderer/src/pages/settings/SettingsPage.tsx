@@ -949,7 +949,10 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
       setStatusOk(result.ok)
       setStatusMessage(
         result.ok
-          ? `Loaded ${result.models?.length ?? 0} models from the vendor.`
+          ? t('settings.loadedModelsFromVendor').replace(
+              '{count}',
+              String(result.models?.length ?? 0)
+            )
           : t('settings.couldNotFetchModels').replace(
               '{message}',
               result.message ?? t('settings.requestFailed')

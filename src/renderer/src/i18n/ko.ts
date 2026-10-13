@@ -4550,5 +4550,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'mainMessage.codexAcpNoChatGptAuth': '설치된 codex-acp가 ChatGPT 인증을 지원하지 않습니다.',
   'mainMessage.codexStatusTimedOut': 'Codex 상태 확인 시간이 초과되었습니다.',
   'mainMessage.codexSignInInProgress': 'Codex 로그인이 이미 진행 중입니다.',
-  'mainMessage.codexSignOutTimedOut': 'Codex 로그아웃 시간이 초과되었습니다.'
+  'mainMessage.codexSignOutTimedOut': 'Codex 로그아웃 시간이 초과되었습니다.',
+  'settings.loadedModelsFromVendor': '공급자에서 모델 {count}개를 불러왔습니다.',
+  'ws.boundedHistoryOmittedOne': '이 제한된 기록에서 이전 작업 {count}개를 생략했습니다.',
+  'ws.boundedHistoryOmittedMany': '이 제한된 기록에서 이전 작업 {count}개를 생략했습니다.',
+  'ws.boundedHistoryRetainedFrom': '유지된 항목은 {date}부터 시작합니다.',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    '앱 소유 저장소에 Anthropic OAuth 토큰(setup-token)이 있으며 Claude Code만 사용할 수 있습니다. Claude Code로 전환하거나 다른 공급자를 선택하세요.',
+  'mainMessage.providerIncompatibleGeneric':
+    '{framework}와 호환되지 않습니다: 필요한 것은 {needs}이지만 이 공급자가 사용하는 것은 {speaks}입니다. API 형식을 바꾸거나 에이전트 프레임워크를 전환하세요.'
 }

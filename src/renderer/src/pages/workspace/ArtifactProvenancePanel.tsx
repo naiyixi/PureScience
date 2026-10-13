@@ -1412,9 +1412,16 @@ const ArtifactProvenancePanel = ({
                 ) : null}
                 {omittedOperationCount > 0 ? (
                   <p className="rounded-md bg-bg-100 px-3 py-2 text-xs text-text-300">
-                    {`${omittedOperationCount} earlier operation${omittedOperationCount === 1 ? '' : 's'} omitted from this bounded history.`}
+                    {t(
+                      omittedOperationCount === 1
+                        ? 'ws.boundedHistoryOmittedOne'
+                        : 'ws.boundedHistoryOmittedMany'
+                    ).replace('{count}', String(omittedOperationCount))}
                     {earliestRetainedOperationAt
-                      ? ` Retained entries begin ${new Date(earliestRetainedOperationAt).toLocaleString()}.`
+                      ? ` ${t('ws.boundedHistoryRetainedFrom').replace(
+                          '{date}',
+                          new Date(earliestRetainedOperationAt).toLocaleString()
+                        )}`
                       : ''}
                   </p>
                 ) : null}

@@ -4655,5 +4655,13 @@ export const en: Record<ZhKey, string> = {
     'The installed codex-acp does not advertise ChatGPT authentication.',
   'mainMessage.codexStatusTimedOut': 'Codex status check timed out.',
   'mainMessage.codexSignInInProgress': 'A Codex sign-in is already in progress.',
-  'mainMessage.codexSignOutTimedOut': 'Codex sign-out timed out.'
+  'mainMessage.codexSignOutTimedOut': 'Codex sign-out timed out.',
+  'settings.loadedModelsFromVendor': 'Loaded {count} models from the vendor.',
+  'ws.boundedHistoryOmittedOne': '{count} earlier operation omitted from this bounded history.',
+  'ws.boundedHistoryOmittedMany': '{count} earlier operations omitted from this bounded history.',
+  'ws.boundedHistoryRetainedFrom': 'Retained entries begin {date}.',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    'Carries an Anthropic OAuth token (setup-token) in app-owned storage, which only Claude Code can carry. Switch to Claude Code or pick another provider.',
+  'mainMessage.providerIncompatibleGeneric':
+    'Not compatible with {framework}: it needs {needs}, but this provider speaks {speaks}. Change the API format or switch the agent framework.'
 }

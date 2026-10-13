@@ -4281,5 +4281,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'mainMessage.codexAcpNoChatGptAuth': '已安裝的 codex-acp 未宣告支援 ChatGPT 驗證。',
   'mainMessage.codexStatusTimedOut': 'Codex 狀態檢查逾時。',
   'mainMessage.codexSignInInProgress': '已有一個 Codex 登入正在進行。',
-  'mainMessage.codexSignOutTimedOut': 'Codex 登出逾時。'
+  'mainMessage.codexSignOutTimedOut': 'Codex 登出逾時。',
+  'settings.loadedModelsFromVendor': '已從供應商載入 {count} 個模型。',
+  'ws.boundedHistoryOmittedOne': '此受限歷史省略了 {count} 個較早的操作。',
+  'ws.boundedHistoryOmittedMany': '此受限歷史省略了 {count} 個較早的操作。',
+  'ws.boundedHistoryRetainedFrom': '保留的項目從 {date} 開始。',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    '它在應用程式自己的儲存空間裡帶著 Anthropic OAuth 權杖（setup-token），只有 Claude Code 能使用。請切換到 Claude Code，或改選另一個供應商。',
+  'mainMessage.providerIncompatibleGeneric':
+    '與 {framework} 不相容：它需要 {needs}，而這個供應商使用的是 {speaks}。請修改 API 格式，或切換智能體框架。'
 }

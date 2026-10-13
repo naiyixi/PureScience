@@ -4337,7 +4337,15 @@ export const zh = {
   'mainMessage.codexAcpNoChatGptAuth': '已安装的 codex-acp 未声明支持 ChatGPT 认证。',
   'mainMessage.codexStatusTimedOut': 'Codex 状态检查超时。',
   'mainMessage.codexSignInInProgress': '已有一个 Codex 登录正在进行。',
-  'mainMessage.codexSignOutTimedOut': 'Codex 退出登录超时。'
+  'mainMessage.codexSignOutTimedOut': 'Codex 退出登录超时。',
+  'settings.loadedModelsFromVendor': '已从服务商加载 {count} 个模型。',
+  'ws.boundedHistoryOmittedOne': '此受限历史省略了 {count} 个较早的操作。',
+  'ws.boundedHistoryOmittedMany': '此受限历史省略了 {count} 个较早的操作。',
+  'ws.boundedHistoryRetainedFrom': '保留的条目从 {date} 开始。',
+  'mainMessage.providerIncompatibleClaudeIsolated':
+    '它在应用自己的存储里带着 Anthropic OAuth 令牌（setup-token），只有 Claude Code 能用它。请切换到 Claude Code，或另选一个服务商。',
+  'mainMessage.providerIncompatibleGeneric':
+    '与 {framework} 不兼容：它需要 {needs}，而这个服务商使用的是 {speaks}。请修改 API 格式，或切换智能体框架。'
 }
 
 export type ZhKey = keyof typeof zh

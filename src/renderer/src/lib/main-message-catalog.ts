@@ -4,6 +4,8 @@
 // Mapping the exact sentence back to a dictionary key keeps that property and still lets the reader
 // see it in their own language; anything the renderer does not recognise passes through unchanged.
 export const MAIN_MESSAGE_KEYS: Record<string, string> = {
+  'Carries an Anthropic OAuth token (setup-token) in app-owned storage, which only Claude Code can carry. Switch to Claude Code or pick another provider.':
+    'mainMessage.providerIncompatibleClaudeIsolated',
   'Browser sign-in is unavailable: the Claude executable was not found.':
     'mainMessage.claudeExecutableMissing',
   'Secure credential storage is unavailable. Unlock the system keychain and retry.':
@@ -48,6 +50,12 @@ const MAIN_MESSAGE_TEMPLATES: ReadonlyArray<{
     pattern: /^That interpreter can't be used as a notebook runtime: (.+)$/,
     key: 'mainMessage.notebookRuntimeUnusableDetail',
     fill: ['{detail}']
+  },
+  {
+    pattern:
+      /^Not compatible with (.+?): it needs (.+?), but this provider speaks (.+?)\. Change the API format or switch the agent framework\.$/,
+    key: 'mainMessage.providerIncompatibleGeneric',
+    fill: ['{framework}', '{needs}', '{speaks}']
   },
   {
     pattern: /^Installing packages into your own (.+?) environment is not authorized\./,
