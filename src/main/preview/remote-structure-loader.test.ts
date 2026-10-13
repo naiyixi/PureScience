@@ -175,14 +175,14 @@ describe('远程结构加载（主进程）', () => {
     expect(result.id).toBe('P00533')
     expect(result.source).toBe('alphafold-db')
     expect(result.host).toBe('alphafold.ebi.ac.uk')
-    expect(result.fileName).toBe('AF-P00533-F1-model_v4.pdb')
+    expect(result.fileName).toBe('AF-P00533-F1-model_v6.pdb')
     expect(
-      result.path.endsWith(join('predictions', 'alphafold-db', 'AF-P00533-F1-model_v4.pdb'))
+      result.path.endsWith(join('predictions', 'alphafold-db', 'AF-P00533-F1-model_v6.pdb'))
     ).toBe(true)
     // **这一条才是打通**：视图侧按路径解析出的引擎，正是这份产物的来源。
     expect(engineForPredictionPath(result.path)?.id).toBe('alphafold-db')
     expect(deps.fetchText).toHaveBeenCalledWith(
-      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v4.pdb'
+      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v6.pdb'
     )
   })
 

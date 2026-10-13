@@ -127,8 +127,16 @@ export const normalizeStructureRemoteUniProtId = (raw: unknown): string | undefi
   return UNIPROT_ACCESSION_PATTERN.test(candidate) ? candidate : undefined
 }
 
-/** AlphaFold DB 官方发布路径里的模型版本 —— 这是**数据库的文件名约定**，不是我们挑的。 */
-const ALPHAFOLD_MODEL_VERSION = 'v4'
+/**
+ * AlphaFold DB 官方发布路径里的模型版本 —— 这是**数据库的文件名约定**，不是我们挑的。
+ *
+ * **它是会变的，而且过期时会得到一个具名的 `not-found`（不是假成功）**：2026-10-13 实测 v4/v5 都返回
+ * `NoSuchKey`（GCS 原话 `No such object: latest-release/AF-P00533-F1-model_v4.pdb`），v6 才是当前发布。
+ * 权威来源是数据库自己的 API：`https://alphafold.ebi.ac.uk/api/prediction/<登录号>` 里的
+ * `latestVersion`（当时 = 6）与 `pdbUrl`（当时 = …AF-<登录号>-F1-model_v6.pdb）。数据库再抬版本时，
+ * 这里要跟着改；改之前的每一次加载都会如实报「源上没有这一条」，不会静默拿旧版冒充。
+ */
+const ALPHAFOLD_MODEL_VERSION = 'v6'
 
 /**
  * 固定模板（AlphaFold DB）。取回的正文里若带着别的 URL，**一律不跟随**：能跟随就等于让远端决定我们去哪。

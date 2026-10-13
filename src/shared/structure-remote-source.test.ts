@@ -140,9 +140,9 @@ describe('结构来源登记表：写侧与读侧由同一条约定钉住', () =
 
   it('AlphaFold 的固定模板与文件名（版本号是数据库的约定，不是调用方挑的）', () => {
     expect(structureRemoteAlphaFoldUrl('P00533')).toBe(
-      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v4.pdb'
+      'https://alphafold.ebi.ac.uk/files/AF-P00533-F1-model_v6.pdb'
     )
-    expect(structureRemoteAlphaFoldFileName('P00533')).toBe('AF-P00533-F1-model_v4.pdb')
+    expect(structureRemoteAlphaFoldFileName('P00533')).toBe('AF-P00533-F1-model_v6.pdb')
     expect(STRUCTURE_REMOTE_SOURCES['alphafold-db'].host).toBe('alphafold.ebi.ac.uk')
   })
 })
