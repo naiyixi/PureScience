@@ -12,6 +12,7 @@ import type {
 } from '@modelcontextprotocol/sdk/shared/auth.js'
 
 import type { StoredCustomMcpOAuthConfig, StoredCustomMcpOAuthState } from '../settings/types'
+import { nativeStringsFor, resolveNativeLocaleCode, type NativeLocaleCode } from '../native-locale'
 
 export type OAuthCallback = {
   code?: string
@@ -25,6 +26,89 @@ type PendingCallback = {
 }
 
 const OAUTH_CALLBACK_TIMEOUT_MS = 5 * 60_000
+
+// The OAuth callback page is served to whatever browser the user completed the login in, outside the
+// renderer, so it carries its own nine-language copy and follows the app locale the same way the
+// native dialogs do (see ../native-locale.ts). English values are kept byte-for-byte with the
+// literals they replaced.
+type OAuthCallbackPageStrings = {
+  expired: string
+  failed: string
+  complete: string
+  closeWindow: string
+}
+
+const OAUTH_CALLBACK_PAGE_STRINGS: Record<NativeLocaleCode, OAuthCallbackPageStrings> = {
+  en: {
+    expired: 'PureScience authorization expired',
+    failed: 'Authorization failed',
+    complete: 'Authorization complete',
+    closeWindow: 'You can close this window.'
+  },
+  zh: {
+    expired: 'PureScience 授权已过期',
+    failed: '授权失败',
+    complete: '授权完成',
+    closeWindow: '可以关闭此窗口。'
+  },
+  'zh-Hant': {
+    expired: 'PureScience 授權已過期',
+    failed: '授權失敗',
+    complete: '授權完成',
+    closeWindow: '可以關閉此視窗。'
+  },
+  ja: {
+    expired: 'PureScience の認証の有効期限が切れました',
+    failed: '認証に失敗しました',
+    complete: '認証が完了しました',
+    closeWindow: 'このウィンドウを閉じてください。'
+  },
+  ko: {
+    expired: 'PureScience 인증이 만료되었습니다',
+    failed: '인증 실패',
+    complete: '인증 완료',
+    closeWindow: '이 창을 닫아도 됩니다.'
+  },
+  es: {
+    expired: 'La autorización de PureScience ha caducado',
+    failed: 'La autorización falló',
+    complete: 'Autorización completada',
+    closeWindow: 'Puedes cerrar esta ventana.'
+  },
+  de: {
+    expired: 'PureScience-Autorisierung abgelaufen',
+    failed: 'Autorisierung fehlgeschlagen',
+    complete: 'Autorisierung abgeschlossen',
+    closeWindow: 'Sie können dieses Fenster schließen.'
+  },
+  fr: {
+    expired: 'Autorisation PureScience expirée',
+    failed: 'Échec de l’autorisation',
+    complete: 'Autorisation terminée',
+    closeWindow: 'Vous pouvez fermer cette fenêtre.'
+  },
+  ru: {
+    expired: 'Срок авторизации PureScience истёк',
+    failed: 'Не удалось авторизоваться',
+    complete: 'Авторизация завершена',
+    closeWindow: 'Это окно можно закрыть.'
+  }
+}
+
+// A whole document rather than a bare fragment, so the page declares the language it is written in.
+const renderOAuthCallbackPage = (heading: string, closeNote: string): string =>
+  `<!doctype html>
+<html lang="${resolveNativeLocaleCode()}">
+  <head>
+    <meta charset="utf-8" />
+    <title>${heading}</title>
+  </head>
+  <body>
+    <h1>${heading}</h1>
+    <p>${closeNote}</p>
+  </body>
+</html>
+`
 
 // One loopback listener is shared by all custom MCP OAuth logins. The callback state is matched to
 // the pending flow before handing the authorization code back to the caller.
@@ -59,7 +143,8 @@ export class OAuthCallbackServer {
       const pending = this.pending.get(state)
       if (!pending) {
         response.writeHead(400, { 'content-type': 'text/html; charset=utf-8' })
-        response.end('<h1>PureScience authorization expired</h1><p>You can close this window.</p>')
+        const expired = nativeStringsFor(OAUTH_CALLBACK_PAGE_STRINGS)
+        response.end(renderOAuthCallbackPage(expired.expired, expired.closeWindow))
         return
       }
 
@@ -67,10 +152,9 @@ export class OAuthCallbackServer {
       const error = url.searchParams.get('error') ?? undefined
       const code = url.searchParams.get('code') ?? undefined
       response.writeHead(error ? 400 : 200, { 'content-type': 'text/html; charset=utf-8' })
+      const settled = nativeStringsFor(OAUTH_CALLBACK_PAGE_STRINGS)
       response.end(
-        error
-          ? '<h1>Authorization failed</h1><p>You can close this window.</p>'
-          : '<h1>Authorization complete</h1><p>You can close this window.</p>'
+        renderOAuthCallbackPage(error ? settled.failed : settled.complete, settled.closeWindow)
       )
       pending.resolve({ code, error, state })
     })

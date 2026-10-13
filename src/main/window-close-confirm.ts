@@ -1,7 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 
 import type { ActiveSessionInfo } from '../shared/storage'
+import { nativeStringsFor, type NativeLocaleCode } from './native-locale'
 import {
   WINDOW_CLOSE_CONFIRM_REQUEST_CHANNEL,
   WINDOW_CLOSE_CONFIRM_RESPONSE_CHANNEL,
@@ -187,7 +188,7 @@ type NativeQuitStrings = {
   dontAskAgain: string
 }
 
-const NATIVE_QUIT_STRINGS: Record<string, NativeQuitStrings> = {
+const NATIVE_QUIT_STRINGS: Record<NativeLocaleCode, NativeQuitStrings> = {
   en: {
     cancel: 'Cancel',
     quit: 'Quit',
@@ -280,34 +281,9 @@ const NATIVE_QUIT_STRINGS: Record<string, NativeQuitStrings> = {
   }
 }
 
-const nativeStringsForLocale = (): NativeQuitStrings => {
-  // app may be absent under unit tests that mock only dialog/BrowserWindow; the interop getter for a
-  // missing named export throws on access, so fall back to English there.
-  let locale = 'en'
-  try {
-    locale = app.getLocale().toLowerCase()
-  } catch {
-    // unit-test electron mock without an `app` export
-  }
-  const code = locale.startsWith('zh')
-    ? locale.startsWith('zh-hant') || locale.startsWith('zh-tw') || locale.startsWith('zh-hk')
-      ? 'zh-Hant'
-      : 'zh'
-    : locale.startsWith('ja')
-      ? 'ja'
-      : locale.startsWith('ko')
-        ? 'ko'
-        : locale.startsWith('es')
-          ? 'es'
-          : locale.startsWith('de')
-            ? 'de'
-            : locale.startsWith('fr')
-              ? 'fr'
-              : locale.startsWith('ru')
-                ? 'ru'
-                : 'en'
-  return NATIVE_QUIT_STRINGS[code]
-}
+// The cascade itself lives in ./native-locale.ts so the served pages, the menus and this dialog
+// cannot drift into three slightly different answers to "which language is this?"
+const nativeStringsForLocale = (): NativeQuitStrings => nativeStringsFor(NATIVE_QUIT_STRINGS)
 
 const nativeFallback = async (
   getWindow: () => BrowserWindow | undefined,
