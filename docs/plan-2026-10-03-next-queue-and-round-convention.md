@@ -4004,3 +4004,40 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 1. **窗口侧读数三件 + 认证 spec 进仓**：`blocked-by` = 内存闸门（本轮空闲页仍 ~66 MB 量级）——这是本版剩下的**唯一**取证类缺口（其余新能力都已按 §六十九/§七十/§七十一 的方式落地）。
 2. 执行器按自己的队列继续（它上一笔已评审通过）。
 3. **拍板项仍挂**：A 续做 + B 只强制用于新写的 main→renderer 结果类型（§六十九 决策表）——A 已按建议执行完毕，B 的强制点尚待你确认是否写入开发口径。
+
+## 七十五、本轮追加（会话，2026-10-13）—— 审计形状的**最终判定收口**（i18n 清扫线到此结束）
+
+### 一 最后两条（`template literal prose fragment` 3 → 2 之后剩下的两条）判为保留
+
+| 位置 | 串 | 判定与依据 |
+| --- | --- | --- |
+| `main/net/egress-failure.ts:234` | `` ` reaching ${target}` ``（`formatEgressFailure` 的片段） | **保留**：函数自己的注释写明「one line that names the failure and the target, **for a log record or an agent-visible message**」；**渲染端全仓不消费**（消费者是 `main/connectors/engine.ts` 与 `main/net/egress-proxy.ts`）|
+| `main/settings/managed-opencode.ts:260` | `` `\`--version\` exited with code ${probe.status}` `` | **保留**：它是探针结果对象的 `reason`（动态尾巴），渲染端不消费（`grep managed-opencode` 在 renderer 零命中）|
+
+### 二 审计形状的最终计数与逐类去向（本轮收口，附**上一单元生效的实证**）
+
+`node scripts/i18n-hardcoded-audit.mjs` 复扫：
+
+| 形状 | 计数 | 去向 |
+| --- | --- | --- |
+| `dquote` | 53 | 全部为**有意保留**：连接器 descriptors 工具 schema 35、评审 agent rubric/工具描述 6、提示正文 2、工具 `.describe()` 2、字体栈假阳 1、其余为网关回显类（§六十六/§七十三 具名判定）|
+| `jsx-text before interpolation` | 3 | `Versions.tsx` 的 `Electron v / Chromium v / Node v` 技术版本前缀（保留）|
+| `jsx prose line` | 3 | `main` 的支持包文本文件 ×2 与 agent 指令 ×1（保留，§六十四·四）|
+| `template literal prose fragment` | **2**（本轮前为 3） | **本项计数下降＝上一单元（受限历史两句键控）生效的实证**：`ArtifactProvenancePanel` 那条已消失，剩两条即上表两条（保留）|
+| `attr literal` / `jsx-text` | 1 / 1 | 字典里的属性样板 / 配对页品牌名（保留）|
+| `single-quoted returned sentence` | 0 | 今日树无此类真漏；**咬合由仓内夹具证明**（§六十八）|
+
+### 三 本线的边界（不许读成「全库已无英文」）
+
+- 审计是**启发式**：它证明的是「这些形状里没有可行动的残留」，**不证明**「界面无英文」。真窗口抽查仍是最终口径，
+  而它卡在内存闸门（本轮读数：**空闲页 4689 ≈ 73 MB**，swap 已用 5013/6144 ⇒ 起不了 `build:e2e` + Electron）。
+- `main/**` 里 agent 面向的文本（工具 schema / rubric / 提示正文）**有意保留英文**，这是产品口径（翻译会破坏 agent 匹配与指令语义）。
+- 第三方/网关回显原文**有意不翻**（判据见 §七十一·三）。
+
+### 四 下一轮第一步（带 blocked-by）
+
+1. **窗口侧读数三件 + 认证 spec 进仓**：`blocked-by` = 内存闸门。**这是本版唯一剩下的取证类缺口**；
+   一旦空闲页回到可起 `build:e2e` 的量级，一次窗口会话可同时收掉：D4 导出点击链、D7 来源按钮链、A 线翻译面板点击、
+   以及窗口翻译认证 spec 的进仓。
+2. 执行器按自身队列继续（上一笔已评审通过）。
+3. **拍板项**：B（新写的 main→renderer 结果类型只带 code + 参数）是否写入开发口径。
