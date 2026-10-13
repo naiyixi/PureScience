@@ -4280,3 +4280,38 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 1. **应用自有运行路径的接线**：`requestAppApproval` 已在位且测过，但**还没有调用者**——app 自己的「跑这个 cell」触发点（运行入口）需：算收据 → `verdict==='review'` 时 `await requestAppApproval({…, riskReview})` → 返回 false 则**不执行**。这是产品侧最后一段线。
 2. **真窗口读数**：弹卡 → 拒绝 → 确认「执行未发生且记录一致」（内存闸门，本轮实测空闲页 73 MB）。
 3. `repl_execute` **有意**不收据：它也带 `code`，但那是控制面 REPL，Python 规则会给错判定（宁缺勿猜）——具名缺口，不假装覆盖。
+
+## 八十三、v2.1.0（批 B）B1 收尾：app 自有运行入口的审批门（会话，2026-10-13）
+
+### 一 交付（`feat(notebook)` 一笔 + 本档）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 判定 | `src/main/notebook/run-risk-receipt.ts` | `resolveNotebookRunRiskGate({code, reviewer, …})` ⇒ `'pass' \| 'allow' \| 'decline' \| 'unreviewed'`（判定与内核无关、审批器作参数注入 ⇒ 两种运行路径与用例共用一份判定）；`NotebookRunDeclinedError`（点名被拒的规则）|
+| 门 | `src/main/notebook/execution-owner.ts` | **按请求来源判定**：`source === 'user'`（窗口）才问；agent 侧由 ACP broker 负责（同一份收据随它的请求走）⇒ 一个决定**只弹一张卡**。门在 `dataExecutionAdmission.admit` **之前**：被拒的 cell **不 provision、不碰内核** |
+| 接线 | `runtime-service.ts` option → `execution-owner` | 逐层显式字段；`...runtimeOptions` 展开保证不丢键 |
+| 生产 | `src/main/ipc.ts` | `reviewNotebookRun` 调 ACP `requestAppApproval({sessionId, title, rawInput:{code}, riskReview: receipt})`；**审批面缺席 ⇒ 拒**（与同文件 specialist 网关同口径：「没人可问」不是「没问题」）|
+| 卡面 | `PermissionApprovalControls.tsx` | 收据派生的**本地化标题接管 header**，main 侧英文串不再上屏（有用例断言 `not.toContain`）|
+
+### 二 读数（全部实跑）
+
+- `src/main/notebook` + `src/main/acp` + `src/shared` ⇒ **297 文件 / 4184 passed｜99 skipped**；定向 108 条（含 4 条判定用例 + 1 条拒绝错误用例）；
+- 双 typecheck 0（node + web）、`eslint --no-cache` 0。
+
+### 三 两处设计决定（记理由）
+
+1. **不做 fail-closed 的那一处**：当「判定为 review 而**没有接审批器**」时，本片是**具名 warn + 放行**，不是拒绝。理由：该函数被两种路径共用，agent 路径的审批已在 broker 完成、且运行期无法在这里分辨它已被批准 ⇒ 一刀切拒绝会把 agent 路径也拦死。生产已接线（`ipc.ts`），所以这条 warn 在真机上不应出现。
+2. **拒绝的记录语义**：被拒 ⇒ 抛 `NotebookRunDeclinedError`，**不建运行记录**（运行历史列的是「跑过什么」；「问过并被拒」的载体是那张卡本身）——具名记在此，若后续要给用户「被拒历史」，落点是 `NotebookRunStatus: 'cancelled'` 一条记录 + 收据。
+
+### 四 本片自踩（全部第 N 次同族，无一新形状）
+
+1. **prettier 折行让锚点失效**（技能里已写）⇒ 改**按行号区间替换**（起点行 + 终点行的 `index()`）。
+2. **判据写宽两次**：① 「符号在文件里出现」当成「已导入」（真出现在 102 行的选项里）；② 「文件里有 `from '../../shared/notebook'`」当成「类型已导入」（值导入早就存在）⇒ 改为**只认 import 语句的正则**。
+3. **`/tmp` 块文件因上一格编译失败从未落盘** ⇒ 「先落块文件、再跑脚本」必须**同一格**内完成。
+4. **`createLogger` 说明符**被脚本猜成 `None`（`from 'None'`，TS2307）⇒ 说明符必须从同目录既有文件里取真值。
+
+### 五 仍未做（具名，不许读成已完成）
+
+1. **真窗口读数**（弹卡 → 拒绝 → 确认执行未发生且无内核痕迹）：`blocked-by` 内存闸门（本轮实测空闲页约 73 MB）。
+2. **拒绝文案 9 语**：`Notebook run declined: fs-delete` 是 main 侧英文串 ⇒ 需按本仓既有的 `messageKey` + 渲染层白名单路线处理，**单独立案**。
+3. `repl_execute` **有意**不覆盖（控制面 REPL，Python 规则会误判）。
