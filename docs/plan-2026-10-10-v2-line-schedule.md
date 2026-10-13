@@ -364,6 +364,15 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 7. **认证车道读数**（两条命令都要跑，缺一条会误判"未取"）：`node scripts/ci/harvest-certification-readings.mjs --sha <完整 40 位>` 与 `--in-repo <tag>`。
 8. **恢复并发**：Release 页核对完再 `hermes cron resume 2be4405e5dc6`。
 
+**评审：执行器 `21e2ec18`（pdf 缝）——判定为诚实且与我这批判据层一致（2026-10-13），逐条**：
+① 工作单元＝**整份文档**（它的证据档写明理由：按页范围调用会让续传恒失效、并会删掉范围外那些页的记录）；
+② 检查点与 PDF **同一个数据根**（`resolveDataRoot()`，一个写入者，检查点住在它所描述的那份文档旁边）；
+③ 端点**每次重新解析**而不是捕获一次（用户在设置里改完，下一次翻译就用新的）；
+④ 拿不出端点 / 这一份没有段落 ⇒ **抛出具名原因**，绝不回一份「0 段已翻译」（那会让「没有文本层」看起来像「已经翻好了」）；
+⑤ 它用了我的 `buildTranslationViewModel`（`src/main/translation/window-translation.ts`）⇒ **A4/A5/A6 经我那一层打通**；
+⑥ 它把段落边界改为复用 `pdfPageTextParagraphs`（**同一条规则**：空行分段 + 段内空白折叠）⇒ 我 A5 里「原文逐字」的重建（`parts.join(' ')`）与读者所见一致。
+**验证**：A 线各层（视图模型/对照件/阅读/逐页状态/文献/术语/单元 + 阅读面板 + 主进程翻译）在它的共享改动落地后复跑 **14 文件 / 122 条全绿**。
+
 **事故与恢复（2026-10-13 记，别重犯）**：我为了退掉自己那 12 个翻译面板键，跑了 `git checkout -- src/renderer/src/i18n` ——
 而执行器在同一批里也改了那 9 个字典（它 14 个 `pdfTranslation.*` 键**未提交**）⇒ **两家的改动一起被回滚**，它的面板/预览立刻 tsc 报键不存在。
 恢复按**它自己的代码与用例**重建（键名从它源码抽、英文措辞以它用例断言为锚），验收＝它那份 `PdfTranslationPanel.test.tsx` **5/5 通过** + i18n 质量门 52 条过；
