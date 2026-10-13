@@ -27,6 +27,7 @@ import type { ShutdownStepOutcome } from '../lifecycle-shutdown'
 import type { AgentModelChangeTarget } from '../agent-framework'
 import { ElicitationBroker } from '../elicitation-broker'
 import type { ElicitationRespondRequest } from '../../shared/elicitation'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 
 const MAX_EVENTS = 500
 const QUIT_PREPARATION_TIMEOUT_MS = 4_000
@@ -735,6 +736,7 @@ class AcpRuntimeCoordinator {
     sessionId: string
     title: string
     rawInput: unknown
+    riskReview?: NotebookRunRiskReceipt
   }): Promise<boolean> {
     return this.runtimeForSession(input.sessionId).requestAppApproval(input)
   }

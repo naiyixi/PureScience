@@ -15,6 +15,7 @@ import type {
   RunNotebookCellRequest
 } from '../../shared/notebook'
 import { uncapturedReadEvidence } from '../../shared/notebook'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 import { getAppClaudeConfigDir } from '../settings/provider-env'
 import {
   unresolvedExecutionProtectionSnapshot,
@@ -44,6 +45,8 @@ import {
   type NotebookShellResult
 } from './shell-process'
 import { startWorkingFileObservation } from './working-file-observer'
+import { createLogger } from '../logger'
+import { NotebookRunDeclinedError, resolveNotebookRunRiskGate } from './run-risk-receipt'
 
 type NotebookControlResult = Pick<
   NotebookSessionExecutionResult,
@@ -90,6 +93,14 @@ type NotebookExecutionOwnerOptions = {
   repository: Pick<NotebookRunRepository, 'updateKernelStatus'>
   runTerminalization: NotebookRunTerminalizationOwner
   dataExecutionAdmission: NotebookDataExecutionAdmissionOwner
+  // v2.1.0: asks the user before a cell the risk review flagged runs. Wired by the composition root to the
+  // same approval card the agent's tool calls use; absent means "no approver" (logged loudly at the gate).
+  reviewNotebookRun?: (input: {
+    sessionId: string
+    code: string
+    language: NotebookLanguage
+    receipt: NotebookRunRiskReceipt
+  }) => Promise<boolean>
   environmentStateTracker: Pick<EnvironmentStateTracker, 'prepareRun' | 'captureCompletedRun'>
   createEnvironmentCaptureTarget: (
     language: NotebookLanguage,
@@ -189,6 +200,32 @@ class NotebookExecutionOwner {
     const startedAt = Date.now()
     const executionCount = session.nextExecutionCount()
     const cwdBefore = session.cwd
+    // v2.1.0: the app's own run path asks before a reviewed cell runs. Keyed off the request's origin on
+    // purpose — the agent's path is gated by the ACP permission broker (the same receipt rides its
+    // request), and asking again here would put two cards on one decision. Runs BEFORE admission: a
+    // declined cell must not provision a runtime or touch the kernel.
+    if (request.source === 'user') {
+      const { gate, receipt } = await resolveNotebookRunRiskGate({
+        code: cell.code,
+        sessionId: session.sessionId,
+        language: cell.language,
+        reviewer: this.options.reviewNotebookRun
+      })
+      if (gate === 'unreviewed') {
+        // Loud, never silent: a reviewed run must not slip through just because no approver was wired.
+        createLogger('notebook').warn(
+          'notebook run risk review has no approver; running without asking',
+          {
+            sessionId: session.sessionId,
+            runId,
+            ruleIds: receipt.hits.map((hit) => hit.ruleId)
+          }
+        )
+      }
+      if (gate === 'decline') {
+        throw new NotebookRunDeclinedError(receipt.hits.map((hit) => hit.ruleId))
+      }
+    }
     const admission = await this.options.dataExecutionAdmission.admit(session, cell)
     const { environment, processKey } = admission.route
     const { binding, resolvedInterpreter } = admission

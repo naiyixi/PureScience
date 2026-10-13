@@ -28,6 +28,7 @@ import {
   withTrustedNativeToolIdentity
 } from './permission-policy'
 import { extractProviderToolName, toAcpRuntimeEvent } from './runtime-events'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 
 const log = createLogger('acp')
 
@@ -449,6 +450,7 @@ class AcpPermissionContext {
     sessionId: string
     title: string
     rawInput: unknown
+    riskReview?: NotebookRunRiskReceipt
   }): Promise<boolean> {
     return this.broker.requestAppApproval(input)
   }

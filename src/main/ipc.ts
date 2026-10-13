@@ -857,6 +857,20 @@ const createApplicationModules = async (
       // One owner: the settings service holds the protection service, so the level a run records
       // cannot disagree with the policy the panel shows.
       resolveExecutionProtection: (surface) => settingsService.resolveExecutionProtection(surface),
+      // v2.1.0: the app's own "run cell" path asks before a reviewed cell runs, on the SAME approval card
+      // the agent's tool calls use. No approval surface => decline, the same call this file's specialist
+      // gateway makes: "nobody could be asked" is not "no problem".
+      reviewNotebookRun: async (input) => {
+        const runtime = runtimeRef.current
+        if (!runtime) return false
+        return runtime.requestAppApproval({
+          sessionId: input.sessionId,
+          // The card renders the receipt's own localized title; this string is the fallback the shape needs.
+          title: 'Run this notebook cell?',
+          rawInput: { code: input.code },
+          riskReview: input.receipt
+        })
+      },
       events: applicationEvents,
       disposeTimeoutMs: QUIT_SHUTDOWN_BUDGET_MS,
       isBackendTeardownOwned: () => backendTeardownOwnedByCoordinator

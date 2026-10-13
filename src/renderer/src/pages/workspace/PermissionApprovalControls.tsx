@@ -748,8 +748,16 @@ const PermissionApprovalControls = ({
 
   // Most identity details stay in the impact tip. When no path or preview exists, retain the only
   // actionable target inline so the approval is reviewable without relying on hover.
-  const headerName = request.providerToolName ?? request.title
+  // v2.1.0: the notebook risk review, when this request is the gate for a cell run. The words come from
+  // the receipt, not from a sentence built in main, so the card reads in the reader's language.
+  const notebookRisk = request.riskReview
+  const riskTitle = notebookRisk ? notebookRiskTitle(t, notebookRisk) : undefined
+  const riskLines = notebookRisk ? notebookRiskLines(t, notebookRisk) : []
+  // A receipt-derived title wins over the raw request title: the request's own title is a main-process
+  // string, so showing it beside a localized one would print English into a nine-language card.
+  const headerName = riskTitle ?? request.providerToolName ?? request.title
   const titleDetail = ((): string | undefined => {
+    if (riskTitle) return undefined
     if (presentation.hideToolIdentity) return undefined
     if (isMcp) {
       return presentation.actionDetail
@@ -761,11 +769,6 @@ const PermissionApprovalControls = ({
     }
     return request.title !== headerName ? request.title : request.providerToolName
   })()
-  // v2.1.0: the notebook risk review, when this request is the gate for a cell run. The words come from
-  // the receipt, not from a sentence built in main, so the card reads in the reader's language.
-  const notebookRisk = request.riskReview
-  const riskTitle = notebookRisk ? notebookRiskTitle(t, notebookRisk) : undefined
-  const riskLines = notebookRisk ? notebookRiskLines(t, notebookRisk) : []
   const showInlineDetail =
     !isMcp && Boolean(titleDetail) && !permCode && !request.toolLocations?.length
   const closeScopeConfirmation = (): void => {

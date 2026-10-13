@@ -24,6 +24,7 @@ import type {
   NotebookSessionState,
   RunNotebookCellRequest
 } from '../../shared/notebook'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 import type {
   ImportLockRequest,
   ImportLockResult,
@@ -149,6 +150,14 @@ type NotebookRuntimeServiceOptions = {
   dataRoot: string
   projectName: string
   repository?: NotebookRunRepository
+  // v2.1.0: asks the user before a cell the risk review flagged runs. Wired by the composition root to the
+  // same approval card the agent's tool calls use; absent means "no approver" (logged loudly at the gate).
+  reviewNotebookRun?: (input: {
+    sessionId: string
+    code: string
+    language: NotebookLanguage
+    receipt: NotebookRunRiskReceipt
+  }) => Promise<boolean>
   executorFactory?: (
     sessionId: string,
     lifecycle: NotebookExecutorLifecycleCallbacks
@@ -484,6 +493,7 @@ class NotebookRuntimeService {
       repository: this.repository,
       runTerminalization: this.runTerminalization,
       dataExecutionAdmission: this.dataExecutionAdmission,
+      reviewNotebookRun: options.reviewNotebookRun,
       environmentStateTracker: this.environmentStateTracker,
       createEnvironmentCaptureTarget: (...args) => this.environmentCaptureTarget(...args),
       persistKernelStatus: (session, status, processKey) =>

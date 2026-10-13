@@ -141,6 +141,7 @@ export type AcpRuntimeCallbacks = {
 
 import type { StructureMeasurement } from '../../shared/structure-measurement'
 import type { StructureSelection } from '../../shared/structure-selection'
+import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 
 type AcpRuntimeOptions = {
   appVersion: string
@@ -1139,6 +1140,7 @@ class AcpRuntime {
     sessionId: string
     title: string
     rawInput: unknown
+    riskReview?: NotebookRunRiskReceipt
   }): Promise<boolean> {
     return this.permissionContext.requestAppApproval(input)
   }

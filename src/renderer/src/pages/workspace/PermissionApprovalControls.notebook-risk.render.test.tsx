@@ -10,6 +10,9 @@ import { PermissionApprovalControls } from './PermissionApprovalControls'
 // The receipt type lives with the request it rides on: never a second definition that can drift.
 type RiskReview = NonNullable<AcpPermissionRequest['riskReview']>
 
+// What a main-process caller would pass as the fallback title (the card must not show it).
+const MAIN_SIDE_TITLE = 'Run this notebook cell?'
+
 const reviewReceipt: RiskReview = {
   verdict: 'review',
   ruleSetVersion: 'notebook-run-risk:v1',
@@ -28,7 +31,7 @@ const notebookRequest = (riskReview?: RiskReview): AcpPermissionRequest => ({
   requestId: 'notebook-1',
   sessionId: 'session-1',
   toolCallId: 'tool-notebook',
-  title: 'mcp__purescience_notebook__notebook_execute',
+  title: MAIN_SIDE_TITLE,
   rawInput: { code: "shutil.rmtree('/tmp/x')" },
   ...(riskReview ? { riskReview } : {}),
   options: [
@@ -68,6 +71,11 @@ describe('PermissionApprovalControls notebook risk review', () => {
     expect(block!.textContent).toContain('fs-delete')
     expect(block!.textContent).toContain('line 2')
     expect(block!.textContent).toContain("shutil.rmtree('/tmp/x')")
+
+    // The receipt-derived title owns the header, so the main-process string never reaches the screen:
+    // a card that asks in nine languages must not print an English sentence beside a localized one.
+    expect(container.textContent).toContain('Review this notebook run: deletes files at line 2')
+    expect(container.textContent).not.toContain(MAIN_SIDE_TITLE)
   })
 
   it('renders nothing for an allow and nothing when no review ran', () => {
