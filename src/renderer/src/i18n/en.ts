@@ -4688,5 +4688,9 @@ export const en: Record<ZhKey, string> = {
   'notebookRisk.titleMany': 'Review this notebook run: {count} rules fired ({rules})',
   'notebookRisk.line': '{rule} ({ruleId}) — {where}: {excerpts}',
   'notebookRisk.oneLine': 'line {numbers}',
-  'notebookRisk.manyLines': 'lines {numbers}'
+  'notebookRisk.manyLines': 'lines {numbers}',
+  'notebookStale.rewrite': '“{variable}” was written again by a later run',
+  'notebookStale.directMutation': '“{variable}” was changed in place by a later run (line {line})',
+  'notebookStale.aliasMutation':
+    '“{variable}” was changed in place by a later run through the alias “{via}” (line {line})'
 }

@@ -4675,5 +4675,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'notebookRisk.titleMany': 'Проверьте этот запуск блокнота: сработало правил — {count} ({rules})',
   'notebookRisk.line': 'Правило {rule} ({ruleId}) — {where}: {excerpts}',
   'notebookRisk.oneLine': 'строка {numbers}',
-  'notebookRisk.manyLines': 'строки {numbers}'
+  'notebookRisk.manyLines': 'строки {numbers}',
+  'notebookStale.rewrite': '«{variable}» был перезаписан последующим запуском',
+  'notebookStale.directMutation':
+    '«{variable}» был изменён на месте последующим запуском (строка {line})',
+  'notebookStale.aliasMutation':
+    '«{variable}» был изменён на месте последующим запуском через псевдоним «{via}» (строка {line})'
 }

@@ -4580,5 +4580,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'notebookRisk.titleMany': '이 노트북 실행을 검토하세요: 규칙 {count}개 해당({rules})',
   'notebookRisk.line': '{rule}({ruleId}) — {where}: {excerpts}',
   'notebookRisk.oneLine': '{numbers}행',
-  'notebookRisk.manyLines': '{numbers}행'
+  'notebookRisk.manyLines': '{numbers}행',
+  'notebookStale.rewrite': '{variable}은(는) 이후 실행에서 다시 작성되었습니다',
+  'notebookStale.directMutation':
+    '{variable}은(는) 이후 실행에서 제자리에서 변경되었습니다({line}행)',
+  'notebookStale.aliasMutation':
+    '{variable}은(는) 이후 실행에서 별칭 {via}을(를) 통해 제자리에서 변경되었습니다({line}행)'
 }

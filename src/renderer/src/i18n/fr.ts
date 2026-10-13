@@ -4792,5 +4792,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Vérifier cette exécution de notebook : {count} règles déclenchées ({rules})',
   'notebookRisk.line': '{rule} ({ruleId}) — {where} : {excerpts}',
   'notebookRisk.oneLine': 'ligne {numbers}',
-  'notebookRisk.manyLines': 'lignes {numbers}'
+  'notebookRisk.manyLines': 'lignes {numbers}',
+  'notebookStale.rewrite': '« {variable} » a été réécrit par une exécution ultérieure',
+  'notebookStale.directMutation':
+    '« {variable} » a été modifié sur place par une exécution ultérieure (ligne {line})',
+  'notebookStale.aliasMutation':
+    '« {variable} » a été modifié sur place par une exécution ultérieure via l’alias « {via} » (ligne {line})'
 }

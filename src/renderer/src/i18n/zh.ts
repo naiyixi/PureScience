@@ -4366,7 +4366,10 @@ export const zh = {
   'notebookRisk.titleMany': '审阅这次笔记本运行：命中 {count} 条规则（{rules}）',
   'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
   'notebookRisk.oneLine': '第 {numbers} 行',
-  'notebookRisk.manyLines': '第 {numbers} 行'
+  'notebookRisk.manyLines': '第 {numbers} 行',
+  'notebookStale.rewrite': '「{variable}」已被后续运行重写',
+  'notebookStale.directMutation': '「{variable}」已被后续运行就地修改（第 {line} 行）',
+  'notebookStale.aliasMutation': '「{variable}」已被后续运行经别名「{via}」就地修改（第 {line} 行）'
 }
 
 export type ZhKey = keyof typeof zh

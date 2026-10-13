@@ -4656,5 +4656,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このノートブック実行を確認してください：{count} 件の規則に該当（{rules}）',
   'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
   'notebookRisk.oneLine': '{numbers} 行目',
-  'notebookRisk.manyLines': '{numbers} 行目'
+  'notebookRisk.manyLines': '{numbers} 行目',
+  'notebookStale.rewrite': '「{variable}」は後続の実行で書き直されました',
+  'notebookStale.directMutation':
+    '「{variable}」は後続の実行でその場で変更されました（{line} 行目）',
+  'notebookStale.aliasMutation':
+    '「{variable}」は後続の実行で別名「{via}」を通じてその場で変更されました（{line} 行目）'
 }

@@ -4762,5 +4762,10 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Revisa esta ejecución del notebook: {count} reglas activadas ({rules})',
   'notebookRisk.line': 'Regla {rule} ({ruleId}) — {where}: {excerpts}',
   'notebookRisk.oneLine': 'línea {numbers}',
-  'notebookRisk.manyLines': 'líneas {numbers}'
+  'notebookRisk.manyLines': 'líneas {numbers}',
+  'notebookStale.rewrite': 'Un run posterior volvió a escribir «{variable}»',
+  'notebookStale.directMutation':
+    'Un run posterior modificó «{variable}» en el sitio (línea {line})',
+  'notebookStale.aliasMutation':
+    'Un run posterior modificó «{variable}» en el sitio a través del alias «{via}» (línea {line})'
 }

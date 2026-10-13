@@ -4310,5 +4310,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'notebookRisk.titleMany': '審閱這次筆記本執行：命中 {count} 條規則（{rules}）',
   'notebookRisk.line': '{rule}（{ruleId}）— {where}：{excerpts}',
   'notebookRisk.oneLine': '第 {numbers} 行',
-  'notebookRisk.manyLines': '第 {numbers} 行'
+  'notebookRisk.manyLines': '第 {numbers} 行',
+  'notebookStale.rewrite': '「{variable}」已被後續執行重寫',
+  'notebookStale.directMutation': '「{variable}」已被後續執行就地修改（第 {line} 行）',
+  'notebookStale.aliasMutation': '「{variable}」已被後續執行經別名「{via}」就地修改（第 {line} 行）'
 }

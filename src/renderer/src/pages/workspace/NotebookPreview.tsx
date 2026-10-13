@@ -3,6 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import type { PreviewToolItem } from '@/stores/preview-workbench-store'
 import { computeStaleRunIds } from '../../../../shared/run-dependencies'
+import {
+  computeNotebookStaleReasons,
+  type NotebookStaleReason
+} from '../../../../shared/run-alias-lineage'
+import { notebookStaleReasonText } from '@/lib/notebook-stale-copy'
 import { Braces, FilePenLine, Power, RotateCw } from 'lucide-react'
 import { useNotebookEnvStore } from '@/stores/notebook-env-store'
 import { cn } from '@/lib/utils'
@@ -189,12 +194,16 @@ const NotebookRunCell = ({
   run,
   index,
   isStale = false,
+  staleReason,
   onRunAgain,
   runAgainBlockedReason
 }: {
   run: NotebookRunRecord
   index: number
   isStale?: boolean
+  // Why this run is stale, when the analysis could locate the change. Absent leaves the marker as it
+  // was: a run can be stale without the app being able to say where it changed.
+  staleReason?: NotebookStaleReason
   // Runs this cell again through the same interpreter the agent uses. Absent when the pane is not
   // allowed to drive the notebook at all (for example while an environment is still provisioning).
   onRunAgain?: (run: NotebookRunRecord) => void
@@ -207,6 +216,8 @@ const NotebookRunCell = ({
   const problemLabel = problemBadgeLabel(run, errorLine, t)
   const kind = resolveRunKernelKind(run)
   const originLabel = kernelOriginLabel(kind)
+  const staleReasonText =
+    staleReason === undefined ? undefined : notebookStaleReasonText(t, staleReason)
 
   return (
     <div className="px-4 py-3" data-testid="notebook-cell">
@@ -223,6 +234,29 @@ const NotebookRunCell = ({
               data-testid="notebook-cell-stale"
             >
               {t('ws.notebookStale')}
+            </span>
+          ) : null}
+          {staleReasonText !== undefined && staleReason !== undefined ? (
+            <span
+              className="min-w-0 truncate text-amber-600/80"
+              data-testid="notebook-cell-stale-reason"
+              // The machine facts behind the sentence, so the statement can be checked against the run
+              // record instead of taken on trust: which rule set produced it, which run changed what
+              // (through which alias, on which line) and the content hash of the producing run's own
+              // source — 'not-recorded' when that run predates the receipt, never a stand-in value.
+              data-recipe={staleReason.recipeVersion}
+              data-variable={staleReason.variable}
+              data-via={staleReason.via}
+              data-alias-chain={staleReason.aliasChain.join('>')}
+              data-later-run={staleReason.laterRunId}
+              data-mutation-kind={staleReason.mutation?.kind}
+              data-line={
+                staleReason.mutation === undefined ? undefined : String(staleReason.mutation.line)
+              }
+              data-content-hash={staleReason.producerContentHash}
+              title={staleReason.mutation?.excerpt}
+            >
+              {staleReasonText}
             </span>
           ) : null}
           {isProblem ? (
@@ -529,11 +563,23 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
   }, [variablesOpen, item.notebook, notebookState?.activeRunId, loadVariables])
 
   // Cross-run dependency staleness: a later completed run that rewrote one of this run's written
-  // variables makes its output reflect an earlier state.
-  const staleRunIds = useMemo(
-    () => computeStaleRunIds(notebookState?.runs ?? []),
-    [notebookState?.runs]
-  )
+  // variables makes its output reflect an earlier state. Since v2.1.0 the marker also carries a reason
+  // naming in-place changes — direct or through an alias — which rewrite no name at all and which the
+  // name-level rule cannot see. The marker keeps the name-level set and adds these rows to it: a reason
+  // explains a marker, it never removes one.
+  const staleReasons = useMemo(() => {
+    const reasons = new Map<string, NotebookStaleReason>()
+    for (const reason of computeNotebookStaleReasons(notebookState?.runs ?? [])) {
+      reasons.set(reason.producerRunId, reason)
+    }
+    return reasons
+  }, [notebookState?.runs])
+
+  const staleRunIds = useMemo(() => {
+    const ids = computeStaleRunIds(notebookState?.runs ?? [])
+    for (const runId of staleReasons.keys()) ids.add(runId)
+    return ids
+  }, [notebookState?.runs, staleReasons])
 
   // Reads the latest notebook state from main, including full run history from run.json.
   const loadNotebookState = useCallback(async (): Promise<void> => {
@@ -1089,6 +1135,7 @@ const NotebookPreview = ({ item }: NotebookPreviewProps): React.JSX.Element => {
                     run={run}
                     index={index}
                     isStale={staleRunIds.has(run.runId)}
+                    staleReason={staleReasons.get(run.runId)}
                     onRunAgain={rerunCell}
                     runAgainBlockedReason={rerunBlockedReasonFor(run)}
                   />
