@@ -4095,3 +4095,42 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 3. 执行器备选下一单元（按连锁最小挑）：**P0-8 后半的 `via` 进持久溯源**（给 env 记录加来源字段，schema 演化 ⇒ 独立单元）；
    或 **P0-10⑥ 包缓存回收动作**（安全规则与入口连锁已量清，等拍板入口 ⇒ 未拍板时按「并进既有用户命令」的最小连锁那支评估）。
 
+
+## 七十七、评审执行器 `15006211`（P0-11：路径闸门根改用存储层的数据根解析）—— 接受，含**我自己的独立探针**
+
+评审口径同 §六十二/§七十二，外加一条本次特有的：**它的读数是「部署产物 + 真载荷」，我可以自己复跑**。
+
+### 一 我独立复跑的读数（不采信它的自述）
+
+命令与它同一形状（`printf '<PreToolUse 载荷>' | node ~/.purescience-project/claude/hooks/path-guard.cjs`），工作区取真目录
+`/Users/totota/PureScience-DEV/workspaces/024f6d89-34f1-4be7-bd6f-78ab6bfaf71b`：
+
+| # | 载荷 | 我的读数 |
+| --- | --- | --- |
+| 1 | `Bash` 工作区脚本 | **静默（allow）** |
+| 2 | `Read` 工作区 notebook 产物 | **静默（allow）** |
+| 3 | `Read` `/etc/passwd`（负对照） | **DENY**，理由逐字：`Refused: /private/etc/passwd is outside this project scope. Project files are read from the project folder itself (/Users/totota/PureScience-DEV); …` |
+| 4 | `Glob` `~/Documents/**`（负对照） | **DENY**，理由同上形状（同样点名 `/Users/totota/PureScience-DEV`）|
+| 5 | `Read` `~/.cache/torch/hub/checkpoints/model.pt`（正对照） | **静默（allow）** |
+
+**比它的表更强的一条读数**：负对照的**拒绝理由文本里直接点名数据根** `/Users/totota/PureScience-DEV`
+（修前那里会是配置根）⇒ 这不是「判决变了」的间接推断，而是**闸门自己把根报了出来**。
+当前根文件亦为 `{"roots":["/Users/totota/PureScience-DEV","/Users/totota/.purescience-project"],"hint":"/Users/totota/PureScience-DEV"}` ✓。
+
+### 二 修法本身（读源核对）
+
+- 改动就一行表达式：`settings.dataRoot?.trim() ? settings.dataRoot : this.storageRoot` → `resolveDataRoot()`（`../storage-root`）✓
+  **不是放宽闸门**：根仍是两项（数据根 + 配置根，`pathGuardRootsFile` 去重），hint 指向数据根。
+- **唯一写入方**：我自 grep `writePathGuard(` 只见 **一处生产调用**（`claude-config-provision.ts:179`，由 `writeAgentConfigFiles` 链到达）✓ 与它的自述一致 ⇒ 修一处即修全。
+- 用例与变异测试：它自陈「把源码改回旧表达式 ⇒ 新增 2 条当场红」——**这正是我从 §六十五 起反复要求的形式**（断言非空可证）。
+
+### 三 它的具名未取与我新增的披露
+
+- 它具名未取：①「一轮真回合里 agent **自然**发出那条工具调用」的窗口侧读数（本次证明的是守卫对同一批载荷的判决变了）；②打包版复核（两概念本就同根，等下次发版）；③**探针污染**（追加 10 行决策日志，无时间戳，辨认方式＝连续 10 行 + 五个载荷）。
+- **我这一轮又追加了 5 行**（同一条日志 `claude/hooks/path-guard-decisions.jsonl`，载荷即上表五个、session_id `probe-review`）⇒ 辨认方式相同，累计 15 行。
+- 它的 §七十六·五·1 记「空闲物理页一度回到 ~1.4 GB（90,479 页）」；我本轮实测为 **4689 页 ≈ 73 MB** ⇒ 闸门读数**波动很大**，窗口项应按当次 `vm_stat` 现取现判（它的建议正确）。
+
+### 四 结论
+
+**接受**。P0-11 从「已立案、无人认领」变成「已交付且经第三方复跑」；§六十三·三·5 那条具名挂账就此闭合。
+剩下的真缺口只有窗口侧读数（D4/D7/A 三件 + 认证 spec 进仓 + P0-10(c) 与 P0-11 各一条真回合读数），全部同因：内存闸门。
