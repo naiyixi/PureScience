@@ -4,6 +4,13 @@
 // Mapping the exact sentence back to a dictionary key keeps that property and still lets the reader
 // see it in their own language; anything the renderer does not recognise passes through unchanged.
 export const MAIN_MESSAGE_KEYS: Record<string, string> = {
+  'Could not reserve an OpenCode usage API port.': 'mainMessage.opencodePortReserveFailed',
+  'PureScience Codex ACP adapter not found. Install Codex in settings.':
+    'mainMessage.codexAcpAdapterMissing',
+  'No SKILL.md found at the linked location.': 'mainMessage.githubNoSkillMd',
+  'GitHub returned an invalid repository search response.':
+    'mainMessage.githubInvalidSearchResponse',
+  'GitHub did not return a commit SHA for that ref.': 'mainMessage.githubNoCommitSha',
   'Connector ID must use only lowercase letters, numbers, and hyphens':
     'mainMessage.connectorIdShape',
   'OAuth is only supported for remote custom connectors': 'mainMessage.connectorOauthRemoteOnly',

@@ -4351,7 +4351,13 @@ export const zh = {
   'mainMessage.connectorOauthHeaderConflict': 'OAuth 与静态请求头不能同时配置',
   'mainMessage.connectorInvalidConfig': '自定义连接器配置无效',
   'mainMessage.connectorMcpServersNotObject': '应为 MCP 服务器的 JSON 对象',
-  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 应为服务器的 JSON 对象'
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 应为服务器的 JSON 对象',
+  'mainMessage.opencodePortReserveFailed': '无法为 OpenCode 用量 API 预留端口。',
+  'mainMessage.codexAcpAdapterMissing':
+    '没有找到 PureScience 的 Codex ACP 适配器。请在设置里安装 Codex。',
+  'mainMessage.githubNoSkillMd': '在链接指向的位置没有找到 SKILL.md。',
+  'mainMessage.githubInvalidSearchResponse': 'GitHub 返回了无效的仓库搜索响应。',
+  'mainMessage.githubNoCommitSha': 'GitHub 没有为该 ref 返回提交 SHA。'
 }
 
 export type ZhKey = keyof typeof zh

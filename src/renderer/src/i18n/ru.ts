@@ -4658,5 +4658,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorInvalidConfig': 'Недопустимая конфигурация пользовательского коннектора',
   'mainMessage.connectorMcpServersNotObject': 'Ожидается объект JSON с серверами MCP',
   'mainMessage.connectorMcpServersKeyNotObject':
-    '`mcpServers` должен быть объектом JSON с серверами'
+    '`mcpServers` должен быть объектом JSON с серверами',
+  'mainMessage.opencodePortReserveFailed':
+    'Не удалось зарезервировать порт для API использования OpenCode.',
+  'mainMessage.codexAcpAdapterMissing':
+    'Адаптер Codex ACP для PureScience не найден. Установите Codex в настройках.',
+  'mainMessage.githubNoSkillMd': 'По указанной ссылке файл SKILL.md не найден.',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub вернул некорректный ответ на поиск репозиториев.',
+  'mainMessage.githubNoCommitSha': 'GitHub не вернул SHA коммита для этой ссылки.'
 }

@@ -4672,5 +4672,12 @@ export const en: Record<ZhKey, string> = {
   'mainMessage.connectorInvalidConfig': 'Invalid custom connector configuration',
   'mainMessage.connectorMcpServersNotObject': 'Expected a JSON object of MCP servers',
   'mainMessage.connectorMcpServersKeyNotObject':
-    'Expected `mcpServers` to be a JSON object of servers'
+    'Expected `mcpServers` to be a JSON object of servers',
+  'mainMessage.opencodePortReserveFailed': 'Could not reserve an OpenCode usage API port.',
+  'mainMessage.codexAcpAdapterMissing':
+    'PureScience Codex ACP adapter not found. Install Codex in settings.',
+  'mainMessage.githubNoSkillMd': 'No SKILL.md found at the linked location.',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub returned an invalid repository search response.',
+  'mainMessage.githubNoCommitSha': 'GitHub did not return a commit SHA for that ref.'
 }

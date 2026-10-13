@@ -4774,5 +4774,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'OAuth et les en-têtes statiques ne peuvent pas être configurés ensemble',
   'mainMessage.connectorInvalidConfig': 'Configuration de connecteur personnalisé non valide',
   'mainMessage.connectorMcpServersNotObject': 'Un objet JSON de serveurs MCP est attendu',
-  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` doit être un objet JSON de serveurs'
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` doit être un objet JSON de serveurs',
+  'mainMessage.opencodePortReserveFailed':
+    'Impossible de réserver un port pour l’API d’usage d’OpenCode.',
+  'mainMessage.codexAcpAdapterMissing':
+    'Adaptateur ACP Codex de PureScience introuvable. Installez Codex dans les réglages.',
+  'mainMessage.githubNoSkillMd': 'Aucun SKILL.md trouvé à l’emplacement lié.',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub a renvoyé une réponse de recherche de dépôt non valide.',
+  'mainMessage.githubNoCommitSha': 'GitHub n’a pas renvoyé de SHA de commit pour cette réf.'
 }

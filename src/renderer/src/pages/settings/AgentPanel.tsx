@@ -23,6 +23,7 @@ import { RepairFrameworkDialog } from './RepairFrameworkDialog'
 import { SettingsSection } from './SettingsLayout'
 import { SwitchFrameworkDialog } from './SwitchFrameworkDialog'
 import { UninstallRuntimeDialog } from './UninstallRuntimeDialog'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 // The agent frameworks the settings page manages, keyed by their short name (used for the
 // uninstall dialog target and the framework card descriptors).
@@ -486,7 +487,9 @@ const AgentPanel = ({
       // The store already preserves runtime logs/error for real IPC failures. This panel-level
       // message also covers unexpected caller failures without leaking an unhandled event promise.
       setInstallActionError(
-        error instanceof Error ? error.message : t('settings.installerCouldNotStart')
+        error instanceof Error
+          ? localizeMainMessage(t, error.message)
+          : t('settings.installerCouldNotStart')
       )
       return
     }

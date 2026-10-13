@@ -4564,5 +4564,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorOauthHeaderConflict': 'OAuth와 정적 헤더는 함께 설정할 수 없습니다',
   'mainMessage.connectorInvalidConfig': '사용자 지정 커넥터 구성이 유효하지 않습니다',
   'mainMessage.connectorMcpServersNotObject': 'MCP 서버의 JSON 객체가 필요합니다',
-  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers`는 서버의 JSON 객체여야 합니다'
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers`는 서버의 JSON 객체여야 합니다',
+  'mainMessage.opencodePortReserveFailed': 'OpenCode 사용량 API 포트를 확보하지 못했습니다.',
+  'mainMessage.codexAcpAdapterMissing':
+    'PureScience Codex ACP 어댑터를 찾지 못했습니다. 설정에서 Codex를 설치하세요.',
+  'mainMessage.githubNoSkillMd': '링크된 위치에서 SKILL.md를 찾지 못했습니다.',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub가 유효하지 않은 저장소 검색 응답을 반환했습니다.',
+  'mainMessage.githubNoCommitSha': 'GitHub가 해당 ref의 커밋 SHA를 반환하지 않았습니다.'
 }

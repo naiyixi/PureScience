@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { useSettingsStore } from '@/stores/settings-store'
 import { SkillImportCandidatePreview } from './SkillImportCandidatePreview'
 import { useSkillImportCandidatePreview } from './useSkillImportCandidatePreview'
+import { localizeMainMessage } from '@/lib/main-message-catalog'
 
 type SkillImportViewProps = {
   onImported: () => void
@@ -95,7 +96,10 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
       if (inputRef.current !== visibleInputAtStart) return
       setMessage({
         kind: 'error',
-        text: error instanceof Error ? error.message : t('settings.githubRequestFailed')
+        text:
+          error instanceof Error
+            ? localizeMainMessage(t, error.message)
+            : t('settings.githubRequestFailed')
       })
     } finally {
       setOperation(null)

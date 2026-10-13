@@ -4295,5 +4295,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorOauthHeaderConflict': 'OAuth 與靜態標頭不能同時設定',
   'mainMessage.connectorInvalidConfig': '自訂連接器設定無效',
   'mainMessage.connectorMcpServersNotObject': '應為 MCP 伺服器的 JSON 物件',
-  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 應為伺服器的 JSON 物件'
+  'mainMessage.connectorMcpServersKeyNotObject': '`mcpServers` 應為伺服器的 JSON 物件',
+  'mainMessage.opencodePortReserveFailed': '無法為 OpenCode 用量 API 保留連接埠。',
+  'mainMessage.codexAcpAdapterMissing':
+    '找不到 PureScience 的 Codex ACP 轉接器。請在設定中安裝 Codex。',
+  'mainMessage.githubNoSkillMd': '在連結指向的位置找不到 SKILL.md。',
+  'mainMessage.githubInvalidSearchResponse': 'GitHub 回傳了無效的儲存庫搜尋回應。',
+  'mainMessage.githubNoCommitSha': 'GitHub 沒有為該 ref 回傳提交 SHA。'
 }

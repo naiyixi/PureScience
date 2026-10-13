@@ -4639,5 +4639,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorInvalidConfig': 'カスタムコネクタの構成が無効です',
   'mainMessage.connectorMcpServersNotObject': 'MCP サーバーの JSON オブジェクトが必要です',
   'mainMessage.connectorMcpServersKeyNotObject':
-    '`mcpServers` はサーバーの JSON オブジェクトである必要があります'
+    '`mcpServers` はサーバーの JSON オブジェクトである必要があります',
+  'mainMessage.opencodePortReserveFailed': 'OpenCode 使用量 API のポートを確保できませんでした。',
+  'mainMessage.codexAcpAdapterMissing':
+    'PureScience の Codex ACP アダプターが見つかりません。設定で Codex をインストールしてください。',
+  'mainMessage.githubNoSkillMd': 'リンク先に SKILL.md が見つかりません。',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub が無効なリポジトリ検索レスポンスを返しました。',
+  'mainMessage.githubNoCommitSha': 'GitHub がその ref のコミット SHA を返しませんでした。'
 }

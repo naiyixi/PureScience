@@ -4744,5 +4744,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'mainMessage.connectorInvalidConfig': 'Configuración de conector personalizado no válida',
   'mainMessage.connectorMcpServersNotObject': 'Se espera un objeto JSON de servidores MCP',
   'mainMessage.connectorMcpServersKeyNotObject':
-    '`mcpServers` debe ser un objeto JSON de servidores'
+    '`mcpServers` debe ser un objeto JSON de servidores',
+  'mainMessage.opencodePortReserveFailed':
+    'No se pudo reservar un puerto para la API de uso de OpenCode.',
+  'mainMessage.codexAcpAdapterMissing':
+    'No se encontró el adaptador ACP de Codex de PureScience. Instala Codex en los ajustes.',
+  'mainMessage.githubNoSkillMd': 'No se encontró SKILL.md en la ubicación enlazada.',
+  'mainMessage.githubInvalidSearchResponse':
+    'GitHub devolvió una respuesta de búsqueda de repositorios no válida.',
+  'mainMessage.githubNoCommitSha': 'GitHub no devolvió un SHA de commit para esa ref.'
 }
