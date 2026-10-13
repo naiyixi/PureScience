@@ -380,7 +380,11 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 它与执行器的 `PdfTranslationPanel.tsx` 同功能，而后者接的是真通道 `pdf:translation` —— 同一件事不留两套实现。技能 i18n 规程已记两条教训
 （目录级 checkout 会替并发写入者回滚；删键要处理 prettier 折行的值行）。
 
-**下一手（等执行器提交后，按序）**：① 评审它的窗口接线（`pdf:translation` LOCAL 档位的计数级联 + `PdfPreview.tsx` 挂载）；② 树干净后重启常驻实例，取两条真机读数 —— A 线端到端（开 PDF → 面板 → `run:false` 只读 → `run:true` 一次真翻译）与 **D7 真网络取回**（见下条待办的三步）；③ 给窗口接缝补一条**认证 spec**（照仓库既有那一类写法：断言「有应答」而不是 `No handler registered`；`run` 缺省只读 ⇒ 不打网络、可无头确定性复现）——**注意**它必须与通道同批落地，否则认证车道会因为一条注定红的 spec 变红。
+**执行器窗口接线（`f4359ce6`）评审 —— 通过（2026-10-13）**：契约目录 `['translation','pdf:translation',LOCAL]` ✓；preload 按同族公共路径 `pdf.translation` 包装 ✓；**计数级联逐项 +1 且各带解释**（`INTERNAL_COMMAND_COUNT 362→363`、`LOCAL_WEB_COMMAND_COUNT 360→361`、`REMOTE_REJECTED_COMMAND_COUNT 127→128`、`coreContracts 238→239`、参数形状 398→399、目录 476→477、兼容投影 368→369、拒绝清单 127→128）——与技能里那张 LOCAL 级联表逐项对上；`PdfPreview` 的按钮由 `canTranslate`（缺桥即不显示）把门，不做死按钮 ✓。
+
+**A 线端到端真机读数（2026-10-13，走 RPC，真实例）**：实例重启到 `f4359ce6` 后实调 `pdf:translation`（真 projectId + 真 PDF 路径）⇒ `ok:true`、**`ran:false`**（不点不跑模型 ✓）、`restored:{state:'none',reason:'no-checkpoint'}`、**HTTP 200 / 0.88 s**；`view.summary={pages:1,paragraphs:1,translated:0,missing:1,kept:0,terminologyChecked:0}`、逐页状态 `[{page:1,kind:'untranslated',…,labelKey:'translation.page.untranslated'}]`、行 `p1#1` 的格子 `missing` —— 面板要的三样（行/逐页状态/偏离）都从生产装配那条链路上来了 ✓。
+
+**认证 spec 草稿（未进仓，具名）**：`pdf-translation-seam.spec.ts` 已按仓库那一类写法（断言「有应答」而非 `No handler registered`；`run` 缺省只读 ⇒ 不打网络、确定性）写在 `/tmp/pdf-translation-seam.spec.ts.draft`。**未进仓的理由**：本地跑它要 `build:e2e` + Playwright 起 Electron，而当时空闲物理页 ≈63 MB（内存闸门）⇒ 按闸门规则不起；它的**意图已在那两条 RPC 真机读数里印证**（真实例确实在应答），打包那一层留给认证车道。要落地就一起做：`npm run build:e2e` → `npx playwright test e2e/certification/pdf-translation-seam.spec.ts --workers=1` 绿了再进仓。
 
 **D7 第二片「真网络取回」读数 —— 已取（2026-10-13，结论分两半）**
 
