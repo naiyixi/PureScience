@@ -4524,5 +4524,21 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': '理由が記録されていません',
   'translation.source.missing': '原文がありません',
   'translation.contrast.export': '対照版を書き出す',
-  'translation.terminology.deviation': '用語が表と不一致：{term}（{accepted} を使用）'
+  'translation.terminology.deviation': '用語が表と不一致：{term}（{accepted} を使用）',
+  'pdfTranslation.panel.title': 'PDF 翻訳',
+  'pdfTranslation.unavailable': 'このウィンドウでは翻訳を利用できません',
+  'pdfTranslation.loading': '保存済みの訳を読み込み中…',
+  'pdfTranslation.run': '翻訳',
+  'pdfTranslation.running': '翻訳中…',
+  'pdfTranslation.report': '新規訳 {translated} · 再利用 {reused} · 失敗 {failed} — モデル {model}',
+  'pdfTranslation.stored.partial': '保存済み {records} 段落（再翻訳はしていません）',
+  'pdfTranslation.stored.none': 'まだ保存されていません（{reason}）',
+  'pdfTranslation.exported': '{name} を書き出しました',
+  'pdfTranslation.exportDenied': '書き出しを拒否しました — ファイルは作成していません',
+  'pdfTranslation.exportFailed': '書き出しに失敗しました',
+  'pdfTranslation.refusal.notConfigured':
+    '利用できるモデル端点が未設定のため翻訳していません（{detail}）',
+  'pdfTranslation.refusal.emptySource':
+    'この文書に翻訳可能な段落がありません（テキスト層が無い可能性）（{detail}）',
+  'pdfTranslation.refusal.other': 'どの文書を翻訳するか指定されていません（{detail}）'
 }

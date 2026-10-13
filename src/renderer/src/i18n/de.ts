@@ -4669,5 +4669,24 @@ export const de: Partial<Record<ZhKey, string>> = {
   'translation.source.missing': 'Originaltext fehlt',
   'translation.contrast.export': 'Gegenüberstellung exportieren',
   'translation.terminology.deviation':
-    'Terminologie weicht von der Tabelle ab: {term} (verwenden Sie {accepted})'
+    'Terminologie weicht von der Tabelle ab: {term} (verwenden Sie {accepted})',
+  'pdfTranslation.panel.title': 'PDF-Übersetzung',
+  'pdfTranslation.unavailable': 'Übersetzung ist in diesem Fenster nicht verfügbar',
+  'pdfTranslation.loading': 'gespeicherte Übersetzungen werden geladen…',
+  'pdfTranslation.run': 'Übersetzen',
+  'pdfTranslation.running': 'Wird übersetzt…',
+  'pdfTranslation.report':
+    'Neu übersetzt {translated} · wiederverwendet {reused} · fehlgeschlagen {failed} — Modell {model}',
+  'pdfTranslation.stored.partial':
+    '{records} Absätze sind bereits gespeichert; nichts wurde erneut übersetzt',
+  'pdfTranslation.stored.none': 'bisher nichts gespeichert ({reason})',
+  'pdfTranslation.exported': '{name} exportiert',
+  'pdfTranslation.exportDenied': 'Export abgelehnt — es wurde keine Datei geschrieben',
+  'pdfTranslation.exportFailed': 'der Export ist fehlgeschlagen',
+  'pdfTranslation.refusal.notConfigured':
+    'es ist kein Modell-Endpunkt konfiguriert — nichts wurde übersetzt ({detail})',
+  'pdfTranslation.refusal.emptySource':
+    'dieses Dokument hat keine übersetzbaren Absätze (vielleicht keine Textebene) ({detail})',
+  'pdfTranslation.refusal.other':
+    'die Anfrage nennt nicht, welches Dokument übersetzt werden soll ({detail})'
 }

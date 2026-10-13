@@ -364,6 +364,13 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 7. **认证车道读数**（两条命令都要跑，缺一条会误判"未取"）：`node scripts/ci/harvest-certification-readings.mjs --sha <完整 40 位>` 与 `--in-repo <tag>`。
 8. **恢复并发**：Release 页核对完再 `hermes cron resume 2be4405e5dc6`。
 
+**事故与恢复（2026-10-13 记，别重犯）**：我为了退掉自己那 12 个翻译面板键，跑了 `git checkout -- src/renderer/src/i18n` ——
+而执行器在同一批里也改了那 9 个字典（它 14 个 `pdfTranslation.*` 键**未提交**）⇒ **两家的改动一起被回滚**，它的面板/预览立刻 tsc 报键不存在。
+恢复按**它自己的代码与用例**重建（键名从它源码抽、英文措辞以它用例断言为锚），验收＝它那份 `PdfTranslationPanel.test.tsx` **5/5 通过** + i18n 质量门 52 条过；
+**非英文 8 语由我写，措辞可能与它原本不同（它的用例只断言英文）⇒ 以它后续版本为准**。同时我那条重复的窗口面板（`TranslationPane.tsx`）已退掉：
+它与执行器的 `PdfTranslationPanel.tsx` 同功能，而后者接的是真通道 `pdf:translation` —— 同一件事不留两套实现。技能 i18n 规程已记两条教训
+（目录级 checkout 会替并发写入者回滚；删键要处理 prettier 折行的值行）。
+
 **待办（2026-10-12 记）：D7 第二片的「真网络取回」读数** —— 常驻 dev Web 实例（`127.0.0.1:44100`）是 3 小时前启动的，**早于** D6 第二半/D7 的代码 ⇒ 它不认识 `preview:load-remote-structure`（实测 `method_not_found`；同一次自检里 `storage:get-info` 用同一 token 回 `ok:true`，所以不是 token 问题）。取这条读数**需要重启该实例**，而执行器此刻正在用它跑自己的探针 ⇒ 重启会撞掉它那一轮，**故不在执行器活跃时重启**（同一族冲突见技能 dual-instance 那条）。执行器空闲后照下面三步取：① `bash scripts/serve-headless.sh`（后台）② 从 `logs/headless.out.log` 取 token ③ `POST /rpc/preview:load-remote-structure?token=<token>`，body `{"protocolVersion":1,"args":[{"sessionId":"<真会话>","id":"P00533","source":"alphafold-db"}]}` ⇒ 期望 `ok:true`、`path` 落在 `predictions/alphafold-db/AF-P00533-F1-model_v4.pdb`，并核该路径被 `engineForPredictionPath` 认回 `alphafold-db`。RPC 信封/token/两种 `method_not_found` 的判据已写进技能 `references/web-rpc-api.md`。
 
 **具名跳过（不得声称）**：两条 `notarize-mac` 作业因无 Apple 凭据**具名跳过** ⇒ 不写"已签名/已公证"。

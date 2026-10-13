@@ -4257,7 +4257,22 @@ export const zh = {
   'translation.reason.missing': '未说明原因',
   'translation.source.missing': '原文缺失',
   'translation.contrast.export': '导出对照件',
-  'translation.terminology.deviation': '术语偏离：{term}（应用 {accepted}）'
+  'translation.terminology.deviation': '术语偏离：{term}（应用 {accepted}）',
+  'pdfTranslation.panel.title': 'PDF 翻译',
+  'pdfTranslation.unavailable': '这个窗口里没有可用的翻译通路',
+  'pdfTranslation.loading': '正在读取已存译文…',
+  'pdfTranslation.run': '翻译',
+  'pdfTranslation.running': '翻译中…',
+  'pdfTranslation.report': '新译 {translated} · 复用 {reused} · 失败 {failed} —— 模型 {model}',
+  'pdfTranslation.stored.partial': '已存 {records} 段，没有重新翻译',
+  'pdfTranslation.stored.none': '还没有存过（{reason}）',
+  'pdfTranslation.exported': '已导出 {name}',
+  'pdfTranslation.exportDenied': '你在看板上拒绝了这次导出，没有写出任何文件',
+  'pdfTranslation.exportFailed': '导出失败',
+  'pdfTranslation.refusal.notConfigured': '没有配置可用的模型端点，因此没有翻译（{detail}）',
+  'pdfTranslation.refusal.emptySource':
+    '这一份里没有可翻译的段落（可能整篇都没有文本层）（{detail}）',
+  'pdfTranslation.refusal.other': '这次请求没说清要翻哪一份（{detail}）'
 }
 
 export type ZhKey = keyof typeof zh

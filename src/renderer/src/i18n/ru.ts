@@ -4540,5 +4540,23 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': 'причина не записана',
   'translation.source.missing': 'исходный текст отсутствует',
   'translation.contrast.export': 'Экспорт сопоставления',
-  'translation.terminology.deviation': 'термин вне таблицы: {term} (используйте {accepted})'
+  'translation.terminology.deviation': 'термин вне таблицы: {term} (используйте {accepted})',
+  'pdfTranslation.panel.title': 'Перевод PDF',
+  'pdfTranslation.unavailable': 'перевод недоступен в этом окне',
+  'pdfTranslation.loading': 'загрузка сохранённых переводов…',
+  'pdfTranslation.run': 'Перевести',
+  'pdfTranslation.running': 'Идёт перевод…',
+  'pdfTranslation.report':
+    'Переведено заново {translated} · повторно использовано {reused} · не удалось {failed} — модель {model}',
+  'pdfTranslation.stored.partial':
+    'уже сохранено абзацев: {records}; заново ничего не переводилось',
+  'pdfTranslation.stored.none': 'пока ничего не сохранено ({reason})',
+  'pdfTranslation.exported': '{name} экспортирован',
+  'pdfTranslation.exportDenied': 'экспорт отклонён — файл не создан',
+  'pdfTranslation.exportFailed': 'экспорт не удался',
+  'pdfTranslation.refusal.notConfigured':
+    'конечная точка модели не настроена — перевод не выполнялся ({detail})',
+  'pdfTranslation.refusal.emptySource':
+    'в этом документе нет переводимых абзацев (возможно, нет текстового слоя) ({detail})',
+  'pdfTranslation.refusal.other': 'в запросе не указано, какой документ переводить ({detail})'
 }

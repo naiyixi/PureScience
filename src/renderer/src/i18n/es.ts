@@ -4621,5 +4621,22 @@ export const es: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': 'motivo no registrado',
   'translation.source.missing': 'falta el texto original',
   'translation.contrast.export': 'Exportar comparación',
-  'translation.terminology.deviation': 'terminología fuera de la tabla: {term} (usar {accepted})'
+  'translation.terminology.deviation': 'terminología fuera de la tabla: {term} (usar {accepted})',
+  'pdfTranslation.panel.title': 'Traducción de PDF',
+  'pdfTranslation.unavailable': 'la traducción no está disponible en esta ventana',
+  'pdfTranslation.loading': 'cargando las traducciones guardadas…',
+  'pdfTranslation.run': 'Traducir',
+  'pdfTranslation.running': 'Traduciendo…',
+  'pdfTranslation.report':
+    'Traducido nuevo {translated} · reutilizado {reused} · fallido {failed} — modelo {model}',
+  'pdfTranslation.stored.partial': '{records} párrafos ya guardados; no se retradujo nada',
+  'pdfTranslation.stored.none': 'todavía no hay nada guardado ({reason})',
+  'pdfTranslation.exported': '{name} exportado',
+  'pdfTranslation.exportDenied': 'exportación rechazada — no se escribió ningún archivo',
+  'pdfTranslation.exportFailed': 'la exportación falló',
+  'pdfTranslation.refusal.notConfigured':
+    'no hay un endpoint de modelo configurado — no se tradujo nada ({detail})',
+  'pdfTranslation.refusal.emptySource':
+    'este documento no tiene párrafos traducibles (puede que no haya capa de texto) ({detail})',
+  'pdfTranslation.refusal.other': 'la solicitud no indica qué documento traducir ({detail})'
 }

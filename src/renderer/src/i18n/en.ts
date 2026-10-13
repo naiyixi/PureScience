@@ -4558,5 +4558,23 @@ export const en: Record<ZhKey, string> = {
   'translation.reason.missing': 'reason not recorded',
   'translation.source.missing': 'original text missing',
   'translation.contrast.export': 'Export side by side',
-  'translation.terminology.deviation': 'terminology off the table: {term} (use {accepted})'
+  'translation.terminology.deviation': 'terminology off the table: {term} (use {accepted})',
+  'pdfTranslation.panel.title': 'PDF translation',
+  'pdfTranslation.unavailable': 'translation is not reachable from this window',
+  'pdfTranslation.loading': 'loading stored translations…',
+  'pdfTranslation.run': 'Translate',
+  'pdfTranslation.running': 'Translating…',
+  'pdfTranslation.report':
+    'Translated {translated} · reused {reused} · failed {failed} — model {model}',
+  'pdfTranslation.stored.partial': '{records} paragraphs already stored; nothing was re-translated',
+  'pdfTranslation.stored.none': 'nothing stored yet ({reason})',
+  'pdfTranslation.exported': 'exported {name}',
+  'pdfTranslation.exportDenied':
+    'you declined the export — it was not approved, so no file was written',
+  'pdfTranslation.exportFailed': 'the export failed',
+  'pdfTranslation.refusal.notConfigured':
+    'No model endpoint is configured — nothing was translated ({detail})',
+  'pdfTranslation.refusal.emptySource':
+    'no paragraphs to translate in this document (it may have no text layer) ({detail})',
+  'pdfTranslation.refusal.other': 'the request did not say which document to translate ({detail})'
 }

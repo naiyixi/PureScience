@@ -4455,5 +4455,21 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': '이유가 기록되지 않음',
   'translation.source.missing': '원문 없음',
   'translation.contrast.export': '대조본 내보내기',
-  'translation.terminology.deviation': '용어가 표와 다름: {term} ({accepted} 사용)'
+  'translation.terminology.deviation': '용어가 표와 다름: {term} ({accepted} 사용)',
+  'pdfTranslation.panel.title': 'PDF 번역',
+  'pdfTranslation.unavailable': '이 창에서는 번역을 사용할 수 없습니다',
+  'pdfTranslation.loading': '저장된 번역을 불러오는 중…',
+  'pdfTranslation.run': '번역',
+  'pdfTranslation.running': '번역 중…',
+  'pdfTranslation.report': '새 번역 {translated} · 재사용 {reused} · 실패 {failed} — 모델 {model}',
+  'pdfTranslation.stored.partial': '이미 저장된 단락 {records}개(다시 번역하지 않음)',
+  'pdfTranslation.stored.none': '아직 저장된 것이 없습니다({reason})',
+  'pdfTranslation.exported': '{name} 내보냄',
+  'pdfTranslation.exportDenied': '내보내기를 거부했습니다 — 파일을 만들지 않았습니다',
+  'pdfTranslation.exportFailed': '내보내기 실패',
+  'pdfTranslation.refusal.notConfigured':
+    '사용할 수 있는 모델 엔드포인트가 없어 번역하지 않았습니다({detail})',
+  'pdfTranslation.refusal.emptySource':
+    '이 문서에는 번역할 단락이 없습니다(텍스트 레이어가 없을 수 있음)({detail})',
+  'pdfTranslation.refusal.other': '어떤 문서를 번역할지 지정되지 않았습니다({detail})'
 }

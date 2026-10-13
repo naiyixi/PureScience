@@ -4199,5 +4199,20 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': '未說明原因',
   'translation.source.missing': '原文缺失',
   'translation.contrast.export': '匯出對照件',
-  'translation.terminology.deviation': '術語偏離：{term}（應用 {accepted}）'
+  'translation.terminology.deviation': '術語偏離：{term}（應用 {accepted}）',
+  'pdfTranslation.panel.title': 'PDF 翻譯',
+  'pdfTranslation.unavailable': '這個視窗裡沒有可用的翻譯通路',
+  'pdfTranslation.loading': '正在讀取已存譯文…',
+  'pdfTranslation.run': '翻譯',
+  'pdfTranslation.running': '翻譯中…',
+  'pdfTranslation.report': '新譯 {translated} · 重用 {reused} · 失敗 {failed} —— 模型 {model}',
+  'pdfTranslation.stored.partial': '已存 {records} 段，沒有重新翻譯',
+  'pdfTranslation.stored.none': '還沒有存過（{reason}）',
+  'pdfTranslation.exported': '已匯出 {name}',
+  'pdfTranslation.exportDenied': '你在看板上拒絕了這次匯出，沒有寫出任何檔案',
+  'pdfTranslation.exportFailed': '匯出失敗',
+  'pdfTranslation.refusal.notConfigured': '沒有設定可用的模型端點，因此沒有翻譯（{detail}）',
+  'pdfTranslation.refusal.emptySource':
+    '這一份裡沒有可翻譯的段落（可能整篇都沒有文字層）（{detail}）',
+  'pdfTranslation.refusal.other': '這次請求沒說清要翻哪一份（{detail}）'
 }

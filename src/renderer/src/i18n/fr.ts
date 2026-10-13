@@ -4654,5 +4654,23 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'translation.reason.missing': 'raison non enregistrée',
   'translation.source.missing': "texte d'origine manquant",
   'translation.contrast.export': 'Exporter la comparaison',
-  'translation.terminology.deviation': 'terminologie hors table : {term} (utiliser {accepted})'
+  'translation.terminology.deviation': 'terminologie hors table : {term} (utiliser {accepted})',
+  'pdfTranslation.panel.title': 'Traduction PDF',
+  'pdfTranslation.unavailable': "la traduction n'est pas disponible dans cette fenêtre",
+  'pdfTranslation.loading': 'chargement des traductions enregistrées…',
+  'pdfTranslation.run': 'Traduire',
+  'pdfTranslation.running': 'Traduction en cours…',
+  'pdfTranslation.report':
+    'Nouvellement traduit {translated} · réutilisé {reused} · échec {failed} — modèle {model}',
+  'pdfTranslation.stored.partial':
+    '{records} paragraphes déjà enregistrés ; rien n’a été retraduit',
+  'pdfTranslation.stored.none': 'rien d’enregistré pour le moment ({reason})',
+  'pdfTranslation.exported': '{name} exporté',
+  'pdfTranslation.exportDenied': 'export refusé — aucun fichier n’a été écrit',
+  'pdfTranslation.exportFailed': 'l’export a échoué',
+  'pdfTranslation.refusal.notConfigured':
+    'aucun point de terminaison de modèle n’est configuré — rien n’a été traduit ({detail})',
+  'pdfTranslation.refusal.emptySource':
+    'ce document n’a aucun paragraphe traduisible (peut-être pas de couche texte) ({detail})',
+  'pdfTranslation.refusal.other': 'la demande n’indique pas quel document traduire ({detail})'
 }
