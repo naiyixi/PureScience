@@ -4363,3 +4363,31 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 
 1. **B3-1b（前态真观测）**：若要给「修改」类变更真前态哈希，唯一诚实的做法是在运行**开始**时对**本会话已变更集**（有界、按 size 上限）取摘要 —— 属新增观测成本，单独立项。
 2. **B3-2 面板**：路径 + 后态哈希 + 前态具名 + 来源回合，9 语，引用格式与 `search-evidence` 同规；**插键要等执行器的 i18n 落定**（它此刻正在改 9 个字典）。
+
+## 八十六、v2.1.0（批 B）B3-1b 已交付：前态哈希（运行开始时真观测）（会话，2026-10-13）
+
+### 一 交付（`feat(notebook)` 一笔 + 本档）
+
+| 项 | 要点 |
+| --- | --- |
+| 请求字段 | `WorkingFileObservationRequest.workspaceCwd?`（缺省 ⇒ 前态一律具名） |
+| 前态捕获 | `captureBeforeContent(workspaceRoot, dataRoot, logicalDataRoot)`：运行**开始**时只走查**会话工作目录**，**双重预算**——条目 ≤ 5 万 且 **总读取字节 ≤ 64 MiB**；超者不做猜测：超大记 `too-large`、预算用尽记 `not-recorded`、读失败记 `unreadable` |
+| 收敛 | 内容计算**只在一处**（`attachObservedContent`）；删掉 `resolveChangedFile` 里的内联计算（原先 watcher 路径与 diff 路径各算一半，且无法知道前态） |
+| 接线 | `execution-owner` 传 `session.cwd`、`kernel-executor` 传 `request.cwd`（typecheck 证明两处字段真实存在 ⇒ **不是空壳**） |
+
+### 二 读数
+
+- 4 条真机式用例：新建（后态真哈希、前态不冒充）／**工作区内修改 ⇒ 前后两侧都 `recorded` 且都是真哈希**／工作区外修改 ⇒ 前态 `not-recorded`（具名）／超大 ⇒ `too-large` 且不读；
+- `src/main/notebook` + `src/shared` ⇒ **211 文件 / 2787 passed｜99 skipped**；双 typecheck 0；eslint 0；pre-push EXIT=0。
+
+### 三 口径（与 §八十五 配套，B3-2 面板必须照此呈现）
+
+「前后内容哈希」现在的真实语义：
+- 变更文件在**运行开始被走查覆盖**（即在会话工作目录内、且未超预算）⇒ **前后都是真哈希**（观测）；
+- 否则 ⇒ 后态真哈希 + 前态**具名**（`did-not-exist` / `not-recorded` / `too-large` / `unreadable`）；
+- **任何情况下都不存在**「用上一次运行的 after 链式冒充 before」的记录。
+
+### 四 本片自踩（一处新形状）
+
+**存在性守卫被自己的注释骗**：`if 'captureBeforeContent' not in file` 判「未插入」，而该名字在文件头注释里出现过 ⇒ 整块 `captureBeforeContent` **从未被插入**，脚本却打印了「已插入」（打印的是别的分支）。
+→ 教训：**存在性守卫必须用代码字符串**（`const captureBeforeContent = async`），不能用**名字出现过**当判据；同族形状本轮已是第三次（「符号出现 ≠ 已导入」两次）。
