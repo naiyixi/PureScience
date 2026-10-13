@@ -4323,3 +4323,43 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 - **判定**：B3 的判据（路径 + **前后内容哈希** + 来源回合）**不能靠投影得出**——变更的前/后内容摘要从未被记录（`changeKind` 只是三态标签）⇒ B3 = 两片（数据：写入轴补内容摘要 + 三种具名缺态；面：审阅面板、9 语、引用格式与 search-evidence 同规），**不是**零代码归档、也不是「新建面板」这么轻。
 - 落点与判据见 `docs/evidence/2026-10-13-b3-session-file-change-review-audit.md`。
 - **并发**：执行器正在做 **B2**（`run-alias-lineage.ts` + 渲染端 stale 文案，未提交）⇒ 本轮不碰其任一在制路径；B3-2 的 i18n 插键要等它的 i18n 落定。
+
+## 八十五、v2.1.0（批 B）B3-1a 已交付：写入轴补内容摘要（会话，2026-10-13）
+
+### 一 交付（`feat(notebook)` 一笔 + 本档）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 契约 | `src/shared/notebook.ts` | `NotebookWorkingFile.content?: { hashes{after?,before?}, states{before,after} }`；状态取值 `recorded / did-not-exist / not-recorded / too-large / unreadable`（**具名，不留空**）；读取侧 `sanitizeNotebookWorkingFileContent` **整条丢弃**，且带**一致性不变量**：某侧声称 `recorded` 就必须有哈希、有哈希就必须是 `recorded`（否则没人能复算 ⇒ 丢） |
+| 捕获 | `src/main/notebook/working-file-observer.ts` | `observeFileContent(canonicalPath, changeKind, size)`：**在观测到变更的同一处读字节算 sha256**（绝不从早前一次运行推断、也绝不重新序列化别的东西来冒充）；>4 MiB ⇒ `too-large`（**不读**）、读失败 ⇒ `unreadable`；watcher 路径在 `resolveChangedFile` 里取，diff 路径在 `attachObservedContent` 取（已带 content 的不重算） |
+| 读取 | `repository.ts` `normalizeWorkingFiles` | 照 `fileEvidence` 先例接净化 |
+
+### 二 判据口径的改判（记档，不许含糊）
+
+排期原文写「每条变更 = 路径 + **前后内容哈希** + 来源回合」。本片实测后**改判**：**前态内容在运行开始时从未被观测过**（before 快照只存 size/mtime/ctime），所以
+- **后态**：真观测的真 sha256 ✓
+- **前态**：一律**具名**（`did-not-exist`（新建）或 `not-recorded`（其余）），**绝不**用「上一次运行的 after」链式冒充 before —— 那是推断不是观测，且运行之间的外部改动会让它错。
+  ⇒ 「前后哈希」在 B3-2 面板上应呈现为「后态哈希 + 前态具名状态」，这是本片最该被记住的一句。
+
+### 三 读数（全部实跑）
+
+- 新增 3 条真机式用例（临时树 + 真观测器）：新建 ⇒ 真 sha256（**用例自己独立算一遍**，不调被测模块的助手）；修改 ⇒ 无前态哈希且 `before='not-recorded'`；超大 ⇒ `too-large` 且无哈希；
+- shared 侧 8 条（净化 + 一致性不变量双向）；
+- **受影响大范围**：`src/shared` + `src/main/notebook` ⇒ **211 文件 / 2786 passed｜99 skipped**；双 typecheck 0；`eslint --no-cache` 0；pre-push EXIT=0。
+
+### 四 生产活性核对（顺带撤回一处疑虑）
+
+我先怀疑观测器的前置检查 `isPathInside(sessionRoot, dataRoot)` 在真实布局下永远不成立而它其实是死的 ⇒ 用真 run.json 取证：**2547 次运行里 826 次带非空 `workingFiles`**（每次 2–3 个文件）⇒ **观测器在生产是活的**，疑虑撤回（记档：这类「机制是否活着」的问题只能用真记录回答，不能用静态推理猜）。
+
+### 五 本片自踩（第 N 次同族，已全部在技能里有对应条目）
+
+1. **定长切片切坏源码**（`s[i:i+320]` 把 `const ...[] = [` 切成 `[
+  'recorded',] = [`）⇒ 改用 `patch` 工具精确修；教训＝**别用定长切片做替换**，锚点必 assert。
+2. **heredoc 套 heredoc + 多行字符串**（两次）⇒ 脚本一律落文件、替换串落文件。
+3. **`/tmp/<旧名>.sh` 残留**：`write_file` 拒写、终端却跑了**上一轮会话的旧脚本**，白跑 250 秒并打印无关内容 ⇒ 写脚本一律用**新文件名**，或先读再改。
+4. **用例断言依赖「路径」而不是「不变量」**：新建文件经 watcher 路径时 `changeKind` 不设（既有行为）⇒ 一红两绿。改为断言路径无关的不变量（真哈希在、前态不冒充），并把真因写进注释。
+
+### 六 仍未做（具名）
+
+1. **B3-1b（前态真观测）**：若要给「修改」类变更真前态哈希，唯一诚实的做法是在运行**开始**时对**本会话已变更集**（有界、按 size 上限）取摘要 —— 属新增观测成本，单独立项。
+2. **B3-2 面板**：路径 + 后态哈希 + 前态具名 + 来源回合，9 语，引用格式与 `search-evidence` 同规；**插键要等执行器的 i18n 落定**（它此刻正在改 9 个字典）。
