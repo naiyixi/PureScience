@@ -236,7 +236,8 @@ describe('WriteAuditPanel', () => {
       })
     ])
 
-    const notice = container.querySelector('[data-testid="write-audit-read-missing"]')?.textContent ?? ''
+    const notice =
+      container.querySelector('[data-testid="write-audit-read-missing"]')?.textContent ?? ''
     expect(notice).toContain('data/gone.csv')
     expect(notice).toContain('not found')
     // It must not show up as a file the result read.
@@ -265,5 +266,65 @@ describe('WriteAuditPanel', () => {
       })
     ])
     expect(container.textContent).toContain('modified')
+  })
+
+  it('shows the content identity as a before → after pair beside the path', () => {
+    renderPanel([
+      makeRun({
+        workingFiles: [
+          {
+            path: '/w/report.md',
+            relativePath: 'report.md',
+            kind: 'other',
+            changeKind: 'modified',
+            content: {
+              hashes: { before: 'a'.repeat(64), after: 'b'.repeat(64) },
+              states: { before: 'recorded', after: 'recorded' }
+            }
+          }
+        ]
+      })
+    ])
+
+    expect(container.querySelector('[data-testid="write-audit-identity"]')?.textContent).toBe(
+      `${'a'.repeat(8)} → ${'b'.repeat(8)}`
+    )
+  })
+
+  it('dashes the missing side when only one hash was recorded', () => {
+    renderPanel([
+      makeRun({
+        workingFiles: [
+          {
+            path: '/w/half.csv',
+            relativePath: 'half.csv',
+            kind: 'other',
+            changeKind: 'modified',
+            content: {
+              hashes: { after: 'c'.repeat(64) },
+              states: { before: 'not-recorded', after: 'recorded' }
+            }
+          }
+        ]
+      })
+    ])
+
+    expect(container.querySelector('[data-testid="write-audit-identity"]')?.textContent).toBe(
+      `— → ${'c'.repeat(8)}`
+    )
+  })
+
+  it('dashes the change cell for a record that never recorded a kind, printing no identity at all', () => {
+    renderPanel([
+      makeRun({
+        workingFiles: [{ path: '/w/legacy.csv', relativePath: 'legacy.csv', kind: 'other' }]
+      })
+    ])
+
+    expect(
+      container.querySelector('[data-testid="write-audit-change-unrecorded"]')?.textContent
+    ).toBe('—')
+    expect(container.querySelector('[data-testid="write-audit-change-badge"]')).toBeNull()
+    expect(container.querySelector('[data-testid="write-audit-identity"]')).toBeNull()
   })
 })

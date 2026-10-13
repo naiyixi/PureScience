@@ -12,19 +12,26 @@ import { cn } from '@/lib/utils'
 import type {
   NotebookFileEvidenceReason,
   NotebookReadFileKind,
-  NotebookRunRecord,
-  NotebookWorkingFile
+  NotebookRunRecord
 } from '../../../../shared/notebook'
 import {
   axisVerdict,
   summarizeFileEvidence
 } from '../../../../shared/notebook-file-evidence-summary'
+import {
+  buildNotebookWriteAuditRows,
+  shortContentHash,
+  type NotebookWriteAuditRow,
+  type NotebookWriteChangeKind
+} from '../../../../shared/notebook-write-audit-rows'
 
 type WriteAuditPanelProps = {
   runs: NotebookRunRecord[]
 }
 
-type ChangeKind = 'created' | 'modified' | 'removed'
+type ChangeKind = NotebookWriteChangeKind
+
+const IDENTITY_DASH = '—'
 
 const CHANGE_KINDS: ChangeKind[] = ['created', 'modified', 'removed']
 
@@ -70,40 +77,21 @@ const formatTime = (mtimeMs: number | undefined): string => {
   return new Date(mtimeMs).toLocaleTimeString()
 }
 
-type AuditRow = {
-  file: NotebookWorkingFile
-  runId: string
-  runIndex?: number
-  changeKind: ChangeKind
-  source: string
-  startedAt?: number
+// The short form of a change's content identity: `before → after`, each side eight hex characters, or a
+// dash for a side the record did not hash. Undefined when NEITHER side has a hash — a row with nothing to
+// say about content stays quiet rather than printing two dashes (the panel's capture notices carry that).
+const identityLine = (row: NotebookWriteAuditRow): string | undefined => {
+  const before = shortContentHash(row.content?.hashes.before)
+  const after = shortContentHash(row.content?.hashes.after)
+  if (before === undefined && after === undefined) return undefined
+  return `${before ?? IDENTITY_DASH} → ${after ?? IDENTITY_DASH}`
 }
 
 const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
   const { t } = useLanguage()
   const [kindFilter, setKindFilter] = useState<ChangeKind | 'all'>('all')
 
-  const rows = useMemo<AuditRow[]>(() => {
-    const collected: AuditRow[] = []
-    for (const run of runs) {
-      for (const file of run.workingFiles ?? []) {
-        collected.push({
-          file,
-          runId: run.runId,
-          runIndex: run.executionCount,
-          changeKind: file.changeKind ?? 'modified',
-          source: run.source ?? 'cell',
-          startedAt: run.startedAt
-        })
-      }
-    }
-    // Newest run first, then by mtime.
-    return collected.sort((a, b) => {
-      const timeA = a.startedAt ?? 0
-      const timeB = b.startedAt ?? 0
-      return timeB - timeA || (b.file.mtimeMs ?? 0) - (a.file.mtimeMs ?? 0)
-    })
-  }, [runs])
+  const rows = useMemo(() => buildNotebookWriteAuditRows(runs), [runs])
 
   const summary = useMemo(() => summarizeFileEvidence(runs), [runs])
   const readVerdict = axisVerdict(summary.read)
@@ -198,25 +186,46 @@ const WriteAuditPanel = ({ runs }: WriteAuditPanelProps): React.JSX.Element => {
             <tbody>
               {filtered.map((row, index) => (
                 <tr
-                  key={`${row.runId}-${row.file.path}-${index}`}
+                  key={`${row.runId}-${row.path}-${index}`}
                   className="border-b border-border-100 last:border-0"
                   data-testid="write-audit-row"
                 >
                   <td className="py-1.5 pr-2 font-mono text-text-100">
-                    {row.file.relativePath ?? row.file.path}
+                    {row.relativePath}
+                    {/* Content identity as machine text on purpose: the recipe is sha256 and a third party
+                        recomputes it from the file itself, so it needs no translation. A side without a hash
+                        shows a dash — a NAMED state in the record, never an empty file (which still hashes). */}
+                    {identityLine(row) ? (
+                      <span
+                        className="mt-0.5 block text-[10px] text-text-400"
+                        data-testid="write-audit-identity"
+                      >
+                        {identityLine(row)}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="py-1.5 pr-2">
-                    <span
-                      className={cn(
-                        'rounded px-1 py-0.5 text-[10px] font-medium uppercase',
-                        KIND_STYLES[row.changeKind] ?? ''
-                      )}
-                    >
-                      {t(KIND_LABEL_KEYS[row.changeKind])}
-                    </span>
+                    {row.changeKind ? (
+                      <span
+                        className={cn(
+                          'rounded px-1 py-0.5 text-[10px] font-medium uppercase',
+                          KIND_STYLES[row.changeKind] ?? ''
+                        )}
+                        data-testid="write-audit-change-badge"
+                      >
+                        {t(KIND_LABEL_KEYS[row.changeKind])}
+                      </span>
+                    ) : (
+                      // A record written before the field existed does not say whether the file was created or
+                      // modified; printing 'modified' here was a guess the record never made. A dash is the
+                      // truth, and the panel's capture notices explain why a row can lack it.
+                      <span className="text-text-400" data-testid="write-audit-change-unrecorded">
+                        {IDENTITY_DASH}
+                      </span>
+                    )}
                   </td>
-                  <td className="py-1.5 pr-2 text-text-300">{formatBytes(row.file.size)}</td>
-                  <td className="py-1.5 pr-2 text-text-300">{formatTime(row.file.mtimeMs)}</td>
+                  <td className="py-1.5 pr-2 text-text-300">{formatBytes(row.size)}</td>
+                  <td className="py-1.5 pr-2 text-text-300">{formatTime(row.mtimeMs)}</td>
                   <td className="py-1.5 text-text-400">
                     {row.runIndex !== undefined ? `#${row.runIndex}` : row.runId.slice(0, 8)}
                   </td>
