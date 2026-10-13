@@ -4700,3 +4700,41 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 
 「存在性守卫」被「名字出现过」骗到两次，都靠 `tsc` 抓到：① `if 'CONTENT_STATE_LABEL_KEYS' not in s` —— 该名字已出现在我刚插入的**使用处** ⇒ 整张映射表没插；② `if 'NotebookFileContentState,' not in s` —— 逗号形态已出现在 `Exclude<NotebookFileContentState, 'recorded'>` 里 ⇒ 类型 import 没插。
 **定法**：守卫判**定义/语句**本身（`const X: Record<` / `import type {\n  X,`），不判符号名出现过。
+
+## 九十七、B2 独立复算（真数据）—— 它的声称与我的再测量一致，且**证明其哈希路径在真数据上尚未被走过**（会话，2026-10-14 凌晨）
+
+### 一 方法
+
+一次性探针（跑完即删）用**执行器已提交的** `src/shared/run-alias-lineage.ts` 直接吃**本机真实** `~/.purescience` 的会话运行文档（`**/run.json`），在探针里独立统计，不调它的测试断言；对抽到的原因逐字段回真脚本核对。
+
+### 二 我的再测量（真数据，逐字）
+
+```json
+{
+  "sessions": 77, "runs": 2754,
+  "mutationSites": 1530,
+  "reasons": 1715,
+  "reasonsByKind": { "name-rewrite": 1700, "direct-mutation": 15 },
+  "runsFlaggedByReasons": 1715,
+  "nameLevelStaleRuns": 1488,
+  "staleOnlyUnderNewRules": 6,
+  "mutationShapedReasons": 15
+}
+```
+
+**与它证据档的对照**：它记的是「2,197 runs / 142 sessions：2,129 处变异点；**3 次**运行只在新规则下才算过期」。我这次的数据更大（2,754 次运行）⇒ 三个数不同在**样本**上，**同一量级/同一方向** ✓；「只在新规则下过期」我量到 **6**（它 3）——**这不是矛盾**，是数据增长的正常结果（且我第一次量成 354 是**我自己度量写错**：把 `name-rewrite` 也算进了「新规则独有」⇒ 修正后 6 ✓）。
+**我这次未能复现它的样本口径**：我按 `**/run.json` 收到 **77 会话**，它记 **142 会话** ⇒ 收集口径可能不同（我的 glob 可能漏掉某些布局），**这条不算它的错，也不算验证通过** —— 具名在此。
+
+### 三 抽验（原因字段 vs 真脚本）
+
+分层采样 3 条变异类 + 2 条 `name-rewrite`（共 5）：**变异类的 `excerpt` 与别名链都能在对应用户脚本里找到**，`name-rewrite` 的 `variable` 也都在 later 脚本里出现 ⇒ **无一条真实失败**（打印出的两条 `name-rewrite excerpt not found: undefined` 是**我自己的自检用错了字段**：`name-rewrite` 本来就没有 mutation excerpt ✗ 我的检查，不是它的缺陷）。
+
+### 四 一个**真发现**（对它的配方与对本版都有意义）
+
+本机真数据里 **0 条运行带 `riskReview` 收据**（打包版仍是 v2.0.0，还没有 B1）⇒ 它配方里那个哈希的来源（`riskReview.codeHash`）在**当前真数据上一次都没被走过**：这 1,715 条原因的 `producerContentHash` 全是 `'not-recorded'` ✓ 与它文档一致（「早于收据的运行报 `not-recorded`」），但也意味着**该字段的「真哈希」形态只有 v2.1.0 之后的新运行才会出现** ⇒ B2 的「可复算哈希」这半，真机读数要等新版跑出新运行后才拿得到（**单独立案**，别把 `not-recorded` 当成验证通过）。
+
+### 五 我**没有**验证的（具名）
+
+- 它的测试读数（它自陈 43 passed / 变异测试 3 红）—— 我没跑它的套件；
+- 它 UI 上的 `data-*` 属性（`data-recipe/variable/via/alias-chain/later-run/mutation-kind/line/content-hash`）—— 我没读渲染；
+- 它的样本口径（142 vs 我的 77 会话，见 §二）。
