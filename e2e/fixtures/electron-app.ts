@@ -1,8 +1,9 @@
 import { test as base } from '@playwright/test'
 import { spawn } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { chmod, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { delimiter, join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { terminateProcessTree } from '../../src/main/process-tree'
 import { RendererFailureGate } from './renderer-failure-gate'
@@ -10,6 +11,11 @@ import { RendererFailureGate } from './renderer-failure-gate'
 const APP_ROOT = resolve(process.cwd())
 const FAKE_AGENT_PATH = resolve(APP_ROOT, 'e2e', 'fixtures', 'fake-opencode.mjs')
 const FAKE_REMOTEIT_PATH = resolve(APP_ROOT, 'e2e', 'fixtures', 'fake-remoteit.cjs')
+// The app's own stdout/stderr, kept OUTSIDE the per-test root: a start-up death used to leave nothing but
+// a "Starting PureScience…" snapshot, because this output was dropped and the isolated root is removed
+// during teardown. One file per run (the newest run's output), path printed so a failure names its evidence.
+const APP_PROCESS_LOG_PATH = resolve(APP_ROOT, 'test-results', 'app-process.log')
+
 const FAKE_PROVIDER_NAME = 'Electron E2E provider'
 
 const electronLaunchTarget = (
@@ -201,6 +207,16 @@ const launchPureScience = async (
       fakeRemoteItEnabled ? fakeRemoteItRoot : undefined
     )
   })
+
+  try {
+    await mkdir(dirname(APP_PROCESS_LOG_PATH), { recursive: true })
+    const logStream = createWriteStream(APP_PROCESS_LOG_PATH, { flags: 'w' })
+    application.process().stdout?.on('data', (chunk: Buffer) => logStream.write(chunk))
+    application.process().stderr?.on('data', (chunk: Buffer) => logStream.write(chunk))
+    application.process().on('exit', () => logStream.end())
+  } catch {
+    // Losing the log must never break a launch; the run's own assertions are the contract here.
+  }
 
   if (process.platform === 'linux') {
     await application.evaluate(({ safeStorage }) => {
@@ -619,6 +635,14 @@ const test = base.extend<{ app: ElectronApp }>({
     try {
       await install(app)
     } finally {
+      // Name the evidence on the way out: whether the test passed or died at start-up, the app's own
+      // output is on disk at a path the failure message can point at.
+      try {
+        const { size } = await stat(APP_PROCESS_LOG_PATH)
+        console.log(`[e2e] app process output (${size} bytes): ${APP_PROCESS_LOG_PATH}`)
+      } catch {
+        console.log(`[e2e] app process output was not captured: ${APP_PROCESS_LOG_PATH}`)
+      }
       await app.dispose()
     }
   }
