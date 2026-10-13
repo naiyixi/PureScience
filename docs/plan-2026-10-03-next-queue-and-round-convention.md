@@ -4477,3 +4477,30 @@ const dataRoot = resolveDataRoot()      // :721
 1. **`—` 是无声的**：`—` 只可能表示「这一侧没记」（空文件仍有哈希 ✓），但读者未必知道。把它换成**具名的一句话**需要一个新键 ⇒ 等执行器的 9 语字典落定后再补（本片刻意不插键以免与它的未提交改动相撞）。
 2. **独立列**：目前哈希行寄居在路径单元格内（为避免新增表头）。文案波次后可考虑独立成列（需表头键）。
 3. 投影模块尚未被 `WriteAuditPanel` 之外的任何面消费（本片只接了这一处）；若 B3-2 的导出/引用格式要做，应复用同一份投影。
+
+## 九十、B1 认证 spec 进仓（本地首跑失败：应用启动期已死，死因未命名）（会话，2026-10-13）
+
+### 一 交付
+
+`e2e/certification/notebook-run-risk-approval.spec.ts`（新，typecheck 0）：驱动 **app 自有运行路径**（`window.api.notebook.execute({…, source:'user'})` —— 与笔记本面板的运行控件同一个调用，也正是我这条门所依据的来源），然后断言：
+1. 审批卡渲染出 `notebook-risk-review` 且**点名**规则（`deletes files` / `fs-delete` / `line 1` / 代码片段）；
+2. 从**卡自己的** `deny-button` 拒绝；
+3. 拒绝后 `notebook.state()` 里**没有任何** `rmtree` 运行记录 —— 这同时证明**审阅发生在 provision 之前**（被拒的 cell 从未到过内核）。
+会话与项目名都取自应用自己的解析（`sessions.loadAll()` + `notebook.getReference()`），不自行编造。
+
+### 二 本地首跑（诚实记录）
+
+- `build:e2e` ✅（23:00 产物落盘）；`npx playwright test <该 spec>` 首跑在 `createProject` 处报 `Target page, context or browser has been closed`，失败快照显示页面**停在 `Starting PureScience…`** ⇒ **应用在启动期就退出**，onboarding 都没走完。
+- **死因未能命名**：夹具用的是 Playwright 的 `electron.launch`（stdout 在进程内可取），但**没有任何地方把它打印或落盘** ⇒ 失败现场没有证据。这正是「失败现场缺的几乎总是证据」那一类。
+- 内存当时可用 ≈1.38 GB（比早前的 73 MB 宽裕），所以**不能据此断言是 OOM**；下一次本地尝试必须先补上应用输出。
+
+### 三 立档（下一步的两件）
+
+| # | 项 | 判据 |
+| --- | --- | --- |
+| 1 | **夹具补应用输出**：`e2e/fixtures/electron-app.ts` 在 launch 后接 stdout/stderr 落到隔离根并作为失败附件 | 任何启动期失败都能在 `test-results/` 里读到应用自己那一行（含 OOM / 崩溃痕迹） |
+| 2 | **该 spec 的真窗口读数** | 由认证车道（`build.yml` 的 macos-arm64 作业）给出，读数绑到具体 SHA；本地跑得起来时也补一次 |
+
+### 四 与既有认证 spec 的关系
+
+驱动方式照抄仓内先例 `notebook-interrupted-run.spec.ts`（真会话 + `getReference` 取项目名 + `execute({source:'user'})`），差别只在本支要**拒绝**并验证「没跑」。不新增夹具、不新增通道。
