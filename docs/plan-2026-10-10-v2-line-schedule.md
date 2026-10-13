@@ -384,6 +384,15 @@ Cannot read runtime context for a missing Session`（裸 RPC 会话未附着）�
 
 **A 线端到端真机读数（2026-10-13，走 RPC，真实例）**：实例重启到 `f4359ce6` 后实调 `pdf:translation`（真 projectId + 真 PDF 路径）⇒ `ok:true`、**`ran:false`**（不点不跑模型 ✓）、`restored:{state:'none',reason:'no-checkpoint'}`、**HTTP 200 / 0.88 s**；`view.summary={pages:1,paragraphs:1,translated:0,missing:1,kept:0,terminologyChecked:0}`、逐页状态 `[{page:1,kind:'untranslated',…,labelKey:'translation.page.untranslated'}]`、行 `p1#1` 的格子 `missing` —— 面板要的三样（行/逐页状态/偏离）都从生产装配那条链路上来了 ✓。
 
+**A 线端到端读数（二）：真文档 + 真跑一次（2026-10-13，同一实例，走 RPC）**
+
+| 读数 | 结果 |
+| --- | --- |
+| 真文档（数据根里的 7 页报告）· 只读 | `HTTP=200 / 0.068 s`；`view.summary={pages:6, pageCount:7, paragraphs:39, translated:0, missing:39}`；逐页状态 `untranslated`。**第 7 页没有文本层**这一事实在真实数据里出现（`pages 6 < pageCount 7`）—— A6 的真机场景 ✓ |
+| 真跑一次（`run:true`，一次真模型调用） | `HTTP=200 / 20.0 s`；`translated:1`、`missing:0`、`terminologyChecked:4`；**抓到一条真偏离** `{unitId:'p1#1', english:'Lancet', accepted:['柳叶刀']}` —— 模型把正文译成中文（阿司匹林/随机对照试验/荟萃分析 都按表），但期刊名 `Lancet` 留了拉丁原文 ⇒ 判据如实标注（A4 的验收在真数据上自然发生，不是造出来的） |
+| 落盘证据 | `/Users/totota/PureScience-DEV/translations/a0ad546861f0b253eb1642f9043846fa.json`（621 B）：`version:1`、`source={kind:'pdf', id:'a44b40bf7ad63f16', contentHash:'8416477f…'}`（文档身份哈希，不是路径）、记录 `p1#1`= `translated/page 1/sourceHash 1feceeda…/` 正文是真中文译文 ✓ |
+| 无副作用核对 | 落盘目录里没有 `predictions/**` 的结构文件 ⇒ 之前那条被拒的 D7 加载**确实没有留下东西** ✓（与「拒绝就是拒绝」一致） |
+
 **认证 spec 草稿（未进仓，具名）**：`pdf-translation-seam.spec.ts` 已按仓库那一类写法（断言「有应答」而非 `No handler registered`；`run` 缺省只读 ⇒ 不打网络、确定性）写在 `/tmp/pdf-translation-seam.spec.ts.draft`。**未进仓的理由**：本地跑它要 `build:e2e` + Playwright 起 Electron，而当时空闲物理页 ≈63 MB（内存闸门）⇒ 按闸门规则不起；它的**意图已在那两条 RPC 真机读数里印证**（真实例确实在应答），打包那一层留给认证车道。要落地就一起做：`npm run build:e2e` → `npx playwright test e2e/certification/pdf-translation-seam.spec.ts --workers=1` 绿了再进仓。
 
 **D7 第二片「真网络取回」读数 —— 已取（2026-10-13，结论分两半）**
