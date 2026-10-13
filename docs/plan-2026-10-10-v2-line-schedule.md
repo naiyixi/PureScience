@@ -104,6 +104,15 @@ dev 实例的根是**配置根** `~/.purescience-project`，而工作区/noteboo
 落到配置根，存储层用另一个默认），影响面 = **数据根与配置根被分开的安装**；产品侧仍应立案（单一来源）。
 读数与完整取证见 `docs/evidence/2026-10-12-d2-live-structure-selection.md` 第 4 / 4b 节。
 
+**✅ 已交付（执行器，2026-10-13，提交 `15006211`）——本条不再敞着。** 修法 = 向存储层自己的解析要数据根
+（`resolveDataRoot()`，与 artifacts/uploads/reviewer/storage 命令面同一个值），闸门根仍是「数据根 + 配置根」两项、
+`hint` 改指数据根；打包/遗留布局两概念同根 ⇒ 去重后逐字节不变（no-op，有用例钉住）。
+真机读数（同一实例、同一份已部署守卫脚本、同一批载荷）：本会话工作区脚本与 notebook 产物
+**改动前 DENY → 改动后 ALLOW**，而 `/etc/passwd`、`/Users/totota/Documents/**` 仍 DENY、
+权重缓存仍 ALLOW（三条对照逐条不变）⇒ 不是整体放宽。提权论证三段 + 负向对照 + 门禁读数见
+`docs/evidence/2026-10-13-p0-11-path-guard-data-root.md`。**仍未取**：一轮真回合里 agent 自己读到产物的
+窗口侧读数（需一轮里恰好发出那条工具调用）；打包版待下一次发版后复核。
+
 ### 交付进度（按提交，勿重复做）
 
 | # | 状态 | 提交 / 证据 |

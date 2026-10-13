@@ -3608,9 +3608,9 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 2. **窗口翻译接缝的认证 spec 未进仓**（草稿在 `/tmp/pdf-translation-seam.spec.ts.draft`）：落地三件一起做 —— `npm run build:e2e` → `npx playwright test e2e/certification/pdf-translation-seam.spec.ts --workers=1` 绿 → 进仓；`blocked-by` = 空闲物理页足够。
 3. **应用内的那一次真远端取回未取**：需「有人点卡」或一个非 `unprotected` 的受保护配置（无头实例两样都没有）；同一 URL 本机实测 200 / 772,334 字节；落点应为 `predictions/alphafold-db/AF-P00533-F1-model_v4.pdb` 且被 `engineForPredictionPath` 认回。
 4. **`Nightly` 认证车道一条已立档的已知红**（`egress-settings-read-failure.spec.ts`，macos-arm64；88 passed/1 failed/12 skipped）：归因未定，本版不改它。
-5. **P0-11（产品侧）**：agent 路径闸门根与存储层 `dataRoot` 不一致（dev 实例 `~/.purescience-project` vs `/Users/totota/PureScience-DEV`）；打包版同根（正确）。
+5. **P0-11（产品侧）**：agent 路径闸门根与存储层 `dataRoot` 不一致（dev 实例 `~/.purescience-project` vs `/Users/totota/PureScience-DEV`）；打包版同根（正确）。 **✅ 已交付（执行器 `15006211`，2026-10-13）** —— 见 §七十六；本条不再敞着。
 6. **两条 `notarize-mac` 作业无 Apple 凭据 ⇒ 具名跳过**：本版**不声称**已签名/已公证（认证文件如实 `macSignature=unsigned`、`credentialsPresent=False`）。
-7. 跨轮不变的老缺口：中文源四家连接器、IC40/IC6、M2 权重校验值、P0-10(c) 会话半边。
+7. 跨轮不变的老缺口：中文源四家连接器、IC40/IC6、M2 权重校验值、P0-10(c) 会话半边。 **✅ 就地更正（2026-10-13）**：P0-10(c) **会话半边已交付**（执行器 `ddbffd41`，见 §六十二·五 收窄后的单位）；仍在敞着的是它的**真机读数**（内存闸门）。
 
 ### 四 下一轮第一步（带 blocked-by）
 
@@ -4041,3 +4041,57 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
    以及窗口翻译认证 spec 的进仓。
 2. 执行器按自身队列继续（上一笔已评审通过）。
 3. **拍板项**：B（新写的 main→renderer 结果类型只带 code + 参数）是否写入开发口径。
+
+## 七十六、本轮追加（执行器，2026-10-13 19:5x–21:0x）—— P0-11 收口：路径闸门的「数据根」改为单一来源（含真机前后对照）
+
+### 〇 开工核对（防重做，现取读数）
+
+- `HEAD = origin/main = 6ff5a90b`；工作树里除**会话的 83 份 `docs/evidence/*.md`**（表格重排，非我的）之外无他人在制。
+- 上一笔（`ddbffd41`，P0-10(c) 会话半边）**已被会话评审通过**（`acp` 那节的评审记录在 §七十二）⇒ 本轮不开它的新面。
+- B 段（A7 / S3 / M2）已耗尽或阻塞：A7 ✅、S3 ✅（含 S4 真机四条）、M2 ⛔ 卡产品决定（无已发布校验值）⇒ 本轮取 v2 批里**已立案、无人认领**的 P0-11。
+
+### 一 本单元交付（`15006211`，2 路径）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 修法 | `src/main/settings/agent-runtime-manager.ts:721` | 闸门的数据根改为 `resolveDataRoot()`（存储层自己的解析，与 artifacts/uploads/reviewer/storage 命令面同一个值），不再用 `settings.dataRoot ?? this.storageRoot`（后者在没挑数据根时回落到**配置根**） |
+| 用例 | `agent-runtime-manager.test.ts`（+3） | ① 未挑数据根时必须以存储层解析出的数据根为准、**不得**由配置根顶替；② 用户挑过的数据根必须生效（旧写法连它也不认）；③ 两概念同指一目录时产出文件**逐字节不变**（no-op 守卫） |
+
+**唯一写入方**：`writePathGuard` 的生产调用者只有 `agent-runtime-manager.ts:735` 一处（`claude-config-provision.ts:179`）⇒ 修一处即修全，没有第二处要改。
+
+### 二 真机读数（同一实例、同一份**已部署**的守卫脚本、同一批载荷）
+
+**改动前**：闸门根文件只有 `/Users/totota/.purescience-project`（应用自己写的），而应用自己的 `storage:get-info` 把数据根解析为 `/Users/totota/PureScience-DEV`（`isDefault: true`、`settings.json` 里 `dataRoot` 未设）。
+
+| 探针（直接跑 `node ~/.purescience-project/claude/hooks/path-guard.cjs`，喂 PreToolUse 载荷） | 改动前 | 改动后 |
+| --- | --- | --- |
+| 本会话工作区里的脚本（`Bash`） | **DENY** | **ALLOW** |
+| 同工作区的 notebook 产物 `figC_pmf_hysteresis.png`（`Read`） | **DENY** | **ALLOW** |
+| `/etc/passwd`（负向对照） | DENY | DENY |
+| `/Users/totota/Documents/**`（负向对照） | DENY | DENY |
+| `~/.cache/torch/hub/checkpoints/model.pt`（正向对照） | ALLOW | ALLOW |
+
+改动后闸门根文件 = `{"roots":["/Users/totota/PureScience-DEV","/Users/totota/.purescience-project"],"hint":"/Users/totota/PureScience-DEV"}`（由应用自己的代码路径重写；触发点是 `sessions:save-session` 的 spawn 装配，不必等真回合）。三条对照**逐条不变** ⇒ 不是整体放宽。
+**提权论证三段 + fail-closed 规则表 + 复跑配方**见 `docs/evidence/2026-10-13-p0-11-path-guard-data-root.md`。
+
+### 三 门禁读数（全部实跑）
+
+- 定向 `vitest src/main/settings src/main/storage-root.test.ts` ⇒ **88 文件 / 1433 passed｜3 skipped**（本文件 18 条）；
+- **变异测试**：把源码改回旧表达式 ⇒ 新增用例 **2 条当场红**（断言非空），改回即绿；
+- 双 typecheck **exit 0**（各 0 条 `error TS`；`typecheck:node` 需 `NODE_OPTIONS=--max-old-space-size=8192`，裸跑会 `Abort trap: 6`）；`eslint --no-cache` 本批两文件 **0 问题**。
+
+### 四 具名未取（不许读成已做）
+
+1. **一轮真回合里 agent 自己读到产物的窗口侧读数**：本次证明的是「守卫对同一批载荷的判决变了」（真机、真部署产物），
+   还差「一轮里恰好发出那条工具调用」这一半。`blocked-by` = 需要一轮里自然产生该调用（或窗口 + CDP）。
+2. **打包版复核**：其两个概念本就同根（no-op 论证 + 去重用例），且打包版的库要等下一次发版运行新代码才走这条路径 ⇒ 下一次发版后复核。
+3. **探针污染**：本次探针往 `claude/hooks/path-guard-decisions.jsonl` 追加 **10 行**（20→25→30），无时间戳，辨认方式＝连续 10 行、target 恰为上表五个载荷。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **窗口侧读数三件 + 认证 spec 进仓**（会话 §七十五·四）：`blocked-by` = 内存闸门 —— 但本轮实测**空闲物理页一度回到 ~1.4 GB**
+   （90,479 页），比前几轮宽裕 ⇒ 下一轮开工先取 `vm_stat`，够就起 `build:e2e`。
+2. **P0-10(c) 会话半边的真机读数**（`ddbffd41` 只差读数）：`blocked-by` = 同上闸门。
+3. 执行器备选下一单元（按连锁最小挑）：**P0-8 后半的 `via` 进持久溯源**（给 env 记录加来源字段，schema 演化 ⇒ 独立单元）；
+   或 **P0-10⑥ 包缓存回收动作**（安全规则与入口连锁已量清，等拍板入口 ⇒ 未拍板时按「并进既有用户命令」的最小连锁那支评估）。
+
