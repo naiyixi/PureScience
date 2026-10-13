@@ -4250,3 +4250,33 @@ tsc `TS1003/TS1005/TS1128/TS1434` 连报）。**修法**：定位锚必须是**�
 1. 用哪种请求形状：既有卡吃 `AcpPermissionRequest`（`sessionId`/`toolCallId`/`options`，为 ACP 工具调用设计）——notebook 跑 cell 不是工具调用，需要么**复用该形状**（合成 toolCallId + 把命中行放进 `title`/新字段），要么给卡加一条**笔记本运行**分支；
 2. 拒绝后的语义：拒绝 ⇒ **不执行**且运行记录仍落一条（`status: 'cancelled'`？还是根本不建记录）——需与「记录进运行历史」的判据对齐。
 `blocked-by` = ① 上述设计（可离线定稿）② **真窗口读数**（弹卡 → 拒绝 → 记录一致），内存闸门本次实测空闲页 73 MB。
+
+## 八十二、v2.1.0（批 B）B1 第五片：审批请求带收据 + 卡面渲染（会话，2026-10-13）
+
+### 一 交付（`feat(acp)` 一笔 + 本档）
+
+| 层 | 落点 | 要点 |
+| --- | --- | --- |
+| 共享契约 | `src/shared/acp.ts` | `AcpPermissionRequest.riskReview?`（注释写明：缺席＝**这次没跑过审阅**，不等于「干净」）|
+| 发射端（agent 调用）| `src/main/acp/permission-broker.ts` | 按 **MCP 身份** `purescience_notebook/notebook_execute` 认调用，从 `rawInput.code` 算收据并附上；**其他工具一个字段都不加**（身份不匹配 ⇒ 不收据）|
+| 发射端（应用自有）| 同文件 `requestAppApproval({…, riskReview?})` | **本会话关键发现**：broker 里**早已有** `requestAppApproval` —— 注释原文「把应用自有的审批停在用于 provider 工具调用的**同一张渲染端卡**上，复用 broker 的 pending/取消/校验，不另建第二个状态机」⇒ 设计问题①自解：**不新增机制**，用它 |
+| 卡面 | `PermissionApprovalControls.tsx` | 收据非空时渲染 `data-testid="notebook-risk-review"` 块：标题（`notebookRiskTitle`）+ 逐条 `notebookRiskLines`（规则名 + 收据里的 id + 行号 + 该行代码，指向卡上已有的 cell 代码块）|
+
+### 二 读数（全部实跑）
+
+- broker 全目录 **100/100**（含新增三条：应用自有审批带收据、不带就不留字段、**只**审 notebook cell 调用而其他工具不收据）；
+- 卡面渲染 **2/2**（点名规则 + 收据 id + 行号；`allow` 与「没跑过审阅」都**不渲染**）；
+- 呈现模块 **6/6**；**宽面** `src/main/acp` + `src/main/notebook` + `src/shared` + 卡面 ⇒ **311 文件 / 4262 passed｜99 skipped**；
+- 双 typecheck 0、eslint 0。
+
+### 三 本片自踩三处（都记形状）
+
+1. **臆造类型名** `AcpPermissionRequestRiskReview`（我随手写的，仓里没有）⇒ **vitest 照过**（类型被擦除），**只有 web typecheck 抓**（TS2724）。这是本会话**第二次**由 tsc 独担把关；结论：任何到 shared 类型边界的改动，跑完 vitest **必须**再跑两个 typecheck。
+2. **声明顺序**：判定块插到了 `mcpIdentity` 声明**之前**却引用它 ⇒ TS2448。
+3. **嵌套三引号（第三次）**：把含 `"""` 的 Python 直接塞进 `write_file` 的 r-string ⇒ 内核 SyntaxError。**定法**：替换串一律先 `write_file` 落成小文件，脚本再读文件。
+
+### 四 仍未做（具名）
+
+1. **应用自有运行路径的接线**：`requestAppApproval` 已在位且测过，但**还没有调用者**——app 自己的「跑这个 cell」触发点（运行入口）需：算收据 → `verdict==='review'` 时 `await requestAppApproval({…, riskReview})` → 返回 false 则**不执行**。这是产品侧最后一段线。
+2. **真窗口读数**：弹卡 → 拒绝 → 确认「执行未发生且记录一致」（内存闸门，本轮实测空闲页 73 MB）。
+3. `repl_execute` **有意**不收据：它也带 `code`，但那是控制面 REPL，Python 规则会给错判定（宁缺勿猜）——具名缺口，不假装覆盖。
