@@ -5324,6 +5324,9 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 2. **`ProvenanceTab` 是联合类型**，加 tab 必须同步扩（`TS2322` + `TS2367`）—— 又一次「只有 tsc 抓得到」。
 3. **`evidence.producer` 可以缺席** ⇒ 真 bug（`Cannot read properties of undefined`，被 `src/main/artifacts` 的一条 database 用例当场抓住）⇒ 加可选链，缺席即 `producer-not-recorded`，修后该目录 273/273。
 
-### 四 仍未取（具名）
+### 五 窗口读数（**已取**，附具名的覆盖范围）
 
-**窗口真机读数**（这一步本轮还没做）：下一步写认证 spec —— 真工件 → 打开该版本的溯源面板 → 点新 tab，断言行/链/哈希/配方上屏。
+`e2e/certification/artifact-alias-lineage.spec.ts` ⇒ **`1 passed (10.5s)`**（真工件 → 真溯源面板 → 新 tab）。屏幕上读到的是：介绍句 + **`recipe notebook-alias-lineage:v1`**（⇒ 主进程确实装配了投影，不是不可用分支）+ 空态原文「*No later run in this session changed a value the producing run wrote. That is what these records say — not a claim about the whole project.*」（`empty=1 rows=0`）。
+
+**覆盖范围具名**：这条读数覆盖「投影装配 + 空态 + 配方上屏」；**行那一支**（真别名/原地变异的行）**在本 harness 上取不到**：它需要 python/R 内核写别名再由后来运行原地改，而 e2e 夹具的数据根**没有装 python 环境**（应用日志里是 `spawn …/runtime/envs/default-python/bin/python ENOENT`）⇒ 夹具里只跑得通 bash 单元格，而 bash 脚本不是别名分析认的语法。
+所以行那一支的证据在它能在的地方：**投影自己的 3 条用例** + **面板的 2 条渲染用例**（都在 §二 的读数里）。我一度给夹具加了产出别名的能力（真行路线），实测撞上这条环境限制后**撤回**，只留注释说明 —— 不留用不上的夹具路径。
