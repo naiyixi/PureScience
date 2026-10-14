@@ -21,6 +21,7 @@ import { MOLECULE_TOOLS } from './descriptors/molecule'
 import { OMICS_ARCHIVES_TOOLS } from './descriptors/omics-archives'
 import { OMICS_ENA_TOOLS } from './descriptors/omics-ena'
 import { PROTEIN_ANNOTATION_TOOLS } from './descriptors/protein-annotation'
+import { PROTEOMICS_PDC_TOOLS } from './descriptors/proteomics-pdc'
 import { PUBMED_TOOLS } from './descriptors/pubmed'
 import { REGULATION_TOOLS } from './descriptors/regulation'
 import { RESEARCH_RESOURCES_TOOLS } from './descriptors/research-resources'
@@ -39,6 +40,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...CANCER_MODELS_TOOLS,
   ...CELLGUIDE_TOOLS,
   ...RNA_ENCORI_TOOLS,
+  ...PROTEOMICS_PDC_TOOLS,
   ...CHEMBL_TOOLS,
   ...CHEMISTRY_TOOLS,
   ...CLINICAL_GENOMICS_TOOLS,

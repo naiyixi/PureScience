@@ -36,11 +36,25 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     id: 'rna-encori',
     displayName: 'ENCORI',
     aliases: ['starBase', 'miRNA target', 'RBP', 'ceRNA'],
-    description: '通过 ENCORI（starBase 后继，中山大学）获取 miRNA-靶基因相互作用表，含 CLIP 与 degradome 实验计数、结合的 RBP、癌症类型数与细胞系/组织。',
+    description:
+      '通过 ENCORI（starBase 后继，中山大学）获取 miRNA-靶基因相互作用表，含 CLIP 与 degradome 实验计数、结合的 RBP、癌症类型数与细胞系/组织。',
     useWhen:
       'Use for miRNA-target interaction evidence — which miRNAs the catalogue lists for a gene, with the support each pair carries (CLIP experiment count, degradome count, the RBP bound, how many cancer types it was seen in, and the cell lines/tissues), including the reverse question of whether a named miRNA is reported to target a gene. Sourced from ENCORI (Sun Yat-sen University), the starBase successor.',
     sources: ['ENCORI'],
     termsUrl: 'https://rnasysu.com/encori/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
+    id: 'proteomics-pdc',
+    displayName: 'PDC',
+    aliases: ['Proteome Data Commons', 'proteomics', 'CPTAC'],
+    description:
+      '通过 PDC（Proteome Data Commons，NCI）获取蛋白组学研究目录与单个研究的文件清单（含每个文件的真实字节数、格式与类型，不下载任何文件）。',
+    useWhen:
+      'Use for PDC (Proteome Data Commons, NCI) proteomics data — the study catalogue (study UUID, name, disease type, primary site), and a single study file listing with each file own size, format and type, so a caller can see what a study holds and how many bytes it is without downloading it. Sourced from PDC (Proteome Data Commons, NCI).',
+    sources: ['PDC'],
+    termsUrl: 'https://pdc.cancer.gov/',
     requiresNcbi: false,
     group: 'directory'
   },
