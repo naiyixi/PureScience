@@ -3,7 +3,7 @@ const isPluginOperationRequest = (value: unknown): value is { token: string; con
   typeof value === 'object' &&
   value !== null &&
   typeof (value as { token?: unknown }).token === 'string' &&
-  (value as { token: string }).token.length > 0 &&
+  (value as { token: string }).token.trim().length > 0 &&
   typeof (value as { confirmed?: unknown }).confirmed === 'boolean'
 
 import type {

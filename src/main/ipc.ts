@@ -1,4 +1,5 @@
 import { basename, dirname, join } from 'node:path'
+
 import { randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { customConnectorSlug } from '../shared/custom-connector'
@@ -2773,7 +2774,11 @@ const createApplicationModules = async (
             clearTimeout(timer)
           }
         }
-      })
+      }),
+      // E3-2: where a deployed plugin lives. The candidate store above belongs to the preview path; without
+      // this argument deploy and run-once refuse with plugins-root-unavailable — which is exactly what the
+      // window reading caught on a real build. (This parameter list is positional, so this is the sixth.)
+      join(resolveDataRoot(), 'plugins')
     )
   )
   // Runtime selection UI (Settings/Onboarding): survey managed+external per language, persist the
