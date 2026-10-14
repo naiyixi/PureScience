@@ -5764,3 +5764,29 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 `src/main/specialist` **17 文件 / 274 passed** ✓；node typecheck 0 ✓；eslint 0 ✓。
 
 **未做（具名）**：① 与**执行保护 / 审批面**的接线（部署与执行都要默认拒绝 ✓）；② 受控 spawn（临时工作目录、白名单环境、超时、不经 shell）+ 执行读数落档；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）；④ 部署与运行的上屏文案 9 语。
+
+## 一百二十四、v2.3.0 **E3 第二段第二件已交付**：插件动作的门（复用执行保护策略）（会话，2026-10-14）
+
+### 一 交付（`src/main/specialist/plugin-run-policy.ts`）
+
+| 要点 | 说明 |
+| --- | --- |
+| **一个门，两个动作** | `deploy` 与 `run-once` 分别判定 —— 理由是本模块存在的全部意义：**部署只是写文件**（本地、用户已确认的动作），策略对它无话可说；**跑别人仓库里的代码才是「未受保护的执行」** ✓ |
+| **复用真策略** | 不新造第二个「什么可以跑」的意见：直接吃 `shared/execution-protection` 的 `policyDeniesUnprotectedExecution(policy, level)` 与 `rememberedApprovalCoversUnprotected(policy)` ✓ |
+| 未确认 ⇒ 拒 | 且拒绝句里带上该动作**会做什么**（`PLUGIN_OPERATION_RULE`：部署＝把插件自己的文件写进应用数据根；跑＝执行取自公开仓库的代码）⇒ 不让人对着「确定吗？」做决定 ✓ |
+| run-once 三态 | ① 策略 `deny` + `unprotected` ⇒ `unprotected-execution-denied`，**拒绝句点名两条轴**（filesystem / network，就是快照里那两条）；② `unprotected` 且策略不记批准 ⇒ `approval-required`（**每次都要批准**）；③ 受保护，或策略记批准 ⇒ 允许 ✓ |
+
+### 二 用例（3 条）
+
+两者未确认都拒、且话里带该动作的说明 ✓ / 确认后 `deploy` 允许并**注明「跑是另一回事」** ✓ / `run-once` 四路（deny ⇒ 拒且点名轴、`confirm` ⇒ 要批准、`remembered` ⇒ 允许、`protected` ⇒ 允许）✓。
+
+### 三 自踩（两条，都是 tsc/eslint 抓的）
+
+1. **我在用例里写了不存在的策略值 `'ask'`** ✗（真枚举是 `'confirm' | 'remembered' | 'deny'`）⇒ **tsc 抓到**，而那时 277 条测试**全绿** —— 又一次印证「只跑 vitest 会漏」✓。
+2. 用例里的辅助函数缺**显式返回类型** ⇒ eslint 抓到 ✓。
+
+### 四 读数与未做
+
+`src/main/specialist` **17 文件 / 277 passed** ✓；node typecheck 0 ✓；eslint 0 ✓；`pre-push-checks` 0 ✓。
+
+**未做（具名）**：① 把门接进 IPC（新增通道要**四处同批**：catalog / preload / `renderer-api.d.ts` / 钉子 —— 清单见 §一百一十九/§一百二十 ✓）；② **受控 spawn**（临时工作目录、环境白名单、超时、不经 shell）+ 执行读数落档；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）；④ 部署与运行的上屏文案 9 语。
