@@ -99,6 +99,102 @@ describe('NotebookLocalRpcServer Skill import bridge', () => {
     expect(request).toHaveBeenCalledOnce()
   })
 
+  it('lets the session-bound skill capability create a skill, not only import one', async () => {
+    // create_skill and request_skill_import are two tools of ONE MCP server, so they arrive on the same
+    // connection: a capability that allows the import but not the creation makes the tool 403 while the
+    // tool list still advertises it (a dead button, except the agent is the one pressing it).
+    const create = vi.fn().mockResolvedValue({
+      created: true,
+      skillName: 'demo-skill',
+      verification: 'unverified'
+    })
+    server = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {
+      transport: 'tcp',
+      token: 'secret-token',
+      skillCreator: { create }
+    })
+    server.registerSessionAlias('pre-session-alias', 'session-1')
+    const { endpoint, token } = await server.issueSkillImportConnection('pre-session-alias')
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        method: 'skillCreate',
+        params: {
+          sessionId: 'pre-session-alias',
+          name: 'demo-skill',
+          description: 'Does a thing',
+          instructions: '1. do it'
+        }
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(create).toHaveBeenCalledWith({
+      name: 'demo-skill',
+      description: 'Does a thing',
+      instructions: '1. do it'
+    })
+  })
+
+  it('forwards kind and evidence to the creator instead of dropping them on the wire', async () => {
+    // The tool schema promises `kind` and `evidence`; the RPC handler used to rebuild the input from
+    // four fields only, so a failure-mode entry arrived at the creator as an unverified procedure with
+    // no reproduction — the one shape the gate exists to refuse.
+    const create = vi.fn().mockResolvedValue({ created: true, skillName: 'vina-dead-end' })
+    server = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {
+      transport: 'tcp',
+      token: 'secret-token',
+      skillCreator: { create }
+    })
+    server.registerSessionAlias('pre-session-alias', 'session-1')
+    const { endpoint, token } = await server.issueSkillImportConnection('pre-session-alias')
+    const post = (params: Record<string, unknown>): Promise<Response> =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ method: 'skillCreate', params })
+      })
+
+    const forwarded = await post({
+      sessionId: 'pre-session-alias',
+      name: 'vina-dead-end',
+      description: 'The pip build of vina cannot work here',
+      instructions: 'Do not try to pip install vina.',
+      kind: 'failure-mode',
+      evidence: ['pip install vina → clang: error: unsupported option']
+    })
+
+    expect(forwarded.status).toBe(200)
+    expect(create).toHaveBeenCalledWith({
+      name: 'vina-dead-end',
+      description: 'The pip build of vina cannot work here',
+      instructions: 'Do not try to pip install vina.',
+      kind: 'failure-mode',
+      evidence: ['pip install vina → clang: error: unsupported option']
+    })
+
+    const unknownKind = await post({
+      sessionId: 'pre-session-alias',
+      name: 'vina-dead-end',
+      description: 'The pip build of vina cannot work here',
+      instructions: 'x',
+      kind: 'rumour'
+    })
+    expect(unknownKind.status).toBe(500)
+    await expect(unknownKind.json()).resolves.toEqual({
+      error: 'Skill create RPC kind must be one of procedure, failure-mode.'
+    })
+    expect(create).toHaveBeenCalledOnce()
+  })
+
   it('rejects shared and out-of-scope RPC capabilities', async () => {
     const request = vi.fn().mockResolvedValue({ status: 'cancelled', skills: [] })
     server = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {

@@ -20,6 +20,7 @@ import type {
 } from '../skills/conversation-import'
 import type { SkillCreator } from '../skills/skill-creator'
 import type { SkillCreateInput, SkillCreateResult } from '../../shared/skill-create'
+import { SKILL_KNOWLEDGE_KINDS, type SkillKnowledgeKind } from '../../shared/skill-provenance'
 import type {
   ArtifactRpcCapabilityBinding,
   ArtifactRpcMethod,
@@ -269,7 +270,12 @@ class RpcHttpError extends Error {
 // it must comfortably exceed long notebook executions that remain inside one active turn.
 const DEFAULT_ARTIFACT_RPC_CAPABILITY_TTL_MS = 2 * 60 * 60 * 1_000
 const CONTROL_RPC_METHODS = new Set(['mcpCall', 'computeCall', 'agentsCall'])
-const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport'])
+// create_skill rides the SAME session-bound capability as request_skill_import, because both are tools
+// of one MCP server and arrive on one connection. Leaving it out made the creation tool answer 403
+// ("capability does not allow skillCreate") on every hosted call while the tool list still advertised
+// it. No widening: this capability is already bound to one session and already allows the import, which
+// installs skill files; creating an app-validated draft from that session's own record is strictly less.
+const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport', 'skillCreate'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
 import { fingerprintInputs } from '../../shared/task-checkpoint'
 
@@ -1365,11 +1371,30 @@ class NotebookLocalRpcServer {
       ) {
         throw new Error('Skill create RPC params must include sessionId, name and description.')
       }
+      // `kind` and `evidence` used to be dropped right here, so a caller that asked for a
+      // failure-mode entry (with the reproduction that makes it worth keeping) got an unverified
+      // *procedure* with no evidence instead — the tool schema promised a field the app never read.
+      const kind = params.kind
+      if (
+        kind !== undefined &&
+        (typeof kind !== 'string' || !SKILL_KNOWLEDGE_KINDS.includes(kind as SkillKnowledgeKind))
+      ) {
+        throw new Error('Skill create RPC kind must be one of procedure, failure-mode.')
+      }
+      const evidence = params.evidence
+      if (
+        evidence !== undefined &&
+        (!Array.isArray(evidence) || evidence.some((item) => typeof item !== 'string'))
+      ) {
+        throw new Error('Skill create RPC evidence must be a list of strings.')
+      }
       const input: SkillCreateInput = {
         name: params.name,
         description: params.description,
         instructions: typeof params.instructions === 'string' ? params.instructions : '',
-        ...(Array.isArray(params.references) ? { references: params.references as string[] } : {})
+        ...(Array.isArray(params.references) ? { references: params.references as string[] } : {}),
+        ...(typeof kind === 'string' ? { kind: kind as SkillKnowledgeKind } : {}),
+        ...(Array.isArray(evidence) ? { evidence: evidence as string[] } : {})
       }
       return this.skillCreator.create(input) as Promise<SkillCreateResult>
     }
