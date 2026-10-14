@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join, posix } from 'node:path'
 
 import { checkPluginDeclaration, type PluginManifest } from '../../shared/plugin-source'
 
@@ -11,6 +11,20 @@ import { checkPluginDeclaration, type PluginManifest } from '../../shared/plugin
 // The shape is borrowed from SpecialistPackageTransaction on purpose (staging directory, then one atomic
 // rename, with a rollback that leaves nothing behind), but the class is not reused: that one is bound to
 // Specialists and their skills, and a plugin deployment has a manifest instead.
+
+/**
+ * Is `candidate` inside `root`?
+ *
+ * Compared on POSIX-normalized paths on purpose. `node:path` uses `\` on Windows, so the obvious
+ * `candidate.startsWith(root + '/')` guard silently matches NOTHING there and refuses every legitimate
+ * entry — a defect that passes every test on a POSIX machine and fails the whole suite on Windows.
+ * Normalizing both sides (and comparing the relative path) makes the answer the same on both.
+ */
+export const isInsideDirectory = (root: string, candidate: string): boolean => {
+  const toPosix = (value: string): string => value.replace(/\\/g, '/')
+  const relative = posix.relative(toPosix(root), toPosix(candidate))
+  return relative !== '' && !relative.startsWith('..') && !posix.isAbsolute(relative)
+}
 
 export type PluginDeployResult =
   | {
@@ -81,7 +95,7 @@ export const deployPlugin = async (input: {
       // The destination is re-checked here even though the declaration already passed: this is the step that
       // writes, so the check that guards writing belongs here too.
       const destination = join(stagingDirectory, tool.entry)
-      if (!destination.startsWith(stagingDirectory + '/')) {
+      if (!isInsideDirectory(stagingDirectory, destination)) {
         // Nothing may be left behind on any refusal path, including the ones that return early: the staging
         // directory is this call's own work, so this call cleans it.
         await rm(stagingDirectory, { recursive: true, force: true }).catch(() => undefined)
@@ -102,7 +116,7 @@ export const deployPlugin = async (input: {
           detail: `The declaration names ${tool.entry}, and the source does not have it.`
         }
       }
-      await mkdir(join(destination, '..'), { recursive: true })
+      await mkdir(dirname(destination), { recursive: true })
       await writeFile(destination, bytes)
       entries.push({ entry: tool.entry, bytes: bytes.byteLength, sha256: sha256(bytes) })
     }

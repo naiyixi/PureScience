@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { PluginSourceCandidateStore } from './plugin-source-candidate'
-import { deployPlugin, readDeployedPlugin } from './plugin-deploy'
+import { deployPlugin, isInsideDirectory, readDeployedPlugin } from './plugin-deploy'
 import { decidePluginOperation, PLUGIN_OPERATION_RULE } from './plugin-run-policy'
 import { runPluginOnce } from './plugin-run'
 import { deployCandidate, runCandidateOnce } from './plugin-operations'
@@ -624,5 +624,20 @@ describe('plugin operations (the gate runs first)', () => {
     // Read from the ref the preview recorded, not from a branch that may have moved since.
     expect(urls[0]).toContain('acme/plugin/v1/tools/demo.mjs')
     await rm(root, { recursive: true, force: true })
+  })
+})
+
+describe('plugin deploy path guard (the Windows defect, pinned)', () => {
+  it('answers the same for posix and windows separators', () => {
+    // The defect this pins: `candidate.startsWith(root + '/')` matches nothing on Windows, because
+    // node:path hands out `\` there. Both spellings must be inside.
+    expect(isInsideDirectory('/plugins/demo', '/plugins/demo/tools/tool.mjs')).toBe(true)
+    expect(isInsideDirectory('C:\\plugins\\demo', 'C:\\plugins\\demo\\tools\\tool.mjs')).toBe(true)
+  })
+
+  it('refuses escapes: a parent, a sibling with the same prefix, and the root itself', () => {
+    expect(isInsideDirectory('/plugins/demo', '/plugins/demo/../other/tool.mjs')).toBe(false)
+    expect(isInsideDirectory('/plugins/demo', '/plugins/demo-x/tool.mjs')).toBe(false)
+    expect(isInsideDirectory('/plugins/demo', '/plugins/demo')).toBe(false)
   })
 })
