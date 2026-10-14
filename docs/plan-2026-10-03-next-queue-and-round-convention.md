@@ -5299,3 +5299,31 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 
 第一版探针在 `run.json` 的**文档顶层**找 `riskReview` ⇒ 报「220 份文档、0 收据」，我差点把它当成「写入点没生效」的证据。**真形状**是：`run.json` 是**文档**，运行在 `runs[]` 数组里（`export-reader.ts` 的 `document.runs` 即此）⇒ 第二版按 `runs[]` 遍历才拿到 4951 次运行的真实分布。
 **定法**：探真数据前先确认「记录是文档还是行」，别拿顶层键的缺失当结论。
+
+## 一百一十一、v2.3.0 首项 B2 第三片已交付：别名级血缘接进产物 / 运行溯源面（会话，2026-10-14）
+
+### 一 交付
+
+| 层 | 落点与要点 |
+| --- | --- |
+| 共享 | 新纯投影 `src/shared/artifact-alias-lineage.ts`：`buildArtifactAliasLineage({producerRunId, runs})` —— **分析不重写**，直接吃执行器那支 `computeNotebookStaleReasons`，本投影只加**作用域**（一个版本只有一个产出运行 ⇒ 只留 `producerRunId` 相符的原因）；行携带 `producerContentHash` + `recipeVersion` ⇒ **可从运行记录复算** |
+| 类型 | `ArtifactVersionProvenance.aliasLineage?`（注释写死：「缺席 = 这次读没带该分节 / 该版本没有产出运行可归属，**绝不等同于依赖干净**」） |
+| 主进程 | `getVersionProvenance(request, sections)` 增 `aliasLineage?: boolean`（默认 true，与 `readings`/`structureObservations` 同口径：一次会话一份运行文档读；单分节读可 opt-out）。产出运行 id 取自 **`evidence.producer`**（**不是** `execution` —— 见自踩①），运行文档经**现成依赖** `notebookRepository.findExisting(projectId, appSessionId)` 取（与 producer 块同一个读者）。四种具名缺态：`not-loaded` / `producer-not-recorded` / `runs-not-recorded` / `runs-unreadable` |
+| 渲染端 | `ArtifactProvenancePanel` 新 tab `aliasLineage`（`ProvenanceTab` 联合类型同步扩）⇒ 分节 `artifact-alias-lineage`（`-row` / `-chain` / `-site` / `-hash` / `-recipe` / `-empty` / `-unavailable`）：每种原因的措辞**复用 notebook 侧同一批键**（`notebookStale.rewrite` / `directMutation` / `aliasMutation` —— 一个原因只有一套词汇表）+ 别名链 + 变异点原文 + 产出哈希（前 12 位；`not-recorded` 原样显示，**不编哈希**）+ 配方版本 |
+| i18n | 6 键 ×9 语（tab / intro / empty / hash / recipe / unavailable） |
+
+### 二 用例与读数
+
+- 血缘模块 **3 条**（作用域隔离：别处产出运行的原因不进；空即「**这些记录说没变**，不是对整个项目的断言」；无收据即具名 `not-recorded`）——断言只针对**本投影加的东西**（作用域 + 原样携带 + 可复算哈希），不重述引擎语义（第一版我按猜的 `aliasChain` 语义写，红了就改口径 —— 一个原因的含义是引擎的事）；
+- 面板 **2 条**（行/链/站点/哈希/配方；空态与不可读态各自具名）。
+- 读数：`src/shared` + `src/main/artifacts` + `src/renderer/src/pages/workspace` **3527 passed**（314 文件，含一条 database 用例当场抓出的真 bug）；i18n **52 passed**；双 typecheck 0；eslint 0；`pre-push-checks` 0。
+
+### 三 本片自踩（三条，都是形状）
+
+1. **`producer` 在 `evidence` 上，不在 `execution` 上**（我第一版写 `execution.producer` ⇒ `TS2339`；`execution` 是原始快照 `ArtifactExecutionSnapshot`，带 `producer` 的是 `ArtifactVersionEvidence`）。
+2. **`ProvenanceTab` 是联合类型**，加 tab 必须同步扩（`TS2322` + `TS2367`）—— 又一次「只有 tsc 抓得到」。
+3. **`evidence.producer` 可以缺席** ⇒ 真 bug（`Cannot read properties of undefined`，被 `src/main/artifacts` 的一条 database 用例当场抓住）⇒ 加可选链，缺席即 `producer-not-recorded`，修后该目录 273/273。
+
+### 四 仍未取（具名）
+
+**窗口真机读数**（这一步本轮还没做）：下一步写认证 spec —— 真工件 → 打开该版本的溯源面板 → 点新 tab，断言行/链/哈希/配方上屏。
