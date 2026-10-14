@@ -5917,3 +5917,22 @@ Test Files  2 failed | 1293 passed | 16 skipped (1311)
 ### 四 仍未做（具名）
 
 ① 把 `deploy` / `run-once` 接上 IPC（四处同批：catalog / preload / `renderer-api.d.ts` / **两处** 钉子 —— 注意 **两族** pin：`renderer-surface-inventory.test.ts` **与** `renderer-contract-catalog.test.ts` ✓ 这次就栽在后者）；② 上屏（两个按钮 + 结果块 + 9 语）；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）。
+
+## 一百二十七、v2.3.0 **E3 第二段接线已交付**：deploy / run-once 两条通道端到端（会话，2026-10-14）
+
+### E3 第二段接线（deploy / run-once 两条通道端到端）
+
+| 层 | 内容 |
+| --- | --- |
+| 共享 | 两条通道常量（`specialist:plugin-source-deploy` / `-run-once`）+ **面向窗口的结果视图** `PluginOperationOutcomeView`：**只带码与参数，文案归渲染端** ⇒ 主进程不负责任何句子 |
+| catalog / d.ts / preload | catalog 两条（同组字母序）+ d.ts 两方法 + preload 两桥 |
+| store | `deploy` / `runOnce` 两个动作（委托 `plugin-operations`，把内部结果映射成视图） |
+| main ipc | 两条 handler + 三处可选依赖 |
+
+**诚实默认（类型逼出来的，比拍脑袋更对）**：`pluginProtection` 缺省 ⇒ 门**具名拒** `protection-unavailable`（**不编造快照**）；`pluginPluginsRoot` 缺省 ⇒ 具名拒 `plugins-root-unavailable`（**不编路径**）；`policy` 缺省 `confirm` ⇒ **每次都要批准**。⇒ 一个什么都没接的调用者：**能读声明，不能静默执行** = 默认拒绝。
+
+**四族 pin 一次改全**（上次栽的就是这里）：计数 `479→481`、`80→82`、`33→35`、`240→242` **加**两份**名字清单**（`renderer-surface-inventory.test.ts`、`preload/index.test.ts`），分布在 **3 个文件**；每处应然值**由测试自己报出**（不是推断）。自踩一次：清单用**单引号**，我拿双引号当锚点 ⇒ 0 命中（安全失败、文件未坏）。
+
+**读数**：双 typecheck 0；eslint 0；四族 pin + specialist 共 **23 文件 / 426 passed**；**全量复核（含 Windows 路径修复）`1295 passed | 16 skipped` / `16627 passed | 207 skipped`、0 failed**。
+
+**车道**：`Windows Full Test @3bc0adf0` = **completed success** ⇒ 抓到缺陷的那条车道**真机验证了修复**；`Nightly @3bc0adf0` pending ⇒ 推送等它让位（不顶掉在飞车道）。
