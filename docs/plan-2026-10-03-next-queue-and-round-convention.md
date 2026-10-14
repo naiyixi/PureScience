@@ -4891,3 +4891,26 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 - 与 B1/B2/B3 的 spec **无关**，也**不是**它 CHANGELOG 里记的那支 PDF spec ⇒ 属**认证车道轮转抖动**（同一套 spec 在不同提交上轮转红在不同支）。
 - **发布自己的认证作业没被它打到**（该页 `electronP0: passed` ✓，见 §一）。
 - 处置口径（若下次打到发布作业）：**无 Release 页 ⇒ 删 tag 重建**；**不许重跑单个 build 作业**（同名重复产物会让 publish 报 `missing`）。
+
+## 1、v2.2.0（批 C 数据面加宽）动手前勘查（会话，2026-10-14）
+
+### 一 逐项勘查（**动手前量出的落点与边界**，每条附证据）
+
+| # | 件 | 今天的状态（file:line / 证据） | 缺口判定 | 差异化红线（我方超越点） | 链规模 |
+| --- | --- | --- | --- | --- | --- |
+| **C1** | **Ensembl 群体 LD** | `genomes-ensembl.ts` 的工具表：`ensembl_lookup` / `_xrefs` / `_vep_variant` / `_homology` / `_sequence` / `_overlap_region` —— **无 LD/pairwise/r² 任何一项** | **真缺口**（新增一条工具，落进既有描述符）| 成对 LD 必须回**明确的人群面板**（1000G 的 super-population）与**样本量**，缺面板就具名拒答；不许把 r² 当成因果或显著性 | 小（一条 tool + 用例 + 既有 fetch 管道 + 真读数）|
+| **C2** | **文献库整页全选** | 宿主是 `components/references/ReferencesLibraryDialog.tsx`；**选择模型已在**（`selectedPdfIds: string[]`、`selectedCollectionId` 过滤） | 窄缺口（缺「本页全选 / 本页取消」这一对动作）| 「全选」只选**当前可见页**（不是整个库），并且**筛选改变后选择集与新可见集的关系必须可解释**（不许出现「选了看不见的东西」）；文案 9 语 | 小（控件 + 不变量 + 渲染用例；真机读数需窗口） |
+| **C3** | **ChEMBL assay 详情与分页** | `chembl.ts` 工具：`compound_search` / `drug_search` / `get_admet` / `get_bioactivity` / `get_mechanism` / `target_search`；**没有 assay 详情**（`assay_*` 只是 activity 的字段）；分页机制本身**通了**（`walkPaged` limit/offset、`true total_count`） | 窄缺口（缺 `assay` 详情工具；分页能力已在）| assay 详情要带**确证的来源总数与截断标记**（与 activities 同口径），并按 `assay_type`/`target` 指认；只回可核字段 | 小-中 |
+| **C4** | **ClinVar 逐提交证据** | `variants-clinvar.ts` 已回 `n_submissions` + `supporting_submissions: { scv, rcv }`（**已有接入清单**），但**没有逐条提交的详情**（每条 SCV 的结论/评审日期/提交者） | **部分覆盖** ⇒ 缺口是「SCV 级详情」 | SCV 级详情必须**逐条可引用**（SCV 号 + 结论 + 评审状态 + 日期），缺失的提交**具名列出**而不是静默少几条 | 中（需核 NCBI 实际暴露的字段）|
+| **C5** | **ENCORI** | 全树 `encori` / `starbase` **零命中** | **真缺口**（新连接器）| 来源可答性**先测后接**（同批 C 政策：不能答的输入具名拒绝、一个请求都不发）；命中要带平台/细胞系上下文 | 大（源探测 + 政策 + 描述符 + 接线 + 真读数）|
+| **C6** | **PDC** | `pdc` 零命中（`proteomic` 命中的两处不是 PDC） | **真缺口**（新连接器）| 同上；另加「同一研究不同版本/分析类型」必须可区分，不许合并 | 大 |
+
+### 二 建议顺序（按连锁最小 → 最大）
+
+**C3（ChEMBL assay 详情）→ C1（Ensembl LD）→ C4（ClinVar SCV 详情）→ C2（文献库整页全选）→ C5/C6（ENCORI / PDC 新连接器）**
+
+理由：C3 与 C1 都是「在既有描述符里加一条工具」（既有 fetch/限流/总量口径全部复用），C4 要先核 API 暴露面，C2 是渲染层小改但要窗口读数，C5/C6 是新连接器（源探测 + 政策 + 接线，链最长）。**动 C5/C6 前必须先做「来源可答性探测」**（本仓既有纪律：探不到就不接，绝不猜）。
+
+### 三 与执行器的关系
+
+本轮勘查期间树是**干净**的（无人在制）✓；C 各件的落点（`descriptors/chembl.ts`、`descriptors/genomes-ensembl.ts`、`descriptors/variants-clinvar.ts`、`components/references/`）与它最近在做的那批（`notebook/**`、`i18n/**`、`shared/**`）**不相交** ✓ 可并行。
