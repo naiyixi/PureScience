@@ -14,7 +14,7 @@
 
 ### 质量与证据口径
 
-- 门禁（隔离工作树，被测提交 `@@GATE_SHA@@`）：`eslint --no-cache .` **@@GATE_ESLINT@@**；`typecheck:node` / `typecheck:web` **两环原文各 0 条 `error TS`**；全量 `vitest --maxWorkers=4` **@@GATE_VITEST@@**；`scripts/pre-push-checks.sh` **EXIT=0**。
+- 门禁（隔离工作树，被测提交 `ecb385e3747074d30872b0e73896a4cf166e86cb`）：`eslint --no-cache .` **0 error ／ 120 warning**；`typecheck:node` / `typecheck:web` **两环原文各 0 条 `error TS`**；全量 `vitest --maxWorkers=4` **1307 文件（1291 passed ｜ 16 skipped）、16766 条（16559 passed ｜ 207 skipped）**，exit 0，345.9 s；`scripts/pre-push-checks.sh` **EXIT=0**。
 - **真机读数（不是单元测试）**：① 卡面：真窗口 `1 passed (11.9s)`，应用日志留 `NotebookRunDeclinedError: … fs-delete`，拒绝后 `notebook.state()` 零 `rmtree` 记录；② 面板**自己的**终端：`1 passed (8.8s)`，条带逐字 `Notebook run declined: deletes files (fs-delete) — no code was executed.`，且**不含**引擎错误与 IPC 信封（证据档 `docs/evidence/2026-10-14-b1-declined-copy-real-window.md`）；③ 真实 182 MB 会话工作区：`before → after` 两侧哈希与独立复算逐字符相同，6 MB 权重文件两侧具名 `too-large`（一个字节都没读）。
 - **认证车道读数（第二证据源）**：`notebook-run-risk-approval.spec.ts` 随 `Build macos-arm64` 的 P0 步骤通过（2026-10-13 的 run `38420183858`）；`notebook-declined-copy.spec.ts` 与 `session-fork.spec.ts` 在 headSha `c8f35f8b` 的 run（job `115598746438`）里各跑一次 —— 该次 **90 passed ｜ 1 flaky（与本版无关的 PDF 面板 spec，重试即过）｜ 12 skipped**，两条主干车道（`Nightly` / `Windows Full Test`）同为 success。
 - 凡「基准」都注明出处（同一条命令或一次独立复算）。签名 / 公证一律不推断：mac 签名两条作业因无凭据**具名跳过**，本版**不声称**已签名或已公证。
