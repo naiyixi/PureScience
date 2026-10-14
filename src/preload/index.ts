@@ -469,6 +469,10 @@ const api: PureScienceAPI = {
     pluginSourcePreview: (request: { reference: string }) =>
       electronRendererContracts.invoke('specialist.pluginSourcePreview', request),
     pluginSourceCancel: () => electronRendererContracts.invoke('specialist.pluginSourceCancel'),
+    pluginSourceDeploy: (request: { token: string; confirmed: boolean }) =>
+      electronRendererContracts.invoke('specialist.pluginSourceDeploy', request),
+    pluginSourceRunOnce: (request: { token: string; confirmed: boolean }) =>
+      electronRendererContracts.invoke('specialist.pluginSourceRunOnce', request),
     savePackageReport: (request: SpecialistPackageInstallRequest) =>
       electronRendererContracts.invoke('specialist.savePackageReport', request),
     onCatalogChanged: (listener: () => void) =>

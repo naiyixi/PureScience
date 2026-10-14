@@ -1,4 +1,10 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
+const isPluginOperationRequest = (value: unknown): value is { token: string; confirmed: boolean } =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { token?: unknown }).token === 'string' &&
+  (value as { token: string }).token.length > 0 &&
+  typeof (value as { confirmed?: unknown }).confirmed === 'boolean'
 
 import type {
   CreateSpecialistRequest,
@@ -13,6 +19,8 @@ import type {
   ResolveSessionSpecialistRequest,
   SessionSpecialistResolution
 } from '../../shared/specialist'
+import type { ExecutionProtectionSnapshot } from '../../shared/execution-protection'
+import type { PluginOperationOutcomeView } from '../../shared/plugin-source'
 import { SPECIALIST_IPC } from '../../shared/specialist'
 import { ProfileService } from './service'
 import { SessionBindingService } from './session-binding'
@@ -160,7 +168,13 @@ export const registerSpecialistIpcHandlers = (
     service: MarketplaceService
     broadcastDownloadProgress: (progress: MarketplaceDownloadProgress) => void
   },
-  pluginSource?: PluginSourceCandidateStore
+  pluginSource?: PluginSourceCandidateStore,
+  // E3-2: where a deployed plugin lives, and what the execution-protection policy says about running one.
+  // Absent means the strict default below: unprotected, and an approval required every single time — a
+  // caller that wired none of this can read a plugin's declaration but cannot silently execute one.
+  pluginPluginsRoot?: string,
+  pluginProtection?: ExecutionProtectionSnapshot,
+  pluginRunPolicy?: 'confirm' | 'remembered' | 'deny'
 ): void => {
   // Subscribe once so every mutation (create, setEnabled) triggers a broadcast.
   service.subscribe(broadcastCatalogChanged)
@@ -202,6 +216,61 @@ export const registerSpecialistIpcHandlers = (
         // nothing can cancel.
         sender?.once?.('destroyed', () => pluginSource.dispose(ownerId))
         return pluginSource.preview(request.reference, ownerId)
+      }
+    )
+
+    // Two operations, one shape: the window names the token it was given and says whether it confirmed the
+    // act in words it showed the reader. The gate decides first; nothing is written and nothing is spawned
+    // before it does.
+    const pluginOperationOptions = (
+      confirmed: boolean
+    ): Parameters<PluginSourceCandidateStore['deploy']>[2] => ({
+      // No invented path: a caller that never said where plugins live gets a refusal that says so, below.
+      pluginsRoot: pluginPluginsRoot ?? '',
+      confirmed,
+      protection: pluginProtection,
+      policy: pluginRunPolicy ?? 'confirm'
+    })
+
+    ipcMainHandle(
+      SPECIALIST_IPC.PLUGIN_SOURCE_DEPLOY,
+      async (event, request: unknown): Promise<PluginOperationOutcomeView> => {
+        if (!isPluginOperationRequest(request)) {
+          throw new Error('Invalid plugin deploy request.')
+        }
+        if (!pluginPluginsRoot) {
+          return {
+            state: 'refused',
+            reason: 'plugins-root-unavailable',
+            detail: 'No plugins directory was configured, so there is nowhere to deploy to.'
+          }
+        }
+        return pluginSource.deploy(
+          rendererOwnerId(event),
+          request.token,
+          pluginOperationOptions(request.confirmed)
+        )
+      }
+    )
+
+    ipcMainHandle(
+      SPECIALIST_IPC.PLUGIN_SOURCE_RUN_ONCE,
+      async (event, request: unknown): Promise<PluginOperationOutcomeView> => {
+        if (!isPluginOperationRequest(request)) {
+          throw new Error('Invalid plugin run request.')
+        }
+        if (!pluginPluginsRoot) {
+          return {
+            state: 'refused',
+            reason: 'plugins-root-unavailable',
+            detail: 'No plugins directory was configured, so there is nothing deployed to run.'
+          }
+        }
+        return pluginSource.runOnce(
+          rendererOwnerId(event),
+          request.token,
+          pluginOperationOptions(request.confirmed)
+        )
       }
     )
 

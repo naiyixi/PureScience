@@ -24,7 +24,11 @@ export type PluginOperationDecision =
   | { state: 'allowed'; detail: string }
   | {
       state: 'refused'
-      reason: 'confirmation-missing' | 'unprotected-execution-denied' | 'approval-required'
+      reason:
+        | 'confirmation-missing'
+        | 'protection-unavailable'
+        | 'unprotected-execution-denied'
+        | 'approval-required'
       detail: string
     }
 
@@ -32,7 +36,7 @@ export const decidePluginOperation = (input: {
   operation: PluginOperation
   /** True only when the caller's own interface asked, naming what happens (see PLUGIN_OPERATION_RULE). */
   confirmed: boolean
-  protection: ExecutionProtectionSnapshot
+  protection?: ExecutionProtectionSnapshot
   policy: RemoteUnprotectedExecutionPolicy
 }): PluginOperationDecision => {
   const rule = PLUGIN_OPERATION_RULE[input.operation]
@@ -55,7 +59,18 @@ export const decidePluginOperation = (input: {
     }
   }
 
-  const { level, scope } = input.protection
+  // A run whose protection could not be established is refused rather than guessed at: this module will
+  // not invent a snapshot to judge by.
+  const protection = input.protection
+  if (!protection) {
+    return {
+      state: 'refused',
+      reason: 'protection-unavailable',
+      detail:
+        'No execution-protection snapshot was provided, so this run cannot be judged; it is refused.'
+    }
+  }
+  const { level, scope } = protection
   if (policyDeniesUnprotectedExecution(input.policy, level)) {
     return {
       state: 'refused',

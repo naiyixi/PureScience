@@ -56,7 +56,7 @@ describe('renderer contract catalog', () => {
     // the fetching, so they are local-only — the catalog, the preload inventory and the local-Web
     // installation set each move by two, while the remote-Web set grows by the rejecting stub a
     // local-only channel gets there.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(479)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(481)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -113,7 +113,7 @@ describe('renderer contract catalog', () => {
     // 78 before the plugin source channels; the two of them are local-only, so they join this set.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(80)
+    ).toHaveLength(82)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(128)
@@ -207,7 +207,7 @@ describe('renderer contract catalog', () => {
       publicPath.startsWith('specialist.')
     )
     // 31 before the plugin source read and its cancel; both are specialist channels.
-    expect(specialist).toHaveLength(33)
+    expect(specialist).toHaveLength(35)
     expect(
       specialist.every(
         ({ surfaceInstallation }) =>

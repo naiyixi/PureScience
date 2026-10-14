@@ -18,6 +18,8 @@ export const SPECIALIST_IPC = {
   // the app keeps what it read under a token — nothing is deployed from these two channels.
   PLUGIN_SOURCE_PREVIEW: 'specialist:plugin-source-preview',
   PLUGIN_SOURCE_CANCEL: 'specialist:plugin-source-cancel',
+  PLUGIN_SOURCE_DEPLOY: 'specialist:plugin-source-deploy',
+  PLUGIN_SOURCE_RUN_ONCE: 'specialist:plugin-source-run-once',
   SAVE_PACKAGE_REPORT: 'specialist:package-report-save',
   PREVIEW_EXPORT: 'specialist:export-preview',
   EXPORT: 'specialist:export-save',

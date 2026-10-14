@@ -793,6 +793,16 @@ export interface PureScienceAPI {
       reference: string
     }): Promise<PluginSourceCandidatePreview<PluginSourcePreview>>
     pluginSourceCancel(): Promise<{ dropped: number }>
+    // E3-2 (v2.3.0): deploying and running are separate acts, and both need the window to say it
+    // confirmed them. The reason strings come from the main-process gate; the sentences do not.
+    pluginSourceDeploy(request: {
+      token: string
+      confirmed: boolean
+    }): Promise<PluginOperationOutcomeView>
+    pluginSourceRunOnce(request: {
+      token: string
+      confirmed: boolean
+    }): Promise<PluginOperationOutcomeView>
   }
   handoff: {
     onChanged(listener: AcpListener<HandoffLifecycleChange>): RemoveListener

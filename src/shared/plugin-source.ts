@@ -333,3 +333,29 @@ export const checkPluginDeclaration = (manifest: PluginManifest): PluginDeclarat
 
   return { state: 'ok' }
 }
+
+/**
+ * What the window is told after it asks to deploy or to run once.
+ *
+ * Codes and parameters only: the sentences a reader sees are the renderer's, keyed by these states, so the
+ * main process never has to own prose. `refused.reason` is the gate's own reason string, and it is passed
+ * through verbatim rather than mapped.
+ */
+export type PluginOperationOutcomeView =
+  | {
+      state: 'deployed'
+      pluginId: string
+      directory: string
+      entries: { entry: string; bytes: number; sha256: string }[]
+    }
+  | {
+      state: 'ran'
+      command: string
+      exitCode: number | null
+      signal: string | null
+      timedOut: boolean
+      stdout: string
+      stderr: string
+      durationMs: number
+    }
+  | { state: 'refused'; reason: string; detail: string }

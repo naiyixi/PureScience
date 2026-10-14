@@ -18,7 +18,11 @@ export type PluginOperationOutcome =
       decision: PluginOperationDecision
       deployment: Extract<PluginDeployResult, { state: 'deployed' }>
     }
-  | { state: 'ran'; decision: PluginOperationDecision; run: PluginRunResult }
+  | {
+      state: 'ran'
+      decision: PluginOperationDecision
+      run: Extract<PluginRunResult, { state: 'ran' }>
+    }
   | {
       state: 'refused'
       reason:
@@ -26,6 +30,7 @@ export type PluginOperationOutcome =
         | 'token-expired'
         | 'not-previewed'
         | 'confirmation-missing'
+        | 'protection-unavailable'
         | 'unprotected-execution-denied'
         | 'approval-required'
         | 'declaration-refused'

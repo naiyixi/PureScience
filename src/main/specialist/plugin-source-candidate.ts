@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import {
   checkPluginDeclaration,
   type PluginDeclarationCheck,
+  type PluginOperationOutcomeView,
   type PluginSourceCandidatePreview
 } from '../../shared/plugin-source'
 import {
@@ -10,6 +11,8 @@ import {
   type PluginFetchOutcome,
   type PluginSourcePreview
 } from './plugin-source'
+import type { decidePluginOperation } from './plugin-run-policy'
+import { deployCandidate, runCandidateOnce, type PluginOperationOutcome } from './plugin-operations'
 
 // E2: the step between a preview and a deployment. A window previews a repository, the app keeps what was
 // previewed under an opaque token, and the later deploy step can only act on a token this module issued —
@@ -104,6 +107,58 @@ export class PluginSourceCandidateStore {
     return dropped
   }
 
+  /**
+   * E3-2: deploy and run are the store's own operations because the token and the bytes are the store's own
+   * state. Both go through the gate first (see plugin-run-policy) — and what goes back to the window is codes
+   * and parameters, never prose and never a decision the main process made on the reader's behalf.
+   */
+  async deploy(
+    ownerId: PluginSourceOwnerId,
+    token: string,
+    options: {
+      pluginsRoot: string
+      confirmed: boolean
+      protection: Parameters<typeof decidePluginOperation>[0]['protection']
+      policy: Parameters<typeof decidePluginOperation>[0]['policy']
+    }
+  ): Promise<PluginOperationOutcomeView> {
+    const outcome = await deployCandidate({
+      store: this,
+      token,
+      ownerId,
+      pluginsRoot: options.pluginsRoot,
+      confirmed: options.confirmed,
+      protection: options.protection,
+      policy: options.policy,
+      fetchBytes: this.deps.fetchBytes
+    })
+    return toOperationView(outcome)
+  }
+
+  async runOnce(
+    ownerId: PluginSourceOwnerId,
+    token: string,
+    options: {
+      pluginsRoot: string
+      confirmed: boolean
+      protection: Parameters<typeof decidePluginOperation>[0]['protection']
+      policy: Parameters<typeof decidePluginOperation>[0]['policy']
+      timeoutMs?: number
+    }
+  ): Promise<PluginOperationOutcomeView> {
+    const outcome = await runCandidateOnce({
+      store: this,
+      token,
+      ownerId,
+      pluginsRoot: options.pluginsRoot,
+      confirmed: options.confirmed,
+      protection: options.protection,
+      policy: options.policy,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs })
+    })
+    return toOperationView(outcome)
+  }
+
   private now(): number {
     return (this.deps.now ?? Date.now)()
   }
@@ -118,4 +173,35 @@ export class PluginSourceCandidateStore {
       if (record.createdAt <= cutoff) this.candidates.delete(token)
     }
   }
+}
+
+/**
+ * The window's view of what happened: codes and parameters. The renderer owns the sentences.
+ */
+const toOperationView = (outcome: PluginOperationOutcome): PluginOperationOutcomeView => {
+  if (outcome.state === 'deployed') {
+    return {
+      state: 'deployed',
+      pluginId: outcome.deployment.pluginId,
+      directory: outcome.deployment.directory,
+      entries: outcome.deployment.entries.map((entry) => ({
+        entry: entry.entry,
+        bytes: entry.bytes,
+        sha256: entry.sha256
+      }))
+    }
+  }
+  if (outcome.state === 'ran') {
+    return {
+      state: 'ran',
+      command: outcome.run.command,
+      exitCode: outcome.run.exitCode,
+      signal: outcome.run.signal,
+      timedOut: outcome.run.timedOut,
+      stdout: outcome.run.stdout,
+      stderr: outcome.run.stderr,
+      durationMs: outcome.run.durationMs
+    }
+  }
+  return { state: 'refused', reason: outcome.reason, detail: outcome.detail }
 }

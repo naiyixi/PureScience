@@ -432,6 +432,15 @@ describe('plugin operation gate', () => {
     })
     expect(protectedRun).toMatchObject({ state: 'allowed' })
   })
+
+  it('refuses a run when no protection snapshot was provided, rather than inventing one', () => {
+    const decision = decidePluginOperation({
+      operation: 'run-once',
+      confirmed: true,
+      policy: 'remembered'
+    })
+    expect(decision).toMatchObject({ state: 'refused', reason: 'protection-unavailable' })
+  })
 })
 
 describe('plugin run once (real child process)', () => {
