@@ -8,6 +8,7 @@ import {
   parsePluginSourceReference,
   pluginSourceManifestUrls
 } from '../../shared/plugin-source'
+import { PluginSourceCandidateStore } from './plugin-source-candidate'
 import { previewPluginSource, type PluginFetchOutcome } from './plugin-source'
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
@@ -160,5 +161,98 @@ describe('plugin source preview', () => {
     expect(preview).toMatchObject({ state: 'unavailable', reason: 'manifest-invalid' })
     if (preview.state !== 'unavailable') throw new Error('expected a refusal')
     expect(preview.fetched).toEqual({ bytes: bytes.byteLength, sha256: sha256(bytes) })
+  })
+})
+
+describe('plugin source candidate', () => {
+  const manifestBytes = (): Uint8Array =>
+    new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: 1,
+        id: 'demo-plugin',
+        display_name: 'Demo plugin',
+        summary: 'A plugin used by the tests.',
+        license: 'MIT',
+        runtime: { kind: 'node' },
+        tools: [{ name: 'demo_tool', description: 'Does the demo thing.', entry: 'tools/demo.mjs' }]
+      })
+    )
+
+  it('issues a token for what was read, binds it to the owner, and refuses a token it never issued', async () => {
+    const store = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: true, bytes: manifestBytes() })
+    })
+    const candidate = await store.preview('github:acme/plugin', 'owner-1')
+    expect(candidate.state).toBe('available')
+    expect(candidate.candidateToken).not.toBe('')
+    expect(candidate.declaration).toEqual({ state: 'ok' })
+
+    const taken = store.take(candidate.candidateToken, 'owner-1')
+    expect(taken.state).toBe('ok')
+    // Another owner cannot act on it, and a token nobody issued is refused rather than guessed at.
+    expect(store.take(candidate.candidateToken, 'owner-2')).toEqual({
+      state: 'refused',
+      reason: 'unknown-token'
+    })
+    expect(store.take('not-issued-by-us', 'owner-1')).toEqual({
+      state: 'refused',
+      reason: 'unknown-token'
+    })
+  })
+
+  it('expires a token instead of honouring an old approval', async () => {
+    let clock = 1_000
+    const store = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: true, bytes: manifestBytes() }),
+      now: () => clock,
+      ttlMs: 60_000
+    })
+    const candidate = await store.preview('github:acme/plugin', 'owner-1')
+    clock += 61_000
+    expect(store.take(candidate.candidateToken, 'owner-1')).toEqual({
+      state: 'refused',
+      reason: 'token-expired'
+    })
+  })
+
+  it('issues no token for a preview that could not be read, and counts what a disposal dropped', async () => {
+    const store = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: false, status: 404 })
+    })
+    const refused = await store.preview('github:acme/plugin', 'owner-1')
+    expect(refused.state).toBe('unavailable')
+    expect(store.take(refused.candidateToken, 'owner-1')).toEqual({
+      state: 'refused',
+      reason: 'unknown-token'
+    })
+
+    const good = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: true, bytes: manifestBytes() })
+    })
+    await good.preview('github:acme/plugin', 'owner-1')
+    await good.preview('github:acme/plugin', 'owner-1')
+    expect(good.dispose('owner-1')).toBe(2)
+    expect(good.dispose('owner-1')).toBe(0)
+  })
+
+  it('refuses a declaration the app cannot honour, before anything could run', async () => {
+    const unsafe = new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: 1,
+        id: 'demo-plugin',
+        display_name: 'Demo plugin',
+        summary: 'A plugin used by the tests.',
+        license: 'MIT',
+        runtime: { kind: 'node' },
+        tools: [{ name: 'demo_tool', description: 'Does the demo thing.', entry: '../outside.mjs' }]
+      })
+    )
+    const store = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: true, bytes: unsafe })
+    })
+    const candidate = await store.preview('github:acme/plugin', 'owner-1')
+    expect(candidate.declaration).toMatchObject({ state: 'refused', reason: 'entry-unsafe' })
+    if (candidate.declaration.state !== 'refused') throw new Error('expected a refusal')
+    expect(candidate.declaration.detail).toContain('tools.demo_tool.entry')
   })
 })

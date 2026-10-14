@@ -221,3 +221,70 @@ export const parsePluginManifest = (bytes: Uint8Array): PluginManifestParse => {
     )
   }
 }
+
+// ── E2: the preview a window holds before anything is deployed ────────────────────────────────────────
+//
+// The existing Specialist import flow binds a preview to an opaque `candidateToken`, and this follows it for
+// the same reason: a later step has to act on exactly what was shown, not on whatever a second fetch would
+// return. The token therefore carries the digest of the bytes that were read, and the deploy step (E3) checks
+// it against what it fetches before anything runs.
+
+// Generic over the preview a caller holds, so this module never has to know the main process's shape:
+// the store binds it to the plugin preview, exactly as the Specialist import flow binds its own.
+export type PluginSourceCandidatePreview<P> = P & { candidateToken: string }
+
+/**
+ * What a declaration is checked against BEFORE anything is deployed or executed: the app's own runtime kinds,
+ * and the shape of the entries a tool would be run from. Every refusal names the field and why.
+ */
+export type PluginDeclarationCheck =
+  | { state: 'ok' }
+  | {
+      state: 'refused'
+      reason: 'runtime-unsupported' | 'entry-unsafe' | 'tool-name-duplicated'
+      detail: string
+    }
+
+export const PLUGIN_SUPPORTED_RUNTIMES = ['node', 'python'] as const
+
+const SAFE_ENTRY = /^[A-Za-z0-9._/-]+$/
+
+export const checkPluginDeclaration = (manifest: PluginManifest): PluginDeclarationCheck => {
+  if (!(PLUGIN_SUPPORTED_RUNTIMES as readonly string[]).includes(manifest.runtime.kind)) {
+    return {
+      state: 'refused',
+      reason: 'runtime-unsupported',
+      detail: `runtime.kind: the app runs ${PLUGIN_SUPPORTED_RUNTIMES.join(' and ')}; this declares ${manifest.runtime.kind}.`
+    }
+  }
+
+  const seen = new Set<string>()
+  for (const tool of manifest.tools) {
+    if (seen.has(tool.name)) {
+      return {
+        state: 'refused',
+        reason: 'tool-name-duplicated',
+        detail: `tools: "${tool.name}" is declared twice; a name has to identify one tool.`
+      }
+    }
+    seen.add(tool.name)
+    // The entry is a path inside the repository, and it is checked as a path: no traversal segment, no
+    // absolute path, no empty segment. A declaration that points outside the repository is refused here,
+    // before anything is fetched for execution.
+    const segments = tool.entry.split('/')
+    const unsafe =
+      tool.entry.startsWith('/') ||
+      tool.entry === '' ||
+      !SAFE_ENTRY.test(tool.entry) ||
+      segments.some((segment) => segment === '' || segment === '.' || segment === '..')
+    if (unsafe) {
+      return {
+        state: 'refused',
+        reason: 'entry-unsafe',
+        detail: `tools.${tool.name}.entry: "${tool.entry}" is not a safe path inside the repository.`
+      }
+    }
+  }
+
+  return { state: 'ok' }
+}
