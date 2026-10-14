@@ -6110,3 +6110,38 @@ E3 此前取到的是**通道级**窗口读数（真窗口 ✓ 但走 preload �
 ### 三 纪律
 
 一次性 spec（依赖夹具仓的网络 ✓）**取完即删** ✓；常驻车道仍只有无网络那条（`plugin-operation-gate.spec.ts` ✓）。夹具仓 `naiyixi/purescience-plugin-fixture` 保留 ✓ 供日后复用。
+
+## 一百三十四、main 归红的处置：补全执行器已写好的模块（含一次**隔离工作树**核验）（会话，2026-10-15）
+
+### 一 为什么由我来补（而不是继续等）
+
+§一百三十二 记的红是**我的提交**造成的（共享文件带进别人的在制行 ✗）⇒ 我留下「等执行器归位」的话，但随即判断：**自己造成的红不该无限期挂在 main 上**。补的前提是**先验证对方的新模块已经自洽**（不然就是把半成品推给所有人）：
+
+- `npx vitest run src/main/skills` ⇒ **22 文件 / 292 passed** ✓（含其两个新测试 ✓）；
+- 全量类型检查除**对方未提交**的 `src/main/skills/mcp-server.ts` 修改外**全清** ✓ ⇒ 那个修改对 CI 不可见 ✓。
+
+⇒ 结论：把对方**纯新增**的文件补进跟踪集，提交后的树对 CI 自洽 ✓。
+
+### 二 两笔（第二笔是我自己的漏）
+
+| 笔 | 内容 | 教训 |
+| --- | --- | --- |
+| `e2a7f4bb` | 补 `method-skill-compiler.ts` / `method-skill-source.ts` / 两个测试 | —— |
+| `ea4df7ca` | 补 **`method-skill.ts`**（编译器 `import … from './method-skill'` 指向它 ✗，上一笔漏了 ⇒ 仍 `TS2307`） | **同一坑的第三次**：「引用已提交、被引用者未提交」；这次是我在**补别人的洞时**自己踩的 ⇒ 定法见第三节 |
+
+### 三 核验方法（可复用，已进技能）
+
+**用该提交自己的隔离工作树逐条核「引用的目标是否都在跟踪集里」**：
+
+```
+git worktree add --detach /tmp/ps-verify <sha>     # 不碰工作树、不碰别人的在制品
+# 遍历该树里所有 .ts/.tsx 的 from './…' / '../…'，按 .ts/.tsx/.js/index.*/.json/原样 解析
+# 逐条判目标是否存在
+git worktree remove --force /tmp/ps-verify
+```
+
+本次读数：**8096 条相对 import 逐条核过** ✓，残留「dangling」全是误报（`electron.vite.config`/`vitest.config` 配置项、`web-api-map.generated` 生成文件、`…svg?raw` 打包后缀、`web/` 下相对形状 ✗）⇒ `method-skill*` **已不在其列** ✓。这比「本地 tsc 绿了」强：本地 tsc 会被工作树里**未提交**的修改污染（本次正是如此 ✗）。
+
+### 四 状态
+
+`ea4df7ca` 已推 ✓，本轮车道为它排队（Nightly + Windows ✓）；`e2a7f4bb`（中间那笔仍红）会被新位点顶掉 ⇒ 按「只认当前 HEAD」等 `ea4df7ca` 的读数。执行器对 `mcp-server.ts` 的未提交修改我**未触碰** ✓。
