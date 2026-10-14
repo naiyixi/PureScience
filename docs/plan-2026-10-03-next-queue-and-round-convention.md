@@ -5488,3 +5488,56 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 
 1. **临时 spec 放错目录**：放在 `e2e/` 却用了认证目录的相对路径（`../fixtures/…`、`./helpers`）⇒ `Cannot find module`。定法：要么放进 `e2e/certification/`，要么把两条 import 改成该层级自己的相对路径。
 2. **`execute_code` 里 `sleep 300` 撞 5 分钟上限**：内核被回收、状态丢失。长等要用 terminal 的前台超时（可到 600s），不要在 execute_code 里睡。
+
+## 一百一十六、v2.3.0（批 E「方法即产物」）**动手前勘查** + 一处前提改判（会话，2026-10-14）
+
+> 本笔**零代码**：冻结推送期间（`2ab9524d` 的 Release/Nightly 仍在跑）做的只读勘查与改判登记。同 §一百〇一 的体例。
+
+### 一 依赖核（排期档说 v2.3.0 需要「D 的结构节点类型与 engine-catalog」）
+
+| 前提 | 现状 |
+| --- | --- |
+| 结构节点类型 | **在位**：`src/shared/structure-selection.ts`（`StructureSelection` / `StructureSelectionLabel`），已被 `shared/acp.ts`、`shared/artifact-provenance.ts` 引用 ✓ |
+| engine-catalog | **在位**：渲染端 `pages/settings/EngineMatrixSection.tsx` + `engine-matrix-copy.ts`（含专门用例）✓ |
+
+⇒ D 的两处复用点可用，**批 E 不被阻塞**。
+
+### 二 两半的现状与缺口（逐条 grep 到源）
+
+**甲半「画布 → 编译为可调用能力」——前提未复现。**
+
+- 「画布」面 **零命中**：`workflow-canvas|WorkflowCanvas|nodeGraph|reactflow|xyflow` 在 `src/renderer/src`、`src/main` 全无；`canvas` 的命中只有 HTML `<canvas>` 预览（TIFF 缩略图等）⇒ **不存在节点图画布**。
+- 与它相邻的**既有承载体**（若要改判成「方法→能力」，这些是要复用的）：
+  - `src/skills/user-skill-repository.ts`（`UserSkillRepository`：用户技能的落盘与目录安全边界，被 `settings/service.ts`、`settings/skill-catalog.ts` 使用）✓
+  - 技能导入/管理 UI（`pages/settings/SkillImportView.tsx`、`SkillsPanel.tsx`）✓
+  - notebook 运行记录（**方法本身**：脚本、输出、`riskReview` 收据、内容哈希）✓
+  - `src/main/agents/customize/workflow.ts`（211 行，`CapabilityScope` / `mustAskForScope` / 权限审查卡）—— 相邻但**不同**：它管「创建代理时的能力范围审查」，不是「把方法变成能力」✗
+
+**乙半「插件创建器」——缺的是「公开仓库」那一环。**
+
+- 既有：`src/main/specialist/package/`（适配器把**本地**文件/归档读成 `preview.installable` ✓，含大量用例）✓；`src/main/specialist/marketplace/`（`official-source.ts` / `protocol.ts` / `repository.ts` ⇒ 有**远端源协议**的雏形 ✓，但面向**官方**市场）✓
+- **零命中**：`http|url|git|clone|fetch` 在 `specialist/package/*.ts` ⇒ 读**任意第三方公开仓库**这条链不存在 ✗
+
+### 三 改判建议（依本仓先例：前提未复现 ⇒ 当场改判并记档，不改口径硬做）
+
+建议 **v2.3.0 第一片取乙半的最小真链**：**第三方公开仓库 → 预览 → 声明工具/运行时 → 部署 → 真跑一次**。理由：包/预览/安装/权限四套机制**都已存在**，第一片只需补「公开仓库取回 + 声明校验 + 一次真执行读数」三处；而甲半若指「新建节点图画布」，那是一个**独立的大单元**（须单独立项、单独立窗口），不应塞进 v2.3.0 首片；若指「把已记录的方法（notebook 运行 / 会话步骤）编译成可调用技能」，**有承载体**（`UserSkillRepository` + 运行记录），可作为第二小片。
+
+### 四 红线（差异化，逐条可执行核验）
+
+**乙半（插件创建器首片）**：
+1. **来源可核**：取回前后的 `sha`/字节数与来源声明必须对得上（可复算，不是「下载成功」）；
+2. **声明即约束**：包声明的工具/运行时在执行前**具名校验**，缺项**具名拒答**（零执行、零落地）；
+3. **真跑一次**：部署后必须有一次**真执行**的读数（不是「安装成功」）；
+4. **两种缺态各自有话**（无声明 / 声明不满足）+ 文案 9 语。
+
+**甲半（若做「方法→技能」小片）**：① 技能**来源可追**（来自哪次运行/哪段会话，可复算）；② 编译产物**可复现**（同一方法两次编译逐字节同）；③ 缺态具名（方法不足 / 已被改 / 无法定位）。
+
+### 五 链规模粗估与本笔边界
+
+- 乙半首片 ≈ **600–900 行**（主进程取回与校验 + 渲染端预览/确认 + 用例 20–30 条 + 真机读数 1 条）；
+- 甲半小片 ≈ 300–500 行；
+- **本笔未做**：任何实现、任何读数（无代码 ✓）。
+
+### 六 待用户一句话（不擅自动范围）
+
+v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的「方法→技能」小片**？我的建议是**乙半**（复用面最大、红线能直接套既有口径）。
