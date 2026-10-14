@@ -6271,4 +6271,8 @@ GATE_EXIT=0
 | 正文 | **44,814 字符**；`from_run_id` ×3 ✓ / `Deployed plugin` ×1 ✓ / `approval-required` ×4 ✓ / `sha256 74644b92` ×1 ✓ / 「明确没做」×2 ✓ / 成熟度块 ×1 ✓ |
 | **未签名披露** | `> ⚠️ **macOS signing status: unsigned** — the macOS packages in this release carry only an ad-hoc signature (no Apple Developer ID credentials are configured…)` ✓ ⇒ 绿的 notarize 作业读不成「已公证」✓ |
 
+| 门禁（隔离工作树逐环自证） | `[ring] cwd=/tmp/ps-release-gate version=2.3.0` ✓；`Test Files 1298 passed | 16 skipped (1314)`、`Tests 16650 passed | 207 skipped (16857)`、`Duration 229.23s` ✓；五环 `eslint|OK · typecheck:node|OK · typecheck:web|OK · vitest|OK · repo-checks|OK`、`GATE_EXIT=0` ✓ |
+
+> 附注：发版当晚对 `scripts/release-gate.sh` 的**第一次调用写错了路径**（脚本是**技能自带**的，不在仓内 ⇒ `GATE_EXIT=127` ✗）⇒ 属调用错误、非代码红；正确调用（技能路径 + 隔离工作树）随即全绿 ✓。
+
 ⇒ **v2.3.0 发布完成**：批 E 两半（甲半：运行记录编译成可调用技能；乙半：第三方公开仓库成为可核验的插件来源）随版发出，页面自带成熟度自陈、逐条「明确没做」与未签名披露。
