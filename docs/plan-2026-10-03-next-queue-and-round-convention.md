@@ -5541,3 +5541,31 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 ### 六 待用户一句话（不擅自动范围）
 
 v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的「方法→技能」小片**？我的建议是**乙半**（复用面最大、红线能直接套既有口径）。
+
+## 一百一十七、v2.3.0 首片 **E1 已交付**：插件创建器 —— 来源与预览（会话，2026-10-14）
+
+### 一 交付（数据层 + 用例 + 真读数；UI 接线与部署**不在本片**）
+
+| 层 | 落点与要点 |
+| --- | --- |
+| 共享 | 新 `src/shared/plugin-source.ts`：**引用解析**（`github:owner/repo[@ref][/path]` 与 `https://github.com/…`，含浏览器链接的 `/tree\|/blob/<ref>/…` 形式；**未指明主机的写法一律拒答**——猜主机就是猜代码来源）；**段校验**与 marketplace protocol 同规（`.` / `..` 是遍历不是名字）；**清单 schema**（zod、`.strict()`）：声明 `runtime{kind,version?}` + `tools[{name,description,entry}]`，逐条 issue 具名；**镜像 URL 只由引用决定** ⇒ 可复算 |
+| 主进程 | 新 `src/main/specialist/plugin-source.ts`：`previewPluginSource(input, {fetchBytes})` —— 按镜像顺序取回（`fetchBytes` 注入 ⇒ 用例无网络）、**零写入**、报**真字节**的 `sha256` + 字节数；四种具名缺态：`invalid-reference`（**零请求**）/ `manifest-missing` / `source-unreachable` / `manifest-invalid` |
+| 命名决定（具名） | 清单文件名 **`purescience-plugin.json`** 是新名：既有 `manifest.json` / `specialist.json` 属**封闭**的专家包格式，且其诊断明确写着「dependency declarations are not supported」⇒ 两种格式各归各，不混用 |
+| 用例 | 7 条（纯、无网络）：引用各形态与拒答、镜像 URL、schema 各违规逐条、成功路径（摘要由用例**自己**算 ⇒ 模块编不出哈希）、镜像 404 后换下一个、全都 404 ⇒ `manifest-missing`、主机故障 ⇒ `source-unreachable`、坏引用**零请求**、**内容被拒时仍携带摘要** |
+
+### 二 真读数（真仓库、真字节，取完即删）
+
+- 真公开仓库（其根无清单）⇒ `manifest-missing`，`detail` ＝ **`Tried 2 host(s); statuses 404, 404 (last: …)`** —— 「都没有」是对**所有**主机的断言，逐台计数得到 ✓；
+- 真公开文件（走显式 `.json` 路径）⇒ `manifest-invalid` 并逐条 issue（`schema_version` / `id` / `display_name` / `runtime` …）✓，且 **`fetched.sha256 = f3e9b38a2c50285001477ac8c91d691d156480b0276ad1f3331ccf1c0f82d322`、`6316` 字节**，与独立 `curl … | shasum -a 256` **逐字符相同** ✓ ⇒ **「来源可核」这条红线在真数据上成立**。
+- 读数用一次性 vitest 文件（跑完即删 ✓），**不进车道** —— 它依赖第三方网络 ✓（本片第二次尝试时就撞了 120 s 超时，同一读数上一次 8.6 s ✓）。
+
+### 三 本片自踩（三处）
+
+1. **我自己的用例抓到实现里的真漏洞**：`github:acme/../plugin` 被接受 ✗（`..` 通过了段校验）⇒ 按 marketplace protocol 同规显式排除 `.` / `..`（这正是那条规则的由来）。
+2. **设计缺口**：`manifest-invalid` 起初**不带**读到的字节摘要 ✗ —— 而「来源可核」恰恰在最需要它的那条路上（内容被拒时）⇒ 拒绝也携带 `fetched`，并补一条把它钉住的用例。
+3. **锚点连环失手**：prettier 折行让两处脚本锚点失配、且一次替换串含三引号 ⇒ 两次脚本抛出**未写盘** ✓（定法不变：替换串先落文件、脚本按「含」定位、必要时从两处鲁棒锚点**整段重写**而不是逐行锚）。另：读数首次撞 120 s 超时（真实网络抖动）⇒ 读数加每请求 15 s 超时。
+
+### 四 读数与未做
+
+`src/main/specialist` **17 文件 / 266 passed** ✓；双 typecheck 0；eslint 0；`pre-push-checks` 0。
+**未做（具名，属 E2/E3）**：① UI 接线（接入点是既有 `specialist-store.packagePreview` 的预览/安装流）；② **声明即约束**的执行前具名校验 + **真跑一次**的读数（部署与执行尚未实现）；③ 上屏文案 9 语（本片无上屏文案）。
