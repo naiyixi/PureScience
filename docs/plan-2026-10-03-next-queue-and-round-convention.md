@@ -6033,3 +6033,11 @@ spawn 自证 : cwd = …/T/plugin-run-PHHsGK（自己的目录，不含 plugins�
 ### 四 纪律执行
 
 按「依赖第三方网络的读数不进车道」：**一次性 spec 取完即删** ✓（`e2e/certification/plugin-deploy-run-once.spec.ts` 不提交）；常驻车道只留无网络的那条（`plugin-operation-gate.spec.ts`）✓。夹具仓保留（公开、可复现，供日后一次性读数复用 ✓）。
+
+### 五 位点与一条**不属于我**的红
+
+- 本笔 `62f63245` 已推（`bd929c16..62f63245`）✓；
+- `Windows Full Test @9f0136d2` = **success** ✓；**`Nightly @9f0136d2` = failure** ✗，读原文为：
+  `src/main/ipc.ts(392,43): Cannot find module './skills/method-skill-compiler'` +
+  `src/main/ipc.ts(1950,7): 'skillMethodCompiler' does not exist in type 'NotebookLocalRpcServerOptions'`
+  ⇒ **执行器在制品**（其 `src/main/skills/method-skill-compiler.ts` 等仍处**未跟踪**状态 ⇒ 已提交的引用指向未提交的文件，与我先前那一类同）。**归属：执行器**，我**不碰**（避免把半成品模块一起提交），仅记明。两边同改 `src/main/ipc.ts` 但改动区段不同（我的是 specialist 注册处 ✓）。
