@@ -23,13 +23,14 @@ const run = async (
 
 const B = 'https://www.ebi.ac.uk/chembl/api/data'
 
-// ── the six tools exist with the exact source ids ──────────────────────────
+// ── the seven tools exist with the exact source ids ────────────────────────
 describe('chembl / registry', () => {
-  it('exposes exactly the six source tools', () => {
+  it('exposes exactly the seven source tools', () => {
     expect(CHEMBL_TOOLS.map((t) => t.id).sort()).toEqual([
       'compound_search',
       'drug_search',
       'get_admet',
+      'get_assay',
       'get_bioactivity',
       'get_mechanism',
       'target_search'
@@ -309,6 +310,14 @@ describe('chembl / get_admet', () => {
 
 // ── get_bioactivity ──────────────────────────────────────────────────────────
 describe('chembl / get_bioactivity', () => {
+  it('narrows to one assay when an assay id is given', async () => {
+    const { urls } = await run('get_bioactivity', { assay_chembl_id: 'CHEMBL1217643', limit: 5 }, [
+      okJson({ activities: [], page_meta: { total_count: 0 } })
+    ])
+
+    expect(urls[0]).toContain('assay_chembl_id=CHEMBL1217643')
+  })
+
   it('single page ordered by activity_id, shaped records, most-potent summary', async () => {
     const { out, urls } = await run(
       'get_bioactivity',
@@ -448,5 +457,81 @@ describe('chembl / target_search', () => {
     // gene_symbol is the first GENE_SYMBOL synonym; xrefs carry a null xref_src_url.
     expect(comp.gene_symbol).toBe('EGFR')
     expect((comp.target_component_xrefs as Record<string, unknown>[])[0].xref_src_url).toBeNull()
+  })
+})
+
+// ── get_assay ────────────────────────────────────────────────────────────────
+describe('chembl / get_assay', () => {
+  const assayRow = {
+    assay_chembl_id: 'CHEMBL1217643',
+    description: 'Inhibition of human hERG',
+    assay_type: 'B',
+    assay_type_description: 'Binding',
+    assay_organism: 'Homo sapiens',
+    confidence_score: 9,
+    confidence_description: 'Direct single protein target assigned',
+    relationship_type: 'D',
+    bao_format: 'BAO_0000357',
+    bao_label: 'single protein format',
+    target_chembl_id: 'CHEMBL240',
+    document_chembl_id: 'CHEMBL1212834',
+    src_id: 1,
+    variant_sequence: null,
+    assay_parameters: [{ type: 'temperature' }]
+  }
+
+  it('quotes the assay record and reports the verified activity total (a capped page says so)', async () => {
+    const { out, urls } = await run(
+      'get_assay',
+      { assay_chembl_id: 'chembl1217643', activity_limit: 2 },
+      [
+        okJson({ assays: [assayRow], page_meta: { total_count: 1 } }),
+        okJson({
+          activities: [
+            { activity_id: 1, standard_type: 'IC50', standard_value: 10, standard_units: 'nM' },
+            { activity_id: 2, standard_type: 'IC50', standard_value: 20, standard_units: 'nM' }
+          ],
+          page_meta: { total_count: 250 }
+        })
+      ]
+    )
+    const result = out as {
+      assay: { description: string; confidence_score: number; confidence_description: string }
+      activities: { count: number; total: number; truncated: boolean }
+    }
+
+    // The id is normalised to upper case and the request carries THAT id — never a guessed name.
+    expect(urls[0]).toContain('assay_chembl_id=CHEMBL1217643')
+    expect(urls[1]).toContain('assay_chembl_id=CHEMBL1217643')
+    expect(urls[1]).toContain('limit=2')
+    expect(urls[1]).toContain('order_by=activity_id')
+    // Quoted, not interpreted.
+    expect(result.assay.description).toBe('Inhibition of human hERG')
+    expect(result.assay.confidence_score).toBe(9)
+    expect(result.assay.confidence_description).toBe('Direct single protein target assigned')
+    // The source's own total decides 'truncated'.
+    expect(result.activities.count).toBe(2)
+    expect(result.activities.total).toBe(250)
+    expect(result.activities.truncated).toBe(true)
+  })
+
+  it('refuses something that is not a ChEMBL id without making a single request', async () => {
+    const fetchImpl = vi.fn()
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('get_assay'),
+      { assay_chembl_id: 'hERG binding assay' },
+      {}
+    )) as { error: string }
+
+    expect(out.error).toBe('invalid-assay-id')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('names an unknown assay instead of returning an empty record', async () => {
+    const { out } = await run('get_assay', { assay_chembl_id: 'CHEMBL9999999999' }, [
+      okJson({ assays: [], page_meta: { total_count: 0 } })
+    ])
+
+    expect((out as { error: string }).error).toBe('unknown-assay')
   })
 })

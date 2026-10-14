@@ -417,6 +417,33 @@ function activitySummary(activities: Rec[]): string {
 }
 
 // { count, total, activities, summary, truncated }.
+// Raw /assay record -> the fields a reader can act on. Confidence and relationship are QUOTED, not
+// interpreted: this tool reports what the source states, and nothing it would have to judge.
+function assayRecord(a: Rec): Rec {
+  return {
+    assay_chembl_id: nz(a.assay_chembl_id),
+    description: nz(a.description),
+    assay_type: nz(a.assay_type),
+    assay_type_description: nz(a.assay_type_description),
+    assay_organism: nz(a.assay_organism),
+    assay_tissue: nz(a.assay_tissue),
+    assay_cell_type: nz(a.assay_cell_type),
+    assay_subcellular_fraction: nz(a.assay_subcellular_fraction),
+    assay_strain: nz(a.assay_strain),
+    confidence_score: nz(a.confidence_score),
+    confidence_description: nz(a.confidence_description),
+    relationship_type: nz(a.relationship_type),
+    relationship_description: nz(a.relationship_description),
+    bao_format: nz(a.bao_format),
+    bao_label: nz(a.bao_label),
+    target_chembl_id: nz(a.target_chembl_id),
+    document_chembl_id: nz(a.document_chembl_id),
+    src_id: nz(a.src_id),
+    src_assay_id: nz(a.src_assay_id),
+    variant_sequence: nz(a.variant_sequence),
+    assay_parameters: Array.isArray(a.assay_parameters) ? a.assay_parameters : []
+  }
+}
 function bioactivityResponse(raw: Rec[], total: number | null): Rec {
   const activities = raw.map(activityRecord)
   const t = total == null ? activities.length : total
@@ -861,6 +888,11 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
           type: 'string',
           description: "ChEMBL target id, e.g. 'CHEMBL240' (hERG)."
         },
+        assay_chembl_id: {
+          type: 'string',
+          description:
+            "ChEMBL assay id, e.g. 'CHEMBL1217643' - narrows to the measurements of that one assay."
+        },
         activity_type: {
           type: 'string',
           enum: ['IC50', 'EC50', 'Ki', 'Kd', 'AC50', 'GI50', 'ED50', 'Potency'],
@@ -891,6 +923,7 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
       const params: Rec = {}
       if (a.molecule_chembl_id) params.molecule_chembl_id = a.molecule_chembl_id
       if (a.target_chembl_id) params.target_chembl_id = a.target_chembl_id
+      if (a.assay_chembl_id) params.assay_chembl_id = a.assay_chembl_id
       if (a.activity_type) params.standard_type = a.activity_type
       if (a.min_pchembl != null) params.pchembl_value__gte = a.min_pchembl
       if (a.min_value != null) params.standard_value__gte = a.min_value
@@ -960,6 +993,70 @@ export const CHEMBL_TOOLS: ToolDescriptor[] = [
         ;({ items, total } = pageItems(raw, 'mechanisms'))
       }
       return mechanismResponse(items, total)
+    }
+  },
+  {
+    id: 'get_assay',
+    connector: 'chembl',
+    description:
+      'Retrieve one ChEMBL assay by its assay_chembl_id, together with how many measurements it holds. The assay record is quoted whole (description, type and type description, organism/tissue/cell/strain, confidence score and description, relationship type and description, BAO format and label, target and document ids, source id, variant sequence, parameters), and the count is the source total_count - so the returned activity list is a capped PREFIX and says so. Use get_bioactivity with assay_chembl_id to walk past the first page.',
+    input: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['assay_chembl_id'],
+      properties: {
+        assay_chembl_id: {
+          type: 'string',
+          description:
+            "ChEMBL assay id, e.g. 'CHEMBL1217643'. Must be a ChEMBL id; a description or a name is refused rather than guessed at."
+        },
+        activity_limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 1000,
+          default: 20,
+          description:
+            'How many of the assay activities to return (the total is reported regardless).'
+        }
+      }
+    },
+    returns:
+      '`{ assay: { assay_chembl_id, description, assay_type, assay_type_description, assay_organism, assay_tissue, assay_cell_type, assay_subcellular_fraction, assay_strain, confidence_score, confidence_description, relationship_type, relationship_description, bao_format, bao_label, target_chembl_id, document_chembl_id, src_id, src_assay_id, variant_sequence, assay_parameters }, activities: { count, total (verified source total_count), truncated, summary, activities: [ same rows get_bioactivity returns ] } }`; or `{ error: "invalid-assay-id" | "unknown-assay", message }` (the invalid case makes no request at all).',
+    example:
+      'const result = await host.mcp("chembl", "get_assay", {"assay_chembl_id": "CHEMBL1217643"})',
+    run: async (ctx, a) => {
+      const requested = typeof a.assay_chembl_id === 'string' ? a.assay_chembl_id : ''
+      const assayId = requested.trim().toUpperCase()
+      // A named id is matched as it stands: anything not shaped like a ChEMBL id is refused WITHOUT a
+      // request, because a lookup that guesses at a name can answer about a different assay than the one
+      // the caller meant.
+      if (!/^CHEMBL[0-9]+$/.test(assayId)) {
+        return {
+          error: 'invalid-assay-id',
+          message: `Not a ChEMBL assay id: ${requested === '' ? '(missing)' : requested}`
+        }
+      }
+
+      const rawAssays = await ctx.fetchJson(
+        buildUrl('/assay.json', { assay_chembl_id: assayId, limit: 1 })
+      )
+      const assay = pageItems(rawAssays, 'assays').items[0]
+      if (!assay) {
+        return { error: 'unknown-assay', message: `ChEMBL has no assay ${assayId}` }
+      }
+
+      const activityLimit = clampLimit(a.activity_limit)
+      const rawActivities = await ctx.fetchJson(
+        buildUrl('/activity.json', {
+          assay_chembl_id: assayId,
+          limit: activityLimit,
+          offset: 0,
+          order_by: 'activity_id'
+        })
+      )
+      const { items, total } = pageItems(rawActivities, 'activities')
+
+      return { assay: assayRecord(assay), activities: bioactivityResponse(items, total) }
     }
   },
   {
