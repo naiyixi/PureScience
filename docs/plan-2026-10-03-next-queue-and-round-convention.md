@@ -5968,3 +5968,31 @@ blank:  Error invoking remote method 'specialist:plugin-source-deploy': Error: I
 
 - **空白令牌收紧**为 `trim().length > 0` ✓（与预览侧一致：没东西可查就不发；spec 里那格从 `accepted` 变成**带通道名**的抛错 ✓）。
 - `Windows Full Test @38b21a2e` 红 ✗ 落在 `src/main/acp/permission-broker-registry.test.ts`（Codex powershell 授权族，`database` 标签）—— **与我改的路径无关**，且 `3bc0adf0` 同车道 success ✓ ⇒ 记**时敏抖动**；已由新位点重跑覆盖。
+
+## 一百二十九、v2.3.0 **E3 第二段收口**：插件运行接上真执行保护（新增 plugin 执行面）（会话，2026-10-14/15）
+
+### 一 设计分叉的取舍（本轮拍板项，按建议 A 落）
+
+`EXECUTION_SURFACES` 是**封闭列表**，而「运行下载来的插件」不属于其中任何一个 ⇒ 复用 `shell` 会在**安全矩阵里谎报一行**（`shell` 的定义是「本地终端命令 / 控制面 repl」）。**取 A：新增 `plugin` 执行面**：
+
+| 改动 | 落点 |
+| --- | --- |
+| 面本身 + 描述注释 | `src/shared/execution-protection.ts`（注释写明它为何**不做** `shell` 的一种：它不是用户敲的命令） |
+| 消掉重复的第二份列表 | `src/main/execution-protection/service.ts` 原先自带一份 `SURFACES` ⇒ 改为直接引用共享常量（少一处漂移源） |
+| 面板标签 + 9 语 | `ExecutionProtectionPanel.tsx` 映射 + `protection.surfacePlugin` ×9（脚本自校 present in all 9 files） |
+| 矩阵有序 pin | `execution-protection/service.test.ts` 的 `toEqual([...])` 补 `'plugin'`（有序 ✓） |
+
+### 二 组合根：保护答案接成**惰性提供者**（而不是注册时快照）
+
+`pluginRuntimePolicy?: () => Promise<{protection, policy}>` —— **每次运行现读设置**，设置一改下一次运行即生效（注册时取值会要求重启 ✗）。实现照 `compute-service.ts` 的同形：`settingsService.resolveExecutionProtection('plugin')` + `getExecutionProtection()`；**不可解析时**用 `unresolvedExecutionProtectionSnapshot({surface, platform, detail})` **明说「未解析」**，而不是编造一个受保护的快照 —— **未解析 ≠ 受保护** ✓。
+
+### 三 读数
+
+- 双 typecheck **0** ✓（`src/main/skills/mcp-server.ts` 的两条属执行器在制品，**不是我的**，已排除且我未触碰 ✓）；
+- eslint **0** ✓；受影响面 **299 文件 / 3917 passed（4 skipped）** ✓；
+- 窗口 spec **2 passed (15.7s)** ✓（`deploy`/`run` 仍 `{refused, unknown-token}`、空白被传输守卫按名拒 ✓）；
+- 车道：`Nightly @e246322f` **completed success** ✓ + `Windows Full Test @e246322f` **completed success** ✓（含此前那条抖动车道）；本笔 `9f0136d2` 已推 ✓，第 7 次全量在后台。
+
+### 四 仍未做（具名）
+
+① **真仓库一次性读数**（部署 + 运行对真实公开仓跑一次）—— 障碍已探明：公开仓没有带 `purescience-plugin.json` 的（`gh search code` 空）⇒ 需自建夹具仓或本地 HTTP 夹具，取完撤掉；② 带**有效令牌**的 run-once 端到端读数（它现在会走真策略：`deny` 拒 / `confirm` 要批准 / `remembered` 放行）—— 同样等 ①的夹具。
