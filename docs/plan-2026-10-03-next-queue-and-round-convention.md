@@ -5029,3 +5029,38 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 ### 五 仍未做（具名，C 的其余四件）
 
 **C1 Ensembl 群体 LD**（六条既有工具无 LD 面）→ **C4 ClinVar SCV 级详情**（已有接入清单、缺逐条提交详情）→ **C2 文献库整页全选**（需窗口读数）→ **C5/C6 ENCORI、PDC 新连接器**（**动手前必须先做来源可答性探测**）。
+
+## 一百〇四、v2.2.0（批 C）C1 已交付：Ensembl 群体 LD（会话，2026-10-14）
+
+### 一 交付（`feat(connectors)` 一笔 + 本档）
+
+| 项 | 要点 |
+| --- | --- |
+| 新工具 `ensembl_ld`（genomes 连接器第 **12** 条） | 入参 `{variant, population, species?, r2?=true, d_prime?=false, window_size?(0..500)}`；回 `{variant, population:{name,description,**size**}, n_pairs, pairs:[{variation1,variation2,r2,d_prime,population_name}]}` |
+| 红线落地 | **面板样本量随结果一起回**（成对 LD 不带面板与样本量就不可审阅）；r²/D' **只引用源给的字符串**（六位小数），不重标度、不解释成因果或显著性；`window_size` 超出源上限（0–500）⇒ **夹紧**而不是把请求打回去 |
+| 具名拒答（可操作） | 人群名未知 ⇒ `unknown-population` **+ 该物种实际提供的 30 个面板名**；变异未知 ⇒ `unknown-variant`；两者源都回同一个 400，所以**去问源的面板清单来判断**，不猜 |
+| 钉子 | `genomes.test.ts` 的**有序 id 表**补 `'ensembl_ld'`；两 README 工具计数 **274 → 275** |
+
+### 二 四步（**形状是源自己纠正出来的**）
+
+1. **测源**：`/ld/:species/:v1/:v2?population_name=…` ⇒ 400「把第 4 段当人群名」；`/ld/:species/:pop/:v1/:v2` ⇒ 400「把人群段当变异」；`/ld/:species/:variant/:population` ⇒ **200** ✓（返回成对行）。人群端点 `/info/variation/populations/:species?filter=LD` ⇒ `name/description/size` ✓。
+2. **政策**：见上表（具名 + 可操作 + 夹紧 + 只引用）。
+3. **接线**：复用 `strArg` / `clampInt` / `isNotFound` 与既有 `ctx.fetchJson`。
+4. **真读数（真 Ensembl，走它自己的代码路径）**：
+   - `rs699` + `1000GENOMES:phase_3:CEU` ⇒ **8 对**，面板 `{size 99, "Utah residents with Northern and Western European ancestry"}`，首对 `rs699 → rs2478543 r²=1.000000 D'=1.000000`；
+   - `rs699` + `CHB` 且 `window_size=200` ⇒ **0 对** —— **是窗口收窄后的真零，不是「没有数据」**（同一位点换 CEU 有 8 对，两条读数一起才说明问题）；
+   - 未知人群 ⇒ `unknown-population` 且回 **30 个可选名**（首个 `1000GENOMES:phase_3:ACB`）；未知变异 ⇒ `unknown-variant`。
+
+### 三 读数
+
+- `genomes-ensembl.test.ts` **23 条**（含 4 条新：真值引述 + 面板 size／未知人群带回可选名／未知变异／window_size 夹紧与 d_prime 仅在要求时）；
+- `src/main/connectors` 全目录 **979 passed ｜ 53 skipped**（86 文件）；双 typecheck 0；`eslint --no-cache` 0；`check-readme-sync` **EXIT=0**；`pre-push-checks` **EXIT=0**。
+
+### 四 本片自踩（两处，都记形状）
+
+1. **「存在性守卫」第四次被我自己的用法骗**：`'ToolContext' not in <数组之前的那段>` 判「未导入」，而该名字已出现在我刚插入的**使用处**（`listLdPopulations(ctx: ToolContext…)`）⇒ import 没加。**定法**：守卫只认 **import 语句**（`import type { X`）或**定义语句**（`const X =`）。
+2. **助手块插进了工具数组内部**：我用「第一个工具对象」当锚点，而那个锚点在 `export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [` **之后** ⇒ 函数声明落进数组字面量（TS1005 一串）。**定法**：模块级声明只按**模块级**锚点插（数组声明、顶层 `const`），不按数组元素插。
+
+### 五 仍未做（具名，C 的其余）
+
+**C4 ClinVar SCV 级详情** → **C2 文献库整页全选**（需窗口读数）→ **C5/C6 ENCORI、PDC 新连接器**（拨前先做来源可答性探测）。
