@@ -4347,5 +4347,18 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRan': '已執行 {command} · 結束碼 {exitCode} · {duration} 毫秒',
   'specialist.pluginRanTimedOut': '已執行 {command} · 於 {duration} 毫秒時被終止（逾時）',
   'specialist.pluginRunOutput': '輸出',
-  'protection.surfacePlugin': '已部署的插件'
+  'protection.surfacePlugin': '已部署的插件',
+  'specialist.pluginCatalogTitle': '已部署的外掛',
+  'specialist.pluginCatalogEmpty': '尚未部署任何外掛。',
+  'specialist.pluginCatalogRow': '{plugin} —— {count} 個檔案 · 磁碟佔用 {bytes} 位元組',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} 位元組 · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': '部署於 {at}',
+  'specialist.pluginCatalogNoDate': '未記錄部署時間。',
+  'specialist.pluginCatalogRecordMissing': '{plugin} —— 沒有部署記錄，本應用程式並未部署它',
+  'specialist.pluginCatalogRecordUnreadable': '{plugin} —— 部署記錄無法讀取：{detail}',
+  'specialist.pluginCatalogRemove': '移除外掛 {plugin}',
+  'specialist.pluginCatalogRemoveConfirm': '我了解：移除外掛會將其目錄從本應用程式的儲存空間刪除。',
+  'specialist.pluginCatalogRemoved': '已移除外掛 {plugin} —— 釋出 {bytes} 位元組',
+  'specialist.pluginCatalogNotRemoved': '{plugin} 並未部署，因此未移除任何項目',
+  'specialist.pluginCatalogRefused': '已拒絕：{reason} —— {detail}'
 }

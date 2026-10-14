@@ -4618,5 +4618,20 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRan': '{command} 실행됨 · 종료 코드 {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': '{command} 실행됨 · {duration} ms에서 종료됨(시간 초과)',
   'specialist.pluginRunOutput': '출력',
-  'protection.surfacePlugin': '배포된 플러그인'
+  'protection.surfacePlugin': '배포된 플러그인',
+  'specialist.pluginCatalogTitle': '배포된 플러그인',
+  'specialist.pluginCatalogEmpty': '아직 배포된 플러그인이 없습니다.',
+  'specialist.pluginCatalogRow': '{plugin} — 파일 {count}개 · 디스크 사용량 {bytes} 바이트',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} 바이트 · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': '배포 시각 {at}',
+  'specialist.pluginCatalogNoDate': '배포 시각이 기록되지 않았습니다.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — 배포 기록이 없어 이 앱이 배포한 것이 아닙니다',
+  'specialist.pluginCatalogRecordUnreadable': '{plugin} — 배포 기록을 읽을 수 없습니다: {detail}',
+  'specialist.pluginCatalogRemove': '{plugin} 제거',
+  'specialist.pluginCatalogRemoveConfirm':
+    '플러그인을 제거하면 이 앱의 저장소에서 해당 디렉터리가 삭제된다는 점을 이해했습니다.',
+  'specialist.pluginCatalogRemoved': '{plugin} 제거됨 — {bytes} 바이트 확보',
+  'specialist.pluginCatalogNotRemoved': '{plugin}은(는) 배포되지 않아 아무것도 제거되지 않았습니다',
+  'specialist.pluginCatalogRefused': '거부됨: {reason} — {detail}'
 }

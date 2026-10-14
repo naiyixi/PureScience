@@ -20,6 +20,10 @@ export const SPECIALIST_IPC = {
   PLUGIN_SOURCE_CANCEL: 'specialist:plugin-source-cancel',
   PLUGIN_SOURCE_DEPLOY: 'specialist:plugin-source-deploy',
   PLUGIN_SOURCE_RUN_ONCE: 'specialist:plugin-source-run-once',
+  // E3-2 follow-up: the read side of the deployer. Deploying used to be a one-way door — the files were
+  // on disk and nothing in the app could list or remove them, so a second deploy of the same id was
+  // refused with "remove it first" and there was nothing that could remove it.
+  PLUGIN_CATALOG: 'specialist:plugin-catalog',
   SAVE_PACKAGE_REPORT: 'specialist:package-report-save',
   PREVIEW_EXPORT: 'specialist:export-preview',
   EXPORT: 'specialist:export-save',

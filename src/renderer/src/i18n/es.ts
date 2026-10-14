@@ -4802,5 +4802,21 @@ export const es: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRanTimedOut':
     '{command} ejecutado · terminado a los {duration} ms (tiempo agotado)',
   'specialist.pluginRunOutput': 'Salida',
-  'protection.surfacePlugin': 'Plugin desplegado'
+  'protection.surfacePlugin': 'Plugin desplegado',
+  'specialist.pluginCatalogTitle': 'Plugins desplegados',
+  'specialist.pluginCatalogEmpty': 'Todavía no hay nada desplegado.',
+  'specialist.pluginCatalogRow': '{plugin} — {count} archivo(s) · {bytes} bytes en disco',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} bytes · resumen sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'Desplegado el {at}',
+  'specialist.pluginCatalogNoDate': 'No se registró la fecha de despliegue.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — sin registro de despliegue; esta aplicación no lo desplegó',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — no se pudo leer el registro de despliegue: {detail}',
+  'specialist.pluginCatalogRemove': 'Quitar {plugin}',
+  'specialist.pluginCatalogRemoveConfirm':
+    'Entiendo que quitar un plugin elimina su carpeta del almacenamiento de esta aplicación.',
+  'specialist.pluginCatalogRemoved': '{plugin} quitado — {bytes} bytes liberados',
+  'specialist.pluginCatalogNotRemoved': '{plugin} no está desplegado, así que no se quitó nada',
+  'specialist.pluginCatalogRefused': 'Rechazado: {reason} — {detail}'
 }

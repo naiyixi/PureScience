@@ -4,6 +4,10 @@ import { dirname, join, posix } from 'node:path'
 
 import { checkPluginDeclaration, type PluginManifest } from '../../shared/plugin-source'
 
+// The record filename is owned by the catalogue (the module that reads it back and must recognise it before
+// removing anything), so the writer and the reader cannot drift apart.
+import { DEPLOYED_RECORD_FILENAME } from './plugin-catalog'
+
 // E3-2, first piece: DEPLOY — and only deploy. Nothing here spawns anything; running the plugin is a separate
 // step behind the execution-protection policy, because deploying files and running third-party code are not
 // the same risk (the second one is the one worth gating).
@@ -124,7 +128,7 @@ export const deployPlugin = async (input: {
     // One rename: before it, nothing is visible; after it, everything is.
     await rename(stagingDirectory, finalDirectory)
     await writeFile(
-      join(finalDirectory, 'deployed.json'),
+      join(finalDirectory, DEPLOYED_RECORD_FILENAME),
       JSON.stringify({ pluginId, deployedAt: new Date().toISOString(), entries }, null, 2),
       'utf8'
     )
@@ -147,7 +151,7 @@ export const readDeployedPlugin = async (
   pluginId: string
 ): Promise<{ entries: Array<{ entry: string; bytes: number; sha256: string }> } | null> => {
   try {
-    const raw = await readFile(join(pluginsRoot, pluginId, 'deployed.json'), 'utf8')
+    const raw = await readFile(join(pluginsRoot, pluginId, DEPLOYED_RECORD_FILENAME), 'utf8')
     const parsed = JSON.parse(raw) as {
       entries?: Array<{ entry: string; bytes: number; sha256: string }>
     }

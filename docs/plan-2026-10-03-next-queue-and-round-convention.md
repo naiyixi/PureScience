@@ -6276,3 +6276,41 @@ GATE_EXIT=0
 > 附注：发版当晚对 `scripts/release-gate.sh` 的**第一次调用写错了路径**（脚本是**技能自带**的，不在仓内 ⇒ `GATE_EXIT=127` ✗）⇒ 属调用错误、非代码红；正确调用（技能路径 + 隔离工作树）随即全绿 ✓。
 
 ⇒ **v2.3.0 发布完成**：批 E 两半（甲半：运行记录编译成可调用技能；乙半：第三方公开仓库成为可核验的插件来源）随版发出，页面自带成熟度自陈、逐条「明确没做」与未签名披露。
+
+## 一百三十七、**收口 v2.3.0「明确没做」②**：已部署插件的目录与卸载（执行器，2026-10-15 05:1x–06:xx）
+
+### 一 选件与并发核对（开工现场）
+
+- `origin/main` = `f0dca20f`（会话 §一百三十六 的收尾 docs 笔），两条车道在 `6efa5a5f`（发版提交）上**均已 success**（Release / Nightly / Windows Full Test）⇒ **本次推送不顶掉任何在飞判决**（推前用 `gh run list --limit 8` 核过）。
+- B 段大件三件（A7 外部锁导入 / S3 增量全文索引 / M2 本地解析模型资产）在队列档里**均已收口**（M2 另卡产品决定）⇒ 按轮次约定取**自拟单元**：v2.3.0 CHANGELOG「明确没做」②「插件目录的展示与管理」。选它的理由：不需要任何产品拍板、纯离线可判、与 v2.4.0（批 F+G，尚未拆单元）不重叠、且正是交付红线里「半截功能」那一条。
+- 会话当时在跑的是「部署与运行策略」那一半（`plugin-deploy` / `plugin-run-policy`）⇒ **目录侧**（读侧）无人认领。
+
+### 二 交付（层 → 文件，细节与读数见 `docs/evidence/2026-10-15-deployed-plugin-catalog.md`）
+
+- **主进程服务**（新）`src/main/specialist/plugin-catalog.ts`：`listDeployedPlugins` / `removeDeployedPlugin`；行按应用自己的 `deployed.json` 报逐条 `bytes`+`sha256`，另加**实测** `onDiskBytes`；四个具名拒绝（`unsafe-plugin-id` / `confirmation-missing` / `not-a-deployed-plugin` / `removal-failed`），**先量后删**回 `freedBytes`，`absent` 与「释放 0」分开；`record-missing` / `record-unreadable` **各自具名**、不静默跳过。
+- **单一来源**：记录文件名 `DEPLOYED_RECORD_FILENAME` 由读写两侧共用（写侧 `plugin-deploy.ts` 改为引用它）；`PLUGIN_ID_PATTERN` 由 schema 与删除路径共用 —— 判据是「能部署的名字就是能卸载的名字」。
+- **通道四处齐**：契约目录（ELECTRON 档）/ preload 包装 / `renderer-api.d.ts` / 主进程处理器；`gen:web-api-map` 输出**逐字节未变** ⇒ 没动任何 Web 面。
+- **渲染层**：设置 → Specialists → Import ZIP 页新增「Deployed plugins」区块；**Remove 只在 `state === 'deployed'` 的行渲染**（对无记录的行闸门必拒 ⇒ 不做死控件），确认勾选是 `confirmed` 的**唯一来源**且**一次确认只授权一次移除**；移除后重读列表、部署成功后也重读（部署 → 上屏 → 移除 → 消失的闭环）。
+- **Web 面的诚实性**：该区块在**没有该通道的表面**（Web 网关）**整块不渲染** —— 空列表在那里会被读成「什么都没部署」，而那是这个表面**没资格下**的断言。
+
+### 三 门禁读数（本机，最终树）
+
+| 门 | 读数 |
+| --- | --- |
+| 新模块 13 条 + 面板 | **19 文件 / 342 passed** |
+| 更宽受影响簇（`--maxWorkers=2`） | **250 文件 / 3098 passed（1 skipped）** |
+| 全量 `vitest --maxWorkers=4` | **1315 文件（1299 passed ｜ 16 skipped）、16874 条（16667 passed ｜ 207 skipped）**，EXIT=0 |
+| 双 typecheck | 各 **0 error** |
+| 全仓 `eslint --no-cache .` | **0 error / 128 warning**（本笔新增路径 **0 条**；比基线少的那些是本笔顺手收掉的 prettier 漂移，见证据档） |
+| 契约 pin 级联 | catalog 481→482、表面清单 481→482、runtime 契约 242→243、本地 Web unavailable 82→83、specialist 面 35→36 |
+| `scripts/pre-push-checks.sh` | **EXIT=0** |
+
+### 四 未取证（具名）
+
+**真窗口点击读数未取**：本机 8 GB，取证那一刻空闲页 **4233 ≈ 66 MB**、swap 已用 **8797 M / 9216 M** ⇒ 按仓规不起 `build:e2e` + Electron。界面闭环目前只有渲染层（jsdom）与主进程真文件系统两类证据；配方（真部署 → 独立根起实例 → 勾选前禁用 / 勾选后移除并消失 / 无记录行无控件 → 收尾复核）写在证据档 §四。
+
+### 五 仍未做（承接）
+
+- **一键「替换 / 更新」**：本单元给的是移除；替换 = 先移除再部署（两步）。
+- **运行一次的批准授权面**（v2.3.0「明确没做」①）仍由会话那条线负责。
+- **未发版**：本单元属下一版边界（v2.3.0 已是 Latest），本轮**未打 tag、未抬版本号**。

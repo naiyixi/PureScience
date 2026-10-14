@@ -651,6 +651,7 @@ describe('preload bridge — public surface inventory', () => {
       'specialist.onHandoffLifecycleEvent',
       'specialist.onMarketplaceDownloadProgress',
       'specialist.onPendingSwitch',
+      'specialist.pluginCatalog',
       'specialist.pluginSourceCancel',
       'specialist.pluginSourceDeploy',
       'specialist.pluginSourcePreview',
@@ -731,7 +732,8 @@ describe('preload bridge — runtime renderer contract catalog', () => {
   it('routes every owned method through its cataloged Electron channel', async () => {
     const requestContracts = runtimeContracts.filter(({ kind }) => kind === 'method')
 
-    expect(runtimeContracts).toHaveLength(242)
+    // 243 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, one contract.
+    expect(runtimeContracts).toHaveLength(243)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -4695,5 +4695,22 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRan': '{command} を実行 · 終了コード {exitCode} · {duration} ミリ秒',
   'specialist.pluginRanTimedOut': '{command} を実行 · {duration} ミリ秒で強制終了（タイムアウト）',
   'specialist.pluginRunOutput': '出力',
-  'protection.surfacePlugin': 'デプロイ済みプラグイン'
+  'protection.surfacePlugin': 'デプロイ済みプラグイン',
+  'specialist.pluginCatalogTitle': 'デプロイ済みのプラグイン',
+  'specialist.pluginCatalogEmpty': 'まだ何もデプロイされていません。',
+  'specialist.pluginCatalogRow': '{plugin} — ファイル {count} 件 · ディスク使用量 {bytes} バイト',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} バイト · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'デプロイ日時 {at}',
+  'specialist.pluginCatalogNoDate': 'デプロイ日時は記録されていません。',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — デプロイ記録がなく、このアプリが配置したものではありません',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — デプロイ記録を読み取れませんでした：{detail}',
+  'specialist.pluginCatalogRemove': '{plugin} を削除',
+  'specialist.pluginCatalogRemoveConfirm':
+    'プラグインを削除すると、そのディレクトリがこのアプリのストレージから消えることを理解しました。',
+  'specialist.pluginCatalogRemoved': '{plugin} を削除しました — {bytes} バイトを解放',
+  'specialist.pluginCatalogNotRemoved':
+    '{plugin} はデプロイされていないため、何も削除されませんでした',
+  'specialist.pluginCatalogRefused': '拒否：{reason} — {detail}'
 }

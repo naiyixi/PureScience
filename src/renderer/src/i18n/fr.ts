@@ -4830,5 +4830,21 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRan': '{command} exécuté · code {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': '{command} exécuté · interrompu à {duration} ms (délai dépassé)',
   'specialist.pluginRunOutput': 'Sortie',
-  'protection.surfacePlugin': 'Plugin déployé'
+  'protection.surfacePlugin': 'Plugin déployé',
+  'specialist.pluginCatalogTitle': 'Plugins déployés',
+  'specialist.pluginCatalogEmpty': 'Rien n’est encore déployé.',
+  'specialist.pluginCatalogRow': '{plugin} — {count} fichier(s) · {bytes} octets sur le disque',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} octets · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'Déployé le {at}',
+  'specialist.pluginCatalogNoDate': 'La date du déploiement n’a pas été enregistrée.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — aucun enregistrement de déploiement ; cette application ne l’a pas déployé',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — l’enregistrement de déploiement est illisible : {detail}',
+  'specialist.pluginCatalogRemove': 'Supprimer {plugin}',
+  'specialist.pluginCatalogRemoveConfirm':
+    'Je comprends que supprimer un plugin efface son dossier du stockage de cette application.',
+  'specialist.pluginCatalogRemoved': '{plugin} supprimé — {bytes} octets libérés',
+  'specialist.pluginCatalogNotRemoved': '{plugin} n’est pas déployé, rien n’a été supprimé',
+  'specialist.pluginCatalogRefused': 'Refusé : {reason} — {detail}'
 }

@@ -4713,5 +4713,21 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRan': '{command} выполнен · код выхода {exitCode} · {duration} мс',
   'specialist.pluginRanTimedOut': '{command} выполнен · прерван на {duration} мс (истёк таймаут)',
   'specialist.pluginRunOutput': 'Вывод',
-  'protection.surfacePlugin': 'Развёрнутый плагин'
+  'protection.surfacePlugin': 'Развёрнутый плагин',
+  'specialist.pluginCatalogTitle': 'Развёрнутые плагины',
+  'specialist.pluginCatalogEmpty': 'Пока ничего не развёрнуто.',
+  'specialist.pluginCatalogRow': '{plugin} — файлов: {count} · {bytes} байт на диске',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} байт · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'Развёрнуто {at}',
+  'specialist.pluginCatalogNoDate': 'Время развёртывания не записано.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — нет записи о развёртывании; это приложение его не развёртывало',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — запись о развёртывании не читается: {detail}',
+  'specialist.pluginCatalogRemove': 'Удалить {plugin}',
+  'specialist.pluginCatalogRemoveConfirm':
+    'Я понимаю, что удаление плагина стирает его каталог из хранилища этого приложения.',
+  'specialist.pluginCatalogRemoved': '{plugin} удалён — освобождено {bytes} байт',
+  'specialist.pluginCatalogNotRemoved': '{plugin} не развёрнут, поэтому ничего не удалено',
+  'specialist.pluginCatalogRefused': 'Отказано: {reason} — {detail}'
 }

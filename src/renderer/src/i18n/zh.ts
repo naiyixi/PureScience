@@ -4403,7 +4403,20 @@ export const zh = {
   'specialist.pluginRan': '已运行 {command} · 退出码 {exitCode} · {duration} 毫秒',
   'specialist.pluginRanTimedOut': '已运行 {command} · 在 {duration} 毫秒时被终止（超时）',
   'specialist.pluginRunOutput': '输出',
-  'protection.surfacePlugin': '已部署的插件'
+  'protection.surfacePlugin': '已部署的插件',
+  'specialist.pluginCatalogTitle': '已部署的插件',
+  'specialist.pluginCatalogEmpty': '尚未部署任何插件。',
+  'specialist.pluginCatalogRow': '{plugin} —— {count} 个文件 · 磁盘占用 {bytes} 字节',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} 字节 · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': '部署于 {at}',
+  'specialist.pluginCatalogNoDate': '未记录部署时间。',
+  'specialist.pluginCatalogRecordMissing': '{plugin} —— 没有部署记录，本应用没有部署它',
+  'specialist.pluginCatalogRecordUnreadable': '{plugin} —— 部署记录读不出来：{detail}',
+  'specialist.pluginCatalogRemove': '移除 {plugin}',
+  'specialist.pluginCatalogRemoveConfirm': '我明白：移除插件会把它的目录从本应用的存储里删掉。',
+  'specialist.pluginCatalogRemoved': '已移除 {plugin} —— 释放了 {bytes} 字节',
+  'specialist.pluginCatalogNotRemoved': '{plugin} 并未部署，没有移除任何东西',
+  'specialist.pluginCatalogRefused': '已拒绝：{reason} —— {detail}'
 }
 
 export type ZhKey = keyof typeof zh

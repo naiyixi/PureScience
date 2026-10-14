@@ -1,4 +1,9 @@
-import type { PluginSourceCandidatePreview, PluginSourcePreview } from '../shared/plugin-source'
+import type {
+  PluginCatalogRequest,
+  PluginCatalogResult,
+  PluginSourceCandidatePreview,
+  PluginSourcePreview
+} from '../shared/plugin-source'
 import type {
   AcpCancelPromptRequest,
   AcpCompactSessionRequest,
@@ -803,6 +808,9 @@ export interface PureScienceAPI {
       token: string
       confirmed: boolean
     }): Promise<PluginOperationOutcomeView>
+    // E3-2 follow-up: the deployed-plugin catalogue. `list` answers with what the app's own records say is
+    // on disk; `remove` answers with the bytes it actually freed, or with a named refusal.
+    pluginCatalog(request: PluginCatalogRequest): Promise<PluginCatalogResult>
   }
   handoff: {
     onChanged(listener: AcpListener<HandoffLifecycleChange>): RemoveListener

@@ -4856,5 +4856,22 @@ export const de: Partial<Record<ZhKey, string>> = {
   'specialist.pluginRanTimedOut':
     '{command} ausgeführt · nach {duration} ms beendet (Zeitüberschreitung)',
   'specialist.pluginRunOutput': 'Ausgabe',
-  'protection.surfacePlugin': 'Deploytes Plugin'
+  'protection.surfacePlugin': 'Deploytes Plugin',
+  'specialist.pluginCatalogTitle': 'Bereitgestellte Plugins',
+  'specialist.pluginCatalogEmpty': 'Es ist noch nichts bereitgestellt.',
+  'specialist.pluginCatalogRow': '{plugin} — {count} Datei(en) · {bytes} Byte auf der Platte',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} Byte · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'Bereitgestellt am {at}',
+  'specialist.pluginCatalogNoDate': 'Der Zeitpunkt der Bereitstellung wurde nicht aufgezeichnet.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — kein Bereitstellungsnachweis; diese Anwendung hat es nicht bereitgestellt',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — der Bereitstellungsnachweis war nicht lesbar: {detail}',
+  'specialist.pluginCatalogRemove': '{plugin} entfernen',
+  'specialist.pluginCatalogRemoveConfirm':
+    'Mir ist klar, dass das Entfernen eines Plugins dessen Verzeichnis aus dem Speicher dieser Anwendung löscht.',
+  'specialist.pluginCatalogRemoved': '{plugin} entfernt — {bytes} Byte freigegeben',
+  'specialist.pluginCatalogNotRemoved':
+    '{plugin} ist nicht bereitgestellt, es wurde nichts entfernt',
+  'specialist.pluginCatalogRefused': 'Abgelehnt: {reason} — {detail}'
 }

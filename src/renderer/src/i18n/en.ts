@@ -4725,5 +4725,21 @@ export const en: Record<ZhKey, string> = {
   'specialist.pluginRan': 'Ran {command} · exit {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': 'Ran {command} · killed at {duration} ms (timed out)',
   'specialist.pluginRunOutput': 'Output',
-  'protection.surfacePlugin': 'Deployed plugin'
+  'protection.surfacePlugin': 'Deployed plugin',
+  'specialist.pluginCatalogTitle': 'Deployed plugins',
+  'specialist.pluginCatalogEmpty': 'Nothing is deployed yet.',
+  'specialist.pluginCatalogRow': '{plugin} — {count} file(s) · {bytes} bytes on disk',
+  'specialist.pluginCatalogEntry': '{entry} · {bytes} bytes · sha256 {sha256}',
+  'specialist.pluginCatalogDeployedAt': 'Deployed {at}',
+  'specialist.pluginCatalogNoDate': 'The deployment time was not recorded.',
+  'specialist.pluginCatalogRecordMissing':
+    '{plugin} — no deployment record; this app did not deploy it',
+  'specialist.pluginCatalogRecordUnreadable':
+    '{plugin} — the deployment record could not be read: {detail}',
+  'specialist.pluginCatalogRemove': 'Remove {plugin}',
+  'specialist.pluginCatalogRemoveConfirm':
+    'I understand that removing a plugin deletes its directory from this app’s storage.',
+  'specialist.pluginCatalogRemoved': 'Removed {plugin} — freed {bytes} bytes',
+  'specialist.pluginCatalogNotRemoved': '{plugin} is not deployed, so nothing was removed',
+  'specialist.pluginCatalogRefused': 'Refused: {reason} — {detail}'
 }

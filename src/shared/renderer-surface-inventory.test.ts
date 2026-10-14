@@ -99,6 +99,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'specialist.onCatalogChanged',
   'specialist.onHandoffLifecycleEvent',
   'specialist.onPendingSwitch',
+  'specialist.pluginCatalog',
   'specialist.pluginSourceCancel',
   'specialist.pluginSourceDeploy',
   'specialist.pluginSourcePreview',
@@ -316,7 +317,9 @@ describe('renderer surface inventory', () => {
     // 474 with verifying a recorded reading (artifacts.verifyReading): same, one method.
     // 477 with the window's PDF translation entry (pdf.translation): one method per contract, so the
     // preload inventory and the catalog move together. 2026-10-14: +2 for the plugin creator (specialist:plugin-source-preview / -cancel), added to preload, catalog and renderer-api.d.ts in one step — the three places a channel has to exist for the window to see it.
-    expect(electronPaths).toHaveLength(481)
+    // 482 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, and it has no Web
+    // channel, so it also joins the generator-omission list above.
+    expect(electronPaths).toHaveLength(482)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

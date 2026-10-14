@@ -1489,3 +1489,145 @@ describe('SpecialistsPanel Chat with agent', () => {
     expect(onNavigate).not.toHaveBeenCalled()
   })
 })
+
+// E3-2 follow-up: the deployed-plugin catalogue. What these cases pin is the part that has to be true in the
+// window rather than in the main process: a row shows what the app's own record says, the Remove control is
+// gated by the confirmation sentence (so `confirmed: true` can only come from a reader who saw it), and a
+// directory the app cannot account for is shown as such WITH NO control that the gate could only refuse.
+describe('SpecialistsPanel deployed plugin catalogue', () => {
+  const deployedRow = {
+    state: 'deployed' as const,
+    pluginId: 'demo-plugin',
+    directory: '/tmp/data-root/plugins/demo-plugin',
+    deployedAt: '2026-10-15T03:00:00.000Z',
+    entries: [{ entry: 'tools/demo.mjs', bytes: 552, sha256: 'd6186063abc1'.padEnd(64, '0') }],
+    onDiskBytes: 900
+  }
+
+  it('shows a row from the app own record, and removes only after the confirmation it displayed', async () => {
+    const pluginCatalog = vi
+      .fn()
+      .mockResolvedValueOnce({ action: 'list', plugins: [deployedRow] })
+      .mockResolvedValueOnce({
+        action: 'remove',
+        removal: { state: 'removed', pluginId: 'demo-plugin', freedBytes: 900 }
+      })
+      .mockResolvedValueOnce({ action: 'list', plugins: [] })
+    window.api.specialist.pluginCatalog = pluginCatalog
+
+    await act(async () => {
+      root.render(<SpecialistsPanel view={{ kind: 'import' }} onNavigate={vi.fn()} />)
+    })
+
+    expect(document.body.textContent).toContain('Deployed plugins')
+    // The row's numbers are the record's, and the digest is short enough to compare by eye against shasum.
+    expect(document.body.textContent).toContain('demo-plugin — 1 file(s) · 900 bytes on disk')
+    expect(document.body.textContent).toContain('tools/demo.mjs · 552 bytes · sha256 d6186063abc1')
+    expect(document.body.textContent).toContain('Deployed 2026-10-15T03:00:00.000Z')
+
+    const remove = (): HTMLButtonElement =>
+      document.querySelector('[data-testid="specialist-plugin-remove"]') as HTMLButtonElement
+    expect(remove().disabled).toBe(true)
+
+    const confirm = document.querySelector(
+      '[data-testid="specialist-plugin-removal-confirm"]'
+    ) as HTMLInputElement
+    await act(async () => {
+      fireEvent.click(confirm)
+    })
+    expect(remove().disabled).toBe(false)
+
+    await act(async () => {
+      fireEvent.click(remove())
+    })
+
+    // The confirmation is the only thing that can make this call, and it carries the act that was shown.
+    expect(pluginCatalog).toHaveBeenNthCalledWith(1, { action: 'list' })
+    expect(pluginCatalog).toHaveBeenNthCalledWith(2, {
+      action: 'remove',
+      pluginId: 'demo-plugin',
+      confirmed: true
+    })
+    // The freed bytes are the reading, and the list is re-read afterwards: the row is gone from the screen.
+    expect(document.body.textContent).toContain('Removed demo-plugin — freed 900 bytes')
+    expect(document.body.textContent).toContain('Nothing is deployed yet.')
+    expect(document.querySelector('[data-testid="specialist-plugin-remove"]')).toBeNull()
+  })
+
+  it('names a directory the app did not deploy, without offering a control that could only be refused', async () => {
+    window.api.specialist.pluginCatalog = vi.fn().mockResolvedValue({
+      action: 'list',
+      plugins: [
+        {
+          state: 'record-missing',
+          pluginId: 'not-ours',
+          directory: '/tmp/data-root/plugins/not-ours',
+          onDiskBytes: 12
+        }
+      ]
+    })
+
+    await act(async () => {
+      root.render(<SpecialistsPanel view={{ kind: 'import' }} onNavigate={vi.fn()} />)
+    })
+
+    expect(document.body.textContent).toContain(
+      'not-ours — no deployment record; this app did not deploy it'
+    )
+    expect(document.querySelector('[data-testid="specialist-plugin-remove"]')).toBeNull()
+    expect(document.querySelector('[data-testid="specialist-plugin-removal-confirm"]')).toBeNull()
+  })
+
+  it('reports a refusal as the answer it is, and keeps the rows on screen', async () => {
+    window.api.specialist.pluginCatalog = vi
+      .fn()
+      .mockResolvedValueOnce({ action: 'list', plugins: [deployedRow] })
+      .mockResolvedValueOnce({
+        action: 'remove',
+        removal: {
+          state: 'refused',
+          reason: 'confirmation-missing',
+          detail: 'demo-plugin was not removed: the confirmation was not given.',
+          freedBytes: 0
+        }
+      })
+    await act(async () => {
+      root.render(<SpecialistsPanel view={{ kind: 'import' }} onNavigate={vi.fn()} />)
+    })
+
+    await act(async () => {
+      fireEvent.click(
+        document.querySelector(
+          '[data-testid="specialist-plugin-removal-confirm"]'
+        ) as HTMLInputElement
+      )
+    })
+    await act(async () => {
+      fireEvent.click(
+        document.querySelector('[data-testid="specialist-plugin-remove"]') as HTMLButtonElement
+      )
+    })
+
+    expect(document.body.textContent).toContain(
+      'Refused: confirmation-missing — demo-plugin was not removed: the confirmation was not given.'
+    )
+    // A refusal freed nothing and changed nothing: the row is still there.
+    expect(document.body.textContent).toContain('demo-plugin — 1 file(s) · 900 bytes on disk')
+  })
+
+  it('does not claim a listing on a surface that cannot read the directory', async () => {
+    // A Web gateway has no `specialist.pluginCatalog` (the deployment it reads is desktop-only). The block
+    // must not appear at all there: an empty list would read as "nothing is deployed" about a directory
+    // this surface is in no position to look at.
+    const specialistApi = window.api.specialist as { pluginCatalog?: unknown }
+    delete specialistApi.pluginCatalog
+
+    await act(async () => {
+      root.render(<SpecialistsPanel view={{ kind: 'import' }} onNavigate={vi.fn()} />)
+    })
+
+    expect(document.querySelector('[data-testid="specialist-plugin-catalog"]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Deployed plugins')
+    expect(document.body.textContent).not.toContain('Nothing is deployed yet.')
+  })
+})

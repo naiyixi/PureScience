@@ -177,11 +177,18 @@ export const pluginSourceEntryUrls = (
   `https://cdn.jsdelivr.net/gh/${ref.owner}/${ref.repo}@${ref.ref}/${entry}`
 ]
 
+/**
+ * What a plugin id may be. It is a single path segment by construction, and it is exported rather than
+ * inlined in the schema below because the catalogue's removal path checks the same rule before it joins a
+ * directory name: one definition, so a name that deployed is a name that can be removed.
+ */
+export const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,63}$/
+
 /** What a repository declares. Strict on purpose: an unknown key is refused, not ignored. */
 export const pluginManifestSchema = z
   .object({
     schema_version: z.literal(1),
-    id: z.string().regex(/^[a-z0-9][a-z0-9-]{1,63}$/),
+    id: z.string().regex(PLUGIN_ID_PATTERN),
     display_name: z.string().min(1).max(160),
     summary: z.string().min(1).max(500),
     license: z.string().min(1).max(128),
@@ -359,3 +366,61 @@ export type PluginOperationOutcomeView =
       durationMs: number
     }
   | { state: 'refused'; reason: string; detail: string }
+
+// ── E3-2 follow-up: the deployed-plugin catalogue ────────────────────────────────────────────────────
+//
+// Deploying used to be a one-way door. The files were on disk, the record was inside them, and no surface
+// could list or remove them — so deploying the same id again was refused with "remove it first" and there
+// was nothing in the app that could remove it. This is the read side of the same feature: nothing here
+// fetches, and nothing here runs a plugin.
+//
+// Two rules shape it. A row reports what the app ITSELF recorded (per-entry bytes and sha256 out of
+// `deployed.json`) plus the directory's measured size, so a reader can recompute the row rather than trust
+// it. And removal answers "did this app deploy this?" before deleting anything: a directory without that
+// record is refused BY NAME, because removing a directory the app did not create is not this feature.
+
+/** One declared entry as the deployment recorded it: the bytes written, and their digest. */
+export type DeployedPluginEntry = { entry: string; bytes: number; sha256: string }
+
+/**
+ * One deployed plugin. `deployed` carries the record; the two other states are named absences rather than
+ * empty rows, so "no record here" cannot be read as "a plugin with nothing in it".
+ */
+export type DeployedPluginView =
+  | {
+      state: 'deployed'
+      pluginId: string
+      directory: string
+      /** From `deployed.json`. Absent when the record predates the field — a named absence, not a guess. */
+      deployedAt?: string
+      entries: DeployedPluginEntry[]
+      /** Measured from the filesystem when this listing was taken, so it can be compared with `du`. */
+      onDiskBytes: number
+    }
+  | { state: 'record-missing'; pluginId: string; directory: string; onDiskBytes: number }
+  | { state: 'record-unreadable'; pluginId: string; directory: string; detail: string }
+
+/** `remove` names one plugin and says whether the reader confirmed the act in words it was shown. */
+export type PluginCatalogRequest =
+  { action: 'list' } | { action: 'remove'; pluginId: string; confirmed: boolean }
+
+export type PluginCatalogRemovalView =
+  | { state: 'removed'; pluginId: string; freedBytes: number }
+  /** The directory is not there. Nothing was freed because nothing was found — not the same as 0 bytes. */
+  | { state: 'absent'; pluginId: string }
+  | {
+      state: 'refused'
+      reason:
+        'unsafe-plugin-id' | 'not-a-deployed-plugin' | 'confirmation-missing' | 'removal-failed'
+      detail: string
+      /** 0 exactly because nothing was removed; a refusal never reports bytes it did not free. */
+      freedBytes: 0
+    }
+
+/**
+ * The answer to either action. Discriminated by `action` so a caller cannot read a listing out of a
+ * removal (or the reverse) by accident.
+ */
+export type PluginCatalogResult =
+  | { action: 'list'; plugins: DeployedPluginView[] }
+  | { action: 'remove'; removal: PluginCatalogRemovalView }

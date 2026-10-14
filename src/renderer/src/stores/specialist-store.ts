@@ -15,6 +15,8 @@ import type {
   SpecialistDeleteResult
 } from '../../../shared/specialist-package'
 import type {
+  DeployedPluginView,
+  PluginCatalogRemovalView,
   PluginSourceCandidatePreview,
   PluginSourcePreview
 } from '../../../shared/plugin-source'
@@ -28,6 +30,11 @@ type SpecialistStoreData = {
   // E3-2: what the last deploy / run-once answered — codes and parameters, so the block that
   // renders it can build its own sentences in the reader's language.
   pluginOperation?: PluginOperationOutcomeView
+  // E3-2 follow-up: what the app's own records say is deployed. `undefined` while it has never been read,
+  // so "not read yet" and "nothing is deployed" ([]) are not the same screen.
+  pluginCatalog?: DeployedPluginView[]
+  // What the last removal answered. A refusal is an answer too, and it is kept as it came.
+  pluginRemoval?: PluginCatalogRemovalView
   exportPreview?: SpecialistExportPreview
 }
 
@@ -53,6 +60,9 @@ type SpecialistStoreActions = {
   deployPluginSource: (token: string, confirmed: boolean) => Promise<PluginOperationOutcomeView>
   runPluginSourceOnce: (token: string, confirmed: boolean) => Promise<PluginOperationOutcomeView>
   clearPluginOperation: () => void
+  loadPluginCatalog: () => Promise<DeployedPluginView[]>
+  removeDeployedPlugin: (pluginId: string, confirmed: boolean) => Promise<PluginCatalogRemovalView>
+  clearPluginRemoval: () => void
   previewExport: (specialistId: string) => Promise<SpecialistExportPreview>
   exportSpecialist: (
     preview: SpecialistExportPreview,
@@ -71,6 +81,8 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
   packagePreview: undefined,
   pluginSourceCandidate: undefined,
   pluginOperation: undefined,
+  pluginCatalog: undefined,
+  pluginRemoval: undefined,
   exportPreview: undefined,
 
   load: async () => {
@@ -164,6 +176,9 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
   deployPluginSource: async (token, confirmed) => {
     const outcome = await window.api.specialist.pluginSourceDeploy({ token, confirmed })
     set({ pluginOperation: outcome })
+    // A deployment changes what is on disk, so the catalogue is re-read: the plugin that was just deployed
+    // has to appear in the list the reader is looking at, without them reopening the panel.
+    if (outcome.state === 'deployed') await useSpecialistStore.getState().loadPluginCatalog()
     return outcome
   },
 
@@ -174,6 +189,43 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
   },
 
   clearPluginOperation: () => set({ pluginOperation: undefined }),
+
+  loadPluginCatalog: async () => {
+    // Guard like load(): pluginCatalog is Electron-only, and a web gateway has no such surface. An empty
+    // listing is the honest answer there (this gateway deploys nothing), not an error.
+    if (typeof window.api?.specialist?.pluginCatalog !== 'function') {
+      set({ pluginCatalog: [] })
+      return []
+    }
+    const result = await window.api.specialist.pluginCatalog({ action: 'list' })
+    const plugins = result.action === 'list' ? result.plugins : []
+    set({ pluginCatalog: plugins })
+    return plugins
+  },
+
+  removeDeployedPlugin: async (pluginId, confirmed) => {
+    const result = await window.api.specialist.pluginCatalog({
+      action: 'remove',
+      pluginId,
+      confirmed
+    })
+    const removal: PluginCatalogRemovalView =
+      result.action === 'remove'
+        ? result.removal
+        : {
+            state: 'refused',
+            reason: 'removal-failed',
+            detail: 'The main process answered a listing request to a removal.',
+            freedBytes: 0
+          }
+    set({ pluginRemoval: removal })
+    // Re-read only after something actually changed on disk: a refusal left the rows exactly as they were,
+    // and the row that was removed must stop being on screen.
+    if (removal.state === 'removed') await useSpecialistStore.getState().loadPluginCatalog()
+    return removal
+  },
+
+  clearPluginRemoval: () => set({ pluginRemoval: undefined }),
 
   previewExport: async (specialistId: string) => {
     const requestId = ++latestExportPreviewRequest

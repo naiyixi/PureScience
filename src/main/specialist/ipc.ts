@@ -23,9 +23,14 @@ import type {
   ExecutionProtectionSnapshot,
   RemoteUnprotectedExecutionPolicy
 } from '../../shared/execution-protection'
-import type { PluginOperationOutcomeView } from '../../shared/plugin-source'
+import type {
+  PluginCatalogRequest,
+  PluginCatalogResult,
+  PluginOperationOutcomeView
+} from '../../shared/plugin-source'
 import { SPECIALIST_IPC } from '../../shared/specialist'
 import { ProfileService } from './service'
+import { listDeployedPlugins, removeDeployedPlugin } from './plugin-catalog'
 import { SessionBindingService } from './session-binding'
 import { createLogger } from '../logger'
 import { broadcastToRenderers } from '../renderer-broadcast'
@@ -72,6 +77,17 @@ const isPluginSourcePreviewRequest = (value: unknown): value is { reference: str
   value !== null &&
   typeof (value as { reference?: unknown }).reference === 'string' &&
   (value as { reference: string }).reference.trim() !== ''
+
+// Transport shape of the catalogue request: the action decides which fields matter. An action this app does
+// not have is refused here rather than reaching the module — "list" and "remove" are the whole vocabulary.
+const isPluginCatalogRequest = (value: unknown): value is PluginCatalogRequest => {
+  if (typeof value !== 'object' || value === null) return false
+  const action = (value as { action?: unknown }).action
+  if (action === 'list') return true
+  if (action !== 'remove') return false
+  const removal = value as { pluginId?: unknown; confirmed?: unknown }
+  return typeof removal.pluginId === 'string' && typeof removal.confirmed === 'boolean'
+}
 
 type PersistSessionSpecialist = (
   sessionId: string,
@@ -292,6 +308,32 @@ export const registerSpecialistIpcHandlers = (
         // The count is returned rather than swallowed: a silent drop is not a disposal.
         dropped: pluginSource.dispose(rendererOwnerId(event))
       })
+    )
+  }
+
+  if (pluginPluginsRoot) {
+    // The catalogue needs the plugins root and nothing else, so it is registered exactly when there IS a
+    // root — the same value the deploy path was given, resolved once in the composition (a listing and a
+    // deployment cannot disagree about where plugins live). Nothing here fetches, and nothing here runs.
+    const catalogOptions = { pluginsRoot: pluginPluginsRoot, log }
+
+    ipcMainHandle(
+      SPECIALIST_IPC.PLUGIN_CATALOG,
+      async (_event, request: unknown): Promise<PluginCatalogResult> => {
+        if (!isPluginCatalogRequest(request)) {
+          throw new Error('Invalid plugin catalog request.')
+        }
+        if (request.action === 'list') {
+          return { action: 'list', plugins: await listDeployedPlugins(catalogOptions) }
+        }
+        return {
+          action: 'remove',
+          removal: await removeDeployedPlugin(catalogOptions, {
+            pluginId: request.pluginId,
+            confirmed: request.confirmed
+          })
+        }
+      }
     )
   }
 

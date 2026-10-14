@@ -139,6 +139,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const deployPluginSource = useSpecialistStore((s) => s.deployPluginSource)
   const runPluginSourceOnce = useSpecialistStore((s) => s.runPluginSourceOnce)
   const pluginOperation = useSpecialistStore((s) => s.pluginOperation)
+  // E3-2 follow-up: what is deployed, and removing one of them.
+  const pluginCatalog = useSpecialistStore((s) => s.pluginCatalog)
+  const loadPluginCatalog = useSpecialistStore((s) => s.loadPluginCatalog)
+  const removeDeployedPlugin = useSpecialistStore((s) => s.removeDeployedPlugin)
+  const pluginRemoval = useSpecialistStore((s) => s.pluginRemoval)
+  const clearPluginRemoval = useSpecialistStore((s) => s.clearPluginRemoval)
+  // The catalogue is a desktop-only channel (like the deployment it reads): a Web gateway has no such
+  // method, so the block is not rendered there at all rather than shown with a claim it cannot verify.
+  const pluginCatalogAvailable = typeof window.api?.specialist?.pluginCatalog === 'function'
   const exportPreview = useSpecialistStore((s) => s.exportPreview)
   const previewExport = useSpecialistStore((s) => s.previewExport)
   const exportSpecialist = useSpecialistStore((s) => s.exportSpecialist)
@@ -167,6 +176,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const [pluginSourceBusy, setPluginSourceBusy] = useState(false)
   const [pluginOperationConfirmed, setPluginOperationConfirmed] = useState(false)
   const [pluginOperationBusy, setPluginOperationBusy] = useState(false)
+  const [pluginRemovalConfirmed, setPluginRemovalConfirmed] = useState(false)
+  const [pluginCatalogBusy, setPluginCatalogBusy] = useState(false)
   const [packageErrorCode, setPackageErrorCode] = useState<string | undefined>()
   const [overwriteConfirmationOpen, setOverwriteConfirmationOpen] = useState(false)
   const focusRestoreOverwrite = useDialogFocusRestore(overwriteConfirmationOpen)
@@ -191,6 +202,15 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
     const unsub = window.api.specialist.onCatalogChanged(() => void load())
     return unsub
   }, [load])
+
+  // The catalogue is read when the import view opens, so the list reflects the disk rather than the last
+  // time this panel happened to be open. The removal notice is cleared with it: a "removed X" line left
+  // over from a previous visit would read as if it had just happened.
+  useEffect(() => {
+    if (view.kind !== 'import') return
+    clearPluginRemoval()
+    void loadPluginCatalog()
+  }, [clearPluginRemoval, loadPluginCatalog, view])
 
   useEffect(() => {
     if (view.kind !== 'export') return
@@ -789,6 +809,129 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                 </div>
               ) : null}
             </div>
+            {/* E3-2 follow-up: what is actually deployed, and removing one of them. Two things this block
+                refuses to do: a row whose record cannot be read is SHOWN saying so (a silent skip would
+                read as "nothing there"), and the Remove button is rendered only for rows the removal gate
+                can succeed on — a control that can only ever be refused is not an entry.
+
+                The whole block is desktop-only, like the deployment it reads: on a Web gateway the channel
+                does not exist, and an empty list there would be a claim this surface is in no position to
+                make ("Nothing is deployed yet." about a directory it cannot read). */}
+            {pluginCatalogAvailable ? (
+              <div className="mt-4 space-y-2" data-testid="specialist-plugin-catalog">
+                <p className="text-sm text-text-300">{t('specialist.pluginCatalogTitle')}</p>
+                {pluginCatalog === undefined ? null : pluginCatalog.length === 0 ? (
+                  <p
+                    className="text-sm text-text-300"
+                    data-testid="specialist-plugin-catalog-empty"
+                  >
+                    {t('specialist.pluginCatalogEmpty')}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {pluginCatalog.map((row) => (
+                      <li
+                        key={row.pluginId}
+                        className="rounded border border-border-300 p-2 text-sm text-text-300"
+                      >
+                        {row.state === 'deployed' ? (
+                          <div className="space-y-1">
+                            <p data-testid="specialist-plugin-catalog-row">
+                              {t('specialist.pluginCatalogRow', {
+                                plugin: row.pluginId,
+                                count: row.entries.length,
+                                bytes: row.onDiskBytes
+                              })}
+                            </p>
+                            <p className="text-xs">
+                              {row.deployedAt === undefined
+                                ? t('specialist.pluginCatalogNoDate')
+                                : t('specialist.pluginCatalogDeployedAt', { at: row.deployedAt })}
+                            </p>
+                            <ul className="space-y-0.5 text-xs">
+                              {row.entries.map((entry) => (
+                                <li key={entry.entry}>
+                                  {t('specialist.pluginCatalogEntry', {
+                                    entry: entry.entry,
+                                    bytes: entry.bytes,
+                                    sha256: entry.sha256.slice(0, 12)
+                                  })}
+                                </li>
+                              ))}
+                            </ul>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              data-testid="specialist-plugin-remove"
+                              disabled={!pluginRemovalConfirmed || pluginCatalogBusy}
+                              onClick={() => {
+                                setPluginCatalogBusy(true)
+                                // The flag is the state the control was gated on, not a literal: if this
+                                // button were ever enabled some other way, the request would still carry
+                                // whatever the reader actually confirmed.
+                                void removeDeployedPlugin(
+                                  row.pluginId,
+                                  pluginRemovalConfirmed
+                                ).finally(() => {
+                                  setPluginCatalogBusy(false)
+                                  // One confirmation, one removal: acting again means confirming
+                                  // again, so a second click cannot inherit the first one's answer.
+                                  setPluginRemovalConfirmed(false)
+                                })
+                              }}
+                            >
+                              {t('specialist.pluginCatalogRemove', { plugin: row.pluginId })}
+                            </Button>
+                          </div>
+                        ) : row.state === 'record-missing' ? (
+                          <p data-testid="specialist-plugin-catalog-row">
+                            {t('specialist.pluginCatalogRecordMissing', { plugin: row.pluginId })}
+                          </p>
+                        ) : (
+                          <p data-testid="specialist-plugin-catalog-row">
+                            {t('specialist.pluginCatalogRecordUnreadable', {
+                              plugin: row.pluginId,
+                              detail: row.detail
+                            })}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {pluginCatalog?.some((row) => row.state === 'deployed') ? (
+                  <label className="flex items-start gap-2 text-sm text-text-300">
+                    <input
+                      type="checkbox"
+                      data-testid="specialist-plugin-removal-confirm"
+                      checked={pluginRemovalConfirmed}
+                      onChange={(event) => setPluginRemovalConfirmed(event.target.checked)}
+                    />
+                    {t('specialist.pluginCatalogRemoveConfirm')}
+                  </label>
+                ) : null}
+                {pluginRemoval ? (
+                  <p
+                    className="text-sm text-text-300"
+                    data-testid="specialist-plugin-removal-result"
+                  >
+                    {pluginRemoval.state === 'removed'
+                      ? t('specialist.pluginCatalogRemoved', {
+                          plugin: pluginRemoval.pluginId,
+                          bytes: pluginRemoval.freedBytes
+                        })
+                      : pluginRemoval.state === 'absent'
+                        ? t('specialist.pluginCatalogNotRemoved', {
+                            plugin: pluginRemoval.pluginId
+                          })
+                        : t('specialist.pluginCatalogRefused', {
+                            reason: pluginRemoval.reason,
+                            detail: pluginRemoval.detail
+                          })}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {templateSaveError ? (
               <p
                 role="alert"

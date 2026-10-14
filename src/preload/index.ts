@@ -73,6 +73,7 @@ import type {
   PrepareMarketplaceInstallRequest,
   RemoveMarketplaceSourceRequest
 } from '../shared/specialist-marketplace'
+import type { PluginCatalogRequest } from '../shared/plugin-source'
 import type {
   ReviewRunRequest,
   ReviewSessionRequest,
@@ -473,6 +474,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('specialist.pluginSourceDeploy', request),
     pluginSourceRunOnce: (request: { token: string; confirmed: boolean }) =>
       electronRendererContracts.invoke('specialist.pluginSourceRunOnce', request),
+    // The read side of the same feature: what is deployed, and removing one of them. Removing is a
+    // decision, so the request carries the confirmation the window showed.
+    pluginCatalog: (request: PluginCatalogRequest) =>
+      electronRendererContracts.invoke('specialist.pluginCatalog', request),
     savePackageReport: (request: SpecialistPackageInstallRequest) =>
       electronRendererContracts.invoke('specialist.savePackageReport', request),
     onCatalogChanged: (listener: () => void) =>
