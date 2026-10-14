@@ -4862,3 +4862,32 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 读 `c8f35f8b` 的双车道判决 + 认证车道那两行（`[b1-declined]` / `1 skipped`）；两笔全绿即**开 v2.1.0 发版窗口**
 （先 `pause` 本执行器、核无并发在制 → 四文件 → 技能自带 `release-gate.sh <sha>` 五环 → 推 main + 附注 tag → 核 Release 页 → notes `--apply` → `resume`）。
 若那笔有红：按**作业级**日志归因（先看是不是本轮新加的那支 spec），当批修，**不带红进窗口**。
+
+## 一百、v2.1.0 发布核验通过 + 发版件审计（会话，2026-10-14）
+
+### 一 核验读数（逐字，全部现取）
+
+| 核验项 | 读数 |
+| --- | --- |
+| 页旗标与资产 | `tag=v2.1.0 draft=false prerelease=false` **21 资产**：mac arm64/x64 各 dmg+zip+blockmap、linux AppImage+deb、win-x64 setup.exe+zip、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest.yml`/`latest-linux.yml`/`latest-mac.yml`、`arm64-mac.yml`/`x64-mac.yml` |
+| 谁是 Latest | `PureScience v2.1.0 = Latest`（`Nightly (latest main)` = Pre-release；v2.0.0 退为普通页）|
+| 页 ↔ 提交绑定 | `RELEASE-CERTIFICATION.json` 的 `sourceSha = 1a75dd847f2844917920807b048e917f7793024e` 与 `git rev-parse 'v2.1.0^{commit}'` **逐字符相同** ✓ |
+| 平台认证 | 四平台 `packageSmoke: passed`；**macos-arm64 `electronP0: passed` + `visualRegression: passed`**；其余平台 `not-applicable`（按设计：P0 只在 macos-arm64 跑）|
+| mac 签名 | `macSignature: unsigned`、`credentialsPresent: False` ⇒ **不声称已签名/已公证** ✓ |
+| 发布 run | `38497300089`（attempt 1）completed **success** ✓ |
+
+### 二 发版件审计（我逐条读，结论：准确）
+
+它的 CHANGELOG v2.1.0 段与事实一致，且把我的两条纪律原样保住：**收据缺席＝未评估（绝不等于无风险）**、**前态不许链式冒充**、**读侧净化整条丢弃**、**mac 签名不推断**。它还把「明确没做」写到七条（含 `repl_execute` 不覆盖、前态覆盖范围、被拒不落记录、**血缘的收据来源哈希只有本版之后的新运行才有**、无 provisioner 构建里运行控件禁用并具名挂起、别名血缘尚未接进产物/溯源面板）。
+
+### 三 我这一轮**主动让路**的两处（避免双份词汇）
+
+1. **B1 拒绝文案 9 语**：我正准备做，它已经做完（上屏句改走**卡面同一套规则名**、机器 id 留行内、第二支认证 spec `notebook-declined-copy.spec.ts`、真机读数 `1 passed (8.8s)`、证据档 `docs/evidence/2026-10-14-b1-declined-copy-real-window.md`）⇒ 我**不重复实现**。
+2. **我 §九十七 立的那条**（真数据 0 条带收据 ⇒ 配方哈希从未被走过）：它用**读侧补算** `sourceContentHash`（`provenance: 'computed-on-read'`、只挂读路径、**永不合成 `riskReview`**）接掉，读数 **1,412 / 1,412** 条血缘行拿到真哈希 —— 正是我立档时要的那一半，且没有把「读侧算的」冒充成「审过的」。
+
+### 四 顺带查出的一条红（登记，不是本版引入）
+
+`edbf9ad8` 的 Nightly 红在 **`build / Build macos-arm64`** 认证作业：`1 failed ｜ 12 skipped ｜ 89 passed (28.8m)`，失败用例 **`e2e/certification/session-fork.spec.ts:27:5`**（`Error: nothing to press` → UI 控件竞态）。
+- 与 B1/B2/B3 的 spec **无关**，也**不是**它 CHANGELOG 里记的那支 PDF spec ⇒ 属**认证车道轮转抖动**（同一套 spec 在不同提交上轮转红在不同支）。
+- **发布自己的认证作业没被它打到**（该页 `electronP0: passed` ✓，见 §一）。
+- 处置口径（若下次打到发布作业）：**无 Release 页 ⇒ 删 tag 重建**；**不许重跑单个 build 作业**（同名重复产物会让 publish 报 `missing`）。
