@@ -6041,3 +6041,24 @@ spawn 自证 : cwd = …/T/plugin-run-PHHsGK（自己的目录，不含 plugins�
   `src/main/ipc.ts(392,43): Cannot find module './skills/method-skill-compiler'` +
   `src/main/ipc.ts(1950,7): 'skillMethodCompiler' does not exist in type 'NotebookLocalRpcServerOptions'`
   ⇒ **执行器在制品**（其 `src/main/skills/method-skill-compiler.ts` 等仍处**未跟踪**状态 ⇒ 已提交的引用指向未提交的文件，与我先前那一类同）。**归属：执行器**，我**不碰**（避免把半成品模块一起提交），仅记明。两边同改 `src/main/ipc.ts` 但改动区段不同（我的是 specialist 注册处 ✓）。
+
+## 一百三十一、复查发现一处**证据缺口**：面板按钮的真窗口点击读数未取（会话，2026-10-15）
+
+### 一 缺口本身（我自己的，不含糊）
+
+E3 此前取到的是**通道级**窗口读数（真窗口 ✓ 但走 preload 桥）与组件层渲染测试；**读者真正按的那两个按钮**（`Deploy` / `Run once`）**从未在真窗口里被点过** ✗ ⇒ 按「UI 类须窗口读数」的口径，这一层尚未完成。
+
+### 二 四次尝试的**可执行线索**（不继续钻，但把路留清楚）
+
+| 事实 | 依据 |
+| --- | --- |
+| 插件创建器**不在** Specialists 列表视图 | 面板实文dump：只有 `All(2) / Custom(0) / Marketplace(0) / Built-in(2)` 与专家条目 |
+| 它在 **创建视图** 里 | `SpecialistsPanel.tsx:370` `if (view.kind === 'create')` 内含「Choose zip」与插件创建器整块 |
+| 该视图需要**先有草稿**才进得去 | 点击 `Add specialist` 后对话框被换掉、且无该块入 DOM ⇒ 入口不是那枚按钮（或需先建草稿） |
+| 面板导航方式（已验证可用） | `page.getByRole('button',{name:'Settings'}).click()` → `dialog[name=Settings]` → `navigation[name=Settings]` → `button[name=Specialists]` |
+
+**下一步（可执行）**：找到通往 `view.kind === 'create'` 的真 UI 入口（列表空态/草稿建立路径），再用真仓库夹具（`naiyixi/purescience-plugin-fixture` ✓ 已备）点一次 `Deploy` + `Run once`，读屏上文案。一次性 spec 写完即删（网络 ✓）。
+
+### 三 已备而未用的东西
+
+夹具仓保留 ✓；`e2e/certification/plugin-operation-gate.spec.ts`（常驻、无网络）继续覆盖四层连通与令牌绑定 ✓。一次性 spec 两次失败后**已删除** ✓（不留失败用例进车道）。
