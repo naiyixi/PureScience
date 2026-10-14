@@ -5606,7 +5606,7 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 
 ### 二 主进程：`src/main/specialist/ipc.ts`
 
-- 动作注册函数把 `packageImport?: PackageImportIpc` 作为**参数**（`:145`）⇒ **第一步是找它的调用方**（`grep -rn "specialist/ipc'" src/main` 顺着 import 找），在那里把 `new PluginSourceCandidateStore({ fetchBytes })` 注入同处。
+- 动作注册函数 `registerSpecialistIpcHandlers`（`ipc.ts:125`）把 `packageImport?: PackageImportIpc` 作为**参数**（`:145`）。**调用方已查到：`src/main/ipc.ts:2689`**，是**一长串位置参数**（`profileService` / `sessionBindingService` / 若干闭包 …）⇒ 在**末位新增**一个 store 形参（并把 `registerSpecialistIpcHandlers` 的签名同批加这一项），实参写 `new PluginSourceCandidateStore({ fetchBytes })`；`fetchBytes` 用主进程既有的取回件（若没有，就在该处现造一个带每请求超时的实现，照 §一百一十七 真读数里的写法）。
 - 两个 handler 照现成体例写：
   - 请求校验：照 `isExportPreviewRequest`（`:180`）——**非形状请求直接抛**，不猜；
   - owner 作用域：`const ownerId = rendererOwnerId(event)`（照 `SELECT_PACKAGE` 分支 `:198`）；
