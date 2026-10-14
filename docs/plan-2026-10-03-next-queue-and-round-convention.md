@@ -6255,3 +6255,20 @@ GATE_EXIT=0
 - 附注 tag（消息按仓规 `<tag>: N commits since <prev> — <一句话>` ✓）：`v2.3.0: 51 commits since v2.2.0 — 方法即产物（甲半：把已记录的方法编译成可调用技能；乙半：第三方公开仓库成为可核验的插件来源）` ✓；
 - `git rev-parse v2.3.0^{commit}` = `6efa5a5f` **= 发版提交本身** ✓（门禁只认这个提交 ✓）；
 - 推送为**一次**（门禁提醒「边做边推会取消在跑车道」✓；推 tag 是另一个 ref ✓ 不碰 main 的在飞车道 ✓）⇒ **`Release @6efa5a5f` 已排队** ✓。
+
+### 五 **v2.3.0 发布完成与页面核验**（2026-10-15）
+
+`Release @6efa5a5f` 的作业逐项：`preflight` ✓ / `build:Verify(lint+typecheck+test+package)` ✓ / 矩阵 ✓ / **四个平台构建全 success**（macos-x64、macos-arm64、linux-x64、windows-x64）✓ / 两条 notarize **具名跳过**「SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)」✓ / **`publish` ✓**；余下 `windows-upgrade-smoke` 与 `Nightly` 在跑（不阻断发布）。
+
+**页面核验（读回外部事实，不看本地）**：
+
+| 项 | 读数 |
+| --- | --- |
+| 参数 | `tag=v2.3.0 draft=false pre=false publishedAt=2026-10-14T18:31:22Z` ✓ |
+| URL | https://github.com/naiyixi/PureScience/releases/tag/v2.3.0 |
+| **Latest** | `gh api …/releases/latest` ⇒ `v2.3.0 : PureScience v2.3.0` ✓ |
+| 资产 | **21** ✓（含 `SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、四平台 yml/安装包） |
+| 正文 | **44,814 字符**；`from_run_id` ×3 ✓ / `Deployed plugin` ×1 ✓ / `approval-required` ×4 ✓ / `sha256 74644b92` ×1 ✓ / 「明确没做」×2 ✓ / 成熟度块 ×1 ✓ |
+| **未签名披露** | `> ⚠️ **macOS signing status: unsigned** — the macOS packages in this release carry only an ad-hoc signature (no Apple Developer ID credentials are configured…)` ✓ ⇒ 绿的 notarize 作业读不成「已公证」✓ |
+
+⇒ **v2.3.0 发布完成**：批 E 两半（甲半：运行记录编译成可调用技能；乙半：第三方公开仓库成为可核验的插件来源）随版发出，页面自带成熟度自陈、逐条「明确没做」与未签名披露。
