@@ -4694,5 +4694,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'specialist.pluginDeployed': '{plugin} をデプロイしました · {count} ファイル · {directory}',
   'specialist.pluginRan': '{command} を実行 · 終了コード {exitCode} · {duration} ミリ秒',
   'specialist.pluginRanTimedOut': '{command} を実行 · {duration} ミリ秒で強制終了（タイムアウト）',
-  'specialist.pluginRunOutput': '出力'
+  'specialist.pluginRunOutput': '出力',
+  'protection.surfacePlugin': 'デプロイ済みプラグイン'
 }

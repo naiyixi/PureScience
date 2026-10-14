@@ -20,7 +20,8 @@ const SURFACE_KEYS: Record<ExecutionSurface, TranslationKey> = {
   notebook: 'protection.surfaceNotebook',
   shell: 'protection.surfaceShell',
   'background-job': 'protection.surfaceBackgroundJob',
-  'remote-host': 'protection.surfaceRemoteHost'
+  'remote-host': 'protection.surfaceRemoteHost',
+  plugin: 'protection.surfacePlugin'
 }
 
 const LEVEL_KEYS: Record<ExecutionProtectionLevel, TranslationKey> = {

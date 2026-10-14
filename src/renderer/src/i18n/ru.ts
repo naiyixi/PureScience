@@ -4712,5 +4712,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'specialist.pluginDeployed': '{plugin} развёрнут · файлов: {count} · {directory}',
   'specialist.pluginRan': '{command} выполнен · код выхода {exitCode} · {duration} мс',
   'specialist.pluginRanTimedOut': '{command} выполнен · прерван на {duration} мс (истёк таймаут)',
-  'specialist.pluginRunOutput': 'Вывод'
+  'specialist.pluginRunOutput': 'Вывод',
+  'protection.surfacePlugin': 'Развёрнутый плагин'
 }

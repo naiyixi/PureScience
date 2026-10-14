@@ -4402,7 +4402,8 @@ export const zh = {
   'specialist.pluginDeployed': '已部署 {plugin} · {count} 个文件 · {directory}',
   'specialist.pluginRan': '已运行 {command} · 退出码 {exitCode} · {duration} 毫秒',
   'specialist.pluginRanTimedOut': '已运行 {command} · 在 {duration} 毫秒时被终止（超时）',
-  'specialist.pluginRunOutput': '输出'
+  'specialist.pluginRunOutput': '输出',
+  'protection.surfacePlugin': '已部署的插件'
 }
 
 export type ZhKey = keyof typeof zh

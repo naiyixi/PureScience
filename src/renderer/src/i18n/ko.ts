@@ -4617,5 +4617,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'specialist.pluginDeployed': '{plugin} 배포됨 · 파일 {count}개 · {directory}',
   'specialist.pluginRan': '{command} 실행됨 · 종료 코드 {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': '{command} 실행됨 · {duration} ms에서 종료됨(시간 초과)',
-  'specialist.pluginRunOutput': '출력'
+  'specialist.pluginRunOutput': '출력',
+  'protection.surfacePlugin': '배포된 플러그인'
 }

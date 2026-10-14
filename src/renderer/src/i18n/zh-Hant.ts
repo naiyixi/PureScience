@@ -4346,5 +4346,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.pluginDeployed': '已部署 {plugin} · {count} 個檔案 · {directory}',
   'specialist.pluginRan': '已執行 {command} · 結束碼 {exitCode} · {duration} 毫秒',
   'specialist.pluginRanTimedOut': '已執行 {command} · 於 {duration} 毫秒時被終止（逾時）',
-  'specialist.pluginRunOutput': '輸出'
+  'specialist.pluginRunOutput': '輸出',
+  'protection.surfacePlugin': '已部署的插件'
 }

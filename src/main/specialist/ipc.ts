@@ -19,7 +19,10 @@ import type {
   ResolveSessionSpecialistRequest,
   SessionSpecialistResolution
 } from '../../shared/specialist'
-import type { ExecutionProtectionSnapshot } from '../../shared/execution-protection'
+import type {
+  ExecutionProtectionSnapshot,
+  RemoteUnprotectedExecutionPolicy
+} from '../../shared/execution-protection'
 import type { PluginOperationOutcomeView } from '../../shared/plugin-source'
 import { SPECIALIST_IPC } from '../../shared/specialist'
 import { ProfileService } from './service'
@@ -169,12 +172,17 @@ export const registerSpecialistIpcHandlers = (
     broadcastDownloadProgress: (progress: MarketplaceDownloadProgress) => void
   },
   pluginSource?: PluginSourceCandidateStore,
-  // E3-2: where a deployed plugin lives, and what the execution-protection policy says about running one.
-  // Absent means the strict default below: unprotected, and an approval required every single time — a
-  // caller that wired none of this can read a plugin's declaration but cannot silently execute one.
+  // E3-2: where a deployed plugin lives, and the execution-protection answer for running one.
+  //
+  // The protection answer is a PROVIDER rather than a value on purpose: the level and the policy are read
+  // when a run is asked for, so flipping either in Settings takes effect on the next run instead of on the
+  // next app start. Absent means the strict default below — unprotected, an approval required every time —
+  // so a caller that wired none of this can read a plugin's declaration but cannot silently execute one.
   pluginPluginsRoot?: string,
-  pluginProtection?: ExecutionProtectionSnapshot,
-  pluginRunPolicy?: 'confirm' | 'remembered' | 'deny'
+  pluginRuntimePolicy?: () => Promise<{
+    protection: ExecutionProtectionSnapshot
+    policy: RemoteUnprotectedExecutionPolicy
+  }>
 ): void => {
   // Subscribe once so every mutation (create, setEnabled) triggers a broadcast.
   service.subscribe(broadcastCatalogChanged)
@@ -222,15 +230,19 @@ export const registerSpecialistIpcHandlers = (
     // Two operations, one shape: the window names the token it was given and says whether it confirmed the
     // act in words it showed the reader. The gate decides first; nothing is written and nothing is spawned
     // before it does.
-    const pluginOperationOptions = (
+    const pluginOperationOptions = async (
       confirmed: boolean
-    ): Parameters<PluginSourceCandidateStore['deploy']>[2] => ({
-      // No invented path: a caller that never said where plugins live gets a refusal that says so, below.
-      pluginsRoot: pluginPluginsRoot ?? '',
-      confirmed,
-      protection: pluginProtection,
-      policy: pluginRunPolicy ?? 'confirm'
-    })
+    ): Promise<Parameters<PluginSourceCandidateStore['deploy']>[2]> => {
+      const runtime = pluginRuntimePolicy ? await pluginRuntimePolicy() : undefined
+      return {
+        // No invented path and no invented snapshot: what a caller did not provide stays undefined, and the
+        // gate refuses a run it cannot judge instead of judging it against something made up.
+        pluginsRoot: pluginPluginsRoot ?? '',
+        confirmed,
+        protection: runtime?.protection,
+        policy: runtime?.policy ?? 'confirm'
+      }
+    }
 
     ipcMainHandle(
       SPECIALIST_IPC.PLUGIN_SOURCE_DEPLOY,
@@ -248,7 +260,7 @@ export const registerSpecialistIpcHandlers = (
         return pluginSource.deploy(
           rendererOwnerId(event),
           request.token,
-          pluginOperationOptions(request.confirmed)
+          await pluginOperationOptions(request.confirmed)
         )
       }
     )
@@ -269,7 +281,7 @@ export const registerSpecialistIpcHandlers = (
         return pluginSource.runOnce(
           rendererOwnerId(event),
           request.token,
-          pluginOperationOptions(request.confirmed)
+          await pluginOperationOptions(request.confirmed)
         )
       }
     )

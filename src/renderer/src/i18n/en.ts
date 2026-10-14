@@ -4724,5 +4724,6 @@ export const en: Record<ZhKey, string> = {
   'specialist.pluginDeployed': 'Deployed {plugin} · {count} file(s) · {directory}',
   'specialist.pluginRan': 'Ran {command} · exit {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': 'Ran {command} · killed at {duration} ms (timed out)',
-  'specialist.pluginRunOutput': 'Output'
+  'specialist.pluginRunOutput': 'Output',
+  'protection.surfacePlugin': 'Deployed plugin'
 }

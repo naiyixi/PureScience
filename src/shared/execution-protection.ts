@@ -14,7 +14,13 @@
 // it is why the axes (`scope`) are always shipped alongside the level: the label never hides a
 // protection that is still in force.
 
-export const EXECUTION_SURFACES = ['notebook', 'shell', 'background-job', 'remote-host'] as const
+export const EXECUTION_SURFACES = [
+  'notebook',
+  'shell',
+  'background-job',
+  'remote-host',
+  'plugin'
+] as const
 
 // Where an execution physically happens, as the user meets it:
 //  - notebook:       a local analysis cell (python/r), executed by the app-owned kernel process.
@@ -23,6 +29,10 @@ export const EXECUTION_SURFACES = ['notebook', 'shell', 'background-job', 'remot
 //                    detached SSH session or a scheduler submission).
 //  - remote-host:    a command run on a compute host as part of the turn (call_command) or a
 //                    session-cache download from it.
+//  - plugin:         code taken from a public repository, deployed into the app's data directory and
+//                    run once by the app itself. It is its own surface rather than a kind of `shell`
+//                    on purpose: nothing about it is a command the user typed, and a protection
+//                    matrix that called it one would be reporting a row that is not true.
 export type ExecutionSurface = (typeof EXECUTION_SURFACES)[number]
 
 export const EXECUTION_PROTECTION_LEVELS = [

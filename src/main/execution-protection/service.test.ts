@@ -82,7 +82,8 @@ describe('matrix', () => {
       'notebook',
       'shell',
       'background-job',
-      'remote-host'
+      'remote-host',
+      'plugin'
     ])
     expect(matrix.osWriteGuard.available).toBe(true)
     expect(matrix.networkAllowlist.enabled).toBe(true)

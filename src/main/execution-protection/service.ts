@@ -23,7 +23,8 @@ import {
   type ExecutionSurface,
   type OsWriteGuardStatus,
   type RemoteExecutionTarget,
-  type RemoteUnprotectedExecutionPolicy
+  type RemoteUnprotectedExecutionPolicy,
+  EXECUTION_SURFACES
 } from '../../shared/execution-protection'
 
 // The component the macOS write-guard spawn wrapper executes. Kept in sync with
@@ -43,7 +44,7 @@ export type ExecutionProtectionServiceDeps = {
   now?: () => number
 }
 
-const SURFACES: readonly ExecutionSurface[] = ['notebook', 'shell', 'background-job', 'remote-host']
+const SURFACES: readonly ExecutionSurface[] = EXECUTION_SURFACES
 
 class ExecutionProtectionService {
   private readonly platform: NodeJS.Platform

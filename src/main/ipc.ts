@@ -1,4 +1,5 @@
 import { basename, dirname, join } from 'node:path'
+import { unresolvedExecutionProtectionSnapshot } from '../shared/execution-protection'
 
 import { randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
@@ -388,6 +389,7 @@ import { readSessionReadings, recordSessionReadings } from './connectors/reading
 import { verifyRecordedReading } from './connectors/reading-verifier'
 import { ConversationSkillImporter, SkillImportApprovalBroker } from './skills/conversation-import'
 import { SkillCreator } from './skills/skill-creator'
+import { createMethodSkillCompiler } from './skills/method-skill-compiler'
 import type { ConversationSkillImportApprovalResponse } from '../shared/settings'
 import type { TaskAgentPort } from './tasks/task-runner'
 
@@ -1932,13 +1934,24 @@ const createApplicationModules = async (
   const taskCheckpointStore = new TaskCheckpointStore((projectId) =>
     join(resolveStorageRoot(), 'checkpoints', projectId)
   )
+  // One creator for both forms of create_skill: a drafted skill and one compiled from a recorded run
+  // (「方法即产物」). Two instances would mean two writers of the skills directory, which is exactly how
+  // two vocabularies for "what a skill is" start to drift.
+  const skillCreator = new SkillCreator({ configDir: resolveConfigRoot() })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
       connectorService,
       computeService: computeServiceWithRegistry,
       skillImporter: conversationSkillImporter,
-      skillCreator: new SkillCreator({ configDir: resolveConfigRoot() }),
+      skillCreator,
+      // Wired here, not passed down as an option: this is the one place where the data root (where the
+      // run records live) and the config root (where skills are written) are both already resolved.
+      skillMethodCompiler: createMethodSkillCompiler({
+        skillCreator,
+        repository: new NotebookRunRepository(resolveDataRoot()),
+        listProjectIds: async () => (await projectRepository.list()).map((project) => project.id)
+      }),
       memoryWriter: {
         saveNote: (categoryName, text, evidence) =>
           settingsService.saveMemoryNote(categoryName, text, evidence)
@@ -2778,7 +2791,31 @@ const createApplicationModules = async (
       // E3-2: where a deployed plugin lives. The candidate store above belongs to the preview path; without
       // this argument deploy and run-once refuse with plugins-root-unavailable — which is exactly what the
       // window reading caught on a real build. (This parameter list is positional, so this is the sixth.)
-      join(resolveDataRoot(), 'plugins')
+      join(resolveDataRoot(), 'plugins'),
+      // The same protection answer the rest of the app asks for, about the surface this actually is. When it
+      // cannot be resolved the snapshot says so (unresolvedExecutionProtectionSnapshot) rather than being
+      // guessed at — and an unresolved snapshot is not a protected one.
+      async () => {
+        try {
+          const [protection, settings] = await Promise.all([
+            settingsService.resolveExecutionProtection('plugin'),
+            settingsService.getExecutionProtection()
+          ])
+          return {
+            protection,
+            policy: settings?.remoteUnprotectedPolicy ?? 'confirm'
+          }
+        } catch (error) {
+          return {
+            protection: unresolvedExecutionProtectionSnapshot({
+              surface: 'plugin',
+              platform: process.platform,
+              detail: error instanceof Error ? error.message : String(error)
+            }),
+            policy: 'confirm'
+          }
+        }
+      }
     )
   )
   // Runtime selection UI (Settings/Onboarding): survey managed+external per language, persist the

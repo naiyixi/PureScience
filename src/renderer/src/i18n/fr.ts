@@ -4829,5 +4829,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'specialist.pluginDeployed': '{plugin} déployé · {count} fichier(s) · {directory}',
   'specialist.pluginRan': '{command} exécuté · code {exitCode} · {duration} ms',
   'specialist.pluginRanTimedOut': '{command} exécuté · interrompu à {duration} ms (délai dépassé)',
-  'specialist.pluginRunOutput': 'Sortie'
+  'specialist.pluginRunOutput': 'Sortie',
+  'protection.surfacePlugin': 'Plugin déployé'
 }
