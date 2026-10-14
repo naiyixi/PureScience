@@ -5427,3 +5427,28 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 4. 上述都落定后，再把这份队列档的本地提交推上 main。
 
 
+
+## 一百一十四、4 份同义的「剥信封」副本折进单一来源（会话，2026-10-14）
+
+> **本笔只本地提交、暂不推**：`origin/main` 上的 `2ab9524d`（v2.2.0 发版提交）此刻 **Release / Windows Full Test / Nightly 三条车道都在跑**，推任何东西都会把它们腰斩（执行器 §一百一十三 §四 也立了同一条纪律）。等 Release 落定再推，届时补记判决。
+
+### 一 交付
+
+| 项 | 要点 |
+| --- | --- |
+| 折并 | `SkillsPanel.tsx`（`skillExportErrorMessage`）/ `SkillUploadView.tsx`（`cleanMessage`）/ `useSkillImportCandidatePreview.ts`（`previewErrorMessage`）三处**逐字相同**的规则折进既有单一来源 `lib/main-message-catalog.ts` 的 `unwrapIpcEnvelope`（它本就导出、本就有钉子用例）⇒ 各处只留一行「error→串」适配，**正则规则不再有第二份** |
+| 保留的**非**副本 | `lib/acp/useWorkspaceAgentRuntime.ts` 的 `unwrapIpcErrorDetail` **不是**副本：它**刻意保留** `RequestError:` 这类具体标签（「哪一层失败」是信息），而目录侧那条会把 `[A-Za-z]+Error:` 一并剥掉 ⇒ 两者语义不同。现在它的注释写明了这条差异，并点名钉住它的用例 |
+| 既有助手的边界用例 | 补一条：具体标签（`TypeError: bad shape`）剥掉、**裸 `Error` 原样返回**（这条帮助器不发明消息）、`EACCES: permission denied` 不被误认成信封 |
+
+### 二 一次**被测试当场抓住**的真实语义差（本笔最有价值的一处）
+
+我第一版按「统一到最强变体」把四处都接到目录侧那条 ⇒ `useWorkspaceAgentRuntime.test.ts` 的 **「keeps a specific RequestError cause visible」** 立刻红：期望 `Agent session resume failed: RequestError: Internal error …`，实际把 `RequestError:` 剥掉了。
+**这不是测试要改，是实现要退**：那条标签在原处是**有意保留**的（它说明失败发生在哪一层）。处置：撤回该处（连我顺手给目录侧加的「孤立 `Error` 标签」扩展一起回退——那扩展的唯一消费者就是该处，退了就没人用，不该留无用能力）；折并只覆盖**真正同义**的三处；并把我写的边界用例改成断言目录侧**真实**行为。修后 `src/renderer/src/lib/main-message-catalog.test.ts` + `src/renderer/src/lib/acp/useWorkspaceAgentRuntime.test.ts` + `src/renderer/src/pages/settings` 共 **65 文件 / 808 passed（1 skipped）**。
+
+### 三 读数
+
+`tsc --noEmit -p tsconfig.web.json` 0 错；`eslint --no-cache`（6 个路径）0 错；`pre-push-checks` **EXIT=0**；上面那三套用例 **808 passed**。信封正则的现存处：**1 条规则（单一来源）+ 1 条刻意不同的变体**（各自有注释与钉住用例），另有 1 处**注释**提到该串（非规则）。
+
+### 四 并发（具名）
+
+执行器 §一百一十三 §四 点名的 6 个未提交文件即本笔在制品；它按纪律「一个字节没碰」✓，我这一侧也**不推**（避免腰斩它的 Release）✓。我这条也是本笔之前它那条纪律的第一执行者：**先核 Release 落定，落定前不在 main 上推任何东西**。
