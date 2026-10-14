@@ -5330,3 +5330,52 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 
 **覆盖范围具名**：这条读数覆盖「投影装配 + 空态 + 配方上屏」；**行那一支**（真别名/原地变异的行）**在本 harness 上取不到**：它需要 python/R 内核写别名再由后来运行原地改，而 e2e 夹具的数据根**没有装 python 环境**（应用日志里是 `spawn …/runtime/envs/default-python/bin/python ENOENT`）⇒ 夹具里只跑得通 bash 单元格，而 bash 脚本不是别名分析认的语法。
 所以行那一支的证据在它能在的地方：**投影自己的 3 条用例** + **面板的 2 条渲染用例**（都在 §二 的读数里）。我一度给夹具加了产出别名的能力（真行路线），实测撞上这条环境限制后**撤回**，只留注释说明 —— 不留用不上的夹具路径。
+
+## 一百一十二、v2.2.0「数据面加宽」之外追加一件：**PDBe 连接器**（执行器，2026-10-14）
+
+> 提交 **`b6fa1d70`**（已推上 main）。落在 `v2.1.0 → v2.2.0` 区间内 ⇒ **v2.2.0 的 CHANGELOG 与发布正文必须覆盖它**（连接器 **30→31**、工具 **279→282**，两份 README 的成熟度块已同批改）。
+> 本件**不是**批 C 六件之一，是我在等 C2 落地期间按队列档「B 段与批次 ①–③ 已耗尽 ⇒ 从新能力面自拟单元」这条自取的；与批 C 的 `descriptors/**` 同域、**不相交于** `components/references/**` 与 `i18n/**`（会话当时在制）。
+
+### 一 交付面（六处同改，一处不缺）
+
+| 处 | 落点 |
+| --- | --- |
+| ① 新描述符 | `src/main/connectors/descriptors/structures-pdbe.ts` —— 3 条工具 `pdbe_entry_summary` / `pdbe_ligands` / `pdbe_secondary_structure`（**独立连接器**，不动既有 `structures` 的族文件与顺序钉子） |
+| ② 聚合 | `src/main/connectors/registry.ts`（import + spread） |
+| ③ 目录 | `src/main/connectors/catalog.ts` 新条目 `structures-pdbe`（`displayName:'PDBe'` / 中文 `description` / 英文 `useWhen` / `sources:['PDBe']` / `termsUrl` / `requiresNcbi:false`）—— **不加这条会有门禁红**：`registry.test.ts` 钉的是**双向**一致性（目录 id ⇄ 注册表 id） |
+| ④ 两份 README | 成熟度块 `30 connectors (279 tools:` → **`31 connectors (282 tools:`**；由 `readme-connector-count.test.ts`（读源测试）核 |
+| ⑤ 顺序钉子 | 不适用：PDBe 是独立连接器，既有 `structures.test.ts` 的有序 id 钉子不受影响（这是**刻意选它**的原因之一） |
+| ⑥ 自己的用例 | `structures-pdbe.test.ts` —— **8 条**全过 |
+
+### 二 差异化红线（都写在代码与 `description` 里，不是只写在档里）
+
+1. **两套残基编号并列返回、永不合并**：作者编号 + 插入码（PDB 文件写、论文引的那个）与源的 label 编号分列两个字段。实测确证：`1cbs` 的配体是**作者 200 / label 1**；`4hhb` 的 6 条配体 **label 全是 1**（分属不同实体）⇒ 只报一个而不标名字必指错残基。
+2. **404 按端点各自命名**：配体那条明说 `error: not-found` ≠「什么都没结合」，并指回 `number_of_entities`。实测 `6lu7` 摘要自写 **`ligand:0 / polypeptide:2`**（共价抑制剂被记成**第二条多肽实体**），其 `/ligand_monomers` 正是 404 —— 两者自洽。
+3. **零请求拒答 + 源省略的空列表读作空**：非「首字符为数字的四字符」的 id 一个请求都不发；实测 `4hhb` 全条目**无 `strands` 键**、`6lu7` 链 C **无 `helices` 键** ⇒ 读作「该链没有这项分配」，不读作答案缺失。
+
+**具名留缺**（不是静默省略）：全库结构清单 `/services/structure/` = **442 KB / 30 s** ⇒ 不做（这么慢的清单不算工具）；`/interface_residues/` = 200 但 **339 KB** ⇒ 本轮不做。
+
+### 三 读数（命令与汇总行）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/connectors --maxWorkers=2` | **89 文件 / 1001 passed（53 skipped）**，`Duration 7.22s`（**最后一次改动之后**复跑） |
+| 新描述符用例 | **8 passed / 8** |
+| 全量 `npx vitest run --maxWorkers=4` | **1310 文件 / 16804 条（16597 passed，207 skipped）**，`Duration 355.93s`，exit 0；**无 FAIL** |
+| 双 typecheck（`--composite false`） | 两环 exit 0、无 `error TS` |
+| 全仓 `npx eslint --no-cache .` | `✖ 161 problems (0 errors, 161 warnings)`；**我自己的 4 个路径 0 条**（修前 14 条 prettier 漂移，已修；余下 147 条是会话已落地批次带来的，与本次无关） |
+| `node scripts/check-readme-sync.mjs` | `✓ 逐字一致`，exit 0 |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（只读退出码，不采信汇总行） |
+
+**一处自纠**：上一轮汇报里我把 `4hhb` 的 6 条配体写成「6 条 HEM」，实测是 **4 条 HEM + 2 条 PO4**。代码没有依赖这个数字，但汇报里的数字是错的 —— 已在 `docs/evidence/2026-10-14-pdbe-connector.md` §三① 更正。同一档里也把上一轮证据档 `2026-10-14-cbatch-independent-reproduction.md` 那句「279 与两份 README 相符」**就地标注为「当日读数、不是现值」**（该数已随本件抬到 282），免得它变成第二真源。
+
+### 四 未取证（具名）
+
+1. **窗口 / agent 面读数未取** —— 内存闸门（空闲物理页 18,893 ≈ 295 MB、swap 7,542/9,216 MB 已用）⇒ 本轮不起实例、不跑 `build:e2e`/Playwright。取到的是**端点级真读数**（我自己重发请求，见证据档）+ 描述符用例；「agent 在真回合里调到它」这一层未取。
+2. **打包态复核** —— 属发版后动作。
+
+### 五 下一手（与 v2.2.0 发版窗口的关系）
+
+- **v2.2.0 现在已无阻塞**：批 C 六件全落地（C2 = `b8340001`），本件也已上 main。
+- 位点：`package.json` = **`2.1.0`**；`v2.1.0` 是 Release 页 **Latest**；发版八步与四文件的取材清单见仓库之外的 `~/.hermes/cache/scratch/v2.2.0-release-draft-and-runbook.md`（**写正文时要把本件加进「数据面加宽」段**）。
+
