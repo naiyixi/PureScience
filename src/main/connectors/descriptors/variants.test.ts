@@ -15,6 +15,7 @@ const EXPECTED_IDS = [
   'get_structural_variant',
   'mitochondrial_variants',
   'clinvar_search',
+  'clinvar_submissions',
   'clinvar_get_records',
   'clinvar_variant_by_rsid',
   'dbsnp_get_rsids',

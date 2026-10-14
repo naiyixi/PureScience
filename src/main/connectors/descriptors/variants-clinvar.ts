@@ -254,6 +254,70 @@ const uniqueSorted = (xs: string[]): string[] => Array.from(new Set(xs)).sort()
 // NCBI E-utilities in JSON mode against db=clinvar (esearch -> esummary). Direct-ClinVar complement to
 // the gnomAD ClinVar mirror: adds review status + gold stars per classification axis, last-evaluated
 // dates, SCV counts, condition xrefs, and the somatic clinical-impact + oncogenicity classifications.
+// ── SCV-level submission evidence (VCV XML) ──────────────────────────────────────────────────────────
+// The esummary path lists the Submitter/SCV accessions of a record but says nothing PER submission; the
+// VCV XML carries one <ClinicalAssertion> per submission. This reader extracts only the fields it
+// documents — an element it does not know is ignored rather than merged into a row.
+const XML_ENTITIES: Record<string, string> = {
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&apos;': "'"
+}
+
+const decodeXml = (value: string): string =>
+  value.replace(/&(?:amp|lt|gt|quot|apos);/g, (entity) => XML_ENTITIES[entity] ?? entity).trim()
+
+const attr = (attrs: string, name: string): string | null => {
+  const match = attrs.match(new RegExp(`${name}="([^"]*)"`))
+  return match ? decodeXml(match[1]) : null
+}
+
+const tagText = (block: string, tag: string): string | null => {
+  const match = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`))
+  return match ? decodeXml(match[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')) : null
+}
+
+// One <ClinicalAssertion> -> the fields a reader can act on. The classification is quoted as the
+// submitter stated it; nothing here promotes a single submitter's word into the record's verdict.
+const submissionRow = (block: string): Record<string, unknown> => {
+  const open = block.match(/^<ClinicalAssertion\s([^>]*)>/)?.[1] ?? ''
+  const accession = block.match(/<ClinVarAccession\s([^>]*)\/?>/)?.[1] ?? ''
+  const classificationBlock =
+    block.match(/<Classification[^>]*>([\s\S]*?)<\/Classification>/)?.[1] ?? ''
+  const citations = Array.from(block.matchAll(/<ID Source="(\w+)">(\d+)<\/ID>/g)).map((m) => ({
+    source: m[1],
+    id: m[2]
+  }))
+  const attributes = Array.from(
+    block.matchAll(/<Attribute Type="([^"]+)">([^<]*)<\/Attribute>/g)
+  ).map((m) => ({ type: m[1], value: decodeXml(m[2]) }))
+
+  return {
+    scv: attr(accession, 'Accession'),
+    scv_version: attr(accession, 'Version'),
+    submitter: attr(accession, 'SubmitterName'),
+    org_id: attr(accession, 'OrgID'),
+    organization_category: attr(accession, 'OrganizationCategory'),
+    submission_date: attr(open, 'SubmissionDate'),
+    date_last_updated: attr(open, 'DateLastUpdated'),
+    contributes_to_aggregate: attr(open, 'ContributesToAggregateClassification'),
+    record_status: tagText(block, 'RecordStatus'),
+    review_status: tagText(classificationBlock, 'ReviewStatus'),
+    germline_classification: tagText(classificationBlock, 'GermlineClassification'),
+    somatic_classification:
+      tagText(classificationBlock, 'SomaticClinicalImpact') ??
+      tagText(classificationBlock, 'OncogenicityClassification'),
+    assertion: tagText(block, 'Assertion'),
+    assertion_methods: attributes.filter((a) => a.type === 'AssertionMethod').map((a) => a.value),
+    citations,
+    comment: block.match(/<Comment Type="public">([\s\S]*?)<\/Comment>/)?.[1]
+      ? decodeXml(block.match(/<Comment Type="public">([\s\S]*?)<\/Comment>/)![1])
+      : null
+  }
+}
+
 export const VARIANTS_CLINVAR_TOOLS: ToolDescriptor[] = [
   {
     id: 'clinvar_search',
@@ -291,6 +355,90 @@ export const VARIANTS_CLINVAR_TOOLS: ToolDescriptor[] = [
         truncated: total > uids.length,
         missing_uids: missing,
         records
+      }
+    }
+  },
+  {
+    id: 'clinvar_submissions',
+    connector: 'variants',
+    description:
+      "Per-submission evidence for one ClinVar variation: the record's own archive facts plus ONE ROW PER SUBMITTED ASSESSMENT (SCV), since an aggregate classification hides which lab said what. Args: variant (an rsID like rs429358 or a ClinVar accession VCV000694742 - anything else is refused with no request); max_submissions (cap on the returned rows, 1-200, default 50; the record's own submission COUNT is always reported, so a capped list says it is capped). Returns {variation: {accession, variation_id, name, type, record_status, number_of_submissions, number_of_submitters, date_last_updated, date_created}, n_submissions_returned, truncated, submissions: [{scv, scv_version, submitter, org_id, organization_category, submission_date, date_last_updated, contributes_to_aggregate, record_status, review_status, germline_classification, somatic_classification, assertion, assertion_methods, citations, comment}]}. Each row quotes the submitter's own words (a review status that says no classification is quoted as such); a single row is NOT the record's verdict. Requires a contact email (Settings -> Privacy -> 'Share contact email with research data services') per NCBI E-utilities usage policy.",
+    input: {
+      type: 'object',
+      properties: {
+        variant: {
+          type: 'string',
+          description: 'rsID (rs429358) or ClinVar accession (VCV000694742).'
+        },
+        max_submissions: { type: 'integer', minimum: 1, maximum: 200, default: 50 }
+      },
+      required: ['variant']
+    },
+    required: ['variant'],
+    returns:
+      '{variation: {...archive facts incl. number_of_submissions/number_of_submitters}, n_submissions_returned, truncated, submissions: [{scv, submitter, org_id, organization_category, submission_date, review_status, germline_classification, somatic_classification, assertion, assertion_methods, citations, comment}]} - every field quoted from the source; or a named error (invalid-variant / not-found / contact_email_required).',
+    example:
+      'const result = await host.mcp("variants", "clinvar_submissions", {"variant": "VCV005007684"})',
+    run: async (ctx, a): Promise<Record<string, unknown> | ContactRequired> => {
+      if (!ctx.credentials.ncbiEmail) return contactRequired()
+      const q = ncbiEtiquette(ctx.credentials)
+
+      const requested = String(a.variant ?? '').trim()
+      // The id is matched as it stands: a gene symbol or a sentence is refused WITHOUT a request, because
+      // a search that guesses can return a different variant than the caller meant.
+      if (!RSID_RE.test(requested) && !VCV_RE.test(requested)) {
+        return {
+          error: 'invalid-variant',
+          message: `Not an rsID or a ClinVar accession: ${requested === '' ? '(missing)' : requested}`
+        }
+      }
+
+      const found = await esearch(ctx, q, requested, 5)
+      const uid = found.idlist?.[0]
+      if (!uid) {
+        return { error: 'not-found', message: `ClinVar has no variation for ${requested}` }
+      }
+
+      const xml = await ctx.fetchText(
+        `${EUTILS}/efetch.fcgi?db=clinvar&id=${encodeURIComponent(String(uid))}&rettype=vcv&is_variationid=1` +
+          q
+      )
+
+      const archiveAttrs = xml.match(/<VariationArchive\s([^>]*)>/)?.[1] ?? ''
+      if (archiveAttrs === '') {
+        return {
+          error: 'unreadable-record',
+          message: `ClinVar returned no variation archive for ${requested}`
+        }
+      }
+
+      const blocks = xml
+        .split('<ClinicalAssertion ')
+        .slice(1)
+        .map((part) => `<ClinicalAssertion ${part}`)
+      const max = clampRetmax(a.max_submissions, 50)
+      const rows = blocks.slice(0, max).map(submissionRow)
+      const declared = attr(archiveAttrs, 'NumberOfSubmissions')
+
+      return {
+        variation: {
+          accession: attr(archiveAttrs, 'Accession'),
+          variation_id: attr(archiveAttrs, 'VariationID'),
+          name: attr(archiveAttrs, 'VariationName'),
+          type: attr(archiveAttrs, 'VariationType'),
+          record_status: tagText(xml, 'RecordStatus'),
+          number_of_submissions: declared === null ? null : Number(declared),
+          number_of_submitters:
+            attr(archiveAttrs, 'NumberOfSubmitters') === null
+              ? null
+              : Number(attr(archiveAttrs, 'NumberOfSubmitters')),
+          date_last_updated: attr(archiveAttrs, 'DateLastUpdated'),
+          date_created: attr(archiveAttrs, 'DateCreated')
+        },
+        n_submissions_returned: rows.length,
+        // The record's own count decides: a capped list says it is capped instead of looking complete.
+        truncated: declared !== null ? rows.length < Number(declared) : blocks.length > rows.length,
+        submissions: rows
       }
     }
   },

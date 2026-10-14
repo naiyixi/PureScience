@@ -344,3 +344,136 @@ describe('variants-clinvar', () => {
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 })
+
+// A minimal VCV XML carrying what the SCV reader documents: archive facts + two submissions, one with a
+// classification and one whose own review status says there is none (both shapes occur in real records).
+const vcvXml = [
+  '<?xml version="1.0"?>',
+  '<ClinVarResult-Set><VariationArchive VariationID="5007684" VariationName="NM_000492.4(CFTR):c.222del" VariationType="Deletion" Accession="VCV005007684" Version="1" RecordType="included" NumberOfSubmissions="2" NumberOfSubmitters="2" DateLastUpdated="2026-10-03" DateCreated="2025-01-02">',
+  '  <RecordStatus>current</RecordStatus>',
+  '  <ClinicalAssertion ID="1" SubmissionDate="2026-09-30" DateLastUpdated="2026-10-03">',
+  '    <ClinVarAccession Accession="SCV008080025" Type="SCV" Version="1" SubmitterName="Juno Genomics, Hangzhou" OrgID="506213" OrganizationCategory="laboratory"/>',
+  '    <RecordStatus>current</RecordStatus>',
+  '    <Classification>',
+  '      <ReviewStatus>criteria provided, single submitter</ReviewStatus>',
+  '      <GermlineClassification>Pathogenic</GermlineClassification>',
+  '      <Comment Type="public">Absent from controls &amp; very rare.</Comment>',
+  '    </Classification>',
+  '    <Assertion>variation to disease</Assertion>',
+  '    <AttributeSet><Attribute Type="AssertionMethod">ACMG Guidelines, 2015</Attribute></AttributeSet>',
+  '    <Citation><ID Source="PubMed">25741868</ID></Citation>',
+  '  </ClinicalAssertion>',
+  '  <ClinicalAssertion ID="2" SubmissionDate="2026-08-01">',
+  '    <ClinVarAccession Accession="SCV000000001" Type="SCV" Version="1" SubmitterName="Another Lab" OrgID="1" OrganizationCategory="laboratory"/>',
+  '    <Classification>',
+  '      <ReviewStatus>no classification for the single variant</ReviewStatus>',
+  '    </Classification>',
+  '  </ClinicalAssertion>',
+  '</VariationArchive></ClinVarResult-Set>'
+].join('\n')
+
+const textRes = (body: string): Response =>
+  ({ ok: true, status: 200, text: async () => body }) as unknown as Response
+
+describe('clinvar_submissions', () => {
+  it('returns one row per submitted assessment, quoting the submitter and the archive counts', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ esearchresult: { count: '1', idlist: ['5007684'] } }))
+      .mockResolvedValueOnce(textRes(vcvXml))
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('clinvar_submissions'),
+      { variant: 'VCV005007684' },
+      { ncbiEmail: 'x@y.org' }
+    )) as {
+      variation: { accession: string; number_of_submissions: number; number_of_submitters: number }
+      n_submissions_returned: number
+      truncated: boolean
+      submissions: Array<{
+        scv: string
+        submitter: string
+        review_status: string
+        germline_classification: string | null
+        assertion: string | null
+        assertion_methods: string[]
+        citations: Array<{ source: string; id: string }>
+        comment: string | null
+      }>
+    }
+    const urls = fetchImpl.mock.calls.map((call) => String(call[0]))
+
+    expect(urls[1]).toContain('rettype=vcv&is_variationid=1')
+    expect(out.variation.accession).toBe('VCV005007684')
+    expect(out.variation.number_of_submissions).toBe(2)
+    expect(out.variation.number_of_submitters).toBe(2)
+    expect(out.n_submissions_returned).toBe(2)
+    expect(out.truncated).toBe(false)
+    // Each row is one lab's own words, not the record's verdict.
+    expect(out.submissions[0].scv).toBe('SCV008080025')
+    expect(out.submissions[0].submitter).toBe('Juno Genomics, Hangzhou')
+    expect(out.submissions[0].germline_classification).toBe('Pathogenic')
+    expect(out.submissions[0].assertion_methods).toEqual(['ACMG Guidelines, 2015'])
+    expect(out.submissions[0].citations).toEqual([{ source: 'PubMed', id: '25741868' }])
+    expect(out.submissions[0].comment).toBe('Absent from controls & very rare.')
+    // A submission that states no classification is quoted as such — never padded into a verdict.
+    expect(out.submissions[1].review_status).toBe('no classification for the single variant')
+    expect(out.submissions[1].germline_classification).toBeNull()
+  })
+
+  it('caps the rows but keeps the record own count, so a short list says it is short', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ esearchresult: { count: '1', idlist: ['5007684'] } }))
+      .mockResolvedValueOnce(textRes(vcvXml))
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('clinvar_submissions'),
+      { variant: 'rs429358', max_submissions: 1 },
+      { ncbiEmail: 'x@y.org' }
+    )) as {
+      n_submissions_returned: number
+      truncated: boolean
+      variation: { number_of_submissions: number }
+    }
+
+    expect(out.n_submissions_returned).toBe(1)
+    expect(out.variation.number_of_submissions).toBe(2)
+    expect(out.truncated).toBe(true)
+  })
+
+  it('refuses something that is neither an rsID nor a VCV accession, without a request', async () => {
+    const fetchImpl = vi.fn()
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('clinvar_submissions'),
+      { variant: 'CFTR c.222del' },
+      { ncbiEmail: 'x@y.org' }
+    )) as { error: string }
+
+    expect(out.error).toBe('invalid-variant')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('names a variation ClinVar does not have instead of returning an empty record', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ esearchresult: { count: '0', idlist: [] } }))
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('clinvar_submissions'),
+      { variant: 'rs999999999' },
+      { ncbiEmail: 'x@y.org' }
+    )) as { error: string }
+
+    expect(out.error).toBe('not-found')
+  })
+
+  it('asks for a contact email before any request is made', async () => {
+    const fetchImpl = vi.fn()
+    const out = (await new ParserEngine({ fetchImpl }).call(
+      tool('clinvar_submissions'),
+      { variant: 'rs429358' },
+      {}
+    )) as { error: string }
+
+    expect(out.error).toBe('contact_email_required')
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+})
