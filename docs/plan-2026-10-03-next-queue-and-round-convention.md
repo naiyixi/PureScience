@@ -6053,7 +6053,7 @@ E3 此前取到的是**通道级**窗口读数（真窗口 ✓ 但走 preload �
 | 事实 | 依据 |
 | --- | --- |
 | 插件创建器**不在** Specialists 列表视图 | 面板实文dump：只有 `All(2) / Custom(0) / Marketplace(0) / Built-in(2)` 与专家条目 |
-| 它在 **创建视图** 里 | `SpecialistsPanel.tsx:370` `if (view.kind === 'create')` 内含「Choose zip」与插件创建器整块 |
+| ~~它在 **创建视图** 里~~ **（下方 §一百三十三 已纠正：实际在 `import` 视图）** | `SpecialistsPanel.tsx:370` 是 create；插件创建器实为 `:572` 的 `if (view.kind === 'import')` |
 | 该视图需要**先有草稿**才进得去 | 点击 `Add specialist` 后对话框被换掉、且无该块入 DOM ⇒ 入口不是那枚按钮（或需先建草稿） |
 | 面板导航方式（已验证可用） | `page.getByRole('button',{name:'Settings'}).click()` → `dialog[name=Settings]` → `navigation[name=Settings]` → `button[name=Specialists]` |
 
@@ -6085,3 +6085,28 @@ E3 此前取到的是**通道级**窗口读数（真窗口 ✓ 但走 preload �
 - 我**不**动他们的在制品（`src/main/skills/method-skill-*` 仍未跟踪）：把半成品模块提交上去会把一个未完成的半截推给所有人 ✗；
 - 因此 **main 当前红**，最快且正确的路径是**执行器**：其模块落地（或告知我回退那两行）后红即消；
 - 我在本档留此条即为**当面通知**（本档是双方共用的交接面 ✓）。我这边不再对 `src/main/ipc.ts` 动手，直到这条归位。
+
+## 一百三十三、面板按钮的**真窗口点击读数已取**（§一百三十一的缺口已闭）（会话，2026-10-15）
+
+### 一 先纠正 §一百三十一 的一处错误假设
+
+那里我写「创建器在 `view.kind === 'create'` 里」✗ —— **错**。真正的位置是 **`view.kind === 'import'`**（`SpecialistsPanel.tsx:572`，与「Select a Specialist ZIP」同段 ✓）：从公开仓创建一个专家，语义上是**从别处导入**一个专家 ✓。入口 `Add specialist` 是**三项下拉菜单**（`Write from scratch` / `Chat with agent` / **`Import ZIP`** ✓，菜单项文案也从窗口里读到了 ✓）。
+
+### 二 一次真点击读数（`1 passed (12.7s)`，真仓库夹具）
+
+```
+菜单项        : Write from scratch… | Chat with agent… | Import ZIPPreview a package, then finish setup…
+进入后的实文  : …IMPORT ZIP | Import a Specialist package | … | From a public repository | Read it
+读取结果      : Declares node, 1 tool(s) · 393 bytes · sha256 74644b924c92      ← 与磁盘 shasum 前 12 位一致
+确认前        : deploy=true  run=true        ← 两个按钮都禁用
+勾选确认后    : deploy=false                 ← 除勾选外不可能发出 confirmed=true
+部署后        : Deployed plugin-fixture · 1 file(s) · /var/…/storage/PureScience-DEV/plugins/plugin-fixture
+运行一次后    : Refused: approval-required — This run would be unprotected (filesystem: runtime-write-protected,
+                network: unrestricted); the policy does not remember approvals, so it needs one per run.
+```
+
+⇒ 三层各自被真窗口验到：**确认门在 UI 上生效**（勾选前禁用 ✓）、**部署的真目录与条目数上屏** ✓、**策略拒答按码与两条轴如实上屏** ✓。
+
+### 三 纪律
+
+一次性 spec（依赖夹具仓的网络 ✓）**取完即删** ✓；常驻车道仍只有无网络那条（`plugin-operation-gate.spec.ts` ✓）。夹具仓 `naiyixi/purescience-plugin-fixture` 保留 ✓ 供日后复用。
