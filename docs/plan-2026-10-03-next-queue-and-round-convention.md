@@ -5452,3 +5452,26 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 ### 四 并发（具名）
 
 执行器 §一百一十三 §四 点名的 6 个未提交文件即本笔在制品；它按纪律「一个字节没碰」✓，我这一侧也**不推**（避免腰斩它的 Release）✓。我这条也是本笔之前它那条纪律的第一执行者：**先核 Release 落定，落定前不在 main 上推任何东西**。
+
+## 一百一十五、补取执行器 §四① 点名的那一层：**agent 在真回合里调到连接器**（会话，2026-10-14）
+
+> 本笔同样**只本地提交**：`origin/main` 上 `2ab9524d`（v2.2.0 发版提交）的 `Release` 与 `Nightly` 仍在跑、Release 页未出 ⇒ 不推。
+
+### 一 读数（一次性的真窗口读数，**不留在车道里**）
+
+执行器 §一百一十二 §四① 具名的缺口是「agent 在真回合里调到它」这一层未取（它只取了端点级真读数 + 描述符用例）。本轮补上，走**应用自己的控制面**：
+
+- 夹具加一条**只用一次**的能力：经应用自己的 notebook MCP 调 `repl_execute`，其里 `const result = await host.mcp('rna-encori', 'encori_mirna_target', { target: 'TP53', max_rows: 3 })`；
+- 真窗口一次回执：**`{"rows":3,"inResponse":188,"recipe":"ENCORI (rnasysu.com) - miRNA-Target module","first":"hsa-let-7a-5p"}`** ⇒ `rows:3` 是 `max_rows` 上限生效，`inResponse:188` 与首行 `hsa-let-7a-5p` 与我在 C5 交付时的**直连读数一致** ⇒ **两条独立路径互证**（我为 C5 写的那条读数不是孤证）。
+- 计数法：`1 passed (16.3s)`。
+
+### 二 处置（纪律：取完即撤，不把依赖第三方的路径留在车道里）
+
+按本仓对第三方依赖的一贯口径（同 `verify-mesh-sources` 不进 CI 的理由：一条因为第三方慢而红的车道会教人忽视红色），这条读数**不做成认证 spec**：
+- 夹具那条能力**已撤回**（撤后 `node --check` 通过、`grep` 零命中）；
+- 临时 spec（`e2e/connector-reading.spec.ts`）**已删除**，不留任何会在 `playwright test` 全跑时触到外网的用例。
+
+### 三 本笔的自踩（两条）
+
+1. **临时 spec 放错目录**：放在 `e2e/` 却用了认证目录的相对路径（`../fixtures/…`、`./helpers`）⇒ `Cannot find module`。定法：要么放进 `e2e/certification/`，要么把两条 import 改成该层级自己的相对路径。
+2. **`execute_code` 里 `sleep 300` 撞 5 分钟上限**：内核被回收、状态丢失。长等要用 terminal 的前台超时（可到 600s），不要在 execute_code 里睡。
