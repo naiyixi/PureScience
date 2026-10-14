@@ -168,6 +168,18 @@ export function ReferencesLibraryDialog({
   const [pdfLoading, setPdfLoading] = useState(false)
   const [showPdfPicker, setShowPdfPicker] = useState(false)
   const [selectedPdfIds, setSelectedPdfIds] = useState<string[]>([])
+  // The page pair acts on what is VISIBLE, and the visible set is the whole selection scope: opening the
+  // picker starts an empty selection (openPdfPicker), and the candidates are loaded once per open, so a
+  // selection can never contain a row the list is not showing. The summary therefore states the size of
+  // that scope beside the selection instead of reporting an invisible remainder that cannot occur.
+  const visiblePdfIds = pdfCandidates.map((candidate) => candidate.id)
+  const selectedOnPage = visiblePdfIds.filter((id) => selectedPdfIds.includes(id)).length
+  const selectPage = (): void => {
+    setSelectedPdfIds((current) => Array.from(new Set([...current, ...visiblePdfIds])))
+  }
+  const clearPage = (): void => {
+    setSelectedPdfIds((current) => current.filter((id) => !visiblePdfIds.includes(id)))
+  }
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null)
   const cancelImportRef = useRef(false)
   const [attachToReferenceId, setAttachToReferenceId] = useState<string | null>(null)
@@ -697,6 +709,37 @@ export function ReferencesLibraryDialog({
                   </span>
                 ) : null}
               </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className={ghostClass}
+                  data-testid="pdf-page-select-all"
+                  disabled={visiblePdfIds.length === 0 || selectedOnPage === visiblePdfIds.length}
+                  onClick={selectPage}
+                >
+                  {t('references.pdfImport.selectPage')}
+                </button>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  data-testid="pdf-page-clear"
+                  disabled={selectedOnPage === 0}
+                  onClick={clearPage}
+                >
+                  {t('references.pdfImport.deselectPage')}
+                </button>
+                {selectedPdfIds.length > 0 ? (
+                  <span
+                    className="text-[11px] text-[var(--muted-foreground)]"
+                    data-testid="pdf-page-summary"
+                  >
+                    {t('references.pdfImport.pageSummary', {
+                      selected: selectedPdfIds.length,
+                      page: visiblePdfIds.length
+                    })}
+                  </span>
+                ) : null}
+              </div>{' '}
               <div className="mt-2 max-h-40 overflow-y-auto rounded border border-[var(--border)] p-1">
                 {pdfLoading ? (
                   <p className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]">…</p>

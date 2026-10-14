@@ -34,6 +34,9 @@ vi.mock('@/i18n', () => ({
       'references.pdfImport.titleBatch': 'Import from project PDFs (selected {n})',
       'references.pdfImport.stop': 'Stop',
       'references.pdfImport.empty': 'No PDF files in this project.',
+      'references.pdfImport.selectPage': 'Select every row on this page',
+      'references.pdfImport.deselectPage': 'Clear this page',
+      'references.pdfImport.pageSummary': 'This page: {page} file(s) · {selected} selected',
       'references.pdfImport.attachSelected': 'Attach to this record ({n})',
       'references.pdfImport.asNewRecords': 'Import as new records ({n})',
       'references.pdfImport.summary': 'Imported {imported} PDF file(s).',
@@ -457,5 +460,93 @@ describe('ReferencesLibraryDialog collections', () => {
     expect(attachPdf).toHaveBeenCalledWith('reference-1', 'file-1')
     expect(addReference).not.toHaveBeenCalled()
     expect(document.body.textContent).toContain('Added to collection.')
+  })
+
+  it('selects every row on the page, clears only that page, and states the page it is acting on', async () => {
+    listFiles.mockResolvedValue({
+      items: [
+        { id: 'file-1', name: 'table-evidence.pdf', mimeType: 'application/pdf' },
+        { id: 'file-2', name: 'figure-legend.pdf', mimeType: 'application/pdf' }
+      ],
+      nextCursor: undefined
+    })
+    await render()
+
+    act(() => findButton('Import PDFs').click())
+    await flush()
+
+    // Nothing chosen yet: of the pair, only the selecting side has work to do.
+    expect(findExactButton('Clear this page').disabled).toBe(true)
+    expect(findExactButton('Select every row on this page').disabled).toBe(false)
+
+    await act(async () => {
+      findExactButton('Select every row on this page').click()
+    })
+    await flush()
+
+    // The selection equals the page, and the scope it was taken from is stated on the same line.
+    expect(document.body.textContent).toContain('This page: 2 file(s) · 2 selected')
+    expect(document.body.textContent).toContain('Import as new records (2)')
+    expect(findExactButton('Select every row on this page').disabled).toBe(true)
+
+    await act(async () => {
+      findExactButton('Clear this page').click()
+    })
+    await flush()
+    expect(document.body.textContent).toContain('Import from project PDFs (selected 0)')
+    // With nothing selected there is no scope line to read, and no leftover claim about one.
+    expect(document.body.textContent).not.toContain('This page: 2 file(s)')
+  })
+
+  it('starts the selection over when the picker reopens, so no chosen row can be off-screen', async () => {
+    // Opening the picker resets the selection and the candidates are loaded once per open, which is what
+    // makes the page pair honest: a selection can never hold a row the list is not showing, and the scope
+    // line always describes the list actually on screen rather than an earlier one.
+    listFiles.mockResolvedValueOnce({
+      items: [
+        { id: 'file-1', name: 'table-evidence.pdf', mimeType: 'application/pdf' },
+        { id: 'file-2', name: 'figure-legend.pdf', mimeType: 'application/pdf' }
+      ],
+      nextCursor: undefined
+    })
+    listFiles.mockResolvedValue({
+      items: [{ id: 'file-1', name: 'table-evidence.pdf', mimeType: 'application/pdf' }],
+      nextCursor: undefined
+    })
+    await render()
+
+    act(() => findButton('Import PDFs').click())
+    await flush()
+    await act(async () => {
+      findExactButton('Select every row on this page').click()
+    })
+    await flush()
+    expect(document.body.textContent).toContain('This page: 2 file(s) · 2 selected')
+
+    // Close and reopen: the file index now lists one file, and the two-row selection is gone with the view.
+    act(() => findExactButton('Cancel').click())
+    await flush()
+    act(() => findButton('Import PDFs').click())
+    await flush()
+    expect(document.body.textContent).toContain('Import as new records (0)')
+    expect(document.body.textContent).not.toContain('This page: 2 file(s)')
+
+    // Selecting the page now means the one row that is on it.
+    await act(async () => {
+      findExactButton('Select every row on this page').click()
+    })
+    await flush()
+    expect(document.body.textContent).toContain('This page: 1 file(s) · 1 selected')
+    expect(document.body.textContent).toContain('Import as new records (1)')
+  })
+  it('offers neither page action when the project has no PDFs', async () => {
+    listFiles.mockResolvedValue({ items: [], nextCursor: undefined })
+    await render()
+
+    act(() => findButton('Import PDFs').click())
+    await flush()
+
+    expect(findExactButton('Select every row on this page').disabled).toBe(true)
+    expect(findExactButton('Clear this page').disabled).toBe(true)
   })
 })
