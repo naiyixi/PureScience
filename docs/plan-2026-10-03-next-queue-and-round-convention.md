@@ -5265,14 +5265,16 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 
 **窗口真机读数尚未取**（C2 在排期里本就标注「需窗口」）。本轮只有渲染层读数；**下一步**：写认证 spec（打开文献库 → 打开 PDF 选择器 → 点本页全选 → 断言范围行与按钮态），并解决「e2e 项目里要有 PDF 候选」的种子问题。
 
-### 六 窗口读数为何仍未取（本轮**勘查结论**，供下一手直接用）
+### 六 窗口真机读数（**已取**，2026-10-14）
 
-C2 的窗口读数卡在**种子**，不是卡在控件本身。逐条查证：
+`e2e/certification/references-page-selection.spec.ts` → **`1 passed (11.3s)`**。全程真窗口、零桩：
 
-1. 选择器的候选来自 `projectFiles.listFiles({collection:{kind:'all'}})`，**按 `.pdf` 或 `application/pdf` 过滤**（`loadPdfCandidates` 内）；
-2. 该索引是**数据库驱动**（`query-support.ts` 里是 SQL 查询，不是扫盘）⇒ **往项目目录里丢一个 PDF 不会被看到**（除非跑索引器，而 e2e 没走这条）；
-3. 应用的附件路径走**主进程原生对话框**（`dialog.showOpenDialog`）⇒ **Playwright 的 filechooser 驱动不了**；
-4. 夹具代理（`e2e/fixtures/electron-app.ts`）**不产出任何文件/工件**（`grep artifact|\.pdf` 无命中）⇒ 也没有「让代理产一个 PDF 工件」这条路；
-5. 文献库弹窗里唯一的 `type="file"` 输入是**导 CSL 样式**用的（`:1061`），不是 PDF。
+- **候选是真的**：夹具代理用应用自己的 `write_artifact_file` 写出的真 PDF 工件（提示 `'Create a table PDF fixture.'` ⇒ `table-evidence.pdf`，mimeType `application/pdf`），经应用**自己的项目文件索引**列出（选择器问的是 `collection:{kind:'all'}`，而 `kind:'all'` 在 `query-owner` 里**不带 source 过滤** ⇒ 会话工件也在内）；
+- 从窗口自己的控件打开（`aria-label` = `ws.referencesLibrary`），再开 PDF 选择器；
+- 断言链：候选可见 ✓ → 只有「全选」可用（「取消」禁用）✓ → 点全选 ⇒ 范围行 **`This page: 1 file(s) · 1 selected`** + 动作按钮 `Import as new records (1)` ✓ + 两侧可用性互换 ✓ → 点取消 ⇒ 范围行**消失** + `Import as new records (0)` **禁用** ✓。
 
-**结论**：要取这条读数，必须先给 e2e 加一条「把 PDF 放进项目文件索引」的能力（最省的两个方向：① 夹具代理支持产出一个 `.pdf` 工件并确认它进 `kind:'all'`；② 给 e2e 加一个直连索引的 seed 帮手）。**在那之前，C2 只有渲染层读数**（components/references 58 passed、components 496 passed、i18n 52 passed、双 typecheck 0、eslint 0），**不得声称窗口已跑通**。
+### 七 取这条读数的两个坑（记形状，供下一手省时）
+
+1. **夹具不会自己重建**：渲染层改动后必须先 `npm run build:e2e`，否则跑的是旧包（本次首跑 47 秒「元素找不到」，`out/main/index.js` 比改动早 11 小时）。**判定法**：跑前 `ls -la out/main/index.js` 与 `git log -1 --format=%ci -- <改的文件>` 对比。
+2. **候选从哪来**：e2e 目前**没有**把 PDF 放进项目索引的通用路径；本 spec 借的是**夹具代理既有的 PDF 工件能力**（`PDF_TABLE_PROMPT`），而 `kind:'all'` 不过滤 source 才让它出现在选择器里 ✓。
+3. 两处**我自己**的定位器错（非产品问题）：同名文件在弹窗后的预览面板里也出现 ⇒ 必须限定到 `getByLabel('Reference library')`（本次改用候选复选框的可访问名）；选择器标题是 `<p>` 文本，不是按钮 ⇒ 计数要断言在动作按钮上。
