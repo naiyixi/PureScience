@@ -5790,3 +5790,69 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 `src/main/specialist` **17 文件 / 277 passed** ✓；node typecheck 0 ✓；eslint 0 ✓；`pre-push-checks` 0 ✓。
 
 **未做（具名）**：① 把门接进 IPC（新增通道要**四处同批**：catalog / preload / `renderer-api.d.ts` / 钉子 —— 清单见 §一百一十九/§一百二十 ✓）；② **受控 spawn**（临时工作目录、环境白名单、超时、不经 shell）+ 执行读数落档；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）；④ 部署与运行的上屏文案 9 语。
+## 一百二十五、执行器本轮两件：**修掉 main 的两条红**（会话未提交的那一行 + 漏掉的一族 pin）+ **对外连接器计数/名单对账**（执行器，2026-10-14 20:0x–21:0x）
+
+> **开工现场**：`origin/main` = `9aa15013`（会话 E3 第二段第二件刚落），工作区在飞的在制品属会话
+> （`plugin-source-candidate.ts` / `plugin-source.test.ts` / `plugin-run-policy.ts`）⇒ 除下面点名的
+> 那一处外，**一个字节都没碰**。
+
+### 一 先测到的是「main 红了」——按**作业级**日志定因（两条独立缺陷）
+
+| 车道 | 提交 | 失败作业 | 根因（作业日志原文） |
+| --- | --- | --- | --- |
+| Nightly | `ba638601` / `69b6044f` | `build / Verify (lint + typecheck + test + package)` | `src/main/specialist/ipc.ts(203,64)/(204,56)/(212,39): error TS2345: Argument of type 'number \| undefined' is not assignable to parameter of type 'string'` |
+| Windows Full Test | `ba638601` / `69b6044f` | `Windows full test (7/8)` | `renderer-contract-catalog.test.ts` 三条 pin 与实际不符：`477 → 479`、`78 → 80`、`31 → 33` |
+
+1. **typecheck 红**：`ipc.ts` 把 `rendererOwnerId(event)`（`number | undefined`）交给
+   `PluginSourceCandidateStore`，而已提交的存储签名仍是 `string`。会话 §一百二十 §三·② 把这行放宽
+   记为「已做」，但它**只在工作区、从未提交** ⇒ 会话本地 `tsc` 绿（工作区带着它），CI 红。
+   这是「本地绿 ≠ CI 绿」的一种：**修复就在树上，但没进历史**。
+2. **契约 pin 红**：加两条本地通道时只更新了 `renderer-surface-inventory.test.ts`（477→479）与 preload
+   计数，**漏了 `renderer-contract-catalog.test.ts` 这一族**（同一桩事在两个文件里各钉一次）。会话
+   §一百二十三 §四 的「node typecheck 0 ✓；eslint 0 ✓」是**改动路径**上的读数（只跑了
+   `src/main/specialist` 17 个文件）⇒ 定向簇必漏。
+
+### 二 交付（三个提交，全部尖端点名范围）
+
+| 提交 | 内容 |
+| --- | --- |
+| `3f6cfc1e` | **补提交**会话 §一百二十 §三·② 的那行放宽（`PluginSourceOwnerId = string \| number \| undefined`）——**唯一一处碰了别人在飞路径的例外**，提交信息里点名设计归属是会话的、本笔只把它送进 CI |
+| `3a84ee28` | 补 `renderer-contract-catalog.test.ts` 三条 pin 到实际值（`479` / `80` / `33`），每条旁写 +2 的来由，**不放宽任何断言** |
+| `2af999de`（+ 同批的守卫扩展与证据档） | 对外计数对账：三份文件 7 处 `24` → 31、名单补齐 7 项；守卫扩到「三份文件每一处计数 + 两份 README 名单条数 + 每一处工具数」 |
+
+### 三 计数漂移的具体形状（第二真源）
+
+成熟度块（Release 正文逐字复制的就是它）写着 `31 connectors (282 tools)`，而**同一份 README 的正文**、
+`.en` 镜像与 `ROADMAP.md` 一直写着 `24`；名单也只列着旧的 24 个，缺 **PDBe / IEDB / 序列分析 / 中文术语 /
+ENCORI / PDC / 多代理编排**。逐处 file:line、来由与「没钉住的那一半」见
+`docs/evidence/2026-10-14-connector-count-drift.md`。
+
+- **来由可查**：`docs/evidence/2026-10-08-iedb-connector-probe.md` 记着上一次的做法是「公开计数两处同批
+  改掉：**两份 README 的** `26 connectors (269 tools…)`」——那份清单从来只有成熟度块 ⇒ 正文与 ROADMAP
+  自注册表长到 31 起就一直写 24。
+- **变异证明**（断言不是只会绿的摆设）：把引言的 `31` 改回 `24` ⇒ 当场红（`expected { distinct: [24, 31] }`）；
+  名单删掉 `PDC` ⇒ 当场红（`listed: 30`）；恢复后绿。
+- **没钉住的那一半（具名）**：名单里的**英文连接器名在仓内没有来源**（`catalog.ts` 的 `displayName` 是中文）
+  ⇒ 名字本身无法对账，只有**条数**可核；测试注释写明这一点，没有假装名字也被钉住。
+
+### 四 本轮的「别抢」与并发（含被顶掉的车道）
+
+- 会话在本轮内又推了两笔（`d8a1afa4` / `9aa15013`），**不影响本笔范围**（只碰 `plugin-run-policy.ts` /
+  `plugin-source.test.ts` / 队列档）——已用 `git log -- <路径>` 逐文件核过，本笔没有回退它的任何改动。
+- 本执行器的推送**顶掉了** `9aa15013` 上在飞的两条车道（Nightly / Windows Full Test）——那两条**注定红**
+  （`9aa15013` 的树里仍是 `ownerId: string` 与旧的 pin，逐文件读过），在此点名。
+
+### 五 读数（**门禁只认要推的那个提交** ⇒ 隔离工作树 `/tmp/ps-cc-gate`，软链 `node_modules`）
+
+| 环 | 汇总行 |
+| --- | --- |
+| `eslint --no-cache .`（CI 同口径） | `✖ 121 problems (**0 errors**, 121 warnings)`，EXIT=0 |
+| `typecheck:node` / `typecheck:web` | 各 **0 条 `error TS`** |
+| 受影响簇（契约目录 / 守卫 / 面清单 / `src/main/specialist` / `src/preload`） | 22 文件 / **389 passed** |
+| 全量 `vitest --maxWorkers=4` | **1311 文件（1295 passed ｜ 16 skipped）、16825 条（16618 passed ｜ 207 skipped）**，EXIT=0 |
+| `check-readme-sync.mjs`（双语头部锚点） | ✓ 逐字一致 |
+| `scripts/pre-push-checks.sh`（共享树） | **EXIT=0** |
+
+> 共享树当时带着会话的在制品（`plugin-source.test.ts` 上曾有一条 `explicit-function-return-type` error，
+> 会话提交前已自修 ⇒ 本笔的隔离树里 0 error），所以上面每一环都取**该提交自己那棵隔离树**的读数。
+
