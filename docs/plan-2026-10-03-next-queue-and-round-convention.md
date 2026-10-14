@@ -5665,3 +5665,42 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 ### 六 仍未做（具名）
 
 ① 渲染端 `specialist-store` 动作 + `SpecialistsPanel` 入口与结果块 + **9 语文案**；② 两条读数（无效引用⇒零请求可留车道 / available 路径一次性）；③ **「真跑一次」**（部署与执行）。
+
+## 一百二十一、v2.3.0 **E3 第一段完成**：渲染端接入 + 9 语 + 窗口端到端读数（会话，2026-10-14）
+
+### 一 交付（第四层）
+
+| 落点 | 要点 |
+| --- | --- |
+| 渲染端 store | `specialist-store.ts`：状态 `pluginSourceCandidate` + 动作 `previewPluginSource(reference)` / `clearPluginSource()`（后者带令牌时会调取消通道 ✓）；**拒绝也存进状态**（读不到也是一个答案，结果块按名说原因，而不是显示空表单 ✓） |
+| 面板 UI | `SpecialistsPanel.tsx`：输入框（`aria-label` = 标题）+「读取」按钮（空输入禁用）+「丢弃」按钮 + 结果块（`data-testid="specialist-plugin-source-result"`）；可用时显示**声明（runtime、工具数）+ 真字节数与 sha256 前 12 位**，拒绝时逐条具名 ✓ |
+| i18n | **6 键 ×9 语**（标题 / 占位示例 / 读取 / 丢弃 / 结果 / 拒绝），覆盖率 **100%（4077 键）** ✓ |
+
+### 二 窗口端到端读数（认证 spec，**无网络、确定**，可留车道）
+
+`e2e/certification/plugin-source-channels.spec.ts` ⇒ **`1 passed (21.4s)`**。逐字回执（真窗口经应用自己的桥）：
+
+```
+{"refused":{"state":"unavailable","reason":"invalid-reference",
+            "detail":"Name the host explicitly: a github.com URL or github:owner/repo[@ref][/path].",
+            "candidateToken":"9948de07-19e2-4000-a90b-814c7bb17288",
+            "declaration":{"state":"ok"}},
+ "blank":"Error: Error invoking remote method 'specialist:plugin-source-preview': Error: Invalid plugin source preview request.",
+ "cancelled":{"dropped":0}}
+```
+
+⇒ ① 模块的**具名拒绝** + **令牌** + 声明检查结果都经四层回到窗口 ✓；② 空白引用由**传输守卫**按名拒，且消息里带着通道名 `specialist:plugin-source-preview` ⇒ **四层确实连通** ✓；③ 第二个通道回 `{dropped: 0}` ✓。这条读数是「接线真的通了」的证据（不是断言某段代码存在）。
+
+### 三 读数
+
+`src/main/specialist` + `src/renderer/src/stores` + `src/renderer/src/i18n` + `src/renderer/src/pages/settings` **115 文件 / 1542 passed（1 skipped）** ✓；双 typecheck 0 ✓；prettier/eslint 0 ✓；`pre-push-checks` 0 ✓。
+
+### 四 本片自踩（三处）
+
+1. **质量门把「占位符示例」判成与英文同形**，而白名单里装的是**值**不是键 —— 我第一版装了键 ⇒ 8 条红。改为**值** `'github:owner/repo@ref'` ✓，并按门自己的规则（「占位符示例保留英文是正确行为」）注明理由：该值是用户**照字面输入**的语法，译成中文反而会让示例失效 ✓。
+2. 我插的 JSX 块多带一个 `</div>`，与原块重复 ⇒ `TS1005` ⇒ 删一个 ✓。
+3. spec 起初把「空白引用」当成模块的 `invalid-reference` ✗ —— 真规则是**传输守卫**先按名拒 ⇒ 改成把守卫那条也断成真读数（并因此**确认了四层连通** ✓）。
+
+### 五 仍未做（具名，E3 第二段）
+
+① **「真跑一次」**：部署与执行（本片只到「读 + 校验」）；② available 路径的**一次性网络读数**（本轮只取了无网络的拒绝路径 ✓）；③ 打包态复核（发版后动作）。
