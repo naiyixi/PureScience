@@ -8,7 +8,12 @@ import {
   parsePluginSourceReference,
   pluginSourceManifestUrls
 } from '../../shared/plugin-source'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { PluginSourceCandidateStore } from './plugin-source-candidate'
+import { deployPlugin, readDeployedPlugin } from './plugin-deploy'
 import { previewPluginSource, type PluginFetchOutcome } from './plugin-source'
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
@@ -254,5 +259,100 @@ describe('plugin source candidate', () => {
     expect(candidate.declaration).toMatchObject({ state: 'refused', reason: 'entry-unsafe' })
     if (candidate.declaration.state !== 'refused') throw new Error('expected a refusal')
     expect(candidate.declaration.detail).toContain('tools.demo_tool.entry')
+  })
+})
+
+describe('plugin deploy', () => {
+  const manifest = {
+    schema_version: 1 as const,
+    id: 'demo-plugin',
+    display_name: 'Demo plugin',
+    summary: 'A plugin used by the tests.',
+    license: 'MIT',
+    runtime: { kind: 'node' as const },
+    tools: [
+      { name: 'demo_tool', description: 'Does the demo thing.', entry: 'tools/demo.mjs' },
+      { name: 'second_tool', description: 'Does the other thing.', entry: 'tools/second.mjs' }
+    ]
+  }
+
+  const bytesFor = (entry: string): Uint8Array => new TextEncoder().encode(`// ${entry}\n`)
+
+  it('writes the declared entries atomically and records the digest of the bytes it wrote', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugin-deploy-'))
+    const result = await deployPlugin({
+      manifest,
+      pluginsRoot: root,
+      readEntry: async (entry) => bytesFor(entry)
+    })
+
+    if (result.state !== 'deployed')
+      throw new Error(`expected a deployment, got ${JSON.stringify(result)}`)
+    expect(result.entries.map((entry) => entry.entry)).toEqual([
+      'tools/demo.mjs',
+      'tools/second.mjs'
+    ])
+    // The digest is recomputed here from the same bytes, so the module cannot invent one.
+    for (const entry of result.entries) {
+      expect(entry.sha256).toBe(sha256(bytesFor(entry.entry)))
+      expect(entry.bytes).toBe(bytesFor(entry.entry).byteLength)
+    }
+    expect(await readdir(root)).toEqual(['demo-plugin'])
+    // The journal and the files are really there, and the staging directory is not.
+    const deployed = await readDeployedPlugin(root, 'demo-plugin')
+    expect(deployed?.entries).toHaveLength(2)
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('leaves NOTHING behind when one declared entry is missing', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugin-deploy-'))
+    const result = await deployPlugin({
+      manifest,
+      pluginsRoot: root,
+      readEntry: async (entry) => (entry === 'tools/second.mjs' ? null : bytesFor(entry))
+    })
+
+    expect(result).toMatchObject({ state: 'refused', reason: 'entry-missing' })
+    // The red line: a failed deployment is not a partial one — the plugin directory does not exist.
+    expect(await readdir(root)).toEqual([])
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('rolls back a write failure, and refuses to replace a plugin that is already deployed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugin-deploy-'))
+    const failing = await deployPlugin({
+      manifest,
+      pluginsRoot: root,
+      readEntry: async () => {
+        throw new Error('the source stopped answering')
+      }
+    })
+    expect(failing).toMatchObject({ state: 'refused', reason: 'deploy-failed' })
+    expect(await readdir(root)).toEqual([])
+
+    await deployPlugin({ manifest, pluginsRoot: root, readEntry: async (entry) => bytesFor(entry) })
+    const again = await deployPlugin({
+      manifest,
+      pluginsRoot: root,
+      readEntry: async (entry) => bytesFor(entry)
+    })
+    expect(again).toMatchObject({ state: 'refused', reason: 'already-deployed' })
+    expect(await readdir(root)).toEqual(['demo-plugin'])
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('refuses a declaration the app cannot honour before writing anything', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugin-deploy-'))
+    const result = await deployPlugin({
+      manifest: {
+        ...manifest,
+        tools: [{ name: 'demo_tool', description: 'x', entry: '../outside.mjs' }]
+      },
+      pluginsRoot: root,
+      readEntry: async (entry) => bytesFor(entry)
+    })
+    expect(result).toMatchObject({ state: 'refused', reason: 'declaration-refused' })
+    expect(await readdir(root)).toEqual([])
+    await rm(root, { recursive: true, force: true })
   })
 })
