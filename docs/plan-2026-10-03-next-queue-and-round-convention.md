@@ -4992,3 +4992,40 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 | 同一 job 里本版三支 spec 全跑过 | `[40/103] notebook-declined-copy.spec.ts`、`[44/103] notebook-run-risk-approval.spec.ts`、`[87/103] session-fork.spec.ts` |
 
 ⇒ 「本版交付的认证读数」这一项现在有**发布自己那一次运行**作证（不只是开发期那一次），且那一次没有 flaky。若下次它真打到发布作业：**无 Release 页 ⇒ 删 tag 重建，不许重跑单个 build 作业**（同名重复产物会让 publish 报 `missing`）—— 这条口径与会话一致。
+
+## 一百〇三、v2.2.0（批 C）C3 已交付：ChEMBL assay 详情 + 按 assay 过滤/分页（会话，2026-10-14）
+
+### 一 交付（`feat(connectors)` 一笔 + 本档）
+
+| 项 | 要点 |
+| --- | --- |
+| 新工具 `get_assay`（本连接器第 **7** 条） | 入参 `{assay_chembl_id, activity_limit}`；**引述式**回来（描述 / 类型与类型说明 / organism·tissue·cell·strain / **confidence_score + confidence_description** / relationship_type + description / **bao_format + bao_label** / target·document id / src_id·src_assay_id / variant_sequence / assay_parameters），**不做任何判断** |
+| 真总数与截断 | 该 assay 的 activities 用源 `page_meta.total_count` 报**真总数**，返回的列表是**有截断标记的前缀**（与 `get_bioactivity` 同一口径） |
+| `get_bioactivity` 补过滤 | 新增可选 `assay_chembl_id` ⇒ 「按 assay 分页」到位（分页机制本来就有） |
+| 展示只有一份 | 复用既有 `activityRecord` / `bioactivityResponse`，不新造第二套行成型 |
+| README 双语计数 | `28 connectors (273 tools` → **`274 tools`**（钉子测试 `readme-connector-count.test.ts` 同时读两份 README；连接器数不变） |
+
+### 二 四步（测 → 政策 → 接线 → 报）
+
+1. **测源（动手前）**：真端点可达；逐字取回真实字段集（`{"aidx":"CLD0", …, "confidence_score":9, "bao_label":"single protein format", …}`）。
+2. **政策（具名，不猜）**：不是 `^CHEMBL[0-9]+$` 的输入 ⇒ **一个请求都不发**，回 `invalid-assay-id`；形状对但源里没有 ⇒ 回 `unknown-assay`（不是空记录）；请求里永远是**调用方给的那个 id 的大写形式**，绝不改写成名字。
+3. **接线**：走既有 `buildUrl`/`pageItems`/`clampLimit`，行成型复用既有函数。
+4. **真读数（真 ChEMBL，走它自己的代码路径）**：
+   - `CHEMBL1217643` ⇒ 全文引述（`Inhibition of human hERG`、`B`/`Binding`、`Homo sapiens`、`confidence_score 9` + `Direct single protein target assigned`、`BAO_0000357`/`single protein format`、target `CHEMBL240`、document `CHEMBL1212834`、`src_id 1`）+ `activities {count 1, total 1, truncated false}`（真实一行 IC50 5900 nM / pChEMBL 5.23）；
+   - **大 assay `CHEMBL4880040`** ⇒ `count 3, total 249, truncated true` ✓（「前缀就说自己是前缀」）；
+   - 未知 id ⇒ `unknown-assay`；给一句名字 ⇒ `invalid-assay-id` 且**请求计数为 0** ✓。
+
+### 三 读数
+
+- `chembl.test.ts` **18 条**（含 4 条新：引述+真总数+截断 / 非 id 零请求 / 未知具名 / bioactivity 的 assay 过滤 URL）；
+- `src/main/connectors` 全目录 **975 passed ｜ 53 skipped**（86 文件）；
+- 双 typecheck 0；`eslint --no-cache` 0；`scripts/pre-push-checks.sh` **EXIT=0**；`node scripts/check-readme-sync.mjs` **EXIT=0**（两 README 头部块逐字一致）。
+
+### 四 本片自踩（两处，都是仪器/手法）
+
+1. 工具块落文件时**又撞三引号**（内容含 `"` 与 `'` 混排）⇒ 改为**逐行列表拼接**，彻底绕开。
+2. **`grep -n "273" README.md` 把整段 50KB 灌进上下文** —— 那份成熟度块是**一整行**，任何按行 grep 都会把它整体打印 ⇒ 这类文档**只用精确字符串替换**，不 grep-content。
+
+### 五 仍未做（具名，C 的其余四件）
+
+**C1 Ensembl 群体 LD**（六条既有工具无 LD 面）→ **C4 ClinVar SCV 级详情**（已有接入清单、缺逐条提交详情）→ **C2 文献库整页全选**（需窗口读数）→ **C5/C6 ENCORI、PDC 新连接器**（**动手前必须先做来源可答性探测**）。
