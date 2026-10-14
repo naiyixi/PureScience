@@ -6314,3 +6314,33 @@ GATE_EXIT=0
 - **一键「替换 / 更新」**：本单元给的是移除；替换 = 先移除再部署（两步）。
 - **运行一次的批准授权面**（v2.3.0「明确没做」①）仍由会话那条线负责。
 - **未发版**：本单元属下一版边界（v2.3.0 已是 Latest），本轮**未打 tag、未抬版本号**。
+
+## 一百三十八、顺手核出的一处**已发布正文失真**：插件来源取字节「走应用既有出口策略」（执行器，2026-10-15）
+
+### 一 怎么发现的
+
+收口「明确没做」② 时把该段**四条逐条对着源码核**，第 ④ 条「网络出口」的前半句对不上代码。
+
+### 二 判据（读源，逐条 file:line）
+
+| # | 事实 | 位置 |
+| --- | --- | --- |
+| 1 | 出口白名单**作用域就是子进程**（源码注释逐字：「Network egress allowlist **for child processes** (notebook/repl/shell)」） | `src/main/settings/types.ts:226` |
+| 2 | 插件来源取字节是合成根交给候选存储的**裸 fetch 闭包**（`redirect:'follow'` + 20 s 超时），体内无 `getEgress`/白名单/同意 | `src/main/ipc.ts` 的 `new PluginSourceCandidateStore({ fetchBytes: … })` |
+| 3 | 市场线同一形状（`fetch: globalThis.fetch.bind(globalThis)`） | `src/main/ipc.ts:996` |
+| 4 | `src/main/specialist/**` 里 `egress` 仅一处命中，且是运行插件的**子进程环境白名单**注释 | `grep -rn "egress\|proxy" src/main/specialist/ --include=*.ts` |
+| 5 | 主进程**没有**全局 fetch 改写；插件预览/部署处理器里也没有出口检查（命中 0） | `grep -rn "globalThis.fetch\s*=" src/main` ⇒ 0；`grep -c "getEgress\|egress" src/main/specialist/ipc.ts` ⇒ 0 |
+
+⇒ 取字节是**主进程直取**，**不经**应用既有出口策略；原句把「应用整体出网现状」说成了「走了一道门」。
+
+### 三 更正（三处同步）
+
+1. **`CHANGELOG.md` v2.3.0 段**（Release 正文的来源）改为实话，并**具名标注「发版后就地更正」**；
+2. 本档本节（队列档）；
+3. 证据档 `docs/evidence/2026-10-15-plugin-source-egress-claim-correction.md`（含判据表）。
+
+**页面同步**：CHANGELOG 是正文来源 ⇒ 更正后**重发 Release 正文**并回读核验（正文里该句已换、资产数未变）。
+
+### 四 立案（需拍板，不自行决定）
+
+**是否为「市场线 + 插件来源」这两条主进程取字节路径补一道门**（同意流程 / 域名白名单 / 复用出网矩阵）＝**产品决定**。blocked-by：用户拍板（它同时决定两条路）。在此之前，正文与界面都不许再暗示这条路有门。
