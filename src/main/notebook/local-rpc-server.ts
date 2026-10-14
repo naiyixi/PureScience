@@ -19,6 +19,7 @@ import type {
   ConversationSkillImportRequest
 } from '../skills/conversation-import'
 import type { SkillCreator } from '../skills/skill-creator'
+import type { MethodSkillCompiler } from '../skills/method-skill-compiler'
 import type { SkillCreateInput, SkillCreateResult } from '../../shared/skill-create'
 import { SKILL_KNOWLEDGE_KINDS, type SkillKnowledgeKind } from '../../shared/skill-provenance'
 import type {
@@ -124,6 +125,10 @@ type NotebookLocalRpcServerOptions = {
   // App-owned conversational skill creation (create_skill MCP tool): the skill-import MCP child
   // routes createSkill calls back here so validation + filesystem writes stay in the main process.
   skillCreator?: Pick<SkillCreator, 'create'>
+  // 「方法即产物」: create_skill with from_run_id compiles a skill from a recorded notebook run. The
+  // compile needs the run records and the creator, both of which live here — so it is wired as one
+  // collaborator rather than handing the RPC server a data root and a second way to write skills.
+  skillMethodCompiler?: MethodSkillCompiler
   // Agent memory writes (memory_save_note MCP): main-process-owned persistence.
   taskCheckpoint?: {
     save: (projectId: string, patch: Record<string, unknown>) => Promise<unknown>
@@ -340,6 +345,7 @@ class NotebookLocalRpcServer {
   private readonly computeService: NotebookLocalRpcServerOptions['computeService']
   private readonly skillImporter: NotebookLocalRpcServerOptions['skillImporter']
   private readonly skillCreator: NotebookLocalRpcServerOptions['skillCreator']
+  private readonly skillMethodCompiler: NotebookLocalRpcServerOptions['skillMethodCompiler']
   private readonly memoryWriter: NotebookLocalRpcServerOptions['memoryWriter']
   private readonly taskCheckpoint: NotebookLocalRpcServerOptions['taskCheckpoint']
   private readonly planService: NotebookLocalRpcServerOptions['planService']
@@ -395,6 +401,7 @@ class NotebookLocalRpcServer {
     this.computeService = options.computeService
     this.skillImporter = options.skillImporter
     this.skillCreator = options.skillCreator
+    this.skillMethodCompiler = options.skillMethodCompiler
     this.memoryWriter = options.memoryWriter
     this.taskCheckpoint = options.taskCheckpoint
     this.contextSummary = options.contextSummary
@@ -1360,6 +1367,40 @@ class NotebookLocalRpcServer {
 
     if (method === 'skillCreate') {
       if (!this.skillCreator) throw new Error('Conversation skill creation is not configured.')
+      // 「方法即产物」: with from_run_id the app compiles the skill from its OWN record of that run.
+      // Anything the caller also sends about the procedure (instructions / kind / evidence) is refused
+      // by name: it would be a second, unchecked source of truth for the same skill, and silently
+      // preferring one of the two is how a paraphrase ends up filed as the method.
+      const fromRunId = params.fromRunId
+      if (fromRunId !== undefined) {
+        if (typeof fromRunId !== 'string' || fromRunId.trim().length === 0) {
+          throw new Error('Skill create RPC from_run_id must be a non-empty string.')
+        }
+        const conflicting = [
+          typeof params.instructions === 'string' && params.instructions.trim().length > 0
+            ? 'instructions'
+            : '',
+          params.kind !== undefined ? 'kind' : '',
+          Array.isArray(params.evidence) && params.evidence.length > 0 ? 'evidence' : ''
+        ].filter((field) => field.length > 0)
+        if (conflicting.length > 0) {
+          throw new Error(
+            `Skill creation from a recorded run derives the skill from the record: do not pass ${conflicting.join(', ')}.`
+          )
+        }
+        if (!this.skillMethodCompiler) {
+          throw new Error('Skill creation from a recorded run is not configured.')
+        }
+        if (typeof params.sessionId !== 'string' || typeof params.name !== 'string') {
+          throw new Error('Skill create RPC from_run_id needs the sessionId and the skill name.')
+        }
+        return this.skillMethodCompiler.compileFromRun({
+          sessionId: params.sessionId,
+          runId: fromRunId,
+          name: params.name,
+          ...(typeof params.description === 'string' ? { description: params.description } : {})
+        })
+      }
       if (
         typeof params.sessionId !== 'string' ||
         typeof params.name !== 'string' ||
