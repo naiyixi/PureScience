@@ -5901,6 +5901,19 @@ Test Files  2 failed | 1293 passed | 16 skipped (1311)
 ⇒ **两条红**（不在我改过的路径上，也不是定向簇能看见的）⇒ 本笔**未推**，等定因。这正是新定法的价值：上一笔（§一百二十五 记录的那两条）就是没跑全量才推红的。
 > **事后更正（同一晚，就地改口径）**：失败名在首轮日志里被 `tail -8` 截掉 ⇒ 后台重跑一次全量，结果 **`Test Files 1295 passed | 16 skipped (1311)` / `Tests 16625 passed | 207 skipped (16832)`、`0 failed`** ⇒ 首轮那两条是**抖动**（其一为依赖打包产物的 mac update feed 用例：它即使在通过的这一轮里也照常打印 `::error::` 行 —— 那是它的**预期输出**，不是失败标记）。**结论：我改过的路径与全量门都是绿的**，本笔照推；「首轮 2 failed」按抖动记，**不记成我造成**。
 
+### 三·补二 两条车道红都已有归属（含**我自己代码的真缺陷**，已修并推）
+
+| 车道 | 位点 | 定因 | 归属与处置 |
+| --- | --- | --- | --- |
+| Nightly `build / Verify` | `9aa15013`（旧 SHA） | `src/main/specialist/ipc.ts(203/204/212): TS2345` —— `number \| undefined` 交给 `string` 形参 | **我**（§一百二十六 二·① 那条漏提交）；执行器已修（`3f6cfc1e`），本 SHA 属旧位点 ⇒ 由新位点重跑覆盖 |
+| Windows full test (7/8) | `2077169b` | **只有我的文件全红**：4 条 deploy 用例一律 `entry-unsafe-destination` | **我**，且是**真缺陷**且是**平台特有**：守卫写 `destination.startsWith(stagingDirectory + '/')`，而 `node:path` 在 Windows 给反斜杠 ⇒ 该式**不匹配任何东西**（连合法条目也拒），macOS 上全绿 ✗ |
+
+**修复**（`3bc0adf0`）：新增导出 `isInsideDirectory(root, candidate)` —— 两侧归一化为 posix（用**正则** `replace(/\\/g,'/')`，不用 `path.sep`，否则本地写不出模拟 Windows 的用例）后用 `posix.relative` 判定；父目录改用 `dirname(p)`。**用例同时喂 `/` 与 `\` 两种写法**，外加 `../` 逃逸、同前缀兄弟目录（`/demo-x`）、根本身三态 —— 这是唯一能在 POSIX 机器上先验出该缺陷的办法 ✓（读数 `plugin-source.test.ts` **26 passed**、node typecheck 0、eslint 0）。
+
+**方法论收益**：同步进技能 `references/editing-pitfalls.md`（路径守卫禁用 `startsWith(root + '/')`）。新定法至此**两轮实测**：① 首轮全量 2 failed 与其后重跑 0 failed 说明它也会抓到**抖动**（就地更正、别记成自己造成）；② **平台维度只有真车道能覆盖** —— 本地全量再绿也证不出 Windows ✗ ⇒ 平台相关的守卫（路径分隔符、大小写、换行）必须在用例里**同时喂两种平台写法**，不能靠跑绿一遍。
+
+> 全量三次读数：首轮 `2 failed | 16623 passed`（抖动）/ 重跑 `0 failed | 16625 passed` / 修复后第三次在跑（`/tmp/full3-e32.log`）。
+
 ### 四 仍未做（具名）
 
 ① 把 `deploy` / `run-once` 接上 IPC（四处同批：catalog / preload / `renderer-api.d.ts` / **两处** 钉子 —— 注意 **两族** pin：`renderer-surface-inventory.test.ts` **与** `renderer-contract-catalog.test.ts` ✓ 这次就栽在后者）；② 上屏（两个按钮 + 结果块 + 9 语）；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）。
