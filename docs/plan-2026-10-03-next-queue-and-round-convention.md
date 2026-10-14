@@ -5234,3 +5234,33 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
   - 若 C2 已落地并推上 main ⇒ **直接进 v2.2.0 发版窗口**（先 `hermes cron pause 2be4405e5dc6`、核没有在跑的那一轮，再把四文件改出来、在**要打 tag 的那个提交**上复跑门禁）。
   - 若 C2 仍在制 ⇒ 继续让路，取与 `components/references/**` 和 `i18n/**` **不相交**的活（队列档 §六 的「未取证」清单优先：能起实例时就补窗口读数）。
 
+
+## 一百〇九、v2.2.0（批 C）C2 已交付：文献库 PDF 选择器的「本页全选 / 本页取消」（会话，2026-10-14）
+
+### 一 交付
+
+| 项 | 要点 |
+| --- | --- |
+| 一对动作 | `ReferencesLibraryDialog.tsx` 的 PDF 候选区新增 **「本页全选」/「本页取消」**（`data-testid` `pdf-page-select-all` / `pdf-page-clear`），各自的可用性由「本页是否已全选 / 本页是否有已选」决定（空项目两个都不可用） |
+| 语义（**不取并集语义含糊**） | 全选＝**并集**（`[...current, ...visible]` 去重），绝不丢掉先前的选择；取消＝**只移除本页可见的 id**，别处的一个都不碰 |
+| 范围如实说 | 同排一行 `references.pdfImport.pageSummary`：**「本页 {page} 个文件 · 已选 {selected} 个」**（`data-testid="pdf-page-summary"`），只在有选择时出现 |
+| 9 语 | `references.pdfImport.selectPage/deselectPage/pageSummary` 三键 ×9，i18n 门 52/52、覆盖率 100% |
+
+### 二 设计上的一处**自我纠正**（重要）
+
+第一版我按计划书的字面写了一个「其中 {hidden} 条不在本页」的计数。**读到 `openPdfPicker` 才发现它是假话**：该函数在打开选择器时 `setSelectedPdfIds([])`，且候选只加载一次（每开一次），因此**选择集里不可能存在列表没在显示的行** ⇒ 报一个恒为 0 的「不在本页」是**声称一个不可能发生的区别**。
+**改成**：承认可见集就是**整个选择范围**，把范围本身写在选择旁边（本页 N 个 · 已选 M 个），注释同步改成真话（「打开即新选择集 + 一次加载 ⇒ 不可能有屏外已选」）。计划书里那条不变量（不许出现「选了看不见的东西」）由**打开即重置**满足，并且改用例把这件事钉住。
+
+### 三 用例（`ReferencesLibraryDialog.render.test.tsx`，3 条新增）
+
+1. **一对动作与范围行**：空选择时只有「全选」可用；全选后＝本页两行、行内写 **`This page: 2 file(s) · 2 selected`**、按钮转不可用；取消后回到 `selected 0`，且范围行**随之消失**（`not.toContain('This page: 2 file(s)')`）。
+2. **重开即重来（真不变量）**：全选两行 → Cancel → 第二次加载只回一个文件 → **`Import as new records (0)`**（先前选择随视图消失，不存在屏外已选）→ 再全选 ⇒ **`This page: 1 file(s) · 1 selected`**（范围随新列表走）。
+3. **空项目**：两个动作都不可用。
+
+### 四 读数
+
+`src/renderer/src/components/references` **58 passed**（文件 5）；`src/renderer/src/components` **496 passed**；i18n **52 passed**；双 typecheck 0；eslint 0。
+
+### 五 仍未取（具名，**不许当成已完成**）
+
+**窗口真机读数尚未取**（C2 在排期里本就标注「需窗口」）。本轮只有渲染层读数；**下一步**：写认证 spec（打开文献库 → 打开 PDF 选择器 → 点本页全选 → 断言范围行与按钮态），并解决「e2e 项目里要有 PDF 候选」的种子问题。
