@@ -5098,3 +5098,46 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 ### 五 仍未做（具名，C 的其余）
 
 **C2 文献库整页全选**（需窗口读数）；**C5 ENCORI、C6 PDC 新连接器**（动手前先做来源可答性探测）。
+
+## 一百〇六、v2.2.0（批 C）C5 已交付：ENCORI 新连接器 + miRNA-靶基因表（会话，2026-10-14）
+
+### 一 交付
+
+| 项 | 要点 |
+| --- | --- |
+| **新连接器 `rna-encori`** | 连接器数 **28 → 29**；`catalog.ts` 条目含 aliases（starBase/miRNA target/RBP/ceRNA）与 useWhen；双语 README 计数改到 **29 connectors (277 tools:** |
+| 工具 `encori_mirna_target` | 入参 `{target(必需), mirna?, gene_type?, assembly?, clip_exp_num?, degra_exp_num?, pancancer_num?, max_rows?}`；回 `{source, request, citation, columns(源表头逐字), absent_columns, n_rows_returned, n_rows_in_response, truncated, rows, note?}` |
+| 源（**站点自己的文档给的**，不猜） | `tutorialAPI.php` 列出真端点：`https://rnasysu.com/encori/api/<模块>/?<参数>`（模块 `miRNATarget/RNARNA/RBPTarget/degradomeRNA/ceRNA/RBPDisease/RBPMotifScan/bindingSite`），响应是**制表符表**（带 `#` 引文两行 + 源自己的表头） |
+| 红线落地 | **只用源报的支持数**（clipExpNum/degraExpNum/pancancerNum/cellline-tissue），不打分、不排序、不把任何一行称为「调控」；表头**逐字回传**（源新增列仍可见），文档化而源已不发的列进 `absent_columns`；`n_rows_in_response` 明确是**这次响应**的行数（源不报总数）；空结果附说明「筛选下没有 ≠ 没有相互作用」 |
+| 具名拒答（零请求） | 空白 target ⇒ `target-required`；`assembly` 不在 hg38/mm10 ⇒ `unsupported-assembly`；`gene_type` 不在源的枚举 ⇒ `unsupported-gene-type` |
+
+### 二 本片最重一处：**真机发现的诚实性缺陷（已修）**
+
+ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
+`<br /><b>Warning</b>: mysqli_connect(): (HY000/2002): Connection refused in <b>/www/wwwroot/html/encori/api/baseFunc.php</b> on line <b>18</b><br />Connect to database fail!`
+⇒ 初版把它当表解析，会**报「2 行」**（1 列，且首行 `<br />`）。
+**定法（形状守卫）**：无引文行、或表头不足两列、或首行含 HTML ⇒ 一律 `source-unreadable` 并**引述服务原话**。修完第一版只引了 `<br />` 那一行（把有用的那句丢了）⇒ **用例当场抓到** ⇒ 改为引述全部非空行（截断 300 字符）。
+
+### 三 真读数（走工具自己的代码路径）
+
+- `{target:'TP53'}` ⇒ **188 行 / 25 列**（25 个文档列一个不缺）、`truncated: false`、引文行＝源自己的 **Nature Methods (2026)** 论文题名、首行 `MIMAT0000062 / hsa-let-7a-5p / ENSG00000141510 / TP53 / protein_coding / chr17 / 7669193-7669199 / strand -`；
+- `{target:'TP53', mirna:'hsa-miR-21-5p'}` ⇒ **0 行** + 具名说明（真零）；
+- `{target:'TP53', max_rows:5}` ⇒ **5 / 188 / `truncated: true`**；
+- 空白 target ⇒ `target-required`（0 请求）；`assembly:'hg19'` ⇒ `unsupported-assembly`（0 请求）；
+- **宕机窗口（12:04）**：同一条调用 ⇒ `source-unreadable` + 服务原话 —— 服务 ~12:07 恢复后同一工具给出 188 行 ⇒ **同一工具在两种服务状态下各给一次诚实回答**（这正是加守卫的价值）。
+
+### 四 读数
+
+用例 **5 条**；`src/main/connectors` **989 passed ｜ 53 skipped**（87 文件）；双 typecheck 0；`eslint --no-cache` 0 错；`check-readme-sync` EXIT=0；`pre-push-checks` EXIT=0。
+
+### 五 本片自踩（五处，都记形状）
+
+1. **插入串尾部多带一个 `]`**：把 `CONNECTOR_CATALOG` 数组**提前闭合** ⇒ 一串 TS1005。
+2. **引擎先检查 required**：缺 `target` 是**引擎抛错**（`missing required arg`），不是我的具名拒答；空白值才轮到我的门 ⇒ 探针/用例要按这个区分写。
+3. **prettier 折行让多行锚点失配**（`anchor count 0`）⇒ 改用**单行锚点**（本次是 `const columns = …` 那一行）插入。
+4. **用例访问 cast 类型没有的字段**：vitest 全绿、**只有 tsc 报** `TS2339`（老毛病，第三次）。
+5. **探针里 `console.log` 在 vitest 里被吞**（grep 到空输出）⇒ 一律 `writeFileSync`/`appendFileSync` 落文件再读。
+
+### 六 仍未做（具名）
+
+**C2 文献库整页全选**（需窗口读数）；**C6 PDC 新连接器**（已确认 `https://pdc.cancer.gov/graphql` 回 `{"data":{"__typename":"Query"}}` ⇒ 真 GraphQL；接线前先钉它的查询形状与分页）。
