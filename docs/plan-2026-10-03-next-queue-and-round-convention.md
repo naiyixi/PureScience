@@ -5471,6 +5471,19 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 - 夹具那条能力**已撤回**（撤后 `node --check` 通过、`grep` 零命中）；
 - 临时 spec（`e2e/connector-reading.spec.ts`）**已删除**，不留任何会在 `playwright test` 全跑时触到外网的用例。
 
+### 四 追加：其余三件的 agent 路径读数（同一手法，一次调用取齐，取完即撤）
+
+同一格 `repl_execute` 里顺序调四件，真窗口一次回执：
+
+| 件 | agent 路径读数 | 与我交付时直连读数对照 |
+| --- | --- | --- |
+| C5 ENCORI | `{rows: 3, inResponse: 188, first: "hsa-let-7a-5p"}` | 一致（188 / 首行同名）✓ |
+| C1 Ensembl LD | `{pairs: 8, panelSize: 99, first: "1.000000"}` | 一致（8 对 / 面板 99 / 首对 r²=1.000000）✓ |
+| C6 PDC | `{total: 600, returned: 2, bytes: 4843457066}` | 一致（total_files 600；**字节数正是我读数里前两个文件之和** 2,463,272,988 + 2,380,184,078）✓ |
+| C4 ClinVar | `{error: "contact_email_required", message: "This tool talks to NCBI E-utilities, which require a contact email per their usage policy."}` | **按设计具名拒答** ⇒ 策略在 agent 路径上同样生效（e2e 应用没配联系方式 ⇒ 它拒答而不是带病调用）✓ |
+
+夹具能力与临时 spec 同样**已撤回/已删**（`node --check` 通过、`grep` 零命中）。
+
 ### 三 本笔的自踩（两条）
 
 1. **临时 spec 放错目录**：放在 `e2e/` 却用了认证目录的相对路径（`../fixtures/…`、`./helpers`）⇒ `Cannot find module`。定法：要么放进 `e2e/certification/`，要么把两条 import 改成该层级自己的相对路径。
