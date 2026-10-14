@@ -5264,3 +5264,15 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 ### 五 仍未取（具名，**不许当成已完成**）
 
 **窗口真机读数尚未取**（C2 在排期里本就标注「需窗口」）。本轮只有渲染层读数；**下一步**：写认证 spec（打开文献库 → 打开 PDF 选择器 → 点本页全选 → 断言范围行与按钮态），并解决「e2e 项目里要有 PDF 候选」的种子问题。
+
+### 六 窗口读数为何仍未取（本轮**勘查结论**，供下一手直接用）
+
+C2 的窗口读数卡在**种子**，不是卡在控件本身。逐条查证：
+
+1. 选择器的候选来自 `projectFiles.listFiles({collection:{kind:'all'}})`，**按 `.pdf` 或 `application/pdf` 过滤**（`loadPdfCandidates` 内）；
+2. 该索引是**数据库驱动**（`query-support.ts` 里是 SQL 查询，不是扫盘）⇒ **往项目目录里丢一个 PDF 不会被看到**（除非跑索引器，而 e2e 没走这条）；
+3. 应用的附件路径走**主进程原生对话框**（`dialog.showOpenDialog`）⇒ **Playwright 的 filechooser 驱动不了**；
+4. 夹具代理（`e2e/fixtures/electron-app.ts`）**不产出任何文件/工件**（`grep artifact|\.pdf` 无命中）⇒ 也没有「让代理产一个 PDF 工件」这条路；
+5. 文献库弹窗里唯一的 `type="file"` 输入是**导 CSL 样式**用的（`:1061`），不是 PDF。
+
+**结论**：要取这条读数，必须先给 e2e 加一条「把 PDF 放进项目文件索引」的能力（最省的两个方向：① 夹具代理支持产出一个 `.pdf` 工件并确认它进 `kind:'all'`；② 给 e2e 加一个直连索引的 seed 帮手）。**在那之前，C2 只有渲染层读数**（components/references 58 passed、components 496 passed、i18n 52 passed、双 typecheck 0、eslint 0），**不得声称窗口已跑通**。
