@@ -37,6 +37,7 @@ import {
   type SkillCreateResult
 } from '../../shared/skill-create'
 import { SkillCreator } from './skill-creator'
+import type { MethodSkillCompileOutcome } from './method-skill-compiler'
 import { SkillLibrary } from './skill-library'
 import { evaluateSkillDescription } from './skill-eval-service'
 import { SKILL_IMPORT_MCP_SERVER_ARG } from '../mcp-server-args'
@@ -127,10 +128,23 @@ type SkillImportMcpHandler = {
     turnToken: string
   ) => Promise<ConversationSkillImportResult>
   requestGitHubImport: (githubUrl: string) => Promise<ConversationSkillImportResult>
-  createSkill: (input: SkillCreateInput) => Promise<SkillCreateResult>
+  createSkill: (input: SkillCreateInput) => Promise<SkillCreateOutcome>
   evalDescription: (description: string) => Promise<SkillEvalResult>
   listSkills: () => Promise<SkillLibraryListResult>
   readSkill: (name: string) => Promise<SkillLibraryReadResult>
+}
+
+// Two forms under one tool: a drafted skill (`SkillCreateResult`) and a skill compiled from a recorded
+// run (`MethodSkillCompileOutcome`, see method-skill-compiler). The compiled form reports the named
+// refusal instead of collapsing every failure into one sentence, because "the record is gone" and "the
+// record was edited after review" are fixed differently.
+type SkillCreateOutcome = SkillCreateResult | MethodSkillCompileOutcome
+
+// The tool's own input shape: `instructions` is optional on the wire (the from_run_id form forbids
+// sending it), so the handler — not the schema — enforces "exactly one of the two forms".
+type SkillCreateToolInput = Omit<SkillCreateInput, 'instructions'> & {
+  instructions?: string
+  from_run_id?: string
 }
 
 type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
@@ -144,7 +158,7 @@ type SkillImportMcpServerConfigRequest = SkillImportMcpEnvironment & {
 type RpcResponse = {
   result?:
     | ConversationSkillImportResult
-    | SkillCreateResult
+    | SkillCreateOutcome
     | SkillEvalResult
     | SkillLibraryListResult
     | SkillLibraryReadResult
@@ -199,7 +213,12 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
         instructions: z
           .string()
           .max(SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH)
-          .describe('Step-by-step markdown instructions for the skill.'),
+          // Optional so the from_run_id form can be sent alone: requiring it would force the caller to
+          // send instructions it is not allowed to send. One of the two is enforced in the handler.
+          .optional()
+          .describe(
+            'Step-by-step markdown instructions for the skill. Required unless from_run_id is given.'
+          ),
         references: z
           .array(z.string().max(SKILL_CREATE_MAX_REFERENCE_LENGTH))
           .max(SKILL_CREATE_MAX_REFERENCES)
@@ -217,11 +236,48 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
           .optional()
           .describe(
             'Evidence for the claim (the command and its error, a measurement, a path). Required for failure-mode knowledge.'
+          ),
+        // Wire key is snake_case (like the rest of the tool schema) while the app-side input is
+        // camelCase: the handler maps it explicitly rather than letting a rename drop it silently.
+        from_run_id: z
+          .string()
+          .min(1)
+          .max(128)
+          .optional()
+          .describe(
+            'Compile this skill from a notebook run of this session instead of from instructions: the application derives the steps, evidence and knowledge kind from its own record of that run. Send it alone — no instructions, kind or evidence.'
           )
       }
     },
-    async (input: SkillCreateInput) => {
-      const result = await handler.createSkill(input)
+    async (input: SkillCreateToolInput) => {
+      const { from_run_id: fromRunId, ...rest } = input
+      if (fromRunId !== undefined) {
+        // «方法即产物»: the body is the record. Anything the caller also claims about the procedure
+        // would be a second, unchecked source of truth for the same skill — refused by name instead of
+        // being quietly ignored.
+        const conflicting = [
+          rest.instructions?.trim() ? 'instructions' : '',
+          rest.kind ? 'kind' : '',
+          rest.evidence?.length ? 'evidence' : ''
+        ].filter((field) => field.length > 0)
+        if (conflicting.length > 0) {
+          throw new Error(
+            `create_skill with from_run_id derives the skill from the recorded run: do not pass ${conflicting.join(', ')}.`
+          )
+        }
+      } else if (!rest.instructions?.trim()) {
+        // Exactly one of the two forms has to be usable: instructions for a drafted skill, or
+        // from_run_id for one compiled from a recorded run. Named here so a body-less draft can never
+        // be filed with an empty procedure.
+        throw new Error(
+          'create_skill needs step-by-step instructions — or from_run_id to compile the skill from a run this session recorded.'
+        )
+      }
+      const result = await handler.createSkill(
+        fromRunId === undefined
+          ? { ...rest, instructions: rest.instructions ?? '' }
+          : { ...rest, instructions: '', fromRunId }
+      )
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
       }
@@ -335,7 +391,7 @@ const callGitHubSkillImportRpc = (
 const callSkillCreateRpc = (
   environment: SkillImportMcpEnvironment,
   input: SkillCreateInput
-): Promise<SkillCreateResult> =>
+): Promise<SkillCreateOutcome> =>
   fetchLocalRpc(
     environment,
     {
@@ -356,8 +412,20 @@ const callSkillCreateRpc = (
     if (!response.ok || payload.error || !payload.result) {
       throw new Error(payload.error ?? `Skill create RPC failed with status ${response.status}`)
     }
-    return payload.result as SkillCreateResult
+    return payload.result as SkillCreateOutcome
   })
+
+// The stdio transport (the MCP child launched with SKILL_IMPORT_MCP_SERVER_ARG) has the filesystem —
+// it writes drafts itself — but NOT the run records, which live in the main process. So the two forms
+// split by what they need: a drafted skill stays local (byte for byte what this transport did before),
+// while a compile from a recorded run goes over the same RPC the import tools already use, where the
+// compiler can read the record it is asked to derive the skill from.
+const createLocalSkillCreator =
+  (configDir: string, environment: SkillImportMcpEnvironment) =>
+  (input: SkillCreateInput): Promise<SkillCreateOutcome> =>
+    input.fromRunId === undefined
+      ? new SkillCreator({ configDir }).create(input)
+      : callSkillCreateRpc(environment, input)
 
 const runSkillImportMcpServer = async (
   environment = createSkillImportMcpEnvironmentFromProcess()
@@ -368,7 +436,7 @@ const runSkillImportMcpServer = async (
     requestImport: (attachmentUri, turnToken) =>
       callSkillImportRpc(environment, attachmentUri, turnToken),
     requestGitHubImport: (githubUrl) => callGitHubSkillImportRpc(environment, githubUrl),
-    createSkill: (input) => new SkillCreator({ configDir }).create(input),
+    createSkill: createLocalSkillCreator(configDir, environment),
     evalDescription: async (description) => evaluateSkillDescription(description),
     listSkills: () => skillLibrary.list(),
     readSkill: (name) => skillLibrary.read(name)
@@ -394,6 +462,7 @@ export {
   createSkillImportMcpEnvironmentFromProcess,
   createSkillImportMcpServer,
   createSkillImportMcpServerConfig,
+  createLocalSkillCreator,
   requestSkillImportToolDefinition,
   requestSkillImportToolSchema,
   runSkillImportMcpServer

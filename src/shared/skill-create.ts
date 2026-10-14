@@ -19,7 +19,10 @@ export const SKILL_CREATE_TOOL_DESCRIPTION =
   'Provide a concise name, a one-line description, and step-by-step instructions. ' +
   'The application owns skill persistence; never write skill files yourself. ' +
   'The result reports the trust state: a fresh draft is "unverified" (nothing has checked it yet), ' +
-  'so say that plainly instead of presenting the new skill as an established procedure.'
+  'so say that plainly instead of presenting the new skill as an established procedure. ' +
+  'To save something this session ACTUALLY RAN, pass from_run_id instead of instructions: the ' +
+  'application then derives the steps, the evidence and the knowledge kind from its own record of ' +
+  'that run, so the skill cannot drift from what ran. Say "unverified" there too.'
 
 // Rendered into the session prompt when the skill MCP is available.
 export const SKILL_CREATE_SYSTEM_PROMPT_APPEND = [
@@ -31,6 +34,10 @@ export const SKILL_CREATE_SYSTEM_PROMPT_APPEND = [
     'only way to add a skill.',
   'A skill you save starts UNVERIFIED: nothing has checked that the procedure works yet. Tell the ' +
     'user it is unverified (Settings → Skills shows the state) instead of implying it is proven.',
+  'When the user asks you to save a method this session actually ran, pass from_run_id (the run id ' +
+    'from your notebook run) and leave instructions out: the application reads its own record of that ' +
+    'run, writes the steps, the evidence and the knowledge kind, and returns a source fingerprint. ' +
+    'Never retype the code from memory — a paraphrase of a run is not the run.',
   'When what you learnt is a dead end (a command that cannot work on this machine, a package that ' +
     'will not build), save it as kind "failure-mode" with evidence: the exact command and the error ' +
     'text. A reproducible failure is worth keeping even if the run it came from failed; a failure ' +
@@ -64,7 +71,8 @@ export const skillCreateToolSchema = {
   instructions: {
     type: 'string',
     maxLength: SKILL_CREATE_MAX_INSTRUCTIONS_LENGTH,
-    description: 'Step-by-step markdown instructions for the skill.'
+    description:
+      'Step-by-step markdown instructions for the skill. Required unless from_run_id is given.'
   },
   references: {
     type: 'array',
@@ -84,6 +92,13 @@ export const skillCreateToolSchema = {
     maxItems: SKILL_CREATE_MAX_EVIDENCE,
     description:
       'Concrete evidence for the claim: the command and the error text, the measurement, the file path. Required for failure-mode knowledge — without a reproduction it is a rumour, not knowledge.'
+  },
+  from_run_id: {
+    type: 'string',
+    minLength: 1,
+    maxLength: 128,
+    description:
+      'Compile this skill from a notebook run of THIS session instead of from instructions: the application reads its own record of that run (source, output, risk receipt) and derives the steps, the evidence, the knowledge kind and a recomputable source fingerprint. Send it alone — pass no instructions with it.'
   }
 }
 
@@ -116,6 +131,12 @@ export type SkillCreateInput = {
   // `unverified` + `procedure` (see shared/skill-provenance): only a verified entry may be reused
   // without review, so the state is recorded at creation time rather than inferred later.
   provenance?: SkillProvenance
+  // The recorded run this skill is compiled FROM (「方法即产物」). When set, the application reads its
+  // own record of that run and derives instructions/evidence/kind itself; a caller that also supplies
+  // `instructions` is refused by name rather than silently overridden. The creator itself does not
+  // read run records — the compile happens in the main-process method-skill compiler, which then calls
+  // create() with the derived input.
+  fromRunId?: string
 }
 
 // Validates a candidate skill name against the wire pattern. Pure so the creator and tests share it.

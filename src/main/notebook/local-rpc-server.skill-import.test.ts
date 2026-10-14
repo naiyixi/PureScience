@@ -195,6 +195,94 @@ describe('NotebookLocalRpcServer Skill import bridge', () => {
     expect(create).toHaveBeenCalledOnce()
   })
 
+  it('routes create_skill from_run_id to the method compiler, with the resolved session and the run', async () => {
+    const compileFromRun = vi.fn().mockResolvedValue({
+      state: 'created',
+      fingerprint: 'method-skill:v1-abc',
+      projectId: 'p1',
+      runId: 'run-7',
+      kind: 'procedure',
+      skillName: 'check-pandas',
+      result: { created: true, skillName: 'check-pandas' }
+    })
+    server = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {
+      transport: 'tcp',
+      token: 'secret-token',
+      skillCreator: { create: vi.fn() },
+      skillMethodCompiler: { compileFromRun }
+    })
+    server.registerSessionAlias('pre-session-alias', 'session-1')
+    const { endpoint, token } = await server.issueSkillImportConnection('pre-session-alias')
+    const post = (params: Record<string, unknown>): Promise<Response> =>
+      fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ method: 'skillCreate', params })
+      })
+
+    const created = await post({
+      sessionId: 'pre-session-alias',
+      name: 'check-pandas',
+      fromRunId: 'run-7'
+    })
+
+    expect(created.status).toBe(200)
+    // The pre-start alias is resolved to the final conversation id, exactly like the import path: the
+    // run record is looked up under the session the record actually lives in.
+    expect(compileFromRun).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      runId: 'run-7',
+      name: 'check-pandas'
+    })
+    await expect(created.json()).resolves.toEqual({
+      result: expect.objectContaining({ state: 'created', fingerprint: 'method-skill:v1-abc' })
+    })
+
+    // The record is the only source: a caller that also describes the procedure is refused by name
+    // rather than having one of the two silently preferred.
+    const conflicting = await post({
+      sessionId: 'pre-session-alias',
+      name: 'check-pandas',
+      fromRunId: 'run-7',
+      instructions: 'print(1)'
+    })
+    expect(conflicting.status).toBe(500)
+    await expect(conflicting.json()).resolves.toEqual({
+      error:
+        'Skill creation from a recorded run derives the skill from the record: do not pass instructions.'
+    })
+
+    const unconfigured = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {
+      transport: 'tcp',
+      token: 'other-token',
+      skillCreator: { create: vi.fn() }
+    })
+    try {
+      const connection = await unconfigured.issueSkillImportConnection('session-9')
+      const onUnconfigured = await fetch(connection.endpoint, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${connection.token}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          method: 'skillCreate',
+          params: { sessionId: 'session-9', name: 'check-pandas', fromRunId: 'run-7' }
+        })
+      })
+      expect(onUnconfigured.status).toBe(500)
+      await expect(onUnconfigured.json()).resolves.toEqual({
+        error: 'Skill creation from a recorded run is not configured.'
+      })
+    } finally {
+      await unconfigured.close()
+    }
+    expect(compileFromRun).toHaveBeenCalledOnce()
+  })
+
   it('rejects shared and out-of-scope RPC capabilities', async () => {
     const request = vi.fn().mockResolvedValue({ status: 'cancelled', skills: [] })
     server = new NotebookLocalRpcServer({ execute: async () => ({}) } as never, {
