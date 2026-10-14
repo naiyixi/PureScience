@@ -5996,3 +5996,40 @@ blank:  Error invoking remote method 'specialist:plugin-source-deploy': Error: I
 ### 四 仍未做（具名）
 
 ① **真仓库一次性读数**（部署 + 运行对真实公开仓跑一次）—— 障碍已探明：公开仓没有带 `purescience-plugin.json` 的（`gh search code` 空）⇒ 需自建夹具仓或本地 HTTP 夹具，取完撤掉；② 带**有效令牌**的 run-once 端到端读数（它现在会走真策略：`deny` 拒 / `confirm` 要批准 / `remembered` 放行）—— 同样等 ①的夹具。
+
+## 一百三十、v2.3.0 **E3 第二段真机端到端读数**：真仓库部署 + 真跑一次（含夹具仓）（会话，2026-10-15）
+
+### 一 夹具仓（一次性读数用，公开、可复用）
+
+`naiyixi/purescience-plugin-fixture`（**public**，`main`）：根清单 `purescience-plugin.json` + 入口 `tools/demo.mjs`（它自报 `cwd`/`argv`/`envKeys`，所以运行产物本身就是 spawn 规则的证据）。建仓原因：公开仓**没有**带该清单名的（`gh search code` 空结果 ✓），而预览必须能拿到一份**合法清单**才能走到部署与运行。
+
+**同时被真实走到的两件事**：
+- **镜像回退链**：本机 `raw.githubusercontent` 时通时不通（curl 曾 `000`），而应用侧两次读数分别在 `manifestUrl` 上落在 raw 与 **cdn.jsdelivr.net** ✓ —— 回退链在成品里真的生效 ✓；
+- **来源可核**：清单 **393B / `74644b92…`**、入口 **552B / `d6186063…`** —— 两者都与 `shasum -a 256` **逐字符相同** ✓（预览所报 = 部署所报 = 磁盘实际）。
+
+### 二 一次性窗口读数（真仓库，取完即删）
+
+```
+preview   : available（declaration ok）
+deploy    : deployed → …/storage/PureScience-DEV/plugins/plugin-fixture
+            entries [{entry: "tools/demo.mjs", bytes: 552, sha256: "d6186063…"}]
+默认策略下 : {refused, approval-required,
+              "This run would be unprotected (filesystem: runtime-write-protected, network: unrestricted);
+               the policy does not remember approvals, so it needs one per run."}
+未确认    : {refused, confirmation-missing,
+              "run-once executes code taken from a public repository; it was not confirmed."}
+remembered : {ran, command: "node tools/demo.mjs", exitCode: 0, signal: null, timedOut: false}
+spawn 自证 : cwd = …/T/plugin-run-PHHsGK（自己的目录，不含 plugins）
+             envKeys = [HOME, NO_COLOR, PATH, __CF_USER_TEXT_ENCODING]，无 ELECTRON_/NPM_/PURESCIENCE_/PWD/TMPDIR 泄漏
+1 passed (14.6s / 24.1s)
+```
+
+⇒ 三条红线在**成品**里各自被验到：**未批准 ⇒ 零进程** ✓（`approval-required`）、**未确认 ⇒ 不发** ✓（`confirmation-missing`）、**执行受控** ✓（自己的目录 + 白名单环境 + 零泄漏）。
+
+### 三 又一处按事实更正的话
+
+运行的 `envKeys` 实测含 **`__CF_USER_TEXT_ENCODING`**（**平台自己**在起进程时注入 ✗ 不是我们传的）⇒ `plugin-run.ts` 里「只有 PATH/HOME/NO_COLOR」那句注释**过于乐观**，已改成「我们只传这三个；平台可能自带编码变量；父进程的一个都不传」✓；一次性 spec 的断言也随之从「恰好三个键」改为**查真性质**（PATH/HOME/NO_COLOR 必须在 + 一组常见继承名**必须不在**）✓ —— 断言要查性质，不要背数字。
+
+### 四 纪律执行
+
+按「依赖第三方网络的读数不进车道」：**一次性 spec 取完即删** ✓（`e2e/certification/plugin-deploy-run-once.spec.ts` 不提交）；常驻车道只留无网络的那条（`plugin-operation-gate.spec.ts`）✓。夹具仓保留（公开、可复现，供日后一次性读数复用 ✓）。

@@ -9,8 +9,9 @@ import { join } from 'node:path'
 //  1. no shell: the command is spawned as a program plus arguments, so nothing a repository contains can be
 //     read as a shell word;
 //  2. its own empty working directory: the plugin runs somewhere it owns, not inside the app's tree;
-//  3. a whitelisted environment: no inherited credentials, no proxy variables — what the child sees is what
-//     is written here, plus PATH so an interpreter can be found;
+//  3. a whitelisted environment: no inherited credentials, no proxy variables — the child is handed exactly
+//     what is written below (PATH so an interpreter can be found). The platform may add variables of its own
+//     while starting it (macOS adds __CF_USER_TEXT_ENCODING); nothing of the parent's is passed through;
 //  4. a timeout: a run that never finishes is a run that is killed and reported as such.
 
 export type PluginRunResult =
