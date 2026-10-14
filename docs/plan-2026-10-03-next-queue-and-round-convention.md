@@ -4914,3 +4914,62 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 ### 三 与执行器的关系
 
 本轮勘查期间树是**干净**的（无人在制）✓；C 各件的落点（`descriptors/chembl.ts`、`descriptors/genomes-ensembl.ts`、`descriptors/variants-clinvar.ts`、`components/references/`）与它最近在做的那批（`notebook/**`、`i18n/**`、`shared/**`）**不相交** ✓ 可并行。
+
+## 一百、v2.1.0 发版（执行器，2026-10-14 09:3x–10:4x）
+
+### 一 上一波两笔的车道判决（先落它，再进窗口）
+
+`bac0081e` + `c8f35f8b` 同一次推送 ⇒ 两条主干 run，**两笔同判**（`c8f35f8b` 是后一笔，其 run 覆盖整棵树 ⇒ 也作 `bac0081e` 的证据）：
+
+| 车道 | 判决 | 读数来源 |
+| --- | --- | --- |
+| `Nightly` | **success** | `gh api .../runs?head_sha=c8f35f8b72545b11c9be21cdbc1108ea6a75c59c` |
+| `Windows Full Test` | **success** | 同上 |
+
+**认证车道真的执行了那两支 spec**（不是「跑了就算」）：
+
+- `[40/103] e2e/certification/notebook-declined-copy.spec.ts:64:5` 跑过 ⇒ 严格支执行（`[b1-declined] seeded a ready runtime …`、应用自报 `pythonReady:true`、条带逐字 `Notebook run declined: deletes files (fs-delete) — no code was executed.`）；
+- `[88/103] e2e/certification/session-fork.spec.ts:27:5` 跑过 ⇒ `bac0081e` 的按压修法生效；
+- 该 job（`115598746438`）汇总：**90 passed ｜ 1 flaky（`pdf-annotation-overlay-pane.spec.ts` 的窄面板中文支，与本版无关，重试即过）｜ 12 skipped**。
+
+### 二 发版窗口（冻结并发 → 四文件 → 门禁 → 推 main + 附注 tag）
+
+- **冻结**：`hermes cron pause 2be4405e5dc6`（本执行器）；开工时 `git status --short` **空**、无 vitest/playwright 在跑、最后一次车道判决已落定 ⇒ 两次「别抢」核对都过。推之前查过在飞车道 = **0**（`gh run list`），本次推送没有取消任何人的判决。
+- **四文件**（提交 `ecb385e3`，`git diff --cached --stat` 自证只有这四个）：`CHANGELOG.md`（v2.1.0 段）、`README.md` + `README.en.md`（成熟度 ✅ 段**前插**本版头条句 + 上一条降级为 `**The previous version added two working lines.**` + 发布横幅换 v2.1.0，两文件逐字相同 —— `check-readme-sync` ✓）、`package.json`（**2.0.0 → 2.1.0**，版本位点取自上一个**已发布**位点，不取自排期档批次标签）。
+- **门禁**（技能自带 `release-gate.sh`，**在隔离工作树 `/tmp/ps-release-gate` 里对 `ecb385e3747074d30872b0e73896a4cf166e86cb` 跑**，共享树一个字节没碰）：
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint` | `eslint --no-cache .` **0 error ／ 120 warning**（与既有基线一致） |
+| `typecheck:node` | 原文 **0 条 `error TS`** |
+| `typecheck:web` | 原文 **0 条 `error TS`** |
+| `vitest` | **1307 文件（1291 passed ｜ 16 skipped）、16766 条（16559 passed ｜ 207 skipped）**，exit 0，345.9 s |
+| `repo-checks` | 汇总行 `OK`，**并另跑一次 `bash scripts/pre-push-checks.sh; echo EXIT=$?` 独立读退出码 = `EXIT=0`**（按常驻纪律：该环的汇总行不可单独采信） |
+
+- **读数落地**：占位替换成真读数 ⇒ 第二笔 `1a75dd84`（与 `ecb385e3` 的差量只有 CHANGELOG 那一行数字）。
+- **推 main**：`13d9d84d..1a75dd84`，随后 `git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main` = **真**。
+- **附注 tag**：`v2.1.0` → `1a75dd847f2844917920807b048e917f7793024e`（`git cat-file -t v2.1.0` = `tag`；`v2.1.0^{commit}` 与 HEAD 逐字符相同）；标注正文里的笔数由 `git rev-list v2.0.0..HEAD --count` 现算 = **75**（不手写）。
+- **tag 推送触发的车道**：`Release` / `Nightly` / `Windows Full Test` 三条 run 同时起，sha = `1a75dd84`。
+
+### 三 Release 页核验（发布状态的唯一判据）
+
+- `gh release view v2.1.0 --json name,tagName,isDraft,isPrerelease,assets` ⇒ `name=PureScience v2.1.0`、`draft=false`、`isPrerelease=false`、**资产 21 件**（四平台齐：mac arm64/x64 各 dmg + zip + blockmap、linux AppImage + deb、win-x64 setup.exe + zip + blockmap，外加 `SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest.yml`、`latest-linux.yml`、`latest-mac.yml`、`arm64-mac.yml`、`x64-mac.yml`）。
+- `gh release list --limit 4` ⇒ **`PureScience v2.1.0` = `Latest`**。
+- **页与提交绑死**：`gh release download v2.1.0 -p RELEASE-CERTIFICATION.json -O /tmp/cert-v210.json`（逐字大写文件名）⇒ `sourceSha = 1a75dd847f2844917920807b048e917f7793024e`，与 `git rev-parse 'v2.1.0^{commit}'` **逐字符相同**。只比 `sourceSha`，没有断言 `runId` 一类会给空的字段。
+- **发布 run**：`gh run view 38497300089` ⇒ `status=completed conclusion=success`；作业逐条 **全 success**（preflight / Resolve platform matrix / Verify / 四个平台 build / publish / `windows-upgrade-smoke`），两条 mac 签名作业 **具名 skipped**（`SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)`）。
+- **tag 提交的三条车道全绿**（同一次查询、按完整 40 位 SHA）：`Release` success ｜ `Nightly` success ｜ `Windows Full Test` success。
+- **正文**：`node scripts/release-notes.mjs v2.1.0 --keep-generated --certification /tmp/cert-v210.json --apply` ⇒ 落地后**回读** `gh release view v2.1.0 --json body --jq '.body|length'` = **37,362 字符**；正文里逐项核到本版头条句、降级后的 `**The previous version added two working lines.**`、`## v2.1.0 — 2026-10-14` 段、`明确没做`、`macOS signing status: unsigned`、门禁数字 `16559 passed`、B2 读数 `1,412 of 1,412`。
+- **一条口径说明**：发布工作流自己就有一道「把本版自己的正文写上去」的步骤（`release-notes.mjs --print --certification … | gh release edit --notes-file`，**不带** `--keep-generated`）⇒ 页面正文由工作流与本地两次落到**同一份内容**；GitHub 自动生成的提交清单**按设计**不在页上（那一步的注释写明「自动清单是 stub」）⇒ 正文里没有 `What's Changed` / `Full Changelog` **不是丢失**。
+
+### 四 本版范围核对（按排期档 §七十八 的三件）
+
+- **B1 可审阅的 Notebook 执行** ✅ 判据层 / 收据 / 两条运行路径的门 / 卡面 / 拒绝语义 / 收据随运行落盘并读取侧净化 / 真窗口读数 / 认证车道读数 / 认证 spec 进仓。
+- **B2 别名级依赖血缘** ✅ 两片（判定引擎 + 界面具名原因；读侧补算内容哈希），判据「同一产物经别名或变异后跨运行血缘可追」+「血缘行可从运行记录复算」**两片已满足**（对源核实）。
+- **B3 会话内文件变更审阅** ✅ 写入轴内容身份（前后态真哈希）+ 审阅面 `before → after` + 缺态词 9 语。
+- **不进本版**：B2 第三片（接进产物 / 运行溯源面板）—— 它是**加宽**而非缺口，排下一版首项。
+
+### 五 下一轮第一步
+
+1. **B2 第三片**（产物 / 运行溯源面接线）：它是本版之外那条加宽的落地位点；`blocked-by` = 无（`artifacts/**` 与其投影，与 `notebook/**`、i18n 不相交）。
+2. 若会话侧另有在飞项，按「目录不相交」选一件并行推进，别碰它的在制品。
+3. 本版之后的**收据路径**真机读数（新运行经过 B1 写入侧）是 B2「真哈希」形态的第一个可观测窗口 —— 有真运行就顺手取一次。
