@@ -5936,3 +5936,35 @@ Test Files  2 failed | 1293 passed | 16 skipped (1311)
 **读数**：双 typecheck 0；eslint 0；四族 pin + specialist 共 **23 文件 / 426 passed**；**全量复核（含 Windows 路径修复）`1295 passed | 16 skipped` / `16627 passed | 207 skipped`、0 failed**。
 
 **车道**：`Windows Full Test @3bc0adf0` = **completed success** ⇒ 抓到缺陷的那条车道**真机验证了修复**；`Nightly @3bc0adf0` pending ⇒ 推送等它让位（不顶掉在飞车道）。
+
+## 一百二十八、v2.3.0 **E3 第二段窗口读数已交付**：真机抓到成品缺口（插件根未接）（会话，2026-10-14）
+
+### 一 窗口真机读数（新 spec，**无网络、可常驻车道**）
+
+`e2e/certification/plugin-operation-gate.spec.ts` —— 用「本应用从未发放过的令牌」驱动两条更动机器的通道：
+
+```
+deploy: {refused, unknown-token, "No usable preview for this token."}
+run:    {refused, unknown-token, "No usable preview for this token."}
+blank:  Error invoking remote method 'specialist:plugin-source-deploy': Error: Invalid plugin deploy request.
+1 passed (14.7s / 17.2s 复跑)
+```
+
+四层（catalog / main handler / preload / 渲染端契约）真的连通 ✓；「零写盘、零 spawn」那两条性质钉在**能观测到它们的地方**（`plugin-source.test.ts` 的 `readdir` + `spawnImpl` 未被调用）✓。
+
+### 二 这条 spec 首跑就抓到**成品缺口**（这就是「必须实机跑通」的价值）
+
+首跑读到的是 **`plugins-root-unavailable`**（两条都是）⇒ 真因：**组合根只传了候选存储（第 5 位），没传插件根（第 6 位）** ⇒ 两条通道在成品里**永远拒**，尽管我自己的单元测试全绿 ✓。修：按该**位置参数表**补 `join(resolveDataRoot(), 'plugins')` ✓；修后读数如上一节 ✓。
+
+### 三 一处中途错误判断（照实记，连同定法）
+
+我中途据一次**不完整**的 grep 断言「四条通道在成品里全都没注册」✗ —— 实际是**我插的重复实参**让我读错了自己的改动 ✗（候选存储其实早就传了 ✓）。**定法**：不要据部分 grep 下「没接线」的结论 —— 读**整个调用**（位置参数表要连看参数名与顺序：`profileService` / `sessionBindingService` / 持久化回调 / 导出器 / `new PluginSourceCandidateStore({…})` / 插件根 ✓）；插入到位置参数表时**不能写 `name: value`**（那在实参位置非法，`TS1005 ',' expected` ✗），要写**表达式本身**并对齐位置。
+
+### 四 差点重犯的漏文件（新定法当场拦住）
+
+`git add` 里漏了 `src/main/specialist/ipc.ts`（`trim()` 那处）✗ —— 提交后按新定法逐条核 `git status` ⇒ 当场发现、`--amend` 补上 ✓（**§一百二十六 二·① 的同一坑，这次没漏进 CI** ✓）。
+
+### 五 同批小改与车道
+
+- **空白令牌收紧**为 `trim().length > 0` ✓（与预览侧一致：没东西可查就不发；spec 里那格从 `accepted` 变成**带通道名**的抛错 ✓）。
+- `Windows Full Test @38b21a2e` 红 ✗ 落在 `src/main/acp/permission-broker-registry.test.ts`（Codex powershell 授权族，`database` 标签）—— **与我改的路径无关**，且 `3bc0adf0` 同车道 success ✓ ⇒ 记**时敏抖动**；已由新位点重跑覆盖。
