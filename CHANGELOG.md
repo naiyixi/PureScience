@@ -1,5 +1,39 @@
 # PureScience 更新日记
 
+## v2.3.0 — 2026-10-15（方法即产物：把画布编译成可调用能力，并把第三方公开仓库引入为一种可核验的专家来源）
+
+**成熟度自陈**：本版把**方法**本身变成产物 —— 一条已记录的方法可以**编译**成可调用的能力（甲半），而一个第三方公开仓库可以成为**可核验的专家来源**（乙半）。两半共用的红线是「**声明即约束，来源可核，执行受控**」，甲半还多一条「**不许有两个真源**」。一个第三方公开仓库要成为专家来源，必须先**读**、再**核**、才能**部署**、最后**受控地跑一次**：清单里的每个字段都要被逐条检查（运行时支持与否、入口是否越出插件目录、工具名是否重复），读到的字节要报真 `sha256` 与字节数（**内容被拒时也携带**读到的摘要），部署要**原子**（staging → 一次 `rename`，任何失败含早退路径都清掉自己的工作目录，最终目录永不半成品），而**执行**是与部署**分开**的一步、且必须过全应用同一套执行保护策略。没做到的部分在文末「明确没做」里逐条具名。
+
+**你现在能看到的**：在 **设置 → Specialists → Add specialist → Import ZIP** 页里多了一块「**From a public repository**」—— 填一个引用（`github:owner/repo[@ref][/path]` 或 `github.com` 链接，**未指明主机一律拒答**），点「Read it」就得到该仓库的**声明**（运行时种类、工具条数与逐条问题）与**读到的真字节**（`393 bytes · sha256 74644b924c92…`）；读不通的四种情形各自具名（引用不合法 → **一个请求都不发**；仓库无清单 → 报「试过 2 个主机、状态 404, 404」；源不可达；清单不合法 —— 后两种**仍然带上读到的摘要**，因为「拒绝」不等于「没读到东西」）。确认勾选之前，「Deploy」与「Run once」**两个按钮都是禁用的** —— 所以窗口发出的 `confirmed: true` 只能来自读者真的看到了那句话。部署后屏上给出**真目录**与**条目数**（例：`Deployed plugin-fixture · 1 file(s) · …/storage/PureScience-DEV/plugins/plugin-fixture`）；「Run once」则按策略如实回：本版默认策略下它是 `Refused: approval-required — …unprotected (filesystem: runtime-write-protected, network: unrestricted); the policy does not remember approvals…`，把「**未批准就不跑**」写在脸上。执行保护矩阵新增一行 **`Deployed plugin`**（它**不是** `shell` 的一种：那不是用户敲的命令），可在 Settings → Execution protection 看到并控制。
+
+### 本版交付 · 甲（**编译半**：把已记录的方法编译成可调用能力，执行器）
+
+> 事实与读数取自执行器的证据档 `docs/evidence/2026-10-15-method-skill-compile-from-run.md`（其条目名与读数由该档如实转述）。
+
+- **从运行记录编译，而不是从调用方的正文**：`skillCreate` 多了 `from_run_id` —— 带它时由**应用自己的运行记录**编译该技能；调用方同时送 `instructions` / `kind` / `evidence` 中任何一个都被**具名拒答**（理由写在代码注释里：两个真源里静默取一个，正是「一段转述被当成方法归档」的来路）。
+- **工具面（agent 面向）**：`createSkill` 的返回类型张开为「草稿 ∪ 编译结果」；schema 新增 `from_run_id`（snake→camel **显式**映射 ⇒ 不为改名静默丢字段）；`instructions` 改为**可选**（否则模型被迫送出一份它不被允许送的正文），由处理器强制「二者取一」；新增 `createLocalSkillCreator` 让 stdio 传输**按每种形态需要什么**分流 —— **草稿仍就地写**（与改动前逐字一致），**编译走应用 RPC**（运行记录只在主进程里）。
+- **读数**（**我会话独立复跑**，数字以复跑为准）：相关 5 个测试文件 **5 passed / 26 passed**；`src/main/skills` + `src/main/notebook` **110 文件 / 1717 passed（99 skipped）**；全树双 typecheck **0 error**；并在该提交自己的隔离工作树里复跑类型检查 = **0 error**。执行器证据档另载其服务层「实机」（真 TCP + 真 token + 运行记录由应用自己的仓储写出）与真机数据读数（2489 条运行、二次编译指纹稳定）✓
+**服务层「实机」**（真 TCP 监听 + 真 token + 运行记录由**应用自己的仓储**写出 + 文档从盘上读回断言）：编译出的 `SKILL.md` 含该记录里的脚本文本、`trust_origin: "run-7"` 与指纹，且**只**写出一份文档；`from_run_id` 指向不存在的运行 ⇒ `refused / not-found` 且**一个文件都没写**（`readdir` 得 ENOENT ✓）。**真机记录读数**（只读复制到 /tmp）：本机 81 份记录里 **2489 条**「已完成且有正文」的运行，取其一（678 字节正文）编译 ⇒ `documentBytes: 2192 / scriptBytes: 678 / skillsWritten: 1`，**二次编译指纹稳定**（`fingerprintStable: true` ✓）。
+
+### 本版交付 · 乙（**插件创建器**：把第三方公开仓库引入为一种可核验的专家来源，会话）
+
+- **E1 来源与预览**：`github:owner/repo[@ref][/path]` 与 `github.com` 链接的**引用解析**（未指明主机一律拒答；`.`/`..` 是遍历不是名字）+ 清单 schema 逐条具名校验（`runtime{kind,version?}` / `tools[{name,description,entry}]`）；**镜像 URL 只由引用决定** ⇒ 谁都能复算。真读数：公开仓无清单 → `manifest-missing`（`Tried 2 host(s); statuses 404, 404`）；真 `.json` → `manifest-invalid` 且 **`fetched.sha256 = f3e9b38a…` / 6316 字节**，与独立 `curl | shasum -a 256` **逐字符相同**。
+- **E2 声明即约束**：`checkPluginDeclaration` 把「声明」变成**可判定的拒答**（`runtime-unsupported` / `entry-unsafe-destination` / `tool-name-duplicated`），并复用它既有的 `candidateToken` 两步式体例。
+- **E3 部署与运行**（本版主要工作量）：
+  - **原子部署**（`plugin-deploy.ts`）：staging → 每个条目记真字节 `sha256` 与大小 → **一次 `rename`** 提交；任何失败**含早退**都清掉自己的工作目录；同名插件已部署 ⇒ `already-deployed` 拒（覆盖是一个决定，不替用户做）；写前再守一次声明与目标路径；`deployed.json` 可回读。**红线用例当场抓到真 bug**：entry 缺失那条提前 `return` 没清 staging ⇒ 留下 `.staging-*` ✗ ⇒ 两处早退补清理。
+  - **平台无关的路径守卫**：`candidate.startsWith(root + '/')` 在 Windows 上**不匹配任何东西**（`node:path` 给反斜杠）⇒ **Windows 车道整族红**而 macOS 全绿 ✗ ⇒ 改为两侧归一化成 posix 后用 `posix.relative` 判定，并把该判定**单独导出**、用例**同时喂 `/` 与 `\`**（这是唯一能在 POSIX 机器上先验出该缺陷的办法）。
+  - **受控执行**（`plugin-run.ts`，本版唯一执行下载代码处）：**不经 shell**（程序 + 参数）、**自己的空工作目录**、**环境白名单**（只传 `PATH`/`HOME`/`NO_COLOR`，父进程的一个都不传；平台可能自带编码变量）、**超时 `SIGKILL` 并报 `timedOut`**；spawn 失败与正常退出同一形状上报；stdout/stderr 各截 16 KiB。
+  - **门与会话策略**（`plugin-run-policy.ts`）：`deploy` 只是写文件（策略对它无话可说）；**`run-once` 才吃执行保护策略**（`deny` ⇒ 具名拒并点名 filesystem/network 两条轴；未受保护且策略不记批准 ⇒ `approval-required`；`remembered` 或受保护 ⇒ 放行）；未确认一律拒，且拒绝句里**带上该动作会做什么**。组合根把保护答案接成**惰性提供者**（每次运行现读设置 ⇒ 改设置下一次运行即生效），不可解析时用 `unresolvedExecutionProtectionSnapshot` **明说未解析** —— **未解析 ≠ 受保护**。
+  - **上屏**：7 键 ×9 语；确认勾选 + 「Deploy」+「Run once」+ 结果块（部署列目录与条目数；运行列命令/退出码/耗时与 stdout；拒绝按 `reason` 码原样 + 具名说明）。
+- **真机端到端读数**（真仓库夹具 `naiyixi/purescience-plugin-fixture`，一次取完即撤一次性 spec）：预览 `available`（393B/`74644b92…`）→ **部署**（条目 552B/`d6186063…`，与 `shasum` 逐字符相同）→ 默认策略 `approval-required` → 未确认 `confirmation-missing` → 策略置 `remembered` 后 **`ran`：`node tools/demo.mjs`、exit 0**，且 spawn 自证 **`cwd` 是自己的临时目录**、环境无 `ELECTRON_/npm_/NODE_/TMPDIR/PWD` 泄漏；**面板点击读数**另取一次（勾选前两按钮禁用 ✓、部署目录与条目数上屏 ✓、拒答按码与两条轴上屏 ✓）。镜像回退链也在真机被走到（`raw.githubusercontent` 时通时不通 ⇒ 落在 `cdn.jsdelivr.net` ✓）。
+
+### 明确没做（逐条具名）
+
+- **运行一次的批准授权面**：策略非 `remembered` 时，`run-once` 一律 `approval-required`，而**尚无**让读者当场批准一次的界面/凭据通道 ⇒ 现状是「默认不许跑」（安全侧 ✓），**不是**「可批准地跑」；
+- **插件目录的展示与管理**：部署后的插件在盘上 ✓，但**没有**「已部署插件」列表/卸载/更新界面 ⇒ 同名再部署会被 `already-deployed` 拒，读者无法在应用内替换；
+- **清单版本演进**：只接受 `schema_version: 1`；`runtime.version` 只校验形状、**不解析**为具体解释器版本；
+- **网络出口**：取字节走应用既有出口策略，**未**为插件来源单独设白名单或同意流程（与市场线共用现状）。
+
 ## v2.2.0 — 2026-10-14（数据面加宽：读侧更宽，且每个新数字都带着它是相对于什么说的）
 
 **成熟度自陈**：本版把**读侧**加宽 —— 四个既有连接器各补一条可核验的读数面（群体 LD、assay 真总数、逐提交证据、文献库的页级选择）、**两个新连接器**（ENCORI、PDC）与**一个按条目取的结构连接器**（PDBe），加上**别名级血缘接进产物/运行溯源面**（B2 第三片）。每一件的共同红线是「**数字不许裸奔**」：成对的 LD 必须带它的人群面板与样本量、assay 的清单必须带源自己申报的总数、逐提交记录必须写清**是谁**说的、二级结构与配体必须**两套残基编号并列**、文件清单只报申报字节数。没做到的部分在文末「明确没做」里逐条具名。
