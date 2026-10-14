@@ -294,6 +294,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Extremo',
   'specialist.chooseZipHint': 'Elija un ZIP que contenga exactamente un especialista.',
   'specialist.chooseZip': 'Elegir ZIP',
+  'specialist.pluginSourceTitle': 'Desde un repositorio público',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': 'Leer',
+  'specialist.pluginSourceCancel': 'Descartar',
+  'specialist.pluginSourceResult':
+    'Declara {runtime}, {tools} herramienta(s) · {bytes} bytes · sha256 {sha256}',
+  'specialist.pluginSourceRefused': 'Rechazado: {reason} — {detail}',
   'settings.zipLimits':
     'Límites: 50 MB comprimido · 200 MB sin comprimir · 2.000 archivos · 25 MB por archivo',
   'specialist.editorDescription': 'Descripción',
@@ -3351,11 +3358,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Falló la hidratación de la referencia del cuaderno',
   'ws.notebookStale': 'desactualizado',
   'ws.aliasLineage': 'Linaje de alias',
-  'ws.aliasLineageIntro': 'Valores que escribió la ejecución que produjo esta versión y que una ejecución posterior de esta sesión cambió — reescribiendo el nombre, modificando el objeto en el sitio o mediante una cadena de alias. Cada fila se puede recalcular desde el registro de ejecución.',
-  'ws.aliasLineageEmpty': 'Ninguna ejecución posterior de esta sesión cambió un valor escrito por la ejecución productora. Es lo que dicen estos registros — no una afirmación sobre todo el proyecto.',
+  'ws.aliasLineageIntro':
+    'Valores que escribió la ejecución que produjo esta versión y que una ejecución posterior de esta sesión cambió — reescribiendo el nombre, modificando el objeto en el sitio o mediante una cadena de alias. Cada fila se puede recalcular desde el registro de ejecución.',
+  'ws.aliasLineageEmpty':
+    'Ninguna ejecución posterior de esta sesión cambió un valor escrito por la ejecución productora. Es lo que dicen estos registros — no una afirmación sobre todo el proyecto.',
   'ws.aliasLineageHash': 'hash del contenido de la ejecución productora {hash}',
   'ws.aliasLineageRecipe': 'receta {recipe}',
-  'ws.aliasLineageUnavailable': 'El linaje de alias no está disponible ({reason}) — el registro no pudo responder, lo que no es lo mismo que «sin cambios».',
+  'ws.aliasLineageUnavailable':
+    'El linaje de alias no está disponible ({reason}) — el registro no pudo responder, lo que no es lo mismo que «sin cambios».',
   'ws.notebookRunError': 'falló',
   'ws.notebookKernelIdle': 'inactivo',
   'ws.notebookKernelRunning': 'en ejecución',

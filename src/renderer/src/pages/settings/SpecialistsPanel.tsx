@@ -132,6 +132,10 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const selectPackage = useSpecialistStore((s) => s.selectPackage)
   const installPackage = useSpecialistStore((s) => s.installPackage)
   const cancelPackage = useSpecialistStore((s) => s.cancelPackage)
+  // E3: the plugin creator reads a public repository and keeps what it read under a token.
+  const pluginSourceCandidate = useSpecialistStore((s) => s.pluginSourceCandidate)
+  const previewPluginSource = useSpecialistStore((s) => s.previewPluginSource)
+  const clearPluginSource = useSpecialistStore((s) => s.clearPluginSource)
   const exportPreview = useSpecialistStore((s) => s.exportPreview)
   const previewExport = useSpecialistStore((s) => s.previewExport)
   const exportSpecialist = useSpecialistStore((s) => s.exportSpecialist)
@@ -156,6 +160,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const [templateSaved, setTemplateSaved] = useState(false)
   const [templateSaveError, setTemplateSaveError] = useState<string | undefined>()
   const [packageBusy, setPackageBusy] = useState(false)
+  const [pluginSourceRef, setPluginSourceRef] = useState('')
+  const [pluginSourceBusy, setPluginSourceBusy] = useState(false)
   const [packageErrorCode, setPackageErrorCode] = useState<string | undefined>()
   const [overwriteConfirmationOpen, setOverwriteConfirmationOpen] = useState(false)
   const focusRestoreOverwrite = useDialogFocusRestore(overwriteConfirmationOpen)
@@ -638,6 +644,55 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
               >
                 {t('specialist.chooseZip')}
               </Button>
+            </div>
+            {/* E3: a third-party public repository, read and checked before anything could be deployed.
+                The reference is the caller's, the verdict is the app's: a refusal names its reason. */}
+            <div className="mt-4 space-y-2">
+              <p className="text-sm text-text-300">{t('specialist.pluginSourceTitle')}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  aria-label={t('specialist.pluginSourceTitle')}
+                  className="min-w-[16rem] flex-1 rounded border border-border-300 bg-bg-100 px-2 py-1 text-sm text-text-000"
+                  placeholder={t('specialist.pluginSourcePlaceholder')}
+                  value={pluginSourceRef}
+                  onChange={(event) => setPluginSourceRef(event.target.value)}
+                />
+                <Button
+                  type="button"
+                  disabled={pluginSourceBusy || pluginSourceRef.trim() === ''}
+                  onClick={() => {
+                    setPluginSourceBusy(true)
+                    void previewPluginSource(pluginSourceRef).finally(() =>
+                      setPluginSourceBusy(false)
+                    )
+                  }}
+                >
+                  {t('specialist.pluginSourcePreview')}
+                </Button>
+                {pluginSourceCandidate ? (
+                  <Button type="button" variant="ghost" onClick={() => void clearPluginSource()}>
+                    {t('specialist.pluginSourceCancel')}
+                  </Button>
+                ) : null}
+              </div>
+              {pluginSourceCandidate ? (
+                <p className="text-sm text-text-300" data-testid="specialist-plugin-source-result">
+                  {pluginSourceCandidate.state === 'available'
+                    ? t('specialist.pluginSourceResult', {
+                        runtime: pluginSourceCandidate.manifest.runtime.kind,
+                        tools: pluginSourceCandidate.manifest.tools.length,
+                        bytes: pluginSourceCandidate.fetched.bytes,
+                        sha256: pluginSourceCandidate.fetched.sha256.slice(0, 12)
+                      })
+                    : t('specialist.pluginSourceRefused', {
+                        reason: pluginSourceCandidate.reason,
+                        detail:
+                          pluginSourceCandidate.detail ??
+                          (pluginSourceCandidate.issues ?? []).join('; ')
+                      })}
+                </p>
+              ) : null}
             </div>
             {templateSaveError ? (
               <p

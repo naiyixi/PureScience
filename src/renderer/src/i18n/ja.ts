@@ -294,6 +294,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'エンドポイント',
   'specialist.chooseZipHint': 'スペシャリストをちょうど 1 つ含む ZIP を選択してください。',
   'specialist.chooseZip': 'ZIP を選択',
+  'specialist.pluginSourceTitle': '公開リポジトリから',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': '読み取る',
+  'specialist.pluginSourceCancel': '破棄',
+  'specialist.pluginSourceResult':
+    '宣言: {runtime}、ツール {tools} 個 · {bytes} バイト · sha256 {sha256}',
+  'specialist.pluginSourceRefused': '拒否: {reason} — {detail}',
   'settings.zipLimits': '制限：圧縮時 50 MB · 解凍時 200 MB · 2,000 ファイル · 1 ファイル 25 MB',
   'specialist.editorDescription': '説明',
   'specialist.editorInstructions': '手順書',
@@ -3288,11 +3295,14 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Notebook 参照のハイドレーションに失敗しました',
   'ws.notebookStale': '古い',
   'ws.aliasLineage': '別名レベルの系譜',
-  'ws.aliasLineageIntro': 'このバージョンを生んだ実行が書き、このセッションの後続の実行が変更した値 — 名前の再書き込み、その場での変更、または別名チェーン経由。各行は実行記録から再計算できます。',
-  'ws.aliasLineageEmpty': 'このセッションの後続の実行は、生成側の実行が書き込んだ値を変更していません。これはこれらの記録が示すことであり、プロジェクト全体についての主張ではありません。',
+  'ws.aliasLineageIntro':
+    'このバージョンを生んだ実行が書き、このセッションの後続の実行が変更した値 — 名前の再書き込み、その場での変更、または別名チェーン経由。各行は実行記録から再計算できます。',
+  'ws.aliasLineageEmpty':
+    'このセッションの後続の実行は、生成側の実行が書き込んだ値を変更していません。これはこれらの記録が示すことであり、プロジェクト全体についての主張ではありません。',
   'ws.aliasLineageHash': '生成側の内容ハッシュ {hash}',
   'ws.aliasLineageRecipe': 'レシピ {recipe}',
-  'ws.aliasLineageUnavailable': '別名レベルの系譜は利用できません（{reason}）— 記録がこの問いに答えられなかったのであり、変更が無かったこととは違います。',
+  'ws.aliasLineageUnavailable':
+    '別名レベルの系譜は利用できません（{reason}）— 記録がこの問いに答えられなかったのであり、変更が無かったこととは違います。',
   'ws.notebookRunError': 'エラー',
   'ws.notebookKernelIdle': '待機中',
   'ws.notebookKernelRunning': '実行中',

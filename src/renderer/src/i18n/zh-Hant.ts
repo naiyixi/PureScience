@@ -231,6 +231,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': '端點',
   'specialist.chooseZipHint': '選擇一個 ZIP，其中恰好包含一個專才。',
   'specialist.chooseZip': '選擇 ZIP',
+  'specialist.pluginSourceTitle': '從公開倉庫讀取',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': '讀取',
+  'specialist.pluginSourceCancel': '丟棄',
+  'specialist.pluginSourceResult':
+    '宣告 {runtime}、{tools} 個工具 · {bytes} 位元組 · sha256 {sha256}',
+  'specialist.pluginSourceRefused': '已拒絕：{reason} —— {detail}',
   'settings.zipLimits': '限制：壓縮後 50 MB · 解壓後 200 MB · 2,000 個檔案 · 每個檔案 25 MB',
   'specialist.editorDescription': '描述',
   'specialist.editorInstructions': '說明',
@@ -3047,11 +3054,14 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': '筆記本參照的實體化失敗',
   'ws.notebookStale': '已過期',
   'ws.aliasLineage': '別名級血緣',
-  'ws.aliasLineageIntro': '產出該版本的那次執行所寫的值中，被本工作階段後來的執行改動過的部分——改名重寫、原地修改，或經別名鏈傳遞。每一行都能從執行紀錄複算。',
-  'ws.aliasLineageEmpty': '本工作階段後來的執行沒有改動產出執行寫下的值。這是這些紀錄說的——不是對整個專案的斷言。',
+  'ws.aliasLineageIntro':
+    '產出該版本的那次執行所寫的值中，被本工作階段後來的執行改動過的部分——改名重寫、原地修改，或經別名鏈傳遞。每一行都能從執行紀錄複算。',
+  'ws.aliasLineageEmpty':
+    '本工作階段後來的執行沒有改動產出執行寫下的值。這是這些紀錄說的——不是對整個專案的斷言。',
   'ws.aliasLineageHash': '產出執行的內容雜湊 {hash}',
   'ws.aliasLineageRecipe': '配方 {recipe}',
-  'ws.aliasLineageUnavailable': '別名級血緣不可用（{reason}）——紀錄回答不了這個問題，這與「沒有改動」不是一回事。',
+  'ws.aliasLineageUnavailable':
+    '別名級血緣不可用（{reason}）——紀錄回答不了這個問題，這與「沒有改動」不是一回事。',
   'ws.notebookRunError': '錯誤',
   'ws.notebookKernelIdle': '閒置',
   'ws.notebookKernelRunning': '執行中',

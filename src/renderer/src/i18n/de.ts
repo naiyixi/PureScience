@@ -295,6 +295,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Endpunkt',
   'specialist.chooseZipHint': 'Wählen Sie ein ZIP mit genau einem Spezialisten.',
   'specialist.chooseZip': 'ZIP wählen',
+  'specialist.pluginSourceTitle': 'Aus einem öffentlichen Repository',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': 'Einlesen',
+  'specialist.pluginSourceCancel': 'Verwerfen',
+  'specialist.pluginSourceResult':
+    'Deklariert {runtime}, {tools} Tool(s) · {bytes} Bytes · sha256 {sha256}',
+  'specialist.pluginSourceRefused': 'Abgelehnt: {reason} — {detail}',
   'settings.zipLimits':
     'Grenzen: 50 MB komprimiert · 200 MB unkomprimiert · 2.000 Dateien · 25 MB pro Datei',
   'specialist.editorDescription': 'Beschreibung',
@@ -3381,11 +3388,14 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Notebook-Referenz-Hydrierung fehlgeschlagen',
   'ws.notebookStale': 'veraltet',
   'ws.aliasLineage': 'Alias-Lineage',
-  'ws.aliasLineageIntro': 'Werte, die der Lauf, der diese Version erzeugt hat, geschrieben hat und die ein späterer Lauf in dieser Sitzung geändert hat — durch erneutes Schreiben des Namens, eine Änderung am Objekt selbst oder über eine Alias-Kette. Jede Zeile ist aus dem Laufdatensatz nachrechenbar.',
-  'ws.aliasLineageEmpty': 'Kein späterer Lauf in dieser Sitzung hat einen Wert geändert, den der erzeugende Lauf geschrieben hat. Das sagen diese Datensätze — keine Aussage über das ganze Projekt.',
+  'ws.aliasLineageIntro':
+    'Werte, die der Lauf, der diese Version erzeugt hat, geschrieben hat und die ein späterer Lauf in dieser Sitzung geändert hat — durch erneutes Schreiben des Namens, eine Änderung am Objekt selbst oder über eine Alias-Kette. Jede Zeile ist aus dem Laufdatensatz nachrechenbar.',
+  'ws.aliasLineageEmpty':
+    'Kein späterer Lauf in dieser Sitzung hat einen Wert geändert, den der erzeugende Lauf geschrieben hat. Das sagen diese Datensätze — keine Aussage über das ganze Projekt.',
   'ws.aliasLineageHash': 'Inhalts-Hash des erzeugenden Laufs {hash}',
   'ws.aliasLineageRecipe': 'Rezept {recipe}',
-  'ws.aliasLineageUnavailable': 'Alias-Lineage ist nicht verfügbar ({reason}) — der Datensatz konnte dies nicht beantworten, was nicht dasselbe ist wie keine Änderungen.',
+  'ws.aliasLineageUnavailable':
+    'Alias-Lineage ist nicht verfügbar ({reason}) — der Datensatz konnte dies nicht beantworten, was nicht dasselbe ist wie keine Änderungen.',
   'ws.notebookRunError': 'Fehler',
   'ws.notebookKernelIdle': 'bereit',
   'ws.notebookKernelRunning': 'läuft',

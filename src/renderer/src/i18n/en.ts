@@ -544,11 +544,14 @@ export const en: Record<ZhKey, string> = {
   'ws.notebookVariablesRefreshing': 'Refreshing…',
   'ws.notebookStale': 'stale',
   'ws.aliasLineage': 'Alias lineage',
-  'ws.aliasLineageIntro': 'Values the run that produced this version wrote, and that a later run in this session changed — by rewriting the name, changing the object in place, or through an alias chain. Each row is recomputable from the run record.',
-  'ws.aliasLineageEmpty': 'No later run in this session changed a value the producing run wrote. That is what these records say — not a claim about the whole project.',
+  'ws.aliasLineageIntro':
+    'Values the run that produced this version wrote, and that a later run in this session changed — by rewriting the name, changing the object in place, or through an alias chain. Each row is recomputable from the run record.',
+  'ws.aliasLineageEmpty':
+    'No later run in this session changed a value the producing run wrote. That is what these records say — not a claim about the whole project.',
   'ws.aliasLineageHash': 'producer content hash {hash}',
   'ws.aliasLineageRecipe': 'recipe {recipe}',
-  'ws.aliasLineageUnavailable': 'Alias lineage is unavailable ({reason}) — the record could not answer this, which is not the same as no changes.',
+  'ws.aliasLineageUnavailable':
+    'Alias lineage is unavailable ({reason}) — the record could not answer this, which is not the same as no changes.',
   'ws.notebookRunError': 'error',
   'ws.notebookKernelIdle': 'idle',
   'ws.notebookKernelRunning': 'running',
@@ -2818,6 +2821,13 @@ export const en: Record<ZhKey, string> = {
   'providerForm.endpointAria': 'Endpoint',
   'specialist.chooseZipHint': 'Choose one ZIP containing exactly one Specialist.',
   'specialist.chooseZip': 'Choose ZIP',
+  'specialist.pluginSourceTitle': 'From a public repository',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': 'Read it',
+  'specialist.pluginSourceCancel': 'Discard',
+  'specialist.pluginSourceResult':
+    'Declares {runtime}, {tools} tool(s) · {bytes} bytes · sha256 {sha256}',
+  'specialist.pluginSourceRefused': 'Refused: {reason} — {detail}',
   'settings.zipLimits':
     'Limits: 50 MB compressed · 200 MB uncompressed · 2,000 files · 25 MB per file',
   'specialist.editorDescription': 'Description',

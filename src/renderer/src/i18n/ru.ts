@@ -292,6 +292,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Конечная точка',
   'specialist.chooseZipHint': 'Выберите ZIP, содержащий ровно одного специалиста.',
   'specialist.chooseZip': 'Выбрать ZIP',
+  'specialist.pluginSourceTitle': 'Из публичного репозитория',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': 'Прочитать',
+  'specialist.pluginSourceCancel': 'Отбросить',
+  'specialist.pluginSourceResult':
+    'Объявлено: {runtime}, инструментов {tools} · {bytes} байт · sha256 {sha256}',
+  'specialist.pluginSourceRefused': 'Отказано: {reason} — {detail}',
   'settings.zipLimits':
     'Ограничения: 50 МБ сжато · 200 МБ без сжатия · 2 000 файлов · 25 МБ на файл',
   'specialist.editorDescription': 'Описание',
@@ -3289,11 +3296,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Не удалось восстановить ссылку на Notebook',
   'ws.notebookStale': 'устарел',
   'ws.aliasLineage': 'Линия псевдонимов',
-  'ws.aliasLineageIntro': 'Значения, записанные запуском, создавшим эту версию, и изменённые более поздним запуском в этом сеансе — перезаписью имени, изменением объекта на месте или через цепочку псевдонимов. Каждую строку можно пересчитать по записи запуска.',
-  'ws.aliasLineageEmpty': 'Ни один более поздний запуск в этом сеансе не изменил значение, записанное создавшим его запуском. Это то, что говорят эти записи — а не утверждение обо всём проекте.',
+  'ws.aliasLineageIntro':
+    'Значения, записанные запуском, создавшим эту версию, и изменённые более поздним запуском в этом сеансе — перезаписью имени, изменением объекта на месте или через цепочку псевдонимов. Каждую строку можно пересчитать по записи запуска.',
+  'ws.aliasLineageEmpty':
+    'Ни один более поздний запуск в этом сеансе не изменил значение, записанное создавшим его запуском. Это то, что говорят эти записи — а не утверждение обо всём проекте.',
   'ws.aliasLineageHash': 'хеш содержимого создавшего запуска {hash}',
   'ws.aliasLineageRecipe': 'рецепт {recipe}',
-  'ws.aliasLineageUnavailable': 'Линия псевдонимов недоступна ({reason}) — запись не смогла ответить, и это не то же самое, что отсутствие изменений.',
+  'ws.aliasLineageUnavailable':
+    'Линия псевдонимов недоступна ({reason}) — запись не смогла ответить, и это не то же самое, что отсутствие изменений.',
   'ws.notebookRunError': 'ошибка',
   'ws.notebookKernelIdle': 'простой',
   'ws.notebookKernelRunning': 'выполняется',

@@ -27,6 +27,10 @@ const zhKeys = Object.keys(zh) as Array<keyof typeof en>
 
 /** 值在中文界面里合法保留英文的白名单（品牌、格式名、占位示例） */
 const KEPT_IN_ENGLISH = new Set<string>([
+  // A literal syntax the user types as-is (github:owner/repo@ref): translating the segments would
+  // make the example wrong, which is exactly the case this whitelist exists for — the gate's own
+  // rule names placeholder examples as the thing that is correct to keep in English.
+  'github:owner/repo@ref',
   // 品牌 / 产品名
   'Beta',
   'PureScience',

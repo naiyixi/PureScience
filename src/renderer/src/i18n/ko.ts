@@ -291,6 +291,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': '엔드포인트',
   'specialist.chooseZipHint': '스페셜리스트가 정확히 하나 들어 있는 ZIP을 선택하세요.',
   'specialist.chooseZip': 'ZIP 선택',
+  'specialist.pluginSourceTitle': '공개 저장소에서',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': '읽기',
+  'specialist.pluginSourceCancel': '버리기',
+  'specialist.pluginSourceResult':
+    '선언: {runtime}, 도구 {tools}개 · {bytes} 바이트 · sha256 {sha256}',
+  'specialist.pluginSourceRefused': '거부됨: {reason} — {detail}',
   'settings.zipLimits': '제한: 압축 50 MB · 해제 200 MB · 2,000개 파일 · 파일당 25 MB',
   'specialist.editorDescription': '설명',
   'specialist.editorInstructions': '지침',
@@ -3230,11 +3237,14 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': '노트북 참조 하이드레이션 실패',
   'ws.notebookStale': '오래됨',
   'ws.aliasLineage': '별칭 수준 계보',
-  'ws.aliasLineageIntro': '이 버전을 만든 실행이 기록한 값 중 이 세션의 이후 실행이 바꾼 것 — 이름 재작성, 제자리 변경, 또는 별칭 사슬을 통한 변경. 각 행은 실행 기록에서 재계산할 수 있습니다.',
-  'ws.aliasLineageEmpty': '이 세션의 이후 실행은 생성 실행이 기록한 값을 바꾸지 않았습니다. 이것은 이 기록들이 말하는 바이며, 프로젝트 전체에 대한 주장이 아닙니다.',
+  'ws.aliasLineageIntro':
+    '이 버전을 만든 실행이 기록한 값 중 이 세션의 이후 실행이 바꾼 것 — 이름 재작성, 제자리 변경, 또는 별칭 사슬을 통한 변경. 각 행은 실행 기록에서 재계산할 수 있습니다.',
+  'ws.aliasLineageEmpty':
+    '이 세션의 이후 실행은 생성 실행이 기록한 값을 바꾸지 않았습니다. 이것은 이 기록들이 말하는 바이며, 프로젝트 전체에 대한 주장이 아닙니다.',
   'ws.aliasLineageHash': '생성 실행의 내용 해시 {hash}',
   'ws.aliasLineageRecipe': '레시피 {recipe}',
-  'ws.aliasLineageUnavailable': '별칭 수준 계보를 사용할 수 없습니다({reason}) — 기록이 이 질문에 답하지 못한 것이며, 변경이 없었다는 뜻이 아닙니다.',
+  'ws.aliasLineageUnavailable':
+    '별칭 수준 계보를 사용할 수 없습니다({reason}) — 기록이 이 질문에 답하지 못한 것이며, 변경이 없었다는 뜻이 아닙니다.',
   'ws.notebookRunError': '오류',
   'ws.notebookKernelIdle': '대기 중',
   'ws.notebookKernelRunning': '실행 중',

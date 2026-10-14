@@ -13,11 +13,17 @@ import type {
   SpecialistDeletePreview,
   SpecialistDeleteResult
 } from '../../../shared/specialist-package'
+import type {
+  PluginSourceCandidatePreview,
+  PluginSourcePreview
+} from '../../../shared/plugin-source'
 
 type SpecialistStoreData = {
   items: SpecialistListItem[]
   isLoaded: boolean
   packagePreview?: SpecialistPackageCandidatePreview
+  // E2/E3: what the plugin creator read from a public repository, and the token that names it.
+  pluginSourceCandidate?: PluginSourceCandidatePreview<PluginSourcePreview>
   exportPreview?: SpecialistExportPreview
 }
 
@@ -36,6 +42,10 @@ type SpecialistStoreActions = {
   selectPackage: () => Promise<{ cancelled: true } | SpecialistPackageCandidatePreview>
   installPackage: (confirmOverwrite?: boolean) => Promise<SpecialistPackageInstallResult>
   cancelPackage: () => Promise<void>
+  previewPluginSource: (
+    reference: string
+  ) => Promise<PluginSourceCandidatePreview<PluginSourcePreview>>
+  clearPluginSource: () => Promise<void>
   previewExport: (specialistId: string) => Promise<SpecialistExportPreview>
   exportSpecialist: (
     preview: SpecialistExportPreview,
@@ -52,6 +62,7 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
   items: [],
   isLoaded: false,
   packagePreview: undefined,
+  pluginSourceCandidate: undefined,
   exportPreview: undefined,
 
   load: async () => {
@@ -125,6 +136,20 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
       await window.api.specialist.cancelPackage({ candidateToken: preview.candidateToken })
     }
     set({ packagePreview: undefined })
+  },
+
+  previewPluginSource: async (reference) => {
+    const candidate = await window.api.specialist.pluginSourcePreview({ reference })
+    // The refusal is kept as it came: a preview that could not be read is still an answer, and the
+    // block that renders it names why instead of showing an empty form.
+    set({ pluginSourceCandidate: candidate })
+    return candidate
+  },
+
+  clearPluginSource: async () => {
+    const candidate = useSpecialistStore.getState().pluginSourceCandidate
+    if (candidate) await window.api.specialist.pluginSourceCancel()
+    set({ pluginSourceCandidate: undefined })
   },
 
   previewExport: async (specialistId: string) => {

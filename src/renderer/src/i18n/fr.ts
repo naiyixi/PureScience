@@ -295,6 +295,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'providerForm.endpointAria': 'Point d’accès',
   'specialist.chooseZipHint': 'Choisissez un ZIP contenant exactement un spécialiste.',
   'specialist.chooseZip': 'Choisir le ZIP',
+  'specialist.pluginSourceTitle': 'Depuis un dépôt public',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': 'Lire',
+  'specialist.pluginSourceCancel': 'Abandonner',
+  'specialist.pluginSourceResult':
+    'Déclare {runtime}, {tools} outil(s) · {bytes} octets · sha256 {sha256}',
+  'specialist.pluginSourceRefused': 'Refusé : {reason} — {detail}',
   'settings.zipLimits':
     'Limites : 50 Mo compressé · 200 Mo décompressé · 2 000 fichiers · 25 Mo par fichier',
   'specialist.editorDescription': 'Descriptif',
@@ -3374,11 +3381,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.notebookHydrationFailed': 'Échec de l’hydratation de la référence du notebook',
   'ws.notebookStale': 'obsolète',
   'ws.aliasLineage': 'Lignée d’alias',
-  'ws.aliasLineageIntro': 'Valeurs écrites par l’exécution qui a produit cette version et modifiées par une exécution ultérieure de cette session — par réécriture du nom, modification sur place ou via une chaîne d’alias. Chaque ligne est recalculable depuis l’enregistrement d’exécution.',
-  'ws.aliasLineageEmpty': 'Aucune exécution ultérieure de cette session n’a modifié une valeur écrite par l’exécution productrice. C’est ce que disent ces enregistrements — pas une affirmation sur tout le projet.',
+  'ws.aliasLineageIntro':
+    'Valeurs écrites par l’exécution qui a produit cette version et modifiées par une exécution ultérieure de cette session — par réécriture du nom, modification sur place ou via une chaîne d’alias. Chaque ligne est recalculable depuis l’enregistrement d’exécution.',
+  'ws.aliasLineageEmpty':
+    'Aucune exécution ultérieure de cette session n’a modifié une valeur écrite par l’exécution productrice. C’est ce que disent ces enregistrements — pas une affirmation sur tout le projet.',
   'ws.aliasLineageHash': 'empreinte du contenu de l’exécution productrice {hash}',
   'ws.aliasLineageRecipe': 'recette {recipe}',
-  'ws.aliasLineageUnavailable': 'La lignée d’alias est indisponible ({reason}) — l’enregistrement n’a pas pu répondre, ce qui n’est pas la même chose qu’aucun changement.',
+  'ws.aliasLineageUnavailable':
+    'La lignée d’alias est indisponible ({reason}) — l’enregistrement n’a pas pu répondre, ce qui n’est pas la même chose qu’aucun changement.',
   'ws.notebookRunError': 'erreur',
   'ws.notebookKernelIdle': 'inactif',
   'ws.notebookKernelRunning': 'en cours',

@@ -521,11 +521,14 @@ export const zh = {
   'ws.notebookVariablesRefreshing': '刷新中…',
   'ws.notebookStale': '已过期',
   'ws.aliasLineage': '别名级血缘',
-  'ws.aliasLineageIntro': '产出该版本的那次运行所写的值中，被本会话后来的运行改动过的部分——改名重写、原地修改，或经别名链传递。每一行都能从运行记录复算。',
-  'ws.aliasLineageEmpty': '本会话后来的运行没有改动产出运行写下的值。这是这些记录说的——不是对整个项目的断言。',
+  'ws.aliasLineageIntro':
+    '产出该版本的那次运行所写的值中，被本会话后来的运行改动过的部分——改名重写、原地修改，或经别名链传递。每一行都能从运行记录复算。',
+  'ws.aliasLineageEmpty':
+    '本会话后来的运行没有改动产出运行写下的值。这是这些记录说的——不是对整个项目的断言。',
   'ws.aliasLineageHash': '产出运行的内容哈希 {hash}',
   'ws.aliasLineageRecipe': '配方 {recipe}',
-  'ws.aliasLineageUnavailable': '别名级血缘不可用（{reason}）——记录回答不了这个问题，这与「没有改动」不是一回事。',
+  'ws.aliasLineageUnavailable':
+    '别名级血缘不可用（{reason}）——记录回答不了这个问题，这与「没有改动」不是一回事。',
   'ws.notebookRunError': '错误',
   'ws.notebookKernelIdle': '空闲',
   'ws.notebookKernelRunning': '运行中',
@@ -2625,6 +2628,13 @@ export const zh = {
   'providerForm.endpointAria': '端点',
   'specialist.chooseZipHint': '选择一个 ZIP，其中恰好包含一个专才。',
   'specialist.chooseZip': '选择 ZIP',
+  'specialist.pluginSourceTitle': '从公开仓库读取',
+  'specialist.pluginSourcePlaceholder': 'github:owner/repo@ref',
+  'specialist.pluginSourcePreview': '读取',
+  'specialist.pluginSourceCancel': '丢弃',
+  'specialist.pluginSourceResult':
+    '声明 {runtime}、{tools} 个工具 · {bytes} 字节 · sha256 {sha256}',
+  'specialist.pluginSourceRefused': '已拒绝：{reason} —— {detail}',
   'settings.zipLimits': '限制：压缩后 50 MB · 解压后 200 MB · 2,000 个文件 · 每个文件 25 MB',
   'specialist.editorDescription': '描述',
   'specialist.editorInstructions': '说明',
