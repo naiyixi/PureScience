@@ -14,6 +14,7 @@ import { join } from 'node:path'
 
 import { PluginSourceCandidateStore } from './plugin-source-candidate'
 import { deployPlugin, readDeployedPlugin } from './plugin-deploy'
+import { decidePluginOperation, PLUGIN_OPERATION_RULE } from './plugin-run-policy'
 import { previewPluginSource, type PluginFetchOutcome } from './plugin-source'
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
@@ -354,5 +355,79 @@ describe('plugin deploy', () => {
     expect(result).toMatchObject({ state: 'refused', reason: 'declaration-refused' })
     expect(await readdir(root)).toEqual([])
     await rm(root, { recursive: true, force: true })
+  })
+})
+
+describe('plugin operation gate', () => {
+  type Protection = Parameters<typeof decidePluginOperation>[0]['protection']
+  const protection = (
+    level: 'protected' | 'unprotected',
+    scope: { filesystem: string; network: string } = {
+      filesystem: 'runtime-write-protected',
+      network: 'allowlist'
+    }
+  ): Protection => ({ level, scope }) as unknown as Protection
+
+  it('refuses anything that was not confirmed, and says what the operation would do', () => {
+    for (const operation of ['deploy', 'run-once'] as const) {
+      const decision = decidePluginOperation({
+        operation,
+        confirmed: false,
+        protection: protection('protected'),
+        policy: 'remembered'
+      })
+      expect(decision).toMatchObject({ state: 'refused', reason: 'confirmation-missing' })
+      if (decision.state !== 'refused') throw new Error('expected a refusal')
+      expect(decision.detail).toContain(PLUGIN_OPERATION_RULE[operation])
+    }
+  })
+
+  it('lets a confirmed deploy write files, and says running is a separate decision', () => {
+    const decision = decidePluginOperation({
+      operation: 'deploy',
+      confirmed: true,
+      protection: protection('unprotected'),
+      policy: 'deny'
+    })
+    expect(decision).toMatchObject({ state: 'allowed' })
+    if (decision.state !== 'allowed') throw new Error('expected an allowance')
+    expect(decision.detail).toContain('separate decision')
+  })
+
+  it('consults the app policy for a run: deny means deny, and unprotected-without-remembering needs an approval', () => {
+    const denied = decidePluginOperation({
+      operation: 'run-once',
+      confirmed: true,
+      protection: protection('unprotected'),
+      policy: 'deny'
+    })
+    expect(denied).toMatchObject({ state: 'refused', reason: 'unprotected-execution-denied' })
+    if (denied.state !== 'refused') throw new Error('expected a refusal')
+    // The refusal names the axes, not just the verdict.
+    expect(denied.detail).toContain('allowlist')
+
+    const needsApproval = decidePluginOperation({
+      operation: 'run-once',
+      confirmed: true,
+      protection: protection('unprotected'),
+      policy: 'confirm'
+    })
+    expect(needsApproval).toMatchObject({ state: 'refused', reason: 'approval-required' })
+
+    const remembered = decidePluginOperation({
+      operation: 'run-once',
+      confirmed: true,
+      protection: protection('unprotected'),
+      policy: 'remembered'
+    })
+    expect(remembered).toMatchObject({ state: 'allowed' })
+
+    const protectedRun = decidePluginOperation({
+      operation: 'run-once',
+      confirmed: true,
+      protection: protection('protected'),
+      policy: 'confirm'
+    })
+    expect(protectedRun).toMatchObject({ state: 'allowed' })
   })
 })
