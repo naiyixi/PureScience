@@ -1,5 +1,34 @@
 # PureScience 更新日记
 
+## v2.1.0 — 2026-10-14（执行可信：可审阅的 Notebook 执行 + 别名级依赖血缘 + 会话内文件变更审阅）
+
+**成熟度自陈**：本版把「执行」这条线做**可信** —— 运行**之前**先审阅（具名规则 + 命中那一行 + 与既有权限门同一张卡），运行**之后**能用可复算的内容哈希说清它动了哪些文件，跨运行的**别名/原地变异级血缘**能指认「哪一行让这次输入过期」。三件**全部交付且都有真机读数**；没做到的部分在文末「明确没做」里逐条具名。✅ 已交付即下；🚧/🗺️ 具名在后。
+
+**你现在能看到的**：一个会删文件的 cell 被按下运行时**不会直接跑** —— 卡上逐条写着命中的规则名、规则版本与那一行代码（`fs-delete`）；拒绝之后屏幕上是同一套词汇的一句话（`Notebook run declined: deletes files (fs-delete) — no code was executed.`，9 语），而不是引擎类名加一串传输信封；被拒的那次**不 provision、不碰内核、不留运行记录**。跑过的每一次运行都带着一张**收据**（判定 + 规则集版本 + 代码哈希 + 逐条命中），读取侧整条净化（半份收据比没有更坏），**没有收据 = 未评估**，绝不等于「无风险」。血缘那半边：一条过期原因会说清**是哪一种**（改名 `name-rewrite` / 原地变异 `direct-mutation`）、变异发生在哪一行、经过哪条别名链；它需要的内容哈希**在读侧现算**（本机真数据 **1,412 / 1,412** 条血缘行拿到真哈希，修前 0 条）。文件变更审阅面板把每次变更的 `before → after`（8 位前缀）写在路径格内，两侧都是**真 sha256**：后态在观测到变更的同一处读字节，前态在**运行开始时**对会话工作目录做有界走查（条目与总字节各 64 MiB 预算；超者具名 `too-large` / `not-recorded` / `unreadable`，绝不拿上一次运行的后态链式冒充前态）。
+
+### 本版交付
+
+- **B1 可审阅的 Notebook 执行**：判据层四条具名规则（`fs-delete` / `fs-overwrite` / `shell-exec` / `large-allocation`，各带规则版本）+ `evaluateNotebookRunRisk` 纯函数；收据 `{verdict, ruleSetVersion, codeHash, hits[]}` 随运行落盘、读取侧 `sanitizeNotebookRunRiskReceipt` 整条净化；**两条运行路径共一张卡**（agent 工具面经权限门 broker 按 MCP 身份认调用；应用自有运行走 `requestAppApproval`）；门挂在 `dataExecutionAdmission.admit` **之前**（被拒：不 provision、不跑、不建记录，抛具名 `NotebookRunDeclinedError`）；拒绝之后上屏的那句话改走**卡面同一套规则名**（机器 id 留行内 —— 第三方复算收据要用它），9 语齐。两支认证 spec（卡面 `notebook-run-risk-approval.spec.ts`、面板终端 `notebook-declined-copy.spec.ts`）进仓。
+- **B2 别名级依赖血缘**：判定引擎（别名 / 原地变异级**跨运行**分析）接在既有 `input-registry`（逐回合输入 + 版本 + 哈希）与 `working-file-observer`（写入轴证据 + 具名缺态）之上，不重写既有轴；每条过期原因给出**具名种类** + 变异点行号 + 别名链；血缘行需要的内容哈希在读侧补算（`sourceContentHash`，`provenance: 'computed-on-read'`，只在读路径挂、不落盘，**永不合成 `riskReview`** —— 没被审过不等于读者事后算了哈希）；界面具名原因 + `notebookStale.*` 3 键 × 9 语。
+- **B3 会话内文件变更审阅**：写入轴补**内容身份**（后态真 sha256 / 前态运行开始观测，双重预算）；审计面板在路径格内显示 `before → after`（机器文本、不新增表头）；legacy 行不再把「没记 kind」显示成 `modified`（那是记录没做过的猜测）而显示 `—`；缺态词 9 语。
+
+### 质量与证据口径
+
+- 门禁（隔离工作树，被测提交 `@@GATE_SHA@@`）：`eslint --no-cache .` **@@GATE_ESLINT@@**；`typecheck:node` / `typecheck:web` **两环原文各 0 条 `error TS`**；全量 `vitest --maxWorkers=4` **@@GATE_VITEST@@**；`scripts/pre-push-checks.sh` **EXIT=0**。
+- **真机读数（不是单元测试）**：① 卡面：真窗口 `1 passed (11.9s)`，应用日志留 `NotebookRunDeclinedError: … fs-delete`，拒绝后 `notebook.state()` 零 `rmtree` 记录；② 面板**自己的**终端：`1 passed (8.8s)`，条带逐字 `Notebook run declined: deletes files (fs-delete) — no code was executed.`，且**不含**引擎错误与 IPC 信封（证据档 `docs/evidence/2026-10-14-b1-declined-copy-real-window.md`）；③ 真实 182 MB 会话工作区：`before → after` 两侧哈希与独立复算逐字符相同，6 MB 权重文件两侧具名 `too-large`（一个字节都没读）。
+- **认证车道读数（第二证据源）**：`notebook-run-risk-approval.spec.ts` 随 `Build macos-arm64` 的 P0 步骤通过（2026-10-13 的 run `38420183858`）；`notebook-declined-copy.spec.ts` 与 `session-fork.spec.ts` 在 headSha `c8f35f8b` 的 run（job `115598746438`）里各跑一次 —— 该次 **90 passed ｜ 1 flaky（与本版无关的 PDF 面板 spec，重试即过）｜ 12 skipped**，两条主干车道（`Nightly` / `Windows Full Test`）同为 success。
+- 凡「基准」都注明出处（同一条命令或一次独立复算）。签名 / 公证一律不推断：mac 签名两条作业因无凭据**具名跳过**，本版**不声称**已签名或已公证。
+
+### 明确没做
+
+- 🚧 **风险审阅有意不覆盖 `repl_execute`**（控制面 REPL，Python 规则会给错判定 —— 宁缺勿猜）。
+- 🚧 **前态哈希只覆盖「运行开始时被走查到的」文件**（会话工作目录内、未超预算）；超出者具名 `too-large` / `not-recorded` / `unreadable`，不冒充。
+- 🚧 **被拒的运行不落运行记录**（运行历史列的是「跑过什么」；被拒的载体是那张卡）。
+- 🚧 **血缘的「收据来源哈希」只有本版之后的新运行才有**：本机真数据里 **0 条**运行带 B1 收据 ⇒ 早于本版的运行一律 `not-recorded`（读侧补算给出的是可复算的那一半）。
+- 🚧 **面板自己的运行控件在「没有 provisioner」的构建里是禁用的**（`notebookGated` 读 `pythonReady`，该状态在回落生命周期里恒为 `false`）⇒ 上屏文案的真机读数取自带 provisioner 的构建；认证 spec 在该类车道里**具名挂起**，不红车道。
+- 🚧 **别名级血缘接进产物 / 运行溯源面板尚未做**（本版范围之外，已立案为下一版首项）。
+- 🗺️ 沿用旧口径的挂账：中文源四家连接器（只回 `text/html`，无机读契约）、IC40 / IC6（真算力主机与真后台投递）、M2 权重校验值。
+
 ## v2.0.0 — 2026-10-13（结构工作台 + 中文文献翻译：把「看结构」与「读文献」做成能干活的两条线）
 
 **成熟度自陈**：v1.x 把**检索与证据**这条线做实了；本版是两条**新线**的第一次落地 —— **D 结构工作台**（打开一份结构 → 选中一段 → 把这一段当上下文问出去 → 把这次选择当证据存下来）与 **A 中文文献翻译**（一份英文 PDF → 段落级译文 → 三种阅读模式 → 术语、引文、缺态全部具名）。两条线各七个单元，**全部交付且都有真机读数**；没做到的部分在文末「明确没做」里逐条具名。✅ 已交付即下；🚧/🗺️ 具名在后。
