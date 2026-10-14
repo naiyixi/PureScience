@@ -6145,3 +6145,71 @@ git worktree remove --force /tmp/ps-verify
 ### 四 状态
 
 `ea4df7ca` 已推 ✓，本轮车道为它排队（Nightly + Windows ✓）；`e2a7f4bb`（中间那笔仍红）会被新位点顶掉 ⇒ 按「只认当前 HEAD」等 `ea4df7ca` 的读数。执行器对 `mcp-server.ts` 的未提交修改我**未触碰** ✓。
+
+## 一百三十五、v2.3.0 **甲半已交付**：把已记录的方法编译成**可调用能力**（接线收口）+ 修掉 main 仍在的红（执行器，2026-10-15 00:5x–01:xx）
+
+### 一 接手点与范围
+
+上一轮（执行器）把甲半的三块实现写在盘上（纯编译层 `method-skill.ts`、来源层 `method-skill-source.ts`、编排层 `method-skill-compiler.ts`），会话在 §一百三十四 把其中**纯新增**的模块补进跟踪集（`e2a7f4bb` / `ea4df7ca`）。留给本执行器的是**接线**那一半：RPC 分支、MCP 工具面、stdio 传输的分流 —— 外加一件当时没人看见的事（下一节）。
+
+### 二 main 的红：独立读数 + 归属 + 口径纠正
+
+- **读数（隔离工作树）**：`git worktree add --detach /tmp/ps-verify-head HEAD` + 软链 `node_modules` → `tsc -p tsconfig.node.json --composite false` ⇒ **恰好一条错**：`src/main/ipc.ts(1950,7): error TS2353: … 'skillMethodCompiler' does not exist in type 'NotebookLocalRpcServerOptions'`。
+- **独立对照（CI 作业日志原文）**：`Nightly @ea4df7ca` 的 `build / Verify` = failure，日志里就是这一条 `##[error]src/main/ipc.ts(1950,7): error TS2353 …`；同一提交的 `Windows Full Test` = success（步骤集不同，看不见它）⇒ 只有全量类型检查能发现。
+- **成因**：组合根那两行（`import { createMethodSkillCompiler }` + `skillMethodCompiler:`）已在 `9f0136d2` 提交，而**声明该选项的** `NotebookLocalRpcServerOptions` 一直只在工作区 ⇒ 已提交的引用指向未提交的声明。
+- **口径纠正（给双方）**：§一百三十四 的核验逐条核了「相对 import 的目标是否都在跟踪集里」（8096 条，对 `TS2307` 有效 ✓），但**类型不匹配（`TS2353`/`TS2345`）它看不到** ⇒ 该节「main 已自洽」的结论只覆盖了一半。补法很便宜：在同一个隔离工作树里再跑一次 `tsc -p tsconfig.node.json --composite false`，有 error 就不算自洽。
+- **本笔提交后**：工作树双 typecheck 各 0 error ⇒ 这一笔同时是修红笔。
+
+### 三 本笔交付（接线）
+
+| 位置 | 内容 |
+| --- | --- |
+| `local-rpc-server.ts` | `skillCreate` 加 `skillMethodCompiler` 选项 + `fromRunId` 分支：正文/证据/知识种类一律**由记录推导**；调用方同时送 `instructions`/`kind`/`evidence` 任一时**具名拒绝**（两个真源不许静默取一个）；未配置时另一句具名拒绝 |
+| `mcp-server.ts` | 工具 schema 加 `from_run_id` 并**显式** snake→camel 映射；`instructions` 改为可选并在处理器里强制「二选一」（否则模型被迫送出一份它不许送的正文）；`SkillCreateOutcome` 张开为「草稿 ∪ 编译结果」；新增 `createLocalSkillCreator` —— **stdio 传输按每种形态需要什么分流**：草稿仍就地写（与改动前逐字一致），编译走应用 RPC（运行记录只在主进程）。HTTP 托管传输本来就走 RPC（`callSkillCreateRpc`），无需改动 |
+| `shared/skill-create.ts` | 工具描述/系统提示各一句（agent 面向，英文，不进 UI 字典）；`fromRunId` 入参；schema 里 `instructions` 的说明改为「除非给了 `from_run_id`」 |
+
+### 四 自查抓到的一处（我自己造成的）
+
+我一度在 `SkillCreateResult` 上加了 `fingerprint` / `sourceRunId` 两个字段，注释写着「从运行编译出来的技能才有」—— 而**全树没有写入方**（`SkillCreator` 不知道指纹，编译结果只在 `MethodSkillCompileOutcome` 那一层带它）⇒ 那是「契约里有、生产里没有生产者」那一类失真，已**删掉**：指纹与来源只住在编译结果上（agent 读到的 JSON 里本来就有）。
+
+### 五 证据与未取证
+
+- 证据档：`docs/evidence/2026-10-15-method-skill-compile-from-run.md`（三层读数 + 两处变异证明 + 真机记录 PROBE + 未取证具名）。
+- **真机记录读数**（本机真实数据**只读**复制到 `/tmp`）：素材是 `~/.purescience/notebooks/<项目 id>/<会话 id>/run.json` 里一条**应用自己写过**的完成运行（该根下 81 份记录 / 2489 条已完成且有正文）；读数 `state=created, kind=procedure, fingerprint=method-skill:v1-290de047…77caac, documentBytes=2192, scriptBytes=678, skillsWritten=1, fingerprintStable=true`，并断言文档正文包含那条记录里的脚本**逐字**。
+- **未取证（具名）**：真窗口点击读数与真实 agent 回合 —— 内存闸门关着（空闲页 **4097 ≈ 64 MB**、swap **8555M/10240M**），按仓规不起 `build:e2e` + Electron；且成功路径会把技能写进**配置根**，而真实配置根只读 ⇒ 这两层需要**隔离实例**（`PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` 同时指向隔离根），归会话。
+
+### 六 门禁读数（本笔，工作树即最终代码）
+
+| 门 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache .` | 0 error / 130 warning（我碰过的 6 个文件 scoped 复跑 0 problem） |
+| `tsc -p tsconfig.node.json --composite false` | 0 error |
+| `tsc -p tsconfig.web.json --composite false` | 0 error |
+| 全量 `npx vitest run --maxWorkers=4` | `<FULL_VITEST>` |
+| `bash scripts/pre-push-checks.sh` | `<PREPUSH>` |
+| CI（Nightly + Windows Full Test） | `<CI>` |
+
+## 一百三十五、main 归绿完成：CI 等价核验（隔离工作树 + 软链 node_modules + 真 tsc）（会话，2026-10-15）
+
+### 一 第三块与最终核验
+
+| 笔 | 内容 | 结果 |
+| --- | --- | --- |
+| `ea4df7ca` | 补 `method-skill.ts`（编译器 `import … from './method-skill'` 的目标） | `TS2307 Cannot find module './method-skill'` **消失** ✓ |
+| `e5f1f159` | 补 `src/main/notebook/local-rpc-server.ts` 的**纯新增 41 行**（`skillMethodCompiler?: MethodSkillCompiler` 选项类型 + `from_run_id` 编译路径；其 import 目标已在 `ea4df7ca` 入库） | `TS2353 'skillMethodCompiler' does not exist …` **消失** ✓ |
+
+**最终核验（比「本地 tsc 绿」强）**：在**该提交自己的隔离工作树**里跑真类型检查 ——
+
+```
+git worktree add --detach /tmp/ps-verify2 e5f1f159
+ln -s <repo>/node_modules /tmp/ps-verify2/node_modules
+cd /tmp/ps-verify2 && npx tsc --noEmit -p tsconfig.node.json --composite false
+=> error TS 计数 = 0
+git worktree remove --force /tmp/ps-verify2
+```
+
+⇒ **已提交的树对 CI 自洽** ✓，且这份读数**不受工作树里任何未提交修改污染**（本次正是这个差别：本地 tsc 一直看到执行器未提交的 `mcp-server.ts` 报错 ✗，而 CI 看的是提交集 ✓）。`e5f1f159` 已推 ✓。
+
+### 二 我第三次踩「引用已提交、被引用者未提交」的处理原则（写成一句话）
+
+补别人造成的洞时，**不要逐个追着错误跑**：先把「该模块及其依赖闭包」一次性凑齐（模块本身 + 选项类型所在文件 + 被它 import 的东西），再用**隔离工作树 + 真 tsc** 收口 —— 逐条追错会一轮一个错误（本次：TS2307 → TS2353 各占一轮 ✗）。
