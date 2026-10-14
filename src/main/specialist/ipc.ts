@@ -33,6 +33,9 @@ import type {
   SpecialistDeletePreview
 } from '../../shared/specialist-package'
 import type { SpecialistPackageService } from './package/service'
+import type { PluginSourceCandidateStore } from './plugin-source-candidate'
+import type { PluginSourceCandidatePreview } from '../../shared/plugin-source'
+import type { PluginSourcePreview } from './plugin-source'
 import type { MarketplaceService } from './marketplace/service'
 import {
   SPECIALIST_MARKETPLACE_IPC,
@@ -50,6 +53,14 @@ import type {
 } from '../../shared/specialist-marketplace'
 
 const log = createLogger('specialist:ipc')
+
+// The transport shape only: whether the REFERENCE means anything is the module's own answer, and it says
+// so by name (`invalid-reference`) without sending a request.
+const isPluginSourcePreviewRequest = (value: unknown): value is { reference: string } =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { reference?: unknown }).reference === 'string' &&
+  (value as { reference: string }).reference.trim() !== ''
 
 type PersistSessionSpecialist = (
   sessionId: string,
@@ -79,6 +90,8 @@ type PackageImportIpc = {
     archiveBytes: Uint8Array
   }) => Promise<SpecialistExportSaveResult>
 }
+
+type PluginSourceCandidateView = PluginSourceCandidatePreview<PluginSourcePreview>
 
 const isCandidateRequest = (request: unknown): request is SpecialistPackageInstallRequest =>
   typeof request === 'object' &&
@@ -146,7 +159,8 @@ export const registerSpecialistIpcHandlers = (
   marketplace?: {
     service: MarketplaceService
     broadcastDownloadProgress: (progress: MarketplaceDownloadProgress) => void
-  }
+  },
+  pluginSource?: PluginSourceCandidateStore
 ): void => {
   // Subscribe once so every mutation (create, setEnabled) triggers a broadcast.
   service.subscribe(broadcastCatalogChanged)
@@ -172,6 +186,33 @@ export const registerSpecialistIpcHandlers = (
       }
     }
   )
+
+  if (pluginSource) {
+    ipcMainHandle(
+      SPECIALIST_IPC.PLUGIN_SOURCE_PREVIEW,
+      async (event, request: unknown): Promise<PluginSourceCandidateView> => {
+        if (!isPluginSourcePreviewRequest(request)) {
+          throw new Error('Invalid plugin source preview request.')
+        }
+        const ownerId = rendererOwnerId(event)
+        const sender = (
+          event as { sender?: { once?: (name: string, listener: () => void) => void } }
+        )?.sender
+        // Dropping what this window held when it goes away: a token that outlives its window is a token
+        // nothing can cancel.
+        sender?.once?.('destroyed', () => pluginSource.dispose(ownerId))
+        return pluginSource.preview(request.reference, ownerId)
+      }
+    )
+
+    ipcMainHandle(
+      SPECIALIST_IPC.PLUGIN_SOURCE_CANCEL,
+      async (event): Promise<{ dropped: number }> => ({
+        // The count is returned rather than swallowed: a silent drop is not a disposal.
+        dropped: pluginSource.dispose(rendererOwnerId(event))
+      })
+    )
+  }
 
   if (packageImport) {
     ipcMainHandle(

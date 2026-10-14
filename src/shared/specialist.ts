@@ -14,6 +14,10 @@ export const SPECIALIST_IPC = {
   SELECT_PACKAGE: 'specialist:package-select',
   INSTALL_PACKAGE: 'specialist:package-install',
   CANCEL_PACKAGE: 'specialist:package-cancel',
+  // E1/E2 (v2.3.0): the plugin creator's source preview. A repository reference is read and checked, and
+  // the app keeps what it read under a token — nothing is deployed from these two channels.
+  PLUGIN_SOURCE_PREVIEW: 'specialist:plugin-source-preview',
+  PLUGIN_SOURCE_CANCEL: 'specialist:plugin-source-cancel',
   SAVE_PACKAGE_REPORT: 'specialist:package-report-save',
   PREVIEW_EXPORT: 'specialist:export-preview',
   EXPORT: 'specialist:export-save',

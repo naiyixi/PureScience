@@ -231,6 +231,38 @@ export const parsePluginManifest = (bytes: Uint8Array): PluginManifestParse => {
 
 // Generic over the preview a caller holds, so this module never has to know the main process's shape:
 // the store binds it to the plugin preview, exactly as the Specialist import flow binds its own.
+/**
+ * The reading a preview reports: what the manifest declares, and the digest and size of the bytes that were
+ * actually read, so a reader recomputes the reading instead of trusting it. This is DATA, so it lives here
+ * and both sides use it — the main process produces it, the window's contract declares it.
+ */
+export type PluginFetchOutcome =
+  { ok: true; bytes: Uint8Array } | { ok: false; status: number; detail?: string }
+
+export type PluginSourcePreview =
+  | {
+      state: 'available'
+      source: {
+        owner: string
+        repo: string
+        ref: string
+        manifestUrl: string
+        manifestPath: string
+      }
+      manifest: PluginManifest
+      fetched: { bytes: number; sha256: string }
+    }
+  | {
+      state: 'unavailable'
+      reason: 'invalid-reference' | 'manifest-missing' | 'source-unreachable' | 'manifest-invalid'
+      detail?: string
+      issues?: string[]
+      url?: string
+      /** Present exactly when bytes were read: a reader checks what was fetched, most of all when the
+       * content is then refused. */
+      fetched?: { bytes: number; sha256: string }
+    }
+
 export type PluginSourceCandidatePreview<P> = P & { candidateToken: string }
 
 /**

@@ -4,42 +4,19 @@ import {
   parsePluginManifest,
   parsePluginSourceReference,
   pluginSourceManifestUrls,
-  type PluginManifest
+  type PluginFetchOutcome,
+  type PluginSourcePreview
 } from '../../shared/plugin-source'
 
+// Re-exported so a caller that already imports this module keeps its import; the shapes themselves are the
+// shared ones, because the window's contract declares them too.
+export type { PluginFetchOutcome, PluginSourcePreview }
 // E1: the PREVIEW half of the plugin creator. It fetches what a repository declares and reports what it
 // actually got — the bytes' own sha256 and size — so a reader can recompute the reading instead of trusting
 // it. It writes nothing: no file, no registration, no environment. Deploying is a separate, later step.
 //
 // The fetch is injected rather than imported so the module's behaviour (mirror order, refusals, hashing) is
 // pinned by tests without a network, and the one real reading is taken deliberately.
-
-export type PluginFetchOutcome =
-  { ok: true; bytes: Uint8Array } | { ok: false; status: number; detail?: string }
-
-export type PluginSourcePreview =
-  | {
-      state: 'available'
-      source: {
-        owner: string
-        repo: string
-        ref: string
-        manifestUrl: string
-        manifestPath: string
-      }
-      manifest: PluginManifest
-      fetched: { bytes: number; sha256: string }
-    }
-  | {
-      state: 'unavailable'
-      reason: 'invalid-reference' | 'manifest-missing' | 'source-unreachable' | 'manifest-invalid'
-      /** Present exactly when bytes were read: a reader checks what was fetched, most of all when the
-       * content is then refused. */
-      fetched?: { bytes: number; sha256: string }
-      detail?: string
-      issues?: string[]
-      url?: string
-    }
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 

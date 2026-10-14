@@ -329,6 +329,7 @@ import { PendingSessionSpecialistBindings } from './agents/pending-session-speci
 import { createCodexCompletionGateRuntime } from './acp/codex-completion-handoff'
 import { createOpenCodeImmediateHandoffRuntime } from './acp/opencode-immediate-handoff'
 import { registerSpecialistIpcHandlers } from './specialist/ipc'
+import { PluginSourceCandidateStore } from './specialist/plugin-source-candidate'
 import {
   createContributionTemplateExporter,
   resolveContributionTemplateReadmePath
@@ -2753,7 +2754,26 @@ const createApplicationModules = async (
         service: marketplaceService,
         broadcastDownloadProgress: (progress) =>
           broadcastToRenderers(SPECIALIST_MARKETPLACE_IPC.DOWNLOAD_PROGRESS, progress)
-      }
+      },
+      new PluginSourceCandidateStore({
+        // Each host gets its own budget: a mirror that never answers must not hold a preview open, because
+        // the module tries the next host either way and names every answer it got.
+        fetchBytes: async (url) => {
+          const controller = new AbortController()
+          const timer = setTimeout(() => controller.abort(), 20_000)
+          try {
+            const response = await fetch(url, { redirect: 'follow', signal: controller.signal })
+            if (!response.ok) return { ok: false, status: response.status }
+            return { ok: true, bytes: new Uint8Array(await response.arrayBuffer()) }
+          } catch {
+            // A refused or timed-out connection is not a 404: status 0 tells the module the host itself did
+            // not answer, which is the sentence worth printing.
+            return { ok: false, status: 0 }
+          } finally {
+            clearTimeout(timer)
+          }
+        }
+      })
     )
   )
   // Runtime selection UI (Settings/Onboarding): survey managed+external per language, persist the

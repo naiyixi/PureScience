@@ -1,3 +1,4 @@
+import type { PluginSourceCandidatePreview, PluginSourcePreview } from '../shared/plugin-source'
 import type {
   AcpCancelPromptRequest,
   AcpCompactSessionRequest,
@@ -785,6 +786,13 @@ export interface PureScienceAPI {
     onMarketplaceDownloadProgress(
       listener: AcpListener<MarketplaceDownloadProgress>
     ): RemoveListener
+    // E2 (v2.3.0): the plugin creator reads a third-party repository and checks its declaration. The
+    // window never deploys anything from these two: the token names what was read, and the digest it
+    // carries is what a later step checks the bytes against.
+    pluginSourcePreview(request: {
+      reference: string
+    }): Promise<PluginSourceCandidatePreview<PluginSourcePreview>>
+    pluginSourceCancel(): Promise<{ dropped: number }>
   }
   handoff: {
     onChanged(listener: AcpListener<HandoffLifecycleChange>): RemoveListener
