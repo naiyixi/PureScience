@@ -5594,3 +5594,41 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 `src/main/specialist` **17 文件 / 270 passed** ✓；node typecheck 0；eslint 0；`pre-push-checks` 0。
 
 **未做（E3 的第一段，已具名）**：① IPC 通道 + preload 契约（注意 `src/preload/index.test.ts` 有**暴露面钉子**，加通道要同批改）；② 渲染端 `specialist-store` 动作与 UI 控件；③ 上屏文案 9 语；④ **「真跑一次」**仍待部署与执行实现。
+
+## 一百一十九、v2.3.0 **E3 第一段：接线清单（坐标已测绘，下一步零勘查直接动手）**（会话，2026-10-14）
+
+本笔**只落清单**（冻结窗口外、勘查已完成但我判断不在本轮硬塞半截接线：半接的通道比不接更糟）。坐标逐条到文件行，体例都指到可照抄的现成处。
+
+### 一 共享：通道常量（`src/shared/specialist.ts:5` 的 `SPECIALIST_IPC`）
+
+- 加两键：`PLUGIN_SOURCE_PREVIEW: 'specialist:plugin-source-preview'`、`PLUGIN_SOURCE_CANCEL: 'specialist:plugin-source-cancel'`。
+- **命名坑（必读）**：常量用**冒号**风格（`'specialist:package-select'`），而 preload 暴露面用**点号**（`electronRendererContracts.invoke('specialist.list')`）⇒ 两套名字**不要混**，映射在 `electronRendererContracts` 里做。
+
+### 二 主进程：`src/main/specialist/ipc.ts`
+
+- 动作注册函数把 `packageImport?: PackageImportIpc` 作为**参数**（`:145`）⇒ **第一步是找它的调用方**（`grep -rn "specialist/ipc'" src/main` 顺着 import 找），在那里把 `new PluginSourceCandidateStore({ fetchBytes })` 注入同处。
+- 两个 handler 照现成体例写：
+  - 请求校验：照 `isExportPreviewRequest`（`:180`）——**非形状请求直接抛**，不猜；
+  - owner 作用域：`const ownerId = rendererOwnerId(event)`（照 `SELECT_PACKAGE` 分支 `:198`）；
+  - sender 销毁即 `store.dispose(ownerId)`：照 `:205` 的 `sender?.once?.('destroyed', …)`；
+  - 取消通道返回 `dispose(ownerId)` 的**丢弃条数**（本仓口径：静默丢弃不算处置）。
+
+### 三 preload：`src/preload/index.ts:444` 的 `specialist: { … }`
+
+- 加两行（点号风格）：`pluginSourcePreview: (request) => electronRendererContracts.invoke('specialist.pluginSourcePreview', request)`、`pluginSourceCancel: () => electronRendererContracts.invoke('specialist.pluginSourceCancel')`。
+- **同批**改 `src/preload/index.test.ts` 的**暴露面钉子**（`:629` 起是按字母序的清单，插入要保持序 ✓）。
+
+### 四 渲染端
+
+- `src/renderer/src/stores/specialist-store.ts`：加 `pluginSourcePreview?: PluginSourceCandidatePreview<PluginSourcePreview>` 状态 + `previewPluginSource(reference: string)` / `cancelPluginSource()`（照 `selectPackage` `:102` / `cancelPackage` `:122` 体例；失败态照 `installPackage` 的 `{ status:'failed', code }` 口径）。
+- `src/renderer/src/pages/settings/SpecialistsPanel.tsx`：在 `selectPackage` 所在的导入块（`:636` 附近）旁加入口（一个引用输入 + 「预览」按钮 + 结果块：**声明（runtime/工具清单）+ 读到的字节 sha256 与大小 + 令牌**；拒绝则逐条具名）；取消按钮调 `cancelPluginSource()`。
+- i18n：新键 ×9（建议前缀 `settings.pluginSource*`），文案口径沿用本仓：拒绝**点名原因**、摘要**可复算**。
+
+### 五 读数（两条，一条留车道一条不留）
+
+1. **可留车道**：无效引用 ⇒ `invalid-reference` 且**零请求**（无网络、确定性 ✓）⇒ 可写成认证 spec；
+2. **不留车道**：available 路径（真仓库、真字节）⇒ 一次性读数，照 §一百一十五 的手法取完即撤（第三方网络不进 CI）。
+
+### 六 仍未做（承接 §一百一十八）
+
+① 上面四层接线；② 9 语文案；③ **「真跑一次」**（部署与执行，E3 第二段）。
