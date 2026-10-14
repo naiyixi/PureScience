@@ -5379,3 +5379,51 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 - **v2.2.0 现在已无阻塞**：批 C 六件全落地（C2 = `b8340001`），本件也已上 main。
 - 位点：`package.json` = **`2.1.0`**；`v2.1.0` 是 Release 页 **Latest**；发版八步与四文件的取材清单见仓库之外的 `~/.hermes/cache/scratch/v2.2.0-release-draft-and-runbook.md`（**写正文时要把本件加进「数据面加宽」段**）。
 
+## 一百一十三、**v2.2.0 已发版件并打 tag**（执行器，2026-10-14）
+
+> 本节的位点已随本节落地而前进：`package.json` = **`2.2.0`**、附注 tag **`v2.2.0`** 指向 **`2ab9524d`**（已推）。
+> §一百一十二 那条「正文需覆盖 PDBe / 位点仍是 2.1.0」**已被本节取代**，按本节执行。
+
+### 一 发版件（四文件，只碰这四个）
+
+| 项 | 值 |
+| --- | --- |
+| 发版提交 | **`2ab9524d26ebcfab5ede278e958e49a1d8b53afa`**（`CHANGELOG` 新段 + `package.json` 2.1.0→2.2.0 + `README.md` / `README.en.md` 横幅 v2.2.0 与成熟度块 ✅ 段**前插**本版头条、上一条改写成 `**The previous version made …**`） |
+| 版本号来源 | 取自**上一个已发布位点** `v2.1.0`（不是批次标签）⇒ 2.2.0 |
+| 自上一个 tag 的笔数 | `git rev-list v2.1.0..HEAD --count` = **31**（写进 tag 标注，不手写） |
+| 双语头部块 | `node scripts/check-readme-sync.mjs` `✓ 逐字一致`（横幅 2097 字符，两份相同） |
+
+**范围说明（重要，供用户裁决）**：本版范围原定 = 批 C 六件。实际 `v2.1.0 → v2.2.0` 窗口内落上 main 的还有 **PDBe 连接器**（本执行器 §一百一十二）与 **B2 第三片**（原登记为「下一版首项」，会话在窗口内落上）⇒ 按「CHANGELOG 必须覆盖自上一个 tag 以来的**全部**批次」这条，**两者都写进了本版正文**（不是把范围做大，而是不把已发布的东西从正文里漏掉）。**下一版不再重复这两项。**
+
+### 二 门禁（技能自带 `release-gate.sh`，**隔离工作树**，对**发版提交本身**）
+
+逐环自证 `[ring] cwd=/tmp/ps-release-gate version=2.2.0`；五环各自的汇总行：
+
+| 环 | 汇总行 | 判定 |
+| --- | --- | --- |
+| `eslint --no-cache .` | `✖ 147 problems (0 errors, 147 warnings)` | **OK**（0 error；本版新增的 4 个路径 **0 条**） |
+| `typecheck:node` / `typecheck:web` | 各自零 `error TS` | **OK** |
+| `vitest run --maxWorkers=4` | `Test Files 1294 passed ｜ 16 skipped (1310)` ／ `Tests 16597 passed ｜ 207 skipped (16804)` | **OK** |
+| `repo-checks` | `[pre-push] 检查通过（有提醒项，不阻断）。` | OK，**另单跑** `bash scripts/pre-push-checks.sh` 读退出码 **EXIT=0** |
+| 汇总 | `eslint|OK` `typecheck:node|OK` `typecheck:web|OK` `vitest|OK` `repo-checks|OK` | `GATE_EXIT=0` |
+
+### 三 推送与车道（逐笔点名谁有判决、谁只是被取消）
+
+| 提交 | 车道判决 |
+| --- | --- |
+| `e587869d`（会话） | Nightly **cancelled**（被 PDBe 那一推顶掉；同 SHA 的 Windows Full Test 早先 success） |
+| `b6fa1d70`（PDBe） | **Windows Full Test = success**；其 Nightly 被发版推送顶掉 ⇒ **cancelled，无判决**（该提交的代码已被 `2ab9524d` 完整包含） |
+| `2ab9524d`（发版） | `Release` run **38546856448**（preflight＝**success**，即「tag 提交在 origin/main 上」这一关过了）＋ Nightly / Windows Full Test 各自在跑 |
+
+### 四 ⚠️ 并发写入者（本轮的真实风险，已具名）
+
+发版窗口进行到一半时，共享树里冒出 **6 个不属于本轮的未提交文件**（`src/renderer/src/lib/acp/useWorkspaceAgentRuntime.ts`、`src/renderer/src/lib/main-message-catalog.ts` 与其测试、`src/renderer/src/pages/settings/{SkillUploadView,SkillsPanel,useSkillImportCandidatePreview}.tsx`）⇒ 另有执行体正在同一棵树上工作。本轮的处置：**一个字节都没碰、不 stash、不替它提交**（我的提交全部用显式路径 `git add`，四次提交前都贴了 `git diff --cached --stat` 自证只有自己那几个文件）。**由此产生两条纪律**：① 本轮不把这份队列档提交推上去（推它＝一次 main 推送，会把正在跑的 **Release 作业腰斩**）；② 下一轮的**第一条**必须是「先核 Release 落定，落定前不要在 main 上推任何东西」。
+
+### 五 下一轮第一步（也写进 notepad）
+
+1. **先核 Release**：`gh run view 38546856448`（或读 `/tmp/ps-v220-release-verdict.txt`）→ 四平台 build 与 `publish`；**若失败且无 Release 页 ⇒ 删 tag 重建**（不许重跑单个 job）；**已有页的 tag 不要删**。
+2. **核页与资产**：`gh release view v2.2.0 --json name,tagName,isDraft,isPrerelease,assets`（要求 `draft=false`、`prerelease=false`、四平台产物齐 + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest*.yml` + `arm64-mac.yml`/`x64-mac.yml`）；`gh release download v2.2.0 -p RELEASE-CERTIFICATION.json` 与 `git rev-parse 'v2.2.0^{commit}'` **逐字符比对 `sourceSha`**；`gh release list --limit 3` 判 Latest（`view --json` 不接受 `isLatest`）。
+3. **正文**：`npm run release:notes -- v2.2.0 --keep-generated --apply` → 回读字节数、核更正文字真的进了正文、页与资产数未变。
+4. 上述都落定后，再把这份队列档的本地提交推上 main。
+
+
