@@ -5632,3 +5632,36 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 ### 六 仍未做（承接 §一百一十八）
 
 ① 上面四层接线；② 9 语文案；③ **「真跑一次」**（部署与执行，E3 第二段）。
+
+## 一百二十、v2.3.0 **E3 第一段前三层已交付**：通道贯通（常量 + 主进程 + preload + 契约 + 钉子）（会话，2026-10-14）
+
+### 一 交付
+
+| 层 | 落点 |
+| --- | --- |
+| 共享 | `src/shared/specialist.ts` 的 `SPECIALIST_IPC` 加 `PLUGIN_SOURCE_PREVIEW` / `PLUGIN_SOURCE_CANCEL`（**冒号**风格 ✓）；`src/shared/plugin-source.ts` 接收**移入的** `PluginSourcePreview` / `PluginFetchOutcome`（见三·③） |
+| 主进程 | `src/main/specialist/ipc.ts`：签名加 `pluginSource?: PluginSourceCandidateStore`（**末位** ✓）、请求形状守卫 `isPluginSourcePreviewRequest`（只查传输形状 ✓ 引用是否有意义归模块自己具名答 ✓）、两个 handler（owner 作用域 + sender 销毁即 `dispose` + 取消通道**返回丢弃条数**）✓；`src/main/ipc.ts:2689` 的装配处末位加 `new PluginSourceCandidateStore({ fetchBytes })`（自造 fetch：每请求 20 s 预算、连不通回 `status 0` 而不是伪装 404 ✓） |
+| preload | `src/preload/index.ts` 的 `specialist` 面加两行；**契约真源** `src/preload/renderer-api.d.ts` 声明两个方法 |
+| 钉子 | `src/shared/renderer-contract-catalog.ts` 的 `group('specialist', …)` 加两条；`src/preload/index.test.ts` 计数 **238 → 240**；`src/shared/renderer-surface-inventory.test.ts` 计数 **477 → 479**（并在那行注释里写明 +2 的来由） |
+
+### 二 本片最值钱的一条发现（前面几轮 tsc 报错的真因）
+
+**`window.api` 面的类型真源是手写的 `src/preload/renderer-api.d.ts`**，**不是**从 `renderer-contract-catalog.ts` 派生 ✗。所以加一条通道必须**三处同批**：**① catalog（通道映射）② preload（实现）③ renderer-api.d.ts（类型）**。我先前只改了 catalog ⇒ 类型当然不认，而报错只指向 preload 的对象字面量 ✗（误导我往派生方向找了四轮）。**下一个人别再找派生点了。**
+
+### 三 另外三处结构坑（都记形状）
+
+1. **位置参数错位**：签名里新增形参必须与实参**同位置** —— 我一度插在 `packageImport` 之后 ⇒ 调用处整体错位，`marketplace` 对象被当成我的 store（`TS2353: 'service' does not exist in type PluginSourceCandidateStore`）⇒ 改为**末位** ✓；且该项原本是最后一项时，**前一项要补逗号** ✓。
+2. **`rendererOwnerId(event)` 返回 `number | undefined`** ⇒ store 的 owner 类型放宽为 `string | number | undefined`（同一窗口的 id 原样使用，不发明一个 ✓）。
+3. **类型归属**：`PluginSourcePreview` / `PluginFetchOutcome` 本是**数据形状** ⇒ 从主进程**移到共享**（窗口契约要声明它 ✓），主进程改为从共享引入并**再导出**（既有 import 不变 ✓）。
+
+### 四 读数
+
+`src/preload` + `src/shared/renderer-surface-inventory.test.ts` + `src/main/specialist` **20 文件 / 374 passed** ✓；node/web typecheck 0 ✓；eslint 0 ✓；`pre-push-checks` 0 ✓。
+
+### 五 自踩（写作纪律）
+
+三引号又坑两次（脚本 `SyntaxError`、同格工具调用未执行）⇒ **脚本一律 `write_file` 落文件、再 `python3` 跑**；prettier 折行让逐行锚点失手 ⇒ 改**整段/行号**替换；`/tmp` 旧脚本一次把输出顶掉（同样用新名 ✓）。
+
+### 六 仍未做（具名）
+
+① 渲染端 `specialist-store` 动作 + `SpecialistsPanel` 入口与结果块 + **9 语文案**；② 两条读数（无效引用⇒零请求可留车道 / available 路径一次性）；③ **「真跑一次」**（部署与执行）。
