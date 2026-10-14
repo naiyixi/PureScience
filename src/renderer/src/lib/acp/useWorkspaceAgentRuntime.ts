@@ -245,9 +245,11 @@ const setWorkspacePermissionProfile = async (
   return true
 }
 
-// Strips the Electron IPC wrapper ("Error invoking remote method '…': Error: <cause>") and any
-// leading "Error:" (or a lone "Error" type label) so the underlying agent message can be shown to the
-// user on its own. Used by both resume and createSession failure paths, since either arrives wrapped.
+// Strips the Electron IPC wrapper ("Error invoking remote method '…': Error: <cause>") and a BARE "Error"
+// label, but deliberately keeps a specific label like `RequestError:` — that label says which layer failed,
+// and a reader loses information when it is folded into the sentence. This rule is NOT the catalog's: the
+// catalog's unwrap strips any error-name label, which would hide exactly that. A pinned case in
+// useWorkspaceAgentRuntime.test.ts ("keeps a specific RequestError cause visible") is what says so.
 const unwrapIpcErrorDetail = (message: string): string =>
   message
     .replace(/^Error invoking remote method '[^']*':\s*/i, '')

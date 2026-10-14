@@ -58,4 +58,14 @@ describe('main message catalog', () => {
   it('does not mistake an ordinary message for an envelope', () => {
     expect(unwrapIpcEnvelope('EACCES: permission denied')).toBe('EACCES: permission denied')
   })
+
+  it('strips a specific error-name label but leaves a bare label alone', () => {
+    // A label WITH a colon is the shape a JS error carries, so it goes; a message that is only the
+    // word `Error` is not something this helper invented, and it is returned as it came.
+    expect(unwrapIpcEnvelope("Error invoking remote method 'x:y': TypeError: bad shape")).toBe(
+      'bad shape'
+    )
+    expect(unwrapIpcEnvelope('Error')).toBe('Error')
+    expect(unwrapIpcEnvelope('EACCES: permission denied')).toBe('EACCES: permission denied')
+  })
 })

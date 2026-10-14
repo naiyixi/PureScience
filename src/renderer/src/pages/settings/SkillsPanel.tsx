@@ -44,6 +44,7 @@ import { SkillUploadView } from './SkillUploadView'
 import { AgentHomeImportView } from './AgentHomeImportView'
 import { SettingsIconAction, SettingsRow, SettingsSection, SettingsToggle } from './SettingsLayout'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
+import { unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 // Learnt skills carry a trust state; the panel shows it as a badge so a recorded-but-unchecked
 // procedure is not mistaken for an established one. Labels come from the language catalogs — the
 // summary sentence and the evidence are recorded data and stay as they are.
@@ -67,8 +68,7 @@ type SourceFilter = 'all' | SkillSource
 type SkillScope = 'all' | 'main' | 'specialist'
 
 const skillExportErrorMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
+  return unwrapIpcEnvelope(error instanceof Error ? error.message : String(error))
 }
 
 const FILTER_LABELS: Record<SourceFilter, TranslationKey> = {

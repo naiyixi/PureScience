@@ -10,6 +10,7 @@ import { SKILL_IMPORT_LIMITS } from '../../../../shared/skill-import-limits'
 import { parseSkillDocument } from '../../../../shared/skill-frontmatter'
 import { SkillImportCandidatePreview } from './SkillImportCandidatePreview'
 import { useSkillImportCandidatePreview } from './useSkillImportCandidatePreview'
+import { unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 
 // Rounds a byte count to whole MB for a user-facing size-limit message.
 const mb = (bytes: number): string => `${Math.round(bytes / (1024 * 1024))} MB`
@@ -89,8 +90,7 @@ type ParseResult = { candidates: Candidate[]; error?: string; skipped?: SkippedE
 // Strips the electron IPC wrapper ("Error invoking remote method '…': Error: …") off a rejection so
 // the user sees only the human-readable message, never the internal method name.
 const cleanMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
+  return unwrapIpcEnvelope(error instanceof Error ? error.message : String(error))
 }
 
 // Reads a File as base64 (for binary-safe bundle transport to the main process).

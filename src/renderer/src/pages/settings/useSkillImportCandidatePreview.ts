@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 
 import type { SkillImportPreviewContent } from '../../../../shared/settings'
+import { unwrapIpcEnvelope } from '@/lib/main-message-catalog'
 
 type SkillImportCandidatePreviewState = {
   open: boolean
@@ -17,8 +18,7 @@ type SkillImportCandidatePreviewController = {
 }
 
 const previewErrorMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.replace(/^Error invoking remote method '[^']*':\s*/, '').replace(/^Error:\s*/, '')
+  return unwrapIpcEnvelope(error instanceof Error ? error.message : String(error))
 }
 
 const isPromiseLike = (
