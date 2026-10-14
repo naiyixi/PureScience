@@ -18,6 +18,11 @@ import {
 //
 // Nothing here writes, installs or executes: it answers questions about a declaration.
 
+// A renderer window is identified by the sender id Electron reports, and that id is a number, or
+// undefined for a sender that reports none. The store keeps the value as it came rather than
+// inventing one: two windows never share a token.
+export type PluginSourceOwnerId = string | number | undefined
+
 export type PluginSourceCandidate = PluginSourceCandidatePreview<PluginSourcePreview> & {
   /** What the declaration was checked against, before anything could be deployed or run. */
   declaration: PluginDeclarationCheck
@@ -26,7 +31,7 @@ export type PluginSourceCandidate = PluginSourceCandidatePreview<PluginSourcePre
 type CandidateRecord = {
   preview: PluginSourcePreview
   declaration: PluginDeclarationCheck
-  ownerId: string
+  ownerId: PluginSourceOwnerId
   createdAt: number
 }
 
@@ -48,7 +53,7 @@ export class PluginSourceCandidateStore {
    * NOT stored: there is nothing to deploy, so issuing a token for it would only invite a later step to act
    * on a refusal.
    */
-  async preview(reference: string, ownerId: string): Promise<PluginSourceCandidate> {
+  async preview(reference: string, ownerId: PluginSourceOwnerId): Promise<PluginSourceCandidate> {
     const preview = await previewPluginSource(reference, { fetchBytes: this.deps.fetchBytes })
     const declaration: PluginDeclarationCheck =
       preview.state === 'available' ? checkPluginDeclaration(preview.manifest) : { state: 'ok' }
@@ -71,7 +76,7 @@ export class PluginSourceCandidateStore {
    */
   take(
     token: string,
-    ownerId: string
+    ownerId: PluginSourceOwnerId
   ):
     | { state: 'ok'; record: CandidateRecord }
     | { state: 'refused'; reason: 'unknown-token' | 'token-expired' } {
@@ -88,7 +93,7 @@ export class PluginSourceCandidateStore {
   }
 
   /** Drops what an owner held, and reports how many records went: a silent drop is not a disposal. */
-  dispose(ownerId: string): number {
+  dispose(ownerId: PluginSourceOwnerId): number {
     let dropped = 0
     for (const [token, record] of this.candidates) {
       if (record.ownerId === ownerId) {
