@@ -5141,3 +5141,41 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 ### 六 仍未做（具名）
 
 **C2 文献库整页全选**（需窗口读数）；**C6 PDC 新连接器**（已确认 `https://pdc.cancer.gov/graphql` 回 `{"data":{"__typename":"Query"}}` ⇒ 真 GraphQL；接线前先钉它的查询形状与分页）。
+
+## 一百〇七、v2.2.0（批 C）C6 已交付：PDC 新连接器（目录 + 单研究文件清单）（会话，2026-10-14）
+
+### 一 交付
+
+| 项 | 要点 |
+| --- | --- |
+| **新连接器 `proteomics-pdc`** | 连接器数 **29 → 30**、工具数 **277 → 279**（**两件**工具）；`catalog.ts` 条目 + 双语 README 计数 |
+| `pdc_studies` | 回 PDC 的**全部研究目录**（`uiStudySummary`）：`{study_id(UUID), study_name, disease_type, primary_site}`；`max_studies`（默认 500）+ `truncated` 由源自己的行数决定 |
+| `pdc_study_files` | 入参 `{study_id(UUID,必需), offset?, limit?(1..600,默认100)}`；回 `{total_files(filesCountPerStudy 的真总数), n_files_returned, offset, limit, truncated, **bytes_of_returned_rows**, files:[{file_name, file_size, file_format, file_type}]}` —— **只看字节数、不下载任何文件**（2.4 GB 的 vendor `.raw` 很常见） |
+| 红线落地 | 每个大小都是**源给的字符串**、求和是**逐位精确整数**；`bytes_of_returned_rows` 明确是**本次返回行**的和（不是整个研究的体积）；GraphQL 的 `errors` 数组**具名抛出**（`graphql-error` + 服务原话），**绝不当成「没有数据」** |
+
+### 二 形状是**逐字段从服务本身问出来的**（内省被禁用）
+
+1. `__schema` 内省 ⇒ **400**（且把服务拖到超时）⇒ 放弃内省；改用**服务自己的 "Did you mean"**：`studySummary` ✗ ⇒ `uiStudySummary` ✓；`allStudies` ✗ ⇒ `allCases`；`filesPerStudy` ✓ 存在（字段提示 `file_format/file_id/file_name/file_size/file_type`）；`studyCatalog` 存在但字段是 `pdc_study_id`。
+2. **参数形状**：`filesPerStudy(study_id:…, offset:…)` ✓（offset=5 ⇒ 595 行）、`limit:2` ⇒ 2 行；`first`/`size` ✗；计数是 **`filesCountPerStudy`**（`fileCountPerStudy` ✗）⇒ 该研究 `files_count = 600` ⇒ **600 就是真文件数，不是上限**（可分页 + 能报真总数）。
+3. **id 形状**：`study(study_id:"PDC000127")` ⇒ 源自己的 DB 错 `Incorrect string value … uuid_to_bin` ⇒ 参数要的是 **UUID**（`uiStudySummary` 给的）⇒ 我的工具**前置形态检查**、零请求具名拒答（`invalid-study-id`，并说明要哪个 id）。
+4. 传输：`ctx.postJson` 是引擎**专为 GraphQL** 给的（`fetchText` 只收 URL）⇒ 两件工具都走它。
+
+### 三 真读数（走工具自己的代码路径）
+
+- `pdc_studies` ⇒ **277 个研究**、`truncated: false`；首条 `28f0e1de-… / Academia Sinica BRCA - Phosphoproteome / Breast Invasive Carcinoma;Not Reported / Breast;Not Reported`；
+- `pdc_study_files(UUID, limit 3)` ⇒ **total_files 600**、3 行、`bytes_of_returned_rows` **7,725,575,208**（＝2,463,272,988 + 2,380,184,078 + 2,882,118,142，逐位精确）、`truncated: true`；三行均为 `vendor-specific / Proprietary` 的 `.raw`；
+- `study_id: 'PDC000127'` ⇒ `invalid-study-id`（**0 请求**）。
+
+### 四 读数
+
+用例 4 条；`src/main/connectors` **993 passed ｜ 53 skipped**（88 文件）；双 typecheck 0；eslint 0；`check-readme-sync` EXIT=0；`pre-push-checks` EXIT=0。
+
+### 五 本片自踩（三处）
+
+1. **`catalog.ts` 条目里写了撇号**（`commons' study catalogue`）⇒ 单引号串被截断、语法错，连带 6 个测试文件红 ⇒ 措辞改掉撇号。
+2. **工具数算错**：C6 是**两件**工具，我只把 README 加了 1 ⇒ 计数钉子（`readme-connector-count.test.ts`）当场报「注册表实际 279 / README 声明 278」⇒ 这正是钉子的用处。
+3. **`ctx.fetchText` 不收 init**（GraphQL 要 POST）⇒ 引擎早有 `ctx.postJson(url, body)` 专供此类 ⇒ 别自己造 POST。
+
+### 六 仍未做（具名）
+
+**C2 文献库整页全选**（批 C 的最后一项，需窗口真机读数）。
