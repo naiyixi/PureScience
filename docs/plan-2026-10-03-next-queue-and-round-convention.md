@@ -5569,3 +5569,28 @@ v2.3.0 首片取 **乙半（插件创建器最小真链）** 还是 **甲半的�
 
 `src/main/specialist` **17 文件 / 266 passed** ✓；双 typecheck 0；eslint 0；`pre-push-checks` 0。
 **未做（具名，属 E2/E3）**：① UI 接线（接入点是既有 `specialist-store.packagePreview` 的预览/安装流）；② **声明即约束**的执行前具名校验 + **真跑一次**的读数（部署与执行尚未实现）；③ 上屏文案 9 语（本片无上屏文案）。
+
+## 一百一十八、v2.3.0 **E2 第一半已交付**：候选令牌 + 「声明即约束」（会话，2026-10-14）
+
+### 一 交付（主进程 + 共享层；IPC/preload/UI 见 §四）
+
+| 落点 | 要点 |
+| --- | --- |
+| 共享 | `PluginSourceCandidatePreview<P>`（**泛型**：共享层不依赖主进程的预览形状）+ `PLUGIN_SUPPORTED_RUNTIMES` + `checkPluginDeclaration(manifest)` —— 检查 **runtime 是否本应用能跑** / **entry 是否是仓库内的安全路径**（禁绝对路径、空段、`.`、`..`）/ **工具名唯一**；拒绝分三型且 `detail` 点名具体字段 ✓ |
+| 主进程 | 新 `PluginSourceCandidateStore`：`preview(reference, ownerId)` 一步完成取回+校验；**读不到就不发令牌**（拒绝没有可部署的东西，发令牌只会诱使后续步骤对着一个拒绝动作）；`take(token, ownerId)` **先读记录再清理** ⇒ 过期**具名成“已过期”**；令牌**绑定 owner** + **TTL（默认 30 分钟）**——半小时前的批准不等于现在的批准；`dispose(ownerId)` **返回丢弃条数**（静默丢弃不算处置） |
+
+### 二 用例（4 条新增，全纯、无网络）
+
+令牌发放与「拿到手＝可 act」✓ / **跨 owner 拒绝** ✓ / **未发放的令牌拒绝**（不是猜 ✓）/ **过期具名成过期** ✓ / **拒绝预览不发令牌**（其 token 取不到 ✓）/ `dispose` 计数 2 然后 0 ✓ / **不安全的 entry 具名**（`tools.demo_tool.entry` 出现在 detail 里 ✓）。
+
+### 三 本片自踩（三处）
+
+1. **共享层起初直接引用主进程的 `PluginSourcePreview`** ⇒ `TS2552` ⇒ 改为**泛型** `PluginSourceCandidatePreview<P>`（共享层不该知道主进程形状）。
+2. **`take` 先 prune 把过期记录删了** ⇒ 过期被报成「未知令牌」✗ —— **用例当场抓到** ⇒ 改成「先读记录、过期具名，再清理其余」。
+3. **三引号又坑我两次**（脚本 `SyntaxError`、未写盘 ✓）＋ prettier 折行让逐行锚点再失配 ⇒ **定法重申**：替换串**一律先落文件**、脚本 `read_text()` 读；方法级改动**按起止行整段替换**，不要逐行锚。
+
+### 四 读数与未做（具名）
+
+`src/main/specialist` **17 文件 / 270 passed** ✓；node typecheck 0；eslint 0；`pre-push-checks` 0。
+
+**未做（E3 的第一段，已具名）**：① IPC 通道 + preload 契约（注意 `src/preload/index.test.ts` 有**暴露面钉子**，加通道要同批改）；② 渲染端 `specialist-store` 动作与 UI 控件；③ 上屏文案 9 语；④ **「真跑一次」**仍待部署与执行实现。
