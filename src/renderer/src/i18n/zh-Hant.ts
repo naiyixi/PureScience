@@ -4338,5 +4338,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.not-recorded': '未記錄',
   'writeAudit.contentMissing.too-large': '過大未算雜湊',
   'writeAudit.contentMissing.unreadable': '讀不到',
-  'notebookRisk.declined': '已拒絕這次筆記本執行：{rules} —— 未執行任何程式碼。'
+  'notebookRisk.declined': '已拒絕這次筆記本執行：{rules} —— 未執行任何程式碼。',
+  'specialist.pluginOperationConfirm':
+    '我已了解：部署會將該倉庫的檔案寫入應用資料目錄；執行一次會執行它的程式碼。',
+  'specialist.pluginDeploy': '部署',
+  'specialist.pluginRunOnce': '執行一次',
+  'specialist.pluginDeployed': '已部署 {plugin} · {count} 個檔案 · {directory}',
+  'specialist.pluginRan': '已執行 {command} · 結束碼 {exitCode} · {duration} 毫秒',
+  'specialist.pluginRanTimedOut': '已執行 {command} · 於 {duration} 毫秒時被終止（逾時）',
+  'specialist.pluginRunOutput': '輸出'
 }

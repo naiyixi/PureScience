@@ -4394,7 +4394,15 @@ export const zh = {
   'writeAudit.contentMissing.not-recorded': '未记录',
   'writeAudit.contentMissing.too-large': '过大未算哈希',
   'writeAudit.contentMissing.unreadable': '读不到',
-  'notebookRisk.declined': '已拒绝这次笔记本运行：{rules} —— 未执行任何代码。'
+  'notebookRisk.declined': '已拒绝这次笔记本运行：{rules} —— 未执行任何代码。',
+  'specialist.pluginOperationConfirm':
+    '我已了解：部署会把该仓库的文件写进应用数据目录；运行一次会执行它的代码。',
+  'specialist.pluginDeploy': '部署',
+  'specialist.pluginRunOnce': '运行一次',
+  'specialist.pluginDeployed': '已部署 {plugin} · {count} 个文件 · {directory}',
+  'specialist.pluginRan': '已运行 {command} · 退出码 {exitCode} · {duration} 毫秒',
+  'specialist.pluginRanTimedOut': '已运行 {command} · 在 {duration} 毫秒时被终止（超时）',
+  'specialist.pluginRunOutput': '输出'
 }
 
 export type ZhKey = keyof typeof zh

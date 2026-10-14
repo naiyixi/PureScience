@@ -4704,5 +4704,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.not-recorded': 'не записан',
   'writeAudit.contentMissing.too-large': 'слишком велик для отпечатка',
   'writeAudit.contentMissing.unreadable': 'не читается',
-  'notebookRisk.declined': 'Запуск ноутбука отклонён: {rules} — код не выполнялся.'
+  'notebookRisk.declined': 'Запуск ноутбука отклонён: {rules} — код не выполнялся.',
+  'specialist.pluginOperationConfirm':
+    'Я понимаю: развёртывание записывает файлы этого репозитория в каталог данных приложения, а однократный запуск выполняет его код.',
+  'specialist.pluginDeploy': 'Развернуть',
+  'specialist.pluginRunOnce': 'Запустить один раз',
+  'specialist.pluginDeployed': '{plugin} развёрнут · файлов: {count} · {directory}',
+  'specialist.pluginRan': '{command} выполнен · код выхода {exitCode} · {duration} мс',
+  'specialist.pluginRanTimedOut': '{command} выполнен · прерван на {duration} мс (истёк таймаут)',
+  'specialist.pluginRunOutput': 'Вывод'
 }

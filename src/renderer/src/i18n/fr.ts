@@ -4821,5 +4821,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.not-recorded': 'non consigné',
   'writeAudit.contentMissing.too-large': 'trop volumineux pour l’empreinte',
   'writeAudit.contentMissing.unreadable': 'illisible',
-  'notebookRisk.declined': "Exécution du notebook refusée : {rules} — aucun code n'a été exécuté."
+  'notebookRisk.declined': "Exécution du notebook refusée : {rules} — aucun code n'a été exécuté.",
+  'specialist.pluginOperationConfirm':
+    "J'ai compris : le déploiement écrit les fichiers de ce dépôt dans le répertoire de données de l'application, et une exécution unique exécute son code.",
+  'specialist.pluginDeploy': 'Déployer',
+  'specialist.pluginRunOnce': 'Exécuter une fois',
+  'specialist.pluginDeployed': '{plugin} déployé · {count} fichier(s) · {directory}',
+  'specialist.pluginRan': '{command} exécuté · code {exitCode} · {duration} ms',
+  'specialist.pluginRanTimedOut': '{command} exécuté · interrompu à {duration} ms (délai dépassé)',
+  'specialist.pluginRunOutput': 'Sortie'
 }

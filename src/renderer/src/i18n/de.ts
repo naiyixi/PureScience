@@ -4846,5 +4846,14 @@ export const de: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.not-recorded': 'nicht aufgezeichnet',
   'writeAudit.contentMissing.too-large': 'zu groß für den Hash',
   'writeAudit.contentMissing.unreadable': 'nicht lesbar',
-  'notebookRisk.declined': 'Notebook-Lauf abgelehnt: {rules} — es wurde kein Code ausgeführt.'
+  'notebookRisk.declined': 'Notebook-Lauf abgelehnt: {rules} — es wurde kein Code ausgeführt.',
+  'specialist.pluginOperationConfirm':
+    'Ich habe verstanden: Deployen schreibt die Dateien dieses Repositorys in das Datenverzeichnis der App, und einmaliges Ausführen führt dessen Code aus.',
+  'specialist.pluginDeploy': 'Deployen',
+  'specialist.pluginRunOnce': 'Einmal ausführen',
+  'specialist.pluginDeployed': '{plugin} deployt · {count} Datei(en) · {directory}',
+  'specialist.pluginRan': '{command} ausgeführt · Exit {exitCode} · {duration} ms',
+  'specialist.pluginRanTimedOut':
+    '{command} ausgeführt · nach {duration} ms beendet (Zeitüberschreitung)',
+  'specialist.pluginRunOutput': 'Ausgabe'
 }

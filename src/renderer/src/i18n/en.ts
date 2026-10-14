@@ -4716,5 +4716,13 @@ export const en: Record<ZhKey, string> = {
   'writeAudit.contentMissing.not-recorded': 'not recorded',
   'writeAudit.contentMissing.too-large': 'too large to hash',
   'writeAudit.contentMissing.unreadable': 'unreadable',
-  'notebookRisk.declined': 'Notebook run declined: {rules} — no code was executed.'
+  'notebookRisk.declined': 'Notebook run declined: {rules} — no code was executed.',
+  'specialist.pluginOperationConfirm':
+    "I understand: deploy writes this repository's files into the app's data directory, and running once executes its code.",
+  'specialist.pluginDeploy': 'Deploy',
+  'specialist.pluginRunOnce': 'Run once',
+  'specialist.pluginDeployed': 'Deployed {plugin} · {count} file(s) · {directory}',
+  'specialist.pluginRan': 'Ran {command} · exit {exitCode} · {duration} ms',
+  'specialist.pluginRanTimedOut': 'Ran {command} · killed at {duration} ms (timed out)',
+  'specialist.pluginRunOutput': 'Output'
 }

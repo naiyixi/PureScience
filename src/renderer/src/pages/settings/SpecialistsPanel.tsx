@@ -136,6 +136,9 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const pluginSourceCandidate = useSpecialistStore((s) => s.pluginSourceCandidate)
   const previewPluginSource = useSpecialistStore((s) => s.previewPluginSource)
   const clearPluginSource = useSpecialistStore((s) => s.clearPluginSource)
+  const deployPluginSource = useSpecialistStore((s) => s.deployPluginSource)
+  const runPluginSourceOnce = useSpecialistStore((s) => s.runPluginSourceOnce)
+  const pluginOperation = useSpecialistStore((s) => s.pluginOperation)
   const exportPreview = useSpecialistStore((s) => s.exportPreview)
   const previewExport = useSpecialistStore((s) => s.previewExport)
   const exportSpecialist = useSpecialistStore((s) => s.exportSpecialist)
@@ -162,6 +165,8 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
   const [packageBusy, setPackageBusy] = useState(false)
   const [pluginSourceRef, setPluginSourceRef] = useState('')
   const [pluginSourceBusy, setPluginSourceBusy] = useState(false)
+  const [pluginOperationConfirmed, setPluginOperationConfirmed] = useState(false)
+  const [pluginOperationBusy, setPluginOperationBusy] = useState(false)
   const [packageErrorCode, setPackageErrorCode] = useState<string | undefined>()
   const [overwriteConfirmationOpen, setOverwriteConfirmationOpen] = useState(false)
   const focusRestoreOverwrite = useDialogFocusRestore(overwriteConfirmationOpen)
@@ -692,6 +697,96 @@ const SpecialistsPanel = ({ view, onNavigate }: SpecialistsPanelProps): React.JS
                           (pluginSourceCandidate.issues ?? []).join('; ')
                       })}
                 </p>
+              ) : null}
+              {pluginSourceCandidate?.state === 'available' ? (
+                <div className="space-y-2 pt-2">
+                  <label className="flex items-start gap-2 text-sm text-text-300">
+                    <input
+                      type="checkbox"
+                      data-testid="specialist-plugin-operation-confirm"
+                      checked={pluginOperationConfirmed}
+                      onChange={(event) => setPluginOperationConfirmed(event.target.checked)}
+                    />
+                    {t('specialist.pluginOperationConfirm')}
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      data-testid="specialist-plugin-deploy"
+                      disabled={!pluginOperationConfirmed || pluginOperationBusy}
+                      onClick={() => {
+                        setPluginOperationBusy(true)
+                        void deployPluginSource(pluginSourceCandidate.candidateToken, true).finally(
+                          () => setPluginOperationBusy(false)
+                        )
+                      }}
+                    >
+                      {t('specialist.pluginDeploy')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      data-testid="specialist-plugin-run-once"
+                      disabled={!pluginOperationConfirmed || pluginOperationBusy}
+                      onClick={() => {
+                        setPluginOperationBusy(true)
+                        void runPluginSourceOnce(
+                          pluginSourceCandidate.candidateToken,
+                          true
+                        ).finally(() => setPluginOperationBusy(false))
+                      }}
+                    >
+                      {t('specialist.pluginRunOnce')}
+                    </Button>
+                  </div>
+                  {pluginOperation ? (
+                    <div
+                      className="space-y-2 text-sm text-text-300"
+                      data-testid="specialist-plugin-operation-result"
+                    >
+                      {pluginOperation.state === 'deployed' ? (
+                        <p>
+                          {t('specialist.pluginDeployed', {
+                            plugin: pluginOperation.pluginId,
+                            count: pluginOperation.entries.length,
+                            directory: pluginOperation.directory
+                          })}
+                        </p>
+                      ) : null}
+                      {pluginOperation.state === 'ran' ? (
+                        <>
+                          <p>
+                            {pluginOperation.timedOut
+                              ? t('specialist.pluginRanTimedOut', {
+                                  command: pluginOperation.command,
+                                  duration: pluginOperation.durationMs
+                                })
+                              : t('specialist.pluginRan', {
+                                  command: pluginOperation.command,
+                                  exitCode:
+                                    pluginOperation.exitCode === null
+                                      ? '—'
+                                      : String(pluginOperation.exitCode),
+                                  duration: pluginOperation.durationMs
+                                })}
+                          </p>
+                          <p>{t('specialist.pluginRunOutput')}</p>
+                          <pre className="max-h-40 overflow-auto rounded bg-surface-100 p-2 text-xs">
+                            {pluginOperation.stdout}
+                          </pre>
+                        </>
+                      ) : null}
+                      {pluginOperation.state === 'refused' ? (
+                        <p>
+                          {t('specialist.pluginSourceRefused', {
+                            reason: pluginOperation.reason,
+                            detail: pluginOperation.detail
+                          })}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             {templateSaveError ? (

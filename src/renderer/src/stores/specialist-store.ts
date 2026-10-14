@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { PluginOperationOutcomeView } from '../../../shared/plugin-source'
 import type {
   SpecialistListItem,
   SpecialistProfileView,
@@ -24,6 +25,9 @@ type SpecialistStoreData = {
   packagePreview?: SpecialistPackageCandidatePreview
   // E2/E3: what the plugin creator read from a public repository, and the token that names it.
   pluginSourceCandidate?: PluginSourceCandidatePreview<PluginSourcePreview>
+  // E3-2: what the last deploy / run-once answered — codes and parameters, so the block that
+  // renders it can build its own sentences in the reader's language.
+  pluginOperation?: PluginOperationOutcomeView
   exportPreview?: SpecialistExportPreview
 }
 
@@ -46,6 +50,9 @@ type SpecialistStoreActions = {
     reference: string
   ) => Promise<PluginSourceCandidatePreview<PluginSourcePreview>>
   clearPluginSource: () => Promise<void>
+  deployPluginSource: (token: string, confirmed: boolean) => Promise<PluginOperationOutcomeView>
+  runPluginSourceOnce: (token: string, confirmed: boolean) => Promise<PluginOperationOutcomeView>
+  clearPluginOperation: () => void
   previewExport: (specialistId: string) => Promise<SpecialistExportPreview>
   exportSpecialist: (
     preview: SpecialistExportPreview,
@@ -63,6 +70,7 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
   isLoaded: false,
   packagePreview: undefined,
   pluginSourceCandidate: undefined,
+  pluginOperation: undefined,
   exportPreview: undefined,
 
   load: async () => {
@@ -151,6 +159,21 @@ const useSpecialistStore = create<SpecialistStore>((set) => ({
     if (candidate) await window.api.specialist.pluginSourceCancel()
     set({ pluginSourceCandidate: undefined })
   },
+
+  // The outcome is kept even when it is a refusal: a refusal is an answer, and the block shows why.
+  deployPluginSource: async (token, confirmed) => {
+    const outcome = await window.api.specialist.pluginSourceDeploy({ token, confirmed })
+    set({ pluginOperation: outcome })
+    return outcome
+  },
+
+  runPluginSourceOnce: async (token, confirmed) => {
+    const outcome = await window.api.specialist.pluginSourceRunOnce({ token, confirmed })
+    set({ pluginOperation: outcome })
+    return outcome
+  },
+
+  clearPluginOperation: () => set({ pluginOperation: undefined }),
 
   previewExport: async (specialistId: string) => {
     const requestId = ++latestExportPreviewRequest

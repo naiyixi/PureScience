@@ -4792,5 +4792,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.too-large': 'demasiado grande para la huella',
   'writeAudit.contentMissing.unreadable': 'ilegible',
   'notebookRisk.declined':
-    'Ejecución del cuaderno rechazada: {rules} — no se ejecutó ningún código.'
+    'Ejecución del cuaderno rechazada: {rules} — no se ejecutó ningún código.',
+  'specialist.pluginOperationConfirm':
+    'Entiendo: desplegar escribe los archivos de este repositorio en el directorio de datos de la aplicación, y ejecutar una vez ejecuta su código.',
+  'specialist.pluginDeploy': 'Desplegar',
+  'specialist.pluginRunOnce': 'Ejecutar una vez',
+  'specialist.pluginDeployed': '{plugin} desplegado · {count} archivo(s) · {directory}',
+  'specialist.pluginRan': '{command} ejecutado · salida {exitCode} · {duration} ms',
+  'specialist.pluginRanTimedOut':
+    '{command} ejecutado · terminado a los {duration} ms (tiempo agotado)',
+  'specialist.pluginRunOutput': 'Salida'
 }

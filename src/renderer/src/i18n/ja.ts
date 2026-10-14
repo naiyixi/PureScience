@@ -4686,5 +4686,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.too-large': '大きすぎて算出せず',
   'writeAudit.contentMissing.unreadable': '読み取れません',
   'notebookRisk.declined':
-    'ノートブックの実行を拒否しました：{rules} — コードは実行されていません。'
+    'ノートブックの実行を拒否しました：{rules} — コードは実行されていません。',
+  'specialist.pluginOperationConfirm':
+    '理解しました: デプロイはこのリポジトリのファイルをアプリのデータディレクトリに書き込み、1 回の実行はそのコードを実行します。',
+  'specialist.pluginDeploy': 'デプロイ',
+  'specialist.pluginRunOnce': '1 回実行',
+  'specialist.pluginDeployed': '{plugin} をデプロイしました · {count} ファイル · {directory}',
+  'specialist.pluginRan': '{command} を実行 · 終了コード {exitCode} · {duration} ミリ秒',
+  'specialist.pluginRanTimedOut': '{command} を実行 · {duration} ミリ秒で強制終了（タイムアウト）',
+  'specialist.pluginRunOutput': '出力'
 }

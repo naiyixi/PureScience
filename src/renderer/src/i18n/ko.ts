@@ -4609,5 +4609,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'writeAudit.contentMissing.not-recorded': '기록되지 않음',
   'writeAudit.contentMissing.too-large': '너무 커서 계산 안 함',
   'writeAudit.contentMissing.unreadable': '읽을 수 없음',
-  'notebookRisk.declined': '노트북 실행을 거부했습니다: {rules} — 코드가 실행되지 않았습니다.'
+  'notebookRisk.declined': '노트북 실행을 거부했습니다: {rules} — 코드가 실행되지 않았습니다.',
+  'specialist.pluginOperationConfirm':
+    '이해했습니다: 배포는 이 저장소의 파일을 앱 데이터 디렉터리에 쓰고, 한 번 실행은 그 코드를 실행합니다.',
+  'specialist.pluginDeploy': '배포',
+  'specialist.pluginRunOnce': '한 번 실행',
+  'specialist.pluginDeployed': '{plugin} 배포됨 · 파일 {count}개 · {directory}',
+  'specialist.pluginRan': '{command} 실행됨 · 종료 코드 {exitCode} · {duration} ms',
+  'specialist.pluginRanTimedOut': '{command} 실행됨 · {duration} ms에서 종료됨(시간 초과)',
+  'specialist.pluginRunOutput': '출력'
 }
