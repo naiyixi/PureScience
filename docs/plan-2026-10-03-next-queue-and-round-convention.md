@@ -5856,3 +5856,51 @@ ENCORI / PDC / 多代理编排**。逐处 file:line、来由与「没钉住的�
 > 共享树当时带着会话的在制品（`plugin-source.test.ts` 上曾有一条 `explicit-function-return-type` error，
 > 会话提交前已自修 ⇒ 本笔的隔离树里 0 error），所以上面每一环都取**该提交自己那棵隔离树**的读数。
 
+
+## 一百二十六、v2.3.0 **E3 第二段第三/四件已交付** + **我造成的两条 main 红：定因与定法**（会话，2026-10-14）
+
+### 一 交付（受控执行 + 编排）
+
+| 件 | 落点与要点 |
+| --- | --- |
+| **受控执行** | `plugin-run.ts` —— 本批**唯一执行下载代码的地方**，四条规则写死在代码里：① **不经 shell**（程序 + 参数 ⇒ 仓库里的任何字符串都不会被当作 shell 词读）；② **自己的空工作目录**（不在应用树、也不在插件目录里）；③ **环境白名单**（只有 `PATH`/`HOME`/`NO_COLOR` 写给孩子 ⇒ 父进程的秘密一个都传不过去）；④ **超时**（到点 `SIGKILL` 并报 `timedOut`）。spawn 失败与正常退出**同一形状**上报；stdout/stderr 各截 16 KiB |
+| **编排** | `plugin-operations.ts`：`deployCandidate` / `runCandidateOnce` —— **令牌 → 门 → 动作**；门的顺序是重点（拒绝时文件系统与进程表与之前一模一样）；条目从**预览记录的那个 ref** 读（不是「main 现在在哪」） |
+| 共享 | `pluginSourceEntryUrls`（条目 URL 也只由引用与路径决定 ⇒ 可复算） |
+
+用例 6 条：真 spawn 三条（**假秘密证明环境白名单** / 超时被 SIGKILL / entry 缺失与运行时不支持各自拒）+ 编排三条（**未确认 ⇒ 零写盘且 spawn 未被调用** / 策略 deny 与未发放令牌均拒 / 已确认 ⇒ 从记录的 ref 部署 ✓）。
+
+### 二 我造成的两条 main 红（执行器 §一百二十五 定因；我照实认，并给出定法）
+
+| 红 | 形状 | 根因 |
+| --- | --- | --- |
+| Nightly `Verify` 类型红 | 已提交的 `ipc.ts` 把 `rendererOwnerId(event)`（`number \| undefined`）交给已提交的 store（签名仍是 `string`） | §一百二十 里那处**类型放宽只在工作区、没进那次提交** —— 我的 `git add` 清单**漏了 `plugin-source-candidate.ts`** ✗ |
+| Windows Full Test 契约 pin 红 | `renderer-contract-catalog.test.ts` 三条 pin 与实际不符（`479` / `80` / `33`） | 加两条本地通道时只更新了 `renderer-surface-inventory.test.ts`，**漏了这一族**（同一桩事在两个文件里各钉一次）✗ |
+
+**共同根因（两条都指向同一件事）**：我**只跑定向簇**（`src/main/specialist` 等）＋ **本地树带着未提交的修改** ⇒ 本地绿、CI 红。
+
+**定法（已写进技能，往后每一笔都照做）**：
+1. **提交前核覆盖**：`git status --short` 逐条对照「我这一笔改过的每个文件**都**在这次 `git add` 里」—— 漏一个文件＝把一个只在本地成立的修复送进 CI ✗；
+2. **推前跑全量**：`npx vitest run --maxWorkers=4`（约 6 分钟，后台跑 + 通知）＋ 双 `tsc --noEmit`；**定向簇不算**（这次两条红都逃过了定向簇）；
+3. 契约/计数类改动要**先搜同族**：`grep -rn "<该常量/计数>" src --include=*.test.ts` ⇒ 一次改全，别一处一处补。
+
+### 三 读数与位点
+
+- 定向：`src/main/specialist` **17 文件 / 283 passed** ✓；node typecheck 0 ✓；eslint 0 ✓；pre-push 0 ✓；
+- **全量**（按新定法，推前跑）：后台作业 `/tmp/full-gate-e32.log`（双 typecheck + 全量 vitest）；读数在推前贴进本档。
+- 位点：本笔提交 `2077169b`（代码）＋本档一节；执行器的修复 `3f6cfc1e` / `3a84ee28` / `2af999de` 随后一并推。
+
+### 三·补 全量门读数（按新定法在**推送前**跑的，因此**没有**把它推上去）
+
+```
+Test Files  2 failed | 1293 passed | 16 skipped (1311)
+     Tests  2 failed | 16623 passed | 207 skipped (16832)
+  Duration  619.54s
+双 typecheck：0 error TS（node / web 各自）
+```
+
+⇒ **两条红**（不在我改过的路径上，也不是定向簇能看见的）⇒ 本笔**未推**，等定因。这正是新定法的价值：上一笔（§一百二十五 记录的那两条）就是没跑全量才推红的。
+> 失败名在首轮日志里被 `tail -8` 截掉；已在后台重跑并把失败名落盘（`/tmp/full2-e32.log`），读到后在本节补归属（我造成 / 既存 / 抖动）。
+
+### 四 仍未做（具名）
+
+① 把 `deploy` / `run-once` 接上 IPC（四处同批：catalog / preload / `renderer-api.d.ts` / **两处** 钉子 —— 注意 **两族** pin：`renderer-surface-inventory.test.ts` **与** `renderer-contract-catalog.test.ts` ✓ 这次就栽在后者）；② 上屏（两个按钮 + 结果块 + 9 语）；③ 两条读数（未批准 ⇒ 零文件零进程 可留车道 / 真仓库一次性）。
