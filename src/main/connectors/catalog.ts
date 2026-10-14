@@ -33,6 +33,18 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'rna-encori',
+    displayName: 'ENCORI',
+    aliases: ['starBase', 'miRNA target', 'RBP', 'ceRNA'],
+    description: '通过 ENCORI（starBase 后继，中山大学）获取 miRNA-靶基因相互作用表，含 CLIP 与 degradome 实验计数、结合的 RBP、癌症类型数与细胞系/组织。',
+    useWhen:
+      'Use for miRNA-target interaction evidence — which miRNAs the catalogue lists for a gene, with the support each pair carries (CLIP experiment count, degradome count, the RBP bound, how many cancer types it was seen in, and the cell lines/tissues), including the reverse question of whether a named miRNA is reported to target a gene. Sourced from ENCORI (Sun Yat-sen University), the starBase successor.',
+    sources: ['ENCORI'],
+    termsUrl: 'https://rnasysu.com/encori/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
     id: 'delegate',
     displayName: '多代理编排',
     description: '并行子代理委派——将独立子任务作为全新代理会话运行。',

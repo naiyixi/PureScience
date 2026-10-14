@@ -25,6 +25,7 @@ import { PUBMED_TOOLS } from './descriptors/pubmed'
 import { REGULATION_TOOLS } from './descriptors/regulation'
 import { RESEARCH_RESOURCES_TOOLS } from './descriptors/research-resources'
 import { RNA_TOOLS } from './descriptors/rna'
+import { RNA_ENCORI_TOOLS } from './descriptors/rna-encori'
 import { SEQUENCE_TOOLS } from './descriptors/sequence-tools'
 import { STRUCTURES_TOOLS } from './descriptors/structures'
 import { VARIANTS_TOOLS } from './descriptors/variants'
@@ -37,6 +38,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...BIORXIV_TOOLS,
   ...CANCER_MODELS_TOOLS,
   ...CELLGUIDE_TOOLS,
+  ...RNA_ENCORI_TOOLS,
   ...CHEMBL_TOOLS,
   ...CHEMISTRY_TOOLS,
   ...CLINICAL_GENOMICS_TOOLS,
