@@ -33,7 +33,9 @@ test('the literature library PDF picker selects and clears the page it names', a
   await selectAll.click()
 
   // The scope line names the page the selection was taken from, and the pair swaps sides.
-  await expect(page.getByTestId('pdf-page-summary')).toContainText('This page: 1 file(s) · 1 selected')
+  await expect(page.getByTestId('pdf-page-summary')).toContainText(
+    'This page: 1 file(s) · 1 selected'
+  )
   await expect(page.getByRole('button', { name: 'Import as new records (1)' })).toBeVisible()
   await expect(selectAll).toBeDisabled()
   await expect(clearPage).toBeEnabled()
