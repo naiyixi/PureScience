@@ -29,6 +29,7 @@ import { RNA_TOOLS } from './descriptors/rna'
 import { RNA_ENCORI_TOOLS } from './descriptors/rna-encori'
 import { SEQUENCE_TOOLS } from './descriptors/sequence-tools'
 import { STRUCTURES_TOOLS } from './descriptors/structures'
+import { STRUCTURES_PDBE_TOOLS } from './descriptors/structures-pdbe'
 import { VARIANTS_TOOLS } from './descriptors/variants'
 import { ZINC_TOOLS } from './descriptors/zinc'
 import { ZH_MEDICAL_TERMS_TOOLS } from './descriptors/zh-medical-terms'
@@ -66,6 +67,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...RNA_TOOLS,
   ...SEQUENCE_TOOLS,
   ...STRUCTURES_TOOLS,
+  ...STRUCTURES_PDBE_TOOLS,
   ...VARIANTS_TOOLS,
   ...ZINC_TOOLS,
   ...ZH_MEDICAL_TERMS_TOOLS

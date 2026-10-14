@@ -54,7 +54,7 @@
 | 环 | 命令 | 读数 |
 | --- | --- | --- |
 | 连接器侧的计数钉子 + 五个描述符用例 | `npx vitest run src/main/connectors/readme-connector-count.test.ts src/main/connectors/descriptors/{proteomics-pdc,rna-encori,variants-clinvar,genomes-ensembl,chembl}.test.ts --maxWorkers=1` | **6 文件 / 68 条全过**，`Duration 1.05s`，exit 0 —— 其中 `readme-connector-count` 是**读源测试**：它同时读两份 README 与注册表，所以「连接器 30 / 工具 279」这两个数字不是我抄的，是它核的 |
-| 独立点数（自证，不是判据） | 按描述符目录数 `id:` 行 | **279**（与两份 README 的 `30 connectors (279 tools)` 相符；判据以那条读源测试为准） |
+| 独立点数（自证，不是判据） | 按描述符目录数 `id:` 行 | **279**（与该轮位点上两份 README 的 `30 connectors (279 tools)` 相符；判据以那条读源测试为准。该数随后随新增连接器抬到 **31 / 282**，本行是**当日读数、不是现值**） |
 | 发版就绪门禁（技能自带 `release-gate.sh`，**隔离工作树**、被测提交 `23292e8b`） | `bash …/release-gate.sh 23292e8b` | 见 `## 五` |
 
 ---

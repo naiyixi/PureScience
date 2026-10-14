@@ -178,6 +178,18 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'structures-pdbe',
+    displayName: 'PDBe',
+    aliases: ['Protein Data Bank in Europe'],
+    description:
+      'EMBL-EBI 的 PDBe（Protein Data Bank in Europe）——按条目取：条目级记录（来源地与处理地分列）、配体/非聚合物实例的两种残基编号、逐链二级结构。',
+    useWhen:
+      "Use when the question is about ONE specific PDB entry and PDBe's own view of it, rather than a search — the entry record (title, experimental method and class, deposition/release/revision dates, the processing site and the deposition site kept apart, authors, entity counts, assemblies); the ligand / non-polymer instances with their chemical component id and name and their residue identity in BOTH numbering schemes (author numbering with its insertion code, and the service's sequential label numbering, never collapsed into one); or the per-chain secondary-structure assignment (helices, and strands carrying their sheet ids). It answers what an entry is and what is bound in it, and deliberately offers no structure list. Sourced from PDBe (EMBL-EBI).",
+    sources: ['PDBe'],
+    termsUrl: 'https://www.ebi.ac.uk/pdbe/',
+    requiresNcbi: false
+  },
+  {
     id: 'chembl',
     displayName: 'ChEMBL',
     description: '通过 ChEMBL REST API 获取生物活性化合物、药物、靶点、生物活性和作用机制。',
