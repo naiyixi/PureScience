@@ -1456,4 +1456,120 @@ describe('ArtifactProvenancePanel', () => {
       container.querySelector('[data-testid="artifact-readings-dropped"]')?.textContent
     ).toContain('3 older readings were dropped')
   })
+
+  // B2-3: the Version's own alias-level lineage, on the Version's own provenance surface. The wording per
+  // reason is the notebook pane's (one vocabulary per reason), and the row carries a hash a reader can
+  // recompute — an absent receipt is named, not blank.
+  it('lists the producing run alias lineage with the chain, the site and a recomputable hash', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      aliasLineage: {
+        state: 'available',
+        recipeVersion: 'notebook-alias-lineage:v1',
+        producerRunId: 'run-1',
+        rows: [
+          {
+            variable: 'table',
+            via: 'view',
+            aliasChain: ['table'],
+            kind: 'alias-mutation',
+            producerRunId: 'run-1',
+            producerContentHash: 'abcdef0123456789',
+            laterRunId: 'run-2',
+            mutation: {
+              kind: 'inplace-call',
+              line: 3,
+              excerpt: 'view.drop(columns=["x"], inplace=True)'
+            }
+          },
+          {
+            variable: 'total',
+            via: 'total',
+            aliasChain: [],
+            kind: 'name-rewrite',
+            producerRunId: 'run-1',
+            producerContentHash: 'not-recorded',
+            laterRunId: 'run-3'
+          }
+        ]
+      }
+    })
+
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Alias lineage')
+
+    const rows = container.querySelectorAll('[data-testid="artifact-alias-lineage-row"]')
+    expect(rows.length).toBe(2)
+    expect(rows[0]?.textContent).toContain('through the alias')
+    expect(
+      container.querySelector('[data-testid="artifact-alias-lineage-chain"]')?.textContent
+    ).toContain('table → view')
+    expect(
+      container.querySelector('[data-testid="artifact-alias-lineage-site"]')?.textContent
+    ).toBe('view.drop(columns=["x"], inplace=True)')
+    expect(rows[0]?.textContent).toContain('producer content hash abcdef012345')
+    // An absent receipt is named where the hash would be: no invented digest.
+    expect(rows[1]?.textContent).toContain('not-recorded')
+    expect(
+      container.querySelector('[data-testid="artifact-alias-lineage-recipe"]')?.textContent
+    ).toBe('recipe notebook-alias-lineage:v1')
+  })
+
+  it('says what these records do and do not say, and names a record it could not read', async () => {
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      aliasLineage: {
+        state: 'available',
+        recipeVersion: 'notebook-alias-lineage:v1',
+        producerRunId: 'run-1',
+        rows: []
+      }
+    })
+
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Alias lineage')
+
+    // An empty lineage is a statement about these records, and the panel says exactly that much.
+    expect(
+      container.querySelector('[data-testid="artifact-alias-lineage-empty"]')?.textContent
+    ).toContain('not a claim about the whole project')
+
+    // A read that could not answer names why: an unreadable record is not an empty lineage.
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    getVersionProvenance.mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      aliasLineage: { state: 'unavailable', reason: 'runs-unreadable' }
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+    await clickTab('Alias lineage')
+    expect(
+      container.querySelector('[data-testid="artifact-alias-lineage-unavailable"]')?.textContent
+    ).toContain('runs-unreadable')
+  })
 })

@@ -36,6 +36,7 @@ import type {
   ProvenanceExecutionInputFile,
   ReplayArtifactVersionRequest
 } from '../../shared/artifact-provenance'
+import { buildArtifactAliasLineage } from '../../shared/artifact-alias-lineage'
 import {
   ARTIFACT_VERSION_UNPUBLISHED,
   ARTIFACT_VERSION_UNPUBLISHED_AMBIGUOUS_TURN,
@@ -3715,6 +3716,7 @@ class ArtifactProvenanceRepository {
       review: boolean
       readings?: boolean
       structureObservations?: boolean
+      aliasLineage?: boolean
     } = {
       execution: true,
       messages: true,
@@ -3725,7 +3727,10 @@ class ArtifactProvenanceRepository {
       readings: true,
       // D3: the structure-observation journal is the same shape of file read ⇒ same default and same
       // opt-out, so a single-section read does not pay for it either.
-      structureObservations: true
+      structureObservations: true,
+      // B2-3: one run-document read per session, the same shape of cost as the journal above, so the
+      // same default and the same opt-out.
+      aliasLineage: true
     }
   ): Promise<ArtifactVersionProvenance> {
     const projectId = assertSafeSegment(request.projectId, 'project id')
@@ -4038,6 +4043,33 @@ class ArtifactProvenanceRepository {
       }
     }
 
+    // B2-3: the alias-level lineage of the run that produced this Version. The analysis is the notebook
+    // module's own (the same names the notebook pane shows, so the two surfaces cannot drift), and it is
+    // scoped to THIS version by its producing run: a row says a value that run wrote was changed by a later
+    // run. The producing run id comes from the evidence block (whose producer is the version's own), and
+    // the runs are read from the session's own document — the same reader that block uses.
+    let aliasLineage: ArtifactVersionProvenance['aliasLineage'] = {
+      state: 'unavailable',
+      reason: 'not-loaded'
+    }
+    if (sections.aliasLineage !== false) {
+      const producerRunId =
+        evidence.producer?.state === 'available' ? evidence.producer.producer_run_id : ''
+      if (producerRunId === '') {
+        aliasLineage = { state: 'unavailable', reason: 'producer-not-recorded' }
+      } else {
+        try {
+          const document = await this.notebookRepository.findExisting(projectId, appSessionId)
+          aliasLineage = document
+            ? buildArtifactAliasLineage({ producerRunId, runs: document.runs })
+            : { state: 'unavailable', reason: 'runs-not-recorded' }
+        } catch {
+          // A document that cannot be read is named as such: an unreadable record is not an empty lineage.
+          aliasLineage = { state: 'unavailable', reason: 'runs-unreadable' }
+        }
+      }
+    }
+
     // Walked from the Version back to the bytes: the readings recorded in this session. The
     // attribution is stated on the value because that is the honest limit of what the connector layer
     // can know — session and time, not which run was derived from which reading.
@@ -4095,7 +4127,8 @@ class ArtifactProvenanceRepository {
       messages,
       review,
       readings,
-      structureObservations
+      structureObservations,
+      aliasLineage
     }
   }
 

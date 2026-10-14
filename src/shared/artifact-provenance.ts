@@ -10,6 +10,7 @@ import type {
 import type { AgentFrameworkId } from './settings'
 import type { StructureMeasurement } from './structure-measurement'
 import type { StructureSelection } from './structure-selection'
+import type { ArtifactAliasLineage } from './artifact-alias-lineage'
 import type { StructureSelectionLabel } from './structure-selection-label'
 import type {
   PersistedActivityGroup,
@@ -488,6 +489,15 @@ export type ArtifactVersionProvenance = {
    * they are counted in `afterWindow` so their absence is stated rather than left to be inferred. That
    * makes an item a real link to check, and still NOT a claim that this Version was derived from it.
    */
+  /**
+   * B2-3: this Version's producing run, alias-level lineage — the values that run wrote that a LATER run
+   * changed, whether by a plain rewrite, in place, or through an alias chain. Absent means this read did
+   * not carry the section (or the Version names no producing run to scope it to): it never means the
+   * dependencies are clean. Each row carries the producer's content hash and the recipe version, so it is
+   * recomputable from the run record rather than trusted.
+   */
+  aliasLineage?: ArtifactAliasLineage
+
   readings:
     | {
         state: 'available'

@@ -9,6 +9,7 @@ import {
   computeNotebookStaleReasons,
   type AliasLineageRun
 } from './run-alias-lineage'
+import { buildArtifactAliasLineage } from './artifact-alias-lineage'
 import { computeStaleRunIds, extractVariablesWritten } from './run-dependencies'
 
 const sha256 = (text: string): string => createHash('sha256').update(text, 'utf8').digest('hex')
@@ -291,5 +292,62 @@ describe('the published recipe is what the row actually carries', () => {
       ].sort()
     )
     expect(runs[1]?.script?.split('\n')[1]).toBe(reason?.mutation?.excerpt)
+  })
+})
+
+// B2-3: the projection the artifact provenance panel reads. The analysis is the module's own — these cases
+// pin the SCOPING (a Version has one producing run, so only that run's reasons are its lineage) and that a
+// row stays recomputable: the hash travels with it, and an absent receipt is named rather than invented.
+describe('buildArtifactAliasLineage', () => {
+  it('scopes the lineage to the producing run and keeps the chain, the site and the hash', () => {
+    const producerScript = 'table = load()\nview = table'
+    const runs = [
+      run('run-1', producerScript),
+      run('run-2', 'view.drop(columns=["x"], inplace=True)'),
+      run('run-3', 'total = table.sum()')
+    ]
+    const lineage = buildArtifactAliasLineage({ producerRunId: 'run-1', runs })
+    expect(lineage.state).toBe('available')
+    if (lineage.state !== 'available') return
+
+    expect(lineage.recipeVersion).toBe(ALIAS_LINEAGE_RECIPE_VERSION)
+    expect(lineage.producerRunId).toBe('run-1')
+    // run-3 wrote `total`, which the producing run never wrote: not this Version's lineage.
+    expect(lineage.rows.map((row) => row.variable)).not.toContain('total')
+    expect(lineage.rows.length).toBeGreaterThan(0)
+    const row = lineage.rows[0]
+    expect(row.producerRunId).toBe('run-1')
+    expect(row.laterRunId).toBe('run-2')
+    // The projection adds scoping and carries the engine's own fields through unchanged: what a
+    // reason MEANS stays the engine's business, so a row cannot drift from what the notebook shows.
+    const engineReasons = computeNotebookStaleReasons(runs).filter(
+      (reason) => reason.producerRunId === 'run-1'
+    )
+    expect(lineage.rows.map((item) => item.variable)).toEqual(
+      engineReasons.map((reason) => reason.variable)
+    )
+    expect(lineage.rows[0].aliasChain).toEqual(engineReasons[0].aliasChain)
+    expect(lineage.rows[0].kind).toBe(engineReasons[0].kind)
+    expect(lineage.rows[0].mutation).toEqual(engineReasons[0].mutation)
+    // The hash is the producing run's own, computed here from its source rather than trusted.
+    expect(row.producerContentHash).toBe(sha256(producerScript))
+  })
+
+  it('reports an available, empty lineage when no later run changed what that run wrote', () => {
+    const lineage = buildArtifactAliasLineage({
+      producerRunId: 'run-1',
+      runs: [run('run-1', 'a = 1')]
+    })
+    expect(lineage).toMatchObject({ state: 'available', rows: [] })
+  })
+
+  it('names an absent receipt instead of inventing a hash', () => {
+    const runs = [
+      run('run-1', 'table = load()\nview = table', { withReceipt: false }),
+      run('run-2', 'view.drop(columns=["x"], inplace=True)')
+    ]
+    const lineage = buildArtifactAliasLineage({ producerRunId: 'run-1', runs })
+    if (lineage.state !== 'available') throw new Error('expected an available lineage')
+    expect(lineage.rows[0].producerContentHash).toBe('not-recorded')
   })
 })

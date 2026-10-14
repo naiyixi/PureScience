@@ -60,7 +60,15 @@ import { groupConversationItems } from './workspace-tool-activity-groups'
 import { ArtifactReplaySection } from './ArtifactReplaySection'
 
 type ProvenanceTab =
-  'code' | 'execution' | 'messages' | 'environment' | 'review' | 'readings' | 'structure' | 'replay'
+  | 'code'
+  | 'execution'
+  | 'messages'
+  | 'environment'
+  | 'review'
+  | 'readings'
+  | 'structure'
+  | 'aliasLineage'
+  | 'replay'
 type DeferredProvenanceTab = Extract<ProvenanceTab, 'execution' | 'messages' | 'review'>
 type DeferredSection =
   | Pick<ArtifactVersionProvenance, 'execution'>
@@ -100,6 +108,7 @@ const tabs: Array<{ id: ProvenanceTab; label: TranslationKey }> = [
   // into the viewer at that very state. Travels with the Version projection, like the readings above,
   // for the same reason: a structure a claim was made about has to be readable in the same window.
   { id: 'structure', label: 'ws.structureObservations' },
+  { id: 'aliasLineage', label: 'ws.aliasLineage' },
   // Runs on demand: a replay executes the recorded version, so it never fires on tab selection.
   { id: 'replay', label: 'ws.replay' }
 ]
@@ -1598,6 +1607,83 @@ const ArtifactProvenancePanel = ({
               </div>
             </section>
           )
+        ) : null}
+        {provenance && activeTab === 'aliasLineage' ? (
+          <section className="space-y-3 p-5 text-sm" data-testid="artifact-alias-lineage">
+            {provenance.aliasLineage?.state === 'available' ? (
+              <>
+                <p className="text-xs text-text-300">{t('ws.aliasLineageIntro')}</p>
+                {provenance.aliasLineage.rows.length === 0 ? (
+                  <p className="text-text-300" data-testid="artifact-alias-lineage-empty">
+                    {t('ws.aliasLineageEmpty')}
+                  </p>
+                ) : (
+                  <ul className="space-y-2" data-testid="artifact-alias-lineage-list">
+                    {provenance.aliasLineage.rows.map((row, index) => (
+                      <li
+                        key={`${row.producerRunId}:${row.variable}:${row.laterRunId}:${String(index)}`}
+                        className="rounded border border-border-300/60 p-2"
+                        data-testid="artifact-alias-lineage-row"
+                      >
+                        {/* The same words the notebook pane uses for the same reason: a reason has one
+                            vocabulary or it has none. */}
+                        <p className="text-text-000">
+                          {row.mutation && row.aliasChain.length > 0
+                            ? t('notebookStale.aliasMutation', {
+                                variable: row.variable,
+                                via: row.via,
+                                line: String(row.mutation.line)
+                              })
+                            : row.mutation
+                              ? t('notebookStale.directMutation', {
+                                  variable: row.variable,
+                                  line: String(row.mutation.line)
+                                })
+                              : t('notebookStale.rewrite', { variable: row.variable })}
+                        </p>
+                        {row.aliasChain.length > 0 ? (
+                          <p
+                            className="text-xs text-text-300"
+                            data-testid="artifact-alias-lineage-chain"
+                          >
+                            {row.aliasChain.join(' → ')} → {row.via}
+                          </p>
+                        ) : null}
+                        {row.mutation ? (
+                          <p
+                            className="text-xs text-text-300"
+                            data-testid="artifact-alias-lineage-site"
+                          >
+                            {row.mutation.excerpt}
+                          </p>
+                        ) : null}
+                        <p
+                          className="text-xs text-text-300"
+                          data-testid="artifact-alias-lineage-hash"
+                        >
+                          {t('ws.aliasLineageHash', {
+                            hash:
+                              row.producerContentHash === 'not-recorded'
+                                ? row.producerContentHash
+                                : row.producerContentHash.slice(0, 12)
+                          })}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-xs text-text-300" data-testid="artifact-alias-lineage-recipe">
+                  {t('ws.aliasLineageRecipe', { recipe: provenance.aliasLineage.recipeVersion })}
+                </p>
+              </>
+            ) : (
+              <p className="text-text-300" data-testid="artifact-alias-lineage-unavailable">
+                {t('ws.aliasLineageUnavailable', {
+                  reason: provenance.aliasLineage?.reason ?? 'not-loaded'
+                })}
+              </p>
+            )}
+          </section>
         ) : null}
         {provenance && activeTab === 'structure' ? (
           <section className="space-y-3 p-5 text-sm" data-testid="artifact-structure-observations">
