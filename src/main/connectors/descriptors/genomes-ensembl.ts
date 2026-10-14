@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { ToolDescriptor } from '../types'
+import type { ToolContext, ToolDescriptor } from '../types'
 
 // Ensembl REST — keyless GETs; the engine already sends Accept: application/json for fetchJson, so
 // plain paths return JSON without the ?content-type suffix.
@@ -162,6 +162,35 @@ function leanHomology(h: Dict): Dict {
 // Best-effort id accessor for overlap-feature sorting (field name varies by feature type).
 const featureId = (f: Dict): string => String(f.id ?? f.gene_id ?? f.ID ?? '')
 
+type LdPanel = { name: string; description: unknown; size: unknown }
+
+// The panels the source offers for LD in a species: name + description + sample SIZE. Fetched so an LD
+// answer can name the panel it stands on — a pair set without its panel and size is not reviewable.
+const listLdPopulations = async (ctx: ToolContext, species: string): Promise<LdPanel[]> => {
+  const raw = await ctx.fetchJson(
+    `${ENSEMBL}/info/variation/populations/${encodeURIComponent(species)}?filter=LD`
+  )
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((p): p is Dict => !!p && typeof p === 'object')
+    .map((p) => ({
+      name: String(p.name ?? ''),
+      description: p.description ?? null,
+      size: p.size ?? null
+    }))
+    .filter((p) => p.name !== '')
+}
+
+// One source pair -> the fields a reader can act on. r2 and D' are quoted as strings the source sent (it
+// formats them to six decimals); nothing here rescales or re-judges them.
+const ldPair = (row: Dict): Dict => ({
+  variation1: row.variation1 ?? null,
+  variation2: row.variation2 ?? null,
+  r2: row.r2 ?? null,
+  d_prime: row.d_prime ?? null,
+  population_name: row.population_name ?? null
+})
+
 export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
   {
     id: 'ensembl_lookup',
@@ -194,6 +223,87 @@ export const GENOMES_ENSEMBL_TOOLS: ToolDescriptor[] = [
       } catch (err) {
         if (isNotFound(err)) return { found: false, query, species, record: null }
         throw err
+      }
+    }
+  },
+  {
+    id: 'ensembl_ld',
+    connector: 'genomes',
+    description:
+      "Linkage disequilibrium around ONE variant in ONE population panel - the pairs the source itself reports, with r-squared and D-prime. Args: variant (rsID like rs699, or a variant stable id); population (a panel name exactly as the source lists it, e.g. '1000GENOMES:phase_3:CEU' - a refused name comes back with the names that species actually offers); species (Ensembl species name, default homo_sapiens); r2 (default true - the statistic to ask for); d_prime (default false); window_size (0-500, the source's own unit; it rejects larger values). Returns {variant, population: {name, description, size}, n_pairs, pairs: [{variation1, variation2, r2, d_prime, population_name}]}. The source returns the complete pair set for that variant and window, so nothing is capped here; the panel's SIZE is reported because a pair set without it cannot be read as a population statement. Errors are named: {error: 'unknown-population', message, populations: [names]} or {error: 'unknown-variant', message}.",
+    input: {
+      type: 'object',
+      properties: {
+        variant: { type: 'string', description: "rsID or variant stable id, e.g. 'rs699'." },
+        population: {
+          type: 'string',
+          description:
+            "Panel name as the source lists it, e.g. '1000GENOMES:phase_3:CEU' or '1000GENOMES:phase_3:CHB'."
+        },
+        species: { type: 'string', default: DEFAULT_SPECIES },
+        r2: { type: 'boolean', default: true },
+        d_prime: { type: 'boolean', default: false },
+        window_size: { type: 'integer', minimum: 0, maximum: 500 }
+      },
+      required: ['variant', 'population']
+    },
+    required: ['variant', 'population'],
+    returns:
+      "{variant, population: {name, description, size}, n_pairs, pairs: [{variation1, variation2, r2, d_prime, population_name}]} - r2/D' quoted as the source formats them, size quoted from the panel list; or a named error with the offered panel names.",
+    example:
+      'const result = await host.mcp("genomes", "ensembl_ld", {"variant": "rs699", "population": "1000GENOMES:phase_3:CEU"})',
+    run: async (ctx, a) => {
+      const variant = strArg(a.variant) ?? ''
+      const population = strArg(a.population) ?? ''
+      const species = String(a.species ?? DEFAULT_SPECIES)
+      if (variant === '' || population === '') {
+        return { error: 'invalid-request', message: 'Both variant and population are required.' }
+      }
+
+      const query: string[] = []
+      if (a.r2 !== false) query.push('r2=1')
+      if (a.d_prime === true) query.push('d_prime=1')
+      if (a.window_size != null) query.push(`window_size=${clampInt(a.window_size, 500, 0, 500)}`)
+      const url =
+        `${ENSEMBL}/ld/${encodeURIComponent(species)}/${encodeURIComponent(variant)}/${encodeURIComponent(population)}` +
+        (query.length > 0 ? `?${query.join('&')}` : '')
+
+      let raw: unknown
+      try {
+        raw = await ctx.fetchJson(url)
+      } catch (err) {
+        if (!isNotFound(err)) throw err
+        // The source answers an unknown panel and an unknown variant with the same 400, so ASK which it was
+        // (its own panel list decides) instead of guessing at the reason.
+        const panels = await listLdPopulations(ctx, species)
+        if (panels.length > 0 && !panels.some((panel) => panel.name === population)) {
+          return {
+            error: 'unknown-population',
+            message: `${species} has no LD panel named ${population}`,
+            populations: panels.map((panel) => panel.name)
+          }
+        }
+        return {
+          error: 'unknown-variant',
+          message: `Ensembl reports no LD around ${variant} in ${population}`
+        }
+      }
+
+      const pairs = Array.isArray(raw)
+        ? raw.filter((row): row is Dict => !!row && typeof row === 'object').map(ldPair)
+        : []
+      const panels = await listLdPopulations(ctx, species)
+      const panel = panels.find((entry) => entry.name === population)
+
+      return {
+        variant,
+        population: {
+          name: population,
+          description: panel?.description ?? null,
+          size: panel?.size ?? null
+        },
+        n_pairs: pairs.length,
+        pairs
       }
     }
   },

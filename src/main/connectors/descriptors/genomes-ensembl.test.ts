@@ -337,3 +337,105 @@ describe('ensembl_overlap_region', () => {
     expect(out.features).toEqual([])
   })
 })
+
+describe('ensembl_ld', () => {
+  const panels = [
+    {
+      name: '1000GENOMES:phase_3:CEU',
+      description: 'Utah residents with Northern and Western European ancestry',
+      size: 99
+    },
+    { name: '1000GENOMES:phase_3:CHB', description: 'Han Chinese in Bejing, China', size: 103 }
+  ]
+
+  it('quotes the pairs the source reports for one variant in one panel, with the panel size', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonRes([
+          {
+            population_name: '1000GENOMES:phase_3:CEU',
+            variation1: 'rs699',
+            variation2: 'rs2493135',
+            r2: '1.000000',
+            d_prime: '1.000000'
+          },
+          {
+            population_name: '1000GENOMES:phase_3:CEU',
+            variation1: 'rs699',
+            variation2: 'rs58359338',
+            r2: '0.500000',
+            d_prime: '0.900000'
+          }
+        ])
+      )
+      .mockResolvedValueOnce(jsonRes(panels))
+
+    const out = (await run(
+      'ensembl_ld',
+      { variant: 'rs699', population: '1000GENOMES:phase_3:CEU' },
+      fetchImpl
+    )) as {
+      population: { name: string; size: number | null }
+      n_pairs: number
+      pairs: Array<{ variation2: string; r2: string }>
+    }
+    const urls = fetchImpl.mock.calls.map((call) => String(call[0]))
+
+    expect(urls[0]).toContain('/ld/homo_sapiens/rs699/1000GENOMES%3Aphase_3%3ACEU')
+    expect(urls[0]).toContain('r2=1')
+    expect(urls[0]).not.toContain('d_prime=1')
+    expect(urls[1]).toContain('/info/variation/populations/homo_sapiens?filter=LD')
+    expect(out.n_pairs).toBe(2)
+    // Quoted as the source formats them — not rescaled, not re-judged.
+    expect(out.pairs[0].r2).toBe('1.000000')
+    // A pair set without its panel and size is not reviewable, so both travel with it.
+    expect(out.population.name).toBe('1000GENOMES:phase_3:CEU')
+    expect(out.population.size).toBe(99)
+  })
+
+  it('names an unknown panel AND returns the panels the species does offer', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(errRes(400))
+      .mockResolvedValueOnce(jsonRes(panels))
+    const out = (await run(
+      'ensembl_ld',
+      { variant: 'rs699', population: '1000GENOMES:phase_3:NOPE' },
+      fetchImpl
+    )) as { error: string; populations: string[] }
+
+    expect(out.error).toBe('unknown-population')
+    expect(out.populations).toContain('1000GENOMES:phase_3:CEU')
+  })
+
+  it('names an unknown variant when the panel does exist', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(errRes(400))
+      .mockResolvedValueOnce(jsonRes(panels))
+    const out = (await run(
+      'ensembl_ld',
+      { variant: 'rs0', population: '1000GENOMES:phase_3:CHB' },
+      fetchImpl
+    )) as { error: string }
+
+    expect(out.error).toBe('unknown-variant')
+  })
+
+  it('clamps window_size to what the source accepts and asks for d_prime only when told to', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes([]))
+      .mockResolvedValueOnce(jsonRes(panels))
+    await run(
+      'ensembl_ld',
+      { variant: 'rs699', population: '1000GENOMES:phase_3:CEU', d_prime: true, window_size: 5000 },
+      fetchImpl
+    )
+    const url = String(fetchImpl.mock.calls[0][0])
+
+    expect(url).toContain('d_prime=1')
+    expect(url).toContain('window_size=500')
+  })
+})

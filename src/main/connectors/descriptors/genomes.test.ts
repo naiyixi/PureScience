@@ -5,6 +5,7 @@ import { GENOMES_TOOLS } from './genomes'
 // genomes-ensembl.test.ts and genomes-ucsc.test.ts.
 const EXPECTED_IDS = [
   'ensembl_lookup',
+  'ensembl_ld',
   'ensembl_xrefs',
   'ensembl_vep_variant',
   'ensembl_homology',
