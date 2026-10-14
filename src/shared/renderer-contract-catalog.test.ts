@@ -51,7 +51,12 @@ describe('renderer contract catalog', () => {
     // only a PDB id, so it is local-only and never re-dispatched by a paired browser.
     // 477 with the window's PDF translation entry (pdf:translation, LOCAL): local-only, so the catalog,
     // the preload inventory and the local-Web installation set each move by one.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(477)
+    // 478/479 with the plugin source read and its cancel (specialist.pluginSourcePreview /
+    // specialist.pluginSourceCancel, LOCAL): the renderer asks for a reference and the main process does
+    // the fetching, so they are local-only — the catalog, the preload inventory and the local-Web
+    // installation set each move by two, while the remote-Web set grows by the rejecting stub a
+    // local-only channel gets there.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(479)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -105,9 +110,10 @@ describe('renderer contract catalog', () => {
         remoteWeb: 'caller-context'
       }
     })
+    // 78 before the plugin source channels; the two of them are local-only, so they join this set.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(78)
+    ).toHaveLength(80)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(128)
@@ -200,7 +206,8 @@ describe('renderer contract catalog', () => {
     const specialist = RENDERER_CONTRACT_CATALOG.filter(({ publicPath }) =>
       publicPath.startsWith('specialist.')
     )
-    expect(specialist).toHaveLength(31)
+    // 31 before the plugin source read and its cancel; both are specialist channels.
+    expect(specialist).toHaveLength(33)
     expect(
       specialist.every(
         ({ surfaceInstallation }) =>
