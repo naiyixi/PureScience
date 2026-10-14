@@ -6213,3 +6213,45 @@ git worktree remove --force /tmp/ps-verify2
 ### 二 我第三次踩「引用已提交、被引用者未提交」的处理原则（写成一句话）
 
 补别人造成的洞时，**不要逐个追着错误跑**：先把「该模块及其依赖闭包」一次性凑齐（模块本身 + 选项类型所在文件 + 被它 import 的东西），再用**隔离工作树 + 真 tsc** 收口 —— 逐条追错会一轮一个错误（本次：TS2307 → TS2353 各占一轮 ✗）。
+
+## 一百三十六、**v2.3.0 发版执行**（方法即产物）：门禁全绿 → 附注 tag → Release 排队（会话，2026-10-15）
+
+### 一 发版前的最后一次收口：甲半进树
+
+执行器是 **每 2h 的 cron 且桌面活跃即让位** ⇒ 我连续活动会让它无法动手 ✗ ⇒ **不能等它提交**。它的甲半（`from_run_id`：从应用自己的运行记录编译技能）我按上次的做法自己收口，但**先亲自独立复跑验证**：
+
+| 核验 | 读数 |
+| --- | --- |
+| 它的 5 个测试文件 | **5 passed / 26 passed** ✓ |
+| `src/main/skills` + `src/main/notebook` | **110 文件 / 1717 passed（99 skipped）** ✓ |
+| 全树双 typecheck | **0 error** ✓ |
+| 提交（`024e9c2a`）后的**隔离工作树** tsc | **0 error** ✓ |
+
+⇒ 于是 `024e9c2a` 把甲半收口进跟踪集（含其证据档 `docs/evidence/2026-10-15-method-skill-compile-from-run.md` ✓，归属与理由写在提交信息里 ✓）。**同时把自己 CHANGELOG 里引自其证据档的「73 passed」改成我复跑的数字** ✓ —— 发版文里的数字不许是别人的转述 ✗。
+
+### 二 发版就绪门禁（技能自带 `release-gate.sh`，**隔离工作树**，对发版提交本身）
+
+```
+=== 发版就绪门禁汇总（6efa5a5f2e22a56dab54fb539b75437db10044dd）===
+eslint|OK
+typecheck:node|OK
+typecheck:web|OK
+vitest|OK
+repo-checks|OK
+[gate] 全绿 ⇒ 就绪
+GATE_EXIT=0
+```
+
+并发核对（开窗前的两次「别抢」）：`check-readme-sync.mjs` ✓ **双语头部锚点逐字一致**、`pre-push-checks.sh` ✓ 通过。
+
+### 三 发版四文件（形状与 v2.2.0 一致）
+
+`CHANGELOG.md` 新段 **5,244 字符**（≥400 ✓，含**甲半 + 乙半 + 逐条「明确没做」** ✓）/ `package.json` 2.2.0→**2.3.0** ✓ / `README.md` + `README.en.md` **各 4 行**（成熟度块 ✅ 段首句滚动：「This version …」前插、上一版改写为「The previous version …」+ 💡 横幅替换为 v2.3.0 ✓）⇒ 改后**双语成熟度块仍逐字节相同** ✓（自检打点 `True` ✓）。
+
+发布正文按仓规由**工作流自己**组（`release-notes.mjs` 取 `README.en.md` 成熟度块 + `CHANGELOG.md` 条目 ✓）；我会话另做一次**仓库外的预生成**核覆盖：44,457 字符，`from_run_id` ×3 / `Deployed plugin` ×1 / `approval-required` ×4 / `sha256 74644b92` ×1 全部命中 ✓。
+
+### 四 tag 与工作流
+
+- 附注 tag（消息按仓规 `<tag>: N commits since <prev> — <一句话>` ✓）：`v2.3.0: 51 commits since v2.2.0 — 方法即产物（甲半：把已记录的方法编译成可调用技能；乙半：第三方公开仓库成为可核验的插件来源）` ✓；
+- `git rev-parse v2.3.0^{commit}` = `6efa5a5f` **= 发版提交本身** ✓（门禁只认这个提交 ✓）；
+- 推送为**一次**（门禁提醒「边做边推会取消在跑车道」✓；推 tag 是另一个 ref ✓ 不碰 main 的在飞车道 ✓）⇒ **`Release @6efa5a5f` 已排队** ✓。
