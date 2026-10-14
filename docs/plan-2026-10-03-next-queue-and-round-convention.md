@@ -5179,3 +5179,58 @@ ENCORI 后端数据库宕机时，用 **HTTP 200** 回它自己的 PHP 告警：
 ### 六 仍未做（具名）
 
 **C2 文献库整页全选**（批 C 的最后一项，需窗口真机读数）。
+
+## 一百〇八、批 C 五件的独立复算 + 发版就绪门禁（执行器，2026-10-14 12:5x–13:2x）
+
+### 一 为什么是这一遍（含让路记录）
+
+- **开工现场**：批 C 六件里五件已落地并推上 main（C1 `967091cc`、C3 `cd0cc41f`、C4 `04b1f599`、C5 `aea0439f`、C6 `84ae5f4f`，11:40–12:17）；**C2 的改动未提交、在会话手里**（`git status --short` 的 10 个路径 = `src/renderer/src/components/references/ReferencesLibraryDialog.tsx` + 9 个 i18n 字典，最后写入 12:20）⇒ 按并发纪律**让路**：不碰、不 stash、不替它提交半成品，也不据那批路径声称任何读数。
+- **内存闸门**：空闲物理页 **4,448 ≈ 72 MB**、swap **7,728 / 9,216 MB** 已用；占用者按 RSS = 长期驻留的无关桌面应用 1,116 MB · Hermes 渲染进程 845 MB · 常驻 dev 实例 807 MB + 390 MB · 另一个工作应用 682 MB ⇒ **本轮不起实例、不跑 `build:e2e` / Playwright**。
+- 所以本轮不是「做件」，而是：**把已落地的五件独立复算一遍** + **读源审计** + 在隔离工作树里**给发版窗口留门禁读数**。形状与逐条读数全文见 `docs/evidence/2026-10-14-cbatch-independent-reproduction.md`。
+
+### 二 独立复算（我发的请求 → 我读到的原始值）
+
+| 件 | 我自己的请求 | 我读到的原始值 |
+| --- | --- | --- |
+| C1 | `GET rest.ensembl.org/ld/homo_sapiens/rs699/1000GENOMES:phase_3:CEU?r2=1` | **8 对**；首对 `rs699 / rs2478543 / r2="1.000000" / d_prime="1.000000"` |
+| C1 | `GET …/info/variation/populations/homo_sapiens?filter=LD` | **30 个面板**；CEU `size=99`、`description="Utah residents with Northern and Western European ancestry"` |
+| C3 | `GET …/chembl/api/data/assay/CHEMBL4880040.json` + `activity.json?assay_chembl_id=…&limit=1` | `confidence_score=9`、`relationship_type="D"`、`bao_label="single protein format"`；`page_meta.total_count`=**249** |
+| C4 | `esearch(VCV005007684)`→uid `5007684` → `efetch rettype=vcv&is_variationid=1` | 归档 `Accession="VCV000017677"`、**`NumberOfSubmissions=101`**、**`NumberOfSubmitters=92`**；XML 里 `<ClinicalAssertion ` **101 次**（101 条全在 ⇒ 不是「只回一部分」）、`<RecordStatus>` 102 次 = 1 文档级 + 101 逐提交级 |
+| C5 | `GET rnasysu.com/encori/api/miRNATarget/?…&target=TP53` | HTTP 200；2 行 `#` 引用 + **25 列**表头（与描述符列名表**逐名相同**，含 `cellline/tissue`）+ **188 数据行**；错列 **0** |
+| C6 | `POST pdc.cancer.gov/graphql`：`uiStudySummary` | **277 个研究**（首条与会话记录**逐字相同**）；缺 id/name 的行 0 |
+| C6 | 同上：`filesPerStudy(offset 0, limit 600)` + `filesCountPerStudy` | `files_count`=**600**、返回 **600 行**、**600/600 行 `file_size` 是纯数字串**、三者和 = **1,505,997,340,728** ⇒ `truncated` 应为 false |
+
+**结论**：五件的源侧形状与关键数字在**我这里逐项复现**；没有一条是「只有会话见过」的。
+
+### 三 一处读到、**不判为缺陷**的观察（具名交给下一批）
+
+`get_bioactivity` 新增的 `assay_chembl_id` **不做形态校验** —— 与本文件既有 `molecule_chembl_id` / `target_chembl_id` 是**同一写法**（交给源自己过滤，传非 id 得 0 行）；批 C 的「非 id 零请求」政策落在**新工具 `get_assay`**（`chembl.ts:1033`）上。要统一收紧属**跨工具**的行为变更（会同时改动既有工具的语义）⇒ 需与话术一起评估，**本轮不擅动**。
+
+### 四 本轮跑过的门禁
+
+- **计数钉子 + 五个描述符用例**：`npx vitest run src/main/connectors/readme-connector-count.test.ts src/main/connectors/descriptors/{proteomics-pdc,rna-encori,variants-clinvar,genomes-ensembl,chembl}.test.ts --maxWorkers=1` ⇒ **6 文件 / 68 条全过**，`Duration 1.05s`，exit 0。其中 `readme-connector-count.test.ts` 是**读源测试**（同时读两份 README 与注册表）⇒ 连接器 **30** / 工具 **279** 这两个数字是它核的，不是我抄的。
+- **发版就绪门禁**（技能自带 `release-gate.sh`，**隔离工作树** `/tmp/ps-release-gate`、被测提交 `23292e8b`）：逐环自证 `[ring] cwd=/tmp/ps-release-gate version=2.1.0`，共享树里会话那 10 个在制路径**一个字节都没进这棵树**。
+
+| 环 | 汇总行原文 | 判定 |
+| --- | --- | --- |
+| `eslint --no-cache .` | `✖ 120 problems (0 errors, 120 warnings)` | OK（0 error；120 warning 与 v2.1.0 那次相同） |
+| `typecheck:node` / `typecheck:web` | 日志只有 npm 横幅、`tsc` 零输出 | 两环 OK（无 `error TS`） |
+| `vitest run --maxWorkers=4` | `Test Files 1293 passed ｜ 16 skipped (1309)` ／ `Tests 16581 passed ｜ 207 skipped (16788)` ／ `Duration 357.73s` | OK（比 v2.1.0 那次多 2 个文件 / 22 条 —— 与批 C 新增 spec 相符） |
+| `repo-checks` | `[pre-push] 全部通过。` | OK |
+
+⇒ **当前位点上，v2.2.0 除四文件外没有阻塞**：只差 C2 落地。
+
+### 五 未取证（具名，不许当已取）
+
+1. **C2 的窗口读数** —— 改动未提交（会话在制）⇒ 未取；它是 v2.2.0 发版前唯一还差读数的那一件。
+2. **五件的「界面上走一遍」读数** —— 本轮未起任何实例（内存闸门）⇒ 我取到的是**端点级复算** + 描述符用例；**窗口那一层未取**（工具经应用那一段由描述符用例与引擎共享路径覆盖，不等同于窗口读数）。
+3. **打包态复核** —— 属发版后动作，本轮未做。
+
+### 六 下一手 + 发版就绪评估
+
+- 位点：`package.json` = **`2.1.0`**；`v2.1.0` 是 Release 页的 **Latest**；自 `v2.1.0` 以来 **15 笔**（现算，发版时重算）。
+- **发版备稿写在仓库之外**：`~/.hermes/cache/scratch/v2.2.0-release-draft-and-runbook.md`（批 C 六件的正文取材清单 + 八步命令 + 本仓会咬人的六条）。**我不动那四个发版文件** —— C2 还在会话手里，抢同一份文件只会两边白做。
+- **下一轮第一步**：`git fetch -q origin && git log --oneline origin/main -3 && git status --short`。
+  - 若 C2 已落地并推上 main ⇒ **直接进 v2.2.0 发版窗口**（先 `hermes cron pause 2be4405e5dc6`、核没有在跑的那一轮，再把四文件改出来、在**要打 tag 的那个提交**上复跑门禁）。
+  - 若 C2 仍在制 ⇒ 继续让路，取与 `components/references/**` 和 `i18n/**` **不相交**的活（队列档 §六 的「未取证」清单优先：能起实例时就补窗口读数）。
+
