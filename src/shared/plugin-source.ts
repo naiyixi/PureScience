@@ -164,6 +164,19 @@ export const pluginSourceManifestUrls = (ref: PluginSourceRef): string[] => [
   `https://cdn.jsdelivr.net/gh/${ref.owner}/${ref.repo}@${ref.ref}/${ref.path}`
 ]
 
+/**
+ * The URLs one declared entry is read from when the plugin is deployed. Same hosts, same order, and
+ * the same property: every URL is a function of the reference and the entry path, so a reader can
+ * recompute where the bytes came from.
+ */
+export const pluginSourceEntryUrls = (
+  ref: Pick<PluginSourceRef, 'owner' | 'repo' | 'ref'>,
+  entry: string
+): string[] => [
+  `https://raw.githubusercontent.com/${ref.owner}/${ref.repo}/${ref.ref}/${entry}`,
+  `https://cdn.jsdelivr.net/gh/${ref.owner}/${ref.repo}@${ref.ref}/${entry}`
+]
+
 /** What a repository declares. Strict on purpose: an unknown key is refused, not ignored. */
 export const pluginManifestSchema = z
   .object({

@@ -8,13 +8,15 @@ import {
   parsePluginSourceReference,
   pluginSourceManifestUrls
 } from '../../shared/plugin-source'
-import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { PluginSourceCandidateStore } from './plugin-source-candidate'
 import { deployPlugin, readDeployedPlugin } from './plugin-deploy'
 import { decidePluginOperation, PLUGIN_OPERATION_RULE } from './plugin-run-policy'
+import { runPluginOnce } from './plugin-run'
+import { deployCandidate, runCandidateOnce } from './plugin-operations'
 import { previewPluginSource, type PluginFetchOutcome } from './plugin-source'
 
 const sha256 = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
@@ -429,5 +431,198 @@ describe('plugin operation gate', () => {
       policy: 'confirm'
     })
     expect(protectedRun).toMatchObject({ state: 'allowed' })
+  })
+})
+
+describe('plugin run once (real child process)', () => {
+  it('runs an entry in its own empty working directory with a whitelisted environment', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'plugin-dir-'))
+    await writeFile(
+      join(directory, 'tool.mjs'),
+      'console.log(JSON.stringify({ cwd: process.cwd(), secret: process.env.PLUGIN_TEST_SECRET ?? null }))\n',
+      'utf8'
+    )
+    process.env.PLUGIN_TEST_SECRET = 'must-not-reach-the-child'
+    const result = await runPluginOnce({
+      directory,
+      entry: 'tool.mjs',
+      runtimeKind: 'node',
+      timeoutMs: 20_000
+    })
+    delete process.env.PLUGIN_TEST_SECRET
+
+    if (result.state !== 'ran') throw new Error(`expected a run, got ${JSON.stringify(result)}`)
+    expect(result.exitCode).toBe(0)
+    const parsed = JSON.parse(result.stdout.trim()) as { cwd: string; secret: string | null }
+    // Its own directory, not the plugin's and not the app's, and the environment it was written rather than
+    // inherited: an inherited secret would show up here.
+    expect(parsed.cwd).not.toBe(directory)
+    expect(parsed.cwd).toContain('plugin-run-')
+    expect(parsed.secret).toBeNull()
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  it('kills a run that exceeds its budget and says it timed out', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'plugin-dir-'))
+    await writeFile(join(directory, 'slow.mjs'), 'setTimeout(() => {}, 10_000)\n', 'utf8')
+    const result = await runPluginOnce({
+      directory,
+      entry: 'slow.mjs',
+      runtimeKind: 'node',
+      timeoutMs: 400
+    })
+
+    if (result.state !== 'ran') throw new Error('expected a run result')
+    expect(result.timedOut).toBe(true)
+    expect(result.signal).toBe('SIGKILL')
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  it('refuses an entry the deployed plugin does not hold, and an unregistered runtime', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'plugin-dir-'))
+    expect(
+      await runPluginOnce({ directory, entry: 'absent.mjs', runtimeKind: 'node' })
+    ).toMatchObject({
+      state: 'refused',
+      reason: 'entry-missing'
+    })
+    await writeFile(join(directory, 'tool.mjs'), 'console.log(1)\n', 'utf8')
+    expect(
+      await runPluginOnce({ directory, entry: 'tool.mjs', runtimeKind: 'ruby' })
+    ).toMatchObject({
+      state: 'refused',
+      reason: 'runtime-unsupported'
+    })
+    await rm(directory, { recursive: true, force: true })
+  })
+})
+
+describe('plugin operations (the gate runs first)', () => {
+  type Protection = Parameters<typeof decidePluginOperation>[0]['protection']
+  const protection: Protection = {
+    level: 'unprotected',
+    scope: { filesystem: 'runtime-write-protected', network: 'allowlist' }
+  } as unknown as Protection
+
+  const manifestBytes = (): Uint8Array =>
+    new TextEncoder().encode(
+      JSON.stringify({
+        schema_version: 1,
+        id: 'demo-plugin',
+        display_name: 'Demo plugin',
+        summary: 'A plugin used by the tests.',
+        license: 'MIT',
+        runtime: { kind: 'node' },
+        tools: [{ name: 'demo_tool', description: 'Does the demo thing.', entry: 'tools/demo.mjs' }]
+      })
+    )
+
+  const storeWithCandidate = async (): Promise<PluginSourceCandidateStore> => {
+    const store = new PluginSourceCandidateStore({
+      fetchBytes: async () => ({ ok: true, bytes: manifestBytes() })
+    })
+    await store.preview('github:acme/plugin@v1', 'owner-1')
+    return store
+  }
+
+  const tokenOf = (store: PluginSourceCandidateStore): string => {
+    const candidate = (store as unknown as { candidates: Map<string, unknown> }).candidates
+    const [token] = candidate.keys()
+    return token
+  }
+
+  it('writes nothing and starts nothing when the operation was not confirmed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugins-root-'))
+    const store = await storeWithCandidate()
+    const spawnImpl = vi.fn()
+
+    const deploy = await deployCandidate({
+      store,
+      token: tokenOf(store),
+      ownerId: 'owner-1',
+      pluginsRoot: root,
+      confirmed: false,
+      protection,
+      policy: 'remembered',
+      fetchBytes: async () => ({ ok: true, bytes: new TextEncoder().encode('// tool\n') })
+    })
+    expect(deploy).toMatchObject({ state: 'refused', reason: 'confirmation-missing' })
+    // The red line: nothing was written...
+    expect(await readdir(root)).toEqual([])
+
+    const run = await runCandidateOnce({
+      store,
+      token: tokenOf(store),
+      ownerId: 'owner-1',
+      pluginsRoot: root,
+      confirmed: false,
+      protection,
+      policy: 'remembered',
+      spawnImpl
+    })
+    expect(run).toMatchObject({ state: 'refused', reason: 'confirmation-missing' })
+    // ...and nothing was started.
+    expect(spawnImpl).not.toHaveBeenCalled()
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('consults the policy for a confirmed run, and refuses a token it never issued', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugins-root-'))
+    const store = await storeWithCandidate()
+    const spawnImpl = vi.fn()
+
+    const denied = await runCandidateOnce({
+      store,
+      token: tokenOf(store),
+      ownerId: 'owner-1',
+      pluginsRoot: root,
+      confirmed: true,
+      protection,
+      policy: 'deny',
+      spawnImpl
+    })
+    expect(denied).toMatchObject({ state: 'refused', reason: 'unprotected-execution-denied' })
+    expect(spawnImpl).not.toHaveBeenCalled()
+
+    const unknown = await runCandidateOnce({
+      store,
+      token: 'not-issued-by-us',
+      ownerId: 'owner-1',
+      pluginsRoot: root,
+      confirmed: true,
+      protection,
+      policy: 'remembered',
+      spawnImpl
+    })
+    expect(unknown).toMatchObject({ state: 'refused', reason: 'unknown-token' })
+    expect(spawnImpl).not.toHaveBeenCalled()
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('deploys a confirmed candidate from the ref it previewed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'plugins-root-'))
+    const store = await storeWithCandidate()
+    const urls: string[] = []
+
+    const deploy = await deployCandidate({
+      store,
+      token: tokenOf(store),
+      ownerId: 'owner-1',
+      pluginsRoot: root,
+      confirmed: true,
+      protection,
+      policy: 'remembered',
+      fetchBytes: async (url) => {
+        urls.push(url)
+        return { ok: true, bytes: new TextEncoder().encode('// tool\n') }
+      }
+    })
+
+    expect(deploy).toMatchObject({ state: 'deployed' })
+    if (deploy.state !== 'deployed') throw new Error('expected a deployment')
+    expect(deploy.deployment.entries).toHaveLength(1)
+    // Read from the ref the preview recorded, not from a branch that may have moved since.
+    expect(urls[0]).toContain('acme/plugin/v1/tools/demo.mjs')
+    await rm(root, { recursive: true, force: true })
   })
 })
