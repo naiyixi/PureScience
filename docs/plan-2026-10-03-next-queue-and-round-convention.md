@@ -5064,3 +5064,37 @@ prettier（3.9.6），与盘上文件**逐字节比对 83/83 相同** ⇒ 是 `n
 ### 五 仍未做（具名，C 的其余）
 
 **C4 ClinVar SCV 级详情** → **C2 文献库整页全选**（需窗口读数）→ **C5/C6 ENCORI、PDC 新连接器**（拨前先做来源可答性探测）。
+
+## 一百〇五、v2.2.0（批 C）C4 已交付：ClinVar 逐提交（SCV）证据（会话，2026-10-14）
+
+### 一 交付
+
+| 项 | 要点 |
+| --- | --- |
+| 新工具 `clinvar_submissions` | 入参 `{variant: rsID\|VCV…, max_submissions?(1..200,默认50)}`；回 `{variation:{accession,variation_id,name,type,record_status,**number_of_submissions**,**number_of_submitters**,date_last_updated,date_created}, n_submissions_returned, truncated, submissions:[{scv,scv_version,submitter,org_id,organization_category,submission_date,date_last_updated,contributes_to_aggregate,record_status,review_status,germline_classification,somatic_classification,assertion,assertion_methods,citations,comment}]}` |
+| 为什么要它 | **聚合分类会把「哪个实验室说了什么」掩掉**；本工具给**一行一次提交**，每行只引述提交者自己的话（`review_status` 是源自己写的、包括「no classification for the single variant」这类）——**单行不是记录的判定**（描述里写死） |
+| 截断诚实 | `truncated` 由**记录申报的提交数**决定（`rows.length < NumberOfSubmissions`）：列表短就明说它短，`number_of_submissions`/`number_of_submitters` 照抄归档 |
+| 具名拒答（零请求） | `rs\d+` / `VCV\d+` 之外一律 **不发请求**、回 `invalid-variant`（基因符号、句子都不猜）；esearch 无命中 ⇒ `not-found`；无联系方式 ⇒ `contact_email_required`（与同文件既有工具**同一道门**） |
+
+### 二 四步
+
+1. **测源**：既有 esummary 路径只给 SCV/RCV **名册**（`supporting_submissions`）；逐条字段在 **VCV XML** —— 根 `<VariationArchive>`（`NumberOfSubmissions` / `NumberOfSubmitters` / `Accession` / `VariationID` …）+ 每条 **`<ClinicalAssertion>`**（`ID`/`SubmissionDate`）内含 `<ClinVarAccession Accession="SCV…" SubmitterName OrgID OrganizationCategory>`、`<Classification>{ReviewStatus, GermlineClassification, Comment Type="public"}`、`<Assertion>`、`<Attribute Type="AssertionMethod">`、`<Citation><ID Source="PubMed">`。**先查旧名 `ClinVarAssertion` 空手而回**——现名是 `ClinicalAssertion`，且要挑**真有提交**的变异才看得见。
+2. **政策**：见上表（零请求拒答 + 截断诚实 + 每行只引述）。
+3. **接线**：复用 `esearch(ctx, q, term, retmax)`、`ncbiEtiquette(ctx.credentials)`、`ctx.fetchText`；**只抽文档化的字段，不认识的元素忽略而不是并进行**。
+4. **真读数（真 NCBI，走工具自己的代码路径）**：
+   - `VCV005007684` ⇒ 归档 `CFTR c.222del`、提交数 1；**1 行**：`SCV008080025` / `Juno Genomics, Hangzhou Juno Genomics, Inc` / OrgID 506213 / laboratory / 提交 2026-09-30 / `criteria provided, single submitter` / **Pathogenic** / `variation to disease` / `ACMG Guidelines, 2015` / PubMed **25741868** / 公开评论四条判据原文；
+   - `rs80357906`（BRCA1 c.5266dup，`VCV000017677`）⇒ **提交 101、提交者 92**、返回 3 行、**`truncated: true`** ✓；
+   - `BRCA1` ⇒ `invalid-variant`（0 请求）；`rs999999999` ⇒ `not-found`。
+
+### 三 读数
+
+用例 17 条（新 5：逐提交字段+实体解码/截断口径/形状拒答 0 请求/not-found/联系方式门）；`src/main/connectors` **984 passed ｜ 53 skipped**（86 文件）；双 typecheck 0；`eslint --no-cache` 0；`check-readme-sync` EXIT=0（**276 工具**）；`pre-push-checks` EXIT=0。钉子在 `variants.test.ts` 的**有序 id 表**（补 `clinvar_submissions` 于 `clinvar_search` 之后）。
+
+### 四 本片自踩（两处）
+
+1. **助手块又插进数组内部**（**同一个坑第二次**，与 §一百〇四 同形）：锚点取「第一个工具对象」，而它天生在 `export const …_TOOLS: ToolDescriptor[] = [` **之后** ⇒ 一串 TS1005。**定法升级为规则**：模块级声明**一律锚在 `export const <CONNECTOR>_TOOLS: ToolDescriptor[] = [` 之前**插入，插完看下一非空行是不是数组的 `{`。
+2. **`UID` 在 bash 里是只读变量**：探针里 `UID=$(…)` 静默失败 ⇒ efetch 用了 `id=501` 的垃圾记录，我一度以为「VCV XML 里没有逐提交」⇒ 变量换名（`CVUID`）后立刻看见。**定法**：脚本里别用 `UID`/`EUID`/`PPID` 这类保留名。
+
+### 五 仍未做（具名，C 的其余）
+
+**C2 文献库整页全选**（需窗口读数）；**C5 ENCORI、C6 PDC 新连接器**（动手前先做来源可答性探测）。
