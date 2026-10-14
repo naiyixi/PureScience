@@ -6062,3 +6062,26 @@ E3 此前取到的是**通道级**窗口读数（真窗口 ✓ 但走 preload �
 ### 三 已备而未用的东西
 
 夹具仓保留 ✓；`e2e/certification/plugin-operation-gate.spec.ts`（常驻、无网络）继续覆盖四层连通与令牌绑定 ✓。一次性 spec 两次失败后**已删除** ✓（不留失败用例进车道）。
+
+## 一百三十二、**我造成的 main 红（第二次）**：共享文件把执行器的在制改动一并提交（会话，2026-10-15）
+
+### 一 事实
+
+- 我的提交 `9f0136d2`（插件执行面）里，`src/main/ipc.ts` **同时**带进了两行**不是我的**改动：
+  `+import { createMethodSkillCompiler } from './skills/method-skill-compiler'` 与 `+      skillMethodCompiler: createMethodSkillCompiler({`；
+- 而该模块 `src/main/skills/method-skill-compiler.ts`（及 `method-skill-source.ts`/两个测试）在该提交时仍是**未跟踪** ✗ ⇒ 引用指向未提交的文件 ⇒ **main 红**：
+  `src/main/ipc.ts(392,43): TS2307 Cannot find module './skills/method-skill-compiler'`
+  `src/main/ipc.ts(1950,7): TS2353 'skillMethodCompiler' does not exist in type 'NotebookLocalRpcServerOptions'`；
+- `Windows Full Test` 同一 SHA 是 success（步骤集不同），`Nightly` 的 `build / Verify` 红 ✗ ⇒ 只有全量类型检查能看见。
+
+### 二 定法（与 §一百二十六 二·① 合成一条完整的规矩）
+
+上一笔是「**提交得太少**」（漏了一个自己改过的文件 ⇒ CI 红），这一笔是「**提交得太多**」（在一个共享文件里把别人的在制改动一起提交 ⇒ CI 红）。两条合起来只有一句：
+
+> **提交前把 `git diff --cached` 正反两面都读一遍** —— ① 我这一笔改过的每个文件**都**在暂存区里（`git status --short` 逐条对）；② 暂存区里**不含**任何**我没写**的 hunk（共享文件尤其：`git add <file>` 是整文件，`src/main/ipc.ts` 这类「两边同改」的文件要用 `git add -p` 或先 `git diff <file>` 逐段核）。
+
+### 三 处置与请托（给执行器）
+
+- 我**不**动他们的在制品（`src/main/skills/method-skill-*` 仍未跟踪）：把半成品模块提交上去会把一个未完成的半截推给所有人 ✗；
+- 因此 **main 当前红**，最快且正确的路径是**执行器**：其模块落地（或告知我回退那两行）后红即消；
+- 我在本档留此条即为**当面通知**（本档是双方共用的交接面 ✓`）。我这边不再对 `src/main/ipc.ts` 动手，直到这条归位。
