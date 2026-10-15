@@ -7176,3 +7176,32 @@ export const pythonReady = (root: string, expectedVersion: number): boolean => {
 ### 四 纪律提醒（本轮第三次同类之后写的）
 
 **立「下一单元」前先搜 `e2e/certification/`**（§一百五十五）。本单元的正当性已核：它**不是**已交付的读数，而是**测试台能力**（就地造内核），且此前有**两处**读数因它缺失：alias lineage **行分支**、`notebook-declined-copy`（跳过原因日志 `pythonReady:false, rReady:false`）。
+
+### 五 §一百五十六·补：**我的前提错了两处** —— 就地更正，并给出真正可做的那一步
+
+**更正依据**：`e2e/certification/notebook-declined-copy.spec.ts:65-98` 自己就把「落盘就绪运行时」这件事做完了：
+
+```ts
+const dataRoot = await page.evaluate(… api.storage.getInfo() …)   // 问应用自己要，不猜路径
+const runtimeRoot = seedReadyRuntime(dataRoot)                      // 真落盘就绪运行时
+page = await app.configureFakeAgent()                               // 重启：新进程才读得到上面那份
+const status = await page.evaluate(… api.notebookEnv.getStatus() …)
+const hasProvisioner = 'pythonRecoveryBlocked' in status || 'rRecoveryBlocked' in status
+test.skip(!hasProvisioner && status.pythonReady !== true,
+  `skipped: this build answers notebook-env:getStatus from its fallback (no provisioner), which reports
+   pythonReady:false whatever is on disk … the sentence this spec asserts is unreachable in this lane, not missing.`)
+expect(status.pythonReady).toBe(true)                               // 前提是证明的，不是假设的
+```
+
+**我错在哪**：
+
+1. **错判原因**。§一百五十六 我写「测试台没内核 ⇒ 去造一个」。事实：**测试台（该规格）已经会造**，且造法与我设计的落盘方案一致（问应用要路径 ✓ → 落盘 ✓ → 重启 ✓）。**真正的阻塞是这份构建**：`notebookEnv.getStatus()` 走的是**没有 provisioner** 的兜底分支 ⇒ **无论盘上有什么**都报 `pythonReady:false` ⇒ 规格才跳过 —— 它自己把那句写成 **「unreachable in this lane, not missing」**（**这份车道够不着，不是产品缺这句话**）。
+2. **把两件事混成一件**。`alias-lineage` 规格里写的「行分支需要 python/R 内核」≠ 本节的「就绪门」：就绪门只要**标记 + 一个文件** ✓；而**行分支需要真跑 cell**（一次运行写入别名值、又一次运行就地改它）⇒ 需要**真能执行 cell 的解释器**（产品的内核协议），**标记和一个符号链接给不了** ✗。⇒ §一百五十六 二·4 那句「记具名结论」正解：**就绪门可满足，但行分支仍需真执行能力**。
+
+### 六 真正可做的那一步（下一单元）
+
+**给 e2e 构建带上 provisioner**（不是造内核）：查 `pythonRecoveryBlocked` / `rRecoveryBlocked` 这两个字段的产出点，看它为何在这份构建里缺席（`isPackaged` / 构建开关 / dev 分支），能开就开 ⇒ 一开之下：
+- `notebook-declined-copy` 的**那句诚实回话**变成可断言（该规格自称只是「本车道够不着」）；
+- alias lineage **行分支**仍需**真解释器**（另一件事，**不**因这一步解决）。
+
+**判据**：改完实测 `notebookEnv.getStatus()` 里出现 `pythonRecoveryBlocked`/`rRecoveryBlocked` 且 `pythonReady === true`（真窗口读数）；拿不到就记**具名**结论，不许写成「已解决」。
