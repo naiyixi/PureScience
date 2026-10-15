@@ -7111,3 +7111,30 @@ if (request.source === 'user') {
 **因此本单元不再需要为 B 取读数**（不可达的支路不是产品行为，取了也不是产品读数），也**不**据此写任何「有洞/没问题」的结论。B 的告警仍是有价值的**装配期防御**（谁将来把这条线拔了，日志会喊），保留原样。
 
 **下一单元回到 A**：按 §一百五十四 二·1-3、5（真窗口 → 经门跑被审阅的 cell → 真点同意 → 只读扫 `run.json` 断言 `riskReview.codeHash` 为 64 位十六进制且 `aliasLineageContentHash(run)` 与之一致），负半边**按 A 写**（有审批面但答否 ⇒ 真拒绝、无新运行、无收据）。
+
+## 一百五十五、收据路由读数**已交付**（第三次同一情形）：立案前先查既有认证规格（会话，2026-10-16）
+
+### 一 事实
+
+我在 §一百五十四 把「收据路由（`riskReview.codeHash`）在真数据上被走过」立为下一单元。开工时先查认证车道 —— **它已经存在并已实测跑绿**：
+
+| 规格 | 用例 | 关键断言 |
+| --- | --- | --- |
+| `e2e/certification/notebook-run-risk-receipt.spec.ts:14` | *「a run that passes the review carries a receipt this spec recomputes」* | `reading.found === true`（并附诊断：`no run record for the cell (runs in state: …)`）⇒ **`receipt` 非空** ⇒ `ruleSetVersion === 'notebook-run-risk:v1'`、`verdict === 'allow'`、`hits === []`、`source === SAFE_CODE` ⇒ **`receipt.codeHash === 规格内独立重算的摘要`** |
+| `e2e/certification/notebook-run-risk-approval.spec.ts:16` | *「a flagged notebook cell asks on the approval card, and declining means it never ran」* | 情形 A 的正负两半（上卡 + 答否 ⇒ 真没跑） |
+| `e2e/certification/notebook-declined-copy.spec.ts:64` | *「a declined notebook run is re-said in words instead of the engine error it arrived as」* | 断言屏上**不出现** `NotebookRunDeclinedError` / `Error invoking remote method` |
+
+**本轮实测（真窗口，本地）**：`2 passed, 1 skipped (35.1s)` —— 绿的两条正是**收据**与**审批卡（情形 A）**；**跳过的是 declined-copy**，日志给出**具名**原因：`[b1-declined] the app reports: {"pythonReady":false,"rReady":false,…}` ⇒ **无内核**（与已知测试台缺口一致，属具名跳过而非静默通过）。
+
+**并排除「空过」**：`receipt?.codeHash` 与 `recomputed` 若同为 `undefined` 会假绿 ⇒ 已核该规格在比哈希**之前**先断言 `found` 为真、`receipt` **非空**、规则集/裁决/命中/来源逐项相等，摘要由规格**自己**从运行源码算（不引用产品算好的值）⇒ **不是空过**。
+
+### 二 教训（第三次，值得写成纪律）
+
+**本轮已有三次**「我立案的单元其实早已交付」：B2 第三片（§一百五十一）、收据路由（本节）、以及 B2 第三片的读数（§一百五十一·补）。**唯一真缺口是 E3 的两个按钮** —— 它的特征是「桥级有覆盖、按钮级没有」，**只有去核规格里点的是不是真按钮**才看得出来。
+
+⇒ **纪律**：立任何「下一单元」之前，**先在 `e2e/certification/` 里按语义搜一遍**（收据 / 审批 / 拒绝 / 血缘 / 面板名），确认它是不是已有真窗口规格；**已有时只做两件事**：跑它取活读数、把它写进台账 —— **不要重写一份**。（下一单元 = 唯一真缺口那种形态：**规格存在但点的是桥不是按钮**。）
+
+### 三 队列现状（收口后）
+
+- 已关闭：B2 第三片（交付 + 读数）、E3 按钮（新规格 `plugin-buttons-window.spec.ts`，1 passed）、收据路由（既有规格实测 2 passed）。
+- 待办只剩：① alias lineage **行分支**的真窗口读数 ⇒ 需**测试台备 python/R 内核**（`runtime/envs/default-python/bin/python` 不存在；`notebook-declined-copy` 的跳过是同一缺口的另一处表现）；② `assay_chembl_id` 形态校验（**跨工具**行为变更，需与话术一起评估）；③ v2.5.0 下一批拆解（等拍板）。
