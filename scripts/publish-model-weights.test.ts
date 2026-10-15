@@ -1,7 +1,9 @@
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -472,5 +474,73 @@ describe('the uploader hands gh what the manifest promises', () => {
     })
 
     expect(calls[0]).toContain('--clobber')
+  })
+})
+
+describe('the CLI entry point, run the way a human runs it', () => {
+  // Why this block exists: a module-link error — a duplicated export, or a relative import one level too
+  // deep — makes the whole file unusable to `node` while vitest still links it and every other test in
+  // this file passes. The documented `npm run publish:model-weights` entry then does nothing but crash,
+  // and no gate in this repo sees it (eslint and tsc do not link an `.mjs`). Verified: a duplicated
+  // export did exactly that, and this is the check that would have caught it.
+  const cliPath = fileURLToPath(new URL('./publish-model-weights.mjs', import.meta.url))
+
+  const runCli = (args: string[]): { status: number | null; stdout: string; stderr: string } => {
+    const result = spawnSync(
+      process.execPath,
+      ['--no-warnings=MODULE_TYPELESS_PACKAGE_JSON', cliPath, ...args],
+      { encoding: 'utf8' }
+    )
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr }
+  }
+
+  it('loads at all: --help prints the usage and exits 0', () => {
+    const result = runCli(['--help'])
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('--spec <spec.json>')
+  })
+
+  it('publishes offline: a spec prints the manifest it would ship, exit 0', () => {
+    const dir = makeWeightsDir()
+    const result = runCli(['--spec', writeSpec(dir)])
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    const printed = JSON.parse(result.stdout) as { entries: { id: string; sha256: string }[] }
+    expect(printed.entries.map((entry) => entry.id)).toEqual(['doc-parse-primary', 'ocsr-primary'])
+    // The digest in what it printed is ours, computed over the real bytes on disk.
+    expect(printed.entries[1].sha256).toBe(digestOf(OCSR_BYTES))
+  })
+
+  it('refuses with a non-zero code, names the reason, and writes no manifest', () => {
+    const dir = makeWeightsDir()
+    // Two entries claiming one asset name: two identities for the same bytes.
+    const specPath = writeSpec(dir, {
+      entries: [
+        {
+          id: 'doc-parse-primary',
+          revision: 'abc123',
+          kind: 'document-parse',
+          license: 'Apache-2.0',
+          file: 'doc-parse.onnx'
+        },
+        {
+          id: 'ocsr-primary',
+          revision: 'def456',
+          kind: 'structure-recognition',
+          license: 'MIT',
+          file: 'ocsr.onnx',
+          assetName: 'doc-parse.onnx'
+        }
+      ]
+    })
+    const outPath = join(dir, 'manifest.json')
+    const result = runCli(['--spec', specPath, '--out', outPath])
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('refused (asset-name-duplicated)')
+    expect(existsSync(outPath)).toBe(false)
   })
 })

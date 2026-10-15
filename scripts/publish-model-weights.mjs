@@ -465,9 +465,7 @@ const main = async (argv = process.argv.slice(2)) => {
 
 export {
   buildManifest,
-  createUploadAsset,
   main,
-  prepareUpload,
   publish,
   realDeps,
   sha256OfFile,
