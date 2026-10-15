@@ -57,15 +57,19 @@ warning 条数（144）高于 CI 的 130，原因可解释且已核对：这一�
 
 ## 三 处置
 
-1. **红 1**：已改（见 §一），与本文一并提交。
+1. **红 1**：已改（见 §一）。**CI 判决**：本笔车道被同轮的第二次推送顶掉（`36426103` 的 Nightly/Windows
+   两条都被 `cancel-in-progress` 取消），按祖先关系引用后一笔 —— `36426103` 是 `3bfb44fb` 的祖先
+   （`git merge-base --is-ancestor` 为真），而 `3bfb44fb` 的 Nightly run `38709880842` 里
+   **`build / Verify (lint + typecheck + test + package)` = success** —— 正是 `83036ef0` 上红的那一步；
+   同一 run 的 `Windows Full Test` = success。
 2. **红 2**：按仓内既有先例（`0a6362be`「regenerate the two stale darwin baselines, and say why rather than just doing it」）
-   刷新该基准，**不放宽 `maxDiffPixelRatio`**、也不遮蔽导航区。刷新读数与复核记录：
-   `docs/evidence/2026-10-15-visual-baseline-refresh.md`（若该文件不存在，说明刷新那一步在本轮没有跑成，
-   §四 会写明内存闸门的具体读数与配方 —— 不许把未跑成写成已修）。
+   刷新该基准，**不放宽 `maxDiffPixelRatio`**、也不遮蔽导航区。读数与 CI 判决：
+   `docs/evidence/2026-10-15-visual-baseline-refresh.md`（§二.4 本机 `1 passed (4.9s)`、§四 CI `1 passed (7.4s)`）。
 
 ## 四 未取证 / 未复核（具名，不写成 0）
 
-- 刷新后的基准**能否在 CI 的 macos-14 runner 上通过**，只能由下一次 macos-arm64 构建作业给出判决；
-  本机刷新只证明「本机同一份代码跑同一张图是自己一致的」。
+- 刷新后的基准**能否在 CI 的 macos-14 runner 上通过**：**判决已取**（本笔 `3bfb44fb` 的 Nightly，
+  macos-arm64 作业第 16 步 `Run desktop visual regression` = success / `1 passed (7.4s)`）—— 逐字读数见
+  `docs/evidence/2026-10-15-visual-baseline-refresh.md` §四。
 - 本机内存闸门（取证时刻的真实读数）：空闲物理页 **4154 ≈ 65 MB**、`vm.swapusage` 已用 **6627.94 M / 7168.00 M**。
   占位者按 RSS 排序：`eslint`（本次门禁，约 0.6 GB）、Hermes 桌面进程、Bitz Net 等长期驻留应用。

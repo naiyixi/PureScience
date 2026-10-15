@@ -6804,6 +6804,6 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
   **26 条行带（间距 ≈30 px = 一行导航）**，页面正文区与顶栏**零像素变化** ⇒ 证实是「导航多一项、其余整体位移」；
   其余三张基准逐字节未变。
 - **明确没做**：没改 `maxDiffPixelRatio`（仍 darwin 0.004）、没遮蔽导航区、没动任何断言 —— 只换了那一张 PNG。
-- **未取证**：CI（打包态 / macos-14 runner）能否重新落进 0.4% 阈值，只有下一次 macos-arm64 构建作业给判决。
+- **未取证 → 已取证（2026-10-15 17:54 同一轮内取到）**：本笔 `3bfb44fb` 的 Nightly run `38709880842` / macos-arm64 作业 `116344530833` 的第 16 步 `Run desktop visual regression` = **completed / success**，日志原文 **`1 passed (7.4s)`**；同作业第 14 步 P0 认证 = success（`95 passed (24.9m)`）；整个 run = **success**（Verify + 四平台构建 + publish 全绿），同笔 `Windows Full Test` = **success**。仍未逐字核对的一格：记录 JSON 落在 566 MB 产物里（输入侧已由 `if [ "success" = "success" ]` 与 `VISUAL_OUTCOME: success` 两条印出）。
 - 读数全文：`docs/evidence/2026-10-15-visual-baseline-refresh.md`。
 
