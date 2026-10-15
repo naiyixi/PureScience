@@ -7205,3 +7205,35 @@ expect(status.pythonReady).toBe(true)                               // 前提是
 - alias lineage **行分支**仍需**真解释器**（另一件事，**不**因这一步解决）。
 
 **判据**：改完实测 `notebookEnv.getStatus()` 里出现 `pythonRecoveryBlocked`/`rRecoveryBlocked` 且 `pythonReady === true`（真窗口读数）；拿不到就记**具名**结论，不许写成「已解决」。
+
+## 一百五十七、兜底的真正原因：**机器上没有 micromamba**（不是构建开关，也不是测试台缺内核）（会话，2026-10-16）
+
+### 一 源码链（逐环，非推测）
+
+1. `src/main/ipc.ts:2911` ⇒ `const provisioningRoot = runtimeRoot(resolveDataRoot())`（**dataRoot 之下**，印证 §一百五十六 二）。
+2. `:2920-2926` ⇒
+   ```ts
+   let provisioner: ReturnType<typeof createProductionProvisioner> | undefined
+   try {
+     const configuredMirror = await settingsService.getPackageMirror()
+     const mirror = await effectiveMirrorAsync(configuredMirror, app.getLocale())
+     provisioner = createProductionProvisioner({ root: provisioningRoot, channel: mirror.condaChannel ?? process.env.PURESCIENCE_CONDA_CHANNEL ?? 'conda-forge', caBundle: mirror.caBundle, … })
+   } catch { /* 构造失败 ⇒ provisioner 保持 undefined */ }
+   ```
+   注释原文：*「if construction fails (**e.g. micromamba missing in dev**), `provisioner` stays undefined but the notebook-env handlers are **STILL registered below (as unavailable stubs)**, so the renderer gets an actionable 'runtime unavailable' status/error instead of a hard 'No handler registered for notebook-env:provision' crash.」*
+3. `provisioner.ts:1779` ⇒ `const mm = resolveMicromamba({ home: derivedHome, ...opts.micromamba })` ⇒ 真正找二进制的地方（`src/main/notebook/micromamba` 由 `storage/command-owner.ts:26` 也在用）。
+4. `provisioner.ts:768-769` ⇒ **provisioner 才**在 status 里带 `pythonRecoveryBlocked` / `rRecoveryBlocked` ⇒ 这正是 `notebook-declined-copy` 规格用来判断「这句回话是谁答的」的字段。
+
+### 二 本机读数
+
+`which micromamba` **空**；`/opt/homebrew/bin/micromamba`、`/usr/local/bin/micromamba` 不存在；`brew list --versions micromamba` 无输出 ⇒ **本机没有 micromamba** ⇒ §一 的 `catch` 生效 ⇒ 兜底 stub ⇒ 规格跳过。**这就是「这份构建没有 provisioner」的准确含义**（构建与源码都完整，**是机器缺件**）。
+
+### 三 因此修正 §一百五十六·补 的措辞
+
+- 原措辞「给 e2e 构建带上 provisioner」**不准** ✗ ⇒ 准确说法是：**让机器具备 provisioner 的构造前提（micromamba）**；构建本身无需改动。
+- 与「alias lineage **行分支**」的关系**仍然分开** ✓：装上 micromamba 只让**就绪门/状态面**可断言（配合规格已有的 `seedReadyRuntime`）；**行分支要真跑 cell**，仍需**真内核 + 真解释器**（另一件事）。
+
+### 四 本轮动作与判据
+
+- 已启动：`brew install micromamba`（**国内镜像** `HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles`，后台 + 完成通知；直连 `micro.mamba.pm` 实测只有 ~5 KB/s ⇒ 892 KB 即被截断，tarball 不可行）。
+- **判据**：装成之后 ⇒ 真窗口里 `notebookEnv.getStatus()` 出现 `pythonRecoveryBlocked` / `rRecoveryBlocked` **且** `pythonReady === true`（配合规格自己的 `seedReadyRuntime`）⇒ 那时 `notebook-declined-copy` 的那句诚实回话**可断言**，并取到活读数。**拿不到就记具名结论，不许写成「已解决」。**
