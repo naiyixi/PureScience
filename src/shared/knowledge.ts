@@ -89,6 +89,12 @@ export type KnowledgeSearchResult = {
   sha256: string
   // Present on every row while no semantic source is configured: a row that says what it is.
   lexicalOnly: true
+  // Set when a citation verifier re-read the location and the bytes no longer match. Absent means "not
+  // found to have moved" — never "verified": the response's `verification` field says whether anyone looked.
+  stale?: true
+  // Set when the location could not be read at all — a different finding from `stale`, and not a retired
+  // citation either.
+  unreadable?: true
 }
 
 export type KnowledgeCoverage = {
@@ -104,6 +110,9 @@ export type KnowledgeSearchResponse = {
   status: KnowledgeSearchStatus
   mode: KnowledgeSearchMode
   degradation?: KnowledgeSearchDegradation
+  // 'not-configured' is not a synonym for 'checked': it says nobody re-read the bytes, so no row below was
+  // found fresh OR stale.
+  verification: 'checked' | 'not-configured'
   coverage: KnowledgeCoverage
   results: KnowledgeSearchResult[]
 }
