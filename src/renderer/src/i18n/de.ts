@@ -2031,7 +2031,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModelsHint':
     'Modelle, die auf diesem Rechner Dokumente und Abbildungen auswerten.',
   'settings.localParsingModelsPlanned':
-    'Noch nicht in dieser Fassung: der Abschnitt sagt, wo diese Modelle künftig stehen. v1.78.0 bringt die Dateien — ohne Prüfsumme des Herausgebers wird nichts geladen.',
+    'Noch nicht in dieser Fassung: der Abschnitt sagt, wo diese Modelle künftig stehen. v2.5.0 bringt die Dateien — ohne Prüfsumme des Herausgebers wird nichts geladen.',
 
   'settings.scenarioModelInherit': 'Wie aktives Modell',
   'settings.scenarioModelSessionDetail': 'Konversationsdetails',
@@ -4887,5 +4887,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.goalsMilestones': 'Meilensteine',
   'settings.goalsUnreadable':
     'Die Zielaufzeichnungen dieser Sitzungen konnten nicht gelesen werden:',
-  'settings.goalsLoadFailed': 'Ziele konnten nicht geladen werden:'
+  'settings.goalsLoadFailed': 'Ziele konnten nicht geladen werden:',
+  'specialist.pluginCatalogUpdate': '{plugin} aus der aufgezeichneten Quelle aktualisieren',
+  'specialist.pluginCatalogSource': 'Aus {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} wurde ohne aufgezeichnete Quelle bereitgestellt und lässt sich hier daher nicht aktualisieren.',
+  'specialist.pluginReplace': '{plugin} ersetzen',
+  'specialist.pluginReplaced': '{plugin} ersetzt — die ersetzte Bereitstellung hatte {previous} Einträge deklariert',
 }

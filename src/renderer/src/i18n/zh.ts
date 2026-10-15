@@ -841,7 +841,7 @@ export const zh = {
   'settings.localParsingModels': '本地解析模型',
   'settings.localParsingModelsHint': '在本机运行、用于解析文档与插图的模型。',
   'settings.localParsingModelsPlanned':
-    '本版尚未提供：这一区先把位置说明白。v1.78.0 才会带来这些资产，且没有发布方校验值就不下载。',
+    '本版尚未提供：这一区先把位置说明白。v2.5.0 才会带来这些资产，且没有发布方校验值就不下载。',
 
   'settings.scenarioModelInherit': '与主模型相同',
   'settings.scenarioModelSessionDetail': '会话详情',
@@ -4428,7 +4428,12 @@ export const zh = {
   'settings.goalsUnmet': '未满足 —— 还没有读数',
   'settings.goalsMilestones': '里程碑',
   'settings.goalsUnreadable': '这些会话的目标记录读不回来：',
-  'settings.goalsLoadFailed': '加载目标失败：'
+  'settings.goalsLoadFailed': '加载目标失败：',
+  'specialist.pluginCatalogUpdate': '从记录来源更新 {plugin}',
+  'specialist.pluginCatalogSource': '来源 {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} 部署时没有记录来源，因此在这里无法更新。',
+  'specialist.pluginReplace': '替换 {plugin}',
+  'specialist.pluginReplaced': '已替换 {plugin} —— 被替换的部署原本声明 {previous} 个条目',
 }
 
 export type ZhKey = keyof typeof zh

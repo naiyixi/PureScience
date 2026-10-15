@@ -1965,7 +1965,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModelsHint':
     'Модели, работающие на этой машине для разбора документов и иллюстраций.',
   'settings.localParsingModelsPlanned':
-    'В этой версии пока нет: раздел говорит, где они будут. Файлы появятся в v1.78.0, и без контрольной суммы издателя ничего не загружается.',
+    'В этой версии пока нет: раздел говорит, где они будут. Файлы появятся в v2.5.0, и без контрольной суммы издателя ничего не загружается.',
 
   'settings.scenarioModelInherit': 'Как активная модель',
   'settings.scenarioModelSessionDetail': 'Детали разговора',
@@ -4742,5 +4742,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.goalsUnmet': 'Не подтверждено — измерений пока нет',
   'settings.goalsMilestones': 'Вехи',
   'settings.goalsUnreadable': 'Записи целей этих сессий не удалось прочитать:',
-  'settings.goalsLoadFailed': 'Не удалось загрузить цели:'
+  'settings.goalsLoadFailed': 'Не удалось загрузить цели:',
+  'specialist.pluginCatalogUpdate': 'Обновить {plugin} из записанного источника',
+  'specialist.pluginCatalogSource': 'Источник {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} развёрнут без записанного источника, поэтому здесь его нельзя обновить.',
+  'specialist.pluginReplace': 'Заменить {plugin}',
+  'specialist.pluginReplaced': '{plugin} заменён — заменённое развёртывание объявляло {previous} элементов',
 }

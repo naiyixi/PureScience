@@ -1825,7 +1825,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': '本機解析模型',
   'settings.localParsingModelsHint': '在本機執行、用於解析文件與圖表的模型。',
   'settings.localParsingModelsPlanned':
-    '本版尚未提供：這一區先把位置說明白。v1.78.0 才會帶來這些資產，且沒有發佈方校驗值就不下載。',
+    '本版尚未提供：這一區先把位置說明白。v2.5.0 才會帶來這些資產，且沒有發佈方校驗值就不下載。',
 
   'settings.scenarioModelInherit': '與主模型相同',
   'settings.scenarioModelSessionDetail': '會話詳情',
@@ -4372,5 +4372,10 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.goalsUnmet': '未滿足 —— 尚無讀數',
   'settings.goalsMilestones': '里程碑',
   'settings.goalsUnreadable': '這些工作階段的目標記錄讀不回來：',
-  'settings.goalsLoadFailed': '載入目標失敗：'
+  'settings.goalsLoadFailed': '載入目標失敗：',
+  'specialist.pluginCatalogUpdate': '從記錄來源更新 {plugin}',
+  'specialist.pluginCatalogSource': '來源 {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} 部署時沒有記錄來源，因此在這裡無法更新。',
+  'specialist.pluginReplace': '取代 {plugin}',
+  'specialist.pluginReplaced': '已取代 {plugin} —— 被取代的部署原本宣告 {previous} 個項目',
 }

@@ -2022,7 +2022,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModelsHint':
     'Modèles exécutés sur cette machine pour analyser documents et figures.',
   'settings.localParsingModelsPlanned':
-    "Pas encore dans cette version : la section indique où ils prendront place. La v1.78.0 apportera les fichiers, sans somme de contrôle de l'éditeur rien n'est téléchargé.",
+    "Pas encore dans cette version : la section indique où ils prendront place. La v2.5.0 apportera les fichiers, sans somme de contrôle de l'éditeur rien n'est téléchargé.",
 
   'settings.scenarioModelInherit': 'Comme le modèle actif',
   'settings.scenarioModelSessionDetail': 'Détails de conversation',
@@ -4860,5 +4860,10 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.goalsMilestones': 'Jalons',
   'settings.goalsUnreadable':
     "Les enregistrements d'objectifs de ces sessions n'ont pas pu être lus :",
-  'settings.goalsLoadFailed': 'Impossible de charger les objectifs :'
+  'settings.goalsLoadFailed': 'Impossible de charger les objectifs :',
+  'specialist.pluginCatalogUpdate': 'Mettre à jour {plugin} depuis sa source enregistrée',
+  'specialist.pluginCatalogSource': 'Depuis {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} a été déployé sans source enregistrée, il ne peut donc pas être mis à jour ici.',
+  'specialist.pluginReplace': 'Remplacer {plugin}',
+  'specialist.pluginReplaced': '{plugin} remplacé — le déploiement remplacé déclarait {previous} entrées',
 }

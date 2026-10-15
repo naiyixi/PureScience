@@ -881,7 +881,7 @@ export const en: Record<ZhKey, string> = {
   'settings.localParsingModelsHint':
     'Models that run on this machine to parse documents and figures.',
   'settings.localParsingModelsPlanned':
-    'Not part of this version: the section is here so the page says where these will live. v1.78.0 brings the assets, with a publisher checksum required before anything is downloaded.',
+    'Not part of this version: the section is here so the page says where these will live. v2.5.0 brings the assets, with a publisher checksum required before anything is downloaded.',
 
   'settings.scenarioModelInherit': 'Same as active model',
   'settings.scenarioModelSessionDetail': 'Conversation details',
@@ -4754,5 +4754,10 @@ export const en: Record<ZhKey, string> = {
   'settings.goalsUnmet': 'Unmet — no reading yet',
   'settings.goalsMilestones': 'Milestones',
   'settings.goalsUnreadable': "These sessions' goal records could not be read:",
-  'settings.goalsLoadFailed': 'Could not load goals:'
+  'settings.goalsLoadFailed': 'Could not load goals:',
+  'specialist.pluginCatalogUpdate': 'Update {plugin} from its recorded source',
+  'specialist.pluginCatalogSource': 'From {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} was deployed without recording its source, so it cannot be updated from here.',
+  'specialist.pluginReplace': 'Replace {plugin}',
+  'specialist.pluginReplaced': 'Replaced {plugin} — the deployment it replaced declared {previous} entries',
 }

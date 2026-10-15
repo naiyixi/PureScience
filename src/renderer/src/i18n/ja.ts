@@ -1966,7 +1966,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': 'ローカル解析モデル',
   'settings.localParsingModelsHint': '文書や図表の解析のためにこの端末で動くモデルです。',
   'settings.localParsingModelsPlanned':
-    'この版には未搭載です。この区画は置き場所を示すためのものです。資産は v1.78.0 で提供し、発行元の検証値がない限りダウンロードしません。',
+    'この版には未搭載です。この区画は置き場所を示すためのものです。資産は v2.5.0 で提供し、発行元の検証値がない限りダウンロードしません。',
 
   'settings.scenarioModelInherit': 'アクティブモデルと同じ',
   'settings.scenarioModelSessionDetail': '会話詳細',
@@ -4725,5 +4725,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.goalsUnmet': '未達 —— まだ読み取りがありません',
   'settings.goalsMilestones': 'マイルストーン',
   'settings.goalsUnreadable': '次のセッションの目標記録を読み取れませんでした：',
-  'settings.goalsLoadFailed': '目標を読み込めませんでした：'
+  'settings.goalsLoadFailed': '目標を読み込めませんでした：',
+  'specialist.pluginCatalogUpdate': '記録されたソースから {plugin} を更新',
+  'specialist.pluginCatalogSource': '取得元 {source}',
+  'specialist.pluginCatalogNoSource': '{plugin} はソースを記録せずにデプロイされたため、ここからは更新できません。',
+  'specialist.pluginReplace': '{plugin} を置き換える',
+  'specialist.pluginReplaced': '{plugin} を置き換えました —— 置き換え前の宣言は {previous} 件でした',
 }

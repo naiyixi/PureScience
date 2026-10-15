@@ -1938,7 +1938,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModelsHint':
     '문서와 그림을 해석하기 위해 이 컴퓨터에서 실행되는 모델입니다.',
   'settings.localParsingModelsPlanned':
-    '이 버전에는 없습니다. 이 영역은 자리가 어디인지 밝히기 위한 것입니다. 자산은 v1.78.0에서 제공되며 발행자 검증값이 없으면 내려받지 않습니다.',
+    '이 버전에는 없습니다. 이 영역은 자리가 어디인지 밝히기 위한 것입니다. 자산은 v2.5.0에서 제공되며 발행자 검증값이 없으면 내려받지 않습니다.',
 
   'settings.scenarioModelInherit': '활성 모델과 동일',
   'settings.scenarioModelSessionDetail': '대화 상세',
@@ -4645,5 +4645,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.goalsUnmet': '미충족 — 아직 판독 없음',
   'settings.goalsMilestones': '마일스톤',
   'settings.goalsUnreadable': '다음 세션의 목표 기록을 읽을 수 없습니다:',
-  'settings.goalsLoadFailed': '목표를 불러오지 못했습니다:'
+  'settings.goalsLoadFailed': '목표를 불러오지 못했습니다:',
+  'specialist.pluginCatalogUpdate': '기록된 소스에서 {plugin} 업데이트',
+  'specialist.pluginCatalogSource': '출처 {source}',
+  'specialist.pluginCatalogNoSource': '{plugin}은(는) 소스를 기록하지 않고 배포되어 여기서 업데이트할 수 없습니다.',
+  'specialist.pluginReplace': '{plugin} 교체',
+  'specialist.pluginReplaced': '{plugin}을(를) 교체했습니다 — 이전 배포는 {previous}개 항목을 선언했습니다',
 }
