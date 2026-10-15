@@ -6862,3 +6862,11 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 ### 四 同时记：队列里另一条我**不动**
 
 `get_bioactivity` 的 `assay_chembl_id` 不做形态校验 —— 与既有 `molecule_chembl_id` / `target_chembl_id` 同一写法，收紧属**跨工具**行为变更（会同时改既有工具语义），台账已明写「需与话术一起评估，本轮不擅动」。本轮维持该判断。
+
+### 五 §一百五十一·补：**读数也早已存在**，我上一轮把「行分支未覆盖」误记成「缺读数」——就地更正
+
+**更正依据**：`e2e/certification/artifact-alias-lineage.spec.ts`（认证车道，B2-3 自 v2.3.0 起就在）—— `test('the provenance panel shows the producing run alias lineage and its recipe')`：真窗口 → 建项目 → 假 agent 真回合产出**真产物**（由真 notebook 运行经应用自己的 artifact 工具写出）→ 打开该产物的 **Provenance** → 点 **Alias lineage** 段 → 断言 `artifact-alias-lineage` 可见、`artifact-alias-lineage-recipe` 含 **`notebook-alias-lineage:v1`**（⇒ 答案不是 unavailable 分支）、`artifact-alias-lineage-unavailable` 计数为 0、且 `空态 or 首行` 必有一者可见；并把 `empty/rows/section` 的实际文本打到日志里作读数。
+
+**该用例自己写明覆盖边界（这才是准确口径）**：本读数覆盖「面板渲染主进程造的投影 + recipe 在屏 + 不用 unavailable 兜底 + 无理由时的诚实陈述」；**未覆盖**「真窗口里出现**一行真数据**」，因为那需要「一次 notebook 运行写入别名值 + 又一次运行就地改它」= **python/R 内核**，而该 harness **不提供**（`runtime/envs/default-python/bin/python` 不存在）⇒ 行分支改由**投影层用例 + 面板 render 用例**覆盖（本轮实测：`run-alias-lineage.test.ts` + 面板 render/integration **3 文件 / 65 passed**）。
+
+**因此登记的下一项改为（比「补读数」准确）**：若要覆盖**行分支的真窗口读数**，需要给 harness **备一个 python/R 内核**（这是**测试台**缺口，不是产品缺口）—— 项目里需先有 `runtime/envs/default-python/bin/python`。在此之前不许把「行分支只有单测覆盖」说成「真窗口已证行」。**别把它写成产品缺陷。**
