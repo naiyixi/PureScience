@@ -7288,3 +7288,18 @@ expect(status.pythonReady).toBe(true)                               // 前提是
 - 本节解决的是**笔记本面**的行分支读数；
 - **产物溯源面板**里的别名级血缘（§一百五十一）已交付且已有真窗口读数，唯独它的「行分支」样本需要**带执行快照的产物** ⇒ 那是**另一条**（更重），仍另说；
 - **不**因为本单元绿了就说产物面行分支也覆盖了 ✗。
+
+### 四 §一百五十九·补：规格的驱动方式与选择器都取准了，并做一处**诚实切分**
+
+**驱动方式（照 `notebook-rerun.spec.ts` 已验证的现成路）**：`createProject(page, …)` → `sendPrompt(page, 'Create a provenance artifact.', 'Artifact provenance verified for session', 120_000)` ⇒ **假 agent 经 notebook MCP 跑一个真 cell**，并把笔记本留在窗口里（该规格头注原文：*「it runs a real Bash cell through the notebook MCP and leaves the notebook running, so the session holds a live notebook reference and a recorded cell」*）⇒ 面板自现（`kernel-notebook-pane`，必要时先 `workspace-preview-toggle`）；**「之后一次运行」**就用 `notebook-cell-rerun` ✓。
+
+**要断言的那一行**：`data-testid="notebook-cell-stale-reason"`（`NotebookPreview.tsx:250`）✓ —— 源码注释（`:573-577`）说明该标记**自 v2.1.0 起还携带「就地变更（direct 或经别名）」的理由**，且*「a reason explains a marker, it never removes one」* ✓。
+
+**诚实切分（重要，别夸大）**：
+
+- 面板这一行渲染的是**理由**（人名级/就地/别名），**并不**渲染 `producerContentHash` ✗ ⇒ 规格**断言行的出现与文案** ✓，**不**声称「屏上看到了哈希」✗。
+- **哈希的真实性**已由**更强的读数**在真数据上证过：§一百五十三·补二 —— 沿读模型规则在真数据根上 `rows=1693 rowsWithRealHash=1693 rowsNotRecorded=0` ✓（且样本哈希与 F2/F3 真机目标指纹 `b720f53a…` 三者互证 ✓）。两件事分开陈述，**不互相冒用** ✓。
+
+**规格判据（照此写）**：① 落盘指向本机真 `python3` 的 `envs/default-python/bin/python` + `.env-ready` ⇒ ② `configureFakeAgent()` 重启 ⇒ ③ `sendPrompt` 产出一个真 cell ⇒ 断言 `pythonReady` 相关的**运行可见**（不再被门挡住）⇒ ④ 点 `notebook-cell-rerun`（**之后一次运行**）⇒ ⑤ 断言屏上出现 `notebook-cell-stale-reason` **且文案非空**（具名理由，不是空白/不是笼统失败）⇒ ⑥ 行文本原样打日志作读数。
+
+**若第 ④/⑤ 步拿不到**（例如假 agent 的那个 Bash cell 不写「命名变量」⇒ 人名级规则看不见、rerun 亦不产生理由）⇒ **记具名结论**（说明卡在哪一环：cell 语言 / 是否写变量 / 是否需要 python cell），**不许**写成「行分支已覆盖」或「行分支不存在」✗。
