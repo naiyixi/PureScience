@@ -6965,3 +6965,20 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 1. **E3 的 `Deploy` / `Run once` 真窗口读数**（配方见 §一百五十二 二）；`blocked-by` = 并发会话正在写那批文件 + 内存闸门（起 Electron 前先 `vm_stat`）。
 2. **回执分态的第二处**（`session-data-cleanup` 两条）：`blocked-by` = wire 形状 + 渲染层那句 + 聚合口径的低风险默认（`freedBytes` 保持必填、另加具名 `bytesState`）。
 3. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2 / IC54（产品决定）。
+
+### 三 §一百五十二·补：**唯一真缺口已关闭** —— E3 的两个按钮在真窗口里被按过（读数原样）
+
+**新增认证规格** `e2e/certification/plugin-buttons-window.spec.ts`（`testDir='./e2e'` ⇒ 自动被收），用例：*「the deploy and run-once buttons a reader presses answer in a real window」*。**实跑结果：1 passed (40.6s)** ✓。
+
+**三条读数（原样，非转述）**：
+
+1. **勾选前**：`[plugin-ops] before-confirm deploy=disabled runOnce=disabled` —— 这正是「窗口只能从读者真的勾过的那一格发出 `confirmed: true`」的**可执行**判据（代码里就是 `disabled={!pluginOperationConfirmed || busy}`）；勾选后两个按钮**真变可用**（同一用例断言）。
+2. **`Deploy` 真按下** ⇒ 屏上给出**真目录与真条目数**：
+   `Deployed plugin-fixture · 1 file(s) · /var/folders/…/purescience-electron-e2e-AvxteF/storage/PureScience-DEV/plugins/plugin-fixture`
+   （同一句话在「本次动作结果」与「已部署插件目录行」两处出现 ⇒ 选择器取 `.first()`，并在日志里点名两处都带它。）
+3. **`Run once` 真按下** ⇒ 默认策略下的**具名**拒绝（不是笼统失败）：
+   `Refused: approval-required — This run would be unprotected (filesystem: runtime-write-protected, network: unrestricted); the policy does not remember approvals, so it needs one per run.`
+
+**顺带核过的两个前提**：夹具仓 `naiyixi/purescience-plugin-fixture` 仍为 **PUBLIC**（`gh repo view` ⇒ visibility=PUBLIC、默认分支 main）✓；本机与认证车道走的是 GitHub 读取路径 ✓。
+
+**至此 §一百五十二 的审计结论收口**：18 条未落项 —— 16 条历史条目、1 条已更正（B2 第三片，含其行分支的**测试台**缺口具名）、**1 条真缺口已于本节点关闭**。台账内**不再有指向产品代码的「未开工」声明**。
