@@ -7497,3 +7497,72 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 - **不存在**「单一权重同时做版面/文本解析与结构识别」的干净公开方案 ⇒ manifest **按能力多条目**（文档解析 / 结构识别 / 通用插图 / 兜底规则引擎），**故意不与某个厂商绑定**。
 - U4 的化学一路验收加强：**多引擎一致性**（≥2 个独立引擎给出同一结构才算高置信）+ **低置信即拒答并给人工核对入口** + 派生结果挂 **revision + 输入指纹**。
 - **sha256 仍由我方实算**（作者方普遍不发布；DECIMER 有 md5，可作交叉核对，但**不替代** sha256）。
+
+## 一百六十五、本轮追加（执行器，2026-10-15 23:0x–）—— **回执分态的第二处**落地（会话 / 项目 notebook 数据清理），并说明为什么本轮不碰 v2.5.0 U2 第三片
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `HEAD == origin/main == 5ce9aedb`（v2.5.0 U2 第二片 = manifest 类型与校验器），Latest = **v2.4.0**；
+  `gh run list` 显示该 SHA 的 **Nightly 正在跑**（Windows Full Test 已 success）⇒ 本轮不推第二笔之外的任何东西。
+- **会话正在推 v2.5.0**：U1（`64e35774` 九语文案）、U2 第二片（`5ce9aedb`）；随后 §一百六十一–§一百六十四 是它的选型调研。
+  ⇒ 本执行器**不重做**这些，也不去认领它正在做的 U2 第三片（原因见 §四）。
+- 树上 10 个改动是**并发会话的在制品**（`src/main/specialist/**`、`src/preload/**`、`SpecialistsPanel.tsx`、
+  `specialist-store.ts`、`shared/plugin-source.ts`）—— 它正在做 §一百三十七 那条「已部署插件的目录与卸载」的后续。
+  **本单元一个字节都没碰这些路径**，`git add` 只加自己的 19 个文件（提交前贴过 `git diff --cached --name-only`）。
+- 本单元取自 **§一百五十三·五 第 2 条**（上一单元自己登记的缺口，带 `blocked-by` 与低风险默认）——即
+  「回执分态的第二处」。不是新自拟：它是 P0-10 那条「0 与『没量到』同形」的**剩余两处**。
+
+### 一 缺口核实（读源取得，file:line）
+
+`src/main/notebook/session-data-cleanup.ts` 的两条路径都写 `dirSize(root, new Set()).catch(() => 0)`
+（项目级原 `:71`、会话级原 `:109`），而 `dirSize` 的**文档化策略**就是「列不出来的目录记 0」
+⇒ 「看了一眼，里面是 0 字节」与「根本没看进去（EACCES / I/O）」在**主进程出口同形**。这个 0 会被三处消费：
+
+| 消费点 | 症状 |
+| --- | --- |
+| `src/renderer/src/lib/session-deletion-notice.ts`（`state: 'removed'`） | 屏上念「已释放 0 B」——一次没人做过的测量被当成读数 |
+| `src/renderer/src/pages/home/HomePage.tsx`（`freedBytes === 0` 的兜底分支） | 屏上念「未发现它占用的存储数据」——而运行数据其实被删掉了 |
+| 两条 `*.notebook data removed` 日志 | 与真 0 同形（本项目「拒绝分支先加具名计数」的那条纪律） |
+
+### 二 交付（19 文件：6 源/契约 + 4 用例 + 9 份字典）
+
+- `session-data-cleanup.ts`：两条路径改用 `measureDirectorySize` 三态测量；量不到时 `freedBytes` 仍是 0，
+  但**同时**给出具名 `freedBytesState: 'unreadable'`（就是测量层自己的那个词）；日志行由同一个
+  helper（`describeNotebookBytes`）组装 ⇒ 两条路径不会各写一份、不会漂。
+- `shared/session-persistence.ts` / `shared/projects.ts`：契约注释写明「该字段缺席 ⇒ 0 是真读数」，
+  项目回执透传 `runDataBytesState`（此时 `freedBytes` 是下界，不是总额）。
+- `deletion-coordinator.ts`：把会话级/项目级的具名状态**透传**进 `ProjectDeletionOutcome`（不是吞掉）。
+- 渲染侧两句实话 + 2 键 ×9 语：`ws.sessionDeletedReleasedUnmeasured`、`home.projectDeletedReleasedUnmeasured`
+  （zh ≠ en；zh-Hant 全繁体；无术语表/机翻腔命中）。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后的运行）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（8 文件，含 i18n 质量门） | **100 passed** |
+| 新断言的有效性（变异测试） | 把项目那条路径改回 `dirSize(...).catch(() => 0)` ⇒ 该用例 **1 failed**；恢复后全绿 ⇒ 断言不是「怎么写都绿」 |
+| 新用例的证据强度 | 真文件系统：`chmod 000` 一个**空**子目录 ⇒ `readdir` 真 EACCES（测量无读数），而 `rm -r` 仍成功（只需父目录的写+执行位）⇒ 真读到「删掉了但没有读数」这一态，不是替身 |
+| `tsc` node / web（`--composite false`） | exit 0 / exit 0 |
+| `npx eslint --no-cache <本单元 19 路径>` | 0 error |
+
+### 四 刻意没做的（具名，不许读成「已做」）
+
+1. **本轮不碰 v2.5.0 U2 第三片（离线读路径：主进程读 `resources/` 的 manifest ⇒ 分区列三态）**：
+   它要把 manifest 送到渲染端 ⇒ **要么新开一条渲染端可见通道**（契约计数涟漪 ≈ 30 文件），**要么**等会话把
+   `src/preload/index.ts` 那批在制品落定 —— 两条都撞同一处，而本仓明令「不许两个执行体做同一件事」。
+   留给会话（它正推 v2.5.0）或下一轮在它落定后取。
+2. **本单元没有真窗口读数**（内存闸门 + 会话 dev 实例在跑；起 Electron 前须先 `vm_stat`）。窗口那半的行为
+   本来就没变（量不到就不报字节），本轮补的是「不再说反话」那一半：证据是**真文件系统**上的读数，不是替身。
+3. `src/main/specialist/plugin-catalog.ts` 里的同一折叠**在并发会话的在制品中**，不碰、不提交。
+4. 如实点名：`npx prettier --write src/renderer/src/i18n/*.ts` 顺带折行了七份字典里**两条不属于本单元**的键
+   （specialist 插件目录相关，仅换行、值未变）——已写进提交信息，不据为己有。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **v2.5.0 U2 第四片**（发布脚本，仿 `scripts/fetch-micromamba.mjs`：算出 sha256 + 产出 manifest +
+   上传资产 tag；无网时只做本地校验与打印）：`blocked-by` = 无（不碰 preload / i18n / 会话在制路径），
+   且它是「manifest 由我方实算」这条纪律的**落地点**。注意：真跑需先有已选定权重（产品决定），
+   脚本本身可用隔离夹具自证（真文件 ⇒ 真摘要 ⇒ 过校验器；改一字节 ⇒ 不符即拒）。
+2. **v2.5.0 U2 第三片**（离线读路径 + 分区三态）：`blocked-by` = 会话 `src/preload/index.ts` 那批在制品落定
+   （或由会话自己做），以及「新通道 vs 复用既有通道」的连锁量。
+3. 跨轮不变：M2 权重选型（产品决定）、IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）。
