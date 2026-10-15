@@ -7705,3 +7705,51 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 - ③ 读取层的**路径解析**（打包后用 `process.resourcesPath/model-weights/manifest.json`，dev 用仓内 `resources/…`）＋把三态接到界面（今天的状态就会如实显示「清单已发布但模型未安装」而不是空话）。
 - ② 把校验器接成**构建/推前门**（清单不过即失败）。
 - ④ 发布脚本：把本地文件变成 manifest 条目（实算 sha256/bytes）并附上传命令；无网时只做本地校验与打印。
+
+## 一百六十八、本轮追加（执行器，2026-10-16 04:0x–）—— ① U2 第三片的**读取层那一半**接上真消费方（支持诊断包）；② U2 ② 随包清单的**推前形状门**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端 `origin/main` = `3fbe4d20`（会话的 U2 第一片 + 文档），Latest = **v2.4.0**；本地当时多一笔未推的 docs（`a450343d`）。
+- 树上 10 个改动**仍是并发会话的在制品**（`src/main/specialist/**`、`src/preload/index.ts`、`src/preload/renderer-api.d.ts`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`）⇒ 本单元**一个字节没碰**：既没碰 `preload`（U2 第三片的界面那一半正卡在这里），也没碰它的 `specialist` 目录。
+- 内存闸门（本轮现取，不照抄上一轮）：**空闲物理页 3883（≈63 MB）、swap 已用 9.6 G / 10.2 G** ⇒ 真机/Electron 取证**关闭**；本单元因此仍然全部落在不需要起窗口的面上（vitest + 脚本 CLI）。
+- §一百六十五 §四 的 U2 剩余三项里，**④ 已由上一轮的 `b5512000` 交付**；本轮取 **② 与 ③ 的非界面那一半**（③ 的界面那一半 `blocked-by` 见 §四）。
+
+### 一 U2 第三片的读取层那一半：路径解析 + 三态，接上真消费方（支持诊断包）
+
+**问题**：`model-weight-manifest-file.ts` 的离线读路径自 `578bb6e8` 起就存在，但**生产里无人调用**（全树只有它自己的用例）——「已建、未接线」正是本仓明令不留的形状；而它的缺件还不止消费者：**没有任何地方知道清单在盘上哪一条路径**（dev 在仓内 `resources/`、打包后在 `process.resourcesPath/model-weights/`）。
+
+**做法的两处判断**（都可被读源复核）：
+
+1. **路径解析写成纯函数、且「找不到」是具名终态**：`resolveModelWeightManifestLocation({ override, resourcesPath, fromDir, exists })` 按序给候选（显式覆盖 → 打包 → 从调用方逐级上溯的 dev 位置），`existsSync` 逐个验；**一个都不存在时返回 `found: false / source: 'none'`，不返回一条什么都没读到的路径**。另行覆盖语义是**唯一候选**而非「第一个候选」——否则一次「拿一份未发布清单试读」的运行会静默改读随包那份，而两者的读数长得一样（用例 `treats an explicit override as the only candidate` 钉住）。dev 上溯取 1–4 级，是为了让调用方无论坐在 `out/main` 还是 `src/main/<dir>` 都指向仓根，**不依赖调用方自己数清层级**。
+2. **消费方选「支持诊断包」，因为它本来就是「这台机器上出了什么事」的载体**：设置里的「导出支持包」是用户可达的真入口，而「随包清单到底在不在、合不合规」正是一条只有我们看得懂的构建事实（`invalid` 时尤其需要它）。于是 `createSupportBundle` 多写一个 `parsing-models.json`，**字段是 `ModelWeightManifestReport`** —— 它与 `runtime.json` 的 `storageLocation` 同规矩：**只写类别，不写路径**。投影里**没有 `path` 这个键**，且 `entryCount` 在「没有可信计数」时**缺席而不是 0**（`README` 与投影注释都写明）。这条不是礼貌：**包里出现家目录路径会让整份包被拒发**（本模块自己的读回校验），所以「带路径」本来就是不可选项。
+   - `SupportBundleInput.localParsingModels` 设成**必填**：一个**可被静默省略的**事实，恰好在最需要它的时候（清单坏了才有人来导包）缺失。
+   - 装配点在 `src/main/ipc.ts` 的 `getFacts`（与 `resolveDataRoot()`、`app.getPath` 同一层），**不新开通道、不碰 preload、不动 9 语字典**：这一半的连锁因此是 4 个文件，而不是新开一条渲染端可见通道的那 ~30 个。
+
+### 二 U2 ②：随包清单的推前形状门（`scripts/check-model-weight-manifest.mjs` + 钩子第 6 段）
+
+- **为什么它必须是一道门而不是一次检查**：清单是**随包离线读**的数据 —— 发出去之后用户装上就是那个版本，**后来一笔提交改不动它**。所以形状要在**推之前**拦，而不是等有人导包时才发现。
+- 两条断言，各自具名：① 清单**过读者自己那份校验器**（直接 `import` `src/main/engines/model-weight-manifest.ts`，**不另写第二套「什么叫合规」**）；② `electron-builder.yml` 的 `extraResources` **仍然把 `resources/model-weights` 映射到 `model-weights`** —— 「文件合规」不等于「它会被装进包」，而一个不再随包出货的清单读起来与「我们从未发布」完全同形，正是要拦的那种静默。
+- 接线：`scripts/pre-push-checks.sh` 新增第 6 段（硬失败）+ `package.json` 一条 `check:model-weights`。**没进 CI 工作流**：`.github/workflows/*.yml` 受保护（`CI Integrity` 会拒），按仓规构建类闸门只能落在 `package.json`/脚本侧；这一条如实记为「门只在推前与本地入口生效」。
+- **闸门的边界（具名，不许读成更强）**：它验的是**形状**，**不验**「这个 sha256 是不是那串字节的 sha256」。实测两种输入：`sha256: "nope"` 被逐字拒绝（`entries[0].sha256: sha256 must be 64 lowercase hex characters`）；而**把 64 位十六进制换一个字符、内容假想不同 ⇒ 门照过**（这是**正确**的，本地根本没有那份 298 MB 权重）。字节级的那一半在 `publish-model-weights.mjs` 的**上传后回取复算**里（上一轮已交付），以及清单里 `publisherMd5` 与发布方自己那份的交叉核对（会话第一片已做）。
+
+### 三 读数（全部实跑，本机、隔离、无 Electron）
+
+| 项 | 读数 |
+| --- | --- |
+| 引擎读路径用例 | `model-weight-manifest-file.test.ts` **13 passed**（原 5 条 + 新 8 条：打包/dev/覆盖/一律找不到四种解析、三态投影、`entryCount` 缺席、**投影无 path**） |
+| 诊断包用例 | `src/main/diagnostics` 两文件含新 2 条（真清单→`parsing-models.json` 逐字段对上且**整包逐条不含隔离根**；坏清单→`invalid` + 字段名上屏 + 无计数） |
+| 门自己的用例 | `scripts/check-model-weight-manifest.test.ts` **6 passed**（含一条**读真仓**的用例：先断言清单文件确实在、再断言 0 problem —— 防「文件没了所以全绿」这种空过） |
+| 定向簇 | `npx vitest run scripts src/main/engines src/main/diagnostics` + 三条接线用例 ⇒ **55 files / 536 passed** |
+| 类型检查 | `tsc -p tsconfig.node.json --composite false` **exit 0**（须带堆：裸跑 **Abort trap: 6**，是已知用法坑）、`tsconfig.web.json` **exit 0** |
+| lint | `npx eslint --no-cache` 本单元 8 个路径 **0 error / 0 warning**（先 prettier 收敛 4 条格式告警） |
+| 门 CLI 端到端（真树、真退出码） | ① 现树 ⇒ `OK … validates (1 entries) and still ships as model-weights/` **exit 0**；② `sha256:"nope"` ⇒ 具名拒绝 **exit 1**；③ 空许可 ⇒ 拒 **exit 1**；④ `revision:"latest"` ⇒ 拒 **exit 1**；⑤ 去掉 extraResources 映射 ⇒ 「not shipped any more」**exit 1**；⑥ 清单缺失而映射仍在 ⇒ 「is missing while the build still ships that directory」**exit 1**；⑦ 非 JSON ⇒ 具名 **exit 1** |
+| 推前钩子 | `bash scripts/pre-push-checks.sh` **exit 0**，新第 6 段打印 `✓ [check-model-weight-manifest] OK …`（另四段照旧全绿） |
+| 全量 vitest | `npx vitest run --maxWorkers=4` ⇒ **1311 files passed / 16 skipped（1327）**、**16766 passed / 207 skipped（16973）**、**exit 0**（04:07 起 528.8s；完整输出落 `/tmp/full-vitest.log`） |
+
+### 四 具名未办与下一轮第一步
+
+- **U2 第三片的界面那一半仍未做**（分区里列出资产/三态）：`blocked-by` = 并发会话在制的 `src/preload/index.ts` / `renderer-api.d.ts`；要么等它落定后**并进既有设置载荷/已有通道**（我上一轮量过：新开渲染端可见通道约 30 文件连锁），要么由会话自己收。**本轮不碰**。
+- **字节级校验仍未在真 release 上取证**（需先选定并托管权重，属产品决定）——与上一轮同一条，未变。
+- **真机支持包导出路径本轮未取**（窗口里的「导出支持包」按钮）：卡内存闸门（空闲物理页 ≈63 MB）；已取的证据是**模块级真跑**（真清单、真 tar、逐条读回），`e2e/support-bundle.spec.ts` 对新增条目是 `arrayContaining` **附加安全**，但**没跑过就是没跑过**，记为未复核。
+- **下一轮第一步**：① 先 `git fetch` + `git status` + `git log` 看会话是否已把 preload 那批落定；② 落定 ⇒ 取 U2 第三片的界面那一半（并进既有设置载荷，不新开通道），未落定 ⇒ 取台账其余项（IC40 needs-attention、IC6 收割需真算力主机、中文源四家属外部条件）；③ 起真机/e2e 前先 `vm_stat`（本轮读数 3883 空闲页 / swap 9.6 G）。
