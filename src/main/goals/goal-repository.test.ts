@@ -28,8 +28,7 @@ describe('goal repository', () => {
   it('returns the same goal to a fresh repository instance (a restart reads it back)', async () => {
     const root = await makeRoot()
     const first = new GoalRepository({ root, now: () => 1_700_000_000_000 })
-    const written = await first.configure({
-      sessionId,
+    const written = await first.configure(sessionId, {
       objective: '把方法编译成可调用能力',
       acceptance: ['运行记录能编译成技能', '指纹稳定']
     })
@@ -51,26 +50,25 @@ describe('goal repository', () => {
     const root = await makeRoot()
     const repository = new GoalRepository({ root })
 
-    const cases: { request: Parameters<GoalRepository['configure']>[0]; code: string }[] = [
+    const cases: { request: Parameters<GoalRepository['configure']>[1]; code: string }[] = [
       {
-        request: { sessionId, objective: '   ', acceptance: ['x'] },
+        request: { objective: '   ', acceptance: ['x'] },
         code: 'empty-objective'
       },
       {
-        request: { sessionId, objective: '目标', acceptance: [] },
+        request: { objective: '目标', acceptance: [] },
         code: 'no-acceptance'
       },
       {
-        request: { sessionId, objective: '目标', acceptance: ['ok', '  '] },
+        request: { objective: '目标', acceptance: ['ok', '  '] },
         code: 'empty-acceptance-item'
       },
       {
-        request: { sessionId, objective: 'x'.repeat(2_001), acceptance: ['ok'] },
+        request: { objective: 'x'.repeat(2_001), acceptance: ['ok'] },
         code: 'objective-too-long'
       },
       {
         request: {
-          sessionId,
           objective: '目标',
           acceptance: Array.from({ length: 13 }, (_, index) => `c${index}`)
         },
@@ -79,7 +77,7 @@ describe('goal repository', () => {
     ]
 
     for (const testCase of cases) {
-      await expect(repository.configure(testCase.request)).rejects.toMatchObject({
+      await expect(repository.configure(sessionId, testCase.request)).rejects.toMatchObject({
         code: testCase.code
       })
     }
@@ -95,13 +93,11 @@ describe('goal repository', () => {
   it('keeps a criterion its id across an update, so its reading cannot be orphaned', async () => {
     const root = await makeRoot()
     const repository = new GoalRepository({ root })
-    const created = await repository.configure({
-      sessionId,
+    const created = await repository.configure(sessionId, {
       objective: '目标',
       acceptance: ['第一条', '第二条']
     })
-    const updated = await repository.configure({
-      sessionId,
+    const updated = await repository.configure(sessionId, {
       goalId: created.id,
       objective: '目标（改）',
       acceptance: ['第一条', '第三条']
@@ -120,7 +116,7 @@ describe('goal repository', () => {
   it('leaves no temporary file behind, and stores everything under the session artifacts directory', async () => {
     const root = await makeRoot()
     const repository = new GoalRepository({ root })
-    await repository.configure({ sessionId, objective: '目标', acceptance: ['ok'] })
+    await repository.configure(sessionId, { objective: '目标', acceptance: ['ok'] })
 
     const directory = join(root, 'artifacts', sessionId, '.goals')
     const entries = await readdir(directory)

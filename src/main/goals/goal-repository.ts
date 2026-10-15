@@ -10,7 +10,13 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
-import type { Goal, GoalAcceptanceItem, GoalRefusalCode, GoalState } from '../../shared/goal'
+import type {
+  Goal,
+  GoalAcceptanceItem,
+  GoalConfigureRequest,
+  GoalRefusalCode,
+  GoalState
+} from '../../shared/goal'
 import {
   GOAL_MAX_ACCEPTANCE_ITEMS,
   GOAL_MAX_OBJECTIVE_CHARS,
@@ -28,13 +34,6 @@ export class GoalValidationError extends Error {
     this.name = 'GoalValidationError'
     this.code = code
   }
-}
-
-export type GoalConfigureRequest = {
-  sessionId: string
-  goalId?: string
-  objective: string
-  acceptance: string[]
 }
 
 export type GoalStoreSnapshot = {
@@ -105,7 +104,7 @@ export class GoalRepository {
 
   // Registers a goal, or updates the one named by goalId. Updating keeps the criteria that are already met
   // and their readings: re-typing a criterion must not erase the evidence that met it.
-  async configure(request: GoalConfigureRequest): Promise<Goal> {
+  async configure(sessionId: string, request: GoalConfigureRequest): Promise<Goal> {
     const objective = nonEmpty(request.objective)
     if (!objective) {
       throw new GoalValidationError('empty-objective', 'A goal needs an objective.')
@@ -146,7 +145,7 @@ export class GoalRepository {
       criteria.push(text)
     }
 
-    const snapshot = await this.load(request.sessionId)
+    const snapshot = await this.load(sessionId)
     const at = this.now()
     const existing = request.goalId
       ? snapshot.goals.find((goal) => goal.id === request.goalId)
@@ -162,7 +161,7 @@ export class GoalRepository {
 
     const goal: Goal = {
       id: existing?.id ?? randomUUID(),
-      sessionId: request.sessionId,
+      sessionId: sessionId,
       objective,
       acceptance,
       milestones: existing?.milestones ?? [],
@@ -174,7 +173,7 @@ export class GoalRepository {
     const goals = existing
       ? snapshot.goals.map((candidate) => (candidate.id === goal.id ? goal : candidate))
       : [...snapshot.goals, goal]
-    await this.save(request.sessionId, { goals })
+    await this.save(sessionId, { goals })
     return goal
   }
 

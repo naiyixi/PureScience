@@ -47,6 +47,7 @@ import {
 import { createLogger, errorLogFields } from '../logger'
 import { PlanCommandError } from '../../shared/session-plan/contract'
 import type { RoutineConfigureRequest } from '../../shared/routine'
+import type { GoalConfigureRequest } from '../../shared/goal'
 import type { EndpointRegisterRequest } from '../../shared/endpoint'
 import type { AnnotationSetRequest } from '../../shared/annotation'
 
@@ -157,7 +158,12 @@ type NotebookLocalRpcServerOptions = {
     status(sessionId: string): Promise<unknown>
     cancel(sessionId: string, routineId: string): Promise<unknown>
   }
-  // Managed local model services (endpoint_* MCP): main-process-owned lifecycle.
+  // Persistent goals (goal_* MCP): one objective plus the criteria that decide it is finished. Progress is
+  // advanced only through the reading-checked path (F2) — this surface registers and reads back.
+  goal?: {
+    configure(sessionId: string, request: GoalConfigureRequest): Promise<unknown>
+    status(sessionId: string): Promise<unknown>
+  } // Managed local model services (endpoint_* MCP): main-process-owned lifecycle.
   endpoints?: {
     register(sessionId: string, request: EndpointRegisterRequest): Promise<unknown>
     unregister(sessionId: string, name: string): Promise<unknown>
@@ -287,6 +293,7 @@ import { fingerprintInputs } from '../../shared/task-checkpoint'
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote', 'taskCheckpointSave', 'taskCheckpointLoad'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
+const GOAL_RPC_METHODS = new Set(['goalConfigure', 'goalStatus'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
 const PDF_RPC_METHODS = new Set([
   'pdfOpen',
@@ -362,6 +369,7 @@ class NotebookLocalRpcServer {
   private readonly memoryRpcTokens = new Map<string, string>()
   private readonly contextSummaryRpcTokens = new Map<string, string>()
   private readonly routineRpcTokens = new Map<string, string>()
+  private readonly goalRpcTokens = new Map<string, string>()
   private readonly endpointRpcTokens = new Map<string, string>()
   private readonly annotationRpcTokens = new Map<string, string>()
   private readonly pdfRpcTokens = new Map<string, string>()
@@ -369,6 +377,7 @@ class NotebookLocalRpcServer {
   private readonly hostQueryRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
   private readonly routine?: NotebookLocalRpcServerOptions['routine']
+  private readonly goal?: NotebookLocalRpcServerOptions['goal']
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
   private readonly pdf?: NotebookLocalRpcServerOptions['pdf']
@@ -406,6 +415,7 @@ class NotebookLocalRpcServer {
     this.taskCheckpoint = options.taskCheckpoint
     this.contextSummary = options.contextSummary
     this.routine = options.routine
+    this.goal = options.goal
     this.endpoints = options.endpoints
     this.annotations = options.annotations
     this.pdf = options.pdf
@@ -647,6 +657,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeGoalSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.goalRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.goalRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokeEndpointSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.endpointRpcTokens.get(ownedSessionId)
@@ -836,6 +854,29 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.routineRpcTokens.get(sessionId) === token) {
           this.routineRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueGoalConnection(sessionId: string): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeGoalSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.goalRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      allowedMethods: GOAL_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.goalRpcTokens.get(sessionId) === token) {
+          this.goalRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1511,6 +1552,32 @@ class NotebookLocalRpcServer {
         throw new Error('Context-summary boundary RPC params must include sessionId and label.')
       }
       return this.contextSummary.recordBoundary(params.sessionId, params.label)
+    }
+
+    if (method === 'goalConfigure') {
+      if (!this.goal) throw new Error('Goal handler is not configured.')
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.objective !== 'string' ||
+        !Array.isArray(params.acceptance)
+      ) {
+        throw new Error(
+          'Goal configure RPC params must include sessionId, objective, and acceptance.'
+        )
+      }
+      return this.goal.configure(params.sessionId, {
+        goalId: typeof params.goalId === 'string' ? params.goalId : undefined,
+        objective: params.objective,
+        acceptance: params.acceptance.filter((item): item is string => typeof item === 'string')
+      })
+    }
+
+    if (method === 'goalStatus') {
+      if (!this.goal) throw new Error('Goal handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Goal status RPC params must include sessionId.')
+      }
+      return this.goal.status(params.sessionId)
     }
 
     if (method === 'routineConfigure') {

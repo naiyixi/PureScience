@@ -23,6 +23,7 @@ import {
   PLAN_MCP_SERVER_ARG,
   REVIEWER_MCP_PROXY_ARG,
   ROUTINE_MCP_SERVER_ARG,
+  GOAL_MCP_SERVER_ARG,
   ENDPOINT_MCP_SERVER_ARG,
   ANNOTATION_MCP_SERVER_ARG,
   PDF_MCP_SERVER_ARG,
@@ -60,6 +61,7 @@ const shouldRunPlanMcpServer = process.argv.includes(PLAN_MCP_SERVER_ARG)
 const shouldRunMemoryMcpServer = process.argv.includes(MEMORY_MCP_SERVER_ARG)
 const shouldRunContextSummaryMcpServer = process.argv.includes(CONTEXT_SUMMARY_MCP_SERVER_ARG)
 const shouldRunRoutineMcpServer = process.argv.includes(ROUTINE_MCP_SERVER_ARG)
+const shouldRunGoalMcpServer = process.argv.includes(GOAL_MCP_SERVER_ARG)
 const shouldRunEndpointMcpServer = process.argv.includes(ENDPOINT_MCP_SERVER_ARG)
 const shouldRunAnnotationMcpServer = process.argv.includes(ANNOTATION_MCP_SERVER_ARG)
 const shouldRunPdfMcpServer = process.argv.includes(PDF_MCP_SERVER_ARG)
@@ -122,6 +124,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunRoutineMcpServer) {
   void import('./settings/routine-mcp-server')
     .then(({ runRoutineMcpServer }) => runRoutineMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunGoalMcpServer) {
+  void import('./goals/goal-mcp-server')
+    .then(({ runGoalMcpServer }) => runGoalMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

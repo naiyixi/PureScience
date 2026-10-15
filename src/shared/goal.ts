@@ -52,6 +52,15 @@ export type GoalMilestone = {
   reading: GoalReadingRef
 }
 
+// What goal_configure sends. Shared rather than owned by the store, because the RPC surface validates the
+// same shape the store validates: two definitions would drift, and the drift would show up as a request the
+// transport accepts and the store refuses.
+export type GoalConfigureRequest = {
+  goalId?: string
+  objective: string
+  acceptance: string[]
+}
+
 export type Goal = {
   id: string
   sessionId: string
