@@ -61,3 +61,49 @@ export class KnowledgeValidationError extends Error {
     this.code = code
   }
 }
+
+// A citation is the whole point of the knowledge store: a result must be traceable back to the bytes it
+// came from, so a reader can re-derive it. `sha256` is computed on the READ side (see the search service),
+// never taken on trust from an index.
+export type KnowledgeLocator =
+  | { kind: 'file'; path: string; startLine: number; endLine: number }
+  | { kind: 'url'; url: string }
+  | { kind: 'pdf'; path: string; page: number }
+
+export type KnowledgeCitation = {
+  sourceId: string
+  locator: KnowledgeLocator
+  sha256: string
+}
+
+// Lexical is what this version does. Semantic is NOT simulated: there is no semantic port wired, so every
+// response says so by name rather than returning lexical hits under a word that promises more.
+export type KnowledgeSearchMode = 'lexical'
+export type KnowledgeSearchDegradation = 'semantic-source-unconfigured'
+
+export type KnowledgeSearchResult = {
+  sourceId: string
+  label: string
+  locator: KnowledgeLocator
+  // The digest of the exact bytes this result was taken from, recomputed at read time.
+  sha256: string
+  // Present on every row while no semantic source is configured: a row that says what it is.
+  lexicalOnly: true
+}
+
+export type KnowledgeCoverage = {
+  // What the index has actually seen, versus what it still owes. "No matches" and "not indexed yet" are
+  // different answers and lead to different actions.
+  indexed: number
+  pending: number
+}
+
+export type KnowledgeSearchStatus = 'ok' | 'no-matches' | 'not-indexed'
+
+export type KnowledgeSearchResponse = {
+  status: KnowledgeSearchStatus
+  mode: KnowledgeSearchMode
+  degradation?: KnowledgeSearchDegradation
+  coverage: KnowledgeCoverage
+  results: KnowledgeSearchResult[]
+}
