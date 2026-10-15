@@ -275,6 +275,7 @@ import { createDefaultSettingsService } from './settings/service'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
 import { RoutineRepository } from './settings/routine-repository'
+import { GoalRepository } from './goals/goal-repository'
 import { EndpointRepository } from './settings/endpoint-repository'
 import { EndpointManager } from './settings/endpoint-manager'
 import { RoutineScheduler } from './settings/routine-scheduler'
@@ -1753,6 +1754,10 @@ const createApplicationModules = async (
   const routineRepository = new RoutineRepository({
     storageRoot: resolveDataRoot()
   })
+
+  // Persistent goals live beside the session's own artifacts, like routines. Same single writer rule: the
+  // main process owns the file, the tool process talks to it over RPC.
+  const goalRepository = new GoalRepository({ root: resolveDataRoot() })
   const endpointRepository = new EndpointRepository({
     storageRoot: resolveDataRoot()
   })
@@ -1978,6 +1983,10 @@ const createApplicationModules = async (
         configure: (sessionId, request) => routineRepository.upsert(sessionId, request),
         status: (sessionId) => routineRepository.list(sessionId),
         cancel: (sessionId, routineId) => routineRepository.remove(sessionId, routineId)
+      },
+      goal: {
+        configure: (sessionId, request) => goalRepository.configure(sessionId, request),
+        status: (sessionId) => goalRepository.status(sessionId)
       },
       endpoints: {
         register: (sessionId, request) => endpointRepository.upsert(request, sessionId),

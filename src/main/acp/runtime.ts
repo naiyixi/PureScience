@@ -50,6 +50,7 @@ import type { SkillImportRpcConnection } from '../skills/mcp-server'
 import type { MemoryRpcConnection } from '../settings/memory-mcp-server'
 import type { ContextSummaryRpcConnection } from '../settings/context-summary-mcp-server'
 import type { RoutineRpcConnection } from '../settings/routine-mcp-server'
+import type { GoalRpcConnection } from '../goals/goal-mcp-server'
 import type { EndpointRpcConnection } from '../settings/endpoint-mcp-server'
 import type { AnnotationRpcConnection } from '../settings/annotation-mcp-server'
 import type { PdfRpcConnection } from '../settings/pdf-mcp-server'
@@ -172,6 +173,7 @@ type AcpRuntimeOptions = {
   memory?: AcpRuntimeMemoryOptions
   contextSummary?: AcpRuntimeContextSummaryOptions
   routine?: AcpRuntimeRoutineOptions
+  goal?: AcpRuntimeGoalOptions
   endpoints?: AcpRuntimeEndpointOptions
   annotations?: AcpRuntimeAnnotationOptions
   pdf?: AcpRuntimePdfOptions
@@ -355,6 +357,12 @@ type AcpRuntimeRoutineOptions = {
   mcpEntryPath: string
   mcpCommand?: string
   getRpcConnection: (binding: { sessionId: string }) => Promise<RoutineRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+type AcpRuntimeGoalOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: { sessionId: string }) => Promise<GoalRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 

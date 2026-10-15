@@ -40,6 +40,7 @@ import {
   createContextSummaryMcpServerConfig
 } from '../settings/context-summary-mcp-server'
 import type { RoutineMcpEnvironment, RoutineRpcConnection } from '../settings/routine-mcp-server'
+import type { GoalRpcConnection } from '../goals/goal-mcp-server'
 import {
   ROUTINE_MCP_SERVER_NAME,
   createRoutineMcpServerConfig
@@ -207,6 +208,13 @@ export type SessionCapabilityRoutineOptions = {
   getRpcConnection: (binding: { sessionId: string }) => Promise<RoutineRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
+export type SessionCapabilityGoalOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  isEnabled?: () => Promise<boolean>
+  getRpcConnection: (binding: { sessionId: string }) => Promise<GoalRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
 
 export type SessionCapabilityEndpointOptions = {
   mcpEntryPath: string
@@ -351,6 +359,7 @@ type SessionCapabilityOwnerOptions = {
   memory?: SessionCapabilityMemoryOptions
   contextSummary?: SessionCapabilityContextSummaryOptions
   routine?: SessionCapabilityRoutineOptions
+  goal?: SessionCapabilityGoalOptions
   endpoints?: SessionCapabilityEndpointOptions
   annotations?: SessionCapabilityAnnotationOptions
   pdf?: SessionCapabilityPdfOptions

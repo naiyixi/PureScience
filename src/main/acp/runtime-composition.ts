@@ -346,6 +346,12 @@ const createAcpRuntime = ({
           registerSessionAlias: (aliasSessionId, sessionId) =>
             notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
         },
+        goal: {
+          mcpEntryPath,
+          getRpcConnection: ({ sessionId }) => notebookRpcServer.issueGoalConnection(sessionId),
+          registerSessionAlias: (aliasSessionId, sessionId) =>
+            notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
+        },
         endpoints: {
           mcpEntryPath,
           getRpcConnection: ({ sessionId }) => notebookRpcServer.issueEndpointConnection(sessionId),
