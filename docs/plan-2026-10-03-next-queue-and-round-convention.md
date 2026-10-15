@@ -6552,3 +6552,34 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 本轮把 `session-capability-owner.ts` 的相关区域读全了：routine 是**内联**站点（没有按能力的路由表），模式是 16 类、约 25 处**完全规则**的插入（能力名元组 / 路由 id 记录 / 连接回调 / 两处 `routineRelease?` / 会话序号字段与自增 / 别名构造 / 三处路由 id 数组 / 两处释放字段 / 策略门 `policyAllowsSessionCapability(…, 'routine')` / 两处 enabled 记录字段 / `capabilities.push('routine')` / 两个 enabled 记录类型 / `buildRoutineEnvironment` 分支）。⇒ 下次开工即可按锚点一次落全 **+ 新增 `buildGoalEnvironment`（照 `buildRoutineEnvironment` 同形）+ 配套测试里枚举能力清单的用例**。
 
 **为什么不在本轮落地**：这是语义敏感的宽改动（策略门/释放点/别名/环境构建），必须与它自己的测试同批完成；会话已极长，赶工的赔率高于收益 ⇒ 按纪律留在下一步第一件事。
+
+## 一百四十六、v2.4.0 **F1 第五处：能力编织落地**（`06ea589f`）+ 自证（`1c4ec32d`）（会话，2026-10-15）
+
+### 一 编织落地
+
+`session-capability-owner.ts` 的 **16 类约 25 处**站点全部镜像（能力名元组 / 路由 id 记录 / 连接回调 / 两处释放字段 / 会话序号字段与自增 / 别名构造 / 三处路由 id 数组 / **五处**释放字段 / 会话 id 断言 / 策略门 / 两处服务器构建传参 / 能力清单 / enabled 记录三处 / 计算式 / 建环境分支），并新增 `buildGoalEnvironment`（照 `buildRoutineEnvironment` 同形）；`shared/goal.ts` 加系统提示追加（写明红线：只有应用自己取到的读数能推进进度）；`session-presentation-policy.ts` 与三个 `provider-session-*.ts` 的构造点同步。
+
+**脚本两处自踩（都靠断言在写盘前中止，零半截改动）**：① 缩进敏感的子串计数虚高（`    routine: boolean` 被 6 空格那两处「包含」）⇒ 改**行首锚定**正则；② 三处路由 id、五处释放字段、两处服务器构建传参各是**不同缩进** ⇒ 改**保留缩进的捕获组**。另外首版把 `GoalRpcConnection` 的**裸导入**重复加了一次 ⇒ tsc 报 `TS2300` ⇒ 删净。
+
+**关键自查（差点让整条编织空转）**：策略门 `policyAllowsSessionCapability` 查的是**允许清单** `CURRENT_PRIMARY_CAPABILITIES` ⇒ 若 `'goal'` 不在其中，编织再完整也**永不发放** ✗。已核：`'goal'` 在清单内（`:86`）✓ ⇒ 能力是真发放的。
+
+### 二 自证（`1c4ec32d`，两条决定性断言）
+
+| 用例 | 判据 |
+| --- | --- |
+| 允许（primary 策略） | 能力清单含 `goal`、`canonicalMcpServerNames` 含 `purescience-goal`，且 **`getRpcConnection` 被调用过一次** —— 名字在清单里 ≠ 服务器被建起来 ✓ |
+| 拒绝（reviewer 策略） | 两处都不含，且 `getRpcConnection` **一次都没被调用** ⇒ 门不是装饰性的 ✓ |
+
+过程：首版读 `provision.servers`（不存在 ⇒ TypeError）⇒ 改用「连接是否被请求」这个更强的判据；`release` 断言测的是既有按能力管线（依赖调用方传 `onGoalConnection`，与 routine 同状）⇒ 去掉不重复测；eslint 抓到辅助函数缺显式返回类型（同坑第二次）⇒ 补上。
+
+### 三 读数与状态
+
+`acp + goals + settings` **178 文件 / 2841 passed**；`session-capability-owner.test.ts` **23 passed**；node tsc 0；web tsc 0；eslint 0；全量第 14 次已起（覆盖本段）。
+
+| 单元 | 状态 |
+| --- | --- |
+| **F1 目标对象** | 库侧 ✓ + 工具面四集成点 ✓ + **能力编织 ✓** + 契约测试 ✓ + **发放自证 ✓** ⇒ **F1 完成**（尚欠真窗口读数：见下） |
+| **F2 读数推进** | 库侧 ✓ + 生产侧 ✓ + 真机读数 ✓；`goal_advance` 工具尚未挂（工具面只做了 configure/status）⇒ F2 **差最后一件** |
+| F3 / G1–G4 | 未开工 |
+
+**下一步**：① 给 F2 挂 `goal_advance`（服务端 + schema + 系统提示 + 测试，同形即可）；② F1/F2 的**真窗口读数**（读者真按的按钮/真看到的读数，按 E 系列纪律）；③ 然后 F3 上屏，再进 G1–G4。
