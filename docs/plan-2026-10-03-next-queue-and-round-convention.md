@@ -6629,3 +6629,28 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 | G1–G4 | 未开工（G2 语义来源待拍板） |
 
 读数后（探针 + spec 已删）：`goals + notebook + acp` **2867 passed**；node tsc 0；web tsc 0；eslint 0。
+
+## 一百四十八、v2.4.0 **F3 上屏作业单**（勘查已完成，下一步第一件事）（会话，2026-10-15）
+
+### 一 勘查结论（只记源码事实）
+
+- **桥**：`src/preload/index.ts` 经 `contextBridge.exposeInMainWorld('api', api)` 暴露 `window.api`；渲染层按**命名空间**调（实例：`window.api.folderGrants.list()` / `.grant({path})` / `.revoke({rootId})`）。
+- **范式组件**：`src/renderer/src/components/FolderGrantsPanel.tsx`（面板 + `window.api.<ns>.<method>()`）配同目录 **`*.render.test.tsx`** ⇒ `GoalPanel` 照它。
+- **preload 里目前没有任何 goal 通道**（`grep goal src/preload/index.ts` 零命中）⇒ F3 要新开 `window.api.goals.*`。
+- **渲染层组件目录**：`src/renderer/src/components/`（`SessionPersistenceAlert` 等是 prop 驱动、不直接调桥 ⇒ 取 `FolderGrantsPanel` 那种"自己取数"的形状）。
+- 主进程侧已有 `goal:{configure,status}` 的 RPC 处理器（`ipc.ts`）与 `GoalRepository` ⇒ F3 只差**面向渲染层**的那一层（`ipcMain.handle` + preload + 组件）。
+
+### 二 交付清单（照仓规）
+
+1. `src/shared/goal.ts`：渲染层要用的视图类型（若 `Goal` 已够就直接复用，别加平行类型）。
+2. `src/main/ipc.ts`：`ipcMain.handle` 两个通道（`status` / `configure`），**复用同一个 `GoalRepository` 实例**（不许第二份状态）。
+3. `src/preload/index.ts`：`api.goals = { status, configure }`（照 `folderGrants` 的命名空间形状）+ 类型声明。
+4. `src/renderer/src/components/GoalPanel.tsx` + `GoalPanel.render.test.tsx`：显示目标、**每条验收项各自的读数或"未满足"**、里程碑、状态。
+5. i18n：新增文案走 `add-i18n-keys.py`（TSV：键/语言/值），**9 语齐全**；判"与英文同形"时**改文案不放宽白名单**。
+6. 挂载点：找到显示会话态的那个视图（下一步第一件事就是定位它）。
+
+### 三 验收（沿用本轮纪律）
+
+- **实机**：真窗口里看到**真数据**（不是夹具）—— 读者能看到的每条验收项要么挂着**真读数**（run id + 指纹），要么明确显示**未满足**；「没有读数就不算满足」这条红线要在 UI 上**看得见**。
+- **读者真正按的按钮**必须在真窗口里被点过（E 系列纪律）。
+- 门：`eslint` + 双 `tsc` + 受影响面 vitest + 全量。
