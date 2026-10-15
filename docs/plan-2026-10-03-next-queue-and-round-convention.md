@@ -7138,3 +7138,41 @@ if (request.source === 'user') {
 
 - 已关闭：B2 第三片（交付 + 读数）、E3 按钮（新规格 `plugin-buttons-window.spec.ts`，1 passed）、收据路由（既有规格实测 2 passed）。
 - 待办只剩：① alias lineage **行分支**的真窗口读数 ⇒ 需**测试台备 python/R 内核**（`runtime/envs/default-python/bin/python` 不存在；`notebook-declined-copy` 的跳过是同一缺口的另一处表现）；② `assay_chembl_id` 形态校验（**跨工具**行为变更，需与话术一起评估）；③ v2.5.0 下一批拆解（等拍板）。
+
+## 一百五十六、测试台备内核：**就绪门的配方已从源码定死**（会话，2026-10-16）
+
+### 一 为什么不需要下载 runtime 包
+
+`src/main/notebook/runtime-paths.ts:491-495`：
+
+```ts
+export const pythonReady = (root: string, expectedVersion: number): boolean => {
+  const marker = readReadyMarker(root)
+  if (!marker || marker.defaultEnvVersion < expectedVersion) return false
+  return isFile(pythonBin(envPrefix(root, DEFAULT_PY_ENV)))
+}
+```
+
+⇒ 就绪**只**取决于两件可在本地造出来的东西：① `readReadyMarker(root)` 读得到且 `defaultEnvVersion >= 1`；② `<envPrefix>/bin/python` 是一个**文件**。**不解包、不校验哈希、不要求 micromamba 前缀**。
+
+### 二 三个位置（都已从源码取准）
+
+| 项 | 来源 | 值 |
+| --- | --- | --- |
+| 运行时根 | `runtime-paths.ts:131` `runtimeRoot = join(storageRoot, 'runtime')` | `<storageRoot>/runtime` |
+| 应用数据根（本仓） | `dataRootForParent(defaultDataParent())` | `<storageRoot>/PureScience-DEV`（`dataFolderName()` 从源码跑返回 DEV 名） |
+| ⇒ 实际落点 | `runtimeRoot(dataRoot)`（`reproduction-runtime-scope.ts:23` 同法） | **`<storageRoot>/PureScience-DEV/runtime/`** |
+| 标记文件 | `readyMarkerPath` = `join(root,'.env-ready')`；形状见 `:259-276` | `{"defaultEnvVersion":1,"preparedAt":"<ISO 字符串>"}`（**两个字段缺一即视为不存在**；`prefixDirectory` 可选；损坏**不抛**只当没有） |
+| 解释器 | `pythonBin(envPrefix(root,'default-python'))` = `runtime-paths.ts:201` | `<root>/envs/default-python/bin/python` |
+
+### 三 下一单元（照此做，不猜）
+
+认证规格（隔离根，与 F3/E3 同形）：
+1. 在**夹具的 storageRoot** 下、按上表落点写入 `.env-ready`（真 ISO 串，用 `new Date().toISOString()`）并放 `envs/default-python/bin/python` —— 先放**符号链接**指向本机真 `python3`，跑不通再换**真拷贝**；
+2. 启动真应用 ⇒ 断言**应用自己的**就绪报告里 `pythonReady === true`（该报告已是既有规格里可读的读数，`[b1-declined] the app reports: {…}` 就是它）；
+3. 然后就着这个环境去跑那条此前被跳过的规格（`notebook-declined-copy`）与 alias lineage **行分支**的读数；
+4. 若「链接的系统 python3」不足以跑真 cell（产品跑 cell 走自己的内核协议）⇒ 记**具名结论**「就绪门可满足，但真跑 cell 仍需 X」，**不**把它写成「已解决」。
+
+### 四 纪律提醒（本轮第三次同类之后写的）
+
+**立「下一单元」前先搜 `e2e/certification/`**（§一百五十五）。本单元的正当性已核：它**不是**已交付的读数，而是**测试台能力**（就地造内核），且此前有**两处**读数因它缺失：alias lineage **行分支**、`notebook-declined-copy`（跳过原因日志 `pythonReady:false, rReady:false`）。
