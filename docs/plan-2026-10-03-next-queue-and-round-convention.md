@@ -6807,3 +6807,33 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 - **未取证 → 已取证（2026-10-15 17:54 同一轮内取到）**：本笔 `3bfb44fb` 的 Nightly run `38709880842` / macos-arm64 作业 `116344530833` 的第 16 步 `Run desktop visual regression` = **completed / success**，日志原文 **`1 passed (7.4s)`**；同作业第 14 步 P0 认证 = success（`95 passed (24.9m)`）；整个 run = **success**（Verify + 四平台构建 + publish 全绿），同笔 `Windows Full Test` = **success**。仍未逐字核对的一格：记录 JSON 落在 566 MB 产物里（输入侧已由 `if [ "success" = "success" ]` 与 `VISUAL_OUTCOME: success` 两条印出）。
 - 读数全文：`docs/evidence/2026-10-15-visual-baseline-refresh.md`。
 
+## 一百五十、v2.4.0 **已发布**（tag `v2.4.0` → `4d39deca`，会话，2026-10-16）
+
+### 一 发布读数（全部为真机取回，非自陈）
+
+| 项 | 读数 |
+| --- | --- |
+| 发版位点 | `4d39deca1c73c96e25c8b0074a4a8bf65481cfc0`（`v2.4.0^{commit}` 同此 ⇒ tag 指的就是被门禁过的那个提交） |
+| 自上一版 | **46** commits since v2.3.0（tag 消息里写的就是这个数） |
+| 门禁 | 技能自带 `release-gate.sh` 五环 **eslint / typecheck:node / typecheck:web / vitest / repo-checks 全 OK**，`GATE_EXIT=0` |
+| 推送 | **冻结推送、只推一次**（`29972925..4d39deca`）；推前核过 `in-flight: 0` |
+| Release 车道 | **completed success**（run `38718854953`） |
+| 资产 | **21**（dmg/zip/exe/deb/AppImage + blockmap + 三个 yml + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json`） |
+| 发布标记 | `draft=false`、`prerelease=false`、**Latest=v2.4.0** |
+| 页面正文 | **45,320 字节**；含**未签名披露**（本机仍无 Apple 凭据 ⇒ 不声称已签名/已公证） |
+
+### 二 页面与仓规生成的差异：**只有排版，无需刷新**
+
+`gh release view v2.4.0 --json body` 45,320 字节 vs `scripts/release-notes.mjs v2.4.0 --print` 45,408 字节，**9 行差异全部是呈现位置**：工作流把未签名披露排在**末尾**、并加了一行自己的注记（`release-notes: macOS signing disclosure required …`），而生成器把它排在前部。**没有内容冲突** ⇒ 与 v2.3.0 不同，本次**不动页面**（`--apply` 只会把披露搬家并塞进工具注记，反而偏离工作流的既有形状）。
+
+### 三 发版材料（仓库外，可复用）
+
+- `/tmp/v240-changelog-section.md`（CHANGELOG 新段，4,530 字节，覆盖自 v2.3.0 以来**全部**批次 + 「明确没做」5 条）
+- `/tmp/v240-release-prep.py`（**幂等 + 断言**：版本号 / CHANGELOG 插段 / 双语 README 横幅 / 成熟度块滚动史；每处替换先断言命中数，不符即不写盘；两 README 的同段由同一常量插入 ⇒ 逐字节一致；自带 cross-file 自证）
+- `/tmp/watch-v240-release.py`（守望 Release 车道到判决，再读回资产/标记/Latest）
+
+### 四 本轮工具坑（入档）
+
+1. `python3 - <<'PY'` 的 heredoc：**首行出现非 ASCII 就会报 PEP 263 编码错**，`PYTHONUTF8=1` 也救不了（它管 I/O 编码，不管**源码解码**）⇒ 含中文的脚本文本一律走 `write_file` 落盘（或首行写 `# -*- coding: utf-8 -*-`）。
+2. **`grep -c` 不能当 `&&` 链的前件**：0 匹配时退出码 1 会静默截断链子（本轮据此漏掉过一次提交）。
+3. 自检器写错会**误报内容错**：成熟度句是**段内插入**，行首探针必然找不到 ⇒ 探针应按子串匹配并在两 README 上各断言**恰好 1 处**。
