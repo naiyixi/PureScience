@@ -7009,3 +7009,15 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 ### 四 顺手核过的一件事
 
 `run.json` 里 run 的标识字段是 **`runId`**（不是 `id`），与 `AliasLineageRun.runId` 一致 ✓ ⇒ 本轮 1693 条理由能算出来，说明 `runId` / `script` / `variablesWritten` 这几项**读的是对的** ⇒ 上面那个 0 **不是**因为整份输入没被识别，而是**只有哈希那两个字段缺**（且缺的原因是装配点不同）。
+
+### 五 §一百五十三·补：装配点已定位（就是**读模型**），下一项收窄为「沿它读数」
+
+**定位依据**（产品自己的注释与代码，非推测）：
+
+1. `src/shared/run-alias-lineage.ts:20-21`（recipe 头注）写明哈希的两条来源与各自的 provenance：**收据**取自运行被评估时持久化的 `riskReview.codeHash`；而**读模型会为「收据出现之前写下的记录」在读时重算** `sourceContentHash`，provenance 记作 **`computed-on-read`**。
+2. `src/main/notebook/repository.ts:142` ⇒ `riskReview: sanitizeNotebookRunRiskReceipt(run.riskReview)`（收据随记录一起净化落盘）；`src/shared/notebook.ts:820` ⇒ **未评估的运行 `riskReview` 保持缺席，绝不合成**（「没评估」不许读成「无风险」）。
+3. ⇒ 我 §一百五十三 手工喂裸 `run.json` 恰好**绕开了读模型**，所以 `notRecorded=2197` 只说明「**文档内联字段里没有**」，不说明产品状态 —— 与 v2.3.0 叙述里 notebook 面拿到真哈希并不矛盾：那些哈希是**读模型读时算出来的**。
+
+**下一项（收窄后，无外部依赖）**：用 `src/main/notebook/session-read-model.ts`（**复用，不另写**）在真数据根上装配运行，再喂给 `computeNotebookStaleReasons` / `aliasLineageContentHash`，统计 `producerContentHash` 是真哈希还是 `not-recorded`，并与叙述里的 **1,412 / 1,412** 对齐；不一致就**具名**指出差异发生在哪一步（装配 / 引擎 / 计数口径）。
+
+**同时记一条待判**：真数据根上 **2,197 条运行里 `riskReview` 命中 0** ⇒ 两种解释——(a) 这些运行**从未被评估过**（该根上的历史运行早于评估写入侧）、(b) 收据落在别处。**本轮不下结论**：判据是「按 `startedAt` 看有多少运行晚于收据写入侧上线」，这需要先确认评估写入侧的版本时间点。**不许**把 (a)/(b) 任一种当成已证事实写进任何对外文字。
