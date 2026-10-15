@@ -7598,3 +7598,59 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 2. 本轮的 §一百六十六 这节**本地提交、暂不推送**：此刻正在跑的车道判决属于代码提交 `4ac071d1`，
    而纯 `docs/**` 提交**自己不会新建 run**、却仍会顶掉在跑的那条（本仓已实测）⇒ 让它在下一轮随下一笔
    代码一起推，避免把判决顶没。
+
+## 一百六十七、本轮追加（执行器，2026-10-16 01:2x–）—— ① 修 main 上一处跨平台红；② v2.5.0 U2 第四片（发布脚本 + 构建门禁）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `HEAD == origin/main == 578bb6e8`（会话的 v2.5.0 U2 第三片：manifest 离线读取层）；Latest = **v2.4.0**。
+  **该提交的 Windows Full Test 已是 failure** ⇒ 本轮第一件事是归因它，不是取新单元。
+- 树上 10 个改动**全部是并发会话的在制品**（`src/main/specialist/**`、`src/preload/index.ts`、
+  `src/preload/renderer-api.d.ts`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`），
+  本单元一个字节都没碰；两次提交都只 `git add` 自己的路径并在提交前贴过暂存清单。
+- 内存闸门（开工时现取，不照抄上一轮）：**空闲物理页 3867（≈63 MB）、swap 已用 9.1 G / 空闲 1.1 G** ⇒
+  真机/Electron 取证**关闭**；本单元因此刻意选的是一门不需要起窗口的活。
+
+### 一 main 上的红：归因（读**作业级**日志）与修法（`662fb545`）
+
+- 红在作业 `Windows full test (5/8)`，报 `src/main/engines/model-weight-manifest-file.test.ts:64`：
+  `AssertionError: expected { state: 'absent', path: '/Users' } to match object { state: 'invalid', …(1) }`。
+- **红的是断言，不是实现**：那条用例拿字面量 `/Users` 当「可读但不是文件」的样本 —— macOS 上它是目录
+  （EISDIR ⇒ 实现按契约判 `unreadable`），Windows 上那个盘根本没有它（ENOENT ⇒ 实现按契约判 `absent`）。
+  即：断言陈述的是**跑测试的机器长什么样**，不是「代码怎么判」。
+- 修法（只紧不放；**没有**跳过该文件、**没有**加大超时）：用例里真建一个临时目录（`mkdtempSync`）当样本 ——
+  目录在任何平台上都「可读但不是文件」⇒ 失败是同一个失败；第一例也顺手去掉机器依赖（临时目录 + 不存在的子文件名）。
+  并加了**变异测试**证明它没被削弱：把实现改成「任何读取失败都降级成 absent」⇒ 该用例 **1 failed**，恢复即全绿。
+- 提交 `662fb545`（1 文件，只改测试）。
+
+### 二 v2.5.0 U2 第四片：发布脚本 + 构建门禁（`b5512000`）
+
+- 交付：`scripts/publish-model-weights.mjs`（三种用法：离线建清单 / 上传后**回取复算** / `--verify` 构建门禁）、
+  `scripts/publish-model-weights.test.ts`（17 条）、`package.json` 一条 `publish:model-weights`。
+- **两条纪律落在代码里**：① 每条的 sha256 由**我方**在**即将托管的那些字节**上算（作者方的 md5 只随条目
+  `publisherMd5` 作交叉核对，**不替代**）；② **发什么就核什么** —— 上传模式下每个产物上传后按发布 URL
+  逐个回取重哈希，不一致则具名拒绝且**不写清单**；离线模式**零 socket**（用例里把上传/取回两个依赖换成
+  「被调用就抛」的替身，跑完断言调用次数为 0）。
+- **形状规则没有第二套**：直接从 `src/main/engines/model-weight-manifest.ts` 导入读者那份校验器 ——
+  与 App 读随包清单用同一个模块，发布方与读者不可能长成两套「什么叫合规清单」的意见。
+- 读数（全部实跑）：定向 **17 passed**；`npx vitest run scripts src/main/app-branding.test.ts` ⇒
+  **36 files / 434 passed**（含项目分区那条钉子）；`tsc` node exit 0 / web exit 0；
+  `eslint --no-cache` 本单元 3 路径 **0 error / 0 warning**；CLI 端到端**九步**（隔离根、全离线）：
+  离线建清单 exit 0 → `--out` 落盘 exit 0 → 复算一致 exit 0 → 翻一个字节 ⇒ 具名 `sha256` 不符 exit 1 →
+  复原 exit 0 → 少一个产物 ⇒ 具名 missing exit 1 → 上传模式缺 `--out` ⇒ 拒绝 exit 1（且上传调用 0 次）→
+  非 GitHub 的 releaseBase ⇒ 拒绝 exit 1 → 无参数 ⇒ 打印用法 exit 0。
+- **刻意没做（具名，不许读成「已做」）**：ⓐ 上传那一跳（`gh release upload`）**未在真 release 上取证** ——
+  需先选定权重（产品决定）；已被替身驱动过的是「回取复算」这条规则（篡改即拒、且不写清单）。
+  ⓑ 仓库里**仍没有** `resources/model-weights/manifest.json`：没选定权重就没有条目，此时正确状态是读者那侧的
+  具名 `absent`（「我们还没发布清单」，是关于我们自己的事实），**不塞一个空清单充数**。
+  ⓒ **面板三态那一半不在本单元**：要把清单送到渲染端 ⇒ 要么新开一条渲染端可见通道（契约计数涟漪约 30 文件），
+  要么等并发会话在制的 `src/preload/index.ts` 落定 —— 两条都撞同一处。
+
+### 三 判决与下一轮第一步
+
+- `662fb545`（红修复）的判决：**要的恰恰是抓到红的那条 Windows 车道**，见本节末尾的读数行。
+- `b5512000`（U2 第四片）的判决：本轮最后一次推送，按「推完冻结」等它落定；若被后一笔顶掉，按祖先规则引后一笔。
+- **下一轮第一步**：ⓐ 把 v2.5.0 剩下的缺口按 `blocked-by` 清一遍（面板三态那半：等会话 `preload` 在制落定或由它做；
+  M2 权重选型：产品决定 —— **选型一旦给定，本轮的脚本就是第一个真跑入口**，先跑离线 `--spec` 建清单，再跑 `--upload`，
+  那时的真机读数才关闭本条「未取证」）；ⓑ 其余队列项与跨轮不变项照旧（IC40 needs-attention、IC6 收割需真算力主机、
+  中文源四家属外部条件）。
