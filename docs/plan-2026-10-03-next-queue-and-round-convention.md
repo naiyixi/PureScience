@@ -6795,3 +6795,15 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 
 细节、判据表与未取证项见 `docs/evidence/2026-10-15-nightly-lint-red-and-stale-visual-baseline.md`。
 
+### 三 红 2 的处置：基准已刷新（读数已取，CI 判决待下一次车道）
+
+- **刷新方式**：隔离工作树 `/tmp/ps-visual`（不碰在跑执行体的 `out/`）→ `npm run build:e2e` → `playwright test e2e/visual-regression.spec.ts --update-snapshots`（真 Electron 真窗口）。
+- **复核读数**：不带 `--update-snapshots` 再跑一次 ⇒ `1 passed (4.9s)`、`EXIT=0`（同一份基准连跑两次逐像素一致）。
+- **量出来的改动**：`107135 B` / `sha256 b8e4e30f…`（旧 `106546 B` / `sha256 5ec4ad35…`）；
+  纯 Python 逐像素对账：1280×800，差异 22673 px（2.21%），**包围盒 x 161..339（设置导航列）**、
+  **26 条行带（间距 ≈30 px = 一行导航）**，页面正文区与顶栏**零像素变化** ⇒ 证实是「导航多一项、其余整体位移」；
+  其余三张基准逐字节未变。
+- **明确没做**：没改 `maxDiffPixelRatio`（仍 darwin 0.004）、没遮蔽导航区、没动任何断言 —— 只换了那一张 PNG。
+- **未取证**：CI（打包态 / macos-14 runner）能否重新落进 0.4% 阈值，只有下一次 macos-arm64 构建作业给判决。
+- 读数全文：`docs/evidence/2026-10-15-visual-baseline-refresh.md`。
+
