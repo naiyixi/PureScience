@@ -6674,3 +6674,27 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 4. `src/renderer/src/pages/settings/GoalPanel.tsx` + `GoalPanel.render.test.tsx`（照 `RoutinePanel` 同形，267 + 223 行），挂进 `SettingsPage.tsx`；**只读**：显示目标、**每条验收项各自的读数或「未满足」**、里程碑、状态，以及「读不回来的会话」。
 5. i18n 9 语（`add-i18n-keys.py`，TSV）。
 6. **真窗口读数**：面板真读到真目标（不是夹具），读者真看到的每条要么挂真读数（run id + 指纹）要么明确未满足。
+
+### 一百四十八·补：F3 接线的**完整作业单**（本轮已试通到只剩账目清单，退回绿位点后落此档）
+
+本轮把 F3 接线**从头到尾写了一遍并跑到只剩「账目清单」类断言**，为了不把红灯留在树上，已全部退回（树上只剩数据侧 `06ba1ee3`，双 tsc 0、受影响面 127 passed ✓）。下面按**实测顺序**记，照做即可一次通：
+
+**① 新模块** `src/main/goals/goal-ipc.ts`（照 `src/main/settings/routine-ipc.ts` 55 行同形）：`GOAL_IPC = { LIST_ALL: 'goal:list-all' }`、`GoalCommandOwner = { listAll: () => Promise<GoalOverview> }`、`createGoalCommandOwner(repository)`、`registerGoalIpcHandlers(owner)`（用 `../ipc-handler-registry` 的 `ipcMainHandle`）。
+
+**② 渲染层契约目录** `src/shared/renderer-contract-catalog.ts`：加 `group('goal', 'goals', [['listAll', 'goal:list-all', LOCAL]])`。
+⚠ **参数顺序是 `group(capability, publicRoot, entries)`** —— capability 在前（本轮写成 `group('goals','goal',…)` 反了，症状是目录过滤后不计数）。
+
+**③ 重生成映射**：`node scripts/generate-web-api-map.mjs`（生成 `web-api-map.generated.ts`，会多出 `'goals.listAll': 'goal:list-all'`）。
+
+**④ 路由** `src/main/host-application-commands.ts`：`goalCommands`（`defineApplicationCommand<'goal:list-all', readonly [], GoalOverview>`）、命名空间映射加 `goal: goalCommands,`、依赖类型加 `goal: GoalCommandOwner`、导入 `GoalOverview` 与 `GoalCommandOwner`、分派加 `scope.registerGroup(hostApplicationCommandGroups[19], { 'goal:list-all': ({callerContext}) => localCommand(callerContext,'goal:list-all',()=>dependencies.goal.listAll()) })`。
+⚠ 组**追加到数组末尾**（`pdfAnnotations` 之后）⇒ 新下标 **19**；插中间会移位。
+
+**⑤ 组合根** `src/main/ipc.ts`：`import { createGoalCommandOwner } from './goals/goal-ipc'` + `host` 依赖里 `goal: createGoalCommandOwner(goalRepository)`（**复用同一实例**）。注意文件里另有一处 `goal: {configure,status,advance}` 是 **RPC**（agent 面）依赖，两者不是一回事。
+
+**⑥ preload** `src/preload/index.ts`：`goals: { listAll: () => electronRendererContracts.invoke('goal:list-all') }`；`src/preload/renderer-api.d.ts`：`goals: { listAll(): Promise<GoalOverview> }`。
+
+**⑦ 账目清单（本轮就是卡在这三处，务必一次改齐）**：
+- `src/main/host-application-commands.test.ts`：`HOST_CAPABILITIES` 加 `'goal'`；`createDependencies()` 加 `goal: { listAll: vi.fn(async () => ({goals: [], unreadableSessionIds: []})) }`；通道计数 **86 → 87**（两处：`:507` 与 `:525`）；本地专属计数 **58 → 59**（`:1011`）；委派用例里补一次 `await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))` + `expect(dependencies.goal.listAll).toHaveBeenCalledWith()`（该用例断言「每个 mock 恰好被调一次」）。
+- `src/preload/index.test.ts`：api 路径清单加 `'goals.listAll'`（**按字母序**插在 `'roCrate.…'` 之前、`'folderGrants.'` 之后一带）、能力清单加 `'goal'`、路由计数 **201 → 202**。警告：该文件有**多张** `toHaveLength` 清单，逐张核对，别按行号猜（本轮按行号插错了一张，导致计数从 201/202 变成 239/240）。
+
+**⑧ 然后**：`GoalPanel.tsx` + `GoalPanel.render.test.tsx`（照 `RoutinePanel` 同形，挂进 `SettingsPage.tsx`）、i18n 9 语、**真窗口读数**。
