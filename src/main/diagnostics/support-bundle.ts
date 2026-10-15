@@ -12,6 +12,8 @@ import { basename, join } from 'node:path'
 import { cpus, release, totalmem, uptime } from 'node:os'
 import * as tar from 'tar'
 
+import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
+
 export type SupportBundleVersions = {
   app: string
   electron: string
@@ -35,6 +37,15 @@ export type SupportBundleInput = {
    * renderings) can expose user and folder names, which is exactly what this bundle must not carry.
    */
   storageLocation: 'default' | 'custom'
+  /**
+   * The shipped local-parsing-model manifest, as the app's own reader found it. Required, not optional:
+   * this is a fact the app always has, and a fact that can be silently omitted is a fact that goes
+   * missing exactly when it matters (an `invalid` manifest is why a bundle gets attached).
+   *
+   * The reading is pathless by construction (`ModelWeightManifestReport`), because a bundle leaves the
+   * device — carrying the path would hand over the folder layout this module exists to spare.
+   */
+  localParsingModels: ModelWeightManifestReport
   counts?: { sessions?: number; projects?: number }
   /** Home directory to scrub from every copied file. Defaults to the environment's home. */
   homeDir?: string
@@ -76,6 +87,8 @@ What is in here
 manifest.json      application, Electron, Chrome and Node versions, plus platform and timezone
 environment.json   operating system, CPU model and count, memory, uptime
 runtime.json       storage location class (never the path), session and project counts
+parsing-models.json  the local-parsing-model manifest this build ships: which copy answered, whether it
+                   validated, how many entries it declares (absent when there is no trustworthy count)
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -241,8 +254,10 @@ export const createSupportBundle = async (
       2
     )}\n`
   )
+  // The manifest reading goes through the same scrubber as everything else, but it is pathless before it
+  // gets here: the scrubber is the backstop, not the reason it is safe to include.
+  await writeStaged('parsing-models.json', `${JSON.stringify(input.localParsingModels, null, 2)}\n`)
   await writeStaged('README.txt', README)
-
   // Newest logs first, stopping at the cap: a bundle too large to attach is as useless as a leaking one.
   let logBytes = 0
   for (const full of await listLogFilesNewestFirst(input.logDir)) {

@@ -106,6 +106,20 @@ else
   FAIL=1
 fi
 
+# ---------- 6. shipped local-parsing-model manifest (hard fail) ----------
+# The app reads this manifest offline from the installed package, so a malformed one cannot be fixed by a
+# later commit: it is already on every machine that installed the build. `check:model-weights` also asserts
+# the file still ships (electron-builder's extraResources mapping), because a manifest nobody installs
+# reads to the user as "we never published one".
+say "本地解析模型清单核对 (resources/model-weights/manifest.json)"
+if node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-model-weight-manifest.mjs >/tmp/model-weight-manifest.log 2>&1; then
+  ok "$(tail -1 /tmp/model-weight-manifest.log)"
+else
+  sed 's/^/      /' /tmp/model-weight-manifest.log
+  bad "随包清单未通过核对（清单不合规，或它已不再随包出货）"
+  FAIL=1
+fi
+
 # ---------- summary ----------
 echo
 if [[ $FAIL -eq 1 ]]; then

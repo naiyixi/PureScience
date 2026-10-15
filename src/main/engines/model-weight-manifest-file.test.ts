@@ -1,12 +1,14 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import {
   parseModelWeightManifestText,
-  readModelWeightManifestFile
+  readModelWeightManifestFile,
+  readShippedModelWeightManifest,
+  resolveModelWeightManifestLocation
 } from './model-weight-manifest-file'
 
 const usableText = JSON.stringify({
@@ -77,5 +79,159 @@ describe('readModelWeightManifestFile', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
+  })
+})
+
+// The shipped-manifest path: a real tree on a real filesystem, laid out the way electron-builder ships it
+// (packaged) and the way a dev build keeps it (under `resources/`). The temp root is removed afterwards, so
+// the "nothing found" case cannot accidentally be satisfied by a leftover from an earlier case.
+const withTree = <T>(run: (root: string) => T): T => {
+  const root = mkdtempSync(join(tmpdir(), 'ps-manifest-tree-'))
+  try {
+    return run(root)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
+const writeManifestAt = (root: string, relative: string, text = usableText): string => {
+  const path = join(root, relative)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, text, 'utf8')
+  return path
+}
+
+describe('resolveModelWeightManifestLocation', () => {
+  it('prefers the packaged copy, and reports which copy answered', () => {
+    withTree((root) => {
+      // Packaged layout: `resources/model-weights` is mapped to `model-weights` beside app.asar, so the
+      // file sits directly under `process.resourcesPath` — not under a second `resources/` directory.
+      const packaged = writeManifestAt(root, 'model-weights/manifest.json')
+      const location = resolveModelWeightManifestLocation({
+        resourcesPath: root,
+        fromDir: join(root, 'out', 'main')
+      })
+      expect(location).toMatchObject({ found: true, source: 'packaged', path: packaged })
+    })
+  })
+
+  it('finds the dev copy by walking up from the asking module', () => {
+    withTree((root) => {
+      const dev = writeManifestAt(root, 'resources/model-weights/manifest.json')
+      const location = resolveModelWeightManifestLocation({
+        fromDir: join(root, 'out', 'main')
+      })
+      expect(location).toMatchObject({ found: true, source: 'dev', path: dev })
+    })
+  })
+
+  it('treats an explicit override as the only candidate — no silent fallback to a shipped copy', () => {
+    withTree((root) => {
+      writeManifestAt(root, 'resources/model-weights/manifest.json')
+      const taken = resolveModelWeightManifestLocation({
+        override: join(root, 'candidate', 'manifest.json'),
+        resourcesPath: join(root, 'resources'),
+        fromDir: join(root, 'out', 'main')
+      })
+      // An override names the one file that counts. Quietly falling back to another copy would let a run
+      // that meant to test an unpublished manifest validate the shipped one instead.
+      expect(taken).toMatchObject({ found: false, source: 'none' })
+    })
+  })
+
+  it('names a miss as a miss instead of reporting a path nothing was read from', () => {
+    withTree((root) => {
+      const location = resolveModelWeightManifestLocation({
+        fromDir: join(root, 'nowhere', 'deep')
+      })
+      expect(location).toMatchObject({ found: false, source: 'none' })
+      expect(Object.keys(location)).not.toContain('path')
+      // The candidates it looked at ride along: a resolution miss has to be debuggable from its own reading.
+      expect(location.candidates.length).toBeGreaterThan(0)
+    })
+  })
+})
+
+describe('readShippedModelWeightManifest', () => {
+  it('reads the manifest a production caller would, and carries the parsed entries', () => {
+    withTree((root) => {
+      const path = writeManifestAt(root, 'resources/model-weights/manifest.json')
+      const reading = readShippedModelWeightManifest({ override: path, fromDir: root })
+      expect(reading.location).toMatchObject({ found: true, source: 'override' })
+      expect(reading.state?.state).toBe('usable')
+      expect(reading.report).toMatchObject({ source: 'override', present: true, state: 'usable' })
+      expect(reading.report.entryCount).toBe(1)
+      expect(reading.report.problems).toEqual([])
+    })
+  })
+
+  it('keeps "nothing shipped" apart from "shipped but unreadable"', () => {
+    withTree((root) => {
+      const missing = readShippedModelWeightManifest({
+        override: join(root, 'absent', 'manifest.json'),
+        fromDir: root
+      })
+      // The override names a file that is not there: the answer is "no manifest", and there is no path in it
+      // because nothing was read.
+      expect(missing.report).toEqual({
+        source: 'none',
+        present: false,
+        state: 'absent',
+        problems: []
+      })
+
+      const unreadable = readShippedModelWeightManifest({ override: root, fromDir: root })
+      expect(unreadable.report).toMatchObject({
+        source: 'override',
+        present: true,
+        state: 'invalid',
+        reason: 'unreadable'
+      })
+      expect(unreadable.report.entryCount).toBeUndefined()
+    })
+  })
+
+  it('reports a failed validation by field and never invents an entry count', () => {
+    withTree((root) => {
+      const broken = JSON.parse(usableText) as { entries: { sha256: string }[] }
+      broken.entries[0].sha256 = 'not-a-digest'
+      const path = writeManifestAt(
+        root,
+        'resources/model-weights/manifest.json',
+        JSON.stringify(broken)
+      )
+      const reading = readShippedModelWeightManifest({ override: path, fromDir: root })
+      expect(reading.report).toMatchObject({ state: 'invalid', reason: 'failed-validation' })
+      expect(reading.report.problems.map((problem) => problem.field)).toEqual(['sha256'])
+      // Zero here would be a number nobody measured; absent is the honest reading.
+      expect(reading.report.entryCount).toBeUndefined()
+    })
+  })
+
+  it('is pathless: the reading that leaves the machine carries no path, while the location still does', () => {
+    withTree((root) => {
+      const path = writeManifestAt(root, 'resources/model-weights/manifest.json')
+      const reading = readShippedModelWeightManifest({
+        override: path,
+        resourcesPath: root,
+        fromDir: join(root, 'out', 'main')
+      })
+
+      // Exact shape on purpose: this object is copied into a bundle that leaves the device, so a new field
+      // is a decision, not an accident.
+      expect(JSON.parse(JSON.stringify(reading.report))).toEqual({
+        source: 'override',
+        present: true,
+        state: 'usable',
+        entryCount: 1,
+        problems: []
+      })
+      expect(Object.keys(reading.report)).not.toContain('path')
+
+      // Read back through the serialized form, the way a consumer sees it: comparing escaped JSON on the
+      // host's own separators is how a Windows runner ends up disagreeing with macOS about a path.
+      const location = JSON.parse(JSON.stringify(reading.location)) as { path?: string }
+      expect(location.path).toBe(path)
+    })
   })
 })

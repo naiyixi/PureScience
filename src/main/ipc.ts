@@ -111,6 +111,7 @@ import {
   registerSupportBundleIpcHandlers,
   resolveDefaultSaveDirectory
 } from './diagnostics/support-bundle-ipc'
+import { readShippedModelWeightManifest } from './engines/model-weight-manifest-file'
 import {
   createVisionEvidenceCommandOwner,
   registerVisionEvidenceIpcHandlers
@@ -2220,7 +2221,15 @@ const createApplicationModules = async (
       locale: app.getLocale(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       packaged: app.isPackaged,
-      storageLocation: samePath(resolveDataRoot(), computeDefaultDataRoot()) ? 'default' : 'custom'
+      storageLocation: samePath(resolveDataRoot(), computeDefaultDataRoot()) ? 'default' : 'custom',
+      // v2.5.0 U2: the local-parsing-model manifest this build ships, read offline from the app's own
+      // resources. The reading is pathless (see the module header) because a bundle leaves the device;
+      // `source: 'none'` is what makes a packaging mistake visible instead of reading as "not published".
+      localParsingModels: readShippedModelWeightManifest({
+        override: process.env.PURESCIENCE_MODEL_WEIGHT_MANIFEST,
+        resourcesPath: process.resourcesPath,
+        fromDir: __dirname
+      }).report
     }),
     // Lazy on purpose: `app.getPath('downloads')` throws when the folder cannot be resolved (a fresh
     // Windows profile has none), and resolving it eagerly at startup would take the whole app down with it.

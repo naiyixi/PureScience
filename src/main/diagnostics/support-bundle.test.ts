@@ -10,6 +10,7 @@ import {
   listSupportBundleEntries,
   type SupportBundleInput
 } from './support-bundle'
+import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 
 const roots: string[] = []
 
@@ -38,6 +39,13 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     timezone: 'Asia/Shanghai',
     packaged: true,
     storageLocation: 'custom',
+    localParsingModels: {
+      source: 'packaged',
+      present: true,
+      state: 'usable',
+      entryCount: 1,
+      problems: []
+    },
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -61,7 +69,13 @@ describe('support bundle', () => {
     const result = await createSupportBundle(input)
 
     expect(result.entries).toEqual(
-      expect.arrayContaining(['manifest.json', 'environment.json', 'runtime.json', 'README.txt'])
+      expect.arrayContaining([
+        'manifest.json',
+        'environment.json',
+        'runtime.json',
+        'parsing-models.json',
+        'README.txt'
+      ])
     )
     expect(result.entries).toContain('logs/purescience.log')
     expect(result.bytes).toBeGreaterThan(0)
@@ -92,6 +106,94 @@ describe('support bundle', () => {
     expect(JSON.parse(runtime)).toMatchObject({ storageLocation: 'custom' })
     expect(runtime).not.toContain(HOME_DIR)
     expect(runtime).not.toContain('/')
+  })
+
+  it('carries the local-parsing-model reading, and never the path it was read from', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    // A real manifest on a real filesystem, read through the production entry point rather than a hand-built
+    // literal: what the bundle carries is only as honest as the reader that produced it.
+    const manifestDir = join(root, 'resources', 'model-weights')
+    await mkdir(manifestDir, { recursive: true })
+    await writeFile(
+      join(manifestDir, 'manifest.json'),
+      JSON.stringify({
+        schema: 1,
+        revision: '2026-10-16.1',
+        entries: [
+          {
+            id: 'structure-recognition-primary',
+            revision: 'zenodo-10.5281/zenodo.8300489',
+            publisher: 'example publisher',
+            url: 'https://example.invalid/weights/models.zip',
+            sha256: 'a'.repeat(64),
+            bytes: 298662033,
+            license: 'CC-BY-4.0',
+            kind: 'structure-recognition'
+          }
+        ]
+      }),
+      'utf8'
+    )
+    const reading = readShippedModelWeightManifest({ fromDir: join(root, 'out', 'main') })
+    input.localParsingModels = reading.report
+
+    const result = await createSupportBundle(input)
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+
+    expect(JSON.parse(await readFrom(target, 'parsing-models.json'))).toEqual({
+      source: 'dev',
+      present: true,
+      state: 'usable',
+      entryCount: 1,
+      problems: []
+    })
+    // The reader knows the path; the bundle must not. The temp root here is the stand-in for a home
+    // directory, and it is exactly what this module exists to keep out of a file that leaves the device.
+    for (const entry of result.entries) {
+      const contents = await readFrom(target, entry)
+      expect(contents).not.toContain(root)
+    }
+  })
+
+  it('reports an invalid shipped manifest as invalid, by field, instead of as an empty listing', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const manifestDir = join(root, 'resources', 'model-weights')
+    await mkdir(manifestDir, { recursive: true })
+    await writeFile(
+      join(manifestDir, 'manifest.json'),
+      JSON.stringify({
+        schema: 1,
+        revision: '2026-10-16.1',
+        // No digest: exactly the publisher error the shape rules exist to catch, and one the reader must not
+        // present as "this build ships no models".
+        entries: [
+          { id: 'x', revision: 'r1', publisher: 'p', url: 'https://example.invalid/x', bytes: 1 }
+        ]
+      }),
+      'utf8'
+    )
+    input.localParsingModels = readShippedModelWeightManifest({
+      fromDir: join(root, 'out', 'main')
+    }).report
+
+    const result = await createSupportBundle(input)
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+
+    const report = JSON.parse(await readFrom(target, 'parsing-models.json')) as {
+      state: string
+      reason?: string
+      entryCount?: number
+      problems: { field: string }[]
+    }
+    expect(report.state).toBe('invalid')
+    expect(report.reason).toBe('failed-validation')
+    expect(report.problems.map((problem) => problem.field)).toContain('sha256')
+    // No count at all: the entries did not validate, so there is nothing to count.
+    expect(report.entryCount).toBeUndefined()
   })
 
   it('scrubs the home directory, the user name and secret-shaped values out of copied logs', async () => {

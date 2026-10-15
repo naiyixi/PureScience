@@ -15,7 +15,14 @@ const facts: SupportBundleFacts = {
   locale: 'zh-CN',
   timezone: 'Asia/Shanghai',
   packaged: true,
-  storageLocation: 'default'
+  storageLocation: 'default',
+  localParsingModels: {
+    source: 'packaged',
+    present: true,
+    state: 'usable',
+    entryCount: 1,
+    problems: []
+  }
 }
 
 const sender = {} as never
