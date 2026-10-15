@@ -73,6 +73,10 @@ extraResources:
       - '*.d.ts'
       - 'LICENSE'
       - 'package.json'
+  # The local parsing model manifest: shipped data, not code. The app reads it offline to list which
+  # models exist and which do not, so the section can say the truth on a machine with no network.
+  - from: resources/model-weights
+    to: model-weights
 # Windows: an unsigned NSIS installer. SmartScreen shows a bypassable "unknown publisher" prompt.
 # The afterPack ad-hoc-sign hook is a no-op off macOS, so it is safe on this target.
 win:

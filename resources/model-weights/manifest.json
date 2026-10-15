@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "revision": "2026-10-16.1",
+  "entries": [
+    {
+      "id": "structure-recognition-primary",
+      "revision": "zenodo-10.5281/zenodo.8300489",
+      "publisher": "Kohulan Rajan, Henning Otto Brinkhaus, Achim Zielesny, Christoph Steinbeck (Zenodo record 8300489)",
+      "url": "https://zenodo.org/records/8300489/files/models.zip?download=1",
+      "sha256": "8ebc7db18fffac7e71a2cf8487708053620d124846bc9502eddac1283b431d2b",
+      "bytes": 298662033,
+      "license": "CC-BY-4.0",
+      "kind": "structure-recognition",
+      "publisherMd5": "de78c966b0d63b290cd3f70bb81a91e7",
+      "note": "Chemical structure recognition (image -> SMILES). The digest above is ours, computed over the bytes named here after a byte-exact resumed fetch; publisherMd5 is the author's own checksum from the Zenodo record's file list, and the two were checked against each other. Redistributed by this app under CC-BY-4.0 with the creators credited in this entry."
+    }
+  ]
+}
