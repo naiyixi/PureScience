@@ -6654,3 +6654,23 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 - **实机**：真窗口里看到**真数据**（不是夹具）—— 读者能看到的每条验收项要么挂着**真读数**（run id + 指纹），要么明确显示**未满足**；「没有读数就不算满足」这条红线要在 UI 上**看得见**。
 - **读者真正按的按钮**必须在真窗口里被点过（E 系列纪律）。
 - 门：`eslint` + 双 `tsc` + 受影响面 vitest + 全量。
+
+### 一百四十八·附：F3 接线的两处**陷阱**（已勘查，落档免得重踩）
+
+1. **组下标不能移位**：`host-application-commands.ts` 的命令分派是按**组下标**注册的（实例：`scope.registerGroup(hostApplicationCommandGroups[8], { 'routine:list-all': …, 'routine:upsert': … })`）。⇒ 新组只能**追加到数组末尾**、并按**新下标**注册；插在中间会让后面所有组的注册错位。
+2. **组名清单要同步**：`src/main/host-application-commands.test.ts:50` 起列了组名与依赖形状（`'folderGrants'`、`folderGrants: {…}`、`hostApplicationCommands.folderGrants.grant` 那一带）⇒ 加 goal 组要一并加进去，否则门红。
+
+### 已完成的 F3 数据侧（`06ba1ee3`）
+
+- `shared/goal.ts`：`GoalOverview = { goals: Goal[]; unreadableSessionIds: string[] }`。
+- `GoalRepository.listAll()`：扫 `artifacts/*/.goals/goals.json`；坏记录**具名报出**（只吞 `record-unreadable`，其它错误照抛）；按 `updatedAt` 倒序。
+- 测试（`goals` 21 passed）：两会话各有目标 + 第三会话坏 JSON ⇒ 恰报出它、且它不贡献任何目标。
+
+### F3 剩余（下一步直接照做）
+
+1. `host-application-commands.ts`：`goalCommands = { listAll: defineApplicationCommand<'goal:list-all', readonly [], GoalOverview>('goal:list-all') }`；命名空间映射加 `goal: goalCommands,`；**追加**组 `defineApplicationCommandGroup('goal', Object.values(goalCommands))`；依赖类型加 `goal: { listAll(): Promise<GoalOverview> }`；分派里照 `'routine:list-all'` 那条（`:768`）加 `'goal:list-all'`；**同步** `host-application-commands.test.ts` 的组名/依赖清单。
+2. `ipc.ts`：路由依赖里给 `goal: { listAll: () => goalRepository.listAll() }`（**复用同一个 `GoalRepository` 实例**）。
+3. `preload/index.ts` + `renderer-api.d.ts`：`goals: { listAll: () => electronRendererContracts.invoke('goal.listAll') }`（照 `routine` 段的形状，`:1030`）。
+4. `src/renderer/src/pages/settings/GoalPanel.tsx` + `GoalPanel.render.test.tsx`（照 `RoutinePanel` 同形，267 + 223 行），挂进 `SettingsPage.tsx`；**只读**：显示目标、**每条验收项各自的读数或「未满足」**、里程碑、状态，以及「读不回来的会话」。
+5. i18n 9 语（`add-i18n-keys.py`，TSV）。
+6. **真窗口读数**：面板真读到真目标（不是夹具），读者真看到的每条要么挂真读数（run id + 指纹）要么明确未满足。
