@@ -108,7 +108,7 @@ type ApplicationCommandComposition = Readonly<{
   dispose: () => void
 }>
 
-const GROUP_COUNT = 39
+const GROUP_COUNT = 40
 // +1 group: the PDF annotation group (pdf-annotations:create / import / list / reattach / remove) sits
 // beside the PDF reading surface it belongs to, and every one of its channels is local-only.
 // +1 group: the saved-search-filter-set group (searchPins.list / remove / save) sits beside the bookmarks
@@ -183,7 +183,10 @@ const GROUP_COUNT = 39
 // (artifacts:verify-reading): asking THIS machine to repeat a request it recorded is local-only by
 // nature — a paired browser does not get to make this host egress — so the dispatch count stays and the
 // fail-closed set takes it.
-const INTERNAL_COMMAND_COUNT = 363
+// +1 internal and +1 local Web for the goals panel's read-only channel (goal:list-all, LOCAL), and
+// +1 on the remote rejections: a reader with no session context still only ever reads, and a paired
+// browser has no business enumerating what this machine's sessions are pursuing.
+const INTERNAL_COMMAND_COUNT = 364
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -193,7 +196,7 @@ const INTERNAL_COMMAND_COUNT = 363
 // skill writes it sits beside, so it lands on both Web surfaces and not in the fail-closed set.
 // One more for verifying a recorded reading (artifacts:verify-reading): same profile again — a plain
 // Web request channel, counted on both Web surfaces and not in the fail-closed set.
-const LOCAL_WEB_COMMAND_COUNT = 361
+const LOCAL_WEB_COMMAND_COUNT = 362
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 233
@@ -201,7 +204,7 @@ const REMOTE_WEB_COMMAND_COUNT = 233
 // the fail-closed set instead of the remote dispatch count.
 // +1 for the window's PDF translation entry (pdf:translation): local-only, so it lands in the fail-closed
 // set instead of the remote dispatch count.
-const REMOTE_REJECTED_COMMAND_COUNT = 128
+const REMOTE_REJECTED_COMMAND_COUNT = 129
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

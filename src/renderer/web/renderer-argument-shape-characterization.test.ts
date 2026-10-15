@@ -212,7 +212,7 @@ describe('renderer argument-shape characterization', () => {
     // the same profile as the runtime environment channels above.
     // 399 with the window's PDF translation entry (pdf.translation): local-only, refused at dispatch, and
     // still a callable path on this surface — the same profile again.
-    expect(actualPaths).toHaveLength(399)
+    expect(actualPaths).toHaveLength(400)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
