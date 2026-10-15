@@ -32,7 +32,7 @@ test('shows what a session is pursuing, and which criterion a reading actually p
   // Through the product's own reader, so a failure here means the seed, not the panel.
   expect((await repository.listAll()).goals).toHaveLength(1)
 
-  const page = await app.completeOnboarding()
+  let page = await app.completeOnboarding()
   await page.getByRole('button', { name: 'Model settings' }).click()
   const settings = page.getByRole('dialog', { name: 'Settings' })
   await settings
@@ -49,4 +49,18 @@ test('shows what a session is pursuing, and which criterion a reading actually p
   // The control a reader actually presses.
   await settings.getByRole('button', { name: 'Refresh goals' }).click()
   await expect(settings.getByText('Compile a method out of a recorded run')).toBeVisible()
+
+  // The record is persisted, not held in memory: after a real relaunch the SAME goal is still there and
+  // the criterion a reading met still carries that reading — the panel never re-derives evidence.
+  const relaunched = await app.restart()
+  await relaunched.getByRole('button', { name: 'Model settings' }).click()
+  const reopened = relaunched.getByRole('dialog', { name: 'Settings' })
+  await reopened
+    .getByRole('navigation', { name: 'Settings' })
+    .getByRole('button', { name: 'Goals and readings', exact: true })
+    .click()
+  await expect(reopened.getByText('Compile a method out of a recorded run')).toBeVisible()
+  await expect(reopened.getByText(/notebook-run-e2e-1/)).toBeVisible()
+  await expect(reopened.getByText(/b720f53ae927/)).toBeVisible()
+  await expect(reopened.getByText(/Unmet — no reading yet/)).toBeVisible()
 })
