@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -54,13 +58,24 @@ describe('parseModelWeightManifestText', () => {
 
 describe('readModelWeightManifestFile', () => {
   it('reports a missing file as absent — we have not published weights yet, which is about us', () => {
-    const state = readModelWeightManifestFile('/definitely/not/here/manifest.json')
+    // A directory that demonstrably exists, so "absent" can only be about the file we asked for.
+    const state = readModelWeightManifestFile(
+      join(mkdtempSync(join(tmpdir(), 'ps-manifest-')), 'manifest.json')
+    )
     expect(state).toMatchObject({ state: 'absent' })
   })
 
   it('reports a path we cannot read as unreadable rather than downgrading it to absent', () => {
     // A directory is readable-but-not-a-file: EISDIR, not ENOENT, so it must not read as "nothing shipped".
-    const state = readModelWeightManifestFile('/Users')
-    expect(state).toMatchObject({ state: 'invalid', reason: 'unreadable' })
+    // It is created here instead of borrowed from the machine, because the failure has to be the same one on
+    // every runner — a literal like /Users exists on macOS and not on Windows, which turns this assertion into
+    // a statement about the host rather than about the code.
+    const directory = mkdtempSync(join(tmpdir(), 'ps-manifest-dir-'))
+    try {
+      const state = readModelWeightManifestFile(directory)
+      expect(state).toMatchObject({ state: 'invalid', reason: 'unreadable' })
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 })
