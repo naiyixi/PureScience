@@ -4434,6 +4434,8 @@ export const zh = {
   'specialist.pluginCatalogNoSource': '{plugin} 部署时没有记录来源，因此在这里无法更新。',
   'specialist.pluginReplace': '替换 {plugin}',
   'specialist.pluginReplaced': '已替换 {plugin} —— 被替换的部署原本声明 {previous} 个条目',
+  'ws.sessionDeletedReleasedUnmeasured': '已删除"{title}"，其运行数据已释放，但未能读取其大小。',
+  'home.projectDeletedReleasedUnmeasured': '已删除"{name}"，其运行数据已释放，但未能读取其大小。'
 }
 
 export type ZhKey = keyof typeof zh

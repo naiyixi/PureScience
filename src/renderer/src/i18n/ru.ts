@@ -4745,7 +4745,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': 'Не удалось загрузить цели:',
   'specialist.pluginCatalogUpdate': 'Обновить {plugin} из записанного источника',
   'specialist.pluginCatalogSource': 'Источник {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} развёрнут без записанного источника, поэтому здесь его нельзя обновить.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} развёрнут без записанного источника, поэтому здесь его нельзя обновить.',
   'specialist.pluginReplace': 'Заменить {plugin}',
-  'specialist.pluginReplaced': '{plugin} заменён — заменённое развёртывание объявляло {previous} элементов',
+  'specialist.pluginReplaced':
+    '{plugin} заменён — заменённое развёртывание объявляло {previous} элементов',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.'
 }

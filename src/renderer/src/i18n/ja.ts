@@ -4728,7 +4728,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': '目標を読み込めませんでした：',
   'specialist.pluginCatalogUpdate': '記録されたソースから {plugin} を更新',
   'specialist.pluginCatalogSource': '取得元 {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} はソースを記録せずにデプロイされたため、ここからは更新できません。',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} はソースを記録せずにデプロイされたため、ここからは更新できません。',
   'specialist.pluginReplace': '{plugin} を置き換える',
-  'specialist.pluginReplaced': '{plugin} を置き換えました —— 置き換え前の宣言は {previous} 件でした',
+  'specialist.pluginReplaced':
+    '{plugin} を置き換えました —— 置き換え前の宣言は {previous} 件でした',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。'
 }

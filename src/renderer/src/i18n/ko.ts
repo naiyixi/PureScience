@@ -4648,7 +4648,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': '목표를 불러오지 못했습니다:',
   'specialist.pluginCatalogUpdate': '기록된 소스에서 {plugin} 업데이트',
   'specialist.pluginCatalogSource': '출처 {source}',
-  'specialist.pluginCatalogNoSource': '{plugin}은(는) 소스를 기록하지 않고 배포되어 여기서 업데이트할 수 없습니다.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin}은(는) 소스를 기록하지 않고 배포되어 여기서 업데이트할 수 없습니다.',
   'specialist.pluginReplace': '{plugin} 교체',
-  'specialist.pluginReplaced': '{plugin}을(를) 교체했습니다 — 이전 배포는 {previous}개 항목을 선언했습니다',
+  'specialist.pluginReplaced':
+    '{plugin}을(를) 교체했습니다 — 이전 배포는 {previous}개 항목을 선언했습니다',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.'
 }

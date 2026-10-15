@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -39,6 +39,32 @@ describe('deleting a project really releases its notebook data', () => {
       freedBytes: 4096
     })
   })
+
+  it.skipIf(process.platform === 'win32')(
+    'names the bytes it could not read instead of reporting a release of zero',
+    async () => {
+      // P0-10's second half: a directory that exists but cannot be listed has NO reading, so the receipt
+      // must not carry a 0 that reads as "there was nothing there". Staged for real: `readdir` on the
+      // sealed directory is denied for its owner, while `rm -r` only needs the parent's write+execute to
+      // drop it once it is empty — so the removal genuinely succeeds and only the measurement has nothing.
+      const projectId = 'cmutflcqb000fwfm931kvwz21'
+      const projectDir = await seedProject(projectId, 1024)
+      const sealed = join(projectDir, 'sealed')
+      await mkdir(sealed, { recursive: true })
+      await chmod(sealed, 0o000)
+      const log = { info: vi.fn() }
+
+      const result = await deleteProjectNotebookData({ dataRoot: root, log }, projectId)
+
+      expect(result).toEqual({ freedBytes: 0, state: 'removed', freedBytesState: 'unreadable' })
+      await expect(access(projectDir)).rejects.toThrow()
+      expect(log.info).toHaveBeenCalledWith('project notebook data removed', {
+        projectId,
+        freedBytes: 0,
+        freedBytesState: 'unreadable'
+      })
+    }
+  )
 
   it('names "absent" instead of claiming zero bytes freed, and says so in the log', async () => {
     const log = { info: vi.fn() }
@@ -106,6 +132,31 @@ describe('deleting one session really releases the run data that session owned',
       freedBytes: 2048
     })
   })
+
+  it.skipIf(process.platform === 'win32')(
+    'names an unreadable figure for the session instead of releasing zero bytes on paper',
+    async () => {
+      // Same distinction one level down: the session's run data really is removed, and no figure exists for
+      // it. The receipt the renderer prints must be able to tell that apart from an empty directory.
+      const projectId = 'cmutflcqb000fwfm931kvwz21'
+      const sessionId = '9f1c2f4a-1111-4a2b-8c3d-00000000000a'
+      const sessionDir = await seedSession(projectId, sessionId, 2048)
+      await mkdir(join(sessionDir, 'sealed'), { recursive: true })
+      await chmod(join(sessionDir, 'sealed'), 0o000)
+      const log = { info: vi.fn() }
+
+      const result = await deleteSessionNotebookData({ dataRoot: root, log }, projectId, sessionId)
+
+      expect(result).toEqual({ freedBytes: 0, state: 'removed', freedBytesState: 'unreadable' })
+      await expect(access(sessionDir)).rejects.toThrow()
+      expect(log.info).toHaveBeenCalledWith('session notebook data removed', {
+        projectId,
+        sessionId,
+        freedBytes: 0,
+        freedBytesState: 'unreadable'
+      })
+    }
+  )
 
   it('names "absent" for a session that stored nothing, instead of claiming a release', async () => {
     const log = { info: vi.fn() }

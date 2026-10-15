@@ -23,6 +23,11 @@ export const sessionDeletionMessage = (
   // refused, failed, or no receipt at all — means bytes are still on disk, and the sentence says that
   // instead of implying a release that did not happen.
   if (notebookData?.state === 'removed') {
+    // …unless the removal happened and nothing measured its bytes: then there is no figure to state, and
+    // "0 B released" would be a claim about a directory nobody could look inside.
+    if (notebookData.freedBytesState === 'unreadable') {
+      return t('ws.sessionDeletedReleasedUnmeasured', { title })
+    }
     return t('ws.sessionDeletedReleased', {
       title,
       size: formatBytes(notebookData.freedBytes, lang)

@@ -111,6 +111,41 @@ describe('ProjectDeletionCoordinator', () => {
     })
   })
 
+  it('carries an unmeasured run-data figure through instead of folding it into zero', async () => {
+    // The notebook cleanup removed the bytes and could not read their size. Its 0 must reach the surface as
+    // "no figure", not as a sum that adds up to a release of nothing.
+    const provenance = {
+      deleteProjectProvenance: vi
+        .fn()
+        .mockResolvedValue({ artifactBytes: 1024, uploadBytes: 512, freedBytes: 1536 })
+    }
+    const notebookData = {
+      deleteProjectNotebookData: vi.fn().mockResolvedValue({
+        freedBytes: 0,
+        state: 'removed' as const,
+        freedBytesState: 'unreadable' as const
+      })
+    }
+    const coordinator = new ProjectDeletionCoordinator(
+      createProjects(),
+      createSessions(),
+      { delete: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      provenance,
+      undefined,
+      notebookData
+    )
+
+    await expect(coordinator.deleteProject('project-1')).resolves.toEqual({
+      freedBytes: 1536,
+      runDataBytes: 0,
+      runDataBytesState: 'unreadable',
+      artifactBytes: 1024,
+      uploadBytes: 512,
+      runData: 'removed'
+    })
+  })
+
   it('says a deletion measured nothing when the Project row was already gone', async () => {
     // Recovery, not this call, owns whatever bytes are left behind once the row is absent — so the outcome
     // must not read as "there was nothing stored".

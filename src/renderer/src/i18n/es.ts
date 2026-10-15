@@ -4834,7 +4834,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': 'No se pudieron cargar los objetivos:',
   'specialist.pluginCatalogUpdate': 'Actualizar {plugin} desde su origen registrado',
   'specialist.pluginCatalogSource': 'Desde {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} se desplegó sin registrar su origen, así que aquí no puede actualizarse.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} se desplegó sin registrar su origen, así que aquí no puede actualizarse.',
   'specialist.pluginReplace': 'Reemplazar {plugin}',
-  'specialist.pluginReplaced': 'Se reemplazó {plugin} — el despliegue reemplazado declaraba {previous} entradas',
+  'specialist.pluginReplaced':
+    'Se reemplazó {plugin} — el despliegue reemplazado declaraba {previous} entradas',
+  'ws.sessionDeletedReleasedUnmeasured':
+    'Se eliminó {title}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.',
+  'home.projectDeletedReleasedUnmeasured':
+    'Se eliminó {name}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.'
 }

@@ -4863,7 +4863,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': 'Impossible de charger les objectifs :',
   'specialist.pluginCatalogUpdate': 'Mettre à jour {plugin} depuis sa source enregistrée',
   'specialist.pluginCatalogSource': 'Depuis {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} a été déployé sans source enregistrée, il ne peut donc pas être mis à jour ici.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} a été déployé sans source enregistrée, il ne peut donc pas être mis à jour ici.',
   'specialist.pluginReplace': 'Remplacer {plugin}',
-  'specialist.pluginReplaced': '{plugin} remplacé — le déploiement remplacé déclarait {previous} entrées',
+  'specialist.pluginReplaced':
+    '{plugin} remplacé — le déploiement remplacé déclarait {previous} entrées',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title} a été supprimé. Ses données d’exécution ont été libérées, mais leur taille n’a pas pu être lue.',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name} a été supprimé. Ses données d’exécution ont été libérées, mais leur taille n’a pas pu être lue.'
 }

@@ -1869,6 +1869,13 @@ export type DeleteSessionRequest = {
 export type SessionNotebookDataDeletion = {
   freedBytes: number
   state: 'removed' | 'absent' | 'refused' | 'failed'
+  /**
+   * Present only when the run data WAS removed but could not be read first: `freedBytes` is then 0 because
+   * nobody measured it, not because the directory held nothing (the word is `measureDirectorySize`'s, and
+   * an absent field is what makes 0 a reading an empty directory really produced). A surface that names a
+   * size must stay silent about it in this state, and a total that includes this slice is a lower bound.
+   */
+  freedBytesState?: 'unreadable'
 }
 
 /**

@@ -47,6 +47,12 @@ export type ProjectDeletionOutcome = {
   freedBytes: number
   /** Run data (the project's notebook session directories). */
   runDataBytes: number
+  /**
+   * Present only when the run data was removed but its size could not be read first: `runDataBytes` (and
+   * this slice of `freedBytes`) then carries no reading, so `freedBytes` is a lower bound. A surface must
+   * say the run data was released without naming a size instead of reading the 0 as "nothing stored".
+   */
+  runDataBytesState?: 'unreadable'
   /** Project-scoped artifact and provenance files. */
   artifactBytes: number
   /** Uploaded file versions the project owned. */

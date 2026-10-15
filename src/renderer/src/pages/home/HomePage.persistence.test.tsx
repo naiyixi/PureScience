@@ -277,6 +277,19 @@ describe('HomePage persistence recovery', () => {
     expect(receipt?.textContent).toBe(`${project.name} was deleted.`)
   })
 
+  it('says the run data was released without inventing a size when none could be read', async () => {
+    await runDelete(
+      deletionOutcome({ runData: 'removed', runDataBytes: 0, runDataBytesState: 'unreadable' })
+    )
+
+    const receipt = container.querySelector('[data-slot="home-project-deleted"]')
+    // This outcome's zero means "nobody measured it", so the receipt must not fall through to "no stored
+    // data was found": the run data was there and the deletion removed it.
+    expect(receipt?.textContent).toBe(
+      `${project.name} was deleted. Its run data was released, but its size could not be read.`
+    )
+  })
+
   it('keeps a refused run-data cleanup visible above the release figure', async () => {
     await runDelete(deletionOutcome({ freedBytes: 3072, runData: 'refused' }))
 

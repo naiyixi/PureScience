@@ -9,18 +9,26 @@
 // do what it said: the bytes stayed on disk.
 //
 // Removal therefore reports the bytes it actually freed, refuses an id that could escape the notebooks
-// directory, and treats "not there" as a named state rather than as zero bytes freed.
+// directory, and treats "not there" as a named state rather than as zero bytes freed. The same applies to
+// the other direction: a removal whose bytes could NOT be read (a directory that exists but cannot be
+// listed) states that too, because a 0 that nobody measured would read at the surface as "nothing there".
 
 import { rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import type { SessionNotebookDataDeletion } from '../../shared/session-persistence'
-import { dirSize } from '../storage/usage'
+import { measureDirectorySize, type DirectorySizeMeasurement } from '../storage/usage'
 
 export type ProjectNotebookDataCleanupResult = {
-  /** Bytes the removal actually freed; 0 for 'absent'/'refused'. */
+  /** Bytes the removal actually freed; 0 for 'absent'/'refused' — and for 'removed' with no reading below. */
   freedBytes: number
   state: 'removed' | 'absent' | 'refused'
+  /**
+   * Present only when the directory WAS removed but could not be read first (`measureDirectorySize`'s word
+   * for that). `freedBytes` is then 0 because nobody measured it, not because there was nothing there —
+   * absence of this field is what makes 0 a reading an empty directory really produced.
+   */
+  freedBytesState?: 'unreadable'
 }
 
 // The session-level receipt is the wire shape the renderer renders, so this module returns that exact
@@ -43,6 +51,16 @@ export type SessionNotebookDataCleanupOptions = ProjectNotebookDataCleanupOption
 // reference, or an unexpected shape is refused by name: these functions delete directories recursively,
 // so every segment they join is a path-traversal boundary.
 const SAFE_ID_SEGMENT = /^[A-Za-z0-9_-]{1,64}$/
+
+// The log line carries the same distinction the receipt does: a figure that was measured, or the named
+// state saying there is no figure. Both cleanup levels go through this one helper so the two lines cannot
+// drift into reporting the state differently.
+const describeNotebookBytes = (
+  measurement: DirectorySizeMeasurement
+): { freedBytes: number; freedBytesState?: 'unreadable' } =>
+  measurement.state === 'measured'
+    ? { freedBytes: measurement.bytes }
+    : { freedBytes: 0, freedBytesState: measurement.reason }
 
 export const deleteProjectNotebookData = async (
   options: ProjectNotebookDataCleanupOptions,
@@ -68,10 +86,19 @@ export const deleteProjectNotebookData = async (
   }
 
   // Measured before the removal: afterwards the number would have to be remembered rather than read.
-  const freedBytes = await dirSize(root, new Set()).catch(() => 0)
+  // Three-state on purpose (P0-10's second half): a directory that exists but cannot be listed has no
+  // reading, so folding it into `freedBytes: 0` would put a figure in the receipt that nobody measured.
+  const measurement = await measureDirectorySize(root, new Set())
   await rm(root, { recursive: true, force: true })
-  options.log?.info('project notebook data removed', { projectId, freedBytes })
-  return { freedBytes, state: 'removed' }
+  options.log?.info('project notebook data removed', {
+    projectId,
+    ...describeNotebookBytes(measurement)
+  })
+  return {
+    freedBytes: measurement.state === 'measured' ? measurement.bytes : 0,
+    state: 'removed',
+    ...(measurement.state === 'unavailable' ? { freedBytesState: measurement.reason } : {})
+  }
 }
 
 // Deleting ONE session releases the run data that session owned. It sits one level deeper than the
@@ -106,7 +133,7 @@ export const deleteSessionNotebookData = async (
     return { freedBytes: 0, state: 'absent' }
   }
 
-  const freedBytes = await dirSize(root, new Set()).catch(() => 0)
+  const measurement = await measureDirectorySize(root, new Set())
   try {
     await rm(root, { recursive: true, force: true })
   } catch (error) {
@@ -119,6 +146,14 @@ export const deleteSessionNotebookData = async (
     })
     return { freedBytes: 0, state: 'failed' }
   }
-  options.log?.info('session notebook data removed', { projectId, sessionId, freedBytes })
-  return { freedBytes, state: 'removed' }
+  options.log?.info('session notebook data removed', {
+    projectId,
+    sessionId,
+    ...describeNotebookBytes(measurement)
+  })
+  return {
+    freedBytes: measurement.state === 'measured' ? measurement.bytes : 0,
+    state: 'removed',
+    ...(measurement.state === 'unavailable' ? { freedBytesState: measurement.reason } : {})
+  }
 }

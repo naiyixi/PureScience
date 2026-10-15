@@ -36,6 +36,23 @@ describe('session deletion notice copy', () => {
     ])
   })
 
+  it('states the release without a figure when nothing could measure its size', () => {
+    const { calls, t } = captureTranslate()
+
+    const message = sessionDeletionMessage(
+      notice({ freedBytes: 0, state: 'removed', freedBytesState: 'unreadable' }),
+      'en',
+      t
+    )
+
+    // "0 B of run data was released" would be a claim about a directory nobody could look inside, so the
+    // sentence states the release and no size.
+    expect(message).toBe('ws.sessionDeletedReleasedUnmeasured')
+    expect(calls).toEqual([
+      { key: 'ws.sessionDeletedReleasedUnmeasured', vars: { title: 'Notebook review' } }
+    ])
+  })
+
   it('claims nothing was stored only when the removal found nothing', () => {
     const { calls, t } = captureTranslate()
 

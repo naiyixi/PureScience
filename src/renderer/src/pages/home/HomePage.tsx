@@ -494,9 +494,16 @@ const HomePage = ({
                         ? // Nothing was measured here (another window, or a replay this call did not run). The
                           // honest receipt states the deletion and claims nothing about bytes.
                           t('home.projectDeletedNotMeasured', { name: deletedProjectNotice.name })
-                        : t('home.projectDeletedNothingStored', {
-                            name: deletedProjectNotice.name
-                          })}
+                        : deletedProjectNotice.outcome.runDataBytesState === 'unreadable'
+                          ? // The run data WAS removed and no size could be read for it, so the receipt says
+                            // exactly that. Falling through to the sentence below would tell the user nothing
+                            // was stored, which is the opposite of what happened.
+                            t('home.projectDeletedReleasedUnmeasured', {
+                              name: deletedProjectNotice.name
+                            })
+                          : t('home.projectDeletedNothingStored', {
+                              name: deletedProjectNotice.name
+                            })}
                 </span>
                 <Button
                   type="button"

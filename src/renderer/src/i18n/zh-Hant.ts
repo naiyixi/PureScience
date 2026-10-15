@@ -4378,4 +4378,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.pluginCatalogNoSource': '{plugin} 部署時沒有記錄來源，因此在這裡無法更新。',
   'specialist.pluginReplace': '取代 {plugin}',
   'specialist.pluginReplaced': '已取代 {plugin} —— 被取代的部署原本宣告 {previous} 個項目',
+  'ws.sessionDeletedReleasedUnmeasured': '{title} 已刪除，其執行資料已釋放，但無法讀取其大小。',
+  'home.projectDeletedReleasedUnmeasured': '{name} 已刪除，其執行資料已釋放，但無法讀取其大小。'
 }

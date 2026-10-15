@@ -42,9 +42,13 @@ type ProjectProvenanceDeletion = {
 type ProjectNotebookDataDeletion = {
   // P0-10: the project's notebook session data is physical project bytes, exactly like provenance — and
   // nothing removed it until now (a deleted project kept its run data; one held 1.1 GB of results).
-  deleteProjectNotebookData(
-    projectId: string
-  ): Promise<{ freedBytes: number; state: 'removed' | 'absent' | 'refused' }>
+  // `freedBytesState` says the removal happened but no figure was measured for it, which the outcome below
+  // has to carry through rather than let it read as "nothing stored".
+  deleteProjectNotebookData(projectId: string): Promise<{
+    freedBytes: number
+    state: 'removed' | 'absent' | 'refused'
+    freedBytesState?: 'unreadable'
+  }>
 }
 
 type ProjectPermissionGrantDeletion = {
@@ -279,6 +283,9 @@ class ProjectDeletionCoordinator {
     const outcome: ProjectDeletionOutcome = {
       freedBytes: (provenance?.freedBytes ?? 0) + (notebookData?.freedBytes ?? 0),
       runDataBytes: notebookData?.freedBytes ?? 0,
+      // Carried through, not swallowed: without it the surface reads the 0 above as "this project stored
+      // nothing", when the truth is that its run data was removed and never measured.
+      ...(notebookData?.freedBytesState ? { runDataBytesState: notebookData.freedBytesState } : {}),
       artifactBytes: provenance?.artifactBytes ?? 0,
       uploadBytes: provenance?.uploadBytes ?? 0,
       runData: notebookData?.state ?? 'not-attempted'

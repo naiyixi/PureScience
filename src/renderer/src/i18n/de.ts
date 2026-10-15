@@ -4890,7 +4890,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.goalsLoadFailed': 'Ziele konnten nicht geladen werden:',
   'specialist.pluginCatalogUpdate': '{plugin} aus der aufgezeichneten Quelle aktualisieren',
   'specialist.pluginCatalogSource': 'Aus {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} wurde ohne aufgezeichnete Quelle bereitgestellt und lässt sich hier daher nicht aktualisieren.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} wurde ohne aufgezeichnete Quelle bereitgestellt und lässt sich hier daher nicht aktualisieren.',
   'specialist.pluginReplace': '{plugin} ersetzen',
-  'specialist.pluginReplaced': '{plugin} ersetzt — die ersetzte Bereitstellung hatte {previous} Einträge deklariert',
+  'specialist.pluginReplaced':
+    '{plugin} ersetzt — die ersetzte Bereitstellung hatte {previous} Einträge deklariert',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.'
 }

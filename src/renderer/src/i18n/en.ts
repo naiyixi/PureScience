@@ -4757,7 +4757,13 @@ export const en: Record<ZhKey, string> = {
   'settings.goalsLoadFailed': 'Could not load goals:',
   'specialist.pluginCatalogUpdate': 'Update {plugin} from its recorded source',
   'specialist.pluginCatalogSource': 'From {source}',
-  'specialist.pluginCatalogNoSource': '{plugin} was deployed without recording its source, so it cannot be updated from here.',
+  'specialist.pluginCatalogNoSource':
+    '{plugin} was deployed without recording its source, so it cannot be updated from here.',
   'specialist.pluginReplace': 'Replace {plugin}',
-  'specialist.pluginReplaced': 'Replaced {plugin} — the deployment it replaced declared {previous} entries',
+  'specialist.pluginReplaced':
+    'Replaced {plugin} — the deployment it replaced declared {previous} entries',
+  'ws.sessionDeletedReleasedUnmeasured':
+    '{title} was deleted. Its run data was released, but its size could not be read.',
+  'home.projectDeletedReleasedUnmeasured':
+    '{name} was deleted. Its run data was released, but its size could not be read.'
 }
