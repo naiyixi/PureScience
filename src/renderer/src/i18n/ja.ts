@@ -4712,5 +4712,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'specialist.pluginCatalogRemoved': '{plugin} を削除しました — {bytes} バイトを解放',
   'specialist.pluginCatalogNotRemoved':
     '{plugin} はデプロイされていないため、何も削除されませんでした',
-  'specialist.pluginCatalogRefused': '拒否：{reason} — {detail}'
+  'specialist.pluginCatalogRefused': '拒否：{reason} — {detail}',
+  'settings.goalsTitle': '目標と読み取り',
+  'settings.goalsDesc':
+    '各セッションが何を目指しているか、そしてアプリ自身が取得した読み取りが何を証明したか。',
+  'settings.goalsRefresh': '目標を更新',
+  'settings.goalsLoading': '目標を読み込み中…',
+  'settings.goalsEmpty': 'まだ記録された目標はありません。',
+  'settings.goalsSession': 'セッション',
+  'settings.goalsAcceptance': '受け入れ基準',
+  'settings.goalsMetBy': '満たした読み取り：',
+  'settings.goalsUnmet': '未達 —— まだ読み取りがありません',
+  'settings.goalsMilestones': 'マイルストーン',
+  'settings.goalsUnreadable': '次のセッションの目標記録を読み取れませんでした：',
+  'settings.goalsLoadFailed': '目標を読み込めませんでした：'
 }

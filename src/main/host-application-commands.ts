@@ -35,6 +35,8 @@ import type {
   StorageInfo
 } from '../shared/storage'
 import type { AppInfo, UpdateStatus } from '../shared/update'
+import type { GoalOverview } from '../shared/goal'
+import type { GoalCommandOwner } from './goals/goal-ipc'
 import type { RoutineSchedule } from '../shared/routine'
 import type { RoutineConfigureRequest } from '../shared/routine'
 import type { ManagedEndpoint } from '../shared/endpoint'
@@ -522,9 +524,14 @@ const queryCommands = Object.freeze({
   >('query:run')
 })
 
+const goalCommands = Object.freeze({
+  listAll: defineApplicationCommand<'goal:list-all', readonly [], GoalOverview>('goal:list-all')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
+  goal: goalCommands,
   github: githubCommands,
   localFs: localFsCommands,
   logs: logsCommands,
@@ -567,7 +574,10 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('searchPins', Object.values(searchPinCommands)),
   // Appended last for the same reason as the two above: the registration below addresses groups by
   // index, so a new group goes at the end rather than into the middle.
-  defineApplicationCommandGroup('pdfAnnotations', Object.values(pdfAnnotationCommands))
+  defineApplicationCommandGroup('pdfAnnotations', Object.values(pdfAnnotationCommands)),
+  // Appended last on purpose: the dispatcher registers groups BY INDEX, so inserting in the middle would
+  // silently shift every group registered after it.
+  defineApplicationCommandGroup('goal', Object.values(goalCommands))
 ] as const)
 
 type HostApplicationCommandDependencies = Readonly<{
@@ -607,6 +617,7 @@ type HostApplicationCommandDependencies = Readonly<{
       enabled: boolean
     ) => Promise<RoutineSchedule | null>
   }>
+  goal: GoalCommandOwner
   endpoint: EndpointCommandOwner
   annotation: AnnotationCommandOwner
   // Session bookmarks: renderer-only, with no agent-facing owner beside it.
@@ -939,6 +950,10 @@ const registerHostApplicationCommands = (
     // PDF annotations (文档标注层 A3): the same transport-independent path as the bookmarks, and
     // deliberately nowhere near an agent-facing tool list. Every channel is local-only, so each one goes
     // through localCommand — a paired remote browser cannot reach the reader's markup.
+    scope.registerGroup(hostApplicationCommandGroups[19], {
+      'goal:list-all': ({ callerContext }) =>
+        localCommand(callerContext, 'goal:list-all', () => dependencies.goal.listAll())
+    })
     scope.registerGroup(hostApplicationCommandGroups[18], {
       'pdf-annotations:create': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf-annotations:create', () =>

@@ -4818,5 +4818,18 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Entiendo que quitar un plugin elimina su carpeta del almacenamiento de esta aplicación.',
   'specialist.pluginCatalogRemoved': '{plugin} quitado — {bytes} bytes liberados',
   'specialist.pluginCatalogNotRemoved': '{plugin} no está desplegado, así que no se quitó nada',
-  'specialist.pluginCatalogRefused': 'Rechazado: {reason} — {detail}'
+  'specialist.pluginCatalogRefused': 'Rechazado: {reason} — {detail}',
+  'settings.goalsTitle': 'Objetivos y lecturas',
+  'settings.goalsDesc':
+    'Qué persigue cada sesión y qué han demostrado las lecturas de la aplicación.',
+  'settings.goalsRefresh': 'Actualizar objetivos',
+  'settings.goalsLoading': 'Cargando objetivos…',
+  'settings.goalsEmpty': 'Aún no hay objetivos registrados.',
+  'settings.goalsSession': 'Sesión',
+  'settings.goalsAcceptance': 'Criterios de aceptación',
+  'settings.goalsMetBy': 'Satisfecho por',
+  'settings.goalsUnmet': 'No satisfecho — aún sin lectura',
+  'settings.goalsMilestones': 'Hitos',
+  'settings.goalsUnreadable': 'No se pudieron leer los registros de objetivos de estas sesiones:',
+  'settings.goalsLoadFailed': 'No se pudieron cargar los objetivos:'
 }

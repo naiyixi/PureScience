@@ -4729,5 +4729,18 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Я понимаю, что удаление плагина стирает его каталог из хранилища этого приложения.',
   'specialist.pluginCatalogRemoved': '{plugin} удалён — освобождено {bytes} байт',
   'specialist.pluginCatalogNotRemoved': '{plugin} не развёрнут, поэтому ничего не удалено',
-  'specialist.pluginCatalogRefused': 'Отказано: {reason} — {detail}'
+  'specialist.pluginCatalogRefused': 'Отказано: {reason} — {detail}',
+  'settings.goalsTitle': 'Цели и измерения',
+  'settings.goalsDesc':
+    'Чего добивается каждая сессия и что доказали собственные измерения приложения.',
+  'settings.goalsRefresh': 'Обновить цели',
+  'settings.goalsLoading': 'Загрузка целей…',
+  'settings.goalsEmpty': 'Цели пока не записаны.',
+  'settings.goalsSession': 'Сессия',
+  'settings.goalsAcceptance': 'Критерии приёмки',
+  'settings.goalsMetBy': 'Подтверждено',
+  'settings.goalsUnmet': 'Не подтверждено — измерений пока нет',
+  'settings.goalsMilestones': 'Вехи',
+  'settings.goalsUnreadable': 'Записи целей этих сессий не удалось прочитать:',
+  'settings.goalsLoadFailed': 'Не удалось загрузить цели:'
 }

@@ -4873,5 +4873,19 @@ export const de: Partial<Record<ZhKey, string>> = {
   'specialist.pluginCatalogRemoved': '{plugin} entfernt — {bytes} Byte freigegeben',
   'specialist.pluginCatalogNotRemoved':
     '{plugin} ist nicht bereitgestellt, es wurde nichts entfernt',
-  'specialist.pluginCatalogRefused': 'Abgelehnt: {reason} — {detail}'
+  'specialist.pluginCatalogRefused': 'Abgelehnt: {reason} — {detail}',
+  'settings.goalsTitle': 'Ziele und Messungen',
+  'settings.goalsDesc':
+    'Was jede Sitzung verfolgt und was die Messungen der App darüber belegt haben.',
+  'settings.goalsRefresh': 'Ziele aktualisieren',
+  'settings.goalsLoading': 'Ziele werden geladen…',
+  'settings.goalsEmpty': 'Noch keine Ziele erfasst.',
+  'settings.goalsSession': 'Sitzung',
+  'settings.goalsAcceptance': 'Abnahmekriterien',
+  'settings.goalsMetBy': 'Belegt durch',
+  'settings.goalsUnmet': 'Nicht belegt — noch keine Messung',
+  'settings.goalsMilestones': 'Meilensteine',
+  'settings.goalsUnreadable':
+    'Die Zielaufzeichnungen dieser Sitzungen konnten nicht gelesen werden:',
+  'settings.goalsLoadFailed': 'Ziele konnten nicht geladen werden:'
 }

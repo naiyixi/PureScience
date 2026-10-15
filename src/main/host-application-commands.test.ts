@@ -49,6 +49,7 @@ const HOST_CAPABILITIES = [
   'cli',
   'folderGrants',
   'github',
+  'goal',
   'local-fs',
   'logs',
   'notifications',
@@ -105,6 +106,9 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       truncated: false
     })),
     revealInFolder: vi.fn(() => undefined)
+  },
+  goal: {
+    listAll: vi.fn(async () => ({ goals: [], unreadableSessionIds: [] }))
   },
   folderGrants: {
     grant: vi.fn(async () => ({
@@ -500,7 +504,8 @@ describe('Host application commands', () => {
     // 85 with the seven PDF annotation channels (the store, the import, and the two export channels) and
     // the on-demand duplicate reclaim.
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(86)
+    // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(87)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -518,7 +523,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(86)
+    expect(router.dispatcher.commandNames()).toHaveLength(87)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -915,6 +920,10 @@ describe('Host application commands', () => {
     // No arguments: the reclaim takes its root from main, never from the caller.
     expect(dependencies.storage.sweepDuplicateContent).toHaveBeenCalledWith()
 
+    // The goals panel reads the whole inventory with no arguments, like the routine panel beside it.
+    await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))
+    expect(dependencies.goal.listAll).toHaveBeenCalledWith()
+
     const ownerMethods = Object.values(dependencies).flatMap((owner) => Object.values(owner))
     expect(
       ownerMethods.filter(vi.isMockFunction).every((method) => method.mock.calls.length === 1)
@@ -1003,7 +1012,9 @@ describe('Host application commands', () => {
     // saved-search-filter-set channels: all of them are local-only like the bookmarks beside them.
     // The on-demand duplicate reclaim joins them: main resolves the root it walks, so a paired
     // browser never gets to point the sweep at a directory of its choosing.
-    expect(localOnlyChannels).toHaveLength(58)
+    // 59 with the goals panel's read-only channel (goal:list-all, LOCAL): a reader with no session
+    // context still only ever reads.
+    expect(localOnlyChannels).toHaveLength(59)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

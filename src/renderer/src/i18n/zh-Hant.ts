@@ -4360,5 +4360,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.pluginCatalogRemoveConfirm': '我了解：移除外掛會將其目錄從本應用程式的儲存空間刪除。',
   'specialist.pluginCatalogRemoved': '已移除外掛 {plugin} —— 釋出 {bytes} 位元組',
   'specialist.pluginCatalogNotRemoved': '{plugin} 並未部署，因此未移除任何項目',
-  'specialist.pluginCatalogRefused': '已拒絕：{reason} —— {detail}'
+  'specialist.pluginCatalogRefused': '已拒絕：{reason} —— {detail}',
+  'settings.goalsTitle': '目標與讀數',
+  'settings.goalsDesc': '每個工作階段在追求什麼，以及應用程式自己取得的讀數證明了什麼。',
+  'settings.goalsRefresh': '重新整理目標',
+  'settings.goalsLoading': '正在載入目標…',
+  'settings.goalsEmpty': '尚未記錄任何目標。',
+  'settings.goalsSession': '工作階段',
+  'settings.goalsAcceptance': '驗收項',
+  'settings.goalsMetBy': '由讀數滿足：',
+  'settings.goalsUnmet': '未滿足 —— 尚無讀數',
+  'settings.goalsMilestones': '里程碑',
+  'settings.goalsUnreadable': '這些工作階段的目標記錄讀不回來：',
+  'settings.goalsLoadFailed': '載入目標失敗：'
 }

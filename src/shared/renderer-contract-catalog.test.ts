@@ -30,7 +30,7 @@ describe('renderer contract catalog', () => {
     // 460 with the window package install/uninstall (runtime.manage-packages, IC13): another LOCAL
     // runtime channel, so the catalog, the preload inventory and the local-Web installation set each
     // move by one while the remote-Web one grows by the rejecting stub it gets for being local-only.
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(46)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(47)
     // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
     // local-Web installation set each move by three while the remote-Web set grows by the same three.
@@ -58,7 +58,7 @@ describe('renderer contract catalog', () => {
     // local-only channel gets there.
     // 482 with the deployed-plugin catalogue (specialist.pluginCatalog): a desktop-only channel, so
     // the catalog and the preload inventory move by one and neither Web map moves at all.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(482)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(483)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -67,7 +67,7 @@ describe('renderer contract catalog', () => {
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
     // 366 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, so the
     // invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(369)
+    expect(Object.keys(projection.invoke)).toHaveLength(370)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -84,7 +84,7 @@ describe('renderer contract catalog', () => {
     // 396 with verifying a recorded reading (artifacts.verifyReading): the same profile, one more method.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(399)
+    ).toHaveLength(400)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -120,7 +120,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(83)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(128)
+    ).toHaveLength(129)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

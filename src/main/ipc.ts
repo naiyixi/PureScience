@@ -184,6 +184,7 @@ import {
 } from './projects/ipc'
 import { createReviewerCommandOwner, registerReviewerIpcHandlers } from './reviewer/ipc'
 import { createRoutineCommandOwner, registerRoutineIpcHandlers } from './settings/routine-ipc'
+import { createGoalCommandOwner, registerGoalIpcHandlers } from './goals/goal-ipc'
 import { createEndpointCommandOwner, registerEndpointIpcHandlers } from './settings/endpoint-ipc'
 import {
   createAnnotationCommandOwner,
@@ -3351,6 +3352,7 @@ const createApplicationModules = async (
   )
   declareElectronAdapter('routine', () => {
     registerRoutineIpcHandlers(createRoutineCommandOwner(routineRepository))
+    registerGoalIpcHandlers(createGoalCommandOwner(goalRepository))
   })
   declareElectronAdapter('endpoint', () => {
     registerEndpointIpcHandlers(createEndpointCommandOwner(endpointRepository, endpointManager))
@@ -3476,6 +3478,7 @@ const createApplicationModules = async (
       },
       reviewer: reviewerCommandOwner,
       routine: createRoutineCommandOwner(routineRepository),
+      goal: createGoalCommandOwner(goalRepository),
       endpoint: createEndpointCommandOwner(endpointRepository, endpointManager),
       annotation: createAnnotationCommandOwner(annotationRepository),
       bookmark: createBookmarkCommandOwner(bookmarkRepository),

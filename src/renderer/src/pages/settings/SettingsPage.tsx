@@ -6,6 +6,7 @@ import {
   Bot,
   Brain,
   CalendarClock,
+  Flag,
   CircleDot,
   Cloud,
   Globe,
@@ -73,6 +74,7 @@ import { ComputeHostDetail } from './ComputeHostDetail'
 import { PermissionsPanel } from './PermissionsPanel'
 import { MemoryPanel } from './MemoryPanel'
 import { TagsPanel } from './TagsPanel'
+import { GoalPanel } from './GoalPanel'
 import { RoutinePanel } from './RoutinePanel'
 import { EndpointPanel } from './EndpointPanel'
 import { CredentialsPanel } from './CredentialsPanel'
@@ -227,6 +229,12 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
         label: t('settings.compute'),
         Icon: Zap,
         keywords: ['compute', 'host', 'gpu', 'cluster', '计算', '主机', '算力']
+      },
+      {
+        id: 'goals',
+        label: t('settings.goalsTitle'),
+        Icon: Flag,
+        keywords: ['goal', 'goals', 'objective', 'reading', '目标', '读数', '验收']
       },
       {
         id: 'routine',
@@ -1388,6 +1396,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                       else navigatePanel('specialists')
                     }}
                   />
+                ) : activePanel === 'goals' ? (
+                  <GoalPanel />
                 ) : activePanel === 'routine' ? (
                   <RoutinePanel />
                 ) : activePanel === 'endpoint' ? (

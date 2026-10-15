@@ -4633,5 +4633,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '플러그인을 제거하면 이 앱의 저장소에서 해당 디렉터리가 삭제된다는 점을 이해했습니다.',
   'specialist.pluginCatalogRemoved': '{plugin} 제거됨 — {bytes} 바이트 확보',
   'specialist.pluginCatalogNotRemoved': '{plugin}은(는) 배포되지 않아 아무것도 제거되지 않았습니다',
-  'specialist.pluginCatalogRefused': '거부됨: {reason} — {detail}'
+  'specialist.pluginCatalogRefused': '거부됨: {reason} — {detail}',
+  'settings.goalsTitle': '목표와 판독',
+  'settings.goalsDesc': '각 세션이 추구하는 것과 앱 자체가 얻은 판독이 무엇을 증명했는지.',
+  'settings.goalsRefresh': '목표 새로 고침',
+  'settings.goalsLoading': '목표 불러오는 중…',
+  'settings.goalsEmpty': '아직 기록된 목표가 없습니다.',
+  'settings.goalsSession': '세션',
+  'settings.goalsAcceptance': '수용 기준',
+  'settings.goalsMetBy': '충족한 판독:',
+  'settings.goalsUnmet': '미충족 — 아직 판독 없음',
+  'settings.goalsMilestones': '마일스톤',
+  'settings.goalsUnreadable': '다음 세션의 목표 기록을 읽을 수 없습니다:',
+  'settings.goalsLoadFailed': '목표를 불러오지 못했습니다:'
 }

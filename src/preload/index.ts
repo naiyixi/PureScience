@@ -1027,6 +1027,9 @@ const api: PureScienceAPI = {
     mutateChecklist: (request: VerificationChecklistMutationRequest) =>
       electronRendererContracts.invoke('reviewer.mutateChecklist', request)
   },
+  goals: {
+    listAll: () => electronRendererContracts.invoke('goals.listAll')
+  },
   routine: {
     listAll: () => electronRendererContracts.invoke('routine.listAll'),
     upsert: (request: { sessionId: string; configure: RoutineConfigureRequest }) =>

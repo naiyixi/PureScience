@@ -1,6 +1,7 @@
 import type { EnvironmentCheckId, EnvironmentCheckItem } from '../../../../shared/settings'
 
 export type SettingsPanelId =
+  | 'goals'
   | 'model'
   | 'agent'
   | 'skills'

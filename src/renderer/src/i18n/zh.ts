@@ -4416,7 +4416,19 @@ export const zh = {
   'specialist.pluginCatalogRemoveConfirm': '我明白：移除插件会把它的目录从本应用的存储里删掉。',
   'specialist.pluginCatalogRemoved': '已移除 {plugin} —— 释放了 {bytes} 字节',
   'specialist.pluginCatalogNotRemoved': '{plugin} 并未部署，没有移除任何东西',
-  'specialist.pluginCatalogRefused': '已拒绝：{reason} —— {detail}'
+  'specialist.pluginCatalogRefused': '已拒绝：{reason} —— {detail}',
+  'settings.goalsTitle': '目标与读数',
+  'settings.goalsDesc': '每个会话在追什么，以及应用自己取到的读数证明了什么。',
+  'settings.goalsRefresh': '刷新目标',
+  'settings.goalsLoading': '正在加载目标…',
+  'settings.goalsEmpty': '还没有记录的目标。',
+  'settings.goalsSession': '会话',
+  'settings.goalsAcceptance': '验收项',
+  'settings.goalsMetBy': '由读数满足：',
+  'settings.goalsUnmet': '未满足 —— 还没有读数',
+  'settings.goalsMilestones': '里程碑',
+  'settings.goalsUnreadable': '这些会话的目标记录读不回来：',
+  'settings.goalsLoadFailed': '加载目标失败：'
 }
 
 export type ZhKey = keyof typeof zh

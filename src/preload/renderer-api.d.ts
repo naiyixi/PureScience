@@ -1325,6 +1325,12 @@ export interface PureScienceAPI {
     // Pins a verified search-hit line to a review (attach), or loads what is pinned (list).
     evidence(request: ReviewEvidenceRequest): Promise<ReviewEvidenceResponse>
   }
+  goals: {
+    // Every session's goals — the objective, each criterion with the reading that met it (or that it is
+    // unmet), and the milestones — plus the sessions whose record would not read. Read-only: the agent's
+    // goal_configure / goal_advance are the only writers.
+    listAll(): Promise<GoalOverview>
+  }
   routine: {
     // Lists every scheduled task across sessions (settings panel).
     listAll(): Promise<RoutineSchedule[]>

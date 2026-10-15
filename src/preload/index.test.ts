@@ -318,6 +318,7 @@ describe('preload bridge — public surface inventory', () => {
       'folderGrants.revoke',
       'getRuntimeVersions',
       'github.getStars',
+      'goals.listAll',
       'handoff.onChanged',
       'lifecycle.getClientId',
       'localFs.getRoots',
@@ -831,6 +832,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'references',
       'remote-access',
       'reviewer',
+      'goal',
       'routine',
       'endpoint',
       // Saved search filter sets (v1.67 unit): beside the bookmarks, which it sits next to in the host
@@ -861,8 +863,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // 237 with the remote-structure load (preview.loadRemoteStructure): a local-only request
     // contract, so it counts here while neither Web dispatch map does.
     // 239 with the window's PDF translation entry (pdf.translation, LOCAL): one more local-only request
+    // 240 with the goals panel's read-only channel (goals.listAll, LOCAL): one more local-only request.
     // contract, so the core request count below moves with it while neither Web map does.
-    expect(coreContracts).toHaveLength(239)
+    expect(coreContracts).toHaveLength(240)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -874,7 +877,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 201, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 202, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -883,7 +886,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(201)
+    expect(requestContracts).toHaveLength(202)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

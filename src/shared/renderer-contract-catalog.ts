@@ -319,6 +319,12 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getChunks', 'reviewer:get-chunks'], ['run', 'reviewer:run'],
     ['evidence', 'reviewer:evidence'],
   ]),
+  // Goals are the renderer's read-only window onto what a session is pursuing: the settings panel shows
+  // the objective, each criterion with the reading that met it (or that it is unmet), and the milestones.
+  // There is no write channel beside it on purpose — the agent-facing goal_configure / goal_advance are
+  // the only writers, because a goal belongs to a session and progress only moves on a reading the app
+  // re-resolves.
+  group('goal', 'goals', [['listAll', 'goal:list-all', LOCAL]]),
   group('routine', 'routine', [
     ['listAll', 'routine:list-all', LOCAL], ['upsert', 'routine:upsert', LOCAL],
     ['remove', 'routine:remove', LOCAL], ['setEnabled', 'routine:set-enabled', LOCAL],

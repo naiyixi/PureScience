@@ -4741,5 +4741,18 @@ export const en: Record<ZhKey, string> = {
     'I understand that removing a plugin deletes its directory from this app’s storage.',
   'specialist.pluginCatalogRemoved': 'Removed {plugin} — freed {bytes} bytes',
   'specialist.pluginCatalogNotRemoved': '{plugin} is not deployed, so nothing was removed',
-  'specialist.pluginCatalogRefused': 'Refused: {reason} — {detail}'
+  'specialist.pluginCatalogRefused': 'Refused: {reason} — {detail}',
+  'settings.goalsTitle': 'Goals and readings',
+  'settings.goalsDesc':
+    "What each session is pursuing, and what the app's own readings have proved about it.",
+  'settings.goalsRefresh': 'Refresh goals',
+  'settings.goalsLoading': 'Loading goals…',
+  'settings.goalsEmpty': 'No goals recorded yet.',
+  'settings.goalsSession': 'Session',
+  'settings.goalsAcceptance': 'Acceptance criteria',
+  'settings.goalsMetBy': 'Met by',
+  'settings.goalsUnmet': 'Unmet — no reading yet',
+  'settings.goalsMilestones': 'Milestones',
+  'settings.goalsUnreadable': "These sessions' goal records could not be read:",
+  'settings.goalsLoadFailed': 'Could not load goals:'
 }
