@@ -7021,3 +7021,21 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 **下一项（收窄后，无外部依赖）**：用 `src/main/notebook/session-read-model.ts`（**复用，不另写**）在真数据根上装配运行，再喂给 `computeNotebookStaleReasons` / `aliasLineageContentHash`，统计 `producerContentHash` 是真哈希还是 `not-recorded`，并与叙述里的 **1,412 / 1,412** 对齐；不一致就**具名**指出差异发生在哪一步（装配 / 引擎 / 计数口径）。
 
 **同时记一条待判**：真数据根上 **2,197 条运行里 `riskReview` 命中 0** ⇒ 两种解释——(a) 这些运行**从未被评估过**（该根上的历史运行早于评估写入侧）、(b) 收据落在别处。**本轮不下结论**：判据是「按 `startedAt` 看有多少运行晚于收据写入侧上线」，这需要先确认评估写入侧的版本时间点。**不许**把 (a)/(b) 任一种当成已证事实写进任何对外文字。
+
+### 六 §一百五十三·补二：**沿读模型重取读数 ⇒ §九十七 那句「哈希路径在真数据上尚未被走过」被推翻**
+
+**读数（原样）**：`documentsRead=142 runs=2197 fromReceipt=0 attachedOnRead=2197 unhashableNoScript=0`；
+**`rows=1693 rowsWithRealHash=1693 rowsNotRecorded=0`**；
+样本 `variable=globalThis via=globalThis kind=name-rewrite producer=notebook-run-1786102211513-11 mine=b720f53ae9272929… recomputed=b720f53ae9272929…`。
+
+**装配方式**：忠实照 `NotebookSessionReadModel.readDerivedSourceHash` 的规则（有收据 ⇒ 不挂读侧哈希，收据保位；否则挂 `{ value: notebookRunSourceHash(run.script), provenance: 'computed-on-read' }`），哈希函数用**收据自己的那一个**（`src/main/notebook/run-risk-receipt.ts`，单一实现，不另写），只读、取完即删。
+
+### 三 条结论（都可复核）
+
+1. **哈希路径在真数据上是被走过的**：2,197 条真运行**全部**走 `computed-on-read`（`fromReceipt=0` 是因为该根上的运行**都没有收据** ⇒ 读模型对它们一律读时现算，这正是设计中「收据保位、无收据则现算」的常态，**不是缺陷**）；1,693 条血缘行**全部**带真哈希 ⇒ **§九十七 的「尚未被走过」不成立**。
+2. **我的第一版 0 是装配方式的产物**（喂裸 `run.json` 绕开读模型）—— 与本节的差**只**在这一步，可作纪律范例：**读数据要沿产品自己的装配点，别自己拼输入**。
+3. **跨面互证**：样本运行 `notebook-run-1786102211513-11` 的哈希 `b720f53ae9272929…` 与**几天前 F2/F3 真机读数**里目标被满足那条的指纹 `b720f53a…` **同一个** ⇒ **目标读数面、血缘行面、现算复核面三者互证**（同一函数、同一输入、同一结果）。
+
+**与 v2.3.0 叙述里「1,412 / 1,412」的关系**：同**类**不同**量** —— 那是当时那批血缘行的计数，本节是当前数据（1,693 行）的计数；两者都是「行数 / 带真哈希的行数」这一口径 ⇒ **一致**（都是满额）。**不**声称两个数字可直接相减或对齐。
+
+**下一项状态**：§一百五十三·五 登记的「沿装配点取读数」**已完成**；§一百五十三·四的「2,197 条 0 收据」待判**维持不下结论**（它现在的意义更清楚：该根的历史运行早于收据写入侧，或从未被评估 ⇒ 判据仍是按 `startedAt` 与写入侧上线时间比对）。
