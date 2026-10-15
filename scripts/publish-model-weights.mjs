@@ -42,7 +42,17 @@
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  createReadStream,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -81,18 +91,67 @@ const sha256OfFile = async (path) => {
   return { sha256: hash.digest('hex'), bytes }
 }
 
+/**
+ * What to actually hand to the uploader for one entry, and how to undo the staging.
+ *
+ * Two rules meet here. gh names the asset after the file it is given, so when the manifest's asset name
+ * differs from the local file's name the bytes must be uploaded from a copy named as promised — a copy, not
+ * a rename, because the author's file is theirs. And the copy is reported together with its cleanup so the
+ * caller cannot forget it: a staged 300 MB weight left behind is a silent cost on the machine that
+ * published.
+ */
+export const prepareUpload = ({ file, name, stage }) => {
+  if (basename(file) === name) {
+    // The common case: the file already carries the name the manifest publishes.
+    return { path: file, cleanup: () => {} }
+  }
+  const stagedDirectory = (stage ?? defaultStage)({ file, name })
+  return {
+    path: join(stagedDirectory, name),
+    cleanup: () => rmSync(stagedDirectory, { recursive: true, force: true })
+  }
+}
+
+const defaultStage = ({ file, name }) => {
+  const directory = mkdtempSync(join(tmpdir(), 'ps-model-weights-upload-'))
+  copyFileSync(file, join(directory, name))
+  return directory
+}
+
+/**
+ * Builds the uploader for one entry. `run` is the process call, injected so the parts that are easy to get
+ * wrong here — which path is handed to gh, and whether the staged copy is always removed — can be tested
+ * against the real implementation instead of a re-implementation.
+ */
+export const createUploadAsset =
+  ({ run = (args) => execFileSync('gh', args, { stdio: 'inherit' }), stage } = {}) =>
+  async ({ repo, tag, file, name, clobber }) => {
+    const prepared = prepareUpload({ file, name: name ?? basename(file), stage })
+    try {
+      const args = ['release', 'upload', tag, prepared.path, '--repo', repo]
+      if (clobber) args.push('--clobber')
+      run(args)
+    } finally {
+      // Always: a staged copy that survives a failed upload is 300 MB of litter nobody will look for.
+      prepared.cleanup()
+    }
+  }
+
 const realDeps = {
   sha256OfFile,
   readFileSync,
   writeFileSync,
   existsSync,
   statSync,
-  /** Uploads one local file as a release asset. Refuses to overwrite unless `clobber` is set. */
-  uploadAsset: async ({ repo, tag, file, clobber }) => {
-    const args = ['release', 'upload', tag, file, '--repo', repo]
-    if (clobber) args.push('--clobber')
-    execFileSync('gh', args, { stdio: 'inherit' })
-  },
+  /**
+   * Uploads one local file as a release asset named `name`. Refuses to overwrite unless `clobber` is set.
+   *
+   * `gh release upload` names an asset after the file it is handed (the `#` suffix is only a display
+   * label, not the name the URL uses), so a file whose own name differs from the manifest's is uploaded
+   * from a staged copy named exactly as the manifest promises — otherwise we would publish a URL for a
+   * name that no upload ever created, and the read-back below would be the first thing to notice.
+   */
+  uploadAsset: createUploadAsset(),
   /** Returns exactly the bytes a reader would fetch from `url`. */
   fetchAsset: async (url) => {
     const response = await fetch(url)
@@ -307,7 +366,9 @@ const publish = async ({
   }
 
   for (const asset of assets) {
-    await deps.uploadAsset({ repo, tag, file: asset.file, clobber })
+    // The name travels with the file: the URL we publish says `assetName`, so the upload has to create an
+    // asset by that name rather than by whatever the local file happens to be called.
+    await deps.uploadAsset({ repo, tag, file: asset.file, name: asset.assetName, clobber })
   }
 
   // Read back what the world will actually fetch. A digest computed before the upload says nothing
@@ -404,7 +465,9 @@ const main = async (argv = process.argv.slice(2)) => {
 
 export {
   buildManifest,
+  createUploadAsset,
   main,
+  prepareUpload,
   publish,
   realDeps,
   sha256OfFile,

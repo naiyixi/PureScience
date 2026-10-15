@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { validateModelWeightManifest } from '../src/main/engines/model-weight-manifest'
 import {
   buildManifest,
+  createUploadAsset,
   publish,
   realDeps,
   verifyManifestAgainstDirectory
@@ -265,8 +266,12 @@ describe('publish, upload', () => {
       outPath,
       upload: true,
       deps: depsWith({
-        uploadAsset: ({ file, repo, tag }: { file: string; repo: string; tag: string }) => {
-          uploaded.push(`${repo}@${tag}:${file.split('/').pop()}`)
+        // The uploader is asked for an asset by *name* — that name is what the manifest URL will point at,
+        // so asserting on it is asserting the promise the reader will act on. (Deriving it here from the
+        // local path with a hard-coded separator would have been a statement about the host instead: the
+        // shipped file is `/`-separated on macOS and `\`-separated on Windows.)
+        uploadAsset: ({ name, repo, tag }: { name: string; repo: string; tag: string }) => {
+          uploaded.push(`${repo}@${tag}:${name}`)
         },
         fetchAsset: (url: string) => served.get(url.split('/').pop() as string) as Buffer
       })
@@ -274,10 +279,15 @@ describe('publish, upload', () => {
 
     expect(uploaded).toEqual([
       'naiyixi/PureScience@models-v1:doc-parse.onnx',
-      'naiyixi/PureScience@models-v1:ocsr.onnx'
+      'naiyixi/PureScience@models-v1:ocsr-v2.onnx'
     ])
+    // And the two halves agree: every name we uploaded is a name the manifest publishes.
+    const written = JSON.parse(readFileSync(outPath, 'utf8')) as { entries: { url: string }[] }
+    expect(uploaded.map((call) => call.split(':').pop())).toEqual(
+      written.entries.map((entry) => entry.url.split('/').pop())
+    )
     expect(result.verified).toBe(2)
-    expect(JSON.parse(readFileSync(outPath, 'utf8')).entries).toHaveLength(2)
+    expect(written.entries).toHaveLength(2)
   })
 
   it('refuses, names the asset, and writes nothing when the published bytes differ from the digest', async () => {
@@ -370,5 +380,97 @@ describe('verifyManifestAgainstDirectory', () => {
       problems.some((problem) => problem.asset === 'doc-parse.onnx' && problem.field === 'sha256')
     ).toBe(true)
     expect(problems.every((problem) => problem.message.includes('64 lowercase hex'))).toBe(true)
+  })
+})
+
+describe('the uploader hands gh what the manifest promises', () => {
+  // A local file whose own name is not the name we publish. gh names an asset after the file it is given,
+  // so this is the case where the upload can silently create a different name than the manifest's URL.
+  const renamedFile = (): string => {
+    const dir = makeRoot()
+    const path = join(dir, 'ocsr.onnx')
+    writeFileSync(path, OCSR_BYTES)
+    return path
+  }
+
+  it('uploads the file as-is when it already carries the published name', async () => {
+    const dir = makeRoot()
+    const path = join(dir, 'doc-parse.onnx')
+    writeFileSync(path, DOC_BYTES)
+    const calls: string[][] = []
+
+    await createUploadAsset({ run: (args: string[]) => void calls.push(args) })({
+      repo: 'naiyixi/PureScience',
+      tag: 'models-v1',
+      file: path,
+      name: basename(path)
+    })
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toEqual([
+      'release',
+      'upload',
+      'models-v1',
+      path,
+      '--repo',
+      'naiyixi/PureScience'
+    ])
+    // Nothing was staged, so nothing had to be cleaned: the author's file is still exactly where it was.
+    expect(existsSync(path)).toBe(true)
+  })
+
+  it('stages a byte-identical copy under the published name and removes it afterwards', async () => {
+    const path = renamedFile()
+    let uploaded = ''
+    // The bytes are read *while the upload runs*: the staging area is deliberately gone by the time the
+    // call returns, so asserting afterwards would only prove the cleanup happened, not what was cleaned.
+    let uploadedBytes: Buffer | null = null
+
+    await createUploadAsset({
+      run: (args: string[]) => {
+        uploaded = args[3]
+        uploadedBytes = readFileSync(args[3])
+      }
+    })({ repo: 'naiyixi/PureScience', tag: 'models-v1', file: path, name: 'ocsr-v2.onnx' })
+
+    expect(basename(uploaded)).toBe('ocsr-v2.onnx')
+    expect(uploadedBytes).toEqual(OCSR_BYTES)
+    // The staged copy is gone; the original is untouched, byte for byte.
+    expect(existsSync(dirname(uploaded))).toBe(false)
+    expect(readFileSync(path)).toEqual(OCSR_BYTES)
+  })
+
+  it('removes the staged copy even when the upload fails — litter is not a side effect of an error', async () => {
+    const path = renamedFile()
+    let staged = ''
+
+    const failure = createUploadAsset({
+      run: (args: string[]) => {
+        staged = args[3]
+        throw new Error('gh exploded')
+      }
+    })({ repo: 'naiyixi/PureScience', tag: 'models-v1', file: path, name: 'ocsr-v2.onnx' })
+
+    await expect(failure).rejects.toThrow('gh exploded')
+    expect(staged).not.toBe('')
+    expect(existsSync(staged)).toBe(false)
+    expect(existsSync(dirname(staged))).toBe(false)
+  })
+
+  it('adds --clobber only when asked', async () => {
+    const dir = makeRoot()
+    const path = join(dir, 'doc-parse.onnx')
+    writeFileSync(path, DOC_BYTES)
+    const calls: string[][] = []
+
+    await createUploadAsset({ run: (args: string[]) => void calls.push(args) })({
+      repo: 'naiyixi/PureScience',
+      tag: 'models-v1',
+      file: path,
+      name: basename(path),
+      clobber: true
+    })
+
+    expect(calls[0]).toContain('--clobber')
   })
 })
