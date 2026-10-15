@@ -7052,3 +7052,23 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 **结论**：这些运行**没有收据是因为在那时它不可能存在**（解释 (a)），读模型对它们一律挂 `computed-on-read` **正是设计中的常态**，**不是缺陷**，也**不是**「收据落在别处」（解释 (b) 不成立 —— 至少在这个根上不成立）。① 从「待判」**结案**。
 
 **遗留的、与之相邻的一条**：本机 DEV 根上**没有任何 2026-10-13 之后的运行** ⇒ 想取「**收据路由**（`riskReview.codeHash`）在真数据上被走过」的读数，需要在**本版之后**真跑一次经过评估的运行（写侧上线后的真运行）—— 这是**下一个可做的动作**（一次真运行即可，不依赖外部凭据），与「行分支需 python/R 内核」是两件事。
+
+## 一百五十四、收据路由（`riskReview.codeHash`）的真读数：**入口已定位，下一单元照此做**（会话，2026-10-16）
+
+### 一 入口与门（读源码所得，非推测）
+
+- `src/main/ipc.ts:871-880` ⇒ 应用自有运行入口 `reviewNotebookRun(input)`：向**同一张审批卡**发问（`runtime.requestAppApproval({ sessionId, title, rawInput:{code}, riskReview: input.receipt })`）——注释原文：*「the app's own 'run cell' path asks before a reviewed cell runs, on the SAME approval card the agent's tool calls use. **No approval surface => decline**, the same call this file's specialist gateway makes: 'nobody could be asked' is not 'no problem'」*。
+- ⇒ **收据落盘的充分路径** = 在**真窗口**里经这条门跑一个「被审阅的 cell」并被**同意**（同意之后收据随运行落盘 ⇒ 才会出现 `riskReview.codeHash`）。
+
+### 二 下一单元的配方（认证车道体例，与 F3/E3 同形）
+
+1. 真 Electron 隔离根启动真应用（`completeOnboarding()` + 真项目）；
+2. 在**真窗口**的 notebook 面里跑一个会触发审阅的 cell ⇒ **真点**审批卡上的同意；
+3. 跑完后（只读）扫 `<storageRoot>/PureScience-DEV` 的 `run.json` ⇒ 断言**新运行带 `riskReview`**，且其 `codeHash` 是 64 位十六进制；**再沿读模型规则**复核 `aliasLineageContentHash(该 run)` **等于**收据里的 `codeHash`（收据保位 ✓ 不被读侧哈希顶替）；
+4. **负半边（同样是红线读数）**：在**没有审批面**的通道上跑同一入口 ⇒ 必须**拒绝且不执行**（「没人可问」≠「没问题」）⇒ 断言**没有新运行落盘、没有收据**；
+5. 读数（真目录、真 runId、真哈希前 12 位、两半的实际文本）原样打日志。
+
+### 三 与之并列、**仍是两件不同的事**
+
+- 本单元做完 ⇒ 「**收据路由**在真数据上被走过」有读数（`fromReceipt>0`、且与读侧哈希一致）；
+- 「alias lineage **行分支**的真窗口读数」仍需 **python/R 内核**（测试台缺口，`runtime/envs/default-python/bin/python` 不存在）—— 本单元**不**顺带解决它，别混称。
