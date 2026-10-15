@@ -7098,3 +7098,16 @@ if (request.source === 'user') {
 **我原稿（§一百五十四 二·4）把 B 写成「必须拒绝且不执行」** —— **错**。B 是**有意**行为（注释：*「Loud, never silent: a reviewed run must not slip through just because no approver was wired」*），且**不是**「没人可问 = 没问题」那句话的适用对象（那句话属于 A 的通道语义）。**因此规格里的负半边要按 A 写**（在**有**审批面但**答否**的通道上 ⇒ 断言真拒绝、无新运行、无收据）；B 若也要读数，断言的是**「有告警且照跑，且收据仍随运行落盘」** —— 两半的期望**相反**，不许合并成一条。
 
 **另记一条待判（不下结论）**：B 这条路径意味着「reviewer 未接线时，用户发起的被标记 cell 会**无问照跑**」。这是**有意**的设计（有告警、且 gate 名字就叫 `unreviewed`），但我**不**据此声称「产品有洞」或「产品没问题」—— 要判它，得先看**组合根在哪些装配下会不接线**（下一单元顺带核）。
+
+### 五 §一百五十四·补二：待判收口 —— 情形 B（`unreviewed` 告警照跑）**在产品装配下不可达**
+
+**核法与读数**：
+
+1. `reviewNotebookRun` 在**组合根无条件接线**：全仓非测试代码里只有两处出现 —— `src/main/ipc.ts:870`（**唯一装配点**，`createNotebookApplicationModule` 的 options 里直接给出实现，**没有任何条件/开关**）与 `runtime-service.ts:496` / `execution-owner.ts:212`（**透传**：`reviewer: this.options.reviewNotebookRun`）。类型上标 `?` 是**组合便利**，不是运行时开关。
+2. 该实现自身 **fail-closed**（`ipc.ts:871-872`）：`const runtime = runtimeRef.current; if (!runtime) return false` ⇒ **runtime 未就绪时返回「否」** ⇒ `gate === 'decline'` ⇒ **抛 `NotebookRunDeclinedError`，不执行**。
+
+**结论**：⇒ **情形 B（reviewer 为 `undefined` ⇒ `gate === 'unreviewed'` ⇒ 告警后照跑）在产品的实际装配下不可达**；用户发起的被标记 cell 要么**被同意后跑**（收据随运行落盘），要么**被拒**（含「runtime 未就绪」这种「没人可问」⇒ 也判否）⇒ **没有「无问照跑」这一支**。
+
+**因此本单元不再需要为 B 取读数**（不可达的支路不是产品行为，取了也不是产品读数），也**不**据此写任何「有洞/没问题」的结论。B 的告警仍是有价值的**装配期防御**（谁将来把这条线拔了，日志会喊），保留原样。
+
+**下一单元回到 A**：按 §一百五十四 二·1-3、5（真窗口 → 经门跑被审阅的 cell → 真点同意 → 只读扫 `run.json` 断言 `riskReview.codeHash` 为 64 位十六进制且 `aliasLineageContentHash(run)` 与之一致），负半边**按 A 写**（有审批面但答否 ⇒ 真拒绝、无新运行、无收据）。
