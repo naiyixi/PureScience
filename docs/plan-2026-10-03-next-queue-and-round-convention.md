@@ -7266,3 +7266,25 @@ expect(status.pythonReady).toBe(true)                               // 前提是
 ⇒ 结论（这才是准确口径）：**「就绪门」与「真执行」是两件事** ✓ —— 有了 micromamba + 规格自己的 `seedReadyRuntime`，应用可以答 `pythonReady:true`，但**行分支要的是一次真跑过的运行**（写入别名值 + 之后一次运行就地改它）⇒ 需要**真能执行 cell 的解释器/内核**，**种子标记与一个文件给不了** ✗。行分支因此**仍开**，且它现在的 `blocked-by` 是**具体的**：本机/车道内跑通「笔记本 cell 真执行」那条路。
 
 **这一条不许含糊**：不许因为 `pythonReady:true`、也不许因为 `declined-copy` 绿了，就说「行分支已覆盖」✗。
+
+## 一百五十九、cell 真执行的**关门栓已找到**：只缺一个解释器（loop 只用标准库）（会话，2026-10-16）
+
+### 一 源码链（逐环，非推测）
+
+1. `resources/notebook/python_loop.py` ✓ **就在仓里**（26 KB），头注：*「Persistent Python exec-loop kernel: one process per environment, **reads one JSON request per line**」*。
+2. 它**只用标准库**：`ast / hashlib / io / inspect / json / os / sys / traceback` + `os, re, shlex, sys, warnings` + `venv` ⇒ **不需要 conda 环境里那套科学包就能起**。
+3. 它还自带有意保护：单元格内**禁止包/环境变更**（`_blocked_environment_mutation` ⇒「Package/environment mutation is not allowed in a Python cell; use manage_packages.」✓），并读 `PURESCIENCE_KERNEL_FIGURES_DIR` / `PURESCIENCE_PROTECTED_DIRS` / `PURESCIENCE_RUNTIME_DIR` ✓。
+4. `kernel-executor.ts:218-223` ⇒ loop 位置解析：`PURESCIENCE_PYTHON_LOOP`（**tests/dev 覆盖优先**）→ `process.resourcesPath/notebook/python_loop.py` → `__dirname/../../../resources/notebook/python_loop.py`（**dev 默认 = 仓内那份**）✓。
+5. `kernel-executor.ts:669` ⇒ `spawn(invocation.executable, invocation.args, { cwd: spawnCwd, env: spawnEnv })` ✓ ⇒ 执行器把**解释器 + loop 脚本**一起起。
+
+⇒ **唯一缺口**：`<dataRoot>/runtime/envs/default-python/bin/python` 这个**能跑 loop 的解释器**（§一百五十六 的就绪门只查「是个文件」，规格现有的 `seedReadyRuntime` 放的东西**不足以真跑**）。
+
+### 二 因此下一单元（具体到可写规格）
+
+认证规格：① 落盘就绪运行时时，把 `envs/default-python/bin/python` 做成**指向本机真 `python3` 的符号链接**（loop 只用标准库 ⇒ 够用；不够再换真拷贝）＋ `.env-ready` 标记；② **重启**（`configureFakeAgent()` 已是既有规格用过的重启法）；③ 建项目后跑**两个 cell**：先 `a = 1`（产出运行的写入）⇒ 再 `a = 2`（**之后一次运行就地改它**）；④ 读**笔记本面自己**的行 —— `NotebookPreview.tsx:580` 就是 `computeNotebookStaleReasons(notebookState?.runs ?? [])` ✓ ⇒ **行分支在笔记本面即可读**，不必先造「带执行快照的产物」（产物面那条更重，另说）。判据：屏上出现**一行**（`name-rewrite` / `direct-mutation` / `alias-mutation` 之一）＋ 该行挂**真哈希**（非 `not-recorded`），并把行文本与哈希前 12 位原样打日志。
+
+### 三 边界（继续分开，不混称）
+
+- 本节解决的是**笔记本面**的行分支读数；
+- **产物溯源面板**里的别名级血缘（§一百五十一）已交付且已有真窗口读数，唯独它的「行分支」样本需要**带执行快照的产物** ⇒ 那是**另一条**（更重），仍另说；
+- **不**因为本单元绿了就说产物面行分支也覆盖了 ✗。
