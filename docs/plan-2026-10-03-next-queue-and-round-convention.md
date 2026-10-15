@@ -7237,3 +7237,32 @@ expect(status.pythonReady).toBe(true)                               // 前提是
 
 - 已启动：`brew install micromamba`（**国内镜像** `HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles`，后台 + 完成通知；直连 `micro.mamba.pm` 实测只有 ~5 KB/s ⇒ 892 KB 即被截断，tarball 不可行）。
 - **判据**：装成之后 ⇒ 真窗口里 `notebookEnv.getStatus()` 出现 `pythonRecoveryBlocked` / `rRecoveryBlocked` **且** `pythonReady === true`（配合规格自己的 `seedReadyRuntime`）⇒ 那时 `notebook-declined-copy` 的那句诚实回话**可断言**，并取到活读数。**拿不到就记具名结论，不许写成「已解决」。**
+
+## 一百五十八、micromamba 装成 ⇒ **declined-copy 那句诚实回话已取活读数**；行分支边界同时被实测钉死（会话，2026-10-16）
+
+### 一 解锁动作
+
+`brew install micromamba`（**清华 bottle 镜像**；直连 `micro.mamba.pm` 实测约 5 KB/s、892 KB 即截断，tarball 路线不可行）⇒ `/opt/homebrew/bin/micromamba` **2.9.0** ✓。这印证 §一百五十七 的判断：缺的是**机器的构造前提**，不是构建、不是测试台。
+
+### 二 读数（真窗口，原样）
+
+**`notebook-declined-copy.spec.ts`** —— 此前**跳过**，现在 **1 passed (15.4s)**：
+
+```
+[b1-declined] seeded a ready runtime at <storageRoot>/PureScience-DEV/runtime
+[b1-declined] the app reports: {"pythonReady":true,"rReady":false,"version":1,"provisioning":false,
+  "bundleSource":{…},"pythonRecoveryBlocked":false,"rRecoveryBlocked":false}
+[b1-declined] the strip says: "Notebook run declined: deletes files (fs-delete) — no code was executed."
+```
+
+**判据逐条命中**（§一百五十七 四）：`pythonRecoveryBlocked` / `rRecoveryBlocked` **字段出现** ⇒ 答话的是**真 provisioner** 而非 stub ✓；**`pythonReady === true`** ✓；**不再跳过** ✓；屏上那句**诚实回话**拿到 ✓（`…declined: deletes files (fs-delete) — no code was executed.`，且规格另有断言「屏上**不出现** `NotebookRunDeclinedError`」✓）。
+
+**before/after 对照（同一份构建、同一条规格）**：装 micromamba **前** ⇒ 跳过，报 `{"pythonReady":false,…}` 且**没有**那两个字段（= 兜底 stub）；装**后** ⇒ 字段出现 + `pythonReady:true` + 通过 ✓✓。
+
+### 三 行分支：**边界被实测钉死，仍未覆盖**
+
+`artifact-alias-lineage.spec.ts` 同机同次：**1 passed (14.1s)**，读数 `[alias-lineage] empty=1 rows=0` ✓ —— 面板诚实显示空态，原话 *「No later run in this session changed a value the producing run wrote.」*
+
+⇒ 结论（这才是准确口径）：**「就绪门」与「真执行」是两件事** ✓ —— 有了 micromamba + 规格自己的 `seedReadyRuntime`，应用可以答 `pythonReady:true`，但**行分支要的是一次真跑过的运行**（写入别名值 + 之后一次运行就地改它）⇒ 需要**真能执行 cell 的解释器/内核**，**种子标记与一个文件给不了** ✗。行分支因此**仍开**，且它现在的 `blocked-by` 是**具体的**：本机/车道内跑通「笔记本 cell 真执行」那条路。
+
+**这一条不许含糊**：不许因为 `pythonReady:true`、也不许因为 `declined-copy` 绿了，就说「行分支已覆盖」✗。
