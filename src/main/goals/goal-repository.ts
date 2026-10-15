@@ -6,7 +6,7 @@
 // 所以目标里最重要的字段不是 objective，而是每条验收项上那个 `metBy` —— 它是**读数引用**，空着就等于
 // 「还没被任何一次真实运行证明过」。
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 
@@ -16,6 +16,7 @@ import type {
   GoalAdvanceRequest,
   GoalConfigureRequest,
   GoalMilestone,
+  GoalOverview,
   GoalReadingRef,
   GoalRefusalCode,
   GoalState
@@ -195,6 +196,34 @@ export class GoalRepository {
   async status(sessionId: string): Promise<Goal[]> {
     const snapshot = await this.load(sessionId)
     return snapshot.goals
+  }
+
+  // Every session's goals, for the settings panel that has no session context of its own. A record that
+  // exists but will not read is listed by session id instead of being dropped: the panel says "could not
+  // read", it never says "nothing here".
+  async listAll(): Promise<GoalOverview> {
+    const artifactsRoot = resolve(this.root, 'artifacts')
+    const entries = await readdir(artifactsRoot, { withFileTypes: true }).catch(() => [])
+    const goals: Goal[] = []
+    const unreadableSessionIds: string[] = []
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue
+      const sessionId = decodeURIComponent(entry.name)
+      let snapshot: GoalStoreSnapshot
+      try {
+        snapshot = await this.load(sessionId)
+      } catch (error) {
+        if (error instanceof GoalValidationError && error.code === 'record-unreadable') {
+          unreadableSessionIds.push(sessionId)
+          continue
+        }
+        throw error
+      }
+      goals.push(...snapshot.goals)
+    }
+    goals.sort((left, right) => right.updatedAt - left.updatedAt || left.id.localeCompare(right.id))
+    unreadableSessionIds.sort()
+    return { goals, unreadableSessionIds }
   }
 
   // Advances one criterion — and this is the whole point of the F series: the claim does not win, the

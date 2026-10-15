@@ -84,6 +84,15 @@ export type GoalAdvanceRequest = {
   reading: GoalReadingRef
 }
 
+// What a SESSION-EXTERNAL reader (the settings panel) gets: every session's goals in one list, plus the
+// sessions whose record exists but would not read. An unreadable record is REPORTED rather than folded
+// into "that session has no goals" — the difference between "nothing was recorded" and "we could not look"
+// is the whole reason the store refuses to treat a torn file as empty.
+export type GoalOverview = {
+  goals: Goal[]
+  unreadableSessionIds: string[]
+}
+
 export type Goal = {
   id: string
   sessionId: string

@@ -2,7 +2,7 @@
 //  ① 重新构造一个仓储（= 应用重启）读回来的是同一份目标；
 //  ② 非法目标**一个字节都不写**（在写之前就被拒），而不是写了半条再报错；
 //  ③ 一次成功的写不留临时文件（原子写的收尾），且一切落在本会话的 artifacts 目录之下。
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -277,5 +277,24 @@ describe('goal progress (F2)', () => {
     ).rejects.toMatchObject({ code: 'too-many-milestones' })
     const goals = await repository.status(sessionId)
     expect(goals[0]?.milestones).toHaveLength(GOAL_MAX_MILESTONES)
+  })
+
+  it("lists every session's goals, and names the sessions whose record would not read", async () => {
+    const root = await makeRoot()
+    const repository = new GoalRepository({ root, now: () => 1_700_000_000_000 })
+    await repository.configure('session-a', { objective: 'A 的目标', acceptance: ['a1'] })
+    await repository.configure('session-b', { objective: 'B 的目标', acceptance: ['b1'] })
+    // 第三个会话：记录**存在但坏掉** ⇒ 必须被具名报出，绝不并进「这个会话没有目标」。
+    const brokenSession = 'session-c'
+    const brokenRoot = resolveGoalsRoot(root, brokenSession)
+    await mkdir(brokenRoot, { recursive: true })
+    await writeFile(join(brokenRoot, 'goals.json'), '{ this is not json', 'utf8')
+
+    const overview = await repository.listAll()
+
+    expect(overview.goals.map((goal) => goal.sessionId).sort()).toEqual(['session-a', 'session-b'])
+    expect(overview.unreadableSessionIds).toEqual([brokenSession])
+    // 坏记录不许贡献任何目标（否则面板会显示一条来源不明的目标）。
+    expect(overview.goals.some((goal) => goal.sessionId === brokenSession)).toBe(false)
   })
 })
