@@ -6443,3 +6443,28 @@ F1 的「目标对象」已交付；**工具面**（`goal_configure` / `goal_sta
 **会话真拿到 goal 服务器**的那一步在 `src/main/acp/session-capability-owner.ts`（+ `acp/runtime.ts`）里，需镜像 routine 的约 **20 处**编织点：能力清单（`:83` 一带）、路由 id（`:137` `routine: string`）、`SessionCapabilityRoutineOptions` 同形的 options、`onRoutineConnection` 同形的回调、`routineSessionSequence` 同形的序号、五处 `routineRelease` 式的释放点、`:645` 的空值断言等。
 
 **为什么不在本轮做**：这是跨切面精细改动，且必须自带测试；会话已极长，赶工的风险高于收益 ⇒ 按纪律**明确立案**，下轮第一步就做它（做完并用 `goal-mcp-server.test.ts` 同形的测试自证后，F1 才可标完成）。
+
+## 一百四十二、v2.4.0 **F2 库侧交付**：进度只由真读数推进（会话，2026-10-15）
+
+### 一 交付（`6ef2f006`）
+
+`src/main/goals/goal-repository.ts` 加 `advance(sessionId, request, resolver)`，配套共享契约里新增 7 个**进展侧**拒答码（`criterion-not-found` / `empty-reading-id` / `empty-reading-fingerprint` / `reading-not-found` / `reading-foreign-session` / `reading-fingerprint-mismatch` / `too-many-milestones`）。
+
+**这条红线落在两处可判据上**：
+
+1. **取不到读数 ⇒ 一个字节都不写**。调用方点名一条读数，解析器（`GoalReadingResolver`，注入端口）去取；`not-found` / `foreign-session` / `fingerprint-mismatch` 三种都各自具名拒答，且测试**在拒绝前后逐字符比对盘上的文件**（`after === before` ✓），不只是断言返回值。
+2. **落盘的是解析器算出的指纹，不是调用方声称的那个**。用例故意让调用方声称 `fp-claimed-by-caller`、解析器返回 `fp-real` ⇒ 记录里必须出现 `fp-real` ✓。这样记录里**不可能存在一个它自己重解析就会自相矛盾的值**。
+
+另有：按 id 或按原文命中同一条验收项（重写问句不会让读数落空）、里程碑封顶、重启后读回一致。
+
+### 二 具名未做（**不当作完成证据**）
+
+**生产侧解析器尚未接** —— 测试里的解析器只是这条缝上的替身。真适配器要去的库本轮已勘查到两个候选：`src/main/artifacts/run-registry.ts`（**在内存**的活注册表，93 行，`register/resolve(claimId)/getUnfinalizedRunIds` ⇒ 不是持久运行记录 ✗）与 `src/main/notebook/run-terminalization.ts`（终结记录）；持久运行记录（执行器证据档里那 2489 条）落在哪份存储，需下一轮定点勘查后写适配器 + 真机读数。
+
+### 三 单元状态汇总（口径：只有实机/真读数才算完成）
+
+| 单元 | 状态 |
+| --- | --- |
+| F1 目标对象 | **库侧 + 工具面四集成点完成**；第五处（`acp/session-capability-owner.ts` 的 50 处引用镜像）**立案未做** ⇒ F1 未完成 |
+| F2 读数推进 | **库侧完成**（9 passed，含两条决定性用例）；生产解析器**未接** ⇒ F2 未完成 |
+| F3 / G1–G4 | 未开工（§一百三十九 拆解不变） |
