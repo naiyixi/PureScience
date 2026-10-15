@@ -6583,3 +6583,49 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 | F3 / G1–G4 | 未开工 |
 
 **下一步**：① 给 F2 挂 `goal_advance`（服务端 + schema + 系统提示 + 测试，同形即可）；② F1/F2 的**真窗口读数**（读者真按的按钮/真看到的读数，按 E 系列纪律）；③ 然后 F3 上屏，再进 G1–G4。
+
+## 一百四十七、v2.4.0 F1+F2 **真机读数**（真子进程 + 真 RPC + 真仓储 + 真解析器）+ 读数抓出的拒答通路修复（`9d7cde20`）（会话，2026-10-15）
+
+### 一 读数怎么做的（不是单元测试）
+
+一次性 spec（取完即删）按应用**生产路径**取读数：用真实数据根构造应用自己的 `NotebookLocalRpcServer`（真 `GoalRepository` + 真 `createNotebookRunReadingResolver`），签发会话连接，然后 `spawn` 应用自己的入口
+
+`node out/main/index.js --purescience-goal-mcp`（`ELECTRON_RUN_AS_NODE=1` + 三个 RPC 环境变量）
+
+经 stdio 说 MCP：`initialize` → `notifications/initialized` → `tools/list` → `tools/call`。真布局是 `$DATA/notebooks/<项目>/<会话>/run.json`，文档带 `runs[]`、每个 run 的源码**内联**在 `script` 里（指纹 = `notebookRunSourceHash(run.script)`）—— 发现逻辑照它走，不另写一份路径/哈希。
+
+### 二 读数（原样）
+
+| 判据 | 读数 |
+| --- | --- |
+| 工具真的挂上 | `tools/list = ["goal_advance","goal_configure","goal_status"]` |
+| 目标真落盘并读回 | `configure`（**不带 goal_id**）→ `{id:"7ab4c442-…", sessionId:"06310b90-5871-47d3-b405-410745404067", acceptance:[{…,"metBy":null}]}`；`status` 读回同一条 |
+| 假指纹 ⇒ 具名拒答 | `{"isError":true,"structuredContent":{"code":"reading-fingerprint-mismatch"},"content":[…人话…]}`，且 `goals.json` **逐字符未变** |
+| 真指纹 ⇒ 推进 | `metBy = {"kind":"run","id":"notebook-run-1786102211513-11","fingerprint":"b720f53ae927292914b178bd4cf49dd7e128799e9f17e858108b7b94bd475603"}`（**应用自己算的**指纹） |
+
+附带实测到一条设计：**带 `goal_id` 的 `goal_configure` 是「更新」**，目标不存在时具名拒绝（`No goal with id …`）而**不是**悄悄新建 ✓。
+
+### 三 读数抓出的缺陷与修复（`9d7cde20`）
+
+**现象**：假指纹时工具只收到人话 `"The reading no longer has the fingerprint it was claimed with."`，**code 丢了** ⇒ 「拒答必须具名」不成立。直连 RPC 探到服务端其实回的是 `{"error":{"code":"not-found","message":"…"}}`（**嵌套**）⇒ 工具侧只读扁平字段。
+
+**修法**：① 序列化器认 `PlanCommandError`（原有）+ **goal**（按错误名判定）；② 工具侧读嵌套形状并抛 `GoalRpcRefusal`；③ 三个处理器统一成 `isError + structuredContent.code`，人话仍给模型。
+
+**两处自踩（都被门或实测拦住）**：① 先用 `instanceof GoalValidationError` ⇒ **循环导入**使 instanceof 失效、code 仍丢 ⇒ 改按错误名判定并去掉那行导入；② 一度把「带 code 的错误一律嵌套」放宽到**共享路径** ⇒ 既有 `download_denied` 契约（500 + 字符串）立刻变红 ⇒ 收窄到 plan + goal 两类。
+
+### 四 读数中的工具坑（记录备用）
+
+- 一次性 spec 里**再签一次** `issueGoalConnection` 会**撤销**工具正在用的令牌（实测：探针一签，后面所有工具调用全 500）⇒ 复用同一份连接。
+- `NotebookLocalRpcServer` 的构造函数**第一个参数是 service**（不是 options）⇒ 把 options 传成第一个参数时，症状是「Goal handler is not configured.」。
+- 子进程要跑新代码 ⇒ 读数前必须 `npm run build:e2e`（否则跑的是旧 `out/main/index.js`）。
+
+### 五 状态
+
+| 单元 | 状态 |
+| --- | --- |
+| **F1 目标对象** | ✅ **完成**（库侧 / 工具面 / 能力编织 / 契约测试 / 发放自证 / **真机读数**） |
+| **F2 读数推进** | ✅ **完成**（库侧 / 生产侧 / 工具面 / **真机读数：真指纹推进、假指纹具名拒答且零写入**） |
+| F3 上屏 | 未开工 |
+| G1–G4 | 未开工（G2 语义来源待拍板） |
+
+读数后（探针 + spec 已删）：`goals + notebook + acp` **2867 passed**；node tsc 0；web tsc 0；eslint 0。
