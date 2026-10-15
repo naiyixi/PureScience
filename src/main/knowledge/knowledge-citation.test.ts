@@ -53,7 +53,9 @@ describe('knowledge citations', () => {
   })
 
   it('marks the row stale when the file moved, and leaves it alone when it did not', async () => {
-    const service = (read: () => Promise<string | undefined>) =>
+    const service = (
+      read: () => Promise<string | undefined>
+    ): ReturnType<typeof createKnowledgeSearchService> =>
       createKnowledgeSearchService({
         lexical: {
           query: async () => ({

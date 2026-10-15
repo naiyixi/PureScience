@@ -23,7 +23,11 @@ export type KnowledgeCitationVerdict = {
 export const sha256Of = (text: string): string =>
   createHash('sha256').update(text, 'utf8').digest('hex')
 
-export const createKnowledgeCitationVerifier = (ports: { reader: KnowledgeContentReader }) => ({
+export const createKnowledgeCitationVerifier = (ports: {
+  reader: KnowledgeContentReader
+}): {
+  verify(citation: KnowledgeCitation): Promise<KnowledgeCitationVerdict>
+} => ({
   async verify(citation: KnowledgeCitation): Promise<KnowledgeCitationVerdict> {
     const current = await ports.reader.read(citation.locator)
     if (current === undefined) return { state: 'unreadable' }
