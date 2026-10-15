@@ -7654,3 +7654,35 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
   M2 权重选型：产品决定 —— **选型一旦给定，本轮的脚本就是第一个真跑入口**，先跑离线 `--spec` 建清单，再跑 `--upload`，
   那时的真机读数才关闭本条「未取证」）；ⓑ 其余队列项与跨轮不变项照旧（IC40 needs-attention、IC6 收割需真算力主机、
   中文源四家属外部条件）。
+
+## 一百六十五、U2 第一片完成：首个本地解析模型 manifest 条目（**授权与校验值均已核实**）（会话 2026-10-16）
+
+### 一 条目（落盘于 `resources/model-weights/manifest.json`）
+
+| 字段 | 值 | 怎么核的 |
+| --- | --- | --- |
+| `id` | `structure-recognition-primary` | 能力槽位命名（化学结构识别 = 用户最关心那一路） |
+| `revision` | `zenodo-10.5281/zenodo.8300489` | 用 **DOI 锚定**（比日期更可复现） |
+| `publisher` | Kohulan Rajan / Henning Otto Brinkhaus / Achim Zielesny / Christoph Steinbeck（Zenodo 记录 8300489） | 取自**发布方自己的 API** `creators` |
+| `url` | `https://zenodo.org/records/8300489/files/models.zip?download=1` | HEAD 实测 200 + `content-length` 对齐 |
+| `sha256` | `8ebc7db18fffac7e71a2cf8487708053620d124846bc9502eddac1283b431d2b` | **我方实算**（下载件） |
+| `bytes` | `298662033` | 抓取后**字节数精确相等**才接受 |
+| `license` | **`CC-BY-4.0`** | 取自发布方 API `metadata.license.id`（**不是**页面转述） |
+| `kind` | `structure-recognition` | 白名单内 |
+| `publisherMd5` | `de78c966b0d63b290cd3f70bb81a91e7` | 发布方在其文件清单里给出；与我方实算**逐字符相同** |
+
+### 二 一条值得记住的实况：**校验当场抓住了残缺件**
+
+第一次抓取被服务器在 **5.9 MB / 298.7 MB** 处掐断（`curl: (18) transfer closed with 292727277 bytes remaining`）⇒ 本地 md5 为 `ec96d21292f637ac2fc6957cc014847c`，**与发布方 md5 不符** ⇒ 判定「不是权重，不许使用」。随后改用**可续传循环**（`curl -C -`，每轮从已有字节接着拉），经 **22 轮**补到 `final_bytes=298662033`，md5 与发布方**完全一致**，才输出我方 sha256（`RESULT=VERIFIED_WITH_AUTHOR_MD5`）。
+
+⇒ 这就是「无发布方校验值不下载」在真实网络下的第一次生效：**碎片没有被当成权重**，而且**我们不是自己给自己盖章**（发布方另有 md5 可对）。
+
+### 三 出货接线
+
+`electron-builder.yml` 的 `extraResources` 增加 `resources/model-weights -> model-weights`：清单是**数据**不是代码，随包发布后**断网也能读**（供 §一百六十四 的三态读取层使用）。`url` 目前仍指向发布方源站（我方托管资产尚未建立）；`note` 写清**本应用在 CC-BY-4.0 下再分发并署名**。
+
+### 四 U2 剩余
+
+- ③ 读取层的**路径解析**（打包后用 `process.resourcesPath/model-weights/manifest.json`，dev 用仓内 `resources/…`）＋把三态接到界面（今天的状态就会如实显示「清单已发布但模型未安装」而不是空话）。
+- ② 把校验器接成**构建/推前门**（清单不过即失败）。
+- ④ 发布脚本：把本地文件变成 manifest 条目（实算 sha256/bytes）并附上传命令；无网时只做本地校验与打印。
