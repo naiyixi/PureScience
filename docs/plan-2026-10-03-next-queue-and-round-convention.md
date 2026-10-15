@@ -7753,3 +7753,56 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 - **字节级校验仍未在真 release 上取证**（需先选定并托管权重，属产品决定）——与上一轮同一条，未变。
 - **真机支持包导出路径本轮未取**（窗口里的「导出支持包」按钮）：卡内存闸门（空闲物理页 ≈63 MB）；已取的证据是**模块级真跑**（真清单、真 tar、逐条读回），`e2e/support-bundle.spec.ts` 对新增条目是 `arrayContaining` **附加安全**，但**没跑过就是没跑过**，记为未复核。
 - **下一轮第一步**：① 先 `git fetch` + `git status` + `git log` 看会话是否已把 preload 那批落定；② 落定 ⇒ 取 U2 第三片的界面那一半（并进既有设置载荷，不新开通道），未落定 ⇒ 取台账其余项（IC40 needs-attention、IC6 收割需真算力主机、中文源四家属外部条件）；③ 起真机/e2e 前先 `vm_stat`（本轮读数 3883 空闲页 / swap 9.6 G）。
+
+## 一百六十九、本轮追加（执行器，2026-10-16 06:2x–）—— ① 修 main 上的 Windows 红；② **真入口一跑就崩**（单测看不见），补守卫 + 拿真机读数
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端当时 `origin/main` = `3fbe4d20`；本地多三笔未推（`a450343d` / `e0a26d8f` / `110d8848`，前一轮留下的）。
+- 树上 10 个改动**仍是并发会话的在制品**（`src/main/specialist/**`、`src/preload/index.ts`、`src/preload/renderer-api.d.ts`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`）⇒ 本单元一个字节没碰。
+- 内存闸门（现取）：**空闲物理页 4232–4584（≈66–72 MB）、swap 已用 9.6 → 10.6 G / 10.3 → 11.3 G** ⇒ 真机/Electron 取证**关闭**；本单元因此全部落在不需要起窗口的面上（vitest + 脚本 CLI + 真 `gh`）。
+- v2.5.0 剩余项（U1 已由 `64e35774` 交付、U2 的 ② ③非界面半 ④ 前两轮已交付）在本轮开始时**只剩界面那一半**，且它 `blocked-by` 会话在制的 `preload`（见 §一百六十八 §四）⇒ 本轮按队列约定**先修主干红**，再取**自拟单元**（下面这份）。
+
+### 一 main 上的 Windows 红：归因到用例自己把宿主路径当成了资产名
+
+- **作业级定因**：`7958abac` 的 `Windows Full Test` 8/8 分片红（该 run 7/8 分片绿）；唯一失败用例 `scripts/publish-model-weights.test.ts:275`，期望 `naiyixi/PureScience@models-v1:ocsr.onnx`，实得 `…@models-v1:C:\Users\RUNNER~1\AppData\Local\Temp\ps-model-weights-u6DhTZ\doc-parse.onnx`。
+- **根因**：用例自己用 `file.split('/').pop()` 从本机绝对路径里取资产名 —— Windows 上是反斜杠，这个 split **切不动**，整个路径被当成名字。断言写的是宿主的形状，与被测契约（「上传时的名字 ＝ 清单 URL 承诺的名字」）无关。**不是产品缺陷**。
+- **修法（只改测试，不改产品语义之外的任何东西）**：断言改读上传时声明的 `name`；并**新增**一条互核「上传过的名字集合 ＝ 清单写的 URL 名集合」（比旧写法更强）。产品侧同一批里补上 staging：本地文件名与承诺名不同时，按**承诺名**拷一份逐字节副本交给 `gh`（`gh` 用「给它的文件」命名资产），上传结束含失败一律清掉 staging 目录。
+- **变异证明**：把产品里 `name` 的来源改回 `basename(file)` ⇒ **恰好那一条红、其余 20 条绿**；已还原，产品代码逐字未动。
+- 读数：`scripts` 全域 **36 files / 440 passed**；`tsc node` exit 0（零输出）、`tsc web` exit 0；`eslint --no-cache` 两路径 **0 error / 0 warning**；推前钩子 exit 0。
+
+### 二 自拟单元：**真入口一跑就崩**（这是本轮最有价值的一条）
+
+- **怎么发现的**：为了给上传路径取真机读数，我把清单指到**自建的一次性 prerelease tag** 上真跑 `--upload`。第一步 `node scripts/publish-model-weights.mjs --help` 就当场 `SyntaxError: Duplicate export of 'prepareUpload'` —— 上一笔把 `createUploadAsset` / `prepareUpload` **同时**写成行内 `export` 与导出块成员，Node 的 ESM 链接器因此**拒绝整个模块**。
+- **为什么门禁零反应**（这才是要记的部分）：vitest 仍能链接它（21 条用例全绿）；`eslint` 不链接模块；**`scripts/**` 不在任何一份 tsconfig 的 `include` 里**（`tsconfig.node.json` = `electron.vite.config.*` / `playwright.config.ts` / `e2e/**` / `vite.web.config.*` / `src/main|preload|shared`；`tsconfig.web.json` 同形），所以两套 `tsc` 也不检查它。⇒ 文档里那条 `npm run publish:model-weights` 入口是**死的**，而本仓没有一道门看得见。
+- **修法**：从导出块去掉那两个名字（行内导出已足够）。
+- **守卫（防复发）**：新增三条用例，用 `process.execPath` **真跑那个文件**（`--help` / 离线 `--spec` 打印清单 / 具名拒绝的退出码与「不写清单」）。变异证明：把重复导出放回去 ⇒ **恰好这三条红、其余 21 条绿**，报错原文与真机逐字相同；已还原。
+
+### 三 真机读数：上传路径这一半（真 `gh`、真 release、真 URL）
+
+一次性 prerelease tag（**跑完即删**：`gh release delete … --yes --cleanup-tag`；删后复核 = 页面 `release not found`、远端 tag 命中数 0、`gh release list` 头三位仍是 `Nightly (Pre-release)` / `v2.4.0 Latest` / `v2.3.0`（Latest 未被扰动）、该 tag **没有**触发任何 Release 车道（它不匹配 `v*`））：
+
+| # | 做的是什么 | 真读数 |
+| --- | --- | --- |
+| ① | `--spec … --out … --upload`（两件小夹具，其一本地名 ≠ 承诺名） | exit 0，打印 `uploaded and verified … 2 asset(s) uploaded, all re-hashed from their published URLs` |
+| ② | 真 `gh release view <tag> --json assets` | 资产名**就是清单承诺的名字**：`doc-parse.onnx` / `ocsr-v2.onnx`（本地文件是 `ocsr.onnx` ⇒ 走的是 staging 副本那一路），字节数 45 / 96 与本地一致 |
+| ③ | `curl` 独立取回两份资产 | sha256 与本地文件、与清单**三方逐字符相同**（`ccfc271e…` / `6954bcba…`） |
+| ④ | `--verify` 对这批字节 | exit 0，打印 `verify OK — 2 entries re-hashed from …/released` |
+| ⑤ | `--verify` 对**篡改副本** | exit 1，点名 `ocsr-v2.onnx` 两处不符（`expected 96, measured 105` 与摘要逐字），**这不是「不可用」而是「具名拒绝」** |
+
+- **边界（不许读成更强）**：真跑的是**机制**那一半；**真权重（298 MB）仍未上传**（`resources/model-weights/manifest.json` 里的 `url` 仍指向发布方源站，托管属产品决定）。上传**读回复算不匹配**那条负路径本轮走的仍是单测（注入 fetch），真机上只取了**正路径**（③④）；⑤ 取的是同一个校验器在**文件**上的负路径。
+
+### 四 本轮的推送与判决归属（逐笔点名）
+
+- 推到远端的共 **4 笔**：`a450343d`（docs）→ `e0a26d8f`（U2 读取层接真消费方 + 推前门）→ `c590f60a`（Windows 红修复）→ `1bde6eb3`（真入口修复 + 守卫）。
+- **`c590f60a` 的两条车道被我自己的下一推取消**（06:29 起跑、06:34 取消）⇒ 它**没有自己的判决**；`1bde6eb3` **包含** `c590f60a`（祖先关系已核：`git merge-base --is-ancestor c590f60a 1bde6eb3` 为真），CI 跑的是整棵树 ⇒ `1bde6eb3` 的双绿可作 `c590f60a` 的证据。
+- **判决（已取到，不是推断）**：`1bde6eb3` 双绿 —— `Windows Full Test` run `38818000796` **conclusion=success**，**8 个分片全 success**（含 `7958abac` 上红过的 **8/8**，即那条跨平台红已转绿）；`Nightly` run `38818000902` **success**（`Verify (lint + typecheck + test + package)` success、四平台 build success、macos-arm64 的 `Run P0 Electron certification` 那一长步正常跑完后通过）。判决文件 `/tmp/ci-verdict-1bde6eb3.txt` 末三行 = `=== 全部目标车道已落定（第 53 次轮询） ===` / `Windows Full Test|completed|success` / `Nightly|completed|success`。
+- 推送前现取在飞车道：**没有**在跑的 run ⇒ 第一次推送没有取消任何人的判决；第二次推送取消了**我自己** `c590f60a` 的判决（上一条的替代关系即为此）。本轮**没有再推**（本地那笔 docs 留到判决取到之后）。
+
+### 五 具名未办与下一轮第一步
+
+- **U2 第三片的界面那一半仍未做**（分区里列出资产/三态）：`blocked-by` = 并发会话在制的 `src/preload/index.ts` / `renderer-api.d.ts`（本轮结束时**仍未落定**）；并进既有设置载荷是首选（新开渲染端可见通道 ≈ 30 文件连锁）。**本轮不碰**。
+- **`1bde6eb3` 的判决已取到（双绿）**，见 §四；本轮因此**以「主干绿」收口**。
+- **真权重（298 MB）未上传**：产品决定；机制这一半本轮已真跑（见 §三）。
+- **`scripts/**` 不在任何 tsconfig 的 `include` 里** ⇒ 该目录下的 `.ts`/`.mjs` 没有任何类型检查覆盖（本轮的重复导出正是从这个洞里漏过去的）。这是**新发现的一条门禁缺口**，修法要动 tsconfig（会牵动全仓类型检查范围）⇒ 立案，不在本轮擅动。
+- **下一轮第一步**：① 读 `/tmp/ci-verdict-1bde6eb3.txt` 取判决；② `git fetch` + `git status` + `git log --oneline origin/main -6` 看会话是否已把 `preload` 那批落定（落定 ⇒ 取 U2 第三片界面那一半；未落定 ⇒ 台账其余项）；③ **动 `scripts/**` 或新写 CLI 之前先按人的方式跑一次它**（本轮的教训）；④ 起真机/e2e 前先 `vm_stat`（本轮读数 4232 空闲页 / swap 10.6 G）。① 已办（双绿，判决见 §四），如需复核读 `/tmp/ci-verdict-1bde6eb3.txt`。
