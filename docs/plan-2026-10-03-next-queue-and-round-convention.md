@@ -6397,3 +6397,29 @@ GATE_EXIT=0
 **G2 的语义来源**：仓内没有 embedding 基础设施 ⇒ 三条路：(a) **只做词法**（把「语义检索」从本版描述中降级，最诚实、零新增依赖）；(b) 走**函数模型**面新增 embedding 用途（依赖用户配置的服务，未配置即降级）；(c) 引入**本地模型资产**（体积与许可都要另立红线条目，且要与 M2 的既有卡点一起看）。
 
 **我的建议：先 (a) + 预留 (b)** —— 即 G2 按「词法默认 + 语义可选（有来源才启用、否则具名降级）」实现，本版的对外描述与页面文案按 (a) 的口径写（说清是词法检索），(b) 作为后续版本的自然升级点。这样不引入新依赖、不写空壳、也不许任何一处把词法叫成语义。
+
+## 一百四十、v2.4.0 **F1 第一段交付**：目标对象与持久化（会话，2026-10-15）
+
+### 一 交付（`bd1b1c7b`）
+
+| 层 | 文件 | 要点 |
+| --- | --- | --- |
+| 共享形状 | `src/shared/goal.ts`（新） | 工具名/描述常量、`GoalReadingRef`（kind+id+fingerprint）、验收项 `metBy`、里程碑、8 个**具名**拒答码 |
+| 持久化 | `src/main/goals/goal-repository.ts`（新） | 形状照 routine 仓储：**主进程唯一写者** + **原子写（temp+rename）** + 路径守卫（落在 `artifacts/<session>/.goals` 下）+ 具名错误码 |
+| 读侧诚实 | 同上 | 文件缺失 = 空（还没人登记）；文件**读不回来 = `record-unreadable`**，绝不静默当空 —— 「读不到」与「没有」导向不同的动作 |
+| 更新语义 | 同上 | 改目标时**保留已满足验收项的 id**（读数引用挂在 id 上 ⇒ 重写问句不会把证据孤立掉） |
+| 测试 | `goal-repository.test.ts`（新） | **5 passed**：写出→新实例读回一致 / 五类非法目标各自具名**且一个字节都不写** / 更新保留 id / 不留临时文件且在会话目录下 / 坏记录 ≠ 空记录 |
+
+本文件 `eslint 0`、`tsc 0`（全树 typecheck 也 0）。
+
+### 二 单元未完成的部分（**不声称 F1 完成**）
+
+F1 的「目标对象」已交付；**工具面**（`goal_configure` / `goal_status`）还差 **5 处集成点**，逐条列出以便下一步直接接上：
+
+1. `src/main/mcp-server-args.ts`：加 `GOAL_MCP_SERVER_ARG = '--purescience-goal-mcp'`（照 `ROUTINE_MCP_SERVER_ARG` ✓）；
+2. `src/main/index.ts`：argv 命中该标志时**惰性**调用 `runGoalMcpServer()`（照 routine 的分派 ✓，惰性以避免 UI 路径加载 MCP SDK 图）；
+3. `src/main/goals/goal-mcp-server.ts`（新）：照 `routine-mcp-server.ts` 的同形 —— zod schema（`goal_id?` / `objective` / `acceptance[]`）、`createGoalMcpServer(handler)`、`createGoalMcpServerConfig`（env：`PURESCIENCE_GOAL_RPC_{ENDPOINT,SOCKET_PATH,TOKEN}` + `PURESCIENCE_GOAL_SESSION_ID`）、`authorization: \`Bearer ${token}\``、经 `fetchLocalRpc` 回调主进程；
+4. 主进程 **RPC 方法** `goalConfigure` / `goalStatus`（与 `routineConfigure` 等同处注册），处理器直接调 `GoalRepository`；
+5. **spawn 注册**：让 agent 会话像拿到 routine 服务器那样拿到 goal 服务器（routine 的 `createRoutineMcpServerConfig` 在非测试里未被调用 ⇒ 该消费点即第 5 处，需要与既有 MCP 服务器清单同改）。
+
+后续单元（F2 进度只由真读数推进 / F3 上屏；G1–G4）保持 §一百三十九 的拆解不变。
