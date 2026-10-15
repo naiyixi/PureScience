@@ -418,7 +418,8 @@ export {
   getNotebookDataRoot,
   getNotebookRunJsonPath,
   getNotebookSessionRoot,
-  getRuntimeRoot
+  getRuntimeRoot,
+  NOTEBOOKS_DIR
 }
 export type {
   AppendNotebookRunRequest,
