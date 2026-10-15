@@ -6982,3 +6982,30 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 **顺带核过的两个前提**：夹具仓 `naiyixi/purescience-plugin-fixture` 仍为 **PUBLIC**（`gh repo view` ⇒ visibility=PUBLIC、默认分支 main）✓；本机与认证车道走的是 GitHub 读取路径 ✓。
 
 **至此 §一百五十二 的审计结论收口**：18 条未落项 —— 16 条历史条目、1 条已更正（B2 第三片，含其行分支的**测试台**缺口具名）、**1 条真缺口已于本节点关闭**。台账内**不再有指向产品代码的「未开工」声明**。
+
+## 一百五十三、真数据读数：血缘内容哈希的**装配点**在别处 —— 我第一版读数的方法学缺陷与更正（会话，2026-10-16）
+
+### 一 我做了什么（只读，临时规格取完即删）
+
+为关闭 §九十x 那条 `blocked-by: 等新运行经过 B1 写入侧` 的「**收据路径的真数据读数**」，我写了一个只读临时规格扫**真数据根**（`/Users/totota/PureScience-DEV/notebooks`），把每份 `run.json` 的 `runs[]` 直接喂给产品自己的 `computeNotebookStaleReasons` / `aliasLineageContentHash`，统计哈希走的是**收据路由**还是**读侧现算**。
+
+**读数**：`documentsRead=142 unreadable=0 runs=2197`；`withReceiptCodeHash=0 readSideSourceHash=0 notRecorded=2197`；引擎找到 `reasons=1693`（`name-rewrite` 1680 / `direct-mutation` 12 / `alias-mutation` 1），其中 **`reasonsWithRealHash=0`**；样本 `variable=globalThis via=globalThis chain=0 kind=name-rewrite producer=notebook-run-1786102211513-11 hash=not-recorded`。
+
+### 二 我为什么**不**把它当成「产品缺口」
+
+我先按纪律反查字段名（避免「字段名写错 ⇒ 假 0」）：`AliasLineageRun` 要的是 `riskReview?.codeHash` 与 `sourceContentHash?.value` ✓；真文档里 run 的键是 `artifacts / cellId / cwdBefore / cwdAfter / endedAt / environment* / executionCount / inputFiles / inputKind / kernelKind / outputs / runId / script / source / startedAt / status / text / variablesWritten / workingFiles` —— **两者都不含**，全盘 grep 这两个字段名也是 **0 文件**。
+
+**但**：v2.3.0 的公开叙述里，notebook 面在真数据上拿到过 **1,412 / 1,412 行带真哈希**。⇒ 结论只能是：**哈希的装配发生在别处**（某个 loader 会把**运行的收据/读侧哈希并进运行对象**再交给引擎），**不是我这次手工喂的裸 `run.json`**。⇒ **我的 0 是装配方式的产物，不是产品状态** ⇒ 「哈希路径在真数据上尚未被走过」这句**没有被这次读数证实**，也**没有被它推翻**。**不许**把它写成产品缺陷（这正是本轮前几节反复防的那类误读）。
+
+### 三 因此登记的**准确**下一项
+
+要回答「收据来源哈希在真数据上到底走没走过」，必须**沿产品自己的装配点**读，而不是自己拼输入：
+1. 找到**谁**把 `AliasLineageRun[]` 从盘上装配起来（notebook 面那个 loader：引擎的调用方，收据 join 就在它那里）；
+2. 用它（**复用**，不另写一份）在真数据根上取读数 ⇒ 看 `producerContentHash` 是**真哈希**还是 `not-recorded`；
+3. 与 v2.3.0 叙述里的 `1,412 / 1,412` 对齐（若一致 ⇒ 该叙述得到复核；若不一致 ⇒ 差异要**具名**说清在哪一步）。
+
+**blocked-by**：无外部依赖（纯本地只读）—— 只是需要一次**沿正确装配点**的读数。
+
+### 四 顺手核过的一件事
+
+`run.json` 里 run 的标识字段是 **`runId`**（不是 `id`），与 `AliasLineageRun.runId` 一致 ✓ ⇒ 本轮 1693 条理由能算出来，说明 `runId` / `script` / `variablesWritten` 这几项**读的是对的** ⇒ 上面那个 0 **不是**因为整份输入没被识别，而是**只有哈希那两个字段缺**（且缺的原因是装配点不同）。
