@@ -3293,7 +3293,7 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
    `blocked-by` = 无；**动手前先按当前树重扫**（数量以扫描为准），插值一律留在组件内用 `.replace(...)`。
 2. **其余形状**（`jsx prose line` / `attr literal` / 中文字面量如 `NotebookPreview` 的 `{n} 个 Markdown 单元`）按审计器清单继续，
    逐形状收口；每形状收口后同样留一条可复跑读数。
-3. **P0-10 最后一条「0 与『没量到』在主进程侧同形」**：`blocked-by` = 无（本地可核）；点位见 v2 排期档 P0-10 行末句与 §五十五 四节第 2 条。
+3. ~~**P0-10 最后一条「0 与『没量到』在主进程侧同形」**~~ ✅ **已收口（执行器 `37bde3ca`，见 §一百五十三）**：点位见 v2 排期档 P0-10 行末句与 §五十五 四节第 2 条。`blocked-by` = 无（本地可核）。
 4. **批 D / 批 A（v2.0.0 大件）**：`blocked-by` = **真机验收需要在真窗口跑（内存闸门）**；其中**可离线做的半边**（如结构文件解析与选择指纹的数据层）
    没有真消费方 ⇒ **不单独开工**（本仓不留死代码），等 D1 的视图内核一起做。
 5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
@@ -3368,7 +3368,7 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
    `blocked-by` = 无；动手前**先按当前树重扫**（数量以扫描为准）。
 2. **`dquote`（70）**：`blocked-by` = **需要逐条判性质**（agent/日志指令文本固定英文，不是缺口）；
    先按文件分桶（`src/main/**` 一批、`src/renderer/**` 一批），只在渲染层那一批里挑真文案。
-3. **P0-10 最后一条「0 与『没量到』在主进程侧同形」**：`blocked-by` = 无（本地可核）。
+3. ~~**P0-10 最后一条「0 与『没量到』在主进程侧同形」**~~ ✅ **已收口（执行器 `37bde3ca`，见 §一百五十三）**：单一来源的三态测量 `measureDirectorySize`（`measured` / `unavailable·unreadable`），移除回执与体积读数都不再把「量不到」折成 0；窗口那半（把「量不到」单独说一句）窗口期仍在字典占用中，已立案。`blocked-by` = 无（本地可核）。
 4. **批 D / 批 A（v2.0.0 大件）**：`blocked-by` = 真机验收需要在真窗口跑（内存闸门）。
 5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 6. 并发写入者那 83 份 `docs/evidence/` 表格重排仍在树里（自 10-10 22:06 未提交）⇒ 下一轮开工仍按
@@ -3446,7 +3446,7 @@ Latest = **v1.102.0** 不动；本单元是**运行时行为改动** ⇒ 占一�
 2. **批 A 下一片（建议）：段落单元接上真消费方**。本轮把页文本修到「有行、有段落」，`pdfPageTextParagraphs` 目前**只有测试**在用；
    把它接成 A1 的段落记录（`src/main/translation/*` 已有段落切分与指纹，改用页文本的真实段落来源即可，别再切一次）——
    `blocked-by` = 无（离线可判）。**动手前先核** `translation-units.ts` 现在的切分输入来自哪里，避免两套切分并存。
-3. **P0-10 最后一条「0 与『没量到』在主进程侧同形」**：`blocked-by` = 无（本地可核）。
+3. ~~**P0-10 最后一条「0 与『没量到』在主进程侧同形」**~~ ✅ **已收口（执行器 `37bde3ca`，见 §一百五十三）**：单一来源的三态测量 `measureDirectorySize`（`measured` / `unavailable·unreadable`），移除回执与体积读数都不再把「量不到」折成 0；窗口那半（把「量不到」单独说一句）窗口期仍在字典占用中，已立案。`blocked-by` = 无（本地可核）。
 4. **批 D / 批 A 的真机验收（v2.0.0）**：`blocked-by` = 需要在真窗口跑（内存闸门，读数见本节〇）；同时点名的**真窗口 PDF 读数**（打开一份真 PDF → `pdf_pages` 读回带段落的文本）也归这一类，内存宽松时补。
 5. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2/IC54（产品决定）。
 6. 并发写入者那 83 份 `docs/evidence/` 表格重排仍在树里 ⇒ 下一轮开工仍按「不是我的、不提交、不 stash」处理。
@@ -6895,3 +6895,73 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 7. 把断言到的文本原样打到日志里作读数（与 F3 同体例）。
 
 **注**：夹具仓是否仍可匿名读、以及认证车道是否联网，开工前先核（`blocked-by` 明写：一个能匿名读的公开仓 + 车道联网）。若夹具不可用 ⇒ 改在**隔离根里**由用例自建一个最小 zip/清单并用**本地**来源通道（先看代码里有没有这条入口），再不济就**具名降级**：只断言两个按钮的**禁用态**与点击后的**拒答**（不需要网络的那部分），并把「真部署目录」那一条标为未覆盖。
+
+## 一百五十三、P0-10 最后一条收口：**「量不到」不再折成 0**（执行器，2026-10-15 20:0x）
+
+### 〇 开工核对（防重做 + 并发 + 闸门）
+
+- `HEAD == origin/main == 587d2150`，工作区**干净的那部分之外**只有并发会话的在制品；`gh release list` 的 Latest = **v2.4.0**（已发布）。
+  B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）与批 F/G 均已收口 ⇒ 本轮按队列约定取**自拟单元**：
+  P0-10 那条「0 与『没量到』在主进程侧同形」（§五十五 四.2 立案，此后三轮都列在「下一轮第一步」第 3 条，`blocked-by` = 无）。
+- 树上 19 个改动是**并发会话的在制品**（`src/main/specialist/**`、九份 i18n、`SpecialistsPanel.tsx`、`specialist-store.ts`、
+  `src/preload/**`、`src/shared/plugin-source.ts`）—— 它正在做 §一百五十二 点名的那条真缺口（E3 的 `Deploy` / `Run once` 真窗口读数）。
+  **本单元一个字节都没碰这些路径**，`git add` 只加自己的 6 个文件。
+- **内存闸门仍关**（20:00 实测：空闲物理页 3,970 ≈ 62 MB、swap 已用 5.90 G / 7.18 G，且会话的 dev 实例在跑）
+  ⇒ 不起 `build:e2e` / Electron，本单元**不冒充真机读数**（见 §四.1）。
+
+### 一 缺口核实（读源取得，不是转述）
+
+`dirSize()`（`src/main/storage/usage.ts:29`）在 `readdir` 失败时**返回 0** —— 这是它**文档化的策略**（整类目录求和的调用方
+不该因为一个子目录不可读就把整类归零）。问题在**上报**读数的调用方还在它外面又包一层 `.catch(() => 0)`：
+
+- `src/main/notebook/environment-management.ts:115` —— 具名环境移除的 `freedBytes`；
+- `src/main/notebook/session-data-cleanup.ts:71` / `:109` —— 项目 / 会话 notebook 数据的 `freedBytes`。
+
+⇒ 「看一眼，里面是 0 字节」与「根本没看进去（EACCES / EIO / 路径不是目录）」在**主进程出口同形**，
+而这两个数分别被**报给 agent**（`compactManageEnvironmentsResult`）与**报给窗口**（`RuntimesPanel` 只在正数时才出话）。
+`withSizes()`（同文件 `:129`）是同一类的另一半：它先 `stat` 分开了「不存在」，但子树只走到一半时会把**部分和**当整份前缀的体积展示。
+
+### 二 交付（6 文件：3 源/契约 + 3 用例）
+
+- `src/main/storage/usage.ts`：新增三态测量 `measureDirectorySize(dir, seen, shared?)` →
+  `{ state: 'measured'; bytes }` | `{ state: 'unavailable'; reason: 'unreadable' }`（缺态命名沿用本仓 `reading-journal.ts` 的
+  `unavailable` + `unreadable` 那套词）。**同一条遍历**（`walkDirectorySize`）多一个显式失败策略参数：
+  `dirSize` 的语义逐字节不变（`ENOENT` ⇒ 0 是**测量**；非 `ENOENT` 的失败才抛）⇒ 不是第二套 walker。
+- `src/main/notebook/environment-management.ts`：移除回执照三态出话 —— 量到就报 `freedBytes`，量不到**整个字段不出现**
+  （窗口与 agent 都按「没有读数」处理）；`withSizes` 改用三态（部分可读的树不再拿部分和冒充体积）。
+- `src/shared/notebook-env.ts`：把「`remove` 结果里该字段**缺席＝没量到**，与『测量为 0』不是一回事」写进契约注释（两态具名）。
+- 用例 3 文件：`usage.test.ts`（可读树 / 不存在 ⇒ 测量 0 / 存在但列不出来 ⇒ `unavailable` / 嵌套不可读 ⇒ `unavailable`，
+  且 lenient 侧仍是 0）、`environment-management.test.ts`（sealed 前缀 ⇒ 回执**没有** `freedBytes`，而移除确实发生）、
+  `mcp-server.test.ts`（映射器不得凭空造 0，而真正的 0 照旧上行）。三个 `chmod` 用例按本仓既有体例
+  `it.skipIf(process.platform === 'win32')`（目录权限是 POSIX 语义，Windows 上 chmod 只动只读位）。
+
+### 三 门禁读数（全部实跑；数字取自**最后一次改动之后**的运行）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（本单元 3 个用例文件） | **75 passed**（3 文件） |
+| 模块 vitest（`src/main/storage` + `src/main/notebook`） | **104 passed \| 8 skipped（112 文件）**、**1711 passed \| 99 skipped（1810 条）** |
+| 渲染侧（`RuntimesPanel.render.test.tsx` + `src/renderer/src/i18n`） | 5 文件 / **99 passed** |
+| `npx eslint --no-cache .`（CI 同口径，全仓） | **0 error / 152 warning**，EXIT=0；本单元 6 文件 **0 warning** |
+| `tsc` node / web（`--composite false`，node 侧抬 8 G 堆） | exit 0 / exit 0（各 0 条 `error TS`） |
+
+**prettier 漂移只在本单元新行**：先核 `HEAD` 版本的这 6 个文件**本来就 CLEAN**，只对本单元文件 `--write`，复跑 `All matched files use Prettier code style!`。
+
+**一条红如实记档**：模块套件第二次跑时 `src/main/notebook/runtime-service.test.ts > executeShell > scrubs host secrets …`
+失败，**单文件 isolation 连跑 3 遍全绿（186 passed ×3）**，该文件本单元未碰、断言与目录体积无关（是 bash 环境变量白名单那条）
+⇒ 按**负载抖动**记档，不当回归、也不谎报通过。
+
+### 四 刻意的边界（不许读成「已做」）
+
+1. **没有真窗口读数**（内存闸门）：本单元的证据是**真文件系统**上的读数（真目录、真 EACCES、真字节数，不是替身）；
+   窗口那半的行为**没有变**（量不到 ⇒ 不报字节，本来就不谎报），把「量不到」**单独说一句**属可选精修，未做。
+2. **另两处同形折叠仍在**（`session-data-cleanup.ts:71` / `:109`）：它们的回执里 `freedBytes` 是**必填** number，
+   要分态得动 wire 形状（含渲染层那句话与聚合口径「至少 N 字节」）⇒ **属独立单元，本单元只登记不冒充**。
+3. `plugin-catalog.ts:137` 的同一折叠位于**并发会话的在制品**里，不碰。
+4. 本单元**无通道 / 无 pin / 无计数涟漪**（未新增命令、未改渲染端可见面），故未跑全量 vitest：受影响面按模块跑齐（上表）。
+
+### 五 下一轮第一步（带 blocked-by）
+
+1. **E3 的 `Deploy` / `Run once` 真窗口读数**（配方见 §一百五十二 二）；`blocked-by` = 并发会话正在写那批文件 + 内存闸门（起 Electron 前先 `vm_stat`）。
+2. **回执分态的第二处**（`session-data-cleanup` 两条）：`blocked-by` = wire 形状 + 渲染层那句 + 聚合口径的低风险默认（`freedBytes` 保持必填、另加具名 `bytesState`）。
+3. 跨轮不变：IC40 needs-attention、IC6 收割（真算力主机）、中文源四家（外部条件）、M2 / IC54（产品决定）。
