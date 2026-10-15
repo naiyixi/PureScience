@@ -6502,3 +6502,37 @@ F1 的「目标对象」已交付；**工具面**（`goal_configure` / `goal_sta
 ### 四 F2 状态
 
 **库侧 + 生产侧完成**（含真机读数 ✓）。**仍未做**：`goal_advance` 的**工具面** —— 它与 F1 第五处是同一个前置（`acp/session-capability-owner.ts` 的能力编织）⇒ 两件一起做才有意义：先接能力编织，再给 F1/F2 各自加工具与上屏（F3 一起）。
+
+## 一百四十四、v2.4.0 **能力透传链接通**（`1de4d17d`）+ 能力编织的作业单（会话，2026-10-15）
+
+### 一 已接通（5 处，编译与受影响面全绿）
+
+```
+ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根取 resolveDataRoot）
+  → runtime-composition.ts（能力选项块；getRpcConnection 走已实现的 issueGoalConnection）
+  → runtime-base-composition.ts（透传 goal: options.goal）
+  → runtime.ts（AcpRuntimeGoalOptions + goal?: 选项字段）
+  → session-capability-owner.ts（SessionCapabilityGoalOptions + goal?: 字段）
+```
+
+读数：`acp + goals + notebook + settings` **265 文件 / 4258 passed（102 skipped）**；node tsc 0；eslint 0。
+
+**自踩两处（都当场抓到）**：① 脚本把 `GoalRepository` 塞进了 routine 的 import 行 ⇒ `TS2300/TS2305` ⇒ 按行精确修正；② `ipc.ts` 与执行器共用 ⇒ 提交前读 `git diff src/main/ipc.ts` 确认**只有我的 goal 相关行**（是 ✓）才 `git add`。
+
+### 二 下一步作业单（能力编织：`session-capability-owner.ts` 里 routine 的镜像点，逐条列全）
+
+| 行 | 现状 | goal 需要 |
+| --- | --- | --- |
+| `:83` | 能力名元组含 `'routine'` | 加 `'goal'` |
+| `:137` | `routine: string`（路由 id 记录） | 加 `goal: string` |
+| `:275` | `onRoutineConnection?` | 加 `onGoalConnection?` |
+| `:320` `:337` | 两个请求类型各含 `routineRelease?` | 各加 `goalRelease?` |
+| `:407` | `routineSessionSequence = 0` | 加 goal 孪生 |
+| `:428` `:461-462` | 建立连接与 `routineRelease = connection.release` | 孪生（含 `onGoalConnection`） |
+| `:490` `:503` `:531` `:545` `:566` `:586` `:609` `:623` | 8 处路由/连接/撤销 | 逐处孪生 |
+| `:645` | `routine: this.options.routine ? stableAppSessionId : ''` | 孪生 |
+| `:661` `:685-686` | 序号自增与 `routine-session-<ts>-<n>` 别名 | 孪生（`goal-session-…`） |
+| `:716` `:732` `:747` `:778` | 策略门 `policyAllowsSessionCapability(…, 'routine')` / 记录字段 / `capabilities.push('routine')` | 孪生（**策略门必须真的接**：goal 也要走 `policyAllowsSessionCapability`） |
+| `:1015` `:1052-1055` `:1158` `:1262-1265` | enabled 记录类型与「按 enabled 建环境」 | 孪生（`buildGoalEnvironment` 走 `request.routingIds.goal`） |
+
+**配套**：既有测试里**枚举了能力清单**的用例要一并加 goal（否则覆盖闸门会红）；做完后用 `goal-mcp-server.test.ts` 同形的测试自证「会话真的拿到了 goal 服务器、且策略不许时拿不到」——**到此 F1/F2 的工具面与 F3 的上屏才有意义**。
