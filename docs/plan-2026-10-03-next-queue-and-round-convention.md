@@ -6870,3 +6870,28 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 **该用例自己写明覆盖边界（这才是准确口径）**：本读数覆盖「面板渲染主进程造的投影 + recipe 在屏 + 不用 unavailable 兜底 + 无理由时的诚实陈述」；**未覆盖**「真窗口里出现**一行真数据**」，因为那需要「一次 notebook 运行写入别名值 + 又一次运行就地改它」= **python/R 内核**，而该 harness **不提供**（`runtime/envs/default-python/bin/python` 不存在）⇒ 行分支改由**投影层用例 + 面板 render 用例**覆盖（本轮实测：`run-alias-lineage.test.ts` + 面板 render/integration **3 文件 / 65 passed**）。
 
 **因此登记的下一项改为（比「补读数」准确）**：若要覆盖**行分支的真窗口读数**，需要给 harness **备一个 python/R 内核**（这是**测试台**缺口，不是产品缺口）—— 项目里需先有 `runtime/envs/default-python/bin/python`。在此之前不许把「行分支只有单测覆盖」说成「真窗口已证行」。**别把它写成产品缺陷。**
+
+## 一百五十二、台账「未开工/未落」全量审计（会话，2026-10-16）——结论：**只剩一条真缺口**
+
+### 一 审计覆盖面与判据
+
+把台账里所有「未开工 / 未落 / 仍未取 / 尚未」条目逐条取出（18 条），按**是否被更晚的章节取代**分两类。判据不是读文字，而是**去代码与测试里核**：模块是否存在、是否真被调用、是否有测试且实跑通过、是否有认证车道的真窗口用例。
+
+**结论**：其中 **16 条是历史条目**（写时属真，已被后来的章节/交付取代 —— 含 §九十x 的 B2 第三片、B2 两片、C2/B3/E2/E3 的进度表，以及 v2.4.0 建程中的 F1/F2/F3/G1–G4 进度行），**1 条已在本轮两次更正**（B2 第三片：交付 ✓、读数 ✓，只差「行分支」而原因是测试台无内核 ⇒ 属测试台缺口），**剩下 1 条是真缺口**（下节）。
+
+### 二 唯一真缺口：E3 的 `Deploy` / `Run once` **从未在真窗口里被读者按过**
+
+**事实**（本轮核）：认证车道有 `e2e/certification/plugin-operation-gate.spec.ts`，用例名 *「the plugin operations answer **through the window** and refuse a token this app never issued」* —— 它**在真窗口里**调 `bridge.api.specialist.pluginSourceDeploy({ token, confirmed: true })`，即**走桥**验证通道与拒答，**没有点 `Deploy` / `Run once` 这两个按钮**。另一个 `plugin-source-channels.spec.ts` 同样在桥层。
+
+**为什么这是缺口而不是细节**：红线写的是「**读者真正按的按钮必须在真窗口里被点过**」。桥级读数证明「通道可用、拒答具名」，但**不能**证明「读者按下去会发生什么」—— 按钮的禁用条件（确认勾选前两个按钮都禁用）、点击后屏上给出的**真目录与条目数**、以及 `Run once` 按策略回的具名拒绝，都还没在真窗口里被按出来。这与 F3 修掉前的情形**同类**。
+
+**下一单元的配方**（沿用 F3 已验的体例）：
+1. 真 Electron 隔离根启动真应用；`completeOnboarding()`；
+2. Settings → **Specialists** → **Import ZIP** 视图 → 「From a public repository」区；
+3. 来源用**保留的**公开夹具仓（`naiyixi/purescience-plugin-fixture`，只读、无凭据），`github:owner/repo` 引用形式；
+4. **先断言两个按钮在勾选前是禁用态**（`toBeDisabled()`）—— 这正是「窗口发出的 `confirmed: true` 只能来自读者真的看过那句话」的**可执行**判据；
+5. 点 **Deploy** ⇒ 断言屏上给出**真目录**与**条目数**（形如 `Deployed plugin-fixture · 1 file(s) · …/storage/PureScience-DEV/plugins/plugin-fixture`）；
+6. 点 **Run once** ⇒ 断言默认策略下返回**具名**拒绝（`approval-required` + 那句「未批准就不跑」的原话），**不是**笼统失败；
+7. 把断言到的文本原样打到日志里作读数（与 F3 同体例）。
+
+**注**：夹具仓是否仍可匿名读、以及认证车道是否联网，开工前先核（`blocked-by` 明写：一个能匿名读的公开仓 + 车道联网）。若夹具不可用 ⇒ 改在**隔离根里**由用例自建一个最小 zip/清单并用**本地**来源通道（先看代码里有没有这条入口），再不济就**具名降级**：只断言两个按钮的**禁用态**与点击后的**拒答**（不需要网络的那部分），并把「真部署目录」那一条标为未覆盖。
