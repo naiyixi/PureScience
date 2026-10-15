@@ -778,3 +778,76 @@ describe('ACP session capability owner', () => {
     expect(releaseSessionCapabilities).toHaveBeenCalledOnce()
   })
 })
+
+// goal 能力的自证：会话**真的把这台服务器建起来了**（判据是它去要了 RPC 连接，而不是清单里有个名字），
+// 且策略不许时**连要都不去要**。否定用例用 reviewer 策略：`policyAllowsSessionCapability` 对非 primary
+// 一律拒绝 ⇒ 若门是装饰性的，这条会红。
+describe('goal capability provisioning', () => {
+  const goalOptions = (
+    getRpcConnection: () => Promise<{ endpoint: string; token: string; release?: () => void }>
+  ): { mcpEntryPath: string; getRpcConnection: typeof getRpcConnection } => ({
+    mcpEntryPath: '/app/main.js',
+    getRpcConnection
+  })
+
+  it('builds the goal server for an allowed session and releases the connection on revoke', async () => {
+    const getRpcConnection = vi.fn(async () => ({
+      endpoint: 'http://127.0.0.1:7',
+      token: 'goal'
+    }))
+    const owner = createOwner({
+      artifacts: undefined,
+      notebook: undefined,
+      skillImport: undefined,
+      goal: goalOptions(getRpcConnection)
+    })
+
+    const provision = await owner.provision({
+      stableAppSessionId: 'session-goal-1',
+      framework: { ...opencodeFramework, acceptsStdioMcp: true },
+      nativeMcpEnabled: true,
+      bridgeMcpAliasesEnabled: false,
+      policy: CURRENT_PRIMARY_SESSION_CAPABILITY_POLICY,
+      sessionCwd: '/workspace',
+      projectName: 'project-1'
+    })
+
+    expect(provision.descriptor.capabilities).toContain('goal')
+    expect(provision.descriptor.canonicalMcpServerNames).toContain('purescience-goal')
+    // 决定性的一半：app 真去要了这台服务器的 RPC 连接（名字在清单里 ≠ 服务器被建起来）。
+    expect(getRpcConnection).toHaveBeenCalledOnce()
+
+    provision.commit('session-goal-1')
+    // 释放走既有按能力的管线（依赖调用方传 onGoalConnection，与 routine 同状），本用例不重复测它；
+    // 这里只证「服务器真被建起来」与「策略不许连要都不去要」两件决定性的。
+    owner.revokeSession('session-goal-1')
+  })
+
+  it('does not even ask for the connection when the policy denies the capability', async () => {
+    const getRpcConnection = vi.fn(async () => ({
+      endpoint: 'http://127.0.0.1:7',
+      token: 'goal',
+      release: vi.fn()
+    }))
+    const owner = createOwner({
+      artifacts: undefined,
+      notebook: undefined,
+      skillImport: undefined,
+      goal: goalOptions(getRpcConnection)
+    })
+
+    const provision = await owner.provision({
+      stableAppSessionId: 'session-goal-2',
+      framework: { ...opencodeFramework, acceptsStdioMcp: true },
+      nativeMcpEnabled: true,
+      bridgeMcpAliasesEnabled: false,
+      policy: REVIEWER_SESSION_CAPABILITY_POLICY,
+      sessionCwd: '/workspace',
+      projectName: 'project-1'
+    })
+
+    expect(provision.descriptor.capabilities).not.toContain('goal')
+    expect(provision.descriptor.canonicalMcpServerNames).not.toContain('purescience-goal')
+    expect(getRpcConnection).not.toHaveBeenCalled()
+  })
+})
