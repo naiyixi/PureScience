@@ -707,20 +707,23 @@ const RuntimesPanel = ({
       const result = await window.api.runtime.manageNamedEnvironments({ action: 'remove', name })
       setNamedEnvs(result.environments)
       // P0-10(b): the removal path measures the prefix BEFORE deleting it and the reading rides the
-      // result (the agent's mapper already carries it through). Claim bytes ONLY for a positive reading:
-      // the producer folds "could not measure" into 0, so a 0/absent value gets the plain notice rather
-      // than an invented "freed 0 B".
+      // result (the agent's mapper already carries it through). The producer answers three states, so the
+      // window answers three ways: a positive reading is reported as bytes, a real 0 (the prefix was not
+      // there) gets the plain notice, and an ABSENT field means the look itself failed — that one says so
+      // instead of borrowing the sentence that claims a release the measurement never supported.
       const freedLabel = formatByteSize(
         typeof result.freedBytes === 'number' && result.freedBytes > 0
           ? result.freedBytes
           : undefined
       )
       setNotice(
-        freedLabel === undefined
-          ? t('runtimes.namedEnvRemoved').replace('{name}', name)
-          : t('runtimes.namedEnvRemovedWithSize')
-              .replace('{name}', name)
-              .replace('{size}', freedLabel)
+        typeof result.freedBytes !== 'number'
+          ? t('runtimes.namedEnvRemovedUnmeasured').replace('{name}', name)
+          : freedLabel === undefined
+            ? t('runtimes.namedEnvRemoved').replace('{name}', name)
+            : t('runtimes.namedEnvRemovedWithSize')
+                .replace('{name}', name)
+                .replace('{size}', freedLabel)
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

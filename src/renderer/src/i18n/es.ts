@@ -4842,5 +4842,6 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleasedUnmeasured':
     'Se eliminó {title}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.',
   'home.projectDeletedReleasedUnmeasured':
-    'Se eliminó {name}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.'
+    'Se eliminó {name}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.',
+  'runtimes.namedEnvRemovedUnmeasured': 'Se eliminó «{name}» — no se pudo leer su tamaño.'
 }

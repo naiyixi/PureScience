@@ -1240,7 +1240,7 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
     expect(container.querySelector('[data-testid="named-env-row"]')).toBeNull()
   })
 
-  it('claims no bytes when the removal reported no reading at all', async () => {
+  it('names an unreadable size when the removal reported no reading at all', async () => {
     manageNamedEnvironments.mockImplementation(async (request: { action: string }) =>
       request.action === 'list' ? { environments: [namedEnv] } : { environments: [] }
     )
@@ -1256,6 +1256,9 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
     expect(notice?.textContent).toContain('lock-import-env')
     // No reading reached the window ⇒ no byte count on screen. "Not measured" must not read as a size.
     expect(notice?.textContent).not.toMatch(/\d+\s?(B|KB|MB)\b/)
+    // And it must not read as the plain removal either: the prefix is gone while nobody could look at it,
+    // which is a different fact from a removal that measured what it released.
+    expect(notice?.textContent).toBe('Removed “lock-import-env” — its size could not be read.')
   })
 
   it('treats a zero reading as no reading rather than printing "freed 0 B"', async () => {
@@ -1272,7 +1275,9 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
 
     const notice = container.querySelector('[data-testid="runtimes-notice"]')
     expect(notice?.textContent).toContain('lock-import-env')
-    // The producer folds "could not measure" into 0, so 0 is not a reading this window may print.
+    // 0 here is a READING (the prefix was not there), not a failed look, so it gets the plain notice — the
+    // counterpart of the unreadable case above, and the reason the two must not share one sentence.
+    expect(notice?.textContent).toBe('Removed “lock-import-env”.')
     expect(notice?.textContent).not.toContain('0 B')
     expect(notice?.textContent).not.toMatch(/\d+\s?(B|KB|MB)\b/)
   })

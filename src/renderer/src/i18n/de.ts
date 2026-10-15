@@ -4898,5 +4898,6 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleasedUnmeasured':
     '{title} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.',
   'home.projectDeletedReleasedUnmeasured':
-    '{name} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.'
+    '{name} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.',
+  'runtimes.namedEnvRemovedUnmeasured': '„{name}“ entfernt — die Größe ließ sich nicht lesen.'
 }

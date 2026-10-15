@@ -4753,5 +4753,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleasedUnmeasured':
     '{title} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.',
   'home.projectDeletedReleasedUnmeasured':
-    '{name} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.'
+    '{name} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.',
+  'runtimes.namedEnvRemovedUnmeasured': '«{name}» удалено — размер прочитать не удалось.'
 }

@@ -4765,5 +4765,6 @@ export const en: Record<ZhKey, string> = {
   'ws.sessionDeletedReleasedUnmeasured':
     '{title} was deleted. Its run data was released, but its size could not be read.',
   'home.projectDeletedReleasedUnmeasured':
-    '{name} was deleted. Its run data was released, but its size could not be read.'
+    '{name} was deleted. Its run data was released, but its size could not be read.',
+  'runtimes.namedEnvRemovedUnmeasured': 'Removed “{name}” — its size could not be read.'
 }

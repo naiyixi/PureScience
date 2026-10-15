@@ -4736,5 +4736,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleasedUnmeasured':
     '{title} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。',
   'home.projectDeletedReleasedUnmeasured':
-    '{name} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。'
+    '{name} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。',
+  'runtimes.namedEnvRemovedUnmeasured': '「{name}」を削除しました — サイズを読み取れませんでした。'
 }

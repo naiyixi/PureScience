@@ -4656,5 +4656,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.sessionDeletedReleasedUnmeasured':
     '{title}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.',
   'home.projectDeletedReleasedUnmeasured':
-    '{name}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.'
+    '{name}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.',
+  'runtimes.namedEnvRemovedUnmeasured': '“{name}”을(를) 제거했습니다 — 크기를 읽을 수 없습니다.'
 }
