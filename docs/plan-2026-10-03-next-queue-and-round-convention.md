@@ -7072,3 +7072,29 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 
 - 本单元做完 ⇒ 「**收据路由**在真数据上被走过」有读数（`fromReceipt>0`、且与读侧哈希一致）；
 - 「alias lineage **行分支**的真窗口读数」仍需 **python/R 内核**（测试台缺口，`runtime/envs/default-python/bin/python` 不存在）—— 本单元**不**顺带解决它，别混称。
+
+### 四 §一百五十四·补：负半边我说反了一半 —— 就地更正，两种「没有审批面」不是一回事
+
+**更正**（读 `src/main/notebook/execution-owner.ts:207-227` 所得，非推测）：
+
+```ts
+if (request.source === 'user') {
+  const { gate, receipt } = await resolveNotebookRunRiskGate({ code, sessionId, language, reviewer: this.options.reviewNotebookRun })
+  if (gate === 'unreviewed') {
+    // Loud, never silent: a reviewed run must not slip through just because no approver was wired.
+    createLogger('notebook').warn('notebook run risk review has no approver; running without asking', { sessionId, runId, ruleIds: receipt.hits.map(h => h.ruleId) })
+  }
+  if (gate === 'decline') { throw new NotebookRunDeclinedError(receipt.hits.map(h => h.ruleId)) }
+}
+```
+
+⇒ **两种情形必须分开写**：
+
+| 情形 | 触发条件 | 实际行为 |
+| --- | --- | --- |
+| **A 同意面缺失 ⇒ 拒绝** | runtime 有审批面能力但 `requestAppApproval` 判定无人可问（返回 false ⇒ reviewer 说不） | `gate === 'decline'` ⇒ **抛 `NotebookRunDeclinedError(ruleIds)`，真不执行**（`ipc.ts:871-880` 注释那句「No approval surface => decline」说的正是这一支）✓ |
+| **B 根本没接 reviewer** | `options.reviewNotebookRun` 为 `undefined`（组合根没接线） | `gate === 'unreviewed'` ⇒ **大声告警后照跑**：`warn('notebook run risk review has no approver; running without asking', …)` ⇒ **不是拒绝** ✗ |
+
+**我原稿（§一百五十四 二·4）把 B 写成「必须拒绝且不执行」** —— **错**。B 是**有意**行为（注释：*「Loud, never silent: a reviewed run must not slip through just because no approver was wired」*），且**不是**「没人可问 = 没问题」那句话的适用对象（那句话属于 A 的通道语义）。**因此规格里的负半边要按 A 写**（在**有**审批面但**答否**的通道上 ⇒ 断言真拒绝、无新运行、无收据）；B 若也要读数，断言的是**「有告警且照跑，且收据仍随运行落盘」** —— 两半的期望**相反**，不许合并成一条。
+
+**另记一条待判（不下结论）**：B 这条路径意味着「reviewer 未接线时，用户发起的被标记 cell 会**无问照跑**」。这是**有意**的设计（有告警、且 gate 名字就叫 `unreviewed`），但我**不**据此声称「产品有洞」或「产品没问题」—— 要判它，得先看**组合根在哪些装配下会不接线**（下一单元顺带核）。
