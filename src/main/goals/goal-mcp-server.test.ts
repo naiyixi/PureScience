@@ -12,6 +12,7 @@ import {
   GOAL_MCP_SERVER_ARG,
   GOAL_MCP_SERVER_NAME,
   GOAL_STATUS_TOOL_NAME,
+  GoalRpcRefusal,
   createGoalMcpServer,
   createGoalMcpServerConfig
 } from './goal-mcp-server'
@@ -174,18 +175,20 @@ describe('goal MCP server contract', () => {
       configure: vi.fn(async () => makeGoal()),
       status: vi.fn(async () => [makeGoal()]),
       advance: vi.fn(async () => {
-        throw new Error('reading-not-found')
+        throw new GoalRpcRefusal('reading-not-found', 'No reading with that id.')
       })
     })
 
-    await expect(
-      toolsOf(server)[GOAL_ADVANCE_TOOL_NAME]?.handler({
-        goal_id: 'goal-1',
-        criterion: '第一条',
-        reading_kind: 'run',
-        reading_id: 'no-such-run',
-        reading_fingerprint: 'fp'
-      })
-    ).rejects.toThrow('reading-not-found')
+    // 拒答以**结构化拒答**回给调用方：isError 置位 + code 在 structuredContent 里，
+    // 调用方不必读人话才知道错在哪（这一条是拿真机读数抓出来补上的）。
+    const refused = (await toolsOf(server)[GOAL_ADVANCE_TOOL_NAME]?.handler({
+      goal_id: 'goal-1',
+      criterion: '第一条',
+      reading_kind: 'run',
+      reading_id: 'no-such-run',
+      reading_fingerprint: 'fp'
+    })) as unknown as { isError?: boolean; structuredContent?: { code?: string } }
+    expect(refused.isError).toBe(true)
+    expect(refused.structuredContent?.code).toBe('reading-not-found')
   })
 })

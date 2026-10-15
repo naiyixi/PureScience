@@ -1337,7 +1337,10 @@ class NotebookLocalRpcServer {
       }
       const message = error instanceof Error ? error.message : String(error)
       const serializedError =
-        error instanceof PlanCommandError ? { code: error.code, message } : message
+        error instanceof PlanCommandError ||
+        (error as { name?: unknown })?.name === 'GoalValidationError'
+          ? { code: (error as { code: string }).code, message }
+          : message
 
       writeJson(response, error instanceof RpcHttpError ? error.statusCode : 500, {
         error: serializedError

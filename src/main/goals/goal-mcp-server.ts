@@ -120,8 +120,22 @@ type GoalMcpServerConfigRequest = GoalMcpEnvironment & {
 
 type RpcResponse = {
   result?: Goal | Goal[]
-  error?: string
+  error?: string | { code?: string; message?: string }
 }
+
+// A refusal answered as a REFUSAL: the SDK's isError flag is set and the code rides in structuredContent,
+// so the caller never has to read prose to find out what went wrong.
+const refusalResult = (
+  error: unknown
+): {
+  content: { type: 'text'; text: string }[]
+  structuredContent: { code: string }
+  isError: true
+} => ({
+  content: [{ type: 'text', text: error instanceof Error ? error.message : String(error) }],
+  structuredContent: { code: error instanceof GoalRpcRefusal ? error.code : 'unknown' },
+  isError: true
+})
 
 const createGoalMcpServer = (handler: GoalMcpHandler): ModelContextProtocolServer => {
   const server = new ModelContextProtocolServer({
@@ -130,38 +144,50 @@ const createGoalMcpServer = (handler: GoalMcpHandler): ModelContextProtocolServe
   })
 
   server.registerTool(GOAL_CONFIGURE_TOOL_NAME, goalConfigureToolDefinition, async (input) => {
-    const result = await handler.configure({
-      goalId: input.goal_id,
-      objective: input.objective,
-      acceptance: input.acceptance
-    })
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    try {
+      const result = await handler.configure({
+        goalId: input.goal_id,
+        objective: input.objective,
+        acceptance: input.acceptance
+      })
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
+    } catch (error) {
+      return refusalResult(error)
     }
   })
 
   server.registerTool(GOAL_STATUS_TOOL_NAME, goalStatusToolDefinition, async () => {
-    const result = await handler.status()
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    try {
+      const result = await handler.status()
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
+    } catch (error) {
+      return refusalResult(error)
     }
   })
 
   server.registerTool(GOAL_ADVANCE_TOOL_NAME, goalAdvanceToolDefinition, async (input) => {
-    // snake_case in the schema, camelCase in the type — mapped explicitly, so a rename can never quietly
-    // drop the reading that this call is supposed to be grounded in.
-    const result = await handler.advance({
-      goalId: input.goal_id,
-      criterion: input.criterion,
-      note: input.note,
-      reading: {
-        kind: input.reading_kind as GoalReadingKind,
-        id: input.reading_id,
-        fingerprint: input.reading_fingerprint
+    try {
+      // snake_case in the schema, camelCase in the type — mapped explicitly, so a rename can never quietly
+      // drop the reading that this call is supposed to be grounded in.
+      const result = await handler.advance({
+        goalId: input.goal_id,
+        criterion: input.criterion,
+        note: input.note,
+        reading: {
+          kind: input.reading_kind as GoalReadingKind,
+          id: input.reading_id,
+          fingerprint: input.reading_fingerprint
+        }
+      })
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
       }
-    })
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    } catch (error) {
+      return refusalResult(error)
     }
   })
 
@@ -203,6 +229,18 @@ const createGoalMcpEnvironmentFromProcess = (
   sessionId: requireEnvironmentVariable(env, 'PURESCIENCE_GOAL_SESSION_ID')
 })
 
+// Carries the store's refusal code across the RPC boundary, so a caller can act on the name rather than
+// string-matching prose that is free to change.
+export class GoalRpcRefusal extends Error {
+  constructor(
+    readonly code: string,
+    message: string
+  ) {
+    super(message)
+    this.name = 'GoalRpcRefusal'
+  }
+}
+
 const callGoalRpc = async (
   environment: GoalMcpEnvironment,
   method: 'goalConfigure' | 'goalStatus' | 'goalAdvance',
@@ -226,7 +264,20 @@ const callGoalRpc = async (
   const payload = (await response.json()) as RpcResponse
 
   if (!response.ok || payload.error || payload.result === undefined) {
-    throw new Error(payload.error ?? `Goal ${method} RPC failed with status ${response.status}`)
+    // The transport serializes a named refusal as {error: {code, message}} and anything else as a string.
+    const refusal =
+      typeof payload.error === 'object' && payload.error !== null
+        ? (payload.error as { code?: unknown; message?: unknown })
+        : undefined
+    const message =
+      (typeof refusal?.message === 'string' ? refusal.message : undefined) ??
+      (typeof payload.error === 'string' ? payload.error : undefined) ??
+      `Goal ${method} RPC failed with status ${response.status}`
+    // A refusal keeps its NAME across the transport: the prose is for the model, the code is the contract.
+    if (typeof refusal?.code === 'string') {
+      throw new GoalRpcRefusal(refusal.code, message)
+    }
+    throw new Error(message)
   }
   return payload.result
 }
