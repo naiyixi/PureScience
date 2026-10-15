@@ -655,6 +655,15 @@ describe('notebook control tool results', () => {
     expect(environments.environments).toHaveLength(10)
     expect(environments).not.toHaveProperty('nextOffset')
     expect(JSON.stringify(environments)).toContain('env-39')
+    // P0-10: a removal whose prefix could not be looked at reports NO number, and the mapper must not
+    // invent one — otherwise the agent relays "recovered 0 bytes" for a measurement nobody made. The
+    // measured zero ("nothing was there") still rides through, because that one IS a reading.
+    expect(
+      compactManageEnvironmentsResult({ environments: [], freedBytes: undefined })
+    ).not.toHaveProperty('freedBytes')
+    expect(compactManageEnvironmentsResult({ environments: [], freedBytes: 0 })).toMatchObject({
+      freedBytes: 0
+    })
   })
 })
 

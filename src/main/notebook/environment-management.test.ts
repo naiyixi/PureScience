@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -342,6 +342,46 @@ describe('NotebookEnvironmentManagementOwner', () => {
       await rm(runtimeRoot, { recursive: true, force: true })
     }
   })
+
+  // Directory permissions are POSIX-only (Windows chmod only touches the read-only bit).
+  it.skipIf(process.platform === 'win32')(
+    'omits the recovered bytes when the prefix cannot be looked at (P0-10: a failed look is not zero)',
+    async () => {
+      const runtimeRoot = await mkdtemp(join(tmpdir(), 'env-remove-sealed-'))
+      const prefix = envPrefix(runtimeRoot, 'analysis')
+      await mkdir(prefix, { recursive: true })
+      await writeFile(join(prefix, 'big.so'), Buffer.alloc(4096, 3))
+      await chmod(prefix, 0o000)
+
+      try {
+        const configured = manager()
+        vi.mocked(configured.removeEnvironment).mockImplementation(() => [])
+        const { owner } = harness({
+          manager: configured,
+          runtimeRoot,
+          sessions: () => [session([['python:analysis', 'terminated']])],
+          ensureRecovered: vi.fn(async () => undefined),
+          assertPrefixRecoverable: vi.fn(() => undefined),
+          environmentOperations: {
+            runMutation: vi.fn(async (_environment, operation) => operation())
+          },
+          runtimeRepair: { completeRemovedManagedEnvironment: vi.fn() }
+        })
+
+        const result = await owner.manage({ action: 'remove', name: 'analysis' })
+
+        // The prefix held at least 4 KB and could not be listed. Reporting 0 would put a number nobody
+        // measured behind "recovered 0 B" (the window and the agent both read an absent reading as "no
+        // claim"), so the receipt carries no `freedBytes` at all.
+        expect(result).toEqual({ environments: [] })
+        expect(result).not.toHaveProperty('freedBytes')
+        expect(vi.mocked(configured.removeEnvironment)).toHaveBeenCalledWith('analysis')
+      } finally {
+        await chmod(prefix, 0o700)
+        await rm(runtimeRoot, { recursive: true, force: true })
+      }
+    }
+  )
 
   describe('importLock (A7)', () => {
     const request = {

@@ -26,28 +26,67 @@ const CATEGORY_KEYS: UsageCategoryKey[] = [
 // independent buckets pass their own fresh `seen`; the runtime breakdown shares ONE `seen` across
 // conda+envs so the shared inodes are attributed to conda (counted first) and not re-counted per env.
 // Missing dirs contribute 0; symlinks are skipped (not followed) to avoid cycles and double-counting.
-export const dirSize = async (
+//
+// P0-10 (last open item): "we could not look" and "there was nothing" must not read alike wherever the
+// number is REPORTED — as bytes a removal recovered, or as the size of an environment prefix. The failure
+// policy is therefore an explicit parameter of the ONE traversal rather than a second walker: `dirSize`
+// keeps counting an unreadable directory as 0 (its callers total a whole tree, where one unreadable
+// subdirectory must not blank the category), while `measureDirectorySize` answers with a reading or with a
+// named reason why there is none.
+type UnreadableDirectoryPolicy = 'count-as-zero' | 'report'
+
+// A path that is not there holds nothing. That IS a measurement, and it is 0 — unlike a directory that
+// exists but cannot be listed (permissions, I/O), which is not a reading at all.
+const isMissingPath = (error: unknown): boolean =>
+  (error as NodeJS.ErrnoException | undefined)?.code === 'ENOENT'
+
+const walkDirectorySize = async (
   dir: string,
   seen: Set<string>,
-  shared?: SharedBytes
+  shared: SharedBytes | undefined,
+  unreadable: UnreadableDirectoryPolicy
 ): Promise<number> => {
   let entries
   try {
     entries = await readdir(dir, { withFileTypes: true })
-  } catch {
-    return 0
+  } catch (error) {
+    if (isMissingPath(error) || unreadable === 'count-as-zero') return 0
+    throw error
   }
   let total = 0
   for (const entry of entries) {
     if (entry.isSymbolicLink()) continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) {
-      total += await dirSize(path, seen, shared)
+      total += await walkDirectorySize(path, seen, shared, unreadable)
     } else if (entry.isFile()) {
       total += await fileSize(path, seen, shared)
     }
   }
   return total
+}
+
+export const dirSize = async (
+  dir: string,
+  seen: Set<string>,
+  shared?: SharedBytes
+): Promise<number> => walkDirectorySize(dir, seen, shared, 'count-as-zero')
+
+// Two states, named the way the rest of the app names a missing reading (`reading-journal.ts`): a number
+// that was measured, or `unavailable`/`unreadable` — never a fabricated 0.
+export type DirectorySizeMeasurement =
+  { state: 'measured'; bytes: number } | { state: 'unavailable'; reason: 'unreadable' }
+
+export const measureDirectorySize = async (
+  dir: string,
+  seen: Set<string>,
+  shared?: SharedBytes
+): Promise<DirectorySizeMeasurement> => {
+  try {
+    return { state: 'measured', bytes: await walkDirectorySize(dir, seen, shared, 'report') }
+  } catch {
+    return { state: 'unavailable', reason: 'unreadable' }
+  }
 }
 
 // Size of one file, or 0 if its inode was already counted via `seen` (hard-link dedup). The skipped size is

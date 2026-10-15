@@ -62,6 +62,9 @@ export type ManageEnvironmentsRequest =
 // create/list/remove all return the full current env set so the caller/UI can refresh in one shot.
 // `freedBytes` rides only on `remove`: the prefix's size measured BEFORE the deletion, so "removed 1.2 GB"
 // is a reading rather than a claim (the removal path previously reported only the refreshed list).
+// On a `remove` result its ABSENCE is itself the reading: the prefix could not be looked at, so no number
+// is reported (see `measureDirectorySize`). A prefix that was not there measures 0, which is a different
+// fact — an absent field must never be read as "freed nothing".
 export type ManageEnvironmentsResult = {
   environments: EnvironmentInfo[]
   freedBytes?: number

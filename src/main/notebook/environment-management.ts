@@ -12,7 +12,7 @@ import type {
 } from '../../shared/notebook-env'
 import type { NotebookEnvironmentOperations } from './environment-operations'
 import { ImportLockIncompleteError } from './provisioner'
-import { dirSize } from '../storage/usage'
+import { measureDirectorySize } from '../storage/usage'
 import { assertSafeEnvName, DEFAULT_PY_ENV, DEFAULT_R_ENV, envPrefix } from './runtime-paths'
 import type { NotebookRuntimeRepairOwner } from './runtime-repair'
 
@@ -111,11 +111,20 @@ class NotebookEnvironmentManagementOwner {
           // P0-10(b): measure the prefix BEFORE removing it. The removal path reported only a refreshed
           // list, so a user who freed 1.2 GB was told nothing — and "N bytes recovered" cannot be
           // reconstructed afterwards. Reuses the storage walker (inode-aware) instead of a second one.
+          //
+          // P0-10 (last open item): this number is REPORTED as bytes recovered, so a look that failed is
+          // not zero bytes. `measureDirectorySize` answers `unavailable`/`unreadable` for a prefix that
+          // cannot be listed, and the receipt then carries NO `freedBytes` — the agent's result mapper and
+          // the window both read an absent reading as "no claim", while a 0 would be a number nobody
+          // measured ("recovered 0 B" for a prefix that may have held gigabytes). A prefix that is simply
+          // not there still measures 0: nothing was there, and that is a reading.
           const prefix = envPrefix(this.options.runtimeRoot, name)
-          const freedBytes = await dirSize(prefix, new Set()).catch(() => 0)
+          const measurement = await measureDirectorySize(prefix, new Set())
           const environments = manager.removeEnvironment(name)
           this.options.runtimeRepair.completeRemovedManagedEnvironment(name)
-          return { environments, freedBytes }
+          return measurement.state === 'measured'
+            ? { environments, freedBytes: measurement.bytes }
+            : { environments }
         })
       }
     }
@@ -131,18 +140,19 @@ class NotebookEnvironmentManagementOwner {
       environments.map(async (environment) => {
         const prefix = envPrefix(this.options.runtimeRoot, environment.name)
         try {
-          // Existence first: the walker answers 0 for a directory that is not there, and 0-byte is a
-          // different fact from a prefix that could not be looked at. Only a prefix that exists is sized.
+          // Existence first: 0-byte is a different fact from a prefix that could not be looked at. Only a
+          // prefix that exists is sized.
           await stat(prefix)
         } catch {
           return environment
         }
-        try {
-          const bytes = await dirSize(prefix, new Set())
-          return { ...environment, sizeBytes: bytes }
-        } catch {
-          return environment
-        }
+        // P0-10 (last open item): the walk reports a reading or `unavailable`. A tree that could only be
+        // PARTLY walked is not "this prefix is 1.2 GB" — the unreadable subtree would silently shrink the
+        // number shown to the reader, so the row goes without a size instead of with a wrong one.
+        const measurement = await measureDirectorySize(prefix, new Set())
+        return measurement.state === 'measured'
+          ? { ...environment, sizeBytes: measurement.bytes }
+          : environment
       })
     )
     return measured

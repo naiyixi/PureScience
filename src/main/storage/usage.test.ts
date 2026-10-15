@@ -1,9 +1,9 @@
-import { link, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, link, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { availableBytes, computeStorageUsage } from './usage'
+import { availableBytes, computeStorageUsage, dirSize, measureDirectorySize } from './usage'
 
 let dataRoot: string
 
@@ -176,6 +176,66 @@ describe('computeStorageUsage', () => {
     ])
     expect(usage.totalBytes).toBe(0)
   })
+})
+
+describe('directory size measurement: a failed look is not zero bytes (P0-10)', () => {
+  it('measures a readable tree and reports a measured zero for a path that is not there', async () => {
+    await writeSized(join(dataRoot, 'tree', 'a.bin'), 10)
+    await writeSized(join(dataRoot, 'tree', 'sub', 'b.bin'), 5)
+
+    await expect(measureDirectorySize(join(dataRoot, 'tree'), new Set())).resolves.toEqual({
+      state: 'measured',
+      bytes: 15
+    })
+    // Not there ⇒ nothing was there. That is a reading (0), not a missing one.
+    await expect(measureDirectorySize(join(dataRoot, 'never-existed'), new Set())).resolves.toEqual(
+      {
+        state: 'measured',
+        bytes: 0
+      }
+    )
+  })
+
+  it('answers unavailable/unreadable for a path that exists but cannot be listed', async () => {
+    // A file where a directory is expected: `readdir` fails with ENOTDIR on every platform, which is the
+    // "we could not look" state — the number nobody measured must not be reported as 0.
+    const path = join(dataRoot, 'not-a-directory')
+    await writeFile(path, 'x')
+
+    await expect(measureDirectorySize(path, new Set())).resolves.toEqual({
+      state: 'unavailable',
+      reason: 'unreadable'
+    })
+    // The lenient walker keeps its documented policy: a whole-tree total counts an unlistable directory as
+    // 0 rather than failing (one unreadable subdirectory must not blank a storage category).
+    await expect(dirSize(path, new Set())).resolves.toBe(0)
+  })
+
+  // Directory permissions are POSIX-only (Windows chmod only touches the read-only bit), so the nested case
+  // is skipped there instead of asserted through a no-op chmod.
+  it.skipIf(process.platform === 'win32')(
+    'answers unavailable when only a nested directory cannot be listed (a partial tree is not a reading)',
+    async () => {
+      const root = join(dataRoot, 'partial')
+      await writeSized(join(root, 'readable.bin'), 7)
+      const sealed = join(root, 'sealed')
+      await mkdir(sealed, { recursive: true })
+      await writeFile(join(sealed, 'hidden.bin'), Buffer.alloc(4096))
+      await chmod(sealed, 0o000)
+
+      try {
+        // 7 is not the answer: that tree holds at least 4,103 bytes. Reporting the partial sum would show a
+        // smaller number as if it were the whole prefix.
+        await expect(measureDirectorySize(root, new Set())).resolves.toEqual({
+          state: 'unavailable',
+          reason: 'unreadable'
+        })
+        await expect(dirSize(root, new Set())).resolves.toBe(7)
+      } finally {
+        await chmod(sealed, 0o700)
+      }
+    }
+  )
 })
 
 describe('availableBytes', () => {
