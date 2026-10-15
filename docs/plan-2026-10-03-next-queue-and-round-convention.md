@@ -6423,3 +6423,23 @@ F1 的「目标对象」已交付；**工具面**（`goal_configure` / `goal_sta
 5. **spawn 注册**：让 agent 会话像拿到 routine 服务器那样拿到 goal 服务器（routine 的 `createRoutineMcpServerConfig` 在非测试里未被调用 ⇒ 该消费点即第 5 处，需要与既有 MCP 服务器清单同改）。
 
 后续单元（F2 进度只由真读数推进 / F3 上屏；G1–G4）保持 §一百三十九 的拆解不变。
+
+## 一百四十一、v2.4.0 **F1 第二段交付**（工具面接线，五处集成点之四）+ 第五处立案（会话，2026-10-15）
+
+### 一 交付（`3796f62d`）
+
+| 集成点 | 落点 | 读数 |
+| --- | --- | --- |
+| ① argv 标志 | `src/main/mcp-server-args.ts`：`GOAL_MCP_SERVER_ARG = '--purescience-goal-mcp'` | tsc 0 ✓ |
+| ② 惰性分派 | `src/main/index.ts`：`shouldRunGoalMcpServer` + else-if 分支（照 routine 同形） | 自证 routine/goal 分支各 **1**、导入各 **1** ✓（中途把 goal 分支插进 routine 的 `{` 之后导致结构破损 ✗ ⇒ 按锚点重建后逐项核过） |
+| ③ MCP 服务器 | `src/main/goals/goal-mcp-server.ts`（新）：zod schema（`goal_id?`/`objective`/`acceptance[]`）、`createGoalMcpServer(handler)`、`createGoalMcpServerConfig`（env `PURESCIENCE_GOAL_RPC_{ENDPOINT,SOCKET_PATH,TOKEN}` + `PURESCIENCE_GOAL_SESSION_ID`）、经 `fetchLocalRpc` 回调主进程 | 该文件的 `authorization: Bearer <token>` 前缀是**从源码字符类推得**（6 个字母 + 空格）而非凭猜 ✗（我的工具输出会把该值打码，脚本连字符类一起打印才拿到形状） |
+| ④ RPC 与令牌 | `src/main/notebook/local-rpc-server.ts`：goal 选项块 + 成员 + 赋值 + `GOAL_RPC_METHODS` + 两条分派 + `issueGoalConnection`/`revokeGoalSessionCapabilities`（照 routine 同形） | 集合经 `allowedMethods` 生效 ✓；修复时段内发现自己的插入**切走了 routine 方法的函数体** ✗ ⇒ 两方法按锚点重建并各自核过 ✓ |
+| 形状收敛 | `shared/goal.ts` 的 `GoalConfigureRequest` **去掉** `sessionId`（会话由处理器第一参数给，与 routine 同形）⇒ 仓储签名随之 `configure(sessionId, request)` | 双 typecheck 0 ✓ |
+
+**测试**：`src/main/goals` **5 passed**；`goals + notebook + settings + shared` **301 文件 / 4212 passed（102 skipped）**；`eslint 0`。
+
+### 二 第五处**立案**（未做，F1 因此**不算完成**）
+
+**会话真拿到 goal 服务器**的那一步在 `src/main/acp/session-capability-owner.ts`（+ `acp/runtime.ts`）里，需镜像 routine 的约 **20 处**编织点：能力清单（`:83` 一带）、路由 id（`:137` `routine: string`）、`SessionCapabilityRoutineOptions` 同形的 options、`onRoutineConnection` 同形的回调、`routineSessionSequence` 同形的序号、五处 `routineRelease` 式的释放点、`:645` 的空值断言等。
+
+**为什么不在本轮做**：这是跨切面精细改动，且必须自带测试；会话已极长，赶工的风险高于收益 ⇒ 按纪律**明确立案**，下轮第一步就做它（做完并用 `goal-mcp-server.test.ts` 同形的测试自证后，F1 才可标完成）。
