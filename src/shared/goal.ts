@@ -82,7 +82,15 @@ export const GOAL_REFUSAL_CODES = [
   'empty-acceptance-item',
   'acceptance-too-long',
   'not-found',
-  'record-unreadable'
+  'record-unreadable',
+  // Progress-side refusals (goal_advance). Every one of these means the claim did not become progress.
+  'criterion-not-found',
+  'empty-reading-id',
+  'empty-reading-fingerprint',
+  'reading-not-found',
+  'reading-foreign-session',
+  'reading-fingerprint-mismatch',
+  'too-many-milestones'
 ] as const
 
 export type GoalRefusalCode = (typeof GOAL_REFUSAL_CODES)[number]

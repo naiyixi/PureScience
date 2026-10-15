@@ -14,11 +14,14 @@ import type {
   Goal,
   GoalAcceptanceItem,
   GoalConfigureRequest,
+  GoalMilestone,
+  GoalReadingRef,
   GoalRefusalCode,
   GoalState
 } from '../../shared/goal'
 import {
   GOAL_MAX_ACCEPTANCE_ITEMS,
+  GOAL_MAX_MILESTONES,
   GOAL_MAX_OBJECTIVE_CHARS,
   GOAL_MAX_TEXT_CHARS
 } from '../../shared/goal'
@@ -38,6 +41,26 @@ export class GoalValidationError extends Error {
 
 export type GoalStoreSnapshot = {
   goals: Goal[]
+}
+
+// The seam for「这条读数真的存在吗」. The store does not know how to look a run or an artifact version up —
+// the app does — so it asks. Kept as a port so the store's rule ("no resolution, no progress") is testable
+// without a running application, while production passes the real adapter.
+export type GoalReadingResolution =
+  | { ok: true; fingerprint: string }
+  | { ok: false; reason: 'not-found' | 'foreign-session' | 'fingerprint-mismatch' }
+
+export type GoalReadingResolver = {
+  resolve(ref: GoalReadingRef, context: { sessionId: string }): Promise<GoalReadingResolution>
+}
+
+export type GoalAdvanceRequest = {
+  goalId: string
+  // The acceptance criterion, by id or by its exact text.
+  criterion: string
+  // One line saying what this step did. Falls back to the criterion's own text when omitted.
+  note?: string
+  reading: GoalReadingRef
 }
 
 // The same shape as the routine store's: under the session's own artifacts directory, so a goal lives and
@@ -180,5 +203,95 @@ export class GoalRepository {
   async status(sessionId: string): Promise<Goal[]> {
     const snapshot = await this.load(sessionId)
     return snapshot.goals
+  }
+
+  // Advances one criterion — and this is the whole point of the F series: the claim does not win, the
+  // app's reading does. The caller names a reading; the resolver goes and gets it; if it cannot, nothing
+  // is written. On success the fingerprint stored is the one the RESOLVER computed, not the one the caller
+  // sent, so a record can never hold a value that its own re-resolution would contradict.
+  async advance(
+    sessionId: string,
+    request: GoalAdvanceRequest,
+    resolver: GoalReadingResolver
+  ): Promise<Goal> {
+    const readingId = nonEmpty(request.reading?.id)
+    if (!readingId) {
+      throw new GoalValidationError('empty-reading-id', 'A reading reference needs an id.')
+    }
+    const claimedFingerprint = nonEmpty(request.reading?.fingerprint)
+    if (!claimedFingerprint) {
+      throw new GoalValidationError(
+        'empty-reading-fingerprint',
+        'A reading reference needs the fingerprint it was read with.'
+      )
+    }
+
+    const snapshot = await this.load(sessionId)
+    const goal = snapshot.goals.find((candidate) => candidate.id === request.goalId)
+    if (!goal) {
+      throw new GoalValidationError('not-found', `No goal with id ${request.goalId}.`)
+    }
+
+    // Matched by id first, then by exact text — a caller that re-typed the criterion still lands on it.
+    const criterion =
+      goal.acceptance.find((item) => item.id === request.criterion) ??
+      goal.acceptance.find((item) => item.text === request.criterion)
+    if (!criterion) {
+      throw new GoalValidationError(
+        'criterion-not-found',
+        'That goal has no acceptance criterion by that id or text.'
+      )
+    }
+
+    if (goal.milestones.length >= GOAL_MAX_MILESTONES) {
+      throw new GoalValidationError(
+        'too-many-milestones',
+        `A goal keeps at most ${GOAL_MAX_MILESTONES} milestones.`
+      )
+    }
+
+    const resolved = await resolver.resolve({ ...request.reading, id: readingId }, { sessionId })
+    if (!resolved.ok) {
+      if (resolved.reason === 'foreign-session') {
+        throw new GoalValidationError(
+          'reading-foreign-session',
+          'That reading belongs to another session.'
+        )
+      }
+      if (resolved.reason === 'fingerprint-mismatch') {
+        throw new GoalValidationError(
+          'reading-fingerprint-mismatch',
+          'The reading no longer has the fingerprint it was claimed with.'
+        )
+      }
+      throw new GoalValidationError('reading-not-found', 'No such reading.')
+    }
+
+    const at = this.now()
+    const reading: GoalReadingRef = {
+      kind: request.reading.kind,
+      id: readingId,
+      // The resolver's value, not the caller's.
+      fingerprint: resolved.fingerprint
+    }
+    const milestones: GoalMilestone[] = [
+      ...goal.milestones,
+      {
+        id: randomUUID(),
+        text: nonEmpty(request.note) ?? criterion.text,
+        at,
+        reading
+      }
+    ]
+    const acceptance: GoalAcceptanceItem[] = goal.acceptance.map((item) =>
+      item.id === criterion.id ? { ...item, metBy: reading } : item
+    )
+
+    const updated: Goal = { ...goal, acceptance, milestones, updatedAt: at }
+    const goals = snapshot.goals.map((candidate) =>
+      candidate.id === goal.id ? updated : candidate
+    )
+    await this.save(sessionId, { goals })
+    return updated
   }
 }
