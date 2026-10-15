@@ -6750,3 +6750,19 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 **下一轮**：读 `src/main/storage-root.ts` 里 `resolveDataRoot()` 的返回值（一行）→ 规格里把种子根改成那个路径（其余不动）→ 跑 `npx playwright test e2e/goals-panel.spec.ts`（约 1 分钟）。断言三条红线：目标文案、**被读数满足的那条挂出 run id 与指纹**（`b720f53ae927…` 截断显示）、**没有读数的那条必须出现 `Unmet — no reading yet`**、刷新按钮真点过。
 
 **纪律**：红规格**不入树**（本轮已删），诊断留档。
+
+### 六 F3 **真窗口读数：通过**（`e2e/goals-panel.spec.ts`，`1 passed (5.4s)`）—— F3 完成
+
+**怎么跑的**：真 Electron 隔离根启动真应用；用**产品自己的** `GoalRepository` 在应用的**真实数据根**（`<夹具 storageRoot>/PureScience-DEV`，即 `dataRootForParent(defaultDataParent())`，从源码跑故 folder 名是 DEV 版）种下一个目标并 `advance`；然后真窗口里 `Model settings` → Settings → 导航项 `Goals and readings` **真点开**。
+
+**四条断言（就是红线）**：
+1. 目标文案 `Compile a method out of a recorded run` 可见 ✓；
+2. **被读数满足的那条挂出 run id + 应用算的指纹**：`notebook-run-e2e-1` / `b720f53ae927…`（截断显示）✓ —— 指纹来自**解析器的值**（仓储盖章），不是调用方给的 ✓；
+3. **没有读数的那条必须出现 `Unmet — no reading yet`** ✓（「没有证据」绝不渲染成「已完成」）；
+4. 读者真正按的按钮 `Refresh goals` **真点过** ✓。
+   + 前置自检：`repository.listAll()` 读到恰好 1 条 ✓（用**同一个读写器**证明种子落对了地方，否则失败就只是种子的问题）。
+   种错地方的代价实测：种在 `storageRoot` 本身或 `electron-profile` 下时，面板诚实地显示空态 `No goals recorded yet.`（环境变量指向父目录、数据根是 `父/dataFolderName()`）。
+
+**如实标注的限制**：e2e 根是隔离的，所以这条读数来自规格内的解析器 —— **真 `advance` 路径 + 真文件 + 真 RPC + 真渲染**，但**不是**真 notebook run。**真 run 的那条读数在 F2 真机读数**里（`notebook-run-1786102211513-11` / 指纹 `b720f53a…`）。两者互补，**不可互相冒充**。
+
+⇒ **F3 上屏：完成**（数据侧 / 接线 / 面板 / 九语 i18n / 账目 / 真窗口读数）。
