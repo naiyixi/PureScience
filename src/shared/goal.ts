@@ -9,6 +9,7 @@ export const GOAL_MCP_SERVER_NAME = 'purescience-goal'
 
 export const GOAL_CONFIGURE_TOOL_NAME = 'goal_configure'
 export const GOAL_STATUS_TOOL_NAME = 'goal_status'
+export const GOAL_ADVANCE_TOOL_NAME = 'goal_advance'
 
 export const GOAL_CONFIGURE_TOOL_DESCRIPTION =
   'Registers (or updates) a persistent goal: one objective, the acceptance criteria that decide it is ' +
@@ -20,6 +21,16 @@ export const GOAL_STATUS_TOOL_DESCRIPTION =
   'Lists the goals this session owns: objective, each acceptance criterion with the reading that met it (or ' +
   'that it is unmet), the milestones in order, and the goal state. Read it after an attempt to see whether ' +
   'anything actually advanced.'
+
+// The one tool that changes progress, and the reason the F series exists. It names a READER-applied reading
+// (a run id and the fingerprint that run's source was read with) rather than a claim: the app re-resolves
+// the reading itself, and stores the fingerprint IT computed. A reading that does not resolve — unknown,
+// belonging to another session, or no longer matching — leaves the record byte-for-byte unchanged.
+export const GOAL_ADVANCE_TOOL_DESCRIPTION =
+  'Advances one acceptance criterion of a goal, and only on the strength of a reading the app itself can ' +
+  're-resolve: pass reading_kind/reading_id/reading_fingerprint for a recorded run (or an artifact version, ' +
+  'once that kind is wired). If the reading cannot be resolved, nothing is written and the call fails by ' +
+  'name. The fingerprint stored is the one the app computes, never the one you send.'
 
 export const GOAL_MAX_OBJECTIVE_CHARS = 2_000
 export const GOAL_MAX_ACCEPTANCE_ITEMS = 12
@@ -59,6 +70,18 @@ export type GoalConfigureRequest = {
   goalId?: string
   objective: string
   acceptance: string[]
+}
+
+// What goal_advance sends: the criterion to advance plus the READING that grounds it. Shared for the same
+// reason the configure shape is: the transport, the store and the tool schema must agree on one shape, or
+// the drift shows up as a request the transport accepts and the store refuses.
+export type GoalAdvanceRequest = {
+  goalId: string
+  // The acceptance criterion, by id or by its exact text.
+  criterion: string
+  // One line saying what this step did. Falls back to the criterion's own text when omitted.
+  note?: string
+  reading: GoalReadingRef
 }
 
 export type Goal = {
@@ -102,6 +125,10 @@ export const GOAL_MCP_SYSTEM_PROMPT_APPEND = [
   'You can keep a long-running objective with goal_configure(objective=…, acceptance=[…]). Each acceptance ' +
     'criterion is met only by a reading the app itself takes (a recorded run or an artifact version) — so ' +
     'write criteria as things a run can demonstrate, not as things you can assert.',
+  'Advance progress with goal_advance(goal_id=…, criterion=…, reading_kind="run", reading_id=…, ' +
+    'reading_fingerprint=…), naming a run the app recorded and the fingerprint it was read with. The app ' +
+    're-resolves that reading; if it cannot, nothing is written and you get a named refusal — do not report ' +
+    'progress you could not ground.',
   'Use goal_status() to read back the objective, each criterion with the reading that met it (or that it ' +
     'is unmet), and the milestones in order.',
   '</purescience_goal_instructions>'

@@ -13,6 +13,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 
 import {
+  GOAL_ADVANCE_TOOL_DESCRIPTION,
+  GOAL_ADVANCE_TOOL_NAME,
   GOAL_CONFIGURE_TOOL_DESCRIPTION,
   GOAL_CONFIGURE_TOOL_NAME,
   GOAL_MAX_ACCEPTANCE_ITEMS,
@@ -22,7 +24,7 @@ import {
   GOAL_STATUS_TOOL_DESCRIPTION,
   GOAL_STATUS_TOOL_NAME
 } from '../../shared/goal'
-import type { Goal } from '../../shared/goal'
+import type { Goal, GoalAdvanceRequest, GoalReadingKind } from '../../shared/goal'
 import { fetchLocalRpc, type LocalRpcTransport } from '../local-rpc-transport'
 import { GOAL_MCP_SERVER_ARG } from '../mcp-server-args'
 
@@ -58,6 +60,35 @@ const goalStatusToolDefinition = {
   inputSchema: {}
 }
 
+const goalAdvanceToolSchema = {
+  goal_id: z.string().min(1).describe('The goal to advance.'),
+  criterion: z
+    .string()
+    .min(1)
+    .describe('The acceptance criterion, by its id or by its exact text.'),
+  note: z
+    .string()
+    .min(1)
+    .optional()
+    .describe('One line saying what this step did; defaults to the criterion text.'),
+  reading_kind: z
+    .enum(['run', 'artifact-version', 'connector-reading'])
+    .describe('What kind of reading grounds this step. Only "run" is wired in this version.'),
+  reading_id: z.string().min(1).describe('The reading\u2019s id (for a run: the run id).'),
+  reading_fingerprint: z
+    .string()
+    .min(1)
+    .describe(
+      'The fingerprint the reading was taken with. The app recomputes it and stores its own value — a ' +
+        'claim that does not match the record is refused.'
+    )
+}
+const goalAdvanceToolDefinition = {
+  title: 'Advance a goal on a real reading',
+  description: GOAL_ADVANCE_TOOL_DESCRIPTION,
+  inputSchema: goalAdvanceToolSchema
+}
+
 export type GoalMcpEnvironment = {
   endpoint: string
   socketPath?: string
@@ -79,6 +110,7 @@ export type GoalConfigureInput = {
 type GoalMcpHandler = {
   configure: (request: GoalConfigureInput) => Promise<Goal>
   status: () => Promise<Goal[]>
+  advance: (request: GoalAdvanceRequest) => Promise<Goal>
 }
 
 type GoalMcpServerConfigRequest = GoalMcpEnvironment & {
@@ -110,6 +142,24 @@ const createGoalMcpServer = (handler: GoalMcpHandler): ModelContextProtocolServe
 
   server.registerTool(GOAL_STATUS_TOOL_NAME, goalStatusToolDefinition, async () => {
     const result = await handler.status()
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    }
+  })
+
+  server.registerTool(GOAL_ADVANCE_TOOL_NAME, goalAdvanceToolDefinition, async (input) => {
+    // snake_case in the schema, camelCase in the type — mapped explicitly, so a rename can never quietly
+    // drop the reading that this call is supposed to be grounded in.
+    const result = await handler.advance({
+      goalId: input.goal_id,
+      criterion: input.criterion,
+      note: input.note,
+      reading: {
+        kind: input.reading_kind as GoalReadingKind,
+        id: input.reading_id,
+        fingerprint: input.reading_fingerprint
+      }
+    })
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     }
@@ -155,7 +205,7 @@ const createGoalMcpEnvironmentFromProcess = (
 
 const callGoalRpc = async (
   environment: GoalMcpEnvironment,
-  method: 'goalConfigure' | 'goalStatus',
+  method: 'goalConfigure' | 'goalStatus' | 'goalAdvance',
   params: Record<string, unknown>
 ): Promise<Goal | Goal[]> => {
   const response = await fetchLocalRpc(
@@ -187,7 +237,8 @@ const runGoalMcpServer = async (
   const server = createGoalMcpServer({
     configure: (request) =>
       callGoalRpc(environment, 'goalConfigure', { ...request }) as Promise<Goal>,
-    status: () => callGoalRpc(environment, 'goalStatus', {}) as Promise<Goal[]>
+    status: () => callGoalRpc(environment, 'goalStatus', {}) as Promise<Goal[]>,
+    advance: (request) => callGoalRpc(environment, 'goalAdvance', { ...request }) as Promise<Goal>
   })
   await server.connect(new StdioServerTransport())
 }
@@ -195,8 +246,10 @@ const runGoalMcpServer = async (
 export {
   GOAL_MCP_SERVER_ARG,
   GOAL_MCP_SERVER_NAME,
+  GOAL_ADVANCE_TOOL_NAME,
   GOAL_CONFIGURE_TOOL_NAME,
   GOAL_STATUS_TOOL_NAME,
+  goalAdvanceToolDefinition,
   goalConfigureToolDefinition,
   goalStatusToolDefinition,
   createGoalMcpEnvironmentFromProcess,

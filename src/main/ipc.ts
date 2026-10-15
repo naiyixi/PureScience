@@ -276,6 +276,7 @@ import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
 import { RoutineRepository } from './settings/routine-repository'
 import { GoalRepository } from './goals/goal-repository'
+import { createNotebookRunReadingResolver } from './goals/notebook-run-reading-resolver'
 import { EndpointRepository } from './settings/endpoint-repository'
 import { EndpointManager } from './settings/endpoint-manager'
 import { RoutineScheduler } from './settings/routine-scheduler'
@@ -1758,6 +1759,8 @@ const createApplicationModules = async (
   // Persistent goals live beside the session's own artifacts, like routines. Same single writer rule: the
   // main process owns the file, the tool process talks to it over RPC.
   const goalRepository = new GoalRepository({ root: resolveDataRoot() })
+  // 读数解析器：推进 goal 时由**主进程**去应用自己的 notebook 运行记录里真查（工具进程只能点名）。
+  const goalReadingResolver = createNotebookRunReadingResolver({ storageRoot: resolveDataRoot() })
   const endpointRepository = new EndpointRepository({
     storageRoot: resolveDataRoot()
   })
@@ -1986,7 +1989,9 @@ const createApplicationModules = async (
       },
       goal: {
         configure: (sessionId, request) => goalRepository.configure(sessionId, request),
-        status: (sessionId) => goalRepository.status(sessionId)
+        status: (sessionId) => goalRepository.status(sessionId),
+        advance: (sessionId, request) =>
+          goalRepository.advance(sessionId, request, goalReadingResolver)
       },
       endpoints: {
         register: (sessionId, request) => endpointRepository.upsert(request, sessionId),

@@ -13,6 +13,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import type {
   Goal,
   GoalAcceptanceItem,
+  GoalAdvanceRequest,
   GoalConfigureRequest,
   GoalMilestone,
   GoalReadingRef,
@@ -52,15 +53,6 @@ export type GoalReadingResolution =
 
 export type GoalReadingResolver = {
   resolve(ref: GoalReadingRef, context: { sessionId: string }): Promise<GoalReadingResolution>
-}
-
-export type GoalAdvanceRequest = {
-  goalId: string
-  // The acceptance criterion, by id or by its exact text.
-  criterion: string
-  // One line saying what this step did. Falls back to the criterion's own text when omitted.
-  note?: string
-  reading: GoalReadingRef
 }
 
 // The same shape as the routine store's: under the session's own artifacts directory, so a goal lives and

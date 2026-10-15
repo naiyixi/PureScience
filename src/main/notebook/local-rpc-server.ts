@@ -47,7 +47,7 @@ import {
 import { createLogger, errorLogFields } from '../logger'
 import { PlanCommandError } from '../../shared/session-plan/contract'
 import type { RoutineConfigureRequest } from '../../shared/routine'
-import type { GoalConfigureRequest } from '../../shared/goal'
+import type { GoalAdvanceRequest, GoalConfigureRequest } from '../../shared/goal'
 import type { EndpointRegisterRequest } from '../../shared/endpoint'
 import type { AnnotationSetRequest } from '../../shared/annotation'
 
@@ -163,6 +163,8 @@ type NotebookLocalRpcServerOptions = {
   goal?: {
     configure(sessionId: string, request: GoalConfigureRequest): Promise<unknown>
     status(sessionId: string): Promise<unknown>
+    // 推进必须带读数：解析器在主进程里（它知道去哪查真运行记录），工具进程只能点名。
+    advance(sessionId: string, request: GoalAdvanceRequest): Promise<unknown>
   } // Managed local model services (endpoint_* MCP): main-process-owned lifecycle.
   endpoints?: {
     register(sessionId: string, request: EndpointRegisterRequest): Promise<unknown>
@@ -293,7 +295,7 @@ import { fingerprintInputs } from '../../shared/task-checkpoint'
 const MEMORY_RPC_METHODS = new Set(['memorySaveNote', 'taskCheckpointSave', 'taskCheckpointLoad'])
 const CONTEXT_SUMMARY_RPC_METHODS = new Set(['summaryQueryChunk', 'recordBoundary'])
 const ROUTINE_RPC_METHODS = new Set(['routineConfigure', 'routineStatus', 'routineCancel'])
-const GOAL_RPC_METHODS = new Set(['goalConfigure', 'goalStatus'])
+const GOAL_RPC_METHODS = new Set(['goalConfigure', 'goalStatus', 'goalAdvance'])
 const ANNOTATION_RPC_METHODS = new Set(['annotationSet', 'annotationList', 'annotationRemove'])
 const PDF_RPC_METHODS = new Set([
   'pdfOpen',
@@ -1578,6 +1580,33 @@ class NotebookLocalRpcServer {
         throw new Error('Goal status RPC params must include sessionId.')
       }
       return this.goal.status(params.sessionId)
+    }
+
+    if (method === 'goalAdvance') {
+      if (!this.goal) throw new Error('Goal handler is not configured.')
+      const reading = params.reading as
+        { kind?: unknown; id?: unknown; fingerprint?: unknown } | undefined
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof params.goalId !== 'string' ||
+        typeof params.criterion !== 'string' ||
+        !reading ||
+        typeof reading.id !== 'string' ||
+        typeof reading.fingerprint !== 'string' ||
+        (reading.kind !== 'run' &&
+          reading.kind !== 'artifact-version' &&
+          reading.kind !== 'connector-reading')
+      ) {
+        throw new Error(
+          'Goal advance RPC params must include sessionId, goalId, criterion, and a reading with kind, id and fingerprint.'
+        )
+      }
+      return this.goal.advance(params.sessionId, {
+        goalId: params.goalId,
+        criterion: params.criterion,
+        note: typeof params.note === 'string' ? params.note : undefined,
+        reading: { kind: reading.kind, id: reading.id, fingerprint: reading.fingerprint }
+      })
     }
 
     if (method === 'routineConfigure') {

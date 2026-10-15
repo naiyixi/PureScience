@@ -5,8 +5,9 @@
 // drop the id and quietly register a second goal instead of updating the first.
 import { describe, expect, it, vi } from 'vitest'
 
-import type { Goal } from '../../shared/goal'
+import type { Goal, GoalAdvanceRequest } from '../../shared/goal'
 import {
+  GOAL_ADVANCE_TOOL_NAME,
   GOAL_CONFIGURE_TOOL_NAME,
   GOAL_MCP_SERVER_ARG,
   GOAL_MCP_SERVER_NAME,
@@ -40,10 +41,11 @@ const toolsOf = (server: unknown): RegisteredTools =>
   (server as { _registeredTools: RegisteredTools })._registeredTools
 
 describe('goal MCP server contract', () => {
-  it('names the server and the two tools', () => {
+  it('names the server and the three tools', () => {
     expect(GOAL_MCP_SERVER_NAME).toBe('purescience-goal')
     expect(GOAL_CONFIGURE_TOOL_NAME).toBe('goal_configure')
     expect(GOAL_STATUS_TOOL_NAME).toBe('goal_status')
+    expect(GOAL_ADVANCE_TOOL_NAME).toBe('goal_advance')
   })
 
   it('builds a stdio config with the goal entry arg and RPC environment', () => {
@@ -81,13 +83,17 @@ describe('goal MCP server contract', () => {
     expect(socketEnv.PURESCIENCE_GOAL_RPC_SOCKET_PATH).toBe('/tmp/purescience-rpc.sock')
   })
 
-  it('registers exactly the two tool names, and calls no handler at registration', () => {
+  it('registers exactly the three tool names, and calls no handler at registration', () => {
     const configure = vi.fn(async () => makeGoal())
     const status = vi.fn(async () => [makeGoal()])
-    const server = createGoalMcpServer({ configure, status })
+    const server = createGoalMcpServer({
+      configure,
+      status,
+      advance: vi.fn(async () => makeGoal())
+    })
 
     expect(Object.keys(toolsOf(server)).sort()).toEqual(
-      [GOAL_CONFIGURE_TOOL_NAME, GOAL_STATUS_TOOL_NAME].sort()
+      [GOAL_ADVANCE_TOOL_NAME, GOAL_CONFIGURE_TOOL_NAME, GOAL_STATUS_TOOL_NAME].sort()
     )
     expect(configure).not.toHaveBeenCalled()
     expect(status).not.toHaveBeenCalled()
@@ -100,7 +106,8 @@ describe('goal MCP server contract', () => {
     )
     const server = createGoalMcpServer({
       configure,
-      status: vi.fn(async () => [makeGoal()])
+      status: vi.fn(async () => [makeGoal()]),
+      advance: vi.fn(async () => makeGoal())
     })
 
     const result = await toolsOf(server)[GOAL_CONFIGURE_TOOL_NAME]?.handler({
@@ -123,7 +130,8 @@ describe('goal MCP server contract', () => {
   it('round-trips goal_status', async () => {
     const server = createGoalMcpServer({
       configure: vi.fn(async () => makeGoal()),
-      status: vi.fn(async () => [makeGoal({ id: 'goal-2' })])
+      status: vi.fn(async () => [makeGoal({ id: 'goal-2' })]),
+      advance: vi.fn(async () => makeGoal())
     })
     const result = await toolsOf(server)[GOAL_STATUS_TOOL_NAME]?.handler({})
     const parsed = JSON.parse(result?.content[0]?.text ?? '[]') as Goal[]
@@ -131,5 +139,53 @@ describe('goal MCP server contract', () => {
     expect(parsed[0]?.id).toBe('goal-2')
     // An unmet criterion is null, not false: "no reading proved it" is the absence of evidence.
     expect(parsed[0]?.acceptance[0]?.metBy).toBeNull()
+  })
+
+  it('round-trips goal_advance, carrying the reading through instead of dropping it', async () => {
+    const advance = vi.fn(async (_request: GoalAdvanceRequest) => makeGoal())
+    const server = createGoalMcpServer({
+      configure: vi.fn(async () => makeGoal()),
+      status: vi.fn(async () => [makeGoal()]),
+      advance
+    })
+
+    const result = await toolsOf(server)[GOAL_ADVANCE_TOOL_NAME]?.handler({
+      goal_id: 'goal-1',
+      criterion: '运行记录能编译成技能',
+      note: '跑了一次并留下记录',
+      reading_kind: 'run',
+      reading_id: 'notebook-run-1',
+      reading_fingerprint: 'fp-real'
+    })
+
+    expect(advance).toHaveBeenCalledTimes(1)
+    // 决定性的一半：读数没有被映射丢掉（丢掉的话这条调用就成了「无读数的主张」）。
+    expect(advance.mock.calls[0]?.[0]).toEqual({
+      goalId: 'goal-1',
+      criterion: '运行记录能编译成技能',
+      note: '跑了一次并留下记录',
+      reading: { kind: 'run', id: 'notebook-run-1', fingerprint: 'fp-real' }
+    })
+    expect(JSON.parse(result?.content[0]?.text ?? '{}')).toMatchObject({ id: 'goal-1' })
+  })
+
+  it('lets a named refusal from the store reach the caller instead of answering a success', async () => {
+    const server = createGoalMcpServer({
+      configure: vi.fn(async () => makeGoal()),
+      status: vi.fn(async () => [makeGoal()]),
+      advance: vi.fn(async () => {
+        throw new Error('reading-not-found')
+      })
+    })
+
+    await expect(
+      toolsOf(server)[GOAL_ADVANCE_TOOL_NAME]?.handler({
+        goal_id: 'goal-1',
+        criterion: '第一条',
+        reading_kind: 'run',
+        reading_id: 'no-such-run',
+        reading_fingerprint: 'fp'
+      })
+    ).rejects.toThrow('reading-not-found')
   })
 })
