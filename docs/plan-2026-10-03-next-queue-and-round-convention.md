@@ -6468,3 +6468,37 @@ F1 的「目标对象」已交付；**工具面**（`goal_configure` / `goal_sta
 | F1 目标对象 | **库侧 + 工具面四集成点完成**；第五处（`acp/session-capability-owner.ts` 的 50 处引用镜像）**立案未做** ⇒ F1 未完成 |
 | F2 读数推进 | **库侧完成**（9 passed，含两条决定性用例）；生产解析器**未接** ⇒ F2 未完成 |
 | F3 / G1–G4 | 未开工（§一百三十九 拆解不变） |
+
+## 一百四十三、v2.4.0 **F2 生产侧交付 + 真机读数**（会话，2026-10-15）
+
+### 一 交付（`d779cd7f`）
+
+`src/main/goals/notebook-run-reading-resolver.ts`（新）：把「这条读数真的存在吗」落到应用自己的 notebook 运行记录上（`<dataRoot>/<项目>/<会话>/run.json`）。两条纪律写在文件头上：
+
+1. **读记录用产品自己的仓储**（`NotebookRunRepository.findExisting`：路径编码、`$DATA` 解码、归一化都在它里面），不自己 `JSON.parse`；
+2. **指纹用风险收据自己的哈希函数**（`notebookRunSourceHash`）—— 绝不第二份实现，否则同一个运行会有两个都能自称权威的哈希。
+
+只接 `run` 一类；`artifact-version` / `connector-reading` **具名**回 `not-found`（不猜、不含糊地「找到了」）。
+
+### 二 首跑三条红与根因（不猜，去读源码）
+
+三条用例全回 `not-found` ⇒ 读仓储的路径助手发现：仓储把 `NOTEBOOKS_DIR` 前缀拼进路径（**dataRoot ≠ notebooks 根**），而我的扫描直接读了 dataRoot ⇒ 只把 `notebooks` 当成了一个「项目」。修法：扫描根改用**仓储导出的同一个常量**（不是重写字面量），并顺手把 `NOTEBOOKS_DIR` 加进仓储导出块（第一次加错位置 —— 落在花括号外 ⇒ esbuild 报 `Expected "}"` ⇒ 按锚点重修）。
+
+另：测试里用 `as` 断言掩盖类型不符 ✗ ⇒ 去掉断言让 tsc 指名（`missing outputs, artifacts, workingFiles`）⇒ 照既有用例补齐记录字面量。
+
+### 三 真机读数（**只读**真实数据根，一次性 spec 取完即删）
+
+| 探针 | 读数 |
+| --- | --- |
+| 真运行 | `notebook-run-1787229523873-2`（会话 `75f44565-77b8-415d-9365-913502ed92d4`，脚本 **969 字节**） |
+| 真指纹 | `7e8d7a19254541a66c2977dcef04f046e0da28ff5d377c1f4988414f172a2ccd` ⇒ 解析 **ok** ✓ |
+| 假指纹 | `{ok:false, reason:"fingerprint-mismatch"}` ✓ |
+| 别人的会话 | `{ok:false, reason:"foreign-session"}` ✓ |
+| 只读自证 | 那份 `run.json` 解析后**逐字符未变** ✓ |
+| 一次性 spec | 已按精确名删除（`zz-realmachine-reading-probe.test.ts` 不在树上 ✓） |
+
+**测试**：`goals` **13 passed**；`goals + notebook` **90 文件 / 1435 passed（99 skipped）**；双 typecheck **0**；`eslint 0`。
+
+### 四 F2 状态
+
+**库侧 + 生产侧完成**（含真机读数 ✓）。**仍未做**：`goal_advance` 的**工具面** —— 它与 F1 第五处是同一个前置（`acp/session-capability-owner.ts` 的能力编织）⇒ 两件一起做才有意义：先接能力编织，再给 F1/F2 各自加工具与上屏（F3 一起）。
