@@ -6698,3 +6698,29 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 - `src/preload/index.test.ts`：api 路径清单加 `'goals.listAll'`（**按字母序**插在 `'roCrate.…'` 之前、`'folderGrants.'` 之后一带）、能力清单加 `'goal'`、路由计数 **201 → 202**。警告：该文件有**多张** `toHaveLength` 清单，逐张核对，别按行号猜（本轮按行号插错了一张，导致计数从 201/202 变成 239/240）。
 
 **⑧ 然后**：`GoalPanel.tsx` + `GoalPanel.render.test.tsx`（照 `RoutinePanel` 同形，挂进 `SettingsPage.tsx`）、i18n 9 语、**真窗口读数**。
+
+## 一百四十九、v2.4.0 **F3 上屏交付**（`2067c866`，会话，2026-10-15）
+
+### 一 交付
+
+**接线**（照 routine 同门）：`src/main/goals/goal-ipc.ts`（`createGoalCommandOwner` / `registerGoalIpcHandlers`，**只读**）+ **boot 装配**（`ipc.ts` 里照 `registerRoutineIpcHandlers` 一行）；契约目录 `group('goal', 'goals', [['listAll','goal:list-all',LOCAL]])`；`node scripts/generate-web-api-map.mjs` 重生成；路由命令组**追加到数组末尾**（组下标 19）；组合根**复用同一 `GoalRepository` 实例**；`preload` 的 `api.goals.listAll`；`renderer-api.d.ts`；`SettingsPanelId` 加 `goals`；`SettingsPage` 注册表加条目 + 面板分支。
+
+**面板** `src/renderer/src/pages/settings/GoalPanel.tsx`（+ `.render.test.tsx`）：列出每个会话的目标、状态、会话 id；**每条验收项要么挂着真读数（kind + run id + 应用自己算的指纹，截断显示）要么明确写「未满足」**；`unreadableSessionIds` **具名报出**而不是并进「没有目标」。面板**只读** —— 写入仍只走 agent 的 `goal_configure` / `goal_advance`（会话感知 + 进度只由真读数推进）。
+
+**i18n**：12 键 × 9 语（`en zh zh-Hant ja ko de fr es ru`），经技能自带 `add-i18n-keys.py` 插入并**由脚本自证「9 个文件各就位」**。
+
+### 二 三处只有实践才暴露的陷阱（已入档，下次免踩）
+
+1. `group(**capability**, publicRoot, …)` —— **capability 在前**。写反的症状不是报错，而是目录过滤后**不计数**。
+2. preload 的 `electronRendererContracts.invoke(...)` 要传**公共路径** `goals.listAll`，**不是**通道名 `goal:list-all`；传错的报错是「Renderer contract is not an Electron IPC request」，会把人引向契约配置而不是那一行调用。
+3. **`renderer-contract-entry-coverage` 与 `main-installation-guard` 要的不是账目，而是实现本身**：前者扫渲染层源码里是否出现能力/成员 token（**没有用户的面板通道不许存在**），后者要求注册器真的在 boot 路径上被装配。两者都是「先有实现再对齐数字」的门，抓得很准。
+
+### 三 读数与剩余
+
+| 项 | 状态 |
+| --- | --- |
+| 接线 / 面板 / i18n | ✅ 已交付并推 main（`2067c866`） |
+| 测试 | `shared + renderer/settings` **189 文件 / 2075 passed**；双 tsc 0；eslint 0 |
+| 四处账目 | 46→47 / 399→400 / 482→483 / 128→129、invoke 369→370（两处）、REMOTE_LOCAL_ONLY 加 goal 组、导航 20→21 与下标顺延 |
+| 全量 | 第 16 次在跑（覆盖本笔） |
+| **真窗口读数** | **尚欠** —— 下一步第一件事：真窗口里打开 Settings → Goals，看到**真目标**（不是夹具）：被读数满足的那条挂真 run id + 指纹，未满足的那条明说；读者真正按的按钮（刷新）要真点过 |
