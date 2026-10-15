@@ -6536,3 +6536,19 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 | `:1015` `:1052-1055` `:1158` `:1262-1265` | enabled 记录类型与「按 enabled 建环境」 | 孪生（`buildGoalEnvironment` 走 `request.routingIds.goal`） |
 
 **配套**：既有测试里**枚举了能力清单**的用例要一并加 goal（否则覆盖闸门会红）；做完后用 `goal-mcp-server.test.ts` 同形的测试自证「会话真的拿到了 goal 服务器、且策略不许时拿不到」——**到此 F1/F2 的工具面与 F3 的上屏才有意义**。
+
+## 一百四十五、v2.4.0 F1 **工具面契约测试**（`a74fe0ef`）+ 能力编织前夜（会话，2026-10-15）
+
+### 一 交付
+
+`src/main/goals/goal-mcp-server.test.ts`（新）：五条 —— 服务器名与两个工具名；stdio 配置（`args` 含 `GOAL_MCP_SERVER_ARG`、四个 env、**无 socketPath 时不出现、给了就透传**）；注册**恰好**两个工具且注册时不调任何处理器（**多挂一个工具会红** —— routine 的同名测试只断言 `toBeDefined()`，这里更严）；`goal_configure` 往返**钉住 `goal_id → goalId` 的显式映射**（静默改名会让 id 丢掉 ⇒ 把「更新」变成「新建第二个目标」）；`goal_status` 往返且未满足的验收项是 **null**（不是 false：没有读数证明 = 证据缺席）。
+
+**自踩**：先用 `as` 断言掩盖 mock 的参数类型 ⇒ tsc 报 `TS2493`（元组无 `[0]`）⇒ 改为在 `vi.fn` 上标注参数类型，断言里因此能看到调用实参、不再需要断言掩盖 ✓。
+
+读数：`goals` **18 passed（3 文件）**；node tsc 0；eslint 0。
+
+### 二 能力编织：模式已确认规整，作业单已逐行落档（§一百四十四）
+
+本轮把 `session-capability-owner.ts` 的相关区域读全了：routine 是**内联**站点（没有按能力的路由表），模式是 16 类、约 25 处**完全规则**的插入（能力名元组 / 路由 id 记录 / 连接回调 / 两处 `routineRelease?` / 会话序号字段与自增 / 别名构造 / 三处路由 id 数组 / 两处释放字段 / 策略门 `policyAllowsSessionCapability(…, 'routine')` / 两处 enabled 记录字段 / `capabilities.push('routine')` / 两个 enabled 记录类型 / `buildRoutineEnvironment` 分支）。⇒ 下次开工即可按锚点一次落全 **+ 新增 `buildGoalEnvironment`（照 `buildRoutineEnvironment` 同形）+ 配套测试里枚举能力清单的用例**。
+
+**为什么不在本轮落地**：这是语义敏感的宽改动（策略门/释放点/别名/环境构建），必须与它自己的测试同批完成；会话已极长，赶工的赔率高于收益 ⇒ 按纪律留在下一步第一件事。
