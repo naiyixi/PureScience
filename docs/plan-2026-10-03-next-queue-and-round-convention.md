@@ -6738,3 +6738,15 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 5. 事后核验：截图 + `test-results/app-process.log`（夹具自己输出的路径）。
 
 **已知限制（要如实写在读数里）**：e2e 根是隔离的，所以那条读数来自用例内的解析器（真 `advance` 路径 + 真文件 + 真 RPC + 真渲染，但不是真 notebook run）。**真 run 的那条读数已在 F2 的真机读数里拿到**（`notebook-run-1786102211513-11` / 指纹 `b720f53a…`），两者互补、不可互相冒充。
+
+### 五 F3 真窗口读数：**面板本体已证**，种子的根路径还差一步（下一轮 2 次调用收口）
+
+**已证（真窗口，非单测）**：夹具隔离根里启动真应用 → `Model settings` → Settings 对话框 → 导航项 **`Goals and readings`** 真存在并**真被点开** → 面板渲染出标题与**空态** `No goals recorded yet.` ⇒ **通道通、无报错、UI 真跑** ✓✓（`expect` 的失败上下文里的可访问性树就是证据）。
+
+**还差一步（根路径）**：用产品自己的 `GoalRepository` 在两个候选根种下目标后 ——
+- `new GoalRepository({root: app.storageRoot})` ⇒ 自检 `seeded=1` ✓（**同一个读写器**能读到 ⇒ 文件与布局都对 ✓）；
+- 应用侧仍显示空态 ✗ ⇒ **应用的 `resolveDataRoot()` 返回的不是 `storageRoot` 本身**（夹具把 `PURESCIENCE_STORAGE_ROOT` 与 `PURESCIENCE_E2E_STORAGE_ROOT` 都指向它，所以差的是**子路径**：`storage-root.ts` 很可能再拼一层，如 `<root>/data`）。
+
+**下一轮**：读 `src/main/storage-root.ts` 里 `resolveDataRoot()` 的返回值（一行）→ 规格里把种子根改成那个路径（其余不动）→ 跑 `npx playwright test e2e/goals-panel.spec.ts`（约 1 分钟）。断言三条红线：目标文案、**被读数满足的那条挂出 run id 与指纹**（`b720f53ae927…` 截断显示）、**没有读数的那条必须出现 `Unmet — no reading yet`**、刷新按钮真点过。
+
+**纪律**：红规格**不入树**（本轮已删），诊断留档。
