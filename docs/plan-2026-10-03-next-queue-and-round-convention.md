@@ -6724,3 +6724,17 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 | 四处账目 | 46→47 / 399→400 / 482→483 / 128→129、invoke 369→370（两处）、REMOTE_LOCAL_ONLY 加 goal 组、导航 20→21 与下标顺延 |
 | 全量 | 第 16 次在跑（覆盖本笔） |
 | **真窗口读数** | **尚欠** —— 下一步第一件事：真窗口里打开 Settings → Goals，看到**真目标**（不是夹具）：被读数满足的那条挂真 run id + 指纹，未满足的那条明说；读者真正按的按钮（刷新）要真点过 |
+
+### 四 F3 真窗口读数：勘查已完成，配方如下（下一轮两次调用即可执行）
+
+**为什么不能只跑单测**：面板的完成判据是「读者在真窗口里看到**真目标**」。单元测试用替身，不算证据。
+
+**e2e 配方**（`e2e/*.spec.ts` 与 `e2e/fixtures/electron-app.ts` 已核）：
+
+1. 夹具给每个用例一个隔离根，并**暴露** `app.storageRoot`（getter，`fixtures/electron-app.ts:325`）；启动参数里 `--user-data-dir` 与 storage root 分开给。
+2. **用产品自己的写入器造数据**（不手搓 JSON 形状）：`new GoalRepository({ root: app.storageRoot })` → `configure(sessionId, request)` → `advance(sessionId, request, resolver)`（`goal-repository.ts:80/123/233`；`advance` 的第三参就是 `GoalReadingResolver`，签名 `resolve(ref, { sessionId })`）。命名读数、解析器给值 —— 与 F2 的红线一致。
+3. 打开面板：`const page = await app.completeOnboarding()` → `page.getByRole('button', { name: 'Model settings' }).click()` → `page.getByRole('dialog', { name: 'Settings' })` → `.getByRole('navigation', { name: 'Settings' })` → `.getByRole('button', { name: 'Goals and readings', exact: true })`（照 `e2e/settings-persistence.spec.ts` 的既有写法；夹具强制 `--lang=en-US` 所以选择器是英文）。
+4. 断言（就是三条红线）：目标文案可见；**被读数满足的那条挂出 run id 与指纹**（指纹截断显示）；**没有读数的那条必须出现「Unmet — no reading yet」**；再点一次刷新按钮（`aria-label='Refresh goals'`）真点过。
+5. 事后核验：截图 + `test-results/app-process.log`（夹具自己输出的路径）。
+
+**已知限制（要如实写在读数里）**：e2e 根是隔离的，所以那条读数来自用例内的解析器（真 `advance` 路径 + 真文件 + 真 RPC + 真渲染，但不是真 notebook run）。**真 run 的那条读数已在 F2 的真机读数里拿到**（`notebook-run-1786102211513-11` / 指纹 `b720f53a…`），两者互补、不可互相冒充。
