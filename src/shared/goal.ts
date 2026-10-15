@@ -94,3 +94,15 @@ export const GOAL_REFUSAL_CODES = [
 ] as const
 
 export type GoalRefusalCode = (typeof GOAL_REFUSAL_CODES)[number]
+
+// Tells the model the goal surface exists, and states the rule it cannot negotiate: progress is advanced
+// only by a reading, so a criterion it cannot point at a run or artifact version for stays unmet.
+export const GOAL_MCP_SYSTEM_PROMPT_APPEND = [
+  '<purescience_goal_instructions>',
+  'You can keep a long-running objective with goal_configure(objective=…, acceptance=[…]). Each acceptance ' +
+    'criterion is met only by a reading the app itself takes (a recorded run or an artifact version) — so ' +
+    'write criteria as things a run can demonstrate, not as things you can assert.',
+  'Use goal_status() to read back the objective, each criterion with the reading that met it (or that it ' +
+    'is unmet), and the milestones in order.',
+  '</purescience_goal_instructions>'
+].join('\n')

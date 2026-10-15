@@ -90,6 +90,7 @@ export class AcpProviderSessionCreator {
           memory: capability.descriptor.capabilities.includes('memory'),
           contextSummary: capability.descriptor.capabilities.includes('context-summary'),
           routine: capability.descriptor.capabilities.includes('routine'),
+          goal: capability.descriptor.capabilities.includes('goal'),
           endpoint: capability.descriptor.capabilities.includes('endpoint'),
           annotation: capability.descriptor.capabilities.includes('annotation'),
           pdf: capability.descriptor.capabilities.includes('pdf'),

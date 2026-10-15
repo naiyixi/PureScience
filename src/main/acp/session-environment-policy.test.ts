@@ -57,6 +57,7 @@ const createPolicy = (
       memory: false,
       contextSummary: false,
       routine: false,
+      goal: false,
       endpoint: false,
       annotation: false,
       pdf: false,

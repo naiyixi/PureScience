@@ -6,6 +6,7 @@ import {
 import { MEMORY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/memory-mcp'
 import { CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/context-summary-mcp'
 import { ROUTINE_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/routine'
+import { GOAL_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/goal'
 import { ENDPOINT_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/endpoint'
 import { ANNOTATION_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/annotation'
 import { PDF_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/pdf'
@@ -22,6 +23,7 @@ type AcpSessionToolingAvailability = Readonly<{
   memory: boolean
   contextSummary: boolean
   routine: boolean
+  goal: boolean
   endpoint: boolean
   annotation: boolean
   pdf: boolean
@@ -124,6 +126,7 @@ class AcpSessionPresentationPolicy {
       ...(tooling.memory ? [MEMORY_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.contextSummary ? [CONTEXT_SUMMARY_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.routine ? [ROUTINE_MCP_SYSTEM_PROMPT_APPEND] : []),
+      ...(tooling.goal ? [GOAL_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.endpoint ? [ENDPOINT_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.annotation ? [ANNOTATION_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.pdf ? [PDF_MCP_SYSTEM_PROMPT_APPEND] : []),

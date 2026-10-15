@@ -40,11 +40,12 @@ import {
   createContextSummaryMcpServerConfig
 } from '../settings/context-summary-mcp-server'
 import type { RoutineMcpEnvironment, RoutineRpcConnection } from '../settings/routine-mcp-server'
-import type { GoalRpcConnection } from '../goals/goal-mcp-server'
+import type { GoalMcpEnvironment, GoalRpcConnection } from '../goals/goal-mcp-server'
 import {
   ROUTINE_MCP_SERVER_NAME,
   createRoutineMcpServerConfig
 } from '../settings/routine-mcp-server'
+import { GOAL_MCP_SERVER_NAME, createGoalMcpServerConfig } from '../goals/goal-mcp-server'
 import type { EndpointMcpEnvironment, EndpointRpcConnection } from '../settings/endpoint-mcp-server'
 import type {
   AnnotationMcpEnvironment,
@@ -82,6 +83,7 @@ const CURRENT_PRIMARY_CAPABILITIES = [
   'memory',
   'context-summary',
   'routine',
+  'goal',
   'endpoint',
   'annotation',
   'pdf',
@@ -136,6 +138,7 @@ type SessionCapabilityRoutingIds = Readonly<{
   memory: string
   contextSummary: string
   routine: string
+  goal: string
   endpoint: string
   annotation: string
   pdf: string
@@ -281,6 +284,7 @@ type BuildSessionCapabilitiesRequest = {
   onMemoryConnection?: (connection: MemoryRpcConnection) => void
   onContextSummaryConnection?: (connection: ContextSummaryRpcConnection) => void
   onRoutineConnection?: (connection: RoutineRpcConnection) => void
+  onGoalConnection?: (connection: GoalRpcConnection) => void
   onEndpointConnection?: (connection: EndpointRpcConnection) => void
   onAnnotationConnection?: (connection: AnnotationRpcConnection) => void
   onPdfConnection?: (connection: PdfRpcConnection) => void
@@ -326,6 +330,7 @@ type CommitSessionCapabilitiesRequest = {
   memoryRelease?: () => void
   contextSummaryRelease?: () => void
   routineRelease?: () => void
+  goalRelease?: () => void
   endpointRelease?: () => void
   annotationRelease?: () => void
   pdfRelease?: () => void
@@ -343,6 +348,7 @@ type RevokeProvisionalSessionCapabilitiesRequest = {
   memoryRelease?: () => void
   contextSummaryRelease?: () => void
   routineRelease?: () => void
+  goalRelease?: () => void
   endpointRelease?: () => void
   annotationRelease?: () => void
   pdfRelease?: () => void
@@ -414,6 +420,7 @@ export class AcpSessionCapabilityOwner {
   private memorySessionSequence = 0
   private contextSummarySessionSequence = 0
   private routineSessionSequence = 0
+  private goalSessionSequence = 0
   private endpointSessionSequence = 0
   private annotationSessionSequence = 0
   private pdfSessionSequence = 0
@@ -435,6 +442,7 @@ export class AcpSessionCapabilityOwner {
     let memoryRelease: (() => void) | undefined
     let contextSummaryRelease: (() => void) | undefined
     let routineRelease: (() => void) | undefined
+    let goalRelease: (() => void) | undefined
     let endpointRelease: (() => void) | undefined
     let annotationRelease: (() => void) | undefined
     let pdfRelease: (() => void) | undefined
@@ -470,6 +478,9 @@ export class AcpSessionCapabilityOwner {
         onRoutineConnection: (connection) => {
           routineRelease = connection.release
         },
+        onGoalConnection: (connection) => {
+          goalRelease = connection.release
+        },
         onEndpointConnection: (connection) => {
           endpointRelease = connection.release
         },
@@ -497,6 +508,7 @@ export class AcpSessionCapabilityOwner {
           routingIds.memory,
           routingIds.contextSummary,
           routingIds.routine,
+          routingIds.goal,
           routingIds.endpoint,
           routingIds.annotation,
           routingIds.pdf,
@@ -510,6 +522,7 @@ export class AcpSessionCapabilityOwner {
         planRelease,
         contextSummaryRelease,
         routineRelease,
+        goalRelease,
         endpointRelease,
         annotationRelease,
         pdfRelease,
@@ -538,6 +551,7 @@ export class AcpSessionCapabilityOwner {
               routingIds.memory,
               routingIds.contextSummary,
               routingIds.routine,
+              routingIds.goal,
               routingIds.endpoint,
               routingIds.annotation,
               routingIds.pdf,
@@ -552,6 +566,7 @@ export class AcpSessionCapabilityOwner {
             memoryRelease,
             contextSummaryRelease,
             routineRelease,
+            goalRelease,
             endpointRelease,
             annotationRelease,
             pdfRelease,
@@ -573,6 +588,7 @@ export class AcpSessionCapabilityOwner {
             memoryRelease,
             contextSummaryRelease,
             routineRelease,
+            goalRelease,
             endpointRelease,
             annotationRelease,
             pdfRelease,
@@ -593,6 +609,7 @@ export class AcpSessionCapabilityOwner {
           memoryRelease,
           contextSummaryRelease,
           routineRelease,
+          goalRelease,
           endpointRelease,
           annotationRelease,
           pdfRelease,
@@ -616,6 +633,7 @@ export class AcpSessionCapabilityOwner {
             routingIds.memory,
             routingIds.contextSummary,
             routingIds.routine,
+            routingIds.goal,
             routingIds.endpoint,
             routingIds.annotation,
             routingIds.pdf,
@@ -630,6 +648,7 @@ export class AcpSessionCapabilityOwner {
           memoryRelease,
           contextSummaryRelease,
           routineRelease,
+          goalRelease,
           endpointRelease,
           annotationRelease,
           pdfRelease,
@@ -652,6 +671,7 @@ export class AcpSessionCapabilityOwner {
         memory: this.options.memory ? stableAppSessionId : '',
         contextSummary: this.options.contextSummary ? stableAppSessionId : '',
         routine: this.options.routine ? stableAppSessionId : '',
+        goal: this.options.goal ? stableAppSessionId : '',
         endpoint: this.options.endpoints ? stableAppSessionId : '',
         annotation: this.options.annotations ? stableAppSessionId : '',
         pdf: this.options.pdf ? stableAppSessionId : '',
@@ -668,6 +688,7 @@ export class AcpSessionCapabilityOwner {
     if (this.options.memory) this.memorySessionSequence += 1
     if (this.options.contextSummary) this.contextSummarySessionSequence += 1
     if (this.options.routine) this.routineSessionSequence += 1
+    if (this.options.goal) this.goalSessionSequence += 1
     if (this.options.endpoints) this.endpointSessionSequence += 1
     if (this.options.annotations) this.annotationSessionSequence += 1
     if (this.options.pdf) this.pdfSessionSequence += 1
@@ -694,6 +715,7 @@ export class AcpSessionCapabilityOwner {
       routine: this.options.routine
         ? `routine-session-${timestamp}-${this.routineSessionSequence}`
         : '',
+      goal: this.options.goal ? `goal-session-${timestamp}-${this.goalSessionSequence}` : '',
       endpoint: this.options.endpoints
         ? `endpoint-session-${timestamp}-${this.endpointSessionSequence}`
         : '',
@@ -723,6 +745,7 @@ export class AcpSessionCapabilityOwner {
     const memoryAllowed = policyAllowsSessionCapability(request.policy, 'memory')
     const contextSummaryAllowed = policyAllowsSessionCapability(request.policy, 'context-summary')
     const routineAllowed = policyAllowsSessionCapability(request.policy, 'routine')
+    const goalAllowed = policyAllowsSessionCapability(request.policy, 'goal')
     const endpointAllowed = policyAllowsSessionCapability(request.policy, 'endpoint')
     const annotationAllowed = policyAllowsSessionCapability(request.policy, 'annotation')
     const pdfAllowed = policyAllowsSessionCapability(request.policy, 'pdf')
@@ -739,6 +762,7 @@ export class AcpSessionCapabilityOwner {
             memory: memoryAllowed,
             contextSummary: contextSummaryAllowed,
             routine: routineAllowed,
+            goal: goalAllowed,
             endpoint: endpointAllowed,
             annotation: annotationAllowed,
             pdf: pdfAllowed,
@@ -754,6 +778,7 @@ export class AcpSessionCapabilityOwner {
               memory: memoryAllowed,
               contextSummary: contextSummaryAllowed,
               routine: routineAllowed,
+              goal: goalAllowed,
               endpoint: endpointAllowed,
               annotation: annotationAllowed,
               pdf: pdfAllowed,
@@ -785,6 +810,9 @@ export class AcpSessionCapabilityOwner {
     }
     if (canonicalMcpServerNames.includes(ROUTINE_MCP_SERVER_NAME)) {
       capabilities.push('routine')
+    }
+    if (canonicalMcpServerNames.includes(GOAL_MCP_SERVER_NAME)) {
+      capabilities.push('goal')
     }
     if (canonicalMcpServerNames.includes(ENDPOINT_MCP_SERVER_NAME)) {
       capabilities.push('endpoint')
@@ -1022,6 +1050,7 @@ export class AcpSessionCapabilityOwner {
     memory: boolean
     contextSummary: boolean
     routine: boolean
+    goal: boolean
     endpoint: boolean
     annotation: boolean
     pdf: boolean
@@ -1062,6 +1091,10 @@ export class AcpSessionCapabilityOwner {
         transportAvailable &&
         Boolean(this.options.routine) &&
         policyAllowsSessionCapability(input.policy, 'routine'),
+      goal:
+        transportAvailable &&
+        Boolean(this.options.goal) &&
+        policyAllowsSessionCapability(input.policy, 'goal'),
       endpoint:
         transportAvailable &&
         Boolean(this.options.endpoints) &&
@@ -1165,6 +1198,7 @@ export class AcpSessionCapabilityOwner {
       memory: boolean
       contextSummary: boolean
       routine: boolean
+      goal: boolean
       endpoint: boolean
       annotation: boolean
       pdf: boolean
@@ -1283,6 +1317,22 @@ export class AcpSessionCapabilityOwner {
         )
       }
     }
+
+    if (enabled.goal) {
+      const environment = await this.buildGoalEnvironment(
+        request.routingIds.goal,
+        request.onGoalConnection
+      )
+      if (environment && this.options.goal) {
+        servers.push(
+          createGoalMcpServerConfig({
+            command: this.options.goal.mcpCommand ?? process.execPath,
+            entryPath: this.options.goal.mcpEntryPath,
+            ...environment
+          })
+        )
+      }
+    }
     if (enabled.endpoint) {
       const environment = await this.buildEndpointEnvironment(
         request.routingIds.endpoint,
@@ -1395,6 +1445,16 @@ export class AcpSessionCapabilityOwner {
     return { ...connection, sessionId: routingId }
   }
 
+  private async buildGoalEnvironment(
+    routingId: string,
+    onConnection?: (connection: GoalRpcConnection) => void
+  ): Promise<GoalMcpEnvironment | undefined> {
+    if (!this.options.goal || !routingId) return undefined
+    const connection = await this.options.goal.getRpcConnection({ sessionId: routingId })
+    onConnection?.(connection)
+    return { ...connection, sessionId: routingId }
+  }
+
   private async buildEndpointEnvironment(
     routingId: string,
     onConnection?: (connection: EndpointRpcConnection) => void
@@ -1471,6 +1531,7 @@ export class AcpSessionCapabilityOwner {
       memory: boolean
       contextSummary: boolean
       routine: boolean
+      goal: boolean
       endpoint: boolean
       annotation: boolean
       pdf: boolean
