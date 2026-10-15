@@ -6775,3 +6775,23 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 | 「显示下一步」（`Goal` 字段） | 显示 objective / 验收逐条 / 里程碑数 / 状态 | 数据面没有「下一步」字段；不造空壳 UI。里程碑是已有字段，按条数摘要显示。 |
 
 **尚欠（下一轮第一件事，2 行 + 1 次运行）**：真窗口读数里加**重启**断言 —— `page = await app.restart()` 后重开面板，目标与读数仍在（F1 单测已覆盖「写出→新实例读回」✓，但**窗口级重启**这条判据还没跑过）。不补就不算全，别留在旧汇报里。
+
+## 一百五十、main 上的两条红：Nightly 的 eslint error（真红，已修）+ 认证车道的陈旧视觉基准（执行器，2026-10-15 17:xx）
+
+### 一 红 1 = 真红：`e2e/goals-panel.spec.ts:35` 的 `prefer-const`
+
+- 读数（作业级日志原文）：`Nightly` run `38703077283`（提交 `83036ef0`）的 `build / Verify (lint + typecheck + test + package)` = failure，唯一 error 是
+  `e2e/goals-panel.spec.ts:35:7  error  'page' is never reassigned. Use 'const' instead  prefer-const`；下游 `Build`/`publish` 全 skipped。
+- 时间线：`631dfcae`（14:11）Nightly 绿 —— 那时该文件还不存在；`f12f9896`（15:46）起连续红在同一处（文件由 F3 上屏 `0c64c888` 建、`49d1be82` 加重启断言）。
+- **另一条车道的绿在这件事上什么也证明不了**：`Windows Full Test` 同批全绿，因为它不跑全仓 eslint。
+- 修法：`let page` → `const page`（该变量在重启断言里未被复用，重启用的是新常量 `relaunched`）。
+  本地按 CI 口径 `npx eslint --no-cache .` ⇒ **0 error / 144 warning，EXIT=0**（warning 高于 CI 的 130 是因为这一跑带着会话未提交的在制品；**判红只看 error 数**）。
+
+### 二 红 2 = 基准陈旧（不是产品缺陷）：`settings-general.png`
+
+- `npm run test:e2e:visual`（macos-arm64 构建作业）在 `631dfcae` 与 `83036ef0` 上 failure：该图 **4815 px / ratio 0.01** > darwin 阈值 0.4%，**重试仍红**；昨天 `74fb22fd` 同一作业是 **1 passed (8.2s)**。
+- 定因：两次之间落进**设置导航**的正是 `2067c866`（新增 `Goals and readings`），而基准最后一次更新是 **10-05**（`ecf8ef71`）⇒ 基准比 UI 旧，多一行导航恰好是这 1%。**修法是刷新基准，不放宽容差、不遮蔽导航**。
+- 别把回显读成判决：认证记录把该步如实写成 `visual_regression=not-applicable`（`if [ failure = success ]` 未成立）；日志里那行 `visual_regression=passed` 是 `set -x` 回显的分支体。
+
+细节、判据表与未取证项见 `docs/evidence/2026-10-15-nightly-lint-red-and-stale-visual-baseline.md`。
+

@@ -32,7 +32,7 @@ test('shows what a session is pursuing, and which criterion a reading actually p
   // Through the product's own reader, so a failure here means the seed, not the panel.
   expect((await repository.listAll()).goals).toHaveLength(1)
 
-  let page = await app.completeOnboarding()
+  const page = await app.completeOnboarding()
   await page.getByRole('button', { name: 'Model settings' }).click()
   const settings = page.getByRole('dialog', { name: 'Settings' })
   await settings
