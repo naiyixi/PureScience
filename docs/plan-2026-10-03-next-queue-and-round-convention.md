@@ -6837,3 +6837,28 @@ ipc.ts（RPC 处理器块 goal:{configure,status} + GoalRepository 实例，根�
 1. `python3 - <<'PY'` 的 heredoc：**首行出现非 ASCII 就会报 PEP 263 编码错**，`PYTHONUTF8=1` 也救不了（它管 I/O 编码，不管**源码解码**）⇒ 含中文的脚本文本一律走 `write_file` 落盘（或首行写 `# -*- coding: utf-8 -*-`）。
 2. **`grep -c` 不能当 `&&` 链的前件**：0 匹配时退出码 1 会静默截断链子（本轮据此漏掉过一次提交）。
 3. 自检器写错会**误报内容错**：成熟度句是**段内插入**，行首探针必然找不到 ⇒ 探针应按子串匹配并在两 README 上各断言**恰好 1 处**。
+
+## 一百五十一、更正台账：**B2 第三片（别名级血缘接进产物/运行溯源面）已交付**，非「未开工」（会话，2026-10-16）
+
+### 一 为什么改写
+
+§九十x 的「具名未做」第 2 条与立案条目写着 *「B2 第三片（别名级血缘接进产物/运行溯源面）未开工」*。本轮按它去开工，**逐层核到它已经落地**：数据层、投影层、渲染层、i18n、测试**全在**，且测试实跑通过。**旧条目是过时的**，按「凡自己写下过『仅剩 X 未落』的项必须主动补掉或明确立案」的规矩，就地更正并附证据。
+
+### 二 逐层证据（本轮亲自核过，非转述）
+
+| 层 | 位置 | 证据 |
+| --- | --- | --- |
+| 分析引擎（**不另写一份**） | `src/shared/artifact-alias-lineage.ts`（85 行，头注明写 **B2-3**） | 复用 notebook 模块自己的 `computeNotebookStaleReasons` + `ALIAS_LINEAGE_RECIPE_VERSION`，只加「按产出运行收窄」的作用域 ⇒ 两个面不会对「理由是什么意思」各说一套；每行带 producer 内容哈希与 recipe 版本（持有运行记录者可重算） |
+| 投影 | `src/shared/artifact-provenance.ts:499` | `aliasLineage?: ArtifactAliasLineage` 已在 `ArtifactVersionProvenance` 上（渲染安全：只带运行 id / 哈希 / 行号，不带 storage key） |
+| 主进程产出 | `src/main/artifacts/provenance-repository.ts:4064` | `buildArtifactAliasLineage({ producerRunId, runs: document.runs })` —— 真的被调用 |
+| 面板渲染 | `src/renderer/src/pages/workspace/ArtifactProvenancePanel.tsx`（`:70` 段类型、`:111` 导航项、`:1616-1682`） | 空态 / 逐行：`变量 → 别名链 → via`（`A → B → via`）/ 变更行号与代码摘录 / producer 内容哈希**截断 12 位**且 `not-recorded` 如实显示 / **recipe 版本行**（读者据此复算）/ `unavailable` **四因**逐条（`not-loaded` / `producer-not-recorded` / `runs-not-recorded` / `runs-unreadable`）—— 默认兜底也是 `not-loaded`，绝不把「没问」说成「干净」 |
+| i18n | `src/renderer/src/i18n/*.ts` | `ws.aliasLineage` / `ws.aliasLineageIntro` / `ws.aliasLineageRecipe` **九语齐**（9/9 文件命中） |
+| 测试 | `run-alias-lineage.test.ts` + 面板 render/integration | 实跑 **3 文件 / 65 passed**，含面板用例「lists the producing run alias lineage with the chain, the site and a recomputable hash」与两条 `unavailable` 用例 |
+
+### 三 剩下的**完成判据**（不是代码缺口，是读数缺口）
+
+按既有红线「UI 类必须窗口读数」，本段（新增面板内容）**还缺一次真窗口读数**：在真窗口里打开某产物版本的溯源面板 → 切到 alias lineage 段 → 看到**真**行（真变量名、真别名链、真变更行号、真 producer 哈希前 12 位）与 recipe 版本；若该产物版本无可算理由，看到的是**具名**的 `unavailable` 原因而不是空白。**下一版开工第一件事**（与 F3 同一体例：`app.storageRoot` + `PURESCIENCE_*` 数据根 + 用产品自己的写入器造数据 + 真窗口点开）。
+
+### 四 同时记：队列里另一条我**不动**
+
+`get_bioactivity` 的 `assay_chembl_id` 不做形态校验 —— 与既有 `molecule_chembl_id` / `target_chembl_id` 同一写法，收紧属**跨工具**行为变更（会同时改既有工具语义），台账已明写「需与话术一起评估，本轮不擅动」。本轮维持该判断。
