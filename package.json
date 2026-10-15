@@ -31,6 +31,7 @@
     "test:cli": "vitest run packages/purescience",
     "test:npm-release": "vitest run scripts/validate-npm-release.test.ts",
     "release:notes": "node scripts/release-notes.mjs",
+    "publish:model-weights": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/publish-model-weights.mjs",
     "test:coverage": "vitest run --coverage",
     "i18n:coverage": "node scripts/i18n-coverage.mjs",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
