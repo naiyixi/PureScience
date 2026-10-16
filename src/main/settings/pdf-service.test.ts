@@ -541,7 +541,9 @@ describe('PdfService.figures understanding', () => {
 
   // U4-b：图上读到的库号要绑到**库里真取的记录**上，不靠模型编。查询口是注入的：缺席就说「没接」，
   // 查得到就换成记录，查不动就具名说为什么（连同这台机器能走的下一步）。
-  const proteinFigure = () => [item('Figure 4. Crystal structure of crambin (PDB 1CRN).', 100, 280)]
+  const proteinFigure = (): PdfTextItem[] => [
+    item('Figure 4. Crystal structure of crambin (PDB 1CRN).', 100, 280)
+  ]
 
   const serviceWithLookup = (
     items: PdfTextItem[],

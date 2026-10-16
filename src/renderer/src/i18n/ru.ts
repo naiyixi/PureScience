@@ -4548,7 +4548,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Идентификаторы, прочитанные с рисунка (то, что использовал бы запрос):',
   'ws.figureObservationsFingerprint':
     'Отпечаток входа (меняется со страницей, рамкой, подписью или текстом внутри рисунка):',
-  'ws.figureObservationsRecords': 'записей, реально полученных из библиотеки: {count} (их написал не модель):',
+  'ws.figureObservationsRecords':
+    'записей, реально полученных из библиотеки: {count} (их написал не модель):',
   'ws.figureObservationsExperimental': 'определено экспериментально',
   'ws.figureObservationsPredicted': 'предсказано — это не экспериментальная структура',
   'preview.structureSelectionLabel': 'Название области',

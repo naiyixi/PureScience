@@ -4664,7 +4664,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Identifiants lus sur la figure (ce qu’utiliserait une requête) :',
   'ws.figureObservationsFingerprint':
     'Empreinte d’entrée (change avec la page, le cadre, la légende ou le texte de la figure) :',
-  'ws.figureObservationsRecords': '{count} enregistrement(s) récupéré(s) dans la bibliothèque (non écrits par un modèle) :',
+  'ws.figureObservationsRecords':
+    '{count} enregistrement(s) récupéré(s) dans la bibliothèque (non écrits par un modèle) :',
   'ws.figureObservationsExperimental': 'déterminée expérimentalement',
   'ws.figureObservationsPredicted': 'prédite — ce n’est pas une structure expérimentale',
   'preview.structureSelectionLabel': 'Nom de la région',

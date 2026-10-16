@@ -4532,7 +4532,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsAccessions': '図から読み取ったアクセッション（照会に使うもの）：',
   'ws.figureObservationsFingerprint':
     '入力フィンガープリント（ページ・枠・図注・図内テキストで変化）：',
-  'ws.figureObservationsRecords': 'ライブラリから実際に取得した記録 {count} 件（モデルが書いたものではありません）：',
+  'ws.figureObservationsRecords':
+    'ライブラリから実際に取得した記録 {count} 件（モデルが書いたものではありません）：',
   'ws.figureObservationsExperimental': '実験的に決定',
   'ws.figureObservationsPredicted': '予測構造 — 実験構造ではありません',
   'preview.structureSelectionLabel': '領域の名前',
