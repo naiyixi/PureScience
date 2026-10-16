@@ -28,8 +28,23 @@
   验收：新用例钉住「未开始直接完成 ⇒ 成功」+「依赖未满足 ⇒ 仍被具名拒答（含 `start with … first`）」+ 既有
   「从终态再改 / in_progress 跳 skipped 的拒绝句点名可改什么」全绿。**注意**：`allowedStepStatuses`、转移表与
   既有 fixture 的**阶段/依赖状态**要一起读清（本轮我按猜改用例被 fixture 当场否掉，已缩回，不把红留在树上）。
-- **P2（工具名契约）**：让**宣告的名字与实际注册的名字**一致（或在服务端注册两种拼法的别名），并加一条门：
-  任何 `mcp__*__*` 名称必须与注册表逐字符一致。仓内已有 `scripts/audit-mcp-tool-name-failures.mjs` 可作起点。
+- **P2 已落一半**：能力挂载不再取决于拼法（`session-capability-owner` 里 13 处相等比较改为两侧归一化后比，
+  `src/main/acp` 88 文件 / 1425 passed）。这一半修的正是分析器诊断为「名字就是今天渲染的那个」的 12/28。
+- **P2 剩下的一半 = 一条门的盲区 + 8 个服务的改名**（本轮读源读到的锋利形状）：
+  - 仓内**已有**这条门：`app-mcp-names.test.ts` 的 `keeps every app-owned MCP server name separator-free`，
+    注释逐字写着真机失败（「一个框架把连字符折成一个下划线、另一个折两个 ⇒ agent 拿到同一工具的两个可调用名
+    并猜错，真机日志里就有只差分隔符的失败调用」）。
+  - **但这条门只检查 `appMcpToolIdentities()`（目录里那六个）与 `FIGURE_MCP_SERVER_NAME`**，而全仓**另有 9 个
+    应用自有服务**没进目录：`purescience-pdf` / `purescience_figure` / `purescience-endpoints` /
+    `purescience-goal` / `purescience-annotations` / `purescience-context-summary` / `purescience-host-query` /
+    `purescience-routine` / `purescience-reviewer`（前八个**带连字符**）⇒ **门看不见它们**，也就一直没红。
+  - 我试着把这 9 个补进目录（规范名沿用今天注册的名字，保证投影不变），当场被两条门挡住：① 名字必须无分隔符；
+    ② 目录必须与**记忆权限目录**（remembered-permission catalog）对齐。⇒ 正确解法**不是补录带连字符的名字**，
+    而是**把这 8 个服务改成无分隔符名**：改 `src/shared/*.ts` 里的常量、在目录里登记、旧拼法进 `legacyNames`
+    （让早先按旧名写的授予/配置仍解析到同一身份）、两个目录同步、并更新钉住旧名的用例与证据档。
+  - **验收**：门先把**全部**应用自有服务枚举进来（而不是只枚举目录内六个）—— 它会**当场红**，那一片红就是
+    这件工作的清单；改完必须全绿，且 `scripts/audit-mcp-tool-name-failures.mjs` 对打包版日志的分类里
+    `wrong-separator` 与 `not-app-server` 归零。
 - **P3（能力令牌）**：`write_artifact_file` 的按回合能力过期时，拒答要说清**怎么拿到当前回合的令牌**（或由工具
   侧自动补发一次），而不是让模型原样重试。
 - **P4（路径守卫提示）**：守卫的 `hint` 必须指向**它实际强制的那一个范围根**（现在指向数据根），并把
