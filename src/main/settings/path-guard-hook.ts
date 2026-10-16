@@ -251,9 +251,13 @@ const main = () => {
     if (underSystemPrefix(absolute)) continue
     if (underRuntimeCache(absolute)) continue
 
+    // 拒答必须说它实际强制的范围：打包版近 7 天的日志里，这句话把 hint（数据根）称作「项目文件夹本身」，
+    // agent 于是去数据根里找项目文件 —— 紧接着就是 3 条「File does not exist. Note: your current working
+    // directory is …」。守卫允许的是**这几个根**；hint 只是「从这里开始找」。
+    const allowedRoots = loaded.roots.join(', ')
     const reason =
-      'Refused: ' + absolute + ' is outside this project scope. Project files are read from the ' +
-      'project folder itself (' + (loaded.hint || ${JSON.stringify(primaryHint)}) + '); ' +
+      'Refused: ' + absolute + ' is outside this project scope. Allowed roots: ' + allowedRoots +
+      '; start from ' + JSON.stringify(loaded.hint || ${JSON.stringify(primaryHint)}) + '; ' +
       'to reach another folder, ask the user to attach it to the project instead of searching the machine.'
     record({ tool: toolName, target, resolved: absolute, decision: 'deny' })
     process.stdout.write(
