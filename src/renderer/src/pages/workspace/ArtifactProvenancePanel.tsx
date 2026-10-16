@@ -460,6 +460,16 @@ const ProvenanceMessagesTimeline = ({
   )
 }
 
+// 插图派生的类别名：类别是**记录里的事实**（判定当时判成什么），这里只把它的码翻成给人看的名字。
+// 键是字面量，`t` 的静态键检查照旧生效。
+const FIGURE_CLASS_LABEL_KEYS = {
+  'chemical-structure': 'ws.figureClassChemical',
+  'protein-structure': 'ws.figureClassProtein',
+  chart: 'ws.figureClassChart',
+  schematic: 'ws.figureClassSchematic',
+  undetermined: 'ws.figureClassUndetermined'
+} as const
+
 const ArtifactProvenancePanel = ({
   item,
   projectId,
@@ -1706,18 +1716,23 @@ const ArtifactProvenancePanel = ({
                     {provenance.structureObservations.items.map((entry, index) => {
                       const selection = entry.selection
                       const measurement = entry.measurement
+                      const figure = entry.figureDerivation
                       // Recomputed here with the same shared functions the viewer sends with, so the value
                       // on screen cannot drift from the one that travelled with the turn.
+                      // 派生记录用的是**记下来的输入指纹**：渲染层手里没有图注与图框内文字，重算会给出一个
+                      // 自己没有依据的值，所以这里只显示记录本身。
                       const fingerprint = selection
                         ? structureSelectionFingerprint(selection)
                         : measurement
                           ? structureMeasurementFingerprint(measurement)
-                          : ''
+                          : (figure?.inputFingerprint ?? '')
                       const label = selection
                         ? structureSelectionRangeLabel(selection)
                         : measurement
                           ? structureMeasurementLabel(measurement)
-                          : ''
+                          : figure
+                            ? `${t('ws.figureObservationsTitle').replace('{page}', String(figure.page))} · ${t(FIGURE_CLASS_LABEL_KEYS[figure.figureClass])}`
+                            : ''
                       return (
                         <li
                           key={`${entry.recordedAt}:${fingerprint}:${index}`}
@@ -1737,24 +1752,87 @@ const ArtifactProvenancePanel = ({
                               {label}
                             </span>
                             <span className="text-xs text-text-300">{entry.recordedAt}</span>
-                            <button
-                              type="button"
-                              className="ml-auto shrink-0 text-xs underline"
-                              data-testid="artifact-structure-observations-jump"
-                              onClick={() => {
-                                // Jump back INTO the viewer at that exact state: the selection (or the
-                                // measurement) goes back into the workbench store under this very preview
-                                // item, then the item is activated so the tab is on screen to see it.
-                                const workbench = usePreviewWorkbenchStore.getState()
-                                if (selection) workbench.setStructureSelection(item.id, selection)
-                                if (measurement)
-                                  workbench.setStructureMeasurement(item.id, measurement)
-                                workbench.activateItem(item.id)
-                              }}
-                            >
-                              {t('ws.structureObservationsJump')}
-                            </button>
+                            {selection || measurement ? (
+                              <button
+                                type="button"
+                                className="ml-auto shrink-0 text-xs underline"
+                                data-testid="artifact-structure-observations-jump"
+                                onClick={() => {
+                                  // Jump back INTO the viewer at that exact state: the selection (or the
+                                  // measurement) goes back into the workbench store under this very preview
+                                  // item, then the item is activated so the tab is on screen to see it.
+                                  const workbench = usePreviewWorkbenchStore.getState()
+                                  if (selection) workbench.setStructureSelection(item.id, selection)
+                                  if (measurement)
+                                    workbench.setStructureMeasurement(item.id, measurement)
+                                  workbench.activateItem(item.id)
+                                }}
+                              >
+                                {t('ws.structureObservationsJump')}
+                              </button>
+                            ) : null}
                           </div>
+                          {figure ? (
+                            <>
+                              {figure.derivation.kind === 'numbers' ? (
+                                <div
+                                  className="space-y-1"
+                                  data-testid="artifact-figure-observations-numbers"
+                                >
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsNumbers').replace(
+                                      '{count}',
+                                      String(figure.derivation.values.length)
+                                    )}
+                                  </p>
+                                  <ul className="space-y-0.5">
+                                    {figure.derivation.values.map((value, valueIndex) => (
+                                      <li key={`${value.line}:${valueIndex}`} className="text-xs">
+                                        <code className="break-all">{value.value}</code>
+                                        <span className="ml-2 text-text-300">
+                                          {t('ws.figureObservationsValue').replace(
+                                            '{line}',
+                                            value.line
+                                          )}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : (
+                                <div
+                                  className="space-y-1"
+                                  data-testid="artifact-figure-observations-refused"
+                                >
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsRefused')}
+                                  </p>
+                                  <code className="block break-all text-xs">
+                                    {figure.derivation.reason}
+                                    {figure.derivation.detail
+                                      ? ` / ${figure.derivation.detail}`
+                                      : ''}
+                                  </code>
+                                  {figure.derivation.accessions?.length ? (
+                                    <p className="text-xs text-text-300">
+                                      {t('ws.figureObservationsAccessions')}{' '}
+                                      {figure.derivation.accessions
+                                        .map((accession) => `${accession.kind}:${accession.id}`)
+                                        .join(', ')}
+                                    </p>
+                                  ) : null}
+                                  {figure.derivation.requires ? (
+                                    <p className="text-xs text-text-300">
+                                      {figure.derivation.requires}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              )}
+                              <p className="text-xs text-text-300">
+                                {t('ws.figureObservationsFingerprint')}
+                              </p>
+                            </>
+                          ) : null}
                           <code className="block break-all text-xs text-text-300">
                             {fingerprint}
                           </code>

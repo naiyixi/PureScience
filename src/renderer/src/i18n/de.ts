@@ -4664,6 +4664,21 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsAfterWindow': '{count} nach dem Schreiben dieser Version aufgezeichnet',
   'ws.structureObservationsDropped': '{count} ältere Einträge wurden an der Obergrenze verworfen',
   'ws.structureObservationsUndated': '{count} Einträge haben keinen lesbaren Zeitstempel',
+  'ws.figureObservationsTitle': 'Abbildungs-Ableitung · Seite {page}',
+  'ws.figureClassChemical': 'chemische Struktur',
+  'ws.figureClassProtein': 'Proteinstruktur',
+  'ws.figureClassChart': 'Diagramm',
+  'ws.figureClassSchematic': 'allgemeine Prinzipskizze',
+  'ws.figureClassUndetermined': 'Klasse nicht bestimmt',
+  'ws.figureObservationsNumbers':
+    '{count} Zahlen im Kasten gelesen, jede mit der Zeile, in der sie steht:',
+  'ws.figureObservationsValue': 'in dieser Zeile: {line}',
+  'ws.figureObservationsRefused':
+    'Für diese Klasse wurde nichts abgeleitet. Der aufgezeichnete Grund:',
+  'ws.figureObservationsAccessions':
+    'Aus der Abbildung gelesene Accessions (was eine Abfrage nutzen würde):',
+  'ws.figureObservationsFingerprint':
+    'Eingabe-Fingerabdruck (ändert sich mit Seite, Kasten, Bildunterschrift oder Text im Bild):',
   'preview.structureSelectionLabel': 'Name des Bereichs',
   'preview.structureSelectionLabelPlaceholder': 'Diesen Bereich benennen',
   'preview.structureSelectionColor': 'Markierungsfarbe {color}',

@@ -4650,6 +4650,20 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsAfterWindow': "{count} enregistrés après l'écriture de cette version",
   'ws.structureObservationsDropped': '{count} entrées plus anciennes ont été écartées à la limite',
   'ws.structureObservationsUndated': "{count} entrées n'ont pas d'horodatage lisible",
+  'ws.figureObservationsTitle': "Dérivation de l'illustration · page {page}",
+  'ws.figureClassChemical': 'structure chimique',
+  'ws.figureClassProtein': 'structure protéique',
+  'ws.figureClassChart': 'graphique',
+  'ws.figureClassSchematic': 'schéma générique',
+  'ws.figureClassUndetermined': 'classe non déterminée',
+  'ws.figureObservationsNumbers':
+    '{count} nombres lus dans le cadre, chacun avec la ligne où il figure :',
+  'ws.figureObservationsValue': 'sur cette ligne : {line}',
+  'ws.figureObservationsRefused': "Rien n'a été dérivé pour cette classe. La raison enregistrée :",
+  'ws.figureObservationsAccessions':
+    'Identifiants lus sur la figure (ce qu’utiliserait une requête) :',
+  'ws.figureObservationsFingerprint':
+    'Empreinte d’entrée (change avec la page, le cadre, la légende ou le texte de la figure) :',
   'preview.structureSelectionLabel': 'Nom de la région',
   'preview.structureSelectionLabelPlaceholder': 'Nommer cette région',
   'preview.structureSelectionColor': 'Couleur de marque {color}',

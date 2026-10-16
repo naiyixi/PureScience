@@ -4617,6 +4617,20 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsDropped':
     '{count} entradas más antiguas se descartaron al alcanzar el límite',
   'ws.structureObservationsUndated': '{count} entradas no tienen marca temporal legible',
+  'ws.figureObservationsTitle': 'Derivación de la ilustración · página {page}',
+  'ws.figureClassChemical': 'estructura química',
+  'ws.figureClassProtein': 'estructura proteica',
+  'ws.figureClassChart': 'gráfico',
+  'ws.figureClassSchematic': 'esquema genérico',
+  'ws.figureClassUndetermined': 'clase no determinada',
+  'ws.figureObservationsNumbers':
+    '{count} números leídos dentro del recuadro, cada uno con la línea en que aparece:',
+  'ws.figureObservationsValue': 'en esta línea: {line}',
+  'ws.figureObservationsRefused': 'No se derivó nada para esta clase. El motivo registrado:',
+  'ws.figureObservationsAccessions':
+    'Identificadores leídos de la figura (lo que usaría una consulta):',
+  'ws.figureObservationsFingerprint':
+    'Huella de entrada (cambia con la página, el recuadro, el pie o el texto de la figura):',
   'preview.structureSelectionLabel': 'Nombre de la región',
   'preview.structureSelectionLabelPlaceholder': 'Nombrar esta región',
   'preview.structureSelectionColor': 'Color de marca {color}',

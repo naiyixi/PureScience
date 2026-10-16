@@ -4534,6 +4534,20 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.structureObservationsDropped':
     '{count} более старых записей отброшено при достижении предела',
   'ws.structureObservationsUndated': '{count} записей без читаемой отметки времени',
+  'ws.figureObservationsTitle': 'Производное от иллюстрации · стр. {page}',
+  'ws.figureClassChemical': 'химическая структура',
+  'ws.figureClassProtein': 'структура белка',
+  'ws.figureClassChart': 'график',
+  'ws.figureClassSchematic': 'обобщённая схема',
+  'ws.figureClassUndetermined': 'класс не определён',
+  'ws.figureObservationsNumbers':
+    'внутри рамки прочитано чисел: {count}, каждое со строкой, где оно напечатано:',
+  'ws.figureObservationsValue': 'на этой строке: {line}',
+  'ws.figureObservationsRefused': 'Для этого класса производное не построено. Записанная причина:',
+  'ws.figureObservationsAccessions':
+    'Идентификаторы, прочитанные с рисунка (то, что использовал бы запрос):',
+  'ws.figureObservationsFingerprint':
+    'Отпечаток входа (меняется со страницей, рамкой, подписью или текстом внутри рисунка):',
   'preview.structureSelectionLabel': 'Название области',
   'preview.structureSelectionLabelPlaceholder': 'Назвать эту область',
   'preview.structureSelectionColor': 'Цвет метки {color}',

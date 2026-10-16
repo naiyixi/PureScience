@@ -550,6 +550,88 @@ describe('ArtifactProvenancePanel', () => {
     expect(container.textContent).not.toContain('The selected Artifact version is unavailable.')
   })
 
+  it('renders an illustration derivation as its own row, and offers no viewer jump for it', async () => {
+    // U4-d 的读侧：派生结果此前在这块面板上是**空白行**（只算选择与测量）。这条钉住它现在怎么呈现 ——
+    // 类别与页数在标题里、数值带它印在的那一行、拒答具名（含图上读到的库号）、指纹标明是**记下来的**；
+    // 没有可回跳的视图状态时**不给**那个按钮（给了就是假交互）。
+    act(() => root.unmount())
+    container.replaceChildren()
+    root = createRoot(container)
+    vi.mocked(window.api.artifacts.getVersionProvenance).mockResolvedValue({
+      ...provenance(),
+      execution: undefined,
+      messages: { state: 'unavailable', reason: 'not-loaded' },
+      review: { state: 'unavailable', reason: 'not-loaded' },
+      structureObservations: {
+        state: 'available',
+        attribution: 'session-window',
+        items: [
+          {
+            recordedAt: '2026-07-27T20:05:00.000Z',
+            kind: 'figure-derivation',
+            figureDerivation: {
+              page: 3,
+              index: 2,
+              bbox: { x: 10, y: 20, width: 300, height: 200 },
+              figureClass: 'chart',
+              inputFingerprint: `sha256:${'b'.repeat(64)}`,
+              derivation: {
+                kind: 'numbers',
+                source: 'pdf-text-in-bbox',
+                values: [
+                  {
+                    value: '1.24',
+                    line: 'HR 1.24 (0.98-1.57)',
+                    bbox: { x: 1, y: 2, width: 3, height: 4 }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            recordedAt: '2026-07-27T20:06:00.000Z',
+            kind: 'figure-derivation',
+            figureDerivation: {
+              page: 5,
+              index: 1,
+              bbox: { x: 1, y: 2, width: 30, height: 40 },
+              figureClass: 'protein-structure',
+              inputFingerprint: `sha256:${'c'.repeat(64)}`,
+              derivation: {
+                kind: 'refused',
+                reason: 'accession-lookup-not-wired',
+                requires: 'a lookup by accession against a real structure database',
+                accessions: [{ kind: 'pdb', id: '1CRN', where: 'in-figure-text' }]
+              }
+            }
+          }
+        ],
+        dropped: 0,
+        afterWindow: 0,
+        undated: 0
+      }
+    })
+    await act(async () =>
+      root.render(<ArtifactProvenancePanel item={item} projectId="project-1" onClose={vi.fn()} />)
+    )
+    await flush()
+
+    await clickTab('Structure context')
+    await flush()
+
+    const numbers = container.querySelector('[data-testid="artifact-figure-observations-numbers"]')
+    expect(numbers?.textContent).toContain('1.24')
+    expect(numbers?.textContent).toContain('HR 1.24 (0.98-1.57)')
+    const refused = container.querySelector('[data-testid="artifact-figure-observations-refused"]')
+    expect(refused?.textContent).toContain('accession-lookup-not-wired')
+    expect(refused?.textContent).toContain('pdb:1CRN')
+    expect(container.textContent).toContain(`sha256:${'b'.repeat(64)}`)
+    // 两类派生行都不给「在视图里显示」按钮。
+    expect(
+      container.querySelector('[data-testid="artifact-structure-observations-jump"]')
+    ).toBeNull()
+  })
+
   it('lists the structure observations the Version carries and jumps back to that exact state', async () => {
     // The tab is the read side of the turn-time journal: a region a claim was made about has to be
     // readable next to the Version, and the fingerprint on screen must be the recomputed one.
