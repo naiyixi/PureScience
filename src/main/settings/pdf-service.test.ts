@@ -471,6 +471,62 @@ describe('PdfService.figures understanding', () => {
     expect(derivation.values[1]?.bbox).toEqual({ x: 140, y: 380, width: 35, height: 10 })
   })
 
+  it('有来源会话时把派生记一条账，带着与会话与输入指纹（U4-d）', async () => {
+    const records: {
+      sessionId: string
+      page: number
+      figureClass: string
+      inFigureText: readonly string[]
+    }[] = []
+    const svc = new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async () => ({
+        pages: ['one page'],
+        outline: [],
+        title: 'figures',
+        items: [
+          [
+            item('Figure 9. Dose-response curves; error bars show SEM; n = 6.', 100, 280),
+            item('0.83', 140, 420)
+          ]
+        ],
+        images: [[placement]]
+      }),
+      onFigureDerivation: (record) => records.push(record)
+    })
+    const opened = await svc.open(pdfPath, 'proj-1', 'session-7')
+
+    await svc.figures(opened.doc.docId)
+
+    expect(records).toHaveLength(1)
+    expect(records[0]?.sessionId).toBe('session-7')
+    expect(records[0]?.page).toBe(1)
+    expect(records[0]?.figureClass).toBe('chart')
+    expect(records[0]?.inFigureText).toEqual(['0.83'])
+  })
+
+  it('没有来源会话时不记账（没有会话就没有账，这不是失败）', async () => {
+    const records: unknown[] = []
+    const svc = new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async () => ({
+        pages: ['one page'],
+        outline: [],
+        title: 'figures',
+        items: [[item('Scheme 1', 120, 400)]],
+        images: [[placement]]
+      }),
+      onFigureDerivation: (record) => records.push(record)
+    })
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    await svc.figures(opened.doc.docId)
+
+    expect(records).toEqual([])
+  })
+
   it('化学结构式给出具名拒答（缺引擎），而不是一个空结果（U4-c）', async () => {
     const svc = serviceFor([item('Scheme 1', 120, 400), item('Et3N, DMF', 120, 380)])
     const opened = await svc.open(pdfPath, 'proj-1')

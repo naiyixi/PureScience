@@ -39,6 +39,9 @@ import {
 import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import { figureUnderstandingFor } from '../../shared/figure-understanding'
 import { deriveFromFigure } from '../../shared/figure-derivation'
+import type { FigureDerivation } from '../../shared/figure-derivation'
+import type { FigureClass } from '../../shared/figure-understanding'
+import type { FigureDerivationInput } from '../../shared/figure-observation'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -74,8 +77,24 @@ export class PdfValidationError extends Error {
   }
 }
 
+/**
+ * U4-d：一条插图派生结果**由谁记账**。端口拿到的是「输入 + 判定 + 派生」这三样，**输入指纹由记账方
+ * 计算**（配方在 shared，摘要在主进程算）—— 这样 PdfService 不必认识那条溯源面的哈希实现。
+ */
+export type FigureDerivationRecord = FigureDerivationInput & {
+  sessionId: string
+  index: number
+  figureClass: FigureClass | 'undetermined'
+  derivation: FigureDerivation
+}
+
 export type PdfServiceOptions = {
   storageRoot: string
+  /**
+   * 有插图被判定并派生时调一次。**只在文档带着来源会话时调**：没有会话就没有账可记（不是失败）。
+   * 调用方负责把这条记进**既有**那条结构观察溯源面（与选择/测量同一条账）。
+   */
+  onFigureDerivation?: (record: FigureDerivationRecord) => void
   // Resolves a project-relative or absolute path to an on-disk file path. Absent ⇒ relative
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
@@ -372,6 +391,7 @@ export class PdfService {
           ...(caption === undefined ? {} : { caption }),
           inFigureText: inside.map((item) => item.text)
         })
+        const derivation = deriveFromFigure({ understanding, inFigureText: inside })
         figures.push({
           page: figure.page,
           index: figure.index,
@@ -384,9 +404,22 @@ export class PdfService {
           understanding,
           // 第二层（U4）：这一类允许派生什么。图表给图框内的数值（每项带来源几何）；其余三类给**具名
           // 拒答**并写明缺什么 —— 拒答也出现在结果里，否则「空」会被读成「没什么可派的」。
-          derivation: deriveFromFigure({ understanding, inFigureText: inside }),
+          derivation,
           warnings: auditPdfFigureForUse(figure)
         })
+        // 记账只发生在文档知道自己来自哪一次会话时；失败/没有会话都不影响这次读取。
+        if (this.options.onFigureDerivation && doc.sourceSessionId) {
+          this.options.onFigureDerivation({
+            sessionId: doc.sourceSessionId,
+            page: figure.page,
+            index: figure.index,
+            bbox: { x: figure.x, y: figure.y, width: figure.width, height: figure.height },
+            ...(caption === undefined ? {} : { caption }),
+            inFigureText: inside.map((item) => item.text),
+            figureClass: understanding.verdict.class,
+            derivation
+          })
+        }
       }
     }
 

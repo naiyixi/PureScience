@@ -203,6 +203,10 @@ import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
+import {
+  figureDerivationFingerprint,
+  recordStructureObservation
+} from './structure/structure-observation-journal'
 import { runDocumentTranslation } from './translation/document-translation'
 import { translationTargetLookup } from './translation/run-translation'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -1897,6 +1901,20 @@ const createApplicationModules = async (
   })
   const pdfService = new PdfService({
     storageRoot: resolveDataRoot(),
+    // U4-d：插图派生结果记进**既有**那条结构观察溯源面（与结构选择/测量同一条账、同一套串行化），
+    // 带上可由外部复算的输入指纹。记账是尽力而为：写失败绝不能让一次成功的读取失败。
+    onFigureDerivation: ({ sessionId, index, figureClass, derivation, ...input }) =>
+      void recordStructureObservation(resolveDataRoot(), sessionId, {
+        kind: 'figure-derivation',
+        figureDerivation: {
+          page: input.page,
+          index,
+          bbox: input.bbox,
+          figureClass,
+          inputFingerprint: figureDerivationFingerprint(input),
+          derivation
+        }
+      }),
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path)),
     // A PDF opened from an Artifact card is identified by its Version, not by a path: the same resolver the
     // file surfaces use turns that identity into the file, so the reader can actually read it.

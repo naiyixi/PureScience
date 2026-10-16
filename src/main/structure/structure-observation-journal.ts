@@ -13,7 +13,16 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { createHash } from 'node:crypto'
+
 import { createLogger, errorLogFields } from '../logger'
+import {
+  FIGURE_DERIVATION_FINGERPRINT_PREFIX,
+  figureDerivationRecipe,
+  isFigureDerivationObservation,
+  type FigureDerivationInput,
+  type FigureDerivationObservation
+} from '../../shared/figure-observation'
 
 import type { StructureMeasurement } from '../../shared/structure-measurement'
 import type { StructureSelection } from '../../shared/structure-selection'
@@ -27,7 +36,12 @@ export const MAX_SESSION_OBSERVATIONS = 200
 export type StructureObservationEntry = {
   /** 录制时刻（ISO 8601）—— 读侧用它做时间窗判断，所以必须是可解析的戳。 */
   recordedAt: string
-  kind: 'selection' | 'measurement'
+  /**
+   * `figure-derivation`（U4）：**插图派生结果**（按类别分派出来的一类，以及这一类允许派生的那一件），
+   * 与它由什么产出（输入指纹 / 模型 revision）。三种 kind 走同一条载体：一次会话一个文件、同一套
+   * 有界与串行化规矩 —— 不给插图另起一套账。
+   */
+  kind: 'selection' | 'measurement' | 'figure-derivation'
   /** 二者按 kind 只有一个存在（判别联合在这里用可选字段表达，便于直接 JSON 往返）。 */
   selection?: StructureSelection
   measurement?: StructureMeasurement
@@ -37,7 +51,18 @@ export type StructureObservationEntry = {
    * 称呼，不进指纹（指纹只回答「这是哪一段」）。
    */
   label?: StructureSelectionLabel
+  /** 只有 `kind: 'figure-derivation'` 有（形状与守卫见 `shared/figure-observation`）。 */
+  figureDerivation?: FigureDerivationObservation
 }
+
+/**
+ * 输入指纹：**先算配方那一行**，再算规范串的 sha256（与 reading-fingerprint 同一套做法）。配方是 shared
+ * 里的公开常量，所以任何拿到这条记录的人都能在应用之外复算它。
+ */
+export const figureDerivationFingerprint = (input: FigureDerivationInput): string =>
+  `${FIGURE_DERIVATION_FINGERPRINT_PREFIX}${createHash('sha256')
+    .update(figureDerivationRecipe(input))
+    .digest('hex')}`
 
 /**
  * 把一次会话的观察记录裁进「版本写出之前」这个窗口 —— **纯函数**，所以在没有库、没有产物的前提下
@@ -113,11 +138,12 @@ export const readSessionStructureObservations = async (
 
 const isObservationEntry = (value: unknown): value is StructureObservationEntry => {
   if (!value || typeof value !== 'object') return false
-  const entry = value as { recordedAt?: unknown; kind?: unknown }
-  return (
-    typeof entry.recordedAt === 'string' &&
-    (entry.kind === 'selection' || entry.kind === 'measurement')
-  )
+  const entry = value as { recordedAt?: unknown; kind?: unknown; figureDerivation?: unknown }
+  if (typeof entry.recordedAt !== 'string') return false
+  if (entry.kind === 'selection' || entry.kind === 'measurement') return true
+  // 派生那一条必须**形状完整**才算一条：一个 kind 写着 `figure-derivation` 而内容读不出来的行，比没有
+  // 这一行更糟 —— 它会以空白形态出现在证据链里，读的人以为「派生过、只是没内容」。
+  return entry.kind === 'figure-derivation' && isFigureDerivationObservation(entry.figureDerivation)
 }
 
 // 同一会话的写串行化：并行回合是常态，朴素的"读-改-写"会让除最后一条以外的全部丢失
@@ -149,7 +175,8 @@ export const recordStructureObservation = async (
           kind: entry.kind,
           ...(entry.selection ? { selection: entry.selection } : {}),
           ...(entry.measurement ? { measurement: entry.measurement } : {}),
-          ...(entry.label ? { label: entry.label } : {})
+          ...(entry.label ? { label: entry.label } : {}),
+          ...(entry.figureDerivation ? { figureDerivation: entry.figureDerivation } : {})
         }
         const all = [...entries, recorded]
         const overflow = Math.max(0, all.length - MAX_SESSION_OBSERVATIONS)

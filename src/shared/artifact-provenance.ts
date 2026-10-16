@@ -10,6 +10,7 @@ import type {
 import type { AgentFrameworkId } from './settings'
 import type { StructureMeasurement } from './structure-measurement'
 import type { StructureSelection } from './structure-selection'
+import type { FigureDerivationObservation } from './figure-observation'
 import type { ArtifactAliasLineage } from './artifact-alias-lineage'
 import type { StructureSelectionLabel } from './structure-selection-label'
 import type {
@@ -419,11 +420,18 @@ export type ArtifactExecutionSnapshot = Omit<PersistedArtifactExecutionSnapshot,
 export type RecordedStructureObservation = {
   /** ISO 8601, the moment the turn carrying it was prepared. */
   recordedAt: string
-  kind: 'selection' | 'measurement'
+  /**
+   * Every kind the journal can record has to be representable here: a kind that is written but not
+   * representable would be dropped by the projection, and a dropped row reads as "nothing was recorded".
+   * `figure-derivation`（U4）is what an illustration was classified as and what could be derived from it.
+   */
+  kind: 'selection' | 'measurement' | 'figure-derivation'
   selection?: StructureSelection
   measurement?: StructureMeasurement
   /** D4: what the user called that region, as it was at that moment (normalised at the recording point). */
   label?: StructureSelectionLabel
+  /** U4: the illustration derivation this entry records, with its input fingerprint. */
+  figureDerivation?: FigureDerivationObservation
 }
 
 export type ArtifactVersionProvenance = {
