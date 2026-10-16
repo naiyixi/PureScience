@@ -214,13 +214,80 @@ export const downloadModelWeightsStreaming = async (input: {
     return {
       status: 'failed',
       modelId: input.modelId,
-      message: `权重流式下载失败（${cause instanceof Error ? cause.message : String(cause)}）：未缓存，且已清除临时文件。`
+      message:
+        `权重流式下载失败（${describeFetchFailure(cause)}）：未缓存，且已清除临时文件。` +
+        `可在「设置 → 网络」里配置代理后重试；若本机直连不到该地址，也可手动下载后放到 ${path} 再重试。`
     }
   }
 }
 
-/** Streams a URL to a file. Uses the global fetch, which is available in this Electron main process. */
+/**
+ * 说清「哪一类失败」，而不是把客户端的 `fetch failed` 原样端给用户：不可达、被拒、超时、证书、被重置
+ * 各是一条不同的结论，下一步也不同（配代理 / 换网络 / 手动放文件）。
+ */
+const describeFetchFailure = (cause: unknown): string => {
+  const raw = cause instanceof Error ? cause.message : String(cause)
+  const code = (cause as { code?: string } | null)?.code ?? ''
+  const text = `${code} ${raw}`
+  if (/ENOTFOUND|EAI_AGAIN|ERR_NAME_NOT_RESOLVED/i.test(text)) return `域名解析不了（${raw}）`
+  if (/ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(text)) return `连接被拒绝（${raw}）`
+  if (/ETIMEDOUT|ERR_TIMED_OUT|ERR_CONNECTION_TIMED_OUT|timeout/i.test(text))
+    return `连接超时（${raw}）`
+  if (/CERT|TLS|SSL/i.test(text)) return `TLS 或证书问题（${raw}）`
+  if (/ECONNRESET|ERR_CONNECTION_RESET|ERR_CONNECTION_CLOSED/i.test(text))
+    return `连接被重置（${raw}）`
+  return raw
+}
+
+/**
+ * Streams a URL to a file.
+ *
+ * **Which HTTP stack, and why it matters**: Node's `fetch` (undici) ignores both this app's proxy setting and
+ * the operating system's proxy configuration, so on a proxied network this download had no route at all —
+ * the user saw a bare `fetch failed` after clicking download on a 299 MB asset. Inside Electron we therefore
+ * stream through **Chromium** (`net.request`), which honours the session proxy the settings layer applies;
+ * outside Electron (unit tests, CLI) the global fetch is all there is.
+ */
+const streamWithChromium = async (url: string, destPath: string): Promise<void> => {
+  const electron = (await import('electron')) as unknown as {
+    net?: {
+      request: (url: string) => {
+        on: (event: string, handler: (...args: unknown[]) => void) => void
+        end: () => void
+      }
+    }
+  }
+  const net = electron.net
+  if (!net?.request) throw new Error('no-chromium-net')
+  await new Promise<void>((resolve, reject) => {
+    const request = net.request(url)
+    request.on('response', (rawResponse) => {
+      const response = rawResponse as { statusCode: number; statusMessage?: string }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        reject(new Error(`HTTP ${response.statusCode} ${response.statusMessage ?? ''}`.trim()))
+        return
+      }
+      void pipeline(
+        rawResponse as unknown as NodeJS.ReadableStream,
+        createWriteStream(destPath)
+      ).then(() => resolve(), reject)
+    })
+    // Chromium reports a failure with its own sentence (e.g. net::ERR_CONNECTION_RESET): keep it.
+    request.on('error', (error) =>
+      reject(error instanceof Error ? error : new Error(String(error)))
+    )
+    request.end()
+  })
+}
+
 export const streamUrlToFile: WeightStreamer = async (url, destPath) => {
+  try {
+    await streamWithChromium(url, destPath)
+    return
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== 'no-chromium-net') throw error
+    // Not in Electron: fall through to the global fetch.
+  }
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`HTTP ${response.status} ${response.statusText}`)

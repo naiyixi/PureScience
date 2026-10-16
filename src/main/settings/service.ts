@@ -139,7 +139,7 @@ import {
   type EgressApprovalRequest,
   type EgressApprovalDecision
 } from '../net/egress-runtime'
-import { applyProxySettings } from '../net/proxy-runtime'
+import { applyProxySession, applyProxySettings } from '../net/proxy-runtime'
 import type { ProxySettings } from '../../shared/proxy'
 import type { ScenarioModels, SetScenarioModelRequest } from '../../shared/settings'
 import {
@@ -668,6 +668,11 @@ class SettingsService {
   async setProxy(proxy: ProxySettings): Promise<ProxySettings | undefined> {
     const persisted = await this.repository.setProxy(proxy)
     applyProxySettings(persisted.proxy)
+    // Both routes, not just the child-process one: without this the app could be configured with a proxy and
+    // still fail its own 299 MB weight download with a bare `fetch failed` (see net/proxy-runtime).
+    void applyProxySession(persisted.proxy).then((problem) => {
+      if (problem) console.warn(`[proxy] could not apply the session proxy: ${problem}`)
+    })
     return persisted.proxy
   }
 
@@ -687,6 +692,7 @@ class SettingsService {
       // Ignore: startup continues; the egress runtime is re-applied on the next edit.
     }
     applyProxySettings(stored.proxy)
+    void applyProxySession(stored.proxy)
   }
 
   // Reads the persisted per-scenario model overrides (undefined = every scenario inherits the
