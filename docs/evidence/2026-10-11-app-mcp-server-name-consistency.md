@@ -108,3 +108,50 @@ Latest 仍为 **v1.102.0**（未动）。本单元是**运行时行为改动**�
 2. **两笔提交的 CI 终态**：`blocked-by` = 本轮推送；解封条件 = `Nightly` + `Windows Full Test` 在**完整 40 位 SHA** 上落定
    （`cancelled` 不算绿）。纯 `docs/**` 提交按 paths 过滤不新建 run，届时按「代码提交的双绿 + 差量只有 docs」取证据并具名。
 3. **P0-6 整行的排期档状态**：已就地把「后半已交付（`63ebc76b`）+ 本条证据档」写进 v2 排期 P0-6 行。
+
+## 八、后续（执行器，2026-10-17）—— 剩下 8 个应用自有服务的改名（P2 的后半）
+
+**起因**：`docs/plan-2026-10-16-packaged-app-field-defects.md` 的 P2 行 —— 打包版真机 7 天数据里
+**~27 条** `No such tool available`，`pdf` / `figure` / `notebook` 都中招；读源发现**那条第 ① 条守卫只枚举了
+命名模块的目录（+ figure 常量）**，而应用自有服务里**另有 8 个带连字符的名字根本不在目录里** ⇒ 守卫看不见它们、
+也就从未红过（§二 那一轮只覆盖了目录内六个 + figure）。
+
+**本单元交付**（不改任何用户可见交互，改的是「交给框架的名字」与「身份键」）：
+
+| 面 | 内容 |
+| --- | --- |
+| 注册名常量（8 个） | `shared/pdf.ts`、`shared/endpoint.ts`、`shared/goal.ts`、`shared/annotation.ts`、`shared/context-summary-mcp.ts`、`shared/host-query.ts`、`shared/routine.ts`、`shared/reviewer.ts`：`purescience-pdf` → `purescience_pdf`（余同） |
+| 命名模块目录 | `app-mcp-names.ts` 新增 **7 条**声明（canonical 无分隔符 + `legacyNames` 保留连字符拼写 + 各自工具表）；**reviewer 不进目录**（它的身份**必须**不进「可被记住的权限目录」，见 `identity-catalog.test.ts` 的 `does not expose internal Reviewer MCP identities`），旧拼写仍由未声明服务的回退别名应答 |
+| 记住的权限目录 | `identity-catalog.ts` 的 `mcp_tool` **18 → 44**、总数 **35 → 61**；两条目录由 `app-mcp-names.test.ts` 的 `keeps the app MCP inventory aligned with the remembered-permission catalog` 强制相等 |
+| **守卫本身** | `keeps every app-owned MCP server name separator-free` 现在**枚举全部 15 个应用自有服务常量**（不再只枚举目录），并**钉住列表长度 15**（少一个就红）＋ 反向断言「figure / reviewer 必须在目录之外」（防后来者「干脆全都声明进去」把可达面悄悄放宽） |
+| 审计脚本 | `scripts/audit-mcp-tool-name-failures.mjs` 把 reviewer 的服务名与工具（与 figure 同法）纳入 `identities`，旧失败行不再被误归到 `not-app-server` |
+| reviewer 会话校验 | `acp/reviewer-session-owner.ts`：改名后**旧连字符配置会被拒**（`Reviewer sessions require exactly one app-owned …`）⇒ 该校验收敛为「**两种拼写都折到规范名再比**」，并把这台服务器答的三种拼写（规范 / 框架安全 / 旧连字符）用于 codex 与 claude 的**已记录标题**识别（改名前它只用 `[名称, 框架安全名]` 这一对，改名会让旧标题不再被认成 reviewer 调用 —— 属「改名悄悄丢掉了旧拼写」，正是本模块警告的那件事） |
+
+**真机读数（同一批用户日志，逐条同一口径，只读）**：`node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs`
+在**本机 `~/Library/Logs/PureScience`** 上，改前 / 改后各跑一次：
+
+| 类 | 改前（`origin/main`） | 改后（本单元） |
+| --- | --- | --- |
+| `identities`（脚本读到的应用自有身份数） | 19 | **51** |
+| `callable-now` 猜测名 = 应用今天渲染的名字 | 12 | **19** |
+| ├ 其中 `mcp__purescience_pdf__pdf_open` | — （落在 `not-app-server`） | **6** |
+| ├ 其中 `mcp__purescience_endpoints__endpoint_list` | — （落在 `not-app-server`） | **1** |
+| `not-app-server` 不是本应用的服务 | 9 | **2** |
+| `wrong-separator` | 1（notebook） | 1（notebook） |
+| `no-such-leaf` | 6 | 6 |
+| 失败行总数 / 窗口 | 28 / `2026-10-02T14:26Z … 2026-10-16T13:25Z` | 同（同一批行） |
+
+⇒ **7 条真机失败**（`pdf_open` ×6 与 `endpoint_list` ×1）从「不是本应用的服务」变成「**模型猜的名字就是应用今天渲染的名字**」：
+这 7 次调用在本改动之后**会解析到真工具**，而改前它们必然失败（应用当时把 `purescience-pdf` 交给框架）。
+这也是「改名不是改名，而是让猜测与渲染对齐」的直接读数。
+
+**边界（不许读成更强）**：
+
+1. **这 7 条是老窗口里的行**，本单元证明的是「它们今后会解析」与「脚本把归属算对了」；
+   **`wrong-separator` 归零**仍按 §七 的口径**等一段新窗口**（改动跑到用户机器上之后产生的日志）。
+2. **这是 §四.5「reviewer 有意不改」那条边界的就地取代**：那条写于 2026-10-11，理由是没有观测到 reviewer 的失败；
+   而 `docs/plan-2026-10-16-packaged-app-field-defects.md` 把 reviewer 与其余 7 个一起列为「带连字符、不在目录里」，
+   且 `reviewer-session-owner.ts` 自己就同时认两种拼写（`mcp__purescience-reviewer__…` 与 `mcp__purescience_reviewer__…`）
+   ⇒ 连字符确实到过模型那一侧。按**最新的那份结论**执行改名，并把连带（会话校验、已记录标题识别）当批收口。
+3. **没有 Electron 窗口读数，不假装有**：本单元改的是注册名与身份解析两层，界面没有新增入口；
+   真机证据来自**应用自己的模块 + 用户自己的日志**（上面那张表），界面侧证据是渲染/契约套件的断言。

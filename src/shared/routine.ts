@@ -4,7 +4,7 @@
 // interval and dispatches each due tick through the task runner as a fresh task run. The agent
 // can inspect its schedules with routine_status and remove one with routine_cancel.
 
-export const ROUTINE_MCP_SERVER_NAME = 'purescience-routine'
+export const ROUTINE_MCP_SERVER_NAME = 'purescience_routine'
 
 export const ROUTINE_CONFIGURE_TOOL_NAME = 'routine_configure'
 export const ROUTINE_STATUS_TOOL_NAME = 'routine_status'

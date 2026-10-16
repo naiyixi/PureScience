@@ -7,7 +7,15 @@ import {
   isActivityGroupToolEvent
 } from '../../shared/activity-groups'
 import { FIGURE_MCP_SERVER_NAME } from '../../shared/figure'
+import { ANNOTATION_MCP_SERVER_NAME } from '../../shared/annotation'
+import { CONTEXT_SUMMARY_MCP_SERVER_NAME } from '../../shared/context-summary-mcp'
+import { ENDPOINT_MCP_SERVER_NAME } from '../../shared/endpoint'
+import { GOAL_MCP_SERVER_NAME } from '../../shared/goal'
+import { HOST_QUERY_MCP_SERVER_NAME } from '../../shared/host-query'
 import { MEMORY_MCP_SERVER_NAME } from '../../shared/memory-mcp'
+import { PDF_MCP_SERVER_NAME } from '../../shared/pdf'
+import { REVIEWER_MCP_SERVER_NAME } from '../../shared/reviewer'
+import { ROUTINE_MCP_SERVER_NAME } from '../../shared/routine'
 import { SKILL_IMPORT_MCP_SERVER_NAME } from '../../shared/skill-import'
 import { ARTIFACT_MCP_SERVER_NAME } from '../artifacts/mcp-server'
 import { NOTEBOOK_MCP_SERVER_NAME } from '../notebook/mcp-server'
@@ -20,6 +28,36 @@ import {
   renderAppMcpToolReferences,
   resolveCanonicalMcpToolIdentity
 } from './app-mcp-names'
+
+// Every MCP server the app itself owns and hands to an agent — the ones the naming module declares,
+// plus the two it deliberately does not: the figure server (whose review tool is not a grantable
+// session capability) and the reviewer server (whose identities must stay out of the remembered
+// permission catalog, see identity-catalog.test.ts). The separator rule has to cover everyone in this
+// list: when it enumerated only the declared catalog, eight hyphenated servers lived outside it and the
+// rule never fired for them, which is how the agent ended up being handed two names for one tool.
+const APP_OWNED_MCP_SERVER_NAMES = [
+  ACTIVITY_GROUP_MCP_SERVER_NAME,
+  ANNOTATION_MCP_SERVER_NAME,
+  ARTIFACT_MCP_SERVER_NAME,
+  CONTEXT_SUMMARY_MCP_SERVER_NAME,
+  ENDPOINT_MCP_SERVER_NAME,
+  FIGURE_MCP_SERVER_NAME,
+  GOAL_MCP_SERVER_NAME,
+  HOST_QUERY_MCP_SERVER_NAME,
+  MEMORY_MCP_SERVER_NAME,
+  NOTEBOOK_MCP_SERVER_NAME,
+  PDF_MCP_SERVER_NAME,
+  PLAN_MCP_SERVER_NAME,
+  REVIEWER_MCP_SERVER_NAME,
+  ROUTINE_MCP_SERVER_NAME,
+  SKILL_IMPORT_MCP_SERVER_NAME
+] as const
+
+// The two servers above that stay out of the naming module's catalog on purpose.
+const APP_OWNED_MCP_SERVER_NAMES_NOT_IN_CATALOG = new Set([
+  FIGURE_MCP_SERVER_NAME,
+  REVIEWER_MCP_SERVER_NAME
+])
 
 const APP_MCP_CODEC_CASES = appMcpToolIdentities().flatMap((identity) => {
   const separator = identity.indexOf('/')
@@ -146,26 +184,23 @@ describe('resolveCanonicalMcpToolIdentity', () => {
   // the agent was handed two different callable names for the same tool and guessed wrong: the real log
   // has failed calls whose only difference from a real tool was the separator.
   it('keeps every app-owned MCP server name separator-free', () => {
-    const declared = appMcpToolIdentities().map((identity) =>
-      identity.slice(0, identity.indexOf('/'))
-    )
-    expect(declared.filter((name) => name.includes('-'))).toEqual([])
-    expect(FIGURE_MCP_SERVER_NAME).not.toContain('-')
+    expect(APP_OWNED_MCP_SERVER_NAMES.filter((name) => name.includes('-'))).toEqual([])
+    // The rule is only as good as the list it walks: a server missing from the list passes silently,
+    // which is exactly how eight hyphenated names survived here. Pin the size so dropping one is red.
+    expect(APP_OWNED_MCP_SERVER_NAMES.length).toBe(15)
   })
 
   it('registers each app-owned MCP server under the name this module declares', () => {
     const declared = new Set(
       appMcpToolIdentities().map((identity) => identity.slice(0, identity.indexOf('/')))
     )
-    for (const registered of [
-      ACTIVITY_GROUP_MCP_SERVER_NAME,
-      ARTIFACT_MCP_SERVER_NAME,
-      MEMORY_MCP_SERVER_NAME,
-      NOTEBOOK_MCP_SERVER_NAME,
-      PLAN_MCP_SERVER_NAME,
-      SKILL_IMPORT_MCP_SERVER_NAME
-    ]) {
-      expect(declared.has(registered)).toBe(true)
+    for (const registered of APP_OWNED_MCP_SERVER_NAMES) {
+      // Figure and reviewer stay out of the catalog by design: an identity in it is one a remembered
+      // permission can name, and neither of these is a grantable session capability. Asserting the
+      // absence as well keeps a later "just declare everything" edit from quietly widening that surface.
+      expect(declared.has(registered)).toBe(
+        !APP_OWNED_MCP_SERVER_NAMES_NOT_IN_CATALOG.has(registered)
+      )
     }
   })
 
@@ -185,6 +220,15 @@ describe('resolveCanonicalMcpToolIdentity', () => {
 
   it('keeps answering to the hyphen spelling of a server it does not declare here', () => {
     expect(appMcpServerAliases(FIGURE_MCP_SERVER_NAME)).toContain('purescience-figure')
+  })
+
+  it('keeps answering to the hyphen spelling of the internal reviewer server', () => {
+    expect(appMcpServerAliases(REVIEWER_MCP_SERVER_NAME)).toContain('purescience-reviewer')
+    expect(
+      resolveCanonicalMcpToolIdentity('mcp__purescience-reviewer__read_turn', [
+        REVIEWER_MCP_SERVER_NAME
+      ])
+    ).toBe('purescience_reviewer/read_turn')
   })
 
   // The activity-group matcher lives in shared/ and carries its own copy of the old spelling, because

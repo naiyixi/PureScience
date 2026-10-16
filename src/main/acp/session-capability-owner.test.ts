@@ -813,7 +813,7 @@ describe('goal capability provisioning', () => {
     })
 
     expect(provision.descriptor.capabilities).toContain('goal')
-    expect(provision.descriptor.canonicalMcpServerNames).toContain('purescience-goal')
+    expect(provision.descriptor.canonicalMcpServerNames).toContain('purescience_goal')
     // 决定性的一半：app 真去要了这台服务器的 RPC 连接（名字在清单里 ≠ 服务器被建起来）。
     expect(getRpcConnection).toHaveBeenCalledOnce()
 
@@ -847,7 +847,7 @@ describe('goal capability provisioning', () => {
     })
 
     expect(provision.descriptor.capabilities).not.toContain('goal')
-    expect(provision.descriptor.canonicalMcpServerNames).not.toContain('purescience-goal')
+    expect(provision.descriptor.canonicalMcpServerNames).not.toContain('purescience_goal')
     expect(getRpcConnection).not.toHaveBeenCalled()
   })
 })

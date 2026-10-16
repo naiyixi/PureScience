@@ -7,7 +7,7 @@
 // PureScience main-process architecture (JSON-file repository + local RPC + capability owner,
 // same spine as routine/endpoint).
 
-export const ANNOTATION_MCP_SERVER_NAME = 'purescience-annotations'
+export const ANNOTATION_MCP_SERVER_NAME = 'purescience_annotations'
 
 export const ANNOTATION_SET_TOOL_NAME = 'annotation_set'
 export const ANNOTATION_LIST_TOOL_NAME = 'annotation_list'

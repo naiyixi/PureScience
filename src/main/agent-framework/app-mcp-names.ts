@@ -63,6 +63,69 @@ const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
     openCodeName: 'purescience_memory',
     legacyNames: ['purescience-memory'],
     tools: ['memory_save_note']
+  },
+  // The rest of the servers the app itself owns. They were missing from this catalog, which is why the
+  // separator rule below could not see them: a hyphen here reaches the model as one underscore under one
+  // framework and two under another, so the same tool had two callable names and the agent guessed. The
+  // canonical spelling is separator-free and the hyphenated spelling stays as a legacy alias, so a grant
+  // or a config written before this rename still resolves to the same identity.
+  {
+    canonicalName: 'purescience_pdf',
+    openCodeName: 'purescience_pdf',
+    legacyNames: ['purescience-pdf'],
+    tools: [
+      'pdf_open',
+      'pdf_pages',
+      'pdf_outline',
+      'pdf_scan',
+      'pdf_tables',
+      'pdf_figures',
+      'pdf_translate'
+    ]
+  },
+  {
+    canonicalName: 'purescience_annotations',
+    openCodeName: 'purescience_annotations',
+    legacyNames: ['purescience-annotations'],
+    tools: ['annotation_set', 'annotation_list', 'annotation_remove']
+  },
+  {
+    canonicalName: 'purescience_context_summary',
+    openCodeName: 'purescience_context_summary',
+    legacyNames: ['purescience-context-summary'],
+    tools: ['summary_query', 'boundary']
+  },
+  {
+    canonicalName: 'purescience_endpoints',
+    openCodeName: 'purescience_endpoints',
+    legacyNames: ['purescience-endpoints'],
+    tools: [
+      'endpoint_register',
+      'endpoint_unregister',
+      'endpoint_start',
+      'endpoint_stop',
+      'endpoint_status',
+      'endpoint_list',
+      'endpoint_free_port'
+    ]
+  },
+  {
+    canonicalName: 'purescience_goal',
+    openCodeName: 'purescience_goal',
+    legacyNames: ['purescience-goal'],
+    tools: ['goal_configure', 'goal_status', 'goal_advance']
+  },
+  {
+    canonicalName: 'purescience_host_query',
+    openCodeName: 'purescience_host_query',
+    legacyNames: ['purescience-host-query'],
+    tools: ['host_query']
+  },
+  {
+    canonicalName: 'purescience_routine',
+    openCodeName: 'purescience_routine',
+    legacyNames: ['purescience-routine'],
+    tools: ['routine_configure', 'routine_status', 'routine_cancel']
   }
 ]
 

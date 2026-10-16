@@ -5,7 +5,7 @@
 // reference product's host.query: SELECT-only, an allowlisted set of tables, a row cap, and
 // automatic project scoping — the agent can never mutate state or read outside its project.
 
-export const HOST_QUERY_MCP_SERVER_NAME = 'purescience-host-query'
+export const HOST_QUERY_MCP_SERVER_NAME = 'purescience_host_query'
 
 export const HOST_QUERY_TOOL_NAME = 'host_query'
 

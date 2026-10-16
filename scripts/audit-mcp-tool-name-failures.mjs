@@ -16,15 +16,19 @@ import {
   modelFacingAppMcpToolName
 } from '../src/main/agent-framework/app-mcp-names.ts'
 import { FIGURE_MCP_SERVER_NAME, FIGURE_REVIEW_TOOL_NAME } from '../src/shared/figure.ts'
+import { REVIEWER_MCP_SERVER_NAME, REVIEWER_MCP_TOOLS } from '../src/shared/reviewer.ts'
 
 const logDir = process.argv[2] ?? join(process.env.HOME, 'Library/Logs/PureScience')
 
 // A framework renders a server name into the tool name it hands the model (mcp__<server>__<tool>),
-// which is the spelling the model either copies or mis-guesses. Figure is app-owned but is not declared
-// in the naming module's catalog, so it is added here the same way the module itself resolves it.
+// which is the spelling the model either copies or mis-guesses. Figure and reviewer are app-owned but
+// are not declared in the naming module's catalog (the figure review tool and the reviewer's identities
+// are not grantable session capabilities), so they are added here the same way the module itself
+// resolves them: by their canonical name plus the hyphen spelling grants and configs were written with.
 const identities = [
   ...appMcpToolIdentities(),
-  `${FIGURE_MCP_SERVER_NAME}/${FIGURE_REVIEW_TOOL_NAME}`
+  `${FIGURE_MCP_SERVER_NAME}/${FIGURE_REVIEW_TOOL_NAME}`,
+  ...Object.values(REVIEWER_MCP_TOOLS).map((tool) => `${REVIEWER_MCP_SERVER_NAME}/${tool}`)
 ].sort()
 
 const splitIdentity = (identity) => {

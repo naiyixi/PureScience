@@ -13,7 +13,7 @@ import {
 
 describe('host-query MCP server contract', () => {
   it('names the server and the tool', () => {
-    expect(HOST_QUERY_MCP_SERVER_NAME).toBe('purescience-host-query')
+    expect(HOST_QUERY_MCP_SERVER_NAME).toBe('purescience_host_query')
     expect(HOST_QUERY_MCP_SERVER_ARG).toBe('--purescience-host-query-mcp')
     expect(HOST_QUERY_TOOL_NAME).toBe('host_query')
   })
@@ -43,7 +43,7 @@ describe('host-query MCP server contract', () => {
       sessionId: 'session-9',
       projectId: 'project-1'
     })
-    expect(config.name).toBe('purescience-host-query')
+    expect(config.name).toBe('purescience_host_query')
     expect(config.args).toEqual(['/app/out/main/index.js', '--purescience-host-query-mcp'])
     const env = Object.fromEntries((config.env ?? []).map((entry) => [entry.name, entry.value]))
     expect(env.PURESCIENCE_HOST_QUERY_RPC_ENDPOINT).toBe('http://127.0.0.1:8642')

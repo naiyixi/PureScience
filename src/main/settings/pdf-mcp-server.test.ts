@@ -83,7 +83,7 @@ const makeHandler = (): PdfMcpHandler => ({
 
 describe('PDF MCP server contract', () => {
   it('names the server and its tools', () => {
-    expect(PDF_MCP_SERVER_NAME).toBe('purescience-pdf')
+    expect(PDF_MCP_SERVER_NAME).toBe('purescience_pdf')
     expect(PDF_MCP_SERVER_ARG).toBe('--purescience-pdf-mcp')
     expect(PDF_OPEN_TOOL_NAME).toBe('pdf_open')
     expect(PDF_PAGES_TOOL_NAME).toBe('pdf_pages')
@@ -110,7 +110,7 @@ describe('PDF MCP server contract', () => {
       sessionId: 'session-9',
       projectId: 'project-1'
     })
-    expect(config.name).toBe('purescience-pdf')
+    expect(config.name).toBe('purescience_pdf')
     expect(config.args).toEqual(['/app/out/main/index.js', '--purescience-pdf-mcp'])
     const env = Object.fromEntries((config.env ?? []).map((entry) => [entry.name, entry.value]))
     expect(env.PURESCIENCE_PDF_RPC_ENDPOINT).toBe('http://127.0.0.1:8642')

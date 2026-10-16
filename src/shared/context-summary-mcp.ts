@@ -5,7 +5,7 @@
 // that the rolling summary elided, and boundary to mark task boundaries so future folds land
 // between tasks instead of mid-task.
 
-export const CONTEXT_SUMMARY_MCP_SERVER_NAME = 'purescience-context-summary'
+export const CONTEXT_SUMMARY_MCP_SERVER_NAME = 'purescience_context_summary'
 
 export const SUMMARY_QUERY_TOOL_NAME = 'summary_query'
 export const BOUNDARY_TOOL_NAME = 'boundary'

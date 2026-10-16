@@ -23,16 +23,32 @@ const log = createLogger('acp')
 
 const REVIEWER_SESSION_ROLE = 'reviewer' as const
 
+// Every spelling the reviewer server answers to. The canonical name is separator-free, and the
+// hyphenated spelling is what a config, a recorded permission or a replayed session written before the
+// rename still carries. The naming module keeps the same pair as aliases; the reviewer server is
+// deliberately absent from its catalog (its identities must stay out of the remembered-permission
+// catalog), so the spellings are stated here instead of resolved there.
+const REVIEWER_MCP_SERVER_NAME_SPELLINGS = [
+  REVIEWER_MCP_SERVER_NAME,
+  REVIEWER_MCP_SERVER_NAME.replace(/[^a-zA-Z0-9]/g, '_'),
+  REVIEWER_MCP_SERVER_NAME.replace(/_/g, '-')
+]
+const REVIEWER_MCP_SERVER_NAME_SPELLING_SET = new Set(REVIEWER_MCP_SERVER_NAME_SPELLINGS)
+
 const REVIEWER_MCP_OPENCODE_TOOL_NAMES = new Set(
-  Object.values(REVIEWER_MCP_TOOLS).map((toolName) => `${REVIEWER_MCP_SERVER_NAME}_${toolName}`)
+  Object.values(REVIEWER_MCP_TOOLS).flatMap((toolName) =>
+    REVIEWER_MCP_SERVER_NAME_SPELLINGS.map((serverName) => `${serverName}_${toolName}`)
+  )
 )
 const REVIEWER_MCP_LEAF_TOOL_NAMES = new Set<string>(Object.values(REVIEWER_MCP_TOOLS))
-const REVIEWER_MCP_SERVER_NAME_SANITIZED = REVIEWER_MCP_SERVER_NAME.replace(/[^a-zA-Z0-9]/g, '_')
+const REVIEWER_MCP_CODEX_TOOL_NAMES = new Set(
+  Object.values(REVIEWER_MCP_TOOLS).flatMap((toolName) =>
+    REVIEWER_MCP_SERVER_NAME_SPELLINGS.map((serverName) => `mcp.${serverName}.${toolName}`)
+  )
+)
 const REVIEWER_MCP_CLAUDE_TOOL_NAMES = new Set(
   Object.values(REVIEWER_MCP_TOOLS).flatMap((toolName) =>
-    [REVIEWER_MCP_SERVER_NAME, REVIEWER_MCP_SERVER_NAME_SANITIZED].map(
-      (serverName) => `mcp__${serverName}__${toolName}`
-    )
+    REVIEWER_MCP_SERVER_NAME_SPELLINGS.map((serverName) => `mcp__${serverName}__${toolName}`)
   )
 )
 const REVIEWER_MCP_PROVIDER_TOOL_NAMES = new Set([
@@ -296,7 +312,8 @@ export class ReviewerSessionOwner {
       context.frameworkId === 'codex' &&
       toolName != null &&
       REVIEWER_MCP_LEAF_TOOL_NAMES.has(toolName) &&
-      reportedTitle === `mcp.${REVIEWER_MCP_SERVER_NAME}.${toolName}`
+      typeof reportedTitle === 'string' &&
+      REVIEWER_MCP_CODEX_TOOL_NAMES.has(reportedTitle)
         ? toolName
         : undefined
     const claudeToolName =
@@ -308,7 +325,7 @@ export class ReviewerSessionOwner {
         : undefined
     const isReviewerMcp =
       context.mcpServerNames.length === 1 &&
-      context.mcpServerNames[0] === REVIEWER_MCP_SERVER_NAME &&
+      REVIEWER_MCP_SERVER_NAME_SPELLING_SET.has(context.mcpServerNames[0] ?? '') &&
       ((toolName != null && REVIEWER_MCP_PROVIDER_TOOL_NAMES.has(toolName)) ||
         opencodeToolName != null ||
         codexToolName != null ||
@@ -446,6 +463,13 @@ export class ReviewerSessionOwner {
     const mcpServerNames = request.mcpServers
       .map((server) => (server as { name?: unknown }).name)
       .filter((name): name is string => typeof name === 'string')
+      // A configured name may carry the pre-rename hyphen spelling (a config or a replayed session
+      // written before the rename). The naming module's catalog cannot canonicalize the reviewer server
+      // — it is deliberately undeclared there — so both spellings are folded onto the canonical name
+      // here before the strict "exactly one" comparison below.
+      .map((name) =>
+        REVIEWER_MCP_SERVER_NAME_SPELLING_SET.has(name) ? REVIEWER_MCP_SERVER_NAME : name
+      )
       .map(canonicalAppMcpServerName)
     const reviewerMcp = request.mcpServers[0]
     const reviewerMcpHttp =

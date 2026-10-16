@@ -33,7 +33,37 @@ const PRE_REGISTERED_PERMISSION_IDENTITIES: Readonly<
     'mcp:purescience_skills/request_skill_import',
     'mcp:purescience_plan/generate_plan',
     'mcp:purescience_plan/update_step_status',
-    'mcp:purescience_memory/memory_save_note'
+    'mcp:purescience_memory/memory_save_note',
+    // The rest of the app-owned servers. They were named with a hyphen, which each framework escaped
+    // differently (`mcp__purescience-pdf__…` vs `mcp__purescience_pdf__…`), so the agent was handed two
+    // callable names for one tool and guessed. The identity key is the separator-free canonical name;
+    // the hyphenated spelling stays a legacy alias in the naming module.
+    'mcp:purescience_pdf/pdf_open',
+    'mcp:purescience_pdf/pdf_pages',
+    'mcp:purescience_pdf/pdf_outline',
+    'mcp:purescience_pdf/pdf_scan',
+    'mcp:purescience_pdf/pdf_tables',
+    'mcp:purescience_pdf/pdf_figures',
+    'mcp:purescience_pdf/pdf_translate',
+    'mcp:purescience_annotations/annotation_set',
+    'mcp:purescience_annotations/annotation_list',
+    'mcp:purescience_annotations/annotation_remove',
+    'mcp:purescience_context_summary/summary_query',
+    'mcp:purescience_context_summary/boundary',
+    'mcp:purescience_endpoints/endpoint_register',
+    'mcp:purescience_endpoints/endpoint_unregister',
+    'mcp:purescience_endpoints/endpoint_start',
+    'mcp:purescience_endpoints/endpoint_stop',
+    'mcp:purescience_endpoints/endpoint_status',
+    'mcp:purescience_endpoints/endpoint_list',
+    'mcp:purescience_endpoints/endpoint_free_port',
+    'mcp:purescience_goal/goal_configure',
+    'mcp:purescience_goal/goal_status',
+    'mcp:purescience_goal/goal_advance',
+    'mcp:purescience_host_query/host_query',
+    'mcp:purescience_routine/routine_configure',
+    'mcp:purescience_routine/routine_status',
+    'mcp:purescience_routine/routine_cancel'
   ],
   execution: ['exec:local/python', 'exec:local/bash'],
   file_operation: [

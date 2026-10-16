@@ -3,6 +3,85 @@
 > 本文件由用户与会话共同定稿，写给**自主执行器的每一轮**。两件事：**收口约定**（别把半成品留给下一轮）与
 > **排序**（每轮都能有"完成项"落地，而不是几天都在同一片里打转）。
 
+## 一百七十七、本轮追加（执行器，2026-10-17 02:3x–）—— 打包版真机 7 天缺陷 **P2 的后半**：8 个应用自有 MCP 服务名去连字符（守卫原来只枚举目录 ⇒ 这 8 个从未被它看过）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 6017a079`（会话 v2.5.1 发版后 U4-b/U4-e 那几笔）。**共享工作树 HEAD = `8eb4e96d`、落后 `origin/main` 29 笔**，带 18 个未提交路径（`src/main/specialist/**`、`src/preload/**`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts` 与若干 pin / 生成物）⇒ 两侧台账对这批的归属**仍对不上**（§一百七十六 §〇 已记），本轮**一个字节没碰**、也没动共享树；全部作业在隔离工作树 `/tmp/ps-wait3`（`origin/main` + 本单元改动，`node_modules` 软链）。
+- **发版窗口已关**（推送的前置条件，现取）：`gh release list --limit 5` ⇒ `PureScience v2.5.1` = **Latest**（2026-10-16T17:43:59Z），其 `Release` run（`head_sha=0e992da8`）= **success**；`v2.5.0` 次之。
+- 本单元取 `docs/plan-2026-10-16-packaged-app-field-defects.md` 的 **P2 后半**（会话在该档写明「改名单元留给下一版」、无人认领）⇒ 执行器认领，并把 ✅ 与读数就地写进那份档的 P2 行。
+- 内存（现取，不照抄）：空闲物理页 **6,070（≈95 MB）**、swap 已用 **8.05 G / 9.22 G** ⇒ 不起 Electron；本单元也不需要（改的是注册名与身份解析两层）。
+
+### 一 缺陷根因（读源，不是推测）
+
+真机 7 天里有 ~28 条 `No such tool available`。那条守卫（`keeps every app-owned MCP server name separator-free`）**只枚举命名模块的目录（+ figure 常量）**，而应用自有服务里另有 **8 个带连字符的名字根本不在目录里** ⇒ 守卫看不见它们、**也就从未红过**。模型按框架的转义规则猜 `mcp__purescience_pdf__pdf_open`，而应用当时交给框架的是 `purescience-pdf`。
+
+### 二 交付（26 文件 / +272 −51；产品侧行为只有「注册名与身份解析」，无新界面）
+
+| 面 | 内容 |
+| --- | --- |
+| 注册名常量（8 个） | `pdf / endpoints / goal / annotations / context_summary / host_query / routine / reviewer`：`purescience-pdf` → `purescience_pdf`（余同） |
+| 命名模块目录 | `app-mcp-names.ts` 新增 **7 条**声明（无分隔符规范名 + `legacyNames` 保留旧连字符拼写 + 各自工具表）；**reviewer 有意不进目录** —— 它是内部身份，不许进「可被记住的权限目录」（被既有守卫 `does not expose internal Reviewer MCP identities` 挡下，据此调整了原计划；旧拼写仍由未声明服务的回退别名应答） |
+| 记住的权限目录 | `identity-catalog.ts` 的 `mcp_tool` **18 → 44**、总数 **35 → 61**；两条目录由既有守卫强制相等 |
+| **守卫本身（缺陷根因）** | `keeps every app-owned MCP server name separator-free` 改为**枚举全部 15 个应用自有服务常量 + 钉住列表长度 15**（少一个就红）＋ 反向断言「figure / reviewer 必须在目录之外」（防后来者「干脆全都声明进去」把可达面悄悄放宽） |
+| 审计脚本 | `scripts/audit-mcp-tool-name-failures.mjs` 把 reviewer 并入 `identities`（与 figure 同法），旧失败行不再被误归到 `not-app-server` |
+| 连带（改名真会咬人处） | `acp/reviewer-session-owner.ts`：「恰好一台自有 reviewer 服务器」校验改为**两种拼写都折到规范名再比**（否则改名会把用户已存的旧连字符配置**判死**）；并据此补齐 codex / claude **已记录标题** 的旧拼写识别（改名前只用 `[规范名, 框架安全名]` 这一对 ⇒ 改完会让旧标题不再被认成 reviewer 调用，属「改名悄悄丢掉旧拼写」）。另修 6 个 `*-mcp-server.test.ts` / `goal` / `orchestrator` / `session-capability-owner` / `runtime.test.ts` 里钉旧名的断言 |
+
+### 三 真机读数（**改前 / 改后各跑一次**、同一批用户日志、同一口径、只读；脚本入库可复跑）
+
+命令：`node --experimental-strip-types scripts/audit-mcp-tool-name-failures.mjs`（缺省 `~/Library/Logs/PureScience`）。
+**改前**在隔离工作树 `/tmp/ps-audit-before`（= `origin/main` `6017a079` **原样**）取，**改后**在本单元那棵树取：
+
+| 类 | 改前（`6017a079`） | 改后（本单元） |
+| --- | --- | --- |
+| `identities`（脚本读到的应用自有身份数） | 19 | **51** |
+| `callable-now`（模型猜的名字 **就是**应用今天渲染的名字） | 12 | **19** |
+| `not-app-server`（不是本应用的服务器） | 9 | **2** |
+| `wrong-separator` | 1（`purescience-notebook`） | 1 |
+| `no-such-leaf` | 6 | 6 |
+| 失败行总数 / 窗口 | 28 / `2026-10-02T14:26:39Z … 2026-10-16T13:25:03Z` | 同（同一批行） |
+
+⇒ 新增可解析的 7 条 = **`mcp__purescience_pdf__pdf_open` ×6** 与 **`mcp__purescience_endpoints__endpoint_list` ×1**；改前它们落在 `not-app-server`（应用当时把 `purescience-pdf` 交给框架）。这两条读数**本轮自己重跑复现过**（不是引用上一轮的自述）。
+
+### 四 门禁（全环实跑；数字取自**最后一次改动之后**的那一遍）
+
+| 项 | 读数 |
+| --- | --- |
+| 双 typecheck | `typecheck:node` exit **0**；`typecheck:web` exit **0** |
+| lint（与 CI 同口径、缓存关闭） | `npx eslint --no-cache .` ⇒ **exit 0、0 error / 131 warning**（与仓内基线同数 ⇒ 本单元没有把 warning 留在树里） |
+| 定向 vitest（`src/main/{settings,agent-framework,permission-grants,acp,reviewer,goals}` + 两个 `src/shared` 文件） | **218 文件（217 passed / 1 skipped）、3626 条（3623 passed / 3 skipped）**、exit 0、**41.18 s** |
+| **全量 vitest** | **1339 文件（1323 passed / 16 skipped）、17176 条（16969 passed / 207 skipped）**、exit 0、**249.99 s** |
+| prettier（代码类改动文件） | 本笔 24 个 `.ts/.tsx/.mjs` 改动文件 `--check` ⇒ 「All matched files use Prettier code style!」、exit 0 |
+| 推前钩子 | `bash scripts/pre-push-checks.sh` ⇒ **exit 0、8 段全绿**（敏感词扫描 `git 跟踪范围零命中` / README 版本横幅 v2.5.1 / CHANGELOG 有 v2.5.1 条目 / 已发布提醒 v2.5.1 / README 双语头部锚点一致 / 权重清单 1 条目 OK / 53 个 launcher 可解析 / 本次推送新增文件 lint：`24 个文件通过（0 problems）`） |
+
+**同一轮内修掉的两条红（如实记，不是「一次就绿」）**：
+
+1. `src/main/acp/runtime.test.ts:8197` —— 它钉着 reviewer 会话**记录下来的**服务器名（`mcpServerNames: ['purescience-reviewer']`），而新的折叠逻辑把请求里携带的旧拼写归到规范名上。判据（不是「改断言让它过」）：`request.mcpServers` 仍**原样**交给框架（`reviewer-session-owner.ts` 里那句 `mcpServers: request.mcpServers` 一个字节未动），折叠只作用于**记录进身份上下文**的那个名字，而 `isReviewerMcp` 对**三种拼写**都成立 ⇒ 改的是断言本身，并在注释里写清它现在钉的是「**旧配置进 ⇒ 规范名被记录**」这条兼容语义。
+2. `src/main/agent-framework/app-mcp-names.test.ts:201` —— 本单元新增的那行反向断言**超长**（`prettier/prettier` 一条 warning，属本单元引入、不是既有）。已 `prettier --write` 就地折行；**不把 warning 留在自己新增的代码里**，也不为它多开一笔提交。
+
+**为什么 prettier 只覆盖代码类扩展名**：本仓 `docs/**` 是手写的长行风格，**在 `origin/main` 上自身就不合 prettier 风格**（实测：`git show origin/main:<两份 md>` 再 `prettier --check` 就报 warning），而 eslint 与 CI 都不检查 `.md` ⇒ 把「重排整份手写文档」混进本笔只会制造无关 diff。上面那一栏覆盖了本笔全部 24 个代码文件。
+
+### 五 边界（不许读成更强）
+
+1. **那 7 条是老窗口里的行**：本单元证明的是「脚本把归属算对了」与「这 7 次调用今后会解析到真工具」；**`wrong-separator` 归零仍要等一段新窗口**（改动跑到用户机器之后产生的日志），不在本笔声称。
+2. **没有 Electron 窗口读数**：改的是注册名与身份解析两层，界面没有新增入口；真机证据来自**应用自己的模块 + 用户自己的日志**（上面那张表），界面侧证据是渲染/契约套件的断言。本单元**不假装**有窗口读数。
+3. **`--purescience-pdf-mcp` 一类进程 argv 未动**：它们是自有子进程的启动参数，不是交给模型的服务器名；仓库里剩下的 `purescience-*` 命中都在这些 argv、URL scheme（`purescience-preview://`）、storage key 与 i18n 文案里。
+4. 本单元**不占版本号**（内部身份改名，无新的用户可见能力）。
+
+### 六 并发、收尾与推送
+
+- 共享树未动（仍是那 18 个归属未对上的在制路径、HEAD 未被动过）；改动、门禁、提交、推送全在隔离工作树 `/tmp/ps-wait3`。
+- **推送时 `origin/main` 上已有的红（归因，不是本单元引入）**：`origin/main` 在 `1f859d20` / `5e81dc13` / `48dff4ca` 三笔上**连续红**，两处失败点都落在**会话的 U4-e 单元**（`src/main/engines/structure-recognition.test.ts`）——一条是 Nightly 的 `Test (with coverage)`（`expected 'recognizer-unavailable' to be 'recognizer-single-engine'/'recognizer-disagreement'`），一条是 `Windows Full Test` 的分片 5/8（同文件 5 条红）。**本单元的 27 个路径与该文件不相交**，本地全量 vitest 全绿（上表）⇒ 本笔照推，红的归属如实点名给会话那个单元（执行器不改别人在制中的单元）。
+- 推送前**现查在飞车道**：读数与「这次推送顶掉了谁 / 没顶掉谁」写在会话汇报里（`cancelled` 不算绿）。
+- 收尾：两个临时工作树（`/tmp/ps-wait3`、`/tmp/ps-audit-before`）与 `/tmp/ps-wait2` / `/tmp/ps-audit-*` / `/tmp/verify3*.sh|log` 按名清理；确认无遗留进程。
+
+### 七 具名未办 + 下一轮第一步
+
+1. **同族 304 处 `vi.waitFor`**（§一百七十六 §四）：`blocked-by` = 无，但要**逐条按判据判**、按文件分批（不许批量加长）。
+2. **打包版真机缺陷档的其余行**：P3 已核实结案；P1（会话状态机）、P4/P5 归会话。
+3. **U3 第二片的界面 / U4 后续片**：归会话（`blocked-by` = 会话认领），执行器不碰。
+4. **下一轮第一步**：① 按**完整 40 位 SHA** 读本轮提交的 `Nightly` + `Windows Full Test` 终态（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`；`cancelled` 不算绿）；② `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：共享树若仍落后且脏，继续在隔离工作树作业；③ 未闭项取 §七 1（逐文件按判据收口），与会话的 U4 不相交。
+
 ## 一百七十六、本轮追加（执行器，2026-10-16 21:4x–）—— §一百七十三 §五 第 2 条立案的那条：同族两个测试文件的 **34 处协调等待**逐条判据 + 显式窗口收口
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
@@ -203,7 +282,7 @@
 `scripts/check-script-entrypoints.mjs`（`node --check` 覆盖 53 个 `.mjs`/`.cjs`，进推前钩子第 7 段）；
 **这一条不许重做**：`scripts|cli|packages|build` 现在都在门里了· **门禁：推前钩子第 8 段（本次推送
 新增/修改文件的 lint，与 CI 同一 linter、缓存关闭）+ 钩子自证测试（执行器，2026-10-16，`fd495d62`，§一百七十一）**
-——这一条也不许重做：钩子现在有 8 段，且段清单/「hard fail 必须真能拒掉推送」由 `scripts/pre-push-checks.test.ts` 钉住· R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
+——这一条也不许重做：钩子现在有 8 段，且段清单/「hard fail 必须真能拒掉推送」由 `scripts/pre-push-checks.test.ts` 钉住· **应用自有 MCP 服务名去连字符（执行器，2026-10-17，§一百七十七）**——8 个常量改名（`purescience-pdf` → `purescience_pdf` 等）+ 7 条进命名目录与记住的权限目录（`mcp_tool` 18→44、总数 35→61）+ 那条守卫改成**枚举全部 15 个应用自有服务常量并钉住 15**；**这一条不许重做**（8 个名字现在都在无分隔符形态下，守卫看得见它们）· R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
 U3 筛选/统计面（`8b074459`）· 面板 DOM + 筛选控件读数（`c4ef3189`/`fc21385c`）·
 U4 别名合并 + `displayName`（`f0b0e218`）· 导入侧真机读数（`d1a96860`）·
 指标导入界面 9 语种 + 摘除 agent-only 登记（`ed9fc653`）· 主色对齐 `#4D6BFE`（`d202b18e`）·

@@ -8194,7 +8194,11 @@ describe('ACP runtime session management', () => {
     expect(session.sessionId).toBe('reviewer-session-1')
     expect(reviewerOwnerProbe(runtime).contextFor('reviewer-session-1')).toEqual({
       frameworkId: 'claude-code',
-      mcpServerNames: ['purescience-reviewer'],
+      // The request above carries the pre-rename spelling — a config or a replayed session written
+      // before the rename still does — and the identity records the canonical name the app now hands
+      // the framework. Folding both spellings onto it is what keeps such a session a reviewer session
+      // instead of rejecting it for "not exactly one app-owned server".
+      mcpServerNames: ['purescience_reviewer'],
       role: 'reviewer'
     })
     expect(mcpServerNamesFor(runtime, 'reviewer-session-1')).toEqual([])
@@ -8611,7 +8615,7 @@ describe('ACP runtime session management', () => {
           }
         ]
       })
-    ).rejects.toThrow(/app-owned purescience-reviewer/)
+    ).rejects.toThrow(/app-owned purescience_reviewer/)
     expect(spawnAgent).not.toHaveBeenCalled()
   })
 

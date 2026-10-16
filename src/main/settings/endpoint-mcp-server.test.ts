@@ -40,7 +40,7 @@ const makeEndpoint = (overrides: Partial<ManagedEndpoint> = {}): ManagedEndpoint
 
 describe('endpoint MCP server contract', () => {
   it('names the server and the seven tools', () => {
-    expect(ENDPOINT_MCP_SERVER_NAME).toBe('purescience-endpoints')
+    expect(ENDPOINT_MCP_SERVER_NAME).toBe('purescience_endpoints')
     expect(ENDPOINT_MCP_SERVER_ARG).toBe('--purescience-endpoint-mcp')
     expect(ENDPOINT_REGISTER_TOOL_NAME).toBe('endpoint_register')
     expect(ENDPOINT_UNREGISTER_TOOL_NAME).toBe('endpoint_unregister')
@@ -76,7 +76,7 @@ describe('endpoint MCP server contract', () => {
       token: 'tok-123',
       sessionId: 'session-9'
     })
-    expect(config.name).toBe('purescience-endpoints')
+    expect(config.name).toBe('purescience_endpoints')
     expect(config.args).toEqual(['/app/out/main/index.js', '--purescience-endpoint-mcp'])
     const env = Object.fromEntries((config.env ?? []).map((entry) => [entry.name, entry.value]))
     expect(env.PURESCIENCE_ENDPOINT_RPC_ENDPOINT).toBe('http://127.0.0.1:8642')

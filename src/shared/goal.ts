@@ -5,7 +5,7 @@
 // 为什么读数引用是记录的一部分而不是附注：一条「已完成」的验收项若说不出它是**哪一次**运行/哪一个
 // 产物版本证明的，那它就是模型的一句自述 —— 与仓里「数字不许裸奔」同源。
 
-export const GOAL_MCP_SERVER_NAME = 'purescience-goal'
+export const GOAL_MCP_SERVER_NAME = 'purescience_goal'
 
 export const GOAL_CONFIGURE_TOOL_NAME = 'goal_configure'
 export const GOAL_STATUS_TOOL_NAME = 'goal_status'

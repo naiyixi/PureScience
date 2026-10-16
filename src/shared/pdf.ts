@@ -14,7 +14,7 @@ import type { FigureDerivation } from './figure-derivation'
 import type { AxisAlignedRotation } from './pdf-page-rotation'
 import type { TranslationViewModel } from './translation-view-model'
 
-export const PDF_MCP_SERVER_NAME = 'purescience-pdf'
+export const PDF_MCP_SERVER_NAME = 'purescience_pdf'
 
 export const PDF_OPEN_TOOL_NAME = 'pdf_open'
 export const PDF_PAGES_TOOL_NAME = 'pdf_pages'

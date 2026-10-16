@@ -37,7 +37,7 @@ const makeHandler = (): AnnotationMcpHandler => ({
 
 describe('annotation MCP server contract', () => {
   it('names the server and the three tools', () => {
-    expect(ANNOTATION_MCP_SERVER_NAME).toBe('purescience-annotations')
+    expect(ANNOTATION_MCP_SERVER_NAME).toBe('purescience_annotations')
     expect(ANNOTATION_MCP_SERVER_ARG).toBe('--purescience-annotation-mcp')
     expect(ANNOTATION_SET_TOOL_NAME).toBe('annotation_set')
     expect(ANNOTATION_LIST_TOOL_NAME).toBe('annotation_list')
@@ -62,7 +62,7 @@ describe('annotation MCP server contract', () => {
       sessionId: 'session-9',
       projectId: 'project-1'
     })
-    expect(config.name).toBe('purescience-annotations')
+    expect(config.name).toBe('purescience_annotations')
     expect(config.args).toEqual(['/app/out/main/index.js', '--purescience-annotation-mcp'])
     const env = Object.fromEntries((config.env ?? []).map((entry) => [entry.name, entry.value]))
     expect(env.PURESCIENCE_ANNOTATION_RPC_ENDPOINT).toBe('http://127.0.0.1:8642')

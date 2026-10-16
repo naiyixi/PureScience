@@ -37,7 +37,7 @@ const makeSchedule = (overrides: Partial<RoutineSchedule> = {}): RoutineSchedule
 
 describe('routine MCP server contract', () => {
   it('names the server and the three tools', () => {
-    expect(ROUTINE_MCP_SERVER_NAME).toBe('purescience-routine')
+    expect(ROUTINE_MCP_SERVER_NAME).toBe('purescience_routine')
     expect(ROUTINE_CONFIGURE_TOOL_NAME).toBe('routine_configure')
     expect(ROUTINE_STATUS_TOOL_NAME).toBe('routine_status')
     expect(ROUTINE_CANCEL_TOOL_NAME).toBe('routine_cancel')

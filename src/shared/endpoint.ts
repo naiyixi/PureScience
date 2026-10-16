@@ -12,7 +12,7 @@
 // adapted to the PureScience main-process architecture (JSON-file repository + local RPC +
 // capability owner, same spine as the routine capability).
 
-export const ENDPOINT_MCP_SERVER_NAME = 'purescience-endpoints'
+export const ENDPOINT_MCP_SERVER_NAME = 'purescience_endpoints'
 
 export const ENDPOINT_REGISTER_TOOL_NAME = 'endpoint_register'
 export const ENDPOINT_UNREGISTER_TOOL_NAME = 'endpoint_unregister'

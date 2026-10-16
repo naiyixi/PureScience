@@ -61,7 +61,7 @@ export type ReviewOutcome = 'pass' | 'flagged'
 // Tool set: scope-bounded evidence reads (read_turn / query_execution_log / read_artifact), a
 // bounded earlier-window record (read_turn_history), verified external-source reads (fetch_source),
 // and the single submit_findings call.
-export const REVIEWER_MCP_SERVER_NAME = 'purescience-reviewer'
+export const REVIEWER_MCP_SERVER_NAME = 'purescience_reviewer'
 export const REVIEWER_MCP_TOOLS = {
   readTurn: 'read_turn',
   readTurnHistory: 'read_turn_history',

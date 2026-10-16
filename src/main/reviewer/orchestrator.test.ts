@@ -256,7 +256,7 @@ describe('reviewer orchestrator', () => {
 
     // The reviewer MCP server (HTTP type) was included.
     const mcpServers = (newSessions[0]?.mcpServers ?? []) as Array<{ type?: string; name?: string }>
-    expect(mcpServers.some((s) => s.type === 'http' && s.name === 'purescience-reviewer')).toBe(
+    expect(mcpServers.some((s) => s.type === 'http' && s.name === 'purescience_reviewer')).toBe(
       true
     )
 

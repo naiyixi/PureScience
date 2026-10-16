@@ -45,6 +45,15 @@
   - **验收**：门先把**全部**应用自有服务枚举进来（而不是只枚举目录内六个）—— 它会**当场红**，那一片红就是
     这件工作的清单；改完必须全绿，且 `scripts/audit-mcp-tool-name-failures.mjs` 对打包版日志的分类里
     `wrong-separator` 与 `not-app-server` 归零。
+    - ✅ **已交付（执行器，2026-10-17，与本台账 §一百七十七 同一笔）**：8 个常量改名（`purescience-pdf` → `purescience_pdf` 等）、
+    其中 **7 个进命名目录 + 记住的权限目录**（`mcp_tool` 18→44、总数 35→61），**reviewer 有意不进目录**（内部身份不许被记住）；
+    守卫改成**枚举全部 15 个应用自有服务常量并钉住 15**（少一个就红），并反向断言 figure / reviewer 必须留在目录之外；
+    审计脚本把 reviewer 并入 `identities`；`reviewer-session-owner.ts` 的「恰好一台自有 reviewer 服务器」校验改为
+    **两种拼写都折到规范名再比**（否则改名会把旧连字符配置判死），已记录标题的识别也补齐旧拼写。
+    **验收读数（同一批真机日志、同一口径、只读）**：`callable-now` **12 → 19**（新增 `pdf_open` ×6 与 `endpoint_list` ×1，
+    改前它们落在 `not-app-server`），`not-app-server` **9 → 2**，`wrong-separator` 1、`no-such-leaf` 6 不变，失败行 28 条同一窗口。
+    **`wrong-separator` 归零仍等一段新窗口**（改动跑到用户机器之后产生的日志），不在本笔声称。
+    证据档：`docs/evidence/2026-10-11-app-mcp-server-name-consistency.md` §八（其中 §四.5「reviewer 有意不改」由本笔就地取代，理由写在那里）。
 - **P3 —— 核实后结案：早已修好，不立为工作**。按仓规「立未办之前先在仓里核实」：那句旧文案
   （`it was issued for an earlier turn (or already spent)`）出自更早的构建，而**当前树里已经是修好的形态** ——
   `fix(artifacts): P0-7 产物能力令牌的生命周期跟着回合走 —— 回合还开着时续期而不是拒绝`（`67bba067`），

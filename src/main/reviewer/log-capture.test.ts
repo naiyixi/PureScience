@@ -196,7 +196,7 @@ describe('driveReviewerToStop — log capture via onUpdate', () => {
         update: {
           sessionUpdate: 'tool_call',
           toolCallId: 'tc-submit',
-          _meta: { claudeCode: { toolName: 'mcp__purescience-reviewer__submit_findings' } },
+          _meta: { claudeCode: { toolName: 'mcp__purescience_reviewer__submit_findings' } },
           title: 'submit_findings',
           rawInput: { checks: [{ status: 'pass' }] }
         }

@@ -43,7 +43,7 @@ const toolsOf = (server: unknown): RegisteredTools =>
 
 describe('goal MCP server contract', () => {
   it('names the server and the three tools', () => {
-    expect(GOAL_MCP_SERVER_NAME).toBe('purescience-goal')
+    expect(GOAL_MCP_SERVER_NAME).toBe('purescience_goal')
     expect(GOAL_CONFIGURE_TOOL_NAME).toBe('goal_configure')
     expect(GOAL_STATUS_TOOL_NAME).toBe('goal_status')
     expect(GOAL_ADVANCE_TOOL_NAME).toBe('goal_advance')
