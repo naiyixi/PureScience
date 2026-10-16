@@ -416,7 +416,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['installClaude', 'settings:install-claude', LOCAL], ['installCodebuddy', 'settings:install-codebuddy', LOCAL], ['installCodex', 'settings:install-codex', LOCAL],
     ['installOpencode', 'settings:install-opencode', LOCAL], ['isEncryptionAvailable', 'settings:encryption-available'],
     ['isNpmAvailable', 'settings:npm-available'], ['listAgentHomeSkills', 'settings:list-agent-home-skills', MAPPED_ELECTRON],
-    ['listAppIcons', 'settings:list-app-icons'], ['listConnectors', 'settings:list-connectors'], ['listSkills', 'settings:list-skills'], ['skillReuse', 'settings:skill-reuse'],
+    ['listAppIcons', 'settings:list-app-icons'], ['getLocalParsingModels', 'settings:get-local-parsing-models', LOCAL], ['downloadLocalParsingModel', 'settings:download-local-parsing-model', LOCAL], ['listConnectors', 'settings:list-connectors'], ['listSkills', 'settings:list-skills'], ['skillReuse', 'settings:skill-reuse'],
     ['loginIsolatedClaude', 'settings:login-isolated-claude', LOCAL], ['loginIsolatedClaudeBrowser', 'settings:login-isolated-claude-browser', LOCAL],
     ['loginIsolatedCodex', 'settings:login-isolated-codex', LOCAL], ['loginSharedClaude', 'settings:login-shared-claude', LOCAL],
     ['logoutIsolatedClaude', 'settings:logout-isolated-claude', LOCAL], ['logoutIsolatedCodex', 'settings:logout-isolated-codex', LOCAL],

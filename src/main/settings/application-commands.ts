@@ -1,3 +1,10 @@
+import { resolveDataRoot } from '../storage-root'
+import {
+  downloadLocalParsingModel,
+  readLocalParsingModels,
+  type LocalParsingDownloadView,
+  type LocalParsingModelsView
+} from '../engines/local-parsing-models'
 import type {
   AppIconPreview,
   ClaudeInstallEvent,
@@ -276,6 +283,16 @@ const settingsCoreApplicationCommands = Object.freeze({
   listAppIcons: defineApplicationCommand<'settings:list-app-icons', readonly [], AppIconPreview[]>(
     'settings:list-app-icons'
   ),
+  getLocalParsingModels: defineApplicationCommand<
+    'settings:get-local-parsing-models',
+    readonly [],
+    LocalParsingModelsView
+  >('settings:get-local-parsing-models'),
+  downloadLocalParsingModel: defineApplicationCommand<
+    'settings:download-local-parsing-model',
+    readonly [{ id: string; consent: boolean }],
+    LocalParsingDownloadView
+  >('settings:download-local-parsing-model'),
   listConnectors: defineApplicationCommand<
     'settings:list-connectors',
     readonly [],
@@ -494,6 +511,8 @@ const settingsCoreApplicationCommandGroup = defineApplicationCommandGroup('setti
   settingsCoreApplicationCommands.isEncryptionAvailable,
   settingsCoreApplicationCommands.isNpmAvailable,
   settingsCoreApplicationCommands.listAppIcons,
+  settingsCoreApplicationCommands.getLocalParsingModels,
+  settingsCoreApplicationCommands.downloadLocalParsingModel,
   settingsCoreApplicationCommands.listConnectors,
   settingsCoreApplicationCommands.listSkills,
   settingsCoreApplicationCommands.skillReuse,
@@ -665,6 +684,30 @@ const registerCoreSettingsApplicationCommands = (
       'settings:encryption-available': () => dependencies.service.isEncryptionAvailable(),
       'settings:npm-available': () => dependencies.service.isNpmAvailable(),
       'settings:list-app-icons': () => dependencies.listAppIconPreviews?.() ?? [],
+      // v2.5.0 U3: what this build ships and what is on disk; and the one action that fetches a model.
+      // The download is a network effect, so it is gated on a local caller and on explicit consent,
+      // and every refusal is the fetch primitive's own answer.
+      'settings:get-local-parsing-models': ({ callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:get-local-parsing-models')
+        return readLocalParsingModels({
+          cacheDir: resolveDataRoot(),
+          override: process.env.PURESCIENCE_MODEL_WEIGHT_MANIFEST,
+          resourcesPath: process.resourcesPath,
+          fromDir: __dirname
+        })
+      },
+      'settings:download-local-parsing-model': ({ args, callerContext }) => {
+        requireLocalCaller(callerContext, 'settings:download-local-parsing-model')
+        const request = args[0]
+        return downloadLocalParsingModel({
+          id: request?.id ?? '',
+          consent: request?.consent === true,
+          cacheDir: resolveDataRoot(),
+          override: process.env.PURESCIENCE_MODEL_WEIGHT_MANIFEST,
+          resourcesPath: process.resourcesPath,
+          fromDir: __dirname
+        })
+      },
       'settings:list-connectors': () => dependencies.service.listConnectors(),
       'settings:list-skills': () => dependencies.service.listSkills(),
       'settings:skill-reuse': () => dependencies.service.skillReuse(),

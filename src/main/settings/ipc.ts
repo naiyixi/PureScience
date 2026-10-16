@@ -1,4 +1,6 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
+import { resolveDataRoot } from '../storage-root'
+import { downloadLocalParsingModel, readLocalParsingModels } from '../engines/local-parsing-models'
 import type { WebContents } from 'electron'
 
 import { EGRESS_APPROVAL_CHANNEL, type EgressApprovalRespondRequest } from '../../shared/egress'
@@ -263,6 +265,28 @@ const registerSettingsIpcHandlers = ({
     }
   )
   ipcMainHandle('settings:list-app-icons', (): AppIconPreview[] => listAppIconPreviews?.() ?? [])
+  // Local parsing models (v2.5.0): what this build ships, and the one way to fetch one. The view
+  // carries no path and no url; the refusals belong to the fetch primitive, not to this handler.
+  ipcMainHandle('settings:get-local-parsing-models', () =>
+    readLocalParsingModels({
+      cacheDir: resolveDataRoot(),
+      override: process.env.PURESCIENCE_MODEL_WEIGHT_MANIFEST,
+      resourcesPath: process.resourcesPath,
+      fromDir: __dirname
+    })
+  )
+  ipcMainHandle(
+    'settings:download-local-parsing-model',
+    (_event, request: { id: string; consent: boolean }) =>
+      downloadLocalParsingModel({
+        id: request?.id ?? '',
+        consent: request?.consent === true,
+        cacheDir: resolveDataRoot(),
+        override: process.env.PURESCIENCE_MODEL_WEIGHT_MANIFEST,
+        resourcesPath: process.resourcesPath,
+        fromDir: __dirname
+      })
+  )
   ipcMainHandle(
     'settings:set-app-icon-variant',
     async (_event, request: SetAppIconVariantRequest) => {

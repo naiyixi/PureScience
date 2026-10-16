@@ -46,6 +46,8 @@ const expectedChannels = [
   'settings:encryption-available',
   'settings:npm-available',
   'settings:list-app-icons',
+  'settings:get-local-parsing-models',
+  'settings:download-local-parsing-model',
   'settings:list-connectors',
   'settings:list-skills',
   'settings:skill-reuse',

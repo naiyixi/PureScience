@@ -655,6 +655,11 @@ export interface PureScienceAPI {
     setMemory(memory: MemorySettings): Promise<MemorySettings>
     setUseIntent(useIntent: 'commercial' | 'non-commercial'): Promise<SettingsSnapshot>
     getCredentials(): Promise<CredentialView[]>
+    getLocalParsingModels(): Promise<LocalParsingModelsView>
+    downloadLocalParsingModel(request: {
+      id: string
+      consent: boolean
+    }): Promise<LocalParsingDownloadView>
     getThirdPartyLicenses(): Promise<{ name: string; version: string; license: string }[]>
     setCredential(request: SetCredentialRequest): Promise<CredentialView>
     deleteCredential(id: string): Promise<CredentialView[]>
