@@ -93,6 +93,9 @@ export const resolveStructureRecognitionScript = (
   deps: StructureRecognitionDeps = {},
   env: NodeJS.ProcessEnv = process.env
 ): string => {
+  // 调用方**显式**指定的脚本优先，且**不做存在性检查**：那是它的声明，不该由这里去猜。装配点因此有一条
+  // 明确的缝，测试也不必依赖任何机器上的具体路径。
+  if (deps.scriptPath) return deps.scriptPath
   const override = env.PURESCIENCE_STRUCTURE_RECOGNITION_SCRIPT
   if (override && existsSync(override)) return override
   const resourcesPath = deps.resourcesPath ?? process.resourcesPath

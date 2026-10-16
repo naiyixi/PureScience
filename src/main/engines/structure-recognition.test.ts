@@ -36,12 +36,12 @@ describe('resolveStructureRecognitionScript', () => {
   it('takes the env override, then resourcesPath, then the development tree', () => {
     const here = '/nonexistent/override.py'
     expect(
-      resolveStructureRecognitionScript({ resourcesPath: '/tmp/ps-ocsr/resources' }, {
+      resolveStructureRecognitionScript({ resourcesPath: '/tmp/ps-test/resources' }, {
         PURESCIENCE_STRUCTURE_RECOGNITION_SCRIPT: here
       } as NodeJS.ProcessEnv)
     ).toContain('resources')
     const packaged = resolveStructureRecognitionScript(
-      { resourcesPath: '/tmp/ps-ocsr/resources' },
+      { resourcesPath: '/tmp/ps-test/resources' },
       {} as NodeJS.ProcessEnv
     )
     expect(packaged.endsWith('engines/structure_recognition.py')).toBe(true)
@@ -56,7 +56,7 @@ describe('resolveEnginePython', () => {
   })
 
   it('looks under each data root at the env the engine is provisioned in', () => {
-    const root = '/Users/totota/.purescience'
+    const root = '/tmp/ps-test-data'
     const expected = `${root}/runtime/envs/structure-recognition/bin/python`
     // 路径形状就是产品自己的命名环境约定；文件是否存在由真机决定，这里钉的是**去哪找**。
     const found = resolveEnginePython('decimer', { dataRoots: [root] }, {} as NodeJS.ProcessEnv)
@@ -78,10 +78,13 @@ describe('recognizeFigureStructure', () => {
     return {
       seen,
       deps: {
-        scriptPath: '/tmp/ps-ocsr/resources/engines/structure_recognition.py',
+        scriptPath: '/tmp/ps-test/structure_recognition.py',
+        // `resolveEnginePython` 只接受**真实存在**的解释器（不假装缺的也在），所以这里用 node 自己的
+        // 可执行路径 —— 它在任何机器上都存在。曾经这里指向我本机某个文件：本机跑得过，CI 里不存在，
+        // 于是引擎被解析成 undefined、排好的读数根本没被消费，断言就飘了（CI 抓到的正是这个）。
         pythonFor: {
-          decimer: '/tmp/ps-ocsr/src/main/engines/structure-recognition.ts', // 只要 existsSync 为真即可
-          molscribe: '/tmp/ps-ocsr/src/main/engines/structure-recognition.ts'
+          decimer: process.execPath,
+          molscribe: process.execPath
         },
         runJson: async (_python: string, args: readonly string[]) => {
           seen.push([...args])
