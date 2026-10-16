@@ -8019,3 +8019,51 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 3. **U4（S2 接入解析 + 派生结果溯源）**：本版仍未开工；判据 = 差异化③④（③ 离线可读已达成；④ 派生结果带 `revision` + 输入指纹、换 revision/输入即标过期）。
 4. **`src/main/settings/service.test.ts`** 的加载敏感 `vi.waitFor` 窗口与收尾竞态（`ENOTEMPTY …/claude/skills`）：`blocked-by` = 无外部依赖，改动后需一次「加载下的复现」判有效性；本机可复现、可判。
 5. **下一轮第一步**：① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；② `git fetch` + `git status --short`（看会话是否已把那 16 个在制路径落定 ⇒ 落定后才谈 U3 第二片的界面读数）；③ 未闭项取第 4 条（本机可复现），**不要重做**本轮已交付的托管与已核为「已覆盖」的四条。
+
+## 一百七十三、本轮追加（执行器，2026-10-16 18:4x–）—— §一百七十二 §五 第 4 条立案的那条：设置服务用例**加载敏感红**的归因与修法（窗口是负载预算；收尾会吞掉真失败）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后：**共享工作树（`/Users/totota/purescience`）HEAD = `8eb4e96d`**，而 `origin/main = 778f1b51`（会话的 **v2.5.0 发版提交**）。`778f1b51` 的四文件**齐全**（`CHANGELOG.md` + `README.md` + `README.en.md` + `package.json` 2.4.0→2.5.0）—— 我先前用 `git show --stat … | head -20` 看漏了 `package.json | 2 +-` 那一行（它排在末位、被截掉），**别据此说「版本位没抬」**；判这类事要读 `git show --stat` 的**尾部**或直接 `git show HEAD:package.json`。
+- **v2.5.0 的发版动作归会话**：它在自己的隔离工作树 `/private/tmp/ps-rel`（= `778f1b51`）里做；**tag 尚未推、Release 页仍是 v2.4.0**（`gh release list`）⇒ 本单元**一个字节不碰**那四个发版文件、不打 tag、不开窗口。共享树另有 18 个在制路径（会话的 Specialist/plugin 轨道：`src/main/specialist/**`、`src/preload/**`、`SpecialistsPanel.tsx`、`shared/plugin-source.ts` 等）⇒ 本单元与之**目录不相交**（只动 `src/main/settings/service.test.ts`）。
+- 本单元取的是 `§一百七十二 §五 第 4 条` 自己立案的那条（`blocked-by` = 无外部依赖、本机可复现）。隔离工作树 `/tmp/ps-flake` = `778f1b51`（软链 node_modules）；内存现取：空闲页 **3688（≈57 MB）**、swap 已用 **10.38 G / 11.26 G** ⇒ 不起 Electron（本单元也不需要）。
+
+### 一 归因（读源 + 变异证明 + 负载实测，三步都不是推测）
+
+1. **读源**：该文件的 17 处 `vi.waitFor(...)` 用的是**默认 1s 窗口**，而 `vitest.config.ts` 的 `testTimeout` 是 **60s** ⇒ 这些等待的预算比用例自身的预算小两个数量级，且 1s 是**负载**预算而不是正确性预算。
+2. **变异证明**（只把窗口压到 1ms、被测行为一个字节不改）：`14 failed / 232 passed`，失败形状与台账 §一百七十一 记的**逐字相同** —— `expected "vi.fn()" to be called 1 times, but got 0 times` ×2（窗口到期）＋ **`ENOTEMPTY: directory not empty, rmdir '<per-test root>'` ×2**（**级联**：用例在 `finishProbe?.()` 之前中止 ⇒ 在飞的登录流继续往自己的临时根里写 ⇒ `afterEach` 的 `rm` 与它赛跑）。失败行号正是台账点名的 6505/6533/6647/6696 加同族 10 处（同一变异下 17 处里有 14 处真的在等）。
+3. **量级（负载下实测）**：2 份并发 + 3 个 CPU 燃烧器，给协调等待挂临时探针（跑完即删）：34 个样本 **min=1ms、p50=52ms、p90=361ms、max=704ms**，>250ms 14 个、**>1000ms 0 个** ⇒ 默认 1s 窗口在本机负载下只剩约 **30% 余量**，这解释了它为什么会红在「全量单测 + 全仓 lint 并发」那种时刻（台账记的那次空闲页一度掉到 3.8k）。
+
+### 二 改法（`c0e98b87`，1 个文件 +75/−19）
+
+| 改动 | 内容 |
+| --- | --- |
+| 17 处协调等待 → 具名 `waitForCall` | 显式 `COORDINATION_WINDOW_MS = 30_000`（与仓规「加载敏感改显式 30s」同口径），窗口只住一处；vitest 的 60s per-test 超时仍是兜底 ⇒ **真挂起照旧响**（没有用大超时糊挂起） |
+| `afterEach` 的删除 → 有界重试 + 失败具名 | `ENOTEMPTY`/`EBUSY` 走重试（40×50ms，且**确认目录真的不在了**），其它错误照旧直抛；40 次仍不落地就**具名报出根路径**，不再让级联错误冒充用例自己的断言 |
+
+### 三 读数（全部实跑；数字取自最后一次改动之后）
+
+| 项 | 读数 |
+| --- | --- |
+| 修后单跑 | `Test Files 1 passed (1)` / **246 passed**、exit 0（22.4 s） |
+| **同一变异（窗口 1ms）复跑** | 仍 `14 failed`（变异照旧咬得住）而 **`ENOTEMPTY` 2 → 0** ⇒ 级联被收尾吸收、一次抖动不再读成两条红 |
+| 干净跑残留 | 每个用例的临时根 **0 个残留**（`ls -d "$TMPDIR"purescience-settings-service-* | wc -l` = 0） |
+| 负载下复跑 | 2 份并发 + 3 燃烧器：两份都 **246 passed**、exit 0 |
+| 受影响簇 | `npx vitest run src/main/settings --maxWorkers=2` ⇒ **87 passed / 1 skipped（88 文件）、1400 passed / 3 skipped**、exit 0 |
+| 双 typecheck | `typecheck:node` exit **0**；`typecheck:web` exit **0** |
+| lint / 格式 | `npx eslint --no-cache src/main/settings/service.test.ts` exit **0**；`prettier --check` 通过 |
+| 推前钩子 | `bash scripts/pre-push-checks.sh` ⇒ 推前在隔离工作树里跑，读退出码并记入下一轮 |
+
+### 四 边界与残留（不许读成更强）
+
+- **产品侧零改动**：这是**测试台**的修法。它杀掉的是一处 CI 噪声源 —— 本文件曾把一次全量跑读成 4 条红，其中 2 条就是上面的 `ENOTEMPTY` 级联。
+- **残留（本轮量到，具名立案）**：一个**被人为中止**的用例仍可能把它的临时根留在 tmpdir —— 写出方在删除之后又把目录建回来（实测：干净跑 **0** 个；把 14 条用例人为中止时 **5** 个）。它只在中止路径上可达、不产生红、**不是本单元引入**；根治要动 14 条用例的形状（各自捕获并 await 自己在飞的登录流），本轮不做。
+- **同族未收口（本轮只量、不改）**：`src/main/notebook/runtime-service.test.ts` **27 处 `vi.waitFor` 只有 1 处**带显式窗口、`src/main/notebook/provisioner.test.ts` **7 处全无**。这两处正被技能自己的 references 记为 Windows 车道的加载敏感来源。**一次改 27 处必须先逐条判「是不是协调等待」**（对真挂起加大超时是被明令禁止的收法），故单独立项、不与本单元混做。
+- 「`vi.waitFor` 默认 1s」是**跨文件的系统性口径**，不是某一个文件的缺陷：要收口就逐文件按同一条判据走 —— **在飞 promise 的确定性副作用 ⇒ 可放宽窗口；等不到就是缺陷 ⇒ 不许放宽**。
+
+### 五 具名未办 + 下一轮第一步
+
+1. **v2.5.0 发版**：`blocked-by` = **会话**（它在 `/private/tmp/ps-rel` 里做，Release 页尚未出现）⇒ 执行器动作：不碰那四个文件、不打 tag；本单元的推送只影响主干车道（tag 车道的并发组是 `release-<ref>`，主干推送**不会**取消它）。
+2. **同族窗口收口**（§四 第三条）：`blocked-by` = 无，但需**逐条判据**；估一个工作窗口。
+3. **中止用例的临时根**（§四 第二条）：`blocked-by` = 无；改法要动 14 条用例。
+4. **下一轮第一步**：① 读本轮提交（`c0e98b87`）与推送后的判决（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；② `git fetch` + `git status --short`：看会话是否已推 v2.5.0 的 tag 与 Release 页（页出现前**不要**做任何发版动作）；③ 未闭项按 §五 2 → 3 的顺序取（先做两个文件里 34 处 `vi.waitFor` 的**逐条判据**，再动刀）。
