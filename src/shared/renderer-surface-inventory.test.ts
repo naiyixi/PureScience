@@ -199,7 +199,9 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
     'cancel-codex-login',
     'cancel-custom-server-authentication',
     'cancel-isolated-claude-login',
+    'download-local-parsing-model',
     'function-models',
+    'get-local-parsing-models',
     'skill-availability',
     'install-claude',
     'install-codebuddy',
@@ -320,7 +322,9 @@ describe('renderer surface inventory', () => {
     // preload inventory and the catalog move together. 2026-10-14: +2 for the plugin creator (specialist:plugin-source-preview / -cancel), added to preload, catalog and renderer-api.d.ts in one step — the three places a channel has to exist for the window to see it.
     // 482 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, and it has no Web
     // channel, so it also joins the generator-omission list above.
-    expect(electronPaths).toHaveLength(483)
+    // 485 with the local parsing models (settings.getLocalParsingModels / downloadLocalParsingModel):
+    // one preload method per contract, so the preload inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(485)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -332,7 +336,7 @@ describe('renderer surface inventory', () => {
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
     // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
     // channel.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(370)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(372)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -372,7 +376,9 @@ describe('renderer surface inventory', () => {
     // is refused on the remote surface and counted in the fail-closed set.
     // 128 with the window's PDF translation entry (pdf:translation, LOCAL): one more local-only channel
     // in the fail-closed set.
-    expect(expectedRemoteLocalOnly).toHaveLength(129)
+    // 131 with the local parsing models: both are local-only Web commands, so they are refused on the
+    // remote surface and counted in the fail-closed set.
+    expect(expectedRemoteLocalOnly).toHaveLength(131)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

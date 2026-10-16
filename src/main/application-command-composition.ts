@@ -186,7 +186,11 @@ const GROUP_COUNT = 40
 // +1 internal and +1 local Web for the goals panel's read-only channel (goal:list-all, LOCAL), and
 // +1 on the remote rejections: a reader with no session context still only ever reads, and a paired
 // browser has no business enumerating what this machine's sessions are pursuing.
-const INTERNAL_COMMAND_COUNT = 364
+// +2 each on internal and local Web, and +2 on the remote rejections, for the local parsing models
+// (settings:get-local-parsing-models / settings:download-local-parsing-model, LOCAL): which models are
+// present on THIS machine, and pulling one onto it, are local-only by nature — a paired browser does not
+// get to enumerate or fetch this host's model assets — so the remote dispatch count stays where it is.
+const INTERNAL_COMMAND_COUNT = 366
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -196,7 +200,7 @@ const INTERNAL_COMMAND_COUNT = 364
 // skill writes it sits beside, so it lands on both Web surfaces and not in the fail-closed set.
 // One more for verifying a recorded reading (artifacts:verify-reading): same profile again — a plain
 // Web request channel, counted on both Web surfaces and not in the fail-closed set.
-const LOCAL_WEB_COMMAND_COUNT = 362
+const LOCAL_WEB_COMMAND_COUNT = 364
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 const REMOTE_WEB_COMMAND_COUNT = 233
@@ -204,7 +208,7 @@ const REMOTE_WEB_COMMAND_COUNT = 233
 // the fail-closed set instead of the remote dispatch count.
 // +1 for the window's PDF translation entry (pdf:translation): local-only, so it lands in the fail-closed
 // set instead of the remote dispatch count.
-const REMOTE_REJECTED_COMMAND_COUNT = 129
+const REMOTE_REJECTED_COMMAND_COUNT = 131
 const TASK_COMMAND_COUNT = 11
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
