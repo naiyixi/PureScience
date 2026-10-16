@@ -24,6 +24,23 @@ import {
 } from './http-server'
 import { TaskApiError } from './task-api'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a request handler reached, a spy called, an abort signal flipped, a socket
+ * released), never for something that may never happen. The only thing the window has to cover is how
+ * long a loaded machine takes to schedule that continuation -- so the default 1s is a quiet-machine
+ * budget, not a correctness budget. Measured on this repository: under load a coordinated wait took up
+ * to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the suite failed at ~1.1s under load
+ * average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const roots: string[] = []
 const servers: RunningWebServer[] = []
 const applicationEvents = new ApplicationEventHub()
@@ -167,7 +184,9 @@ describe('startWebHttpServer', () => {
     expect(directSignal.aborted).toBe(false)
     secondSocket.close()
     await new Promise<void>((resolve) => secondSocket.once('close', () => resolve()))
-    await vi.waitFor(() => expect(directSignal.aborted).toBe(true))
+    await vi.waitFor(() => expect(directSignal.aborted).toBe(true), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('releases its application-event subscription when listening fails', async () => {
@@ -422,31 +441,34 @@ describe('startWebHttpServer', () => {
       title: 'Run command',
       options: []
     })
-    await vi.waitFor(() => {
-      expect(publicMessages).toEqual([
-        {
-          type: 'run.event',
-          data: {
-            id: 'event-1',
-            timestamp: 1,
-            level: 'info',
-            sessionId: 'session-1',
-            kind: 'message',
-            text: 'Hi'
+    await vi.waitFor(
+      () => {
+        expect(publicMessages).toEqual([
+          {
+            type: 'run.event',
+            data: {
+              id: 'event-1',
+              timestamp: 1,
+              level: 'info',
+              sessionId: 'session-1',
+              kind: 'message',
+              text: 'Hi'
+            }
+          },
+          {
+            type: 'permission.requested',
+            data: {
+              sessionId: 'session-1',
+              requestId: 'permission-1',
+              toolCallId: 'tool-1',
+              title: 'Run command',
+              options: []
+            }
           }
-        },
-        {
-          type: 'permission.requested',
-          data: {
-            sessionId: 'session-1',
-            requestId: 'permission-1',
-            toolCallId: 'tool-1',
-            title: 'Run command',
-            options: []
-          }
-        }
-      ])
-    })
+        ])
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     publicSocket.close()
   })
 
@@ -739,8 +761,9 @@ describe('startWebHttpServer', () => {
         request.once('error', reject)
       })
       request.flushHeaders()
-      await vi.waitFor(() =>
-        expect(authorizeHttp).toHaveBeenCalledTimes(expectedAuthorizationCalls)
+      await vi.waitFor(
+        () => expect(authorizeHttp).toHaveBeenCalledTimes(expectedAuthorizationCalls),
+        { timeout: COORDINATION_WINDOW_MS }
       )
       authorizationGeneration += 1
       request.end(JSON.stringify(body))
@@ -1178,7 +1201,9 @@ describe('startWebHttpServer', () => {
     })
     expect(response.status).toBe(202)
     expect(await response.json()).toEqual({ ok: true })
-    await vi.waitFor(() => expect(onShutdownRequest).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onShutdownRequest).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('keeps shutdown local even when remote Browser access is authorized', async () => {
@@ -1543,9 +1568,12 @@ describe('startWebHttpServer', () => {
       request.end()
     })
 
-    await vi.waitFor(() => {
-      expect(cancelStream).toHaveBeenCalledOnce()
-      expect(tasks.releaseArtifact).toHaveBeenCalledWith('resource-disconnect')
-    })
+    await vi.waitFor(
+      () => {
+        expect(cancelStream).toHaveBeenCalledOnce()
+        expect(tasks.releaseArtifact).toHaveBeenCalledWith('resource-disconnect')
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
   })
 })

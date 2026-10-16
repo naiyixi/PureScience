@@ -10,6 +10,23 @@ import {
 } from '@/stores/preview-workbench-store'
 import { PreviewFileContent } from './PreviewFileContent'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for work the renderer has already
+ * started to surface (a canvas rasterized, a zoom label appearing, a viewer spy called with the
+ * expected arguments, a rendered note reaching its final text), never for something that may never
+ * happen. The only thing the window has to cover is how long a loaded machine takes to schedule that
+ * continuation -- so the default 1s is a quiet-machine budget, not a correctness budget. Measured on
+ * this repository: under load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site
+ * elsewhere in the suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const highlightSpy = vi.hoisted(() => vi.fn())
 const addModel = vi.fn()
 const setStyle = vi.fn()
@@ -257,7 +274,9 @@ describe('PreviewFileContent', () => {
       })
 
     await renderFile(createFileItem({ format: 'text', name: 'notes.txt' }))
-    await vi.waitFor(() => expect(container.textContent).toContain("File couldn't be read"))
+    await vi.waitFor(() => expect(container.textContent).toContain("File couldn't be read"), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const retry = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent?.trim() === 'Retry'
@@ -270,7 +289,9 @@ describe('PreviewFileContent', () => {
       await Promise.resolve()
     })
 
-    await vi.waitFor(() => expect(container.textContent).toContain('recovered preview'))
+    await vi.waitFor(() => expect(container.textContent).toContain('recovered preview'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(window.api.artifacts.readPreview).toHaveBeenCalledTimes(2)
     consoleError.mockRestore()
   })
@@ -363,13 +384,15 @@ describe('PreviewFileContent', () => {
 
     await renderFile(createFileItem({ format: 'code', name: 'analysis.py' }))
 
-    await vi.waitFor(() =>
-      expect(highlightSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'import pandas as pd',
-          language: 'python'
-        })
-      )
+    await vi.waitFor(
+      () =>
+        expect(highlightSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            code: 'import pandas as pd',
+            language: 'python'
+          })
+        ),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     const token = container.querySelector('[data-testid="source-code-token"]') as HTMLElement
     expect(token?.textContent).toBe('import')
@@ -388,13 +411,15 @@ describe('PreviewFileContent', () => {
 
     await renderFile(createFileItem({ format: 'code', name: 'plot.r' }))
 
-    await vi.waitFor(() =>
-      expect(highlightSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'library(ggplot2)',
-          language: 'r'
-        })
-      )
+    await vi.waitFor(
+      () =>
+        expect(highlightSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            code: 'library(ggplot2)',
+            language: 'r'
+          })
+        ),
+      { timeout: COORDINATION_WINDOW_MS }
     )
   })
 
@@ -408,7 +433,9 @@ describe('PreviewFileContent', () => {
 
     await renderFile(createFileItem({ format: 'code', name: 'analysis.py' }))
 
-    await vi.waitFor(() => expect(highlightSpy).toHaveBeenCalled())
+    await vi.waitFor(() => expect(highlightSpy).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(container.textContent).toContain('print("fresh")')
     expect(container.textContent).not.toContain('print("stale")')
     expect(container.querySelector('[data-testid="source-code-token"]')).toBeNull()
@@ -1119,21 +1146,27 @@ describe('PreviewFileContent', () => {
         click?.({ chain: 'A', resi: 1, resn: 'MET', icode: '' }, undefined, { shiftKey: false })
       })
       // The click handler hashes the content before publishing, so the chip appears a tick later.
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
-          'chain A residue 1'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+            'chain A residue 1'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       await act(async () => {
         click?.({ chain: 'A', resi: 2, resn: 'GLY', icode: '' }, undefined, { shiftKey: true })
       })
 
       // What the user sees on screen is exactly what a turn on this session would carry.
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
-          'chain A residues 1-2'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+            'chain A residues 1-2'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       const selection = usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
       expect(selection).toMatchObject({
         structureId: 'file-1',
@@ -1209,19 +1242,25 @@ describe('PreviewFileContent', () => {
       await act(async () => {
         click?.({ chain: 'A', resi: 1, resn: 'MET', icode: '' }, undefined, { shiftKey: false })
       })
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       // Whole chain: the extent comes from the atoms the viewer actually has.
       await act(async () => {
         container.querySelector<HTMLButtonElement>('[data-slot="structure-select-chain"]')?.click()
       })
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
-          'chain A (entire chain)'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+            'chain A (entire chain)'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       expect(
         usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
       ).toMatchObject({ kind: 'chain', chain: 'A', residueStart: 1, residueEnd: 9 })
@@ -1238,13 +1277,16 @@ describe('PreviewFileContent', () => {
       await act(async () => {
         container.querySelector<HTMLButtonElement>('[data-slot="structure-select-within"]')?.click()
       })
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
-          // The reference is whatever was selected when the radius query ran — here the whole chain
-          // (1-9), because that is the button the test pressed just before. The label says so.
-          '3 residues within 5 Å of chain A residue 1-9 (chains A, B)'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+            // The reference is whatever was selected when the radius query ran — here the whole chain
+            // (1-9), because that is the button the test pressed just before. The label says so.
+            '3 residues within 5 Å of chain A residue 1-9 (chains A, B)'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       expect(selectedAtoms).toHaveBeenCalledWith(
         expect.objectContaining({ within: expect.objectContaining({ distance: 5 }) })
       )
@@ -1313,11 +1355,14 @@ describe('PreviewFileContent', () => {
       })
 
       // 3-4-0 from the origin is exactly 5 Å, and the readout names both atoms.
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-measurement"]')?.textContent).toBe(
-          'MET1.CA — GLY2.CA: 5 Å'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-measurement"]')?.textContent).toBe(
+            'MET1.CA — GLY2.CA: 5 Å'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       expect(
         usePreviewWorkbenchStore.getState().activeStructureMeasurement(item.sessionId)
       ).toMatchObject({
@@ -1375,36 +1420,48 @@ describe('PreviewFileContent', () => {
 
       // A phrase that names a residue that exists: applied, and the parameter line says what ran.
       await typeInstruction('A 链 1 号甲硫氨酸')
-      await vi.waitFor(() => {
-        expect(
-          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
-        ).toBe('已执行 · 单残基：链 A 残基 1 (MET)')
-      })
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
-          'chain A residue 1'
-        )
-      })
+      await vi.waitFor(
+        () => {
+          expect(
+            container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+          ).toBe('已执行 · 单残基：链 A 残基 1 (MET)')
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')?.textContent).toBe(
+            'chain A residue 1'
+          )
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       // A phrase naming a residue this structure does not have: nothing is applied, and the reason is
       // on screen — no silent no-op and no "close enough" substitution.
       await typeInstruction('A 链 145 号半胱氨酸')
-      await vi.waitFor(() => {
-        expect(
-          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
-        ).toContain('未执行 · 链 A 上没有残基 145')
-      })
+      await vi.waitFor(
+        () => {
+          expect(
+            container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+          ).toContain('未执行 · 链 A 上没有残基 145')
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       expect(
         usePreviewWorkbenchStore.getState().activeStructureSelection(item.sessionId)
       ).toMatchObject({ residueStart: 1, residueEnd: 1 })
 
       // An unresolvable word is refused by the parser itself, with its own wording.
       await typeInstruction('A 链 1 号硒代半胱氨酸')
-      await vi.waitFor(() => {
-        expect(
-          container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
-        ).toContain('不在本模块的 20 种标准氨基酸表里')
-      })
+      await vi.waitFor(
+        () => {
+          expect(
+            container.querySelector('[data-slot="structure-instruction-note"]')?.textContent
+          ).toContain('不在本模块的 20 种标准氨基酸表里')
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
     })
 
     it('focuses the camera when the same residue is clicked twice (D1 camera/focus)', async () => {
@@ -1437,18 +1494,24 @@ describe('PreviewFileContent', () => {
       await act(async () => {
         click?.(residueOne, undefined, { shiftKey: false })
       })
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="structure-selection"]')).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       expect(zoomTo).not.toHaveBeenCalled()
 
       // The second click on the SAME residue (within the double-click window) focuses it.
       await act(async () => {
         click?.(residueOne, undefined, { shiftKey: false })
       })
-      await vi.waitFor(() => {
-        expect(zoomTo).toHaveBeenCalledWith({ chain: 'A', resi: 1 }, 600)
-      })
+      await vi.waitFor(
+        () => {
+          expect(zoomTo).toHaveBeenCalledWith({ chain: 'A', resi: 1 }, 600)
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
     })
   })
 

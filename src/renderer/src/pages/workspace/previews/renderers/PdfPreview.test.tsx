@@ -7,6 +7,23 @@ import { LanguageProvider } from '@/i18n'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
 import { PdfPreviewContent } from './PdfPreview'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for work the renderer has already
+ * started to surface (a canvas rasterized, a zoom label appearing, a viewer spy called with the
+ * expected arguments, a rendered note reaching its final text), never for something that may never
+ * happen. The only thing the window has to cover is how long a loaded machine takes to schedule that
+ * continuation -- so the default 1s is a quiet-machine budget, not a correctness budget. Measured on
+ * this repository: under load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site
+ * elsewhere in the suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 vi.mock('../managed-pdf-document', () => ({ createManagedPdfLoadingTask: vi.fn() }))
 
 describe('PdfPreviewContent', () => {
@@ -72,7 +89,9 @@ describe('PdfPreviewContent', () => {
       )
     })
     await act(async () => {
-      await vi.waitFor(() => expect(createManagedPdfLoadingTask).toHaveBeenCalled())
+      await vi.waitFor(() => expect(createManagedPdfLoadingTask).toHaveBeenCalled(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
 
     expect(window.api.previewResources.acquire).toHaveBeenCalledWith({
@@ -108,10 +127,12 @@ describe('PdfPreviewContent', () => {
       )
     })
     await act(async () => {
-      await vi.waitFor(() =>
-        expect(
-          container.querySelector<HTMLElement>('[data-page-number="1"]')?.style.aspectRatio
-        ).toBe('2 / 1')
+      await vi.waitFor(
+        () =>
+          expect(
+            container.querySelector<HTMLElement>('[data-page-number="1"]')?.style.aspectRatio
+          ).toBe('2 / 1'),
+        { timeout: COORDINATION_WINDOW_MS }
       )
     })
 
@@ -174,8 +195,9 @@ describe('PdfPreviewContent', () => {
       )
     })
     // At fit width (100%) the 400pt page backs the canvas at its own width.
-    await vi.waitFor(() =>
-      expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(400)
+    await vi.waitFor(
+      () => expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(400),
+      { timeout: COORDINATION_WINDOW_MS }
     )
 
     await act(async () => {
@@ -184,8 +206,9 @@ describe('PdfPreviewContent', () => {
     })
 
     // 125% zoom widens the page and re-rasterizes rather than upscaling the old bitmap.
-    await vi.waitFor(() =>
-      expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(500)
+    await vi.waitFor(
+      () => expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(500),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.textContent).toContain('125%')
     expect(container.querySelector<HTMLCanvasElement>('canvas')?.height).toBe(700)
@@ -213,7 +236,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/align.pdf" name="align.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // At fit width the pages column is centered.
     const column = container.querySelector('[data-page-number]')?.parentElement
@@ -225,10 +250,12 @@ describe('PdfPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')?.click()
       await Promise.resolve()
     })
-    await vi.waitFor(() =>
-      expect(container.querySelector('[data-page-number]')?.parentElement?.className).toContain(
-        'items-start'
-      )
+    await vi.waitFor(
+      () =>
+        expect(container.querySelector('[data-page-number]')?.parentElement?.className).toContain(
+          'items-start'
+        ),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.querySelector('[data-page-number]')?.parentElement?.className).not.toContain(
       'items-center'
@@ -257,7 +284,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/a11y.pdf" name="a11y.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // The inner scroller (parent of the measurement probe) owns overflow, so it must be reachable
     // by keyboard — the outer surface that gets focus is not the scrollable element.
@@ -291,7 +320,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/wide.pdf" name="wide.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const columnClass = (): string =>
       container.querySelector('[data-page-number]')?.parentElement?.className ?? ''
@@ -301,7 +332,9 @@ describe('PdfPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')?.click()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('125%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('125%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(columnClass()).toContain('items-center')
     expect(columnClass()).not.toContain('items-start')
 
@@ -310,7 +343,9 @@ describe('PdfPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')?.click()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('150%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('150%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(columnClass()).toContain('items-center')
 
     // 175% (768*1.75 = 1344px) overflows the 1200px pane → now left-aligns.
@@ -318,7 +353,9 @@ describe('PdfPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')?.click()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('175%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('175%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(columnClass()).toContain('items-start')
     expect(columnClass()).not.toContain('items-center')
 
@@ -361,7 +398,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/wheel.pdf" name="wheel.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // The scroll container owns the wheel listener; it is the parent of the measurement probe.
     const scroll = container.querySelector<HTMLElement>('[aria-hidden="true"]')?.parentElement
@@ -389,7 +428,9 @@ describe('PdfPreviewContent', () => {
       flushFrame()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('150%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('150%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // The Cmd (metaKey) branch also zooms: deltaY +100 * 0.0025 = -0.25 (150% -> 125%).
     await act(async () => {
@@ -399,7 +440,9 @@ describe('PdfPreviewContent', () => {
       flushFrame()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('125%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('125%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     clientWidthSpy.mockRestore()
   })
@@ -439,7 +482,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/first.pdf" name="first.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const scroll = container.querySelector<HTMLElement>('[aria-hidden="true"]')?.parentElement
     // Queue a Ctrl+wheel zoom but do NOT flush the frame yet.
@@ -491,13 +536,17 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/first.pdf" name="first.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBe(400), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Zoom in"]')?.click()
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(container.textContent).toContain('125%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('125%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // The Files-tab dialog swaps the file in place (same component instance, no remount / key).
     await act(async () => {
@@ -507,7 +556,9 @@ describe('PdfPreviewContent', () => {
     })
 
     // The new file must open fit-to-width, not inherit the previous document's zoom.
-    await vi.waitFor(() => expect(container.textContent).toContain('100%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('100%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(container.textContent).not.toContain('125%')
 
     clientWidthSpy.mockRestore()
@@ -548,7 +599,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/resize.pdf" name="resize.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(getPage).toHaveBeenCalledTimes(1)
     expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(400)
 
@@ -559,7 +612,9 @@ describe('PdfPreviewContent', () => {
       resizeCallbacks[0]?.([] as unknown as ResizeObserverEntry[], {} as ResizeObserver)
       await Promise.resolve()
     })
-    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(render).toHaveBeenCalledTimes(2), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(getPage).toHaveBeenCalledTimes(1)
     expect(container.querySelector<HTMLCanvasElement>('canvas')?.width).toBe(600)
     expect(container.querySelector<HTMLElement>('[data-page-number="1"]')?.style.width).toBe(
@@ -573,10 +628,12 @@ describe('PdfPreviewContent', () => {
       resizeCallbacks[0]?.([] as unknown as ResizeObserverEntry[], {} as ResizeObserver)
       await Promise.resolve()
     })
-    await vi.waitFor(() =>
-      expect(container.querySelector<HTMLElement>('[data-page-number="1"]')?.style.width).toBe(
-        '300px'
-      )
+    await vi.waitFor(
+      () =>
+        expect(container.querySelector<HTMLElement>('[data-page-number="1"]')?.style.width).toBe(
+          '300px'
+        ),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(getPage).toHaveBeenCalledTimes(1)
     // Displayed width is responsive (300px), while the backing store never drops below the page's
@@ -609,7 +666,9 @@ describe('PdfPreviewContent', () => {
       )
     })
     await act(async () => {
-      await vi.waitFor(() => expect(container.querySelector('canvas')?.height).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(container.querySelector('canvas')?.height).toBeGreaterThan(0), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
 
     const canvas = container.querySelector<HTMLCanvasElement>('canvas')
@@ -644,7 +703,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/hidpi.pdf" name="hidpi.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // Zoom to 175% (100 -> 125 -> 150 -> 175 via three button steps).
     for (let i = 0; i < 3; i += 1) {
@@ -653,7 +714,9 @@ describe('PdfPreviewContent', () => {
         await Promise.resolve()
       })
     }
-    await vi.waitFor(() => expect(container.textContent).toContain('175%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('175%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const width = container.querySelector<HTMLCanvasElement>('canvas')?.width ?? 0
     // Backing reaches the physical on-screen pixels (~2688), well past the old 2380 (4x) ceiling,
@@ -689,7 +752,9 @@ describe('PdfPreviewContent', () => {
         <PdfPreviewContent path="/workspace/deep.pdf" name="deep.pdf" source="artifact" />
       )
     })
-    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0))
+    await vi.waitFor(() => expect(container.querySelector('canvas')?.width).toBeGreaterThan(0), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // Zoom to the 300% max (eight 25% button steps).
     for (let i = 0; i < 8; i += 1) {
@@ -698,7 +763,9 @@ describe('PdfPreviewContent', () => {
         await Promise.resolve()
       })
     }
-    await vi.waitFor(() => expect(container.textContent).toContain('300%'))
+    await vi.waitFor(() => expect(container.textContent).toContain('300%'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const width = container.querySelector<HTMLCanvasElement>('canvas')?.width ?? 0
     // Scale is capped at 5 → 595*5 = 2975, below the ~3443 the area clamp alone would permit.
@@ -997,7 +1064,7 @@ describe('PdfPreviewContent', () => {
     })
     // Wait until rasterization is in flight so the render task exists to be canceled.
     await act(async () => {
-      await vi.waitFor(() => expect(render).toHaveBeenCalled())
+      await vi.waitFor(() => expect(render).toHaveBeenCalled(), { timeout: COORDINATION_WINDOW_MS })
     })
 
     await act(async () => root.unmount())
@@ -1040,8 +1107,9 @@ describe('PdfPreviewContent', () => {
       await Promise.resolve()
     })
     await act(async () => {
-      await vi.waitFor(() =>
-        expect(container.querySelectorAll('[data-slot="pdf-text-span"]')).toHaveLength(2)
+      await vi.waitFor(
+        () => expect(container.querySelectorAll('[data-slot="pdf-text-span"]')).toHaveLength(2),
+        { timeout: COORDINATION_WINDOW_MS }
       )
     })
 
@@ -1212,13 +1280,15 @@ describe('PdfPreviewContent annotations', () => {
     await renderPreview()
 
     // The window names the version; it never names a checksum.
-    await vi.waitFor(() =>
-      expect(annotations.list).toHaveBeenCalledWith({
-        projectId: 'project-1',
-        sessionId: 'session-1',
-        artifactId: 'artifact-1',
-        versionId: 'version-1'
-      })
+    await vi.waitFor(
+      () =>
+        expect(annotations.list).toHaveBeenCalledWith({
+          projectId: 'project-1',
+          sessionId: 'session-1',
+          artifactId: 'artifact-1',
+          versionId: 'version-1'
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
 
     await act(async () => {
@@ -1234,21 +1304,23 @@ describe('PdfPreviewContent annotations', () => {
       await Promise.resolve()
     })
 
-    await vi.waitFor(() =>
-      expect(annotations.create).toHaveBeenCalledWith({
-        projectId: 'project-1',
-        sessionId: 'session-1',
-        artifactId: 'artifact-1',
-        versionId: 'version-1',
-        kind: 'area',
-        selector: {
-          version: 1,
-          shape: 'area',
-          page: 1,
-          rect: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 }
-        },
-        body: ''
-      })
+    await vi.waitFor(
+      () =>
+        expect(annotations.create).toHaveBeenCalledWith({
+          projectId: 'project-1',
+          sessionId: 'session-1',
+          artifactId: 'artifact-1',
+          versionId: 'version-1',
+          kind: 'area',
+          selector: {
+            version: 1,
+            shape: 'area',
+            page: 1,
+            rect: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 }
+          },
+          body: ''
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.querySelector('[data-testid="pdf-annotation-status"]')?.textContent).toBe(
       'Annotation saved'
@@ -1294,22 +1366,24 @@ describe('PdfPreviewContent annotations', () => {
       await Promise.resolve()
     })
 
-    await vi.waitFor(() =>
-      expect(annotations.create).toHaveBeenCalledWith({
-        projectId: 'project-1',
-        sessionId: 'session-1',
-        artifactId: 'artifact-1',
-        versionId: 'version-1',
-        kind: 'highlight',
-        selector: {
-          version: 1,
-          shape: 'text-range',
-          page: 1,
-          rects: [{ x: 0.2667, y: 0.1625, width: 0.5, height: 0.025 }],
-          quote
-        },
-        body: ''
-      })
+    await vi.waitFor(
+      () =>
+        expect(annotations.create).toHaveBeenCalledWith({
+          projectId: 'project-1',
+          sessionId: 'session-1',
+          artifactId: 'artifact-1',
+          versionId: 'version-1',
+          kind: 'highlight',
+          selector: {
+            version: 1,
+            shape: 'text-range',
+            page: 1,
+            rects: [{ x: 0.2667, y: 0.1625, width: 0.5, height: 0.025 }],
+            quote
+          },
+          body: ''
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
   })
 
@@ -1425,7 +1499,9 @@ describe('PdfPreviewContent annotations', () => {
     const panel = container.querySelector('[data-testid="pdf-annotation-panel"]')
     expect(panel).not.toBeNull()
     // The annotation is listed with the version it belongs to, and named as changed — never dropped.
-    await vi.waitFor(() => expect(panel?.textContent).toContain('version-0'))
+    await vi.waitFor(() => expect(panel?.textContent).toContain('version-0'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(panel?.querySelectorAll('[data-testid="pdf-annotation-item"]')).toHaveLength(1)
 
     await act(async () => {
@@ -1433,18 +1509,22 @@ describe('PdfPreviewContent annotations', () => {
       await Promise.resolve()
     })
 
-    await vi.waitFor(() =>
-      expect(annotations.import).toHaveBeenCalledWith({
-        projectId: 'project-1',
-        sessionId: 'session-1',
-        artifactId: 'artifact-1',
-        versionId: 'version-1'
-      })
+    await vi.waitFor(
+      () =>
+        expect(annotations.import).toHaveBeenCalledWith({
+          projectId: 'project-1',
+          sessionId: 'session-1',
+          artifactId: 'artifact-1',
+          versionId: 'version-1'
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
-    await vi.waitFor(() =>
-      expect(
-        container.querySelector('[data-testid="pdf-annotation-import-status"]')?.textContent
-      ).toBe('This PDF carries no annotations')
+    await vi.waitFor(
+      () =>
+        expect(
+          container.querySelector('[data-testid="pdf-annotation-import-status"]')?.textContent
+        ).toBe('This PDF carries no annotations'),
+      { timeout: COORDINATION_WINDOW_MS }
     )
   })
 
