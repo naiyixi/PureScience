@@ -111,7 +111,13 @@ const readRoots = () => {
     // deliberately is NOT one of them — a command that needs it works without naming an absolute path
     // (and the guard only judges paths a tool input actually spells out), while allowing it would open
     // every other process's scratch files.
-    return { roots: resolved.map(realPath), hint: typeof parsed.hint === 'string' ? parsed.hint : '' }
+    // 「roots」是**真正强制**的那一份（realpath 之后：Windows 上短名 RUNNER~1 会展开成长名，macOS 通常不变）；
+    // 「displayed」是**配置里写的那个写法**。拒答要把两者都给出来，否则读者会以为自己配错了地方。
+    return {
+      roots: resolved.map(realPath),
+      displayed: resolved,
+      hint: typeof parsed.hint === 'string' ? parsed.hint : ''
+    }
   } catch {
     // No readable roots file: allow (see the module comment). Not being able to load the fence must
     // never break a turn.
@@ -254,9 +260,13 @@ const main = () => {
     // 拒答必须说它实际强制的范围：打包版近 7 天的日志里，这句话把 hint（数据根）称作「项目文件夹本身」，
     // agent 于是去数据根里找项目文件 —— 紧接着就是 3 条「File does not exist. Note: your current working
     // directory is …」。守卫允许的是**这几个根**；hint 只是「从这里开始找」。
-    const allowedRoots = loaded.roots.join(', ')
+    const allowedRoots = (loaded.displayed.length > 0 ? loaded.displayed : loaded.roots).join(', ')
+    // 解析结果与配置写法不同（Windows 的短名就是这种情况）⇒ **把两层都写出来**，不隐藏这层变换。
+    const resolvedNote = loaded.displayed.some((root, index) => root !== loaded.roots[index])
+      ? ' (resolved: ' + loaded.roots.join(', ') + ')'
+      : ''
     const reason =
-      'Refused: ' + absolute + ' is outside this project scope. Allowed roots: ' + allowedRoots +
+      'Refused: ' + absolute + ' is outside this project scope. Allowed roots: ' + allowedRoots + resolvedNote +
       '; start from ' + JSON.stringify(loaded.hint || ${JSON.stringify(primaryHint)}) + '; ' +
       'to reach another folder, ask the user to attach it to the project instead of searching the machine.'
     record({ tool: toolName, target, resolved: absolute, decision: 'deny' })
