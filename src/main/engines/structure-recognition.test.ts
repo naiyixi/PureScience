@@ -1,3 +1,5 @@
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -44,7 +46,8 @@ describe('resolveStructureRecognitionScript', () => {
       { resourcesPath: '/tmp/ps-test/resources' },
       {} as NodeJS.ProcessEnv
     )
-    expect(packaged.endsWith('engines/structure_recognition.py')).toBe(true)
+    // 用 join 构造后缀：Windows 上 join 出来的是反斜杠，硬写 '/' 只有 Windows 会红（CI 抓到的正是这个）。
+    expect(packaged.endsWith(join('engines', 'structure_recognition.py'))).toBe(true)
   })
 })
 
@@ -67,7 +70,8 @@ describe('resolveEnginePython', () => {
       {} as NodeJS.ProcessEnv
     )
     expect(
-      molscribe === undefined || molscribe.endsWith('structure-recognition-molscribe/bin/python')
+      molscribe === undefined ||
+        molscribe.endsWith(join('structure-recognition-molscribe', 'bin', 'python'))
     ).toBe(true)
   })
 })
