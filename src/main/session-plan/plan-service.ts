@@ -547,10 +547,15 @@ class PlanService {
           )
         )
         .map((priorPhase) => `"${priorPhase.name}"`)
+      // Say which one to do FIRST, not only which ones are unfinished: a refusal that lists three
+      // prerequisites still leaves the caller choosing, and the recorded data shows it then retried the same
+      // change (26 calls in 7 days on the installed build).
+      const firstMissing = missingSteps[0] ?? missingPhases[0]
       const reasons = [
         missingSteps.length > 0
           ? `earlier steps in this delegation are not finished: ${missingSteps.join(', ')}`
           : undefined,
+        firstMissing === undefined ? undefined : `start with ${firstMissing} first`,
         missingPhases.length > 0
           ? `earlier phases are not finished: ${missingPhases.join(', ')}`
           : undefined,
