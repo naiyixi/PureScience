@@ -49,7 +49,9 @@
 **已完成（别再重做）**：**门禁：launcher 目录的类型与解析门（执行器，2026-10-16，§一百七十）**——
 `tsconfig.node.json` 收 `scripts/**`+`cli/**`+`packages/**`（7 条既有类型错已修）+ 新门
 `scripts/check-script-entrypoints.mjs`（`node --check` 覆盖 53 个 `.mjs`/`.cjs`，进推前钩子第 7 段）；
-**这一条不许重做**：`scripts|cli|packages|build` 现在都在门里了· R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
+**这一条不许重做**：`scripts|cli|packages|build` 现在都在门里了· **门禁：推前钩子第 8 段（本次推送
+新增/修改文件的 lint，与 CI 同一 linter、缓存关闭）+ 钩子自证测试（执行器，2026-10-16，`fd495d62`，§一百七十一）**
+——这一条也不许重做：钩子现在有 8 段，且段清单/「hard fail 必须真能拒掉推送」由 `scripts/pre-push-checks.test.ts` 钉住· R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
 U3 筛选/统计面（`8b074459`）· 面板 DOM + 筛选控件读数（`c4ef3189`/`fc21385c`）·
 U4 别名合并 + `displayName`（`f0b0e218`）· 导入侧真机读数（`d1a96860`）·
 指标导入界面 9 语种 + 摘除 agent-only 登记（`ed9fc653`）· 主色对齐 `#4D6BFE`（`d202b18e`）·
@@ -7866,6 +7868,8 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 | 按人的方式跑入口（上一轮的教训） | `npm run check:script-entrypoints` exit 0；`node cli/index.mjs --help` **exit 0**（打出 `Usage: purescience <command> [options]`）；`node packages/purescience/cli.mjs --help` **exit 0** |
 | 全量 vitest | `npx vitest run --maxWorkers=4` ⇒ **1312 files passed / 16 skipped（1328）**、**16777 passed / 207 skipped（16984）**、**exit 0**（09:40 起 711.3s；完整输出落 `/tmp/full-vitest-1016b.log`）。比上一轮多 1 个文件 / 11 条用例 —— 其中**本单元新增的是 1 个文件 / 4 条用例**；其余差值来自同树里并发会话的未提交在制品（**全量跑的是工作树，不是某个提交**，归属按 `git status` 认领） |
 
+| CI 判决（本笔 `70a6e341`） | **双绿，不是推断**：`Windows Full Test` run `38837649994` **success**（**8 个分片全 success** —— 跨平台那一半就是它给的：新用例里那句「点名文件」的断言与输出路径的正斜杠规范化在 Windows 上也成立）；`Nightly` run `38837650004` **success**（`Verify (lint + typecheck + test + package)` success ⇒ **CI 里真跑了新纳入的三个目录的类型检查与那 4 条新用例**；四平台 build success，含 macos-arm64 那个带 P0 认证的长步；`publish` success）。判决文件 `/tmp/ci-verdict.txt` 末三行 = `=== 全部目标车道已落定（第 60 次轮询） ===` / `Nightly|completed|success` / `Windows Full Test|completed|success`。推前现查在飞车道：**无** run 在跑 ⇒ 本次推送没有取消任何人的判决 |
+
 ### 四 边界（不许读成更强）
 
 - 这道门验的是**能不能被 Node 解析/链接**，**不验**「这个脚本跑起来行为对不对」。上一轮 `--help`/离线 `--spec`/具名拒绝那三条才是行为那一半，它们住在 `publish-model-weights.test.ts` 里；本单元**没有**给其余 52 个 launcher 各写行为用例（那是 52 个不同故事，不是一道门的事）。
@@ -7877,3 +7881,141 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 
 - 全量：**1312 files passed / 16 skipped（1328）**、**16777 passed / 207 skipped（16984）**、**exit 0**（711.3s，完整输出 `/tmp/full-vitest-1016b.log`）⇒ 本单元以「全量绿」收口。
 - **下一轮第一步**：① `git fetch` + `git status` + `git log --oneline origin/main -6` —— 看并发会话是否已把 `preload` 那批落定（落定 ⇒ **v2.5.0 U2 第三片的界面那一半**，并进既有设置载荷、不新开通道；未落定 ⇒ 继续取台账项）；② 本轮推的是**主干**，判决要挂到**本轮的提交 SHA** 上（`/tmp/ci-verdict-<sha8>.txt`，判据是 `=== 全部目标车道已落定 ===` 与逐条 `名|completed|success`）；③ 起真机/e2e 前先 `vm_stat`（本轮读数 4115 空闲页 / swap 9.83 G）。
+
+## 一百七十一、本轮追加（执行器，2026-10-16 13:0x–）—— 推前钩子补第 8 段（本次推送新增文件的 lint）+ 钩子自证
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = `7fd2c66f`（会话 12:05 的 U3 方案，纯 docs）；本地与远端一致，`git log --oneline origin/main..HEAD` 为空。
+- **v2.5.0 剩余项已被会话书面认领**：`docs/plan-2026-10-16-u3-parsing-model-fetch.md` 首行即「（会话认领，2026-10-16）」，该档 §二/§四 写明它要动 `ProvidersPanel.tsx` 那一区、9 语字典与设置载荷 ⇒ **U3 不是本执行器的单元**，本轮一个字都没碰这些面（也没碰 U2 第三片的界面那一半）。
+- 树上 10 个改动**仍是并发会话的在制品**（`src/main/specialist/**`、`src/preload/index.ts`、`src/preload/renderer-api.d.ts`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`，mtime 停在 10-15 14:4x）⇒ 本单元一个字节没碰。
+- 上一轮（`70a6e341`）判决已取：`Windows Full Test` run `38837649994` / `Nightly` run `38837650004` 均 **success**（判决文件 `/tmp/ci-verdict.txt` 第 60 次轮询落定）；会话的 `cb83fa18` 两条车道也已 success ⇒ **主干绿**，本轮取新单元。
+- 内存闸门（现取，不照抄）：**空闲物理页 8667（≈135 MB）**、swap 已用 **9.93 G / 11.26 G**（本机另有用户常驻 headless dev 实例跑了 15h+）⇒ 真机/Electron 取证**关闭**。台账其余项都要真算力主机 + 真后台投递（IC40/IC6）或外部条件（中文源四家）⇒ 本轮取**离线可判**的自拟单元。
+
+### 一 缺口核实（先量再选路；顺手关掉四条「以为缺、其实已覆盖」的）
+
+| 候选 | 核实结论（读源 + 实测） |
+| --- | --- |
+| Windows `database` 旁路那条红（`578bb6e8` 5/8：`readModelWeightManifestFile('/Users')`） | **早已修**（`662fb545`）。本轮取那次作业级日志原文复核：`AssertionError: expected { state: 'absent', path: '/Users' } …`、同作业 `Duration 188.16s（tests 133.20s）` ⇒ 归因（断言写的是宿主机）成立、修复已在链上 |
+| README 的连通器计数会不会手抄漂移 | **已有读源守卫**（`src/main/connectors/readme-connector-count.test.ts`）⇒ 不新建第二套 |
+| `check:web-api-map` / `check:claude-acp-patch` / `check:cli-package` 是否存在「存在却没人跑」 | 三条都有人跑：前者由 `src/renderer/web/api-map.generated.test.ts` **真跑子进程** + pr-gate；`check:claude-acp-patch` 在 `postinstall`（`npm ci` 当场拦）；`check:cli-package` 在 `build.yml` 的 Verify 与 pr-gate ⇒ **没有孤儿门禁**，不新增 |
+| 53 个 launcher 的相对导入是否可解析 | 静态探针：**29 条相对 import 描述符 / 0 条指向不存在的文件** ⇒ 不为此新增门 |
+| 全仓 lint 的直接成本（新段的量法） | `npx eslint --no-cache .` ⇒ **0 error / 132 warning、exit 0、4:59（299 s）** |
+
+⇒ 单元来自最后一行：CI 的 `Verify` **先跑 lint**，一个 error 就让该作业红、下游打包与平台认证作业**全部 skipped**；而推前钩子此前**没有 lint**（仓规自己记着：「全量单测 + 双 typecheck + pre-push」这套集合里没有 lint）。补上它，且在**推的那一刻**补。
+
+### 二 交付（`fd495d62`，2 文件 / +119 行）
+
+| # | 文件 | 改了什么 |
+| --- | --- | --- |
+| ① | `scripts/pre-push-checks.sh` | 新第 8 段（硬失败）：对 `origin/main...HEAD` 里本次**新增/修改**的 `.ts/.tsx/.mjs/.cjs/.js/.jsx` 跑 `npx eslint --no-cache`（与 CI 同一 linter、缓存关闭）；失败时打印 **eslint 原文**（文件:行:列 + 规则名）并 `FAIL=1`；头部清单补第 8 条 |
+| ② | `scripts/pre-push-checks.test.ts`（新） | 钩子自证 3 条：① 头部清单 **=** 实际段（逐号、逐条、非空）；② 每段必须标 `(hard fail)` 或 `(soft)`，没有第三种；③ **标了 hard fail 的段体内必须有 `FAIL=1`**（否则它拒不掉推送），soft 段必须只置 `WARN=1` 且不含 `FAIL=1`。扫描自带下限（段数 ≥ 8、脚本体 ≥ 3500 字符）⇒ 正则失配必须红，不许静默通过 |
+
+**为什么不做全仓**（量法即边界）：全仓 **4:59** 太慢；更关键的是 `eslint .` lint 的是**工作树**——共享树里别人未提交的在制品会连带拒掉一次 **CI 本来会接受**的推送。⇒ 本段只裁「这次推送让那条车道首次看见的文件」；全仓那半留在发布门禁与 CI 自己。
+
+**为什么自证第 ③ 条不是过苛**：仓规写着「不留『看起来在守、其实从未通过』的门」——只 `warn` 却自称门禁的段与真门禁**完全同形**（都打印 ✓、都放行）。这条把差别钉在段体上（`FAIL=1` / `WARN=1`）。
+
+### 三 门禁读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 语法 | `bash -n scripts/pre-push-checks.sh` ⇒ exit 0 |
+| 钩子真跑 | `bash scripts/pre-push-checks.sh` ⇒ **exit 0、8 段全绿、real 20.7 s**（第 8 段：`✓ 1 个文件通过（1 problem）`；`.sh` 不在 lint glob 里，所以 1 个文件是准确的） |
+| 钩子 · **变异证明** | 临时分支放一个真 lint error（`let value = 1` 未再赋值）⇒ **exit 1**，逐字打印 `/…/scripts/tmp-lint-mutation.ts 1:5 error 'value' is never reassigned. Use 'const' instead prefer-const` + `✗ 本次推送引入 lint 错误（…）`。清理后：`git status` 与开工前**逐字相同**（`diff` 为空）、`HEAD` 回到 `fd495d62`、临时分支 ref 已删、临时文件不存在、钩子复跑 exit 0 |
+| 钩子自证用例 | `npx vitest run scripts/pre-push-checks.test.ts` ⇒ **3 passed**；连 `test/vitest-project-partition.test.ts` 一起 **2 files / 17 passed** |
+| 本单元文件 lint | `npx eslint --no-cache scripts/pre-push-checks.test.ts` ⇒ **0 error / 0 warning**（首版有 1 条 prettier warning，已 `--write` 并 amend 进同一笔 —— 不把 warning 留在自己新增的文件里，也不为它多留一笔提交） |
+| 类型检查（node） | `NODE_OPTIONS=--max-old-space-size=4096 npm run typecheck:node` ⇒ 见 §五 |
+| 全量 vitest | 见 §五 |
+
+### 四 边界（不许读成更强）
+
+- 第 8 段**不等于** CI 的全仓 lint：它只看本次推送范围里的文件。本段成立的前提**本轮实测过**（主干此前就是 0 error / 132 warning）；若有人用 `--no-verify` 绕过钩子把错误推上去，本段不会发现它 —— 全仓那一半只在发布门禁与 CI 里。
+- 第 8 段只覆盖 **lint**。`typecheck` 与测试仍是**纪律项**（按仓规手工全跑），不进钩子：两者各自 5 分钟以上，且 CI 的 Verify 已覆盖。
+- 钩子自证测的是**钩子自己的形状**（清单一致、hard/soft 属实），不测各段语义对不对 —— 各段的语义由它们各自的门/用例负责。
+- 本单元**不占版本号**：纯门禁/工具链改动（仓规：纯文档/测试/工具链改动不占补丁号）。
+
+### 五 全量读数与下一轮第一步
+
+- `typecheck:node`（`NODE_OPTIONS=--max-old-space-size=4096 npm run typecheck:node`）⇒ **exit 0**（本单元新文件在 `scripts/**`，已随上一轮进 `tsconfig.node.json` 的 include ⇒ 它真被类型检查过）。
+- 全量 vitest（`npx vitest run --maxWorkers=4`）⇒ **1329 文件（1313 passed / 16 skipped）、16779 passed / 207 skipped**，`Duration 961.77s`，**1 文件 4 条红**（完整输出 `/tmp/full-vitest-1016c.log`）。**四条红全部落在 `src/main/settings/service.test.ts`，与本单元文件不相交**：
+  - 两条是 `vi.waitFor` **1 秒窗口**的加载敏感（`service.test.ts:5934`/`:6505`/`:6533`/`:6696`，`expected "vi.fn()" to be called 1|2 times, but got 0|1`）—— 本次跑时**我自己的全仓 eslint 与它并发**、空闲页一度掉到 3.8k；
+  - 两条是**收尾竞态**：`Error: ENOTEMPTY: directory not empty, rmdir '…/purescience-settings-service-<随机>/claude/skills'` —— 用例没有 await 那条 login 流（`const login = service.loginClaudeShared()` 之后直接 `finishProbe?.()`），`afterEach` 的 `rm` 与它赛跑。
+  - **该文件单文件连跑 3 遍：`246 passed` ×3、exit 0 ×3**（`/tmp/settings-run-{1,2,3}.log`）⇒ 按**加载抖动**记档、**不当本单元的回归**；**也不写成本单元引入**（它是既有的加载敏感/收尾竞态形状）。
+- **具名未办（每条带 blocked-by 与解封条件）**：
+  1. **`src/main/settings/service.test.ts` 的加载敏感半（`vi.waitFor` 1s 窗口）与收尾竞态半（`ENOTEMPTY …/claude/skills`）** —— `blocked-by`：**无外部依赖**，但需要一次「加载下的复现」才能判修法有效（本轮的复现是与我自己的全仓 eslint 撞出来的）。两半修法不同：窗口半对齐到本仓的加载敏感口径；竞态半要么在 `afterEach` 前 await 那条 login 流，要么有界重试 + 失败仍具名。**本轮不改**（一改就要跑全量判有效性，且不猜着改）。
+  2. **Windows `database` 旁路那条间歇红** —— `blocked-by` 与 §三十 相同（本机没有 Windows 文件锁语义、无复现）。本轮**新增**一条对照读数：5/8 那条红（`578bb6e8`）实为 `662fb545` 已修的**断言宿主依赖**，**不再是活缺口**。
+  3. **v2.5.0 U3** —— `blocked-by` = **会话认领**（不是阻塞，是归属；`docs/plan-2026-10-16-u3-parsing-model-fetch.md`）。
+- **下一轮第一步**：① 读 `/tmp/ci-verdict-<本轮 sha8>.txt` 取双车道判决（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；② `git fetch` + `git status --short` + `git log --oneline origin/main -6`：看会话是否已把 `preload`/`specialist` 那 10 个在制路径落定（落定 ⇒ 才谈 U2 第三片的界面那一半；**U3 归会话，别碰**）；③ 未闭项取上面第 1 条（本机可复现、可判），**不要重做**本轮已核为「已覆盖」的四条（readme 连通器计数 / 三条 `check:*` 的跑者 / launcher 相对导入 / `578bb6e8` 那条红）。
+
+## 一百七十二、本轮追加（执行器，2026-10-16 15:4x–）—— v2.5.0 U2 的最后一片：**权重资产真托管（`models-v1`）**，脚本自身回读 + 我独立回读 + 托管位服务端摘要三方一致
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = `2a743a3e`（会话的 U3 第一片），`git log origin/main..HEAD` 为空；树上 13 个改动 + 2 个未跟踪文件**全是并发会话的在制品**（`src/main/specialist/**`、`src/preload/**`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`、`shared/renderer-contract-catalog.ts`、`src/main/settings/{application-commands,ipc}.ts`、`src/main/engines/local-parsing-models.{ts,test.ts}` = U3 第二片）⇒ 本单元一个字节没碰这些路径。
+- **U3 归会话**（`docs/plan-2026-10-16-u3-parsing-model-fetch.md` 首行即「会话认领」）⇒ 本单元取 U2 里唯一剩下的那半：`§一百六十七` 自己立案的「**我方托管资产尚未建立**」。
+- 内存闸门（现取，不照抄）：空闲物理页 **4558（≈71 MB）**、swap 已用 **10.14 G / 11.26 G** ⇒ 不起 Electron；本单元也不需要（它是资产 + 清单，不是界面）。推前现查在飞车道：**无**。
+
+### 一 为什么这半是缺的（读源，不是推测）
+
+- 清单的 url 此前指向**发布方源站**（记录里那份 `models.zip`）⇒ 差异化①「无校验即拒」在语义上是**我们替别人盖章**：sha256 是我们算的，而条目声明的 `publisher` 是作者方。
+- 发布脚本 `scripts/publish-model-weights.mjs`（§一百六十七 建）**当时还不是它的生产入口** —— 它存在的意义正是「把权重上传到我方资产 tag，且 sha256 在**发布步骤**算」，而当时没有资产可上传。
+- §一百六十一 已由用户拍板：托管位 = 我方 release 资产、**新增资产 tag**、并且 manifest 要写 `publisher`（我方）。
+
+### 二 交付（外部动作 + 2 文件）
+
+| # | 动作 / 文件 | 内容 |
+| --- | --- | --- |
+| ① | release `models-v1`（GitHub） | `--latest=false` 创建 ⇒ **v2.4.0 仍是 Latest**（`gh release list` 复核）；`targetCommitish=main`、非 draft/非 prerelease（与 `runtime-v1` 同形：仓里早有一条 `runtime-v1`，24 个资产、100–350 MB 级） |
+| ② | 资产 `structure-recognition-primary.zip` | 298,662,033 B；由发布脚本**自己的 `--upload` 模式**上传 —— 它会**从发布 URL 回读再哈希**，全对上才写清单 |
+| ③ | `resources/model-weights/manifest.json` | 换成本次发布脚本的**自身产物**：`revision` 2026-10-16.1 → **2026-10-16.2**、`publisher` → **PureScience**、url → 我方资产、note 写明「托管位自己也报同一个 sha256」 |
+| ④ | 本轮台账（本文件） | 读数、边界、具名未办 |
+
+**spec（scratch，`~/.hermes/cache/scratch/v250/spec-models-v1.json`；可原样重建）**：
+
+```json
+{
+  "releaseBase": "https://github.com/naiyixi/PureScience/releases/download/models-v1",
+  "manifestRevision": "2026-10-16.2",
+  "publisher": "PureScience",
+  "entries": [
+    {
+      "id": "structure-recognition-primary",
+      "revision": "zenodo-10.5281/zenodo.8300489",
+      "kind": "structure-recognition",
+      "license": "CC-BY-4.0",
+      "file": "<本地字节> / decimer-models.zip（298662033 B）",
+      "assetName": "structure-recognition-primary.zip",
+      "publisherMd5": "de78c966b0d63b290cd3f70bb81a91e7",
+      "note": "…（见清单原文：署名作者方 4 人 + 记录号、写明我方再分发、写明托管位自报同一 sha256）"
+    }
+  ]
+}
+```
+
+### 三 门禁与读数（全部实跑；数字取自最后一次改动之后）
+
+| 项 | 读数 |
+| --- | --- |
+| 发布脚本 `--upload`（生产入口**第一次真跑**） | `uploaded and verified … 1 entries (1 asset(s) uploaded, all re-hashed from their published URLs)`，**exit 0** |
+| **独立回读**（我自己的实现，不经脚本） | `curl -o 文件` ⇒ HTTP **200**、**298,662,033 B**、`sha256 = 8ebc7db18fffac7e71a2cf8487708053620d124846bc9502eddac1283b431d2b` ⇒ 与清单里那一个**逐字符相同**（经本机代理 ≈ **11.55 MB/s**） |
+| 托管位的**服务端**摘要 | `gh api …/releases/tags/models-v1` ⇒ `state=uploaded`、`size=298662033`、`digest=sha256:8ebc7db1…d2b` ⇒ **是对方算的**、与我们的相同（不是自己盖章） |
+| 清单门 `npm run check:model-weights` | **exit 0**（清单合规 + 仍在打包配置里） |
+| 本地产物核对器 `--verify <清单> --dir <本地字节>` | **exit 0**（`1 entr(y|ies) re-hashed`）⇒ 正向证明「清单描述的字节 == 我们托管的字节」 |
+| 引擎 / 诊断 / 发布脚本套件 | `npx vitest run src/main/engines src/main/diagnostics scripts/publish-model-weights.test.ts` ⇒ **18 文件 / 121 passed**、exit 0 |
+
+### 四 边界与并发事实（不许读成更强）
+
+- **并发会话也在这条线上，归属如实**：它在 15:52 提交 `a3d10032`（只改 url **一行**），消息写「把托管方的服务端摘要记入条目」——**该改动不在那一笔的 diff 里**（diff 只有 url，note 未动）。本单元把 `note` / `publisher` / `revision` 补齐成**发布脚本自己的产物**，正是把那句话落到树上。托管这个**动作**是本单元的：会话读到并指向的资产名与服务端摘要，都出自本单元这次上传。
+- **托管位别被重复建/删**（协调点）：`models-v1` 已存在且资产**已验证**；清单的 sha256 与它的服务端摘要逐字符相同 ⇒ 任何人再跑一遍发布只需 `--clobber` 重传同一份，**不要删该 tag/页**（删页会让清单的 url 直接 404）。
+- **三种摘要有三种角色**：`publisherMd5`（作者方记录里公布、与我方实算一致）= **交叉核对**；`sha256`（我方对托管字节实算）= **下载与载入时真正比对的那一个**；托管位服务端摘要 = **第三方可自证**的凭据（只写在 note 里）。
+- **端到端下载的真机读数仍归 U3**：本单元证明的是「资产已托管、字节可复算、清单指向它」，**不是**「界面点一下能下下来」。本单元不起 Electron。
+- **直连速度是既有事实，不是本单元引入的**（实测 4 MB 段读）：我方资产 **17.7 KB/s 直连 / 1.31 MB/s 经本机代理**；原发布方源站 **24.8 KB/s 直连 / 546 KB/s 经代理** ⇒ 换源**没有让用户变慢**（同一量级；经代理反而更快），但 298 MB 直连约 4.7 小时 ⇒ 「国内直连下大资产」是**既有通道事实**（`runtime-v1` 各包 100–350 MB 同形），镜像/CDN 属**产品决策**，此处只登记不下结论。
+- 本单元**不占版本号**（资产 + 清单，不是运行时行为改动）。
+
+### 五 具名未办 + 下一轮第一步
+
+1. **U2 后续（`blocked-by`：无）**：将来按能力分条新增第二/第三个条目（文档解析 / 插图 / 兜底）时，同一脚本 + 同一 tag 追加资产即可；spec 按 §二 重建。
+2. **U3 第二片（归会话）**：界面（列出 / 下载 / 进度 / 拒绝原因）+ 9 语字典 + 设置载荷投影；`blocked-by` = 会话认领。
+3. **U4（S2 接入解析 + 派生结果溯源）**：本版仍未开工；判据 = 差异化③④（③ 离线可读已达成；④ 派生结果带 `revision` + 输入指纹、换 revision/输入即标过期）。
+4. **`src/main/settings/service.test.ts`** 的加载敏感 `vi.waitFor` 窗口与收尾竞态（`ENOTEMPTY …/claude/skills`）：`blocked-by` = 无外部依赖，改动后需一次「加载下的复现」判有效性；本机可复现、可判。
+5. **下一轮第一步**：① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；② `git fetch` + `git status --short`（看会话是否已把那 16 个在制路径落定 ⇒ 落定后才谈 U3 第二片的界面读数）；③ 未闭项取第 4 条（本机可复现），**不要重做**本轮已交付的托管与已核为「已覆盖」的四条。
