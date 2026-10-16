@@ -30,12 +30,12 @@
 
 ## 三、引擎的实测可得性（都是量过的，不是推测）
 
-| 候选 | 读数 | 结论 |
-| --- | --- | --- |
-| **DECIMER**（TensorFlow） | pip 直连 **2.9/200.5 MB @ 111 kB/s**，连接被打断 3 次重试；换清华镜像后 **25.6 MB @ 13.7 MB/s** | ✅ 装在专设环境 `runtime/envs/structure-recognition`（python 3.12） |
-| **MolScribe**（PyTorch） | `pip` 直接失败：`No matching distribution found for torch<2.0,>=1.11.0`（镜像与本机都是 torch ≥2.2） | ✅ 需要**专设 py3.10 环境**（`structure-recognition-molscribe`）；镜像有 `torch-1.13.1-cp310 arm64`（53 MB @ 16.7 MB/s） |
-| **OSRA** | conda-forge / bioconda 的 `osx-arm64` 都**没有**；brew 也没有 | ❌ 不可得 |
-| **IMAGO** | EPAM 的 mac 控制台版能下（9 MB），但二进制是 **Mach-O universal i386/x86_64** ⇒ 本机 **`Bad CPU type in executable`**；`ggasoftware/imago` 是 C++ 源码（需自编） | ❌ 不可得（除非自编） |
+| 候选                      | 读数                                                                                                                                                             | 结论                                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **DECIMER**（TensorFlow） | pip 直连 **2.9/200.5 MB @ 111 kB/s**，连接被打断 3 次重试；换清华镜像后 **25.6 MB @ 13.7 MB/s**                                                                  | ✅ 装在专设环境 `runtime/envs/structure-recognition`（python 3.12）                                                      |
+| **MolScribe**（PyTorch）  | `pip` 直接失败：`No matching distribution found for torch<2.0,>=1.11.0`（镜像与本机都是 torch ≥2.2）                                                             | ✅ 需要**专设 py3.10 环境**（`structure-recognition-molscribe`）；镜像有 `torch-1.13.1-cp310 arm64`（53 MB @ 16.7 MB/s） |
+| **OSRA**                  | conda-forge / bioconda 的 `osx-arm64` 都**没有**；brew 也没有                                                                                                    | ❌ 不可得                                                                                                                |
+| **IMAGO**                 | EPAM 的 mac 控制台版能下（9 MB），但二进制是 **Mach-O universal i386/x86_64** ⇒ 本机 **`Bad CPU type in executable`**；`ggasoftware/imago` 是 C++ 源码（需自编） | ❌ 不可得（除非自编）                                                                                                    |
 
 ### MolScribe 的两道 ABI 墙（以及怎么过的）
 
@@ -73,3 +73,38 @@ PDFium、pip 轮子，不必动 JS 依赖树与打包配置），脚本随包走
 - MolScribe 的 checkpoint（pip 包不带权重）走 **hf-mirror** 取；
 - ④ 的对照夹具：RDKit 画的 `caffeine` / `aspirin` / `glucose_open` 三张真实结构图 + 规范化 SMILES 作为
   ground truth；验收脚本 `/tmp/verify-ocsr.sh`（两台引擎 × 三张图，规范化后比较，一致才高置信）。
+
+## 六、④ 终验：三张真实结构图 × 两台相互独立的引擎（全部一致）
+
+夹具由 RDKit 画出（`caffeine` / `aspirin` / `glucose_open`），验收走**产品自己的代码路径**
+（`resources/engines/structure_recognition.py` + 产品命名环境里的两个解释器），读法按产品的规则：
+两台引擎（严格多数）**规范化之后**一致才算高置信。
+
+| 夹具         | DECIMER（TensorFlow）        | MolScribe（PyTorch） | 真值（RDKit） | 判定      |
+| ------------ | ---------------------------- | -------------------- | ------------- | --------- |
+| caffeine     | `Cn1c(=O)c2c(ncn2C)n(C)c1=O` | 同                   | 同            | ✅ 高置信 |
+| aspirin      | `CC(=O)Oc1ccccc1C(=O)O`      | 同                   | 同            | ✅ 高置信 |
+| glucose_open | `O=CC(O)C(O)C(O)C(O)CO`      | 同                   | 同            | ✅ 高置信 |
+
+**6/6 台次与真值逐字符相同，两台引擎在三张图上全部一致** —— 「≥2 台独立引擎一致」这条规则在真机上第一次
+拿到真实命中。
+
+资产侧同时核过三样：文件 **298,662,033 字节**、**sha256 = 产品清单里的 `8ebc7db1…`**、
+**产品自己的读侧报 `installed: true`**。
+
+## 七、跑真机路径时抓出的四个问题（都已修，且每个都有读数）
+
+1. **`Chem.rdMolDescriptors` 必须显式导入子模块** —— 否则规范化一律抛 `AttributeError`，化学结构式这一路
+   **根本不可能达成一致**（运行器会如实报 `unparsable-smiles`，即「功能全废但不骗人」）。已修，并把分子式
+   降级为**可选注解**（取不到也绝不让规范化失败）。
+2. **DECIMER 的模型下载发生在 `import` 时** —— 脚本第一步的 `engines` 自报就会导入它，于是绕过链接又去下
+   285 MB。链接因此提前到**任何会导入引擎的模式之前**。
+3. **`models.zip` 必须在位** —— 它解包成 `DECIMER_model/` + `DECIMER_HandDrawn_model/`，而下次 import 若发现
+   zip 不在就**重新下载 285 MB**（一次 150 秒）。所以链接逻辑按「**zip 是否存在且字节数一致**」判断（我一度
+   误判为「已解包就不链接」，真机读数把我纠回来了）。
+4. **运行器超时 180s → 720s** —— 首次导入+解包+起 TF 会话在真机上超过 300 秒（又一次 127s、182s）；超时仍
+   一定**具名**回报，不会被当成「没引擎」。
+
+另外两条通道事实：**产品自己的下载器**跑到 62 分钟失败，并按设计**清理掉临时文件**，同时给出可操作提示
+（「可手动下载后放到 `…/weights.bin` 再重试」）；**GitHub 发布资产这条当时整体不通**（`curl: (28)` 连不上
+443），最终改从**规范来源 Zenodo** 取同一份字节，并按产品清单的 sha256 校验通过。

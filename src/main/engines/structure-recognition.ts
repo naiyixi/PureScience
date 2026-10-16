@@ -55,7 +55,12 @@ export const STRUCTURE_RECOGNITION_ENGINES: readonly StructureRecognitionEngineN
 ]
 
 export const DEFAULT_RASTER_DPI = 200
-export const DEFAULT_ENGINE_TIMEOUT_MS = 180_000
+/**
+ * 单台引擎一次调用的超时。**720 秒**是量出来的，不是拍的：DECIMER 的模型加载发生在 **import 时** ——
+ * 首次会解包 285 MB 的权重并起 TensorFlow 会话，真机上这一步超过 300 秒；模型解好后同一张图的推理是秒级。
+ * 超时到期会**具名**回报（`runner-failed: no answer within …`），不会被当成「没引擎」。
+ */
+export const DEFAULT_ENGINE_TIMEOUT_MS = 720_000
 
 export type StructureRecognitionDeps = {
   /** 引擎脚本；默认：环境变量 → resourcesPath → 开发树（与 notebook 的 loop 脚本同规矩）。 */

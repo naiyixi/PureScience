@@ -35,6 +35,10 @@ def _link_product_weights(weights):
     """把**产品已经下载并校验过**的权重链接到引擎期望的位置（硬链接优先），返回用到的路径。
 
     没给路径就不动 —— 那就按引擎自己的行为走（它会去下自己的那份，慢，但由调用方决定）。
+
+    这一步**每次调用都要先做**：DECIMER 的模型加载在 import 时发生，而它解包完会把 zip 删掉，下次 import
+    发现 zip 不在就会**重新下载 285 MB**（真机读数：一次 150 秒）。硬链接是即时的，符合「产品那份已校验的
+    字节是唯一来源」。
     """
     if not weights:
         return None
@@ -44,8 +48,11 @@ def _link_product_weights(weights):
         source = candidate if candidate.is_file() else source
     if not source.is_file():
         return None
-    # DECIMER 用 pystow 解析模型位置：<PYSTOW_HOME or ~/.data>/DECIMER-V2/models.zip
-    target = Path(os.environ.get("PYSTOW_HOME", str(Path.home() / ".data"))) / "DECIMER-V2" / "models.zip"
+    # DECIMER 用 pystow 解析模型位置：<PYSTOW_HOME or ~/.data>/DECIMER-V2/models.zip。
+    # **zip 不在就链接**：真机读数显示 DECIMER 每次 import 都要求这个 zip 在位（它解包完会把它删掉），
+    # 缺了就去网上重下 285 MB —— 所以这里按「zip 是否存在且字节数一致」判断，而不是按「是否已解包」。
+    home = Path(os.environ.get("PYSTOW_HOME", str(Path.home() / ".data")))
+    target = home / "DECIMER-V2" / "models.zip"
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         if not target.exists() or target.stat().st_size != source.stat().st_size:
@@ -273,11 +280,23 @@ def canonicalize(args):
             _fail({"ok": False, "reason": "unparsable-smiles", "detail": args.smiles})
             return
         canonical = Chem.MolToSmiles(molecule)
-        formula = Chem.rdMolDescriptors.CalcMolFormula(molecule)
+        # 分子式是**额外**信息：它取不到也绝不能把规范化本身弄失败（缺它只是少一行注解）。
+        formula = None
+        try:
+            from rdkit.Chem import rdMolDescriptors
+
+            formula = rdMolDescriptors.CalcMolFormula(molecule)
+        except Exception:  # noqa: BLE001
+            formula = None
     except Exception as exc:  # noqa: BLE001
         _fail({"ok": False, "reason": "canonicalize-failed", "detail": f"{type(exc).__name__}: {exc}"})
         return
-    print(json.dumps({"ok": True, "canonical": canonical, "formula": formula}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"ok": True, "canonical": canonical, **({} if formula is None else {"formula": formula})},
+            ensure_ascii=False,
+        )
+    )
 
 
 def main():
@@ -303,6 +322,10 @@ def main():
     p_can.add_argument("--smiles", required=True)
 
     args = parser.parse_args()
+    # **任何会导入引擎的模式都要先建链接**：DECIMER 的模型下载发生在 **import 时**（真机踩到过：脚本第一步的
+    # `engines` 自报就把它招来了，于是绕过链接又去下 285 MB）。这一步幂等且极廉价。
+    if args.mode in ("recognize", "engines"):
+        _link_product_weights(getattr(args, "weights", ""))
     if args.mode == "rasterize":
         rasterize(args)
     elif args.mode == "recognize":
