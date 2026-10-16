@@ -1,4 +1,14 @@
-import { chmod, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  stat,
+  symlink,
+  writeFile
+} from 'node:fs/promises'
 import { dirname, join, normalize } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execPath } from 'node:process'
@@ -59,6 +69,21 @@ const resolveActiveBackend = async (
   context: AgentBackendResolutionContext = {}
 ): ReturnType<InstanceType<typeof SettingsService>['resolveAgentBackend']> =>
   service.resolveAgentBackend(await service.captureActiveAgentBackendSelection(), context)
+
+/**
+ * Coordination wait for a call that is *already in flight*: each of these tests starts a
+ * settings-service promise and then waits for it to reach a fake, so the call itself is
+ * deterministic — only its latency is not. `vi.waitFor`'s default window is 1s, i.e. a *load*
+ * budget rather than a correctness budget: under a loaded machine (a full-tree lint beside the
+ * suite, free pages in the low thousands) 14 of these waits expired while the code under test was
+ * healthy, and because an aborted test leaves its login flow running, the per-test cleanup then
+ * raced it (`ENOTEMPTY …/claude/skills`) — one load blip read as two failures. Hence one explicit,
+ * generous window. vitest's own per-test timeout (60s, vitest.config.ts) stays the backstop, so a
+ * genuine hang still fails loudly instead of being hidden by this window.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+const waitForCall = (assertion: () => void): Promise<void> =>
+  vi.waitFor(assertion, { timeout: COORDINATION_WINDOW_MS })
 
 let storageRoot: string
 let repository: InstanceType<typeof SettingsRepository>
@@ -261,8 +286,39 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
-  await rm(storageRoot, { recursive: true, force: true })
+  await removeStorageRoot(storageRoot)
 })
+
+/**
+ * Removes a per-test settings root. A test that aborts before awaiting its login flow leaves the
+ * settings service writing into that root, so a single walk can both fail (ENOTEMPTY — measured: it
+ * turned one load blip into two failures) and be silently undone: a pending write re-creates the
+ * directory the walk just deleted (measured: 6 roots survived a walk that reported success). Only a
+ * walk that left nothing behind counts, and if the root will not stay removed the failure is named
+ * here so it is attributable instead of looking like the test's own assertion.
+ */
+async function removeStorageRoot(root: string): Promise<void> {
+  for (let attempt = 1; attempt <= 40; attempt += 1) {
+    try {
+      await rm(root, { recursive: true, force: true })
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== 'ENOTEMPTY' && code !== 'EBUSY') throw error
+    }
+
+    if (!(await pathExists(root))) return
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+
+  throw new Error(`settings storage root would not stay removed after 40 attempts: ${root}`)
+}
+
+const pathExists = async (path: string): Promise<boolean> =>
+  stat(path).then(
+    () => true,
+    () => false
+  )
 
 describe('SettingsService: custom MCP OAuth', () => {
   it('delegates authentication and returns the refreshed connector snapshot', async () => {
@@ -698,7 +754,7 @@ describe('SettingsService: providers', () => {
     await service.upsertProvider({ type: 'claude-isolated' })
 
     const login = service.loginIsolatedClaudeBrowser()
-    await vi.waitFor(() => expect(claudeIsolatedAuth.loginIsolatedBrowser).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(claudeIsolatedAuth.loginIsolatedBrowser).toHaveBeenCalledOnce())
     await service.deleteProvider(CLAUDE_ISOLATED_PROVIDER_ID)
     await finishBrowserLogin?.()
 
@@ -803,7 +859,7 @@ describe('SettingsService: providers', () => {
     await service.upsertProvider({ type: 'codex-shared' })
 
     const validation = service.validateProvider({ providerId: CODEX_SUBSCRIPTION_PROVIDER_ID })
-    await vi.waitFor(() => expect(codexAuth.getStatus).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(codexAuth.getStatus).toHaveBeenCalledOnce())
     await service.upsertProvider({ type: 'codex-isolated' })
     finishStatus()
 
@@ -939,7 +995,7 @@ describe('SettingsService: providers', () => {
     await writeFile(appAuthPath, '{"tokens":{"access_token":"isolated"}}')
 
     const switching = service.upsertProvider({ type: 'codex-shared' })
-    await vi.waitFor(() => expect(codexAuth.cancelLogin).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(codexAuth.cancelLogin).toHaveBeenCalledOnce())
     await expect(readFile(appAuthPath, 'utf8')).resolves.toContain('isolated')
 
     finishCancellation()
@@ -1532,7 +1588,7 @@ describe('SettingsService: validation', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const slow = service.validateProvider({ providerId: created.id })
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(fetchMock).toHaveBeenCalledOnce())
     const fast = await service.validateProvider({ providerId: created.id })
     expect(fast).toMatchObject({ ok: true, applied: true })
 
@@ -1608,7 +1664,7 @@ describe('SettingsService: validation', () => {
     ).providers[0]
 
     const validation = service.validateProvider({ providerId: created.id })
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(fetchMock).toHaveBeenCalledOnce())
     await service.upsertProvider({ id: created.id, type: 'custom', name: 'G', model: 'm2' })
     resolveFetch({ status: 200 })
     await validation
@@ -1636,7 +1692,7 @@ describe('SettingsService: validation', () => {
     ).providers[0]
 
     const validation = service.validateProvider({ providerId: created.id })
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(fetchMock).toHaveBeenCalledOnce())
     await service.deleteProvider(created.id)
     resolveFetch({ status: 200 })
     await validation
@@ -1660,9 +1716,9 @@ describe('SettingsService: validation', () => {
     ).providers[0]
 
     const older = service.validateProvider({ providerId: created.id })
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitForCall(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const newer = service.validateProvider({ providerId: created.id })
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitForCall(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     resolvers[1](validAnthropicResponse())
     await newer
     resolvers[0](new Response(null, { status: 401 }))
@@ -1837,7 +1893,7 @@ describe('SettingsService: preflight & spawn config', () => {
 
     const first = service.getPreflight()
     const second = service.getPreflight()
-    await vi.waitFor(() => expect(claudeSharedAuth.getStatus).toHaveBeenCalled())
+    await waitForCall(() => expect(claudeSharedAuth.getStatus).toHaveBeenCalled())
 
     expect(claudeSharedAuth.getStatus).toHaveBeenCalledOnce()
     resolveStatus?.({ supported: true, authenticated: true })
@@ -1877,7 +1933,7 @@ describe('SettingsService: preflight & spawn config', () => {
     await service.setActiveProvider(CLAUDE_SHARED_PROVIDER_ID)
 
     const stalePreflight = service.getPreflight()
-    await vi.waitFor(() => expect(claudeSharedAuth.getStatus).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(claudeSharedAuth.getStatus).toHaveBeenCalledOnce())
     await service.loginClaudeShared()
     resolveStaleStatus?.({ supported: true, authenticated: false })
     await expect(stalePreflight).resolves.toMatchObject({ activeProviderReady: false })
@@ -5898,7 +5954,7 @@ describe('SettingsService: claude-isolated login + status coordination', () => {
     })
 
     const login = service.loginIsolatedClaude('sk-ant-valid')
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(probe).toHaveBeenCalledOnce())
     await service.logoutIsolatedClaude()
     finishProbe?.()
 
@@ -5929,9 +5985,9 @@ describe('SettingsService: claude-isolated login + status coordination', () => {
     })
 
     const olderLogin = service.loginIsolatedClaude('sk-ant-older')
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledTimes(1))
+    await waitForCall(() => expect(probe).toHaveBeenCalledTimes(1))
     const newerLogin = service.loginIsolatedClaude('sk-ant-newer')
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledTimes(2))
+    await waitForCall(() => expect(probe).toHaveBeenCalledTimes(2))
 
     finishProbes[1]?.()
     expect(await newerLogin).toMatchObject({ ok: true, applied: true })
@@ -6502,7 +6558,7 @@ describe('SettingsService: claude-shared login orchestration', () => {
     await service.setActiveProvider(gateway.id, 'deepseek-v4-pro')
 
     const login = service.loginClaudeShared()
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(probe).toHaveBeenCalledOnce())
     await service.setActiveProvider(gateway.id, 'deepseek-v4-flash')
     finishProbe?.()
 
@@ -6530,7 +6586,7 @@ describe('SettingsService: claude-shared login orchestration', () => {
     await service.upsertProvider({ type: 'claude-shared', model: 'claude-opus-4-6' })
 
     const login = service.loginClaudeShared()
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(probe).toHaveBeenCalledOnce())
 
     await service.upsertProvider({ type: 'claude-shared', model: 'claude-sonnet-4-5' })
     await service.upsertProvider({ type: 'claude-isolated' })
@@ -6644,7 +6700,7 @@ describe('SettingsService: claude-shared login orchestration', () => {
     await service.upsertProvider({ type: 'claude-shared' })
 
     const validation = service.validateProvider({ providerId: CLAUDE_SHARED_PROVIDER_ID })
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(probe).toHaveBeenCalledOnce())
     await service.logoutClaudeShared()
     finishProbe?.()
 
@@ -6693,7 +6749,7 @@ describe('SettingsService: claude-shared login orchestration', () => {
     await service.setActiveProvider(firstId)
 
     const validation = service.validateProvider({ providerId: CLAUDE_SHARED_PROVIDER_ID })
-    await vi.waitFor(() => expect(probe).toHaveBeenCalledOnce())
+    await waitForCall(() => expect(probe).toHaveBeenCalledOnce())
     await service.setActiveProvider(secondId)
     finishProbe?.()
 
