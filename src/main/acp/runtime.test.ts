@@ -70,6 +70,24 @@ import {
   waitForDataRootWriters
 } from '../storage/migration-state'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of a promise
+ * that is already in flight (a fake agent receiving the prompt, the runtime reporting a terminal
+ * status, a spy being called, the process being killed), never for something that may never happen.
+ * The only thing the window has to cover is how long a loaded machine takes to schedule that
+ * continuation -- so the default 1s is a quiet-machine budget, not a correctness budget. Measured on
+ * this repository: under load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and the
+ * one site that carries a note below failed at ~1.1s under load average ~70 while passing on a quiet
+ * machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // Captures info/warn logs so the permission-request audit line and the agent-process lifecycle records
 // can be asserted; real file/console logging is otherwise irrelevant to these tests. errorLogFields is
 // left as the real implementation so lifecycle records carry its true output shape.
@@ -1479,7 +1497,9 @@ describe('ACP runtime migration write-gate', () => {
     const session = await runtime.createSession({ cwd: '/workspace' })
 
     const promptPromise = runtime.sendPrompt({ sessionId: session.sessionId, text: 'running' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     beginMigration()
     let drained = false
     const drainPromise = waitForDataRootWriters().then(() => {
@@ -2089,7 +2109,9 @@ describe('ACP runtime session management', () => {
 
     // Calling it again after the process is gone is a no-op, not a crash.
     expect(() => runtime.shutdown()).not.toThrow()
-    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('kills a child that finishes spawning after shutdown began, so quit-during-connect cannot orphan it', async () => {
@@ -2180,14 +2202,21 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'stay pending' })
     void prompt.catch(() => undefined)
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await runtime.cancelPrompt({ sessionId: session.sessionId })
-    await vi.waitFor(() => expect(fakeAgent.cancelledSessions).toEqual(['cancel-timeout-session']))
+    await vi.waitFor(
+      () => expect(fakeAgent.cancelledSessions).toEqual(['cancel-timeout-session']),
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     expect(fireCancelTimeout).toBeDefined()
     fireCancelTimeout?.()
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(process.killed).toBe(true)
     expect(events).toContain('Prompt cancellation timed out')
     promptGate.resolve()
@@ -2205,8 +2234,10 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace', permissionProfile: 'ask' })
     process.stdout.end()
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
-    await vi.waitFor(() => expect(process.killed).toBe(true))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+    await vi.waitFor(() => expect(process.killed).toBe(true), { timeout: COORDINATION_WINDOW_MS })
     expect(runtime.getSnapshot().sessionIds).toEqual([])
     expect(runtime.getSnapshot().permissionProfiles[session.sessionId]?.selectedProfile).toBe('ask')
     expect(runtime.getSessionFramework(session.sessionId)).toBe('claude-code')
@@ -2288,8 +2319,12 @@ describe('ACP runtime session management', () => {
     await runtime.createSession({ cwd: '/workspace' })
     process.stdout.end()
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
-    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     runtime.shutdown()
     expect(release).toHaveBeenCalledOnce()
@@ -2314,7 +2349,9 @@ describe('ACP runtime session management', () => {
     process.stdout.end()
     runtime.shutdown()
 
-    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(release).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(process.killed).toBe(true)
   })
 
@@ -2340,7 +2377,9 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace' })
     process.stdout.end()
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(releaseSessionCapabilities).toHaveBeenCalledOnce()
     expect(releaseSessionCapabilities).toHaveBeenCalledWith(session.sessionId)
   })
@@ -2361,11 +2400,15 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'stay pending' })
     void prompt.catch(() => undefined)
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     process.stdout.end()
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(events).toContainEqual(
       expect.objectContaining({
         kind: 'error',
@@ -2403,10 +2446,14 @@ describe('ACP runtime session management', () => {
         provenanceContext: { promptMessageId: 'closed-prompt-message' }
       })
       .catch(() => undefined)
-    await vi.waitFor(() => expect(oldAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(oldAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     oldProcess.stdout.end()
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await runtime.resumeSession({ sessionId, cwd: '/workspace' })
     const resumedEvent = events.filter((event) => event.title === 'Session resumed').at(-1)
@@ -3602,8 +3649,10 @@ describe('ACP runtime session management', () => {
     // Claim compaction first to retain the public snapshot's historical grouping: prompt sessions
     // precede compaction sessions regardless of the cross-kind claim order.
     const compacting = runtime.compactSession({ sessionId: second.sessionId })
-    await vi.waitFor(() =>
-      expect(agent.prompts).toContainEqual({ sessionId: 'remote-session-2', text: '/compact' })
+    await vi.waitFor(
+      () =>
+        expect(agent.prompts).toContainEqual({ sessionId: 'remote-session-2', text: '/compact' }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     await expect(
       runtime.sendPrompt({ sessionId: second.sessionId, text: 'blocked prompt' })
@@ -3613,11 +3662,13 @@ describe('ACP runtime session management', () => {
     ).rejects.toThrow(/compacting/)
 
     const prompting = runtime.sendPrompt({ sessionId: first.sessionId, text: 'first prompt' })
-    await vi.waitFor(() =>
-      expect(agent.prompts).toContainEqual({
-        sessionId: 'remote-session-1',
-        text: 'first prompt'
-      })
+    await vi.waitFor(
+      () =>
+        expect(agent.prompts).toContainEqual({
+          sessionId: 'remote-session-1',
+          text: 'first prompt'
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     await expect(runtime.compactSession({ sessionId: first.sessionId })).rejects.toThrow(
       /already running/
@@ -3811,7 +3862,9 @@ describe('ACP runtime session management', () => {
       sessionId: session.sessionId,
       reason: 'overflow-recovery'
     })
-    await vi.waitFor(() => expect(agent.prompts.at(-1)?.text).toBe('/compact'))
+    await vi.waitFor(() => expect(agent.prompts.at(-1)?.text).toBe('/compact'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // Ownership moved away from the failed prompt, but native compaction still keeps the session
     // unavailable to another user turn until the framework control turn stops.
@@ -3824,7 +3877,9 @@ describe('ACP runtime session management', () => {
     expect(runtime.getSnapshot().promptInFlightSessionIds).toEqual([])
     expect(cancelTimer?.active).toBe(false)
     const retry = runtime.sendPrompt({ sessionId: session.sessionId, text: 'retry after overflow' })
-    await vi.waitFor(() => expect(agent.prompts.at(-1)?.text).toBe('retry after overflow'))
+    await vi.waitFor(() => expect(agent.prompts.at(-1)?.text).toBe('retry after overflow'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     cancelTimer?.fire()
     expect(runtime.getSnapshot().status).toBe('connected')
@@ -4169,8 +4224,9 @@ describe('ACP runtime session management', () => {
     const inflight = runtime
       .sendPrompt({ sessionId: session.sessionId, text: 'oversized turn' })
       .catch(() => undefined)
-    await vi.waitFor(() =>
-      expect(runtime.getSnapshot().promptInFlightSessionIds).toContain(session.sessionId)
+    await vi.waitFor(
+      () => expect(runtime.getSnapshot().promptInFlightSessionIds).toContain(session.sessionId),
+      { timeout: COORDINATION_WINDOW_MS }
     )
 
     await runtime.resetSessionContext({ sessionId: session.sessionId, cwd: '/workspace' })
@@ -4208,7 +4264,9 @@ describe('ACP runtime session management', () => {
       text: 'stale turn',
       forcedSkillIds: ['research']
     })
-    await vi.waitFor(() => expect(namesForIds).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(namesForIds).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await runtime.resetSessionContext({ sessionId: session.sessionId, cwd: '/workspace' })
     namesGate.resolve(['research'])
@@ -4435,7 +4493,9 @@ describe('ACP runtime session management', () => {
     const promptA = runtime.sendPrompt({ sessionId: sessionA.sessionId, text: 'a' })
     const promptB = runtime.sendPrompt({ sessionId: sessionB.sessionId, text: 'b' })
     // Both prompts have reached the agent, so both sessions' artifact runs are now active.
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(2))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(2), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const artifactA = await runtime.writeArtifactForCurrentRun(sessionA.sessionId, {
       filename: 'a.txt',
@@ -4511,7 +4571,9 @@ describe('ACP runtime session management', () => {
 
     const session = await runtime.createSession({ cwd: '/workspace', projectName: 'project-1' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'preview aspirin' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const artifact = await runtime.writeArtifactForCurrentRun(session.sessionId, {
       filename: 'aspirin.mol',
@@ -7532,8 +7594,9 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace', permissionProfile: 'ask' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'run python' })
 
-    await vi.waitFor(() =>
-      expect(opencodeMcpToolInputsMap(runtime).get(session.sessionId)?.size).toBe(1)
+    await vi.waitFor(
+      () => expect(opencodeMcpToolInputsMap(runtime).get(session.sessionId)?.size).toBe(1),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(opencodeMcpToolInputWaitersMap(runtime).has(session.sessionId)).toBe(false)
     await runtime.cancelPrompt({ sessionId: session.sessionId })
@@ -7648,8 +7711,9 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace', permissionProfile: 'ask' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'run python' })
 
-    await vi.waitFor(() =>
-      expect(opencodeMcpToolInputWaitersMap(runtime).get(session.sessionId)?.size).toBe(1)
+    await vi.waitFor(
+      () => expect(opencodeMcpToolInputWaitersMap(runtime).get(session.sessionId)?.size).toBe(1),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     await runtime.cancelPrompt({ sessionId: session.sessionId })
     await prompt
@@ -8923,7 +8987,9 @@ describe('ACP runtime session management', () => {
       expect(
         (runtime as unknown as { reconnectBarrier?: Promise<void> }).reconnectBarrier
       ).toBeUndefined()
-      await vi.waitFor(() => expect(release).toHaveBeenCalledOnce())
+      await vi.waitFor(() => expect(release).toHaveBeenCalledOnce(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
       for (const reviewerCwd of reviewerCwds) {
         await expect(stat(reviewerCwd)).rejects.toMatchObject({ code: 'ENOENT' })
       }
@@ -9422,7 +9488,7 @@ describe('ACP runtime session management', () => {
 
     releasePendingMode.resolve()
     await expect(pending).resolves.toMatchObject({ sessionId: 'pending-primary' })
-    await vi.waitFor(() => expect(process.killed).toBe(true))
+    await vi.waitFor(() => expect(process.killed).toBe(true), { timeout: COORDINATION_WINDOW_MS })
   })
 
   it('does not let a startup reserved behind an armed reconnect barrier publish on the old connection', async () => {
@@ -9459,7 +9525,9 @@ describe('ACP runtime session management', () => {
     })
     const first = await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: first.sessionId, text: 'stay active' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const second = runtime.createSession({ cwd: '/workspace' })
     await secondNewStarted.promise
 
@@ -9470,7 +9538,7 @@ describe('ACP runtime session management', () => {
 
       promptGate.resolve()
       await prompt
-      await vi.waitFor(() => expect(process.killed).toBe(true))
+      await vi.waitFor(() => expect(process.killed).toBe(true), { timeout: COORDINATION_WINDOW_MS })
 
       releaseSecondMode.resolve()
       await expect(second).rejects.toThrow('ACP session startup was superseded.')
@@ -9646,10 +9714,12 @@ describe('ACP runtime session management', () => {
 
       releaseActivity.resolve()
       await activity
-      await vi.waitFor(() =>
-        expect(
-          (runtime as unknown as { reconnectBarrier?: Promise<void> }).reconnectBarrier
-        ).toBeUndefined()
+      await vi.waitFor(
+        () =>
+          expect(
+            (runtime as unknown as { reconnectBarrier?: Promise<void> }).reconnectBarrier
+          ).toBeUndefined(),
+        { timeout: COORDINATION_WINDOW_MS }
       )
     } finally {
       releaseOldClose.resolve()
@@ -11115,7 +11185,9 @@ describe('ACP runtime session management', () => {
 
     // The cancel fallback targets the underlying agent id, not the app-facing one (cancel is a
     // fire-and-forget notification, so wait for the agent to receive it).
-    await vi.waitFor(() => expect(fakeAgent.cancelledSessions).toEqual(['adopted-session-1']))
+    await vi.waitFor(() => expect(fakeAgent.cancelledSessions).toEqual(['adopted-session-1']), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(fakeAgent.closedSessions).toEqual([])
     expect(runtime.getSnapshot().sessionIds).toEqual([])
   })
@@ -11898,7 +11970,9 @@ describe('ACP runtime session management', () => {
     await runtime.sendPrompt({ sessionId: session.sessionId, text: 'Interrupted task' })
 
     process.stdout.end()
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(() =>
       runtime.createClaudeCodeContinuationRequest({
@@ -12342,7 +12416,9 @@ describe('ACP runtime session management', () => {
 
     const session = await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'request permission' })
-    await vi.waitFor(() => expect(runtime.getSnapshot().pendingPermissions).toHaveLength(1))
+    await vi.waitFor(() => expect(runtime.getSnapshot().pendingPermissions).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const existingEventCount = runtime.getSnapshot().events.length
     handleSessionUpdate(runtime, {
       sessionId: 's1',
@@ -12627,7 +12703,9 @@ describe('ACP runtime session management', () => {
 
     await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: 's1', text: 'analyze these results' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const usageWhileGenerating = runtime.getSnapshot().contextUsageBySession.s1
     expect(usageWhileGenerating).toMatchObject({
@@ -12668,7 +12746,9 @@ describe('ACP runtime session management', () => {
 
     await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: 's1', text: 'estimate before first usage' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(runtime.getSnapshot().contextUsageBySession.s1).toMatchObject({
       used: expect.any(Number),
@@ -12703,7 +12783,9 @@ describe('ACP runtime session management', () => {
     })
 
     const prompt = runtime.sendPrompt({ sessionId: 's1', text: 'continue from this context' })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const usageWhileGenerating = runtime.getSnapshot().contextUsageBySession.s1
     expect(usageWhileGenerating.used).toBe(96_000)
@@ -12777,7 +12859,9 @@ describe('ACP runtime session management', () => {
       sessionId: 's1',
       text: 'This deliberately long prompt makes the local estimate exceed the tiny test window.'
     })
-    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1))
+    await vi.waitFor(() => expect(fakeAgent.prompts).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(runtime.getSnapshot().contextUsageBySession.s1.breakdown?.status).toBe('preflight')
     expect(fakeAgent.prompts.map(({ text }) => text)).not.toContain('/compact')
@@ -13434,10 +13518,14 @@ describe('ACP runtime session management', () => {
 
         if (disruption === 'connection close') {
           process.stdout.end()
-          await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'))
+          await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('closed'), {
+            timeout: COORDINATION_WINDOW_MS
+          })
         } else {
           const reset = runtime.resetSessionContext({ sessionId: 's1', cwd: '/workspace' })
-          await vi.waitFor(() => expect(fakeAgent.newSessions).toHaveLength(2))
+          await vi.waitFor(() => expect(fakeAgent.newSessions).toHaveLength(2), {
+            timeout: COORDINATION_WINDOW_MS
+          })
           await reset
         }
 
@@ -13446,8 +13534,9 @@ describe('ACP runtime session management', () => {
             ? runtime.sendPrompt({ sessionId: 's1', text: 'replacement prompt' })
             : undefined
         if (replacement) {
-          await vi.waitFor(() =>
-            expect(runtime.getSnapshot().promptInFlightSessionIds).toContain('s1')
+          await vi.waitFor(
+            () => expect(runtime.getSnapshot().promptInFlightSessionIds).toContain('s1'),
+            { timeout: COORDINATION_WINDOW_MS }
           )
           handleSessionUpdate(runtime, {
             sessionId: 's2',
@@ -13457,14 +13546,17 @@ describe('ACP runtime session management', () => {
 
         now.mockReturnValue(5678)
         releaseFinalUsage.resolve()
-        await vi.waitFor(() =>
-          expect(
-            runtime
-              .getSnapshot()
-              .events.some(
-                (event) => event.promptMessageId === 'terminal-race-prompt' && event.kind === 'stop'
-              )
-          ).toBe(true)
+        await vi.waitFor(
+          () =>
+            expect(
+              runtime
+                .getSnapshot()
+                .events.some(
+                  (event) =>
+                    event.promptMessageId === 'terminal-race-prompt' && event.kind === 'stop'
+                )
+            ).toBe(true),
+          { timeout: COORDINATION_WINDOW_MS }
         )
         await prompt
 
@@ -14032,7 +14124,9 @@ describe('ACP runtime session management', () => {
 
     releasePrompt.resolve()
     await prompt
-    await vi.waitFor(() => expect(onRetired).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(onRetired).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(process.killed).toBe(true)
     expect(states).not.toContain('idle')
@@ -14308,7 +14402,7 @@ describe('ACP runtime session management', () => {
 
     expect(unregisterReviewerSession).toHaveBeenCalledWith('reviewer-session-1')
     await expect(stat(reviewerCwd)).rejects.toMatchObject({ code: 'ENOENT' })
-    await vi.waitFor(() => expect(process.killed).toBe(true))
+    await vi.waitFor(() => expect(process.killed).toBe(true), { timeout: COORDINATION_WINDOW_MS })
     expect(releaseBridge).toHaveBeenCalledOnce()
   })
 
@@ -15904,7 +15998,9 @@ describe('ACP runtime session management', () => {
       // The claim is published by a later async step than the prompt's own resolution, and under a full-suite
       // load that step can land after this line. Wait for the condition instead of assuming the ordering — it
       // still fails when the claim never appears.
-      await vi.waitFor(() => expect(artifactClaimId).toBeTruthy())
+      await vi.waitFor(() => expect(artifactClaimId).toBeTruthy(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
       const claim = resolveArtifactRunClaim(runtime, artifactClaimId!)
       const version = await client.artifactVersion.findFirstOrThrow({
         where: { artifactRunId: claim.runId }
@@ -16562,7 +16658,9 @@ describe('ACP runtime session management', () => {
     const session = await runtime.createSession({ cwd: '/workspace' })
     const prompt = runtime.sendPrompt({ sessionId: session.sessionId, text: 'run tests' })
 
-    await vi.waitFor(() => expect(runtime.getSnapshot().pendingPermissions).toHaveLength(1))
+    await vi.waitFor(() => expect(runtime.getSnapshot().pendingPermissions).toHaveLength(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const connection = (
       runtime as unknown as {
         connection: { agent: { notify: (method: unknown, params: unknown) => Promise<void> } }
@@ -16931,7 +17029,9 @@ describe('ACP runtime skill force-load + nudge', () => {
         forcedSkillIds: ['research']
       })
     ).rejects.toThrow()
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('idle'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('idle'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await runtime.resumeSession({ sessionId: 'remote-session-1', cwd: '/workspace' })
     expect(backendContexts.slice(0, 3)).toEqual([[], ['research'], []])
@@ -18359,7 +18459,9 @@ describe('ACP runtime — model hot switch', () => {
 
     finishCreation.resolve()
     await create
-    await vi.waitFor(() => expect(fakeAgent.configChanges).toHaveLength(2))
+    await vi.waitFor(() => expect(fakeAgent.configChanges).toHaveLength(2), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(fakeAgent.configChanges).toEqual([
       { sessionId: 's-existing', configId: 'model', value: 'model-b' },
@@ -18469,10 +18571,13 @@ describe('ACP runtime — model hot switch', () => {
 
     finishPrompt.resolve()
     await prompt
-    await vi.waitFor(() => {
-      expect(setTarget).toHaveBeenCalledWith('provider-b/model-b')
-      expect(fakeAgent.configChanges).toHaveLength(1)
-    })
+    await vi.waitFor(
+      () => {
+        expect(setTarget).toHaveBeenCalledWith('provider-b/model-b')
+        expect(fakeAgent.configChanges).toHaveLength(1)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     expect(fakeAgent.configChanges).toEqual([
       { sessionId: 's-provider-switch', configId: 'model', value: 'model-b' }
@@ -18533,7 +18638,9 @@ describe('ACP runtime — model hot switch', () => {
 
     finishPrompt.resolve()
     await prompt
-    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('idle'))
+    await vi.waitFor(() => expect(runtime.getSnapshot().status).toBe('idle'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(process.killed).toBe(true)
     expect(fakeAgent.configChanges).toEqual([])
   })

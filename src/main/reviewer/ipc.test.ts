@@ -131,6 +131,24 @@ beforeEach(() => {
 
 afterEach(() => clearMigrationPending())
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of a promise
+ * that is already in flight (a fake agent receiving the prompt, the runtime reporting a terminal
+ * status, a spy being called, the process being killed), never for something that may never happen.
+ * The only thing the window has to cover is how long a loaded machine takes to schedule that
+ * continuation -- so the default 1s is a quiet-machine budget, not a correctness budget. Measured on
+ * this repository: under load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and the
+ * one site that carries a note below failed at ~1.1s under load average ~70 while passing on a quiet
+ * machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 describe('reviewer IPC handlers', () => {
   it('shares one in-flight arbitration owner between direct and IPC commands', async () => {
     let finishRun: (() => void) | undefined
@@ -166,7 +184,9 @@ describe('reviewer IPC handlers', () => {
     runHandler?.({}, createRequest())
 
     // triggerReview is fire-and-forget; wait for the background session load + runReview call.
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const passed = runReview.mock.calls[0][0] as { artifactStorageRoot: string }
     expect(passed.artifactStorageRoot).toBe(DATA_ROOT)
@@ -188,7 +208,9 @@ describe('reviewer IPC handlers', () => {
     }
     handlers.get(REVIEWER_IPC.RUN)?.({}, { ...createRequest(), supervisor })
 
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // Measured on a real session before this test existed: the policy fired on the recorded activities and
     // 12 reviews started, yet no ledger was ever attached - the plan died in the option list assembled here.
@@ -200,7 +222,9 @@ describe('reviewer IPC handlers', () => {
 
     handlers.get(REVIEWER_IPC.RUN)?.({}, createRequest())
 
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // An ordinary turn must stay byte-identical: no empty ledger object, no stray key.
     expect((runReview.mock.calls[0][0] as { supervisor?: unknown }).supervisor).toBeUndefined()
@@ -222,7 +246,9 @@ describe('reviewer IPC handlers', () => {
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     runHandler?.({}, createRequest())
 
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const passed = runReview.mock.calls[0][0] as { artifactStorageRoot: string }
     expect(passed.artifactStorageRoot).toBe('/tmp/injected-data')
@@ -248,7 +274,9 @@ describe('reviewer IPC handlers', () => {
       { ...createRequest(), turnMessageId: 'original', scopeTurnMessageId: 'correction' }
     )
 
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const passed = runReview.mock.calls[0][0] as {
       turnMessageId: string
@@ -266,7 +294,9 @@ describe('reviewer IPC handlers', () => {
 
     const runHandler = handlers.get(REVIEWER_IPC.RUN)
     await runHandler?.({}, createRequest())
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const passed = runReview.mock.calls[0][0] as {
       getSession: () => Promise<{ messages: Array<{ id: string }> } | undefined>
@@ -298,7 +328,9 @@ describe('reviewer IPC handlers', () => {
     const dropped = await runHandler?.({}, createRequest())
     expect(dropped).toEqual({ started: false, reason: 'already-in-flight' })
 
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     resolveRun?.()
     await Promise.resolve()
     expect(runReview).toHaveBeenCalledTimes(1)
@@ -373,7 +405,9 @@ describe('reviewer IPC handlers', () => {
     const result = await runHandler?.({}, createRequest())
 
     expect(result).toEqual({ started: true })
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('does not start a Review sidecar writer while data-root migration is pending', async () => {
@@ -407,7 +441,9 @@ describe('reviewer IPC handlers', () => {
     const result = await runHandler?.({}, { ...createRequest(), origin: 'auto' })
 
     expect(result).toEqual({ started: true })
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('fails closed when the idempotency lookup throws: no run, lock released, retryable', async () => {
@@ -425,7 +461,9 @@ describe('reviewer IPC handlers', () => {
     // review) is not dropped as already-in-flight — it proceeds and starts.
     const retry = await runHandler?.({}, { ...createRequest(), origin: 'auto' })
     expect(retry).toEqual({ started: true })
-    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('lets a manual re-run bypass idempotency even when the turn already has a review', async () => {
@@ -559,7 +597,9 @@ describe('reviewer IPC handlers', () => {
       // Trigger a review so the orchestrator options are captured.
       const runHandler = handlers.get(REVIEWER_IPC.RUN)
       const promise = runHandler?.({}, createRequest())
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       // The orchestrator would call onFixLoopStart when the loop actually starts; we simulate it.
       captured.onFixLoopStart?.()
@@ -617,7 +657,9 @@ describe('reviewer IPC handlers', () => {
     it('broadcasts REVIEWER_IPC.UPDATED when the orchestrator reports a review update', async () => {
       const { captured, promise } = captureCallbacks()
 
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const review = { id: 'review-1', turnMessageId: 'message-1' }
       captured.onReviewUpdate?.(review)
@@ -641,7 +683,9 @@ describe('reviewer IPC handlers', () => {
           mainSessionId: 'main-session-1'
         }
       )
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       // The second invocation's callbacks are the ones the triggerReview returned; invoke them.
       // (triggerReview is fire-and-forget; we read off the most recent runReview call's options.)
@@ -671,7 +715,9 @@ describe('reviewer IPC handlers', () => {
           mainSessionId: 'main-session-1'
         }
       )
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const latest = runReview.mock.calls[1]?.[0] as OrchestratorCallbacks
       latest.onCorrectionFailed?.()
@@ -689,7 +735,9 @@ describe('reviewer IPC handlers', () => {
       // means the fix-loop start/end broadcasts (and the abort lookup) must use sessionId directly.
       const { captured, promise } = captureCallbacks()
 
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       captured.onFixLoopStart?.()
       expect(broadcastToRenderers).toHaveBeenCalledWith(REVIEWER_IPC.FIX_LOOP_START, {
@@ -720,7 +768,9 @@ describe('reviewer IPC handlers', () => {
           mainSessionId: 'main-session-9'
         }
       )
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(2), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const latest = runReview.mock.calls[1]?.[0] as OrchestratorCallbacks
       latest.onFixLoopStart?.()
@@ -774,7 +824,9 @@ describe('reviewer IPC handlers', () => {
       // No projectId → the per-project loadSession path must NOT be called.
       expect(sessionLoadOne).not.toHaveBeenCalled()
       expect(loadAllSpy).toHaveBeenCalled()
-      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(runReview).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
   })
 })
