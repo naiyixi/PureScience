@@ -797,36 +797,45 @@ export class AcpSessionCapabilityOwner {
       .map((server) => (server as { name?: unknown }).name)
       .filter((name): name is string => typeof name === 'string')
     const canonicalMcpServerNames = modelFacingMcpServerNames.map(canonicalAppMcpServerName)
+    // 名字的**两套拼法不能决定能力是否挂载**：框架把服务名渲染进工具名时会把连字符折成下划线（有的折
+    // 一处、有的折两处），而这里的常量是带连字符的那个 —— 于是同一个服务在「模型看得见的名字」与「能力
+    // 检查用的名字」之间对不上，整类工具就**静默不挂载**，模型拿着正确的名字收到 `No such tool
+    // available`（打包版近 7 天日志里这一类占 12/28，且分析器诊断为「这个名字就是今天渲染的那个」）。
+    // 两侧都归一化后再比：只把同一个服务的两种拼法认成同一个，不改任何身份键。
+    const normalizeServerName = (name: string): string => name.replace(/-/gu, '_')
+    const attachedServers = new Set(canonicalMcpServerNames.map(normalizeServerName))
+    const hasServer = (constant: string): boolean =>
+      attachedServers.has(normalizeServerName(constant))
     const capabilities: SessionCapabilityName[] = []
-    if (canonicalMcpServerNames.includes(ARTIFACT_MCP_SERVER_NAME)) capabilities.push('artifacts')
-    if (canonicalMcpServerNames.includes(NOTEBOOK_MCP_SERVER_NAME)) capabilities.push('notebook')
-    if (canonicalMcpServerNames.includes(SKILL_IMPORT_MCP_SERVER_NAME)) {
+    if (hasServer(ARTIFACT_MCP_SERVER_NAME)) capabilities.push('artifacts')
+    if (hasServer(NOTEBOOK_MCP_SERVER_NAME)) capabilities.push('notebook')
+    if (hasServer(SKILL_IMPORT_MCP_SERVER_NAME)) {
       capabilities.push('skill-import')
     }
-    if (canonicalMcpServerNames.includes(PLAN_MCP_SERVER_NAME)) capabilities.push('plan')
-    if (canonicalMcpServerNames.includes(MEMORY_MCP_SERVER_NAME)) capabilities.push('memory')
-    if (canonicalMcpServerNames.includes(CONTEXT_SUMMARY_MCP_SERVER_NAME)) {
+    if (hasServer(PLAN_MCP_SERVER_NAME)) capabilities.push('plan')
+    if (hasServer(MEMORY_MCP_SERVER_NAME)) capabilities.push('memory')
+    if (hasServer(CONTEXT_SUMMARY_MCP_SERVER_NAME)) {
       capabilities.push('context-summary')
     }
-    if (canonicalMcpServerNames.includes(ROUTINE_MCP_SERVER_NAME)) {
+    if (hasServer(ROUTINE_MCP_SERVER_NAME)) {
       capabilities.push('routine')
     }
-    if (canonicalMcpServerNames.includes(GOAL_MCP_SERVER_NAME)) {
+    if (hasServer(GOAL_MCP_SERVER_NAME)) {
       capabilities.push('goal')
     }
-    if (canonicalMcpServerNames.includes(ENDPOINT_MCP_SERVER_NAME)) {
+    if (hasServer(ENDPOINT_MCP_SERVER_NAME)) {
       capabilities.push('endpoint')
     }
-    if (canonicalMcpServerNames.includes(ANNOTATION_MCP_SERVER_NAME)) {
+    if (hasServer(ANNOTATION_MCP_SERVER_NAME)) {
       capabilities.push('annotation')
     }
-    if (canonicalMcpServerNames.includes(PDF_MCP_SERVER_NAME)) {
+    if (hasServer(PDF_MCP_SERVER_NAME)) {
       capabilities.push('pdf')
     }
-    if (canonicalMcpServerNames.includes(FIGURE_MCP_SERVER_NAME)) {
+    if (hasServer(FIGURE_MCP_SERVER_NAME)) {
       capabilities.push('figure')
     }
-    if (canonicalMcpServerNames.includes(HOST_QUERY_MCP_SERVER_NAME)) {
+    if (hasServer(HOST_QUERY_MCP_SERVER_NAME)) {
       capabilities.push('query')
     }
     if (
