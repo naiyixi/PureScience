@@ -130,6 +130,11 @@ export type PdfFigureForAgent = {
   page: number
   /** 1-based within its page, top to bottom. */
   index: number
+  /**
+   * 这个候选是从哪来的：`image` 是图像放置，`vector` 是页面**路径几何**聚出来的（森林图、决策树这类
+   * 画出来的图只存在于后者）。读者的告诫语也据此不同，所以它不是装饰字段。
+   */
+  origin: 'image' | 'vector'
   /** PDF user-space box (origin bottom-left), as the page places it. */
   bbox: { x: number; y: number; width: number; height: number }
   /** The label the document put next to the picture, when it has one. Never invented. */

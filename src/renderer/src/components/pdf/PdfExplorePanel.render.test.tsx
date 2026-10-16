@@ -22,6 +22,7 @@ const FIGURES: PdfFigureForAgent[] = [
   {
     page: 2,
     index: 1,
+    origin: 'image',
     bbox: { x: 10, y: 20, width: 300.4, height: 120.6 },
     caption: 'Figure 1. Expression levels.',
     captionSource: 'below',
@@ -30,6 +31,7 @@ const FIGURES: PdfFigureForAgent[] = [
   {
     page: 4,
     index: 1,
+    origin: 'image',
     bbox: { x: 5, y: 5, width: 200, height: 100 },
     captionSource: 'none',
     warnings: []

@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   extractPdfFigureCandidates,
   pdfFigureCaptionStarts,
-  pdfImagePlacementsFromOperations
+  pdfImagePlacementsFromOperations,
+  pdfVectorFigurePlacementsFromOperations
 } from './pdf-figure-extraction'
 import type { PdfTextItem } from './pdf-table-extraction'
 
@@ -192,5 +193,106 @@ describe('pdfImagePlacementsFromOperations', () => {
     expect(pdfImagePlacementsFromOperations([{ kind: 'image' }])).toEqual([
       { x: 0, y: 0, width: 1, height: 1 }
     ])
+  })
+})
+
+describe('pdfVectorFigurePlacementsFromOperations', () => {
+  const page = { width: 400, height: 600 } // 240_000 pt² ⇒ 4% = 9_600
+
+  it('drops a rule line and a whole-page border instead of calling them figures', () => {
+    const result = pdfVectorFigurePlacementsFromOperations(
+      [
+        { kind: 'path', points: [0, 20, 300, 1, 380, 300, 4] }, // 一条 0 高（细）的规则线
+        { kind: 'path', points: [0, 0, 0, 1, 400, 0, 1, 400, 600, 1, 0, 600, 4] } // 整页边框
+      ],
+      page
+    )
+    expect(result.placements).toHaveLength(0)
+    expect(result.skippedPaths).toBe(2)
+  })
+
+  it('keeps a path cluster that is large enough and reports its geometry', () => {
+    const result = pdfVectorFigurePlacementsFromOperations(
+      [{ kind: 'path', points: [0, 50, 100, 1, 250, 100, 1, 250, 250, 1, 50, 250, 4] }],
+      page
+    )
+    expect(result.placements).toEqual([{ x: 50, y: 100, width: 200, height: 150 }])
+    expect(result.skippedPaths).toBe(0)
+  })
+
+  it('merges nearby paths into one cluster: together they pass, apart they would not', () => {
+    const alone = pdfVectorFigurePlacementsFromOperations(
+      [{ kind: 'path', points: [0, 100, 400, 1, 190, 400, 1, 190, 490, 1, 100, 490, 4] }],
+      page
+    )
+    expect(alone.placements).toHaveLength(0) // 3.4% of the page — under the bar
+    expect(alone.skippedClusters).toBe(1)
+
+    // 各自够大的两簇、间距大于 clusterGap ⇒ 各算一张
+    const apart = pdfVectorFigurePlacementsFromOperations(
+      [
+        { kind: 'path', points: [0, 20, 400, 1, 140, 400, 1, 140, 520, 1, 20, 520, 4] },
+        { kind: 'path', points: [0, 20, 260, 1, 140, 260, 1, 140, 380, 1, 20, 380, 4] } // 间距 20 ⇒ 不并
+      ],
+      page
+    )
+    expect(apart.placements).toHaveLength(2)
+
+    // 各自 3.4%（低于 4% 的门），**并起来** 4.5% ⇒ 聚簇让它们够格 —— 这正是「一张矢量图由很多路径画成」
+    // 的情形：单看每条路径都不像图。
+    const chained = pdfVectorFigurePlacementsFromOperations(
+      [
+        { kind: 'path', points: [0, 100, 400, 1, 190, 400, 1, 190, 490, 1, 100, 490, 4] },
+        { kind: 'path', points: [0, 100, 370, 1, 190, 370, 1, 190, 460, 1, 100, 460, 4] } // 与上一条重叠 ⇒ 并成一簇
+      ],
+      page
+    )
+    expect(chained.placements).toEqual([{ x: 100, y: 370, width: 90, height: 120 }])
+  })
+
+  it('applies the current transformation matrix to path points', () => {
+    const result = pdfVectorFigurePlacementsFromOperations(
+      [
+        { kind: 'transform', matrix: [2, 0, 0, 2, 10, 20] },
+        { kind: 'path', points: [0, 50, 50, 1, 150, 50, 1, 150, 150, 1, 50, 150, 4] }
+      ],
+      page
+    )
+    expect(result.placements).toEqual([{ x: 110, y: 120, width: 200, height: 200 }])
+  })
+
+  it('treats curve control points as bounding, never as clipping', () => {
+    // 曲线（码 2，6 个坐标 = 三个点）：控制点 (300,300) 远在端点之外 —— 盒子只能被撑大，不能被裁小。
+    const result = pdfVectorFigurePlacementsFromOperations(
+      [{ kind: 'path', points: [0, 100, 100, 2, 300, 300, 120, 120, 140, 140, 4] }],
+      page
+    )
+    expect(result.placements).toEqual([{ x: 100, y: 100, width: 200, height: 200 }])
+  })
+})
+
+describe('extractPdfFigureCandidates with vector candidates', () => {
+  const items = [
+    { text: 'Figure 1', x: 40, y: 60, width: 60, height: 10, page: 1, fontSize: 10 }
+  ] as never
+
+  it('names where each candidate came from and keeps one reading order on the page', () => {
+    const extraction = extractPdfFigureCandidates({
+      page: 1,
+      images: [{ x: 40, y: 300, width: 200, height: 200 }],
+      vector: [{ x: 40, y: 620, width: 200, height: 200 }],
+      items
+    })
+    expect(extraction.figures.map((figure) => figure.origin)).toEqual(['vector', 'image'] as never)
+    expect(extraction.figures.map((figure) => figure.index)).toEqual([1, 2] as never)
+  })
+
+  it('says it has no vector candidates when there are none', () => {
+    const extraction = extractPdfFigureCandidates({
+      page: 1,
+      images: [{ x: 40, y: 300, width: 200, height: 200 }],
+      items
+    })
+    expect(extraction.figures.map((figure) => figure.origin)).toEqual(['image'] as never)
   })
 })

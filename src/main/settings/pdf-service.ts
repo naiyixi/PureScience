@@ -27,6 +27,7 @@ import {
   auditPdfFigureForUse,
   extractPdfFigureCandidates,
   pdfImagePlacementsFromOperations,
+  pdfVectorFigurePlacementsFromOperations,
   type PdfImagePlacement,
   type PdfPaintOperation
 } from '../../shared/pdf-figure-extraction'
@@ -117,6 +118,8 @@ export type PdfServiceOptions = {
      */
     items?: PdfTextItem[][]
     images?: PdfImagePlacement[][]
+    /** 路径几何聚出来的候选（矢量画的图），与 `images` 并列。缺席 = 这个解析器不读操作符。 */
+    vectors?: PdfImagePlacement[][]
     /**
      * The content-stream rotation the parser normalized away, one entry per page (0 = the page was already
      * upright). Optional for the same reason `items` is: a parser that does not read text matrices has no
@@ -374,11 +377,14 @@ export class PdfService {
       if (figures.length >= PDF_FIGURES_MAX_FIGURES) break
       scannedPages += 1
       const images = parsed.images?.[pageNumber - 1] ?? []
-      if (images.length === 0) continue
+      const vectors = parsed.vectors?.[pageNumber - 1] ?? []
+      // 只按图像判空页会**整页漏掉矢量画的图** —— 那些页恰恰是森林图/决策树所在页。
+      if (images.length === 0 && vectors.length === 0) continue
       const items = parsed.items?.[pageNumber - 1] ?? []
       const extraction = extractPdfFigureCandidates({
         page: pageNumber,
         images,
+        ...(vectors.length === 0 ? {} : { vector: vectors }),
         items
       })
       skippedSmall += extraction.skippedSmall
@@ -396,6 +402,8 @@ export class PdfService {
           page: figure.page,
           index: figure.index,
           bbox: { x: figure.x, y: figure.y, width: figure.width, height: figure.height },
+          // 候选从哪来：图像放置，还是页面的路径几何。读者要能分辨，否则矢量簇会被当成一张位图。
+          origin: figure.origin,
           ...(caption === undefined ? {} : { caption }),
           captionSource: figure.captionSource,
           // 插图理解的第一层（U4）：按类别分派。凭的是文档自己给出的两样东西 —— 图注，与**落在图框内**
@@ -528,6 +536,8 @@ const parsePdf = async (
   /** Absent on the paths that stop before the text layer could be read. */
   items?: PdfTextItem[][]
   images?: PdfImagePlacement[][]
+  /** 路径几何聚出来的候选：矢量画的图只存在于这里（与 `images` 并列，都来自同一趟操作符读取）。 */
+  vectors?: PdfImagePlacement[][]
   /** One entry per page: the content-stream rotation that was normalized away (0 = already upright). */
   pageRotations?: AxisAlignedRotation[]
 }> => {
@@ -558,6 +568,8 @@ const parsePdf = async (
     const itemsPerPage: PdfTextItem[][] = []
     const pageRotations: AxisAlignedRotation[] = []
     const imagesPerPage: PdfImagePlacement[][] = []
+    // 路径几何聚出来的候选，与图像候选并行：矢量画的图只存在于这里（见 shared 里的聚簇函数）。
+    const vectorsPerPage: PdfImagePlacement[][] = []
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
       const page = await document.getPage(pageNumber)
       const content = await page.getTextContent()
@@ -596,6 +608,7 @@ const parsePdf = async (
       // The same pass that reads the text reads the page's images: a figure is an image placement plus
       // whatever label the document put near it, so the placements travel with the items.
       const placements: PdfImagePlacement[] = []
+      const vectorPlacements: PdfImagePlacement[] = []
       try {
         const operators = await page.getOperatorList()
         const operations: PdfPaintOperation[] = []
@@ -618,13 +631,40 @@ const parsePdf = async (
             fn === pdfjs.OPS.paintImageMaskXObject
           ) {
             operations.push({ kind: 'image' })
+            continue
+          }
+          if (fn === pdfjs.OPS.constructPath) {
+            // args = [坐标个数, [打包流], bbox]。打包流是**码+坐标**的混合（见 shared 里的文法注释，按
+            // 「恰好读完」在真机语料上证过），所以这里只做拆包，不做语义假设。
+            const pathArgs = Array.isArray(args) ? args : []
+            const packed = pathArgs[1]
+            const raw: unknown = Array.isArray(packed) ? packed[0] : packed
+            const values = ArrayBuffer.isView(raw)
+              ? Array.from(raw as unknown as ArrayLike<number>)
+              : Array.isArray(raw)
+                ? (raw as unknown[]).map((value) => Number(value))
+                : []
+            const numbers = values
+              .map((value) => Number(value))
+              .filter((value) => Number.isFinite(value))
+            if (numbers.length >= 3) operations.push({ kind: 'path', points: numbers })
           }
         }
         placements.push(...pdfImagePlacementsFromOperations(operations))
+        const view = Array.isArray(page.view) ? page.view : []
+        if (view.length >= 4) {
+          vectorPlacements.push(
+            ...pdfVectorFigurePlacementsFromOperations(operations, {
+              width: Math.abs(Number(view[2]) - Number(view[0])),
+              height: Math.abs(Number(view[3]) - Number(view[1]))
+            }).placements
+          )
+        }
       } catch {
         // Images are best-effort: a page whose operators cannot be read still yields its text.
       }
       imagesPerPage.push(placements)
+      vectorsPerPage.push(vectorPlacements)
       // The page text is assembled from the SAME pass, but from every run pdfjs reported — including the
       // whitespace-only runs the positioned list above drops, because a space is its own item and dropping it
       // would glue words together. `hasEOL` is what carries the line ends (see `assemblePdfPageText`); without
@@ -664,6 +704,7 @@ const parsePdf = async (
       // text path that other readers use is unaffected by carrying them.
       items: itemsPerPage,
       images: imagesPerPage,
+      vectors: vectorsPerPage,
       // Pages whose coordinates were rotated back to upright, so the caller can say so instead of
       // handing back numbers that silently disagree with the page as displayed.
       pageRotations
