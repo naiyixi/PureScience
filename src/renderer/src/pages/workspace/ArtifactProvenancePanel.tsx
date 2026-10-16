@@ -1799,6 +1799,37 @@ const ArtifactProvenancePanel = ({
                                     ))}
                                   </ul>
                                 </div>
+                              ) : figure.derivation.kind === 'records' ? (
+                                <div
+                                  className="space-y-1"
+                                  data-testid="artifact-figure-observations-records"
+                                >
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsRecords').replace(
+                                      '{count}',
+                                      String(figure.derivation.records.length)
+                                    )}
+                                  </p>
+                                  <ul className="space-y-0.5">
+                                    {figure.derivation.records.map((record, recordIndex) => (
+                                      <li key={`${record.id}:${recordIndex}`} className="text-xs">
+                                        <code className="break-all">{record.id}</code>
+                                        <span className="ml-2 text-text-300">
+                                          {record.basis === 'predicted'
+                                            ? t('ws.figureObservationsPredicted')
+                                            : t('ws.figureObservationsExperimental')}
+                                          {record.method ? ` · ${record.method}` : ''}
+                                          {record.date ? ` · ${record.date}` : ''}
+                                        </span>
+                                        {record.title ? (
+                                          <span className="block text-text-300">
+                                            {record.title}
+                                          </span>
+                                        ) : null}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
                               ) : (
                                 <div
                                   className="space-y-1"

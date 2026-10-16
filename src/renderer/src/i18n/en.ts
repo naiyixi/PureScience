@@ -4566,6 +4566,9 @@ export const en: Record<ZhKey, string> = {
   'ws.figureObservationsAccessions': 'Accessions read from the figure (what a lookup would use):',
   'ws.figureObservationsFingerprint':
     'Input fingerprint (changes with page, box, caption or in-figure text):',
+  'ws.figureObservationsRecords': '{count} record(s) fetched from the library (not written by a model):',
+  'ws.figureObservationsExperimental': 'experimentally determined',
+  'ws.figureObservationsPredicted': 'predicted — not an experimental structure',
   'preview.structureSelectionLabel': 'Region name',
   'preview.structureSelectionLabelPlaceholder': 'Name this region',
   'preview.structureSelectionColor': 'Mark colour {color}',

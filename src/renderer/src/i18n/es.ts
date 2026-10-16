@@ -4631,6 +4631,9 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Identificadores leídos de la figura (lo que usaría una consulta):',
   'ws.figureObservationsFingerprint':
     'Huella de entrada (cambia con la página, el recuadro, el pie o el texto de la figura):',
+  'ws.figureObservationsRecords': '{count} registro(s) obtenidos de la biblioteca (no escritos por un modelo):',
+  'ws.figureObservationsExperimental': 'determinada experimentalmente',
+  'ws.figureObservationsPredicted': 'predicha — no es una estructura experimental',
   'preview.structureSelectionLabel': 'Nombre de la región',
   'preview.structureSelectionLabelPlaceholder': 'Nombrar esta región',
   'preview.structureSelectionColor': 'Color de marca {color}',

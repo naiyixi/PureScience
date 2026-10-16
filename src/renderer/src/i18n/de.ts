@@ -4679,6 +4679,9 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Aus der Abbildung gelesene Accessions (was eine Abfrage nutzen würde):',
   'ws.figureObservationsFingerprint':
     'Eingabe-Fingerabdruck (ändert sich mit Seite, Kasten, Bildunterschrift oder Text im Bild):',
+  'ws.figureObservationsRecords': '{count} aus der Bibliothek geholte Datensätze (nicht von einem Modell verfasst):',
+  'ws.figureObservationsExperimental': 'experimentell bestimmt',
+  'ws.figureObservationsPredicted': 'vorhergesagt — keine experimentelle Struktur',
   'preview.structureSelectionLabel': 'Name des Bereichs',
   'preview.structureSelectionLabelPlaceholder': 'Diesen Bereich benennen',
   'preview.structureSelectionColor': 'Markierungsfarbe {color}',

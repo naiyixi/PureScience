@@ -538,4 +538,69 @@ describe('PdfService.figures understanding', () => {
     if (derivation?.kind !== 'refused') throw new Error('unreachable')
     expect(derivation.reason).toBe('recognizer-unavailable')
   })
+
+  // U4-b：图上读到的库号要绑到**库里真取的记录**上，不靠模型编。查询口是注入的：缺席就说「没接」，
+  // 查得到就换成记录，查不动就具名说为什么（连同这台机器能走的下一步）。
+  const proteinFigure = () => [item('Figure 4. Crystal structure of crambin (PDB 1CRN).', 100, 280)]
+
+  const serviceWithLookup = (
+    items: PdfTextItem[],
+    lookup: PdfServiceOptions['lookupAccession']
+  ): PdfService =>
+    new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async () => ({
+        pages: ['one page'],
+        outline: [],
+        title: 'figures',
+        items: [items],
+        images: [[placement]]
+      }),
+      ...(lookup ? { lookupAccession: lookup } : {})
+    })
+
+  it('把库号换成库里真取的记录，并保留「实验测定 / 预测」的依据（U4-b）', async () => {
+    const svc = serviceWithLookup(proteinFigure(), async (accession) => ({
+      state: 'resolved',
+      records: [
+        {
+          id: accession.id.toLowerCase(),
+          basis: 'experimental',
+          source: 'pdbe',
+          title: 'WATER STRUCTURE OF A HYDROPHOBIC PROTEIN AT ATOMIC RESOLUTION',
+          method: 'X-ray diffraction'
+        }
+      ]
+    }))
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    const derivation = result.figures[0]?.derivation
+    expect(derivation?.kind).toBe('records')
+    if (derivation?.kind !== 'records') throw new Error('unreachable')
+    expect(derivation.records[0].basis).toBe('experimental')
+    expect(derivation.records[0].source).toBe('pdbe')
+  })
+
+  it('查询口缺席时说「没接」，查不动时具名说为什么（都不是空结果）', async () => {
+    const withoutPort = serviceFor(proteinFigure())
+    const openedWithout = await withoutPort.open(pdfPath, 'proj-1')
+    const refused = (await withoutPort.figures(openedWithout.doc.docId)).figures[0]?.derivation
+    expect(refused?.kind).toBe('refused')
+    if (refused?.kind !== 'refused') throw new Error('unreachable')
+    expect(refused.reason).toBe('accession-lookup-not-wired')
+
+    const unreachable = serviceWithLookup(proteinFigure(), async (accession) => ({
+      state: 'unavailable',
+      id: accession.id,
+      reason: 'no answer within 20000ms'
+    }))
+    const openedUnreachable = await unreachable.open(pdfPath, 'proj-1')
+    const failed = (await unreachable.figures(openedUnreachable.doc.docId)).figures[0]?.derivation
+    expect(failed?.kind).toBe('refused')
+    if (failed?.kind !== 'refused') throw new Error('unreachable')
+    expect(failed.reason).toBe('accession-lookup-unavailable')
+  })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  applyAccessionLookups,
   deriveFromFigure,
   describeFigureDerivation,
   numericTokensIn,
@@ -117,5 +118,76 @@ describe('deriveFromFigure — 这一类允许派生什么', () => {
 
     const refused = derived('Scheme 2', [])
     expect(describeFigureDerivation(refused)).toContain('refused: recognizer-unavailable')
+  })
+})
+
+describe('applyAccessionLookups — 库号换成真取的记录，或具名说为什么没有', () => {
+  const refused = {
+    kind: 'refused' as const,
+    reason: 'accession-lookup-not-wired' as const,
+    requires: 'a lookup by accession against a real structure database',
+    accessions: [{ kind: 'pdb' as const, id: '1CRN', where: 'in-figure-text' as const }]
+  }
+
+  it('upgrades to records — and keeps the basis (experimental vs predicted) visible', () => {
+    const upgraded = applyAccessionLookups(refused, [
+      {
+        state: 'resolved',
+        records: [
+          {
+            id: '1crn',
+            basis: 'experimental',
+            source: 'pdbe',
+            title: 'WATER STRUCTURE OF A HYDROPHOBIC PROTEIN AT ATOMIC RESOLUTION'
+          }
+        ]
+      }
+    ])
+    expect(upgraded.kind).toBe('records')
+    if (upgraded.kind !== 'records') return
+    expect(upgraded.records[0].id).toBe('1crn')
+    expect(upgraded.records[0].basis).toBe('experimental')
+  })
+
+  it('names an unreachable service as unavailable and carries the next step', () => {
+    const outcome = applyAccessionLookups(refused, [
+      { state: 'unavailable', id: '1CRN', reason: 'no answer within 20000ms' }
+    ])
+    expect(outcome.kind).toBe('refused')
+    if (outcome.kind !== 'refused') return
+    expect(outcome.reason).toBe('accession-lookup-unavailable')
+    expect(outcome.requires).toContain('no answer within 20000ms')
+    expect(outcome.requires).toContain('proxy')
+  })
+
+  it('separates "the service has no such entry" from "nothing was looked up"', () => {
+    const outcome = applyAccessionLookups(refused, [{ state: 'not-found', id: '1CRN' }])
+    expect(outcome.kind).toBe('refused')
+    if (outcome.kind !== 'refused') return
+    expect(outcome.reason).toBe('accession-lookup-not-found')
+    expect(outcome.requires).toContain('Nothing was invented')
+  })
+
+  it('leaves every other derivation exactly as it was', () => {
+    const numbers = { kind: 'numbers' as const, source: 'pdf-text-in-bbox' as const, values: [] }
+    expect(applyAccessionLookups(numbers, [{ state: 'not-found', id: 'X' }])).toEqual(numbers)
+    const undetermined = {
+      kind: 'refused' as const,
+      reason: 'undetermined' as const,
+      detail: 'no-signals' as const
+    }
+    expect(applyAccessionLookups(undetermined, [{ state: 'not-found', id: 'X' }])).toEqual(
+      undetermined
+    )
+  })
+
+  it('describes a records derivation by entry and basis', () => {
+    expect(
+      describeFigureDerivation({
+        kind: 'records',
+        source: 'accession-lookup',
+        records: [{ id: 'AF-P00533-F1', basis: 'predicted', source: 'alphafold-db' }]
+      })
+    ).toBe('1 record(s) from accession-lookup: AF-P00533-F1 (predicted)')
   })
 })

@@ -39,9 +39,10 @@ import {
 } from '../../shared/pdf-page-rotation'
 import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import { figureUnderstandingFor } from '../../shared/figure-understanding'
-import { deriveFromFigure } from '../../shared/figure-derivation'
+import { applyAccessionLookups, deriveFromFigure } from '../../shared/figure-derivation'
 import type { FigureDerivation } from '../../shared/figure-derivation'
-import type { FigureClass } from '../../shared/figure-understanding'
+import type { AccessionLookupOutcome } from '../../shared/figure-accession'
+import type { FigureAccession, FigureClass } from '../../shared/figure-understanding'
 import type { FigureDerivationInput } from '../../shared/figure-observation'
 import type {
   PdfOpenResult,
@@ -96,6 +97,11 @@ export type PdfServiceOptions = {
    * 调用方负责把这条记进**既有**那条结构观察溯源面（与选择/测量同一条账）。
    */
   onFigureDerivation?: (record: FigureDerivationRecord) => void
+  /**
+   * 按图上的库号取**真实数据**（U4-b）。缺席 = 这条路没接线，派生会**具名**说「没接」而不是静默省略。
+   * 请求本身不在这里做：装配点注入的实现跑在主进程的受管取数路径上（遵应用与系统的代理设置）。
+   */
+  lookupAccession?: (accession: FigureAccession) => Promise<AccessionLookupOutcome>
   // Resolves a project-relative or absolute path to an on-disk file path. Absent ⇒ relative
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
@@ -351,6 +357,33 @@ export class PdfService {
     }
   }
 
+  /**
+   * 库号 → 真实记录。只升级「库号在图上、查询口没接」这一种拒答；查询口缺席 ⇒ 一个字都不动（保持具名
+   * 说「没接」），查询抛错 ⇒ 也算**查不动**（不是因为异常而把这一路悄悄抹掉）。
+   */
+  private async withAccessionLookups(derivation: FigureDerivation): Promise<FigureDerivation> {
+    const lookup = this.options.lookupAccession
+    if (!lookup) return derivation
+    if (derivation.kind !== 'refused' || derivation.reason !== 'accession-lookup-not-wired') {
+      return derivation
+    }
+    const accessions = derivation.accessions ?? []
+    if (accessions.length === 0) return derivation
+    const outcomes: AccessionLookupOutcome[] = []
+    for (const accession of accessions) {
+      try {
+        outcomes.push(await lookup(accession))
+      } catch (error) {
+        outcomes.push({
+          state: 'unavailable',
+          id: accession.id,
+          reason: error instanceof Error ? error.message : 'the lookup threw'
+        })
+      }
+    }
+    return applyAccessionLookups(derivation, outcomes)
+  }
+
   async figures(docId: string, page?: number): Promise<PdfFiguresResult> {
     const doc = await this.requireDoc(docId)
     if (page !== undefined && (page < 1 || page > doc.pageCount)) {
@@ -397,7 +430,10 @@ export class PdfService {
           ...(caption === undefined ? {} : { caption }),
           inFigureText: inside.map((item) => item.text)
         })
-        const derivation = deriveFromFigure({ understanding, inFigureText: inside })
+        // 纯函数先给出「这一类允许派生什么」；库号那一路再**换成库里真取的记录**（查询口缺席时保持具名拒答）。
+        const derivation = await this.withAccessionLookups(
+          deriveFromFigure({ understanding, inFigureText: inside })
+        )
         figures.push({
           page: figure.page,
           index: figure.index,

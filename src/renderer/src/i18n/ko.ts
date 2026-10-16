@@ -4461,6 +4461,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsRefused': '이 분류는 파생하지 않았습니다. 기록된 이유:',
   'ws.figureObservationsAccessions': '그림에서 읽은 접근 번호(조회에 쓸 값):',
   'ws.figureObservationsFingerprint': '입력 지문(페이지·상자·캡션·그림 내 텍스트가 바뀌면 변함):',
+  'ws.figureObservationsPredicted': '예측 구조 — 실험 구조가 아닙니다',
+  'ws.figureObservationsRecords':
+    '라이브러리에서 실제로 가져온 기록 {count}건(모델이 쓴 것이 아님):',
+  'ws.figureObservationsExperimental': '실험적으로 결정됨',
   'preview.structureSelectionLabel': '영역 이름',
   'preview.structureSelectionLabelPlaceholder': '이 영역에 이름 붙이기',
   'preview.structureSelectionColor': '표시 색 {color}',

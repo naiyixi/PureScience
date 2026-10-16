@@ -9,6 +9,8 @@
 // （PDF 的文字层），每一项带**它印在的那一行的页级几何** —— 这就是来源标注，读者可以回原文核对。
 // 所以这一路给的是**数值本身**，不是结论：不做换算、不做统计、不解释。
 
+import { accessionLookupRetryHint } from './figure-accession'
+import type { AccessionLookupOutcome, AccessionRecord } from './figure-accession'
 import type { FigureAccession, PdfFigureUnderstanding } from './figure-understanding'
 
 export type DerivedFigureNumber = {
@@ -23,8 +25,12 @@ export type DerivedFigureNumber = {
 export type FigureDerivationRefusal =
   // 化学结构式：需要一台 OCSR 引擎，本机没有。
   | 'recognizer-unavailable'
-  // 蛋白结构图：库号在图上，但「按库号查真实数据」这条路还没接。
+  // 蛋白结构图：库号在图上，但「按库号查真实数据」这条路还没接（装配点没给查询口）。
   | 'accession-lookup-not-wired'
+  // 查过了，库里没有这一条 —— 与「没查」不是一回事。
+  | 'accession-lookup-not-found'
+  // 查不动（网络/代理/超时）。**不是**「以后再说」：下面会带一句这台机器能走的下一步。
+  | 'accession-lookup-unavailable'
   // 通用示意图：需要一台通用描述模型，本机没有配置。
   | 'description-model-not-configured'
   // 图表：图框内没有任何数值文字项（数值可能是矢量画的，文字层里没有）。
@@ -34,6 +40,9 @@ export type FigureDerivationRefusal =
 
 export type FigureDerivation =
   | { kind: 'numbers'; source: 'pdf-text-in-bbox'; values: readonly DerivedFigureNumber[] }
+  // 蛋白/生物图：图上读到的库号已经**换成库里真取的记录**（不靠模型编）。每条都带来源与依据
+  // （实验测定 / 预测），因为这两者在证据链上不是同一件事。
+  | { kind: 'records'; source: 'accession-lookup'; records: readonly AccessionRecord[] }
   | {
       kind: 'refused'
       reason: FigureDerivationRefusal
@@ -44,6 +53,45 @@ export type FigureDerivation =
       /** 判不出时的具名理由，原样带出来。 */
       detail?: 'no-signals' | 'insufficient-signals' | 'conflicting-signals'
     }
+
+/**
+ * 把查询结果贴回派生：只有「库号在图上、但查询口没接」这一种拒答会被**升级**成 `records`；查过了但没有、
+ * 或查不动，都改成对应的**具名拒答**并带上可操作的那一步。其余派生原样返回 —— 这一步只做升级与具名，
+ * 不改判据。
+ */
+export const applyAccessionLookups = (
+  derivation: FigureDerivation,
+  outcomes: readonly AccessionLookupOutcome[]
+): FigureDerivation => {
+  if (derivation.kind !== 'refused') return derivation
+  if (derivation.reason !== 'accession-lookup-not-wired') return derivation
+  if (outcomes.length === 0) return derivation
+
+  const records = outcomes.flatMap((outcome) =>
+    outcome.state === 'resolved' ? [...outcome.records] : []
+  )
+  if (records.length > 0) return { kind: 'records', source: 'accession-lookup', records }
+
+  const unavailable = outcomes.find((outcome) => outcome.state === 'unavailable')
+  if (unavailable && unavailable.state === 'unavailable') {
+    return {
+      ...derivation,
+      reason: 'accession-lookup-unavailable',
+      requires: `${unavailable.id}: ${unavailable.reason}. ${accessionLookupRetryHint}`
+    }
+  }
+
+  const missing = outcomes.find((outcome) => outcome.state === 'not-found')
+  if (missing) {
+    return {
+      ...derivation,
+      reason: 'accession-lookup-not-found',
+      requires: 'the entry service answered: no such entry. Nothing was invented to fill the gap.'
+    }
+  }
+
+  return derivation
+}
 
 export type FigureTextItem = {
   text: string
@@ -125,6 +173,12 @@ export const deriveFromFigure = (input: {
 export const describeFigureDerivation = (derivation: FigureDerivation): string => {
   if (derivation.kind === 'numbers') {
     return `${derivation.values.length} number(s) from ${derivation.source}`
+  }
+  if (derivation.kind === 'records') {
+    // 库里的记录：写清**哪一条**与**依据**（实验测定 / 预测），两者在证据链上不是同一件事。
+    return `${derivation.records.length} record(s) from ${derivation.source}: ${derivation.records
+      .map((record) => `${record.id} (${record.basis})`)
+      .join(', ')}`
   }
   const requires = derivation.requires === undefined ? '' : ` — requires: ${derivation.requires}`
   const detail = derivation.detail === undefined ? '' : ` (${derivation.detail})`

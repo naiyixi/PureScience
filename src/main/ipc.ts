@@ -207,6 +207,7 @@ import {
   figureDerivationFingerprint,
   recordStructureObservation
 } from './structure/structure-observation-journal'
+import { lookupAccessionOnMainFetch } from './settings/accession-lookup'
 import { runDocumentTranslation } from './translation/document-translation'
 import { translationTargetLookup } from './translation/run-translation'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -1915,6 +1916,8 @@ const createApplicationModules = async (
           derivation
         }
       }),
+    // U4-b：图上读到的库号 → 库里的真实记录。实现单开一个模块，好让真机读数与生产走同一个函数。
+    lookupAccession: lookupAccessionOnMainFetch,
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path)),
     // A PDF opened from an Artifact card is identified by its Version, not by a path: the same resolver the
     // file surfaces use turns that identity into the file, so the reader can actually read it.

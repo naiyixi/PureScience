@@ -604,6 +604,30 @@ describe('ArtifactProvenancePanel', () => {
                 accessions: [{ kind: 'pdb', id: '1CRN', where: 'in-figure-text' }]
               }
             }
+          },
+          {
+            recordedAt: '2026-07-27T20:07:00.000Z',
+            kind: 'figure-derivation',
+            figureDerivation: {
+              page: 7,
+              index: 1,
+              bbox: { x: 1, y: 2, width: 90, height: 60 },
+              figureClass: 'protein-structure',
+              inputFingerprint: `sha256:${'d'.repeat(64)}`,
+              derivation: {
+                kind: 'records',
+                source: 'accession-lookup',
+                records: [
+                  {
+                    id: 'AF-P00533-F1',
+                    basis: 'predicted',
+                    source: 'alphafold-db',
+                    method: 'AlphaFold Monomer v2.0 pipeline',
+                    date: '2025-08-01T00:00:00Z'
+                  }
+                ]
+              }
+            }
           }
         ],
         dropped: 0,
@@ -626,6 +650,10 @@ describe('ArtifactProvenancePanel', () => {
     expect(refused?.textContent).toContain('accession-lookup-not-wired')
     expect(refused?.textContent).toContain('pdb:1CRN')
     expect(container.textContent).toContain(`sha256:${'b'.repeat(64)}`)
+    const records = container.querySelector('[data-testid="artifact-figure-observations-records"]')
+    expect(records?.textContent).toContain('AF-P00533-F1')
+    expect(records?.textContent).toContain('predicted')
+    expect(records?.textContent).toContain('AlphaFold Monomer v2.0 pipeline')
     // 两类派生行都不给「在视图里显示」按钮。
     expect(
       container.querySelector('[data-testid="artifact-structure-observations-jump"]')
