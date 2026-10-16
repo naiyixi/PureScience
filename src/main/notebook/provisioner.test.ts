@@ -45,6 +45,23 @@ import {
   type RuntimeOperationRecord
 } from './operation-journal'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of a promise
+ * that is already in flight (a release landing in the record, a spy being called, a journal row being
+ * written), never for something that may never happen. The only thing the window has to cover is how
+ * long a loaded machine takes to schedule that continuation — so the default 1s is a quiet-machine
+ * budget, not a correctness budget. Measured on this repository: under load a coordinated wait took up
+ * to 704ms (34 samples, p90 = 361ms), and the one site that carries a note below failed at ~1.1s under
+ * load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const makeRoot = (): string => mkdtempSync(join(tmpdir(), 'os-prov-'))
 const logicalNameForPrefix = (prefix: string): string =>
   logicalEnvNameFromDirectory(basename(prefix))
@@ -228,7 +245,7 @@ describe('DefaultRuntimeProvisioner.provisionPython', () => {
     const provisioner = new DefaultRuntimeProvisioner(deps)
     const run = provisioner.provisionPython(() => {})
     // Wait until provisionPython (after fetchBundle) reaches the create call and wires the signal.
-    await vi.waitFor(() => expect(seenSignal).toBeDefined())
+    await vi.waitFor(() => expect(seenSignal).toBeDefined(), { timeout: COORDINATION_WINDOW_MS })
     provisioner.cancel()
     await expect(run).rejects.toThrow(/cancelled/i)
   })
@@ -245,7 +262,7 @@ describe('DefaultRuntimeProvisioner.provisionPython', () => {
     })
     const provisioner = new DefaultRuntimeProvisioner(deps)
     const run = provisioner.provisionPython(() => {})
-    await vi.waitFor(() => expect(seenSignal).toBeDefined())
+    await vi.waitFor(() => expect(seenSignal).toBeDefined(), { timeout: COORDINATION_WINDOW_MS })
     provisioner.cancel('python') // targets the running language explicitly
     await expect(run).rejects.toThrow(/cancelled/i)
   })
@@ -267,7 +284,7 @@ describe('DefaultRuntimeProvisioner.provisionPython', () => {
     })
     const provisioner = new DefaultRuntimeProvisioner(deps)
     const py = provisioner.provisionPython(() => {})
-    await vi.waitFor(() => expect(seenSignal).toBeDefined()) // python create in flight
+    await vi.waitFor(() => expect(seenSignal).toBeDefined(), { timeout: COORDINATION_WINDOW_MS }) // python create in flight
     // Cancelling R while Python runs must NOT abort Python's signal.
     provisioner.cancel('r')
     expect(seenSignal?.aborted).toBe(false)
@@ -829,11 +846,14 @@ describe('DefaultRuntimeProvisioner.provisionPython', () => {
         // The provisioner's onChild does a fire-and-forget journal.update, so poll the on-disk journal
         // until the pid lands (still "during" the create, before we materialize the bin below).
         const journal = RuntimeOperationJournal.forPath(operationJournalPath(root))
-        await vi.waitFor(async () => {
-          const found = (await journal.pending()).find((r) => r.kind === 'materialize')
-          expect(found?.childPid).toBe(4242)
-          recordDuringCreate = found
-        })
+        await vi.waitFor(
+          async () => {
+            const found = (await journal.pending()).find((r) => r.kind === 'materialize')
+            expect(found?.childPid).toBe(4242)
+            recordDuringCreate = found
+          },
+          { timeout: COORDINATION_WINDOW_MS }
+        )
         // Still materialize the interpreter bin so verify() passes and materialize reaches complete().
         const bin = pythonBin(prefix)
         mkdirSync(join(bin, '..'), { recursive: true })
@@ -1001,7 +1021,9 @@ describe('serializeProvisioner cancel over a real queue', () => {
 
     const py = serialized.provisionPython(() => {})
     const r = serialized.provisionR(() => {}) // queued behind python
-    await vi.waitFor(() => expect(resolvePyCreate).toBeDefined()) // python is running
+    await vi.waitFor(() => expect(resolvePyCreate).toBeDefined(), {
+      timeout: COORDINATION_WINDOW_MS
+    }) // python is running
 
     serialized.cancel('r') // cancel the QUEUED language
     resolvePyCreate?.() // let python finish normally
@@ -1283,7 +1305,7 @@ describe('DefaultRuntimeProvisioner.createNamedEnvironment', () => {
     })
     const provisioner = new DefaultRuntimeProvisioner(deps)
     const py = provisioner.provisionPython(() => {})
-    await vi.waitFor(() => expect(pyVerifyStarted).toBe(true))
+    await vi.waitFor(() => expect(pyVerifyStarted).toBe(true), { timeout: COORDINATION_WINDOW_MS })
 
     await provisioner.createNamedEnvironment('my-analysis', 'python')
     expect(sawNamedRun).toBe(true)
@@ -1393,11 +1415,14 @@ describe('DefaultRuntimeProvisioner journals every prefix write', () => {
     runArgv: async (_argv: string[], _signal, onChild) => {
       onChild?.(pid)
       const journal = RuntimeOperationJournal.forPath(operationJournalPath(root))
-      await vi.waitFor(async () => {
-        const found = (await journal.pending()).find((r) => r.targetPath === prefix)
-        expect(found?.childPid).toBe(pid)
-        capture(found as RuntimeOperationRecord)
-      })
+      await vi.waitFor(
+        async () => {
+          const found = (await journal.pending()).find((r) => r.targetPath === prefix)
+          expect(found?.childPid).toBe(pid)
+          capture(found as RuntimeOperationRecord)
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       const bin = logicalNameForPrefix(prefix) === DEFAULT_R_ENV ? rBin(prefix) : pythonBin(prefix)
       mkdirSync(join(bin, '..'), { recursive: true })
       writeFileSync(bin, 'x')

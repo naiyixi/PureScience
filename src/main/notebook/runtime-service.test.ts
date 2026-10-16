@@ -57,6 +57,23 @@ import {
 } from './runtime-paths'
 import type { NotebookShellProcess } from './shell-process'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of a promise
+ * that is already in flight (a release landing in the record, a spy being called, a journal row being
+ * written), never for something that may never happen. The only thing the window has to cover is how
+ * long a loaded machine takes to schedule that continuation — so the default 1s is a quiet-machine
+ * budget, not a correctness budget. Measured on this repository: under load a coordinated wait took up
+ * to 704ms (34 samples, p90 = 361ms), and the one site that carries a note below failed at ~1.1s under
+ * load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 let storageRoot: string | undefined
 
 const createStorageRoot = async (): Promise<string> => {
@@ -1617,10 +1634,13 @@ describe('notebook runtime service', () => {
         command: 'second'
       })
 
-      await vi.waitFor(() => {
-        expect(entered).toHaveLength(2)
-        expect(entered).toEqual(expect.arrayContaining(['first', 'second']))
-      })
+      await vi.waitFor(
+        () => {
+          expect(entered).toHaveLength(2)
+          expect(entered).toEqual(expect.arrayContaining(['first', 'second']))
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       releases.get('second')?.()
       releases.get('first')?.()
 
@@ -2072,7 +2092,9 @@ describe('notebook runtime service', () => {
       })
 
     const first = service.recoverInterruptedOperations()
-    await vi.waitFor(() => expect(readState).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(readState).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const second = service.recoverInterruptedOperations()
 
     await Promise.resolve()
@@ -2243,7 +2265,7 @@ describe('notebook runtime service', () => {
 
     const first = submit("print('a')")
     // Wait until the first run has actually entered the executor and is holding the single slot.
-    await vi.waitFor(() => expect(releases).toHaveLength(1))
+    await vi.waitFor(() => expect(releases).toHaveLength(1), { timeout: COORDINATION_WINDOW_MS })
 
     const second = submit("print('b')")
     // Give the second run a chance to (wrongly) reach the executor while the first is in flight.
@@ -2254,7 +2276,7 @@ describe('notebook runtime service', () => {
 
     // Drain the first run; the second should then take the freed slot and run on its own.
     releases[0]()
-    await vi.waitFor(() => expect(releases).toHaveLength(2))
+    await vi.waitFor(() => expect(releases).toHaveLength(2), { timeout: COORDINATION_WINDOW_MS })
     releases[1]()
 
     const [firstSummary, secondSummary] = (await Promise.all([first, second])) as Array<{
@@ -2325,7 +2347,7 @@ describe('notebook runtime service', () => {
 
     // Both sessions should be inside their own executors at the same time — the per-session queue
     // must not serialize one session behind another.
-    await vi.waitFor(() => expect(releases.size).toBe(2))
+    await vi.waitFor(() => expect(releases.size).toBe(2), { timeout: COORDINATION_WINDOW_MS })
     expect(maxConcurrent).toBe(2)
 
     releases.get('session-a')?.()
@@ -2474,7 +2496,9 @@ describe('notebook runtime service', () => {
 
     const restarting = service.restart({ sessionId: 'session-1', workspaceCwd: root })
     // Wait for restart() to reach and await executor.restart() (the in-flight window).
-    await vi.waitFor(() => expect(releaseRestart).toBeDefined())
+    await vi.waitFor(() => expect(releaseRestart).toBeDefined(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const midFlight = await service.state({ sessionId: 'session-1', workspaceCwd: root })
     expect(midFlight.kernelStatus).toBe('restarting')
@@ -2654,7 +2678,9 @@ describe('notebook runtime service', () => {
         operation === 'session shutdown'
           ? service.shutdown({ sessionId: 'session-1', workspaceCwd: root })
           : service.restart({ sessionId: 'session-1', workspaceCwd: root })
-      await vi.waitFor(() => expect(shutdownExecutor).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(shutdownExecutor).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const duringTeardown =
         operation === 'executor replacement'
@@ -2713,7 +2739,9 @@ describe('notebook runtime service', () => {
     const changedCountBefore = changedSessions.length
 
     const callback = lifecycles[0].onIdleShutdown('python', DEFAULT_PY_ENV)
-    await vi.waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(updateSpy).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const teardown = service.shutdown({ sessionId: 'session-1', workspaceCwd: root })
 
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -2854,7 +2882,7 @@ describe('notebook runtime service', () => {
       })
 
       const run = service.execute({ sessionId: 'session-1', workspaceCwd: root, code: '1' })
-      await vi.waitFor(() => expect(release).toBeDefined())
+      await vi.waitFor(() => expect(release).toBeDefined(), { timeout: COORDINATION_WINDOW_MS })
 
       // The kernel reads 'running' while the run is in flight (G4: the union member is now written).
       const midFlight = await service.state({ sessionId: 'session-1', workspaceCwd: root })
@@ -2935,7 +2963,7 @@ describe('notebook runtime service', () => {
 
       // python and r are independent processes → both enter the executor at once; the second python
       // queues behind the first, so exactly two runs (one python, one r) are in flight.
-      await vi.waitFor(() => expect(releases).toHaveLength(2))
+      await vi.waitFor(() => expect(releases).toHaveLength(2), { timeout: COORDINATION_WINDOW_MS })
       await new Promise((resolve) => setTimeout(resolve, 20))
       expect(releases).toHaveLength(2)
       expect(maxConcurrent).toBe(2)
@@ -2944,7 +2972,7 @@ describe('notebook runtime service', () => {
       // Drain the first python; the queued second python now takes the freed python slot (still only
       // two concurrent, never three).
       drain(releases.find((entry) => entry.language === 'python')!)
-      await vi.waitFor(() => expect(releases).toHaveLength(3))
+      await vi.waitFor(() => expect(releases).toHaveLength(3), { timeout: COORDINATION_WINDOW_MS })
       expect(maxConcurrent).toBe(2)
 
       releases.forEach((entry) => entry.release())
@@ -3001,7 +3029,7 @@ describe('notebook runtime service', () => {
         code: '1',
         language: 'python'
       })
-      await vi.waitFor(() => expect(releaseRun).toBeDefined())
+      await vi.waitFor(() => expect(releaseRun).toBeDefined(), { timeout: COORDINATION_WINDOW_MS })
 
       const install = service.managePackages({ language: 'python', packages: ['numpy'] })
       // The install (exclusive writer) must not start while the run holds the python env read lock.
@@ -3058,7 +3086,9 @@ describe('notebook runtime service', () => {
       })
 
       const install = service.managePackages({ language: 'python', packages: ['numpy'] })
-      await vi.waitFor(() => expect(releaseInstall).toBeDefined())
+      await vi.waitFor(() => expect(releaseInstall).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const run = service.execute({
         sessionId: 's',
@@ -3109,7 +3139,9 @@ describe('notebook runtime service', () => {
       })
 
       const install = service.managePackages({ language: 'python', packages: ['numpy'] })
-      await vi.waitFor(() => expect(releaseInstall).toBeDefined())
+      await vi.waitFor(() => expect(releaseInstall).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       // An r run proceeds to completion even while a python install holds the python env lock — the
       // lock is keyed per language, so it only blocks the target env's queue.
@@ -3144,7 +3176,9 @@ describe('notebook runtime service', () => {
         })
         events.push('first:end')
       })
-      await vi.waitFor(() => expect(releaseFirst).toBeDefined())
+      await vi.waitFor(() => expect(releaseFirst).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const second = service.withEnvLock('analysis', async () => {
         events.push('second:start')
@@ -3195,7 +3229,9 @@ describe('notebook runtime service', () => {
         })
         events.push('first:end')
       })
-      await vi.waitFor(() => expect(releaseFirst).toBeDefined())
+      await vi.waitFor(() => expect(releaseFirst).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       await service.withEnvLock('analysis-b', async () => {
         events.push('second:start')
@@ -4465,7 +4501,9 @@ describe('notebook runtime service', () => {
       })
 
       const install = service.managePackages({ language: 'python', packages: ['numpy'] })
-      await vi.waitFor(() => expect(releaseInstall).toBeDefined())
+      await vi.waitFor(() => expect(releaseInstall).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       const run = service.execute({
         sessionId: 's',
@@ -4519,7 +4557,9 @@ describe('notebook runtime service', () => {
       })
 
       const install = service.managePackages({ language: 'python', packages: ['numpy'] })
-      await vi.waitFor(() => expect(releaseInstall).toBeDefined())
+      await vi.waitFor(() => expect(releaseInstall).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
       const run = service.execute({
         sessionId: 's',
         workspaceCwd: root,
@@ -4599,7 +4639,9 @@ describe('notebook runtime service', () => {
         language: 'python',
         packages: ['numpy']
       })
-      await vi.waitFor(() => expect(releaseInstall).toBeDefined())
+      await vi.waitFor(() => expect(releaseInstall).toBeDefined(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
 
       // A run in a DIFFERENT session on the DEFAULT python env proceeds while the my-analysis install
       // holds only its own env lock — the lock is keyed by resolved env name, not language.
@@ -6103,7 +6145,9 @@ describe('v4 runtime bindings & agent tools', () => {
         .mockImplementation(() => recoveryGate)
 
       const run = service.execute({ sessionId, workspaceCwd: root, code: '1' })
-      await vi.waitFor(() => expect(ensureRecovered).toHaveBeenCalledOnce())
+      await vi.waitFor(() => expect(ensureRecovered).toHaveBeenCalledOnce(), {
+        timeout: COORDINATION_WINDOW_MS
+      })
       expect(executions, scenario.label).toEqual([])
 
       releaseRecovery()
@@ -6275,9 +6319,12 @@ describe('v4 runtime bindings & agent tools', () => {
 
     // Wait until the provisioner has journaled the op (its spawn-intent sidecar is written just before).
     const journal = new RuntimeOperationJournal(operationJournalPath(runtimeRoot))
-    await vi.waitFor(async () => {
-      expect((await journal.pending()).some((r) => r.kind === 'materialize')).toBe(true)
-    })
+    await vi.waitFor(
+      async () => {
+        expect((await journal.pending()).some((r) => r.kind === 'materialize')).toBe(true)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     const service = bindingService(root)
     await service.recoverInterruptedOperations()
@@ -7298,7 +7345,9 @@ describe('v4 runtime bindings & agent tools', () => {
 
     // Disable is non-blocking: the drain-and-close runs in the background — the kernel is torn down
     // after the in-flight run drains (here already finished), not left to idle-timeout.
-    await vi.waitFor(() => expect(terminations).toContain('python:default-python'))
+    await vi.waitFor(() => expect(terminations).toContain('python:default-python'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     await service.shutdownAll()
   })
 
@@ -7341,7 +7390,9 @@ describe('v4 runtime bindings & agent tools', () => {
     const first = service.state(request)
     const second = service.state(request)
 
-    await vi.waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(executorFactory).not.toHaveBeenCalled()
     releaseFirstLoad()
     await expect(Promise.all([first, second])).resolves.toHaveLength(2)
@@ -7435,7 +7486,9 @@ describe('v4 runtime bindings & agent tools', () => {
       disposed = true
     })
 
-    await vi.waitFor(() => expect(shutdown).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(shutdown).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(disposed).toBe(false)
     releaseRecovery?.()
     await expect(disposal).resolves.toEqual({ reaped: true })
@@ -7465,7 +7518,9 @@ describe('v4 runtime bindings & agent tools', () => {
           releaseHeld = resolve
         })
     )
-    await vi.waitFor(() => expect(releaseHeld).toBeTypeOf('function'))
+    await vi.waitFor(() => expect(releaseHeld).toBeTypeOf('function'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     const queued = operationOwner.runMutation('default', async () => undefined)
 
     const disposal = service.dispose()
@@ -7524,7 +7579,9 @@ describe('v4 runtime bindings & agent tools', () => {
       }
     )
 
-    await vi.waitFor(() => expect(shutdown).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(shutdown).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(disposed).toBe(false)
     releaseRecovery?.()
     await expect(disposal).rejects.toBe(shutdownError)
@@ -7645,7 +7702,7 @@ describe('v4 runtime bindings & agent tools', () => {
     // that the run reached the executor — a machine under load needs longer than that to schedule it.
     // Measured: with the default it failed at ~1.1s under load average ~70 while passing on a quiet
     // machine, which is a flake waiting to happen rather than a product fault.
-    await vi.waitFor(() => expect(rejectRun).toBeDefined(), { timeout: 30_000 })
+    await vi.waitFor(() => expect(rejectRun).toBeDefined(), { timeout: COORDINATION_WINDOW_MS })
 
     // Force-stop: abort the running cell now. The killed run is recorded 'cancelled', not 'failed'.
     await service.revokeRuntime('python', userPyA.envId, { force: true })
