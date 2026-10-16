@@ -3,6 +3,65 @@
 > 本文件由用户与会话共同定稿，写给**自主执行器的每一轮**。两件事：**收口约定**（别把半成品留给下一轮）与
 > **排序**（每轮都能有"完成项"落地，而不是几天都在同一片里打转）。
 
+## 一百七十八、本轮追加（执行器，2026-10-17 05:4x–）—— §一百七十七 §七 1 的同族协调等待**第二、三批**：122 处（5 文件）逐条判据 + 变异自证
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 6c732ccf`（会话的 OCSR 红修两笔）。**共享工作树 HEAD = `8eb4e96d`、落后 35 笔**，仍带**同一批 18 个归属未对上的在制路径**（mtime 两批：10-15 14:4x 的插件批、10-16 15:33/16:42 的计数与 preload 批）⇒ 本轮**一个字节没碰**共享树，全部作业在隔离工作树 `/tmp/ps-wait4`（`origin/main` + 本单元的改动，`node_modules` 软链）。
+- 本单元取 **§一百七十七 §七 1**（同族 304 处 `vi.waitFor` 逐文件收口，`blocked-by` = 无）。B 段三件（A7 外部锁导入 / S3 增量全文索引 / M2 本地解析模型资产）**已完成或已入版**（M2 = v2.5.0 U2/U3）⇒ 按队列约定推进自己的具名未闭项；与会话的 U4（`src/main/engines/**`、`figures`）**不相交**。
+- 内存（现取，不照抄）：空闲物理页 **4,142（≈65 MB）**、swap 已用 **7.91 G / 9.22 G** ⇒ 不起 Electron；本单元全是测试台，不需要。
+- **上一轮那笔推送（`f67d7575`）的判决已读并归因**：两条车道**都红**，作业级归因是**会话 U4-e 单元**的 `src/main/engines/structure-recognition.test.ts`（Nightly 的 `Verify` 4 条：`expected 'refused' to be 'agreed'` 等；Windows `Windows full test (5/8)`）。会话随后以 `75b33fe7`（Nightly success）与 `6c732ccf`（Windows success）**把它修掉** ⇒ 那条红已闭，执行器不动别人的单元。
+
+### 一 判据（一条，逐处读源；不是「统一加长」）
+
+**等的是不是「已经起飞的 promise / 已开始的工作的确定性副作用」** —— 是（spy 被调用、数组到 N 条、状态到终态、canvas 被光栅化、标签上屏、信号翻转、socket 释放）⇒ 窗口只是**负载预算**、可放宽；等不到就是缺陷的那类 ⇒ **不许放宽**。逐处读源结论：本批 **122 处全部是前者**，没有一处是「等一个可能永远不发生的状态」：
+
+| 文件 | 处数 | 形状（逐处读源） |
+| --- | --- | --- |
+| `src/main/acp/runtime.test.ts` | **49** | 假 agent 收到 prompt / runtime 快照到终态（`closed`/`idle`）/ `release` 被调用 / 子进程 `killed` / `cancelledSessions` / `pendingPermissions` 到 1 / `promptInFlightSessionIds` 含该会话 / 事件里出现 `stop` |
+| `src/main/reviewer/ipc.test.ts` | **17** | `expect(runReview).toHaveBeenCalledTimes(n)`（fire-and-forget 的后台会话加载 + 运行调用；其中 1 条注释逐字写着「triggerReview is fire-and-forget; wait for the background session load + runReview call」） |
+| `src/renderer/.../renderers/PdfPreview.test.tsx` | **34** | canvas 被光栅化（宽/高到位）/ 缩放标签上屏（`125%`…）/ `annotations.*` 被以既有参数调用 / 注释面板文案落定 |
+| `src/renderer/.../previews/PreviewFileContent.test.tsx` | **17** | 已渲染文案出现（`recovered preview` / 结构选择与测量读数）/ `highlightSpy` 被以预期参数调用 / `zoomTo` 被调用 |
+| `src/main/web-service/http-server.test.ts` | **5** | `directSignal.aborted` 翻转 / 投影消息数组相等 / `authorizeHttp` 被调用 N 次 / `onShutdownRequest` 被调用一次 / `cancelStream` + `releaseArtifact` 被调用 |
+
+### 二 改法（5 文件；产品侧零改动、断言零改动）
+
+- 每个文件**一处** `COORDINATION_WINDOW_MS = 30_000` + 头注（写明判据与余量口径）；每处 `vi.waitFor(...)` 的第二个参数加 `{ timeout: COORDINATION_WINDOW_MS }`，由 `prettier` 统一换行。**窗口只住一处常量**，不散落字面量。
+- 站点对账：`runtime.test.ts` **49/49**、`reviewer/ipc.test.ts` **17/17**、`PdfPreview.test.tsx` **34/34**、`PreviewFileContent.test.tsx` **17/17**、`http-server.test.ts` **5/5**（`vi.waitFor(` 计数 = 具名窗口计数）。改动前先对 `origin/main` 原文件跑 `prettier --check`（两文件均干净）⇒ 本笔 diff 里**没有无关的重排**。
+
+### 三 读数（全部实跑；数字取自最后一次改动之后）
+
+| 项 | 读数 |
+| --- | --- |
+| 单跑（第二批 2 文件） | **2 files / 477 passed**、exit 0、12.76 s |
+| 单跑（第三批 3 文件） | **3 files / 86 passed**、exit 0、4.24 s |
+| 模块目录簇 | `src/main/acp` + `src/main/reviewer` **111 文件 / 1689 passed**；`src/main/web-service` + `src/renderer/src/pages/workspace/previews` **46 文件 / 386 passed**；均 exit 0 |
+| **变异（窗口压到 1ms，被测行为一个字节不改）** | 第二批：**39 failed / 477**（`runtime.test.ts` 30 条、`reviewer/ipc.test.ts` 9 条）⇒ 这些等待真在等调度；第三批：**5 failed / 86**（`http-server.test.ts` 4 条、`PreviewFileContent.test.tsx` 1 条）|
+| 变异里**没被挡住的**（如实记，不声称） | `PdfPreview.test.tsx` 的 **34 处压到 1ms 也全过**（前置的 `act(async …)` 已把工作刷完 ⇒ 那些等待今天在本机不构成余量风险）；本笔对它是**一致性收敛**，不声称修掉任何东西 |
+| 双 typecheck | `typecheck:node` exit **0**；`typecheck:web` exit **0** |
+| lint（与 CI 同口径、缓存关闭） | `npx eslint --no-cache .` ⇒ **exit 0、0 error / 131 warning**（与仓内基线同数 ⇒ 没有把 warning 留在树里） |
+| **全量 vitest** | **1339 文件（1323 passed / 16 skipped）、17176 条（16969 passed / 207 skipped）**、exit 0、207.81 s |
+| prettier | 本笔 5 个改动文件 `--check` ⇒ 「All matched files use Prettier code style!」 |
+| 推前钩子 | `bash scripts/pre-push-checks.sh` ⇒ **exit 0、8 段全绿**（第 8 段：本次推送的 **5 个文件通过（0 problems）**）|
+
+### 四 边界（不许读成更强）
+
+1. 本单元**不声称修掉某次观测到的红**：变异只证明「这些等待真的在等调度」，不等于某条车道红就是它引起的。
+2. **同族仍在外面的一大片**：`origin/main` 上 `vi.waitFor(` 共 **337 处**，本批 122 处（加之前两批 34 处）⇒ **其余约 180 处**（含 `src/main/acp/runtime.test.ts` 之外的一批 main 侧文件与若干渲染套件）仍在外面，**逐条判据、不许批量加长**这条纪律照旧。
+3. 本单元**不占版本号**（纯测试台，无用户可见能力）。
+
+### 五 并发、收尾与推送
+
+- 共享树未动（仍是那 18 个归属未对上的在制路径、HEAD 未被动过）；改动、门禁、提交、推送全在隔离工作树 `/tmp/ps-wait4`。
+- 推送前**现查在飞车道**：`6c732ccf` 的 `Nightly` 在本轮大部分时间里 `in_progress`（其 `Windows Full Test` 已 success）⇒ **等它落定再推**，避免 `cancel-in-progress` 把会话那条车道的判决腰斩；「这次推送顶掉了谁 / 没顶掉谁」的读数写在会话汇报里（`cancelled` 不算绿）。
+- 两笔提交（`28af5f16` 66 处 + `6032d38f` 56 处）**一次推完**，不再推第二笔。
+
+### 六 具名未办 + 下一轮第一步
+
+1. **同族剩余约 180 处**（§四 2）：`blocked-by` = 无；建议按文件分批，优先 main 侧高计数文件（`compute/compute-approval-broker`、`acp/artifact-turn-owner`、`acp/runtime-coordinator`、`notebook/kernel-executor`、`find-overlay`、`connectors/service`、`settings/codex-auth`、`session-persistence/coordinator` 等）。
+2. **U4 后续片（矢量图进候选 / 蛋白查库 / 挂进溯源面 / OCSR 引擎依赖）** 归会话，执行器不碰。
+3. **下一轮第一步**：① 按**完整 40 位 SHA** 读本两笔的 `Nightly` + `Windows Full Test` 终态（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`；`cancelled` 不算绿）；② `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：共享树若仍落后且脏，继续在隔离工作树作业；③ 继续 §六 1 的下一批文件。
+
 ## 一百七十七、本轮追加（执行器，2026-10-17 02:3x–）—— 打包版真机 7 天缺陷 **P2 的后半**：8 个应用自有 MCP 服务名去连字符（守卫原来只枚举目录 ⇒ 这 8 个从未被它看过）
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
