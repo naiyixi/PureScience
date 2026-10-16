@@ -4462,6 +4462,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsAccessions': '그림에서 읽은 접근 번호(조회에 쓸 값):',
   'ws.figureObservationsFingerprint': '입력 지문(페이지·상자·캡션·그림 내 텍스트가 바뀌면 변함):',
   'ws.figureObservationsPredicted': '예측 구조 — 실험 구조가 아닙니다',
+  'ws.figureObservationsStructure': '이 구조에 동의한 엔진(각 버전 포함):',
+  'ws.figureObservationsStructureCanonical': '정규화(두 엔진 비교 기준):',
+  'ws.figureObservationsStructureFingerprint': '입력 지문(페이지·상자·렌더 DPI·엔진):',
+  'ws.figureObservationsReadings': '각 엔진의 판독:',
   'ws.figureObservationsRecords':
     '라이브러리에서 실제로 가져온 기록 {count}건(모델이 쓴 것이 아님):',
   'ws.figureObservationsExperimental': '실험적으로 결정됨',

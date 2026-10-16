@@ -4566,6 +4566,12 @@ export const en: Record<ZhKey, string> = {
   'ws.figureObservationsAccessions': 'Accessions read from the figure (what a lookup would use):',
   'ws.figureObservationsFingerprint':
     'Input fingerprint (changes with page, box, caption or in-figure text):',
+  'ws.figureObservationsStructure':
+    'Engines that agree on this structure (each with the version it ran as):',
+  'ws.figureObservationsStructureCanonical': 'canonical (how two engines are compared):',
+  'ws.figureObservationsStructureFingerprint':
+    'Input fingerprint (page, box, render DPI and the engines):',
+  'ws.figureObservationsReadings': 'what each engine said:',
   'ws.figureObservationsRecords':
     '{count} record(s) fetched from the library (not written by a model):',
   'ws.figureObservationsExperimental': 'experimentally determined',

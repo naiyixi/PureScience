@@ -1,12 +1,12 @@
 // PDF-explore service tests: open/pages/outline/scan with an injected parser (pdfjs mocked),
 // bounds enforcement, and persistence.
 
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { AxisAlignedRotation } from '../../shared/pdf-page-rotation'
 import type { PdfTextItem } from '../../shared/pdf-table-extraction'
@@ -604,5 +604,123 @@ describe('PdfService.figures understanding', () => {
     expect(failed?.kind).toBe('refused')
     if (failed?.kind !== 'refused') throw new Error('unreachable')
     expect(failed.reason).toBe('accession-lookup-unavailable')
+  })
+})
+
+// U4-e：化学结构式一路的识别口。上屏的派生因此多了一种形态（structure），而「识别口缺席」必须仍然是**具名**
+// 的拒答，不是空结果。这个 describe 自建夹具（外层的 root/pdfPath 在另一个块里）。
+describe('PdfService.figures — 化学结构式的识别口', () => {
+  let localRoot: string
+  let localPdf: string
+  const placement = { x: 100, y: 300, width: 300, height: 200 }
+  const text = (label: string, x: number, y: number): PdfTextItem => ({
+    text: label,
+    x,
+    y,
+    width: 60,
+    height: 10
+  })
+
+  beforeEach(() => {
+    localRoot = mkdtempSync(join(tmpdir(), 'pdf-figures-ocsr-'))
+    localPdf = join(localRoot, 'paper.pdf')
+    writeFileSync(localPdf, '%PDF-1.4\n% minimal test document\n')
+  })
+
+  afterEach(() => {
+    rmSync(localRoot, { recursive: true, force: true })
+  })
+
+  const serviceWith = (recognize?: PdfServiceOptions['recognizeStructure']): PdfService =>
+    new PdfService({
+      storageRoot: localRoot,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(localRoot, path)),
+      parsePdf: async () => ({
+        pages: ['one page'],
+        outline: [],
+        title: 'figures',
+        items: [[text('Scheme 1', 120, 400), text('Et3N, DMF', 120, 380)]],
+        images: [[placement]]
+      }),
+      ...(recognize ? { recognizeStructure: recognize } : {})
+    })
+
+  it('两台引擎一致 ⇒ 派生升级为 structure，并带上引擎版本与输入指纹', async () => {
+    const svc = serviceWith(async () => ({
+      outcome: {
+        state: 'agreed',
+        canonical: 'CCO',
+        smiles: 'OCC',
+        engines: [
+          { engine: 'decimer', revision: 'DECIMER 2.8.0' },
+          { engine: 'molscribe', revision: 'MolScribe 1.1.1' }
+        ],
+        readings: [
+          {
+            engine: 'decimer',
+            state: 'read',
+            revision: 'DECIMER 2.8.0',
+            smiles: 'OCC',
+            canonical: 'CCO'
+          },
+          {
+            engine: 'molscribe',
+            state: 'read',
+            revision: 'MolScribe 1.1.1',
+            smiles: 'CCO',
+            canonical: 'CCO'
+          }
+        ]
+      },
+      fingerprint: `sha256:${'e'.repeat(64)}`
+    }))
+    const opened = await svc.open(localPdf, 'proj-1')
+
+    const derivation = (await svc.figures(opened.doc.docId)).figures[0]?.derivation
+
+    expect(derivation?.kind).toBe('structure')
+    if (derivation?.kind !== 'structure') throw new Error('unreachable')
+    expect(derivation.canonical).toBe('CCO')
+    expect(derivation.engines.map((engine) => engine.engine)).toEqual(['decimer', 'molscribe'])
+    expect(derivation.recognitionFingerprint).toBe(`sha256:${'e'.repeat(64)}`)
+  })
+
+  it('只有一台引擎时具名说 single-engine，并把每台读数带出来', async () => {
+    const svc = serviceWith(async () => ({
+      outcome: {
+        state: 'refused',
+        reason: 'recognizer-single-engine',
+        readings: [
+          {
+            engine: 'decimer',
+            state: 'read',
+            revision: 'DECIMER 2.8.0',
+            smiles: 'OCC',
+            canonical: 'CCO'
+          },
+          { engine: 'molscribe', state: 'unavailable', detail: 'no interpreter for this engine' }
+        ]
+      },
+      fingerprint: `sha256:${'f'.repeat(64)}`
+    }))
+    const opened = await svc.open(localPdf, 'proj-1')
+
+    const derivation = (await svc.figures(opened.doc.docId)).figures[0]?.derivation
+
+    expect(derivation?.kind).toBe('refused')
+    if (derivation?.kind !== 'refused') throw new Error('unreachable')
+    expect(derivation.reason).toBe('recognizer-single-engine')
+    expect(derivation.structureReadings).toHaveLength(2)
+  })
+
+  it('识别口缺席 ⇒ 保持具名的 recognizer-unavailable（不是空结果）', async () => {
+    const svc = serviceWith()
+    const opened = await svc.open(localPdf, 'proj-1')
+
+    const derivation = (await svc.figures(opened.doc.docId)).figures[0]?.derivation
+
+    expect(derivation?.kind).toBe('refused')
+    if (derivation?.kind !== 'refused') throw new Error('unreachable')
+    expect(derivation.reason).toBe('recognizer-unavailable')
   })
 })

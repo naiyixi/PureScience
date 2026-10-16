@@ -1830,6 +1830,46 @@ const ArtifactProvenancePanel = ({
                                     ))}
                                   </ul>
                                 </div>
+                              ) : figure.derivation.kind === 'structure' ? (
+                                <div
+                                  className="space-y-1"
+                                  data-testid="artifact-figure-observations-structure"
+                                >
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsStructure')}
+                                  </p>
+                                  <ul className="space-y-0.5">
+                                    {figure.derivation.engines.map((engine, engineIndex) => (
+                                      <li
+                                        key={`${engine.engine}:${engineIndex}`}
+                                        className="text-xs"
+                                      >
+                                        <code className="break-all">{engine.engine}</code>
+                                        <span className="ml-2 text-text-300">
+                                          {engine.revision}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  <p className="text-xs">
+                                    <code className="break-all">{figure.derivation.smiles}</code>
+                                    {figure.derivation.formula ? (
+                                      <span className="ml-2 text-text-300">
+                                        {figure.derivation.formula}
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsStructureCanonical')}{' '}
+                                    <code className="break-all">{figure.derivation.canonical}</code>
+                                  </p>
+                                  <p className="text-xs text-text-300">
+                                    {t('ws.figureObservationsStructureFingerprint')}{' '}
+                                    <code className="break-all">
+                                      {figure.derivation.recognitionFingerprint}
+                                    </code>
+                                  </p>
+                                </div>
                               ) : (
                                 <div
                                   className="space-y-1"
@@ -1856,6 +1896,34 @@ const ArtifactProvenancePanel = ({
                                     <p className="text-xs text-text-300">
                                       {figure.derivation.requires}
                                     </p>
+                                  ) : null}
+                                  {figure.derivation.structureReadings?.length ? (
+                                    <div className="space-y-0.5">
+                                      <p className="text-xs text-text-300">
+                                        {t('ws.figureObservationsReadings')}
+                                      </p>
+                                      <ul className="space-y-0.5">
+                                        {figure.derivation.structureReadings.map(
+                                          (reading, readingIndex) => (
+                                            <li
+                                              key={`${reading.engine}:${readingIndex}`}
+                                              className="text-xs"
+                                            >
+                                              <code className="break-all">{reading.engine}</code>
+                                              <span className="ml-2 text-text-300">
+                                                {reading.state === 'read'
+                                                  ? reading.canonical
+                                                  : `${reading.state}: ${
+                                                      reading.state === 'failed'
+                                                        ? reading.reason
+                                                        : reading.detail
+                                                    }`}
+                                              </span>
+                                            </li>
+                                          )
+                                        )}
+                                      </ul>
+                                    </div>
                                   ) : null}
                                 </div>
                               )}

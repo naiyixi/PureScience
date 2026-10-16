@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   applyAccessionLookups,
+  applyStructureRecognition,
   deriveFromFigure,
   describeFigureDerivation,
   numericTokensIn,
@@ -189,5 +190,116 @@ describe('applyAccessionLookups — 库号换成真取的记录，或具名说�
         records: [{ id: 'AF-P00533-F1', basis: 'predicted', source: 'alphafold-db' }]
       })
     ).toBe('1 record(s) from accession-lookup: AF-P00533-F1 (predicted)')
+  })
+})
+
+describe('applyStructureRecognition — 图进结构式出，或具名说为什么没有', () => {
+  const refused = {
+    kind: 'refused' as const,
+    reason: 'recognizer-unavailable' as const,
+    requires: 'an optical chemical structure recognizer'
+  }
+  const read = (engine: 'decimer' | 'molscribe', canonical: string, revision: string) => ({
+    engine,
+    state: 'read' as const,
+    revision,
+    smiles: canonical,
+    canonical
+  })
+
+  it('两台独立引擎一致 ⇒ 升级成 structure，并带上引擎与版本', () => {
+    const upgraded = applyStructureRecognition(
+      refused,
+      {
+        state: 'agreed',
+        canonical: 'CCO',
+        smiles: 'OCC',
+        formula: 'C2H6O',
+        engines: [
+          { engine: 'decimer', revision: 'DECIMER 2.8.0' },
+          { engine: 'molscribe', revision: 'MolScribe 1.1.1' }
+        ],
+        readings: [
+          read('decimer', 'CCO', 'DECIMER 2.8.0'),
+          read('molscribe', 'CCO', 'MolScribe 1.1.1')
+        ]
+      },
+      `sha256:${'a'.repeat(64)}`
+    )
+    expect(upgraded.kind).toBe('structure')
+    if (upgraded.kind !== 'structure') return
+    expect(upgraded.canonical).toBe('CCO')
+    expect(upgraded.smiles).toBe('OCC') // 代表写法取引擎原样输出，不改写它的拼法
+    expect(upgraded.engines.map((engine) => engine.revision)).toEqual([
+      'DECIMER 2.8.0',
+      'MolScribe 1.1.1'
+    ])
+    expect(upgraded.recognitionFingerprint).toBe(`sha256:${'a'.repeat(64)}`)
+  })
+
+  it('只有一台 ⇒ 具名 single-engine，并把每台读数带出来', () => {
+    const outcome = applyStructureRecognition(
+      refused,
+      {
+        state: 'refused',
+        reason: 'recognizer-single-engine',
+        readings: [
+          read('decimer', 'CCO', 'DECIMER 2.8.0'),
+          { engine: 'molscribe', state: 'unavailable', detail: 'no interpreter for this engine' }
+        ]
+      },
+      `sha256:${'b'.repeat(64)}`
+    )
+    expect(outcome.kind).toBe('refused')
+    if (outcome.kind !== 'refused') return
+    expect(outcome.reason).toBe('recognizer-single-engine')
+    expect(outcome.structureReadings).toHaveLength(2)
+  })
+
+  it('两台不一致 ⇒ 具名 disagreement（不挑一个顺眼的）', () => {
+    const outcome = applyStructureRecognition(
+      refused,
+      {
+        state: 'refused',
+        reason: 'recognizer-disagreement',
+        readings: [read('decimer', 'CCO', 'v1'), read('molscribe', 'CCC', 'v2')]
+      },
+      `sha256:${'c'.repeat(64)}`
+    )
+    expect(outcome.kind).toBe('refused')
+    if (outcome.kind !== 'refused') return
+    expect(outcome.reason).toBe('recognizer-disagreement')
+  })
+
+  it('别的派生与别的拒答一个字不动', () => {
+    const numbers = { kind: 'numbers' as const, source: 'pdf-text-in-bbox' as const, values: [] }
+    expect(
+      applyStructureRecognition(
+        numbers,
+        { state: 'refused', reason: 'recognizer-unavailable', readings: [] },
+        'sha256:x'
+      )
+    ).toEqual(numbers)
+    const undetermined = { kind: 'refused' as const, reason: 'undetermined' as const }
+    expect(
+      applyStructureRecognition(
+        undetermined,
+        { state: 'refused', reason: 'recognizer-disagreement', readings: [] },
+        'sha256:x'
+      )
+    ).toEqual(undetermined)
+  })
+
+  it('describe 说出写法、规范化与同意的引擎', () => {
+    expect(
+      describeFigureDerivation({
+        kind: 'structure',
+        source: 'ocsr',
+        smiles: 'OCC',
+        canonical: 'CCO',
+        engines: [{ engine: 'decimer', revision: 'DECIMER 2.8.0' }],
+        recognitionFingerprint: `sha256:${'d'.repeat(64)}`
+      })
+    ).toBe('OCC (ocsr; canonical CCO; agreed by decimer DECIMER 2.8.0)')
   })
 })

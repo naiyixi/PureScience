@@ -39,8 +39,13 @@ import {
 } from '../../shared/pdf-page-rotation'
 import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import { figureUnderstandingFor } from '../../shared/figure-understanding'
-import { applyAccessionLookups, deriveFromFigure } from '../../shared/figure-derivation'
+import {
+  applyAccessionLookups,
+  applyStructureRecognition,
+  deriveFromFigure
+} from '../../shared/figure-derivation'
 import type { FigureDerivation } from '../../shared/figure-derivation'
+import type { StructureRecognitionOutcome } from '../../shared/structure-recognition'
 import type { AccessionLookupOutcome } from '../../shared/figure-accession'
 import type { FigureAccession, FigureClass } from '../../shared/figure-understanding'
 import type { FigureDerivationInput } from '../../shared/figure-observation'
@@ -102,6 +107,16 @@ export type PdfServiceOptions = {
    * 请求本身不在这里做：装配点注入的实现跑在主进程的受管取数路径上（遵应用与系统的代理设置）。
    */
   lookupAccession?: (accession: FigureAccession) => Promise<AccessionLookupOutcome>
+  /**
+   * 化学结构式一路的识别口（U4-e）。缺席 = 没接线，派生保持具名拒答 `recognizer-unavailable`；接了口就按
+   * **≥2 台相互独立的引擎一致**判高置信，否则换成对应的具名拒答（并带上每台引擎的读数）。
+   * 请求本身不在这里做：装配点注入的实现跑在子进程里（python 引擎 + 随包脚本）。
+   */
+  recognizeStructure?: (input: {
+    filePath: string
+    page: number
+    bbox: { x: number; y: number; width: number; height: number }
+  }) => Promise<{ outcome: StructureRecognitionOutcome; fingerprint: string } | undefined>
   // Resolves a project-relative or absolute path to an on-disk file path. Absent ⇒ relative
   // paths resolve against storageRoot.
   resolvePath?: (path: string) => Promise<string | undefined>
@@ -358,6 +373,36 @@ export class PdfService {
   }
 
   /**
+   * 化学结构式 → 结构式（U4-e）。只升级「化学结构式、识别口没接」这一种拒答：识别口缺席 ⇒ 一个字都不动；
+   * 识别口抛错 ⇒ 也算**没有结果**（把原始信息带上），而绝不让一次成功的读图整体失败。
+   */
+  private async withStructureRecognition(
+    derivation: FigureDerivation,
+    figure: {
+      filePath: string
+      page: number
+      bbox: { x: number; y: number; width: number; height: number }
+    }
+  ): Promise<FigureDerivation> {
+    const recognize = this.options.recognizeStructure
+    if (!recognize) return derivation
+    if (derivation.kind !== 'refused' || derivation.reason !== 'recognizer-unavailable') {
+      return derivation
+    }
+    try {
+      const result = await recognize(figure)
+      if (!result) return derivation
+      return applyStructureRecognition(derivation, result.outcome, result.fingerprint)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'unknown failure'
+      return {
+        ...derivation,
+        requires: `the recognizer could not be run: ${detail}. ${derivation.requires ?? ''}`.trim()
+      }
+    }
+  }
+
+  /**
    * 库号 → 真实记录。只升级「库号在图上、查询口没接」这一种拒答；查询口缺席 ⇒ 一个字都不动（保持具名
    * 说「没接」），查询抛错 ⇒ 也算**查不动**（不是因为异常而把这一路悄悄抹掉）。
    */
@@ -430,9 +475,17 @@ export class PdfService {
           ...(caption === undefined ? {} : { caption }),
           inFigureText: inside.map((item) => item.text)
         })
-        // 纯函数先给出「这一类允许派生什么」；库号那一路再**换成库里真取的记录**（查询口缺席时保持具名拒答）。
-        const derivation = await this.withAccessionLookups(
-          deriveFromFigure({ understanding, inFigureText: inside })
+        // 纯函数先给出「这一类允许派生什么」；库号那一路再**换成库里真取的记录**（查询口缺席时保持具名拒答），
+        // 化学结构式那一路再按**≥2 台独立引擎一致**判高置信（识别口缺席时同样保持具名拒答）。
+        const derivation = await this.withStructureRecognition(
+          await this.withAccessionLookups(
+            deriveFromFigure({ understanding, inFigureText: inside })
+          ),
+          {
+            filePath: sourcePath,
+            page: figure.page,
+            bbox: { x: figure.x, y: figure.y, width: figure.width, height: figure.height }
+          }
         )
         figures.push({
           page: figure.page,

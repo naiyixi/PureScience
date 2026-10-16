@@ -4664,6 +4664,12 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Identifiants lus sur la figure (ce qu’utiliserait une requête) :',
   'ws.figureObservationsFingerprint':
     'Empreinte d’entrée (change avec la page, le cadre, la légende ou le texte de la figure) :',
+  'ws.figureObservationsStructure':
+    'Moteurs qui concordent sur cette structure (avec leur version) :',
+  'ws.figureObservationsStructureCanonical': 'canonique (ce qui est comparé entre moteurs) :',
+  'ws.figureObservationsStructureFingerprint':
+    'Empreinte d’entrée (page, cadre, DPI de rendu et moteurs) :',
+  'ws.figureObservationsReadings': 'ce que chaque moteur a répondu :',
   'ws.figureObservationsRecords':
     '{count} enregistrement(s) récupéré(s) dans la bibliothèque (non écrits par un modèle) :',
   'ws.figureObservationsExperimental': 'déterminée expérimentalement',

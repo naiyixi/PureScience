@@ -208,6 +208,7 @@ import {
   recordStructureObservation
 } from './structure/structure-observation-journal'
 import { lookupAccessionOnMainFetch } from './settings/accession-lookup'
+import { recognizeFigureStructure } from './engines/structure-recognition'
 import { runDocumentTranslation } from './translation/document-translation'
 import { translationTargetLookup } from './translation/run-translation'
 import { createFigureCommandOwner, registerFigureIpcHandlers } from './settings/figure-ipc'
@@ -1918,6 +1919,17 @@ const createApplicationModules = async (
       }),
     // U4-b：图上读到的库号 → 库里的真实记录。实现单开一个模块，好让真机读数与生产走同一个函数。
     lookupAccession: lookupAccessionOnMainFetch,
+    // U4-e：化学结构式一路的识别口。脚本随包（resources/engines），解释器按产品自己的命名环境解析，
+    // 推理跑在子进程里，带超时与具名失败 —— 一次读图不会因为识别不了而失败。
+    recognizeStructure: async ({ filePath, page, bbox }) => {
+      const result = await recognizeFigureStructure({
+        pdfPath: filePath,
+        page,
+        bbox,
+        deps: { dataRoots: [resolveDataRoot()] }
+      })
+      return { outcome: result.outcome, fingerprint: result.fingerprint }
+    },
     resolvePath: async (path) => (path.startsWith('/') ? path : join(resolveDataRoot(), path)),
     // A PDF opened from an Artifact card is identified by its Version, not by a path: the same resolver the
     // file surfaces use turns that identity into the file, so the reader can actually read it.

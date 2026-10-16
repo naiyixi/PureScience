@@ -628,6 +628,59 @@ describe('ArtifactProvenancePanel', () => {
                 ]
               }
             }
+          },
+          {
+            recordedAt: '2026-07-27T20:08:00.000Z',
+            kind: 'figure-derivation',
+            figureDerivation: {
+              page: 9,
+              index: 1,
+              bbox: { x: 1, y: 2, width: 120, height: 90 },
+              figureClass: 'chemical-structure',
+              inputFingerprint: `sha256:${'e'.repeat(64)}`,
+              derivation: {
+                kind: 'structure',
+                source: 'ocsr',
+                smiles: 'OCC',
+                canonical: 'CCO',
+                formula: 'C2H6O',
+                engines: [
+                  { engine: 'decimer', revision: 'DECIMER 2.8.0' },
+                  { engine: 'molscribe', revision: 'MolScribe 1.1.1' }
+                ],
+                recognitionFingerprint: `sha256:${'f'.repeat(64)}`
+              }
+            }
+          },
+          {
+            recordedAt: '2026-07-27T20:09:00.000Z',
+            kind: 'figure-derivation',
+            figureDerivation: {
+              page: 11,
+              index: 1,
+              bbox: { x: 1, y: 2, width: 60, height: 60 },
+              figureClass: 'chemical-structure',
+              inputFingerprint: `sha256:${'a'.repeat(64)}`,
+              derivation: {
+                kind: 'refused',
+                reason: 'recognizer-single-engine',
+                requires: 'a second independent engine',
+                structureReadings: [
+                  {
+                    engine: 'decimer',
+                    state: 'read',
+                    revision: 'DECIMER 2.8.0',
+                    smiles: 'OCC',
+                    canonical: 'CCO'
+                  },
+                  {
+                    engine: 'molscribe',
+                    state: 'unavailable',
+                    detail: 'no interpreter for this engine'
+                  }
+                ]
+              }
+            }
           }
         ],
         dropped: 0,
@@ -654,6 +707,25 @@ describe('ArtifactProvenancePanel', () => {
     expect(records?.textContent).toContain('AF-P00533-F1')
     expect(records?.textContent).toContain('predicted')
     expect(records?.textContent).toContain('AlphaFold Monomer v2.0 pipeline')
+    // 结构式一路：引擎与版本、写法、规范化、输入指纹都要上屏
+    const structure = container.querySelector(
+      '[data-testid="artifact-figure-observations-structure"]'
+    )
+    expect(structure?.textContent).toContain('decimer')
+    expect(structure?.textContent).toContain('DECIMER 2.8.0')
+    expect(structure?.textContent).toContain('OCC')
+    expect(structure?.textContent).toContain('CCO')
+    expect(structure?.textContent).toContain(`sha256:${'f'.repeat(64)}`)
+    // 只有一台引擎时：具名拒答 + **每台各自说了什么**
+    const readingsRefused = container.querySelectorAll(
+      '[data-testid="artifact-figure-observations-refused"]'
+    )
+    const singleEngine = [...readingsRefused].find((node) =>
+      (node.textContent ?? '').includes('recognizer-single-engine')
+    )
+    expect(singleEngine?.textContent).toContain('decimer')
+    expect(singleEngine?.textContent).toContain('CCO')
+    expect(singleEngine?.textContent).toContain('no interpreter for this engine')
     // 两类派生行都不给「在视图里显示」按钮。
     expect(
       container.querySelector('[data-testid="artifact-structure-observations-jump"]')

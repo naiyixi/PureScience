@@ -4548,6 +4548,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Идентификаторы, прочитанные с рисунка (то, что использовал бы запрос):',
   'ws.figureObservationsFingerprint':
     'Отпечаток входа (меняется со страницей, рамкой, подписью или текстом внутри рисунка):',
+  'ws.figureObservationsStructure': 'Движки, согласные по этой структуре (с их версиями):',
+  'ws.figureObservationsStructureCanonical': 'каноническая форма (по ней и сравниваются движки):',
+  'ws.figureObservationsStructureFingerprint':
+    'Отпечаток входа (страница, рамка, DPI рендера и движки):',
+  'ws.figureObservationsReadings': 'что сказал каждый движок:',
   'ws.figureObservationsRecords':
     'записей, реально полученных из библиотеки: {count} (их написал не модель):',
   'ws.figureObservationsExperimental': 'определено экспериментально',

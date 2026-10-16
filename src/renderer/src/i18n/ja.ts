@@ -4532,6 +4532,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsAccessions': '図から読み取ったアクセッション（照会に使うもの）：',
   'ws.figureObservationsFingerprint':
     '入力フィンガープリント（ページ・枠・図注・図内テキストで変化）：',
+  'ws.figureObservationsStructure': 'この構造で一致したエンジン（それぞれのバージョン付き）：',
+  'ws.figureObservationsStructureCanonical': '正規化（2 エンジンの比較に使う形）：',
+  'ws.figureObservationsStructureFingerprint':
+    '入力フィンガープリント（ページ・枠・描画 DPI・エンジン）：',
+  'ws.figureObservationsReadings': '各エンジンの読み:',
   'ws.figureObservationsRecords':
     'ライブラリから実際に取得した記録 {count} 件（モデルが書いたものではありません）：',
   'ws.figureObservationsExperimental': '実験的に決定',
