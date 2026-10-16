@@ -9,6 +9,7 @@ import {
   type FigureDerivation,
   type FigureTextItem
 } from './figure-derivation'
+import type { StructureRecognitionReading } from './structure-recognition'
 import { figureUnderstandingFor } from './figure-understanding'
 
 const item = (text: string, x = 10, y = 20, width = text.length * 5): FigureTextItem => ({
@@ -199,9 +200,13 @@ describe('applyStructureRecognition — 图进结构式出，或具名说为什�
     reason: 'recognizer-unavailable' as const,
     requires: 'an optical chemical structure recognizer'
   }
-  const read = (engine: 'decimer' | 'molscribe', canonical: string, revision: string) => ({
+  const read = (
+    engine: 'decimer' | 'molscribe',
+    canonical: string,
+    revision: string
+  ): StructureRecognitionReading => ({
     engine,
-    state: 'read' as const,
+    state: 'read',
     revision,
     smiles: canonical,
     canonical

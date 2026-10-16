@@ -5,6 +5,7 @@ import {
   resolveEnginePython,
   resolveStructureRecognitionScript
 } from './structure-recognition'
+import type { StructureRecognitionDeps } from './structure-recognition'
 
 // 这一套跑的是**运行器**：用注入的缝（runJson）代替真 python，这样判定、失败具名与指纹都能在
 // 没有引擎的机器上钉住。真机读数另有其人（探针 + 两台真引擎）。
@@ -17,8 +18,19 @@ const rasterizeOk = {
   pageSize: { width: 595, height: 842 }
 }
 
-const engineOk = (smiles: string, revision: string) => ({ ok: true, engine: 'x', revision, smiles })
-const canonicalOk = (canonical: string, formula = 'C2H6O') => ({ ok: true, canonical, formula })
+const engineOk = (
+  smiles: string,
+  revision: string
+): { ok: boolean; engine: string; revision: string; smiles: string } => ({
+  ok: true,
+  engine: 'x',
+  revision,
+  smiles
+})
+const canonicalOk = (
+  canonical: string,
+  formula = 'C2H6O'
+): { ok: boolean; canonical: string; formula: string } => ({ ok: true, canonical, formula })
 
 describe('resolveStructureRecognitionScript', () => {
   it('takes the env override, then resourcesPath, then the development tree', () => {
@@ -61,7 +73,7 @@ describe('resolveEnginePython', () => {
 })
 
 describe('recognizeFigureStructure', () => {
-  const deps = (answers: unknown[]) => {
+  const deps = (answers: unknown[]): { seen: string[][]; deps: StructureRecognitionDeps } => {
     const seen: string[][] = []
     return {
       seen,
