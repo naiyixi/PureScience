@@ -1964,8 +1964,27 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': 'Локальные модели разбора',
   'settings.localParsingModelsHint':
     'Модели, работающие на этой машине для разбора документов и иллюстраций.',
-  'settings.localParsingModelsPlanned':
-    'В этой версии пока нет: раздел говорит, где они будут. Файлы появятся в v2.5.0, и без контрольной суммы издателя ничего не загружается.',
+  'settings.localParsingModelsIntro':
+    'Манифест поставляется вместе с приложением, а веса — нет. Модель загружается из собственного выпуска этого приложения только по вашему запросу и сохраняется лишь тогда, когда её байты совпадают с опубликованным SHA256.',
+  'settings.localParsingModelsNotParsingYet':
+    'Загрузка модели здесь ещё не означает, что она что-то разбирает: подключить эти файлы к разбору документов и иллюстраций — следующая работа, и эта версия не утверждает обратного.',
+  'settings.localParsingModelsLoading': 'Чтение манифеста, поставленного с этой сборкой…',
+  'settings.localParsingModelsUnavailable': 'Локальные модели разбора недоступны в этом окне.',
+  'settings.localParsingModelsLoadFailed': 'Не удалось прочитать локальные модели разбора.',
+  'settings.localParsingModelsAbsent':
+    'В этой сборке нет манифеста локальных моделей разбора, поэтому загружать здесь нечего.',
+  'settings.localParsingModelsInvalid':
+    'Манифест в этой сборке не проходит проверку, поэтому из него ничего не будет загружено. Каждая проблема названа рядом со своей записью:',
+  'settings.localParsingModelsEmpty':
+    'Манифест корректен и не содержит моделей, поэтому загружать здесь нечего.',
+  'settings.localParsingModelsInstalled': 'Есть на этой машине',
+  'settings.localParsingModelsMissing': 'Нет на этой машине',
+  'settings.localParsingModelsPublisherMd5Label':
+    'контрольная сумма самого издателя, для перекрёстной проверки',
+  'settings.localParsingModelsConsent':
+    'Я понимаю, что это скачает {size} из интернета, и что при несовпадении дайджеста ничего не останется.',
+  'settings.localParsingModelsDownload': 'Скачать и проверить',
+  'settings.localParsingModelsDownloading': 'Загрузка…',
 
   'settings.scenarioModelInherit': 'Как активная модель',
   'settings.scenarioModelSessionDetail': 'Детали разговора',

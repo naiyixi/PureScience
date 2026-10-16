@@ -2014,8 +2014,28 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': 'Modelos de análisis locales',
   'settings.localParsingModelsHint':
     'Modelos que se ejecutan en este equipo para analizar documentos y figuras.',
-  'settings.localParsingModelsPlanned':
-    'Todavía no en esta versión: la sección indica dónde vivirán. v2.5.0 trae los archivos y sin la suma de comprobación del editor no se descarga nada.',
+  'settings.localParsingModelsIntro':
+    'El manifiesto se incluye con la aplicación, los pesos no. Un modelo solo se descarga del propio release de esta aplicación cuando lo pides, y solo se conserva si sus bytes coinciden con el SHA256 publicado.',
+  'settings.localParsingModelsNotParsingYet':
+    'Descargar aquí un modelo todavía no hace que analice nada: conectar estos archivos al análisis de documentos y figuras es el siguiente trabajo, y esta versión no afirma lo contrario.',
+  'settings.localParsingModelsLoading': 'Leyendo el manifiesto incluido en esta compilación…',
+  'settings.localParsingModelsUnavailable':
+    'Los modelos de análisis locales no están disponibles en esta ventana.',
+  'settings.localParsingModelsLoadFailed': 'No se pudieron leer los modelos de análisis locales.',
+  'settings.localParsingModelsAbsent':
+    'Esta compilación no incluye ningún manifiesto de modelos de análisis locales, así que aquí no hay nada que descargar.',
+  'settings.localParsingModelsInvalid':
+    'El manifiesto de esta compilación no supera la validación, así que no se descargará nada de él. Cada problema aparece nombrado junto a su entrada:',
+  'settings.localParsingModelsEmpty':
+    'El manifiesto es válido y no lista ningún modelo, así que aquí no hay nada que descargar.',
+  'settings.localParsingModelsInstalled': 'En esta máquina',
+  'settings.localParsingModelsMissing': 'No está en esta máquina',
+  'settings.localParsingModelsPublisherMd5Label':
+    'la suma de comprobación del propio editor, para cotejo',
+  'settings.localParsingModelsConsent':
+    'Entiendo que esto descarga {size} por internet y que una huella que no coincida no deja nada detrás.',
+  'settings.localParsingModelsDownload': 'Descargar y verificar',
+  'settings.localParsingModelsDownloading': 'Descargando…',
 
   'settings.scenarioModelInherit': 'Igual que el modelo activo',
   'settings.scenarioModelSessionDetail': 'Detalles de conversación',

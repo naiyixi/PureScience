@@ -840,8 +840,26 @@ export const zh = {
   'settings.functionModelUnavailable': '此窗口无法读取功能模型设置。',
   'settings.localParsingModels': '本地解析模型',
   'settings.localParsingModelsHint': '在本机运行、用于解析文档与插图的模型。',
-  'settings.localParsingModelsPlanned':
-    '本版尚未提供：这一区先把位置说明白。v2.5.0 才会带来这些资产，且没有发布方校验值就不下载。',
+  'settings.localParsingModelsIntro':
+    '清单随包提供，权重不随包。只有你点了下载，才会从本应用自己的发布位取回该模型；而且只有字节与已公布的 SHA256 一致，它才会留在本机。',
+  'settings.localParsingModelsNotParsingYet':
+    '在这里取回模型，并不代表它已经开始解析：把这些资产接进文档与插图解析是下一件要做的事，本版不作此声称。',
+  'settings.localParsingModelsLoading': '正在读取本构建随包的清单…',
+  'settings.localParsingModelsUnavailable': '此窗口无法使用本地解析模型。',
+  'settings.localParsingModelsLoadFailed': '读取本地解析模型失败。',
+  'settings.localParsingModelsAbsent':
+    '本构建没有随包的本地解析模型清单，因此这里没有可取回的条目。',
+  'settings.localParsingModelsInvalid':
+    '本构建里的清单未通过校验，因此不会从它下载任何东西。逐条问题与其所属条目并列如下：',
+  'settings.localParsingModelsEmpty':
+    '清单通过校验，但没有列出任何模型，因此这里没有可取回的条目。',
+  'settings.localParsingModelsInstalled': '本机已就位',
+  'settings.localParsingModelsMissing': '本机还没有',
+  'settings.localParsingModelsPublisherMd5Label': '发布方自己公布的校验值，留作交叉核对',
+  'settings.localParsingModelsConsent':
+    '我明白这会从互联网下载 {size}，且摘要不一致时什么都不会留下。',
+  'settings.localParsingModelsDownload': '下载并校验',
+  'settings.localParsingModelsDownloading': '正在下载…',
 
   'settings.scenarioModelInherit': '与主模型相同',
   'settings.scenarioModelSessionDetail': '会话详情',

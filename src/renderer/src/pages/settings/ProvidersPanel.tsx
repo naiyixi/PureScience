@@ -9,6 +9,7 @@ import { ActiveModelSelect } from './ActiveModelSelect'
 import { VisionModelSelect } from './VisionModelSelect'
 import { FUNCTION_MODEL_IDS } from '../../../../shared/function-models'
 import { FunctionModelRow, FunctionModelTrail } from './FunctionModelSelect'
+import { LocalParsingModelsSection } from './LocalParsingModelsSection'
 import { ScenarioModelRow } from './ScenarioModelSelect'
 import { ProviderList } from './ProviderList'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
@@ -399,18 +400,9 @@ const ProvidersPanel = ({
         </div>
       </SettingsSection>
 
-      {/* Local parsing models: stated now, provided later. No switches — a control that changes nothing is
-          worse than the sentence that says why it is not here yet. */}
-      <SettingsSection
-        title={t('settings.localParsingModels')}
-        aria-label={t('settings.localParsingModels')}
-        description={t('settings.localParsingModelsHint')}
-        separated={visibleProviders.length > 0}
-      >
-        <p className="max-w-md text-xs text-muted-foreground" data-testid="local-parsing-models">
-          {t('settings.localParsingModelsPlanned')}
-        </p>
-      </SettingsSection>
+      {/* Local parsing models: the assets the app parses documents and figures with. Its own component
+          because it is the reader's side of a real fetch — see the notes at the top of that file. */}
+      <LocalParsingModelsSection separated={visibleProviders.length > 0} />
 
       {/* Optional Vision model relay : a fixed model that translates image
           input for a text-only active backend. Independent of the active model; hidden when no

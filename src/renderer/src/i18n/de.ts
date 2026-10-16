@@ -2030,8 +2030,29 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': 'Lokale Analysemodelle',
   'settings.localParsingModelsHint':
     'Modelle, die auf diesem Rechner Dokumente und Abbildungen auswerten.',
-  'settings.localParsingModelsPlanned':
-    'Noch nicht in dieser Fassung: der Abschnitt sagt, wo diese Modelle künftig stehen. v2.5.0 bringt die Dateien — ohne Prüfsumme des Herausgebers wird nichts geladen.',
+  'settings.localParsingModelsIntro':
+    'Das Manifest wird mit der App ausgeliefert, die Gewichte nicht. Ein Modell wird nur auf Anforderung aus dem eigenen Release dieser App geladen und nur behalten, wenn seine Bytes zum veröffentlichten SHA256 passen.',
+  'settings.localParsingModelsNotParsingYet':
+    'Ein hier geladenes Modell analysiert noch nichts: Diese Dateien an die Dokument- und Abbildungsanalyse anzubinden ist der nächste Arbeitsschritt, und diese Version behauptet nichts anderes.',
+  'settings.localParsingModelsLoading': 'Das mit diesem Build ausgelieferte Manifest wird gelesen…',
+  'settings.localParsingModelsUnavailable':
+    'Lokale Analysemodelle sind in diesem Fenster nicht verfügbar.',
+  'settings.localParsingModelsLoadFailed':
+    'Die lokalen Analysemodelle konnten nicht gelesen werden.',
+  'settings.localParsingModelsAbsent':
+    'Dieser Build enthält kein Manifest für lokale Analysemodelle, hier gibt es also nichts zu laden.',
+  'settings.localParsingModelsInvalid':
+    'Das Manifest in diesem Build besteht die Prüfung nicht, daraus wird nichts geladen. Jedes Problem steht beim zugehörigen Eintrag:',
+  'settings.localParsingModelsEmpty':
+    'Das Manifest ist gültig und listet keine Modelle, hier gibt es also nichts zu laden.',
+  'settings.localParsingModelsInstalled': 'Auf diesem Rechner',
+  'settings.localParsingModelsMissing': 'Nicht auf diesem Rechner',
+  'settings.localParsingModelsPublisherMd5Label':
+    'die Prüfsumme des Verlags selbst, als Gegenprobe',
+  'settings.localParsingModelsConsent':
+    'Mir ist klar, dass dies {size} über das Internet lädt und dass bei abweichender Prüfsumme nichts zurückbleibt.',
+  'settings.localParsingModelsDownload': 'Laden und prüfen',
+  'settings.localParsingModelsDownloading': 'Wird geladen…',
 
   'settings.scenarioModelInherit': 'Wie aktives Modell',
   'settings.scenarioModelSessionDetail': 'Konversationsdetails',

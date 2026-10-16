@@ -1937,8 +1937,26 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': '로컬 파싱 모델',
   'settings.localParsingModelsHint':
     '문서와 그림을 해석하기 위해 이 컴퓨터에서 실행되는 모델입니다.',
-  'settings.localParsingModelsPlanned':
-    '이 버전에는 없습니다. 이 영역은 자리가 어디인지 밝히기 위한 것입니다. 자산은 v2.5.0에서 제공되며 발행자 검증값이 없으면 내려받지 않습니다.',
+  'settings.localParsingModelsIntro':
+    '매니페스트는 앱에 포함되지만 가중치는 포함되지 않습니다. 모델은 요청할 때만 이 앱 자체의 릴리스에서 내려받아지고, 바이트가 공개된 SHA256과 일치할 때만 남습니다.',
+  'settings.localParsingModelsNotParsingYet':
+    '여기서 모델을 내려받아도 아직 무엇도 파싱하지 않습니다. 이 자산을 문서와 그림 파싱에 연결하는 일은 다음 작업이며, 이 버전은 그렇다고 주장하지 않습니다.',
+  'settings.localParsingModelsLoading': '이 빌드에 포함된 매니페스트를 읽는 중…',
+  'settings.localParsingModelsUnavailable': '이 창에서는 로컬 파싱 모델을 사용할 수 없습니다.',
+  'settings.localParsingModelsLoadFailed': '로컬 파싱 모델을 읽지 못했습니다.',
+  'settings.localParsingModelsAbsent':
+    '이 빌드에는 로컬 파싱 모델 매니페스트가 포함되어 있지 않아 여기서 받을 것이 없습니다.',
+  'settings.localParsingModelsInvalid':
+    '이 빌드의 매니페스트가 검증을 통과하지 못하므로 그에서 아무것도 내려받지 않습니다. 문제는 해당 항목 옆에 이름을 붙여 표시합니다:',
+  'settings.localParsingModelsEmpty':
+    '매니페스트는 유효하지만 나열된 모델이 없어 여기서 받을 것이 없습니다.',
+  'settings.localParsingModelsInstalled': '이 컴퓨터에 있음',
+  'settings.localParsingModelsMissing': '이 컴퓨터에 없음',
+  'settings.localParsingModelsPublisherMd5Label': '게시자가 직접 공개한 체크섬(교차 확인용)',
+  'settings.localParsingModelsConsent':
+    '인터넷에서 {size}를 내려받으며, 다이제스트가 일치하지 않으면 아무것도 남지 않는다는 점을 이해했습니다.',
+  'settings.localParsingModelsDownload': '내려받아 검증',
+  'settings.localParsingModelsDownloading': '내려받는 중…',
 
   'settings.scenarioModelInherit': '활성 모델과 동일',
   'settings.scenarioModelSessionDetail': '대화 상세',

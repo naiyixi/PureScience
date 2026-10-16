@@ -880,8 +880,27 @@ export const en: Record<ZhKey, string> = {
   'settings.localParsingModels': 'Local parsing models',
   'settings.localParsingModelsHint':
     'Models that run on this machine to parse documents and figures.',
-  'settings.localParsingModelsPlanned':
-    'Not part of this version: the section is here so the page says where these will live. v2.5.0 brings the assets, with a publisher checksum required before anything is downloaded.',
+  'settings.localParsingModelsIntro':
+    'The manifest ships with the app; the weights do not. A model is fetched from this app’s own release only when you ask for it, and it is kept only if its bytes match the published SHA256.',
+  'settings.localParsingModelsNotParsingYet':
+    'Fetching a model here does not make it parse anything yet: wiring these assets into document and figure parsing is the next piece of work, and this version does not claim otherwise.',
+  'settings.localParsingModelsLoading': 'Reading the manifest that shipped with this build…',
+  'settings.localParsingModelsUnavailable': 'Local parsing models are unavailable in this window.',
+  'settings.localParsingModelsLoadFailed': 'Could not read the local parsing models.',
+  'settings.localParsingModelsAbsent':
+    'This build carries no manifest for local parsing models, so there is nothing to fetch here.',
+  'settings.localParsingModelsInvalid':
+    'The manifest in this build does not validate, so nothing will be downloaded from it. Each problem is named beside the entry it belongs to:',
+  'settings.localParsingModelsEmpty':
+    'The manifest is valid and lists no models, so there is nothing to fetch here.',
+  'settings.localParsingModelsInstalled': 'On this machine',
+  'settings.localParsingModelsMissing': 'Not on this machine',
+  'settings.localParsingModelsPublisherMd5Label':
+    'the publisher’s own checksum, kept as a cross-check',
+  'settings.localParsingModelsConsent':
+    'I understand this downloads {size} over the internet, and that a digest which does not match leaves nothing behind.',
+  'settings.localParsingModelsDownload': 'Download and verify',
+  'settings.localParsingModelsDownloading': 'Downloading…',
 
   'settings.scenarioModelInherit': 'Same as active model',
   'settings.scenarioModelSessionDetail': 'Conversation details',

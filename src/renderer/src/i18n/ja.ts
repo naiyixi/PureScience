@@ -1965,8 +1965,27 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.functionModelUnavailable': 'このウィンドウでは機能モデルを利用できません。',
   'settings.localParsingModels': 'ローカル解析モデル',
   'settings.localParsingModelsHint': '文書や図表の解析のためにこの端末で動くモデルです。',
-  'settings.localParsingModelsPlanned':
-    'この版には未搭載です。この区画は置き場所を示すためのものです。資産は v2.5.0 で提供し、発行元の検証値がない限りダウンロードしません。',
+  'settings.localParsingModelsIntro':
+    'マニフェストはアプリに同梱されますが、重みは同梱されません。モデルはあなたが要求したときだけ、このアプリ自身のリリースから取得され、バイト列が公表された SHA256 と一致した場合にのみ保存されます。',
+  'settings.localParsingModelsNotParsingYet':
+    'ここでモデルを取得しても、まだ何も解析できるようにはなりません。これらの資産を文書と図の解析に接続するのは次の作業で、本版はそう主張しません。',
+  'settings.localParsingModelsLoading': 'このビルドに同梱されたマニフェストを読んでいます…',
+  'settings.localParsingModelsUnavailable':
+    'このウィンドウではローカル解析モデルを利用できません。',
+  'settings.localParsingModelsLoadFailed': 'ローカル解析モデルを読み取れませんでした。',
+  'settings.localParsingModelsAbsent':
+    'このビルドにはローカル解析モデルのマニフェストが同梱されていないため、ここで取得できるものはありません。',
+  'settings.localParsingModelsInvalid':
+    'このビルドのマニフェストは検証を通らないため、そこから何もダウンロードしません。問題は該当の項目ごとに名前を挙げて示します：',
+  'settings.localParsingModelsEmpty':
+    'マニフェストは有効ですが、モデルが一つも載っていないため、ここで取得できるものはありません。',
+  'settings.localParsingModelsInstalled': 'このマシンにあり',
+  'settings.localParsingModelsMissing': 'このマシンになし',
+  'settings.localParsingModelsPublisherMd5Label': '公開元自身のチェックサム（照合用）',
+  'settings.localParsingModelsConsent':
+    'これはインターネット経由で {size} をダウンロードし、ダイジェストが一致しない場合は何も残らないことを理解しました。',
+  'settings.localParsingModelsDownload': 'ダウンロードして検証',
+  'settings.localParsingModelsDownloading': 'ダウンロード中…',
 
   'settings.scenarioModelInherit': 'アクティブモデルと同じ',
   'settings.scenarioModelSessionDetail': '会話詳細',

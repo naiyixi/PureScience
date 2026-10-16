@@ -1824,8 +1824,26 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.functionModelUnavailable': '此視窗無法讀取功能模型設定。',
   'settings.localParsingModels': '本機解析模型',
   'settings.localParsingModelsHint': '在本機執行、用於解析文件與圖表的模型。',
-  'settings.localParsingModelsPlanned':
-    '本版尚未提供：這一區先把位置說明白。v2.5.0 才會帶來這些資產，且沒有發佈方校驗值就不下載。',
+  'settings.localParsingModelsIntro':
+    '清單隨包提供，權重不隨包。只有你按下下載，才會從本應用程式自己的發佈位置取回該模型；而且只有位元組與已公佈的 SHA256 一致，它才會留在本機。',
+  'settings.localParsingModelsNotParsingYet':
+    '在這裡取回模型，並不代表它已經開始解析：把這些資產接進文件與圖表解析是下一件要做的事，本版不作此聲稱。',
+  'settings.localParsingModelsLoading': '正在讀取本建置隨包的清單…',
+  'settings.localParsingModelsUnavailable': '此視窗無法使用本機解析模型。',
+  'settings.localParsingModelsLoadFailed': '讀取本機解析模型失敗。',
+  'settings.localParsingModelsAbsent':
+    '本建置沒有隨包的本機解析模型清單，因此這裡沒有任何可取回的項目。',
+  'settings.localParsingModelsInvalid':
+    '本建置裡的清單未通過驗證，因此不會從它下載任何東西。逐條問題與其所属項目並列如下：',
+  'settings.localParsingModelsEmpty':
+    '清單通過驗證，但沒有列出任何模型，因此這裡沒有可取回的項目。',
+  'settings.localParsingModelsInstalled': '本機已就位',
+  'settings.localParsingModelsMissing': '本機還沒有',
+  'settings.localParsingModelsPublisherMd5Label': '發佈方自己公佈的校驗值，留作交叉核對',
+  'settings.localParsingModelsConsent':
+    '我明白這會從網際網路下載 {size}，且摘要不一致時什麼都不會留下。',
+  'settings.localParsingModelsDownload': '下載並驗證',
+  'settings.localParsingModelsDownloading': '正在下載…',
 
   'settings.scenarioModelInherit': '與主模型相同',
   'settings.scenarioModelSessionDetail': '會話詳情',

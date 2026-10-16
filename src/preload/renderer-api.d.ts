@@ -33,6 +33,10 @@ import type {
   ReferenceCollection
 } from '../shared/references'
 import type { IdentifierKind } from '../main/references/service'
+import type {
+  LocalParsingDownloadView,
+  LocalParsingModelsView
+} from '../main/engines/local-parsing-models'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../shared/artifact-replay'
 import type { ReadingVerification, VerifyReadingRequest } from '../shared/reading-fingerprint'
 import type {

@@ -2021,8 +2021,28 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.localParsingModels': "Modèles d'analyse locaux",
   'settings.localParsingModelsHint':
     'Modèles exécutés sur cette machine pour analyser documents et figures.',
-  'settings.localParsingModelsPlanned':
-    "Pas encore dans cette version : la section indique où ils prendront place. La v2.5.0 apportera les fichiers, sans somme de contrôle de l'éditeur rien n'est téléchargé.",
+  'settings.localParsingModelsIntro':
+    "Le manifeste est livré avec l'application, pas les poids. Un modèle n'est récupéré depuis la publication de cette application que si vous le demandez, et il n'est conservé que si ses octets correspondent au SHA256 publié.",
+  'settings.localParsingModelsNotParsingYet':
+    "Récupérer un modèle ici ne le fait pas encore analyser quoi que ce soit : relier ces fichiers à l'analyse des documents et des figures est le prochain travail, et cette version ne prétend pas le contraire.",
+  'settings.localParsingModelsLoading': 'Lecture du manifeste livré avec cette version…',
+  'settings.localParsingModelsUnavailable':
+    "Les modèles d'analyse locaux ne sont pas disponibles dans cette fenêtre.",
+  'settings.localParsingModelsLoadFailed': "Impossible de lire les modèles d'analyse locaux.",
+  'settings.localParsingModelsAbsent':
+    "Cette version ne contient aucun manifeste pour les modèles d'analyse locaux : il n'y a donc rien à récupérer ici.",
+  'settings.localParsingModelsInvalid':
+    "Le manifeste de cette version ne passe pas la validation : rien n'en sera téléchargé. Chaque problème est nommé à côté de l'entrée concernée :",
+  'settings.localParsingModelsEmpty':
+    "Le manifeste est valide et ne liste aucun modèle : il n'y a donc rien à récupérer ici.",
+  'settings.localParsingModelsInstalled': 'Sur cette machine',
+  'settings.localParsingModelsMissing': 'Absent de cette machine',
+  'settings.localParsingModelsPublisherMd5Label':
+    "la somme de contrôle de l'éditeur lui-même, gardée pour recoupement",
+  'settings.localParsingModelsConsent':
+    "Je comprends que cela télécharge {size} sur Internet et qu'une empreinte non concordante ne laisse rien derrière.",
+  'settings.localParsingModelsDownload': 'Télécharger et vérifier',
+  'settings.localParsingModelsDownloading': 'Téléchargement…',
 
   'settings.scenarioModelInherit': 'Comme le modèle actif',
   'settings.scenarioModelSessionDetail': 'Détails de conversation',
