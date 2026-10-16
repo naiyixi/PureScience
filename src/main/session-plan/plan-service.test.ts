@@ -888,38 +888,57 @@ describe('PlanService', () => {
   it('states which statuses may follow instead of only saying the change is invalid', async () => {
     const { service, identity, approved } = await approveExecutionPlan()
 
-    await expect(
-      service.updateStepStatus({
-        ...identity,
-        expectedRevision: approved.projection.revision,
-        title: 'Audit findings',
-        status: 'completed'
-      })
-    ).rejects.toThrow(
-      '"Audit findings" is not started; from there the only statuses that may be set are in_progress, skipped.'
-    )
-
-    const running = await service.updateStepStatus({
+    // 契约（本轮按真机频次放宽）：**未开始直接报 completed 合法**。这条调用此前被拒，而打包版近 7 天的
+    // 记录里正是这个形态出现 16 次 —— agent 干完活就报完成，「有没有先记一笔开始」不是关于这份工作的事实。
+    const completedWithoutStart = await service.updateStepStatus({
       ...identity,
       expectedRevision: approved.projection.revision,
       title: 'Audit findings',
-      status: 'in_progress'
-    })
-    const completed = await service.updateStepStatus({
-      ...identity,
-      expectedRevision: running.projection.revision,
-      title: 'Audit findings',
       status: 'completed'
     })
+    expect(completedWithoutStart.changed).toBe(true)
 
+    // 终态不可再改：拒绝句要点名**为什么**，而不是只说「无效」。
     await expect(
       service.updateStepStatus({
         ...identity,
-        expectedRevision: completed.projection.revision,
+        expectedRevision: completedWithoutStart.projection.revision,
         title: 'Audit findings',
         status: 'blocked'
       })
     ).rejects.toThrow('"Audit findings" is already completed and cannot be changed.')
+
+    // 仍非法的转移要点名**可以改成什么**（这里：从 in_progress 不能跳到 skipped）。
+    const running = await service.updateStepStatus({
+      ...identity,
+      expectedRevision: completedWithoutStart.projection.revision,
+      title: 'Validate cohorts',
+      status: 'in_progress'
+    })
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: running.projection.revision,
+        title: 'Validate cohorts',
+        status: 'skipped'
+      })
+    ).rejects.toThrow(
+      '"Validate cohorts" is in_progress; from there the only statuses that may be set are in_progress, completed, blocked.'
+    )
+  })
+
+  // 放宽的那一半必须**不能插队**：未开始直接报完成，仍要走同一道依赖闸。
+  it('still refuses a completion reported for a step whose dependencies are unfinished', async () => {
+    const { service, identity, approved } = await approveExecutionPlan()
+
+    await expect(
+      service.updateStepStatus({
+        ...identity,
+        expectedRevision: approved.projection.revision,
+        title: 'Compare cohorts',
+        status: 'completed'
+      })
+    ).rejects.toMatchObject({ code: 'dependency-not-satisfied' })
   })
 
   it('points a blocked step at the explicit continuation it actually needs', async () => {

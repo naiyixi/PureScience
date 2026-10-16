@@ -101,7 +101,10 @@ const isTerminalStepStatus = (status: SessionPlanStepStatus): boolean =>
 const allowedStepStatuses = (
   previous: SessionPlanStepStatus | undefined
 ): SessionPlanStepStatus[] => {
-  if (previous === undefined) return ['in_progress', 'skipped']
+  // 真机频次：这一处拒答在打包版近 7 天里出现 16 次，形态都是「agent 干完活直接报 completed」——
+  // 而「有没有先记一笔 in_progress」不是关于这份工作的事实。所以「未开始 ⇒ completed」成为合法转移
+  // （仍走同一道依赖闸，见 updateStepStatus：完成不能插队）。
+  if (previous === undefined) return ['in_progress', 'skipped', 'completed']
   if (previous === 'in_progress') return ['in_progress', 'completed', 'blocked']
   return []
 }
@@ -303,7 +306,9 @@ class PlanService {
     if (sameTerminal) {
       return { projection: this.project(document, plan, context.revision, true), changed: false }
     }
-    const startsStep = !previous && (input.status === 'in_progress' || input.status === 'skipped')
+    const startsStep =
+      !previous &&
+      (input.status === 'in_progress' || input.status === 'skipped' || input.status === 'completed')
     const valid =
       startsStep ||
       (previous === 'in_progress' && ['in_progress', 'completed', 'blocked'].includes(input.status))
