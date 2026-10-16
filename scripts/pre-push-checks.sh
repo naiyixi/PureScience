@@ -11,6 +11,8 @@
 #   5. README bilingual header anchors (badges / intro / banner / DOI) stay byte-identical.
 #   6. The shipped local-parsing-model manifest validates and still ships in the package.
 #   7. Every Node launcher under scripts/, cli/, packages/purescience/ and build/ parses under Node.
+#   8. The files this push adds lint with the same linter CI runs, cache off — a lint error in a pushed
+#      file fails CI's Verify step and skips every packaging/certification job downstream.
 #
 # Exit non-zero on any hard failure so the push is refused.
 set -uo pipefail
@@ -136,6 +138,34 @@ else
   sed 's/^/      /' /tmp/script-entrypoints.log
   bad "有脚本入口连 Node 都链接不起来（上面逐个点名）"
   FAIL=1
+fi
+
+# ---------- 8. lint the files this push adds (hard fail) ----------
+# CI's `Verify` step runs `npm run lint` first: one error there fails the job and every packaging and
+# certification job downstream is skipped, so a lint error that reaches main costs a whole lane even
+# though nothing else noticed it. This segment runs the same linter, cache off, over the files this push
+# introduces — the ones that lane is about to see for the first time.
+#
+# It is scoped to the committed range instead of the whole tree on purpose. Whole-tree lint measured 4:59
+# on this machine (`npx eslint --no-cache .` -> 0 errors, 132 warnings), which is too slow to stand in
+# front of every push; worse, it lints the working tree, so it would refuse a push over another writer's
+# uncommitted work, which CI would never see. The whole tree is still linted where that cost is paid once
+# (the release gate), and by CI itself on every push.
+say "本次推送新增文件的 lint（与 CI 同一 linter，缓存关闭）"
+LINT_BASE="$(git rev-parse --verify -q origin/main 2>/dev/null || true)"
+if [[ -z "$LINT_BASE" ]]; then
+  warn "origin/main 无法解析 ⇒ 无法确定本次推送的范围，跳过（发布门禁与 CI 仍会全仓 lint）"
+else
+  LINT_COUNT="$(git diff --name-only --diff-filter=ACMR "$LINT_BASE"...HEAD -- '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.js' '*.jsx' 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$LINT_COUNT" == "0" ]]; then
+    ok "本次没有新增或修改的可 lint 文件"
+  elif git diff --name-only -z --diff-filter=ACMR "$LINT_BASE"...HEAD -- '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.js' '*.jsx' 2>/dev/null | xargs -0 npx eslint --no-cache >/tmp/eslint-pre-push.log 2>&1; then
+    ok "${LINT_COUNT} 个文件通过（$(grep -Eo '[0-9]+ problems?' /tmp/eslint-pre-push.log | tail -1 || echo '0 problems')）"
+  else
+    sed 's/^/      /' /tmp/eslint-pre-push.log | head -40
+    bad "本次推送引入 lint 错误（CI 的 Verify 会因此翻红，并跳过全部打包/认证作业）"
+    FAIL=1
+  fi
 fi
 
 # ---------- summary ----------
