@@ -449,4 +449,37 @@ describe('PdfService.figures understanding', () => {
     expect(understanding.verdict.reason).toBe('no-signals')
     expect(understanding.route).toBeUndefined()
   })
+
+  it('图表类给出图框内的数值，每项带来源几何（U4-c）', async () => {
+    const svc = serviceFor([
+      item('Figure 9. Dose-response curves; error bars show SEM; n = 6.', 100, 280),
+      item('0.83', 140, 420),
+      item('inhibition (%)', 140, 400),
+      item('p<0.001', 140, 380)
+    ])
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    const derivation = result.figures[0]?.derivation
+    expect(derivation?.kind).toBe('numbers')
+    if (derivation?.kind !== 'numbers') throw new Error('unreachable')
+    expect(derivation.values.map((v) => v.value)).toEqual(['0.83', 'p<0.001'])
+    // 来源标注：值印在哪一行、那一行在哪。
+    expect(derivation.values[0]?.line).toBe('0.83')
+    expect(derivation.values[0]?.bbox).toEqual({ x: 140, y: 420, width: 20, height: 10 })
+    expect(derivation.values[1]?.bbox).toEqual({ x: 140, y: 380, width: 35, height: 10 })
+  })
+
+  it('化学结构式给出具名拒答（缺引擎），而不是一个空结果（U4-c）', async () => {
+    const svc = serviceFor([item('Scheme 1', 120, 400), item('Et3N, DMF', 120, 380)])
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    const derivation = result.figures[0]?.derivation
+    expect(derivation?.kind).toBe('refused')
+    if (derivation?.kind !== 'refused') throw new Error('unreachable')
+    expect(derivation.reason).toBe('recognizer-unavailable')
+  })
 })

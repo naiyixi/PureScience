@@ -10,6 +10,7 @@
 
 import type { PdfTableRejection } from './pdf-table-extraction'
 import type { PdfFigureUnderstanding } from './figure-understanding'
+import type { FigureDerivation } from './figure-derivation'
 import type { AxisAlignedRotation } from './pdf-page-rotation'
 import type { TranslationViewModel } from './translation-view-model'
 
@@ -139,6 +140,11 @@ export type PdfFigureForAgent = {
    * 一个**判定的结果**（带具名理由），与「还没判」不是同一件事，所以两者不共用一个形状。
    */
   understanding?: PdfFigureUnderstanding
+  /**
+   * 这一类的**派生结果**（U4）：图表给图框内的数值（每项带印着它的那一行的页级几何）；化学/蛋白/
+   * 通用三类给**具名拒答**并写明缺什么。缺席 = 这张图没有被派生过，与「拒答」不是同一件事。
+   */
+  derivation?: FigureDerivation
   /** What a reader has to do before quoting this figure, from the extraction's own audit. */
   warnings: readonly string[]
 }

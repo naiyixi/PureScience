@@ -38,6 +38,7 @@ import {
 } from '../../shared/pdf-page-rotation'
 import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
 import { figureUnderstandingFor } from '../../shared/figure-understanding'
+import { deriveFromFigure } from '../../shared/figure-derivation'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -366,6 +367,11 @@ export class PdfService {
       for (const figure of extraction.figures) {
         if (figures.length >= PDF_FIGURES_MAX_FIGURES) break
         const caption = figure.caption
+        const inside = itemsInsideFigure(items, figure)
+        const understanding = figureUnderstandingFor({
+          ...(caption === undefined ? {} : { caption }),
+          inFigureText: inside.map((item) => item.text)
+        })
         figures.push({
           page: figure.page,
           index: figure.index,
@@ -375,10 +381,10 @@ export class PdfService {
           // 插图理解的第一层（U4）：按类别分派。凭的是文档自己给出的两样东西 —— 图注，与**落在图框内**
           // 的文字项（轴标注、试剂/取代基记号）。判不出就写 `undetermined` 并给出具名理由：这张图不是
           // 「还没判」，而是「凭现有证据判不出」，两者不能共用一个形状。
-          understanding: figureUnderstandingFor({
-            ...(caption === undefined ? {} : { caption }),
-            inFigureText: textInsideFigure(items, figure)
-          }),
+          understanding,
+          // 第二层（U4）：这一类允许派生什么。图表给图框内的数值（每项带来源几何）；其余三类给**具名
+          // 拒答**并写明缺什么 —— 拒答也出现在结果里，否则「空」会被读成「没什么可派的」。
+          derivation: deriveFromFigure({ understanding, inFigureText: inside }),
           warnings: auditPdfFigureForUse(figure)
         })
       }
@@ -464,22 +470,21 @@ const FIGURE_TEXT_TOLERANCE = 1
 
 /**
  * 落在图框内的文字项（PDF 用户空间，原点左下）。**只取图内**：图注本身由抽取器单独给出，两者在
- * 判定里分属不同来源（`caption` / `in-figure-text`），读者据此知道是哪一边投的票。
+ * 判定里分属不同来源（`caption` / `in-figure-text`），读者据此知道是哪一边投的票。返回**带几何的项**
+ * 而不是纯文本：图表一路的派生要把每一项的来源（它印在哪一行、印在哪）原样带出去。
  */
-const textInsideFigure = (
+const itemsInsideFigure = (
   items: readonly PdfTextItem[],
   figure: { x: number; y: number; width: number; height: number }
-): string[] =>
-  items
-    .filter(
-      (item) =>
-        item.x >= figure.x - FIGURE_TEXT_TOLERANCE &&
-        item.x + item.width <= figure.x + figure.width + FIGURE_TEXT_TOLERANCE &&
-        item.y >= figure.y - FIGURE_TEXT_TOLERANCE &&
-        item.y + item.height <= figure.y + figure.height + FIGURE_TEXT_TOLERANCE
-    )
-    .map((item) => item.text)
-    .filter((text) => text.trim() !== '')
+): PdfTextItem[] =>
+  items.filter(
+    (item) =>
+      item.text.trim() !== '' &&
+      item.x >= figure.x - FIGURE_TEXT_TOLERANCE &&
+      item.x + item.width <= figure.x + figure.width + FIGURE_TEXT_TOLERANCE &&
+      item.y >= figure.y - FIGURE_TEXT_TOLERANCE &&
+      item.y + item.height <= figure.y + figure.height + FIGURE_TEXT_TOLERANCE
+  )
 
 const parsePdf = async (
   filePath: string
