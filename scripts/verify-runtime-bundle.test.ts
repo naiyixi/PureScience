@@ -7,12 +7,17 @@ import {
   verifyRuntimeBundle
 } from './verify-runtime-bundle.mjs'
 
+// `scripts/*.mjs` is outside both tsconfig projects, so its exports arrive here untyped (`allowJs` is off;
+// turning it on was measured at 65 pre-existing errors, mostly vitest-mock variance). Pin the shape the
+// module documents once, so the fixture below is checked instead of silently drifting in as `unknown`.
+const VERSIONS_BY_LANGUAGE = VERSIONS as Record<string, readonly string[]>
+
 const manifest = (subdir = 'osx-arm64', envVersion = 1): Record<string, unknown> => ({
   schema: 1,
   envVersion,
   subdir,
   packs: Object.fromEntries(
-    Object.entries(VERSIONS).flatMap(([language, versions]) =>
+    Object.entries(VERSIONS_BY_LANGUAGE).flatMap(([language, versions]) =>
       versions.map((version) => [
         packId(language, version),
         {

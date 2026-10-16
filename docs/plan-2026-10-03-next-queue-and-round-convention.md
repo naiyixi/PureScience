@@ -46,7 +46,10 @@
 - **会话完成某项后必须在本清单追加一行（项目 + 提交 sha）**——不追加，执行器无从得知，就会重做：
   这正是要避免的那笔浪费。
 
-**已完成（别再重做）**：R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
+**已完成（别再重做）**：**门禁：launcher 目录的类型与解析门（执行器，2026-10-16，§一百七十）**——
+`tsconfig.node.json` 收 `scripts/**`+`cli/**`+`packages/**`（7 条既有类型错已修）+ 新门
+`scripts/check-script-entrypoints.mjs`（`node --check` 覆盖 53 个 `.mjs`/`.cjs`，进推前钩子第 7 段）；
+**这一条不许重做**：`scripts|cli|packages|build` 现在都在门里了· R2 U1/U2 实体与解析落库（`b4509920`）· 指标导入（`041146dd`）·
 U3 筛选/统计面（`8b074459`）· 面板 DOM + 筛选控件读数（`c4ef3189`/`fc21385c`）·
 U4 别名合并 + `displayName`（`f0b0e218`）· 导入侧真机读数（`d1a96860`）·
 指标导入界面 9 语种 + 摘除 agent-only 登记（`ed9fc653`）· 主色对齐 `#4D6BFE`（`d202b18e`）·
@@ -7806,3 +7809,71 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 - **真权重（298 MB）未上传**：产品决定；机制这一半本轮已真跑（见 §三）。
 - **`scripts/**` 不在任何 tsconfig 的 `include` 里** ⇒ 该目录下的 `.ts`/`.mjs` 没有任何类型检查覆盖（本轮的重复导出正是从这个洞里漏过去的）。这是**新发现的一条门禁缺口**，修法要动 tsconfig（会牵动全仓类型检查范围）⇒ 立案，不在本轮擅动。
 - **下一轮第一步**：① 读 `/tmp/ci-verdict-1bde6eb3.txt` 取判决；② `git fetch` + `git status` + `git log --oneline origin/main -6` 看会话是否已把 `preload` 那批落定（落定 ⇒ 取 U2 第三片界面那一半；未落定 ⇒ 台账其余项）；③ **动 `scripts/**` 或新写 CLI 之前先按人的方式跑一次它**（本轮的教训）；④ 起真机/e2e 前先 `vm_stat`（本轮读数 4232 空闲页 / swap 10.6 G）。① 已办（双绿，判决见 §四），如需复核读 `/tmp/ci-verdict-1bde6eb3.txt`。
+
+## 一百七十、本轮追加（执行器，2026-10-16 09:3x–）—— **launcher 目录自己没有门**的收口（上一轮自己立案的那条门禁缺口）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后远端 `origin/main` = `1381d0f3`，本地与远端**一致**（无未推提交）；Latest = **v2.4.0**。
+- 上一轮判决已取：`1bde6eb3` **双绿**（`/tmp/ci-verdict-1bde6eb3.txt` 末三行 = `=== 全部目标车道已落定（第 53 次轮询） ===` / `Windows Full Test|completed|success` / `Nightly|completed|success`）⇒ 上一轮以「主干绿」收口成立，本轮按队列约定取新单元。
+- 树上 10 个改动**仍是并发会话的在制品**（`src/main/specialist/**`、`src/preload/index.ts`、`src/preload/renderer-api.d.ts`、`SpecialistsPanel.tsx`、`specialist-store.ts`、`shared/plugin-source.ts`）⇒ 本单元**一个字节没碰**它们。
+- v2.5.0 版内剩余项仍是 **U2 第三片的界面那一半**，`blocked-by` = 上面那批在制的 `preload`（本轮开工时**未落定**）⇒ 不碰。
+- 内存闸门（现取，不照抄）：**空闲物理页 4115（≈64 MB）**、swap 已用 **9.83 G / 11.0 G** ⇒ 真机/Electron 取证**关闭**；本单元全部落在不需要起窗口的面上（`tsc` + `node --check` + vitest）。
+
+### 一 缺口核实（读源 + 两条探针，先量后选路）
+
+**断言**（上一轮 §五 自己立案的那条）：launcher 目录这一批**连能不能被 Node 链接起来都没人验**。
+
+- **不在任何 tsconfig 的 `include` 里**（读源）：`tsconfig.node.json` = `electron.vite.config.*` / `playwright.config.ts` / `e2e/**/*` / `vite.web.config.*` / `src/main|preload|shared`；`tsconfig.web.json` 同形。⇒ 落在这个洞里的不只是 `scripts/**`（37 `.ts` + 28 `.mjs`），还有 **`cli/**`**（4 `.ts` + 3 `.mjs`）、**`packages/purescience/**`**（7 `.ts` + 6 `.mjs`）与 `build/adhoc-sign.cjs` —— 这三处**都是用户直接运行的入口**（`npm run cli`、npm 包内的 CLI）。
+- **`.mjs` 连 `tsc` 也不会看一眼**：两套 tsconfig 都**没开 `allowJs`**（默认 false），而 `tsc` 只在 `allowJs` 打开时才把 `.js`/`.mjs` 纳入程序 ⇒ 上一轮那条 `SyntaxError` 正好落在没有任何检测器覆盖的那一层。
+
+**开工前先量了两条路（隔离 tsconfig，跑完即删；不让探针留在树上）**：
+
+| 探针 | 读数 |
+| --- | --- |
+| 只把 `scripts/**`/`cli/**`/`packages/**`/`build/**` 加进 `include`（不开 allowJs） | **7 条错**，全在用例里：`scripts/generate-version-manifest.test.ts` 3、`scripts/windows-release-workflows.test.ts` 2、`scripts/verify-runtime-bundle.test.ts` 1、`packages/purescience/doctor.test.ts` 1 |
+| 同上**再加 `allowJs: true`**（想把 `.mjs` 本体也一起检查） | **65 条错 / 14 个文件**：`publish-model-weights.test.ts` 21、`doctor.test.ts` 10、`check-pr-policy.test.ts` 7、`merge-mac-feed.test.ts` 5 …绝大多数是「替身与 Node 签名」的方差（`Mock<…>` 不可赋值给 `fs/promises`、`spawn` 的返回值缺 12 个成员） |
+
+⇒ **判断：`allowJs` 不在本轮开**。它会把 65 条错逼成一批 `as unknown as` 式的断言 —— 那正是仓规不许的形状（把检查器眼前的事实藏起来），而且和被测行为无关。**类型那一半只做 `include`；`.mjs` 那一半交给 Node 自己的解析器**（`node --check` 就是那个会对重复导出回 `Duplicate export of '<名>'` 的解析）。这条量法本身是结论的一部分，所以写在这里。
+
+### 二 交付（9 个文件：1 新门 + 1 新用例 + 3 处类型收敛 + 两处接线 + 两处配置）
+
+| # | 文件 | 改了什么 |
+| --- | --- | --- |
+| ① | `scripts/check-script-entrypoints.mjs`（新） | 门本体：对 `scripts/`、`scripts/ci/`、`cli/`、`packages/purescience/`、`build/` 下的每个 `.mjs`/`.cjs` 跑 `node --check`；**逐个点名**失败件与 Node 的原文；打印**扫了多少个**；两条「没在看」也具名失败（声明的根不存在 ⇒ 报哪个根；扫到的数量低于 floor ⇒ 报「走错地方了，下面的结论不许读成通过」）。输出里的相对路径**统一成正斜杠**，免得 CI 日志里的差异来自宿主的路径分隔符 |
+| ② | `scripts/check-script-entrypoints.test.ts`（新） | 4 条**真跑**用例（`spawnSync(process.execPath, …)`，与 `publish-model-weights.test.ts` 同一形状）：真树 exit 0 且**打印的计数 ≥ floor**（防「只扫到一个文件也印 ✓」）／合成树里放一个重复导出 ⇒ exit 1 且**点名那个文件**与 `Duplicate export of 'b'`／空树 ⇒ exit 1 且带 floor 句／少一个根 ⇒ exit 1 且点名 `cli/ does not exist` |
+| ③ | `tsconfig.node.json` | `include` 增 `scripts/**/*`、`cli/**/*`、`packages/**/*` ⇒ 这三个目录的 `.ts`（含用例）从此进 `typecheck:node`，也就是进 CI 的 `Verify` |
+| ④ | `scripts/generate-version-manifest.test.ts` | 3 条：`Object.keys(INSTALLERS)` 的键联合用**成员检查谓词**收回来（不是 `as`），而非在 `entry()` 上让步；`files.find(...)` 的 `deb` 先**具名断言存在**再读两个字段（原先读的是 `undefined`，红起来像「用例坏了」而不是「夹具变了」） |
+| ⑤ | `scripts/windows-release-workflows.test.ts` | 2 条：`setup` 步骤先**具名断言存在**（`throw new Error("… has no step with id 'set'")`）再读 `.run` |
+| ⑥ | `scripts/verify-runtime-bundle.test.ts` | 1 条：`VERSIONS` 从 `.mjs` 进来是未类型化的（`allowJs` 关着）⇒ 在消费点**按模块文档的形状标注一次**并写明为什么（照它原有的 `Object.entries` 写法会让 `versions` 以 `unknown` 漂进去） |
+| ⑦ | `packages/purescience/doctor.test.ts` | 1 条：`const roots = []` ⇒ `const roots: string[] = []`（TS 推成 `never[]`，`push` 报「string 不可赋给 never」） |
+| ⑧ | `package.json` | 新入口 `check:script-entrypoints`（与 `check:model-weights` 同形） |
+| ⑨ | `scripts/pre-push-checks.sh` | 新第 7 段（硬失败）+ 头部注释把 5/6/7 三段补进去（原先只列到 4，第 5/6 段从来没进过那份注释） |
+
+**为什么第二半（`node --check`）是主菜、第一半是配菜**：上一轮那条 bug 在 `.mjs` 里，而 `.mjs` 是 `include` **覆盖不到**的（`allowJs` 关着）⇒ 只做 `include` 挡不住它复发。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后的运行）
+
+| 项 | 读数 |
+| --- | --- |
+| 新门 · 真树 | `✓ script entrypoints: 53 launcher(s) under scripts, cli, packages/purescience, build parse under Node`，**exit 0**（52 个既有 + 门自己这个文件） |
+| 新门 · **变异证明（在真文件上）** | 把 `prepareUpload` 加回 `publish-model-weights.mjs` 的导出块（即上一轮那个 bug 的原形）⇒ `✗ scripts/publish-model-weights.mjs: SyntaxError: Duplicate export of 'prepareUpload'` + `✗ … 1 of 53 launcher(s) do not parse`，**exit 1**；还原后 `sha256 = e6813321e7ee83cf7fdab9b19563eaf82cd9e1ee68a0bf41af0da062ee7bf870`（与改前逐字符相同）、`git diff` 无输出、门回到 exit 0 |
+| 新用例 | `scripts/check-script-entrypoints.test.ts` **4 passed** |
+| 定向簇 | `npx vitest run scripts cli packages/purescience` ⇒ **58 files / 653 passed** |
+| 类型检查 | `npm run typecheck:node` **exit 0**（含新纳入的三个目录）、`npm run typecheck:web` **exit 0** |
+| lint | `npx eslint --no-cache` 本单元 6 个可 lint 的文件 **0 error / 0 warning**（新文件先按 prettier 收敛）；**`packages/purescience/doctor.test.ts` 另有 8 条 prettier warning，是 HEAD 上就有的**（用 `git show HEAD:<文件> | eslint --stdin` 对照过：同一位置同一数量）⇒ **不顺手扫**，本单元在这份文件里的净改动只有那一行类型标注 |
+| 推前钩子 | `bash scripts/pre-push-checks.sh` **exit 0**，第 7 段打印 `✓ script entrypoints: 53 launcher(s) …`（另六段照旧全绿） |
+| 按人的方式跑入口（上一轮的教训） | `npm run check:script-entrypoints` exit 0；`node cli/index.mjs --help` **exit 0**（打出 `Usage: purescience <command> [options]`）；`node packages/purescience/cli.mjs --help` **exit 0** |
+| 全量 vitest | `npx vitest run --maxWorkers=4` ⇒ **1312 files passed / 16 skipped（1328）**、**16777 passed / 207 skipped（16984）**、**exit 0**（09:40 起 711.3s；完整输出落 `/tmp/full-vitest-1016b.log`）。比上一轮多 1 个文件 / 11 条用例 —— 其中**本单元新增的是 1 个文件 / 4 条用例**；其余差值来自同树里并发会话的未提交在制品（**全量跑的是工作树，不是某个提交**，归属按 `git status` 认领） |
+
+### 四 边界（不许读成更强）
+
+- 这道门验的是**能不能被 Node 解析/链接**，**不验**「这个脚本跑起来行为对不对」。上一轮 `--help`/离线 `--spec`/具名拒绝那三条才是行为那一半，它们住在 `publish-model-weights.test.ts` 里；本单元**没有**给其余 52 个 launcher 各写行为用例（那是 52 个不同故事，不是一道门的事）。
+- `include` 进 `typecheck:node` 意味着这些 `.ts` **从此会被 CI 的 `Verify` 检查**；但 `.mjs` 仍然是 `any` 的世界（`allowJs` 关着）—— 这一条**没有被修好，只是被记下来了**（读数见 §一）。
+- 本单元**不占版本号**：纯门禁/工具链改动（仓规：纯文档/测试/工具链改动不占补丁号）。
+- `pre-push` 只在**推送**时生效：`.github/workflows/*.yml` 受保护（`CI Integrity` 会拒），构建类闸门只能落在脚本/`package.json` 侧 ⇒ 第 7 段**在 CI 里不跑**，它在 CI 的替身是 ② 那 4 条用例（`vitest` 会在 CI 里真跑它们）。
+
+### 五 全量读数与下一轮第一步
+
+- 全量：**1312 files passed / 16 skipped（1328）**、**16777 passed / 207 skipped（16984）**、**exit 0**（711.3s，完整输出 `/tmp/full-vitest-1016b.log`）⇒ 本单元以「全量绿」收口。
+- **下一轮第一步**：① `git fetch` + `git status` + `git log --oneline origin/main -6` —— 看并发会话是否已把 `preload` 那批落定（落定 ⇒ **v2.5.0 U2 第三片的界面那一半**，并进既有设置载荷、不新开通道；未落定 ⇒ 继续取台账项）；② 本轮推的是**主干**，判决要挂到**本轮的提交 SHA** 上（`/tmp/ci-verdict-<sha8>.txt`，判据是 `=== 全部目标车道已落定 ===` 与逐条 `名|completed|success`）；③ 起真机/e2e 前先 `vm_stat`（本轮读数 4115 空闲页 / swap 9.83 G）。

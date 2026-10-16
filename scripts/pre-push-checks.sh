@@ -8,6 +8,9 @@
 #   3. CHANGELOG has an entry for the current package.json version.
 #   4. A pending Release for the current version is flagged (publish separately
 #      via scripts/publish-release.sh — never blocked here, just reminded).
+#   5. README bilingual header anchors (badges / intro / banner / DOI) stay byte-identical.
+#   6. The shipped local-parsing-model manifest validates and still ships in the package.
+#   7. Every Node launcher under scripts/, cli/, packages/purescience/ and build/ parses under Node.
 #
 # Exit non-zero on any hard failure so the push is refused.
 set -uo pipefail
@@ -117,6 +120,21 @@ if node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-model-weight-ma
 else
   sed 's/^/      /' /tmp/model-weight-manifest.log
   bad "随包清单未通过核对（清单不合规，或它已不再随包出货）"
+  FAIL=1
+fi
+
+# ---------- 7. script launchers parse under Node (hard fail) ----------
+# scripts/, scripts/ci/, cli/, packages/purescience/ and build/ are outside both tsconfig projects, and
+# their .mjs/.cjs files are not parsed by tsc either. A duplicate export in scripts/publish-model-weights.mjs
+# therefore made the documented `npm run publish:model-weights` entry die with a SyntaxError while every
+# other gate stayed green (vitest still links such a module; eslint never links one). Node's own parser
+# is asked here — the same parse that refuses it.
+say "脚本入口可解析性核对 (node --check)"
+if node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-script-entrypoints.mjs >/tmp/script-entrypoints.log 2>&1; then
+  ok "$(tail -1 /tmp/script-entrypoints.log | sed 's/^✓ //')"
+else
+  sed 's/^/      /' /tmp/script-entrypoints.log
+  bad "有脚本入口连 Node 都链接不起来（上面逐个点名）"
   FAIL=1
 fi
 

@@ -51,6 +51,12 @@ function entry(key: keyof typeof INSTALLERS, extra = 0): FileSpec {
   return { name: INSTALLERS[key], content: 'x'.repeat(10 + extra), sha: HEX(String(extra % 10)) }
 }
 
+// `Object.keys` widens the platform literals to `string`; narrow them back by *checking* membership
+// rather than asserting it, so a renamed platform literal surfaces as a failing count assertion below
+// instead of an argument the compiler was told to trust.
+const installerKeys = (): (keyof typeof INSTALLERS)[] =>
+  Object.keys(INSTALLERS).filter((key): key is keyof typeof INSTALLERS => key in INSTALLERS)
+
 describe('parseSha256Sums', () => {
   it('parses `<hex>  <filename>` lines and lowercases the hash', () => {
     const map = parseSha256Sums(
@@ -138,7 +144,7 @@ describe('buildManifest', () => {
   afterEach(() => dir && rmSync(dir, { recursive: true, force: true }))
 
   it('maps every installer to its key with url, size and sha256', () => {
-    const files = Object.keys(INSTALLERS).map((key, i) => entry(key, i + 1))
+    const files = installerKeys().map((key, i) => entry(key, i + 1))
     dir = makeReleaseDir(files)
 
     const manifest = buildManifest({
@@ -169,6 +175,9 @@ describe('buildManifest', () => {
 
     // sha256 comes from SHA256SUMS.txt (entry #2 -> content length 12, sha of '2').
     const deb = files.find((f) => f.name === INSTALLERS['linux-x64-deb'])
+    // Named, not read past: a fixture that stopped producing this entry would otherwise fail as a
+    // TypeError on `undefined`, which reads like a broken test rather than a changed fixture.
+    if (!deb) throw new Error('the fixture produced no linux-x64-deb entry')
     expect(manifest.downloads['linux-x64-deb'].sha256).toBe(deb.sha)
     expect(manifest.downloads['linux-x64-deb'].size).toBe(deb.content.length)
   })

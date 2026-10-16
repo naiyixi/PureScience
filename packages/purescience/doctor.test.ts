@@ -10,7 +10,7 @@ import { formatDoctor, formatInit, runDoctor, runInit } from './doctor.mjs'
 // permission, a version), the readiness verdict is explicitly not this command's, and a secret never reaches
 // the output. The token check is the one that would be easiest to get wrong, so it is asserted directly.
 
-const roots = []
+const roots: string[] = []
 
 const makeRoot = async (): Promise<string> => {
   const root = await mkdtemp(join(tmpdir(), 'purescience-doctor-'))

@@ -142,6 +142,9 @@ describe('post-merge Windows validation', () => {
 
   it('runs one canonical packaged P0 and visual gate plus native package smoke on every target', () => {
     const setup = readWorkflow('build.yml').jobs.setup.steps?.find(({ id }) => id === 'set')
+    // Fail by name if the step is gone or renamed, instead of the TypeError that reading through an
+    // absent step would produce (which reads like a broken test rather than a changed workflow).
+    if (!setup) throw new Error("build.yml's setup job has no step with id 'set'")
     const job = readWorkflow('build.yml').jobs.build
     const names = job.steps?.map(({ name }) => name) ?? []
     const packaged = findStep(job, 'Resolve packaged Electron executable')
