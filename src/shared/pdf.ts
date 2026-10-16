@@ -9,6 +9,7 @@
 // owner, same spine as routine/endpoint/annotation).
 
 import type { PdfTableRejection } from './pdf-table-extraction'
+import type { PdfFigureUnderstanding } from './figure-understanding'
 import type { AxisAlignedRotation } from './pdf-page-rotation'
 import type { TranslationViewModel } from './translation-view-model'
 
@@ -133,6 +134,11 @@ export type PdfFigureForAgent = {
   /** The label the document put next to the picture, when it has one. Never invented. */
   caption?: string
   captionSource: 'below' | 'above' | 'none'
+  /**
+   * 这张图**是**哪一类，以及凭哪条证据判的（U4）。没有理解步骤时这一项缺席：`undetermined` 是
+   * 一个**判定的结果**（带具名理由），与「还没判」不是同一件事，所以两者不共用一个形状。
+   */
+  understanding?: PdfFigureUnderstanding
   /** What a reader has to do before quoting this figure, from the extraction's own audit. */
   warnings: readonly string[]
 }

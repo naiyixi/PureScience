@@ -37,6 +37,7 @@ import {
   type PdfTextMatrix
 } from '../../shared/pdf-page-rotation'
 import { assemblePdfPageText, pdfTextRunsFromItems } from '../../shared/pdf-page-text'
+import { figureUnderstandingFor } from '../../shared/figure-understanding'
 import type {
   PdfOpenResult,
   PdfOutlineEntry,
@@ -354,21 +355,30 @@ export class PdfService {
       scannedPages += 1
       const images = parsed.images?.[pageNumber - 1] ?? []
       if (images.length === 0) continue
+      const items = parsed.items?.[pageNumber - 1] ?? []
       const extraction = extractPdfFigureCandidates({
         page: pageNumber,
         images,
-        items: parsed.items?.[pageNumber - 1] ?? []
+        items
       })
       skippedSmall += extraction.skippedSmall
       withoutCaption += extraction.withoutCaption
       for (const figure of extraction.figures) {
         if (figures.length >= PDF_FIGURES_MAX_FIGURES) break
+        const caption = figure.caption
         figures.push({
           page: figure.page,
           index: figure.index,
           bbox: { x: figure.x, y: figure.y, width: figure.width, height: figure.height },
-          ...(figure.caption === undefined ? {} : { caption: figure.caption }),
+          ...(caption === undefined ? {} : { caption }),
           captionSource: figure.captionSource,
+          // 插图理解的第一层（U4）：按类别分派。凭的是文档自己给出的两样东西 —— 图注，与**落在图框内**
+          // 的文字项（轴标注、试剂/取代基记号）。判不出就写 `undetermined` 并给出具名理由：这张图不是
+          // 「还没判」，而是「凭现有证据判不出」，两者不能共用一个形状。
+          understanding: figureUnderstandingFor({
+            ...(caption === undefined ? {} : { caption }),
+            inFigureText: textInsideFigure(items, figure)
+          }),
           warnings: auditPdfFigureForUse(figure)
         })
       }
@@ -449,6 +459,28 @@ export class PdfService {
 }
 
 // Parses a PDF with pdfjs: per-page text + bookmark outline + title.
+/** 图框内文字项四边各留一个点：图内的轴标注常压在边框上，而它们正是判类别的证据。 */
+const FIGURE_TEXT_TOLERANCE = 1
+
+/**
+ * 落在图框内的文字项（PDF 用户空间，原点左下）。**只取图内**：图注本身由抽取器单独给出，两者在
+ * 判定里分属不同来源（`caption` / `in-figure-text`），读者据此知道是哪一边投的票。
+ */
+const textInsideFigure = (
+  items: readonly PdfTextItem[],
+  figure: { x: number; y: number; width: number; height: number }
+): string[] =>
+  items
+    .filter(
+      (item) =>
+        item.x >= figure.x - FIGURE_TEXT_TOLERANCE &&
+        item.x + item.width <= figure.x + figure.width + FIGURE_TEXT_TOLERANCE &&
+        item.y >= figure.y - FIGURE_TEXT_TOLERANCE &&
+        item.y + item.height <= figure.y + figure.height + FIGURE_TEXT_TOLERANCE
+    )
+    .map((item) => item.text)
+    .filter((text) => text.trim() !== '')
+
 const parsePdf = async (
   filePath: string
 ): Promise<{

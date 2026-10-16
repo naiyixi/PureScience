@@ -375,3 +375,78 @@ describe('PdfService.tables rotated pages', () => {
     expect(pageTwo.rotatedPages).toBeUndefined()
   })
 })
+
+// U4：插图理解的第一层 —— `figures()` 现在给每张图带上「是哪一类 + 凭哪条证据判的」。这里钉住三件事：
+// 图注能判类、图框内的文字项也能判类（来源要分开写）、判不出时如实写 undetermined 而不是落一个默认类别。
+describe('PdfService.figures understanding', () => {
+  const item = (text: string, x: number, y: number, width = text.length * 5): PdfTextItem => ({
+    text,
+    x,
+    y,
+    width,
+    height: 10
+  })
+
+  // 300x200 的一块（远大于抽取器 60x60 的下限），图注放在它下面 20 点处（在 72 点窗口内）。
+  const placement = { x: 100, y: 300, width: 300, height: 200 }
+
+  const serviceFor = (items: PdfTextItem[]): PdfService =>
+    new PdfService({
+      storageRoot: root,
+      resolvePath: async (path) => (path.startsWith('/') ? path : join(root, path)),
+      parsePdf: async () => ({
+        pages: ['one page'],
+        outline: [],
+        title: 'figures',
+        items: [items],
+        images: [[placement]]
+      })
+    })
+
+  it('用图注判出图表，并把「这一类允许派生什么」一起给出', async () => {
+    const svc = serviceFor([
+      item('Figure 3. Dose-response curves with 95% CI.', 100, 280),
+      item('concentration', 120, 400)
+    ])
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    expect(result.figures).toHaveLength(1)
+    const understanding = result.figures[0]?.understanding
+    expect(understanding?.verdict.class).toBe('chart')
+    expect(understanding?.verdict.signals.some((s) => s.where === 'caption')).toBe(true)
+    expect(understanding?.route?.derivation).toContain('数值抽取')
+  })
+
+  it('图框内的文字项同样能判类，而且来源标成 in-figure-text', async () => {
+    const svc = serviceFor([
+      item('Scheme 1', 120, 400),
+      item('Et3N, DMF', 120, 380),
+      item('Figure 4. Experimental setup.', 100, 280)
+    ])
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    const understanding = result.figures[0]?.understanding
+    expect(understanding?.verdict.class).toBe('chemical-structure')
+    expect(
+      understanding?.verdict.signals.filter((s) => s.where === 'in-figure-text').length
+    ).toBeGreaterThan(0)
+    expect(understanding?.route?.requires).toContain('引擎')
+  })
+
+  it('判不出时如实写 undetermined 并**不给** route（没有类别就没有允许的派生）', async () => {
+    const svc = serviceFor([item('Figure 5. Experimental setup.', 100, 280)])
+    const opened = await svc.open(pdfPath, 'proj-1')
+
+    const result = await svc.figures(opened.doc.docId)
+
+    const understanding = result.figures[0]?.understanding
+    expect(understanding?.verdict.class).toBe('undetermined')
+    if (understanding?.verdict.class !== 'undetermined') throw new Error('unreachable')
+    expect(understanding.verdict.reason).toBe('no-signals')
+    expect(understanding.route).toBeUndefined()
+  })
+})
