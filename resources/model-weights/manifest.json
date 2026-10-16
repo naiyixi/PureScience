@@ -6,7 +6,7 @@
       "id": "structure-recognition-primary",
       "revision": "zenodo-10.5281/zenodo.8300489",
       "publisher": "Kohulan Rajan, Henning Otto Brinkhaus, Achim Zielesny, Christoph Steinbeck (Zenodo record 8300489)",
-      "url": "https://zenodo.org/records/8300489/files/models.zip?download=1",
+      "url": "https://github.com/naiyixi/PureScience/releases/download/models-v1/structure-recognition-primary.zip",
       "sha256": "8ebc7db18fffac7e71a2cf8487708053620d124846bc9502eddac1283b431d2b",
       "bytes": 298662033,
       "license": "CC-BY-4.0",
