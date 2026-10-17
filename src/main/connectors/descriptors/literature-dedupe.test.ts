@@ -22,7 +22,9 @@ const openalexRecord = (over: Record<string, unknown> = {}): Record<string, unkn
 
 describe('dedupe key derivation', () => {
   it('strips the DOI resolver, the doi: prefix and casing', () => {
-    expect(bareDoiKey('https://doi.org/10.1038/S41586-021-03429-Y')).toBe('10.1038/s41586-021-03429-y')
+    expect(bareDoiKey('https://doi.org/10.1038/S41586-021-03429-Y')).toBe(
+      '10.1038/s41586-021-03429-y'
+    )
     expect(bareDoiKey('http://dx.doi.org/10.1/ABC')).toBe('10.1/abc')
     expect(bareDoiKey('doi: 10.1/Abc')).toBe('10.1/abc')
     expect(bareDoiKey('   ')).toBeNull()
@@ -30,7 +32,9 @@ describe('dedupe key derivation', () => {
   })
 
   it('normalises punctuation, case and diacritics in titles, and refuses short ones', () => {
-    expect(titleKey('Base Editing of the Genome: A Review')).toBe('base editing of the genome a review')
+    expect(titleKey('Base Editing of the Genome: A Review')).toBe(
+      'base editing of the genome a review'
+    )
     expect(titleKey('Café society in 1900s Paris')).toBe('cafe society in 1900s paris')
     expect(titleKey('Correction')).toBeNull()
     expect(titleKey('Editorial')).toBeNull()

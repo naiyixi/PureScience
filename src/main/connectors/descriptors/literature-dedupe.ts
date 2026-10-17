@@ -97,7 +97,8 @@ const recordId = (record: Record<string, unknown>): string | null => {
 }
 
 /** Years are compatible when they are equal, or one side simply does not say. */
-const yearsCompatible = (a: number | null, b: number | null): boolean => a === null || b === null || a === b
+const yearsCompatible = (a: number | null, b: number | null): boolean =>
+  a === null || b === null || a === b
 
 /**
  * Folds records that describe the same work. Input order is preserved: the first occurrence of a work
