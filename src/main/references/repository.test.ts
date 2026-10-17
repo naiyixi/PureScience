@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, type Mock } from 'vitest'
 
-import { ReferenceRepository, type ReferenceClient } from './repository'
+import { ReferenceRepository, mapReference, type ReferenceClient } from './repository'
 import type { CreateReferenceInput } from '../../shared/references'
 import { citationKeyFrom, normalizeTitleForDedupe } from '../../shared/references'
 
@@ -24,6 +24,8 @@ const rowFixture = (overrides: Record<string, unknown> = {}): Record<string, unk
   pdfManagedFileId: null,
   pdfContentHash: null,
   notes: null,
+  citedAt: null,
+  citedSessionId: null,
   createdAt: new Date(1710000000000),
   updatedAt: new Date(1710000000100),
   ...overrides
@@ -320,5 +322,41 @@ describe('ReferenceRepository attachment history', () => {
         replacedAt: 1710000005000
       }
     ])
+  })
+})
+
+// v2.6.0 A2: a citation is a stored fact — a time and (when there was one) a session. A record
+// nobody cited must come back with neither, so "not cited" never reads as "cited at time zero".
+describe('citation mark mapping', () => {
+  it('maps a cited row to a time and a session, and an uncited row to neither', () => {
+    const cited = mapReference({
+      ...rowFixture({ citedAt: new Date(1710000000000), citedSessionId: 'sess-1' })
+    } as never)
+    expect(cited.citedAt).toBe(1710000000000)
+    expect(cited.citedSessionId).toBe('sess-1')
+
+    const uncited = mapReference({ ...rowFixture() } as never)
+    expect(uncited.citedAt).toBeUndefined()
+    expect(uncited.citedSessionId).toBeUndefined()
+  })
+
+  it('writes a citation time as a date and a cleared one as null', async () => {
+    const update = vi.fn().mockResolvedValue(undefined)
+    // The constructor takes a provider (a lazily-resolved client), so the fake is shaped as one
+    // rather than as a client — the compiler caught that difference, which is why it is spelled out.
+    type ClientProvider = ConstructorParameters<typeof ReferenceRepository>[0]
+    const provider = ((): Promise<unknown> =>
+      Promise.resolve({ reference: { update } })) as ClientProvider
+    const repo = new ReferenceRepository(provider)
+    await repo.updateReference('ref-1', { citedAt: 1710000000000, citedSessionId: 'sess-1' })
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'ref-1' },
+      data: { citedAt: new Date(1710000000000), citedSessionId: 'sess-1' }
+    })
+    await repo.updateReference('ref-1', { citedAt: null, citedSessionId: null })
+    expect(update).toHaveBeenLastCalledWith({
+      where: { id: 'ref-1' },
+      data: { citedAt: null, citedSessionId: null }
+    })
   })
 })

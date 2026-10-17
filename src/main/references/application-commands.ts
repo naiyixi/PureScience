@@ -33,6 +33,9 @@ type ReferencesCommandOwner = Pick<
   | 'merge'
   | 'fetchByIdentifier'
   | 'attachPdf'
+  // v2.6.0 A2: the citation mark, picked from the same handler interface as the notes write.
+  | 'markCited'
+  | 'clearCited'
   | 'setNotes'
   | 'detachPdf'
   | 'importDoisFromPdf'
@@ -151,6 +154,18 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'setNotes'>,
     OwnerResult<ReferencesCommandOwner, 'setNotes'>
   >('references:set-notes'),
+  // v2.6.0 A2: the citation mark is a command like the notes write it sits beside — the Web profile
+  // and the agent surface both reach it through the same registry.
+  markCited: defineApplicationCommand<
+    'references:mark-cited',
+    OwnerArgs<ReferencesCommandOwner, 'markCited'>,
+    OwnerResult<ReferencesCommandOwner, 'markCited'>
+  >('references:mark-cited'),
+  clearCited: defineApplicationCommand<
+    'references:clear-cited',
+    OwnerArgs<ReferencesCommandOwner, 'clearCited'>,
+    OwnerResult<ReferencesCommandOwner, 'clearCited'>
+  >('references:clear-cited'),
   detachPdf: defineApplicationCommand<
     'references:detach-pdf',
     OwnerArgs<ReferencesCommandOwner, 'detachPdf'>,
@@ -233,6 +248,9 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.listJournalClaims,
   referencesApplicationCommands.attachPdf,
   referencesApplicationCommands.setNotes,
+  // v2.6.0 A2: the citation mark, registered beside the notes write it follows the same path as.
+  referencesApplicationCommands.markCited,
+  referencesApplicationCommands.clearCited,
   referencesApplicationCommands.detachPdf,
   referencesApplicationCommands.listCitationStyles,
   referencesApplicationCommands.importCitationStyle,
@@ -284,6 +302,8 @@ const registerReferencesApplicationCommands = (
         dependencies.references.listJournalClaims(args[0]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
       'references:set-notes': ({ args }) => dependencies.references.setNotes(args[0], args[1]),
+      'references:mark-cited': ({ args }) => dependencies.references.markCited(args[0], args[1]),
+      'references:clear-cited': ({ args }) => dependencies.references.clearCited(args[0]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),
       'references:list-citation-styles': () => dependencies.references.listCitationStyles(),
       'references:import-citation-style': ({ args }) =>

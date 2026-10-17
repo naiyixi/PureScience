@@ -142,6 +142,9 @@ export function ReferencesLibraryDialog({
   const { t } = useLanguage()
   const focusRestore = useDialogFocusRestore(open)
   const [references, setReferences] = useState<Reference[]>([])
+  // v2.6.0 A2: which row's citation mark is in flight, so the control that was pressed is the
+  // control that goes busy — not every row at once.
+  const [citedBusyId, setCitedBusyId] = useState<string | null>(null)
   const [collections, setCollections] = useState<ReferenceCollection[]>([])
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | undefined>(undefined)
@@ -197,6 +200,25 @@ export function ReferencesLibraryDialog({
   const [notesEditingId, setNotesEditingId] = useState<string | null>(null)
   const [notesDraft, setNotesDraft] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
+
+  // v2.6.0 A2: the citation mark is a fact written through the record's own update path and then
+  // re-read, so the row shows what the store holds rather than what the click assumed.
+  const toggleCited = async (reference: Reference): Promise<void> => {
+    setCitedBusyId(reference.id)
+    try {
+      const updated = reference.citedAt
+        ? await window.api.references.clearCited(reference.id)
+        : await window.api.references.markCited(reference.id)
+      setReferences((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      setNotice(
+        updated.citedAt
+          ? t('references.citedNotice', { title: updated.title })
+          : t('references.uncitedNotice', { title: updated.title })
+      )
+    } finally {
+      setCitedBusyId(null)
+    }
+  }
 
   const saveNotes = async (referenceId: string): Promise<void> => {
     setNotesSaving(true)
@@ -1337,6 +1359,22 @@ export function ReferencesLibraryDialog({
                               ) : null}
                             </div>
                             <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                className={ghostClass}
+                                disabled={citedBusyId === reference.id}
+                                aria-pressed={Boolean(reference.citedAt)}
+                                title={
+                                  reference.citedAt
+                                    ? t('references.unmarkCited')
+                                    : t('references.markCited')
+                                }
+                                onClick={() => void toggleCited(reference)}
+                              >
+                                {reference.citedAt
+                                  ? t('references.citedBadge')
+                                  : t('references.markCited')}
+                              </button>
                               <button
                                 type="button"
                                 className={ghostClass}

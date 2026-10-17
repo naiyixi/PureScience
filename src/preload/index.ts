@@ -710,6 +710,10 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('references.attachPdf', referenceId, pdfManagedFileId),
     setNotes: (referenceId, notes) =>
       electronRendererContracts.invoke('references.setNotes', referenceId, notes),
+    markCited: (referenceId, sessionId) =>
+      electronRendererContracts.invoke('references.markCited', referenceId, sessionId),
+    clearCited: (referenceId) =>
+      electronRendererContracts.invoke('references.clearCited', referenceId),
     appendJournalMetric: (input) =>
       electronRendererContracts.invoke('references.appendJournalMetric', input),
     listJournalClaims: (journalId) =>

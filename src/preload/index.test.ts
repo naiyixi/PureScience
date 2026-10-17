@@ -422,6 +422,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.appendScreeningRuleRevision',
       'references.attachPdf',
       'references.cancelScreeningRun',
+      'references.clearCited',
       'references.clearScreeningOverride',
       'references.createCollection',
       'references.deleteCollection',
@@ -437,6 +438,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.listJournalClaims',
       'references.listJournalMetrics',
       'references.listScreeningRuleRevisions',
+      'references.markCited',
       'references.merge',
       'references.mergeJournals',
       'references.remove',
@@ -867,7 +869,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // 239 with the window's PDF translation entry (pdf.translation, LOCAL): one more local-only request
     // 240 with the goals panel's read-only channel (goals.listAll, LOCAL): one more local-only request.
     // contract, so the core request count below moves with it while neither Web map does.
-    expect(coreContracts).toHaveLength(240)
+    // 242 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
+    // request contracts — a project-database write in the same profile as references.setNotes.
+    expect(coreContracts).toHaveLength(242)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -879,7 +883,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 202, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 204, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -888,7 +892,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(202)
+    expect(requestContracts).toHaveLength(204)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

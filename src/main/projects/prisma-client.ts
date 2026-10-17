@@ -680,6 +680,8 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "pdfManagedFileId" TEXT,
     "pdfContentHash" TEXT,
     "notes" TEXT,
+    "citedAt" DATETIME,
+    "citedSessionId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 )`
@@ -690,12 +692,19 @@ const REFERENCE_ADD_ISSUE_DDL = `ALTER TABLE "Reference" ADD COLUMN "issue" TEXT
 const REFERENCE_ADD_PAGES_DDL = `ALTER TABLE "Reference" ADD COLUMN "pages" TEXT`
 const REFERENCE_ADD_PUBLISHER_DDL = `ALTER TABLE "Reference" ADD COLUMN "publisher" TEXT`
 const REFERENCE_ADD_ITEM_TYPE_DDL = `ALTER TABLE "Reference" ADD COLUMN "itemType" TEXT`
+// v2.6.0 A2: a citation mark — when the record was declared cited, and by which session — added
+// to existing databases too, because a citation recorded on one machine has to read back on the
+// same one after an upgrade.
+const REFERENCE_ADD_CITED_AT_DDL = `ALTER TABLE "Reference" ADD COLUMN "citedAt" DATETIME`
+const REFERENCE_ADD_CITED_SESSION_ID_DDL = `ALTER TABLE "Reference" ADD COLUMN "citedSessionId" TEXT`
 const REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL = `CREATE UNIQUE INDEX IF NOT EXISTS "Reference_projectId_citationKey_key" ON "Reference"("projectId", "citationKey")`
 const REFERENCE_INDEX_DDLS = [
   `CREATE INDEX IF NOT EXISTS "Reference_projectId_idx" ON "Reference"("projectId")`,
   `CREATE INDEX IF NOT EXISTS "Reference_doi_idx" ON "Reference"("doi")`,
   `CREATE INDEX IF NOT EXISTS "Reference_pmid_idx" ON "Reference"("pmid")`,
-  `CREATE INDEX IF NOT EXISTS "Reference_arxivId_idx" ON "Reference"("arxivId")`
+  `CREATE INDEX IF NOT EXISTS "Reference_arxivId_idx" ON "Reference"("arxivId")`,
+  // v2.6.0 A2: the citation mark's own index, mirroring the Prisma @@index([projectId, citedAt]).
+  `CREATE INDEX IF NOT EXISTS "Reference_projectId_citedAt_idx" ON "Reference"("projectId", "citedAt")`
 ]
 
 const REFERENCE_ATTACHMENT_VERSION_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReferenceAttachmentVersion" (
@@ -1135,6 +1144,13 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   await addColumnIfMissing(client, 'Reference', 'pages', REFERENCE_ADD_PAGES_DDL)
   await addColumnIfMissing(client, 'Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL)
   await addColumnIfMissing(client, 'Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL)
+  await addColumnIfMissing(client, 'Reference', 'citedAt', REFERENCE_ADD_CITED_AT_DDL)
+  await addColumnIfMissing(
+    client,
+    'Reference',
+    'citedSessionId',
+    REFERENCE_ADD_CITED_SESSION_ID_DDL
+  )
   await client.$executeRawUnsafe(CITATION_STYLE_TABLE_DDL)
   await addColumnIfMissing(client, 'CitationStyle', 'fidelity', CITATION_STYLE_ADD_FIDELITY_DDL)
   await addColumnIfMissing(

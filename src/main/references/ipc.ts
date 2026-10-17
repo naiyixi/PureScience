@@ -73,6 +73,10 @@ export type ReferencesHandlers = {
   // IC26: the record's own notes. The column, the create path and the list projection all existed; there was
   // simply no way to change them on an existing record.
   setNotes(referenceId: string, notes: string): Promise<Reference>
+  // v2.6.0 A2: a citation is a fact recorded on the record — when it was declared cited, and by
+  // which session. Both come back as the re-read record, so the surface shows what landed.
+  markCited(referenceId: string, sessionId?: string): Promise<Reference>
+  clearCited(referenceId: string): Promise<Reference>
   // Journal metric import (R2): one downloaded publisher table in, one outcome per row out — imported, or
   // skipped with a named reason. Nothing is dropped silently, and no row without a year and a source lands.
   importJournalMetrics(input: JournalMetricImportRequest): Promise<JournalMetricImportResult>
@@ -249,6 +253,8 @@ export const createReferencesIpcModule = (
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId),
     setNotes: (referenceId, notes) => service.setNotes(referenceId, notes),
+    markCited: (referenceId, sessionId) => service.markCited(referenceId, sessionId),
+    clearCited: (referenceId) => service.clearCited(referenceId),
     importJournalMetrics: (input) => journalMetrics.importMetrics(input),
     // Read side of the same store: one call for the whole library, filtered in the renderer (see the shared
     // pure view), so changing a filter never waits on the main process.

@@ -190,7 +190,9 @@ const GROUP_COUNT = 40
 // (settings:get-local-parsing-models / settings:download-local-parsing-model, LOCAL): which models are
 // present on THIS machine, and pulling one onto it, are local-only by nature — a paired browser does not
 // get to enumerate or fetch this host's model assets — so the remote dispatch count stays where it is.
-const INTERNAL_COMMAND_COUNT = 366
+// 368 with the citation mark (v2.6.0 A2: references:mark-cited / references:clear-cited), registered
+// in the references group beside the notes write.
+const INTERNAL_COMMAND_COUNT = 368
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -200,10 +202,12 @@ const INTERNAL_COMMAND_COUNT = 366
 // skill writes it sits beside, so it lands on both Web surfaces and not in the fail-closed set.
 // One more for verifying a recorded reading (artifacts:verify-reading): same profile again — a plain
 // Web request channel, counted on both Web surfaces and not in the fail-closed set.
-const LOCAL_WEB_COMMAND_COUNT = 364
+// 366 with the citation mark (v2.6.0 A2: references:mark-cited / references:clear-cited): two plain
+// reference writes, so they count on both the local and the remote Web surfaces.
+const LOCAL_WEB_COMMAND_COUNT = 366
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
-const REMOTE_WEB_COMMAND_COUNT = 233
+const REMOTE_WEB_COMMAND_COUNT = 235
 // +1 for verifying a recorded reading (artifacts:verify-reading): local-only by nature, so it lands in
 // the fail-closed set instead of the remote dispatch count.
 // +1 for the window's PDF translation entry (pdf:translation): local-only, so it lands in the fail-closed

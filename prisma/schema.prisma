@@ -506,10 +506,17 @@ model Reference {
   pdfManagedFileId String? // references ManagedFile.id (no FK; storage layer stays decoupled)
   pdfContentHash   String? // content fingerprint of the attached PDF (sha256 head + size)
   notes            String?
+  // v2.6.0 A2: a citation is a fact this table records, not something inferred later from an export
+  // having been clicked. `citedAt` is when the record was declared cited; `citedSessionId` names the
+  // session that declared it (null for a citation recorded outside a session). Both stay null on a
+  // record nobody has cited, which is distinguishable from a record cited at an unknown time.
+  citedAt          DateTime?
+  citedSessionId   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   @@unique([projectId, citationKey])
+  @@index([projectId, citedAt])
   @@index([projectId])
   @@index([doi])
   @@index([pmid])

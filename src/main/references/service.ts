@@ -349,6 +349,33 @@ export class ReferenceService {
     return updated
   }
 
+  // v2.6.0 A2: record that this reference was cited — a fact with a time and (when there is one) the
+  // session that declared it. The re-read record comes back, so the caller shows what landed rather
+  // than what it hoped landed; a citation recorded outside a session keeps `citedSessionId` unset
+  // instead of borrowing one.
+  async markCited(referenceId: string, sessionId?: string): Promise<Reference> {
+    const existing = await this.repository.getReference(referenceId)
+    if (!existing) throw new Error('Reference not found.')
+    await this.repository.updateReference(referenceId, {
+      citedAt: Date.now(),
+      citedSessionId: sessionId?.trim() || null
+    })
+    const updated = await this.repository.getReference(referenceId)
+    if (!updated) throw new Error('Reference not found.')
+    return updated
+  }
+
+  // Clearing is explicit rather than "mark with null time": a record nobody cites must go back to
+  // `undefined` on the shared type, not to a date of zero.
+  async clearCited(referenceId: string): Promise<Reference> {
+    const existing = await this.repository.getReference(referenceId)
+    if (!existing) throw new Error('Reference not found.')
+    await this.repository.updateReference(referenceId, { citedAt: null, citedSessionId: null })
+    const updated = await this.repository.getReference(referenceId)
+    if (!updated) throw new Error('Reference not found.')
+    return updated
+  }
+
   // Attaches the project-managed PDF that backs page-level annotations for a reference. The
   // renderer only offers files that belong to the active project; existence of the reference is
   // enforced here so a stale id can never silently write into a missing record.

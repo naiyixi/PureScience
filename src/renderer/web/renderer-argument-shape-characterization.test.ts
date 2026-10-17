@@ -215,7 +215,9 @@ describe('renderer argument-shape characterization', () => {
     // 402 with the local parsing models (settings.getLocalParsingModels / downloadLocalParsingModel): both
     // LOCAL-only, refused at dispatch in the Web profile, but still CALLABLE paths on this surface — the
     // same profile as the runtime environment channels above.
-    expect(actualPaths).toHaveLength(402)
+    // 404 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain Web
+    // request channels, callable on this surface like the reference writes they sit beside.
+    expect(actualPaths).toHaveLength(404)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

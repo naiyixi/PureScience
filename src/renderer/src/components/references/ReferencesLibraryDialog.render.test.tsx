@@ -57,7 +57,12 @@ vi.mock('@/i18n', () => ({
       'common.cancel': 'Cancel',
       'references.exportFormat': 'File format',
       'references.formatStyle': 'Journal style',
-      'references.exportAs': 'Export as {format}'
+      'references.exportAs': 'Export as {format}',
+      'references.markCited': 'Mark as cited',
+      'references.unmarkCited': 'Remove citation mark',
+      'references.citedBadge': 'Cited',
+      'references.citedNotice': 'Marked “{title}” as cited.',
+      'references.uncitedNotice': 'Citation mark removed from “{title}”.'
     }
 
     return {
@@ -599,5 +604,22 @@ describe('ReferencesLibraryDialog collections', () => {
       URL.createObjectURL = originalCreate
       URL.revokeObjectURL = originalRevoke
     }
+  })
+
+  // v2.6.0 A2: the citation mark goes through the record's own update path and the row shows what
+  // came back — this reads the store call and the re-read state, not just that a button took a click.
+  it('records a citation mark and shows the re-read state (A2)', async () => {
+    const markCited = vi
+      .fn()
+      .mockResolvedValue({ ...reference, citedAt: 1710000000000, citedSessionId: undefined })
+    window.api.references.markCited = markCited as unknown as typeof window.api.references.markCited
+    await render()
+
+    act(() => findButton('Mark as cited').click())
+    await flush()
+
+    expect(markCited).toHaveBeenCalledWith('reference-1')
+    expect(document.body.textContent).toContain('as cited')
+    expect(findButton('Cited')).toBeTruthy()
   })
 })

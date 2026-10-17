@@ -58,6 +58,8 @@ const mapReference = (row: {
   pdfManagedFileId: string | null
   pdfContentHash: string | null
   notes: string | null
+  citedAt: Date | null
+  citedSessionId: string | null
   createdAt: Date
   updatedAt: Date
 }): Reference => ({
@@ -85,6 +87,8 @@ const mapReference = (row: {
   pdfManagedFileId: row.pdfManagedFileId ?? undefined,
   pdfContentHash: row.pdfContentHash ?? undefined,
   notes: row.notes ?? undefined,
+  citedAt: row.citedAt?.getTime(),
+  citedSessionId: row.citedSessionId ?? undefined,
   createdAt: row.createdAt.getTime(),
   updatedAt: row.updatedAt.getTime()
 })
@@ -148,6 +152,8 @@ export const referenceColumns = {
   provenanceJson: true,
   pdfManagedFileId: true,
   notes: true,
+  citedAt: true,
+  citedSessionId: true,
   createdAt: true,
   updatedAt: true
 } as const
@@ -404,7 +410,15 @@ export class ReferenceRepository {
   // Updates notes and/or provenance on a record (merge support). Undefined values are left intact.
   async updateReference(
     id: string,
-    changes: { notes?: string; provenance?: ReferenceProvenance }
+    changes: {
+      notes?: string
+      provenance?: ReferenceProvenance
+      // v2.6.0 A2: a citation is written through the same update path every other field uses, so
+      // there is one place a reference row changes. `null` means "this record is no longer cited",
+      // which is why the two fields are checked against undefined rather than truthiness.
+      citedAt?: number | null
+      citedSessionId?: string | null
+    }
   ): Promise<void> {
     const client = await this.getClient()
     await client.reference.update({
@@ -413,7 +427,11 @@ export class ReferenceRepository {
         ...(changes.notes !== undefined ? { notes: changes.notes } : {}),
         ...(changes.provenance !== undefined
           ? { provenanceJson: JSON.stringify(changes.provenance) }
-          : {})
+          : {}),
+        ...(changes.citedAt !== undefined
+          ? { citedAt: changes.citedAt === null ? null : new Date(changes.citedAt) }
+          : {}),
+        ...(changes.citedSessionId !== undefined ? { citedSessionId: changes.citedSessionId } : {})
       }
     })
   }

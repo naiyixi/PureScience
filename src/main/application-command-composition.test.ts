@@ -186,7 +186,9 @@ describe('application command composition', () => {
     // so the local Web surface moves with it while the rejection set does not.
     // One more for the window's PDF translation entry (pdf:translation): local-only, so the local Web
     // surface and the fail-closed set both move while the remote dispatch count stays.
-    expect(composition.localWeb.commandNames()).toHaveLength(364)
+    // 366 with the citation mark (v2.6.0 A2: references:mark-cited / references:clear-cited):
+    // two plain reference writes, reachable from the local Web view.
+    expect(composition.localWeb.commandNames()).toHaveLength(366)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -207,7 +209,9 @@ describe('application command composition', () => {
     // project-files:list-kinds, which carries no surface flag.
     // One more here too: the skill fork is a plain Web request profile, so it is mapped on the remote
     // Web surface as well. The fail-closed rejection set is unchanged.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(233)
+    // 235 for the same two channels: they are plain Web requests, so the paired remote profile
+    // carries them too rather than rejecting them before dispatch.
+    expect(composition.remoteWeb.commandNames()).toHaveLength(235)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.

@@ -322,9 +322,11 @@ describe('renderer surface inventory', () => {
     // preload inventory and the catalog move together. 2026-10-14: +2 for the plugin creator (specialist:plugin-source-preview / -cancel), added to preload, catalog and renderer-api.d.ts in one step — the three places a channel has to exist for the window to see it.
     // 482 with the deployed-plugin catalogue (specialist.pluginCatalog): one method, and it has no Web
     // channel, so it also joins the generator-omission list above.
+    // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two more
+    // Electron paths, in the same profile as the reference writes they sit beside.
     // 485 with the local parsing models (settings.getLocalParsingModels / downloadLocalParsingModel):
     // one preload method per contract, so the preload inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(485)
+    expect(electronPaths).toHaveLength(487)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -334,9 +336,10 @@ describe('renderer surface inventory', () => {
     // channels, so the invoke map moves with them.
     // 354 with the window package install/uninstall (runtime.manage-packages, IC13): same profile.
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
+    // 374 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited).
     // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
     // channel.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(372)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(374)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

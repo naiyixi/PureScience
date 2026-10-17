@@ -52,11 +52,22 @@ const makeRepo = (existing: Reference[] = []): ReferenceRepository & Record<stri
       return Promise.resolve()
     }),
     updateReference: vi.fn(
-      (id: string, changes: { notes?: string; provenance?: Reference['provenance'] }) => {
+      (
+        id: string,
+        changes: {
+          notes?: string
+          provenance?: Reference['provenance']
+          citedAt?: number | null
+          citedSessionId?: string | null
+        }
+      ) => {
         const record = rows.find((r) => r.id === id)
         if (record) {
           if (changes.notes !== undefined) record.notes = changes.notes
           if (changes.provenance !== undefined) record.provenance = changes.provenance
+          if (changes.citedAt !== undefined) record.citedAt = changes.citedAt ?? undefined
+          if (changes.citedSessionId !== undefined)
+            record.citedSessionId = changes.citedSessionId ?? undefined
         }
         return Promise.resolve()
       }
@@ -301,5 +312,35 @@ describe('ReferenceService PDF attachment', () => {
 
     await service.attachPdf('ref-1', 'file-pdf-9')
     expect(repo.attachPdf).toHaveBeenCalledWith('ref-1', 'file-pdf-9', null)
+  })
+})
+
+// v2.6.0 A2: the citation mark goes through the same update path and comes back re-read, so the
+// caller prints what the store holds. A citation recorded without a session keeps it unset rather
+// than borrowing one, and clearing puts the record back to "nobody cited this".
+describe('ReferenceService citations', () => {
+  it('marks a record cited with a time and the declaring session', async () => {
+    const repo = makeRepo([refFixture()])
+    const service = new ReferenceService(repo)
+    const updated = await service.markCited('ref-1', 'sess-1')
+    expect(typeof updated.citedAt).toBe('number')
+    expect(updated.citedSessionId).toBe('sess-1')
+  })
+
+  it('keeps the session unset when a citation is recorded outside one', async () => {
+    const repo = makeRepo([refFixture()])
+    const service = new ReferenceService(repo)
+    const updated = await service.markCited('ref-1')
+    expect(typeof updated.citedAt).toBe('number')
+    expect(updated.citedSessionId).toBeUndefined()
+  })
+
+  it('clears both fields, and refuses an unknown record by name', async () => {
+    const repo = makeRepo([refFixture({ citedAt: 1710000000000, citedSessionId: 'sess-1' })])
+    const service = new ReferenceService(repo)
+    const cleared = await service.clearCited('ref-1')
+    expect(cleared.citedAt).toBeUndefined()
+    expect(cleared.citedSessionId).toBeUndefined()
+    await expect(service.clearCited('missing')).rejects.toThrow('Reference not found.')
   })
 })

@@ -1005,6 +1005,8 @@ export interface PureScienceAPI {
     }>
     detachPdf(referenceId: string): Promise<Reference>
     setNotes(referenceId: string, notes: string): Promise<Reference>
+    markCited(referenceId: string, sessionId?: string): Promise<Reference>
+    clearCited(referenceId: string): Promise<Reference>
     appendJournalMetric(input: {
       journalId: string
       kind: string

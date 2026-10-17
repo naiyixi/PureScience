@@ -79,6 +79,11 @@ export type Reference = {
   pdfVersions?: ReferenceAttachmentVersion[]
   // Collection memberships of this record, populated by list-style reads (undefined on single reads).
   collectionIds?: string[]
+  // v2.6.0 A2: when this record was declared cited, and by which session. `undefined` means nobody
+  // has cited it — kept apart from a citation recorded at an unknown time, which cannot happen but
+  // would read as "not cited" if the two were folded together.
+  citedAt?: number
+  citedSessionId?: string
   createdAt: number
   updatedAt: number
 }

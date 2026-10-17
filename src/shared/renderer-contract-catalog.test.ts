@@ -61,7 +61,9 @@ describe('renderer contract catalog', () => {
     // 485 with the local parsing models (settings.getLocalParsingModels / downloadLocalParsingModel):
     // both are LOCAL Web commands, so the catalog, the invoke map and the local-Web installation set each
     // move by two while the remote-Web set grows by the rejecting stub each one gets there.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(485)
+    // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
+    // Web request contracts, so the catalog, the invoke map and the local-Web set each move by two.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(487)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -70,7 +72,8 @@ describe('renderer contract catalog', () => {
     // 357 with the session runtime binding surface (IC14): three more local invoke channels.
     // 366 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, so the
     // invoke map and the local-only set move together.
-    expect(Object.keys(projection.invoke)).toHaveLength(372)
+    // 374 with the citation mark (v2.6.0 A2): the two reference-write channels, same profile as above.
+    expect(Object.keys(projection.invoke)).toHaveLength(374)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -85,9 +88,11 @@ describe('renderer contract catalog', () => {
     // 395 with the skill fork (settings.forkImportedSkill, work order 二): a plain Web request channel,
     // so the local-Web installation set moves with it while the remote-Web one gains the same channel.
     // 396 with verifying a recorded reading (artifacts.verifyReading): the same profile, one more method.
+    // 404 with the citation mark (v2.6.0 A2): the two reference-write channels are callable on the
+    // local Web surface, like the reference writes they sit beside.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(402)
+    ).toHaveLength(404)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
