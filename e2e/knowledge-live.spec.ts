@@ -120,13 +120,13 @@ test('a real model session calls knowledge_search', async ({ app }) => {
   // The proof is the tool call itself: the model has to choose knowledge_register_source, then knowledge_search,
   // and the search has to come back with the citation. Waiting on the tool name (not on prose) keeps this
   // honest — a reply that merely claims to have searched does not satisfy it.
-  const toolRun = conversation.getByRole('button', { name: /Ran \d+ tools?/ })
-  await expect(toolRun.first()).toBeVisible({ timeout: 300_000 })
+  // Deliberately not the "Ran N tools" summary row: the UI groups tool runs differently from turn to turn, so
+  // that row comes and goes while the per-tool rows are the actual calls.
   // Both tools, by their own rows: the register call proves the model found the registration surface, the
   // search call proves it then asked the store a question instead of reading the file by other means.
   await expect(
     conversation.getByRole('button', { name: /knowledge_register_source/i }).first()
-  ).toBeVisible({ timeout: 60_000 })
+  ).toBeVisible({ timeout: 300_000 })
   await expect(conversation.getByRole('button', { name: /knowledge_search/i }).first()).toBeVisible(
     { timeout: 60_000 }
   )
@@ -150,6 +150,11 @@ test('a real model session calls knowledge_search', async ({ app }) => {
   const wikiTool = conversation.getByRole('button', { name: /knowledge_render_wiki/i }).first()
   await expect(wikiTool).toBeVisible({ timeout: 180_000 })
   await wikiTool.click()
+  // Poll for the rendered output instead of reading once: the panel fills a beat after the tool row appears, and
+  // reading too early reports "no output" for a call that is still streaming.
+  await expect
+    .poll(async () => (await conversation.innerText()).replace(/\s+/g, ''), { timeout: 90_000 })
+    .toContain('written')
   const wikiText = await conversation.innerText()
   console.log('WIKI=' + wikiText.replace(/\n+/g, ' | ').slice(-1500))
   expect(wikiText.replace(/\s+/g, '')).toContain('written')
