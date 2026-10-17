@@ -50,7 +50,12 @@ describe('knowledge module', () => {
     expect(response.results[0]?.sha256).toBe(sha256('the matched line'))
   })
 
-  it('counts a source it cannot search as pending instead of reporting no matches', async () => {
+  // This case used to assert the opposite: a module without a URL reader could not read a URL source, so the
+  // source was counted as owed. That was true while a search re-fetched the page; now the body is stored at
+  // registration, so the copy — not the reader — is what a search needs. The "owed" answer still exists and is
+  // asserted where it belongs: a registration with no copy and no reader is `not-indexed`
+  // (knowledge-module-offline.test.ts).
+  it('searches a URL source from its stored copy even with no URL reader configured', async () => {
     const withUrl = createKnowledgeModule({
       root,
       roots: [root],
@@ -60,13 +65,11 @@ describe('knowledge module', () => {
     })
     await withUrl.register({ kind: 'url', url: 'https://example.org/doc' })
 
-    // A module with no URL reader cannot read that source: it must say so in coverage.
     const response = await module.search('body')
 
-    expect(response.results).toHaveLength(0)
-    expect(response.coverage.pending).toBe(1)
-    // No hits + work outstanding is `not-indexed`, never `no-matches`.
-    expect(response.status).toBe('not-indexed')
+    expect(response.results).toHaveLength(1)
+    expect(response.coverage).toEqual({ indexed: 1, pending: 0 })
+    expect(response.status).toBe('ok')
   })
 
   it('reports a source that disappeared as unreadable, not as absent', async () => {

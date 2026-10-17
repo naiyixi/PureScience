@@ -4,7 +4,8 @@
 // What it deliberately does NOT do: reach for a database, invent a second index, or hold text in
 // memory between calls. The store's snapshot is the only state; text is read when a query runs.
 
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 import type {
   KnowledgeOverview,
@@ -55,14 +56,33 @@ export const createKnowledgeModule = (options: KnowledgeModuleOptions): Knowledg
   const lexical = createKnowledgeLexicalPort({
     listSources: () => repository.list(),
     readFileText: async (source) => readFile(source.location, 'utf8'),
-    // A URL source is re-read through the same reader registration used, so a search sees the body a
-    // registration fingerprinted rather than a second, differently-shaped fetch.
-    ...(options.urlReader
-      ? {
-          readUrlText: async (source) =>
-            (await options.urlReader!.read(source.finalUrl ?? source.location)).body
+    // A URL source is searched against the copy taken at registration (named by its own digest). No network on
+    // the query path: a search that needed one could not run offline, and re-fetching every page per query is a
+    // crawl, not a search. A registration that predates the copy is healed ONCE here — fetched through the same
+    // reader registration uses, and stored — so upgrading does not silently turn every existing URL source into
+    // "unreadable". Verification is unaffected: it goes to the network on purpose.
+    readUrlText: async (source) => {
+      try {
+        return await readFile(
+          join(options.root, 'knowledge', 'contents', source.fingerprint.value),
+          'utf8'
+        )
+      } catch {
+        if (!options.urlReader) throw new Error('That URL source has no stored copy.')
+        const read = await options.urlReader.read(source.finalUrl ?? source.location)
+        try {
+          await mkdir(join(options.root, 'knowledge', 'contents'), { recursive: true })
+          await writeFile(
+            join(options.root, 'knowledge', 'contents', source.fingerprint.value),
+            read.body,
+            'utf8'
+          )
+        } catch {
+          // A copy that cannot be written still answers this query; the next one heals again.
         }
-      : {}),
+        return read.body
+      }
+    },
     ...(options.maxBytesPerSource === undefined
       ? {}
       : { maxBytesPerSource: options.maxBytesPerSource }),

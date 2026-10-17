@@ -24,7 +24,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { createKnowledgeModule } from './knowledge-module'
 import { createKnowledgeCitationVerifier } from './knowledge-citation'
-import { createKnowledgeContentReader } from './knowledge-transport-io'
+import { createKnowledgeContentReader, createKnowledgeUrlReader } from './knowledge-transport-io'
 import { createKnowledgeWikiGenerator } from './knowledge-wiki'
 import { createKnowledgeRpcCalls } from './knowledge-rpc-calls'
 import { NotebookLocalRpcServer } from '../notebook/local-rpc-server'
@@ -408,5 +408,51 @@ describe('knowledge tool acceptance (four answers a caller must be able to tell 
       )
       expect(after.results[0]?.sha256).not.toBe(before.results[0]?.sha256)
     })
+  })
+})
+
+// The property that makes an offline search honest: with the origin GONE, the query still answers from the copy
+// taken at registration, while the verifier — which is allowed the network — says it could not look. Real server,
+// real socket, really closed.
+describe('a URL source outlives its origin', () => {
+  it('answers from the stored copy and reports the verification as unreadable, not fresh', async () => {
+    const { createServer } = await import('node:http')
+    const body = 'Method: TP53 assay was run on 40 samples'
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain' })
+      response.end(body)
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const address = server.address()
+    if (typeof address === 'string' || address === null)
+      throw new Error('No port for the test server.')
+    const url = `http://127.0.0.1:${address.port}/paper.txt`
+
+    const dataRoot = await tempDir('knowledge-url-offline-')
+    const network = createKnowledgeUrlReader()
+    const module = createKnowledgeModule({
+      root: dataRoot,
+      roots: [dataRoot],
+      urlReader: network,
+      verifier: createKnowledgeCitationVerifier({
+        reader: createKnowledgeContentReader({ urlReader: network })
+      })
+    })
+
+    await module.register({ kind: 'url', url })
+    // The origin disappears between registration and the query.
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+
+    const response = await module.search('TP53')
+
+    expect(response.status).toBe('ok')
+    expect(response.results[0]?.locator).toEqual({ kind: 'url', url })
+    expect(response.results[0]?.sha256).toBe(
+      createHash('sha256').update(body, 'utf8').digest('hex')
+    )
+    // The bytes were found (from the copy) but the verifier could not re-read them: "could not look" is neither
+    // "stale" nor "fresh".
+    expect(response.results[0]?.unreadable).toBe(true)
+    expect(response.results[0]?.stale).toBeUndefined()
   })
 })

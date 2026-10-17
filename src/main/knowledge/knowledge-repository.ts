@@ -58,6 +58,21 @@ export class KnowledgeRepository {
     return join(this.root, 'knowledge', SOURCES_FILE)
   }
 
+  // A fetched URL's body is kept beside the register, named by its own digest. Registration is the one moment
+  // the bytes are certainly in hand, so it is the moment worth spending them on: a search can then answer from
+  // disk (fast, and with no network at all) instead of re-fetching every page on every query. The copy is NEVER
+  // used for verification — the verifier re-fetches, because a cache that answers it only ever vouches for itself.
+  private get contentDir(): string {
+    return join(this.root, 'knowledge', 'contents')
+  }
+
+  private async storeUrlBody(body: string): Promise<void> {
+    const path = join(this.contentDir, fingerprintOf(body).value)
+    await mkdir(this.contentDir, { recursive: true })
+    // Named by digest ⇒ writing the same body twice is the same write. No rotation, no clock in the name.
+    await writeFile(path, body, 'utf8')
+  }
+
   // A missing file is an empty store (nobody has registered anything yet); a file that will not parse is
   // named rather than treated as empty.
   async load(): Promise<KnowledgeStoreSnapshot> {
@@ -201,6 +216,7 @@ export class KnowledgeRepository {
       } catch {
         throw new KnowledgeValidationError('url-fetch-failed', 'That URL could not be fetched.')
       }
+      await this.storeUrlBody(read.body)
       const sources = KnowledgeRepository.upsert(
         snapshot.sources,
         {
