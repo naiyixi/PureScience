@@ -78,7 +78,13 @@ describe('knowledge search (lexical only)', () => {
 // contribute has its own answer. A lexical list must never travel under a hybrid label.
 describe('knowledge search (hybrid)', () => {
   const semanticHit = (
-    overrides: Partial<{ sourceId: string; label: string; text: string; score: number }> = {}
+    overrides: Partial<{
+      sourceId: string
+      label: string
+      text: string
+      score: number
+      locator: KnowledgeLexicalHit['locator']
+    }> = {}
   ): {
     sourceId: string
     label: string
