@@ -4816,5 +4816,9 @@ export const en: Record<ZhKey, string> = {
     '{title} was deleted. Its run data was released, but its size could not be read.',
   'home.projectDeletedReleasedUnmeasured':
     '{name} was deleted. Its run data was released, but its size could not be read.',
-  'runtimes.namedEnvRemovedUnmeasured': 'Removed “{name}” — its size could not be read.'
+  'runtimes.namedEnvRemovedUnmeasured': 'Removed “{name}” — its size could not be read.',
+  'ws.figureObservationsSupersededInput':
+    'Superseded — the same illustration was later derived from a different input ({at}). Re-derive before reusing these values.',
+  'ws.figureObservationsSupersededRevision':
+    'Superseded — the same illustration was later derived with a different model revision ({at}). Re-derive before reusing these values.'
 }

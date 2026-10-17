@@ -10,7 +10,7 @@ import type {
 import type { AgentFrameworkId } from './settings'
 import type { StructureMeasurement } from './structure-measurement'
 import type { StructureSelection } from './structure-selection'
-import type { FigureDerivationObservation } from './figure-observation'
+import type { FigureDerivationObservation, FigureDerivationStatus } from './figure-observation'
 import type { ArtifactAliasLineage } from './artifact-alias-lineage'
 import type { StructureSelectionLabel } from './structure-selection-label'
 import type {
@@ -432,6 +432,14 @@ export type RecordedStructureObservation = {
   label?: StructureSelectionLabel
   /** U4: the illustration derivation this entry records, with its input fingerprint. */
   figureDerivation?: FigureDerivationObservation
+  /**
+   * U4-f: whether that derivation is still supported by the latest basis recorded for the same figure.
+   * Computed in main from the session's FULL journal (a later derivation may sit outside this Version's
+   * window and still supersede an earlier one), so the renderer displays a verdict rather than guessing
+   * one. Present exactly on `figure-derivation` rows: a missing field means "not a derivation row",
+   * never "no verdict".
+   */
+  figureDerivationStatus?: FigureDerivationStatus
 }
 
 export type ArtifactVersionProvenance = {

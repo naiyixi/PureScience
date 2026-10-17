@@ -4702,5 +4702,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '{title}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.',
   'home.projectDeletedReleasedUnmeasured':
     '{name}을(를) 삭제했습니다. 실행 데이터는 확보했지만 크기를 읽을 수 없습니다.',
-  'runtimes.namedEnvRemovedUnmeasured': '“{name}”을(를) 제거했습니다 — 크기를 읽을 수 없습니다.'
+  'runtimes.namedEnvRemovedUnmeasured': '“{name}”을(를) 제거했습니다 — 크기를 읽을 수 없습니다.',
+  'ws.figureObservationsSupersededInput':
+    '대체됨 — 같은 그림이 나중에 다른 입력으로 다시 파생되었습니다({at}). 이 값을 재사용하기 전에 다시 파생하세요.',
+  'ws.figureObservationsSupersededRevision':
+    '대체됨 — 같은 그림이 나중에 다른 모델 버전으로 다시 파생되었습니다({at}). 이 값을 재사용하기 전에 다시 파생하세요.'
 }

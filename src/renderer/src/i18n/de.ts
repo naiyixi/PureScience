@@ -4953,5 +4953,9 @@ export const de: Partial<Record<ZhKey, string>> = {
     '{title} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.',
   'home.projectDeletedReleasedUnmeasured':
     '{name} wurde gelöscht. Die Ausführungsdaten wurden freigegeben, ihre Größe ließ sich jedoch nicht lesen.',
-  'runtimes.namedEnvRemovedUnmeasured': '„{name}“ entfernt — die Größe ließ sich nicht lesen.'
+  'runtimes.namedEnvRemovedUnmeasured': '„{name}“ entfernt — die Größe ließ sich nicht lesen.',
+  'ws.figureObservationsSupersededInput':
+    'Überholt – dieselbe Abbildung wurde später aus einer anderen Eingabe abgeleitet ({at}). Vor der Wiederverwendung neu ableiten.',
+  'ws.figureObservationsSupersededRevision':
+    'Überholt – dieselbe Abbildung wurde später mit einer anderen Modellversion abgeleitet ({at}). Vor der Wiederverwendung neu ableiten.'
 }

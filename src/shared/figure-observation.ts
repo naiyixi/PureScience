@@ -57,6 +57,89 @@ export type FigureDerivationObservation = {
   derivation: FigureDerivation
 }
 
+/**
+ * 读侧判决：这条派生结果**是否仍被当前的依据支持**。
+ *
+ * 记下来的东西只有输入指纹与模型版本两样；这两样正是「这段结果是由什么产出的」。所以判决只需要把同一张图
+ * （同一页、同一图序）**后来**的派生与它比一次：
+ *  - 同一张图后来没有派生过 ⇒ `current`（没人推翻它）；
+ *  - 后来那一条的输入指纹不同 ⇒ `input-changed`（旧结果算的是**另一份输入**，页面/框/图注/图内文字变过）；
+ *  - 输入相同但模型版本不同 ⇒ `model-revision-changed`（换了引擎版本，同一个输入算出了另一份结果）；
+ *  - 两样都相同 ⇒ 仍是 `current`：那只是同一份输入用同一批模型又算了一次，结论没有变。
+ *
+ * 判决不落到「缺失」上：`current` 也是判决，会被写进值里 —— 于是渲染层看到「没有这个字段」只意味着一件事：
+ * 这一行不是派生行。**缺席 ≠ 通过**在这条契约里是结构性的，不靠读的人猜。
+ */
+export type FigureDerivationStatus =
+  | { state: 'current' }
+  | {
+      state: 'superseded'
+      reason: 'input-changed' | 'model-revision-changed'
+      /** 取代它那一条的录制时刻（ISO 8601），读的人据此去找那一条。 */
+      supersededAt: string
+      /** 取代它那一条的输入指纹（`sha256:<64 hex>`），供逐字符比对。 */
+      supersededBy: string
+    }
+
+/** 判决只需要这两样：录制时刻（给人看）与那条派生本身。 */
+export type FigureDerivationJournalRow = {
+  recordedAt: string
+  figureDerivation?: FigureDerivationObservation
+}
+
+/** 同一张图的身份：页 + 图序。派生是在这张图上做的，指纹之外的这两项就是「哪一张图」。 */
+const figureIdentity = (derivation: FigureDerivationObservation): string =>
+  `${String(derivation.page)}:${String(derivation.index)}`
+
+/**
+ * 模型版本：这一路结果由哪一套模型产出。确定性的一路（图内数值取自文字层、库号查真库）**没有模型**
+ * ⇒ 缺席，绝不写一个看起来像版本号的假值；化学一路是「引擎@版本」按引擎原样拼起来，两台引擎各自可比。
+ */
+export const figureDerivationModelRevision = (derivation: FigureDerivation): string | undefined =>
+  derivation.kind === 'structure'
+    ? derivation.engines.map((engine) => `${engine.engine}@${engine.revision}`).join('+')
+    : undefined
+
+/**
+ * 逐行判决，**按日志顺序**（追加顺序就是时间顺序；不拿时间戳排序 —— 同毫秒的两条会互相盖掉，而顺序是载体
+ * 自己的事实）。只对派生行给判决；其余行返回 `undefined`（它们没有「是否被推翻」这回事）。
+ */
+export const figureDerivationStatuses = (
+  rows: readonly FigureDerivationJournalRow[]
+): (FigureDerivationStatus | undefined)[] => {
+  // 每张图**最后一次**派生。后来的每一条都会覆盖前一条 —— 判决永远只跟「最新的那一份依据」比。
+  const latest = new Map<string, number>()
+  rows.forEach((row, index) => {
+    if (row.figureDerivation) latest.set(figureIdentity(row.figureDerivation), index)
+  })
+
+  return rows.map((row, index) => {
+    const derivation = row.figureDerivation
+    if (!derivation) return undefined
+    const latestIndex = latest.get(figureIdentity(derivation))
+    if (latestIndex === undefined || latestIndex === index) return { state: 'current' }
+    const newer = rows[latestIndex]?.figureDerivation
+    if (!newer) return { state: 'current' }
+    if (newer.inputFingerprint !== derivation.inputFingerprint) {
+      return {
+        state: 'superseded',
+        reason: 'input-changed',
+        supersededAt: rows[latestIndex]?.recordedAt ?? '',
+        supersededBy: newer.inputFingerprint
+      }
+    }
+    if ((newer.modelRevision ?? null) !== (derivation.modelRevision ?? null)) {
+      return {
+        state: 'superseded',
+        reason: 'model-revision-changed',
+        supersededAt: rows[latestIndex]?.recordedAt ?? '',
+        supersededBy: newer.inputFingerprint
+      }
+    }
+    return { state: 'current' }
+  })
+}
+
 /** 形状守卫：读侧据此把「坏了的一条」与「没有的一条」分开，绝不把坏记录当空记录。 */
 export const isFigureDerivationObservation = (
   value: unknown

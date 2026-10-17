@@ -4424,5 +4424,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'specialist.pluginReplaced': '已取代 {plugin} —— 被取代的部署原本宣告 {previous} 個項目',
   'ws.sessionDeletedReleasedUnmeasured': '{title} 已刪除，其執行資料已釋放，但無法讀取其大小。',
   'home.projectDeletedReleasedUnmeasured': '{name} 已刪除，其執行資料已釋放，但無法讀取其大小。',
-  'runtimes.namedEnvRemovedUnmeasured': '已移除「{name}」，但無法讀取其大小。'
+  'runtimes.namedEnvRemovedUnmeasured': '已移除「{name}」，但無法讀取其大小。',
+  'ws.figureObservationsSupersededInput':
+    '已被取代 —— 同一張插圖後來用不同的輸入重新衍生過（{at}）。重複使用這些值前請重新衍生。',
+  'ws.figureObservationsSupersededRevision':
+    '已被取代 —— 同一張插圖後來用不同的模型版本重新衍生過（{at}）。重複使用這些值前請重新衍生。'
 }

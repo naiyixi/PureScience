@@ -4480,7 +4480,11 @@ export const zh = {
   'specialist.pluginReplaced': '已替换 {plugin} —— 被替换的部署原本声明 {previous} 个条目',
   'ws.sessionDeletedReleasedUnmeasured': '已删除"{title}"，其运行数据已释放，但未能读取其大小。',
   'home.projectDeletedReleasedUnmeasured': '已删除"{name}"，其运行数据已释放，但未能读取其大小。',
-  'runtimes.namedEnvRemovedUnmeasured': '已移除“{name}”，但未能读取它的大小。'
+  'runtimes.namedEnvRemovedUnmeasured': '已移除“{name}”，但未能读取它的大小。',
+  'ws.figureObservationsSupersededInput':
+    '已被取代 —— 同一张插图后来用不同的输入重新派生过（{at}）。复用这些值前请重新派生。',
+  'ws.figureObservationsSupersededRevision':
+    '已被取代 —— 同一张插图后来用不同的模型版本重新派生过（{at}）。复用这些值前请重新派生。'
 }
 
 export type ZhKey = keyof typeof zh

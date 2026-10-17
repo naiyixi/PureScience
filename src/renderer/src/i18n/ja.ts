@@ -4785,5 +4785,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{title} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。',
   'home.projectDeletedReleasedUnmeasured':
     '{name} を削除しました。実行データは解放しましたが、サイズを読み取れませんでした。',
-  'runtimes.namedEnvRemovedUnmeasured': '「{name}」を削除しました — サイズを読み取れませんでした。'
+  'runtimes.namedEnvRemovedUnmeasured': '「{name}」を削除しました — サイズを読み取れませんでした。',
+  'ws.figureObservationsSupersededInput':
+    '上書き済み — 同じ図は後に別の入力で再派生されています（{at}）。これらの値を使い回す前に再派生してください。',
+  'ws.figureObservationsSupersededRevision':
+    '上書き済み — 同じ図は後に別のモデル版で再派生されています（{at}）。これらの値を使い回す前に再派生してください。'
 }

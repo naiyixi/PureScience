@@ -4924,5 +4924,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
     '{title} a été supprimé. Ses données d’exécution ont été libérées, mais leur taille n’a pas pu être lue.',
   'home.projectDeletedReleasedUnmeasured':
     '{name} a été supprimé. Ses données d’exécution ont été libérées, mais leur taille n’a pas pu être lue.',
-  'runtimes.namedEnvRemovedUnmeasured': '« {name} » supprimé — sa taille n’a pas pu être lue.'
+  'runtimes.namedEnvRemovedUnmeasured': '« {name} » supprimé — sa taille n’a pas pu être lue.',
+  'ws.figureObservationsSupersededInput':
+    "Remplacé — la même illustration a été dérivée plus tard à partir d'une entrée différente ({at}). À re-dériver avant réutilisation.",
+  'ws.figureObservationsSupersededRevision':
+    'Remplacé — la même illustration a été dérivée plus tard avec une autre version du modèle ({at}). À re-dériver avant réutilisation.'
 }

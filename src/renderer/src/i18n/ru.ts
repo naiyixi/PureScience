@@ -4804,5 +4804,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
     '{title} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.',
   'home.projectDeletedReleasedUnmeasured':
     '{name} удалён. Данные выполнения освобождены, но их размер прочитать не удалось.',
-  'runtimes.namedEnvRemovedUnmeasured': '«{name}» удалено — размер прочитать не удалось.'
+  'runtimes.namedEnvRemovedUnmeasured': '«{name}» удалено — размер прочитать не удалось.',
+  'ws.figureObservationsSupersededInput':
+    'Заменено — тот же рисунок позже был обработан с другим входом ({at}). Перед повторным использованием выполните вывод заново.',
+  'ws.figureObservationsSupersededRevision':
+    'Заменено — тот же рисунок позже был обработан другой версией модели ({at}). Перед повторным использованием выполните вывод заново.'
 }

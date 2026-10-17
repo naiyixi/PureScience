@@ -207,6 +207,7 @@ import {
   figureDerivationFingerprint,
   recordStructureObservation
 } from './structure/structure-observation-journal'
+import { figureDerivationModelRevision } from '../shared/figure-observation'
 import { lookupAccessionOnMainFetch } from './settings/accession-lookup'
 import { recognizeFigureStructure } from './engines/structure-recognition'
 import { runDocumentTranslation } from './translation/document-translation'
@@ -1913,7 +1914,10 @@ const createApplicationModules = async (
     storageRoot: resolveDataRoot(),
     // U4-d：插图派生结果记进**既有**那条结构观察溯源面（与结构选择/测量同一条账、同一套串行化），
     // 带上可由外部复算的输入指纹。记账是尽力而为：写失败绝不能让一次成功的读取失败。
-    onFigureDerivation: ({ sessionId, index, figureClass, derivation, ...input }) =>
+    onFigureDerivation: ({ sessionId, index, figureClass, derivation, ...input }) => {
+      // U4-f：**模型版本**随记录一起落盘。此前这个字段在契约里有、在生产里从来没有写入方 ⇒ 读侧拿不到
+      // 「换 revision 即过期」的那一半依据。化学一路是「引擎@版本」，确定性的一路没有模型 ⇒ 缺席。
+      const modelRevision = figureDerivationModelRevision(derivation)
       void recordStructureObservation(resolveDataRoot(), sessionId, {
         kind: 'figure-derivation',
         figureDerivation: {
@@ -1922,9 +1926,11 @@ const createApplicationModules = async (
           bbox: input.bbox,
           figureClass,
           inputFingerprint: figureDerivationFingerprint(input),
+          ...(modelRevision ? { modelRevision } : {}),
           derivation
         }
-      }),
+      })
+    },
     // U4-b：图上读到的库号 → 库里的真实记录。实现单开一个模块，好让真机读数与生产走同一个函数。
     lookupAccession: lookupAccessionOnMainFetch,
     // U4-e：化学结构式一路的识别口。脚本随包（resources/engines），解释器按产品自己的命名环境解析，

@@ -569,6 +569,13 @@ describe('ArtifactProvenancePanel', () => {
           {
             recordedAt: '2026-07-27T20:05:00.000Z',
             kind: 'figure-derivation',
+            // U4-f：这张图后来用另一份输入又派生过 ⇒ 这一行应当被标成过期并说清原因。
+            figureDerivationStatus: {
+              state: 'superseded',
+              reason: 'input-changed',
+              supersededAt: '2026-07-27T20:30:00.000Z',
+              supersededBy: `sha256:${'9'.repeat(64)}`
+            },
             figureDerivation: {
               page: 3,
               index: 2,
@@ -726,6 +733,13 @@ describe('ArtifactProvenancePanel', () => {
     expect(singleEngine?.textContent).toContain('decimer')
     expect(singleEngine?.textContent).toContain('CCO')
     expect(singleEngine?.textContent).toContain('no interpreter for this engine')
+    // U4-f：过期判决要上屏，且只有被推翻的那一行有它（current 不渲染徽标）。
+    const superseded = container.querySelectorAll(
+      '[data-testid="artifact-figure-observations-superseded"]'
+    )
+    expect(superseded).toHaveLength(1)
+    expect(superseded[0]?.textContent).toContain('different input')
+    expect(superseded[0]?.textContent).toContain('2026-07-27T20:30:00.000Z')
     // 两类派生行都不给「在视图里显示」按钮。
     expect(
       container.querySelector('[data-testid="artifact-structure-observations-jump"]')

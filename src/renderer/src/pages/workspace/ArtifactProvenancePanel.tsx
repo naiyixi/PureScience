@@ -1927,6 +1927,19 @@ const ArtifactProvenancePanel = ({
                                   ) : null}
                                 </div>
                               )}
+                              {/* U4-f：这份结果还站不站得住 —— 判决在主进程按整本日志算好，页面只负责照实说。
+                                  没有这个字段 = 这一行不是派生行；`current` 是判决而不是缺席。 */}
+                              {entry.figureDerivationStatus?.state === 'superseded' ? (
+                                <p
+                                  className="text-xs text-amber-400"
+                                  data-testid="artifact-figure-observations-superseded"
+                                >
+                                  {(entry.figureDerivationStatus.reason === 'input-changed'
+                                    ? t('ws.figureObservationsSupersededInput')
+                                    : t('ws.figureObservationsSupersededRevision')
+                                  ).replace('{at}', entry.figureDerivationStatus.supersededAt)}
+                                </p>
+                              ) : null}
                               <p className="text-xs text-text-300">
                                 {t('ws.figureObservationsFingerprint')}
                               </p>

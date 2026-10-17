@@ -4894,5 +4894,9 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Se eliminó {title}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.',
   'home.projectDeletedReleasedUnmeasured':
     'Se eliminó {name}. Se liberaron sus datos de ejecución, pero no se pudo leer su tamaño.',
-  'runtimes.namedEnvRemovedUnmeasured': 'Se eliminó «{name}» — no se pudo leer su tamaño.'
+  'runtimes.namedEnvRemovedUnmeasured': 'Se eliminó «{name}» — no se pudo leer su tamaño.',
+  'ws.figureObservationsSupersededInput':
+    'Reemplazado: la misma ilustración se derivó después con una entrada distinta ({at}). Vuelve a derivarla antes de reutilizar estos valores.',
+  'ws.figureObservationsSupersededRevision':
+    'Reemplazado: la misma ilustración se derivó después con otra versión del modelo ({at}). Vuelve a derivarla antes de reutilizar estos valores.'
 }

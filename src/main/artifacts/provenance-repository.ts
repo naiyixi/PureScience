@@ -60,6 +60,7 @@ import {
   projectStructureObservationWindow,
   readSessionStructureObservations
 } from '../structure/structure-observation-journal'
+import { figureDerivationStatuses } from '../../shared/figure-observation'
 import { dirSize } from '../storage/usage'
 import type { RecordedConnectorReading } from '../../shared/reading-fingerprint'
 import type {
@@ -4030,10 +4031,18 @@ class ArtifactProvenanceRepository {
         // The window rule itself is a pure function next to the journal, so it is pinned by unit tests
         // rather than only by whatever data a reader happens to have.
         const window = projectStructureObservationWindow(journal.entries, evidence.created_at)
+        // U4-f：判决读的是**整本日志**，不是这个窗口 —— 一张图后来的那次派生常常落在版本写出之后
+        // （用户回头改了框/图注再派生一次），而在窗口内看起来「什么都没变」。按窗口算会把该标过期的
+        // 那些全判成 current，正好把这条契约的要点漏掉。判决是纯函数，逐行与日志对齐。
+        const statuses = figureDerivationStatuses(journal.entries)
+        const statusByRow = new Map(journal.entries.map((entry, index) => [entry, statuses[index]]))
         structureObservations = {
           state: 'available',
           attribution: window.windowKnown ? 'session-window' : 'session',
-          items: window.items,
+          items: window.items.map((entry) => {
+            const status = statusByRow.get(entry)
+            return status ? { ...entry, figureDerivationStatus: status } : entry
+          }),
           dropped: journal.dropped,
           afterWindow: window.afterWindow,
           undated: window.undated

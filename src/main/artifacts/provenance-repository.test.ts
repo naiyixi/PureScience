@@ -19,6 +19,7 @@ import { createLinearConversationGraph } from '../../shared/conversation-graph'
 import type { NotebookEnvironmentManifest } from '../../shared/notebook'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { recordSessionReadings } from '../connectors/reading-journal'
+import { recordStructureObservation } from '../structure/structure-observation-journal'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import { NotebookRunRepository } from '../notebook/repository'
 import { createPngBytes, createPngInlineSource } from './artifact-test-fixtures'
@@ -4399,5 +4400,121 @@ describe('artifact provenance repository', () => {
     for (const [, sections] of spy.mock.calls) {
       expect(sections).toMatchObject({ readings: false })
     }
+  })
+  it('插图派生结果的过期判决读的是整本日志 —— 版本写出之后那次派生也照样推翻它', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-figure-status-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client)
+    })
+    const contentStorageKey = 'artifacts/project-1/session-1/.provenance/versions/version-1/content'
+    const contentPath = join(storageRoot, ...contentStorageKey.split('/'))
+    await mkdir(dirname(contentPath), { recursive: true })
+    await writeFile(contentPath, 'artifact bytes')
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'plot.png',
+        filename: 'plot.png'
+      }
+    })
+    const evidenceCreatedAt = new Date(Date.now() - 3_600_000).toISOString()
+    await client.artifactVersion.create({
+      data: {
+        id: 'version-1',
+        artifactId: 'artifact-1',
+        versionNumber: 1,
+        filename: 'plot.png',
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'root-1',
+        agentFrameId: 'agent-1',
+        messageBranchId: 'branch-1',
+        runtimeSegmentId: 'segment-1',
+        promptMessageId: 'prompt-1',
+        state: 'finalized',
+        contentStorageKey,
+        evidenceStorageKey:
+          'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
+        sizeBytes: BigInt(14),
+        checksum: 'a'.repeat(64),
+        evidenceJson: JSON.stringify({ created_at: evidenceCreatedAt }),
+        evidenceChecksum: createHash('sha256')
+          .update(JSON.stringify({ created_at: evidenceCreatedAt }))
+          .digest('hex')
+      }
+    })
+    const request = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    }
+    const beforeWindow = new Date(Date.now() - 7_200_000).toISOString()
+    const afterWindow = new Date(Date.now() - 600_000).toISOString()
+    const derivation = (
+      fingerprint: string,
+      page: number
+    ): {
+      kind: 'figure-derivation'
+      recordedAt: string
+      figureDerivation: {
+        page: number
+        index: number
+        bbox: { x: number; y: number; width: number; height: number }
+        figureClass: 'chart'
+        inputFingerprint: string
+        derivation: { kind: 'numbers'; source: 'pdf-text-in-bbox'; values: never[] }
+      }
+    } => ({
+      kind: 'figure-derivation' as const,
+      recordedAt: '',
+      figureDerivation: {
+        page,
+        index: 0,
+        bbox: { x: 1, y: 2, width: 30, height: 40 },
+        figureClass: 'chart' as const,
+        inputFingerprint: `sha256:${fingerprint.repeat(64)}`,
+        derivation: { kind: 'numbers' as const, source: 'pdf-text-in-bbox' as const, values: [] }
+      }
+    })
+    await recordStructureObservation(storageRoot as string, 'session-1', {
+      ...derivation('a', 3),
+      recordedAt: beforeWindow
+    })
+    // 一张没有后来者的图：判决是 current，而不是「没有判决」。
+    await recordStructureObservation(storageRoot as string, 'session-1', {
+      ...derivation('b', 9),
+      recordedAt: beforeWindow
+    })
+    // 同一张图（页 3、图序 0）在版本写出之后用**另一份输入**又派生了一次。
+    await recordStructureObservation(storageRoot as string, 'session-1', {
+      ...derivation('c', 3),
+      recordedAt: afterWindow
+    })
+
+    const provenance = await repository.getVersionProvenance(request)
+    expect(provenance.structureObservations.state).toBe('available')
+    if (provenance.structureObservations.state !== 'available') return
+    // 窗口规则没有变：晚的那条不在 items 里，只计数。
+    expect(provenance.structureObservations.items).toHaveLength(2)
+    expect(provenance.structureObservations.afterWindow).toBe(1)
+    const [superseded, current] = provenance.structureObservations.items
+    expect(superseded?.figureDerivation?.page).toBe(3)
+    expect(superseded?.figureDerivationStatus).toEqual({
+      state: 'superseded',
+      reason: 'input-changed',
+      supersededAt: afterWindow,
+      supersededBy: `sha256:${'c'.repeat(64)}`
+    })
+    expect(current?.figureDerivation?.page).toBe(9)
+    expect(current?.figureDerivationStatus).toEqual({ state: 'current' })
   })
 })
