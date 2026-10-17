@@ -11,6 +11,7 @@ vi.mock('electron', () => ({
 }))
 
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import { normalizeSessionFile } from '../../shared/session-persistence'
 import { ArtifactProvenanceRepository } from '../artifacts/provenance-repository'
 import { ManagedFileIndexRepository } from '../project-files/repository'
 import { ProjectDeletionCoordinator } from '../projects/deletion-coordinator'
@@ -179,7 +180,14 @@ describe('managed-file deletion integration', () => {
       await readFile(join(tombstoneDir, `${SESSION_ID}.json`), 'utf8')
     ) as { session: PersistedChatSession }
     expect(JSON.stringify(durableTombstone)).toContain('upload-version-1')
-    expect(durableTombstone.session.messages[0].uploads?.[0]).not.toHaveProperty('path')
+    // Read back through the app's own session reader: the message list is projected from the graph now,
+    // so the durable record must keep the immutable Version reference (not the erased legacy path).
+    const restoredTombstone = normalizeSessionFile(durableTombstone)
+    expect(restoredTombstone?.messages[0].uploads?.[0]).toMatchObject({
+      id: 'upload-1',
+      versionId: 'upload-version-1'
+    })
+    expect(restoredTombstone?.messages[0].uploads?.[0]).not.toHaveProperty('path')
     await expect(sessions.getProjectSessionDeletionState(PROJECT_ID)).resolves.toBe('prepared')
     await expect(readFile(legacyPath)).rejects.toMatchObject({ code: 'ENOENT' })
     await expect(files.getOverview(PROJECT_ID)).resolves.toMatchObject({ totalCount: 0 })

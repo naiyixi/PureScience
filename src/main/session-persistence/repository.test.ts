@@ -11,6 +11,7 @@ vi.mock('electron', () => ({
 
 import { MAX_RETAINED_SESSION_MESSAGES } from '../../shared/session-retention'
 import type { PersistedChatSession } from '../../shared/session-persistence'
+import { SESSION_FILE_VERSION, normalizeSessionFile } from '../../shared/session-persistence'
 import { DEV_SESSION_DIR_NAME, SessionRepository, getSessionPersistenceDir } from './repository'
 import { getSessionRevision } from './session-revision'
 
@@ -98,11 +99,13 @@ describe('session persistence repository (per-session files)', () => {
       version: number
       session: PersistedChatSession
     }
-    expect(raw.version).toBe(2)
+    expect(raw.version).toBe(SESSION_FILE_VERSION)
     expect(raw.session.conversationGraph).toMatchObject({
       schemaVersion: 1,
       rootFrameId: 'root-frame-session-1'
     })
+    // The graph is the stored representation; the projections a reader needs are derived from it.
+    expect(raw.session).not.toHaveProperty('messages')
 
     const { sessions } = await repository.loadAll()
     expect(sessions).toHaveLength(1)
@@ -204,7 +207,10 @@ describe('session persistence repository (per-session files)', () => {
     const filePath = join(storageRoot!, 'sessions', 'project-a', 'session-1.json')
     const serialized = await readFile(filePath, 'utf8')
     expect(serialized).not.toContain('/Users/private/uploads/input.csv')
-    expect(JSON.parse(serialized).session.messages[0].uploads[0]).toMatchObject({
+    // The message list is a projection of the graph now, so the sanitized upload is read back through
+    // the same reader the app uses instead of being expected verbatim on disk.
+    const restored = normalizeSessionFile(JSON.parse(serialized))
+    expect(restored?.messages[0].uploads?.[0]).toMatchObject({
       id: 'upload-1',
       versionId: 'upload-version-1',
       versionNumber: 1,

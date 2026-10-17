@@ -40,6 +40,7 @@ import {
 import {
   createLinearConversationGraph,
   projectConversationMessage,
+  projectPersistedConversationActivities,
   resolveActiveConversationMessages,
   synchronizeActiveConversationActivities,
   synchronizeActiveConversationMessages,
@@ -54,7 +55,9 @@ import {
 } from './conversation-graph'
 
 // One JSON file per session (sessions/<projectId>/<sessionId>.json) carries this envelope version.
-export const SESSION_FILE_VERSION = 2
+// v3 stopped duplicating the conversation projections (`messages` / `activities` / `activityGroups`)
+// that a graph already carries; readers derive them, and older files keep their own copies.
+export const SESSION_FILE_VERSION = 3
 // Small manifest (sessions/manifest.json) that restores the user's last-open project + session.
 export const SESSION_MANIFEST_VERSION = 1
 
@@ -1735,6 +1738,27 @@ const sanitizeSession = (
     if (!graph) return undefined
     sanitized.conversationGraph = graph
     sanitized.messages = resolveActiveConversationMessages(graph).map(projectConversationMessage)
+    // `messages` and the two activity arrays are projections of the graph, so a document written by
+    // a version that stopped duplicating them rebuilds them here instead of carrying a second copy of
+    // the same bytes. An array that IS present keeps precedence, so older documents restore exactly
+    // what they recorded (and a deliberately empty list is not resurrected from a stale graph).
+    if (!Array.isArray(session.activities) || !Array.isArray(session.activityGroups)) {
+      const projected = projectPersistedConversationActivities(graph)
+      if (!Array.isArray(session.activities)) {
+        const activities = projected.activities
+          .map(sanitizeToolActivity)
+          .filter((item): item is PersistedToolActivity => !!item)
+          .map(normalizeActivityAfterRestore)
+        if (activities.length > 0) sanitized.activities = activities
+      }
+      if (!Array.isArray(session.activityGroups)) {
+        const activityGroups = projected.activityGroups
+          .map(sanitizeActivityGroup)
+          .filter((item): item is PersistedActivityGroup => !!item)
+          .map(normalizeActivityGroupAfterRestore)
+        if (activityGroups.length > 0) sanitized.activityGroups = activityGroups
+      }
+    }
   } else {
     sanitized.conversationGraph = createLinearConversationGraph({
       sessionId: sanitized.id,
@@ -1747,7 +1771,28 @@ const sanitizeSession = (
     })
   }
 
-  return sanitizeSessionMessageImages(sanitized)
+  return sanitizeSessionMessageImages(restoreResumeRecovery(sanitized, session.resumeRecovery))
+}
+
+// The interrupted-turn record is derived where an interruption is discovered (a document loaded with
+// `running` / `waiting-permission`) and consumed by the continuation path on a LATER start — but the
+// first re-save stores the session as `error`, which is not an interrupted status, so the derivation no
+// longer runs and the record used to disappear on the second read (measured: 2 of 65 real sessions).
+// It is restored only when it still names the turn that is actually unanswered, using the same
+// predicate the writer uses, so a stale record cannot offer a continuation for a finished turn.
+const restoreResumeRecovery = (
+  session: PersistedChatSession,
+  value: unknown
+): PersistedChatSession => {
+  if (session.resumeRecovery || session.status !== 'error' || !isRecord(value)) return session
+  if (value.cause !== 'app-restart' || value.kind !== 'resume-required') return session
+  const promptMessageId = asString(value.promptMessageId)
+  if (!promptMessageId) return session
+  if (interruptedTurnAfterRestore(session.messages)?.id !== promptMessageId) return session
+  return {
+    ...session,
+    resumeRecovery: { cause: 'app-restart', kind: 'resume-required', promptMessageId }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1755,17 +1800,55 @@ const sanitizeSession = (
 // ---------------------------------------------------------------------------
 
 // Durable envelope for a single session file; the version allows future per-file migrations.
+// A document that carries the authoritative conversation graph omits the projections of it
+// (`messages`, `activities`, `activityGroups`) — `normalizeSessionFile` rebuilds them on read, so the
+// same conversation is not stored three times.
+export type PersistedSessionFileBody = Omit<
+  PersistedChatSession,
+  'messages' | 'activities' | 'activityGroups'
+> &
+  Partial<Pick<PersistedChatSession, 'messages' | 'activities' | 'activityGroups'>>
+
 export type PersistedSessionFile = {
   version: typeof SESSION_FILE_VERSION
-  session: PersistedChatSession
+  session: PersistedSessionFileBody
 }
 
 // Wraps a session in the on-disk envelope written per file.
+//
+// The graph is the authoritative representation of the conversation, and `messages`,
+// `activities` and `activityGroups` are projections of it — the reader rebuilds all three when the
+// graph is present. Writing them again stored the same conversation three times: measured on 65 real
+// sessions, the duplicated arrays were 47% of every file's bytes, and a Session file is rewritten on
+// every autosave (median 848 KB, p90 1.9 MB). So the file stores the graph plus metadata only.
+// Legacy documents without a graph are unaffected: the reader turns their arrays into a linear graph.
+const reproducedByGraph = (
+  entries: readonly { id: string }[] | undefined,
+  graphEntries: readonly { id: string }[]
+): boolean => {
+  const ids = new Set(graphEntries.map((entry) => entry.id))
+  return (entries ?? []).every((entry) => ids.has(entry.id))
+}
+
 export const createSessionFile = (session: PersistedChatSession): PersistedSessionFile => {
   const materialized = materializeSessionConversationGraph(session)
+  const sanitized = sanitizeSessionMessageImages(materialized)
+  const graph = sanitized.conversationGraph
+  if (!graph) return { version: SESSION_FILE_VERSION, session: sanitized }
+  // `messages` is always rebuilt from the graph by the reader (`resolveActiveConversationMessages`), so
+  // it carries no information the graph lacks and is dropped unconditionally. The two activity arrays
+  // are dropped only when the graph actually reproduces them: an activity that could not be scoped to a
+  // prompt on the active path never reaches the graph (`synchronizeActiveConversationActivities` skips
+  // it), and dropping the array would then quietly erase it from the document.
+  const { messages, activities, activityGroups, ...metadata } = sanitized
+  void messages
   return {
     version: SESSION_FILE_VERSION,
-    session: sanitizeSessionMessageImages(materialized)
+    session: {
+      ...metadata,
+      ...(reproducedByGraph(activities, graph.activities) ? {} : { activities }),
+      ...(reproducedByGraph(activityGroups, graph.activityGroups) ? {} : { activityGroups })
+    }
   }
 }
 

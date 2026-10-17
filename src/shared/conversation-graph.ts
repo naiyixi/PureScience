@@ -222,6 +222,31 @@ export const resolveActiveConversationActivities = (
   return { activities, activityGroups }
 }
 
+// The persisted Session document keeps one authoritative conversation representation (the graph) and
+// projects the two compatibility arrays from it, exactly like `messages`. A reader that finds them
+// absent (a file written by a version that stopped duplicating them) rebuilds them here, so the same
+// bytes never have to be stored twice. Grouping/scoping fields belong to the Branch, not to the
+// activity a reader renders, so only those are stripped — `promptMessageId` is kept because a Session
+// document records which prompt each activity answered.
+export const projectPersistedConversationActivities = (
+  graph: PersistedConversationGraph
+): { activities: PersistedToolActivity[]; activityGroups: PersistedActivityGroup[] } => {
+  const activities = graph.activities.map(
+    ({ agentFrameId, messageBranchId, runtimeSegmentId, ...activity }) => {
+      void agentFrameId
+      void messageBranchId
+      void runtimeSegmentId
+      return activity
+    }
+  )
+  const activityGroups = graph.activityGroups.map(({ agentFrameId, messageBranchId, ...group }) => {
+    void agentFrameId
+    void messageBranchId
+    return group
+  })
+  return { activities, activityGroups }
+}
+
 export const validateConversationGraph = (graph: PersistedConversationGraph): void => {
   if (graph.schemaVersion !== 1) throw new Error('Unsupported conversation graph version.')
   const frames = indexById(graph.frames)

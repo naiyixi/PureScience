@@ -259,6 +259,84 @@ describe('message terminal time persistence', () => {
     })
   })
 
+  it('restores the interrupted-turn record a re-saved Session carries as an error', () => {
+    // A Session interrupted by a restart is stored with status `error` and this record; the derivation
+    // only runs for interrupted statuses, so without the read path the continuation became unreachable
+    // after the next start (measured on real sessions: 2 of 65).
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      status: 'error',
+      activities: undefined,
+      error: 'Session was interrupted before the app closed.',
+      resumeRecovery: {
+        cause: 'app-restart',
+        kind: 'resume-required',
+        promptMessageId: 'interrupted-prompt'
+      },
+      messages: [
+        {
+          id: 'interrupted-prompt',
+          role: 'user',
+          content: 'Summarize this file',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1,
+          updatedAt: 1
+        },
+        {
+          id: 'interrupted-reply',
+          role: 'agent',
+          content: 'Part of the answer',
+          status: 'error',
+          eventIds: [],
+          createdAt: 2,
+          updatedAt: 2
+        }
+      ]
+    })
+
+    expect(restored?.resumeRecovery).toEqual({
+      cause: 'app-restart',
+      kind: 'resume-required',
+      promptMessageId: 'interrupted-prompt'
+    })
+  })
+
+  it('drops a stored interrupted-turn record that names a turn which has since been answered', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      status: 'error',
+      activities: undefined,
+      resumeRecovery: {
+        cause: 'app-restart',
+        kind: 'resume-required',
+        promptMessageId: 'answered-prompt'
+      },
+      messages: [
+        {
+          id: 'answered-prompt',
+          role: 'user',
+          content: 'Summarize this file',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 1,
+          updatedAt: 1
+        },
+        {
+          id: 'answered-reply',
+          role: 'agent',
+          content: 'Here is the summary',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 2,
+          updatedAt: 2
+        }
+      ]
+    })
+
+    expect(restored?.resumeRecovery).toBeUndefined()
+  })
+
   it('records no interrupted turn when the last turn was answered', () => {
     const restored = normalizeSessionFile({
       ...createSessionWithActivity(undefined),
@@ -758,6 +836,94 @@ describe('sanitizeActivityGroup', () => {
       createdAt: 5,
       updatedAt: 6
     })
+  })
+})
+
+describe('single-copy conversation storage', () => {
+  const promptSession = (overrides: Record<string, unknown> = {}): PersistedChatSession =>
+    ({
+      id: 'session-1',
+      projectId: 'project-a',
+      title: 'Session',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [
+        {
+          id: 'prompt-1',
+          role: 'user',
+          content: 'Summarize this file',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 10,
+          updatedAt: 10
+        },
+        {
+          id: 'answer-1',
+          role: 'agent',
+          content: 'Here is the summary',
+          status: 'complete',
+          eventIds: [],
+          createdAt: 20,
+          updatedAt: 20
+        }
+      ],
+      activities: [
+        {
+          id: 'tool-1',
+          kind: 'tool',
+          title: 'Read input.csv',
+          promptMessageId: 'prompt-1',
+          status: 'completed',
+          sortIndex: 0,
+          eventIds: [],
+          createdAt: 15,
+          updatedAt: 15
+        }
+      ],
+      createdAt: 1,
+      updatedAt: 1,
+      ...overrides
+    }) as unknown as PersistedChatSession
+
+  it('stores the conversation once and rebuilds the projections on read', () => {
+    const persisted = createSessionFile(promptSession())
+    const stored = persisted.session as Record<string, unknown>
+
+    // The graph is the stored representation; the three projections are derived on read.
+    expect(stored.conversationGraph).toBeDefined()
+    expect(stored).not.toHaveProperty('messages')
+    expect(stored).not.toHaveProperty('activities')
+    expect(stored).not.toHaveProperty('activityGroups')
+
+    const restored = normalizeSessionFile(persisted)
+    expect(restored?.messages.map((message) => message.id)).toEqual(['prompt-1', 'answer-1'])
+    expect(restored?.activities).toMatchObject([
+      { id: 'tool-1', title: 'Read input.csv', promptMessageId: 'prompt-1' }
+    ])
+  })
+
+  it('keeps an activity the graph cannot reproduce instead of silently erasing it', () => {
+    // No user message on the path ⇒ `synchronizeActiveConversationActivities` cannot scope the activity
+    // to a prompt, so it never reaches the graph. Dropping the array would lose it.
+    const persisted = createSessionFile(
+      promptSession({
+        messages: [
+          {
+            id: 'answer-1',
+            role: 'agent',
+            content: 'Unsolicited answer',
+            status: 'complete',
+            eventIds: [],
+            createdAt: 20,
+            updatedAt: 20
+          }
+        ]
+      })
+    )
+    const stored = persisted.session as Record<string, unknown>
+
+    expect(stored.activities).toHaveLength(1)
+    expect(normalizeSessionFile(persisted)?.activities).toMatchObject([{ id: 'tool-1' }])
   })
 })
 
