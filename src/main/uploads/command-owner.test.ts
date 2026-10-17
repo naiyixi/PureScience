@@ -16,6 +16,23 @@ import {
 import { createUploadCommandOwner } from './command-owner'
 import type { UploadRepository } from './repository'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 type TestCaller = Readonly<{
   context: ReturnType<typeof createElectronCallerContext>
   ownedLease: ReturnType<ApplicationCallerLeaseRegistry['acquire']>
@@ -158,11 +175,14 @@ describe('upload command owner', () => {
     )
     owner.releaseCaller(caller.ownedLease.lease)
 
-    await vi.waitFor(() => {
-      expect(repository.abortTransfer).toHaveBeenCalledWith({
-        transferId: 'navigating-transfer'
-      })
-    })
+    await vi.waitFor(
+      () => {
+        expect(repository.abortTransfer).toHaveBeenCalledWith({
+          transferId: 'navigating-transfer'
+        })
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
   })
 
   it('isolates a replacement caller generation from stale lease cleanup', async () => {
@@ -188,9 +208,12 @@ describe('upload command owner', () => {
 
     const replacement = createCaller(leases, 16)
     expect(staleCaller.ownedLease.lease.signal.aborted).toBe(true)
-    await vi.waitFor(() => {
-      expect(repository.abortTransfer).toHaveBeenCalledTimes(1)
-    })
+    await vi.waitFor(
+      () => {
+        expect(repository.abortTransfer).toHaveBeenCalledTimes(1)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     expect(repository.abortTransfer).toHaveBeenCalledWith({ transferId: 'stale-generation' })
 
     await owner.beginTransfer(
@@ -332,9 +355,12 @@ describe('upload command owner', () => {
     )
     owner.releaseCaller(caller.ownedLease.lease)
 
-    await vi.waitFor(() => {
-      expect(repository.deleteUpload).toHaveBeenCalledWith({ path: attachment.path })
-    })
+    await vi.waitFor(
+      () => {
+        expect(repository.deleteUpload).toHaveBeenCalledWith({ path: attachment.path })
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
   })
 
   it('uses the native file size and releases standalone staging before publication', async () => {

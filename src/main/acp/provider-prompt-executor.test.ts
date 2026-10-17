@@ -13,6 +13,23 @@ import {
 } from './provider-prompt-executor'
 import type { AcpProviderTurnAdapter, AcpProviderTurnProbe } from './provider-turn-adapter'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 type NextUpdate = Awaited<ReturnType<ActiveSession['nextUpdate']>>
 
 type Deferred<Value> = {
@@ -233,7 +250,9 @@ describe('AcpProviderPromptExecutor', () => {
     ;(fixture.adapter.begin as ReturnType<typeof vi.fn>).mockReturnValueOnce(probeGate.promise)
     let current = true
     const pending = fixture.executor.execute({ ...fixture.input, isCurrent: () => current })
-    await vi.waitFor(() => expect(fixture.adapter.begin).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(fixture.adapter.begin).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     current = false
     probeGate.resolve(fixture.probe)
@@ -293,7 +312,9 @@ describe('AcpProviderPromptExecutor', () => {
     const finalizeGate = deferred<never>()
     fixture.probe.finalize = vi.fn(() => finalizeGate.promise)
     const pending = fixture.executor.execute(fixture.input)
-    await vi.waitFor(() => expect(fixture.captureStop).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(fixture.captureStop).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     finalizeGate.reject(new Error('usage unavailable'))
     await expect(pending).resolves.toEqual({
@@ -331,7 +352,9 @@ describe('AcpProviderPromptExecutor', () => {
     const nextUpdate = deferred<NextUpdate>()
     ;(fixture.session.nextUpdate as ReturnType<typeof vi.fn>).mockReturnValue(nextUpdate.promise)
     const pending = fixture.executor.execute(fixture.input)
-    await vi.waitFor(() => expect(fixture.session.prompt).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(fixture.session.prompt).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const providerMessage = { sessionId: 'provider-1', message: { type: 'result' } }
     fixture.executor.observeProviderMessage(providerMessage)

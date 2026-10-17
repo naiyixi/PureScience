@@ -3,6 +3,76 @@
 > 本文件由用户与会话共同定稿，写给**自主执行器的每一轮**。两件事：**收口约定**（别把半成品留给下一轮）与
 > **排序**（每轮都能有"完成项"落地，而不是几天都在同一片里打转）。
 
+## 一百八十、本轮追加（执行器，2026-10-17 09:0x–）—— 同族协调等待**第五批（收口）**：剩下 74 处（48 文件）一次收完 ⇒ **全族 337/337 关闭**
+
+### 〇 开工核对与 CI 判决（读数即结论）
+
+- `origin/main = 13e3d800`（本轮刚推的两笔）；共享工作树**仍停在 `8eb4e96d`、落后 36 笔**并带同一批 18 个在制路径 ⇒ 继续全程在隔离工作树 `/tmp/ps-wait4`。
+- **`13e3d800` 的判决（按完整 40 位 SHA 查）**：`Windows Full Test` **`38987208036` success**；`Nightly` `38987208046` 在本节落笔时仍 `in_progress`（判据见 §五）。
+- **`0e71d1cd` 的 `Nightly`（`38986490899`）事后落定 `completed / cancelled`** —— §一百七十九 §五 的预判得到实测确认：**推送确实按 `cancel-in-progress` 顶掉了它**（`00:38Z`）。⇒ 那一笔的 `Nightly` **无自身判决**，改由包含它的后一笔（`13e3d800` 及其后继）代替；`Windows Full Test` 有自身判决 success。**取消 ≠ 绿**，也不为它重跑。
+
+### 一 交付（本笔，48 文件 / 74 处，纯测试台）—— 一次把这一族收干净
+
+上一批剩下的 **74 处默认窗口 / 48 文件**（最大 3 处）本轮全部逐条判据后收口：
+`uploads/command-owner`(3)、`session-persistence/coordinator`(3)、`acp/runtime-session-plan`(3)、
+`acp/provider-prompt-executor`(3)、`acp/permission-context`(3)，以及 16 个 2 处、27 个 1 处文件。
+
+判据与上一批完全同一条（**「已起飞 promise / 已开始工作的确定性副作用」**⇒ 给显式窗口；
+**等不到就是缺陷的一律不放宽**）。74 处逐条读谓词，全部属前者 —— 其中三类要单独点名（都不是「等一个可能
+永不发生的状态」）：
+① `expect(releaseFirst/releaseDrain/releaseLiveness).toBeTypeOf('function')`（`notebook/environment-operations`、
+   `permission-grants/registry`）等的是**在飞操作到达自己的挂起点、把 resolve 交出来**；
+② `expect(() => process.kill(pid, 0)).toThrow()`（`notebook/provisioner-runtime`、`notebook/package-manager`）
+   等的是**已经发出的终止真的生效**；
+③ `expect(alert?.textContent).toContain('Permission load failed')`（`PermissionsPanel.render`）等的是
+   **一次拒绝渲染到屏**。
+每文件一处 `COORDINATION_WINDOW_MS = 30_000` + 同一份头注；站点对账 **74/74**、常量 **48/48** 逐文件相等。
+
+### 二 门禁与自证（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（本笔 48 文件） | **48 files / 871 passed**，exit 0 |
+| 全量 vitest（`--maxWorkers=4`） | **1323 passed \| 16 skipped（1339）**；**16969 passed \| 207 skipped（17176）**；215.58 s；**exit 0** |
+| 双 typecheck（node / web） | **exit 0** |
+| `eslint --no-cache .` | **0 error / 131 warning**（与基线同数） |
+| `prettier --check`（本笔 48 文件） | 全过（**改动前**先验过这 48 个文件本就干净 ⇒ diff 无无关重排） |
+| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过 |
+
+**变异自证**（窗口压到 1ms）：**34 文件红 / 47 条失败** ⇒ 真在等调度；
+**14 文件在 1ms 下仍全过** ⇒ 如实记为「一致性收敛（预防性）」，**不声称修掉任何红**。
+
+### 三 两处「仪器自己会说谎」的地方（本轮各咬一次，已修）
+
+1. **变异读数的抽取正则**：vitest 的 `FAIL` 行带**环境标签**（`|unit|` / `|jsdom|` …），第一版只匹配
+   `^ FAIL  |unit| src/…` ⇒ **渲染套件（jsdom）的失败行被漏掉**，于是「在 1ms 下仍全过的文件」被**多报 3 个**
+   （`artifacts/ipc`、`session-persistence/coordinator`、`uploads/repository` 被错列成通过）。
+   改成 `^ FAIL +([|]<env>[|] )?src/…` 后与 vitest 自己的 `Test Files 34 failed` 对齐。
+   **教训**：**先让两处计数对齐**（我抽出的失败文件数 == vitest 汇总里的失败文件数）**再写结论**。
+2. **分页截断伪装成全量**（§一百七十九 §一 已记）：扫描输出被 `head` 截断，一度算出「254 处待收口」；
+   用**求和自证**（清单之和 == 总数）才发现真数是 **181**。同一族的两条：**凡「派生显示」都要回落到原始计数**。
+
+### 四 边界（不许读成更强）与全族结转
+
+1. 本单元**不声称修掉某次观测到的红**；变异只证明这些等待真在等调度。
+2. **同族关闭的账面**：`vi.waitFor(` 共 **337 处 / 75 文件** ⇒ 显式窗口 **337/337**（前几批 156 + 本就自带 10 +
+   上一批 97 + 本批 74 = 337），**默认 1s 窗口 0 处**。**该族不再有待办**；今后新写的 `vi.waitFor`
+   按同一条判据办（**这条纪律仍在，只是「存量」清零**）。
+3. 本单元**不占版本号**（纯测试台，无用户可见能力）。
+4. **下一单元候选（已勘、未认领）**：`docs/plan-2026-10-10-v2-line-schedule.md` 的交付进度表里，
+   **P0-8 后半「科研来源镜像回退」**是明确写着「未做 / 属独立单元」的一条（前半 `60333ac9` 已交付），
+   `blocked-by` = **无外部依赖**，但**必须先读技能自带 `references/measured-source-fallbacks.md`**
+   （候选配对必须逐对实测、**没有校验和就没有回退**、换源前先删 `.part`、`via` 要随产物走）；
+   另 **P0-3/P0-4 的剩余半（首屏串行探针 / 投影缓存）** 与 **P0-9（询问密度显性化）** 也都还敞着，
+   下一轮开工**先按提交核会话没在同时做**再取其一。
+
+### 五 推送时机与判读
+
+- 本笔推送前后**现查在飞车道**：`13e3d800` 的 `Windows Full Test` **已 success**、`Nightly` `in_progress`
+  （都是**我自己**的车道，无第三方判决被波及）⇒ 本笔推送会把它顶掉，同样按「**包含它的后一笔代替**」记账。
+- 汇报口径：`0e71d1cd` = Windows success + Nightly cancelled（替代）；`13e3d800` = Windows success +
+  Nightly 见 §五 之后的读数；本笔的判决按完整 40 位 SHA 读终态，**`cancelled` 不算绿**。
+
 ## 一百七十九、本轮追加（执行器，2026-10-17 08:1x–）—— 同族协调等待**第四批**：97 处（17 文件）逐条判据 + 变异自证；并把上一轮那四笔**推上去**
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）

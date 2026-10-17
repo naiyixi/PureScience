@@ -6,6 +6,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createManagedPdfLoadingTask } from '../managed-pdf-document'
 import { PdfThumbnail } from './PdfThumbnail'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 vi.mock('../managed-pdf-document', () => ({ createManagedPdfLoadingTask: vi.fn() }))
 
 const flushMicrotasks = async (): Promise<void> => {
@@ -570,7 +587,9 @@ describe('PdfThumbnail', () => {
     })
     await act(async () => {
       await flushMicrotasks()
-      await vi.waitFor(() => expect(window.api.previewResources.acquire).toHaveBeenCalledTimes(3))
+      await vi.waitFor(() => expect(window.api.previewResources.acquire).toHaveBeenCalledTimes(3), {
+        timeout: COORDINATION_WINDOW_MS
+      })
       await flushMicrotasks()
     })
     await act(async () => {
@@ -578,12 +597,15 @@ describe('PdfThumbnail', () => {
     })
     await act(async () => {
       await flushMicrotasks()
-      await vi.waitFor(() => {
-        const firstAcquires = vi
-          .mocked(window.api.previewResources.acquire)
-          .mock.calls.filter(([request]) => request.path === '/workspace/evicted-1.pdf')
-        expect(firstAcquires).toHaveLength(2)
-      })
+      await vi.waitFor(
+        () => {
+          const firstAcquires = vi
+            .mocked(window.api.previewResources.acquire)
+            .mock.calls.filter(([request]) => request.path === '/workspace/evicted-1.pdf')
+          expect(firstAcquires).toHaveLength(2)
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
     })
 
     const firstAcquires = vi

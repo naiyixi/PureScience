@@ -6,6 +6,23 @@ import type { ApplicationCommandComposition } from '../application-command-compo
 import type { TaskAgentPort } from '../tasks/task-runner'
 import { createWebServiceController, type WebServiceControllerDeps } from './index'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 type StartOptions = Parameters<WebServiceControllerDeps['startServer']>[0]
 
 // Builds a controller over fully faked I/O so the idempotency + attached logic is exercised without
@@ -339,7 +356,9 @@ describe('createWebServiceController', () => {
     await h.controller.ensureStarted(44100, { attached: true })
 
     h.lastOptions().onShutdownRequest?.()
-    await vi.waitFor(() => expect(stopped).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(stopped).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('a non-attached (dedicated daemon) shutdown request quits the app', async () => {

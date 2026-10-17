@@ -19,6 +19,23 @@ import {
   type AcpConnectionResourceAttempt
 } from './connection-resource-owner'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const terminateProcessTree = vi.hoisted(() =>
   vi.fn(async (child?: { kill?: () => void }) => {
     child?.kill?.()
@@ -458,8 +475,9 @@ describe('AcpAgentConnectionAdapter', () => {
 
     await agentConnection.client.notify('_claude/sdkMessage', notification)
 
-    await vi.waitFor(() =>
-      expect(connectionHooks.observeClaudeSdkMessage).toHaveBeenCalledWith(notification)
+    await vi.waitFor(
+      () => expect(connectionHooks.observeClaudeSdkMessage).toHaveBeenCalledWith(notification),
+      { timeout: COORDINATION_WINDOW_MS }
     )
 
     await close()

@@ -8,6 +8,23 @@ import { JobPoller } from './job-poller'
 import { DispatchTracker } from './dispatch-tracker'
 import type { HarvestFn } from './job-poller'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // Mock resolveSshTarget at module level so all tests bypass the real ssh -G call.
 vi.mock('./ssh-runner', async (importOriginal) => {
   const original = await importOriginal<typeof import('./ssh-runner')>()
@@ -1237,11 +1254,13 @@ describe('compute_done notification on dispatch_failed (error) jobs', () => {
     await poller.tick()
     // Wait for the async notification to settle. A fixed delay is a guess that a loaded machine beats:
     // wait for the write itself, so the assertions below do not depend on how busy the host is.
-    await vi.waitFor(() =>
-      expect(update).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({ notifiedAt: expect.any(Date) })
-      )
+    await vi.waitFor(
+      () =>
+        expect(update).toHaveBeenCalledWith(
+          'job-1',
+          expect.objectContaining({ notifiedAt: expect.any(Date) })
+        ),
+      { timeout: COORDINATION_WINDOW_MS }
     )
 
     // Status update was called with error/dispatch_failed

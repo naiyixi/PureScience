@@ -13,6 +13,23 @@ import { SCREENING_PROMPT_POLICY_KEY } from './screening-prompt'
 import { ScreeningRepository } from './screening-repository'
 import { createInMemoryScreeningClient } from '../../../test/fixtures/in-memory-screening-client'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // The orchestration layer's own rules, exercised against the real repository and the real engine over an
 // in-memory ledger: only the model is stubbed. That is what makes these assertions about the SERVICE
 // rather than about a mock — an override that leaked into the AI layer, a resume that re-decided an
@@ -409,9 +426,12 @@ describe('ScreeningService runs', () => {
     const { service } = build(references, { runner: slowRunner, chunkSize: 1 })
     await service.appendRuleRevision({ collectionId: COLLECTION, inclusion, exclusion })
     await service.startRun({ collectionId: COLLECTION })
-    await vi.waitFor(async () => {
-      expect((await service.snapshot(COLLECTION)).lastRun?.assessed).toBe(1)
-    })
+    await vi.waitFor(
+      async () => {
+        expect((await service.snapshot(COLLECTION)).lastRun?.assessed).toBe(1)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     const cancelled = await service.cancelRun(COLLECTION)
     expect(cancelled.cancelled).toBe(true)
@@ -419,12 +439,15 @@ describe('ScreeningService runs', () => {
     releaseFirst?.()
 
     // Cancelling does not mark the pass finished: it stays resumable, and the untouched rows stay pending.
-    await vi.waitFor(async () => {
-      const snapshot = await service.snapshot(COLLECTION)
-      expect(snapshot.lastRun?.running).toBe(false)
-      expect(snapshot.lastRun?.pending).toBeGreaterThan(0)
-      expect(snapshot.lastRun?.run.status).toBe('running')
-    })
+    await vi.waitFor(
+      async () => {
+        const snapshot = await service.snapshot(COLLECTION)
+        expect(snapshot.lastRun?.running).toBe(false)
+        expect(snapshot.lastRun?.pending).toBeGreaterThan(0)
+        expect(snapshot.lastRun?.run.status).toBe('running')
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     const afterCancel = await service.snapshot(COLLECTION)
     const pendingBefore = afterCancel.items.filter(
       (item) => item.decision.verdict === 'not-evaluated'
