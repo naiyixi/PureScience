@@ -1784,14 +1784,27 @@ const restoreResumeRecovery = (
   session: PersistedChatSession,
   value: unknown
 ): PersistedChatSession => {
-  if (session.resumeRecovery || session.status !== 'error' || !isRecord(value)) return session
-  if (value.cause !== 'app-restart' || value.kind !== 'resume-required') return session
-  const promptMessageId = asString(value.promptMessageId)
-  if (!promptMessageId) return session
-  if (interruptedTurnAfterRestore(session.messages)?.id !== promptMessageId) return session
+  if (session.resumeRecovery) return session
+  if (session.status !== 'error') return session
+  // Derived here rather than reconstructed from the stored record: the writer never serialised this field
+  // (it exists only on the in-memory session), so a document read back from disk carries no `value` at all and
+  // any record-shaped guard turns the whole restoration into a no-op — which is exactly how the continuation
+  // entry disappeared on the second start. The predicate below is the writer's own: the last user message, and
+  // no completed reply after it.
+  const unanswered = interruptedTurnAfterRestore(session.messages)
+  if (!unanswered) return session
+  // A stored record that names a different turn is stale and must not open a continuation for a finished one.
+  if (isRecord(value)) {
+    const recorded = asString(value.promptMessageId)
+    if (recorded && recorded !== unanswered.id) return session
+  }
   return {
     ...session,
-    resumeRecovery: { cause: 'app-restart', kind: 'resume-required', promptMessageId }
+    resumeRecovery: {
+      cause: 'app-restart',
+      kind: 'resume-required',
+      promptMessageId: unanswered.id
+    }
   }
 }
 

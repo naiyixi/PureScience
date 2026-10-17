@@ -44,19 +44,25 @@ const requireInterruptedTurn = (
   session: PersistedChatSession,
   request: AcpContinueInterruptedTurnRequest
 ): NonNullable<PersistedChatSession['messages'][number]> => {
+  // The refusal names the two ids it compared: "does not match" alone sends the next reader to the branch
+  // model, and the two ids are what actually decides it.
   if (
     session.resumeRecovery?.kind !== 'resume-required' ||
     session.resumeRecovery.promptMessageId !== request.promptMessageId
   ) {
     throw new Error(
-      'Resume no longer matches the interrupted turn on the active Conversation Branch.'
+      'Resume no longer matches the interrupted turn on the active Conversation Branch ' +
+        `(recovery=${session.resumeRecovery?.kind ?? 'absent'}:${session.resumeRecovery?.promptMessageId ?? '-'}` +
+        ` requested=${request.promptMessageId} status=${session.status}).`
     )
   }
 
   const prompt = session.messages.find((message) => message.id === request.promptMessageId)
   if (prompt?.role !== 'user') {
     throw new Error(
-      'Resume no longer matches the interrupted turn on the active Conversation Branch.'
+      'Resume no longer matches the interrupted turn on the active Conversation Branch ' +
+        `(the requested message is ${prompt ? `role=${prompt.role}` : 'absent'} among ` +
+        `${session.messages.length} messages).`
     )
   }
   return prompt
