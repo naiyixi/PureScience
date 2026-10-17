@@ -76,10 +76,14 @@ export type KnowledgeCitation = {
   sha256: string
 }
 
-// Lexical is what this version does. Semantic is NOT simulated: there is no semantic port wired, so every
-// response says so by name rather than returning lexical hits under a word that promises more.
-export type KnowledgeSearchMode = 'lexical'
-export type KnowledgeSearchDegradation = 'semantic-source-unconfigured'
+// `mode` says what was actually consulted, not what we wish had been: 'lexical' when only the
+// incremental index answered, 'hybrid' when an embedding source answered too. 'semantic' is reserved
+// for a future version that can rank without the lexical index — it is not produced here.
+export type KnowledgeSearchMode = 'lexical' | 'semantic' | 'hybrid'
+// Every way the semantic side can fail to contribute is named: not configured at all, configured and
+// failed, configured and answered with nothing. A caller can act differently on each.
+export type KnowledgeSearchDegradation =
+  'semantic-source-unconfigured' | 'semantic-source-failed' | 'semantic-source-empty'
 
 export type KnowledgeSearchResult = {
   sourceId: string
@@ -87,8 +91,14 @@ export type KnowledgeSearchResult = {
   locator: KnowledgeLocator
   // The digest of the exact bytes this result was taken from, recomputed at read time.
   sha256: string
-  // Present on every row while no semantic source is configured: a row that says what it is.
-  lexicalOnly: true
+  // Present while only the lexical index answered: a row that says what it is. Absent once an
+  // embedding source took part, because then `matchedBy` says more.
+  lexicalOnly?: true
+  // Which side(s) found this row — 'both' means the two independent methods agreed, which is a
+  // different (and stronger) statement than either one alone.
+  matchedBy?: 'lexical' | 'semantic' | 'both'
+  // The fused score the ordering used, so a reader can see why one row ranked above another.
+  score?: number
   // Set when a citation verifier re-read the location and the bytes no longer match. Absent means "not
   // found to have moved" — never "verified": the response's `verification` field says whether anyone looked.
   stale?: true
