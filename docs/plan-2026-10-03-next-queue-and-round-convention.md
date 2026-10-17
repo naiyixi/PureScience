@@ -3,6 +3,92 @@
 > 本文件由用户与会话共同定稿，写给**自主执行器的每一轮**。两件事：**收口约定**（别把半成品留给下一轮）与
 > **排序**（每轮都能有"完成项"落地，而不是几天都在同一片里打转）。
 
+## 一百七十九、本轮追加（执行器，2026-10-17 08:1x–）—— 同族协调等待**第四批**：97 处（17 文件）逐条判据 + 变异自证；并把上一轮那四笔**推上去**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 6c732ccf`；**共享工作树仍停在 `8eb4e96d`、落后 35 笔**，并带着**同一批 18 个归属未对上的在制路径**（`src/main/specialist/*`、`src/preload/*`、两个契约 pin、`renderer-surface-inventory` 等）⇒ 本轮**一个字节没碰**共享树，全部作业在隔离工作树 `/tmp/ps-wait4`（`node_modules` 软链）。
+- **上一轮遗留的推送已完成**（这是本轮的第一步）：`6c732ccf` 的两条车道 `completed/success`（`Nightly` `38966687962`、`Windows Full Test` `38966687932`）⇒ 冻结解除，`git -C /tmp/ps-wait4 push origin HEAD:main` 一次推上四笔 `28af5f16`/`6032d38f`/`2411f3c1`/`0e71d1cd`（fast-forward，`6c732ccf..0e71d1cd`）。保险动作先做：`git branch -f wip-coord-waits 0e71d1cd` 让那四笔在共享仓里可达（`/tmp` 被清理也不会变成不可达对象）。
+- 本单元继续 **§一百七十七 §七 1**（同族 `vi.waitFor` 收口，`blocked-by` = 无）；与会话的 U3/U4 各片**不相交**（本轮全是测试文件）。
+- 内存（现取）：空闲物理页 **78,717（≈1.2 GB）**、swap 已用 **8.21 G / 9.22 G** ⇒ 仍不起 Electron（本单元是测试台，不需要）。
+
+### 一 仪器先行：先把「哪些站点还没有显式窗口」量出来，再动手
+
+`origin/main` 上 `vi.waitFor(` 共 **337 处 / 75 文件**。写了一个只读扫描器（按**括号配对 + 顶层逗号**判断「有没有第二个参数 / 里面有没有 `timeout`」，不靠正则猜行尾）⇒ 本批开工前：
+
+| 形态 | 站点 | 说明 |
+| --- | --- | --- |
+| 已有显式窗口 | 166 | 前几批改过的 156（`runtime.test` 49、`PdfPreview` 34、`runtime-service` 27、`reviewer/ipc` 17、`PreviewFileContent` 17、`provisioner` 7、`http-server` 5）+ **本就自带窗口的 10**（`kernel-executor` 6、`completion-gate` 2、`settings/service` 1、`spreadsheet-cache-policy` 1） |
+| **仍是默认 1s 窗口** | **181** | 其余 71 个文件 |
+
+⇒ §一百七十八 §四 2 那句「其余约 180 处」**经实测成立**（181），本批收 97 ⇒ **剩 74 处 / 48 文件**。
+**默认 1s 是负载预算而不是正确性预算**，所以判据不是「有没有窗口」，而是「这个等待等的是什么」。
+（**仪器自身的一次假读数已就地更正**：第一遍扫描的输出被 `head` 截断，我一度把「截断后的前 48 项」
+读成完整清单、算出「254 处待收口」；重跑并**对总数求和**（263 + 74 = 337）后才知道真数是 **181**。
+**教训**：仪器输出的**分页截断**会把「清单」伪装成「全量」，求和自证（清单之和必须等于总数）才是判据。）
+
+### 二 交付（`1f2f8f42`，17 文件 / +658 −174，纯测试台）
+
+| 分组 | 文件 | 处数 |
+| --- | --- | --- |
+| main 侧（acp / compute / connectors / windows / find-overlay / settings） | `acp/runtime-coordinator`(8)、`acp/artifact-turn-owner`(5)、`compute/compute-approval-broker`(5)、`acp/connection-transition-owner`(4)、`windows`(4)、`find-overlay`(4)、`settings/codex-auth`(4)、`connectors/service`(4) | **38** |
+| 渲染套件 | `previews/spreadsheet-cache-policy`(10)、`renderers/TiffPreview`(8)、`renderers/ZoomablePreview.render`(8)、`lib/acp/useWorkspaceAgentRuntime`(6)、`pages/workspace/ProjectFilesView`(6)、`pages/workspace/SessionInfoCard.render`(6)、`pages/workspace/artifact-preview-tiff`(6)、`pages/workspace/WorkspacePage.image-staging`(5)、`previews/managed-pdf-document`(4) | **59** |
+
+判据一条贯到底：**等的是不是「已起飞 promise / 已开始工作的确定性副作用」**（spy 被调用 N 次、数组到 N 条、
+worker 报告已开始解析、canvas 被光栅化、DOM 槽位出现、进程真的死掉、barrier 被释放）⇒ 是则可给显式窗口；
+**等不到就是缺陷的那类一律不放宽**（对真挂起加大超时是明令禁止的收法）。97 处**逐处读谓词**后全部属前者，
+无一处「等一个可能永不发生的状态」；`vitest` 的 60s per-test 超时仍是兜底 ⇒ 真挂起照旧响。
+每文件**一处** `COORDINATION_WINDOW_MS = 30_000` + 同一份头注（写明判据、余量口径与上面那句兜底）。
+站点对账逐文件相等：**8/8、5/5、4/4、5/5、4/4、4/4、4/4、4/4、10/10、8/8、8/8、6/6、6/6、6/6、6/6、5/5、4/4**
+（`spreadsheet-cache-policy` 共 **11** 处，其中 **1 处本就带自己的显式窗口**、原样不动 —— 这一处是扫描器
+「只改没窗口的」这条规矩的自证）。
+
+### 三 门禁与自证（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（本笔 17 文件） | **17 files / 475 passed**，exit 0（7.2 s） |
+| 全量 vitest（`--maxWorkers=4`） | **1323 passed \| 16 skipped（1339）**；**16969 passed \| 207 skipped（17176）**；201.99 s；**exit 0** |
+| 双 typecheck（node / web） | **exit 0**（`NODE_OPTIONS=--max-old-space-size=4096`） |
+| `eslint --no-cache .` | **0 error / 131 warning**（与上一轮基线同数 ⇒ 本笔未新增） |
+| `prettier --check`（本笔 17 文件） | 全过（改动前先验过这 17 个文件本就干净 ⇒ diff 里没有无关重排） |
+| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过 |
+
+**变异自证**（窗口压到 1ms，被测行为一个字节不改）：**13 文件红 / 57 条失败**
+（`useWorkspaceAgentRuntime` 12、`runtime-coordinator` 8、`spreadsheet-cache-policy` 4、`SessionInfoCard` 4、
+`windows` 4、`find-overlay` 4、`connectors/service` 4、`compute-approval-broker` 4、
+`connection-transition-owner` 4、`managed-pdf-document` 3、`codex-auth` 3、`ZoomablePreview` 2、
+`artifact-turn-owner` 1）⇒ 这些等待**真在等调度**。
+**反面对照（诚实边界）**：`ProjectFilesView`、`WorkspacePage.image-staging`、`artifact-preview-tiff`、`TiffPreview`
+四个文件在 1ms 下**仍全过** ⇒ 如实记为「**一致性收敛（预防性）**」，**本单元不声称修掉任何一次观测到的红**。
+
+**语义不变判据**（可复跑）：把每份文件的「新增常量块 + 新增窗口参数」删掉、压掉全部空白后与
+`git show HEAD:<路径>` 逐字节比对 ⇒ **17/17 `semantic_identical=True`** ⇒ 本笔除窗口外**没有动任何断言、
+夹具或行序**（这条判据上一轮已用「会话那笔夹了一个 `stat` import ⇒ False」作过反面对照，不是恒真）。
+
+### 四 边界（不许读成更强）
+
+1. 变异只证明「这些等待真的在等调度」，**不等于**某条车道红就是它引起的。
+2. **同族仍在外面**：337 处里已有显式窗口 **263**（本批 97 + 前几批 156 + 本就自带 10）⇒ **剩 74 处默认窗口 / 48 文件**（最大的也就 3 处：`uploads/command-owner`、`session-persistence/coordinator`、`acp/runtime-session-plan`、`acp/provider-prompt-executor`、`acp/permission-context`；其余多为 1–2 处）。**逐条判据、不许批量加长**这条纪律照旧。
+   **注意 `notebook/kernel-executor.test.ts` 不在待办里**：它那 6 处**本就带自己的显式窗口**（5s / 1s / 8s，含 `terminateProcessTree` 的 SIGTERM→SIGKILL 宽限），本轮**原样未动** —— 把它列进「下一批」是上一轮记事本的陈旧条目，就地更正。
+3. 本单元**不占版本号**（纯测试台，无用户可见能力）。
+
+### 五 并发、收尾与推送
+
+- 共享树未动（HEAD 仍 `8eb4e96d`，那 18 个在制路径未碰）；改动、门禁、提交、推送全在 `/tmp/ps-wait4`。
+- 推送前**现查在飞车道**：`0e71d1cd` 的 `Windows Full Test`（`38986490985`）已 **success**，
+  `Nightly`（`38986490899`）仍在 `in_progress`（`build / Verify` 自 `00:28:06Z` 起跑）⇒ 本笔推送会把那条
+  `Nightly` 按 `cancel-in-progress` 顶掉：**如实记为「`0e71d1cd` 的 `Nightly` 无自身判决、改由包含它的后一笔代替」**
+  （CI 跑整棵树，本笔的树包含它）——**不写成绿、也不为它重跑**。
+
+### 六 具名未办 + 下一轮第一步
+
+1. **同族剩余 74 处默认窗口 / 48 文件**（§四 2）：`blocked-by` = 无；逐条判据后按文件分批；建议下一批优先 3 处档（`uploads/command-owner`、`session-persistence/coordinator`、`acp/runtime-session-plan`、`acp/provider-prompt-executor`、`acp/permission-context`）。
+2. **U3 / U4 各片**归会话，执行器不碰。
+3. **下一轮第一步**：① `git fetch -q origin && git log --oneline origin/main -3 && git status --short`；
+   ② 按**完整 40 位 SHA** 读本笔（`1f2f8f42` 及其后继）的 `Nightly` + `Windows Full Test` 终态
+   （`cancelled` 不算绿）；③ 继续 §六 1 的下一批文件；④ 内存宽松时再谈真机读数（本单元无真机面）。
+
 ## 一百七十八、本轮追加（执行器，2026-10-17 05:4x–）—— §一百七十七 §七 1 的同族协调等待**第二、三批**：122 处（5 文件）逐条判据 + 变异自证
 
 ### 〇 开工核对（防重做 + 并发 + 该谁做）
