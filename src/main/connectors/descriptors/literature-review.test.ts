@@ -46,7 +46,9 @@ type ReviewResult = {
   results: Array<{
     query: string
     total_records: number
-    records: Array<{ source: string }>
+    records_before_dedupe: number
+    dedupe: { removed: number; byDoi: number; byTitle: number }
+    records: Array<{ source: string; also_in?: Array<{ source: string; id: string | null }> }>
     sources: {
       arxiv: { status: string; n_records_returned: number; api_total: number }
       openalex: { status: string; n_records_returned: number; api_total: number }
@@ -112,6 +114,44 @@ describe('literature review tools', () => {
     expect(result.results[0]?.sources.openalex).toMatchObject({ status: 'ok' })
     expect(result.results[0]?.records).toHaveLength(1)
     expect(result.results[0]?.records[0]).toMatchObject({ source: 'openalex' })
+  })
+
+  it('folds the same work returned by both sources and reports the counts', async () => {
+    const ctx = makeContext()
+    ;(ctx.fetchText as ReturnType<typeof vi.fn>).mockResolvedValue(
+      arxivFeed().replace(
+        '</entry>',
+        '<arxiv:doi xmlns:arxiv="http://arxiv.org/schemas/atom">10.1/shared-work</arxiv:doi></entry>'
+      )
+    )
+    ;(ctx.fetchJson as ReturnType<typeof vi.fn>).mockResolvedValue({
+      meta: { count: 1 },
+      results: [
+        {
+          id: 'https://openalex.org/W42',
+          doi: 'https://doi.org/10.1/SHARED-WORK',
+          title: 'Base editing paper',
+          publication_year: 2021,
+          cited_by_count: 10,
+          type: 'article'
+        }
+      ]
+    })
+    const tool = LITERATURE_REVIEW_TOOLS[0]
+    if (!tool?.run) throw new Error('missing run')
+
+    const result = (await tool.run(ctx, { query: 'base editing' })) as ReviewResult
+    const first = result.results[0]
+
+    expect(first?.records_before_dedupe).toBe(2)
+    expect(first?.total_records).toBe(1)
+    expect(first?.records).toHaveLength(1)
+    expect(first?.dedupe).toEqual({ removed: 1, byDoi: 1, byTitle: 0 })
+    expect(first?.records[0]?.source).toBe('arxiv')
+    expect(first?.records[0]?.also_in).toEqual([{ source: 'openalex', id: 'W42' }])
+    // The per-source counts stay what each source said, not what survived the fold.
+    expect(first?.sources.arxiv.n_records_returned).toBe(1)
+    expect(first?.sources.openalex.n_records_returned).toBe(1)
   })
 
   it('rejects an empty query and empty queries array', async () => {

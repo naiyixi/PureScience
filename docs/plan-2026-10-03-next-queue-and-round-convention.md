@@ -8800,3 +8800,62 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
   `types.test.ts` 四条用例 + 证据档 `docs/evidence/2026-10-17-citation-style-label-language.md`。
 - 下一单元（发版侧，需窗口）：P0 两条真绿之后，`v2.6.0` 的 tag **没有 Release 页** ⇒ 按仓规删 tag 重建
   （移动 tag 不会触发发布），重建前先确认会话那条 `interrupted-turn-continuation` 也已落地，否则白跑一轮 33 分钟。
+
+## 一百八十五、本轮追加（执行器，2026-10-18 00:4x–）—— 多源文献检索的跨源去重（B 段已耗尽后的自拟单元），并让开一场正在进行的发版窗口
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后：`origin/main` = `905b1358`（会话的「中断续跑」修复，v2.6.0 的第三条 P0 红），其
+  `Nightly` / `Windows Full Test` / `Release` **三条车道均 completed success**。`v2.6.0` 的 Release 页
+  **已存在**（21 资产、`draft=false`、`prerelease=false`、tag 指向 `905b1358`）⇒ 上一轮立案的「v2.6.0 无页、
+  需删 tag 重建」这件事**已由会话收口**，本轮不碰（发版窗口归会话）。
+- **会话正在跑 v2.7.0 的发版门禁**：`release-gate.sh 4174be5e` 在 `/tmp/ps-release-gate5` 跑了 12 分钟，
+  `4174be5e` = `release: v2.7.0（网址来源可以离线检索…）`，父链 `75e74680` → `905b1358`（= 当前 `origin/main`）。
+  ⇒ **本轮的推送必须等它落定**：此刻推 main 会让它的 `git push origin main` 变成 non-fast-forward，
+  而发版提交必须在 main 上才过 `Verify release commit is on main`。
+- **共享主树是脏的且本地 main 已与远端分叉**：主树 `HEAD=ad48fd17`（本地 main 领先 9 笔未推的知识库提交、
+  同时缺远端 9 笔），另有 17 个未提交路径（`src/main/specialist/**`、`src/preload/**` 等，mtime 10-15/10-16）。
+  ⇒ 本轮全程在隔离工作树 `/tmp/ps-inc`（软链 `node_modules`），**主树一个字节没碰**，也不替它 rebase。
+- 队列档的 B 段三件（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）与批 F/G 早已收口 ⇒ 按 §一百八十四 之后的自拟单元线，
+  本轮取「上一轮已实现但未提交」的那一件：**多源文献检索的跨源去重**（`literature_review_search` 把 arXiv 与
+  OpenAlex 直接拼接，同一篇被数两次）。
+
+### 一 交付（4 文件 + 证据档；隔离树内提交 `42f79e68`→随本段 amend）
+
+| 面 | 内容 |
+| --- | --- |
+| 新模块 | `literature-dedupe.ts`：两侧都有 DOI ⇒ 按 DOI；**两侧 DOI 不同一律不合并**（同标题不同物）；无 DOI ⇒ 规范化标题全等 + 年份兼容；短标题不合并（拉丁 < 12 / 汉字 < 6）；不做作者表/摘要/模糊相似 |
+| 接线 | `literature-review.ts` 合并后折叠；新增 `records_before_dedupe` 与 `dedupe {removed,byDoi,byTitle}`；`total_records` = 折叠后行数；保留行带 `also_in [{source,id}]`；`description`/`returns` 同步 |
+| 单测 | `literature-dedupe.test.ts` 14 条 + 集成 1 条 ⇒ 定向 **4 文件 / 41 passed**（含 `skill-doc` 与 `registry` 两个受描述符文案影响的族） |
+| 真网络读数 | 7 query × 两源 × 50 = **700 行 → 折 11 行（1.6%）**；`byDoi=6`（量子纠错那组）、`byTitle=5`；逐条折掉的配对见证据档 |
+| 证据档 | `docs/evidence/2026-10-18-literature-cross-source-dedupe.md`（含「同一 query 两次读数不同是因为该源限流」的如实记录） |
+
+**读数据抓到的两处真问题（都只有真数据能抓，已修）**：① 首版按 12 字符卡中文标题 ⇒ 中文标题永不合并；
+② 首版把「同标题不同 DOI」也合并 ⇒ 真数据里把 `Faculty Opinions recommendation of …` 与出版社
+`Supplementary Data` 记录误并 ⇒ 加「两侧 DOI 不同不合并」后误并全部消失。
+
+### 二 门禁（隔离树实跑，数字取自最后一次改动之后）
+
+- 定向 vitest：`literature-dedupe.test.ts` + `literature-review.test.ts` + `connectors/skill-doc.test.ts` +
+  `connectors/registry.test.ts` ⇒ **4 文件 / 41 passed**，exit 0。
+- 双 typecheck：`tsc -p tsconfig.node.json --composite false` = **0**、`-p tsconfig.web.json --composite false` = **0**。
+- `eslint --no-cache`（4 文件）：首轮 **0 error / 3 prettier warning** ⇒ 就地 `--fix` 后复跑 **0 problem**，
+  改的是本单元自己的两个文件（`--fix` 未波及他人行，`git diff --stat` 只多 8 增 3 删）。
+- 推送：**本轮尚未推**（见 §〇 的发版窗口），推送前按完整 40 位 SHA 现查在飞车道、并等会话把 v2.7.0 落定。
+
+### 三 边界与具名未办
+
+1. **本单元不占版本号**（工具返回值形状新增字段，但不是界面行为；是否随 v2.7.x 发由会话的发版窗口决定）。
+2. **真实 agent 回合读数未取**：`blocked-by` = 需要起一次隔离实例（本轮内存闸门 + 发版窗口都不允许），
+   取法是发布后在实例上让模型调一次 `literature_review_search`，读它是否按 `records_before_dedupe`/`dedupe` 解释。
+3. **同源内重复也被折叠**（OpenAlex 自身两个 `W…` 同标题记录）：当前共用同一套规则，`also_in` 里会出现同源条目；
+   未改口径，仅点名。
+4. **会话的 v2.7.0 门禁在本轮 00:48 落定时报了 1 条红**：`src/main/notebook/provisioner-runtime.test.ts`
+   的 `runMicromamba > distinguishes timeout …`（期望 stderr 尾巴里有 `timeout-stderr-token`，实际没有）——
+   形状是**负载敏感**：子进程用 `node -e` 起、超时预算只有 200 ms，满负载下 node 启动就吃掉了窗口 ⇒
+   stderr 尚未写出就被 kill。同族的「stdout token 进超时诊断」那条用同样形状、本轮是过的。
+   这条属**会话发版窗口内的红**，本轮不抢（不碰它的在制品）；若它在 main 上复发，下一轮接手时按
+   「让夹具的时序不依赖子进程启动速度」修（不是加大超时糊住）。
+5. **下一轮第一步**：① 先看会话 v2.7.0 是否已推 + 打了 tag（`git log --oneline origin/main -3` 与
+   `gh release list --limit 3`）；落定后把 `42f79e68` rebase 到新的 `origin/main`、重跑定向套件、推 main，
+   再按完整 40 位 SHA 读双车道；② 若派发时窗口仍在跑，就地等（不在同一 ref 上叠推送）。

@@ -1,6 +1,7 @@
 import type { ToolContext, ToolDescriptor } from '../types'
 import { searchArxiv } from './literature-arxiv'
 import { searchOpenAlexWorks } from './literature-openalex'
+import { dedupeLiteratureRecords } from './literature-dedupe'
 
 /** One per-query result: merged records from both sources with per-source status. */
 interface LiteratureSourceReport {
@@ -10,10 +11,20 @@ interface LiteratureSourceReport {
   error?: string
 }
 
+interface LiteratureDedupeReport {
+  removed: number
+  byDoi: number
+  byTitle: number
+}
+
 interface LiteratureQueryResult {
   query: string
   sources: { arxiv: LiteratureSourceReport; openalex: LiteratureSourceReport }
+  /** Records after folding duplicates. Always equals `records.length`. */
   total_records: number
+  /** Rows both sources returned, before folding — `total_records + dedupe.removed`. */
+  records_before_dedupe: number
+  dedupe: LiteratureDedupeReport
   records: Array<Record<string, unknown>>
 }
 
@@ -26,7 +37,7 @@ export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
     id: 'literature_review_search',
     connector: 'literature',
     description:
-      'Parallel multi-source literature search across arXiv preprints and the OpenAlex scholarly graph (~250M works) in a single call. Args: query (required, free-text) OR queries (array of free-text queries — each runs in parallel as an independent sub-task across both sources, mimicking multi-agent parallel literature review), year_from / year_to (optional inclusive years, OpenAlex only), open_access_only (optional, OpenAlex only), max_per_source (default 10, hard ceiling 50 — each source returns at most this many records per query). Returns { results: [ { query, sources: { arxiv: {status, n_records_returned, api_total}, openalex: {status, n_records_returned, api_total} }, records: [{ source, ... }] } ] } — one entry per query (single-query calls return one entry). A source that fails (network/rate limit) is reported with status "error" and an error message while the other source still returns records.',
+      'Parallel multi-source literature search across arXiv preprints and the OpenAlex scholarly graph (~250M works) in a single call. Args: query (required, free-text) OR queries (array of free-text queries — each runs in parallel as an independent sub-task across both sources, mimicking multi-agent parallel literature review), year_from / year_to (optional inclusive years, OpenAlex only), open_access_only (optional, OpenAlex only), max_per_source (default 10, hard ceiling 50 — each source returns at most this many records per query). The same work found in both sources is returned ONCE (matched by DOI, or by identical title + year when neither side has a DOI) and the other source is named on it under also_in; every query reports records_before_dedupe and dedupe {removed, byDoi, byTitle} so the fold is auditable. Returns { results: [ { query, total_records, records_before_dedupe, dedupe: { removed, byDoi, byTitle }, sources: { arxiv: {status, n_records_returned, api_total}, openalex: {status, n_records_returned, api_total} }, records: [{ source, ... }] } ] } — one entry per query (single-query calls return one entry), total_records === records.length. A source that fails (network/rate limit) is reported with status "error" and an error message while the other source still returns records.',
     input: {
       type: 'object',
       properties: {
@@ -41,7 +52,7 @@ export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
     },
     required: [],
     returns:
-      '`{ results: [ { query, sources: { arxiv: {status, n_records_returned, api_total, error?}, openalex: {status, n_records_returned, api_total, error?} }, records: [{ source, ... }] } ] }`',
+      '`{ results: [ { query, total_records, records_before_dedupe, dedupe: { removed, byDoi, byTitle }, sources: { arxiv: {status, n_records_returned, api_total, error?}, openalex: {status, n_records_returned, api_total, error?} }, records: [{ source, also_in?: [{source, id}], ... }] } ] }` — `total_records` counts the folded list (`records.length`), `records_before_dedupe` what both sources returned, so `records_before_dedupe - total_records === dedupe.removed`.',
     example:
       'const result = await host.mcp("literature", "literature_review_search", {"queries": ["CRISPR base editing", "prime editing 2024"], "max_per_source": 15})',
     run: async (ctx: ToolContext, a: Record<string, unknown>) => {
@@ -97,6 +108,8 @@ export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
               }))
             : []
 
+        const merged = dedupeLiteratureRecords([...arxivRecords, ...openalexRecords])
+
         return {
           query: q,
           sources: {
@@ -113,8 +126,10 @@ export const LITERATURE_REVIEW_TOOLS: ToolDescriptor[] = [
               ...(openalexResult.status === 'error' ? { error: openalexResult.error } : {})
             }
           },
-          total_records: arxivRecords.length + openalexRecords.length,
-          records: [...arxivRecords, ...openalexRecords]
+          total_records: merged.after,
+          records_before_dedupe: merged.before,
+          dedupe: { removed: merged.removed, byDoi: merged.byDoi, byTitle: merged.byTitle },
+          records: merged.records
         }
       }
 
