@@ -190,6 +190,27 @@ describe('downloadLocalParsingModel', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
+  it('names the mirror in the sentence the reader sees when the bytes came from one', async () => {
+    // The fallback is only honest if the reader can tell: "downloaded" with no host would make a mirrored
+    // file look like one that came from the published location.
+    const dir = await mkdtemp(join(tmpdir(), 'lpm-'))
+    await writeManifest(dir, [entry])
+    const view = await downloadLocalParsingModel({
+      id: entry.id,
+      consent: true,
+      cacheDir: dir,
+      override: join(dir, 'manifest.json'),
+      fromDir: dir,
+      streamWeights: async (url, dest) => {
+        await streamerFor(weights)(url, dest)
+        return 'gh-proxy.com'
+      }
+    })
+    expect(view.status).toBe('downloaded')
+    expect(view.message).toContain('经镜像 gh-proxy.com')
+    await rm(dir, { recursive: true, force: true })
+  })
+
   it('refuses an id that is not in the shipped manifest', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'lpm-'))
     await writeManifest(dir, [entry])

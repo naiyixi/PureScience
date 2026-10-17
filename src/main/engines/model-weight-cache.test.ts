@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  createStallGuard,
   downloadModelWeights,
   downloadModelWeightsStreaming,
   modelWeightPartialPath,
@@ -287,5 +288,103 @@ describe('downloadModelWeightsStreaming', () => {
     })
     expect(outcome.status).toBe('downloaded')
     expect(sha256Of(await readFile(path))).toBe(streamSpec.sha256)
+  })
+
+  it('hands the published digest to the streamer and carries the serving host back', async () => {
+    // The digest is what allows a mirror at all: the streamer may only fall back when the caller can verify
+    // what comes back. This asserts both halves — the digest went in, the mirror name came out.
+    const cacheDir = await mkdtemp(join(tmpdir(), 'mw-stream-'))
+    const seen: Array<{ expectedSha256?: string } | undefined> = []
+    const outcome = await downloadModelWeightsStreaming({
+      modelId: streamSpec.modelId,
+      cacheDir,
+      specs,
+      consent: true,
+      streamWeights: async (_url, dest, opts) => {
+        seen.push(opts)
+        await writeFile(dest, streamPayload)
+        return 'gh-proxy.com'
+      }
+    })
+    expect(seen).toEqual([{ expectedSha256: streamSpec.sha256 }])
+    expect(outcome.status).toBe('downloaded')
+    if (outcome.status !== 'downloaded') return
+    expect(outcome.via).toBe('gh-proxy.com')
+  })
+
+  it('records no serving host when the streamer does not name one', async () => {
+    // A stub that returns nothing is the origin, by definition — the outcome must not invent a host.
+    const cacheDir = await mkdtemp(join(tmpdir(), 'mw-stream-'))
+    const outcome = await downloadModelWeightsStreaming({
+      modelId: streamSpec.modelId,
+      cacheDir,
+      specs,
+      consent: true,
+      streamWeights: async (_url, dest) => {
+        await writeFile(dest, streamPayload)
+      }
+    })
+    expect(outcome.status).toBe('downloaded')
+    if (outcome.status !== 'downloaded') return
+    expect(outcome.via).toBeUndefined()
+  })
+})
+
+// A silent stall is the failure mode the mirror fallback exists for, so the timer has to be the guard's own
+// behaviour rather than something each HTTP stack improvises. Timers are injected here so the test asserts
+// the arming/disarming logic instead of waiting on wall-clock time under load.
+describe('createStallGuard', () => {
+  const harness = (): {
+    timers: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout }
+    fire: () => void
+    armed: number
+    cleared: number
+  } => {
+    let armed = 0
+    let cleared = 0
+    let last: (() => void) | undefined
+    const timers = {
+      setTimeout: ((callback: () => void) => {
+        armed += 1
+        last = callback
+        return armed as unknown as ReturnType<typeof setTimeout>
+      }) as unknown as typeof setTimeout,
+      clearTimeout: (() => {
+        cleared += 1
+      }) as unknown as typeof clearTimeout
+    }
+    return {
+      timers,
+      fire: () => last?.(),
+      get armed() {
+        return armed
+      },
+      get cleared() {
+        return cleared
+      }
+    }
+  }
+
+  it('arms a clock immediately and fires it when no bytes arrive', () => {
+    const h = harness()
+    const onStall = vi.fn()
+    createStallGuard(1_000, onStall, h.timers)
+    expect(h.armed).toBe(1)
+    expect(onStall).not.toHaveBeenCalled()
+    h.fire()
+    expect(onStall).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-arms on every chunk, so a slow-but-alive transfer never counts as stalled', () => {
+    const h = harness()
+    const onStall = vi.fn()
+    const guard = createStallGuard(1_000, onStall, h.timers)
+    guard.write(Buffer.from('a'))
+    expect(h.armed).toBe(2)
+    guard.write(Buffer.from('b'))
+    expect(h.armed).toBe(3)
+    expect(onStall).not.toHaveBeenCalled()
+    guard.end()
+    expect(h.cleared).toBeGreaterThanOrEqual(1)
   })
 })

@@ -153,7 +153,11 @@ const describeDownloadOutcome = (outcome: WeightDownloadOutcome): string => {
     case 'cached':
       return '已在本地缓存，且校验值与本清单一致。'
     case 'downloaded':
-      return '已下载并校验通过，可在本机离线使用。'
+      // The reader is told when the bytes did not come from the published location: a mirror was used, and
+      // "downloaded" alone would hide that. Same sentence either way, one clause added when it is not origin.
+      return outcome.via && outcome.via !== 'origin'
+        ? `已下载并校验通过（经镜像 ${outcome.via}），可在本机离线使用。`
+        : '已下载并校验通过，可在本机离线使用。'
     case 'needs-consent':
       return outcome.message
     case 'unresolved':

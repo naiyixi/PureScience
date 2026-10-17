@@ -26,17 +26,28 @@ export type MirrorCandidate = {
 // billable request to a third party, and the user would never see it happen.
 const NEVER_MIRROR_HOSTS = ['api.anthropic.com', 'api.deepseek.com']
 
+// Release-asset proxies, in the order they should be tried. Measured 2026-10-17 on a 2 MB range of the
+// shipped weight asset: `gh-proxy.com` 1394 KB/s, `ghfast.top` 536 KB/s, direct origin 139 KB/s. Their
+// bytes for the same release file matched the origin's `sha256` exactly (identity is checked per download
+// by the caller's digest — the table only decides who gets asked second).
+// Refuted the same day and therefore NOT in the table: `ghproxy.net` (30 s timeout, 32 KB/s on a 2 MB
+// range), `hub.gitmirror.com` (DNS does not resolve here), `gh.llkk.cc` (connect timeout).
+const GITHUB_RELEASE_PROXIES = ['https://gh-proxy.com', 'https://ghfast.top'] as const
+
+/** `/<owner>/<repo>/releases/download/<tag>/<file>` — the only GitHub shape whose bytes we can verify. */
+const GITHUB_RELEASE_ASSET_PATH = /^\/[^/]+\/[^/]+\/releases\/download\/[^/]+\/.+$/
+
 type MirrorRule = {
   from: string
-  /** Rewrites the request URL for the candidate; returns null when this URL is not mirrorable. */
-  rewrite: (url: URL) => string | null
+  /** Candidate URLs for this request, in the order to try them; empty when this URL is not mirrorable. */
+  rewrite: (url: URL) => string[]
 }
 
 // Observed working, 2026-10-11: origin timed out (HTTP 000 after 25 s), mirror answered 200.
 const MIRROR_RULES: MirrorRule[] = [
   {
     from: 'huggingface.co',
-    rewrite: (url) => `https://hf-mirror.com${url.pathname}${url.search}`
+    rewrite: (url) => [`https://hf-mirror.com${url.pathname}${url.search}`]
   },
   {
     from: 'raw.githubusercontent.com',
@@ -44,9 +55,20 @@ const MIRROR_RULES: MirrorRule[] = [
     // Measured: jsDelivr's bytes for a repo file were identical to the local working copy (sha256 match).
     rewrite: (url) => {
       const parts = url.pathname.split('/').filter(Boolean)
-      if (parts.length < 4) return null
+      if (parts.length < 4) return []
       const [owner, repo, ref, ...rest] = parts
-      return `https://cdn.jsdelivr.net/gh/${owner}/${repo}@${ref}/${rest.join('/')}${url.search}`
+      return [`https://cdn.jsdelivr.net/gh/${owner}/${repo}@${ref}/${rest.join('/')}${url.search}`]
+    }
+  },
+  {
+    from: 'github.com',
+    // Release assets only. This is the one GitHub URL shape whose bytes the caller can check against a
+    // published digest (our weight manifest carries one); a repo page or an API call has nothing to verify
+    // against, and a query string could be carrying a token — both are left alone rather than guessed at.
+    rewrite: (url) => {
+      if (!GITHUB_RELEASE_ASSET_PATH.test(url.pathname)) return []
+      if (url.search !== '' || url.username !== '' || url.password !== '') return []
+      return GITHUB_RELEASE_PROXIES.map((prefix) => `${prefix}/https://github.com${url.pathname}`)
     }
   }
 ]
@@ -60,8 +82,7 @@ export const mirrorCandidatesFor = (rawUrl: string): MirrorCandidate[] => {
   }
   if (NEVER_MIRROR_HOSTS.includes(url.hostname)) return []
   return MIRROR_RULES.filter((rule) => rule.from === url.hostname)
-    .map((rule) => rule.rewrite(url))
-    .filter((candidate): candidate is string => candidate !== null)
+    .flatMap((rule) => rule.rewrite(url))
     .map((candidate) => ({ url: candidate, host: new URL(candidate).hostname }))
 }
 
@@ -108,6 +129,51 @@ export const downloadWithMirrorFallback = async (
       } catch (candidateError) {
         lastError = candidateError
         await remove(`${destPath}.part`).catch(() => undefined)
+      }
+    }
+    throw lastError
+  }
+}
+
+/** One streaming attempt: pulls `url` into `destPath` (creating or truncating it). */
+export type StreamAttempt = (url: string, destPath: string) => Promise<void>
+
+/**
+ * The streaming twin of `downloadWithMirrorFallback`: same rule, applied at the layer where the bytes
+ * land on disk instead of going through the resumable downloader.
+ *
+ * The digest is not optional decoration here — it is the whole reason a fallback is allowed at all. With
+ * one, a mirror that serves different bytes fails exactly as loudly as the origin (the caller hashes the
+ * landed file right after this returns); without one, we report the origin's failure and never try a
+ * third party.
+ */
+export const streamWithMirrorFallback = async (
+  url: string,
+  destPath: string,
+  opts: { expectedSha256?: string },
+  deps: { stream: StreamAttempt; removeFile?: (path: string) => Promise<void> }
+): Promise<MirrorFallbackResult> => {
+  const remove = deps.removeFile ?? (async (path: string) => rm(path, { force: true }))
+
+  try {
+    await deps.stream(url, destPath)
+    return { path: destPath, via: 'origin' }
+  } catch (originError) {
+    const candidates = opts.expectedSha256 ? mirrorCandidatesFor(url) : []
+    if (candidates.length === 0) throw originError
+
+    // Whatever the failed attempt wrote belongs to the origin's byte stream. Gluing a mirror's bytes onto
+    // it would splice two sources into one file, so the partial is dropped before the source changes.
+    await remove(destPath).catch(() => undefined)
+
+    let lastError: unknown = originError
+    for (const candidate of candidates) {
+      try {
+        await deps.stream(candidate.url, destPath)
+        return { path: destPath, via: candidate.host }
+      } catch (candidateError) {
+        lastError = candidateError
+        await remove(destPath).catch(() => undefined)
       }
     }
     throw lastError

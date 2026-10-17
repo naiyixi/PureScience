@@ -17,9 +17,11 @@ import { createHash } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import type { EngineWeightSpec } from '../../shared/engine-weights'
+import { streamWithMirrorFallback, type StreamAttempt } from '../net/source-mirrors'
 
 /** The spec shape is owned by `shared/engine-weights` (the build-level list of what may be downloaded);
  *  this module only fetches against it, so the two cannot drift into two vocabularies. */
@@ -27,7 +29,14 @@ export type WeightSpec = EngineWeightSpec
 
 export type WeightDownloadOutcome =
   | { status: 'cached'; path: string; spec: WeightSpec; verifiedSha256: string }
-  | { status: 'downloaded'; path: string; spec: WeightSpec; verifiedSha256: string }
+  | {
+      status: 'downloaded'
+      path: string
+      spec: WeightSpec
+      verifiedSha256: string
+      /** Which host actually served the bytes: `'origin'`, or the mirror that had to be used. */
+      via?: string
+    }
   | { status: 'needs-consent'; spec: WeightSpec; message: string }
   | { status: 'unresolved'; modelId: string; message: string }
   | {
@@ -41,8 +50,19 @@ export type WeightDownloadOutcome =
 
 export type WeightFetcher = (url: string) => Promise<Uint8Array>
 
-/** Streams `url` into `destPath`. The caller owns `destPath` (a partial file), including its removal. */
-export type WeightStreamer = (url: string, destPath: string) => Promise<void>
+/**
+ * Streams `url` into `destPath`. The caller owns `destPath` (a partial file), including its removal.
+ *
+ * The third argument is what makes a mirror fallback legitimate: a caller that holds the published digest
+ * passes it in, and the streamer may then fall back to a measured mirror after the origin fails. A caller
+ * that passes no digest gets the origin only. The resolved value names where the bytes came from
+ * (`'origin'` or a mirror host); a stub that returns nothing is read as the origin.
+ */
+export type WeightStreamer = (
+  url: string,
+  destPath: string,
+  opts?: { expectedSha256?: string }
+) => Promise<string | void>
 
 const isHex64 = (value: string): boolean => /^[0-9a-f]{64}$/.test(value)
 
@@ -193,7 +213,9 @@ export const downloadModelWeightsStreaming = async (input: {
   const partial = modelWeightPartialPath(input.cacheDir, input.modelId)
   try {
     await mkdir(dirname(path), { recursive: true })
-    await input.streamWeights(spec.url, partial)
+    // The digest goes in so the streamer may fall back to a measured mirror after the origin fails; the
+    // verification below is what makes that fallback safe, and it runs on the landed file either way.
+    const via = await input.streamWeights(spec.url, partial, { expectedSha256: spec.sha256 })
     const actualSha256 = await sha256OfFile(partial)
     if (actualSha256 !== spec.sha256) {
       await rm(partial, { force: true })
@@ -206,7 +228,13 @@ export const downloadModelWeightsStreaming = async (input: {
       }
     }
     await rename(partial, path)
-    return { status: 'downloaded', path, spec, verifiedSha256: actualSha256 }
+    return {
+      status: 'downloaded',
+      path,
+      spec,
+      verifiedSha256: actualSha256,
+      ...(via ? { via } : {})
+    }
   } catch (cause) {
     // Whatever went wrong, the partial file must not survive: a half-written weight that is later read as
     // "cached" is the exact failure this module exists to prevent.
@@ -240,7 +268,138 @@ const describeFetchFailure = (cause: unknown): string => {
 }
 
 /**
- * Streams a URL to a file.
+ * Fails a transfer that has stopped producing bytes.
+ *
+ * The nine-day log's dominant download failure was not an error — it was a connection that never finished.
+ * A silent stall has no error to react to, so without this the mirror fallback would never fire in exactly
+ * the case it exists for. Written as a stream stage (not as a whole-request timeout) because a 299 MB
+ * transfer legitimately takes many minutes: the clock has to reset on every chunk, not run once.
+ */
+export const createStallGuard = (
+  stallMs: number,
+  onStall: () => void,
+  timers: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout } = {
+    setTimeout,
+    clearTimeout
+  }
+): Transform => {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const arm = (): void => {
+    if (timer) timers.clearTimeout(timer)
+    timer = timers.setTimeout(() => {
+      timer = undefined
+      onStall()
+    }, stallMs)
+  }
+  const disarm = (): void => {
+    if (timer) timers.clearTimeout(timer)
+    timer = undefined
+  }
+  arm()
+  return new Transform({
+    transform(chunk, _encoding, callback) {
+      arm()
+      callback(null, chunk)
+    },
+    flush(callback) {
+      disarm()
+      callback()
+    },
+    destroy(error, callback) {
+      disarm()
+      callback(error)
+    }
+  })
+}
+
+/** No bytes for this long ⇒ the connection is treated as failed, so the fallback can be reached. */
+const STALL_TIMEOUT_MS = 30_000
+
+const streamWithChromium = async (url: string, destPath: string): Promise<void> => {
+  const electron = (await import('electron')) as unknown as {
+    net?: {
+      request: (url: string) => {
+        on: (event: string, handler: (...args: unknown[]) => void) => void
+        end: () => void
+        abort: () => void
+      }
+    }
+  }
+  const net = electron.net
+  if (!net?.request) throw new Error('no-chromium-net')
+  await new Promise<void>((resolve, reject) => {
+    let settled = false
+    const settle = (finish: () => void): void => {
+      if (settled) return
+      settled = true
+      finish()
+    }
+    const request = net.request(url)
+    const guard = createStallGuard(STALL_TIMEOUT_MS, () => {
+      try {
+        request.abort()
+      } catch {
+        // The request may already be torn down; the rejection below is what matters.
+      }
+      settle(() =>
+        reject(new Error(`停滞超时：${STALL_TIMEOUT_MS / 1000} 秒内没有收到任何字节（${url}）`))
+      )
+    })
+    request.on('response', (rawResponse) => {
+      const response = rawResponse as { statusCode: number; statusMessage?: string }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        settle(() =>
+          reject(new Error(`HTTP ${response.statusCode} ${response.statusMessage ?? ''}`.trim()))
+        )
+        return
+      }
+      void pipeline(
+        rawResponse as unknown as NodeJS.ReadableStream,
+        guard,
+        createWriteStream(destPath)
+      ).then(
+        () => settle(resolve),
+        (error) => settle(() => reject(error as Error))
+      )
+    })
+    // Chromium reports a failure with its own sentence (e.g. net::ERR_CONNECTION_RESET): keep it.
+    request.on('error', (error) =>
+      settle(() => reject(error instanceof Error ? error : new Error(String(error))))
+    )
+    request.end()
+  })
+}
+
+const streamWithFetch = async (url: string, destPath: string): Promise<void> => {
+  const controller = new AbortController()
+  let stalled = false
+  const guard = createStallGuard(STALL_TIMEOUT_MS, () => {
+    stalled = true
+    controller.abort()
+  })
+  const response = await fetch(url, { signal: controller.signal })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`)
+  }
+  if (!response.body) {
+    throw new Error('响应没有可读的正文')
+  }
+  try {
+    await pipeline(
+      response.body as unknown as NodeJS.ReadableStream,
+      guard,
+      createWriteStream(destPath)
+    )
+  } catch (error) {
+    if (stalled) {
+      throw new Error(`停滞超时：${STALL_TIMEOUT_MS / 1000} 秒内没有收到任何字节（${url}）`)
+    }
+    throw error
+  }
+}
+
+/**
+ * Streams a URL to a file, one attempt against one host.
  *
  * **Which HTTP stack, and why it matters**: Node's `fetch` (undici) ignores both this app's proxy setting and
  * the operating system's proxy configuration, so on a proxied network this download had no route at all —
@@ -248,39 +407,7 @@ const describeFetchFailure = (cause: unknown): string => {
  * stream through **Chromium** (`net.request`), which honours the session proxy the settings layer applies;
  * outside Electron (unit tests, CLI) the global fetch is all there is.
  */
-const streamWithChromium = async (url: string, destPath: string): Promise<void> => {
-  const electron = (await import('electron')) as unknown as {
-    net?: {
-      request: (url: string) => {
-        on: (event: string, handler: (...args: unknown[]) => void) => void
-        end: () => void
-      }
-    }
-  }
-  const net = electron.net
-  if (!net?.request) throw new Error('no-chromium-net')
-  await new Promise<void>((resolve, reject) => {
-    const request = net.request(url)
-    request.on('response', (rawResponse) => {
-      const response = rawResponse as { statusCode: number; statusMessage?: string }
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        reject(new Error(`HTTP ${response.statusCode} ${response.statusMessage ?? ''}`.trim()))
-        return
-      }
-      void pipeline(
-        rawResponse as unknown as NodeJS.ReadableStream,
-        createWriteStream(destPath)
-      ).then(() => resolve(), reject)
-    })
-    // Chromium reports a failure with its own sentence (e.g. net::ERR_CONNECTION_RESET): keep it.
-    request.on('error', (error) =>
-      reject(error instanceof Error ? error : new Error(String(error)))
-    )
-    request.end()
-  })
-}
-
-export const streamUrlToFile: WeightStreamer = async (url, destPath) => {
+const streamOnce: StreamAttempt = async (url, destPath) => {
   try {
     await streamWithChromium(url, destPath)
     return
@@ -288,14 +415,12 @@ export const streamUrlToFile: WeightStreamer = async (url, destPath) => {
     if (!(error instanceof Error) || error.message !== 'no-chromium-net') throw error
     // Not in Electron: fall through to the global fetch.
   }
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
-  if (!response.body) {
-    throw new Error('响应没有可读的正文')
-  }
-  await pipeline(response.body as unknown as NodeJS.ReadableStream, createWriteStream(destPath))
+  await streamWithFetch(url, destPath)
+}
+
+export const streamUrlToFile: WeightStreamer = async (url, destPath, opts) => {
+  const { via } = await streamWithMirrorFallback(url, destPath, opts ?? {}, { stream: streamOnce })
+  return via
 }
 
 /** Returns the verified digest when the cached file matches, otherwise removes it and returns null. */
