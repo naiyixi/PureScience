@@ -37,12 +37,35 @@
 | `tsc --noEmit -p tsconfig.web.json --composite false` | 0 error |
 | `eslint --no-cache`（本次 17 文件） | 0 problem（首轮 2 条缺显式返回类型，已按报错改测试助手，**未放宽规则**） |
 | i18n 套件 | 52 passed（九语齐全、zh ≠ en、zh-Hant 繁体） |
-| 全量 vitest（改过 `src/shared/**` 的跨层结果类型 ⇒ 按纪律跑全量） | 见本档末「补记」 |
+| 全量 vitest（改过 `src/shared/**` 的跨层结果类型 ⇒ 按纪律跑全量） | **1343 文件 / 17093 passed / 207 skipped**，exit 0 |
+| 认证 spec（真窗口） | `artifact-figure-derivation-expiry.spec.ts` **1 passed (7.4s)**，先 `build:e2e` 再跑 |
 
-## 四 边界（不许读成更强）
+## 四 真窗口读数（本条新增徽标的验收，已取）
 
-- **真机窗口读数尚未取**：本条新增的徽标是渲染层可见面，按红线要以真窗口取证（一条既有会话里同一张图两次派生、
-  第二次改框或改引擎版本）。本轮未取，**具名立案**：下一轮用认证 spec 或既有 e2e 夹具补，取不到就拿不到。
+认证 spec：`e2e/certification/artifact-figure-derivation-expiry.spec.ts` —— **1 passed (7.4s)**，先 `npm run build:e2e`
+重建产物再跑（e2e 加载的是构建产物，只跑 `build:web` 会让读数落在旧渲染包上）。
+
+做法与 readings 那支 spec 同形：先由假 agent 造出真实产物与版本，再问应用自己解析出的**数据根**，把会话日志种在
+`.structure-observations/<sessionId>.json`（生产记录点写的就是这个路径），然后走真实 UI 路径打开「文件动作 → 溯源 →
+Structure context」页签读屏。种进去的只有「会话当时录了什么」，投影、判决、渲染三段都是生产代码。
+
+窗口内 3 行、窗口外 2 行（②④ 由 `2 recorded after this Version was written` 如实报出），屏上实际读到的两条徽标原文：
+
+```
+Superseded — the same illustration was later derived from a different input (2026-10-17T22:11:06.298Z). Re-derive before reusing these values.
+Superseded — the same illustration was later derived with a different model revision (2026-10-17T22:11:06.299Z). Re-derive before reusing these values.
+```
+
+第三行（`page 5`，这张图再没被派生过）**没有任何徽标** —— 缺席是判决的结果，不是渲染的偶然。
+
+写这支 spec 时踩到的两处（都已就地修，不是产品缺陷）：`configureFakeAgent()` 会重启应用并返回**新的** page，
+丢掉返回值就会拿已关闭的旧 page 继续操作（症状是 `page.evaluate: Target page … has been closed`）；
+`artifact-structure-observations-list` 里的数值块自己也是 `<ul><li>`，用后代选择器数行会把 3 行数成 6（改用 `> li`）。
+
+## 五 边界（不许读成更强）
+
+- 真机读数覆盖的是「判决 → 投影 → 渲染」三段；**写入那一段**（真实一次派生把 `modelRevision` 落盘）由记录点的
+  单测与整日志用例覆盖 —— 要在真窗口里跑一次真派生需要一台真 OCR 引擎，本机没有，未取、也不声称已取。
 - 判决只比「同一张图的最后一次派生」。同一张图在**两个不同会话/版本窗口**里各派生一次时，判决按该会话自己的
   日志算（每份日志独立成账），跨会话的推翻不在本单元的口径内。
 - 「输入指纹」的配方未改；本单元不改变什么算输入，只改变「旧结果还站不站得住」的判决与呈现。
