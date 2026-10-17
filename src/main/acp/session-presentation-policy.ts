@@ -10,6 +10,7 @@ import { GOAL_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/goal'
 import { ENDPOINT_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/endpoint'
 import { ANNOTATION_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/annotation'
 import { PDF_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/pdf'
+import { KNOWLEDGE_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/knowledge-mcp'
 import { FIGURE_MCP_SYSTEM_PROMPT_APPEND } from '../../shared/figure'
 import { HOST_QUERY_SYSTEM_PROMPT_APPEND } from '../../shared/host-query'
 import type { AgentFramework, SessionSetup } from '../agent-framework/types'
@@ -27,6 +28,7 @@ type AcpSessionToolingAvailability = Readonly<{
   endpoint: boolean
   annotation: boolean
   pdf: boolean
+  knowledge: boolean
   figure: boolean
   query: boolean
 }>
@@ -130,6 +132,7 @@ class AcpSessionPresentationPolicy {
       ...(tooling.endpoint ? [ENDPOINT_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.annotation ? [ANNOTATION_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.pdf ? [PDF_MCP_SYSTEM_PROMPT_APPEND] : []),
+      ...(tooling.knowledge ? [KNOWLEDGE_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.figure ? [FIGURE_MCP_SYSTEM_PROMPT_APPEND] : []),
       ...(tooling.query ? [HOST_QUERY_SYSTEM_PROMPT_APPEND] : [])
     ])

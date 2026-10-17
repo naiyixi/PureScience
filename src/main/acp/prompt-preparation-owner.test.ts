@@ -153,6 +153,7 @@ const setup = (
         endpoint: false,
         annotation: false,
         pdf: false,
+        knowledge: false,
         figure: false,
         query: false
       },

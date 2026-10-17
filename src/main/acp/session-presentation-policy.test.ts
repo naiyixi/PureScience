@@ -53,6 +53,7 @@ describe('ACP Session presentation policy', () => {
       endpoint: false,
       annotation: false,
       pdf: false,
+      knowledge: false,
       figure: false,
       query: false
     })
@@ -80,6 +81,7 @@ describe('ACP Session presentation policy', () => {
       endpoint: false,
       annotation: false,
       pdf: false,
+      knowledge: false,
       figure: false,
       query: false
     })
@@ -102,6 +104,7 @@ describe('ACP Session presentation policy', () => {
         endpoint: false,
         annotation: false,
         pdf: false,
+        knowledge: false,
         figure: false,
         query: false
       },
@@ -154,6 +157,7 @@ describe('ACP Session presentation policy', () => {
           endpoint: false,
           annotation: false,
           pdf: false,
+          knowledge: false,
           figure: false,
           query: false
         },
@@ -220,6 +224,7 @@ describe('ACP Session presentation policy', () => {
           endpoint: false,
           annotation: false,
           pdf: false,
+          knowledge: false,
           figure: false,
           query: false
         },
@@ -258,6 +263,7 @@ describe('ACP Session presentation policy', () => {
       endpoint: false,
       annotation: false,
       pdf: false,
+      knowledge: false,
       figure: false,
       query: false
     }

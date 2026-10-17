@@ -100,6 +100,7 @@ export class AcpProviderSessionAdopter {
           endpoint: capability.descriptor.capabilities.includes('endpoint'),
           annotation: capability.descriptor.capabilities.includes('annotation'),
           pdf: capability.descriptor.capabilities.includes('pdf'),
+          knowledge: capability.descriptor.capabilities.includes('knowledge'),
           figure: capability.descriptor.capabilities.includes('figure'),
           query: capability.descriptor.capabilities.includes('query')
         },

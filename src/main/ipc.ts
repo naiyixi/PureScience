@@ -277,6 +277,14 @@ import { SETTINGS_INSTALL_LOG_CHANNEL, registerSettingsIpcHandlers } from './set
 import { registerLocalFsIpcHandlers } from './local-fs/ipc'
 import { LocalFsService } from './local-fs/service'
 import { FolderGrantsService } from './folder-grants'
+import { createKnowledgeModule } from './knowledge/knowledge-module'
+import { createKnowledgeRpcCalls } from './knowledge/knowledge-rpc-calls'
+import { createKnowledgeCitationVerifier } from './knowledge/knowledge-citation'
+import { createKnowledgeWikiGenerator } from './knowledge/knowledge-wiki'
+import {
+  createKnowledgeContentReader,
+  createKnowledgeUrlReader
+} from './knowledge/knowledge-transport-io'
 import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
@@ -1981,6 +1989,18 @@ const createApplicationModules = async (
   // (「方法即产物」). Two instances would mean two writers of the skills directory, which is exactly how
   // two vocabularies for "what a skill is" start to drift.
   const skillCreator = new SkillCreator({ configDir: resolveConfigRoot() })
+  // The knowledge store's four calls. Data root owns the source record; the managed roots are the data root plus
+  // every folder the user granted, resolved per call so a revoked grant stops counting immediately. The verifier
+  // is wired (not optional) and re-reads each cited location through the same URL reader registration uses.
+  const knowledgeUrlReader = createKnowledgeUrlReader()
+  const knowledgeModule = createKnowledgeModule({
+    root: resolveDataRoot(),
+    roots: [resolveDataRoot()],
+    urlReader: knowledgeUrlReader,
+    verifier: createKnowledgeCitationVerifier({
+      reader: createKnowledgeContentReader({ urlReader: knowledgeUrlReader })
+    })
+  })
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -2081,6 +2101,28 @@ const createApplicationModules = async (
           return outcome.result
         }
       },
+      knowledge: (() => {
+        const calls = createKnowledgeRpcCalls(
+          knowledgeModule,
+          createKnowledgeWikiGenerator({
+            reader: {
+              read: async (path) => {
+                try {
+                  return await readFile(path, 'utf8')
+                } catch {
+                  return undefined
+                }
+              }
+            }
+          })
+        )
+        return {
+          search: (_sessionId, request) => calls.search(request),
+          registerSource: (_sessionId, request) => calls.registerSource(request),
+          listSources: () => calls.listSources(),
+          renderWiki: (_sessionId, folder) => calls.renderWiki(folder)
+        }
+      })(),
       figure: {
         review: (_sessionId, _projectId, request) => {
           const figureRequest = request as FigureReviewRequest

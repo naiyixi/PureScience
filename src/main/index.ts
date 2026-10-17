@@ -27,6 +27,7 @@ import {
   ENDPOINT_MCP_SERVER_ARG,
   ANNOTATION_MCP_SERVER_ARG,
   PDF_MCP_SERVER_ARG,
+  KNOWLEDGE_MCP_SERVER_ARG,
   FIGURE_MCP_SERVER_ARG,
   HOST_QUERY_MCP_SERVER_ARG,
   SKILL_IMPORT_MCP_SERVER_ARG
@@ -65,6 +66,7 @@ const shouldRunGoalMcpServer = process.argv.includes(GOAL_MCP_SERVER_ARG)
 const shouldRunEndpointMcpServer = process.argv.includes(ENDPOINT_MCP_SERVER_ARG)
 const shouldRunAnnotationMcpServer = process.argv.includes(ANNOTATION_MCP_SERVER_ARG)
 const shouldRunPdfMcpServer = process.argv.includes(PDF_MCP_SERVER_ARG)
+const shouldRunKnowledgeMcpServer = process.argv.includes(KNOWLEDGE_MCP_SERVER_ARG)
 const shouldRunFigureMcpServer = process.argv.includes(FIGURE_MCP_SERVER_ARG)
 const shouldRunHostQueryMcpServer = process.argv.includes(HOST_QUERY_MCP_SERVER_ARG)
 let startupDiagnostics: DiagnosticOperation | undefined
@@ -152,6 +154,13 @@ if (shouldRunArtifactMcpServer) {
 } else if (shouldRunPdfMcpServer) {
   void import('./settings/pdf-mcp-server')
     .then(({ runPdfMcpServer }) => runPdfMcpServer())
+    .catch((error: unknown) => {
+      console.error(error)
+      process.exitCode = 1
+    })
+} else if (shouldRunKnowledgeMcpServer) {
+  void import('./knowledge/knowledge-mcp-server')
+    .then(({ runKnowledgeMcpServer }) => runKnowledgeMcpServer())
     .catch((error: unknown) => {
       console.error(error)
       process.exitCode = 1

@@ -66,6 +66,14 @@ import {
   createAnnotationMcpServerConfig
 } from '../settings/annotation-mcp-server'
 import { PDF_MCP_SERVER_NAME, createPdfMcpServerConfig } from '../settings/pdf-mcp-server'
+import {
+  KNOWLEDGE_MCP_SERVER_NAME,
+  createKnowledgeMcpServerConfig
+} from '../knowledge/knowledge-mcp-server'
+import type {
+  KnowledgeMcpEnvironment,
+  KnowledgeRpcConnection
+} from '../knowledge/knowledge-mcp-server'
 import { FIGURE_MCP_SERVER_NAME, createFigureMcpServerConfig } from '../settings/figure-mcp-server'
 import {
   HOST_QUERY_MCP_SERVER_NAME,
@@ -87,6 +95,7 @@ const CURRENT_PRIMARY_CAPABILITIES = [
   'endpoint',
   'annotation',
   'pdf',
+  'knowledge',
   'figure',
   'query',
   'host-agents'
@@ -142,6 +151,7 @@ type SessionCapabilityRoutingIds = Readonly<{
   endpoint: string
   annotation: string
   pdf: string
+  knowledge: string
   figure: string
   query: string
 }>
@@ -246,6 +256,17 @@ export type SessionCapabilityPdfOptions = {
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 
+export type SessionCapabilityKnowledgeOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  isEnabled?: () => Promise<boolean>
+  getRpcConnection: (binding: {
+    sessionId: string
+    projectId: string
+  }) => Promise<KnowledgeRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
 export type SessionCapabilityFigureOptions = {
   mcpEntryPath: string
   mcpCommand?: string
@@ -288,6 +309,7 @@ type BuildSessionCapabilitiesRequest = {
   onEndpointConnection?: (connection: EndpointRpcConnection) => void
   onAnnotationConnection?: (connection: AnnotationRpcConnection) => void
   onPdfConnection?: (connection: PdfRpcConnection) => void
+  onKnowledgeConnection?: (connection: KnowledgeRpcConnection) => void
   onFigureConnection?: (connection: FigureRpcConnection) => void
   onQueryConnection?: (connection: HostQueryRpcConnection) => void
 }
@@ -369,6 +391,7 @@ type SessionCapabilityOwnerOptions = {
   endpoints?: SessionCapabilityEndpointOptions
   annotations?: SessionCapabilityAnnotationOptions
   pdf?: SessionCapabilityPdfOptions
+  knowledge?: SessionCapabilityKnowledgeOptions
   figure?: SessionCapabilityFigureOptions
   query?: SessionCapabilityQueryOptions
   mcpHttpHost?: AgentMcpHttpHost
@@ -424,6 +447,7 @@ export class AcpSessionCapabilityOwner {
   private endpointSessionSequence = 0
   private annotationSessionSequence = 0
   private pdfSessionSequence = 0
+  private knowledgeSessionSequence = 0
   private figureSessionSequence = 0
   private querySessionSequence = 0
   private skillImportEnabled = true
@@ -675,6 +699,7 @@ export class AcpSessionCapabilityOwner {
         endpoint: this.options.endpoints ? stableAppSessionId : '',
         annotation: this.options.annotations ? stableAppSessionId : '',
         pdf: this.options.pdf ? stableAppSessionId : '',
+        knowledge: this.options.knowledge ? stableAppSessionId : '',
         figure: this.options.figure ? stableAppSessionId : '',
         query: this.options.query ? stableAppSessionId : ''
       })
@@ -692,6 +717,7 @@ export class AcpSessionCapabilityOwner {
     if (this.options.endpoints) this.endpointSessionSequence += 1
     if (this.options.annotations) this.annotationSessionSequence += 1
     if (this.options.pdf) this.pdfSessionSequence += 1
+    if (this.options.knowledge) this.knowledgeSessionSequence += 1
     if (this.options.figure) this.figureSessionSequence += 1
     if (this.options.query) this.querySessionSequence += 1
 
@@ -723,6 +749,9 @@ export class AcpSessionCapabilityOwner {
         ? `annotation-session-${timestamp}-${this.annotationSessionSequence}`
         : '',
       pdf: this.options.pdf ? `pdf-session-${timestamp}-${this.pdfSessionSequence}` : '',
+      knowledge: this.options.knowledge
+        ? `knowledge-session-${timestamp}-${this.knowledgeSessionSequence}`
+        : '',
       figure: this.options.figure
         ? `figure-session-${timestamp}-${this.figureSessionSequence}`
         : '',
@@ -749,6 +778,7 @@ export class AcpSessionCapabilityOwner {
     const endpointAllowed = policyAllowsSessionCapability(request.policy, 'endpoint')
     const annotationAllowed = policyAllowsSessionCapability(request.policy, 'annotation')
     const pdfAllowed = policyAllowsSessionCapability(request.policy, 'pdf')
+    const knowledgeAllowed = policyAllowsSessionCapability(request.policy, 'knowledge')
     const figureAllowed = policyAllowsSessionCapability(request.policy, 'figure')
     const queryAllowed = policyAllowsSessionCapability(request.policy, 'query')
 
@@ -766,6 +796,7 @@ export class AcpSessionCapabilityOwner {
             endpoint: endpointAllowed,
             annotation: annotationAllowed,
             pdf: pdfAllowed,
+            knowledge: knowledgeAllowed,
             figure: figureAllowed,
             query: queryAllowed
           })
@@ -782,6 +813,7 @@ export class AcpSessionCapabilityOwner {
               endpoint: endpointAllowed,
               annotation: annotationAllowed,
               pdf: pdfAllowed,
+              knowledge: knowledgeAllowed,
               figure: figureAllowed,
               query: queryAllowed
             })
@@ -831,6 +863,9 @@ export class AcpSessionCapabilityOwner {
     }
     if (hasServer(PDF_MCP_SERVER_NAME)) {
       capabilities.push('pdf')
+    }
+    if (hasServer(KNOWLEDGE_MCP_SERVER_NAME)) {
+      capabilities.push('knowledge')
     }
     if (hasServer(FIGURE_MCP_SERVER_NAME)) {
       capabilities.push('figure')
@@ -1063,6 +1098,7 @@ export class AcpSessionCapabilityOwner {
     endpoint: boolean
     annotation: boolean
     pdf: boolean
+    knowledge: boolean
     figure: boolean
     query: boolean
   }> {
@@ -1112,6 +1148,10 @@ export class AcpSessionCapabilityOwner {
         transportAvailable &&
         Boolean(this.options.annotations) &&
         policyAllowsSessionCapability(input.policy, 'annotation'),
+      knowledge:
+        transportAvailable &&
+        Boolean(this.options.knowledge) &&
+        policyAllowsSessionCapability(input.policy, 'knowledge'),
       pdf:
         transportAvailable &&
         Boolean(this.options.pdf) &&
@@ -1210,6 +1250,7 @@ export class AcpSessionCapabilityOwner {
       goal: boolean
       endpoint: boolean
       annotation: boolean
+      knowledge: boolean
       pdf: boolean
       figure: boolean
       query: boolean
@@ -1389,6 +1430,22 @@ export class AcpSessionCapabilityOwner {
         )
       }
     }
+    if (enabled.knowledge) {
+      const environment = await this.buildKnowledgeEnvironment(
+        request.routingIds.knowledge,
+        request.projectName,
+        request.onKnowledgeConnection
+      )
+      if (environment && this.options.knowledge) {
+        servers.push(
+          createKnowledgeMcpServerConfig({
+            command: this.options.knowledge.mcpCommand ?? process.execPath,
+            entryPath: this.options.knowledge.mcpEntryPath,
+            ...environment
+          })
+        )
+      }
+    }
     if (enabled.figure) {
       const environment = await this.buildFigureEnvironment(
         request.routingIds.figure,
@@ -1488,6 +1545,20 @@ export class AcpSessionCapabilityOwner {
     return { ...connection, sessionId: routingId, projectId: projectName }
   }
 
+  private async buildKnowledgeEnvironment(
+    routingId: string,
+    projectName: string,
+    onConnection?: (connection: KnowledgeRpcConnection) => void
+  ): Promise<KnowledgeMcpEnvironment | undefined> {
+    if (!this.options.knowledge || !routingId || !projectName) return undefined
+    const connection = await this.options.knowledge.getRpcConnection({
+      sessionId: routingId,
+      projectId: projectName
+    })
+    onConnection?.(connection)
+    return { ...connection, sessionId: routingId, projectId: projectName }
+  }
+
   private async buildPdfEnvironment(
     routingId: string,
     projectName: string,
@@ -1543,6 +1614,7 @@ export class AcpSessionCapabilityOwner {
       goal: boolean
       endpoint: boolean
       annotation: boolean
+      knowledge: boolean
       pdf: boolean
       figure: boolean
       query: boolean

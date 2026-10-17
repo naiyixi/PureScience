@@ -81,6 +81,7 @@ const composeAcpRuntimeBaseOwners = (options: AcpRuntimeOptions) => {
     endpoints: options.endpoints,
     annotations: options.annotations,
     pdf: options.pdf,
+    knowledge: options.knowledge,
     figure: options.figure,
     query: options.query,
     mcpHttpHost: options.mcpHttpHost

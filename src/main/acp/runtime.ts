@@ -54,6 +54,7 @@ import type { GoalRpcConnection } from '../goals/goal-mcp-server'
 import type { EndpointRpcConnection } from '../settings/endpoint-mcp-server'
 import type { AnnotationRpcConnection } from '../settings/annotation-mcp-server'
 import type { PdfRpcConnection } from '../settings/pdf-mcp-server'
+import type { KnowledgeRpcConnection } from '../knowledge/knowledge-mcp-server'
 import type { FigureRpcConnection } from '../settings/figure-mcp-server'
 import type { HostQueryRpcConnection } from '../settings/host-query-mcp-server'
 import { codexStorageDir, codexSubscriptionStorageDir } from '../agent-framework/codex'
@@ -177,6 +178,7 @@ type AcpRuntimeOptions = {
   endpoints?: AcpRuntimeEndpointOptions
   annotations?: AcpRuntimeAnnotationOptions
   pdf?: AcpRuntimePdfOptions
+  knowledge?: AcpRuntimeKnowledgeOptions
   figure?: AcpRuntimeFigureOptions
   query?: AcpRuntimeQueryOptions
   // Optional hook called after a context compaction completes, so the app can persist the
@@ -387,6 +389,16 @@ type AcpRuntimePdfOptions = {
   mcpEntryPath: string
   mcpCommand?: string
   getRpcConnection: (binding: { sessionId: string; projectId: string }) => Promise<PdfRpcConnection>
+  registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
+}
+
+type AcpRuntimeKnowledgeOptions = {
+  mcpEntryPath: string
+  mcpCommand?: string
+  getRpcConnection: (binding: {
+    sessionId: string
+    projectId: string
+  }) => Promise<KnowledgeRpcConnection>
   registerSessionAlias?: (aliasSessionId: string, sessionId: string) => void
 }
 

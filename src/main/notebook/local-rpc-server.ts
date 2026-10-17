@@ -50,6 +50,8 @@ import type { RoutineConfigureRequest } from '../../shared/routine'
 import type { GoalAdvanceRequest, GoalConfigureRequest } from '../../shared/goal'
 import type { EndpointRegisterRequest } from '../../shared/endpoint'
 import type { AnnotationSetRequest } from '../../shared/annotation'
+import type { KnowledgeRegistration } from '../../shared/knowledge'
+import type { KnowledgeSearchRequest } from '../knowledge/knowledge-search-service'
 
 const log = createLogger('notebook:local-rpc')
 
@@ -210,6 +212,15 @@ type NotebookLocalRpcServerOptions = {
       request: { targetLanguage?: string }
     ): Promise<unknown>
   }
+  // Knowledge store (knowledge_* MCP): the source registry plus lexical search over what it registered.
+  // Main-process-owned like the PDF surface: one writer for `knowledge/sources.json`, and the MCP process
+  // only names what it wants.
+  knowledge?: {
+    search(sessionId: string, request: KnowledgeSearchRequest): Promise<unknown>
+    registerSource(sessionId: string, request: KnowledgeRegistration): Promise<unknown>
+    listSources(sessionId: string): Promise<unknown>
+    renderWiki(sessionId: string, folder: string): Promise<unknown>
+  }
   planService?: {
     call(input: {
       projectId: string
@@ -306,6 +317,12 @@ const PDF_RPC_METHODS = new Set([
   'pdfFigures',
   'pdfTranslate'
 ])
+const KNOWLEDGE_RPC_METHODS = new Set([
+  'knowledgeSearch',
+  'knowledgeRegisterSource',
+  'knowledgeListSources',
+  'knowledgeRenderWiki'
+])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
 const ENDPOINT_RPC_METHODS = new Set([
@@ -375,6 +392,7 @@ class NotebookLocalRpcServer {
   private readonly endpointRpcTokens = new Map<string, string>()
   private readonly annotationRpcTokens = new Map<string, string>()
   private readonly pdfRpcTokens = new Map<string, string>()
+  private readonly knowledgeRpcTokens = new Map<string, string>()
   private readonly figureRpcTokens = new Map<string, string>()
   private readonly hostQueryRpcTokens = new Map<string, string>()
   private readonly contextSummary?: NotebookLocalRpcServerOptions['contextSummary']
@@ -383,6 +401,7 @@ class NotebookLocalRpcServer {
   private readonly endpoints?: NotebookLocalRpcServerOptions['endpoints']
   private readonly annotations?: NotebookLocalRpcServerOptions['annotations']
   private readonly pdf?: NotebookLocalRpcServerOptions['pdf']
+  private readonly knowledge?: NotebookLocalRpcServerOptions['knowledge']
   private readonly figure?: NotebookLocalRpcServerOptions['figure']
   private readonly hostQuery?: NotebookLocalRpcServerOptions['hostQuery']
   // The session → Specialist relationship is established by the ACP runtime, not supplied by the
@@ -421,6 +440,7 @@ class NotebookLocalRpcServer {
     this.endpoints = options.endpoints
     this.annotations = options.annotations
     this.pdf = options.pdf
+    this.knowledge = options.knowledge
     this.figure = options.figure
     this.hostQuery = options.hostQuery
     this.planService = options.planService
@@ -691,6 +711,14 @@ class NotebookLocalRpcServer {
     }
   }
 
+  private revokeKnowledgeSessionCapabilities(sessionId: string): void {
+    for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
+      const token = this.knowledgeRpcTokens.get(ownedSessionId)
+      if (token) this.sessionRpcCapabilities.delete(token)
+      this.knowledgeRpcTokens.delete(ownedSessionId)
+    }
+  }
+
   private revokeFigureSessionCapabilities(sessionId: string): void {
     for (const ownedSessionId of this.resolveSessionCapabilityOwners(sessionId)) {
       const token = this.figureRpcTokens.get(ownedSessionId)
@@ -728,6 +756,7 @@ class NotebookLocalRpcServer {
     this.revokeEndpointSessionCapabilities(sessionId)
     this.revokeAnnotationSessionCapabilities(sessionId)
     this.revokePdfSessionCapabilities(sessionId)
+    this.revokeKnowledgeSessionCapabilities(sessionId)
     this.revokeFigureSessionCapabilities(sessionId)
     this.revokeHostQuerySessionCapabilities(sessionId)
     this.revokePlanSessionCapabilities(sessionId)
@@ -953,6 +982,33 @@ class NotebookLocalRpcServer {
       release: () => {
         if (this.pdfRpcTokens.get(sessionId) === token) {
           this.pdfRpcTokens.delete(sessionId)
+        }
+        this.sessionRpcCapabilities.delete(token)
+      }
+    }
+  }
+
+  async issueKnowledgeConnection(
+    sessionId: string,
+    projectId: string
+  ): Promise<NotebookRpcConnection> {
+    const connection = await this.ensureStarted()
+    this.revokeKnowledgeSessionCapabilities(sessionId)
+
+    const token = randomUUID()
+    this.knowledgeRpcTokens.set(sessionId, token)
+    this.sessionRpcCapabilities.set(token, {
+      sessionId,
+      projectId,
+      allowedMethods: KNOWLEDGE_RPC_METHODS
+    })
+    return {
+      endpoint: connection.endpoint,
+      socketPath: connection.socketPath,
+      token,
+      release: () => {
+        if (this.knowledgeRpcTokens.get(sessionId) === token) {
+          this.knowledgeRpcTokens.delete(sessionId)
         }
         this.sessionRpcCapabilities.delete(token)
       }
@@ -1870,6 +1926,70 @@ class NotebookLocalRpcServer {
       }
       const page = typeof params.page === 'number' ? params.page : undefined
       return this.pdf.figures(params.sessionId, params.projectId, params.docId, page)
+    }
+
+    if (method === 'knowledgeSearch') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge search RPC params must include sessionId.')
+      }
+      if (typeof params.text !== 'string' || params.text.trim().length === 0) {
+        throw new Error('Knowledge search RPC params must include a non-empty text.')
+      }
+      if (params.limit !== undefined && typeof params.limit !== 'number') {
+        throw new Error('Knowledge search RPC limit must be a number when given.')
+      }
+      return this.knowledge.search(params.sessionId, {
+        text: params.text,
+        ...(typeof params.limit === 'number' ? { limit: params.limit } : {})
+      })
+    }
+
+    if (method === 'knowledgeRegisterSource') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge register RPC params must include sessionId.')
+      }
+      const request = params.request
+      if (typeof request !== 'object' || request === null) {
+        throw new Error('Knowledge register RPC params must include a request.')
+      }
+      const candidate = request as Record<string, unknown>
+      const kind = candidate.kind
+      const path = candidate.path
+      const url = candidate.url
+      if (kind === 'file' || kind === 'folder') {
+        if (typeof path !== 'string' || path.length === 0) {
+          throw new Error('Knowledge register RPC params must include a path for a file or folder.')
+        }
+        return this.knowledge.registerSource(params.sessionId, { kind, path })
+      }
+      if (kind === 'url') {
+        if (typeof url !== 'string' || url.length === 0) {
+          throw new Error('Knowledge register RPC params must include a url for a url source.')
+        }
+        return this.knowledge.registerSource(params.sessionId, { kind, url })
+      }
+      throw new Error('Knowledge register RPC request kind must be file, folder, or url.')
+    }
+
+    if (method === 'knowledgeListSources') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge list RPC params must include sessionId.')
+      }
+      return this.knowledge.listSources(params.sessionId)
+    }
+
+    if (method === 'knowledgeRenderWiki') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge wiki RPC params must include sessionId.')
+      }
+      if (typeof params.folder !== 'string' || params.folder.trim().length === 0) {
+        throw new Error('Knowledge wiki RPC params must include a non-empty folder.')
+      }
+      return this.knowledge.renderWiki(params.sessionId, params.folder)
     }
 
     if (method === 'planCall') {

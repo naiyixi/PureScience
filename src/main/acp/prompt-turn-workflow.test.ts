@@ -321,6 +321,7 @@ const createHarness = (
         endpoint: false,
         annotation: false,
         pdf: false,
+        knowledge: false,
         figure: false,
         query: false
       }),

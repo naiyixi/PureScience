@@ -34,6 +34,12 @@ const PRE_REGISTERED_PERMISSION_IDENTITIES: Readonly<
     'mcp:purescience_plan/generate_plan',
     'mcp:purescience_plan/update_step_status',
     'mcp:purescience_memory/memory_save_note',
+    // The knowledge store's four tools are a permission surface of their own: a grant must be able to name
+    // `knowledge_search` without also inheriting `knowledge_register_source`.
+    'mcp:purescience_knowledge/knowledge_search',
+    'mcp:purescience_knowledge/knowledge_register_source',
+    'mcp:purescience_knowledge/knowledge_list_sources',
+    'mcp:purescience_knowledge/knowledge_render_wiki',
     // The rest of the app-owned servers. They were named with a hyphen, which each framework escaped
     // differently (`mcp__purescience-pdf__…` vs `mcp__purescience_pdf__…`), so the agent was handed two
     // callable names for one tool and guessed. The identity key is the separator-free canonical name;

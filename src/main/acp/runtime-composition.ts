@@ -365,6 +365,13 @@ const createAcpRuntime = ({
           registerSessionAlias: (aliasSessionId, sessionId) =>
             notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
         },
+        knowledge: {
+          mcpEntryPath,
+          getRpcConnection: ({ sessionId, projectId }) =>
+            notebookRpcServer.issueKnowledgeConnection(sessionId, projectId),
+          registerSessionAlias: (aliasSessionId, sessionId) =>
+            notebookRpcServer.registerSessionAlias(aliasSessionId, sessionId)
+        },
         pdf: {
           mcpEntryPath,
           getRpcConnection: ({ sessionId, projectId }) =>
