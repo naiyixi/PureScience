@@ -361,7 +361,7 @@ describe('SettingsPage layout', () => {
     expect(nav?.textContent).toContain('Workspace')
     expect(nav?.textContent).toContain('Remote access')
     const navItems = nav?.querySelectorAll('li') ?? []
-    expect(navItems).toHaveLength(21)
+    expect(navItems).toHaveLength(22)
     expect(navItems[0]?.textContent).toContain('Skills')
     expect(navItems[1]?.textContent).toContain('Connectors')
     expect(navItems[2]?.textContent).toContain('Credentials')
@@ -384,7 +384,10 @@ describe('SettingsPage layout', () => {
     expect(navItems[17]?.textContent).toContain('Token usage')
     expect(navItems[18]?.textContent).toContain('General')
     expect(navItems[19]?.textContent).toContain('Remote control')
-    expect(navItems[20]?.textContent).toContain('Archived')
+    // The knowledge store's window surface sits in its own group just before the bottom Archived entry
+    // (v2.8.0): it is a reading surface over data the workspace already owns, not a capability toggle.
+    expect(navItems[20]?.textContent).toContain('Knowledge')
+    expect(navItems[21]?.textContent).toContain('Archived')
     const modelNavButton = navButton('Model')
     const agentNavButton = navButton('Agent')
     expect(modelNavButton?.querySelector('.lucide-brain')).not.toBeNull()
