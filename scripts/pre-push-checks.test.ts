@@ -88,4 +88,21 @@ describe('pre-push hook self-evidence', () => {
       expect(segment.body).toContain('WARN=1')
     }
   })
+
+  it('checks the tree being pushed, not the tree this hook file happens to live in', () => {
+    // Git keeps ONE hooks directory for the whole repository (`.git/hooks` is a symlink into the
+    // main checkout), so resolving the root from `BASH_SOURCE` alone makes a linked worktree lint
+    // itself in the MAIN checkout — where the branch's new files do not exist, and segment 8 fails
+    // with "No files matching the pattern …" for a push that is clean. Observed exactly that.
+    //
+    // The rule: the git-derived root must be assigned, and it must come after the symlink walk so it
+    // wins over the path-derived value.
+    const gitRootAt = lines.findIndex((line) => line.includes('git rev-parse --show-toplevel'))
+    const pathRootAt = lines.findIndex((line) =>
+      line.includes('ROOT="$(cd -P "$(dirname "$SOURCE_PATH")/.." && pwd)"')
+    )
+    expect(gitRootAt).toBeGreaterThan(pathRootAt)
+    expect(pathRootAt).toBeGreaterThan(0)
+    expect(text).toContain('ROOT="$(cd -P "$GIT_TOPLEVEL" && pwd)"')
+  })
 })

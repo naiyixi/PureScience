@@ -28,6 +28,15 @@ while [[ -L "$SOURCE_PATH" ]]; do
   [[ "$SOURCE_PATH" != /* ]] && SOURCE_PATH="$DIR/$SOURCE_PATH"
 done
 ROOT="$(cd -P "$(dirname "$SOURCE_PATH")/.." && pwd)"
+# …but the tree that must be checked is the tree being pushed, not the tree this file lives in:
+# git keeps one hooks directory for the whole repository (`.git/hooks`, a symlink into the main
+# checkout), so a linked worktree pushing its own branch would otherwise be linted in the main
+# checkout — where the branch's new files do not exist, and segment 8 fails with
+# "No files matching the pattern …" for a push that is in fact clean. Hooks run with the working
+# directory set to the pushed tree, so ask git rather than deriving the root from file paths.
+if GIT_TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -n "$GIT_TOPLEVEL" ]]; then
+  ROOT="$(cd -P "$GIT_TOPLEVEL" && pwd)"
+fi
 cd "$ROOT"
 
 VERSION="$(node -p "require('./package.json').version" 2>/dev/null || echo '?')"
