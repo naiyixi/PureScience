@@ -91,3 +91,12 @@ export type CitationStyleDefinition = {
   unsupportedElements?: readonly string[]
   format: (item: CitationItem, context: CitationFormatContext) => CitationFormatResult
 }
+
+// The picker names a style in the interface language: `label` is the English catalogue name and
+// `labelZh` the Chinese one. Anything other than a Chinese interface — including a render with no
+// language provider, which is how the dictionaries' own English fallback behaves — gets `label`.
+// Imported styles derive both fields from their own document, so this is safe for them too.
+export const citationStyleLabel = (
+  style: Pick<CitationStyleDefinition, 'label' | 'labelZh'>,
+  language: string | undefined
+): string => (language === 'zh' || language === 'zh-Hant' ? style.labelZh : style.label)

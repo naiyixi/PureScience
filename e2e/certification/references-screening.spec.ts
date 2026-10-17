@@ -147,7 +147,7 @@ test('screens a collection, names its reasons, and layers a human override over 
 
   // The screened collection is the collection the style export covers — screening does not invent a
   // second set. The export notice names GB/T 7714 and the two records.
-  await library.getByRole('button', { name: 'Export in the selected style' }).click()
+  await library.getByRole('button', { name: 'Export as GB/T 7714-2015 (numeric)' }).click()
   await expect(library.getByText(/Exported 2 citations in/)).toBeVisible()
 
   // A rule change is a NEW revision: the notice says how many stored decisions that staled, the history

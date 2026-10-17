@@ -12,6 +12,7 @@ import {
 } from '../../../../shared/citation/format'
 import { citationStyleFromImport } from '../../../../shared/citation/csl'
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
+import { citationStyleLabel } from '../../../../shared/citation/types'
 import {
   SCREENING_EVIDENCE_COVERAGES,
   SCREENING_FAILURE_KINDS,
@@ -258,7 +259,7 @@ export function ReferencesScreeningPanel({
   onNotice: (message: string) => void
   onError: (message: string) => void
 }): React.JSX.Element {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [snapshot, setSnapshot] = useState<ScreeningItemView[] | null>(null)
   const [rule, setRule] = useState<ScreeningRuleRevision | null>(null)
   const [summaryText, setSummaryText] = useState<{
@@ -1165,7 +1166,7 @@ export function ReferencesScreeningPanel({
                   .filter((style) => style.source === 'builtin')
                   .map((style) => (
                     <option key={style.id} value={style.id}>
-                      {style.labelZh}
+                      {citationStyleLabel(style, lang)}
                     </option>
                   ))}
               </optgroup>

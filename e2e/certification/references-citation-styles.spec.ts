@@ -70,6 +70,14 @@ test('imports a CSL style, renders one record in several styles, and exports in 
   const library = page.getByRole('dialog', { name: 'Reference library' })
   await expect(library).toBeVisible()
 
+  // The style picker speaks the interface language. This window is English, so every built-in style is
+  // named by its English catalogue label — the Chinese field of the same definition must not appear
+  // (it used to, for all nine built-ins, in every non-Chinese interface).
+  const styleOptions = library.getByLabel('Citation style').locator('option')
+  await expect(styleOptions.filter({ hasText: 'APA 7th' })).toHaveCount(1)
+  await expect(styleOptions.filter({ hasText: 'GB/T 7714-2015 (numeric)' })).toHaveCount(1)
+  await expect(styleOptions.filter({ hasText: 'APA 第 7 版' })).toHaveCount(0)
+
   // A record to cite: the manual add path needs only a title.
   await library.getByRole('button', { name: 'Manual add' }).click()
   await library.getByPlaceholder('Title (required)').fill('Deep learning for protein design')
@@ -80,18 +88,25 @@ test('imports a CSL style, renders one record in several styles, and exports in 
   await library.getByLabel('Import CSL style').setInputFiles(writeStyleFile())
   // The style lands with its licence and its fidelity verdict — both are what a reader must see.
   await expect(library.getByText(/Imported style: PureScience Acceptance Style/)).toBeVisible()
-  await expect(library.getByText(/creativecommons\.org\/licenses\/by-sa\/3\.0/).first()).toBeVisible()
+  await expect(
+    library.getByText(/creativecommons\.org\/licenses\/by-sa\/3\.0/).first()
+  ).toBeVisible()
 
   // Select the imported style, then compare all styles side by side for the same record.
   await library.getByLabel('Citation style').selectOption({ label: 'PureScience Acceptance Style' })
   await library.getByRole('button', { name: 'Compare styles' }).first().click()
   const comparison = library.getByText('Same record, several styles')
   await expect(comparison).toBeVisible()
-  await expect(library.getByText('APA 7th')).toBeVisible()
-  await expect(library.getByText('GB/T 7714-2015 (numeric)')).toBeVisible()
+  // Scoped to the comparison list: the style picker carries the same names, so an unscoped lookup would
+  // match the picker first (or refuse as ambiguous) instead of saying anything about the comparison.
+  const comparisonList = library.getByTestId('citation-style-comparison')
+  await expect(comparisonList.getByText('APA 7th')).toHaveCount(1)
+  await expect(comparisonList.getByText('GB/T 7714-2015 (numeric)')).toHaveCount(1)
 
-  // Export in the imported style and read the confirmation back, which names the style it used.
-  await library.getByRole('button', { name: 'Export in the selected style' }).click()
+  // Export in the imported style and read the confirmation back, which names the style it used. The
+  // button itself names the format it will write, so locating it by that name also proves the picker
+  // drives the export rather than a fixed phrase.
+  await library.getByRole('button', { name: 'Export as PureScience Acceptance Style' }).click()
   await expect(
     library.getByText(/Exported 1 citations in PureScience Acceptance Style/)
   ).toBeVisible()

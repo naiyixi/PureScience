@@ -419,8 +419,9 @@ describe('ReferencesLibraryDialog collections', () => {
     await flush()
 
     expect(document.body.textContent).toContain('No PDF files in this project.')
-    // Not one of this area's former hardcoded strings survives anywhere in the dialog (the citation
-    // style names above are the backend's own labelZh, not UI copy). Each of these used to be written
+    // Not one of this area's former hardcoded strings survives anywhere in the dialog. (Citation style
+    // names are the shared catalogue's own labels, chosen by interface language — backend data, not UI
+    // copy — so they stay out of this list.) Each of these used to be written
     // into the JSX and reached every non-Chinese interface verbatim.
     for (const former of [
       '项目内没有 PDF 文件。',

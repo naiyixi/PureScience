@@ -8722,3 +8722,81 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 - 降级方向具名：旧版本读 v3 文件时 `messages` 会从图重建，但 `activities`/`activityGroups` 不重建 ⇒ 旧版本上
   工具活动面板会空（升版后回退才发生，不是前向兼容问题）。
 - 下一单元：消息级**增量追加**（真正的按内容增量写）；本单元只去掉「重复存三份」。
+
+## 一百八十四、本轮追加（执行器，2026-10-17 19:5x–21:2x）—— P0 认证车道连红两笔的真因（按钮改名后 spec 没跟）+ 顺着失败快照抓到的真缺陷（九个样式名在英文界面里是中文）
+
+### 一 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = e8d82c37`；上一轮留在 `/tmp/ps-inc` 的两笔（`5a295654`/`f6cc98f7`）**本地已全绿、尚未推**，
+  本单元第一步就是把它们推上去：`e8d82c37..f6cc98f7`，推前在飞车道 **0**（不取消任何人的判决）。
+- **共享工作树的本地 main 与 origin 已经分叉，一个字节都没碰**：本地 main 走的是会话那条知识库工具线
+  （`fbf6289e` 三把工具 → `833c5eb3` 启动账目 → `57ba5c4a`/`e3b2f8ea`/`cfd1a4d7`/`64f7c081` 真机会话与第四把工具，
+  6 笔、2026-10-17 15:50–19:43），分叉点是 `8eb4e96d`；origin 那边是 `da1bdc91`/`71460799`（P0-4）、
+  `2ed9062f`/`e695ea99`/`5fbe2d5d`（v2.6.0 A1/A2）、`e32a922b`（知识层模块工厂）、`e8d82c37`（施工图）。
+  **两侧都不含对方**，合并是会话侧的事（本地那 6 笔在 `src/main/knowledge/` 下新增文件、并改
+  `src/main/ipc.ts`、`local-rpc-server.ts`、`identity-catalog.ts`、`app-mcp-names.ts` 这几个两侧都动过的文件）；
+  共享受管树里还有 17 个在制路径（`src/main/specialist/**`、`src/preload/**`、`renderer-contract-catalog` 等），
+  按纪律全程隔离工作树 `/tmp/ps-inc`，共享树一个字节没碰。
+- 本单元做的两件事都**不在**上面的已交付清单里：车道红此前只在会话汇报里被记成「需要单独立案归因」，
+  样式名中文此前没有任何记录。
+
+### 二 P0 红怎么定的因（先读作业级日志与失败快照，再动代码）
+
+- 作业级：`e32a922b` 的 Nightly `build / Build macos-arm64` 唯一红的一步是 P0，读数 `95 passed / 2 failed / 12 skipped`；
+  上一笔 `71460799` 同一对 spec。失败两条都在同一行：`getByRole('button', { name: 'Export in the selected style' })`
+  等 30 s 超时，**retry #1 也红** ⇒ 不是抖动。
+- 失败快照（artifact `p0-test-results-macos-arm64` 的 `error-context.md`）把屏幕照下来了：那个位置的按钮真名是
+  `Export as PureScience Acceptance Style` —— 是 v2.6.0 A2「一条导出路径、三种格式」那片改的文案，两条 spec 没跟。
+- **同一张快照还暴露出第二件事**：`Citation style` 选择器里的九个 option 全印中文（`APA 第 7 版` …），
+  而同一个对话框的并排比较面板印英文。查源：`CitationStyleDefinition` 同时带 `label` 与 `labelZh`，
+  渲染层在**选择器里无条件印 `labelZh`**（两处：文献库对话框、纳排面板），于是**任何非中文界面都看到中文样式名**。
+  这是一处产品缺陷，不是 spec 问题。
+
+### 三 落地的改动
+
+- `src/shared/citation/types.ts`：`citationStyleLabel(style, language)` —— 中文界面取 `labelZh`，其余（含没有语言
+  提供者的渲染）取 `label`；`label`/`labelZh` 的类型收敛成 `Pick<…>`，导入样式两名同值天然成立。
+- `ReferencesLibraryDialog.tsx`：样式名收敛成一份 `styleLabelById` 映射，**选择器 / 导出按钮 / 复制引用 tooltip /
+  并排比较** 四处统一读它（原来三处各读各的字段，漏一处就是这次的缺陷）；`复制引用` 的 tooltip 顺带从固定英文
+  变成跟界面语言。并排比较的 `<ul>` 加 `data-testid="citation-style-comparison"`（选择器现在也带同样的英文名，
+  旧断言会命中它而非比较面板）。
+- `ReferencesScreeningPanel.tsx`：纳排面板的样式选择器同改。
+- 两个认证 spec：按钮定位改成真名 `Export as …`（并把「按钮名点出所选样式」变成断言 —— 比原来那句固定文案更强）；
+  比较面板两条断言收窄到列表容器；`references-citation-styles` 另加**样式名讲界面语言**的真机断言
+  （英文窗口 `APA 7th`/`GB/T 7714-2015 (numeric)` 各恰一条、`APA 第 7 版` 零条）。
+- 新用例 `src/shared/citation/types.test.ts` 4 条；顺带改掉 `ReferencesLibraryDialog.render.test.tsx` 里一句给
+  「样式名是中文」开脱的注释（它写「这是后端的 labelZh，不是 UI 文案」—— 有了本批的取值规则，这句话不再成立）。
+
+### 四 门禁（实跑，取自最后一次改动之后）
+
+- 定向：`src/shared/citation` + `src/renderer/src/components/references` ⇒ **11 文件 / 123 例全绿**（其中新增 4 例）；
+- **真机**：`npm run build:e2e` 后 `npx playwright test` 两条认证 spec ⇒ **2 passed (20.8 s)**；
+  英文窗口的九个样式名的真机读数 `[ic38]` 与证据档记录一致；
+- 全量：`1339 passed / 16 skipped`（1355 文件）、`17035 passed / 207 skipped`（17242 例）、exit 0
+  —— 比上一轮基线 +1 文件 / +4 例，正是本批新增；
+- 双 typecheck `--composite false`：node `0`、web `0`；改动文件 `eslint --no-cache`：0 error 0 warning；
+- `scripts/pre-push-checks.sh` 八段：见本轮汇报。
+
+### 五 边界与下一单元
+
+- 本批**不改导出语义**（「导出为 <格式>」是 A2 定的），只把 spec 与样式名的语言修到位；P0 车道要等本笔提交的
+  Nightly 才能拿到判决，本机读数与车道读数分开记（车道上那两条 spec 只在 `macos-arm64` 构建作业里跑）。
+- **本地 main 的分叉没有动**：那 6 笔会话提交既没被合并、也没被改写，见本节 §一 的名单；它需要会话侧合并后再推，
+  否则它那批工作永远进不了 origin。
+- 下一单元仍是消息级**增量追加**（上一轮定的），本单元只清了车道红与一处 i18n 缺陷。
+
+### 六 收口（2026-10-17 22:3x–23:0x 这一轮补完）—— 代码落地并推送，等于给 v2.6.0 的 Release 红拆掉两条
+
+- 上一笔 `ad48fd17` 的 Nightly 与本版 tag `v2.6.0`（`ab5c650a`）的 Release **红在同一处**：`Build macos-arm64` 里
+  `Run P0 Electron certification` 的 outcome=failure（`94 passed / 3 failed / 33.3m`），随后
+  `Enforce platform certification` 读到 `P0_OUTCOME=failure` 判红 ⇒ `notarize-mac`/`publish` 全部 skipped，
+  于是 **v2.6.0 只有 tag、没有 Release 页**（`gh release list` 的 Latest 仍是 v2.5.1）。
+- 三条失败里**两条正是本单元修的**（`references-citation-styles.spec.ts:94`、`references-screening.spec.ts:150`，
+  都在等 `Export in the selected style` 这个旧名）；第三条是
+  `interrupted-turn-continuation.spec.ts:172`（等不到「The interrupted turn continued from where it stopped.」这句），
+  **由会话在 `/tmp/ps-v26` 上并行归因**（该 spec 当时正在那里跑），本单元不碰、也不认领。
+- 本单元落地：`src/shared/citation/types.ts` 的 `citationStyleLabel(style, language)` + 两处渲染面收敛到
+  `styleLabelById` 单一来源 + 两条认证 spec 改真名（并把「按钮名点出所选样式」升成断言）+ 新增
+  `types.test.ts` 四条用例 + 证据档 `docs/evidence/2026-10-17-citation-style-label-language.md`。
+- 下一单元（发版侧，需窗口）：P0 两条真绿之后，`v2.6.0` 的 tag **没有 Release 页** ⇒ 按仓规删 tag 重建
+  （移动 tag 不会触发发布），重建前先确认会话那条 `interrupted-turn-continuation` 也已落地，否则白跑一轮 33 分钟。

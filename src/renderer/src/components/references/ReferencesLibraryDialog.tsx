@@ -27,6 +27,7 @@ import {
   type ImportedCitationStyle
 } from '../../../../shared/citation/csl'
 import type { CitationStyleDefinition } from '../../../../shared/citation/types'
+import { citationStyleLabel } from '../../../../shared/citation/types'
 import { copyText } from '@/lib/copy-text'
 import { ReferencesScreeningPanel } from './ReferencesScreeningPanel'
 import { JournalMetricsPanel } from './JournalMetricsPanel'
@@ -139,7 +140,7 @@ export function ReferencesLibraryDialog({
   onClose: () => void
   projectId: string | undefined
 }): React.JSX.Element | null {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const focusRestore = useDialogFocusRestore(open)
   const [references, setReferences] = useState<Reference[]>([])
   // v2.6.0 A2: which row's citation mark is in flight, so the control that was pressed is the
@@ -247,9 +248,13 @@ export function ReferencesLibraryDialog({
     () => resolveCitationStyles(importedStyles.map((style) => citationStyleFromImport(style))),
     [importedStyles]
   )
-  const selectedStyle = useMemo(
-    () => citationStyles.find((style) => style.id === selectedStyleId) ?? citationStyles[0],
-    [citationStyles, selectedStyleId]
+  // One name per style, in the interface language — the picker, the export button, the copy tooltip
+  // and the side-by-side comparison all read from here, so a Chinese style name can never leak into an
+  // English window (or the reverse) through one of those surfaces.
+  const styleLabelById = useMemo(
+    () =>
+      new Map(citationStyles.map((style) => [style.id, citationStyleLabel(style, lang)] as const)),
+    [citationStyles, lang]
   )
   // What the export will actually write — the style's own label, or the interchange format's name.
   const exportFormatLabel =
@@ -257,7 +262,7 @@ export function ReferencesLibraryDialog({
       ? 'BibTeX'
       : exportFormat === 'ris'
         ? 'RIS'
-        : (selectedStyle?.label ?? selectedStyleId)
+        : (styleLabelById.get(selectedStyleId) ?? selectedStyleId)
 
   const loadCitationStyles = useCallback(async (): Promise<void> => {
     try {
@@ -1064,7 +1069,7 @@ export function ReferencesLibraryDialog({
                       .filter((style) => style.source === 'builtin')
                       .map((style) => (
                         <option key={style.id} value={style.id}>
-                          {style.labelZh}
+                          {styleLabelById.get(style.id) ?? style.label}
                         </option>
                       ))}
                   </optgroup>
@@ -1199,7 +1204,10 @@ export function ReferencesLibraryDialog({
                   <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
                     {t('references.compareStylesHint')}
                   </p>
-                  <ul className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto">
+                  <ul
+                    className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto"
+                    data-testid="citation-style-comparison"
+                  >
                     {compareCitationStyles(
                       citationItemFromReference(compareTarget),
                       citationStyles.map((style) => style.id),
@@ -1208,7 +1216,7 @@ export function ReferencesLibraryDialog({
                     ).map((entry) => (
                       <li key={entry.styleId} className="text-[11px]">
                         <span className="font-medium text-[var(--foreground)]">
-                          {entry.styleLabel}
+                          {styleLabelById.get(entry.styleId) ?? entry.styleLabel}
                         </span>
                         <p className="whitespace-pre-wrap text-[var(--muted-foreground)]">
                           {entry.text || t('references.compareEmpty')}
@@ -1414,7 +1422,7 @@ export function ReferencesLibraryDialog({
                                 type="button"
                                 className={ghostClass}
                                 title={t('references.copyInStyle', {
-                                  style: selectedStyle?.label ?? ''
+                                  style: styleLabelById.get(selectedStyleId) ?? ''
                                 })}
                                 onClick={() => void handleCopyInStyle(reference)}
                               >
