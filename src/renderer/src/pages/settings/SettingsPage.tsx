@@ -16,6 +16,7 @@ import {
   Minimize2,
   MonitorSmartphone,
   ChartNoAxesCombined,
+  BookOpen,
   BookOpenText,
   KeyRound,
   ScrollText,
@@ -62,6 +63,7 @@ import { RuntimesPanel } from './RuntimesPanel'
 import { RemoteControlPanel } from './RemoteControlPanel'
 import { SkillsPanel, type SkillsView } from './SkillsPanel'
 import { ConnectorsPanel, type ConnectorsView } from './ConnectorsPanel'
+import { KnowledgePanel } from './KnowledgePanel'
 import { SpecialistsPanel, type SpecialistsView } from './SpecialistsPanel'
 import { ConnectorDetailView } from './ConnectorDetailView'
 import { ConnectorAddForm } from './ConnectorAddForm'
@@ -367,6 +369,16 @@ const buildSettingsGroups = (t: (key: TranslationKey) => string): ReadonlyArray<
         label: t('settings.remoteControl'),
         Icon: MonitorSmartphone,
         keywords: ['remote', 'mobile', 'phone', '远程', '手机', '控制']
+      }
+    ]
+  },
+  {
+    panels: [
+      {
+        id: 'knowledge',
+        label: t('settings.knowledge.title'),
+        Icon: BookOpen,
+        keywords: ['knowledge', 'sources', 'search', '知识库', '来源', '检索']
       }
     ]
   },
@@ -1330,6 +1342,8 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                     onNavigate={navigateSkills}
                     canImportInstalledSkills={canImportInstalledSkills}
                   />
+                ) : activePanel === 'knowledge' ? (
+                  <KnowledgePanel />
                 ) : activePanel === 'specialists' ? (
                   <SpecialistsPanel view={specialistsView} onNavigate={navigateSpecialists} />
                 ) : activePanel === 'connectors' ? (

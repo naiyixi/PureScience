@@ -59,6 +59,9 @@ const GENERATED_SOURCE_OMISSIONS = [
   'diagnostics.reportRendererFailure',
   'getRuntimeVersions',
   'handoff.onChanged',
+  'knowledge.listSources',
+  'knowledge.registerSource',
+  'knowledge.search',
   'network.checkConnectivity',
   'network.getInfo',
   'notifications.clearAll',
@@ -326,7 +329,9 @@ describe('renderer surface inventory', () => {
     // Electron paths, in the same profile as the reference writes they sit beside.
     // 485 with the local parsing models (settings.getLocalParsingModels / downloadLocalParsingModel):
     // one preload method per contract, so the preload inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(487)
+    // 490 with the knowledge window surface (v2.8.0: knowledge.listSources / registerSource / search): three
+    // Electron paths, local-only, so they also join the generator-omission list rather than any Web set.
+    expect(electronPaths).toHaveLength(490)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

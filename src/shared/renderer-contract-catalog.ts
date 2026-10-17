@@ -236,6 +236,14 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onProgress', 'notebook-env:progress', DORMANT_EVENT], ['cancel', 'notebook-env:cancel', LOCAL, OPTIONAL_ARGUMENT_SLOT, POSITIONAL], ['getStatus', 'notebook-env:status'],
     ['provision', 'notebook-env:provision', LOCAL], ['repair', 'notebook-env:repair', LOCAL],
   ]),
+  // The knowledge store's window surface: list what is registered, register a file/folder/URL, and search it
+  // with citations. Local-only by design — a paired remote browser has no business enumerating this machine's
+  // sources — so every entry is ELECTRON and no local-Web count moves.
+  // prettier-ignore
+  group('knowledge', 'knowledge', [
+    ['listSources', 'knowledge:list-sources', ELECTRON], ['registerSource', 'knowledge:register-source', ELECTRON],
+    ['search', 'knowledge:search', ELECTRON],
+  ]),
   group('notifications', 'notifications', [
     ['clearAll', 'notifications:clear-all', ELECTRON], ['deleteItems', 'notifications:delete-items', ELECTRON],
     ['getSnapshot', 'notifications:get-snapshot', ELECTRON], ['markAllRead', 'notifications:mark-all-read', ELECTRON],

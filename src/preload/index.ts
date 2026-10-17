@@ -532,6 +532,12 @@ const api: PureScienceAPI = {
     openFile: () => electronRendererContracts.invoke('logs.openFile'),
     revealInFolder: () => electronRendererContracts.invoke('logs.revealInFolder')
   },
+  // The knowledge store's window surface. Local-only: these three never reach the remote Web dispatch.
+  knowledge: {
+    listSources: () => electronRendererContracts.invoke('knowledge.listSources'),
+    registerSource: (request) => electronRendererContracts.invoke('knowledge.registerSource', request),
+    search: (request) => electronRendererContracts.invoke('knowledge.search', request)
+  },
   notifications: {
     clearAll: (request) => electronRendererContracts.invoke('notifications.clearAll', request),
     deleteItems: (request) =>

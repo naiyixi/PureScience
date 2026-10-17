@@ -30,7 +30,7 @@ describe('renderer contract catalog', () => {
     // 460 with the window package install/uninstall (runtime.manage-packages, IC13): another LOCAL
     // runtime channel, so the catalog, the preload inventory and the local-Web installation set each
     // move by one while the remote-Web one grows by the rejecting stub it gets for being local-only.
-    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(47)
+    expect(RENDERER_CONTRACT_GROUPS).toHaveLength(48)
     // 463 with the window's session runtime binding surface (notebook.listRuntimes / bindRuntime /
     // switchRuntime, IC14): three plain Web request channels, so the catalog, the invoke map and the
     // local-Web installation set each move by three while the remote-Web set grows by the same three.
@@ -63,7 +63,7 @@ describe('renderer contract catalog', () => {
     // move by two while the remote-Web set grows by the rejecting stub each one gets there.
     // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // Web request contracts, so the catalog, the invoke map and the local-Web set each move by two.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(487)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(490)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -125,7 +125,7 @@ describe('renderer contract catalog', () => {
     // this one rather than a Web installation set.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(83)
+    ).toHaveLength(86)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(131)

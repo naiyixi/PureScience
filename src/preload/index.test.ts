@@ -320,6 +320,9 @@ describe('preload bridge — public surface inventory', () => {
       'github.getStars',
       'goals.listAll',
       'handoff.onChanged',
+      'knowledge.listSources',
+      'knowledge.registerSource',
+      'knowledge.search',
       'lifecycle.getClientId',
       'localFs.getRoots',
       'localFs.listDir',
@@ -821,6 +824,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       'local-fs',
       'logs',
       'network',
+      'knowledge',
       'notifications',
       'office-preview',
       'egress',
@@ -871,7 +875,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // contract, so the core request count below moves with it while neither Web map does.
     // 242 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // request contracts — a project-database write in the same profile as references.setNotes.
-    expect(coreContracts).toHaveLength(242)
+    expect(coreContracts).toHaveLength(245)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -883,7 +887,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 204, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 207, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -892,7 +896,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(204)
+    expect(requestContracts).toHaveLength(207)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

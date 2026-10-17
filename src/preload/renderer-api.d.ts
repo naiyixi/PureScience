@@ -1,4 +1,10 @@
 import type {
+  KnowledgeOverview,
+  KnowledgeRegistration,
+  KnowledgeSearchResponse,
+  KnowledgeSource
+} from '../shared/knowledge'
+import type {
   PluginCatalogRequest,
   PluginCatalogResult,
   PluginSourceCandidatePreview,
@@ -828,6 +834,11 @@ export interface PureScienceAPI {
     getPath(): Promise<string | null>
     openFile(): Promise<OpenLogFileResult>
     revealInFolder(): Promise<RevealLogFileResult>
+  }
+  knowledge: {
+    listSources(): Promise<KnowledgeOverview>
+    registerSource(request: KnowledgeRegistration): Promise<KnowledgeSource[]>
+    search(request: { text: string; limit?: number }): Promise<KnowledgeSearchResponse>
   }
   notifications: {
     clearAll(request: NotificationClearRequest): Promise<void>

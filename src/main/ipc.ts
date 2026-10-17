@@ -278,6 +278,7 @@ import { SETTINGS_INSTALL_LOG_CHANNEL, registerSettingsIpcHandlers } from './set
 import { registerLocalFsIpcHandlers } from './local-fs/ipc'
 import { LocalFsService } from './local-fs/service'
 import { FolderGrantsService } from './folder-grants'
+import type { KnowledgeRegistration } from '../shared/knowledge'
 import { createKnowledgeModule } from './knowledge/knowledge-module'
 import { createKnowledgeRpcCalls } from './knowledge/knowledge-rpc-calls'
 import { createKnowledgeCitationVerifier } from './knowledge/knowledge-citation'
@@ -411,6 +412,45 @@ import { SkillCreator } from './skills/skill-creator'
 import { createMethodSkillCompiler } from './skills/method-skill-compiler'
 import type { ConversationSkillImportApprovalResponse } from '../shared/settings'
 import type { TaskAgentPort } from './tasks/task-runner'
+
+// The window sends the same three kinds the model's tools send. Anything else is refused by name HERE, with a
+// reason, instead of reaching the store as a request it would have to guess at.
+const readKnowledgeRegistration = (value: unknown): KnowledgeRegistration => {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('A knowledge registration needs a request.')
+  }
+  const candidate = value as Record<string, unknown>
+  if (candidate.kind === 'url') {
+    if (typeof candidate.url !== 'string' || candidate.url.length === 0) {
+      throw new Error('A url source needs a url.')
+    }
+    return { kind: 'url', url: candidate.url }
+  }
+  if (candidate.kind === 'file' || candidate.kind === 'folder') {
+    if (typeof candidate.path !== 'string' || candidate.path.length === 0) {
+      throw new Error(`A ${candidate.kind} source needs a path.`)
+    }
+    return { kind: candidate.kind, path: candidate.path }
+  }
+  throw new Error('A knowledge source kind must be file, folder, or url.')
+}
+
+const readKnowledgeSearchRequest = (value: unknown): { text: string; limit?: number } => {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('A knowledge search needs a request.')
+  }
+  const candidate = value as Record<string, unknown>
+  if (typeof candidate.text !== 'string' || candidate.text.trim().length === 0) {
+    throw new Error('A knowledge search needs a non-empty text.')
+  }
+  if (candidate.limit !== undefined && typeof candidate.limit !== 'number') {
+    throw new Error('A knowledge search limit must be a number when given.')
+  }
+  return {
+    text: candidate.text,
+    ...(typeof candidate.limit === 'number' ? { limit: candidate.limit } : {})
+  }
+}
 
 const permissionGrantsLog = createLogger('permission-grants')
 const screeningLog = createLogger('references:screening')
@@ -2007,6 +2047,31 @@ const createApplicationModules = async (
       reader: createKnowledgeContentReader({ urlReader: knowledgeUrlReader })
     })
   })
+  // The window's knowledge surface (v2.8.0): the same module the model's tools go through, exposed as three
+  // local-only channels. Kept in one place with the module so a window read and a tool call cannot drift into
+  // two different behaviours — including the NAMED refusal, which is what tells a reader why a path was refused.
+  const knowledgeCalls = createKnowledgeRpcCalls(
+    knowledgeModule,
+    createKnowledgeWikiGenerator({
+      reader: {
+        read: async (path) => {
+          try {
+            return await readFile(path, 'utf8')
+          } catch {
+            return undefined
+          }
+        }
+      }
+    })
+  )
+  ipcMainHandle('knowledge:list-sources', () => knowledgeCalls.listSources())
+  ipcMainHandle('knowledge:register-source', (_event, request: unknown) =>
+    knowledgeCalls.registerSource(readKnowledgeRegistration(request))
+  )
+  ipcMainHandle('knowledge:search', (_event, request: unknown) =>
+    knowledgeCalls.search(readKnowledgeSearchRequest(request))
+  )
+
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
