@@ -20,6 +20,8 @@ import {
   missingFieldsFromWarnings,
   resolveCitationStyles
 } from '../../../../shared/citation/format'
+import { formatBibTeXList } from '../../../../shared/citation/bibtex'
+import { formatRisList } from '../../../../shared/citation/ris'
 import {
   citationStyleFromImport,
   type ImportedCitationStyle
@@ -211,6 +213,10 @@ export function ReferencesLibraryDialog({
   // store; both are merged here so one picker drives export, copy and the side-by-side comparison.
   const [importedStyles, setImportedStyles] = useState<ImportedCitationStyle[]>([])
   const [selectedStyleId, setSelectedStyleId] = useState<string>('gbt7714-2015')
+  // v2.6.0 A2: the same list leaves as a journal style, BibTeX or RIS. The file format is a
+  // parameter of the one export path rather than a second command, so the selection it exports and
+  // the notice it prints stay the same in all three modes.
+  const [exportFormat, setExportFormat] = useState<'style' | 'bibtex' | 'ris'>('style')
   const [compareTarget, setCompareTarget] = useState<Reference | null>(null)
   const [styleBusy, setStyleBusy] = useState(false)
   const styleFileInputRef = useRef<HTMLInputElement | null>(null)
@@ -223,6 +229,13 @@ export function ReferencesLibraryDialog({
     () => citationStyles.find((style) => style.id === selectedStyleId) ?? citationStyles[0],
     [citationStyles, selectedStyleId]
   )
+  // What the export will actually write — the style's own label, or the interchange format's name.
+  const exportFormatLabel =
+    exportFormat === 'bibtex'
+      ? 'BibTeX'
+      : exportFormat === 'ris'
+        ? 'RIS'
+        : (selectedStyle?.label ?? selectedStyleId)
 
   const loadCitationStyles = useCallback(async (): Promise<void> => {
     try {
@@ -333,31 +346,36 @@ export function ReferencesLibraryDialog({
 
   const todayIso = (): string => new Date().toISOString().slice(0, 10)
 
-  // Exports in whichever style is selected. The file name carries the style id so a saved list can be
-  // traced back to the convention (and, for imports, to the exact imported style) that produced it.
+  // One export path, three file formats (v2.6.0 A2): the journal style that was already here, plus
+  // the two interchange formats a reference manager imports. The file name carries what produced it
+  // — a style id, or `bibtex`/`ris` — and the notice names the format that was written instead of
+  // claiming a journal style in every mode.
   const handleExportWithStyle = async (): Promise<void> => {
     if (shownReferences.length === 0) {
       setNotice(t('references.noDuplicates'))
       return
     }
     const items = shownReferences.map((reference) => citationItemFromReference(reference))
-    const text = formatCitationList(
-      items,
-      selectedStyleId,
-      { retrievedAt: todayIso() },
-      citationStyles
-    )
+    const text =
+      exportFormat === 'bibtex'
+        ? formatBibTeXList(items)
+        : exportFormat === 'ris'
+          ? formatRisList(items)
+          : formatCitationList(items, selectedStyleId, { retrievedAt: todayIso() }, citationStyles)
+    const extension = exportFormat === 'bibtex' ? 'bib' : exportFormat === 'ris' ? 'ris' : 'txt'
+    const slug =
+      exportFormat === 'style' ? selectedStyleId.replace(/[^a-z0-9-]+/gi, '-') : exportFormat
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `references-${selectedStyleId.replace(/[^a-z0-9-]+/gi, '-')}-${todayIso()}.txt`
+    link.download = `references-${slug}-${todayIso()}.${extension}`
     link.click()
     URL.revokeObjectURL(url)
     setNotice(
       t('references.exportedWithStyle', {
         n: shownReferences.length,
-        style: selectedStyle?.label ?? selectedStyleId
+        style: exportFormatLabel
       })
     )
   }
@@ -1040,13 +1058,25 @@ export function ReferencesLibraryDialog({
                     </optgroup>
                   ) : null}
                 </select>
+                <select
+                  className="ml-1 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                  aria-label={t('references.exportFormat')}
+                  value={exportFormat}
+                  onChange={(event) =>
+                    setExportFormat(event.target.value as 'style' | 'bibtex' | 'ris')
+                  }
+                >
+                  <option value="style">{t('references.formatStyle')}</option>
+                  <option value="bibtex">BibTeX</option>
+                  <option value="ris">RIS</option>
+                </select>
                 <button
                   type="button"
                   className={ghostClass}
                   onClick={() => void handleExportWithStyle()}
                 >
                   <BookMarked className="size-3" aria-hidden="true" />{' '}
-                  {t('references.exportWithStyle')}
+                  {t('references.exportAs', { format: exportFormatLabel })}
                 </button>
                 <button
                   type="button"

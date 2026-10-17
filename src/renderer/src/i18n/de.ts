@@ -3892,6 +3892,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'Dekodiere TIFF-Bild…',
 
   // references
+  'references.exportAs': 'Als {format} exportieren',
+  'references.exportFormat': 'Dateiformat',
+  'references.formatStyle': 'Zeitschriftenstil',
   'references.exportGbt': 'GB/T-7714-Zitate exportieren',
   'references.gbtCopied': 'GB/T-7714-Zitat kopiert.',
   'references.gbtExported': '{n} GB/T-7714-Zitate exportiert.',

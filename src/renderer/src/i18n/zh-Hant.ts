@@ -3507,6 +3507,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': '正在解碼 TIFF 影像',
 
   // references
+  'references.exportAs': '匯出為 {format}',
+  'references.exportFormat': '檔案格式',
+  'references.formatStyle': '期刊樣式',
   'references.exportGbt': '匯出 GB/T 7714 引文',
   'references.gbtCopied': 'GB/T 7714 引文已複製。',
   'references.gbtExported': '已匯出 {n} 筆 GB/T 7714 引文。',

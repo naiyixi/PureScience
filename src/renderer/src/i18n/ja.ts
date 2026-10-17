@@ -3785,6 +3785,9 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'TIFF 画像をデコード中…',
 
   // references
+  'references.exportAs': '{format} として書き出す',
+  'references.exportFormat': 'ファイル形式',
+  'references.formatStyle': '雑誌スタイル',
   'references.exportGbt': 'GB/T 7714 引用をエクスポート',
   'references.gbtCopied': 'GB/T 7714 引用をコピーしました。',
   'references.gbtExported': '{n} 件の GB/T 7714 引用をエクスポートしました。',

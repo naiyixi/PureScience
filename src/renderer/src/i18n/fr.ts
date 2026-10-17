@@ -3883,6 +3883,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'tiffPreview.decoding': 'Décodage de l’image TIFF…',
 
   // references
+  'references.exportAs': 'Exporter en {format}',
+  'references.exportFormat': 'Format de fichier',
+  'references.formatStyle': 'Style de revue',
   'references.exportGbt': 'Exporter les citations GB/T 7714',
   'references.gbtCopied': 'Citation GB/T 7714 copiée.',
   'references.gbtExported': '{n} citations GB/T 7714 exportées.',

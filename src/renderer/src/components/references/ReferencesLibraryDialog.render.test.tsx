@@ -54,7 +54,10 @@ vi.mock('@/i18n', () => ({
       'references.attachmentAttachedOn': 'attached {date}',
       'references.addedToCollection': 'Added to collection.',
       'common.delete': 'Delete',
-      'common.cancel': 'Cancel'
+      'common.cancel': 'Cancel',
+      'references.exportFormat': 'File format',
+      'references.formatStyle': 'Journal style',
+      'references.exportAs': 'Export as {format}'
     }
 
     return {
@@ -548,5 +551,53 @@ describe('ReferencesLibraryDialog collections', () => {
 
     expect(findExactButton('Select every row on this page').disabled).toBe(true)
     expect(findExactButton('Clear this page').disabled).toBe(true)
+  })
+
+  // v2.6.0 A2: the library exports BibTeX/RIS through the same control the style export already
+  // uses, and what leaves is an entry a reference manager can read — not a renamed journal list.
+  it('exports the selection as BibTeX through the format control (A2)', async () => {
+    await render()
+    const select = document.body.querySelector<HTMLSelectElement>(
+      'select[aria-label="File format"]'
+    )
+    expect(select).not.toBeNull()
+    expect(Array.from(select?.options ?? []).map((option) => option.value)).toEqual([
+      'style',
+      'bibtex',
+      'ris'
+    ])
+
+    const captured: Blob[] = []
+    const originalCreate = URL.createObjectURL
+    const originalRevoke = URL.revokeObjectURL
+    URL.createObjectURL = ((blob: Blob): string => {
+      captured.push(blob)
+      return 'blob:test'
+    }) as typeof URL.createObjectURL
+    URL.revokeObjectURL = ((): void => undefined) as typeof URL.revokeObjectURL
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined)
+    try {
+      await act(async () => {
+        if (select) {
+          select.value = 'bibtex'
+          select.dispatchEvent(new Event('change', { bubbles: true }))
+        }
+      })
+      await flush()
+      expect(findButton('Export as BibTeX')).toBeTruthy()
+      await act(async () => {
+        findButton('Export as BibTeX').click()
+      })
+      await flush()
+      const text = captured[0] ? await captured[0].text() : ''
+      expect(text).toContain('@article{')
+      expect(text).toContain('title = {A screen for variants}')
+    } finally {
+      clickSpy.mockRestore()
+      URL.createObjectURL = originalCreate
+      URL.revokeObjectURL = originalRevoke
+    }
   })
 })
