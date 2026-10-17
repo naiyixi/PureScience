@@ -8,6 +8,23 @@ import { drainWorkspaceRuntimeEventsForPersistence } from '../../lib/acp/useWork
 import { flushSessionPersistence } from '../../lib/session-persistence/session-persistence'
 import type { ChatSession } from '@/stores/session-store'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // The measurement must push pending writes down before it reads the document, so the two calls that do it
 // are spies here; everything else in these modules stays real.
 vi.mock('../../lib/acp/useWorkspaceAgentRuntime', async (importOriginal) => ({
@@ -170,9 +187,12 @@ describe('session information card', () => {
           .querySelector('[data-slot="session-fork-measure"]')
           ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       })
-      await vi.waitFor(() => {
-        expect(order).toContain('read')
-      })
+      await vi.waitFor(
+        () => {
+          expect(order).toContain('read')
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
       // IC52: the card also reads the document once at mount for its read-only replay section. The
       // property this case pins is about the MEASUREMENT — whatever else reads, the measurement's read
       // must come after both the drain and the flush — so the sequence is asserted as: the card's own
@@ -216,9 +236,12 @@ describe('session information card', () => {
           .querySelector('[data-slot="session-fork-measure"]')
           ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
       })
-      await vi.waitFor(() => {
-        expect(first.textContent).toContain('The copy will hold')
-      })
+      await vi.waitFor(
+        () => {
+          expect(first.textContent).toContain('The copy will hold')
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       // A second instance for the same session — what a re-mount produces.
       const second = mount(element)
@@ -250,9 +273,14 @@ describe('session information card', () => {
     }
     try {
       const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="session-info-vision-evidence"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(
+            container.querySelector('[data-slot="session-info-vision-evidence"]')
+          ).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       const item = container.querySelector('[data-slot="session-info-vision-evidence-item"]')
       expect(item?.textContent).toContain('a'.repeat(12))
@@ -361,9 +389,12 @@ describe('session information card', () => {
     ;(window as unknown as { api: unknown }).api = api
     try {
       const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="session-replay-steps"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="session-replay-steps"]')).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       const steps = [...container.querySelectorAll('[data-slot="replay-step"]')]
       expect(steps.map((step) => step.getAttribute('data-replay-step-kind'))).toEqual([
@@ -453,9 +484,12 @@ describe('session information card', () => {
     ;(window as unknown as { api: unknown }).api = api
     try {
       const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       const select = container.querySelector(
         '[data-slot="session-replay-ask"] select'
@@ -510,9 +544,12 @@ describe('session information card', () => {
     ;(window as unknown as { api: unknown }).api = api
     try {
       const container = mount(<SessionInfoCard session={session()} onClose={() => {}} />)
-      await vi.waitFor(() => {
-        expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
-      })
+      await vi.waitFor(
+        () => {
+          expect(container.querySelector('[data-slot="session-replay-ask"]')).not.toBeNull()
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
 
       const select = container.querySelector(
         '[data-slot="session-replay-ask"] select'

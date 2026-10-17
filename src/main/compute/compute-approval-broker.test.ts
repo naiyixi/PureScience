@@ -3,6 +3,23 @@ import { ComputeApprovalBroker } from './compute-approval-broker'
 import type { ComputeApprovalRequest } from '../../shared/compute'
 import { resolveExecutionProtection } from '../../shared/execution-protection'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // A synchronous fake timer so timeout behavior is deterministic without real time passing.
 const makeTimer = (): {
   set: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
@@ -161,7 +178,9 @@ describe('ComputeApprovalBroker', () => {
       operation: 'call_command',
       ownerId: 'host-row-1'
     })
-    await vi.waitFor(() => expect(resolveGrant).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(resolveGrant).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     let invalidationCompleted = false
     const invalidation = broker.invalidateProvider('ssh:biowulf').then(() => {
@@ -233,7 +252,9 @@ describe('ComputeApprovalBroker', () => {
     })
     await Promise.resolve()
     broker.respond('id-1', 'project')
-    await vi.waitFor(() => expect(remember).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(remember).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     let invalidationCompleted = false
     const invalidation = broker.invalidateProvider('ssh:biowulf').then(() => {
@@ -286,7 +307,9 @@ describe('ComputeApprovalBroker', () => {
       operation: 'call_command',
       ownerId: 'deleted-host-row'
     })
-    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     broker.respond('id-1', 'once')
 
     await expect(decision).resolves.toBe('deny')
@@ -741,7 +764,9 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
       makeRequest({ protection: remoteSnapshot('unprotected') }),
       context
     )
-    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     broker.respond('id-1', 'once')
 
     await expect(decision).resolves.toBe('once')
@@ -766,7 +791,9 @@ describe('ComputeApprovalBroker — unprotected remote execution policy', () => 
     )
     // The unprotected path reads the policy before the card is armed, so the answer must wait for the
     // card rather than for a fixed number of microtasks.
-    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(broadcast).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     // The user asked to remember it; storing a grant the next call would ignore would make the
     // revocable-grant list lie about what was authorized.
     broker.respond('id-1', 'project')

@@ -11,6 +11,23 @@ import type {
   TiffDecodeWorkerResponse
 } from './previews/tiff-preview-worker-protocol'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 class TestTiffWorker {
   private data: ArrayBuffer | undefined
   private readonly listeners = new Map<string, Set<EventListener>>()
@@ -120,7 +137,9 @@ describe('TIFF artifact thumbnail', () => {
       )
     })
 
-    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull())
+    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(container.querySelector('canvas')?.className).toContain('object-cover')
     expect(container.querySelector('canvas')?.className).toContain('object-top')
     expect(fetch).toHaveBeenCalledWith(
@@ -141,10 +160,12 @@ describe('TIFF artifact thumbnail', () => {
       })
     )
     expect(putImageData).toHaveBeenCalledOnce()
-    await vi.waitFor(() =>
-      expect(window.api.previewResources.release).toHaveBeenCalledWith({
-        resourceId: 'resource-1'
-      })
+    await vi.waitFor(
+      () =>
+        expect(window.api.previewResources.release).toHaveBeenCalledWith({
+          resourceId: 'resource-1'
+        }),
+      { timeout: COORDINATION_WINDOW_MS }
     )
   })
 
@@ -161,11 +182,15 @@ describe('TIFF artifact thumbnail', () => {
     }
     root = createRoot(container)
     await act(async () => root.render(<ArtifactPreview artifact={artifact} isVisible />))
-    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull())
+    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await act(async () => root.render(<ArtifactPreview artifact={artifact} isVisible={false} />))
 
-    await vi.waitFor(() => expect(container.querySelector('canvas')).toBeNull())
+    await vi.waitFor(() => expect(container.querySelector('canvas')).toBeNull(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(container.textContent).toContain('TIFF')
   })
 
@@ -189,8 +214,12 @@ describe('TIFF artifact thumbnail', () => {
       )
     })
 
-    await vi.waitFor(() => expect(getContext).toHaveBeenCalled())
-    await vi.waitFor(() => expect(container.querySelector('canvas')).toBeNull())
+    await vi.waitFor(() => expect(getContext).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+    await vi.waitFor(() => expect(container.querySelector('canvas')).toBeNull(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(container.textContent).toContain('TIFF')
   })
 })

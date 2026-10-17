@@ -24,6 +24,23 @@ import {
 } from '@/stores/session-store'
 import type { UploadedAttachment } from '../../../../shared/uploads'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 // Capture the ConversationPanel props the page computes on each render.
 let conversationProps: {
   attachments: UploadedAttachment[]
@@ -233,10 +250,13 @@ describe('WorkspacePage image attachment gating', () => {
 
     // The image takes the native-path upload adapter and then surfaces as a composer attachment.
     await act(async () => {
-      await vi.waitFor(() => {
-        expect(stageLocalFile).toHaveBeenCalledTimes(1)
-        expect(conversationProps.attachments).toEqual([staged])
-      })
+      await vi.waitFor(
+        () => {
+          expect(stageLocalFile).toHaveBeenCalledTimes(1)
+          expect(conversationProps.attachments).toEqual([staged])
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
     })
     expect(conversationProps.actionError).toBeNull()
     expect(conversationProps.canSendMessage).toBe(true)
@@ -246,7 +266,9 @@ describe('WorkspacePage image attachment gating', () => {
       conversationProps.onSendMessage([])
     })
     await act(async () => {
-      await vi.waitFor(() => expect(runtime.sendMessage).toHaveBeenCalledTimes(1))
+      await vi.waitFor(() => expect(runtime.sendMessage).toHaveBeenCalledTimes(1), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
     expect(runtime.sendMessage.mock.calls[0][0].attachments).toEqual([staged])
   })
@@ -261,7 +283,9 @@ describe('WorkspacePage image attachment gating', () => {
       conversationProps.onStageAttachmentFiles([imageFile()])
     })
     await act(async () => {
-      await vi.waitFor(() => expect(conversationProps.actionError).toBe(IMAGE_BLOCKED_MESSAGE))
+      await vi.waitFor(() => expect(conversationProps.actionError).toBe(IMAGE_BLOCKED_MESSAGE), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
     expect(stageLocalFile).not.toHaveBeenCalled()
     expect(conversationProps.attachments).toEqual([])
@@ -287,7 +311,9 @@ describe('WorkspacePage image attachment gating', () => {
       conversationProps.onStageAttachmentFiles([imageFile()])
     })
     await act(async () => {
-      await vi.waitFor(() => expect(conversationProps.attachments).toEqual([staged]))
+      await vi.waitFor(() => expect(conversationProps.attachments).toEqual([staged]), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
 
     // ...then switch to a model without image support and attempt to send.
@@ -300,7 +326,9 @@ describe('WorkspacePage image attachment gating', () => {
       conversationProps.onSendMessage([])
     })
     await act(async () => {
-      await vi.waitFor(() => expect(conversationProps.actionError).toBe(IMAGE_BLOCKED_MESSAGE))
+      await vi.waitFor(() => expect(conversationProps.actionError).toBe(IMAGE_BLOCKED_MESSAGE), {
+        timeout: COORDINATION_WINDOW_MS
+      })
     })
     expect(runtime.sendMessage).not.toHaveBeenCalled()
   })

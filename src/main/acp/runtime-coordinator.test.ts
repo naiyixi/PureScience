@@ -6,6 +6,23 @@ import type { AcpRuntime, AcpRuntimeCallbacks } from './runtime'
 import type { ConversationPermissionGrantStore } from './permission-broker'
 import type { AgentModelChangeTarget } from '../agent-framework'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const createDeferred = <Value = void>(): {
   promise: Promise<Value>
   resolve: (value: Value) => void
@@ -378,8 +395,9 @@ describe('AcpRuntimeCoordinator', () => {
     )
     const session = await coordinator.createSession()
     const prompt = coordinator.sendPrompt({ sessionId: session.sessionId, text: 'original task' })
-    await vi.waitFor(() =>
-      expect(coordinator.getSnapshot().promptInFlightSessionIds).toContain(session.sessionId)
+    await vi.waitFor(
+      () => expect(coordinator.getSnapshot().promptInFlightSessionIds).toContain(session.sessionId),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     let released = false
     const ownershipRelease = coordinator
@@ -1160,7 +1178,9 @@ describe('AcpRuntimeCoordinator', () => {
       cwd: '/workspace',
       previousFrameworkId: 'claude-code'
     })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     // Adoption cannot publish the new owner until the prior turn clears its terminal state.
     expect(coordinator.getSnapshot().promptInFlightSessionIds).toEqual([session.sessionId])
@@ -1238,7 +1258,9 @@ describe('AcpRuntimeCoordinator', () => {
       cwd: '/workspace',
       previousFrameworkId: 'codex'
     })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     created[0].emitEvent(
       toolEvent('late-codex-tool', 'mcp.purescience_artifacts.write_artifact_file')
@@ -1400,7 +1422,9 @@ describe('AcpRuntimeCoordinator', () => {
       .finally(() => {
         resumeSettled = true
       })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     adoption.resolve()
     await expect(created[1].resumeSession.mock.results[0]?.value).resolves.toMatchObject({
@@ -1468,7 +1492,9 @@ describe('AcpRuntimeCoordinator', () => {
       cwd: '/workspace',
       previousFrameworkId: 'codex'
     })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     await expect(created[1].resumeSession.mock.results[0]?.value).resolves.toMatchObject({
       sessionId: session.sessionId
     })
@@ -1573,7 +1599,9 @@ describe('AcpRuntimeCoordinator', () => {
       cwd: '/workspace',
       previousFrameworkId: 'claude-code'
     })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     created[0].emitState({ promptInFlight: false, promptInFlightSessionIds: [] })
     await resumeRequest
 
@@ -1640,7 +1668,9 @@ describe('AcpRuntimeCoordinator', () => {
       cwd: '/workspace',
       previousFrameworkId: 'claude-code'
     })
-    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[1].resumeSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     created[0].emitState({ promptInFlight: false, promptInFlightSessionIds: [] })
     await resumeRequest
 
@@ -1884,7 +1914,9 @@ describe('AcpRuntimeCoordinator', () => {
     created[0].deleteSession.mockReturnValueOnce(deleteDeferred.promise)
 
     const deleting = coordinator.deleteSession({ sessionId: 'session-1' })
-    await vi.waitFor(() => expect(created[0].deleteSession).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(created[0].deleteSession).toHaveBeenCalledOnce(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     await coordinator.resumeSession({ sessionId: 'session-1', cwd: '/workspace' })
     deleteDeferred.resolve(emptySnapshot())
 

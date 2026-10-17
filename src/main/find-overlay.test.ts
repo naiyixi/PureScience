@@ -9,6 +9,23 @@ import {
 } from './find-overlay'
 import { WINDOW_FIND_APPEARANCE_CHANNEL, WINDOW_FIND_SHOW_CHANNEL } from '../shared/window-controls'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 describe('computeOverlayBounds', () => {
   it('anchors the bar to the top-right of the content area with a margin', () => {
     expect(computeOverlayBounds(1000)).toEqual({ x: 572, y: 8, width: 420, height: 40 })
@@ -103,7 +120,9 @@ describe('find overlay manager', () => {
     const { view, mainWindow, createView, registerOwner, manager } = createFakes()
 
     manager.open()
-    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(createView).toHaveBeenCalledWith({
       webPreferences: { preload: PRELOAD_PATH, sandbox: true, contextIsolation: true }
@@ -144,7 +163,9 @@ describe('find overlay manager', () => {
     const { view, mainWindow, createView, manager } = createFakes()
 
     manager.open()
-    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     manager.close()
     manager.updateAppearance({ theme: 'dark', followsSystem: false })
     view.webContents.send.mockClear()
@@ -166,7 +187,9 @@ describe('find overlay manager', () => {
   it('updates an open overlay appearance without refocusing or signaling show', async () => {
     const { view, manager } = createFakes()
     manager.open()
-    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(view.webContents.send).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     view.webContents.send.mockClear()
     view.webContents.focus.mockClear()
 
@@ -202,7 +225,9 @@ describe('find overlay manager', () => {
 
     manager.open()
     failLoad?.(new Error('load failed'))
-    await vi.waitFor(() => expect(manager.isOpen()).toBe(false))
+    await vi.waitFor(() => expect(manager.isOpen()).toBe(false), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(view.destroy).toHaveBeenCalledTimes(1)
     manager.open()

@@ -4,6 +4,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ManagedPreviewResource } from '../../../../../shared/preview-resources'
 import { createManagedPdfLoadingTask } from './managed-pdf-document'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const resource: ManagedPreviewResource = {
   id: 'resource-1',
   url: 'purescience-preview://resource-1/report.pdf',
@@ -37,7 +54,9 @@ describe('createManagedPdfLoadingTask', () => {
     const onDataRange = vi.spyOn(options.range, 'onDataRange')
 
     options.range.requestDataRange(65536, 131072)
-    await vi.waitFor(() => expect(onDataRange).toHaveBeenCalled())
+    await vi.waitFor(() => expect(onDataRange).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(result).toBe(loadingTask)
     expect(options).toMatchObject({
@@ -73,7 +92,9 @@ describe('createManagedPdfLoadingTask', () => {
     const onDataRange = vi.spyOn(range, 'onDataRange')
 
     range.requestDataRange(0, chunkBytes * 2 + 3)
-    await vi.waitFor(() => expect(onDataRange).toHaveBeenCalled())
+    await vi.waitFor(() => expect(onDataRange).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     expect(window.api.previewResources.readRange).toHaveBeenCalledTimes(3)
     expect(window.api.previewResources.readRange).toHaveBeenNthCalledWith(1, {
@@ -113,7 +134,9 @@ describe('createManagedPdfLoadingTask', () => {
     const onDataRange = vi.spyOn(range, 'onDataRange')
 
     range.requestDataRange(0, 2 * 1024 * 1024)
-    await vi.waitFor(() => expect(window.api.previewResources.readRange).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(window.api.previewResources.readRange).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     range.abort()
     resolveFirstChunk?.({
       begin: 0,
@@ -136,7 +159,9 @@ describe('createManagedPdfLoadingTask', () => {
     const loadingTask = createManagedPdfLoadingTask(resource, getDocument)
     const range = getDocument.mock.calls[0]?.[0].range
     range.requestDataRange(0, 64 * 1024)
-    await vi.waitFor(() => expect(destroy).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(destroy).toHaveBeenCalledTimes(1), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     await loadingTask.destroy()
 
     expect(destroy).toHaveBeenCalledTimes(1)

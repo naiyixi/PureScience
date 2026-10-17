@@ -12,6 +12,23 @@ import { ArtifactTurnOwner } from './artifact-turn-owner'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { ARTIFACT_RPC_METHODS } from '../artifacts/rpc-methods'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const roots: string[] = []
 
 const createRoot = async (): Promise<string> => {
@@ -800,7 +817,9 @@ describe('ArtifactTurnOwner', () => {
       agentName: 'Claude Code'
     })
 
-    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']))
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('releases only the capability of the session that went idle', async () => {
@@ -833,10 +852,14 @@ describe('ArtifactTurnOwner', () => {
     // The release walks the whole map, and a session going idle must not take another session's credential
     // with it — the two are only related by living in the same map.
     await owner.dispose(second)
-    await vi.waitFor(() => expect(revoked).toEqual(['capability-2']))
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-2']), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     await owner.dispose(first)
-    await vi.waitFor(() => expect(revoked).toEqual(['capability-2', 'capability-1']))
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-2', 'capability-1']), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('defers the release while another turn of the session is still sealing', async () => {
@@ -875,7 +898,7 @@ describe('ArtifactTurnOwner', () => {
 
     const firstFinalization = owner.finalize(first)
     const secondFinalization = owner.finalize(second)
-    await vi.waitFor(() => expect(retired).toHaveLength(2))
+    await vi.waitFor(() => expect(retired).toHaveLength(2), { timeout: COORDINATION_WINDOW_MS })
 
     // Both turns are sealing, so a release that ran when one of them settled would take the credential away
     // from the other's admitted writes.
@@ -886,7 +909,9 @@ describe('ArtifactTurnOwner', () => {
 
     await owner.dispose(first)
     await owner.dispose(second)
-    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']))
+    await vi.waitFor(() => expect(revoked).toEqual(['capability-1']), {
+      timeout: COORDINATION_WINDOW_MS
+    })
   })
 
   it('surfaces a seal whose retirement rejects, and still clears ownership', async () => {

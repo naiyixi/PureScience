@@ -1,6 +1,23 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 const tableHarness = {
   instances: [] as Array<{
     ctx: { body: { headIndex: number; tailIndex: number }; scrollY: number }
@@ -174,10 +191,13 @@ describe('patched spreadsheet window cache', () => {
         spreadsheet: { worker: true, workerUrl: 'sheet-worker.js' }
       }
     })
-    await vi.waitFor(() => {
-      expect(SpreadsheetWorker.parseStarts).toContain(1_500)
-      expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
-    })
+    await vi.waitFor(
+      () => {
+        expect(SpreadsheetWorker.parseStarts).toContain(1_500)
+        expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     const table = tableHarness.instances[0]
     table.ctx.body.headIndex = 4_000
@@ -185,11 +205,14 @@ describe('patched spreadsheet window cache', () => {
     table.ctx.scrollY = 80_000
     table.emit('onScrollY')
 
-    await vi.waitFor(() => {
-      expect(SpreadsheetWorker.parseStarts).toContain(5_500)
-      expect(target.querySelector('.sheet-loading-summary')?.textContent).toContain('3,000')
-      expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
-    })
+    await vi.waitFor(
+      () => {
+        expect(SpreadsheetWorker.parseStarts).toContain(5_500)
+        expect(target.querySelector('.sheet-loading-summary')?.textContent).toContain('3,000')
+        expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     const firstRow = table.getRows()[0]
     expect(firstRow?.__baseHeight).toBeUndefined()
     expect(firstRow?._height).toBeUndefined()
@@ -198,13 +221,16 @@ describe('patched spreadsheet window cache', () => {
     table.ctx.body.tailIndex = 20
     table.ctx.scrollY = 0
     table.emit('onScrollY')
-    await vi.waitFor(() => {
-      expect(
-        [0, 500, 1_000, 1_500].some(
-          (start) => SpreadsheetWorker.parseStarts.filter((value) => value === start).length > 1
-        )
-      ).toBe(true)
-    })
+    await vi.waitFor(
+      () => {
+        expect(
+          [0, 500, 1_000, 1_500].some(
+            (start) => SpreadsheetWorker.parseStarts.filter((value) => value === start).length > 1
+          )
+        ).toBe(true)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     await disposeSpreadsheet(instance)
   })
@@ -219,7 +245,9 @@ describe('patched spreadsheet window cache', () => {
         spreadsheet: { worker: true, workerUrl: 'sheet-worker.js' }
       }
     })
-    await vi.waitFor(() => expect(SpreadsheetWorker.parseStarts).toContain(1_500))
+    await vi.waitFor(() => expect(SpreadsheetWorker.parseStarts).toContain(1_500), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     SpreadsheetWorker.responseDelayMs = 50
     const table = tableHarness.instances[0]
@@ -253,9 +281,12 @@ describe('patched spreadsheet window cache', () => {
         spreadsheet: { worker: true, workerUrl: 'sheet-worker.js' }
       }
     })
-    await vi.waitFor(() => {
-      expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 0, startRow: 0 })
-    })
+    await vi.waitFor(
+      () => {
+        expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 0, startRow: 0 })
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     const clickTab = (name: string): void => {
       Array.from(target.querySelectorAll<HTMLButtonElement>('.sheet-tab'))
@@ -263,32 +294,44 @@ describe('patched spreadsheet window cache', () => {
         ?.click()
     }
     const expectSheetReady = async (name: string): Promise<void> => {
-      await vi.waitFor(() => {
-        const active = target.querySelector<HTMLButtonElement>('.sheet-tab[aria-pressed="true"]')
-        expect(active?.textContent).toBe(name)
-        expect(target.querySelector('.loading')?.classList.contains('hidden')).toBe(true)
-        expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
-      })
+      await vi.waitFor(
+        () => {
+          const active = target.querySelector<HTMLButtonElement>('.sheet-tab[aria-pressed="true"]')
+          expect(active?.textContent).toBe(name)
+          expect(target.querySelector('.loading')?.classList.contains('hidden')).toBe(true)
+          expect(target.querySelector('.sheet-loading')?.classList.contains('hidden')).toBe(true)
+        },
+        { timeout: COORDINATION_WINDOW_MS }
+      )
     }
 
     clickTab('Second')
-    await vi.waitFor(() => {
-      expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 1, startRow: 0 })
-    })
+    await vi.waitFor(
+      () => {
+        expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 1, startRow: 0 })
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     await expectSheetReady('Second')
     clickTab('Third')
-    await vi.waitFor(() => {
-      expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 2, startRow: 0 })
-    })
+    await vi.waitFor(
+      () => {
+        expect(SpreadsheetWorker.parseRequests).toContainEqual({ sheet: 2, startRow: 0 })
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
     await expectSheetReady('Third')
     clickTab('First')
-    await vi.waitFor(() => {
-      expect(
-        SpreadsheetWorker.parseRequests.filter(
-          ({ sheet, startRow }) => sheet === 0 && startRow === 0
-        )
-      ).toHaveLength(2)
-    })
+    await vi.waitFor(
+      () => {
+        expect(
+          SpreadsheetWorker.parseRequests.filter(
+            ({ sheet, startRow }) => sheet === 0 && startRow === 0
+          )
+        ).toHaveLength(2)
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     await disposeSpreadsheet(instance)
   })
@@ -311,7 +354,9 @@ describe('patched spreadsheet window cache', () => {
         spreadsheet: { worker: true, workerUrl: 'sheet-worker.js' }
       }
     })
-    await vi.waitFor(() => expect(target.querySelectorAll('.sheet-tab')).toHaveLength(10))
+    await vi.waitFor(() => expect(target.querySelectorAll('.sheet-tab')).toHaveLength(10), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     for (const button of target.querySelectorAll<HTMLButtonElement>('.sheet-tab')) button.click()
 

@@ -11,6 +11,23 @@ import type {
 } from '../tiff-preview-worker-protocol'
 import { TiffPreviewContent } from './TiffPreview'
 
+/**
+ * How long a coordination wait may take.
+ *
+ * Every `vi.waitFor` in this file is a *coordination* wait: it waits for the side effect of work that
+ * is already in flight (a spy being called, a process dying, a worker reporting that it started, a
+ * rendered node reaching its final text), never for something that may never happen. The only thing
+ * the window has to cover is how long a loaded machine takes to schedule that continuation -- so the
+ * default 1s is a quiet-machine budget, not a correctness budget. Measured on this repository: under
+ * load a coordinated wait took up to 704ms (34 samples, p90 = 361ms), and a site elsewhere in the
+ * suite failed at ~1.1s under load average ~70 while passing on a quiet machine.
+ *
+ * 30s matches the window this repository already uses for load-sensitive waits, and it stays well below
+ * vitest's 60s per-test timeout, so an assertion that is genuinely stuck still fails as a failure
+ * instead of hanging.
+ */
+const COORDINATION_WINDOW_MS = 30_000
+
 let workerResponseOverride:
   ((request: TiffDecodeWorkerRequest) => TiffDecodeWorkerResponse | undefined) | undefined
 
@@ -119,7 +136,9 @@ describe('TiffPreviewContent', () => {
       root.render(<TiffPreviewContent path="/workspace/chart.tiff" name="chart.tiff" />)
     })
 
-    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull())
+    await vi.waitFor(() => expect(container.querySelector('canvas')).not.toBeNull(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
 
     const canvas = container.querySelector('canvas')
     expect(fetch).toHaveBeenCalledWith(
@@ -161,7 +180,9 @@ describe('TiffPreviewContent', () => {
       root.render(<TiffPreviewContent path="/workspace/stack.tiff" name="stack.tiff" />)
     })
 
-    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'))
+    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(
       container.querySelector<HTMLButtonElement>('[aria-label="Previous TIFF page"]')?.disabled
     ).toBe(true)
@@ -173,7 +194,9 @@ describe('TiffPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Next TIFF page"]')?.click()
     })
 
-    await vi.waitFor(() => expect(container.textContent).toContain('Page 2 of 2'))
+    await vi.waitFor(() => expect(container.textContent).toContain('Page 2 of 2'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(fetch).toHaveBeenCalledOnce()
     expect(putImageData).toHaveBeenCalledTimes(2)
     const secondPage = putImageData.mock.calls[1]?.[0] as ImageData
@@ -206,13 +229,17 @@ describe('TiffPreviewContent', () => {
       root.render(<TiffPreviewContent path="/workspace/stack.tiff" name="stack.tiff" />)
     })
 
-    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'))
+    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     await act(async () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Next TIFF page"]')?.click()
     })
 
-    await vi.waitFor(() =>
-      expect(container.textContent).toContain("This TIFF encoding isn't supported for preview")
+    await vi.waitFor(
+      () =>
+        expect(container.textContent).toContain("This TIFF encoding isn't supported for preview"),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.textContent).toContain('Page 2 of 2')
     expect(window.api.previewResources.release).not.toHaveBeenCalled()
@@ -221,7 +248,9 @@ describe('TiffPreviewContent', () => {
       container.querySelector<HTMLButtonElement>('[aria-label="Previous TIFF page"]')?.click()
     })
 
-    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'))
+    await vi.waitFor(() => expect(container.textContent).toContain('Page 1 of 2'), {
+      timeout: COORDINATION_WINDOW_MS
+    })
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(container.querySelector('canvas')).not.toBeNull()
   })
@@ -242,8 +271,9 @@ describe('TiffPreviewContent', () => {
       root.render(<TiffPreviewContent path="/workspace/broken.tiff" name="broken.tiff" />)
     })
 
-    await vi.waitFor(() =>
-      expect(container.textContent).toContain("TIFF couldn't be decoded for preview")
+    await vi.waitFor(
+      () => expect(container.textContent).toContain("TIFF couldn't be decoded for preview"),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.textContent).not.toContain('byte order')
     expect(window.api.previewResources.release).toHaveBeenCalledWith({
@@ -260,8 +290,9 @@ describe('TiffPreviewContent', () => {
       root.render(<TiffPreviewContent path="/workspace/chart.tiff" name="chart.tiff" />)
     })
 
-    await vi.waitFor(() =>
-      expect(container.textContent).toContain("TIFF couldn't be decoded for preview")
+    await vi.waitFor(
+      () => expect(container.textContent).toContain("TIFF couldn't be decoded for preview"),
+      { timeout: COORDINATION_WINDOW_MS }
     )
     expect(container.querySelector('canvas')).toBeNull()
     expect(window.api.previewResources.release).toHaveBeenCalledWith({
