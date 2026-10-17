@@ -34,11 +34,17 @@ import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provena
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 
 // `sessions:save-session` is the most frequent slow handler in nine days of real-machine logs (4,282 calls,
-// p95 939 ms, max 50.0 s) and the router's line for it names the channel but not the phase. A median of
-// 100 ms beside a 50 s maximum is what queueing looks like, not writing — so the tail reports its own
-// split and the difference can be attributed without a profiler. The threshold sits above the router's
-// (50 ms) on purpose: the whole population already gets one line per slow call, and a second line for the
-// median would just be noise.
+// p95 939 ms, max 50.0 s) and the router's line for it names the channel but not the phase — so the tail
+// reports its own split and the difference can be attributed without a profiler. The threshold sits above
+// the router's (50 ms) on purpose: the whole population already gets one line per slow call, and a second
+// line for the median would just be noise.
+//
+// The first hypothesis — a 100 ms median beside a 50 s maximum must be queueing — is REFUTED by the phase
+// split itself: across 159 slow saves on a real machine (2026-10-17, packaged build, current + previous
+// log) `queuedMs` had p90 = 50 ms and only three samples above 500 ms, while `authorityMs` (39.9 s),
+// `writeMs` (44.6 s) and `aftermathMs` (37.0 s) shared the 142.7 s total. So the cost is the work itself,
+// not the wait, and the next optimization must target the read, the whole-file write, or the tail — not
+// the queue. The tail is split further below for that reason.
 const SLOW_SESSION_SAVE_THRESHOLD_MS = 200
 import { repairHistoricalArtifactAliases } from './artifact-alias-repair'
 import { startDiagnosticOperation } from '../diagnostics/operation'
@@ -1140,6 +1146,10 @@ class SessionPersistenceCoordinator {
         this.validatedBindingTopologies.set(key, bindingTopology)
       }
       await this.provenance?.captureFinalizedMessages(durableSession)
+      // The aftermath is split because the real machine says it is as expensive as the write itself:
+      // across 159 slow saves the tail after the JSON was durable was 37.0 s of 142.7 s total. Naming the
+      // two halves is what turns "the save is slow" into "this half is slow" without a profiler.
+      const capturedAt = Date.now()
       let changedSources: ProjectFileSource[]
       try {
         changedSources = await this.fileIndex.syncSession(durableSession)
@@ -1162,7 +1172,15 @@ class SessionPersistenceCoordinator {
           kind: 'upsert'
         })
       }
-      this.reportSlowSessionSave({ requestedAt, startedAt, readAt, preparedAt, writtenAt })
+      this.reportSlowSessionSave({
+        requestedAt,
+        startedAt,
+        readAt,
+        preparedAt,
+        writtenAt,
+        capturedAt,
+        indexedAt: Date.now()
+      })
       return durableSession
     })
   }
@@ -1177,6 +1195,8 @@ class SessionPersistenceCoordinator {
     readAt: number
     preparedAt: number
     writtenAt: number
+    capturedAt: number
+    indexedAt: number
   }): void {
     const finishedAt = Date.now()
     const totalMs = finishedAt - times.requestedAt
@@ -1187,6 +1207,11 @@ class SessionPersistenceCoordinator {
         authorityMs: times.readAt - times.startedAt,
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
+        // The two halves that were folded into `aftermathMs` before the real-machine reading showed the
+        // tail costs as much as the write. `aftermathMs` keeps its old meaning (everything after the JSON
+        // was durable) so an older reading and a newer one are still comparable.
+        provenanceMs: times.capturedAt - times.writtenAt,
+        fileIndexMs: times.indexedAt - times.capturedAt,
         aftermathMs: finishedAt - times.writtenAt,
         totalMs
       })

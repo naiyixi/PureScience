@@ -3906,17 +3906,24 @@ describe('session save diagnostics', () => {
     const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, number>]
     expect(message).toBe('session save was slow')
     expect(fields).toMatchObject({ queuedMs: 5_000, totalMs: 5_000 })
-    // Every phase is named, so a slow save can be attributed without a profiler.
+    // Every phase is named, so a slow save can be attributed without a profiler. The tail is split into
+    // its two halves (`provenanceMs` + `fileIndexMs`) because on a real machine it costs as much as the
+    // write: 37.0 s of 142.7 s across 159 slow saves.
     for (const phase of [
       'queuedMs',
       'authorityMs',
       'prepareMs',
       'writeMs',
+      'provenanceMs',
+      'fileIndexMs',
       'aftermathMs',
       'totalMs'
     ]) {
       expect(Object.keys(fields)).toContain(phase)
     }
+    // The split has to add up to the whole it was cut out of, or a later reading cannot be compared with
+    // the older one where the tail was a single number.
+    expect(fields.provenanceMs + fields.fileIndexMs).toBeLessThanOrEqual(fields.aftermathMs)
     clock.mockRestore()
   })
 })
