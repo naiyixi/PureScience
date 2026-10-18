@@ -4554,13 +4554,16 @@ export const zh = {
   'settings.knowledge.selectSource': '选中 {label}',
   'settings.knowledge.selectPageAll': '全选本页',
   'settings.knowledge.selectedCount': '已选 {count} 项',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '已移除 {count} 个来源；清理 {pruned} 份副本；{missing} 个 id 未登记。',
+  'settings.knowledge.bulkNotApplied': '整批未执行：{reason} 没有删除任何来源。',
   'settings.knowledge.bulkRemove': '移除选中',
   'settings.knowledge.bulkRemoveConfirm': '确认移除 {count} 个来源',
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 个来源，清理了 {pruned} 份已存副本。',
-  'settings.knowledge.bulkRemovePartial': '已移除 {count} 个来源；{failed} 个被拒绝：{reason}',
   'settings.knowledge.lastSweepUnreadable': '上次清扫的记账读不出来——这和「从未清扫过」是两回事。',
   'settings.knowledge.sweptMismatched': '另有 {count} 份副本的内容已与它自己的摘要不符，已删除。'
+
 }
 
 export type ZhKey = keyof typeof zh

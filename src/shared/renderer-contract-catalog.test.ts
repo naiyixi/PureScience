@@ -66,7 +66,7 @@ describe('renderer contract catalog', () => {
     // 494 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
     // (engines.*): one and two desktop-only contracts, so the catalog and the preload inventory move by
     // three while the local-Web "unavailable" set moves with them.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(496)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(497)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -129,7 +129,7 @@ describe('renderer contract catalog', () => {
     // 88 with the knowledge copy sweep: desktop-only, so the Web installation stays unavailable for it.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(92)
+    ).toHaveLength(93)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(131)

@@ -254,7 +254,8 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   // prettier-ignore
   group('knowledge', 'knowledge', [
     ['listSources', 'knowledge:list-sources', ELECTRON], ['registerSource', 'knowledge:register-source', ELECTRON],
-    ['removeSource', 'knowledge:remove-source', ELECTRON], ['search', 'knowledge:search', ELECTRON],
+    ['removeSource', 'knowledge:remove-source', ELECTRON], ['removeSources', 'knowledge:remove-sources', ELECTRON],
+    ['search', 'knowledge:search', ELECTRON],
     ['sweepCopies', 'knowledge:sweep-copies', ELECTRON],
   ]),
   group('notifications', 'notifications', [

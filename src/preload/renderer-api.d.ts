@@ -902,6 +902,11 @@ export interface PureScienceAPI {
     // Deletes stored copies no registered source names any more; takes no arguments, because which copies are
     // orphans is decided on the main side from the register itself.
     sweepCopies(): Promise<KnowledgeCopySweep>
+    removeSources(request: { sourceIds: string[] }): Promise<{
+      removed: KnowledgeSource[]
+      prunedContents: string[]
+      missing: string[]
+    }>
     search(request: { text: string; limit?: number }): Promise<KnowledgeSearchResponse>
   }
   notifications: {

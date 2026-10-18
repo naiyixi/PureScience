@@ -547,6 +547,7 @@ const api: PureScienceAPI = {
     registerSource: (request) =>
       electronRendererContracts.invoke('knowledge.registerSource', request),
     removeSource: (request) => electronRendererContracts.invoke('knowledge.removeSource', request),
+    removeSources: (request) => electronRendererContracts.invoke('knowledge.removeSources', request),
     sweepCopies: () => electronRendererContracts.invoke('knowledge.sweepCopies'),
     search: (request) => electronRendererContracts.invoke('knowledge.search', request)
   },

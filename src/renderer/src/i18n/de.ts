@@ -5031,13 +5031,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': '{label} auswählen',
   'settings.knowledge.selectPageAll': 'Alle auf dieser Seite auswählen',
   'settings.knowledge.selectedCount': '{count} ausgewählt',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '{count} Quelle(n) entfernt; {pruned} Kopie(n) bereinigt; {missing} ID(s) waren nicht registriert.',
+  'settings.knowledge.bulkNotApplied':
+    'Der Stapel wurde nicht angewendet: {reason} Es wurde nichts entfernt.',
   'settings.knowledge.bulkRemove': 'Ausgewählte entfernen',
   'settings.knowledge.bulkRemoveConfirm': 'Entfernen von {count} Quelle(n) bestätigen',
   'settings.knowledge.bulkRemoveCancel': 'Abbrechen',
   'settings.knowledge.bulkRemoved':
     '{count} Quelle(n) entfernt; {pruned} gespeicherte Kopie(n) bereinigt.',
-  'settings.knowledge.bulkRemovePartial':
-    '{count} Quelle(n) entfernt; {failed} abgelehnt: {reason}',
   'settings.knowledge.lastSweepUnreadable':
     'Der Eintrag des letzten Aufräumlaufs war nicht lesbar — das ist nicht dasselbe wie „noch nie aufgeräumt“.',
   'settings.knowledge.sweptMismatched':

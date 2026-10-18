@@ -140,52 +140,52 @@ const KnowledgePanel = (): React.JSX.Element => {
     }
   }
 
-  // A bulk removal is N removals, not one new operation: each source is removed through the same call a single row
-  // uses, so a refusal on the fourth one leaves the first three removed and says so. The sentence afterwards
-  // reports what actually happened — a partial run reported as success would be the panel claiming work it did not do.
+  // A bulk removal is ONE operation on the store, not N single removals. That buys the two properties a loop
+  // cannot have: the register is written once (a crash halfway cannot leave some rows gone and some not), and
+  // copy pruning is judged against the sources that remain, so two sources sharing bytes clean up once and a
+  // surviving source never loses its copy.
+  //
+  // It also changes what a refusal means, and the sentence afterwards says so: an atomic batch that fails was
+  // NOT partly applied. "Removed 3 of 4" belongs to the loop version and would be a lie here.
   const removeSelected = async (): Promise<void> => {
     const targets = allSources.filter((source) => selected.includes(source.id))
     if (targets.length === 0) return
     setBusy('remove')
     setArmed(false)
     setNote(undefined)
-    let removed = 0
-    let pruned = 0
-    const failures: string[] = []
-    for (const target of targets) {
-      try {
-        const outcome = await window.api.knowledge.removeSource({ sourceId: target.id })
-        removed += 1
-        pruned += outcome.prunedContents.length
-      } catch (cause) {
-        failures.push(
-          `${target.label}: ${describeError(cause, t('settings.knowledge.removeFailed'))}`
-        )
-      }
-    }
     try {
+      const outcome = await window.api.knowledge.removeSources({
+        sourceIds: targets.map((source) => source.id)
+      })
       const loaded = await window.api.knowledge.listSources()
       setOverview(loaded)
-      // The ones that refused are still rows, so their ticks stay: the reader can retry exactly those.
-      setSelected(pruneToPresent(selected, loaded.sources))
+      // Ticks are cleared, not pruned: the batch either removed every ticked row or changed nothing, so a
+      // leftover tick would point at a row that is either gone or deliberately untouched.
+      setSelected([])
       setResults(undefined)
       setError(undefined)
+      setNote(
+        outcome.missing.length > 0
+          ? t('settings.knowledge.bulkRemovedWithMissing', {
+              count: String(outcome.removed.length),
+              pruned: String(outcome.prunedContents.length),
+              missing: String(outcome.missing.length)
+            })
+          : t('settings.knowledge.bulkRemoved', {
+              count: String(outcome.removed.length),
+              pruned: String(outcome.prunedContents.length)
+            })
+      )
     } catch (cause) {
-      setError(describeError(cause, t('settings.knowledge.loadFailed')))
+      // Nothing was removed: the store's write is all-or-nothing, so the message must not imply progress.
+      setError(
+        t('settings.knowledge.bulkNotApplied', {
+          reason: describeError(cause, t('settings.knowledge.removeFailed'))
+        })
+      )
+    } finally {
+      setBusy(undefined)
     }
-    setNote(
-      failures.length > 0
-        ? t('settings.knowledge.bulkRemovePartial', {
-            count: String(removed),
-            failed: String(failures.length),
-            reason: failures[0] ?? ''
-          })
-        : t('settings.knowledge.bulkRemoved', {
-            count: String(removed),
-            pruned: String(pruned)
-          })
-    )
-    setBusy(undefined)
   }
 
   // Copies of fetched bodies outlive the rows that named them in two ways: a register that died between writing

@@ -4498,11 +4498,14 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': '選取 {label}',
   'settings.knowledge.selectPageAll': '全選本頁',
   'settings.knowledge.selectedCount': '已選 {count} 項',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '已移除 {count} 個來源；清理 {pruned} 份副本；{missing} 個 id 未登記。',
+  'settings.knowledge.bulkNotApplied': '整批未執行：{reason} 沒有刪除任何來源。',
   'settings.knowledge.bulkRemove': '移除選取',
   'settings.knowledge.bulkRemoveConfirm': '確認移除 {count} 個來源',
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 個來源，清理了 {pruned} 份已存副本。',
-  'settings.knowledge.bulkRemovePartial': '已移除 {count} 個來源；{failed} 個被拒絕：{reason}',
   'settings.knowledge.lastSweepUnreadable': '上次清掃的記錄讀不出來——這和「從未清掃過」是兩回事。',
   'settings.knowledge.sweptMismatched': '另有 {count} 份副本的內容已與它自己的摘要不符，已刪除。'
+
 }

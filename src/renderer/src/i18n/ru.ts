@@ -4881,13 +4881,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': 'Выбрать {label}',
   'settings.knowledge.selectPageAll': 'Выбрать все на этой странице',
   'settings.knowledge.selectedCount': 'Выбрано: {count}',
+  'settings.knowledge.bulkRemovedWithMissing':
+    'Удалено источников: {count}; очищено копий: {pruned}; не найдено идентификаторов: {missing}.',
+  'settings.knowledge.bulkNotApplied': 'Пакет не применён: {reason} Ничего не удалено.',
   'settings.knowledge.bulkRemove': 'Удалить выбранные',
   'settings.knowledge.bulkRemoveConfirm': 'Подтвердить удаление источников: {count}',
   'settings.knowledge.bulkRemoveCancel': 'Отмена',
   'settings.knowledge.bulkRemoved':
     'Удалено источников: {count}; очищено сохранённых копий: {pruned}.',
-  'settings.knowledge.bulkRemovePartial':
-    'Удалено источников: {count}; отклонено {failed}: {reason}',
   'settings.knowledge.lastSweepUnreadable':
     'Запись о последней очистке не читается — это не то же самое, что очистка никогда не выполнялась.',
   'settings.knowledge.sweptMismatched':

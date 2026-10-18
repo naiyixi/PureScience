@@ -24,6 +24,11 @@ export type KnowledgeRpcCalls = {
   listSources(): Promise<KnowledgeOverview>
   renderWiki(folder: string): Promise<KnowledgeWikiResult>
   removeSource(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
+  removeSources(sourceIds: string[]): Promise<{
+    removed: KnowledgeSource[]
+    prunedContents: string[]
+    missing: string[]
+  }>
   sweepCopies(): Promise<KnowledgeCopySweep>
 }
 
@@ -47,5 +52,6 @@ export const createKnowledgeRpcCalls = (
   listSources: () => named(() => module.overview()),
   renderWiki: async (folder) => named(async () => wiki.render(folder, await module.list())),
   removeSource: (sourceId) => named(() => module.remove(sourceId)),
+  removeSources: (sourceIds) => named(() => module.removeMany(sourceIds)),
   sweepCopies: () => named(() => module.sweepContents())
 })

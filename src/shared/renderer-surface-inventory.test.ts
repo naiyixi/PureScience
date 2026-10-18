@@ -66,6 +66,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'knowledge.listSources',
   'knowledge.registerSource',
   'knowledge.removeSource',
+  'knowledge.removeSources',
   'knowledge.search',
   'knowledge.sweepCopies',
   'network.checkConnectivity',
@@ -338,7 +339,7 @@ describe('renderer surface inventory', () => {
     // 490 with the knowledge window surface (v2.8.0: knowledge.listSources / registerSource / search): three
     // Electron paths, local-only, so they also join the generator-omission list rather than any Web set.
     // 494 with the knowledge copy sweep (+1) and the inverse-folding pair (+2).
-    expect(electronPaths).toHaveLength(496)
+    expect(electronPaths).toHaveLength(497)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

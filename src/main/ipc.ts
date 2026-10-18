@@ -2144,6 +2144,14 @@ const createApplicationModules = async (
     }
     return knowledgeCalls.removeSource(candidate.sourceId)
   })
+  ipcMainHandle('knowledge:remove-sources', (_event, request: unknown) => {
+    const candidate = request as { sourceIds?: unknown } | null
+    const ids = candidate?.sourceIds
+    if (!Array.isArray(ids) || ids.length === 0 || ids.some((id) => typeof id !== 'string')) {
+      throw new Error('A knowledge batch removal needs a non-empty sourceIds array.')
+    }
+    return knowledgeCalls.removeSources(ids as string[])
+  })
   ipcMainHandle('knowledge:search', (_event, request: unknown) =>
     knowledgeCalls.search(readKnowledgeSearchRequest(request))
   )

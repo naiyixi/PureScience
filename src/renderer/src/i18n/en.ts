@@ -4892,11 +4892,13 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.selectSource': 'Select {label}',
   'settings.knowledge.selectPageAll': 'Select all on this page',
   'settings.knowledge.selectedCount': 'Selected {count}',
+  'settings.knowledge.bulkRemovedWithMissing':
+    'Removed {count} source(s); pruned {pruned} copy(ies); {missing} id(s) were not registered.',
+  'settings.knowledge.bulkNotApplied': 'The batch was not applied: {reason} Nothing was removed.',
   'settings.knowledge.bulkRemove': 'Remove selected',
   'settings.knowledge.bulkRemoveConfirm': 'Confirm removing {count} source(s)',
   'settings.knowledge.bulkRemoveCancel': 'Cancel',
   'settings.knowledge.bulkRemoved': 'Removed {count} source(s); {pruned} stored copy(ies) pruned.',
-  'settings.knowledge.bulkRemovePartial': 'Removed {count} source(s); {failed} refused: {reason}',
   'settings.knowledge.lastSweepUnreadable':
     'The last sweep record could not be read — that is not the same as never having swept.',
   'settings.knowledge.sweptMismatched':

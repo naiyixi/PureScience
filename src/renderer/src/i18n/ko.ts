@@ -4778,13 +4778,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': '{label} 선택',
   'settings.knowledge.selectPageAll': '이 페이지 모두 선택',
   'settings.knowledge.selectedCount': '{count}개 선택됨',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '소스 {count}개를 제거하고 복사본 {pruned}개를 정리했습니다. 등록되지 않은 ID {missing}개.',
+  'settings.knowledge.bulkNotApplied':
+    '일괄 작업이 적용되지 않았습니다: {reason} 아무것도 삭제되지 않았습니다.',
   'settings.knowledge.bulkRemove': '선택 항목 제거',
   'settings.knowledge.bulkRemoveConfirm': '{count}개 소스 제거 확인',
   'settings.knowledge.bulkRemoveCancel': '취소',
   'settings.knowledge.bulkRemoved':
     '소스 {count}개를 제거하고 저장된 사본 {pruned}개를 정리했습니다.',
-  'settings.knowledge.bulkRemovePartial':
-    '소스 {count}개를 제거했고 {failed}개는 거부되었습니다: {reason}',
   'settings.knowledge.lastSweepUnreadable':
     '지난 정리 기록을 읽을 수 없습니다. 아직 한 번도 정리하지 않은 것과는 다릅니다.',
   'settings.knowledge.sweptMismatched':

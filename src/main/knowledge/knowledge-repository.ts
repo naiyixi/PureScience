@@ -296,6 +296,52 @@ export class KnowledgeRepository {
     return { removed, prunedContents }
   }
 
+  // Removing several sources in one action, atomically. Two things make this different from calling `remove`
+  // in a loop — and they are the reasons the panel's batch goes through this rather than N single removals:
+  //
+  //   1. one save. A loop writes the register once per row, so a crash halfway leaves some rows gone and some
+  //      not, with nothing recording which. A batch is one write or none.
+  //   2. copy pruning is judged against the sources that REMAIN after the whole batch. Removing two sources
+  //      that share a copy must delete that copy once, at the end — a per-row check sees the other row still
+  //      present for the first removal and nothing for the second, so the answer would depend on list order.
+  //
+  // Ids that are not registered do not fail the batch: they come back in `missing`. "Removed 2" would
+  // otherwise hide that one of the two was never there.
+  async removeMany(
+    sourceIds: string[]
+  ): Promise<{ removed: KnowledgeSource[]; prunedContents: string[]; missing: string[] }> {
+    const snapshot = await this.load()
+    const wanted = [...new Set(sourceIds)]
+    const removed = snapshot.sources.filter((source) => wanted.includes(source.id))
+    const removedIds = new Set(removed.map((source) => source.id))
+    const missing = wanted.filter((id) => !removedIds.has(id))
+    if (removed.length === 0) {
+      return { removed: [], prunedContents: [], missing }
+    }
+
+    const sources = snapshot.sources.filter((source) => !removedIds.has(source.id))
+    await this.save({ sources })
+
+    const prunedContents: string[] = []
+    for (const source of removed) {
+      if (source.kind !== 'url') continue
+      const digest = source.fingerprint.value
+      if (prunedContents.includes(digest)) continue
+      const stillReferenced = sources.some(
+        (remaining) => remaining.kind === 'url' && remaining.fingerprint.value === digest
+      )
+      if (stillReferenced) continue
+      try {
+        await rm(join(this.contentDir, digest), { force: true })
+        prunedContents.push(digest)
+      } catch {
+        // Same rule as the single removal: the rows are gone either way, and a file that will not delete is
+        // reported by its absence from `prunedContents` rather than claimed as cleaned.
+      }
+    }
+    return { removed, prunedContents, missing }
+  }
+
   // Copy cleanup that does NOT depend on someone removing a source: a copy can be orphaned by anything that
   // rewrites the register (a hand-edited sources.json, a restore from backup, a crash between save and delete).
   //

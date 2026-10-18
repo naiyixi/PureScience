@@ -221,6 +221,8 @@ type NotebookLocalRpcServerOptions = {
     listSources(sessionId: string): Promise<unknown>
     renderWiki(sessionId: string, folder: string): Promise<unknown>
     removeSource(sessionId: string, sourceId: string): Promise<unknown>
+    /** Optional on purpose: the window exposes batch removal, the model does not. */
+    removeSources?(sessionId: string, sourceIds: string[]): Promise<unknown>
   }
   planService?: {
     call(input: {
@@ -323,7 +325,8 @@ const KNOWLEDGE_RPC_METHODS = new Set([
   'knowledgeRegisterSource',
   'knowledgeListSources',
   'knowledgeRenderWiki',
-  'knowledgeRemoveSource'
+  'knowledgeRemoveSource',
+  'knowledgeRemoveSources'
 ])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
@@ -1984,6 +1987,21 @@ class NotebookLocalRpcServer {
         throw new Error('Knowledge remove RPC params must include a sourceId.')
       }
       return this.knowledge.removeSource(params.sessionId, params.sourceId)
+    }
+
+    if (method === 'knowledgeRemoveSources') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge batch remove RPC params must include sessionId.')
+      }
+      const ids = params.sourceIds
+      if (!Array.isArray(ids) || ids.length === 0 || ids.some((id) => typeof id !== 'string')) {
+        throw new Error('Knowledge batch remove RPC params must include a non-empty sourceIds array.')
+      }
+      if (!this.knowledge.removeSources) {
+        throw new Error('Knowledge batch removal is not available in this build.')
+      }
+      return this.knowledge.removeSources(params.sessionId, ids as string[])
     }
 
     if (method === 'knowledgeListSources') {

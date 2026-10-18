@@ -4862,13 +4862,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': '{label} を選択',
   'settings.knowledge.selectPageAll': 'このページをすべて選択',
   'settings.knowledge.selectedCount': '{count} 件を選択中',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '{count} 件のソースを削除し、コピー {pruned} 件を整理しました。未登録の ID が {missing} 件あります。',
+  'settings.knowledge.bulkNotApplied':
+    'バッチは適用されませんでした: {reason} 何も削除されていません。',
   'settings.knowledge.bulkRemove': '選択した項目を削除',
   'settings.knowledge.bulkRemoveConfirm': '{count} 件のソースを削除する',
   'settings.knowledge.bulkRemoveCancel': 'キャンセル',
   'settings.knowledge.bulkRemoved':
     '{count} 件のソースを削除し、保存済みコピーを {pruned} 件整理しました。',
-  'settings.knowledge.bulkRemovePartial':
-    '{count} 件を削除しました。{failed} 件は拒否されました: {reason}',
   'settings.knowledge.lastSweepUnreadable':
     '前回のスイープ記録を読み取れませんでした。これは「まだ一度もスイープしていない」とは別のことです。',
   'settings.knowledge.sweptMismatched':

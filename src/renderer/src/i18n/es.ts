@@ -4971,13 +4971,14 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': 'Seleccionar {label}',
   'settings.knowledge.selectPageAll': 'Seleccionar todo en esta página',
   'settings.knowledge.selectedCount': '{count} seleccionado(s)',
+  'settings.knowledge.bulkRemovedWithMissing':
+    'Se eliminaron {count} fuente(s); depuradas {pruned} copia(s); {missing} id(s) no estaban registrados.',
+  'settings.knowledge.bulkNotApplied': 'El lote no se aplicó: {reason} No se eliminó nada.',
   'settings.knowledge.bulkRemove': 'Quitar la selección',
   'settings.knowledge.bulkRemoveConfirm': 'Confirmar la eliminación de {count} fuente(s)',
   'settings.knowledge.bulkRemoveCancel': 'Cancelar',
   'settings.knowledge.bulkRemoved':
     'Se quitaron {count} fuente(s) y se depuraron {pruned} copia(s) guardada(s).',
-  'settings.knowledge.bulkRemovePartial':
-    'Se quitaron {count} fuente(s); {failed} rechazada(s): {reason}',
   'settings.knowledge.lastSweepUnreadable':
     'No se pudo leer el registro del último barrido; eso no es lo mismo que no haber barrido nunca.',
   'settings.knowledge.sweptMismatched':

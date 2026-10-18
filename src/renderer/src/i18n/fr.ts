@@ -5001,13 +5001,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.selectSource': 'Sélectionner {label}',
   'settings.knowledge.selectPageAll': 'Tout sélectionner sur cette page',
   'settings.knowledge.selectedCount': '{count} sélectionné(s)',
+  'settings.knowledge.bulkRemovedWithMissing':
+    '{count} source(s) supprimée(s) ; {pruned} copie(s) nettoyée(s) ; {missing} identifiant(s) non enregistré(s).',
+  'settings.knowledge.bulkNotApplied':
+    'Le lot n’a pas été appliqué : {reason} Rien n’a été supprimé.',
   'settings.knowledge.bulkRemove': 'Retirer la sélection',
   'settings.knowledge.bulkRemoveConfirm': 'Confirmer le retrait de {count} source(s)',
   'settings.knowledge.bulkRemoveCancel': 'Annuler',
   'settings.knowledge.bulkRemoved':
     '{count} source(s) retirée(s) ; {pruned} copie(s) enregistrée(s) supprimée(s).',
-  'settings.knowledge.bulkRemovePartial':
-    '{count} source(s) retirée(s) ; {failed} refusée(s) : {reason}',
   'settings.knowledge.lastSweepUnreadable':
     "L'enregistrement du dernier nettoyage est illisible — ce n'est pas la même chose qu'une absence de nettoyage.",
   'settings.knowledge.sweptMismatched':
