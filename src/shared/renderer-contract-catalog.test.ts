@@ -63,10 +63,10 @@ describe('renderer contract catalog', () => {
     // move by two while the remote-Web set grows by the rejecting stub each one gets there.
     // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // Web request contracts, so the catalog, the invoke map and the local-Web set each move by two.
-    // 493 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
+    // 494 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
     // (engines.*): one and two desktop-only contracts, so the catalog and the preload inventory move by
     // three while the local-Web "unavailable" set moves with them.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(493)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(494)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
