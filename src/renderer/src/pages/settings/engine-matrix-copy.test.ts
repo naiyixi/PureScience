@@ -37,11 +37,12 @@ const ENGINE_IDS = [
   'ddg-cpu-predictor',
   'openmm-fep',
   'rosetta-ddg',
+  'gromacs-md',
   'proteinmpnn'
 ]
 
 describe('engine matrix copy', () => {
-  it('covers the eight catalog engines with a key for the name and one for the summary', () => {
+  it('covers the nine catalog engines with a key for the name and one for the summary', () => {
     expect(ENGINE_CATALOG.map((engine) => engine.id)).toEqual(ENGINE_IDS)
   })
 
@@ -57,7 +58,7 @@ describe('engine matrix copy', () => {
       'settings.enginesIntro',
       'settings.enginesGpuRule'
     ]
-    // Guard against a silently empty sweep: eight engines plus chrome is far more than twenty keys.
+    // Guard against a silently empty sweep: nine engines plus chrome is far more than twenty keys.
     expect(keys.length).toBeGreaterThan(25)
 
     const missing: string[] = []
