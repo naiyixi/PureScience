@@ -9,6 +9,12 @@ import type {
   KnowledgeSearchResponse,
   KnowledgeSource
 } from '../../../../shared/knowledge'
+import {
+  filterAndSortKnowledgeSources,
+  isNarrowed,
+  type KnowledgeKindFilter,
+  type KnowledgeSortKind
+} from './knowledge-source-view'
 
 const describeError = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message : fallback
@@ -44,6 +50,11 @@ const KnowledgePanel = (): React.JSX.Element => {
   const [error, setError] = useState<string | undefined>()
   const [note, setNote] = useState<string | undefined>()
   const [page, setPage] = useState(0)
+  // Narrowing the list is a view concern, not a store concern: the register is read once and filtered here,
+  // so a filter can never change what the store holds or what the model's tools answer.
+  const [filterText, setFilterText] = useState('')
+  const [kindFilter, setKindFilter] = useState<KnowledgeKindFilter>('all')
+  const [sortKind, setSortKind] = useState<KnowledgeSortKind>('store')
   // Which rows are ticked for a bulk removal, and whether the ticked set has been confirmed once. The armed step
   // exists because a bulk removal is the one action here that cannot be undone by looking at the screen.
   const [selected, setSelected] = useState<string[]>([])
@@ -54,10 +65,16 @@ const KnowledgePanel = (): React.JSX.Element => {
   // point past the end of a shorter list.
   const PAGE_SIZE = 20
   const allSources = overview?.sources ?? []
-  const pageCount = Math.max(1, Math.ceil(allSources.length / PAGE_SIZE))
+  // Filter and sort first, paginate second: a page is a window onto the narrowed list, so "select all on this
+  // page" and the pager both describe rows the reader can actually see. Doing it the other way round would let a
+  // filter change which rows a page number refers to while the ticks stayed on the old ones.
+  const sourceView = { text: filterText, kind: kindFilter, sort: sortKind }
+  const visibleSources = filterAndSortKnowledgeSources(allSources, sourceView)
+  const narrowing = isNarrowed(sourceView)
+  const pageCount = Math.max(1, Math.ceil(visibleSources.length / PAGE_SIZE))
   // Clamped, not trusted: a refresh can shrink the list while `page` still points past its end.
   const currentPage = Math.min(page, pageCount - 1)
-  const pagedSources = allSources.slice(
+  const pagedSources = visibleSources.slice(
     currentPage * PAGE_SIZE,
     currentPage * PAGE_SIZE + PAGE_SIZE
   )
@@ -309,6 +326,64 @@ const KnowledgePanel = (): React.JSX.Element => {
             </label>
           ) : null}
         </div>
+        {overview !== undefined && allSources.length > 0 ? (
+          // The list is paginated twenty rows at a time, so narrowing and reordering are what make a large
+          // register scannable. Both act on the rows already read — nothing here reaches the store.
+          <div className="flex flex-wrap items-center gap-2" data-testid="knowledge-filter-bar">
+            <input
+              type="search"
+              aria-label={t('settings.knowledge.filterLabel')}
+              placeholder={t('settings.knowledge.filterPlaceholder')}
+              data-testid="knowledge-filter-text"
+              className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm"
+              value={filterText}
+              onChange={(event) => {
+                setFilterText(event.target.value)
+                // The narrowed list is a different list; a page index saved against the wider one means
+                // nothing in it, and keeping it would open the view past the end.
+                setPage(0)
+              }}
+            />
+            <select
+              aria-label={t('settings.knowledge.filterKind')}
+              data-testid="knowledge-filter-kind"
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+              value={kindFilter}
+              onChange={(event) => {
+                setKindFilter(event.target.value as KnowledgeKindFilter)
+                setPage(0)
+              }}
+            >
+              <option value="all">{t('settings.knowledge.kindAll')}</option>
+              <option value="file">{t('settings.knowledge.kindFile')}</option>
+              <option value="url">{t('settings.knowledge.kindUrl')}</option>
+            </select>
+            <select
+              aria-label={t('settings.knowledge.sort')}
+              data-testid="knowledge-sort"
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+              value={sortKind}
+              onChange={(event) => {
+                setSortKind(event.target.value as KnowledgeSortKind)
+                setPage(0)
+              }}
+            >
+              <option value="store">{t('settings.knowledge.sortStore')}</option>
+              <option value="label">{t('settings.knowledge.sortLabel')}</option>
+              <option value="bytes">{t('settings.knowledge.sortBytes')}</option>
+            </select>
+            {/* Printed only while a filter is on: "showing 3 of 128" is a fact about narrowing, and showing it
+                when nothing is narrowed would be a number a reader learns to ignore. */}
+            {narrowing ? (
+              <span className="text-xs text-muted-foreground" data-testid="knowledge-filter-count">
+                {t('settings.knowledge.filteredCount', {
+                  shown: String(visibleSources.length),
+                  total: String(allSources.length)
+                })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {overview?.lastSweep ? (
           <p className="text-xs text-muted-foreground" data-testid="knowledge-last-sweep">
             {t('settings.knowledge.lastSweep', {
@@ -379,8 +454,15 @@ const KnowledgePanel = (): React.JSX.Element => {
           <p className="text-sm text-destructive">{t('settings.knowledge.unreadable')}</p>
         ) : overview.sources.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('settings.knowledge.empty')}</p>
+        ) : visibleSources.length === 0 ? (
+          // "Nothing matched the filter" and "nothing is registered" are different facts, and the second one is
+          // false here: the register holds rows, this view just excludes them. Saying the register were empty
+          // would send a reader off to register a source they already have.
+          <p className="text-sm text-muted-foreground" data-testid="knowledge-no-matches">
+            {t('settings.knowledge.noMatches')}
+          </p>
         ) : (
-          <ul className="divide-y rounded-md border">
+          <ul className="divide-y rounded-md border" data-testid="knowledge-source-list">
             {pagedSources.map((source) => (
               <li key={source.id} className="flex items-start gap-2 px-3 py-2 text-sm">
                 <input

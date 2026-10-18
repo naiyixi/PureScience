@@ -5013,5 +5013,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     "L'enregistrement du dernier nettoyage est illisible — ce n'est pas la même chose qu'une absence de nettoyage.",
   'settings.knowledge.sweptMismatched':
-    '{count} copie(s) ne correspondaient plus à leur propre empreinte et ont été supprimées.'
+    '{count} copie(s) ne correspondaient plus à leur propre empreinte et ont été supprimées.',
+  'settings.knowledge.filterLabel': 'Filtrer les sources',
+  'settings.knowledge.filterPlaceholder': 'Nom ou emplacement',
+  'settings.knowledge.filterKind': 'Filtrer par type',
+  'settings.knowledge.kindAll': 'Tous les types',
+  'settings.knowledge.sort': 'Trier',
+  'settings.knowledge.sortStore': 'Ordre d’enregistrement',
+  'settings.knowledge.sortLabel': 'Nom',
+  'settings.knowledge.sortBytes': 'Taille, les plus volumineuses d’abord',
+  'settings.knowledge.filteredCount': '{shown} sur {total} affichés',
+  'settings.knowledge.noMatches': 'Aucune source ne correspond à ce filtre.'
 }

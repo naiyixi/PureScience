@@ -4562,8 +4562,18 @@ export const zh = {
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 个来源，清理了 {pruned} 份已存副本。',
   'settings.knowledge.lastSweepUnreadable': '上次清扫的记账读不出来——这和「从未清扫过」是两回事。',
-  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的内容已与它自己的摘要不符，已删除。'
+  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的内容已与它自己的摘要不符，已删除。',
 
+  'settings.knowledge.filterLabel': '筛选来源',
+  'settings.knowledge.filterPlaceholder': '名称或位置',
+  'settings.knowledge.filterKind': '按类型筛选',
+  'settings.knowledge.kindAll': '全部类型',
+  'settings.knowledge.sort': '排序',
+  'settings.knowledge.sortStore': '登记顺序',
+  'settings.knowledge.sortLabel': '名称',
+  'settings.knowledge.sortBytes': '体积（大→小）',
+  'settings.knowledge.filteredCount': '显示 {shown} / {total} 条',
+  'settings.knowledge.noMatches': '没有符合筛选条件的来源。'
 }
 
 export type ZhKey = keyof typeof zh

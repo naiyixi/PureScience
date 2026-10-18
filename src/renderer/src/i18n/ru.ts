@@ -4892,5 +4892,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     'Запись о последней очистке не читается — это не то же самое, что очистка никогда не выполнялась.',
   'settings.knowledge.sweptMismatched':
-    '{count} копий больше не совпадали со своим дайджестом и были удалены.'
+    '{count} копий больше не совпадали со своим дайджестом и были удалены.',
+  'settings.knowledge.filterLabel': 'Фильтр источников',
+  'settings.knowledge.filterPlaceholder': 'Имя или расположение',
+  'settings.knowledge.filterKind': 'Фильтр по типу',
+  'settings.knowledge.kindAll': 'Все типы',
+  'settings.knowledge.sort': 'Сортировка',
+  'settings.knowledge.sortStore': 'Порядок регистрации',
+  'settings.knowledge.sortLabel': 'Имя',
+  'settings.knowledge.sortBytes': 'Размер, от большего',
+  'settings.knowledge.filteredCount': 'Показано {shown} из {total}',
+  'settings.knowledge.noMatches': 'Ни один источник не соответствует фильтру.'
 }

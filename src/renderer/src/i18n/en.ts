@@ -4902,5 +4902,15 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.lastSweepUnreadable':
     'The last sweep record could not be read — that is not the same as never having swept.',
   'settings.knowledge.sweptMismatched':
-    '{count} copy(ies) no longer matched their own digest and were deleted.'
+    '{count} copy(ies) no longer matched their own digest and were deleted.',
+  'settings.knowledge.filterLabel': 'Filter sources',
+  'settings.knowledge.filterPlaceholder': 'Name or location',
+  'settings.knowledge.filterKind': 'Filter by kind',
+  'settings.knowledge.kindAll': 'All kinds',
+  'settings.knowledge.sort': 'Sort',
+  'settings.knowledge.sortStore': 'Registration order',
+  'settings.knowledge.sortLabel': 'Name',
+  'settings.knowledge.sortBytes': 'Size, largest first',
+  'settings.knowledge.filteredCount': 'Showing {shown} of {total}',
+  'settings.knowledge.noMatches': 'No sources match this filter.'
 }

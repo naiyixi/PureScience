@@ -4506,6 +4506,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 個來源，清理了 {pruned} 份已存副本。',
   'settings.knowledge.lastSweepUnreadable': '上次清掃的記錄讀不出來——這和「從未清掃過」是兩回事。',
-  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的內容已與它自己的摘要不符，已刪除。'
+  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的內容已與它自己的摘要不符，已刪除。',
 
+  'settings.knowledge.filterLabel': '篩選來源',
+  'settings.knowledge.filterPlaceholder': '名稱或位置',
+  'settings.knowledge.filterKind': '依類型篩選',
+  'settings.knowledge.kindAll': '全部類型',
+  'settings.knowledge.sort': '排序',
+  'settings.knowledge.sortStore': '登記順序',
+  'settings.knowledge.sortLabel': '名稱',
+  'settings.knowledge.sortBytes': '大小（大→小）',
+  'settings.knowledge.filteredCount': '顯示 {shown} / {total} 筆',
+  'settings.knowledge.noMatches': '沒有符合篩選條件的來源。'
 }

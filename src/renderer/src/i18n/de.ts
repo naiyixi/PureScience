@@ -5043,5 +5043,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     'Der Eintrag des letzten Aufräumlaufs war nicht lesbar — das ist nicht dasselbe wie „noch nie aufgeräumt“.',
   'settings.knowledge.sweptMismatched':
-    '{count} Kopie(n) stimmten nicht mehr mit ihrem eigenen Digest überein und wurden gelöscht.'
+    '{count} Kopie(n) stimmten nicht mehr mit ihrem eigenen Digest überein und wurden gelöscht.',
+  'settings.knowledge.filterLabel': 'Quellen filtern',
+  'settings.knowledge.filterPlaceholder': 'Name oder Speicherort',
+  'settings.knowledge.filterKind': 'Nach Art filtern',
+  'settings.knowledge.kindAll': 'Alle Arten',
+  'settings.knowledge.sort': 'Sortieren',
+  'settings.knowledge.sortStore': 'Reihenfolge der Registrierung',
+  'settings.knowledge.sortLabel': 'Name',
+  'settings.knowledge.sortBytes': 'Größe, größte zuerst',
+  'settings.knowledge.filteredCount': '{shown} von {total} angezeigt',
+  'settings.knowledge.noMatches': 'Keine Quelle passt zu diesem Filter.'
 }

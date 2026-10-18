@@ -4790,5 +4790,15 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     '지난 정리 기록을 읽을 수 없습니다. 아직 한 번도 정리하지 않은 것과는 다릅니다.',
   'settings.knowledge.sweptMismatched':
-    '{count}개의 사본이 자체 다이제스트와 더 이상 일치하지 않아 삭제했습니다.'
+    '{count}개의 사본이 자체 다이제스트와 더 이상 일치하지 않아 삭제했습니다.',
+  'settings.knowledge.filterLabel': '출처 필터',
+  'settings.knowledge.filterPlaceholder': '이름 또는 위치',
+  'settings.knowledge.filterKind': '종류로 필터',
+  'settings.knowledge.kindAll': '모든 종류',
+  'settings.knowledge.sort': '정렬',
+  'settings.knowledge.sortStore': '등록 순서',
+  'settings.knowledge.sortLabel': '이름',
+  'settings.knowledge.sortBytes': '크기(큰 것부터)',
+  'settings.knowledge.filteredCount': '{total}개 중 {shown}개 표시',
+  'settings.knowledge.noMatches': '이 필터에 맞는 출처가 없습니다.'
 }

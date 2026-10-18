@@ -4874,5 +4874,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     '前回のスイープ記録を読み取れませんでした。これは「まだ一度もスイープしていない」とは別のことです。',
   'settings.knowledge.sweptMismatched':
-    '{count} 件のコピーが自身のダイジェストと一致しなくなっていたため削除しました。'
+    '{count} 件のコピーが自身のダイジェストと一致しなくなっていたため削除しました。',
+  'settings.knowledge.filterLabel': 'ソースを絞り込む',
+  'settings.knowledge.filterPlaceholder': '名前または場所',
+  'settings.knowledge.filterKind': '種類で絞り込む',
+  'settings.knowledge.kindAll': 'すべての種類',
+  'settings.knowledge.sort': '並べ替え',
+  'settings.knowledge.sortStore': '登録順',
+  'settings.knowledge.sortLabel': '名前',
+  'settings.knowledge.sortBytes': 'サイズ（大きい順）',
+  'settings.knowledge.filteredCount': '{total} 件中 {shown} 件を表示',
+  'settings.knowledge.noMatches': 'この絞り込みに一致するソースはありません。'
 }

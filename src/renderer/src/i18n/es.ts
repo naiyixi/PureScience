@@ -4982,5 +4982,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.lastSweepUnreadable':
     'No se pudo leer el registro del último barrido; eso no es lo mismo que no haber barrido nunca.',
   'settings.knowledge.sweptMismatched':
-    '{count} copia(s) ya no coincidían con su propio resumen y se eliminaron.'
+    '{count} copia(s) ya no coincidían con su propio resumen y se eliminaron.',
+  'settings.knowledge.filterLabel': 'Filtrar fuentes',
+  'settings.knowledge.filterPlaceholder': 'Nombre o ubicación',
+  'settings.knowledge.filterKind': 'Filtrar por tipo',
+  'settings.knowledge.kindAll': 'Todos los tipos',
+  'settings.knowledge.sort': 'Ordenar',
+  'settings.knowledge.sortStore': 'Orden de registro',
+  'settings.knowledge.sortLabel': 'Nombre',
+  'settings.knowledge.sortBytes': 'Tamaño, mayor primero',
+  'settings.knowledge.filteredCount': 'Mostrando {shown} de {total}',
+  'settings.knowledge.noMatches': 'Ninguna fuente coincide con este filtro.'
 }
