@@ -8908,3 +8908,65 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 ② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已落定 `specialist/**` 那批；
 ③ 未闭项从 v2.10.0 发布正文剩余条目取：**批量移除**、**列表分页**（两条都还在）；清扫「按内容校验」已归档为限制、
 不再取；M2/IC54 仍卡产品决定。
+
+## 一百八十七、本轮追加（执行器，2026-10-18 22:3x–）—— v2.10.0 自陈的最后一条：**副本自己证明自己是原样**（读前验摘要、清扫按内容重算、对不上的单独成桶）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = **`0f53c422`**（v2.14.0，21:02 发出）；我上一轮在 `b4fd578e` 上的两条车道
+  （Nightly / Windows Full Test）判决已读：**completed success**。推前会再查一次在飞车道。
+- **单元来源**：上一轮遗留在 `/tmp/ps-v214`（基线 `b4fd578e`）的未提交工作，断点写在记事本 `round-next`。
+  先核「origin 是否已有同一交付」：`git log origin/main --grep='按内容|mismatch|内容核对'` 只命中无关条目；
+  `git show origin/main:src/shared/knowledge.ts | grep mismatched` **零命中** ⇒ 缺口仍在，不是重做。
+- **会话状态**：主工作区 `HEAD` 停在 `ad48fd17`（10-17 的一条自建线，8 笔未推、与 origin 已分叉），
+  树上 17 个 `specialist/**` 在制路径是会话的 ⇒ 本轮全程在隔离工作树，**一个字节没碰主树**。
+  这条分叉如实记在这里：谁的线谁处理，我不 rebase/reset 别人的分支。
+- 机器负载（现取）：load 37.9、空闲物理页 3810（≈60 MB）、swap 已用 11.03 G / 12.29 G —— 打包版 PureScience
+  与会话的 claude 都在跑；全量 vitest 因此比平时慢（见读数表）。
+
+### 一 交付（`d2db698e`，19 文件 / +469 −56）
+
+| 面 | 内容 |
+| --- | --- |
+| 读 | `readVerifiedCopy()`：读副本前重算 sha256，**不符按缺失处理**，再走原来的自愈 |
+| 写 | 自愈只在「取回字节的摘要 == 登记指纹」时才落盘（原来无条件写 ⇒ 亲手制造名字说谎的副本） |
+| 清扫 | `sweepContents()` 逐份重算：对不上的删除并计入新桶 `mismatched`；删不掉进 `failed`；五桶仍自洽到 `scanned` |
+| 契约 | `KnowledgeCopySweep.mismatched: string[]`；`KnowledgeSweepRecord.mismatched?: number`（可选＝旧记录「没查过」） |
+| 界面 | 两句并列；`mismatched > 0` 时单独成句，绝不与「没有可清理的」同屏；记录行只在 `> 0` 时追加 |
+| 文案 | 九语言各 1 键（脚本自证九文件齐平、zh ≠ en） |
+
+**零新通道、零计数涟漪**（没有新增通道/命令，契约计数一处未动）。
+
+### 二 读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 定向单测 `src/main/knowledge src/renderer/src/pages/settings src/renderer/src/i18n` | **82 文件 / 823 passed / 1 skipped** |
+| 全量单测 `vitest run --maxWorkers=4` | 1355 文件 / 17337 例：**1338 文件通过 / 17129 例通过 / 207 skipped**；**1 例红**在 `GlobalSearchDialog.test.tsx`（本单元未碰该文件；单文件隔离 **3/3 全绿**，全量那轮 load 37.9）⇒ 负载敏感记档，不当回归 |
+| 双 tsc（node 带 `--max-old-space-size=8192`、web，均 `--composite false`） | 各 **exit 0 / 0 错** |
+| 改动面 `eslint --no-cache`（19 文件） | **exit 0 / 0 problems** |
+| `scripts/pre-push-checks.sh` | **exit 0**（19 个新文件 lint 0；品牌/README/清单/入口五项全过） |
+| **真机认证** `e2e/certification/knowledge-copy-integrity.spec.ts`（先 `build:e2e`） | **1 passed (27.9s)** |
+
+真机那一条不是面板自说：篡改副本后检索给 `no-matches` 且 `pending 0`（是「索引从页面字节重建」而不是
+「没索引」），磁盘上副本被自愈回原样；再篡改并点「清理未引用副本」⇒ 屏上
+`1 copy(ies) no longer matched their own digest and were deleted.`，`No unused copies to delete.` 不出现，
+测试进程自己 `readdir` 得空目录；随后来源仍可检索、副本重新落盘且逐字正确。
+
+### 三 边界（不许读成更强）
+
+- 名字仍是摘要，方案没换；本单元只让它**可被复核**。
+- 校验在读取与清扫两处；索引不重算内容（既有口径：索引只给位置，引用在读侧现算）。
+- `mismatched` 的字节计入 `bytesFreed`（确实删了），不进 `removed`（那是另一种发现）。
+- 旧清扫记录没有这一项 ⇒ 面板不印 = 「没查过」，不是 0。
+- 本片不占版本号；README 成熟度块与 CHANGELOG 属发版件，本轮未动。
+
+### 四 具名未办 + 下一轮第一步
+
+1. **排期外候选**（`plan-2026-10-18-v2-line-schedule-continuation.md` §五.5）三条：副本按内容校验（**本轮关闭**）、
+   知识库面板排序筛选（未开工）、URL 来源的验证频率策略（未开工）。
+2. **H 批 binder 生成**：仍 `blocked-by` 一台 CUDA 主机（不是代码缺口）。
+3. **M2 / IC54**：卡产品决定。
+4. **下一轮第一步**：① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条
+   `名|completed|success`）；② `git fetch` + `git status --short` + `git log --oneline origin/main -6`；
+   ③ 从「面板排序筛选」与「URL 验证频率策略」里取一件（前者离线可判、连锁小），或按会话新落的排期走。
