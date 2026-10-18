@@ -533,9 +533,15 @@ const api: PureScienceAPI = {
     revealInFolder: () => electronRendererContracts.invoke('logs.revealInFolder')
   },
   // The knowledge store's window surface. Local-only: these three never reach the remote Web dispatch.
+  engines: {
+    inverseFoldingStatus: () => electronRendererContracts.invoke('engines.inverseFoldingStatus'),
+    runInverseFolding: (request) =>
+      electronRendererContracts.invoke('engines.runInverseFolding', request)
+  },
   knowledge: {
     listSources: () => electronRendererContracts.invoke('knowledge.listSources'),
-    registerSource: (request) => electronRendererContracts.invoke('knowledge.registerSource', request),
+    registerSource: (request) =>
+      electronRendererContracts.invoke('knowledge.registerSource', request),
     removeSource: (request) => electronRendererContracts.invoke('knowledge.removeSource', request),
     sweepCopies: () => electronRendererContracts.invoke('knowledge.sweepCopies'),
     search: (request) => electronRendererContracts.invoke('knowledge.search', request)

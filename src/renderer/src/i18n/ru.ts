@@ -4320,6 +4320,20 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (удалённый прогноз структуры)',
   'engines.colabfold.summary':
     'Классический конвейер сворачивания на основе MSA; лучше всего на удалённом узле с GPU.',
+  'engines.proteinmpnn.label': 'ProteinMPNN (обратная укладка)',
+  'engines.proteinmpnn.summary':
+    'Подбирает последовательности под заданный каркас менее чем за секунду на CPU; дизайн остаётся гипотезой, пока его не экспрессировали и не измерили.',
+  'settings.engines.inverseFold.title':
+    'Обратная укладка (каркас → последовательность)',
+  'settings.engines.inverseFold.intro':
+    'Дайте структуру — здесь подберут последовательности, которые могут так укладываться. Это предсказание, а не измерение: дизайн нужно экспрессировать и измерить.',
+  'settings.engines.inverseFold.pdb': 'Путь к файлу .pdb',
+  'settings.engines.inverseFold.run': 'Подобрать последовательности',
+  'settings.engines.inverseFold.running': 'Подбор…',
+  'settings.engines.inverseFold.notInstalled':
+    'Движок не установлен на этой машине. Ожидается в {path}.',
+  'settings.engines.inverseFold.failed':
+    'Не удалось выполнить дизайн ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'CPU-прогноз ΔΔG',
   'engines.ddg-cpu-predictor.summary':
     'За секунды даёт тенденцию к стабилизации или дестабилизации; это лишь прогноз и обязательно с неопределённостью.',

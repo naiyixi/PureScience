@@ -4056,6 +4056,17 @@ export const zh = {
   'engines.esmfold.summary': '单序列端到端折叠；权重数 GB、需要 GPU，按需下载。',
   'engines.colabfold.label': 'ColabFold / AlphaFold2（远程结构预测）',
   'engines.colabfold.summary': '经典 MSA 折叠流程；适合有 GPU 的远程主机。',
+  'engines.proteinmpnn.label': 'ProteinMPNN（反向折叠）',
+  'engines.proteinmpnn.summary':
+    '给定一条主链，在 CPU 上不到一秒生成可能折叠成它的序列；设计只是假设，表达并测过才算数。',
+  'settings.engines.inverseFold.title': '反向折叠（主链 → 序列）',
+  'settings.engines.inverseFold.intro':
+    '给一份结构，这里会设计出可能折叠成它的序列。这是预测，不是测量——设计要表达并测过，才能说它行得通。',
+  'settings.engines.inverseFold.pdb': '.pdb 文件路径',
+  'settings.engines.inverseFold.run': '设计序列',
+  'settings.engines.inverseFold.running': '正在设计…',
+  'settings.engines.inverseFold.notInstalled': '本机尚未备好该引擎，应位于 {path}。',
+  'settings.engines.inverseFold.failed': '设计失败（{code}）：{message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 预测器',
   'engines.ddg-cpu-predictor.summary': '秒级给出稳定化/去稳定化倾向；只是预测，必须带不确定度。',
   'engines.openmm-fep.label': 'OpenMM FEP（物理 ΔΔG）',

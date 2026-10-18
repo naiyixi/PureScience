@@ -836,6 +836,37 @@ export interface PureScienceAPI {
     openFile(): Promise<OpenLogFileResult>
     revealInFolder(): Promise<RevealLogFileResult>
   }
+  engines: {
+    inverseFoldingStatus(): Promise<{
+      engineSrc: string
+      weights: string
+      envPython: string
+      installed: boolean
+      missing: string[]
+    }>
+    runInverseFolding(request: {
+      pdbPath: string
+      num?: number
+      seed?: number
+      temperature?: number
+    }): Promise<{
+      engine: 'proteinmpnn'
+      model: string
+      seed: number
+      temperature: number
+      nativeSequence: string
+      samples: {
+        index: number
+        sequence: string
+        score?: string | null
+        globalScore?: string | null
+        sequenceRecovery?: string | null
+      }[]
+      weightsSha256: string
+      pdbSha256: string
+      engineSha256: string
+    }>
+  }
   knowledge: {
     listSources(): Promise<KnowledgeOverview>
     registerSource(request: KnowledgeRegistration): Promise<KnowledgeSource[]>

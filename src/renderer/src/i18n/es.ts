@@ -4395,6 +4395,19 @@ export const es: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (predicción estructural remota)',
   'engines.colabfold.summary':
     'La clásica pipeline de plegado basada en MSA; mejor en un host remoto con GPU.',
+  'engines.proteinmpnn.label': 'ProteinMPNN (plegamiento inverso)',
+  'engines.proteinmpnn.summary':
+    'Diseña secuencias para un esqueleto en mucho menos de un segundo en CPU; un diseño es una hipótesis hasta que se expresa y se mide.',
+  'settings.engines.inverseFold.title':
+    'Plegamiento inverso (esqueleto → secuencia)',
+  'settings.engines.inverseFold.intro':
+    'Da una estructura y aquí se diseñan secuencias que podrían plegarse así. Es una predicción, no una medición: un diseño debe expresarse y medirse.',
+  'settings.engines.inverseFold.pdb': 'Ruta a un archivo .pdb',
+  'settings.engines.inverseFold.run': 'Diseñar secuencias',
+  'settings.engines.inverseFold.running': 'Diseñando…',
+  'settings.engines.inverseFold.notInstalled':
+    'Motor no preparado en esta máquina. Se espera en {path}.',
+  'settings.engines.inverseFold.failed': 'El diseño falló ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'Predictor ΔΔG en CPU',
   'engines.ddg-cpu-predictor.summary':
     'Da en segundos una tendencia a estabilizar o desestabilizar; solo una predicción, siempre con incertidumbre.',

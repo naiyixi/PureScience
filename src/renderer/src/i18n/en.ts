@@ -4343,6 +4343,18 @@ export const en: Record<ZhKey, string> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (remote structure prediction)',
   'engines.colabfold.summary':
     'The classic MSA-based folding pipeline; best on a remote host with a GPU.',
+  'engines.proteinmpnn.label': 'ProteinMPNN (inverse folding)',
+  'engines.proteinmpnn.summary':
+    'Designs sequences for one backbone in well under a second on CPU; a design is a hypothesis until it is expressed and measured.',
+  'settings.engines.inverseFold.title': 'Inverse folding (backbone → sequence)',
+  'settings.engines.inverseFold.intro':
+    'Give a structure and this designs sequences that may fold like it. A prediction, never a measurement — a design has to be expressed and assayed before anyone can say it works.',
+  'settings.engines.inverseFold.pdb': 'Path to a .pdb file',
+  'settings.engines.inverseFold.run': 'Design sequences',
+  'settings.engines.inverseFold.running': 'Designing…',
+  'settings.engines.inverseFold.notInstalled':
+    'Engine not provisioned on this machine. Expected at {path}.',
+  'settings.engines.inverseFold.failed': 'Design failed ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG CPU predictor',
   'engines.ddg-cpu-predictor.summary':
     'Gives a stabilising/destabilising tendency in seconds; a prediction only, and it must carry an uncertainty.',

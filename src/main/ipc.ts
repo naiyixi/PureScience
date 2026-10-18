@@ -280,6 +280,12 @@ import { LocalFsService } from './local-fs/service'
 import { FolderGrantsService } from './folder-grants'
 import type { KnowledgeRegistration } from '../shared/knowledge'
 import { createKnowledgeModule } from './knowledge/knowledge-module'
+import {
+  checkInverseFolding,
+  designInverseFolding,
+  resolveInverseFoldScript,
+  resolveInverseFoldingLayout
+} from './engines/inverse-folding'
 import { createKnowledgeRpcCalls } from './knowledge/knowledge-rpc-calls'
 import { createKnowledgeCitationVerifier } from './knowledge/knowledge-citation'
 import { createKnowledgeWikiGenerator } from './knowledge/knowledge-wiki'
@@ -2065,6 +2071,33 @@ const createApplicationModules = async (
       }
     })
   )
+  // Inverse folding. Status is read-only and cheap (three existence checks); a run is a subprocess of the
+  // provisioned Python environment, and its refusal codes are the engine's own ("engine-not-provisioned",
+  // "design-failed"), never a generic failure that hides which one happened.
+  ipcMainHandle('engines:inverse-folding-status', () =>
+    checkInverseFolding(resolveInverseFoldingLayout(resolveDataRoot()))
+  )
+  ipcMainHandle('engines:run-inverse-folding', (_event, request: unknown) => {
+    const candidate = request as {
+      pdbPath?: unknown
+      num?: unknown
+      seed?: unknown
+      temperature?: unknown
+    } | null
+    if (typeof candidate?.pdbPath !== 'string' || candidate.pdbPath.trim().length === 0) {
+      throw new Error('An inverse folding run needs a pdbPath.')
+    }
+    return designInverseFolding({
+      layout: resolveInverseFoldingLayout(resolveDataRoot()),
+      scriptPath: resolveInverseFoldScript(),
+      request: {
+        pdbPath: candidate.pdbPath,
+        num: typeof candidate.num === 'number' ? candidate.num : undefined,
+        seed: typeof candidate.seed === 'number' ? candidate.seed : undefined,
+        temperature: typeof candidate.temperature === 'number' ? candidate.temperature : undefined
+      }
+    })
+  })
   ipcMainHandle('knowledge:list-sources', () => knowledgeCalls.listSources())
   ipcMainHandle('knowledge:register-source', (_event, request: unknown) =>
     knowledgeCalls.registerSource(readKnowledgeRegistration(request))

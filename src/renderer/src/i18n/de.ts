@@ -4439,6 +4439,19 @@ export const de: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (Strukturvorhersage auf entferntem Host)',
   'engines.colabfold.summary':
     'Die klassische MSA-basierte Faltungspipeline; am besten auf einem entfernten Host mit GPU.',
+  'engines.proteinmpnn.label': 'ProteinMPNN (inverse Faltung)',
+  'engines.proteinmpnn.summary':
+    'Entwirft Sequenzen für ein Rückgrat in deutlich unter einer Sekunde auf der CPU; ein Entwurf ist eine Hypothese, bis er exprimiert und gemessen ist.',
+  'settings.engines.inverseFold.title': 'Inverse Faltung (Rückgrat → Sequenz)',
+  'settings.engines.inverseFold.intro':
+    'Geben Sie eine Struktur an; hier werden Sequenzen entworfen, die sich möglicherweise so falten. Eine Vorhersage, keine Messung — ein Entwurf muss exprimiert und gemessen werden.',
+  'settings.engines.inverseFold.pdb': 'Pfad zu einer .pdb-Datei',
+  'settings.engines.inverseFold.run': 'Sequenzen entwerfen',
+  'settings.engines.inverseFold.running': 'Wird entworfen…',
+  'settings.engines.inverseFold.notInstalled':
+    'Engine auf diesem Rechner nicht eingerichtet. Erwartet unter {path}.',
+  'settings.engines.inverseFold.failed':
+    'Entwurf fehlgeschlagen ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG-Vorhersage auf der CPU',
   'engines.ddg-cpu-predictor.summary':
     'Liefert die Tendenz zu Stabilisierung/Destabilisierung in Sekunden; nur eine Vorhersage, stets mit Unsicherheit.',

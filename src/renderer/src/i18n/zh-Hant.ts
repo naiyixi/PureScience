@@ -3996,6 +3996,17 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'engines.esmfold.summary': '單序列端到端折疊；權重數 GB、需要 GPU，按需下載。',
   'engines.colabfold.label': 'ColabFold / AlphaFold2（遠端結構預測）',
   'engines.colabfold.summary': '經典 MSA 折疊流程；適合有 GPU 的遠端主機。',
+  'engines.proteinmpnn.label': 'ProteinMPNN（反向折疊）',
+  'engines.proteinmpnn.summary':
+    '給定一條主鏈，在 CPU 上不到一秒生成可能折疊成它的序列；設計只是假設，表現並測過才算數。',
+  'settings.engines.inverseFold.title': '反向折疊（主鏈 → 序列）',
+  'settings.engines.inverseFold.intro':
+    '給一份結構，這裡會設計出可能折疊成它的序列。這是預測，不是測量——設計要表現並測過，才能說它行得通。',
+  'settings.engines.inverseFold.pdb': '.pdb 檔案路徑',
+  'settings.engines.inverseFold.run': '設計序列',
+  'settings.engines.inverseFold.running': '正在設計…',
+  'settings.engines.inverseFold.notInstalled': '本機尚未備好該引擎，應位於 {path}。',
+  'settings.engines.inverseFold.failed': '設計失敗（{code}）：{message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 預測器',
   'engines.ddg-cpu-predictor.summary': '秒級給出穩定化/去穩定化傾向；只是預測，必須帶不確定度。',
   'engines.openmm-fep.label': 'OpenMM FEP（物理 ΔΔG）',

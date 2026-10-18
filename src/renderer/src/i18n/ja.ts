@@ -4305,6 +4305,18 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2（リモート構造予測）',
   'engines.colabfold.summary':
     '定番の MSA ベース折りたたみパイプライン。GPU のあるリモートホストに最適です。',
+  'engines.proteinmpnn.label': 'ProteinMPNN（逆フォールディング）',
+  'engines.proteinmpnn.summary':
+    '主鎖から、それを折りたたむ可能性のある配列をCPUで1秒未満で設計します。設計は仮説であり、発現・測定して初めて成立します。',
+  'settings.engines.inverseFold.title': '逆フォールディング（主鎖 → 配列）',
+  'settings.engines.inverseFold.intro':
+    '構造を渡すと、それを折りたたむ可能性のある配列を設計します。これは予測であり測定ではありません。設計は発現して測定する必要があります。',
+  'settings.engines.inverseFold.pdb': '.pdb ファイルのパス',
+  'settings.engines.inverseFold.run': '配列を設計',
+  'settings.engines.inverseFold.running': '設計中…',
+  'settings.engines.inverseFold.notInstalled':
+    'このマシンにエンジンが導入されていません。想定場所: {path}。',
+  'settings.engines.inverseFold.failed': '設計に失敗しました（{code}）: {message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 予測器',
   'engines.ddg-cpu-predictor.summary':
     '安定化／不安定化の傾向を秒単位で示します。予測にすぎず、不確かさを必ず添えます。',

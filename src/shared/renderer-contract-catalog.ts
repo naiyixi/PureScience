@@ -236,6 +236,13 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onProgress', 'notebook-env:progress', DORMANT_EVENT], ['cancel', 'notebook-env:cancel', LOCAL, OPTIONAL_ARGUMENT_SLOT, POSITIONAL], ['getStatus', 'notebook-env:status'],
     ['provision', 'notebook-env:provision', LOCAL], ['repair', 'notebook-env:repair', LOCAL],
   ]),
+  // Inverse folding: whether the engine is provisioned on this machine, and one design run. Local only —
+  // the engine is a subprocess of a named environment under this machine's data root — so both entries
+  // are ELECTRON and no local-Web count moves.
+  // prettier-ignore
+  group('engines', 'engines', [
+    ['inverseFoldingStatus', 'engines:inverse-folding-status', ELECTRON], ['runInverseFolding', 'engines:run-inverse-folding', ELECTRON],
+  ]),
   // The knowledge store's window surface: list what is registered, register a file/folder/URL, and search it
   // with citations. Local-only by design — a paired remote browser has no business enumerating this machine's
   // sources — so every entry is ELECTRON and no local-Web count moves.

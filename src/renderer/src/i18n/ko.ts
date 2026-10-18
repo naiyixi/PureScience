@@ -4239,6 +4239,18 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2(원격 구조 예측)',
   'engines.colabfold.summary':
     '고전적인 MSA 기반 폴딩 파이프라인입니다. GPU가 있는 원격 호스트에 적합합니다.',
+  'engines.proteinmpnn.label': 'ProteinMPNN(역폴딩)',
+  'engines.proteinmpnn.summary':
+    '골격 하나에 대해 CPU에서 1초 이내로 접힐 수 있는 서열을 설계합니다. 설계는 가설이며, 발현·측정을 거쳐야 성립합니다.',
+  'settings.engines.inverseFold.title': '역폴딩(골격 → 서열)',
+  'settings.engines.inverseFold.intro':
+    '구조를 주면 그렇게 접힐 수 있는 서열을 설계합니다. 예측이지 측정이 아닙니다. 설계는 발현하고 측정해야 합니다.',
+  'settings.engines.inverseFold.pdb': '.pdb 파일 경로',
+  'settings.engines.inverseFold.run': '서열 설계',
+  'settings.engines.inverseFold.running': '설계 중…',
+  'settings.engines.inverseFold.notInstalled':
+    '이 컴퓨터에 엔진이 준비되지 않았습니다. 예상 위치: {path}.',
+  'settings.engines.inverseFold.failed': '설계 실패({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG CPU 예측기',
   'engines.ddg-cpu-predictor.summary':
     '초 단위로 안정화/불안정화 경향을 제시합니다. 예측일 뿐이며 불확실도를 반드시 포함합니다.',

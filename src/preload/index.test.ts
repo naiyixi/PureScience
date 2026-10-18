@@ -312,6 +312,8 @@ describe('preload bridge — public surface inventory', () => {
       'endpoint.remove',
       'endpoint.start',
       'endpoint.stop',
+      'engines.inverseFoldingStatus',
+      'engines.runInverseFolding',
       'figure.review',
       'folderGrants.grant',
       'folderGrants.list',
@@ -826,6 +828,9 @@ describe('preload bridge — core renderer contract catalog', () => {
       'local-fs',
       'logs',
       'network',
+      // Inverse folding (v2.11.0): the engine is provisioned per machine, so its availability is a
+      // capability of its own rather than a field on an existing one.
+      'engines',
       'knowledge',
       'notifications',
       'office-preview',
@@ -877,9 +882,10 @@ describe('preload bridge — core renderer contract catalog', () => {
     // contract, so the core request count below moves with it while neither Web map does.
     // 242 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // request contracts — a project-database write in the same profile as references.setNotes.
-    // 247 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL): a local-only request contract, so it
-    // counts here while neither Web map does.
-    expect(coreContracts).toHaveLength(247)
+    // 249 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
+    // (engines.inverseFoldingStatus / engines.runInverseFolding): three local-only request contracts,
+    // so they count here while neither Web map does.
+    expect(coreContracts).toHaveLength(249)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -891,7 +897,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 209, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 211, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -900,7 +906,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(209)
+    expect(requestContracts).toHaveLength(211)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

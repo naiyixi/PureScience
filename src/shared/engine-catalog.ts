@@ -19,7 +19,15 @@
 export const ENGINE_CATALOG_SCHEMA_VERSION = 1
 
 export type EngineKind =
-  'database-lookup' | 'structure-prediction' | 'ddg-prediction' | 'ddg-physics' | 'md'
+  | 'database-lookup'
+  | 'structure-prediction'
+  | 'ddg-prediction'
+  | 'ddg-physics'
+  | 'md'
+  // Backbone -> sequence. The inverse of structure prediction, and the one direction where a
+  // prediction is *supposed* to be novel: the output is a hypothesis about what could fold this
+  // way, never a claim about what does.
+  | 'inverse-folding'
 
 /** How the number leaves the engine: measured experiments are impossible here, so this is the
  *  honesty axis the whole app turns on. */
@@ -183,6 +191,23 @@ export const ENGINE_CATALOG: EngineDefinition[] = [
       id: 'Rosetta-noncommercial',
       commercialRestricted: true,
       note: 'buy a licence for commercial use'
+    }
+  },
+  {
+    id: 'proteinmpnn',
+    label: 'ProteinMPNN (inverse folding)',
+    labelKey: 'engines.proteinmpnn.label',
+    kind: 'inverse-folding',
+    outputKind: 'predicted',
+    placement: 'local',
+    summary:
+      'Designs sequences for one backbone in well under a second on CPU; a design is a hypothesis until it is expressed and measured.',
+    summaryKey: 'engines.proteinmpnn.summary',
+    requirements: { gpuRequired: false, weightBytes: 6_681_301, onDemandDownload: true },
+    license: {
+      id: 'MIT',
+      commercialRestricted: false,
+      note: 'code and weights MIT (6.7 MB); the torch stack it needs is ~740 MB and is the real cost'
     }
   }
 ]

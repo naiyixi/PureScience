@@ -4425,6 +4425,20 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (prédiction de structure à distance)',
   'engines.colabfold.summary':
     "La pipeline de repliement classique à base d'AMM ; idéale sur un hôte distant avec GPU.",
+  'engines.proteinmpnn.label': 'ProteinMPNN (repliement inverse)',
+  'engines.proteinmpnn.summary':
+    'Conçoit des séquences pour un squelette en bien moins d’une seconde sur CPU ; un design reste une hypothèse tant qu’il n’est pas exprimé et mesuré.',
+  'settings.engines.inverseFold.title':
+    'Repliement inverse (squelette → séquence)',
+  'settings.engines.inverseFold.intro':
+    'Donnez une structure : des séquences pouvant se replier ainsi sont conçues ici. Une prédiction, pas une mesure — un design doit être exprimé puis mesuré.',
+  'settings.engines.inverseFold.pdb': 'Chemin vers un fichier .pdb',
+  'settings.engines.inverseFold.run': 'Concevoir des séquences',
+  'settings.engines.inverseFold.running': 'Conception…',
+  'settings.engines.inverseFold.notInstalled':
+    'Moteur non installé sur cette machine. Attendu dans {path}.',
+  'settings.engines.inverseFold.failed':
+    'Échec de la conception ({code}) : {message}',
   'engines.ddg-cpu-predictor.label': 'Prédicteur ΔΔG sur CPU',
   'engines.ddg-cpu-predictor.summary':
     'Donne en quelques secondes une tendance à stabiliser ou déstabiliser ; une prédiction seulement, toujours avec incertitude.',
