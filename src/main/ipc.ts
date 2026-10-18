@@ -281,6 +281,12 @@ import { FolderGrantsService } from './folder-grants'
 import type { KnowledgeRegistration } from '../shared/knowledge'
 import { createKnowledgeModule } from './knowledge/knowledge-module'
 import {
+  checkMolecularDynamics,
+  resolveMolecularDynamicsLayout,
+  resolveMolecularDynamicsScript,
+  runMolecularDynamics
+} from './engines/molecular-dynamics'
+import {
   checkInverseFolding,
   designInverseFolding,
   resolveInverseFoldScript,
@@ -2074,6 +2080,35 @@ const createApplicationModules = async (
   // Inverse folding. Status is read-only and cheap (three existence checks); a run is a subprocess of the
   // provisioned Python environment, and its refusal codes are the engine's own ("engine-not-provisioned",
   // "design-failed"), never a generic failure that hides which one happened.
+  ipcMainHandle('md:status', () =>
+    checkMolecularDynamics(resolveMolecularDynamicsLayout(resolveDataRoot()))
+  )
+  ipcMainHandle('md:run', (_event, request: unknown) => {
+    const candidate = request as {
+      pdbPath?: unknown
+      steps?: unknown
+      temperature?: unknown
+      seed?: unknown
+    } | null
+    if (typeof candidate?.pdbPath !== 'string' || candidate.pdbPath.trim().length === 0) {
+      throw new Error('A molecular dynamics run needs a pdbPath.')
+    }
+    const dataRoot = resolveDataRoot()
+    return runMolecularDynamics({
+      layout: resolveMolecularDynamicsLayout(dataRoot),
+      scriptPath: resolveMolecularDynamicsScript(),
+      // The wrapper is standard-library only, so the interpreter is the app's own — not the engine's
+      // environment, which is where gmx lives but where Python need not be reachable by name.
+      python: process.env.PURESCIENCE_MD_PYTHON ?? 'python3',
+      outDir: join(dataRoot, 'runtime', 'engines', 'md-runs', String(Date.now())),
+      request: {
+        pdbPath: candidate.pdbPath,
+        steps: typeof candidate.steps === 'number' ? candidate.steps : undefined,
+        temperature: typeof candidate.temperature === 'number' ? candidate.temperature : undefined,
+        seed: typeof candidate.seed === 'number' ? candidate.seed : undefined
+      }
+    })
+  })
   ipcMainHandle('engines:inverse-folding-status', () =>
     checkInverseFolding(resolveInverseFoldingLayout(resolveDataRoot()))
   )

@@ -4351,6 +4351,19 @@ export const en: Record<ZhKey, string> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (remote structure prediction)',
   'engines.colabfold.summary':
     'The classic MSA-based folding pipeline; best on a remote host with a GPU.',
+  'engines.gromacs-md.label': 'GROMACS (molecular dynamics)',
+  'engines.gromacs-md.summary':
+    'Minimises a structure and runs a short trajectory on CPU; a trajectory is a simulation, never a measurement of the real system.',
+  'settings.engines.md.title': 'Molecular dynamics (vacuum, short run)',
+  'settings.engines.md.intro':
+    'Give a structure and this minimises it and runs a short trajectory in vacuum. It is a fast check that the engine runs end to end, not a production simulation — a solvated box is a different piece of work.',
+  'settings.engines.md.pdb': 'Path to a .pdb file',
+  'settings.engines.md.run': 'Run trajectory',
+  'settings.engines.md.running': 'Running…',
+  'settings.engines.md.notInstalled': 'Engine not provisioned on this machine. Expected at {path}.',
+  'settings.engines.md.failed': 'Run failed ({code}): {message}',
+  'settings.engines.md.repro':
+    'Output is not byte-reproducible (measured at 4 threads, at -nt 1 and fully serial). Compare frames and statistics, not digests.',
   'engines.proteinmpnn.label': 'ProteinMPNN (inverse folding)',
   'engines.proteinmpnn.summary':
     'Designs sequences for one backbone in well under a second on CPU; a design is a hypothesis until it is expressed and measured.',

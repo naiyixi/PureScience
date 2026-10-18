@@ -336,6 +336,8 @@ describe('preload bridge — public surface inventory', () => {
       'logs.getPath',
       'logs.openFile',
       'logs.revealInFolder',
+      'md.run',
+      'md.status',
       'network.checkConnectivity',
       'network.getInfo',
       'notebook.appendCodeCell',
@@ -828,8 +830,9 @@ describe('preload bridge — core renderer contract catalog', () => {
       'local-fs',
       'logs',
       'network',
-      // Inverse folding (v2.11.0): the engine is provisioned per machine, so its availability is a
-      // capability of its own rather than a field on an existing one.
+      // Molecular dynamics and inverse folding (v2.11.0 / v2.13.0): both engines are provisioned per
+      // machine, so each availability is a capability of its own rather than a field on an existing one.
+      'md',
       'engines',
       'knowledge',
       'notifications',
@@ -885,7 +888,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // 249 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
     // (engines.inverseFoldingStatus / engines.runInverseFolding): three local-only request contracts,
     // so they count here while neither Web map does.
-    expect(coreContracts).toHaveLength(249)
+    expect(coreContracts).toHaveLength(251)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -897,7 +900,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 211, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 213, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -906,7 +909,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(211)
+    expect(requestContracts).toHaveLength(213)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

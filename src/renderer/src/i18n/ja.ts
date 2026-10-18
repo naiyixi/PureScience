@@ -4313,6 +4313,20 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2（リモート構造予測）',
   'engines.colabfold.summary':
     '定番の MSA ベース折りたたみパイプライン。GPU のあるリモートホストに最適です。',
+  'engines.gromacs-md.label': 'GROMACS（分子動力学）',
+  'engines.gromacs-md.summary':
+    '構造を最小化し、短いトラジェクトリをCPUで計算します。トラジェクトリはシミュレーションであり、実系の測定ではありません。',
+  'settings.engines.md.title': '分子動力学（真空・短時間）',
+  'settings.engines.md.intro':
+    '構造を渡すと、最小化して短い真空トラジェクトリを計算します。エンジンが端から端まで動くことの速い確認であり、本番シミュレーションではありません。溶媒和ボックスは別作業です。',
+  'settings.engines.md.pdb': '.pdb ファイルのパス',
+  'settings.engines.md.run': 'トラジェクトリを計算',
+  'settings.engines.md.running': '計算中…',
+  'settings.engines.md.notInstalled':
+    'このマシンにエンジンが導入されていません。想定場所: {path}。',
+  'settings.engines.md.failed': '実行に失敗しました（{code}）: {message}',
+  'settings.engines.md.repro':
+    '出力はバイト単位で再現しません（4スレッド、-nt 1、完全直列のいずれでも実測）。比較すべきはフレーム数と統計量であり、ダイジェストではありません。',
   'engines.proteinmpnn.label': 'ProteinMPNN（逆フォールディング）',
   'engines.proteinmpnn.summary':
     '主鎖から、それを折りたたむ可能性のある配列をCPUで1秒未満で設計します。設計は仮説であり、発現・測定して初めて成立します。',

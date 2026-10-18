@@ -4403,6 +4403,19 @@ export const es: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (predicción estructural remota)',
   'engines.colabfold.summary':
     'La clásica pipeline de plegado basada en MSA; mejor en un host remoto con GPU.',
+  'engines.gromacs-md.label': 'GROMACS (dinámica molecular)',
+  'engines.gromacs-md.summary':
+    'Minimiza una estructura y ejecuta una trayectoria corta en CPU; una trayectoria es una simulación, nunca una medición del sistema real.',
+  'settings.engines.md.title': 'Dinámica molecular (vacío, ejecución corta)',
+  'settings.engines.md.intro':
+    'Da una estructura y aquí se minimiza y se ejecuta una trayectoria corta en vacío. Es una comprobación rápida de que el motor funciona de extremo a extremo, no una simulación de producción: una caja solvatada es otro trabajo.',
+  'settings.engines.md.pdb': 'Ruta a un archivo .pdb',
+  'settings.engines.md.run': 'Ejecutar trayectoria',
+  'settings.engines.md.running': 'Ejecutando…',
+  'settings.engines.md.notInstalled': 'Motor no preparado en esta máquina. Se espera en {path}.',
+  'settings.engines.md.failed': 'La ejecución falló ({code}): {message}',
+  'settings.engines.md.repro':
+    'La salida no es reproducible byte a byte (medido con 4 hilos, con -nt 1 y totalmente en serie). Compare fotogramas y estadísticas, no resúmenes.',
   'engines.proteinmpnn.label': 'ProteinMPNN (plegamiento inverso)',
   'engines.proteinmpnn.summary':
     'Diseña secuencias para un esqueleto en mucho menos de un segundo en CPU; un diseño es una hipótesis hasta que se expresa y se mide.',

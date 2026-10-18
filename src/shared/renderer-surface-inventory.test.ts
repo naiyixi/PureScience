@@ -57,6 +57,8 @@ const GENERATED_SOURCE_OMISSIONS = [
   'diagnostics.exportSupportBundle',
   'diagnostics.listVisionEvidence',
   'diagnostics.reportRendererFailure',
+  'md.run',
+  'md.status',
   'engines.inverseFoldingStatus',
   'engines.runInverseFolding',
   'getRuntimeVersions',
@@ -336,7 +338,7 @@ describe('renderer surface inventory', () => {
     // 490 with the knowledge window surface (v2.8.0: knowledge.listSources / registerSource / search): three
     // Electron paths, local-only, so they also join the generator-omission list rather than any Web set.
     // 494 with the knowledge copy sweep (+1) and the inverse-folding pair (+2).
-    expect(electronPaths).toHaveLength(494)
+    expect(electronPaths).toHaveLength(496)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

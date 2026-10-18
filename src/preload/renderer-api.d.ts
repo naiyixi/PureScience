@@ -836,6 +836,31 @@ export interface PureScienceAPI {
     openFile(): Promise<OpenLogFileResult>
     revealInFolder(): Promise<RevealLogFileResult>
   }
+  md: {
+    status(): Promise<{ gmx: string; installed: boolean; missing: string[] }>
+    run(request: {
+      pdbPath: string
+      steps?: number
+      temperature?: number
+      seed?: number
+    }): Promise<{
+      engine: 'gromacs'
+      engineVersion: string
+      pdbSha256: string
+      steps: number
+      temperature: number
+      seed: number
+      solvent: string
+      forceField: string
+      waterModel: string
+      frames: number | null
+      atoms: number | null
+      finalStructure: { sha256: string; bytes: number }
+      trajectory: { sha256: string; bytes: number }
+      statistics: { meanTemperature: number | null; meanPotential: number | null }
+      reproducible: { inputFingerprint: boolean; byteIdenticalOutput: boolean; note: string }
+    }>
+  }
   engines: {
     inverseFoldingStatus(): Promise<{
       engineSrc: string

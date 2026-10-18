@@ -194,6 +194,24 @@ export const ENGINE_CATALOG: EngineDefinition[] = [
     }
   },
   {
+    id: 'gromacs-md',
+    label: 'GROMACS (molecular dynamics)',
+    labelKey: 'engines.gromacs-md.label',
+    kind: 'md',
+    outputKind: 'predicted',
+    placement: 'local',
+    summary:
+      'Minimises a structure and runs a short trajectory on CPU; a trajectory is a simulation, never a measurement of the real system.',
+    summaryKey: 'engines.gromacs-md.summary',
+    // No weights to fetch: the engine and its force fields arrive with the environment.
+    requirements: { gpuRequired: false, weightBytes: 0, onDemandDownload: false },
+    license: {
+      id: 'LGPL-2.1',
+      commercialRestricted: false,
+      note: 'GROMACS is LGPL; force fields carry their own terms'
+    }
+  },
+  {
     id: 'proteinmpnn',
     label: 'ProteinMPNN (inverse folding)',
     labelKey: 'engines.proteinmpnn.label',

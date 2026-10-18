@@ -4447,6 +4447,20 @@ export const de: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (Strukturvorhersage auf entferntem Host)',
   'engines.colabfold.summary':
     'Die klassische MSA-basierte Faltungspipeline; am besten auf einem entfernten Host mit GPU.',
+  'engines.gromacs-md.label': 'GROMACS (Molekulardynamik)',
+  'engines.gromacs-md.summary':
+    'Minimiert eine Struktur und rechnet eine kurze Trajektorie auf der CPU; eine Trajektorie ist eine Simulation, keine Messung des realen Systems.',
+  'settings.engines.md.title': 'Molekulardynamik (Vakuum, kurzer Lauf)',
+  'settings.engines.md.intro':
+    'Geben Sie eine Struktur an; sie wird minimiert und eine kurze Vakuum-Trajektorie gerechnet. Das ist ein schneller Nachweis, dass die Engine durchläuft, keine Produktionssimulation – eine solvatisierte Box ist eine andere Aufgabe.',
+  'settings.engines.md.pdb': 'Pfad zu einer .pdb-Datei',
+  'settings.engines.md.run': 'Trajektorie rechnen',
+  'settings.engines.md.running': 'Läuft…',
+  'settings.engines.md.notInstalled':
+    'Engine auf diesem Rechner nicht eingerichtet. Erwartet unter {path}.',
+  'settings.engines.md.failed': 'Lauf fehlgeschlagen ({code}): {message}',
+  'settings.engines.md.repro':
+    'Die Ausgabe ist nicht byte-reproduzierbar (gemessen mit 4 Threads, mit -nt 1 und vollständig seriell). Vergleichen Sie Bilder und Statistiken, nicht Digests.',
   'engines.proteinmpnn.label': 'ProteinMPNN (inverse Faltung)',
   'engines.proteinmpnn.summary':
     'Entwirft Sequenzen für ein Rückgrat in deutlich unter einer Sekunde auf der CPU; ein Entwurf ist eine Hypothese, bis er exprimiert und gemessen ist.',

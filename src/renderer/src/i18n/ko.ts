@@ -4246,6 +4246,19 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2(원격 구조 예측)',
   'engines.colabfold.summary':
     '고전적인 MSA 기반 폴딩 파이프라인입니다. GPU가 있는 원격 호스트에 적합합니다.',
+  'engines.gromacs-md.label': 'GROMACS(분자 동역학)',
+  'engines.gromacs-md.summary':
+    '구조를 최소화하고 짧은 궤적을 CPU에서 계산합니다. 궤적은 시뮬레이션이며 실제 계의 측정이 아닙니다.',
+  'settings.engines.md.title': '분자 동역학(진공, 짧은 실행)',
+  'settings.engines.md.intro':
+    '구조를 주면 최소화한 뒤 짧은 진공 궤적을 계산합니다. 엔진이 끝까지 도는지 보는 빠른 확인이며 운영용 시뮬레이션이 아닙니다. 용매 상자는 별개의 작업입니다.',
+  'settings.engines.md.pdb': '.pdb 파일 경로',
+  'settings.engines.md.run': '궤적 계산',
+  'settings.engines.md.running': '계산 중…',
+  'settings.engines.md.notInstalled': '이 컴퓨터에 엔진이 준비되지 않았습니다. 예상 위치: {path}.',
+  'settings.engines.md.failed': '실행 실패({code}): {message}',
+  'settings.engines.md.repro':
+    '출력은 바이트 단위로 재현되지 않습니다(4스레드, -nt 1, 완전 직렬 모두 실측). 비교할 것은 프레임 수와 통계량이며 요약값이 아닙니다.',
   'engines.proteinmpnn.label': 'ProteinMPNN(역폴딩)',
   'engines.proteinmpnn.summary':
     '골격 하나에 대해 CPU에서 1초 이내로 접힐 수 있는 서열을 설계합니다. 설계는 가설이며, 발현·측정을 거쳐야 성립합니다.',

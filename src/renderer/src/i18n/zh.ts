@@ -4063,6 +4063,19 @@ export const zh = {
   'engines.esmfold.summary': '单序列端到端折叠；权重数 GB、需要 GPU，按需下载。',
   'engines.colabfold.label': 'ColabFold / AlphaFold2（远程结构预测）',
   'engines.colabfold.summary': '经典 MSA 折叠流程；适合有 GPU 的远程主机。',
+  'engines.gromacs-md.label': 'GROMACS（分子动力学）',
+  'engines.gromacs-md.summary':
+    '把结构做能量最小化并跑一小段轨迹；轨迹是模拟，不是对真实体系的测量。',
+  'settings.engines.md.title': '分子动力学（真空、短程）',
+  'settings.engines.md.intro':
+    '给一份结构，这里会做能量最小化并跑一小段真空轨迹。它是「引擎能端到端跑通」的快速检查，不是生产级模拟——溶剂化盒子是另一件事。',
+  'settings.engines.md.pdb': '.pdb 文件路径',
+  'settings.engines.md.run': '跑一段轨迹',
+  'settings.engines.md.running': '正在跑…',
+  'settings.engines.md.notInstalled': '本机尚未备好该引擎，应位于 {path}。',
+  'settings.engines.md.failed': '运行失败（{code}）：{message}',
+  'settings.engines.md.repro':
+    '输出不可逐字节复现（4 线程、-nt 1、完全串行三种配置实测都不复现）。要比对帧数与统计量，不要比摘要。',
   'engines.proteinmpnn.label': 'ProteinMPNN（反向折叠）',
   'engines.proteinmpnn.summary':
     '给定一条主链，在 CPU 上不到一秒生成可能折叠成它的序列；设计只是假设，表达并测过才算数。',

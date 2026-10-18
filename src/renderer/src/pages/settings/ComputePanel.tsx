@@ -12,6 +12,7 @@ import { FileBrowserModal } from './FileBrowserModal'
 import { ExternalComputeSection } from './ExternalComputeSection'
 import { EngineMatrixSection } from './EngineMatrixSection'
 import { InverseFoldingSection } from './InverseFoldingSection'
+import { MolecularDynamicsSection } from './MolecularDynamicsSection'
 
 // The compute panel sub-view, driven by the settings navigation history. The add form and host detail
 // are separate components owned by SettingsPage; this panel renders the list + header banner only.
@@ -259,6 +260,8 @@ export function ComputePanel({ onNavigate }: ComputePanelProps): React.JSX.Eleme
       <EngineMatrixSection />
 
       <InverseFoldingSection />
+
+      <MolecularDynamicsSection />
 
       <ExternalComputeSection />
     </div>

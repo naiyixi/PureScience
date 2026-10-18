@@ -4433,6 +4433,19 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'engines.colabfold.label': 'ColabFold / AlphaFold2 (prédiction de structure à distance)',
   'engines.colabfold.summary':
     "La pipeline de repliement classique à base d'AMM ; idéale sur un hôte distant avec GPU.",
+  'engines.gromacs-md.label': 'GROMACS (dynamique moléculaire)',
+  'engines.gromacs-md.summary':
+    'Minimise une structure et calcule une courte trajectoire sur CPU ; une trajectoire est une simulation, jamais une mesure du système réel.',
+  'settings.engines.md.title': 'Dynamique moléculaire (vide, calcul court)',
+  'settings.engines.md.intro':
+    'Donnez une structure : elle est minimisée et une courte trajectoire sous vide est calculée. C’est une vérification rapide que le moteur tourne de bout en bout, pas une simulation de production — une boîte solvatée est un autre travail.',
+  'settings.engines.md.pdb': 'Chemin vers un fichier .pdb',
+  'settings.engines.md.run': 'Calculer la trajectoire',
+  'settings.engines.md.running': 'Calcul en cours…',
+  'settings.engines.md.notInstalled': 'Moteur non installé sur cette machine. Attendu dans {path}.',
+  'settings.engines.md.failed': 'Échec du calcul ({code}) : {message}',
+  'settings.engines.md.repro':
+    'La sortie n’est pas reproductible octet pour octet (mesuré à 4 threads, avec -nt 1 et entièrement en série). Comparez les images et les statistiques, pas les empreintes.',
   'engines.proteinmpnn.label': 'ProteinMPNN (repliement inverse)',
   'engines.proteinmpnn.summary':
     'Conçoit des séquences pour un squelette en bien moins d’une seconde sur CPU ; un design reste une hypothèse tant qu’il n’est pas exprimé et mesuré.',

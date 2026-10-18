@@ -236,6 +236,11 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['onProgress', 'notebook-env:progress', DORMANT_EVENT], ['cancel', 'notebook-env:cancel', LOCAL, OPTIONAL_ARGUMENT_SLOT, POSITIONAL], ['getStatus', 'notebook-env:status'],
     ['provision', 'notebook-env:provision', LOCAL], ['repair', 'notebook-env:repair', LOCAL],
   ]),
+  // Molecular dynamics: the same two reads as inverse folding — is the engine here, and one run.
+  // prettier-ignore
+  group('md', 'md', [
+    ['status', 'md:status', ELECTRON], ['run', 'md:run', ELECTRON],
+  ]),
   // Inverse folding: whether the engine is provisioned on this machine, and one design run. Local only —
   // the engine is a subprocess of a named environment under this machine's data root — so both entries
   // are ELECTRON and no local-Web count moves.
