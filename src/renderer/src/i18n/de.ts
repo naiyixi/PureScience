@@ -683,11 +683,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     'Wählen Sie „{trust}“, solange der Browser-Zugriff aktiv ist, für direkten Zugriff bei künftigen Besuchen.',
   'settings.knowledge.title': 'Wissensbasis',
-  'settings.knowledge.description': 'Die in diesem Arbeitsbereich registrierten Quellen. Die Suche antwortet daraus, und jedes Ergebnis trägt den sha256 genau der Bytes, aus denen es stammt.',
+  'settings.knowledge.description':
+    'Die in diesem Arbeitsbereich registrierten Quellen. Die Suche antwortet daraus, und jedes Ergebnis trägt den sha256 genau der Bytes, aus denen es stammt.',
   'settings.knowledge.sources': 'Registrierte Quellen',
   'settings.knowledge.refresh': 'Aktualisieren',
   'settings.knowledge.loading': 'Quellendatensatz wird gelesen…',
-  'settings.knowledge.unreadable': 'Der Quellendatensatz konnte nicht gelesen werden — das ist nicht dasselbe wie keine Quellen zu haben.',
+  'settings.knowledge.unreadable':
+    'Der Quellendatensatz konnte nicht gelesen werden — das ist nicht dasselbe wie keine Quellen zu haben.',
   'settings.knowledge.empty': 'Noch keine Quellen registriert.',
   'settings.knowledge.register': 'Quelle registrieren',
   'settings.knowledge.kind': 'Quellenart',
@@ -696,7 +698,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'Ort der Quelle',
   'settings.knowledge.registerAction': 'Registrieren',
-  'settings.knowledge.registerHint': 'Ein lokaler Pfad muss im Datenstamm oder in einem freigegebenen Ordner liegen. Die Suche antwortet aus den gespeicherten Bytes dieser Quelle.',
+  'settings.knowledge.registerHint':
+    'Ein lokaler Pfad muss im Datenstamm oder in einem freigegebenen Ordner liegen. Die Suche antwortet aus den gespeicherten Bytes dieser Quelle.',
   'settings.knowledge.registered': '{count} Quelle(n) registriert.',
   'settings.knowledge.registerFailed': 'Diese Quelle konnte nicht registriert werden.',
   'settings.knowledge.search': 'Suche',
@@ -711,6 +714,11 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} entfernen',
   'settings.knowledge.removed': 'Quelle entfernt; {count} gespeicherte Kopie(n) gelöscht.',
   'settings.knowledge.removeFailed': 'Diese Quelle konnte nicht entfernt werden.',
+  'settings.knowledge.lastSweep':
+    'Letzte Bereinigung: {at} · geprüft {scanned} · behalten {kept} · entfernt {removed} · fehlgeschlagen {failed}',
+  'settings.knowledge.page': 'Seite {page} / {pages}',
+  'settings.knowledge.previous': 'Zurück',
+  'settings.knowledge.next': 'Weiter',
   'settings.knowledge.sweep': 'Nicht verwendete Kopien aufräumen',
   'settings.knowledge.swept':
     '{count} nicht verwendete Kopie(n) gelöscht, {bytes} Byte freigegeben.',
@@ -4450,8 +4458,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.engines.inverseFold.running': 'Wird entworfen…',
   'settings.engines.inverseFold.notInstalled':
     'Engine auf diesem Rechner nicht eingerichtet. Erwartet unter {path}.',
-  'settings.engines.inverseFold.failed':
-    'Entwurf fehlgeschlagen ({code}): {message}',
+  'settings.engines.inverseFold.failed': 'Entwurf fehlgeschlagen ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'ΔΔG-Vorhersage auf der CPU',
   'engines.ddg-cpu-predictor.summary':
     'Liefert die Tendenz zu Stabilisierung/Destabilisierung in Sekunden; nur eine Vorhersage, stets mit Unsicherheit.',

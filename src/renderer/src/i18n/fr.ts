@@ -681,11 +681,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     'Choisissez « {trust} » pour un accès direct lors des prochaines visites tant que l’accès navigateur est activé.',
   'settings.knowledge.title': 'Connaissances',
-  'settings.knowledge.description': 'Sources enregistrées dans cet espace de travail. La recherche répond à partir d’elles, et chaque résultat porte le sha256 exact des octets dont il provient.',
+  'settings.knowledge.description':
+    'Sources enregistrées dans cet espace de travail. La recherche répond à partir d’elles, et chaque résultat porte le sha256 exact des octets dont il provient.',
   'settings.knowledge.sources': 'Sources enregistrées',
   'settings.knowledge.refresh': 'Actualiser',
   'settings.knowledge.loading': 'Lecture du registre des sources…',
-  'settings.knowledge.unreadable': 'Le registre des sources n’a pas pu être lu — ce n’est pas la même chose qu’aucune source.',
+  'settings.knowledge.unreadable':
+    'Le registre des sources n’a pas pu être lu — ce n’est pas la même chose qu’aucune source.',
   'settings.knowledge.empty': 'Aucune source enregistrée pour l’instant.',
   'settings.knowledge.register': 'Enregistrer une source',
   'settings.knowledge.kind': 'Type de source',
@@ -694,7 +696,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'Emplacement de la source',
   'settings.knowledge.registerAction': 'Enregistrer',
-  'settings.knowledge.registerHint': 'Un chemin local doit se trouver dans la racine de données ou dans un dossier que vous avez autorisé. La recherche répond à partir des octets stockés de cette source.',
+  'settings.knowledge.registerHint':
+    'Un chemin local doit se trouver dans la racine de données ou dans un dossier que vous avez autorisé. La recherche répond à partir des octets stockés de cette source.',
   'settings.knowledge.registered': '{count} source(s) enregistrée(s).',
   'settings.knowledge.registerFailed': 'Cette source n’a pas pu être enregistrée.',
   'settings.knowledge.search': 'Rechercher',
@@ -709,6 +712,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Supprimer {label}',
   'settings.knowledge.removed': 'Source supprimée ; {count} copie(s) stockée(s) purgée(s).',
   'settings.knowledge.removeFailed': 'Cette source n’a pas pu être supprimée.',
+  'settings.knowledge.lastSweep':
+    'Dernier nettoyage : {at} · examinées {scanned} · conservées {kept} · supprimées {removed} · échouées {failed}',
+  'settings.knowledge.page': 'Page {page} / {pages}',
+  'settings.knowledge.previous': 'Précédent',
+  'settings.knowledge.next': 'Suivant',
   'settings.knowledge.sweep': 'Nettoyer les copies inutilisées',
   'settings.knowledge.swept':
     '{count} copie(s) inutilisée(s) supprimée(s), {bytes} octet(s) libéré(s).',
@@ -4428,8 +4436,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'engines.proteinmpnn.label': 'ProteinMPNN (repliement inverse)',
   'engines.proteinmpnn.summary':
     'Conçoit des séquences pour un squelette en bien moins d’une seconde sur CPU ; un design reste une hypothèse tant qu’il n’est pas exprimé et mesuré.',
-  'settings.engines.inverseFold.title':
-    'Repliement inverse (squelette → séquence)',
+  'settings.engines.inverseFold.title': 'Repliement inverse (squelette → séquence)',
   'settings.engines.inverseFold.intro':
     'Donnez une structure : des séquences pouvant se replier ainsi sont conçues ici. Une prédiction, pas une mesure — un design doit être exprimé puis mesuré.',
   'settings.engines.inverseFold.pdb': 'Chemin vers un fichier .pdb',
@@ -4437,8 +4444,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.engines.inverseFold.running': 'Conception…',
   'settings.engines.inverseFold.notInstalled':
     'Moteur non installé sur cette machine. Attendu dans {path}.',
-  'settings.engines.inverseFold.failed':
-    'Échec de la conception ({code}) : {message}',
+  'settings.engines.inverseFold.failed': 'Échec de la conception ({code}) : {message}',
   'engines.ddg-cpu-predictor.label': 'Prédicteur ΔΔG sur CPU',
   'engines.ddg-cpu-predictor.summary':
     'Donne en quelques secondes une tendance à stabiliser ou déstabiliser ; une prédiction seulement, toujours avec incertitude.',

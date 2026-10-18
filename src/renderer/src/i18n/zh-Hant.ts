@@ -618,7 +618,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '比對六位代碼完成兩步驗證，然後在此電腦或受信任的瀏覽器上核准請求。',
   'remoteControl.browserStep3': '選擇「{trust}」，即可在瀏覽器存取開啟時直接存取後續會話。',
   'settings.knowledge.title': '知識庫',
-  'settings.knowledge.description': '本工作區已登記的來源。檢索從這些來源回答，每條結果都帶著它取自的那段位元組的 sha256。',
+  'settings.knowledge.description':
+    '本工作區已登記的來源。檢索從這些來源回答，每條結果都帶著它取自的那段位元組的 sha256。',
   'settings.knowledge.sources': '已登記來源',
   'settings.knowledge.refresh': '重新整理',
   'settings.knowledge.loading': '正在讀取來源記錄…',
@@ -631,7 +632,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': '網址',
   'settings.knowledge.location': '來源位置',
   'settings.knowledge.registerAction': '登記',
-  'settings.knowledge.registerHint': '本機路徑必須位於資料根或你已授權的資料夾內。檢索從該來源已存下的位元組回答。',
+  'settings.knowledge.registerHint':
+    '本機路徑必須位於資料根或你已授權的資料夾內。檢索從該來源已存下的位元組回答。',
   'settings.knowledge.registered': '已登記 {count} 個來源。',
   'settings.knowledge.registerFailed': '這個來源沒能登記。',
   'settings.knowledge.search': '檢索',
@@ -646,6 +648,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '移除 {label}',
   'settings.knowledge.removed': '已移除來源；清理了 {count} 份已存副本。',
   'settings.knowledge.removeFailed': '這個來源沒能移除。',
+  'settings.knowledge.lastSweep':
+    '上次清掃：{at} · 掃描 {scanned} · 保留 {kept} · 清理 {removed} · 未清掉 {failed}',
+  'settings.knowledge.page': '第 {page} / {pages} 頁',
+  'settings.knowledge.previous': '上一頁',
+  'settings.knowledge.next': '下一頁',
   'settings.knowledge.sweep': '清理未參照副本',
   'settings.knowledge.swept': '已刪除 {count} 份未參照副本，釋放 {bytes} 位元組。',
   'settings.knowledge.sweptPartial':

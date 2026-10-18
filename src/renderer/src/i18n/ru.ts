@@ -664,11 +664,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     'Выберите «{trust}», чтобы получать прямой доступ при последующих посещениях, пока включён доступ через браузер.',
   'settings.knowledge.title': 'База знаний',
-  'settings.knowledge.description': 'Источники, зарегистрированные в этом рабочем пространстве. Поиск отвечает по ним, и каждый результат несёт sha256 именно тех байтов, из которых он взят.',
+  'settings.knowledge.description':
+    'Источники, зарегистрированные в этом рабочем пространстве. Поиск отвечает по ним, и каждый результат несёт sha256 именно тех байтов, из которых он взят.',
   'settings.knowledge.sources': 'Зарегистрированные источники',
   'settings.knowledge.refresh': 'Обновить',
   'settings.knowledge.loading': 'Чтение записи источников…',
-  'settings.knowledge.unreadable': 'Запись источников не читается — это не то же самое, что отсутствие источников.',
+  'settings.knowledge.unreadable':
+    'Запись источников не читается — это не то же самое, что отсутствие источников.',
   'settings.knowledge.empty': 'Источники пока не зарегистрированы.',
   'settings.knowledge.register': 'Зарегистрировать источник',
   'settings.knowledge.kind': 'Тип источника',
@@ -677,13 +679,15 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'Расположение источника',
   'settings.knowledge.registerAction': 'Зарегистрировать',
-  'settings.knowledge.registerHint': 'Локальный путь должен находиться в корне данных или в разрешённой вами папке. Поиск отвечает по сохранённым байтам этого источника.',
+  'settings.knowledge.registerHint':
+    'Локальный путь должен находиться в корне данных или в разрешённой вами папке. Поиск отвечает по сохранённым байтам этого источника.',
   'settings.knowledge.registered': 'Зарегистрировано источников: {count}.',
   'settings.knowledge.registerFailed': 'Этот источник зарегистрировать не удалось.',
   'settings.knowledge.search': 'Поиск',
   'settings.knowledge.query': 'Поисковый запрос',
   'settings.knowledge.searchAction': 'Искать',
-  'settings.knowledge.status': 'статус {status} · проиндексировано {indexed} · в ожидании {pending}',
+  'settings.knowledge.status':
+    'статус {status} · проиндексировано {indexed} · в ожидании {pending}',
   'settings.knowledge.noResults': 'Совпадений в зарегистрированных источниках нет.',
   'settings.knowledge.stale': 'байты изменились',
   'settings.knowledge.unreadableRow': 'не перечитать',
@@ -692,6 +696,11 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Удалить {label}',
   'settings.knowledge.removed': 'Источник удалён; очищено сохранённых копий: {count}.',
   'settings.knowledge.removeFailed': 'Этот источник удалить не удалось.',
+  'settings.knowledge.lastSweep':
+    'Последняя очистка: {at} · проверено {scanned} · оставлено {kept} · удалено {removed} · сбоев {failed}',
+  'settings.knowledge.page': 'Страница {page} / {pages}',
+  'settings.knowledge.previous': 'Назад',
+  'settings.knowledge.next': 'Далее',
   'settings.knowledge.sweep': 'Очистить неиспользуемые копии',
   'settings.knowledge.swept': 'Удалено неиспользуемых копий: {count}, освобождено байт: {bytes}.',
   'settings.knowledge.sweptPartial':
@@ -4323,8 +4332,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'engines.proteinmpnn.label': 'ProteinMPNN (обратная укладка)',
   'engines.proteinmpnn.summary':
     'Подбирает последовательности под заданный каркас менее чем за секунду на CPU; дизайн остаётся гипотезой, пока его не экспрессировали и не измерили.',
-  'settings.engines.inverseFold.title':
-    'Обратная укладка (каркас → последовательность)',
+  'settings.engines.inverseFold.title': 'Обратная укладка (каркас → последовательность)',
   'settings.engines.inverseFold.intro':
     'Дайте структуру — здесь подберут последовательности, которые могут так укладываться. Это предсказание, а не измерение: дизайн нужно экспрессировать и измерить.',
   'settings.engines.inverseFold.pdb': 'Путь к файлу .pdb',
@@ -4332,8 +4340,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.engines.inverseFold.running': 'Подбор…',
   'settings.engines.inverseFold.notInstalled':
     'Движок не установлен на этой машине. Ожидается в {path}.',
-  'settings.engines.inverseFold.failed':
-    'Не удалось выполнить дизайн ({code}): {message}',
+  'settings.engines.inverseFold.failed': 'Не удалось выполнить дизайн ({code}): {message}',
   'engines.ddg-cpu-predictor.label': 'CPU-прогноз ΔΔG',
   'engines.ddg-cpu-predictor.summary':
     'За секунды даёт тенденцию к стабилизации или дестабилизации; это лишь прогноз и обязательно с неопределённостью.',

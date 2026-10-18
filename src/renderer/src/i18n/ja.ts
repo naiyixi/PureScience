@@ -664,11 +664,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     'ブラウザアクセスがオンの間、今後のアクセスで直接接続するには「{trust}」を選択します。',
   'settings.knowledge.title': 'ナレッジ',
-  'settings.knowledge.description': 'このワークスペースに登録されたソースです。検索はこれらから回答し、各結果はそれが取られたバイト列の sha256 を伴います。',
+  'settings.knowledge.description':
+    'このワークスペースに登録されたソースです。検索はこれらから回答し、各結果はそれが取られたバイト列の sha256 を伴います。',
   'settings.knowledge.sources': '登録済みソース',
   'settings.knowledge.refresh': '更新',
   'settings.knowledge.loading': 'ソース記録を読み込み中…',
-  'settings.knowledge.unreadable': 'ソース記録を読み取れませんでした。ソースが無いこととは別のことです。',
+  'settings.knowledge.unreadable':
+    'ソース記録を読み取れませんでした。ソースが無いこととは別のことです。',
   'settings.knowledge.empty': 'まだソースが登録されていません。',
   'settings.knowledge.register': 'ソースを登録',
   'settings.knowledge.kind': 'ソース種別',
@@ -677,7 +679,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'ソースの場所',
   'settings.knowledge.registerAction': '登録',
-  'settings.knowledge.registerHint': 'ローカルパスはデータルートまたは許可したフォルダー内にある必要があります。検索はこのソースの保存済みバイト列から回答します。',
+  'settings.knowledge.registerHint':
+    'ローカルパスはデータルートまたは許可したフォルダー内にある必要があります。検索はこのソースの保存済みバイト列から回答します。',
   'settings.knowledge.registered': '{count} 件のソースを登録しました。',
   'settings.knowledge.registerFailed': 'このソースは登録できませんでした。',
   'settings.knowledge.search': '検索',
@@ -692,6 +695,11 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} を削除',
   'settings.knowledge.removed': 'ソースを削除しました。保存済みコピー {count} 件を破棄しました。',
   'settings.knowledge.removeFailed': 'このソースを削除できませんでした。',
+  'settings.knowledge.lastSweep':
+    '前回の整理: {at} · 走査 {scanned} · 保持 {kept} · 削除 {removed} · 失敗 {failed}',
+  'settings.knowledge.page': 'ページ {page} / {pages}',
+  'settings.knowledge.previous': '前へ',
+  'settings.knowledge.next': '次へ',
   'settings.knowledge.sweep': '未参照のコピーを整理',
   'settings.knowledge.swept': '未参照のコピーを {count} 件削除し、{bytes} バイトを解放しました。',
   'settings.knowledge.sweptPartial':

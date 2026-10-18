@@ -625,11 +625,13 @@ export const en: Record<ZhKey, string> = {
   // settings (面板区块)
   'settings.sessions': 'Sessions',
   'settings.knowledge.title': 'Knowledge',
-  'settings.knowledge.description': 'Sources this workspace has registered. Search answers from these, and every result carries the sha256 of the exact bytes it came from.',
+  'settings.knowledge.description':
+    'Sources this workspace has registered. Search answers from these, and every result carries the sha256 of the exact bytes it came from.',
   'settings.knowledge.sources': 'Registered sources',
   'settings.knowledge.refresh': 'Refresh',
   'settings.knowledge.loading': 'Reading the source record…',
-  'settings.knowledge.unreadable': 'The source record could not be read — this is not the same as having no sources.',
+  'settings.knowledge.unreadable':
+    'The source record could not be read — this is not the same as having no sources.',
   'settings.knowledge.empty': 'No sources registered yet.',
   'settings.knowledge.register': 'Register a source',
   'settings.knowledge.kind': 'Source kind',
@@ -638,7 +640,8 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'Source location',
   'settings.knowledge.registerAction': 'Register',
-  'settings.knowledge.registerHint': 'A local path must sit inside the data root or a folder you granted. Search answers from this source’s stored bytes.',
+  'settings.knowledge.registerHint':
+    'A local path must sit inside the data root or a folder you granted. Search answers from this source’s stored bytes.',
   'settings.knowledge.registered': 'Registered {count} source(s).',
   'settings.knowledge.registerFailed': 'That source could not be registered.',
   'settings.knowledge.search': 'Search',
@@ -653,6 +656,11 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.remove': 'Remove {label}',
   'settings.knowledge.removed': 'Source removed; {count} stored copy(ies) pruned.',
   'settings.knowledge.removeFailed': 'That source could not be removed.',
+  'settings.knowledge.lastSweep':
+    'Last sweep: {at} · scanned {scanned} · kept {kept} · removed {removed} · failed {failed}',
+  'settings.knowledge.page': 'Page {page} / {pages}',
+  'settings.knowledge.previous': 'Previous',
+  'settings.knowledge.next': 'Next',
   'settings.knowledge.sweep': 'Clean unused copies',
   'settings.knowledge.swept': 'Deleted {count} unused copy(ies), freed {bytes} byte(s).',
   'settings.knowledge.sweptPartial':

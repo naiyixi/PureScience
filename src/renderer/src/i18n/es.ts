@@ -678,11 +678,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     'Elija « {trust} » para el acceso directo en futuras visitas mientras el acceso del navegador esté activado.',
   'settings.knowledge.title': 'Conocimiento',
-  'settings.knowledge.description': 'Fuentes registradas en este espacio de trabajo. La búsqueda responde con ellas y cada resultado lleva el sha256 de los bytes exactos de los que procede.',
+  'settings.knowledge.description':
+    'Fuentes registradas en este espacio de trabajo. La búsqueda responde con ellas y cada resultado lleva el sha256 de los bytes exactos de los que procede.',
   'settings.knowledge.sources': 'Fuentes registradas',
   'settings.knowledge.refresh': 'Actualizar',
   'settings.knowledge.loading': 'Leyendo el registro de fuentes…',
-  'settings.knowledge.unreadable': 'No se pudo leer el registro de fuentes; eso no es lo mismo que no tener fuentes.',
+  'settings.knowledge.unreadable':
+    'No se pudo leer el registro de fuentes; eso no es lo mismo que no tener fuentes.',
   'settings.knowledge.empty': 'Todavía no hay fuentes registradas.',
   'settings.knowledge.register': 'Registrar una fuente',
   'settings.knowledge.kind': 'Tipo de fuente',
@@ -691,7 +693,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': 'Ubicación de la fuente',
   'settings.knowledge.registerAction': 'Registrar',
-  'settings.knowledge.registerHint': 'Una ruta local debe estar dentro de la raíz de datos o de una carpeta que hayas autorizado. La búsqueda responde con los bytes guardados de esa fuente.',
+  'settings.knowledge.registerHint':
+    'Una ruta local debe estar dentro de la raíz de datos o de una carpeta que hayas autorizado. La búsqueda responde con los bytes guardados de esa fuente.',
   'settings.knowledge.registered': 'Se registraron {count} fuente(s).',
   'settings.knowledge.registerFailed': 'No se pudo registrar esa fuente.',
   'settings.knowledge.search': 'Buscar',
@@ -706,6 +709,11 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Quitar {label}',
   'settings.knowledge.removed': 'Fuente eliminada; se depuraron {count} copia(s) guardada(s).',
   'settings.knowledge.removeFailed': 'No se pudo eliminar esa fuente.',
+  'settings.knowledge.lastSweep':
+    'Última limpieza: {at} · revisadas {scanned} · conservadas {kept} · eliminadas {removed} · fallidas {failed}',
+  'settings.knowledge.page': 'Página {page} / {pages}',
+  'settings.knowledge.previous': 'Anterior',
+  'settings.knowledge.next': 'Siguiente',
   'settings.knowledge.sweep': 'Limpiar las copias sin usar',
   'settings.knowledge.swept':
     'Se eliminaron {count} copia(s) sin usar y se liberaron {bytes} byte(s).',
@@ -4398,8 +4406,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'engines.proteinmpnn.label': 'ProteinMPNN (plegamiento inverso)',
   'engines.proteinmpnn.summary':
     'Diseña secuencias para un esqueleto en mucho menos de un segundo en CPU; un diseño es una hipótesis hasta que se expresa y se mide.',
-  'settings.engines.inverseFold.title':
-    'Plegamiento inverso (esqueleto → secuencia)',
+  'settings.engines.inverseFold.title': 'Plegamiento inverso (esqueleto → secuencia)',
   'settings.engines.inverseFold.intro':
     'Da una estructura y aquí se diseñan secuencias que podrían plegarse así. Es una predicción, no una medición: un diseño debe expresarse y medirse.',
   'settings.engines.inverseFold.pdb': 'Ruta a un archivo .pdb',

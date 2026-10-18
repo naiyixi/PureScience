@@ -7,6 +7,7 @@ import { basename, dirname, join } from 'node:path'
 import {
   KnowledgeValidationError,
   type KnowledgeCopySweep,
+  type KnowledgeSweepRecord,
   type KnowledgeFingerprint,
   type KnowledgeOverview,
   type KnowledgeRegistration,
@@ -68,6 +69,12 @@ export class KnowledgeRepository {
   // used for verification — the verifier re-fetches, because a cache that answers it only ever vouches for itself.
   private get contentDir(): string {
     return join(this.root, 'knowledge', 'contents')
+  }
+
+  /** Where the last sweep's counts are kept. Small, human-readable, and outside the copy store so it can never be
+   *  mistaken for a copy. */
+  private get sweepStateFile(): string {
+    return join(this.root, 'knowledge', 'last-sweep.json')
   }
 
   private async storeUrlBody(body: string): Promise<void> {
@@ -348,15 +355,57 @@ export class KnowledgeRepository {
       removed.push(entry.name)
       bytesFreed += bytes
     }
-    return { scanned: entries.length, kept, removed, failed, bytesFreed, ignored }
+    const outcome = { scanned: entries.length, kept, removed, failed, bytesFreed, ignored }
+    // Recorded after the sweep, never before: a record written first would claim a sweep that then threw.
+    // A failed write is swallowed on purpose — the sweep did its work, and losing the note must not turn a
+    // completed cleanup into an error the caller has to interpret.
+    try {
+      await writeFile(
+        this.sweepStateFile,
+        JSON.stringify({
+          at: new Date().toISOString(),
+          scanned: outcome.scanned,
+          kept: outcome.kept,
+          removed: outcome.removed.length,
+          failed: outcome.failed.length,
+          bytesFreed: outcome.bytesFreed
+        } satisfies KnowledgeSweepRecord),
+        'utf8'
+      )
+    } catch {
+      // see above
+    }
+    return outcome
   }
 
   // What a session-external reader gets: the sources, plus whether the record itself could be read.
   async overview(): Promise<KnowledgeOverview> {
+    const lastSweep = await this.readSweepRecord()
     try {
-      return { sources: await this.list(), unreadable: false }
+      return { sources: await this.list(), unreadable: false, ...(lastSweep ? { lastSweep } : {}) }
     } catch {
-      return { sources: [], unreadable: true }
+      return { sources: [], unreadable: true, ...(lastSweep ? { lastSweep } : {}) }
+    }
+  }
+
+  /** The last sweep's own record; absent when none has run or when the note is unreadable. A note that will not
+   *  parse is not "a sweep found nothing" — it is "we cannot say", which is why it is dropped rather than zeroed. */
+  private async readSweepRecord(): Promise<KnowledgeSweepRecord | undefined> {
+    try {
+      const parsed: unknown = JSON.parse(await readFile(this.sweepStateFile, 'utf8'))
+      if (!parsed || typeof parsed !== 'object') return undefined
+      const record = parsed as Partial<KnowledgeSweepRecord>
+      if (typeof record.at !== 'string') return undefined
+      return {
+        at: record.at,
+        scanned: Number(record.scanned ?? 0),
+        kept: Number(record.kept ?? 0),
+        removed: Number(record.removed ?? 0),
+        failed: Number(record.failed ?? 0),
+        bytesFreed: Number(record.bytesFreed ?? 0)
+      }
+    } catch {
+      return undefined
     }
   }
 }

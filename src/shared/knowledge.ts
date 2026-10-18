@@ -36,6 +36,21 @@ export type KnowledgeStoreSnapshot = { sources: KnowledgeSource[] }
 export type KnowledgeOverview = {
   sources: KnowledgeSource[]
   unreadable: boolean
+  /** The last completed sweep, so "when did this last run, and what did it do" is answerable without a second
+   *  channel. Absent when nothing has swept yet — which is different from a sweep that found nothing. */
+  lastSweep?: KnowledgeSweepRecord
+}
+
+export type KnowledgeSweepRecord = {
+  /** ISO timestamp of the sweep that produced the counts. */
+  at: string
+  scanned: number
+  kept: number
+  /** How many copies this sweep deleted (not the digests — the record stays small and readable). */
+  removed: number
+  /** Copies the sweep could not delete. Non-zero means the store needs attention, not an apology. */
+  failed: number
+  bytesFreed: number
 }
 
 // What sweeping the copy store found. A copy is named by the digest of its own bytes, so a copy no registered

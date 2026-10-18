@@ -599,7 +599,8 @@ export const zh = {
   // settings (面板区块)
   'settings.sessions': '会话',
   'settings.knowledge.title': '知识库',
-  'settings.knowledge.description': '本工作区已登记的来源。检索从这些来源回答，每条结果都带着它取自的那段字节的 sha256。',
+  'settings.knowledge.description':
+    '本工作区已登记的来源。检索从这些来源回答，每条结果都带着它取自的那段字节的 sha256。',
   'settings.knowledge.sources': '已登记来源',
   'settings.knowledge.refresh': '刷新',
   'settings.knowledge.loading': '正在读取来源记录…',
@@ -612,7 +613,8 @@ export const zh = {
   'settings.knowledge.kindUrl': '网址',
   'settings.knowledge.location': '来源位置',
   'settings.knowledge.registerAction': '登记',
-  'settings.knowledge.registerHint': '本地路径必须位于数据根或你已授权的文件夹内。检索从该来源已存下的字节回答。',
+  'settings.knowledge.registerHint':
+    '本地路径必须位于数据根或你已授权的文件夹内。检索从该来源已存下的字节回答。',
   'settings.knowledge.registered': '已登记 {count} 个来源。',
   'settings.knowledge.registerFailed': '这个来源没能登记。',
   'settings.knowledge.search': '检索',
@@ -627,6 +629,11 @@ export const zh = {
   'settings.knowledge.remove': '移除 {label}',
   'settings.knowledge.removed': '已移除来源；清理了 {count} 份已存副本。',
   'settings.knowledge.removeFailed': '这个来源没能移除。',
+  'settings.knowledge.lastSweep':
+    '上次清扫：{at} · 扫描 {scanned} · 保留 {kept} · 清理 {removed} · 未清掉 {failed}',
+  'settings.knowledge.page': '第 {page} / {pages} 页',
+  'settings.knowledge.previous': '上一页',
+  'settings.knowledge.next': '下一页',
   'settings.knowledge.sweep': '清理未引用副本',
   'settings.knowledge.swept': '已删除 {count} 份未引用副本，释放 {bytes} 字节。',
   'settings.knowledge.sweptPartial':

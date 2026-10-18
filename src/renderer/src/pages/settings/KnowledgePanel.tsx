@@ -36,6 +36,20 @@ const KnowledgePanel = (): React.JSX.Element => {
   const [busy, setBusy] = useState<'list' | 'register' | 'search' | 'sweep' | undefined>()
   const [error, setError] = useState<string | undefined>()
   const [note, setNote] = useState<string | undefined>()
+  const [page, setPage] = useState(0)
+
+  // Twenty rows is one screen of this panel; anything more and the list stops being scannable. The page is reset
+  // whenever a load changes the set out from under it (a removal or a refresh), so a saved page index can never
+  // point past the end of a shorter list.
+  const PAGE_SIZE = 20
+  const allSources = overview?.sources ?? []
+  const pageCount = Math.max(1, Math.ceil(allSources.length / PAGE_SIZE))
+  // Clamped, not trusted: a refresh can shrink the list while `page` still points past its end.
+  const currentPage = Math.min(page, pageCount - 1)
+  const pagedSources = allSources.slice(
+    currentPage * PAGE_SIZE,
+    currentPage * PAGE_SIZE + PAGE_SIZE
+  )
 
   const loadSources = useCallback(async (): Promise<void> => {
     setBusy('list')
@@ -181,6 +195,17 @@ const KnowledgePanel = (): React.JSX.Element => {
             {t('settings.knowledge.sweep')}
           </Button>
         </div>
+        {overview?.lastSweep ? (
+          <p className="text-xs text-muted-foreground" data-testid="knowledge-last-sweep">
+            {t('settings.knowledge.lastSweep', {
+              at: new Date(overview.lastSweep.at).toLocaleString(),
+              scanned: String(overview.lastSweep.scanned),
+              kept: String(overview.lastSweep.kept),
+              removed: String(overview.lastSweep.removed),
+              failed: String(overview.lastSweep.failed)
+            })}
+          </p>
+        ) : null}
         {overview === undefined ? (
           <p className="text-sm text-muted-foreground">{t('settings.knowledge.loading')}</p>
         ) : overview.unreadable ? (
@@ -190,7 +215,7 @@ const KnowledgePanel = (): React.JSX.Element => {
           <p className="text-sm text-muted-foreground">{t('settings.knowledge.empty')}</p>
         ) : (
           <ul className="divide-y rounded-md border">
-            {overview.sources.map((source) => (
+            {pagedSources.map((source) => (
               <li key={source.id} className="flex flex-col gap-1 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{source.label}</span>
@@ -216,6 +241,32 @@ const KnowledgePanel = (): React.JSX.Element => {
             ))}
           </ul>
         )}
+        {pageCount > 1 ? (
+          <div className="flex items-center justify-end gap-2" data-testid="knowledge-pager">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={page === 0}
+              onClick={() => setPage((current) => Math.max(0, current - 1))}
+            >
+              {t('settings.knowledge.previous')}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {t('settings.knowledge.page', {
+                page: String(page + 1),
+                pages: String(pageCount)
+              })}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={page >= pageCount - 1}
+              onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+            >
+              {t('settings.knowledge.next')}
+            </Button>
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-2">

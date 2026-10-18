@@ -658,7 +658,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'remoteControl.browserStep3':
     '브라우저 액세스가 켜져 있는 동안 향후 방문에서 직접 액세스하려면 “{trust}”를 선택하세요.',
   'settings.knowledge.title': '지식 저장소',
-  'settings.knowledge.description': '이 작업 공간에 등록된 출처입니다. 검색은 이 출처에서 답하며, 각 결과는 가져온 바이트의 sha256을 함께 답니다.',
+  'settings.knowledge.description':
+    '이 작업 공간에 등록된 출처입니다. 검색은 이 출처에서 답하며, 각 결과는 가져온 바이트의 sha256을 함께 답니다.',
   'settings.knowledge.sources': '등록된 출처',
   'settings.knowledge.refresh': '새로 고침',
   'settings.knowledge.loading': '출처 기록을 읽는 중…',
@@ -671,7 +672,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.kindUrl': 'URL',
   'settings.knowledge.location': '출처 위치',
   'settings.knowledge.registerAction': '등록',
-  'settings.knowledge.registerHint': '로컬 경로는 데이터 루트나 허용한 폴더 안에 있어야 합니다. 검색은 이 출처의 저장된 바이트에서 답합니다.',
+  'settings.knowledge.registerHint':
+    '로컬 경로는 데이터 루트나 허용한 폴더 안에 있어야 합니다. 검색은 이 출처의 저장된 바이트에서 답합니다.',
   'settings.knowledge.registered': '출처 {count}개를 등록했습니다.',
   'settings.knowledge.registerFailed': '이 출처를 등록하지 못했습니다.',
   'settings.knowledge.search': '검색',
@@ -686,6 +688,11 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} 제거',
   'settings.knowledge.removed': '출처를 제거했습니다. 저장된 사본 {count}개를 정리했습니다.',
   'settings.knowledge.removeFailed': '이 출처를 제거하지 못했습니다.',
+  'settings.knowledge.lastSweep':
+    '마지막 정리: {at} · 검사 {scanned} · 유지 {kept} · 삭제 {removed} · 실패 {failed}',
+  'settings.knowledge.page': '페이지 {page} / {pages}',
+  'settings.knowledge.previous': '이전',
+  'settings.knowledge.next': '다음',
   'settings.knowledge.sweep': '참조되지 않는 사본 정리',
   'settings.knowledge.swept':
     '참조되지 않는 사본 {count}개를 삭제하고 {bytes}바이트를 확보했습니다.',
