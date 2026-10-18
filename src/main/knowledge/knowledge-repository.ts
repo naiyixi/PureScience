@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
 import {
@@ -252,6 +252,37 @@ export class KnowledgeRepository {
   async list(): Promise<KnowledgeSource[]> {
     const snapshot = await this.load()
     return [...snapshot.sources].sort((left, right) => left.location.localeCompare(right.location))
+  }
+
+  // Removing a source is two facts, not one: the row leaves the register, and the copy that only it referenced
+  // leaves the disk. A copy still named by another source stays — two sources can hold the same bytes, and
+  // dropping the file for one of them would break the other's search. What was pruned is reported, so a caller
+  // does not have to guess whether the disk changed.
+  async remove(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }> {
+    const snapshot = await this.load()
+    const removed = snapshot.sources.find((source) => source.id === sourceId)
+    if (!removed) {
+      throw new KnowledgeValidationError('source-not-found', 'That source is not registered.')
+    }
+    const sources = snapshot.sources.filter((source) => source.id !== sourceId)
+    await this.save({ sources })
+
+    const prunedContents: string[] = []
+    if (removed.kind === 'url') {
+      const stillReferenced = sources.some(
+        (source) => source.kind === 'url' && source.fingerprint.value === removed.fingerprint.value
+      )
+      if (!stillReferenced) {
+        try {
+          await rm(join(this.contentDir, removed.fingerprint.value), { force: true })
+          prunedContents.push(removed.fingerprint.value)
+        } catch {
+          // A copy that will not delete is not a failed removal: the row is gone, and a stale file on disk only
+          // costs space. Reported by its absence from `prunedContents`, never claimed as cleaned.
+        }
+      }
+    }
+    return { removed, prunedContents }
   }
 
   // What a session-external reader gets: the sources, plus whether the record itself could be read.

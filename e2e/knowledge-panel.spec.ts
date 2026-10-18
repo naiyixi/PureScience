@@ -53,4 +53,10 @@ test('registers a source and searches it from the Knowledge panel', async ({ app
   })
   // The citation's location is on screen, down to the line range.
   await expect(page.getByText(`${notePath}:2-2`, { exact: false })).toBeVisible()
+
+  // Removing it: the row leaves the register, and the panel says so. The store reports what it pruned, so this
+  // assertion is about the row going away rather than about a file on disk a screenshot cannot show.
+  await page.getByRole('button', { name: 'Remove cohort.md' }).click()
+  await expect(page.getByText('cohort.md', { exact: true })).toBeHidden({ timeout: 30_000 })
+  await expect(page.getByText(/Source removed/)).toBeVisible()
 })

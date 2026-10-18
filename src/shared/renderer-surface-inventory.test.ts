@@ -61,6 +61,7 @@ const GENERATED_SOURCE_OMISSIONS = [
   'handoff.onChanged',
   'knowledge.listSources',
   'knowledge.registerSource',
+  'knowledge.removeSource',
   'knowledge.search',
   'network.checkConnectivity',
   'network.getInfo',
@@ -331,7 +332,7 @@ describe('renderer surface inventory', () => {
     // one preload method per contract, so the preload inventory and the catalog move together.
     // 490 with the knowledge window surface (v2.8.0: knowledge.listSources / registerSource / search): three
     // Electron paths, local-only, so they also join the generator-omission list rather than any Web set.
-    expect(electronPaths).toHaveLength(490)
+    expect(electronPaths).toHaveLength(491)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)

@@ -838,6 +838,10 @@ export interface PureScienceAPI {
   knowledge: {
     listSources(): Promise<KnowledgeOverview>
     registerSource(request: KnowledgeRegistration): Promise<KnowledgeSource[]>
+    removeSource(request: { sourceId: string }): Promise<{
+      removed: KnowledgeSource
+      prunedContents: string[]
+    }>
     search(request: { text: string; limit?: number }): Promise<KnowledgeSearchResponse>
   }
   notifications: {

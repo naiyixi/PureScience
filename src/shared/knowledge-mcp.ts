@@ -14,6 +14,7 @@ export const KNOWLEDGE_SEARCH_TOOL_NAME = 'knowledge_search'
 export const KNOWLEDGE_REGISTER_SOURCE_TOOL_NAME = 'knowledge_register_source'
 export const KNOWLEDGE_LIST_SOURCES_TOOL_NAME = 'knowledge_list_sources'
 export const KNOWLEDGE_RENDER_WIKI_TOOL_NAME = 'knowledge_render_wiki'
+export const KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME = 'knowledge_remove_source'
 
 export const KNOWLEDGE_SEARCH_TOOL_DESCRIPTION =
   'Searches the sources registered in this workspace and returns matches WITH citations. Each result names ' +
@@ -50,6 +51,13 @@ export const KNOWLEDGE_RENDER_WIKI_TOOL_DESCRIPTION =
   'anywhere: the document comes back in the response for you to place. A folder with no registered files ' +
   'reports state "empty-folder", and a folder whose files cannot all be read reports "unreadable-folder" — ' +
   'the document is withheld rather than emitted with rows whose digests cannot be recomputed.'
+
+export const KNOWLEDGE_REMOVE_SOURCE_TOOL_DESCRIPTION =
+  'Removes one registered source by its id (from knowledge_list_sources). The row leaves the register and, when a ' +
+  'stored copy is no longer referenced by any remaining source, that copy is deleted too — the response reports ' +
+  'which digests were pruned, so you do not have to assume the disk changed. A copy still named by another source ' +
+  'is kept: two sources can hold the same bytes. An unknown id is refused by name (source-not-found) instead of ' +
+  'succeeding silently.'
 
 // One source can yield many hits (one per matching line), so the tool needs a bound the agent can predict.
 export const KNOWLEDGE_SEARCH_RESULT_LIMIT = 25

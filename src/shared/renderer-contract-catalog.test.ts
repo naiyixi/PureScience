@@ -63,7 +63,7 @@ describe('renderer contract catalog', () => {
     // move by two while the remote-Web set grows by the rejecting stub each one gets there.
     // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // Web request contracts, so the catalog, the invoke map and the local-Web set each move by two.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(490)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(491)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -125,7 +125,7 @@ describe('renderer contract catalog', () => {
     // this one rather than a Web installation set.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(86)
+    ).toHaveLength(87)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(131)

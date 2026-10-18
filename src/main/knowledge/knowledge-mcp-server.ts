@@ -14,6 +14,8 @@ import {
   KNOWLEDGE_MCP_SERVER_NAME,
   KNOWLEDGE_REGISTER_SOURCE_TOOL_DESCRIPTION,
   KNOWLEDGE_REGISTER_SOURCE_TOOL_NAME,
+  KNOWLEDGE_REMOVE_SOURCE_TOOL_DESCRIPTION,
+  KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME,
   KNOWLEDGE_RENDER_WIKI_TOOL_DESCRIPTION,
   KNOWLEDGE_RENDER_WIKI_TOOL_NAME,
   KNOWLEDGE_SEARCH_RESULT_LIMIT,
@@ -95,6 +97,16 @@ const knowledgeRenderWikiToolDefinition = {
   inputSchema: knowledgeRenderWikiToolSchema
 }
 
+const knowledgeRemoveSourceToolSchema = {
+  source_id: z.string().min(1).describe('Source id from knowledge_list_sources.')
+}
+
+const knowledgeRemoveSourceToolDefinition = {
+  title: 'Remove a registered knowledge source',
+  description: KNOWLEDGE_REMOVE_SOURCE_TOOL_DESCRIPTION,
+  inputSchema: knowledgeRemoveSourceToolSchema
+}
+
 const knowledgeListSourcesToolDefinition = {
   title: 'List the registered knowledge sources',
   description: KNOWLEDGE_LIST_SOURCES_TOOL_DESCRIPTION,
@@ -119,6 +131,9 @@ export type KnowledgeMcpHandler = {
   registerSource: (request: KnowledgeRegistration) => Promise<KnowledgeSource[]>
   listSources: () => Promise<KnowledgeOverview>
   renderWiki: (folder: string) => Promise<KnowledgeWikiResult>
+  removeSource: (
+    sourceId: string
+  ) => Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
 }
 
 type KnowledgeMcpServerConfigRequest = KnowledgeMcpEnvironment & {
@@ -127,7 +142,12 @@ type KnowledgeMcpServerConfigRequest = KnowledgeMcpEnvironment & {
 }
 
 type RpcResponse = {
-  result?: KnowledgeSearchResponse | KnowledgeSource[] | KnowledgeOverview | KnowledgeWikiResult
+  result?:
+    | KnowledgeSearchResponse
+    | KnowledgeSource[]
+    | KnowledgeOverview
+    | KnowledgeWikiResult
+    | { removed: KnowledgeSource; prunedContents: string[] }
   error?: string
 }
 
@@ -155,6 +175,12 @@ const createKnowledgeMcpServer = (handler: KnowledgeMcpHandler): ModelContextPro
     KNOWLEDGE_LIST_SOURCES_TOOL_NAME,
     knowledgeListSourcesToolDefinition,
     async () => asText(await handler.listSources())
+  )
+
+  server.registerTool(
+    KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME,
+    knowledgeRemoveSourceToolDefinition,
+    async (input) => asText(await handler.removeSource(input.source_id))
   )
 
   server.registerTool(
@@ -270,6 +296,11 @@ const runKnowledgeMcpServer = async (
       >,
     listSources: () =>
       callKnowledgeRpc(environment, 'knowledgeListSources', {}) as Promise<KnowledgeOverview>,
+    removeSource: (sourceId) =>
+      callKnowledgeRpc(environment, 'knowledgeRemoveSource', { sourceId }) as Promise<{
+        removed: KnowledgeSource
+        prunedContents: string[]
+      }>,
     renderWiki: (folder) =>
       callKnowledgeRpc(environment, 'knowledgeRenderWiki', {
         folder
@@ -284,7 +315,9 @@ export {
   KNOWLEDGE_SEARCH_TOOL_NAME,
   KNOWLEDGE_REGISTER_SOURCE_TOOL_NAME,
   KNOWLEDGE_LIST_SOURCES_TOOL_NAME,
+  KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME,
   KNOWLEDGE_RENDER_WIKI_TOOL_NAME,
+  knowledgeRemoveSourceToolDefinition,
   knowledgeSearchToolDefinition,
   knowledgeRenderWikiToolDefinition,
   knowledgeRegisterSourceToolDefinition,

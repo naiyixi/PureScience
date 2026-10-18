@@ -220,6 +220,7 @@ type NotebookLocalRpcServerOptions = {
     registerSource(sessionId: string, request: KnowledgeRegistration): Promise<unknown>
     listSources(sessionId: string): Promise<unknown>
     renderWiki(sessionId: string, folder: string): Promise<unknown>
+    removeSource(sessionId: string, sourceId: string): Promise<unknown>
   }
   planService?: {
     call(input: {
@@ -321,7 +322,8 @@ const KNOWLEDGE_RPC_METHODS = new Set([
   'knowledgeSearch',
   'knowledgeRegisterSource',
   'knowledgeListSources',
-  'knowledgeRenderWiki'
+  'knowledgeRenderWiki',
+  'knowledgeRemoveSource'
 ])
 const FIGURE_RPC_METHODS = new Set(['figureReview'])
 const HOST_QUERY_RPC_METHODS = new Set(['hostQuery'])
@@ -1971,6 +1973,17 @@ class NotebookLocalRpcServer {
         return this.knowledge.registerSource(params.sessionId, { kind, url })
       }
       throw new Error('Knowledge register RPC request kind must be file, folder, or url.')
+    }
+
+    if (method === 'knowledgeRemoveSource') {
+      if (!this.knowledge) throw new Error('Knowledge handler is not configured.')
+      if (typeof params.sessionId !== 'string') {
+        throw new Error('Knowledge remove RPC params must include sessionId.')
+      }
+      if (typeof params.sourceId !== 'string' || params.sourceId.length === 0) {
+        throw new Error('Knowledge remove RPC params must include a sourceId.')
+      }
+      return this.knowledge.removeSource(params.sessionId, params.sourceId)
     }
 
     if (method === 'knowledgeListSources') {

@@ -66,7 +66,8 @@ const APP_MCP_SERVERS: readonly AppMcpServerDefinition[] = [
       'knowledge_search',
       'knowledge_register_source',
       'knowledge_list_sources',
-      'knowledge_render_wiki'
+      'knowledge_render_wiki',
+      'knowledge_remove_source'
     ]
   },
   {

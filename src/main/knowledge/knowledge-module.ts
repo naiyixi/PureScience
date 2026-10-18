@@ -42,6 +42,8 @@ export type KnowledgeModule = {
   register(request: KnowledgeRegistration): Promise<KnowledgeSource[]>
   list(): Promise<KnowledgeSource[]>
   overview(): Promise<KnowledgeOverview>
+  /** Removes a source and any copy only it referenced; reports what was pruned. */
+  remove(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
   search(text: string, limit?: number): Promise<KnowledgeSearchResponse>
 }
 
@@ -102,6 +104,7 @@ export const createKnowledgeModule = (options: KnowledgeModuleOptions): Knowledg
     register: (request) => repository.register(request),
     list: () => repository.list(),
     overview: () => repository.overview(),
+    remove: (sourceId) => repository.remove(sourceId),
     search: (text, limit) => search.search(limit === undefined ? { text } : { text, limit })
   }
 }

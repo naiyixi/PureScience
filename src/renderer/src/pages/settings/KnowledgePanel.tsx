@@ -1,5 +1,5 @@
 import { useLanguage } from '@/i18n'
-import { BookOpen, FilePlus2, Search } from 'lucide-react'
+import { BookOpen, FilePlus2, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,28 @@ const KnowledgePanel = (): React.JSX.Element => {
       cancelled = true
     }
   }, [t])
+
+  const remove = async (sourceId: string): Promise<void> => {
+    setBusy('register')
+    setNote(undefined)
+    try {
+      const outcome = await window.api.knowledge.removeSource({ sourceId })
+      // The pruned copies are reported rather than assumed: "the row is gone" and "the bytes are gone" are two
+      // facts, and a copy another source still names is deliberately kept.
+      setNote(
+        t('settings.knowledge.removed', {
+          count: String(outcome.prunedContents.length)
+        })
+      )
+      setOverview(await window.api.knowledge.listSources())
+      setResults(undefined)
+      setError(undefined)
+    } catch (cause) {
+      setError(describeError(cause, t('settings.knowledge.removeFailed')))
+    } finally {
+      setBusy(undefined)
+    }
+  }
 
   const register = async (): Promise<void> => {
     const trimmed = location.trim()
@@ -134,7 +156,18 @@ const KnowledgePanel = (): React.JSX.Element => {
               <li key={source.id} className="flex flex-col gap-1 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">{source.label}</span>
-                  <span className="text-xs text-muted-foreground">{source.kind}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{source.kind}</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t('settings.knowledge.remove', { label: source.label })}
+                      disabled={busy !== undefined}
+                      onClick={() => void remove(source.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </span>
                 </div>
                 <span className="break-all text-xs text-muted-foreground">{source.location}</span>
                 {/* The digest is shown, not summarised: a reader can check it against the file. */}

@@ -134,7 +134,8 @@ const startServer = async (
         registerSource: (_sessionId: string, request: Parameters<typeof calls.registerSource>[0]) =>
           calls.registerSource(request),
         listSources: () => calls.listSources(),
-        renderWiki: (_sessionId: string, folder: string) => calls.renderWiki(folder)
+        renderWiki: (_sessionId: string, folder: string) => calls.renderWiki(folder),
+        removeSource: (_sessionId: string, sourceId: string) => calls.removeSource(sourceId)
       }
     })()
   })
@@ -174,6 +175,7 @@ describe('knowledge MCP over a real stdio child and the real RPC server', () => 
       expect(tools.tools.map((tool) => tool.name).sort()).toEqual([
         'knowledge_list_sources',
         'knowledge_register_source',
+        'knowledge_remove_source',
         'knowledge_render_wiki',
         'knowledge_search'
       ])

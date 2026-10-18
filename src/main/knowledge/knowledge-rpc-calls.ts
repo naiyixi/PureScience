@@ -22,6 +22,7 @@ export type KnowledgeRpcCalls = {
   registerSource(request: KnowledgeRegistration): Promise<KnowledgeSource[]>
   listSources(): Promise<KnowledgeOverview>
   renderWiki(folder: string): Promise<KnowledgeWikiResult>
+  removeSource(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
 }
 
 const named = async <T>(work: () => Promise<T>): Promise<T> => {
@@ -42,5 +43,6 @@ export const createKnowledgeRpcCalls = (
   search: (request) => named(() => module.search(request.text, request.limit)),
   registerSource: (request) => named(() => module.register(request)),
   listSources: () => named(() => module.overview()),
-  renderWiki: async (folder) => named(async () => wiki.render(folder, await module.list()))
+  renderWiki: async (folder) => named(async () => wiki.render(folder, await module.list())),
+  removeSource: (sourceId) => named(() => module.remove(sourceId))
 })

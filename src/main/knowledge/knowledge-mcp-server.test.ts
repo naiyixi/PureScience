@@ -11,6 +11,7 @@ import {
   createKnowledgeMcpServerConfig,
   knowledgeListSourcesToolDefinition,
   knowledgeRenderWikiToolDefinition,
+  knowledgeRemoveSourceToolDefinition,
   knowledgeRegisterSourceToolDefinition,
   knowledgeSearchToolDefinition,
   registrationFrom
@@ -18,6 +19,7 @@ import {
 import type { KnowledgeMcpHandler } from './knowledge-mcp-server'
 import {
   KNOWLEDGE_LIST_SOURCES_TOOL_NAME,
+  KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME,
   KNOWLEDGE_RENDER_WIKI_TOOL_NAME,
   KNOWLEDGE_REGISTER_SOURCE_TOOL_NAME,
   KNOWLEDGE_SEARCH_TOOL_NAME
@@ -42,20 +44,25 @@ const makeHandler = (): KnowledgeMcpHandler => ({
   })),
   registerSource: vi.fn(async () => []),
   listSources: vi.fn(async () => ({ sources: [], unreadable: false })),
-  renderWiki: vi.fn(async () => ({ state: 'empty-folder' as const }))
+  renderWiki: vi.fn(async () => ({ state: 'empty-folder' as const })),
+  removeSource: vi.fn(async () => ({
+    removed: {} as never,
+    prunedContents: [] as string[]
+  }))
 })
 
 describe('knowledge MCP server contract', () => {
-  it('names the server and its four tools', () => {
+  it('names the server and its five tools', () => {
     expect(KNOWLEDGE_MCP_SERVER_NAME).toBe('purescience-knowledge')
     expect(KNOWLEDGE_MCP_SERVER_ARG).toBe('--purescience-knowledge-mcp')
     expect(KNOWLEDGE_SEARCH_TOOL_NAME).toBe('knowledge_search')
     expect(KNOWLEDGE_REGISTER_SOURCE_TOOL_NAME).toBe('knowledge_register_source')
     expect(KNOWLEDGE_LIST_SOURCES_TOOL_NAME).toBe('knowledge_list_sources')
     expect(KNOWLEDGE_RENDER_WIKI_TOOL_NAME).toBe('knowledge_render_wiki')
+    expect(KNOWLEDGE_REMOVE_SOURCE_TOOL_NAME).toBe('knowledge_remove_source')
   })
 
-  it('registers exactly four tools and calls nothing until invoked', async () => {
+  it('registers exactly five tools and calls nothing until invoked', async () => {
     const handler = makeHandler()
     const server = createKnowledgeMcpServer(handler)
     const tools = (server as unknown as { _registeredTools: Record<string, unknown> })
@@ -64,6 +71,7 @@ describe('knowledge MCP server contract', () => {
     expect(Object.keys(tools).sort()).toEqual([
       'knowledge_list_sources',
       'knowledge_register_source',
+      'knowledge_remove_source',
       'knowledge_render_wiki',
       'knowledge_search'
     ])
@@ -71,6 +79,7 @@ describe('knowledge MCP server contract', () => {
     expect(handler.registerSource).not.toHaveBeenCalled()
     expect(handler.listSources).not.toHaveBeenCalled()
     expect(handler.renderWiki).not.toHaveBeenCalled()
+    expect(handler.removeSource).not.toHaveBeenCalled()
   })
 
   // The descriptions are the model's only contract with the store: they must say lexical, name the degradation,
@@ -84,6 +93,12 @@ describe('knowledge MCP server contract', () => {
   })
 
   // The wiki must not promise to place the file: choosing a path is the caller's decision.
+  it('describes removal as reporting what it pruned', () => {
+    const description = knowledgeRemoveSourceToolDefinition.description
+    expect(description).toContain('pruned')
+    expect(description).toContain('source-not-found')
+  })
+
   it('describes the wiki as rendered, never written', () => {
     const description = knowledgeRenderWikiToolDefinition.description
     expect(description).toContain('Nothing is written')

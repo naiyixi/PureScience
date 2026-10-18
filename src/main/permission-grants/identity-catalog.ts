@@ -40,6 +40,7 @@ const PRE_REGISTERED_PERMISSION_IDENTITIES: Readonly<
     'mcp:purescience_knowledge/knowledge_register_source',
     'mcp:purescience_knowledge/knowledge_list_sources',
     'mcp:purescience_knowledge/knowledge_render_wiki',
+    'mcp:purescience_knowledge/knowledge_remove_source',
     // The rest of the app-owned servers. They were named with a hyphen, which each framework escaped
     // differently (`mcp__purescience-pdf__…` vs `mcp__purescience_pdf__…`), so the agent was handed two
     // callable names for one tool and guessed. The identity key is the separator-free canonical name;

@@ -643,6 +643,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.unreadableRow': '重讀不到',
   'settings.knowledge.loadFailed': '來源記錄讀不出來。',
   'settings.knowledge.searchFailed': '檢索沒能跑起來。',
+  'settings.knowledge.remove': '移除 {label}',
+  'settings.knowledge.removed': '已移除來源；清理了 {count} 份已存副本。',
+  'settings.knowledge.removeFailed': '這個來源沒能移除。',
   'settings.archived': '已封存',
   'settings.appearance': '外觀',
   'settings.appearanceDesc':

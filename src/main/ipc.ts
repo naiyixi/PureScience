@@ -2068,6 +2068,13 @@ const createApplicationModules = async (
   ipcMainHandle('knowledge:register-source', (_event, request: unknown) =>
     knowledgeCalls.registerSource(readKnowledgeRegistration(request))
   )
+  ipcMainHandle('knowledge:remove-source', (_event, request: unknown) => {
+    const candidate = request as { sourceId?: unknown } | null
+    if (typeof candidate?.sourceId !== 'string' || candidate.sourceId.length === 0) {
+      throw new Error('A knowledge removal needs a sourceId.')
+    }
+    return knowledgeCalls.removeSource(candidate.sourceId)
+  })
   ipcMainHandle('knowledge:search', (_event, request: unknown) =>
     knowledgeCalls.search(readKnowledgeSearchRequest(request))
   )
@@ -2191,7 +2198,8 @@ const createApplicationModules = async (
           search: (_sessionId, request) => calls.search(request),
           registerSource: (_sessionId, request) => calls.registerSource(request),
           listSources: () => calls.listSources(),
-          renderWiki: (_sessionId, folder) => calls.renderWiki(folder)
+          renderWiki: (_sessionId, folder) => calls.renderWiki(folder),
+          removeSource: (_sessionId, sourceId) => calls.removeSource(sourceId)
         }
       })(),
       figure: {
