@@ -196,19 +196,34 @@ const KnowledgePanel = (): React.JSX.Element => {
     setNote(undefined)
     try {
       const outcome = await window.api.knowledge.sweepCopies()
-      setNote(
-        outcome.failed.length > 0
-          ? t('settings.knowledge.sweptPartial', {
-              count: String(outcome.removed.length),
-              failed: String(outcome.failed.length)
-            })
-          : outcome.removed.length === 0
-            ? t('settings.knowledge.sweptNone')
-            : t('settings.knowledge.swept', {
-                count: String(outcome.removed.length),
-                bytes: String(outcome.bytesFreed)
-              })
-      )
+      // Two findings, two sentences: "nobody references these copies" and "these copies are not the bytes their
+      // names claim" call for different responses, and folding the second into the first would let an edited copy
+      // read as ordinary housekeeping. The mismatch sentence is emitted on its own when nothing else was found, so
+      // "No unused copies to delete" never stands next to a deletion it does not mention.
+      const sentences: string[] = []
+      if (outcome.failed.length > 0) {
+        sentences.push(
+          t('settings.knowledge.sweptPartial', {
+            count: String(outcome.removed.length),
+            failed: String(outcome.failed.length)
+          })
+        )
+      } else if (outcome.removed.length > 0) {
+        sentences.push(
+          t('settings.knowledge.swept', {
+            count: String(outcome.removed.length),
+            bytes: String(outcome.bytesFreed)
+          })
+        )
+      } else if (outcome.mismatched.length === 0) {
+        sentences.push(t('settings.knowledge.sweptNone'))
+      }
+      if (outcome.mismatched.length > 0) {
+        sentences.push(
+          t('settings.knowledge.sweptMismatched', { count: String(outcome.mismatched.length) })
+        )
+      }
+      setNote(sentences.join(' '))
       setError(undefined)
     } catch (cause) {
       setError(describeError(cause, t('settings.knowledge.sweepFailed')))
@@ -303,6 +318,13 @@ const KnowledgePanel = (): React.JSX.Element => {
               removed: String(overview.lastSweep.removed),
               failed: String(overview.lastSweep.failed)
             })}
+            {/* A note written before copies were checked against their own digest has no mismatch reading. Absence
+                is "not checked then", so nothing is printed for it — never a zero the sweep did not report. */}
+            {overview.lastSweep.mismatched !== undefined && overview.lastSweep.mismatched > 0
+              ? ` ${t('settings.knowledge.sweptMismatched', {
+                  count: String(overview.lastSweep.mismatched)
+                })}`
+              : null}
           </p>
         ) : overview?.lastSweepUnreadable ? (
           // "No sweep has run" and "we cannot read what the last one did" are different facts; the panel says which

@@ -4898,5 +4898,7 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.bulkRemoved': 'Removed {count} source(s); {pruned} stored copy(ies) pruned.',
   'settings.knowledge.bulkRemovePartial': 'Removed {count} source(s); {failed} refused: {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    'The last sweep record could not be read — that is not the same as never having swept.'
+    'The last sweep record could not be read — that is not the same as never having swept.',
+  'settings.knowledge.sweptMismatched':
+    '{count} copy(ies) no longer matched their own digest and were deleted.'
 }

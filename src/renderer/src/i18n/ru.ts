@@ -4889,5 +4889,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     'Удалено источников: {count}; отклонено {failed}: {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    'Запись о последней очистке не читается — это не то же самое, что очистка никогда не выполнялась.'
+    'Запись о последней очистке не читается — это не то же самое, что очистка никогда не выполнялась.',
+  'settings.knowledge.sweptMismatched':
+    '{count} копий больше не совпадали со своим дайджестом и были удалены.'
 }

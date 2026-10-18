@@ -5039,5 +5039,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     '{count} Quelle(n) entfernt; {failed} abgelehnt: {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    'Der Eintrag des letzten Aufräumlaufs war nicht lesbar — das ist nicht dasselbe wie „noch nie aufgeräumt“.'
+    'Der Eintrag des letzten Aufräumlaufs war nicht lesbar — das ist nicht dasselbe wie „noch nie aufgeräumt“.',
+  'settings.knowledge.sweptMismatched':
+    '{count} Kopie(n) stimmten nicht mehr mit ihrem eigenen Digest überein und wurden gelöscht.'
 }

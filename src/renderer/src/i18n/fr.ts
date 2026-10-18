@@ -5009,5 +5009,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     '{count} source(s) retirée(s) ; {failed} refusée(s) : {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    "L'enregistrement du dernier nettoyage est illisible — ce n'est pas la même chose qu'une absence de nettoyage."
+    "L'enregistrement du dernier nettoyage est illisible — ce n'est pas la même chose qu'une absence de nettoyage.",
+  'settings.knowledge.sweptMismatched':
+    '{count} copie(s) ne correspondaient plus à leur propre empreinte et ont été supprimées.'
 }

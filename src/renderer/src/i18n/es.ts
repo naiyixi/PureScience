@@ -4979,5 +4979,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     'Se quitaron {count} fuente(s); {failed} rechazada(s): {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    'No se pudo leer el registro del último barrido; eso no es lo mismo que no haber barrido nunca.'
+    'No se pudo leer el registro del último barrido; eso no es lo mismo que no haber barrido nunca.',
+  'settings.knowledge.sweptMismatched':
+    '{count} copia(s) ya no coincidían con su propio resumen y se eliminaron.'
 }

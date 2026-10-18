@@ -318,7 +318,15 @@ export class KnowledgeRepository {
     } catch (error) {
       // No copy store at all is a real state: nothing was ever fetched, so there is nothing to sweep.
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return { scanned: 0, kept: 0, removed: [], failed: [], bytesFreed: 0, ignored: 0 }
+        return {
+          scanned: 0,
+          kept: 0,
+          removed: [],
+          mismatched: [],
+          failed: [],
+          bytesFreed: 0,
+          ignored: 0
+        }
       }
       throw new KnowledgeValidationError(
         'copy-store-unreadable',
@@ -329,6 +337,7 @@ export class KnowledgeRepository {
     let ignored = 0
     let bytesFreed = 0
     const removed: string[] = []
+    const mismatched: string[] = []
     const failed: string[] = []
     for (const entry of entries) {
       // Only digest-shaped regular files are ours to delete. A file someone dropped in here is not this store's
@@ -337,14 +346,37 @@ export class KnowledgeRepository {
         ignored += 1
         continue
       }
+      const path = join(this.contentDir, entry.name)
+      // The name is a claim about the bytes, and a sweep that only trusted the name would keep a copy whose
+      // contents were edited underneath it — a search reads the file by that name and would cite text the
+      // source's fingerprint never covered. So the claim is re-derived here, before anything is kept or deleted.
+      let body: Buffer
+      let size = 0
+      try {
+        body = await readFile(path)
+        size = body.byteLength
+      } catch {
+        failed.push(entry.name)
+        continue
+      }
+      if (fingerprintOf(body).value !== entry.name) {
+        // A copy that is not the bytes its name claims can never answer truthfully, whether or not a source still
+        // names it: dropping it is what lets the next query heal from the source itself.
+        try {
+          await rm(path, { force: true })
+        } catch {
+          failed.push(entry.name)
+          continue
+        }
+        mismatched.push(entry.name)
+        bytesFreed += size
+        continue
+      }
       if (referenced.has(entry.name)) {
         kept += 1
         continue
       }
-      const path = join(this.contentDir, entry.name)
-      let bytes = 0
       try {
-        bytes = (await stat(path)).size
         await rm(path, { force: true })
       } catch {
         // A copy that will not delete is named: the sweep did not clean it, and saying so is the difference
@@ -353,9 +385,17 @@ export class KnowledgeRepository {
         continue
       }
       removed.push(entry.name)
-      bytesFreed += bytes
+      bytesFreed += size
     }
-    const outcome = { scanned: entries.length, kept, removed, failed, bytesFreed, ignored }
+    const outcome = {
+      scanned: entries.length,
+      kept,
+      removed,
+      mismatched,
+      failed,
+      bytesFreed,
+      ignored
+    }
     // Recorded after the sweep, never before: a record written first would claim a sweep that then threw.
     // A failed write is swallowed on purpose — the sweep did its work, and losing the note must not turn a
     // completed cleanup into an error the caller has to interpret.
@@ -368,7 +408,8 @@ export class KnowledgeRepository {
           kept: outcome.kept,
           removed: outcome.removed.length,
           failed: outcome.failed.length,
-          bytesFreed: outcome.bytesFreed
+          bytesFreed: outcome.bytesFreed,
+          mismatched: outcome.mismatched.length
         } satisfies KnowledgeSweepRecord),
         'utf8'
       )

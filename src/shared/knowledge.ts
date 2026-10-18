@@ -55,22 +55,33 @@ export type KnowledgeSweepRecord = {
   /** Copies the sweep could not delete. Non-zero means the store needs attention, not an apology. */
   failed: number
   bytesFreed: number
+  /** Copies deleted because their bytes no longer hashed to their own name. Optional because notes written before
+   *  this count existed have no such reading: "not checked then" is not "none found", and an old note read as zero
+   *  would be a claim that sweep never made. */
+  mismatched?: number
 }
 
 // What sweeping the copy store found. A copy is named by the digest of its own bytes, so a copy no registered
 // source names any more can never answer anything — it is bytes with no reader. Counted rather than summarised,
-// because "we deleted three" and "one would not delete" lead to different actions, and the four buckets below
-// add up to `scanned` (a sweep that cannot account for every entry must not look like it did).
+// because "we deleted three" and "one would not delete" lead to different actions, and the buckets below add up
+// to `scanned` (a sweep that cannot account for every entry must not look like it did).
+//
+// `removed` and `mismatched` are separate buckets on purpose: "nobody references this copy" and "this copy is not
+// the bytes its name claims" are different findings, and a store whose copies were edited underneath it needs a
+// different response from one that merely accumulated orphans.
 export type KnowledgeCopySweep = {
   /** Every entry in `<data root>/knowledge/contents`: digest-named files, plus anything else that sits there. */
   scanned: number
-  /** Digest-named copies still referenced by a registered URL source — kept, by definition. */
+  /** Digest-named copies still referenced by a registered URL source AND still hashing to their own name. */
   kept: number
-  /** Digest-named copies this sweep deleted. */
+  /** Digest-named copies this sweep deleted because no source names them. */
   removed: string[]
-  /** Digest-named copies that could not be deleted — named, never counted in `removed` or `bytesFreed`. */
+  /** Digest-named copies whose bytes no longer hash to their own name — deleted, because such a copy cannot
+   *  answer truthfully: a search reads it by name and would cite text the fingerprint never covered. */
+  mismatched: string[]
+  /** Digest-named copies that could not be deleted — named, never counted in `removed` or `mismatched`. */
   failed: string[]
-  /** Bytes actually freed: the sizes of `removed` only. */
+  /** Bytes actually freed: the sizes of `removed` plus `mismatched`. */
   bytesFreed: number
   /** Entries that are not digest-named regular files: left alone, counted so the totals still add up. */
   ignored: number

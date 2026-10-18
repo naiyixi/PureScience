@@ -85,6 +85,7 @@ const mockApi = (ids: string[], refuse: string[] = []): Mocked => {
         scanned: 0,
         kept: 0,
         removed: [],
+        mismatched: [],
         failed: [],
         bytesFreed: 0,
         ignored: 0

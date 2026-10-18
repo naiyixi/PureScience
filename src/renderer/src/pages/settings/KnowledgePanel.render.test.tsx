@@ -7,7 +7,11 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { KnowledgeCopySweep, KnowledgeSource } from '../../../../shared/knowledge'
+import type {
+  KnowledgeCopySweep,
+  KnowledgeSource,
+  KnowledgeSweepRecord
+} from '../../../../shared/knowledge'
 
 // `t` is created ONCE here rather than inside `useLanguage`: a fresh `t` per render is a fresh dependency for
 // every effect that lists it, and this panel's initial read would then re-run on every render.
@@ -21,6 +25,8 @@ const labels: Record<string, string> = {
   'settings.knowledge.sweptPartial':
     'Deleted {count} unused copy(ies); {failed} could not be deleted and are still on disk.',
   'settings.knowledge.sweptNone': 'No unused copies to delete.',
+  'settings.knowledge.sweptMismatched':
+    '{count} copy(ies) no longer matched their own digest and were deleted.',
   'settings.knowledge.sweepFailed': 'The unused copies could not be swept.',
   'settings.knowledge.lastSweepUnreadable':
     'The last sweep record could not be read — that is not the same as never having swept.',
@@ -65,7 +71,7 @@ const source = (overrides: Partial<KnowledgeSource> = {}): KnowledgeSource => ({
 
 const mockApi = (
   sweep: KnowledgeCopySweep | Error,
-  overview?: { lastSweepUnreadable?: boolean }
+  overview?: { lastSweepUnreadable?: boolean; lastSweep?: KnowledgeSweepRecord }
 ): { sweepCopies: ReturnType<typeof vi.fn> } => {
   const sweepCopies = vi.fn(async () => {
     if (sweep instanceof Error) throw sweep
@@ -124,6 +130,7 @@ describe('KnowledgePanel copy sweep', () => {
       scanned: 3,
       kept: 1,
       removed: ['b'.repeat(64), 'c'.repeat(64)],
+      mismatched: [],
       failed: [],
       bytesFreed: 1234,
       ignored: 0
@@ -137,7 +144,15 @@ describe('KnowledgePanel copy sweep', () => {
   })
 
   it('says there was nothing to delete rather than claiming a cleanup', async () => {
-    mockApi({ scanned: 1, kept: 1, removed: [], failed: [], bytesFreed: 0, ignored: 0 })
+    mockApi({
+      scanned: 1,
+      kept: 1,
+      removed: [],
+      mismatched: [],
+      failed: [],
+      bytesFreed: 0,
+      ignored: 0
+    })
     await renderPanel()
 
     await clickSweep()
@@ -150,6 +165,7 @@ describe('KnowledgePanel copy sweep', () => {
       scanned: 2,
       kept: 0,
       removed: ['b'.repeat(64)],
+      mismatched: [],
       failed: ['c'.repeat(64)],
       bytesFreed: 10,
       ignored: 0
@@ -162,6 +178,80 @@ describe('KnowledgePanel copy sweep', () => {
       'Deleted 1 unused copy(ies); 1 could not be deleted and are still on disk.'
     )
     expect(container.textContent).not.toContain('No unused copies to delete.')
+  })
+
+  it('reports copies that no longer matched their own digest apart from ordinary cleanup', async () => {
+    mockApi({
+      scanned: 2,
+      kept: 0,
+      removed: [],
+      mismatched: ['d'.repeat(64)],
+      failed: [],
+      bytesFreed: 40,
+      ignored: 0
+    })
+    await renderPanel()
+
+    await clickSweep()
+
+    expect(container.textContent).toContain(
+      '1 copy(ies) no longer matched their own digest and were deleted.'
+    )
+    // The housekeeping sentence must not stand next to a deletion it does not mention.
+    expect(container.textContent).not.toContain('No unused copies to delete.')
+  })
+
+  it('keeps the mismatch reading on screen after the store record is re-read', async () => {
+    mockApi(
+      { scanned: 0, kept: 0, removed: [], mismatched: [], failed: [], bytesFreed: 0, ignored: 0 },
+      {
+        lastSweep: {
+          at: '2026-10-18T10:00:00.000Z',
+          scanned: 3,
+          kept: 2,
+          removed: 0,
+          failed: 0,
+          bytesFreed: 64,
+          mismatched: 1
+        }
+      }
+    )
+    await renderPanel()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const record = container.querySelector('[data-testid="knowledge-last-sweep"]')
+    expect(record?.textContent).toContain(
+      '1 copy(ies) no longer matched their own digest and were deleted.'
+    )
+  })
+
+  it('prints no mismatch clause for a record written before copies were checked', async () => {
+    // A note from an older build carries no mismatch reading. "Not checked then" is not "none found", so the panel
+    // must not invent a zero the sweep never reported.
+    mockApi(
+      { scanned: 0, kept: 0, removed: [], mismatched: [], failed: [], bytesFreed: 0, ignored: 0 },
+      {
+        lastSweep: {
+          at: '2026-10-17T10:00:00.000Z',
+          scanned: 3,
+          kept: 3,
+          removed: 0,
+          failed: 0,
+          bytesFreed: 0
+        }
+      }
+    )
+    await renderPanel()
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const record = container.querySelector('[data-testid="knowledge-last-sweep"]')
+    expect(record?.textContent).not.toContain('no longer matched their own digest')
   })
 
   it('shows the store’s own refusal when the sweep is refused', async () => {
@@ -180,7 +270,7 @@ describe('KnowledgePanel copy sweep', () => {
 
   it('says the last sweep record is unreadable instead of leaving it looking like no sweep ran', async () => {
     mockApi(
-      { scanned: 0, kept: 0, removed: [], failed: [], bytesFreed: 0, ignored: 0 },
+      { scanned: 0, kept: 0, removed: [], mismatched: [], failed: [], bytesFreed: 0, ignored: 0 },
       {
         lastSweepUnreadable: true
       }

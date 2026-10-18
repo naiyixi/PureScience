@@ -4,6 +4,7 @@
 // What it deliberately does NOT do: reach for a database, invent a second index, or hold text in
 // memory between calls. The store's snapshot is the only state; text is read when a query runs.
 
+import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -39,6 +40,23 @@ export type KnowledgeModuleOptions = {
   maxSources?: number
 }
 
+/**
+ * Reads a stored copy only if its bytes still hash to the name it is filed under. A copy that no longer matches is
+ * reported as MISSING, never as text: a search reads the file by that name and would otherwise cite bytes the
+ * source's fingerprint never covered, with nothing on screen to say so. Missing is recoverable (the reader heals
+ * it); wrong-but-served is not.
+ */
+const readVerifiedCopy = async (path: string, digest: string): Promise<string | undefined> => {
+  let body: string
+  try {
+    body = await readFile(path, 'utf8')
+  } catch {
+    return undefined
+  }
+  const actual = createHash('sha256').update(body, 'utf8').digest('hex')
+  return actual === digest ? body : undefined
+}
+
 export type KnowledgeModule = {
   register(request: KnowledgeRegistration): Promise<KnowledgeSource[]>
   list(): Promise<KnowledgeSource[]>
@@ -66,27 +84,28 @@ export const createKnowledgeModule = (options: KnowledgeModuleOptions): Knowledg
     // crawl, not a search. A registration that predates the copy is healed ONCE here — fetched through the same
     // reader registration uses, and stored — so upgrading does not silently turn every existing URL source into
     // "unreadable". Verification is unaffected: it goes to the network on purpose.
+    //
+    // The copy is read through its own digest, not just its name: a file that was edited in place is not this
+    // source's body any more, and answering with it would put text under a fingerprint that never covered it.
     readUrlText: async (source) => {
-      try {
-        return await readFile(
-          join(options.root, 'knowledge', 'contents', source.fingerprint.value),
-          'utf8'
-        )
-      } catch {
-        if (!options.urlReader) throw new Error('That URL source has no stored copy.')
-        const read = await options.urlReader.read(source.finalUrl ?? source.location)
+      const copyPath = join(options.root, 'knowledge', 'contents', source.fingerprint.value)
+      const stored = await readVerifiedCopy(copyPath, source.fingerprint.value)
+      if (stored !== undefined) return stored
+      if (!options.urlReader) throw new Error('That URL source has no stored copy.')
+      const read = await options.urlReader.read(source.finalUrl ?? source.location)
+      const fetched = createHash('sha256').update(read.body, 'utf8').digest('hex')
+      // Only bytes that hash to the name they would be filed under are written. Storing a body whose digest
+      // differs would manufacture exactly the lying copy the sweep exists to delete — and it would overwrite the
+      // name of a page that has since changed, which is a fact the source row cannot express either.
+      if (fetched === source.fingerprint.value) {
         try {
           await mkdir(join(options.root, 'knowledge', 'contents'), { recursive: true })
-          await writeFile(
-            join(options.root, 'knowledge', 'contents', source.fingerprint.value),
-            read.body,
-            'utf8'
-          )
+          await writeFile(copyPath, read.body, 'utf8')
         } catch {
           // A copy that cannot be written still answers this query; the next one heals again.
         }
-        return read.body
       }
+      return read.body
     },
     ...(options.maxBytesPerSource === undefined
       ? {}

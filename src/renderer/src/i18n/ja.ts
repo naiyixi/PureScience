@@ -4870,5 +4870,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     '{count} 件を削除しました。{failed} 件は拒否されました: {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    '前回のスイープ記録を読み取れませんでした。これは「まだ一度もスイープしていない」とは別のことです。'
+    '前回のスイープ記録を読み取れませんでした。これは「まだ一度もスイープしていない」とは別のことです。',
+  'settings.knowledge.sweptMismatched':
+    '{count} 件のコピーが自身のダイジェストと一致しなくなっていたため削除しました。'
 }

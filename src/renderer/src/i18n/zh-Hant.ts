@@ -4503,5 +4503,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 個來源，清理了 {pruned} 份已存副本。',
   'settings.knowledge.bulkRemovePartial': '已移除 {count} 個來源；{failed} 個被拒絕：{reason}',
-  'settings.knowledge.lastSweepUnreadable': '上次清掃的記錄讀不出來——這和「從未清掃過」是兩回事。'
+  'settings.knowledge.lastSweepUnreadable': '上次清掃的記錄讀不出來——這和「從未清掃過」是兩回事。',
+  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的內容已與它自己的摘要不符，已刪除。'
 }

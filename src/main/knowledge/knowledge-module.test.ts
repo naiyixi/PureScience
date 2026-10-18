@@ -72,6 +72,27 @@ describe('knowledge module', () => {
     expect(response.status).toBe('ok')
   })
 
+  it('does not serve a stored copy that no longer matches its own digest', async () => {
+    const withUrl = createKnowledgeModule({
+      root,
+      roots: [root],
+      urlReader: {
+        read: async (url: string) => ({ body: 'the registered sentence', finalUrl: url })
+      }
+    })
+    await withUrl.register({ kind: 'url', url: 'https://example.org/doc' })
+    const copy = join(root, 'knowledge', 'contents', sha256('the registered sentence'))
+    await writeFile(copy, 'tampered sentence', 'utf8')
+
+    // `module` has no URL reader, so nothing can heal the name: the honest answer is "could not look", and the
+    // tampered words must not appear as a hit the citation would attribute to the registered page.
+    const response = await module.search('tampered')
+
+    expect(response.results).toEqual([])
+    expect(response.coverage).toEqual({ indexed: 0, pending: 1 })
+    expect(response.status).toBe('not-indexed')
+  })
+
   it('reports a source that disappeared as unreadable, not as absent', async () => {
     const path = join(root, 'gone.md')
     await writeFile(path, 'searchable text here', 'utf8')

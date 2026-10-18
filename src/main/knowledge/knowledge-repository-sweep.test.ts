@@ -7,7 +7,7 @@
 // on the disk. So that case is a named refusal, and the test asserts the bytes are still there afterwards.
 
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -65,8 +65,44 @@ describe('sweeping orphan copies', () => {
     // Every entry is accounted for in exactly one bucket — a sweep that cannot say where an entry went must not
     // be able to look like it did.
     expect(sweep.scanned).toBe(
-      sweep.kept + sweep.removed.length + sweep.failed.length + sweep.ignored
+      sweep.kept +
+        sweep.removed.length +
+        sweep.mismatched.length +
+        sweep.failed.length +
+        sweep.ignored
     )
+  })
+
+  it('deletes a copy whose bytes no longer match its name, and reports it apart from the orphans', async () => {
+    await repository.register({ kind: 'url', url: 'https://example.org/kept' })
+    // The registered copy's name, filled with different bytes: what an in-place edit or a restore from another
+    // machine leaves behind. The source still names it, so a name-only sweep would count it as `kept`.
+    const tampered = digestOf('referenced body')
+    await writeFile(join(contentsDir(), tampered), 'some other body entirely', 'utf8')
+
+    const sweep = await repository.sweepContents()
+
+    expect(sweep.mismatched).toEqual([tampered])
+    expect(sweep.removed).toEqual([])
+    expect(sweep.kept).toBe(0)
+    expect(sweep.bytesFreed).toBe(Buffer.byteLength('some other body entirely', 'utf8'))
+    // Gone from the store: a copy that is not the bytes its name claims cannot answer truthfully, and leaving it
+    // would keep a search quoting text the source's fingerprint never covered.
+    expect(await contents()).toEqual([])
+    expect(
+      sweep.kept +
+        sweep.removed.length +
+        sweep.mismatched.length +
+        sweep.failed.length +
+        sweep.ignored
+    ).toBe(sweep.scanned)
+    // The reading survives this process: the note says one copy was not what it claimed, so a person reading the
+    // panel tomorrow learns the store was edited, not that housekeeping ran clean.
+    const record = JSON.parse(
+      await readFile(join(root, 'knowledge', 'last-sweep.json'), 'utf8')
+    ) as { removed: number; mismatched?: number }
+    expect(record.mismatched).toBe(1)
+    expect(record.removed).toBe(0)
   })
 
   it('refuses by name when the register cannot be read, and deletes nothing', async () => {
@@ -87,6 +123,7 @@ describe('sweeping orphan copies', () => {
       scanned: 0,
       kept: 0,
       removed: [],
+      mismatched: [],
       failed: [],
       bytesFreed: 0,
       ignored: 0

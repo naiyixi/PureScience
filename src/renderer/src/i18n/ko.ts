@@ -4786,5 +4786,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.bulkRemovePartial':
     '소스 {count}개를 제거했고 {failed}개는 거부되었습니다: {reason}',
   'settings.knowledge.lastSweepUnreadable':
-    '지난 정리 기록을 읽을 수 없습니다. 아직 한 번도 정리하지 않은 것과는 다릅니다.'
+    '지난 정리 기록을 읽을 수 없습니다. 아직 한 번도 정리하지 않은 것과는 다릅니다.',
+  'settings.knowledge.sweptMismatched':
+    '{count}개의 사본이 자체 다이제스트와 더 이상 일치하지 않아 삭제했습니다.'
 }

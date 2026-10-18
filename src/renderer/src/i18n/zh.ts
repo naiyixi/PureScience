@@ -4559,7 +4559,8 @@ export const zh = {
   'settings.knowledge.bulkRemoveCancel': '取消',
   'settings.knowledge.bulkRemoved': '已移除 {count} 个来源，清理了 {pruned} 份已存副本。',
   'settings.knowledge.bulkRemovePartial': '已移除 {count} 个来源；{failed} 个被拒绝：{reason}',
-  'settings.knowledge.lastSweepUnreadable': '上次清扫的记账读不出来——这和「从未清扫过」是两回事。'
+  'settings.knowledge.lastSweepUnreadable': '上次清扫的记账读不出来——这和「从未清扫过」是两回事。',
+  'settings.knowledge.sweptMismatched': '另有 {count} 份副本的内容已与它自己的摘要不符，已删除。'
 }
 
 export type ZhKey = keyof typeof zh
