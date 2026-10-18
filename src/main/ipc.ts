@@ -453,6 +453,7 @@ const readKnowledgeSearchRequest = (value: unknown): { text: string; limit?: num
 }
 
 const permissionGrantsLog = createLogger('permission-grants')
+const knowledgeLog = createLogger('knowledge')
 const screeningLog = createLogger('references:screening')
 // How long a delivery turn waits for a session that is already running a turn, and how often it looks.
 const BACKGROUND_DELIVERY_TURN_WAIT_MS = 15 * 60 * 1000
@@ -2078,6 +2079,23 @@ const createApplicationModules = async (
   ipcMainHandle('knowledge:search', (_event, request: unknown) =>
     knowledgeCalls.search(readKnowledgeSearchRequest(request))
   )
+
+  // Housekeeping, once per start: copies that no source references are deleted. It is deliberately NOT awaited —
+  // a slow disk must not delay the window — and its refusal path is loud in the log, because the one thing this
+  // sweep must never do is mistake "the register would not parse" for "nothing is referenced" and delete the store.
+  void knowledgeModule
+    .sweepContents()
+    .then((outcome) => {
+      if (outcome.pruned.length > 0) {
+        knowledgeLog.info('pruned unreferenced knowledge copies', {
+          scanned: outcome.scanned,
+          pruned: outcome.pruned.length
+        })
+      }
+    })
+    .catch((error: unknown) => {
+      knowledgeLog.warn('knowledge copy sweep skipped', errorLogFields(error))
+    })
 
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {

@@ -285,6 +285,43 @@ export class KnowledgeRepository {
     return { removed, prunedContents }
   }
 
+  // Copy cleanup that does NOT depend on someone removing a source: a copy can be orphaned by anything that
+  // rewrites the register (a hand-edited sources.json, a restore from backup, a crash between save and delete).
+  //
+  // The guard that matters: the register is read FIRST and a register that will not parse aborts the sweep with
+  // nothing deleted. An unreadable register looks exactly like "nothing is referenced", and acting on that reading
+  // would delete every copy in the store — turning a corrupt file into data loss.
+  async sweepContents(): Promise<{ scanned: number; pruned: string[] }> {
+    const snapshot = await this.load()
+    const referenced = new Set(
+      snapshot.sources
+        .filter((source) => source.kind === 'url')
+        .map((source) => source.fingerprint.value)
+    )
+    let names: string[]
+    try {
+      names = await readdir(this.contentDir)
+    } catch {
+      // No directory means no copies yet — an empty sweep, not an error.
+      return { scanned: 0, pruned: [] }
+    }
+    // Only digest-shaped names are ours to delete. A file someone dropped in here is not this store's copy, and
+    // a sweep that removes it would be deleting data it never wrote.
+    const DIGEST_NAME = /^[0-9a-f]{64}$/
+    const pruned: string[] = []
+    for (const name of names) {
+      if (!DIGEST_NAME.test(name)) continue
+      if (referenced.has(name)) continue
+      try {
+        await rm(join(this.contentDir, name), { force: true })
+        pruned.push(name)
+      } catch {
+        // A copy that will not delete stays and is reported by its absence from `pruned`, never claimed as done.
+      }
+    }
+    return { scanned: names.length, pruned }
+  }
+
   // What a session-external reader gets: the sources, plus whether the record itself could be read.
   async overview(): Promise<KnowledgeOverview> {
     try {
