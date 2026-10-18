@@ -8970,3 +8970,68 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 4. **下一轮第一步**：① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条
    `名|completed|success`）；② `git fetch` + `git status --short` + `git log --oneline origin/main -6`；
    ③ 从「面板排序筛选」与「URL 验证频率策略」里取一件（前者离线可判、连锁小），或按会话新落的排期走。
+
+## 一百八十八、本轮追加（执行器，2026-10-19 02:0x–03:0x）—— 排期外候选里连锁最小的一条：**来源列表能筛选、能排序**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = **`c8cdf626`**（会话的原子批量移除 + 用例改写），Latest = **v2.15.0**
+  （`gh release list` 实读，2026-10-18T17:04Z）；该 SHA 的三条车道（Release / Nightly / Windows Full Test）
+  **均 completed success**，在飞车道 **0** 条 ⇒ 主干绿，可以取新单元。
+- **防重做**：`grep` 面板里没有任何 `sort`/`filter` 控件（`KnowledgePanel.tsx` 全文无 `sort`/`filter` 命中），
+  排期档 §五.5 也仍写着「未开工」⇒ 缺口真实。会话这两天在知识库这条线上连续推（批量移除 → 原子化），
+  但**排序筛选它没碰** ⇒ 不撞。
+- **主工作区的分叉仍在**：`/Users/totota/purescience` 的 `main` 停在 `a0541b03`（10 笔自建线未推、与
+  `origin/main` 共祖 `8eb4e96d`，落后 92 笔），树上 17 个 `specialist/**` 在制路径是会话的 ⇒ 本轮全程在
+  隔离工作树 `/tmp/ps-sort`（`--detach c8cdf626` + 软链 `node_modules`），**主树一个字节没碰**。
+- 机器负载（现取）：load 2.14、空闲物理页 4686（≈73 MB）、swap 已用 12.5 G / 13.3 G ⇒ 上一轮那些
+  「内存闸门关闭真机」的条件本轮不成立（负载已落下来），真机认证可以跑。
+
+### 一 取件理由
+
+排期档 §五 里除 binder 生成（`blocked-by` 一台 CUDA 主机）外**已无排期内条目**；§五.5 的排期外候选剩
+「面板排序筛选」与「URL 来源的验证频率策略」。后者要产品口径（多久验一次、失败怎么降级、面板怎么表述），
+前者离线可判、连锁全在渲染层 ⇒ 按「连锁最小」取前者。
+
+### 二 交付（`d940bf46`，15 文件 / +766 −12）
+
+| 面 | 内容 |
+| --- | --- |
+| 纯函数 | `knowledge-source-view.ts`：`filterAndSortKnowledgeSources()` / `isNarrowed()`，无 import 依赖 |
+| 面板 | 文字筛选、类型筛选（全部/文件/网址）、排序（登记顺序/名称/体积从大到小）、筛选时的 `Showing {shown} of {total}`、`No sources match this filter.` 单独一句 |
+| 文案 | 九语言各 10 键 |
+| 用例 | 纯函数 8 条 + 渲染 7 条 + 真机认证 `e2e/certification/knowledge-panel-filter-sort.spec.ts` |
+
+**三处取舍**：① 先筛后排**再分页**（页码与「全选本页」都建立在窄化后的列表上 —— 反过来会让「全选本页」
+选到读者没看见的行）；② 「没有匹配」与「还没有登记」分成两句话；③ 计数只在筛选时出现。
+**零新通道、零契约计数涟漪**：筛选与排序都作用在面板已读到的 `overview.sources` 上。
+名称比较**沿用**市场列表那条既有口径（`specialist-marketplace-sort.ts`），不新建第二套。
+
+### 三 读数（全部实跑）
+
+| 门 | 读数 |
+| --- | --- |
+| 定向 | `src/renderer/src/pages/settings` + `i18n` ⇒ **73 文件 / 773 passed / 1 skipped** |
+| 全量 | **1358 文件（1342 通过 / 16 skipped）**、**17152 例通过 / 207 skipped**、**exit 0**（206.38s） |
+| 类型 | 双 `tsc --composite false` 各 **exit 0** |
+| lint | 改动面 14 文件 **0 error / 0 warning**（i18n 插入块的 9 条尾逗号 warning 已清，diff 只多 9 增 9 删） |
+| 推前钩子 | `scripts/pre-push-checks.sh` **exit 0** |
+| **真机认证** | `knowledge-panel-filter-sort.spec.ts` **1 passed (4.9s)**：三个真文件按名字与体积刻意错开 —— 筛 `beta` 只剩一行且 `Showing 1 of 3`；类型筛到 url 给出「没有符合筛选条件的来源」而**不出现**「还没有登记来源」；按体积排后行序变为 gamma/beta/alpha，切回登记顺序复原 |
+
+### 四 边界与具名未办
+
+- **纯客户端**：`listSources` 仍一次返回全部来源，服务端分页仍未做（v2.12.0 归档的同一条限制）。
+- 筛选匹配的是行上真正印出的三个字符串（名称/位置/网址最终落点），**不匹配摘要、不匹配文件内容**。
+- 名称排序跟随运行时区域设置（与市场列表同口径）⇒ 非 ASCII 名称的先后可能因机器语言而异；用例只钉
+  「大小写不敏感 + 数字段按数值比」，不钉某语言的排序习惯。
+- 勾选不随筛选变化（既有语义，未改）。
+- **URL 来源的验证频率策略**仍未开工（要产品口径）；binder 生成仍 `blocked-by` 一台 CUDA 主机；
+  M2/IC54 仍卡产品决定。
+- 证据档：`docs/evidence/2026-10-19-knowledge-panel-filter-sort.md`。
+
+### 五 下一轮第一步
+
+① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否又落了新排期；
+③ 排期外候选只剩 URL 验证频率策略（要口径）⇒ 若无新排期，从「各版自陈的尾巴」与 §四 的取证欠账里挑
+（打包版界面截图 / 打包版库的 WAL 读数 已解封），不要重做本轮已交付的排序筛选。
