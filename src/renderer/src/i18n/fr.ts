@@ -714,7 +714,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.removeFailed': 'Cette source n’a pas pu être supprimée.',
   'settings.knowledge.lastSweep':
     'Dernier nettoyage : {at} · examinées {scanned} · conservées {kept} · supprimées {removed} · échouées {failed}',
-  'settings.knowledge.page': 'Page {page} / {pages}',
+  'settings.knowledge.page': 'Page {page} sur {pages}',
   'settings.knowledge.previous': 'Précédent',
   'settings.knowledge.next': 'Suivant',
   'settings.knowledge.sweep': 'Nettoyer les copies inutilisées',
