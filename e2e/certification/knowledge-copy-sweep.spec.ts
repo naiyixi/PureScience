@@ -68,6 +68,18 @@ test('sweeps the copies no source names and keeps the one a source still names',
     )
     // The disk, read by this process: the orphan is gone and the named copy is still there.
     expect(await readdir(contents)).toEqual([kept])
+
+    // The record this sweep just wrote is on screen after a re-read.
+    await page.getByRole('button', { name: 'Refresh' }).click()
+    await expect(page.getByTestId('knowledge-last-sweep')).toBeVisible({ timeout: 30_000 })
+    // Now break it: a note that will not parse is "we cannot say", not "never swept", so the panel must swap the
+    // record for that sentence rather than showing neither.
+    await writeFile(join(dataRoot, 'knowledge', 'last-sweep.json'), '{ not json', 'utf8')
+    await page.getByRole('button', { name: 'Refresh' }).click()
+    await expect(page.getByTestId('knowledge-last-sweep-unreadable')).toBeVisible({
+      timeout: 30_000
+    })
+    await expect(page.getByTestId('knowledge-last-sweep')).toHaveCount(0)
   } finally {
     await new Promise<void>((resolve) => {
       server.close(() => {

@@ -4774,5 +4774,17 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     '대체됨 — 같은 그림이 나중에 다른 입력으로 다시 파생되었습니다({at}). 이 값을 재사용하기 전에 다시 파생하세요.',
   'ws.figureObservationsSupersededRevision':
-    '대체됨 — 같은 그림이 나중에 다른 모델 버전으로 다시 파생되었습니다({at}). 이 값을 재사용하기 전에 다시 파생하세요.'
+    '대체됨 — 같은 그림이 나중에 다른 모델 버전으로 다시 파생되었습니다({at}). 이 값을 재사용하기 전에 다시 파생하세요.',
+  'settings.knowledge.selectSource': '{label} 선택',
+  'settings.knowledge.selectPageAll': '이 페이지 모두 선택',
+  'settings.knowledge.selectedCount': '{count}개 선택됨',
+  'settings.knowledge.bulkRemove': '선택 항목 제거',
+  'settings.knowledge.bulkRemoveConfirm': '{count}개 소스 제거 확인',
+  'settings.knowledge.bulkRemoveCancel': '취소',
+  'settings.knowledge.bulkRemoved':
+    '소스 {count}개를 제거하고 저장된 사본 {pruned}개를 정리했습니다.',
+  'settings.knowledge.bulkRemovePartial':
+    '소스 {count}개를 제거했고 {failed}개는 거부되었습니다: {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    '지난 정리 기록을 읽을 수 없습니다. 아직 한 번도 정리하지 않은 것과는 다릅니다.'
 }

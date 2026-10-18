@@ -39,6 +39,10 @@ export type KnowledgeOverview = {
   /** The last completed sweep, so "when did this last run, and what did it do" is answerable without a second
    *  channel. Absent when nothing has swept yet — which is different from a sweep that found nothing. */
   lastSweep?: KnowledgeSweepRecord
+  /** Set when a sweep note is on disk but will not be read. Distinct from `lastSweep` being absent on purpose:
+   *  "no sweep has run" and "we cannot say what the last one did" lead to different actions, and folding the
+   *  second into the first would have the screen report a fact nothing verified. */
+  lastSweepUnreadable?: boolean
 }
 
 export type KnowledgeSweepRecord = {

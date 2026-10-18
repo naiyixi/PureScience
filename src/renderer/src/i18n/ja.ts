@@ -4858,5 +4858,17 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     '上書き済み — 同じ図は後に別の入力で再派生されています（{at}）。これらの値を使い回す前に再派生してください。',
   'ws.figureObservationsSupersededRevision':
-    '上書き済み — 同じ図は後に別のモデル版で再派生されています（{at}）。これらの値を使い回す前に再派生してください。'
+    '上書き済み — 同じ図は後に別のモデル版で再派生されています（{at}）。これらの値を使い回す前に再派生してください。',
+  'settings.knowledge.selectSource': '{label} を選択',
+  'settings.knowledge.selectPageAll': 'このページをすべて選択',
+  'settings.knowledge.selectedCount': '{count} 件を選択中',
+  'settings.knowledge.bulkRemove': '選択した項目を削除',
+  'settings.knowledge.bulkRemoveConfirm': '{count} 件のソースを削除する',
+  'settings.knowledge.bulkRemoveCancel': 'キャンセル',
+  'settings.knowledge.bulkRemoved':
+    '{count} 件のソースを削除し、保存済みコピーを {pruned} 件整理しました。',
+  'settings.knowledge.bulkRemovePartial':
+    '{count} 件を削除しました。{failed} 件は拒否されました: {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    '前回のスイープ記録を読み取れませんでした。これは「まだ一度もスイープしていない」とは別のことです。'
 }

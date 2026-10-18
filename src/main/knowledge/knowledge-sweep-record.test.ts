@@ -69,7 +69,17 @@ describe('the last sweep record', () => {
     const overview = await repository().overview()
 
     expect(overview.lastSweep).toBeUndefined()
+    // Not the same fact as "nothing has swept yet": the note exists and would not parse, so the caller is told the
+    // record is unreadable rather than left to infer that no sweep ever ran.
+    expect(overview.lastSweepUnreadable).toBe(true)
     // Sanity: the file really sits where the reader looks, so the absence above is the parser's verdict.
     expect(await readFile(join(root, 'knowledge', 'last-sweep.json'), 'utf8')).toContain('not json')
+  })
+
+  it('says nothing about readability when no note exists at all — absence is a fact, not a failure', async () => {
+    const overview = await repository().overview()
+
+    expect(overview.lastSweep).toBeUndefined()
+    expect(overview.lastSweepUnreadable).toBeUndefined()
   })
 })

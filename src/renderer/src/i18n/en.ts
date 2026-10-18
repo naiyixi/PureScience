@@ -4888,5 +4888,15 @@ export const en: Record<ZhKey, string> = {
   'ws.figureObservationsSupersededInput':
     'Superseded — the same illustration was later derived from a different input ({at}). Re-derive before reusing these values.',
   'ws.figureObservationsSupersededRevision':
-    'Superseded — the same illustration was later derived with a different model revision ({at}). Re-derive before reusing these values.'
+    'Superseded — the same illustration was later derived with a different model revision ({at}). Re-derive before reusing these values.',
+  'settings.knowledge.selectSource': 'Select {label}',
+  'settings.knowledge.selectPageAll': 'Select all on this page',
+  'settings.knowledge.selectedCount': 'Selected {count}',
+  'settings.knowledge.bulkRemove': 'Remove selected',
+  'settings.knowledge.bulkRemoveConfirm': 'Confirm removing {count} source(s)',
+  'settings.knowledge.bulkRemoveCancel': 'Cancel',
+  'settings.knowledge.bulkRemoved': 'Removed {count} source(s); {pruned} stored copy(ies) pruned.',
+  'settings.knowledge.bulkRemovePartial': 'Removed {count} source(s); {failed} refused: {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    'The last sweep record could not be read — that is not the same as never having swept.'
 }

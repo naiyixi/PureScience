@@ -4877,5 +4877,17 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     'Заменено — тот же рисунок позже был обработан с другим входом ({at}). Перед повторным использованием выполните вывод заново.',
   'ws.figureObservationsSupersededRevision':
-    'Заменено — тот же рисунок позже был обработан другой версией модели ({at}). Перед повторным использованием выполните вывод заново.'
+    'Заменено — тот же рисунок позже был обработан другой версией модели ({at}). Перед повторным использованием выполните вывод заново.',
+  'settings.knowledge.selectSource': 'Выбрать {label}',
+  'settings.knowledge.selectPageAll': 'Выбрать все на этой странице',
+  'settings.knowledge.selectedCount': 'Выбрано: {count}',
+  'settings.knowledge.bulkRemove': 'Удалить выбранные',
+  'settings.knowledge.bulkRemoveConfirm': 'Подтвердить удаление источников: {count}',
+  'settings.knowledge.bulkRemoveCancel': 'Отмена',
+  'settings.knowledge.bulkRemoved':
+    'Удалено источников: {count}; очищено сохранённых копий: {pruned}.',
+  'settings.knowledge.bulkRemovePartial':
+    'Удалено источников: {count}; отклонено {failed}: {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    'Запись о последней очистке не читается — это не то же самое, что очистка никогда не выполнялась.'
 }

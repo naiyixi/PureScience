@@ -4967,5 +4967,17 @@ export const es: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     'Reemplazado: la misma ilustración se derivó después con una entrada distinta ({at}). Vuelve a derivarla antes de reutilizar estos valores.',
   'ws.figureObservationsSupersededRevision':
-    'Reemplazado: la misma ilustración se derivó después con otra versión del modelo ({at}). Vuelve a derivarla antes de reutilizar estos valores.'
+    'Reemplazado: la misma ilustración se derivó después con otra versión del modelo ({at}). Vuelve a derivarla antes de reutilizar estos valores.',
+  'settings.knowledge.selectSource': 'Seleccionar {label}',
+  'settings.knowledge.selectPageAll': 'Seleccionar todo en esta página',
+  'settings.knowledge.selectedCount': '{count} seleccionado(s)',
+  'settings.knowledge.bulkRemove': 'Quitar la selección',
+  'settings.knowledge.bulkRemoveConfirm': 'Confirmar la eliminación de {count} fuente(s)',
+  'settings.knowledge.bulkRemoveCancel': 'Cancelar',
+  'settings.knowledge.bulkRemoved':
+    'Se quitaron {count} fuente(s) y se depuraron {pruned} copia(s) guardada(s).',
+  'settings.knowledge.bulkRemovePartial':
+    'Se quitaron {count} fuente(s); {failed} rechazada(s): {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    'No se pudo leer el registro del último barrido; eso no es lo mismo que no haber barrido nunca.'
 }

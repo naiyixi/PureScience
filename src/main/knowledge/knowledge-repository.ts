@@ -380,32 +380,52 @@ export class KnowledgeRepository {
 
   // What a session-external reader gets: the sources, plus whether the record itself could be read.
   async overview(): Promise<KnowledgeOverview> {
-    const lastSweep = await this.readSweepRecord()
+    const sweep = await this.readSweepRecord()
+    const sweepFields = {
+      ...(sweep.lastSweep ? { lastSweep: sweep.lastSweep } : {}),
+      ...(sweep.unreadable ? { lastSweepUnreadable: true } : {})
+    }
     try {
-      return { sources: await this.list(), unreadable: false, ...(lastSweep ? { lastSweep } : {}) }
+      return { sources: await this.list(), unreadable: false, ...sweepFields }
     } catch {
-      return { sources: [], unreadable: true, ...(lastSweep ? { lastSweep } : {}) }
+      return { sources: [], unreadable: true, ...sweepFields }
     }
   }
 
-  /** The last sweep's own record; absent when none has run or when the note is unreadable. A note that will not
-   *  parse is not "a sweep found nothing" — it is "we cannot say", which is why it is dropped rather than zeroed. */
-  private async readSweepRecord(): Promise<KnowledgeSweepRecord | undefined> {
+  /** The last sweep's own record. Three states, deliberately not two: no note at all means no sweep has run; a note
+   *  that will not parse means we cannot say what the last one did. A note that will not parse is not "a sweep found
+   *  nothing" — it is "we cannot say", which is why it is dropped rather than zeroed, and why the caller is told
+   *  which of the two it got. */
+  private async readSweepRecord(): Promise<{
+    lastSweep?: KnowledgeSweepRecord
+    unreadable: boolean
+  }> {
+    let raw: string
     try {
-      const parsed: unknown = JSON.parse(await readFile(this.sweepStateFile, 'utf8'))
-      if (!parsed || typeof parsed !== 'object') return undefined
+      raw = await readFile(this.sweepStateFile, 'utf8')
+    } catch (cause) {
+      // No note at all is the honest "nothing has swept yet". A note that exists but cannot be opened is not.
+      const code = (cause as { code?: unknown }).code
+      return { unreadable: code !== 'ENOENT' }
+    }
+    try {
+      const parsed: unknown = JSON.parse(raw)
+      if (!parsed || typeof parsed !== 'object') return { unreadable: true }
       const record = parsed as Partial<KnowledgeSweepRecord>
-      if (typeof record.at !== 'string') return undefined
+      if (typeof record.at !== 'string') return { unreadable: true }
       return {
-        at: record.at,
-        scanned: Number(record.scanned ?? 0),
-        kept: Number(record.kept ?? 0),
-        removed: Number(record.removed ?? 0),
-        failed: Number(record.failed ?? 0),
-        bytesFreed: Number(record.bytesFreed ?? 0)
+        lastSweep: {
+          at: record.at,
+          scanned: Number(record.scanned ?? 0),
+          kept: Number(record.kept ?? 0),
+          removed: Number(record.removed ?? 0),
+          failed: Number(record.failed ?? 0),
+          bytesFreed: Number(record.bytesFreed ?? 0)
+        },
+        unreadable: false
       }
     } catch {
-      return undefined
+      return { unreadable: true }
     }
   }
 }

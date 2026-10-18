@@ -15,6 +15,11 @@ const describeError = (error: unknown, fallback: string): string =>
 
 const shortDigest = (digest: string): string => `${digest.slice(0, 12)}…`
 
+// A refresh or a removal can take rows away under a ticked set; a tick for a row that no longer exists would arm a
+// removal that has nothing to remove. Dropped here, at the one place a list arrives, rather than in an effect.
+const pruneToPresent = (ids: string[], sources: KnowledgeSource[] | undefined): string[] =>
+  ids.filter((id) => (sources ?? []).some((source) => source.id === id))
+
 const describeLocator = (response: KnowledgeSearchResponse): string => {
   const locator = response.results[0]?.locator
   if (!locator) return ''
@@ -33,10 +38,16 @@ const KnowledgePanel = (): React.JSX.Element => {
   const [location, setLocation] = useState('')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<KnowledgeSearchResponse | undefined>()
-  const [busy, setBusy] = useState<'list' | 'register' | 'search' | 'sweep' | undefined>()
+  const [busy, setBusy] = useState<
+    'list' | 'register' | 'search' | 'sweep' | 'remove' | undefined
+  >()
   const [error, setError] = useState<string | undefined>()
   const [note, setNote] = useState<string | undefined>()
   const [page, setPage] = useState(0)
+  // Which rows are ticked for a bulk removal, and whether the ticked set has been confirmed once. The armed step
+  // exists because a bulk removal is the one action here that cannot be undone by looking at the screen.
+  const [selected, setSelected] = useState<string[]>([])
+  const [armed, setArmed] = useState(false)
 
   // Twenty rows is one screen of this panel; anything more and the list stops being scannable. The page is reset
   // whenever a load changes the set out from under it (a removal or a refresh), so a saved page index can never
@@ -51,10 +62,33 @@ const KnowledgePanel = (): React.JSX.Element => {
     currentPage * PAGE_SIZE + PAGE_SIZE
   )
 
+  // Ticking is per row, but "select all" acts on what is on screen: a reader can only vouch for rows they can see,
+  // and a control that quietly selects rows on other pages would remove sources nobody looked at.
+  const pageIds = pagedSources.map((source) => source.id)
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id))
+
+  const toggleSelected = (sourceId: string): void => {
+    setArmed(false)
+    setSelected((current) =>
+      current.includes(sourceId) ? current.filter((id) => id !== sourceId) : [...current, sourceId]
+    )
+  }
+
+  const togglePage = (): void => {
+    setArmed(false)
+    setSelected((current) =>
+      allOnPageSelected
+        ? current.filter((id) => !pageIds.includes(id))
+        : [...new Set([...current, ...pageIds])]
+    )
+  }
+
   const loadSources = useCallback(async (): Promise<void> => {
     setBusy('list')
     try {
-      setOverview(await window.api.knowledge.listSources())
+      const loaded = await window.api.knowledge.listSources()
+      setOverview(loaded)
+      setSelected((current) => pruneToPresent(current, loaded.sources))
       setError(undefined)
     } catch (cause) {
       setError(describeError(cause, t('settings.knowledge.loadFailed')))
@@ -70,7 +104,10 @@ const KnowledgePanel = (): React.JSX.Element => {
     let cancelled = false
     void window.api.knowledge.listSources().then(
       (loaded) => {
-        if (!cancelled) setOverview(loaded)
+        if (!cancelled) {
+          setOverview(loaded)
+          setSelected((current) => pruneToPresent(current, loaded.sources))
+        }
       },
       (cause: unknown) => {
         if (!cancelled) setError(describeError(cause, t('settings.knowledge.loadFailed')))
@@ -101,6 +138,54 @@ const KnowledgePanel = (): React.JSX.Element => {
     } finally {
       setBusy(undefined)
     }
+  }
+
+  // A bulk removal is N removals, not one new operation: each source is removed through the same call a single row
+  // uses, so a refusal on the fourth one leaves the first three removed and says so. The sentence afterwards
+  // reports what actually happened — a partial run reported as success would be the panel claiming work it did not do.
+  const removeSelected = async (): Promise<void> => {
+    const targets = allSources.filter((source) => selected.includes(source.id))
+    if (targets.length === 0) return
+    setBusy('remove')
+    setArmed(false)
+    setNote(undefined)
+    let removed = 0
+    let pruned = 0
+    const failures: string[] = []
+    for (const target of targets) {
+      try {
+        const outcome = await window.api.knowledge.removeSource({ sourceId: target.id })
+        removed += 1
+        pruned += outcome.prunedContents.length
+      } catch (cause) {
+        failures.push(
+          `${target.label}: ${describeError(cause, t('settings.knowledge.removeFailed'))}`
+        )
+      }
+    }
+    try {
+      const loaded = await window.api.knowledge.listSources()
+      setOverview(loaded)
+      // The ones that refused are still rows, so their ticks stay: the reader can retry exactly those.
+      setSelected(pruneToPresent(selected, loaded.sources))
+      setResults(undefined)
+      setError(undefined)
+    } catch (cause) {
+      setError(describeError(cause, t('settings.knowledge.loadFailed')))
+    }
+    setNote(
+      failures.length > 0
+        ? t('settings.knowledge.bulkRemovePartial', {
+            count: String(removed),
+            failed: String(failures.length),
+            reason: failures[0] ?? ''
+          })
+        : t('settings.knowledge.bulkRemoved', {
+            count: String(removed),
+            pruned: String(pruned)
+          })
+    )
+    setBusy(undefined)
   }
 
   // Copies of fetched bodies outlive the rows that named them in two ways: a register that died between writing
@@ -194,6 +279,20 @@ const KnowledgePanel = (): React.JSX.Element => {
           >
             {t('settings.knowledge.sweep')}
           </Button>
+          {pageIds.length > 0 ? (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5"
+                data-testid="knowledge-select-page"
+                aria-label={t('settings.knowledge.selectPageAll')}
+                checked={allOnPageSelected}
+                disabled={busy !== undefined}
+                onChange={togglePage}
+              />
+              {t('settings.knowledge.selectPageAll')}
+            </label>
+          ) : null}
         </div>
         {overview?.lastSweep ? (
           <p className="text-xs text-muted-foreground" data-testid="knowledge-last-sweep">
@@ -205,6 +304,51 @@ const KnowledgePanel = (): React.JSX.Element => {
               failed: String(overview.lastSweep.failed)
             })}
           </p>
+        ) : overview?.lastSweepUnreadable ? (
+          // "No sweep has run" and "we cannot read what the last one did" are different facts; the panel says which
+          // one it has instead of letting the second look like the first.
+          <p className="text-xs text-destructive" data-testid="knowledge-last-sweep-unreadable">
+            {t('settings.knowledge.lastSweepUnreadable')}
+          </p>
+        ) : null}
+        {selected.length > 0 ? (
+          <div
+            className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs"
+            data-testid="knowledge-bulk-bar"
+          >
+            <span>{t('settings.knowledge.selectedCount', { count: String(selected.length) })}</span>
+            {armed ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  data-testid="knowledge-bulk-confirm"
+                  disabled={busy !== undefined}
+                  onClick={() => void removeSelected()}
+                >
+                  {t('settings.knowledge.bulkRemoveConfirm', { count: String(selected.length) })}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  data-testid="knowledge-bulk-cancel"
+                  onClick={() => setArmed(false)}
+                >
+                  {t('settings.knowledge.bulkRemoveCancel')}
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="ghost"
+                data-testid="knowledge-bulk-remove"
+                disabled={busy !== undefined}
+                onClick={() => setArmed(true)}
+              >
+                {t('settings.knowledge.bulkRemove')}
+              </Button>
+            )}
+          </div>
         ) : null}
         {overview === undefined ? (
           <p className="text-sm text-muted-foreground">{t('settings.knowledge.loading')}</p>
@@ -216,27 +360,38 @@ const KnowledgePanel = (): React.JSX.Element => {
         ) : (
           <ul className="divide-y rounded-md border">
             {pagedSources.map((source) => (
-              <li key={source.id} className="flex flex-col gap-1 px-3 py-2 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium">{source.label}</span>
-                  <span className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{source.kind}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={t('settings.knowledge.remove', { label: source.label })}
-                      disabled={busy !== undefined}
-                      onClick={() => void remove(source.id)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+              <li key={source.id} className="flex items-start gap-2 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-3.5 w-3.5"
+                  data-testid={`knowledge-select-row-${source.id}`}
+                  aria-label={t('settings.knowledge.selectSource', { label: source.label })}
+                  checked={selected.includes(source.id)}
+                  disabled={busy !== undefined}
+                  onChange={() => toggleSelected(source.id)}
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium">{source.label}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{source.kind}</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={t('settings.knowledge.remove', { label: source.label })}
+                        disabled={busy !== undefined}
+                        onClick={() => void remove(source.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </span>
+                  </div>
+                  <span className="break-all text-xs text-muted-foreground">{source.location}</span>
+                  {/* The digest is shown, not summarised: a reader can check it against the file. */}
+                  <span className="font-mono text-xs text-muted-foreground">
+                    sha256 {shortDigest(source.fingerprint.value)} · {source.fingerprint.bytes} B
                   </span>
                 </div>
-                <span className="break-all text-xs text-muted-foreground">{source.location}</span>
-                {/* The digest is shown, not summarised: a reader can check it against the file. */}
-                <span className="font-mono text-xs text-muted-foreground">
-                  sha256 {shortDigest(source.fingerprint.value)} · {source.fingerprint.bytes} B
-                </span>
               </li>
             ))}
           </ul>

@@ -4997,5 +4997,17 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     "Remplacé — la même illustration a été dérivée plus tard à partir d'une entrée différente ({at}). À re-dériver avant réutilisation.",
   'ws.figureObservationsSupersededRevision':
-    'Remplacé — la même illustration a été dérivée plus tard avec une autre version du modèle ({at}). À re-dériver avant réutilisation.'
+    'Remplacé — la même illustration a été dérivée plus tard avec une autre version du modèle ({at}). À re-dériver avant réutilisation.',
+  'settings.knowledge.selectSource': 'Sélectionner {label}',
+  'settings.knowledge.selectPageAll': 'Tout sélectionner sur cette page',
+  'settings.knowledge.selectedCount': '{count} sélectionné(s)',
+  'settings.knowledge.bulkRemove': 'Retirer la sélection',
+  'settings.knowledge.bulkRemoveConfirm': 'Confirmer le retrait de {count} source(s)',
+  'settings.knowledge.bulkRemoveCancel': 'Annuler',
+  'settings.knowledge.bulkRemoved':
+    '{count} source(s) retirée(s) ; {pruned} copie(s) enregistrée(s) supprimée(s).',
+  'settings.knowledge.bulkRemovePartial':
+    '{count} source(s) retirée(s) ; {failed} refusée(s) : {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    "L'enregistrement du dernier nettoyage est illisible — ce n'est pas la même chose qu'une absence de nettoyage."
 }

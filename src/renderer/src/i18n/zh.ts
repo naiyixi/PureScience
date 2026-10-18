@@ -4550,7 +4550,16 @@ export const zh = {
   'ws.figureObservationsSupersededInput':
     '已被取代 —— 同一张插图后来用不同的输入重新派生过（{at}）。复用这些值前请重新派生。',
   'ws.figureObservationsSupersededRevision':
-    '已被取代 —— 同一张插图后来用不同的模型版本重新派生过（{at}）。复用这些值前请重新派生。'
+    '已被取代 —— 同一张插图后来用不同的模型版本重新派生过（{at}）。复用这些值前请重新派生。',
+  'settings.knowledge.selectSource': '选中 {label}',
+  'settings.knowledge.selectPageAll': '全选本页',
+  'settings.knowledge.selectedCount': '已选 {count} 项',
+  'settings.knowledge.bulkRemove': '移除选中',
+  'settings.knowledge.bulkRemoveConfirm': '确认移除 {count} 个来源',
+  'settings.knowledge.bulkRemoveCancel': '取消',
+  'settings.knowledge.bulkRemoved': '已移除 {count} 个来源，清理了 {pruned} 份已存副本。',
+  'settings.knowledge.bulkRemovePartial': '已移除 {count} 个来源；{failed} 个被拒绝：{reason}',
+  'settings.knowledge.lastSweepUnreadable': '上次清扫的记账读不出来——这和「从未清扫过」是两回事。'
 }
 
 export type ZhKey = keyof typeof zh

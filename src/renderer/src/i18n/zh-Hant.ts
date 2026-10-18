@@ -4494,5 +4494,14 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     '已被取代 —— 同一張插圖後來用不同的輸入重新衍生過（{at}）。重複使用這些值前請重新衍生。',
   'ws.figureObservationsSupersededRevision':
-    '已被取代 —— 同一張插圖後來用不同的模型版本重新衍生過（{at}）。重複使用這些值前請重新衍生。'
+    '已被取代 —— 同一張插圖後來用不同的模型版本重新衍生過（{at}）。重複使用這些值前請重新衍生。',
+  'settings.knowledge.selectSource': '選取 {label}',
+  'settings.knowledge.selectPageAll': '全選本頁',
+  'settings.knowledge.selectedCount': '已選 {count} 項',
+  'settings.knowledge.bulkRemove': '移除選取',
+  'settings.knowledge.bulkRemoveConfirm': '確認移除 {count} 個來源',
+  'settings.knowledge.bulkRemoveCancel': '取消',
+  'settings.knowledge.bulkRemoved': '已移除 {count} 個來源，清理了 {pruned} 份已存副本。',
+  'settings.knowledge.bulkRemovePartial': '已移除 {count} 個來源；{failed} 個被拒絕：{reason}',
+  'settings.knowledge.lastSweepUnreadable': '上次清掃的記錄讀不出來——這和「從未清掃過」是兩回事。'
 }

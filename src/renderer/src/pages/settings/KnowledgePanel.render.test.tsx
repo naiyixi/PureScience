@@ -22,6 +22,8 @@ const labels: Record<string, string> = {
     'Deleted {count} unused copy(ies); {failed} could not be deleted and are still on disk.',
   'settings.knowledge.sweptNone': 'No unused copies to delete.',
   'settings.knowledge.sweepFailed': 'The unused copies could not be swept.',
+  'settings.knowledge.lastSweepUnreadable':
+    'The last sweep record could not be read — that is not the same as never having swept.',
   'settings.knowledge.loading': 'Reading the source record…',
   'settings.knowledge.empty': 'No sources registered yet.',
   'settings.knowledge.register': 'Register a source',
@@ -61,14 +63,21 @@ const source = (overrides: Partial<KnowledgeSource> = {}): KnowledgeSource => ({
   ...overrides
 })
 
-const mockApi = (sweep: KnowledgeCopySweep | Error): { sweepCopies: ReturnType<typeof vi.fn> } => {
+const mockApi = (
+  sweep: KnowledgeCopySweep | Error,
+  overview?: { lastSweepUnreadable?: boolean }
+): { sweepCopies: ReturnType<typeof vi.fn> } => {
   const sweepCopies = vi.fn(async () => {
     if (sweep instanceof Error) throw sweep
     return sweep
   })
   ;(window as unknown as { api: unknown }).api = {
     knowledge: {
-      listSources: vi.fn(async () => ({ sources: [source()], unreadable: false })),
+      listSources: vi.fn(async () => ({
+        sources: [source()],
+        unreadable: false,
+        ...(overview ?? {})
+      })),
       registerSource: vi.fn(async () => [source()]),
       removeSource: vi.fn(async () => ({ removed: source(), prunedContents: [] })),
       sweepCopies,
@@ -167,5 +176,22 @@ describe('KnowledgePanel copy sweep', () => {
 
     expect(container.textContent).toContain('record-unreadable')
     expect(container.textContent).not.toContain('Deleted')
+  })
+
+  it('says the last sweep record is unreadable instead of leaving it looking like no sweep ran', async () => {
+    mockApi(
+      { scanned: 0, kept: 0, removed: [], failed: [], bytesFreed: 0, ignored: 0 },
+      {
+        lastSweepUnreadable: true
+      }
+    )
+    await renderPanel()
+
+    expect(
+      container.querySelector('[data-testid="knowledge-last-sweep-unreadable"]')
+    ).not.toBeNull()
+    expect(container.textContent).toContain('that is not the same as never having swept')
+    // And it must not print a record it does not have.
+    expect(container.querySelector('[data-testid="knowledge-last-sweep"]')).toBeNull()
   })
 })

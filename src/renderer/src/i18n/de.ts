@@ -5027,5 +5027,17 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.figureObservationsSupersededInput':
     'Überholt – dieselbe Abbildung wurde später aus einer anderen Eingabe abgeleitet ({at}). Vor der Wiederverwendung neu ableiten.',
   'ws.figureObservationsSupersededRevision':
-    'Überholt – dieselbe Abbildung wurde später mit einer anderen Modellversion abgeleitet ({at}). Vor der Wiederverwendung neu ableiten.'
+    'Überholt – dieselbe Abbildung wurde später mit einer anderen Modellversion abgeleitet ({at}). Vor der Wiederverwendung neu ableiten.',
+  'settings.knowledge.selectSource': '{label} auswählen',
+  'settings.knowledge.selectPageAll': 'Alle auf dieser Seite auswählen',
+  'settings.knowledge.selectedCount': '{count} ausgewählt',
+  'settings.knowledge.bulkRemove': 'Ausgewählte entfernen',
+  'settings.knowledge.bulkRemoveConfirm': 'Entfernen von {count} Quelle(n) bestätigen',
+  'settings.knowledge.bulkRemoveCancel': 'Abbrechen',
+  'settings.knowledge.bulkRemoved':
+    '{count} Quelle(n) entfernt; {pruned} gespeicherte Kopie(n) bereinigt.',
+  'settings.knowledge.bulkRemovePartial':
+    '{count} Quelle(n) entfernt; {failed} abgelehnt: {reason}',
+  'settings.knowledge.lastSweepUnreadable':
+    'Der Eintrag des letzten Aufräumlaufs war nicht lesbar — das ist nicht dasselbe wie „noch nie aufgeräumt“.'
 }
