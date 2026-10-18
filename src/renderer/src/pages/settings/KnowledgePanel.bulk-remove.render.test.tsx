@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
-// A bulk removal is N single-row removals, and the panel has to report it that way: the count of what went through,
-// the copies that went with them, and — when one refuses — which one refused while staying ticked. A run that said
-// "removed" for a row still on screen would be the panel claiming work it did not do.
+// Bulk removal is ONE store operation now, and the panel has to report it that way. Three things this file pins:
+//
+//   * the panel calls `removeSources` ONCE with every ticked id — a panel that looped single removals would still
+//     look right on screen while losing the one-write property that made the batch atomic;
+//   * a refusal means the batch was NOT applied, so the sentence must not imply partial progress. The old
+//     "Removed 1; 1 refused" string described a loop and is gone from the dictionaries, so it must not reappear;
+//   * the armed step still removes nothing on the first click.
 
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -26,7 +30,9 @@ const labels: Record<string, string> = {
   'settings.knowledge.bulkRemoveConfirm': 'Confirm removing {count} source(s)',
   'settings.knowledge.bulkRemoveCancel': 'Cancel',
   'settings.knowledge.bulkRemoved': 'Removed {count} source(s); {pruned} stored copy(ies) pruned.',
-  'settings.knowledge.bulkRemovePartial': 'Removed {count} source(s); {failed} refused: {reason}'
+  'settings.knowledge.bulkRemovedWithMissing':
+    'Removed {count} source(s); pruned {pruned}; {missing} not registered.',
+  'settings.knowledge.bulkNotApplied': 'The batch was not applied: {reason} Nothing was removed.'
 }
 // Created ONCE: a fresh `t` per render is a fresh dependency for the load effect, which would then re-run forever.
 const t = (key: string, vars?: Record<string, string>): string => {
@@ -53,34 +59,38 @@ const source = (id: string): KnowledgeSource => ({
 })
 
 type Mocked = {
-  removeSource: ReturnType<typeof vi.fn>
+  removeSources: ReturnType<typeof vi.fn>
   listSources: ReturnType<typeof vi.fn>
 }
 
-// A register that behaves like the real one: a removed row is gone from the next read, and a refused row is still
-// there — which is what lets the assertions tell "removed" apart from "said it removed".
+// A register with the real all-or-nothing property: a batch that contains a refused row removes NOTHING, and a
+// batch that succeeds removes every row. That is what lets the assertions tell "removed" from "said it removed".
 const mockApi = (ids: string[], refuse: string[] = []): Mocked => {
-  const present = [...ids]
+  let present = [...ids]
   const listSources = vi.fn(async () => ({
     sources: ids.filter((id) => present.includes(id)).map(source),
     unreadable: false
   }))
-  const removeSource = vi.fn(async ({ sourceId }: { sourceId: string }) => {
-    if (refuse.includes(sourceId)) {
-      throw new Error('Knowledge source refused (source-not-found): no such source')
+  const removeSources = vi.fn(async ({ sourceIds }: { sourceIds: string[] }) => {
+    const refused = sourceIds.filter((id) => refuse.includes(id))
+    if (refused.length > 0) {
+      throw new Error(`Knowledge source refused (source-not-found): ${refused.join(',')}`)
     }
-    const index = present.indexOf(sourceId)
-    const removed = present[index]
-    if (!removed) throw new Error('missing source')
-    present.splice(index, 1)
-    // One stored copy per removed source keeps the aggregate honest arithmetic the assertion can check.
-    return { removed: source(sourceId), prunedContents: [sourceId.padEnd(64, 'b')] }
+    const removed = sourceIds.filter((id) => present.includes(id))
+    present = present.filter((id) => !sourceIds.includes(id))
+    return {
+      removed: removed.map(source),
+      // One stored copy per removed source keeps the arithmetic the assertion checks honest.
+      prunedContents: removed.map((id) => id.padEnd(64, 'b')),
+      missing: sourceIds.filter((id) => !removed.includes(id))
+    }
   })
   ;(window as unknown as { api: unknown }).api = {
     knowledge: {
       listSources,
       registerSource: vi.fn(async () => []),
-      removeSource,
+      removeSource: vi.fn(),
+      removeSources,
       sweepCopies: vi.fn(async () => ({
         scanned: 0,
         kept: 0,
@@ -99,7 +109,7 @@ const mockApi = (ids: string[], refuse: string[] = []): Mocked => {
       }))
     }
   }
-  return { removeSource, listSources }
+  return { removeSources, listSources }
 }
 
 const click = async (container: HTMLElement, selector: string): Promise<void> => {
@@ -132,7 +142,7 @@ describe('KnowledgePanel bulk removal', () => {
     })
   }
 
-  it('removes every ticked source and reports the copies that went with them', async () => {
+  it('removes every ticked source in one store call and reports the copies that went with them', async () => {
     const api = mockApi(['s1', 's2', 's3'])
     await renderPanel()
 
@@ -143,9 +153,10 @@ describe('KnowledgePanel bulk removal', () => {
     await click(container, '[data-testid="knowledge-bulk-remove"]')
     await click(container, '[data-testid="knowledge-bulk-confirm"]')
 
-    expect(api.removeSource).toHaveBeenCalledTimes(2)
-    expect(api.removeSource).toHaveBeenCalledWith({ sourceId: 's1' })
-    expect(api.removeSource).toHaveBeenCalledWith({ sourceId: 's2' })
+    // One call, both ids: this is the property a loop cannot have and the reason the batch was rewritten.
+    expect(api.removeSources).toHaveBeenCalledTimes(1)
+    expect(api.removeSources).toHaveBeenCalledWith({ sourceIds: ['s1', 's2'] })
+    expect(api.removeSources.mock.results[0]?.value).toBeInstanceOf(Promise)
     expect(container.textContent).toContain('Removed 2 source(s); 2 stored copy(ies) pruned.')
     // The list is re-read, not assumed: only the unticked source is left on screen.
     expect(api.listSources).toHaveBeenCalledTimes(2)
@@ -153,7 +164,7 @@ describe('KnowledgePanel bulk removal', () => {
     expect(checkbox(container, 's3')).not.toBeNull()
   })
 
-  it('keeps the refused row ticked and names it, instead of reporting a clean run', async () => {
+  it('says the batch was not applied when a row is refused, and keeps every row ticked', async () => {
     mockApi(['s1', 's2'], ['s2'])
     await renderPanel()
 
@@ -162,11 +173,15 @@ describe('KnowledgePanel bulk removal', () => {
     await click(container, '[data-testid="knowledge-bulk-remove"]')
     await click(container, '[data-testid="knowledge-bulk-confirm"]')
 
-    expect(container.textContent).toContain('Removed 1 source(s); 1 refused: s2.txt:')
+    expect(container.textContent).toContain('The batch was not applied')
+    expect(container.textContent).toContain('Nothing was removed.')
     expect(container.textContent).toContain('source-not-found')
-    // Still there, and still ticked — the retry needs to be aimed at exactly this row.
+    // Both rows survive — the atomic promise cuts both ways — and both stay ticked so a retry is aimed at them.
+    expect(checkbox(container, 's1')?.checked).toBe(true)
     expect(checkbox(container, 's2')?.checked).toBe(true)
-    expect(container.textContent).toContain('Selected 1')
+    expect(container.textContent).toContain('Selected 2')
+    // The retired partial-progress sentence must not come back through any path.
+    expect(container.textContent).not.toContain('refused:')
   })
 
   it('removes nothing on the first click — the ticked set has to be confirmed once', async () => {
@@ -176,7 +191,7 @@ describe('KnowledgePanel bulk removal', () => {
     await click(container, '[data-testid="knowledge-select-row-s1"]')
     await click(container, '[data-testid="knowledge-bulk-remove"]')
 
-    expect(api.removeSource).not.toHaveBeenCalled()
+    expect(api.removeSources).not.toHaveBeenCalled()
     expect(container.querySelector('[data-testid="knowledge-bulk-confirm"]')).not.toBeNull()
   })
 
