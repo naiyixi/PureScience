@@ -709,6 +709,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Supprimer {label}',
   'settings.knowledge.removed': 'Source supprimée ; {count} copie(s) stockée(s) purgée(s).',
   'settings.knowledge.removeFailed': 'Cette source n’a pas pu être supprimée.',
+  'settings.knowledge.sweep': 'Nettoyer les copies inutilisées',
+  'settings.knowledge.swept':
+    '{count} copie(s) inutilisée(s) supprimée(s), {bytes} octet(s) libéré(s).',
+  'settings.knowledge.sweptPartial':
+    '{count} copie(s) inutilisée(s) supprimée(s) ; {failed} n’ont pas pu être supprimées et restent sur le disque.',
+  'settings.knowledge.sweptNone': 'Aucune copie inutilisée à nettoyer.',
+  'settings.knowledge.sweepFailed': 'Le nettoyage des copies inutilisées a échoué.',
   'settings.archived': 'Archivé',
   'settings.appearance': 'Apparence',
   'settings.licensing': 'Licences',

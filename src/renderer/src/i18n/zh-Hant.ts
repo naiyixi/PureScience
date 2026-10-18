@@ -646,6 +646,12 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '移除 {label}',
   'settings.knowledge.removed': '已移除來源；清理了 {count} 份已存副本。',
   'settings.knowledge.removeFailed': '這個來源沒能移除。',
+  'settings.knowledge.sweep': '清理未參照副本',
+  'settings.knowledge.swept': '已刪除 {count} 份未參照副本，釋放 {bytes} 位元組。',
+  'settings.knowledge.sweptPartial':
+    '已刪除 {count} 份未參照副本；另有 {failed} 份無法刪除，仍留在磁碟上。',
+  'settings.knowledge.sweptNone': '沒有需要清理的未參照副本。',
+  'settings.knowledge.sweepFailed': '未參照副本清理失敗。',
   'settings.archived': '已封存',
   'settings.appearance': '外觀',
   'settings.appearanceDesc':

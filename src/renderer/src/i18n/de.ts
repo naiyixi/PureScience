@@ -711,6 +711,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} entfernen',
   'settings.knowledge.removed': 'Quelle entfernt; {count} gespeicherte Kopie(n) gelöscht.',
   'settings.knowledge.removeFailed': 'Diese Quelle konnte nicht entfernt werden.',
+  'settings.knowledge.sweep': 'Nicht verwendete Kopien aufräumen',
+  'settings.knowledge.swept':
+    '{count} nicht verwendete Kopie(n) gelöscht, {bytes} Byte freigegeben.',
+  'settings.knowledge.sweptPartial':
+    '{count} nicht verwendete Kopie(n) gelöscht; {failed} konnten nicht gelöscht werden und liegen weiterhin auf der Festplatte.',
+  'settings.knowledge.sweptNone': 'Keine nicht verwendeten Kopien zum Aufräumen.',
+  'settings.knowledge.sweepFailed': 'Die nicht verwendeten Kopien konnten nicht aufgeräumt werden.',
   'settings.archived': 'Archiviert',
   'settings.appearance': 'Darstellung',
   'settings.licensing': 'Lizenzierung',

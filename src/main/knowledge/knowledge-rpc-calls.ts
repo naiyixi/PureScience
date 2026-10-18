@@ -9,6 +9,7 @@
 
 import {
   KnowledgeValidationError,
+  type KnowledgeCopySweep,
   type KnowledgeOverview,
   type KnowledgeRegistration,
   type KnowledgeSearchResponse,
@@ -23,6 +24,7 @@ export type KnowledgeRpcCalls = {
   listSources(): Promise<KnowledgeOverview>
   renderWiki(folder: string): Promise<KnowledgeWikiResult>
   removeSource(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
+  sweepCopies(): Promise<KnowledgeCopySweep>
 }
 
 const named = async <T>(work: () => Promise<T>): Promise<T> => {
@@ -44,5 +46,6 @@ export const createKnowledgeRpcCalls = (
   registerSource: (request) => named(() => module.register(request)),
   listSources: () => named(() => module.overview()),
   renderWiki: async (folder) => named(async () => wiki.render(folder, await module.list())),
-  removeSource: (sourceId) => named(() => module.remove(sourceId))
+  removeSource: (sourceId) => named(() => module.remove(sourceId)),
+  sweepCopies: () => named(() => module.sweepContents())
 })

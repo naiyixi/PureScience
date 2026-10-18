@@ -63,7 +63,9 @@ describe('renderer contract catalog', () => {
     // move by two while the remote-Web set grows by the rejecting stub each one gets there.
     // 487 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain
     // Web request contracts, so the catalog, the invoke map and the local-Web set each move by two.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(491)
+    // 492 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL): desktop-only, so the catalog and
+    // the preload inventory move by one, and it joins the local-Web "unavailable" set below.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(492)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -123,9 +125,10 @@ describe('renderer contract catalog', () => {
     // 78 before the plugin source channels; the two of them are local-only, so they join this set.
     // 83 with the deployed-plugin catalogue: it is unreachable from the Web surfaces too, so it joins
     // this one rather than a Web installation set.
+    // 88 with the knowledge copy sweep: desktop-only, so the Web installation stays unavailable for it.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(87)
+    ).toHaveLength(88)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
     ).toHaveLength(131)

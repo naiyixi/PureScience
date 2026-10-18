@@ -653,6 +653,12 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.remove': 'Remove {label}',
   'settings.knowledge.removed': 'Source removed; {count} stored copy(ies) pruned.',
   'settings.knowledge.removeFailed': 'That source could not be removed.',
+  'settings.knowledge.sweep': 'Clean unused copies',
+  'settings.knowledge.swept': 'Deleted {count} unused copy(ies), freed {bytes} byte(s).',
+  'settings.knowledge.sweptPartial':
+    'Deleted {count} unused copy(ies); {failed} could not be deleted and are still on disk.',
+  'settings.knowledge.sweptNone': 'No unused copies to delete.',
+  'settings.knowledge.sweepFailed': 'The unused copies could not be swept.',
   'settings.archived': 'Archived',
   'settings.projects': 'Projects',
   'settings.manage': 'Manage',

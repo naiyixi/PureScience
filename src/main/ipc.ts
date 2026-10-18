@@ -2079,6 +2079,9 @@ const createApplicationModules = async (
   ipcMainHandle('knowledge:search', (_event, request: unknown) =>
     knowledgeCalls.search(readKnowledgeSearchRequest(request))
   )
+  // Sweeping orphans takes no arguments: what counts as an orphan is decided from the register itself, on the
+  // main side. A caller that could name the digests to delete would be a caller that could delete any copy.
+  ipcMainHandle('knowledge:sweep-copies', () => knowledgeCalls.sweepCopies())
 
   // Housekeeping, once per start: copies that no source references are deleted. It is deliberately NOT awaited —
   // a slow disk must not delay the window — and its refusal path is loud in the log, because the one thing this
@@ -2086,10 +2089,11 @@ const createApplicationModules = async (
   void knowledgeModule
     .sweepContents()
     .then((outcome) => {
-      if (outcome.pruned.length > 0) {
+      if (outcome.removed.length > 0) {
         knowledgeLog.info('pruned unreferenced knowledge copies', {
           scanned: outcome.scanned,
-          pruned: outcome.pruned.length
+          pruned: outcome.removed.length,
+          bytesFreed: outcome.bytesFreed
         })
       }
     })

@@ -243,6 +243,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   group('knowledge', 'knowledge', [
     ['listSources', 'knowledge:list-sources', ELECTRON], ['registerSource', 'knowledge:register-source', ELECTRON],
     ['removeSource', 'knowledge:remove-source', ELECTRON], ['search', 'knowledge:search', ELECTRON],
+    ['sweepCopies', 'knowledge:sweep-copies', ELECTRON],
   ]),
   group('notifications', 'notifications', [
     ['clearAll', 'notifications:clear-all', ELECTRON], ['deleteItems', 'notifications:delete-items', ELECTRON],

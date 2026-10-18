@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import type {
+  KnowledgeCopySweep,
   KnowledgeOverview,
   KnowledgeRegistration,
   KnowledgeSearchResponse,
@@ -43,7 +44,7 @@ export type KnowledgeModule = {
   list(): Promise<KnowledgeSource[]>
   overview(): Promise<KnowledgeOverview>
   /** Deletes stored copies no registered source references. Aborts on an unreadable register. */
-  sweepContents(): Promise<{ scanned: number; pruned: string[] }>
+  sweepContents(): Promise<KnowledgeCopySweep>
   /** Removes a source and any copy only it referenced; reports what was pruned. */
   remove(sourceId: string): Promise<{ removed: KnowledgeSource; prunedContents: string[] }>
   search(text: string, limit?: number): Promise<KnowledgeSearchResponse>

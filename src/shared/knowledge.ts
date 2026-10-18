@@ -38,6 +38,25 @@ export type KnowledgeOverview = {
   unreadable: boolean
 }
 
+// What sweeping the copy store found. A copy is named by the digest of its own bytes, so a copy no registered
+// source names any more can never answer anything — it is bytes with no reader. Counted rather than summarised,
+// because "we deleted three" and "one would not delete" lead to different actions, and the four buckets below
+// add up to `scanned` (a sweep that cannot account for every entry must not look like it did).
+export type KnowledgeCopySweep = {
+  /** Every entry in `<data root>/knowledge/contents`: digest-named files, plus anything else that sits there. */
+  scanned: number
+  /** Digest-named copies still referenced by a registered URL source — kept, by definition. */
+  kept: number
+  /** Digest-named copies this sweep deleted. */
+  removed: string[]
+  /** Digest-named copies that could not be deleted — named, never counted in `removed` or `bytesFreed`. */
+  failed: string[]
+  /** Bytes actually freed: the sizes of `removed` only. */
+  bytesFreed: number
+  /** Entries that are not digest-named regular files: left alone, counted so the totals still add up. */
+  ignored: number
+}
+
 export type KnowledgeRegistration =
   { kind: 'file'; path: string } | { kind: 'folder'; path: string } | { kind: 'url'; url: string }
 
@@ -49,6 +68,7 @@ export type KnowledgeRefusalCode =
   | 'source-unreadable'
   | 'url-fetch-failed'
   | 'record-unreadable'
+  | 'copy-store-unreadable'
 
 // A named refusal, one per reason a source cannot be registered as asked: an empty read, a redirect loop
 // and a path outside the managed roots are different mistakes and the caller can act on the difference.

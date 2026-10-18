@@ -706,6 +706,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Quitar {label}',
   'settings.knowledge.removed': 'Fuente eliminada; se depuraron {count} copia(s) guardada(s).',
   'settings.knowledge.removeFailed': 'No se pudo eliminar esa fuente.',
+  'settings.knowledge.sweep': 'Limpiar las copias sin usar',
+  'settings.knowledge.swept':
+    'Se eliminaron {count} copia(s) sin usar y se liberaron {bytes} byte(s).',
+  'settings.knowledge.sweptPartial':
+    'Se eliminaron {count} copia(s) sin usar; {failed} no se pudieron eliminar y siguen en el disco.',
+  'settings.knowledge.sweptNone': 'No hay copias sin usar que limpiar.',
+  'settings.knowledge.sweepFailed': 'No se pudieron limpiar las copias sin usar.',
   'settings.archived': 'Archivado',
   'settings.appearance': 'Apariencia',
   'settings.licensing': 'Licencias',

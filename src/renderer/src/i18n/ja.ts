@@ -692,6 +692,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} を削除',
   'settings.knowledge.removed': 'ソースを削除しました。保存済みコピー {count} 件を破棄しました。',
   'settings.knowledge.removeFailed': 'このソースを削除できませんでした。',
+  'settings.knowledge.sweep': '未参照のコピーを整理',
+  'settings.knowledge.swept': '未参照のコピーを {count} 件削除し、{bytes} バイトを解放しました。',
+  'settings.knowledge.sweptPartial':
+    '未参照のコピーを {count} 件削除しましたが、{failed} 件は削除できずディスクに残っています。',
+  'settings.knowledge.sweptNone': '整理する未参照のコピーはありません。',
+  'settings.knowledge.sweepFailed': '未参照のコピーを整理できませんでした。',
   'settings.archived': 'アーカイブ済み',
   'settings.appearance': '外観',
   'settings.licensing': 'ライセンス',

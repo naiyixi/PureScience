@@ -8859,3 +8859,52 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 5. **下一轮第一步**：① 先看会话 v2.7.0 是否已推 + 打了 tag（`git log --oneline origin/main -3` 与
    `gh release list --limit 3`）；落定后把 `42f79e68` rebase 到新的 `origin/main`、重跑定向套件、推 main，
    再按完整 40 位 SHA 读双车道；② 若派发时窗口仍在跑，就地等（不在同一 ref 上叠推送）。
+
+## 一百八十六、本轮追加（执行器，2026-10-18 13:0x–）—— v2.10.0「明确没做」第一条：孤儿副本的**手动清扫入口**（复用既有清扫，不建第二套）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = **`768edd55`**，v2.10.0 已在 08:52 发出、三条车道 completed success，在飞车道 0 条。
+- **上一轮我在 `/tmp/ps-orphan`（基于 `941d6b93`）搭的那套作废、一个字节没提交**：它自带一份
+  `repository.sweepCopies()`，而会话已用 `b1307f21` 交付了 `sweepContents()` ⇒ 交付它会变成**同一族逻辑的第二套**
+  （一处补守卫、另一处没补时，按按钮那一次就是没守卫的那一次）。正解是**扩展既有实现**。
+- 本单元取自 v2.10.0 发布正文的「明确没做、已归档的」第一条逐字：**「没有手动触发清扫的入口（想要一个按钮
+  的话，它得走一遍契约八处，下一版再说）」**。开工先 `grep` 确认缺口真实（`sweep-copies` 在界面/通道面零命中）。
+- 全程在隔离工作树 `/tmp/ps-sweep`（`git worktree add --detach … 768edd55` + 软链 node_modules）；主树那 17 个
+  `specialist/**` 在制路径一个字节没碰；本地 main 落后远端 77 笔（我那 9 笔已被会话收成 `4a61b472` 等），不推。
+
+### 一 交付
+
+| 面 | 内容 |
+| --- | --- |
+| 既有清扫 | `sweepContents()` 返回形状扩到 `{scanned, kept, removed[], failed[], bytesFreed, ignored}`（**四桶相加 = `scanned`**）；目录读失败由「一律当空清扫」改成 `ENOENT` 才算空、其余具名拒 `copy-store-unreadable`；删不掉的按名进 `failed`，不计字节 |
+| 通道 | `knowledge:sweep-copies`（**不收参数**：能点名摘要 = 能删任意副本）；`knowledge-rpc-calls` 沿用既有 `named()` |
+| 渲染面 | preload + `renderer-api.d.ts`（`KnowledgeCopySweep` 是 `import type`）+ 契约目录 `group('knowledge')` |
+| 界面 | 来源区「清理未引用副本」，三态分开：删了 N 份/释放字节、**没有可清的**、**有几份删不掉仍在盘上**；失败走具名拒绝 |
+| 文案 | 9 语各 5 键，各自撰写（非英文占位） |
+
+### 二 门禁与读数（全部实跑；数字取自最后一次改动之后）
+
+| 项 | 读数 |
+| --- | --- |
+| 存储层 | `knowledge-repository-sweep.test.ts` **5 passed**（含桶自洽断言、登记簿坏 ⇒ 字节仍在、只读目录 ⇒ `failed`） |
+| 面板 | `KnowledgePanel.render.test.tsx` **4 passed** |
+| 契约涟漪 | `src/shared src/preload src/renderer/web` ⇒ **141 文件 / 1611 passed**（目录 491→492、preload 491→492、core 246→247、请求 208→209、local-Web unavailable 87→88、生成物遗漏清单 +1） |
+| 类型 | `tsc -p tsconfig.node.json` 与 `-p tsconfig.web.json`（带 `--composite false`）各 **exit 0 / 0 error** |
+| lint | 改动面 `npx eslint --no-cache …` ⇒ **0 error**；i18n 九文件 warning 数**回到基线 25**（我新增的 5 条已清零） |
+| **真机** | `build:e2e` 后 `playwright test e2e/certification/knowledge-copy-sweep.spec.ts` ⇒ **1 passed (5.5s)**：真窗口 + 真本地 HTTP 服务登记 → 种一份孤儿 → 点按钮 → 屏上 `Deleted 1 unused copy(ies), freed N byte(s).`，**磁盘由测试进程自己 readdir 复核**（孤儿没了、被引用的还在） |
+
+### 三 边界（不许读成更强）
+
+- 启动清扫**语义未变**（每次启动一次、不 await、有清理一条日志）；本片只让它的返回值可算、并多一个用户可达触发点。
+- `failed` 只覆盖「存在但删不掉」；「名字不对/是目录」归 `ignored`，界面上不出现数字（只计入 `scanned`）。
+- 只读目录那条用例在 Windows 上 `runIf` 跳过（删文件在该平台不是目录权限语义），跳过的是造法不是断言。
+- 清扫仍只按**摘要名**匹配、不校验内容（v2.10.0 已归档的同一限制，未改）。
+- 本片不占版本号（是否随下一版发由会话的发版窗口决定）。
+
+### 四 下一轮第一步
+
+① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已落定 `specialist/**` 那批；
+③ 未闭项从 v2.10.0 发布正文剩余条目取：**批量移除**、**列表分页**（两条都还在）；清扫「按内容校验」已归档为限制、
+不再取；M2/IC54 仍卡产品决定。

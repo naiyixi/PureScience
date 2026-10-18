@@ -692,6 +692,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': 'Удалить {label}',
   'settings.knowledge.removed': 'Источник удалён; очищено сохранённых копий: {count}.',
   'settings.knowledge.removeFailed': 'Этот источник удалить не удалось.',
+  'settings.knowledge.sweep': 'Очистить неиспользуемые копии',
+  'settings.knowledge.swept': 'Удалено неиспользуемых копий: {count}, освобождено байт: {bytes}.',
+  'settings.knowledge.sweptPartial':
+    'Удалено неиспользуемых копий: {count}; {failed} удалить не удалось, они остались на диске.',
+  'settings.knowledge.sweptNone': 'Неиспользуемых копий для очистки нет.',
+  'settings.knowledge.sweepFailed': 'Не удалось очистить неиспользуемые копии.',
   'settings.archived': 'Архивировано',
   'settings.appearance': 'Внешний вид',
   'settings.licensing': 'Лицензирование',

@@ -1,4 +1,5 @@
 import type {
+  KnowledgeCopySweep,
   KnowledgeOverview,
   KnowledgeRegistration,
   KnowledgeSearchResponse,
@@ -842,6 +843,9 @@ export interface PureScienceAPI {
       removed: KnowledgeSource
       prunedContents: string[]
     }>
+    // Deletes stored copies no registered source names any more; takes no arguments, because which copies are
+    // orphans is decided on the main side from the register itself.
+    sweepCopies(): Promise<KnowledgeCopySweep>
     search(request: { text: string; limit?: number }): Promise<KnowledgeSearchResponse>
   }
   notifications: {

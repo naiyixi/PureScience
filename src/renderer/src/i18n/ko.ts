@@ -686,6 +686,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.remove': '{label} 제거',
   'settings.knowledge.removed': '출처를 제거했습니다. 저장된 사본 {count}개를 정리했습니다.',
   'settings.knowledge.removeFailed': '이 출처를 제거하지 못했습니다.',
+  'settings.knowledge.sweep': '참조되지 않는 사본 정리',
+  'settings.knowledge.swept':
+    '참조되지 않는 사본 {count}개를 삭제하고 {bytes}바이트를 확보했습니다.',
+  'settings.knowledge.sweptPartial':
+    '참조되지 않는 사본 {count}개를 삭제했지만 {failed}개는 삭제하지 못해 디스크에 남아 있습니다.',
+  'settings.knowledge.sweptNone': '정리할 참조되지 않는 사본이 없습니다.',
+  'settings.knowledge.sweepFailed': '참조되지 않는 사본을 정리하지 못했습니다.',
   'settings.archived': '보관됨',
   'settings.appearance': '모양',
   'settings.licensing': '라이선스',

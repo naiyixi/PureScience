@@ -33,7 +33,7 @@ const KnowledgePanel = (): React.JSX.Element => {
   const [location, setLocation] = useState('')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<KnowledgeSearchResponse | undefined>()
-  const [busy, setBusy] = useState<'list' | 'register' | 'search' | undefined>()
+  const [busy, setBusy] = useState<'list' | 'register' | 'search' | 'sweep' | undefined>()
   const [error, setError] = useState<string | undefined>()
   const [note, setNote] = useState<string | undefined>()
 
@@ -84,6 +84,35 @@ const KnowledgePanel = (): React.JSX.Element => {
       setError(undefined)
     } catch (cause) {
       setError(describeError(cause, t('settings.knowledge.removeFailed')))
+    } finally {
+      setBusy(undefined)
+    }
+  }
+
+  // Copies of fetched bodies outlive the rows that named them in two ways: a register that died between writing
+  // the bytes and committing the row, and a deletion that failed. Neither can answer a search, so the sweep
+  // deletes them and reports what it actually freed — including the ones it could NOT delete, which stay on disk.
+  const sweepCopies = async (): Promise<void> => {
+    setBusy('sweep')
+    setNote(undefined)
+    try {
+      const outcome = await window.api.knowledge.sweepCopies()
+      setNote(
+        outcome.failed.length > 0
+          ? t('settings.knowledge.sweptPartial', {
+              count: String(outcome.removed.length),
+              failed: String(outcome.failed.length)
+            })
+          : outcome.removed.length === 0
+            ? t('settings.knowledge.sweptNone')
+            : t('settings.knowledge.swept', {
+                count: String(outcome.removed.length),
+                bytes: String(outcome.bytesFreed)
+              })
+      )
+      setError(undefined)
+    } catch (cause) {
+      setError(describeError(cause, t('settings.knowledge.sweepFailed')))
     } finally {
       setBusy(undefined)
     }
@@ -141,6 +170,15 @@ const KnowledgePanel = (): React.JSX.Element => {
             onClick={() => void loadSources()}
           >
             {t('settings.knowledge.refresh')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            data-testid="knowledge-sweep"
+            disabled={busy !== undefined}
+            onClick={() => void sweepCopies()}
+          >
+            {t('settings.knowledge.sweep')}
           </Button>
         </div>
         {overview === undefined ? (

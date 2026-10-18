@@ -627,6 +627,12 @@ export const zh = {
   'settings.knowledge.remove': '移除 {label}',
   'settings.knowledge.removed': '已移除来源；清理了 {count} 份已存副本。',
   'settings.knowledge.removeFailed': '这个来源没能移除。',
+  'settings.knowledge.sweep': '清理未引用副本',
+  'settings.knowledge.swept': '已删除 {count} 份未引用副本，释放 {bytes} 字节。',
+  'settings.knowledge.sweptPartial':
+    '已删除 {count} 份未引用副本；另有 {failed} 份删不掉，仍留在磁盘上。',
+  'settings.knowledge.sweptNone': '没有需要清理的未引用副本。',
+  'settings.knowledge.sweepFailed': '未引用副本清理失败。',
   'settings.archived': '已归档',
   'settings.projects': '项目',
   'settings.manage': '管理',

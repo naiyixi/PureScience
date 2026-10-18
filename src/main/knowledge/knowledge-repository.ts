@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
+import type { Dirent } from 'node:fs'
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
 import {
   KnowledgeValidationError,
+  type KnowledgeCopySweep,
   type KnowledgeFingerprint,
   type KnowledgeOverview,
   type KnowledgeRegistration,
@@ -14,6 +16,8 @@ import {
 import { isPathInsideOrEqual } from '../storage-root'
 
 const SOURCES_FILE = 'sources.json'
+// A stored copy is named by the digest of its own bytes; anything else in the directory is not a copy.
+const DIGEST_NAME = /^[0-9a-f]{64}$/
 
 // What a fetched URL gives the store: the body we fingerprint and where the request actually landed.
 export type KnowledgeUrlReader = {
@@ -291,35 +295,60 @@ export class KnowledgeRepository {
   // The guard that matters: the register is read FIRST and a register that will not parse aborts the sweep with
   // nothing deleted. An unreadable register looks exactly like "nothing is referenced", and acting on that reading
   // would delete every copy in the store — turning a corrupt file into data loss.
-  async sweepContents(): Promise<{ scanned: number; pruned: string[] }> {
+  //
+  // Counted rather than summarised, because "we deleted three" and "one would not delete" lead to different
+  // actions: the buckets add up to `scanned`, so a sweep that cannot account for an entry cannot look like it did.
+  async sweepContents(): Promise<KnowledgeCopySweep> {
     const snapshot = await this.load()
     const referenced = new Set(
       snapshot.sources
         .filter((source) => source.kind === 'url')
         .map((source) => source.fingerprint.value)
     )
-    let names: string[]
+    let entries: Dirent[]
     try {
-      names = await readdir(this.contentDir)
-    } catch {
-      // No directory means no copies yet — an empty sweep, not an error.
-      return { scanned: 0, pruned: [] }
-    }
-    // Only digest-shaped names are ours to delete. A file someone dropped in here is not this store's copy, and
-    // a sweep that removes it would be deleting data it never wrote.
-    const DIGEST_NAME = /^[0-9a-f]{64}$/
-    const pruned: string[] = []
-    for (const name of names) {
-      if (!DIGEST_NAME.test(name)) continue
-      if (referenced.has(name)) continue
-      try {
-        await rm(join(this.contentDir, name), { force: true })
-        pruned.push(name)
-      } catch {
-        // A copy that will not delete stays and is reported by its absence from `pruned`, never claimed as done.
+      entries = await readdir(this.contentDir, { withFileTypes: true })
+    } catch (error) {
+      // No copy store at all is a real state: nothing was ever fetched, so there is nothing to sweep.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return { scanned: 0, kept: 0, removed: [], failed: [], bytesFreed: 0, ignored: 0 }
       }
+      throw new KnowledgeValidationError(
+        'copy-store-unreadable',
+        'The stored copies could not be read.'
+      )
     }
-    return { scanned: names.length, pruned }
+    let kept = 0
+    let ignored = 0
+    let bytesFreed = 0
+    const removed: string[] = []
+    const failed: string[] = []
+    for (const entry of entries) {
+      // Only digest-shaped regular files are ours to delete. A file someone dropped in here is not this store's
+      // copy, and a sweep that removes it would be deleting data it never wrote.
+      if (!entry.isFile() || !DIGEST_NAME.test(entry.name)) {
+        ignored += 1
+        continue
+      }
+      if (referenced.has(entry.name)) {
+        kept += 1
+        continue
+      }
+      const path = join(this.contentDir, entry.name)
+      let bytes = 0
+      try {
+        bytes = (await stat(path)).size
+        await rm(path, { force: true })
+      } catch {
+        // A copy that will not delete is named: the sweep did not clean it, and saying so is the difference
+        // between "nothing was orphaned" and "one copy is still on disk".
+        failed.push(entry.name)
+        continue
+      }
+      removed.push(entry.name)
+      bytesFreed += bytes
+    }
+    return { scanned: entries.length, kept, removed, failed, bytesFreed, ignored }
   }
 
   // What a session-external reader gets: the sources, plus whether the record itself could be read.
