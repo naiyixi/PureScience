@@ -1095,4 +1095,189 @@ describe('review repository (integration)', () => {
       )
     ).rejects.toThrow(/Claim not found/)
   })
+
+  // Field evidence (2026-10-18, installed app): a Review commit expired against the client's default 5 s
+  // budget at 6,692 ms and lost a Review that had already cost minutes of model time. These two tests pin
+  // the two halves of the fix: the budget is explicit, and the statement count no longer scales with the
+  // number of tracked Findings.
+  it('gives every Review transaction an explicit budget instead of the 5 s client default', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-reviewer-'))
+    const realClient = createProjectDbClient(storageRoot)
+    await ensureProjectSchema(realClient)
+    client = realClient
+
+    const options: unknown[] = []
+    const countingClient = {
+      ...(realClient as unknown as Record<string, unknown>),
+      $transaction: ((callback: (tx: object) => Promise<unknown>, provided: unknown) => {
+        options.push(provided)
+        return realClient.$transaction(
+          (tx) => callback(tx),
+          provided as { timeout: number; maxWait: number }
+        )
+      }) as PrismaClient['$transaction']
+    } as unknown as PrismaClient
+
+    const repository = new ReviewRepository(() => Promise.resolve(countingClient))
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-budget',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(review.id, [checks()[0]!])
+
+    expect(options.length).toBeGreaterThan(0)
+    for (const provided of options) {
+      expect(provided).toEqual({ timeout: 30_000, maxWait: 10_000 })
+    }
+  })
+
+  it('writes a re-assessment of three tracked Findings with a fixed number of statements', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-reviewer-'))
+    const realClient = createProjectDbClient(storageRoot)
+    await ensureProjectSchema(realClient)
+    client = realClient
+
+    const statements: string[] = []
+    const countDelegate = (name: string, delegate: object): object =>
+      new Proxy(delegate, {
+        get(target, operation, receiver) {
+          const value = Reflect.get(target, operation, receiver)
+          if (typeof value !== 'function') return value
+          return (...args: unknown[]) => {
+            statements.push(`${name}.${String(operation)}`)
+            return value.apply(target, args)
+          }
+        }
+      })
+    const countingClient = {
+      ...(realClient as unknown as Record<string, unknown>),
+      $transaction: ((callback: (tx: object) => Promise<unknown>, provided: unknown) => {
+        return realClient.$transaction(
+          (tx) => {
+            const countedTx = {
+              ...(tx as unknown as Record<string, unknown>),
+              review: countDelegate('review', tx.review),
+              finding: countDelegate('finding', tx.finding),
+              reviewFindingDisposition: countDelegate(
+                'reviewFindingDisposition',
+                tx.reviewFindingDisposition
+              )
+            }
+            return callback(countedTx)
+          },
+          provided as { timeout: number; maxWait: number }
+        )
+      }) as PrismaClient['$transaction']
+    } as unknown as PrismaClient
+
+    const repository = new ReviewRepository(() => Promise.resolve(countingClient))
+    const sourceReview = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-batch',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+    await repository.addChecks(sourceReview.id, [
+      { status: 'fail', claim: 'first', evidence: 'e1', sortIndex: 0 },
+      { status: 'warn', claim: 'second', evidence: 'e2', sortIndex: 1 },
+      { status: 'warn', claim: 'third', evidence: 'e3', sortIndex: 2 }
+    ])
+    const [storedSource] = await repository.getReviewsForProjectSession(
+      'project-1',
+      'session-batch'
+    )
+    const sourceFindingIds = storedSource.checks.map((check) => check.id)
+    const assessmentReview = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-batch',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+
+    statements.length = 0
+    await repository.commitScopedSubmission({
+      reviewId: assessmentReview.id,
+      checks: [
+        {
+          status: 'pass',
+          claim: 'first fixed',
+          evidence: 'e1',
+          sourceFindingId: sourceFindingIds[0]!
+        },
+        {
+          status: 'warn',
+          claim: 'second still open',
+          evidence: 'e2',
+          sourceFindingId: sourceFindingIds[1]!
+        },
+        {
+          status: 'warn',
+          claim: 'third still open',
+          evidence: 'e3',
+          sourceFindingId: sourceFindingIds[2]!
+        }
+      ],
+      expectedSourceFindingIds: sourceFindingIds,
+      outcome: 'flagged'
+    })
+
+    // Reads are batched (no per-Finding findUnique) and each distinct effect is one statement. The only
+    // single-row read left is the reviewed Review itself.
+    expect(statements).not.toContain('finding.findUnique')
+    expect(statements).not.toContain('reviewFindingDisposition.findUnique')
+    expect(statements).not.toContain('finding.update')
+    expect(statements.filter((entry) => entry === 'review.findUnique')).toHaveLength(1)
+    expect(statements.filter((entry) => entry === 'finding.findMany')).toHaveLength(1)
+    expect(statements.filter((entry) => entry === 'review.findMany')).toHaveLength(1)
+    expect(statements.filter((entry) => entry === 'finding.updateMany')).toHaveLength(2)
+    expect(
+      statements.filter((entry) => entry === 'reviewFindingDisposition.createMany')
+    ).toHaveLength(1)
+    expect(statements.filter((entry) => entry === 'review.updateMany')).toHaveLength(1)
+    // Fixed shape: the count must not grow with the number of tracked Findings.
+    expect(statements.length).toBeLessThanOrEqual(12)
+  })
+
+  it('retries a transaction that could not start, and never one that expired mid-flight', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-reviewer-'))
+    const realClient = createProjectDbClient(storageRoot)
+    await ensureProjectSchema(realClient)
+    client = realClient
+
+    let attempts = 0
+    let failure: string | undefined
+    const flakyClient = {
+      ...(realClient as unknown as Record<string, unknown>),
+      $transaction: ((callback: (tx: object) => Promise<unknown>, provided: unknown) => {
+        attempts += 1
+        if (failure && attempts === 1) return Promise.reject(new Error(failure))
+        return realClient.$transaction(
+          (tx) => callback(tx),
+          provided as { timeout: number; maxWait: number }
+        )
+      }) as PrismaClient['$transaction']
+    } as unknown as PrismaClient
+
+    const repository = new ReviewRepository(() => Promise.resolve(flakyClient))
+    const review = await repository.createReview({
+      projectId: 'project-1',
+      sessionId: 'session-retry',
+      turnMessageId: 'a1',
+      scope: scope('a1')
+    })
+
+    failure = 'Transaction API error: Unable to start a transaction in the given time.'
+    attempts = 0
+    await repository.updateFindingResolutions(review.id, 'resolved')
+    expect(attempts).toBe(2)
+
+    failure = 'Transaction API error: Transaction already closed: expired transaction.'
+    attempts = 0
+    await expect(repository.updateFindingResolutions(review.id, 'resolved')).rejects.toThrow(
+      /already closed/
+    )
+    expect(attempts).toBe(1)
+  })
 })

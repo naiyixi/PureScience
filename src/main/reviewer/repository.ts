@@ -4,10 +4,13 @@ import { dirname, relative, resolve, sep } from 'node:path'
 
 import type {
   Finding as PrismaFinding,
+  Prisma,
   PrismaClient,
   Review as PrismaReview,
   ReviewEvidence as PrismaReviewEvidence
 } from '@prisma/client'
+
+import { createLogger } from '../logger'
 
 import type {
   CheckStatus,
@@ -91,6 +94,34 @@ const resolveSnapshotStorageKey = (root: string, key: string): string => {
     throw new Error('Invalid Review scope snapshot storage key.')
   }
   return candidate
+}
+
+const log = createLogger('reviewer:repository')
+
+// Interactive-transaction budget for every Review write. The Prisma client default is 5 s, and in the
+// field a Review commit expired at 6,692 ms (and a sibling commit at 6,494 ms) with
+// "Transaction already closed" — the review itself had already cost minutes of model time, so the write
+// budget must not be shorter than the work it wraps. SQLite runs on one connection here, which is why a
+// commit also queues behind whatever ran before it; 30 s bounds that wait without letting a wedged write
+// hold the connection indefinitely.
+const REVIEW_TRANSACTION_OPTIONS = { timeout: 30_000, maxWait: 10_000 } as const
+
+// A transaction that never started changed nothing, so retrying it is safe; a transaction that expired
+// mid-flight may or may not have committed and is deliberately NOT retried — the caller reports it.
+const TRANSACTION_START_FAILURE = 'Unable to start a transaction'
+
+const runTransaction = async <Result>(
+  client: ReviewClient,
+  run: (tx: Prisma.TransactionClient) => Promise<Result>
+): Promise<Result> => {
+  try {
+    return await client.$transaction(run, REVIEW_TRANSACTION_OPTIONS)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.includes(TRANSACTION_START_FAILURE)) throw error
+    log.warn('review transaction could not start — retrying once', { error: message })
+    return client.$transaction(run, REVIEW_TRANSACTION_OPTIONS)
+  }
 }
 
 // Bumps a Review's updatedAt within the caller's transaction. Prisma's @updatedAt tracks writes to the
@@ -333,7 +364,7 @@ class ReviewRepository {
 
     const client = await this.getClient()
 
-    await client.$transaction(async (tx) => {
+    await runTransaction(client, async (tx) => {
       const review = await tx.review.findUnique({ where: { id: reviewId } })
       if (!review) throw new Error(`Review not found: ${reviewId}`)
       const scope = parseJson<TurnScope>(review.scope, EMPTY_SCOPE(review.turnMessageId))
@@ -398,7 +429,7 @@ class ReviewRepository {
     }
 
     const client = await this.getClient()
-    const ownership = await client.$transaction(async (tx) => {
+    const ownership = await runTransaction(client, async (tx) => {
       const assessmentReview = await tx.review.findUnique({ where: { id: input.reviewId } })
       if (!assessmentReview) throw new Error(`Review not found: ${input.reviewId}`)
       if (assessmentReview.lifecycle !== 'running') {
@@ -436,10 +467,71 @@ class ReviewRepository {
         })
       }
 
+      // Tracked checks are read as one batch and their source Reviews are touched with one statement:
+      // per-check round trips are what made this transaction outlive its budget in the field (a
+      // submission with N tracked Findings issued ~4N statements inside the 5 s window).
+      const trackedChecks = input.checks.filter((check) => check.sourceFindingId)
+      const trackedFindingIds = [
+        ...new Set(trackedChecks.map((check) => check.sourceFindingId as string))
+      ]
+      const trackedFindings =
+        trackedFindingIds.length > 0
+          ? await tx.finding.findMany({ where: { id: { in: trackedFindingIds } } })
+          : []
+      const findingById = new Map(trackedFindings.map((row) => [row.id, row]))
+      const sourceReviewIds = [...new Set(trackedFindings.map((row) => row.reviewId))]
+      const sourceReviews =
+        sourceReviewIds.length > 0
+          ? await tx.review.findMany({ where: { id: { in: sourceReviewIds } } })
+          : []
+      const sourceReviewById = new Map(sourceReviews.map((row) => [row.id, row]))
+      const latestDispositions =
+        trackedFindingIds.length > 0
+          ? await tx.reviewFindingDisposition.findMany({
+              where: { sourceFindingId: { in: trackedFindingIds } },
+              orderBy: [{ sourceFindingId: 'asc' }, { sequence: 'desc' }],
+              select: { sourceFindingId: true, sequence: true }
+            })
+          : []
+      // First row seen per Finding is its highest sequence, because the query orders desc within each.
+      const latestSequenceByFinding = new Map<string, number>()
+      for (const row of latestDispositions) {
+        if (!latestSequenceByFinding.has(row.sourceFindingId)) {
+          latestSequenceByFinding.set(row.sourceFindingId, row.sequence)
+        }
+      }
+
+      const eventIdFor = (findingId: string): string =>
+        `review-disposition-${sha256(
+          stableJson({
+            sourceFindingId: findingId,
+            causeReviewId: assessmentReview.id,
+            trigger: 'review_submission'
+          })
+        )}`
+      const existingEvents =
+        trackedFindingIds.length > 0
+          ? await tx.reviewFindingDisposition.findMany({
+              where: { id: { in: trackedFindingIds.map(eventIdFor) } }
+            })
+          : []
+      const existingEventById = new Map(existingEvents.map((row) => [row.id, row]))
+
       const touchedSourceReviewIds = new Set<string>()
-      for (const check of input.checks) {
-        if (!check.sourceFindingId) continue
-        const finding = await tx.finding.findUnique({ where: { id: check.sourceFindingId } })
+      const stillOpenFindingIds: string[] = []
+      const resolvedFindingIds: string[] = []
+      const dispositionsToCreate: Array<{
+        id: string
+        sourceFindingId: string
+        causeReviewId: string
+        sequence: number
+        trigger: ReviewFindingDispositionTrigger
+        outcome: ReviewFindingDispositionOutcome
+        assessedArtifactVersionId: string | null
+      }> = []
+      for (const check of trackedChecks) {
+        const sourceFindingId = check.sourceFindingId as string
+        const finding = findingById.get(sourceFindingId)
         if (
           !finding ||
           (finding.status !== 'warn' && finding.status !== 'fail') ||
@@ -447,7 +539,7 @@ class ReviewRepository {
         ) {
           throw new Error(`Tracked Finding is unavailable: ${check.sourceFindingId}`)
         }
-        const sourceReview = await tx.review.findUnique({ where: { id: finding.reviewId } })
+        const sourceReview = sourceReviewById.get(finding.reviewId)
         if (
           !sourceReview ||
           sourceReview.projectId !== assessmentReview.projectId ||
@@ -458,14 +550,8 @@ class ReviewRepository {
         }
         const dispositionOutcome: ReviewFindingDispositionOutcome =
           check.status === 'pass' ? 'resolved' : 'still_open'
-        const eventId = `review-disposition-${sha256(
-          stableJson({
-            sourceFindingId: finding.id,
-            causeReviewId: assessmentReview.id,
-            trigger: 'review_submission'
-          })
-        )}`
-        const existing = await tx.reviewFindingDisposition.findUnique({ where: { id: eventId } })
+        const eventId = eventIdFor(finding.id)
+        const existing = existingEventById.get(eventId)
         if (existing) {
           if (
             existing.sourceFindingId !== finding.id ||
@@ -478,34 +564,43 @@ class ReviewRepository {
           }
           continue
         }
-        await tx.finding.update({
-          where: { id: finding.id },
-          data:
-            dispositionOutcome === 'still_open'
-              ? { resolution: 'open', reflagCount: { increment: 1 } }
-              : { resolution: 'resolved' }
-        })
-        const latest = await tx.reviewFindingDisposition.findFirst({
-          where: { sourceFindingId: finding.id },
-          orderBy: { sequence: 'desc' },
-          select: { sequence: true }
-        })
-        await tx.reviewFindingDisposition.create({
-          data: {
-            id: eventId,
-            sourceFindingId: finding.id,
-            causeReviewId: assessmentReview.id,
-            sequence: (latest?.sequence ?? 0) + 1,
-            trigger: 'review_submission',
-            outcome: dispositionOutcome,
-            assessedArtifactVersionId: check.artifactVersionId ?? null
-          }
+        if (dispositionOutcome === 'still_open') stillOpenFindingIds.push(finding.id)
+        else resolvedFindingIds.push(finding.id)
+        dispositionsToCreate.push({
+          id: eventId,
+          sourceFindingId: finding.id,
+          causeReviewId: assessmentReview.id,
+          sequence: (latestSequenceByFinding.get(finding.id) ?? 0) + 1,
+          trigger: 'review_submission',
+          outcome: dispositionOutcome,
+          assessedArtifactVersionId: check.artifactVersionId ?? null
         })
         touchedSourceReviewIds.add(sourceReview.id)
       }
 
-      for (const sourceReviewId of touchedSourceReviewIds) {
-        await touchReview(tx, sourceReviewId)
+      // One statement per distinct effect: a re-review that re-assesses 200 Findings writes three
+      // statements, not 200.
+      if (stillOpenFindingIds.length > 0) {
+        await tx.finding.updateMany({
+          where: { id: { in: stillOpenFindingIds } },
+          data: { resolution: 'open', reflagCount: { increment: 1 } }
+        })
+      }
+      if (resolvedFindingIds.length > 0) {
+        await tx.finding.updateMany({
+          where: { id: { in: resolvedFindingIds } },
+          data: { resolution: 'resolved' }
+        })
+      }
+      if (dispositionsToCreate.length > 0) {
+        await tx.reviewFindingDisposition.createMany({ data: dispositionsToCreate })
+      }
+
+      if (touchedSourceReviewIds.size > 0) {
+        await tx.review.updateMany({
+          where: { id: { in: [...touchedSourceReviewIds] } },
+          data: { updatedAt: new Date() }
+        })
       }
       await tx.review.update({
         where: { id: assessmentReview.id },
@@ -592,7 +687,7 @@ class ReviewRepository {
     const client = await this.getClient()
     // One transaction so the finding change and the version bump commit together (or not at all): a
     // partial write leaving new findings under a stale updatedAt would let a focus-load keep old data.
-    await client.$transaction(async (tx) => {
+    await runTransaction(client, async (tx) => {
       await tx.finding.updateMany({
         where: { reviewId, status: { in: ['warn', 'fail'] } },
         data: { resolution }
@@ -609,7 +704,7 @@ class ReviewRepository {
     resolution: FindingResolution
   ): Promise<void> {
     const client = await this.getClient()
-    await client.$transaction(async (tx) => {
+    await runTransaction(client, async (tx) => {
       const updated = await tx.finding.updateMany({
         where: { id: findingId, reviewId, status: { in: ['warn', 'fail'] } },
         data: { resolution }
@@ -625,7 +720,7 @@ class ReviewRepository {
   // re-review can never mutate a finding from another review.
   async incrementReflagCount(reviewId: string, findingId: string): Promise<void> {
     const client = await this.getClient()
-    await client.$transaction(async (tx) => {
+    await runTransaction(client, async (tx) => {
       const updated = await tx.$executeRaw`
         UPDATE "Finding"
         SET "reflagCount" = "reflagCount" + 1
@@ -650,7 +745,7 @@ class ReviewRepository {
     assessedArtifactVersionId?: string
   }): Promise<ReviewFindingDisposition> {
     const client = await this.getClient()
-    const row = await client.$transaction(async (tx) => {
+    const row = await runTransaction(client, async (tx) => {
       const existing = await tx.reviewFindingDisposition.findUnique({
         where: { id: input.eventId }
       })
@@ -728,7 +823,7 @@ class ReviewRepository {
     }
 
     const client = await this.getClient()
-    const rows = await client.$transaction(async (tx) => {
+    const rows = await runTransaction(client, async (tx) => {
       const dispositions: Array<Parameters<typeof toFindingDisposition>[0]> = []
       const reviewIds = new Set<string>()
       for (const input of inputs) {
@@ -922,7 +1017,7 @@ class ReviewRepository {
       throw new Error(`Claim ${rootFindingId} is not a warn/fail check of this session.`)
     }
 
-    await client.$transaction(async (tx) => {
+    await runTransaction(client, async (tx) => {
       const updated = await tx.finding.updateMany({
         where: { id: finding.id, reviewId: finding.reviewId },
         data: { resolution }

@@ -9035,3 +9035,51 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 ② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否又落了新排期；
 ③ 排期外候选只剩 URL 验证频率策略（要口径）⇒ 若无新排期，从「各版自陈的尾巴」与 §四 的取证欠账里挑
 （打包版界面截图 / 打包版库的 WAL 读数 已解封），不要重做本轮已交付的排序筛选。
+
+## 一百八十九、本轮追加（执行器，2026-10-19 04:5x–06:0x）—— 审查落库不再按默认 5 秒预算跑，也不再按 Finding 条数发语句
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = `f44c1d5d`（上一轮我的排序筛选），该 SHA 两条车道**都已 success**（`Nightly` / `Windows Full Test`）；开工时在飞车道 **0 条**。
+- 主工作区仍在会话那条分叉上（本地 `main` = `a0541b03`，10 笔未推、落后远端 94 笔），树上 17 个 `specialist/**` 是它的在制品 ⇒ 全程在隔离工作树 `/tmp/ps-persist`（`--detach f44c1d5d` + 软链 `node_modules`），**主树一个字节没碰**。
+- B 段仍无可做项（A7 / S3 已交付、M2 卡产品决定）；会话 01:40 新落了一份真机审计档
+  `docs/plan-2026-10-19-runtime-audit-and-fixes.md`（在它那条未推的分支上，我按只读引用），其 §5 第 3 条「审查事务 5 s → 30 s 且失败要在面板显式报」正是本单元。
+  **不撞**：会话在改 `specialist/**` 与 `settings/{application-commands,ipc}.ts`，本单元只碰 `src/main/reviewer/repository.ts(-test)`。
+
+### 一 真机证据与根因
+
+见 `docs/evidence/2026-10-19-review-transaction-budget.md` §一/§二（四条日志原文按时间列出）。要点：
+`review persistence failed` 的那次事务在 **6,692 ms** 撞上客户端默认 **5,000 ms** 预算被关闭，审查判决整段丢；
+同一批 8 秒后 `runReview threw unexpectedly` 是默认 `maxWait` 2 s 排不上队；另有两条 `P2028` 落在 `acp` / `notifications`（同一次阻塞的连带）。
+读源：8 处写路径都用 `client.$transaction(fn)`（无第二参数），而 `commitScopedSubmission` 对每条追踪 Finding 逐一 `findUnique`/`update`/`create`/`touchReview` ⇒ ~4N+1 条语句，单连接上排队。
+
+### 二 交付（`src/main/reviewer/repository.ts` + 其测试）
+
+① 8 处事务统一走 `runTransaction(client, fn)`，预算 `{ timeout: 30_000, maxWait: 10_000 }`；
+② 只对「事务根本没起来」重试一次（什么都没执行 ⇒ 安全），`Transaction already closed` **不重试**（可能已提交，重试会重复写）；
+③ 追踪分支改批量：三条 `findMany({id:{in}})` 读齐，写入合并成 `finding.updateMany` ×2 + `reviewFindingDisposition.createMany` + `review.updateMany` ⇒ 语句数固定 7 条，不随 Finding 条数增长；
+④ 三条新用例把这两件事钉住（预算必须显式、语句形状固定、重试只给「没起来」那一类）。
+
+### 三 门禁读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 本文件 | **30 passed**（27 既有 + 3 新增） |
+| review 模块整目录 | **23 文件 / 267 passed**（既有 27 条真 SQLite 集成用例全绿 ⇒ 批量改写没改语义：回滚、跨回合拒绝、disposition 复用、sequence 递增、reflagCount 只动目标行） |
+| 双 typecheck | node / web 各 **exit 0**（`--composite false`，堆 8 GB） |
+| lint | 改动面 **0 problem** |
+| **反向门** | 换回旧实现 ⇒ 新增两条**都红**（`expected undefined to deeply equal { timeout: 30000, maxWait: 10000 }`、`expected [ 'review.findUnique', …(20) ] to not include 'finding.findUnique'`）；换回新实现 30 passed |
+
+### 四 具名未办（每条带 blocked-by 与解封条件）
+
+1. **面板把 Prisma 原文当人话**：`ReviewerCard.tsx:365` 已把 `review.errorMessage` 上屏（所以「要说得出」这一半是架构已覆盖），但内容是 `Transaction API error: … 5000 ms`。要变成九语人话需要新的文案键 + 渲染层按错误族映射。`blocked-by`：无外部依赖，但要一次「失败态真的能造出来」的渲染读数（现成的降级夹具可以喂 error 态）。
+2. **`reviewer:get-for-session` 最长 203 s（读侧）**：读源只到「`flagStaleReviews` 对每条 review 顺序重算 scope 与 artifact 摘要」，**没有**真机对照读数证明时间花在哪一段 ⇒ `blocked-by`：需要一次带分段计时的真机读数（本机内存闸门允许时）。不许先改代码。
+3. **单连接排队本身**（P0-10③ 的根因）：需 WAL + 读池 + 「运行时约束要求同一物理连接」的迁移口径，独立设计，`blocked-by` 设计未定。
+4. **`Finding.reviewId` 无索引**：本机库 `Finding` 801 行 / `Review` 149 行（副本实测），全表扫可忽略 ⇒ 不为此写迁移；`blocked-by`：单项目 Finding 上万的真实读数。
+
+### 五 下一轮第一步
+
+① 读 `/tmp/ci-verdict-<本轮 sha8>.txt`（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否把 `specialist/**` 那批落定、是否又落新排期；
+③ 未闭项按上面第 1 / 2 条挑（都被本机可做的事挡住，不需要外部条件）；**不要重做**本轮的写侧事务预算与语句合并。
+
