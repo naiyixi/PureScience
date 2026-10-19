@@ -4884,5 +4884,27 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': '名前',
   'settings.knowledge.sortBytes': 'サイズ（大きい順）',
   'settings.knowledge.filteredCount': '{total} 件中 {shown} 件を表示',
-  'settings.knowledge.noMatches': 'この絞り込みに一致するソースはありません。'
+  'settings.knowledge.noMatches': 'この絞り込みに一致するソースはありません。',
+  'reviewer.error.persistence':
+    'レビューは実行されましたが、判定をこのプロジェクトに保存できなかったため、今回の結果は残っていません。もう一度実行してください。繰り返し失敗する場合は、下の技術的な詳細にどこで止まったかが書かれています。',
+  'reviewer.error.storage':
+    'このレビューが照合に使う凍結済みの証拠をディスクに書き込めず、判定は保存されませんでした。データフォルダーの空き容量と書き込み権限を確認してから、もう一度実行してください。',
+  'reviewer.error.protocol':
+    'レビューモデルが判定を出さずに停止したため、このターンは実際には検査されていません。もう一度実行してください。',
+  'reviewer.error.provider':
+    'モデル提供元がリクエストを拒否しました（残高・割当・認証情報の問題）。レビューは開始されていません。アカウントを確認してから、もう一度実行してください。',
+  'reviewer.error.runtime':
+    '判定が届く前にレビュー用エージェントとの接続が切れました。もう一度実行してください。',
+  'reviewer.error.timeout':
+    '判定を出す前にレビューが時間切れになりました。もう一度実行するか、このターンを小さく分けてからレビューしてください。',
+  'reviewer.error.unknown':
+    'このパネルが判別できない理由でレビューが失敗しました。元のメッセージは下にあります。',
+  'reviewer.errorShort.persistence': '判定が未保存',
+  'reviewer.errorShort.storage': '証拠が未保存',
+  'reviewer.errorShort.protocol': '判定なし',
+  'reviewer.errorShort.provider': '提供元が拒否',
+  'reviewer.errorShort.runtime': 'エージェント切断',
+  'reviewer.errorShort.timeout': '時間切れ',
+  'reviewer.errorShort.unknown': '原因不明',
+  'reviewer.errorTechnicalDetail': '技術的な詳細'
 }

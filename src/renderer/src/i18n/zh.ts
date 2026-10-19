@@ -4573,7 +4573,26 @@ export const zh = {
   'settings.knowledge.sortLabel': '名称',
   'settings.knowledge.sortBytes': '体积（大→小）',
   'settings.knowledge.filteredCount': '显示 {shown} / {total} 条',
-  'settings.knowledge.noMatches': '没有符合筛选条件的来源。'
+  'settings.knowledge.noMatches': '没有符合筛选条件的来源。',
+  'reviewer.error.persistence':
+    '审查已经跑完，判决却没能写进项目库，这一轮的结果没有留下。可以重新运行审查；若反复失败，下方技术详情里写着具体卡在哪一步。',
+  'reviewer.error.storage':
+    '这次审查用来比对的冻结证据没能写入磁盘，判决因此没有保留。检查数据目录的剩余空间和写入权限，再重新运行。',
+  'reviewer.error.protocol':
+    '审查模型没有提交任何结论就停了，这一轮其实没有得到检查。重新运行一次审查。',
+  'reviewer.error.provider':
+    '模型服务拒绝了这次请求（余额、配额或凭据问题），审查没有真正开始。确认账号状态后重新运行。',
+  'reviewer.error.runtime': '与审查智能体的连接在结论返回前断开了。重新运行一次审查。',
+  'reviewer.error.timeout': '审查在给出结论前用尽了时间。可以重新运行，或把这一轮拆小后再审。',
+  'reviewer.error.unknown': '审查失败，原因不在这个面板认得的几类里。原始信息见下方。',
+  'reviewer.errorShort.persistence': '判决未落库',
+  'reviewer.errorShort.storage': '证据未落盘',
+  'reviewer.errorShort.protocol': '没有结论',
+  'reviewer.errorShort.provider': '模型服务拒绝',
+  'reviewer.errorShort.runtime': '智能体断连',
+  'reviewer.errorShort.timeout': '超时',
+  'reviewer.errorShort.unknown': '原因未知',
+  'reviewer.errorTechnicalDetail': '技术详情'
 }
 
 export type ZhKey = keyof typeof zh

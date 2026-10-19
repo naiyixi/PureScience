@@ -4517,5 +4517,24 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': '名稱',
   'settings.knowledge.sortBytes': '大小（大→小）',
   'settings.knowledge.filteredCount': '顯示 {shown} / {total} 筆',
-  'settings.knowledge.noMatches': '沒有符合篩選條件的來源。'
+  'settings.knowledge.noMatches': '沒有符合篩選條件的來源。',
+  'reviewer.error.persistence':
+    '審查已經跑完，判決卻沒能寫進專案庫，這一輪的結果沒有留下。可以重新執行審查；若反覆失敗，下方技術詳情裡寫著具體卡在哪一步。',
+  'reviewer.error.storage':
+    '這次審查用來比對的凍結證據沒能寫入磁碟，判決因此沒有保留。檢查資料目錄的剩餘空間與寫入權限，再重新執行。',
+  'reviewer.error.protocol':
+    '審查模型沒有提交任何結論就停了，這一輪其實沒有得到檢查。重新執行一次審查。',
+  'reviewer.error.provider':
+    '模型服務拒絕了這次請求（餘額、配額或憑據問題），審查沒有真正開始。確認帳號狀態後重新執行。',
+  'reviewer.error.runtime': '與審查智慧體的連線在結論返回前斷開了。重新執行一次審查。',
+  'reviewer.error.timeout': '審查在給出結論前用盡了時間。可以重新執行，或把這一輪拆小後再審。',
+  'reviewer.error.unknown': '審查失敗，原因不在這個面板認得的幾類裡。原始資訊見下方。',
+  'reviewer.errorShort.persistence': '判決未落庫',
+  'reviewer.errorShort.storage': '證據未落盤',
+  'reviewer.errorShort.protocol': '沒有結論',
+  'reviewer.errorShort.provider': '模型服務拒絕',
+  'reviewer.errorShort.runtime': '智慧體斷線',
+  'reviewer.errorShort.timeout': '逾時',
+  'reviewer.errorShort.unknown': '原因未知',
+  'reviewer.errorTechnicalDetail': '技術詳情'
 }

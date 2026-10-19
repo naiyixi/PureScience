@@ -991,6 +991,63 @@ describe('ReviewerCard — error card', () => {
     expect(detail).toBeTruthy()
     expect(detail?.textContent).toContain('Argument `severity` is missing.')
   })
+
+  // What the panel received in the field was this, verbatim (installed app's Review row): a framework dump
+  // naming a path inside the packaged bundle. The card has to say what happened in words a reader of a
+  // review can act on, and keep the dump only as labelled evidence.
+  const fieldPrismaError =
+    'Invalid `tx.review.update()` invocation in\n' +
+    '/Applications/PureScience.app/Contents/Resources/app.asar/out/main/ipc-CLnmvMls.js:2029:23\n' +
+    'Transaction API error: Transaction already closed: A query cannot be executed on an expired ' +
+    'transaction. The timeout for this transaction was 5000 ms, however 6692 ms passed since the start ' +
+    'of the transaction.'
+
+  it('names the kind of failure in the status line and explains it, keeping the raw text as evidence', async () => {
+    const review = makeReview({
+      lifecycle: 'error',
+      outcome: null,
+      errorMessage: fieldPrismaError,
+      checks: []
+    })
+    await act(async () => {
+      root.render(<ReviewerCard review={review} />)
+    })
+
+    // The collapsed line now says whether the turn was checked: a lost verdict, not just "an error".
+    expect(container.textContent).toContain('Review error · verdict not saved')
+    expect(container.textContent).not.toContain('Invalid `tx.')
+
+    const headerBtn = container.querySelector('button')
+    await act(async () => {
+      headerBtn!.click()
+    })
+
+    const plain = container.querySelector('[data-testid="reviewer-error-plain"]')
+    expect(plain?.textContent).toContain('could not be saved to this project')
+    // Raw output is explained, never replaced.
+    const detail = container.querySelector('[data-testid="reviewer-error-detail"]')
+    expect(detail?.textContent).toContain('Transaction already closed')
+    expect(detail?.textContent).toContain('Technical details')
+  })
+
+  it('admits an unrecognised cause instead of guessing one', async () => {
+    const review = makeReview({
+      lifecycle: 'error',
+      outcome: null,
+      errorMessage: 'Something else entirely went wrong.',
+      checks: []
+    })
+    await act(async () => {
+      root.render(<ReviewerCard review={review} defaultExpanded />)
+    })
+
+    expect(container.textContent).toContain('Review error · cause unknown')
+    const plain = container.querySelector('[data-testid="reviewer-error-plain"]')
+    expect(plain?.textContent).toContain('does not recognise')
+    expect(container.querySelector('[data-testid="reviewer-error-detail"]')?.textContent).toContain(
+      'Something else entirely went wrong.'
+    )
+  })
 })
 
 describe('ReviewerCard — stale review', () => {

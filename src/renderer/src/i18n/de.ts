@@ -5053,5 +5053,27 @@ export const de: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': 'Name',
   'settings.knowledge.sortBytes': 'Größe, größte zuerst',
   'settings.knowledge.filteredCount': '{shown} von {total} angezeigt',
-  'settings.knowledge.noMatches': 'Keine Quelle passt zu diesem Filter.'
+  'settings.knowledge.noMatches': 'Keine Quelle passt zu diesem Filter.',
+  'reviewer.error.persistence':
+    'Das Urteil wurde erstellt, ließ sich aber nicht in diesem Projekt speichern – das Ergebnis dieses Laufs ist verloren. Führen Sie die Prüfung erneut aus; scheitert sie wiederholt, benennen die technischen Details unten den genauen Schritt.',
+  'reviewer.error.storage':
+    'Die eingefrorenen Belege, gegen die diese Prüfung abgleicht, ließen sich nicht auf die Festplatte schreiben – das Urteil wurde nicht behalten. Prüfen Sie freien Speicherplatz und Schreibrechte des Datenordners und führen Sie die Prüfung erneut aus.',
+  'reviewer.error.protocol':
+    'Das Prüfmodell hat gestoppt, ohne ein Urteil abzugeben – dieser Durchgang wurde also nicht geprüft. Führen Sie die Prüfung erneut aus.',
+  'reviewer.error.provider':
+    'Der Modellanbieter hat die Anfrage abgelehnt (Guthaben, Kontingent oder Zugangsdaten) – die Prüfung hat nie begonnen. Prüfen Sie das Anbieterkonto und führen Sie sie dann erneut aus.',
+  'reviewer.error.runtime':
+    'Die Verbindung zum Prüf-Agenten wurde geschlossen, bevor ein Urteil ankam. Führen Sie die Prüfung erneut aus.',
+  'reviewer.error.timeout':
+    'Der Prüfung ging die Zeit aus, bevor ein Urteil vorlag. Führen Sie sie erneut aus oder prüfen Sie diesen Durchgang in kleineren Teilen.',
+  'reviewer.error.unknown':
+    'Die Prüfung ist aus einem Grund gescheitert, den dieses Panel nicht kennt. Die Rohmeldung steht unten.',
+  'reviewer.errorShort.persistence': 'Urteil nicht gespeichert',
+  'reviewer.errorShort.storage': 'Belege nicht geschrieben',
+  'reviewer.errorShort.protocol': 'kein Urteil',
+  'reviewer.errorShort.provider': 'Anbieter abgelehnt',
+  'reviewer.errorShort.runtime': 'Agent getrennt',
+  'reviewer.errorShort.timeout': 'Zeitüberschreitung',
+  'reviewer.errorShort.unknown': 'Ursache unbekannt',
+  'reviewer.errorTechnicalDetail': 'Technische Details'
 }

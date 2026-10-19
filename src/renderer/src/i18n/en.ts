@@ -4912,5 +4912,27 @@ export const en: Record<ZhKey, string> = {
   'settings.knowledge.sortLabel': 'Name',
   'settings.knowledge.sortBytes': 'Size, largest first',
   'settings.knowledge.filteredCount': 'Showing {shown} of {total}',
-  'settings.knowledge.noMatches': 'No sources match this filter.'
+  'settings.knowledge.noMatches': 'No sources match this filter.',
+  'reviewer.error.persistence':
+    'The verdict was produced but could not be saved to this project, so the result of this run is gone. Re-run the review; if it keeps failing, the technical details below name the exact step.',
+  'reviewer.error.storage':
+    'The frozen evidence this review checks against could not be written to disk, so the verdict was not kept. Check free space and write permission for the data folder, then re-run.',
+  'reviewer.error.protocol':
+    'The reviewer model stopped before submitting any verdict, so this turn was not actually checked. Re-run the review.',
+  'reviewer.error.provider':
+    'The model provider refused the request (balance, quota or credentials), so the review never started. Check the provider account, then re-run.',
+  'reviewer.error.runtime':
+    'The connection to the reviewer agent closed before a verdict arrived. Re-run the review.',
+  'reviewer.error.timeout':
+    'The review ran out of time before producing a verdict. Re-run it, or review this turn in smaller pieces.',
+  'reviewer.error.unknown':
+    'The review failed for a reason this panel does not recognise. The raw message is below.',
+  'reviewer.errorShort.persistence': 'verdict not saved',
+  'reviewer.errorShort.storage': 'evidence not written',
+  'reviewer.errorShort.protocol': 'no verdict',
+  'reviewer.errorShort.provider': 'provider refused',
+  'reviewer.errorShort.runtime': 'agent disconnected',
+  'reviewer.errorShort.timeout': 'timed out',
+  'reviewer.errorShort.unknown': 'cause unknown',
+  'reviewer.errorTechnicalDetail': 'Technical details'
 }

@@ -9145,3 +9145,65 @@ vitest 里直调 `SessionRepository.loadSession` 会因 `decodeDataPath(path, da
 ① `git fetch` + `git status --short` + `git log --oneline origin/main -6`；② 未闭项优先「面板把 Prisma 原文当人话」
 （`ReviewerCard.tsx` 已上屏 `review.errorMessage`，缺的是按错误族映射的九语文案 + 一条失败态渲染读数）；
 ③ **禁重做**本轮的读侧分段日志与上一轮的写侧事务预算/语句合并。
+
+## 一百九十一、本轮追加（执行器，2026-10-19 10:1x–12:4x）—— 审查卡片的失败态：把 ORM 原文换成一句人话，原文仍作证据留着
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步读上一轮记事本三条：`round-outcome` 说代码与真机读数已落、**未提交**，`round-next` 给了四步。本轮照它续做，**不重做**。
+- `origin/main` = `f4a5eba8`（上一轮我的读侧分段日志），该 SHA 的 Nightly 与 Windows Full Test 上一轮已核为**双绿**；本轮开机**未再新推**。
+- 主工作区仍停在会话那条与远端分叉的本地 `main`（`a0541b03`），树上 20 个 `specialist/**`、`settings/**`、`preload/**` 是它的在制品
+  ⇒ 全程在隔离工作树 `/tmp/ps-reviewerr`（`--detach f4a5eba8` + 软链 `node_modules`），**主树一个字节没碰**（收尾时复核仍 20 条、全是它的文件）。
+- 上一轮那支全量 vitest 被会话结束时一并杀掉（`/tmp/vitest-full.log` 只剩 `EXIT=143`，无 `Test Files` 汇总行）⇒ **那份读数作废，本轮重跑**。
+
+### 一 缺陷的真机依据（不是推断）
+
+装好的 `/Applications/PureScience.app` 自己的库里，`lifecycle='error'` 的审查 **5 条、4 种原文**，最糟的一条是
+`Invalid \`tx.review.update()\` invocation in /Applications/PureScience.app/Contents/Resources/app.asar/out/main/ipc-CLnmvMls.js:2029:23 … Transaction already closed: … The timeout for this transaction was 5000 ms, however 6692 ms passed…`
+——读者被塞了一段打包产物内部路径与一段指到代码行的 ORM 报错，而这一族**恰恰最该说清楚**（判决已产出、只是没落库，重跑大概率就好）。
+其余三条：`API Error: 402 Insufficient Balance`、`Reviewer stopped without calling submit_findings.`、`ACP connection closed`（×2）；开发库另有 `reviewer session timed out before stopping`。
+
+### 二 交付（15 个路径：4 新 + 11 改）
+
+1. `src/renderer/src/lib/reviewer-error-copy.ts`（新）—— 纯函数 `classifyReviewError`：七族 `persistence/storage/protocol/provider/runtime/timeout/unknown`，
+   匹配串**逐条引用本仓生产者的真字面量**。**顺序是契约**：落库失败的原文自带 `The timeout for this transaction was 5000 ms`，
+   所以 persistence 必须排在 timeout 之前，否则把「没存下」误读成「太慢」。认不出 ⇒ `unknown`，不猜族。
+2. `ReviewerCard.tsx` —— 折叠行 `Review error` → `Review error · <族短标签>`；展开后先一句可行动的说明（`reviewer-error-plain`），
+   原文放进带 `Technical details` 标签的块（`reviewer-error-detail` 仍在原容器上，旧断言不动）。
+3. 文案 **15 键 × 9 语**（7 长句 + 7 短标签 + 1 标签），由 `scripts/add-i18n-keys.py` 写入并自证九文件齐平；zh 值均不等于 en 值。
+4. 用例：`reviewer-error-copy.test.ts`（5 条真机原文各一例 + 顺序反例 + 快照族独立 + `unknown` 不借别人的句子）、
+   `ReviewerCard.render.test.tsx` 新增 2 例、认证 spec `e2e/certification/reviewer-error-copy.spec.ts`（真窗口 + 应用自己的 Prisma 客户端植入真行 + 重读）。
+5. 证据档 `docs/evidence/2026-10-19-review-error-copy.md`。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后）
+
+| 项 | 读数 |
+| --- | --- |
+| 真机（`build:e2e` 后跑认证 spec，真窗口 / 真 Prisma 行 / 真重读） | **1 passed (14.1 s)**：折叠行 `Reviewer · Review error · verdict not saved`；plain 句 `The verdict was produced but could not be saved to this project, …`；技术块 **514 字符**、含 `Transaction already closed` |
+| **反向门** | 换回旧 `ReviewerCard.tsx` ⇒ 新用例红在 `expected 'Reviewer·Review error' to contain 'Review error · verdict not saved'`（这条守的是「族短标签真的上屏」，不是文案本身） |
+| 定向 vitest（分类器 + 卡片 + i18n 三套） | **6 文件 / 120 passed** |
+| 双 typecheck（`tsconfig.node` / `tsconfig.web`） | 各 **EXIT=0** |
+| 全仓 lint（CI 同口径 `npx eslint --no-cache .`） | **0 error** / 129 warning（warning 是仓库既有基线；本批未新增） |
+| **全量 vitest**（隔离工作树，`--maxWorkers=4`） | **1343 文件通过 / 16 跳过（1359）；17170 用例通过 / 207 跳过（17377）；EXIT=0**，426.8 s |
+
+### 四 这轮咬到的三个坑（都不是产品缺陷，但都会把人引错）
+
+1. **共享树里的九语字典不是 main 的**：本地分叉 `main` 的九语字典比 main 少 139–148 行；拷进隔离工作树后 `tsc -p tsconfig.web.json` 一次报 **125** 个错，
+   全落在别人负责的页面（`KnowledgePanel.tsx` 65 条…）。判据：错的文件我一个字没碰、`git diff` 显示是**净删除**。修法＝在隔离工作树的 main 版本上重插键。
+2. **磁盘会话文件不再存 `messages`**（只落 `conversationGraph`，读时投影）⇒ spec 首版读到 `messages=0` 而文档明明存在；改用产品自己的 `normalizeSessionFile()`，不写第二份投影。
+3. **`text-transform: uppercase` 会改 `innerText`** ⇒ 标签断言用 `/technical details/i`，不是产品缺陷。
+
+### 五 边界（不许读成更强）
+
+- 本单元只治**渲染侧说人话**，不治各族自身的故障率：`persistence` 的 30 s 预算与语句形状是 `c8b5c409` 的事；`provider`（402 余额）与 `runtime`（ACP 断连）各有成因。
+- 分类依据是**原文文本**、不是结构化字段（加 `Review.errorKind` 要动 Prisma 迁移 + 契约目录 + 全部计数面，连锁不划算）。代价：生产者改字面量 ⇒ 退化成 `unknown`，
+  **退化是安全的**（不误报原因），且 5 条真机原文已各自钉成用例，改字面量会先红。
+- **未取**：非英文界面下的真机卡片（真机读数只跑了英文窗口 `--lang=en-US`，本仓 e2e 既定口径）；这一格姓「未取」不姓「通过」。
+- `ReviewerCard.tsx` 里有一处与本批无关的 prettier 折行（`t(warnFailCount === 1 ? … )` 的参数换行），随本批一起进了提交，**点名在此**，不是功能改动。
+
+### 六 下一轮第一步
+
+① `git fetch` + `git status --short` + `git log --oneline origin/main -6`，并核本笔推送的 Nightly + Windows Full Test（完整 40 位 SHA）；
+② 仍未归因的那一半（上一轮 §五 单列的）：`sessions:save-session` 118.9 s（`writeMs` 46.2 / `authorityMs` 42.2 / `aftermathMs` 17.0 / `fileIndexMs` 11.4）、
+`notebook:state` 76.6 s —— 各自有分段读数，取数先行、不许先改代码；
+③ **禁重做**：审查读侧分段日志（§一百九十）、写侧事务预算与语句合并（§一百八十九）、本轮的失败态说人话。

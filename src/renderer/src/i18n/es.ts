@@ -4992,5 +4992,27 @@ export const es: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': 'Nombre',
   'settings.knowledge.sortBytes': 'Tamaño, mayor primero',
   'settings.knowledge.filteredCount': 'Mostrando {shown} de {total}',
-  'settings.knowledge.noMatches': 'Ninguna fuente coincide con este filtro.'
+  'settings.knowledge.noMatches': 'Ninguna fuente coincide con este filtro.',
+  'reviewer.error.persistence':
+    'El veredicto se produjo pero no se pudo guardar en este proyecto, así que el resultado de esta pasada se ha perdido. Vuelve a ejecutar la revisión; si falla otra vez, los detalles técnicos de abajo indican el paso exacto.',
+  'reviewer.error.storage':
+    'Las pruebas congeladas contra las que contrasta esta revisión no se pudieron escribir en disco, así que el veredicto no se conservó. Comprueba el espacio libre y el permiso de escritura de la carpeta de datos y vuelve a ejecutar la revisión.',
+  'reviewer.error.protocol':
+    'El modelo de revisión se detuvo sin entregar ningún veredicto, así que este turno no se llegó a comprobar. Vuelve a ejecutar la revisión.',
+  'reviewer.error.provider':
+    'El proveedor del modelo rechazó la petición (saldo, cuota o credenciales), así que la revisión nunca empezó. Comprueba la cuenta del proveedor y vuelve a ejecutarla.',
+  'reviewer.error.runtime':
+    'La conexión con el agente de revisión se cerró antes de que llegara un veredicto. Vuelve a ejecutar la revisión.',
+  'reviewer.error.timeout':
+    'La revisión se quedó sin tiempo antes de emitir un veredicto. Vuelve a ejecutarla o divide este turno en partes más pequeñas.',
+  'reviewer.error.unknown':
+    'La revisión falló por un motivo que este panel no reconoce. El mensaje original está abajo.',
+  'reviewer.errorShort.persistence': 'veredicto sin guardar',
+  'reviewer.errorShort.storage': 'pruebas sin escribir',
+  'reviewer.errorShort.protocol': 'sin veredicto',
+  'reviewer.errorShort.provider': 'proveedor rechazó',
+  'reviewer.errorShort.runtime': 'agente desconectado',
+  'reviewer.errorShort.timeout': 'tiempo agotado',
+  'reviewer.errorShort.unknown': 'causa desconocida',
+  'reviewer.errorTechnicalDetail': 'Detalles técnicos'
 }

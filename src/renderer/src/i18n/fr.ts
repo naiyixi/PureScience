@@ -5023,5 +5023,27 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': 'Nom',
   'settings.knowledge.sortBytes': 'Taille, les plus volumineuses d’abord',
   'settings.knowledge.filteredCount': '{shown} sur {total} affichés',
-  'settings.knowledge.noMatches': 'Aucune source ne correspond à ce filtre.'
+  'settings.knowledge.noMatches': 'Aucune source ne correspond à ce filtre.',
+  'reviewer.error.persistence':
+    'Le verdict a été produit mais n’a pas pu être enregistré dans ce projet : le résultat de cette passe est perdu. Relancez la revue ; si elle échoue encore, les détails techniques ci-dessous indiquent l’étape exacte.',
+  'reviewer.error.storage':
+    'Les preuves figées sur lesquelles s’appuie cette revue n’ont pas pu être écrites sur le disque : le verdict n’a pas été conservé. Vérifiez l’espace libre et les droits d’écriture du dossier de données, puis relancez la revue.',
+  'reviewer.error.protocol':
+    'Le modèle de revue s’est arrêté sans rendre de verdict : ce tour n’a donc pas été vérifié. Relancez la revue.',
+  'reviewer.error.provider':
+    'Le fournisseur de modèle a refusé la requête (solde, quota ou identifiants) : la revue n’a jamais démarré. Vérifiez le compte du fournisseur, puis relancez-la.',
+  'reviewer.error.runtime':
+    'La connexion à l’agent de revue s’est fermée avant l’arrivée d’un verdict. Relancez la revue.',
+  'reviewer.error.timeout':
+    'La revue a manqué de temps avant de rendre un verdict. Relancez-la, ou découpez ce tour en parties plus petites.',
+  'reviewer.error.unknown':
+    'La revue a échoué pour une raison que ce panneau ne reconnaît pas. Le message brut se trouve ci-dessous.',
+  'reviewer.errorShort.persistence': 'verdict non enregistré',
+  'reviewer.errorShort.storage': 'preuves non écrites',
+  'reviewer.errorShort.protocol': 'aucun verdict',
+  'reviewer.errorShort.provider': 'fournisseur refusé',
+  'reviewer.errorShort.runtime': 'agent déconnecté',
+  'reviewer.errorShort.timeout': 'délai dépassé',
+  'reviewer.errorShort.unknown': 'cause inconnue',
+  'reviewer.errorTechnicalDetail': 'Détails techniques'
 }

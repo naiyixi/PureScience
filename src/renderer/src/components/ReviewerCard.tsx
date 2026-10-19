@@ -16,6 +16,11 @@ import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { PureScienceThinkingIndicator } from '@/components/PureScienceThinkingIndicator'
 import { HumanEvidenceSection } from '@/components/HumanEvidenceSection'
+import {
+  classifyReviewError,
+  reviewErrorCopyKey,
+  reviewErrorShortKey
+} from '@/lib/reviewer-error-copy'
 
 import type { ReviewWithChecks, ReviewCheck, GoToTranscriptIntent } from '../../../shared/reviewer'
 
@@ -229,10 +234,14 @@ export const ReviewerCard = ({
     )
 
   // A complete review is expandable if it has any checks; an error review is expandable if it carries
-  // a message (kept out of the status bar so a verbose Prisma-style error doesn't overflow the line).
+  // a message (kept out of the status bar so a verbose framework error doesn't overflow the line).
   const hasErrorDetail = isError && Boolean(review.errorMessage)
   const canExpand = (isComplete && totalCheckCount > 0) || hasErrorDetail
   const isFlagged = isComplete && hasWarnOrFail
+
+  // What kind of failure this was, so the reader gets a sentence instead of the raw layer output. The
+  // classifier only names a cause it can match; anything else stays 'unknown' (see reviewer-error-copy).
+  const errorFamily = isError ? classifyReviewError(review.errorMessage) : 'unknown'
 
   // The turn changed after this review ran (e.g. an artifact was edited) — the verdict may not
   // describe the current turn. Computed at load time (see flagStaleReviews); only meaningful for a
@@ -241,14 +250,15 @@ export const ReviewerCard = ({
 
   // Compact summary line.
   const summaryText = (): string => {
-    if (isError) return t('reviewer.summaryError')
+    // An error names what kind of failure it was: "review error · verdict not saved" tells the reader
+    // whether the turn was checked at all, which the bare "review error" did not.
+    if (isError) return `${t('reviewer.summaryError')} · ${t(reviewErrorShortKey(errorFamily))}`
     if (isComplete && !hasWarnOrFail)
       return isStale ? t('reviewer.summaryCleanOutdated') : t('reviewer.summaryClean')
     if (isComplete && hasWarnOrFail) {
-      const base = t(
-        warnFailCount === 1 ? 'reviewer.summaryFinding' : 'reviewer.summaryFindings',
-        { count: warnFailCount }
-      )
+      const base = t(warnFailCount === 1 ? 'reviewer.summaryFinding' : 'reviewer.summaryFindings', {
+        count: warnFailCount
+      })
       return isStale ? t('reviewer.summaryOutdated', { summary: base }) : base
     }
     return t('reviewer.summaryPending')
@@ -354,13 +364,23 @@ export const ReviewerCard = ({
         </div>
       )}
 
-      {/* Expanded error detail: full message in a scrollable monospace block (kept out of the status bar). */}
+      {/* Expanded error detail: what happened, in the reader's language, then the raw layer output.
+          The raw message is always kept — the panel explains it, it never replaces the evidence. */}
       {hasErrorDetail && expanded && (
-        <div className="mt-2">
+        <div className="mt-2 space-y-2">
+          <p
+            className="rounded-lg bg-bg-000 p-3 text-xs leading-relaxed text-text-200"
+            data-testid="reviewer-error-plain"
+          >
+            {t(reviewErrorCopyKey(errorFamily))}
+          </p>
           <div
             className="max-h-48 overflow-auto rounded-lg bg-bg-000 p-3"
             data-testid="reviewer-error-detail"
           >
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-text-400">
+              {t('reviewer.errorTechnicalDetail')}
+            </div>
             <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-text-300">
               {review.errorMessage}
             </pre>

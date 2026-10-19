@@ -4800,5 +4800,27 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.knowledge.sortLabel': '이름',
   'settings.knowledge.sortBytes': '크기(큰 것부터)',
   'settings.knowledge.filteredCount': '{total}개 중 {shown}개 표시',
-  'settings.knowledge.noMatches': '이 필터에 맞는 출처가 없습니다.'
+  'settings.knowledge.noMatches': '이 필터에 맞는 출처가 없습니다.',
+  'reviewer.error.persistence':
+    '리뷰는 실행됐지만 판정을 이 프로젝트에 저장하지 못해 이번 결과가 남지 않았습니다. 리뷰를 다시 실행하세요. 계속 실패하면 아래 기술 세부 정보에 어느 단계에서 멈췄는지 적혀 있습니다.',
+  'reviewer.error.storage':
+    '이 리뷰가 대조에 쓰는 동결된 증거를 디스크에 쓰지 못해 판정이 저장되지 않았습니다. 데이터 폴더의 여유 공간과 쓰기 권한을 확인한 뒤 다시 실행하세요.',
+  'reviewer.error.protocol':
+    '리뷰 모델이 판정을 내지 않은 채 멈춰서 이 턴은 실제로 검사되지 않았습니다. 리뷰를 다시 실행하세요.',
+  'reviewer.error.provider':
+    '모델 제공자가 요청을 거부했습니다(잔액, 할당량 또는 자격 증명 문제). 리뷰는 시작되지 않았습니다. 계정을 확인한 뒤 다시 실행하세요.',
+  'reviewer.error.runtime':
+    '판정이 도착하기 전에 리뷰 에이전트와의 연결이 끊겼습니다. 리뷰를 다시 실행하세요.',
+  'reviewer.error.timeout':
+    '판정을 내기 전에 리뷰 시간이 초과되었습니다. 다시 실행하거나 이 턴을 더 작게 나눠 리뷰하세요.',
+  'reviewer.error.unknown':
+    '이 패널이 인식하지 못하는 이유로 리뷰가 실패했습니다. 원본 메시지는 아래에 있습니다.',
+  'reviewer.errorShort.persistence': '판정 미저장',
+  'reviewer.errorShort.storage': '증거 미기록',
+  'reviewer.errorShort.protocol': '판정 없음',
+  'reviewer.errorShort.provider': '제공자 거부',
+  'reviewer.errorShort.runtime': '에이전트 끊김',
+  'reviewer.errorShort.timeout': '시간 초과',
+  'reviewer.errorShort.unknown': '원인 불명',
+  'reviewer.errorTechnicalDetail': '기술 세부 정보'
 }
