@@ -34,6 +34,14 @@ import { acquireDataRootWriter } from '../storage/migration-state'
 
 const log = createLogger('reviewer:ipc')
 
+// Channel-level logs only say `reviewer:get-for-session` was slow, never which of its three awaited
+// steps waited: the reviews query (a single-connection project DB also used by the session save),
+// the session document parse, or the per-review scope pass (one version resolve + one content hash
+// per artifact). Replaying the path on a copy of real data put the whole thing at ~76 ms when nothing
+// else runs, so a multi-second call is waiting, not working — and only segments say on what. Above
+// this, the call names its own breakdown.
+const SLOW_REVIEW_LOAD_MS = 250
+
 // Sends a review update event to every open renderer window.
 const broadcastReviewUpdate = (event: ReviewUpdateEvent): void => {
   broadcastToRenderers(REVIEWER_IPC.UPDATED, event)
@@ -150,19 +158,51 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
   // audited turn has since changed (e.g. an artifact was edited after the review completed) so the UI
   // does not present a stale verdict as current.
   const getForSession = async (request: ReviewSessionRequest): Promise<ReviewWithChecks[]> => {
+    const startedAt = Date.now()
     const reviews = await reviewRepository.getReviewsForProjectSession(
       request.projectId,
       request.appSessionId
     )
+    const reviewsQueryMs = Date.now() - startedAt
     let session: PersistedChatSession | undefined
+    const loadStartedAt = Date.now()
     try {
       session = await sessionRepository.loadSession(request.projectId, request.appSessionId)
     } catch {
+      // Unchanged behaviour (a deleted/unreadable Session has no evidence to recompute), but the
+      // segments still go out: "the session could not be read" and "the session was read fast" look
+      // identical to the channel log otherwise.
+      log.warn('review load segments', {
+        projectId: request.projectId,
+        appSessionId: request.appSessionId,
+        reviews: reviews.length,
+        reviewsQueryMs,
+        sessionLoadMs: Date.now() - loadStartedAt,
+        sessionUnavailable: true,
+        flagMs: 0,
+        totalMs: Date.now() - startedAt
+      })
       return reviews
     }
-    return flagStaleReviews(reviews, session, dataRoot, (versionRequest) =>
+    const sessionLoadMs = Date.now() - loadStartedAt
+    const flagStartedAt = Date.now()
+    const flagged = await flagStaleReviews(reviews, session, dataRoot, (versionRequest) =>
       artifactProvenanceRepository.resolveVersionContent(versionRequest)
     )
+    const flagMs = Date.now() - flagStartedAt
+    const totalMs = Date.now() - startedAt
+    if (totalMs >= SLOW_REVIEW_LOAD_MS) {
+      log.warn('review load segments', {
+        projectId: request.projectId,
+        appSessionId: request.appSessionId,
+        reviews: reviews.length,
+        reviewsQueryMs,
+        sessionLoadMs,
+        flagMs,
+        totalMs
+      })
+    }
+    return flagged
   }
 
   const abortFixLoop = (request: ReviewSessionRequest): void => {

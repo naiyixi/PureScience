@@ -25,6 +25,21 @@ vi.mock('../storage-root', () => ({
   resolveDataRoot: () => DATA_ROOT
 }))
 
+// Capture reviewer:ipc warnings so the segment breakdown that reaches the field log can be asserted.
+const { loggerWarnings } = vi.hoisted(() => ({
+  loggerWarnings: [] as { message: string; payload: Record<string, unknown> }[]
+}))
+vi.mock('../logger', () => ({
+  createLogger: () => ({
+    debug: () => undefined,
+    info: () => undefined,
+    warn: (message: string, payload: Record<string, unknown>) => {
+      loggerWarnings.push({ message, payload })
+    },
+    error: () => undefined
+  })
+}))
+
 const runReview = vi.fn().mockResolvedValue(undefined)
 vi.mock('./orchestrator', () => ({
   runReview: (options: unknown) => runReview(options)
@@ -561,6 +576,85 @@ describe('reviewer IPC handlers', () => {
       expect(result).toBe(reviews)
       // Fail-open: a load failure must not hide stale findings by leaving the detector un-runnable.
       expect(flagStaleReviews).not.toHaveBeenCalled()
+    })
+
+    // The channel log only says the call was slow. These two pin that a slow one names its own
+    // breakdown, and that a normal one stays quiet (a log line per panel open would be noise).
+    it('names its own segments when the load is slow', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      try {
+        vi.setSystemTime(new Date('2026-10-19T00:00:00.000Z'))
+        getReviewsForSession.mockImplementation(async () => {
+          vi.setSystemTime(new Date('2026-10-19T00:00:00.100Z'))
+          return []
+        })
+        sessionLoadOne.mockImplementationOnce(async () => {
+          vi.setSystemTime(new Date('2026-10-19T00:00:00.150Z'))
+          return { id: 'session-1' }
+        })
+        flagStaleReviews.mockImplementationOnce(async (reviews: unknown) => {
+          vi.setSystemTime(new Date('2026-10-19T00:00:00.350Z'))
+          return reviews
+        })
+        registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+
+        loggerWarnings.length = 0
+        await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+          {},
+          { projectId: 'project-1', appSessionId: 'session-1' }
+        )
+
+        expect(loggerWarnings).toEqual([
+          {
+            message: 'review load segments',
+            payload: {
+              projectId: 'project-1',
+              appSessionId: 'session-1',
+              reviews: 0,
+              reviewsQueryMs: 100,
+              sessionLoadMs: 50,
+              flagMs: 200,
+              totalMs: 350
+            }
+          }
+        ])
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('stays quiet when the load is fast', async () => {
+      getReviewsForSession.mockResolvedValue([{ id: 'review-1', turnMessageId: 'message-1' }])
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+
+      loggerWarnings.length = 0
+      await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+        {},
+        { projectId: 'project-1', appSessionId: 'session-1' }
+      )
+
+      expect(loggerWarnings.filter((w) => w.message === 'review load segments')).toEqual([])
+    })
+
+    it('logs the segments (with sessionUnavailable) when the session cannot be read', async () => {
+      getReviewsForSession.mockResolvedValue([{ id: 'review-1', turnMessageId: 'message-1' }])
+      sessionLoadOne.mockRejectedValueOnce(new Error('session store unavailable'))
+      registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+
+      loggerWarnings.length = 0
+      await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+        {},
+        { projectId: 'project-1', appSessionId: 'session-1' }
+      )
+
+      const [entry] = loggerWarnings.filter((w) => w.message === 'review load segments')
+      expect(entry?.payload).toMatchObject({
+        projectId: 'project-1',
+        appSessionId: 'session-1',
+        reviews: 1,
+        sessionUnavailable: true,
+        flagMs: 0
+      })
     })
   })
 

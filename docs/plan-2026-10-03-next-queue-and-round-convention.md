@@ -9083,3 +9083,65 @@ U4（S2 接入解析 + 派生结果溯源）**验收改为按类别**：化学�
 ② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否把 `specialist/**` 那批落定、是否又落新排期；
 ③ 未闭项按上面第 1 / 2 条挑（都被本机可做的事挡住，不需要外部条件）；**不要重做**本轮的写侧事务预算与语句合并。
 
+
+## 一百九十、本轮追加（执行器，2026-10-19 07:4x–09:0x）—— 审查读侧那条 203 秒被**证伪**在实现里：它在等别的通道（附真数据重放读数）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main` = `c8b5c409`（上一轮我的写侧事务预算），该 SHA 两条车道**都已 success**；开工时在飞车道 **0 条**。
+- 主工作区仍在会话那条分叉上（本地 `main` = `a0541b03`，10 笔未推、落后远端 95 笔），树上 17 个 `specialist/**`/`settings/**` 是它的在制品
+  ⇒ 全程在隔离工作树 `/tmp/ps-read203`（`--detach c8b5c409` + 软链 `node_modules`），**主树一个字节没碰**。
+- B 段仍无可做项（A7 / S3 已交付、M2 卡产品决定）⇒ 按上一轮记事本的未闭项第 2 条开工，**开始前先取读数、不许先改代码**（上一轮自己立的规矩）。
+
+### 一 取数（三处，互相独立）
+
+1. **真机慢通道分布**（装好的应用日志 ×3 份）：`reviewer:get-for-session` 慢记录 **675** 条，中位 209 ms、p90 1,341 ms、
+   p99 15,467 ms、**最大 203,180 ms**；>10 s 14 条。
+2. **区间重叠**：把全部慢通道还原成区间后，那 203 秒里有 **195.2 s / 96%** 与另外 12 条重叠 ——
+   `sessions:save-session` 118,871 ms、`notebook:state` 76,622 ms、`settings:function-models` 56,113 ms、
+   `artifacts:read-preview` 46,142 ms。同窗口 `artifact-provenance` 的自证更硬：30 KB 的读 `readMs` 38,309 ms、
+   `readEventLoopMaxMs` 12,046 ms、`dbCanaryMs` 7,915 ms（连 `SELECT 1` 都排了近 8 秒）。
+3. **真数据副本重放**（`sqlite3 .backup` 真库 228 MB + 该项目会话文档 2.0 MB + 产物 3.5 MB → `/tmp`；真实配置根只读；
+   生产函数逐字调用）：reviews 查询 **35 ms**、会话文档读+解析+归一 **10–13 ms**、`flagStaleReviews`（8 条 review、19 个产物版本）
+   **冷 28 / 暖 21 ms** ⇒ 合计 **≈76 ms**，与现场 203,180 ms 差 **2,670 倍**。
+
+### 二 结论与反证
+
+- **不是读路径的活**：它当时在等（主进程被上面那几条通道占着）。所以本轮**不改**读路径实现。
+- **上一轮那条「重复哈希 300 MB 产物」的假设被真数据推翻**：全库 149 条 review 引用 806 次、唯一 796 个 ⇒ 重复因子 **1.01**；
+  全部字节 100.3 MB（唯一 99.4 MB）；本机最大那个会话 19 个版本合计 **2.2 MB**。按"25 s/条 × 8 条"推，每一条得指向 ~300 MB 产物，不存在。
+- 评估过但不做：调用内去重（收益 ≈1%）、跨调用缓存摘要（会削弱「size+mtime 不变的外部编辑也能发现」这条判据）、
+  哈希搬到工作线程（本机实测不是瓶颈）。另记一条**真存在但不值得现在做**的：`resolveVersionContent` 读整份并 sha256 后，
+  调用方又流式哈希同一份字节（每个版本读两遍）—— 19 次合计 74 ms，省下的 <40 ms 抵不上为它扩一条能力位的连锁。
+
+### 三 交付（`src/main/reviewer/ipc.ts` + 其测试 + 本证据档）
+
+`getForSession` 现在自己报分段：`totalMs >= 250` 时写一条 `review load segments`
+（`reviews / reviewsQueryMs / sessionLoadMs / flagMs / totalMs`）；会话读不出来时也写一条并带 `sessionUnavailable: true`
+—— 否则"读不出来"与"读得很快"在通道日志里同形。三条用例：慢的必须报且字段逐字对、快的必须静默、读不出来必须带 `sessionUnavailable`。
+证据：`docs/evidence/2026-10-19-review-read-path-attribution.md`。
+
+### 四 门禁读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| `src/main/reviewer/ipc.test.ts` | **33 passed**（30 既有 + 3 新增） |
+| review 模块整目录 | 见本轮汇报的实跑读数 |
+| 双 typecheck / lint / 推前钩子 | 见本轮汇报的实跑读数 |
+| **反向门** | 换回旧实现 ⇒ 新增的两条正向用例**都红**；「快的必须静默」那条两种实现都绿（它守的是"别吵"，本就该两向绿） |
+
+### 五 仍未归因的那一半（单列，不算在本单元）
+
+把主进程堵住的是 `sessions:save-session`（118.9 s：`writeMs` 46.2 / `authorityMs` 42.2 / `aftermathMs` 17.0 / `fileIndexMs` 11.4）、
+`notebook:state` 76.6 s、`settings:function-models` 56.1 s。它们各有自己的分段读数与修法，**不许**再算到审查读侧头上。
+
+### 六 探针自己的坑（写进档，防下一次误判）
+
+vitest 里直调 `SessionRepository.loadSession` 会因 `decodeDataPath(path, dataRoot = resolveDataRoot())` 在非 Electron 环境抛错，
+于是读失败被当成"损坏文件"、真会话被改名成 `.json.invalid-<ts>-<n>`。**这是探针环境问题，不是产品缺陷**（生产文件仍在原地、mtime 未变）。
+
+### 七 下一轮第一步
+
+① `git fetch` + `git status --short` + `git log --oneline origin/main -6`；② 未闭项优先「面板把 Prisma 原文当人话」
+（`ReviewerCard.tsx` 已上屏 `review.errorMessage`，缺的是按错误族映射的九语文案 + 一条失败态渲染读数）；
+③ **禁重做**本轮的读侧分段日志与上一轮的写侧事务预算/语句合并。
