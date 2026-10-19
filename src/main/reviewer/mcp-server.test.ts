@@ -1,6 +1,10 @@
 // Tests for the reviewer MCP server's check-to-scope mapping. The key invariant (design.md:114):
-// a check's locator.contentHash must agree with the referenced frozen scope block, and out-of-scope
-// or stale locators are rejected.
+// a check's locator is resolved against the frozen scope, and out-of-scope locators are rejected.
+// The block identity stored with a check — its blockRef source id AND its contentHash — always comes
+// from the frozen block, so contentHash is optional in the submitted locator; when one IS supplied it
+// must agree, and a mismatch is refused by name (that refusal is what catches a client pinning a
+// different scope). Measured reason for the optionality: 41 refusals over 2026-10-17 → 10-19, every
+// value a block id or an empty string, and one review spent six round trips and 87 s retyping it.
 //
 // v2 (issue 12): submit_findings accepts checks[] (status pass|warn|fail) not findings[]+severity.
 // summary is no longer accepted (strict schema). Pass checks may omit their locator.
@@ -120,6 +124,62 @@ describe('mapChecksToScope', () => {
         scope
       )
     ).toThrow(/content hash.*does not match/i)
+  })
+
+  it('accepts a locator that omits contentHash and pins the frozen block hash itself', () => {
+    const mapped = mapChecksToScope(
+      [
+        {
+          status: 'fail',
+          claim: 'wrong count',
+          evidence: 'block 0 says 32',
+          locator: { blockRef: { messageId: 'msg-2', blockIndex: 0 } }
+        }
+      ],
+      scope
+    )
+
+    // The pin the rest of the pipeline reads is still there — it came from the frozen scope rather
+    // than from a string the model retyped.
+    expect(mapped[0]!.locator).toEqual({
+      blockRef: { messageId: 'msg-2', blockIndex: 0 },
+      contentHash: 'real-hash-msg-2'
+    })
+  })
+
+  it('names the expected hash in a mismatch refusal so one more turn can correct it', () => {
+    expect(() =>
+      mapChecksToScope(
+        [
+          {
+            status: 'warn',
+            claim: 'suspicious tool call',
+            evidence: 'act-9',
+            locator: {
+              blockRef: { blockIndex: 1 },
+              // The real-log shape: a tool-call id where the hash belongs.
+              contentHash: 'call_03_lKb3kDln8Tibyzf5cLEi3515'
+            }
+          }
+        ],
+        scope
+      )
+    ).toThrow(/got "call_03_lKb3kDln8Tibyzf5cLEi3515", expected real-hash-act-9/)
+  })
+
+  it('lets the MCP schema accept a locator without contentHash', () => {
+    const parsed = submitFindingsInputSchema.parse({
+      checks: [
+        {
+          status: 'warn',
+          claim: 'claim',
+          evidence: 'evidence',
+          locator: { blockRef: { blockIndex: 1 } }
+        }
+      ]
+    })
+
+    expect(parsed.checks[0]!.locator).toEqual({ blockRef: { blockIndex: 1 } })
   })
 
   it('resolves the block by blockIndex for activity references too', () => {
@@ -721,6 +781,88 @@ describe('ReviewerMcpServer HTTP transport', () => {
       expect(evidence.fetchSource).toHaveBeenCalledWith('https://example.com/source')
       expect(submitted.result?.isError).not.toBe(true)
       expect(onSubmit).toHaveBeenCalledOnce()
+    } finally {
+      await server.stop()
+    }
+  })
+
+  it('pins a submitted locator from the frozen scope when the reviewer omits contentHash', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const server = new ReviewerMcpServer(scope, onSubmit, createReviewerEvidence())
+    const { endpoint, token } = await server.start()
+
+    try {
+      const { sessionId, headers } = await initialize(endpoint, token)
+      await callTool(endpoint, sessionId, headers, 'read_turn', {})
+
+      const submitted = await callTool(
+        endpoint,
+        sessionId,
+        headers,
+        'submit_findings',
+        {
+          checks: [
+            {
+              status: 'fail',
+              claim: 'the report says 32 rows',
+              evidence: 'msg[0] says 32; the artifact has 33',
+              locator: { blockRef: { blockIndex: 0 } }
+            }
+          ]
+        },
+        3
+      )
+
+      expect(submitted.result?.isError).not.toBe(true)
+      expect(onSubmit).toHaveBeenCalledOnce()
+      const [checks] = onSubmit.mock.calls[0] as [
+        { locator?: { blockRef: unknown; contentHash: string } }[]
+      ]
+      expect(checks[0]!.locator).toEqual({
+        blockRef: { messageId: 'msg-2', blockIndex: 0 },
+        contentHash: 'real-hash-msg-2'
+      })
+    } finally {
+      await server.stop()
+    }
+  })
+
+  it('refuses a wrong contentHash by name and names the expected one', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const server = new ReviewerMcpServer(scope, onSubmit, createReviewerEvidence())
+    const { endpoint, token } = await server.start()
+
+    try {
+      const { sessionId, headers } = await initialize(endpoint, token)
+      await callTool(endpoint, sessionId, headers, 'read_turn', {})
+
+      const submitted = await callTool(
+        endpoint,
+        sessionId,
+        headers,
+        'submit_findings',
+        {
+          checks: [
+            {
+              status: 'warn',
+              claim: 'the report says 32 rows',
+              evidence: 'msg[0] says 32',
+              locator: {
+                blockRef: { blockIndex: 0 },
+                contentHash: '47221407-a941-4ef9-97ac-194c480def32'
+              }
+            }
+          ]
+        },
+        3
+      )
+
+      expect(submitted.result?.isError).toBe(true)
+      const text = submitted.result?.content?.[0]?.text ?? ''
+      expect(text).toContain('47221407-a941-4ef9-97ac-194c480def32')
+      expect(text).toContain('expected real-hash-msg-2')
+      expect(text).toContain('or omit contentHash')
+      expect(onSubmit).not.toHaveBeenCalled()
     } finally {
       await server.stop()
     }

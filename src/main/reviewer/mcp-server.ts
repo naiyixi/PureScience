@@ -43,7 +43,19 @@ const checkLocatorSchema = z.object({
       blockIndex: z.number().int().min(0)
     })
     .describe('Identifies the block within the turn this check points at'),
-  contentHash: z.string().describe('The contentHash of the block this check points at')
+  // Optional on purpose. `blockIndex` is the pointer, and the block's identity is reconstructed from
+  // the frozen scope anyway; a hash the model has to copy by hand added a failure mode without adding
+  // evidence (read_turn already returns every block with its hash, so copying one never proved the
+  // block was read). Measured cost of requiring it, 2026-10-17 → 10-19: 41 refusals, one of them
+  // six round trips and 87 s of one review, every value a block id or an empty string. When a hash IS
+  // supplied it must still match — that refusal is what catches a client pinning a different scope.
+  contentHash: z
+    .string()
+    .optional()
+    .describe(
+      'Optional. Omit it: blockRef.blockIndex alone identifies the frozen block. When you do supply ' +
+        'it, it must be the exact contentHash read_turn reports for that block.'
+    )
 })
 
 const checkFields = {
@@ -160,9 +172,13 @@ type ReviewerMcpServerOptions = {
 }
 
 // Maps model-submitted checks onto the turn scope, enforcing the single-sourcing contract
-// (design.md:114): for checks that carry a locator, the model supplies only blockIndex as the
-// pointer; the block is resolved from scope.blocks, out-of-scope indices are rejected, its identity
-// is reconstructed from the frozen scope, and the supplied contentHash must match that frozen block.
+// (design.md:114): for checks that carry a locator, the model supplies blockIndex as the pointer; the
+// block is resolved from scope.blocks, out-of-scope indices are rejected, and its identity — the
+// blockRef source id and the contentHash — is reconstructed from the frozen scope, so a hallucinated
+// or stale id can never be stored. `contentHash` is therefore optional in the submitted locator: the
+// pin the rest of the pipeline reads always comes from the frozen block, whether the model copied the
+// hash or left it out. A hash the model DOES supply is compared, and a mismatch is refused by name —
+// that is the one signal worth keeping, because it means the caller pinned a different scope.
 // Pass checks without a locator are accepted as-is.
 export const mapChecksToScope = (
   checks: SubmitFindingsInput['checks'],
@@ -187,9 +203,12 @@ export const mapChecksToScope = (
       scope.blocks.find((b) => b.blockIndex === blockIndex),
       String(blockIndex)
     )
-    if (c.locator.contentHash !== block.contentHash) {
+    const suppliedHash = c.locator.contentHash
+    if (suppliedHash !== undefined && suppliedHash !== block.contentHash) {
       throw new Error(
-        `Locator content hash does not match frozen block ${blockIndex}: ${c.locator.contentHash}`
+        `Locator content hash does not match frozen block ${blockIndex}: got ${JSON.stringify(suppliedHash)}, ` +
+          `expected ${block.contentHash}. Copy the contentHash read_turn reports for this block, or omit ` +
+          `contentHash — blockIndex alone identifies the frozen block.`
       )
     }
 

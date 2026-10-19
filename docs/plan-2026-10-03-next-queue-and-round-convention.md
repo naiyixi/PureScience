@@ -9613,3 +9613,83 @@ lint 本次推送的文件：那里没有本分支的新文件，于是 `No file
 **下一轮宜从各版自陈的尾巴里挑**，动手前先按标记词把「未做/仍开」拉一遍清单并逐条对源码核。
 **不要重做**：审查成本上限（`6290334d`）、本单元的抓取三态、以及前几轮那七项（读侧分段、写侧事务预算、
 失败态说人话、`save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs`、进程树宽限）。
+
+## 一百九十七、本轮追加（执行器，2026-10-20 06:1x–）—— 审查提交里「要人手抄 64 位哈希」的那个字段：41 次拒绝 / 一次审查 87 秒
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端 `origin/main` = `161ebc94`（上一轮推的那笔）；主工作树仍停在会话那条分叉分支（`32db0300`），树上 13 条在制品
+  （`specialist/**`、`settings/application-commands*`、`preload/**`）全是它的 ⇒ 本轮全部工作在隔离工作树 `/tmp/ps-wd4`，
+  **主树一个字节没碰**（收尾复核：`git status --short` 仍是那 13 条）。
+- 内存闸门（现取）：空闲物理页 4,510（≈72 MB）、swap 已用 8.66 G / 10.24 G，且**打包版实例正在跑**（用户在用）⇒
+  真机/Electron 取证关闭；本单元落在主进程 MCP 面上，不需要窗口。
+- **上一轮遗留判决已闭**：`161ebc94` 按完整 40 位 SHA 查 ⇒ `Nightly` **39317177908 success** + `Windows Full Test`
+  **39317177464 success**（双绿）。上一轮那个「Nightly pending」不再挂账。
+- 防重做核对：`git log --oneline origin/main -12` 与上一轮「不要重做」清单（审查成本上限、抓取三态、读侧分段、
+  写侧事务预算、失败态说人话、`save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs`、进程树宽限）逐条比过
+  ⇒ 本轮单元不在其中。
+
+### 一 单元从哪来：**各版自陈的尾巴**先核了一遍，最后取的是真机日志里的实测缺口
+
+按上一轮 §五 的指路，先把 CHANGELOG v2.12–v2.15 与 README 成熟度块里「明确没做」的条目逐条对源码核了一遍：
+
+| 自陈项 | 对源码核的结果 | 本轮取不取 |
+| --- | --- | --- |
+| 服务端分页（`listSources` 一次返回全部） | 真缺口，但注册表本身是**一份 JSON 文件整读整写**（`knowledge-repository.ts` `load()/save()`）⇒ 只加分页并不减少解析成本，属独立重构 | 不取（要单独立项） |
+| 没有撤销（来源移除） | 真缺口；与「副本按引用淘汰」的既有语义冲突，须先定保留策略 | 不取（要拍板） |
+| 清扫历史只留最近一次 | 真缺口、可做，但价值低于下面这条 | 不取 |
+| 轨迹可视化 / RMSD / 续跑 | 真缺口，但都需要起引擎与窗口 | 不取（内存闸门） |
+
+⇒ 改从**真机日志**（`~/Library/Logs/PureScience/main.log`，用户打包实例，只读）按签名聚合。窗口 2026-10-17 起的
+14,587 行里，`reviewer:mcp / submit_findings locator out of scope` **41 次**，且 **41/41 都是「content hash 不匹配」**。
+详见证据档 `docs/evidence/2026-10-20-reviewer-locator-hash-optional.md`。
+
+### 二 为什么这是我们的契约在量错东西（不是模型不听话）
+
+`mapChecksToScope` 本来就用 `blockIndex` 在冻结 scope 里找块、并把 blockRef 的 sourceId 从块本身重建 ⇒ 落库的
+`locator.contentHash` **一直来自冻结块**，模型抄的那串从来没被存过。于是这道校验只量到「会不会逐字抄 64 位十六进制」，
+而 `read_turn` 本来就把每块的哈希一起返回（抄对不需要读过任何东西）；真正把关的是 `validateReviewerEvidenceAccess`
+那三道门（必读 turn / 活动块必读执行日志 / artifactVersionId 必读版本），一行未动。
+同一路径上已有先例：首轮审查显式丢弃模型瞎编的 `sourceFindingId`（「so a valid assessment is not lost to a non-semantic
+tracking mistake」）——`contentHash` 属同一类指针字段，却把整份评估判死。
+
+**读数（4 个审查运行 / 26 小时）**：15 个 UUID、8 个 `call_…`、8 个空串、2 个「真哈希但不是这个块的」，其余是
+`artifact:<uuid>`、`message-1792…`、`x`、`unknown`。最贵的一次（run `b866e3dc`）15:05:12 → 15:06:39 **连拒 6 次**、
+第 7 次才通过 ⇒ **约 87 秒**与 6 个完整 MCP 往返花在同一个字段上，随后 `review complete`。
+
+### 三 交付（3 文件 + 证据档）
+
+- `src/main/reviewer/mcp-server.ts`：`contentHash` 改为**可选**（工具描述写明「省略即可」）；`mapChecksToScope`
+  省略时用冻结块哈希填上（**落库永远带 pin**），**送错仍然拒绝**，拒绝句改为「收到什么 / 期望什么 / 可以不送」。
+- `src/main/reviewer/rubric.ts`：审查员说明书那一行改成「blockIndex 就够，别抄哈希；送了就必须逐字来自 read_turn」。
+- `src/main/reviewer/mcp-server.test.ts`：+5 条（省略即接受且 pin 来自冻结块 / 拒绝句点名期望值 / schema 接受无哈希
+  locator + **两条走真实 MCP HTTP 端点**的端到端：省略 ⇒ `onSubmit` 收到 `contentHash:'real-hash-msg-2'`；送
+  `47221407-…` ⇒ `isError:true` 且正文含 `expected real-hash-msg-2` 与 `or omit contentHash`，`onSubmit` 未被调用）。
+
+### 四 门禁读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| `mcp-server.test.ts` + `rubric.test.ts` | **57 passed**（2 文件） |
+| 审查员整簇 `src/main/reviewer` | **24 文件 / 286 passed**（改前 281 ⇒ +5 即新增） |
+| 变异证明 A（`.optional()` 改回必填） | `1 failed / 31 passed`（红在 schema 那条），已还原 |
+| 变异证明 B（pin 改回用模型送的值） | `1 failed / 31 passed`（红在 pin 那条），已还原 |
+| 全仓 `eslint --no-cache .` | **0 error / 129 warning**、`exit 0`；本轮 3 个文件 **0 problem** |
+| 双 typecheck | 本机各 **5 条红，全部在 `src/main/references/repository.ts`**；`git stash` 移开本轮文件后**同读数复现** ⇒ 与本轮无关。根因：共享的生成客户端比 schema 旧（`grep -c citedAt node_modules/.prisma/client/index.d.ts` = **0**，而 schema:513 有该列；主工作树那份 schema 没有这两列）⇒ CI 侧 `prisma generate` 会用带列的 schema。本轮三文件在两套 typecheck 里**零错** |
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+1. **模型侧行为改变的读数未取** —— `blocked-by`：本机内存闸门 + 打包实例在用；解封条件 = 下一次打包版/dev 实例能起。
+   判据：`reviewer:mcp / submit_findings locator out of scope` 这条日志应从 41 次/26 小时显著下降。
+2. **`not-reported` 的真机读数**（上一轮遗留）—— 同上，等窗口。
+3. **工具命名统一（真机审计 §5 第 8 条的另一半）** —— 仍不做：闭集两侧改名要单独立项。
+4. **`v2.15.1` 没有发布页**（会话那条线）—— tag 指向 `32db0300`，不在 main 上 ⇒ `Release preflight` 必失败；
+   正确顺序是先把那条分支合进 main，再**删掉这个没页的 tag 重建**。执行器不替它动 tag。
+
+### 六 下一轮第一步
+
+① `git fetch` + `git status --short` + `git log --oneline origin/main -6`（看会话是否已把分支合上 / 重发 v2.15.1）；
+② 按**完整 40 位 SHA** 取本轮提交的双车道判决（判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+③ 内存闸门仍关 ⇒ 继续取「不需要窗口」的单元；来源优先**真机日志按签名聚合**（本轮的来源），其次各版自陈的尾巴
+（服务端分页 / 撤销 / 清扫历史三条仍开着，前两条要单独立项或拍板）；
+④ **不要重做**：审查成本上限（`6290334d`）、抓取三态（`161ebc94`）、本轮的 locator 可选化，以及前几轮那七项。
