@@ -40,6 +40,7 @@ import {
   initializeApplicationDiagnostics,
   reportApplicationStartupFailure
 } from './diagnostics/startup'
+import { startEventLoopStallWatchdog } from './diagnostics/event-loop-stall-watchdog'
 import { createLogger, diagnosticErrorFields, flushLogs } from './logger'
 import { createProcessFailureCapture } from './crash-diagnostics'
 import { classifyPreviousShutdown, createShutdownBreadcrumbWriter } from './shutdown-breadcrumb'
@@ -227,6 +228,12 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
   startupDiagnostics = diagnostics.operation
   startupFlush = diagnostics.flush
 
+  // A 113.9 s save and a 7.2 s `SELECT 1` inside the same 150 s window say the whole process stopped, not
+  // that the save path is slow; wall-clock timers cannot separate our own synchronous block from the
+  // machine not scheduling us. This watchdog adds the CPU/main-thread and sampled-stack readings that can
+  // (see the module header). Armed only after a stall, so a healthy process never pays for a profiler.
+  const stallWatchdog = startEventLoopStallWatchdog({ log: createLogger('diagnostics') })
+
   // Register process-level failure capture before loading the application modules. Keep renderer
   // diagnostics on a separate, one-way channel while the central IPC registry is being refactored.
   installChildProcessGoneLogging((listener) => app.on('child-process-gone', listener), log)
@@ -240,6 +247,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
   // A quitting process must not lose the failures it folded: flush the open windows before the logger's
   // write queue is drained for the last time.
   process.on('exit', () => {
+    stallWatchdog.stop()
     captureProcessFailure.flush()
   })
 

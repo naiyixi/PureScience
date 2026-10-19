@@ -9240,3 +9240,62 @@ vitest 里直调 `SessionRepository.loadSession` 会因 `decodeDataPath(path, da
 
 本轮**不动保存路径**：中位 404 ms 的正常尾占 91%，凭现有读数去「优化」会把一次机器级停顿写成代码缺陷，
 并让下一次同样的形状更难判。判据未满足（见 §三）就不开工。
+
+## 一百九十三、本轮追加（执行器，2026-10-19 15:0x–16:2x）—— 给「进程整体停住」造一台能分开两种成因的仪器
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后远端 `origin/main` = `2de9975d`；主工作树停在**会话那条分叉的本地 main**（`a7225aaa`，
+  领先/落后各有若干笔），树上 18 条改动全是它的在制品 ⇒ 本单元全程在隔离工作树 `/tmp/ps-wd`
+  （`--detach 2de9975d` + 软链 `node_modules`），**主树一个字节没碰**。
+- 上一轮判决已核：`24a4d113` 双车道 success；`2de9975d` 是 docs-only（`head_sha` 查询 `total_count=0`）⇒
+  它的证据是前者双绿 + 两提交 diff 仅 docs。本轮按上一轮 §6/§7 的口径取下一个单元。
+- 内存闸门（现取，不照抄）：**空闲物理页 4,048（≈63 MB）**、swap 已用 **9.70 G / 10.24 G** ⇒
+  真机/Electron 取证关闭；本单元因此全部落在不需要起窗口的面上（vitest + 真 `node` 进程）。
+
+### 一 为什么是仪器而不是修法
+
+上一轮已证伪「`sessions:save-session` 的 118.9 秒在保存里」（七段等比放大、同窗口 `SELECT 1` 7.2 s）。
+缺的是一条判别线：**我们自己的长同步块**与**进程压根没被调度**，现有墙钟读数同形。
+仪器加两条：`cpuShare`（`process.cpuUsage` ÷ 墙钟迟到）与「首次停顿后 15 秒剖析窗口内的第二次停顿」
+（V8 抽样剖析器，另一条线程采样 ⇒ 能点名同步栈，并给出主线程运行时间）。
+
+### 二 交付（3 个代码文件 + 1 份证据档）
+
+| # | 文件 | 内容 |
+| --- | --- | --- |
+| ① | `src/main/diagnostics/event-loop-stall-watchdog.ts`（新） | 心跳 500 ms；`cpuShare ≥ 0.6` ⇒ `cpu-bound-in-process`、`≤ 0.15` ⇒ `process-not-scheduled`、中间带 `inconclusive`（不硬塞）；按需开剖析、窗口内无第二次停顿即自停；剖析可用时用**主线程运行时间**覆盖第一次的判定（`cpuUsage` 含 libuv/V8 辅助线程，会虚高） |
+| ② | `src/main/diagnostics/event-loop-stall-watchdog.test.ts`（新） | 7 条注入式（假时钟/假 CPU/假剖析器：无停顿不说话、两半判别、中间带不硬塞、剖析器不可用具名、`stop()` 后不再报、第二次停顿的帧与主线程读数覆盖）+ 1 条**真时钟真剖析器**（阻塞事件循环两次，断言帧里出现本文件的函数） |
+| ③ | `src/main/index.ts` | 开机接线（诊断日志初始化之后立刻起）＋既有 `process.on('exit')` 里收掉 |
+| ④ | `docs/evidence/2026-10-19-event-loop-stall-watchdog.md`（新） | 口径、两跑真进程读数、四条边界、下一步判据 |
+
+**刻意不做**：不开新通道、不碰界面、不加 9 语键（读数写进应用自己的日志，与上一轮取证同一条链）；
+不做常驻剖析（健康进程一个样本都不采）；不顺手改保存路径（上一轮已证伪）。
+本单元**不占版本号**：诊断仪器，无用户可见行为变化。
+
+### 三 读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 新模块用例 | `npx vitest run src/main/diagnostics/event-loop-stall-watchdog.test.ts` ⇒ **8 passed**（含真时钟那一条点出 `blockLoop (src/main/diagnostics/event-loop-stall-watchdog.test.ts:198)`、60 样本） |
+| 诊断目录整簇 | `npx vitest run src/main/diagnostics` ⇒ **12 files / 56 passed** |
+| 真进程 · 我们自己挡住（esbuild 打包后真 `node` 跑，真 `initLogger` 写 JSON Lines） | 第一条 `windowMs 699 / cpuShare 0.868 / cpu-bound-in-process / no-second-stall`；第二条 `windowMs 1000 / cpuShare 0.906 / mainThreadMs 1051 / frames: block (tmp/wd-driver.mjs:476) 91 样本` |
+| 真进程 · 操作系统停住（外部 `kill -STOP` 2 s 再 `CONT`） | `windowMs 2087 / cpuMs 0 / cpuShare 0 / process-not-scheduled` ⇒ 与上一行**同形输入、不同结论** |
+| 类型检查 / lint | `tsc -p tsconfig.node.json --composite false` **exit 0**；`eslint --no-cache` 三个改动文件 **0 error / 0 warning** |
+
+### 四 具名未办（每条带 blocked-by 与解封条件）
+
+1. **Electron 主进程里的第一条真实读数未取** —— `blocked-by`：本机内存闸门（空闲页 4,048 ≈ 63 MB、
+   swap 9.70/10.24 G）。解封条件：下一次打包版或 dev 实例正常运行；接线已在 `src/main/index.ts`，
+   不会因为没读数而失效。
+2. **打包产物里的帧长相未验** —— 打包后产品帧是 `out/main/index.js:<行>`；若构建压缩，函数名退化成单字母
+   （行号仍可回查 sourcemap）。`blocked-by`：需要一次打包 + 一次真停顿；本轮不起 Electron。
+3. **机器侧读数只在停顿结束后取** —— 缺「停顿期间」的空闲页/换页计数；`blocked-by`：进程被
+   `SIGSTOP`/换页时它自己也跑不动，要取那一格得另起一条外部采样线（下一单元候选，未开工）。
+
+### 五 下一轮第一步
+
+① 读本轮提交的 CI 判决（完整 40 位 SHA，判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的在制品落定；
+③ 仍未取的那三条按上面 `blocked-by` 解封；**不要重做**：审查读侧分段、写侧事务预算、失败态说人话、
+`save-session` 分段日志、以及本轮的仪器本体。
