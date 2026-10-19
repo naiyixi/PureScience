@@ -393,8 +393,32 @@ const createArtifactHandlers = (
   }
 }
 
+// A finalize that loses the durability race must wait for the writer, not fail the turn. Real run
+// (2026-10-19, 04:52:38): the artifact was written and readable, both immediate attempts threw
+// ArtifactOwnershipPersistenceRaceError ("message is not durable yet"), and the run was reported
+// failed. The retry is bounded, applies only to that race, and is safe: every attempt re-validates
+// the same ownership proof, so a later attempt that wins cannot publish bytes the first would reject.
+const FINALIZE_RACE_RETRY_DELAYS_MS = [50, 150, 400] as const
+
+const finalizeProvenanceWithRaceRetry = async (
+  provenance: Pick<ArtifactProvenanceRepository, 'finalizeRun'>,
+  request: Parameters<ArtifactProvenanceRepository['finalizeRun']>[0]
+): Promise<ArtifactFile[]> => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await provenance.finalizeRun(request)
+    } catch (error) {
+      const delay = FINALIZE_RACE_RETRY_DELAYS_MS[attempt]
+      if (delay === undefined || !(error instanceof ArtifactOwnershipPersistenceRaceError)) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+}
+
 // Turns a runtime claim into message-owned files and permits idempotent replay for the same message.
-const finalizeRunArtifacts = async (
+export const finalizeRunArtifacts = async (
   repository: ArtifactRepository,
   runRegistry: ArtifactRunRegistry,
   request: FinalizeRunArtifactsRequest,
@@ -456,7 +480,7 @@ const finalizeRunArtifacts = async (
       }
       // Commit the complete provenance proof and immutable message ownership before compatibility bytes
       // move. A later compatibility failure is retryable because the prepared marker remains durable.
-      provenanceArtifacts = await provenance.finalizeRun(provenanceRequest)
+      provenanceArtifacts = await finalizeProvenanceWithRaceRetry(provenance, provenanceRequest)
       durableFinalizationCompleted = true
     }
 

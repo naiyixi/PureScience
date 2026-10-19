@@ -159,6 +159,79 @@ describe('artifact IPC handlers', () => {
     expect(listed).toEqual(finalized)
   })
 
+  it('waits out a durability race instead of failing the turn that produced the artifact', async () => {
+    // Real run 2026-10-19 04:52:38: artifact written and readable, two immediate finalize attempts threw
+    // ArtifactOwnershipPersistenceRaceError, run reported failed. The retry is bounded and only for
+    // that race: the fourth attempt here succeeds.
+    const finalizedArtifact = createFinalizedArtifact()
+    const repository = {
+      finalizeRunArtifacts: vi.fn().mockResolvedValue([finalizedArtifact]),
+      listMessageFiles: vi.fn().mockResolvedValue([finalizedArtifact])
+    } as unknown as ArtifactRepository
+    const runRegistry = new ArtifactRunRegistry()
+    const finalizeRun = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+      )
+      .mockRejectedValueOnce(
+        new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+      )
+      .mockResolvedValue([finalizedArtifact])
+    const handlers = createArtifactHandlers(repository, runRegistry, {
+      provenance: { finalizeRun } as never
+    })
+    const claimId = runRegistry.register({
+      projectName: 'default-project',
+      artifactSessionId: 'artifact-session-1',
+      sessionId: 'session-1',
+      runId: 'run-1',
+      rootFrameId: 'frame-root',
+      agentFrameId: 'frame-root',
+      messageBranchId: 'branch-1',
+      runtimeSegmentId: 'segment-1',
+      promptMessageId: 'message-prompt',
+      artifactVersionIds: ['version-1']
+    })
+
+    await expect(
+      handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
+    ).resolves.toEqual([finalizedArtifact])
+    expect(finalizeRun).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not retry a terminal proof failure', async () => {
+    const runRegistry = new ArtifactRunRegistry()
+    const finalizeRun = vi
+      .fn()
+      .mockRejectedValue(new ArtifactFinalizationProofError('root Frame does not match'))
+    const handlers = createArtifactHandlers(
+      {
+        finalizeRunArtifacts: vi.fn(),
+        listMessageFiles: vi.fn().mockResolvedValue([])
+      } as unknown as ArtifactRepository,
+      runRegistry,
+      { provenance: { finalizeRun } as never }
+    )
+    const claimId = runRegistry.register({
+      projectName: 'default-project',
+      artifactSessionId: 'artifact-session-1',
+      sessionId: 'session-1',
+      runId: 'run-1',
+      rootFrameId: 'frame-root',
+      agentFrameId: 'frame-root',
+      messageBranchId: 'branch-1',
+      runtimeSegmentId: 'segment-1',
+      promptMessageId: 'message-prompt',
+      artifactVersionIds: ['version-1']
+    })
+
+    await expect(
+      handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
+    ).rejects.toBeInstanceOf(ArtifactFinalizationProofError)
+    expect(finalizeRun).toHaveBeenCalledTimes(1)
+  })
+
   it('serializes concurrent finalize requests for the same claim', async () => {
     const finalizedArtifact = createFinalizedArtifact()
     let releaseFinalize: (() => void) | undefined
