@@ -9380,3 +9380,73 @@ worker 照常采样 ⇒ 机器在跑、只有主线程被饿住；worker 恰好�
 在制品落定（落定后才谈与它同改一批文件）；③ 若内存闸门仍关着，取「不需要窗口」的下一个单元；闸门一开，
 优先取第 1 条（真机第一条读数）——那是这条线唯一还缺的证据。**不要重做**：审查读侧分段、写侧事务预算、
 失败态说人话、`save-session` 分段日志、看门狗本体、本轮的采样线程与 `unobservedMs` 修法。
+
+## 一百九十五、本轮追加（执行器，2026-10-19 20:1x–21:0x）—— 退出时被 SIGKILL 的「112 个子孙」其实是还在收尾：给整棵树同一个宽限窗口
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 先取上一轮判决（**完整 40 位 SHA** `15cbfcf130840f26d26d8cd6aacf65fea4b5a4f9`）：
+  `Nightly | completed | success`、`Windows Full Test | completed | success` ⇒ **双车道全绿**，上一轮「未取」那一格改成绿。
+- 远端 `origin/main` = `15cbfcf1`；主工作树仍停在**会话那条分叉的本地 main**（`3a2815e7`），树上 18 条改动
+  （`specialist/**`、`settings/**`、`preload/**`、`plan-2026-10-19-*`）全是它的在制品 ⇒ 本轮继续在隔离工作树
+  `/tmp/ps-wd2`（`--detach 15cbfcf1` + 软链 `node_modules`），**主树一个字节没碰**。
+- 排期 B 段三项状态复核：A7 ✅、S3（含 S4 真机读数）✅、M2 ⛔ 卡在产品决定（无发布方校验值清单）⇒ B 段没有可取的活；
+  D 段（真机审计 §5 的八条）由会话在其分支上推进（它本轮的提交 `a0541b03`/`b65b61da`…`3a2815e7` 都在那几个面）。
+  本单元取 **§5 第 7 条「进程树收口」**：`src/main/process-tree.ts` 与会话的改动路径不相交，且不需要起窗口。
+- 内存闸门（现取）：空闲物理页 **3,848（≈60 MB）**、swap 已用 **10.5 G / 12.0 G** ⇒ 真机/Electron 取证关闭；
+  本单元全部落在真 `node` 进程上（不需要 Electron）。
+- 上一轮 `15cbfcf1` 推送时**无在飞车道**（`gh run list` 读数：两条 completed/success），本轮推送前再核一次。
+
+### 一 不是「它们不听话」，是「它们还没死完」
+
+日志里 `process tree left N descendant(s) alive after SIGTERM` 一共 15 条（最多 **112** 个）。原读法是被杀的进程不响应信号。
+真进程复现（1 个根 + 5 个孙进程，生产代码 esbuild 打包后由真 `node` 跑）把这个读法推翻了：
+
+| 孙进程行为 | 修复前（`15cbfcf1`） | 修复后 |
+| --- | --- | --- |
+| SIGTERM 后 600 ms 收尾 | `reaped:false`、升级 SIGKILL、**32 ms**、`cleanExits: 0` | `reaped:true`、**未升级**、**646 ms**、`cleanExits: 5` |
+| 默认（收到即退） | `reaped:false`、升级 SIGKILL（2 个「幸存者」）、**40 ms** | `reaped:true`、未升级、**32 ms** |
+| 显式忽略 SIGTERM | `reaped:false`、升级 SIGKILL、31 ms | `reaped:true`、升级 SIGKILL、**3109 ms** |
+
+第二行是关键：**连收到 SIGTERM 就立刻退出的进程，也会在那次复查里被记成幸存者** —— 因为复查发生在「信号发出后约 30 ms」，
+而代码只等了直接子进程（它几毫秒就没了），没有等子孙。`reaped:false` 又正好是更新安装闸门拒绝继续的那一格。
+
+### 二 交付（1 改文件 + 1 用例文件 + 1 份证据档）
+
+| # | 文件 | 内容 |
+| --- | --- | --- |
+| ① | `src/main/process-tree.ts` | 宽限窗口给**整棵树**（信号发出时刻 + 3 s，子进程与子孙共用；子孙每 50 ms 复查，全消失即返回）；升级 SIGKILL 前**从仍存活的进程**再拍一张快照抓宽限内新 fork 的进程（不从已退出的子进程出发——pid 可能已被回收）；SIGKILL 之后**等内核收完**再给 `reaped` 定值；`collectDescendantPids` 改多根/去重/永不 reject |
+| ② | 同名 `.test.ts` | 4 条新用例：收尾中不得算幸存者、差 10 ms 到宽限仍不得 SIGKILL、宽限内新 fork 的进程也要被杀、SIGKILL 未落地时不得报 `reaped:false` |
+| ③ | `docs/evidence/2026-10-19-process-tree-graceful-teardown.md`（新） | 真机日志读数、三跑真进程原文、修法、四条边界、下一步 |
+
+**刻意不做**：不动 Windows 分支（那边一次到位杀掉整棵树，没有「等子孙」这段）；**不改进程组 / detached**
+（ACP 子进程与应用同一个进程组，整组信号会把应用自己一起杀掉；要用进程组必须同时改 spawn 的 `detached`，
+那是独立一条需要真机读数的改动，已在证据档 §6 立案）；不加日志级别、不开通道、不碰界面。
+
+### 三 读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| `process-tree.test.ts` | **16 passed**（12 既有 + 4 新增） |
+| 反向门 | 把实现换回 `15cbfcf1` 那一版、只留新用例 ⇒ **4 failed / 12 passed**（四条全红） |
+| 受影响簇（process-tree / lifecycle-shutdown / acp 连接收口两侧 / notebook kernel+shell） | **6 files / 128 passed | 6 skipped** |
+| 真进程三跑 | 见 §一 表（同一份代码、三种子进程行为、三种结论） |
+| 双 typecheck | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0** |
+| lint | `eslint --no-cache` 两个改动文件 **0 error / 0 warning** |
+| 全量单测 | **1345 files / 17196 passed**（16 skipped files、207 skipped 用例，exit 0；比上一轮 +4 用例 = 本轮新增数） |
+
+### 四 具名未办（每条带 blocked-by 与解封条件）
+
+1. **打包版／真实应用树的第一条读数未取**（112 个子孙那种规模收尾要多久）——`blocked-by`：本机内存闸门
+   （空闲页 3,848 ≈ 60 MB、swap 10.5/12.0 G）。解封条件：下一次打包版或 dev 实例正常运行。
+2. **进程组路线未做**（审计第 7 条的另一半）——`blocked-by`：需要同时改 `agent-process` 的 `detached`，
+   并取「真退出、真恢复、真升级」三条真机读数；改错会把应用自己的信号面改掉，不能只靠单测。
+3. **「已干净退出的中间进程 fork 出的孤儿」仍可能逃逸**——只有进程组能彻底关掉；在本单元里具名，不假装已覆盖。
+
+### 五 下一轮第一步
+
+① 读本轮提交的 CI 判决（完整 40 位 SHA，判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`），红了当批修；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的在制品落定；
+③ 内存闸门仍关着 ⇒ 取「不需要窗口」的下一单元（候选：真机审计 §5 第 4 条审查成本上限、第 8 条工具命名统一；
+   两者都要先核会话是否已在做，它的在制品路径是判据）。**不要重做**：审查读侧分段、写侧事务预算、失败态说人话、
+   `save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs` 修法、本轮的进程树宽限。

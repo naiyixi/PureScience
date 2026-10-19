@@ -20,6 +20,10 @@ const TERMINATE_GRACE_MS = 3_000
 // kernel-level unkillable (uninterruptible sleep) we cannot do anything about — don't wait the full grace.
 const SIGKILL_GRACE_MS = 1_000
 
+// Poll interval while waiting for a signalled tree to actually disappear. Short enough that a clean
+// shutdown is noticed promptly, long enough that a 3 s window costs ~60 existence checks per process.
+const TERMINATE_POLL_MS = 50
+
 // Signals the direct child, tolerating an already-exited process or a handle with no pid. Skips a child
 // already signaled so a first, graceful pass is a no-op on retry; escalation uses forceKillChild instead.
 const killDirectChild = (child: ChildProcess, signal?: NodeJS.Signals): void => {
@@ -91,16 +95,31 @@ const waitForExit = (child: ChildProcess, ms: number): Promise<boolean> =>
     })
   })
 
-// Best-effort descendant discovery on POSIX. Node's child.kill() signals only the immediate child, so a
-// grandchild (conda, the claude CLI, a package manager) would otherwise be orphaned exactly as it would
-// on Windows without taskkill /T. `ps -A -o pid=,ppid=` is available on both macOS (BSD) and Linux
-// (procps); any failure resolves to an empty list so we still fall back to killing the direct child.
-const collectDescendantPids = (rootPid: number): Promise<number[]> =>
+// Best-effort descendant discovery on POSIX from one process-table snapshot. Node's child.kill() signals
+// only the immediate child, so a grandchild (conda, the claude CLI, a package manager) would otherwise be
+// orphaned exactly as it would on Windows without taskkill /T. `ps -A -o pid=,ppid=` is available on both
+// macOS (BSD) and Linux (procps); any failure — including a spawn double that returns nothing — resolves
+// to an empty list so the caller still falls back to killing the direct child. This never rejects: a
+// teardown helper that throws is worse than one that reports an empty tree.
+const collectDescendantPids = async (rootPids: number[]): Promise<number[]> => {
+  if (rootPids.length === 0) return []
+  try {
+    return await snapshotDescendants(rootPids)
+  } catch {
+    return []
+  }
+}
+
+const snapshotDescendants = (rootPids: number[]): Promise<number[]> =>
   new Promise<number[]>((resolve) => {
     let ps: ChildProcess
     try {
       ps = spawn('ps', ['-A', '-o', 'pid=,ppid='], { windowsHide: true })
     } catch {
+      resolve([])
+      return
+    }
+    if (!ps) {
       resolve([])
       return
     }
@@ -146,12 +165,16 @@ const collectDescendantPids = (rootPid: number): Promise<number[]> =>
           childrenByParent.set(ppid, siblings)
         }
 
-        // Depth-first walk from the root; the root itself is excluded (the caller kills it via its handle).
+        // Depth-first walk from every root; the roots themselves are excluded (the caller kills the direct
+        // child via its handle, and the survivors it rescans from are already in its kill set).
         const descendants: number[] = []
-        const stack = [rootPid]
+        const seen = new Set<number>(rootPids)
+        const stack = [...rootPids]
         while (stack.length > 0) {
           const current = stack.pop() as number
           for (const kid of childrenByParent.get(current) ?? []) {
+            if (seen.has(kid)) continue
+            seen.add(kid)
             descendants.push(kid)
             stack.push(kid)
           }
@@ -226,26 +249,61 @@ const terminateWindowsTree = async (
   return { reaped: true }
 }
 
+// Waits until every pid is gone or the deadline passes. Descendants are given the same grace the direct
+// child gets: signalling a tree and checking `kill(pid, 0)` a few milliseconds later reports a clean
+// shutdown as a survivor — measured on a real 6-process tree, grandchildren that die on SIGTERM were
+// still counted alive ~30 ms after the signal, which escalated them to SIGKILL and reported the teardown
+// as `reaped: false`. A process on its way out is not a survivor.
+const waitForDescendantsToExit = async (pids: number[], deadline: number): Promise<void> => {
+  while (pids.some(isProcessAlive)) {
+    const left = deadline - Date.now()
+    if (left <= 0) return
+    await new Promise<void>((resolve) => {
+      // Deliberately not unref'd: this timer is the only thing keeping the event loop alive while we wait
+      // for the tree to die. An unref'd timer lets the process exit mid-teardown, leaving the caller's
+      // await unsettled (measured in a plain node probe), and the wait is bounded by the deadline anyway.
+      setTimeout(resolve, Math.min(TERMINATE_POLL_MS, left))
+    })
+  }
+}
+
 // POSIX tree teardown. child.kill() reaches only the immediate child, so descendants are discovered via
 // `ps` and signaled alongside it. The graceful signal (SIGTERM by default) is given the grace to take
-// effect, then anything still alive — the child that ignored it, or a reparented grandchild — is
-// escalated to SIGKILL and confirmed, so the function does not return leaving the tree running.
+// effect — for the direct child and for every descendant, from one shared deadline — then anything still
+// alive is escalated to SIGKILL and confirmed, so the function does not return leaving the tree running.
 const terminatePosixTree = async (
   child: ChildProcess,
   signal: NodeJS.Signals | undefined,
   log: ProcessTreeLogger | undefined
 ): Promise<ProcessTreeKillResult> => {
   const gracefulSignal = signal ?? 'SIGTERM'
-  const descendants = child.pid === undefined ? [] : await collectDescendantPids(child.pid)
+  const descendants = child.pid === undefined ? [] : await collectDescendantPids([child.pid])
 
+  // The grace starts when we actually signal, not when the caller asked: the ps snapshot above can take a
+  // while, and nothing has been signalled yet while it runs.
+  const gracefulDeadline = Date.now() + TERMINATE_GRACE_MS
   signalPids(descendants, gracefulSignal)
   killDirectChild(child, gracefulSignal)
 
-  const exited = await waitForExit(child, TERMINATE_GRACE_MS)
-  const survivors = descendants.filter(isProcessAlive)
+  const exited = await waitForExit(child, Math.max(0, gracefulDeadline - Date.now()))
+  // Descendants shut down on their own schedule (a kernel flushing its state, an agent CLI writing its
+  // transcript); they get the rest of the same window before being called survivors.
+  await waitForDescendantsToExit(descendants, gracefulDeadline)
+
+  let survivors = descendants.filter(isProcessAlive)
+  // A process forked after the snapshot is in no list we hold and would outlive the app. Rescan from the
+  // processes that are still alive — never from the exited child, whose pid the kernel may have recycled
+  // into an unrelated process — and add whatever hangs off them to the kill set.
+  if (survivors.length > 0) {
+    const late = (await collectDescendantPids(survivors)).filter(
+      (pid) => !descendants.includes(pid)
+    )
+    if (late.length > 0) survivors = [...survivors, ...late]
+  }
 
   if (exited && survivors.length === 0) return { reaped: true }
 
+  const killDeadline = Date.now() + SIGKILL_GRACE_MS
   let childExited = exited
   if (survivors.length > 0) {
     log?.error(
@@ -258,11 +316,14 @@ const terminatePosixTree = async (
       `process ${child.pid ?? '(no pid)'} did not exit after ${gracefulSignal}; escalating to SIGKILL`
     )
     forceKillChild(child)
-    childExited = await waitForExit(child, SIGKILL_GRACE_MS)
+    childExited = await waitForExit(child, Math.max(0, killDeadline - Date.now()))
   }
+  // SIGKILL is uncatchable but not instantaneous: confirm the kernel finished with them before judging
+  // the tree, otherwise a delivered SIGKILL still reads as a survivor and a clean teardown reports false.
+  await waitForDescendantsToExit(survivors, killDeadline)
 
   // Re-check after SIGKILL: reaped only if the direct child exited and no descendant is still alive.
-  return { reaped: childExited && descendants.filter(isProcessAlive).length === 0 }
+  return { reaped: childExited && survivors.every((pid) => !isProcessAlive(pid)) }
 }
 
 // Terminates a child process and every descendant it spawned, then waits for the direct child to actually

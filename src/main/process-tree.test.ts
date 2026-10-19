@@ -282,4 +282,139 @@ describe('terminateProcessTree (posix)', () => {
 
     await expect(pending).resolves.toEqual({ reaped: true })
   })
+
+  // The three tests below pin the grace window that descendants get. Before it, a teardown signalled the
+  // tree and re-checked liveness the moment the direct child exited (~30 ms later on a real tree), so
+  // processes that were still shutting down were counted as survivors, SIGKILLed mid-flush, and the whole
+  // teardown reported reaped:false — which makes the update-install gate refuse to proceed.
+  it('does not call a descendant a survivor while it is still shutting down', async () => {
+    vi.useFakeTimers()
+    setPlatform('linux')
+    const ps = new FakePs()
+    spawnMock.mockReturnValueOnce(ps)
+    const alive = new Set([1001])
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid, sig) => {
+      if (sig === 0) {
+        if (!alive.has(Number(pid))) throw esrch()
+        return true
+      }
+      return true
+    })
+    const log = { error: vi.fn() }
+    const child = new FakeChild(1000)
+
+    const pending = terminateProcessTree(child as never, 'SIGTERM', log)
+    ps.stdout.emit('data', Buffer.from('1000 1\n1001 1000\n'))
+    ps.emit('close', 0)
+    await Promise.resolve()
+    await Promise.resolve()
+    child.emit('exit', 0, null)
+    // The descendant handles SIGTERM and needs 300 ms to finish its own shutdown.
+    setTimeout(() => alive.delete(1001), 300)
+
+    await vi.advanceTimersByTimeAsync(299)
+    expect(killSpy).not.toHaveBeenCalledWith(1001, 'SIGKILL')
+
+    await vi.advanceTimersByTimeAsync(200)
+    await expect(pending).resolves.toEqual({ reaped: true })
+    expect(log.error).not.toHaveBeenCalled()
+    expect(killSpy).not.toHaveBeenCalledWith(1001, 'SIGKILL')
+  })
+
+  it('waits out the grace before escalating a descendant that never exits', async () => {
+    vi.useFakeTimers()
+    setPlatform('linux')
+    const ps = new FakePs()
+    spawnMock.mockReturnValueOnce(ps)
+    // Nothing ever dies: signal 0 keeps succeeding, so the descendant stays a survivor.
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
+    const log = { error: vi.fn() }
+    const child = new FakeChild(1000)
+
+    const pending = terminateProcessTree(child as never, 'SIGTERM', log)
+    ps.stdout.emit('data', Buffer.from('1000 1\n1001 1000\n'))
+    ps.emit('close', 0)
+    await Promise.resolve()
+    await Promise.resolve()
+    child.emit('exit', 0, null)
+
+    // Just short of the grace: it is still shutting down, not a survivor.
+    await vi.advanceTimersByTimeAsync(2_990)
+    expect(killSpy).not.toHaveBeenCalledWith(1001, 'SIGKILL')
+
+    await vi.advanceTimersByTimeAsync(20)
+    expect(killSpy).toHaveBeenCalledWith(1001, 'SIGKILL')
+    expect(log.error).toHaveBeenCalledTimes(1)
+
+    // It survives SIGKILL too (kill spy always succeeds), so the tree is not reaped.
+    await vi.advanceTimersByTimeAsync(1_100)
+    await expect(pending).resolves.toEqual({ reaped: false })
+  })
+
+  it('kills a process forked during teardown that the first snapshot could not see', async () => {
+    vi.useFakeTimers()
+    setPlatform('linux')
+    const first = new FakePs()
+    const second = new FakePs()
+    spawnMock.mockReturnValueOnce(first).mockReturnValueOnce(second)
+    const alive = new Set([1001, 1002])
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid, sig) => {
+      const target = Number(pid)
+      if (sig === 0) {
+        if (!alive.has(target)) throw esrch()
+        return true
+      }
+      if (sig === 'SIGKILL') alive.delete(target)
+      return true
+    })
+    const child = new FakeChild(1000)
+
+    const pending = terminateProcessTree(child as never, 'SIGTERM')
+    first.stdout.emit('data', Buffer.from('1000 1\n1001 1000\n'))
+    first.emit('close', 0)
+    await Promise.resolve()
+    await Promise.resolve()
+    child.emit('exit', 0, null)
+
+    // The survivor forks a helper while the grace is running: it is in no list we already hold.
+    await vi.advanceTimersByTimeAsync(3_000)
+    second.stdout.emit('data', Buffer.from('1000 1\n1001 1\n1002 1001\n'))
+    second.emit('close', 0)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(killSpy).toHaveBeenCalledWith(1002, 'SIGKILL')
+    await vi.advanceTimersByTimeAsync(1_100)
+    // Both the survivor and the late fork were killed, so the tree did come down.
+    await expect(pending).resolves.toEqual({ reaped: true })
+  })
+
+  it('judges the tree only after SIGKILLed processes are gone', async () => {
+    vi.useFakeTimers()
+    setPlatform('linux')
+    const ps = new FakePs()
+    spawnMock.mockReturnValueOnce(ps)
+    const alive = new Set([1001])
+    vi.spyOn(process, 'kill').mockImplementation((pid, sig) => {
+      if (sig === 0) {
+        if (!alive.has(Number(pid))) throw esrch()
+        return true
+      }
+      if (sig === 'SIGKILL') setTimeout(() => alive.delete(Number(pid)), 200)
+      return true
+    })
+    const child = new FakeChild(1000)
+
+    const pending = terminateProcessTree(child as never)
+    ps.stdout.emit('data', Buffer.from('1000 1\n1001 1000\n'))
+    ps.emit('close', 0)
+    await Promise.resolve()
+    await Promise.resolve()
+    child.emit('exit', 0, null)
+
+    // A delivered SIGKILL takes a moment to be reflected in kill(pid, 0); reporting false here would
+    // tell the update-install gate that handles are still held.
+    await vi.advanceTimersByTimeAsync(3_050)
+    await vi.advanceTimersByTimeAsync(400)
+    await expect(pending).resolves.toEqual({ reaped: true })
+  })
 })
