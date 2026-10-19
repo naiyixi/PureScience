@@ -213,7 +213,7 @@ const REMOTE_WEB_COMMAND_COUNT = 235
 // +1 for the window's PDF translation entry (pdf:translation): local-only, so it lands in the fail-closed
 // set instead of the remote dispatch count.
 const REMOTE_REJECTED_COMMAND_COUNT = 131
-const TASK_COMMAND_COUNT = 11
+const TASK_COMMAND_COUNT = 13
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -235,7 +235,12 @@ const TASK_COMMAND_NAMES = Object.freeze([
   'settings:list-connectors',
   // 2.1: re-running a recorded version is a read-and-report operation, so the command line reaches it
   // through the same narrow view as the other machine-readable state.
-  'artifacts:replay-version'
+  'artifacts:replay-version',
+  // Headless approvals: a `start --no-open` service has no window, so the cards a run is waiting on
+  // are readable and answerable from the same narrow view (GET /api/v1/permissions and its approve
+  // route). Without these two the command line can start a run but never unblock one.
+  'acp:get-state',
+  'acp:respond-permission'
 ])
 
 const APPLICATION_COMMAND_GROUPS = Object.freeze([

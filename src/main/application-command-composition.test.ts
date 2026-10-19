@@ -230,7 +230,7 @@ describe('application command composition', () => {
     expect(listProjects).toHaveBeenCalledOnce()
   })
 
-  it('exposes only the eleven Task commands and no transport-wide capability', async () => {
+  it('exposes only the thirteen Task commands and no transport-wide capability', async () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.task.commandNames()).toEqual([
@@ -244,7 +244,10 @@ describe('application command composition', () => {
       'settings:check-environment',
       'runtime:list-environments',
       'settings:list-connectors',
-      'artifacts:replay-version'
+      'artifacts:replay-version',
+      // Headless approvals (no window in `start --no-open`): read the pending cards, answer one.
+      'acp:get-state',
+      'acp:respond-permission'
     ])
     await expect(
       composition.localWeb.invoke('sessions:export-conversation', invocation())
