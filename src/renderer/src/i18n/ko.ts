@@ -4822,5 +4822,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': '에이전트 끊김',
   'reviewer.errorShort.timeout': '시간 초과',
   'reviewer.errorShort.unknown': '원인 불명',
-  'reviewer.errorTechnicalDetail': '기술 세부 정보'
+  'reviewer.errorTechnicalDetail': '기술 세부 정보',
+  'reviewer.error.budget':
+    '검토가 도구 호출 상한에서 멈춰 판정에 이르지 못했고, 이번 턴의 검사는 기록되지 않았습니다. 다시 실행하거나 범위를 줄여 검토하세요.',
+  'reviewer.errorShort.budget': '호출 상한 소진'
 }

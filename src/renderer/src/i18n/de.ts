@@ -5075,5 +5075,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': 'Agent getrennt',
   'reviewer.errorShort.timeout': 'Zeitüberschreitung',
   'reviewer.errorShort.unknown': 'Ursache unbekannt',
-  'reviewer.errorTechnicalDetail': 'Technische Details'
+  'reviewer.errorTechnicalDetail': 'Technische Details',
+  'reviewer.error.budget':
+    'Die Prüfung hat ihr Aufrufkontingent für Werkzeuge ausgeschöpft, bevor ein Urteil vorlag; für diesen Durchgang wurde nichts festgehalten. Prüfung erneut starten oder einen kleineren Durchgang prüfen.',
+  'reviewer.errorShort.budget': 'Aufrufkontingent aufgebraucht'
 }

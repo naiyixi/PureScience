@@ -4924,5 +4924,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': 'агент отключён',
   'reviewer.errorShort.timeout': 'время истекло',
   'reviewer.errorShort.unknown': 'причина неизвестна',
-  'reviewer.errorTechnicalDetail': 'Технические детали'
+  'reviewer.errorTechnicalDetail': 'Технические детали',
+  'reviewer.error.budget':
+    'Проверка остановилась на пределе вызовов инструментов, не вынеся вердикта: по этому ходу ничего не записано. Запустите проверку снова или проверьте ход меньшего объёма.',
+  'reviewer.errorShort.budget': 'предел вызовов'
 }

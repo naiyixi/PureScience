@@ -5045,5 +5045,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': 'agent déconnecté',
   'reviewer.errorShort.timeout': 'délai dépassé',
   'reviewer.errorShort.unknown': 'cause inconnue',
-  'reviewer.errorTechnicalDetail': 'Détails techniques'
+  'reviewer.errorTechnicalDetail': 'Détails techniques',
+  'reviewer.error.budget':
+    "La revue s'est arrêtée à son plafond d'appels d'outils avant de rendre un verdict : rien n'a été enregistré pour ce tour. Relancez la revue ou réduisez la portée du tour.",
+  'reviewer.errorShort.budget': "plafond d'appels atteint"
 }

@@ -4934,5 +4934,8 @@ export const en: Record<ZhKey, string> = {
   'reviewer.errorShort.runtime': 'agent disconnected',
   'reviewer.errorShort.timeout': 'timed out',
   'reviewer.errorShort.unknown': 'cause unknown',
-  'reviewer.errorTechnicalDetail': 'Technical details'
+  'reviewer.errorTechnicalDetail': 'Technical details',
+  'reviewer.error.budget':
+    'The review stopped at its tool-call ceiling before reaching a verdict, so nothing was recorded for this turn. Re-run the review, or review a smaller turn.',
+  'reviewer.errorShort.budget': 'tool budget spent'
 }

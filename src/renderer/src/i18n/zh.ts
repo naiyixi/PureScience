@@ -4592,7 +4592,10 @@ export const zh = {
   'reviewer.errorShort.runtime': '智能体断连',
   'reviewer.errorShort.timeout': '超时',
   'reviewer.errorShort.unknown': '原因未知',
-  'reviewer.errorTechnicalDetail': '技术详情'
+  'reviewer.errorTechnicalDetail': '技术详情',
+  'reviewer.error.budget':
+    '审查在工具调用上限处停下，没有给出结论，因此这一轮没有记下任何检查。可以重新运行审查，或把这一轮拆小后再审。',
+  'reviewer.errorShort.budget': '工具调用用尽'
 }
 
 export type ZhKey = keyof typeof zh

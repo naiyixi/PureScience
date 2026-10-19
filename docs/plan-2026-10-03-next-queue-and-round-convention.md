@@ -9450,3 +9450,89 @@ worker 照常采样 ⇒ 机器在跑、只有主线程被饿住；worker 恰好�
 ③ 内存闸门仍关着 ⇒ 取「不需要窗口」的下一单元（候选：真机审计 §5 第 4 条审查成本上限、第 8 条工具命名统一；
    两者都要先核会话是否已在做，它的在制品路径是判据）。**不要重做**：审查读侧分段、写侧事务预算、失败态说人话、
    `save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs` 修法、本轮的进程树宽限。
+
+## 一百九十六、本轮追加（执行器，2026-10-20 01:1x–）—— 审查成本上限：一次审查 300 次工具调用封顶，且停下来的理由能到读者眼前
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 先取基点判决（**完整 40 位 SHA** `5b0ebd496d1a0697704e282be51a2bd2fa89feaa`，即当前 `origin/main`）：
+  `Nightly | completed | success`、`Windows Full Test | completed | success` ⇒ 双车道全绿；`gh run list` 读数里
+  **在飞车道 0 条**（最近六条全 completed）。所以本轮推送前不必担心顶掉谁的判决，但仍会在推前再查一次。
+- 主工作树 `/Users/totota/purescience` 仍在**会话那条分叉的本地 main**（`00461eab`，自 `origin/main` 起 18 笔未推、
+  与远端已分叉 101 笔），树上 17 个在制路径（`specialist/**`、`settings/**`、`preload/**` 等）是它的在制品
+  ⇒ 本轮继续在隔离工作树 `/tmp/ps-wd3`（`--detach 5b0ebd49` + 软链 `node_modules`），**主树一个字节没碰**。
+- 它这一轮的新提交 `00461eab`（审查事务超时重试）**也改 `src/main/reviewer/orchestrator.ts`**，但与本轮改动**不相交**：
+  它在 `commitScopedSubmission` 那一处（外加文件头的一个常量与助手函数），本轮在 `driveReviewerToStop` 与选项接线。
+  两侧基点 blob 相同（`cfbf4de3`）⇒ 它将来落主干时是可直接合并的两段，本轮的集成用例也不依赖它。
+- 排期 B 段三项状态复核：A7 ✅、S3（含 S4 真机读数）✅、M2 ⛔ 卡在产品决定（无发布方校验值清单）⇒ B 段没有可取的活；
+  D 段（真机审计 §5 的八条）由会话推进。本单元取 **§5 第 4 条「审查成本上限」**：与会话的在制路径不相交，
+  且不需要起窗口（内存闸门仍关着：空闲页 ~5.2k ≈ 82 MB、swap 12.1/13.3 GB）。
+- **不重做**：审查读侧分段、写侧事务预算、失败态说人话、`save-session` 分段日志、看门狗本体、采样线程与
+  `unobservedMs` 修法、进程树宽限 —— 这些都在 `15cbfcf1`/`5b0ebd49`/会话分支上已交付。
+
+### 一 缺口：两道既有闸都不管「成本」
+
+`DEFAULT_REVIEWER_TIMEOUT_MS`（900 s）拦的是**挂住不动**；`DEFAULT_REVIEWER_MAX_UPDATES`（1000）拦的是**帧级疯转**
+（同一调用反复刷状态也算帧：1000 帧可以是 12 次调用，也可以是 900 次）。于是一个「每次调用都便宜、但一秒能发起好几次」
+的审查在面板上表现为**正常跑着**，直到墙钟到点才以 `reviewer session timed out before stopping` 收场 ——
+那句话既说不出花了多少次调用，也说不出为什么没有结论。
+
+### 二 先量后定（并**就地更正上一轮汇报里的一个错数**）
+
+量的是打包版真实库（`~/.purescience/purescience.db`，只读）：151 条有工具调用的 Review（库内共 154 条）——
+**median 25、p90 90、p99 164、max 202**；**超过 240 的 0 条、超过 300 的 0 条**；最重那次 202 次里
+**186 次是 `query_execution_log`**（一次只查一个 activity）。
+
+**具名更正**：上一轮我写「每次调用 1.5–3 s，900 s 仍可放行 300–600 次」——按行时长重算（96 条 ≥20 次调用且时长可信），
+**中位是 5.22 s**（p90 10.38、max 21.42），900 s 在中位节奏下只放得行 ~170 次。结论因此不是「墙钟太松」，而是
+**两道闸管两种形状**：慢审查由墙钟先收口、本预算永不生效（151 条里没有一条会被它停下 —— 这正是想要的）；
+便宜调用的疯转（最重那次 202 次 / 313 s ≈ 1.55 s/次）由预算在 ~7.5 分钟处停下，**而且带原因**。
+代码注释已按这组实测数改写，旧那句「1.5–3 s」不再留在仓里。
+
+### 三 交付（4 处代码 + 2 个用例文件 + 1 份证据档）
+
+| # | 文件 | 内容 |
+| --- | --- | --- |
+| ① | `src/main/reviewer/orchestrator.ts` | `DEFAULT_REVIEWER_MAX_TOOL_CALLS = 300`（注释带实测分布与「不拦慢审查」的边界）；drive 循环按 **distinct `toolCallId`** 计调用（同一 id 的 `tool_call_update` 只算收尾、无 id 照计、流式 chunk 不计），到上限抛 `reviewer session exceeded tool-call budget (N) — review stopped without a verdict. …`；80% 处 `warn` 一次；正常停下打 `reviewer drive stopped {stopReason, toolCalls, toolBudget}` |
+| ② | 同上（接线） | `reviewerMaxToolCalls` 沿 `RunReviewOptions → runFixLoop → runScopedReview → 两处 drive` 共 **10 个点**接齐 |
+| ③ | `src/renderer/src/lib/reviewer-error-copy.ts` | 第八族 **`budget`**（`needles: ['exceeded tool-call budget', 'tool-call budget']`），保留「persistence 先于 timeout」的既有顺序契约 |
+| ④ | `src/renderer/src/i18n/*.ts`（9 语言） | `reviewer.error.budget` + `reviewer.errorShort.budget` 共 18 行（技能自带 `add-i18n-keys.py` 写入并自证九文件齐平；zh / zh-Hant ≠ en） |
+| ⑤ | `src/main/reviewer/orchestrator-tool-budget.test.ts`（新） | 7 条：到上限即停 / 消息带面板匹配短语 / 未超预算照常返回 / 同一调用的 update 不自耗预算 / 无 id 照计 / chunk 不计 / 缺省走 300 |
+| ⑥ | `src/main/reviewer/orchestrator.test.ts`（改） | 1 条**集成**用例：`runReview({ reviewerMaxToolCalls: 2 })` 走完整编排（真 ACP 夹具 + 真 SQLite），断言 `lifecycle='error'`、`errorMessage` 含 `exceeded tool-call budget (2)`、`checks` 为空，并**回读库里那一行**再断言一次 |
+| ⑦ | `docs/evidence/2026-10-20-review-tool-call-budget.md`（新） | 分布读数（含口径与更正）、交付、四条反向门、真进程探针五场景、五条边界、下一步 |
+
+**为什么集成用例是必需的**：单元用例直接驱 `driveReviewerToStop`，只证明「函数会停」；本仓吃过的形状是
+「参数沿每层签名都接上了、却没走到真正的循环」。集成用例证明旋钮**真的被 `runReview` 消费**、
+且停止原因**真的到了读者眼前**（库里那一行的 `errorMessage`）。
+
+### 四 读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 新用例 `orchestrator-tool-budget.test.ts` | **7 passed** |
+| `orchestrator.test.ts`（13 既有 + 1 新增） | **14 passed** |
+| 反向门 ①（把两处 drive 传参摘成 `undefined`） | **1 failed / 13 passed**，红的恰是那条集成用例 |
+| 反向门 ②（`orchestrator.ts` 整文件换回 `5b0ebd49`） | `orchestrator-tool-budget.test.ts` **3 failed / 4 passed** |
+| 受影响簇 `src/main/reviewer` | **24 files / 277 passed**，exit 0 |
+| i18n + 卡片簇 | **6 files / 122 passed** |
+| 双 typecheck | node **exit 0**；web **exit 0** |
+| lint（本笔改动文件） | **0 error** |
+| 真进程探针（生产代码 esbuild 打包 + 真 `node`） | 300 封顶恰在第 300 次停下；不给选项同样 300；单调用刷 500 次状态 `toolCalls: 1`；299 次后正常结束；4 万 chunk `toolCalls: 0` |
+| 全量单测 `--maxWorkers=4` | **三次**（同一工作树）：① `1346 files / 17206 passed` exit 0；② 同一读数复跑再次 `1346 / 17206` exit 0（此两次的 Prisma 客户端来自共享 `node_modules` 的旧生成物）；③ 用**与 origin/main 同一份 schema 重新生成**的本地客户端再跑：`1 failed / 17205 passed`，红在 `src/renderer/src/pages/workspace/session-plan/SessionPlanSurfaces.test.tsx`（与本批无关的渲染用例），**单文件隔离复跑 3 遍全绿 21/21** ⇒ 按**负载抖动**记档（当时 load average ~15，机器上另有一条全量在跑；最终判决以上 CI 为准） |
+| Prisma 客户端的口径（一条环境事实，写下来防下轮误判） | 隔离工作树的 `node_modules` 原本软链到主树。主树（会话那条分叉分支）在 01:23 用**它自己的旧 schema** 重生成了共享客户端 ⇒ `tsc` 在 `src/main/references/repository.ts` 报 `citedAt`/`citedSessionId` 缺失（v2.6.0 A2 的两列，本批一个字没碰）。处置：把 `node_modules` 换成「逐包软链 + 本地复制 `@prisma/client` 与 `.prisma`」并从 `prisma/schema.prisma` 重新生成，**共享客户端一个字节没动**（核对：`grep -c citedAt` 仍是 0）。双 typecheck 在本地客户端下 **exit 0 / exit 0** |
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+1. **真实审查回合打到 300 的真机读数未取** —— `blocked-by`：本机内存闸门（空闲页 ~5.2k ≈ 82 MB、swap 12.1/13.3 GB）。
+   解封条件：下一次 dev 或打包实例能起。**不许用真进程探针顶替**（探针证 drive 循环，真机证整条编排 + 面板文案）。
+2. **预算不限制修正轮数**：`fixLoopMaxRounds`（缺省 3）管整轮次数，预算管单次会话里的调用；两者相乘才是极端上界，
+   合并成一个总预算会改变 `maxRounds` 的既有语义，属独立一条，本轮不做。
+3. **「一次审查花了多少调用」还没有只读展示**（现在只在日志里）。做成界面字段前必须先有渲染端消费方，
+   否则就是空壳字段 —— 按本仓纪律不在没有入口的情况下先造。
+
+### 六 下一轮第一步
+
+① 读本轮提交的 CI 判决（**完整 40 位 SHA**；判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`），红了当批修；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的在制品落定；
+③ 内存闸门仍关着 ⇒ 继续取「不需要窗口」的下一单元（候选：真机审计 §5 第 8 条工具命名统一；先核会话是否已在做）。
+**不要重做**：以上 §〇 末列的那七项，加上本轮的预算与 `budget` 一族文案。

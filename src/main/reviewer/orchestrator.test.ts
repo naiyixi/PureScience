@@ -87,6 +87,10 @@ const startFakeReviewerAgent = (
     // When set, the agent requests a non-reviewer tool the strict gate rejects, then ends its turn
     // without submit_findings — exercising the gate-rejection incomplete-review path.
     emitRejectedToolCall?: boolean
+    // When set, the agent announces `calls` distinct tool calls (each with its own toolCallId) before
+    // ending its turn. With `updateEach`, every id is announced twice — the `tool_call` plus the
+    // `tool_call_update` that finishes it — so a caller can prove the budget counts calls, not frames.
+    emitToolCalls?: { calls: number; updateEach?: boolean }
     // v3: checks[] only — reasoning removed from submit_findings
     checksToSubmit?: Array<{
       status: 'pass' | 'warn' | 'fail'
@@ -178,6 +182,40 @@ const startFakeReviewerAgent = (
               }
             ]
           )
+        }
+      }
+
+      // If requested, announce tool calls until the caller's budget stop (or until the session is
+      // disposed out from under us — the orchestrator closes it the moment the budget is exhausted).
+      if (options.emitToolCalls) {
+        const { calls, updateEach } = options.emitToolCalls
+        try {
+          for (let index = 0; index < calls; index += 1) {
+            const toolCallId = `call-${index}`
+            await ctx.client.notify(acp.methods.client.session.update, {
+              sessionId: ctx.params.sessionId,
+              update: {
+                sessionUpdate: 'tool_call',
+                toolCallId,
+                title: 'query_execution_log',
+                kind: 'fetch',
+                status: 'pending'
+              }
+            })
+            if (updateEach) {
+              await ctx.client.notify(acp.methods.client.session.update, {
+                sessionId: ctx.params.sessionId,
+                update: {
+                  sessionUpdate: 'tool_call_update',
+                  toolCallId,
+                  status: 'completed'
+                }
+              })
+            }
+          }
+        } catch {
+          // The orchestrator disposes the reviewer session as soon as the budget is exhausted, so a
+          // late announcement legitimately fails to deliver. The assertion belongs on the Review row.
         }
       }
 
@@ -534,6 +572,53 @@ describe('reviewer orchestrator', () => {
     // First update: 'running' (created), last update: 'complete'.
     expect(lifecycles[0]).toBe('running')
     expect(lifecycles[lifecycles.length - 1]).toBe('complete')
+
+    await client.$disconnect()
+  })
+
+  it('stops a runaway reviewer at the tool-call budget and says so on the Review row', async () => {
+    // The unit tests drive `driveReviewerToStop` directly. This one proves the option is actually
+    // consumed by `runReview` (i.e. it reaches the drive call and the error surfaces to the reader),
+    // which is the shape that otherwise goes missing: a knob that is threaded through every signature
+    // but never reaches the loop is indistinguishable from no knob at all in the panel.
+    const process = new FakeAgentProcess()
+    startFakeReviewerAgent(process, 'reviewer-session-1', {
+      // Six distinct calls, each announced twice (call + its finishing update): the budget must count
+      // two calls, not four frames, so a budget of 2 stops the run.
+      emitToolCalls: { calls: 6, updateEach: true }
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+
+    const review = await runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => makeSession(),
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!,
+      reviewerMaxToolCalls: 2
+    })
+
+    expect(review.lifecycle).toBe('error')
+    // The panel classifies the failure by this literal (lib/reviewer-error-copy → `budget`), so the
+    // phrase is part of the contract, not just a log line.
+    expect(review.errorMessage).toContain('exceeded tool-call budget (2)')
+    expect(review.checks).toEqual([])
+
+    // Persisted, not merely returned: a re-read of the row shows the same stop and no verdict.
+    const stored = await repository.findReviewById(review.id)
+    expect(stored?.lifecycle).toBe('error')
+    expect(stored?.errorMessage).toContain('exceeded tool-call budget (2)')
 
     await client.$disconnect()
   })

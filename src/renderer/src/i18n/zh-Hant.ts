@@ -4536,5 +4536,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': '智慧體斷線',
   'reviewer.errorShort.timeout': '逾時',
   'reviewer.errorShort.unknown': '原因未知',
-  'reviewer.errorTechnicalDetail': '技術詳情'
+  'reviewer.errorTechnicalDetail': '技術詳情',
+  'reviewer.error.budget':
+    '審查在工具呼叫上限處停下，沒有給出結論，所以這一輪沒有記下任何檢查。可以重新執行審查，或把這一輪拆小後再審。',
+  'reviewer.errorShort.budget': '工具呼叫用盡'
 }

@@ -5014,5 +5014,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': 'agente desconectado',
   'reviewer.errorShort.timeout': 'tiempo agotado',
   'reviewer.errorShort.unknown': 'causa desconocida',
-  'reviewer.errorTechnicalDetail': 'Detalles técnicos'
+  'reviewer.errorTechnicalDetail': 'Detalles técnicos',
+  'reviewer.error.budget':
+    'La revisión se detuvo al agotar su límite de llamadas a herramientas antes de emitir un veredicto, así que no se registró nada para este turno. Vuelve a ejecutarla o revisa un turno más pequeño.',
+  'reviewer.errorShort.budget': 'límite de llamadas'
 }

@@ -12,7 +12,7 @@
 // `unknown`: the panel then says only that it does not know the cause and shows the raw text — it never
 // guesses one, and nothing is ever hidden.
 export type ReviewErrorFamily =
-  'persistence' | 'storage' | 'protocol' | 'provider' | 'runtime' | 'timeout' | 'unknown'
+  'persistence' | 'storage' | 'protocol' | 'budget' | 'provider' | 'runtime' | 'timeout' | 'unknown'
 
 type Matcher = { family: ReviewErrorFamily; needles: readonly string[] }
 
@@ -46,6 +46,13 @@ const MATCHERS: readonly Matcher[] = [
     // Observed: 'Reviewer stopped without calling submit_findings.' (and the permission-gate variant),
     // plus the bridge-scope refusal REVIEWER_BRIDGE_SCOPE_ERROR.
     needles: ['submit_findings', 'reviewer-only tool scope']
+  },
+  {
+    family: 'budget',
+    // The orchestrator's own tool-call ceiling: 'reviewer session exceeded tool-call budget (300) —
+    // review stopped without a verdict…'. This is a cost stop, not a failure of the audited turn, so
+    // the panel must not let it read as "the turn failed the review".
+    needles: ['exceeded tool-call budget', 'tool-call budget']
   },
   {
     family: 'provider',

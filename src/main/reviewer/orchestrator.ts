@@ -107,6 +107,8 @@ export type RunReviewOptions = {
   reviewerTimeoutMs?: number
   // Hard cap on reviewer session updates before the drive loop aborts (guards a fast-looping agent).
   reviewerMaxUpdates?: number
+  // Distinct tool calls one review run may make before it stops without a verdict (cost ceiling).
+  reviewerMaxToolCalls?: number
   // Maximum number of fix-loop iterations (whole-loop counter cap). Defaults to 3.
   fixLoopMaxRounds?: number
   // Called just before the fix loop starts (after initial review finds warn/fail). Used to lock
@@ -130,6 +132,32 @@ export type RunReviewOptions = {
 // evidence tracing, so the timeout is generous.
 const DEFAULT_REVIEWER_TIMEOUT_MS = 900_000
 const DEFAULT_REVIEWER_MAX_UPDATES = 1000
+
+// Tool-call budget for ONE reviewer run.
+//
+// Measured on the installed app's own Review rows (field database: 151 reviews that recorded tool
+// calls — median 25 calls, p90 90, p99 164, max 202; the heaviest spent 186 of its 202 on
+// query_execution_log, one activity at a time). 300 is 1.48× the heaviest review ever observed, so an
+// honestly deep review keeps its headroom and none of the observed runs would have been stopped.
+//
+// What this guard is NOT: the 900 s wall clock already bounds a slow review. Measured per-call cost is
+// median 5.2 s (p90 10.4 s, max 21.4 s over 96 reviews with ≥20 calls and a plausible duration), i.e.
+// at the median pace 900 s admits only ~170 calls — so on a slow review the clock fires first and this
+// budget never binds. It exists for the other shape: a looping agent making *cheap* calls (the heaviest
+// observed review ran 202 calls in 313 s ≈ 1.55 s per call) would otherwise spend the whole wall-clock
+// window. At that pace 300 calls is ~7.5 min, half the window, and the run stops with a reason instead
+// of grinding on until the timeout tells a less useful story.
+const DEFAULT_REVIEWER_MAX_TOOL_CALLS = 300
+// Warn once when the budget is this far spent, so the field log shows near-misses (which is the only
+// way to tell "300 is too tight" from "300 is right") without adding a second counter anywhere.
+const REVIEWER_TOOL_BUDGET_WARN_RATIO = 0.8
+
+// The message a budget stop writes into Review.errorMessage. The renderer classifies it by the
+// literal `exceeded tool-call budget` (lib/reviewer-error-copy), so that phrase must survive edits.
+const reviewerToolBudgetMessage = (budget: number): string =>
+  `reviewer session exceeded tool-call budget (${budget}) — review stopped without a verdict. ` +
+  'No checks were recorded for this turn: re-run the review, or review a smaller turn.'
+
 const DEFAULT_SESSION_REFRESH_TIMEOUT_MS = 10_000
 const SESSION_REFRESH_POLL_MS = 50
 
@@ -220,6 +248,8 @@ type DrivableSession = {
 type DriveOptions = {
   timeoutMs: number
   maxUpdates: number
+  // Distinct tool calls one reviewer run may make before it is stopped. Omitted ⇒ the module default.
+  maxToolCalls?: number
 }
 
 type DriveCallbacks = {
@@ -299,8 +329,16 @@ export const driveReviewerToStop = async (
 ): Promise<string | undefined> => {
   const { timeoutMs, maxUpdates } = options
   const { onUpdate } = callbacks ?? {}
+  const toolBudget = options.maxToolCalls ?? DEFAULT_REVIEWER_MAX_TOOL_CALLS
+  const warnAt = Math.max(1, Math.ceil(toolBudget * REVIEWER_TOOL_BUDGET_WARN_RATIO))
   const deadline = Date.now() + timeoutMs
   let updates = 0
+  // Distinct tool calls (by ACP toolCallId), which is what a review's cost actually tracks: one call =
+  // one model round trip. A `tool_call_update` for a call already counted is that same call finishing,
+  // and a call arriving with no id at all can only be counted as it arrives.
+  const countedToolCalls = new Set<string>()
+  let toolCalls = 0
+  let budgetWarned = false
 
   // In-flight accumulator for streaming text chunks (assembled into whole entries on transition).
   const acc: ChunkAccumulator = { thoughtText: null, messageText: null, pendingTools: new Map() }
@@ -321,6 +359,9 @@ export const driveReviewerToStop = async (
       if (result.kind === 'stop') {
         // Flush any in-flight streaming chunks before returning.
         flushAccumulator(acc, onUpdate)
+        // One line per reviewer run: the tool-call count is what tunes the budget above, and it is
+        // otherwise only recoverable by parsing the captured log of every review row.
+        log.info('reviewer drive stopped', { stopReason: result.stopReason, toolCalls, toolBudget })
         return result.stopReason
       }
 
@@ -332,6 +373,29 @@ export const driveReviewerToStop = async (
         updates++
         if (updates >= maxUpdates) {
           throw new Error(`reviewer session exceeded max updates (${maxUpdates})`)
+        }
+      }
+
+      // Tool-call budget. Counted here rather than from the captured log so it also holds when no
+      // `onUpdate` callback is wired. A stop is honest, not silent: the caller records this message as
+      // the review's error, and the panel shows the budget family instead of a verdict that never came.
+      if (sessionUpdate === 'tool_call' || sessionUpdate === 'tool_call_update') {
+        const callId = result.update?.toolCallId
+        if (typeof callId === 'string' && callId.length > 0) {
+          if (!countedToolCalls.has(callId)) {
+            countedToolCalls.add(callId)
+            toolCalls++
+          }
+        } else {
+          toolCalls++
+        }
+        if (toolCalls >= toolBudget) {
+          log.warn('reviewer tool-call budget exhausted', { toolCalls, toolBudget })
+          throw new Error(reviewerToolBudgetMessage(toolBudget))
+        }
+        if (!budgetWarned && toolCalls >= warnAt) {
+          budgetWarned = true
+          log.warn('reviewer tool-call budget nearly exhausted', { toolCalls, toolBudget })
         }
       }
 
@@ -454,6 +518,7 @@ type FixLoopOptions = {
   onCorrectionFailed?: () => void
   reviewerTimeoutMs: number
   reviewerMaxUpdates: number
+  reviewerMaxToolCalls: number
   maxRounds: number
   sessionRefreshTimeoutMs: number
   // Carried into each round's scoped re-review so a correction round is audited with the same
@@ -524,6 +589,7 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
     onCorrectionFailed,
     reviewerTimeoutMs,
     reviewerMaxUpdates,
+    reviewerMaxToolCalls,
     maxRounds,
     sessionRefreshTimeoutMs,
     abortSignal
@@ -702,6 +768,7 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
       onReviewUpdate,
       reviewerTimeoutMs,
       reviewerMaxUpdates,
+      reviewerMaxToolCalls,
       trackedChecks: openChecks,
       sessionSnapshot: correctionState.session,
       supervisor: options.supervisor
@@ -821,6 +888,7 @@ const runScopedReview = async (options: {
   onReviewUpdate?: (review: ReviewWithChecks) => void
   reviewerTimeoutMs: number
   reviewerMaxUpdates: number
+  reviewerMaxToolCalls: number
   trackedChecks: ReviewCheck[]
   sessionSnapshot?: PersistedChatSession
   supervisor?: SupervisorPlan
@@ -841,6 +909,7 @@ const runScopedReview = async (options: {
     onReviewUpdate,
     reviewerTimeoutMs,
     reviewerMaxUpdates,
+    reviewerMaxToolCalls,
     trackedChecks,
     sessionSnapshot
   } = options
@@ -950,7 +1019,11 @@ const runScopedReview = async (options: {
 
     await driveReviewerToStop(
       reviewerSession,
-      { timeoutMs: reviewerTimeoutMs, maxUpdates: reviewerMaxUpdates },
+      {
+        timeoutMs: reviewerTimeoutMs,
+        maxUpdates: reviewerMaxUpdates,
+        maxToolCalls: reviewerMaxToolCalls
+      },
       { onUpdate: (entry) => capturedLog.push(entry) }
     )
   } catch (error) {
@@ -1106,6 +1179,7 @@ const runReviewWithSession = async (
     onCorrectionFailed,
     reviewerTimeoutMs = DEFAULT_REVIEWER_TIMEOUT_MS,
     reviewerMaxUpdates = DEFAULT_REVIEWER_MAX_UPDATES,
+    reviewerMaxToolCalls = DEFAULT_REVIEWER_MAX_TOOL_CALLS,
     fixLoopMaxRounds = 3,
     onFixLoopStart,
     onFixLoopEnd,
@@ -1218,7 +1292,8 @@ const runReviewWithSession = async (
       reviewerSession,
       {
         timeoutMs: reviewerTimeoutMs,
-        maxUpdates: reviewerMaxUpdates
+        maxUpdates: reviewerMaxUpdates,
+        maxToolCalls: reviewerMaxToolCalls
       },
       {
         onUpdate: (entry) => capturedLog.push(entry)
@@ -1366,6 +1441,7 @@ const runReviewWithSession = async (
         onCorrectionFailed,
         reviewerTimeoutMs,
         reviewerMaxUpdates,
+        reviewerMaxToolCalls,
         maxRounds: fixLoopMaxRounds,
         sessionRefreshTimeoutMs,
         abortSignal: fixLoopAbortSignal

@@ -4906,5 +4906,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'reviewer.errorShort.runtime': 'エージェント切断',
   'reviewer.errorShort.timeout': '時間切れ',
   'reviewer.errorShort.unknown': '原因不明',
-  'reviewer.errorTechnicalDetail': '技術的な詳細'
+  'reviewer.errorTechnicalDetail': '技術的な詳細',
+  'reviewer.error.budget':
+    'レビューはツール呼び出しの上限で停止し、判定に到達しませんでした。このターンの検査は記録されていません。もう一度実行するか、対象を小さくしてレビューしてください。',
+  'reviewer.errorShort.budget': '呼び出し上限'
 }
