@@ -9290,8 +9290,9 @@ vitest 里直调 `SessionRepository.loadSession` 会因 `decodeDataPath(path, da
    不会因为没读数而失效。
 2. **打包产物里的帧长相未验** —— 打包后产品帧是 `out/main/index.js:<行>`；若构建压缩，函数名退化成单字母
    （行号仍可回查 sourcemap）。`blocked-by`：需要一次打包 + 一次真停顿；本轮不起 Electron。
-3. **机器侧读数只在停顿结束后取** —— 缺「停顿期间」的空闲页/换页计数；`blocked-by`：进程被
-   `SIGSTOP`/换页时它自己也跑不动，要取那一格得另起一条外部采样线（下一单元候选，未开工）。
+3. ~~**机器侧读数只在停顿结束后取**~~ ✅ **已由 §一百九十四 收口（`0f51a96e` 之后的那一笔）**：另起了
+   一条线程（`host-stall-sampler`），停顿期间的空闲页/负载/换页计数由它取，并给出「采样线程自己有没有被
+   停」这一格（`continuity`）。同轮还修掉它暴露的一处读数错误（见 §一百九十四 §四）。
 
 ### 五 下一轮第一步
 
@@ -9299,3 +9300,83 @@ vitest 里直调 `SessionRepository.loadSession` 会因 `decodeDataPath(path, da
 ② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的在制品落定；
 ③ 仍未取的那三条按上面 `blocked-by` 解封；**不要重做**：审查读侧分段、写侧事务预算、失败态说人话、
 `save-session` 分段日志、以及本轮的仪器本体。
+
+## 一百九十四、本轮追加（执行器，2026-10-19 17:4x–19:0x）—— 停顿期间的机器侧采样线（上一轮 §四·3 的收口），并修掉它当场暴露的一处读数错误
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 先取上一轮判决（**完整 40 位 SHA** `0f51a96eb54d022f809bdccf5e786ca0a7941871`）：
+  `Nightly | completed | success`、`Windows Full Test | completed | success`、
+  `Scheduled Regression | completed | success` ⇒ **三车道全绿，上一轮那一格由「未取」改成「绿」**。
+- 远端 `origin/main` = `0f51a96e`；主工作树仍停在**会话那条分叉的本地 main**（`a7225aaa`），树上 18 条
+  改动（`specialist/**`、`settings/**`、`preload/**`、`plan-2026-10-19-*`）全是它的在制品 ⇒ 本轮继续在
+  隔离工作树 `/tmp/ps-wd2`（`--detach 0f51a96e` + 软链 `node_modules`），**主树一个字节没碰**。
+- 排期 B 段三项的状态先核了一遍：A7 ✅、S3（含 S4 真机读数）✅、M2 ⛔ 卡在产品决定（无发布方校验值清单）
+  ⇒ B 段没有可取的活；D 段由会话在跑（它的在制品就在树上）。本单元取上一轮自己立案的**下一单元候选**：
+  「停顿期间的机器侧读数」（上一轮证据档 §4 第三条、队列 §一百九十三 §四·3）。
+- 内存闸门（现取）：空闲物理页 **4,074（≈64 MB）**、swap 已用 **10.1 G / 11.0 G** ⇒ 真机/Electron 取证
+  关闭，本单元全部落在不起窗口的面上。
+
+### 一 为什么是「另一条线程」而不是「多取几个数」
+
+主线程被停住时它自己取不到任何读数——能写进日志的只有停顿前与停顿后，所以「当时机器是不是没内存了」
+从来没被测量过，只是从恢复后的快照里推断。一条自己的线程不受此限，而且**它停不停本身就是判据**：
+worker 照常采样 ⇒ 机器在跑、只有主线程被饿住；worker 恰好停顿时宽一个洞 ⇒ 整个进程没被调度
+（换页 / 整机冻结）。这比「再多采几个机器读数」更接近真相。
+
+### 二 交付（2 个新文件 + 2 个改文件 + 1 份证据档）
+
+| # | 文件 | 内容 |
+| --- | --- | --- |
+| ① | `src/main/diagnostics/host-stall-sampler.ts`（新） | worker 线程（`eval` 内联程序，不动打包配置）：250 ms 采 `process.cpuUsage` 增量 / `freemem` / `loadavg` / `rss`；500 ms 采一次平台换页计数**原文**（darwin `vm_stat`、linux `/proc/vmstat`）；`flush` 时**整份回传缓冲**（不靠逐条投递，避免主线程刚恢复时消息还没排到）。解释在主线程（`parsePagingCounters`）⇒ IO 与解释分开、解析规则一个家 |
+| ② | 同名 `.test.ts`（新） | 4 条解析 + 5 条切片（含**整段冻结的洞**、只有一个锚点只能说 `unknown`、一个样本都没有）+ 2 条**真线程**（主线程忙等 600 ms 期间仍有 ≥2 个窗口内样本且 `cpuMs > 0`；worker 起不来时报 `unavailable`） |
+| ③ | `src/main/diagnostics/event-loop-stall-watchdog.ts` | 记录多一格 `host`（`window-armed` / `sampled` / `no-in-stall-samples` / `unavailable`）；窗口打开时剖析器与采样线程一起起，第二次停顿两半一起收；**并修掉剖析读数里的一处墙钟错误（§四）** |
+| ④ | 同名 `.test.ts` | 既有 7 条注入式补上采样线程的桩（否则假时钟下会起真线程）；新增 1 条「第一次 `window-armed`、第二次报出线程看见的读数」+ 2 条剖析读数规则 |
+| ⑤ | `docs/evidence/2026-10-19-host-stall-sampling-line.md`（新） | 口径、两跑真进程原文、被抓出的读数错误与修法、六条边界、下一步 |
+
+**刻意不做**：不开通道、不碰界面、不加 9 语键（读数进应用自己的日志）；**不给「机器压力」另立阈值**
+（那是先编一个数字再让读数去凑）；**不把 `host` 折进 `attribution`**（后者仍只回答「我们自己烧 CPU
+还是没被调度」，机器侧读数是并列证据）。本单元**不占版本号**。
+
+### 三 读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| 新增两个套件 | `npx vitest run src/main/diagnostics/host-stall-sampler.test.ts src/main/diagnostics/event-loop-stall-watchdog.test.ts` ⇒ **22 passed**（含真线程那条：主线程忙等 600 ms 期间照常有窗口内样本，805 ms 完成） |
+| 诊断目录整簇 | **13 files / 70 passed**、exit 0 |
+| 真进程 · 我们自己挡住（忙等 1.2 s） | `windowMs 1298 / cpuShare 0.931 / cpu-bound-in-process / mainThreadMs 1348 / unobservedMs 0 / frames: block (tmp/wd2-driver-busy.mjs:732) 120 样本`；`host: kept-sampling, samples 5, maxGapMs 258, cpuShare 0.784, pageouts 0` |
+| 真进程 · 整机冻结（外部 `kill -STOP` 两次各 2 s） | 第二条 `windowMs 2048 / process-not-scheduled / mainThreadMs 73 / unobservedMs 2026 / frames []`；`host: gapped, samples 1（应有 7）, maxGapMs 2221` ⇒ 与上一行**同一份代码、两种成因、两种结论** |
+| 类型检查 | `tsc -p tsconfig.node.json --composite false` **exit 0**、`-p tsconfig.web.json --composite false` **exit 0** |
+| lint | `eslint --no-cache src/main/diagnostics/` **exit 0**（0 error / 0 warning） |
+| 全量单测 | 见 §六（本文件写下时仍在跑，读数回来后就地补） |
+
+### 四 这一跑抓出的真缺陷（上一轮留下的读数错误）
+
+第一次跑冻结那一支时，同一条记录报的是 `attribution: cpu-bound-in-process`、`mainThreadMs: 2103`
+——一个 2053 ms 的停顿里「主线程跑了 2103 ms」，**把整机冻结说成了我们自己的代码在烧 CPU**。
+根因：V8 剖析的 `timeDeltas` 是相邻两样本的间隔，而冻结期间**采样线程也停了**，恢复后那一个 delta
+就等于整个冻结时长，原实现把它原样加进主线程运行时间。
+
+修法：**delta ≥ 500 ms 就算「没人观测到」**（`PROFILE_UNOBSERVED_DELTA_MS`），计进新字段 `unobservedMs`，
+不计入 `mainThreadMs`、也不参与 `attribution` 的覆盖。判据来自实测（剖析器按 1 ms 请求、实测约
+10–11 ms 一个样本 ⇒ 几百毫秒的洞只可能是采样线程没跑）。两条用例钉住：真冻结形状 ⇒ 主线程 33 ms /
+未观测 2000 ms / 帧仍点名；对照 ⇒ 未观测 0 / 主线程 44 ms。
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+1. **Electron 主进程 / 打包版里的第一条读数未取** —— `blocked-by`：本机内存闸门（空闲页 4,074 ≈ 64 MB、
+   swap 10.1/11.0 G）。解封条件：下一次打包版或 dev 实例正常运行。
+2. **`vm_stat` 在打包版里能不能找到** —— `blocked-by`：第 1 条（要真机）。找不到就只是「没有换页读数」，
+   语义上已按「缺席不是 0」处理；但这条只有真机能验。
+3. **`pageouts` 只在 darwin/linux 有** —— Windows 没有可同步读的计数 ⇒ 该字段缺席（不是 0）。若要有，
+   得另接平台 API；`blocked-by`：需要一条 Windows 真机读数先证明值这个代价。
+4. **单发停顿仍只有 `window-armed`** —— 采样线跟着剖析窗口走（照搬上一轮的策略）。若真机上停顿是单发的，
+   要改成「常驻低频采样」；`blocked-by`：真机读数先证明停顿是单发还是成串。
+
+### 六 下一轮第一步
+
+① 读本轮提交的 CI 判决（**完整 40 位 SHA**，判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`），
+红了当批修；② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的
+在制品落定（落定后才谈与它同改一批文件）；③ 若内存闸门仍关着，取「不需要窗口」的下一个单元；闸门一开，
+优先取第 1 条（真机第一条读数）——那是这条线唯一还缺的证据。**不要重做**：审查读侧分段、写侧事务预算、
+失败态说人话、`save-session` 分段日志、看门狗本体、本轮的采样线程与 `unobservedMs` 修法。

@@ -3,6 +3,11 @@ import { freemem, loadavg, totalmem } from 'node:os'
 import { performance } from 'node:perf_hooks'
 
 import type { Logger } from '../logger'
+import {
+  createHostStallSampler,
+  type HostStallReading,
+  type HostStallSampler
+} from './host-stall-sampler'
 
 // A 113.9 s save and a 7.2 s `SELECT 1` in the same 150 s window cannot both be explained by "the save is
 // slow": the segment timings grew by the same factor (write 641x, authority read 639x), and the event loop
@@ -10,13 +15,17 @@ import type { Logger } from '../logger'
 // them: our own long synchronous block, or the process/machine not being scheduled at all (paging, disk
 // thrash, CPU starvation). Wall-clock timers cannot tell those apart — they are late in both cases.
 //
-// This watchdog adds the two readings that can:
+// This watchdog adds the three readings that can:
 //   1. `cpuShare` — process CPU time (all threads) against the wall time the loop was late. A stall that
 //      burns most of its wall time on CPU is ours; one that burns almost none was descheduled.
 //   2. a V8 CPU profile armed for a bounded window after the first stall. A *second* stall inside that
 //      window is sampled from a separate thread, so the blocking frame is named instead of guessed. The
 //      profile also yields main-thread run time, which is stricter than `cpuShare` (that one counts the
 //      libuv threadpool and V8 helper threads too).
+//   3. `host` — the same window sampled by a thread of our own (see `host-stall-sampler`), because the
+//      machine readings taken by the main thread only ever describe the moment the stall ended. That
+//      timeline says whether the machine kept running while we were held, and what it looked like inside
+//      the stall (free memory, load, paging counters).
 //
 // Deliberately not a fix: this proves a stall existed and roughly what held it, not why the pages were
 // gone. Until a sample names a function (or the machine reading shows the memory is gone) the save path
@@ -34,13 +43,21 @@ const PROFILE_SAMPLING_INTERVAL_US = 1_000
 const MAX_REPORTED_FRAMES = 3
 // Samples are attributed to the stall that just ended; a little slack absorbs the tick's own scheduling.
 const PROFILE_WINDOW_SLACK_MS = 50
+// The profiler asks for a 1 ms cadence and this runtime delivers roughly one sample per 10 ms; a gap of
+// half a second between two samples therefore does not mean "the main thread ran for half a second", it
+// means the sampling thread itself was not running (the whole process was stopped). Counting such a gap as
+// main-thread run time turns a machine freeze into an accusation of our own code — measured, not theorised:
+// a 2 s `SIGSTOP` produced `mainThreadMs 2103` and `cpu-bound-in-process` before this bound existed.
+const PROFILE_UNOBSERVED_DELTA_MS = 500
 
 export type StallAttribution = 'cpu-bound-in-process' | 'process-not-scheduled' | 'inconclusive'
 
 export type StallFrame = { frame: string; samples: number }
 
 export type StallStack =
-  | { status: 'profiled'; mainThreadMs: number; frames: StallFrame[] }
+  // `unobservedMs` is the part of the window the profiler did not sample at all (see
+  // PROFILE_UNOBSERVED_DELTA_MS): it is neither main-thread run time nor evidence of anything we did.
+  | { status: 'profiled'; mainThreadMs: number; unobservedMs: number; frames: StallFrame[] }
   // The first stall arms the profiler, so without a second stall inside the window there is nothing to
   // sample. Saying that keeps "we did not catch it" from reading like "there was nothing to catch".
   | { status: 'no-second-stall' }
@@ -61,9 +78,12 @@ export type EventLoopStallRecord = MachineReading & {
   cpuShare: number
   attribution: StallAttribution
   stack: StallStack
+  // What another thread saw while the loop was held. Always present: "not measured" has to be a named
+  // state, never a missing field that reads like a healthy machine.
+  host: HostStallReading
 }
 
-type StackProfile = { mainThreadMs: number; frames: StallFrame[] }
+export type StackProfile = { mainThreadMs: number; unobservedMs: number; frames: StallFrame[] }
 
 type StackSampler = {
   // `stalledForMs` bounds the summary to the samples taken during the stall that just ended.
@@ -78,9 +98,13 @@ export type EventLoopStallWatchdogInput = {
   profileWindowMs?: number
   // Seams. Production passes nothing; tests drive time, CPU, machine state and the sampler directly.
   now?: () => number
+  // Wall clock (epoch ms), used to line the sampler's timeline up with the stall: the sampler runs on its
+  // own thread and stamps with `Date.now()`, so the two clocks have to be the same kind.
+  wallClock?: () => number
   cpuUsage?: (previous?: NodeJS.CpuUsage) => NodeJS.CpuUsage
   machine?: () => MachineReading
   createSampler?: () => StackSampler | undefined
+  createHostSampler?: () => HostStallSampler | undefined
 }
 
 export type EventLoopStallWatchdog = { stop: () => void }
@@ -131,14 +155,16 @@ const frameLabel = (url: string, functionName: string, lineNumber: number): stri
   return `${functionName || '(anonymous)'} (${file}:${lineNumber + 1})`
 }
 
-type V8Profile = {
+export type V8Profile = {
   startTime: number
   nodes: { id: number; callFrame: { functionName: string; url: string; lineNumber: number } }[]
   samples: number[]
   timeDeltas: number[]
 }
 
-const summarizeProfile = (profile: V8Profile, stalledForMs: number): StackProfile => {
+// Exported so a test can pin the one rule that has already been wrong once: a delta wider than the
+// sampler's cadence is time nobody observed, not main-thread run time (see PROFILE_UNOBSERVED_DELTA_MS).
+export const summarizeProfile = (profile: V8Profile, stalledForMs: number): StackProfile => {
   const framesById = new Map(profile.nodes.map((node) => [node.id, node.callFrame]))
   // The profile's own clock is monotonic (its `startTime` is not an epoch), so the stall is bounded
   // relative to the profile's total duration: the sampler is stopped in the tick that fires when the stall
@@ -147,11 +173,19 @@ const summarizeProfile = (profile: V8Profile, stalledForMs: number): StackProfil
   const fromUs = totalUs - (stalledForMs + PROFILE_WINDOW_SLACK_MS) * 1000
   const counts = new Map<string, number>()
   let mainThreadUs = 0
+  let unobservedUs = 0
   let cumulativeUs = 0
+  const unobservedFromUs = PROFILE_UNOBSERVED_DELTA_MS * 1000
   for (let index = 0; index < profile.samples.length; index += 1) {
     const deltaUs = profile.timeDeltas[index] ?? 0
     cumulativeUs += deltaUs
     if (cumulativeUs < fromUs) continue
+    // A gap wider than the sampler's plausible cadence is time nobody observed: the process was not
+    // running. Report it as unobserved instead of crediting it to the main thread.
+    if (deltaUs >= unobservedFromUs) {
+      unobservedUs += deltaUs
+      continue
+    }
     mainThreadUs += deltaUs
     const frame = framesById.get(profile.samples[index])
     if (!frame || !isReportableFrame(frame.url, frame.functionName)) continue
@@ -162,7 +196,11 @@ const summarizeProfile = (profile: V8Profile, stalledForMs: number): StackProfil
     .map(([frame, samples]) => ({ frame, samples }))
     .sort((left, right) => right.samples - left.samples)
     .slice(0, MAX_REPORTED_FRAMES)
-  return { mainThreadMs: Math.round(mainThreadUs / 1000), frames }
+  return {
+    mainThreadMs: Math.round(mainThreadUs / 1000),
+    unobservedMs: Math.round(unobservedUs / 1000),
+    frames
+  }
 }
 
 const openProfileSession = (): Session | undefined => {
@@ -233,9 +271,11 @@ export const startEventLoopStallWatchdog = (
   input: EventLoopStallWatchdogInput
 ): EventLoopStallWatchdog => {
   const now = input.now ?? (() => performance.now())
+  const wallClock = input.wallClock ?? ((): number => Date.now())
   const cpuUsage = input.cpuUsage ?? ((previous) => process.cpuUsage(previous))
   const machine = input.machine ?? readMachine
   const createSampler = input.createSampler ?? createV8StackSampler
+  const createHostSampler = input.createHostSampler ?? (() => createHostStallSampler())
   const tickMs = input.tickMs ?? DEFAULT_TICK_MS
   const thresholdMs = input.thresholdMs ?? DEFAULT_STALL_THRESHOLD_MS
   const profileWindowMs = input.profileWindowMs ?? DEFAULT_PROFILE_WINDOW_MS
@@ -244,26 +284,34 @@ export const startEventLoopStallWatchdog = (
   let lastCpu = cpuUsage()
   let sampler: StackSampler | undefined
   let samplerUnavailable = false
+  let hostSampler: HostStallSampler | undefined
+  // Armed, not "has a profiler": the two samplers fail independently (DevTools may already own the
+  // inspector while the sampler thread works fine), so the window has to be tracked on its own.
+  let armed = false
   let windowTimer: ReturnType<typeof setTimeout> | undefined
   let stopped = false
 
   const disarm = (): void => {
+    armed = false
     if (windowTimer) {
       clearTimeout(windowTimer)
       windowTimer = undefined
     }
     sampler?.cancel()
     sampler = undefined
+    hostSampler?.cancel()
+    hostSampler = undefined
   }
 
   const arm = (): void => {
-    if (stopped || sampler) return
+    if (stopped || armed) return
+    armed = true
     const created = createSampler()
-    if (!created) {
-      samplerUnavailable = true
-      return
-    }
     sampler = created
+    samplerUnavailable = !created
+    // The sampler thread does not depend on the profiler, and it has to be running *before* the next stall
+    // begins: sampling only after the fact could never describe the inside of a stall.
+    hostSampler = createHostSampler()
     windowTimer = setTimeout(() => {
       // No second stall: stop paying for samples that would only describe ordinary work.
       windowTimer = undefined
@@ -291,35 +339,46 @@ export const startEventLoopStallWatchdog = (
 
     const cpuMs = Math.round((cpu.user + cpu.system) / 1000)
     const cpuShare = windowMs > 0 ? Math.min(1, cpuMs / windowMs) : 0
-    const base: EventLoopStallRecord = {
+    // The stall ended now: the sampler's timeline is lined up against this instant minus the stall itself.
+    const endedAtWall = wallClock()
+    const base = {
       ...machine(),
       windowMs,
       cpuMs,
       cpuShare: Number(cpuShare.toFixed(3)),
-      attribution: classify(cpuShare),
-      stack: { status: 'no-second-stall' }
+      attribution: classify(cpuShare)
     }
 
-    const pending = sampler
-    if (!pending) {
+    if (!armed) {
       // Arm first: whether the stack can be sampled at all is part of this record, not the next one's.
       arm()
       report({
         ...base,
-        stack: samplerUnavailable ? { status: 'unavailable' } : { status: 'no-second-stall' }
+        stack: samplerUnavailable ? { status: 'unavailable' } : { status: 'no-second-stall' },
+        // Whatever the host sampler is going to see, it cannot have seen it yet: it starts now.
+        host: hostSampler ? { status: 'window-armed' } : { status: 'unavailable' }
       })
       return
     }
 
-    // Hand the sampler over instead of cancelling it: `disarm()` would close the session this stop needs.
+    // Hand the samplers over instead of cancelling them: `disarm()` would close the session and the thread
+    // this stop needs.
+    armed = false
     if (windowTimer) {
       clearTimeout(windowTimer)
       windowTimer = undefined
     }
+    const pending = sampler
     sampler = undefined
-    void pending.stop(windowMs).then((profile) => {
+    const pendingHost = hostSampler
+    hostSampler = undefined
+    const hostSlice: Promise<HostStallReading> = pendingHost
+      ? pendingHost.stop(endedAtWall - windowMs, endedAtWall)
+      : Promise.resolve({ status: 'unavailable' })
+    const profileSlice = pending ? pending.stop(windowMs) : Promise.resolve(undefined)
+    void Promise.all([profileSlice, hostSlice]).then(([profile, host]) => {
       if (!profile) {
-        report({ ...base, stack: { status: 'unavailable' } })
+        report({ ...base, stack: { status: 'unavailable' }, host })
         return
       }
       // Main-thread run time is the stricter verdict: `cpuShare` also counts the libuv threadpool and V8
@@ -328,7 +387,13 @@ export const startEventLoopStallWatchdog = (
       report({
         ...base,
         attribution: classify(mainThreadShare),
-        stack: { status: 'profiled', mainThreadMs: profile.mainThreadMs, frames: profile.frames }
+        stack: {
+          status: 'profiled',
+          mainThreadMs: profile.mainThreadMs,
+          unobservedMs: profile.unobservedMs,
+          frames: profile.frames
+        },
+        host
       })
     })
   }

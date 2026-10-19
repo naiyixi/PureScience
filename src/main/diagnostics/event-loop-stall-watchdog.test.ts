@@ -2,9 +2,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   startEventLoopStallWatchdog,
+  summarizeProfile,
   type EventLoopStallRecord,
-  type StallFrame
+  type StallFrame,
+  type V8Profile
 } from './event-loop-stall-watchdog'
+import type { HostStallSampler } from './host-stall-sampler'
+
+// The watchdog cases drive time by hand; a real sampler thread would stamp the test's own clock instead of
+// the one they advance. This stub answers as "the thread saw nothing inside the stall", which is the honest
+// answer for a window nobody sampled — and one case below drives a timeline through it.
+const quietHostSampler = (): HostStallSampler => ({
+  stop: async () => ({ status: 'no-in-stall-samples' }),
+  cancel: () => undefined
+})
 
 type Warned = { message: string; data: EventLoopStallRecord }
 
@@ -63,7 +74,8 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 120 }),
-      createSampler: () => undefined
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
     })
 
     for (let index = 0; index < 5; index += 1) {
@@ -87,7 +99,8 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 40, loadAvg1m: 12.5 }),
-      createSampler: created
+      createSampler: created,
+      createHostSampler: quietHostSampler
     })
 
     // 2 s of wall time for a 100 ms tick, 1.6 s of it on CPU.
@@ -115,7 +128,7 @@ describe('event loop stall watchdog', () => {
     const frames: StallFrame[] = [
       { frame: 'saveSession (src/main/session-persistence/coordinator.ts:412)', samples: 46 }
     ]
-    const stop = vi.fn(async () => ({ mainThreadMs: 4_900, frames }))
+    const stop = vi.fn(async () => ({ mainThreadMs: 4_900, unobservedMs: 0, frames }))
     const watchdog = startEventLoopStallWatchdog({
       log,
       tickMs: 100,
@@ -124,7 +137,8 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => ({ stop, cancel: () => undefined })
+      createSampler: () => ({ stop, cancel: () => undefined }),
+      createHostSampler: quietHostSampler
     })
 
     time.advance(2_000, 1_600)
@@ -143,7 +157,12 @@ describe('event loop stall watchdog', () => {
     // main-thread reading is the stricter verdict and wins.
     expect(second?.cpuShare).toBe(0.12)
     expect(second?.attribution).toBe('cpu-bound-in-process')
-    expect(second?.stack).toEqual({ status: 'profiled', mainThreadMs: 4_900, frames })
+    expect(second?.stack).toEqual({
+      status: 'profiled',
+      mainThreadMs: 4_900,
+      unobservedMs: 0,
+      frames
+    })
     watchdog.stop()
   })
 
@@ -158,7 +177,8 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 12 }),
-      createSampler: () => undefined
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
     })
 
     time.advance(5_000, 40)
@@ -181,7 +201,8 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
     })
 
     time.advance(5_000, 2_000)
@@ -192,7 +213,7 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('records an unavailable sampler instead of a stall with no stack as if nothing was wrong', () => {
+  it('records an unavailable sampler instead of a stall with no stack as if nothing was wrong', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
@@ -203,17 +224,82 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
     })
 
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
+    // The second stall is reported from the samplers' promise: both halve out, then the record lands.
+    await Promise.resolve()
+    await Promise.resolve()
 
     expect(warned).toHaveLength(2)
     expect(warned[0]?.data.stack).toEqual({ status: 'unavailable' })
     expect(warned[1]?.data.stack).toEqual({ status: 'unavailable' })
+    // The two samplers fail independently: with no profiler the window is still armed, so the second stall
+    // is served by the sampler thread instead of arming a second window and leaking the first thread.
+    expect(warned[0]?.data.host).toEqual({ status: 'window-armed' })
+    expect(warned[1]?.data.host).toEqual({ status: 'no-in-stall-samples' })
+    watchdog.stop()
+  })
+
+  it('hands the stall window to the sampler thread and reports what it saw inside', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const windows: [number, number][] = []
+    const host: HostStallSampler = {
+      stop: async (fromMs, toMs) => {
+        windows.push([fromMs, toMs])
+        return {
+          status: 'sampled',
+          intervalMs: 250,
+          stallMs: toMs - fromMs,
+          samples: 19,
+          expectedSamples: 19,
+          maxGapMs: 250,
+          continuity: 'kept-sampling',
+          cpuMs: 20,
+          cpuShare: 0.004,
+          freeMemMbMin: 38
+        }
+      },
+      cancel: () => undefined
+    }
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      profileWindowMs: 10_000,
+      now: time.now,
+      // The sampler stamps with the wall clock, so the window has to be expressed in the same clock.
+      wallClock: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 40 }),
+      createSampler: () => ({ stop: async () => undefined, cancel: () => undefined }),
+      createHostSampler: () => host
+    })
+
+    time.advance(2_000, 100)
+    vi.advanceTimersByTime(100)
+    // The window is armed by the first stall; nothing has been sampled inside a stall yet.
+    expect(warned[0]?.data.host).toEqual({ status: 'window-armed' })
+
+    time.advance(5_000, 20)
+    vi.advanceTimersByTime(100)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(windows).toEqual([[3_000, 8_000]])
+    expect(warned[1]?.data.host).toMatchObject({
+      status: 'sampled',
+      samples: 19,
+      continuity: 'kept-sampling',
+      freeMemMbMin: 38
+    })
     watchdog.stop()
   })
 
@@ -228,13 +314,55 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
     })
 
     watchdog.stop()
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
     expect(warned).toHaveLength(0)
+  })
+})
+
+// The rule below has already been wrong once, and only a real frozen process exposed it: a profile taken
+// across a 2 s `SIGSTOP` reported `mainThreadMs 2103` for a 2053 ms stall, because the gap between two
+// samples (the sampling thread was stopped too) was added up as main-thread run time. That turned a machine
+// freeze into "our own code did it".
+describe('reading a V8 profile', () => {
+  const frame = {
+    id: 1,
+    callFrame: { functionName: 'block', url: 'file:///app/out/main/index.js', lineNumber: 10 }
+  }
+
+  it('counts a gap wider than the sampler cadence as unobserved, not as main-thread work', () => {
+    const frozen: V8Profile = {
+      startTime: 1,
+      nodes: [frame],
+      samples: [1, 1, 1, 1],
+      // Three ordinary samples, then the hole: 2 s in which the sampling thread itself did not run.
+      timeDeltas: [11_000, 11_000, 11_000, 2_000_000]
+    }
+
+    const profile = summarizeProfile(frozen, 2_000)
+    expect(profile.unobservedMs).toBe(2_000)
+    // The three real samples still name the frame; the hole is reported separately and adds no run time.
+    expect(profile.mainThreadMs).toBe(33)
+    expect(profile.frames).toEqual([{ frame: 'block (out/main/index.js:11)', samples: 3 }])
+  })
+
+  it('counts every ordinary sample when the loop was simply busy', () => {
+    const busy: V8Profile = {
+      startTime: 1,
+      nodes: [frame],
+      samples: [1, 1, 1, 1],
+      timeDeltas: [11_000, 11_000, 11_000, 11_000]
+    }
+
+    const profile = summarizeProfile(busy, 50)
+    expect(profile.unobservedMs).toBe(0)
+    expect(profile.mainThreadMs).toBe(44)
+    expect(profile.frames[0]?.samples).toBe(4)
   })
 })
 
