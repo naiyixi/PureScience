@@ -2,7 +2,7 @@ export type CallerSurface = 'electron' | 'web' | 'task'
 export type CallerLocation = 'local' | 'remote'
 export type CallerPrincipalKind = 'human' | 'automation' | 'agent-session'
 export type CallerActionOrigin = 'human' | 'automation' | 'agent-session'
-export type CallerAuthority = 'manage-remote-pairing'
+export type CallerAuthority = 'manage-remote-pairing' | 'satisfy-approval'
 
 export type CallerContext = Readonly<{
   clientId: string
@@ -30,6 +30,10 @@ type CreateWebCallerContextOptions = Partial<
 
 type CreateTaskCallerContextOptions = Partial<Pick<CallerContext, 'location'>> & {
   isAuthorizationCurrent?: () => boolean
+  // A headless service has no window to click. The authenticated approval route builds its command
+  // context with this authority so a human at a terminal can answer a card — the capability is named
+  // and auditable instead of relabelling automation as human.
+  satisfyApproval?: boolean
 }
 
 const alwaysCurrent = (): boolean => true
@@ -77,6 +81,7 @@ const createTaskCallerContext = (options: CreateTaskCallerContextOptions = {}): 
     location: options.location ?? 'local',
     principalKind: 'automation',
     actionOrigin: 'automation',
+    authorities: options.satisfyApproval ? (['satisfy-approval'] as const) : undefined,
     isAuthorizationCurrent: options.isAuthorizationCurrent
   })
 
@@ -85,8 +90,8 @@ const hasCallerAuthority = (context: CallerContext, authority: CallerAuthority):
 
 const canSatisfyHumanApproval = (context: CallerContext): boolean =>
   context.isAuthorizationCurrent() &&
-  context.principalKind === 'human' &&
-  context.actionOrigin === 'human'
+  ((context.principalKind === 'human' && context.actionOrigin === 'human') ||
+    hasCallerAuthority(context, 'satisfy-approval'))
 
 export type ClientLease = Readonly<{
   clientId: string

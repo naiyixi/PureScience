@@ -28,6 +28,9 @@ import {
 } from '../tasks/task-runner'
 
 const TASK_CALLER_CONTEXT = createTaskCallerContext()
+// The approval route's context: same headless caller, but carrying the explicit `satisfy-approval`
+// authority the permission command requires. Nothing else in the task surface uses it.
+const TASK_APPROVAL_CALLER_CONTEXT = createTaskCallerContext({ satisfyApproval: true })
 
 type TaskApiPorts = {
   commands: ApplicationCommandByNameDispatcher
@@ -208,9 +211,18 @@ class HeadlessTaskApi {
   /**
    * Answers one of those requests. The id is passed through to the runtime, which rejects an unknown or
    * already-settled request — the command line cannot manufacture an approval that no request backs.
+   *
+   * This single command runs under the approval caller context (an explicit `satisfy-approval`
+   * authority) instead of the generic automation one: approving is what a human at a terminal does,
+   * and the capability is named rather than inferred from a relabelled principal.
    */
   respondPermission(response: AcpPermissionResponse): Promise<unknown> {
-    return this.invoke('acp:respond-permission', response)
+    return this.commandClient.invoke(
+      this.ports.commands,
+      'acp:respond-permission',
+      TASK_APPROVAL_CALLER_CONTEXT,
+      [response]
+    )
   }
 
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {

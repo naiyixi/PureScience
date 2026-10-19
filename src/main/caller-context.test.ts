@@ -69,6 +69,29 @@ describe('caller context', () => {
     expect(canSatisfyHumanApproval(context)).toBe(false)
   })
 
+  it('lets the explicit satisfy-approval authority answer a headless approval', () => {
+    // The headless service has no window. The approval route carries this named authority instead of
+    // relabelling automation as human; the generic task context must not be able to approve.
+    const approval = createTaskCallerContext({ satisfyApproval: true })
+    expect(canSatisfyHumanApproval(approval)).toBe(true)
+    expect(canSatisfyHumanApproval(createTaskCallerContext())).toBe(false)
+    expect(
+      canSatisfyHumanApproval(
+        createCallerContext({
+          clientId: 'stale',
+          lifecycleClientId: 'web:stale',
+          leaseId: 'stale',
+          surface: 'task',
+          location: 'local',
+          principalKind: 'automation',
+          actionOrigin: 'automation',
+          authorities: ['satisfy-approval'],
+          isAuthorizationCurrent: () => false
+        })
+      )
+    ).toBe(false)
+  })
+
   it('derives one stable context only for a real Electron sender', () => {
     const sender = { id: 7 }
     const first = callerContextForEvent({ sender })
