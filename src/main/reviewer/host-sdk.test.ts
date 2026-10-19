@@ -650,12 +650,14 @@ describe('host.fetch_source — injected external-source verification', () => {
     ): Promise<{
       url: string
       finalUrl: string
+      redirect: 'none' | 'followed' | 'not-reported'
       title: string
       text: string
       truncated: boolean
     }> => ({
       url,
       finalUrl: url,
+      redirect: 'none',
       title: 'Example',
       text: 'The paper says the effect is 42%.',
       truncated: false

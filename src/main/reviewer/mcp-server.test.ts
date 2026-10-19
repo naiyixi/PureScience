@@ -89,6 +89,7 @@ const createReviewerEvidence = (): ReviewerEvidence => ({
   fetchSource: vi.fn<(url: string) => Promise<SourceFetchResult>>().mockResolvedValue({
     url: 'https://example.com/source',
     finalUrl: 'https://example.com/source',
+    redirect: 'none',
     title: 'Example',
     text: 'The source page content.',
     truncated: false

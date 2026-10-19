@@ -495,6 +495,7 @@ it.runIf(runLiveContract)(
       fetchSource: vi.fn(async (url: string) => ({
         url,
         finalUrl: url,
+        redirect: 'none' as const,
         title: 'Source',
         text: 'source evidence',
         truncated: false

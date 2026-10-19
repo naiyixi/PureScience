@@ -364,7 +364,11 @@ export class ReviewerMcpServer {
             'resolver page, or PMID page) and return a bounded plain-text extract. Only http(s) ' +
             'URLs are allowed. Use it to verify claims about external sources: open the cited ' +
             'page, then compare its content against the claim. A fetch failure returns an error — ' +
-            'record that you attempted the read; do not invent content.',
+            'record that you attempted the read; do not invent content. The result states what the ' +
+            'fetch stack reported about redirects: `redirect: "followed"` means it landed on a ' +
+            'different URL (that URL is `finalUrl`), `"none"` means it confirmed the requested URL, ' +
+            'and `"not-reported"` means it reported nothing — then `finalUrl` is only the URL you ' +
+            'asked for, so do not describe it as the page you landed on.',
           inputSchema: { url: z.string().min(1).describe('The http(s) URL to fetch') }
         },
         async ({ url }) => {

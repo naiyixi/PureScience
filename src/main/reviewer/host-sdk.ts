@@ -77,6 +77,11 @@ export type ArtifactVersionContentResolver = (request: {
 export type SourceFetchResult = {
   url: string
   finalUrl: string
+  // What the fetch stack actually reported about the URL it ended on. This is three states on
+  // purpose: `not-reported` is a real observation (the stack reported nothing), and it must not be
+  // read as `none` — with `not-reported`, `finalUrl` is only the requested URL, so the reviewer may
+  // not claim the page's identity (or that no redirect happened) from it.
+  redirect: 'none' | 'followed' | 'not-reported'
   title?: string
   text: string
   truncated: boolean

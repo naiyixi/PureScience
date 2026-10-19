@@ -76,14 +76,24 @@ export const createExternalSourceFetcher = (): ((url: string) => Promise<SourceF
       }
 
       const html = await response.text()
-      const { title, text } = toPlainText(html, response.url ?? url)
+      // `response.url` is '' — not undefined — whenever the network stack does not report a final
+      // URL (measured on the runtime this app ships: JSON.stringify(response.url) === '""'), so a
+      // `??` fallback never fires and JSDOM throws `Invalid URL: `, failing every verification.
+      // Emptiness is the only signal available, and it means "not reported", which is NOT the same
+      // claim as "no redirect happened": the reviewer is told which of the three it got.
+      const reportedUrl = response.url || ''
+      const finalUrl = reportedUrl || url
+      const redirect: SourceFetchResult['redirect'] =
+        reportedUrl === '' ? 'not-reported' : reportedUrl === url ? 'none' : 'followed'
+      const { title, text } = toPlainText(html, finalUrl)
 
       const truncated = text.length > MAX_EXTRACT_CHARS
       const bounded = truncated ? text.slice(0, MAX_EXTRACT_CHARS) : text
 
       log.info('fetch_source verified', {
         url,
-        finalUrl: response.url ?? url,
+        finalUrl,
+        redirect,
         title,
         chars: bounded.length,
         truncated
@@ -91,7 +101,8 @@ export const createExternalSourceFetcher = (): ((url: string) => Promise<SourceF
 
       return {
         url,
-        finalUrl: response.url ?? url,
+        finalUrl,
+        redirect,
         title,
         text: bounded,
         truncated

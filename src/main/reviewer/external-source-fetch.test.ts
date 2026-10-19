@@ -15,7 +15,12 @@ type FetchMock = ReturnType<typeof vi.fn>
 
 const htmlResponse = (
   html: string,
-  init: { status?: number; statusText?: string; headers?: Record<string, string> } = {}
+  init: {
+    status?: number
+    statusText?: string
+    headers?: Record<string, string>
+    url?: string
+  } = {}
 ): {
   ok: boolean
   status: number
@@ -30,7 +35,9 @@ const htmlResponse = (
   headers: {
     get: (name: string) => init.headers?.[name] ?? null
   },
-  url: 'https://example.com/paper',
+  // Callers override this to reproduce what a real stack reports. Electron's net.fetch answers ''
+  // (empty string, not undefined) for every response — see the redirect cases below.
+  url: init.url ?? 'https://example.com/paper',
   text: async () => html
 })
 
@@ -113,5 +120,60 @@ describe('createExternalSourceFetcher', () => {
     await expect(createExternalSourceFetcher()('https://example.com/restricted')).rejects.toThrow(
       /HTTP 403/
     )
+  })
+
+  it('reports "none" when the stack confirms the requested URL', async () => {
+    ;(netFetchStandard as FetchMock).mockResolvedValue(
+      htmlResponse('<html><head><title>Paper</title></head><body>text</body></html>', {
+        url: 'https://example.com/paper'
+      })
+    )
+
+    const result = await createExternalSourceFetcher()('https://example.com/paper')
+
+    expect(result).toMatchObject({
+      url: 'https://example.com/paper',
+      finalUrl: 'https://example.com/paper',
+      redirect: 'none'
+    })
+  })
+
+  it('follows a reported redirect and names the URL it landed on', async () => {
+    ;(netFetchStandard as FetchMock).mockResolvedValue(
+      htmlResponse('<html><head><title>Final</title></head><body>moved</body></html>', {
+        url: 'https://example.com/final'
+      })
+    )
+
+    const result = await createExternalSourceFetcher()('https://example.com/start')
+
+    expect(result).toMatchObject({
+      url: 'https://example.com/start',
+      finalUrl: 'https://example.com/final',
+      redirect: 'followed'
+    })
+  })
+
+  it('still reads the page when the stack reports no final URL, and says so instead of "none"', async () => {
+    // Measured shape of the stack this app ships: `response.url` is the empty string for every
+    // response. `??` never fires on '', so the extractor was handed '' and JSDOM threw
+    // `Invalid URL: ` — every verification failed while the extract itself was fine. The empty
+    // string is also the only evidence we get, and it cannot distinguish "no redirect" from
+    // "not reported", so the honest answer is the third state.
+    ;(netFetchStandard as FetchMock).mockResolvedValue(
+      htmlResponse(
+        '<html><head><title>Paper</title></head><body>The effect is 42%.</body></html>',
+        {
+          url: ''
+        }
+      )
+    )
+
+    const result = await createExternalSourceFetcher()('https://example.com/paper')
+
+    expect(result.redirect).toBe('not-reported')
+    expect(result.finalUrl).toBe('https://example.com/paper')
+    expect(result.text).toContain('The effect is 42%.')
+    expect(result.title).toBe('Paper')
   })
 })

@@ -9536,3 +9536,80 @@ worker 照常采样 ⇒ 机器在跑、只有主线程被饿住；worker 恰好�
 ② `git fetch` + `git status --short` + `git log --oneline origin/main -6`，看会话是否已把它的在制品落定；
 ③ 内存闸门仍关着 ⇒ 继续取「不需要窗口」的下一单元（候选：真机审计 §5 第 8 条工具命名统一；先核会话是否已在做）。
 **不要重做**：以上 §〇 末列的那七项，加上本轮的预算与 `budget` 一族文案。
+
+## 一百九十六、本轮追加（执行器，2026-10-20 03:4x–）—— 先把上一轮验完的提交送上去；再补「外部来源抓取」的诚实三态
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端 `origin/main` 在我开工时是 `5b0ebd49`；**上一轮那笔验完的提交 `6290334d`（审查成本上限）当时没送上去**
+  （被推前钩子第 8 段误拒，见下 §四）。本轮第一件事就是把它推上去：`origin/main` 现在是 **`6290334d`**，
+  它是 `5b0ebd49` 的直接子提交，无冲突、无需 rebase。
+- 主工作树仍是会话那条分叉分支（`32db0300`，比远端少 101 笔、多 22 笔），树上 13 条在制品
+  （`specialist/**`、`settings/application-commands*`、`preload/**`）全是它的 ⇒ 本轮全部工作在隔离工作树
+  `/tmp/ps-wd3`（`--detach` + 软链 `node_modules`），**主树一个字节没碰**。
+- 内存闸门（现取）：空闲物理页 ~4k（≈60 MB）、swap 已用 10 G 以上 ⇒ 真机/Electron 取证关闭；
+  本单元全部落在不起窗口的面上。
+- 排期 B 段三项复核仍是 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）；真机审计 §5 的 8 条里，第 2/3/5 条会话已在其分支
+  交付、第 7 条上一轮交付、第 4 条上一轮交付（本轮推送），**剩下第 8 条**（工具命名统一 + `finalUrl` 语义诚实）
+  —— 本轮取它的**可交付那一半**（见 §二），另一半（改名）按技能里的封闭清单纪律不碰。
+
+### 一 上一轮那笔为什么送不上去（环境事实，不是代码问题）
+
+推前钩子在 `.git/hooks/pre-push`，它是指向**主检出** `scripts/pre-push-checks.sh` 的符号链接
+（git 全仓共用一份 hooks 目录）。主检出停在会话那条 101 笔落后的分支上，**那份脚本是旧版**
+（没有 `git rev-parse --show-toplevel` 的根纠正，`adb93f26` 才加的）⇒ 它按自身路径推根，跑到**主检出**去
+lint 本次推送的文件：那里没有本分支的新文件，于是 `No files matching the pattern …` 拒绝一次干净推送。
+判据：同一条脚本在推送树里手工跑是 `14 个文件通过（0 problems）`，而 `git push` 跑它读到的是主检出的
+`package.json` 版本（2.15.1 ↔ 2.15.0 之差就是证据）。**解法不是绕过门**：把 `core.hooksPath` 指到
+「推送树自己那份脚本」（`git -c core.hooksPath=/tmp/ps-hooks push …`，`/tmp/ps-hooks/pre-push` →
+该树的 `scripts/pre-push-checks.sh`），跑的是同一份门禁、且是被测的那棵树。会话把 main 合上来之后，
+主检出那份脚本自然更新，这条就不需要了。
+
+### 二 本单元：`fetch_source` 的三态 —— 一个空字符串让每次验证都失败
+
+缺口两面（详见 `docs/evidence/2026-10-20-fetch-source-redirect-honesty.md`）：`response.url ?? url`
+对**空串**不回落 ⇒ JSDOM 抛 `Invalid URL: ` ⇒ 真机日志里 159 次调用 0 次成功；而即使补上回落，
+「平台没上报最终地址」与「确认没跳转」在旧实现里**同形**，模型会把「我没拿到」读成「我确认过了」。
+
+交付（7 文件）：
+
+| 文件 | 内容 |
+| --- | --- |
+| `src/main/reviewer/external-source-fetch.ts` | `reportedUrl = response.url \|\| ''` / `finalUrl = reportedUrl \|\| url`；三态 `redirect`（空串 ⇒ `not-reported`、相同 ⇒ `none`、不同 ⇒ `followed`）；日志与返回值同源 |
+| `src/main/reviewer/host-sdk.ts` | `SourceFetchResult.redirect` 必填三态 + 注释说明「`not-reported` 不是 `none`」 |
+| `src/main/reviewer/mcp-server.ts` | 工具描述补三态语义，明写 `not-reported` 时不得把 `finalUrl` 描述成落地页（这句话就是消费方：模型是读者） |
+| 四个测试文件 | 新增 3 条（`none` / `followed` / 空串仍能读且报 `not-reported`）+ 三处夹具补字段 |
+
+### 三 读数
+
+| 项 | 读数 |
+| --- | --- |
+| 三个改动文件套件 | `3 files / 60 passed` |
+| 审查员整簇 + 桥接集成 | `24 passed | 1 skipped`（25 文件）、`281 passed | 3 skipped` |
+| 反向门 | 换回 `??` 且只留新用例 ⇒ `1 failed / 7 passed`，报错逐字 `TypeError: Invalid URL: `（与真机同形） |
+| 真进程探针（生产代码 esbuild 打包 + 真 node + 真 HTTP 服务） | `/plain` ⇒ `none`；`/start`（302）⇒ `followed`、`finalUrl` = 落地页、`title` 取自落地页 |
+| 双 typecheck | node **exit 0**、web **exit 0** |
+| lint（7 个改动文件，`--no-cache`） | **0 error / 0 warning** |
+| 全量单测 | **1346 files / 17209 passed**（16 skipped files、207 skipped 用例，exit 0；比上一轮 +3 用例 = 本轮新增数） |
+
+### 四 具名未办（每条带 blocked-by 与解封条件）
+
+1. **`not-reported` 的真机读数** —— `blocked-by`：本机内存闸门。它现在由单元用例以**实测空串形状**钉住，
+   工具描述也已向模型说明；解封条件：下一次打包版或 dev 实例能起。
+2. **工具命名统一（审计 §5 第 8 条的另一半）** —— 本轮**不做**：`APP_MCP_SERVERS` 与权限身份目录是同一份
+   闭集的两侧，改名会牵动目录、枚举门与钉总数的用例（技能里有专门的坑档）；且现有代码里
+   `REVIEWER_MCP_SERVER_NAME = 'purescience_reviewer'` 已是单一下划线形态，日志里那些连字符名属旧构建。
+   要动它得先单独立项并数清落点。
+3. **v2.15.1 的发布页不存在（会话那条线的事，本轮只报不动）** —— tag `v2.15.1` 指向 `32db0300`，
+   而该提交**不在 main 上** ⇒ Release 车道 `Release preflight` 第一步 `git merge-base --is-ancestor … origin/main`
+   直接失败，`build`/`notarize-mac`/`publish` 全 skipped ⇒ **没有发布页**。它不是抖动，重跑同一个 job 也没用；
+   正确顺序是先把那条分支合进 main（或把该版本的四个发版文件落到 main 上），再**删掉这个没有页的 tag 重建**。
+
+### 五 下一轮第一步
+
+① 读本轮提交的 CI 判决（完整 40 位 SHA；判据 `=== 全部目标车道已落定 ===` + 逐条 `名|completed|success`）；
+② `git fetch` + `git status --short` + `git log --oneline origin/main -6`：会话是否已把分支合上/把 v2.15.1 重发；
+③ 内存闸门仍关着 ⇒ 继续取「不需要窗口」的单元；审计 §5 已只剩第 1 条（要真机）与第 8 条的改名半条，
+**下一轮宜从各版自陈的尾巴里挑**，动手前先按标记词把「未做/仍开」拉一遍清单并逐条对源码核。
+**不要重做**：审查成本上限（`6290334d`）、本单元的抓取三态、以及前几轮那七项（读侧分段、写侧事务预算、
+失败态说人话、`save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs`、进程树宽限）。
