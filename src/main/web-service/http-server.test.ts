@@ -714,7 +714,9 @@ describe('startWebHttpServer', () => {
       replayArtifactVersion: vi.fn(),
       listArtifacts: vi.fn(),
       acquireArtifact: vi.fn(),
-      releaseArtifact: vi.fn()
+      releaseArtifact: vi.fn(),
+      pendingPermissions: vi.fn().mockResolvedValue([]),
+      respondPermission: vi.fn().mockResolvedValue({})
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1288,6 +1290,16 @@ describe('startWebHttpServer', () => {
       listArtifacts: vi.fn().mockResolvedValue([{ id: 'artifact/1', name: 'report.md' }]),
       acquireArtifact: vi.fn(),
       releaseArtifact: vi.fn(),
+      pendingPermissions: vi.fn().mockResolvedValue([
+        {
+          requestId: 'permission/1',
+          sessionId: 'session-1',
+          toolCallId: 'call-1',
+          title: 'Run a notebook cell',
+          status: 'pending'
+        }
+      ]),
+      respondPermission: vi.fn().mockResolvedValue({}),
       dispose: vi.fn()
     }
     const server = await startTestWebHttpServer({
@@ -1417,17 +1429,33 @@ describe('startWebHttpServer', () => {
     expect(unauthenticated.status).toBe(401)
     expect(await unauthenticated.text()).toBe('Unauthorized')
 
-    for (const path of [
-      '/api/v1/permissions/permission-1/approve',
-      '/api/v1/specialists',
-      '/api/v1/compute'
-    ]) {
+    for (const path of ['/api/v1/specialists', '/api/v1/compute']) {
       const absent = await fetch(`${base}${path}`, { method: 'POST', headers })
       expect(absent.status).toBe(404)
       expect(await absent.json()).toEqual({
         error: { code: 'not_found', message: 'Task API endpoint not found.' }
       })
     }
+
+    // Headless approvals: the cards an unattended run is waiting on are readable, and answering one
+    // reaches the runtime with both the decoded id and the chosen option.
+    const pending = await fetch(`${base}/api/v1/permissions`, { headers })
+    expect(pending.status).toBe(200)
+    expect(await pending.json()).toEqual({
+      data: [expect.objectContaining({ requestId: 'permission/1' })]
+    })
+
+    const approved = await fetch(`${base}/api/v1/permissions/permission%2F1/approve`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ optionId: 'allow' })
+    })
+    expect(approved.status).toBe(200)
+    expect(await approved.json()).toEqual({ data: { requestId: 'permission/1' } })
+    expect(tasks.respondPermission).toHaveBeenCalledWith({
+      requestId: 'permission/1',
+      optionId: 'allow'
+    })
   })
 
   it('streams an acquired artifact and always releases its capability', async () => {
@@ -1459,7 +1487,9 @@ describe('startWebHttpServer', () => {
         mimeType: 'text/plain',
         size: 14
       }),
-      releaseArtifact: vi.fn().mockResolvedValue(undefined)
+      releaseArtifact: vi.fn().mockResolvedValue(undefined),
+      pendingPermissions: vi.fn().mockResolvedValue([]),
+      respondPermission: vi.fn().mockResolvedValue({})
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1529,7 +1559,9 @@ describe('startWebHttpServer', () => {
         mimeType: 'application/octet-stream',
         size: 2 * 1024 * 1024
       }),
-      releaseArtifact: vi.fn().mockResolvedValue(undefined)
+      releaseArtifact: vi.fn().mockResolvedValue(undefined),
+      pendingPermissions: vi.fn().mockResolvedValue([]),
+      respondPermission: vi.fn().mockResolvedValue({})
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',

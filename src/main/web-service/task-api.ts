@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 
-import type { AcpRuntimeEvent } from '../../shared/acp'
+import type { AcpPermissionRequest, AcpPermissionResponse, AcpRuntimeEvent } from '../../shared/acp'
 import type {
   FinalizeRunArtifactsRequest,
   FinalizeRunArtifactsResult
@@ -190,6 +190,27 @@ class HeadlessTaskApi {
    */
   replayArtifactVersion(request: ReplayVersionRequest): Promise<unknown> {
     return this.invoke('artifacts:replay-version', request)
+  }
+
+  /**
+   * The permission requests currently waiting for an answer, read from the same runtime snapshot the
+   * window renders. A headless service has no window to click, so without this a run that asks for
+   * approval waits forever with no way to see why (observed: a plain run stalled after its first
+   * notebook tool call, with the reviewer never starting).
+   */
+  async pendingPermissions(): Promise<AcpPermissionRequest[]> {
+    const snapshot = (await this.invoke('acp:get-state')) as {
+      pendingPermissions?: AcpPermissionRequest[]
+    }
+    return snapshot.pendingPermissions ?? []
+  }
+
+  /**
+   * Answers one of those requests. The id is passed through to the runtime, which rejects an unknown or
+   * already-settled request — the command line cannot manufacture an approval that no request backs.
+   */
+  respondPermission(response: AcpPermissionResponse): Promise<unknown> {
+    return this.invoke('acp:respond-permission', response)
   }
 
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {

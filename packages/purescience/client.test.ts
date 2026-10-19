@@ -37,6 +37,8 @@ describe('PureScienceClient', () => {
         'getReadiness',
         'listRuntimes',
         'listConnectors',
+        'pendingPermissions',
+        'respondPermission',
         'replayVersion',
         'events',
         'request',

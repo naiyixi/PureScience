@@ -57,6 +57,25 @@ export class PureScienceClient {
   }
 
   /**
+   * The permission requests a run is waiting on. A headless service has no window to click, so this is
+   * the only way to see why an unattended run stopped.
+   */
+  pendingPermissions() {
+    return this.request('/api/v1/permissions')
+  }
+
+  /** Answers one of those requests. An unknown or already-settled id is rejected by the app. */
+  respondPermission(requestId, { optionId, cancelled } = {}) {
+    return this.request(`/api/v1/permissions/${encodeURIComponent(requestId)}/approve`, {
+      method: 'POST',
+      body: {
+        ...(optionId === undefined ? {} : { optionId }),
+        ...(cancelled ? { cancelled: true } : {})
+      }
+    })
+  }
+
+  /**
    * Re-run a recorded artifact version and compare the result with what it recorded producing. The
    * verdict, the origin the recipe came from and whether the environment lock came back are reported
    * separately: a summary that merges them cannot be audited.

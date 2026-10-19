@@ -90,6 +90,8 @@ type WebServerOptions = {
     | 'listArtifacts'
     | 'acquireArtifact'
     | 'releaseArtifact'
+    | 'pendingPermissions'
+    | 'respondPermission'
     | 'runWithCallerContext'
   >
   onShutdownRequest?: () => void
@@ -353,6 +355,27 @@ const handleTaskApiRequest = async (
       if (url.pathname === '/api/v1/connectors' && request.method === 'GET') {
         assertExternalAuthorizationCurrent(externalAuthorization)
         json(response, 200, { data: await tasks.connectors() })
+        return true
+      }
+      // Headless approvals. A run that needs permission has no window to click in a `start --no-open`
+      // service, so the same runtime state the desktop card reads and answers is exposed here. Without
+      // these two routes an unattended run stalls silently on its first gated tool call.
+      if (url.pathname === '/api/v1/permissions' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: await tasks.pendingPermissions() })
+        return true
+      }
+      const approvalPath = /^\/api\/v1\/permissions\/([^/]+)\/approve$/.exec(url.pathname)
+      if (approvalPath && request.method === 'POST') {
+        const body = (await readJsonBody(request)) as { optionId?: string; cancelled?: boolean }
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        const requestId = decodeURIComponent(approvalPath[1]!)
+        await tasks.respondPermission({
+          requestId,
+          ...(body.optionId === undefined ? {} : { optionId: body.optionId }),
+          ...(body.cancelled === true ? { cancelled: true } : {})
+        })
+        json(response, 200, { data: { requestId } })
         return true
       }
       if (url.pathname === '/api/v1/artifacts/replay' && request.method === 'POST') {

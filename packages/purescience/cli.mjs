@@ -63,6 +63,8 @@ Options:
   --no-open              Do not open the browser after start
   --no-sandbox           Disable Chromium's process sandbox (security risk; start only)
   --json                 Emit one machine-readable result
+  --option <optionId>    Answer a pending permission request with this option (approve)
+  --cancel               Deny a pending permission request (approve)
   -h, --help             Show this help`
 
 // Flags that take a value, mapped to their camelCase option key (explicit so new hyphenated flags
@@ -80,7 +82,9 @@ const VALUE_OPTIONS = {
   '--artifact': 'artifactId',
   '--timeout-ms': 'timeoutMs',
   '--description': 'description',
-  '--output': 'output'
+  '--output': 'output',
+  // Option id to answer a pending permission request with (see `approve`).
+  '--option': 'option'
 }
 
 const TASK_COMMANDS = new Set([
@@ -93,7 +97,10 @@ const TASK_COMMANDS = new Set([
   'runtime',
   'connectors',
   // Re-running a recorded artifact version and comparing what comes back (2.1).
-  'replay'
+  'replay',
+  // Answering the permission cards a headless run cannot click (there is no window in `start --no-open`).
+  'permissions',
+  'approve'
 ])
 const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts', 'runtime', 'connectors'])
 
@@ -128,6 +135,7 @@ export const parseCliArgs = (argv) => {
     else if (arg === '--yes') options.yes = true
     else if (arg === '--jsonl') options.jsonl = true
     else if (arg === '--wait') options.wait = true
+    else if (arg === '--cancel') options.cancel = true
     else if (arg === '--skill') {
       const value = args.shift()
       if (!value) throw new CliUsageError('--skill requires a value.')
@@ -741,6 +749,25 @@ export const runTaskCommand = async (parsed, dependencies = {}) => {
   }
   if (command === 'connectors' && subcommand === 'list') {
     outputValue(await client.listConnectors(), options, deps)
+    return
+  }
+  // A headless service has no window, so a run that asks for permission used to wait forever with no
+  // way to see what it was waiting for. `permissions` lists the cards; `approve` answers one by id.
+  if (command === 'permissions') {
+    outputValue(await client.pendingPermissions(), options, deps)
+    return
+  }
+  if (command === 'approve') {
+    const requestId = positionals[0]
+    if (!requestId) throw new CliUsageError('Request id is required.')
+    if (!options.option && !options.cancel) {
+      throw new CliUsageError('Pass --option <optionId> to allow/choose, or --cancel to deny.')
+    }
+    const result = await client.respondPermission(requestId, {
+      ...(options.option === undefined ? {} : { optionId: options.option }),
+      ...(options.cancel ? { cancelled: true } : {})
+    })
+    outputValue(result, options, deps)
     return
   }
   // Re-running a recorded artifact version. The verdict, where the recipe came from and whether the
