@@ -3515,6 +3515,43 @@ const createApplicationModules = async (
   declareElectronAdapter('reviewer', () => {
     registerReviewerIpcHandlers(reviewerOptions, reviewerCommandOwner)
   })
+  // Auto-review must not depend on a window being open. `reviewer:run` was reachable only from the
+  // renderer, so a headless/CLI turn was audited only when a desktop window happened to be looking at
+  // it (observed: two identical CLI runs — the first reviewed, the second silently unaudited, which is
+  // also why `fetch_source` could not be exercised end to end). Main now triggers the review itself on
+  // a clean end_turn; the reviewer's own already-reviewed check keeps this idempotent with the window.
+  const triggerAutoReviewForTurn = async (sessionId: string): Promise<void> => {
+    const { sessions } = await sessionPersistenceBackend.loadAll()
+    const session = sessions.find((candidate) => candidate.id === sessionId)
+    // Absent means enabled, mirroring the per-session switch the window renders.
+    if (!session || session.autoReviewEnabled === false) return
+    const messages = session.conversationGraph?.messages ?? []
+    const turnMessage = [...messages]
+      .reverse()
+      .find((message) => message.role === 'agent' && message.status === 'complete')
+    if (!turnMessage) return
+    await reviewerCommandOwner.run({
+      sessionId,
+      projectId: session.projectId,
+      turnMessageId: turnMessage.id,
+      mainSessionId: sessionId
+    })
+  }
+  const unsubscribeAutoReview = applicationEvents.subscribe((event) => {
+    const runtimeEvent = projectTaskRuntimeEvent(event)
+    if (!runtimeEvent || runtimeEvent.kind !== 'stop' || runtimeEvent.text !== 'end_turn') return
+    const sessionId = runtimeEvent.sessionId
+    if (!sessionId) return
+    void triggerAutoReviewForTurn(sessionId).catch((error: unknown) => {
+      createLogger('reviewer:ipc').warn('auto-review trigger failed', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    })
+  })
+  // Kept referenced: the subscription lives for the process lifetime, and a future teardown path can
+  // call it without rediscovering who owns the listener.
+  void unsubscribeAutoReview
   declareElectronAdapter('session-package', () =>
     registerSessionPackageIpcHandlers({
       loadSession: (projectId, sessionId) =>
