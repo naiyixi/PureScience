@@ -1533,6 +1533,35 @@ describe('SessionPersistenceCoordinator', () => {
     })
   })
 
+  it('marks a Session left mid-run by a dead process as interrupted at startup', async () => {
+    // Real state found on 2026-10-19: two Sessions still `running` ten hours after their last message
+    // completed — the window kept a spinner and refused input, and a restart did not clear it. No ACP
+    // run survives a process restart, so hydration must close those turns instead of trusting the flag.
+    const running = createSession({ id: 'stale-running', status: 'running' })
+    const waiting = createSession({ id: 'stale-waiting', status: 'waiting-permission' })
+    const idle = createSession({ id: 'fine', status: 'idle' })
+    const result = { sessions: [running, waiting, idle], manifest: { version: 1 as const } }
+    const repository = createSessionRepository({
+      loadAllWithDiagnostics: vi.fn().mockResolvedValue({ result, isComplete: true })
+    })
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    )
+
+    const loaded = await coordinator.loadAll()
+
+    const byId = new Map(loaded.sessions.map((session) => [session.id, session]))
+    expect(byId.get('stale-running')?.status).toBe('error')
+    expect(byId.get('stale-waiting')?.status).toBe('error')
+    expect(byId.get('fine')?.status).toBe('idle')
+    expect(repository.saveSession).toHaveBeenCalledTimes(2)
+  })
+
   it('hydrates sessions after indexing and reconciles only a complete scan', async () => {
     const session = createSession()
     const result = { sessions: [session], manifest: { version: 1 as const } }

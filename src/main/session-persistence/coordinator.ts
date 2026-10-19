@@ -727,6 +727,38 @@ class SessionPersistenceCoordinator {
         }
       }
 
+      // A Session that was mid-run when the process died keeps its interactive status on disk forever:
+      // the window then shows a spinner and refuses input with no way back (observed: two Sessions still
+      // `running` ten hours after their last message completed). No ACP run survives a process restart,
+      // so any interactive status found during startup hydration is stale by definition — record it as
+      // an interrupted turn instead of pretending it is still working.
+      if (mayRunDestructiveStartupCleanup) {
+        const staleStatuses = new Set<PersistedSessionStatus>([
+          'running',
+          'waiting-permission',
+          'waiting-plan-approval'
+        ])
+        const staleIndexes = sessions
+          .map((session, index) => (staleStatuses.has(session.status) ? index : -1))
+          .filter((index) => index >= 0)
+        // Only announce the phase when it has work: an empty phase in the startup aggregate reads as a
+        // step that ran, and the aggregate is compared against the phases the app actually performed.
+        if (staleIndexes.length > 0) operation.phase('reconcile-stale-session-status')
+        for (const index of staleIndexes) {
+          const session = sessions[index]
+          const interrupted: PersistedChatSession = {
+            ...session,
+            status: 'error',
+            updatedAt: Date.now()
+          }
+          await this.repository.saveSession(interrupted)
+          sessions = sessions.map((candidate, candidateIndex) =>
+            candidateIndex === index ? interrupted : candidate
+          )
+          result = { ...result, sessions }
+        }
+      }
+
       operation.phase('reconcile-derived-state')
       try {
         if (this.uploads) {
