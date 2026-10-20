@@ -9844,3 +9844,77 @@ tracking mistake」）——`contentHash` 属同一类指针字段，却把整�
    再决定是「等进程真退出」还是「关停后重启同一端口」；**先加具名日志把两种成因分开**（值到了却没退出 / 退出了仍被拨号），
    再改代码 —— 与本轮进程组那笔同一套判据。
 ⑤ **不要重做**：§四 表里「已闭合」的两族（`uncaughtException` 的 socket 族、存储冗余回收），以及 §〇 列的九项。
+
+## 两百、本轮追加（执行器，2026-10-20 19:5x–）—— 审查员关停后的旧端口轮询：根因是协议层的半截收尾，已被真机探针一组对照分开
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 6e953b53`（会话的 **v2.15.2** 重发提交），主检出与远端同点、`git status` 只有本单元上一轮留下的 6 个路径（我的在制品）。
+- **`6e953b53` 的三条车道全部落定且全绿**：`Nightly` / `Windows Full Test` / `Release` 均 `completed|success`；
+  `gh release list` 的 Latest 已是 **v2.15.2**（上一轮 §五-2 的「发布页未出现」**已解除**，不再挂着）。
+- 上一轮 §五-3 把它记成「二选一：等子进程 exit，或给 MCP 服务器留宽限窗口」。**两条都不对**，本轮已用真机读数证伪（见 §一、§三）。
+- 本轮开工时无在飞车道（`gh run list` 四条全 `completed`）⇒ 本次推送没有取消任何人的判决。
+
+### 一 根因（更正上一轮那两个备选）
+
+1. **进程不能等、也不该等**：审查员会话跑在**共享的 ACP 连接**上（`reviewer-session-owner.ts` 的 `create()` 走 `ensureConnected`），
+   那个 provider 进程是主会话共用的，杀它等于杀掉用户正在用的会话。
+2. **真正的缺口在协议层**：SDK 自己的声明写着 `ActiveSession.dispose(): void` —— *"This does not close the ACP session on
+   the agent. Use ClientContext session lifecycle methods when the protocol session itself should be closed"*。
+   而产品里**只有用户删除会话**那条路会发 `session/close`（`session-deletion-workflow.ts:101`），**审查员会话从不经过那条路**
+   ⇒ agent 侧的会话与它持有的**每会话 MCP 客户端**一直活到连接结束。服务器一停，那个客户端就继续拨一个死端口。
+3. **能力是现成的**：真机日志 `agent initialized` 行逐条写着 `supportsSessionClose: true, supportsSessionDelete: true`（claude-code，5 条独立启动）。
+4. **时序逐条对得上**：`reviewer MCP server stopped`（port 56439 @14:18:59.892）→ `egress target failed` 打 `127.0.0.1:56439` @14:19:02.654（+2.76 s）；
+   port 56569 stop @14:19:15.212 → 拨号 +1.0 s 与 +2.5 s。**不是端口串味，是停服后客户端仍在拨。**
+
+### 二 改动（6 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `src/main/acp/reviewer-session-owner.ts` | `dispose()` **先**取连接、立刻发起 agent 侧收尾（广告了 `session/close` 就发它，否则退化为 `session/cancel`），把 `remoteClose` 挂进 `ReviewerSessionDisposition`；新增 `closeRemoteSession()`：结果具名五态 `closed/cancelled/no-connection/timed-out/failed`、每条都有具名日志、**永不 reject**、有界（默认 3 s，定时器 `unref`） |
+| `src/main/acp/runtime-session-composition.ts` | 两个新端口 `currentConnection` / `supportsSessionClose`（取自 `connectionResources.connection` 与 `.capabilities.close`） |
+| `src/main/reviewer/session-cleanup.ts`（新） | 把收尾抽成**有序契约**：`dispose → await remoteClose → mcp.stop()`，头注写明这个顺序为什么是承重的 |
+| `src/main/reviewer/orchestrator.ts` | 改调新模块（−41 行重复逻辑），两处 `finally` 行为不变 |
+| `src/main/reviewer/session-cleanup.test.ts`（新） | 5 条：顺序（`['dispose','agent-close','stop']`）、agent 侧失败不改变 review 结论、dispose 抛错仍停 MCP、MCP 停失败不外溢、无会话无服务器 |
+| `src/main/acp/runtime.test.ts` | 主流程断言 `closedSessions === ['reviewer-session']`；新增「不广告 `session/close` ⇒ 退化为 `session/cancel`」一条；4 处 `toEqual(disposition)` 改为 `toMatchObject` |
+
+**判据写法**：不靠「代码里写了 close」，而靠**停服后同端口起一个 catcher，数后到的连接**——对照组（只本地 dispose）应非零，实验组应为 0。
+
+### 三 真机读数（真 ACP 适配器 CLI + 产品自己的 `ReviewerMcpServer`，同一进程内起服务、停服后 8 s 窗口收拨号）
+
+```
+INIT sessionCapabilities= {"additionalDirectories":{},"close":{},"delete":{},"fork":{},"list":{},"resume":{}}
+RESULT {"label":"dispose-only","port":57115,"dialsAfterStop":2,"offsetsMs":[1007,2516]}
+CASE session-close session/close acknowledged in 13 ms
+RESULT {"label":"session-close","port":57169,"dialsAfterStop":0,"offsetsMs":[]}
+```
+
+- **对照组 2 次拨号、偏移 1,007 ms 与 2,516 ms** —— 与现场日志的 +1.0 s / +2.5 s **逐个重合**，说明这个探针复现的正是现场那条签名。
+- **修复组 0 次拨号**，`session/close` 13 ms 被 agent 确认。
+- 探针源码留档在仓外 scratch（不进仓）；上一轮卡住的 `session/new` 超时是**手搓 MCP 端点不够真**，换成产品的真 `ReviewerMcpServer` 后一次通过。
+
+### 四 门禁读数（都是最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（`src/main/reviewer` + `src/main/acp` 全簇） | **113 文件 / 1,717 passed**，`VITEST_EXIT=0` |
+| 全量 vitest `--maxWorkers=4` | **1349 文件 passed | 16 skipped**；**17,235 passed | 207 skipped（17,442）**；`FULL_EXIT=0`（基线 1348 / 17,229 ⇒ +1 文件 / +6 例，正是本批新增） |
+| 双 typecheck（`--composite false`，`NODE_OPTIONS=8192`） | node **0 error / exit 0**；web **0 error / exit 0** |
+| 本批 6 文件 `eslint --no-cache` | **exit 0 / 0 problem** |
+| `bash scripts/pre-push-checks.sh` | **exit 0**（README 双语、权重清单、脚本入口、新增文件 lint 四门全过） |
+
+### 五 具名未办
+
+1. **agent 不广告 `session/close` 的退路只到 `session/cancel`** —— 那条路上会话仍然注册着，MCP 客户端也还在；
+   本机实测的 claude-code **两种情况都没有**，所以只有单测钉住、**真机读数缺**。`blocked-by`：需要一个真的不广告 `close` 的适配器；
+   在此之前不许写成「所有适配器都收口了」。
+2. **宽限窗口是 3 s**：agent 兜底慢于 3 s 时仍会有 1–2 次拨号（`timed-out` 具名日志会说话）。判据是日志里 `timed-out` 的出现次数，
+   出现就说明这个界要往上抬或改成「等 agent 确认」。**未取现场复测读数**（要发版后跑一段真实审查才看得到）。
+3. 「退出时 `degraded` 不可归因（8 次）」**仍在案**：`application-runtime.test.ts:369` 有一条具名用例刻意钉住「不记原始错误细节」（脱敏），
+   要动须先改那条不变量 ⇒ 不是随手可改的缺口，继续挂着。
+
+### 六 下一轮第一步
+
+① `git fetch` + `git status`（看会话是否又落新提交）；② 按完整 40 位 SHA 取本笔的双车道判决（重点 `macos-arm64`）；
+③ 下一单元候选：`egress target failed` 里**非回环**的那 1 条（130 条里唯一的真外网失败）——先看它是不是同一个「目标已关停仍被拨号」的形状，
+   还是外部源真的不可达；两者判读完全不同，别合并处理。
