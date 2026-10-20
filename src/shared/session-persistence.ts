@@ -699,9 +699,12 @@ const asArtifactKind = (value: unknown): PersistedArtifactKind | undefined => {
   return kind && ARTIFACT_KINDS.has(kind) ? kind : undefined
 }
 
-// Identifies UI states that cannot survive an app process shutdown.
+// Identifies UI states that cannot survive an app process shutdown. `waiting-plan-approval` belongs here
+// for the callers that hand over an already-parsed Session: the parse path has already turned a missing or
+// damaged Plan context back into `idle`, so what reaches this function with that status either still has a
+// pending approval (handled before this check) or is the residue of a crash after the approval landed.
 const isSessionInterrupted = (status: PersistedSessionStatus): boolean =>
-  status === 'running' || status === 'waiting-permission'
+  status === 'running' || status === 'waiting-permission' || status === 'waiting-plan-approval'
 
 // Converts partial streamed assistant messages into visible errors after restart.
 const normalizeMessageAfterRestore = (message: PersistedChatMessage): PersistedChatMessage =>

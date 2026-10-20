@@ -1022,6 +1022,25 @@ describe('normalizeSessionFile with activities', () => {
     expect(restored?.error).toBeUndefined()
   })
 
+  it('restores an approved Plan that a crash left marked as waiting for approval', () => {
+    // The approval is durable execution authority, so a Session whose status still says "waiting for
+    // approval" while its Plan is already approved is a crash artefact: nothing will ever resolve that
+    // gate again, and the window would keep showing an approval that has already happened. Restore it
+    // the same way an approved Plan interrupted mid-run is restored.
+    const plan = { ...createRuntimePlan(), approval: 'approved' as const }
+    const restored = normalizeSessionFile({
+      ...(createSessionWithActivity(undefined) as PersistedChatSession),
+      activities: undefined,
+      status: 'waiting-plan-approval',
+      activeRun: { promptMessageId: 'prompt-1', startedAt: 10 },
+      runtimeContext: { version: 1, revision: 4, plan }
+    })
+
+    expect(restored).toMatchObject({ status: 'idle' })
+    expect(restored?.activeRun).toBeUndefined()
+    expect(restored?.error).toBeUndefined()
+  })
+
   it('drops unknown or damaged runtime context without losing the conversation', () => {
     const unknown = normalizeSessionFile({
       ...createSessionWithActivity(undefined),
