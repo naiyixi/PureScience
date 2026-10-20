@@ -175,14 +175,39 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   expect(citation.reference?.title).toBe('Molecular docking of nirmatrelvir')
 
   // 2) A review row for the source turn.
-  const run = await page.evaluate(
-    async (request) => {
-      const bridge = globalThis as unknown as Bridge
-      return bridge.api.reviewer.run(request)
-    },
-    { projectId: sourceProjectId, sessionId: source.sessionId, turnMessageId: source.messageId }
-  )
-  expect(run.started).toBe(true)
+  //
+  // The app schedules a review of its own about 100 ms after the turn ends (workspace-events), and main
+  // holds ONE in-flight key per turn: while that review is running, a second request for the same turn
+  // comes back `already-in-flight`. That is the mutex doing its job, not a failure — but asserting on the
+  // first answer made this a coin flip on a loaded machine (measured: green on the 30-minute mac lane,
+  // red on the 36-minute one, retry included). So wait for the app's own run to release the key, and keep
+  // the assertion strict: a review must actually start, and when it does not, the reason main gave is
+  // printed instead of a bare `false`.
+  const startReview = (): Promise<{ started: boolean; reason?: string }> =>
+    page.evaluate(
+      async (request) => {
+        const bridge = globalThis as unknown as Bridge
+        return bridge.api.reviewer.run(request)
+      },
+      { projectId: sourceProjectId, sessionId: source.sessionId, turnMessageId: source.messageId }
+    )
+
+  // The renderer's own auto-review retries exactly these: both are persistence-race shapes a retry can
+  // clear. `already-in-flight` is this spec's case (the app's review for the turn is still running).
+  // Every other reason is terminal, so stop at once and report it rather than burning the budget.
+  const retryableStartReasons = new Set(['already-in-flight', 'not-found', 'load-failed'])
+  const startDeadline = Date.now() + 90_000
+  let run = await startReview()
+  while (
+    !run.started &&
+    run.reason &&
+    retryableStartReasons.has(run.reason) &&
+    Date.now() < startDeadline
+  ) {
+    await page.waitForTimeout(500)
+    run = await startReview()
+  }
+  expect(run.started, `the review could not start: ${run.reason ?? 'no reason given'}`).toBe(true)
 
   const readSourceReviews = (): Promise<
     Array<{ id: string; lifecycle?: string; outcome?: string | null; checks?: unknown[] }>
