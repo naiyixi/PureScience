@@ -2447,3 +2447,52 @@ describe('AcpRuntimeCoordinator snapshot rate probe', () => {
     expect(readings[1].pullCalls).toBe(0)
   })
 })
+
+// A published event used to cost two full runtime snapshot builds: the runtime built one to hand over, and
+// the coordinator rebuilt the same projection of the same state from the same stack to merge it. Re-reading
+// that runtime is pure waste, but the reuse must not change what is published, and every path that has no
+// fresh snapshot still has to read the runtime live.
+describe('AcpRuntimeCoordinator fresh snapshot reuse', () => {
+  it('does not re-read the runtime that just published, and publishes what a full read would', async () => {
+    const created: ReturnType<typeof createFakeRuntime>[] = []
+    const emitted: AcpStateSnapshot[] = []
+    const coordinator = new AcpRuntimeCoordinator(
+      (callbacks) => {
+        const fake = createFakeRuntime({
+          frameworkId: 'codex',
+          sessionIds: ['session-1'],
+          callbacks
+        })
+        created.push(fake)
+        return fake.runtime
+      },
+      { onStateChanged: (snapshot) => emitted.push(snapshot) },
+      ''
+    )
+    await coordinator.createSession()
+
+    const runtime = created[0]!.runtime
+    const reads = vi.spyOn(runtime, 'getSnapshot')
+    reads.mockClear()
+    emitted.length = 0
+
+    created[0]!.emitEvent({
+      id: 'reuse-event',
+      timestamp: 3,
+      kind: 'system',
+      level: 'info',
+      sessionId: 'session-1',
+      title: 'published once'
+    })
+
+    // The emitting runtime's snapshot is already in hand: the emission must not read it a second time.
+    expect(reads).not.toHaveBeenCalled()
+    expect(emitted).toHaveLength(1)
+    // Same projection, not a lossy shortcut: an independent full read of the same state agrees field for
+    // field with what the emission published.
+    expect(emitted[0]).toEqual(coordinator.getSnapshot())
+
+    // The pull path has no snapshot in hand, so it still reads the runtime live.
+    expect(reads).toHaveBeenCalled()
+  })
+})

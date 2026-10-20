@@ -10205,3 +10205,93 @@ RECORD windowMs=501 lateMs=1 cpuShare=0.016 attribution=cpu-bound-in-process
 
 **下一轮第一步**：① 按完整 40 位 SHA 读本笔的两条车道；② 取 §四 第 3 条那个现场读数（内存闸门解除后）；
 ③ 拿到 calls/s 后，再决定要不要动发射节流 —— **在此之前不许**把「卡顿根因」写成已定位。
+
+## 两百零五、本轮追加（执行器，2026-10-21 06:35–）—— 每条流式 delta 的发布成本里有一整次多余的快照构建；顺带把 890 ms 那个量级对上了
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 7f50d331`，工作区**干净**；`origin/main..HEAD` 为空（上一轮 `7ca28363` 已被后一笔推送带上远端）。
+- 桌面会话仍在跑 v2.17 线（`src/shared/sci-bench-*`、`src/shared/capability-*`、其计划档，06:31/06:47 各落一笔）⇒
+  本单元全程只碰 `src/main/acp/**`，**目录不相交**，开工与提交两次都核过它的 HEAD 没有移动进本单元的文件。
+- B 段三项复核仍是 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）⇒ 按队列约定取自拟单元。
+
+### 一 先归因上一笔的 CI 红（不猜、不重跑）
+
+`7ca28363`（上一轮的快照计数器）与 `7f50d331`（纯文档）**都没有自己的 run**：前者的推送被后一笔带上、后者不触发 `paths`。
+按「包含它的后一笔可代其判决」，取 `ff5bb7ea` 的两条车道：
+
+| 车道 | 结论 | 说明 |
+|---|---|---|
+| Windows Full Test | **success** | 不跑认证 spec（认证只在 `macos-arm64` 的构建作业里执行） |
+| Nightly | **failure** | 失败作业只有一个：`build / Build macos-arm64`（`Build linux/windows/macos-x64` 与 `Verify` 全 success） |
+
+失败步骤是 P0 认证：**99 passed / 12 skipped / 1 flaky / 3 failed**，三条分别是
+
+1. `notification-inbox-clear.spec.ts:46` —— 前置「两条通知」只种出 **1 条**（`items=[task.completed]`），两次重试同形；
+2. `pdf-table-extraction.spec.ts:37` —— 首次 `the table PDF artifact has no path in the session document`，重试 **`firstWindow` 超时 30 s**；
+3. `search-index-coverage.spec.ts:33` —— **`firstWindow` 超时 30 s**（重试同样）。
+
+**归因（轮转红，不是本批引入的回归）**：同一车道在前几笔上红在**别的** spec —— `8b39cf4a` 是 `ro-crate-export:268` +
+`storage-migration:117`；`deca85a7` 是 9 条 flaky（`notification-inbox-clear` 就在其中）；`5f4989bb` 整条 **success**。
+三家轮转 + 每条在别的提交上绿过 ⇒ 判为负载/启动时序侧的抖动；本轮本机内存闸门不允许起 e2e（见 §四 第 3 条），
+**不据此改产品代码**，也不加超时。第 1 条的「只种出 1 条」形状是**前置读取早于异步落库**（`recordInboxAuthorization`
+是 fire-and-forget），已在 §五 单独立案，不在本轮改。
+
+### 二 交付（2 文件 +49 −4）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/acp/runtime-coordinator.ts` | `buildSnapshot()` 接受**一个**「刚出炉的快照」（`{runtime, snapshot}`）；`emitState()` 把它透传；`handleRuntimeState()` 用运行时自己刚交来的那份。`getSnapshot()`（pull 路径）与其余 8 处语义发射**一律不传**，照旧逐运行时活读 |
+| `.../runtime-coordinator.test.ts` | +1 例：发射时**不再重读**该运行时的 `getSnapshot`（迁移前实测 `Number of calls: 1`，迁移后 0），并断言发布出来的快照与一次完整重读 `toEqual`（不是有损捷径），而 pull 路径仍然活读 |
+
+**为什么这是纯浪费而不是优化猜测**：`AcpRuntimePublicationOwner.pushEvent` 每条事件都 `getSnapshot()` 一次（出快照 → 交给协调器），
+协调器拿到后**又把同一个运行时的同一状态重算了一遍**（同一个栈里、同一份投影）。一条事件 = 两次全量快照构建。
+
+### 三 读数（全部实跑，真链路）
+
+把**产品源码**用仓内 esbuild 打成单文件，驱动**真的** `AcpRuntimeSnapshotOwner` → **真的** `AcpRuntimePublicationOwner`
+→ **真的** `AcpRuntimeCoordinator`（保留窗口按产品上限填满 500 条事件），同一份探针分别在**迁移前/迁移后**各跑一次：
+
+```
+BEFORE  publishes=1000  totalMs=1633.38  snapshotBuilds=2000   # 1.633 ms / 次
+AFTER   publishes=1000  totalMs= 885.56  snapshotBuilds=1000   # 0.886 ms / 次
+```
+
+- **每次发布的快照构建数 2 → 1**；单次发布成本 **1.633 ms → 0.886 ms（−45.8 %）**（200 次那一档同向：1.613 → 0.875 ms）。
+- 同一次运行里另一条读数（此前没人量过）：**一次快照本身的深拷贝 0.74–0.76 ms**（500 条纯文本事件，2000 次取样 avg）。
+  它就是上面那 0.886 ms 的几乎全部。
+
+**这修正了上一轮的一个结论（必须更正）**：§两百零四 记「一次构建 ≤1.33 ms ⇒ 现场 890 ms 不可能是单次构建，按 mean 要约 17,800 次」。
+现在有了真链路的数：**一次发布 ≈1.6 ms**，890 ms **≈ 545 次发布事件**挤在同一个窗口里 —— 一个长回合把几百条 delta
+成簇投递完全够得上。也就是说：**它是「成簇」，不是「单次」**；上一轮那个「17,800 次」是用**桩快照**（0.05 ms）算出来的，
+桩没有深拷贝保留窗口，所以把成本低估了 30 倍。数字要改，方向（发射路径才是成本所在）不变。
+
+### 四 边界（不许读成更强）
+
+1. **只去掉了一次重复构建**，没有改发布频率，也没有改「每条事件都要发布一次快照」这个语义 —— 那属下一单元。
+2. **剩下的一半成本是契约要求的**：`runtime.test.ts:12514` 那条已验收用例钉住「发布出去的快照必须能被持有者**随便改写**而不影响运行时」
+   （它逐条改写 events/raw/contextUsage/pendingPermissions 后再读回权威状态）。本轮试过用「冻结事件 + 浅拷贝数组」把这 0.74 ms 拿掉，
+   **被那条用例当场否掉**（`TypeError: Cannot assign to read only property 'title'`）⇒ 已回退（`git checkout --` 两文件），
+   只保留了不触契约的那一半。放宽或收紧那条契约属**产品决定**，见 §五。
+3. **现场读数仍未取**（沿用 §两百零四 §四 第 3 条）：需要一次带本代码的运行 + 一次流式回合；本轮内存闸门同样不满足
+   （空闲页 3,852 ≈ 60 MB、`swap used 12.9 G / 14.3 G`，机器上跑着打包版实例、dev Electron 与桌面会话的 `claude`）。
+4. 合成负载的保留窗口是**文本事件**；带 4 MB base64 图片的事件会让那 0.74 ms 更大（深拷贝按字节），本轮没量，不写「已量」。
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+| 项 | blocked-by | 解封条件 |
+|---|---|---|
+| 把「每次发布都深拷贝整窗」压下去（0.74 ms/次，随会话增长、单条事件可带 ≤4 MB 图） | **产品决定**：`runtime.test.ts:12514` 钉住「持有者可随意改写发布快照」。要么改成「发布快照不可改写（冻结）」并同步改这条用例，要么把深拷贝挪到别的边界 | 拍板后：冻结方案 ≈ 3 文件（owner + 该用例 + 逐条消费方核对）；风险是主进程里任何就地改写会当场抛错 |
+| `notification-inbox-clear` 前置只种出 1 条 | 需一次真机复跑（e2e 内存闸门） | 内存恢复后单跑该 spec 3 遍；判据：`recordInboxAuthorization` 的落库确实晚于 spec 的读取（改法是 `expect.poll` 等第二条，**不是**放宽 `>1`） |
+| `firstWindow` 30 s 超时（两条 spec） | 需要 CI runner 上的 `test-results/app-process.log`（本轮日志里只有字节数，没有内容） | 下次该车道红时先取该 artifact；在此之前不许写「启动变慢」 |
+
+### 六 门禁与推送
+
+- 定向 `npx vitest run src/main/acp src/main/diagnostics --maxWorkers=2` ⇒ **102 文件 / 1504 passed**（比上一轮多 1 例，即本笔那条）。
+- 全量 `npx vitest run --maxWorkers=2` ⇒ **1358 passed | 16 skipped（1374 文件）**；**17322 passed | 207 skipped（17529 例）**；**exit 0**（约 7 分钟）。
+- `typecheck:node` **0 error**；`typecheck:web` **0 error**（各带 `--composite false`，node 侧 `NODE_OPTIONS=--max-old-space-size=6144`）。
+- `npx eslint --no-cache`（本批 2 文件）⇒ **0 error / 0 warning**；`bash scripts/pre-push-checks.sh` ⇒ 见补记。
+- 本笔只碰 2 个源/测试文件与本节：**不碰发版四文件**，v2.15.3 已是 Latest，本轮不发版。
+
+**下一轮第一步**：① 按完整 40 位 SHA 读本笔两条车道；② 若内存闸门解除，先取 §两百零四 §四 第 3 条的现场读数
+（`state snapshot build rate` 的 `calls/s` 与 `maxMs`），再决定「发射频率」这一半；③ §五 第 1 条等拍板，别自己改契约。

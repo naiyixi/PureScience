@@ -148,9 +148,14 @@ class AcpRuntimeCoordinator {
   // Both paths rebuild the whole snapshot, so the rate is part of the cost and not a separate curiosity:
   // during streaming the emission path runs per state change, and a per-call duration alone could not be
   // reconciled with a stall profile that attributed ~890 ms to one of its phases.
-  private emitState(): void {
+  //
+  // `fresh` is the snapshot the emitting runtime just handed over. Re-reading that runtime here would be
+  // the same projection of the same state computed a second time in the same stack -- a published event
+  // used to cost two full runtime snapshot builds instead of one. Callers with no fresh snapshot
+  // (permission grants, session ownership, teardown) pass nothing and every runtime is read live.
+  private emitState(fresh?: { runtime: AcpRuntime; snapshot: AcpStateSnapshot }): void {
     this.callbacks.onStateChanged?.(
-      this.measureSnapshotBuild('emission', () => this.buildSnapshot())
+      this.measureSnapshotBuild('emission', () => this.buildSnapshot(fresh))
     )
   }
 
@@ -158,10 +163,15 @@ class AcpRuntimeCoordinator {
     return this.snapshotRateProbe ? this.snapshotRateProbe.measure(source, build) : build()
   }
 
-  private buildSnapshot(): AcpStateSnapshot {
+  private buildSnapshot(fresh?: {
+    runtime: AcpRuntime
+    snapshot: AcpStateSnapshot
+  }): AcpStateSnapshot {
+    const freshSnapshotFor = (runtime: AcpRuntime): AcpStateSnapshot | undefined =>
+      fresh && fresh.runtime === runtime ? fresh.snapshot : undefined
     const snapshots = Array.from(this.runtimes, (runtime) => ({
       runtime,
-      snapshot: runtime.getSnapshot()
+      snapshot: freshSnapshotFor(runtime) ?? runtime.getSnapshot()
     }))
     const primaryRuntime = this.activeRuntime ?? this.lastRuntime
     const primary = snapshots.find(({ runtime }) => runtime === primaryRuntime)?.snapshot
@@ -1112,7 +1122,7 @@ class AcpRuntimeCoordinator {
         this.sessionConnectionStatuses.set(sessionId, snapshot.status)
       }
     }
-    this.emitState()
+    this.emitState({ runtime, snapshot })
     this.resolveSessionDrain(runtime, snapshot)
   }
 
