@@ -86,6 +86,38 @@ describe('event loop stall watchdog', () => {
     expect(warned).toHaveLength(0)
   })
 
+  // The two defaults are equal, and that is the whole trap: a case that drives a 100 ms tick against a
+  // 500 ms threshold can never notice that the shipped cadence fills the threshold by itself. This case
+  // uses the production pair, and the windows are the ones the shipped build actually wrote (501/502 ms).
+  it('stays silent at the shipped cadence and reports only the lateness past it', () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 70 }),
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler
+    })
+
+    for (const step of [500, 501, 502, 500, 503, 500]) {
+      time.advance(step, 5)
+      vi.advanceTimersByTime(500)
+    }
+    expect(warned).toHaveLength(0)
+
+    // One window that arrived a full threshold late: 500 ms of schedule + 500 ms of lateness.
+    time.advance(1_000, 100)
+    vi.advanceTimersByTime(500)
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.windowMs).toBe(1_000)
+    expect(warned[0]?.data.lateMs).toBe(500)
+    watchdog.stop()
+  })
+
   it('attributes a stall that burned CPU to this process and arms the profiler', () => {
     vi.useFakeTimers()
     const time = drive()

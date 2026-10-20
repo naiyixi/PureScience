@@ -9983,3 +9983,152 @@ RESULT {"label":"session-close","port":57169,"dialsAfterStop":0,"offsetsMs":[]}
 ② 判决绿后**一次推送**（本节这笔 + 计划档），推前现查在飞车道；
 ③ 之后从签名聚合里挑下一件：优先「`ipc handler was slow` 4,324 次」里**能定位到具体通道**的那一段（已有分段埋点，先读分布再决定），
    或 `specialist:update failed`（会话那条线在改 `specialist/**` ⇒ 动之前先看 `git status` 是否有人在写）。
+
+## 两百零二、本轮追加（执行器，2026-10-21 01:1x–）—— 权限授予两条读路径从「每次发射都重算一遍」改成「变更时算一次」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 7f8baa2a`；工作区**只有上一轮我自己留下的 4 个未提交路径**（`src/main/permission-grants/{catalog,registry}{,.test}.ts`），
+  无他人未提交内容 ⇒ 本轮第一件事是**把上一轮的单元收口**（它当时卡在门禁之前）。
+- 共享工作树里**有另一个执行体在跑**：它 01:14 落了 `bae40175`（自动审查等落盘）、01:29 落了 `6f03a1a4`（v2.15.3 发版提交），
+  两条都在我跑全量期间落地 ⇒ 见 §三 的口径（代码面按 `bae40175` 取读数，`6f03a1a4` 只动四个发版文件）。
+- 本单元不重做任何既有交付：`permission-grants` 目录下既有的 10 个用例文件一个字没删，新增用例是**加**。
+
+### 一 单元从哪来：真机日志的顶层帧，而不是凭感觉挑热点
+
+上一轮把用户本人打包版的 `~/Library/Logs/PureScience/` 三份日志全扫了（`event loop stalled` **18,445 条**，集中在 20:42–23:10；
+其中 16,120 条不带栈帧、2,325 条带帧）。在带帧的 8,639 条里**顶层帧第一是 `sortedRecords`（908 条）**，
+最糟的 8 条（主线程停滞 1.2–1.6 s）里它占约 60% 采样，同批还出现 `capabilityIdentity`（它只存在于 O(n²) 的覆盖判定里）。
+两者都在 `getSnapshot()` 链上：`runtime-composition.ts:483` 把 `listCached()` 喂给 `projectRegistrySessionGrants`，
+而面板/变更路径走 `projectPermissionGrantSnapshot` ⇒ 一条读路径每发射重排整表，另一条每行再扫全表。
+
+### 二 改动（4 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `src/main/permission-grants/catalog.ts` | 覆盖判定从「每行扫其余全部行、每对一次 `JSON.stringify`」改成**一趟建索引（能力身份 → 是否全局 / 项目集合）一趟查**；`coveringScopeFor` 改名 `coveringScopeIn` 并只吃索引 |
+| `src/main/permission-grants/registry.ts` | 比较器里每次排序都新建的 `scopeOrder` 字面量提到模块级（`SCOPE_ORDER` + `compareRecords`）；`records` 加**读侧 memo**（`sortedEpoch`/`recordsEpoch`），写侧收口到 `putRecord`/`dropRecord` 两个帮手 —— 撤销、按属主修剪、恢复默认这几条路径**全部**经过它们，所以不可能读到陈旧顺序 |
+| `catalog.test.ts` | +2 例：① 把**旧规则原样重写一遍**当参照，逐行断言覆盖答案完全相同（并断言夹具真的覆盖 `none`/`project`/`global` 三种答案，否则这条证明不了索引正确）；② 按 `JSON.stringify` **调用次数**钉算法形状（< 6×行数），不做墙钟计时 |
+| `registry.test.ts` | +1 例：同一数组在两次读之间复用、写一笔后换新数组且顺序正确、撤销后该行从下一次读里消失 |
+
+### 三 读数（全部实跑）
+
+**真机数据的形状**（只读）：打包版库 `~/.purescience/purescience.db` 的 `PermissionGrant` 表 **152 行**，
+开发库 `~/.purescience-project/purescience.db` 为 **0 行** ⇒ 上一轮的量表用的正是这个 152 行真形状（这一项本轮重新核过）。
+
+上一轮在真库行形状上的实测（改前/改后）：
+
+| 路径 | 改前 | 改后 |
+|---|---|---|
+| 面板投影 `projectPermissionGrantSnapshot` | 2.965 ms（152 行）/ 47 ms（608）/ 478 ms（1,976） | **0.1695 ms**（152 行） |
+| 每次发射的 `listCached()` + 会话授予投影 | 0.149 ms（其中排序 0.041） | 0.1559 ms（排序已归零） |
+
+本轮门禁（最后一次改动之后取）：
+
+- 定向 `npx vitest run src/main/permission-grants` ⇒ **10 文件 / 229 passed**（两次：改前一次、prettier 收口后一次）。
+- 全量 `npx vitest run --maxWorkers=4` ⇒ **1366 文件：1349 passed / 1 failed / 16 skipped；17456 例：17248 passed / 1 failed / 207 skipped**（874 s）。
+  唯一红是 `src/main/logger.test.ts > bounds a shared DAG of throwing getters` 的**墙钟断言**（1401 ms > 1000 ms，机器上同时跑着一个 Electron 开发实例）。
+  单文件隔离连跑 **3 遍全绿（66 passed ×3）** ⇒ 按**负载敏感**记档，**未放宽断言**。
+- `typecheck:node` **0 error**（第一次红在 `catalog.test.ts:176`：`record.scope.projectId` 在回调里丢了收窄 ⇒ 提到回调外取名，这是只有 `tsc` 看得见的形状，vitest 全绿时它不报）；
+  `typecheck:web` **0 error**。
+- `npx eslint --no-cache .` ⇒ **0 error / 134 warning**（warning 均不在本批 4 文件里；本批 4 文件 `--no-cache` **0 problem**）。
+- `bash scripts/pre-push-checks.sh` ⇒ **exit 0**（含品牌扫描、README 双语、模型清单、53 个脚本入口 `node --check`）。
+
+**门禁与提交的时间差（照纪律点名）**：全量那一轮起于 01:17、终于 01:31，而上面那两笔是在 01:14 / 01:29 落地的 ⇒
+代码面读数等于 `bae40175` 的树；`6f03a1a4` 之后的差量只有 `CHANGELOG.md`/`README.md`/`README.en.md`/`package.json` 四个文件（无代码），
+版本横幅与 CHANGELOG 条目由 01:4x 那次 `pre-push-checks.sh` 覆盖（它正是核这两样的那道门）。
+
+### 四 必须说清的边界（不许读成更强）
+
+1. **不能声称「卡顿根因已解决」**：一次 `getSnapshot` 的授予投影实测只有 0.155 ms，而现场最糟的停滞有约 890 ms 落在 `sortedRecords` 上——
+   **两者差三个数量级，仪器与微基准互相矛盾**。缺的那一个量是「每秒发射多少次」，当前代码**没有计数器**，不拿推断补。
+2. 本轮交付的是**可测的改进**（面板投影 17×、随行数放大到 ~150×；排序从读路径消失），不是「停滞已消除」。
+3. 这是主进程侧纯计算改动，**不涉及界面** ⇒ 本单元没有窗口读数；按纪律不拿单测冒充真机，把「缺窗口读数」的原因写明（无 UI 面可点）。
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+| 项 | blocked-by | 解封条件 |
+|---|---|---|
+| 快照路径的**聚合计数器**（每 30 s 一行：calls/totalMs/maxMs） | 无（纯代码） | 下一轮直接做；它才是「是反馈环（发射率异常高）还是采样归因偏了」的判据 |
+| 用真实发射率复现那 890 ms | 上面那条计数器 + 一次发版后的现场日志 | 发版后从日志读 calls/s 与 maxMs，再决定要不要改发射节流 |
+
+### 六 下一轮第一步
+
+① 先看 `v2.15.3` 的发版窗口是否已关（tag 与 Release 页）；窗口开着就**只做本地提交不推**；
+② 做快照路径的聚合计数器（30 s 一行），并把「calls/s 未知」这条从 §五 划掉；
+③ 交付时按 §四 的口径写读数，不许把计数器当成「根因已定」。
+
+## 两百零三、本轮追加（执行器，2026-10-21 01:5x–）—— 停滞看门狗把「每一个 tick」都记成了停滞：阈值与节拍都是 500 ms，而它比的是整个窗口
+
+### 〇 开工核对
+
+- 上一节（§两百零二）那个单元已提交并推送（`394391e5`），推前现查在飞车道全 `completed` ⇒ 那次推送没有取消任何判决。
+- 本单元取 §两百零二 §五 的第一条（「快照路径的调用率未知」）的**前置**：在加计数器之前，先把「停滞」这条读数本身校准 ——
+  它正是上一轮挑 `sortedRecords` 的依据，若仪器在误报，依据就是脏的。
+- 不重做：`event-loop-stall-watchdog` 的三类归因（cpu-bound / not-scheduled / inconclusive）与栈采样机制**一个字没动**，
+  本单元只动**什么时候算一次停滞**。
+
+### 一 根因（真机日志全扫，只读）
+
+用户本人打包版的三份日志（`main.log` / `main.1.log` / `main.2.log`，14:04Z–17:50Z 共 3.7 h）里 `event loop stalled` **26,331 条**：
+
+| 读数 | 值 |
+|---|---|
+| `windowMs` 众数 | **501（10,536）/ 502（6,560）/ 500（6,428）** |
+| `windowMs ≤ 550` 的占比 | **97.2 %**（25,677 条），其 `cpuShare` 中位 **0.23**（p10 0.058 / p90 0.425） |
+| `windowMs > 550` 的 | **729 条（2.8 %）**，`cpuShare` 中位 **0.918**；其中 ≥2000 ms 的只有 9 条 |
+
+`DEFAULT_TICK_MS` 与 `DEFAULT_STALL_THRESHOLD_MS` **都是 500**，而判定写的是 `if (windowMs < thresholdMs) return`，
+`windowMs` 是**两次 tick 之间的总时长**（已包含 500 ms 的节拍本身）⇒ 循环只要按自己的节拍跑，窗口就 ≥500，
+**每一次 tick 都算一次停滞**。现场的 501/502 众数正是这个形状：`lateMs`（真正迟到的时间）只有 0/1/2 ms。
+
+**为什么既有用例没抓住**：它们全部用 `tickMs: 100, thresholdMs: 500`（阈值远大于节拍），那个组合下窗口永远填不满阈值 ⇒
+用例能过，而生产用的是「节拍＝阈值」这一对。这是「夹具比生产宽松」的典型，修法不是改用例的步长，而是**补一条用生产默认值的用例**。
+
+### 二 改动（2 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 判定改为**先扣掉节拍**：`lateMs = windowMs - tickMs`，`lateMs < thresholdMs` 才静默；记录里新增 `lateMs`（`windowMs` 保留原义，既有读日志的口径不破），并在 `tick` 上方写清这段读数与代价 |
+| `.../event-loop-stall-watchdog.test.ts` | +1 例：**用生产默认值**（不给 `tickMs`/`thresholdMs`），按现场真实窗口（500/501/502/503）推进 6 个 tick ⇒ **必须一条都不报**；再让一个窗口迟到整 500 ms（`windowMs 1000`）⇒ 必须报一条且 `lateMs 500` |
+
+### 三 读数（真定时器，不是假时钟）
+
+把**产品源码**用仓内 esbuild 打包成单文件，用 `startEventLoopStallWatchdog({ log })`（**不传任何参数 ⇒ 就是生产的 500/500**）跑两段：
+
+```
+PHASE healthy ticks=8 records=0                                    # 新版：健康 4 s，一条不报
+PHASE blocked records=1
+RECORD windowMs=1693 lateMs=1193 cpuShare=0.701 attribution=cpu-bound-in-process
+```
+
+同一份产物只把那一行判定改回旧写法（对照），同样的两段：
+
+```
+PHASE healthy ticks=8 records=6                                    # 旧版：健康 4 s 里报了 6 条
+RECORD windowMs=501 lateMs=1 cpuShare=0.002 attribution=process-not-scheduled
+RECORD windowMs=501 lateMs=1 cpuShare=0.016 attribution=cpu-bound-in-process
+...（共 9 条，其中 8 条 windowMs≈500/501/503、lateMs 0–3 ms）
+```
+
+现场日志的签名（`windowMs 501 / lateMs 1`）就是这个对照的第一行 ⇒ **误报被复现，修法把误报清零而真阻塞照旧报出**。
+探针与打包产物已删除（`/tmp` 内，不进提交）。
+
+### 四 门禁
+
+- `npx vitest run src/main/diagnostics` ⇒ **13 文件 / 71 passed**（含新增那条）。
+- `typecheck:node` **0 error**；本批 2 文件 `eslint --no-cache` **0 problem**。
+
+### 五 必须更正的两处（同批）
+
+1. **上一节引的 18,445 条是 23:09 那一刻的累计值**，日志仍在增长：01:5x 全扫已是 **26,331 条**（3.7 h，≈1.94 条/秒）。两个数都对，但都只是当时的快照 ⇒
+   报告这类「条数」必须带扫描时刻。
+2. **`sortedRecords` 是顶层第一帧这个结论，在真停滞带上仍然成立，但上一节没说清它的分母**：带栈帧的 1,498 条里，
+   `sortedRecords` 命中 280 条；**只看 `windowMs > 550` 的真停滞带（323 条带帧）它仍是第一（146 条）**。
+   而分母里 78 % 落在误报带（1,175/1,498）⇒ 上一节的「908 条」口径把误报也算了进去，结论方向对、强度被高估。
+
+### 六 下一轮第一步
+
+① 先等 `v2.15.3` 的 Release 落页（本轮结束时它正在建，见汇报）；**窗口开着不推**；
+② 窗口关掉后再推本节这笔，并盯 `394391e5` 与本节那笔的双车道判决；
+③ 之后再做 §两百零二 §五 的**聚合计数器**（现在它的读数才有意义：报出来的都是真停滞）。

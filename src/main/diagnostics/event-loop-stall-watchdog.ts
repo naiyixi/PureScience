@@ -74,6 +74,10 @@ export type MachineReading = {
 
 export type EventLoopStallRecord = MachineReading & {
   windowMs: number
+  // How far past its own schedule this window arrived. This is the quantity the threshold is about;
+  // `windowMs` alone cannot separate a late loop from an on-time one, because the tick period is part of
+  // the window (see the note above `DEFAULT_STALL_THRESHOLD_MS`).
+  lateMs: number
   cpuMs: number
   cpuShare: number
   attribution: StallAttribution
@@ -335,7 +339,14 @@ export const startEventLoopStallWatchdog = (
     const cpu = cpuUsage(lastCpu)
     lastTick = current
     lastCpu = cpuUsage()
-    if (windowMs < thresholdMs) return
+    // The threshold is about lateness, not about the window. Both defaults are 500 ms, so the loop's own
+    // schedule already fills the whole window and comparing `windowMs` against the threshold reported
+    // *every* tick as a stall: on the shipped build 26,331 records in 3.7 h, 97.2 % of them 500-503 ms
+    // windows (median CPU share 0.23) with no evidence of anything. Deducting the schedule first leaves
+    // only the windows that actually arrived late; the 2.8 % that remain in those same logs are the ones
+    // carrying a multi-second block (median CPU share 0.92 — these are ours, not the scheduler's).
+    const lateMs = windowMs - tickMs
+    if (lateMs < thresholdMs) return
 
     const cpuMs = Math.round((cpu.user + cpu.system) / 1000)
     const cpuShare = windowMs > 0 ? Math.min(1, cpuMs / windowMs) : 0
@@ -344,6 +355,7 @@ export const startEventLoopStallWatchdog = (
     const base = {
       ...machine(),
       windowMs,
+      lateMs,
       cpuMs,
       cpuShare: Number(cpuShare.toFixed(3)),
       attribution: classify(cpuShare)
