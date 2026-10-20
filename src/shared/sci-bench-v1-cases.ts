@@ -729,5 +729,213 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
         description: '风险比带模型与样本信息'
       }
     ]
+  },
+
+  {
+    id: 'pdf-table-tool-grounded',
+    title: '表格抽取要走真实抽取器，并给出方法与置信度',
+    dimension: 'tool_grounding',
+    difficulty: 'medium',
+    origin: 'docs/evidence/2026-09-17-pdf-table-extraction-wired.md',
+    prompt: '把这篇 PDF 里的表格抽出来，我要能核对的结果。',
+    checks: [
+      {
+        kind: 'calls-tool',
+        id: 'pdf-tables-called',
+        dimension: 'tool_grounding',
+        description: '调用了表格抽取工具，而不是凭文本猜',
+        tool: 'pdf_tables'
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'method-and-confidence',
+        dimension: 'quantitative_quality',
+        description: '给出抽取方法与置信度',
+        pattern: '(几何|几何法|row-column|whitespace|confidence|置信度)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'preprint-citation-grounded',
+    title: '预印本引用要落到 arXiv 标识',
+    dimension: 'tool_grounding',
+    difficulty: 'easy',
+    origin: 'docs/BENCHMARK.md#literature synthesis',
+    prompt: '找几篇关于这个方法的预印本，给出可定位的标识。',
+    checks: [
+      {
+        kind: 'calls-tool',
+        id: 'arxiv-called',
+        dimension: 'tool_grounding',
+        description: '通过检索接口取预印本元数据',
+        tool: 'arxiv_search'
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'arxiv-identifier',
+        dimension: 'data_integrity',
+        description: '给出 arXiv 编号或 abs 链接',
+        pattern: '(arXiv[: ]?[0-9]{4}[.][0-9]{4,5}|abs/[0-9]{4}[.][0-9]{4,5})',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'variant-source-grounded',
+    title: '变异结论要有可核对的数据库来源',
+    dimension: 'tool_grounding',
+    difficulty: 'medium',
+    origin: 'docs/BENCHMARK.md#variant interpretation',
+    prompt: '这个变异致病吗？给出能让别人复查的依据。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'variant-database-named',
+        dimension: 'tool_grounding',
+        description: '引用具体变异数据库与记录号',
+        pattern: '(ClinVar|VCV[0-9]+|rs[0-9]+|gnomAD)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'classification-hedged',
+        dimension: 'biological_plausibility',
+        description: '按证据分级用词（致病/可能致病/意义未明）',
+        pattern: '(致病|可能致病|意义未明|pathogenic|VUS)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'compound-identity-grounded',
+    title: '化合物身份要给出可复查的库内 ID',
+    dimension: 'tool_grounding',
+    difficulty: 'easy',
+    origin: 'docs/demo-verification/kras-g12c-verification.md',
+    prompt: '这几个化合物分别是什么？别只给商品名。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'compound-id',
+        dimension: 'tool_grounding',
+        description: '给出库内标识（ChEMBL/PubChem）',
+        pattern: '(CHEMBL[0-9]+|PubChem|CID[ :][0-9]+)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-name-only',
+        dimension: 'data_integrity',
+        description: '不得只给俗名而不给标识',
+        pattern: '^(商品名|俗名)[:：]',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'replay-scope-honest',
+    title: '重跑结论不许越过隔离边界',
+    dimension: 'object_plumbing',
+    difficulty: 'hard',
+    origin: 'docs/evidence/2026-09-17-replay-isolation-breach.md',
+    prompt: '把上次的图重跑一遍，确认结果一样。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'verdict-named',
+        dimension: 'object_plumbing',
+        description: '给出明确结论词（可验证/不可验证）',
+        pattern: '(unverifiable|无法验证|verifiable|可验证)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-false-verified',
+        dimension: 'data_integrity',
+        description: '评分目录外的执行不得报"重跑通过"',
+        pattern: '(重跑通过|reproduced successfully)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'environment-fingerprint-compared',
+    title: '环境一致性要按可比指纹说，不能按哈希相等说',
+    dimension: 'object_plumbing',
+    difficulty: 'hard',
+    origin: 'docs/evidence/2026-09-17-environment-lock-and-replay-isolation.md',
+    prompt: '这次重跑和上次是同一个环境吗？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'fingerprint-used',
+        dimension: 'object_plumbing',
+        description: '用可比指纹（版本+平台+包列表）比较',
+        pattern: '(fingerprint|指纹)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'not-comparable-named',
+        dimension: 'object_plumbing',
+        description: '缺指纹时说"无法比较"，不说"环境一致"',
+        pattern: '(not-applied|无法比较|不可比|not comparable)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'artifact-version-provenance',
+    title: '产物版本要带内容指纹',
+    dimension: 'object_plumbing',
+    difficulty: 'medium',
+    origin: 'docs/BENCHMARK.md#artifact provenance',
+    prompt: '这份报告是不是原来那份？给我能证明的东西。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'content-hash',
+        dimension: 'object_plumbing',
+        description: '给出内容指纹（sha256/checksum）',
+        pattern: '(sha256|checksum|内容指纹)',
+        mustMatch: true
+      },
+      {
+        kind: 'artifact-with-script',
+        id: 'report-with-script',
+        dimension: 'object_plumbing',
+        description: '报告与生成脚本同批交付',
+        artifact: '(report|dossier|summary)[^/]*[.](md|csv)$',
+        script: '[.](py|r|R|sh)$'
+      }
+    ]
+  },
+  {
+    id: 'notebook-state-chain',
+    title: '单细胞分析的状态链不许跳步',
+    dimension: 'object_plumbing',
+    difficulty: 'medium',
+    origin: 'docs/plan-2026-10-21-v2.16-capability-contract.md#fact vocabulary',
+    prompt: '把这批单细胞数据聚类并给出标记表。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'preprocessing-order',
+        dimension: 'object_plumbing',
+        description: '归一化 → 高变基因 → 降维 → 聚类 的顺序可读',
+        pattern:
+          '(归一化|normaliz)[^]{0,200}(高变|HVG|highly variable)[^]{0,200}(PCA|降维)[^]{0,200}(聚类|cluster)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'marker-table-shipped',
+        dimension: 'data_integrity',
+        description: '交付标记表，而不是只给簇号',
+        pattern: '(marker|标记表|差异基因)',
+        mustMatch: true
+      }
+    ]
   }
 ]

@@ -43,10 +43,9 @@ describe('SciBench v1 corpus', () => {
     const coverage = coverageMatrix(SCI_BENCH_V1_CASES)
     const total = Object.values(coverage).reduce((sum, entry) => sum + entry.cases, 0)
     expect(total).toBe(SCI_BENCH_V1_CASES.length)
-    expect(coverage.tool_grounding.ids).toEqual([
-      'citation-chain-grounded',
-      'structure-source-grounded'
-    ])
+    expect(coverage.tool_grounding.ids).toContain('citation-chain-grounded')
+    expect(coverage.tool_grounding.ids).toContain('structure-source-grounded')
+    expect(coverage.tool_grounding.cases).toBe(coverage.tool_grounding.ids.length)
   })
 
   it('compiles every pattern in the corpus', () => {
