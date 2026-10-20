@@ -9918,3 +9918,68 @@ RESULT {"label":"session-close","port":57169,"dialsAfterStop":0,"offsetsMs":[]}
 ① `git fetch` + `git status`（看会话是否又落新提交）；② 按完整 40 位 SHA 取本笔的双车道判决（重点 `macos-arm64`）；
 ③ 下一单元候选：`egress target failed` 里**非回环**的那 1 条（130 条里唯一的真外网失败）——先看它是不是同一个「目标已关停仍被拨号」的形状，
    还是外部源真的不可达；两者判读完全不同，别合并处理。
+
+## 两百零一、本轮追加（执行器，2026-10-20 20:0x–）—— 退出时「degraded 不可归因」：类别一直只有 object，而 `steps` 早就知道是哪个后端
+
+### 〇 开工核对
+
+- 上一节的推送 `9f6e45b0`（`fix(reviewer)` + 本档那一节）已上线，两条主干车道当时在飞 ⇒ **本单元只在本地提交，等判决出来再推**。
+- 本单元取上一节 §五-3（也是 §一百九十九 §五-4）：`application surface shutdown failed` 在五天日志里有 8 条，
+  `result: degraded`、`errorCategory: object`，**说不出是哪个后端**。
+- 先核「这个缺口还在不在」：`application-runtime.test.ts:369` 那条不变量钉的是 **"without logging raw error details"**
+  （不许把被收尾模块自己的报错文本写进日志），**不是**「不许增加结构性字段」。⇒ 可以补「哪个后端」，只要不夹带原始错误文本。
+
+### 一 根因
+
+`ShutdownOutcome.steps` 从一开始就写着每个后端的独立结果（`lifecycle-shutdown.ts` 头注也写明它的存在理由是
+「让被拒的更新闸门能点名是哪个收尾没完成」），但 `BackendShutdownOutcomeError` **只把 `outcome` 带出来**，
+`steps` 在 `assertClean` 那一层被丢掉 ⇒ 日志只剩类别。缺的不是测量，是**把已有的测量带过去**。
+
+### 二 改动（4 文件）
+
+| 文件 | 改动 |
+|---|---|
+| `src/main/lifecycle-shutdown.ts` | 新增 `BackendShutdownStep`；`BackendShutdownOutcomeError` 增加第二个字段 `backends`（**结构性名字，永不含收尾模块的错误文本**）；`assertClean` 按 `steps` 算出未完成的后端（timeout → 不是 `completed` 的；degraded → 恰好是 `degraded` 的） |
+| `src/main/application-runtime.ts` | 收尾失败那条日志在**类别之外**带上 `backends`（有才带，空则不出现 ⇒ 旧断言逐字不变） |
+| `src/main/lifecycle-shutdown.test.ts` | +3 例：`notebook` 单独降级 / 两个都降级 / timeout 归到 `runtime`，并断言错误消息里**不含**后端名（不变量未被放宽） |
+| `src/main/application-runtime.test.ts` | +1 例：带 `backends` 的降级错误把名字写进那一行，且仍不含原始错误文本 |
+
+**为什么不改那条不变量**：它的本意是「不许把被收尾模块自己的报错文本写进日志」（脱敏决定），
+而 `backends` 是枚举里的名字。既有 `it.each` 那条用例**一个字没动**（错误不带 `backends` 时字段根本不出现）。
+
+### 三 读数
+
+- **真模块 + 真 logger 落盘**（`initLogger` 指到 `/tmp` 的隔离目录、`shutdownApplicationSurfaces` 与
+  `BackendShutdownCoordinator` 都是产品本体、`notebook.dispose()` 返回 `reaped: false`）：
+  ```
+  OUTCOME {"completed":true,"reaped":false,"steps":{"runtime":"completed","notebook":"degraded"}}
+  RESULT  degraded
+  LINE    {"level":"error","scope":"app-lifecycle","msg":"application surface shutdown failed",
+           "data":{"surface":"application-runtime","result":"degraded","backends":["notebook"],"errorCategory":"object"}}
+  ```
+  与现场那 8 条的差别**只有一个**：`backends` 出现了。这是「真解释器 + 真 logger」，不是渲染/窗口读数（本单元不涉及界面），
+  探针产物与隔离日志目录已删。
+- 定向 vitest（`lifecycle-shutdown` + `application-runtime` + `app-lifecycle`）**3 文件 / 74 passed**；
+  加跑 `src/main/storage` 与 `src/main/ipc` 共 **21 文件 / 436 passed**（`ipc.ts` 是 `assertClean` 的另一个调用方）。
+- `tsc --noEmit -p tsconfig.node.json --composite false` **0 error**；本批 4 文件 `eslint --no-cache` **0 problem**（prettier 已收口）。
+
+### 四 顺带更正上一节的一个数字（现场日志三年份全扫）
+
+上一节 §六-③ 我写了「130 条里唯一的真外网失败」。**全扫三份日志（main/main.1/main.2）后这个说法不成立**：
+
+| 读数 | 值 |
+|---|---|
+| `egress target failed` 总数 | **232**（ECONNREFUSED 231 / ECONNRESET 1） |
+| **非回环**host 的 | **0** —— 那条 `ECONNRESET` 的 host 也是 `127.0.0.1:63254`，我上一轮把它读成了「外网」 |
+| 能对上「同端口、此后再没重启过、停服 30 s 内」的 `reviewer MCP server stopped` | **162** |
+| 偏移分布 | 中位 **1.12 s**、p95 5.24 s、max 28.73 s；`≤0.5 s` 21、`1–3 s` 126、`3–10 s` 10、`>10 s` 5 |
+| 对不上任何 stop 的 | **70**（它们的 stop 行不在这三份文件里，最可能落在更早被轮转删掉的那一份）⇒ **不归因，不许算进已解释的那 162** |
+
+⇒ 「下一单元＝查唯一那条外网失败」这条**作废**（它不存在）。剩下的候选回到非回环的**成功**族与其它签名。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 取 `9f6e45b0` 与本节这笔的判决（`Nightly` / `Windows Full Test`，重点 `macos-arm64`）；
+② 判决绿后**一次推送**（本节这笔 + 计划档），推前现查在飞车道；
+③ 之后从签名聚合里挑下一件：优先「`ipc handler was slow` 4,324 次」里**能定位到具体通道**的那一段（已有分段埋点，先读分布再决定），
+   或 `specialist:update failed`（会话那条线在改 `specialist/**` ⇒ 动之前先看 `git status` 是否有人在写）。
