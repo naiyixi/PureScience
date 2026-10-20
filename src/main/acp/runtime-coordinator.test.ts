@@ -4,6 +4,10 @@ import type { AcpPermissionRequest, AcpRuntimeEvent, AcpStateSnapshot } from '..
 import { AcpRuntimeCoordinator } from './runtime-coordinator'
 import type { AcpRuntime, AcpRuntimeCallbacks } from './runtime'
 import type { ConversationPermissionGrantStore } from './permission-broker'
+import {
+  createSnapshotRateProbe,
+  type SnapshotRateReading
+} from '../diagnostics/snapshot-rate-probe'
 import type { AgentModelChangeTarget } from '../agent-framework'
 
 /**
@@ -2389,5 +2393,57 @@ describe('AcpRuntimeCoordinator', () => {
         'session-2': 'connected'
       }
     })
+  })
+})
+
+// The reading this pins exists because two measurements disagreed: a stall profile attributed ~890 ms to
+// one phase of this snapshot, while that phase measured 0.16 ms per call in isolation. A per-call cost and a
+// per-stall total can only be reconciled through the call rate, so both build paths have to be counted --
+// if only one were, the rate would silently be half the truth.
+describe('AcpRuntimeCoordinator snapshot rate probe', () => {
+  it('bills both the emission and the direct read, each as one snapshot build', async () => {
+    let clock = 0
+    const readings: SnapshotRateReading[] = []
+    const probe = createSnapshotRateProbe({
+      log: {
+        info: (_message, data) => {
+          readings.push(data as SnapshotRateReading)
+        }
+      },
+      // Zero window: every build closes its own window, so one build is one line — no timer, no waiting.
+      windowMs: 0,
+      now: () => clock
+    })
+    const coordinator = new AcpRuntimeCoordinator(
+      (callbacks) => {
+        clock += 1
+        return createFakeRuntime({ frameworkId: 'codex', sessionIds: [], callbacks }).runtime
+      },
+      // A real listener, because without one the emission path never builds a snapshot at all: the argument
+      // to the optional call is not evaluated, and the counter would correctly report no build.
+      { onStateChanged: () => undefined },
+      '',
+      undefined,
+      undefined,
+      undefined,
+      {},
+      undefined,
+      undefined,
+      probe
+    )
+    // Construction builds the initial runtime; whatever it reported is not what this case is about.
+    readings.length = 0
+
+    clock += 1
+    coordinator.getSnapshot()
+    expect(readings).toHaveLength(1)
+    expect(readings[0]).toMatchObject({ calls: 1, pullCalls: 1, emissionCalls: 0 })
+
+    clock += 1
+    coordinator.notifyPermissionGrantsChanged()
+    expect(readings).toHaveLength(2)
+    expect(readings[1]).toMatchObject({ calls: 1, emissionCalls: 1, pullCalls: 0 })
+    // The direct read is not a second emission: the two paths never share a count.
+    expect(readings[1].pullCalls).toBe(0)
   })
 })

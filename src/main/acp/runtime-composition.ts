@@ -47,8 +47,14 @@ import { RestrictedInferenceRunner } from './restricted-inference-runner'
 import { ImageInputCompatibilityOwner } from './image-input-compatibility-owner'
 import { VisionEvidenceRepository } from '../vision/vision-evidence-repository'
 import { getProjectDbClient } from '../projects/prisma-client'
+import { createSnapshotRateProbe } from '../diagnostics/snapshot-rate-probe'
 
 const log = createLogger('acp')
+
+// Process-wide: the coordinator is replaced when the agent backend changes generation, and a per-instance
+// probe would restart its window on every switch — exactly when the emission rate is interesting. One
+// counter per process also keeps two live generations from being billed to different windows.
+const snapshotRateProbe = createSnapshotRateProbe({ log: createLogger('diagnostics') })
 
 type AcpRuntimeArtifacts = {
   repository: ArtifactRepository
@@ -482,7 +488,8 @@ const createAcpRuntime = ({
     permissionGrantRegistry
       ? () => projectRegistrySessionGrants(permissionGrantRegistry.listCached())
       : undefined,
-    elicitationBroker
+    elicitationBroker,
+    snapshotRateProbe
   )
 }
 

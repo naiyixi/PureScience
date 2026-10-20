@@ -22,6 +22,7 @@ import type { AgentFrameworkId } from '../../shared/settings'
 import { AcpRuntime, type AcpRuntimeCallbacks } from './runtime'
 import type { AcpRuntimeActivity, AcpRuntimeActivityOptions } from './runtime-activity'
 import { ConversationPermissionGrantStore } from './permission-broker'
+import type { SnapshotPathSource, SnapshotRateProbe } from '../diagnostics/snapshot-rate-probe'
 import type { ApprovedSwitchReadBack, ClaudeCodeReplayInput } from '../agents/claude-code-handoff'
 import type { ShutdownStepOutcome } from '../lifecycle-shutdown'
 import type { AgentModelChangeTarget } from '../agent-framework'
@@ -131,13 +132,33 @@ class AcpRuntimeCoordinator {
     private readonly onSessionUnavailable?: (sessionId: string) => void,
     private readonly teardownCallbacks: AcpRuntimeCoordinatorTeardownCallbacks = {},
     private readonly permissionGrantSnapshot?: PermissionGrantSnapshotProvider,
-    private readonly elicitationBroker?: ElicitationBroker
+    private readonly elicitationBroker?: ElicitationBroker,
+    // Optional: measures every renderer-state snapshot build (see `diagnostics/snapshot-rate-probe`).
+    // Absent in tests that do not care about the reading; the build path itself is unchanged either way.
+    private readonly snapshotRateProbe?: SnapshotRateProbe
   ) {
     this.activeRuntime = this.addRuntime()
     this.lastRuntime = this.activeRuntime
   }
 
   getSnapshot(): AcpStateSnapshot {
+    return this.measureSnapshotBuild('pull', () => this.buildSnapshot())
+  }
+
+  // Both paths rebuild the whole snapshot, so the rate is part of the cost and not a separate curiosity:
+  // during streaming the emission path runs per state change, and a per-call duration alone could not be
+  // reconciled with a stall profile that attributed ~890 ms to one of its phases.
+  private emitState(): void {
+    this.callbacks.onStateChanged?.(
+      this.measureSnapshotBuild('emission', () => this.buildSnapshot())
+    )
+  }
+
+  private measureSnapshotBuild<Value>(source: SnapshotPathSource, build: () => Value): Value {
+    return this.snapshotRateProbe ? this.snapshotRateProbe.measure(source, build) : build()
+  }
+
+  private buildSnapshot(): AcpStateSnapshot {
     const snapshots = Array.from(this.runtimes, (runtime) => ({
       runtime,
       snapshot: runtime.getSnapshot()
@@ -300,7 +321,7 @@ class AcpRuntimeCoordinator {
         if (result.status === 'fulfilled') this.releaseRuntimeOwnership(runtime)
         else this.releaseMissingRuntimeSessions(runtime, runtime.getSnapshot())
       })
-      this.callbacks.onStateChanged?.(this.getSnapshot())
+      this.emitState()
       throw failure.reason
     }
     this.clearRuntimeOwnership()
@@ -435,7 +456,7 @@ class AcpRuntimeCoordinator {
     // draining owner cannot classify later prompt failures as disconnects.
     this.sessionConnectionStatuses.set(response.sessionId, runtime.getSnapshot().status)
     this.lastRuntime = runtime
-    if (transfersOwnership) this.callbacks.onStateChanged?.(this.getSnapshot())
+    if (transfersOwnership) this.emitState()
     return response
   }
 
@@ -470,7 +491,7 @@ class AcpRuntimeCoordinator {
 
   reportApprovedHandoffFailure(sessionId: string): void {
     this.runtimeForSession(sessionId).reportApprovedHandoffFailure(sessionId)
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
   }
 
   // Hot-switches the specialist on a live session. Delegates to the owning runtime so a framework
@@ -546,7 +567,7 @@ class AcpRuntimeCoordinator {
       this.applicationEvents.splice(0, this.applicationEvents.length - MAX_EVENTS)
     }
     this.callbacks.onEvent?.(event)
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
   }
 
   async compactSession(request: AcpCompactSessionRequest): Promise<AcpStateSnapshot> {
@@ -752,7 +773,7 @@ class AcpRuntimeCoordinator {
   }
 
   notifyPermissionGrantsChanged(): void {
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
   }
 
   // A framework change takes effect for every future turn and workflow. The old generation stays alive
@@ -782,7 +803,7 @@ class AcpRuntimeCoordinator {
     // on the old generation, while every later turn resumes through a freshly provisioned runtime.
     this.retiredRuntimes.add(retiring)
     this.rotateActiveRuntime()
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
     await retiring.requestRetirement()
   }
 
@@ -1091,7 +1112,7 @@ class AcpRuntimeCoordinator {
         this.sessionConnectionStatuses.set(sessionId, snapshot.status)
       }
     }
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
     this.resolveSessionDrain(runtime, snapshot)
   }
 
@@ -1117,7 +1138,7 @@ class AcpRuntimeCoordinator {
 
   private handleRuntimeRetired(runtime: AcpRuntime): void {
     this.releaseRuntimeOwnership(runtime)
-    this.callbacks.onStateChanged?.(this.getSnapshot())
+    this.emitState()
   }
 
   private releaseRuntimeOwnership(runtime: AcpRuntime): void {
@@ -1257,7 +1278,7 @@ class AcpRuntimeCoordinator {
         if (outcome.status === 'fulfilled') this.releaseRuntimeOwnership(runtime)
         else this.releaseMissingRuntimeSessions(runtime, runtime.getSnapshot())
       })
-      this.callbacks.onStateChanged?.(this.getSnapshot())
+      this.emitState()
       throw failure.reason
     }
     this.clearRuntimeOwnership()

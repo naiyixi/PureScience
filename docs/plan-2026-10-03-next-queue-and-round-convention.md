@@ -10049,7 +10049,7 @@ RESULT {"label":"session-close","port":57169,"dialsAfterStop":0,"offsetsMs":[]}
 
 | 项 | blocked-by | 解封条件 |
 |---|---|---|
-| 快照路径的**聚合计数器**（每 30 s 一行：calls/totalMs/maxMs） | 无（纯代码） | 下一轮直接做；它才是「是反馈环（发射率异常高）还是采样归因偏了」的判据 |
+| 快照路径的**聚合计数器**（每 30 s 一行：calls/totalMs/maxMs） | 无（纯代码） | **✅ 已交付（§两百零四）**：计数器在 `src/main/diagnostics/snapshot-rate-probe.ts`，`emission`/`pull` 分开计；「calls/s 未知」这一条已划掉，现场读数仍待取（原因见该节 §四 第 3 条） |
 | 用真实发射率复现那 890 ms | 上面那条计数器 + 一次发版后的现场日志 | 发版后从日志读 calls/s 与 maxMs，再决定要不要改发射节流 |
 
 ### 六 下一轮第一步
@@ -10132,3 +10132,76 @@ RECORD windowMs=501 lateMs=1 cpuShare=0.016 attribution=cpu-bound-in-process
 ① 先等 `v2.15.3` 的 Release 落页（本轮结束时它正在建，见汇报）；**窗口开着不推**；
 ② 窗口关掉后再推本节这笔，并盯 `394391e5` 与本节那笔的双车道判决；
 ③ 之后再做 §两百零二 §五 的**聚合计数器**（现在它的读数才有意义：报出来的都是真停滞）。
+
+## 两百零四、本轮追加（执行器，2026-10-21 04:0x–）—— 快照路径终于有计数器了：每条渲染态构建按路径计数、按窗口出一行
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 8b39cf4a`（桌面会话 04:02 落的 `feat(sci-bench): S2 第三段`），工作区**干净**。
+- 桌面会话正在 `src/shared/sci-bench-v1-*` 与 `docs/plan-2026-10-21-v2.17-scibench-v1.md` 上推进 S2/S3 ⇒
+  本单元全程只碰 `src/main/acp/**` 与 `src/main/diagnostics/**`，**目录不相交**；开工与提交两次都核过它的 HEAD 没有移动进本单元的文件。
+- 本单元取 §两百零二 §五 第 1 条（**快照路径的聚合计数器，每 30 s 一行 calls/totalMs/maxMs**）与 §两百零三 §六 ③。
+  不重做：看门狗的三类归因、权限授予的两条读路径（§两百零二/§两百零三 已交付）一个字没动。
+
+### 一 交付（5 文件 +425 −24）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/snapshot-rate-probe.ts` | 新探针：`measure(source, build)` 计一次构建的耗时，按窗口（默认 30 s）聚合成**一行** `state snapshot build rate`：`windowMs / calls / emissionCalls / pullCalls / totalMs / maxMs / meanMs`；空窗口**不报**（`calls 0` 会被读成「测过且空闲」）；嵌套测量不重复计（内层不计量、外层按真实总时长记）；抛错的构建照样计量并让错误穿出；logger 抛错吞掉（诊断不得拖垮被测路径） |
+| `src/main/acp/runtime-coordinator.ts` | 原 `getSnapshot()` 主体改名为私有 `buildSnapshot()`；公开 `getSnapshot()` 计为 `pull`；9 处 `this.callbacks.onStateChanged?.(this.getSnapshot())` 收成一个私有 `emitState()` 并计为 `emission`（**这是唯一的去重收口**：9 处写法完全相同，替换前先断言命中数恰为 9）；构造函数末尾加可选第 10 参数 `snapshotRateProbe`（缺省＝不计量，构建路径一字未变） |
+| `src/main/acp/runtime-composition.ts` | 进程级建一枚探针（`createLogger('diagnostics')`）并注入；**进程级而不是每实例**：换后端会换掉协调器，每实例一枚会让窗口在「最想知道时」重启 |
+| `snapshot-rate-probe.test.ts` / `runtime-coordinator.test.ts` | 新 5 例（注入时钟，逐条断言窗口算术：sources 拆分、空窗口静默、窗口起点接在上一次收口处、嵌套不重复计、抛错仍计量、logger 抛错不穿出）+ 1 例接进真协调器（`pull` 与 `emission` 各记一次，且互不串味） |
+
+**为什么 `emission` 与 `pull` 要分开**：现场要回答的是「是我们在推得太勤，还是渲染端在拉得太勤」，两者合成一个数就答不了。
+写这一例时顺手确认了一件真实语义：`onStateChanged` 缺席时 `emitState()` 的实参**根本不会被求值**（可选调用的实参只在回调存在时求值），
+所以「没有监听者就没有构建」——用例里必须给一个真监听者，否则计数为 0 是**正确**的而不是漏计。
+
+### 二 读数（全部实跑）
+
+**① 探针自身的算术**（注入时钟，不测墙钟）：5 例全绿，逐条对应上表那一列。
+
+**② 接进真协调器**（`runtime-coordinator.test.ts`，真类、真 `emitState` 路径）：`getSnapshot()` → 1 行 `calls 1 / pullCalls 1`；
+`notifyPermissionGrantsChanged()` → 1 行 `calls 1 / emissionCalls 1 / pullCalls 0`。
+
+**③ 真实形状的构建耗时**（把产品源码用仓内 esbuild 打成单文件跑，非墙钟断言、只为取数）：
+
+```
+{"phase":"synthetic-load","builds":1000,"totalMs":51.64,"maxMs":1.33,"meanMs":0.05,"wallMs":54}
+```
+
+口径：假运行时的快照带**满 500 条事件**（运行时自己的保留上限），跑的是协调器真实的合并/过滤/排序/去重路径，
+**唯一**没带的是权限授予投影（`permissionGrants` 为空对象，那条路径上一单元单独测过：152 行真形状 0.1695 ms）。
+
+**判读（只写这一步支撑得起的）**：一次真实形状的构建 `max 1.33 ms / mean 0.05 ms` ⇒ 现场那份 stall profile 里
+「约 890 ms 落在 `sortedRecords`」**不可能是单次构建**的耗时（按 mean 烧掉 890 ms 要约 17,800 次构建）。
+它与上一轮「同一投影孤立测量 0.16 ms」**同向**，两次读数互相印证；剩下的未知量只有**发射率**，现在有计数器可读。
+
+### 三 门禁（最后一次改动之后取）
+
+- 定向 `npx vitest run src/main/acp src/main/diagnostics --maxWorkers=2` ⇒ **102 文件 / 1503 passed**，exit 0。
+- 全量 `npx vitest run --maxWorkers=2` ⇒ 见 §五（本轮把全量放在推送前跑完，读数随后补在本节）。
+- `typecheck:node` **0 error**；`typecheck:web` **0 error**（照仓库口径带 `--composite false`，node 侧 `NODE_OPTIONS=--max-old-space-size=6144`）。
+- `npx eslint --no-cache .` ⇒ **0 error / 131 warning**（本批 5 文件 `--no-cache` **0 problem**）。
+  与 §两百零二 记的 134 相差 3，**差额不归本单元**：那之后 main 上又落了桌面会话的多笔提交，本批文件一条 warning 都没贡献。
+- `bash scripts/pre-push-checks.sh` ⇒ 见 §五。
+
+### 四 边界（不许读成更强）
+
+1. **只量构建，不量过桥**：IPC 序列化/发送、渲染层反序列化、`trimStateEvents` 之后的体积**都不在**这条读数里 ⇒
+   「构建很快」不能推出「这一路不卡」。
+2. **构建内部没有分段**：`maxMs` 是一次构建的**总时长**，说不出事件合并与授予投影各占多少（要分段得再动一层，本轮不做）。
+3. **首个现场读数未取**（具名）：需要一次带本代码的运行 + 一次流式回合。本轮**内存闸门**不满足 ——
+   空闲页 **4,090（约 67 MB）**、`swap used 13.1 G / 14.3 G`，机器上同时跑着打包版实例（`/private/tmp/ps-v2153`）、
+   dev Electron 与一个 `claude` 进程；此时起 e2e 会与它们抢内存，且 `build:e2e` 会与共享树里的构建抢 `out/`。
+   解封条件：空闲内存恢复到能跑一次 `npm run build:e2e` + 一条会话 spec（或由一个没有并发实例的窗口执行），
+   之后从主日志读 `state snapshot build rate` 行即可。**本条的判据写在这里，免得被下一轮读成「已取」。**
+4. 合成负载的形状是**夹具**（500 条合成事件、单运行时）：它证明量级，不证明现场分布。
+
+### 五 推送与下一轮第一步
+
+- 全量 `npx vitest run --maxWorkers=2` ⇒ **1356 passed | 16 skipped（1372 文件）**；**17307 passed | 207 skipped（17514 例）**；**exit 0**（402 s）。
+- `bash scripts/pre-push-checks.sh` ⇒ **exit 0**（含品牌扫描、README 双语、模型清单、53 个脚本入口 `node --check`）。
+- 本笔只碰 5 个文件（2 新探针 + 协调器/组合根 + 两条用例）与本节：**不碰发版四文件**，v2.15.3 已是 Latest，本轮不发版。
+
+**下一轮第一步**：① 按完整 40 位 SHA 读本笔的两条车道；② 取 §四 第 3 条那个现场读数（内存闸门解除后）；
+③ 拿到 calls/s 后，再决定要不要动发射节流 —— **在此之前不许**把「卡顿根因」写成已定位。
