@@ -1,5 +1,6 @@
 ---
 name: figure-style
+contract: '{"id":"figure-style","aliases":["图表规范","图表自检","figure check"],"requires":[],"produces":["review:figure"],"failure_policy":{"missing_state":"This is a checklist: run it on a figure the session produced."}}'
 description: 出版级科学图表的正确性清单——数据保真（排除的行不得渗入摘要统计）、标签经济、色彩串线、按数据形态选图、渲染后逐面板自检。无任何审美内容，处处适用。任何要产出图表的会话都应先加载本技能；多面板图加载 figure-composer，整篇论文的图组用 paper-narrative 审查。
 license: Apache-2.0
 category: publication

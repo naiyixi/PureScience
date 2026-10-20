@@ -1,5 +1,6 @@
 ---
 name: literature-review
+contract: '{"id":"literature-review","aliases":["文献综述","文献综合","literature synthesis"],"requires":[],"produces":["evidence:literature_set"],"failure_policy":{"missing_state":"No corpus yet: search and verify DOIs before synthesising."}}'
 description: 查找、验证并综合科学文献——从"X 的开创性论文是什么"到完整的多来源综述。涵盖将论点锚定在真实检索来源、避免捏造引用、处理撤稿、以及按证据强度校准置信度。
 license: Apache-2.0
 metadata:

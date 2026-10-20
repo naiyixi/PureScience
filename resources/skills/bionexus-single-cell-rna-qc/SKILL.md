@@ -1,5 +1,6 @@
 ---
 name: bionexus-single-cell-rna-qc
+contract: '{"id":"bionexus-single-cell-rna-qc","aliases":["质控","单细胞质控","scRNA QC"],"requires":["input:expression_matrix"],"produces":["data:cluster","data:marker_table"],"failure_policy":{"missing_state":"Load a count matrix first, or run omics-data-preview to confirm its shape."}}'
 display_name: "Single-Cell RNA-seq Quality Control & Gold Chain"
 description: scRNA-seq 数据质控金链：读取/过滤/归一化/聚类/标记表（scanpy）。停止在数值簇 + 标记表，不注释细胞类型。
 tier: core

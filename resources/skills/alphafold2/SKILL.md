@@ -1,5 +1,6 @@
 ---
 name: alphafold2
+contract: '{"id":"alphafold2","aliases":["蛋白结构预测","折叠预测","AF2"],"requires":["input:protein_sequence"],"produces":["prediction:structure"],"failure_policy":{"missing_state":"Provide a sequence; a prediction is not a measured structure (G2), so it may never be consumed as experimental coordinates."}}'
 description: 使用 AlphaFold2 通过 ColabFold 运行器预测单体和多聚体蛋白质结构（Mirdita 等 2022，github.com/sokrypton/ColabFold；AlphaFold2 Jumper 等 2021）。用于折叠序列或复合物（AF2/AF2-Multimer evoformer）、通过自洽性 pLDDT/ipTM/RMSD 验证设计序列、或运行快速的 MSA 支撑预测。
 license: Apache-2.0
 category: biomodels

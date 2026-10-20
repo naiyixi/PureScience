@@ -1,5 +1,6 @@
 ---
 name: citation-integrity
+contract: '{"id":"citation-integrity","aliases":["引文核查","引用核查","citation check"],"requires":["input:reference_list"],"produces":["review:citation","evidence:verified_reference"],"failure_policy":{"missing_state":"Attach or build the reference list first; this skill verifies what exists, it does not find new evidence."}}'
 description: 核查引用与参考文献的真实性、可验证性与支撑关系。当需要验证 DOI/PMID/PMID/URL 是否存在且指向正确内容、检查"这句话是否真的由所引文献支撑"、处理二手引用（转引）、统一参考文献格式、或审计稿件是否存在编造/错配/幽灵引用时使用。不检索新证据（归 literature-search-strategy）、不评价证据强度（归 evidence-grading）；纯格式排版（GB/T 7714 与 Vancouver 样式细节）只做要点指引，不逐条排版。
 license: MIT license
 metadata:

@@ -1,0 +1,121 @@
+// Skill capability registry: the installed skills' declared contracts, aggregated into one place so
+// a caller can ask three questions without reading 50 SKILL.md files —
+//   1. what does this capability need and leave behind?
+//   2. which capability establishes the fact I am missing?
+//   3. which skills declared nothing at all (and must therefore be reported as unchecked)?
+//
+// A malformed contract is kept as an error on its entry instead of aborting the scan: one bad skill
+// must not make every other capability invisible.
+
+import { readdir, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+
+import { extractContract, type CapabilityContract } from '../../shared/capability-contract'
+import {
+  indexProducers,
+  preflightCapability,
+  type PreflightResult
+} from '../../shared/capability-preflight'
+
+export type CapabilityRegistryEntry = {
+  id: string
+  /** Null when the skill declared no contract, or declared one that failed validation. */
+  contract: CapabilityContract | null
+  /** Machine-readable contract problems (see parseContractField). Empty for a clean entry. */
+  errors: string[]
+}
+
+export class SkillCapabilityRegistry {
+  private readonly entries = new Map<string, CapabilityRegistryEntry>()
+  private producers = new Map<string, string[]>()
+
+  constructor(private readonly skillsDir: string) {}
+
+  /** Scans the skills directory. Idempotent: a second call replaces, never appends. */
+  async load(): Promise<CapabilityRegistryEntry[]> {
+    const next = new Map<string, CapabilityRegistryEntry>()
+    let dirs: { name: string; isDirectory(): boolean }[] = []
+    try {
+      dirs = await readdir(this.skillsDir, { withFileTypes: true })
+    } catch {
+      dirs = []
+    }
+
+    for (const entry of [...dirs].sort((a, b) => a.name.localeCompare(b.name))) {
+      if (!entry.isDirectory()) continue
+      let raw: string
+      try {
+        raw = await readFile(join(this.skillsDir, entry.name, 'SKILL.md'), 'utf8')
+      } catch {
+        continue // A directory without a SKILL.md is not a skill.
+      }
+      const parsed = extractContract(raw, entry.name)
+      next.set(entry.name, { id: entry.name, contract: parsed.contract, errors: parsed.errors })
+    }
+
+    this.entries.clear()
+    for (const [id, entry] of next) this.entries.set(id, entry)
+    this.producers = indexProducers(this.declared())
+    return this.list()
+  }
+
+  list(): CapabilityRegistryEntry[] {
+    return [...this.entries.values()].sort((a, b) => a.id.localeCompare(b.id))
+  }
+
+  declared(): CapabilityContract[] {
+    return this.list()
+      .map((entry) => entry.contract)
+      .filter((contract): contract is CapabilityContract => contract !== null)
+  }
+
+  /** Skill ids that declared no usable contract — the set the manifest must not hide. */
+  undeclared(): string[] {
+    return this.list()
+      .filter((entry) => entry.contract === null)
+      .map((entry) => entry.id)
+  }
+
+  /** Contract problems across the whole registry, `id: error` per line. */
+  problems(): string[] {
+    return this.list().flatMap((entry) => entry.errors.map((error) => `${entry.id}: ${error}`))
+  }
+
+  get(id: string): CapabilityRegistryEntry | undefined {
+    return this.entries.get(id)
+  }
+
+  /**
+   * Preflight one capability against facts the session holds. Throws for an unknown capability —
+   * asking about a skill that is not installed is a caller bug, not a state reading.
+   */
+  preflight(id: string, observed: Iterable<string>): PreflightResult {
+    const entry = this.entries.get(id)
+    if (!entry) throw new Error(`Unknown capability: ${id}`)
+    return preflightCapability(entry.contract, observed, this.producers)
+  }
+
+  /**
+   * Agent-facing manifest. Declared capabilities carry their requires/produces one line each;
+   * everything else is named in the undeclared line rather than omitted, because an empty contract
+   * and a satisfied contract must never look alike.
+   */
+  renderManifest(): string {
+    const declared = this.declared()
+    const undeclared = this.undeclared()
+    const lines = [`capability manifest · declared ${declared.length}/${this.entries.size}`]
+    for (const contract of declared) {
+      const aliases = contract.aliases.length ? ` · aliases: ${contract.aliases.join(', ')}` : ''
+      const requires = contract.requires.length ? contract.requires.join(', ') : '(entry point)'
+      const produces = contract.produces.length ? contract.produces.join(', ') : '(none declared)'
+      lines.push(`- ${contract.id}${aliases}`)
+      lines.push(`  requires: ${requires}`)
+      lines.push(`  produces: ${produces}`)
+      if (contract.prerequisites.length) {
+        lines.push(`  prerequisites: ${contract.prerequisites.join(', ')}`)
+      }
+    }
+    if (undeclared.length) lines.push(`undeclared (${undeclared.length}): ${undeclared.join(', ')}`)
+    return lines.join('\n')
+  }
+}

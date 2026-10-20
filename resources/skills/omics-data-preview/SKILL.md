@@ -1,5 +1,6 @@
 ---
 name: omics-data-preview
+contract: '{"id":"omics-data-preview","aliases":["大文件预览","h5ad 预览","vcf 预览"],"requires":["input:omics_file"],"produces":["data:file_preview","data:subset_scope"],"failure_policy":{"missing_state":"Point the skill at an .h5ad or .vcf first; preview reads structure, it never creates data."}}'
 display_name: "Large Omics File Preview (h5ad / VCF)"
 description: 大文件组学数据的“先探后算”预览：只读结构与头部统计、按预算降采样（默认 2000 细胞），并强制标注子集范围；全量结论必须走算力决策链，不得用降采样结论定稿。
 tier: core

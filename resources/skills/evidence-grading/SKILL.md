@@ -1,5 +1,6 @@
 ---
 name: evidence-grading
+contract: '{"id":"evidence-grading","aliases":["证据分级","证据强度","GRADE"],"requires":["evidence:literature_set"],"produces":["review:evidence_grade","claim:calibrated"],"failure_policy":{"missing_state":"Grade an existing evidence set: gather and verify the literature first."}}'
 description: 对证据体做确定性分级并把论断措辞校准到与证据强度匹配。当需要判断"这批证据支持什么强度的结论"、写结论/摘要/新闻稿时选择"证明/表明/提示/与…一致"等措辞、按 GRADE 式维度（偏倚风险、不一致、间接性、不精确、发表偏倚 + 升级因素）评估证据体、或审计他人论断是否超证据时使用。不检索证据（归 literature-search-strategy）、不评价单篇方法学质量细节（那是质量评价工具环节，属循证证据综合专家专包）、不做统计计算（归 statistical-inference）。
 license: MIT license
 metadata:
