@@ -11,6 +11,13 @@ export type ProcessTreeLogger = { error: (message: string, error?: unknown) => v
 // caller that must guarantee released file handles (the update-install gate) can refuse to proceed.
 export type ProcessTreeKillResult = { reaped: boolean }
 
+// `processGroup` says the caller spawned the child as the leader of its OWN process group (POSIX
+// `detached`), which lets teardown signal the whole tree in one call instead of enumerating it. The flag
+// is a request, not a fact: the child's real pgid is read from the kernel and used only when it matches,
+// because signalling -pid for a child that is NOT a group leader would reach the app's own group.
+// Windows ignores it — taskkill /T already walks the tree there.
+export type ProcessTreeKillOptions = { processGroup?: boolean }
+
 // Upper bound for awaiting a direct child's real exit (POSIX) or taskkill's own completion (Windows).
 // Bounded so a wedged process can never hang app teardown; the caller (before-quit) also time-bounds
 // the whole shutdown, this is a second, tighter guard scoped to a single tree.
@@ -267,16 +274,145 @@ const waitForDescendantsToExit = async (pids: number[], deadline: number): Promi
   }
 }
 
+// Reads a live pid's process-group id. The caller's flag says how IT spawned the child; this says what the
+// kernel actually recorded, and only the kernel's answer may be signalled — killing the wrong group would
+// take down the app itself (its own group) or the user's shell. Returns undefined when ps cannot answer,
+// so an unreadable group falls back to the per-pid path instead of guessing.
+const readProcessGroupId = (pid: number): Promise<number | undefined> =>
+  new Promise<number | undefined>((resolve) => {
+    let settled = false
+    const finish = (value: number | undefined): void => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+    // Bounded like the tree snapshot: a wedged ps must not hang app teardown.
+    const timer = setTimeout(() => {
+      finish(undefined)
+      try {
+        ps.kill()
+      } catch {
+        // Already gone.
+      }
+    }, TERMINATE_GRACE_MS)
+    timer.unref?.()
+    let ps: ChildProcess
+    try {
+      ps = spawn('ps', ['-o', 'pgid=', '-p', String(pid)])
+    } catch {
+      clearTimeout(timer)
+      finish(undefined)
+      return
+    }
+    let out = ''
+    ps.stdout?.on('data', (chunk: Buffer | string) => {
+      out += chunk.toString()
+    })
+    ps.on('error', () => {
+      clearTimeout(timer)
+      finish(undefined)
+    })
+    ps.on('close', () => {
+      clearTimeout(timer)
+      const value = Number(out.trim())
+      finish(Number.isInteger(value) && value > 0 ? value : undefined)
+    })
+  })
+
+// Signals every member of a process group in one call. Addressing -pgid reaches whatever is in the group
+// at that moment, including helpers forked after any snapshot we could have taken — the hole the per-pid
+// path cannot close.
+const signalProcessGroup = (pgid: number, signal: NodeJS.Signals): void => {
+  try {
+    process.kill(-pgid, signal)
+  } catch {
+    // No member left, or not ours to signal.
+  }
+}
+
+// True while ANY member of the group is alive: signal 0 to -pgid succeeds if at least one process in the
+// group still exists, so this is an atomic membership check rather than a snapshot that can go stale.
+const isProcessGroupAlive = (pgid: number): boolean => {
+  try {
+    process.kill(-pgid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM'
+  }
+}
+
+// Waits until the group is empty or the deadline passes. Same reasoning as the per-pid wait: a process on
+// its way out is not a survivor, and SIGKILL is not instantaneous.
+const waitForProcessGroupToExit = async (pgid: number, deadline: number): Promise<void> => {
+  while (isProcessGroupAlive(pgid)) {
+    const left = deadline - Date.now()
+    if (left <= 0) return
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, Math.min(TERMINATE_POLL_MS, left))
+    })
+  }
+}
+
+// Group teardown for a child that leads its own process group (spawned detached). One signal covers the
+// whole tree, so a mid-teardown fork cannot slip past a stale enumeration, and the graceful pass is
+// normally enough: a kernel that flushes its state on SIGTERM dies without ever seeing SIGKILL.
+const terminatePosixProcessGroup = async (
+  child: ChildProcess,
+  pgid: number,
+  gracefulSignal: NodeJS.Signals,
+  log: ProcessTreeLogger | undefined
+): Promise<ProcessTreeKillResult> => {
+  const gracefulDeadline = Date.now() + TERMINATE_GRACE_MS
+  signalProcessGroup(pgid, gracefulSignal)
+  killDirectChild(child, gracefulSignal)
+  const exited = await waitForExit(child, Math.max(0, gracefulDeadline - Date.now()))
+  await waitForProcessGroupToExit(pgid, gracefulDeadline)
+  if (exited && !isProcessGroupAlive(pgid)) return { reaped: true }
+
+  const killDeadline = Date.now() + SIGKILL_GRACE_MS
+  let childExited = exited
+  if (isProcessGroupAlive(pgid)) {
+    log?.error(
+      `process group ${pgid} still has live members after ${gracefulSignal}; escalating to SIGKILL`
+    )
+    signalProcessGroup(pgid, 'SIGKILL')
+  }
+  if (!exited) {
+    log?.error(
+      `process ${child.pid ?? '(no pid)'} did not exit after ${gracefulSignal}; escalating to SIGKILL`
+    )
+    forceKillChild(child)
+    childExited = await waitForExit(child, Math.max(0, killDeadline - Date.now()))
+  }
+  await waitForProcessGroupToExit(pgid, killDeadline)
+  return { reaped: childExited && !isProcessGroupAlive(pgid) }
+}
+
 // POSIX tree teardown. child.kill() reaches only the immediate child, so descendants are discovered via
 // `ps` and signaled alongside it. The graceful signal (SIGTERM by default) is given the grace to take
 // effect — for the direct child and for every descendant, from one shared deadline — then anything still
 // alive is escalated to SIGKILL and confirmed, so the function does not return leaving the tree running.
+// A child spawned as its own group leader takes the atomic group path instead (see above).
 const terminatePosixTree = async (
   child: ChildProcess,
   signal: NodeJS.Signals | undefined,
-  log: ProcessTreeLogger | undefined
+  log: ProcessTreeLogger | undefined,
+  options: ProcessTreeKillOptions
 ): Promise<ProcessTreeKillResult> => {
   const gracefulSignal = signal ?? 'SIGTERM'
+
+  if (options.processGroup && child.pid !== undefined) {
+    const pgid = await readProcessGroupId(child.pid)
+    if (pgid === child.pid) {
+      return terminatePosixProcessGroup(child, pgid, gracefulSignal, log)
+    }
+    // The caller asked for group teardown but did not spawn the child detached. Signalling -pid here would
+    // reach the app's OWN group, so fall back and say so rather than acting on the flag alone.
+    log?.error(
+      `process ${child.pid} does not lead its own process group; using per-pid tree teardown instead`
+    )
+  }
+
   const descendants = child.pid === undefined ? [] : await collectDescendantPids([child.pid])
 
   // The grace starts when we actually signal, not when the caller asked: the ps snapshot above can take a
@@ -335,10 +471,11 @@ const terminatePosixTree = async (
 export const terminateProcessTree = async (
   child: ChildProcess,
   signal?: NodeJS.Signals,
-  log?: ProcessTreeLogger
+  log?: ProcessTreeLogger,
+  options: ProcessTreeKillOptions = {}
 ): Promise<ProcessTreeKillResult> => {
   if (process.platform === 'win32') {
     return terminateWindowsTree(child, signal, log)
   }
-  return terminatePosixTree(child, signal, log)
+  return terminatePosixTree(child, signal, log, options)
 }

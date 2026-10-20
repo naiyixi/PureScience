@@ -666,7 +666,17 @@ class NotebookKernelExecutor implements NotebookExecutor {
       request.runtimeRoot,
       this.platform
     )
-    const child = spawn(invocation.executable, invocation.args, { cwd: spawnCwd, env: spawnEnv })
+    // POSIX: spawn the kernel as the leader of its own process group so teardown can signal the whole tree
+    // in one call (terminateProcessTree still verifies the kernel's real pgid before using it). A helper a
+    // kernel forks while shutting down is then covered by that same signal instead of being found late and
+    // force-killed — measured on a real machine: 112 descendants once had to be SIGKILLed at quit. The
+    // handle and stdio stay referenced (no unref), so normal completion and output capture are unchanged.
+    // Windows keeps its taskkill /T path, where a new console group would only add noise.
+    const child = spawn(invocation.executable, invocation.args, {
+      cwd: spawnCwd,
+      env: spawnEnv,
+      detached: this.platform !== 'win32'
+    })
     await new Promise<void>((resolve, reject) => {
       child.once('spawn', resolve)
       child.once('error', reject)
@@ -942,7 +952,11 @@ class NotebookKernelExecutor implements NotebookExecutor {
   // handles released) from a degraded one — the update-install gate refuses the NSIS uninstall unless
   // every kernel tree was cleanly reaped. terminateProcessTree never rejects.
   private async killChild(child: ChildProcessWithoutNullStreams): Promise<ProcessTreeKillResult> {
-    const result = await terminateProcessTree(child)
+    // The kernel is spawned detached on POSIX (its own process group), so teardown can address the whole
+    // tree with one signal; the module confirms the group before using it.
+    const result = await terminateProcessTree(child, undefined, undefined, {
+      processGroup: this.platform !== 'win32'
+    })
     child.removeAllListeners('exit')
     child.removeAllListeners('close')
     return result
