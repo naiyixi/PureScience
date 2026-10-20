@@ -155,6 +155,7 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     },
     clearPermissionCorrelations: (sessionId) =>
       permissionContext.clearCorrelationsForSession(sessionId),
+    currentConnection: () => base.connectionResources.connection,
     currentSessionSetup: () => ({
       framework: base.backendGeneration.current.framework,
       sessionOptions: base.backendGeneration.current.session.options
@@ -165,6 +166,7 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     registerBridgeSession: (sessionId) =>
       base.connectionResources.registerBridgeReviewerSession(sessionId),
     removeStartupBlocker: (token) => base.generationActivity.releaseStartup(token),
+    supportsSessionClose: () => base.connectionResources.capabilities.close,
     unregisterBridgeSession: (sessionId) =>
       base.connectionResources.unregisterBridgeReviewerSession(sessionId)
   })

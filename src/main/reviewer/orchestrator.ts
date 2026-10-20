@@ -30,6 +30,7 @@ import {
   type PersistedChatSession
 } from '../../shared/session-persistence'
 import { ReviewerMcpServer } from './mcp-server'
+import { cleanupReviewerResources } from './session-cleanup'
 import { ReviewerHostServer, type ArtifactVersionContentResolver } from './host-sdk'
 import { createExternalSourceFetcher } from './external-source-fetch'
 import { buildReviewScopeSnapshot } from './scope-snapshot'
@@ -174,54 +175,8 @@ const incompleteReviewMessage = (rejectedToolCalls: number): string =>
 const REVIEWER_BRIDGE_SCOPE_ERROR =
   'Reviewer request was not constrained to the reviewer-only tool scope.'
 
-type ReviewerCleanupResult = {
-  rejectedToolCalls: number
-  reviewerBridgeScoped: boolean | undefined
-  runtimeCleanupFailed: boolean
-  runtimeCleanupError?: unknown
-}
-
-// Reviewer ACP disposal and MCP shutdown are independent cleanup operations. A throwing ACP adapter
-// must not strand the authenticated MCP server; callers decide whether the disposal error is primary
-// or secondary to an earlier reviewer failure after both cleanup attempts have completed.
-const cleanupReviewerResources = async (
-  acpRuntime: ReviewerAcpRuntime,
-  reviewerSession: ActiveSession | undefined,
-  mcpServer: ReviewerMcpServer | undefined
-): Promise<ReviewerCleanupResult> => {
-  let rejectedToolCalls = 0
-  let reviewerBridgeScoped: boolean | undefined
-  let runtimeCleanupFailed = false
-  let runtimeCleanupError: unknown
-
-  if (reviewerSession) {
-    try {
-      const disposition = acpRuntime.disposeReviewerSession(reviewerSession)
-      rejectedToolCalls = disposition.rejectedToolCalls
-      reviewerBridgeScoped = disposition.reviewerBridgeScoped
-    } catch (error) {
-      runtimeCleanupFailed = true
-      runtimeCleanupError = error
-    }
-  }
-
-  try {
-    await mcpServer?.stop()
-  } catch (error) {
-    // MCP stop was historically best-effort. Keep that contract while reporting the failure; a
-    // runtime cleanup error, when present, remains the cleanup error returned to orchestration.
-    log.error('reviewer MCP server cleanup failed', {
-      error: error instanceof Error ? error.message : String(error)
-    })
-  }
-
-  return {
-    rejectedToolCalls,
-    reviewerBridgeScoped,
-    runtimeCleanupFailed,
-    ...(runtimeCleanupError === undefined ? {} : { runtimeCleanupError })
-  }
-}
+// Teardown order (session → agent → MCP server) is a contract with its own unit test, so the
+// orchestrator only calls it; see reviewer/session-cleanup.ts for why the order matters.
 
 // Streaming content deltas are emitted one-per-chunk as the reviewer writes its message/thinking, so
 // their count tracks how much it *says*, not how much it *does*. Counting them toward the loop cap

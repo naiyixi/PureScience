@@ -95,10 +95,32 @@ export type ReviewerSessionResult = {
   role: ReviewerSessionRole
 }
 
+// What became of the agent-side half of a reviewer teardown.
+//
+// ACP's `ActiveSession.dispose()` only stops routing updates to the local helper — the SDK says so in
+// its own doc comment ("This does not close the ACP session on the agent"). Nobody else closes a
+// reviewer session: it is ephemeral, it never reaches the user-facing deletion workflow, and the
+// provider process it lives on is the shared connection, which must NOT be killed. So without an
+// explicit `session/close` the agent keeps the session — and the per-session MCP client the reviewer
+// server was registered with — for the rest of the connection. That is what the field log shows: with
+// the reviewer MCP server already gone, the provider keeps dialling its port 1–3 s later, 130
+// `egress target failed` ECONNREFUSED lines in five days whose ports each match a
+// `reviewer MCP server stopped` line.
+export type ReviewerRemoteSessionClose = {
+  sessionId: string
+  outcome: 'closed' | 'cancelled' | 'no-connection' | 'timed-out' | 'failed'
+  elapsedMs: number
+}
+
 export type ReviewerSessionDisposition = {
   rejectedToolCalls: number
   // Undefined for frameworks/providers that do not traverse the Responses bridge.
   reviewerBridgeScoped: boolean | undefined
+  // Settles once the agent has been told this session is over (bounded by `sessionCloseTimeoutMs`).
+  // Disposing already released the local half, so callers must await this before tearing down the
+  // MCP server the session was created with — stopping the server first is what produced the
+  // ECONNREFUSED retries described above.
+  remoteClose?: Promise<ReviewerRemoteSessionClose>
 }
 
 export type ReviewerSessionSnapshot = {
@@ -134,6 +156,9 @@ export type ReviewerSessionOwnerDependencies = {
   addStartupBlocker: (token: symbol) => void
   assertCurrentConnection: (connection: ClientConnection) => void
   clearPermissionCorrelations: (sessionId: string) => void
+  // The live connection, so a disposed reviewer session can be closed on the agent as well. Undefined
+  // when the connection is already gone (nothing to tell, and nothing to wait for).
+  currentConnection: () => ClientConnection | undefined
   currentSessionSetup: () => {
     framework: AgentFramework
     sessionOptions: Record<string, unknown> | undefined
@@ -143,7 +168,20 @@ export type ReviewerSessionOwnerDependencies = {
   onActiveSessionReleased: () => void
   registerBridgeSession: (sessionId: string) => void
   removeStartupBlocker: (token: symbol) => void
+  // Bounded wait for the agent to confirm the session is over; a hung agent must not hold review
+  // teardown (and the reviewer MCP server behind it) open indefinitely.
+  sessionCloseTimeoutMs?: number
+  supportsSessionClose: () => boolean
   unregisterBridgeSession: (sessionId: string) => boolean | undefined
+}
+
+export const DEFAULT_REVIEWER_SESSION_CLOSE_TIMEOUT_MS = 3_000
+
+class ReviewerSessionCloseTimeoutError extends Error {
+  constructor() {
+    super('reviewer ACP session close timed out')
+    this.name = 'ReviewerSessionCloseTimeoutError'
+  }
 }
 
 export type ReviewerSessionCreateCapability = Readonly<{
@@ -376,6 +414,13 @@ export class ReviewerSessionOwner {
 
   dispose(session: ActiveSession): ReviewerSessionDisposition {
     const cleanupFailures: unknown[] = []
+    // Captured before the local cleanup runs: the agent-side close must address the connection this
+    // session was created on, and must start immediately (the agent can then cancel its in-flight
+    // work while the rest of the teardown happens here).
+    const remoteClose = this.closeRemoteSession(
+      session.sessionId,
+      this.dependencies.currentConnection()
+    )
     const runCleanup = <Result>(stage: string, cleanup: () => Result): Result | undefined => {
       try {
         return cleanup()
@@ -425,7 +470,78 @@ export class ReviewerSessionOwner {
 
     if (disposeFailed) throw disposeFailure
     if (cleanupFailures.length > 0) throw cleanupFailures[0]
-    return { rejectedToolCalls, reviewerBridgeScoped }
+    return { rejectedToolCalls, reviewerBridgeScoped, remoteClose }
+  }
+
+  // Tells the agent the reviewer session is over. Best-effort by design: every outcome is named and
+  // logged, nothing here throws, and the returned promise never rejects — review teardown must not
+  // turn a slow or unhappy agent into a failed review. `session/close` is the protocol's own answer
+  // (the agent must cancel ongoing work and free the session's resources, which includes the MCP
+  // client it holds for the reviewer server); agents that do not advertise it get `session/cancel`,
+  // which at least stops the work even though it leaves the session registered.
+  private async closeRemoteSession(
+    sessionId: string,
+    connection: ClientConnection | undefined
+  ): Promise<ReviewerRemoteSessionClose> {
+    const startedAt = Date.now()
+    const elapsed = (): number => Date.now() - startedAt
+    if (!connection) {
+      safeLogWarn('reviewer ACP session left open on the agent', {
+        sessionId,
+        reason: 'no-connection'
+      })
+      return { sessionId, outcome: 'no-connection', elapsedMs: elapsed() }
+    }
+
+    const supportsClose = this.dependencies.supportsSessionClose()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      const settle = supportsClose
+        ? connection.agent.request(acp.methods.agent.session.close, { sessionId })
+        : connection.agent.notify(acp.methods.agent.session.cancel, { sessionId })
+      await Promise.race([
+        settle,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new ReviewerSessionCloseTimeoutError()),
+            this.dependencies.sessionCloseTimeoutMs ?? DEFAULT_REVIEWER_SESSION_CLOSE_TIMEOUT_MS
+          )
+          // A pending bound must never keep the app's event loop alive on its own.
+          timer.unref?.()
+        })
+      ])
+      const outcome = supportsClose ? 'closed' : 'cancelled'
+      log.info(
+        supportsClose
+          ? 'reviewer ACP session closed on the agent'
+          : 'reviewer ACP session cancelled on the agent',
+        {
+          sessionId,
+          elapsedMs: elapsed(),
+          ...(supportsClose ? {} : { reason: 'no-session-close' })
+        }
+      )
+      return { sessionId, outcome, elapsedMs: elapsed() }
+    } catch (error) {
+      const timedOut = error instanceof ReviewerSessionCloseTimeoutError
+      safeLogWarn(
+        timedOut ? 'reviewer ACP session close timed out' : 'reviewer ACP session close failed',
+        {
+          sessionId,
+          elapsedMs: elapsed(),
+          ...(timedOut
+            ? {
+                timeoutMs:
+                  this.dependencies.sessionCloseTimeoutMs ??
+                  DEFAULT_REVIEWER_SESSION_CLOSE_TIMEOUT_MS
+              }
+            : diagnosticErrorFields(error))
+        }
+      )
+      return { sessionId, outcome: timedOut ? 'timed-out' : 'failed', elapsedMs: elapsed() }
+    } finally {
+      if (timer !== undefined) clearTimeout(timer)
+    }
   }
 
   invalidatePending(): void {

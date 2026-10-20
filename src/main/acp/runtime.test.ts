@@ -1567,7 +1567,45 @@ describe('ACP runtime session management', () => {
       expect(fakeAgent.newSessions[1].mcpServers).toEqual([reviewerServer])
       expect(reviewer.role).toBe('reviewer')
 
-      await runtime.disposeReviewerSession(reviewer.session)
+      const disposition = runtime.disposeReviewerSession(reviewer.session)
+      // The reviewer's MCP client lives in the agent process, so a local-only dispose left it dialling
+      // the stopped server for another 1–3 s (field log: 130 ECONNREFUSED lines against a reviewer
+      // MCP port that had just been closed). Disposing must therefore also close the session on the
+      // agent, and the caller must be able to wait for that confirmation.
+      await disposition.remoteClose
+      expect(fakeAgent.closedSessions).toEqual(['reviewer-session'])
+    } finally {
+      await runtime.disconnect()
+    }
+  })
+
+  it('cancels the reviewer session on an agent that advertises no session/close', async () => {
+    const process = new FakeAgentProcess()
+    const fakeAgent = startFakeAgent(process, ['primary-session', 'reviewer-session'], {
+      supportsClose: false
+    })
+    const runtime = new AcpRuntime({
+      appVersion: '0.2.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+
+    try {
+      await runtime.createSession({ cwd: '/workspace' })
+      const reviewer = await runtime.buildReviewerSession({
+        cwd: '/workspace',
+        mcpServers: [
+          { type: 'http', name: 'purescience-reviewer', url: 'http://127.0.0.1:1/mcp', headers: [] }
+        ]
+      })
+
+      const close = await runtime.disposeReviewerSession(reviewer.session).remoteClose
+
+      // The named outcome is what the caller and the field log read; the request itself must be the
+      // fallback, not a close the agent never advertised.
+      expect(close).toMatchObject({ sessionId: 'reviewer-session', outcome: 'cancelled' })
+      expect(fakeAgent.cancelledSessions).toContain('reviewer-session')
+      expect(fakeAgent.closedSessions).toEqual([])
     } finally {
       await runtime.disconnect()
     }
@@ -8530,7 +8568,9 @@ describe('ACP runtime session management', () => {
     expect(permissionResponse).toEqual({
       outcome: { outcome: 'selected', optionId: 'allow-once' }
     })
-    expect(runtime.disposeReviewerSession(session)).toEqual({
+    // The disposition also carries the agent-side close handle (see `remoteClose`); the values this
+    // test is about are still exact.
+    expect(runtime.disposeReviewerSession(session)).toMatchObject({
       rejectedToolCalls: 0,
       reviewerBridgeScoped: undefined
     })
@@ -8576,7 +8616,9 @@ describe('ACP runtime session management', () => {
     expect(permissionResponse).toEqual({
       outcome: { outcome: 'selected', optionId: 'allow-once' }
     })
-    expect(runtime.disposeReviewerSession(session)).toEqual({
+    // The disposition also carries the agent-side close handle (see `remoteClose`); the values this
+    // test is about are still exact.
+    expect(runtime.disposeReviewerSession(session)).toMatchObject({
       rejectedToolCalls: 0,
       reviewerBridgeScoped: undefined
     })
@@ -8618,7 +8660,9 @@ describe('ACP runtime session management', () => {
     expect(permissionResponse).toEqual({
       outcome: { outcome: 'selected', optionId: 'reject-once' }
     })
-    expect(runtime.disposeReviewerSession(session)).toEqual({
+    // The disposition also carries the agent-side close handle (see `remoteClose`); the values this
+    // test is about are still exact.
+    expect(runtime.disposeReviewerSession(session)).toMatchObject({
       rejectedToolCalls: 1,
       reviewerBridgeScoped: undefined
     })
@@ -8652,7 +8696,9 @@ describe('ACP runtime session management', () => {
     await session.prompt([{ type: 'text', text: 'run a shell command' }])
 
     // dispose returns the final count and clears it atomically — the orchestrator relies on this.
-    expect(runtime.disposeReviewerSession(session)).toEqual({
+    // The disposition also carries the agent-side close handle (see `remoteClose`); the values this
+    // test is about are still exact.
+    expect(runtime.disposeReviewerSession(session)).toMatchObject({
       rejectedToolCalls: 1,
       reviewerBridgeScoped: undefined
     })
