@@ -185,16 +185,23 @@ const scopeRank = (scope: PermissionGrantScope, context: PermissionGrantContext)
   return 0
 }
 
+const SCOPE_ORDER: Readonly<Record<PermissionGrantScope['kind'], number>> = {
+  global: 0,
+  project: 1,
+  session: 2
+}
+
+const compareRecords = (left: PermissionGrantRecord, right: PermissionGrantRecord): number =>
+  SCOPE_ORDER[left.scope.kind] - SCOPE_ORDER[right.scope.kind] ||
+  left.capability.kind.localeCompare(right.capability.kind) ||
+  left.capability.key.localeCompare(right.capability.key) ||
+  left.id.localeCompare(right.id)
+
+// The order only changes when a record does, so the sort is done once per mutation instead of once
+// per read: the ACP snapshot provider calls `listCached()` on every state emission, and the emission
+// rate during streaming is what makes a per-read sort show up in the stall profiles at all.
 const sortedRecords = (records: Iterable<PermissionGrantRecord>): PermissionGrantRecord[] =>
-  Array.from(records).sort((left, right) => {
-    const scopeOrder = { global: 0, project: 1, session: 2 }
-    return (
-      scopeOrder[left.scope.kind] - scopeOrder[right.scope.kind] ||
-      left.capability.kind.localeCompare(right.capability.kind) ||
-      left.capability.key.localeCompare(right.capability.key) ||
-      left.id.localeCompare(right.id)
-    )
-  })
+  Array.from(records).sort(compareRecords)
 
 const findConflict = async (
   transaction: Prisma.TransactionClient,
@@ -248,6 +255,27 @@ const createPermissionGrantRegistry = async (
     'SELECT * FROM "PermissionGrant"'
   )
   const records = new Map(rows.map((row) => [row.fingerprint, recordFromRow(row)]))
+  // Read-side memo of `records`. Every write goes through the two helpers below and bumps
+  // `recordsEpoch`, so a read re-sorts only after a mutation and can never serve a stale order. The
+  // returned array is shared: every consumer filters/maps it into new objects and none mutates it.
+  let recordsEpoch = 0
+  let sortedEpoch = -1
+  let sortedCache: PermissionGrantRecord[] = []
+  const sortedView = (): PermissionGrantRecord[] => {
+    if (sortedEpoch !== recordsEpoch) {
+      sortedCache = sortedRecords(records.values())
+      sortedEpoch = recordsEpoch
+    }
+    return sortedCache
+  }
+  const putRecord = (fingerprint: string, record: PermissionGrantRecord): void => {
+    records.set(fingerprint, record)
+    recordsEpoch += 1
+  }
+  const dropRecord = (fingerprint: string): void => {
+    records.delete(fingerprint)
+    recordsEpoch += 1
+  }
   const receipts = new Map<string, RevocationReceipt>()
   const listeners = new Set<() => void>()
   let mutationTail: Promise<void> = Promise.resolve()
@@ -279,7 +307,7 @@ const createPermissionGrantRegistry = async (
     let changed = false
     for (const [fingerprint, record] of records) {
       if (!recordBelongsToOwner(record, owner)) continue
-      records.delete(fingerprint)
+      dropRecord(fingerprint)
       changed = true
     }
     return changed
@@ -347,14 +375,14 @@ const createPermissionGrantRegistry = async (
         if (!row) throw new Error('Permission grant write did not produce a durable record.')
 
         const record = recordFromRow(row)
-        records.set(fingerprint, record)
+        putRecord(fingerprint, record)
         publish()
         return record
       })
     },
 
     async list() {
-      return sortedRecords(records.values())
+      return sortedView()
     },
 
     restoreDefaults(capabilities) {
@@ -401,11 +429,11 @@ const createPermissionGrantRegistry = async (
 
         for (const row of added) {
           const record = recordFromRow(row)
-          records.set(row.fingerprint, record)
+          putRecord(row.fingerprint, record)
         }
 
         const mutation: PermissionGrantMutationResult = {
-          grants: sortedRecords(records.values()),
+          grants: sortedView(),
           conflicts
         }
         if (added.length > 0) publish()
@@ -414,7 +442,7 @@ const createPermissionGrantRegistry = async (
     },
 
     listCached() {
-      return sortedRecords(records.values())
+      return sortedView()
     },
 
     revoke(command) {
@@ -441,10 +469,10 @@ const createPermissionGrantRegistry = async (
           return { removed, conflicts }
         })
 
-        for (const row of result.removed) records.delete(row.fingerprint)
+        for (const row of result.removed) dropRecord(row.fingerprint)
 
         const mutation: PermissionGrantMutationResult = {
-          grants: sortedRecords(records.values()),
+          grants: sortedView(),
           conflicts: result.conflicts
         }
         if (result.removed.length > 0) {
@@ -481,11 +509,11 @@ const createPermissionGrantRegistry = async (
       return runMutation(async () => {
         const receipt = receipts.get(command.undoToken)
         if (!receipt) {
-          return { grants: sortedRecords(records.values()), conflicts: [] }
+          return { grants: sortedView(), conflicts: [] }
         }
         if (receipt.expiresAt <= now().getTime()) {
           receipts.delete(command.undoToken)
-          return { grants: sortedRecords(records.values()), conflicts: [] }
+          return { grants: sortedView(), conflicts: [] }
         }
 
         const liveRows: PermissionGrantRow[] = []
@@ -530,9 +558,9 @@ const createPermissionGrantRegistry = async (
         })
 
         receipts.delete(command.undoToken)
-        for (const row of restoredRows) records.set(row.fingerprint, recordFromRow(row))
+        for (const row of restoredRows) putRecord(row.fingerprint, recordFromRow(row))
         if (restoredRows.length > 0) publish()
-        return { grants: sortedRecords(records.values()), conflicts }
+        return { grants: sortedView(), conflicts }
       })
     },
 

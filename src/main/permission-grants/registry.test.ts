@@ -585,4 +585,53 @@ describe('PermissionGrantRegistry', () => {
     expect(registry.listCached()).toEqual([])
     await expect(client.permissionGrant.count()).resolves.toBe(0)
   })
+
+  it('reuses the sorted view between reads and drops it on the next mutation', async () => {
+    const client = await openClient()
+    await client.project.create({ data: { id: 'project-1', name: 'Project one' } })
+    let nextId = 0
+    const registry = await createPermissionGrantRegistry({
+      getClient: async () => client,
+      createId: () => `grant-${++nextId}`
+    })
+
+    // Two rows whose stored order is the reverse of the projection's (project before session is
+    // already sorted; write the session one first so the sort has work to do).
+    await registry.remember({
+      capability: { kind: 'file_operation', key: 'file:read' },
+      scope: { kind: 'project', projectId: 'project-1' }
+    })
+    await registry.remember({
+      capability: { kind: 'execution', key: 'exec:agent/shell' },
+      scope: { kind: 'global' }
+    })
+
+    const first = registry.listCached()
+    expect(first.map((record) => record.capability.key)).toEqual(['exec:agent/shell', 'file:read'])
+    // Same array, not merely an equal one: the snapshot provider runs this on every ACP emission.
+    expect(registry.listCached()).toBe(first)
+
+    await registry.remember({
+      capability: { kind: 'builtin_tool', key: 'builtin/webfetch' },
+      scope: { kind: 'session', projectId: 'project-1', sessionId: 'session-1' }
+    })
+
+    const second = registry.listCached()
+    expect(second).not.toBe(first)
+    expect(second.map((record) => record.capability.key)).toEqual([
+      'exec:agent/shell',
+      'file:read',
+      'builtin/webfetch'
+    ])
+    // A revoke drops the row from the next read, so the memo cannot outlive a deletion either.
+    await registry.revoke({
+      grants: second
+        .filter((record) => record.capability.key === 'exec:agent/shell')
+        .map((record) => ({ id: record.id, revision: record.revision }))
+    })
+    expect(registry.listCached().map((record) => record.capability.key)).toEqual([
+      'file:read',
+      'builtin/webfetch'
+    ])
+  })
 })

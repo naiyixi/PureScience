@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { projectPermissionGrantSnapshot } from './catalog'
+import type { PermissionGrantRecord } from '../../shared/permission-grants'
 
 describe('permission grant renderer projection', () => {
   it('uses owner names and never exposes an exact qualifier digest', () => {
@@ -147,5 +148,93 @@ describe('permission grant renderer projection', () => {
     ])
 
     expect(snapshot.grants[0].capabilityLabel).toBe('Attach connector')
+  })
+
+  // The coverage answer is what the panel prints next to a revocable row, so a faster index may not
+  // change a single one of them. This reference is the previous scan-every-other-record rule written
+  // out again: comparing against it proves equality of *results*, not equality of code.
+  const naiveCoveredBy = (
+    record: PermissionGrantRecord,
+    records: readonly PermissionGrantRecord[]
+  ): 'global' | 'project' | undefined => {
+    if (record.scope.kind === 'global') return undefined
+    const identity = (candidate: PermissionGrantRecord): string =>
+      JSON.stringify([
+        candidate.capability.kind,
+        candidate.capability.key,
+        candidate.capability.qualifier?.mode ?? 'none',
+        candidate.capability.qualifier && candidate.capability.qualifier.mode !== 'any'
+          ? candidate.capability.qualifier.value
+          : null
+      ])
+    const matching = records.filter(
+      (candidate) => candidate.id !== record.id && identity(candidate) === identity(record)
+    )
+    if (record.scope.kind === 'session') {
+      // Hoisted: the narrowing of `record.scope` does not survive into the callback below.
+      const sessionProjectId = record.scope.projectId
+      const matchedProject = matching.some(
+        (candidate) =>
+          candidate.scope.kind === 'project' && candidate.scope.projectId === sessionProjectId
+      )
+      if (matchedProject) return 'project'
+    }
+    return matching.some((candidate) => candidate.scope.kind === 'global') ? 'global' : undefined
+  }
+
+  const fixture = (count: number): PermissionGrantRecord[] => {
+    // Deterministic, no randomness: the same 152-shaped mix of capabilities and scopes repeats.
+    let seed = 7
+    const next = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      return Math.floor(seed / 65536)
+    }
+    return Array.from({ length: count }, (_, index) => {
+      const capability = next() % 4
+      const scope = next() % 4
+      return {
+        id: `grant-${index}`,
+        revision: 1,
+        capability: {
+          kind: (['execution', 'mcp_tool', 'file_operation', 'builtin_tool'] as const)[capability],
+          key: `cap/${capability}`,
+          ...(next() % 2 === 0
+            ? { qualifier: { mode: 'category' as const, value: `value-${next() % 3}` } }
+            : {})
+        },
+        scope:
+          scope === 0
+            ? { kind: 'global' as const }
+            : scope === 1 || scope === 2
+              ? { kind: 'project' as const, projectId: `project-${scope}` }
+              : { kind: 'session' as const, projectId: 'project-1', sessionId: `s-${index % 5}` }
+      } as PermissionGrantRecord
+    })
+  }
+
+  it('answers coverage exactly as the previous per-record scan did', () => {
+    const records = fixture(152)
+    const snapshot = projectPermissionGrantSnapshot(records)
+
+    const expected = records.map((record) => [record.id, naiveCoveredBy(record, records)] as const)
+    const actual = snapshot.grants.map((grant) => [grant.id, grant.coveredBy] as const)
+    expect(actual).toEqual(expected)
+    // The fixture has to exercise all three answers, or this test proves nothing about the index.
+    expect(new Set(expected.map(([, covered]) => covered ?? 'none'))).toEqual(
+      new Set(['none', 'project', 'global'])
+    )
+  })
+
+  it('reads each capability identity a bounded number of times per projection', () => {
+    // The cost that used to be quadratic was one `JSON.stringify` per record *per record*; counting the
+    // calls pins the shape of the algorithm without timing it (a wall-clock bound would be a load test).
+    const records = fixture(400)
+    const stringify = vi.spyOn(JSON, 'stringify')
+    try {
+      projectPermissionGrantSnapshot(records)
+      expect(stringify.mock.calls.length).toBeLessThan(records.length * 6)
+    } finally {
+      stringify.mockRestore()
+    }
   })
 })
