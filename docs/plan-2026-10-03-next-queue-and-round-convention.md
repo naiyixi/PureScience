@@ -9750,3 +9750,97 @@ tracking mistake」）——`contentHash` 属同一类指针字段，却把整�
    一个粗类别」）⇒ 「会话缺失」与「JSON 坏了」在拒绝日志里仍然同形。本单元从**源头**让前者不再是拒绝，
    没有去放宽那个适配器的词汇表。
 3. `v2.15.1` 仍无发布页（会话那条线：tag 指向 `32db0300`、不在 main 上）—— 执行器不替它动 tag。
+
+## 一百九十九、本轮追加（执行器，2026-10-20 15:1x–）—— 把上一轮验完的三笔送上去；并按真机日志的签名聚合重排了下一批候选
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端 `origin/main` = `18e57f6b`（会话那条线的 **v2.15.1 发版提交**：`7adffcca`/`39d17531`/`a3844d31` CLI 审批两笔、
+  `a83b5fe9` artifact 收尾竞态、`2abb603e` 审查触发搬到主进程、`7922675b` 死进程会话恢复，外加发版四文件）。
+  ⇒ 上一轮 §一百九十八 §六 第 4 条「`v2.15.1` 没有发布页」的**前一半已由会话解掉**：tag 现在指向 main 上的提交，
+  Release 车道在飞（见下）。
+- 主检出干净、与远端同一提交；上一轮留在 `/tmp/ps-wd4`（三文件）、`/tmp/ps-wd5`（四文件）的改动**没有被任何一方重新落地**
+  ⇒ 本轮的工作就是**把它们接到当前 main 上、过门禁、推送**，不是重做。
+- 开工时在飞车道：`Release`（`18e57f6b`，tag 事件，run `39381401683`）与 `Nightly`（`18e57f6b`，run `39381401602`）
+  各一条，`Windows Full Test`（`18e57f6b`）已 `success`。本笔推送**只会取消 `Nightly`**（并发组 `nightly-${{ github.event_name }}`），
+  `Release` 的并发组是 `release-${{ github.ref }}`、跟 `refs/heads/main` 不是一组 ⇒ **本次推送没有取消任何发版作业**。
+- 防重做：`git log --oneline 098bfc17..18e57f6b` 七笔与上一轮「不要重做」清单（审查成本上限、抓取三态、读侧分段、
+  写侧事务预算、失败态说人话、`save-session` 分段日志、看门狗本体、采样线程与 `unobservedMs`、进程树宽限）
+  逐条比过 ⇒ 本笔三个单元都不在其中。
+
+### 一 交付（3 笔 / 6 文件，`+398 −15`）
+
+| 提交 | 单元 | 文件 |
+|---|---|---|
+| `8aa1b3a5` | 认证 spec 不再与 app 自己的审查抢同一把锁（`098bfc17` 的 macos-arm64 红因） | `e2e/certification/session-package-import-evidence.spec.ts` |
+| `05a5ae2b` | 崩在「Plan 已批准、状态还写着等批准」的会话恢复成 `idle` | `src/shared/session-persistence.ts` + 用例 |
+| `dfb6b86d` | 内核自成进程组：收尾一次信号覆盖整棵树（审计 §5 第 7 条收口） | `src/main/process-tree.ts`、`kernel-executor.ts` + 真进程用例 4 条 |
+
+三笔的判因与设计判据写在各自的提交信息里，这里只记两条**只能靠读数分辨**的：
+
+1. **spec 那笔不是「放宽断言」**：app 在轮次结束后约 100 ms 自己起一次审查（`workspace-events` 的 auto review），主进程对同一轮次
+   只留一个 in-flight key；spec 紧接着再发起一次拿到 `already-in-flight` —— 那是互斥在正常工作。同一份代码在 30.1 分钟的车道上绿、
+   在 35.7 分钟的车道上红（含重试），正是这个竞态的形状。修法对 `already-in-flight`/`not-found`/`load-failed` 有界重试（90 s），
+   **仍然要求 `started === true`**，其它 reason 立刻停并把 reason 写进断言信息。
+2. **进程组那笔的 flag 只是请求**：真值以内核 `ps -o pgid=` 为准，不匹配就退回逐 pid 路径并具名记日志（对非组长打 `kill(-pid)`
+   会打到 app 自己的组）。变异证明：关掉组分支 ⇒ fork 循环 / 孤儿 / 拒绝打组三红，还原后 20 passed。
+
+### 二 门禁读数（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（`process-tree*` + `session-persistence` + `src/main/notebook` 全簇） | **91 文件 / 1,489 passed | 99 skipped**（exit 0） |
+| 全量 vitest `--maxWorkers=4` | **1348 文件 passed | 16 skipped**；**17,229 passed | 207 skipped（17,436）**；`FULL_EXIT=0`（323.74 s） |
+| 本次 6 个文件 `eslint --no-cache` | **0 problem** |
+| 双 typecheck（`--composite false`） | node **exit 0 / 0 error**；web **exit 0 / 0 error**（见第三节的更正） |
+| `bash scripts/pre-push-checks.sh` | **exit 0**；推送时钩子对 6 个新文件复查 lint = **0 problems** |
+| 推送 | `18e57f6b..dfb6b86d`（fast-forward，三笔一笔推送）；主检出 `git pull --ff-only` 后与远端同点、`git status` 干净 |
+
+### 三 一处旧记录的更正：typecheck 的「5 条基线红」已经不在了
+
+§一百九十六 / §一百九十七 / §一百九十八 三节都写着「本机双 typecheck 各 5 条红，全在 `src/main/references/repository.ts`，
+共享生成客户端比 schema 旧」。**本轮实测是 0 error（两套都是）**，根因侧也变了：`node_modules/.prisma/client/index.d.ts` 里
+`citedAt` 现在出现 **30 次**（旧读数时是 0），`prisma/schema.prisma` 里 3 次 ⇒ 生成客户端已经追上 schema。
+⇒ 那句话以后不要再当「已知基线」抄进新一节：本机的 typecheck 现在是可以当门禁读的。**留这条更正，是为了不让下一轮拿旧基线
+把一次真红当成「又是那 5 条」。**
+
+### 四 真机日志签名聚合（`~/Library/Logs/PureScience/main.log`，只读；17,341 行 / 10-15 16:04 → 10-20 07:07）
+
+| 签名 | 次数 | 判读 |
+|---|---|---|
+| `ipc handler was slow` | 4,324 | 性能族，`blocked-by` 内存闸门与真机窗口 |
+| `session save was slow` / `artifact version resolve was slow` | 451 / 370 | 同上（已有分段埋点） |
+| `main / uncaughtException` | 109（聚合行，`occurrences` 最大 100） | **10-19 起为 0**：同期新增了 `egress client socket failed`（46 次）——socket 错误已被接住。⇒ 这类**已闭合，不要重做** |
+| `egress target failed` | 131（其中 **130 是 `127.0.0.1:<ephemeral>` 的 `ECONNREFUSED`**） | 目标端口与 `reviewer:mcp` 的 `port` 逐个对得上，且失败发生在 `reviewer MCP server stopped` **之后 1–2.5 s** ⇒ 审查员 MCP 关停后客户端仍在轮询旧端口。**候选（下一批首选）** |
+| `specialist:update failed`（`SpecialistReadonlyError`） | 13 | 会话那条线正在改 `specialist/**` ⇒ **不碰** |
+| `application surface shutdown failed`（`result: degraded`、`errorCategory: object`） | 8 | 退出时有一个面降级，而日志**说不出是哪个模块、为什么**（类别是 `object`）⇒ 可观测性缺口，候选 |
+| `storage package cache redundancy` / `content storage` | — | 读数已在（冗余 4.80 GB / 133,776 文件；`uniqueBytes` 21.7 GB，`totalBytes` 29.7 GB），而**回收动作也已存在**（`dedupe-sweep.ts` + 存储面板）⇒ 自陈尾巴里「清扫历史」那条不是空白，**不要照旧表重做** |
+
+### 五 具名未办（每条带 blocked-by 与解封条件）
+
+1. **`dfb6b86d` 的双车道判决** —— 在飞（`Nightly` 因旧 run 占着并发组而 `pending`，`Windows Full Test` `in_progress`）。
+   `blocked-by`：车道时长（不含取消、不重跑）；判据 = `Nightly|Windows Full Test` 逐条 `completed|success`。
+   **特别要看 macos-arm64**：本笔的 spec 修法正是为它写的，它的绿才算那条红的收口。
+2. **`v2.15.1` 的发布页** —— `Release` run `39381401683` 在飞（`Build macos-arm64` 自 06:52Z 起）。执行器**不动 tag**；
+   页出现后按 `gh release view v2.15.1 --json isDraft,isPrerelease,assets` 核资产齐不齐，缺就归会话。
+3. **审查员 MCP 关停后的旧端口轮询（130 次）** —— 已有完整判因（端口逐个对得上 + 时序 1–2.5 s），但**根因在谁先退**：
+   `cleanupReviewerResources` 的顺序是「先 `disposeReviewerSession` 再 `mcpServer.stop()`」，文档注释也这么写；
+   实测仍是 stop 之后还有拨号 ⇒ 要查的是 `disposeReviewerSession` 是否真等到 CLI 进程退出（还是只发了取消）。
+   **已核（本轮只读到这一层就收手）**：`src/main/acp/runtime.ts:1358` → `reviewerSessions.dispose()`（`reviewer-session-owner.ts:377`）
+   里对会话只调 `session.dispose()`，而 SDK 的 `ActiveSession.dispose(): void`（`node_modules/@agentclientprotocol/sdk/dist/acp.d.ts:358`）
+   **是同步的、不返回 promise** ⇒ 这一层**拿不到「进程真的退出了」这件事**。下一轮要么在适配器那一层等子进程 exit（有界），
+   要么让 MCP HTTP server 在会话释放后多留一个有界宽限窗口，二选一都得先说清「等的是谁、上限多少」。
+   `blocked-by`：无（可做）；下一轮第一步就从这里开始。
+4. **退出时 `degraded` 不可归因（8 次）** —— `application-runtime.ts:99` 只记 `diagnosticErrorFields(cause)`，而类别落成 `object`。
+   `blocked-by`：需要先定「记哪些字段」（模块名 + `BackendShutdownOutcomeError` 的 outcome）；属独立小单元。
+
+### 六 下一轮第一步
+
+① `git fetch` + `git status --short` + `git log --oneline origin/main -6`（会话是否又在发版/合分支）；
+② 按**完整 40 位 SHA** 取 `dfb6b86d` 的双车道判决（`VERDICT_FILE=/tmp/ci-verdict-dfb6b86d.txt` 已有的行 + 现查），
+   红了先按作业级日志归因，**不要在旧读数上改并发语义**；
+③ 若 `v2.15.1` 的 `Release` 落定：核页与资产（`gh release view`），缺资产归会话，执行器不删 tag；
+④ 下一单元 = 第五节第 3 条（审查员 MCP 旧端口轮询）：先读 `disposeReviewerSession` 到进程退出的那一段，
+   再决定是「等进程真退出」还是「关停后重启同一端口」；**先加具名日志把两种成因分开**（值到了却没退出 / 退出了仍被拨号），
+   再改代码 —— 与本轮进程组那笔同一套判据。
+⑤ **不要重做**：§四 表里「已闭合」的两族（`uncaughtException` 的 socket 族、存储冗余回收），以及 §〇 列的九项。
