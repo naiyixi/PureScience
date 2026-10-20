@@ -184,6 +184,7 @@ import {
   registerProjectIpcHandlers
 } from './projects/ipc'
 import { createReviewerCommandOwner, registerReviewerIpcHandlers } from './reviewer/ipc'
+import { createAutoReviewTrigger } from './reviewer/auto-review-trigger'
 import { createRoutineCommandOwner, registerRoutineIpcHandlers } from './settings/routine-ipc'
 import { createGoalCommandOwner, registerGoalIpcHandlers } from './goals/goal-ipc'
 import { createEndpointCommandOwner, registerEndpointIpcHandlers } from './settings/endpoint-ipc'
@@ -3520,23 +3521,16 @@ const createApplicationModules = async (
   // it (observed: two identical CLI runs — the first reviewed, the second silently unaudited, which is
   // also why `fetch_source` could not be exercised end to end). Main now triggers the review itself on
   // a clean end_turn; the reviewer's own already-reviewed check keeps this idempotent with the window.
-  const triggerAutoReviewForTurn = async (sessionId: string): Promise<void> => {
-    const { sessions } = await sessionPersistenceBackend.loadAll()
-    const session = sessions.find((candidate) => candidate.id === sessionId)
-    // Absent means enabled, mirroring the per-session switch the window renders.
-    if (!session || session.autoReviewEnabled === false) return
-    const messages = session.conversationGraph?.messages ?? []
-    const turnMessage = [...messages]
-      .reverse()
-      .find((message) => message.role === 'agent' && message.status === 'complete')
-    if (!turnMessage) return
-    await reviewerCommandOwner.run({
-      sessionId,
-      projectId: session.projectId,
-      turnMessageId: turnMessage.id,
-      mainSessionId: sessionId
-    })
-  }
+  //
+  // The trigger waits out session persistence instead of reading once: the finished session lands on
+  // disk AFTER this event (measured on a real CLI turn: stop at 01:06:24.248, session written at
+  // 01:06:26). Reading once at t+0 found no session, returned silently, and left the turn unaudited
+  // with nothing in the log to say so.
+  const triggerAutoReviewForTurn = createAutoReviewTrigger({
+    loadSessions: () => sessionPersistenceBackend.loadAll(),
+    runReview: (request) => reviewerCommandOwner.run(request),
+    warn: (message, data) => createLogger('reviewer:ipc').warn(message, data)
+  })
   const unsubscribeAutoReview = applicationEvents.subscribe((event) => {
     const runtimeEvent = projectTaskRuntimeEvent(event)
     if (!runtimeEvent || runtimeEvent.kind !== 'stop' || runtimeEvent.text !== 'end_turn') return
