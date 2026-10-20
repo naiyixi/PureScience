@@ -231,4 +231,36 @@ describe('BackendShutdownCoordinator', () => {
       )
     }
   )
+
+  // The category alone answered "something was not clean" and nothing else: the app's own field log
+  // carried 8 lines of `result: degraded, errorCategory: object` with no way to tell the agent
+  // runtime from the notebook kernels. The outcome's `steps` always knew; carry it onto the error.
+  it.each([
+    [
+      'degraded',
+      { completed: true, reaped: false, steps: { runtime: 'completed', notebook: 'degraded' } },
+      ['notebook']
+    ],
+    [
+      'degraded',
+      { completed: true, reaped: false, steps: { runtime: 'degraded', notebook: 'degraded' } },
+      ['runtime', 'notebook']
+    ],
+    [
+      'timeout',
+      { completed: false, reaped: false, steps: { runtime: 'timeout', notebook: 'completed' } },
+      ['runtime']
+    ]
+  ] as const)('names the backend behind a %s teardown (%j → %j)', (expected, outcome, backends) => {
+    try {
+      BackendShutdownOutcomeError.assertClean(outcome)
+    } catch (error) {
+      expect(error).toBeInstanceOf(BackendShutdownOutcomeError)
+      expect(error).toMatchObject({ outcome: expected, backends })
+      // The invariant is unchanged: attribution is a backend name, never the teardown's own text.
+      expect((error as Error).message).not.toContain('notebook')
+      return
+    }
+    throw new Error('assertClean was expected to throw for a non-clean outcome')
+  })
 })

@@ -389,4 +389,30 @@ describe('application surface shutdown', () => {
       expect(JSON.stringify(log.error.mock.calls)).not.toContain('Backend shutdown')
     }
   )
+
+  // Same invariant, plus the attribution the field log lacked: a degraded teardown must be
+  // attributable to the backend that did not settle, and that name is structural — the teardown's own
+  // error text still never reaches the line.
+  it('names the degraded backend without widening the diagnostic surface', async () => {
+    const log = { error: vi.fn() }
+
+    await expect(
+      shutdownApplicationSurfaces({
+        disposeApplicationRuntime: () =>
+          Promise.reject(new BackendShutdownOutcomeError('degraded', ['notebook'])),
+        shutdownRemoteAccess: vi.fn(),
+        disposeWebController: vi.fn(),
+        disposeIpcHandlers: vi.fn(),
+        log
+      })
+    ).resolves.toBe('degraded')
+
+    expect(log.error).toHaveBeenCalledWith('application surface shutdown failed', {
+      surface: 'application-runtime',
+      result: 'degraded',
+      backends: ['notebook'],
+      errorCategory: 'object'
+    })
+    expect(JSON.stringify(log.error.mock.calls)).not.toContain('Backend shutdown')
+  })
 })

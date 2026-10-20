@@ -95,10 +95,18 @@ export const shutdownApplicationSurfaces = async ({
       for (const cause of flattenErrors(error)) {
         const result = classifyError(cause)
         overallOutcome = combineOutcomes(overallOutcome, result)
+        // A degraded/timeout teardown knows WHICH backend behind it did not settle; name it, so the
+        // line can be acted on. `diagnosticErrorFields` stays category-only (it must not leak the
+        // teardown's own error text), so the structural attribution rides beside it, not inside it.
+        const attribution =
+          cause instanceof BackendShutdownOutcomeError && cause.backends.length > 0
+            ? { backends: [...cause.backends] }
+            : {}
         try {
           log?.error('application surface shutdown failed', {
             surface,
             result,
+            ...attribution,
             ...diagnosticErrorFields(cause)
           })
         } catch {

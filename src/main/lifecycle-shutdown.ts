@@ -20,16 +20,36 @@ export type ShutdownOutcome = {
   steps: { runtime: ShutdownStepOutcome; notebook: ShutdownStepOutcome }
 }
 
+export type BackendShutdownStep = keyof ShutdownOutcome['steps']
+
 export class BackendShutdownOutcomeError extends Error {
   readonly name = 'BackendShutdownOutcomeError'
 
-  constructor(readonly outcome: Extract<ShutdownStepOutcome, 'timeout' | 'degraded'>) {
+  constructor(
+    readonly outcome: Extract<ShutdownStepOutcome, 'timeout' | 'degraded'>,
+    // Which teardowns produced that outcome. Structural attribution only — a backend name, never the
+    // teardown's own error text: the shutdown diagnostic deliberately records categories instead of
+    // messages, and a field log that says only "degraded / object" cannot be acted on (8 such lines
+    // in the app's own log said a surface degraded without naming which backend behind it).
+    readonly backends: readonly BackendShutdownStep[] = []
+  ) {
     super('Backend shutdown did not complete cleanly.')
   }
 
   static assertClean(outcome: ShutdownOutcome): void {
-    if (!outcome.completed) throw new BackendShutdownOutcomeError('timeout')
-    if (!outcome.reaped) throw new BackendShutdownOutcomeError('degraded')
+    const steps: BackendShutdownStep[] = ['runtime', 'notebook']
+    if (!outcome.completed) {
+      throw new BackendShutdownOutcomeError(
+        'timeout',
+        steps.filter((step) => outcome.steps[step] !== 'completed')
+      )
+    }
+    if (!outcome.reaped) {
+      throw new BackendShutdownOutcomeError(
+        'degraded',
+        steps.filter((step) => outcome.steps[step] === 'degraded')
+      )
+    }
   }
 }
 
