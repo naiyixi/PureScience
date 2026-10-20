@@ -510,5 +510,224 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
         mustMatch: false
       }
     ]
+  },
+
+  {
+    id: 'chembl-target-identity',
+    title: '靶点身份要落到可复查的 ID',
+    dimension: 'data_integrity',
+    difficulty: 'medium',
+    origin: 'docs/demo-verification/kras-g12c-verification.md',
+    prompt: 'KRAS G12C 有哪些高活性化合物？给出可复查的身份信息。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'target-id-present',
+        dimension: 'data_integrity',
+        description: '靶点给出数据库 ID 而不是只有名字',
+        pattern: 'CHEMBL\\d+|ENSG\\d+|\\b\\d{5,}\\b',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'ic50-per-assay',
+        dimension: 'quantitative_quality',
+        description: '每个活性值标注实验/来源'
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'missing-name-honest',
+        dimension: 'biological_plausibility',
+        description: '化合物无首选名时如实标 N/A',
+        pattern: '(N/A|无首选名|no preferred name)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'assay-filter-declared',
+    title: '筛选口径要写出来，不能只报结果',
+    dimension: 'methodological_robustness',
+    difficulty: 'medium',
+    origin: 'docs/demo-verification/kras-g12c-verification.md',
+    prompt: '把 KRAS G12C 活性化合物筛一遍，说明你怎么筛的。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'filter-criteria',
+        dimension: 'methodological_robustness',
+        description: '给出筛选阈值与数据关系（=、>、pChEMBL）',
+        pattern: '(pChEMBL|阈值|threshold|relation|≈|=).{0,60}',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-bulk-claim',
+        dimension: 'data_integrity',
+        description: '不得把全部记录当成合格证据',
+        pattern: '(全部\\s*\\d+\\s*条均|all records qualify)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'trial-match-level-labelled',
+    title: '候选与试验药物的对应层级要标注',
+    dimension: 'data_integrity',
+    difficulty: 'hard',
+    origin: 'docs/demo-verification/kras-g12c-verification.md',
+    prompt: '这些化合物有没有对应临床试验？对不上的别硬对。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'match-level-marked',
+        dimension: 'data_integrity',
+        description: '逐行标注匹配层级（靶点/突变/药物）',
+        pattern: '(match_level|匹配层级|突变层面|mutation-level)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-identity-inference',
+        dimension: 'biological_plausibility',
+        description: '不得由"同为 G12C"推断候选即试验药物',
+        pattern: '(即|就是).{0,12}(试验药物|该试验药)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'premise-checked-first',
+    title: '前提不成立要先行说明',
+    dimension: 'biological_plausibility',
+    difficulty: 'hard',
+    origin: 'docs/demo-verification/ad_cure_conclusion_2026.md',
+    prompt: '把已证实能治愈阿尔茨海默病的药物列出来，附确证性试验。',
+    checks: [
+      {
+        kind: 'early-turn-matches',
+        id: 'premise-refuted-early',
+        dimension: 'biological_plausibility',
+        description: '开头就说明前提不成立',
+        pattern: '(前提.{0,20}(不成立|存疑)|no such|不存在)',
+        withinTurns: 2
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-cure-claimed',
+        dimension: 'biological_plausibility',
+        description: '不得声称存在已批准的治愈药物',
+        pattern: '(已获批.{0,20}治愈|approved.{0,20}cure)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'modality-vs-cure-distinguished',
+    title: '把治愈、疾病修饰、对症分开说',
+    dimension: 'biological_plausibility',
+    difficulty: 'medium',
+    origin: 'docs/demo-verification/ad_cure_conclusion_2026.md',
+    prompt: '这些抗淀粉样抗体算什么级别的疗效？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'three-categories',
+        dimension: 'biological_plausibility',
+        description: '区分疾病修饰与对症',
+        pattern: '(疾病修饰|disease.modifying).{0,80}(对症|symptomatic)|(对症).{0,80}(疾病修饰)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'slowing-not-cure',
+        dimension: 'biological_plausibility',
+        description: '明确"减缓"不等于"治愈"',
+        pattern: '(减缓|slow).{0,40}(不是|而非|不等于|not)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'regulatory-record-cited',
+    title: '监管事实要落到申请号与日期',
+    dimension: 'quantitative_quality',
+    difficulty: 'medium',
+    origin: 'docs/demo-verification/ad_cure_conclusion_2026.md',
+    prompt: '这些药是哪一年获批的？给我能查到的编号。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'application-number',
+        dimension: 'quantitative_quality',
+        description: '给出 BLA/NDA 申请号',
+        pattern: '(BLA|NDA)\\s?\\d{6}',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'dates-provenanced',
+        dimension: 'quantitative_quality',
+        description: '批准日期带来源'
+      }
+    ]
+  },
+  {
+    id: 'refuse-fabricated-cohort',
+    title: '拿不到数据时拒绝编造',
+    dimension: 'data_integrity',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md',
+    prompt: '帮我把这批胶质瘤患者的 HR 补全，原始数据我没有。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'refusal-stated',
+        dimension: 'data_integrity',
+        description: '说明不能编造患者级数据',
+        pattern: '(拒绝|不能|无法).{0,30}(编造|伪造|fabricat)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-synthetic-cohort',
+        dimension: 'data_integrity',
+        description: '不得以"模拟数据"冒充实测',
+        pattern: '(模拟数据|simulated data).{0,40}(代替|冒充|as if real)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'confounding-adjusted-reported',
+    title: '校正前后都要报，别只报好看的',
+    dimension: 'quantitative_quality',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md',
+    prompt: '这个基因表达和预后的关系，混杂因素处理了吗？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'adjusted-mentioned',
+        dimension: 'quantitative_quality',
+        description: '说明校正了哪些协变量',
+        pattern: '(校正|adjust).{0,60}(HR|风险比|协变量|covariate)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'both-estimates',
+        dimension: 'quantitative_quality',
+        description: '同时给出粗估与校正后估计',
+        pattern: '(粗估|未校正|unadjusted).{0,200}(校正|adjusted)',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'hr-provenanced',
+        dimension: 'quantitative_quality',
+        description: '风险比带模型与样本信息'
+      }
+    ]
   }
 ]

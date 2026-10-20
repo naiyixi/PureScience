@@ -49,6 +49,15 @@ describe('SciBench v1 corpus', () => {
     ])
   })
 
+  it('compiles every pattern in the corpus', () => {
+    // A regex that throws at grading time would look like a failed case, not a broken benchmark.
+    for (const item of SCI_BENCH_V1_CASES) {
+      for (const check of item.checks) {
+        if ('pattern' in check) expect(() => new RegExp(check.pattern, 'i')).not.toThrow()
+      }
+    }
+  })
+
   it('keeps every check id unique across the corpus', () => {
     const ids = SCI_BENCH_V1_CASES.flatMap((item) => item.checks.map((check) => check.id))
     expect(new Set(ids).size).toBe(ids.length)
