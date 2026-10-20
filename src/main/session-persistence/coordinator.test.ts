@@ -26,6 +26,7 @@ import {
   UploadRepository
 } from '../uploads/repository'
 import {
+  SessionRuntimeContextMissingError,
   SessionRuntimeContextRevisionConflictError,
   SessionPersistenceCoordinator,
   type SessionDeletionHandlers,
@@ -363,6 +364,24 @@ describe('SessionPersistenceCoordinator', () => {
       plan: createRuntimePlan()
     })
     expect(durable.updatedAt).toBeGreaterThan(previousUpdatedAt)
+  })
+
+  it('names a missing Session so a display read can tell it apart from an unreadable one', async () => {
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics: vi.fn(async () => ({ status: 'missing' as const }))
+    })
+    const coordinator = new SessionPersistenceCoordinator(repository, createFileIndex())
+
+    // Callers that only need a display answer (a Plan projection) branch on this identity, and the
+    // rejected-IPC diagnostic maps error NAMES to categories — so a rename here would silently move
+    // these lines from `error` to `object` in the user's log. Pin both halves.
+    const rejection = coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    await expect(rejection).rejects.toBeInstanceOf(SessionRuntimeContextMissingError)
+    await expect(rejection).rejects.toMatchObject({
+      name: 'Error',
+      code: 'session-missing',
+      message: 'Cannot read runtime context for a missing Session.'
+    })
   })
 
   it('does not persist a runtime context patch when its commit precondition fails', async () => {

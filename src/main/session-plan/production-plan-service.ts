@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises'
 import type { ArtifactTurnOwner } from '../acp/artifact-turn-owner'
 import type { ArtifactProvenanceRepository } from '../artifacts/provenance-repository'
 import type { SessionPersistenceCoordinator } from '../session-persistence/coordinator'
-import { SessionRuntimeContextRevisionConflictError } from '../session-persistence/coordinator'
+import {
+  SessionRuntimeContextMissingError,
+  SessionRuntimeContextRevisionConflictError
+} from '../session-persistence/coordinator'
 import { PlanService } from './plan-service'
 import { SessionPlanInteractionOwner } from './session-plan-interaction-owner'
 
@@ -63,7 +66,8 @@ const createProductionPlanService = ({
         content: input.content,
         ...(input.beforePersist ? { beforePersist: input.beforePersist } : {})
       }),
-    isRevisionConflict: (error) => error instanceof SessionRuntimeContextRevisionConflictError
+    isRevisionConflict: (error) => error instanceof SessionRuntimeContextRevisionConflictError,
+    isMissingRuntimeContext: (error) => error instanceof SessionRuntimeContextMissingError
   })
 
 export { createProductionPlanService }

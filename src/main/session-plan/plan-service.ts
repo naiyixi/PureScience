@@ -55,6 +55,7 @@ type PlanServiceDependencies = Readonly<{
     beforePersist?: () => void
   }) => Promise<SessionRuntimeContext>
   isRevisionConflict: (error: unknown) => boolean
+  isMissingRuntimeContext: (error: unknown) => boolean
   persistUserMessage: (input: {
     projectId: string
     sessionId: string
@@ -353,7 +354,18 @@ class PlanService {
     sessionId: string,
     options: Readonly<{ interactionIsLive?: boolean }> = {}
   ): Promise<ActivePlanProjection | null> {
-    const context = await this.dependencies.readRuntimeContext(projectId, sessionId)
+    let context: SessionRuntimeContext
+    try {
+      context = await this.dependencies.readRuntimeContext(projectId, sessionId)
+    } catch (error) {
+      // Opening a Session asks for its Plan projection immediately, so a Session main has not written
+      // to disk yet reaches here on the ordinary path. There is nothing to project, and answering
+      // "no Plan" is the truth — rejecting made the window swallow an error 85 times in three days and
+      // left the rejection log unable to say anything but `error`. An unreadable durable JSON and every
+      // other failure still reject: those are real conditions, not an empty answer.
+      if (this.dependencies.isMissingRuntimeContext(error)) return null
+      throw error
+    }
     if (!context.plan) return null
     try {
       const document = await this.readDocument(projectId, sessionId, context.plan)

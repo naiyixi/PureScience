@@ -220,6 +220,19 @@ class SessionRuntimeContextRevisionConflictError extends Error {
   }
 }
 
+// A Session whose durable JSON does not exist yet has no runtime context to read. That is an ordinary
+// state — a window asks for a Session's Plan projection as soon as it opens — so callers that only need
+// a display answer must be able to tell this apart from an unreadable JSON, which is a real condition.
+// The name stays `Error` on purpose: the rejected-IPC diagnostic vocabulary maps error names to
+// categories, and renaming this would silently move these lines from `error` to `object`.
+class SessionRuntimeContextMissingError extends Error {
+  readonly code = 'session-missing' as const
+
+  constructor(readonly operation: 'read' | 'patch') {
+    super(`Cannot ${operation} runtime context for a missing Session.`)
+  }
+}
+
 const emptySessionRuntimeContext = (): SessionRuntimeContext => ({ version: 1, revision: 0 })
 
 const cloneRuntimeContext = (context: SessionRuntimeContext): SessionRuntimeContext =>
@@ -864,7 +877,7 @@ class SessionPersistenceCoordinator {
       )
     }
     if (loaded.status === 'missing') {
-      throw new Error(`Cannot ${operation} runtime context for a missing Session.`)
+      throw new SessionRuntimeContextMissingError(operation)
     }
     return loaded.session
   }
@@ -1643,7 +1656,11 @@ class SessionPersistenceCoordinator {
 
 const sessionKey = (projectId: string, sessionId: string): string => `${projectId}:${sessionId}`
 
-export { SessionPersistenceCoordinator, SessionRuntimeContextRevisionConflictError }
+export {
+  SessionPersistenceCoordinator,
+  SessionRuntimeContextMissingError,
+  SessionRuntimeContextRevisionConflictError
+}
 export type {
   PatchSessionRuntimeContextCommand,
   ProjectSessionDeletionResult,

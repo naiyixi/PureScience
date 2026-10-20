@@ -9693,3 +9693,60 @@ tracking mistake」）——`contentHash` 属同一类指针字段，却把整�
 ③ 内存闸门仍关 ⇒ 继续取「不需要窗口」的单元；来源优先**真机日志按签名聚合**（本轮的来源），其次各版自陈的尾巴
 （服务端分页 / 撤销 / 清扫历史三条仍开着，前两条要单独立项或拍板）；
 ④ **不要重做**：审查成本上限（`6290334d`）、抓取三态（`161ebc94`）、本轮的 locator 可选化，以及前几轮那七项。
+
+## 一百九十八、本轮追加（执行器，2026-10-20 08:3x–09:1x）—— 打开会话时那条「读不到计划」的拒绝：85 次、一次也说不出为什么
+
+### 一 开工核对（防重做 + 并发 + 该谁做）
+
+- 远端 `origin/main` = `6e2b26f7`（上一轮那笔），按完整 40 位 SHA 取判决：`Nightly` **39317177908** +
+  `Windows Full Test` **39317177464** 双 **success**（上一轮挂着的「判决未取」已闭）。
+- 主工作树仍停在会话那条分叉分支（`32db0300`，13 条在制品全在 `specialist/**`、`settings/**`、`preload/**`）⇒
+  本轮全部工作在隔离工作树 `/tmp/ps-wd4`（基于 `6e2b26f7`），**主树一个字节没碰**。
+- 内存闸门（现取）：空闲物理页 4,662（≈73 MB）、swap 已用 8.70 G / 10.24 G，**打包实例在跑**（20 小时）⇒ 真机取证仍关闭。
+- 防重做核对：真机审计档 §5（还没做）8 条逐条对提交核过 —— 第 2/3/4 条已由 `5aab179f`/`00461eab`/`6290334d` 落地；
+  第 5 条（内置专家只读）**正被会话在做**（`specialist/**` 在制品）⇒ 不碰；第 6 条（保存/投影性能）需要真机读数，
+  且**它的量具已经在了**（`reportSlowSessionSave` 已带 `provenanceMs`/`fileIndexMs` 两段，`coordinator.test.ts` 钉住
+  「两段之和 ≤ aftermathMs」）⇒ 本轮不重复造量具。
+
+### 二 单元怎么选的：真机日志按签名聚合后，取「一半噪声、一半实际缺口」的那一条
+
+窗口内 `ipc handler rejected` 的 109 条里，**85 条是同一个通道** `acp:get-plan-projection`，而 85 条的 `data` 逐字相同
+（除了 `durationMs`）：`{channel, surface, location, principalKind, actionOrigin, errorCategory:"error"}`。
+也就是说**没有一条能读出「为什么被拒」**。同通道另有 173 次慢记录（中位 273 ms、p95 11.0 s、max 67.4 s、47 次 >1 s）。
+详见证据档 `docs/evidence/2026-10-20-plan-projection-missing-session.md`。
+
+### 三 真因：打开会话的常规时序被当成了失败
+
+渲染端会话一打开就读一次计划投影（`WorkspacePage` 的 effect、答复计划后的最佳努力刷新都是），而主进程侧
+`readSessionRuntimeContext` 在**磁盘上还没有这个会话的 JSON** 时直接抛 `Cannot read runtime context for a missing Session.`
+⇒ 新建未落盘的会话一问就拒。渲染端早把这件事当常态（`respond-to-session-plan.test.ts` 的用例注释逐字写着
+「That must not escape as a rejection」），两边约定其实一致，只有主进程还把它说成失败。
+
+### 四 交付（5 文件 + 证据档）
+
+- `coordinator.ts`：新增并导出 `SessionRuntimeContextMissingError`（`code:'session-missing'`），`missing` 分支改抛它；
+  **`name` 故意保持 `Error`** —— 被拒 IPC 的诊断把错误名映射成类别，改名会把这些行从 `error` 静默挪到 `object`。
+- `plan-service.ts`：`getProjection` 只在这一种错误上回答 `null`（＝「没有计划」）；`unreadable` 与其它失败照旧抛出。
+- `production-plan-service.ts`：按既有 `isRevisionConflict` 的同一形状注入 `isMissingRuntimeContext`。
+- 用例 +6（3 条服务层 / 2 条**按产品装配路径**的新文件 / 1 条钉住错误身份与 `name`）。新文件存在的理由：
+  服务层那 3 条用的是「消息匹配」替身，导入写错一处照样全绿而产品照旧拒绝。
+
+### 五 门禁读数（全部实跑）
+
+| 项 | 读数 |
+| --- | --- |
+| `src/main/session-persistence` + `src/main/session-plan` + `src/main/acp` | **105 文件 / 1717 passed** |
+| 变异证明（`isMissingRuntimeContext` 恒 `false`） | **1 failed / 1 passed**（红在缺会话那条），已还原 |
+| `eslint --no-cache`（改动 5 文件） | **0 error / 2 warning**（新文件 prettier 折行，已 `--fix`） |
+| 双 typecheck | 各 **5 条红，全在 `src/main/references/repository.ts`**；对**基线提交**（stash 掉本轮文件）跑出**同样 5 条** ⇒ 与本轮无关（本机共享生成客户端比 schema 旧，缺 `citedAt`/`citedSessionId`） |
+| 全量 vitest | 本轮后台跑，读数见下节与下一轮的判决 |
+
+### 六 具名未办（带 blocked-by）
+
+1. **`acp:get-plan-projection` 的慢尾（173 次、p95 11 s、max 67.4 s）** —— `blocked-by`：它和 `sessions:save-session`
+   同源（`readSessionRuntimeContext` 也走**全局串行**的 `enqueue`，一次 118 s 的保存把只读投影堵到分钟级），
+   属真机审计档 §5 第 6 条那一整块，需要真机读数与独立立项 ⇒ 本轮只去掉「拒绝」那一半的噪声，慢尾未动。
+2. **日志类别的颗粒度**：`ipc-rejection` 适配器只记粗类别（设计如此，注释写明它的词汇表就是「固定的调用方元数据 +
+   一个粗类别」）⇒ 「会话缺失」与「JSON 坏了」在拒绝日志里仍然同形。本单元从**源头**让前者不再是拒绝，
+   没有去放宽那个适配器的词汇表。
+3. `v2.15.1` 仍无发布页（会话那条线：tag 指向 `32db0300`、不在 main 上）—— 执行器不替它动 tag。

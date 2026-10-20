@@ -103,6 +103,9 @@ const setup = (): PlanServiceHarness => {
       return context
     }),
     isRevisionConflict: (error) => error instanceof Error && error.message === 'revision conflict',
+    isMissingRuntimeContext: (error) =>
+      error instanceof Error &&
+      error.message === 'Cannot read runtime context for a missing Session.',
     persistUserMessage: vi.fn(async (message) => ({
       id: 'message-1',
       role: 'user' as const,
@@ -1358,6 +1361,42 @@ describe('PlanService', () => {
     await expect(service.getProjection('project-1', 'session-1')).resolves.toBeNull()
     expect(context().plan).toBeUndefined()
     expect(status()).toBe('idle')
+  })
+
+  it('answers "no Plan" for a Session main has not written to disk yet', async () => {
+    const { service, dependencies } = setup()
+    // The window asks for a projection the moment a Session opens, so this reaches main before the
+    // Session JSON exists. It used to reject, and the window swallowed that rejection — 85 times in
+    // three days of one user's log, each one indistinguishable from a real failure.
+    vi.mocked(dependencies.readRuntimeContext).mockRejectedValueOnce(
+      new Error('Cannot read runtime context for a missing Session.')
+    )
+
+    await expect(service.getProjection('project-1', 'session-1')).resolves.toBeNull()
+    expect(dependencies.readArtifactVersion).not.toHaveBeenCalled()
+  })
+
+  it('still rejects when the durable Session JSON is unreadable, because that is a real condition', async () => {
+    const { service, dependencies } = setup()
+    const unreadable = new Error(
+      'Cannot read Session runtime context because its durable JSON is unreadable.'
+    )
+    vi.mocked(dependencies.readRuntimeContext).mockRejectedValueOnce(unreadable)
+
+    await expect(service.getProjection('project-1', 'session-1')).rejects.toThrow(
+      'its durable JSON is unreadable'
+    )
+  })
+
+  it('still rejects an unexpected runtime-context failure rather than reporting an empty Plan', async () => {
+    const { service, dependencies } = setup()
+    vi.mocked(dependencies.readRuntimeContext).mockRejectedValueOnce(
+      new Error('Session runtime context revision conflict: expected 3, actual 4.')
+    )
+
+    await expect(service.getProjection('project-1', 'session-1')).rejects.toThrow(
+      'revision conflict'
+    )
   })
 
   it('drives deterministic fake-Agent blocked and completed acceptance flows', async () => {
