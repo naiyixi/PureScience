@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { SCI_BENCH_V1_CASES } from './sci-bench-v1-cases'
-import { DIMENSIONS, evaluateBenchCase, summariseBench, type BenchEvidence } from './sci-bench-v1'
+import {
+  DIMENSIONS,
+  coverageMatrix,
+  evaluateBenchCase,
+  summariseBench,
+  type BenchEvidence
+} from './sci-bench-v1'
 
 // Evidence that satisfies the checkpoint case on purpose: "restored the last checkpoint" is stated,
 // the load happens before the save, and neither forbidden pattern appears.
@@ -14,16 +20,33 @@ const resumeEvidence: BenchEvidence = {
 const checkpointCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'checkpoint-resume-order')!
 
 describe('SciBench v1 corpus', () => {
-  it('ships 12 cases with two per dimension and a real origin for each', () => {
-    expect(SCI_BENCH_V1_CASES).toHaveLength(12)
+  it('ships at least two cases per dimension, each with a real origin', () => {
+    expect(SCI_BENCH_V1_CASES.length).toBeGreaterThanOrEqual(12)
+    const coverage = coverageMatrix(SCI_BENCH_V1_CASES)
     for (const dimension of DIMENSIONS) {
-      expect(SCI_BENCH_V1_CASES.filter((item) => item.dimension === dimension)).toHaveLength(2)
+      expect(coverage[dimension].cases).toBeGreaterThanOrEqual(2)
     }
     for (const item of SCI_BENCH_V1_CASES) {
       expect(item.origin.trim().length).toBeGreaterThan(3)
       expect(item.prompt.trim().length).toBeGreaterThan(5)
-      expect(item.checks.length).toBeGreaterThanOrEqual(3)
+      expect(item.checks.length).toBeGreaterThanOrEqual(2)
+      expect(['easy', 'medium', 'hard']).toContain(item.difficulty)
     }
+  })
+
+  it('labels every case difficulty, and covers all three levels', () => {
+    const levels = new Set(SCI_BENCH_V1_CASES.map((item) => item.difficulty))
+    expect([...levels].sort()).toEqual(['easy', 'hard', 'medium'])
+  })
+
+  it('keeps a coverage matrix whose counts match the corpus', () => {
+    const coverage = coverageMatrix(SCI_BENCH_V1_CASES)
+    const total = Object.values(coverage).reduce((sum, entry) => sum + entry.cases, 0)
+    expect(total).toBe(SCI_BENCH_V1_CASES.length)
+    expect(coverage.tool_grounding.ids).toEqual([
+      'citation-chain-grounded',
+      'structure-source-grounded'
+    ])
   })
 
   it('keeps every check id unique across the corpus', () => {

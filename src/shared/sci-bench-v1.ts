@@ -92,11 +92,15 @@ export type AtomicCheck =
       description: string
     }
 
+export type CaseDifficulty = 'easy' | 'medium' | 'hard'
+
 export type BenchCaseV1 = {
   id: string
   title: string
   /** The case's primary dimension; individual checks may belong to others. */
   dimension: Dimension
+  /** Difficulty is a statement about how many independent capabilities the task needs. */
+  difficulty: CaseDifficulty
   /** The real record this case was drawn from (path or document), never invented. */
   origin: string
   /** What the user asked. States the scientific goal only — no API or library names. */
@@ -242,6 +246,21 @@ export const evaluateBenchCase = (benchCase: BenchCaseV1, evidence: BenchEvidenc
     atomicPassRate: findings.length ? passedCount / findings.length : 0,
     findings
   }
+}
+
+/** Coverage per dimension, so a corpus gap is a number rather than an impression. */
+export const coverageMatrix = (
+  cases: readonly BenchCaseV1[]
+): Record<Dimension, { cases: number; ids: string[] }> => {
+  const matrix = Object.fromEntries(
+    DIMENSIONS.map((dimension) => [dimension, { cases: 0, ids: [] as string[] }])
+  ) as Record<Dimension, { cases: number; ids: string[] }>
+  for (const item of cases) {
+    matrix[item.dimension].cases += 1
+    matrix[item.dimension].ids.push(item.id)
+  }
+  for (const dimension of DIMENSIONS) matrix[dimension].ids.sort()
+  return matrix
 }
 
 /** Aggregate over many cases: Pass@1 plus the atomic pass-rate the plan requires alongside it. */

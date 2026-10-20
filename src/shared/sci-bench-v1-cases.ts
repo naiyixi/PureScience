@@ -14,6 +14,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'structure-source-grounded',
     title: '结构结论必须有来源，预测不得冒充实验结构',
     dimension: 'tool_grounding',
+    difficulty: 'medium',
     origin: 'docs/demo-verification/kras-pdb-structures-verification.md',
     prompt: 'KRAS G12C 有没有可用的三维结构？如果只有预测，请说明它是什么。',
     checks: [
@@ -45,6 +46,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'citation-chain-grounded',
     title: '文献结论要能落回可验证的引用',
     dimension: 'tool_grounding',
+    difficulty: 'medium',
     origin: 'docs/demo-verification/egfr-t790m-dossier-verification.md',
     prompt: 'EGFR T790M 的第三代抑制剂证据链是什么？给出可核对出处。',
     checks: [
@@ -75,6 +77,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'omics-preview-subset-labelled',
     title: '大文件降采样必须标注范围',
     dimension: 'data_integrity',
+    difficulty: 'medium',
     origin: 'src/shared/sci-bench.ts#omics-large-file-preview',
     prompt: '这个 h5ad 有多少细胞、多少基因？先给结论再决定是否全量分析。',
     checks: [
@@ -106,6 +109,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'missing-input-prebrief',
     title: '缺输入要早说，不能留到结论里',
     dimension: 'data_integrity',
+    difficulty: 'easy',
     origin: 'src/shared/sci-bench.ts#missing-input-prebrief',
     prompt: '帮我算一下这个靶点的 ΔΔG。',
     checks: [
@@ -137,6 +141,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'checkpoint-resume-order',
     title: '恢复工作时先装载检查点再做新计算',
     dimension: 'object_plumbing',
+    difficulty: 'medium',
     origin: 'src/shared/sci-bench.ts#multi-step-checkpoint-resume',
     prompt: '接着上次那批差异表达的结果往下做富集分析。',
     checks: [
@@ -170,6 +175,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'analysis-artifact-pairing',
     title: '图必须带着生成脚本一起交付',
     dimension: 'object_plumbing',
+    difficulty: 'easy',
     origin: 'docs/demo-verification/assay-local-analysis-verification.md',
     prompt: '把这些化合物活性做成一张可以放进报告的图。',
     checks: [
@@ -201,6 +207,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'figure-axis-discipline',
     title: '对数轴与刻度必须自检',
     dimension: 'quantitative_quality',
+    difficulty: 'medium',
     origin: 'src/shared/sci-bench.ts#egfr-figure-discipline',
     prompt: '画一张 IC50 分布图，说明你怎么处理跨数量级。',
     checks: [
@@ -234,6 +241,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'engine-availability-stated',
     title: '算力/引擎不可用要说清，不许静默降级',
     dimension: 'methodological_robustness',
+    difficulty: 'hard',
     origin: 'src/shared/sci-bench.ts#engine-choice-structure-ddg',
     prompt: '用本地能跑的方式给我这个复合物的结合自由能。',
     checks: [
@@ -265,6 +273,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'reproducible-environment-stated',
     title: '复现条件（环境）要写出来',
     dimension: 'methodological_robustness',
+    difficulty: 'hard',
     origin: 'docs/BENCHMARK.md#environment reconstruction',
     prompt: '把这次分析的复现条件写清楚，别人要能照着重跑。',
     checks: [
@@ -298,6 +307,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'claim-calibrated-to-evidence',
     title: '观察性证据不得写成"证明"',
     dimension: 'biological_plausibility',
+    difficulty: 'medium',
     origin: 'src/shared/sci-bench.ts#learnt-skill-trust-disclosure',
     prompt: '总结这批队列研究能得出什么结论。',
     checks: [
@@ -329,6 +339,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'cross-database-consistency',
     title: '跨库核对：不一致要说出来，而不是挑一个',
     dimension: 'quantitative_quality',
+    difficulty: 'hard',
     origin: 'docs/BENCHMARK.md#cross-database consistency',
     prompt: '同一个靶点在不同数据库里的活性数据对得上吗？对不上就说明。',
     checks: [
@@ -360,6 +371,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     id: 'learnt-knowledge-trust-stated',
     title: '现场学到的技能要标信任状态',
     dimension: 'biological_plausibility',
+    difficulty: 'hard',
     origin: 'src/shared/sci-bench.ts#learnt-skill-trust-disclosure',
     prompt: '把这次跑通的方法沉淀成可复用的技能，并说明它可靠到什么程度。',
     checks: [
@@ -386,6 +398,116 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
         description: '技能包与其可执行脚本同批',
         artifact: 'SKILL\\.md$',
         script: '\\.(py|r|R|sh)$'
+      }
+    ]
+  },
+  {
+    id: 'compute-ladder-routed',
+    title: '缺算力就走阶梯或明说未计算',
+    dimension: 'methodological_robustness',
+    difficulty: 'hard',
+    origin: 'src/shared/sci-bench.ts#shank2-compute-ladder',
+    prompt: '把这个复合物的结合自由能算出来，本地跑不动的话告诉我怎么办。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'route-or-gap',
+        dimension: 'methodological_robustness',
+        description: '给出远程/审批路径，或明说未计算及缺什么',
+        pattern: '(slurm|ssh|远程算力|提交作业|未计算|not computed)',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'energy-needs-engine',
+        dimension: 'quantitative_quality',
+        description: '任何能量数值必须带引擎与参数'
+      }
+    ]
+  },
+  {
+    id: 'batch-import-progress',
+    title: '批量导入要有进度与结果澄清',
+    dimension: 'data_integrity',
+    difficulty: 'easy',
+    origin: 'src/shared/sci-bench.ts#literature-batch-pdf-import',
+    prompt: '把这十篇 PDF 全部入库，然后告诉我哪些能引用。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'progress-reported',
+        dimension: 'data_integrity',
+        description: '报告进度或最终计数',
+        pattern: '(进度|progress|\\b\\d+\\s*/\\s*\\d+\\b|完成 \\d+)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'partial-not-disguised',
+        dimension: 'data_integrity',
+        description: '不把部分成功说成全部成功',
+        pattern: '(全部导入成功|all imported successfully)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'citation-style-declared',
+    title: '参考文献格式要说清用的是哪一套',
+    dimension: 'quantitative_quality',
+    difficulty: 'easy',
+    origin: 'src/shared/sci-bench.ts#gbt7714-export',
+    prompt: '把参考文献按国内期刊常用的格式导出。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'style-named',
+        dimension: 'quantitative_quality',
+        description: '声明所采用的格式标准',
+        pattern: '(GB/?T\\s*7714|Vancouver|APA)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'identifiers-present',
+        dimension: 'data_integrity',
+        description: '每条文献带 DOI 或 PMID',
+        pattern: '(DOI|doi|PMID)',
+        mustMatch: true
+      }
+    ]
+  },
+  {
+    id: 'failure-knowledge-cites-repro',
+    title: '失败经验必须带复现步骤',
+    dimension: 'biological_plausibility',
+    difficulty: 'medium',
+    origin: 'src/shared/sci-bench.ts#failure-mode-evidence',
+    prompt: '把这次踩的坑沉淀下来，别只写下结论。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'reproduction-present',
+        dimension: 'data_integrity',
+        description: '给出可复现的命令或步骤',
+        pattern: '(复现|reproduc|命令|command).{0,80}',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'error-quoted',
+        dimension: 'data_integrity',
+        description: '引用真实报错而不是转述',
+        pattern: '(Traceback|Error:|错误:|报错)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-bare-conclusion',
+        dimension: 'biological_plausibility',
+        description: '不得只留"这个方法不行"',
+        pattern: '^(这个方法(不行|不可用)。?)$',
+        mustMatch: false
       }
     ]
   }
