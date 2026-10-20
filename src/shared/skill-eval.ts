@@ -6,6 +6,8 @@
 // the agent inspect the installed skill library so it can reuse, extend, or fix existing
 // skills instead of duplicating them.
 
+import type { CapabilityContract } from './capability-contract'
+
 export const SKILL_EVAL_TOOL_NAME = 'skill_eval'
 export const SKILL_LIST_TOOL_NAME = 'skill_list'
 export const SKILL_READ_TOOL_NAME = 'skill_read'
@@ -55,6 +57,13 @@ export type SkillLibraryReadResult = {
   description: string
   // Full markdown body (instructions) without the frontmatter.
   instructions: string
+  // The capability contract this skill declared, parsed rather than left as the raw frontmatter
+  // JSON: an agent that reads a skill should see "these facts must hold" as structure, not as a
+  // string it has to re-parse. Absent when the skill declared no contract at all.
+  contract?: CapabilityContract
+  // Named problems when a declared contract failed validation (see parseContractField). Present with
+  // `contract` absent — a broken declaration must not read as "no declaration".
+  contractErrors?: string[]
 }
 
 // Rendered into the session prompt when the skill MCP is available (extends the existing

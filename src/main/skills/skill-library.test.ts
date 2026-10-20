@@ -58,4 +58,41 @@ describe('SkillLibrary', () => {
     const empty = new SkillLibrary(join(root, 'missing'))
     expect((await empty.list()).skills).toHaveLength(0)
   })
+
+  it('returns a declared capability contract as structure', async () => {
+    const dir = join(root, 'skills', 'gamma')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'SKILL.md'),
+      '---\nname: gamma\ndescription: "Grades evidence."\ncontract: \'{"id":"gamma","aliases":["证据分级"],"requires":["evidence:literature_set"],"produces":["review:evidence_grade"]}\'\n---\n\n# Gamma\n'
+    )
+    const skill = await library.read('gamma')
+    expect(skill.contract).toEqual({
+      id: 'gamma',
+      aliases: ['证据分级'],
+      requires: ['evidence:literature_set'],
+      produces: ['review:evidence_grade'],
+      prerequisites: [],
+      failurePolicy: {}
+    })
+    expect(skill.contractErrors).toBeUndefined()
+  })
+
+  it('keeps a broken declaration distinguishable from no declaration', async () => {
+    const dir = join(root, 'skills', 'delta')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'SKILL.md'),
+      '---\nname: delta\ndescription: "Bad contract."\ncontract: \'{"id":"delta","produces":["model:thing"]}\'\n---\n\n# Delta\n'
+    )
+    const skill = await library.read('delta')
+    expect(skill.contract).toBeUndefined()
+    expect(skill.contractErrors).toEqual(['produces_invalid_fact:model:thing'])
+  })
+
+  it('reports neither field for a skill that declared nothing', async () => {
+    const skill = await library.read('alpha')
+    expect(skill.contract).toBeUndefined()
+    expect(skill.contractErrors).toBeUndefined()
+  })
 })

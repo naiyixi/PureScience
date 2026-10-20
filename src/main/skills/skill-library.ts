@@ -6,6 +6,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { extractContract } from '../../shared/capability-contract'
 import { isValidSkillName } from '../../shared/skill-create'
 import type {
   SkillLibraryEntry,
@@ -58,7 +59,16 @@ export class SkillLibrary {
       throw new Error(`No skill named "${trimmed}" is installed.`)
     }
     const { description, body } = splitFrontmatter(raw)
-    return { name: trimmed, description, instructions: body }
+    const { contract, errors } = extractContract(raw, trimmed)
+    // A declared contract travels with the read as structure; a broken one travels as its named
+    // problems, so "declared badly" can never look the same as "declared nothing".
+    return {
+      name: trimmed,
+      description,
+      instructions: body,
+      ...(contract ? { contract } : {}),
+      ...(errors.length ? { contractErrors: errors } : {})
+    }
   }
 }
 
