@@ -130,6 +130,8 @@ type Harness = {
   isMainWindowHidden: () => boolean
   closeOpts: CapturedCloseOpts[]
   confirmClose: ReturnType<typeof vi.fn>
+  // The order native objects were created in — install order is a contract (window before tray).
+  order: string[]
 }
 
 const setup = (
@@ -152,6 +154,8 @@ const setup = (
     >
   > & {
     trayHost?: boolean
+    // Makes createTray throw, the way a host that refuses a status-bar item behaves.
+    trayThrows?: boolean
     detectActiveSessions?: () => ActiveSessionInfo[]
     confirmClose?: (
       variant: CloseConfirmVariant,
@@ -161,6 +165,7 @@ const setup = (
 ): Harness => {
   const app = makeFakeApp()
   const windows: FakeWindow[] = []
+  const order: string[] = []
   const trayHost = overrides.trayHost ?? true
   const tray = trayHost ? { destroy: vi.fn() } : undefined
   let trayHandlers: TrayHandlers | undefined
@@ -178,12 +183,15 @@ const setup = (
   const { showMainWindow, getMainWindow, isMainWindowHidden } = installAppLifecycle({
     app: app as unknown as AppLifecycleDeps['app'],
     createMainWindow: (opts) => {
+      order.push('window')
       closeOpts.push(opts)
       const w = makeFakeWindow()
       windows.push(w)
       return asWindow(w)
     },
     createTray: (handlers) => {
+      order.push('tray')
+      if (overrides.trayThrows) throw new Error('host refused the status-bar item')
       trayHandlers = handlers
       return tray as unknown as import('electron').Tray | undefined
     },
@@ -218,7 +226,8 @@ const setup = (
     getMainWindow,
     isMainWindowHidden,
     closeOpts,
-    confirmClose
+    confirmClose,
+    order
   }
 }
 
@@ -236,6 +245,46 @@ describe('installAppLifecycle', () => {
     const { windows, trayHandlers } = setup()
     expect(windows).toHaveLength(1)
     expect(trayHandlers).toBeDefined()
+  })
+
+  it('creates the window before the tray, so a stalled tray cannot cost the window', () => {
+    // Both are native objects built synchronously during install. Whichever is created first is the one
+    // that can hang a launch; with the tray first, a stalled status-bar item meant no window at all
+    // (measured on a CI runner, 2026-10-21: two launches in a row never opened a window and the log
+    // stopped at this install step). The order is the contract; the log lines below are how a future
+    // stuck launch says which step it was in.
+    const info = vi.fn()
+    const { order, windows } = setup({
+      log: { debug: vi.fn(), info, warn: vi.fn(), error: vi.fn() }
+    })
+
+    expect(order).toEqual(['window', 'tray'])
+    expect(windows).toHaveLength(1)
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      'main window created',
+      'tray created'
+    ])
+  })
+
+  it('keeps the window and names the failure when the tray cannot be created', () => {
+    const warn = vi.fn()
+    const info = vi.fn()
+    const { windows, getMainWindow, closeOpts } = setup({
+      platform: 'win32',
+      trayThrows: true,
+      log: { debug: vi.fn(), info, warn, error: vi.fn() }
+    })
+
+    // The window exists even though the tray never did.
+    expect(windows).toHaveLength(1)
+    expect(getMainWindow()).toBeDefined()
+    // And the absence of a tray is reflected honestly in close behavior: no hide-to-tray, quit on close.
+    expect(closeOpts[0].classifyClose()).toBe('quit')
+    // The step that finished says so; the one that failed says so by name instead of vanishing.
+    expect(info.mock.calls.map(([message]) => message)).toEqual(['main window created'])
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toBe('tray creation failed; continuing without a tray')
+    expect(warn.mock.calls[0][1]).toMatchObject({ errorCategory: expect.any(String) })
   })
 
   it('passes native appearance synchronization to every recreated main window', () => {

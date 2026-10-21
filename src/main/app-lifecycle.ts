@@ -196,11 +196,9 @@ export const installAppLifecycle = (
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
   }
 
-  trayBox.current = deps.createTray({
-    onShow: showMainWindow,
-    onHide: hideMainWindow,
-    onQuit: () => deps.quit()
-  })
+  // The tray used to be created here, before the window. It is created at the end of this function now
+  // (see the note there): both are native objects built synchronously during install, and whichever goes
+  // first can take the other down when the host's window/status-bar service stalls.
 
   // Authoritative quit cleanup: stop the agent process tree (awaited, so Windows taskkill /T finishes)
   // and every notebook kernel before exiting. app.on (not once) plus latches: a re-issued quit while
@@ -376,7 +374,32 @@ export const installAppLifecycle = (
     if (platform !== 'darwin' && !trayBox.current) deps.quit()
   })
 
-  if (deps.createInitialWindow !== false) mainWindow = openWindow()
+  // The window is created BEFORE the tray, and each step names itself in the log.
+  //
+  // Why the order: both are native objects created synchronously during install, and on a host whose
+  // window/status-bar service stalls the first one can never return. With the tray first, that stall
+  // cost the user the window too — measured on a CI runner (2026-10-21, packaged build): the launch log
+  // stopped at this install step and no window ever appeared, twice in a row, while 114 other launches
+  // in the same job opened normally. Creating the window first means the UI exists before the tray is
+  // attempted, and the two log lines below say which step a future stuck launch was in — the launch log
+  // could not tell them apart before.
+  if (deps.createInitialWindow !== false) {
+    mainWindow = openWindow()
+    deps.log?.info('main window created')
+  }
+  try {
+    trayBox.current = deps.createTray({
+      onShow: showMainWindow,
+      onHide: hideMainWindow,
+      onQuit: () => deps.quit()
+    })
+    if (trayBox.current) deps.log?.info('tray created')
+  } catch (error) {
+    // A tray the host refused must not cost the window or the quit path. Named rather than swallowed:
+    // no tray silently turns close-to-tray into quit-on-close on Windows/Linux (see classifyClose).
+    trayBox.current = undefined
+    deps.log?.warn('tray creation failed; continuing without a tray', diagnosticErrorFields(error))
+  }
 
   return {
     showMainWindow,

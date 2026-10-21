@@ -10515,3 +10515,77 @@ PROBE ../escape  e26108e7…                  {"state":"unavailable","reason":"u
 ① 按完整 40 位 SHA 读本笔双车道；② 下一单元候选：`P0-9` 的**渲染层审批卡计数**（日志不能替代渲染层读数；可用 jsdom 计数 + 明确标注真机未取）、
 `P0-3` 的分步真机读数（**仍卡内存闸门**）、或从「能力面」自拟一件（可离线判、差异化点能写成断言）；
 ③ 取之前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
+
+## 两百零九、本轮追加（执行器，2026-10-21 18:3x–）—— 窗口不再排在托盘之后：一次「永远没有窗口」的读数，与它带出的顺序契约
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = 106cf6ee`（上一轮那笔），`git status --short` **0 项**；`git log` 里没有别人刚落的相关单元
+  （`src/main/app-lifecycle.ts` 上一次动是 `6c24323d`，v2.0.0 的退出收尾）。
+- **上一轮 §五 ① 的判决按完整 40 位 SHA 取到了**：`106cf6eea7503a92b9e177aaf2d1ec3c1831e3ed` ⇒
+  `Nightly` **failure**（run `39569817054`）、`Windows Full Test` **success**、`Scheduled Regression` **success**、
+  同 run 的 `Verify (lint + typecheck + test + package)` **success**。
+- 内存（现取）：空闲页 4,893 ≈ **76 MB**、`swap used 13.1 G / 14.0 G` ⇒ **真机 e2e 闸门仍不满足**，本轮不取窗口读数。
+- B 段复核仍为 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）；按队列约定取自拟单元 —— 本轮取的是「上一轮那笔的红」里
+  **唯一还没被归因的那一条**（不是新功能，是先让红说话）。
+
+### 一 归因：红不在单测，也不在我上一笔的逻辑（读数）
+
+唯一红的作业是 **`build / Build macos-arm64`**（job `119126871492`），作业级日志里只有**一条**失败：
+
+```
+1) e2e/certification/storage-info-read-failure.spec.ts:30:5 › a hostile data root keeps the section usable, and a repaired one is re-read for real
+   Error: The Electron app never opened a window: electronApplication.firstWindow: Timeout 30000ms exceeded while waiting for event "window"
+     process: is still running
+```
+
+**同一次运行里 114 支认证 spec 正常开窗**，只有这一支**连续两次**（首次 + `retry #1`）没开。两次启动的日志
+（取自该 run 的 `p0-test-results-macos-arm64` 产物，92 / 76 行）**都停在同一处**：
+`[main] operation phase { …, phase: 'install-lifecycle' }`，之后什么都没有；而**同作业里成功**的启动（250 行）
+在这两行之后紧接着 `[main] operation completed { …, phase: 'install-lifecycle', outcome: 'completed', durationMs: 2887 }`。
+
+⇒ 读数级结论：**卡在 `install-lifecycle` 这一步里面，进程活着、窗口从未建立**。
+顺带更正一处口径：三笔连续红**每次红的 spec 都不同**（`39495083212` 是通知收件箱播种条数断言、
+`39511096581` 是 `connector-availability-badges` 窗口超时、本笔是 `storage-info-read-failure` 窗口超时）
+⇒ 不能写成「某条用例 flaky」，但也**不能**据此说「托盘一定是元凶」（见 §三 边界）。
+
+### 二 交付（2 个源/测试文件 + 1 份证据档 + 本节）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/app-lifecycle.ts` | 安装期顺序改为 **窗口 → 托盘**（改前托盘在前：`new Tray` 不返回就把窗口一起带走）；两条具名 `info`（`main window created` / `tray created`）；`createTray` 包 `try/catch`，失败落 **`tray creation failed; continuing without a tray` + `errorCategory`** 并继续（`trayBox` 保持 `undefined`，照既有语义：无托盘 ⇒ 关窗即退出） |
+| `src/main/app-lifecycle.test.ts` | 夹具新增 `order`（记录原生对象创建次序）与 `trayThrows`；新增两条用例：**顺序契约**（`['window','tray']` + 两条 info）与**托盘失败不连带窗口**（窗口仍在、`classifyClose()` 在 win32 无托盘时回 `quit`、warn 只有一条且具名） |
+| `docs/evidence/2026-10-21-window-before-tray.md` | 两次启动的日志原文、成功启动的对照行、改前两处行号、边界与具名未办 |
+
+**为什么这条不是「顺手改改」**：`install-lifecycle` 里创建的两个对象都要经过原生层，而**顺序决定了失败面**——
+托盘在前时，一个状态栏项卡住就等于**应用没有窗口**（用户看到的就是「双击没反应」）。这条同时把
+「卡在窗口」与「卡在托盘」变成**两行可分辨的日志**，下次再红不用从整段安装里猜。
+
+### 三 边界（不许读成更强）
+
+1. **不声称修掉那次红**：究竟卡在 `new Tray(...)` 还是 `new BrowserWindow(...)`，这一次的日志**证不出来**（改前两步
+   都不落日志）。改后若仍无窗口，范围就收窄到窗口/原生层。
+2. **不声称已复现**：认证车道只在 `macos-arm64` 构建作业里跑，且要构建产物；本机内存闸门未解除。
+3. **真窗口读数未取**：`blocked-by` = 内存闸门（76 MB 空闲 / swap 13.1 G）。解封判据：起一次打包态实例，
+   确认两行日志在且顺序为 `main window created` → `tray created`。
+4. 退出流程、`classifyClose` 语义、单实例锁、窗口重建（`activate`）、托盘菜单项**一个字节未改**。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest `src/main/app-lifecycle.test.ts` | **47 passed**（改前 45，本单元 +2） |
+| 簇 `app-lifecycle` + `app-startup` + `tray` + `app-menu` | **79 passed / 4 files**，exit 0 |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 8192） | `NODE_EXIT=0`，**0 error** |
+| 全量 vitest `--maxWorkers=4` | **1361 passed \| 16 skipped（1377 文件）**；**17,350 passed \| 207 skipped（17,557 例）**；219.07 s；**exit 0**（比上一轮 +2 例＝本单元新增） |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | `WEB_EXIT=0`，**0 error** |
+| `eslint --no-cache`（本笔 2 文件） | **0 error**（1 条 prettier warning 已 `--write` 修掉，复跑干净） |
+| `prettier --check`（本笔 2 文件 + 证据档） | 全过 |
+| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过（品牌扫描零命中） |
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道；**若 `Nightly` 再红在窗口超时**，先看本笔新加的那两行日志在不在
+（`main window created` / `tray created`）——在 ⇒ 卡点已被收窄到托盘之后；不在 ⇒ 卡在窗口/原生层，
+别再往托盘方向查；② 下一单元候选：`P0-9` 的渲染层审批卡计数（jsdom 计数 + 真机未取要具名）、
+`P0-3` 的分步真机读数（**仍卡内存闸门**）；③ 取之前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
