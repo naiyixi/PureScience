@@ -10793,3 +10793,15 @@ steps"`，判据是 `stepCount: 11` 与新步名 `open-project-db` 出现在位�
 ① 按完整 40 位 SHA 读本笔双车道；② 下一单元候选：`P0-3` 的分步真机读数（**仍卡内存闸门**）、
 `P0-10` 剩下的「0 与没量到分态」、或从能力面自拟一件（可离线判、差异化点能写成断言）；
 ③ 取之前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
+
+### 六 推送与双车道判决（按完整 40 位 SHA，两次推送无在飞车道被顶掉）
+
+| 提交 | 内容 | `Windows Full Test` | `Nightly` |
+|---|---|---|---|
+| `beec8338` | 超时探针预算（`src/main/notebook/provisioner-runtime.test.ts`） | —（被下一笔承载） | —（同上） |
+| **`faf0ef84`** | 渲染层询问密度 + 9 语两键 + 两套用例 + 证据档 + 本节 | **success**（run `39688787783`） | **success**（run `39688787854`：`Verify` + 四平台 build 含 `macos-arm64` 认证 + `publish` 全过） |
+
+- 推前现查在飞车道：**0 条** ⇒ 本次推送没有取消任何人的判决；`beec8338` 与 `faf0ef84` 在同一次推送里上去
+  （`88b76d9f..faf0ef84`），后者包含前者，证据即它的双绿（`git merge-base --is-ancestor` 成立）。
+- 判决来自本轮的看门脚本（逐轮写 `/tmp/ci-verdict-faf0ef84.txt`，终态行 `FINAL both lanes concluded`，
+  且要求**两条车道都** completed：`nightly_done=1 windows_done=1 in_flight=0`）。
