@@ -99,7 +99,9 @@ const writeArtifactFileToolSchema = {
   filename: z
     .string()
     .min(1)
-    .describe('Display filename for the artifact, e.g. "sine_wave.png" or "report.pdf".'),
+    .describe(
+      'Display filename for the artifact, e.g. "sine_wave.png" or "report.pdf". Keep it under 191 bytes (Chinese characters cost 3 bytes each, so ~60 characters): longer names cannot be stored on disk.'
+    ),
   mimeType: z.string().min(1).optional(),
   source: z
     .preprocess(

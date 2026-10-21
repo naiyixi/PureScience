@@ -10589,3 +10589,59 @@ PROBE ../escape  e26108e7…                  {"state":"unavailable","reason":"u
 （`main window created` / `tray created`）——在 ⇒ 卡点已被收窄到托盘之后；不在 ⇒ 卡在窗口/原生层，
 别再往托盘方向查；② 下一单元候选：`P0-9` 的渲染层审批卡计数（jsdom 计数 + 真机未取要具名）、
 `P0-3` 的分步真机读数（**仍卡内存闸门**）；③ 取之前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
+
+## 两百一十、本轮追加（执行器，2026-10-21 21:3x–）—— 中文标题的产物名：侧车按字节算，名字太长给一句能改的话
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = 52f4bbf0`，`git status --short` **0 项**。会话（桌面侧）正在推进 **S3 四臂 / SciBench v2.17**：
+  最近五笔 `a8628664`→`52f4bbf0` 全在 `sci-bench` / `skills/materializer` / `capability` 上，**与本轮不相交**。
+- B 段复核：A7 ✅ / S3 由会话在跑（四臂消融已落到物化层）/ M2 ⛔ 卡产品决定 ⇒ 按队列约定取**自拟单元**，
+  且按「先让读数说话」取用户日志里的**具名失败**，不新造能力面。
+- 上一轮那笔（窗口先于托盘）的 `Nightly` 判决**仍未落定**：`69599ef0` 的 run `39603061976` 里
+  `Build macos-arm64` 于 21:10 起跑、21:5x 仍在 `in_progress`（其余三平台 success、`Verify` success）。
+  ⇒ 本轮的推送会顶掉它，**所以先把提交留在本地、等它落定再推**（见 §六）。
+
+### 一 取到的缺陷（真机日志，不是猜）
+
+`logs/headless.out.log:9474`，用户自己的运行，`[acp] tool call failed`：
+
+```
+tool: 'purescience-artifacts/write_artifact_file'
+reason: ENAMETOOLONG: name too long, open '…/.pending/artifact-run-…/.metadata/%E5%9B%BA%E6%9C%89%E6%97%A0%E5%BA%8F…'
+```
+
+整笔产物写入失败，而错误指向的是**临时侧车路径**——读者既不知道是自己写的标题太长，也不知道该改什么。
+根因：`getArtifactMetadataPath()` 把整个产物名 `encodeURIComponent` 成一个文件名，CJK 一字三字节 → 九字符，
+**约 27 个中文字**就撞上单段 255 字节上限（30 字标题 = 270 字节）。
+
+### 二 交付（4 个文件）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/artifacts/storage-access.ts` | 侧车名分两套：编码后 ≤ **214** 字节仍用**原名**（默认路径逐字节不变）；放不下改用 `@long-<sha256 前 32 位>.json`。`readArtifactMetadata()` 按同一顺序试**两个候选**（老侧车照旧解析，非「缺文件」的错照旧抛）。`assertSafeFilename()` 增 **191 字节**上限（= 255 − 64 的事务后缀预留），超限抛具名错误（报字节数/上限/名字） |
+| `src/main/artifacts/mcp-server.ts` | `write_artifact_file` 的 `filename` 描述补「191 字节以内（中文约 60 字）」——让模型提交前收住，而不是失败后重试 |
+| `src/main/artifacts/storage-access.test.ts` | 新增 7 条：短名侧车名逐字节不变、长中文名有界、真实目录往返、**编码能放下但临时名放不下**的边界、老 scheme 侧车仍可读、`runPendingFileTransaction` 全事务（真实产物 + 真实侧车 + 无 `.tmp`/`.backup` 残留）、上限拒绝句子 |
+| `docs/evidence/2026-10-21-artifact-name-bytes.md` | 日志原文、RED 三行原文、阈值推导、读数、边界与具名未办 |
+
+**为什么阈值不是 255**：产物写入会在真实文件旁写 `.<epochMs>-<uuid>.backup`（57 字节），元数据写入写 `.<uuid>.tmp`（41 字节）。
+卡在 255 只是把失败推迟到事务中间，报的还是同一句 `ENAMETOOLONG` —— 这正是本次 RED 的第二、三条用例当场演示的事。
+
+### 三 门禁（取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向 `storage-access.test.ts` | 改前 **4 failed / 6 passed**（RED，场内 `ENAMETOOLONG` 原文）→ 改后 **11 passed** |
+| `src/main/artifacts` 全套 | **20 文件 / 282 passed**，exit 0 |
+| `mcp-server.test.ts` | **26 passed** |
+| 全量 vitest `--maxWorkers=4` | 见 §五（后台跑，读数补在本节） |
+| `tsc -p tsconfig.node.json --composite false`（堆 8192） | **0 error** |
+| `eslint --no-cache`（本笔 3 文件） | **0 error / 0 warning**（prettier 已 `--write`，复跑干净） |
+
+### 四 边界（不许读成更强）
+
+1. **没有真窗口读数**：`blocked-by` = 内存闸门（空闲页 3,860 ≈ 60 MB、swap 13.6 G / 15.0 G）。
+   单元 + 真实文件系统事务都**不等于**实机。
+2. **不改产物显示名**：≤191 字节的中文标题仍是最终文件名；只改侧车与上限检查。
+3. **磁盘上老侧车不迁移**，只保证继续能读。
+4. 超限名字仍会被拒（有意）：区别是拒绝句说清了字节数、上限与名字。

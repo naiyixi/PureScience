@@ -59,6 +59,18 @@ const hasControlCharacter = (value: string): boolean =>
     return codePoint !== undefined && (codePoint <= 31 || codePoint === 127)
   })
 
+// Filesystem component limits. APFS and ext4 cap one path component at 255 UTF-8 bytes; NTFS counts 255
+// UTF-16 units, which is never tighter for non-ASCII text, so bytes is the portable bound.
+const MAX_FILE_NAME_BYTES = 255
+// An artifact write names its temporary and backup files after the payload (`.<epochMs>-<uuid>.backup` is
+// 57 bytes), and so does a metadata write (`.<uuid>.tmp` is 41). Accepting a name that only fits at 255
+// would move the failure later, into the transaction, as the same ENAMETOOLONG the caller was promised it
+// would not hit — so the accepted bound keeps that room up front.
+const TRANSACTION_NAME_RESERVE_BYTES = 64
+const MAX_ARTIFACT_FILENAME_BYTES = MAX_FILE_NAME_BYTES - TRANSACTION_NAME_RESERVE_BYTES
+const METADATA_TEMP_NAME_RESERVE_BYTES = 41
+const MAX_METADATA_NAME_BYTES = MAX_FILE_NAME_BYTES - METADATA_TEMP_NAME_RESERVE_BYTES
+
 const assertSafeFilename = (filename: string): string => {
   if (
     filename.length === 0 ||
@@ -73,11 +85,39 @@ const assertSafeFilename = (filename: string): string => {
   ) {
     throw new Error(`Invalid artifact filename: ${filename}`)
   }
+  const filenameBytes = Buffer.byteLength(filename, 'utf8')
+  if (filenameBytes > MAX_ARTIFACT_FILENAME_BYTES) {
+    // Named, actionable, and it quotes the name so the writer knows which one to shorten. A raw
+    // ENAMETOOLONG from the filesystem names a temp path nobody recognises and arrives after the copy.
+    throw new Error(
+      `Artifact filename is too long: ${filenameBytes} bytes, over the ` +
+        `${MAX_ARTIFACT_FILENAME_BYTES}-byte limit (a name holds ${MAX_FILE_NAME_BYTES} bytes and the ` +
+        `atomic write needs ${TRANSACTION_NAME_RESERVE_BYTES} more): ${filename.slice(0, 40)}` +
+        `${filename.length > 40 ? '…' : ''}`
+    )
+  }
   return filename
 }
 
+// A sidecar is addressed by the artifact name, and the shipped scheme percent-encoded that whole name.
+// Each CJK byte becomes three characters there, so a 30-character Chinese title produced a 270-byte
+// sidecar — over the component limit, and the artifact write died with ENAMETOOLONG (field log,
+// 2026-09). Names whose encoded form fits keep that exact name (sidecars already on disk must resolve);
+// the rest get a bounded, content-addressed name. `@` cannot start an encoded name — encodeURIComponent
+// escapes it as `%40` — so the two schemes can never collide on different artifact names.
+const encodedMetadataName = (filename: string): string => `${encodeURIComponent(filename)}.json`
+const hashedMetadataName = (filename: string): string =>
+  `@long-${createHash('sha256').update(filename, 'utf8').digest('hex').slice(0, 32)}.json`
+
+const metadataNameCandidates = (filename: string): readonly string[] => {
+  const encoded = encodedMetadataName(filename)
+  const hashed = hashedMetadataName(filename)
+  const encodedFits = Buffer.byteLength(encoded, 'utf8') <= MAX_METADATA_NAME_BYTES
+  return encodedFits && encoded !== hashed ? [encoded, hashed] : [hashed, encoded]
+}
+
 const getArtifactMetadataPath = (directory: string, filename: string): string =>
-  join(directory, METADATA_DIR, `${encodeURIComponent(filename)}.json`)
+  join(directory, METADATA_DIR, metadataNameCandidates(filename)[0])
 
 const getProjectArtifactDir = (storageRoot: string, projectName: string): string =>
   join(storageRoot, ARTIFACTS_DIR, assertSafePathSegment(projectName))
@@ -284,27 +324,34 @@ class ArtifactStorageAccess {
   }
 
   async readArtifactMetadata(directory: string, filename: string): Promise<ArtifactMetadata> {
-    try {
-      const metadata = JSON.parse(
-        await readFile(getArtifactMetadataPath(directory, filename), 'utf8')
-      ) as unknown
-      if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return {}
-      const value = metadata as Record<string, unknown>
-      return {
-        ...(typeof value.mimeType === 'string' ? { mimeType: value.mimeType } : {}),
-        ...(typeof value.artifactId === 'string' ? { artifactId: value.artifactId } : {}),
-        ...(typeof value.versionId === 'string' ? { versionId: value.versionId } : {}),
-        ...(Number.isSafeInteger(value.versionNumber)
-          ? { versionNumber: value.versionNumber as number }
-          : {}),
-        ...(typeof value.artifactRunId === 'string' ? { artifactRunId: value.artifactRunId } : {}),
-        ...(typeof value.checksum === 'string' ? { checksum: value.checksum } : {}),
-        ...(value.kind === 'plan' ? { kind: value.kind } : {})
+    // Two names can legitimately carry one artifact's metadata: the encoded one the shipped scheme wrote,
+    // and the bounded one written when encoding does not fit. Read them in the same order the writer
+    // prefers, and let a missing candidate fall through instead of ending the read.
+    for (const name of metadataNameCandidates(filename)) {
+      try {
+        const metadata = JSON.parse(
+          await readFile(join(directory, METADATA_DIR, name), 'utf8')
+        ) as unknown
+        if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return {}
+        const value = metadata as Record<string, unknown>
+        return {
+          ...(typeof value.mimeType === 'string' ? { mimeType: value.mimeType } : {}),
+          ...(typeof value.artifactId === 'string' ? { artifactId: value.artifactId } : {}),
+          ...(typeof value.versionId === 'string' ? { versionId: value.versionId } : {}),
+          ...(Number.isSafeInteger(value.versionNumber)
+            ? { versionNumber: value.versionNumber as number }
+            : {}),
+          ...(typeof value.artifactRunId === 'string'
+            ? { artifactRunId: value.artifactRunId }
+            : {}),
+          ...(typeof value.checksum === 'string' ? { checksum: value.checksum } : {}),
+          ...(value.kind === 'plan' ? { kind: value.kind } : {})
+        }
+      } catch (error) {
+        if (!isMissingFileError(error)) throw error
       }
-    } catch (error) {
-      if (isMissingFileError(error)) return {}
-      throw error
     }
+    return {}
   }
 
   toPendingRouting(metadata: ArtifactMetadata): PendingArtifactVersionRouting | undefined {
@@ -436,9 +483,11 @@ const sha256 = (value: Buffer): string => createHash('sha256').update(value).dig
 export {
   ArtifactStorageAccess,
   assertPathInsideArtifactRoot,
+  assertSafeFilename,
   assertSafePathSegment,
   createArtifactPublicationStorage,
   getArtifactCurrentRunFilePath,
+  getArtifactMetadataPath,
   getProjectArtifactDir,
   isMissingFileError,
   isPathInsideRoot,
