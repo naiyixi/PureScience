@@ -1,5 +1,6 @@
 ---
 name: chai1
+contract: '{"id":"chai1","aliases":["Chai-1","抗体抗原预测"],"requires":["input:protein_sequence"],"produces":["prediction:complex_structure"],"failure_policy":{"missing_state":"Provide a FASTA first; a prediction is not a measured structure (G2)."}}'
 description: 使用 Chai-1 基础模型（Chai Discovery 2024，github.com/chaidiscovery/chai-lab）预测蛋白质、核酸和小分子复合物结构。用于从单个 FASTA 预测抗体-抗原或蛋白质-配体复合物、作为 AlphaFold-multimer 替代重新折叠设计结合物、或从 Python 驱动批量共折叠活动。
 license: Apache-2.0
 category: biomodels

@@ -1,5 +1,6 @@
 ---
 name: boltz
+contract: '{"id":"boltz","aliases":["Boltz-2","共折叠","co-folding"],"requires":["input:protein_sequence"],"produces":["prediction:complex_structure"],"failure_policy":{"missing_state":"Provide the sequences (and ligand SMILES/CCD if any); a prediction is not a measured structure (G2)."}}'
 description: 使用 Boltz-2（Passaro & Wohlwend 等 2025，github.com/jwohlwend/boltz）预测蛋白质、核酸和小分子复合物结构。用于验证设计结合物、与 SMILES 或 CCD 配体共折叠蛋白质、或获取带可选结合亲和力预测的开源 AlphaFold3 替代方案。
 license: Apache-2.0
 category: biomodels

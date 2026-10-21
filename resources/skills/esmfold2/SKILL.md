@@ -1,5 +1,6 @@
 ---
 name: esmfold2
+contract: '{"id":"esmfold2","aliases":["ESMFold2","全原子折叠","all-atom folding"],"requires":["input:protein_sequence"],"produces":["prediction:all_atom_structure"],"failure_policy":{"missing_state":"Provide a sequence first; a prediction is not a measured structure (G2)."}}'
 description: Biohub ESMFold2 / ESMFold2-Fast 全原子共折叠（Candido 等 2026，github.com/Biohub/esm）。单序列和 MSA 模式；支持蛋白质、DNA、RNA、配体（CCD/SMILES）和修饰残基。FoldBench Ab-Ag 50-55%、PPI 70-77% DockQ 通过。还涵盖同版本发布的 ESMC-{300M,600M,6B} 蛋白质语言模型：掩码 LM 对数、隐状态、突变评分和接触预测。
 license: Apache-2.0
 category: biomodels

@@ -1,5 +1,6 @@
 ---
 name: bionexus-spatial-transcriptomics
+contract: '{"id":"bionexus-spatial-transcriptomics","aliases":["空间转录组","空转分析","spatial transcriptomics"],"requires":["input:expression_matrix"],"produces":["data:spatial_domain","review:spatial_pattern"],"failure_policy":{"missing_state":"Load the spatial expression matrix (with coordinates) first."}}'
 description: 空间转录组学分析（squidpy）：组织图像、邻域富集、共定位与空间模式检测。
 ---
 

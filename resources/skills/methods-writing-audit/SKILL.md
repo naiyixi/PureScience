@@ -1,5 +1,6 @@
 ---
 name: methods-writing-audit
+contract: '{"id":"methods-writing-audit","aliases":["方法审计","方法学审查","methods audit"],"requires":["input:manuscript"],"produces":["review:methods"],"failure_policy":{"missing_state":"Attach the manuscript or methods draft first; there is nothing to audit otherwise."}}'
 description: 撰写与审计论文/报告的方法与结果章节。当需要把研究方案与数据变成符合报告规范的方法段与结果段、核对正文-表格-图之间的数字一致性、检查方法是否足以复现、或审计稿件方法与结果是否有缺失/夸大/不一致时使用。不负责结论与讨论的证据措辞校准（归 evidence-grading）；不做统计分析本身（归 statistical-inference）；不做引文管理（归 citation-integrity）。
 license: MIT license
 metadata:

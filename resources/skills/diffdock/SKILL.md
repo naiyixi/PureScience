@@ -1,5 +1,6 @@
 ---
 name: diffdock
+contract: '{"id":"diffdock","aliases":["DiffDock","对接","docking"],"requires":["input:protein_id","input:ligand_smiles"],"produces":["prediction:docking_pose"],"failure_policy":{"missing_state":"Provide both a receptor structure and a ligand (SMILES/SDF); docking needs a pose target, not just a sequence."}}'
 description: 使用 DiffDock-L（Corso 等 2023/2024，github.com/gcorso/DiffDock）预测小分子结合姿态——无需预定义搜索框的盲扩散对接，用学习置信模型对样本排序。用于将 SMILES 或 SDF 与 PDB 对接、为小片段库生成排序 3D 姿态、或获取带约束的对接结果。
 license: Apache-2.0
 category: biomodels

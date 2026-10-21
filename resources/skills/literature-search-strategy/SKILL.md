@@ -1,5 +1,6 @@
 ---
 name: literature-search-strategy
+contract: '{"id":"literature-search-strategy","aliases":["检索式","检索策略","search strategy"],"requires":["input:research_question"],"produces":["evidence:search_strategy"],"failure_policy":{"missing_state":"State the research question (and population/intervention if PICO-style) first; this skill designs queries, it does not run them."}}'
 description: 为文献检索构建数据库级检索式。当用户需要把研究问题（PICO/PECO/PEO 或一般主题）转成 PubMed/Embase/Cochrane/MEDLINE/Web of Science 或中文库（CBM/CNKI/万方）可执行的检索式，需要主题词（MeSH/Emtree）+自由词扩展、布尔组合、字段限定、灵敏度与精确度权衡、检索过程留痕时使用。只设计检索式与检索计划，不实际执行检索（执行交给连接器或多库收集环节）；不做文献质量评价、不阅读全文、不编造检索结果或命中数量；已有完整检索式的场景不必重复构建。
 license: MIT license
 metadata:

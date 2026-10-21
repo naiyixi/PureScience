@@ -1,5 +1,6 @@
 ---
 name: ligandmpnn
+contract: '{"id":"ligandmpnn","aliases":["LigandMPNN","逆折叠","inverse folding"],"requires":["prediction:structure"],"produces":["data:designed_sequence"],"failure_policy":{"missing_state":"A backbone is required: get one from a prediction capability (alphafold2 / boltz / chai1 / esmfold2) or supply a measured structure."}}'
 description: 使用 LigandMPNN（Dauparas 等 2023，github.com/dauparas/LigandMPNN）对带配体、核酸和金属上下文的骨架进行逆折叠。用于重新设计结合口袋内壁残基、设计必须满足几何约束的金属配位位点、或从任意 MPNN 运行获取线程化设计序列 PDB。
 license: Apache-2.0
 category: biomodels

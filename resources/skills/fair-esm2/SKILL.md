@@ -1,5 +1,6 @@
 ---
 name: fair-esm2
+contract: '{"id":"fair-esm2","aliases":["ESM-2","蛋白嵌入","protein embedding"],"requires":["input:protein_sequence"],"produces":["data:protein_embedding"],"failure_policy":{"missing_state":"Provide sequences first; embeddings are derived from what you supply, not from a database lookup."}}'
 description: 使用 Meta AI 的 ESM-2（fair-esm 包）嵌入蛋白质。用于：(1) 提取逐残基或逐序列嵌入用于下游机器学习，(2) 掩码 LM 似然/突变效应评分，(3) 从序列进行接触预测。
 license: Apache-2.0
 category: biomodels

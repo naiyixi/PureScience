@@ -1,5 +1,6 @@
 ---
 name: indication-dossier
+contract: '{"id":"indication-dossier","aliases":["适应症档案","indication dossier"],"requires":["input:indication"],"produces":["artifact:report","evidence:literature_set"],"failure_policy":{"missing_state":"Name the indication first; epidemiology and standard-of-care sections are indication-specific."}}'
 description: 生成治疗适应症档案。涵盖患者人群、流行病学、疾病生物学、标准治疗、监管先例和里程碑式临床试验。
 license: Apache-2.0
 ---
