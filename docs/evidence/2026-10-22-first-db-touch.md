@@ -99,3 +99,19 @@ grep -A5 "compose runtime steps" logs/headless.out.log | tail -20
 两条仪器坑（本轮各咬一次，别再犯）：① 复用同一份输出/同一份库副本会把**上一轮的 WAL**算进本轮读数 ⇒ 每轮先
 `copyFileSync` 一份新副本；② 读数的**量级**先与 `loadAvg1m` 一起看 —— 同一段代码在同一天从 95.8 走到 281.4 ms
 是机器的事，不是代码的事。
+
+## 七 变异证明：这条 pin 真的会咬人（不只是「现在是绿的」）
+
+pin 的价值在于「把面改小/改松时它会红」。用隔离工作树（`git worktree add --detach /tmp/ps-mut-03d2d3c8 03d2d3c8` +
+软链 `node_modules`）逐条施加变异，再跑同一支 pin：
+
+| 变异 | 结果 | 变红的断言 |
+|---|---|---|
+| M0 未变异（基线） | **5 passed** | — |
+| M1 把一个 `await composeSteps.step(` 改成 `void composeSteps.step(` | **1 failed / 4 passed** | `awaits every timed step` |
+| M2 把 `specialist-package-snapshot` 改名成 `specialist-packages` | **1 failed / 4 passed** | `times exactly the inventory … in composition order` |
+| M3 把 `open-project-db` 挪到 `restore-notification-inbox` **之后**（合并数字的那一版） | **2 failed / 3 passed** | 有序清单 + `measures the first database touch as its own step …` |
+
+三次变异各自只打断它该打断的那一条（M3 打断两条，正是因为它同时改了清单顺序与先后关系），
+工作树随即 `git worktree remove --force` 删除，主树 `git status --short` 为空。
+**边界**：这证明的是「断言没有退化」，不是「11 步在真机上都录到了」——后者仍属未取。
