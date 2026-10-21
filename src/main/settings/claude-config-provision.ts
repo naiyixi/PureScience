@@ -149,6 +149,9 @@ type ProvisionOptions = {
   allowedRoots?: readonly string[]
   // Named in the refusal so the agent knows where this project's files actually are.
   allowedRootsHint?: string
+  // Experiment-only (see shared/ablation): drop `contract:` declarations from the materialized
+  // skills so a benchmark arm can measure what the declarations are worth. Never set by the UI.
+  stripContracts?: boolean
 }
 
 // Ensures the app config dir + asset subdirs exist, writes the file-tool deny rules, then materializes
@@ -183,7 +186,7 @@ const provisionAppClaudeConfigDir = async (
   const disabled = new Set(options.disabledSkillIds ?? [])
   const enabled = skills.filter((skill) => !disabled.has(skill.id))
 
-  await materializer.sync(configDir, enabled)
+  await materializer.sync(configDir, enabled, { stripContracts: options.stripContracts === true })
 }
 
 export {

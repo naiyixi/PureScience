@@ -54,6 +54,7 @@ import { isSkillAlwaysOn, SkillAlwaysOnRefusal } from '../../shared/skill-activa
 import { readSkillFile } from '../skills/skill-files'
 import { buildSkillExportArchive, type SkillExportArchive } from '../skills/export'
 import { SAFE_SLUG, UserSkillRepository } from '../skills/user-skill-repository'
+import { ABLATION_ENV, parseAblationArm, shouldStripContracts } from '../../shared/ablation'
 import {
   provisionAppClaudeConfigDir,
   type ClaudeRuntimeModelConfig
@@ -776,7 +777,8 @@ class SkillCatalogModule {
     const disabled = new Set([...blocked].filter((id) => !forcedIds.has(id)))
     await new ClaudeCodeSkillMaterializer().sync(
       configRoot,
-      skills.filter((skill) => !disabled.has(skill.id))
+      skills.filter((skill) => !disabled.has(skill.id)),
+      { stripContracts: shouldStripContracts(parseAblationArm(process.env[ABLATION_ENV])) }
     )
   }
 
@@ -799,6 +801,7 @@ class SkillCatalogModule {
     await provisionAppClaudeConfigDir(configDir, {
       skills,
       disabledSkillIds: disabled,
+      stripContracts: shouldStripContracts(parseAblationArm(process.env[ABLATION_ENV])),
       ...(modelConfig === undefined ? {} : { modelConfig }),
       ...(pathScope ? { allowedRoots: pathScope.roots, allowedRootsHint: pathScope.hint } : {})
     })
