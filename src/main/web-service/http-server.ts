@@ -94,6 +94,7 @@ type WebServerOptions = {
     | 'pendingPermissions'
     | 'respondPermission'
     | 'capabilitySessionInputs'
+    | 'sessionEvidence'
     | 'runWithCallerContext'
   >
   onShutdownRequest?: () => void
@@ -420,6 +421,16 @@ const handleTaskApiRequest = async (
         assertExternalAuthorizationCurrent(externalAuthorization)
         json(response, 200, {
           data: await tasks.listArtifacts(decodeURIComponent(sessionArtifactsMatch[1]))
+        })
+        return true
+      }
+      // The evidence a benchmark case is graded against, for one session: transcript, tool calls and
+      // artifact paths. Quantities/citations are reported as not collected rather than guessed.
+      const sessionEvidenceMatch = url.pathname.match(/^\/api\/v1\/sessions\/([^/]+)\/evidence$/)
+      if (sessionEvidenceMatch && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, {
+          data: await tasks.sessionEvidence(decodeURIComponent(sessionEvidenceMatch[1]))
         })
         return true
       }

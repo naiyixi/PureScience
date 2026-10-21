@@ -7,6 +7,7 @@ import type {
   FinalizeRunArtifactsResult
 } from '../../shared/artifacts'
 import type { ReplayVersionRequest } from '../../shared/artifact-replay'
+import { benchEvidenceFromSession, type SessionEvidence } from '../../shared/bench-evidence'
 import type { Project } from '../../shared/projects'
 import type { PersistedArtifact, PersistedChatSession } from '../../shared/session-persistence'
 import type {
@@ -255,6 +256,24 @@ class HeadlessTaskApi {
       }
     }
     return { found: true, attachments, usedCapabilities: [...used] }
+  }
+
+  /**
+   * The evidence a benchmark case is graded against: the session's transcript, its tool calls and
+   * the artifacts it produced. Quantities and citations are deliberately not extracted here — a
+   * regex cannot tell whether a number carried provenance, and inventing that would defeat the
+   * grader. See shared/bench-evidence.
+   */
+  async sessionEvidence(
+    sessionId: string
+  ): Promise<{ found: boolean; evidence: SessionEvidence | null }> {
+    const result = (await this.invoke('sessions:load-all', { allowCachedCatalog: true })) as {
+      sessions: PersistedChatSession[]
+    }
+    const session = result.sessions.find((entry) => entry.id === sessionId)
+    if (!session) return { found: false, evidence: null }
+    const artifacts = await this.listArtifacts(sessionId)
+    return { found: true, evidence: benchEvidenceFromSession(session, artifacts) }
   }
 
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {

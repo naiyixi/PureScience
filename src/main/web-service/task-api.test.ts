@@ -97,6 +97,43 @@ describe('HeadlessTaskApi adapter', () => {
     ])
   })
 
+  it("collects a session's evidence for benchmark grading", async () => {
+    const invoke = vi.fn(async (channel: string) =>
+      channel === 'sessions:load-all'
+        ? {
+            sessions: [
+              {
+                ...sessionWithInputs,
+                activities: [
+                  {
+                    id: 'a1',
+                    kind: 'tool',
+                    title: 'Run cell',
+                    status: 'completed',
+                    sortIndex: 0,
+                    eventIds: [],
+                    providerToolName: 'repl_execute',
+                    createdAt: 1,
+                    updatedAt: 2
+                  }
+                ],
+                artifacts: [{ id: 'art-1', kind: 'workspace-file', path: 'out/figure.png' }]
+              }
+            ]
+          }
+        : undefined
+    )
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    const found = await api.sessionEvidence('session-1')
+    expect(found.found).toBe(true)
+    expect(found.evidence?.toolCalls).toEqual([{ name: 'repl_execute' }])
+    expect(found.evidence?.artifacts).toEqual(['out/figure.png'])
+    expect(found.evidence?.collected).toMatchObject({ transcript: true, numbers: false })
+
+    await expect(api.sessionEvidence('missing')).resolves.toEqual({ found: false, evidence: null })
+  })
+
   it('dispatches façade operations through the narrow Task command view', async () => {
     const commandInvoke = vi.fn(async () => [project])
     const api = new HeadlessTaskApi({
