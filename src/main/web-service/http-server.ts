@@ -26,6 +26,7 @@ import {
   webRpcRequestSchema
 } from '../../shared/web-rpc-contract'
 import { RENDERER_CONTRACT_CATALOG } from '../../shared/renderer-contract-catalog'
+import { buildCapabilitiesPayload } from './capabilities-route'
 import { projectPublicTaskEvent, projectWebRendererEvent } from './application-event-projections'
 import { authenticateRequest, persistAuthCookie } from './auth'
 import type { StartTaskRunRequest } from '../../shared/task-api'
@@ -315,6 +316,7 @@ const handleTaskApiRequest = async (
   url: URL,
   tasks: NonNullable<WebServerOptions['tasks']>,
   callerContext: CallerContext,
+  configRoot: string,
   externalAuthorization?: ExternalWebAccessAuthorization
 ): Promise<boolean> =>
   tasks.runWithCallerContext(callerContext, async () => {
@@ -355,6 +357,20 @@ const handleTaskApiRequest = async (
       if (url.pathname === '/api/v1/connectors' && request.method === 'GET') {
         assertExternalAuthorizationCurrent(externalAuthorization)
         json(response, 200, { data: await tasks.connectors() })
+        return true
+      }
+      // What each installed capability needs and leaves behind, and — when a session is named —
+      // whether that session currently satisfies it. Without a session the payload reports no facts
+      // at all rather than a wall of "ready".
+      if (url.pathname === '/api/v1/capabilities' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, {
+          data: await buildCapabilitiesPayload({
+            configRoot,
+            sessionId: url.searchParams.get('session'),
+            listArtifacts: (id) => tasks.listArtifacts(id)
+          })
+        })
         return true
       }
       // Headless approvals. A run that needs permission has no window to click in a `start --no-open`
@@ -561,6 +577,7 @@ const startWebHttpServer = async (options: WebServerOptions): Promise<RunningWeb
                 }
               : {})
           }),
+          options.bootstrap.configRoot,
           externalAuthorization
         ))
       ) {
