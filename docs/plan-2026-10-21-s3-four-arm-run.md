@@ -59,6 +59,20 @@
 3. 物化结果里记录本次臂（`ablation` 写入技能目录旁的 run manifest），让取证时能回答
    "这次跑的是哪一支"——否则两个 run 的差异无法归因。
 
+## 3.1 环境要求（2026-10-21 实测踩到）
+
+第一次尝试起 pilot 实例时踩到两个环境事实，记下来免得下次重演：
+
+1. **必须没有并发实例**。本机当时另有两个 Electron 实例在跑（一个 headless、一个 dev），
+   可用内存只剩约 60 MB；`electron-vite dev` 的 esbuild 在 transform 阶段直接 Go panic 退出，
+   `electron .`（已构建）则**静默退出、无任何输出**——看起来像"启动脚本写错了"，其实是内存。
+2. **`electron .` 不是 headless 的受支持入口**。仓库里 headless 只有两条路：
+   `electron-vite dev -- --purescience-headless`（dev）与打包版二进制；用构建产物直接
+   `electron .` 不会起 web 服务。
+
+因此 pilot 的前置条件写成清单：无并发实例、内存充足、用受支持的启动入口。
+未满足时 pilot 不跑，也不拿旧实例顶替——旧实例是 v2.15.2，没有 `/sessions/:id/evidence`。
+
 ## 4. Pilot 协议（先 1 题，再 16 题）
 
 1. 选 1 题（`checkpoint-resume-order` 这类**不依赖外部 API** 的题，先排除网络噪声）。
