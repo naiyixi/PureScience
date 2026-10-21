@@ -228,6 +228,28 @@ export const extractContract = (markdown: string, expectedId?: string): Contract
 }
 
 /**
+ * The same skill document with its `contract:` frontmatter line removed, and nothing else changed.
+ *
+ * This exists for exactly one purpose: an ablation arm whose only difference from the full one is
+ * whether the declaration is visible to the agent. Byte-exactness is the point — a stripper that
+ * also reflowed the file would confound the measurement it exists to enable.
+ *
+ * A document with no contract line is returned unchanged (not re-serialized), and a `contract:`
+ * that appears in the body is left alone: only the frontmatter block is considered.
+ */
+export const withoutContract = (markdown: string): string => {
+  const frontmatterEnd = /^---\r?\n[\s\S]*?\r?\n---(\r?\n|$)/.exec(markdown)
+  if (!frontmatterEnd) return markdown
+  const blockEnd = frontmatterEnd[0].length
+  const head = markdown.slice(0, blockEnd)
+  const tail = markdown.slice(blockEnd)
+  const lines = head.split(/(?<=\n)/)
+  const kept = lines.filter((line) => !/^contract:/.test(line.replace(/^\uFEFF/, '').trimStart()))
+  if (kept.length === lines.length) return markdown
+  return kept.join('') + tail
+}
+
+/**
  * Ranks declared capabilities against a free-text request. Deterministic: score, then id.
  *
  * The single-query shape is what the missing-state advice needs ("which capability establishes this

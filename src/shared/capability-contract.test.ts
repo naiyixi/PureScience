@@ -4,6 +4,7 @@ import {
   extractContract,
   parseContractField,
   rankCapabilities,
+  withoutContract,
   type CapabilityContract
 } from './capability-contract'
 
@@ -107,6 +108,46 @@ describe('extractContract', () => {
     const { contract, errors } = extractContract('---\nname: demo\ndescription: d\n---\n', 'demo')
     expect(contract).toBeNull()
     expect(errors).toEqual([])
+  })
+})
+
+describe('withoutContract', () => {
+  const withContract = [
+    '---',
+    'name: demo',
+    'description: "d"',
+    'contract: \'{"id":"demo","produces":["artifact:table"]}\'',
+    'license: MIT',
+    '---',
+    '',
+    '# Demo',
+    'contract: mentioned in the body, not in frontmatter',
+    ''
+  ].join('\n')
+
+  it('removes exactly the frontmatter contract line', () => {
+    const stripped = withoutContract(withContract)
+    expect(stripped).not.toContain('{"id":"demo"')
+    expect(stripped).toContain('name: demo')
+    expect(stripped).toContain('license: MIT')
+    // The body's mention is untouched: only the frontmatter block is in scope.
+    expect(stripped).toContain('contract: mentioned in the body')
+    expect(stripped.split('\n')).toHaveLength(withContract.split('\n').length - 1)
+  })
+
+  it('returns a document without a contract unchanged, byte for byte', () => {
+    const plain = '---\nname: demo\n---\n\n# Demo\n'
+    expect(withoutContract(plain)).toBe(plain)
+  })
+
+  it('preserves CRLF line endings elsewhere in the file', () => {
+    const crlf = '---\r\nname: demo\r\ncontract: \'{"id":"demo"}\'\r\n---\r\n\r\n# Demo\r\n'
+    const stripped = withoutContract(crlf)
+    expect(stripped).toBe('---\r\nname: demo\r\n---\r\n\r\n# Demo\r\n')
+  })
+
+  it('leaves a document with no frontmatter alone', () => {
+    expect(withoutContract('# Just a body\n')).toBe('# Just a body\n')
   })
 })
 
