@@ -42,6 +42,8 @@ Commands:
                          (needs --project, --session and --artifact)
   runtime list           List the Python/R runtimes the app can see
   connectors list        List connectors and whether each is enabled
+  capabilities [--session <session-id>]
+                         List capability contracts; with --session, say what each still needs
   rollback-to-0.7.3 --yes [--output <path>]
 
 Options:
@@ -100,7 +102,9 @@ const TASK_COMMANDS = new Set([
   'replay',
   // Answering the permission cards a headless run cannot click (there is no window in `start --no-open`).
   'permissions',
-  'approve'
+  'approve',
+  // Capability contracts and per-session readiness, projected from the app's own registry.
+  'capabilities'
 ])
 const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts', 'runtime', 'connectors'])
 
@@ -749,6 +753,12 @@ export const runTaskCommand = async (parsed, dependencies = {}) => {
   }
   if (command === 'connectors' && subcommand === 'list') {
     outputValue(await client.listConnectors(), options, deps)
+    return
+  }
+  // What each capability needs and leaves behind; with --session, the app also says whether that
+  // session satisfies it. Nothing is re-decided here — the registry lives in the app.
+  if (command === 'capabilities') {
+    outputValue(await client.getCapabilities(options.session), options, deps)
     return
   }
   // A headless service has no window, so a run that asks for permission used to wait forever with no

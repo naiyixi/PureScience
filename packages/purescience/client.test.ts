@@ -37,6 +37,7 @@ describe('PureScienceClient', () => {
         'getReadiness',
         'listRuntimes',
         'listConnectors',
+        'getCapabilities',
         'pendingPermissions',
         'respondPermission',
         'replayVersion',
@@ -69,6 +70,12 @@ describe('PureScienceClient', () => {
     await expect(client.listRuntimes()).resolves.toEqual({
       url: 'http://127.0.0.1:44100/api/v1/runtimes'
     })
+    await expect(client.getCapabilities()).resolves.toEqual({
+      url: 'http://127.0.0.1:44100/api/v1/capabilities'
+    })
+    await expect(client.getCapabilities('session-1')).resolves.toEqual({
+      url: 'http://127.0.0.1:44100/api/v1/capabilities?session=session-1'
+    })
     await expect(
       client.replayVersion({
         projectId: 'project-1',
@@ -81,10 +88,12 @@ describe('PureScienceClient', () => {
     await expect(client.listConnectors()).resolves.toEqual({
       url: 'http://127.0.0.1:44100/api/v1/connectors'
     })
-    expect(fetch).toHaveBeenCalledTimes(4)
+    expect(fetch).toHaveBeenCalledTimes(6)
     expect(fetch.mock.calls.map(([url]) => url)).toEqual([
       'http://127.0.0.1:44100/api/v1/readiness',
       'http://127.0.0.1:44100/api/v1/runtimes',
+      'http://127.0.0.1:44100/api/v1/capabilities',
+      'http://127.0.0.1:44100/api/v1/capabilities?session=session-1',
       'http://127.0.0.1:44100/api/v1/artifacts/replay',
       'http://127.0.0.1:44100/api/v1/connectors'
     ])

@@ -218,6 +218,23 @@ describe('task CLI', () => {
     expect(printed).toEqual([readiness, runtimes, connectors])
   })
 
+  // The capability catalog is the app's registry, not the CLI's: this command must ask, never decide.
+  it('dispatches capability contracts and per-session readiness through the SDK', async () => {
+    const capabilities = { declared: [], undeclared: [], problems: [], session: null }
+    const client = { getCapabilities: vi.fn().mockResolvedValue(capabilities) }
+    const log = vi.fn()
+    const deps = { connect: vi.fn().mockResolvedValue(client), log }
+
+    await runTaskCommand({ command: 'capabilities', options: { json: true, jsonl: false } }, deps)
+    await runTaskCommand(
+      { command: 'capabilities', options: { json: true, jsonl: false, session: 'session-1' } },
+      deps
+    )
+
+    expect(client.getCapabilities.mock.calls).toEqual([[undefined], ['session-1']])
+    expect(log.mock.calls.map(([line]) => JSON.parse(line))).toEqual([capabilities, capabilities])
+  })
+
   it('dispatches project, session, and artifact commands through the SDK', async () => {
     const client = {
       listProjects: vi.fn().mockResolvedValue([{ id: 'project-1', name: 'Research' }]),

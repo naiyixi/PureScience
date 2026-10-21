@@ -214,6 +214,23 @@ purescience connectors list --json
 network, Python for notebooks), each entry with its status and the sentence that explains it. Use it
 to tell a failed install from a working one before opening the app.
 
+## Capability contracts
+
+Every skill may declare what it needs before it can run and what it leaves behind. `capabilities`
+prints those declarations as the app resolved them, and with `--session` it also says, per
+capability, whether that session currently satisfies them:
+
+```bash
+purescience capabilities --json
+purescience capabilities --session <session-id> --json
+```
+
+Without `--session` the answer is about the catalog only: the payload reports `session: null` rather
+than a wall of "ready", because nothing was asked. With a session, each entry is `ready`,
+`missing_state` (naming the missing fact and which capabilities could establish it) or `undeclared`
+(the skill declared nothing, so nothing was checked). A skill a message _mentions_ is not a skill
+that ran — the payload says so in `notes` instead of counting a mention as execution.
+
 ## Re-running a recorded artifact
 
 Every artifact version records the code that produced it, the inputs it read and a digest of what came

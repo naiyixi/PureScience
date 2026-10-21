@@ -57,6 +57,16 @@ export class PureScienceClient {
   }
 
   /**
+   * Capability contracts, and — when a session id is given — whether that session satisfies each one.
+   * The app decides; this only carries the question. A call without a session reports no facts at all,
+   * so `--session` is what turns the catalog into a readiness reading.
+   */
+  getCapabilities(sessionId) {
+    const suffix = sessionId ? `?session=${encodeURIComponent(sessionId)}` : ''
+    return this.request(`/api/v1/capabilities${suffix}`)
+  }
+
+  /**
    * The permission requests a run is waiting on. A headless service has no window to click, so this is
    * the only way to see why an unattended run stopped.
    */
