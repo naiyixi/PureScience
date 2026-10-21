@@ -981,7 +981,7 @@ describe('SessionPersistenceCoordinator', () => {
       expect.objectContaining({ id: 'session-1' }),
       { mode: 'live-save' }
     )
-    expect(repository.saveSession).toHaveBeenCalledWith(durableSession)
+    expect(repository.saveSession).toHaveBeenCalledWith(durableSession, expect.any(Function))
   })
 
   it('does not overwrite Session JSON when finalized Artifact bindings reject the snapshot', async () => {
@@ -1210,7 +1210,7 @@ describe('SessionPersistenceCoordinator', () => {
     expect(result.updatedAt).toBeGreaterThan(authoritativeSession.updatedAt)
     expect(result.updatedAt).toBeGreaterThan(submittedSession.updatedAt)
     expect(result.messages).toEqual(authoritativeSession.messages)
-    expect(repository.saveSession).toHaveBeenCalledWith(result)
+    expect(repository.saveSession).toHaveBeenCalledWith(result, expect.any(Function))
     expect(provenance.validateFinalizedMessageBindings).toHaveBeenCalledTimes(2)
     expect(provenance.captureFinalizedMessages).toHaveBeenCalledWith(result)
   })
@@ -1270,7 +1270,7 @@ describe('SessionPersistenceCoordinator', () => {
 
     expect(result.specialistId).toBe('specialist-new')
     expect(result.messages).toEqual(authoritativeSession.messages)
-    expect(repository.saveSession).toHaveBeenCalledWith(result)
+    expect(repository.saveSession).toHaveBeenCalledWith(result, expect.any(Function))
   })
 
   it('restores DB visibility and clears the tombstone when JSON deletion fails', async () => {
@@ -3972,6 +3972,56 @@ describe('session save diagnostics', () => {
     // The split has to add up to the whole it was cut out of, or a later reading cannot be compared with
     // the older one where the tail was a single number.
     expect(fields.provenanceMs + fields.fileIndexMs).toBeLessThanOrEqual(fields.aftermathMs)
+    clock.mockRestore()
+  })
+
+  // `writeMs` is where the field reading put 44.6 s of 142.7 s, and whether that is serialization or the
+  // filesystem decides the next unit. The repository measures its own write; this asserts the numbers reach
+  // the slow-save line intact and that the part the five do not explain is printed rather than folded in.
+  it('carries the write breakdown into the slow-save line, with the remainder printed', async () => {
+    const repository = createSessionRepository({
+      saveSession: vi.fn(async (_session, onPhases) => {
+        onPhases?.({
+          queueMs: 1,
+          materializeMs: 2,
+          serializeMs: 3,
+          diskWriteMs: 4,
+          replaceMs: 5
+        })
+      }) as unknown as SessionMutationRepository['saveSession']
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+
+    const pending = coordinator.saveSession(createSession({ title: 'Slow write' }))
+    now += 5_000
+    await pending
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [, fields] = log.warn.mock.calls[0] as [string, Record<string, number>]
+    expect(fields).toMatchObject({
+      writeQueueMs: 1,
+      writeMaterializeMs: 2,
+      writeSerializeMs: 3,
+      writeDiskMs: 4,
+      writeReplaceMs: 5
+    })
+    // The clock is frozen inside the write here, so `writeMs` is 0 and the remainder must not go negative.
+    expect(fields.writeMs).toBe(0)
+    expect(fields.writeUnaccountedMs).toBe(0)
     clock.mockRestore()
   })
 })

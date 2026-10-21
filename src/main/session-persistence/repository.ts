@@ -79,6 +79,27 @@ type SessionDirectoryEntry = {
   isFile(): boolean
 }
 
+// Where one session write spent its wall time, measured inside the write itself.
+//
+// Why split it: the real-machine reading put 44.6 s of a 142.7 s slow-save total in `writeMs` across 159 slow
+// saves, and the question that decides the next unit is whether those seconds are OUR serialization (a cost
+// that writing only what changed would remove) or the filesystem's (a cost no reshaping of the bytes removes on
+// a machine under memory pressure). A probe on an idle machine says the bytes are cheap — rewriting a 3.1 MB
+// session cost 6 ms of serialization and 4 ms of write — so the field's 98 ms median is not the JSON.
+// Naming the parts is what makes that decidable from a field log instead of another design guess.
+export type SessionWritePhases = {
+  /** Waiting in this repository's own save queue, behind an earlier write. */
+  queueMs: number
+  /** Trimming, sanitizing and path encoding: CPU over the document before a byte is produced. */
+  materializeMs: number
+  /** The `JSON.stringify` of the whole document. */
+  serializeMs: number
+  /** Creating the project directory and writing the temp file. */
+  diskWriteMs: number
+  /** The rename that makes the write observable. */
+  replaceMs: number
+}
+
 type SessionRepositoryDependencies = {
   remove(path: string, options: { force: boolean; recursive: boolean }): Promise<void>
   readDirectoryEntries(path: string): Promise<SessionDirectoryEntry[]>
@@ -362,11 +383,28 @@ class SessionRepository {
   }
 
   // Writes one session file (serialized through the save queue to preserve write order).
-  async saveSession(session: PersistedChatSession): Promise<void> {
+  //
+  // `onWritePhases` is how the caller learns where the write spent its wall time. It is a callback rather than
+  // a return value so that every existing stand-in that implements this surface with one parameter keeps
+  // satisfying it, and so that a caller with nothing to report pays no allocation.
+  async saveSession(
+    session: PersistedChatSession,
+    onWritePhases?: (phases: SessionWritePhases) => void
+  ): Promise<void> {
+    const queuedAt = Date.now()
     return this.enqueue(async () => {
-      await this.writeSession(session)
+      const phases: SessionWritePhases = {
+        queueMs: Date.now() - queuedAt,
+        materializeMs: 0,
+        serializeMs: 0,
+        diskWriteMs: 0,
+        replaceMs: 0
+      }
+      await this.writeSession(session, phases)
       // Readers that keep a view of every session (search) learn about the write here, not by re-reading.
       bumpSessionRevision()
+      // Reported only after the bytes are durable: a failed write has no breakdown worth attributing.
+      onWritePhases?.(phases)
     })
   }
 
@@ -546,14 +584,19 @@ class SessionRepository {
   }
 
   // Writes through a unique temp file, then atomically replaces the target session file.
-  private async writeSession(session: PersistedChatSession): Promise<void> {
-    await this.writeSessionToDirectory(session, this.projectDir(session.projectId))
+  private async writeSession(
+    session: PersistedChatSession,
+    phases?: SessionWritePhases
+  ): Promise<void> {
+    await this.writeSessionToDirectory(session, this.projectDir(session.projectId), phases)
   }
 
   private async writeSessionToDirectory(
     session: PersistedChatSession,
-    projectDirectory: string
+    projectDirectory: string,
+    phases?: SessionWritePhases
   ): Promise<void> {
+    const materializeStarted = Date.now()
     const messages = [...session.messages, ...(session.conversationGraph?.messages ?? [])]
     const legacyUpload = messages
       .flatMap((message) => message.uploads ?? [])
@@ -569,9 +612,13 @@ class SessionRepository {
     // the drop is recorded on the document (shared/session-retention) so a reader sees where the
     // record resumes rather than believing the conversation began there.
     const sanitizedSession = sanitizeSessionUploadedAttachments(trimRetainedSessionHistory(session))
+    const payload = createSessionFile(encodeSessionDataPaths(sanitizedSession))
+    if (phases) phases.materializeMs = Date.now() - materializeStarted
 
+    const mkdirStarted = Date.now()
     await mkdir(projectDirectory, { recursive: true })
-    await this.atomicWrite(filePath, createSessionFile(encodeSessionDataPaths(sanitizedSession)))
+    if (phases) phases.diskWriteMs += Date.now() - mkdirStarted
+    await this.atomicWrite(filePath, payload, phases)
     // Warm the summary cache so the next startup skips parsing this file.
     void this.writeSessionSummary(filePath, sanitizedSession)
   }
@@ -582,15 +629,27 @@ class SessionRepository {
   }
 
   // Shared temp-file + rename write used by session files and the manifest.
-  private async atomicWrite(filePath: string, payload: unknown): Promise<void> {
+  private async atomicWrite(
+    filePath: string,
+    payload: unknown,
+    phases?: SessionWritePhases
+  ): Promise<void> {
     this.writeSequence += 1
     const temporaryPath = `${filePath}.${Date.now()}-${this.writeSequence}.tmp`
 
-    await writeFile(temporaryPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8')
+    const serializeStarted = Date.now()
+    const serialized = `${JSON.stringify(payload, null, 2)}\n`
+    if (phases) phases.serializeMs = Date.now() - serializeStarted
+
+    const diskStarted = Date.now()
+    await writeFile(temporaryPath, serialized, 'utf8')
+    if (phases) phases.diskWriteMs += Date.now() - diskStarted
+    const replaceStarted = Date.now()
     try {
       for (let attempt = 0; ; attempt += 1) {
         try {
           await this.dependencies.renameFile(temporaryPath, filePath)
+          if (phases) phases.replaceMs = Date.now() - replaceStarted
           return
         } catch (error) {
           const delayMs = FILE_REPLACEMENT_RETRY_DELAYS_MS[attempt]

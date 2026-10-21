@@ -12,7 +12,12 @@ vi.mock('electron', () => ({
 import { MAX_RETAINED_SESSION_MESSAGES } from '../../shared/session-retention'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { SESSION_FILE_VERSION, normalizeSessionFile } from '../../shared/session-persistence'
-import { DEV_SESSION_DIR_NAME, SessionRepository, getSessionPersistenceDir } from './repository'
+import {
+  DEV_SESSION_DIR_NAME,
+  SessionRepository,
+  getSessionPersistenceDir,
+  type SessionWritePhases
+} from './repository'
 import { getSessionRevision } from './session-revision'
 
 let storageRoot: string | undefined
@@ -1051,5 +1056,58 @@ describe('session persistence repository (per-session files)', () => {
     // Deletion changes the corpus too, and in the same direction: a reader that missed it would keep
     // answering from a session that is gone.
     expect(getSessionRevision()).toBeGreaterThan(afterSave)
+  })
+
+  // The slow-save line can only attribute `writeMs` if the write says where its time went. These five parts
+  // are measured around the real calls, so the assertion is about coverage rather than exact numbers: each
+  // part is a non-negative integer, and together they never claim more than the caller's own measurement of
+  // the whole write.
+  it('reports where a session write spent its time', async () => {
+    const repository = new SessionRepository(await createStorageRoot())
+    const reported: SessionWritePhases[] = []
+
+    const startedAt = Date.now()
+    await repository.saveSession(createSession(), (phases) => reported.push(phases))
+    const totalMs = Date.now() - startedAt
+
+    expect(reported).toHaveLength(1)
+    const [phases] = reported
+    for (const part of [
+      phases.queueMs,
+      phases.materializeMs,
+      phases.serializeMs,
+      phases.diskWriteMs,
+      phases.replaceMs
+    ]) {
+      expect(Number.isInteger(part)).toBe(true)
+      expect(part).toBeGreaterThanOrEqual(0)
+    }
+    const explained =
+      phases.queueMs +
+      phases.materializeMs +
+      phases.serializeMs +
+      phases.diskWriteMs +
+      phases.replaceMs
+    expect(explained).toBeLessThanOrEqual(totalMs)
+    // The parts are a reading, not a second write path: the document the reader gets back is unchanged.
+    await expect(repository.loadSession('project-a', 'session-1')).resolves.toMatchObject({
+      title: 'Saved conversation'
+    })
+  })
+
+  // A write that never became durable has no breakdown worth attributing, and reporting one would let a
+  // failed save look measured. The callback is therefore only reached on success.
+  it('reports no breakdown for a write that never became durable', async () => {
+    const failure = Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
+    const repository = new SessionRepository(await createStorageRoot(), {
+      renameFile: vi.fn(async () => Promise.reject(failure)),
+      wait: vi.fn(async () => undefined)
+    })
+    const reported: SessionWritePhases[] = []
+
+    await expect(
+      repository.saveSession(createSession(), (phases) => reported.push(phases))
+    ).rejects.toBe(failure)
+    expect(reported).toHaveLength(0)
   })
 })

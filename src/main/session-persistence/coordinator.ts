@@ -21,7 +21,7 @@ import type {
 } from '../../shared/session-persistence'
 import type { ManagedFileSoftDeleteToken } from '../project-files/repository'
 import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
-import type { ProjectSessionDeletionState } from './repository'
+import type { ProjectSessionDeletionState, SessionWritePhases } from './repository'
 import {
   materializeSessionConversationGraph,
   sanitizeSessionRuntimeContext
@@ -93,7 +93,10 @@ type SessionMutationRepository = {
     | { status: 'missing' }
     | { status: 'unreadable' }
   >
-  saveSession(session: PersistedChatSession): Promise<void>
+  saveSession(
+    session: PersistedChatSession,
+    onWritePhases?: (phases: SessionWritePhases) => void
+  ): Promise<void>
   saveCommittedProjectSession(session: PersistedChatSession): Promise<void>
   deleteSession(projectId: string, sessionId: string): Promise<void>
   deleteProjectSessions(projectId: string): Promise<void>
@@ -1182,7 +1185,12 @@ class SessionPersistenceCoordinator {
         if (bindingValidation.status === 'conflict') throw bindingValidation.error
       }
       const preparedAt = Date.now()
-      await this.repository.saveSession(durableSession)
+      // The repository measures its own write; this is where those numbers are picked up so the slow-save
+      // line can say whether the seconds were serialization, disk, or the rename that makes the write visible.
+      let writePhases: SessionWritePhases | undefined
+      await this.repository.saveSession(durableSession, (phases) => {
+        writePhases = phases
+      })
       this.upsertSessionMetadata(durableSession)
       const writtenAt = Date.now()
       // Cache only confirmed topology. A transient validation failure keeps the old fingerprint so
@@ -1224,7 +1232,8 @@ class SessionPersistenceCoordinator {
         preparedAt,
         writtenAt,
         capturedAt,
-        indexedAt: Date.now()
+        indexedAt: Date.now(),
+        writePhases
       })
       return durableSession
     })
@@ -1242,6 +1251,7 @@ class SessionPersistenceCoordinator {
     writtenAt: number
     capturedAt: number
     indexedAt: number
+    writePhases?: SessionWritePhases
   }): void {
     const finishedAt = Date.now()
     const totalMs = finishedAt - times.requestedAt
@@ -1252,6 +1262,28 @@ class SessionPersistenceCoordinator {
         authorityMs: times.readAt - times.startedAt,
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
+        // How `writeMs` divides up. `writeUnaccountedMs` is the remainder the five parts do not explain — the
+        // clock here is 1 ms, and the revision bump runs inside the same span — printed rather than folded in
+        // so nobody reads the parts as covering the whole when they do not.
+        ...(times.writePhases
+          ? {
+              writeQueueMs: times.writePhases.queueMs,
+              writeMaterializeMs: times.writePhases.materializeMs,
+              writeSerializeMs: times.writePhases.serializeMs,
+              writeDiskMs: times.writePhases.diskWriteMs,
+              writeReplaceMs: times.writePhases.replaceMs,
+              writeUnaccountedMs: Math.max(
+                0,
+                times.writtenAt -
+                  times.preparedAt -
+                  (times.writePhases.queueMs +
+                    times.writePhases.materializeMs +
+                    times.writePhases.serializeMs +
+                    times.writePhases.diskWriteMs +
+                    times.writePhases.replaceMs)
+              )
+            }
+          : {}),
         // The two halves that were folded into `aftermathMs` before the real-machine reading showed the
         // tail costs as much as the write. `aftermathMs` keeps its old meaning (everything after the JSON
         // was durable) so an older reading and a newer one are still comparable.
