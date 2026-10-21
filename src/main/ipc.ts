@@ -555,15 +555,19 @@ const createApplicationModules = async (
       }
     })
   }
-  const applicationEvents = await modules.add(
-    installRendererBroadcastEventHub,
-    createApplicationEventModule
-  )
   // P0-3: attribute the startup window. The real record shows `compose-runtime` at 11:51:31.445 and
   // `data root resolved` at 11:51:57.083 with nothing in between — 25.6 s nobody could explain, while the
   // same version and data root also started in 1.0 s. Every awaited step below is timed; a slow step names
   // itself, and one summary line closes the window.
+  //
+  // The set of timed steps is a deliberate inventory, not an accident of where the recorder happened to be
+  // declared: the launch total is far larger than the sum of the steps (real record: 26,960 ms to the window
+  // against 7,834 ms of recorded steps), so every un-timed await is a hole in that attribution. A pin test
+  // (`ipc-startup-attribution.test.ts`) enumerates these names — extending the surface must be intentional.
   const composeSteps = createComposeStepRecorder({ log: createLogger('startup') })
+  const applicationEvents = await composeSteps.step('application-events', () =>
+    modules.add(installRendererBroadcastEventHub, createApplicationEventModule)
+  )
   // One settings service backs both the settings IPC and the ACP spawn config (single source of truth).
   const settingsService = await composeSteps.step('settings-service', () =>
     modules.add(undefined, () => ({
@@ -584,6 +588,14 @@ const createApplicationModules = async (
   await composeSteps.step('hydrate-child-proxy-runtime', () =>
     settingsService.hydrateChildProxyRuntime(storedSettings)
   )
+  // The first database touch of the run: opening the client creates the storage dir, starts the query
+  // engine, and replays the schema guards. It is timed as its OWN step because the inbox restore below
+  // waits on it — with one combined number, a slow engine start (machine-side) and slow inbox work
+  // (code-side) look identical. Measured on a copy of the real 87 MB database with the product's own client:
+  // open 80.5 ms + 66-statement schema replay 29.0 ms + 30 column probes 8.1 ms = 121 ms, while the same
+  // launches reported 573 / 1,724 / 2,892 / 7,672 ms for the combined step, and the two inbox queries
+  // themselves measured 0.03 / 0.06 ms. See docs/evidence/2026-10-22-first-db-touch.md.
+  await composeSteps.step('open-project-db', () => getProjectDbClient(resolveStorageRoot()))
   const notificationInbox = createNotificationInboxController({
     headless,
     repository: new NotificationInboxDbRepository(() => getProjectDbClient(resolveStorageRoot())),
@@ -591,7 +603,6 @@ const createApplicationModules = async (
     onError: (error) =>
       createLogger('notifications').warn('message center operation failed', errorLogFields(error))
   })
-  // First database touch of the run: it opens the client and applies the schema guards.
   await composeSteps.step('restore-notification-inbox', () => notificationInbox.restore())
   composeSteps.logSummary()
   // Record only the location class. Absolute paths (including reversible code-point renderings) can
@@ -727,17 +738,20 @@ const createApplicationModules = async (
   // Construct one storage/index/deletion graph for every related IPC surface. Sharing these instances
   // is essential: separate coordinators would have independent queues and recovery gates.
   const configRoot = resolveStorageRoot()
-  const permissionGrantRegistry = await createPermissionGrantRegistry({
-    getClient: () => getProjectDbClient(configRoot),
-    isScopeLive: (scope) =>
-      isPermissionGrantScopeLive(scope, {
-        projectExists: async (projectId) => (await projectRepository.get(projectId)) !== undefined,
-        persistedSessionExists: async (projectId, sessionId) =>
-          (await sessionRepository.loadSession(projectId, sessionId)) !== undefined,
-        liveSessionExists: (projectId, sessionId) =>
-          runtimeRef.current?.hasLiveSession(projectId, sessionId) ?? false
-      })
-  })
+  const permissionGrantRegistry = await composeSteps.step('permission-grant-registry', () =>
+    createPermissionGrantRegistry({
+      getClient: () => getProjectDbClient(configRoot),
+      isScopeLive: (scope) =>
+        isPermissionGrantScopeLive(scope, {
+          projectExists: async (projectId) =>
+            (await projectRepository.get(projectId)) !== undefined,
+          persistedSessionExists: async (projectId, sessionId) =>
+            (await sessionRepository.loadSession(projectId, sessionId)) !== undefined,
+          liveSessionExists: (projectId, sessionId) =>
+            runtimeRef.current?.hasLiveSession(projectId, sessionId) ?? false
+        })
+    })
+  )
   const projectFilesRepository = createManagedFileIndexRepository(
     getProjectDbClient,
     configRoot,
@@ -915,44 +929,47 @@ const createApplicationModules = async (
       }
     }
   }
-  const notebookApplication = await modules.add(
-    {
-      configRoot: resolveConfigRoot(),
-      dataRoot: resolveDataRoot(),
-      projectName: DEFAULT_ARTIFACT_PROJECT_NAME,
-      repository: new NotebookRunRepository(resolveDataRoot()),
-      getPackageMirror: () => settingsService.getPackageMirror(),
-      notebookRuntimeSettings,
-      locale: app.getLocale(),
-      appVersion: app.getVersion(),
-      resolveArtifactPath: (request: { projectName: string; sessionId: string; path: string }) =>
-        artifactRepository.resolveSessionArtifactFilePath(
-          request.projectName,
-          request.sessionId,
-          request.path
-        ),
-      // One owner: the settings service holds the protection service, so the level a run records
-      // cannot disagree with the policy the panel shows.
-      resolveExecutionProtection: (surface) => settingsService.resolveExecutionProtection(surface),
-      // v2.1.0: the app's own "run cell" path asks before a reviewed cell runs, on the SAME approval card
-      // the agent's tool calls use. No approval surface => decline, the same call this file's specialist
-      // gateway makes: "nobody could be asked" is not "no problem".
-      reviewNotebookRun: async (input) => {
-        const runtime = runtimeRef.current
-        if (!runtime) return false
-        return runtime.requestAppApproval({
-          sessionId: input.sessionId,
-          // The card renders the receipt's own localized title; this string is the fallback the shape needs.
-          title: 'Run this notebook cell?',
-          rawInput: { code: input.code },
-          riskReview: input.receipt
-        })
+  const notebookApplication = await composeSteps.step('notebook-application', () =>
+    modules.add(
+      {
+        configRoot: resolveConfigRoot(),
+        dataRoot: resolveDataRoot(),
+        projectName: DEFAULT_ARTIFACT_PROJECT_NAME,
+        repository: new NotebookRunRepository(resolveDataRoot()),
+        getPackageMirror: () => settingsService.getPackageMirror(),
+        notebookRuntimeSettings,
+        locale: app.getLocale(),
+        appVersion: app.getVersion(),
+        resolveArtifactPath: (request: { projectName: string; sessionId: string; path: string }) =>
+          artifactRepository.resolveSessionArtifactFilePath(
+            request.projectName,
+            request.sessionId,
+            request.path
+          ),
+        // One owner: the settings service holds the protection service, so the level a run records
+        // cannot disagree with the policy the panel shows.
+        resolveExecutionProtection: (surface) =>
+          settingsService.resolveExecutionProtection(surface),
+        // v2.1.0: the app's own "run cell" path asks before a reviewed cell runs, on the SAME approval card
+        // the agent's tool calls use. No approval surface => decline, the same call this file's specialist
+        // gateway makes: "nobody could be asked" is not "no problem".
+        reviewNotebookRun: async (input) => {
+          const runtime = runtimeRef.current
+          if (!runtime) return false
+          return runtime.requestAppApproval({
+            sessionId: input.sessionId,
+            // The card renders the receipt's own localized title; this string is the fallback the shape needs.
+            title: 'Run this notebook cell?',
+            rawInput: { code: input.code },
+            riskReview: input.receipt
+          })
+        },
+        events: applicationEvents,
+        disposeTimeoutMs: QUIT_SHUTDOWN_BUDGET_MS,
+        isBackendTeardownOwned: () => backendTeardownOwnedByCoordinator
       },
-      events: applicationEvents,
-      disposeTimeoutMs: QUIT_SHUTDOWN_BUDGET_MS,
-      isBackendTeardownOwned: () => backendTeardownOwnedByCoordinator
-    },
-    createNotebookApplicationModule
+      createNotebookApplicationModule
+    )
   )
   const {
     runtime: notebookService,
@@ -965,10 +982,14 @@ const createApplicationModules = async (
   // the same repository while keeping their dynamic Connector/custom-Skill catalog separate.
   const specialistRepository = new SpecialistRepository(resolveStorageRoot())
   const appVersion = app.getVersion()
-  const specialistSkills = await settingsService.listSpecialistSkillCatalog()
+  const specialistSkills = await composeSteps.step('specialist-skill-catalog', () =>
+    settingsService.listSpecialistSkillCatalog()
+  )
   const specialistPackageSkillAdapter = new UserSkillSpecialistPackageAdapter(resolveStorageRoot())
   const builtinSpecialistPackageSkillAdapter = new BundledSkillSpecialistPackageAdapter()
-  const packageSkills = await specialistPackageSkillAdapter.snapshot()
+  const packageSkills = await composeSteps.step('specialist-package-snapshot', () =>
+    specialistPackageSkillAdapter.snapshot()
+  )
   const builtinRegistry = new BuiltinSpecialistRegistry({
     appVersion,
     builtinSkills: composeBuiltinSkillCatalog(appVersion, specialistSkills),
@@ -987,7 +1008,7 @@ const createApplicationModules = async (
     protectedSpecialistNames: ['Reviewer']
   })
   const profileService = new ProfileService(specialistRepository, builtinRegistry)
-  await profileService.ensureBuiltinCatalogReady()
+  await composeSteps.step('builtin-catalog-ready', () => profileService.ensureBuiltinCatalogReady())
   const specialistPackageService = new SpecialistPackageService({
     storageDir: resolveStorageRoot(),
     repository: specialistRepository,

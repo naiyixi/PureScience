@@ -10645,3 +10645,92 @@ reason: ENAMETOOLONG: name too long, open '…/.pending/artifact-run-…/.metada
 2. **不改产物显示名**：≤191 字节的中文标题仍是最终文件名；只改侧车与上限检查。
 3. **磁盘上老侧车不迁移**，只保证继续能读。
 4. 超限名字仍会被拒（有意）：区别是拒绝句说清了字节数、上限与名字。
+
+## 两百一十一、本轮追加（执行器，2026-10-22 02:3x–03:4x）—— 第一次开库的账：把 573–7,672 ms 从收件箱头上挪走，再把 4 步账补成 11 步
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 3e60ba64`（会话的 sci-bench 三笔 + pilot 真跑）；`git status` 里只有**我自己上一轮留下的**
+  `src/main/ipc.ts`（未提交）⇒ 本单元是**接手自己那一笔**，不是新开一摊，也没有碰会话的在制品。
+- **上一笔的判决**（`gh run list` 现读）：`3e60ba64` 的 `Nightly` **success**、`Windows Full Test` **success**；
+  我自己的 `3eb48a8c` 由 `3e60ba64` 承载（`git merge-base --is-ancestor` 为真），其证据即后者的双绿。
+- 推前现查在飞车道：**无 in-flight** ⇒ 本次推送没有取消任何人的判决。
+- B 段三件（A7 / S3 / M2）按本档 §二 已收口（M2 卡产品决定）⇒ 继续推自己的具名开项（P0-3）。
+
+### 一 读数：一条错归因被就地否掉（本轮的实质产出）
+
+`restore-notification-inbox` 那一步原先**同时**包含 `getProjectDbClient()`（建目录 + 起引擎 + 重放 schema 守卫）
+与收件箱自己的两条查询。真实启动日志（用户自己的数据根）里同一个合并数字是：
+
+| 启动 | 该步 | `compose runtime steps` 总计 | 到 `install-lifecycle` 完成 |
+|---|---|---|---|
+| ① | 573 ms | 713 | — |
+| ② | 844 ms | 983 | 5,701 ms |
+| ③ | 1,724 ms | 1,860 | — |
+| ④ | 2,892 ms | 3,184 | 11,532 ms |
+| ⑤ | **7,672 ms** | 7,834 | **26,960 ms** |
+
+用产品自己的 Prisma 客户端（6.19.3）在 **87,851,008 字节的真实库副本**上拆开量（五次：本轮 4 次 + 上一轮 1 次）：
+
+| 段 | 读数（ms） |
+|---|---|
+| 构造客户端 | 2.0 / 2.2 / 2.8 / 3.6 / 4.6 |
+| 首次查询（起引擎 + 连接 + schema 守卫） | 17.5 / 32.4 / 45.8 / 56.2 / 80.5 |
+| 66 条 `CREATE TABLE/INDEX IF NOT EXISTS` | 34.4 / 65.1 / 107.3 / 29.0 / 117.4 |
+| 30 次列探测 | 8.1 / 10.1 / 28.7 / 36.3 / 125.9 |
+| **收件箱两条查询** | **0.1 / 0.2 / 0.3 / 0.4 / 0.8** |
+| 合计 | **95.8 / 98.6 / 121.4 / 214.9 / 281.4** |
+
+裸 sqlite3 同量级（66 条 DDL 8.8 ms、70 次 `table_info` 0.7 ms、legacy `findMany` 0.02 ms、重放 4.9 ms）；
+库内 `UnreadTaskSession` **0 行**、`NotificationInboxItem` 86 行、`Project` 56 行。
+
+⇒ **573–7,672 ms 不是收件箱的账，也不是 schema 重放的账**（两者合计 96–281 ms 全包），而 ⑤ 那次同窗口里诊断线
+自己写着 `event loop stalled … loadAvg1m 28.33 / freeMemMb 163 / attribution: cpu-bound-in-process` ⇒ 剩下的是
+**Electron 主进程里第一次开库那段上下文**（引擎子进程冷起 + CPU 饥饿）。**这条结论就地阻断了「去优化通知收件箱」
+这条错路**。完整读数、配方与边界：`docs/evidence/2026-10-22-first-db-touch.md`。
+
+### 二 交付（2 源 + 1 测试 + 1 证据档）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/ipc.ts` | 新增独立步 `open-project-db`（`getProjectDbClient` 自己就做建目录 + 起引擎 + schema 守卫），`restore-notification-inbox` 此后**只量收件箱自己**；并把 compose 里剩下会慢的 await 补进同一张账（`application-events`、`permission-grant-registry`、`notebook-application`、`specialist-skill-catalog`、`specialist-package-snapshot`、`builtin-catalog-ready`）⇒ **4 步 → 11 步** |
+| `src/main/ipc-startup-attribution.test.ts` | 新增 pin（5 条）：11 个步名的**有序清单**、`open-project-db` 必须早于 `restore-notification-inbox`、每个 `step(` 都必须被 `await`（未被 await 的步只记 0 ms 且什么也没围住）、`createComposeStepRecorder(` 与 `logSummary()` 各恰好一次、源码长度 > 100k 自检（截断读法会让上面每条空过） |
+| `docs/evidence/2026-10-22-first-db-touch.md` | 五张读数表 + 结论 + 边界 + 复跑配方 + 两条仪器坑 |
+
+### 三 门禁（取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 新增 pin（`ipc-startup-attribution.test.ts`） | **1 文件 / 5 passed**，exit 0 |
+| `tsc -p tsconfig.node.json --composite false`（堆 8192） | **0 error**，exit 0 |
+| `tsc -p tsconfig.web.json --composite false` | **0 error**，exit 0 |
+| `eslint --no-cache .` | **0 error / 131 warning**（与既有基线同数） |
+| 全量 vitest `--maxWorkers=4` | **1383 文件：1 failed / 1366 passed / 16 skipped；17,600 例：1 failed / 17,390 passed / 209 skipped**；耗时 1,107 s（满载） |
+| `scripts/pre-push-checks.sh` | **8 段全过**（含发布提醒、双语 README、权重清单、脚本入口可解析性、本次新增文件 lint） |
+
+**唯一那条红不是本批的**：`src/main/notebook/provisioner-runtime.test.ts > attaches structured offline-create
+diagnostics to a timeout` —— 期望 `stdoutTail: 'timeout-stdout-token'`、实得 `''`；**单文件 isolation 3 遍全绿
+（19/19 × 3）** ⇒ 按负载敏感记档，不当回归（详见 §五 1）。
+
+### 四 边界（不许读成更强）
+
+1. **没有真机窗口读数**：内存闸门（空闲页 3,858 ≈ 60 MB、swap 12.6 G / 14.0 G 已用）⇒ 不声称「启动变快了」，
+   并且**新增的 7 步在真机上尚无读数**（要等下一次真实启动，属**未取**，不是 0）。
+2. 探针是**未打包 Node + 库副本**：量的是「这段 SQL/引擎工作本身多贵」，不是那次启动的现场。
+3. 收件箱查询 0.2–1.0 ms 只说明**查询本身便宜**，不说明 `restore()` 的其余行为无问题。
+4. 若开库在本步之前已被别处打开，本步会读到缓存的 promise（≈0 ms）—— 这是**可见的**（pin 钉死步名与顺序），不是静默。
+
+### 五 具名未办与新发现
+
+1. **新发现（负载敏感用例）**：`src/main/notebook/provisioner-runtime.test.ts` 的超时诊断用例把「子进程完成
+   node 启动并写出 stdout」塞进 **200 ms** 预算，满载时必然红。**本轮不动它**（不是本批的文件，且「加大超时」在本仓是禁手）；
+   建议下一轮认领的修法：预算抬到 1500 ms 并保留 `durationMs ≈ timeoutMs` 的断言 —— 它测的是「超时被结构化成诊断」，
+   不是「node 能在 200 ms 内启动」。
+2. **P0-3 仍缺真机分步读数**：`blocked-by` = 内存闸门（swap 12.6 G / 14.0 G）。
+3. **P0-9 渲染层审批卡计数**（jsdom 计数 + 真机未取要具名）仍敞着。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道；② 内存一旦松开立刻起一次真实启动取 **11 步**读数（`grep -A8 "compose runtime
+steps"`，判据是 `stepCount: 11` 与新步名 `open-project-db` 出现在位次 5）；③ 仍卡内存就按 §五 1 收掉那条负载敏感用例；
+④ 开工前先 `git log --oneline origin/main -3` 核会话没在同时做。
