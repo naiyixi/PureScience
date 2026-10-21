@@ -52,7 +52,51 @@ const commandsFrom = (
   invoke: (channel, invocation) => invoke(channel, invocation.callerContext, [...invocation.args])
 })
 
+const sessionWithInputs = {
+  id: 'session-1',
+  projectId: 'project-1',
+  title: 't',
+  status: 'idle',
+  cwd: '/tmp',
+  messages: [
+    {
+      id: 'm1',
+      role: 'user',
+      content: 'hi',
+      status: 'complete',
+      uploads: [
+        { id: 'u1', sessionId: 'session-1', name: 'pbmc.h5ad', originalName: 'pbmc.h5ad', size: 1 }
+      ],
+      parts: [
+        { type: 'skill', id: 'literature-review', name: 'Literature review' },
+        { type: 'skill', id: 'literature-review', name: 'Literature review' }
+      ]
+    }
+  ]
+} as unknown as PersistedChatSession
+
 describe('HeadlessTaskApi adapter', () => {
+  it("reads a session's attachments and mentioned skills for a capability preflight", async () => {
+    const invoke = vi.fn(async (channel: string) =>
+      channel === 'sessions:load-all' ? { sessions: [sessionWithInputs] } : undefined
+    )
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    await expect(api.capabilitySessionInputs('session-1')).resolves.toEqual({
+      found: true,
+      attachments: [{ name: 'pbmc.h5ad' }],
+      usedCapabilities: ['literature-review']
+    })
+    await expect(api.capabilitySessionInputs('missing')).resolves.toEqual({
+      found: false,
+      attachments: [],
+      usedCapabilities: []
+    })
+    expect(invoke).toHaveBeenCalledWith('sessions:load-all', expect.anything(), [
+      expect.objectContaining({ allowCachedCatalog: true })
+    ])
+  })
+
   it('dispatches façade operations through the narrow Task command view', async () => {
     const commandInvoke = vi.fn(async () => [project])
     const api = new HeadlessTaskApi({

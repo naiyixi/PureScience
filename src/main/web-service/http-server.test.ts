@@ -716,7 +716,12 @@ describe('startWebHttpServer', () => {
       acquireArtifact: vi.fn(),
       releaseArtifact: vi.fn(),
       pendingPermissions: vi.fn().mockResolvedValue([]),
-      respondPermission: vi.fn().mockResolvedValue({})
+      respondPermission: vi.fn().mockResolvedValue({}),
+      capabilitySessionInputs: vi.fn(async () => ({
+        found: false,
+        attachments: [],
+        usedCapabilities: []
+      }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1300,6 +1305,11 @@ describe('startWebHttpServer', () => {
         }
       ]),
       respondPermission: vi.fn().mockResolvedValue({}),
+      capabilitySessionInputs: vi.fn(async () => ({
+        found: false,
+        attachments: [],
+        usedCapabilities: []
+      })),
       dispose: vi.fn()
     }
     const server = await startTestWebHttpServer({
@@ -1489,7 +1499,12 @@ describe('startWebHttpServer', () => {
       }),
       releaseArtifact: vi.fn().mockResolvedValue(undefined),
       pendingPermissions: vi.fn().mockResolvedValue([]),
-      respondPermission: vi.fn().mockResolvedValue({})
+      respondPermission: vi.fn().mockResolvedValue({}),
+      capabilitySessionInputs: vi.fn(async () => ({
+        found: false,
+        attachments: [],
+        usedCapabilities: []
+      }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1561,7 +1576,12 @@ describe('startWebHttpServer', () => {
       }),
       releaseArtifact: vi.fn().mockResolvedValue(undefined),
       pendingPermissions: vi.fn().mockResolvedValue([]),
-      respondPermission: vi.fn().mockResolvedValue({})
+      respondPermission: vi.fn().mockResolvedValue({}),
+      capabilitySessionInputs: vi.fn(async () => ({
+        found: false,
+        attachments: [],
+        usedCapabilities: []
+      }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',

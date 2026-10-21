@@ -6,7 +6,9 @@
 //     "ready" simply because nothing was asked.
 //   • A session whose artifacts cannot be read → `session.status = 'unavailable'` with a named
 //     reason. Empty facts and unread facts are different answers.
-//   • What the session did not record is named (`used_capabilities_not_recorded`), not assumed.
+//   • A skill a message MENTIONS is not a skill that RAN. That distinction travels as a note,
+//     because a preflight that treated a mention as execution would report a fact nobody
+//     established.
 
 import { join } from 'node:path'
 
@@ -32,6 +34,15 @@ export type SessionCapabilityReading = {
   suggested: string[]
 }
 
+/** What a session contributes besides its artifacts. */
+export type SessionInputs = {
+  found: boolean
+  /** Files the user attached to messages in this session. */
+  attachments: { name: string }[]
+  /** Skill ids the session's messages reference. A reference is not an execution. */
+  usedCapabilities: string[]
+}
+
 export type CapabilitiesPayload = {
   declared: DeclaredCapabilitySummary[]
   undeclared: string[]
@@ -55,6 +66,8 @@ export type BuildCapabilitiesInput = {
   sessionId?: string | null
   /** Absent when the caller has no artifact store — the payload then says so instead of guessing. */
   listArtifacts?: (sessionId: string) => Promise<PersistedArtifact[]>
+  /** Absent when the caller cannot read session records; the payload then names that gap. */
+  loadSession?: (sessionId: string) => Promise<SessionInputs>
 }
 
 const summarise = (registry: SkillCapabilityRegistry): DeclaredCapabilitySummary[] =>
@@ -96,14 +109,24 @@ export const buildCapabilitiesPayload = async (
   }
 
   const artifacts = await input.listArtifacts(sessionId)
+  const inputs = input.loadSession ? await input.loadSession(sessionId) : null
+  if (inputs && !inputs.found) {
+    return { ...base, session: { status: 'unavailable', reason: 'session_not_found' } }
+  }
+
   const facts = factsForSession(
-    { artifacts: artifacts.map((artifact) => ({ path: artifact.path })) },
+    {
+      attachments: inputs?.attachments ?? [],
+      artifacts: artifacts.map((artifact) => ({ path: artifact.path })),
+      usedCapabilities: inputs?.usedCapabilities ?? []
+    },
     registry.declared()
   )
-  // What this route cannot see, named so a "missing" reading is never read as a claim about what the
-  // session did: which skills it ran, and which files the user attached (the artifact store does not
-  // carry attachments).
-  const notes = ['used_capabilities_not_recorded', 'attachments_not_read']
+
+  // Named gaps keep a "missing" reading from being read as a claim about what the session did.
+  const notes: string[] = []
+  if (!inputs) notes.push('session_inputs_unavailable')
+  else if (inputs.usedCapabilities.length) notes.push('used_capabilities_from_mentions')
 
   const readings = registry
     .declared()

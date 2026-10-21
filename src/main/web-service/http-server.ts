@@ -93,6 +93,7 @@ type WebServerOptions = {
     | 'releaseArtifact'
     | 'pendingPermissions'
     | 'respondPermission'
+    | 'capabilitySessionInputs'
     | 'runWithCallerContext'
   >
   onShutdownRequest?: () => void
@@ -368,7 +369,8 @@ const handleTaskApiRequest = async (
           data: await buildCapabilitiesPayload({
             configRoot,
             sessionId: url.searchParams.get('session'),
-            listArtifacts: (id) => tasks.listArtifacts(id)
+            listArtifacts: (id) => tasks.listArtifacts(id),
+            loadSession: (id) => tasks.capabilitySessionInputs(id)
           })
         })
         return true

@@ -225,6 +225,38 @@ class HeadlessTaskApi {
     )
   }
 
+  /**
+   * What a session contributes to a capability preflight beyond its artifacts: the files the user
+   * attached and the skills its messages reference. Session records are the only place those live,
+   * and `sessions:load-all` is the narrow read that already serves session listing.
+   *
+   * `usedCapabilities` is a MENTION list, not an execution log — the caller words it that way.
+   */
+  async capabilitySessionInputs(sessionId: string): Promise<{
+    found: boolean
+    attachments: { name: string }[]
+    usedCapabilities: string[]
+  }> {
+    const result = (await this.invoke('sessions:load-all', { allowCachedCatalog: true })) as {
+      sessions: PersistedChatSession[]
+    }
+    const session = result.sessions.find((entry) => entry.id === sessionId)
+    if (!session) return { found: false, attachments: [], usedCapabilities: [] }
+
+    const attachments: { name: string }[] = []
+    const used = new Set<string>()
+    for (const message of session.messages ?? []) {
+      for (const upload of message.uploads ?? []) {
+        const name = upload.name || upload.originalName
+        if (name) attachments.push({ name })
+      }
+      for (const part of message.parts ?? []) {
+        if (part.type === 'skill' && part.id) used.add(part.id)
+      }
+    }
+    return { found: true, attachments, usedCapabilities: [...used] }
+  }
+
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     return this.commandClient.invoke(
       this.ports.commands,

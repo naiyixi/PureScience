@@ -85,18 +85,49 @@ describe('buildCapabilitiesPayload', () => {
       missing: [],
       suggested: []
     })
-    // An artifact store says nothing about a matrix the user attached: that requirement stays unmet,
-    // and the note above says attachments were not read.
+    // Without session records this route cannot see attachments, so that requirement stays unmet and
+    // the gap is named rather than filled in.
     expect(readings.find((entry) => entry.id === 'reads-matrix')).toEqual({
       id: 'reads-matrix',
       status: 'missing_state',
       missing: [{ fact: 'input:omics_file', producers: [] }],
       suggested: []
     })
-    expect(payload.session.notes).toEqual([
-      'used_capabilities_not_recorded',
-      'attachments_not_read'
-    ])
+    expect(payload.session.notes).toEqual(['session_inputs_unavailable'])
+  })
+
+  it('uses attachments and named skills from the session record', async () => {
+    const payload = await buildCapabilitiesPayload({
+      configRoot,
+      sessionId: 's1',
+      listArtifacts: async () => [artifact('out/figure.png')],
+      loadSession: async () => ({
+        found: true,
+        attachments: [{ name: 'pbmc.h5ad' }],
+        usedCapabilities: ['reads-matrix']
+      })
+    })
+    if (payload.session?.status !== 'read') throw new Error('unreachable')
+    // Order is "attachments, then what the session's capabilities produced, then artifacts" — the
+    // order the three sources are composed in, so a reader can tell where each fact came from.
+    expect(payload.session.facts).toEqual(['input:omics_file', 'data:summary', 'artifact:figure'])
+    expect(payload.session.factSources['input:omics_file']).toEqual(['file:pbmc.h5ad'])
+    expect(payload.session.factSources['data:summary']).toEqual(['capability:reads-matrix'])
+    expect(payload.session.readings.find((entry) => entry.id === 'reads-matrix')?.status).toBe(
+      'ready'
+    )
+    // A skill the message mentions is not proof it ran; the payload says which one it is.
+    expect(payload.session.notes).toEqual(['used_capabilities_from_mentions'])
+  })
+
+  it('says the session was not found instead of reporting empty facts', async () => {
+    const payload = await buildCapabilitiesPayload({
+      configRoot,
+      sessionId: 'gone',
+      listArtifacts: async () => [],
+      loadSession: async () => ({ found: false, attachments: [], usedCapabilities: [] })
+    })
+    expect(payload.session).toEqual({ status: 'unavailable', reason: 'session_not_found' })
   })
 
   it('reports a missing requirement with the capability that would establish it', async () => {
