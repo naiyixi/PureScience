@@ -10295,3 +10295,77 @@ AFTER   publishes=1000  totalMs= 885.56  snapshotBuilds=1000   # 0.886 ms / 次
 
 **下一轮第一步**：① 按完整 40 位 SHA 读本笔两条车道；② 若内存闸门解除，先取 §两百零四 §四 第 3 条的现场读数
 （`state snapshot build rate` 的 `calls/s` 与 `maxMs`），再决定「发射频率」这一半；③ §五 第 1 条等拍板，别自己改契约。
+
+## 两百零六、本轮追加（执行器，2026-10-21 08:3x–09:2x）—— 「窗口没出现」那条红：先证明证据本身在启动时被删了，再让它自带证据
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 26dd678b`（上一轮那一笔），工作区**干净**、`origin/main..HEAD` 为空；
+  两条车道都已落定（`Nightly` failure / `Windows Full Test` success），**在飞车道为零** ⇒ 本笔推送不会取消任何人的判决。
+- 桌面会话这条线仍在 `src/shared/sci-bench-*` 与其计划档（最近：`ec9127eb`/`5f4989bb`/`8b448097`）⇒
+  本单元只碰 `e2e/**`、`test/**`、`docs/evidence/**` 与本档，**目录不相交**。
+- B 段复核仍为 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）⇒ 按队列约定取自拟单元；本单元取自
+  §两百零五 §五 第 3 条那条**已立案、带 blocked-by** 的项（它正是「取证路径本身不存在」）。
+
+### 一 上一笔的判决与归因（按完整 40 位 SHA，不重跑）
+
+| 车道 | 结论 | 说明 |
+|---|---|---|
+| `Nightly`（run `39511096581`） | **failure** | 唯一失败作业 `build / Build macos-arm64`；唯一失败步骤 `Enforce platform certification`；套件自身 **95 passed / 8 flaky / 1 failed / 11 skipped（56.9 min）** |
+| `Windows Full Test` | **success** | 该车道不执行认证 spec |
+
+唯一 failed 仍是 `search-index-coverage.spec.ts:33`，两次尝试同为 `firstWindow: Timeout 30000ms exceeded`（栈在
+`fixtures/electron-app.ts:280`、调用方 `restart()` `:560`）。**本轮不据此改产品、不加超时** —— 原因见下一节：
+**这条红当时根本没有可归因的证据**。
+
+### 二 交付（2 新文件 + 1 改 + 1 证据档 + 本节）
+
+| 位置 | 改动 |
+|---|---|
+| `e2e/fixtures/app-process-log.ts`（新） | 纯函数模块：启动日志命名（序号 + spec 标题 + 重试号）、首部自述（哪次启动 / pid / 两个根 / 时间）、退出态措辞、失败文案、有界读尾部（64 KB / 20 行）；`raceWindowAgainstExit` 把「等窗口」与「等进程退出」并置，`openWindowOrNameFailure` 按三种终局给出各自的判词 |
+| `e2e/fixtures/electron-app.ts` | ① 每次 `launch()` 写**自己的**文件 `test-results/app-process/<序号>-<spec slug>[-retryN].log`（另镜像一份到旧的固定路径，习惯与既有文档不变）；② 首部由夹具写入，日志**能自证是哪次启动**；③ `openMainWindow` 不再裸等 `firstWindow`：**进程先退出就立刻失败**并给出 `exited (code=…, signal=…)` + 该次日志尾部，超时则保留原超时原因并写明 `is still running`；④ 夹具收尾那行改指**该 harness 最近一次启动**的文件 |
+| `test/app-process-log.test.ts`（新，**15 例**） | 命名（序号/重试/长标题不留悬挂分隔符）、退出态三种措辞、文案含路径与尾部、空尾部不打印空段、竞态两分支、`openWindowOrNameFailure` 三分支（含**进程已退出时不花 30 s**，断言 <1 s）、尾部读取对**真实文件**与**缺失文件**两态 |
+| `docs/evidence/2026-10-21-launch-log-evidence.md` | 这次红的全部读数：作业/步骤、artifact 清点、121 次启动的字节数分布、六个最小值的 spec 对照、边界与未办 |
+
+### 三 读数：这次红为什么无法归因（已确证），以及能取到的替代读数
+
+1. **artifact 里的 `app-process.log` 不是失败那次的**：下载 `p0-test-results-macos-arm64`（4.5 MB）后只有一个
+   305 行的日志，首行是正常启动、末行是 `application-shutdown … durationMs: 65`，属整轮**最后**一次启动
+   （`window-find-overlay`，通过）。根因在夹具：单一固定路径 + `flags: 'w'` ⇒ **每次启动截断上一次**。
+   失败尝试的 `trace.zip` 里只有一个 `stdout` 事件（就是夹具那行 `(2489 bytes)`），**应用输出一个字节都没进 trace**。
+   ⇒ §两百零五 §五 第 3 条「下次红时先取该 artifact」按那时的夹具**取不到**，此条就地更正。
+2. **替代读数（作业日志里的字节数，121 次启动）**：中位 **8,607 B**、最小 1,472 B；而最小的六个**正好**是本轮
+   出问题的六个 spec（`pdf-annotation-layer` 1,472 / `pdf-table-panel-reasons` 2,226 / `search-index-coverage` 2,489 /
+   `session-package-round-trip` 2,489 / `storage-migration-unfinished` 2,489 / `ro-crate-export` 2,593）。
+3. **两个只有这组数能说的话**：① 这些启动只写出正常启动的**三成**就再无输出 ⇒「窗口慢」缺少支撑，窗口之前也没写完；
+   ② 三个不同 spec 的字节数**完全相同（2,489）** ⇒ 三次停在启动里**同一处**，是确定性截断而非慢。
+   对照一份 10,757 B 的完整启动，2,489 B 落在 `session-hydration` 早段、`install-lifecycle`（该步实测 3,859 ms）与
+   `session-hydration`（473 ms）完成**之前** —— 只能说到**段落级**（不同启动的根路径不同，字节无法逐字节对齐）。
+4. **没有据此判定成因**：进程退出与卡在某一步两条都符合现有读数 ⇒ 本轮**不改产品代码、不加超时**。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `test/app-process-log.test.ts` | **1 file / 15 passed**（含「已退出时 <1 s 失败」那条） |
+| `test/vitest-project-partition.test.ts` + `test/renderer-failure-gate.test.ts` + 新档 | **3 files / 32 passed** |
+| `typecheck:node`（含 `e2e/**`） | `NODE_EXIT=0`、**0 error** |
+| `eslint --no-cache`（本批 3 文件） | **0 problem**（4 处 prettier 换行按提示手工收紧，未用 `--fix` 扫别处） |
+| 未跑 | **真机 e2e（无读数）**：内存闸门不满足（空闲页 5,042 ≈ 78 MB、`swap used 12.95 G / 14.34 G`，机器上跑着打包版实例、dev Electron 与桌面会话）⇒ 本单元**不声称**任何真机读数 |
+
+### 五 边界（不许读成更强）与具名未办
+
+1. **本单元只改取证，不改行为**：窗口出现的路径、超时时长（仍是 30 s）、断言强度一个字节没动；新加的失败分支
+   只在「进程已退出」时**更快地**失败，不会把一条本可成功的用例判红（窗口先到即走原路径）。
+2. **成因仍未确证**：`blocked-by` = 下一轮该车道红时**按新命名读那次启动自己的日志**。解封后第一步：看
+   `test-results/app-process/` 下那次是「退出」还是「停在某一步」——那才是判因的入口。
+3. **`Run P0 Electron certification` 步骤绿点而套件有 1 failed**：属既有设计（`continue-on-error` + 下游裁决），
+   但「步骤绿点≠真判决」本身易误读；要不要让它显式化属车道设计决定，本轮不动 `.github/**`（受保护）。
+4. **不发版**：本笔不碰发版四文件；v2.15.3 已是 Latest。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 取本笔两条车道（`Nightly` 会给新证据，`Windows Full Test` 只作对照）；
+② 若 `Nightly` 再红在同族：按 `test-results/app-process/` 里**那一次**的日志与失败文案里的 `exited/is still running`
+   判因，**先分「退出」与「卡住」两态**再动代码；③ 若内存闸门解除，取 §两百零四 §四 第 3 条与 §两百零五 §四 第 3 条
+   那条现场读数（`state snapshot build rate` 的 `calls/s` 与 `maxMs`）；④ §两百零五 §五 第 1 条（发布快照可否冻结）等拍板，不自己改契约。

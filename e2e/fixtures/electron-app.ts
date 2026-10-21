@@ -6,6 +6,13 @@ import { tmpdir } from 'node:os'
 import { delimiter, dirname, join, resolve } from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { terminateProcessTree } from '../../src/main/process-tree'
+import {
+  appProcessLogPath,
+  launchHeader,
+  openWindowOrNameFailure,
+  readTailLines,
+  type LaunchLogIdentity
+} from './app-process-log'
 import { RendererFailureGate } from './renderer-failure-gate'
 
 const APP_ROOT = resolve(process.cwd())
@@ -13,8 +20,11 @@ const FAKE_AGENT_PATH = resolve(APP_ROOT, 'e2e', 'fixtures', 'fake-opencode.mjs'
 const FAKE_REMOTEIT_PATH = resolve(APP_ROOT, 'e2e', 'fixtures', 'fake-remoteit.cjs')
 // The app's own stdout/stderr, kept OUTSIDE the per-test root: a start-up death used to leave nothing but
 // a "Starting PureScience…" snapshot, because this output was dropped and the isolated root is removed
-// during teardown. One file per run (the newest run's output), path printed so a failure names its evidence.
-const APP_PROCESS_LOG_PATH = resolve(APP_ROOT, 'test-results', 'app-process.log')
+// during teardown. It is written twice: to a per-launch file (the authoritative evidence — a relaunch can no
+// longer truncate the log of the launch that failed) and to the single stable path this run's logs used to
+// live at, so the familiar file keeps meaning "the newest launch".
+const TEST_RESULTS_ROOT = resolve(APP_ROOT, 'test-results')
+const APP_PROCESS_LOG_PATH = resolve(TEST_RESULTS_ROOT, 'app-process.log')
 
 const FAKE_PROVIDER_NAME = 'Electron E2E provider'
 
@@ -195,7 +205,8 @@ const launchPureScience = async (
   { storageRoot, userDataRoot, fakeAgentBinRoot }: LaunchRoots,
   fakeAgentEnabled: boolean,
   fakeRemoteItEnabled: boolean,
-  fakeRemoteItRoot: string
+  fakeRemoteItRoot: string,
+  log: { path: string; identity: LaunchLogIdentity }
 ): Promise<ElectronApplication> => {
   const application = await electron.launch({
     ...electronLaunchTarget(userDataRoot),
@@ -209,11 +220,31 @@ const launchPureScience = async (
   })
 
   try {
-    await mkdir(dirname(APP_PROCESS_LOG_PATH), { recursive: true })
-    const logStream = createWriteStream(APP_PROCESS_LOG_PATH, { flags: 'w' })
-    application.process().stdout?.on('data', (chunk: Buffer) => logStream.write(chunk))
-    application.process().stderr?.on('data', (chunk: Buffer) => logStream.write(chunk))
-    application.process().on('exit', () => logStream.end())
+    await mkdir(dirname(log.path), { recursive: true })
+    const stream = application.process()
+    // The header goes in first so a log self-identifies: which launch, which roots, which pid. Two files
+    // per launch (see the constants above) — the per-launch one is the evidence, the stable one is the habit.
+    const header = launchHeader({
+      identity: log.identity,
+      pid: stream.pid,
+      startedAt: new Date(),
+      userDataRoot,
+      storageRoot
+    })
+    const perLaunch = createWriteStream(log.path, { flags: 'w' })
+    const latest = createWriteStream(APP_PROCESS_LOG_PATH, { flags: 'w' })
+    perLaunch.write(header)
+    latest.write(header)
+    const forward = (chunk: Buffer): void => {
+      perLaunch.write(chunk)
+      latest.write(chunk)
+    }
+    stream.stdout?.on('data', forward)
+    stream.stderr?.on('data', forward)
+    stream.on('exit', () => {
+      perLaunch.end()
+      latest.end()
+    })
   } catch {
     // Losing the log must never break a launch; the run's own assertions are the contract here.
   }
@@ -275,12 +306,33 @@ const makeTreeWritable = async (root: string): Promise<void> => {
 
 const openMainWindow = async (
   application: ElectronApplication,
-  rendererFailures: RendererFailureGate
+  rendererFailures: RendererFailureGate,
+  logPath: string
 ): Promise<Page> => {
-  const page = await application.firstWindow()
-  await rendererFailures.observe(page)
-  await page.waitForLoadState('domcontentloaded')
-  return page
+  const ready = async (window: unknown): Promise<Page> => {
+    const page = window as Page
+    await rendererFailures.observe(page)
+    await page.waitForLoadState('domcontentloaded')
+    return page
+  }
+
+  const child = application.process()
+  const exited: Promise<{ code: number | null; signal: string | null }> = new Promise((resolve) => {
+    // `exit` may already have fired between the launch resolving and this listener attaching, hence the
+    // immediate check. A dead process is a fact to report, never a rejection of its own.
+    if (child.exitCode !== null || child.signalCode !== null)
+      resolve({ code: child.exitCode, signal: child.signalCode })
+    else child.once('exit', (code, signal) => resolve({ code, signal }))
+  })
+
+  const page = await openWindowOrNameFailure({
+    firstWindow: () => application.firstWindow(),
+    exited,
+    logPath,
+    readTail: () => readTailLines(logPath, 20),
+    open: ready
+  })
+  return page as Page
 }
 
 class ElectronAppHarness implements ElectronApp {
@@ -289,21 +341,35 @@ class ElectronAppHarness implements ElectronApp {
   private fakeAgentEnabled = false
   private fakeRemoteItEnabled = false
   private readonly rendererFailures = new RendererFailureGate()
+  /** 1-based launch ordinal for this harness: a restart is launch #2, and its log keeps its own file. */
+  private launchCount = 0
+  private lastLaunchLogPath: string | undefined
 
   private constructor(
     private readonly testRoot: string,
-    private readonly roots: LaunchRoots
+    private readonly roots: LaunchRoots,
+    private readonly evidence: {
+      testTitle: string
+      retry: number
+    }
   ) {}
 
-  static async create(): Promise<ElectronAppHarness> {
+  static async create(evidence?: {
+    testTitle: string
+    retry: number
+  }): Promise<ElectronAppHarness> {
     const testRoot = await mkdtemp(join(tmpdir(), 'purescience-electron-e2e-'))
-    const harness = new ElectronAppHarness(testRoot, {
-      fakeAgentBinRoot: join(testRoot, 'fake-agent-bin'),
-      fakeRemoteItRoot: join(testRoot, 'fake-remoteit'),
-      fakeRemoteItState: join(testRoot, 'storage', 'fake-remoteit-state.json'),
-      storageRoot: join(testRoot, 'storage'),
-      userDataRoot: join(testRoot, 'electron-profile')
-    })
+    const harness = new ElectronAppHarness(
+      testRoot,
+      {
+        fakeAgentBinRoot: join(testRoot, 'fake-agent-bin'),
+        fakeRemoteItRoot: join(testRoot, 'fake-remoteit'),
+        fakeRemoteItState: join(testRoot, 'storage', 'fake-remoteit-state.json'),
+        storageRoot: join(testRoot, 'storage'),
+        userDataRoot: join(testRoot, 'electron-profile')
+      },
+      evidence ?? { testTitle: '', retry: 0 }
+    )
     try {
       await mkdir(harness.roots.storageRoot, { recursive: true })
       await writeFile(harness.roots.fakeRemoteItState, JSON.stringify({ services: [] }), 'utf8')
@@ -569,13 +635,26 @@ class ElectronAppHarness implements ElectronApp {
   }
 
   private async launch(): Promise<void> {
+    const identity: LaunchLogIdentity = {
+      index: ++this.launchCount,
+      testTitle: this.evidence.testTitle,
+      retry: this.evidence.retry
+    }
+    const logPath = appProcessLogPath(TEST_RESULTS_ROOT, identity)
+    this.lastLaunchLogPath = logPath
     this.application = await launchPureScience(
       this.roots,
       this.fakeAgentEnabled,
       this.fakeRemoteItEnabled,
-      this.roots.fakeRemoteItRoot
+      this.roots.fakeRemoteItRoot,
+      { path: logPath, identity }
     )
-    this.currentPage = await openMainWindow(this.application, this.rendererFailures)
+    this.currentPage = await openMainWindow(this.application, this.rendererFailures, logPath)
+  }
+
+  /** The file the fixture's closing evidence line points at: this harness's most recent launch. */
+  get currentLaunchLogPath(): string | undefined {
+    return this.lastLaunchLogPath
   }
 
   private get runningApplication(): ElectronApplication {
@@ -629,19 +708,27 @@ class ElectronAppHarness implements ElectronApp {
 const test = base.extend<{ app: ElectronApp }>({
   // Playwright fixture callbacks require an object pattern even when no base fixture is needed.
   // eslint-disable-next-line no-empty-pattern
-  app: async ({}, install) => {
-    const app = await ElectronAppHarness.create()
+  app: async ({}, install, testInfo) => {
+    // The launch logs are named after the spec and the attempt, so a log left behind by a failed run says
+    // which test produced it (and a retry does not overwrite the first attempt's evidence).
+    const app = await ElectronAppHarness.create({
+      testTitle: testInfo.titlePath.join(' / '),
+      retry: testInfo.retry
+    })
 
     try {
       await install(app)
     } finally {
-      // Name the evidence on the way out: whether the test passed or died at start-up, the app's own
-      // output is on disk at a path the failure message can point at.
-      try {
-        const { size } = await stat(APP_PROCESS_LOG_PATH)
-        console.log(`[e2e] app process output (${size} bytes): ${APP_PROCESS_LOG_PATH}`)
-      } catch {
-        console.log(`[e2e] app process output was not captured: ${APP_PROCESS_LOG_PATH}`)
+      // Name the evidence on the way out: whether the test passed or died at start-up, this launch's own
+      // output is on disk at a path the failure message points at.
+      const logPath = app.currentLaunchLogPath
+      if (logPath) {
+        try {
+          const { size } = await stat(logPath)
+          console.log(`[e2e] app process output (${size} bytes): ${logPath}`)
+        } catch {
+          console.log(`[e2e] app process output was not captured: ${logPath}`)
+        }
       }
       await app.dispose()
     }
