@@ -34,6 +34,7 @@ let server: Server
 let baseUrl = ''
 let outDir = ''
 let runStatus = 'completed'
+let lastRunBody: Record<string, unknown> | null = null
 
 beforeAll(async () => {
   outDir = await mkdtemp(join(tmpdir(), 'pilot-out-'))
@@ -43,7 +44,12 @@ beforeAll(async () => {
       res.end(JSON.stringify(payload))
     }
     if (req.method === 'POST' && req.url === '/api/v1/runs') {
-      send(202, { data: { id: 'run-1', sessionId: 'session-1' } })
+      const chunks: Buffer[] = []
+      req.on('data', (chunk: Buffer) => chunks.push(chunk))
+      req.on('end', () => {
+        lastRunBody = JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>
+        send(202, { data: { id: 'run-1', sessionId: 'session-1' } })
+      })
       return
     }
     if (req.method === 'GET' && req.url === '/api/v1/runs/run-1') {
@@ -72,15 +78,20 @@ describe('runPilot', () => {
     const { record, file } = await runPilot({
       baseUrl,
       token: 'test-token',
-      projectId: 'project-1',
+      project: 'project-1',
       benchCase: checkpoint,
       arm: 'no-contract',
       outDir,
       model: 'deepseek-v4-flash',
       runtime: 'claude-code',
       seed: 7,
+      permissionProfile: 'full',
       pollMs: 10
     })
+
+    // The wire shape is the app's, not ours: `project` (not projectId) and the profile that lets a
+    // headless run finish without a permission card.
+    expect(lastRunBody).toMatchObject({ project: 'project-1', permissionProfile: 'full' })
 
     expect(record).toMatchObject({
       caseId: 'checkpoint-resume-order',
@@ -105,7 +116,7 @@ describe('runPilot', () => {
     const { record } = await runPilot({
       baseUrl,
       token: 'test-token',
-      projectId: 'project-1',
+      project: 'project-1',
       benchCase: checkpoint,
       arm: 'full-contract',
       outDir,
@@ -120,7 +131,7 @@ describe('runPilot', () => {
       runPilot({
         baseUrl: `${baseUrl}/nope`,
         token: 'test-token',
-        projectId: 'project-1',
+        project: 'project-1',
         benchCase: checkpoint,
         arm: 'full-contract',
         outDir,

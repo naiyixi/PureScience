@@ -1,0 +1,44 @@
+{
+  "caseId": "checkpoint-resume-order",
+  "arm": "full-contract",
+  "runId": "(regraded)",
+  "sessionId": "ses_ea0c2e8c8ffeo5jCwkK1IrOmnj",
+  "runStatus": "regraded",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-21T16:23:35.131Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "numbers": false,
+    "citations": false
+  },
+  "result": {
+    "caseId": "checkpoint-resume-order",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "load-before-work",
+        "dimension": "object_plumbing",
+        "passed": false,
+        "detail": "checkpoint_load@-1 / checkpoint_save@-1 — order not evidenced"
+      },
+      {
+        "checkId": "resume-named",
+        "dimension": "object_plumbing",
+        "passed": false,
+        "detail": "pattern missing: (恢复|resume|沿用).{0,40}(检查点|checkpoint|上次)"
+      },
+      {
+        "checkId": "no-silent-redo",
+        "dimension": "data_integrity",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}

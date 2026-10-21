@@ -42,32 +42,45 @@ describe.skipIf(!caseId)('S3 pilot', () => {
     expect(parseAblationArm(process.env[ABLATION_ENV])).toBe(arm)
   })
 
-  it.skipIf(dryRun)('runs the case, reads its evidence and grades it', async () => {
-    const baseUrl = process.env.PILOT_BASE_URL?.replace(/\/$/, '')
-    const projectId = process.env.PILOT_PROJECT?.trim()
-    expect(baseUrl, 'PILOT_BASE_URL is required for a real run').toBeTruthy()
-    expect(projectId, 'PILOT_PROJECT is required for a real run').toBeTruthy()
+  it.skipIf(dryRun)(
+    'runs the case, reads its evidence and grades it',
+    async () => {
+      const baseUrl = process.env.PILOT_BASE_URL?.replace(/\/$/, '')
+      const projectId = process.env.PILOT_PROJECT?.trim()
+      expect(baseUrl, 'PILOT_BASE_URL is required for a real run').toBeTruthy()
+      expect(projectId, 'PILOT_PROJECT is required for a real run').toBeTruthy()
 
-    const { record, file } = await runPilot({
-      baseUrl: baseUrl!,
-      token: process.env.PILOT_TOKEN ?? '',
-      projectId: projectId!,
-      benchCase: benchCase!,
-      arm,
-      outDir: join(process.cwd(), 'docs', 'bench-runs'),
-      model: process.env.PILOT_MODEL ?? null,
-      runtime: process.env.PILOT_RUNTIME ?? null,
-      seed: process.env.PILOT_SEED ? Number(process.env.PILOT_SEED) : null,
-      ...(process.env.PILOT_TIMEOUT_MS ? { timeoutMs: Number(process.env.PILOT_TIMEOUT_MS) } : {})
-    })
+      const { record, file } = await runPilot({
+        baseUrl: baseUrl!,
+        token: process.env.PILOT_TOKEN ?? '',
+        project: projectId!,
+        benchCase: benchCase!,
+        arm,
+        outDir: join(process.cwd(), 'docs', 'bench-runs'),
+        model: process.env.PILOT_MODEL ?? null,
+        runtime: process.env.PILOT_RUNTIME ?? null,
+        seed: process.env.PILOT_SEED ? Number(process.env.PILOT_SEED) : null,
+        // A headless run cannot answer a permission card; 'full' is the only profile that lets the
+        // agent finish unattended, and it is scoped to this throwaway config root.
+        permissionProfile:
+          (process.env.PILOT_PERMISSION_PROFILE as 'ask' | 'auto' | 'full') ?? 'full',
+        // Re-grading an existing session must not cost another model call.
+        sessionId: process.env.PILOT_SESSION?.trim() ?? null,
+        ...(process.env.PILOT_TIMEOUT_MS ? { timeoutMs: Number(process.env.PILOT_TIMEOUT_MS) } : {})
+      })
 
-    // The run's own log carries the verdict, not only the file.
-    console.log(`pilot result: ${file}`)
-    console.log(
-      JSON.stringify({ runStatus: record.runStatus, passed: record.result.passed }, null, 2)
-    )
-    expect(['completed', 'failed']).toContain(record.runStatus)
-  })
+      // The run's own log carries the verdict, not only the file.
+      console.log(`pilot result: ${file}`)
+      console.log(
+        JSON.stringify({ runStatus: record.runStatus, passed: record.result.passed }, null, 2)
+      )
+      // 'regraded' is its own state: it means no new run happened, only a second reading.
+      expect(['completed', 'failed', 'regraded']).toContain(record.runStatus)
+      // A real agent run is minutes, not seconds; vitest's 60s default would fail the test while the
+      // run it started is still going.
+    },
+    25 * 60 * 1000
+  )
 })
 
 // Always runs: the plan is worth printing (and asserting) even when nothing is executed.

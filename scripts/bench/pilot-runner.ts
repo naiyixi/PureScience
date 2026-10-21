@@ -18,13 +18,21 @@ import {
 export type PilotOptions = {
   baseUrl: string
   token: string
-  projectId: string
+  /** The app's project field is `project` (an id or a name); the wire shape is not the local naming. */
+  project: string
+  /**
+   * Grade an existing session instead of starting a new run. Re-grading after fixing a check must not
+   * cost another model call, and must not be reported as a fresh run.
+   */
+  sessionId?: string | null
   benchCase: BenchCaseV1
   arm: string
   outDir: string
   model?: string | null
   runtime?: string | null
   seed?: number | null
+  /** Headless runs have no window to answer a permission card in; the pilot must say so up front. */
+  permissionProfile?: 'ask' | 'auto' | 'full'
   /** Wall-clock budget for the run itself. Exceeding it is a recorded failure, not a hang. */
   timeoutMs?: number
   pollMs?: number
@@ -69,19 +77,24 @@ export const runPilot = async (
   const pollMs = options.pollMs ?? 5_000
   const deadline = (options.now?.() ?? new Date()).getTime() + (options.timeoutMs ?? 15 * 60 * 1000)
 
-  const started = await call<{ id: string; sessionId: string }>(
-    `${baseUrl}/api/v1/runs`,
-    options.token,
-    {
-      method: 'POST',
-      body: JSON.stringify({ projectId: options.projectId, prompt: options.benchCase.prompt })
-    }
-  )
+  const reused = options.sessionId?.trim()
+  const started = reused
+    ? { id: '(regraded)', sessionId: reused }
+    : await call<{ id: string; sessionId: string }>(`${baseUrl}/api/v1/runs`, options.token, {
+        method: 'POST',
+        body: JSON.stringify({
+          project: options.project,
+          prompt: options.benchCase.prompt,
+          ...(options.permissionProfile ? { permissionProfile: options.permissionProfile } : {})
+        })
+      })
 
-  let run = await call<{ status: string; error?: string }>(
-    `${baseUrl}/api/v1/runs/${started.id}`,
-    options.token
-  )
+  let run: { status: string; error?: string } = reused
+    ? { status: 'regraded' }
+    : await call<{ status: string; error?: string }>(
+        `${baseUrl}/api/v1/runs/${started.id}`,
+        options.token
+      )
   while (run.status === 'running' && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, pollMs))
     run = await call<{ status: string; error?: string }>(
