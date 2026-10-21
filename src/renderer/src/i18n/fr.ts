@@ -5048,5 +5048,11 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': 'Détails techniques',
   'reviewer.error.budget':
     "La revue s'est arrêtée à son plafond d'appels d'outils avant de rendre un verdict : rien n'a été enregistré pour ce tour. Relancez la revue ou réduisez la portée du tour.",
-  'reviewer.errorShort.budget': "plafond d'appels atteint"
+  'reviewer.errorShort.budget': "plafond d'appels atteint",
+  'workspace.deleteSessionRunData':
+    'Cela supprime aussi {size} de données d’exécution de notebook produites par cette session.',
+  'workspace.deleteSessionNoRunData':
+    'Cette session n’a produit aucune donnée d’exécution de notebook.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'Les données d’exécution de notebook de cette session n’ont pas pu être mesurées — tout ce qu’elle a produit sera supprimé avec elle.'
 }

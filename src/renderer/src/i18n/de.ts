@@ -5078,5 +5078,10 @@ export const de: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': 'Technische Details',
   'reviewer.error.budget':
     'Die Prüfung hat ihr Aufrufkontingent für Werkzeuge ausgeschöpft, bevor ein Urteil vorlag; für diesen Durchgang wurde nichts festgehalten. Prüfung erneut starten oder einen kleineren Durchgang prüfen.',
-  'reviewer.errorShort.budget': 'Aufrufkontingent aufgebraucht'
+  'reviewer.errorShort.budget': 'Aufrufkontingent aufgebraucht',
+  'workspace.deleteSessionRunData':
+    'Damit werden außerdem {size} an Notebook-Laufdaten gelöscht, die diese Sitzung erzeugt hat.',
+  'workspace.deleteSessionNoRunData': 'Diese Sitzung hat keine Notebook-Laufdaten erzeugt.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'Die Notebook-Laufdaten dieser Sitzung konnten nicht gemessen werden — was sie erzeugt hat, wird mit der Sitzung gelöscht.'
 }

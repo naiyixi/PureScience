@@ -1,5 +1,8 @@
 import type { TranslationKey } from '@/i18n'
-import type { SessionNotebookDataDeletion } from '../../../shared/session-persistence'
+import type {
+  SessionNotebookDataDeletion,
+  SessionNotebookUsage
+} from '../../../shared/session-persistence'
 import { formatBytes } from '../../../shared/update'
 
 // The sentence one session deletion reports. Both surfaces that delete a session (the workspace
@@ -37,4 +40,22 @@ export const sessionDeletionMessage = (
     return t('ws.sessionDeletedNothingStored', { title })
   }
   return t('ws.sessionDeletedRunDataKept', { title })
+}
+
+// The sentence the CONFIRMATION prints before an irreversible session delete. Same vocabulary as the
+// receipt above, but it has to be honest in the one state a receipt never sees: a reading that does not
+// exist yet. The confirmation is where the user decides, so it names what the action takes with it —
+// deleting a session also releases `<dataRoot>/notebooks/<projectId>/<sessionId>`, which on a real
+// installation held 1.1 GB of analysis results. `undefined` means "no reading to speak from" and the
+// caller renders nothing rather than the "nothing to lose" claim.
+export const sessionNotebookUsageMessage = (
+  usage: SessionNotebookUsage | null,
+  lang: string,
+  t: Translate
+): string | undefined => {
+  if (!usage) return undefined
+  if (usage.state === 'absent') return t('workspace.deleteSessionNoRunData')
+  if (usage.state === 'unavailable') return t('workspace.deleteSessionRunDataUnmeasured')
+  if (usage.bytes <= 0) return t('workspace.deleteSessionNoRunData')
+  return t('workspace.deleteSessionRunData', { size: formatBytes(usage.bytes, lang) })
 }

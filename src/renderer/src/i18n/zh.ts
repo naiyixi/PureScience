@@ -4595,7 +4595,11 @@ export const zh = {
   'reviewer.errorTechnicalDetail': '技术详情',
   'reviewer.error.budget':
     '审查在工具调用上限处停下，没有给出结论，因此这一轮没有记下任何检查。可以重新运行审查，或把这一轮拆小后再审。',
-  'reviewer.errorShort.budget': '工具调用用尽'
+  'reviewer.errorShort.budget': '工具调用用尽',
+  'workspace.deleteSessionRunData': '这还会删除本会话产出的笔记本运行数据（{size}）。',
+  'workspace.deleteSessionNoRunData': '本会话没有产出笔记本运行数据。',
+  'workspace.deleteSessionRunDataUnmeasured':
+    '无法测量本会话的笔记本运行数据——它产出的内容会随会话一起删除。'
 }
 
 export type ZhKey = keyof typeof zh

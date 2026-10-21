@@ -217,7 +217,9 @@ describe('renderer argument-shape characterization', () => {
     // same profile as the runtime environment channels above.
     // 404 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited): two plain Web
     // request channels, callable on this surface like the reference writes they sit beside.
-    expect(actualPaths).toHaveLength(404)
+    // 405 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
+    // channel, callable on this surface like the session reads it sits beside.
+    expect(actualPaths).toHaveLength(405)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

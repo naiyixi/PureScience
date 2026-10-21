@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { deleteProjectNotebookData, deleteSessionNotebookData } from './session-data-cleanup'
+import {
+  deleteProjectNotebookData,
+  deleteSessionNotebookData,
+  measureSessionNotebookData
+} from './session-data-cleanup'
 
 let root: string
 
@@ -200,5 +204,55 @@ describe('deleting one session really releases the run data that session owned',
     })
     // The session the second refusal addressed by traversal is still there, byte for byte.
     await expect(access(join(insideDir, 'run-1', 'data', 'results.h5ad'))).resolves.toBeUndefined()
+  })
+})
+
+// The confirmation that precedes a session delete prints what else that action takes with it, so it needs
+// a reading taken BEFORE anything is removed — and that reading must not be able to remove anything itself.
+describe('reading what one session holds before it is deleted', () => {
+  it('answers with the bytes that session produced, and deletes nothing', async () => {
+    const projectId = 'cmutflcqb000fwfm931kvwz21'
+    const sessionId = '9f1c2f4a-1111-4a2b-8c3d-000000000005'
+    const sessionDir = await seedSession(projectId, sessionId, 4096)
+
+    const usage = await measureSessionNotebookData({ dataRoot: root }, projectId, sessionId)
+
+    expect(usage).toEqual({ state: 'measured', bytes: 4096 })
+    // The property that makes this safe to call while the user is still deciding.
+    await expect(access(join(sessionDir, 'run-1', 'data', 'results.h5ad'))).resolves.toBeUndefined()
+  })
+
+  it('names a session with no run data as absent rather than as zero bytes', async () => {
+    const usage = await measureSessionNotebookData(
+      { dataRoot: root },
+      'cmutflcqb000fwfm931kvwz21',
+      '9f1c2f4a-1111-4a2b-8c3d-000000000006'
+    )
+
+    expect(usage).toEqual({ state: 'absent' })
+  })
+
+  it('refuses an id that could escape the notebooks directory instead of measuring beside it', async () => {
+    const log = { info: vi.fn() }
+
+    const projectEscape = await measureSessionNotebookData(
+      { dataRoot: root, log },
+      '../../outside',
+      '9f1c2f4a-1111-4a2b-8c3d-000000000007'
+    )
+    const sessionEscape = await measureSessionNotebookData(
+      { dataRoot: root, log },
+      'cmutflcqb000fwfm931kvwz21',
+      '../9f1c2f4a-1111-4a2b-8c3d-000000000007'
+    )
+
+    expect(projectEscape).toEqual({ state: 'unavailable', reason: 'unsafe-id' })
+    expect(sessionEscape).toEqual({ state: 'unavailable', reason: 'unsafe-id' })
+    expect(log.info).toHaveBeenCalledWith('session notebook data not measured', {
+      reason: 'unsafe-project-id'
+    })
+    expect(log.info).toHaveBeenCalledWith('session notebook data not measured', {
+      reason: 'unsafe-session-id'
+    })
   })
 })

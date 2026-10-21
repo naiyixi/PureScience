@@ -9,6 +9,8 @@ import type {
   PersistedChatSession,
   SaveSessionOptions,
   ReadSessionDocumentRequest,
+  ReadSessionNotebookUsageRequest,
+  SessionNotebookUsage,
   SaveSessionManifestRequest,
   UpdateSessionArchiveRequest,
   SessionLoadDiagnostics
@@ -16,7 +18,8 @@ import type {
 import { LIFECYCLE_CHANNELS } from '../../shared/lifecycle-events'
 import { broadcastLifecycleEvent, getLifecycleClientId } from '../lifecycle-broadcast'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
-import { resolveStorageRoot } from '../storage-root'
+import { resolveDataRoot, resolveStorageRoot } from '../storage-root'
+import { measureSessionNotebookData } from '../notebook/session-data-cleanup'
 import { SessionRepository } from './repository'
 import { ReviewRepository } from '../reviewer/repository'
 import { getProjectDbClient } from '../projects/prisma-client'
@@ -44,6 +47,9 @@ type SessionPersistenceHandlers = {
   listCatalog: () => Promise<SessionCatalogResult>
   // The document tier: one session, straight from its own file, for a reader that needs its content.
   readDocument: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
+  // What the session's own notebook run data occupies on disk — asked BEFORE the session is deleted, so the
+  // confirmation can name what else that irreversible action takes with it.
+  readNotebookUsage: (projectId: string, sessionId: string) => Promise<SessionNotebookUsage>
   saveSession: (
     session: PersistedChatSession,
     options?: SaveSessionOptions
@@ -163,7 +169,8 @@ const loadCatalogAfterProjectRecovery = async (
 const createSessionPersistenceHandlers = (
   repository: SessionPersistenceBackend,
   reviewRepository: ReviewRepository,
-  documents: SessionDocumentLoader
+  documents: SessionDocumentLoader,
+  notebookUsage: SessionNotebookUsageReader = createDefaultSessionNotebookUsageReader()
 ): SessionPersistenceHandlers => {
   // Kept as an injected boundary for project-level cleanup compatibility; session deletion must not
   // call it because Reviews belong to retained provenance.
@@ -189,9 +196,26 @@ const createSessionPersistenceHandlers = (
     // The projection is the repository's, so nothing here has to rebuild it from messages the list
     // deliberately does not carry.
     listCatalog: () => repository.loadCatalog(),
-    readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId)
+    readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId),
+    readNotebookUsage: (projectId, sessionId) => notebookUsage.measure(projectId, sessionId)
   }
 }
+
+// The default reader: the data root resolved per call (a mid-session root change must not point the walk at
+// a stale tree), delegated to the one module that already owns this path and its id boundary. A reader that
+// could not be built answers `not-configured` — never `absent`, which would claim there is nothing to lose.
+type SessionNotebookUsageReader = {
+  measure: (projectId: string, sessionId: string) => Promise<SessionNotebookUsage>
+}
+
+const createDefaultSessionNotebookUsageReader = (): SessionNotebookUsageReader => ({
+  measure: (projectId, sessionId) =>
+    measureSessionNotebookData(
+      { dataRoot: resolveDataRoot(), log: createLogger('session-persistence') },
+      projectId,
+      sessionId
+    ).catch(() => ({ state: 'unavailable' as const, reason: 'unreadable' as const }))
+})
 
 // Creates the production repository rooted at the (dev-aware) storage root.
 const createDefaultSessionRepository = (): SessionRepository =>
@@ -274,6 +298,11 @@ const registerSessionPersistenceIpcHandlers = (
           })
         : handlers.listCatalog()
     )
+  )
+  ipcMainHandle(
+    'sessions:read-notebook-usage',
+    (_event, request: ReadSessionNotebookUsageRequest) =>
+      handlers.readNotebookUsage(request.projectId, request.sessionId)
   )
   ipcMainHandle('sessions:read-document', (_event, request: ReadSessionDocumentRequest) =>
     withDataRootWrite(() => handlers.readDocument(request.projectId, request.sessionId))

@@ -234,6 +234,8 @@ import type {
   LoadAllSessionsResult,
   PersistedChatSession,
   ReadSessionDocumentRequest,
+  ReadSessionNotebookUsageRequest,
+  SessionNotebookUsage,
   SaveSessionOptions,
   SaveSessionManifestRequest,
   UpdateSessionArchiveRequest
@@ -552,6 +554,11 @@ export interface PureScienceAPI {
     loadAll(): Promise<LoadAllSessionsResult>
     /** The document tier: one session's full content, read from its own file rather than by scanning. */
     readDocument(request: ReadSessionDocumentRequest): Promise<PersistedChatSession | undefined>
+    /**
+     * What this session's own notebook run data occupies on disk. Read before the destructive action, so the
+     * confirmation can say what else goes with the conversation; three states, never a silent zero.
+     */
+    readNotebookUsage(request: ReadSessionNotebookUsageRequest): Promise<SessionNotebookUsage>
     saveSession(
       session: PersistedChatSession,
       options?: SaveSessionOptions

@@ -339,7 +339,9 @@ describe('renderer surface inventory', () => {
     // 490 with the knowledge window surface (v2.8.0: knowledge.listSources / registerSource / search): three
     // Electron paths, local-only, so they also join the generator-omission list rather than any Web set.
     // 494 with the knowledge copy sweep (+1) and the inverse-folding pair (+2).
-    expect(electronPaths).toHaveLength(497)
+    // 498 with the session run-data measurement (sessions.readNotebookUsage): one preload method for the one
+    // contract, so the inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(498)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -352,7 +354,9 @@ describe('renderer surface inventory', () => {
     // 374 with the citation mark (v2.6.0 A2: references.markCited / references.clearCited).
     // 366 with verifying a recorded reading (artifacts.verifyReading): same profile, one more invoke
     // channel.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(374)
+    // 375 with the session run-data measurement (sessions.readNotebookUsage): a plain Web request channel,
+    // so the invoke map moves with it.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(375)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

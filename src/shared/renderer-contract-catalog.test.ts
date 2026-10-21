@@ -66,7 +66,9 @@ describe('renderer contract catalog', () => {
     // 494 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
     // (engines.*): one and two desktop-only contracts, so the catalog and the preload inventory move by
     // three while the local-Web "unavailable" set moves with them.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(497)
+    // 498 with the session run-data measurement (sessions:read-notebook-usage): one more capability-owned
+    // request contract in the sessions group.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(498)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -76,7 +78,8 @@ describe('renderer contract catalog', () => {
     // 366 with verifying a recorded reading (artifacts.verifyReading): a plain Web request channel, so the
     // invoke map and the local-only set move together.
     // 374 with the citation mark (v2.6.0 A2): the two reference-write channels, same profile as above.
-    expect(Object.keys(projection.invoke)).toHaveLength(374)
+    // 375 with the session run-data measurement (sessions:read-notebook-usage): one more invoke map entry.
+    expect(Object.keys(projection.invoke)).toHaveLength(375)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -93,9 +96,11 @@ describe('renderer contract catalog', () => {
     // 396 with verifying a recorded reading (artifacts.verifyReading): the same profile, one more method.
     // 404 with the citation mark (v2.6.0 A2): the two reference-write channels are callable on the
     // local Web surface, like the reference writes they sit beside.
+    // 405 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
+    // channel, callable on the local Web surface like the session reads it sits beside.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(404)
+    ).toHaveLength(405)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

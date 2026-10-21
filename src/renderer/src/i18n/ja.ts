@@ -4909,5 +4909,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': '技術的な詳細',
   'reviewer.error.budget':
     'レビューはツール呼び出しの上限で停止し、判定に到達しませんでした。このターンの検査は記録されていません。もう一度実行するか、対象を小さくしてレビューしてください。',
-  'reviewer.errorShort.budget': '呼び出し上限'
+  'reviewer.errorShort.budget': '呼び出し上限',
+  'workspace.deleteSessionRunData':
+    'このセッションが生成したノートブック実行データ（{size}）も削除されます。',
+  'workspace.deleteSessionNoRunData': 'このセッションはノートブック実行データを生成していません。',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'このセッションのノートブック実行データは測定できませんでした。生成された内容はセッションとともに削除されます。'
 }

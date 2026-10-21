@@ -271,6 +271,7 @@ const dataContentApplicationCommands = Object.freeze({
   sessionListCatalog: sessionCommand('sessions:list-catalog', 'listCatalog'),
   sessionLoadAll: sessionCommand('sessions:load-all', 'loadAll'),
   sessionReadDocument: sessionCommand('sessions:read-document', 'readDocument'),
+  sessionReadNotebookUsage: sessionCommand('sessions:read-notebook-usage', 'readNotebookUsage'),
   sessionSaveManifest: sessionCommand('sessions:save-manifest', 'saveManifest'),
   sessionUpdateArchive: sessionCommand('sessions:update-archive', 'updateArchive'),
   sessionSave: defineApplicationCommand<
@@ -353,6 +354,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
     dataContentApplicationCommands.sessionListCatalog,
     dataContentApplicationCommands.sessionLoadAll,
     dataContentApplicationCommands.sessionReadDocument,
+    dataContentApplicationCommands.sessionReadNotebookUsage,
     dataContentApplicationCommands.sessionSaveManifest,
     dataContentApplicationCommands.sessionUpdateArchive,
     dataContentApplicationCommands.sessionSave
@@ -543,6 +545,12 @@ const registerDataContentApplicationCommands = (
       'sessions:read-document': ({ args }) =>
         dependencies.withDataRootWrite(() =>
           dependencies.sessions.readDocument(args[0].projectId, args[0].sessionId)
+        ),
+      // A read, not a write: it walks one session's run-data directory. Wrapped in the same data-root guard
+      // as its siblings so a root change in flight cannot make it answer for the wrong tree.
+      'sessions:read-notebook-usage': ({ args }) =>
+        dependencies.withDataRootWrite(() =>
+          dependencies.sessions.readNotebookUsage(args[0].projectId, args[0].sessionId)
         ),
       'sessions:save-manifest': ({ args }) =>
         dependencies.withDataRootWrite(() => dependencies.sessions.saveManifest(args[0])),

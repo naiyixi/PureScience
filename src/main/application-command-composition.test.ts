@@ -188,7 +188,9 @@ describe('application command composition', () => {
     // surface and the fail-closed set both move while the remote dispatch count stays.
     // 366 with the citation mark (v2.6.0 A2: references:mark-cited / references:clear-cited):
     // two plain reference writes, reachable from the local Web view.
-    expect(composition.localWeb.commandNames()).toHaveLength(366)
+    // 367 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
+    // profile, so it is reachable from the local Web view too.
+    expect(composition.localWeb.commandNames()).toHaveLength(367)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -211,7 +213,8 @@ describe('application command composition', () => {
     // Web surface as well. The fail-closed rejection set is unchanged.
     // 235 for the same two channels: they are plain Web requests, so the paired remote profile
     // carries them too rather than rejecting them before dispatch.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(235)
+    // 236 for the same profile: the session run-data measurement is mapped on the remote surface too.
+    expect(composition.remoteWeb.commandNames()).toHaveLength(236)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.

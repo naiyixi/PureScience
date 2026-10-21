@@ -10369,3 +10369,71 @@ AFTER   publishes=1000  totalMs= 885.56  snapshotBuilds=1000   # 0.886 ms / 次
 ② 若 `Nightly` 再红在同族：按 `test-results/app-process/` 里**那一次**的日志与失败文案里的 `exited/is still running`
    判因，**先分「退出」与「卡住」两态**再动代码；③ 若内存闸门解除，取 §两百零四 §四 第 3 条与 §两百零五 §四 第 3 条
    那条现场读数（`state snapshot build rate` 的 `calls/s` 与 `maxMs`）；④ §两百零五 §五 第 1 条（发布快照可否冻结）等拍板，不自己改契约。
+
+## 两百零七、本轮追加（执行器，2026-10-21 15:3x–16:0x）—— 删除会话前先量一次「会一并删掉多少运行数据」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = fc463a0e`（上一轮那一笔），`origin/main..HEAD` 为空；工作树上是**本会话上一轮未提交的 33 个在制路径**
+  （本单元自己的实现与测试），与桌面会话的 `src/shared/sci-bench-*` 线**目录不相交**。
+- B 段复核仍为 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）⇒ 按队列约定取自拟单元。本单元取自上一轮已落地但**未提交**的那片，
+  本轮把它收口（补证据档、跑门禁、提交、取判决）。
+- 桌面会话的 dev Electron 已驻留 14 小时（与本轮无关）；内存：空闲页 **7,115 ≈ 111 MB**、`swap used 13.5 G / 14.0 G`
+  ⇒ **e2e 内存闸门仍不满足**，本轮照旧不取真窗口读数。
+
+### 一 交付（30 个文件 + 1 份证据档 + 本节）
+
+| 层 | 落点 | 改动 |
+|---|---|---|
+| 主进程 | `src/main/notebook/session-data-cleanup.ts` | 新增 `measureSessionNotebookData`：**与删除同一处铸造路径、同一道 id 边界**（`SAFE_ID_SEGMENT`），三态 `measured/absent/unavailable` |
+| 主进程 | `src/main/session-persistence/ipc.ts` | 通道 `sessions:read-notebook-usage` + 读取器注入边界（默认实现每次现取 `resolveDataRoot()`；抛错落 `unreadable`，**永不落 `absent`**） |
+| 契约 | `src/shared/session-persistence.ts`、契约目录、`web-api-map.generated.ts`、`renderer-api.d.ts`、preload | 新通道一枚 + 计数连锁 7 处一次改齐 |
+| 渲染层 | `use-session-notebook-usage.ts`（新）、`session-deletion-notice.ts`、`DeleteSessionDialog.tsx` | 读数**盖会话 id 戳**（换会话不把旧数字贴到新标题旁）；四态文案；锚点 `data-slot="delete-session-run-data"` |
+| 九语 | `i18n/*.ts`（9 文件） | 3 键 × 9 语，zh 值与 en 值不同形 |
+| 证据 | `docs/evidence/2026-10-21-delete-session-run-data.md` | 探针读数、门禁数字、两处补桩坑、边界与 `blocked-by` |
+
+**为什么这条不是文案改动**：会话删除会连带释放 `<dataRoot>/notebooks/<projectId>/<sessionId>`，而确认框过去只写「这会删除 <标题>」。
+本片让不可逆动作的决策点先量一次再说话；读不到就说「无法测量」，**不冒充「没有」**。
+
+### 二 真读数（产品自己的测量函数，只读，跑在本机真实数据根上）
+
+```
+PROBE cmutflcqb… e26108e7…  {"state":"measured","bytes":1195071853}   4 ms   ← du -sk 1,167,268 KB（1.1 GB）
+PROBE cmus6s5yx… 026279b9…  {"state":"measured","bytes":1044975508}   1 ms   ← du -sk 1,020,560 KB（997 MB）
+PROBE cmv0zlg6t… no-such-session            {"state":"absent"}        0 ms
+PROBE ../escape  e26108e7…                  {"state":"unavailable","reason":"unsafe-id"}  0 ms
+```
+
+两个 `measured` 与 `du -sk` 同量级且逐目录对得上（差值口径：产品按文件字节求和、`du` 按块）。
+**分量**：本机真实安装里存在**单个会话 1.19 GB** 的运行数据，而旧确认框对此一个字都没说。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 全量 vitest `--maxWorkers=4` | **1361 passed \| 16 skipped（1377 文件）**；**17,345 passed \| 207 skipped（17,552 例）**；exit 0 |
+| 定向 vitest（本单元 13 个簇） | **312 passed \| 8 skipped（320 文件）**；**4,130 passed \| 99 skipped（4,229 例）**；exit 0 |
+| 双 typecheck（`--composite false`，堆 8192） | `NODE_EXIT=0` / `WEB_EXIT=0`，**0 error** |
+| `eslint --no-cache`（本笔 30 文件） | **0 error**；1 warning 在 `src/preload/index.ts:554`（**既有行、不在本笔 hunk 内**） |
+| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过（品牌扫描零命中） |
+
+**两处只有全量/真渲染才暴露的坑**（都按「补桩、不改断言」处置）：① `session-dialogs.render.test.tsx` 是直呼组件的结构测试，
+把 `useState/useEffect` 写进对话框后当场 `Cannot read properties of null (reading 'useState')` ⇒ 把读取抽成独立 hook 并 `vi.mock` 掉，
+真读取由新写的 jsdom 用例覆盖；② `ArchivedPanel.render.test.tsx` 的 `window.api.sessions` 夹具缺新方法 ⇒ **给夹具补桩**，
+不在组件里加防御分支（那会把契约悄悄降级）。
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **只有一态在说「有东西要丢」**：`measured && bytes > 0`。`absent`（没产出）与 `unavailable`（测不了，产出的会随会话删除）
+   是两句不同的话，不许合并。
+2. **不是估算**：读的是真实目录字节，不是「有几个单元格」的推断。
+3. **真窗口读数未取**：`blocked-by` = 内存闸门（空闲 111 MB / swap 13.5 G）。解封后：`npm run build:e2e` → 打开删除确认 →
+   按 `data-slot="delete-session-run-data"` 取三态各一次。**在此之前不声称任何真窗口读数。**
+4. 会话删除本身的行为**一个字节未改**，本片只补「删除前的话」。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 取本笔 `Nightly` + `Windows Full Test` 双判决（若 `Nightly` 再红在 `search-index-coverage` 同族，
+按 `test-results/app-process/` 里**那一次**的日志 + 失败文案的 `exited / is still running` 先分「退出」与「卡住」两态）；
+② 下一单元候选（都敞着、都不需要发版窗口）：`P0-3` 的分步真机读数（埋点已交付 `46d10584`，只缺一次窗口读数，**仍被内存闸门挡着**）、
+`P0-4` 的投影缓存与保存去抖、`P0-9` 的渲染层审批卡计数（日志不能替代渲染层读数）；③ 取之前先按提交核会话没在同时做。

@@ -31,6 +31,12 @@ vi.mock('@/components/ui/dialog-focus-restore', () => ({
     onCloseAutoFocus: () => {}
   })
 }))
+// The delete confirmation reads the session's run-data size through its own hook. These structure tests call
+// the components as pure functions, so the hook is stubbed to its "nothing measured yet" answer; the read
+// itself is covered by DeleteSessionDialog.render.test.tsx (jsdom) against the real hook.
+vi.mock('./use-session-notebook-usage', () => ({
+  useSessionNotebookUsage: () => null
+}))
 
 type ElementWithProps = ReactElement<Record<string, unknown>>
 

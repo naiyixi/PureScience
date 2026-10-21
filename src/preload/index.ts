@@ -201,6 +201,10 @@ const api: PureScienceAPI = {
     loadAll: () => electronRendererContracts.invoke('sessions.loadAll'),
     // The document tier: one session's full content, read from its own file on demand.
     readDocument: (request) => electronRendererContracts.invoke('sessions.readDocument', request),
+    // What the session's own notebook run data occupies on disk, read before an irreversible deletion so the
+    // confirmation can name what else it takes with it.
+    readNotebookUsage: (request) =>
+      electronRendererContracts.invoke('sessions.readNotebookUsage', request),
     // Persists a single sanitized session file.
     saveSession: (session, options) =>
       electronRendererContracts.invoke('sessions.saveSession', session, options),

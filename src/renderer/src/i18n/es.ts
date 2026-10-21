@@ -5017,5 +5017,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': 'Detalles técnicos',
   'reviewer.error.budget':
     'La revisión se detuvo al agotar su límite de llamadas a herramientas antes de emitir un veredicto, así que no se registró nada para este turno. Vuelve a ejecutarla o revisa un turno más pequeño.',
-  'reviewer.errorShort.budget': 'límite de llamadas'
+  'reviewer.errorShort.budget': 'límite de llamadas',
+  'workspace.deleteSessionRunData':
+    'También se eliminarán {size} de datos de ejecución del notebook producidos en esta sesión.',
+  'workspace.deleteSessionNoRunData': 'Esta sesión no generó datos de ejecución del notebook.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'No se han podido medir los datos de ejecución del notebook de esta sesión: lo que haya producido se eliminará con ella.'
 }

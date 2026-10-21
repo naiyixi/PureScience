@@ -46,7 +46,12 @@ describe('ArchivedPanel', () => {
     updateArchive.mockReset().mockResolvedValue({ ...session, archivedAt: undefined })
     deleteSession.mockReset().mockResolvedValue(undefined)
     window.api = {
-      sessions: { updateArchive, deleteSession },
+      // The delete confirmation asks what the session's run data occupies before it shows the sentence.
+      sessions: {
+        updateArchive,
+        deleteSession,
+        readNotebookUsage: vi.fn().mockResolvedValue({ state: 'absent' })
+      },
       acp: { getState: vi.fn().mockResolvedValue({ sessionIds: [] }), deleteSession: vi.fn() }
     } as unknown as Window['api']
     useProjectStore.setState({

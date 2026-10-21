@@ -16,7 +16,10 @@
 import { rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { SessionNotebookDataDeletion } from '../../shared/session-persistence'
+import type {
+  SessionNotebookDataDeletion,
+  SessionNotebookUsage
+} from '../../shared/session-persistence'
 import { measureDirectorySize, type DirectorySizeMeasurement } from '../storage/usage'
 
 export type ProjectNotebookDataCleanupResult = {
@@ -99,6 +102,40 @@ export const deleteProjectNotebookData = async (
     state: 'removed',
     ...(measurement.state === 'unavailable' ? { freedBytesState: measurement.reason } : {})
   }
+}
+
+// What one session's own run data occupies on disk, read BEFORE the session is deleted.
+//
+// Why this exists separately from the removal above: the confirmation that precedes a session delete says
+// what else goes with it, and it can only say that honestly with a reading. Same path minting and the same
+// id boundary as the removal (one source for both), and the same three states as every other optional
+// reading in this file — a number, "there is no such directory", or "cannot be read". A surface that prints
+// nothing for the last one is making the "nothing to lose" claim on our behalf.
+export const measureSessionNotebookData = async (
+  options: ProjectNotebookDataCleanupOptions,
+  projectId: string,
+  sessionId: string
+): Promise<SessionNotebookUsage> => {
+  if (!SAFE_ID_SEGMENT.test(projectId)) {
+    options.log?.info('session notebook data not measured', { reason: 'unsafe-project-id' })
+    return { state: 'unavailable', reason: 'unsafe-id' }
+  }
+  if (!SAFE_ID_SEGMENT.test(sessionId)) {
+    options.log?.info('session notebook data not measured', { reason: 'unsafe-session-id' })
+    return { state: 'unavailable', reason: 'unsafe-id' }
+  }
+
+  const root = join(options.dataRoot, 'notebooks', projectId, sessionId)
+  try {
+    const info = await stat(root)
+    if (!info.isDirectory()) return { state: 'absent' }
+  } catch {
+    return { state: 'absent' }
+  }
+  const measurement = await measureDirectorySize(root, new Set())
+  return measurement.state === 'measured'
+    ? { state: 'measured', bytes: measurement.bytes }
+    : { state: 'unavailable', reason: measurement.reason }
 }
 
 // Deleting ONE session releases the run data that session owned. It sits one level deeper than the

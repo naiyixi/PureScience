@@ -4937,5 +4937,10 @@ export const en: Record<ZhKey, string> = {
   'reviewer.errorTechnicalDetail': 'Technical details',
   'reviewer.error.budget':
     'The review stopped at its tool-call ceiling before reaching a verdict, so nothing was recorded for this turn. Re-run the review, or review a smaller turn.',
-  'reviewer.errorShort.budget': 'tool budget spent'
+  'reviewer.errorShort.budget': 'tool budget spent',
+  'workspace.deleteSessionRunData':
+    'This also deletes {size} of notebook run data this session produced.',
+  'workspace.deleteSessionNoRunData': 'This session produced no notebook run data.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'Its notebook run data could not be measured — anything it produced is deleted with the session.'
 }

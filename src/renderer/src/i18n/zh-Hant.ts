@@ -4539,5 +4539,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': '技術詳情',
   'reviewer.error.budget':
     '審查在工具呼叫上限處停下，沒有給出結論，所以這一輪沒有記下任何檢查。可以重新執行審查，或把這一輪拆小後再審。',
-  'reviewer.errorShort.budget': '工具呼叫用盡'
+  'reviewer.errorShort.budget': '工具呼叫用盡',
+  'workspace.deleteSessionRunData': '這還會刪除本工作階段產出的筆記本執行資料（{size}）。',
+  'workspace.deleteSessionNoRunData': '本工作階段沒有產出筆記本執行資料。',
+  'workspace.deleteSessionRunDataUnmeasured':
+    '無法測量本工作階段的筆記本執行資料——它產出的內容會隨工作階段一併刪除。'
 }

@@ -278,6 +278,30 @@ export type ReadSessionDocumentRequest = {
   sessionId: string
 }
 
+/**
+ * What one session's own notebook run data occupies on disk, read BEFORE the session is deleted.
+ *
+ * Deleting a session does not only remove the conversation: it also releases
+ * `<dataRoot>/notebooks/<projectId>/<sessionId>`, which on a real installation held 1.1 GB of analysis
+ * results (`.h5ad` files a notebook run wrote). The confirmation therefore has to say what else goes
+ * with it — and to say it honestly it needs a reading, not a guess.
+ *
+ * Three states, because they lead to three different sentences:
+ *  - `measured` — a number the user can weigh before confirming;
+ *  - `absent` — there is no such directory on disk, so nothing besides the conversation is lost;
+ *  - `unavailable` — it exists (or may) but could not be read, so no number may be printed: showing
+ *    nothing there would read as "nothing to lose", which is exactly the claim we cannot make.
+ */
+export type SessionNotebookUsage =
+  | { state: 'measured'; bytes: number }
+  | { state: 'absent' }
+  | { state: 'unavailable'; reason: 'unreadable' | 'unsafe-id' | 'not-configured' }
+
+export type ReadSessionNotebookUsageRequest = {
+  projectId: string
+  sessionId: string
+}
+
 // Where a forked session came from. Recorded on the fork, never on the source: the source document
 // is not touched by a fork, so the only place this fact can live is the copy.
 export type SessionForkProvenance = {

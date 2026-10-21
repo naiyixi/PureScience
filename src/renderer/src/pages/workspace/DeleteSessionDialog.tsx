@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useRetainedDialogValue } from '@/components/ui/use-retained-dialog-value'
 import type { ChatSession } from '@/stores/session-store'
+import { sessionNotebookUsageMessage } from '../../lib/session-deletion-notice'
+import { useSessionNotebookUsage } from './use-session-notebook-usage'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type DeleteSessionDialogProps = {
@@ -33,9 +35,13 @@ const DeleteSessionDialog = ({
   onCancel,
   onConfirmDelete
 }: DeleteSessionDialogProps): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const dialogSession = useRetainedDialogValue(session)
   const focusRestore = useDialogFocusRestore(Boolean(session))
+  // What the session's own notebook run data occupies on disk, read while the confirmation is open. The
+  // hook stamps the reading with the session it belongs to and answers null for any other session.
+  const notebookUsage = useSessionNotebookUsage(dialogSession?.projectId, dialogSession?.id)
+  const runDataSentence = sessionNotebookUsageMessage(notebookUsage, lang, t)
 
   return (
     <AlertDialog.Root
@@ -59,6 +65,14 @@ const DeleteSessionDialog = ({
               <AlertDialog.Description className={dialogDescriptionClassName}>
                 {t('workspace.deleteSessionConfirm').replace('{title}', dialogSession?.title ?? '')}
               </AlertDialog.Description>
+              {runDataSentence ? (
+                <AlertDialog.Description
+                  className={dialogDescriptionClassName}
+                  data-slot="delete-session-run-data"
+                >
+                  {runDataSentence}
+                </AlertDialog.Description>
+              ) : null}
             </div>
             <Button
               type="button"

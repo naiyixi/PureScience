@@ -4927,5 +4927,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': 'Технические детали',
   'reviewer.error.budget':
     'Проверка остановилась на пределе вызовов инструментов, не вынеся вердикта: по этому ходу ничего не записано. Запустите проверку снова или проверьте ход меньшего объёма.',
-  'reviewer.errorShort.budget': 'предел вызовов'
+  'reviewer.errorShort.budget': 'предел вызовов',
+  'workspace.deleteSessionRunData':
+    'Вместе с ним будут удалены данные выполнения блокнота, созданные в этом сеансе ({size}).',
+  'workspace.deleteSessionNoRunData': 'Этот сеанс не создавал данных выполнения блокнота.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    'Не удалось измерить данные выполнения блокнота этого сеанса — всё, что он создал, будет удалено вместе с ним.'
 }

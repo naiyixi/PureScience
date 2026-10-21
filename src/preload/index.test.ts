@@ -521,6 +521,7 @@ describe('preload bridge — public surface inventory', () => {
       'sessions.onUpdated',
       'sessions.previewPackage',
       'sessions.readDocument',
+      'sessions.readNotebookUsage',
       'sessions.saveManifest',
       'sessions.saveSession',
       'sessions.sendFlushResponse',
@@ -889,7 +890,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // 249 with the knowledge copy sweep (knowledge.sweepCopies, LOCAL) and the inverse-folding pair
     // (engines.inverseFoldingStatus / engines.runInverseFolding): three local-only request contracts,
     // so they count here while neither Web map does.
-    expect(coreContracts).toHaveLength(252)
+    // 253 with the session run-data measurement (sessions.readNotebookUsage): one more plain Web request
+    // contract beside readDocument, so the Web maps move with it exactly as they do here.
+    expect(coreContracts).toHaveLength(253)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -901,7 +904,7 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 214, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 215, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -910,7 +913,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(214)
+    expect(requestContracts).toHaveLength(215)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -231,6 +231,7 @@ export const WEB_INVOKE_CHANNELS = {
   'sessions.listCatalog': 'sessions:list-catalog',
   'sessions.loadAll': 'sessions:load-all',
   'sessions.readDocument': 'sessions:read-document',
+  'sessions.readNotebookUsage': 'sessions:read-notebook-usage',
   'sessions.saveManifest': 'sessions:save-manifest',
   'sessions.saveSession': 'sessions:save-session',
   'sessions.updateArchive': 'sessions:update-archive',

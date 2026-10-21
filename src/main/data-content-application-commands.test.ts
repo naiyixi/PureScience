@@ -230,6 +230,7 @@ const WRAPPED_COMMAND_KEYS = [
   'sessionListCatalog',
   'sessionLoadAll',
   'sessionReadDocument',
+  'sessionReadNotebookUsage',
   'sessionSaveManifest',
   'sessionSave',
   'uploadStageLocalFile',
@@ -258,7 +259,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 55 current data and content invoke channels', () => {
+  it('owns exactly the 56 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -306,6 +307,7 @@ describe('Data and content application commands', () => {
         'sessions:list-catalog',
         'sessions:load-all',
         'sessions:read-document',
+        'sessions:read-notebook-usage',
         'sessions:save-manifest',
         'sessions:update-archive',
         'sessions:save-session',

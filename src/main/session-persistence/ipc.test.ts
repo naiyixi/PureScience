@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 import { summarizeSessionCatalog } from '../../shared/session-catalog-summary'
-import type { PersistedChatSession } from '../../shared/session-persistence'
+import type { PersistedChatSession, SessionNotebookUsage } from '../../shared/session-persistence'
 import type { Logger } from '../logger'
 import type { ReviewRepository } from '../reviewer/repository'
 
@@ -178,17 +178,24 @@ describe('session persistence IPC handlers', () => {
 
   it('does not accept a physical managed-file cleanup hook', () => {
     // Session persistence owns authoritative JSON and index visibility only. The factory gained the
-    // list/document split, so the guard now names three parameters — and the third one is asserted to be
-    // read-only: it may load a session and nothing else, so deletion flows still cannot reach a
-    // dependency that removes file bytes.
+    // list/document split and the run-data measurement, so the guard now names four parameters — and the
+    // third and fourth are asserted to be read-only: one may load a session, the other may only measure what
+    // its run data occupies on disk. Neither can remove file bytes, so deletion flows still cannot reach a
+    // dependency that does.
     expectTypeOf<Parameters<typeof createSessionPersistenceHandlers>>().toEqualTypeOf<
       [
         repository: SessionPersistenceBackend,
         reviewRepository: ReviewRepository,
-        documents: SessionDocumentLoader
+        documents: SessionDocumentLoader,
+        notebookUsage?: {
+          measure: (projectId: string, sessionId: string) => Promise<SessionNotebookUsage>
+        }
       ]
     >()
     expectTypeOf<keyof SessionDocumentLoader>().toEqualTypeOf<'loadSession'>()
+    expectTypeOf<
+      keyof NonNullable<Parameters<typeof createSessionPersistenceHandlers>[3]>
+    >().toEqualTypeOf<'measure'>()
   })
 
   it('routes each command to the repository', async () => {
@@ -331,6 +338,8 @@ describe('session persistence IPC handlers', () => {
       // The list/document split: the list no longer carries the active Branch's content, so a reader
       // that needs it asks for one session by name.
       'sessions:list-catalog',
+      // What the session's own run data occupies, asked before an irreversible delete.
+      'sessions:read-notebook-usage',
       'sessions:read-document'
     ])
 
@@ -389,6 +398,7 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn(),
       saveManifest: vi.fn(),
       listCatalog: vi.fn(),
+      readNotebookUsage: vi.fn(),
       readDocument: vi.fn()
     }
 
@@ -420,6 +430,7 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn(),
       saveManifest: vi.fn(),
       listCatalog: vi.fn(),
+      readNotebookUsage: vi.fn(),
       readDocument: vi.fn()
     }
     registrationFailure.channel = 'sessions:load-all'
@@ -602,6 +613,7 @@ describe('session persistence IPC handlers', () => {
       deleteSession: vi.fn(),
       saveManifest: vi.fn(),
       listCatalog: vi.fn().mockResolvedValue(catalog),
+      readNotebookUsage: vi.fn().mockResolvedValue({ state: 'absent' }),
       readDocument: vi.fn().mockResolvedValue({ id: 'session-1' })
     }
     const repository: SessionPersistenceBackend = {

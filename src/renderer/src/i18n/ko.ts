@@ -4825,5 +4825,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'reviewer.errorTechnicalDetail': '기술 세부 정보',
   'reviewer.error.budget':
     '검토가 도구 호출 상한에서 멈춰 판정에 이르지 못했고, 이번 턴의 검사는 기록되지 않았습니다. 다시 실행하거나 범위를 줄여 검토하세요.',
-  'reviewer.errorShort.budget': '호출 상한 소진'
+  'reviewer.errorShort.budget': '호출 상한 소진',
+  'workspace.deleteSessionRunData':
+    '이 세션이 생성한 노트북 실행 데이터({size})도 함께 삭제됩니다.',
+  'workspace.deleteSessionNoRunData': '이 세션은 노트북 실행 데이터를 생성하지 않았습니다.',
+  'workspace.deleteSessionRunDataUnmeasured':
+    '이 세션의 노트북 실행 데이터 크기를 측정할 수 없습니다. 생성된 내용은 세션과 함께 삭제됩니다.'
 }
