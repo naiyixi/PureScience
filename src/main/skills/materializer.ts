@@ -2,6 +2,7 @@ import { chmod, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:
 import { join } from 'node:path'
 
 import { createLogger } from '../logger'
+import { withoutContract } from '../../shared/capability-contract'
 import { COMPUTE_SKILL_ID, preserveComputeHostProjection } from '../compute/skill-doc'
 import type { BundledSkill } from './registry'
 
@@ -99,14 +100,27 @@ async function chmodTree(dir: string, mode: 'readonly' | 'writable'): Promise<vo
 
 // Writes an enabled skill set into a framework's config dir. One implementation per agent framework.
 interface SkillMaterializer {
-  sync(configDir: string, enabled: BundledSkill[]): Promise<void>
+  sync(configDir: string, enabled: BundledSkill[], options?: MaterializeOptions): Promise<void>
 }
+
+/**
+ * `stripContracts` exists for one experiment: the ablation arm where the only difference from the
+ * full arm is whether a skill's `contract:` declaration is visible to the agent. It is never a user
+ * setting, and it is not persisted — a run passes it in and the next sync without it restores the
+ * declarations.
+ */
+export type MaterializeOptions = { stripContracts?: boolean }
 
 // Materializes bundled skills into `<configDir>/skills/os-<id>/` for Claude Code. The target state is
 // exactly the enabled set: enabled skills are copied when new or when their version changed, and os-
 // dirs not in the set are removed. Directories without the os- prefix are never touched.
 class ClaudeCodeSkillMaterializer implements SkillMaterializer {
-  async sync(configDir: string, enabled: BundledSkill[]): Promise<void> {
+  async sync(
+    configDir: string,
+    enabled: BundledSkill[],
+    options: MaterializeOptions = {}
+  ): Promise<void> {
+    const stripContracts = options.stripContracts === true
     const skillsDir = join(configDir, 'skills')
     await mkdir(skillsDir, { recursive: true })
 
@@ -148,7 +162,9 @@ class ClaudeCodeSkillMaterializer implements SkillMaterializer {
     // Copy new or changed skills. A skill with a stable, unchanged version whose dir already exists is
     // skipped; one with no version (empty updatedAt) is always recopied.
     for (const [name, skill] of wanted) {
-      const version = skill.updatedAt || ''
+      // The arm is part of the version key: switching arms must re-materialize even when the skill
+      // itself did not change, or the second arm would run against the first arm's files.
+      const version = `${skill.updatedAt || ''}${stripContracts ? '#no-contract' : ''}`
       const unchanged = version !== '' && existingDirs.has(name) && versions[name] === version
       if (unchanged) continue
 
@@ -171,6 +187,11 @@ class ClaudeCodeSkillMaterializer implements SkillMaterializer {
             return true
           }
         })
+        if (stripContracts) {
+          const current = await readFile(join(target, 'SKILL.md'), 'utf8')
+          const stripped = withoutContract(current)
+          if (stripped !== current) await writeFile(join(target, 'SKILL.md'), stripped, 'utf8')
+        }
         if (priorComputeDocument !== undefined) {
           const current = await readFile(join(target, 'SKILL.md'), 'utf8')
           await writeFile(

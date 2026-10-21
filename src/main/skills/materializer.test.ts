@@ -35,7 +35,60 @@ const skillsDir = async (): Promise<string> => {
 const listSkillDirs = async (configDir: string): Promise<string[]> =>
   (await readdir(join(configDir, 'skills'))).filter((name) => !name.startsWith('.'))
 
+const makeContractSkill = async (name: string): Promise<BundledSkill> => {
+  const root = await mkdtemp(join(tmpdir(), `src-${name}-`))
+  await writeFile(
+    join(root, 'SKILL.md'),
+    [
+      '---',
+      `name: ${name}`,
+      'description: "d"',
+      `contract: '{"id":"${name}","produces":["artifact:table"]}'`,
+      '---',
+      '',
+      `# ${name}`,
+      ''
+    ].join('\n'),
+    'utf8'
+  )
+  return {
+    id: name,
+    name,
+    description: '',
+    source: 'featured',
+    updatedAt: '2026-10-21',
+    sourceDir: root
+  }
+}
+
 describe('ClaudeCodeSkillMaterializer', () => {
+  it('keeps the contract declaration on the default path, byte for byte', async () => {
+    const configDir = await skillsDir()
+    const skill = await makeContractSkill('with-contract')
+    await new ClaudeCodeSkillMaterializer().sync(configDir, [skill])
+
+    const materialized = await readFile(
+      join(configDir, 'skills', 'os-with-contract', 'SKILL.md'),
+      'utf8'
+    )
+    expect(materialized).toBe(await readFile(join(skill.sourceDir, 'SKILL.md'), 'utf8'))
+  })
+
+  it('strips only the contract line for the ablation arm, and restores it on the next sync', async () => {
+    const configDir = await skillsDir()
+    const skill = await makeContractSkill('arm-skill')
+    const file = join(configDir, 'skills', 'os-arm-skill', 'SKILL.md')
+
+    await new ClaudeCodeSkillMaterializer().sync(configDir, [skill], { stripContracts: true })
+    const stripped = await readFile(file, 'utf8')
+    expect(stripped).not.toContain('contract:')
+    expect(stripped).toContain('# arm-skill')
+
+    // Same skill, same version — the arm is part of the version key, so this must re-materialize.
+    await new ClaudeCodeSkillMaterializer().sync(configDir, [skill])
+    expect(await readFile(file, 'utf8')).toContain('contract:')
+  })
+
   it('copies enabled skills into os-<id> dirs including subdirectories', async () => {
     const configDir = await skillsDir()
     const skill = await makeSkill('alpha')
