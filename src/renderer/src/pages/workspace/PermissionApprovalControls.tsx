@@ -14,6 +14,10 @@ import { Button } from '@/components/ui/button'
 import { dialogTitleClassName } from '@/components/ui/dialog-chrome'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import {
+  recordPresentedPermissionRequest,
+  usePermissionAskSummary
+} from '@/lib/permission-ask-ledger'
 import { resolveNotebookLanguage, resolveNotebookRunToolName } from './notebook-tool-names'
 import {
   describePermissionRequest,
@@ -586,6 +590,14 @@ const PermissionApprovalControls = ({
   // Show only the oldest pending request; the rest stay queued.
   const request = requests[0]
 
+  // P0-9: how often this conversation has put a card in front of the reader. Recorded here, in the
+  // component that renders the card, so the number is the surface's own count rather than the main
+  // process's request log (which also contains everything the broker resolved by itself).
+  const askSummary = usePermissionAskSummary(request?.sessionId)
+  useEffect(() => {
+    if (request) recordPresentedPermissionRequest(request)
+  }, [request])
+
   // Default to Session when available: it avoids repeated prompts without silently widening to a
   // whole Project or Global grant. Once remains the fallback for requests without Session scope.
   const availableScopes = request ? getAvailableScopes(request.options) : new Set<PermissionScope>()
@@ -814,6 +826,23 @@ const PermissionApprovalControls = ({
           scopeDescription={scopeDescription}
         />
       </div>
+
+      {/* How dense the asking has become in this conversation (P0-9). Shown from the second card on:
+          on the first card the count carries no information, and the surface should stay quiet until
+          there is something to say. The repeat half is the part a session-scope grant removes. */}
+      {askSummary && askSummary.asked > 1 ? (
+        <p
+          data-testid="permission-ask-density"
+          className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground"
+        >
+          <span>{t('ws.permissionAsksCount').replace('{count}', String(askSummary.asked))}</span>
+          {askSummary.repeated > 0 ? (
+            <span>
+              {t('ws.permissionAsksRepeat').replace('{count}', String(askSummary.repeated))}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
 
       {/* Affected file targets — the canonical location field, shown so read/edit/delete
           prompts always reveal the path being authorized. Wraps to keep full values readable. */}

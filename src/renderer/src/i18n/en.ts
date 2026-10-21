@@ -3398,6 +3398,8 @@ export const en: Record<ZhKey, string> = {
   'ws.authorizationScope': 'Authorization scope',
   'ws.forThisSession': 'for this session',
   'ws.permissionBatchSiblings': '{count} more requests need the same decision',
+  'ws.permissionAsksCount': '{count} approval requests in this session',
+  'ws.permissionAsksRepeat': '{count} of them asked again about the same tool',
   'ws.permissionBatchAllowAll': 'Allow all',
   'ws.permissionBatchDenyAll': 'Deny all',
   'ws.forThisProject': 'for this project',

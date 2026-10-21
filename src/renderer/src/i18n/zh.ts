@@ -3169,6 +3169,8 @@ export const zh = {
   'ws.authorizationScope': '授权范围',
   'ws.forThisSession': '用于此会话',
   'ws.permissionBatchSiblings': '另有 {count} 条同类请求需同样处理',
+  'ws.permissionAsksCount': '本会话已询问 {count} 次',
+  'ws.permissionAsksRepeat': '其中 {count} 次是同一工具的重复询问',
   'ws.permissionBatchAllowAll': '全部允许',
   'ws.permissionBatchDenyAll': '全部拒绝',
   'ws.forThisProject': '用于此项目',

@@ -3291,6 +3291,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'ws.forThisProject': 'für dieses Projekt',
   'ws.forThisSession': 'für diese Sitzung',
   'ws.permissionBatchSiblings': '{count} weitere Anfragen brauchen dieselbe Entscheidung',
+  'ws.permissionAsksCount': '{count} Genehmigungsanfragen in dieser Sitzung',
+  'ws.permissionAsksRepeat': '{count} davon betrafen erneut dasselbe Werkzeug',
   'ws.permissionBatchAllowAll': 'Alle erlauben',
   'ws.permissionBatchDenyAll': 'Alle ablehnen',
   'ws.generatingReconstructedScript': 'Rekonstruiertes Skript wird generiert',

@@ -2965,6 +2965,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'ws.forThisProject': '用於此專案',
   'ws.forThisSession': '用於此對話',
   'ws.permissionBatchSiblings': '另有 {count} 條同類請求需同樣處理',
+  'ws.permissionAsksCount': '本工作階段已詢問 {count} 次',
+  'ws.permissionAsksRepeat': '其中 {count} 次是同一工具的重複詢問',
   'ws.permissionBatchAllowAll': '全部允許',
   'ws.permissionBatchDenyAll': '全部拒絕',
   'ws.generatingReconstructedScript': '正在產生重建指令碼',

@@ -3203,6 +3203,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'ws.forThisProject': 'для этого проекта',
   'ws.forThisSession': 'для этой сессии',
   'ws.permissionBatchSiblings': 'ещё {count} запросов требуют такого же решения',
+  'ws.permissionAsksCount': 'Запросов на подтверждение в этом сеансе: {count}',
+  'ws.permissionAsksRepeat': 'из них {count} — повторный вопрос о том же инструменте',
   'ws.permissionBatchAllowAll': 'Разрешить все',
   'ws.permissionBatchDenyAll': 'Отклонить все',
   'ws.generatingReconstructedScript': 'Создание восстановленного скрипта',

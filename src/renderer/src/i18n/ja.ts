@@ -3199,6 +3199,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'ws.forThisProject': 'このプロジェクト用',
   'ws.forThisSession': 'このセッション用',
   'ws.permissionBatchSiblings': '同じ判断が必要な同種のリクエストが他に {count} 件あります',
+  'ws.permissionAsksCount': 'このセッションでの承認リクエストは {count} 件',
+  'ws.permissionAsksRepeat': 'うち {count} 件は同じツールへの再確認',
   'ws.permissionBatchAllowAll': 'すべて許可',
   'ws.permissionBatchDenyAll': 'すべて拒否',
   'ws.generatingReconstructedScript': '再構築スクリプトを生成中',

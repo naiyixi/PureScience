@@ -10734,3 +10734,62 @@ diagnostics to a timeout` —— 期望 `stdoutTail: 'timeout-stdout-token'`、�
 ① 按完整 40 位 SHA 读本笔双车道；② 内存一旦松开立刻起一次真实启动取 **11 步**读数（`grep -A8 "compose runtime
 steps"`，判据是 `stepCount: 11` 与新步名 `open-project-db` 出现在位次 5）；③ 仍卡内存就按 §五 1 收掉那条负载敏感用例；
 ④ 开工前先 `git log --oneline origin/main -3` 核会话没在同时做。
+
+## 两百一十二、本轮追加（执行器，2026-10-22 06:1x–）—— P0-9 的「用户可见密度」由卡自己数：本会话问了几次、其中几次是同一工具在重复问
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = 88b76d9f`、`git status --short` **0 项**；上一轮那两笔的判决已按完整 40 位 SHA 读到
+  （`03d2d3c8` 双绿；`88b76d9f` 纯 `docs/**` 按 paths 过滤 `total_count=0`，符合预期）。
+- 内存（现取）：空闲页 4,208 ≈ **67 MB**、`swap used 11,601.5 MB / 13,312 MB` ⇒ **真机闸门仍未解**，
+  本轮不声称任何窗口读数（P0-3 的分步读数与上一轮的 11 步读数同样仍卡在这里）。
+- B 段复核仍为 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）⇒ 按队列约定取自拟单元；本单元取的是**上一轮 §五 具名的那条**
+  P0-9（渲染层审批卡计数），不是新开一摊：主进程日志那一半已在 `af6e3354` 交付，剩下的是**只有渲染层能回答**的那一半。
+
+### 一 交付（新 1 模块 + 1 组件 + 2 键 × 9 语 + 2 套用例 + 1 份证据档）
+
+| 位置 | 改动 |
+|---|---|
+| `src/renderer/src/lib/permission-ask-ledger.ts`（新） | 每会话一本账：按 `requestId` 去重记「这张卡被渲染过」，按工具身份数「同类重复」；`useSyncExternalStore` 读，快照在计数变化前保持同一引用；只活在渲染进程内存里，重启归零 |
+| `src/renderer/src/pages/workspace/PermissionApprovalControls.tsx` | 在**渲染卡的那个组件里**记账（`requests[0]` 才是真正上屏的一张），卡片头部下方一行读数：本会话询问 `N` 次 / 其中 `M` 次是同一工具的重复询问；**第一张不显示** |
+| 9 个语言文件 | `ws.permissionAsksCount` / `ws.permissionAsksRepeat`，插值留在组件内（与 `permissionBatchSiblings` 同口径） |
+| `docs/evidence/2026-10-22-permission-ask-density.md` | 为什么这条只能来自渲染层、判据为什么是「同类重复」而不是「本可自动」、读数与变异证明、边界 |
+
+**判据为什么不写成「自动批准覆盖率」**：broker 在问之前就用已记忆的授权结清请求（`resolveCurrentAutomaticPermission`
+→ grant registry → 才 `enqueuePermissionRequest`），所以「被问那一刻是否已有授权」几乎恒为 0 —— 那个覆盖率是一句
+空话。同一工具在本会话被**第二次**问才是真能省下来的那部分，文案照此写，不承诺「本可自动」。
+
+### 二 读数与变异证明（全部实跑）
+
+| 环 | 读数 |
+|---|---|
+| 账本单测 | **12 passed** |
+| 渲染单测（真 `LanguageProvider` zh，断言读者读到的字） | **4 passed** |
+| 同族 7 文件簇 | **7 files / 100 passed** |
+| 变异：显示阈值 `asked > 1` → `> 0` | 只红「第一张安静」 |
+| 变异：重复子句条件改恒真 | 只红「换工具时不出现重复子句」 |
+
+### 三 门禁（取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 全量 vitest `--maxWorkers=4` | **1369 passed \| 16 skipped（1385 文件）**；**17,407 passed \| 209 skipped（17,616 例）**；1,096 s；**exit 0**（比上一轮 +2 文件 / +16 例＝本笔那两套用例，且上一轮那唯一 1 failed 已随 §四 5 的修法消失） |
+| 双 typecheck（`--composite false`，堆 8192） | node **0 error**；web **0 error** |
+| `eslint --no-cache`（本笔 14 文件） | **0 error**（本笔自己那 4 条 prettier warning 已 `--write` 修掉，复跑干净） |
+| `scripts/pre-push-checks.sh` | 推送时实跑（见 §六） |
+
+### 四 边界（不许读成更强）
+
+1. **真机窗口读数未取**：`blocked-by` = 内存闸门（67 MB 空闲 / swap 11.6 G）。解封判据：`build:e2e` → 让 agent 连问
+   同一工具两次 → 第二张卡出现 `data-testid="permission-ask-density"` 且文案为「本会话已询问 2 次 · 其中 1 次…」。
+2. 只数**卡**，不数决定；被取消/被 profile 切换结清的卡也计入（读者确实看过一眼）。
+3. 身份取 `mcpIdentity`/`providerToolName`/`toolKind`，**不猜标题**；没有这三样的请求计入「问了几次」但永不判重复。
+4. 账本不持久化、不跨会话汇总。
+5. 另修一条**与本单元同批的负载敏感用例**（`provisioner-runtime.test.ts` 的 200 ms 探针预算 → 具名 1500 ms +
+   `durationMs >= 预算-50`）：它是上一轮全量里唯一那条红，改法写在证据档 §5。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道；② 下一单元候选：`P0-3` 的分步真机读数（**仍卡内存闸门**）、
+`P0-10` 剩下的「0 与没量到分态」、或从能力面自拟一件（可离线判、差异化点能写成断言）；
+③ 取之前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。

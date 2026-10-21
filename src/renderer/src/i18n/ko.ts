@@ -3143,6 +3143,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'ws.forThisProject': '이 프로젝트용',
   'ws.forThisSession': '이 세션용',
   'ws.permissionBatchSiblings': '같은 결정이 필요한 동종 요청이 {count}건 더 있습니다',
+  'ws.permissionAsksCount': '이 세션의 승인 요청 {count}건',
+  'ws.permissionAsksRepeat': '그중 {count}건은 같은 도구에 대한 재요청',
   'ws.permissionBatchAllowAll': '모두 허용',
   'ws.permissionBatchDenyAll': '모두 거부',
   'ws.generatingReconstructedScript': '재구성 스크립트 생성 중',
