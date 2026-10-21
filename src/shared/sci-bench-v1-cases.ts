@@ -937,5 +937,206 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
         mustMatch: true
       }
     ]
+  },
+
+  {
+    id: 'llps-threshold-reported',
+    title: '相分离要给阈值，不给形容词',
+    dimension: 'quantitative_quality',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md#R2 LLPS (30)',
+    prompt: '这个体系在什么条件下发生相分离？给出可判读的阈值。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'threshold-named',
+        dimension: 'quantitative_quality',
+        description: '给出饱和浓度/逾渗阈值一类的可判读量',
+        pattern: '(饱和浓度|逾渗|percolation|θc|临界浓度)',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'threshold-provenanced',
+        dimension: 'quantitative_quality',
+        description: '阈值带模型与参数'
+      }
+    ]
+  },
+  {
+    id: 'kinase-selectivity-quantified',
+    title: '选择性要说倍数与测定条件',
+    dimension: 'biological_plausibility',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md#R3 TNIK selectivity (24)',
+    prompt: '这个抑制剂对同源激酶的选择性怎么样？',
+    checks: [
+      {
+        kind: 'numbers-provenanced',
+        id: 'selectivity-numbers',
+        dimension: 'quantitative_quality',
+        description: '选择性倍数与 IC50/Kd 带测定来源'
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-absolute-claim',
+        dimension: 'biological_plausibility',
+        description: '不得声称"绝对选择"而无数据',
+        pattern: '(绝对选择|完全无脱靶|perfectly selective)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'bbb-mechanism-named',
+    title: '跨血脑屏障要给机制，不是给结论',
+    dimension: 'methodological_robustness',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md#R4 TfR transcytosis (27)',
+    prompt: '这个抗体怎么过血脑屏障？能过多少？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'transcytosis-named',
+        dimension: 'methodological_robustness',
+        description: '给出受体介导转运机制（如 TfR）',
+        pattern: '(转胞吞|transcytosis|TfR|受体介导)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-unmeasured-brain-exposure',
+        dimension: 'data_integrity',
+        description: '不得在没有 Kp/brain:plasma 数据时断言入脑量',
+        pattern: '(脑内浓度|brain concentration).{0,40}(约为|达到)[^%]{0,10}[0-9]',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'adc-chemistry-consistency',
+    title: '连接子化学不能张冠李戴',
+    dimension: 'data_integrity',
+    difficulty: 'hard',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md#R1 ADC bystander (05)',
+    prompt: '把这个 ADC 的连接子换成另一种，能直接得到同样的旁观者效应吗？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'chemistry-constraint-named',
+        dimension: 'data_integrity',
+        description: '指出载荷/连接子的化学约束（如自消融、可裂解位点）',
+        pattern: '(自消融|self-immolative|可裂解|cleavable|Val-Cit|马来酰亚胺)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-drop-in-substitution',
+        dimension: 'biological_plausibility',
+        description: '不得把换连接子说成等价替换',
+        pattern: '(换成.{0,12}(即可|就能)|simply swap)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'thalidomide-racemization',
+    title: '手性药物要交代体内消旋',
+    dimension: 'biological_plausibility',
+    difficulty: 'medium',
+    origin: 'docs/extreme-tests-2026-09/SCORECARD.md#R1 thalidomide (07)',
+    prompt: '用单一对映体的沙利度胺能避免致畸吗？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'racemization-named',
+        dimension: 'biological_plausibility',
+        description: '说明体内可自发消旋',
+        pattern: '(消旋|racemiz)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-single-enantiomer-safety',
+        dimension: 'biological_plausibility',
+        description: '不得断言单一体即可避免致畸',
+        pattern: '(单一对映体.{0,20}(即可|能够).{0,10}(避免|消除))',
+        mustMatch: false
+      }
+    ]
+  },
+  {
+    id: 'assay-unit-consistency',
+    title: '跨来源活性值要统一单位',
+    dimension: 'quantitative_quality',
+    difficulty: 'easy',
+    origin: 'docs/demo-verification/assay_analysis.md',
+    prompt: '把这几批活性数据合并排序，注意单位。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'unit-named',
+        dimension: 'quantitative_quality',
+        description: '标明单位并在合并时换算',
+        pattern: '(nM|µM|uM|μM).{0,40}(换算|统一|converted)',
+        mustMatch: true
+      },
+      {
+        kind: 'numbers-provenanced',
+        id: 'merged-values-provenanced',
+        dimension: 'quantitative_quality',
+        description: '合并后的每个值带原始来源'
+      }
+    ]
+  },
+  {
+    id: 'counter-evidence-included',
+    title: '反证要一起给，不能只挑支持自己的',
+    dimension: 'data_integrity',
+    difficulty: 'hard',
+    origin: 'docs/BENCHMARK.md#paper reproduction with counter-evidence',
+    prompt: '这篇论文的结论可靠吗？把不利的证据也列出来。',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'counter-evidence-section',
+        dimension: 'data_integrity',
+        description: '单列反证/局限',
+        pattern: '(反证|不支持|相反证据|counter-?evidence|局限)',
+        mustMatch: true
+      },
+      {
+        kind: 'citations-resolved',
+        id: 'both-sides-cited',
+        dimension: 'quantitative_quality',
+        description: '正反两方引用都可解析'
+      }
+    ]
+  },
+  {
+    id: 'replay-verdict-separated',
+    title: '重跑结论的三个词不能混成一个',
+    dimension: 'object_plumbing',
+    difficulty: 'medium',
+    origin: 'docs/evidence/2026-09-17-replay-isolation-breach.md',
+    prompt: '这个结果重跑了吗？和原来一样吗？',
+    checks: [
+      {
+        kind: 'transcript-matches',
+        id: 'three-way-verdict',
+        dimension: 'object_plumbing',
+        description: '复现/不同/不可验证 三类结论分开说',
+        pattern: '(reproduced|复现|differs|不同|unverifiable|不可验证)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-merged-summary',
+        dimension: 'data_integrity',
+        description: '不得用一句话合并"跑过了且一样"',
+        pattern: '(重跑成功且一致|reran and matched)',
+        mustMatch: false
+      }
+    ]
   }
 ]
