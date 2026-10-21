@@ -30,6 +30,20 @@ import { condaActivatedPath } from './runtime-paths'
  */
 const COORDINATION_WINDOW_MS = 30_000
 
+/**
+ * How long the timeout-diagnostic probes below give the child before the timeout fires.
+ *
+ * These two cases assert that a timeout is *structured* (`MICROMAMBA_TIMEOUT` + the stdout/stderr
+ * tails + `durationMs`), so the child must first get as far as spawning `process.execPath`, booting
+ * node, and writing its token. The budget was 200ms, which measured node's startup latency rather
+ * than the timeout path: on a loaded machine (full suite, four workers, swapping) the child had not
+ * written a byte by then, and the assertion failed on an empty `stdoutTail`/`stderrTail` — a red
+ * about the machine, not about the code. 1500ms keeps this a startup budget (a quiet machine starts
+ * node in tens of milliseconds) while leaving room for a heavily scheduled machine, and it still
+ * sits far below the 60s per-test timeout, so a genuinely stuck child fails as a failure.
+ */
+const TIMEOUT_PROBE_BUDGET_MS = 1_500
+
 describe('verifyExecutable', () => {
   it('resolves for a real interpreter that answers --version', async () => {
     // node itself answers `--version`; use it as a stand-in executable.
@@ -173,7 +187,7 @@ describe('runMicromamba', () => {
         undefined,
         undefined,
         undefined,
-        200
+        TIMEOUT_PROBE_BUDGET_MS
       )
     ).rejects.toThrow(/timed out[^]*timeout-stderr-token/i)
   })
@@ -187,19 +201,19 @@ describe('runMicromamba', () => {
       '--offline'
     ]
 
-    await expect(
-      runMicromamba(
-        argv,
-        {
-          MM_TIMEOUT_TOKEN: 'timeout-stdout-token',
-          CONDA_PKGS_DIRS: 'C:\\Users\\test\\os12345678'
-        },
-        undefined,
-        undefined,
-        undefined,
-        200
-      )
-    ).rejects.toMatchObject({
+    const error = await runMicromamba(
+      argv,
+      {
+        MM_TIMEOUT_TOKEN: 'timeout-stdout-token',
+        CONDA_PKGS_DIRS: 'C:\\Users\\test\\os12345678'
+      },
+      undefined,
+      undefined,
+      undefined,
+      TIMEOUT_PROBE_BUDGET_MS
+    ).catch((thrown: unknown) => thrown)
+
+    expect(error).toMatchObject({
       code: 'MICROMAMBA_TIMEOUT',
       data: {
         argv,
@@ -209,9 +223,13 @@ describe('runMicromamba', () => {
         pid: expect.any(Number),
         stderrTail: '',
         stdoutTail: 'timeout-stdout-token',
-        timeoutMs: 200
+        timeoutMs: TIMEOUT_PROBE_BUDGET_MS
       }
     })
+    // The tail above is only reachable if the child got as far as writing it, so prove the budget —
+    // not the child exiting — is what ended the call.
+    const { durationMs } = (error as { data: { durationMs: number } }).data
+    expect(durationMs).toBeGreaterThanOrEqual(TIMEOUT_PROBE_BUDGET_MS - 50)
   })
 
   it('distinguishes user cancellation from timeout and non-zero exit', async () => {
