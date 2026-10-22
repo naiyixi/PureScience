@@ -1,0 +1,44 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "no-contract",
+  "runId": "e3c47272-f9a3-4527-ac03-830a7b92b8d3",
+  "sessionId": "ses_e9d17d448ffeMUnSj143xwevu0",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 3,
+  "recordedAt": "2026-10-22T09:19:25.793Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "numbers": false,
+    "citations": false
+  },
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "pattern missing: (与.{0,10}(相关|一致)|associat|suggest)"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}
