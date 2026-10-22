@@ -52,6 +52,8 @@ const readSessionRecord = (raw: unknown): PersistedChatSession | null => {
     : null
 }
 
+const capabilityGapsLog = createLogger('capabilities')
+
 import { createAcpRuntime } from './acp/runtime-composition'
 import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
 import { createAcpHandlerWorkflows } from './acp/handler-workflows'
@@ -2620,12 +2622,23 @@ const createApplicationModules = async (
       // Per-turn capability gaps: the same reading the `capability_preflight` tool gives, prepended to the
       // turn's content. Measured: with the tool mounted, a real run called it zero times — so the gaps
       // are delivered instead of offered.
-      capabilityGaps: (sessionId) =>
-        renderSessionCapabilityGaps({
+      capabilityGaps: async (sessionId) => {
+        const block = await renderSessionCapabilityGaps({
           configRoot: resolveConfigRoot(),
           sessionId,
           deps: { loadFacts: loadCapabilityFacts }
-        }),
+        })
+        // Counts only — the block names the user's own inputs, so it never goes into a log line. This
+        // exists so "the gaps were injected" is observable at runtime instead of only assertable in a
+        // unit test: the provider content is not part of the transcript.
+        capabilityGapsLog.info('capability gaps notice', {
+          sessionId,
+          injected: block !== null,
+          lines: block ? block.split('\n').filter((line) => line.startsWith('- ')).length : 0,
+          chars: block?.length ?? 0
+        })
+        return block
+      },
       // Function-level model slots: a narrow call asks what model to use and reports what it did, so the
       // settings row and the trail are the same facts stated twice rather than two separate stories.
       functionModels: {
