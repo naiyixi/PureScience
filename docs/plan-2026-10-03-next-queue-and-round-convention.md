@@ -10870,3 +10870,90 @@ the file list`（那是用法错、不是代码错）；补上后暴露出**真�
 ① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；② 下一单元候选：给慢行补**可归属字段**（会话 id /
 调用点）使上面那条缺口可闭合（本地可判、纯 main 侧日志面）、或从能力面自拟一件；
 ③ 动手前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
+
+## 两百一十四、本轮追加（执行器，2026-10-22 21:0x–22:0x）——「这个会话有计划吗」不再解析整份会话 JSON：改从**指纹校验过的摘要层**回答（真语料 66/66）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = f2e79800`、`git status --short` **就是我上一轮遗留的 4 个文件**（`session-persistence/{coordinator,repository}.ts` +
+  两个 `.test.ts`）—— 上一轮汇报已写明「实现与本地读数全绿、尚未提交」⇒ 本轮第一件事是补完门禁并落盘，不开新单元。
+- 并发体在同一棵树上又落了 5 笔（`bd37363a` / `1d1a984d` / `c09065af` / `e2087d5e` / `f2e79800`，全在 `src/main/capabilities/**`
+  与 `local-rpc-server` / `skills/mcp-server`），与我那 4 个文件**零重叠**；它的在制品一个字节没碰（开工时树里已无未提交路径）。
+- **上一轮 §两百一十三 §三 2 的立案由本单元收口**：那条写的是「单次 3.8 秒那一半没治 —— 需要一次分段读数」。
+  分段读数上一轮已交付（`5c39a856`，排队 / 读盘 / 克隆三段 + `sessionId`），本单元治的是**为什么会有那 3.8 秒**：
+  普通答案（没有 Plan）本来不需要解析任何文档。
+- 内存（现取）：空闲物理页 **7,724 ≈ 120 MB**、swap `13,107 MB / 14,336 MB`、load 9.7 ⇒ 真机闸门仍未解，
+  本轮不声称任何窗口读数（且运行中的 dev 实例是**旧构建**，连 `5c39a856` 的新分段行都还没产生过 —— 见 §五 2）。
+
+### 一 CI 归因：`f2e79800` 的 `Nightly` 红在两条 mac 构建作业，判为环境/负载抖动（已复跑取证）
+
+按完整 40 位 SHA 查：`Windows Full Test` **success**、`Verify (lint+typecheck+test+package)` **success**，
+红的是 `build / Build macos-arm64` 与 `build / Build macos-x64`。作业级读数是**两件不同的事**，都不是代码：
+
+| 作业 | 失败步骤 | 读数 |
+|---|---|---|
+| macos-x64 | `scripts/macos-package-smoke.mjs` | `Error: Timed out waiting for the packaged macOS web service.`（60 s 预算，12:20:23→12:21:53）；随后签名读数文件没被写出 ⇒ `macSignature=unproven` 是**后果**，不是原因 |
+| macos-arm64 | `npm run test:e2e:p0` | `1 failed / 8 flaky / 11 skipped / 95 passed (41.5m)`；唯一那条失败是 `search-index-coverage.spec.ts:254`（`expect(coverageAfterRestart.indexed).toBeGreaterThanOrEqual(3)` ⇒ 收到 **0**），而它的 **retry #1 根本没跑到断言**：`electronApplication.firstWindow: Timeout 30000ms exceeded while waiting for event "window"` |
+
+判据（三条，全部是现取的读数，不是推断）：① 窗口里没有任何提交碰搜索索引 / 窗口创建 / 启动顺序
+（`faf0ef84..f2e79800` 只碰 `capabilities`、`session-persistence`、`local-rpc-server`、`mcp-server` 与文档）；
+② **同一个打包 smoke 作业在 arm64 上是 success**（`MACOS_SMOKE_OUTCOME: success`）⇒ smoke 脚本本身没坏；
+③ 同一次 P0 里 **8 条 flaky**（含 `storage-migration`、`reference-notes`、`provider-bridge` 各一条）+ 两条
+`firstWindow` 30 s 超时，形状是**跑满 41.5 分钟后的 runner 负载**，不是某一条 spec 的断言退化。
+
+处置：`gh run rerun 39769843709 --failed`（**Nightly 不是 Release**，不存在同名重复产物问题；Release 那条禁令不适用）。
+复跑期间 `Verify` 已 success、四条平台作业重跑中 —— 判决记在汇报里，**不把「我判它是抖动」写成「它绿了」**。
+
+### 二 交付（4 文件 + 1 份证据档 + 本节；换答案来源，不换队列、不放宽判据）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/session-persistence/repository.ts` | 新增 `loadRuntimeContextFromSummary()` + `RuntimeContextIndexLookup`：读现成摘要件（复用 `tryReadSessionSummary` 自带的 `size + mtimeMs` 指纹比对）⇒ 指纹描述的就是当前字节 ⇒ `answered`；缺席 / 指纹不符 / 摘要里的上下文**过不了与文档读同一个 sanitizer** ⇒ `unavailable`。**一字节不猜**：读不出来的上下文绝不被读成「这个会话没有 Plan」 |
+| `src/main/session-persistence/coordinator.ts` | `readSessionRuntimeContext` 先问索引，`answered` 用它，`unavailable` 仍读文档（与改动前**逐字相同**）；读取仍在同一个 `enqueue` 队列里。慢行读数新增 `source: 'index' \| 'document'` —— 否则「索引慢」会被读成「解析慢」 |
+
+**真语料读数（本机 `~/.purescience-project`，只读；脚本 `/tmp/ps-measure-summary-index.mjs` 不入仓）**：
+
+```
+documents 67 · 会话文档合计 68,994,993 字节（单份最大 3,117,545）
+summaries 66 · 摘要件合计 639,192 字节 ⇒ 体积比 107.9x
+fingerprintMatches 66/66（size + mtimeMs 与盘上文档逐字相同）
+summariesWithRuntimeContext 1（其中带 Plan 的 1）
+```
+
+⇒ **66 次里有 65 次**，产品为了得到「没有」这个答案，要把兆字节级 JSON 整份解析掉；而旁边那条投影小两个数量级、
+且已经被指纹校验过。这就是那 3.8 秒的来源。
+
+### 三 门禁（隔离工作树 `/private/tmp/ps-gate-2210` = `origin/main` + 本笔 4 文件，`node_modules` 软链）
+
+| 环 | 读数 |
+|---|---|
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
+| 域内 vitest（`session-persistence` + `session-plan` + `acp`） | **105 files / 1735 passed**，exit 0，141 s |
+| `eslint --no-cache`（本笔 4 文件） | **0 problems** |
+| `prettier --check`（本笔 4 文件） | 全部合风格 |
+| `scripts/pre-push-checks.sh`（主树现跑） | **EXIT=0**（八段全过；第 8 段报「本次没有新增或修改的可 lint 文件」是因为改动尚未提交 ⇒ 我自己那份 `eslint --no-cache` 是这一环的真实读数） |
+
+**tsc 抓到两条 vitest 完全看不见的错（都在我自己新写的用例里，形状值得记）**：
+1. 辅助函数把用例递进来的 spy **覆盖**掉了 ⇒ `toHaveBeenCalledTimes(1)` 读到的是一个从未被调用过的新替身，
+   断言**永远成立**（不是红，是假绿）。修法：spy 作为第二参数传入并原样保留。
+2. `first.revision = 99` —— 上下文按契约是 `readonly`（`TS2540`）。修法：用例里显式窄化成可写视图，
+   断言意图不变（调用方怎么写都不能污染下一次读到的索引条目）。
+
+**两条变异各自只红该红的那条**：① 索引查找短路成恒 `unavailable`（等于回到改动前）⇒ 4 条索引用例红，含
+「没打开文档」那条；② sanitizer 拒绝时仍回 `answered` ⇒ 只红「索引里的上下文过不了 sanitizer 必须拒答」。
+
+### 四 边界（不许读成更强）
+
+1. **真数据读数 + 真代码路径，不是真窗口读数**：内存闸门未解（120 MB 空闲 / swap 13.1 G of 14.3 G），
+   窗口侧行为未取，**不声称**。
+2. **那 3.8 秒的直接证据（分段读数：排队 vs 读盘）本轮没取到**：运行中的 dev 实例是旧构建（`5c39a856` 之后没重启过），
+   生产日志里还没有新分段行 ⇒ 本单元的价值由**语料读数 + 代码路径**支撑，不由生产日志支撑。重启实例即可产生（属真机闸门）。
+3. 没有换掉文档读那条路：`unavailable` 时行为与改动前逐字相同 ⇒ 答案不可能变弱，「变快」只在索引命中的情形成立。
+4. 不占版本号：无新的用户可见能力，只是同一个答案的取法。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；`f2e79800` 的 `Nightly` 复跑判决一并读（**复跑转绿才叫抖动**，
+红了则按作业级日志重新归因，别沿用本轮判断）；② 内存松开先补两条真机读数：`5c39a856` 的分段读数（重启实例即可产生
+`source` + 三段毫秒）与 P0-9 的审批卡密度；③ 仍卡就按能力面自拟一件（可离线判、差异化点能写成断言）。
