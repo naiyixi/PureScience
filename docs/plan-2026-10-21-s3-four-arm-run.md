@@ -89,6 +89,27 @@
 - arm manifest 能证明"这次跑了哪一支"，且默认路径产物与今天逐字节一致；
 - pilot 报告写进 `docs/BENCHMARK.md` 之前先生成 `docs/bench-runs/` 原始 JSON。
 
+## 5.1 实测发现：预检没有可用的注入面（2026-10-22）
+
+要把"契约"变成"agent 真的会用的东西"，得先找注入点。实测三个候选都不通：
+
+| 候选 | 实际情况 |
+|---|---|
+| `skill_read` 工具 | HTTP 传输层直接抛错（`Skill library reads are unavailable over the HTTP transport`）——opencode 走不走这条都读不到；claude-code 侧也不保证 |
+| 技能文件（`opencode/.../skills/os-*`） | agent 要主动打开文件才看得到 frontmatter 里的 contract；pilot 观测到它基本不打开 |
+| `opencode/instructions/purescience.md` | 是**安装级**文件，不是会话级——写进去会跨会话串味 |
+
+所以"契约层价值"测不出来，根因不是模型，而是**没有会话级的注入面**。
+
+### 需要拍板的两条路
+
+| 方案 | 形态 | 代价 |
+|---|---|---|
+| **A. 每会话 MCP 工具 `capability_preflight`** | 与 reviewer/skills 同族的 MCP server，按 session 计算 facts，返回 ready/missing/suggested | 中：新增一个 MCP server + 工具；需按六处计数规矩联动 |
+| B. 会话级指令片段 | 每会话生成 instructions 片段并在物化时写入会话专属配置目录 | 大：需要打开 opencode 的会话级配置能力，或为每会话单独 provision 配置目录 |
+
+我倾向 **A**：语义清楚（"问一下这一步能不能跑"）、可测、不会串会话；代价是要动 MCP 表面。
+
 ## 6. 不做
 
 - 不做"只注入文档"与"只给工具名"这两个臂（需要正文/工具清单裁剪，另立项）。
