@@ -1,4 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { Dirent } from 'node:fs'
+import { access, readdir } from 'node:fs/promises'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
 import type { AcpPermissionRequest, AcpPermissionResponse, AcpRuntimeEvent } from '../../shared/acp'
@@ -278,7 +281,65 @@ class HeadlessTaskApi {
     const artifacts = await this.namedArtifacts(sessionId, session.projectId).catch(() =>
       this.listArtifacts(sessionId)
     )
-    return { found: true, evidence: benchEvidenceFromSession(session, artifacts) }
+    // A run that wrote the figure into the notebook directory produced it just the same; include
+    // those files so the grader scores the work rather than the publish step.
+    const notebookFiles = await this.notebookOutputs(session.cwd)
+    const seen = new Set(artifacts.map((artifact) => artifact.path))
+    const merged: PersistedArtifact[] = [
+      ...artifacts,
+      ...notebookFiles
+        .filter((file) => !seen.has(file.path))
+        .map((file) => ({
+          id: file.path,
+          kind: 'workspace-file' as const,
+          path: file.path,
+          name: file.name
+        }))
+    ]
+    return { found: true, evidence: benchEvidenceFromSession(session, merged) }
+  }
+
+  /**
+   * Files the run left in its notebook data directory. A run may produce a figure by writing a file
+   * in the notebook cwd without ever publishing an artifact — the difference is publishing, not
+   * producing — so grading on artifacts alone would score the publish step, not the work.
+   *
+   * Bounded on purpose: two levels deep, hidden directories skipped, capped, and never fatal.
+   */
+  private async notebookOutputs(
+    cwd: string | undefined
+  ): Promise<{ path: string; name: string }[]> {
+    if (!cwd) return []
+    // Only a notebook data directory qualifies, and `run.json` is what marks one. Without this a
+    // session whose cwd happens to be `/tmp` (or a home directory) would have unrelated files
+    // graded as its outputs.
+    try {
+      await access(join(cwd, 'run.json'))
+    } catch {
+      return []
+    }
+    const found: { path: string; name: string }[] = []
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 2 || found.length >= 200) return
+      let entries: Dirent[]
+      try {
+        entries = await readdir(dir, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        if (found.length >= 200) return
+        if (entry.name.startsWith('.')) continue
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          await walk(full, depth + 1)
+          continue
+        }
+        found.push({ path: full, name: entry.name })
+      }
+    }
+    await walk(cwd, 0)
+    return found
   }
 
   /**

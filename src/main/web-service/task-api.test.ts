@@ -1,3 +1,7 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it, vi, type MockedFunction } from 'vitest'
 
 import type { AcpRuntimeEvent } from '../../shared/acp'
@@ -159,6 +163,34 @@ describe('HeadlessTaskApi adapter', () => {
     expect(invoke).toHaveBeenCalledWith('artifacts:list-project-files', expect.anything(), [
       expect.objectContaining({ projectName: 'pilot' })
     ])
+  })
+
+  it('includes files the run wrote into its notebook directory', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'nb-out-'))
+    try {
+      // `run.json` is what marks a notebook data directory; without it the guard refuses to walk.
+      await writeFile(join(cwd, 'run.json'), '{}')
+      await writeFile(join(cwd, 'ic50_distribution.png'), 'png')
+      await writeFile(join(cwd, 'ic50_distribution.py'), 'print(1)')
+      const invoke = vi.fn(async (channel: string) => {
+        if (channel === 'sessions:load-all') {
+          return { sessions: [{ ...sessionWithInputs, cwd }] }
+        }
+        // Both artifact sources answer with nothing: the run published no artifact.
+        if (channel === 'projects:list') return [{ id: 'project-1', name: 'pilot' }]
+        if (channel === 'artifacts:list-project-files') throw new Error('empty')
+        return undefined
+      })
+      const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+      const found = await api.sessionEvidence('session-1')
+      // Producing a figure and publishing one are different steps; the grader scores producing.
+      expect(found.evidence?.artifacts).toEqual(
+        expect.arrayContaining(['ic50_distribution.png', 'ic50_distribution.py'])
+      )
+    } finally {
+      await rm(cwd, { recursive: true, force: true })
+    }
   })
 
   it('falls back to the session record when the file library cannot answer', async () => {
