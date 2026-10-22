@@ -14,6 +14,7 @@ import { join } from 'node:path'
 
 import type { CapabilityFailureClass, StateFact } from '../../shared/capability-contract'
 import type { PreflightResult } from '../../shared/capability-preflight'
+import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PersistedArtifact } from '../../shared/session-persistence'
 import { SkillCapabilityRegistry } from '../skills/skill-capability-registry'
@@ -58,6 +59,11 @@ export type CapabilitiesPayload = {
         problems: string[]
         notes: string[]
         readings: SessionCapabilityReading[]
+        /**
+         * The same gaps phrased as prompt text, ready to prepend to a turn. Null means every declared
+         * capability is satisfied — a meaningful answer, not a missing one.
+         */
+        promptBlock: string | null
       }
 }
 
@@ -141,7 +147,16 @@ export const buildCapabilitiesPayload = async (
       factSources: facts.sources,
       problems: facts.problems,
       notes,
-      readings
+      readings,
+      promptBlock: renderCapabilityGaps({
+        selected: readings.filter((reading) => reading.status === 'missing_state').map((r) => r.id),
+        contracts: registry.declared().map((contract) => ({
+          id: contract.id,
+          requires: contract.requires,
+          produces: contract.produces
+        })),
+        facts: facts.facts
+      })
     }
   }
 }

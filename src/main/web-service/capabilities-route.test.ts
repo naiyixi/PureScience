@@ -149,6 +149,10 @@ describe('buildCapabilitiesPayload', () => {
       suggested: ['reads-matrix']
     })
     expect(payload.session.facts).toContain('artifact:figure')
+    // The same gap, phrased for a prompt: this is what a turn would carry, so it must name the
+    // capability, the fact and the producer without anyone having to ask the tool.
+    expect(payload.session.promptBlock).toContain('needs-summary 需要 summary（data:summary）')
+    expect(payload.session.promptBlock).toContain('reads-matrix')
   })
 
   it('treats a blank session id as no session', async () => {
