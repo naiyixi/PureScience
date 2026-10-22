@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, type Mock } from 'vitest'
 
 import type { ArtifactVersionFile } from '../../shared/artifact-provenance'
 import {
@@ -3850,6 +3850,9 @@ const createSessionRepository = (
     isComplete: true
   }),
   loadSessionWithDiagnostics: vi.fn().mockResolvedValue({ status: 'missing' }),
+  // Default: the index cannot answer, so every existing case keeps reading the document exactly as it
+  // did before this seam existed. Cases that exercise the index override this.
+  loadRuntimeContextFromSummary: vi.fn().mockResolvedValue({ status: 'unavailable' }),
   saveSession: vi.fn().mockResolvedValue(undefined),
   saveCommittedProjectSession: vi.fn().mockResolvedValue(undefined),
   deleteSession: vi.fn().mockResolvedValue(undefined),
@@ -4137,6 +4140,124 @@ describe('session runtime context read diagnostics', () => {
     // every slow open would look like a slow projection over a real Plan.
     expect(fields.hasPlan).toBe(false)
     expect(fields).not.toHaveProperty('plan')
+    clock.mockRestore()
+  })
+})
+
+describe('session runtime context read sources', () => {
+  const createIndexCoordinator = (
+    overrides: Partial<SessionMutationRepository> = {},
+    loadSessionWithDiagnostics: Mock = vi.fn()
+  ): { coordinator: SessionPersistenceCoordinator; loadSessionWithDiagnostics: Mock } => {
+    // Keep whichever spy the case handed in: returning a fresh one would make its call count a reading
+    // of nothing (the coordinator would be using a different function).
+    const repository = createSessionRepository({ ...overrides, loadSessionWithDiagnostics })
+    return {
+      coordinator: new SessionPersistenceCoordinator(repository, createFileIndex()),
+      loadSessionWithDiagnostics
+    }
+  }
+
+  it('answers from the list-tier index without opening the document', async () => {
+    const plan = createRuntimePlan()
+    const { coordinator, loadSessionWithDiagnostics } = createIndexCoordinator({
+      loadRuntimeContextFromSummary: vi.fn(async () => ({
+        status: 'answered' as const,
+        runtimeContext: { version: 1 as const, revision: 4, plan }
+      }))
+    })
+
+    await expect(coordinator.readSessionRuntimeContext('project-1', 'session-1')).resolves.toEqual({
+      version: 1,
+      revision: 4,
+      plan
+    })
+    // The whole point: a megabyte-scale Session JSON is not parsed to answer "is there a Plan?".
+    expect(loadSessionWithDiagnostics).not.toHaveBeenCalled()
+  })
+
+  it('hands back a copy, so a caller cannot write through to the index entry', async () => {
+    const { coordinator } = createIndexCoordinator({
+      loadRuntimeContextFromSummary: vi.fn(async () => ({
+        status: 'answered' as const,
+        runtimeContext: { version: 1 as const, revision: 4, plan: createRuntimePlan() }
+      }))
+    })
+
+    const first = await coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    // The context is readonly by contract; a caller that writes through it anyway must not be able to
+    // poison the index entry the next read is served from.
+    ;(first as { revision: number }).revision = 99
+    await expect(
+      coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    ).resolves.toMatchObject({ revision: 4 })
+  })
+
+  it('answers "no Plan" when the index shows no runtime context at all', async () => {
+    const { coordinator, loadSessionWithDiagnostics } = createIndexCoordinator({
+      loadRuntimeContextFromSummary: vi.fn(async () => ({ status: 'answered' as const }))
+    })
+
+    // 65 of 66 Sessions on the real corpus are this case: the ordinary answer, and the expensive one to
+    // obtain before this change.
+    await expect(coordinator.readSessionRuntimeContext('project-1', 'session-1')).resolves.toEqual({
+      version: 1,
+      revision: 0
+    })
+    expect(loadSessionWithDiagnostics).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the document when the index cannot prove it describes the file', async () => {
+    const durable = createSession({
+      runtimeContext: { version: 1, revision: 7, plan: createRuntimePlan() }
+    })
+    const loadFound = vi.fn(async () => ({
+      status: 'found' as const,
+      session: durable
+    }))
+    const { coordinator, loadSessionWithDiagnostics } = createIndexCoordinator(
+      {
+        loadRuntimeContextFromSummary: vi.fn(async () => ({ status: 'unavailable' as const }))
+      },
+      loadFound
+    )
+
+    await expect(
+      coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    ).resolves.toMatchObject({ revision: 7 })
+    expect(loadSessionWithDiagnostics).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the tier that answered, so a slow index read is not read as a slow parse', async () => {
+    const log = createTestLogger()
+    const repository = createSessionRepository({
+      loadRuntimeContextFromSummary: vi.fn(async () => ({ status: 'answered' as const }))
+    })
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 4_000_000
+    clock.mockImplementation(() => now)
+
+    const pending = coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    now += 5_000
+    await pending
+
+    const [message, fields] = log.warn.mock.calls[0] as [
+      string,
+      Record<string, number | boolean | string>
+    ]
+    expect(message).toBe('session runtime context read was slow')
+    expect(fields).toMatchObject({ source: 'index', hasPlan: false })
     clock.mockRestore()
   })
 })

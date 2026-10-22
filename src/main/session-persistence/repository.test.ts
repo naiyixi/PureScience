@@ -852,6 +852,99 @@ describe('session persistence repository (per-session files)', () => {
     await expect(repository.getProjectSessionDeletionState('project-a')).resolves.toBe('absent')
   })
 
+  // The Plan projection's question is answered from the list-tier index when the index can prove it
+  // describes the current file, and from the document otherwise. These three cases pin the seam: the
+  // cheap answer, the two reasons it must refuse, and that a refusal never reads as "no Plan".
+  it('answers a runtime context from the list-tier index without reading the document', async () => {
+    const root = await createStorageRoot()
+    const reads: string[] = []
+    const repository = new SessionRepository(root, {
+      readSessionFile: async (path) => {
+        reads.push(path)
+        return readFile(path, 'utf8')
+      }
+    })
+    await repository.saveSession(createSession({ runtimeContext: { version: 1, revision: 5 } }))
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    const summaryPath = `${documentPath}.summary.json`
+    // The summary write is best-effort and never awaited by the save; wait for it to land.
+    await vi.waitFor(async () => {
+      await expect(readFile(summaryPath, 'utf8')).resolves.toBeTruthy()
+    })
+    reads.length = 0
+
+    await expect(
+      repository.loadRuntimeContextFromSummary('project-a', 'session-1')
+    ).resolves.toEqual({
+      status: 'answered',
+      runtimeContext: { version: 1, revision: 5 }
+    })
+    // Only the index was read — the document is exactly what this seam exists to avoid parsing.
+    expect(reads).toEqual([summaryPath])
+  })
+
+  it('refuses to answer when the summary no longer describes the file', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    const summaryPath = `${documentPath}.summary.json`
+    await vi.waitFor(async () => {
+      await expect(readFile(summaryPath, 'utf8')).resolves.toBeTruthy()
+    })
+
+    // One byte of drift is enough: the fingerprint is the only proof the projection describes these bytes.
+    await writeFile(documentPath, `${await readFile(documentPath, 'utf8')} `, 'utf8')
+
+    await expect(
+      repository.loadRuntimeContextFromSummary('project-a', 'session-1')
+    ).resolves.toEqual({
+      status: 'unavailable'
+    })
+  })
+
+  it('refuses to answer when there is no index entry at all', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+    const summaryPath = join(root, 'sessions', 'project-a', 'session-1.json.summary.json')
+    await vi.waitFor(async () => {
+      await expect(readFile(summaryPath, 'utf8')).resolves.toBeTruthy()
+    })
+    await rm(summaryPath)
+
+    await expect(
+      repository.loadRuntimeContextFromSummary('project-a', 'session-1')
+    ).resolves.toEqual({
+      status: 'unavailable'
+    })
+  })
+
+  it('refuses to answer when the indexed context does not survive the sanitizer', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession({ runtimeContext: { version: 1, revision: 2 } }))
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    const summaryPath = `${documentPath}.summary.json`
+    await vi.waitFor(async () => {
+      await expect(readFile(summaryPath, 'utf8')).resolves.toBeTruthy()
+    })
+
+    // A context the document read would have rejected must not become "this Session has no Plan": the
+    // fingerprint still matches, so only the sanitizer stands between the index and a wrong answer.
+    const summary = JSON.parse(await readFile(summaryPath, 'utf8')) as {
+      catalog: { runtimeContext?: unknown }
+    }
+    summary.catalog.runtimeContext = { version: 99, revision: 2 }
+    await writeFile(summaryPath, JSON.stringify(summary), 'utf8')
+
+    await expect(
+      repository.loadRuntimeContextFromSummary('project-a', 'session-1')
+    ).resolves.toEqual({
+      status: 'unavailable'
+    })
+  })
+
   it('commits an empty Project Session phase with a durable marker', async () => {
     const root = await createStorageRoot()
     const repository = new SessionRepository(root)

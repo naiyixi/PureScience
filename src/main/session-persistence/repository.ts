@@ -6,6 +6,7 @@ import {
   createSessionFile,
   normalizeSessionFile,
   sanitizeSessionUploadedAttachments,
+  sanitizeSessionRuntimeContext,
   normalizeSessionManifest,
   type LoadAllSessionsResult,
   type PersistedChatSession,
@@ -13,6 +14,7 @@ import {
   type SaveSessionManifestRequest,
   type SessionLoadFailure,
   type SessionLoadWarning,
+  type SessionRuntimeContext,
   type SessionSummaryFile
 } from '../../shared/session-persistence'
 import {
@@ -204,6 +206,12 @@ const assertSafeSegment = (segment: string): string => {
   return segment
 }
 
+// The answer to "does this Session carry a Plan?" from the list-tier projection. `answered` carries the
+// runtime context when the index shows one; `unavailable` is not an error and not "no Plan" — it means
+// the index cannot prove it describes the current bytes, so the caller must read the document.
+export type RuntimeContextIndexLookup =
+  { status: 'answered'; runtimeContext?: SessionRuntimeContext } | { status: 'unavailable' }
+
 // Owns per-session durable reads/writes: one file per session under sessions/<projectId>/<id>.json,
 // plus a small manifest for the last-open selection. Writes are serialized and atomic (temp + rename),
 // while malformed JSON is backed up and I/O failures preserve the existing file for later recovery.
@@ -294,6 +302,33 @@ class SessionRepository {
     if (!quarantine.isComplete) return { status: 'unreadable' }
     if (read.session) return { status: 'found', session: read.session }
     return quarantine.exists ? { status: 'unreadable' } : { status: 'missing' }
+  }
+
+  // The Plan projection asks one question every time a window opens — "does this Session carry a Plan?"
+  // — and the document tier answers it by parsing the whole Session JSON (real corpus: 68.99 MB across
+  // 66 Sessions, up to 3.1 MB for a single one). The list tier already keeps a projection beside every
+  // document that is 108x smaller (0.64 MB in total) and carries the runtime context, validated against
+  // the document's own bytes by the fingerprint check below. So this lookup answers from that index when
+  // the index can prove it describes the current file, and otherwise says `unavailable` — which puts the
+  // caller back on the document, byte for byte the behaviour it had before.
+  //
+  // It never guesses in either direction: a summary whose fingerprint does not match answers nothing,
+  // and a runtime context that does not survive the same sanitizer the document read runs answers
+  // nothing either (an unreadable context in the index must not become "this Session has no Plan").
+  async loadRuntimeContextFromSummary(
+    projectId: string,
+    sessionId: string
+  ): Promise<RuntimeContextIndexLookup> {
+    const filePath = this.sessionFilePath(
+      assertSafeSegment(projectId),
+      assertSafeSegment(sessionId)
+    )
+    const summary = await this.tryReadSessionSummary(filePath)
+    if (!summary) return { status: 'unavailable' }
+    if (summary.runtimeContext === undefined) return { status: 'answered' }
+    const runtimeContext = sanitizeSessionRuntimeContext(summary.runtimeContext)
+    if (!runtimeContext) return { status: 'unavailable' }
+    return { status: 'answered', runtimeContext }
   }
 
   // Reports whether the live sessions tree was fully scanned so DB reconciliation never acts on a

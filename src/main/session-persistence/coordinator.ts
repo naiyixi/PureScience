@@ -21,7 +21,11 @@ import type {
 } from '../../shared/session-persistence'
 import type { ManagedFileSoftDeleteToken } from '../project-files/repository'
 import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
-import type { ProjectSessionDeletionState, SessionWritePhases } from './repository'
+import type {
+  ProjectSessionDeletionState,
+  RuntimeContextIndexLookup,
+  SessionWritePhases
+} from './repository'
 import {
   materializeSessionConversationGraph,
   sanitizeSessionRuntimeContext
@@ -101,6 +105,13 @@ type SessionMutationRepository = {
     session: PersistedChatSession,
     onWritePhases?: (phases: SessionWritePhases) => void
   ): Promise<void>
+  // Answers "does this Session carry a Plan?" from the validated list-tier projection; `unavailable`
+  // means the caller must read the document (absent or stale summary, or a context the sanitizer
+  // rejects). Reads stay in this queue — only where the answer comes from changes.
+  loadRuntimeContextFromSummary(
+    projectId: string,
+    sessionId: string
+  ): Promise<RuntimeContextIndexLookup>
   saveCommittedProjectSession(session: PersistedChatSession): Promise<void>
   deleteSession(projectId: string, sessionId: string): Promise<void>
   deleteProjectSessions(projectId: string): Promise<void>
@@ -931,18 +942,28 @@ class SessionPersistenceCoordinator {
     let startedAt = requestedAt
     return this.enqueue(async () => {
       startedAt = Date.now()
-      const session = await this.loadRuntimeContextSession(projectId, sessionId, 'read')
+      // The index answers the question without opening the document at all, which is the whole point:
+      // on the real corpus 65 of 66 Sessions have no runtime context, so every one of those opens used
+      // to parse a megabyte-scale JSON to learn "nothing to project". The document is still read when
+      // the index cannot prove it describes the current bytes, so no answer got weaker — only cheaper.
+      const summarized = await this.repository.loadRuntimeContextFromSummary(projectId, sessionId)
+      const context =
+        summarized.status === 'answered'
+          ? (summarized.runtimeContext ?? emptySessionRuntimeContext())
+          : ((await this.loadRuntimeContextSession(projectId, sessionId, 'read')).runtimeContext ??
+            emptySessionRuntimeContext())
       const readAt = Date.now()
-      const context = cloneRuntimeContext(session.runtimeContext ?? emptySessionRuntimeContext())
+      const cloned = cloneRuntimeContext(context)
       this.reportSlowRuntimeContextRead({
         sessionId,
         requestedAt,
         startedAt,
         readAt,
         finishedAt: Date.now(),
-        hasPlan: context.plan !== undefined
+        hasPlan: cloned.plan !== undefined,
+        source: summarized.status === 'answered' ? 'index' : 'document'
       })
-      return context
+      return cloned
     })
   }
 
@@ -955,6 +976,8 @@ class SessionPersistenceCoordinator {
    * `sessionId` is carried because the caller asks per Session and the same window can ask about several:
    * without it, "how many times did one open ask" cannot be cut out of the log at all, and that count is
    * the whole point of the exercise (a Session that has no Plan is the ordinary answer, not a failure).
+   * `source` says which tier answered, so a slow read that came from the index is not misread as a slow
+   * document parse (and the reverse): the phase split alone cannot tell those apart.
    */
   private reportSlowRuntimeContextRead(times: {
     sessionId: string
@@ -963,6 +986,7 @@ class SessionPersistenceCoordinator {
     readAt: number
     finishedAt: number
     hasPlan: boolean
+    source: 'index' | 'document'
   }): void {
     const totalMs = times.finishedAt - times.requestedAt
     if (totalMs < SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS) return
@@ -973,7 +997,8 @@ class SessionPersistenceCoordinator {
         loadMs: times.readAt - times.startedAt,
         cloneMs: times.finishedAt - times.readAt,
         totalMs,
-        hasPlan: times.hasPlan
+        hasPlan: times.hasPlan,
+        source: times.source
       })
     } catch {
       // Best-effort: a logging failure must never fail a read the caller is waiting on.
