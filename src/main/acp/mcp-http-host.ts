@@ -8,6 +8,7 @@ import { createArtifactMcpServer, type ArtifactMcpEnvironment } from '../artifac
 import { ArtifactRepository } from '../artifacts/repository'
 import { createNotebookMcpServer, type NotebookMcpEnvironment } from '../notebook/mcp-server'
 import {
+  callCapabilityPreflightRpc,
   callGitHubSkillImportRpc,
   callSkillCreateRpc,
   callSkillImportRpc,
@@ -209,7 +210,11 @@ class AgentMcpHttpHost {
       listSkills: async () => ({ skills: [] }),
       readSkill: async (name) => {
         throw new Error(`Skill library reads are unavailable over the HTTP transport: ${name}`)
-      }
+      },
+      // Preflight does NOT need the library in this process: the answer is computed in main from the
+      // session's own facts, so this transport can serve it like the stdio one does.
+      preflightCapability: (capability) =>
+        callCapabilityPreflightRpc(skillImportEnvironment, capability)
     })
   }
 

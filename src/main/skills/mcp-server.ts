@@ -414,7 +414,7 @@ const callSkillImportRpcRequest = async <T>(
 
 // Preflight rides the same session-bound RPC capability as the import/creation tools: it answers
 // about one session, and the main process owns both the registry and the session facts.
-const callCapabilityPreflightRpc = (
+export const callCapabilityPreflightRpc = (
   environment: SkillImportMcpEnvironment,
   capability: string
 ): Promise<unknown> =>
