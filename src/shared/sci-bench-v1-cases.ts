@@ -177,7 +177,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     dimension: 'object_plumbing',
     difficulty: 'easy',
     origin: 'docs/demo-verification/assay-local-analysis-verification.md',
-    prompt: '把这些化合物活性做成一张可以放进报告的图。',
+    prompt: '把这些化合物活性做成一张可以放进报告的图，图片与生成脚本都要落盘。',
     checks: [
       {
         kind: 'artifact-with-script',
@@ -209,7 +209,7 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     dimension: 'quantitative_quality',
     difficulty: 'medium',
     origin: 'src/shared/sci-bench.ts#egfr-figure-discipline',
-    prompt: '画一张 IC50 分布图，说明你怎么处理跨数量级。',
+    prompt: '画一张 IC50 分布图，把图片文件与生成脚本都存下来，并说明你怎么处理跨数量级。',
     checks: [
       {
         kind: 'artifact-with-script',
