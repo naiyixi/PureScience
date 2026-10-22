@@ -110,6 +110,43 @@
 
 我倾向 **A**：语义清楚（"问一下这一步能不能跑"）、可测、不会串会话；代价是要动 MCP 表面。
 
+## 5.2 真机验证：opencode 拿到的 MCP 服务是**零个**（2026-10-22）
+
+起了一个 opencode headless 实例（`/tmp/ps-vp`，端口 44320），跑完 `claim-calibrated-to-evidence`
+（session `ses_e9c12f850ffeCT8zI31dw2vIXG`，原子 0.33），然后读它自己生成的配置：
+
+```
+/tmp/ps-vp/opencode/config/opencode/opencode.json →  "mcp": {}      # 空
+```
+
+对照 claude-code（本机安装根真实 transcript）：
+
+```
+mcp__purescience_skills__{skill_list, skill_read, skill_eval, request_skill_import, create_skill}
+mcp__purescience_notebook__* / mcp__purescience_pdf__* / mcp__purescience_plan__* ...
+```
+
+也就是说：
+
+- **claude-code**：技能服务挂着，`capability_preflight` 自动随行；
+- **opencode**：**一个 MCP 服务都没有**——没有 skill_read、没有 preflight、没有 notebook 工具。
+
+### 这条改变了此前 30+ 份记录的解释
+
+之前的 pilot 全在 opencode 上跑，因此那些记录测的是"opencode + 只有文件形态的技能"：
+
+- 「agent 从不打开技能」**不是行为偏好，而是结构使然**——它没有 skill 工具可调；
+- 契约消融在这些记录里接近空操作，除了"没环节消费契约"，还叠了"这个 runtime 连工具面都没有"。
+
+所以：**契约效应实验必须换到工具面真的挂上的 runtime**（claude-code），或先给 opencode 接上 MCP。
+
+### 两条路
+
+| 方案 | 说明 | 代价 |
+|---|---|---|
+| **A. 给 opencode 写 mcp 段** | 用已有的 HTTP MCP host（`host.urlFor('skill-import', routingId)`）生成 `type: remote` 条目 | 中：opencode 配置写入 + 路由 id 生命周期 + 权限提示 |
+| B. 换 claude-code 跑实验 | 工具面现成 | 需可用凭证（开发构建拿不到钥匙串密钥，此前正是因此切到 opencode） |
+
 ## 6. 不做
 
 - 不做"只注入文档"与"只给工具名"这两个臂（需要正文/工具清单裁剪，另立项）。
