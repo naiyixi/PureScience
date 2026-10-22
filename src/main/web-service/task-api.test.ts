@@ -134,6 +134,56 @@ describe('HeadlessTaskApi adapter', () => {
     await expect(api.sessionEvidence('missing')).resolves.toEqual({ found: false, evidence: null })
   })
 
+  it('names artifacts from the file library instead of grading blob paths', async () => {
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === 'sessions:load-all') return { sessions: [sessionWithInputs] }
+      if (channel === 'projects:list') return [{ id: 'project-1', name: 'pilot' }]
+      if (channel === 'artifacts:list-project-files') {
+        return [
+          {
+            id: 'art-1',
+            kind: 'workspace-file',
+            path: '/data/.provenance/a/versions/b/content',
+            name: 'ic50.png',
+            sessionId: 'session-1'
+          }
+        ]
+      }
+      return undefined
+    })
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    const found = await api.sessionEvidence('session-1')
+    // A filename-shaped check must see `ic50.png`; the stored path never ends in .png.
+    expect(found.evidence?.artifacts).toEqual(['ic50.png'])
+    expect(invoke).toHaveBeenCalledWith('artifacts:list-project-files', expect.anything(), [
+      expect.objectContaining({ projectName: 'pilot' })
+    ])
+  })
+
+  it('falls back to the session record when the file library cannot answer', async () => {
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === 'sessions:load-all') {
+        return {
+          sessions: [
+            {
+              ...sessionWithInputs,
+              artifacts: [{ id: 'art-1', kind: 'workspace-file', path: 'out/figure.png' }]
+            }
+          ]
+        }
+      }
+      // projects:list answers, but the library rejects.
+      if (channel === 'projects:list') return [{ id: 'project-1', name: 'pilot' }]
+      if (channel === 'artifacts:list-project-files') throw new Error('not available to tasks')
+      return undefined
+    })
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    const found = await api.sessionEvidence('session-1')
+    expect(found.evidence?.artifacts).toEqual(['out/figure.png'])
+  })
+
   it('dispatches façade operations through the narrow Task command view', async () => {
     const commandInvoke = vi.fn(async () => [project])
     const api = new HeadlessTaskApi({

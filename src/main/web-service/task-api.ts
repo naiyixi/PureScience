@@ -272,8 +272,37 @@ class HeadlessTaskApi {
     }
     const session = result.sessions.find((entry) => entry.id === sessionId)
     if (!session) return { found: false, evidence: null }
-    const artifacts = await this.listArtifacts(sessionId)
+    // Session JSON records the artifact's content path, not the name the run used. The file library
+    // does carry names, so ask it first and fall back to the session record only when it cannot
+    // answer — a grader keyed on filenames is useless without them.
+    const artifacts = await this.namedArtifacts(sessionId, session.projectId).catch(() =>
+      this.listArtifacts(sessionId)
+    )
     return { found: true, evidence: benchEvidenceFromSession(session, artifacts) }
+  }
+
+  /**
+   * Artifacts for one session as the file library sees them: `name` plus the stored path. Throws when
+   * the library or the project name is unavailable, so the caller can fall back rather than silently
+   * grading against unnamed blobs.
+   */
+  private async namedArtifacts(sessionId: string, projectId: string): Promise<PersistedArtifact[]> {
+    const projects = (await this.invoke('projects:list')) as Project[]
+    const projectName = projects.find((project) => project.id === projectId)?.name
+    if (!projectName) throw new Error(`No project name for ${projectId}`)
+    const files = (await this.invoke('artifacts:list-project-files', {
+      projectName
+    })) as (PersistedArtifact & { sessionId?: string })[]
+    const forSession = files.filter(
+      (file) => file.sessionId === undefined || file.sessionId === sessionId
+    )
+    if (!forSession.length) throw new Error('file library returned nothing for this session')
+    return forSession.map((file) => ({
+      id: file.id,
+      kind: file.kind,
+      path: file.path,
+      ...(file.name ? { name: file.name } : {})
+    }))
   }
 
   private invoke(channel: string, ...args: unknown[]): Promise<unknown> {
