@@ -127,6 +127,28 @@ describe('evaluateBenchCase', () => {
     expect(pairing?.detail).toBe('artifact present but no producing script recorded')
   })
 
+  it('names the artifacts it did see when the expected one is missing', () => {
+    // This case expects an ic50/potency figure; a dotplot does not satisfy it, so the finding must
+    // say what WAS written rather than just "missing".
+    const benchCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'figure-axis-discipline')!
+    const result = evaluateBenchCase(benchCase, {
+      transcript: '使用对数轴（log scale）',
+      artifacts: ['out/assay_dotplot.png', 'out/raw.csv'],
+      numbers: [{ label: 'mean IC50', value: 12.5, provenance: 'pandas 2.2' }]
+    })
+    const pairing = result.findings.find((finding) => finding.checkId === 'ic50-figure-with-script')
+    // Not a dead end: the finding says what was produced, so the next person can tell a naming
+    // mismatch from "nothing was written".
+    expect(pairing?.detail).toContain('observed 2: out/assay_dotplot.png, out/raw.csv')
+  })
+
+  it('says plainly when nothing was written at all', () => {
+    const benchCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'figure-axis-discipline')!
+    const result = evaluateBenchCase(benchCase, { transcript: '数据源来自 assay_summary.csv' })
+    const pairing = result.findings.find((finding) => finding.checkId === 'ic50-figure-with-script')
+    expect(pairing?.detail).toContain('observed: no artifacts')
+  })
+
   it('is deterministic across repeated grading', () => {
     expect(evaluateBenchCase(checkpointCase, resumeEvidence)).toEqual(
       evaluateBenchCase(checkpointCase, resumeEvidence)

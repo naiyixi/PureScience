@@ -195,6 +195,12 @@ const evaluateCheck = (check: AtomicCheck, evidence: BenchEvidence): CheckFindin
         (pair) => artifactRegex.test(pair.artifact) && scriptRegex.test(pair.producedBy)
       )
       const passed = artifactPresent && producedByScript
+      // A bare "artifact missing" hides the most useful fact: what WAS produced. Naming the observed
+      // paths (bounded) turns the finding into something a person can act on instead of a dead end.
+      const produced = artifactPaths(evidence)
+      const observed = produced.length
+        ? `observed ${produced.length}: ${produced.slice(0, 3).join(', ')}${produced.length > 3 ? ', …' : ''}`
+        : 'observed: no artifacts'
       return {
         ...base,
         passed,
@@ -202,7 +208,7 @@ const evaluateCheck = (check: AtomicCheck, evidence: BenchEvidence): CheckFindin
           ? 'artifact shipped together with its producing script'
           : artifactPresent
             ? 'artifact present but no producing script recorded'
-            : 'artifact missing'
+            : `artifact missing — ${observed}`
       }
     }
     case 'numbers-provenanced': {
