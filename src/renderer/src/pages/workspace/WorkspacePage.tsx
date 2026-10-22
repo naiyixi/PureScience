@@ -1117,29 +1117,52 @@ const WorkspacePage = ({
     markComposerDraftChanged,
     t
   ])
+  // 「这个会话有计划吗」每次**打开**只问一次。
+  //
+  // 这个问题的答案只与「打开的是哪个会话」有关（外加一种真实的迁移：状态进入等批准 —— 下面那条修复
+  // 路线要靠它），而 effect 原来的依赖是整个 `activeSession` 对象。修一次卡住的会话会让这个对象换一次
+  // 身份（`finishRun` 改状态），于是同一次「打开」里会再问一遍，把刚刚拿到的答案重新取一次：主进程每次
+  // 回答都要进全局持久化队列、把会话 JSON 整份读出来解析（真机 `acp:get-plan-projection` 726 条 ≥50ms、
+  // 中位 3,825ms），而这次重问没有任何新信息。账本按「打开」重置：切走再切回来算新的一次打开。
+  const planAskLedger = useRef<{ sessionId: string; askedStatuses: Set<string> }>({
+    sessionId: '',
+    askedStatuses: new Set()
+  })
+  const planAskSessionId = activeSession?.id
+  const planAskProjectId = activeSession?.projectId
+  const planAskStatus = activeSession?.status
+  const planAskHasPlan = Boolean(activeSession?.activePlanProjection)
   useEffect(() => {
     const getPlanProjection = window.api.acp?.getPlanProjection
-    if (!activeSession || activeSession.activePlanProjection || !getPlanProjection) return
+    if (!planAskSessionId || !planAskProjectId || planAskHasPlan || !getPlanProjection) {
+      return
+    }
+    if (planAskLedger.current.sessionId !== planAskSessionId) {
+      planAskLedger.current = { sessionId: planAskSessionId, askedStatuses: new Set() }
+    }
+    const askedStatus = planAskStatus ?? 'unknown'
+    if (planAskLedger.current.askedStatuses.has(askedStatus)) return
+    planAskLedger.current.askedStatuses.add(askedStatus)
     let cancelled = false
-    void getPlanProjection(activeSession.projectId, activeSession.id)
+    void getPlanProjection(planAskProjectId, planAskSessionId)
       .then((projection) => {
         if (cancelled) return
         if (projection) {
-          setActivePlanProjection(activeSession.id, projection)
+          setActivePlanProjection(planAskSessionId, projection)
           return
         }
         const current = useSessionStore
           .getState()
-          .sessions.find((session) => session.id === activeSession.id)
+          .sessions.find((session) => session.id === planAskSessionId)
         if (current?.status === 'waiting-plan-approval' && !current.activePlanProjection) {
-          useSessionStore.getState().finishRun(activeSession.id)
+          useSessionStore.getState().finishRun(planAskSessionId)
         }
       })
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [activeSession, setActivePlanProjection])
+  }, [planAskSessionId, planAskProjectId, planAskStatus, planAskHasPlan, setActivePlanProjection])
   // The read-only posture an imported session carries, read from the record beside it whenever the
   // session is opened: the session itself says where it came from and that nothing here verified it —
   // not only the dialog that once imported it. Keyed by session id so a posture can never linger on a

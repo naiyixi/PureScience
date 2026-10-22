@@ -10805,3 +10805,68 @@ steps"`，判据是 `stepCount: 11` 与新步名 `open-project-db` 出现在位�
   （`88b76d9f..faf0ef84`），后者包含前者，证据即它的双绿（`git merge-base --is-ancestor` 成立）。
 - 判决来自本轮的看门脚本（逐轮写 `/tmp/ci-verdict-faf0ef84.txt`，终态行 `FINAL both lanes concluded`，
   且要求**两条车道都** completed：`nightly_done=1 windows_done=1 in_flight=0`）。
+
+## 两百一十三、本轮追加（执行器，2026-10-22 11:40–13:3x）—— 「这个会话有计划吗」每次打开只问一次（上一轮被迭代上限截断的单元，本轮补完门禁与提交）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = bd264096`、`git status --short` **2 项**（`WorkspacePage.tsx` 改动 +
+  `WorkspacePage.plan-projection-ask.test.tsx` 新增）—— **这两项就是上一轮遗留**（§三 写明「未提交、未推送」）
+  ⇒ 本轮第一件事不是开新单元，而是把它跑完门禁并落盘。
+- 上一轮那条后台全量**没有判决**：`/tmp/ps-full.log` 只有 42 字节（`RUN v4.1.11` 一行），
+  进程表里也没有 `vitest`。⇒ **按「没有读数」处理，重跑，不引用它的任何结论。**
+- 内存（现取）：空闲页 4,903 ≈ **76 MB**、`swap used 12,857.81 MB / 14,336 MB` ⇒ 真机闸门仍未解，
+  本轮不声称任何窗口读数。
+- B 段复核仍为 A7 ✅ / S3 ✅ / M2 ⛔（卡产品决定）⇒ 按队列约定先收口自己的遗留项。
+
+### 一 交付（2 个源/测试文件 + 1 份证据档 + 本节）
+
+| 位置 | 改动 |
+|---|---|
+| `src/renderer/src/pages/workspace/WorkspacePage.tsx` | `planAskLedger`（`useRef`，按「打开」重置、按状态记账）；effect 依赖从整个 `activeSession` 对象收窄为 `planAskSessionId / planAskProjectId / planAskStatus / planAskHasPlan` 四个值；兜底修复路线（`waiting-plan-approval` + main 说没有计划 ⇒ `finishRun`）原样保留 |
+| `src/renderer/src/pages/workspace/WorkspacePage.plan-projection-ask.test.tsx`（新，4 条） | 打开只问一次 / 五次真写入的工具活动不再问（**先断言 store 对象换了身份且 `activities` 增加**，否则这条是假绿）/ 状态真迁移仍再问并解开卡住的状态 / 切走再切回来算新的一次打开 |
+| `docs/evidence/2026-10-22-plan-projection-ask-once-per-open.md` | 读数的**两类行怎么分开**（726 条慢行 vs 26 条拒绝行）、两条生产消费方的分工、变异证明、边界与具名立案 |
+
+**根因（两半，别读成一处）**：① effect 依赖的是整个对象，而对象在每次工具活动/状态迁移后换身份；
+② **兜底修复路线自己会触发一次重问** —— `finishRun` 改状态 ⇒ 对象换身份 ⇒ 同一个问题再问一遍，
+而重问拿到的答案必然与刚拿到的相同。
+
+### 二 读数与变异证明（全部实跑）
+
+生产日志（`logs/headless.out.log`，慢通道阈值 50 ms）按通道聚合，**只数 `ipc handler was slow` 那一类**：
+
+```
+acp:get-plan-projection  n=726  median=3,819 ms  p95=121,600 ms  max=125,341 ms  sum=13,396,660 ms
+```
+
+同一通道另有 **26 条 `ipc handler rejected`**（`Cannot read runtime context for a missing Session`，亚毫秒级）——
+把它们混进来会把中位数从 3.8 秒读成几百毫秒，所以证据档里写明了分块取值的命令。
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（新用例） | **1 file / 4 passed** |
+| 变异：去掉账本去重 | 只红「打开只问一次」（`expected 3 to be 2` —— 多出来的正是修复路径自己触发的那次重问） |
+| 变异：账本不随「打开」重置 | 只红「切走再切回来算新的一次打开」 |
+| 全量 vitest `--maxWorkers=3` | **1370 passed \| 16 skipped（1386 文件）**；**17,411 passed \| 209 skipped（17,620 例）**；`FULL_EXIT=0`（比上一轮 +1 文件 / +4 例＝本笔新用例，无其他增减） |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `npx eslint --no-cache`（本笔 2 文件） | **0 error / 0 warning**（首跑 1 条 prettier warning ＝依赖数组折行，已就地改） |
+| `scripts/pre-push-checks.sh` | **EXIT=0**（品牌扫描 / README 双语 / 模型清单 / 脚本入口 全过） |
+
+**顺带纠一条自己的错**：第一次跑 web typecheck 漏了 `--composite false`，报了一屏 `TS6307 … not listed within
+the file list`（那是用法错、不是代码错）；补上后暴露出**真正的那条** —— 新用例里声明了未使用的
+`COORDINATION_WINDOW_MS`（`TS6133`）。**这正是「vitest 全绿而 tsc 红」的典型形状**：定向 4 条一开始就是绿的。
+
+### 三 边界（不许读成更强）
+
+1. **无真机窗口读数**：`blocked-by` = 内存闸门（76 MB 空闲 / swap 12.9 G of 14.3 G）。
+   证据 = **生产日志的既有读数 + 渲染层用例**，不冒充窗口读数。
+2. 这条读通道的**单次 3.8 秒那一半没治**（主进程排队 + 整份会话 JSON 解析）⇒ **具名立案**：
+   `blocked-by` = 需要一台不抖的机器上一次分段读数（排队时间 vs 解析时间）。
+3. 慢行**不带会话 id**，所以「一次打开内问了几次」目前无法从日志切分 —— 记为**可观测性缺口**，
+   解封要么补字段、要么按安静窗口比条数，**不用推测值冒充**。
+
+### 四 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；② 下一单元候选：给慢行补**可归属字段**（会话 id /
+调用点）使上面那条缺口可闭合（本地可判、纯 main 侧日志面）、或从能力面自拟一件；
+③ 动手前先 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
