@@ -17,6 +17,8 @@ export type SessionFactSources = {
   artifacts: { path: string; name?: string }[]
   /** Skills the session's messages reference. A reference is not an execution. */
   referencedCapabilities: string[]
+  /** Fact sources this caller could not read. Named, so an empty list is not read as "nothing there". */
+  unavailableSources?: string[]
 }
 
 export type PreflightDeps = {
@@ -77,7 +79,7 @@ export const buildCapabilityPreflight = async (input: {
         suggested: []
       }
 
-  const notes: string[] = []
+  const notes: string[] = [...(sources.unavailableSources ?? [])]
   if (sources.referencedCapabilities.length) notes.push('used_capabilities_from_mentions')
   if (!installed) notes.push('unknown_capability')
   else if (!contract) notes.push('undeclared_capability')
