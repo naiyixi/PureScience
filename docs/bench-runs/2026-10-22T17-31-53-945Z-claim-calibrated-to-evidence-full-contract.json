@@ -1,0 +1,49 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "full-contract",
+  "runId": "32e6da01-9b6a-4377-baab-8efb78413462",
+  "sessionId": "ses_e9b54f81affe63A30i8ivStbfN",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 7,
+  "recordedAt": "2026-10-22T17:31:53.945Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [
+    "execute",
+    "other"
+  ],
+  "toolCallCount": 3,
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "forbidden pattern present: (证明|proves|demonstrates causation)"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern present"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}
