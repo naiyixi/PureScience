@@ -94,6 +94,28 @@ const skillReadToolSchema = {
     .regex(/^[a-z0-9_-]+$/)
     .describe('Skill name (lowercase letters, digits, hyphens, underscores).')
 }
+// The agent asks this before running a capability it is unsure about; the answer is computed in the
+// main process from the session's own facts, so "ready" here means ready for THIS session.
+const CAPABILITY_PREFLIGHT_TOOL_NAME = 'capability_preflight'
+const CAPABILITY_PREFLIGHT_TOOL_DESCRIPTION =
+  'Asks whether a declared capability can run in this session, and if not, what is missing and which ' +
+  "capability would establish it. Answers from the session's own state (attachments, artifacts, " +
+  'files written by the notebook), not from the skill text alone. Use it before a step whose inputs ' +
+  'may not exist yet; it never blocks execution, it only reports.'
+const capabilityPreflightToolSchema = {
+  capability: z
+    .string()
+    .min(2)
+    .max(64)
+    .regex(/^[a-z0-9_-]+$/)
+    .describe('Capability id (the skill name whose contract should be checked).')
+}
+const capabilityPreflightToolDefinition = {
+  title: 'Preflight a capability',
+  description: CAPABILITY_PREFLIGHT_TOOL_DESCRIPTION,
+  inputSchema: capabilityPreflightToolSchema
+}
+
 const skillReadToolDefinition = {
   title: 'Read a skill',
   description: SKILL_READ_TOOL_DESCRIPTION,
@@ -132,6 +154,8 @@ type SkillImportMcpHandler = {
   evalDescription: (description: string) => Promise<SkillEvalResult>
   listSkills: () => Promise<SkillLibraryListResult>
   readSkill: (name: string) => Promise<SkillLibraryReadResult>
+  /** Optional so the tool can be registered everywhere while the facts source is wired per transport. */
+  preflightCapability?: (capability: string) => Promise<unknown>
 }
 
 // Two forms under one tool: a drafted skill (`SkillCreateResult`) and a skill compiled from a recorded
@@ -298,6 +322,20 @@ const createSkillImportMcpServer = (handler: SkillImportMcpHandler): ModelContex
     }
   })
 
+  server.registerTool(
+    CAPABILITY_PREFLIGHT_TOOL_NAME,
+    capabilityPreflightToolDefinition,
+    async (input) => {
+      if (!handler.preflightCapability) {
+        throw new Error('Capability preflight is not available on this transport.')
+      }
+      const result = await handler.preflightCapability(input.capability)
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+      }
+    }
+  )
+
   server.registerTool(SKILL_READ_TOOL_NAME, skillReadToolDefinition, async (input) => {
     const result = await handler.readSkill(input.name)
     return {
@@ -374,6 +412,36 @@ const callSkillImportRpcRequest = async <T>(
   return payload.result as T
 }
 
+// Preflight rides the same session-bound RPC capability as the import/creation tools: it answers
+// about one session, and the main process owns both the registry and the session facts.
+const callCapabilityPreflightRpc = (
+  environment: SkillImportMcpEnvironment,
+  capability: string
+): Promise<unknown> =>
+  fetchLocalRpc(
+    environment,
+    {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${environment.token}`,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        method: 'capabilityPreflight',
+        params: { sessionId: environment.sessionId, capability }
+      })
+    },
+    'Capability preflight RPC'
+  ).then(async (response) => {
+    const payload = (await response.json()) as RpcResponse
+    if (!response.ok || payload.error) {
+      throw new Error(
+        payload.error ?? `Capability preflight RPC failed with status ${response.status}`
+      )
+    }
+    return payload.result
+  })
+
 const callSkillImportRpc = (
   environment: SkillImportMcpEnvironment,
   attachmentUri: string,
@@ -439,7 +507,8 @@ const runSkillImportMcpServer = async (
     createSkill: createLocalSkillCreator(configDir, environment),
     evalDescription: async (description) => evaluateSkillDescription(description),
     listSkills: () => skillLibrary.list(),
-    readSkill: (name) => skillLibrary.read(name)
+    readSkill: (name) => skillLibrary.read(name),
+    preflightCapability: (capability) => callCapabilityPreflightRpc(environment, capability)
   })
   await server.connect(new StdioServerTransport())
 }

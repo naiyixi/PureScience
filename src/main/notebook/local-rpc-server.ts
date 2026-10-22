@@ -128,6 +128,10 @@ type NotebookLocalRpcServerOptions = {
   // App-owned conversational skill creation (create_skill MCP tool): the skill-import MCP child
   // routes createSkill calls back here so validation + filesystem writes stay in the main process.
   skillCreator?: Pick<SkillCreator, 'create'>
+  // Agent-facing preflight: "can this capability run in this session, and if not, what is missing".
+  // Injected rather than computed here so the facts source (session store + notebook dir) stays a
+  // caller concern; absent means the tool reports that it is unavailable instead of guessing.
+  capabilityPreflight?: (input: { sessionId: string; capability: string }) => Promise<unknown>
   // 「方法即产物」: create_skill with from_run_id compiles a skill from a recorded notebook run. The
   // compile needs the run records and the creator, both of which live here — so it is wired as one
   // collaborator rather than handing the RPC server a data root and a second way to write skills.
@@ -302,7 +306,7 @@ const CONTROL_RPC_METHODS = new Set(['mcpCall', 'computeCall', 'agentsCall'])
 // ("capability does not allow skillCreate") on every hosted call while the tool list still advertised
 // it. No widening: this capability is already bound to one session and already allows the import, which
 // installs skill files; creating an app-validated draft from that session's own record is strictly less.
-const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport', 'skillCreate'])
+const SKILL_IMPORT_RPC_METHODS = new Set(['skillImport', 'skillCreate', 'capabilityPreflight'])
 const PLAN_RPC_METHODS = new Set(['planCall'])
 import { fingerprintInputs } from '../../shared/task-checkpoint'
 
@@ -375,6 +379,7 @@ class NotebookLocalRpcServer {
   private readonly connectorService: NotebookLocalRpcServerOptions['connectorService']
   private readonly computeService: NotebookLocalRpcServerOptions['computeService']
   private readonly skillImporter: NotebookLocalRpcServerOptions['skillImporter']
+  private readonly capabilityPreflight: NotebookLocalRpcServerOptions['capabilityPreflight']
   private readonly skillCreator: NotebookLocalRpcServerOptions['skillCreator']
   private readonly skillMethodCompiler: NotebookLocalRpcServerOptions['skillMethodCompiler']
   private readonly memoryWriter: NotebookLocalRpcServerOptions['memoryWriter']
@@ -435,6 +440,7 @@ class NotebookLocalRpcServer {
     this.connectorService = options.connectorService
     this.computeService = options.computeService
     this.skillImporter = options.skillImporter
+    this.capabilityPreflight = options.capabilityPreflight
     this.skillCreator = options.skillCreator
     this.skillMethodCompiler = options.skillMethodCompiler
     this.memoryWriter = options.memoryWriter
@@ -1440,6 +1446,25 @@ class NotebookLocalRpcServer {
       )
     }
 
+    if (method === 'capabilityPreflight') {
+      if (!this.capabilityPreflight) throw new Error('Capability preflight is not configured.')
+      const capability = params.capability
+      if (
+        typeof params.sessionId !== 'string' ||
+        typeof capability !== 'string' ||
+        capability.trim().length === 0
+      ) {
+        throw new Error('Capability preflight RPC params must include sessionId and capability.')
+      }
+      const result = await this.capabilityPreflight({
+        sessionId: params.sessionId,
+        capability: capability.trim()
+      })
+      // A missing session is not an empty reading; it is a refusal to answer.
+      if (!result) throw new Error(`No session for capability preflight: ${params.sessionId}`)
+      return result
+    }
+
     if (method === 'skillImport') {
       if (!this.skillImporter) throw new Error('Conversation Skill import is not configured.')
       if (
@@ -1996,7 +2021,9 @@ class NotebookLocalRpcServer {
       }
       const ids = params.sourceIds
       if (!Array.isArray(ids) || ids.length === 0 || ids.some((id) => typeof id !== 'string')) {
-        throw new Error('Knowledge batch remove RPC params must include a non-empty sourceIds array.')
+        throw new Error(
+          'Knowledge batch remove RPC params must include a non-empty sourceIds array.'
+        )
       }
       if (!this.knowledge.removeSources) {
         throw new Error('Knowledge batch removal is not available in this build.')

@@ -94,6 +94,12 @@ describe('Skill import MCP server', () => {
       }),
       expect.objectContaining({ name: SKILL_LIST_TOOL_NAME }),
       expect.objectContaining({
+        name: 'capability_preflight',
+        inputSchema: expect.objectContaining({
+          properties: expect.objectContaining({ capability: expect.any(Object) })
+        })
+      }),
+      expect.objectContaining({
         name: SKILL_READ_TOOL_NAME,
         inputSchema: expect.objectContaining({
           properties: expect.objectContaining({
