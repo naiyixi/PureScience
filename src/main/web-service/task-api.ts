@@ -13,6 +13,10 @@ import type { ReplayVersionRequest } from '../../shared/artifact-replay'
 import { benchEvidenceFromSession, type SessionEvidence } from '../../shared/bench-evidence'
 import type { Project } from '../../shared/projects'
 import type { PersistedArtifact, PersistedChatSession } from '../../shared/session-persistence'
+import {
+  readCapabilityNoticeTally,
+  type CapabilityNoticeTally
+} from '../capabilities/notice-journal'
 import type {
   AcquiredTaskArtifact,
   StartTaskRunRequest,
@@ -267,14 +271,17 @@ class HeadlessTaskApi {
    * regex cannot tell whether a number carried provenance, and inventing that would defeat the
    * grader. See shared/bench-evidence.
    */
-  async sessionEvidence(
-    sessionId: string
-  ): Promise<{ found: boolean; evidence: SessionEvidence | null }> {
+  async sessionEvidence(sessionId: string): Promise<{
+    found: boolean
+    evidence: SessionEvidence | null
+    /** Present when this session was asked whether it had capability gaps; null when it never was. */
+    capabilityNotice: CapabilityNoticeTally | null
+  }> {
     const result = (await this.invoke('sessions:load-all', { allowCachedCatalog: true })) as {
       sessions: PersistedChatSession[]
     }
     const session = result.sessions.find((entry) => entry.id === sessionId)
-    if (!session) return { found: false, evidence: null }
+    if (!session) return { found: false, evidence: null, capabilityNotice: null }
     // Session JSON records the artifact's content path, not the name the run used. The file library
     // does carry names, so ask it first and fall back to the session record only when it cannot
     // answer — a grader keyed on filenames is useless without them.
@@ -296,7 +303,13 @@ class HeadlessTaskApi {
           name: file.name
         }))
     ]
-    return { found: true, evidence: benchEvidenceFromSession(session, merged) }
+    return {
+      found: true,
+      evidence: benchEvidenceFromSession(session, merged),
+      // Did this session ever get told about its capability gaps? A benchmark that cannot check its
+      // own manipulation reads flat scores as "no effect" when the truth is "nothing happened".
+      capabilityNotice: readCapabilityNoticeTally(sessionId)
+    }
   }
 
   /**

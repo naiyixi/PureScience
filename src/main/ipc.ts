@@ -31,6 +31,7 @@ import {
 } from './application-command-composition'
 import type { ApplicationInvocation } from './application-command-router'
 import type { PersistedChatSession } from '../shared/session-persistence'
+import { recordCapabilityNotice } from './capabilities/notice-journal'
 import {
   buildCapabilityPreflight,
   renderSessionCapabilityGaps,
@@ -2631,6 +2632,10 @@ const createApplicationModules = async (
         // Counts only — the block names the user's own inputs, so it never goes into a log line. This
         // exists so "the gaps were injected" is observable at runtime instead of only assertable in a
         // unit test: the provider content is not part of the transcript.
+        recordCapabilityNotice(sessionId, {
+          injected: block !== null,
+          lines: block ? block.split('\n').filter((line) => line.startsWith('- ')).length : 0
+        })
         capabilityGapsLog.info('capability gaps notice', {
           sessionId,
           sessionFound,

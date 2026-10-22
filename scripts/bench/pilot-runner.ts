@@ -58,6 +58,17 @@ export type PilotRecord = {
    */
   toolCallNames: string[]
   toolCallCount: number
+  /**
+   * Whether the arm's intended difference actually reached the model. `valid: false` means the score
+   * must not be compared with the other arm — the run tested the setup, not the hypothesis.
+   */
+  manipulation: {
+    arm: string
+    noticeTurns: number
+    noticeInjectedTurns: number
+    expectsNotice: boolean
+    valid: boolean
+  }
   result: CaseResult
 }
 
@@ -125,14 +136,25 @@ export const runPilot = async (
     )
   }
 
-  const collected = await call<{ found: boolean; evidence: BenchEvidence | null }>(
-    `${baseUrl}/api/v1/sessions/${started.sessionId}/evidence`,
-    options.token
-  )
+  const collected = await call<{
+    found: boolean
+    evidence: BenchEvidence | null
+    capabilityNotice?: { injectedTurns?: number; turns?: number; lastLines?: number } | null
+  }>(`${baseUrl}/api/v1/sessions/${started.sessionId}/evidence`, options.token)
   // A run that produced no session cannot be graded; saying so is the honest outcome, and the record
   // keeps it distinguishable from "graded and failed".
   const evidence: BenchEvidence = collected.evidence ?? { transcript: '' }
   const result = evaluateBenchCase(options.benchCase, evidence)
+
+  // Manipulation check. Three ablation attempts were read as "no effect" when the injection had simply
+  // never fired; a record that cannot tell those apart is worse than no record.
+  const noticeInjectedTurns = collected.capabilityNotice?.injectedTurns ?? 0
+  const noticeTurns = collected.capabilityNotice?.turns ?? 0
+  const expectsNotice = options.arm === 'full-contract'
+  const manipulationValid =
+    options.arm === 'baseline' || options.arm === 'no-contract'
+      ? noticeInjectedTurns === 0
+      : noticeInjectedTurns > 0
 
   const record: PilotRecord = {
     caseId: options.benchCase.id,
@@ -148,6 +170,13 @@ export const runPilot = async (
     evidenceCollected: (evidence as { collected?: unknown }).collected ?? null,
     toolCallNames: toolCallNamesFrom(evidence),
     toolCallCount: toolCallsFrom(evidence).length,
+    manipulation: {
+      arm: options.arm,
+      noticeTurns,
+      noticeInjectedTurns,
+      expectsNotice,
+      valid: manipulationValid
+    },
     result
   }
 

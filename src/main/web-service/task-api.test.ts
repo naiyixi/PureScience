@@ -135,7 +135,7 @@ describe('HeadlessTaskApi adapter', () => {
     expect(found.evidence?.artifacts).toEqual(['out/figure.png'])
     expect(found.evidence?.collected).toMatchObject({ transcript: true, numbers: false })
 
-    await expect(api.sessionEvidence('missing')).resolves.toEqual({ found: false, evidence: null })
+    await expect(api.sessionEvidence('missing')).resolves.toEqual({ found: false, evidence: null, capabilityNotice: null })
   })
 
   it('names artifacts from the file library instead of grading blob paths', async () => {

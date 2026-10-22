@@ -27,7 +27,8 @@ const evidenceBody = {
       numbers: false,
       citations: false
     }
-  }
+  },
+  capabilityNotice: { injectedTurns: 1, turns: 1, lastLines: 12 }
 }
 
 let server: Server
@@ -109,6 +110,15 @@ describe('runPilot', () => {
     // may be gone by the time anyone asks.
     expect(record.toolCallNames).toEqual(['checkpoint_load', 'checkpoint_save'])
     expect(record.toolCallCount).toBe(2)
+    // This fixture runs the no-contract arm yet the session reports an injected notice — exactly the
+    // failure that made three earlier attempts unreadable. The record must mark itself invalid.
+    expect(record.manipulation).toEqual({
+      arm: 'no-contract',
+      noticeTurns: 1,
+      noticeInjectedTurns: 1,
+      expectsNotice: false,
+      valid: false
+    })
 
     const written = JSON.parse(await readFile(file, 'utf8')) as typeof record
     expect(written).toEqual(record)

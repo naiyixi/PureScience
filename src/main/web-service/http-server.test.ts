@@ -722,7 +722,7 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null }))
+      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1311,7 +1311,7 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null })),
+      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null })),
       dispose: vi.fn()
     }
     const server = await startTestWebHttpServer({
@@ -1507,7 +1507,7 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null }))
+      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1585,7 +1585,7 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null }))
+      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
