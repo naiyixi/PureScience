@@ -1,0 +1,44 @@
+{
+  "caseId": "figure-axis-discipline",
+  "arm": "no-contract",
+  "runId": "4668a9b2-898f-4350-9250-003cc154e9df",
+  "sessionId": "ses_e9d585756ffe7Kdy5jHDOWafAO",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 8,
+  "recordedAt": "2026-10-22T08:11:18.623Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": true,
+    "numbers": false,
+    "citations": false
+  },
+  "result": {
+    "caseId": "figure-axis-discipline",
+    "passed": true,
+    "atomicPassRate": 1,
+    "findings": [
+      {
+        "checkId": "ic50-figure-with-script",
+        "dimension": "object_plumbing",
+        "passed": true,
+        "detail": "artifact and script shipped together (producer pairing not recorded)"
+      },
+      {
+        "checkId": "log-axis-declared",
+        "dimension": "quantitative_quality",
+        "passed": true,
+        "detail": "pattern present"
+      },
+      {
+        "checkId": "no-useless-empty-figure",
+        "dimension": "data_integrity",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}
