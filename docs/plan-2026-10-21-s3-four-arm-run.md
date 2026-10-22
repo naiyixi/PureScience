@@ -140,6 +140,38 @@ skill-import …），因此 `capability_preflight` 在两边都应可见。clau
 （这里是 ACP 的 session 参数）或直接看 transcript。差一步就会把一个 self-inflicted 的
 假发现写进结论。
 
+## 5.3 真机取证：工具存在，但一次都没被调用（2026-10-22）
+
+给 run 记录加了 `toolCallNames` 之后，同一案例的重跑给出了可读的答案
+（`docs/bench-runs/2026-10-22T14-25-10-165Z-claim-calibrated-to-evidence-full-contract.json`）：
+
+```
+atomic 0.33   status completed
+tools ["execute", "other"]   count 2
+capability_preflight called: false
+```
+
+也就是说：
+
+- 工具**确认挂载可用**（上一节：MCP 服务经 ACP 传参，claude 侧有 transcript 旁证）；
+- 但这一次真实运行里，模型只发了 2 次工具调用（`execute` + 一个无名的 `other`），
+  **没有 skill_read、没有 capability_preflight、也没有 notebook 工具**；
+- 于是两臂差异为零的原因第三次得到确认：**不是契约不可见，而是模型根本不问。**
+
+这条把"契约层有没有价值"的问题改写成了另一个更实际的问题：
+**靠模型自觉调用工具来消费契约，不成立**——至少在 `deepseek-v4-flash` + 单轮文本任务上不成立。
+
+### 由此得到的选路
+
+| 做法 | 说明 | 判断 |
+|---|---|---|
+| 继续加工具/加契约覆盖 | 模型不调用，加得再多也是零作用面 | ✗ |
+| **把预检结果注入回合上下文** | 不需要模型主动问，缺口在执行前就已写在提示里 | ✓ 下一步 |
+| 把预检设为某些技能的前置硬门 | 与 G1（只建议不阻断）冲突，且会误杀合法路径 | ✗ |
+
+结论：`capability_preflight` 作为"可问的工具"保留（对会问的模型/运行时有用），
+但**契约效应的实验必须改成注入式**，否则测的永远是"模型要不要问"。
+
 ## 6. 不做
 
 - 不做"只注入文档"与"只给工具名"这两个臂（需要正文/工具清单裁剪，另立项）。
