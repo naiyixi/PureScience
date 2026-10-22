@@ -31,8 +31,22 @@ import {
 } from './application-command-composition'
 import type { ApplicationInvocation } from './application-command-router'
 import type { PersistedChatSession } from '../shared/session-persistence'
+import { buildCapabilityPreflight } from './capabilities/session-preflight'
 import { createApplicationEventModule, type ApplicationEventSource } from './application-events'
 import { projectTaskRuntimeEvent } from './web-service/application-event-projections'
+
+// `loadSession` is being reshaped elsewhere in the tree from "session | undefined" to a status union
+// (`{ status: 'found', session } | { status: 'missing' }`). This reader accepts both shapes, so
+// preflight keeps working across that refactor instead of pinning one of them and breaking silently.
+const readSessionRecord = (raw: unknown): PersistedChatSession | null => {
+  if (!raw || typeof raw !== 'object') return null
+  const record = raw as Record<string, unknown>
+  const unwrapped = 'session' in record ? record.session : record
+  if (!unwrapped || typeof unwrapped !== 'object') return null
+  return 'messages' in (unwrapped as Record<string, unknown>)
+    ? (unwrapped as PersistedChatSession)
+    : null
+}
 
 import { createAcpRuntime } from './acp/runtime-composition'
 import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
@@ -2206,6 +2220,46 @@ const createApplicationModules = async (
       computeService: computeServiceWithRegistry,
       skillImporter: conversationSkillImporter,
       skillCreator,
+      // The agent-facing preflight (MCP tool `capability_preflight`). Facts come from the session
+      // record: attachments the user added, and skills its messages reference. Artifacts are NOT read
+      // here yet, and the payload says so by name rather than leaving an empty list to be misread.
+      capabilityPreflight: ({ sessionId, capability }) =>
+        buildCapabilityPreflight({
+          configRoot: resolveConfigRoot(),
+          sessionId,
+          capability,
+          deps: {
+            loadFacts: async (id) => {
+              let session: PersistedChatSession | null = null
+              for (const project of await projectRepository.list()) {
+                const found = readSessionRecord(await sessionRepository.loadSession(project.id, id))
+                if (found) {
+                  session = found
+                  break
+                }
+              }
+              if (!session) return null
+
+              const attachments: { name: string }[] = []
+              const referenced = new Set<string>()
+              for (const message of session.messages ?? []) {
+                for (const upload of message.uploads ?? []) {
+                  const name = upload.name || upload.originalName
+                  if (name) attachments.push({ name })
+                }
+                for (const part of message.parts ?? []) {
+                  if (part.type === 'skill' && part.id) referenced.add(part.id)
+                }
+              }
+              return {
+                attachments,
+                artifacts: [],
+                referencedCapabilities: [...referenced],
+                unavailableSources: ['artifacts_not_read_by_preflight']
+              }
+            }
+          }
+        }),
       // Wired here, not passed down as an option: this is the one place where the data root (where the
       // run records live) and the config root (where skills are written) are both already resolved.
       skillMethodCompiler: createMethodSkillCompiler({
