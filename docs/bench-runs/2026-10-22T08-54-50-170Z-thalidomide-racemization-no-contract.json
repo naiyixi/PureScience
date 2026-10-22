@@ -1,0 +1,38 @@
+{
+  "caseId": "thalidomide-racemization",
+  "arm": "no-contract",
+  "runId": "18e54f19-68bb-4c2c-abe2-0e00b04d4d30",
+  "sessionId": "ses_e9d2f4f70ffehrbNT4BhSuFDcv",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 4,
+  "recordedAt": "2026-10-22T08:54:50.170Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "numbers": false,
+    "citations": false
+  },
+  "result": {
+    "caseId": "thalidomide-racemization",
+    "passed": true,
+    "atomicPassRate": 1,
+    "findings": [
+      {
+        "checkId": "racemization-named",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern present"
+      },
+      {
+        "checkId": "no-single-enantiomer-safety",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}
