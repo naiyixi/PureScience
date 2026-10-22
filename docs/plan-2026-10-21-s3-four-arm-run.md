@@ -110,42 +110,35 @@
 
 我倾向 **A**：语义清楚（"问一下这一步能不能跑"）、可测、不会串会话；代价是要动 MCP 表面。
 
-## 5.2 真机验证：opencode 拿到的 MCP 服务是**零个**（2026-10-22）
+## 5.2 真机核查（含一次自我纠正，2026-10-22）
 
-起了一个 opencode headless 实例（`/tmp/ps-vp`，端口 44320），跑完 `claim-calibrated-to-evidence`
-（session `ses_e9c12f850ffeCT8zI31dw2vIXG`，原子 0.33），然后读它自己生成的配置：
-
-```
-/tmp/ps-vp/opencode/config/opencode/opencode.json →  "mcp": {}      # 空
-```
-
-对照 claude-code（本机安装根真实 transcript）：
+起 opencode headless（`/tmp/ps-vp`，端口 44320）跑 `claim-calibrated-to-evidence`
+（session `ses_e9c12f850ffeCT8zI31dw2vIXG`，原子 0.33），读它的 `opencode.json`：
 
 ```
-mcp__purescience_skills__{skill_list, skill_read, skill_eval, request_skill_import, create_skill}
-mcp__purescience_notebook__* / mcp__purescience_pdf__* / mcp__purescience_plan__* ...
+"mcp": {}      # 空
 ```
 
-也就是说：
+**我一度据此判断「opencode 拿不到任何 MCP 服务」，这是错的。** 复查代码：
+MCP 服务经 ACP 的 `buildSession({ mcpServers })` 传入（`provider-session-creator.ts:109`、
+`provider-session-resumer.ts:250`），**不写进 opencode.json**——那个文件为空是预期行为，
+`agent-framework/opencode.ts` 的注释也写明 opencode 走 stdio、与 Claude 同一套配置。
 
-- **claude-code**：技能服务挂着，`capability_preflight` 自动随行；
-- **opencode**：**一个 MCP 服务都没有**——没有 skill_read、没有 preflight、没有 notebook 工具。
+结论撤回：opencode 与 claude-code 都拿到同一批 stdio MCP 服务（artifact / notebook /
+skill-import …），因此 `capability_preflight` 在两边都应可见。claude-code 侧有真实 transcript
+作为旁证（`mcp__purescience_skills__*` 5 个工具）。
 
-### 这条改变了此前 30+ 份记录的解释
+### 仍未证的那件事
 
-之前的 pilot 全在 opencode 上跑，因此那些记录测的是"opencode + 只有文件形态的技能"：
+「agent 到底会不会调用这些工具」——此前 pilot 记录里看不到技能工具调用，但当时没有专门
+检查工具调用序列，因此**不能**再解释成"它没有工具"。要回答，只能看真实 run 的 transcript
+里有没有 `capability_preflight` / `skill_read` 的调用条目。
 
-- 「agent 从不打开技能」**不是行为偏好，而是结构使然**——它没有 skill 工具可调；
-- 契约消融在这些记录里接近空操作，除了"没环节消费契约"，还叠了"这个 runtime 连工具面都没有"。
+### 方法教训
 
-所以：**契约效应实验必须换到工具面真的挂上的 runtime**（claude-code），或先给 opencode 接上 MCP。
-
-### 两条路
-
-| 方案 | 说明 | 代价 |
-|---|---|---|
-| **A. 给 opencode 写 mcp 段** | 用已有的 HTTP MCP host（`host.urlFor('skill-import', routingId)`）生成 `type: remote` 条目 | 中：opencode 配置写入 + 路由 id 生命周期 + 权限提示 |
-| B. 换 claude-code 跑实验 | 工具面现成 | 需可用凭证（开发构建拿不到钥匙串密钥，此前正是因此切到 opencode） |
+判断「某个 runtime 有没有某能力」时，配置文件的空值不是证据——要顺着运行时的实际传参路径
+（这里是 ACP 的 session 参数）或直接看 transcript。差一步就会把一个 self-inflicted 的
+假发现写进结论。
 
 ## 6. 不做
 
