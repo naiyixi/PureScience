@@ -88,6 +88,39 @@ describe('benchEvidenceFromSession', () => {
     expect(evidence.collected).toMatchObject({ numbers: false, citations: false })
   })
 
+  it('records which skill files the run opened, and ignores reads outside a skills directory', () => {
+    const evidence = benchEvidenceFromSession(
+      session({
+        activities: [
+          {
+            id: 'a1',
+            title: 'read',
+            providerToolName: 'read',
+            rawInput: { path: '/cfg/opencode/skills/os-evidence-grading/SKILL.md' }
+          },
+          {
+            id: 'a2',
+            title: 'read',
+            providerToolName: 'read',
+            rawInput: { file_path: '/tmp/notes/SKILL.md' }
+          }
+        ]
+      } as never),
+      []
+    )
+
+    // Consulting a skill is the one behaviour a gap notice is supposed to cause; an unrelated file
+    // that happens to be called SKILL.md must not be counted as one.
+    expect(evidence.skillsRead).toEqual(['os-evidence-grading'])
+    expect(evidence.collected.skillReads).toBe(true)
+  })
+
+  it('says nothing was read when no skill file was opened', () => {
+    const evidence = benchEvidenceFromSession(session({}), [])
+    expect(evidence.skillsRead).toBeUndefined()
+    expect(evidence.collected.skillReads).toBe(false)
+  })
+
   it('omits empty collections instead of emitting empty arrays', () => {
     const evidence = benchEvidenceFromSession(session({}), [])
     expect(evidence.toolCalls).toBeUndefined()
@@ -97,6 +130,7 @@ describe('benchEvidenceFromSession', () => {
       transcript: false,
       toolCalls: false,
       artifacts: false,
+      skillReads: false,
       numbers: false,
       citations: false
     })

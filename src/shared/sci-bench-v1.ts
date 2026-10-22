@@ -33,6 +33,12 @@ export type BenchEvidence = SciBenchTrace & {
   numbers?: { label: string; value: number; provenance?: string }[]
   /** Citations the report relies on, with the result of resolving them. */
   citations?: { ref: string; resolved: boolean; supportsClaim: boolean }[]
+  /**
+   * Skill files the run actually opened. Skills are files to the agent, so this is the only direct
+   * observation of "did it consult a skill" — and consulting one is exactly what a contract/gap notice
+   * is supposed to cause.
+   */
+  skillsRead?: string[]
 }
 
 export type AtomicCheck =

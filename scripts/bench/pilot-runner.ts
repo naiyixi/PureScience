@@ -57,6 +57,8 @@ export type PilotRecord = {
    * benchmark artifact has to answer that by itself.
    */
   toolCallNames: string[]
+  /** Skill files the run opened — the behaviour a capability-gap notice is meant to cause. */
+  skillsRead: string[]
   toolCallCount: number
   /**
    * Whether the arm's intended difference actually reached the model. `valid: false` means the score
@@ -169,6 +171,9 @@ export const runPilot = async (
     recordedAt: (options.now?.() ?? new Date()).toISOString(),
     evidenceCollected: (evidence as { collected?: unknown }).collected ?? null,
     toolCallNames: toolCallNamesFrom(evidence),
+    skillsRead: Array.isArray((evidence as { skillsRead?: unknown }).skillsRead)
+      ? ((evidence as { skillsRead?: string[] }).skillsRead ?? [])
+      : [],
     toolCallCount: toolCallsFrom(evidence).length,
     manipulation: {
       arm: options.arm,

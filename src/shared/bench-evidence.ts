@@ -15,6 +15,8 @@ export type SessionEvidence = BenchEvidence & {
     transcript: boolean
     toolCalls: boolean
     artifacts: boolean
+    /** True when at least one skill file was opened; absence is named, never guessed. */
+    skillReads: boolean
     numbers: false
     citations: false
   }
@@ -51,6 +53,21 @@ export const benchEvidenceFromSession = (
   // The stored `path` is a content blob (…/versions/<id>/content), not the name the session used;
   // grading on that would make every filename-shaped check fail for a reason nobody can see.
   // Prefer the original name and keep the blob path only as a fallback.
+  // Skills are files to the agent, and a read's path is structured data — no prose parsing needed.
+  // Only `<...>/skills/<name>/...` counts, so an unrelated read of a file that happens to be named
+  // SKILL.md elsewhere is not credited as consulting a skill.
+  const skillsRead = new Set<string>()
+  for (const call of toolCalls) {
+    const args = (call as { args?: Record<string, unknown> }).args
+    if (!args) continue
+    for (const key of ['path', 'file_path', 'filePath', 'target_file', 'targetFile'] as const) {
+      const value = args[key]
+      if (typeof value !== 'string') continue
+      const match = /\/skills\/([^/]+)\//u.exec(value)
+      if (match) skillsRead.add(match[1])
+    }
+  }
+
   const artifactPaths = artifacts
     .map((artifact) => ('name' in artifact && artifact.name ? artifact.name : artifact.path))
     .filter(Boolean)
@@ -60,10 +77,12 @@ export const benchEvidenceFromSession = (
     turns,
     ...(toolCalls.length ? { toolCalls } : {}),
     ...(artifactPaths.length ? { artifacts: artifactPaths } : {}),
+    ...(skillsRead.size ? { skillsRead: [...skillsRead].sort() } : {}),
     collected: {
       transcript: transcriptParts.length > 0,
       toolCalls: toolCalls.length > 0,
       artifacts: artifactPaths.length > 0,
+      skillReads: skillsRead.size > 0,
       numbers: false,
       citations: false
     }
