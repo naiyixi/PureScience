@@ -1,0 +1,38 @@
+{
+  "caseId": "trial-match-level-labelled",
+  "arm": "full-contract",
+  "runId": "2ff867cb-bd52-4719-9a72-c86c9728737d",
+  "sessionId": "ses_e9d28d937ffeTivbY0J1fRueUW",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 2,
+  "recordedAt": "2026-10-22T09:00:48.709Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "numbers": false,
+    "citations": false
+  },
+  "result": {
+    "caseId": "trial-match-level-labelled",
+    "passed": false,
+    "atomicPassRate": 0.5,
+    "findings": [
+      {
+        "checkId": "match-level-marked",
+        "dimension": "data_integrity",
+        "passed": false,
+        "detail": "pattern missing: (match_level|匹配层级|突变层面|mutation-level)"
+      },
+      {
+        "checkId": "no-identity-inference",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}
