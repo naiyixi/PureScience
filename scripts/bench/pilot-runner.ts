@@ -51,8 +51,30 @@ export type PilotRecord = {
   seed: number | null
   recordedAt: string
   evidenceCollected: unknown
+  /**
+   * The tool names the run actually called, deduped and sorted. Kept in the record because the
+   * session's own store may be gone by the time someone asks "did the agent use tool X" — a
+   * benchmark artifact has to answer that by itself.
+   */
+  toolCallNames: string[]
+  toolCallCount: number
   result: CaseResult
 }
+
+// Evidence is a wire shape, not a typed value — read it defensively so a missing field degrades to [].
+const toolCallsFrom = (evidence: unknown): { name?: unknown }[] => {
+  const calls = (evidence as { toolCalls?: unknown } | null)?.toolCalls
+  return Array.isArray(calls) ? (calls as { name?: unknown }[]) : []
+}
+
+const toolCallNamesFrom = (evidence: unknown): string[] =>
+  [
+    ...new Set(
+      toolCallsFrom(evidence)
+        .map((entry) => entry.name)
+        .filter((n): n is string => !!n)
+    )
+  ].sort()
 
 const call = async <T>(url: string, token: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, {
@@ -124,6 +146,8 @@ export const runPilot = async (
     seed: options.seed ?? null,
     recordedAt: (options.now?.() ?? new Date()).toISOString(),
     evidenceCollected: (evidence as { collected?: unknown }).collected ?? null,
+    toolCallNames: toolCallNamesFrom(evidence),
+    toolCallCount: toolCallsFrom(evidence).length,
     result
   }
 

@@ -105,6 +105,10 @@ describe('runPilot', () => {
     })
     expect(record.result.passed).toBe(true)
     expect(record.evidenceCollected).toMatchObject({ numbers: false, citations: false })
+    // The record has to answer "which tools did this run actually call" on its own: the session store
+    // may be gone by the time anyone asks.
+    expect(record.toolCallNames).toEqual(['checkpoint_load', 'checkpoint_save'])
+    expect(record.toolCallCount).toBe(2)
 
     const written = JSON.parse(await readFile(file, 'utf8')) as typeof record
     expect(written).toEqual(record)
