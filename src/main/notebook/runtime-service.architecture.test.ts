@@ -159,6 +159,10 @@ describe('Notebook runtime facade architecture', () => {
       [
         'DEFAULT_LOCALE',
         'EMPTY_NOTEBOOK_RUNTIME_SETTINGS',
+        // Added deliberately: a threshold is the only module-level value a slow-read line needs, and
+        // keeping it here (next to the other module constants) is what stops the line from being
+        // silently retuned per call site. It holds a number, no state.
+        'SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS',
         'dataProcessKey',
         'resolveDefaultExecutorOptions',
         'resolveLoopScript',

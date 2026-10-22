@@ -63,6 +63,15 @@ type NotebookSessionReadModelOptions<Session extends NotebookSessionReadSource> 
   isRestartRecommended: (processKey: string) => boolean
 }
 
+/**
+ * Caller-owned timing slot for `NotebookSessionReadModel.state()`.
+ *
+ * The point of the split is the next reading, not this one: a slow `notebook:state` is either our own
+ * parse of a multi-megabyte document or a main thread that was not running this code at all, and only
+ * the per-call numbers can tell those apart.
+ */
+export type NotebookStateReadPhases = { loadMs?: number }
+
 // Projects live Session Aggregate state and durable run history without owning either source.
 class NotebookSessionReadModel<Session extends NotebookSessionReadSource> {
   constructor(private readonly options: NotebookSessionReadModelOptions<Session>) {}
@@ -130,14 +139,26 @@ class NotebookSessionReadModel<Session extends NotebookSessionReadSource> {
     }
   }
 
+  /**
+   * Where one `notebook:state` read spent its time, filled by the read that knows.
+   *
+   * `loadMs` is the durable half — reading, parsing and normalizing run.json, which on this machine is
+   * 391 MB across 125 documents (median 2.1 MB, max 15.9 MB). It is taken here because this is the only
+   * place the document is parsed, and it is written into an object the CALLER owns so two concurrent
+   * reads of different sessions cannot overwrite each other's numbers. Nothing else is recorded: a
+   * timing slot must never be able to change the answer it describes.
+   */
   async state(
-    session: Session
+    session: Session,
+    phases?: NotebookStateReadPhases
   ): Promise<NotebookSessionState & { runtimeBindings: NotebookRuntimeBindings }> {
+    const loadStartedAt = performance.now()
     const document = await this.options.repository.loadOrCreate({
       projectName: session.projectName,
       sessionId: session.sessionId,
       workspaceCwd: session.cwd
     })
+    if (phases) phases.loadMs = performance.now() - loadStartedAt
     const snapshot = session.snapshot()
 
     return {

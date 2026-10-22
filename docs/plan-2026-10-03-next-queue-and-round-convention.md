@@ -10957,3 +10957,83 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 ① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；`f2e79800` 的 `Nightly` 复跑判决一并读（**复跑转绿才叫抖动**，
 红了则按作业级日志重新归因，别沿用本轮判断）；② 内存松开先补两条真机读数：`5c39a856` 的分段读数（重启实例即可产生
 `source` + 三段毫秒）与 P0-9 的审批卡密度；③ 仍卡就按能力面自拟一件（可离线判、差异化点能写成断言）。
+
+
+## 两百一十五、本轮追加（执行器，2026-10-23 02:2x–）—— `notebook:state` 的 1.2 秒里，它自己只占几十毫秒（分段仪器落地）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = HEAD = 50e82458`；`git status --short` 里**属于我的**只有上一轮遗留的 5 个 notebook 路径
+  （4 改 + 1 新）。**另一个写入者正在同一棵树上干活**：开工后两分钟内树里又长出了
+  `scripts/bench/{pilot-runner,pilot-runner.test}.ts`、`src/main/ipc.ts`、`src/main/web-service/task-api.ts`、
+  `src/main/capabilities/notice-journal{,.test}.ts` 与一批 `docs/bench-runs/*.json`（那 12 个 `??` 不是我建的）。
+  它的在制品一个字节没碰，我的提交只按路径 `git add`。
+- 上一轮汇报已写明「实现与本地读数全绿、尚未提交」⇒ 本轮第一件事是把本单元收口，不开新单元。
+- 内存（现取）：空闲物理页 **44,376 ≈ 694 MB**、swap **17.4 G / 18.4 G**、load 17.94 ⇒ 真机闸门仍未解；
+  且运行中的 dev 实例是 **1 天 2 小时前的构建**（`electron-vite dev`，`etime` 1-02:40），**本轮不重启、不声称窗口读数**。
+
+### 一 交付（仪器，不是优化）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/notebook/session-read-model.ts` | 新增导出 `NotebookStateReadPhases`；`state(session, phases?)` 把持久层那一段（读 + 解析 + 归一化 `run.json`）写进**调用方自己的对象**（两路并发读不会互相覆盖）；不传 `phases` 时行为与改动前逐字相同 |
+| `src/main/notebook/runtime-service.ts` | `state()` 取三个时间点并新增一行 `warn: notebook state read was slow`，字段 `sessionId / cold / ensureMs / loadMs / projectMs / totalMs / runs`（`runs` 只是条数，**不带任何 run 内容**）；门槛 `SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200`，**内联块而非私有方法**（该 facade 的架构 pin 把私有面钉死为「无 IO 的策略助手」），`try/catch` 包住 |
+| `src/main/notebook/state-read-attribution.test.ts`（新） | 慢读要打印三段且 `loadMs ≥ 250`；第二次调用 `cold=false`；快读**不出声**；logger 抛错时答案照常返回 |
+| `src/main/notebook/session-read-model.test.ts` | 补一条：`phases.loadMs` 被填且是数字；不传 `phases` 仍合法 |
+| `src/main/notebook/runtime-service.architecture.test.ts` | 模块常量 pin 里**显式**加入新常量并写明理由 |
+
+### 二 读数（全部现取；先量后写码）
+
+**通道自身的分布**（`logs/headless.out.log` 全量重算，只记 ≥50 ms 的调用 ⇒ 116 是下界）：
+
+| 次数 n | 中位 | 均值 | p90 / p95 / max | >1 s / >5 s / >10 s | 合计 |
+|---|---|---|---|---|---|
+| **116** | **1,168 ms** | 5,831 ms | **18,664 / 21,578 / 29,180 ms** | **58 / 42 / 32** | **676 秒** |
+
+**真实语料**（`~/.purescience/notebooks`，只读）：**125** 份 `run.json`、合计 **391 MB**，中位 2.06 MB、p90 6.5 MB、最大 15.9 MB。
+
+**生产函数在真文档副本上单独跑**（副本落 `/tmp`，每档三次取中位）：
+
+| 文档 | runs | `loadOrCreate` | 裸 `readFile`+`JSON.parse` |
+|---|---|---|---|
+| 5.85 MB | 54 | **57 ms** | 77 ms |
+| 14.4 MB | 58 | **136 ms** | 129 ms |
+| 16.6 MB | 100 | **198 ms** | 257 ms |
+
+⇒ **归一化几乎不花钱，成本就是读 + 解析，随文档线性**。而中位 1,168 ms 比它高一个数量级；主进程卡顿采样里
+`process-not-scheduled` 11,078 / `cpu-bound-in-process` 11,060、`cpuShare` 中位 0.09 ⇒ 一半样本连 CPU 都没拿到。
+**结论：绝大多数时间不是这段代码在跑。** 证据档 `docs/evidence/2026-10-23-notebook-state-phase-attribution.md`。
+
+### 三 门禁（隔离工作树 `/tmp/ps-gate-2310` = `50e82458` + 本笔 5 文件，`node_modules` 软链）
+
+| 环 | 读数 |
+|---|---|
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **exit 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **exit 0** |
+| `npx vitest run src/main/notebook --maxWorkers=4` | **91 passed \| 8 skipped（99 文件）**；**1437 passed \| 99 skipped**，exit 0 |
+| `eslint --no-cache`（本笔 5 文件） | **0 problems** |
+| `prettier --check`（本笔 5 文件） | 全部合风格 |
+
+**为什么开隔离工作树**：共享树里 `typecheck:web` 此刻红在 `src/main/web-service/task-api.ts(305,7) TS2353`
+（另一个写入者正把 `capabilityNotice` 加进返回值而没同时加宽返回类型）——那不是本笔的红、也不是产品缺陷，
+是别人半截的接线；隔离工作树只用来判我这 5 个文件。**它的那处红不修、不碰**（修了会改到它正在写的文件）。
+
+**两条变异各自只红该红的那条**：① 门槛抬成 `Infinity` ⇒ 红「慢读要打印」+「`cold=false`」，logger 抛错那条仍绿；
+② 不把 `phases` 传给读模型 ⇒ **只**红 `loadMs` 那条（`expected 0 to be greater than or equal to 250`）。
+
+### 四 边界（不许读成更强）与不立项的那一刀
+
+1. **本笔不优化任何东西**：只让下一次读数能分开「自己的解析」与「主线程被占」。
+2. **相位行尚未在真机上产生过**：日志里 `notebook state read was slow` 计数 **0**（运行中的 dev 实例是旧构建）⇒
+   要它必须重启实例（内存闸门 + 用户正在用的实例）⇒ 本轮不声称。
+3. **下一刀不做「`loadOrCreate` 指纹缓存」**：中位 1,168 ms 里持久层只占 20–200 ms，占比个位数；按性能杠杆的判定闸门
+   （占比 <1% 的段直接排除），缓存最多省掉这一小段 ⇒ **不立项**，理由写进证据档，别让下一轮把它当成「顺手能捡的便宜」。
+4. 不占版本号：无用户可见能力变化。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；② 内存闸门一解，**重启 dev 实例即有相位行**（这是本单元的
+唯一真机读数，取法：重启 → 打开一次大会话 → `grep "notebook state read was slow" logs/headless.out.log`）；
+③ 真正的杠杆是「主线程被谁占着」（同一条链上的 Prisma `request`、日志重写、运行落盘）⇒ 下一个单元应从
+`process-not-scheduled` 那一半取数，而不是继续在 notebook 自己的代码里找。
+

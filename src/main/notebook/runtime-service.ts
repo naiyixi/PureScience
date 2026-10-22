@@ -103,7 +103,11 @@ import {
   type NotebookControlCompletionInterceptor,
   type NotebookControlResult
 } from './execution-owner'
-import { NotebookSessionReadModel, type NotebookHandoffContext } from './session-read-model'
+import {
+  NotebookSessionReadModel,
+  type NotebookHandoffContext,
+  type NotebookStateReadPhases
+} from './session-read-model'
 import {
   NotebookSessionLifecycleOwner,
   type NotebookExecutorLifecycleCallbacks,
@@ -113,6 +117,13 @@ import {
 // Locale fallback when no explicit locale is injected (see shared/mirror.ts: non-CN locales resolve
 // to public hosts, so this default never silently forces a CN mirror).
 const DEFAULT_LOCALE = 'en-US'
+
+// Above this, one `notebook:state` read is worth a line that names its phases. On this machine the
+// durable half alone measures 57–198 ms for documents of 5.9–16.6 MB (median document 2.1 MB), so a
+// read that crosses this line is either a very large document or a main thread that stopped running
+// our code — exactly the two cases the phase split exists to separate. `ipc handler was slow` (50 ms)
+// already reports the total; this line is what turns the total into an attribution.
+const SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS = 200
 
 const EMPTY_NOTEBOOK_RUNTIME_SETTINGS: Pick<NotebookRuntimeSettings, 'getSnapshot'> = {
   getSnapshot: async (language) => ({
@@ -846,11 +857,47 @@ class NotebookRuntimeService {
   }
 
   // Returns the current in-memory cells plus the complete persisted run history.
+  //
+  // The phases are logged, never returned: `ensureMs` says whether this call paid a cold session load,
+  // `loadMs` says how much of the rest was us parsing run.json, and `projectMs` covers the projection.
+  // A total alone cannot answer "is this slow because the document is big or because the main thread was
+  // busy with something else", and those two have different fixes — so the numbers are taken here and
+  // nowhere else, on the one path that performs all three parts.
+  //
+  // The line is written inline rather than from a helper: this facade pins its private surface to
+  // stateless policy helpers (`runtime-service.architecture.test.ts`), and a logging helper is IO.
   async state(
     request: NotebookSessionRequest
   ): Promise<NotebookSessionState & { runtimeBindings: NotebookRuntimeBindings }> {
+    const requestedAt = performance.now()
+    const wasLive = this.sessions.get(request.sessionId) !== undefined
     const session = await this.sessionLifecycle.ensure(request)
-    return this.sessionReadModel.state(session)
+    const ensuredAt = performance.now()
+    const phases: NotebookStateReadPhases = {}
+    const state = await this.sessionReadModel.state(session, phases)
+    const finishedAt = performance.now()
+    const loadMs = phases.loadMs ?? 0
+    const totalMs = finishedAt - requestedAt
+    if (totalMs >= SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS) {
+      try {
+        // `runs` is a count, never a run: the question the line answers is "was this a big history",
+        // and shipping any of its content into the log would make the diagnostic as expensive as the
+        // problem. Best-effort on the same rule the other lines follow — a diagnostic failure must
+        // never replace the answer the caller is waiting on.
+        this.runtimeLogger?.warn('notebook state read was slow', {
+          sessionId: request.sessionId,
+          cold: !wasLive,
+          ensureMs: Math.round(ensuredAt - requestedAt),
+          loadMs: Math.round(loadMs),
+          projectMs: Math.round(finishedAt - ensuredAt - loadMs),
+          totalMs: Math.round(totalMs),
+          runs: state.runs.length
+        })
+      } catch {
+        // Best-effort: a logging failure must never fail a read the window is waiting on.
+      }
+    }
+    return state
   }
 
   // Resolves the durable reference for a session, preferring the live runtime session but falling

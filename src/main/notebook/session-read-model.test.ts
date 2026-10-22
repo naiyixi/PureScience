@@ -177,6 +177,24 @@ describe('NotebookSessionReadModel', () => {
     })
   })
 
+  it('fills the caller-owned timing slot with the durable half of the read', async () => {
+    const storageRoot = await createRoot()
+    const repository = new NotebookRunRepository(storageRoot)
+    const session = makeSession(storageRoot)
+    const model = makeReadModel(storageRoot, session, repository)
+
+    const phases: { loadMs?: number } = {}
+    await model.state(session, phases)
+
+    // A number the caller owns is the only shape that stays correct when two reads overlap: the
+    // alternative (a field on the model) would have the second read overwrite the first one's number.
+    expect(typeof phases.loadMs).toBe('number')
+    expect(phases.loadMs).toBeGreaterThanOrEqual(0)
+
+    // Omitting the slot stays legal — every existing caller passes no phases and must keep working.
+    await expect(model.state(session)).resolves.toMatchObject({ sessionId: session.sessionId })
+  })
+
   it('prefers a live reference and otherwise falls back to normalized durable roots', async () => {
     const storageRoot = await createRoot()
     const repository = new NotebookRunRepository(storageRoot)
