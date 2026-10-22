@@ -1,0 +1,60 @@
+{
+  "caseId": "figure-axis-discipline",
+  "arm": "no-contract",
+  "runId": "033c4844-da16-46dd-b1f9-81611a1bfefe",
+  "sessionId": "ses_e9ad3d772ffeNar0Cy8U28NGlu",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-22T19:54:15.995Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": true,
+    "skillReads": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [
+    "edit",
+    "execute",
+    "other",
+    "read"
+  ],
+  "skillsRead": [],
+  "toolCallCount": 18,
+  "manipulation": {
+    "arm": "no-contract",
+    "noticeTurns": 1,
+    "noticeInjectedTurns": 0,
+    "expectsNotice": false,
+    "valid": true
+  },
+  "result": {
+    "caseId": "figure-axis-discipline",
+    "passed": true,
+    "atomicPassRate": 1,
+    "findings": [
+      {
+        "checkId": "ic50-figure-with-script",
+        "dimension": "object_plumbing",
+        "passed": true,
+        "detail": "artifact and script shipped together (producer pairing not recorded)"
+      },
+      {
+        "checkId": "log-axis-declared",
+        "dimension": "quantitative_quality",
+        "passed": true,
+        "detail": "pattern present"
+      },
+      {
+        "checkId": "no-useless-empty-figure",
+        "dimension": "data_integrity",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}
