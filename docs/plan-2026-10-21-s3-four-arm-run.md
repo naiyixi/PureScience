@@ -207,6 +207,39 @@ atomic 0.333   tools ["execute","other"]
 契约来自 `resources/skills` 的 frontmatter，而**已安装的旧资源里没有 `contract:`**。
 所以现网升级后，要等技能资源重新物化，注入才会有内容——沙盒里我们手工补了这一步。
 
+## 5.5 第一次注入对照 —— **实验无效，由我自己的设置造成**（2026-10-22）
+
+两臂各 3 次 `figure-axis-discipline`：
+
+| arm | 原子 | 工具调用 | 状态 |
+|---|---|---|---|
+| full-contract | 1.00 / 1.00 / 1.00 | read/edit/execute 等 | completed |
+| no-contract | 1.00 / 1.00 / **0.33（0 次工具调用）** | — | 第三条记录 `running`，无效 |
+
+看起来像"全契约 3/3、无契约 2/2+1 无效"，但**这个对照不成立**：
+
+```
+grep 'injected: true' /tmp/ps-arm-f/run.log → 5
+grep 'injected: true' /tmp/ps-arm-n/run.log → 3    ← 本该一条都没有
+grep -l 'contract:' /tmp/ps-arm-n/skills/*/SKILL.md | wc -l → 20
+```
+
+原因：为了让沙盒有契约，我把 `resources/skills` 直接拷进了 `<root>/skills`。
+而消融是在**物化时**剥掉 `contract:` 的——我手工拷贝绕过了物化，于是两臂读到同一批 20 个契约，
+注入完全相同（都是 12 行 / 1281 字符）。**被测变量根本没变。**
+
+### 方法教训
+
+1. 消融必须作用在它真正生效的那一步（物化），不能手工构造"看起来对"的输入；
+2. 跑完先验证**操纵检查**（manipulation check）：两臂的注入计数必须不同，
+   否则后面的分数一律不可读。这次是先看分数、后看日志，顺序反了。
+
+### 重跑条件（下一次）
+
+- 让应用自己物化技能（不要预拷贝 `resources/skills`）；
+- 开跑前断言 `full-contract` 的 `injected: true` 次数 > 0 且 `no-contract` 严格为 0；
+- 断言不成立就中止，不采信分数。
+
 ## 6. 不做
 
 - 不做"只注入文档"与"只给工具名"这两个臂（需要正文/工具清单裁剪，另立项）。
