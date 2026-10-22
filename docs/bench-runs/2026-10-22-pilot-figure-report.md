@@ -55,6 +55,27 @@
 另：产物被写进了 `/Users/totota/PureScience-DEV/artifacts/…`——**配置目录隔离了，数据根没有**。
 pilot 下次必须同时把数据根指到临时目录；本次没有删除任何文件（无法可靠区分我的产物与既有产物）。
 
+## 产物到底在哪（磁盘核查，2026-10-22）
+
+直接看数据目录，图题的那次 run **确实产出了带名字的产物**：
+
+```
+<dataRoot>/artifacts/<project>/<session>/<artifactId>/ic50_distribution.png
+<dataRoot>/artifacts/<project>/<session>/<artifactId>/ic50_plot.py
+<dataRoot>/artifacts/<project>/<session>/<artifactId>/.metadata/ic50_distribution.png.json
+```
+
+所以"artifact missing"**不是 agent 没产图，而是取证没把名字带出来**——`/api/v1/.../artifacts`
+给的是 `…/versions/<id>/content`。修复方向已明确（`7a55f196`：改问文件库的 `name`），
+但是否对 task 视图开放尚未验证：本轮新跑的一次（seed 3）**没有产生任何产物**，
+所以那条路径仍未被真实走通。
+
+## 方差比预想的大
+
+同题同日 6 次 run 的原子通过率：`0.67, 0.67, 0.67, 0.33, 0.33`（另有 1 次无效）。
+最新一次（seed 3）连 `log-axis-declared` 都没写、也没产图——说明这题对模型的**执行稳定性**
+敏感，多于对契约敏感。因此下一阶段应先把"能不能稳定产图"当成独立问题，再谈臂效应。
+
 ## 下一步
 
 1. 同一题跑 3 个种子（6 次 run），看 `log-axis-declared` 的翻转是否稳定；同时补 1–2 道契约覆盖题
