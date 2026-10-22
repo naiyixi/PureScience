@@ -60,6 +60,9 @@ summariesWithRuntimeContext  1 其中只有 1 份带运行时上下文（也就�
    起 Electron 取证要重建 `build:e2e` 并跑真窗口，本轮不具备安全余量。窗口侧行为未取读数，**不声称**。
 2. **没有换掉文档读那条路**：索引说 `unavailable` 时行为与改动前逐字相同，因此「答案变弱」不可能发生，
    但「答案变快」也只在索引命中的那 66/66 情形成立。
+   **结构上的保证**（不是措辞）：摘要条目由 `summarizeSessionCatalogEntry` 产出，它只丢 `messages` /
+   `conversationGraph` / `activities` / `activityGroups` 四个字段，其余走 `...rest` ⇒ 摘要里的 `runtimeContext` 是**整份**，
+   不是裁剪过的投影；且读它时仍要过与文档读同一个 `sanitizeSessionRuntimeContext`。
 3. **摘要件是产品自己在保存时写的**（`writeSessionSummary`，best-effort，失败不影响保存）。所以本单元不引入新的
    一致性风险：指纹不符时它退化成今天的路径。
 4. 不占版本号：无新的用户可见能力，只是同一答案的取法。
