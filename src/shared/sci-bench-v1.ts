@@ -191,10 +191,14 @@ const evaluateCheck = (check: AtomicCheck, evidence: BenchEvidence): CheckFindin
       const artifactRegex = new RegExp(check.artifact, 'i')
       const scriptRegex = new RegExp(check.script, 'i')
       const artifactPresent = hasAnyArtifact(evidence, artifactRegex)
-      const producedByScript = (evidence.artifactProducers ?? []).some(
+      // Two acceptable proofs, named apart: a recorded producer pairing, or a script shipped in the
+      // same batch. The case asks that the figure travel with its generating script, and saying which
+      // proof was found keeps "paired" from being silently claimed when only "co-delivered" is true.
+      const paired = (evidence.artifactProducers ?? []).some(
         (pair) => artifactRegex.test(pair.artifact) && scriptRegex.test(pair.producedBy)
       )
-      const passed = artifactPresent && producedByScript
+      const scriptPresent = artifactPaths(evidence).some((path) => scriptRegex.test(path))
+      const passed = artifactPresent && (paired || scriptPresent)
       // A bare "artifact missing" hides the most useful fact: what WAS produced. Naming the observed
       // paths (bounded) turns the finding into something a person can act on instead of a dead end.
       const produced = artifactPaths(evidence)
@@ -205,7 +209,9 @@ const evaluateCheck = (check: AtomicCheck, evidence: BenchEvidence): CheckFindin
         ...base,
         passed,
         detail: passed
-          ? 'artifact shipped together with its producing script'
+          ? paired
+            ? 'artifact shipped together with its producing script'
+            : 'artifact and script shipped together (producer pairing not recorded)'
           : artifactPresent
             ? 'artifact present but no producing script recorded'
             : `artifact missing — ${observed}`

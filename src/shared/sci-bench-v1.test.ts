@@ -127,6 +127,28 @@ describe('evaluateBenchCase', () => {
     expect(pairing?.detail).toBe('artifact present but no producing script recorded')
   })
 
+  it('accepts a co-delivered script, and says pairing was not recorded', () => {
+    const benchCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'figure-axis-discipline')!
+    const result = evaluateBenchCase(benchCase, {
+      transcript: '使用对数轴（log scale）',
+      artifacts: ['ic50_distribution.png', 'ic50_distribution.py']
+    })
+    const pairing = result.findings.find((finding) => finding.checkId === 'ic50-figure-with-script')
+    expect(pairing?.passed).toBe(true)
+    expect(pairing?.detail).toContain('producer pairing not recorded')
+  })
+
+  it('still prefers the recorded pairing when one exists', () => {
+    const benchCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'figure-axis-discipline')!
+    const result = evaluateBenchCase(benchCase, {
+      transcript: '使用对数轴（log scale）',
+      artifacts: ['ic50_distribution.png'],
+      artifactProducers: [{ artifact: 'ic50_distribution.png', producedBy: 'ic50_plot.py' }]
+    })
+    const pairing = result.findings.find((finding) => finding.checkId === 'ic50-figure-with-script')
+    expect(pairing?.detail).toBe('artifact shipped together with its producing script')
+  })
+
   it('names the artifacts it did see when the expected one is missing', () => {
     // This case expects an ic50/potency figure; a dotplot does not satisfy it, so the finding must
     // say what WAS written rather than just "missing".
