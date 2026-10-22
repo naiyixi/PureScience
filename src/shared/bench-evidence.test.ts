@@ -65,6 +65,19 @@ describe('benchEvidenceFromSession', () => {
     expect(evidence.collected.toolCalls).toBe(true)
   })
 
+  it('prefers the artifact name over the stored content-blob path', () => {
+    const artifacts: Pick<PersistedArtifact, 'path' | 'name'>[] = [
+      { path: '/data/artifacts/p1/s1/.provenance/a/versions/b/content', name: 'ic50.png' },
+      { path: '/data/artifacts/p1/s1/.provenance/c/versions/d/content' }
+    ]
+    const evidence = benchEvidenceFromSession(session({}), artifacts)
+    // A filename-shaped check must see `ic50.png`, not the blob path that never ends in .png.
+    expect(evidence.artifacts).toEqual([
+      'ic50.png',
+      '/data/artifacts/p1/s1/.provenance/c/versions/d/content'
+    ])
+  })
+
   it('carries artifact paths and never invents quantities or citations', () => {
     const artifacts: Pick<PersistedArtifact, 'path'>[] = [{ path: 'out/figure.png' }]
     const evidence = benchEvidenceFromSession(session({}), artifacts)

@@ -24,7 +24,7 @@ const isAgentRole = (role: string): boolean => role === 'agent' || role === 'ass
 
 export const benchEvidenceFromSession = (
   session: Pick<PersistedChatSession, 'messages' | 'activities'>,
-  artifacts: readonly Pick<PersistedArtifact, 'path'>[]
+  artifacts: readonly Pick<PersistedArtifact, 'path' | 'name'>[]
 ): SessionEvidence => {
   const messages = session.messages ?? []
   const transcriptParts: string[] = []
@@ -48,7 +48,12 @@ export const benchEvidenceFromSession = (
     return [{ name, ...(args ? { args } : {}) }]
   })
 
-  const artifactPaths = artifacts.map((artifact) => artifact.path).filter(Boolean)
+  // The stored `path` is a content blob (…/versions/<id>/content), not the name the session used;
+  // grading on that would make every filename-shaped check fail for a reason nobody can see.
+  // Prefer the original name and keep the blob path only as a fallback.
+  const artifactPaths = artifacts
+    .map((artifact) => ('name' in artifact && artifact.name ? artifact.name : artifact.path))
+    .filter(Boolean)
 
   return {
     transcript: transcriptParts.join('\n'),
