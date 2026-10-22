@@ -66,3 +66,18 @@ summariesWithRuntimeContext  1 其中只有 1 份带运行时上下文（也就�
 3. **摘要件是产品自己在保存时写的**（`writeSessionSummary`，best-effort，失败不影响保存）。所以本单元不引入新的
    一致性风险：指纹不符时它退化成今天的路径。
 4. 不占版本号：无新的用户可见能力，只是同一答案的取法。
+5. **本单元不声称那 6 秒消失**。生产日志里这条通道是全应用**按总耗时排第一**的慢处理器
+   （`logs/headless.out.log`，只读聚合，`ipc handler was slow` 一类、阈值 200 ms）：
+
+   ```
+   SLOW acp:get-plan-projection  n=580  median=6,303 ms  p95=121,617 ms  max=125,341 ms  sum=13,382,391 ms
+   SLOW sessions:save-session    n=79   median=854 ms    p95=60,865 ms   max=125,589 ms  sum=708,964 ms
+   SLOW notebook:state           n=68   median=8,629 ms  p95=25,253 ms   max=29,180 ms   sum=672,207 ms
+   SLOW sessions:list-catalog    n=221  median=603 ms    p95=3,877 ms    max=7,861 ms    sum=262,259 ms
+   ```
+
+   `p95 = 121.6 s` 与 `sessions:save-session`、`send-prompt` 的量级同处一档 ⇒ 这条通道的耗时里**至少有一部分是排队**，
+   而不是解析。本单元去掉的只是「解析」那一段；排队那一段由 `5c39a856` 的分段行去量，**下一单元按那个读数决定**。
+   同一份聚合里还露出第二个候选（`notebook:state` 中位 8.6 s），留作下一轮的备选。
+   分区取值的脚本在 `/tmp/summarise-slow-ipc.mjs`（不入仓）：这些记录是 Node 的**对象检视格式**（无引号键、单引号），
+   按 JSON 解析会**读到 0 条**——我第一次就是这么读到空结果的。
