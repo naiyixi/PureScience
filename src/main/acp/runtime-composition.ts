@@ -81,6 +81,9 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
   // runtime: it used to be dropped (the composition type did not name it), which left the turn path's
   // skill-selection bridge without a host — the configured model was never consulted there and nothing was
   // recorded, i.e. a settings switch that changed nothing.
+  // Named here for the same reason as functionModels below: a value the app passes must be forwarded,
+  // or the per-turn capability gaps silently never reach the runtime.
+  capabilityGaps?: AcpRuntimeOptions['capabilityGaps']
   functionModels?: AcpRuntimeOptions['functionModels']
   permissionGrantRegistry?: PermissionGrantRegistry
   initializationBarrier?: Promise<unknown>
@@ -114,6 +117,7 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
 
 // Composes the compatibility façade while the coordinator remains the cross-generation Session owner.
 const createAcpRuntime = ({
+  capabilityGaps,
   mcpEntryPath,
   repository,
   runRegistry,
@@ -264,6 +268,7 @@ const createAcpRuntime = ({
       })
       const runtimeOptions: AcpRuntimeOptions = {
         appVersion: app.getVersion(),
+        ...(capabilityGaps ? { capabilityGaps } : {}),
         // Packaged macOS apps often start with cwd at "/" or the app bundle; use home instead.
         defaultCwd,
         resolveBackend: async (context) =>

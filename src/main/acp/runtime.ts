@@ -171,6 +171,10 @@ type AcpRuntimeOptions = {
   skillImport?: AcpRuntimeSkillImportOptions
   skills?: AcpTurnSkillHooks
   plan?: AcpRuntimePlanOptions
+  // Per-turn capability-gap text: which declared capabilities this session cannot run yet and what would
+  // establish each missing fact. Injected into the prompt content, not the user's own text — the model
+  // gets it whether or not it would have asked `capability_preflight` (measured: it does not ask).
+  capabilityGaps?: (sessionId: string) => Promise<string | null>
   memory?: AcpRuntimeMemoryOptions
   contextSummary?: AcpRuntimeContextSummaryOptions
   routine?: AcpRuntimeRoutineOptions

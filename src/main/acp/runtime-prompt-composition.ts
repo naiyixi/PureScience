@@ -226,6 +226,11 @@ const composeAcpRuntimePromptOwners = (
     }),
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,
+    ...(options.capabilityGaps
+      ? {
+          capabilityNotice: (request) => options.capabilityGaps!(request.sessionId)
+        }
+      : {}),
     inputNotice: (request) =>
       inputNoticeResolver.forTurn(request.text ?? '', sessionCwd(request.sessionId)),
     // D2: the region the user has selected in the structure viewer, when the turn carries one.

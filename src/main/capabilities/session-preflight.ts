@@ -6,6 +6,7 @@
 // code runs against a real session store in production and against fixtures in tests.
 
 import type { CapabilityContract, StateFact } from '../../shared/capability-contract'
+import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PreflightResult } from '../../shared/capability-preflight'
 import { SkillCapabilityRegistry } from '../skills/skill-capability-registry'
@@ -41,6 +42,45 @@ export type CapabilityPreflightPayload = {
   notes: string[]
   /** Declared capabilities in the same install, so the agent can see what else is available. */
   declared: string[]
+}
+
+/**
+ * The same reading, phrased as prompt text: which declared capabilities this session cannot run yet and
+ * what would establish each missing fact. Null means every declared capability is satisfied — a real
+ * answer, not "nothing was rendered".
+ *
+ * Every declared capability is considered, because a turn's intent is not known when the prompt is
+ * assembled; the renderer caps the block and counts what it left out.
+ */
+export const renderSessionCapabilityGaps = async (input: {
+  configRoot: string
+  sessionId: string
+  deps: PreflightDeps
+}): Promise<string | null> => {
+  const registry = new SkillCapabilityRegistry(`${input.configRoot}/skills`)
+  await registry.load()
+  const sources = await input.deps.loadFacts(input.sessionId)
+  if (!sources) return null
+
+  const declared = registry.declared()
+  const facts = factsForSession(
+    {
+      attachments: sources.attachments,
+      artifacts: sources.artifacts,
+      usedCapabilities: sources.referencedCapabilities
+    },
+    declared
+  )
+
+  return renderCapabilityGaps({
+    selected: declared.map((contract) => contract.id),
+    contracts: declared.map((contract) => ({
+      id: contract.id,
+      requires: contract.requires,
+      produces: contract.produces
+    })),
+    facts: facts.facts
+  })
 }
 
 export const buildCapabilityPreflight = async (input: {

@@ -70,6 +70,15 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // The structure-selection notice (D2): returns '' when the turn carries no selection. Same seam and
   // same rule as the input pre-check above — the region the user has selected is context, not their words.
   selectionNotice?: (request: AcpPromptRequest) => string
+  // The capability-gap notice: which declared capabilities this session cannot run yet, and what would
+  // establish each missing fact. Async because the facts live behind the session store, and it changes
+  // between turns — a capstone produced in turn 3 satisfies turn 4. Returns null for an ordinary turn,
+  // which keeps that turn byte-identical to what it was before this seam existed.
+  //
+  // This exists because the tool was measured to be unused: with `capability_preflight` mounted and
+  // callable, a real run called it zero times (2 tool calls total). Asking only works on a model that
+  // asks; the gaps have to arrive.
+  capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>
   // The structure-measurement notice (D3): '' when the turn carries no measurement.
   measurementNotice?: (request: AcpPromptRequest) => string
   emitState: () => void
@@ -255,8 +264,12 @@ class AcpPromptPreparationOwner {
       // Application context blocks ride in the content the model receives, never in request.text: the D5
       // input pre-check (which named inputs are not there) and the D2 structure selection. Both return ''
       // for an ordinary turn, so such a turn stays byte-identical to what it was before this seam existed.
+      const capabilityNotice = this.options.capabilityNotice
+        ? await this.options.capabilityNotice(input.request)
+        : null
       const notices = [
         this.options.inputNotice?.(input.request),
+        capabilityNotice,
         this.options.selectionNotice?.(input.request),
         this.options.measurementNotice?.(input.request)
       ].filter((notice): notice is string => typeof notice === 'string' && notice.length > 0)

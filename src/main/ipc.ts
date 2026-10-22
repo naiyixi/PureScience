@@ -31,7 +31,11 @@ import {
 } from './application-command-composition'
 import type { ApplicationInvocation } from './application-command-router'
 import type { PersistedChatSession } from '../shared/session-persistence'
-import { buildCapabilityPreflight } from './capabilities/session-preflight'
+import {
+  buildCapabilityPreflight,
+  renderSessionCapabilityGaps,
+  type SessionFactSources
+} from './capabilities/session-preflight'
 import { createApplicationEventModule, type ApplicationEventSource } from './application-events'
 import { projectTaskRuntimeEvent } from './web-service/application-event-projections'
 
@@ -2213,6 +2217,39 @@ const createApplicationModules = async (
       knowledgeLog.warn('knowledge copy sweep skipped', errorLogFields(error))
     })
 
+  // One loader for both consumers of session facts: the `capability_preflight` tool and the per-turn
+  // gap notice. Two copies here would let the prompt and the tool tell different stories.
+  const loadCapabilityFacts = async (sessionId: string): Promise<SessionFactSources | null> => {
+    let session: PersistedChatSession | null = null
+    for (const project of await projectRepository.list()) {
+      const found = readSessionRecord(await sessionRepository.loadSession(project.id, sessionId))
+      if (found) {
+        session = found
+        break
+      }
+    }
+    if (!session) return null
+
+    const attachments: { name: string }[] = []
+    const referenced = new Set<string>()
+    for (const message of session.messages ?? []) {
+      for (const upload of message.uploads ?? []) {
+        const name = upload.name || upload.originalName
+        if (name) attachments.push({ name })
+      }
+      for (const part of message.parts ?? []) {
+        if (part.type === 'skill' && part.id) referenced.add(part.id)
+      }
+    }
+    return {
+      attachments,
+      artifacts: [],
+      referencedCapabilities: [...referenced],
+      // Artifacts are not read here yet; the payload names that gap instead of implying "none produced".
+      unavailableSources: ['artifacts_not_read_by_preflight']
+    }
+  }
+
   const notebookRpcServer = await modules.add(
     new NotebookLocalRpcServer(notebookLocalRpc, {
       onSessionReleased: (sessionId) => completionGateCoordinator.releaseSession(sessionId),
@@ -2220,45 +2257,14 @@ const createApplicationModules = async (
       computeService: computeServiceWithRegistry,
       skillImporter: conversationSkillImporter,
       skillCreator,
-      // The agent-facing preflight (MCP tool `capability_preflight`). Facts come from the session
-      // record: attachments the user added, and skills its messages reference. Artifacts are NOT read
-      // here yet, and the payload says so by name rather than leaving an empty list to be misread.
+      // The agent-facing preflight (MCP tool `capability_preflight`) and the per-turn gap notice share
+      // ONE facts loader, so the tool's answer and the prompt's text cannot disagree.
       capabilityPreflight: ({ sessionId, capability }) =>
         buildCapabilityPreflight({
           configRoot: resolveConfigRoot(),
           sessionId,
           capability,
-          deps: {
-            loadFacts: async (id) => {
-              let session: PersistedChatSession | null = null
-              for (const project of await projectRepository.list()) {
-                const found = readSessionRecord(await sessionRepository.loadSession(project.id, id))
-                if (found) {
-                  session = found
-                  break
-                }
-              }
-              if (!session) return null
-
-              const attachments: { name: string }[] = []
-              const referenced = new Set<string>()
-              for (const message of session.messages ?? []) {
-                for (const upload of message.uploads ?? []) {
-                  const name = upload.name || upload.originalName
-                  if (name) attachments.push({ name })
-                }
-                for (const part of message.parts ?? []) {
-                  if (part.type === 'skill' && part.id) referenced.add(part.id)
-                }
-              }
-              return {
-                attachments,
-                artifacts: [],
-                referencedCapabilities: [...referenced],
-                unavailableSources: ['artifacts_not_read_by_preflight']
-              }
-            }
-          }
+          deps: { loadFacts: loadCapabilityFacts }
         }),
       // Wired here, not passed down as an option: this is the one place where the data root (where the
       // run records live) and the config root (where skills are written) are both already resolved.
@@ -2611,6 +2617,15 @@ const createApplicationModules = async (
       authorizeSkillImportReferencedUploads: (projectId, sessionId, paths) =>
         conversationSkillImporter.authorizeReferencedUploads(projectId, sessionId, paths),
       settingsService,
+      // Per-turn capability gaps: the same reading the `capability_preflight` tool gives, prepended to the
+      // turn's content. Measured: with the tool mounted, a real run called it zero times — so the gaps
+      // are delivered instead of offered.
+      capabilityGaps: (sessionId) =>
+        renderSessionCapabilityGaps({
+          configRoot: resolveConfigRoot(),
+          sessionId,
+          deps: { loadFacts: loadCapabilityFacts }
+        }),
       // Function-level model slots: a narrow call asks what model to use and reports what it did, so the
       // settings row and the trail are the same facts stated twice rather than two separate stories.
       functionModels: {

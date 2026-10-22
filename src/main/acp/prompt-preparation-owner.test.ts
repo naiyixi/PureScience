@@ -66,7 +66,8 @@ type ImageRelayDouble = {
 const setup = (
   inputNotice?: (request: AcpPromptRequest) => string,
   selectionNotice?: (request: AcpPromptRequest) => string,
-  imageInputCompatibility?: ImageRelayDouble
+  imageInputCompatibility?: ImageRelayDouble,
+  capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>
 ): Fixture => {
   const turn = contextTurn()
   const promptContent = {
@@ -97,6 +98,7 @@ const setup = (
     ...(inputNotice ? { inputNotice } : {}),
     ...(selectionNotice ? { selectionNotice } : {}),
     ...(imageInputCompatibility ? { imageInputCompatibility } : {}),
+    ...(capabilityNotice ? { capabilityNotice } : {}),
     notebook: {
       peekHandoffContext: vi.fn(() => ({
         executionCount: 1,
@@ -302,6 +304,35 @@ describe('AcpPromptPreparationOwner', () => {
     // records the user as having said.
     expect(JSON.stringify(handle.content)).toContain('<missing_inputs>')
     expect(seen).toEqual(['Analyze the result.'])
+  })
+
+  it('delivers capability gaps without being asked, and keeps the user text clean', async () => {
+    const seen: string[] = []
+    const fixture = setup(undefined, undefined, undefined, async (request) => {
+      seen.push(request.text)
+      return '<purescience_capability_gaps>\n- needs-matrix 需要 omics file（input:omics_file），本会话没有；先运行 fetch-geo 生成它。\n</purescience_capability_gaps>'
+    })
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    // The whole point: the model receives the gaps on a turn where it never called the tool.
+    expect(JSON.stringify(handle.content)).toContain('purescience_capability_gaps')
+    expect(JSON.stringify(handle.content)).toContain('needs-matrix')
+    // Application context must not masquerade as the user's words.
+    expect(seen).toEqual(['Analyze the result.'])
+  })
+
+  it('leaves the provider content alone when there are no capability gaps', async () => {
+    const fixture = setup(undefined, undefined, undefined, async () => null)
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
+    if (handle.status !== 'ready') throw new Error('expected a ready prompt')
+    // No gaps is a real answer, and it must not change a single byte of the turn.
+    expect(handle.content).toBe('provider-content')
   })
 
   it('leaves the provider content alone when nothing is missing', async () => {
