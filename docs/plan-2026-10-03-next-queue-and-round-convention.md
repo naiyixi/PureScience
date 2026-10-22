@@ -11041,3 +11041,72 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 ③ 真正的杠杆是「主线程被谁占着」（同一条链上的 Prisma `request`、日志重写、运行落盘）⇒ 下一个单元应从
 `process-not-scheduled` 那一半取数，而不是继续在 notebook 自己的代码里找。
 
+
+## 两百一十六、本轮追加（执行器，2026-10-23 04:5x–）—— 后台复查把「想一下」当越权工具拒掉，整轮复查就没了（16 次拒绝 ↔ 15 轮作废，逐条配对）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = HEAD = 94e8d5d0`、`git status --short` **干净**；上一轮我推上去的 4 笔（`84cb22e4` /
+  `8f3b5db0` / `059a0e63` + 并发体那笔 `3534d841`）都已在远端，看门脚本日志终态 `PUSHED 059a0e63`。
+  本轮开工时树里**没有**别人的在制品 ⇒ 不需要让路，也不需要隔离工作树（但门禁仍按单元跑全簇）。
+- 桌面会话线（`scripts/bench/**`、`src/main/capabilities/**`、v2.16 契约档）与本轮改动**目录不相交**。
+- **本轮不再从 notebook 自己身上找**：§两百一十五 §五 第 ③ 条写的就是「真正的杠杆是主线程被谁占着／被谁挡着」，
+  所以先从**真机日志**取数（只读）。打包版那份先被排除：它没有 `lateMs` 字段 ⇒ 跑的是 §两百零三 修复之前的构建
+  （`0e6d47cf` 在 `v2.15.3` 的发布提交 `6f03a1a4` 之后 23 分钟），那 2,927 条停滞洪水是**已知旧构建行为**，不重修。
+- 内存（现取）：空闲物理页 **3,871 ≈ 63 MB**、`swap used 15,321 MB / 16,384 MB`、load 10.6 ⇒ 真机闸门仍未解，
+  本轮不声称任何窗口读数。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/acp/reviewer-session-owner.ts` | 判定抽成纯函数 `classifyReviewerToolCall`（`reviewer-mcp` / `pure-reasoning` / `foreign`）与 `decideReviewerPermission`（`allow` 带 rule / `reject` 带选项 / `cancel`）+ `permissionDecisionResponse`；**新增一条规则**：ACP kind 为 `think` 的调用按「纯推理步骤」放行（优先级排在复查 MCP 工具**之后**），并打自己的一句 info（`approving reviewer reasoning step` / `rule: 'reviewer-pure-reasoning-step'`）；没有 allow 选项就 cancel。拒绝行补 `toolKind` |
+| `src/main/acp/reviewer-session-owner.permission-decision.test.ts`（新） | 18 条，含**七种其它 kind 逐个仍 foreign**（`execute`/`read`/`fetch`/`edit`/`search`/`switch_mode`/`other`） |
+
+### 二 读数（真机日志，只读；`~/Library/Logs/PureScience (DEV)/main.log`，11,039 条，10-21 16:09 → 10-22 20:01 UTC）
+
+- `rejecting non-reviewer tool requested by background reviewer` **16** 条：`think` 9 / `execute` 7。
+- `review protocol incomplete`（error：「Reviewer stopped without calling submit_findings」）**15** 条。
+- **配对：15/15 都在 2.12 s 内跟着一次拒绝；16 条拒绝里 0 条后面没有作废** ⇒ 这不是「偶尔失败」，
+  是一条链：原生工具被拒 → harness 收手 → 那轮 `checks` 为空、复查行落 `lifecycle='error'`。
+- 顺带量到（不属本单元）：`OpenCode permission context wait timed out` **289** 条（`waitMs` 恒 1000），其中
+  **184 条是复查自己的 MCP 调用**，超时后 1 ms 就被应用自动批准 ⇒ 那 1 秒是纯延迟；另 105 条是别的工具。
+  这条按「等的是谁将要读这些入参」立为**下一单元候选**，不混进本条。
+
+证据档 `docs/evidence/2026-10-23-reviewer-reasoning-step-refusal.md`。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 新增用例 | **1 file / 18 passed** |
+| `src/main/acp` | **89 files / 1,445 passed**，exit 0 |
+| `src/main/reviewer` | **26 files / 298 passed**，exit 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 2 文件） | **0 problems** |
+| `prettier --check`（本笔 2 文件） | 全过 |
+
+变异两条：白名单换空集 ⇒ **3 条**红（`think` 那三条）；把 `execute` 塞进白名单 ⇒ **4 条**红（七种 kind 逐个、
+拒绝 shell、无 reject 选项、选项优先级）。**tsc 抓到一条 vitest 看不见的错**：`permissionDecisionResponse` 里
+`decision.optionId` 在「可选字段」与「必填」两个分支上没收窄（`TS2322`），18 条用例当时全绿 ⇒ 显式收窄，不用 `as`。
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **只覆盖 kind 为 `think` 的那一半**：那 9 条里 `tool: think` 从这一份日志**判定不了**是「ACP kind」还是
+   「工具名叫 think、kind 为空」（拒绝行原来只有一个字段，两种形状同形）。本次按 kind 生效的依据是 `execute`
+   那条只能是 kind（OpenCode 的 shell 工具叫 bash 不叫 execute）⇒ **这是推断**。判据已埋好：下次真机出现拒绝时
+   `toolKind` 会自证；若为空则本条重开（改到「名称 + 无路径/命令入参」那一侧，**不**放宽到按名称一律放行）。
+2. **`execute` 那 7 条仍会作废整轮复查**，这是设计（后台复查不许有 shell）。正确出路是「没有 findings 时怎么收场」，
+   见下一条，不是放宽。
+3. **下一单元（未开工，已具名）**：复查在「被拒后收手」时的一次有界补救 —— 判据是「复查结束时 `checks` 为空**且**
+   本轮有过拒绝 ⇒ 是否给出可行动的收场（重试一次 / 明确告诉读者这轮没成）」，`blocked-by` = 无（纯 main 侧、可离线判）。
+4. **无真机窗口读数**：证据 = 生产日志既有读数 + 纯函数用例，不是窗口里点出来的（内存闸门未解）。
+5. **适配层 `resolvePermission` 无端到端用例**：构造活动复查会话要先拉起 ACP agent，代价超本单元；判定与响应
+   映射都已纯函数化并被钉住，剩下「记日志 + 计数」按代码可读，**具名记为覆盖边界**。
+6. 不占版本号（无新的用户可见能力）⇒ 本条不会随下一版之外的途径到达读者，窗口读数也要等那一版。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；② 下一单元候选：上面 §四 3 的「被拒后收场」、
+`OpenCode permission context wait` 那 184 条 1 秒纯延迟（复查每调一次工具就付一次）、或 P0-3 的分步真机读数
+（**仍卡内存闸门**）；③ 动手前 `git log --oneline origin/main -3` 核会话没在同时做同一件事。

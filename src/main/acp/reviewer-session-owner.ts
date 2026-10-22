@@ -56,6 +56,129 @@ const REVIEWER_MCP_PROVIDER_TOOL_NAMES = new Set([
   ...REVIEWER_MCP_CLAUDE_TOOL_NAMES
 ])
 
+// ACP tool kinds that describe a reasoning step: `think` names the model's own deliberation, which
+// carries no filesystem, network or process capability. Measured on the shipped logs
+// (2026-10-22/23, `~/Library/Logs/PureScience (DEV)/main.log`): the gate rejected 16 native tool calls
+// and **every one of them** was followed by `review protocol incomplete … Reviewer stopped without
+// calling submit_findings` within 2.1 s (15/15 paired; the 16th is the last one in the window).
+// 9 of the 16 were kind `think` ⇒ refusing a reasoning step protects nothing and costs the user the
+// entire review. It is answered with the allow option; every other kind stays rejected, including
+// `execute` (a shell), `read`/`fetch` (filesystem and network), which is where the isolation lives.
+const REVIEWER_PURE_REASONING_TOOL_KINDS: ReadonlySet<string> = new Set(['think'])
+
+type ReviewerToolCallShape = {
+  title?: unknown
+  kind?: unknown
+  _meta?: unknown
+}
+
+type ReviewerPermissionOption = { readonly optionId: string; readonly kind: string }
+
+export type ReviewerToolCallIdentity =
+  | { readonly kind: 'reviewer-mcp' }
+  | { readonly kind: 'pure-reasoning' }
+  | { readonly kind: 'foreign' }
+
+export type ReviewerPermissionDecision =
+  | {
+      readonly outcome: 'allow'
+      readonly rule: 'reviewer-mcp' | 'pure-reasoning-step'
+      readonly optionId: string
+    }
+  | { readonly outcome: 'reject'; readonly optionId?: string }
+  | { readonly outcome: 'cancel' }
+
+// Which one of the three the caller is holding. The reviewer's own MCP tools are recognised first (a
+// reviewer tool that happened to be reported with a reasoning kind must still take the MCP branch), then
+// a reasoning step, then everything else.
+export const classifyReviewerToolCall = (input: {
+  readonly toolCall: ReviewerToolCallShape | undefined
+  readonly frameworkId: AgentFrameworkId
+  readonly mcpServerNames: readonly string[]
+}): ReviewerToolCallIdentity => {
+  const toolName = extractProviderToolName(input.toolCall)
+  const reportedTitle = input.toolCall?.title
+  const opencodeToolName =
+    toolName == null &&
+    input.frameworkId === 'opencode' &&
+    typeof reportedTitle === 'string' &&
+    REVIEWER_MCP_OPENCODE_TOOL_NAMES.has(reportedTitle)
+      ? reportedTitle
+      : undefined
+  const codexToolName =
+    input.frameworkId === 'codex' &&
+    toolName != null &&
+    REVIEWER_MCP_LEAF_TOOL_NAMES.has(toolName) &&
+    typeof reportedTitle === 'string' &&
+    REVIEWER_MCP_CODEX_TOOL_NAMES.has(reportedTitle)
+      ? toolName
+      : undefined
+  const claudeToolName =
+    toolName == null &&
+    input.frameworkId === 'claude-code' &&
+    typeof reportedTitle === 'string' &&
+    REVIEWER_MCP_CLAUDE_TOOL_NAMES.has(reportedTitle)
+      ? reportedTitle
+      : undefined
+  const isReviewerMcp =
+    input.mcpServerNames.length === 1 &&
+    REVIEWER_MCP_SERVER_NAME_SPELLING_SET.has(input.mcpServerNames[0] ?? '') &&
+    ((toolName != null && REVIEWER_MCP_PROVIDER_TOOL_NAMES.has(toolName)) ||
+      opencodeToolName != null ||
+      codexToolName != null ||
+      claudeToolName != null)
+
+  if (isReviewerMcp) return { kind: 'reviewer-mcp' }
+  const reportedKind = input.toolCall?.kind
+  if (typeof reportedKind === 'string' && REVIEWER_PURE_REASONING_TOOL_KINDS.has(reportedKind)) {
+    return { kind: 'pure-reasoning' }
+  }
+  return { kind: 'foreign' }
+}
+
+// The whole policy as one pure function so it can be pinned without standing up a reviewer session.
+export const decideReviewerPermission = (input: {
+  readonly toolCall: ReviewerToolCallShape | undefined
+  readonly options: readonly ReviewerPermissionOption[]
+  readonly frameworkId: AgentFrameworkId
+  readonly mcpServerNames: readonly string[]
+}): ReviewerPermissionDecision => {
+  const identity = classifyReviewerToolCall(input)
+  if (identity.kind === 'foreign') {
+    const rejectOption =
+      input.options.find((option) => option.kind === 'reject_once') ??
+      input.options.find((option) => option.kind === 'reject_always')
+    return rejectOption
+      ? { outcome: 'reject', optionId: rejectOption.optionId }
+      : { outcome: 'reject' }
+  }
+  const allowOption =
+    input.options.find((option) => option.kind === 'allow_once') ??
+    input.options.find((option) => option.kind === 'allow_always')
+  if (!allowOption) return { outcome: 'cancel' }
+  return {
+    outcome: 'allow',
+    rule: identity.kind === 'reviewer-mcp' ? 'reviewer-mcp' : 'pure-reasoning-step',
+    optionId: allowOption.optionId
+  }
+}
+
+// The decision as the wire response the agent expects, so the adapter that logs it cannot bend the
+// answer on its way out (a decision that is not `allow` is never a selection).
+export const permissionDecisionResponse = (
+  decision: ReviewerPermissionDecision
+): RequestPermissionResponse => {
+  const cancelled: RequestPermissionResponse = { outcome: { outcome: 'cancelled' } }
+  if (decision.outcome === 'cancel') return cancelled
+  if (decision.outcome === 'reject') {
+    const rejectOptionId = decision.optionId
+    return rejectOptionId
+      ? { outcome: { outcome: 'selected', optionId: rejectOptionId } }
+      : cancelled
+  }
+  return { outcome: { outcome: 'selected', optionId: decision.optionId } }
+}
+
 const errorMessage = (error: unknown): string => {
   try {
     const raw = error instanceof Error ? (error as { message?: unknown }).message : error
@@ -337,79 +460,66 @@ export class ReviewerSessionOwner {
   resolvePermission(params: RequestPermissionRequest): RequestPermissionResponse | undefined {
     const context = this.contextFor(params.sessionId)
     if (!context) return undefined
-    const toolName = extractProviderToolName(params.toolCall)
-    const reportedTitle = params.toolCall.title
-    const opencodeToolName =
-      toolName == null &&
-      context.frameworkId === 'opencode' &&
-      typeof reportedTitle === 'string' &&
-      REVIEWER_MCP_OPENCODE_TOOL_NAMES.has(reportedTitle)
-        ? reportedTitle
-        : undefined
-    const codexToolName =
-      context.frameworkId === 'codex' &&
-      toolName != null &&
-      REVIEWER_MCP_LEAF_TOOL_NAMES.has(toolName) &&
-      typeof reportedTitle === 'string' &&
-      REVIEWER_MCP_CODEX_TOOL_NAMES.has(reportedTitle)
-        ? toolName
-        : undefined
-    const claudeToolName =
-      toolName == null &&
-      context.frameworkId === 'claude-code' &&
-      typeof reportedTitle === 'string' &&
-      REVIEWER_MCP_CLAUDE_TOOL_NAMES.has(reportedTitle)
-        ? reportedTitle
-        : undefined
-    const isReviewerMcp =
-      context.mcpServerNames.length === 1 &&
-      REVIEWER_MCP_SERVER_NAME_SPELLING_SET.has(context.mcpServerNames[0] ?? '') &&
-      ((toolName != null && REVIEWER_MCP_PROVIDER_TOOL_NAMES.has(toolName)) ||
-        opencodeToolName != null ||
-        codexToolName != null ||
-        claudeToolName != null)
+    const decision = decideReviewerPermission({
+      toolCall: params.toolCall,
+      options: params.options,
+      frameworkId: context.frameworkId,
+      mcpServerNames: context.mcpServerNames
+    })
 
-    if (!isReviewerMcp) {
-      const rejectOption =
-        params.options.find((option) => option.kind === 'reject_once') ??
-        params.options.find((option) => option.kind === 'reject_always')
+    if (decision.outcome === 'reject') {
       this.rejectedToolCalls.set(
         params.sessionId,
         (this.rejectedToolCalls.get(params.sessionId) ?? 0) + 1
       )
+      // `tool` is the provider's tool name when it has one and the ACP kind otherwise, so `toolKind` is
+      // what tells the two apart in a reading: without it `tool: "think"` is ambiguous between a tool
+      // named think and a call reported with kind think. No title or input is logged — a native tool
+      // call's title is the model's own text.
       log.warn('rejecting non-reviewer tool requested by background reviewer', {
         sessionId: params.sessionId,
-        tool: toolName ?? params.toolCall.kind,
+        tool: extractProviderToolName(params.toolCall) ?? params.toolCall.kind,
+        toolKind: params.toolCall.kind,
         toolCallId: params.toolCall?.toolCallId
       })
-      return rejectOption
-        ? { outcome: { outcome: 'selected', optionId: rejectOption.optionId } }
-        : { outcome: { outcome: 'cancelled' } }
+      return permissionDecisionResponse(decision)
     }
 
-    const allowOption =
-      params.options.find((option) => option.kind === 'allow_once') ??
-      params.options.find((option) => option.kind === 'allow_always')
-    if (!allowOption) {
+    if (decision.outcome === 'cancel') {
       log.warn('reviewer MCP permission request had no allow option; cancelling', {
         sessionId: params.sessionId,
         toolCallId: params.toolCall?.toolCallId
       })
-      return { outcome: { outcome: 'cancelled' } }
+      return permissionDecisionResponse(decision)
     }
+
     // Logged at info, not debug (P0-9): the request line is `info` while this decision was `debug`, so a
     // normal log showed 2,128 "permission request received" lines and almost no decisions — which reads as
     // "the user was asked 2,128 times" when in fact the app approves each one itself within the same
     // millisecond. Measured on real logs: 906 requests ↔ 856 of these in one file, each at +0.00 s with the
     // same toolCallId. A decision made on the user's behalf belongs in the record at the same level as the
     // request it answers, so the pair can be joined and the user-facing density can be told apart.
-    log.info('approving scope-bounded reviewer MCP tool call', {
-      sessionId: params.sessionId,
-      toolCallId: params.toolCall?.toolCallId,
-      optionId: allowOption.optionId,
-      rule: 'scope-bounded-reviewer-mcp'
-    })
-    return { outcome: { outcome: 'selected', optionId: allowOption.optionId } }
+    //
+    // The reasoning-step rule logs its own sentence: it approves a call that is NOT one of the reviewer
+    // MCP tools, and a reading that could not tell the two apart would report a scope-bounded approval
+    // that never happened.
+    if (decision.rule === 'pure-reasoning-step') {
+      log.info('approving reviewer reasoning step', {
+        sessionId: params.sessionId,
+        toolCallId: params.toolCall?.toolCallId,
+        toolKind: params.toolCall.kind,
+        optionId: decision.optionId,
+        rule: 'reviewer-pure-reasoning-step'
+      })
+    } else {
+      log.info('approving scope-bounded reviewer MCP tool call', {
+        sessionId: params.sessionId,
+        toolCallId: params.toolCall?.toolCallId,
+        optionId: decision.optionId,
+        rule: 'scope-bounded-reviewer-mcp'
+      })
+    }
+    return { outcome: { outcome: 'selected', optionId: decision.optionId } }
   }
 
   dispose(session: ActiveSession): ReviewerSessionDisposition {
