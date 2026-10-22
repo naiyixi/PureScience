@@ -17,6 +17,9 @@ import {
   type PreflightResult
 } from '../../shared/capability-preflight'
 
+// The prefix the app gives every materialized bundled skill directory. Contracts declare the bare id.
+const SKILL_DIR_PREFIX = 'os-'
+
 export type CapabilityRegistryEntry = {
   id: string
   /** Null when the skill declared no contract, or declared one that failed validation. */
@@ -60,13 +63,21 @@ export class SkillCapabilityRegistry {
         } catch {
           continue // A directory without a SKILL.md is not a skill.
         }
-        const parsed = extractContract(raw, entry.name)
+        // The app materializes bundled skills into `os-<id>` directories, while the contract declares
+        // the bare id. The parser rejects a mismatch, so passing the directory name made EVERY
+        // materialized contract fail with `id_mismatch` — which is why the registry looked empty on a
+        // real install. Compare against the bare id, and key the entry by it.
+        const expectedId = entry.name.startsWith(SKILL_DIR_PREFIX)
+          ? entry.name.slice(SKILL_DIR_PREFIX.length)
+          : entry.name
+        const parsed = extractContract(raw, expectedId)
+        const key = parsed.contract?.id ?? expectedId
         // Same skill in two roots: keep the one that actually declares something. A materialized
         // mirror can be stripped (the ablation does exactly that), and that must not erase the
         // contract a canonical copy still carries.
-        const existing = next.get(entry.name)
+        const existing = next.get(key)
         if (existing?.contract && !parsed.contract) continue
-        next.set(entry.name, { id: entry.name, contract: parsed.contract, errors: parsed.errors })
+        next.set(key, { id: key, contract: parsed.contract, errors: parsed.errors })
       }
     }
 

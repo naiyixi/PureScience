@@ -87,6 +87,21 @@ describe('SkillCapabilityRegistry', () => {
     expect(registry.get('alpha-skill')?.contract?.id).toBe('alpha-skill')
   })
 
+  it('accepts a contract inside an os- prefixed materialized directory', async () => {
+    // The app materializes bundled skills as `os-<id>`; the contract declares the bare id. Passing the
+    // directory name as the expected id rejected every one of them with `id_mismatch`.
+    const materialized = join(dir, 'os-alpha-skill')
+    await mkdir(materialized, { recursive: true })
+    await writeFile(join(materialized, 'SKILL.md'), declared, 'utf8')
+
+    const registry = new SkillCapabilityRegistry(dir)
+    await registry.load()
+
+    expect(registry.declared().map((contract) => contract.id)).toEqual(['alpha-skill'])
+    expect(registry.problems()).toEqual([])
+    expect(registry.get('alpha-skill')?.contract).not.toBeNull()
+  })
+
   it('preflights a capability against held facts and refuses an unknown id', async () => {
     await writeSkill('alpha-skill', declared)
     const registry = new SkillCapabilityRegistry(dir)
