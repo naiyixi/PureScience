@@ -172,6 +172,41 @@ capability_preflight called: false
 结论：`capability_preflight` 作为"可问的工具"保留（对会问的模型/运行时有用），
 但**契约效应的实验必须改成注入式**，否则测的永远是"模型要不要问"。
 
+## 5.4 注入打通（真机证据，2026-10-22）
+
+沙盒根补上当前资源（`resources/skills` → `<root>/skills`，20 个契约）后跑同一案例，应用自己的日志：
+
+```
+declared contracts in sandbox: 20
+[capabilities] capability gaps notice {
+  sessionId: 'ses_e9b929f5effeEBrDW14bqXeHQk',
+  sessionFound: true,
+  injected: true,
+  lines: 12,
+  chars: 1281
+}
+atomic 0.333   tools ["execute","other"]
+```
+
+三件事同时被证实：
+
+1. **注入真的发生了**：12 条缺口、1281 字符进入该回合的 provider content；
+2. **它是逐轮的**：同一会话不同回合会重新计算（facts 变了，文本就变）；
+3. **模型仍然没理它**：本次仍是 0.333、2 次工具调用。这个案例是纯文本论断校准，
+   缺的是组学输入——它不做组学步骤属于**合理**行为，不能算「忽略了提示」。
+
+### 过程中踩到的两个真问题（都已修）
+
+| 问题 | 现象 | 修法 |
+|---|---|---|
+| ACP 会话 id 与会话库 id 不同 | `sessionFound: false`，注入静默为空 | 在 prompt 组合处先 `resolveAppSessionId` |
+| 「查不到会话」与「没有缺口」共用一句 `injected: false` | 掩盖了上一条 | 返回 `{ block, sessionFound }`，日志两个字段都记 |
+
+### 一条部署事实
+
+契约来自 `resources/skills` 的 frontmatter，而**已安装的旧资源里没有 `contract:`**。
+所以现网升级后，要等技能资源重新物化，注入才会有内容——沙盒里我们手工补了这一步。
+
 ## 6. 不做
 
 - 不做"只注入文档"与"只给工具名"这两个臂（需要正文/工具清单裁剪，另立项）。
