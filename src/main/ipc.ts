@@ -2623,7 +2623,7 @@ const createApplicationModules = async (
       // turn's content. Measured: with the tool mounted, a real run called it zero times — so the gaps
       // are delivered instead of offered.
       capabilityGaps: async (sessionId) => {
-        const block = await renderSessionCapabilityGaps({
+        const { block, sessionFound } = await renderSessionCapabilityGaps({
           configRoot: resolveConfigRoot(),
           sessionId,
           deps: { loadFacts: loadCapabilityFacts }
@@ -2633,6 +2633,7 @@ const createApplicationModules = async (
         // unit test: the provider content is not part of the transcript.
         capabilityGapsLog.info('capability gaps notice', {
           sessionId,
+          sessionFound,
           injected: block !== null,
           lines: block ? block.split('\n').filter((line) => line.startsWith('- ')).length : 0,
           chars: block?.length ?? 0

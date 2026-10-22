@@ -228,7 +228,12 @@ const composeAcpRuntimePromptOwners = (
     imageInputCompatibility: options.imageInputCompatibility,
     ...(options.capabilityGaps
       ? {
-          capabilityNotice: (request) => options.capabilityGaps!(request.sessionId)
+          // The runtime speaks in ACP session ids; the session store speaks in app session ids. Resolve
+          // before asking, or every lookup misses and the notice silently never arrives (observed once).
+          capabilityNotice: (request) =>
+            options.capabilityGaps!(
+              session.sessionRegistry.resolveAppSessionId(request.sessionId) ?? request.sessionId
+            )
         }
       : {}),
     inputNotice: (request) =>

@@ -56,11 +56,13 @@ export const renderSessionCapabilityGaps = async (input: {
   configRoot: string
   sessionId: string
   deps: PreflightDeps
-}): Promise<string | null> => {
+}): Promise<{ block: string | null; sessionFound: boolean }> => {
   const registry = new SkillCapabilityRegistry(`${input.configRoot}/skills`)
   await registry.load()
   const sources = await input.deps.loadFacts(input.sessionId)
-  if (!sources) return null
+  // "No facts" and "no such session" are different answers, and conflating them hid a real miss once:
+  // the first live run reported `injected: false` for a session that simply could not be found.
+  if (!sources) return { block: null, sessionFound: false }
 
   const declared = registry.declared()
   const facts = factsForSession(
@@ -72,15 +74,18 @@ export const renderSessionCapabilityGaps = async (input: {
     declared
   )
 
-  return renderCapabilityGaps({
-    selected: declared.map((contract) => contract.id),
-    contracts: declared.map((contract) => ({
-      id: contract.id,
-      requires: contract.requires,
-      produces: contract.produces
-    })),
-    facts: facts.facts
-  })
+  return {
+    block: renderCapabilityGaps({
+      selected: declared.map((contract) => contract.id),
+      contracts: declared.map((contract) => ({
+        id: contract.id,
+        requires: contract.requires,
+        produces: contract.produces
+      })),
+      facts: facts.facts
+    }),
+    sessionFound: true
+  }
 }
 
 export const buildCapabilityPreflight = async (input: {
