@@ -63,6 +63,30 @@ describe('SkillCapabilityRegistry', () => {
     expect(registry.problems()).toEqual(['gamma-skill: produces_invalid_fact:model:thing'])
   })
 
+  it('reads several roots and keeps the declared copy when a mirror was stripped', async () => {
+    // User skills in the canonical root; built-ins in the runtime mirror, where the ablation blanks
+    // the contract. Reading only one root was how a real install reported "nothing declared".
+    await writeSkill('alpha-skill', declared)
+    const mirror = join(dir, 'mirror')
+    await mkdir(join(mirror, 'alpha-skill'), { recursive: true })
+    await writeFile(join(mirror, 'alpha-skill', 'SKILL.md'), undeclared, 'utf8')
+    await mkdir(join(mirror, 'delta-skill'), { recursive: true })
+    await writeFile(
+      join(mirror, 'delta-skill', 'SKILL.md'),
+      declared.replace(/alpha-skill/gu, 'delta-skill'),
+      'utf8'
+    )
+
+    const registry = new SkillCapabilityRegistry([dir, mirror])
+    await registry.load()
+
+    expect(registry.declared().map((contract) => contract.id)).toEqual([
+      'alpha-skill',
+      'delta-skill'
+    ])
+    expect(registry.get('alpha-skill')?.contract?.id).toBe('alpha-skill')
+  })
+
   it('preflights a capability against held facts and refuses an unknown id', async () => {
     await writeSkill('alpha-skill', declared)
     const registry = new SkillCapabilityRegistry(dir)

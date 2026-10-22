@@ -10,6 +10,7 @@ import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PreflightResult } from '../../shared/capability-preflight'
 import { SkillCapabilityRegistry } from '../skills/skill-capability-registry'
+import { skillCapabilityRoots } from './skill-roots'
 
 export type SessionFactSources = {
   /** Files the user attached to messages (names, as the session records them). */
@@ -57,7 +58,7 @@ export const renderSessionCapabilityGaps = async (input: {
   sessionId: string
   deps: PreflightDeps
 }): Promise<{ block: string | null; sessionFound: boolean }> => {
-  const registry = new SkillCapabilityRegistry(`${input.configRoot}/skills`)
+  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
   await registry.load()
   const sources = await input.deps.loadFacts(input.sessionId)
   // "No facts" and "no such session" are different answers, and conflating them hid a real miss once:
@@ -94,7 +95,7 @@ export const buildCapabilityPreflight = async (input: {
   capability: string
   deps: PreflightDeps
 }): Promise<CapabilityPreflightPayload | null> => {
-  const registry = new SkillCapabilityRegistry(`${input.configRoot}/skills`)
+  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
   await registry.load()
 
   const declared: CapabilityContract[] = registry.declared()

@@ -10,14 +10,13 @@
 //     because a preflight that treated a mention as execution would report a fact nobody
 //     established.
 
-import { join } from 'node:path'
-
 import type { CapabilityFailureClass, StateFact } from '../../shared/capability-contract'
 import type { PreflightResult } from '../../shared/capability-preflight'
 import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PersistedArtifact } from '../../shared/session-persistence'
 import { SkillCapabilityRegistry } from '../skills/skill-capability-registry'
+import { skillCapabilityRoots } from '../capabilities/skill-roots'
 
 export type DeclaredCapabilitySummary = {
   id: string
@@ -96,7 +95,7 @@ const toReading = (id: string, result: PreflightResult): SessionCapabilityReadin
 export const buildCapabilitiesPayload = async (
   input: BuildCapabilitiesInput
 ): Promise<CapabilitiesPayload> => {
-  const registry = new SkillCapabilityRegistry(join(input.configRoot, 'skills'))
+  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
   await registry.load()
 
   const base = {

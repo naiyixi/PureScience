@@ -28,29 +28,46 @@ export type CapabilityRegistryEntry = {
 export class SkillCapabilityRegistry {
   private readonly entries = new Map<string, CapabilityRegistryEntry>()
   private producers = new Map<string, string[]>()
+  private readonly roots: readonly string[]
 
-  constructor(private readonly skillsDir: string) {}
+  /**
+   * One root is the normal case; several are supported because the app keeps built-in skills in the
+   * RUNTIME's materialized directory (`<configRoot>/claude/skills`, `<configRoot>/opencode/...`) while
+   * user-installed skills live in `<configRoot>/skills`. Reading only one of those reported "no
+   * declared capabilities" on a real install even though 89 skills were installed.
+   */
+  constructor(skillsDir: string | readonly string[]) {
+    this.roots = typeof skillsDir === 'string' ? [skillsDir] : skillsDir
+  }
 
-  /** Scans the skills directory. Idempotent: a second call replaces, never appends. */
+  /** Scans every skills root. Idempotent: a second call replaces, never appends. */
   async load(): Promise<CapabilityRegistryEntry[]> {
     const next = new Map<string, CapabilityRegistryEntry>()
-    let dirs: { name: string; isDirectory(): boolean }[] = []
-    try {
-      dirs = await readdir(this.skillsDir, { withFileTypes: true })
-    } catch {
-      dirs = []
-    }
 
-    for (const entry of [...dirs].sort((a, b) => a.name.localeCompare(b.name))) {
-      if (!entry.isDirectory()) continue
-      let raw: string
+    for (const root of this.roots) {
+      let dirs: { name: string; isDirectory(): boolean }[] = []
       try {
-        raw = await readFile(join(this.skillsDir, entry.name, 'SKILL.md'), 'utf8')
+        dirs = await readdir(root, { withFileTypes: true })
       } catch {
-        continue // A directory without a SKILL.md is not a skill.
+        continue
       }
-      const parsed = extractContract(raw, entry.name)
-      next.set(entry.name, { id: entry.name, contract: parsed.contract, errors: parsed.errors })
+
+      for (const entry of [...dirs].sort((a, b) => a.name.localeCompare(b.name))) {
+        if (!entry.isDirectory()) continue
+        let raw: string
+        try {
+          raw = await readFile(join(root, entry.name, 'SKILL.md'), 'utf8')
+        } catch {
+          continue // A directory without a SKILL.md is not a skill.
+        }
+        const parsed = extractContract(raw, entry.name)
+        // Same skill in two roots: keep the one that actually declares something. A materialized
+        // mirror can be stripped (the ablation does exactly that), and that must not erase the
+        // contract a canonical copy still carries.
+        const existing = next.get(entry.name)
+        if (existing?.contract && !parsed.contract) continue
+        next.set(entry.name, { id: entry.name, contract: parsed.contract, errors: parsed.errors })
+      }
     }
 
     this.entries.clear()
