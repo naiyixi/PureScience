@@ -46,6 +46,10 @@ import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 // not the wait, and the next optimization must target the read, the whole-file write, or the tail — not
 // the queue. The tail is split further below for that reason.
 const SLOW_SESSION_SAVE_THRESHOLD_MS = 200
+// Same rule for the read through this queue: the IPC channel already reports every call over 50 ms, so the
+// phase split only speaks for the tail (200 ms), where "waiting" and "parsing the durable JSON" are still
+// distinguishable. A second line at the median would be noise.
+const SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS = 200
 import { repairHistoricalArtifactAliases } from './artifact-alias-repair'
 import { startDiagnosticOperation } from '../diagnostics/operation'
 import {
@@ -918,10 +922,62 @@ class SessionPersistenceCoordinator {
   }
 
   readSessionRuntimeContext(projectId: string, sessionId: string): Promise<SessionRuntimeContext> {
+    // Clock starts BEFORE `enqueue`: this read is serialized behind every other Session mutation, and a
+    // clock started inside the task body would put the whole queue wait outside the reading. The renderer's
+    // "does this Session have a Plan" question is this path, and it is the second most frequent slow IPC
+    // channel (726 calls, median 3,819 ms in nine days of development logs), so the tail has to say whether
+    // that time is the wait or the durable-JSON load — the two answer different units.
+    const requestedAt = Date.now()
+    let startedAt = requestedAt
     return this.enqueue(async () => {
+      startedAt = Date.now()
       const session = await this.loadRuntimeContextSession(projectId, sessionId, 'read')
-      return cloneRuntimeContext(session.runtimeContext ?? emptySessionRuntimeContext())
+      const readAt = Date.now()
+      const context = cloneRuntimeContext(session.runtimeContext ?? emptySessionRuntimeContext())
+      this.reportSlowRuntimeContextRead({
+        sessionId,
+        requestedAt,
+        startedAt,
+        readAt,
+        finishedAt: Date.now(),
+        hasPlan: context.plan !== undefined
+      })
+      return context
     })
+  }
+
+  /**
+   * One line for the slow tail of `readSessionRuntimeContext`, naming the wait and the load separately.
+   * Best-effort on the same rule the save line follows: a diagnostic must never replace the result it is
+   * describing. `hasPlan` is a boolean, never the Plan itself — the line answers "was this one of the
+   * Sessions that have nothing to project", which is the question the caller was asking.
+   *
+   * `sessionId` is carried because the caller asks per Session and the same window can ask about several:
+   * without it, "how many times did one open ask" cannot be cut out of the log at all, and that count is
+   * the whole point of the exercise (a Session that has no Plan is the ordinary answer, not a failure).
+   */
+  private reportSlowRuntimeContextRead(times: {
+    sessionId: string
+    requestedAt: number
+    startedAt: number
+    readAt: number
+    finishedAt: number
+    hasPlan: boolean
+  }): void {
+    const totalMs = times.finishedAt - times.requestedAt
+    if (totalMs < SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS) return
+    try {
+      this.log.warn('session runtime context read was slow', {
+        sessionId: times.sessionId,
+        queuedMs: times.startedAt - times.requestedAt,
+        loadMs: times.readAt - times.startedAt,
+        cloneMs: times.finishedAt - times.readAt,
+        totalMs,
+        hasPlan: times.hasPlan
+      })
+    } catch {
+      // Best-effort: a logging failure must never fail a read the caller is waiting on.
+    }
   }
 
   patchSessionRuntimeContext(

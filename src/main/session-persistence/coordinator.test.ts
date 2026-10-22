@@ -4025,3 +4025,118 @@ describe('session save diagnostics', () => {
     clock.mockRestore()
   })
 })
+
+// The read side of the same queue. A window asks "does this Session have a Plan" every time it opens one,
+// and in nine days of development logs that call is the second most frequent slow IPC channel (726 calls,
+// median 3,819 ms, max 125,341 ms). Whether that time is the *wait* behind other Session mutations or the
+// durable-JSON load decides which unit comes next — they are different fixes — so the tail has to name
+// both halves, and it has to say whether a Plan existed at all, because "nothing to project" is the
+// ordinary answer for most opens and a reader cannot tell those apart from a slow projection otherwise.
+describe('session runtime context read diagnostics', () => {
+  it('names the wait and the load separately, and stays quiet when the read is fast', async () => {
+    const durable = createSession({
+      runtimeContext: { version: 1, revision: 3, plan: createRuntimePlan() }
+    })
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics: vi.fn(async () => ({
+        status: 'found' as const,
+        session: durable
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    // Only the clock is controlled, for the same reason as the save line: it is the only thing the
+    // threshold reads. A read that stays under 200 ms reports nothing (the IPC channel already reports
+    // everything over 50 ms, so repeating those here would only add noise under the median).
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+
+    // The diagnostic must not change the answer it is describing.
+    await expect(coordinator.readSessionRuntimeContext('project-1', 'session-1')).resolves.toEqual({
+      version: 1,
+      revision: 3,
+      plan: createRuntimePlan()
+    })
+    expect(log.warn).not.toHaveBeenCalled()
+
+    now = 2_000_000
+    const pending = coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    // The task body runs in a later microtask, so moving the clock here is exactly "it waited in the queue".
+    now += 5_000
+    await pending
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [
+      string,
+      Record<string, number | boolean | string>
+    ]
+    expect(message).toBe('session runtime context read was slow')
+    expect(fields).toMatchObject({
+      sessionId: 'session-1',
+      queuedMs: 5_000,
+      loadMs: 0,
+      cloneMs: 0,
+      totalMs: 5_000,
+      hasPlan: true
+    })
+    // The split has to add up to the whole it was cut out of, or a later reading cannot be compared with
+    // this one once the queue is what gets changed.
+    expect(
+      (fields.queuedMs as number) + (fields.loadMs as number) + (fields.cloneMs as number)
+    ).toBe(fields.totalMs)
+    // ...and it must not carry the Plan itself: the line is a duration reading, not a copy of user content.
+    expect(JSON.stringify(fields)).not.toContain('plan-1')
+    clock.mockRestore()
+  })
+
+  it('says when the Session had nothing to project, which is the ordinary answer', async () => {
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics: vi.fn(async () => ({
+        status: 'found' as const,
+        session: createSession()
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 3_000_000
+    clock.mockImplementation(() => now)
+
+    const pending = coordinator.readSessionRuntimeContext('project-1', 'session-2')
+    now += 5_000
+    await pending
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [
+      string,
+      Record<string, number | boolean | string>
+    ]
+    expect(message).toBe('session runtime context read was slow')
+    // A boolean, not an absent field: "we looked and there was no Plan" must be readable in the log, or
+    // every slow open would look like a slow projection over a real Plan.
+    expect(fields.hasPlan).toBe(false)
+    expect(fields).not.toHaveProperty('plan')
+    clock.mockRestore()
+  })
+})
