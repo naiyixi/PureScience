@@ -7,6 +7,12 @@ export type DiagnosticFields = Record<string, DiagnosticValue>
 
 export type DiagnosticOperation = {
   phase: (name: string, fields?: DiagnosticFields) => void
+  /**
+   * `name=12ms name2=340ms …` — lets a caller that never completes (app startup) still report where time
+   * went. Optional so a test double that only stubs phase/terminal does not have to grow a method it
+   * never calls; every real operation provides it.
+   */
+  snapshotPhases?: () => string
   complete: (fields?: DiagnosticFields) => void
   cancel: (fields?: DiagnosticFields) => void
   fail: (error: unknown, fields?: DiagnosticFields) => void
@@ -105,6 +111,9 @@ export const startDiagnosticOperation = (
   const baseFields = scalarFields(inputValue(input, 'fields') as DiagnosticFields | undefined)
   let latestPhase: string | undefined
   let terminal = false
+  // Phases carry no timestamps of their own, so a slow startup could say *what* it did but never *where*
+  // the seconds went. Recorded relative to the operation start and reported as one line on completion.
+  const phases: { name: string; atMs: number }[] = []
 
   const eventFields = (fields?: DiagnosticFields): Record<string, unknown> => ({
     ...baseFields,
@@ -124,6 +133,12 @@ export const startDiagnosticOperation = (
     emitSafely(logger, level, message, {
       ...eventFields(fields),
       ...(latestPhase === undefined ? {} : { phase: latestPhase }),
+      ...(phases.length === 0
+        ? {}
+        : {
+            phases: phases.map((entry) => `${entry.name}=${entry.atMs}ms`).join(' '),
+            totalPhaseMs: phases.length === 0 ? 0 : phases[phases.length - 1]!.atMs
+          }),
       outcome,
       durationMs: Math.max(0, readNow() - startedAt),
       ...extraFields
@@ -140,9 +155,17 @@ export const startDiagnosticOperation = (
   return {
     phase: (name, fields) => {
       if (terminal) return
-      latestPhase = name
-      emitSafely(logger, 'info', 'operation phase', { ...eventFields(fields), phase: name })
+      const rawName = typeof name === 'string' && name ? name : 'unknown'
+      latestPhase = rawName
+      const atMs = Math.max(0, readNow() - startedAt)
+      phases.push({ name: rawName, atMs })
+      emitSafely(logger, 'info', 'operation phase', {
+        ...eventFields(fields),
+        phase: rawName,
+        elapsedMs: atMs
+      })
     },
+    snapshotPhases: () => phases.map((entry) => `${entry.name}=${entry.atMs}ms`).join(' '),
     complete: (fields) => finish('info', 'operation completed', 'completed', fields),
     cancel: (fields) => finish('warn', 'operation cancelled', 'cancelled', fields),
     fail: (error, fields) =>

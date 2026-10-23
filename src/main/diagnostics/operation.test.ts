@@ -59,12 +59,15 @@ describe('diagnostic operation', () => {
 
   it('records a phase with the operation context', () => {
     const { logger, records } = createRecordingLogger()
+    let timestamp = 40
     const operation = startDiagnosticOperation(logger, {
       operation: 'data-root-migration',
       operationId: 'migration-1',
-      fields: { source: 'legacy' }
+      fields: { source: 'legacy' },
+      now: () => timestamp
     })
 
+    timestamp = 52
     operation.phase('copy', { filesCopied: 3 })
 
     expect(records[1]).toEqual({
@@ -75,7 +78,8 @@ describe('diagnostic operation', () => {
         filesCopied: 3,
         operation: 'data-root-migration',
         operationId: 'migration-1',
-        phase: 'copy'
+        phase: 'copy',
+        elapsedMs: 12
       }
     })
   })
@@ -103,6 +107,8 @@ describe('diagnostic operation', () => {
         operation: 'data-root-migration',
         operationId: 'migration-1',
         phase: 'verify-target',
+        phases: 'verify-target=0ms',
+        totalPhaseMs: 0,
         outcome: 'completed',
         durationMs: 45
       }
@@ -136,6 +142,8 @@ describe('diagnostic operation', () => {
         operation: 'data-root-migration',
         operationId: 'migration-1',
         phase: 'copy',
+        phases: 'copy=0ms',
+        totalPhaseMs: 0,
         outcome: 'failed',
         durationMs: 24,
         errorCategory: 'permission'
@@ -186,6 +194,8 @@ describe('diagnostic operation', () => {
         operation: 'update-download',
         operationId: 'update-1',
         phase: 'download',
+        phases: 'download=0ms',
+        totalPhaseMs: 0,
         outcome: 'cancelled',
         durationMs: 12
       }
@@ -237,13 +247,16 @@ describe('diagnostic operation', () => {
       scalar: 1,
       operation: 'update-check',
       operationId: 'update-1',
-      phase: 'checking'
+      phase: 'checking',
+      elapsedMs: 0
     })
     expect(records[2].data).toEqual({
       result: true,
       operation: 'update-check',
       operationId: 'update-1',
       phase: 'checking',
+      phases: 'checking=0ms',
+      totalPhaseMs: 0,
       outcome: 'completed',
       durationMs: 0
     })

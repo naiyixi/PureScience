@@ -598,6 +598,13 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       // A launch that itself requested serving (a dedicated headless daemon, or an explicit --serve) is
       // not attached: stopping it quits the process. On-demand starts for a running instance are attached.
       if (webMode.enabled) await webController.ensureStarted(webMode.port, { attached: false })
+      // First moment an HTTP client can get a 200 from this process, which is the number the cold-start
+      // probe measures. Logged as one line with every phase before it, because "4 s to ready" is not
+      // actionable but "db 280 ms, skill catalog 811 ms, rest in the run up to Electron ready" is.
+      startupDiagnostics?.phase('web-service-started')
+      createLogger('startup').info('startup timeline', {
+        phases: startupDiagnostics?.snapshotPhases?.() ?? ''
+      })
       // Restore a persisted remote-access preference only after the normal IPC/web surfaces exist.
       // A missing or signed-out third-party remote-access installation must never delay the desktop window.
       void remoteAccess.restore()
