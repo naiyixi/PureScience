@@ -558,35 +558,128 @@ type FixLoopOptions = {
   abortSignal?: AbortSignal
 }
 
-const waitForCorrectionAgentMessage = async (options: {
+// What the post-correction wait saw, named. Every failure used to reach the caller as `undefined`, so
+// the field log could only say "the correction turn did not reach durable storage" — a sentence that is
+// equally true of a Session that was never written, of one that grew without an agent message, and of
+// one whose agent message is still marked `streaming`. Those want three different fixes, and 28/28
+// refusals in nine days of logs could not be attributed to any of them. Reported, not acted on: the
+// wait's budget and the refusal are unchanged.
+export type CorrectionWaitResult =
+  | {
+      status: 'found'
+      session: PersistedChatSession
+      message: PersistedChatSession['messages'][number]
+      elapsedMs: number
+      polls: number
+    }
+  | { status: 'aborted'; elapsedMs: number; polls: number }
+  | { status: 'session-missing'; elapsedMs: number; polls: number }
+  | {
+      status: 'no-new-agent-message'
+      elapsedMs: number
+      polls: number
+      newMessages: number
+      lastRole?: string
+      lastStatus?: string
+    }
+  | {
+      status: 'agent-message-incomplete'
+      elapsedMs: number
+      polls: number
+      messageId: string
+      messageStatus: string
+    }
+
+export const waitForCorrectionAgentMessage = async (options: {
   sessionId: string
   messageIdsBefore: ReadonlySet<string>
   getSession: SessionProvider
   timeoutMs: number
   abortSignal?: AbortSignal
-}): Promise<
-  | {
-      session: PersistedChatSession
-      message: PersistedChatSession['messages'][number]
-    }
-  | undefined
-> => {
-  const deadline = Date.now() + options.timeoutMs
+}): Promise<CorrectionWaitResult> => {
+  const startedAt = Date.now()
+  const deadline = startedAt + options.timeoutMs
+  let polls = 0
+  let sawSession = false
 
   for (;;) {
-    if (options.abortSignal?.aborted) return undefined
+    if (options.abortSignal?.aborted) {
+      return { status: 'aborted', elapsedMs: Date.now() - startedAt, polls }
+    }
 
     const latest = await options.getSession(options.sessionId)
-    const correction = latest?.messages.find(
-      (message) =>
-        !options.messageIdsBefore.has(message.id) &&
-        message.role === 'agent' &&
-        message.status === 'complete'
-    )
-    if (latest && correction) return { session: latest, message: correction }
+    polls += 1
+    // Messages that are newer than the pre-correction snapshot, whatever their role or status — the
+    // failure shapes are described in terms of these, so they are collected before the match attempt.
+    let fresh: PersistedChatSession['messages'] = []
+    if (latest) {
+      sawSession = true
+      fresh = latest.messages.filter((message) => !options.messageIdsBefore.has(message.id))
+      const correction = fresh.find(
+        (message) => message.role === 'agent' && message.status === 'complete'
+      )
+      if (correction) {
+        return {
+          status: 'found',
+          session: latest,
+          message: correction,
+          elapsedMs: Date.now() - startedAt,
+          polls
+        }
+      }
+    }
 
-    if (Date.now() >= deadline) return undefined
+    if (Date.now() >= deadline) {
+      const elapsedMs = Date.now() - startedAt
+      if (!sawSession) return { status: 'session-missing', elapsedMs, polls }
+      const freshAgent = fresh.find((message) => message.role === 'agent')
+      if (freshAgent) {
+        return {
+          status: 'agent-message-incomplete',
+          elapsedMs,
+          polls,
+          messageId: freshAgent.id,
+          messageStatus: String(freshAgent.status)
+        }
+      }
+      const last = fresh[fresh.length - 1]
+      return {
+        status: 'no-new-agent-message',
+        elapsedMs,
+        polls,
+        newMessages: fresh.length,
+        ...(last ? { lastRole: last.role, lastStatus: String(last.status) } : {})
+      }
+    }
     await new Promise<void>((resolve) => setTimeout(resolve, SESSION_REFRESH_POLL_MS))
+  }
+}
+
+// Log fields for a wait that did not find the correction turn — the numbers that tell the three
+// shapes apart. Nothing here names message text or provider material; ids and statuses only.
+const waitDiagnostics = (
+  result: Exclude<CorrectionWaitResult, { status: 'found' }>
+): Record<string, string | number> => {
+  switch (result.status) {
+    case 'session-missing':
+      return { polls: result.polls, elapsedMs: result.elapsedMs }
+    case 'no-new-agent-message':
+      return {
+        polls: result.polls,
+        elapsedMs: result.elapsedMs,
+        newMessages: result.newMessages,
+        ...(result.lastRole ? { lastRole: result.lastRole } : {}),
+        ...(result.lastStatus ? { lastStatus: result.lastStatus } : {})
+      }
+    case 'agent-message-incomplete':
+      return {
+        polls: result.polls,
+        elapsedMs: result.elapsedMs,
+        messageId: result.messageId,
+        messageStatus: result.messageStatus
+      }
+    case 'aborted':
+      return { polls: result.polls, elapsedMs: result.elapsedMs }
   }
 }
 
@@ -732,11 +825,12 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
 
     // Step C: wait for the new agent message to reach durable storage. sendPrompt completion and the
     // renderer persistence queue are independent, so an immediate one-shot reload is still racy.
-    let correctionState:
-      | { session: PersistedChatSession; message: PersistedChatSession['messages'][number] }
-      | undefined
+    // The wait reports *why* it gave up: "never written", "written without an agent message", and
+    // "written with the agent message still streaming" are three different defects, and the single
+    // refusal sentence below used to cover all three (28/28 refusals over nine days were unattributable).
+    let correctionWait: CorrectionWaitResult
     try {
-      correctionState = await waitForCorrectionAgentMessage({
+      correctionWait = await waitForCorrectionAgentMessage({
         sessionId,
         messageIdsBefore,
         getSession,
@@ -755,19 +849,21 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
       )
       return
     }
-    if (!correctionState) {
-      if (abortSignal?.aborted) {
-        log.info('fix loop: aborted while waiting for durable correction turn', {
-          sessionId,
-          round
-        })
-        await markOpenChecksUnaddressed('aborted', 'The fix loop was aborted by the user.')
-        return
-      }
+    if (correctionWait.status === 'aborted' || abortSignal?.aborted) {
+      log.info('fix loop: aborted while waiting for durable correction turn', {
+        sessionId,
+        round
+      })
+      await markOpenChecksUnaddressed('aborted', 'The fix loop was aborted by the user.')
+      return
+    }
+    if (correctionWait.status !== 'found') {
       log.warn('correction turn did not reach durable session storage; refusing stale re-review', {
         sessionId,
         round,
-        timeoutMs: sessionRefreshTimeoutMs
+        timeoutMs: sessionRefreshTimeoutMs,
+        reason: correctionWait.status,
+        ...waitDiagnostics(correctionWait)
       })
       await markOpenChecksUnaddressed(
         'correction_failed',
@@ -775,6 +871,8 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
       )
       return
     }
+
+    const correctionState = correctionWait
 
     const correctionTurnMessageId = correctionState.message.id
 

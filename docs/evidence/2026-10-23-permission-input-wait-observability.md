@@ -105,3 +105,8 @@ dev 实例下次以本提交构建重启后，按这四张表读数，**修法�
 | `OpenCode permission input arrived after the wait gave up` 的 `lateMs` 分布 | 出现即成因 C（只是迟了）⇒ 修法是放宽或改成「先发卡、后补入参」，**不是删掉等待** |
 
 一句话：**先让这四张表有数，再决定那 1 秒该不该付**；本轮只是把「付没付、付给谁、等到了没有」变成可核对的四行。
+
+> 2026-10-23 补：四张表已在真机上取到第一份读数，见 `2026-10-23-correction-wait-attribution.md` §2。
+> 其中**表三的判据要收紧**：只按 `reason === 'not-an-mcp-title'` 计数会把**非 MCP 原生工具**的正常丢弃
+> 误报成「我们的判据丢了入参」（实测 65 条里 53 条同 `toolCallId` 被应用自己判成 `isMcp: false`，0 条是 MCP 请求）；
+> 正解是再看「同 `toolCallId` 是否是一次 MCP 权限请求」。
