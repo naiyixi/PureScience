@@ -150,3 +150,27 @@ come from, and that path is measured elsewhere.
 **Reproducing.** Records live in `docs/bench-runs/`, one JSON per run with `runId`, `sessionId`,
 `toolCallNames`, `skillsRead` and `manipulation`. Anything with `valid: false` must be dropped
 before comparing arms.
+
+### Why there is no `baseline` arm
+
+The scheduled design named four arms, including `baseline` (no skills at all). That arm cannot be
+produced through the product: every built-in skill has `source: 'featured'`, whose activation policy
+is `always-on` — the app **refuses** to disable them, because they carry guarantees the rest of the
+workflow leans on (`shared/skill-activation.ts`, and the same judgement gates listing,
+materialization and the agent-facing catalogs). Deleting the directories in a sandbox would create a
+configuration the product never ships and immediately re-materialises on the next session, so it
+would be an arm no user can be in.
+
+What that leaves, honestly:
+
+| Planned arm | Reachable? |
+|---|---|
+| `baseline` (no skills) | **No** — always-on policy refuses it |
+| `doc-only` (body, no contract) | Yes — this is `no-contract` |
+| `named-no-contract` (name only) | No distinct mechanism: the materializer either writes the file with its contract or strips the contract; there is no "name without body" state |
+| `full-contract` | Yes |
+
+So the measured comparison is the only one the product can express: **declaration present vs
+stripped**. If a genuine no-skill arm is required, it needs a product change (a research-mode
+switch that disables the safeguard skills), which is a decision about what the app guarantees — not
+a benchmark setting.
