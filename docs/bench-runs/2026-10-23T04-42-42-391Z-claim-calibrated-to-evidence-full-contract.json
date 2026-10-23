@@ -1,0 +1,55 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "full-contract",
+  "runId": "90219549-ae9f-490f-8f59-0833528af47a",
+  "sessionId": "ses_e98eeab13ffebmPYs63Atkkc35",
+  "runStatus": "failed",
+  "runError": "无法开始「proteinmpnn」：缺少 data:structure_file（structure file），可先运行 bionexus-protein-structure-analysis 生成。契约声明的处理方式：需要骨架结构文件（PDB/CIF）。先做结构预测或让用户提供结构，再做序列设计。",
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-23T04:42:42.391Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": false,
+    "artifacts": false,
+    "skillReads": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [],
+  "skillsRead": [],
+  "toolCallCount": 0,
+  "manipulation": {
+    "arm": "full-contract",
+    "noticeTurns": 0,
+    "noticeInjectedTurns": 0,
+    "expectsNotice": true,
+    "valid": false
+  },
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "pattern missing: (与.{0,10}(相关|一致)|associat|suggest)"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}

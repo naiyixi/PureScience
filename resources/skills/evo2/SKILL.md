@@ -1,5 +1,6 @@
 ---
 name: evo2
+contract: '{"id":"evo2","aliases":["Evo 2","基因组基础模型","DNA 似然评分"],"requires":["input:dna_sequence"],"produces":["data:sequence_embedding"],"failure_policy":{"missing_state":"需要 DNA 序列（FASTA）才能评分或嵌入。先提供序列。"}}'
 description: 使用 Evo 2（长上下文基因组基础模型）评分、嵌入和生成 DNA 序列。用于：(1) 计算逐核苷酸或逐序列似然进行变异效应评分，(2) 嵌入基因组窗口用于下游分类，(3) 基于前缀生成 DNA，(4) 跨物种评分调控或编码区域。
 license: Apache-2.0
 category: biomodels

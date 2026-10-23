@@ -1,5 +1,6 @@
 ---
 name: openfold3
+contract: '{"id":"openfold3","aliases":["OpenFold3","AF3 复现","复合物结构预测"],"requires":["input:protein_sequence"],"produces":["prediction:structure"],"failure_policy":{"missing_state":"需要蛋白（或蛋白-核酸-配体）序列。先提供 FASTA 序列，再预测结构。"}}'
 description: 使用 OpenFold3（AlQuraishi 实验室的开源权重 PyTorch AlphaFold3 复现）进行结构预测。用于预测蛋白质/核酸/配体复合物结构（Apache-2.0 许可的 AF3 重实现）。
 license: Apache-2.0
 category: biomodels

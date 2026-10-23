@@ -1,5 +1,6 @@
 ---
 name: scgpt
+contract: '{"id":"scgpt","aliases":["scGPT","单细胞基础模型","细胞类型注释"],"requires":["input:expression_matrix"],"produces":["data:cell_embedding"],"failure_policy":{"missing_state":"需要单细胞表达矩阵（AnnData）。先提供矩阵，或先跑 QC 技能生成清洗后的矩阵。"}}'
 description: 使用 scGPT（单细胞生物学基础模型）嵌入和注释单细胞表达数据。用于：(1) 从 AnnData 生成细胞嵌入进行聚类/整合，(2) 零样本或微调细胞类型注释，(3) 用于扰动/GRN 任务的基因级表示。概率性单细胞模型（scVI 等）请使用 scvi-tools 库。
 license: Apache-2.0
 category: biomodels

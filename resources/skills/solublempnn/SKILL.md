@@ -1,5 +1,6 @@
 ---
 name: solublempnn
+contract: '{"id":"solublempnn","aliases":["SolubleMPNN","可溶性设计","胞质表达优化"],"requires":["data:structure_file"],"produces":["data:designed_sequence"],"failure_policy":{"missing_state":"需要骨架结构文件（PDB/CIF）。先拿到结构，再做可溶性偏向的序列设计。"}}'
 description: 使用 SolubleMPNN（在可溶性 PDB 子集上重训的 ProteinMPNN，Dauparas 等 2022）对骨架进行逆折叠——生成偏向胞质表达和减少聚集的序列。当 vanilla ProteinMPNN 设计聚集或进入包涵体、重设计膜邻近折叠以实现可溶性表达、或需要大肠杆菌表达系统时使用。
 license: Apache-2.0
 category: biomodels

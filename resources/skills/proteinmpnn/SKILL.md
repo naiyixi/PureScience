@@ -1,5 +1,6 @@
 ---
 name: proteinmpnn
+contract: '{"id":"proteinmpnn","aliases":["ProteinMPNN","逆折叠","序列设计"],"requires":["data:structure_file"],"produces":["data:designed_sequence"],"failure_policy":{"missing_state":"需要骨架结构文件（PDB/CIF）。先做结构预测或让用户提供结构，再做序列设计。"}}'
 description: 使用 ProteinMPNN（Dauparas 等 2022，github.com/dauparas/ProteinMPNN）将蛋白质骨架（PDB 结构）逆折叠为氨基酸序列。用于在 RFdiffusion 骨架上运行序列设计、重设计 PDB 的一条链（保持界面残基固定）、或生成温度扫描序列集用于下游折叠。
 license: Apache-2.0
 category: biomodels

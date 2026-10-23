@@ -1,5 +1,6 @@
 ---
 name: borzoi
+contract: '{"id":"borzoi","aliases":["Borzoi 预测","调控谱预测","变异调控效应"],"requires":["input:dna_sequence"],"produces":["prediction:regulatory_track"],"failure_policy":{"missing_state":"需要目标基因座的 DNA 序列（FASTA）。先让用户提供序列，或先取参考基因组片段。"}}'
 description: 使用 Borzoi 从 DNA 序列预测全基因组功能谱（RNA-seq、CAGE、DNase、ChIP）。用于：(1) 评估变异对表达/可及性的调控效应，(2) 生成基因座的预测覆盖谱，(3) 按预测谱差异对非编码变异排序。
 license: Apache-2.0
 category: biomodels
