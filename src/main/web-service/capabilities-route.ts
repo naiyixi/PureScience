@@ -11,6 +11,10 @@
 //     established.
 
 import type { CapabilityFailureClass, StateFact } from '../../shared/capability-contract'
+import {
+  CAPABILITY_FAILURE_FAMILY,
+  type ReviewFailureFamily
+} from '../../shared/capability-failure-family'
 import type { PreflightResult } from '../../shared/capability-preflight'
 import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
@@ -44,6 +48,12 @@ export type SessionInputs = {
 }
 
 export type CapabilitiesPayload = {
+  /**
+   * The contract's five failure classes, each already mapped onto the family vocabulary the rest of the
+   * app reports failures in. Published so a consumer never has to invent a second mapping (or report
+   * `unknown` for a condition this payload can name).
+   */
+  failureFamilies: Record<CapabilityFailureClass, ReviewFailureFamily>
   declared: DeclaredCapabilitySummary[]
   undeclared: string[]
   problems: string[]
@@ -99,6 +109,7 @@ export const buildCapabilitiesPayload = async (
   await registry.load()
 
   const base = {
+    failureFamilies: { ...CAPABILITY_FAILURE_FAMILY },
     declared: summarise(registry),
     undeclared: registry.undeclared(),
     problems: registry.problems()

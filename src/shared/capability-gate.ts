@@ -12,9 +12,15 @@
 //   • a capability with no usable contract is never blocked (we have nothing to check it against).
 
 import type { CapabilityContract, StateFact } from './capability-contract'
+import { failureFamilyFor, type ReviewFailureFamily } from './capability-failure-family'
 
 export type CapabilityGateRefusal = {
   capability: string
+  /**
+   * Which existing failure family this refusal belongs to, so an error panel does not have to report
+   * `unknown` for a condition the app understands perfectly well.
+   */
+  family: ReviewFailureFamily
   missing: { fact: StateFact; producers: string[] }[]
   /** Ready to surface verbatim: names the capability, the missing fact, who produces it, and the policy. */
   message: string
@@ -59,6 +65,7 @@ export const evaluateCapabilityGate = (input: {
 
     return {
       capability: id,
+      family: failureFamilyFor('missing_state'),
       missing,
       message: `无法开始「${id}」：缺少 ${detail}。契约声明的处理方式：${policy.trim()}`
     }
