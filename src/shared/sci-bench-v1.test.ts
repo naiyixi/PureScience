@@ -18,6 +18,9 @@ const resumeEvidence: BenchEvidence = {
 }
 
 const checkpointCase = SCI_BENCH_V1_CASES.find((item) => item.id === 'checkpoint-resume-order')!
+const caseWithReads = SCI_BENCH_V1_CASES.find(
+  (item) => item.id === 'rule-consulted-before-wording'
+)!
 
 describe('SciBench v1 corpus', () => {
   it('ships at least two cases per dimension, each with a real origin', () => {
@@ -32,6 +35,18 @@ describe('SciBench v1 corpus', () => {
       expect(item.checks.length).toBeGreaterThanOrEqual(2)
       expect(['easy', 'medium', 'hard']).toContain(item.difficulty)
     }
+  })
+
+  it('can grade whether a capability was consulted, not only what the prose said', () => {
+    // Without this endpoint every check was reachable by writing well; the ablation would have been
+    // measuring style no matter which arm ran.
+    const withRead = evaluateBenchCase(caseWithReads, {
+      transcript: '提示而非证明',
+      skillsRead: ['os-evidence-grading']
+    })
+    const withoutRead = evaluateBenchCase(caseWithReads, { transcript: '提示而非证明' })
+    expect(withRead.findings.find((f) => f.checkId === 'grading-skill-read')?.passed).toBe(true)
+    expect(withoutRead.findings.find((f) => f.checkId === 'grading-skill-read')?.passed).toBe(false)
   })
 
   it('labels every case difficulty, and covers all three levels', () => {

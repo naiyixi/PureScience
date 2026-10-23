@@ -86,6 +86,19 @@ export type AtomicCheck =
       script: string
     }
   | {
+      /**
+       * Did the run open this skill's own files? Skills are files to an agent, so this is the one
+       * endpoint that can see "did a capability get consulted" at all — a `calls-tool` check cannot,
+       * because connector work happens through `repl_execute` rather than as a tool of its own name.
+       */
+      kind: 'reads-skill'
+      id: string
+      dimension: Dimension
+      description: string
+      /** Skill directory name, matched against the `skills/<name>/…` path the read carried. */
+      skill: string
+    }
+  | {
       kind: 'numbers-provenanced'
       id: string
       dimension: Dimension
@@ -221,6 +234,22 @@ const evaluateCheck = (check: AtomicCheck, evidence: BenchEvidence): CheckFindin
           : artifactPresent
             ? 'artifact present but no producing script recorded'
             : `artifact missing — ${observed}`
+      }
+    }
+    case 'reads-skill': {
+      const reads = evidence.skillsRead ?? []
+      // The materialized directory is `os-<id>`; accept either spelling so a check does not depend on
+      // which runtime's layout produced the read.
+      const wanted = check.skill.replace(/^os-/u, '')
+      const hit = reads.some((entry) => entry.replace(/^os-/u, '') === wanted)
+      return {
+        ...base,
+        passed: hit,
+        detail: hit
+          ? `read ${wanted}`
+          : reads.length > 0
+            ? `read other skills only: ${reads.join(', ')}`
+            : 'no skill file was opened'
       }
     }
     case 'numbers-provenanced': {

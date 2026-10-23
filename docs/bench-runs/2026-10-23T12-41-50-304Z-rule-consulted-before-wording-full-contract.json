@@ -1,0 +1,61 @@
+{
+  "caseId": "rule-consulted-before-wording",
+  "arm": "full-contract",
+  "runId": "e32a6ea1-c8f8-43e0-8c96-2f02703aa4f9",
+  "sessionId": "ses_e97394151ffeAW85XD4G5FgNuz",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-23T12:41:50.304Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "skillReads": true,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [
+    "execute",
+    "other",
+    "read"
+  ],
+  "skillsRead": [
+    "os-evidence-grading"
+  ],
+  "toolCallCount": 4,
+  "manipulation": {
+    "arm": "full-contract",
+    "noticeTurns": 1,
+    "noticeInjectedTurns": 1,
+    "expectsNotice": true,
+    "valid": true
+  },
+  "result": {
+    "caseId": "rule-consulted-before-wording",
+    "passed": true,
+    "atomicPassRate": 1,
+    "findings": [
+      {
+        "checkId": "grading-skill-read",
+        "dimension": "methodological_robustness",
+        "passed": true,
+        "detail": "read evidence-grading"
+      },
+      {
+        "checkId": "hedged-wording",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern present"
+      },
+      {
+        "checkId": "no-proof-claim",
+        "dimension": "data_integrity",
+        "passed": true,
+        "detail": "pattern absent as required"
+      }
+    ]
+  }
+}

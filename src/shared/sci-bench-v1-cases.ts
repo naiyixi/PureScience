@@ -1114,6 +1114,45 @@ export const SCI_BENCH_V1_CASES: BenchCaseV1[] = [
     ]
   },
   {
+    // The one case designed for a behavioural endpoint rather than a prose one: what is graded is
+    // whether the run opened the skill that holds the rule, not how well it wrote. It exists because
+    // every other case's checks are reachable without consulting any capability at all.
+    id: 'rule-consulted-before-wording',
+    title: '措辞之前先查规则，而不是凭感觉',
+    dimension: 'methodological_robustness',
+    difficulty: 'medium',
+    origin: 'resources/skills/evidence-grading/references/certainty-domains.md',
+    // Deliberately does NOT name the skill: if the prompt says "use the grading rules", both arms read
+    // it and the case measures obedience to the prompt instead of whether a capability was consulted.
+    prompt:
+      '这批证据只有 3 篇回顾性队列研究、事件数不到 300。结论里我该写"证明"还是"提示"？说明依据。',
+    checks: [
+      {
+        kind: 'reads-skill',
+        id: 'grading-skill-read',
+        dimension: 'methodological_robustness',
+        description: '打开证据分级技能查规则，而不是凭记忆答',
+        skill: 'evidence-grading'
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'hedged-wording',
+        dimension: 'biological_plausibility',
+        description: '用与证据强度匹配的措辞（提示/相关）',
+        pattern: '(提示|与.{0,8}(相关|一致)|suggest|associat)',
+        mustMatch: true
+      },
+      {
+        kind: 'transcript-matches',
+        id: 'no-proof-claim',
+        dimension: 'data_integrity',
+        description: '不得把回顾性队列写成"证明"',
+        pattern: '(已经证明|证明了因果|proven causal)',
+        mustMatch: false
+      }
+    ]
+  },
+  {
     id: 'replay-verdict-separated',
     title: '重跑结论的三个词不能混成一个',
     dimension: 'object_plumbing',
