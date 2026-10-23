@@ -1,5 +1,47 @@
 # PureScience 更新日记
 
+## v2.16.0 — 2026-10-23（能力契约：这一步能不能跑，由应用回答）
+
+**成熟度自陈**：这一版给技能和 connector 工具加了**机器可读的前置/产物声明**，并把「缺前置」做成应用侧可以回答的问题。它也交了一份**否定结果**——把契约讲给模型听，实测不改变行为。两件事都写在这里，因为只报前者就是把一次失败的实验藏进版本说明。
+
+**做了什么**
+
+- **契约 schema**：`contract: { id, aliases, requires, produces, prerequisites, failure_policy }`，技能（`resources/skills/*/SKILL.md` 的 frontmatter）与 connector 工具（`ToolDescriptor.contract`）共用同一套词汇。当前 **29/51 技能**、**3 个 connector 工具**（`search_preprints` → `evidence:literature_set`、`get_preprint` → `evidence:verified_reference`、`pdbe_entry_summary` → `data:structure_file`）声明了契约。
+- **注册表**：按应用**真实物化的目录**读取（`skills/`、`claude/skills/`、`opencode/…/skills/`、`codex/skills/`），同名冲突时保留有契约的那份；connector 契约并入同一张表，技能同 id 优先。
+- **预检**：`buildCapabilityPreflight` / `renderSessionCapabilityGaps` 一个函数算「能不能跑、缺什么、谁生产它」，供三处共用——`GET /api/v1/capabilities`、`purescience capabilities`、以及每轮注入的缺口文本（`session.promptBlock`，12 行 / 1281 字符，真机验证）。**只提示，不阻断**（硬门见下）。
+- **每轮注入**：缺口随回合内容送达（只进 provider content，不进 `request.text`）；无缺口返回 `null`，该回合与加机制前逐字节相同。
+- **失败五类归入既有族**：`missing_state → runtime`、`invalid_arguments → protocol`、`unavailable_dependency → provider`、`incompatible_object → storage`、`failed_execution → runtime`，穷尽映射，随 API 的 `failureFamilies` 发布。
+- **失败回放机检**：分类器 + 30 条**逐字可溯源**的真实失败语料（每条带 `file#L`），覆盖率 **100%**；测试会读回出处文件，编造的样本会让它失败。
+- **操纵自检**：run 记录带 `manipulation.valid`（契约臂要求注入了缺口，无契约臂要求严格为 0）与 `skillsRead`。三次消融失败都是靠这两项才被识别出来。
+
+**修掉的三处「让契约在现网完全失效」的缺陷**
+
+1. 注册表只扫 `<configRoot>/skills`，而内置技能物化在 runtime 目录 —— 真实安装 89 个技能一个都看不见；
+2. 物化目录名 `os-<id>` 与契约声明的裸 id 不相等，解析器判 `id_mismatch` —— **每个**物化副本都被丢弃；
+3. `codex` 的 `<root>/codex/skills` 没被读取 —— codex 会话 `declared=0`，而磁盘上躺着 28 个契约。
+
+**其他修复**
+
+- npm 安装不带 `--registry`，默认源不可达时用户无法自救 —— 四条安装路径都加 `--registry` 与**换源重试**（npmjs → npmmirror）；
+- ACP 会话 id 与会话库 id 不同导致注入静默为空；现已先解析再查。
+
+**实测（真机，非推断）**
+
+| 观测 | 结果 |
+|---|---|
+| 契约命中可查 | opencode `declared=28` / codebuddy `28` / codex `31`，`evidence-grading` 均为 `missing_state` |
+| 注入是否发生 | 每轮发生（12 行），20/20 记录通过操纵自检 |
+| 行为是否改变 | **否** —— 10 次运行、工具调用 12–41 次，`skillsRead` 全为 0 |
+| 分数是否改变 | **否** —— 天花板题上无可分辨差异（同条件方差本身就能到 0.33） |
+| 缺前置时的输出 | `missing_state` 读数，载荷可 JSON 往返且不含 stack/traceback |
+
+**明确没做**
+
+- **硬门默认关闭**：按排期「只提示不阻断」，`capabilityGate` 只有 `PURESCIENCE_CAPABILITY_GATE=on` 才装配；代码与真机证据（三次具名拒绝、零模型调用）保留，产品化留待后续版本；
+- **claude-code 的契约命中未验**：开发构建拿不到钥匙串模型凭证，会话建不起来（机检 3/4）；
+- **connector 契约只做了 3 个**（约 133 个工具未声明），不批量套模板；
+- **不补「意图级前置」**：研究问题写在消息里，不是可核验事实，声明它会让每次选中该技能都被误拦。
+
 ## v2.15.3 — 2026-10-21（主进程自动审查真的会触发了：先等落盘，再读）
 
 **成熟度自陈**：这一版只修上一版的一处 **自伤**。2.15.2 把自动审查从渲染器搬到主进程，但触发只读一次会话快照 —— 而 `stop` / `end_turn` 事件是在会话 **落盘之前** 发出的。真机读数（CLI 无窗跑一轮）：事件 01:06:24.248，会话文件 01:06:26 才写出；触发在 t+0 读，必然找不到会话，于是 **静默返回**：`Review` 表 0 行、日志 0 条，那一轮没人审，而所有读数都显示它是干净的。这正是这条修复当初要解决的情形，被它自己的竞态吃掉了 —— 上一节的页面与 README 说「主进程会触发」，在无窗场景里其实一次也没触发过。
