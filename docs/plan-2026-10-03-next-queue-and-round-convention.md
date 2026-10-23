@@ -11444,3 +11444,50 @@ P0-3 分步真机读数之外的纯代码项），不要把「等闸门」写成
 这需要 dev 实例以新构建重启才取得到读数 ⇒ 开工前先取 `vm_stat` / `vm.swapusage`，闸门未解就换纯代码项；
 ③ §两百二十 那四张表的提法按 §6 改写：现在没有超时可归因，「1 秒该不该付」在当前构建上**已不是现状问题**；
 ④ 桌面会话线那批 `src/main/artifacts/**` 若已提交，先 `git fetch && git log --oneline origin/main -3` 核一遍再动手。
+
+## 两百二十二、本轮追加（执行器，2026-10-24 05:0x–07:3x）—— 「闸门说是 MCP、入参恢复说标题解析不到」：18 条无读数请求逐条归位，其中只有 1 条是真分叉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` ⇒ `HEAD = origin/main = dcd039b8`（上一轮的 docs-only 提交**未推**，本轮先推：推前 `gh run list` 确认
+  无在飞车道 ⇒ 本次推送没有取消任何人的判决）。
+- 工作区不干净：`src/main/artifacts/{ipc.ts,ipc.test.ts,run-registry.ts}` 是**桌面会话线**的在制品 ⇒ 一个字节没碰。
+- 本轮只动 `src/main/acp/**` + 两份文档；`git add` 逐路径指名，无 `-A`。
+
+### 一 判据（读源，不是推测）
+
+| 位置 | 判据 |
+|---|---|
+| `permission request received` 审计行 | `isMcpToolName(title) ∥ isMcpToolName(extractProviderToolName(toolCall))`（`_meta.toolName`） |
+| `restoreToolCall` opencode 分支 | `isMcpToolName(title)` —— **只看标题**，不成立就静默 return |
+
+⇒ 标题是裸工具名、限定名只在 `_meta` 里的请求，必然「审计行说是 MCP、等待侧一句话没有」。
+
+### 二 读数（只读生产日志，17,808 行，窗口 `10-21T15:51Z → 10-23T21:02Z`）
+
+- 请求 2,042 / `isMcp` 1,396 / 其中有等待侧读数 396、没有 1,000（后者绝大多数属另一种框架：等待是 opencode 独有）。
+- 跳过修复（`05:41:32Z`）之后：**161 / 125 / 107 / 18**（请求 / MCP / 有读数 / 无读数）。
+- 18 条按 `toolCallId` 逐条归位 = **1 条真分叉**（opencode 会话 `ses_e98b8853…`，`tool` 是服务器限定名，同会话另外
+  5 条请求都落了 `skipping`）**＋ 17 条另一种框架**（三个复查会话，其日志里 0 条 opencode 等待读数）。
+  ⇒ 上一轮「19 条都因为裸标题早返回」的提法是**错的**，16/17 那部分根本不该改。
+
+### 三 交付
+
+判据拆成两个具名布尔；`isMcpRequest = titleSaysMcp ∥ (providerNameSaysMcp && hasOwnInput)` —— **只在请求自带入参时**
+按提供方名字认 MCP（等待只为空入参而生 ⇒ 不可能多等一毫秒，用例用 `setTimer` 未被调用证明）；新增
+`reportProviderNameOnlyMcpRequest()`（一次调用只报一次、有界、载荷仅两个布尔）；组合根接一行 `info`：
+`OpenCode permission request names its MCP server only in provider metadata`。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+`permission-context.test.ts` **21 passed**（18→21）；变异三组各恰红（1/3/1 条）后恢复全绿；`src/main/acp` 整域
+**89 files / 1463 passed**（1460→1463）；双 typecheck **0/0**；3 文件 `eslint --no-cache` + `prettier --check` 全过。
+
+### 五 边界与下一轮第一步
+
+1. 新读数**还没有真机样本**（旧构建上那条分叉不会回溯出这行）；主会话 MCP 请求仍 0 样本 ⇒ 「1 秒该不该付」仍无样本，
+   等待预算一个字未动。本轮未重启 dev 实例：空闲页已回到 31,902（≈522 MB），但 swap **8.93G / 10.24G** 仍高 ⇒ 按不重启处理。
+2. **空入参那半边仍静默早返回**：修它必须同时让**更新侧**也认 `_meta`（入参落库同样以标题为准，否则等来的必是超时）
+   ⇒ 已具名立为下一单元，先看这条新读数的 `hasOwnInput: false` 出现频率再决定做不做。
+3. 下一轮第一步：按完整 40 位 SHA 读本轮 `Nightly` + `Windows Full Test`；然后取「更新侧认 `_meta`」这一片的
+   前置读数（同一份日志里裸标题更新的占比），再决定动不动等待路径。

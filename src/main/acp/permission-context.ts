@@ -148,6 +148,21 @@ type AcpPermissionContextOptions = {
     reason: 'identity-only-decision'
   }) => void
   /**
+   * Fired when an MCP request names its server only in `_meta` while the title carries a bare leaf name.
+   *
+   * That is the one shape the title-only judgement cannot classify, and it used to leave the request
+   * outside the MCP path with no reading at all (18 of 125 MCP requests in the 2026-10-23 field log).
+   * `hasOwnInput` splits the two cases, because they call for different fixes: with the arguments already
+   * in hand such a request can be treated as MCP at no cost, while an empty one would have to wait for an
+   * input the update path -- itself keyed on the title -- cannot store for this shape.
+   */
+  onOpenCodeMcpIdentityInProviderNameOnly?: (details: {
+    sessionId: string
+    toolCallId: string
+    hasOwnInput: boolean
+    awaitsProviderInput: boolean
+  }) => void
+  /**
    * Fired once per request that could have waited, with what the wait actually produced.
    *
    * Only a timeout was observable before this: a wait that resolved is silent, so "every wait timed out"
@@ -347,6 +362,13 @@ class AcpPermissionContext {
    * provider chunks: one call produced up to five rows before this existed.
    */
   private readonly openCodeDroppedInputReports = new Map<string, Set<string>>()
+  /**
+   * Requests whose server-qualified name lived only in `_meta`, per session.
+   *
+   * Bounded and once-per-call for the same reason as the report set above: the point of the reading is
+   * how many distinct requests have this shape, not how many chunks the provider sent.
+   */
+  private readonly providerNameOnlyMcpReports = new Map<string, Set<string>>()
   private readonly setTimer: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
   private readonly clearTimer: (handle: ReturnType<typeof setTimeout>) => void
 
@@ -703,15 +725,28 @@ class AcpPermissionContext {
       if (trustedNativeSkill !== params) return trustedNativeSkill
 
       const restored = this.restoreOpenCodeMcpToolInput(params, sessionId, mcpServerNames)
-      const isMcpRequest = isMcpToolName(params.toolCall.title, mcpServerNames)
+      const titleSaysMcp = isMcpToolName(params.toolCall.title, mcpServerNames)
+      const providerNameSaysMcp = isMcpToolName(
+        extractProviderToolName(params.toolCall),
+        mcpServerNames
+      )
+      const hasOwnInput =
+        isRecord(restored.toolCall.rawInput) && Object.keys(restored.toolCall.rawInput).length > 0
+      if (providerNameSaysMcp && !titleSaysMcp) {
+        this.reportProviderNameOnlyMcpRequest(sessionId, params.toolCall.toolCallId, {
+          hasOwnInput,
+          awaitsProviderInput: context.awaitsProviderInput !== false
+        })
+      }
+      // The provider can name its server only in `_meta` while the title carries the bare tool name, so a
+      // title-only judgement leaves such a request outside the MCP path with no reading at all. It is
+      // taken as MCP here only when the request already carries its own arguments: the wait below exists
+      // for requests with an empty input, so this cannot make any request wait longer than before.
+      const isMcpRequest = titleSaysMcp || (providerNameSaysMcp && hasOwnInput)
       const isNativeSkillCandidate =
         params.toolCall.kind === 'other' && params.toolCall.title?.trim().toLowerCase() === 'skill'
       if (!isMcpRequest && !isNativeSkillCandidate) return restored
-      if (
-        isMcpRequest &&
-        isRecord(restored.toolCall.rawInput) &&
-        Object.keys(restored.toolCall.rawInput).length > 0
-      ) {
+      if (isMcpRequest && hasOwnInput) {
         this.options.onOpenCodeInputWaitOutcome?.({
           sessionId,
           toolCallId: params.toolCall.toolCallId,
@@ -823,6 +858,7 @@ class AcpPermissionContext {
     this.opencodeNativeSkillToolCalls.delete(sessionId)
     this.closedOpenCodeToolCalls.delete(sessionId)
     this.timedOutInputWaits.delete(sessionId)
+    this.providerNameOnlyMcpReports.delete(sessionId)
     const sessionWaiters = this.opencodeMcpToolInputWaiters.get(sessionId)
     if (!sessionWaiters) return
 
@@ -840,7 +876,8 @@ class AcpPermissionContext {
       ...this.opencodeNativeSkillToolCalls.keys(),
       ...this.closedOpenCodeToolCalls.keys(),
       ...this.opencodeMcpToolInputWaiters.keys(),
-      ...this.timedOutInputWaits.keys()
+      ...this.timedOutInputWaits.keys(),
+      ...this.providerNameOnlyMcpReports.keys()
     ])
     for (const sessionId of sessionIds) this.clearCorrelationsForSession(sessionId)
   }
@@ -1137,6 +1174,32 @@ class AcpPermissionContext {
     const reported = this.openCodeDroppedInputReports.get(sessionId)
     reported?.delete(toolCallId)
     if (reported?.size === 0) this.openCodeDroppedInputReports.delete(sessionId)
+  }
+
+  /**
+   * Reports a request whose MCP identity lives only in the provider tool name, once per tool call.
+   *
+   * Without this line the two judgements can disagree silently: the audit line for a request has always
+   * checked both names, while the input-restore path only checked the title, so a request could be
+   * logged as MCP and still leave that path with no outcome at all. Nothing is reported for the ordinary
+   * case (title names the server), so the line counts the disagreement rather than all MCP traffic.
+   */
+  private reportProviderNameOnlyMcpRequest(
+    sessionId: string,
+    toolCallId: string,
+    shape: { hasOwnInput: boolean; awaitsProviderInput: boolean }
+  ): void {
+    const reported = this.providerNameOnlyMcpReports.get(sessionId) ?? new Set<string>()
+    if (reported.has(toolCallId)) return
+    this.addBounded(reported, toolCallId, MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION)
+    this.providerNameOnlyMcpReports.set(sessionId, reported)
+
+    this.options.onOpenCodeMcpIdentityInProviderNameOnly?.({
+      sessionId,
+      toolCallId,
+      hasOwnInput: shape.hasOwnInput,
+      awaitsProviderInput: shape.awaitsProviderInput
+    })
   }
 
   /** Reports one dropped input per call: a provider that chunks its updates used to produce up to five. */

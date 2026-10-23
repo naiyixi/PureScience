@@ -145,6 +145,23 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     onOpenCodeInputWaitSkipped: ({ sessionId, toolCallId, reason }) => {
       log.info('skipping OpenCode input wait', { sessionId, toolCallId, reason })
     },
+    // The two judgements that can disagree: the audit line for a request has always checked the title
+    // and the provider tool name, while the input-restore path checked the title alone. A row here is a
+    // request that only the second judgement can classify, and `hasOwnInput` says whether treating it as
+    // MCP costs a wait (it cannot: the request already carries its arguments).
+    onOpenCodeMcpIdentityInProviderNameOnly: ({
+      sessionId,
+      toolCallId,
+      hasOwnInput,
+      awaitsProviderInput
+    }) => {
+      log.info('OpenCode permission request names its MCP server only in provider metadata', {
+        sessionId,
+        toolCallId,
+        hasOwnInput,
+        awaitsProviderInput
+      })
+    },
     // The wait's own products, so a field log can count outcomes instead of inferring them from the
     // timeout line alone (a wait that resolved used to leave no trace at all).
     onOpenCodeInputWaitOutcome: ({ sessionId, toolCallId, outcome, waitedMs }) => {

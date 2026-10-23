@@ -442,6 +442,129 @@ describe('ACP permission context', () => {
     }
   })
 
+  it('takes a request whose server name lives only in provider metadata as MCP when it carries its own input', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeInputWaitOutcome = vi.fn()
+      const onOpenCodeMcpIdentityInProviderNameOnly = vi.fn()
+      const setTimer = vi.fn((fn: () => void, ms: number) => setTimeout(fn, ms))
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        setTimer,
+        onOpenCodeInputWaitOutcome,
+        onOpenCodeMcpIdentityInProviderNameOnly
+      })
+
+      // The field shape: the request's title is the bare leaf name and the server-qualified name is only
+      // in `_meta`, so a title-only judgement cannot see that this is an MCP request at all.
+      const restored = await context.restoreToolCall(
+        permissionRequest('session-1', 'call-1', {
+          title: 'notebook_execute',
+          rawInput: { code: 'print(1)' },
+          _meta: { toolName: 'purescience_notebook_notebook_execute' }
+        }),
+        {
+          sessionId: 'session-1',
+          framework: 'opencode',
+          mcpServerNames: NOTEBOOK_SERVERS,
+          isCancelled: () => false
+        }
+      )
+
+      expect(restored?.toolCall.rawInput).toMatchObject({ code: 'print(1)' })
+      expect(setTimer).not.toHaveBeenCalled()
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        outcome: 'input-present',
+        waitedMs: 0
+      })
+      expect(onOpenCodeMcpIdentityInProviderNameOnly).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        hasOwnInput: true,
+        awaitsProviderInput: true
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports a provider-metadata-only request that carries no input without ever awaiting one', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeMcpIdentityInProviderNameOnly = vi.fn()
+      const onOpenCodeInputWaitSkipped = vi.fn()
+      const setTimer = vi.fn((fn: () => void, ms: number) => setTimeout(fn, ms))
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        setTimer,
+        onOpenCodeInputWaitSkipped,
+        onOpenCodeMcpIdentityInProviderNameOnly
+      })
+
+      const restored = await context.restoreToolCall(
+        permissionRequest('session-1', 'call-1', {
+          title: 'notebook_execute',
+          _meta: { toolName: 'purescience_notebook_notebook_execute' }
+        }),
+        {
+          sessionId: 'session-1',
+          framework: 'opencode',
+          mcpServerNames: NOTEBOOK_SERVERS,
+          isCancelled: () => false,
+          awaitsProviderInput: false
+        }
+      )
+
+      expect(restored?.toolCall.toolCallId).toBe('call-1')
+      // The reading is the point here: an empty request of this shape must not start a wait whose input
+      // the update path (also keyed on the title) could never store.
+      expect(setTimer).not.toHaveBeenCalled()
+      expect(onOpenCodeInputWaitSkipped).not.toHaveBeenCalled()
+      expect(onOpenCodeMcpIdentityInProviderNameOnly).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        hasOwnInput: false,
+        awaitsProviderInput: false
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports the provider-metadata-only shape once per call and stays silent for the ordinary one', async () => {
+    const onOpenCodeMcpIdentityInProviderNameOnly = vi.fn()
+    const context = new AcpPermissionContext({
+      emitPermissionRequest: vi.fn(),
+      routing: permissionRouting(),
+      onOpenCodeMcpIdentityInProviderNameOnly
+    })
+    const shape = {
+      title: 'notebook_execute',
+      rawInput: { code: 'print(1)' },
+      _meta: { toolName: 'purescience_notebook_notebook_execute' }
+    }
+    const restoreContext = {
+      sessionId: 'session-1',
+      framework: 'opencode' as const,
+      mcpServerNames: NOTEBOOK_SERVERS,
+      isCancelled: () => false
+    }
+
+    await context.restoreToolCall(permissionRequest('session-1', 'call-1', shape), restoreContext)
+    await context.restoreToolCall(permissionRequest('session-1', 'call-1', shape), restoreContext)
+    await context.restoreToolCall(
+      permissionRequest('session-1', 'call-2', { rawInput: { code: 'print(2)' } }),
+      restoreContext
+    )
+
+    expect(onOpenCodeMcpIdentityInProviderNameOnly).toHaveBeenCalledTimes(1)
+    expect(context.snapshot()).toEqual({ pendingRequests: [], sessions: {} })
+  })
+
   it('counts a wait that resolved, which used to leave no trace at all', async () => {
     vi.useFakeTimers()
     try {
