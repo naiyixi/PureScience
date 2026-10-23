@@ -198,7 +198,7 @@ it, and produce an artifact whose numbers can be checked independently.**
 |---|---|---|
 | 1 | The install materialises the Skill | `/tmp/ps-e2e-pyfastx/opencode/config/opencode/skills/os-pyfastx-sequence-stats/` exists after session creation |
 | 2 | The session ran **that** copy, not the repo one | the session transcript contains the command `…/opencode/config/opencode/skills/os-pyfastx-sequence-stats/scripts/sequence-stats.sh` |
-| 3 | The numbers are the tool's and are correct | reported `seqCounts=10`, `totalBases=2070`, `GC%=51.787`; an independent Python pass over the same file gives 10 / 2070 / 51.79 |
+| 3 | The numbers are the tool's and are correct | reported `seqCounts=10`, `totalBases=2070`, `GC%=51.787`; an independent Python pass over the same file gives 10 / 2070 / 51.79, and a **second, unrelated third-party tool** (`seqkit 2.14.0`) gives `num_seqs=10`, `sum_len=2070`, `N50=240`, `GC(%)=51.79` |
 | 4 | An artifact was registered, not just narrated | run payload carries `demo.fa.stats.tsv`, `versionNumber: 1`, `checksum: 2dee9da7…`; the file is copied to `docs/evidence/pyfastx-skill-e2e/artifact-demo.fa.stats.tsv` |
 
 Artifact contents (verbatim):
@@ -208,14 +208,23 @@ fileName	seqType	seqCounts	totalBases	   GC%	avgLen	medianLen	maxLen	minLen	N50	
 demo.fa 	    DNA	       10	      2070	51.787	 207.0	    195.0	   300	   120	240	  4
 ```
 
+Same fixture, second tool (`seqkit stats -T -a`), independently:
+
+```
+num_seqs  sum_len  min_len  avg_len  max_len  N50  N50_num  GC(%)
+10        2070     120      207.0    300      240  4        51.79
+```
+
 ### What this does **not** show
 
 - It is **one** tool and **one** question. It says a Skill can wrap a CLI and be used; it says nothing
   about how often that happens across a suite.
 - The prompt named the file. Finding the right input is a separate capability, not measured here.
-- `seqkit` was the first choice and could not be installed: `brew install seqkit` stalled at 438 KB on
-  `ghcr.io` (0 B/s), so `pyfastx` — a PyPI wheel — took its place. The Skill shape is the same either
-  way, but the tool was chosen by what the network allowed, not by fit.
+- `seqkit` was the first choice. Its Homebrew download stalled at 438 KB on `ghcr.io` (0 B/s) while
+  this was being built, so `pyfastx` — a PyPI wheel — took its place, and an earlier version of this
+  section wrongly said seqkit "could not be installed". It could: the stalled install finished later,
+  and `seqkit 2.14.0` is now at `/opt/homebrew/bin/seqkit`. Corrected here — and the tool turned out
+  to be useful as an independent check rather than as the wrapper (row 3 above).
 
 ### Harness hazard found while doing this
 
