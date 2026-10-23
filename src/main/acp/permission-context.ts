@@ -79,6 +79,15 @@ type OpenCodeMcpToolInput = {
 type DroppedOpenCodeInput = {
   reason: 'not-an-mcp-title' | 'unresolved-identity'
   title?: string
+  /**
+   * Whether the update carried a provider tool name in `_meta` even though its title did not resolve.
+   *
+   * That is the only way to tell "the provider never named a server" from "it named one where this
+   * judgement does not look": the title check runs first, so a server-qualified `_meta` name is thrown away
+   * with the title that failed. The distinction decides whether teaching the update path to read `_meta`
+   * would recover anything at all.
+   */
+  hasProviderName: boolean
 }
 
 type ClaudeCodeMcpToolInput = {
@@ -187,6 +196,7 @@ type AcpPermissionContextOptions = {
     toolCallId: string
     reason: 'not-an-mcp-title' | 'unresolved-identity'
     title?: string
+    hasProviderName: boolean
   }) => void
   /**
    * Fired when raw input for a call arrives after its wait already gave up. That means the provider does
@@ -667,7 +677,13 @@ class AcpPermissionContext {
       // the wait times out, so it reports itself before returning -- but only when something was
       // actually waiting for it: every ordinary local tool call reports its own arguments here too.
       if (hasIncomingRawInput) {
-        this.handleUnusableOpenCodeInput(sessionId, event.toolCallId, 'not-an-mcp-title', title)
+        this.handleUnusableOpenCodeInput(
+          sessionId,
+          event.toolCallId,
+          'not-an-mcp-title',
+          title,
+          event.providerToolName != null
+        )
       }
       return
     }
@@ -682,7 +698,13 @@ class AcpPermissionContext {
       (canReusePreviousIdentity ? previous?.mcpIdentity : undefined)
     if (!mcpIdentity) {
       if (hasIncomingRawInput) {
-        this.handleUnusableOpenCodeInput(sessionId, event.toolCallId, 'unresolved-identity', title)
+        this.handleUnusableOpenCodeInput(
+          sessionId,
+          event.toolCallId,
+          'unresolved-identity',
+          title,
+          event.providerToolName != null
+        )
       }
       return
     }
@@ -1130,11 +1152,16 @@ class AcpPermissionContext {
     sessionId: string,
     toolCallId: string,
     reason: 'not-an-mcp-title' | 'unresolved-identity',
-    title: string | null | undefined
+    title: string | null | undefined,
+    hasProviderName: boolean
   ): void {
     const waiters = this.opencodeMcpToolInputWaiters.get(sessionId)?.get(toolCallId)
     if ((waiters?.size ?? 0) > 0) {
-      this.reportDroppedOpenCodeInput(sessionId, toolCallId, { reason, title: title ?? undefined })
+      this.reportDroppedOpenCodeInput(sessionId, toolCallId, {
+        reason,
+        title: title ?? undefined,
+        hasProviderName
+      })
       return
     }
     if (this.reportLateInput(sessionId, toolCallId)) return
@@ -1145,7 +1172,7 @@ class AcpPermissionContext {
     this.setBounded(
       records,
       toolCallId,
-      { reason, ...(title ? { title: title.slice(0, 120) } : {}) },
+      { reason, ...(title ? { title: title.slice(0, 120) } : {}), hasProviderName },
       MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION
     )
     this.droppedOpenCodeInputs.set(sessionId, records)
@@ -1220,7 +1247,8 @@ class AcpPermissionContext {
       sessionId,
       toolCallId,
       reason: record.reason,
-      ...(record.title ? { title: record.title } : {})
+      ...(record.title ? { title: record.title } : {}),
+      hasProviderName: record.hasProviderName
     })
   }
 

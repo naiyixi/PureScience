@@ -773,12 +773,66 @@ describe('ACP permission context', () => {
         sessionId: 'session-1',
         toolCallId: 'call-1',
         reason: 'not-an-mcp-title',
-        title: 'knowledge_list_sources'
+        title: 'knowledge_list_sources',
+        hasProviderName: false
       })
 
       await vi.advanceTimersByTimeAsync(1_000)
       await expect(restored).resolves.toBeDefined()
       expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('says whether a dropped input could have been routed by provider metadata', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeToolCallUpdateUnusable = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout: vi.fn(),
+        onOpenCodeToolCallUpdateUnusable
+      })
+
+      // The same bare title as the field log, but this update also names its server in `_meta`. The title
+      // check runs first and takes the input with it, so this flag is the only record that the provider
+      // did say which server it came from -- the difference between "never named" and "named elsewhere".
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call',
+            toolCallId: 'call-1',
+            title: 'notebook_execute',
+            kind: 'other',
+            status: 'pending',
+            rawInput: { code: 'print(1)' },
+            _meta: { toolName: 'purescience_notebook_notebook_execute' }
+          }
+        },
+        'opencode'
+      )
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        reason: 'not-an-mcp-title',
+        title: 'notebook_execute',
+        hasProviderName: true
+      })
+
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(restored).resolves.toBeDefined()
     } finally {
       vi.useRealTimers()
     }
@@ -823,7 +877,8 @@ describe('ACP permission context', () => {
         sessionId: 'session-1',
         toolCallId: 'call-1',
         reason: 'not-an-mcp-title',
-        title: 'knowledge_list_sources'
+        title: 'knowledge_list_sources',
+        hasProviderName: false
       })
 
       await vi.advanceTimersByTimeAsync(1_000)

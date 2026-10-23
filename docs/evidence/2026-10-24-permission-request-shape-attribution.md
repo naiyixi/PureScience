@@ -95,3 +95,42 @@
 4. 本轮未重启 dev 实例（上一轮的内存闸门：空闲页 4,463 ≈70 MB）。本轮复核 `vm_stat` 空闲页已回到
    **31,902（≈522 MB）**，但 `swap` 用量是 **8.93G / 10.24G**（上一轮 7.96G）⇒ 仍按「不重启」处理，
    真机样本留待与下一次重启窗口一起取。
+
+## 7 同一轮的第二个单元：更新侧那半边的判据也补一个布尔（不修，先量）
+
+§4 末段说「空入参那半边要靠更新侧也认 `_meta`」。做那件事之前必须先回答一个问题：
+**提供方到底会不会在裸标题的更新上把服务器名放进 `_meta`？** 旧日志答不了——那条
+`OpenCode permission input dropped while a wait was pending` 行里没有这个信息，而标题检查跑在最前面，
+`_meta` 里的限定名跟着标题一起被丢掉了。
+
+因此本轮在同一处补一个布尔：`DroppedOpenCodeInput` 增 `hasProviderName`
+（`event.providerToolName != null`），并把它透传到日志载荷。
+
+| 位置 | 改动 |
+|---|---|
+| `permission-context.ts` `DroppedOpenCodeInput` | 新增 `hasProviderName`（带注释说明它区分的两件事：从没说过服务器名 / 说在了我们不看的字段里） |
+| 同上 `handleUnusableOpenCodeInput()` | 增一个参数，两条记录（立即报 / 先记着）都带上它 |
+| 同上 `reportDroppedOpenCodeInput()` | 载荷透传 |
+| 同上 `observeToolCall` 两处调用 | 传 `event.providerToolName != null` |
+| `runtime-session-composition.ts` | 那行 `warn` 多一个字段 |
+| `permission-context.test.ts` | 新增 1 条用例（裸标题 + `_meta` 限定名 ⇒ `hasProviderName: true`）；两条既有断言补上 `hasProviderName: false`（收紧，不是放宽） |
+
+**为什么这算一个单元而不是半截**：它把「要不要改更新侧」从猜测变成可测量的判据 ——
+`hasProviderName: true` 的出现次数就是那条修法的封顶收益；一次都不出现，那条修法就当场作废，
+不再花第二个单元。行为一个字未变（判定、等待、上报时机全部照旧）。
+
+### 门禁（第二单元，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `permission-context.test.ts` | **22 passed**（21→22） |
+| 变异：把该调用点的 `event.providerToolName != null` 换成 `false` | 恰 **1** 条红（1 failed / 21 passed），恢复全绿 |
+| `src/main/acp` 整域 | **89 files / 1464 passed**（1463→1464） |
+| node / web typecheck | **EXIT 0 / EXIT 0** |
+| 3 文件 `eslint --no-cache` / `prettier --check` | **0 problems / 全过**（中途 prettier 要求把回调形参折行，已就地修） |
+
+### 边界
+
+- 新字段**同样没有真机样本**：它随下一份日志一起出现。
+- 「更新侧认 `_meta`」这件事**仍未做**；判据是上面那个布尔的出现频率，不是本次交付。
+
