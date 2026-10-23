@@ -1,0 +1,2 @@
+fileName	seqType	seqCounts	totalBases	   GC%	avgLen	medianLen	maxLen	minLen	N50	L50
+demo.fa 	    DNA	       10	      2070	51.787	 207.0	    195.0	   300	   120	240	  4

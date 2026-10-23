@@ -236,6 +236,12 @@
       "updatedAt": "2026-07-14T00:00:00.000Z"
     },
     {
+      "id": "pyfastx-sequence-stats",
+      "name": "Sequence Set Statistics (pyfastx)",
+      "source": "featured",
+      "updatedAt": "2026-10-23T00:00:00.000Z"
+    },
+    {
       "id": "remote-compute-ssh",
       "name": "Remote Compute (SSH)",
       "source": "featured",

@@ -174,3 +174,53 @@ So the measured comparison is the only one the product can express: **declaratio
 stripped**. If a genuine no-skill arm is required, it needs a product change (a research-mode
 switch that disables the safeguard skills), which is a decision about what the app guarantees — not
 a benchmark setting.
+
+## A third-party tool, packaged as a Skill, run end to end
+
+The four-arm question above is about the contract layer. This section is a narrower, harder claim:
+**the app can ship a Skill that wraps a real third-party tool, and an agent session will find it, run
+it, and produce an artifact whose numbers can be checked independently.**
+
+### The Skill
+
+`pyfastx-sequence-stats` (`resources/skills/pyfastx-sequence-stats/`), listed in
+`resources/skills/manifest.json` so the install materialises it:
+
+- **tool**: `pyfastx` 2.3.1 (PyPI, `pyfastx stat`) — not written by this project;
+- **contract**: `requires: ["input:sequence_file"]`, `produces: ["data:sequence_stats"]`;
+- **wrapper**: `scripts/sequence-stats.sh` fixes the flags, fails with exit 3 when the tool is absent
+  rather than estimating, and prints the artifact path;
+- **fixture**: `fixtures/demo.fa`, ten synthetic sequences, checked into the repo.
+
+### What was verified, and how
+
+| # | Claim | Evidence |
+|---|---|---|
+| 1 | The install materialises the Skill | `/tmp/ps-e2e-pyfastx/opencode/config/opencode/skills/os-pyfastx-sequence-stats/` exists after session creation |
+| 2 | The session ran **that** copy, not the repo one | the session transcript contains the command `…/opencode/config/opencode/skills/os-pyfastx-sequence-stats/scripts/sequence-stats.sh` |
+| 3 | The numbers are the tool's and are correct | reported `seqCounts=10`, `totalBases=2070`, `GC%=51.787`; an independent Python pass over the same file gives 10 / 2070 / 51.79 |
+| 4 | An artifact was registered, not just narrated | run payload carries `demo.fa.stats.tsv`, `versionNumber: 1`, `checksum: 2dee9da7…`; the file is copied to `docs/evidence/pyfastx-skill-e2e/artifact-demo.fa.stats.tsv` |
+
+Artifact contents (verbatim):
+
+```
+fileName	seqType	seqCounts	totalBases	   GC%	avgLen	medianLen	maxLen	minLen	N50	L50
+demo.fa 	    DNA	       10	      2070	51.787	 207.0	    195.0	   300	   120	240	  4
+```
+
+### What this does **not** show
+
+- It is **one** tool and **one** question. It says a Skill can wrap a CLI and be used; it says nothing
+  about how often that happens across a suite.
+- The prompt named the file. Finding the right input is a separate capability, not measured here.
+- `seqkit` was the first choice and could not be installed: `brew install seqkit` stalled at 438 KB on
+  `ghcr.io` (0 B/s), so `pyfastx` — a PyPI wheel — took its place. The Skill shape is the same either
+  way, but the tool was chosen by what the network allowed, not by fit.
+
+### Harness hazard found while doing this
+
+Dev builds resolve their artifact root to `~/PureScience-DEV` (`src/main/storage-root.ts:52`), so a
+sandboxed run still writes artifacts into the developer's real storage. This run did exactly that;
+the artifact was copied into `docs/evidence/pyfastx-skill-e2e/` and the stray session directory
+removed. A benchmark harness that asserts on artifacts must redirect that root, or it will grade
+against leftover state.
