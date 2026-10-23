@@ -75,3 +75,36 @@
 3. **只覆盖 `opencode` 框架**的这条入参通道；`claude-code` 那侧走的是另一条（`ClaudeCodeMcpToolInput`，标题
    必须能解析到已配置服务器），未受影响也未改动。
 4. 不占版本号：无用户可见文案、无窗口读数、无行为变化（等待行为一个字未动）。
+
+## 6 顺手取的读数（本轮同一份日志，改写了下一单元的问题提法）
+
+写这份档时把同一条通道按时间轴又切了一刀，结果推翻了「那 1 秒还在白付」这个默认假设：
+
+| 读数 | 值 |
+|---|---|
+| `wait timed out` 总数 / 首条 / **末条** | 290 / `2026-10-21T16:09:24Z` / **`2026-10-23T05:41:32Z`** |
+| 第一条 `skipping OpenCode input wait` | `2026-10-23T05:41:44Z`（超时末条之后 **12 秒**） |
+| `2026-10-23T05:41:32Z` 之后的超时 | **0** |
+| 同期 `permission request received` | **161**（其中 `isMcp: true` **125**） |
+| 同期 `OpenCode permission input wait outcome` | **2**（`input-present` 0 ms、`resolved` **2 ms**） |
+| 同期 `skipping OpenCode input wait` | **104**（复查会话，`identity-only-decision`） |
+| 同期 `dropped while a wait was pending` / `arrived after the wait gave up` | **0 / 0** |
+
+⇒ 两件事：
+1. **§两百一十八 的跳过修复在真机上生效后，这条通道再没有超时过**（125 次 MCP 请求、0 次超时），
+   所以「1 秒白等」在**当前构建**上是历史读数，不再是现状。唯一一次真正等到入参也只等了 **2 ms**
+   （另一次入参在请求里就有，0 ms 未进入等待）。
+2. **但 125 次 MCP 请求只留下 2 条等待读数**：把这 125 条按 `sessionId` 逐条归位后，缺口是 **18 条**
+   （不是估算的 19，按 `toolCallId` 精确配对），**全部是复查会话**（`0745858e…` 8 条、`01a16855…` 6 条、
+   `01a1686b…` 3 条、`ses_e98b…` 1 条），每条都紧跟一行 `approving scope-bounded reviewer MCP tool call`
+   ⇒ 它们被复查闸门按身份直接放行、从未进入等待，行为是对的，只是**这条路径不落等待读数**。
+   它们的标题形态是 `query_execution_log` / `read_turn` / `submit_findings` 这类**不带服务器前缀**的裸名，
+   而 `restoreToolCall` 的 `isMcpRequest` 用的正是 `isMcpToolName(params.toolCall.title, …)` ⇒ 裸名在这里
+   解析不到，于是**在等待之前就返回**（无任何日志），而闸门侧的 `isMcp` 是另一个判据。
+3. **因此主会话那条路在当前构建上还没有被观测到**：125 次 MCP 请求里 104 条走复查 skip、18 条走上述早返回、
+   2 条有等待读数 ⇒ 主会话 MCP 权限请求在 `05:41:32Z` 之后几乎没发生过（dev 实例这段时间基本只有复查在跑）。
+   「1 秒该不该付」不是已经证明不用付，而是**当前构建上还没有样本**。
+   **下一单元**：把「闸门说 isMcp、入参恢复说标题解析不到」这条分叉变成具名读数（两边的判据各自是什么、
+   谁在什么条件下不同），并把主会话 MCP 请求重新跑出样本；在那之前不改等待预算。
+
+
