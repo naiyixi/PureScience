@@ -1,0 +1,30 @@
+{"source": "docs/evidence/2026-09-17-performance-baseline.md", "message": "Cannot read properties of undefined (reading 'trim')"}
+{"source": "docs/evidence/2026-09-18-guard-other-edit-paths.md", "message": "ReferenceError: selector is not defined"}
+{"source": "docs/evidence/2026-09-18-renderer-performance-baseline.md", "message": "The builtin Specialist registry manifest is invalid."}
+{"source": "docs/evidence/2026-09-22-windows-upgrade-smoke-root-cause.md", "message": "Timed out waiting for installed version 1.68.0."}
+{"source": "docs/evidence/2026-09-22-windows-upgrade-smoke-root-cause.md", "message": "Timed out waiting for installed version 1.67.1."}
+{"source": "docs/evidence/2026-09-22-windows-upgrade-smoke-root-cause.md", "message": "Timed out waiting for installed version 1.65.0."}
+{"source": "docs/evidence/2026-10-15-nightly-lint-red-and-stale-visual-baseline.md", "message": "Process completed with exit code 1."}
+{"source": "docs/evidence/2026-10-02-codex-turn-bridge-measurement.md", "message": "TimeoutError: Timeout 180000ms exceeded"}
+{"source": "docs/evidence/2026-10-02-codex-turn-bridge-measurement.md", "message": "Test timeout of 120000ms exceeded while setting up"}
+{"source": "docs/evidence/2026-10-13-nightly-certification-egress-spec-red.md", "message": "No handler registered for 'storage:get-info'"}
+{"source": "docs/evidence/2026-09-29-literature-screening.md", "message": "Project files page limit must be between 1 and 100."}
+{"source": "docs/evidence/2026-10-20-fetch-source-redirect-honesty.md", "message": "Invalid URL"}
+{"source": "docs/evidence/2026-10-19-review-error-copy.md", "message": "402 Insufficient Balance"}
+{"source": "docs/evidence/2026-10-13-nightly-certification-egress-spec-red.md", "message": "AggregateError: Renderer emitted errors during Electron E2E."}
+{"source": "docs/evidence/2026-10-19-review-transaction-budget.md", "message": "Transaction API error"}
+{"source": "docs/evidence/2026-10-11-egress-failure-families.md", "message": "connect ECONNREFUSED 10.255.255.1:80"}
+{"source": "docs/evidence/2026-10-11-egress-failure-families.md", "message": "the name did not resolve (ENOTFOUND)"}
+{"source": "docs/evidence/2026-10-11-egress-failure-families.md", "message": "the target refused the connection (ECONNREFUSED)"}
+{"source": "docs/evidence/2026-09-18-renderer-performance-baseline.md", "message": "ECONNREFUSED 9333"}
+{"source": "docs/evidence/2026-09-17-unpublished-reason-per-file.md", "message": "createSession: failed"}
+{"source": "docs/evidence/2026-09-18-default-parallelism-timeouts.md", "message": "Test timed out in 15000ms"}
+{"source": "docs/evidence/2026-09-18-default-parallelism-timeouts.md", "message": "Hook timed out in 10000ms"}
+{"source": "docs/evidence/2026-09-23-entry-layer-coverage-audit.md", "message": "No handler registered for 'handoff-lifecycle:list'"}
+{"source": "docs/evidence/2026-10-02-codex-turn-bridge-measurement.md", "message": "Codex Skill selection failed { reason: 'selector-error' | 'catalog-error' }"}
+{"source": "docs/evidence/2026-10-02-q3-codex-turn-path-findings.md", "message": "Codex native executable not found. Re-detect or install Codex in settings."}
+{"source": "docs/evidence/2026-10-04-handoff-retry-resume-point.md", "message": "Specialist handoff failed"}
+{"source": "docs/evidence/2026-10-11-app-mcp-server-name-consistency.md", "message": "tool call failed / No such tool available"}
+{"source": "docs/evidence/2026-10-11-artifact-capability-turn-lifetime.md", "message": "AssertionError: expected 401 to be 200"}
+{"source": "docs/evidence/2026-10-11-egress-failure-families.md", "message": "egress tunnel target failed"}
+{"source": "docs/evidence/2026-10-11-mirror-candidate-identity-probe.md", "message": "Connection timed out after 25006 ms"}
