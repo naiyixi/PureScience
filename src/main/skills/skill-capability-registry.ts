@@ -7,7 +7,7 @@
 // A malformed contract is kept as an error on its entry instead of aborting the scan: one bad skill
 // must not make every other capability invisible.
 
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { extractContract, type CapabilityContract } from '../../shared/capability-contract'
@@ -16,6 +16,8 @@ import {
   preflightCapability,
   type PreflightResult
 } from '../../shared/capability-preflight'
+
+const registryCache = new Map<string, { entries: Map<string, CapabilityRegistryEntry> }>()
 
 // The prefix the app gives every materialized bundled skill directory. Contracts declare the bare id.
 const SKILL_DIR_PREFIX = 'os-'
@@ -50,8 +52,43 @@ export class SkillCapabilityRegistry {
     this.roots = typeof skillsDir === 'string' ? [skillsDir] : skillsDir
   }
 
+  /**
+   * Directory-mtime signature for the scans.
+   *
+   * The registry is read on a hot path (every turn, when the gap notice is on) and its cost was O(files):
+   * 80+ SKILL.md reads per call, measured at ~23 s of extra turn latency. Skills change rarely, so the
+   * signature is what decides whether the scan is worth repeating.
+   */
+  private async signature(): Promise<string> {
+    const parts = await Promise.all(
+      this.roots.map(async (root) => {
+        try {
+          const stats = await stat(root)
+          return `${root}:${stats.mtimeMs}`
+        } catch {
+          return `${root}:-`
+        }
+      })
+    )
+    return parts.join('|')
+  }
+
   /** Scans every skills root. Idempotent: a second call replaces, never appends. */
   async load(): Promise<CapabilityRegistryEntry[]> {
+    // Cached in production, never in tests: a test writes a SKILL.md and expects the next load to see
+    // it, sometimes inside the same millisecond.
+    const cacheable = !process.env.VITEST
+    const signature = cacheable ? await this.signature() : ''
+    if (cacheable) {
+      const cached = registryCache.get(signature)
+      if (cached) {
+        this.entries.clear()
+        for (const [id, entry] of cached.entries) this.entries.set(id, entry)
+        this.producers = cacheable ? indexProducers(this.declared()) : this.producers
+        return this.list()
+      }
+    }
+
     const next = new Map<string, CapabilityRegistryEntry>()
 
     for (const root of this.roots) {
@@ -98,6 +135,12 @@ export class SkillCapabilityRegistry {
     this.entries.clear()
     for (const [id, entry] of next) this.entries.set(id, entry)
     this.producers = indexProducers(this.declared())
+    if (cacheable) {
+      registryCache.set(signature, { entries: new Map(this.entries) })
+      // Bounded: the signature space is small (one per install layout), but a test-like loop of temp
+      // roots must not grow this without limit.
+      if (registryCache.size > 8) registryCache.delete([...registryCache.keys()][0] as string)
+    }
     return this.list()
   }
 

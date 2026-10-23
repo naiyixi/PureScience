@@ -1,8 +1,16 @@
 #!/bin/bash
 # Per-turn cost probe: same app, same machine, notice OFF vs ON.
 # Only the capability-gap notice differs, so the delta is attributable to it.
-set -u
+# Job control ON: each app launch becomes its own process group, so the whole tree (main + renderer +
+# GPU + utility helpers) can be killed as one. Without this, `kill -9 $app` leaves orphan helpers behind
+# and the *next* run measures a machine that the previous run is still loading — which is exactly how a
+# first version of this probe reported a fabricated 3x regression at load 138.
+set -m -u
 cd ~/purescience || exit 1
+
+# Leftovers from an interrupted earlier run are not part of this measurement.
+pkill -9 -f '/tmp/ps-lat-' 2>/dev/null
+sleep 1
 PROJECT=cmvgyik9y0002wf625wgx5do6
 OUT=docs/bench-runs
 
@@ -34,7 +42,7 @@ probe() {
     [ -n "$tok" ] && break
     sleep 1
   done
-  [ -z "$tok" ] && { echo "{\"probe\":\"$label\",\"error\":\"no_token\"}"; kill -9 $app 2>/dev/null; return 1; }
+  [ -z "$tok" ] && { echo "{\"probe\":\"$label\",\"error\":\"no_token\"}"; kill -9 -- -$app 2>/dev/null; return 1; }
 
   for i in $(seq 1 60); do
     code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 -H "authorization: Bearer $tok" "http://127.0.0.1:$port/api/v1/projects")
@@ -74,7 +82,9 @@ except Exception: print('?')
   notices=$(grep -c 'capability gaps notice' "$root/run.log" 2>/dev/null || true)
   notices=${notices:-0}
   echo "{\"probe\":\"$label\",\"notice\":\"$notice\",\"readyMs\":$readyMs,\"turnMs\":[$(IFS=,; echo "${times[*]}")],\"notices\":$notices,\"loadAvg\":\"$(sysctl -n vm.loadavg | tr -d '{}')\"}"
-  kill -9 $app 2>/dev/null
+  # The whole group, not just the parent: orphaned helpers were the reason readings drifted upward.
+  kill -9 -- -$app 2>/dev/null
+  pkill -9 -f "$root/electron-userdata" 2>/dev/null
   chmod -R u+w "$root" 2>/dev/null
 }
 

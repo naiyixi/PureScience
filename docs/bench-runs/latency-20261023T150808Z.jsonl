@@ -1,0 +1,2 @@
+{"probe":"notice-off","notice":"off","readyMs":4413,"turnMs":[18307,12961,12443],"notices":0,"loadAvg":" 25.68 34.64 38.28 "}
+{"probe":"notice-on","notice":"on","readyMs":4464,"turnMs":[18847,9407,10669],"notices":3,"loadAvg":" 24.18 32.66 37.32 "}

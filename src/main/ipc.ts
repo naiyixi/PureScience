@@ -2223,13 +2223,29 @@ const createApplicationModules = async (
 
   // One loader for both consumers of session facts: the `capability_preflight` tool and the per-turn
   // gap notice. Two copies here would let the prompt and the tool tell different stories.
+  // Which project a session lives in, remembered after the first lookup. Without this the hot path was
+  // O(projects) session reads per turn (measure: it helped turn a 13 s turn into 37 s together with the
+  // uncached skill scan); with it, a repeat turn is one read. A stale entry simply misses and falls back
+  // to the full scan.
+  const sessionProjectMemo = new Map<string, string>()
+
   const loadCapabilityFacts = async (sessionId: string): Promise<SessionFactSources | null> => {
     let session: PersistedChatSession | null = null
-    for (const project of await projectRepository.list()) {
-      const found = readSessionRecord(await sessionRepository.loadSession(project.id, sessionId))
-      if (found) {
-        session = found
-        break
+    const known = sessionProjectMemo.get(sessionId)
+    if (known) {
+      session = readSessionRecord(await sessionRepository.loadSession(known, sessionId))
+    }
+    if (!session) {
+      for (const project of await projectRepository.list()) {
+        const found = readSessionRecord(await sessionRepository.loadSession(project.id, sessionId))
+        if (found) {
+          session = found
+          sessionProjectMemo.set(sessionId, project.id)
+          if (sessionProjectMemo.size > 500) {
+            sessionProjectMemo.delete([...sessionProjectMemo.keys()][0] as string)
+          }
+          break
+        }
       }
     }
     if (!session) return null
