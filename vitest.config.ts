@@ -104,6 +104,8 @@ const DATABASE_TEST_GLOBS = [
   'src/main/notifications/unread-task-repository.test.ts',
   'src/main/notifications/task-notification-runtime.test.ts',
   'src/main/notifications/notification-inbox-clear.test.ts',
+  // Opens a real temp project database to prove the two write gates do not fire on a healthy session.
+  'src/main/notifications/notification-inbox-record-gate.test.ts',
   'src/main/session-persistence/deletion-integration.test.ts',
   'src/main/session-persistence/coordinator.test.ts',
   'src/main/session-persistence/artifact-finalization-recovery.integration.test.ts'
