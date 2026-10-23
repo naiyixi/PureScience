@@ -2622,30 +2622,44 @@ const createApplicationModules = async (
         conversationSkillImporter.authorizeReferencedUploads(projectId, sessionId, paths),
       settingsService,
       // Per-turn capability gaps: the same reading the `capability_preflight` tool gives, prepended to the
-      // turn's content. Measured: with the tool mounted, a real run called it zero times — so the gaps
-      // are delivered instead of offered.
-      capabilityGaps: async (sessionId) => {
-        const { block, sessionFound } = await renderSessionCapabilityGaps({
-          configRoot: resolveConfigRoot(),
-          sessionId,
-          deps: { loadFacts: loadCapabilityFacts }
-        })
-        // Counts only — the block names the user's own inputs, so it never goes into a log line. This
-        // exists so "the gaps were injected" is observable at runtime instead of only assertable in a
-        // unit test: the provider content is not part of the transcript.
-        recordCapabilityNotice(sessionId, {
-          injected: block !== null,
-          lines: block ? block.split('\n').filter((line) => line.startsWith('- ')).length : 0
-        })
-        capabilityGapsLog.info('capability gaps notice', {
-          sessionId,
-          sessionFound,
-          injected: block !== null,
-          lines: block ? block.split('\n').filter((line) => line.startsWith('- ')).length : 0,
-          chars: block?.length ?? 0
-        })
-        return block
-      },
+      // turn's content.
+      //
+      // OFF BY DEFAULT, for two measured reasons: (a) the notice changed nothing — 10 runs, 0 skill
+      // files opened, no score difference; (b) it made every turn pay for a four-directory skill scan
+      // plus a walk over every project's sessions, which is exactly the main-process work that starves
+      // the MCP children a new session is waiting on. `PURESCIENCE_CAPABILITY_NOTICE=on` restores it.
+      ...(process.env.PURESCIENCE_CAPABILITY_NOTICE === 'on'
+        ? {
+            capabilityGaps: async (sessionId: string) => {
+              try {
+                const { block, sessionFound } = await renderSessionCapabilityGaps({
+                  configRoot: resolveConfigRoot(),
+                  sessionId,
+                  deps: { loadFacts: loadCapabilityFacts }
+                })
+                // Counts only — the block names the user's own inputs, so it never goes into a log line.
+                // This exists so "the gaps were injected" is observable at runtime, not only assertable
+                // in a unit test: the provider content is not part of the transcript.
+                const lines = block
+                  ? block.split('\n').filter((line) => line.startsWith('- ')).length
+                  : 0
+                recordCapabilityNotice(sessionId, { injected: block !== null, lines })
+                capabilityGapsLog.info('capability gaps notice', {
+                  sessionId,
+                  sessionFound,
+                  injected: block !== null,
+                  lines,
+                  chars: block?.length ?? 0
+                })
+                return block
+              } catch (error) {
+                // A notice is advisory; it must never be able to fail a turn.
+                capabilityGapsLog.warn('capability gaps notice skipped', errorLogFields(error))
+                return null
+              }
+            }
+          }
+        : {}),
       // The hard gate: only capabilities the user explicitly picked, and only those whose contract
       // declares a missing_state policy. Everything else passes, so a skill author opts in and nothing
       // outside the contracts can be blocked by surprise.

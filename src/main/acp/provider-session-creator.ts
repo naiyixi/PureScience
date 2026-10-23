@@ -24,6 +24,33 @@ import type {
 
 const log = createLogger('acp')
 
+/**
+ * What a session-start failure actually was.
+ *
+ * The agent's own answer is a bare `RequestError: Internal error`, which tells a reader nothing and
+ * sends them looking for a bug that is usually a machine under load: the agent starts its MCP servers
+ * inside `session/new` and refuses the session when they miss their readiness budget. Naming that
+ * possibility, while keeping the original message, is the difference between "the app is broken" and
+ * "this machine was busy — retry".
+ */
+const sessionStartFailure = (error: unknown): Error => {
+  // Name and code only: the agent's message can embed provider material, and this string reaches the
+  // window. "RequestError -32603" is enough to identify it; the runtime log has the rest.
+  const record = (error ?? {}) as { name?: unknown; code?: unknown }
+  const name = typeof record.name === 'string' ? record.name : 'Error'
+  const code = typeof record.code === 'number' ? ` ${record.code}` : ''
+  const failure = new Error(
+    `The agent could not create a session (${name}${code}). Its MCP servers have a bounded readiness ` +
+      'budget at startup, so a heavily loaded machine can miss it — this was retried once already. ' +
+      'Retry when the machine is idle; if it keeps failing, attach Diagnostics → runtime log.'
+  )
+  // Keep the identity the error classifier keys on, so a wrapped failure is still categorised as the
+  // thing that failed (a JSON-RPC request error stays `request`, not a generic `error`).
+  failure.name = name
+  if (typeof record.code === 'number') (failure as Error & { code?: number }).code = record.code
+  return failure
+}
+
 type CreationEvent = Omit<AcpRuntimeEvent, 'id' | 'timestamp'>
 
 type AcpProviderSessionCreatorDependencies = Readonly<{
@@ -105,9 +132,34 @@ export class AcpProviderSessionCreator {
         specialistSkills: specialist.skills
       })
       log.info('createSession: buildSession', this.deps.diagnosticContext())
-      const session = await connection.agent
-        .buildSession({ cwd, mcpServers: capability.mcpServers, ...setup.metaArg })
-        .start()
+      // The agent starts its 14 MCP servers inside this call and refuses the session if they are not
+      // ready in time, answering with a bare `Internal error` that names nothing. On a loaded machine
+      // that budget is routinely missed (measured: load 20, the app's own watchdog reporting
+      // `process-not-scheduled` with a 0.006 CPU share), so one retry is worth it — by then the servers
+      // are usually up. A second failure is reported as what it is instead of "Internal error".
+      // Captured as a const: `capability` is a `let`, so its narrowing at this line does not survive
+      // into the arrow function below.
+      const sessionMcpServers = capability.mcpServers
+      const startSession = (): Promise<ActiveSession> =>
+        connection.agent
+          .buildSession({ cwd, mcpServers: sessionMcpServers, ...setup.metaArg })
+          .start()
+      let session: ActiveSession
+      try {
+        session = await startSession()
+      } catch {
+        // No error payload here on purpose: an ACP failure can carry provider material in its `data`,
+        // and a retry line is not worth leaking credentials into a log file for.
+        log.warn(
+          'createSession: first attempt failed, retrying once',
+          this.deps.diagnosticContext()
+        )
+        try {
+          session = await startSession()
+        } catch (retryError) {
+          throw sessionStartFailure(retryError)
+        }
+      }
       provisionalSession = session
 
       const reserved = this.deps.reserveIdentity(session.sessionId, startupGeneration)
