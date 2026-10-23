@@ -114,6 +114,14 @@ const residueIdentity = (v: unknown): Record<string, unknown> => {
 export const STRUCTURES_PDBE_TOOLS: ToolDescriptor[] = [
   {
     id: 'pdbe_entry_summary',
+    contract: {
+      id: 'pdbe_entry_summary',
+      aliases: ['PDB 条目摘要', '结构条目元数据'],
+      requires: [],
+      produces: ['data:structure_file'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'structures-pdbe',
     description:
       "The entry-level record for one PDB entry, as EMBL-EBI's PDBe holds it: title, experimental method and its class, deposition/release/revision dates, the processing and deposition sites, the authors, the entity counts, and the assemblies. Use it to state what an entry is and where its coordinates came from. Args: pdb_id (four characters, first a digit, e.g. 1cbs). Returns {source, pdb_id, title, experimental_method[], experimental_method_class[], processing_site, deposition_site, deposition_date, release_date, revision_date, entry_authors[], number_of_entities, assemblies[{assembly_id, name, form, preferred}]} or a named error (invalid-id / not-found / unexpected-shape / source-unreadable). Dates are the service's own YYYYMMDD strings, not reformatted here; number_of_entities is passed through as the service writes it (water / polypeptide / ligand / ...), and processing_site and deposition_site are returned as the service holds them and do differ - they are not one field under two names. Requires network access to www.ebi.ac.uk.",

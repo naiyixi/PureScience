@@ -39,7 +39,14 @@ export class SkillCapabilityRegistry {
    * user-installed skills live in `<configRoot>/skills`. Reading only one of those reported "no
    * declared capabilities" on a real install even though 89 skills were installed.
    */
-  constructor(skillsDir: string | readonly string[]) {
+  constructor(
+    skillsDir: string | readonly string[],
+    /**
+     * Contracts declared by something other than a SKILL.md — today, connector tools. A supplier
+     * function (not a value) so the descriptor registry is only walked when someone actually asks.
+     */
+    private readonly extraContracts?: () => readonly CapabilityContract[]
+  ) {
     this.roots = typeof skillsDir === 'string' ? [skillsDir] : skillsDir
   }
 
@@ -79,6 +86,13 @@ export class SkillCapabilityRegistry {
         if (existing?.contract && !parsed.contract) continue
         next.set(key, { id: key, contract: parsed.contract, errors: parsed.errors })
       }
+    }
+
+    // Connector-declared contracts join the same table. A skill of the same id wins, because a skill's
+    // own SKILL.md is the more specific statement about that capability.
+    for (const contract of this.extraContracts?.() ?? []) {
+      if (next.get(contract.id)?.contract) continue
+      next.set(contract.id, { id: contract.id, contract, errors: [] })
     }
 
     this.entries.clear()

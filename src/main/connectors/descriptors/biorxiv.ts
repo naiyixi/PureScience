@@ -419,6 +419,14 @@ export const BIORXIV_TOOLS: ToolDescriptor[] = [
   },
   {
     id: 'search_preprints',
+    contract: {
+      id: 'search_preprints',
+      aliases: ['预印本检索', 'bioRxiv 检索', 'medRxiv 检索'],
+      requires: [],
+      produces: ['evidence:literature_set'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'biorxiv',
     description:
       'Search bioRxiv/medRxiv preprints by date and (optionally) category. Use exactly ONE search method: date_from+date_to, recent_days (last N days), or recent_count (N most recent within a 90-day window); with none, the last 60 days. There is NO keyword/text search. cursor paginates. Returns DOI, title, authors, date, category, version, and a 200-char abstract preview.',
@@ -466,6 +474,14 @@ export const BIORXIV_TOOLS: ToolDescriptor[] = [
   },
   {
     id: 'get_preprint',
+    contract: {
+      id: 'get_preprint',
+      aliases: ['预印本详情', '按 DOI 取预印本'],
+      requires: [],
+      produces: ['evidence:verified_reference'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'biorxiv',
     description:
       'Get complete metadata for one preprint by DOI (bare "10.1101/..." or a full https://doi.org/ URL). Uses the latest version. Returns title, authors, corresponding author + institution, full abstract, category, license, version, JATS XML, funding, published journal DOI (if linked), PDF and web URLs, and version count. Preprints are NOT peer-reviewed.',

@@ -102,6 +102,38 @@ describe('SkillCapabilityRegistry', () => {
     expect(registry.get('alpha-skill')?.contract).not.toBeNull()
   })
 
+  it('mixes in contracts declared outside SKILL.md, and a skill of the same id wins', async () => {
+    // Connector tools declare contracts too; leaving them out meant a missing fact could never name the
+    // tool that produces it.
+    await writeSkill('alpha-skill', declared)
+    const registry = new SkillCapabilityRegistry(dir, () => [
+      {
+        id: 'search_preprints',
+        aliases: [],
+        requires: [],
+        produces: ['evidence:literature_set'],
+        prerequisites: [],
+        failurePolicy: {}
+      },
+      {
+        id: 'alpha-skill',
+        aliases: [],
+        requires: [],
+        produces: ['data:other'],
+        prerequisites: [],
+        failurePolicy: {}
+      }
+    ])
+    await registry.load()
+
+    expect(registry.declared().map((contract) => contract.id)).toEqual([
+      'alpha-skill',
+      'search_preprints'
+    ])
+    // The skill's own document is the more specific statement about that capability.
+    expect(registry.get('alpha-skill')?.contract?.produces).toEqual(['data:summary'])
+  })
+
   it('preflights a capability against held facts and refuses an unknown id', async () => {
     await writeSkill('alpha-skill', declared)
     const registry = new SkillCapabilityRegistry(dir)

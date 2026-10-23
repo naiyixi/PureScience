@@ -51,7 +51,11 @@ afterEach(async () => {
 describe('buildCapabilitiesPayload', () => {
   it('reports declared, undeclared and problems without any session', async () => {
     const payload = await buildCapabilitiesPayload({ configRoot })
-    expect(payload.declared.map((entry) => entry.id)).toEqual(['checks-figure', 'reads-matrix'])
+    // Connector-declared contracts share the payload: they are where most facts are established, and
+    // this is the one place a caller can see the whole vocabulary at once.
+    expect(payload.declared.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['checks-figure', 'reads-matrix', 'search_preprints'])
+    )
     expect(payload.declared.find((entry) => entry.id === 'reads-matrix')?.requires).toEqual([
       'input:omics_file'
     ])

@@ -10,6 +10,7 @@ import { evaluateCapabilityGate, type CapabilityGateRefusal } from '../../shared
 import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PreflightResult } from '../../shared/capability-preflight'
+import { allConnectorContracts } from '../connectors/registry'
 import { SkillCapabilityRegistry } from '../skills/skill-capability-registry'
 import { skillCapabilityRoots } from './skill-roots'
 
@@ -59,7 +60,10 @@ export const renderSessionCapabilityGaps = async (input: {
   sessionId: string
   deps: PreflightDeps
 }): Promise<{ block: string | null; sessionFound: boolean }> => {
-  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
+  const registry = new SkillCapabilityRegistry(
+    skillCapabilityRoots(input.configRoot),
+    allConnectorContracts
+  )
   await registry.load()
   const sources = await input.deps.loadFacts(input.sessionId)
   // "No facts" and "no such session" are different answers, and conflating them hid a real miss once:
@@ -104,7 +108,10 @@ export const gateSessionCapabilities = async (input: {
   const referenced = input.referenced.filter((id) => typeof id === 'string' && id.trim().length > 0)
   if (referenced.length === 0) return null
 
-  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
+  const registry = new SkillCapabilityRegistry(
+    skillCapabilityRoots(input.configRoot),
+    allConnectorContracts
+  )
   await registry.load()
   const sources = await input.deps.loadFacts(input.sessionId)
   if (!sources) return null
@@ -137,7 +144,10 @@ export const buildCapabilityPreflight = async (input: {
   capability: string
   deps: PreflightDeps
 }): Promise<CapabilityPreflightPayload | null> => {
-  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
+  const registry = new SkillCapabilityRegistry(
+    skillCapabilityRoots(input.configRoot),
+    allConnectorContracts
+  )
   await registry.load()
 
   const declared: CapabilityContract[] = registry.declared()

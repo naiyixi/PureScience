@@ -33,6 +33,7 @@ import { STRUCTURES_PDBE_TOOLS } from './descriptors/structures-pdbe'
 import { VARIANTS_TOOLS } from './descriptors/variants'
 import { ZINC_TOOLS } from './descriptors/zinc'
 import { ZH_MEDICAL_TERMS_TOOLS } from './descriptors/zh-medical-terms'
+import type { CapabilityContract } from '../../shared/capability-contract'
 import type { ToolDescriptor } from './types'
 
 const ALL_TOOLS: ToolDescriptor[] = [
@@ -74,6 +75,15 @@ const ALL_TOOLS: ToolDescriptor[] = [
 ]
 
 export const ALL_CONNECTOR_IDS = [...new Set(ALL_TOOLS.map((t) => t.connector))]
+
+/**
+ * Connector-declared contracts, for the capability registry. Connector tools are where most facts are
+ * actually established, so without these the preflight could name a missing `evidence:literature_set`
+ * and no producer even though two tools can make one.
+ */
+export function allConnectorContracts(): CapabilityContract[] {
+  return ALL_TOOLS.flatMap((tool) => (tool.contract ? [tool.contract] : []))
+}
 
 export function getConnectorTools(connector: string): ToolDescriptor[] {
   return ALL_TOOLS.filter((t) => t.connector === connector)

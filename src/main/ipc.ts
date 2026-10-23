@@ -2649,13 +2649,27 @@ const createApplicationModules = async (
       // The hard gate: only capabilities the user explicitly picked, and only those whose contract
       // declares a missing_state policy. Everything else passes, so a skill author opts in and nothing
       // outside the contracts can be blocked by surprise.
-      capabilityGate: ({ sessionId, referenced }) =>
-        gateSessionCapabilities({
-          configRoot: resolveConfigRoot(),
-          sessionId,
-          referenced,
-          deps: { loadFacts: loadCapabilityFacts }
-        }),
+      //
+      // OFF BY DEFAULT, on purpose: this version's approved scope is "缺口只提示，不阻断"。The gate is
+      // verified working (three live refusals) but it changes user-visible behaviour, so it ships behind
+      // an explicit switch and gets productised — a setting, an error copy, a changelog line — later.
+      ...(process.env.PURESCIENCE_CAPABILITY_GATE === 'on'
+        ? {
+            capabilityGate: ({
+              sessionId,
+              referenced
+            }: {
+              sessionId: string
+              referenced: readonly string[]
+            }) =>
+              gateSessionCapabilities({
+                configRoot: resolveConfigRoot(),
+                sessionId,
+                referenced,
+                deps: { loadFacts: loadCapabilityFacts }
+              })
+          }
+        : {}),
       // Function-level model slots: a narrow call asks what model to use and reports what it did, so the
       // settings row and the trail are the same facts stated twice rather than two separate stories.
       functionModels: {

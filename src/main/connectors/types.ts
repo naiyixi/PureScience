@@ -1,3 +1,5 @@
+import type { CapabilityContract } from '../../shared/capability-contract'
+
 export type ConnectorCredentials = { ncbiEmail?: string; ncbiApiKey?: string }
 
 export type ToolContext = {
@@ -27,6 +29,12 @@ export type ToolContext = {
 // One connector tool = a request-mapper (url) + response-parser (parse), or a run() escape hatch.
 export type ToolDescriptor = {
   id: string
+  /**
+   * What this tool needs and establishes, in the same vocabulary skills use. Connector tools are where
+   * most facts come from, so leaving them uncontracted meant the preflight could see a missing
+   * `evidence:literature_set` and name no producer even though `search_preprints` can make one.
+   */
+  contract?: CapabilityContract
   connector: string
   description: string
   input: Record<string, unknown> // JSON Schema for the tool args (also used by docs)
