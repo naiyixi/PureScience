@@ -25,6 +25,29 @@ const readInbox = async (page: import('@playwright/test').Page): Promise<InboxSn
     return bridge.api.notifications.getSnapshot()
   })) as InboxSnapshot
 
+// Both notices are written asynchronously by the main process, off the agent event path, so this reading
+// waits for the row it needs instead of sampling the inbox once. Measured 2026-10-22 on two consecutive
+// P0 runs: the seed step had run both prompts and the permission request was in the app log, yet a single
+// read found only `task.completed`. Waiting does not lower the requirement below — the assertion still
+// demands two notices — it only takes the sampling instants out of the instrument, so a failure here means
+// "the row was never written" (the app log then names why) rather than "the read was early".
+const waitForNotices = async (
+  page: import('@playwright/test').Page,
+  minimum: number,
+  timeoutMs: number
+): Promise<InboxSnapshot> => {
+  const startedAt = Date.now()
+  let snapshot = await readInbox(page)
+  while (snapshot.items.length < minimum && Date.now() - startedAt < timeoutMs) {
+    await page.waitForTimeout(250)
+    snapshot = await readInbox(page)
+  }
+  console.log(
+    `[notifclear] inbox after ${Date.now() - startedAt} ms of waiting: unread=${snapshot.unreadCount}; items=${JSON.stringify(snapshot.items.map((item) => ({ id: item.id, kind: item.kind })))}`
+  )
+  return snapshot
+}
+
 test('deletes one notice, clears them all, and cancelling changes nothing', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
@@ -35,10 +58,7 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
   // the REQUEST itself (`runtime-composition.ts` creates `authorization.required` keyed by session+request).
   await sendPrompt(page, 'Request fixture permission.', 'Fixture permission')
 
-  const seeded = await readInbox(page)
-  console.log(
-    `[notifclear] seeded: unread=${seeded.unreadCount}; items=${JSON.stringify(seeded.items.map((item) => ({ id: item.id, kind: item.kind })))}`
-  )
+  const seeded = await waitForNotices(page, 2, 30_000)
   // A spec that proceeds without the fixture it needs reports success for work it never did.
   expect(
     seeded.items.length,

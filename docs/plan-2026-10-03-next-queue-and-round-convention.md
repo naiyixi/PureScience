@@ -11110,3 +11110,63 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 ① 按完整 40 位 SHA 读本笔双车道（`cancelled` 不算绿）；② 下一单元候选：上面 §四 3 的「被拒后收场」、
 `OpenCode permission context wait` 那 184 条 1 秒纯延迟（复查每调一次工具就付一次）、或 P0-3 的分步真机读数
 （**仍卡内存闸门**）；③ 动手前 `git log --oneline origin/main -3` 核会话没在同时做同一件事。
+
+## 两百一十七、本轮追加（执行器，2026-10-23 07:1x–08:xx）—— 主线的认证车道红在「收件箱少一条通知」：先把仪器修到能分开三种同形
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = HEAD = 94e8d5d0`；工作区里只有**上一轮我自己的 4 个路径**（复查推理步骤那一笔，未提交）⇒
+  先把那一笔补提交推送（`b383ad28`），再做本单元。桌面会话线（`scripts/bench/**`、`src/main/capabilities/**`）与
+  本单元目录不相交。
+- 队列档「已完成（别再重做）」清单与本单元无交集（没有「收件箱写入闸门具名化」这一条）。
+- 在飞车道（现取）：0 条 —— 上一笔推送不取消任何人的判决。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/notifications/notification-inbox-controller.ts` | `recordNow` 的三处丢弃点各自具名：会话已删除（`info`）、会话不可解析（`warn`，带 `kind`/`sessionId`）、记录过程中被删（`info`）。此前全是裸 `return` |
+| `src/main/notifications/notification-inbox-record-gate.test.ts`（新） | 3 条：两道闸各一条 + 两闸都不适用时落盘且不打丢弃行（并断言 pending 授权不被标已读） |
+| `e2e/certification/notification-inbox-clear.spec.ts` | 播种读改有界等待（`waitForNotices(page, 2, 30_000)`，250 ms 采样），读数带等待耗时与条目；断言仍是「≥2 条」 |
+
+证据档 `docs/evidence/2026-10-23-notification-inbox-missing-authorization-notice.md`。
+
+### 二 读数（打包态 CI 工件里的真机日志，只读）
+
+- 主线 Nightly 连续两笔红：`4b94b069`（17:12Z，**1 failed / 3 flaky / 99 passed**）、`919796af`（19:31Z，
+  **1 failed / 10 flaky / 95 passed**）。**failed 都是同一支**：`notification-inbox-clear.spec.ts:28`。
+- 车道级「红」的判词要读作业级：失败步骤是 `Enforce platform certification`，它拒收的原因是
+  `p0 ended with failure`；而第 14 步 `Run P0 Electron certification` 在 API 里显示 `success`（`continue-on-error: true`
+  把步骤结论改写成了 success，`steps.p0.outcome` 才是 failure）。打包本身是成功的。
+- 应用日志（重试那次启动）：两轮 prompt 都跑了（44 / 27 字符），`[acp] permission request received`
+  `toolCallId: 'e2e-permission-tool'` 真的到了应用侧；随后直接退出，**没有** `inbox record failed`，
+  也**没有**任何收件箱写入的行 —— 因为写入路径上有三个静默出口。
+- 四次读数完全一致：`unread=1; items=[{"kind":"task.completed"}]`。
+- 两次红之间的三笔提交（`5f317a05` / `8e279804` / `4b94b069`）只碰能力注册表、preflight 的根、Web 能力路由与文档
+  ⇒ **没有代码级解释**；但连续两次红，不能只当抖动记档。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+|---|---|
+| 新增用例 | 1 file / **3 passed** |
+| `src/main/notifications` | **11 files / 167 passed**，exit 0 |
+| 变异（两道闸退回裸 `return`） | **2 条红**，第 3 条仍绿 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（3 文件） | **0 errors**；4 条 warning 全是 prettier 对既有行的意见 |
+| `prettier --check` | 新增两文件过；spec 的漂移在 `HEAD` 上就有（`git show HEAD:… \| prettier --check --stdin-filepath` 同样报） |
+
+### 四 边界与具名未办
+
+1. **原因未定**：三种可能（自动裁决没走写入 / 被闸门丢弃 / 读得太早）在旧日志里同形。本单元只保证下一次能分开：
+   有丢弃行 ⇒ 第 2 条；无丢弃行且 30 秒后仍一条 ⇒ 第 1 条（那时才查 `resolveAutomaticPermission` 的例外表）。
+2. **没有本机窗口读数**：内存闸门未解（空闲页 ~63 MB、swap 15.3 G / 16.4 G）。证据是 CI 打包态工件里的真机日志。
+3. **`execute` 那 7 条复查作废**仍是设计（上一轮 §两百一十六 已具名），未动。
+4. **下一单元候选**：① 若下一次 P0 仍红，按上面第 1 条分流；② 184 条「OpenCode 权限上下文等 1 秒」的纯延迟
+   （复查每调一次工具就付一次）；③ P0-3 的分步真机读数（仍卡内存闸门）。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本次推送的双车道，**特别读 P0 的 `notification-inbox-clear`**：
+   应用日志里出现具名丢弃行 ⇒ 按 §四 1 的第 2 条修；没有丢弃行且读数带「after 30xxx ms of waiting」⇒ 转第 1 条；
+② 若双绿，下一个单元从 §四 4 的 ② 取数（纯 main 侧、可离线判）。

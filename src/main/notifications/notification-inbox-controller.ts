@@ -8,11 +8,16 @@ import type {
   NotificationSource,
   UnreadTaskViewState
 } from '../../shared/notifications'
+import { createLogger } from '../logger'
 import type {
   NotificationInboxDbRepository,
   NotificationRecordInput,
   NotificationRepositoryState
 } from './notification-inbox-repository'
+
+// Why a notice was not written is diagnosable only from here: the record path is fire-and-forget, so a
+// dropped row leaves no caller to report to.
+const log = createLogger('notifications')
 
 type NotificationInboxRecord = Omit<NotificationRecordInput, 'id' | 'readAt'>
 
@@ -167,15 +172,37 @@ export const createNotificationInboxController = (
 
   const recordNow = async (input: NotificationInboxRecord): Promise<void> => {
     const sessionId = input.sessionId?.trim() || undefined
-    if (sessionId && deletedSessionIds.has(sessionId)) return
-    if (sessionId && isSessionAvailable && !(await isSessionAvailable(sessionId))) return
+    // A notice can only be dropped on purpose, and both places below used to drop it silently. The
+    // caller is fire-and-forget (`runtime-composition.ts` records on the agent event path), so a
+    // rejected row has no way back to anyone: measured 2026-10-22 on two consecutive P0 runs, the inbox
+    // held the `task.completed` row but no `authorization.required` row for a turn whose permission
+    // request the app had logged as received — and the log could not say whether the row was never
+    // written, written for a session the app no longer knew, or written after the reading happened.
+    // Name the reason so the next such reading answers that instead of reproducing it.
+    if (sessionId && deletedSessionIds.has(sessionId)) {
+      log.info('notification dropped: its session was deleted', { kind: input.kind, sessionId })
+      return
+    }
+    if (sessionId && isSessionAvailable && !(await isSessionAvailable(sessionId))) {
+      log.warn('notification dropped: its session is not available', {
+        kind: input.kind,
+        sessionId
+      })
+      return
+    }
 
     let readAt: number | undefined
     if (sessionId && isTaskOutcome(input.kind) && isAppFocused()) {
       const visible = await confirmVisibleSession(sessionId)
       if (isAppFocused() && visible) readAt = now()
     }
-    if (sessionId && deletedSessionIds.has(sessionId)) return
+    if (sessionId && deletedSessionIds.has(sessionId)) {
+      log.info('notification dropped: its session was deleted while it was being recorded', {
+        kind: input.kind,
+        sessionId
+      })
+      return
+    }
 
     await mutate(() =>
       dependencies.repository.record({
