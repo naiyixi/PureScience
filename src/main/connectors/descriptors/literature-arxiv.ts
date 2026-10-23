@@ -265,6 +265,14 @@ export const searchArxiv = async (
 export const ARXIV_LITERATURE_TOOLS: ToolDescriptor[] = [
   {
     id: 'arxiv_search',
+    contract: {
+      id: 'arxiv_search',
+      aliases: ['arXiv 检索', '预印本检索', '按主题找论文'],
+      requires: [],
+      produces: ['evidence:literature_set'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'literature',
     description:
       "Search arXiv preprints (physics, math, CS, stats, q-bio, ...) via the official Atom API. Args: query (arXiv query string; plain terms search all fields, field prefixes ti:/au:/abs: and booleans AND/OR/ANDNOT work; optional if category or a date range is set), category (arXiv code AND-ed in, e.g. q-bio.GN, cs.LG, stat.ML), date_from / date_to (submission date YYYY-MM-DD, inclusive), start (0-based paging offset; the API paces ~3s between requests — page politely), max_results (default 25, max 100 per call), sort_by (relevance default / submittedDate / lastUpdatedDate), sort_order (descending default / ascending). Returns {search_query (the exact query sent), api_total (arXiv's total match count), start_index, n_records_returned, records_truncated, sort_by, sort_order, records}; each record {arxiv_id, version, id_versioned, title, abstract, authors, published, updated, primary_category, categories, doi, journal_ref, comment, abs_url, pdf_url}. doi/journal_ref appear only after journal publication. Malformed queries raise an error (arXiv's HTTP-200 error feed is detected, never returned as data). A Chinese `query` is rewritten IN PLACE through the app’s Chinese term table before it is sent (the rewrite comes back in `zh_terms`; field prefixes and operators stay exactly as typed), and Chinese the table cannot map is refused by name with nothing sent — arXiv indexes Latin text, so a Chinese query returns zero matches whether or not the work exists (`all:阿司匹林` → 0 vs `all:aspirin` → 42, measured through this connector).",

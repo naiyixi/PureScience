@@ -85,6 +85,27 @@ describe('buildCapabilityPreflight', () => {
     expect(payload?.suggested).toEqual(expect.arrayContaining(['makes-summary', 'needs-matrix']))
   })
 
+  it('names a connector tool as the producer of a fact no skill can make', async () => {
+    // Regression for a real hole: `evidence-grading` requires an existing literature set, and every
+    // skill in the install only consumed one — so the preflight said "nothing here can produce it"
+    // while three literature connectors could. The producer index has to include connector contracts,
+    // not just SKILL.md ones.
+    await writeSkill(
+      'grades-evidence',
+      '{"id":"grades-evidence","requires":["evidence:literature_set"],"produces":["review:grade"]}'
+    )
+    const payload = await buildCapabilityPreflight({
+      configRoot,
+      sessionId: 's1',
+      capability: 'grades-evidence',
+      deps: deps({ attachments: [], artifacts: [], referencedCapabilities: [] })
+    })
+    expect(payload?.status).toBe('missing_state')
+    expect(payload?.suggested).toEqual(
+      expect.arrayContaining(['search_articles', 'arxiv_search', 'openalex_search_works'])
+    )
+  })
+
   it('names a capability that is not installed at all', async () => {
     const payload = await buildCapabilityPreflight({
       configRoot,

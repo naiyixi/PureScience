@@ -554,6 +554,14 @@ export const searchOpenAlexWorks = async (
 export const OPENALEX_LITERATURE_TOOLS: ToolDescriptor[] = [
   {
     id: 'openalex_search_works',
+    contract: {
+      id: 'openalex_search_works',
+      aliases: ['OpenAlex 检索', '跨库文献检索', '按主题找论文'],
+      requires: [],
+      produces: ['evidence:literature_set'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'literature',
     description:
       'Search OpenAlex scholarly works (all disciplines, ~250M records) with year/type/OA/venue filters. Args: query (free-text over title+abstract+fulltext; optional if a filter is set), year_from, year_to (inclusive years), work_type (article/review/preprint/book-chapter/dataset/dissertation), open_access_only, venue (S-id, openalex.org URL, ISSN, or a plain name resolved to the top sources hit — surfaced in venue_resolved; pass an exact ID to skip resolution), sort (relevance default / cited_by_count / publication_date), max_records (default 50, hard ceiling 500; pages of 200), include_abstracts (reconstructed from the inverted index, but ONLY for verified-open licenses — cc-by/cc-by-sa/cc0/public-domain; others get abstract=null + abstract_policy note + abstract_license; adds bulk). Returns {query, filters, sort, api_total, n_records_returned, records_truncated, records}; each record is the lean work shape (openalex_id, doi, pmid, title, publication_year/date, type, language, is_retracted, authors[...], source{...}, biblio, cited_by_count, fwci, referenced_works_count, open_access{...}, best_oa_pdf_url, primary_topic, keywords). A Chinese `query` is rewritten through the app’s Chinese term table before it is sent and the rewrite comes back in `zh_terms` — that rewrite is what raises coverage (the English term of record matches far more works than its Chinese form: `aspirin` 443,778 vs `阿司匹林` 11,867, measured 2026-10-10). Terms the table cannot map are NOT refused here: this source indexes Chinese text and answers it (`search=高血压` → 47,119), so they are searched as typed and named in `zh_terms.unmapped`, which keeps a thin result readable as thin rather than as evidence of absence.',

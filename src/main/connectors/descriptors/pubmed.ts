@@ -514,6 +514,17 @@ const eutilsUrl = (ctx: ToolContext, endpoint: string, params: string): string =
 export const PUBMED_TOOLS: ToolDescriptor[] = [
   {
     id: 'search_articles',
+    // The producer the preflight was missing: a skill that requires an existing literature set had no
+    // tool willing to say it can make one, so the gap was reported as "no producer" even though PubMed
+    // is exactly that producer.
+    contract: {
+      id: 'search_articles',
+      aliases: ['PubMed 检索', '文献检索', '按主题找论文'],
+      requires: [],
+      produces: ['evidence:literature_set'],
+      prerequisites: [],
+      failurePolicy: {}
+    },
     connector: 'pubmed',
     description:
       'Search PubMed (biomedical & life-sciences literature via NCBI esearch) for articles matching a query. Returns the total match count plus a page of PMIDs. Supports PubMed field tags ([Title], [Author], [Journal], [MeSH Terms], ...), Boolean operators, date filtering and sort. PubMed does not index physics / CS / math / pure-chemistry papers. A Chinese query is mapped to English via the app’s Chinese term table and the mapping comes back in `zh_terms`; Chinese the table cannot map is refused by name, not sent.',
