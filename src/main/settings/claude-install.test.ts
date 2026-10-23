@@ -13,6 +13,12 @@ import {
   runInstallWithFallback
 } from './claude-install'
 
+const CODEBUDDY_TARGET = {
+  npmPackage: '@tencent-ai/codebuddy-code',
+  scriptUnix: ''
+}
+const MIRROR = 'https://registry.npmmirror.com'
+
 // Minimal fake child process exposing the stdout/stderr/exit surface runInstall consumes.
 class FakeChild extends EventEmitter {
   stdout = new EventEmitter()
@@ -67,6 +73,14 @@ describe('claude-install: command construction', () => {
       '--prefix',
       '/home/tester/.local'
     ])
+  })
+
+  it('adds --registry when a mirror is supplied', () => {
+    const spec = getInstallSpawnSpec('npm', 'linux', undefined, CODEBUDDY_TARGET, MIRROR)
+
+    // Without this flag `npm i -g` has no way to reach a mirror, so a blocked default registry reads to
+    // the user as "the app cannot download CodeBuddy".
+    expect(spec.args).toEqual(['i', '-g', '@tencent-ai/codebuddy-code', '--registry', MIRROR])
   })
 
   it('honours the override on macOS too', () => {
@@ -240,6 +254,49 @@ describe('claude-install: run', () => {
 
     expect(result.ok).toBe(false)
     expect(result.regionBlocked).toBeFalsy()
+  })
+})
+
+describe('claude-install: registry fallback', () => {
+  it('retries on the next registry when the first one is unreachable', async () => {
+    let calls = 0
+    const seen: string[] = []
+    const spawnImpl = (_command: string, args: string[]): FakeChild => {
+      calls += 1
+      seen.push(args.join(' '))
+      const child = new FakeChild()
+      queueMicrotask(() => {
+        if (calls === 1) {
+          child.stderr.emit('data', Buffer.from('npm ERR! code ETIMEDOUT'))
+          child.emit('exit', 1)
+        } else {
+          child.stdout.emit('data', Buffer.from('added 1 package'))
+          child.emit('exit', 0)
+        }
+      })
+      return child
+    }
+
+    const logs: ClaudeInstallEvent[] = []
+    const result = await runInstallWithFallback({
+      source: 'npm',
+      installId: 'install-mirror',
+      onEvent: (event) => logs.push(event),
+      spawnImpl: spawnImpl as never,
+      platform: 'linux',
+      npmPrefixWritable: () => Promise.resolve(true),
+      installTarget: CODEBUDDY_TARGET,
+      registries: ['https://registry.npmjs.org', MIRROR],
+      maxNetworkRetries: 0,
+      retrySleep: () => Promise.resolve()
+    })
+
+    expect(result.ok).toBe(true)
+    // Two attempts, two different registries — the same package, a reachable source.
+    expect(calls).toBe(2)
+    expect(seen[0]).toContain('registry.npmjs.org')
+    expect(seen[1]).toContain(MIRROR)
+    expect(logs.some((e) => e.kind === 'log' && /unreachable/i.test(e.chunk))).toBe(true)
   })
 })
 

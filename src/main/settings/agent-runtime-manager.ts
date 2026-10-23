@@ -509,7 +509,17 @@ export class AgentRuntimeManager {
       return outcome.result
     }
 
-    const result = await runInstallWithFallback({ source: request.source, installId, onEvent })
+    const result = await runInstallWithFallback({
+      source: request.source,
+      installId,
+      onEvent,
+      // Same registry fallback as the managed path: an unreachable default registry is not something the
+      // user can fix from inside the app.
+      registries:
+        request.managedRegistry === 'npmmirror'
+          ? [DEFAULT_REGISTRIES[1], DEFAULT_REGISTRIES[0]]
+          : DEFAULT_REGISTRIES
+    })
     if (result.ok) await this.detectClaude()
     return result
   }
@@ -536,7 +546,8 @@ export class AgentRuntimeManager {
       source: request.source,
       installId,
       onEvent,
-      installTarget: OPENCODE_INSTALL_TARGET
+      installTarget: OPENCODE_INSTALL_TARGET,
+      registries: DEFAULT_REGISTRIES
     })
     if (result.ok) await this.detectOpencode()
     return result
@@ -575,7 +586,8 @@ export class AgentRuntimeManager {
       source: request.source,
       installId,
       onEvent,
-      installTarget: CODEX_INSTALL_TARGET
+      installTarget: CODEX_INSTALL_TARGET,
+      registries: DEFAULT_REGISTRIES
     })
     if (result.ok) await this.detectCodex()
     return result
@@ -591,7 +603,11 @@ export class AgentRuntimeManager {
       source: request.source,
       installId,
       onEvent,
-      installTarget: CODEBUDDY_INSTALL_TARGET
+      installTarget: CODEBUDDY_INSTALL_TARGET,
+      // CodeBuddy ships on npm only. Its package is large enough that a blocked registry reads as
+      // "cannot download" rather than "slow", so the mirror is not an optimisation here — it is the
+      // difference between installing and not. Existing callers without a list are unaffected.
+      registries: DEFAULT_REGISTRIES
     })
     if (result.ok) await this.detectCodebuddy()
     return result

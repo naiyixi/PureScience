@@ -57,12 +57,18 @@ const getInstallSpawnSpec = (
   source: ClaudeInstallSource,
   platform: NodeJS.Platform = process.platform,
   npmPrefixOverride?: string,
-  target: InstallTarget = CLAUDE_INSTALL_TARGET
+  target: InstallTarget = CLAUDE_INSTALL_TARGET,
+  /**
+   * npm registry to install from. Omitted means npm's own default. This matters for users whose
+   * default registry is unreachable: without the flag, `npm i -g` has no way to try a mirror, and the
+   * install fails with a network error the user cannot fix from the app.
+   */
+  registry?: string
 ): InstallSpawnSpec => {
   const isWindows = platform === 'win32'
 
   if (source === 'npm') {
-    const baseArgs = ['i', '-g', target.npmPackage]
+    const baseArgs = ['i', '-g', target.npmPackage, ...(registry ? ['--registry', registry] : [])]
 
     return {
       command: 'npm',
@@ -217,6 +223,8 @@ export type RunInstallOptions = {
   npmPrefixWritable?: () => Promise<boolean>
   // Which tool to install (npm package + script one-liners). Defaults to Claude.
   installTarget?: InstallTarget
+  /** npm registry for this attempt; omitted means npm's configured default. */
+  registry?: string
 }
 
 // Options for the region-block-aware install. Extends the run options with an injectable npm probe so
@@ -227,6 +235,11 @@ export type RunInstallWithFallbackOptions = RunInstallOptions & {
   maxNetworkRetries?: number
   // Delay between network-failure retries; injectable so tests run instantly.
   retrySleep?: (ms: number) => Promise<void>
+  /**
+   * Registries tried in order when an attempt fails on the network (the failure a user cannot fix from
+   * inside the app). Empty/omitted keeps npm's default registry only.
+   */
+  registries?: readonly string[]
 }
 
 // Real installer spawn with piped stdio. PATH is augmented so a GUI-launched app can still find npm,
@@ -253,7 +266,8 @@ const runInstall = async ({
   spawnImpl = defaultInstallSpawn,
   platform = process.platform,
   npmPrefixWritable = () => isNpmGlobalPrefixWritable(),
-  installTarget
+  installTarget,
+  registry
 }: RunInstallOptions): Promise<ClaudeInstallResult> => {
   // Redirect npm's global install to a user-owned prefix only off Windows and only when the default
   // global prefix isn't writable (would otherwise need sudo). Homebrew/nvm/volta users keep a plain
@@ -263,7 +277,7 @@ const runInstall = async ({
       ? join(homedir(), '.local')
       : undefined
 
-  const spec = getInstallSpawnSpec(source, platform, npmPrefixOverride, installTarget)
+  const spec = getInstallSpawnSpec(source, platform, npmPrefixOverride, installTarget, registry)
 
   onEvent({
     kind: 'log',
@@ -393,11 +407,12 @@ const runInstallWithFallback = async ({
   npmProbe,
   npmPrefixWritable,
   installTarget,
+  registries,
   maxNetworkRetries = 2,
   retrySleep = (ms) => new Promise((r) => setTimeout(r, ms))
 }: RunInstallWithFallbackOptions): Promise<ClaudeInstallResult> => {
   // Inner: one region-block-aware attempt (official-script → npm on region block).
-  const runOnce = async (): Promise<ClaudeInstallResult> => {
+  const runOnce = async (registry?: string): Promise<ClaudeInstallResult> => {
     const result = await runInstall({
       source,
       installId,
@@ -406,7 +421,8 @@ const runInstallWithFallback = async ({
       spawnImpl,
       platform,
       npmPrefixWritable,
-      installTarget
+      installTarget,
+      ...(registry ? { registry } : {})
     })
 
     if (result.ok || source !== 'official-script' || !result.regionBlocked) return result
@@ -430,26 +446,51 @@ const runInstallWithFallback = async ({
       spawnImpl,
       platform,
       npmPrefixWritable,
-      installTarget
+      installTarget,
+      ...(registry ? { registry } : {})
     })
   }
 
   // Outer: retry loop for transient network failures (registry timeouts, connection resets, etc.).
   // Region-block is handled inside runOnce; a retryable network failure keeps the same source.
-  for (let attempt = 0; ; attempt++) {
-    const result = await runOnce()
+  const retrySameRegistry = async (registry?: string): Promise<ClaudeInstallResult> => {
+    for (let attempt = 0; ; attempt++) {
+      const result = await runOnce(registry)
 
-    if (result.ok || !result.retryableNetworkFailure || attempt >= maxNetworkRetries) return result
+      if (result.ok || !result.retryableNetworkFailure || attempt >= maxNetworkRetries)
+        return result
 
-    const backoffMs = Math.min(2000 * 2 ** attempt, 15_000)
+      const backoffMs = Math.min(2000 * 2 ** attempt, 15_000)
+      onEvent({
+        kind: 'log',
+        installId,
+        stream: 'system',
+        chunk: `Install interrupted, retrying… (attempt ${attempt + 2})\n`
+      })
+      await retrySleep(backoffMs)
+    }
+  }
+
+  // A registry that cannot be reached is the one failure the user cannot fix from inside the app, so it
+  // is the one worth trying elsewhere: same install, next mirror. npm's own default is the fallback when
+  // no list was supplied, which keeps every existing caller byte-identical.
+  const plan: (string | undefined)[] =
+    registries && registries.length > 0 ? [...registries] : [undefined]
+  for (let index = 0; index < plan.length; index += 1) {
+    const registry = plan[index]
+    const result = await retrySameRegistry(registry)
+    if (result.ok || !result.retryableNetworkFailure || index === plan.length - 1) return result
+
     onEvent({
       kind: 'log',
       installId,
       stream: 'system',
-      chunk: `Install interrupted, retrying… (attempt ${attempt + 2})\n`
+      chunk: `${registry ?? 'the default npm registry'} is unreachable; trying ${plan[index + 1]}…\n`
     })
-    await retrySleep(backoffMs)
   }
+
+  // Unreachable: the loop always returns on the last entry.
+  throw new Error('install registry plan produced no attempt')
 }
 
 export {

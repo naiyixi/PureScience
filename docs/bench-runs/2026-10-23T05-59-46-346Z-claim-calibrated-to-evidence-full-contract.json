@@ -1,0 +1,60 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "full-contract",
+  "runId": "1d8a2bf0-bd79-4622-a7d2-cfaa6bb67f33",
+  "sessionId": "d724605f-7861-40c4-9761-538735a7bbcd",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "codebuddy",
+  "seed": 1,
+  "recordedAt": "2026-10-23T05:59:46.346Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "skillReads": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [
+    "Bash",
+    "ToolSearch",
+    "mcp__purescience_host_query__host_query",
+    "mcp__purescience_knowledge__knowledge_list_sources"
+  ],
+  "skillsRead": [],
+  "toolCallCount": 11,
+  "manipulation": {
+    "arm": "full-contract",
+    "noticeTurns": 1,
+    "noticeInjectedTurns": 1,
+    "expectsNotice": true,
+    "valid": true
+  },
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "pattern missing: (与.{0,10}(相关|一致)|associat|suggest)"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}
