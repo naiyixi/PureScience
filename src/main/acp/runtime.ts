@@ -175,6 +175,12 @@ type AcpRuntimeOptions = {
   // establish each missing fact. Injected into the prompt content, not the user's own text — the model
   // gets it whether or not it would have asked `capability_preflight` (measured: it does not ask).
   capabilityGaps?: (sessionId: string) => Promise<string | null>
+  // App-side hard gate: refuse a turn whose explicitly chosen capability has an unmet, contract-declared
+  // precondition. Independent of the model — the measured failure mode was that the model never asks.
+  capabilityGate?: (input: {
+    sessionId: string
+    referenced: readonly string[]
+  }) => Promise<{ message: string } | null>
   memory?: AcpRuntimeMemoryOptions
   contextSummary?: AcpRuntimeContextSummaryOptions
   routine?: AcpRuntimeRoutineOptions

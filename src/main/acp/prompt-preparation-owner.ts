@@ -79,6 +79,9 @@ type AcpPromptPreparationOwnerOptions = Readonly<{
   // callable, a real run called it zero times (2 tool calls total). Asking only works on a model that
   // asks; the gaps have to arrive.
   capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>
+  // The hard gate (app-side, model-independent): returns a refusal when the turn targets a capability
+  // whose contract declares a missing_state policy and whose requirement is absent. Null lets it run.
+  capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>
   // The structure-measurement notice (D3): '' when the turn carries no measurement.
   measurementNotice?: (request: AcpPromptRequest) => string
   emitState: () => void
@@ -131,6 +134,14 @@ class AcpPromptPreparationOwner {
   constructor(private readonly options: AcpPromptPreparationOwnerOptions) {}
 
   async prepare(input: AcpPromptPreparationInput): Promise<PreparedPromptHandle> {
+    // The hard gate runs before anything else: a turn the user aimed at a capability whose declared
+    // precondition is missing must not spend a model call to discover that. Refusal is thrown, not
+    // logged, because a silent skip would look like success.
+    const refusal = this.options.capabilityGate
+      ? await this.options.capabilityGate(input.request)
+      : null
+    if (refusal) throw new Error(refusal.message)
+
     let releaseGrant: (() => void) | undefined
     let contextTurn: ContextUsageTurnHandle | undefined
     let closed = false

@@ -226,6 +226,16 @@ const composeAcpRuntimePromptOwners = (
     }),
     authorizeReferencedUploads: options.skillImport?.authorizeReferencedUploads,
     imageInputCompatibility: options.imageInputCompatibility,
+    ...(options.capabilityGate
+      ? {
+          capabilityGate: (request) =>
+            options.capabilityGate!({
+              sessionId:
+                session.sessionRegistry.resolveAppSessionId(request.sessionId) ?? request.sessionId,
+              referenced: request.forcedSkillIds ?? []
+            })
+        }
+      : {}),
     ...(options.capabilityGaps
       ? {
           // The runtime speaks in ACP session ids; the session store speaks in app session ids. Resolve

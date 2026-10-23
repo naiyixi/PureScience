@@ -6,6 +6,7 @@
 // code runs against a real session store in production and against fixtures in tests.
 
 import type { CapabilityContract, StateFact } from '../../shared/capability-contract'
+import { evaluateCapabilityGate, type CapabilityGateRefusal } from '../../shared/capability-gate'
 import { renderCapabilityGaps } from '../../shared/capability-preflight-prompt'
 import { factsForSession } from '../../shared/capability-session-facts'
 import type { PreflightResult } from '../../shared/capability-preflight'
@@ -87,6 +88,47 @@ export const renderSessionCapabilityGaps = async (input: {
     }),
     sessionFound: true
   }
+}
+
+/**
+ * The hard gate for one turn: the capabilities the user explicitly aimed at, checked against the
+ * session's facts. Null means "let it run" — including when the session cannot be read, because an
+ * unreadable session is not evidence that a precondition is missing.
+ */
+export const gateSessionCapabilities = async (input: {
+  configRoot: string
+  sessionId: string
+  referenced: readonly string[]
+  deps: PreflightDeps
+}): Promise<CapabilityGateRefusal | null> => {
+  const referenced = input.referenced.filter((id) => typeof id === 'string' && id.trim().length > 0)
+  if (referenced.length === 0) return null
+
+  const registry = new SkillCapabilityRegistry(skillCapabilityRoots(input.configRoot))
+  await registry.load()
+  const sources = await input.deps.loadFacts(input.sessionId)
+  if (!sources) return null
+
+  const declared = registry.declared()
+  const facts = factsForSession(
+    {
+      attachments: sources.attachments,
+      artifacts: sources.artifacts,
+      usedCapabilities: sources.referencedCapabilities
+    },
+    declared
+  )
+
+  return evaluateCapabilityGate({
+    referenced,
+    contracts: declared.map((contract) => ({
+      id: contract.id,
+      requires: contract.requires,
+      produces: contract.produces,
+      failurePolicy: contract.failurePolicy
+    })),
+    facts: facts.facts
+  })
 }
 
 export const buildCapabilityPreflight = async (input: {

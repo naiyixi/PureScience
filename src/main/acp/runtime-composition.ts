@@ -84,6 +84,7 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
   // Named here for the same reason as functionModels below: a value the app passes must be forwarded,
   // or the per-turn capability gaps silently never reach the runtime.
   capabilityGaps?: AcpRuntimeOptions['capabilityGaps']
+  capabilityGate?: AcpRuntimeOptions['capabilityGate']
   functionModels?: AcpRuntimeOptions['functionModels']
   permissionGrantRegistry?: PermissionGrantRegistry
   initializationBarrier?: Promise<unknown>
@@ -118,6 +119,7 @@ type AcpRuntimeCompositionOptions = AcpRuntimeArtifacts & {
 // Composes the compatibility façade while the coordinator remains the cross-generation Session owner.
 const createAcpRuntime = ({
   capabilityGaps,
+  capabilityGate,
   mcpEntryPath,
   repository,
   runRegistry,
@@ -269,6 +271,7 @@ const createAcpRuntime = ({
       const runtimeOptions: AcpRuntimeOptions = {
         appVersion: app.getVersion(),
         ...(capabilityGaps ? { capabilityGaps } : {}),
+        ...(capabilityGate ? { capabilityGate } : {}),
         // Packaged macOS apps often start with cwd at "/" or the app bundle; use home instead.
         defaultCwd,
         resolveBackend: async (context) =>

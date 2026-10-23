@@ -67,7 +67,8 @@ const setup = (
   inputNotice?: (request: AcpPromptRequest) => string,
   selectionNotice?: (request: AcpPromptRequest) => string,
   imageInputCompatibility?: ImageRelayDouble,
-  capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>
+  capabilityNotice?: (request: AcpPromptRequest) => Promise<string | null>,
+  capabilityGate?: (request: AcpPromptRequest) => Promise<{ message: string } | null>
 ): Fixture => {
   const turn = contextTurn()
   const promptContent = {
@@ -99,6 +100,7 @@ const setup = (
     ...(selectionNotice ? { selectionNotice } : {}),
     ...(imageInputCompatibility ? { imageInputCompatibility } : {}),
     ...(capabilityNotice ? { capabilityNotice } : {}),
+    ...(capabilityGate ? { capabilityGate } : {}),
     notebook: {
       peekHandoffContext: vi.fn(() => ({
         executionCount: 1,
@@ -304,6 +306,25 @@ describe('AcpPromptPreparationOwner', () => {
     // records the user as having said.
     expect(JSON.stringify(handle.content)).toContain('<missing_inputs>')
     expect(seen).toEqual(['Analyze the result.'])
+  })
+
+  it('refuses the turn before spending a model call when the gate names a missing input', async () => {
+    // The gate is app-side: the model never gets asked, because the measured failure mode was that it
+    // never asks and never reads skills either.
+    const fixture = setup(undefined, undefined, undefined, undefined, async () => ({
+      message:
+        '无法开始「needs-matrix」：缺少 omics file（input:omics_file），可先运行 fetch-geo 生成。'
+    }))
+
+    await expect(fixture.prepare()).rejects.toThrow('无法开始「needs-matrix」')
+  })
+
+  it('starts normally when the gate has nothing to refuse', async () => {
+    const fixture = setup(undefined, undefined, undefined, undefined, async () => null)
+
+    const handle = await fixture.prepare()
+
+    expect(handle.status).toBe('ready')
   })
 
   it('delivers capability gaps without being asked, and keeps the user text clean', async () => {
