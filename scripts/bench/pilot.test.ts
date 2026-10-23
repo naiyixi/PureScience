@@ -64,6 +64,15 @@ describe.skipIf(!caseId)('S3 pilot', () => {
         // agent finish unattended, and it is scoped to this throwaway config root.
         permissionProfile:
           (process.env.PILOT_PERMISSION_PROFILE as 'ask' | 'auto' | 'full') ?? 'full',
+        // Capabilities the turn is aimed at (comma separated). The app-side gate refuses the turn when
+        // one of them declares a missing_state policy and its requirement is absent.
+        ...(process.env.PILOT_SKILLS?.trim()
+          ? {
+              skillIds: process.env.PILOT_SKILLS.split(',')
+                .map((id) => id.trim())
+                .filter(Boolean)
+            }
+          : {}),
         // Re-grading an existing session must not cost another model call.
         sessionId: process.env.PILOT_SESSION?.trim() ?? null,
         ...(process.env.PILOT_TIMEOUT_MS ? { timeoutMs: Number(process.env.PILOT_TIMEOUT_MS) } : {})

@@ -33,6 +33,8 @@ export type PilotOptions = {
   seed?: number | null
   /** Headless runs have no window to answer a permission card in; the pilot must say so up front. */
   permissionProfile?: 'ask' | 'auto' | 'full'
+  /** Capabilities the turn is explicitly aimed at; the app-side gate checks only these. */
+  skillIds?: string[]
   /** Wall-clock budget for the run itself. Exceeding it is a recorded failure, not a hang. */
   timeoutMs?: number
   pollMs?: number
@@ -120,6 +122,9 @@ export const runPilot = async (
         body: JSON.stringify({
           project: options.project,
           prompt: options.benchCase.prompt,
+          // Explicitly picked capabilities. The app-side gate only ever looks at these, so a bench run
+          // that wants to exercise the gate must name one — never a global scan.
+          ...(options.skillIds?.length ? { skillIds: options.skillIds } : {}),
           ...(options.permissionProfile ? { permissionProfile: options.permissionProfile } : {})
         })
       })

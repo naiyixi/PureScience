@@ -1,0 +1,55 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "full-contract",
+  "runId": "eac2f9f2-d657-499c-816f-56dcfd2e91b8",
+  "sessionId": "ses_e98fb60deffesz0N16Z3ZNYlTG",
+  "runStatus": "failed",
+  "runError": "无法开始「evidence-grading」：缺少 evidence:literature_set（literature set），可先运行 indication-dossier 或 literature-review 生成。契约声明的处理方式：Grade an existing evidence set: gather and verify the literature first.",
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-23T04:28:51.372Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": false,
+    "artifacts": false,
+    "skillReads": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [],
+  "skillsRead": [],
+  "toolCallCount": 0,
+  "manipulation": {
+    "arm": "full-contract",
+    "noticeTurns": 0,
+    "noticeInjectedTurns": 0,
+    "expectsNotice": true,
+    "valid": false
+  },
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "pattern missing: (与.{0,10}(相关|一致)|associat|suggest)"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}
