@@ -42,6 +42,18 @@ type PermissionToolContext = {
 
 type PermissionRestoreContext = PermissionToolContext & {
   isCancelled: () => boolean
+  /**
+   * Whether the caller's decision actually reads the tool's raw input.
+   *
+   * The OpenCode raw-input wait below exists to fill the permission card a human (or a policy that
+   * inspects arguments) is about to read. A decision taken from the tool's identity alone -- the
+   * background reviewer classifies on title/kind -- has nothing to do with that input, so it sets this
+   * to `false` and the wait is skipped instead of paid.
+   *
+   * Omitted means `true`: primary sessions keep the existing behaviour, because their card renders the
+   * arguments and their auto-review strategy inspects them.
+   */
+  awaitsProviderInput?: boolean
 }
 
 type CodexMcpToolIdentity = {
@@ -114,6 +126,15 @@ type AcpPermissionContextOptions = {
     sessionId: string
     toolCallId: string
     waitMs: number
+  }) => void
+  /**
+   * Fired when the raw-input wait is skipped because the decision is identity-only. Named so a reading
+   * can tell "skipped on purpose" from "the wait never happened".
+   */
+  onOpenCodeInputWaitSkipped?: (details: {
+    sessionId: string
+    toolCallId: string
+    reason: 'identity-only-decision'
   }) => void
 }
 
@@ -303,7 +324,13 @@ class AcpPermissionContext {
       sessionId: appSessionId,
       framework,
       mcpServerNames,
-      isCancelled
+      isCancelled,
+      // Reviewer-owned sessions decide through `resolveReviewerPermission`, which classifies on the
+      // tool's title and kind only -- no policy on that path reads the arguments. Waiting there buys a
+      // card nobody reads, and the provider's late update never arrives: on the 2026-10-21/23 field log
+      // 184 of 289 waits were reviewer calls, every one of them burning the full window and being
+      // approved 1 ms later (median).
+      awaitsProviderInput: reviewerContext === undefined
     }
     const normalizedParams = await this.restoreToolCall(params, restoreContext)
     if (
@@ -605,11 +632,10 @@ class AcpPermissionContext {
         return restored
       }
 
-      const outcome = await this.waitForOpenCodeMcpToolInput(
-        sessionId,
-        params.toolCall.toolCallId,
-        context
-      )
+      const outcome =
+        context.awaitsProviderInput === false
+          ? this.skipOpenCodeInputWait(sessionId, params.toolCall.toolCallId)
+          : await this.waitForOpenCodeMcpToolInput(sessionId, params.toolCall.toolCallId, context)
       if (outcome === 'cancelled') return undefined
       if (outcome === 'timeout') {
         this.options.onOpenCodeWaitTimeout?.({
@@ -818,6 +844,25 @@ class AcpPermissionContext {
       return params
     }
     return withTrustedNativeToolIdentity(params, 'opencode/skill')
+  }
+
+  /**
+   * Stands in for the raw-input wait when the caller's decision cannot read that input at all.
+   *
+   * Returns `'ready'` on purpose: the wait's only product is the provider's late `tool_call` update, and
+   * a decision taken from the tool's identity has nothing to do with it. It reports itself so a reading
+   * can tell a deliberate skip from a request that never had to wait.
+   */
+  private skipOpenCodeInputWait(
+    sessionId: string,
+    toolCallId: string
+  ): OpenCodePermissionContextWaitOutcome {
+    this.options.onOpenCodeInputWaitSkipped?.({
+      sessionId,
+      toolCallId,
+      reason: 'identity-only-decision'
+    })
+    return 'ready'
   }
 
   private waitForOpenCodeMcpToolInput(

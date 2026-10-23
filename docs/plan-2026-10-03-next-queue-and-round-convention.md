@@ -11170,3 +11170,68 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 ① 按完整 40 位 SHA 读本次推送的双车道，**特别读 P0 的 `notification-inbox-clear`**：
    应用日志里出现具名丢弃行 ⇒ 按 §四 1 的第 2 条修；没有丢弃行且读数带「after 30xxx ms of waiting」⇒ 转第 1 条；
 ② 若双绿，下一个单元从 §四 4 的 ② 取数（纯 main 侧、可离线判）。
+
+## 两百一十八、本轮追加（执行器，2026-10-23 09:2x–10:1x）—— 复查每调一次工具就白等 1 秒：把「要不要等入参」交给调用方自报
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工读到 `origin/main = 94e8d5d0`、工作区里是**上一轮我自己的 5 个路径**（收件箱写入闸门具名化，未提交）
+  ⇒ 先补提交并推送（`41c35b33`，连带上一轮未推的 `b383ad28`），再做本单元。推送前 `gh run list` 在飞车道 **0 条**。
+- 队列档「已完成（别再重做）」清单与本单元无交集；B 段（A7 / S3 / M2）已全部收口 ⇒ 按 §两百一十六 §四 4 的候选 ② 取数。
+- 本轮不碰 `scripts/bench/**`、`src/main/capabilities/**`（桌面会话线），改动只在 `src/main/acp/**`。
+
+### 一 读数（先量再改；生产日志只读）
+
+日志 `~/Library/Logs/PureScience (DEV)/main.log`（11,051 行，10-21 16:09 → 10-22 20:01 UTC）：
+
+| 读数 | 值 |
+|---|---|
+| 权限上下文等待超时 | **289** 条（`waitMs` 恒 1000） |
+| 落在复查会话上 | **184** 条（100 个复查会话，每会话 1–3 条） |
+| 其余 | 105 条主会话 MCP 调用（卡片要读入参，不动） |
+| 超时行之后紧跟的那一行 | **184/184** = `permission request received` |
+| 时间差 | min 0.0 / **中位 1.0 ms** / max 16.0 ms |
+
+⇒ 那 1 秒等的东西（提供方迟到的 `tool_call` 更新，用来填卡面入参）在这 184 次里**一次都没到**。
+
+### 二 根因与交付
+
+等待发生在「谁来做决定」**之前**：`restoreToolCall` 对所有 OpenCode MCP 请求都等；而复查的决定由
+`resolveReviewerPermission` → `classifyReviewerToolCall` 做出，只读 `title`/`kind`/`mcpServerNames`，
+**不读入参** ⇒ 对复查会话是纯延迟。
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/acp/permission-context.ts` | `PermissionRestoreContext` 增可选 `awaitsProviderInput`（缺省＝等，主会话行为不变）；`handleProviderRequest` 用 `reviewerContext === undefined` 决定；新增 `skipOpenCodeInputWait`（返回 `'ready'`）与具名回调 `onOpenCodeInputWaitSkipped`（`reason:'identity-only-decision'`） |
+| `src/main/acp/runtime-session-composition.ts` | 接上回调 → `info` 级 `skipping OpenCode input wait`（sessionId / toolCallId / reason） |
+| `src/main/acp/permission-context.test.ts` | 2 条：单元级（不排定时器、超时不响、落具名跳过行）＋ 路由级（复查请求照旧拿到批准响应） |
+
+证据档 `docs/evidence/2026-10-23-reviewer-permission-wait-latency.md`。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+|---|---|
+| 该 spec | **11 passed** |
+| `src/main/acp` + `src/main/reviewer` | **115 files / 1,748 passed**，exit 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache` 3 文件 | **0 errors**（3 条 prettier 警告已收） |
+| `prettier --check` 3 文件 | 全过 |
+| 变异（`awaitsProviderInput` 写死 `true`） | 路由级那条**红**，**耗时 1011 ms** ⇒ 失败时长本身就是省掉的那 1 秒 |
+
+修前／修后墙钟（同一支用例，verbose 单跑）：**1011 ms → 50 ms**。
+
+### 四 边界（不许读成更强）
+
+1. 只治复查会话那 184 条；主会话 105 条**故意不动**（那里的入参是卡片与 auto-review 策略要读的）。
+2. **无窗口读数**（内存闸门未解）：证据是「生产日志 before」＋「真代码路径上的变异/单跑 before-after」。
+   end-to-end 的 after 只能等下一次真机会话在日志里出现 `skipping OpenCode input wait` —— 届时按该行计数复核。
+3. 判定规则、三条出口、优先级零改动；不占版本号。
+4. 下一单元候选：① 真机出现跳过行后复核计数（判据：`skipping OpenCode input wait` 条数 ≈ 复查 MCP 调用数，
+   且 `permission context wait timed out` 里不再有复查会话）；② P0-3 分步真机读数（仍卡内存闸门）；
+   ③ 105 条主会话等待的成因（入参到底为什么不来）——这是另一个问题，未立项。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔与 `41c35b33` 的车道判决（`cancelled` 不算绿；先冻结推送，等两笔都落定）；
+② P0 若仍红，按 §两百一十七 §四 1 的三条分流；③ 新单元从 §四 4 里按「连锁最小」取。

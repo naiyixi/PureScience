@@ -368,6 +368,84 @@ describe('ACP permission context', () => {
     }
   })
 
+  it('skips the input wait when the decision cannot read the input', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeWaitTimeout = vi.fn()
+      const onOpenCodeInputWaitSkipped = vi.fn()
+      const setTimer = vi.fn((fn: () => void, ms: number) => setTimeout(fn, ms))
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout,
+        onOpenCodeInputWaitSkipped,
+        setTimer
+      })
+
+      // No `tool_call` update ever arrives for this call, which is exactly the field shape: the provider
+      // never sends the late raw input these waits are waiting for.
+      const restored = await context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false,
+        awaitsProviderInput: false
+      })
+
+      expect(restored?.toolCall.toolCallId).toBe('call-1')
+      expect(setTimer).not.toHaveBeenCalled()
+      expect(onOpenCodeWaitTimeout).not.toHaveBeenCalled()
+      expect(onOpenCodeInputWaitSkipped).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        reason: 'identity-only-decision'
+      })
+      expect(context.snapshot()).toEqual({ pendingRequests: [], sessions: {} })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not wait for input on a reviewer request, and still answers it', async () => {
+    const reviewerResponse = {
+      outcome: { outcome: 'selected' as const, optionId: 'allow-once' }
+    }
+    const onOpenCodeWaitTimeout = vi.fn()
+    const onOpenCodeInputWaitSkipped = vi.fn()
+    const resolveReviewerPermission = vi.fn(() => reviewerResponse)
+    const context = new AcpPermissionContext({
+      emitPermissionRequest: vi.fn(),
+      onOpenCodeWaitTimeout,
+      onOpenCodeInputWaitSkipped,
+      routing: permissionRouting({
+        // The reviewer runs while the primary turn it is reviewing is still in flight -- the same shape
+        // the field logs show (the wait timed out, then the request was answered 1 ms later).
+        capturePrompt: () => ({ sequence: 7, isCancellationAccepted: () => false }),
+        currentInteractionSequence: () => 7,
+        reviewerContextFor: () => ({
+          frameworkId: 'opencode',
+          mcpServerNames: ['purescience-reviewer']
+        }),
+        resolveReviewerPermission
+      })
+    })
+    const request = permissionRequest('reviewer-session', 'reviewer-call', {
+      title: 'purescience_reviewer_read_turn',
+      kind: 'other'
+    })
+
+    // Real timers on purpose: this is the shape that used to cost the full 1,000 ms window per call.
+    // With the wiring removed it fails on the two callbacks instead of on a wall-clock assertion.
+    await expect(context.handleProviderRequest(request)).resolves.toEqual(reviewerResponse)
+    expect(onOpenCodeInputWaitSkipped).toHaveBeenCalledWith({
+      sessionId: 'reviewer-session',
+      toolCallId: 'reviewer-call',
+      reason: 'identity-only-decision'
+    })
+    expect(onOpenCodeWaitTimeout).not.toHaveBeenCalled()
+    expect(resolveReviewerPermission).toHaveBeenCalledTimes(1)
+  })
+
   it('cancels pending correlation waiters and decisions on session cleanup', async () => {
     const emitted: Array<{ requestId: string }> = []
     const context = new AcpPermissionContext({

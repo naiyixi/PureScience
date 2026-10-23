@@ -141,6 +141,9 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     clearTimer: base.clearTimer,
     onOpenCodeWaitTimeout: ({ sessionId, toolCallId, waitMs }) => {
       log.warn('OpenCode permission context wait timed out', { sessionId, toolCallId, waitMs })
+    },
+    onOpenCodeInputWaitSkipped: ({ sessionId, toolCallId, reason }) => {
+      log.info('skipping OpenCode input wait', { sessionId, toolCallId, reason })
     }
   })
   const reviewerSessions = new ReviewerSessionOwner({
