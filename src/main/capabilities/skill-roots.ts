@@ -12,13 +12,16 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 export const skillCapabilityRoots = (configRoot: string): string[] => {
-  // Every directory the app actually materializes into. Verified live, not guessed: `codebuddy` writes
-  // to the same `<configRoot>/claude/skills` as claude-code (its create-session log names that configDir),
-  // and no `<configRoot>/codebuddy` or `<configRoot>/codex` directory is ever created.
+  // Every directory the app actually materializes into, each verified live rather than guessed:
+  //   • codebuddy writes to `<configRoot>/claude/skills` (same tree as claude-code);
+  //   • codex writes its own `<configRoot>/codex/skills` (79 skills, 28 with contracts, on a real run).
+  // Missing the codex one is what made a live codex session report `declared: 0` while 28 contracts sat
+  // on disk.
   const candidates = [
     join(configRoot, 'skills'),
     join(configRoot, 'claude', 'skills'),
-    join(configRoot, 'opencode', 'config', 'opencode', 'skills')
+    join(configRoot, 'opencode', 'config', 'opencode', 'skills'),
+    join(configRoot, 'codex', 'skills')
   ]
   const present = candidates.filter((dir) => existsSync(dir))
   // Keep the canonical path even when it does not exist yet, so "no such directory" stays a readable
