@@ -15,6 +15,10 @@ files:
   # the app to multiple GB AND leaking local agent state into the shipped bundle.
   - '!.claude{,/**/*}'
   - '!.codex{,/**/*}'
+  # Packaged smoke runs drop a Chromium profile here whose `SingletonSocket` is a symlink into a
+  # per-run temp dir. Left in the tree, packaging stats a dangling link and dies with
+  # `ENOENT … /scoped_dirXXXX/SingletonSocket` — a build failure that names a temp path nobody owns.
+  - '!.tmp-*{,/**/*}'
   - '!src/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
