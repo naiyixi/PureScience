@@ -144,8 +144,10 @@ describe('runReview — framework-neutral rubric delivery (promptPrefix)', () =>
       artifactStorageRoot: temporaryRoot!
     })
 
-    // Exactly one prompt was sent to the reviewer session.
-    expect(promptSink).toHaveLength(1)
+    // Two prompts: the stubbed reviewer never submits findings, so the orchestrator's single bounded
+    // follow-up is the second. Asserting both keeps this a prefix test *and* pins that the rubric
+    // prefix belongs to the first turn only — it is not re-sent on the follow-up.
+    expect(promptSink).toHaveLength(2)
     const sent = promptSink[0]!
 
     // The sent prompt begins with the prefix followed by a blank line, then the reviewer prompt.
@@ -156,6 +158,11 @@ describe('runReview — framework-neutral rubric delivery (promptPrefix)', () =>
     expect(sent.indexOf(openCodePrefix)).toBeLessThan(sent.indexOf(REVIEWER_PROMPT_HEAD))
     // Concretely: prefix + separator + the reviewer prompt (which starts with its known head line).
     expect(sent.startsWith(`${openCodePrefix}\n\n${REVIEWER_PROMPT_HEAD}`)).toBe(true)
+
+    // The follow-up turn says why it was sent, and the rubric prefix is not repeated on it.
+    const followUp = promptSink[1]!
+    expect(followUp).toContain('ended without calling submit_findings')
+    expect(followUp).not.toContain('OPENCODE-RUBRIC-PREFIX')
 
     await client.$disconnect()
   })
@@ -179,13 +186,17 @@ describe('runReview — framework-neutral rubric delivery (promptPrefix)', () =>
       artifactStorageRoot: temporaryRoot!
     })
 
-    expect(promptSink).toHaveLength(1)
+    // Two prompts here as well: the reviewer prompt, then the follow-up after a first turn that
+    // submitted nothing. Neither of them may carry the prefix.
+    expect(promptSink).toHaveLength(2)
     const sent = promptSink[0]!
 
     // No prefix: the text sent is exactly the reviewer prompt, starting with its head line.
     expect(sent.startsWith(REVIEWER_PROMPT_HEAD)).toBe(true)
-    // And nothing from the opencode-style prefix leaked in.
+    // And nothing from the opencode-style prefix leaked in — on either turn.
     expect(sent).not.toContain('OPENCODE-RUBRIC-PREFIX')
+    expect(promptSink[1]).toContain('ended without calling submit_findings')
+    expect(promptSink[1]).not.toContain('OPENCODE-RUBRIC-PREFIX')
 
     await client.$disconnect()
   })
@@ -419,14 +430,17 @@ describe('runScopedReview — framework-neutral rubric delivery (fix-loop re-rev
 
     // The initial review + exactly one scoped re-review each built a reviewer session.
     expect(buildCall).toBe(2)
-    // The scoped re-review sent exactly one prompt, and it carries the prefix ahead of the reviewer
-    // prompt for the correction turn (msg-4-correction).
-    expect(scopedPromptSink).toHaveLength(1)
+    // The scoped re-review sent two prompts: the prefix-carrying reviewer prompt for the correction
+    // turn (msg-4-correction), then the follow-up after it submitted nothing. Only the first one has
+    // the rubric prefix.
+    expect(scopedPromptSink).toHaveLength(2)
     const scopedHead = 'You are reviewing turn: msg-4-correction'
     const sent = scopedPromptSink[0]!
     expect(sent.startsWith(`${scopedPrefix}\n\n`)).toBe(true)
     expect(sent).toContain(scopedHead)
     expect(sent.startsWith(`${scopedPrefix}\n\n${scopedHead}`)).toBe(true)
+    expect(scopedPromptSink[1]).toContain('ended without calling submit_findings')
+    expect(scopedPromptSink[1]).not.toContain(scopedPrefix)
 
     await client.$disconnect()
   })

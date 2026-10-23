@@ -87,6 +87,12 @@ const startFakeReviewerAgent = (
     // When set, the agent requests a non-reviewer tool the strict gate rejects, then ends its turn
     // without submit_findings — exercising the gate-rejection incomplete-review path.
     emitRejectedToolCall?: boolean
+    // Same rejection, only on the 1-based prompt whose number matches. Used to model "the reviewer
+    // closed its turn after a refusal, then finished once it was told the call was refused".
+    emitRejectedToolCallOnPrompt?: number
+    // When set, submit_findings is only called from this 1-based prompt onward (the orchestrator's
+    // follow-up turn is prompt 2). Omitted ⇒ `simulateFindingsViaHttp` behaves as before.
+    simulateFindingsFromPrompt?: number
     // When set, the agent announces `calls` distinct tool calls (each with its own toolCallId) before
     // ending its turn. With `updateEach`, every id is announced twice — the `tool_call` plus the
     // `tool_call_update` that finishes it — so a caller can prove the budget counts calls, not frames.
@@ -136,10 +142,15 @@ const startFakeReviewerAgent = (
         .join('')
 
       prompts.push({ sessionId: ctx.params.sessionId, text })
+      const promptNumber = prompts.length
 
       // If requested, ask for a tool outside the reviewer allowlist; the runtime gate rejects it and
       // increments the session's rejected-tool-call counter.
-      if (options.emitRejectedToolCall) {
+      if (
+        options.emitRejectedToolCall ||
+        (options.emitRejectedToolCallOnPrompt !== undefined &&
+          options.emitRejectedToolCallOnPrompt === promptNumber)
+      ) {
         await ctx.client.request(acp.methods.client.session.requestPermission, {
           sessionId: ctx.params.sessionId,
           toolCall: {
@@ -156,7 +167,12 @@ const startFakeReviewerAgent = (
       }
 
       // If requested, simulate the reviewer calling submit_findings via the HTTP MCP server.
-      if (options.simulateFindingsViaHttp && newSessions.length > 0) {
+      if (
+        options.simulateFindingsViaHttp &&
+        newSessions.length > 0 &&
+        (options.simulateFindingsFromPrompt === undefined ||
+          promptNumber >= options.simulateFindingsFromPrompt)
+      ) {
         const mcpServers = newSessions[newSessions.length - 1]?.mcpServers ?? []
         const reviewerMcp = (
           mcpServers as Array<{
@@ -380,6 +396,94 @@ describe('reviewer orchestrator', () => {
     // The message reports the rejection count as context without claiming it blocked submit_findings.
     expect(review.errorMessage).toContain('rejected by the permission gate')
     expect(review.errorMessage).toContain('stopped without calling submit_findings')
+    expect(review.checks).toHaveLength(0)
+
+    await client.$disconnect()
+  })
+
+  it('finishes the review on one follow-up turn after the gate refused a call', async () => {
+    const process = new FakeAgentProcess()
+    const fake = startFakeReviewerAgent(process, 'reviewer-session-1', {
+      emitRejectedToolCallOnPrompt: 1,
+      simulateFindingsViaHttp: true,
+      simulateFindingsFromPrompt: 2,
+      checksToSubmit: [
+        {
+          status: 'pass',
+          claim: 'The audited turn is supported',
+          evidence: 'The frozen turn was read after the refusal.'
+        }
+      ]
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+
+    const review = await runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => makeSession(),
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!
+    })
+
+    // Two prompts on ONE reviewer session: the refused first turn, then the follow-up that finishes.
+    expect(fake.prompts).toHaveLength(2)
+    expect(fake.prompts[0]?.text).not.toContain('Your previous turn ended without calling')
+    expect(fake.prompts[1]?.text).toContain('ended without calling submit_findings')
+    expect(fake.prompts[1]?.text).toContain('Do not repeat it')
+    expect(fake.newSessions).toHaveLength(1)
+
+    // The findings reasoned about in that second turn reach the reader instead of being discarded.
+    expect(review.lifecycle).toBe('complete')
+    expect(review.outcome).toBe('pass')
+    expect(review.checks).toHaveLength(1)
+    expect(review.errorMessage ?? null).toBeNull()
+
+    await client.$disconnect()
+  })
+
+  it('reports that the follow-up produced nothing too when it stays silent', async () => {
+    const process = new FakeAgentProcess()
+    // Every turn asks for the forbidden tool and then closes without submitting: the follow-up runs,
+    // and the failure must say so rather than looking like a single silent turn.
+    const fake = startFakeReviewerAgent(process, 'reviewer-session-1', {
+      emitRejectedToolCall: true
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+
+    const review = await runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => makeSession(),
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!
+    })
+
+    expect(fake.prompts).toHaveLength(2)
+    expect(review.lifecycle).toBe('error')
+    expect(review.errorMessage).toContain('one follow-up turn produced none either')
+    expect(review.errorMessage).toContain('rejected by the permission gate')
     expect(review.checks).toHaveLength(0)
 
     await client.$disconnect()

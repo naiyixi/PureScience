@@ -11235,3 +11235,80 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 
 ① 按完整 40 位 SHA 读本笔与 `41c35b33` 的车道判决（`cancelled` 不算绿；先冻结推送，等两笔都落定）；
 ② P0 若仍红，按 §两百一十七 §四 1 的三条分流；③ 新单元从 §四 4 里按「连锁最小」取。
+
+## 两百一十九、本轮追加（执行器，2026-10-23 16:4x–）—— 复查被拒一次就整轮作废：补一次有界追问，并把「问过还是没成」与「一次沉默」分开
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工读到 `HEAD = origin/main = 93fc4423`（`test(capability): 机检① …`），在飞车道：`Nightly` / `Windows Full Test`
+  对该 SHA **均 success**，另有 `Scheduled Regression` 在跑（与本轮无关）。
+- 工作区里有**两批未提交改动**，本轮的判断与处置分开：
+  1. **复查那一批**（`src/main/reviewer/orchestrator.ts` / `orchestrator.test.ts` / `orchestrator-prompt-prefix.test.ts`，
+     mtime 11:58–14:05）——这是我这个 job 前两轮（`2bf44fb8` 11:47 起、`d0bd98c2` 14:01 起，后者在汇报阶段
+     报 `agent reported failure`）做完但没提交的同一单元 ⇒ 本轮**接着做完并提交**。
+  2. **CodeBuddy 装不上的那一批**（`src/main/settings/claude-install.ts` / `agent-runtime-manager.ts` /
+     `docs/plan-2026-10-21-v2.16-capability-contract.md` §7.18–7.19，mtime 13:57–13:59，与 12:48–13:49 那 5 笔
+     `feat(capability)` 提交同一批次）——属**桌面会话线**的在制品 ⇒ **一个字节都没碰、也没提交**（见 §四 6）。
+- 队列档「已完成（别再重做）」清单与本单元无交集：§两百一十六 §四 3 把它写成「未开工、已具名」；
+  B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔）在 §两百一十八 已记账为收口 ⇒ 按「连锁最小」取这一条。
+
+### 一 读数（真机日志重新聚了一遍，只读；先量再改）
+
+`~/Library/Logs/PureScience (DEV)/main.log`，**13,497** 条，窗口 2026-10-21T15:51:11Z → 2026-10-23T08:43:56Z：
+
+| 读数 | 值 |
+|---|---|
+| `review triggered` / `reviewer session started` | 103 / 102 |
+| `review complete` | 87 |
+| `review protocol incomplete`（error） | **15** |
+| 拒绝行 `rejecting non-reviewer tool requested by background reviewer` | **16**（`think` 9 / `execute` 7） |
+| 追问行 | **0**（本单元之前没有这条路径） |
+| 配对（同 `runId` 内先拒绝、后作废） | **15/15**，间隔 min 0.2 s / **中位 0.4 s** / max 2.1 s |
+
+⇒ 不是「模型自己没话说」，是**一次拒绝足以结束一轮复查**：已读的冻结轮次与已推理出的结论一个都没到读者手里。
+
+### 二 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/reviewer/orchestrator.ts` | `driveReviewerWithFollowUp`：**只有** `stopReason === 'end_turn'` 且此刻未 `submit_findings` 才发**一次**追问再驱动一轮；追问预算 = 常规 / 4；`incompleteReviewMessage(…, nudged)` 分两态（「问过仍为空」≠「一次沉默」）；`runReviewWithSession` 与 `runScopedReview` 两条路径都接上；两条具名日志（`…one follow-up sent` / `reviewer follow-up finished`） |
+| 同上 | 追问文本点名「被拒的调用不能重试、别重复」，写出可用出路，并要求「无法核验的条目记具名原因，而不是沉默收手」 |
+| `orchestrator.test.ts` | 假 agent 增 `emitRejectedToolCallOnPrompt` / `simulateFindingsFromPrompt`；新增 2 条：问一次后提交 ⇒ `complete`/`pass` 且 findings 到读者（**只有 1 个 reviewer 会话**）；问一次仍空 ⇒ `error` 且消息同时含「one follow-up turn produced none either」与「rejected by the permission gate」 |
+| `orchestrator-prompt-prefix.test.ts` | 三处 `toHaveLength(1)` → 2，并**加**断言（只紧不放）：第 2 轮不带 rubric 前缀、带「ended without calling submit_findings」 |
+
+证据档 `docs/evidence/2026-10-23-reviewer-empty-turn-follow-up.md`。
+
+**真机日志顺手抓到一条缺陷（已修）**：改动中途把 `driveReviewerWithFollowUp` 的返回值整体赋给了名为
+`stopReason` 的变量 ⇒ dev 实例日志里出现 `"stopReason":{"stopReason":"end_turn","nudged":false}` 这种嵌套，
+单测与 tsc 都合法、只有真机日志读得出来。已改成 `const drive = …` + `drive.stopReason`。这两条记录同时是
+**新代码在真机跑过**的读证（两次常规复查照常提交、`nudged:false`，没被追问打扰）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/reviewer` | **26 files / 300 passed**，exit 0 |
+| `src/main/reviewer` + `src/main/settings/claude-install.test.ts` | **27 files / 331 passed**，exit 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache` 3 文件 | **0 problems** |
+| `prettier --check` 3 文件 | 全过 |
+| 变异（`driveReviewerToStop` 后直接 return，等于关掉追问） | 新增 2 条**同时红**（2 failed / 14 skipped）；恢复后 26 files / 300 passed |
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **只对 `end_turn` 逐问**：超时 / 更新上限 / 工具预算停已经抛错走失败路径；**取消不追问**。
+2. **最多一次**、预算 1/4，不做循环重试；**闸门规则零改动**（`execute`/shell 仍拒）。
+3. **追问分支本身没有真机触发过**（由模型行为触发，点不出来）：真机证据只到「新代码跑过两次常规复查且结局未变」。
+   判据已埋：下次「拒绝后收手」时依次出现 `one follow-up sent` 与 `reviewer follow-up finished`，按这两行计数复核。
+4. 不占版本号（无新的用户可见文案、无窗口读数）。
+5. 本单元**没有**动 `src/main/settings/**`（那批注册表回退属桌面会话线，见下一条）。
+6. **具名交出**：工作区里 `src/main/settings/claude-install.ts`、`agent-runtime-manager.ts`、
+   `docs/plan-2026-10-21-v2.16-capability-contract.md`（§7.18–7.19）是**桌面会话线**的在制品，本轮不提交、不 stash、
+   不回退；本轮提交只含 `src/main/reviewer/**` 三个路径 + 本档 + 证据档。
+
+### 五 下一轮第一步
+
+① 本笔推送后按**完整 40 位 SHA** 读 `Nightly` + `Windows Full Test` 判决（`cancelled` 不算绿；推送前先查在飞车道，
+   有在跑的先记下会顶掉谁）；② 下一单元候选按「连锁最小」取：§两百一十八 §四 4 的 ③（105 条主会话权限上下文等待的成因）
+   或 P0-3 分步真机读数（**仍卡内存闸门**，开工前先取 `vm_stat` / `vm.swapusage`）；③ 若桌面会话线把工作区里那批
+   `src/main/settings/**` 提交了，先 `git fetch && git log --oneline origin/main -3` 核一遍再动手。

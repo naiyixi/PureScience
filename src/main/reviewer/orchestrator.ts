@@ -166,11 +166,38 @@ const SESSION_REFRESH_POLL_MS = 50
 // stalled, or the permission gate rejected its tool calls. The rejection counter cannot tell these
 // apart — it counts every rejected call, including tools the gate is *meant* to block (Bash/network) —
 // so the message reports the count as context without asserting it blocked submit_findings.
-const incompleteReviewMessage = (rejectedToolCalls: number): string =>
-  rejectedToolCalls > 0
-    ? 'Reviewer stopped without calling submit_findings; ' +
+const incompleteReviewMessage = (rejectedToolCalls: number, nudged = false): string =>
+  nudged
+    ? 'Reviewer stopped without calling submit_findings, and one follow-up turn produced none ' +
+      'either; ' +
       `${rejectedToolCalls} tool call(s) were also rejected by the permission gate.`
-    : 'Reviewer stopped without calling submit_findings.'
+    : rejectedToolCalls > 0
+      ? 'Reviewer stopped without calling submit_findings; ' +
+        `${rejectedToolCalls} tool call(s) were also rejected by the permission gate.`
+      : 'Reviewer stopped without calling submit_findings.'
+
+// One bounded follow-up when the reviewer ends its turn with nothing submitted. Field log
+// (2026-10-21/23, 100 reviews): 15 reviews ended with zero checks and **every one of them** had at
+// least one rejected tool call (16 rejections over those 15 sessions: 9 `think`, 7 `execute`) — the
+// gate refused a call the reviewer had already committed to, and it closed the turn instead of
+// continuing with the tools it does have. Discarding the whole review is the expensive half of that
+// interaction: the findings that were already reasoned about never reach the reader.
+//
+// The follow-up is bounded (one turn, a fraction of the tool budget) and only fires when the model
+// ended its own turn (`end_turn`): a timeout or budget stop already threw, and a cancellation must
+// not be argued with. It names the refusal so a repeated attempt is not the model's only option.
+const EMPTY_TURN_FOLLOW_UP_PROMPT =
+  'Your previous turn ended without calling submit_findings, so no verdict was recorded for this ' +
+  'review. Background reviewers get only the reviewer tools: shell, network and native editor calls ' +
+  'are refused by the permission gate, and a refused call cannot be retried. Do not repeat it. ' +
+  'Continue the review from where you stopped using the tools the gate allows (read the frozen ' +
+  'turn, read artifacts, query the execution log, fetch an external source), then call ' +
+  'submit_findings exactly once with a pass/warn/fail check for every item in scope. If an item ' +
+  'cannot be verified with the tools you have, record that as a check with a named reason rather ' +
+  'than ending the turn silently.'
+
+// The follow-up may not re-open the full budget: it exists to finish a review, not to restart one.
+const REVIEWER_FOLLOW_UP_BUDGET_DIVISOR = 4
 
 const REVIEWER_BRIDGE_SCOPE_ERROR =
   'Reviewer request was not constrained to the reviewer-only tool scope.'
@@ -449,6 +476,54 @@ export const driveReviewerToStop = async (
       if (timer) clearTimeout(timer)
     }
   }
+}
+
+// The reviewer session as the follow-up needs it: the drive loop's `nextUpdate` plus the prompt entry
+// point that is already used to start a review (both live on the ACP ActiveSession).
+type DrivableReviewerSession = DrivableSession & {
+  prompt: (blocks: Array<{ type: 'text'; text: string }>) => unknown
+}
+
+// Drives the reviewer to a stop, and — when it ended its own turn with nothing submitted — gives it
+// exactly one follow-up turn to finish (`EMPTY_TURN_FOLLOW_UP_PROMPT`).
+//
+// `isSubmitted` is read between the two drives rather than after the loop because submit_findings
+// arrives over the MCP server, not through the session updates: a reviewer can submit and still keep
+// talking, and a reviewer that submitted needs no follow-up. The returned `nudged` flag is what the
+// failure message reports, so "we asked once more and it still produced nothing" never reads like the
+// single silent turn it used to be.
+const driveReviewerWithFollowUp = async (
+  session: DrivableReviewerSession,
+  options: DriveOptions,
+  callbacks: DriveCallbacks,
+  isSubmitted: () => boolean,
+  onFollowUp?: () => void
+): Promise<{ stopReason: string | undefined; nudged: boolean }> => {
+  const stopReason = await driveReviewerToStop(session, options, callbacks)
+  if (isSubmitted() || stopReason !== 'end_turn') return { stopReason, nudged: false }
+
+  const followUpBudget = Math.max(
+    1,
+    Math.floor(
+      (options.maxToolCalls ?? DEFAULT_REVIEWER_MAX_TOOL_CALLS) / REVIEWER_FOLLOW_UP_BUDGET_DIVISOR
+    )
+  )
+  log.info('reviewer ended its turn without submit_findings; one follow-up sent', {
+    stopReason,
+    followUpBudget
+  })
+  onFollowUp?.()
+  session.prompt([{ type: 'text', text: EMPTY_TURN_FOLLOW_UP_PROMPT }])
+  const followUpStopReason = await driveReviewerToStop(
+    session,
+    { ...options, maxToolCalls: followUpBudget },
+    callbacks
+  )
+  log.info('reviewer follow-up finished', {
+    stopReason: followUpStopReason,
+    submitted: isSubmitted()
+  })
+  return { stopReason: followUpStopReason, nudged: true }
 }
 
 // Options for the Phase 3 fix loop.
@@ -923,6 +998,9 @@ const runScopedReview = async (options: {
   let checksReceived: NewCheck[] = []
   let checksSubmitted = false
   let rejectedToolCalls = 0
+  // Same meaning as in `runReview`: the scoped re-review also gets one follow-up turn when it ends
+  // with nothing submitted, and the failure message says so.
+  let nudged = false
   let reviewerBridgeScoped: boolean | undefined
   let reviewerSessionFailed = false
   let reviewerSessionError: unknown
@@ -972,15 +1050,24 @@ const runScopedReview = async (options: {
       : reviewerPrompt
     reviewerSession.prompt([{ type: 'text', text: reviewerPromptText }])
 
-    await driveReviewerToStop(
+    const scopedDrive = await driveReviewerWithFollowUp(
       reviewerSession,
       {
         timeoutMs: reviewerTimeoutMs,
         maxUpdates: reviewerMaxUpdates,
         maxToolCalls: reviewerMaxToolCalls
       },
-      { onUpdate: (entry) => capturedLog.push(entry) }
+      { onUpdate: (entry) => capturedLog.push(entry) },
+      () => checksSubmitted,
+      () => {
+        nudged = true
+      }
     )
+    log.info('scoped re-review session stopped', {
+      reviewId: review.id,
+      stopReason: scopedDrive.stopReason,
+      nudged
+    })
   } catch (error) {
     reviewerSessionFailed = true
     reviewerSessionError = error
@@ -1041,8 +1128,12 @@ const runScopedReview = async (options: {
   }
 
   if (!checksSubmitted) {
-    const errorMessage = incompleteReviewMessage(rejectedToolCalls)
-    log.error('scoped re-review protocol incomplete', { reviewId: review.id, error: errorMessage })
+    const errorMessage = incompleteReviewMessage(rejectedToolCalls, nudged)
+    log.error('scoped re-review protocol incomplete', {
+      reviewId: review.id,
+      error: errorMessage,
+      nudged
+    })
     review = await runReviewMutation(runSessionMutation, () =>
       reviewRepository.updateReview(review.id, {
         lifecycle: 'error',
@@ -1179,6 +1270,9 @@ const runReviewWithSession = async (
   let checksReceived: NewCheck[] = []
   let checksSubmitted = false
   let rejectedToolCalls = 0
+  // Set when the reviewer ended its own turn with nothing submitted and got one follow-up turn. The
+  // failure message reports it, so a review that was asked twice never reads like one silent turn.
+  let nudged = false
   let reviewerBridgeScoped: boolean | undefined
   let reviewerSessionFailed = false
   let reviewerSessionError: unknown
@@ -1243,7 +1337,7 @@ const runReviewWithSession = async (
       : reviewerPrompt
     reviewerSession.prompt([{ type: 'text', text: reviewerPromptText }])
 
-    const stopReason = await driveReviewerToStop(
+    const drive = await driveReviewerWithFollowUp(
       reviewerSession,
       {
         timeoutMs: reviewerTimeoutMs,
@@ -1252,9 +1346,17 @@ const runReviewWithSession = async (
       },
       {
         onUpdate: (entry) => capturedLog.push(entry)
+      },
+      () => checksSubmitted,
+      () => {
+        nudged = true
       }
     )
-    log.info('reviewer session stopped', { reviewId: review.id, stopReason })
+    log.info('reviewer session stopped', {
+      reviewId: review.id,
+      stopReason: drive.stopReason,
+      nudged
+    })
   } catch (error) {
     reviewerSessionFailed = true
     reviewerSessionError = error
@@ -1316,8 +1418,8 @@ const runReviewWithSession = async (
   }
 
   if (!checksSubmitted) {
-    const errorMessage = incompleteReviewMessage(rejectedToolCalls)
-    log.error('review protocol incomplete', { reviewId: review.id, error: errorMessage })
+    const errorMessage = incompleteReviewMessage(rejectedToolCalls, nudged)
+    log.error('review protocol incomplete', { reviewId: review.id, error: errorMessage, nudged })
     review = await runReviewMutation(runSessionMutation, () =>
       reviewRepository.updateReview(review.id, {
         lifecycle: 'error',
