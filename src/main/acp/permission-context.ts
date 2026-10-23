@@ -136,6 +136,41 @@ type AcpPermissionContextOptions = {
     toolCallId: string
     reason: 'identity-only-decision'
   }) => void
+  /**
+   * Fired once per request that could have waited, with what the wait actually produced.
+   *
+   * Only a timeout was observable before this: a wait that resolved is silent, so "every wait timed out"
+   * was an inference rather than a measurement. `waitedMs` is how long the caller actually blocked
+   * (`0` when the input was already in hand and nothing was awaited).
+   */
+  onOpenCodeInputWaitOutcome?: (details: {
+    sessionId: string
+    toolCallId: string
+    outcome: 'input-present' | 'resolved' | 'timeout' | 'cancelled'
+    waitedMs: number
+  }) => void
+  /**
+   * Fired when a provider tool-call update that carried raw input could not be used as permission input.
+   *
+   * This is the other half of "the wait timed out": either the update never came, or it came and this
+   * module dropped it (title shape, unresolvable identity). Without this line the two are identical in
+   * the logs. The title is reported (it is a tool name, bounded) and never the input itself.
+   */
+  onOpenCodeToolCallUpdateUnusable?: (details: {
+    sessionId: string
+    toolCallId: string
+    reason: 'not-an-mcp-title' | 'unresolved-identity'
+    title?: string
+  }) => void
+  /**
+   * Fired when raw input for a call arrives after its wait already gave up. That means the provider does
+   * send the input, and the wait was simply too short -- a different fix from "it never sends one".
+   */
+  onOpenCodeInputArrivedLate?: (details: {
+    sessionId: string
+    toolCallId: string
+    lateMs: number
+  }) => void
 }
 
 type PermissionContextSessionSnapshot = {
@@ -281,6 +316,13 @@ class AcpPermissionContext {
     string,
     Map<string, Set<OpenCodePermissionContextWaiter>>
   >()
+  /**
+   * Calls whose raw-input wait already gave up, per session, with the time it gave up.
+   *
+   * Kept only so a later arrival can be reported as late (`lateMs`) instead of looking like a call that
+   * simply arrived with its input. Bounded like every other per-session correlation store.
+   */
+  private readonly timedOutInputWaits = new Map<string, Map<string, number>>()
   private readonly closedOpenCodeToolCalls = new Map<string, Set<string>>()
   private readonly setTimer: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
   private readonly clearTimer: (handle: ReturnType<typeof setTimeout>) => void
@@ -570,10 +612,24 @@ class AcpPermissionContext {
       update.sessionUpdate === 'tool_call' || update.sessionUpdate === 'tool_call_update'
         ? update.rawInput
         : undefined
+    const hasIncomingRawInput =
+      isRecord(originalRawInput) && Object.keys(originalRawInput).length > 0
     const inputs = this.opencodeMcpToolInputs.get(sessionId) ?? new Map()
     const previous = inputs.get(event.toolCallId)
     const title = event.title ?? previous?.title
-    if (!title || !isMcpToolName(title, mcpServerNames)) return
+    if (!title || !isMcpToolName(title, mcpServerNames)) {
+      // An input that arrives and is dropped here is indistinguishable from one that never arrived once
+      // the wait times out, so it reports itself before returning.
+      if (hasIncomingRawInput) {
+        this.options.onOpenCodeToolCallUpdateUnusable?.({
+          sessionId,
+          toolCallId: event.toolCallId,
+          reason: 'not-an-mcp-title',
+          ...(title ? { title: title.slice(0, 120) } : {})
+        })
+      }
+      return
+    }
     const canReusePreviousIdentity = event.title == null || event.title === previous?.title
     const providerToolName =
       event.providerToolName ??
@@ -583,7 +639,17 @@ class AcpPermissionContext {
       resolveCanonicalMcpToolIdentity(providerToolName, mcpServerNames) ??
       resolveCanonicalMcpToolIdentity(title, mcpServerNames) ??
       (canReusePreviousIdentity ? previous?.mcpIdentity : undefined)
-    if (!mcpIdentity) return
+    if (!mcpIdentity) {
+      if (hasIncomingRawInput) {
+        this.options.onOpenCodeToolCallUpdateUnusable?.({
+          sessionId,
+          toolCallId: event.toolCallId,
+          reason: 'unresolved-identity',
+          title: title.slice(0, 120)
+        })
+      }
+      return
+    }
 
     const rawInput =
       boundedNotebookPermissionInput(title, originalRawInput, mcpServerNames) ?? event.rawInput
@@ -601,7 +667,10 @@ class AcpPermissionContext {
 
     this.setBounded(inputs, event.toolCallId, next, MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION)
     this.opencodeMcpToolInputs.set(sessionId, inputs)
-    if (hasRawInput) this.resolveOpenCodeWaiters(sessionId, event.toolCallId)
+    if (hasRawInput) {
+      this.reportLateInput(sessionId, event.toolCallId)
+      this.resolveOpenCodeWaiters(sessionId, event.toolCallId)
+    }
   }
 
   async restoreToolCall(
@@ -629,15 +698,40 @@ class AcpPermissionContext {
         isRecord(restored.toolCall.rawInput) &&
         Object.keys(restored.toolCall.rawInput).length > 0
       ) {
+        this.options.onOpenCodeInputWaitOutcome?.({
+          sessionId,
+          toolCallId: params.toolCall.toolCallId,
+          outcome: 'input-present',
+          waitedMs: 0
+        })
         return restored
       }
 
+      const waitStartedAt = Date.now()
       const outcome =
         context.awaitsProviderInput === false
           ? this.skipOpenCodeInputWait(sessionId, params.toolCall.toolCallId)
           : await this.waitForOpenCodeMcpToolInput(sessionId, params.toolCall.toolCallId, context)
+      if (context.awaitsProviderInput !== false) {
+        this.options.onOpenCodeInputWaitOutcome?.({
+          sessionId,
+          toolCallId: params.toolCall.toolCallId,
+          outcome: outcome === 'ready' ? 'resolved' : outcome,
+          waitedMs: Math.max(0, Date.now() - waitStartedAt)
+        })
+      }
       if (outcome === 'cancelled') return undefined
       if (outcome === 'timeout') {
+        // Remember when it gave up, so an input that turns up afterwards is reported as late rather than
+        // looking like one that was always there.
+        const timedOut = this.timedOutInputWaits.get(sessionId) ?? new Map<string, number>()
+        this.setBounded(
+          timedOut,
+          params.toolCall.toolCallId,
+          Date.now(),
+          MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION
+        )
+        this.timedOutInputWaits.set(sessionId, timedOut)
         this.options.onOpenCodeWaitTimeout?.({
           sessionId,
           toolCallId: params.toolCall.toolCallId,
@@ -708,6 +802,7 @@ class AcpPermissionContext {
     this.opencodeMcpToolInputs.delete(sessionId)
     this.opencodeNativeSkillToolCalls.delete(sessionId)
     this.closedOpenCodeToolCalls.delete(sessionId)
+    this.timedOutInputWaits.delete(sessionId)
     const sessionWaiters = this.opencodeMcpToolInputWaiters.get(sessionId)
     if (!sessionWaiters) return
 
@@ -724,7 +819,8 @@ class AcpPermissionContext {
       ...this.opencodeMcpToolInputs.keys(),
       ...this.opencodeNativeSkillToolCalls.keys(),
       ...this.closedOpenCodeToolCalls.keys(),
-      ...this.opencodeMcpToolInputWaiters.keys()
+      ...this.opencodeMcpToolInputWaiters.keys(),
+      ...this.timedOutInputWaits.keys()
     ])
     for (const sessionId of sessionIds) this.clearCorrelationsForSession(sessionId)
   }
@@ -931,6 +1027,25 @@ class AcpPermissionContext {
     const waiters = this.opencodeMcpToolInputWaiters.get(sessionId)?.get(toolCallId)
     if (!waiters) return
     for (const finish of Array.from(waiters)) finish(outcome)
+  }
+
+  /**
+   * Reports an input that turned up after its wait had already given up, then forgets the call.
+   *
+   * The two are different defects: "the provider sends nothing" argues for skipping the wait, while "the
+   * provider is late" argues for relaxing it. Only this line tells them apart in a field log.
+   */
+  private reportLateInput(sessionId: string, toolCallId: string): void {
+    const timedOut = this.timedOutInputWaits.get(sessionId)
+    const gaveUpAt = timedOut?.get(toolCallId)
+    if (gaveUpAt === undefined) return
+    timedOut?.delete(toolCallId)
+    if (timedOut?.size === 0) this.timedOutInputWaits.delete(sessionId)
+    this.options.onOpenCodeInputArrivedLate?.({
+      sessionId,
+      toolCallId,
+      lateMs: Math.max(0, Date.now() - gaveUpAt)
+    })
   }
 
   private setBounded<T>(

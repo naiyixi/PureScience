@@ -406,6 +406,213 @@ describe('ACP permission context', () => {
     }
   })
 
+  it('reports a request whose input was already in hand as a wait that cost nothing', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeInputWaitOutcome = vi.fn()
+      const setTimer = vi.fn((fn: () => void, ms: number) => setTimeout(fn, ms))
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        setTimer,
+        onOpenCodeInputWaitOutcome
+      })
+
+      const restored = await context.restoreToolCall(
+        permissionRequest('session-1', 'call-1', { rawInput: { code: 'print(1)' } }),
+        {
+          sessionId: 'session-1',
+          framework: 'opencode',
+          mcpServerNames: NOTEBOOK_SERVERS,
+          isCancelled: () => false
+        }
+      )
+
+      expect(restored?.toolCall.rawInput).toMatchObject({ code: 'print(1)' })
+      expect(setTimer).not.toHaveBeenCalled()
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledTimes(1)
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        outcome: 'input-present',
+        waitedMs: 0
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('counts a wait that resolved, which used to leave no trace at all', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeInputWaitOutcome = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeInputWaitOutcome
+      })
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+
+      await vi.advanceTimersByTimeAsync(40)
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call_update',
+            toolCallId: 'call-1',
+            title: 'purescience_notebook_notebook_execute',
+            status: 'in_progress',
+            rawInput: { code: 'print(2)' }
+          }
+        },
+        'opencode'
+      )
+
+      await expect(restored).resolves.toMatchObject({
+        toolCall: { rawInput: { code: 'print(2)' } }
+      })
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        outcome: 'resolved',
+        waitedMs: 40
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('counts a wait that gave up, and reports the input that turned up afterwards as late', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeInputWaitOutcome = vi.fn()
+      const onOpenCodeInputArrivedLate = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout: vi.fn(),
+        onOpenCodeInputWaitOutcome,
+        onOpenCodeInputArrivedLate
+      })
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(restored).resolves.toBeDefined()
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledTimes(1)
+      expect(onOpenCodeInputWaitOutcome).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        outcome: 'timeout',
+        waitedMs: 1_000
+      })
+
+      await vi.advanceTimersByTimeAsync(250)
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call_update',
+            toolCallId: 'call-1',
+            title: 'purescience_notebook_notebook_execute',
+            status: 'in_progress',
+            rawInput: { code: 'print(3)' }
+          }
+        },
+        'opencode'
+      )
+
+      expect(onOpenCodeInputArrivedLate).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        lateMs: 250
+      })
+      // Reported once, not on every later update for the same call.
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call_update',
+            toolCallId: 'call-1',
+            title: 'purescience_notebook_notebook_execute',
+            status: 'in_progress',
+            rawInput: { code: 'print(3)' }
+          }
+        },
+        'opencode'
+      )
+      expect(onOpenCodeInputArrivedLate).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports an input-bearing update it cannot use instead of dropping it silently', () => {
+    const onOpenCodeToolCallUpdateUnusable = vi.fn()
+    const context = new AcpPermissionContext({
+      emitPermissionRequest: vi.fn(),
+      routing: permissionRouting(),
+      onOpenCodeToolCallUpdateUnusable
+    })
+
+    // The field shape that produced the question: an update whose title is the bare tool name, so it
+    // cannot be tied back to a configured server, and whose input was therefore thrown away.
+    observe(
+      context,
+      {
+        sessionId: 'session-1',
+        update: {
+          sessionUpdate: 'tool_call',
+          toolCallId: 'call-1',
+          title: 'knowledge_list_sources',
+          kind: 'read',
+          status: 'pending',
+          rawInput: { limit: 5 }
+        }
+      },
+      'opencode'
+    )
+
+    expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      toolCallId: 'call-1',
+      reason: 'not-an-mcp-title',
+      title: 'knowledge_list_sources'
+    })
+    expect(context.snapshot().sessions['session-1']).toBeUndefined()
+
+    // An update that carried no input lost nothing, so it must not add noise to the reading.
+    observe(
+      context,
+      {
+        sessionId: 'session-1',
+        update: {
+          sessionUpdate: 'tool_call',
+          toolCallId: 'call-2',
+          title: 'knowledge_list_sources',
+          kind: 'read',
+          status: 'pending'
+        }
+      },
+      'opencode'
+    )
+    expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+  })
+
   it('does not wait for input on a reviewer request, and still answers it', async () => {
     const reviewerResponse = {
       outcome: { outcome: 'selected' as const, optionId: 'allow-once' }

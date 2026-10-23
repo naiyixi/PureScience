@@ -144,6 +144,31 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
     },
     onOpenCodeInputWaitSkipped: ({ sessionId, toolCallId, reason }) => {
       log.info('skipping OpenCode input wait', { sessionId, toolCallId, reason })
+    },
+    // The wait's own products, so a field log can count outcomes instead of inferring them from the
+    // timeout line alone (a wait that resolved used to leave no trace at all).
+    onOpenCodeInputWaitOutcome: ({ sessionId, toolCallId, outcome, waitedMs }) => {
+      log.info('OpenCode permission input wait outcome', {
+        sessionId,
+        toolCallId,
+        outcome,
+        waitedMs
+      })
+    },
+    onOpenCodeToolCallUpdateUnusable: ({ sessionId, toolCallId, reason, title }) => {
+      log.warn('OpenCode tool call update unusable as permission input', {
+        sessionId,
+        toolCallId,
+        reason,
+        ...(title ? { title } : {})
+      })
+    },
+    onOpenCodeInputArrivedLate: ({ sessionId, toolCallId, lateMs }) => {
+      log.info('OpenCode permission input arrived after the wait gave up', {
+        sessionId,
+        toolCallId,
+        lateMs
+      })
     }
   })
   const reviewerSessions = new ReviewerSessionOwner({

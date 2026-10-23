@@ -11312,3 +11312,66 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
    有在跑的先记下会顶掉谁）；② 下一单元候选按「连锁最小」取：§两百一十八 §四 4 的 ③（105 条主会话权限上下文等待的成因）
    或 P0-3 分步真机读数（**仍卡内存闸门**，开工前先取 `vm_stat` / `vm.swapusage`）；③ 若桌面会话线把工作区里那批
    `src/main/settings/**` 提交了，先 `git fetch && git log --oneline origin/main -3` 核一遍再动手。
+
+## 两百二十、本轮追加（执行器，2026-10-23 19:0x–）—— 主会话那 1 秒权限等待：先把「谁决定的」与「等到了什么」变成四行数
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `HEAD = origin/main = 6db7fee5`；上一笔 `79653720`（复查追问）的**双车道已落定双绿**
+  （`Nightly` / `Windows Full Test` 均 success）；`6db7fee5` 的 `Windows Full Test` 已 success、`Nightly` 仍在跑。
+- B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔）在 §两百一十八 已记账为收口 ⇒ 按「连锁最小」继续取 §两百一十八 §四 4 ③
+  （主会话权限上下文等待的成因）。
+- **工作区归属先分清**：`src/main/capabilities/skill-roots.ts`（加 `codex/skills` 根）与
+  `docs/plan-2026-10-21-v2.16-capability-contract.md`（§7.20 codex 打通）、`scripts/bench/codex-install-probe.test.ts`
+  与 `docs/bench-runs/*.json` 是**桌面会话线**的在制品（mtime 18:42–19:06，与本轮无关）⇒ 一个字节没碰、没提交；
+  本轮只动 `src/main/acp/**` 三个路径 + 两份用例 + 证据档 + 本节。
+
+### 一 交付（可见性，不是行为改动）
+
+| 位置 | 改动 |
+|---|---|
+| `permission-broker.ts` | `recordPermissionDecision` 补齐**四态**：`automatic`（首判 + 实时自动放行两条路）/ `remembered-grant` / `session-grant` / **`card`**；字段只有身份 + `rawInput: 'present'|'missing'`，**不记标题与入参内容** |
+| `permission-context.ts` | 三个新回调：`onOpenCodeInputWaitOutcome`（`input-present` / `resolved` / `timeout` / `cancelled` + `waitedMs`，**resolved 以前一声不响**）、`onOpenCodeToolCallUpdateUnusable`（带入参的更新被丢弃时报 `reason` + 标题）、`onOpenCodeInputArrivedLate`（超时之后到的入参报 `lateMs`，按调用有界记账） |
+| `runtime-session-composition.ts` | 三条回调接成三条具名日志 |
+| 用例 | 新增 5 条（决定四态顺序与「不含入参内容」、`input-present` 不计时、`resolved: 40ms`、`timeout: 1000ms` + `lateMs: 250` 且只报一次、不可用更新报 `reason`+`title` 且无入参时不产生噪声） |
+
+### 二 真机读数（只读，未重启实例）与一条就地更正
+
+日志 `~/Library/Logs/PureScience (DEV)/main*.log` 三份共 **36,095** 行（窗口 10-21T14:16Z → 10-23T11:02Z）：
+`wait timed out` **290** 条 —— 复查侧 **184**、主会话 **106**（`knowledge_list_sources` 48 / `notebook_state` 46 /
+`annotation_list` 11 / `notebook_restart` 1，跨 **78** 个各有自己 `prompt start` 的会话）。290/290 都带同 `toolCallId` 的
+`permission request received` ⇒ 等待结束后请求照常走到闸门。主会话侧白等量 = 106 × 1 s ≈ **1 分 46 秒**。
+
+**§两百一十八 的修复在真机上确认生效**：最后一条超时 `05:41:32Z`，第一条 `skipping OpenCode input wait` `05:41:44Z`，
+此后到日志末尾（`11:02:06Z`）共 **5** 条 skip、**0** 条超时。
+
+**就地更正上一轮的一句话**：「290 次等待全部超时」当时是**推断**——`resolved` 的等待从来不打日志，分母不在日志里。
+本轮把这条通道补成四态之后，这个比例才有得算（见证据档 §1、§6）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 两份用例 | **2 files / 116 passed**，exit 0（新增 5 条逐个具名跑出） |
+| 变异（同时挖掉 `card` 决定记录 + 等待结果回调 + 不可用更新回调） | 恰好 **4 条红**（4 failed / 112 passed）；恢复后 116 全绿 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache` 5 文件 | **0 problems**；`prettier --check` 全过 |
+| `src/main/acp` 整域 | **89 files / 1457 passed**，exit 0 |
+
+### 四 边界（不许读成更强）
+
+1. **等待行为零改动**：`WAIT_MS = 1_000` 与「等不等」的判据一个字没动 —— A/B/C 三种成因（没发 / 被我们丢了 / 只是迟到）
+   都还没有数，先动就是猜。
+2. **新日志行尚无真机读数**：本机空闲页 4,129（≈68 MB）、swap 17.6G/18.4G，dev 实例**没有重启**（重编 vite 会拖死整机）
+   ⇒ 本轮真机数字全部来自旧构建基线。
+3. 决定记录**不记入参内容**（长期开着的日志只答「谁决定的」）；`lateMs` 只内存记账，重启即丢。
+4. 不占版本号：无用户可见文案、无窗口读数、无行为变化。
+
+### 五 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本笔 `Nightly` + `Windows Full Test`（`cancelled` 不算绿；推送前先查在飞车道）。
+② 本单元的**解封判据**是四张表（证据档 §6）：`wait outcome` 的 `resolved` 占比、`permission decision` 的四态分布、
+`tool call update unusable` 的 `reason`、`lateMs` 分布 —— 数出来才决定那 1 秒该不该付（`resolved ≈ 0` + 无卡 ⇒
+按族沿用 `awaitsProviderInput` 跳过；出现 `not-an-mcp-title` ⇒ 我们自己丢了入参，修判据而不是修等待）。
+③ 取数需要 dev 实例以本提交构建重启 ⇒ 先取 `vm_stat` / `vm.swapusage`，内存闸门未解就换下一单元（连锁最小：
+P0-3 分步真机读数之外的纯代码项），不要把「等闸门」写成「已完成」。

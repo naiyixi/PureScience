@@ -13,6 +13,7 @@ import type {
   PermissionGrantScope
 } from '../../shared/permission-grants'
 import type { CommandShellDialect } from '../agent-framework/types'
+import { createLogger } from '../logger'
 import { extractProviderToolName } from './runtime-events'
 import {
   isMcpToolName,
@@ -42,6 +43,8 @@ import type { PermissionGrantRegistry } from '../permission-grants/registry'
 import type { NotebookRunRiskReceipt } from '../../shared/notebook'
 import { evaluateNotebookRunRisk } from '../notebook/run-risk-rules'
 import { notebookRunRiskReceipt } from '../notebook/run-risk-receipt'
+
+const log = createLogger('acp')
 
 type PendingPermission = {
   request: AcpPermissionRequest
@@ -349,6 +352,35 @@ const resolvePermissionTitle = (params: RequestPermissionRequest, isMcp: boolean
     (!isMcp && isShell && hasNoTitle ? commandFromRawInput(params.toolCall.rawInput) : undefined) ??
     reportedPermissionTitle(params)
   )
+}
+
+// Who decided a permission request, recorded next to the request it answers.
+//
+// The field log (2026-10-21/23) could not answer "was this request auto-approved or did it become a
+// card?" for any of the 1,897 requests: only the reviewer path logged a decision, so the 106
+// main-session MCP requests that burned the full input wait were indistinguishable from ones the user
+// actually had to click. The record below closes that gap with the four decisions this broker can take.
+//
+// It deliberately carries no title, arguments or payload: only the identity, whether the request
+// arrived with arguments at all (`rawInput` presence is exactly what the wait was about), and which
+// rule answered it.
+type PermissionDecision = 'automatic' | 'remembered-grant' | 'session-grant' | 'card'
+
+const recordPermissionDecision = (
+  request: AcpPermissionRequest,
+  decision: PermissionDecision,
+  policyContext?: PermissionPolicyContext
+): void => {
+  const rawInput = recordInput(request.rawInput)
+  log.info('permission decision', {
+    sessionId: request.sessionId,
+    toolCallId: request.toolCallId,
+    decision,
+    isMcp: request.isMcp,
+    rawInput: rawInput && Object.keys(rawInput).length > 0 ? 'present' : 'missing',
+    ...(request.mcpIdentity ? { tool: request.mcpIdentity } : {}),
+    ...(policyContext?.profile ? { profile: policyContext.profile } : {})
+  })
 }
 
 const resolveMcpToolIdentity = (
@@ -991,6 +1023,7 @@ class AcpPermissionBroker {
     )
 
     if (automaticOptionId) {
+      recordPermissionDecision(request, 'automatic', policyContext)
       return Promise.resolve({
         outcome: { outcome: 'selected', optionId: automaticOptionId }
       })
@@ -1011,6 +1044,7 @@ class AcpPermissionBroker {
             return { outcome: { outcome: 'cancelled' as const } }
           }
           if (match && providerAllowOnceOption) {
+            recordPermissionDecision(request, 'remembered-grant', policyContext)
             return {
               outcome: { outcome: 'selected' as const, optionId: providerAllowOnceOption.optionId }
             }
@@ -1034,6 +1068,7 @@ class AcpPermissionBroker {
       : undefined
 
     if (autoAllowOptionId) {
+      recordPermissionDecision(request, 'session-grant', policyContext)
       return Promise.resolve({
         outcome: { outcome: 'selected', optionId: autoAllowOptionId }
       })
@@ -1058,6 +1093,7 @@ class AcpPermissionBroker {
       : undefined
 
     if (liveAutomaticOptionId) {
+      recordPermissionDecision(pending.request, 'automatic', pending.policyContext)
       return Promise.resolve({
         outcome: { outcome: 'selected', optionId: liveAutomaticOptionId }
       })
@@ -1090,6 +1126,7 @@ class AcpPermissionBroker {
         ...entry,
         resolve
       })
+      recordPermissionDecision(entry.request, 'card', entry.policyContext)
       this.emitPermissionRequest(entry.request)
     })
   }

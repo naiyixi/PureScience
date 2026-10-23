@@ -1,5 +1,17 @@
 import type { RequestPermissionRequest } from '@agentclientprotocol/sdk'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+const { infoLog } = vi.hoisted(() => ({ infoLog: vi.fn() }))
+
+// The broker's decision record is the only place a field log can tell "auto-approved" from "the user
+// was shown a card"; the suite captures it instead of trusting the call site by inspection.
+vi.mock('../logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../logger')>()
+  return {
+    ...actual,
+    createLogger: (scope: string) => ({ ...actual.createLogger(scope), info: infoLog })
+  }
+})
 
 import { AcpPermissionBroker, ConversationPermissionGrantStore } from './permission-broker'
 import { withTrustedNativeToolIdentity } from './permission-policy'
@@ -632,6 +644,43 @@ describe('ACP permission broker', () => {
         optionId: 'allow-once'
       }
     })
+  })
+
+  it('records who decided each request, so a field log can tell a card from an auto-approval', async () => {
+    infoLog.mockClear()
+    const emitted: EmittedPermissionRequest[] = []
+    const broker = new AcpPermissionBroker((request) => emitted.push(request))
+
+    // Policy auto-approves a conservative read: no card, and the record says so.
+    const autoRequest = createToolPermissionRequest({ kind: 'read' })
+    autoRequest.toolCall.locations = [{ path: 'data/results.csv' }]
+    await broker.requestPermission(autoRequest, {
+      profile: 'auto',
+      autoReviewStrategy: 'conservative',
+      cwd: '/workspace'
+    })
+
+    // Then a call that really is shown as a card, and one answered from the session grant it produced.
+    const firstNotebook = broker.requestPermission(createNotebookPermissionRequest())
+    expect(emitted).toHaveLength(1)
+    broker.respond({ requestId: emitted[0].requestId, optionId: getSessionOptionId(emitted[0]) })
+    await firstNotebook
+    await broker.requestPermission(createNotebookPermissionRequest())
+
+    const decisions = (): Array<Record<string, unknown>> =>
+      infoLog.mock.calls
+        .map(([, data]) => data as Record<string, unknown> | undefined)
+        .filter((data): data is Record<string, unknown> => data?.decision !== undefined)
+
+    expect(decisions().map((entry) => entry.decision)).toEqual([
+      'automatic',
+      'card',
+      'session-grant'
+    ])
+    // The record answers "did the user have to click?" and "did the request even carry arguments?".
+    expect(decisions()[1]).toMatchObject({ decision: 'card', isMcp: true, rawInput: 'present' })
+    // ...and carries no argument content of its own.
+    expect(JSON.stringify(decisions())).not.toContain('python')
   })
 
   it('projects Codex commands to PureScience once and session scopes', async () => {
