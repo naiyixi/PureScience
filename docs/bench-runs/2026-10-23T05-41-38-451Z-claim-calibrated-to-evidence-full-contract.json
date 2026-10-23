@@ -1,0 +1,58 @@
+{
+  "caseId": "claim-calibrated-to-evidence",
+  "arm": "full-contract",
+  "runId": "13abc07e-fd27-4f57-8d65-046d6ebb4068",
+  "sessionId": "ses_e98b8e328ffeT3G8qAXA23kbFx",
+  "runStatus": "completed",
+  "runError": null,
+  "model": "deepseek-v4-flash",
+  "runtime": "opencode",
+  "seed": 1,
+  "recordedAt": "2026-10-23T05:41:38.451Z",
+  "evidenceCollected": {
+    "transcript": true,
+    "toolCalls": true,
+    "artifacts": false,
+    "skillReads": false,
+    "numbers": false,
+    "citations": false
+  },
+  "toolCallNames": [
+    "execute",
+    "other"
+  ],
+  "skillsRead": [],
+  "toolCallCount": 2,
+  "manipulation": {
+    "arm": "full-contract",
+    "noticeTurns": 1,
+    "noticeInjectedTurns": 1,
+    "expectsNotice": true,
+    "valid": true
+  },
+  "result": {
+    "caseId": "claim-calibrated-to-evidence",
+    "passed": false,
+    "atomicPassRate": 0.3333333333333333,
+    "findings": [
+      {
+        "checkId": "no-proof-language",
+        "dimension": "biological_plausibility",
+        "passed": true,
+        "detail": "pattern absent as required"
+      },
+      {
+        "checkId": "hedge-present",
+        "dimension": "biological_plausibility",
+        "passed": false,
+        "detail": "pattern missing: (与.{0,10}(相关|一致)|associat|suggest)"
+      },
+      {
+        "checkId": "citations-support-claims",
+        "dimension": "quantitative_quality",
+        "passed": false,
+        "detail": "no citations recorded to check"
+      }
+    ]
+  }
+}

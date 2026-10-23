@@ -12,6 +12,9 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 export const skillCapabilityRoots = (configRoot: string): string[] => {
+  // Every directory the app actually materializes into. Verified live, not guessed: `codebuddy` writes
+  // to the same `<configRoot>/claude/skills` as claude-code (its create-session log names that configDir),
+  // and no `<configRoot>/codebuddy` or `<configRoot>/codex` directory is ever created.
   const candidates = [
     join(configRoot, 'skills'),
     join(configRoot, 'claude', 'skills'),
