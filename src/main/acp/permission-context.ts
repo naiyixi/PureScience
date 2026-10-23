@@ -70,6 +70,17 @@ type OpenCodeMcpToolInput = {
   rawInput?: unknown
 }
 
+/**
+ * An input-bearing update that was thrown away because it could not be tied to a configured server.
+ *
+ * Held until a permission request for the same tool call decides whether the loss mattered: if that
+ * request waits for input, these were the bytes it was waiting for.
+ */
+type DroppedOpenCodeInput = {
+  reason: 'not-an-mcp-title' | 'unresolved-identity'
+  title?: string
+}
+
 type ClaudeCodeMcpToolInput = {
   title: string
   providerToolName: string
@@ -324,6 +335,18 @@ class AcpPermissionContext {
    */
   private readonly timedOutInputWaits = new Map<string, Map<string, number>>()
   private readonly closedOpenCodeToolCalls = new Map<string, Set<string>>()
+  /**
+   * Inputs thrown away on a call that had no wait yet, per session, kept until a request for that call
+   * says whether the loss mattered. Bounded like every other per-session correlation store.
+   */
+  private readonly droppedOpenCodeInputs = new Map<string, Map<string, DroppedOpenCodeInput>>()
+  /**
+   * Tool calls whose dropped input was already reported, per session.
+   *
+   * Only used for the shape that actually loses something, so the number counts calls rather than
+   * provider chunks: one call produced up to five rows before this existed.
+   */
+  private readonly openCodeDroppedInputReports = new Map<string, Set<string>>()
   private readonly setTimer: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
   private readonly clearTimer: (handle: ReturnType<typeof setTimeout>) => void
 
@@ -619,14 +642,10 @@ class AcpPermissionContext {
     const title = event.title ?? previous?.title
     if (!title || !isMcpToolName(title, mcpServerNames)) {
       // An input that arrives and is dropped here is indistinguishable from one that never arrived once
-      // the wait times out, so it reports itself before returning.
+      // the wait times out, so it reports itself before returning -- but only when something was
+      // actually waiting for it: every ordinary local tool call reports its own arguments here too.
       if (hasIncomingRawInput) {
-        this.options.onOpenCodeToolCallUpdateUnusable?.({
-          sessionId,
-          toolCallId: event.toolCallId,
-          reason: 'not-an-mcp-title',
-          ...(title ? { title: title.slice(0, 120) } : {})
-        })
+        this.handleUnusableOpenCodeInput(sessionId, event.toolCallId, 'not-an-mcp-title', title)
       }
       return
     }
@@ -641,12 +660,7 @@ class AcpPermissionContext {
       (canReusePreviousIdentity ? previous?.mcpIdentity : undefined)
     if (!mcpIdentity) {
       if (hasIncomingRawInput) {
-        this.options.onOpenCodeToolCallUpdateUnusable?.({
-          sessionId,
-          toolCallId: event.toolCallId,
-          reason: 'unresolved-identity',
-          title: title.slice(0, 120)
-        })
+        this.handleUnusableOpenCodeInput(sessionId, event.toolCallId, 'unresolved-identity', title)
       }
       return
     }
@@ -708,6 +722,12 @@ class AcpPermissionContext {
       }
 
       const waitStartedAt = Date.now()
+      // This is the moment the question "did we throw away the input this request needs?" can be
+      // answered: the request exists, it is one that waits, and its own input is empty. A skip decides
+      // from identity alone and never reads the input, so a dropped input is not a loss there.
+      if (context.awaitsProviderInput !== false) {
+        this.reportRememberedOpenCodeInputDrop(sessionId, params.toolCall.toolCallId)
+      }
       const outcome =
         context.awaitsProviderInput === false
           ? this.skipOpenCodeInputWait(sessionId, params.toolCall.toolCallId)
@@ -1033,18 +1053,111 @@ class AcpPermissionContext {
    * Reports an input that turned up after its wait had already given up, then forgets the call.
    *
    * The two are different defects: "the provider sends nothing" argues for skipping the wait, while "the
-   * provider is late" argues for relaxing it. Only this line tells them apart in a field log.
+   * provider is late" argues for relaxing it. Only this line tells them apart in a field log. Returns
+   * whether this call was one of them, so the caller does not count the same update twice.
    */
-  private reportLateInput(sessionId: string, toolCallId: string): void {
+  private reportLateInput(sessionId: string, toolCallId: string): boolean {
     const timedOut = this.timedOutInputWaits.get(sessionId)
     const gaveUpAt = timedOut?.get(toolCallId)
-    if (gaveUpAt === undefined) return
+    if (gaveUpAt === undefined) return false
     timedOut?.delete(toolCallId)
     if (timedOut?.size === 0) this.timedOutInputWaits.delete(sessionId)
     this.options.onOpenCodeInputArrivedLate?.({
       sessionId,
       toolCallId,
       lateMs: Math.max(0, Date.now() - gaveUpAt)
+    })
+    return true
+  }
+
+  /**
+   * Handles an input that cannot be used, in the three ways it can differ.
+   *
+   * The provider sends a tool call's input before the permission request for it (measured: update at
+   * `15:56:54.836Z`, request at `15:56:55.210Z`), so at this point nothing is waiting yet and "was this
+   * loss?" cannot be answered from the call id alone. Three shapes follow, and only one is a defect:
+   *
+   * - a wait is already pending for this call (the request came first) — the input it is waiting for was
+   *   thrown away: report it;
+   * - the wait already gave up (this call is in `timedOutInputWaits`) — the input was merely late:
+   *   report it through the late channel, which carries `lateMs`;
+   * - neither — remember it, and let the request decide. If a request for this call later waits for its
+   *   input, that is exactly "we dropped the input this request needed" and it is reported then; if no
+   *   such request ever comes (every ordinary `bash`/`read` call, which reports its own arguments here)
+   *   nothing was lost and nothing is logged.
+   *
+   * The old behaviour logged the third shape as a defect: 77 rows over 49 calls and 14 sessions in two
+   * days, every one of them non-MCP, none sharing a tool call with any of the 290 waits that timed out.
+   */
+  private handleUnusableOpenCodeInput(
+    sessionId: string,
+    toolCallId: string,
+    reason: 'not-an-mcp-title' | 'unresolved-identity',
+    title: string | null | undefined
+  ): void {
+    const waiters = this.opencodeMcpToolInputWaiters.get(sessionId)?.get(toolCallId)
+    if ((waiters?.size ?? 0) > 0) {
+      this.reportDroppedOpenCodeInput(sessionId, toolCallId, { reason, title: title ?? undefined })
+      return
+    }
+    if (this.reportLateInput(sessionId, toolCallId)) return
+
+    const records =
+      this.droppedOpenCodeInputs.get(sessionId) ?? new Map<string, DroppedOpenCodeInput>()
+    if (records.has(toolCallId)) return
+    this.setBounded(
+      records,
+      toolCallId,
+      { reason, ...(title ? { title: title.slice(0, 120) } : {}) },
+      MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION
+    )
+    this.droppedOpenCodeInputs.set(sessionId, records)
+  }
+
+  /**
+   * Reports a remembered drop once the request it belonged to turns out to wait for the input.
+   *
+   * Called at the only moment the question can be answered: the request exists, it is an MCP request,
+   * and its own input is empty, so the wait that starts here is waiting for the bytes we threw away.
+   */
+  private reportRememberedOpenCodeInputDrop(sessionId: string, toolCallId: string): void {
+    const records = this.droppedOpenCodeInputs.get(sessionId)
+    const record = records?.get(toolCallId)
+    if (!records || !record) return
+    records.delete(toolCallId)
+    if (records.size === 0) this.droppedOpenCodeInputs.delete(sessionId)
+    this.reportDroppedOpenCodeInput(sessionId, toolCallId, record)
+  }
+
+  /** Drops the per-call state of a dropped input (the record itself and the once-per-call report marker). */
+  private forgetDroppedInputState(sessionId: string, toolCallId: string): void {
+    const dropped = this.droppedOpenCodeInputs.get(sessionId)
+    dropped?.delete(toolCallId)
+    if (dropped?.size === 0) this.droppedOpenCodeInputs.delete(sessionId)
+    const reported = this.openCodeDroppedInputReports.get(sessionId)
+    reported?.delete(toolCallId)
+    if (reported?.size === 0) this.openCodeDroppedInputReports.delete(sessionId)
+  }
+
+  /** Reports one dropped input per call: a provider that chunks its updates used to produce up to five. */
+  private reportDroppedOpenCodeInput(
+    sessionId: string,
+    toolCallId: string,
+    record: DroppedOpenCodeInput
+  ): void {
+    const reported = this.openCodeDroppedInputReports.get(sessionId) ?? new Set<string>()
+    if (reported.has(toolCallId)) return
+    this.addBounded(reported, toolCallId, MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION)
+    this.openCodeDroppedInputReports.set(sessionId, reported)
+
+    const remembered = this.droppedOpenCodeInputs.get(sessionId)
+    remembered?.delete(toolCallId)
+    if (remembered?.size === 0) this.droppedOpenCodeInputs.delete(sessionId)
+    this.options.onOpenCodeToolCallUpdateUnusable?.({
+      sessionId,
+      toolCallId,
+      reason: record.reason,
+      ...(record.title ? { title: record.title } : {})
     })
   }
 
@@ -1088,6 +1201,7 @@ class AcpPermissionContext {
     const opencodeNativeSkills = this.opencodeNativeSkillToolCalls.get(sessionId)
     opencodeNativeSkills?.delete(toolCallId)
     if (opencodeNativeSkills?.size === 0) this.opencodeNativeSkillToolCalls.delete(sessionId)
+    this.forgetDroppedInputState(sessionId, toolCallId)
     if (framework === 'opencode') {
       const closedToolCalls = this.closedOpenCodeToolCalls.get(sessionId) ?? new Set<string>()
       this.addBounded(closedToolCalls, toolCallId, MAX_OPENCODE_MCP_TOOL_INPUTS_PER_SESSION)
@@ -1108,6 +1222,7 @@ class AcpPermissionContext {
       calls?.delete(toolCallId)
       if (calls?.size === 0) sessions.delete(sessionId)
     }
+    this.forgetDroppedInputState(sessionId, toolCallId)
     this.resolveOpenCodeWaiters(sessionId, toolCallId, 'cancelled')
   }
 

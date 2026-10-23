@@ -11375,3 +11375,69 @@ summariesWithRuntimeContext 1（其中带 Plan 的 1）
 按族沿用 `awaitsProviderInput` 跳过；出现 `not-an-mcp-title` ⇒ 我们自己丢了入参，修判据而不是修等待）。
 ③ 取数需要 dev 实例以本提交构建重启 ⇒ 先取 `vm_stat` / `vm.swapusage`，内存闸门未解就换下一单元（连锁最小：
 P0-3 分步真机读数之外的纯代码项），不要把「等闸门」写成「已完成」。
+
+## 两百二十一、本轮追加（执行器，2026-10-24 02:1x–04:5x）—— 「我们丢了 77 次提供方入参」的实际读法：一次都没有；判据从读数侧挪进生产者
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `HEAD = origin/main = df864e88`；上一笔 `4ea363dd`（README 契约覆盖数）的双车道已核（`Windows Full Test` success、
+  `Nightly` success）；`f2bfd5dd`（broker 四态决定记录）已推。
+- 工作区**不干净**，归属先分清：`src/main/artifacts/{ipc.ts,ipc.test.ts,run-registry.ts}` 是**桌面会话线**的在制品
+  （mtime 00:15–00:16，内容为「finalize 重试次数与完成行上账」）⇒ 一个字节没碰、没提交、没回退。本轮只动
+  `src/main/acp/**` 三个路径 + 证据档 + 本节，与它不相交。
+- 内存闸门仍未解（本轮现取：空闲页 **4,463** ≈70 MB、swap **7.96G / 9.2G**）⇒ 不重启 dev 实例、不取窗口读数，
+  只做纯代码单元。
+
+### 一 读数（生产日志只读；本轮重新聚一遍复核）
+
+窗口 `2026-10-21T15:48Z → 2026-10-23T17:00Z`，三份 `main*.log` 共 17,804 行：
+
+| 读数 | 值 |
+|---|---|
+| `OpenCode tool call update unusable as permission input` | **77 行 / 49 个调用 / 14 个会话** |
+| `reason` | **100% `not-an-mcp-title`**，0 条 `unresolved-identity` |
+| 行/调用 | 40 个 1 行、8 个 4 行、1 个 5 行（提供方分块更新） |
+| 这 49 个调用里有权限请求的 | **35**，`isMcp` 100% false、决定 100% `automatic`、`rawInput` 100% `present` |
+| 与 290 次等待超时的 `toolCallId` 交集 | **0** |
+
+⇒ 那 77 行**一次都不是**「我们丢了提供方的入参」。上一单元只在**读数侧**收紧了判据（要人工 join 四张表），
+本单元把它**做进生产者**。
+
+### 二 交付
+
+`src/main/acp/permission-context.ts`：`handleUnusableOpenCodeInput()` 把同形三态分开（等飞 ⇒ 立即报 /
+已放弃 ⇒ 走迟到通道带 `lateMs` / 都不是 ⇒ 只记账留给请求裁决）；`reportRememberedOpenCodeInputDrop()`
+在**请求到来且确实要等入参**的那一刻才上账；`reportDroppedOpenCodeInput()` 一次调用只报一次；
+`reportLateInput()` 改返回 `boolean` 防重复计数；`forgetDroppedInputState()` 在关闭/取消时清两处记账。
+`runtime-session-composition.ts` 日志文案改为 `OpenCode permission input dropped while a wait was pending`
+（旧那句以后不再出现，读数可分新旧）。
+
+**判据为何在请求侧才成立**：提供方先发入参、约 300 ms 后才来请求（实测 `15:56:54.836Z` → `15:56:55.210Z`），
+入参到达那一刻还没有请求；决定只从工具身份做的请求（skip 路径）从不读入参，那里丢掉不算丢失。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `permission-context.test.ts` | **18 passed**（基线 15，+3：无人等待保持沉默 + skip 不报 / 请求要等 ⇒ 报一次 / 迟到走迟到通道不报） |
+| 变异 3 组 | 分别恰 1–2 条红，逐组恢复全绿 |
+| `src/main/acp` 整域 | **89 files / 1460 passed**，exit 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0** / web **0** |
+| `eslint --no-cache` 3 文件 + `prettier --check` | **0 problems / 全过** |
+
+证据档 `docs/evidence/2026-10-24-permission-input-drop-attribution.md`。
+
+### 四 边界（不许读成更强）
+
+1. **290 次等待超时的入参确实一次都没到** —— 这件事**没有修**，只是把「我们丢了」从读数里去掉噪声；
+   那 1 秒该不该付，仍要等 §两百二十 四张表数出来。
+2. **新日志行无真机读数**（真机上从未丢过 ⇒ 它下次出现本身就是缺陷证据）；dev 实例未重启（内存闸门）。
+3. 只覆盖 `opencode` 框架这条入参通道；`claude-code` 那侧是另一条，未动。
+4. 不占版本号（无用户可见文案、无窗口读数、无行为变化）。
+
+### 五 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本笔 `Nightly` + `Windows Full Test`（`cancelled` 不算绿；推送前先查在飞车道并点名会顶掉谁）；
+② 下一单元仍按「连锁最小」取纯代码项；§两百二十 的四张表（`wait outcome` 的 `resolved` 占比等）**需要 dev 实例以新
+构建重启**才能取 ⇒ 开工前先取 `vm_stat` / `vm.swapusage`，闸门未解就换单元，别把「等闸门」写成「已完成」；
+③ 桌面会话线那批 `src/main/artifacts/**` 若已提交，先 `git fetch && git log --oneline origin/main -3` 核一遍再动手。

@@ -155,8 +155,11 @@ const composeAcpRuntimeSessionOwners = (options: AcpRuntimeOptions, base: AcpRun
         waitedMs
       })
     },
+    // Only fires when the dropped input belonged to a call that was waiting for it, and only once per
+    // call. The wording says so: the previous message read as "we lost provider input" for every local
+    // tool call that reported its own arguments, and produced 77 rows of normal traffic.
     onOpenCodeToolCallUpdateUnusable: ({ sessionId, toolCallId, reason, title }) => {
-      log.warn('OpenCode tool call update unusable as permission input', {
+      log.warn('OpenCode permission input dropped while a wait was pending', {
         sessionId,
         toolCallId,
         reason,

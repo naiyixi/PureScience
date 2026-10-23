@@ -561,16 +561,20 @@ describe('ACP permission context', () => {
     }
   })
 
-  it('reports an input-bearing update it cannot use instead of dropping it silently', () => {
+  it('stays silent for an input-bearing update that nobody was waiting for', async () => {
     const onOpenCodeToolCallUpdateUnusable = vi.fn()
+    const onOpenCodeInputArrivedLate = vi.fn()
     const context = new AcpPermissionContext({
       emitPermissionRequest: vi.fn(),
       routing: permissionRouting(),
-      onOpenCodeToolCallUpdateUnusable
+      onOpenCodeToolCallUpdateUnusable,
+      onOpenCodeInputArrivedLate
     })
 
-    // The field shape that produced the question: an update whose title is the bare tool name, so it
-    // cannot be tied back to a configured server, and whose input was therefore thrown away.
+    // The field shape that filled the log: a local tool call reporting its own arguments. It carries an
+    // input, its title cannot be tied to a configured server, and no wait exists for it -- reporting a
+    // dropout here made normal traffic look like lost provider input (77 rows / 49 calls / 14 sessions
+    // over two days, none of them sharing a tool call with the 290 waits that timed out).
     observe(
       context,
       {
@@ -578,39 +582,181 @@ describe('ACP permission context', () => {
         update: {
           sessionUpdate: 'tool_call',
           toolCallId: 'call-1',
-          title: 'knowledge_list_sources',
-          kind: 'read',
+          title: 'bash',
+          kind: 'execute',
           status: 'pending',
-          rawInput: { limit: 5 }
+          rawInput: { command: 'ls -la' }
         }
       },
       'opencode'
     )
 
-    expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledWith({
-      sessionId: 'session-1',
-      toolCallId: 'call-1',
-      reason: 'not-an-mcp-title',
-      title: 'knowledge_list_sources'
-    })
-    expect(context.snapshot().sessions['session-1']).toBeUndefined()
+    expect(onOpenCodeToolCallUpdateUnusable).not.toHaveBeenCalled()
+    expect(onOpenCodeInputArrivedLate).not.toHaveBeenCalled()
 
-    // An update that carried no input lost nothing, so it must not add noise to the reading.
-    observe(
-      context,
-      {
+    // A request that decides from the tool's identity alone never reads the input, so the dropped bytes
+    // are not a loss even now that the request exists.
+    await context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+      sessionId: 'session-1',
+      framework: 'opencode',
+      mcpServerNames: NOTEBOOK_SERVERS,
+      isCancelled: () => false,
+      awaitsProviderInput: false
+    })
+    expect(onOpenCodeToolCallUpdateUnusable).not.toHaveBeenCalled()
+    expect(context.snapshot().sessions['session-1']).toBeUndefined()
+  })
+
+  it('reports the drop when the request for the same call turns out to wait for that input', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeToolCallUpdateUnusable = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout: vi.fn(),
+        onOpenCodeToolCallUpdateUnusable
+      })
+
+      // The provider's real order: the input arrives first (bare title, so it cannot be tied to a
+      // configured server), the permission request comes 300 ms later with no input of its own.
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call',
+            toolCallId: 'call-1',
+            title: 'knowledge_list_sources',
+            kind: 'read',
+            status: 'pending',
+            rawInput: { limit: 5 }
+          }
+        },
+        'opencode'
+      )
+      expect(onOpenCodeToolCallUpdateUnusable).not.toHaveBeenCalled()
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+
+      // Reported because the wait that starts here is waiting for exactly those bytes.
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        reason: 'not-an-mcp-title',
+        title: 'knowledge_list_sources'
+      })
+
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(restored).resolves.toBeDefined()
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports a dropped input once, and only while a wait is pending', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeToolCallUpdateUnusable = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout: vi.fn(),
+        onOpenCodeToolCallUpdateUnusable
+      })
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+
+      // The pending wait is what makes this drop a loss: the input that arrives is the only thing it is
+      // waiting for, and it is thrown away because the update's title is the bare tool name.
+      await vi.advanceTimersByTimeAsync(40)
+      const bareTitleUpdate: SessionNotification = {
         sessionId: 'session-1',
         update: {
-          sessionUpdate: 'tool_call',
-          toolCallId: 'call-2',
+          sessionUpdate: 'tool_call_update',
+          toolCallId: 'call-1',
           title: 'knowledge_list_sources',
-          kind: 'read',
-          status: 'pending'
+          status: 'in_progress',
+          rawInput: { limit: 5 }
         }
-      },
-      'opencode'
-    )
-    expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+      }
+      observe(context, bareTitleUpdate, 'opencode')
+      observe(context, bareTitleUpdate, 'opencode')
+
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledTimes(1)
+      expect(onOpenCodeToolCallUpdateUnusable).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        reason: 'not-an-mcp-title',
+        title: 'knowledge_list_sources'
+      })
+
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(restored).resolves.toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('classifies a bare-title input that arrives after the wait gave up as late, not as a drop', async () => {
+    vi.useFakeTimers()
+    try {
+      const onOpenCodeToolCallUpdateUnusable = vi.fn()
+      const onOpenCodeInputArrivedLate = vi.fn()
+      const context = new AcpPermissionContext({
+        emitPermissionRequest: vi.fn(),
+        routing: permissionRouting(),
+        onOpenCodeWaitTimeout: vi.fn(),
+        onOpenCodeToolCallUpdateUnusable,
+        onOpenCodeInputArrivedLate
+      })
+
+      const restored = context.restoreToolCall(permissionRequest('session-1', 'call-1'), {
+        sessionId: 'session-1',
+        framework: 'opencode',
+        mcpServerNames: NOTEBOOK_SERVERS,
+        isCancelled: () => false
+      })
+      await vi.advanceTimersByTimeAsync(1_000)
+      await expect(restored).resolves.toBeDefined()
+
+      await vi.advanceTimersByTimeAsync(250)
+      observe(
+        context,
+        {
+          sessionId: 'session-1',
+          update: {
+            sessionUpdate: 'tool_call_update',
+            toolCallId: 'call-1',
+            title: 'knowledge_list_sources',
+            status: 'in_progress',
+            rawInput: { limit: 5 }
+          }
+        },
+        'opencode'
+      )
+
+      expect(onOpenCodeInputArrivedLate).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        toolCallId: 'call-1',
+        lateMs: 250
+      })
+      expect(onOpenCodeToolCallUpdateUnusable).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('does not wait for input on a reviewer request, and still answers it', async () => {
