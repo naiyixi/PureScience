@@ -233,3 +233,34 @@ sandboxed run still writes artifacts into the developer's real storage. This run
 the artifact was copied into `docs/evidence/pyfastx-skill-e2e/` and the stray session directory
 removed. A benchmark harness that asserts on artifacts must redirect that root, or it will grade
 against leftover state.
+
+## Cold start: where the seconds are
+
+A single "4 s to ready" number is not actionable, so startup now logs a phase timeline
+(`DiagnosticOperation.phase` carries `elapsedMs`; the startup operation, which never completes, is
+snapshotted at the moment an HTTP client can first get a 200).
+
+Three sandboxed launches, same build, same machine, load 56–64 throughout (so the absolute values are
+inflated — the structure is the point):
+
+| run | ready (probe) | electron-ready | compose-runtime | web-service-started | HTTP 200 |
+|---|---|---|---|---|---|
+| 1 | 4,830 ms | 1,510 ms | 2,059 ms | 3,279 ms | +1,551 ms |
+| 2 | 2,637 ms | 728 ms | 809 ms | 1,853 ms | +784 ms |
+| 3 | 4,785 ms | 738 ms | 822 ms | 3,766 ms | +1,019 ms |
+
+What that says:
+
+- **0.7–1.5 s is Electron itself**, before any application code runs (`electron-ready`). Nothing in this
+  repository can remove that, and it is the second-largest single item.
+- The stretch from `compose-runtime` to `web-service-started` is 1.0–2.9 s. Inside it, three named steps
+  are already timed: `open-project-db` 280 ms, the composed runtime steps 361 ms in total, and the
+  specialist skill catalog 811 ms.
+- The last ~0.6–1.0 s is between "web service started" and the first `200` (bearer check plus the first
+  request through the HTTP layer).
+- **Variance from machine load (1.0 s vs 2.9 s for the same code path) is larger than any single step.**
+  Attribution past this point needs a quiet machine; optimising from these numbers alone would be
+  guesswork dressed as engineering.
+
+So the honest state of the cold-start work: the instrumentation exists and the shape is known; the
+optimisation has not been justified yet.
