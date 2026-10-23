@@ -159,6 +159,39 @@ describe('buildCapabilitiesPayload', () => {
     expect(payload.session.promptBlock).toContain('reads-matrix')
   })
 
+  it('answers a missing prerequisite with missing_state, never with an exception', async () => {
+    // Machine check ①: with the input absent, the reading must be a state — not a traceback and not an
+    // empty promise. A throw here would reach the agent as a stack and teach it nothing.
+    const payload = await buildCapabilitiesPayload({
+      configRoot,
+      sessionId: 's-empty',
+      listArtifacts: async () => [],
+      loadSession: async () => ({ found: true, attachments: [], usedCapabilities: [] })
+    })
+    if (payload.session?.status !== 'read') throw new Error('expected a readable session')
+
+    const readsMatrix = payload.session.readings.find((entry) => entry.id === 'reads-matrix')
+    expect(readsMatrix?.status).toBe('missing_state')
+    expect(readsMatrix?.missing.map((entry) => entry.fact)).toContain('input:omics_file')
+    // And the whole payload survives serialisation: an exception object would not.
+    const wire = JSON.stringify(payload)
+    expect(wire).not.toContain('stack')
+    expect(wire).not.toContain('traceback')
+    expect(JSON.parse(wire)).toMatchObject({ session: { status: 'read' } })
+  })
+
+  it('reports a malformed contract as a named problem instead of failing the scan', async () => {
+    await writeSkill('broken-skill', '{"id":"broken-skill","produces":["model:thing"]}')
+
+    const payload = await buildCapabilitiesPayload({ configRoot })
+
+    expect(payload.problems).toContain('broken-skill: produces_invalid_fact:model:thing')
+    // One bad skill must not hide the healthy ones.
+    expect(payload.declared.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(['reads-matrix'])
+    )
+  })
+
   it('treats a blank session id as no session', async () => {
     const payload = await buildCapabilitiesPayload({
       configRoot,
