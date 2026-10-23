@@ -1,5 +1,6 @@
 ---
 name: scvi-tools
+contract: '{"id":"scvi-tools","aliases":["scVI","scANVI 集成","变分自编码单细胞"],"requires":["input:expression_matrix"],"produces":["data:cell_embedding"],"failure_policy":{"missing_state":"需要表达矩阵（AnnData/h5ad）才能训练模型。先提供矩阵，或先跑 QC 技能。"}}'
 description: 使用 scvi-tools 进行概率性单细胞 RNA-seq——scVI 用于批次校正潜空间、scANVI 用于半监督标签转移、贝叶斯差异表达。用于整合 scRNA-seq 批次、嵌入细胞聚类、将参考注释转移到查询、或按聚类对差异表达基因评分。
 license: Apache-2.0
 requirements: [gpu]

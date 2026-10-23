@@ -1,5 +1,6 @@
 ---
 name: bionexus-scvi-tools
+contract: '{"id":"bionexus-scvi-tools","aliases":["单细胞变分推断","scVI 深度生成模型","scVI 工具链"],"requires":["input:expression_matrix"],"produces":["data:cell_embedding"],"failure_policy":{"missing_state":"需要表达矩阵（细胞×基因，AnnData/h5ad）。先让用户提供，或先用 QC 技能生成清洗后的矩阵。"}}'
 description: 训练官方 scvi-tools 模型（scVI/scANVI/totalVI/PeakVI/MultiVI/veloVI）进行概率批次整合或深度生成建模。
 ---
 
