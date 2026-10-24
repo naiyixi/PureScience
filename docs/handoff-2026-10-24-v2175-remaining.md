@@ -67,6 +67,12 @@
      这是唯一能真正减少"同时启动 14 个进程"而不丢能力的路；
   2. **让每个服务启动更便宜**：MCP 入口的顶层 import 懒化（现在每个入口都连带拉起同一批重模块）；
   3. **预热常驻**：启动后先把这些服务拉起来并完成 initialize，使代理的 readiness 预算面对的是"已经在答"的进程。
+- **已排除的假设（别重复排查）**：这 14 个服务**不是**各自启动一个完整 Electron —— 会话侧的服务配置全部带
+  `ELECTRON_RUN_AS_NODE=1`（artifacts / notebook / annotation / context-summary / endpoint / figure / host-query /
+  memory / pdf / routine / skills 都已是 node 模式；唯一还是完整 Electron 的是 `src/main/reviewer/mcp-server.ts`，
+  它不在主会话那 14 个里）。所以剩下的成本是**模块加载重量 × 14 个并发 node 进程**，不是启动器选错。
+  下一步的量法：给每个 server 记一条「spawn → initialize 完成」的耗时（在 `buildStdioServers` 交给代理之前先探一次并打点），
+  再决定是懒化 import 还是预热。
 - 三条路都不要调预算值掩盖；每条都要给出「14 个进程各自到达就绪的时间」的具名读数作为前后对照。
 
 ### F — 机检③ 补齐（当前 1/4）
