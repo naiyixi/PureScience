@@ -13,6 +13,7 @@ import type {
   NpmAvailability
 } from '../../shared/settings'
 import { augmentedPathEnv } from './shell-path'
+import { npmAvailable } from './npm-executable'
 
 const execFileAsync = promisify(execFile)
 
@@ -372,16 +373,16 @@ const runInstall = async ({
 
 // Reports whether npm is on PATH so the UI can default to/enable the npm source. PATH is augmented
 // with common node locations so a GUI-launched app doesn't falsely report npm as missing.
-const detectNpmAvailable = async (
-  runNpm: () => Promise<unknown> = () =>
-    execFileAsync('npm', ['--version'], {
-      timeout: 10_000,
-      // On Windows npm is an `npm.cmd` shim that execFile can't launch without a shell.
-      shell: process.platform === 'win32',
-      windowsHide: true,
-      env: augmentedPathEnv()
-    })
-): Promise<NpmAvailability> => {
+//
+// With no probe injected this goes through the memoised availability probe: the answer can only change
+// when the npm on PATH changes, so a repeat call avoids a full `npm --version` (a whole Node start —
+// 37 calls, median 1.9 s, in one afternoon's logs). An injected probe keeps the exact old behaviour,
+// which is why every test seam stays a plain "resolve ⇒ available, reject ⇒ not available".
+const detectNpmAvailable = async (runNpm?: () => Promise<unknown>): Promise<NpmAvailability> => {
+  if (runNpm === undefined) {
+    return { available: await npmAvailable() }
+  }
+
   try {
     await runNpm()
 

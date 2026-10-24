@@ -11654,3 +11654,90 @@ code: EPIPE}` → 93 ms 后 `write after end`（帧 `_write (writable:491:11)`�
 ③ 若闸门仍未解：候选按「连锁最小」取 `settings:npm-available` 的身份键（先按 `PATH` 解析 npm 真实路径，再复用
    `withVersionProbeCache`），或把 `settings:check-environment` 的四条运行时探测也收进同一套归因。
 ④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。
+
+## 两百二十六、本轮追加（执行器，2026-10-24 14:4x–）—— `settings:npm-available` 每次问同一个文件都要重付一次 Node 启动；并修掉上一轮那条 Windows 分类门红
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `HEAD = 26a66c29`（上一轮已提交未推）、`origin/main = 053760cd`。**第一步先把 26a66c29 推上去**
+  （推送前现查在飞车道：八条全 `completed` ⇒ **那次推送没有取消任何人的判决**），然后读它的判决。
+- **`26a66c29` 的判决（完整 40 位 SHA：`26a66c298bb9a43246670b964bc8e90add21898a`）**：
+  `Windows Full Test` **failure**（作业 `Windows full test (8/8)`）、`Nightly` **failure**
+  （`build / Verify (lint + typecheck + test + package)`）。两条都落在同一个用例上：
+  `scripts/ci/classify-pr-changes.test.ts > covers every production source file with an explicit Windows
+  runtime signal`，`AssertionError: expected [ Array(1) ] to deeply equal []`，数组里唯一一项是
+  `src/main/settings/version-probe-cache.ts`。
+  **归因**：该门要求「凡带 Windows 运行时信号（`'win32'` / `windowsHide` / …）的生产文件，必须被
+  `classifyChanges` 判为 `windows_sensitive`」，而上轮新文件没登记进 `scripts/ci/change-impact.json`
+  的 `windows_sensitive` 列表 ⇒ 不是测试坏了，是**表没登记**。修法见 §二 第三行。
+- 工作区不干净：`src/main/artifacts/{ipc.ts,ipc.test.ts,run-registry.ts}` 是**桌面会话线**在制品 ⇒ 一个字节没碰。
+- 内存（现取）：空闲页 **16,975**（≈272 MB）、swap **9.03 G / 10.24 G**、`loadAvg` 14.4
+  ⇒ dev 实例重启取窗口读数仍不取（具名未取，见 §四）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无新东西 ⇒ 按 §两百二十五 §5 ③ 的推荐取 `settings:npm-available`
+  的身份键（**连锁最小**：一个 main 侧新模块 + 一处默认参数 + 一张分类表登记）。
+
+### 一 为什么取这一条（读数不是猜的）
+
+`~/Library/Logs/PureScience/` 三份真机日志（只读）的 `ipc handler was slow` 按通道聚合：
+
+| 通道 | 次数 | 中位 | 最大 |
+|---|---|---|---|
+| `settings:npm-available` | **37** | **1,917 ms** | 22,604 ms |
+| `settings:get-settings`（对照，同样只读设置） | 16 | 145 ms | 558 ms |
+
+这条通道只回答「PATH 上有没有 npm」，37 次调用每次都跑一整遍 `npm --version` —— npm 是 JS 程序加一层
+shim，那是**一整个 Node 启动**。同一个问题问的是**同一个文件**：两次调用之间答案能变的唯一条件是文件变了。
+同窗口机侧归因（`cpuShare` 中位 0.077、`loadAvg1m` 中位 39.2，见 §两百二十五 §一）⇒ **不按耗时优化，
+只去掉不可能产生不同答案的重复工作**。
+
+### 二 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/settings/npm-executable.ts`（新） | `resolveNpmExecutable`：按已增广的 `PATH` 扫 npm（Windows 上按 `npm.cmd`/`npm.exe`/`npm.bat`/`npm` 顺序试）；`createNpmAvailabilityProbe`：用 `withVersionProbeCache` 按**文件身份**（`mtimeMs`+`size`，跟随符号链接）记忆「npm 能答 `--version`」，并发同键共享一次 |
+| `src/main/settings/claude-install.ts` | `detectNpmAvailable(runNpm?)`：**未注入探针**时走记忆化的 `npmAvailable()`；**注入探针时行为逐字不变**，既有替身用例与 `runInstallWithFallback(npmProbe)` 一字未改 |
+| `scripts/ci/change-impact.json` | 把本轮新文件与本轮之前那笔的 `version-probe-cache.ts` 一起登记进 `windows_sensitive`（修 §〇 那条红） |
+
+**三条边界（写进模块头注）**：① **不改启动方式**（仍用裸名 `npm` + 完全相同的选项：Windows 带 shell 因为是
+`npm.cmd` 垫片、`PATH` 已增广）—— 变的只有重复成本；② **解析不到 ≠ 没装**（身份记 `unknown` 不记 `missing`：
+Windows 上 shell 还能通过 `PATHEXT` 解析）⇒ 该路径不缓存，与改动前一致；③ **失败不记忆**（spawn 超时是机器侧
+瞬时现象，记住会把刚装好的 npm 显示成没装）。
+
+**真机探针（产品自己的默认依赖，跑完即删、未提交）**：
+`resolved=/Users/totota/.local/bin/npm rawSpawnMs=276.5 coldMs=337.8 warm1Ms=1.8 warm2Ms=1.1`
+（原始 spawn 276.5 ms ⇒ 后续调用 1.8 / 1.1 ms，约 250 倍）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/settings` + `src/main/diagnostics` 整域 | **104 files / 1,523 passed**（3 skipped），exit 0 |
+| 本笔 2 个测试文件 | **43 passed**（10 条模块用例 + 2 条接线用例为新增） |
+| `scripts/ci/classify-pr-changes.test.ts` | **41 passed**（红转绿） |
+| 双 typecheck（`--composite false`，堆 8192，**prettier 改写之后重跑**） | node **EXIT 0** / web **EXIT 0** |
+| `eslint --no-cache` 4 文件 + `prettier --check` | **0 problems** / 全过 |
+
+**一处自证**：第一版 `createNpmAvailabilityProbe` 把 `deps.runVersion` 收进参数表却没使用（**死参数**），
+10 条模块用例里有 6 条当场红（`runVersion` 调用 0 次）⇒ 这正是「声明了却没被使用＝这条缝不生效」那条纪律的实例。
+
+证据档 `docs/evidence/2026-10-24-npm-availability-memo.md`。
+
+### 四 边界（不许读成更强）
+
+1. **没有窗口读数**：证据 = 单测 + 产品默认依赖上的本机探针；窗口里要看差别需以新构建重启 dev 实例，
+   而内存闸门未解 ⇒ **具名未取**。
+2. 只覆盖「npm 播报可用性」；`settings:check-environment`（12 次、中位 20.7 s）与 `runtime:*` 那一簇
+   （`get-enablement` 21.9 s / `list-environments` 29.3 s / `survey` 22.9 s）**未动**——它们的时间在那段窗口里
+   由机器侧主导且缺分步归属。
+3. 记忆边界同样是「文件身份」：若有可执行文件自身字节不变而输出随外部状态变化，本层会用第一次的应答。
+4. 不占版本号（无用户可见文案、无窗口读数）。
+
+### 五 推送与下一轮第一步
+
+- 本轮两笔一起推（`fix(ci)` 的分类表登记 + 本单元）；推前查在飞车道并点名会顶掉谁。
+- **下一轮第一步**：① 按**完整 40 位 SHA** 读本笔 `Nightly` + `Windows Full Test`（重点看
+  `classify-pr-changes.test.ts` 那条是否转绿，以及本单元新增的 12 条是否在 Windows 分片上绿）；
+  ② 内存闸门一解就先以新构建重启 dev 实例，取 `hasProviderName: true` 频率（§两百二十三）与
+  `preflight steps` 汇总行（§两百二十五 埋点）；③ 闸门未解则取 `settings:check-environment` 的分步归属
+  （`verify-storage` / `find-python` / 两条 registry 探测），复用同一个 `createComposeStepRecorder`；
+  ④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。

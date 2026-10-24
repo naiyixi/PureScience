@@ -12,6 +12,15 @@ import {
   runInstall,
   runInstallWithFallback
 } from './claude-install'
+import { npmAvailable } from './npm-executable'
+
+// The npm availability answer is memoised behind `npmAvailable`; this file only needs to prove the
+// wiring (default ⇒ memoised probe, injected ⇒ unchanged), never a real spawn.
+const npmAvailableMock = vi.mocked(npmAvailable)
+
+vi.mock('./npm-executable', () => ({
+  npmAvailable: vi.fn(() => Promise.resolve(true))
+}))
 
 const CODEBUDDY_TARGET = {
   npmPackage: '@tencent-ai/codebuddy-code',
@@ -428,6 +437,27 @@ describe('claude-install: npm availability', () => {
     await expect(detectNpmAvailable(() => Promise.reject(new Error('not found')))).resolves.toEqual(
       { available: false }
     )
+  })
+
+  // Wiring, not just behaviour: with no probe injected the answer must come from the memoised probe,
+  // otherwise the repeat cost this change exists to remove is still paid by every settings visit.
+  it('delegates to the memoised probe when no npm probe is injected', async () => {
+    npmAvailableMock.mockResolvedValueOnce(true)
+
+    await expect(detectNpmAvailable()).resolves.toEqual({ available: true })
+
+    npmAvailableMock.mockResolvedValueOnce(false)
+
+    await expect(detectNpmAvailable()).resolves.toEqual({ available: false })
+    expect(npmAvailableMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not touch the memoised probe when a probe is injected', async () => {
+    npmAvailableMock.mockClear()
+
+    await detectNpmAvailable(() => Promise.resolve())
+
+    expect(npmAvailableMock).not.toHaveBeenCalled()
   })
 })
 
