@@ -24,7 +24,14 @@ export type AutoReviewRequest = {
 }
 
 export type AutoReviewTriggerDeps = {
-  loadSessions: () => Promise<{ sessions: PersistedChatSession[] }>
+  // ONE session, read by id.
+  //
+  // This was a full hydration pass (`loadAll`) until 2.17.3: the trigger looked for its finished turn by
+  // re-scanning and re-migrating every session in the corpus, up to six times per finished turn. Measured
+  // on the real machine (2026-10-24 log): 81 such passes, 2,336.8 s of session-queue occupancy, and every
+  // save that waited more than a second was waiting behind one of them. The trigger never needed the
+  // corpus — it needs the one document whose turn just ended.
+  readSession: (sessionId: string) => Promise<PersistedChatSession | undefined>
   runReview: (request: AutoReviewRequest) => Promise<unknown>
   // Overridable so tests do not spend real seconds waiting.
   delaysMs?: readonly number[]
@@ -48,8 +55,7 @@ export const createAutoReviewTrigger =
   async (sessionId: string): Promise<AutoReviewTriggerOutcome> => {
     const delays = deps.delaysMs ?? AUTO_REVIEW_SETTLE_DELAYS_MS
     for (let attempt = 0; ; attempt += 1) {
-      const { sessions } = await deps.loadSessions()
-      const session = sessions.find((candidate) => candidate.id === sessionId)
+      const session = await deps.readSession(sessionId)
       // Absent means enabled, mirroring the per-session switch the window renders — but only once the
       // session itself is readable. A missing session is the persistence race, not "disabled".
       if (session?.autoReviewEnabled === false) return 'disabled'

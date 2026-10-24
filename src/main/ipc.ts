@@ -3642,8 +3642,9 @@ const createApplicationModules = async (
   // a second recipe, and a fingerprint nobody else can recompute is not evidence.
   const searchEvidenceService = createSearchEvidenceService({
     readSessionMessages: async (sessionId) => {
-      const { sessions } = await sessionPersistenceBackend.loadAll()
-      const session = sessions.find((candidate) => candidate.id === sessionId)
+      // One document, not the corpus: this runs per citation pin, and the hydration pass it used to call
+      // re-scanned and re-migrated every session to answer a question about one of them.
+      const session = await sessionPersistenceHandlers.readSessionById(sessionId)
       return session ? toSearchableMessages(session) : []
     }
   })
@@ -3691,7 +3692,7 @@ const createApplicationModules = async (
   // 01:06:26). Reading once at t+0 found no session, returned silently, and left the turn unaudited
   // with nothing in the log to say so.
   const triggerAutoReviewForTurn = createAutoReviewTrigger({
-    loadSessions: () => sessionPersistenceBackend.loadAll(),
+    readSession: (sessionId) => sessionPersistenceHandlers.readSessionById(sessionId),
     runReview: (request) => reviewerCommandOwner.run(request),
     warn: (message, data) => createLogger('reviewer:ipc').warn(message, data)
   })

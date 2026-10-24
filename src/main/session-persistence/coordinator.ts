@@ -55,7 +55,7 @@ const SLOW_SESSION_SAVE_THRESHOLD_MS = 200
 // distinguishable. A second line at the median would be noise.
 const SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS = 200
 import { repairHistoricalArtifactAliases } from './artifact-alias-repair'
-import { startDiagnosticOperation } from '../diagnostics/operation'
+import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
 import {
   OrphanLegacyUploadAuthorityMissingError,
   UnsafeLegacyUploadResidualError
@@ -487,6 +487,9 @@ class SessionPersistenceCoordinator {
   private readonly validatedBindingTopologies = new Map<string, string>()
   private sessionMetadata = new Map<string, SessionMetadata>()
   private isSessionMetadataComplete = false
+  // A hydration pass already running: the next caller waits for that answer instead of paying for a
+  // second scan of the same 151 documents. See the reading in `loadAll`.
+  private loadAllInFlight: Promise<LoadAllSessionsResult> | undefined
   private destructiveStartupWindowOpen = true
   private sessionDeletionHandlers: SessionDeletionHandlers | undefined
 
@@ -641,278 +644,338 @@ class SessionPersistenceCoordinator {
   /**
    * Loads durable sessions, reconciles Upload storage, and backfills the file projection only after a
    * complete scan has restored active ownership. Chat hydration remains available on any failure.
+   *
+   * Where the time actually went, from the real-machine log (2026-10-24, 22 h window): 81 reconcile
+   * passes, 2,336.8 s of queue occupancy between them, and every one of the 73 saves that waited more
+   * than a second was waiting on one of them (median wait 20.1 s, max 97.9 s, against a write that never
+   * exceeded 40 ms of disk time). So the occupant was never a swarm of short operations — it was this
+   * pass, run again and again: the auto-review trigger alone asked for it up to six times per finished
+   * turn to find one Session, and each attempt re-scanned and re-migrated all 151.
+   *
+   * What follows from that reading, in this pass and in its callers:
+   *
+   *   1. a pass already running answers later callers instead of stacking a second scan of the same
+   *      corpus behind it;
+   *   2. the authority scan reads WITHOUT the mutation queue, so a save no longer waits out a 21 s scan
+   *      before it can be written. The ordering it gives up is small and named: a save that lands while
+   *      the scan is reading another Session's file is picked up by that save's own write path, not by
+   *      this snapshot;
+   *   3. the write half stays queued and stays re-runnable — artifact finalization recovery needs a later
+   *      pass to see a marker a crash left behind — but it is no longer what a per-turn reader asks for:
+   *      `readSessionById` answers "that one Session" without this pass at all.
    */
   loadAll(options: LoadAllSessionsOptions = {}): Promise<LoadAllSessionsResult> {
-    return this.enqueue('load-all', async () => {
-      const cached = this.catalogCache
-      if (
-        options.allowCachedCatalog === true &&
-        cached &&
-        Date.now() - cached.at < CATALOG_CACHE_TTL_MS
-      ) {
-        return cached.result
+    const inFlight = this.loadAllInFlight
+    // Same question, already being answered: a second scan of the same corpus would queue up behind the
+    // first only to repeat it, which is what made a 20 s pass into a 40 s one.
+    if (inFlight) return inFlight
+    const pass = this.loadAllPass(options).finally(() => {
+      if (this.loadAllInFlight === pass) this.loadAllInFlight = undefined
+    })
+    this.loadAllInFlight = pass
+    return pass
+  }
+
+  private async loadAllPass(options: LoadAllSessionsOptions): Promise<LoadAllSessionsResult> {
+    const cached = this.catalogCache
+    if (
+      options.allowCachedCatalog === true &&
+      cached &&
+      Date.now() - cached.at < CATALOG_CACHE_TTL_MS
+    ) {
+      return cached.result
+    }
+    this.validatedBindingTopologies.clear()
+    // Public loadAll can be called by multiple renderers/tasks. Only the first invocation in this
+    // process is a startup boundary; consume it before any await so failures and partial scans cannot
+    // reopen destructive cleanup while live clients may already hold the legacy projection.
+    const mayRunDestructiveStartupCleanup = this.destructiveStartupWindowOpen
+    this.destructiveStartupWindowOpen = false
+    const operation = startDiagnosticOperation(this.log, {
+      operation: 'session-hydration',
+      fields: {
+        mode: 'reconcile',
+        startupCleanupEligible: mayRunDestructiveStartupCleanup
       }
-      this.validatedBindingTopologies.clear()
-      // Public loadAll can be called by multiple renderers/tasks. Only the first invocation in this
-      // process is a startup boundary; consume it before any await so failures and partial scans cannot
-      // reopen destructive cleanup while live clients may already hold the legacy projection.
-      const mayRunDestructiveStartupCleanup = this.destructiveStartupWindowOpen
-      this.destructiveStartupWindowOpen = false
-      const operation = startDiagnosticOperation(this.log, {
-        operation: 'session-hydration',
-        fields: {
-          mode: 'reconcile',
-          startupCleanupEligible: mayRunDestructiveStartupCleanup
-        }
+    })
+    operation.phase('load-authority')
+    // Timed, because this is the half of the startup pass that had no number: the phases report their own
+    // durations, and the scan ran before the first one. Without it, "the startup pass takes 2.5 s" cannot
+    // be split into scanning documents and reconciling derived state — which is the difference between a
+    // watermark increment being worth writing and not.
+    const authorityStartedAt = Date.now()
+    let scanDurationMs = 0
+    let scan: Awaited<ReturnType<SessionMutationRepository['loadAllWithDiagnostics']>>
+    try {
+      scan = await this.repository.loadAllWithDiagnostics()
+      scanDurationMs = Date.now() - authorityStartedAt
+    } catch (error) {
+      operation.fail(error, { status: 'failed', hydrationAvailable: false })
+      throw error
+    }
+    this.replaceSessionMetadata(scan.result.sessions, scan.isComplete)
+    scan.result.diagnostics = {
+      isComplete: scan.isComplete,
+      warnings: scan.warnings ?? [],
+      failure: scan.failure
+    }
+    const result = scan.result
+    const sessions = scan.result.sessions
+
+    if (!scan.isComplete) {
+      // Without the full active-session set, syncing could let a readable duplicate steal a row from
+      // a soft-deleted owner whose JSON was merely unreadable during this scan.
+      this.fileIndex.markReconciliationIncomplete()
+      operation.complete({
+        status: 'partial',
+        sessionCount: sessions.length,
+        warningCount: scan.warnings?.length ?? 0,
+        scanDurationMs
       })
-      operation.phase('load-authority')
-      // Timed, because this is the half of the startup pass that had no number: the phases report their own
-      // durations, and the scan ran before the first one. Without it, "the startup pass takes 2.5 s" cannot
-      // be split into scanning documents and reconciling derived state — which is the difference between a
-      // watermark increment being worth writing and not.
-      const authorityStartedAt = Date.now()
-      let scanDurationMs = 0
-      let scan: Awaited<ReturnType<SessionMutationRepository['loadAllWithDiagnostics']>>
-      try {
-        scan = await this.repository.loadAllWithDiagnostics()
-        scanDurationMs = Date.now() - authorityStartedAt
-      } catch (error) {
-        operation.fail(error, { status: 'failed', hydrationAvailable: false })
-        throw error
-      }
-      this.replaceSessionMetadata(scan.result.sessions, scan.isComplete)
-      scan.result.diagnostics = {
-        isComplete: scan.isComplete,
+      return result
+    }
+
+    // The read half above ran without the queue. The write half takes one slot — it is a bounded pass and
+    // serializing it is what keeps the migration correct.
+    return this.enqueue('load-all-reconcile', () =>
+      this.reconcileScannedSessions({
+        sessions,
+        result,
         warnings: scan.warnings ?? [],
-        failure: scan.failure
-      }
-      let result = scan.result
-      let sessions = scan.result.sessions
+        operation,
+        mayRunDestructiveStartupCleanup,
+        scanDurationMs
+      })
+    )
+  }
 
-      if (!scan.isComplete) {
-        // Without the full active-session set, syncing could let a readable duplicate steal a row from
-        // a soft-deleted owner whose JSON was merely unreadable during this scan.
-        this.fileIndex.markReconciliationIncomplete()
-        operation.complete({
-          status: 'partial',
-          sessionCount: sessions.length,
-          warningCount: scan.warnings?.length ?? 0,
-          scanDurationMs
-        })
-        return result
-      }
+  /**
+   * The write half of the hydration pass: Uploads upgrade, artifact recovery, stale-status repair,
+   * permission-grant cleanup and the file projection. Split out of {@link loadAll} so the scan can run
+   * without the mutation queue while these writes keep it.
+   */
+  private async reconcileScannedSessions(input: {
+    sessions: PersistedChatSession[]
+    result: LoadAllSessionsResult
+    warnings: SessionLoadWarning[]
+    operation: DiagnosticOperation
+    mayRunDestructiveStartupCleanup: boolean
+    scanDurationMs: number
+  }): Promise<LoadAllSessionsResult> {
+    const { operation, mayRunDestructiveStartupCleanup, scanDurationMs, warnings } = input
+    let { sessions, result } = input
 
-      let degradedReconciliationCount = 0
-      // Versions whose run never published them: named during startup reconciliation. Counted so the
-      // completion log says how many files a reader may find in that state, instead of leaving it silent.
-      let unpublishedArtifactVersionCount = 0
-      const finalizationSkipCounts: Record<string, number> = {}
-      operation.phase('reconcile-unread-sessions')
+    let degradedReconciliationCount = 0
+    // Versions whose run never published them: named during startup reconciliation. Counted so the
+    // completion log says how many files a reader may find in that state, instead of leaving it silent.
+    let unpublishedArtifactVersionCount = 0
+    const finalizationSkipCounts: Record<string, number> = {}
+    operation.phase('reconcile-unread-sessions')
+    try {
+      await this.sessionDeletionHandlers?.reconcile(
+        sessions.map((session) => session.id),
+        sessions.filter((session) => session.archivedAt !== undefined).map((session) => session.id)
+      )
+    } catch (error) {
+      degradedReconciliationCount += 1
+      // Unread metadata is a recoverable projection and must not block Session hydration.
+      emitRecoverableDiagnostic(this.log, 'unread Session reconciliation failed', {
+        operation: 'session-hydration',
+        phase: 'reconcile-unread-sessions',
+        outcome: 'degraded',
+        ...diagnosticErrorFields(error)
+      })
+    }
+
+    if (mayRunDestructiveStartupCleanup && this.permissionGrants) {
+      operation.phase('reconcile-permission-grants')
       try {
-        await this.sessionDeletionHandlers?.reconcile(
-          sessions.map((session) => session.id),
-          sessions
-            .filter((session) => session.archivedAt !== undefined)
-            .map((session) => session.id)
+        await this.permissionGrants.reconcileSessions(
+          sessions.map((session) => ({ projectId: session.projectId, sessionId: session.id }))
         )
       } catch (error) {
         degradedReconciliationCount += 1
-        // Unread metadata is a recoverable projection and must not block Session hydration.
-        emitRecoverableDiagnostic(this.log, 'unread Session reconciliation failed', {
+        // Chat hydration remains available. The Registry is still fail-closed by exact live scope
+        // matching, and the complete scan will retry cleanup on the next process startup.
+        emitRecoverableDiagnostic(this.log, 'permission grant reconciliation failed', {
           operation: 'session-hydration',
-          phase: 'reconcile-unread-sessions',
+          phase: 'reconcile-permission-grants',
           outcome: 'degraded',
           ...diagnosticErrorFields(error)
         })
       }
+    }
 
-      if (mayRunDestructiveStartupCleanup && this.permissionGrants) {
-        operation.phase('reconcile-permission-grants')
-        try {
-          await this.permissionGrants.reconcileSessions(
-            sessions.map((session) => ({ projectId: session.projectId, sessionId: session.id }))
-          )
-        } catch (error) {
-          degradedReconciliationCount += 1
-          // Chat hydration remains available. The Registry is still fail-closed by exact live scope
-          // matching, and the complete scan will retry cleanup on the next process startup.
-          emitRecoverableDiagnostic(this.log, 'permission grant reconciliation failed', {
-            operation: 'session-hydration',
-            phase: 'reconcile-permission-grants',
-            outcome: 'degraded',
-            ...diagnosticErrorFields(error)
-          })
+    // A Session that was mid-run when the process died keeps its interactive status on disk forever:
+    // the window then shows a spinner and refuses input with no way back (observed: two Sessions still
+    // `running` ten hours after their last message completed). No ACP run survives a process restart,
+    // so any interactive status found during startup hydration is stale by definition — record it as
+    // an interrupted turn instead of pretending it is still working.
+    if (mayRunDestructiveStartupCleanup) {
+      const staleStatuses = new Set<PersistedSessionStatus>([
+        'running',
+        'waiting-permission',
+        'waiting-plan-approval'
+      ])
+      const staleIndexes = sessions
+        .map((session, index) => (staleStatuses.has(session.status) ? index : -1))
+        .filter((index) => index >= 0)
+      // Only announce the phase when it has work: an empty phase in the startup aggregate reads as a
+      // step that ran, and the aggregate is compared against the phases the app actually performed.
+      if (staleIndexes.length > 0) operation.phase('reconcile-stale-session-status')
+      for (const index of staleIndexes) {
+        const session = sessions[index]
+        const interrupted: PersistedChatSession = {
+          ...session,
+          status: 'error',
+          updatedAt: Date.now()
         }
+        await this.repository.saveSession(interrupted)
+        sessions = sessions.map((candidate, candidateIndex) =>
+          candidateIndex === index ? interrupted : candidate
+        )
+        result = { ...result, sessions }
       }
+    }
 
-      // A Session that was mid-run when the process died keeps its interactive status on disk forever:
-      // the window then shows a spinner and refuses input with no way back (observed: two Sessions still
-      // `running` ten hours after their last message completed). No ACP run survives a process restart,
-      // so any interactive status found during startup hydration is stale by definition — record it as
-      // an interrupted turn instead of pretending it is still working.
-      if (mayRunDestructiveStartupCleanup) {
-        const staleStatuses = new Set<PersistedSessionStatus>([
-          'running',
-          'waiting-permission',
-          'waiting-plan-approval'
-        ])
-        const staleIndexes = sessions
-          .map((session, index) => (staleStatuses.has(session.status) ? index : -1))
-          .filter((index) => index >= 0)
-        // Only announce the phase when it has work: an empty phase in the startup aggregate reads as a
-        // step that ran, and the aggregate is compared against the phases the app actually performed.
-        if (staleIndexes.length > 0) operation.phase('reconcile-stale-session-status')
-        for (const index of staleIndexes) {
-          const session = sessions[index]
-          const interrupted: PersistedChatSession = {
-            ...session,
-            status: 'error',
-            updatedAt: Date.now()
-          }
-          await this.repository.saveSession(interrupted)
-          sessions = sessions.map((candidate, candidateIndex) =>
-            candidateIndex === index ? interrupted : candidate
-          )
-          result = { ...result, sessions }
-        }
-      }
-
-      operation.phase('reconcile-derived-state')
-      try {
-        if (this.uploads) {
-          for (let index = 0; index < sessions.length; index += 1) {
-            const session = sessions[index]
-            const requiresProjectionWrite = hasLegacySessionUpload(session)
-            if (requiresProjectionWrite) {
-              // Build the complete immutable projection without consuming any source. Promise.all
-              // publication may otherwise strand successful Uploads when a sibling upgrade fails.
-              const upgradedSession = await this.uploads.upgradeLegacySessionUploads(session, {
-                mode: 'live-save'
-              })
-              // Advance hydration before attempting the JSON write so a save failure still hands
-              // callers the readable immutable projection produced by the completed live-save.
-              sessions = sessions.map((candidate, candidateIndex) =>
-                candidateIndex === index ? upgradedSession : candidate
-              )
-              result = { ...result, sessions }
-              // Persist every immutable identity before startup reconciliation can consume a legacy
-              // source. A failed write remains retryable because live-save preserved every source.
-              await this.repository.saveSession(upgradedSession)
-              if (mayRunDestructiveStartupCleanup) {
-                await this.uploads.upgradeLegacySessionUploads(upgradedSession, {
-                  mode: 'reconcile'
-                })
-              }
-            } else {
-              await this.uploads.upgradeLegacySessionUploads(session, {
-                mode: mayRunDestructiveStartupCleanup ? 'reconcile' : 'live-save'
-              })
-            }
-          }
-        }
-
-        await this.provenance?.reconcileSessionDeletions(sessions)
-        const projectReconciliations = new Map<string, ArtifactProjectReconciliationSnapshot>()
-        if (this.artifactStorage) {
-          for (const projectId of new Set(sessions.map((session) => session.projectId))) {
-            projectReconciliations.set(
-              projectId,
-              await this.artifactStorage.prepareProjectReconciliation(projectId)
-            )
-          }
-        }
+    operation.phase('reconcile-derived-state')
+    try {
+      if (this.uploads) {
         for (let index = 0; index < sessions.length; index += 1) {
           const session = sessions[index]
-          const artifactRecovery = await this.artifactStorage?.reconcileSession(
-            session.projectId,
-            session.id,
-            session,
-            {
-              // Only the first process-level load is a startup boundary. Later renderer/task readers
-              // may inspect recovery state but cannot destructively clean storage held by live clients.
-              removeOrphanStaging: mayRunDestructiveStartupCleanup,
-              // Same boundary, same reason: naming a run unpublished is only safe before this process
-              // can have a turn that is still closing and about to write its publication intent.
-              markUnpublishedRuns: mayRunDestructiveStartupCleanup,
-              projectReconciliation: projectReconciliations.get(session.projectId)!
-            }
-          )
-          const attachedSession = attachRecoveredMessageArtifacts(
-            session,
-            artifactRecovery?.recoveredMessageArtifacts ?? []
-          )
-          // Optional on the port's shape: a reconciler that predates this field simply reports none.
-          unpublishedArtifactVersionCount += artifactRecovery?.unpublishedVersionIds?.length ?? 0
-          for (const [reason, count] of Object.entries(
-            artifactRecovery?.finalizationSkipCounts ?? {}
-          )) {
-            finalizationSkipCounts[reason] = (finalizationSkipCounts[reason] ?? 0) + count
-          }
-          const recoveredSession = repairHistoricalArtifactAliases(attachedSession, {
-            // One reconciliation pass writes one JSON revision even when recovery and historical
-            // alias repair both contribute to the same atomic Session update.
-            advanceFilesRevision: attachedSession === session
-          })
-          if (recoveredSession !== session) {
+          const requiresProjectionWrite = hasLegacySessionUpload(session)
+          if (requiresProjectionWrite) {
+            // Build the complete immutable projection without consuming any source. Promise.all
+            // publication may otherwise strand successful Uploads when a sibling upgrade fails.
+            const upgradedSession = await this.uploads.upgradeLegacySessionUploads(session, {
+              mode: 'live-save'
+            })
+            // Advance hydration before attempting the JSON write so a save failure still hands
+            // callers the readable immutable projection produced by the completed live-save.
             sessions = sessions.map((candidate, candidateIndex) =>
-              candidateIndex === index ? recoveredSession : candidate
+              candidateIndex === index ? upgradedSession : candidate
             )
             result = { ...result, sessions }
-            // Capture immutable Message evidence before JSON. If either write fails, the unchanged
-            // Session remains an attachment witness on the next startup and the whole sequence retries.
-            await this.provenance?.captureFinalizedMessages(recoveredSession)
-            await this.repository.saveSession(recoveredSession)
+            // Persist every immutable identity before startup reconciliation can consume a legacy
+            // source. A failed write remains retryable because live-save preserved every source.
+            await this.repository.saveSession(upgradedSession)
+            if (mayRunDestructiveStartupCleanup) {
+              await this.uploads.upgradeLegacySessionUploads(upgradedSession, {
+                mode: 'reconcile'
+              })
+            }
+          } else {
+            await this.uploads.upgradeLegacySessionUploads(session, {
+              mode: mayRunDestructiveStartupCleanup ? 'reconcile' : 'live-save'
+            })
           }
         }
-        // Reconciliation restores active owners left soft-deleted by an interrupted delete before any
-        // scan-order-dependent sync can offer their canonical rows to another session.
-        await this.fileIndex.reconcileActiveSessions(sessions)
-        for (const session of sessions) {
-          await this.fileIndex.syncSession(session)
-        }
-      } catch (error) {
-        this.isSessionMetadataComplete = false
-        this.fileIndex.markReconciliationIncomplete()
-        operation.fail(error, {
-          status: 'degraded',
-          hydrationAvailable: true,
-          sessionCount: sessions.length,
-          warningCount: scan.warnings?.length ?? 0,
-          degradedReconciliationCount,
-          scanDurationMs
-        })
-        // Keep chat hydration available while Files remains explicitly incomplete and retryable.
-        result.diagnostics = {
-          isComplete: false,
-          warnings: scan.warnings ?? [],
-          failure: 'startup-reconciliation-failed'
-        }
-        return result
       }
 
-      operation.complete({
-        status: degradedReconciliationCount > 0 ? 'degraded' : 'ready',
+      await this.provenance?.reconcileSessionDeletions(sessions)
+      const projectReconciliations = new Map<string, ArtifactProjectReconciliationSnapshot>()
+      if (this.artifactStorage) {
+        for (const projectId of new Set(sessions.map((session) => session.projectId))) {
+          projectReconciliations.set(
+            projectId,
+            await this.artifactStorage.prepareProjectReconciliation(projectId)
+          )
+        }
+      }
+      for (let index = 0; index < sessions.length; index += 1) {
+        const session = sessions[index]
+        const artifactRecovery = await this.artifactStorage?.reconcileSession(
+          session.projectId,
+          session.id,
+          session,
+          {
+            // Only the first process-level load is a startup boundary. Later renderer/task readers
+            // may inspect recovery state but cannot destructively clean storage held by live clients.
+            removeOrphanStaging: mayRunDestructiveStartupCleanup,
+            // Same boundary, same reason: naming a run unpublished is only safe before this process
+            // can have a turn that is still closing and about to write its publication intent.
+            markUnpublishedRuns: mayRunDestructiveStartupCleanup,
+            projectReconciliation: projectReconciliations.get(session.projectId)!
+          }
+        )
+        const attachedSession = attachRecoveredMessageArtifacts(
+          session,
+          artifactRecovery?.recoveredMessageArtifacts ?? []
+        )
+        // Optional on the port's shape: a reconciler that predates this field simply reports none.
+        unpublishedArtifactVersionCount += artifactRecovery?.unpublishedVersionIds?.length ?? 0
+        for (const [reason, count] of Object.entries(
+          artifactRecovery?.finalizationSkipCounts ?? {}
+        )) {
+          finalizationSkipCounts[reason] = (finalizationSkipCounts[reason] ?? 0) + count
+        }
+        const recoveredSession = repairHistoricalArtifactAliases(attachedSession, {
+          // One reconciliation pass writes one JSON revision even when recovery and historical
+          // alias repair both contribute to the same atomic Session update.
+          advanceFilesRevision: attachedSession === session
+        })
+        if (recoveredSession !== session) {
+          sessions = sessions.map((candidate, candidateIndex) =>
+            candidateIndex === index ? recoveredSession : candidate
+          )
+          result = { ...result, sessions }
+          // Capture immutable Message evidence before JSON. If either write fails, the unchanged
+          // Session remains an attachment witness on the next startup and the whole sequence retries.
+          await this.provenance?.captureFinalizedMessages(recoveredSession)
+          await this.repository.saveSession(recoveredSession)
+        }
+      }
+      // Reconciliation restores active owners left soft-deleted by an interrupted delete before any
+      // scan-order-dependent sync can offer their canonical rows to another session.
+      await this.fileIndex.reconcileActiveSessions(sessions)
+      for (const session of sessions) {
+        await this.fileIndex.syncSession(session)
+      }
+    } catch (error) {
+      this.isSessionMetadataComplete = false
+      this.fileIndex.markReconciliationIncomplete()
+      operation.fail(error, {
+        status: 'degraded',
+        hydrationAvailable: true,
         sessionCount: sessions.length,
-        warningCount: scan.warnings?.length ?? 0,
+        warningCount: warnings.length,
         degradedReconciliationCount,
-        unpublishedArtifactVersionCount,
-        // The half of this pass that is scanning rather than reconciling — see the timer above.
-        scanDurationMs,
-        // Diagnostics take primitives: report the reasons as one readable line, in a stable order, and
-        // only when something was actually refused.
-        ...(Object.keys(finalizationSkipCounts).length > 0
-          ? {
-              finalizationSkips: Object.entries(finalizationSkipCounts)
-                .sort(([left], [right]) => left.localeCompare(right))
-                .map(([reason, count]) => `${reason}=${count}`)
-                .join(',')
-            }
-          : {})
+        scanDurationMs
       })
-      // Only a complete, healthy scan is worth serving again; a degraded one is retryable and short-lived.
-      this.catalogCache = { at: Date.now(), result }
+      // Keep chat hydration available while Files remains explicitly incomplete and retryable.
+      result.diagnostics = {
+        isComplete: false,
+        warnings,
+        failure: 'startup-reconciliation-failed'
+      }
       return result
+    }
+
+    // Recorded only on the success path is not a thing this pass can promise: it stays re-runnable on
+    // purpose (artifact finalization recovery depends on a later pass seeing a marker a crash left behind),
+    // so the fix below is fewer callers and one shared pass — never "migrate once and hope".
+    operation.complete({
+      status: degradedReconciliationCount > 0 ? 'degraded' : 'ready',
+      sessionCount: sessions.length,
+      warningCount: warnings.length,
+      degradedReconciliationCount,
+      unpublishedArtifactVersionCount,
+      // The half of this pass that is scanning rather than reconciling — see the timer above.
+      scanDurationMs,
+      // Diagnostics take primitives: report the reasons as one readable line, in a stable order, and
+      // only when something was actually refused.
+      ...(Object.keys(finalizationSkipCounts).length > 0
+        ? {
+            finalizationSkips: Object.entries(finalizationSkipCounts)
+              .sort(([left], [right]) => left.localeCompare(right))
+              .map(([reason, count]) => `${reason}=${count}`)
+              .join(',')
+          }
+        : {})
     })
+    // Only a complete, healthy scan is worth serving again; a degraded one is retryable and short-lived.
+    this.catalogCache = { at: Date.now(), result }
+    return result
   }
 
   private async loadRuntimeContextSession(

@@ -260,6 +260,51 @@ describe('session persistence IPC handlers', () => {
     ).resolves.toEqual({ notebookData: { freedBytes: 0, state: 'absent' } })
   })
 
+  // One Session, by id: the index says where it lives, the document tier reads that file, and no hydration
+  // pass runs. This is the path the auto-review trigger and citation pins use instead of `loadAll`.
+  it('reads one session by id without running a hydration pass', async () => {
+    const session = createSession()
+    const repository = {
+      loadAll: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      loadCatalog: vi.fn().mockResolvedValue({
+        sessions: [{ id: 'session-1', projectId: 'project-7' }],
+        manifest: { version: 1 as const }
+      }),
+      saveSession: vi.fn(),
+      deleteSession: vi.fn(),
+      saveManifest: vi.fn()
+    }
+    const documents = { loadSession: vi.fn().mockResolvedValue(session) }
+    const handlers = createSessionPersistenceHandlers(
+      repository as never,
+      createMockReviewRepository(),
+      documents
+    )
+
+    await expect(handlers.readSessionById('session-1')).resolves.toBe(session)
+    expect(documents.loadSession).toHaveBeenCalledWith('project-7', 'session-1')
+    expect(repository.loadAll).not.toHaveBeenCalled()
+  })
+
+  it('reports an unknown session id as absent instead of reading a guess', async () => {
+    const repository = {
+      loadAll: vi.fn(),
+      loadCatalog: vi.fn().mockResolvedValue({ sessions: [], manifest: { version: 1 as const } }),
+      saveSession: vi.fn(),
+      deleteSession: vi.fn(),
+      saveManifest: vi.fn()
+    }
+    const documents = { loadSession: vi.fn() }
+    const handlers = createSessionPersistenceHandlers(
+      repository as never,
+      createMockReviewRepository(),
+      documents
+    )
+
+    await expect(handlers.readSessionById('gone')).resolves.toBeUndefined()
+    expect(documents.loadSession).not.toHaveBeenCalled()
+  })
+
   it('retains session review rows after the authoritative session deletion succeeds', async () => {
     const order: string[] = []
     const repository = {
@@ -399,7 +444,8 @@ describe('session persistence IPC handlers', () => {
       saveManifest: vi.fn(),
       listCatalog: vi.fn(),
       readNotebookUsage: vi.fn(),
-      readDocument: vi.fn()
+      readDocument: vi.fn(),
+      readSessionById: vi.fn()
     }
 
     registerSessionPersistenceIpcHandlers(
@@ -431,7 +477,8 @@ describe('session persistence IPC handlers', () => {
       saveManifest: vi.fn(),
       listCatalog: vi.fn(),
       readNotebookUsage: vi.fn(),
-      readDocument: vi.fn()
+      readDocument: vi.fn(),
+      readSessionById: vi.fn()
     }
     registrationFailure.channel = 'sessions:load-all'
     registrationFailure.error = failure
@@ -614,7 +661,8 @@ describe('session persistence IPC handlers', () => {
       saveManifest: vi.fn(),
       listCatalog: vi.fn().mockResolvedValue(catalog),
       readNotebookUsage: vi.fn().mockResolvedValue({ state: 'absent' }),
-      readDocument: vi.fn().mockResolvedValue({ id: 'session-1' })
+      readDocument: vi.fn().mockResolvedValue({ id: 'session-1' }),
+      readSessionById: vi.fn().mockResolvedValue(undefined)
     }
     const repository: SessionPersistenceBackend = {
       loadAll: vi.fn(),

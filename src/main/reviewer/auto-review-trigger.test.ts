@@ -31,12 +31,12 @@ const session = (overrides: Record<string, unknown> = {}): PersistedChatSession 
   }) as unknown as PersistedChatSession
 
 const deps = (
-  loads: Array<PersistedChatSession[]>,
+  reads: Array<PersistedChatSession | undefined>,
   overrides: Record<string, unknown> = {}
 ): {
   runReview: ReturnType<typeof vi.fn>
   warn: ReturnType<typeof vi.fn>
-  loadSessions: ReturnType<typeof vi.fn>
+  readSession: ReturnType<typeof vi.fn>
   trigger: ReturnType<typeof createAutoReviewTrigger>
 } => {
   let index = 0
@@ -44,17 +44,14 @@ const deps = (
     .fn<(request: AutoReviewRequest) => Promise<unknown>>()
     .mockResolvedValue({ started: true })
   const warn = vi.fn()
-  const loadSessions = vi.fn(async () => {
-    const sessions = loads[Math.min(index, loads.length - 1)] ?? []
-    index += 1
-    return { sessions }
-  })
+  // One document per attempt, `undefined` while the save that produces it has not landed yet.
+  const readSession = vi.fn(async () => reads[Math.min(index++, reads.length - 1)])
   return {
     runReview,
     warn,
-    loadSessions,
+    readSession,
     trigger: createAutoReviewTrigger({
-      loadSessions,
+      readSession,
       runReview,
       warn,
       delaysMs: [0, 0, 0],
@@ -66,11 +63,12 @@ const deps = (
 describe('main-process auto-review trigger', () => {
   it('waits out the persistence race instead of dropping the turn', async () => {
     // The exact shape observed on a real run: nothing readable at t+0, session present a moment later.
-    const { trigger, runReview, loadSessions, warn } = deps([[], [], [session()]])
+    const { trigger, runReview, readSession, warn } = deps([undefined, undefined, session()])
 
     await expect(trigger('session-1')).resolves.toBe('reviewed')
 
-    expect(loadSessions).toHaveBeenCalledTimes(3)
+    expect(readSession).toHaveBeenCalledTimes(3)
+    expect(readSession).toHaveBeenCalledWith('session-1')
     expect(runReview).toHaveBeenCalledTimes(1)
     expect(runReview.mock.calls[0]![0]).toMatchObject({
       sessionId: 'session-1',
@@ -92,7 +90,7 @@ describe('main-process auto-review trigger', () => {
         edges: []
       }
     })
-    const { trigger, runReview } = deps([[sessionWithTwoTurns]])
+    const { trigger, runReview } = deps([sessionWithTwoTurns])
 
     await trigger('session-1')
 
@@ -100,21 +98,26 @@ describe('main-process auto-review trigger', () => {
   })
 
   it('does not review when the session switched auto-review off', async () => {
-    const { trigger, runReview, loadSessions } = deps([[session({ autoReviewEnabled: false })]])
+    const { trigger, runReview, readSession } = deps([session({ autoReviewEnabled: false })])
 
     await expect(trigger('session-1')).resolves.toBe('disabled')
 
     expect(runReview).not.toHaveBeenCalled()
-    expect(loadSessions).toHaveBeenCalledTimes(1)
+    expect(readSession).toHaveBeenCalledTimes(1)
   })
 
   it('reports a turn that never becomes readable instead of swallowing it', async () => {
-    const { trigger, runReview, loadSessions, warn } = deps([[], [], [], []])
+    const { trigger, runReview, readSession, warn } = deps([
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    ])
 
     await expect(trigger('session-1')).resolves.toBe('unreadable')
 
     expect(runReview).not.toHaveBeenCalled()
-    expect(loadSessions).toHaveBeenCalledTimes(4)
+    expect(readSession).toHaveBeenCalledTimes(4)
     expect(warn).toHaveBeenCalledWith(
       'auto-review skipped: the finished turn never became readable',
       {
@@ -134,14 +137,14 @@ describe('main-process auto-review trigger', () => {
         edges: []
       }
     })
-    const { trigger, runReview } = deps([[inFlight], [session()]])
+    const { trigger, runReview } = deps([inFlight, session()])
 
     await expect(trigger('session-1')).resolves.toBe('reviewed')
     expect(runReview).toHaveBeenCalledTimes(1)
   })
 
   it('surfaces a reviewer failure rather than pretending it reviewed', async () => {
-    const { trigger, runReview } = deps([[session()]])
+    const { trigger, runReview } = deps([session()])
     runReview.mockRejectedValueOnce(new Error('reviewer unavailable'))
 
     await expect(trigger('session-1')).rejects.toThrow('reviewer unavailable')

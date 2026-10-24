@@ -47,6 +47,10 @@ type SessionPersistenceHandlers = {
   listCatalog: () => Promise<SessionCatalogResult>
   // The document tier: one session, straight from its own file, for a reader that needs its content.
   readDocument: (projectId: string, sessionId: string) => Promise<PersistedChatSession | undefined>
+  // One session by id, without knowing its Project and without a hydration pass. `loadAll` was the only
+  // way to answer "give me that one session" before 2.17.3, so callers paid for a full scan and migration
+  // of the corpus to read a single document.
+  readSessionById: (sessionId: string) => Promise<PersistedChatSession | undefined>
   // What the session's own notebook run data occupies on disk — asked BEFORE the session is deleted, so the
   // confirmation can name what else that irreversible action takes with it.
   readNotebookUsage: (projectId: string, sessionId: string) => Promise<SessionNotebookUsage>
@@ -196,6 +200,14 @@ const createSessionPersistenceHandlers = (
     // The projection is the repository's, so nothing here has to rebuild it from messages the list
     // deliberately does not carry.
     listCatalog: () => repository.loadCatalog(),
+    // The index says where the Session lives; its own file is the answer. No hydration pass, so no queue
+    // slot and no corpus-wide migration for a caller that asked about one document.
+    readSessionById: async (sessionId) => {
+      const catalog = await repository.loadCatalog()
+      const entry = catalog.sessions.find((candidate) => candidate.id === sessionId)
+      if (!entry) return undefined
+      return documents.loadSession(entry.projectId, sessionId)
+    },
     readDocument: (projectId, sessionId) => documents.loadSession(projectId, sessionId),
     readNotebookUsage: (projectId, sessionId) => notebookUsage.measure(projectId, sessionId)
   }
