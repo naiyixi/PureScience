@@ -172,10 +172,14 @@ describe('artifact IPC handlers', () => {
     const finalizeRun = vi
       .fn()
       .mockRejectedValueOnce(
-        new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+        new ArtifactOwnershipPersistenceRaceError(
+          'Artifact finalization message is not durable yet.'
+        )
       )
       .mockRejectedValueOnce(
-        new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+        new ArtifactOwnershipPersistenceRaceError(
+          'Artifact finalization message is not durable yet.'
+        )
       )
       .mockResolvedValue([finalizedArtifact])
     const handlers = createArtifactHandlers(repository, runRegistry, {
@@ -198,6 +202,70 @@ describe('artifact IPC handlers', () => {
       handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
     ).resolves.toEqual([finalizedArtifact])
     expect(finalizeRun).toHaveBeenCalledTimes(3)
+  })
+
+  it('records how many retries a finalize needed when the race outlasts them', async () => {
+    // The shape that dominates the real log (36 of 36 failure rows on 2026-10-22/23): the internal retry
+    // loop spends all three delays and still throws, then the caller's own next attempt publishes. The
+    // failure row has to carry what that loop cost, and the second attempt has to say it is the one that
+    // published — otherwise a reading sees the failure and has to guess whether 600 ms bought anything.
+    const finalizedArtifact = createFinalizedArtifact()
+    const diagnosticLogger = { error: vi.fn(), info: vi.fn() }
+    const repository = {
+      finalizeRunArtifacts: vi.fn().mockResolvedValue([finalizedArtifact]),
+      listMessageFiles: vi.fn().mockResolvedValue([finalizedArtifact])
+    } as unknown as ArtifactRepository
+    const runRegistry = new ArtifactRunRegistry()
+    const notDurableYet = (): ArtifactOwnershipPersistenceRaceError =>
+      new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+    const finalizeRun = vi
+      .fn()
+      .mockRejectedValueOnce(notDurableYet())
+      .mockRejectedValueOnce(notDurableYet())
+      .mockRejectedValueOnce(notDurableYet())
+      .mockRejectedValueOnce(notDurableYet())
+      .mockResolvedValue([finalizedArtifact])
+    const handlers = createArtifactHandlers(repository, runRegistry, {
+      provenance: { finalizeRun } as never,
+      logger: diagnosticLogger
+    })
+    const claimId = runRegistry.register({
+      projectName: 'default-project',
+      artifactSessionId: 'artifact-session-1',
+      sessionId: 'session-1',
+      runId: 'run-1',
+      rootFrameId: 'frame-root',
+      agentFrameId: 'frame-root',
+      messageBranchId: 'branch-1',
+      runtimeSegmentId: 'segment-1',
+      promptMessageId: 'message-prompt',
+      artifactVersionIds: ['version-1']
+    })
+
+    await expect(
+      handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
+    ).rejects.toBeInstanceOf(ArtifactOwnershipPersistenceRaceError)
+    expect(diagnosticLogger.error).toHaveBeenCalledWith(
+      'artifact finalization attempt failed',
+      expect.objectContaining({
+        failureKind: 'ownership-persistence-race',
+        stage: 'durable-finalization',
+        attempt: 1,
+        provenanceRetries: 3,
+        provenanceWaitedMs: 600,
+        durableFinalizationCompleted: false,
+        compatibilityPublicationCompleted: false
+      })
+    )
+    expect(diagnosticLogger.info).not.toHaveBeenCalled()
+
+    await expect(
+      handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
+    ).resolves.toEqual([finalizedArtifact])
+    expect(diagnosticLogger.info).toHaveBeenCalledWith(
+      'artifact finalization completed',
+      expect.objectContaining({ attempt: 2, recovered: true, provenanceRetries: 0 })
+    )
   })
 
   it('does not retry a terminal proof failure', async () => {
@@ -333,7 +401,7 @@ describe('artifact IPC handlers', () => {
     const repository = {
       finalizeRunArtifacts: vi.fn()
     } as unknown as ArtifactRepository
-    const diagnosticLogger = { error: vi.fn() }
+    const diagnosticLogger = { error: vi.fn(), info: vi.fn() }
     const provenance = {
       finalizeRun: vi
         .fn()
@@ -540,7 +608,7 @@ describe('artifact IPC handlers', () => {
 
   it('retries compatibility publication after provenance finalized but the first move failed', async () => {
     const finalizedArtifact = createFinalizedArtifact()
-    const diagnosticLogger = { error: vi.fn() }
+    const diagnosticLogger = { error: vi.fn(), info: vi.fn() }
     const repository = {
       finalizeRunArtifacts: vi
         .fn()
@@ -585,6 +653,8 @@ describe('artifact IPC handlers', () => {
         failureKind: 'operational-failure',
         durableFinalizationCompleted: true,
         compatibilityPublicationCompleted: false,
+        attempt: 1,
+        provenanceRetries: 0,
         claimId,
         artifactRunId: 'run-1',
         artifactVersionIds: ['version-1'],
@@ -603,6 +673,22 @@ describe('artifact IPC handlers', () => {
     expect(provenance.finalizeRun).toHaveBeenCalledTimes(2)
     expect(registry.resolve(claimId).finalizedMessageId).toBe('message-1')
     expect(diagnosticLogger.error).toHaveBeenCalledOnce()
+    // The recovered shape has to be readable from the record alone: the second attempt is the one that
+    // published, and it says so (`attempt: 2` + `recovered`). Without this line the field log showed the
+    // failure and nothing else, so "retried and published" and "never published" were the same reading
+    // (measured 2026-10-23T15:57Z: 36 claims, 36 failures, zero completions recorded).
+    expect(diagnosticLogger.info).toHaveBeenCalledOnce()
+    expect(diagnosticLogger.info).toHaveBeenCalledWith(
+      'artifact finalization completed',
+      expect.objectContaining({
+        claimId,
+        artifactRunId: 'run-1',
+        messageId: 'message-1',
+        attempt: 2,
+        recovered: true,
+        artifactCount: 1
+      })
+    )
   })
 
   it('keeps migration drain pending until an artifact finalization already in progress finishes', async () => {

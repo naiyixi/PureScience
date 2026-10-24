@@ -30,10 +30,7 @@ import type {
 } from '../../shared/artifact-code-reconstruction'
 import { parseArtifactVersionLocator } from '../../shared/artifact-provenance'
 import type { ReplayVersionRequest, ReplayVersionResult } from '../../shared/artifact-replay'
-import type {
-  ReadingVerification,
-  VerifyReadingRequest
-} from '../../shared/reading-fingerprint'
+import type { ReadingVerification, VerifyReadingRequest } from '../../shared/reading-fingerprint'
 import type {
   FinalizeRunArtifactsRequest,
   ListProjectArtifactsRequest,
@@ -105,7 +102,7 @@ type ArtifactHandlers = {
 type ArtifactHandlerDependencies = {
   openPath?: (path: string) => Promise<string>
   reveal?: (path: string) => void
-  logger?: Pick<Logger, 'error'>
+  logger?: Pick<Logger, 'error' | 'info'>
   // Run ids of turns in flight right now (live runtime state). Their pending files are still being
   // written, so the orphan scan excludes them; a crashed run is absent here and correctly surfaces.
   getActiveArtifactRunIds?: () => string[]
@@ -400,18 +397,29 @@ const createArtifactHandlers = (
 // the same ownership proof, so a later attempt that wins cannot publish bytes the first would reject.
 const FINALIZE_RACE_RETRY_DELAYS_MS = [50, 150, 400] as const
 
+// What one provenance attempt needed before it settled. `retries` and `waitedMs` are recorded, not just
+// used: a finalize that only succeeds after the renderer's own retry has to say whether this loop helped
+// at all, since "the race resolved while we slept" and "the race could only resolve after we returned"
+// look identical in the log otherwise (measured 2026-10-23: 36 claims exhausted all three retries and
+// were then published by the caller's next attempt).
+type ProvenanceFinalization = { artifacts: ArtifactFile[]; retries: number; waitedMs: number }
+
 const finalizeProvenanceWithRaceRetry = async (
   provenance: Pick<ArtifactProvenanceRepository, 'finalizeRun'>,
   request: Parameters<ArtifactProvenanceRepository['finalizeRun']>[0]
-): Promise<ArtifactFile[]> => {
+): Promise<ProvenanceFinalization> => {
+  let retries = 0
+  let waitedMs = 0
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return await provenance.finalizeRun(request)
+      return { artifacts: await provenance.finalizeRun(request), retries, waitedMs }
     } catch (error) {
       const delay = FINALIZE_RACE_RETRY_DELAYS_MS[attempt]
       if (delay === undefined || !(error instanceof ArtifactOwnershipPersistenceRaceError)) {
         throw error
       }
+      retries += 1
+      waitedMs += delay
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
@@ -423,7 +431,7 @@ export const finalizeRunArtifacts = async (
   runRegistry: ArtifactRunRegistry,
   request: FinalizeRunArtifactsRequest,
   provenance?: Pick<ArtifactProvenanceRepository, 'finalizeRun'>,
-  logger: Pick<Logger, 'error'> = log
+  logger: Pick<Logger, 'error' | 'info'> = log
 ): Promise<ArtifactFile[]> => {
   const claim = runRegistry.resolve(request.claimId)
 
@@ -442,8 +450,13 @@ export const finalizeRunArtifacts = async (
     })
   }
 
+  // Counted before any work so an attempt that fails early still advances the ordinal the retry reports.
+  const attempt = runRegistry.noteFinalizeAttempt(request.claimId)
+
   let durableFinalizationCompleted = false
   let compatibilityPublicationCompleted = false
+  let provenanceRetries = 0
+  let provenanceWaitedMs = 0
   let stage: 'durable-finalization' | 'compatibility-publication' = 'durable-finalization'
 
   try {
@@ -480,7 +493,13 @@ export const finalizeRunArtifacts = async (
       }
       // Commit the complete provenance proof and immutable message ownership before compatibility bytes
       // move. A later compatibility failure is retryable because the prepared marker remains durable.
-      provenanceArtifacts = await finalizeProvenanceWithRaceRetry(provenance, provenanceRequest)
+      const provenanceFinalization = await finalizeProvenanceWithRaceRetry(
+        provenance,
+        provenanceRequest
+      )
+      provenanceArtifacts = provenanceFinalization.artifacts
+      provenanceRetries = provenanceFinalization.retries
+      provenanceWaitedMs = provenanceFinalization.waitedMs
       durableFinalizationCompleted = true
     }
 
@@ -514,7 +533,22 @@ export const finalizeRunArtifacts = async (
 
     runRegistry.markFinalized(request.claimId, request.messageId)
 
-    return provenanceArtifacts ?? artifacts
+    const publishedArtifacts = provenanceArtifacts ?? artifacts
+    // The one line the failure record was missing: which attempt published this claim, and how much of
+    // this attempt went into waiting. `recovered` is only present when an earlier attempt failed, so a
+    // reading can count recovered claims without re-joining every failure row by claimId.
+    logger.info('artifact finalization completed', {
+      claimId: request.claimId,
+      artifactRunId: claim.runId,
+      messageId: request.messageId,
+      attempt,
+      provenanceRetries,
+      provenanceWaitedMs,
+      artifactCount: publishedArtifacts.length,
+      ...(attempt > 1 ? { recovered: true } : {})
+    })
+
+    return publishedArtifacts
   } catch (error) {
     const failureKind =
       error instanceof ArtifactOwnershipPersistenceRaceError
@@ -527,6 +561,9 @@ export const finalizeRunArtifacts = async (
       failureKind,
       durableFinalizationCompleted,
       compatibilityPublicationCompleted,
+      attempt,
+      provenanceRetries,
+      provenanceWaitedMs,
       claimId: request.claimId,
       artifactRunId: claim.runId,
       messageId: request.messageId,

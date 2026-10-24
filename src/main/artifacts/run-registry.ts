@@ -13,6 +13,11 @@ type ArtifactRunClaim = {
   runtimeSegmentId?: string
   promptMessageId?: string
   finalizedMessageId?: string
+  // How many finalize calls this claim has seen. The renderer retries a claim after losing the
+  // durability race, so "the second attempt succeeded" is the normal recovered shape; without a counter
+  // the field log cannot tell that apart from "the first attempt worked" (measured 2026-10-23T15:57Z:
+  // 36 claims, 36 recorded failures, and no line at all for the attempt that published them).
+  finalizeAttemptCount?: number
 }
 
 type RegisterArtifactRunClaimRequest = {
@@ -86,6 +91,21 @@ class ArtifactRunRegistry {
       ...claim,
       finalizedMessageId: messageId
     })
+  }
+
+  // Counts one finalize call for a claim and returns its 1-based ordinal. The count lives on the claim
+  // (not in the caller) because the renderer is what retries: two separate IPC calls must still add up to
+  // "attempt 2", otherwise every retry would report itself as a first attempt and the recovered shape
+  // would look identical to a fresh claim.
+  noteFinalizeAttempt(claimId: string): number {
+    const claim = this.resolve(claimId)
+    const attempt = (claim.finalizeAttemptCount ?? 0) + 1
+
+    this.claims.set(claimId, {
+      ...claim,
+      finalizeAttemptCount: attempt
+    })
+    return attempt
   }
 }
 
