@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 import type { ClaudeDetectResult } from '../../shared/settings'
 import { resolveClaudeExecutableForSpawn } from '../acp/claude-executable'
 import { augmentedPathEnv } from './shell-path'
+import { withVersionProbeCache } from './version-probe-cache'
 
 const execFileAsync = promisify(execFile)
 
@@ -207,7 +208,8 @@ const createDefaultDetectDeps = (): ClaudeDetectDeps => {
     homePath: homedir(),
     platform,
     isExecutable: isExecutableFile(platform),
-    getVersion: runClaudeVersion(platform),
+    // Identity-keyed: a repeat probe of an unchanged binary answers from the file, not a spawn.
+    getVersion: withVersionProbeCache(runClaudeVersion(platform)),
     resolveNpmBinDirs: resolveNpmBinDirs(platform),
     resolveSpawnTarget: (candidate) => resolveClaudeExecutableForSpawn(candidate, platform)
   }

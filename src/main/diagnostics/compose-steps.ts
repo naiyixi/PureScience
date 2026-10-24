@@ -21,10 +21,20 @@ export type ComposeStep = Readonly<{
   outcome: ComposeStepOutcome
 }>
 
-type ComposeStepLogger = {
+export type ComposeStepLogger = {
   info: (message: string, metadata: Record<string, unknown>) => void
   warn: (message: string, metadata: Record<string, unknown>) => void
   error: (message: string, metadata: Record<string, unknown>) => void
+}
+
+/**
+ * Line names for the three records the recorder can emit. Defaults are the startup-composition
+ * vocabulary; a second caller (settings preflight) names its own so one grep answers one question.
+ */
+export type ComposeStepMessages = {
+  slow: string
+  failed: string
+  summary: string
 }
 
 export type ComposeStepRecorderOptions = {
@@ -35,6 +45,8 @@ export type ComposeStepRecorderOptions = {
   slowMs?: number
   /** How many slowest steps the summary keeps. */
   summarySize?: number
+  /** Line names. Omitted = the startup-composition defaults, unchanged. */
+  messages?: ComposeStepMessages
 }
 
 export type ComposeStepRecorder = {
@@ -50,6 +62,11 @@ export type ComposeStepRecorder = {
 
 const DEFAULT_SLOW_MS = 250
 const DEFAULT_SUMMARY_SIZE = 6
+const DEFAULT_MESSAGES: ComposeStepMessages = {
+  slow: 'compose step slow',
+  failed: 'compose step failed',
+  summary: 'compose runtime steps'
+}
 
 export const createComposeStepRecorder = (
   options: ComposeStepRecorderOptions
@@ -57,6 +74,7 @@ export const createComposeStepRecorder = (
   const now = options.now ?? ((): number => performance.now())
   const slowMs = options.slowMs ?? DEFAULT_SLOW_MS
   const summarySize = options.summarySize ?? DEFAULT_SUMMARY_SIZE
+  const messages = options.messages ?? DEFAULT_MESSAGES
 
   const recorded: ComposeStep[] = []
   let startedAt: number | undefined
@@ -71,14 +89,14 @@ export const createComposeStepRecorder = (
       endedAt = now()
       recorded.push({ name, durationMs, outcome: 'ok' })
       if (durationMs >= slowMs) {
-        options.log.warn('compose step slow', { step: name, durationMs: Math.round(durationMs) })
+        options.log.warn(messages.slow, { step: name, durationMs: Math.round(durationMs) })
       }
       return value
     } catch (error) {
       const durationMs = Math.max(0, now() - stepStart)
       endedAt = now()
       recorded.push({ name, durationMs, outcome: 'failed' })
-      options.log.error('compose step failed', {
+      options.log.error(messages.failed, {
         step: name,
         durationMs: Math.round(durationMs),
         ...diagnosticErrorFields(error)
@@ -101,7 +119,7 @@ export const createComposeStepRecorder = (
           (entry) =>
             `${entry.name}=${Math.round(entry.durationMs)}ms${entry.outcome === 'failed' ? '(failed)' : ''}`
         )
-      options.log.info('compose runtime steps', {
+      options.log.info(messages.summary, {
         totalMs: Math.round(
           startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt)
         ),

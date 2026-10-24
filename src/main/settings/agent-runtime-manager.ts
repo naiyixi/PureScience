@@ -22,6 +22,8 @@ import { isModelBridgeSupported } from '../../shared/provider-registry'
 import { CLAUDE_EXECUTABLE_MISSING_MESSAGE } from '../../shared/run-error-classification'
 import { skillIdsDisabledForTarget } from '../../shared/skill-availability'
 import { buildAgentSpawnEnv } from '../acp/agent-process'
+import { createLogger } from '../logger'
+import { createComposeStepRecorder, type ComposeStepLogger } from '../diagnostics/compose-steps'
 import {
   DEFAULT_AGENT_FRAMEWORK_ID,
   getAgentFramework,
@@ -93,6 +95,9 @@ import type { StoredCodexInfo, StoredSettings } from './types'
 
 const execFileAsync = promisify(execFile)
 const CLAUDE_PROBE_TIMEOUT_MS = 20_000
+// A preflight step at or above this logs its own line; the whole call logs one summary above it. The
+// packaged build's handler-level threshold is a full second, which is far too coarse to name a probe.
+const PREFLIGHT_SLOW_STEP_MS = 250
 const CODEX_INSTALL_TARGET: InstallTarget = {
   npmPackage: '@agentclientprotocol/codex-acp',
   // Codex exposes no supported shell installer; InstallCodexRequest cannot select this branch.
@@ -225,6 +230,10 @@ export type AgentRuntimeManagerOptions = {
   opencodeDetectDeps?: OpencodeDetectDeps
   codebuddyDetectDeps?: CodeBuddyDetectDeps
   codexDetectDeps?: CodexDetectDeps
+  /** Injectable step clock + sink so preflight attribution is testable; production uses the defaults. */
+  preflightNow?: () => number
+  preflightLog?: ComposeStepLogger
+  preflightSlowMs?: number
   allocateOpenCodeUsagePort?: () => Promise<number>
   executeClaudeProbe?: ExecuteClaudeProbe
   installManagedClaudeImpl?: (
@@ -267,6 +276,9 @@ export class AgentRuntimeManager {
   ) => Promise<ManagedCodexInstallOutcome>
   private readonly resolveProxyEnvironment: () => Promise<SystemProxyEnvironment | undefined>
   private readonly syncComputeSkillDocument: (skillsDir: string) => Promise<void>
+  private readonly preflightNow: () => number
+  private readonly preflightLog: ComposeStepLogger
+  private readonly preflightSlowMs: number
 
   constructor(options: AgentRuntimeManagerOptions) {
     this.repository = options.repository
@@ -275,6 +287,9 @@ export class AgentRuntimeManager {
     this.skills = options.skills
     this.connectors = options.connectors
     this.allocateSettingsIdSequence = options.allocateSettingsIdSequence
+    this.preflightNow = options.preflightNow ?? ((): number => performance.now())
+    this.preflightLog = options.preflightLog ?? createLogger('settings-preflight')
+    this.preflightSlowMs = options.preflightSlowMs ?? PREFLIGHT_SLOW_STEP_MS
 
     const baseDetectDeps = options.detectDeps ?? createDefaultDetectDeps()
     this.detectDeps = {
@@ -332,17 +347,44 @@ export class AgentRuntimeManager {
   }
 
   async getPreflight(providers: ProviderPreflightAccess): Promise<Preflight> {
-    const settings = await this.repository.getSettings()
-    const claudePathExists = settings.claude?.resolvedPath
-      ? (await this.detectDeps.getVersion(settings.claude.resolvedPath)) !== undefined
-      : false
-    const opencodePathExists = settings.opencodePath
-      ? (await this.opencodeDetectDeps.getVersion(settings.opencodePath)) !== undefined
-      : false
-    const codexPathExists = (await this.probeCodexRuntime(settings.codex)) !== undefined
-    const codebuddyPathExists = settings.codebuddyPath
-      ? (await this.codebuddyDetectDeps.getVersion(settings.codebuddyPath)) !== undefined
-      : false
+    // Per-step attribution for a handler that the packaged build logged as slow 35 times in one
+    // afternoon (median 14.0 s, max 35.1 s) with nothing in the line saying which probe consumed it.
+    // The four binary probes are independent, so they run together; the recorder still times and names
+    // each one, and a slow preflight logs ONE summary so a healthy call stays silent.
+    const steps = createComposeStepRecorder({
+      log: this.preflightLog,
+      now: this.preflightNow,
+      slowMs: this.preflightSlowMs,
+      messages: {
+        slow: 'preflight step slow',
+        failed: 'preflight step failed',
+        summary: 'preflight steps'
+      }
+    })
+
+    const settings = await steps.step('settings-read', () => this.repository.getSettings())
+    const [claudePathExists, opencodePathExists, codexPathExists, codebuddyPathExists] =
+      await Promise.all([
+        steps.step('probe-claude', async () =>
+          settings.claude?.resolvedPath
+            ? (await this.detectDeps.getVersion(settings.claude.resolvedPath)) !== undefined
+            : false
+        ),
+        steps.step('probe-opencode', async () =>
+          settings.opencodePath
+            ? (await this.opencodeDetectDeps.getVersion(settings.opencodePath)) !== undefined
+            : false
+        ),
+        steps.step(
+          'probe-codex',
+          async () => (await this.probeCodexRuntime(settings.codex)) !== undefined
+        ),
+        steps.step('probe-codebuddy', async () =>
+          settings.codebuddyPath
+            ? (await this.codebuddyDetectDeps.getVersion(settings.codebuddyPath)) !== undefined
+            : false
+        )
+      ])
 
     const agentFrameworkId = settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID
     const framework = getAgentFramework(agentFrameworkId)
@@ -365,8 +407,10 @@ export class AgentRuntimeManager {
       : false
     const activeProviderKeyUsable =
       activeProvider && activeProvider.lastValidatedAt !== undefined
-        ? await providers.isProviderKeyUsable(activeProvider)
+        ? await steps.step('provider-key', () => providers.isProviderKeyUsable(activeProvider))
         : false
+
+    if (steps.totalMs() >= this.preflightSlowMs) steps.logSummary()
 
     return computePreflight({
       settings,

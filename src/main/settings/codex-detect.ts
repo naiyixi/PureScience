@@ -9,6 +9,7 @@ import { createLogger } from '../logger'
 import { augmentedPathEnv } from './shell-path'
 import { stripCodexCredentialEnv } from './process-tree'
 import { terminateProcessTree } from '../process-tree'
+import { withVersionProbeCache } from './version-probe-cache'
 
 const execFileAsync = promisify(execFile)
 
@@ -392,8 +393,9 @@ const createDefaultDetectDeps = (): CodexDetectDeps => {
     homePath: homedir(),
     platform,
     isRunnable: isRunnableFile(platform),
-    getAdapterVersion: runVersion(platform, true),
-    getCodexVersion: runVersion(platform, false),
+    // Identity-keyed: a repeat probe of an unchanged binary answers from the file, not a spawn.
+    getAdapterVersion: withVersionProbeCache(runVersion(platform, true)),
+    getCodexVersion: withVersionProbeCache(runVersion(platform, false)),
     smokeInitialize: runAcpInitializeSmoke(platform),
     resolveNpmBinDirs: resolveNpmBinDirs(platform)
   }

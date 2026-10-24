@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
 import { augmentedPathEnv } from './shell-path'
+import { withVersionProbeCache } from './version-probe-cache'
 
 const execFileAsync = promisify(execFile)
 
@@ -182,7 +183,8 @@ const createDefaultDetectDeps = (): OpencodeDetectDeps => {
     homePath: homedir(),
     platform,
     isExecutable: isExecutableFile(platform),
-    getVersion: runOpencodeVersion(platform),
+    // Identity-keyed: a repeat probe of an unchanged binary answers from the file, not a spawn.
+    getVersion: withVersionProbeCache(runOpencodeVersion(platform)),
     resolveNpmBinDirs: resolveNpmBinDirs(platform)
   }
 }

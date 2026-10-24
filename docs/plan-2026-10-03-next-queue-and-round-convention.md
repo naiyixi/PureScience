@@ -11580,3 +11580,77 @@ code: EPIPE}` → 93 ms 后 `write after end`（帧 `_write (writable:491:11)`�
 当前实例（v2.16.0）只有 **190 条**，全部带 `lateMs` ⇒ 不是现存缺陷。另：用户机器上装的是 **v2.16.0**
 （不是 Latest v2.17.0），日志里 `createSession: failed / Internal error` 那条正是 v2.16.1 修掉的那个，
 属「该升级」而不是「待修」。
+
+## 两百二十五、本轮追加（执行器，2026-10-24 12:3x–）—— `settings:get-preflight` 一次 14 秒无归因，且每次都重跑同样的二进制探测
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `HEAD = origin/main = 053760cd`；上一轮那笔的判决按**完整 40 位 SHA** 读：
+  `053760cdd67355f08427dda8417d06f455175244` ⇒ `Nightly` **success**、`Windows Full Test` **success**
+  （推送前查过在飞车道为空，那次推送没有取消任何人的判决）。上一轮 notepad 记的「docs-only 提交 `98b34864` 未推」
+  已复核：它不是 HEAD 的祖先，且 053760cd 的推送区间不含它 ⇒ 那笔是**游离提交**，内容与已落地的 §两百二十二/二十三
+  节重复，不追认、不重推。
+- 工作区不干净：`src/main/artifacts/{ipc.ts,ipc.test.ts,run-registry.ts}` 是**桌面会话线**的在制品 ⇒ 一个字节没碰、
+  没提交、没回退（本轮 `git add` 逐路径指名，无 `-A`）。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无新东西；§两百二十三 的前置读数（`hasProviderName: true` 频率）
+  **需要 dev 实例以新构建重启**才取得到。现取内存：空闲页 **4,409**（≈69 MB）、swap **8.07 G / 9.2 G** ⇒ 闸门未解，
+  按约定改取**纯代码**单元。
+- 本轮只动 `src/main/settings/**`（探测与 preflight）、`src/main/diagnostics/compose-steps.ts`、两份文档。
+
+### 一 为什么取这一条（读数不是猜的）
+
+打包版 v2.16.0 的 `ipc handler was slow`（1,174 条日志，`12:29:48Z → 01:57:52Z`）按通道聚合，
+`settings:get-preflight` **35 次、中位 14.0 s、最大 35.1 s**，同窗口 `settings:check-environment` 9 次中位 28.7 s；
+**同版本更早的两份日志里这两条通道一次都没出现**（`slow` 记录 0 条）⇒ 变慢发生在那段窗口，不是常量成本。
+同窗口 `event loop stalled` 的 190 条带 `lateMs` 记录给出机侧归因：`loadAvg1m` 中位 **39.2** / 最大 **164.9**、
+本进程 `cpuShare` 中位 **0.077**、`attribution` 里 `process-not-scheduled` **99** 条
+⇒ **这段窗口的时间被机器侧吃掉了，此刻不适合按耗时优化**（同 handler 空闲时段是 0.6–1 s 量级）。
+
+于是取两者交集里唯一与负载无关的那一半：**同一个二进制、同样的字节，重复探测必然得到同一个版本号**。
+35 次调用各自重跑一遍 `claude --version` / `opencode --version`，这部分是纯浪费；而那条慢日志**连一步的归属都没有**，
+所以另一半做成**分步计时**，让下一次慢的那一秒能点名。
+
+### 二 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/settings/version-probe-cache.ts`（新） | 按**文件身份**（`mtimeMs`+`size`，`stat` 跟随符号链接）记忆应答；并发同键**共享一次 spawn**；上限 64 条、最旧先淘汰。三条边界：**失败不记忆**（spawn 超时是机器侧瞬时现象，缓存会把「装着的运行时」显示成「没装」）、**Windows 上 stat 缺失降级为 unknown**（该平台探测经 shell 解析 `PATH`/`PATHEXT`）、**无身份则不缓存** |
+| 四个 `*-detect.ts` | `createDefaultDetectDeps()` 的 `getVersion` / `getAdapterVersion` / `getCodexVersion` 全包上记忆层；**注入式 deps 一个字节未动** ⇒ 既有替身用例行为不变 |
+| `compose-steps.ts` | 记录器新增可选 `messages`（既有的启动组合那行文案**逐字不变**） |
+| `agent-runtime-manager.ts` | `getPreflight` 四个二进制探测**并行**；六步计时（`settings-read`/`probe-claude`/`probe-opencode`/`probe-codex`/`probe-codebuddy`/`provider-key`）；单步 ≥250 ms 记 `preflight step slow`、整次 ≥250 ms 再记一行 `preflight steps`（`totalMs` + 最慢几步），**快的 preflight 一行都不记** |
+
+**真机探针**（产品自己的默认依赖包，跑完即删、未提交）：`claude` 首次 211.9 ms / 再次 **0.159 ms**；
+`opencode` 首次 1,427.2 ms / 再次 **0.202 ms**；不存在的路径从「起一个必然失败的进程」降到 **0.166 ms**。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/settings` + `src/main/diagnostics` 整域 | **103 files / 1,511 passed**（3 skipped），exit 0 |
+| 本笔 4 个测试文件 | **45 passed**（缓存 13 / 接线 5 / preflight 2 / 记录器文案 1 为新增） |
+| 双 typecheck（`--composite false`，堆 8192） | node **EXIT 0** / web **EXIT 0** |
+| `eslint --no-cache` 本笔 11 文件 | **0 problems**（改前 4 条 prettier warning，已按格式化器收敛） |
+| 变异 ①：`claude-detect` 去掉记忆层 | 接线用例恰红 1 条（`spawnCount` 2、版本漂到 1.2.2） |
+| 变异 ②：`agent-runtime-manager.ts` 回退到 HEAD | 并行用例 + 归因用例恰红 2 条 |
+
+证据档 `docs/evidence/2026-10-24-preflight-probe-attribution.md`。
+
+### 四 边界（不许读成更强）
+
+1. **没有真机窗口读数**：本单元证据 = 单测 + 产品默认依赖包上的本地探针。要取「窗口里变快」的读数需要以新构建重启
+   dev 实例，而空闲页 4,409、swap 8.07 G / 9.2 G ⇒ 未重启，**具名未取**。
+2. **只覆盖二进制版本探测**。`settings:npm-available`（29 次、中位 2.1 s）走 `npm --version`，要先按 `PATH` 解析出
+   npm 的真实路径才谈得上身份键 ⇒ **未做**，已具名立为下一单元候选。
+3. 记忆的边界是「文件身份」：某可执行文件若输出随外部状态变化而自身字节不变，本层会一直用第一次的应答。仓内四个
+   探测都是「读自身包版本」，不属于这一类。
+4. `provider-key`（Keychain 解密）与 `settings-read` 未与探测并行——它们与设置读取的先后有关，本轮不动。
+5. 不占版本号：无用户可见文案、无窗口读数。
+
+### 五 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本笔 `Nightly` + `Windows Full Test`（推送前先查在飞车道并点名会顶掉谁；`cancelled` 不算绿）。
+② 开工前现取 `vm_stat` / `vm.swapusage`：闸门一解，先以新构建重启 dev 实例，取两件前置读数——
+   `hasProviderName: true` 的出现频率（§两百二十三）与新的 `preflight steps` 汇总行（本轮埋点），后者点名下一步该攻哪一段。
+③ 若闸门仍未解：候选按「连锁最小」取 `settings:npm-available` 的身份键（先按 `PATH` 解析 npm 真实路径，再复用
+   `withVersionProbeCache`），或把 `settings:check-environment` 的四条运行时探测也收进同一套归因。
+④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。

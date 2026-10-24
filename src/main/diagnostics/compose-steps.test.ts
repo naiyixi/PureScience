@@ -121,4 +121,32 @@ describe('compose step recorder', () => {
     expect(recorder.totalMs()).toBe(0)
     expect(recorder.steps()).toEqual([])
   })
+
+  it('uses caller-supplied line names while the defaults stay as they were', async () => {
+    const log = makeLogger()
+    let clock = 0
+    const recorder = createComposeStepRecorder({
+      log,
+      // Each reading advances the clock, so every step takes 20 ms without any real waiting.
+      now: () => (clock += 20),
+      slowMs: 10,
+      messages: {
+        slow: 'preflight step slow',
+        failed: 'preflight step failed',
+        summary: 'preflight steps'
+      }
+    })
+
+    await recorder.step('probe-claude', () => Promise.resolve(true))
+    await expect(
+      recorder.step('probe-codex', () => Promise.reject(new Error('boom')))
+    ).rejects.toThrow('boom')
+    recorder.logSummary()
+
+    expect(log.warn.mock.calls[0][0]).toBe('preflight step slow')
+    expect(log.warn.mock.calls[0][1]).toMatchObject({ step: 'probe-claude' })
+    expect(log.error.mock.calls[0][0]).toBe('preflight step failed')
+    expect(log.error.mock.calls[0][1]).toMatchObject({ step: 'probe-codex' })
+    expect(log.info.mock.calls[0][0]).toBe('preflight steps')
+  })
 })

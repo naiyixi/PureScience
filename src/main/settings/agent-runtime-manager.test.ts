@@ -246,6 +246,95 @@ describe('AgentRuntimeManager', () => {
     expect(providers.isProviderKeyUsable).toHaveBeenCalledWith(storedProvider)
   })
 
+  it('runs the binary probes together instead of one after another', async () => {
+    const claudePath = join(storageRoot, 'bin', 'claude')
+    const opencodePath = join(storageRoot, 'bin', 'opencode')
+    await repository.setClaudeInfo({ resolvedPath: claudePath, version: '2.1.0' })
+    await repository.setOpencodeInfo(opencodePath, '1.19.0')
+
+    const started: string[] = []
+    let releaseGate: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      releaseGate = resolve
+    })
+    const gatedProbe = (name: string, version: string): ((path: string) => Promise<string>) =>
+      vi.fn(async () => {
+        started.push(name)
+        await gate
+        return version
+      })
+
+    manager = createManager({
+      detectDeps: { ...createClaudeDeps(inventory), getVersion: gatedProbe('claude', '2.1.0') },
+      opencodeDetectDeps: {
+        ...createOpencodeDeps(inventory),
+        getVersion: gatedProbe('opencode', '1.19.0')
+      }
+    })
+    const providers: ProviderPreflightAccess = {
+      resolveProviderApiEndpoints: vi.fn().mockReturnValue(['anthropic']),
+      resolveActiveModel: vi.fn().mockReturnValue('model-a'),
+      isProviderKeyUsable: vi.fn().mockResolvedValue(true)
+    }
+
+    const pending = manager.getPreflight(providers)
+    // A sequential implementation would still be sitting inside the first probe here, with the second
+    // one never started.
+    await vi.waitFor(() => expect(started).toHaveLength(2))
+    releaseGate()
+
+    await expect(pending).resolves.toMatchObject({ claudeReady: true, opencodeReady: true })
+  })
+
+  it('names the slow probe and logs one summary, while a fast preflight stays silent', async () => {
+    const claudePath = join(storageRoot, 'bin', 'claude')
+    const opencodePath = join(storageRoot, 'bin', 'opencode')
+    await repository.setClaudeInfo({ resolvedPath: claudePath, version: '2.1.0' })
+    await repository.setOpencodeInfo(opencodePath, '1.19.0')
+    const providers: ProviderPreflightAccess = {
+      resolveProviderApiEndpoints: vi.fn().mockReturnValue(['anthropic']),
+      resolveActiveModel: vi.fn().mockReturnValue('model-a'),
+      isProviderKeyUsable: vi.fn().mockResolvedValue(true)
+    }
+
+    const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    manager = createManager({
+      preflightLog: log,
+      preflightSlowMs: 50,
+      opencodeDetectDeps: {
+        ...createOpencodeDeps(inventory),
+        getVersion: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 150))
+          return '1.19.0'
+        }
+      }
+    })
+
+    await manager.getPreflight(providers)
+
+    // Only the probe that actually took the time is named; a slow read or a slow key check would show
+    // up as its own step instead of being blamed on a probe.
+    const slowProbes = log.warn.mock.calls
+      .filter(([, fields]) => String((fields as Record<string, unknown>).step).startsWith('probe-'))
+      .map(([, fields]) => (fields as Record<string, unknown>).step)
+    expect(slowProbes).toEqual(['probe-opencode'])
+    expect(log.warn.mock.calls[0][0]).toBe('preflight step slow')
+    expect(log.info).toHaveBeenCalledOnce()
+    const [summaryMessage, summaryFields] = log.info.mock.calls[0] as [
+      string,
+      Record<string, unknown>
+    ]
+    expect(summaryMessage).toBe('preflight steps')
+    expect(String(summaryFields.slowest)).toContain('probe-opencode=')
+
+    const quietLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    manager = createManager({ preflightLog: quietLog, preflightSlowMs: 50 })
+    await manager.getPreflight(providers)
+
+    expect(quietLog.warn).not.toHaveBeenCalled()
+    expect(quietLog.info).not.toHaveBeenCalled()
+  })
+
   it('uses the shared allocator and forwards the same event sink through managed installs', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(123)
     const allocateSettingsIdSequence = vi
