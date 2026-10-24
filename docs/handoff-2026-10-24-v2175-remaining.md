@@ -57,8 +57,17 @@
 - 结构信息已就位：`src/main/acp/session-capability-owner.ts` 的 `buildStdioServers(request, enabled)` 是**扁平 14 项**；
   v2.17.5 已加 `FIRST_SCREEN_MCP_SERVER_NAMES`（artifacts/notebook/plan/memory/context-summary）与
   `deferredServerNames()`，日志里能读到 `groups: 5 core,9 deferred`。
-- **下一步**：确认 ACP 是否支持会话建立后追加 MCP 服务；支持则延后挂载延后组；不支持则考虑把延后组的 server 进程
-  改为共享常驻（一次启动多个工具面）或按需拉起。**不要调预算值掩盖**。
+- **已查清（不要再查一遍）**：ACP schema 里 `mcpServers` 只出现在 `session/new`（以及 `load`/`resume` 的重放），
+  方法集合是 `session/new | load | list | delete | fork | resume | close | set_mode | set_config_option | prompt |
+  update | cancel | request_permission` —— **没有"会话建立后追加 MCP 服务"的方法**（见
+  `node_modules/@agentclientprotocol/sdk/schema/schema.json`，x-method 列表）。所以"延后挂载延后组"在不改协议的前提下
+  **等于让那些能力整个会话不可用**，不能这么做。
+- **因此 E 的三条可行路径**（按代价排序，任选其一并附读数）：
+  1. **合并工具面**：把延后组里的图/PDF/知识/标注/端点合成一个 MCP 进程（工具名不变，进程数从 9 降到 1–2）。
+     这是唯一能真正减少"同时启动 14 个进程"而不丢能力的路；
+  2. **让每个服务启动更便宜**：MCP 入口的顶层 import 懒化（现在每个入口都连带拉起同一批重模块）；
+  3. **预热常驻**：启动后先把这些服务拉起来并完成 initialize，使代理的 readiness 预算面对的是"已经在答"的进程。
+- 三条路都不要调预算值掩盖；每条都要给出「14 个进程各自到达就绪的时间」的具名读数作为前后对照。
 
 ### F — 机检③ 补齐（当前 1/4）
 
