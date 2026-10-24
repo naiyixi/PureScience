@@ -39,10 +39,37 @@
 - **修掉它带来的缺陷**：原实现把计数放在返回值里，而重试耗尽时函数是 throw ⇒ 恰恰是那 36/36 的失败会报 0。改为调用方持有计数槽，两条路径都从同一槽读。
 - **丢弃**：分支里那段 settings `timed()`。main 已经用 `recordStep` 把 environment-check 四个探测点全部计时，真机日志能看到 step 名（上表），重复接线只会把同一步计两次。分支已删除。
 
+### 装后真机读数（2.17.4 已安装并重启两次）
+
+**读数 2 的答案：10 秒里有 16.8 秒是"钥匙串可用性判断"**
+
+```
+settings key migration was slow { totalMs: 16788, outcome: "unchanged",
+  phases: "encryption-available=16758ms,providers=24ms,connectors=1ms" }
+compose step slow { step: "read-stored-settings", durationMs: 16878 }
+```
+
+也就是说：读文件、解析、迁移规则（providers 24 ms、connectors 1 ms）都不是成本，`isEncryptionAvailable()` 一次就花掉 **16,758 ms**。这次启动比上一版那次 10,311 ms 更慢，说明它是**随机器状态波动**的钥匙串往返，不是固定开销。
+
+**读数 1 的效果：新进程第一次 preflight 从 6,116 ms 降到 634 ms**
+
+| 场景 | preflight 总耗时 | 逐步 |
+|---|---|---|
+| 装后首次（缓存文件刚生成） | **6,116 ms** | probe-opencode 5,055 / probe-codex 5,373 / probe-claude 5,954 |
+| 重启后（同一进程第一次 preflight） | **634 ms** | 只剩 probe-codex 585 ms；opencode/claude/codebuddy 全部未达阈值（未 spawn）|
+
+缓存文件内容（真机）：`settings/probe-answers.json` 五条身份键控答案 —— `opencode 1.19.3`、`claude 2.1.212`、
+`codebuddy 2.173.0`、managed `codex 0.144.6`、`npm 10.9.8`，每条键都带自己的 mtime+size 指纹。
+
+**仍未收口的一点**：`probe-codex` 还有 585 ms（跨三次采样 5,373 → 1,632 → 585）。它不是版本探测的冷启动——
+managed codex 的版本已经命中磁盘答案——而是 `probeCodexRuntime` 里那一步会话 smoke（ACP initialize）本身不计入
+身份缓存。这是下一版 B 的靶子，本版没有动它。
+
 ### 明确没做 / 未验证
 
-- 落盘缓存与钥匙串四段计时都**还没有在真机新版本上读数**（本机安装的是 2.17.3）。下一步就是装上 2.17.4 后读两次启动：`load-probe-answers` 是否命中、`settings key migration was slow` 的 phases 指向哪一段。
-- 任务 C 的**优化**未做：这一版只把 10 秒拆开，没有改"什么时候需要钥匙串"（那要在读数之后决定延迟或预热）。
+- 任务 C 的**优化**未做：这一版只把 10 秒拆开并已归因到 `encryption-available`，没有改"什么时候需要钥匙串"（延迟到首次真正用密钥、或启动预热），那要在下一次读数之后决定。
+- `probe-codex` 剩余 585 ms 未优化（见上）。
+- MCP 就绪超时、机检③ 1/4、v2.18.0 / v2.19.0 仍未开工。
 - MCP 就绪超时、机检③ 1/4、v2.18.0/v2.19.0 仍未开工。
 
 ## v2.17.3 — 2026-10-24（队列里真正占位的那个人：每轮重跑的全量迁移）
