@@ -1095,12 +1095,63 @@ class SettingsService {
   }
 
   private async migrateLegacyKeyRefs(settings: StoredSettings): Promise<StoredSettings> {
-    if (!isEncryptionAvailable()) return settings
-    let changed = await this.providers.migrateLegacyKeyRefs(settings.providers)
+    // The startup step that reads settings was logged at **10,311 ms** on a real machine (2026-10-24,
+    // `compose step slow { step: 'read-stored-settings' }`), and file read + JSON.parse cannot be the cost
+    // of a settings document. This function is the only part of that step that touches the OS secret store,
+    // so each phase is timed and named: "read-stored-settings took 10 s" cannot be acted on, "keychain
+    // availability took 9.8 s" can. Nothing here changes behaviour — only where the number is attributed.
+    const phases: Record<string, number> = {}
+    const startedAt = Date.now()
+    const measure = async <T>(name: string, run: () => Promise<T> | T): Promise<T> => {
+      const phaseStartedAt = Date.now()
+      try {
+        return await run()
+      } finally {
+        phases[name] = Date.now() - phaseStartedAt
+      }
+    }
 
-    changed = (await this.connectors.migrateLegacyNcbiKeyRef(settings.connectors)) || changed
+    const encryptionAvailable = await measure('encryption-available', () => isEncryptionAvailable())
+    if (!encryptionAvailable) {
+      this.logKeyMigration(startedAt, phases, 'encryption-unavailable')
+      return settings
+    }
 
-    return changed ? this.repository.getSettings() : settings
+    let changed = await measure('providers', () =>
+      this.providers.migrateLegacyKeyRefs(settings.providers)
+    )
+    changed =
+      (await measure('connectors', () =>
+        this.connectors.migrateLegacyNcbiKeyRef(settings.connectors)
+      )) || changed
+
+    if (!changed) {
+      this.logKeyMigration(startedAt, phases, 'unchanged')
+      return settings
+    }
+    const reloaded = await measure('reload', () => this.repository.getSettings())
+    this.logKeyMigration(startedAt, phases, 'migrated')
+    return reloaded
+  }
+
+  // One line, and only when the pass is worth attributing: a healthy read stays silent, exactly like the
+  // preflight and compose recorders.
+  private logKeyMigration(
+    startedAt: number,
+    phases: Record<string, number>,
+    outcome: 'migrated' | 'unchanged' | 'encryption-unavailable'
+  ): void {
+    const totalMs = Date.now() - startedAt
+    if (totalMs < SETTINGS_KEY_MIGRATION_SLOW_MS) return
+    createLogger('settings').warn('settings key migration was slow', {
+      totalMs,
+      outcome,
+      // The phases that ran, largest first, in the same `name=12ms` shape the compose recorder prints.
+      phases: Object.entries(phases)
+        .sort(([, left], [, right]) => right - left)
+        .map(([name, ms]) => `${name}=${ms}ms`)
+        .join(',')
+    })
   }
 
   // Selects the agent backend to drive; the caller reconnects so the choice applies to the next spawn.
@@ -1806,6 +1857,10 @@ class SettingsService {
     return this.backendResolver.resolveSelection(selection, context)
   }
 }
+
+// A key-migration pass under this is the normal case (in-memory maps, no keychain roundtrip) and stays
+// silent; the threshold matches the compose and preflight recorders, so one filter catches all of them.
+const SETTINGS_KEY_MIGRATION_SLOW_MS = 250
 
 // Production service rooted at the shared storage root with real detection dependencies.
 const createDefaultSettingsService = (): SettingsService => new SettingsService()
