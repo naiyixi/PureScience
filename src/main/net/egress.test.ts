@@ -3,6 +3,7 @@
 
 import { request as httpRequest, createServer, type Server } from 'node:http'
 import { connect as tcpConnect, createServer as createTcpServer } from 'node:net'
+import { Duplex } from 'node:stream'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { mirrorEgressHosts } from '../../shared/egress'
@@ -441,6 +442,72 @@ describe('EgressProxy', () => {
       expect(escaped).toEqual([])
     })
   }
+
+  // Deterministic pin for the ending that carries no error: a socket the test owns emits `close` and
+  // nothing else, and a teardown that only listened for `error` left the target connection open. Over
+  // real TCP that ending arrives intermittently, so it is pinned here on a socket we control.
+  it('tears the target down when the client socket closes with no error and no end', async () => {
+    let targetConnected = false
+    let targetClosed = false
+    const target = createTcpServer((socket) => {
+      targetConnected = true
+      socket.on('data', () => undefined)
+      socket.on('close', () => {
+        targetClosed = true
+      })
+    })
+    await new Promise<void>((resolve) => target.listen(0, '127.0.0.1', resolve))
+    const targetPort = (target.address() as { port: number }).port
+    const localProxy = new EgressProxy()
+    localProxy.setAllowlist(['127.0.0.1'])
+    // A socket we own, so `destroy()` emits `close` and nothing else — the silent ending under test.
+    const clientSide = new Duplex({
+      read() {
+        return undefined
+      },
+      write(_chunk, _encoding, callback) {
+        callback()
+      }
+    })
+    try {
+      const connectHandler = localProxy as unknown as {
+        handleConnect(
+          req: { url?: string; method?: string; headers: Record<string, string> },
+          socket: Duplex,
+          head: Buffer
+        ): void
+      }
+      connectHandler.handleConnect(
+        { url: `127.0.0.1:${targetPort}`, method: 'CONNECT', headers: {} },
+        clientSide,
+        Buffer.alloc(0)
+      )
+      const connected = await Promise.race([
+        new Promise<'up'>((resolve) =>
+          setImmediate(function poll() {
+            if (targetConnected) resolve('up')
+            else setTimeout(poll, 10)
+          })
+        ),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
+      ])
+      // Without a live tunnel the assertion below would be vacuous.
+      expect(connected).toBe('up')
+      clientSide.destroy()
+      const closedInTime = await Promise.race([
+        new Promise<'closed'>((resolve) =>
+          setImmediate(function poll() {
+            if (targetClosed) resolve('closed')
+            else setTimeout(poll, 10)
+          })
+        ),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
+      ])
+      expect(closedInTime).toBe('closed')
+    } finally {
+      await new Promise<void>((resolve) => target.close(() => resolve()))
+    }
+  })
 
   it('answers a plain HTTP target failure with the named family and a 502, not a 403', async () => {
     proxy = new EgressProxy()

@@ -317,6 +317,11 @@ export class EgressProxy {
       })
       teardown()
     })
+    // A client can go away without an error: `destroy()` with nothing pending closes the socket
+    // without ever raising `error`, and a reset the kernel reports only as a close behaves the same.
+    // `error` alone therefore leaves the target connection open — the leak this tunnel exists to
+    // prevent — so the close is its own teardown trigger. `settled` keeps the two paths idempotent.
+    socket.on('close', () => teardown())
     const open = (): void => {
       if (settled) return
       log.info('egress tunnel opening', { host, port })
