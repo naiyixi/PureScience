@@ -1,5 +1,48 @@
 # PureScience 更新日记
 
+## v2.17.1 — 2026-10-24（模型不产文件：把交付物规则提到每轮）
+
+**成熟度自陈**：这一版修的是用户真机上「Claude 只写文字、不产文件、notebook 标签也不出现」的问题，外加三笔同时落地的稳定性/性能修复。核心那笔有真机读数支撑，也写清了它**不是**根因证明。
+
+### 1. 交付物规则改成每轮提醒（用户报障）
+
+**现象**：Claude 会话里做数据分析，只回一段文字；没有内容物文件，Notebook 标签也不见了。
+
+**读数（用户机器）**
+
+- 三个 Claude 会话：工具调用 **0 次**（不只是 MCP，连内置 Read/Bash 都没调）；同一台机器同一模型跑 Codex：**85 次**调用，`notebook_execute×12`、`repl_execute×44`、`write_artifact_file×2`；
+- 模型自报可用工具 **58 个**，`notebook_execute`、`write_artifact_file` 都在；
+- 我按应用的方式手动拉起打包版 artifact 服务：`initialize` + `tools/list` 正常；
+- 用户把两个工具**点名**后，Claude 立刻执行成功（notebook run + Artifact v1）。
+
+**结论**：工具链、服务端、模型能力都没问题；`ARTIFACT_FILE_SYSTEM_PROMPT_APPEND` 这类常驻规则埋在 ~5k token 的系统提示里，这个模型不照做。
+
+**改法**：交付物规则走既有 `turnPromptReminders` 通道**每轮**注入，只在会话确实挂了 artifacts/notebook 时出现，文案点名 `notebook_execute`、`write_artifact_file` 与 `producerRunId`。
+
+> Notebook 标签「消失」不是 UI 缺陷：`WorkspacePage` 只在收到 `notebook.onAvailable` 时才创建该标签；agent 不跑 notebook，就永远没有标签。两个症状同源。
+
+### 2. 隧道 egress 的进程级异常（`read ECONNRESET` / `write EPIPE`）
+
+真机日志里两条 `uncaughtException` 紧跟在同一条隧道失败之后（99 ms 内 `write after end`，4 秒后 `write EPIPE`）。源因：隧道 socket 从未挂 `error` 监听，收尾又有多个出口。改为单一 teardown（只生效一次、先 unpipe 再 destroy），客户端错误变成具名读数，已建立后的目标失败不再往 TLS 写状态行。用例 30 passed、net 整域 91 passed。
+
+### 3. 设置探测不再重复 spawn（性能）
+
+真机读数：`settings:get-preflight` 中位 **14.0 s**、最大 35.1 s；`settings:npm-available` 中位 1,917 ms——而它每次问的是同一个文件。新增按文件身份（mtime+size）记忆的版本探测缓存，四个探测并行并逐步计时。本机探针：claude 首次 211.9 ms / 再次 0.159 ms；opencode 首次 1,427.2 ms / 再次 0.202 ms。失败不缓存（spawn 超时会把「装着的运行时」显示成「没装」）。
+
+### 4. connector 契约补齐 `evidence:literature_set`
+
+排期要求「技能 + connector 同批」：此前 connector 侧 254 个工具里只有 4 个声明。先算缺口再动手——技能侧 15 个 requires 中 12 个是用户输入（工具无法生产），真正可由工具产出的只有三个事实，缺的是 `evidence:literature_set`。补 `pubmed.search_articles`、`literature.arxiv_search`、`literature.openalex_search_works`，并用一条回归用例钉住「预检必须把这三个列为建议生产者」。
+
+### 5. ACP 入参日志判据修正
+
+旧判据在入参到达那一刻就报「不可用作权限入参」，而提供方是先把入参发来、约 300 ms 后才发请求——于是每次普通本地工具调用都进了同一条日志（真机两天 77 行 / 49 个调用）。改为三态分流：等待在飞则立即报；等待已放弃走迟到通道带 `lateMs`；都不是就只记账。
+
+### 明确没做 / 未验证
+
+- **每轮提醒是行为修法，不是根因证明**：它在用户机器上对应的是「点名就生效」这一实测事实；是否能让模型**不再需要点名**，要等这次安装后的同一句话复验；
+- 设置探测的真机窗口读数未取（需重启 dev 实例，当时内存/swap 紧张，具名未取）；
+- connector 契约仍只覆盖「可由工具生产」的三个事实；其余 12 个 `input:*` 按设计不由工具生产。
+
 ## v2.17.0 — 2026-10-23（把「慢」量出来：每轮开销、一个真工具、启动分解）
 
 **成熟度自陈**：这一版没有新功能，三件事都是把上一版留下的「卡」变成可归因的数字，并交付 v2.17.0 排期里的第三方工具证据。三处改动都有测量撑着，也都写清了没做到的部分。
