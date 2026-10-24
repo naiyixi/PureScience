@@ -27,6 +27,8 @@
 
 import { stat } from 'node:fs/promises'
 
+import type { ProbeAnswerStore } from './probe-answer-store'
+
 export type VersionProbe = (executablePath: string) => Promise<string | undefined>
 
 /**
@@ -46,6 +48,15 @@ export type VersionProbeCacheOptions = {
 }
 
 const DEFAULT_MAX_ENTRIES = 64
+
+// A store that outlives the process. Configured once at startup, deliberately module-level: the probe
+// wrappers are built by each detect module's own factory (`createDefaultDetectDeps()`), and threading a
+// store through five factories to reach one file would be five chances to forget it in a sixth.
+let processAnswerStore: ProbeAnswerStore | undefined
+
+export const configureVersionProbeAnswerStore = (store: ProbeAnswerStore | undefined): void => {
+  processAnswerStore = store
+}
 
 const errnoOf = (error: unknown): string | undefined => {
   if (typeof error !== 'object' || error === null) return undefined
@@ -112,6 +123,13 @@ export const withVersionProbeCache = (
     const remembered = answered.get(key)
     if (remembered !== undefined) return remembered
 
+    // Answered by a previous process: same fingerprint, so the spawn contributed nothing but startup time.
+    const persisted = processAnswerStore?.get(key)
+    if (persisted !== undefined) {
+      remember(key, persisted)
+      return persisted
+    }
+
     const pending = inFlight.get(key)
     if (pending !== undefined) return pending
 
@@ -119,7 +137,10 @@ export const withVersionProbeCache = (
       try {
         const version = await probe(executablePath)
         // Failures are not answers: see the header.
-        if (version !== undefined) remember(key, version)
+        if (version !== undefined) {
+          remember(key, version)
+          processAnswerStore?.set(key, version)
+        }
         return version
       } finally {
         inFlight.delete(key)

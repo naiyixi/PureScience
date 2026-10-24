@@ -325,6 +325,8 @@ import {
 import { registerFolderGrantsIpcHandlers } from './folder-grants-ipc'
 import { getAppClaudeConfigDir } from './settings/provider-env'
 import { createDefaultSettingsService } from './settings/service'
+import { createProbeAnswerStore } from './settings/probe-answer-store'
+import { configureVersionProbeAnswerStore } from './settings/version-probe-cache'
 import { ContextSummaryRepository } from './settings/context-summary-repository'
 import { createContextSummaryCapture } from './settings/context-summary-capture'
 import { RoutineRepository } from './settings/routine-repository'
@@ -596,6 +598,17 @@ const createApplicationModules = async (
       capability: createDefaultSettingsService()
     }))
   )
+  // Probe answers outlive the process. Measured on this host 2026-10-24: `opencode --version` costs
+  // **4,035.9 ms** cold and **1.062 ms** when the shipped identity cache answers, and the settings
+  // preflight asks for that answer on the user's critical path (`probe-codex` alone was 17 log rows,
+  // p50 1,856 ms / max 5,128 ms). The file is keyed on the executable's mtime+size, so an updated binary
+  // is probed again — this only removes a launch cost nothing could have changed.
+  const probeAnswerStore = createProbeAnswerStore({
+    filePath: join(resolveStorageRoot(), 'settings', 'probe-answers.json')
+  })
+  await composeSteps.step('load-probe-answers', () => probeAnswerStore.load())
+  configureVersionProbeAnswerStore(probeAnswerStore)
+
   // Reading stored settings decrypts the provider key through the OS secret store, so this is a prime
   // suspect for a multi-second stall and must be timed in its own right.
   const storedSettings = await composeSteps.step('read-stored-settings', () =>
