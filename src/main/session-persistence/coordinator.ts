@@ -506,7 +506,7 @@ class SessionPersistenceCoordinator {
     sessionId: string,
     messageId: string
   ): Promise<boolean> {
-    return this.enqueue(async () => {
+    return this.enqueue('contains-message-on-active-branch', async () => {
       const loaded = await this.repository.loadSessionWithDiagnostics(projectId, sessionId)
       if (loaded.status !== 'found') {
         throw new Error(`Cannot read active Message Branch for a ${loaded.status} Session.`)
@@ -525,7 +525,7 @@ class SessionPersistenceCoordinator {
   }
 
   sessionMetadataSnapshot(): Promise<SessionMetadataSnapshot> {
-    return this.enqueue(async () => ({
+    return this.enqueue('session-metadata-snapshot', async () => ({
       sessions: [...this.sessionMetadata.values()],
       isComplete: this.isSessionMetadataComplete
     }))
@@ -568,7 +568,7 @@ class SessionPersistenceCoordinator {
    * navigable, while the incomplete marker keeps writes blocked until a full retry succeeds.
    */
   loadAllReadOnly(): Promise<LoadAllSessionsResult> {
-    return this.enqueue(async () => {
+    return this.enqueue('load-all-read-only', async () => {
       this.validatedBindingTopologies.clear()
       // Once any renderer has observed a degraded snapshot, later loads are no longer allowed to
       // treat the process as an untouched startup boundary for destructive cleanup.
@@ -643,7 +643,7 @@ class SessionPersistenceCoordinator {
    * complete scan has restored active ownership. Chat hydration remains available on any failure.
    */
   loadAll(options: LoadAllSessionsOptions = {}): Promise<LoadAllSessionsResult> {
-    return this.enqueue(async () => {
+    return this.enqueue('load-all', async () => {
       const cached = this.catalogCache
       if (
         options.allowCachedCatalog === true &&
@@ -940,7 +940,7 @@ class SessionPersistenceCoordinator {
     // that time is the wait or the durable-JSON load — the two answer different units.
     const requestedAt = Date.now()
     let startedAt = requestedAt
-    return this.enqueue(async () => {
+    return this.enqueue('read-session-runtime-context', async () => {
       startedAt = Date.now()
       // The index answers the question without opening the document at all, which is the whole point:
       // on the real corpus 65 of 66 Sessions have no runtime context, so every one of those opens used
@@ -1008,7 +1008,7 @@ class SessionPersistenceCoordinator {
   patchSessionRuntimeContext(
     command: PatchSessionRuntimeContextCommand
   ): Promise<SessionRuntimeContext> {
-    return this.enqueue(async () => {
+    return this.enqueue('patch-session-runtime-context', async () => {
       const { projectId, sessionId, expectedRevision, patch, sessionStatus } = command
       if (this.deletedProjects.has(projectId)) {
         throw new Error('Cannot mutate a session whose project has been deleted.')
@@ -1052,7 +1052,7 @@ class SessionPersistenceCoordinator {
   appendUserMessageToInteraction(
     command: AppendUserMessageToInteractionCommand
   ): Promise<PersistedChatMessage> {
-    return this.enqueue(async () => {
+    return this.enqueue('append-user-message-to-interaction', async () => {
       const { projectId, sessionId, interactionId } = command
       const content = command.content.trim()
       if (!content) throw new Error('User Message content must be non-empty.')
@@ -1092,7 +1092,7 @@ class SessionPersistenceCoordinator {
     projectId: string,
     isRuntimeBusy: (sessionId: string) => boolean = () => false
   ): Promise<string[]> {
-    return this.enqueue(async () => {
+    return this.enqueue('assert-project-archivable', async () => {
       const loaded = await this.repository.loadProjectWithDiagnostics(projectId)
       if (!loaded.isComplete) {
         throw new Error('Cannot archive a Project while its Session catalog is incomplete.')
@@ -1111,7 +1111,7 @@ class SessionPersistenceCoordinator {
   // Used by runtime admission checks after resolving a known project/session pair. It is intentionally
   // read-only: restoring an item never attaches or resumes an agent session by itself.
   assertSessionAvailable(projectId: string, sessionId: string): Promise<void> {
-    return this.enqueue(async () => {
+    return this.enqueue('assert-session-available', async () => {
       const loaded = await this.repository.loadSessionWithDiagnostics(projectId, sessionId)
       if (loaded.status === 'unreadable') {
         throw new Error('Cannot use a Session whose durable JSON is unreadable.')
@@ -1126,7 +1126,10 @@ class SessionPersistenceCoordinator {
   // Finds a persisted Session's owner for runtime admission. Fresh, unsaved sessions have no durable
   // archive state and deliberately return undefined.
   sessionProjectId(sessionId: string): Promise<string | undefined> {
-    return this.enqueue(async () => this.sessionMetadata.get(sessionId)?.projectId)
+    return this.enqueue(
+      'session-project-id',
+      async () => this.sessionMetadata.get(sessionId)?.projectId
+    )
   }
 
   // Dedicated main-owned archive mutation. Unlike full renderer saves it preserves updatedAt and
@@ -1135,7 +1138,7 @@ class SessionPersistenceCoordinator {
     request: UpdateSessionArchiveRequest,
     isRuntimeBusy: () => boolean = () => false
   ): Promise<PersistedChatSession> {
-    return this.enqueue(async () => {
+    return this.enqueue('update-archive', async () => {
       assertArchiveExpectedAt(request.expectedArchivedAt, 'Session')
       if (this.deletedProjects.has(request.projectId)) {
         throw new Error('Cannot archive a Session whose project has been deleted.')
@@ -1182,7 +1185,10 @@ class SessionPersistenceCoordinator {
     // 50 s maximum beside a 100 ms median looks like, and it is invisible if the clock starts after
     // dequeuing. Every phase below is captured on the way past, so a slow save can say where it went.
     const requestedAt = Date.now()
-    return this.enqueue(async () => {
+    // Ticket for "who held the queue while this save waited". The queue is strictly serial, so the
+    // operations recorded after this mark are exactly the ones that delayed the save.
+    const queueMark = this.markQueueTrace()
+    return this.enqueue('save-session', async () => {
       const startedAt = Date.now()
       if (this.deletedProjects.has(session.projectId)) {
         throw new Error('Cannot save a session whose project has been deleted.')
@@ -1308,6 +1314,7 @@ class SessionPersistenceCoordinator {
       }
       this.reportSlowSessionSave({
         requestedAt,
+        blockers: this.blockersSince(queueMark),
         startedAt,
         readAt,
         preparedAt,
@@ -1326,6 +1333,8 @@ class SessionPersistenceCoordinator {
    */
   private reportSlowSessionSave(times: {
     requestedAt: number
+    /** Which queued operations ran ahead of this save — the answer to "what held the queue". */
+    blockers?: string
     startedAt: number
     readAt: number
     preparedAt: number
@@ -1340,6 +1349,7 @@ class SessionPersistenceCoordinator {
     try {
       this.log.warn('session save was slow', {
         queuedMs: times.startedAt - times.requestedAt,
+        ...(times.blockers ? { queueBlockers: times.blockers } : {}),
         authorityMs: times.readAt - times.startedAt,
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
@@ -1397,7 +1407,7 @@ class SessionPersistenceCoordinator {
     sessionId: string,
     mutation: () => Promise<Result>
   ): Promise<Result> {
-    return this.enqueue(async () => {
+    return this.enqueue('save-session-specialist-binding', async () => {
       if (this.deletedProjects.has(projectId)) {
         throw new Error('Cannot mutate a session whose project has been deleted.')
       }
@@ -1479,7 +1489,7 @@ class SessionPersistenceCoordinator {
     projectId: string,
     options: { requireExistingUploadAuthority?: boolean } = {}
   ): Promise<ProjectSessionDeletionResult> {
-    return this.enqueue(async () => {
+    return this.enqueue('delete-project-sessions', async () => {
       this.deletedProjects.add(projectId)
       let deletedSessionIds: string[] = []
 
@@ -1579,19 +1589,27 @@ class SessionPersistenceCoordinator {
   }
 
   getProjectSessionDeletionState(projectId: string): Promise<ProjectSessionDeletionState> {
-    return this.enqueue(() => this.repository.getProjectSessionDeletionState(projectId))
+    return this.enqueue('get-project-session-deletion-state', () =>
+      this.repository.getProjectSessionDeletionState(projectId)
+    )
   }
 
   markCommittedProjectSessionsPrepared(projectId: string): Promise<void> {
-    return this.enqueue(() => this.repository.markCommittedProjectSessionsPrepared(projectId))
+    return this.enqueue('mark-committed-project-sessions-prepared', () =>
+      this.repository.markCommittedProjectSessionsPrepared(projectId)
+    )
   }
 
   completeProjectSessionDeletion(projectId: string): Promise<void> {
-    return this.enqueue(() => this.repository.completeProjectSessionDeletion(projectId))
+    return this.enqueue('complete-project-session-deletion', () =>
+      this.repository.completeProjectSessionDeletion(projectId)
+    )
   }
 
   listLegacyProjectSessionTombstones(): Promise<string[]> {
-    return this.enqueue(() => this.repository.listLegacyProjectSessionTombstones())
+    return this.enqueue('list-legacy-project-session-tombstones', () =>
+      this.repository.listLegacyProjectSessionTombstones()
+    )
   }
 
   /**
@@ -1602,7 +1620,7 @@ class SessionPersistenceCoordinator {
    * failure that succeeds on the final pass does not make the repair IPC report a false failure.
    */
   repairProjectFiles(projectId: string): Promise<void> {
-    return this.enqueue(async () => {
+    return this.enqueue('repair-project-files', async () => {
       const scan = await this.repository.loadAllWithDiagnostics()
       if (!scan.isComplete) {
         this.fileIndex.markReconciliationIncomplete()
@@ -1660,7 +1678,7 @@ class SessionPersistenceCoordinator {
   }
 
   saveManifest(request: SaveSessionManifestRequest): Promise<void> {
-    return this.enqueue(() => this.repository.saveManifest(request))
+    return this.enqueue('save-manifest', () => this.repository.saveManifest(request))
   }
 
   /**
@@ -1671,7 +1689,7 @@ class SessionPersistenceCoordinator {
    * deleted-owner event so already loaded renderer pages invalidate in the same operation.
    */
   deleteSession(projectId: string, sessionId: string): Promise<void> {
-    return this.enqueue(async () => {
+    return this.enqueue('delete-session', async () => {
       const key = sessionKey(projectId, sessionId)
       this.deletedSessions.add(key)
       let token: ManagedFileSoftDeleteToken | undefined
@@ -1769,8 +1787,51 @@ class SessionPersistenceCoordinator {
 
   // Rejections are absorbed only by the queue tail, not by the returned task promise. Later mutations
   // therefore continue in order while each caller still receives its own failure.
-  private enqueue<Result>(task: () => Promise<Result>): Promise<Result> {
-    const run = this.queue.then(task, task)
+  // Serialized queue bookkeeping. A save that waits 23 s while writing in 15 ms is waiting on *other*
+  // work, and "queuedMs: 23294" names no culprit — so every enqueued operation carries a label and its
+  // own wait/run times, and a slow save reports who was ahead of it.
+  private readonly queueTrace: { label: string; waitedMs: number; ranMs: number }[] = []
+  private queueTraceTotal = 0
+
+  private markQueueTrace(): number {
+    return this.queueTraceTotal
+  }
+
+  /**
+   * The operations that ran — or were still running — between `mark` and now. They are exactly the ones
+   * that delayed the caller, because this queue is strictly serial.
+   */
+  private blockersSince(mark: number): string {
+    const recent = this.queueTrace.slice(
+      Math.max(0, mark - (this.queueTraceTotal - this.queueTrace.length))
+    )
+    const named = recent
+      .map((entry) => `${entry.label}=${Math.round(entry.ranMs)}ms`)
+      .sort(
+        (left, right) =>
+          Number(/(\d+)ms$/.exec(right)?.[1] ?? 0) - Number(/(\d+)ms$/.exec(left)?.[1] ?? 0)
+      )
+      .slice(0, 4)
+    return named.join(',')
+  }
+
+  private enqueue<Result>(label: string, task: () => Promise<Result>): Promise<Result> {
+    const requestedAt = Date.now()
+    const labeled = async (): Promise<Result> => {
+      const startedAt = Date.now()
+      try {
+        return await task()
+      } finally {
+        this.queueTrace.push({
+          label,
+          waitedMs: startedAt - requestedAt,
+          ranMs: Date.now() - startedAt
+        })
+        if (this.queueTrace.length > 64) this.queueTrace.shift()
+        this.queueTraceTotal += 1
+      }
+    }
+    const run = this.queue.then(labeled, labeled)
     this.queue = run.then(
       () => undefined,
       () => undefined

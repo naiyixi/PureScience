@@ -3978,6 +3978,43 @@ describe('session save diagnostics', () => {
     clock.mockRestore()
   })
 
+  // A save that waits 23 s and writes in 15 ms was waiting on other work, and `queuedMs` alone names no
+  // culprit. The queue is strictly serial, so the operations that completed while a save waited ARE the
+  // delay; this pins that the slow-save line names them.
+  it('names the queued operations that held the queue while a save waited', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+
+    // A queued read that takes a measurable slice of the clock, then the save that waits behind it.
+    const blocker = coordinator.sessionMetadataSnapshot()
+    now += 7_000
+    const pending = coordinator.saveSession(createSession({ title: 'Slow' }))
+    now += 5_000
+    await blocker
+    await pending
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, string | number>]
+    expect(message).toBe('session save was slow')
+    expect(fields.queuedMs).toBe(5_000)
+    expect(String(fields.queueBlockers)).toContain('session-metadata-snapshot')
+    clock.mockRestore()
+  })
+
   // `writeMs` is where the field reading put 44.6 s of 142.7 s, and whether that is serialization or the
   // filesystem decides the next unit. The repository measures its own write; this asserts the numbers reach
   // the slow-save line intact and that the part the five do not explain is printed rather than folded in.
