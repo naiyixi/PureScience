@@ -1,5 +1,50 @@
 # PureScience 更新日记
 
+## v2.17.4 — 2026-10-24（设置：冷探针只付一次；启动那 10 秒开始点名）
+
+**成熟度自陈**：这一版两件事，都有真机读数支撑。一件是**优化**（跨进程复用 `--version` 答案），一件是**只加读数**（把 `read-stored-settings` 的 10 秒拆成四段）。另有一笔来自 `wip/settings-probe-timing` 分支的收口（artifact 终稿重试代价），并修掉它带过来的一个真缺陷。
+
+### 读数 1：4 秒不是"预检慢"，是二进制自己启动
+
+真机日志按 step 名统计（`preflight step slow` / `environment check step slow`）：
+
+| step | n | p50 | max |
+|---|---|---|---|
+| **probe-codex** | 17 | 1,856 ms | **5,128 ms** |
+| probe-claude | 3 | 3,975 ms | 4,457 ms |
+| probe-opencode | 3 | 3,803 ms | 3,937 ms |
+| detect-codebuddy | 4 | 2,148 ms | 3,164 ms |
+| detect-codex | 4 | 728 ms | 2,237 ms |
+
+本机实测（走产品自己的 cache 实现）：`opencode --version` 冷 **4,035.9 ms**、暖 **1.062 ms**（**3,800×**）。也就是说进程内的缓存早就生效，剩下的 4 秒是**每次进程启动的第一次**，而那期间二进制没变过。
+
+### 改法：身份键控的答案落盘
+
+新增 `src/main/settings/probe-answer-store.ts`：答案写到 `<storageRoot>/settings/probe-answers.json`，键 = `sha256(路径 + "\0" + mtimeMs:size)`（与内存缓存同一个指纹）。启动时 `load-probe-answers` 读一次，`withVersionProbeCache` 命中磁盘就不再 spawn。
+
+三条纪律（与内存缓存一致，且都不是超时窗口）：
+- **失败永不落盘**：spawn 失败是机器瞬时状态，缓存它会把"已安装"读成"未安装"直到文件变化；
+- **指纹变化即失效**：重装/升级后 mtime+size 变了，重新探测；
+- **读不懂就丢**：损坏文件、异版本文件、非字符串条目一律忽略；写入走 temp+rename 与单链排队，半个文件不会毁掉整批答案。
+
+### 读数 2：启动 10,311 ms 落在哪里（只加读数）
+
+`compose step slow { step: 'read-stored-settings', durationMs: 10311 }`，而该步骤里的读文件+解析只有毫秒级。唯一碰 OS 秘密存储的 `migrateLegacyKeyRefs` 现在四段计时（`encryption-available` / `providers` / `connectors` / `reload`），≥250 ms 时打一行 `settings key migration was slow`，按耗时降序点名。
+
+**下一次启动的日志会给出归属**——这一版不声称已经知道 10 秒是谁，只说从这一版起能回答。
+
+### 分支收口（`wip/settings-probe-timing`）
+
+- **并入**：artifact 终稿的 `attempt` / `provenanceRetries` / `provenanceWaitedMs` 读数。真机 2026-10-23 的 36 条失败行全是"内部三次重试跑满仍抛出、调用方下一次才成功"，原先日志看不出那 600 ms 有没有用；现在失败行也带得出代价。
+- **修掉它带来的缺陷**：原实现把计数放在返回值里，而重试耗尽时函数是 throw ⇒ 恰恰是那 36/36 的失败会报 0。改为调用方持有计数槽，两条路径都从同一槽读。
+- **丢弃**：分支里那段 settings `timed()`。main 已经用 `recordStep` 把 environment-check 四个探测点全部计时，真机日志能看到 step 名（上表），重复接线只会把同一步计两次。分支已删除。
+
+### 明确没做 / 未验证
+
+- 落盘缓存与钥匙串四段计时都**还没有在真机新版本上读数**（本机安装的是 2.17.3）。下一步就是装上 2.17.4 后读两次启动：`load-probe-answers` 是否命中、`settings key migration was slow` 的 phases 指向哪一段。
+- 任务 C 的**优化**未做：这一版只把 10 秒拆开，没有改"什么时候需要钥匙串"（那要在读数之后决定延迟或预热）。
+- MCP 就绪超时、机检③ 1/4、v2.18.0/v2.19.0 仍未开工。
+
 ## v2.17.3 — 2026-10-24（队列里真正占位的那个人：每轮重跑的全量迁移）
 
 **成熟度自陈**：这一版**改变调度**（上一版只加读数，这一版按读数动手）。依据是真机日志的时间窗归因，不是猜测；但**修复后的排队读数尚未在真机重测**——本机安装的还是 2.17.1，重测需要装 2.17.3 并跑一轮真实会话，这一点在下面「未验证」里单独列明，不当成已完成。
