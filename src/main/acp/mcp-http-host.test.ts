@@ -294,6 +294,67 @@ describe('AgentMcpHttpHost', () => {
     expect(removed.status).toBe(404)
   })
 
+  it('executes a memory tool call over http and forwards it to the app RPC gateway', async () => {
+    const routingId = 'memory-session-1'
+    const rpcRequest: { authorization?: string; body?: unknown } = {}
+    rpcServer = createServer((request, response) => {
+      void (async () => {
+        const chunks: Buffer[] = []
+        for await (const chunk of request) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+        }
+        rpcRequest.authorization = request.headers.authorization
+        rpcRequest.body = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+        response.writeHead(200, { 'content-type': 'application/json' })
+        response.end(JSON.stringify({ result: { saved: true, noteId: 'note-1' } }))
+      })()
+    })
+    await new Promise<void>((resolve, reject) => {
+      rpcServer?.once('error', reject)
+      rpcServer?.listen(0, '127.0.0.1', resolve)
+    })
+    const rpcAddress = rpcServer.address()
+    if (typeof rpcAddress !== 'object' || rpcAddress === null) {
+      throw new Error('Test memory RPC server did not return a TCP address.')
+    }
+
+    host = new AgentMcpHttpHost()
+    const { token } = await host.ensureStarted()
+    // The newly wired kinds are the point here: memory used to exist only as a stdio child, so a
+    // session on http silently lost it. This drives the real memory MCP server in-process and checks
+    // the tool call actually reaches the RPC gateway with the envelope main expects.
+    host.registerMemory(routingId, {
+      endpoint: `http://127.0.0.1:${rpcAddress.port}/memory`,
+      token: 'rpc-token',
+      sessionId: routingId
+    })
+
+    const client = new Client({ name: 'test-client', version: '0.0.0' })
+    const memoryUrl = host.urlFor('memory', routingId)
+    const transport = new StreamableHTTPClientTransport(new URL(memoryUrl), {
+      requestInit: { headers: { authorization: `Bearer ${token}` } }
+    })
+    await client.connect(transport)
+
+    const tools = await client.listTools()
+    expect(tools.tools.map((tool) => tool.name)).toContain('memory_save_note')
+
+    const result = await client.callTool({
+      name: 'memory_save_note',
+      arguments: { category_name: 'bench', text: 'v2177-http-tool-ok' }
+    })
+    expect(JSON.stringify(result.content)).toContain('note-1')
+    expect(rpcRequest).toEqual({
+      authorization: 'Bearer rpc-token',
+      body: {
+        method: 'memorySaveNote',
+        params: { sessionId: routingId, categoryName: 'bench', text: 'v2177-http-tool-ok' }
+      }
+    })
+
+    await client.close()
+  })
+
   it('rejects requests without the bearer token', async () => {
     host = new AgentMcpHttpHost()
     const { endpoint } = await host.ensureStarted()

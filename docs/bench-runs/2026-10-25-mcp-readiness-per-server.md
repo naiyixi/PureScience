@@ -149,5 +149,19 @@ buildServer 分支，owner 的 `buildHttpServers` 加同形状的一段），然
 required`），所以「工具真能调通」只在传输层被证明（initialize + tools/list 十四类都过），
 执行面留到装机后的发版验收，届时跑一次 memory 存一条 / plan 读一次。
 
+### 7.1 执行面补证（不需要模型的那一段）
+
+`src/main/acp/mcp-http-host.test.ts` 新增一例：起真的 `AgentMcpHttpHost`，注册 memory 环境到一个
+记录请求的桩 RPC 服务，然后用真的 MCP 客户端走 StreamableHTTP 调 `memory_save_note`，断言：
+
+- 工具列表里有 `memory_save_note`（宿主构建的是**真的** memory server，不是替身）；
+- 工具调用落到网关的封装是 `{ method: 'memorySaveNote', params: { sessionId, categoryName, text } }`，
+  即主进程侧真正期待的那个信封；
+- 返回值透传（`note-1`）。
+
+这一步把「HTTP 宿主 → 十类真实 server → 工具执行 → RPC 网关」这条链钉住了；仍然缺的只有
+「**模型**决定去调工具」这一段，它与传输无关，留装机验收。
+
+
 
 
