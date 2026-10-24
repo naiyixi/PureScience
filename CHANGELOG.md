@@ -16,10 +16,24 @@
 
 **这只是读数**：交付集合一字未动。下一版据此把延后组移出启动预算（不调预算）。
 
+### 装后真机读数（2.17.5 已安装并跑了一次真实会话）
+
+- **能力清单点名生效**（真实 Claude 主会话）：
+  `session capabilities built { framework: "claude-code", role: "primary", transport: "stdio", count: 14,
+  servers: "purescience_annotations,purescience_artifacts,purescience_context_summary,purescience_endpoints,
+  purescience_figure,purescience_goal,purescience_host_query,purescience_knowledge,purescience_memory,
+  purescience_notebook,…", groups: "5 core,9 deferred" }`
+  —— 从这一版起，就绪超时可以和这行日志对上「哪一组在抢预算」。
+- **钥匙串那一步又变慢了，而且是同一处**：`settings key migration was slow { totalMs: 56793,
+  phases: "encryption-available=56769ms,providers=20ms,connectors=0ms" }`，`read-stored-settings = 56,898 ms`。
+  三次启动的同一项读数：**10,311 → 16,758 → 56,769 ms**。它随机器状态剧烈波动，是当前启动的头号成本，
+  也是下一版 C 必须动手的地方（延迟到首次用密钥 / 后台预热）。
+- `load-probe-answers = 368 ms`（探针答案文件读取，正常）。
+
 ### 明确没做 / 未验证
 
-- MCP 就绪超时**尚未修复**：这一版只让超时可归因（哪一组），延后组挂载还没有实现；
-- 兼容哈希的记忆**没有在真机新版本上量**（本机安装的是 2.17.4）：下一次冷启动对比 `read-stored-settings` 之外的启动阶段才能给出省下多少；
+- MCP 就绪超时**尚未修复**：这一版只让超时可归因（`groups: 5 core,9 deferred` 已在真机日志里），延后组挂载还没有实现；
+- 兼容哈希的记忆**没有在真机新版本上量**：本机启动日志里没有一步单独对应技能树扫描，要量它需要给启动阶段补一条读数（或对比同一机器连续两次冷启动的 `compose-runtime`）；
 - 机检③ 仍是 1/4（受钥匙串凭证限制，未变）；
 - **v2.18.0 / v2.19.0 未实现**，只落了两份开工前置文档：`docs/plan-2026-10-24-v2.18-usage-and-zh-alias.md`、`docs/plan-2026-10-24-v2.19-a2a-trajectory.md`。
 
