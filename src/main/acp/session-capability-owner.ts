@@ -1767,6 +1767,161 @@ export class AcpSessionCapabilityOwner {
         })
       }
     }
+    if (enabled.query) {
+      const environment = await this.buildQueryEnvironment(
+        request.routingIds.query,
+        request.projectName,
+        request.onQueryConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerQuery(request.routingIds.query, environment)
+        servers.push({
+          type: 'http',
+          name: HOST_QUERY_MCP_SERVER_NAME,
+          url: host.urlFor('query', request.routingIds.query),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.memory) {
+      const environment = await this.buildMemoryEnvironment(
+        request.routingIds.memory,
+        request.onMemoryConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerMemory(request.routingIds.memory, environment)
+        servers.push({
+          type: 'http',
+          name: MEMORY_MCP_SERVER_NAME,
+          url: host.urlFor('memory', request.routingIds.memory),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.contextSummary) {
+      const environment = await this.buildContextSummaryEnvironment(
+        request.routingIds.contextSummary,
+        request.onContextSummaryConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerContextSummary(request.routingIds.contextSummary, environment)
+        servers.push({
+          type: 'http',
+          name: CONTEXT_SUMMARY_MCP_SERVER_NAME,
+          url: host.urlFor('context-summary', request.routingIds.contextSummary),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.routine) {
+      const environment = await this.buildRoutineEnvironment(
+        request.routingIds.routine,
+        request.onRoutineConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerRoutine(request.routingIds.routine, environment)
+        servers.push({
+          type: 'http',
+          name: ROUTINE_MCP_SERVER_NAME,
+          url: host.urlFor('routine', request.routingIds.routine),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.goal) {
+      const environment = await this.buildGoalEnvironment(
+        request.routingIds.goal,
+        request.onGoalConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerGoal(request.routingIds.goal, environment)
+        servers.push({
+          type: 'http',
+          name: GOAL_MCP_SERVER_NAME,
+          url: host.urlFor('goal', request.routingIds.goal),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.endpoint) {
+      const environment = await this.buildEndpointEnvironment(
+        request.routingIds.endpoint,
+        request.onEndpointConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerEndpoint(request.routingIds.endpoint, environment)
+        servers.push({
+          type: 'http',
+          name: ENDPOINT_MCP_SERVER_NAME,
+          url: host.urlFor('endpoint', request.routingIds.endpoint),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.annotation) {
+      const environment = await this.buildAnnotationEnvironment(
+        request.routingIds.annotation,
+        request.projectName,
+        request.onAnnotationConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerAnnotation(request.routingIds.annotation, environment)
+        servers.push({
+          type: 'http',
+          name: ANNOTATION_MCP_SERVER_NAME,
+          url: host.urlFor('annotation', request.routingIds.annotation),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.pdf) {
+      const environment = await this.buildPdfEnvironment(
+        request.routingIds.pdf,
+        request.projectName,
+        request.onPdfConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerPdf(request.routingIds.pdf, environment)
+        servers.push({
+          type: 'http',
+          name: PDF_MCP_SERVER_NAME,
+          url: host.urlFor('pdf', request.routingIds.pdf),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.knowledge) {
+      const environment = await this.buildKnowledgeEnvironment(
+        request.routingIds.knowledge,
+        request.projectName,
+        request.onKnowledgeConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerKnowledge(request.routingIds.knowledge, environment)
+        servers.push({
+          type: 'http',
+          name: KNOWLEDGE_MCP_SERVER_NAME,
+          url: host.urlFor('knowledge', request.routingIds.knowledge),
+          headers: [authHeader]
+        })
+      }
+    }
+    if (enabled.figure) {
+      const environment = await this.buildFigureEnvironment(
+        request.routingIds.figure,
+        request.projectName,
+        request.onFigureConnection
+      )
+      if (environment && this.canPublishHttpRoute(request)) {
+        host.registerFigure(request.routingIds.figure, environment)
+        servers.push({
+          type: 'http',
+          name: FIGURE_MCP_SERVER_NAME,
+          url: host.urlFor('figure', request.routingIds.figure),
+          headers: [authHeader]
+        })
+      }
+    }
     return servers
   }
 

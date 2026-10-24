@@ -320,10 +320,12 @@ const callPdfRpc = async (
   return payload.result
 }
 
-const runPdfMcpServer = async (
-  environment = createPdfMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createPdfMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createPdfMcpServerForEnvironment = (
+  environment: PdfMcpEnvironment
+): ModelContextProtocolServer =>
+  createPdfMcpServer({
     open: (path) => callPdfRpc(environment, 'pdfOpen', { path }) as Promise<PdfOpenResult>,
     pages: (docId, start, end) =>
       callPdfRpc(environment, 'pdfPages', {
@@ -351,6 +353,11 @@ const runPdfMcpServer = async (
         ...(request.targetLanguage !== undefined ? { targetLanguage: request.targetLanguage } : {})
       }) as unknown as Promise<PdfTranslateResult>
   })
+
+const runPdfMcpServer = async (
+  environment = createPdfMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createPdfMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -373,6 +380,7 @@ export {
   pdfTranslateToolDefinition,
   createPdfMcpEnvironmentFromProcess,
   createPdfMcpServer,
+  createPdfMcpServerForEnvironment,
   createPdfMcpServerConfig,
   runPdfMcpServer
 }

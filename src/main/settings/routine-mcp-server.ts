@@ -199,10 +199,12 @@ const callRoutineRpc = async (
   return payload.result
 }
 
-const runRoutineMcpServer = async (
-  environment = createRoutineMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createRoutineMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createRoutineMcpServerForEnvironment = (
+  environment: RoutineMcpEnvironment
+): ModelContextProtocolServer =>
+  createRoutineMcpServer({
     configure: (request) =>
       callRoutineRpc(environment, 'routineConfigure', {
         ...request,
@@ -212,6 +214,11 @@ const runRoutineMcpServer = async (
     cancel: (routineId) =>
       callRoutineRpc(environment, 'routineCancel', { routineId }) as Promise<RoutineCancelResult>
   })
+
+const runRoutineMcpServer = async (
+  environment = createRoutineMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createRoutineMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -226,6 +233,7 @@ export {
   routineCancelToolDefinition,
   createRoutineMcpEnvironmentFromProcess,
   createRoutineMcpServer,
+  createRoutineMcpServerForEnvironment,
   createRoutineMcpServerConfig,
   runRoutineMcpServer
 }

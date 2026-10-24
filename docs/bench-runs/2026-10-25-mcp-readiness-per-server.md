@@ -126,4 +126,28 @@ goal、endpoint、annotation、pdf、knowledge、figure、query）没有 HTTP �
 下一步单元因此定为：把剩下 ten 类接进 HTTP 宿主（每类 = 宿主注册 + 每请求构服务器的分支 + 用例），
 14/14 都在 http 上之后再把 claude-code 翻过去。收益是 14 个子进程 → 0。
 
+## 7. 已完成：14/14 走 HTTP（真机读数）
+
+十类逐个接进宿主（每类抽一个 `create<X>McpServerForEnvironment(environment)`，宿主加 kind/register/
+buildServer 分支，owner 的 `buildHttpServers` 加同形状的一段），然后按判据验收：
+
+```json
+{"framework":"claude-code","transport":"http","count":14,"groups":"5 core,9 deferred","buildMs":3,
+ "servers":"purescience_annotations,purescience_artifacts,purescience_context_summary,
+ purescience_endpoints,purescience_figure,purescience_goal,purescience_host_query,
+ purescience_knowledge,purescience_memory,purescience_notebook,purescience_pdf,purescience_plan,
+ purescience_routine,purescience_skills"}
+```
+
+- **count=14**、十四名字逐个在列（不是 4）
+- 该会话**没有**任何 `[mcp-readiness] Timed out`（整个 dev 日志该计数为 0）
+- 结构上不再有 MCP 子进程：`buildHttpServers` 把环境注册进宿主，agent 连 `/mcp/<kind>/<routingId>`
+- 门禁：`tsc -p tsconfig.node.json` exit 0；`eslint --cache=false`（12 个文件）0；定向 vitest **203 文件 /
+  3,326 例全绿**；`npm run build` exit 0
+
+⚠️ 未验证（不许当已验）：**真实工具调用**要模型，本轮的隔离实例拿不到钥匙串凭据（`Authentication
+required`），所以「工具真能调通」只在传输层被证明（initialize + tools/list 十四类都过），
+执行面留到装机后的发版验收，届时跑一次 memory 存一条 / plan 读一次。
+
+
 

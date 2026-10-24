@@ -219,10 +219,12 @@ const callAnnotationRpc = async (
   return payload.result
 }
 
-const runAnnotationMcpServer = async (
-  environment = createAnnotationMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createAnnotationMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createAnnotationMcpServerForEnvironment = (
+  environment: AnnotationMcpEnvironment
+): ModelContextProtocolServer =>
+  createAnnotationMcpServer({
     set: (request) =>
       callAnnotationRpc(environment, 'annotationSet', {
         ...request
@@ -236,6 +238,11 @@ const runAnnotationMcpServer = async (
         annotationId
       }) as Promise<AnnotationRemoveResult>
   })
+
+const runAnnotationMcpServer = async (
+  environment = createAnnotationMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createAnnotationMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -250,6 +257,7 @@ export {
   annotationRemoveToolDefinition,
   createAnnotationMcpEnvironmentFromProcess,
   createAnnotationMcpServer,
+  createAnnotationMcpServerForEnvironment,
   createAnnotationMcpServerConfig,
   runAnnotationMcpServer
 }

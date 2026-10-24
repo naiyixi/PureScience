@@ -142,12 +142,17 @@ const callHostQueryRpc = async (
   return payload.result
 }
 
+// The handler is derived from the environment alone, so the same server can be served in-process by
+// the MCP http host instead of being spawned as a child (see docs/plan-2026-10-25-mcp-http-transport.md).
+const createHostQueryMcpServerForEnvironment = (
+  environment: HostQueryMcpEnvironment
+): ModelContextProtocolServer =>
+  createHostQueryMcpServer({ query: (sql) => callHostQueryRpc(environment, { sql }) })
+
 const runHostQueryMcpServer = async (
   environment = createHostQueryMcpEnvironmentFromProcess()
 ): Promise<void> => {
-  const server = createHostQueryMcpServer({
-    query: (sql) => callHostQueryRpc(environment, { sql })
-  })
+  const server = createHostQueryMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -159,6 +164,7 @@ export {
   createHostQueryMcpEnvironmentFromProcess,
   createHostQueryMcpServer,
   createHostQueryMcpServerConfig,
+  createHostQueryMcpServerForEnvironment,
   runHostQueryMcpServer
 }
 export type { HostQueryMcpHandler }

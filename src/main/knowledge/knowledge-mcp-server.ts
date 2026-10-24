@@ -281,10 +281,12 @@ const callKnowledgeRpc = async (
   return payload.result
 }
 
-const runKnowledgeMcpServer = async (
-  environment = createKnowledgeMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createKnowledgeMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createKnowledgeMcpServerForEnvironment = (
+  environment: KnowledgeMcpEnvironment
+): ModelContextProtocolServer =>
+  createKnowledgeMcpServer({
     search: (query, limit) =>
       callKnowledgeRpc(environment, 'knowledgeSearch', {
         text: query,
@@ -306,6 +308,11 @@ const runKnowledgeMcpServer = async (
         folder
       }) as Promise<KnowledgeWikiResult>
   })
+
+const runKnowledgeMcpServer = async (
+  environment = createKnowledgeMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createKnowledgeMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -325,6 +332,7 @@ export {
   registrationFrom,
   createKnowledgeMcpEnvironmentFromProcess,
   createKnowledgeMcpServer,
+  createKnowledgeMcpServerForEnvironment,
   createKnowledgeMcpServerConfig,
   runKnowledgeMcpServer
 }

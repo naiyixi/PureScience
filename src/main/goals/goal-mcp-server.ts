@@ -282,15 +282,22 @@ const callGoalRpc = async (
   return payload.result
 }
 
-const runGoalMcpServer = async (
-  environment = createGoalMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createGoalMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createGoalMcpServerForEnvironment = (
+  environment: GoalMcpEnvironment
+): ModelContextProtocolServer =>
+  createGoalMcpServer({
     configure: (request) =>
       callGoalRpc(environment, 'goalConfigure', { ...request }) as Promise<Goal>,
     status: () => callGoalRpc(environment, 'goalStatus', {}) as Promise<Goal[]>,
     advance: (request) => callGoalRpc(environment, 'goalAdvance', { ...request }) as Promise<Goal>
   })
+
+const runGoalMcpServer = async (
+  environment = createGoalMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createGoalMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -305,6 +312,7 @@ export {
   goalStatusToolDefinition,
   createGoalMcpEnvironmentFromProcess,
   createGoalMcpServer,
+  createGoalMcpServerForEnvironment,
   createGoalMcpServerConfig,
   runGoalMcpServer
 }

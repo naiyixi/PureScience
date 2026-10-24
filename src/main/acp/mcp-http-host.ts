@@ -20,6 +20,46 @@ import {
   createPlanMcpServerForEnvironment,
   type PlanMcpEnvironment
 } from '../session-plan/plan-mcp-server'
+import {
+  createHostQueryMcpServerForEnvironment,
+  type HostQueryMcpEnvironment
+} from '../settings/host-query-mcp-server'
+import {
+  createMemoryMcpServerForEnvironment,
+  type MemoryMcpEnvironment
+} from '../settings/memory-mcp-server'
+import {
+  createContextSummaryMcpServerForEnvironment,
+  type ContextSummaryMcpEnvironment
+} from '../settings/context-summary-mcp-server'
+import {
+  createRoutineMcpServerForEnvironment,
+  type RoutineMcpEnvironment
+} from '../settings/routine-mcp-server'
+import {
+  createGoalMcpServerForEnvironment,
+  type GoalMcpEnvironment
+} from '../goals/goal-mcp-server'
+import {
+  createEndpointMcpServerForEnvironment,
+  type EndpointMcpEnvironment
+} from '../settings/endpoint-mcp-server'
+import {
+  createAnnotationMcpServerForEnvironment,
+  type AnnotationMcpEnvironment
+} from '../settings/annotation-mcp-server'
+import {
+  createPdfMcpServerForEnvironment,
+  type PdfMcpEnvironment
+} from '../settings/pdf-mcp-server'
+import {
+  createKnowledgeMcpServerForEnvironment,
+  type KnowledgeMcpEnvironment
+} from '../knowledge/knowledge-mcp-server'
+import {
+  createFigureMcpServerForEnvironment,
+  type FigureMcpEnvironment
+} from '../settings/figure-mcp-server'
 import { createLogger } from '../logger'
 
 const log = createLogger('mcp-http-host')
@@ -30,7 +70,22 @@ type HostConnection = {
 }
 
 // The MCP server kinds this host serves; each maps to a factory + a per-session environment.
-const SERVER_KINDS = ['artifact', 'notebook', 'skill-import', 'plan'] as const
+const SERVER_KINDS = [
+  'artifact',
+  'notebook',
+  'skill-import',
+  'plan',
+  'query',
+  'memory',
+  'context-summary',
+  'routine',
+  'goal',
+  'endpoint',
+  'annotation',
+  'pdf',
+  'knowledge',
+  'figure'
+] as const
 type ServerKind = (typeof SERVER_KINDS)[number]
 
 const isServerKind = (value: string): value is ServerKind =>
@@ -42,6 +97,16 @@ type SessionEntry = {
   notebook?: NotebookMcpEnvironment
   skillImport?: SkillImportMcpEnvironment
   plan?: PlanMcpEnvironment
+  query?: HostQueryMcpEnvironment
+  memory?: MemoryMcpEnvironment
+  contextSummary?: ContextSummaryMcpEnvironment
+  routine?: RoutineMcpEnvironment
+  goal?: GoalMcpEnvironment
+  endpoint?: EndpointMcpEnvironment
+  annotation?: AnnotationMcpEnvironment
+  pdf?: PdfMcpEnvironment
+  knowledge?: KnowledgeMcpEnvironment
+  figure?: FigureMcpEnvironment
 }
 
 // Reads and JSON-parses a POST body so it can be handed to the transport as a pre-parsed payload.
@@ -151,6 +216,66 @@ class AgentMcpHttpHost {
     this.sessions.set(routingId, entry)
   }
 
+  registerQuery(routingId: string, environment: HostQueryMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.query = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerMemory(routingId: string, environment: MemoryMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.memory = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerContextSummary(routingId: string, environment: ContextSummaryMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.contextSummary = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerRoutine(routingId: string, environment: RoutineMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.routine = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerGoal(routingId: string, environment: GoalMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.goal = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerEndpoint(routingId: string, environment: EndpointMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.endpoint = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerAnnotation(routingId: string, environment: AnnotationMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.annotation = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerPdf(routingId: string, environment: PdfMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.pdf = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerKnowledge(routingId: string, environment: KnowledgeMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.knowledge = environment
+    this.sessions.set(routingId, entry)
+  }
+
+  registerFigure(routingId: string, environment: FigureMcpEnvironment): void {
+    const entry = this.sessions.get(routingId) ?? {}
+    entry.figure = environment
+    this.sessions.set(routingId, entry)
+  }
+
   // Drops a routing id's registered environments once its session is gone.
   unregister(routingId: string): void {
     this.sessions.delete(routingId)
@@ -196,6 +321,58 @@ class AgentMcpHttpHost {
       if (!entry.plan) return undefined
       return createPlanMcpServerForEnvironment(entry.plan)
     }
+
+    if (kind === 'query') {
+      if (!entry.query) return undefined
+      return createHostQueryMcpServerForEnvironment(entry.query)
+    }
+
+    if (kind === 'memory') {
+      if (!entry.memory) return undefined
+      return createMemoryMcpServerForEnvironment(entry.memory)
+    }
+
+    if (kind === 'context-summary') {
+      if (!entry.contextSummary) return undefined
+      return createContextSummaryMcpServerForEnvironment(entry.contextSummary)
+    }
+
+    if (kind === 'routine') {
+      if (!entry.routine) return undefined
+      return createRoutineMcpServerForEnvironment(entry.routine)
+    }
+
+    if (kind === 'goal') {
+      if (!entry.goal) return undefined
+      return createGoalMcpServerForEnvironment(entry.goal)
+    }
+
+    if (kind === 'endpoint') {
+      if (!entry.endpoint) return undefined
+      return createEndpointMcpServerForEnvironment(entry.endpoint)
+    }
+
+    if (kind === 'annotation') {
+      if (!entry.annotation) return undefined
+      return createAnnotationMcpServerForEnvironment(entry.annotation)
+    }
+
+    if (kind === 'pdf') {
+      if (!entry.pdf) return undefined
+      return createPdfMcpServerForEnvironment(entry.pdf)
+    }
+
+    if (kind === 'knowledge') {
+      if (!entry.knowledge) return undefined
+      return createKnowledgeMcpServerForEnvironment(entry.knowledge)
+    }
+
+    if (kind === 'figure') {
+      if (!entry.figure) return undefined
+      return createFigureMcpServerForEnvironment(entry.figure)
+    }
+
+    if (kind !== 'skill-import') return undefined
 
     const skillImportEnvironment = entry.skillImport
     if (!skillImportEnvironment) return undefined

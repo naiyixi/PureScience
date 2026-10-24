@@ -217,13 +217,20 @@ const callRecordBoundaryRpc = async (
   return payload.result as SummaryBoundaryResult
 }
 
-const runContextSummaryMcpServer = async (
-  environment = createContextSummaryMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createContextSummaryMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createContextSummaryMcpServerForEnvironment = (
+  environment: ContextSummaryMcpEnvironment
+): ModelContextProtocolServer =>
+  createContextSummaryMcpServer({
     queryChunk: (summaryId, question) => callSummaryQueryRpc(environment, summaryId, question),
     recordBoundary: (label) => callRecordBoundaryRpc(environment, label)
   })
+
+const runContextSummaryMcpServer = async (
+  environment = createContextSummaryMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createContextSummaryMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -236,6 +243,7 @@ export {
   boundaryToolDefinition,
   createContextSummaryMcpEnvironmentFromProcess,
   createContextSummaryMcpServer,
+  createContextSummaryMcpServerForEnvironment,
   createContextSummaryMcpServerConfig,
   runContextSummaryMcpServer
 }

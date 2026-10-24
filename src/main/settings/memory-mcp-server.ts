@@ -286,10 +286,12 @@ const callCheckpointRpc = async (
   return payload.result
 }
 
-const runMemoryMcpServer = async (
-  environment = createMemoryMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createMemoryMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createMemoryMcpServerForEnvironment = (
+  environment: MemoryMcpEnvironment
+): ModelContextProtocolServer =>
+  createMemoryMcpServer({
     saveNote: (categoryName, text, evidence) =>
       callMemorySaveNoteRpc(environment, categoryName, text, evidence),
     checkpointSave: (request) =>
@@ -308,6 +310,11 @@ const runMemoryMcpServer = async (
         fingerprintInputs: request.fingerprintInputs
       })
   })
+
+const runMemoryMcpServer = async (
+  environment = createMemoryMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createMemoryMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -321,6 +328,7 @@ export {
   checkpointSaveToolDefinition,
   createMemoryMcpEnvironmentFromProcess,
   createMemoryMcpServer,
+  createMemoryMcpServerForEnvironment,
   createMemoryMcpServerConfig,
   memorySaveNoteToolDefinition,
   memorySaveNoteToolSchema,

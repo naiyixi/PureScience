@@ -302,10 +302,12 @@ const callEndpointRpc = async (
   return payload.result
 }
 
-const runEndpointMcpServer = async (
-  environment = createEndpointMcpEnvironmentFromProcess()
-): Promise<void> => {
-  const server = createEndpointMcpServer({
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createEndpointMcpServerForEnvironment = (
+  environment: EndpointMcpEnvironment
+): ModelContextProtocolServer =>
+  createEndpointMcpServer({
     register: (request) =>
       callEndpointRpc(environment, 'endpointRegister', {
         ...request
@@ -324,6 +326,11 @@ const runEndpointMcpServer = async (
     freePort: () =>
       callEndpointRpc(environment, 'endpointFreePort', {}) as Promise<EndpointFreePortResult>
   })
+
+const runEndpointMcpServer = async (
+  environment = createEndpointMcpEnvironmentFromProcess()
+): Promise<void> => {
+  const server = createEndpointMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -346,6 +353,7 @@ export {
   endpointFreePortToolDefinition,
   createEndpointMcpEnvironmentFromProcess,
   createEndpointMcpServer,
+  createEndpointMcpServerForEnvironment,
   createEndpointMcpServerConfig,
   runEndpointMcpServer
 }

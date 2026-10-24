@@ -37,10 +37,12 @@ export const claudeCodeFramework: AgentFramework = {
   supportsSkills: true,
   // Claude launches stdio MCP servers directly — the app's artifact/notebook tooling relies on this.
   acceptsStdioMcp: true,
-  // NOT flipped to http yet, although claude-agent-acp advertises `mcpCapabilities: { http: true }`:
-  // the app's http MCP host currently serves only artifacts/notebook/skills/plan, so claiming http
-  // today would hand the session 4 of 14 capabilities (measured: `count: 4`). Flip this only after the
-  // other ten capabilities are registered on the host — see docs/bench-runs/2026-10-25-mcp-readiness-per-server.md.
+  acceptsHttpMcp: true,
+  // claude-agent-acp advertises `mcpCapabilities: { http: true, sse: true }` in its initialize result,
+  // and the app serves all fourteen capabilities from its own MCP http host. Over stdio each session
+  // spawned fourteen Electron-as-node children (~123 ms boot + ~180 ms module graph each, 2.6 s burst
+  // against a 10 s readiness budget — 11/14 timed out on a loaded machine); over http the agent connects
+  // instead of spawning, so that budget is no longer spent on boots at all.
   // The adapter advertises an `effort` select (category thought_level) and applies changes to live
   // sessions via applyFlagSettings — no respawn needed.
   supportsLiveEffortChange: true,

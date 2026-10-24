@@ -237,12 +237,19 @@ const callFigureRpc = async (
   return payload.result
 }
 
+// Handler derived from the environment alone, so the same server can be served in-process by the
+// MCP http host instead of being spawned as a child (docs/plan-2026-10-25-mcp-http-transport.md).
+const createFigureMcpServerForEnvironment = (
+  environment: FigureMcpEnvironment
+): ModelContextProtocolServer =>
+  createFigureMcpServer({
+    review: (request) => callFigureRpc(environment, { ...request })
+  })
+
 const runFigureMcpServer = async (
   environment = createFigureMcpEnvironmentFromProcess()
 ): Promise<void> => {
-  const server = createFigureMcpServer({
-    review: (request) => callFigureRpc(environment, { ...request })
-  })
+  const server = createFigureMcpServerForEnvironment(environment)
   await server.connect(new StdioServerTransport())
 }
 
@@ -254,6 +261,7 @@ export {
   figureReviewRpcParams,
   createFigureMcpEnvironmentFromProcess,
   createFigureMcpServer,
+  createFigureMcpServerForEnvironment,
   createFigureMcpServerConfig,
   runFigureMcpServer
 }
