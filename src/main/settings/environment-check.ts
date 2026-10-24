@@ -36,6 +36,16 @@ const REGISTRY_PROBE_TIMEOUT_MS = 5_000
 
 type RegistryProbe = (registry: ManagedClaudeRegistry, packagePath?: string) => Promise<number>
 
+// Times one phase of the check so a slow answer names the phase that consumed it. The packaged build
+// logged `settings:check-environment` as slow 17 times (median 5.3 s, max 42.2 s) with no line saying
+// which of the five phases — storage write, Python lookup, either registry probe, or the four runtime
+// detections the caller runs before this function — spent the time, so the number could not be acted on.
+// Omitted = the phase simply runs, so every existing caller keeps its exact behaviour.
+export type EnvironmentCheckStepRecorder = <T>(
+  name: string,
+  run: () => Promise<T> | T
+) => Promise<T>
+
 export type EnvironmentCheckDeps = {
   platform?: NodeJS.Platform
   architecture?: string
@@ -45,6 +55,7 @@ export type EnvironmentCheckDeps = {
   probeRegistry?: RegistryProbe
   detectAvx2?: () => boolean
   now?: () => number
+  recordStep?: EnvironmentCheckStepRecorder
 }
 
 const platformLabel = (platform: NodeJS.Platform): string => {
@@ -117,13 +128,16 @@ const probeRegistryReachability: RegistryProbe = (registry, packagePath = '') =>
 const inspectRegistry = async (
   registry: ManagedClaudeRegistry,
   probe: RegistryProbe,
-  packagePath: string
+  packagePath: string,
+  recordStep: EnvironmentCheckStepRecorder
 ): Promise<{ registry: ManagedClaudeRegistry; latencyMs?: number }> => {
-  try {
-    return { registry, latencyMs: await probe(registry, packagePath) }
-  } catch {
-    return { registry }
-  }
+  // An unreachable registry is a RESULT here, not a failure — the check exists to compare the two — so
+  // the probe's rejection is absorbed inside the timed step. Recording it as a failed step would print
+  // an error line for the expected case and teach a reader to ignore that line.
+  const latencyMs = await recordStep(`probe-${registry}`, () =>
+    probe(registry, packagePath).catch(() => undefined)
+  )
+  return { registry, latencyMs }
 }
 
 const runEnvironmentCheck = async ({
@@ -162,6 +176,9 @@ const runEnvironmentCheck = async ({
   const probeRegistry = deps.probeRegistry ?? probeRegistryReachability
   const detectAvx2Cap = deps.detectAvx2 ?? detectAvx2
   const now = deps.now ?? Date.now
+  const recordStep: EnvironmentCheckStepRecorder =
+    deps.recordStep ??
+    (<T>(_name: string, run: () => Promise<T> | T): Promise<T> => Promise.resolve().then(run))
 
   // opencode ships a `-baseline` build for a non-AVX2 x64 host, so such a machine is still fully
   // auto-installable — reflect the true capability with an informational note rather than a warning.
@@ -200,7 +217,7 @@ const runEnvironmentCheck = async ({
         }
       }
     }),
-    verifyStorage(storageRoot)
+    recordStep('verify-storage', () => verifyStorage(storageRoot))
       .then<EnvironmentCheckItem>(() => ({
         id: 'storage',
         label: 'App storage permission',
@@ -218,7 +235,9 @@ const runEnvironmentCheck = async ({
             ? `${storageRoot} — ${error.message}`
             : `${storageRoot} — grant write access, then check again.`
       })),
-    findPython().catch(() => undefined)
+    // "No system Python" is the optional case this check reports as passed, so the lookup's failure is
+    // absorbed inside the timed step for the same reason as the registry probes above.
+    recordStep('find-python', () => findPython().catch(() => undefined))
   ])
 
   let recommendedRegistry: ManagedClaudeRegistry | undefined
@@ -233,8 +252,13 @@ const runEnvironmentCheck = async ({
     }
   } else {
     const registryResults = await Promise.all([
-      inspectRegistry('npmjs', probeRegistry, REGISTRY_PROBE_PATHS[agentFrameworkId]),
-      inspectRegistry('npmmirror', probeRegistry, REGISTRY_PROBE_PATHS[agentFrameworkId])
+      inspectRegistry('npmjs', probeRegistry, REGISTRY_PROBE_PATHS[agentFrameworkId], recordStep),
+      inspectRegistry(
+        'npmmirror',
+        probeRegistry,
+        REGISTRY_PROBE_PATHS[agentFrameworkId],
+        recordStep
+      )
     ])
     const reachable = registryResults
       .filter(

@@ -11741,3 +11741,87 @@ Windows 上 shell 还能通过 `PATHEXT` 解析）⇒ 该路径不缓存，与�
   `preflight steps` 汇总行（§两百二十五 埋点）；③ 闸门未解则取 `settings:check-environment` 的分步归属
   （`verify-storage` / `find-python` / 两条 registry 探测），复用同一个 `createComposeStepRecorder`；
   ④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。
+
+## 两百二十七、本轮追加（执行器，2026-10-24 17:1x–）—— `settings:check-environment` 一次 5.3 秒（最大 42 秒）没有一步的归属：九个阶段逐个点名
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `HEAD = 7fb96551`（`origin/main` 同一位点、工作区干净）。上一轮 `66a5aa65` 的判决已**双绿**
+  （`Nightly` / `Windows Full Test` 均 success）⇒ `classify-pr-changes` 那条红确已转绿。
+- **并发核对**：发版窗口正在飞 —— `Release | 2273b32b | in_progress`（tag 驱动的 `release-refs/tags/v2.17.1`
+  组），`v2.17.1` 已是 Latest。该 workflow 的并发组按 **ref** 取（`group: release-${{ github.ref }}`），
+  main 上的推送属于另一组 ⇒ 推 main **不会**取消它；但为免与桌面会话线的发版核对抢同一批文件，
+  本轮只碰 `src/main/settings/**` 的四个文件，`src/main/artifacts/**` 一个字节没碰。
+- **`2273b32b` 的两条红已定因并已修**：`Windows full test (6/8)` 与 `Nightly → Verify` 都红在
+  `src/main/connectors/readme-connector-count.test.ts > never state a tool count that disagrees with the registry`
+  （`expected { name: 'README.md', count: 85 } to deeply equal { count: 282 }`）。真因是发布横幅里那句叙事
+  「made 85 tools in a Codex session」被那道门的 `(\d+)\s+(?:callable\s+)?tools` 当成「工具总数」；
+  桌面会话线已把它改写成 `85 tool calls`（`7fb96551`，措辞更准确，门本身的判据一字未放宽）。本地复跑：
+  `readme-connector-count.test.ts` **4 passed**。**该修复是 docs-only ⇒ 两条车道都不会为它单独起跑**，
+  所以本轮推出的这一笔将成为它第一次真正过车道的读数（见 §五）。
+- 内存（现取）：空闲页 **5,418**（≈85 MB）、swap **11.86 G / 13.3 G** ⇒ 重启 dev 实例取窗口读数**不取**（见 §四）。
+
+### 一 为什么取这一条（读数不是猜的）
+
+三份打包版日志（只读，`ipc handler was slow` 共 824 行）按通道聚合：
+
+| 通道 | 次数 | 中位 | 最大 |
+|---|---|---|---|
+| `settings:check-environment` | **17** | **5,306 ms** | **42,249 ms** |
+| `settings:detect-claude`（同一批检测，单独通道） | 7 | 10,134 ms | 13,585 ms |
+| `settings:detect-codex` | 4 | 19,163 ms | 22,765 ms |
+
+这条通道要等九个阶段：读设置、四个运行时检测（Codex 那次还会**真起一次 ACP 冒烟**）、写一次存储哨兵、
+找一次系统 Python、两条 registry 的 HEAD 探测（各 5 s 超时）。一次 5.3 秒的答案里，谁也说不清时间花在
+哪一段 —— 与 §两百二十五 处理 `settings:get-preflight` 时同一个形状，所以复用**同一个**
+`createComposeStepRecorder`，不新造第二套计时器。
+
+### 二 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/settings/environment-check.ts` | 新增可选 `recordStep` 缝（`EnvironmentCheckStepRecorder`），把四段本地阶段交给它计时：`verify-storage` / `find-python` / `probe-npmjs` / `probe-npmmirror`。**省略＝各段照旧直接跑**，既有调用方行为逐字不变 |
+| `src/main/settings/agent-runtime-manager.ts` | `checkEnvironment()` 建一个 recorder（行名 `environment check step slow` / `… step failed` / 汇总 `environment check steps`），给 `settings-read` 与四个 `detect-*` 计时，把同一个 recorder 经 `deps.recordStep` 传进 `environment-check`；`totalMs()` 过阈值才写**一行**汇总。新增两个注入项 `environmentCheckLog` / `environmentCheckSlowMs`，以及 `environmentCheckDeps`（生产不传＝真实现；测试传桩） |
+
+**两条边界（写进代码注释）**：
+1. **探测失败是结果、不是失败步骤** —— 两条 registry 与 Python 查找的拒绝都在计时步**内部**吸收：
+   这两件事的失败本来就是这道检查要报告的结论，记成 `failed` 步骤会在正常情形下打 error 行，
+   训练读者忽略那一行。存储写入失败相反：它**照旧记 `failed` 并照旧上屏**（记录不吞错）。
+2. **没跑的阶段不出现** —— 选中框架已安装时不发探测 ⇒ 记录里就只有 `verify-storage` + `find-python`；
+   一行汇总不许声称一段调用方从未付出的时间。
+
+**一处自证**：`environmentCheckDeps` 第一版只在 `checkEnvironment()` 里读 `this.environmentCheckDeps`、
+却没在构造函数里存成字段 —— `tsc` 当场 `TS2551: Property 'environmentCheckDeps' does not exist`。
+这正是「声明了却没接上」那一族，只有类型检查看得见（`vitest` 全绿）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后，且 prettier 改写之后重跑）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/settings` + `src/main/diagnostics` 整域 | **104 files / 1,528 passed**（3 skipped），exit 0 |
+| 本笔两个测试文件 | **44 passed**（新增 5 条：四段点名 / 已安装不探测 / 存储失败仍上屏 / 探测失败不算步骤 / 管理器九阶段 + 快则静默） |
+| 双 typecheck（`--composite false`，堆 8192） | node **EXIT 0** / web **EXIT 0** |
+| `eslint --no-cache` 4 文件 + `prettier --check` | **0 problems** / 全部通过 |
+| `scripts/pre-push-checks.sh` | **EXIT 0** |
+| **变异测试**（3 组，文件用 cp 备份还原、哈希逐字相同） | 去掉 `find-python` 计时 ⇒ **3 failed**；汇总改成无条件写 ⇒ **1 failed**（快则静默那条）；探测失败记成失败步骤 ⇒ **1 failed** |
+
+### 四 边界（不许读成更强）
+
+1. **没有窗口读数**：证据 = 单测 + 变异 + 三份生产日志的历史读数。要看到 `environment check steps` 汇总行
+   真出现，须以新构建重启实例（dev 或打包），而内存闸门未解（空闲 5,418 页 / swap 11.86 G）⇒ **具名未取**。
+   拿到那行的判据：`~/Library/Logs/PureScience/main.log` 里 `scope=settings-environment-check` 且
+   `msg="environment check steps"`，`slowest` 里带 `名=毫秒`。
+2. 本轮**只加归属、不动耗时**：5.3 秒这个数字一行没变。下一轮才有资格按点名结果取舍
+   （例如两条 registry 探测各自的 5 s 超时是否需要提前短路）。
+3. 九段里有五段是「并行开始、各自结束」，所以慢行**按完成顺序**出现，顺序本身不携带含义
+   （用例按集合比对，注释写明原因）。
+4. 不占版本号（无用户可见文案、无窗口读数）。
+
+### 五 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本轮推送的 `Nightly` + `Windows Full Test`：重点看
+   `readme-connector-count.test.ts` 是否转绿（`2273b32b` 那条红的首次车道复核）；
+② 内存闸门一解就以新构建重启 dev 实例，一次取两样：`preflight steps` 汇总行（§两百二十五）与本轮
+   `environment check steps` 汇总行，并按点名结果决定下一刀；
+③ 仍未动：`runtime:*` 那一簇（`get-enablement` 21.9 s / `list-environments` 29.3 s / `survey` 22.9 s）；
+④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。

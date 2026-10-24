@@ -494,4 +494,124 @@ describe('runEnvironmentCheck', () => {
     expect(adapterCheck?.status).toBe('warning')
     expect(result.ready).toBe(true) // Non-selected framework doesn't block
   })
+
+  // The packaged build logged this handler as slow 17 times (median 5.3 s, max 42.2 s) and the line named
+  // no phase, so the number could not be acted on. These three cases pin the names a slow answer must be
+  // attributable to — and that recording them changes neither the answer nor which phases run.
+  it('names every phase it waited on, without changing the answer', async () => {
+    const recorded: string[] = []
+    const record = async <T>(name: string, run: () => Promise<T> | T): Promise<T> => {
+      recorded.push(name)
+      return run()
+    }
+    const request = {
+      storageRoot: '/data',
+      agentFrameworkId: 'claude-code' as const,
+      frameworks: [
+        { id: 'claude-code' as const, label: 'Claude', runtime: { found: false as const } }
+      ],
+      encryptionAvailable: true
+    }
+
+    const unrecorded = await runEnvironmentCheck({ ...request, deps: baseDeps() })
+    const attributed = await runEnvironmentCheck({
+      ...request,
+      deps: { ...baseDeps(), recordStep: record }
+    })
+
+    expect(recorded).toEqual(['verify-storage', 'find-python', 'probe-npmjs', 'probe-npmmirror'])
+    // Attribution is an observation: the answer itself must be byte-identical to the unrecorded run.
+    expect(attributed).toEqual(unrecorded)
+  })
+
+  it('does not record a registry probe at all when the selected runtime is already installed', async () => {
+    const recorded: string[] = []
+
+    await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'claude-code',
+      frameworks: [
+        { id: 'claude-code', label: 'Claude', runtime: { found: true, path: '/bin/claude' } }
+      ],
+      encryptionAvailable: true,
+      deps: {
+        ...baseDeps(),
+        recordStep: (name, run) => {
+          recorded.push(name)
+          return Promise.resolve().then(run)
+        }
+      }
+    })
+
+    // No download is needed, so no probe may appear in the record — a step that never ran must not be
+    // timed, or the summary would claim a phase the caller never paid for.
+    expect(recorded).toEqual(['verify-storage', 'find-python'])
+  })
+
+  it('records a storage failure as a failed step and still reports it on the check', async () => {
+    const outcomes: { name: string; outcome: string }[] = []
+
+    const result = await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'claude-code',
+      frameworks: [
+        { id: 'claude-code', label: 'Claude', runtime: { found: true, path: '/bin/claude' } }
+      ],
+      encryptionAvailable: true,
+      deps: {
+        ...baseDeps(),
+        verifyStorage: vi.fn().mockRejectedValue(new Error('EACCES')),
+        recordStep: async (name, run) => {
+          try {
+            const value = await run()
+            outcomes.push({ name, outcome: 'ok' })
+            return value
+          } catch (error) {
+            outcomes.push({ name, outcome: 'failed' })
+            throw error
+          }
+        }
+      }
+    })
+
+    // Recording must not swallow the failure: the step is named as failed AND the item still says so.
+    expect(outcomes).toContainEqual({ name: 'verify-storage', outcome: 'failed' })
+    expect(result.checks.find((check) => check.id === 'storage')).toMatchObject({
+      status: 'failed'
+    })
+    expect(result.canAutoInstall).toBe(false)
+  })
+
+  it('an unreachable registry stays a result rather than a failed step', async () => {
+    const outcomes: { name: string; outcome: string }[] = []
+
+    const result = await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'claude-code',
+      frameworks: [{ id: 'claude-code', label: 'Claude', runtime: { found: false } }],
+      encryptionAvailable: true,
+      deps: {
+        ...baseDeps(),
+        probeRegistry: vi.fn().mockRejectedValue(new Error('Timed out')),
+        recordStep: async (name, run) => {
+          try {
+            const value = await run()
+            outcomes.push({ name, outcome: 'ok' })
+            return value
+          } catch (error) {
+            outcomes.push({ name, outcome: 'failed' })
+            throw error
+          }
+        }
+      }
+    })
+
+    // Both probes are expected to be able to fail — that is what the check compares — so neither may be
+    // reported as a failed step; the network item carries the verdict instead.
+    expect(outcomes.filter((entry) => entry.name.startsWith('probe-'))).toEqual([
+      { name: 'probe-npmjs', outcome: 'ok' },
+      { name: 'probe-npmmirror', outcome: 'ok' }
+    ])
+    expect(result.checks.find((check) => check.id === 'install-network')?.status).toBe('failed')
+  })
 })

@@ -335,6 +335,77 @@ describe('AgentRuntimeManager', () => {
     expect(quietLog.info).not.toHaveBeenCalled()
   })
 
+  it('names every phase of an environment check and logs one summary; a fast one stays silent', async () => {
+    // A clock that advances 100 ms per read makes every phase deterministically slow, so the assertion is
+    // about the plumbing (which phases are timed) rather than about this machine's speed.
+    let tick = 0
+    const advancing = (): number => (tick += 100)
+    const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const checkDeps = {
+      platform: 'darwin' as const,
+      architecture: 'arm64',
+      verifyStorage: async (): Promise<void> => undefined,
+      resolveManagedPlatform: () => ({ key: 'darwin-arm64' }),
+      findPython: async () => ({ command: 'python3', baseArgs: [] as string[] }),
+      probeRegistry: async () => 20
+    }
+    manager = createManager({
+      preflightNow: advancing,
+      environmentCheckLog: log,
+      environmentCheckSlowMs: 50,
+      environmentCheckDeps: checkDeps
+    })
+
+    const result = await manager.checkEnvironment()
+
+    // The answer still exists and still carries the rows the window renders.
+    expect(result.checks.map((check) => check.id)).toContain('install-network')
+    // Every phase is named exactly once, spanning both halves: the four detections this manager runs and
+    // the four phases environment-check owns. Compared as a sorted set: the phases run concurrently, so
+    // the order the slow lines appear in is completion order and carries no meaning.
+    const named = log.warn.mock.calls
+      .map(([, fields]) => String((fields as Record<string, unknown>).step))
+      .sort()
+    expect(named).toEqual(
+      [
+        'detect-claude',
+        'detect-codebuddy',
+        'detect-codex',
+        'detect-opencode',
+        'find-python',
+        'probe-npmmirror',
+        'probe-npmjs',
+        'settings-read',
+        'verify-storage'
+      ].sort()
+    )
+    expect(
+      log.warn.mock.calls.every(([message]) => message === 'environment check step slow')
+    ).toBe(true)
+    // One summary per call — a healthy call stays silent instead of logging per phase.
+    expect(log.info).toHaveBeenCalledOnce()
+    const [summaryMessage, summaryFields] = log.info.mock.calls[0] as [
+      string,
+      Record<string, unknown>
+    ]
+    expect(summaryMessage).toBe('environment check steps')
+    expect(summaryFields.stepCount).toBe(9)
+
+    const quietLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    let frozen = 0
+    manager = createManager({
+      preflightNow: () => frozen++,
+      environmentCheckLog: quietLog,
+      environmentCheckSlowMs: 50,
+      environmentCheckDeps: checkDeps
+    })
+
+    await manager.checkEnvironment()
+
+    expect(quietLog.warn).not.toHaveBeenCalled()
+    expect(quietLog.info).not.toHaveBeenCalled()
+  })
+
   it('uses the shared allocator and forwards the same event sink through managed installs', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(123)
     const allocateSettingsIdSequence = vi

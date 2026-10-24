@@ -82,6 +82,7 @@ import {
   type ManagedCodexInstallOutcome
 } from './managed-codex'
 import { runEnvironmentCheck } from './environment-check'
+import type { EnvironmentCheckDeps } from './environment-check'
 import { computePreflight } from './preflight'
 import { isEncryptionAvailable } from './crypto'
 import { augmentedPathEnv } from './shell-path'
@@ -234,6 +235,18 @@ export type AgentRuntimeManagerOptions = {
   preflightNow?: () => number
   preflightLog?: ComposeStepLogger
   preflightSlowMs?: number
+  /**
+   * Sink + threshold for the environment check's own step attribution. The clock is the one above: one
+   * injected clock keeps both recorders controllable from a single test seam.
+   */
+  environmentCheckLog?: ComposeStepLogger
+  environmentCheckSlowMs?: number
+  /**
+   * Seams for the check's own phases (storage write, Python lookup, registry probes). Production passes
+   * nothing and gets the real ones; a test passes stubs so attribution can be asserted without touching
+   * the disk or the network.
+   */
+  environmentCheckDeps?: EnvironmentCheckDeps
   allocateOpenCodeUsagePort?: () => Promise<number>
   executeClaudeProbe?: ExecuteClaudeProbe
   installManagedClaudeImpl?: (
@@ -279,6 +292,9 @@ export class AgentRuntimeManager {
   private readonly preflightNow: () => number
   private readonly preflightLog: ComposeStepLogger
   private readonly preflightSlowMs: number
+  private readonly environmentCheckLog: ComposeStepLogger
+  private readonly environmentCheckSlowMs: number
+  private readonly environmentCheckDeps: EnvironmentCheckDeps
 
   constructor(options: AgentRuntimeManagerOptions) {
     this.repository = options.repository
@@ -290,6 +306,10 @@ export class AgentRuntimeManager {
     this.preflightNow = options.preflightNow ?? ((): number => performance.now())
     this.preflightLog = options.preflightLog ?? createLogger('settings-preflight')
     this.preflightSlowMs = options.preflightSlowMs ?? PREFLIGHT_SLOW_STEP_MS
+    this.environmentCheckLog =
+      options.environmentCheckLog ?? createLogger('settings-environment-check')
+    this.environmentCheckSlowMs = options.environmentCheckSlowMs ?? PREFLIGHT_SLOW_STEP_MS
+    this.environmentCheckDeps = options.environmentCheckDeps ?? {}
 
     const baseDetectDeps = options.detectDeps ?? createDefaultDetectDeps()
     this.detectDeps = {
@@ -426,16 +446,32 @@ export class AgentRuntimeManager {
   }
 
   async checkEnvironment(): Promise<EnvironmentCheckResult> {
-    const settings = await this.repository.getSettings()
+    // Per-step attribution for a handler the packaged build logged as slow 17 times (median 5.3 s, max
+    // 42.2 s) with nothing in the line saying which phase spent the time. Four runtime detections run in
+    // parallel (a Codex detection even smoke-initializes the ACP adapter), then the check adds a storage
+    // write, a Python lookup and two registry HEAD probes with a 5 s timeout each — a number that moves
+    // between runs is only actionable once the phase is named.
+    const steps = createComposeStepRecorder({
+      log: this.environmentCheckLog,
+      now: this.preflightNow,
+      slowMs: this.environmentCheckSlowMs,
+      messages: {
+        slow: 'environment check step slow',
+        failed: 'environment check step failed',
+        summary: 'environment check steps'
+      }
+    })
+
+    const settings = await steps.step('settings-read', () => this.repository.getSettings())
     const agentFrameworkId = settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID
     const [claudeRuntime, opencodeRuntime, codexRuntime, codebuddyRuntime] = await Promise.all([
-      this.resolveClaudeRuntime(settings),
-      this.resolveOpencodeRuntime(settings),
-      this.resolveCodexRuntime(settings),
-      this.resolveCodebuddyRuntime(settings)
+      steps.step('detect-claude', () => this.resolveClaudeRuntime(settings)),
+      steps.step('detect-opencode', () => this.resolveOpencodeRuntime(settings)),
+      steps.step('detect-codex', () => this.resolveCodexRuntime(settings)),
+      steps.step('detect-codebuddy', () => this.resolveCodebuddyRuntime(settings))
     ])
 
-    return runEnvironmentCheck({
+    const result = await runEnvironmentCheck({
       storageRoot: this.storageRoot,
       agentFrameworkId,
       frameworks: [
@@ -460,8 +496,15 @@ export class AgentRuntimeManager {
           runtime: codebuddyRuntime
         }
       ],
-      encryptionAvailable: isEncryptionAvailable()
+      encryptionAvailable: isEncryptionAvailable(),
+      // The phases below live in environment-check; they report their times through the same recorder,
+      // so one slow answer is one summary naming every phase it paid for.
+      deps: { ...this.environmentCheckDeps, recordStep: (name, run) => steps.step(name, run) }
     })
+
+    if (steps.totalMs() >= this.environmentCheckSlowMs) steps.logSummary()
+
+    return result
   }
 
   async detectClaude(): Promise<ClaudeDetectResult> {
