@@ -402,24 +402,28 @@ const FINALIZE_RACE_RETRY_DELAYS_MS = [50, 150, 400] as const
 // at all, since "the race resolved while we slept" and "the race could only resolve after we returned"
 // look identical in the log otherwise (measured 2026-10-23: 36 claims exhausted all three retries and
 // were then published by the caller's next attempt).
-type ProvenanceFinalization = { artifacts: ArtifactFile[]; retries: number; waitedMs: number }
+//
+// The sink is separate from the return value on purpose: when the retries are exhausted the loop THROWS,
+// and a return value would lose exactly the reading that matters most (3 retries, 600 ms spent, still
+// failed). The caller therefore owns the counters and reads them on both paths.
+type ProvenanceFinalizationCost = { retries: number; waitedMs: number }
+type ProvenanceFinalization = { artifacts: ArtifactFile[] } & ProvenanceFinalizationCost
 
 const finalizeProvenanceWithRaceRetry = async (
   provenance: Pick<ArtifactProvenanceRepository, 'finalizeRun'>,
-  request: Parameters<ArtifactProvenanceRepository['finalizeRun']>[0]
+  request: Parameters<ArtifactProvenanceRepository['finalizeRun']>[0],
+  cost: ProvenanceFinalizationCost = { retries: 0, waitedMs: 0 }
 ): Promise<ProvenanceFinalization> => {
-  let retries = 0
-  let waitedMs = 0
   for (let attempt = 0; ; attempt += 1) {
     try {
-      return { artifacts: await provenance.finalizeRun(request), retries, waitedMs }
+      return { artifacts: await provenance.finalizeRun(request), ...cost }
     } catch (error) {
       const delay = FINALIZE_RACE_RETRY_DELAYS_MS[attempt]
       if (delay === undefined || !(error instanceof ArtifactOwnershipPersistenceRaceError)) {
         throw error
       }
-      retries += 1
-      waitedMs += delay
+      cost.retries += 1
+      cost.waitedMs += delay
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
@@ -457,6 +461,9 @@ export const finalizeRunArtifacts = async (
   let compatibilityPublicationCompleted = false
   let provenanceRetries = 0
   let provenanceWaitedMs = 0
+  // Owned by this call, not by the retry loop: the loop throws when it exhausts its delays, and those
+  // counters are the whole reading of a failed attempt.
+  const provenanceCost: ProvenanceFinalizationCost = { retries: 0, waitedMs: 0 }
   let stage: 'durable-finalization' | 'compatibility-publication' = 'durable-finalization'
 
   try {
@@ -495,7 +502,8 @@ export const finalizeRunArtifacts = async (
       // move. A later compatibility failure is retryable because the prepared marker remains durable.
       const provenanceFinalization = await finalizeProvenanceWithRaceRetry(
         provenance,
-        provenanceRequest
+        provenanceRequest,
+        provenanceCost
       )
       provenanceArtifacts = provenanceFinalization.artifacts
       provenanceRetries = provenanceFinalization.retries
@@ -562,8 +570,10 @@ export const finalizeRunArtifacts = async (
       durableFinalizationCompleted,
       compatibilityPublicationCompleted,
       attempt,
-      provenanceRetries,
-      provenanceWaitedMs,
+      // Read from the sink as well: a failed attempt that exhausted the retry loop never returns, so the
+      // return value alone would report 0 retries for the case that spent all 600 ms.
+      provenanceRetries: Math.max(provenanceRetries, provenanceCost.retries),
+      provenanceWaitedMs: Math.max(provenanceWaitedMs, provenanceCost.waitedMs),
       claimId: request.claimId,
       artifactRunId: claim.runId,
       messageId: request.messageId,
