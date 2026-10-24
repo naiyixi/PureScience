@@ -28,6 +28,30 @@ import {
   resetEgressRuntimeForTest
 } from './egress-runtime'
 
+// Waits for a socket event that may already have happened, without a wall-clock budget that load can
+// eat. A 20 ms poll loop racing its own 2 s deadline reads a teardown that *did* run as `timeout`
+// whenever the poll's timers are starved (six CPU burners on this machine reproduced it 1 run in 3),
+// so these waits are driven by the event itself and the bound only catches a genuine leak.
+const armedSignal = (): { promise: Promise<void>; fire: () => void } => {
+  let fire: () => void = () => undefined
+  const promise = new Promise<void>((resolve) => {
+    fire = () => resolve()
+  })
+  return { promise, fire }
+}
+
+const settledWithin = async (
+  settled: Promise<void>,
+  boundMs = 10_000
+): Promise<'settled' | 'timeout'> =>
+  Promise.race([
+    settled.then(() => 'settled' as const),
+    new Promise<'timeout'>((resolve) => {
+      const timer = setTimeout(() => resolve('timeout'), boundMs)
+      timer.unref?.()
+    })
+  ])
+
 // P3-9 / 3.5: a mirror the user configured is configuration, not an unknown host. With egress on,
 // installs through their own mirror were refused (or prompted for) as if it were anything else,
 // because only the public package hosts were on the allowlist.
@@ -359,10 +383,12 @@ describe('EgressProxy', () => {
     it(`tears an established tunnel down when the client is ${ending}d, leaving no target socket open`, async () => {
       let targetClosed = false
       let targetSocket: import('node:net').Socket | undefined
+      const targetClosedSignal = armedSignal()
       const target = createTcpServer((socket) => {
         targetSocket = socket
         socket.on('close', () => {
           targetClosed = true
+          targetClosedSignal.fire()
         })
         // Passive peer: it must stay connected until *we* close it, which is the leak under test.
         socket.on('data', () => undefined)
@@ -423,16 +449,36 @@ describe('EgressProxy', () => {
         expect(established).toBe(true)
         expect(clientSocketClosed).toBe(true)
         // The leak: the target connection has to be closed by the proxy, not by the target.
-        const closedInTime = await Promise.race([
-          new Promise<'closed'>((resolve) =>
-            setImmediate(function poll() {
-              if (targetClosed) resolve('closed')
-              else setTimeout(poll, 20)
-            })
-          ),
-          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
-        ])
-        expect(closedInTime).toBe('closed')
+        expect(await settledWithin(targetClosedSignal.promise)).toBe('settled')
+        expect(targetClosed).toBe(true)
+        // ...and the teardown was scoped to this tunnel: the same proxy still answers a fresh CONNECT,
+        // so "settled" cannot be satisfied by a proxy that stopped serving altogether.
+        const again = await new Promise<string>((resolve) => {
+          const socket = tcpConnect({ host: '127.0.0.1', port })
+          let data = ''
+          let done = false
+          const finish = (): void => {
+            if (done) return
+            done = true
+            clearTimeout(watchdog)
+            socket.destroy()
+            resolve(data)
+          }
+          const watchdog = setTimeout(finish, 10_000)
+          watchdog.unref?.()
+          socket.on('connect', () => {
+            socket.write(
+              `CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`
+            )
+          })
+          socket.on('data', (chunk) => {
+            data += chunk.toString()
+            if (data.includes('200 Connection Established')) finish()
+          })
+          socket.on('error', () => finish())
+          socket.on('close', () => finish())
+        })
+        expect(again).toContain('200 Connection Established')
       } finally {
         process.off('uncaughtException', onEscaped)
         // A leaked target socket would otherwise make cleanup hang and hide the assertion above.
@@ -447,13 +493,15 @@ describe('EgressProxy', () => {
   // nothing else, and a teardown that only listened for `error` left the target connection open. Over
   // real TCP that ending arrives intermittently, so it is pinned here on a socket we control.
   it('tears the target down when the client socket closes with no error and no end', async () => {
-    let targetConnected = false
     let targetClosed = false
+    const targetConnectedSignal = armedSignal()
+    const targetClosedSignal = armedSignal()
     const target = createTcpServer((socket) => {
-      targetConnected = true
+      targetConnectedSignal.fire()
       socket.on('data', () => undefined)
       socket.on('close', () => {
         targetClosed = true
+        targetClosedSignal.fire()
       })
     })
     await new Promise<void>((resolve) => target.listen(0, '127.0.0.1', resolve))
@@ -482,28 +530,13 @@ describe('EgressProxy', () => {
         clientSide,
         Buffer.alloc(0)
       )
-      const connected = await Promise.race([
-        new Promise<'up'>((resolve) =>
-          setImmediate(function poll() {
-            if (targetConnected) resolve('up')
-            else setTimeout(poll, 10)
-          })
-        ),
-        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
-      ])
+      const connected = await settledWithin(targetConnectedSignal.promise)
       // Without a live tunnel the assertion below would be vacuous.
-      expect(connected).toBe('up')
+      expect(connected).toBe('settled')
       clientSide.destroy()
-      const closedInTime = await Promise.race([
-        new Promise<'closed'>((resolve) =>
-          setImmediate(function poll() {
-            if (targetClosed) resolve('closed')
-            else setTimeout(poll, 10)
-          })
-        ),
-        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
-      ])
-      expect(closedInTime).toBe('closed')
+      const closedInTime = await settledWithin(targetClosedSignal.promise)
+      expect(closedInTime).toBe('settled')
+      expect(targetClosed).toBe(true)
     } finally {
       await new Promise<void>((resolve) => target.close(() => resolve()))
     }
