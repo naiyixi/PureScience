@@ -228,6 +228,13 @@ export interface AgentFramework {
   // (currently stdio) is gated off for such frameworks until it is exposed over http/sse.
   readonly acceptsStdioMcp: boolean
 
+  // Whether this framework can ALSO reach MCP over http, which the app serves from its own host.
+  // Optional, and undefined must keep the old rule (http only where stdio is impossible): handing a
+  // session one http endpoint instead of one child process per capability removes ~300 ms × 14 of
+  // concurrent boots from the agent's single readiness budget, so it is worth claiming — but only
+  // after that framework's http transport was measured, never by default.
+  readonly acceptsHttpMcp?: boolean
+
   // Whether a reasoning-effort change can be applied LIVE to open sessions via the ACP thought_level
   // configOption, without a respawn. True where the adapter advertises that option (verified live:
   // Claude Code, codex-acp). False where effort only rides the baked spawn config (opencode ignores

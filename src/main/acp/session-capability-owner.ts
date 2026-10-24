@@ -80,6 +80,7 @@ import {
   createHostQueryMcpServerConfig
 } from '../settings/host-query-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
+import { resolveMcpTransport } from './mcp-transport-choice'
 import {
   MCP_READINESS_PROBE_TIMEOUT_MS,
   runMcpReadinessProbe,
@@ -296,7 +297,7 @@ export type SessionCapabilityQueryOptions = {
 }
 
 type BuildSessionCapabilitiesRequest = {
-  framework: Pick<AgentFramework, 'id' | 'acceptsStdioMcp'>
+  framework: Pick<AgentFramework, 'id' | 'acceptsStdioMcp' | 'acceptsHttpMcp'>
   nativeMcpEnabled: boolean
   bridgeMcpAliasesEnabled: boolean
   policy: SessionCapabilityPolicy
@@ -791,11 +792,11 @@ export class AcpSessionCapabilityOwner {
     // configs. The agent's own budget covers only what happens after this point, so without this number a
     // `RequestError -32603` cannot be split into "we were slow to hand over" vs "they were slow to boot".
     const buildStartedAt = Date.now()
-    const transport = request.framework.acceptsStdioMcp
-      ? 'stdio'
-      : this.options.mcpHttpHost
-        ? 'http'
-        : 'none'
+    const transport = resolveMcpTransport({
+      acceptsStdioMcp: request.framework.acceptsStdioMcp,
+      acceptsHttpMcp: request.framework.acceptsHttpMcp,
+      httpHostAvailable: this.options.mcpHttpHost !== undefined
+    })
     const artifactsAllowed =
       policyAllowsSessionCapability(request.policy, 'artifacts') &&
       (request.nativeMcpEnabled || request.bridgeMcpAliasesEnabled)

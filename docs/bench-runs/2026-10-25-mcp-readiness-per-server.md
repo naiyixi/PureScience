@@ -101,3 +101,29 @@ chunk 子进程根本不碰），而是 **MCP SDK + zod + 服务模块自身**�
 结论：单进程成本 = 约 123 ms Electron-as-node 引导 + 约 180 ms MCP SDK/服务模块，两者都压不动；
 **唯一有效的杠杆是减少子进程个数**（14 → 更少），而不是让每个进程更便宜。
 
+## 6. HTTP 通道：代理侧支持、应用侧只做了一半（实测）
+
+claude-agent-acp 的 `initialize` 结果里 `mcpCapabilities: { http: true, sse: true }`，应用的
+`AgentMcpHttpHost` 也已经在 `runtime-composition.ts` 里无条件构造。把 claude-code 的传输切成 http 后
+真机会话的读数：
+
+```json
+{"framework":"claude-code","transport":"http","count":4,
+ "servers":"purescience_artifacts,purescience_notebook,purescience_plan,purescience_skills",
+ "groups":"5 core,1 deferred","buildMs":1}
+```
+
+**count 只有 4**：`buildHttpServers()` 里只有 artifacts / notebook / skillImport / plan 四段
+（`host.registerArtifact|Notebook|SkillImport|Plan`），其余 ten 类（memory、context_summary、routine、
+goal、endpoint、annotation、pdf、knowledge、figure、query）没有 HTTP 注册通路。因此：
+
+- 此刻把任何一个框架切到 http，都会**静默丢掉 10 个能力**——这正是要修的那类缺陷，不能这么做；
+- 反过来也是一条既有隐患：任何只接受 http 的框架（历史上 opencode 就是）在这些能力上是**缺的**，
+  只是没有任何日志说过这件事；
+- 本次的翻转已回退（`claude-code.ts` 里留了具名注释与判据）。基础设施（`resolveMcpTransport` +
+  `acceptsHttpMcp?`）留下，语义是「未声明 = 沿用旧规则」，所以现有行为一字未变（37 例定向用例全绿）。
+
+下一步单元因此定为：把剩下 ten 类接进 HTTP 宿主（每类 = 宿主注册 + 每请求构服务器的分支 + 用例），
+14/14 都在 http 上之后再把 claude-code 翻过去。收益是 14 个子进程 → 0。
+
+

@@ -37,6 +37,10 @@ export const claudeCodeFramework: AgentFramework = {
   supportsSkills: true,
   // Claude launches stdio MCP servers directly — the app's artifact/notebook tooling relies on this.
   acceptsStdioMcp: true,
+  // NOT flipped to http yet, although claude-agent-acp advertises `mcpCapabilities: { http: true }`:
+  // the app's http MCP host currently serves only artifacts/notebook/skills/plan, so claiming http
+  // today would hand the session 4 of 14 capabilities (measured: `count: 4`). Flip this only after the
+  // other ten capabilities are registered on the host — see docs/bench-runs/2026-10-25-mcp-readiness-per-server.md.
   // The adapter advertises an `effort` select (category thought_level) and applies changes to live
   // sessions via applyFlagSettings — no respawn needed.
   supportsLiveEffortChange: true,
