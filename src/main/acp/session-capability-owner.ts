@@ -781,6 +781,10 @@ export class AcpSessionCapabilityOwner {
   }
 
   private async build(request: BuildSessionCapabilitiesRequest): Promise<BuiltSessionCapabilities> {
+    // The app-side half of the readiness chain: how long IT took to assemble and hand over the server
+    // configs. The agent's own budget covers only what happens after this point, so without this number a
+    // `RequestError -32603` cannot be split into "we were slow to hand over" vs "they were slow to boot".
+    const buildStartedAt = Date.now()
     const transport = request.framework.acceptsStdioMcp
       ? 'stdio'
       : this.options.mcpHttpHost
@@ -928,7 +932,8 @@ export class AcpSessionCapabilityOwner {
         .map((server) => server.name)
         .sort()
         .join(','),
-      groups: `${FIRST_SCREEN_MCP_SERVERS.size} core,${deferredServerNames(modelFacingServers).length} deferred`
+      groups: `${FIRST_SCREEN_MCP_SERVERS.size} core,${deferredServerNames(modelFacingServers).length} deferred`,
+      buildMs: Date.now() - buildStartedAt
     })
 
     return Object.freeze({ mcpServers: modelFacingServers, descriptor })
