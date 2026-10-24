@@ -1,5 +1,79 @@
 # PureScience 更新日记
 
+## v2.17.7 — 2026-10-25（会话不再为 MCP 起子进程：14 个能力改走 HTTP）
+
+**成熟度自陈**：这一版只做了一件事——把每个会话为 14 个能力起的 14 个 Electron-as-node 子进程
+**变成 0 个**。依据是同一台机器上的逐服务读数，不是估计；改法是让代理连应用自己的 MCP HTTP 宿主，
+而不是让代理去 spawn。传输层已在真机验证（14/14 就绪、零超时），**工具执行面尚未在装机版上验证**，
+所以这一版不宣称「工具调用更快」，只宣称它不再靠 14 个进程的冷启动来过就绪预算。
+
+### 读数：钱都花在 14 次冷启动上
+
+生产日志里一次会话建立有 **11 / 14 个服务一起超时**（`[mcp-readiness] Timed out waiting for MCP
+servers: …`），随后 `createSession: first attempt failed, retrying once` 才成功——重试把问题掩盖了。
+新增的逐服务探针（`PURESCIENCE_MCP_READINESS_PROBE=1`，按客户端真实顺序发
+`initialize → notifications/initialized → tools/list`）在同一台机器上量到：
+
+| 事实 | 读数 |
+|---|---|
+| 我方装配（`session capabilities built` 的 `buildMs`） | **5 ms** |
+| 单个子进程：只引导 node | 123 ms |
+| 单个子进程：到模块就绪（安装版） | **305 ms**（其中 ~180 ms 是 MCP SDK + 服务模块） |
+| 14 个并发 burst（真实会话） | 中位 **2,635 ms** / 最大 **2,729 ms** |
+| 代理侧就绪预算（我们自己 patch 的 `MCP_STARTUP_TIMEOUT_MS`） | 10,000 ms |
+
+`tools/list` 只比 `initialize` 多 8–150 ms ⇒ 工具清单不是成本，**冷启动才是**。本机安静时仍有 3–4 倍
+余量，说明生产超时发生在系统争抢时——所以不调预算值（那只是掩盖），而是把 14 个进程变成 0 个。
+
+### 改法：十类接进既有的 MCP HTTP 宿主
+
+`AgentMcpHttpHost` 早已存在（token 鉴权、`/mcp/<kind>/<routingId>`），但只服务 artifacts / notebook /
+skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能力**（实测 `count: 4`）。本版补齐：
+
+- 十个模块各抽出 `create<X>McpServerForEnvironment(environment)`，`run<X>McpServer` 复用同一份
+  （handler 本来就只依赖环境、走本地 RPC 回主进程，因此同一份服务器可以跑在宿主进程里）；
+- 宿主 `SERVER_KINDS` / `SessionEntry` / `register` / `buildServer` 各加十项；**`skill-import` 从兜底
+  改成显式判定**，未知 kind 一律返回 `undefined`，不再被末尾分支吞掉（这是「工具静默消失」的一类隐患）；
+- owner 的 `buildHttpServers` 按 artifact 那段加十段，同样受 `canPublishHttpRoute` 约束；
+- `claude-code` 打开 `acceptsHttpMcp`（agent 的 `initialize` 确实带 `mcpCapabilities: { http: true }`）。
+
+传输选择同时收成一处可测判定 `resolveMcpTransport()`（5 例），语义保留旧规则：框架未声明
+`acceptsHttpMcp` 时，http 只在「它根本不吃 stdio」时才用——不靠默认值偷偷改任何框架的行为。
+
+### 验收读数（隔离实例 + claude-code，真机）
+
+```json
+{"framework":"claude-code","transport":"http","count":14,"groups":"5 core,9 deferred","buildMs":3}
+```
+
+- **count = 14**，十四个服务名逐个在列（切之前是 `count: 4`）；
+- 该会话**零** `[mcp-readiness] Timed out`（整个当日 dev 日志该计数为 0）；
+- 结构上不再有 MCP 子进程：环境注册进宿主，agent 连 `/mcp/<kind>/<routingId>`。
+
+### 同版一起进来的
+
+- `fix(egress)`：客户端「无声消失」时到目标的连接没人收尾——`close` 也是收尾触发点（修掉 flaky 用例的
+  真实成因，不是放宽断言）；
+- `fix(pin)`：启动归属清单补上第 12 个阶段 `load-probe-answers`——主干 Nightly / Windows / Release
+  三道红是同一个成因；
+- `feat(acp)`：`session capabilities built` 增加 `buildMs`（本次归因的起点）；
+- `feat(acp)`：新增逐服务 MCP 就绪探针（默认关闭，`PURESCIENCE_MCP_READINESS_PROBE=1`）。
+
+### 明确没做 / 未验证
+
+- **真实工具调用未在装机版验证**：隔离实例拿不到钥匙串凭据（`Authentication required`），当前只证明到
+  传输层（十四类 `initialize` + `tools/list` 全过）。装机后必须跑一次 memory 存一条 / plan 读一次，
+  未跑之前不写「工具已调通」。
+- **HTTP 下失去子进程隔离**：工具调用现在跑在宿主进程内，某个能力崩会连带主进程（stdio 模式下只死一个
+  子进程）。回退面是一行：`claude-code.ts` 去掉 `acceptsHttpMcp`，十类 stdio 分支未删。
+- **探针只覆盖 stdio**：切到 http 后 `mcp readiness probe` 没有对象可测，会话建立的就绪对照改为墙钟口径，
+  不能与之前的逐服务毫秒直接比。
+- **本预案里被证伪的一条**：单进程那 182 ms 曾被我判成「app 入口模块图」，做完薄入口（6.88 kB）实测
+  329 ms vs 主入口 317 ms，**没有收益**，重构已回退、不入库——读数刻在
+  `docs/bench-runs/2026-10-25-mcp-readiness-per-server.md` §5，防止下一个会话重做。
+- 机检③、`probe-codex` 尾巴、钥匙串那一次调用、v2.18.0 / v2.19.0 仍未开工。
+
+
 ## v2.17.6 — 2026-10-24（启动不再等钥匙串：迁移挪到启动之后）
 
 **成熟度自陈**：这一版只有一件事——**启动不再等 OS 秘密存储**。依据是真机三次启动的同一项读数，不是猜测；改法是把不受它影响的读（dataRoot、子进程代理）先走，迁移挪到启动之后。装后读数见 CHANGELOG；本文件写完时**尚未装机测量**，所以这一版不宣称启动数字。
