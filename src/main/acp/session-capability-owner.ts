@@ -424,6 +424,27 @@ const safeLogError = (message: string, fields: Record<string, unknown>): void =>
   }
 }
 
+// The split the readiness budget should have had from the start: a session's first turn needs artifacts,
+// notebook, plan, memory and context-summary. Routine, goal, endpoint, annotation, pdf, knowledge, figure and
+// host-query are attached for work that may never happen in that session — and on a loaded machine they
+// compete with the five above for one startup budget.
+const FIRST_SCREEN_MCP_SERVER_NAMES: readonly string[] = [
+  ARTIFACT_MCP_SERVER_NAME,
+  NOTEBOOK_MCP_SERVER_NAME,
+  PLAN_MCP_SERVER_NAME,
+  MEMORY_MCP_SERVER_NAME,
+  CONTEXT_SUMMARY_MCP_SERVER_NAME
+]
+// Same canonicalisation the attach check uses (`-` and `_` are the same server to the agent), so a name
+// that differs only in punctuation can never land in the wrong group.
+const canonicalServerKey = (name: string): string => name.replace(/-/gu, '_')
+const FIRST_SCREEN_MCP_SERVERS = new Set(FIRST_SCREEN_MCP_SERVER_NAMES.map(canonicalServerKey))
+
+const deferredServerNames = (servers: readonly McpServer[]): string[] =>
+  servers
+    .map((server) => server.name)
+    .filter((name) => !FIRST_SCREEN_MCP_SERVERS.has(canonicalServerKey(name)))
+
 export class AcpSessionCapabilityOwner {
   private readonly artifactRoutingIds = new Map<string, string>()
   private readonly notebookRoutingIds = new Map<string, string>()
@@ -896,7 +917,18 @@ export class AcpSessionCapabilityOwner {
       framework: request.framework.id,
       role: request.policy.role,
       transport: descriptor.transport,
-      count: modelFacingServers.length
+      count: modelFacingServers.length,
+      // Named, because the agent enforces its readiness budget over ALL of these at once and the only
+      // thing the window ever said was `RequestError -32603`. On a real machine 11 of the 14 timed out in
+      // one attempt (`[mcp-readiness] Timed out waiting for MCP servers: purescience_plan,
+      // purescience_memory, …`), and a reader could not tell which were first-screen work and which were
+      // never needed by that turn. `servers` is what was handed over; `deferred` is the group that the
+      // next step (attach after the session is ready) will move off the startup budget.
+      servers: modelFacingServers
+        .map((server) => server.name)
+        .sort()
+        .join(','),
+      groups: `${FIRST_SCREEN_MCP_SERVERS.size} core,${deferredServerNames(modelFacingServers).length} deferred`
     })
 
     return Object.freeze({ mcpServers: modelFacingServers, descriptor })
