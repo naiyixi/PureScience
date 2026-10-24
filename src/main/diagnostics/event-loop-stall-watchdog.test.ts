@@ -8,6 +8,7 @@ import {
   type V8Profile
 } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
+import { createLoopHeldWindows } from './loop-held-windows'
 
 // The watchdog cases drive time by hand; a real sampler thread would stamp the test's own clock instead of
 // the one they advance. This stub answers as "the thread saw nothing inside the stall", which is the honest
@@ -150,6 +151,39 @@ describe('event loop stall watchdog', () => {
     expect(warned[0]?.data.loadAvg1m).toBe(12.5)
     // The first stall has nothing to sample; it arms the window instead.
     expect(created).toHaveBeenCalledTimes(1)
+    watchdog.stop()
+  })
+
+  it('remembers the window it reported so a handler spanning it can say how long it was not running', () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log } = collect()
+    const held = createLoopHeldWindows()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 90 }),
+      createSampler: () => undefined,
+      createHostSampler: quietHostSampler,
+      heldWindows: held
+    })
+
+    // Schedule only: the loop was on time, so nothing is remembered as held.
+    time.advance(100, 5)
+    vi.advanceTimersByTime(100)
+    expect(held.heldMsWithin(0, 1_000_000)).toBe(0)
+
+    // 2 s late with a 100 ms tick: the unresponsive part is the 1.9 s past the schedule, not the whole window.
+    time.advance(2_000, 100)
+    vi.advanceTimersByTime(100)
+    const endOfWindow = time.now()
+    expect(held.heldMsWithin(endOfWindow - 1_900, endOfWindow)).toBe(1_900)
+    expect(held.heldMsWithin(endOfWindow - 2_000, endOfWindow)).toBe(1_900)
+    // A handler that finished before the block began was not held by it.
+    expect(held.heldMsWithin(endOfWindow - 5_000, endOfWindow - 2_500)).toBe(0)
     watchdog.stop()
   })
 

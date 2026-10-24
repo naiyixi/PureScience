@@ -11825,3 +11825,102 @@ Windows 上 shell 还能通过 `PATHEXT` 解析）⇒ 该路径不缓存，与�
    `environment check steps` 汇总行，并按点名结果决定下一刀；
 ③ 仍未动：`runtime:*` 那一簇（`get-enablement` 21.9 s / `list-environments` 29.3 s / `survey` 22.9 s）；
 ④ 桌面会话线那批 `src/main/artifacts/**` 仍未提交、仍不碰。
+
+## 两百二十八、本轮追加（执行器，2026-10-25 03:0x–04:5x）—— 那一簇「20–30 秒」是错读：93–100 % 的时间主进程根本没在跑；顺手让慢通道那一行自己把这段时间分开
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `HEAD = origin/main = 6121beec`、`git status` 里**只有**桌面会话线的四个发版文件
+  （`CHANGELOG.md` / `README.md` / `README.en.md` / `package.json`，版本已抬到 **2.17.7**，正文已写好）
+  ⇒ 它正在发版窗口里。本轮**一个字节都没碰这四个文件**，也没在它落定前推送（`gh run list` 里
+  `Nightly|6121beec` 仍 pending、`Windows Full Test|6121beec` in_progress，推一下会把它顶掉）。
+- 队列档「已完成（别再重做）」清单与本单元无交集：B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）已耗尽，
+  §两百二十七 §五 ③ 把 `runtime:*` 这一簇留成候选 ⇒ 本轮取它。
+- 与桌面会话线的工作面不相交：它这批在 `src/main/acp/**`、`src/main/agent-framework/**`、
+  `src/main/settings/*-mcp-server.ts`；本轮只碰 `src/main/diagnostics/**` 三个源文件。
+
+### 一 读数（只读生产日志，先量再改）
+
+`~/Library/Logs/PureScience/main.log`（窗口 `2026-10-23T12:29Z → 2026-10-24T18:15Z`，8,015 行）里
+`ipc handler was slow` 共 2,424 行，按通道聚合后那一簇是：
+
+| 通道 | 次数 | 中位 | 最大 |
+|---|---|---|---|
+| `runtime:manage-named-environments` | 6 | 117,915 ms | 144,055 ms |
+| `runtime:list-environments` | 6 | **29,338 ms** | 43,301 ms |
+| `runtime:list-package-counts` | 2 | 24,273 ms | 37,523 ms |
+| `runtime:survey` | 6 | **22,919 ms** | 27,944 ms |
+| `runtime:get-enablement` | 12 | **21,894 ms** | 27,938 ms |
+| `settings:get-egress` | 7 | 21,775 ms | 27,935 ms |
+
+**它们不是各自的耗时，是同一次「主进程没在跑」**。四个「设置页挂载」突发的形状完全一致（以
+`10-23T12:50` 那次为例）：五个通道在**同一秒开始**（`12:50:24`），又在 7.6 秒内**先后全部结束**
+（`12:50:45.960` … `12:50:53.558`），而它们各自 93 % 以上的时长落在**同一个** watchdog 窗口里：
+
+| 突发起点 | 覆盖它的 stall 窗口 | 归属 | `runtime:get-enablement` | `settings:get-egress` | `runtime:survey` | `list-environments` |
+|---|---|---|---|---|---|---|
+| `10-23T12:50:24Z` | 19,720 ms（`12:50:25→44`） | inconclusive, cpuShare 0.434 | 21,708 ms / **93.4 % 在窗内** | 21,775 / 93.4 % | 22,169 / 93.6 % | 29,274 / 65.6 % + 后一段 |
+| `10-23T12:58:00Z` | 19,642 ms | inconclusive, 0.406 | 21,708 / **93.7 %** | 21,713 / 93.7 % | 22,444 / 93.9 % | 32,880 / 76.6 % |
+| `10-23T12:58:35Z` | 20,588 ms | inconclusive, 0.42 | 23,184 / **93.7 %** | 23,183 / 93.7 % | 23,937 / 93.9 % | 29,402 / 76.6 % |
+| `10-24T03:28:46Z` | 15,000 ms | inconclusive | 16,238 / **97.5 %** | 16,247 / 97.5 % | 16,605 / 97.6 % | 19,626 / 84.7 % |
+| `10-23T23:00:21Z` | 23,000 ms + 其后 1–2 s 共 13 段 | cpu-bound-in-process | 27,932 / **99.5 %** | 27,935 / 99.5 % | 27,944 / 99.5 % | 43,301 / **100 %** |
+
+六通道合计 1,461,880 ms 里有 841,659 ms（**57.6 %**）落在 stall 窗口内；只算上面这五个读通道则
+**93.4–100 %**。⇒ 给这五个通道做优化是在优化「什么都不做的那一段」：**§两百二十七 §五 ③ 这条候选按错读撤掉**。
+
+### 二 另一件必须点名的读法：那几段超长窗口是合盖睡眠，不是我们
+
+watchdog 报过 `process-not-scheduled` 的 213,464 / 1,062,947 / 876,685 / 635,775 ms 四段；`pmset -g log`
+在同一时刻记着 `Entering Sleep … 216 secs` / `1064 secs` / `880 secs`（`2026-10-23 20:46 → 21:22` 本地时间）
+—— 结束时刻逐段对得上（`12:46:35Z+216s=12:50:11Z` 对 watchdog 的 `12:50:10Z`；`12:50:22Z+1064s=13:08:06Z`
+对 `13:08:07Z`）。所以**这台机器上 `performance.now()` 是含系统睡眠的**：跨睡眠的时长既不是我们的 CPU、
+也不是「被饿死」，是机器睡了。任何跨这几段的读数都不可用。
+
+### 三 交付：慢通道那一行自己把「我们在跑」和「进程没在跑」分开
+
+只改量仪、不改任何业务路径。判据：**下一次出现同样突发时，行上必须能读出我们自己的那一段。**
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/loop-held-windows.ts`（新） | 一个有界（64 段、最短 200 ms）的窗口登记表，`heldMsWithin(start,end)` 返回与查询区间**相交后裁剪**的和，永不超过查询跨度；非有限值/负数一律回 0。进程级单例（watchdog 写、IPC 诊断读），测试注入自己的实例 |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 每报一段 stall 就把**真正迟到的那一段**（`current - lateMs → current`）记进登记表，且在两条上报路径**之前**记（突发里第一段往往最长，它此前没有任何读数） |
+| `src/main/diagnostics/ipc-rejection.ts` | `ipc handler was slow` 增加 `heldMs` / `ownMs` 两个字段，**仅当 `heldMs ≥ 1` 时才出现** ⇒ 普通慢行的字节一字不变；`heldMs` 夹在 `[0, durationMs]` 内，来源抛错就退化成纯 `durationMs`（不丢行、不谎报） |
+
+**两处自证**（都是先写错、被门禁当场抓住）：
+
+1. 我在新测试里手算「两段窗口落在查询区间里的和」，写的是 4,000 ms，实际是 3,500 ms —— `vitest`
+   报 `expected 3500 to be 4000`。改的是**测试的算术**，不是实现（实现一直是对的）。
+2. 变异测试三组（文件用 `cp` 备份、事后 `shasum -a 256` 逐字相同）：撤掉 watchdog 的 `record` ⇒ 恰 1 条红；
+   撤掉行上的 `heldMs/ownMs` ⇒ 恰 1 条红；把「只记迟到那段」改成「记整段」⇒ 恰 1 条红。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/diagnostics` 整域 | **16 files / 85 passed**，exit 0 |
+| 三个改动/四个测试文件 | **新增 7 条**：窗口裁剪 / 求和 / 下限 / 环容量 / 坏输入、行上拆分四态、watchdog 记账、**生产接线**（不经手把手的「watchdog 写 → 慢行读」默认路径，独占一个文件，因为登记表是进程级的） |
+| 变异 3 组 | 各自 **恰 1 failed**，还原后 sha256 逐字相同（3/3 YES） |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 8192） | **EXIT 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **EXIT 0** |
+| `eslint --no-cache` 六个文件 + `prettier --check` | **0 problems** / 全部通过 |
+
+### 五 边界（不许读成更强）与下一轮第一步
+
+1. **新字段还没有真机读数**：要看到 `heldMs/ownMs` 出现在行上，得用新构建重启实例（dev 或打包），
+   而桌面会话线正在同一台机器上发版、内存也紧 ⇒ 本轮**具名未取**。取法：`~/Library/Logs/PureScience/main.log`
+   里 `msg="ipc handler was slow"` 且 `data.heldMs` 存在。
+2. **「究竟什么把事件循环按住了 ~20 秒」没有定因**：19.7 s 那段 `stack: no-second-stall`（profiler 是
+   **事后**才 armed 的，第一段永远采不到），只有其后 2.1 s / 1.9 s 两段有栈，样例帧是
+   `stringifyLogRecord (out/main/index.js:282)` 18 个、`isPython3Version` 9 个、`formatLine` 8 个，
+   另一段是 `parseVersion$4` 25 个。**这是线索不是判决**：这段窗口的 CPU 只有 0.43 核，日志写盘是异步的
+   （`appendLine` 走 `writeChain` + `appendFile`），慢行本身也只有四个小字段 ⇒ 不据此改代码。
+3. `runtime:manage-named-environments`（中位 117.9 s）只被 stall 覆盖 22–35 %，**它自己确实在做事**
+   （建/删环境的真操作），本轮不动它。
+4. 登记表是**进程级单例**（模块级），不是组合根注入：watchdog 在 `index.ts` 启动一次、IPC 适配器在
+   模块加载时创建，为这一条只读诊断加一条组合根接缝不划算；测试一律注入自己的实例，不读单例。
+
+**下一轮第一步**：① 桌面会话线把 v2.17.7 发出去之后，用新构建重启一次隔离实例，先取 `heldMs/ownMs` 那一行；
+② 若 `ownMs` 仍大（>2 s），按通道逐个分段（沿用 `createComposeStepRecorder`）；若 `ownMs` 很小，
+   把「什么按住事件循环 20 s」列成独立单元 —— 首要是让**第一段**stall 也有栈（当前 `arm()` 在事后，
+   长段永远无栈），这是量仪还缺的一件；③ 桌面会话线那四个发版文件仍不碰。
+

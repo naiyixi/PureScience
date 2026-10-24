@@ -1,5 +1,6 @@
 import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
+import { sharedLoopHeldWindows } from './loop-held-windows'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
 
@@ -14,6 +15,9 @@ type IpcRejectionDiagnosticInput<T> = {
   invoke: () => T | PromiseLike<T>
   log: IpcRejectionLogger
   now?: () => number
+  // How much of [startMs, endMs] the process was not running at all (loop-stall windows). Defaults to the
+  // shared registry the watchdog writes; tests inject their own answer.
+  heldMs?: (startMs: number, endMs: number) => number
 }
 
 const safeNow = (now: () => number): number => {
@@ -21,6 +25,20 @@ const safeNow = (now: () => number): number => {
     const value = now()
     return Number.isFinite(value) ? value : 0
   } catch {
+    return 0
+  }
+}
+
+const safeHeldMs = (
+  source: (startMs: number, endMs: number) => number,
+  startMs: number,
+  endMs: number
+): number => {
+  try {
+    const value = source(startMs, endMs)
+    return Number.isFinite(value) ? value : 0
+  } catch {
+    // A diagnostic must never replace the handler's result; an unknown split stays a plain duration.
     return 0
   }
 }
@@ -36,6 +54,9 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
   input: IpcRejectionDiagnosticInput<T>
 ): T | PromiseLike<T> => {
   const now = input.now ?? performance.now.bind(performance)
+  const heldMsWithin =
+    input.heldMs ??
+    ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
   const startedAt = safeNow(now)
   const recordRejection = (error: unknown): void => {
     try {
@@ -56,13 +77,23 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
   // Best-effort, and deliberately carries no request arguments or result: this adapter never sees them.
   const recordSlowSuccess = (): void => {
     try {
-      const durationMs = Math.max(0, safeNow(now) - startedAt)
+      const endedAt = safeNow(now)
+      const durationMs = Math.max(0, endedAt - startedAt)
       if (durationMs < SLOW_IPC_HANDLER_THRESHOLD_MS) return
+      // Split the wall duration by the same windows the stall watchdog reports. A settings-mount burst where
+      // five channels all finish together is one blocked loop, not five slow handlers: without this split
+      // every one of them reads as app work and the next round optimizes a channel that did nothing.
+      const heldMs = Math.max(
+        0,
+        Math.min(durationMs, Math.round(safeHeldMs(heldMsWithin, startedAt, endedAt)))
+      )
       input.log.warn('ipc handler was slow', {
         channel: input.channel,
         surface: input.callerContext.surface,
         location: input.callerContext.location,
-        durationMs
+        durationMs,
+        // Present only when there is something to split, so an ordinary slow handler's line is unchanged.
+        ...(heldMs < 1 ? {} : { heldMs, ownMs: Math.max(0, durationMs - heldMs) })
       })
     } catch {
       // Diagnostic failures must never replace the handler's authoritative result.

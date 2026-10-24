@@ -57,6 +57,90 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
     )
   })
 
+  it('splits a slow handler into the part we ran and the part the process was not running', async () => {
+    // The settings-mount burst: five channels starting together, all finishing within seconds of each other,
+    // each 93-100 % inside one 15-23 s window where the loop never ran. The wall duration alone read as five
+    // slow handlers; the split is what makes the line say which part was ours.
+    const warn = vi.fn()
+    const callerContext = createWebCallerContext('client-1', {
+      location: 'local',
+      principalKind: 'human',
+      actionOrigin: 'human'
+    })
+    const now = vi.fn().mockReturnValueOnce(10_000).mockReturnValueOnce(31_700)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'runtime:get-enablement',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now,
+      heldMs: () => 20_300
+    })
+    expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
+      channel: 'runtime:get-enablement',
+      surface: 'web',
+      location: 'local',
+      durationMs: 21_700,
+      heldMs: 20_300,
+      ownMs: 1_400
+    })
+
+    // A held reading larger than the duration cannot make ownMs negative.
+    warn.mockClear()
+    const short = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(2_000)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'runtime:survey',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now: short,
+      heldMs: () => 9_999
+    })
+    expect(warn).toHaveBeenCalledWith(
+      'ipc handler was slow',
+      expect.objectContaining({ durationMs: 2_000, heldMs: 2_000, ownMs: 0 })
+    )
+
+    // No held time: the line is exactly what it was before the split existed, so an ordinary slow handler is
+    // not labelled as somebody else's problem.
+    warn.mockClear()
+    const plain = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(600)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:read-document',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now: plain,
+      heldMs: () => 0
+    })
+    expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
+      channel: 'sessions:read-document',
+      surface: 'web',
+      location: 'local',
+      durationMs: 600
+    })
+
+    // A broken held source degrades to the plain duration rather than dropping the line.
+    warn.mockClear()
+    const broken = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(600)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:list-catalog',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now: broken,
+      heldMs: () => {
+        throw new Error('registry unavailable')
+      }
+    })
+    expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
+      channel: 'sessions:list-catalog',
+      surface: 'web',
+      location: 'local',
+      durationMs: 600
+    })
+  })
+
   it('records only allowlisted caller metadata for a rejection and rethrows the same value', async () => {
     const warn = vi.fn()
     const secretError = Object.assign(new Error('secret provider failure'), {

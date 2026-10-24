@@ -8,6 +8,7 @@ import {
   type HostStallReading,
   type HostStallSampler
 } from './host-stall-sampler'
+import { sharedLoopHeldWindows, type LoopHeldWindows } from './loop-held-windows'
 
 // A 113.9 s save and a 7.2 s `SELECT 1` in the same 150 s window cannot both be explained by "the save is
 // slow": the segment timings grew by the same factor (write 641x, authority read 639x), and the event loop
@@ -100,6 +101,9 @@ export type EventLoopStallWatchdogInput = {
   tickMs?: number
   thresholdMs?: number
   profileWindowMs?: number
+  // Where the reported windows are remembered for the IPC slow-handler split (see `loop-held-windows`).
+  // Defaults to the shared registry; tests inject their own so one case cannot see another's windows.
+  heldWindows?: LoopHeldWindows
   // Seams. Production passes nothing; tests drive time, CPU, machine state and the sampler directly.
   now?: () => number
   // Wall clock (epoch ms), used to line the sampler's timeline up with the stall: the sampler runs on its
@@ -283,6 +287,7 @@ export const startEventLoopStallWatchdog = (
   const tickMs = input.tickMs ?? DEFAULT_TICK_MS
   const thresholdMs = input.thresholdMs ?? DEFAULT_STALL_THRESHOLD_MS
   const profileWindowMs = input.profileWindowMs ?? DEFAULT_PROFILE_WINDOW_MS
+  const heldWindows = input.heldWindows ?? sharedLoopHeldWindows
 
   let lastTick = now()
   let lastCpu = cpuUsage()
@@ -347,6 +352,11 @@ export const startEventLoopStallWatchdog = (
     // carrying a multi-second block (median CPU share 0.92 — these are ours, not the scheduler's).
     const lateMs = windowMs - tickMs
     if (lateMs < thresholdMs) return
+
+    // Remember the part of the window the loop was actually late by, so a handler that spans it can say how
+    // much of its duration the process was not running (the rest is its own work). Recorded before either
+    // report path so the first (unsampled) stall of a burst counts too — that one is often the long one.
+    heldWindows.record(current - lateMs, current)
 
     const cpuMs = Math.round((cpu.user + cpu.system) / 1000)
     const cpuShare = windowMs > 0 ? Math.min(1, cpuMs / windowMs) : 0
