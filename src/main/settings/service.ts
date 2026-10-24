@@ -91,7 +91,7 @@ import {
   type FunctionModelEvent
 } from '../function-models/event-log'
 import { detectFunctionModelTarget } from '../function-models/detect'
-import { createLogger } from '../logger'
+import { createLogger, diagnosticErrorFields } from '../logger'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -358,6 +358,39 @@ class SettingsService {
   // the data-root cache) that shouldn't go through the renderer-safe view.
   async getStoredSettings(): Promise<StoredSettings> {
     return this.migrateLegacyKeyRefs(await this.repository.getSettings())
+  }
+
+  /**
+   * The same document WITHOUT the legacy key-ref migration.
+   *
+   * The migration is where the OS secret store is touched, and that touch is the largest single cost of a
+   * start on this machine: `encryption-available` measured 10,311 / 16,758 / 56,769 ms across three launches
+   * while providers and connectors together stayed under 25 ms. Nothing the bootstrap needs — the data root
+   * and the child-process proxy runtime — lives in a `keyRef`, so a start has no reason to wait for it.
+   *
+   * What a caller of this method gives up is named: a legacy key reference is still on disk until
+   * {@link warmKeyMigration} finishes, so the first reader that needs a decrypted key must go through
+   * `getStoredSettings` (which migrates synchronously) rather than this one.
+   */
+  async getBootstrapSettings(): Promise<StoredSettings> {
+    return this.repository.getSettings()
+  }
+
+  /**
+   * Runs the deferred migration off the startup path and reports what it cost.
+   *
+   * Fire-and-forget at startup: a failure here is a slower first key read, never a broken launch, so it is
+   * logged as a warning and retried by the next `getStoredSettings` call (which migrates inline).
+   */
+  async warmKeyMigration(): Promise<void> {
+    try {
+      const settings = await this.repository.getSettings()
+      await this.migrateLegacyKeyRefs(settings)
+    } catch (error) {
+      createLogger('settings').warn('deferred settings key migration failed', {
+        ...diagnosticErrorFields(error)
+      })
+    }
   }
 
   // Returns the renderer-safe (masked) snapshot of settings.

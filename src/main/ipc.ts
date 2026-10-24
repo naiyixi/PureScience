@@ -611,8 +611,12 @@ const createApplicationModules = async (
 
   // Reading stored settings decrypts the provider key through the OS secret store, so this is a prime
   // suspect for a multi-second stall and must be timed in its own right.
+  // Bootstrap read, WITHOUT the key migration: that migration is the OS secret store's first touch
+  // (`encryption-available` measured 10,311 / 16,758 / 56,769 ms on three launches here, while the actual
+  // migration stayed under 25 ms), and nothing this startup needs — data root, child proxy runtime — lives
+  // in a `keyRef`. The migration is kicked below, off the critical path.
   const storedSettings = await composeSteps.step('read-stored-settings', () =>
-    settingsService.getStoredSettings()
+    settingsService.getBootstrapSettings()
   )
   const storageLog = createLogger('storage')
   // Prime the data-root cache from settings before any data repository is constructed below. A change
@@ -640,6 +644,9 @@ const createApplicationModules = async (
   })
   await composeSteps.step('restore-notification-inbox', () => notificationInbox.restore())
   composeSteps.logSummary()
+  // Deferred, not skipped: a reader that needs a decrypted key calls `getStoredSettings`, which migrates
+  // inline, so the only thing this changes is whether a start waits for the secret store to answer.
+  void settingsService.warmKeyMigration()
   // Record only the location class. Absolute paths (including reversible code-point renderings) can
   // expose usernames and folder names in a support bundle.
   storageLog.info('data root resolved', {
