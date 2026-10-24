@@ -28,6 +28,10 @@ describe('startup composition attribution', () => {
     expect(timedStepNames(ipcSource)).toEqual([
       'application-events',
       'settings-service',
+      // Deliberately ahead of the stored-settings read: the probe answers it restores are what the
+      // preflight asks for on the user's critical path (`opencode --version` 4,035.9 ms cold vs
+      // 1.062 ms answered from the file), so the load has to be inside the attributed window too.
+      'load-probe-answers',
       'read-stored-settings',
       'hydrate-child-proxy-runtime',
       'open-project-db',
