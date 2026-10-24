@@ -80,6 +80,12 @@ import {
   createHostQueryMcpServerConfig
 } from '../settings/host-query-mcp-server'
 import type { AgentMcpHttpHost } from './mcp-http-host'
+import {
+  MCP_READINESS_PROBE_TIMEOUT_MS,
+  runMcpReadinessProbe,
+  shouldProbeMcpReadiness,
+  summariseMcpReadiness
+} from './mcp-readiness-probe'
 
 const log = createLogger('acp')
 
@@ -935,6 +941,39 @@ export class AcpSessionCapabilityOwner {
       groups: `${FIRST_SCREEN_MCP_SERVERS.size} core,${deferredServerNames(modelFacingServers).length} deferred`,
       buildMs: Date.now() - buildStartedAt
     })
+
+    // Opt-in per-server readiness readings. `buildMs` above ends where our work ends; the agent's budget
+    // only starts there, and a single slow child is what actually costs a session. Kept off by default
+    // because it really spawns every server (measurement must not be a tax on normal sessions).
+    if (shouldProbeMcpReadiness()) {
+      const probe = await runMcpReadinessProbe(modelFacingServers, {
+        timeoutMs: MCP_READINESS_PROBE_TIMEOUT_MS
+      })
+      const logPass = (mode: 'serial' | 'burst', samples: typeof probe.serial): void => {
+        for (const sample of samples) {
+          log.info('mcp readiness probe', {
+            mode,
+            server: sample.name,
+            status: sample.status,
+            spawnMs: sample.spawnMs,
+            initializeMs: sample.initializeMs,
+            toolsMs: sample.toolsMs,
+            tools: sample.toolCount,
+            ...(sample.detail ? { detail: sample.detail } : {})
+          })
+        }
+        const summary = summariseMcpReadiness(samples)
+        log.info('mcp readiness probe summary', {
+          mode,
+          servers: samples.length,
+          ready: summary.ready,
+          failed: summary.failed.join(',') || 'none',
+          slowest: summary.slowest
+        })
+      }
+      logPass('serial', probe.serial)
+      logPass('burst', probe.burst)
+    }
 
     return Object.freeze({ mcpServers: modelFacingServers, descriptor })
   }
