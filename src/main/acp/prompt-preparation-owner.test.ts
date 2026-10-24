@@ -223,7 +223,9 @@ describe('AcpPromptPreparationOwner', () => {
     expect(preparedText).toEqual(expect.stringContaining('<purescience_notebook_continuity>'))
     expect(preparedText).toEqual(expect.stringContaining('"label":"dataset"'))
     expect(preparedText).toMatch(
-      /^replayed history[\s\S]+Specialist identity\.\n\nAllowed Specialist Skills for this session:\n- Research\n\nprepared task$/
+      // The per-turn deliverable reminder rides after the Specialist block and before the user text;
+      // the tail order (identity → allowed skills → task) is what this test is about.
+      /^replayed history[\s\S]+Specialist identity\.[\s\S]+<purescience_deliverable_reminder>[\s\S]+Allowed Specialist Skills for this session:\n- Research\n\nprepared task$/
     )
     expect(fixture.authorizeReferencedUploads).toHaveBeenCalledWith('project-1', 'session-1', [
       '/uploads/Research.skill'
@@ -232,9 +234,10 @@ describe('AcpPromptPreparationOwner', () => {
       expect.objectContaining({ promptMessageId: 'prompt-fallback' })
     )
     expect(handle.content).toBe('provider-content')
-    expect(handle.promptPrefix).toBe(
-      'Specialist identity.\n\nAllowed Specialist Skills for this session:\n- Research'
-    )
+    // The Specialist block still opens the per-turn prefix; the deliverable reminder follows it.
+    expect(handle.promptPrefix).toContain('Specialist identity.')
+    expect(handle.promptPrefix).toContain('Allowed Specialist Skills for this session:\n- Research')
+    expect(handle.promptPrefix).toContain('<purescience_deliverable_reminder>')
     expect(handle.skillActivityInputs).toEqual([
       { name: 'Research', path: '/missing/Research/SKILL.md' }
     ])

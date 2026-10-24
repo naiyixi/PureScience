@@ -102,6 +102,20 @@ const ARTIFACT_FILE_SYSTEM_PROMPT_APPEND = [
   '</purescience_artifact_instructions>'
 ].join('\n')
 
+// Delivered as a per-TURN reminder, not only a system-prompt append. Measured on a real install:
+// with the append present but nothing said per turn, claude-code answered a data task in prose and
+// called no tool at all (0 activities in three consecutive sessions, while the same model on the
+// same machine called 85 tools in a Codex session); naming the two tools in the request made it run
+// them immediately. A standing rule buried in a 5k-token system prompt is not enough for this model.
+const DELIVERABLE_TOOL_REMINDER = [
+  '<purescience_deliverable_reminder>',
+  'Deliverables are produced with tools in this turn, not described in prose.',
+  'Computation, data inspection or charts → `notebook_execute` (server `purescience_notebook`).',
+  'Any user-facing file (report, CSV, image, archive) → `write_artifact_file` (server `purescience_artifacts`), passing the `runId` returned by the execution that produced it.',
+  'An answer that reports numbers it never computed, or lists files it never saved, is a failed turn. If a call fails, say it failed.',
+  '</purescience_deliverable_reminder>'
+].join('\n')
+
 const LARGE_DATA_FILE_SYSTEM_PROMPT_APPEND = [
   '<purescience_large_file_instructions>',
   'Large attached data files (CSV, TSV, TXT, JSON, FASTA/FASTQ, VCF, and similar tabular or text data) are provided as a file reference plus a short preview, not as full inline content.',
@@ -192,9 +206,15 @@ class AcpSessionPresentationPolicy {
       input.framework.id,
       input.specialistSkills
     )
+    // The deliverable rule rides on every turn, not just the session's system prompt: measured on a
+    // real install, claude-code ignored the standing version and answered in prose with zero tool
+    // calls, then complied the moment the same two tools were named in the request.
+    const deliverableReminder =
+      input.tooling.artifacts || input.tooling.notebook ? [DELIVERABLE_TOOL_REMINDER] : []
     const setup = input.framework.buildSessionSetup({
       systemPromptAppends: this.systemPromptAppends(input),
       turnPromptReminders: [
+        ...deliverableReminder,
         ...(specialistSkillGuidance ? [specialistSkillGuidance] : []),
         ...(input.turnPromptReminders ?? [])
       ],

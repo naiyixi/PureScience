@@ -286,6 +286,36 @@ describe('ACP Session presentation policy', () => {
     ).toBeUndefined()
   })
 
+  it('names the deliverable tools on every turn when artifacts or notebook are available', () => {
+    // A real session showed the standing system-prompt rule being ignored: the model answered a data
+    // task in prose and called no tool. The rule therefore has to ride each turn as well.
+    const tooling = {
+      artifacts: true,
+      notebook: true,
+      skillImport: false,
+      memory: false,
+      contextSummary: false,
+      routine: false,
+      goal: false,
+      endpoint: false,
+      annotation: false,
+      pdf: false,
+      knowledge: false,
+      figure: false,
+      query: false
+    }
+    const prefix = policy.buildTurnPromptPrefix({ framework: claudeCodeFramework, tooling })
+    expect(prefix).toContain('<purescience_deliverable_reminder>')
+    expect(prefix).toContain('notebook_execute')
+    expect(prefix).toContain('write_artifact_file')
+
+    const withoutTools = policy.buildTurnPromptPrefix({
+      framework: claudeCodeFramework,
+      tooling: { ...tooling, artifacts: false, notebook: false }
+    })
+    expect(withoutTools).toBeUndefined()
+  })
+
   it('renders exact Specialist handoff continuation text from the original request and result', () => {
     expect(
       policy.continuationText({

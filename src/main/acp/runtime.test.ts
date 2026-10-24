@@ -2825,7 +2825,14 @@ describe('ACP runtime session management', () => {
     resolveSessionUpload.mockClear()
     await runtime.sendPrompt({ sessionId: session.sessionId, text: 'summarize without context' })
 
-    expect(receivedPrompts).toEqual([[{ type: 'text', text: 'summarize without context' }]])
+    // The per-turn deliverable reminder rides in front of the user's text when the session has the
+    // artifact/notebook tools; the point of this test is that no ambient file context sneaks in.
+    expect(receivedPrompts).toHaveLength(1)
+    expect(receivedPrompts[0]).toHaveLength(1)
+    const [firstBlock] = receivedPrompts[0] as [{ type: string; text: string }]
+    expect(firstBlock.type).toBe('text')
+    expect(firstBlock.text.endsWith('summarize without context')).toBe(true)
+    expect(firstBlock.text).not.toContain(ambientSecret)
     expect(JSON.stringify(receivedPrompts)).not.toContain(ambientSecret)
     expect(finalizeUploads).not.toHaveBeenCalled()
     expect(resolveManagedUpload).not.toHaveBeenCalled()
@@ -3846,7 +3853,8 @@ describe('ACP runtime session management', () => {
     const agent = startFakeAgent(process, ['remote-session-1'], {
       onPrompt: ({ text }) => {
         if (text === '/compact') return compactTurn.promise
-        if (text === 'retry after overflow') return retryTurn.promise
+        // The per-turn deliverable reminder prefixes prompt content, so match the user's tail.
+        if (text.endsWith('retry after overflow')) return retryTurn.promise
         throw acp.RequestError.internalError({ errorKind: 'request_too_large' }, 'Internal error')
       }
     })
@@ -3915,9 +3923,10 @@ describe('ACP runtime session management', () => {
     expect(runtime.getSnapshot().promptInFlightSessionIds).toEqual([])
     expect(cancelTimer?.active).toBe(false)
     const retry = runtime.sendPrompt({ sessionId: session.sessionId, text: 'retry after overflow' })
-    await vi.waitFor(() => expect(agent.prompts.at(-1)?.text).toBe('retry after overflow'), {
-      timeout: COORDINATION_WINDOW_MS
-    })
+    await vi.waitFor(
+      () => expect(agent.prompts.at(-1)?.text.endsWith('retry after overflow')).toBe(true),
+      { timeout: COORDINATION_WINDOW_MS }
+    )
 
     cancelTimer?.fire()
     expect(runtime.getSnapshot().status).toBe('connected')
@@ -4744,9 +4753,17 @@ describe('ACP runtime session management', () => {
     })
 
     expect(receivedPrompts).toHaveLength(1)
-    expect(receivedPrompts[0][0]).toEqual({ type: 'text', text: 'use these files' })
+    // Block order is positional only by accident; the reminder rides first when the session has the
+    // artifact tools, so assert by content and by type rather than by index.
+    const blocks = receivedPrompts[0] as { type: string; text?: string; [k: string]: unknown }[]
+    expect(blocks[0]?.type).toBe('text')
+    expect(blocks[0]?.text ?? '').toContain('<purescience_deliverable_reminder>')
+    const userText = blocks.find(
+      (block) => block.type === 'text' && String(block.text).endsWith('use these files')
+    )
+    expect(userText).toBeDefined()
     // Referenced upload text file -> inline resource with its contents.
-    expect(receivedPrompts[0][1]).toMatchObject({
+    expect(blocks.find((block) => block.type === 'resource')).toMatchObject({
       type: 'resource',
       resource: {
         mimeType: 'text/plain',
@@ -4755,14 +4772,14 @@ describe('ACP runtime session management', () => {
       }
     })
     // Referenced image artifact -> base64 image block.
-    expect(receivedPrompts[0][2]).toMatchObject({
+    expect(blocks.find((block) => block.type === 'image')).toMatchObject({
       type: 'image',
       mimeType: 'image/png',
       data: createPngBytes('runtime referenced image').toString('base64'),
       uri: expect.stringContaining('chart.png')
     })
     // Referenced binary artifact -> resource link.
-    expect(receivedPrompts[0][3]).toMatchObject({
+    expect(blocks.find((block) => block.type === 'resource_link')).toMatchObject({
       type: 'resource_link',
       name: 'data.bin',
       title: 'data.bin',
@@ -4771,12 +4788,12 @@ describe('ACP runtime session management', () => {
     })
     // Artifact-backed Skill package -> provider-safe ordinary archive reference, never the
     // current-session import wrapper.
-    expect(receivedPrompts[0][4]).toMatchObject({
-      type: 'text',
-      text: expect.stringMatching(
-        /<attached_local_archive>[\s\S]*generated\.skill[\s\S]*"skillImportEligible":false/
-      )
-    })
+    const archiveBlock = blocks.find(
+      (block) => block.type === 'text' && String(block.text).includes('<attached_local_archive>')
+    )
+    expect(archiveBlock?.text ?? '').toMatch(
+      /<attached_local_archive>[\s\S]*generated\.skill[\s\S]*"skillImportEligible":false/
+    )
   })
 
   it('resolves a version-backed artifact mention before sending the prompt', async () => {
@@ -15533,7 +15550,7 @@ describe('ACP runtime session management', () => {
 
     expect(fakeAgent.prompts[0]).toMatchObject({
       sessionId: 'remote-session-1',
-      text: 'Generate a little duckling meme image and save it locally'
+      text: expect.stringContaining('Generate a little duckling meme image and save it locally')
     })
     expect(fakeAgent.newSessions[0]._meta).toMatchObject({
       systemPrompt: {
