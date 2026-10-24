@@ -248,44 +248,108 @@ export class EgressProxy {
     error: Error,
     port?: number
   ): void {
+    this.reportTargetFailure(host, error, port)
+    this.refuse(
+      res,
+      `PureScience egress proxy: ${formatEgressFailure(describeEgressFailure(error), host)}`,
+      502
+    )
+  }
+
+  // The log half of the above, for the one case that cannot be answered on the wire: a tunnel that was
+  // already established is carrying TLS, so there is no HTTP status the client could read anymore.
+  private reportTargetFailure(
+    host: string,
+    error: Error,
+    port?: number,
+    phase?: 'established'
+  ): void {
     const failure = describeEgressFailure(error)
     // The tunnel keeps its historical message name so the existing log-grep recipes (and any reading
     // taken before this change) still join across it; `family` is the field that is new.
     log.warn(port === undefined ? 'egress target failed' : 'egress tunnel target failed', {
       host,
       ...(port === undefined ? {} : { port }),
+      ...(phase === undefined ? {} : { phase }),
       family: failure.family,
       code: failure.code,
       error: error.message
     })
-    this.refuse(res, `PureScience egress proxy: ${formatEgressFailure(failure, host)}`, 502)
   }
 
   // HTTPS CONNECT tunnel: open a raw TCP tunnel to the target if allowed, or ask first.
   private handleConnect(req: IncomingMessage, socket: Duplex, head: Buffer): void {
     const host = req.url?.split(':')[0] ?? ''
-    const open = (): void => {
-      const port = Number(req.url?.split(':')[1] ?? 443)
-      log.info('egress tunnel opening', { host, port })
-      const targetConn = tcpConnect({ host, port })
-      targetConn.on('error', (error: Error) => {
-        // Answer before dropping the tunnel. A bare destroy reaches the client as an anonymous socket
-        // hang up, exactly like a connection that was cut mid-flight, so the reason never leaves this
-        // process — which is how 86 of these became unanswerable "failed to reach the target" reports.
-        this.refuseTargetFailure(socket, host, error, port)
+    const port = Number(req.url?.split(':')[1] ?? 443)
+    // A tunnel socket arrives from node's HTTP server and nothing on our side ever listened for its
+    // errors. On the shipped build a client that reset mid-request therefore escaped as a process-level
+    // `uncaughtException` (`read ECONNRESET`, 2026-10-23T13:08:11Z; `write EPIPE` at 13:08:15Z, frames
+    // `_write (writable:491:11)` / `afterWriteDispatched`), and the target connection was left open —
+    // the target server could not finish closing until the app exited. Both are handled here: one
+    // `teardown()` owns every path, and it unpipes before destroying so no write can land on an end.
+    let settled = false
+    let established = false
+    let targetConn: ReturnType<typeof tcpConnect> | undefined
+    const teardown = (): void => {
+      if (settled) return
+      settled = true
+      try {
+        if (targetConn) {
+          socket.unpipe(targetConn)
+          targetConn.unpipe(socket)
+          targetConn.destroy()
+        }
         socket.destroy()
+      } catch {
+        // A diagnostic-free teardown: nothing here may throw into the server's connect handler.
+      }
+    }
+    socket.on('error', (error: Error) => {
+      // Named, because this used to be an uncaught exception: the client went away mid-request.
+      const failure = describeEgressFailure(error)
+      log.warn('egress tunnel client aborted', {
+        host,
+        port,
+        established,
+        family: failure.family,
+        code: failure.code,
+        error: error.message
       })
-      targetConn.on('connect', () => {
+      teardown()
+    })
+    const open = (): void => {
+      if (settled) return
+      log.info('egress tunnel opening', { host, port })
+      const connection = tcpConnect({ host, port })
+      targetConn = connection
+      connection.on('error', (error: Error) => {
+        if (settled) return
+        // Before the tunnel is established the client is still speaking HTTP to us, so the named 502 is
+        // the answer it can read. Afterwards it is speaking TLS *through* us: a status line would arrive
+        // as protocol garbage, so the honest answer is a closed connection and this log line.
+        if (!established) this.refuseTargetFailure(socket, host, error, port)
+        else this.reportTargetFailure(host, error, port, 'established')
+        teardown()
+      })
+      connection.on('close', () => teardown())
+      connection.on('connect', () => {
+        // The client may already be gone: a tunnel that is established for nobody would hold this
+        // target socket open until the kernel gives up.
+        if (settled || socket.destroyed) {
+          connection.destroy()
+          return
+        }
+        established = true
         log.info('egress tunnel established', { host, port })
         socket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
-        if (head.length > 0) targetConn.write(head)
-        socket.pipe(targetConn)
-        targetConn.pipe(socket)
+        if (head.length > 0) connection.write(head)
+        socket.pipe(connection)
+        connection.pipe(socket)
       })
     }
     const deny = (): void => {
       this.refuse(socket, 'PureScience egress allowlist: host not permitted')
-      socket.destroy()
+      teardown()
     }
     if (!host || !this.isAllowed(host)) {
       if (!host || isHostDenied(host)) {

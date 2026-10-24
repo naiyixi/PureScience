@@ -11507,3 +11507,76 @@ P0-3 分步真机读数之外的纯代码项），不要把「等闸门」写成
   一次都不出现则那条修法当场作废，不再花单元。
 - **下一轮第一步**：按完整 40 位 SHA 读**最后一个提交**的 `Nightly` + `Windows Full Test`（本轮推了两笔，
   早一笔会被 `cancel-in-progress` 顶掉，按「祖先」关系引后一笔的判决并写明这层替代）；再按上一条取前置读数。
+
+## 两百二十四、本轮追加（执行器，2026-10-24 09:5x–12:xx）—— 出网隧道：客户端中途消失会抛到**进程级**，并把到目标的连接留成僵尸
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `HEAD = origin/main = 42acd647`；上一轮那两笔的判决按**完整 40 位 SHA**复核：
+  `42acd647e076d256385fa53584f729e791262f7e` ⇒ `Nightly` **success**、`Windows Full Test` **success**
+  （`1246bff8` 的 `Nightly` 是 `cancelled`，按祖先关系引后一笔的判决，见 §两百二十二）。
+- 工作区不干净：`src/main/artifacts/{ipc.ts,ipc.test.ts,run-registry.ts}` 是**桌面会话线**的在制品 ⇒ 一个字节没碰、
+  没提交、没回退。本轮只动 `src/main/net/**` 两个路径 + 证据档 + 本节。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无新东西；§两百二十三 定的下一单元（「更新侧认 `_meta`」的前置读数）
+  **需要 dev 实例以新构建重启**才取得到 ⇒ 先取内存：空闲页 **5,613**（≈88 MB）、swap **7.56 G / 8.0 G**
+  ⇒ 闸门未解，改取一个**纯代码**单元。
+
+### 一 为什么取这一条（读数不是猜的）
+
+`~/Library/Logs/PureScience/` 三份日志共 **22,284** 条（窗口 `10-23T10:59:43Z → 10-24T01:57:52Z`）里，
+当前实例（`runId 189d5c74`，**v2.16.0**，`12:42:55Z` 起）有两条**进程级** `uncaughtException`，
+都紧跟同一条隧道失败：`13:08:11.026Z` 的 `egress tunnel target failed {api.anthropic.com:443, family: reset,
+code: EPIPE}` → 93 ms 后 `write after end`（帧 `_write (writable:491:11)`）→ 4.07 s 后 `write EPIPE`
+（帧 `afterWriteDispatched (stream_base_commons:159:15)`）。
+
+读源后判据：`handleConnect` 拿到的隧道 `socket` **从未挂 `'error'`**，而收尾有多个出口（`refuse…` + `destroy`
++ 两条仍然武装的 `pipe()`）。本地临时探针（跑完即删）复现：**隧道已建立后客户端 reset** ⇒
+逃到进程级的 `read ECONNRESET`，且**到目标的连接永不关闭**（对端的 server 无法 `close()`）；另外两种形态
+（目标先退、客户端半关）都干净。
+
+### 二 交付（一个出口拥有所有收尾 + 一条具名读数）
+
+| 位置 | 改动 |
+|---|---|
+| `teardown()` | 只生效一次（`settled`）；**先 `unpipe` 两侧再 `destroy`** ⇒ 收尾之后不可能有写入落在已结束的流上；整体 `try/catch`，诊断不许抛回 connect 处理器 |
+| `socket.on('error')` | 新增，具名 `egress tunnel client aborted`（`family`/`code`/`established`）——这一行以前是**进程级异常** |
+| 隧道已建立后的目标失败 | 不再往 TLS 流里写 `HTTP/1.1 502 …`，只落同名日志并多一个 `phase: 'established'`；**未建立时的 502 行为一个字节未改**（既有用例仍要求 502 + 具名家族） |
+| `connect` 分支 | `settled \|\| socket.destroyed` 时直接 `destroy()` 这条目标连接（客户端早已走掉就不建立一条没人的隧道） |
+| `deny()` | 写 403 后走同一个 `teardown()` |
+
+日志**消息名与 `family`/`code` 字段全部不变** ⇒ 既有 grep 配方与历史读数仍可跨这次改动拼接。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/net/egress.test.ts` | **30 passed**（原 28 + 两种客户端终结形态各 1） |
+| `src/main/net` 整域 | **8 files / 91 passed**，exit 0 |
+| 变异 ①：删掉 `socket.on('error')` | 恰红 `expected [ Error: read ECONNRESET { … } ] to deeply equal []` |
+| 变异 ②：`egress-proxy.ts` 回退到 HEAD | 恰红 `expected 'timeout' to be 'closed'`（到目标的连接一直没关） |
+| 双 typecheck（`--composite false`，堆 8192） | node **EXIT 0** / web **EXIT 0** |
+| `eslint --no-cache` 2 文件 / `prettier --check` 3 文件 | **0 problems** / 全过 |
+| `bash scripts/pre-push-checks.sh` | **EXIT 0**（首次被**品牌词扫描**拦下：注释里把对端写成「借用的行话」⇒ 改写为「到目标的连接」，不放宽门禁） |
+
+证据档 `docs/evidence/2026-10-24-egress-tunnel-client-abort.md`。
+
+### 四 边界（不许读成更强）
+
+1. `write after end` 那一帧**本地没有原样复现**；修法是让「收尾之后的写入」结构上不可能，并把客户端错误
+   从进程级异常变成具名日志，不是猜那一帧。
+2. **已建立隧道**在目标失败时的语义有一处行为变化（不再往 TLS 里塞 HTTP 状态行，改为直接关闭）；未建立时
+   的 502 不变。
+3. 新日志行（`egress tunnel client aborted` / `phase: 'established'`）**还没有真机样本**，要等下一次客户端中途取消。
+4. 只覆盖「客户端消失」与「目标失败」两条收尾；正常用完后的收尾仍由两条 `pipe()` 的 end 传播负责。
+5. 不占版本号（无用户可见文案、无窗口读数）。
+
+### 五 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本笔 `Nightly` + `Windows Full Test`（推送前先查在飞车道，并点名会顶掉谁）；
+② §两百二十三 定的前置读数（`hasProviderName: true` 的出现频率）仍要 dev 实例重启才取得到 ⇒ 开工前现取
+`vm_stat` / `vm.swapusage`，闸门未解就继续取纯代码单元；
+③ 本轮顺手**排除了一个假线索**（记下来免得下一轮再去查）：打包版日志里 **21,373 条** `event loop stalled`
+来自 **2.16.0 之前**的构建（那些记录**没有 `lateMs` 字段**），正是 §两百零三 已修掉的「每个 tick 都记成停滞」；
+当前实例（v2.16.0）只有 **190 条**，全部带 `lateMs` ⇒ 不是现存缺陷。另：用户机器上装的是 **v2.16.0**
+（不是 Latest v2.17.0），日志里 `createSession: failed / Internal error` 那条正是 v2.16.1 修掉的那个，
+属「该升级」而不是「待修」。

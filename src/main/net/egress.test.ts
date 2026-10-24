@@ -2,7 +2,7 @@
 // proxy's allow/deny behavior.
 
 import { request as httpRequest, createServer, type Server } from 'node:http'
-import { connect as tcpConnect } from 'node:net'
+import { connect as tcpConnect, createServer as createTcpServer } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { mirrorEgressHosts } from '../../shared/egress'
@@ -345,6 +345,102 @@ describe('EgressProxy', () => {
     expect(response).toContain('egress refused failure reaching 127.0.0.1')
     expect(response).toContain('ECONNREFUSED')
   })
+
+  // An *established* tunnel whose client disappears mid-request. Two defects came out of the shipped
+  // build's log here:
+  //   1. nothing on our side listened for the tunnel socket's errors, so a client reset escaped as a
+  //      process-level `uncaughtException` (`read ECONNRESET` at 2026-10-23T13:08:11Z, then `write EPIPE`
+  //      with frames `_write (writable:491:11)` / `afterWriteDispatched` four seconds later);
+  //   2. no path closed the target connection, so the target never learned the request was over.
+  // Both client-side endings are covered because they arrive differently: a reset raises `error` on the
+  // tunnel socket, a plain destroy only closes it — and each one alone used to leave the target open.
+  for (const ending of ['reset', 'destroy'] as const) {
+    it(`tears an established tunnel down when the client is ${ending}d, leaving no target socket open`, async () => {
+      let targetClosed = false
+      let targetSocket: import('node:net').Socket | undefined
+      const target = createTcpServer((socket) => {
+        targetSocket = socket
+        socket.on('close', () => {
+          targetClosed = true
+        })
+        // Passive peer: it must stay connected until *we* close it, which is the leak under test.
+        socket.on('data', () => undefined)
+      })
+      await new Promise<void>((resolve) => target.listen(0, '127.0.0.1', resolve))
+      const targetPort = (target.address() as { port: number }).port
+      proxy = new EgressProxy()
+      proxy.setAllowlist(['127.0.0.1'])
+      const port = await proxy.start()
+
+      const escaped: unknown[] = []
+      const onEscaped = (error: unknown): void => {
+        escaped.push(error)
+      }
+      process.on('uncaughtException', onEscaped)
+      let established = false
+      let clientSocketClosed = false
+      try {
+        await new Promise<void>((resolve) => {
+          const socket = tcpConnect({ host: '127.0.0.1', port })
+          let done = false
+          const finish = (): void => {
+            if (done) return
+            done = true
+            clearInterval(keepTalking)
+            clearTimeout(watchdog)
+            setTimeout(resolve, 150)
+          }
+          // Fails in seconds with the named assertions below instead of riding the suite's timeout.
+          const watchdog = setTimeout(finish, 3000)
+          watchdog.unref?.()
+          const keepTalking = setInterval(() => {
+            if (!established || done) return
+            for (let index = 0; index < 8; index += 1) socket.write('x'.repeat(4096))
+          }, 5)
+          socket.on('connect', () => {
+            socket.write(
+              `CONNECT 127.0.0.1:${targetPort} HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\n\r\n`
+            )
+          })
+          let data = ''
+          socket.on('data', (chunk) => {
+            data += chunk.toString()
+            if (established || !data.includes('200 Connection Established')) return
+            established = true
+            // The client goes away *after* the tunnel carries traffic: the shape that used to leak and throw.
+            setTimeout(() => {
+              if (ending === 'reset') socket.resetAndDestroy()
+              else socket.destroy()
+            }, 20)
+          })
+          socket.on('error', () => undefined)
+          socket.on('close', () => {
+            clientSocketClosed = true
+            finish()
+          })
+        })
+        expect(established).toBe(true)
+        expect(clientSocketClosed).toBe(true)
+        // The leak: the target connection has to be closed by the proxy, not by the target.
+        const closedInTime = await Promise.race([
+          new Promise<'closed'>((resolve) =>
+            setImmediate(function poll() {
+              if (targetClosed) resolve('closed')
+              else setTimeout(poll, 20)
+            })
+          ),
+          new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 2000))
+        ])
+        expect(closedInTime).toBe('closed')
+      } finally {
+        process.off('uncaughtException', onEscaped)
+        // A leaked target socket would otherwise make cleanup hang and hide the assertion above.
+        targetSocket?.destroy()
+        await new Promise<void>((resolve) => target.close(() => resolve()))
+      }
+      expect(escaped).toEqual([])
+    })
+  }
 
   it('answers a plain HTTP target failure with the named family and a 502, not a 403', async () => {
     proxy = new EgressProxy()
