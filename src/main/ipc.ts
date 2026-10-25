@@ -59,6 +59,7 @@ const capabilityGapsLog = createLogger('capabilities')
 
 import { createAcpRuntime } from './acp/runtime-composition'
 import type { TrajectoryInput } from './trajectory/bundle-payload'
+import { extractArtifacts } from './trajectory/extract-artifacts'
 import { extractToolCalls } from './trajectory/extract-tool-calls'
 import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
 import { createAcpHandlerWorkflows } from './acp/handler-workflows'
@@ -2592,6 +2593,9 @@ const createApplicationModules = async (
       )[0]
       if (!newest) return undefined
       const { calls } = extractToolCalls(newest)
+      // Artifact locators from the session document itself (message-level `artifactIds`). No second
+      // repository, no projectName, no checksum we cannot read.
+      const artifacts = extractArtifacts(newest)
       return {
         productVersion: app.getVersion(),
         sessionId: newest.id,
@@ -2599,6 +2603,7 @@ const createApplicationModules = async (
         // 工具名/耗时/结果大小来自 session.activities（与 bench-evidence 同一口径）。会话里没有
         // activities 时这一段整段不写，而不是写一个空文件冒充「这轮没调工具」。
         ...(calls.length > 0 ? { toolCalls: calls } : {}),
+        ...(artifacts.length > 0 ? { artifacts } : {}),
         needles: [homedir(), basename(homedir())].filter((needle) => needle.length > 2)
       }
     } catch {
