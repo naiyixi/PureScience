@@ -108,7 +108,12 @@ const DATABASE_TEST_GLOBS = [
   'src/main/notifications/notification-inbox-record-gate.test.ts',
   'src/main/session-persistence/deletion-integration.test.ts',
   'src/main/session-persistence/coordinator.test.ts',
-  'src/main/session-persistence/artifact-finalization-recovery.integration.test.ts'
+  'src/main/session-persistence/artifact-finalization-recovery.integration.test.ts',
+  // Manual benchmarks (`scripts/bench/*.bench.test.ts`, gated by an env var so a normal run skips
+  // them). They open a copy of a REAL project database and time it — the same file/lock contention the
+  // group above exists to remove, and they are profiling runs whose numbers are worthless under a
+  // parallel swarm. Kept as a glob so the next bench is covered without a second config change.
+  'scripts/bench/**/*.bench.test.ts'
 ]
 
 export const VITEST_TEST_GROUPS = {

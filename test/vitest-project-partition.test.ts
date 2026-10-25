@@ -116,7 +116,15 @@ describe('vitest test partition', () => {
       expect(allTestFiles).toContain(file)
     }
 
-    expect(outsideSrcAndTest.filter((file) => groupOf(file) !== 'unit')).toEqual([])
+    // The point of this assertion is "not silently dropped", not "all in the pool": a suite that is
+    // still run, but serialized with its own kind, is discovered just the same. Manual benchmarks under
+    // `scripts/bench/` are the one such case — they time a real database file, so the config puts them
+    // with the database suites. Everything else outside src/ and test/ must stay in the pool, and the
+    // exception itself is pinned to that group so a bench cannot drift somewhere unforeseen.
+    const offPool = outsideSrcAndTest.filter((file) => groupOf(file) !== 'unit')
+    const benchOffPool = offPool.filter((file) => file.startsWith('scripts/bench/'))
+    expect(offPool.filter((file) => !file.startsWith('scripts/bench/'))).toEqual([])
+    expect(benchOffPool.every((file) => groupOf(file) === 'database')).toBe(true)
   })
 
   it('keeps real-SQLite suites out of the unbounded parallel pool', () => {
