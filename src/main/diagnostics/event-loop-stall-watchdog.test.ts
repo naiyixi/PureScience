@@ -2,13 +2,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   startEventLoopStallWatchdog,
-  summarizeProfile,
   type EventLoopStallRecord,
-  type StallFrame,
-  type V8Profile
+  type StallFrame
 } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
 import { createLoopHeldWindows } from './loop-held-windows'
+import {
+  createRollingStackProfile,
+  summarizeProfile,
+  type RollingStackProfile,
+  type StackProfile,
+  type V8Profile
+} from './stall-stack-profile'
 
 // The watchdog cases drive time by hand; a real sampler thread would stamp the test's own clock instead of
 // the one they advance. This stub answers as "the thread saw nothing inside the stall", which is the honest
@@ -17,6 +22,24 @@ const quietHostSampler = (): HostStallSampler => ({
   stop: async () => ({ status: 'no-in-stall-samples' }),
   cancel: () => undefined
 })
+
+// A runtime without an inspector: every record then says `unavailable`, which is what these cases are not
+// about. Cases that do exercise the stack inject a stub that answers with a profile.
+const noPresampler = (): RollingStackProfile | undefined => undefined
+
+const presamplerStub = (
+  profile?: StackProfile
+): {
+  presampler: RollingStackProfile
+  take: ReturnType<typeof vi.fn>
+  rotate: ReturnType<typeof vi.fn>
+  stop: ReturnType<typeof vi.fn>
+} => {
+  const take = vi.fn(async () => profile)
+  const rotate = vi.fn()
+  const stop = vi.fn()
+  return { presampler: { take, rotate, stop }, take, rotate, stop }
+}
 
 type Warned = { message: string; data: EventLoopStallRecord }
 
@@ -33,6 +56,12 @@ const collect = (): {
       }
     }
   }
+}
+
+// Every record now comes out of the samplers' promise (there is no synchronous first-stall path any more), so
+// a case has to let those microtasks run before reading the log.
+const settle = async (): Promise<void> => {
+  for (let index = 0; index < 6; index += 1) await Promise.resolve()
 }
 
 // Fake clock plus fake CPU: the watchdog reads wall time and process CPU separately, and the whole point
@@ -75,7 +104,7 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 120 }),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
@@ -90,7 +119,7 @@ describe('event loop stall watchdog', () => {
   // The two defaults are equal, and that is the whole trap: a case that drives a 100 ms tick against a
   // 500 ms threshold can never notice that the shipped cadence fills the threshold by itself. This case
   // uses the production pair, and the windows are the ones the shipped build actually wrote (501/502 ms).
-  it('stays silent at the shipped cadence and reports only the lateness past it', () => {
+  it('stays silent at the shipped cadence and reports only the lateness past it', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
@@ -99,7 +128,7 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 70 }),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
@@ -112,6 +141,7 @@ describe('event loop stall watchdog', () => {
     // One window that arrived a full threshold late: 500 ms of schedule + 500 ms of lateness.
     time.advance(1_000, 100)
     vi.advanceTimersByTime(500)
+    await settle()
 
     expect(warned).toHaveLength(1)
     expect(warned[0]?.data.windowMs).toBe(1_000)
@@ -119,42 +149,47 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('attributes a stall that burned CPU to this process and arms the profiler', () => {
+  // The gap this case pins is the one the shipped logs showed for weeks: the sampler used to be armed *after*
+  // the first stall was reported, so the first (and usually longest) stall of a burst could never carry a
+  // stack — it said `no-second-stall` by construction. Now the profile is already recording when it arrives.
+  it('reads the stack sampler that was already recording when the very first stall arrives', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
-    const created = vi.fn(() => ({ stop: async () => undefined, cancel: (): void => undefined }))
+    const { presampler, take } = presamplerStub()
+    const createPresampler = vi.fn(() => presampler)
     const watchdog = startEventLoopStallWatchdog({
       log,
       tickMs: 100,
       thresholdMs: 500,
-      profileWindowMs: 10_000,
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 40, loadAvg1m: 12.5 }),
-      createSampler: created,
+      createPresampler,
       createHostSampler: quietHostSampler
     })
+    // Created once, at start-up: that is the whole point — nothing waits for a stall to begin sampling.
+    expect(createPresampler).toHaveBeenCalledTimes(1)
 
     // 2 s of wall time for a 100 ms tick, 1.6 s of it on CPU.
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
+    await settle()
 
     expect(warned).toHaveLength(1)
     expect(warned[0]?.message).toBe('event loop stalled')
     expect(warned[0]?.data.windowMs).toBe(2_000)
     expect(warned[0]?.data.cpuMs).toBe(1_600)
     expect(warned[0]?.data.cpuShare).toBe(0.8)
-    expect(warned[0]?.data.attribution).toBe('cpu-bound-in-process')
-    expect(warned[0]?.data.stack).toEqual({ status: 'no-second-stall' })
+    // The stub answered with no profile, so the record has to say so rather than claim it looked.
+    expect(warned[0]?.data.stack).toEqual({ status: 'unavailable' })
     expect(warned[0]?.data.freeMemMb).toBe(40)
     expect(warned[0]?.data.loadAvg1m).toBe(12.5)
-    // The first stall has nothing to sample; it arms the window instead.
-    expect(created).toHaveBeenCalledTimes(1)
+    expect(take).toHaveBeenCalledWith(2_000)
     watchdog.stop()
   })
 
-  it('remembers the window it reported so a handler spanning it can say how long it was not running', () => {
+  it('remembers the window it reported so a handler spanning it can say how long it was not running', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log } = collect()
@@ -166,7 +201,7 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 90 }),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler,
       heldWindows: held
     })
@@ -179,6 +214,7 @@ describe('event loop stall watchdog', () => {
     // 2 s late with a 100 ms tick: the unresponsive part is the 1.9 s past the schedule, not the whole window.
     time.advance(2_000, 100)
     vi.advanceTimersByTime(100)
+    await settle()
     const endOfWindow = time.now()
     expect(held.heldMsWithin(endOfWindow - 1_900, endOfWindow)).toBe(1_900)
     expect(held.heldMsWithin(endOfWindow - 2_000, endOfWindow)).toBe(1_900)
@@ -187,43 +223,38 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('names the blocking frame from the profile when a second stall lands inside the window', async () => {
+  it('names the blocking frame from the profile of the first stall', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
     const frames: StallFrame[] = [
       { frame: 'saveSession (src/main/session-persistence/coordinator.ts:412)', samples: 46 }
     ]
-    const stop = vi.fn(async () => ({ mainThreadMs: 4_900, unobservedMs: 0, frames }))
+    const { presampler, take } = presamplerStub({ mainThreadMs: 4_900, unobservedMs: 0, frames })
     const watchdog = startEventLoopStallWatchdog({
       log,
       tickMs: 100,
       thresholdMs: 500,
-      profileWindowMs: 10_000,
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => ({ stop, cancel: () => undefined }),
+      createPresampler: () => presampler,
       createHostSampler: quietHostSampler
     })
 
-    time.advance(2_000, 1_600)
-    vi.advanceTimersByTime(100)
+    // 5 s of wall time for a 100 ms tick, but only 0.6 s of CPU: `cpuShare` alone would call this
+    // `process-not-scheduled`. The profiled main-thread reading (4.9 of those 5 s) is the stricter verdict.
     time.advance(5_000, 600)
     vi.advanceTimersByTime(100)
-    // Let the (fake) Profiler.stop promise settle.
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
 
-    expect(warned).toHaveLength(2)
-    expect(stop).toHaveBeenCalledWith(5_000)
-    const second = warned[1]?.data
-    expect(second?.windowMs).toBe(5_000)
-    // cpuShare over the whole process is 0.12, but the main thread ran 4.9 of those 5 s: the profiled
-    // main-thread reading is the stricter verdict and wins.
-    expect(second?.cpuShare).toBe(0.12)
-    expect(second?.attribution).toBe('cpu-bound-in-process')
-    expect(second?.stack).toEqual({
+    expect(warned).toHaveLength(1)
+    expect(take).toHaveBeenCalledWith(5_000)
+    const record = warned[0]?.data
+    expect(record?.windowMs).toBe(5_000)
+    expect(record?.cpuShare).toBe(0.12)
+    expect(record?.attribution).toBe('cpu-bound-in-process')
+    expect(record?.stack).toEqual({
       status: 'profiled',
       mainThreadMs: 4_900,
       unobservedMs: 0,
@@ -232,7 +263,7 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('attributes a stall that burned almost no CPU to the process not being scheduled', () => {
+  it('attributes a stall that burned almost no CPU to the process not being scheduled', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
@@ -243,12 +274,13 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 12 }),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
     time.advance(5_000, 40)
     vi.advanceTimersByTime(100)
+    await settle()
 
     expect(warned).toHaveLength(1)
     expect(warned[0]?.data.cpuShare).toBe(0.008)
@@ -256,7 +288,7 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('keeps the middle band unresolved instead of forcing a verdict', () => {
+  it('keeps the middle band unresolved instead of forcing a verdict', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
@@ -267,12 +299,13 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
     time.advance(5_000, 2_000)
     vi.advanceTimersByTime(100)
+    await settle()
 
     expect(warned[0]?.data.cpuShare).toBe(0.4)
     expect(warned[0]?.data.attribution).toBe('inconclusive')
@@ -290,17 +323,16 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
+    await settle()
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
-    // The second stall is reported from the samplers' promise: both halve out, then the record lands.
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
 
     expect(warned).toHaveLength(2)
     expect(warned[0]?.data.stack).toEqual({ status: 'unavailable' })
@@ -339,25 +371,25 @@ describe('event loop stall watchdog', () => {
       log,
       tickMs: 100,
       thresholdMs: 500,
-      profileWindowMs: 10_000,
+      hostWindowMs: 10_000,
       now: time.now,
       // The sampler stamps with the wall clock, so the window has to be expressed in the same clock.
       wallClock: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 40 }),
-      createSampler: () => ({ stop: async () => undefined, cancel: () => undefined }),
+      createPresampler: noPresampler,
       createHostSampler: () => host
     })
 
     time.advance(2_000, 100)
     vi.advanceTimersByTime(100)
+    await settle()
     // The window is armed by the first stall; nothing has been sampled inside a stall yet.
     expect(warned[0]?.data.host).toEqual({ status: 'window-armed' })
 
     time.advance(5_000, 20)
     vi.advanceTimersByTime(100)
-    await Promise.resolve()
-    await Promise.resolve()
+    await settle()
 
     expect(windows).toEqual([[3_000, 8_000]])
     expect(warned[1]?.data.host).toMatchObject({
@@ -367,6 +399,46 @@ describe('event loop stall watchdog', () => {
       freeMemMbMin: 38
     })
     watchdog.stop()
+  })
+
+  // One profiler for the life of the process has to be bounded, and the bound must not eat the samples the
+  // next record needs: rotation runs on the loop's own tick, and a stall's `take()` restarts the segment, so
+  // the two can never both fire on the same tick and lose the stall.
+  it('rotates the always-recording profile on the loop tick and after every stall', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const { presampler, take, rotate, stop } = presamplerStub()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      presampleRotateMs: 1_000,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({}),
+      createPresampler: () => presampler,
+      createHostSampler: quietHostSampler
+    })
+
+    // Three on-time ticks, 1.1 s of loop time: one rotation, on the tick that crosses the interval.
+    for (let index = 0; index < 11; index += 1) {
+      time.advance(100, 5)
+      vi.advanceTimersByTime(100)
+    }
+    expect(rotate).toHaveBeenCalledTimes(1)
+
+    // A stall takes the profile instead: it must not also be rotated on the same tick, or the samples the
+    // record needs would be thrown away before they are read.
+    time.advance(2_000, 1_600)
+    vi.advanceTimersByTime(100)
+    await settle()
+    expect(take).toHaveBeenCalledTimes(1)
+    expect(rotate).toHaveBeenCalledTimes(1)
+
+    watchdog.stop()
+    expect(stop).toHaveBeenCalledTimes(1)
+    expect(warned).toHaveLength(1)
   })
 
   it('stops reporting after stop()', () => {
@@ -380,7 +452,7 @@ describe('event loop stall watchdog', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined,
+      createPresampler: noPresampler,
       createHostSampler: quietHostSampler
     })
 
@@ -430,10 +502,30 @@ describe('reading a V8 profile', () => {
     expect(profile.mainThreadMs).toBe(44)
     expect(profile.frames[0]?.samples).toBe(4)
   })
+
+  // The coarse cadence means the last sample before the stall can be up to a whole interval early: the window
+  // the summary looks at has to be widened by the cadence, or the first samples of a stall would be dropped.
+  // Totals here: 200+200+50+50 = 500 ms of recording, so a 90 ms stall starts 410 ms in.
+  it('widens the window by the coalescing slack it is given', () => {
+    const profile: V8Profile = {
+      startTime: 1,
+      nodes: [frame],
+      samples: [1, 1, 1, 1],
+      // Two samples well before the stall, then two inside it.
+      timeDeltas: [200_000, 200_000, 50_000, 50_000]
+    }
+
+    // With the production slack (50 ms) the window opens at 360 ms, so the sample that lands 400 ms in — one
+    // 50 ms cadence early — still counts: 3 samples.
+    expect(summarizeProfile(profile, 90).frames[0]?.samples).toBe(3)
+    // With no slack at all the window opens at 410 ms and that pre-stall sample is excluded: 2 samples.
+    expect(summarizeProfile(profile, 90, 0).frames[0]?.samples).toBe(2)
+  })
 })
 
 // The unit cases above drive injected time; this one runs the real interval, the real `process.cpuUsage`
-// and the real V8 sampler, because the sampler is the part that can silently return nothing.
+// and the real V8 sampler, because the sampler is the part that can silently return nothing. It is also the
+// case that pins the point of this module: the FIRST block of the run has to come back profiled.
 describe('event loop stall watchdog (real clock and sampler)', () => {
   const blockLoop = (ms: number): void => {
     const end = performance.now() + ms
@@ -442,18 +534,13 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     }
   }
 
-  it('names a function from a real profile of a real block', async () => {
+  it('names a function from a real profile, on the first block as well as the second', async () => {
     const { log, warned } = collect()
-    const watchdog = startEventLoopStallWatchdog({
-      log,
-      tickMs: 50,
-      thresholdMs: 200,
-      profileWindowMs: 10_000
-    })
+    const watchdog = startEventLoopStallWatchdog({ log, tickMs: 50, thresholdMs: 200 })
     try {
       await new Promise((resolve) => setTimeout(resolve, 150))
       blockLoop(500)
-      await new Promise((resolve) => setTimeout(resolve, 150))
+      await new Promise((resolve) => setTimeout(resolve, 300))
       blockLoop(700)
       await new Promise((resolve) => setTimeout(resolve, 600))
     } finally {
@@ -462,13 +549,122 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
 
     const profiled = warned.filter((entry) => entry.data.stack.status === 'profiled')
     expect(profiled.length).toBeGreaterThan(0)
-    const stack = profiled[0]?.data.stack
-    if (stack?.status !== 'profiled') throw new Error('expected a profiled stall')
-    expect(stack.mainThreadMs).toBeGreaterThan(0)
-    expect(stack.frames.length).toBeGreaterThan(0)
+    const firstStall = warned[0]?.data
+    if (firstStall?.stack.status !== 'profiled') {
+      throw new Error(
+        `expected the first stall to carry a stack, got ${JSON.stringify(firstStall?.stack)}`
+      )
+    }
+    expect(firstStall.stack.frames.length).toBeGreaterThan(0)
     expect(
-      stack.frames.some((frame) => frame.frame.includes('event-loop-stall-watchdog.test'))
+      firstStall.stack.frames.some((frame) =>
+        frame.frame.includes('event-loop-stall-watchdog.test')
+      )
     ).toBe(true)
-    expect(profiled[0]?.data.attribution).toBe('cpu-bound-in-process')
+    expect(firstStall.attribution).toBe('cpu-bound-in-process')
   }, 15_000)
+})
+
+// The presampler itself, with a fake inspector session: what matters is that one session survives the
+// stop/start cycle (a bounded window needs it), that a failed read is `undefined` rather than a profile with
+// nothing in it, and that `stop()` closes the session exactly once.
+describe('rolling stack profile', () => {
+  type Fake = {
+    posts: string[]
+    stopAnswers: (V8Profile | undefined | Error)[]
+    session: {
+      post: (
+        method: string,
+        params?: Record<string, unknown> | ((error: Error | null, result?: unknown) => void),
+        callback?: (error: Error | null, result?: unknown) => void
+      ) => void
+      disconnect: () => void
+    }
+  }
+
+  const fake = (stopAnswers: (V8Profile | undefined | Error)[]): Fake => {
+    const posts: string[] = []
+    const answerTo = (
+      method: string,
+      callback?: (error: Error | null, result?: unknown) => void
+    ): void => {
+      posts.push(method)
+      if (method !== 'Profiler.stop' || !callback) return
+      const next = stopAnswers.shift()
+      if (next instanceof Error) {
+        callback(next)
+        return
+      }
+      callback(null, next ? { profile: next } : undefined)
+    }
+    return {
+      posts,
+      stopAnswers,
+      session: {
+        post: (method, params, callback) => {
+          const cb = typeof params === 'function' ? params : callback
+          answerTo(method, cb)
+        },
+        disconnect: () => undefined
+      }
+    }
+  }
+
+  const profile = (frameCount: number): V8Profile => ({
+    startTime: 1,
+    nodes: [
+      {
+        id: 1,
+        callFrame: { functionName: 'work', url: 'file:///app/out/main/index.js', lineNumber: 3 }
+      }
+    ],
+    samples: Array.from({ length: frameCount }, () => 1),
+    timeDeltas: Array.from({ length: frameCount }, () => 50_000)
+  })
+
+  it('reads one segment per take and keeps recording afterwards', async () => {
+    const { posts, session } = fake([profile(4), profile(6)])
+    const rolling = createRollingStackProfile({ openSession: () => session })
+    if (!rolling) throw new Error('expected a sampler')
+
+    const first = await rolling.take(200)
+    expect(first?.frames[0]).toEqual({ frame: 'work (out/main/index.js:4)', samples: 4 })
+    // Every take has to leave the session recording again, or the next stall has nothing.
+    expect(posts).toEqual(['Profiler.stop', 'Profiler.start'])
+
+    const second = await rolling.take(300)
+    expect(second?.frames[0]?.samples).toBe(6)
+    expect(posts).toEqual(['Profiler.stop', 'Profiler.start', 'Profiler.stop', 'Profiler.start'])
+    rolling.stop()
+    await settle()
+  })
+
+  it('answers undefined when the session cannot be read, and stops recording after that', async () => {
+    const { posts, session } = fake([new Error('inspector gone')])
+    const rolling = createRollingStackProfile({ openSession: () => session })
+    if (!rolling) throw new Error('expected a sampler')
+
+    expect(await rolling.take(100)).toBeUndefined()
+    // A session that failed is not restarted: reporting `unavailable` forever beats pretending to sample.
+    expect(posts).toEqual(['Profiler.stop'])
+    expect(await rolling.take(100)).toBeUndefined()
+    rolling.stop()
+  })
+
+  it('drops a segment on rotate without reporting it', async () => {
+    const { posts, session } = fake([profile(5)])
+    const rolling = createRollingStackProfile({ openSession: () => session })
+    if (!rolling) throw new Error('expected a sampler')
+
+    rolling.rotate()
+    await settle()
+    expect(posts).toEqual(['Profiler.stop', 'Profiler.start'])
+    rolling.stop()
+    await settle()
+    expect(posts).toEqual(['Profiler.stop', 'Profiler.start', 'Profiler.stop'])
+  })
+
+  it('is undefined when the runtime has no inspector, which is a state the record can name', () => {
+    expect(createRollingStackProfile({ openSession: () => undefined })).toBeUndefined()
+  })
 })

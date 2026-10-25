@@ -11924,3 +11924,96 @@ watchdog 报过 `process-not-scheduled` 的 213,464 / 1,062,947 / 876,685 / 635,
    把「什么按住事件循环 20 s」列成独立单元 —— 首要是让**第一段**stall 也有栈（当前 `arm()` 在事后，
    长段永远无栈），这是量仪还缺的一件；③ 桌面会话线那四个发版文件仍不碰。
 
+
+## 两百二十九、本轮追加（执行器，2026-10-25 08:2x–11:0x）—— 一次突发里**最长的那段停顿**终于有栈：把「事后才开采样」换成常开 + 有界轮转，先量了代价才选 cadence
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD = origin/main = 48b6f8c4`、`git status` **干净**（桌面会话线 v2.17.7 已发、已收尾）。先把上一轮留下的
+  两笔在制收口：`f58c2e49`（egress 那条 2 秒预算）与本轮补的 `41e6388c`（探测答案库写盘先排空再删根目录）；
+  **推前现查在飞车道**：`Nightly|48b6f8c4` failure、`Windows|48b6f8c4` success、`Release|b433207a` success
+  ⇒ 那次推送**没有取消任何人的判决**。
+- 本单元取自 §两百二十八 §五 ② 自己具名立案的那一条（「首要是让**第一段** stall 也有栈」）。B 段（A7 ✅ / S3 ✅ /
+  M2 ⛔ 卡产品决定）仍耗尽；工作面 `src/main/diagnostics/**` 与桌面会话线（`acp/**`、`agent-framework/**`）不相交。
+- **上一轮点名的三件收尾都做了**：隔离实例 pid 1180 已不在、9333 无监听、`git worktree remove /tmp/ps-held` 成功、
+  `/tmp/ps-held*` 已删（`ls -d /tmp/ps-held*` 空）。
+
+### 一 先量代价，再选 cadence（这一步否决了原来的想法）
+
+同一台 8 核机、同一个 CPU 密集循环（约 1.2 s/次）、六轮 A/B/A/B 交替：
+
+| cadence | 中位 | 相对自身基线 | 判读 |
+|---|---|---|---|
+| 不开 profiler | 1214 ms | 0 | 六次落在 806–1287 ms ⇒ **本机噪声约 ±25 %** |
+| **1 ms** | 1434 ms | **+18.10 %** | 另一轮独立测量 **+22.60 %**（基线 2227 ms）⇒ 两轮都在噪声之上 |
+| 20 ms | 1022 ms | −15.86 % | 在噪声内 |
+| **50 ms（采用）** | 1190 ms | −1.99 % | 在噪声内 |
+| 100 ms | 1371 ms | +12.89 % | 在噪声内 |
+
+机器状态照实记（`load1` 11.9–13.5、swap 6.78/7.17 GB 已用）⇒ 粗档的正确读法是「**低于本机噪声下界**」，
+**不是「0 代价」**。1 ms 常开因此在两轮里都被否决，采用 50 ms。
+
+机制的另两条自证：① 一条 inspector 会话能反复 stop/start（一次会话服务了 4 段录制）——有界轮转的前提；
+② 50 ms cadence 仍能点名阻塞函数（1.1 s 忙等 → 17–20 个样本全落在它上面），同时也记到一条诚实限制：
+TurboFan 内联之后那几段报成 `(anonymous) (…:0)`。
+
+### 二 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/stall-stack-profile.ts`（新） | `summarizeProfile` 与帧过滤规则搬到这里；新增 `createRollingStackProfile`：常开录制、`take(stalledForMs)` 取尾段并**立刻重开一段**、`rotate()` 丢弃旧段、`stop()` 关会话；inspector 调用串行化（start 不能与 stop 交错）、读失败一律 `undefined` 且不再重开 |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 删掉「事后 arm 的 15 s 采样窗」（`arm/disarm`、`createSampler`、`profileWindowMs`）与 `no-second-stall` 状态；改为**每一段 stall 都从已经在录的 profile 取栈**（单一上报路径，`host` 窗口语义不变，改名 `hostWindowMs`）；轮转**只在 loop 自己的 tick 上做**，且 `take()` 会重置下一个轮转点 ⇒ 轮转不可能与「取栈」在同一 tick 相撞、把正要读的样本丢掉 |
+| `src/main/diagnostics/event-loop-stall-watchdog.test.ts` | 9 处增 `createPresampler` 接缝；新增/重写 6 条：第一段就有栈、take 重置轮转、轮转只在 tick 上、slack 随 cadence 变宽、滚动采样器四个行为（反复取段、读失败、rotate 丢弃、无 inspector）；**真时钟那条改成断言「本次运行的第一段也有栈」** |
+| `docs/evidence/2026-10-25-stall-first-stack.md`（新） | 代价表 + 真机读数 + 四条边界 |
+
+### 三 真机读数（Electron 自己的运行时，不是系统 Node）
+
+用 esbuild 把 watchdog（含新模块）打成单文件，`ELECTRON_RUN_AS_NODE=1 electron` 跑 —— **Node 24.21.0 /
+Electron 43.7.5 / V8 15.0.245.31-electron.0**，真 inspector + 真 host 线程 + 真忙等：
+
+```
+[record 1] windowMs=1603 lateMs=1503 cpuShare=0.371 attribution=cpu-bound-in-process
+  stack={ status:"profiled", mainThreadMs:1658, unobservedMs:0,
+          frames:[{"blockLoop (tmp/ps-stall-probe.cjs:14)",21},{"main (…:23)",1}] }
+  host={ status:"window-armed" }
+[record 2] windowMs=1101 stack={status:"profiled", frames:[…16]} host={status:"sampled", continuity:"kept-sampling"}
+SUMMARY every-record-profiled=true
+```
+
+**第一段就是这次运行的第一段，它有栈，点出来的正是那个忙等函数。**
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/diagnostics` 整域 | **16 files / 91 passed**，exit 0 |
+| 变异复核 | 把「从录制的 profile 取栈」换回常量 `undefined` ⇒ **恰 4 红**（含真机那条，2.4 s），还原后 `shasum` **逐字相同**，再跑 91 passed |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **EXIT 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **EXIT 0** |
+| `eslint --no-cache src/main/diagnostics/` | **0 problems** |
+| `prettier --check`（本笔 5 个文件） | 全部通过 |
+| 全量 `vitest run --maxWorkers=4` | **1393 passed \| 17 skipped（1410 文件）**；**17,648 passed \| 210 skipped（17,858）**；**exit 0** |
+
+### 五 顺手修掉一条 Windows 车道的红（不是本单元，但不许累积）
+
+`41e6388c` 的 `Windows Full Test` 红在 shard 7 的 `skill-compatibility-cache.test.ts > re-hashes when a SKILL.md
+changes even though its size is unchanged`：`expected 'sha256:240c2df9…' not to be 'sha256:240c2df9…'`
+（同一次运行的另外 2,978 条全过、六条 shard 全绿）。归因：新鲜度键是 `size:mtimeMs`，而夹具**建文件与改写落在
+同一毫秒** ⇒ 两次签名相同、命中 memo。**没有产品缺陷被证明**（随包技能在运行期不变；真正会变的是重装/重建，
+mtime 差在秒级）。修法是让这条用例不再依赖时间戳分辨率（改写后显式 `utimes` 到 1 s 后），**并补一条更强的**：
+清掉 memo 后同一份改写必须改变哈希本身 —— 证明「字节进了哈希，不只是 stat」。
+
+### 六 边界（不许读成更强）与下一轮第一步
+
+1. 本单元证明的是「第一段 stall 也能被点名」，**不是**「10-23 那 20 秒是谁按住的」；真机这次的阻塞是探针自己造的。
+2. `mainThreadMs` 可以**略超** `windowMs`（1658 > 1603）：窗口按 `stall + max(50 ms, cadence)` 取，会把紧邻停顿
+   之前的一两个样本算进来；比值仍夹在 [0,1]。
+3. 只在 **Electron 的 Node 运行时**里取到读数，没起带窗实例；产品主进程里那一行要等下一次真机 stall。
+4. `host` 的第一段仍是 `window-armed`（host 采样线程还是事后才起）——**同族的下一件**，本单元没动它。
+5. 上一轮 §两百二十八 §五 2 里那句「第一段永远无栈」**已被本单元取代**：现在第一段有栈，`no-second-stall` 状态
+   已从类型里删除。
+
+**下一轮第一步**：① 按完整 40 位 SHA 读本笔的 Nightly + Windows 双车道；② 取 `host` 那一半：把
+`host-stall-sampler` 的 worker 改成**环形缓冲 + `read` 消息**（现在 `stop()` 是单次、flush 完就 terminate），
+让第一段 stall 的「机器在停顿里看到了什么」也不缺；③ 若桌面会话线起了新版本窗口，顺手在真机日志里
+确认 `event loop stalled` 行带 `stack.status: profiled`。

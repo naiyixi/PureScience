@@ -49,7 +49,7 @@ describe('stall watchdog to slow-handler line (default wiring)', () => {
       now: time.now,
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
-      createSampler: () => undefined,
+      createPresampler: () => undefined,
       createHostSampler: quietHostSampler
     })
 
