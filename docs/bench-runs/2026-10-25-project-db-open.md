@@ -54,6 +54,20 @@ asar 里能 grep 到 `SchemaStamp` / `ddlFingerprint` 且 `user_version` 已不�
 
 **第一次启动会比以前慢约 100 ms**（多一张表 + 一次写戳），第二次起比原来快 **约 200 ms**。
 
+## 发布件（v2.18.0 的 DMG）也装过一遍
+
+DMG 下载完成后（GitHub CDN 在本机只有 ~20 KB/s，四轮断点续传才拉全 284,219,199 字节），做了三件事：
+
+1. **字节校验**：`shasum -a 256` = `1299d1460f17e32ad281574dbcf5b01e91e471d56528cb4c8145e43de4b30b43`，
+   与 Release 页 `SHA256SUMS.txt` 里那行**逐字符一致**；
+2. **内容核对**：`CFBundleShortVersionString = 2.18.0`；asar 里 `/api/v1/agent-card` 与 `trajectory/` 在，
+   **`SchemaStamp` 不在** —— 发布件确实早于这次快路径；
+3. **装机读日志**：`open-project-db = 406 ms`（`compose runtime steps` 合计 497 ms），即**修复前**的形状。
+
+随后把含快路径的本地构建装回（同一版本号 2.18.0，asar 里 `SchemaStamp` 已存在），机器保持在修复后的状态。
+
+**所以这一版的收益不在 v2.18.0 里**：同一台机器、同一个库，发布件 406 ms vs 修复版 126 ms。
+
 ## 做不到 / 没做
 
 - 剩下的 38 ms 里含引擎首次查询与 WAL 打开，不是这套 DDL 序列，没有继续压；
