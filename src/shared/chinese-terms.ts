@@ -478,6 +478,25 @@ const METHODS: readonly ChineseTermEntry[] = [
 //
 // Replayed from that note by the desktop session after a concurrent stand-down rolled this batch out of
 // the shared tree; the rows, descriptors and the three variants are the note's, unaltered.
+// Proteins: the gap a 40-term Chinese glossary measured (docs/bench-runs/2026-10-25-zh-alias-retrieval.md) —
+// 9 of the 10 terms that had to be REFUSED carried a protein name, so a question about a protein could not
+// be asked at all while disease/drug/gene questions could. Kept under `topic` (what a question is ABOUT),
+// the same kind as apoptosis/autophagy, because that is the role a protein plays in these queries.
+const PROTEINS: readonly ChineseTermEntry[] = [
+  meshEntry('p53蛋白', 'topic', 'tumor suppressor protein p53', 'D016159', ['p53 蛋白']),
+  meshEntry('血管内皮生长因子', 'topic', 'vascular endothelial growth factor a', 'D042461'),
+  meshEntry('肿瘤坏死因子', 'topic', 'tumor necrosis factor-alpha', 'D014409', ['肿瘤坏死因子α']),
+  meshEntry('白细胞介素6', 'topic', 'interleukin-6', 'D015850', ['白细胞介素-6']),
+  meshEntry('白细胞介素', 'topic', 'interleukins', 'D007378'),
+  meshEntry('C反应蛋白', 'topic', 'c-reactive protein', 'D002097', ['C 反应蛋白']),
+  meshEntry('淀粉样蛋白', 'topic', 'amyloid', 'D000682'),
+  meshEntry('血红蛋白', 'topic', 'hemoglobins', 'D006454'),
+  meshEntry('肌钙蛋白', 'topic', 'troponin', 'D014336'),
+  meshEntry('降钙素原', 'topic', 'procalcitonin', 'D000077740'),
+  // A drug CLASS rather than one drug: `他汀` is how a Chinese question names statins as a group.
+  entry('他汀类药物', 'drug', 'statins', ['他汀'])
+]
+
 const TOPICS: readonly ChineseTermEntry[] = [
   meshEntry('细胞凋亡', 'topic', 'apoptosis', 'D017209', ['凋亡']),
   meshEntry('自噬', 'topic', 'autophagy', 'D001343'),
@@ -559,6 +578,7 @@ export const CHINESE_TERMS: readonly ChineseTableEntry[] = Object.freeze([
   ...JOURNALS,
   ...METHODS,
   ...PROCEDURES,
+  ...PROTEINS,
   ...TOPICS,
   ...CONNECTIVES
 ])

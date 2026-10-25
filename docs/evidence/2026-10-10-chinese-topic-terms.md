@@ -72,6 +72,16 @@ GET https://id.nlm.nih.gov/mesh/lookup/descriptor?label=<english>&match=exact&li
 | 糖基化            | glycosylation                     | mesh:D006031    |
 | 微小RNA           | microRNAs                         | mesh:D035683    |
 | 长链非编码RNA     | RNA, long noncoding               | mesh:D062085    |
+| p53蛋白 | tumor suppressor protein p53 | mesh:D016159 |
+| 血管内皮生长因子 | vascular endothelial growth factor a | mesh:D042461 |
+| 肿瘤坏死因子 | tumor necrosis factor-alpha | mesh:D014409 |
+| 白细胞介素6 | interleukin-6 | mesh:D015850 |
+| 白细胞介素 | interleukins | mesh:D007378 |
+| C反应蛋白 | c-reactive protein | mesh:D002097 |
+| 淀粉样蛋白 | amyloid | mesh:D000682 |
+| 血红蛋白 | hemoglobins | mesh:D006454 |
+| 肌钙蛋白 | troponin | mesh:D014336 |
+| 降钙素原 | procalcitonin | mesh:D000077740 |
 
 表的行数与本档的行数由读源测试**双向**钉住（`documented.size === topics.length` + 逐行比对
 `english`/`source`）：任一边漂了、或两边一起改了其中一个字段，测试都红。
