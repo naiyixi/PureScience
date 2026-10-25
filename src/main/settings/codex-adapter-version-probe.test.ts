@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { createCodexAdapterVersionProbe } from './agent-runtime-manager'
+import type { ExecutableIdentity } from './version-probe-cache'
 
 // `probe-codex` was the last uncached spawn on the startup critical path: every launch paid the
 // managed adapter's own `--version` (measured 585 ms), for an answer that cannot change unless that
 // file changes. These assertions pin the caching contract onto the wiring, not onto the generic
 // helper (version-probe-cache.test.ts already covers the helper's own rules).
 
-const pinnedIdentity = (): ReturnType<typeof vi.fn> =>
-  vi.fn(async () => ({ kind: 'present' as const, identity: 'mtime:size' }))
+const pinnedIdentity = (): ((executablePath: string) => Promise<ExecutableIdentity>) =>
+  vi.fn<(executablePath: string) => Promise<ExecutableIdentity>>(async () => ({
+    kind: 'present' as const,
+    identity: 'mtime:size'
+  }))
 
 describe('createCodexAdapterVersionProbe', () => {
   it('answers a repeat probe from memory instead of spawning again', async () => {
