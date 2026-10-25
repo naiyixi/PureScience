@@ -104,13 +104,16 @@ describe('probeMcpServerReadiness', () => {
   })
 
   it('reports a child that never answers as timeout, with the stderr tail as the reason', async () => {
+    // The listener is attached *after* `spawnImpl` returns, so the stderr must arrive on a later tick
+    // (a synchronous emit is lost), while the budget has to be generous enough that a loaded suite cannot
+    // expire it first — at 25 ms this case failed once in a 258-file run with `no answer within budget`.
     const spawnImpl = fakeSpawn((child) => {
       child.stderr.emit('data', Buffer.from('Cannot find module ./gone.js'))
     })
 
     const sample = await probeMcpServerReadiness(server('purescience_figure'), {
       spawnImpl: spawnImpl as never,
-      timeoutMs: 25
+      timeoutMs: 400
     })
 
     expect(sample.status).toBe('timeout')

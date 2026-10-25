@@ -359,6 +359,15 @@ export type PersistedChatSession = {
   // Last known context-window usage. A live attached runtime replaces or clears this snapshot; a
   // detached restored Session keeps it so the indicator survives an app restart.
   contextUsage?: AcpContextUsage
+  /**
+   * The app-owned MCP servers this session was actually handed at creation (canonical names).
+   *
+   * Written once, when the session is created: it is the only durable record of "what did this
+   * conversation have access to", which a support request or a trajectory bundle has to answer. A
+   * session created before this was recorded omits it — absent means NOT RECORDED, never "no
+   * capabilities", and consumers must keep those two apart.
+   */
+  sessionCapabilities?: SessionCapabilityProjection
   runtimeContext?: SessionRuntimeContext
   // Read-only UI history for branch-specific Plan discovery and exact-version previews. Main-owned
   // execution authority remains exclusively in runtimeContext.plan.
@@ -599,6 +608,37 @@ const sanitizeSessionPlanRuntimeContext = (
     approval,
     stepStatuses
   }
+}
+
+export type SessionCapabilityProjection = {
+  /** Canonical app-owned MCP server names, deduped, in the order the session registered them. */
+  servers: string[]
+}
+
+const MAX_SESSION_CAPABILITY_SERVERS = 64
+const MAX_SESSION_CAPABILITY_NAME_LENGTH = 128
+
+/**
+ * Re-validates the durable projection on load. Names only: a capability descriptor carries policy and
+ * tools that belong to the runtime, and copying those into a session file would create a second,
+ * stale copy of them.
+ */
+export const sanitizeSessionCapabilityProjection = (
+  value: unknown
+): SessionCapabilityProjection | undefined => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const raw = (value as { servers?: unknown }).servers
+  if (!Array.isArray(raw)) return undefined
+  const servers: string[] = []
+  for (const entry of raw) {
+    if (typeof entry !== 'string') continue
+    const name = entry.trim()
+    if (name.length === 0 || name.length > MAX_SESSION_CAPABILITY_NAME_LENGTH) continue
+    if (servers.includes(name)) continue
+    servers.push(name)
+    if (servers.length >= MAX_SESSION_CAPABILITY_SERVERS) break
+  }
+  return servers.length > 0 ? { servers } : undefined
 }
 
 export const sanitizeSessionRuntimeContext = (
@@ -1744,6 +1784,8 @@ const sanitizeSession = (
   if (specialistId) sanitized.specialistId = specialistId
   const contextUsage = sanitizeAcpContextUsage(session.contextUsage)
   if (contextUsage) sanitized.contextUsage = contextUsage
+  const sessionCapabilities = sanitizeSessionCapabilityProjection(session.sessionCapabilities)
+  if (sessionCapabilities) sanitized.sessionCapabilities = sessionCapabilities
   const runtimeContext = sanitizeSessionRuntimeContext(session.runtimeContext)
   if (runtimeContext) sanitized.runtimeContext = runtimeContext
   const planHistoryProjections = sanitizePlanHistoryProjections(session.planHistoryProjections)

@@ -59,6 +59,8 @@ type TaskAgentSession = {
   frameworkId?: AgentFrameworkId
   backendId?: string
   contextReset?: boolean
+  /** Canonical app-owned MCP servers the session was handed; absent when the runtime did not report it. */
+  capabilities?: { servers: string[] }
 }
 
 type TaskAgentCreateSessionRequest = {
@@ -493,6 +495,8 @@ class TaskRunner {
           permissionProfile,
           agentFrameworkId: sessionInfo.frameworkId,
           agentBackendId: sessionInfo.backendId,
+          // Recorded once, at creation: the only durable answer to「这个会话当时挂了哪些服务」。
+          ...(sessionInfo.capabilities ? { sessionCapabilities: sessionInfo.capabilities } : {}),
           messages: [userMessage],
           activeRun: { promptMessageId: userMessageId, startedAt: now },
           createdAt: now,

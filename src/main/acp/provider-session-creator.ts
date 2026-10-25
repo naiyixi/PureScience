@@ -86,6 +86,7 @@ export class AcpProviderSessionCreator {
 
   async create(request: AcpCreateSessionRequest = {}): Promise<AcpCreateSessionResponse> {
     let capability: SessionCapabilityProvision | undefined
+    let capabilityServers: string[] = []
     let provisionalSession: ActiveSession | undefined
     let reservation: ReturnType<AcpSessionRegistry['reserve']>['reservation']
     try {
@@ -213,6 +214,9 @@ export class AcpProviderSessionCreator {
         aggregate.setSpecialistPrefix(specialist.prefix || undefined)
         aggregate.setSpecialistId(request.specialistId)
         provisionedCapability.commit(session.sessionId)
+        // What this session was actually handed, captured before the provisional is released: it is the
+        // only place that knows, and the durable session document is written eight layers away.
+        capabilityServers = [...provisionedCapability.descriptor.canonicalMcpServerNames]
         provisionalSession = undefined
         identityReservation.release()
         reservation = undefined
@@ -226,7 +230,8 @@ export class AcpProviderSessionCreator {
         sessionId: session.sessionId,
         cwd,
         frameworkId: backend.framework.id,
-        ...(backend.backendId ? { backendId: backend.backendId } : {})
+        ...(backend.backendId ? { backendId: backend.backendId } : {}),
+        ...(capabilityServers.length > 0 ? { capabilities: { servers: capabilityServers } } : {})
       }
     } catch (caught) {
       let startupError = caught

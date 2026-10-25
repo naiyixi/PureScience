@@ -1414,3 +1414,61 @@ describe('message annotation persistence', () => {
     expect(restored?.messages[0].annotations).toBeUndefined()
   })
 })
+
+describe('session capability projection persistence', () => {
+  it('round-trips the servers a session was handed', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      sessionCapabilities: { servers: ['purescience_memory', 'purescience_plan'] }
+    })
+
+    expect(restored?.sessionCapabilities).toEqual({
+      servers: ['purescience_memory', 'purescience_plan']
+    })
+  })
+
+  it('keeps "not recorded" and "no capabilities" apart', () => {
+    // Absent on the way in must stay absent on the way out: a consumer that read this as an empty list
+    // would report "this session had no tools" for every older session.
+    const restored = normalizeSessionFile(createSessionWithActivity(undefined))
+
+    expect(restored?.sessionCapabilities).toBeUndefined()
+  })
+
+  it('drops names that are not usable and dedupes the rest', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      sessionCapabilities: {
+        servers: ['purescience_memory', '  ', 'purescience_memory', 42, 'purescience_plan']
+      }
+    })
+
+    expect(restored?.sessionCapabilities).toEqual({
+      servers: ['purescience_memory', 'purescience_plan']
+    })
+  })
+
+  it('drops the projection entirely when nothing usable is left', () => {
+    const restored = normalizeSessionFile({
+      ...createSessionWithActivity(undefined),
+      sessionCapabilities: { servers: ['', '   ', 7] }
+    })
+
+    expect(restored?.sessionCapabilities).toBeUndefined()
+  })
+
+  it('rejects a projection that is not shaped like one', () => {
+    expect(
+      normalizeSessionFile({
+        ...createSessionWithActivity(undefined),
+        sessionCapabilities: { servers: 'purescience_memory' }
+      })?.sessionCapabilities
+    ).toBeUndefined()
+    expect(
+      normalizeSessionFile({
+        ...createSessionWithActivity(undefined),
+        sessionCapabilities: ['purescience_memory']
+      })?.sessionCapabilities
+    ).toBeUndefined()
+  })
+})

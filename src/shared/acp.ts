@@ -651,6 +651,11 @@ export type AcpCreateSessionResponse = {
   // same app id (framework switch, or a restart the agent could not resume). Agent-side context is gone,
   // so the caller may replay a transcript preamble into the next prompt to restore continuity.
   contextReset?: boolean
+  /**
+   * Canonical app-owned MCP server names this session was handed. Absent when the framework was given no
+   * capability servers, or the observation was not available — consumers must keep those apart.
+   */
+  capabilities?: { servers: string[] }
 }
 
 export type AcpResumeSessionRequest = {

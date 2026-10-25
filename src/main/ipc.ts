@@ -2596,6 +2596,12 @@ const createApplicationModules = async (
       // Artifact locators from the session document itself (message-level `artifactIds`). No second
       // repository, no projectName, no checksum we cannot read.
       const artifacts = extractArtifacts(newest)
+      // Recorded at creation (see PersistedChatSession.sessionCapabilities). Absent means the session
+      // predates that record, which is a different answer from "it had no capabilities" — the bundle
+      // says which one it is via manifest.sections.
+      const capabilities = newest.sessionCapabilities
+        ? { servers: [...newest.sessionCapabilities.servers] }
+        : undefined
       return {
         productVersion: app.getVersion(),
         sessionId: newest.id,
@@ -2604,6 +2610,7 @@ const createApplicationModules = async (
         // activities 时这一段整段不写，而不是写一个空文件冒充「这轮没调工具」。
         ...(calls.length > 0 ? { toolCalls: calls } : {}),
         ...(artifacts.length > 0 ? { artifacts } : {}),
+        ...(capabilities ? { capabilities } : {}),
         needles: [homedir(), basename(homedir())].filter((needle) => needle.length > 2)
       }
     } catch {
