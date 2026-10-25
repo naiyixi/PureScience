@@ -12508,3 +12508,72 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 2. 队列 B 段复核仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 自拟单元。候选（上一轮已具名、仍敞着）：
    把 **host 时间线并进 support bundle**（与 `1b46939a` 的 bundle 改动不相交的字段位）、CPU 归属铺到剩下 10 处只报墙钟的慢行。
 3. **仍等点头的一条（不变）**：用户常驻 dev 实例是旧代码，要取「真机日志里出现 `stack.samples`」必须重启它、会打断正在用的界面。
+
+## 二百三十六、本轮追加（执行器，2026-10-26 07:1x–）—— 轨迹包在**真窗口**里导出一次，按归档回读核对（补齐交接档那条「未做」）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 承接上一笔 `fab900f1`（§二百三十五）之后的**同一轮**：队列 B 段复核仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定），
+  按轮次约定取自拟单元。取的是 `docs/handoff-2026-10-25-next-session.md` §4 里**具名未做**的那条
+  「轨迹包实物导出 —— 需要窗口交互（support bundle 走 save dialog，屏幕锁屏时无法操作）」。
+- **先核缺口还在不在**（免得重做）：`e2e/support-bundle.spec.ts` 确实回读了归档（entries + stalls + 泄漏扫描），
+  但它的 `arrayContaining` 里**没有 `trajectory/`**，也不读 `manifest.sections` 与 `checksums.sha256`；
+  `e2e/certification/support-bundle-export-readback.spec.ts`（IC37）只断言面板报的**字节数与脱敏计数**。
+  ⇒ 轨迹段只有**单测**，没有一次「真窗口导出 → 读回包」的读数。缺口成立。
+- **交接档那条的阻塞理由已被证伪**：`app.stubSaveDialog(path)` 就是夹具给的那个缝（IC37 用的同一条），
+  下游全是产品自己的代码 ⇒ 不需要人点原生对话框，锁屏也能跑。
+
+### 一 交付：新认证 spec `e2e/certification/support-bundle-trajectory-readback.spec.ts`
+
+真窗口：建项目 → 两轮 prompt（第二轮用夹具的建产物提示）→ 设置里点「Export support bundle」→ 用 `tar` 回读应用**自己写出的**归档。
+
+五组断言，每组都只能由真产物回答：
+
+| # | 断言 | 为什么非要真产物 |
+| --- | --- | --- |
+| 1 | `trajectory/manifest.json` 的 `sessionId` **等于本测试刚建的那个会话**（按 id 集合差集认领，不按标题猜）| 导出路径选的是「最近更新的会话」，单测喂的是自己造的 input |
+| 2 | `manifest.sections` 与盘上文件**双向一致**：`included*` ⇒ 文件必须在，`absent:*` ⇒ 文件必须不在 | 具名状态存在的理由就是防「说到没做到」，而只有真包能查 |
+| 3 | `counts.messages` / `counts.artifacts` 与**窗口桥**读到的会话文档逐数相等（`artifactIds` 按抽取器的同一口径去重计数）| 跨侧一致：manifest 自述的数要对得上渲染层看到的那份 |
+| 4 | `checksums.sha256` 的每一行在这里用 `node:crypto` **独立复算**，且清单集合恰等于 `trajectory/` 里除自己以外的全部文件 | 调模块自己的助手只证明它等于自己 |
+| 5 | `trajectory/**` 六件都不含家路径、用户名、`sk-…` / `enc:v1:` / PEM 私钥形状 | 包是要离开设备的 |
+
+### 二 读数（本机实跑，`build:e2e` 后单跑）
+
+```
+[trajectory-readback] the seeded session: e2e-session-1 (4 messages, title "Summarise the docking run.")
+[trajectory-readback] the archive carries 14 files
+[trajectory-readback] trajectory/: artifacts.json, checksums.sha256, manifest.json, session.json
+[trajectory-readback] sections: {"session":"included","toolCalls":"absent:not-collected","artifacts":"included","capabilities":"absent:not-persisted"} counts: {"messages":4,"messagesWithProviderUsage":0,"toolCalls":0,"artifacts":1}
+[trajectory-readback] 3 checksums recomputed, all matching
+✓ 1 passed (11.1s)
+```
+
+第一次跑就抓到一处**我的**判断错：标题不是项目名而是首条 prompt（`Summarise the docking run.`）⇒ 改成按 id 差集认领，
+不再依赖标题派生规则。另：加第二轮（建产物）之前 `artifacts` 段是 `absent:not-collected`，加之后变 `included` 且计数 1 ——
+**这一段的状态确实是跟着会话内容走的**，不是写死的。
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache`（本笔 1 文件） | `EXIT=0` |
+| `prettier --check` | 通过 |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | `EXIT=0` |
+| 真机单跑（`npm run build:e2e` → `playwright test <本 spec>`） | `1 passed (11.1s)` |
+
+### 四 边界（不许读成更强）
+
+1. **`toolCalls` 段在本车道里始终是 `absent:not-collected`**：夹具的 agent 在它自己的进程里调 MCP，
+   这些调用不进应用的 `session.activities` ⇒ 那一段在 e2e 车道里**没有真数据可采**（`counts.toolCalls: 0`）。
+   这是**真实状态**，不是本 spec 的缺陷；要让那一段有读数，需要一次真 agent 回合（要 token）⇒ 具名保留。
+2. `capabilities` 段 `absent:not-persisted`：本 spec 的会话由夹具建立（不经 `provider-session-creator`），
+   所以 `sessionCapabilities` 本来就没记 —— 同样是真实缺态，不是回归。
+3. 本笔**纯测试台 + 一份交接档更正**，不占补丁号、不发版。
+
+### 五 下一轮第一步
+
+1. 读本笔两条车道（完整 40 位 SHA）。注意：`fab900f1` 的 Nightly 会被**本笔推送**按 `cancel-in-progress` 顶掉
+   （`Windows Full Test` 已在 `fab900f1` 上 success），本笔的 Nightly 覆盖两笔（祖先成立）。
+2. 队列 B 段仍耗尽 ⇒ 自拟单元。仍敞着的具名候选：把 host 时间线并进 support bundle（`stall-record-ring` 之外的那半）、
+   CPU 归属铺到剩下 10 处只报墙钟的慢行。
+3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
