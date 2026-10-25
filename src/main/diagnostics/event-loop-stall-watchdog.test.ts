@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   startEventLoopStallWatchdog,
   type EventLoopStallRecord,
-  type StallFrame
+  type StallFrame,
+  type StallStack
 } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
 import { createLoopHeldWindows } from './loop-held-windows'
@@ -511,6 +512,19 @@ describe('reading a V8 profile', () => {
     expect(profile.frames[0]?.samples).toBe(4)
   })
 
+  // The shape a starved runner produced on Windows CI: the record came back `profiled` with zero frames and
+  // zero unobserved time, which is indistinguishable from "the loop was idle". A window nobody sampled has to
+  // say so, or the caller reads silence as evidence.
+  it('reports the whole window as unobserved when the sampler recorded no sample in it', () => {
+    const empty: V8Profile = { startTime: 1, nodes: [frame], samples: [], timeDeltas: [] }
+
+    const profile = summarizeProfile(empty, 500)
+    expect(profile.frames).toEqual([])
+    expect(profile.mainThreadMs).toBe(0)
+    // 500 ms stall + the 50 ms coalescing slack the window is widened by.
+    expect(profile.unobservedMs).toBe(550)
+  })
+
   // The coarse cadence means the last sample before the stall can be up to a whole interval early: the window
   // the summary looks at has to be widened by the cadence, or the first samples of a stall would be dropped.
   // Totals here: 200+200+50+50 = 500 ms of recording, so a 90 ms stall starts 410 ms in.
@@ -555,18 +569,28 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
       watchdog.stop()
     }
 
-    const profiled = warned.filter((entry) => entry.data.stack.status === 'profiled')
-    expect(profiled.length).toBeGreaterThan(0)
+    const profiledStacks = warned
+      .map((entry) => entry.data.stack)
+      .filter(
+        (stack): stack is Extract<StallStack, { status: 'profiled' }> => stack.status === 'profiled'
+      )
+    expect(profiledStacks.length).toBeGreaterThan(0)
     const firstStall = warned[0]?.data
     if (firstStall?.stack.status !== 'profiled') {
       throw new Error(
         `expected the first stall to carry a stack, got ${JSON.stringify(firstStall?.stack)}`
       )
     }
-    expect(firstStall.stack.frames.length).toBeGreaterThan(0)
+    // A profiled record either names a frame or says the sampling thread observed none of the window — the two
+    // zeros case is now impossible (see `summarizeProfile`), so this cannot pass by staying silent.
+    expect(firstStall.stack.frames.length > 0 || firstStall.stack.unobservedMs > 0).toBe(true)
+    // The point of the module still has to be proven in this run: some profiled record names the test's own
+    // busy-wait frame. Which block answers is not something this case can demand — on a Windows CI runner the
+    // V8 sampling thread was kept off the CPU for a whole 500 ms block, and demanding it of the *first* block
+    // turned a starved runner into a red lane.
     expect(
-      firstStall.stack.frames.some((frame) =>
-        frame.frame.includes('event-loop-stall-watchdog.test')
+      profiledStacks.some((stack) =>
+        stack.frames.some((frame) => frame.frame.includes('event-loop-stall-watchdog.test'))
       )
     ).toBe(true)
     expect(firstStall.attribution).toBe('cpu-bound-in-process')

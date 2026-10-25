@@ -12130,6 +12130,17 @@ preflight stays silent`）、`src/renderer/src/pages/workspace/session-plan/Sess
 修法按本仓既有写法（`version-probe-cache.test.ts` 用 `vi.fn<VersionProbe>(…)`）给该 mock 显式类型参数：修前 3 条 error、
 修后 **exit 0**。（该文件已由后续一笔 `b4614612` 独立修掉，本单元这一笔不再包含它。）
 
+### 七bis 收口时的一条 Windows 车道红（同族，一并修掉）
+
+推送 `56ffa9bd` 后会话线在其上推了 `f9abd3f9`，那条 `Windows Full Test` 红在分片 6/8：
+`event-loop-stall-watchdog.test.ts > names a function from a real profile…`，`expected 0 to be greater than 0`
+（`stack.frames.length`）。**同一棵树在 `1cfc84df` 的 Windows 车道是 success** ⇒ 间歇；本机 `--maxWorkers=1`
+连跑 4 遍全绿 ⇒ 形状是「V8 采样线程在那台 runner 上整段没被调度」。
+判据是记录本身：`profiled` + `frames: []` + `unobservedMs: 0` —— **两个零与「循环在空转」同形**（与 §五 同族的仪器说谎）。
+修法落在产品：`summarizeProfile` 在窗口内零样本时把整段窗口报成 `unobservedMs`（新增 1 条单测）；
+真机用例改成「要么点名帧、要么报 unobserved > 0」+「这次运行里**有**一条 profiled 记录点名测试自己的忙等帧」。
+读数：diagnostics 域 **16 files / 97 passed**、`tsc node` exit 0、eslint/prettier 0。详见证据档 §九。
+
 ### 八 下一轮第一步
 
 ① 按完整 40 位 SHA 读本笔的 Nightly + Windows 双车道（推前先看有没有在飞的车道，避免顶掉别人的判决）；

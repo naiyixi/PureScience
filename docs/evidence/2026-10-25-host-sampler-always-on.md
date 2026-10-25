@@ -111,7 +111,26 @@ RUN 3
 > 归属说明：该文件已由后续一笔 `b4614612`（会话线）独立修掉，**本单元这一笔不再包含它**；这里只记当时的读数，
 > 不当作本单元交付的一部分。
 
-## 八 边界（不许读成更强）
+## 九 收口时发现的一条 Windows 车道红（与上面同族，一并修掉）
+
+推送 `56ffa9bd` 之后、会话线在其上推了 `f9abd3f9`，那条的 `Windows Full Test` 红在分片 6/8：同一棵树上
+`event-loop-stall-watchdog.test.ts > names a function from a real profile, on the first block as well as the second`，
+报 `AssertionError: expected 0 to be greater than 0`（`stack.frames.length`）。**同一棵树在 `1cfc84df` 的
+Windows 车道是 success** ⇒ 间歇，不是恒定红；本机 `--maxWorkers=1` 连跑 4 遍也全绿，属于「采样线程在那台 runner 上
+整段没被调度」这一种形状。
+
+判据是记录本身：`profiled` + `frames: []` + `unobservedMs: 0` —— **两个零读起来与「循环在空转」完全同形**，
+这正是本仓最忌讳的那类仪器说谎（与 §五 同族）。所以修的是**产品**而不是只改断言：
+
+- `summarizeProfile`：窗口里**一个样本都没有**时，把整段窗口（停顿 + 合并余量）报成 `unobservedMs`，
+  不再让两个零声称「看过了、什么也没发生」（新增 1 条单测钉住）。
+- 真机那条用例：`profiled` 记录必须**要么点名帧、要么报 `unobservedMs > 0`**；同时保留「这次运行里**有**一条
+  profiled 记录点名了测试自己的忙等帧」（改成 `some`，不再要求恰好是第一段）。**收紧的地方**：以前两零能过，
+  现在不能过；**放宽的地方**只有一个受机器调度影响的量 —— 哪一段拿到采样。
+
+门禁：diagnostics 域 **16 files / 97 passed**、`tsc node` exit 0、`eslint` 与 `prettier` 0；该文件 `--maxWorkers=1` 连跑 3 遍 20 passed。
+
+## 十 边界（不许读成更强）
 
 1. 本单元证明的是「第一段 stall 也能拿到机器侧时间线」，**不**证明 10-23 那 20 秒是内存/换页造成的。
    真机冻结是探针自己用 `SIGSTOP` 造的，不是产品里发生过的。

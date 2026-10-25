@@ -76,11 +76,13 @@ export const summarizeProfile = (
   let mainThreadUs = 0
   let unobservedUs = 0
   let cumulativeUs = 0
+  let inWindowSamples = 0
   const unobservedFromUs = PROFILE_UNOBSERVED_DELTA_MS * 1000
   for (let index = 0; index < profile.samples.length; index += 1) {
     const deltaUs = profile.timeDeltas[index] ?? 0
     cumulativeUs += deltaUs
     if (cumulativeUs < fromUs) continue
+    inWindowSamples += 1
     // A gap wider than the sampler's plausible cadence is time nobody observed: the process was not running.
     // Report it as unobserved instead of crediting it to the main thread.
     if (deltaUs >= unobservedFromUs) {
@@ -93,6 +95,11 @@ export const summarizeProfile = (
     const label = frameLabel(frame.url, frame.functionName, frame.lineNumber)
     counts.set(label, (counts.get(label) ?? 0) + 1)
   }
+  // A window with no sample in it says nothing about the window — the V8 sampling thread never got to run.
+  // Measured on a Windows CI runner: a 500 ms block came back `profiled` with zero frames and zero unobserved
+  // time, which reads exactly like an idle loop. Say `unobserved` for the whole window instead of letting two
+  // zeros claim it was seen; the caller can then tell "nobody looked" from "we saw nothing happening".
+  if (inWindowSamples === 0) unobservedUs = (stalledForMs + slackMs) * 1000
   const frames = [...counts.entries()]
     .map(([frame, samples]) => ({ frame, samples }))
     .sort((left, right) => right.samples - left.samples)
