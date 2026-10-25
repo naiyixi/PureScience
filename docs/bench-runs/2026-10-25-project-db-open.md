@@ -40,6 +40,20 @@
 **快路径的语句数**（用例逐条数，不测毫秒）：冷启动 >50 条 → 温启动 **4 条**（两个 pragma + 戳读取 +
 `schema_version`）。新用例还钉住两条：指纹不符要重跑、外部改写要重跑。
 
+## 真机对照（打包版 2.18.0 + 本次改动，同一台机器、同一个 255 MB 库）
+
+| 启动 | `open-project-db` | `compose runtime steps` 合计 |
+|---|---|---|
+| 改动前（无快路径，每次启动都一样） | **330 ms** | 404 ms |
+| 改动后第一次（无 `SchemaStamp`，跑全序列并写戳） | 432 ms | 492 ms |
+| 改动后第二次（命中快路径） | **126 ms** | **185 ms** |
+
+平台：macOS 26（arm64），应用 `/Applications/PureScience.app`，`CFBundleShortVersionString = 2.18.0`，
+asar 里能 grep 到 `SchemaStamp` / `ddlFingerprint` 且 `user_version` 已不存在（先证明跑的是这棵树）。
+`compose step slow`（阈值行）在 126 ms 这次也不再出现——改前 330 ms 那次是出现的。
+
+**第一次启动会比以前慢约 100 ms**（多一张表 + 一次写戳），第二次起比原来快 **约 200 ms**。
+
 ## 做不到 / 没做
 
 - 剩下的 38 ms 里含引擎首次查询与 WAL 打开，不是这套 DDL 序列，没有继续压；
