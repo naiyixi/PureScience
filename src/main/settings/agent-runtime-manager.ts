@@ -22,6 +22,7 @@ import { isModelBridgeSupported } from '../../shared/provider-registry'
 import { CLAUDE_EXECUTABLE_MISSING_MESSAGE } from '../../shared/run-error-classification'
 import { skillIdsDisabledForTarget } from '../../shared/skill-availability'
 import { buildAgentSpawnEnv } from '../acp/agent-process'
+import { withVersionProbeCache } from './version-probe-cache'
 import { createLogger } from '../logger'
 import { createComposeStepRecorder, type ComposeStepLogger } from '../diagnostics/compose-steps'
 import {
@@ -148,6 +149,17 @@ const runCodexAdapterVersion = async (
     return undefined
   }
 }
+
+// Identity-keyed, same contract as every other version probe in this app: answered once per executable
+// fingerprint (mtime+size) and remembered across processes, failures never remembered. Without it this
+// one probe was the only uncached spawn left in the codex path — measured 585 ms on the startup critical
+// path (`probe-codex`), for an answer that cannot change unless the adapter file changes.
+export const createCodexAdapterVersionProbe = (
+  runAdapterVersion: (adapterPath: string) => Promise<string | undefined>,
+  // Injection seam for tests: the production call site uses the real file-identity source.
+  options?: Parameters<typeof withVersionProbeCache>[1]
+): ((adapterPath: string) => Promise<string | undefined>) =>
+  withVersionProbeCache(runAdapterVersion, options)
 
 const allocateLoopbackPort = async (): Promise<number> => {
   const server = createServer()
@@ -339,7 +351,9 @@ export class AgentRuntimeManager {
       homePath: baseOpencodeDetectDeps.homePath,
       platform: baseOpencodeDetectDeps.platform,
       isRunnable: baseOpencodeDetectDeps.isExecutable,
-      getAdapterVersion: (path) => runCodexAdapterVersion(path, baseOpencodeDetectDeps.getVersion),
+      getAdapterVersion: createCodexAdapterVersionProbe((path) =>
+        runCodexAdapterVersion(path, baseOpencodeDetectDeps.getVersion)
+      ),
       getCodexVersion: baseOpencodeDetectDeps.getVersion,
       smokeInitialize: runAcpInitializeSmoke(baseOpencodeDetectDeps.platform),
       resolveNpmBinDirs: baseOpencodeDetectDeps.resolveNpmBinDirs,
