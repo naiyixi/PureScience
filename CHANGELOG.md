@@ -1,5 +1,66 @@
 # PureScience 更新日记
 
+## v2.18.0 — 2026-10-25（钥匙串只在真要迁移时问 → 探针缓存化 → 会话能力可追溯）
+
+**成熟度自陈**：这一版有三类改动，成熟度不同，分开说清：**(1) 性能**——两处「每次启动都要付」的开销被去掉，
+读数来自真机；**(2) 可追溯性**——会话现在记下「当时挂了哪些能力」，support bundle 里带一份脱敏的轨迹包，
+并新增只读的 `/api/v1/agent-card`；**(3) 评测**——中文别名检索与成本矩阵从「计划」变成可复跑的读数。
+**没有一项**是「声称已完成但没有读数」：下文每个数字都能在 `docs/bench-runs/` 里找到对应文件。
+
+### 一、性能：两处「每次启动都付」的开销
+
+| 改动 | 前 | 后 |
+|---|---|---|
+| 没有待迁移 `keyRef` 就不再问钥匙串（`hasLegacyKeyRefs`） | `encryption-available` 实测 **10,311 / 16,758 / 56,769 / 635,082 ms**（四次启动），且每个读设置的路径各付一遍（`permission-grant-registry` 同窗口被拖 635,268 ms） | 文档自己回答「有没有 `plain:` 引用」；升级后第一次启动之外不再触碰秘密存储 |
+| codex 适配器版本探针走身份键控缓存 | 每次启动裸 spawn 一次 `--version`，实测 **989 / 384 / 332 / 300 ms** | 按 `mtime+size` 记忆、跨进程落盘、失败永不记忆、并发共享一次 spawn |
+
+两者都保留了失败语义：拿不到就重探（不缓存失败），安全网（`getStoredSettings` 内联迁移）没动。
+
+### 二、可追溯性：会话能力 / 轨迹包 / agent card
+
+- **会话能力投影**：会话建立时把 `descriptor.canonicalMcpServerNames` 记进 `sessionCapabilities`。
+  **缺席 ≠ 没有**：老会话没有这个字段，读侧保持缺席，不把它读成「当时没有工具」。
+- **轨迹包进 support bundle**：`trajectory/{manifest,session,tool-calls,artifacts,capabilities,checksums}`。
+  脱敏**复用** `support-bundle` 的 `scrubText`（不新造第二套词汇表），并在归档回读后由同一道闸复核；
+  一侧用例把各种形状的凭证种进会话，断言**包里一个都没有**，另一侧走 `scrub:false` 旁路，断言闸门**拒发**
+  且不留半成品归档。`manifest.sections` 具名每段状态（`included` / `absent:not-collected` /
+  `absent:not-persisted` / `included-without-content`）——「这轮没有」与「我们没采到」是两个答案。
+- **只读 `GET /api/v1/agent-card`**：真机读数 `capabilities(n) = 15`（与 `CURRENT_PRIMARY_CAPABILITIES`
+  逐项一致），无 token 返回 **401**；`interop.a2a` 恒为 **`unverified`**——没做过互通测试，这个字段就
+  只有一个合法值（机器可读的非声明，而不是注释）。
+
+### 三、评测：中文别名检索与成本矩阵（可复跑）
+
+- **中文词条**：补 11 条 protein-as-topic + 「他汀类药物」，40 条术语的改写覆盖率 **75% → 100%**；
+  英文侧逐条从 MeSH lookup 读出，`scripts/verify-mesh-sources.mjs` 反向核对 **110/110** 行与描述符一致。
+- **检索评测**（`PURESCIENCE_BENCH_ZH_ALIAS=1`）：口径从「总条数 > 0」升级为**真 top-5 命中**——
+  pubmed **30/40（75.0%）**、openalex **37/40（92.5%）**、arxiv **22/40（55.0%）**；只有一个源命中的术语
+  **8 条**；对照重测：肺癌直接发中文 pubmed **0** 条、arxiv **0** 条（英文分别 512,633 / 13,181）。
+- **成本矩阵**（`PURESCIENCE_BENCH_COST_MATRIX=1`）：只读聚合已有语料 **163 个会话 / 240 轮**，
+  按 framework × model 出 token 与墙钟 p50/p90。两条口径写进档：`turnUsage` 是**每轮聚合**（一轮含
+  7–97 次模型请求），cache 读取比 prompt 大两个量级是 provider 真实计费口径；最大一组 cache/prompt
+  **80.8×**。**不含金额**——单价没接进产品，写美元就是把猜测当读数。
+
+### 四、诊断（同一工作树里的另一条在制单元一并进来）
+
+- 支持包自带「事件循环停顿」摘要（机器可读环形记录，替代一次 grep）；
+- 停顿采样线程常开 + 有界环：第一段停顿也有栈；采样线程整段没被调度时记录不再用两个零冒充「循环在空转」。
+
+### 五、测试稳定性（都不是产品缺陷）
+
+`test(egress)` 等事件而不是轮询墙钟、`probe-answer-store` 的 `flush()` 等到写链不动（Nightly 的
+`ENOTEMPTY` 是它漏了一次）、停顿 watchdog 的 Windows 用例改用可注入 profile（原来那条在测 runner 的
+调度器，而不是 watchdog）、轨迹包拒发断言不再写死路径分隔符。
+
+### 明确没做 / 未验证
+
+- **模型驱动的工具调用未验**：v2.17.7 起的 HTTP 工具面只证明到传输层与宿主侧（真 server → RPC 网关的信封
+  已被用例钉住），「模型自己决定去调」这一段需要一次真实模型调用，本轮没有跑。
+- **轨迹包实物未导出**：support bundle 里那六件只在测试与 dev 实例里验过；从 App 界面导出一次需要窗口交互。
+- **agent card 的互通未验**：`interop.a2a` 仍是 `unverified`，且**没有**外部 A2A 实现的互通测试。
+- **会话能力只对新会话记录**：老会话的 `capabilities.json` 继续是 `absent:not-persisted`（这是设计，不是缺口）。
+- F（机检③ 自 1/4 起）、v2.18 §2 的 usage↔日志对账、金额列仍未做。
+
 ## v2.17.7 — 2026-10-25（会话不再为 MCP 起子进程：14 个能力改走 HTTP）
 
 **成熟度自陈**：这一版只做了一件事——把每个会话为 14 个能力起的 14 个 Electron-as-node 子进程
