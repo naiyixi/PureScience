@@ -14,18 +14,18 @@
 
 ## 2. 本轮已落地（全部有提交号，可逐笔查）
 
-| 主题 | 提交 | 关键点 |
-|---|---|---|
-| 逐服务 MCP 就绪探针 | `987811e2` | 默认关闭（`PURESCIENCE_MCP_READINESS_PROBE=1`）；serial + burst 两遍；读数在 `docs/bench-runs/2026-10-25-mcp-readiness-per-server.md` |
-| 传输选择判定 | `83c748cb` | `resolveMcpTransport()`；`acceptsHttpMcp?` 未声明=旧规则 |
-| 14 能力全走 HTTP | `6121beec` | 十类接进 `AgentMcpHttpHost`；`count: 14` 真机读数 |
-| 中文别名检索评测 | `f87dacc8` | env-gated 脚本 + 40 条术语；**75% → 100%**（补 11 条蛋白/他汀词条 `9b5727e4`） |
-| 探针缓存化（B 尾巴） | `11e9e18f` | codex 适配器版本探针套身份键控缓存（每次启动省 300–990 ms） |
-| 钥匙串（C 尾巴） | `3b1698e5` + `195bb941` | 没有待迁移 `keyRef` 就不再问钥匙串（`hasLegacyKeyRefs`） |
-| 轨迹包（v2.19 §2） | `1b46939a` `1cfc84df` `e20c6d64` `f9abd3f9` `c24dd773` | 六段（manifest/session/tool-calls/artifacts/capabilities/checksums），脱敏复用 support-bundle 的 `scrubText`，`manifest.sections` 具名缺席原因 |
-| 会话能力投影 | `c24dd773` | `sessionCapabilities`：建立时记 `descriptor.canonicalMcpServerNames`，缺席 ≠ 没有 |
-| agent card 只读端点 | `9c51fb88` | `GET /api/v1/agent-card`，真机读数在计划档 §7.2；`interop.a2a` 恒为 `unverified` |
-| 归档级验收 | `19bf1afb` | 轨迹段 ENOENT 修复 + 「scrub 旁路仍被拒发」用例 |
+| 主题                 | 提交                                                   | 关键点                                                                                                                                         |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 逐服务 MCP 就绪探针  | `987811e2`                                             | 默认关闭（`PURESCIENCE_MCP_READINESS_PROBE=1`）；serial + burst 两遍；读数在 `docs/bench-runs/2026-10-25-mcp-readiness-per-server.md`          |
+| 传输选择判定         | `83c748cb`                                             | `resolveMcpTransport()`；`acceptsHttpMcp?` 未声明=旧规则                                                                                       |
+| 14 能力全走 HTTP     | `6121beec`                                             | 十类接进 `AgentMcpHttpHost`；`count: 14` 真机读数                                                                                              |
+| 中文别名检索评测     | `f87dacc8`                                             | env-gated 脚本 + 40 条术语；**75% → 100%**（补 11 条蛋白/他汀词条 `9b5727e4`）                                                                 |
+| 探针缓存化（B 尾巴） | `11e9e18f`                                             | codex 适配器版本探针套身份键控缓存（每次启动省 300–990 ms）                                                                                    |
+| 钥匙串（C 尾巴）     | `3b1698e5` + `195bb941`                                | 没有待迁移 `keyRef` 就不再问钥匙串（`hasLegacyKeyRefs`）                                                                                       |
+| 轨迹包（v2.19 §2）   | `1b46939a` `1cfc84df` `e20c6d64` `f9abd3f9` `c24dd773` | 六段（manifest/session/tool-calls/artifacts/capabilities/checksums），脱敏复用 support-bundle 的 `scrubText`，`manifest.sections` 具名缺席原因 |
+| 会话能力投影         | `c24dd773`                                             | `sessionCapabilities`：建立时记 `descriptor.canonicalMcpServerNames`，缺席 ≠ 没有                                                              |
+| agent card 只读端点  | `9c51fb88`                                             | `GET /api/v1/agent-card`，真机读数在计划档 §7.2；`interop.a2a` 恒为 `unverified`                                                               |
+| 归档级验收           | `19bf1afb`                                             | 轨迹段 ENOENT 修复 + 「scrub 旁路仍被拒发」用例                                                                                                |
 
 本地全量：`src/main src/shared src/preload` **939 文件 / 12,679 例全绿**（排除 integration 与 net-fetch，按仓里配方）。
 
@@ -40,15 +40,15 @@
 
 ## 4. 未完成项（每条带 blocked-by 与解封条件）
 
-| 项 | 状态 | blocked-by | 解封后第一步 |
-|---|---|---|---|
-| **Windows 车道红**（`diagnostics/event-loop-stall-watchdog.test.ts`「第一段停顿也有栈」） | 在多个 SHA 上重复，本机 2/2 复现不出（CI 时序） | 归属 cron 执行器的在制单元（`676340c5`）；同一文件上活跃迭代，改了必撞 | 由所有者把采样器时钟/调度做成**可注入固定序列**（不是加大超时）；接手前先确认对方已停手 |
-| **Release 前置** | 被上一条挡住 | 同上 | Windows 绿后才可发下一版 |
-| 轨迹包**实物导出** | 未做 | 需要窗口交互（`support bundle` 走 save dialog，屏幕锁屏时无法操作） | 解锁后从 App 导出一次，核对 `trajectory/*` 六件与 `checksums.sha256` |
-| **F：机检③**（现 1/4） | 未做 | 沙盒实例拿不到钥匙串凭据（`Authentication required`）；打包版单实例与 dev 无头抢同一配置根 | 停掉 dev 无头后，用打包版 + 真实配置根跑 `PURESCIENCE_AGENT_FRAMEWORK=<fw>` 探针；拿不到凭证就如实记 N/4 |
-| **v2.18 §2/§3**（成本矩阵、usage 对账） | 未做 | 需要真实模型调用（token）/ 对账需要一次真跑 | 先确认 §0 的核对结论：`AcpTurnTokenUsage` 早已落盘，别再新造记账结构 |
-| **v2.19 `message/send`**、agent card 之外的部分 | 未做 | 真正跑通需要模型；互通测试还需要第二个实现 | 先做「只读 + 明确 unverified」的部分，别在实测前说支持 A2A |
-| 模型驱动的工具调用验证（v2.17.7 的 HTTP 工具面） | 未做 | 需要一次模型调用 | 一条 prompt 调 `memory_save_note`，判据见 CHANGELOG |
+| 项                                               | 状态                                              | blocked-by                                                                                 | 解封后第一步                                                                                                                                                                                                                                             |
+| ------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Windows 车道红~~                               | **已解除**（2026-10-25，`0bd9594a` + `02a118d0`） | —                                                                                          | 已由本会话接手修掉：原用例在真实时钟下要求「profiled 记录里出现本测试文件的帧」，测的是 runner 调度器而不是 watchdog；改成「承诺用可注入 profile 逐条断言（两次停顿都要有具名帧 + 归因）、真实采样只断言任何 runner 都办得到的事」。Windows 8/8 分片全绿 |
+| ~~Release 前置~~                                 | **解除**                                          | —                                                                                          | Windows 绿了，可发下一版（注意 `02a118d0` 的 Nightly 判决还没回）                                                                                                                                                                                        |
+| 轨迹包**实物导出**                               | 未做                                              | 需要窗口交互（`support bundle` 走 save dialog，屏幕锁屏时无法操作）                        | 解锁后从 App 导出一次，核对 `trajectory/*` 六件与 `checksums.sha256`                                                                                                                                                                                     |
+| **F：机检③**（现 1/4）                           | 未做                                              | 沙盒实例拿不到钥匙串凭据（`Authentication required`）；打包版单实例与 dev 无头抢同一配置根 | 停掉 dev 无头后，用打包版 + 真实配置根跑 `PURESCIENCE_AGENT_FRAMEWORK=<fw>` 探针；拿不到凭证就如实记 N/4                                                                                                                                                 |
+| **v2.18 §2/§3**（成本矩阵、usage 对账）          | 未做                                              | 需要真实模型调用（token）/ 对账需要一次真跑                                                | 先确认 §0 的核对结论：`AcpTurnTokenUsage` 早已落盘，别再新造记账结构                                                                                                                                                                                     |
+| **v2.19 `message/send`**、agent card 之外的部分  | 未做                                              | 真正跑通需要模型；互通测试还需要第二个实现                                                 | 先做「只读 + 明确 unverified」的部分，别在实测前说支持 A2A                                                                                                                                                                                               |
+| 模型驱动的工具调用验证（v2.17.7 的 HTTP 工具面） | 未做                                              | 需要一次模型调用                                                                           | 一条 prompt 调 `memory_save_note`，判据见 CHANGELOG                                                                                                                                                                                                      |
 
 ## 5. 本轮踩过、别再踩的坑
 
