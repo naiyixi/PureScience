@@ -40,6 +40,12 @@ type Bridge = {
         packagePath: string
         confirm?: { targetProjectId?: string }
       }) => Promise<{ ok: boolean; sessionId?: string; reason?: string; landed?: EvidenceLanding }>
+      previewPackage: (request?: { packagePath?: string }) => Promise<{
+        accepted?: boolean
+        described?: {
+          counts: { citations: number; reviewFindings: number; verificationRecords: number }
+        }
+      } | null>
     }
     references: {
       add: (input: unknown) => Promise<{
@@ -323,6 +329,38 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   expect(imported.ok, `import failed: ${JSON.stringify(imported)}`).toBe(true)
   const landed = imported.landed!
   console.log(`[ic10] landed: ${JSON.stringify(landed)}`)
+
+  // What the package CARRIED, read back through the app's own preview path: the manifest's counts are
+  // written by the exporter from the sender's stores, so they are what the receiver actually got. The
+  // snapshot above is taken BEFORE the export, and the app can write another review row in between (it
+  // retries its turn-end review); measured on the mac lane: landed 3 against a snapshot of 2, and nothing
+  // in the report could say whether the importer had duplicated a row or the snapshot was simply stale.
+  // Poll until the sender's store and the manifest agree — a divergence that does not clear is a named
+  // failure, never a guess about which side is wrong.
+  const preview = await page.evaluate(async (path) => {
+    const bridge = globalThis as unknown as Bridge
+    return bridge.api.sessions.previewPackage({ packagePath: path })
+  }, packagePath)
+  const carried = preview?.described?.counts
+  expect(
+    carried,
+    `the package did not describe its own counts: ${JSON.stringify(preview)}`
+  ).toBeTruthy()
+
+  let settledReviews = await readSourceReviews()
+  const agreementDeadline = Date.now() + 30_000
+  while (settledReviews.length !== carried!.reviewFindings && Date.now() < agreementDeadline) {
+    await page.waitForTimeout(500)
+    settledReviews = await readSourceReviews()
+  }
+  expect(
+    settledReviews.length,
+    `the sender holds ${settledReviews.length} reviews but the package carries ${carried!.reviewFindings}: ${reviewShape(settledReviews)}`
+  ).toBe(carried!.reviewFindings)
+  console.log(
+    `[ic10] carried: reviews=${carried!.reviewFindings} settled=${reviewShape(settledReviews)} snapshot=${sourceReviews.length}`
+  )
+
   // Every dimension is accounted for: each row the package carried either landed on this machine or is
   // NAMED in `skipped`. The sender's evidence set includes review rows the app creates on its own (an
   // auto review at turn end) and those can point at a turn message the package's transcript does not
@@ -330,10 +368,10 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   // So the invariant is "landed + named = carried", not "nothing was skipped": the latter reports a
   // correct, named refusal as a failure, which is exactly what it did on the first packaged run (one
   // ambient review row, `message-not-found`; see the queue's v1.84.0 item on package self-consistency).
-  const sourceReviewIds = sourceReviews.map((review) => review.id)
+  const sourceReviewIds = settledReviews.map((review) => review.id)
   const skippedIds = new Set(landed.skipped.flatMap((row) => (row.id ? [row.id] : [])))
   const notLandedReviewIds = sourceReviewIds.filter((id) => skippedIds.has(id))
-  const findingsOfLandedReviews = sourceReviews
+  const findingsOfLandedReviews = settledReviews
     .filter((review) => !skippedIds.has(review.id))
     .reduce((total, review) => total + (review.checks?.length ?? 0), 0)
 
@@ -344,8 +382,8 @@ test('a package’s evidence becomes rows on the machine that imports it', async
   )
   expect(
     landed.reviews,
-    `source reviews=${reviewShape(sourceReviews)} notLanded=${JSON.stringify(notLandedReviewIds)} skipped=${JSON.stringify(landed.skipped)}`
-  ).toBe(sourceReviews.length - notLandedReviewIds.length)
+    `carried=${carried!.reviewFindings} snapshot=${reviewShape(sourceReviews)} settled=${reviewShape(settledReviews)} notLanded=${JSON.stringify(notLandedReviewIds)} skipped=${JSON.stringify(landed.skipped)}`
+  ).toBe(settledReviews.length - notLandedReviewIds.length)
   expect(
     landed.reviewFindings,
     `source findings=${sourceFindings} notLanded=${JSON.stringify(notLandedReviewIds)}`

@@ -12445,3 +12445,66 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 2. **视觉基准解耦**：把版本串与运行时告警横幅所在的 header 区域按「环境不许参与比较」遮蔽（skill 里
    「遮蔽整个版本区，而不是放宽容差」的同一条），**不重画基准、不放大 `maxDiffPixelRatio`**。
 3. 队列 B 段复核仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 1、2 即自拟单元。
+
+## 二百三十五、本轮追加（执行器，2026-10-26 06:0x–）—— 两条间歇红的成因各归位：认证那条是**快照早于导出**，视觉那条是**环境文本进了比较**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == de470be3`，`git status --short` 是**上一轮 §二百三十四 §四 1、2 具名的那 3 个在制品**
+  （`session-package-import-evidence.spec.ts` / `visual-regression.spec.ts` / `HomePage.tsx`）—— 我自己的、已写好且本地门禁已绿，
+  只是上一轮工具预算用尽没提交 ⇒ **本轮第一件事是把它提交**，不开新单元（与 §二百三十四 §四 的顺序一致）。
+- `de470be3` 的判决（完整 40 位 SHA，`gh api …/actions/runs?head_sha=`）：
+
+| 车道 | run | 结论 |
+| --- | --- | --- |
+| `Windows Full Test` | `40227656663` | **success**（上一轮 `82512eff` 那条 `expected false to be true` 随 `StackProfile.samples` 消失）|
+| `Nightly` | `40227656721` | **success** —— 作业级：`build / Build macos-arm64` success，其中 `Run P0 Electron certification`、`Run desktop visual regression`、`Enforce platform certification` 三步**都是 success**（不是 `continue-on-error` 掩盖的假绿：`publish` 也 success）|
+
+- 这一条判决本身就是本单元的依据：**同一支 IC10 spec 在 `2dbdb00d` 上确定性红（3 vs 2）、在 `de470be3` 上通过（102 passed）**，
+  两次的差别不在代码是否重复写行 —— 日志逐字：
+
+```
+[ic10] source: citations=1 reviews=error/null:0|error/null:0|error/null:0 findings=0 pins=1
+[ic10] landed: {"citations":1,"reviews":3,"reviewFindings":0,"verificationRecords":1,"skipped":[]}
+```
+
+  即 `source reviews` 这次也是 3 条 ⇒ 红的那一次是**快照取早了**（导出之后应用自己的 turn-end 复查又补写一行），
+  **不是导入侧多写了一行**。结论：这是**时序耦合**，不是产品缺陷；修法是换判据，不是改产品。
+
+### 一 交付（3 文件，纯测试台 + 一处 `data-slot`）
+
+| 位置 | 改动 |
+| --- | --- |
+| `e2e/certification/session-package-import-evidence.spec.ts` | 判据从「导出**之前**的 source 快照」改为**包自己 manifest 的计数**（`previewPackage().described.counts.reviewFindings`，由发送端导出路径写，是接收方真的拿到的那份），并轮询发送端存储直到与包一致（30 s 上限，不一致就是**具名失败**，不猜是哪一边错）。逐行比对改用 settle 后的集合 |
+| `e2e/visual-regression.spec.ts` | 截图前把两处**描述这台机器而非产品**的 header 元素归一：版本徽标（`v2.18.0` vs lane 的 `v2.18.0-nightly.g<sha>`）`visibility:hidden`；运行时告警按钮（只在环境检查失败时存在，CI runner 没有 agent runtime ⇒ lane 上多一条 `Claude Code runtime needs attention`）`display:none`（取掉占位，所以它的有无不会推移别的元素） |
+| `src/renderer/src/pages/home/HomePage.tsx` | 给上述两处加 `data-slot="app-version"` / `data-slot="environment-attention"`（纯标记，无行为改动） |
+
+**两条判据都只紧不放**：IC10 从「快照条数」换成「包自述条数 + sender 存储收敛」，多一条或少一条都会红；
+视觉**没放宽容差、没重画基准**（`git status` 里无 PNG 变化），遮蔽的是**与产品无关的环境文本**。
+
+**仪器自证（视觉）**：临时注入一个与 CI 同形的告警按钮后按普通模式跑，**仍通过** ⇒ 它确实不参与比较；随后复原注入（`grep TEMP-PROOF` = 0）。
+
+### 二 门禁读数（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | `EXIT=0` |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | `EXIT=0` |
+| `npx eslint --no-cache`（本笔 3 文件） | `EXIT=0` |
+| `prettier --check` | 3 文件全过 |
+| IC10 真机单跑（`build:e2e` 后） | `1 passed (15.8s)`，读数 `landed.reviews:3`、target 也 3 |
+
+### 三 边界
+
+1. 本单元**不占补丁号、不发版**（产品行为零改动，只有两处 `data-slot` 标记）。
+2. **不能说「我把那两条红修好了」**：`de470be3` 上它们本来就绿。本笔做的是**把间歇红的成因钉住并去掉耦合**
+   —— 下一次它若再红，失败信息会直接给出 `carried` / `snapshot` / `settled` 三个数，不必再从「3 vs 2」反推。
+3. 视觉那 3708 px 的具体像素差**仍未逐像素定因**（本机与 `505858ad`/`de470be3` 的 CI 都通过）；本笔只保证
+   「环境文本不再参与比较」这一条。
+
+### 四 下一轮第一步
+
+1. 读本笔两条车道（完整 40 位 SHA），红了当场归因。
+2. 队列 B 段复核仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 自拟单元。候选（上一轮已具名、仍敞着）：
+   把 **host 时间线并进 support bundle**（与 `1b46939a` 的 bundle 改动不相交的字段位）、CPU 归属铺到剩下 10 处只报墙钟的慢行。
+3. **仍等点头的一条（不变）**：用户常驻 dev 实例是旧代码，要取「真机日志里出现 `stack.samples`」必须重启它、会打断正在用的界面。

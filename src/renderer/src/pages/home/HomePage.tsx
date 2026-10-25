@@ -400,7 +400,9 @@ const HomePage = ({
               {APP.name}
             </a>
             {appVersion ? (
-              <div className="mt-1 text-[11px] text-muted-foreground">v{appVersion}</div>
+              <div data-slot="app-version" className="mt-1 text-[11px] text-muted-foreground">
+                v{appVersion}
+              </div>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
@@ -422,6 +424,7 @@ const HomePage = ({
             {requiredEnvironmentFailures.length > 0 && environmentRepairPanel ? (
               <button
                 type="button"
+                data-slot="environment-attention"
                 onClick={() => openSettingsToPanel(environmentRepairPanel)}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-danger-000/35 bg-danger-900 px-2.5 text-xs font-medium text-danger-000 transition-colors duration-150 ease-out hover:border-danger-000/55 hover:bg-danger-900/80"
                 aria-label={t('home.openEnvironmentRepair')}

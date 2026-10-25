@@ -23,6 +23,19 @@ const expectStableScreenshot = async (
   await page.locator('a[aria-label*="GitHub"]').evaluateAll((elements) => {
     for (const element of elements) element.style.visibility = 'hidden'
   })
+  // Two header items describe THIS machine rather than the product, and both were measured on the lane:
+  // the version badge reads `v2.18.0` here but `v2.18.0-nightly.g2dbdb00` on a nightly build (the job log's
+  // surface fingerprint printed the lane's header verbatim), and the runtime-attention button only exists
+  // when the environment check FAILS — a CI runner has no agent runtime installed, so the lane's header
+  // carried `Claude Code runtime needs attention` while this machine's carried nothing. Normalize both:
+  // the badge is not compared at all, and the attention button is taken out of the layout so its presence
+  // cannot shift anything else. Everything else stays strictly compared — no tolerance is loosened.
+  await page.evaluate(() => {
+    const badge = document.querySelector('[data-slot="app-version"]')
+    if (badge instanceof HTMLElement) badge.style.visibility = 'hidden'
+    const attention = document.querySelector('[data-slot="environment-attention"]')
+    if (attention instanceof HTMLElement) attention.style.display = 'none'
+  })
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   })
