@@ -11,6 +11,7 @@ import { createProbeAnswerStore } from './probe-answer-store'
 import { configureVersionProbeAnswerStore, withVersionProbeCache } from './version-probe-cache'
 
 let root: string
+const created: ReturnType<typeof createProbeAnswerStore>[] = []
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'probe-answer-store-'))
@@ -19,17 +20,24 @@ beforeEach(async () => {
 
 afterEach(async () => {
   configureVersionProbeAnswerStore(undefined)
+  // A store's `set()` queues its write and returns (a cache write must never delay a caller). Draining every
+  // store this file created is what keeps the removal below from racing a queued mkdir/writeFile/rename —
+  // which is how the Nightly lane failed once with `ENOTEMPTY … probe-answer-store-ohVJhe`.
+  await Promise.all(created.splice(0).map((store) => store.flush().catch(() => undefined)))
   await rm(root, { recursive: true, force: true })
 })
 
 const storeAt = (
   name = 'probe-answers.json',
   maxEntries?: number
-): ReturnType<typeof createProbeAnswerStore> =>
-  createProbeAnswerStore({
+): ReturnType<typeof createProbeAnswerStore> => {
+  const store = createProbeAnswerStore({
     filePath: join(root, name),
     ...(maxEntries === undefined ? {} : { maxEntries })
   })
+  created.push(store)
+  return store
+}
 
 describe('probe answer store', () => {
   it('answers a later process for the same executable identity', async () => {
@@ -166,6 +174,10 @@ describe('version probe cache over a persistent store', () => {
       })('/opt/homebrew/bin/opencode')
     ).resolves.toBe('1.20.0')
     expect(upgradedProbe).toHaveBeenCalledOnce()
+    // `set()` persists through a fire-and-forget chain (by design: a cache write must never delay a launch).
+    // Awaiting it here is what keeps the afterEach's `rm` from racing the mkdir/writeFile/rename and failing
+    // with ENOTEMPTY — measured on the Nightly lane (probe-answer-store-ohVJhe), not theorised.
+    await second.flush()
   })
 
   it('never writes a failed probe to the file', async () => {
