@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
+import { SETTINGS_FILE_VERSION } from '../../shared/settings'
 import { hasLegacyKeyRefs } from './legacy-key-refs'
-import { SETTINGS_FILE_VERSION, type StoredProvider, type StoredSettings } from './types'
+import type { StoredProvider, StoredSettings } from './types'
 
 // The predicate that decides whether a settings read is allowed to touch the OS secret store. Getting
 // this wrong in the "true" direction is a wasted keychain round-trip; getting it wrong in the "false"
