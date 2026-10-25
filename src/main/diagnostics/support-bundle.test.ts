@@ -287,3 +287,60 @@ describe('support bundle', () => {
     )
   })
 })
+
+describe('support bundle: trajectory section', () => {
+  const trajectorySession = {
+    id: 'session-1',
+    status: 'completed',
+    messages: [{ id: 'm1', role: 'user', content: '看看这份数据', artifactIds: ['v1'] }],
+    providers: [{ id: 'p1', apiKey: 'sk-live-SHOULDNOTSHIP', keyRef: 'enc:v1:SHOULDNOTSHIP' }]
+  }
+
+  it('carries the redacted trajectory and leaves no credential in the archive', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const result = await createSupportBundle({
+      ...input,
+      trajectory: {
+        productVersion: '2.19.0',
+        sessionId: 'session-1',
+        session: trajectorySession,
+        artifacts: [{ artifactVersionId: 'v1' }]
+      }
+    })
+
+    expect(result.entries).toContain('trajectory/session.json')
+    expect(result.entries).toContain('trajectory/manifest.json')
+    expect(result.entries).toContain('trajectory/checksums.sha256')
+
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const session = await readFrom(target, 'trajectory/session.json')
+    expect(session).toContain('REDACTED')
+    expect(session).not.toContain('SHOULDNOTSHIP')
+    // The archive-level leak check reads what actually shipped, so a bundle that kept a secret would not exist.
+    const manifest = await readFrom(target, 'trajectory/manifest.json')
+    expect(manifest).toContain('"toolCalls": "absent:not-collected"')
+  })
+
+  it('refuses to hand over a bundle whose trajectory still carries a secret', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    await expect(
+      createSupportBundle({
+        ...input,
+        // The scrubber is bypassed on purpose: the read-back gate is what must refuse, not the scrubber.
+        scrub: false,
+        trajectory: {
+          productVersion: '2.19.0',
+          sessionId: 'session-1',
+          session: trajectorySession,
+          scrub: false
+        }
+      })
+    ).rejects.toThrow(/trajectory\/.*still contains/)
+
+    // Nothing left behind: a refused bundle must not leave a half-written archive.
+    await expect(stat(input.outPath)).rejects.toThrow()
+  })
+})

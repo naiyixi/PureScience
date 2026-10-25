@@ -269,6 +269,9 @@ export const createSupportBundle = async (
   // plus the archive is re-read below. Three layers on purpose — this is the one section that carries a
   // conversation.
   if (input.trajectory) {
+    // Staging only creates `logs/`; every section owns its own directory or the first write is an ENOENT
+    // (this test caught it: `….staging/trajectory/manifest.json` could not be opened).
+    await mkdir(join(staging, 'trajectory'), { recursive: true })
     const bundle = await buildTrajectoryDocuments({
       ...input.trajectory,
       needles: [...(input.trajectory.needles ?? []), ...needles]
