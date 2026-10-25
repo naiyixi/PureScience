@@ -340,7 +340,10 @@ describe('support bundle: trajectory section', () => {
           scrub: false
         }
       })
-    ).rejects.toThrow(/trajectory\/.*still contains/)
+      // Separator-agnostic on purpose: the archive path is built with `join`, so a Windows runner reports
+      // `trajectory\session.json` where POSIX reports `trajectory/session.json`. Pinning one separator is a
+      // cross-platform red that has nothing to do with the behaviour under test.
+    ).rejects.toThrow(/trajectory.*still contains a secret/u)
 
     // Nothing left behind: a refused bundle must not leave a half-written archive.
     await expect(stat(input.outPath)).rejects.toThrow()
