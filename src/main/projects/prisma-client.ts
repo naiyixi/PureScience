@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -980,7 +981,230 @@ const addColumnIfMissing = async (
   }
 }
 
+// The schema as ordered data, not as an ordered sequence of awaited calls.
+//
+// Why this is a list: a launch on an existing database re-ran ~180 statements so that each one could
+// answer "already there" (measured on a copy of a 255 MB live database: `ensureProjectSchema` cost
+// p50 120.7 ms / p90 174.7 ms per launch, `docs/bench-runs/2026-10-25-project-db-open.txt`). The list
+// exists so the same data can also produce a fingerprint: apply it, record the fingerprint in SQLite's
+// own `user_version`, and skip the whole thing when the file already matches. A hand-maintained version
+// number would drift the first time someone adds a step and forgets; a fingerprint of the steps cannot.
+type ProjectSchemaStep =
+  | { readonly kind: 'sql'; readonly sql: string }
+  | {
+      readonly kind: 'column'
+      readonly table: string
+      readonly column: string
+      readonly ddl: string
+    }
+  | { readonly kind: 'checks' }
+
+const column = (table: string, columnName: string, ddl: string): ProjectSchemaStep => ({
+  kind: 'column',
+  table,
+  column: columnName,
+  ddl
+})
+
+const sql = (...statements: readonly string[]): readonly ProjectSchemaStep[] =>
+  statements.map((statement) => ({ kind: 'sql', sql: statement }))
+
+// Two facts have to hold for the fast path, and `PRAGMA user_version` alone can only hold one of them:
+//   * the DDL this build would apply is the DDL that was applied (a fingerprint of the steps below);
+//   * nothing has changed the schema since (SQLite's own `schema_version`, which bumps on ANY DDL — including
+//     a table rewritten by another process, a restored file, or an older build).
+// Recording only the fingerprint would let a file mutated behind the app's back pass as current; recording
+// both keeps the promise "after this call the schema is correct" without paying for 180 statements.
+const SCHEMA_STAMP_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "SchemaStamp" (
+    "id" INTEGER NOT NULL PRIMARY KEY CHECK ("id" = 1),
+    "ddlFingerprint" INTEGER NOT NULL,
+    "schemaVersion" INTEGER NOT NULL
+);`
+
+const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
+  ...sql(SCHEMA_STAMP_TABLE_DDL),
+  ...sql(PROJECT_TABLE_DDL),
+  column('Project', 'archivedAt', PROJECT_ADD_ARCHIVED_AT_DDL),
+  ...sql(PERMISSION_GRANT_TABLE_DDL, ...PERMISSION_GRANT_INDEX_DDLS),
+  ...sql(PREVIEW_STATE_TABLE_DDL),
+  ...sql(UNREAD_TASK_SESSION_TABLE_DDL, UNREAD_TASK_SESSION_SESSION_ID_INDEX_DDL),
+  ...sql(NOTIFICATION_INBOX_ITEM_TABLE_DDL, ...NOTIFICATION_INBOX_ITEM_INDEX_DDLS),
+  ...sql(REVIEW_TABLE_DDL, FINDING_TABLE_DDL),
+  // Old databases carry `severity` / `reasoning` instead of these columns; each guarded add proves the
+  // postcondition rather than trusting an engine error string.
+  column('Finding', 'status', FINDING_ADD_STATUS_COLUMN_DDL),
+  column('Review', 'reviewerLog', REVIEW_ADD_REVIEWER_LOG_DDL),
+  column('Finding', 'reflagCount', FINDING_ADD_REFLAG_COUNT_DDL),
+  column('Finding', 'artifactBindingState', FINDING_ADD_ARTIFACT_BINDING_STATE_DDL),
+  ...sql(PROJECT_DELETION_INTENT_TABLE_DDL),
+  ...sql(MANAGED_FILE_TABLE_DDL),
+  column('ManagedFile', 'sourceVersionId', MANAGED_FILE_ADD_SOURCE_VERSION_ID_DDL),
+  column('ManagedFile', 'checksum', MANAGED_FILE_ADD_CHECKSUM_DDL),
+  column('ArtifactVersion', 'stateReason', ARTIFACT_VERSION_ADD_STATE_REASON_DDL),
+  ...sql(MANAGED_FILE_SESSION_SYNC_TABLE_DDL, ...MANAGED_FILE_INDEX_DDLS),
+  ...sql(
+    FILE_ORIGIN_SESSION_TABLE_DDL,
+    ARTIFACT_LINEAGE_TABLE_DDL,
+    UPLOAD_FILE_TABLE_DDL,
+    UPLOAD_VERSION_TABLE_DDL,
+    ARTIFACT_MESSAGE_SNAPSHOT_TABLE_DDL
+  ),
+  column('ArtifactMessageSnapshot', 'checksum', ARTIFACT_MESSAGE_SNAPSHOT_ADD_CHECKSUM_DDL),
+  ...sql(ARTIFACT_VERSION_TABLE_DDL),
+  column('ArtifactVersion', 'filename', ARTIFACT_VERSION_ADD_FILENAME_DDL),
+  // Backfill: rows written before `filename` existed take it from their lineage. Runs after the column
+  // exists, which is why the steps below are ordered rather than grouped.
+  ...sql(
+    `UPDATE "ArtifactVersion" SET "filename" = (SELECT "filename" FROM "ArtifactLineage" WHERE "ArtifactLineage"."id" = "ArtifactVersion"."artifactId") WHERE "filename" IS NULL OR "filename" = ''`
+  ),
+  ...sql(
+    ARTIFACT_VERSION_INPUT_TABLE_DDL,
+    REVIEW_FINDING_DISPOSITION_TABLE_DDL,
+    REVIEW_SCOPE_SNAPSHOT_TABLE_DDL,
+    REVIEW_EVIDENCE_TABLE_DDL,
+    REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL,
+    BACKGROUND_DELIVERY_TABLE_DDL,
+    ...BACKGROUND_DELIVERY_INDEX_DDLS
+  ),
+  // Rebuilds a table when a CHECK constraint in an older file does not match the canonical DDL.
+  { kind: 'checks' },
+  ...sql(...ARTIFACT_PROVENANCE_INDEX_DDLS),
+  ...sql(COMPUTE_HOST_TABLE_DDL, COMPUTE_HOST_PROVIDER_ID_INDEX_DDL),
+  column('ComputeHost', 'executionMode', COMPUTE_HOST_ADD_EXECUTION_MODE_DDL),
+  ...sql(
+    COMPUTE_JOB_TABLE_DDL,
+    COMPUTE_JOB_PROVIDER_INDEX_DDL,
+    COMPUTE_JOB_SESSION_INDEX_DDL,
+    COMPUTE_JOB_STATUS_INDEX_DDL
+  ),
+  // Compute-job columns added after the table shipped: all nullable, so existing rows are untouched.
+  column('ComputeJob', 'lastPollError', COMPUTE_JOB_ADD_LAST_POLL_ERROR_DDL),
+  column('ComputeJob', 'harvestError', COMPUTE_JOB_ADD_HARVEST_ERROR_DDL),
+  column('ComputeJob', 'leftOnRemote', COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL),
+  column('ComputeJob', 'notifiedAt', COMPUTE_JOB_ADD_NOTIFIED_AT_DDL),
+  column('ComputeJob', 'executionProtection', COMPUTE_JOB_ADD_EXECUTION_PROTECTION_DDL),
+  column('Reference', 'pdfContentHash', REFERENCE_ADD_PDF_CONTENT_HASH_DDL),
+  column('ComputeJob', 'notificationConsumedAt', COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL),
+  ...sql(VISION_EVIDENCE_TABLE_DDL, ...VISION_EVIDENCE_INDEX_DDLS),
+  ...sql(REFERENCE_TABLE_DDL),
+  // Citation-style layer: bibliographic columns on Reference for existing databases.
+  column('Reference', 'volume', REFERENCE_ADD_VOLUME_DDL),
+  column('Reference', 'issue', REFERENCE_ADD_ISSUE_DDL),
+  column('Reference', 'pages', REFERENCE_ADD_PAGES_DDL),
+  column('Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL),
+  column('Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL),
+  column('Reference', 'citedAt', REFERENCE_ADD_CITED_AT_DDL),
+  column('Reference', 'citedSessionId', REFERENCE_ADD_CITED_SESSION_ID_DDL),
+  ...sql(CITATION_STYLE_TABLE_DDL),
+  column('CitationStyle', 'fidelity', CITATION_STYLE_ADD_FIDELITY_DDL),
+  column('CitationStyle', 'fidelityNotesJson', CITATION_STYLE_ADD_FIDELITY_NOTES_DDL),
+  ...sql(
+    CITATION_STYLE_UNIQUE_STYLE_ID_DDL,
+    CITATION_STYLE_IMPORTED_AT_INDEX_DDL,
+    REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL,
+    ...REFERENCE_INDEX_DDLS,
+    REFERENCE_COLLECTION_TABLE_DDL,
+    REFERENCE_ATTACHMENT_VERSION_TABLE_DDL,
+    ...REFERENCE_ATTACHMENT_VERSION_INDEX_DDLS,
+    REFERENCE_COLLECTION_UNIQUE_PROJECT_NAME_DDL,
+    REFERENCE_COLLECTION_PROJECT_INDEX_DDL,
+    COLLECTION_ITEM_TABLE_DDL,
+    COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL,
+    COLLECTION_ITEM_REFERENCE_INDEX_DDL
+  ),
+  // Literature screening: revisions, AI verdicts, human overrides, and the run/item ledger.
+  ...sql(
+    SCREENING_RULE_REVISION_TABLE_DDL,
+    SCREENING_ASSESSMENT_TABLE_DDL,
+    SCREENING_OVERRIDE_TABLE_DDL,
+    SCREENING_RUN_TABLE_DDL,
+    SCREENING_RUN_ITEM_TABLE_DDL,
+    ...SCREENING_INDEX_DDLS
+  ),
+  // PDF annotations: the annotations and the import receipt ledger, deliberately unlinked.
+  ...sql(PDF_ANNOTATION_TABLE_DDL, PDF_ANNOTATION_IMPORT_TABLE_DDL, ...PDF_ANNOTATION_INDEX_DDLS),
+  ...sql(
+    JOURNAL_TABLE_DDL,
+    JOURNAL_METRIC_TABLE_DDL,
+    JOURNAL_ALIAS_TABLE_DDL,
+    ...JOURNAL_INDEX_DDLS,
+    ...JOURNAL_ALIAS_INDEX_DDLS
+  ),
+  column('Journal', 'displayName', `ALTER TABLE "Journal" ADD COLUMN "displayName" TEXT`),
+  column('Reference', 'journalId', `ALTER TABLE "Reference" ADD COLUMN "journalId" TEXT`),
+  column('Reference', 'journalMatch', `ALTER TABLE "Reference" ADD COLUMN "journalMatch" TEXT`),
+  ...sql(REFERENCE_JOURNAL_ID_INDEX_DDL)
+]
+
+// Derived, never hand-written: any change to a statement, a guarded column, or a CHECK migration
+// changes this value, so the recorded fingerprint cannot claim a schema the steps no longer produce.
+// 31 bits because `PRAGMA user_version` is a signed 32-bit integer.
+const PROJECT_SCHEMA_FINGERPRINT: number = (() => {
+  const hash = createHash('sha256')
+    .update(
+      JSON.stringify({
+        steps: PROJECT_SCHEMA_STEPS,
+        checks: PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS
+      })
+    )
+    .digest()
+  return hash.readUInt32BE(0) & 0x7fffffff
+})()
+
+type SchemaStamp = { ddlFingerprint: number; schemaVersion: number }
+
+const toNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' ? value : typeof value === 'bigint' ? Number(value) : undefined
+
+const readSchemaVersion = async (client: PrismaClient): Promise<number | undefined> => {
+  const rows =
+    await client.$queryRawUnsafe<Array<{ schema_version: number }>>('PRAGMA schema_version')
+  return toNumber(rows[0]?.schema_version)
+}
+
+// Absent (a fresh file, or one written before the stamp existed) is `undefined`, not a zero: the caller
+// must not be able to read "no stamp" as "matches".
+const readSchemaStamp = async (client: PrismaClient): Promise<SchemaStamp | undefined> => {
+  try {
+    const rows = await client.$queryRawUnsafe<
+      Array<{ ddlFingerprint: unknown; schemaVersion: unknown }>
+    >('SELECT "ddlFingerprint", "schemaVersion" FROM "SchemaStamp" WHERE "id" = 1')
+    const ddlFingerprint = toNumber(rows[0]?.ddlFingerprint)
+    const schemaVersion = toNumber(rows[0]?.schemaVersion)
+    return ddlFingerprint === undefined || schemaVersion === undefined
+      ? undefined
+      : { ddlFingerprint, schemaVersion }
+  } catch {
+    // No SchemaStamp table yet: the first run of this build on this file.
+    return undefined
+  }
+}
+
+const writeSchemaStamp = async (client: PrismaClient, schemaVersion: number): Promise<void> => {
+  await client.$executeRawUnsafe(
+    `INSERT INTO "SchemaStamp" ("id", "ddlFingerprint", "schemaVersion") VALUES (1, ${PROJECT_SCHEMA_FINGERPRINT}, ${schemaVersion}) ON CONFLICT("id") DO UPDATE SET "ddlFingerprint" = ${PROJECT_SCHEMA_FINGERPRINT}, "schemaVersion" = ${schemaVersion}`
+  )
+}
+
+const applySchemaStep = async (client: PrismaClient, step: ProjectSchemaStep): Promise<void> => {
+  if (step.kind === 'sql') {
+    await client.$executeRawUnsafe(step.sql)
+    return
+  }
+  if (step.kind === 'checks') {
+    await ensureSqliteCheckConstraints(client, PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS)
+    return
+  }
+  await addColumnIfMissing(client, step.table, step.column, step.ddl)
+}
+
 // Creates the schema if missing. Idempotent; no projects are seeded, so a fresh install starts empty.
+//
+// The fast path is the point: `journal_mode` is a FILE property and `busy_timeout` a connection property,
+// so both still run on every launch, then one `PRAGMA user_version` read decides whether the other ~180
+// statements have anything to do. A file whose fingerprint does not match (fresh, older, or written by a
+// build with different DDL) runs the full sequence and records the fingerprint afterwards — so an
+// interrupted upgrade simply re-runs it.
 const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   // P0-10③ first step. `journal_mode` is a FILE-level property (unlike `foreign_keys`, which is
   // connection-scoped), so setting it here covers every later connection to this database. WAL stops a
@@ -992,247 +1216,27 @@ const ensureProjectSchema = async (client: PrismaClient): Promise<void> => {
   // Design and acceptance readings: docs/evidence/2026-10-11-single-connection-read-pool-design.md
   await client.$queryRawUnsafe('PRAGMA journal_mode = WAL')
   await client.$queryRawUnsafe(`PRAGMA busy_timeout = ${PROJECT_DB_BUSY_TIMEOUT_MS}`)
-  await client.$executeRawUnsafe(PROJECT_TABLE_DDL)
-  await addColumnIfMissing(client, 'Project', 'archivedAt', PROJECT_ADD_ARCHIVED_AT_DDL)
-  await client.$executeRawUnsafe(PERMISSION_GRANT_TABLE_DDL)
-  for (const ddl of PERMISSION_GRANT_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  await client.$executeRawUnsafe(PREVIEW_STATE_TABLE_DDL)
-  await client.$executeRawUnsafe(UNREAD_TASK_SESSION_TABLE_DDL)
-  await client.$executeRawUnsafe(UNREAD_TASK_SESSION_SESSION_ID_INDEX_DDL)
-  await client.$executeRawUnsafe(NOTIFICATION_INBOX_ITEM_TABLE_DDL)
-  for (const ddl of NOTIFICATION_INBOX_ITEM_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  await client.$executeRawUnsafe(REVIEW_TABLE_DDL)
-  await client.$executeRawUnsafe(FINDING_TABLE_DDL)
 
-  // Migration guard: if this is an old DB with `severity` but not `status`, add the status column.
-  await addColumnIfMissing(client, 'Finding', 'status', FINDING_ADD_STATUS_COLUMN_DDL)
-
-  // Migration guard: if this is an old DB with `reasoning` but not `reviewerLog`, add the new column.
-  await addColumnIfMissing(client, 'Review', 'reviewerLog', REVIEW_ADD_REVIEWER_LOG_DDL)
-
-  // Migration guard: add reflagCount to Finding for DBs created before issue 15.
-  await addColumnIfMissing(client, 'Finding', 'reflagCount', FINDING_ADD_REFLAG_COUNT_DDL)
-  await addColumnIfMissing(
-    client,
-    'Finding',
-    'artifactBindingState',
-    FINDING_ADD_ARTIFACT_BINDING_STATE_DDL
-  )
-
-  await client.$executeRawUnsafe(PROJECT_DELETION_INTENT_TABLE_DDL)
-  await client.$executeRawUnsafe(MANAGED_FILE_TABLE_DDL)
-  await addColumnIfMissing(
-    client,
-    'ManagedFile',
-    'sourceVersionId',
-    MANAGED_FILE_ADD_SOURCE_VERSION_ID_DDL
-  )
-  await addColumnIfMissing(client, 'ManagedFile', 'checksum', MANAGED_FILE_ADD_CHECKSUM_DDL)
-  await addColumnIfMissing(
-    client,
-    'ArtifactVersion',
-    'stateReason',
-    ARTIFACT_VERSION_ADD_STATE_REASON_DDL
-  )
-  await client.$executeRawUnsafe(MANAGED_FILE_SESSION_SYNC_TABLE_DDL)
-
-  for (const ddl of MANAGED_FILE_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
+  const stamp = await readSchemaStamp(client)
+  if (
+    stamp &&
+    stamp.ddlFingerprint === PROJECT_SCHEMA_FINGERPRINT &&
+    stamp.schemaVersion === (await readSchemaVersion(client))
+  ) {
+    return
   }
 
-  await client.$executeRawUnsafe(FILE_ORIGIN_SESSION_TABLE_DDL)
-  await client.$executeRawUnsafe(ARTIFACT_LINEAGE_TABLE_DDL)
-  await client.$executeRawUnsafe(UPLOAD_FILE_TABLE_DDL)
-  await client.$executeRawUnsafe(UPLOAD_VERSION_TABLE_DDL)
-  await client.$executeRawUnsafe(ARTIFACT_MESSAGE_SNAPSHOT_TABLE_DDL)
-  await addColumnIfMissing(
-    client,
-    'ArtifactMessageSnapshot',
-    'checksum',
-    ARTIFACT_MESSAGE_SNAPSHOT_ADD_CHECKSUM_DDL
-  )
-  await client.$executeRawUnsafe(ARTIFACT_VERSION_TABLE_DDL)
-  await addColumnIfMissing(client, 'ArtifactVersion', 'filename', ARTIFACT_VERSION_ADD_FILENAME_DDL)
-  await client.$executeRawUnsafe(
-    `UPDATE "ArtifactVersion" SET "filename" = (SELECT "filename" FROM "ArtifactLineage" WHERE "ArtifactLineage"."id" = "ArtifactVersion"."artifactId") WHERE "filename" IS NULL OR "filename" = ''`
-  )
-  await client.$executeRawUnsafe(ARTIFACT_VERSION_INPUT_TABLE_DDL)
-  await client.$executeRawUnsafe(REVIEW_FINDING_DISPOSITION_TABLE_DDL)
-  await client.$executeRawUnsafe(REVIEW_SCOPE_SNAPSHOT_TABLE_DDL)
-  await client.$executeRawUnsafe(REVIEW_EVIDENCE_TABLE_DDL)
-  await client.$executeRawUnsafe(REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL)
-  await client.$executeRawUnsafe(BACKGROUND_DELIVERY_TABLE_DDL)
-  for (const ddl of BACKGROUND_DELIVERY_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
+  for (const step of PROJECT_SCHEMA_STEPS) {
+    await applySchemaStep(client, step)
   }
 
-  await ensureSqliteCheckConstraints(client, PROVENANCE_CHECK_CONSTRAINT_MIGRATIONS)
-
-  for (const ddl of ARTIFACT_PROVENANCE_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
+  // Read the version AFTER the sequence: creating the stamp table (or rebuilding one for a CHECK
+  // constraint) bumps it, and the stamp has to describe the file as it is now.
+  const schemaVersion = await readSchemaVersion(client)
+  if (schemaVersion === undefined) {
+    throw new Error('SQLite did not report a schema_version after applying the project schema.')
   }
-
-  // Compute hosts (issue 01): pure-additive table + its unique index. Both use IF NOT EXISTS so they
-  // are safe to (re)run on any existing DB without disturbing the reviewer/project tables above.
-  await client.$executeRawUnsafe(COMPUTE_HOST_TABLE_DDL)
-  await client.$executeRawUnsafe(COMPUTE_HOST_PROVIDER_ID_INDEX_DDL)
-
-  // Migration guard: add executionMode for DBs created before the Slurm execution-mode work.
-  await addColumnIfMissing(
-    client,
-    'ComputeHost',
-    'executionMode',
-    COMPUTE_HOST_ADD_EXECUTION_MODE_DDL
-  )
-
-  // Compute jobs (compute-jobs issue 01, Phase 3a): pure-additive table + three indexes.
-  // IF NOT EXISTS makes each statement safe to re-run on any pre-existing DB.
-  await client.$executeRawUnsafe(COMPUTE_JOB_TABLE_DDL)
-  await client.$executeRawUnsafe(COMPUTE_JOB_PROVIDER_INDEX_DDL)
-  await client.$executeRawUnsafe(COMPUTE_JOB_SESSION_INDEX_DDL)
-  await client.$executeRawUnsafe(COMPUTE_JOB_STATUS_INDEX_DDL)
-
-  // Migration guard: add lastPollError column for DBs created before compute-jobs issue 02.
-  await addColumnIfMissing(
-    client,
-    'ComputeJob',
-    'lastPollError',
-    COMPUTE_JOB_ADD_LAST_POLL_ERROR_DDL
-  )
-
-  // Migration guards: add Phase 3b harvest columns for DBs created before compute-harvest issue 01.
-  // Each column is nullable (default NULL), so existing rows are unaffected (CLAUDE.md requirement).
-  await addColumnIfMissing(client, 'ComputeJob', 'harvestError', COMPUTE_JOB_ADD_HARVEST_ERROR_DDL)
-  await addColumnIfMissing(client, 'ComputeJob', 'leftOnRemote', COMPUTE_JOB_ADD_LEFT_ON_REMOTE_DDL)
-  await addColumnIfMissing(client, 'ComputeJob', 'notifiedAt', COMPUTE_JOB_ADD_NOTIFIED_AT_DDL)
-  // Migration guard for the execution-protection snapshot column (see the DDL comment above).
-  await addColumnIfMissing(
-    client,
-    'ComputeJob',
-    'executionProtection',
-    COMPUTE_JOB_ADD_EXECUTION_PROTECTION_DDL
-  )
-  await addColumnIfMissing(
-    client,
-    'Reference',
-    'pdfContentHash',
-    REFERENCE_ADD_PDF_CONTENT_HASH_DDL
-  )
-  await addColumnIfMissing(
-    client,
-    'ComputeJob',
-    'notificationConsumedAt',
-    COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL
-  )
-
-  // Vision evidence cache : pure-additive table + indexes, safe to (re)run
-  // on any existing DB (IF NOT EXISTS), same runtime-DDL approach as the tables above.
-  await client.$executeRawUnsafe(VISION_EVIDENCE_TABLE_DDL)
-  for (const ddl of VISION_EVIDENCE_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-
-  // Reference library (v1.51): three pure-additive tables + their unique/index DDL.
-  await client.$executeRawUnsafe(REFERENCE_TABLE_DDL)
-  // Citation-style layer (v1.65): bibliographic columns on Reference for existing databases.
-  await addColumnIfMissing(client, 'Reference', 'volume', REFERENCE_ADD_VOLUME_DDL)
-  await addColumnIfMissing(client, 'Reference', 'issue', REFERENCE_ADD_ISSUE_DDL)
-  await addColumnIfMissing(client, 'Reference', 'pages', REFERENCE_ADD_PAGES_DDL)
-  await addColumnIfMissing(client, 'Reference', 'publisher', REFERENCE_ADD_PUBLISHER_DDL)
-  await addColumnIfMissing(client, 'Reference', 'itemType', REFERENCE_ADD_ITEM_TYPE_DDL)
-  await addColumnIfMissing(client, 'Reference', 'citedAt', REFERENCE_ADD_CITED_AT_DDL)
-  await addColumnIfMissing(
-    client,
-    'Reference',
-    'citedSessionId',
-    REFERENCE_ADD_CITED_SESSION_ID_DDL
-  )
-  await client.$executeRawUnsafe(CITATION_STYLE_TABLE_DDL)
-  await addColumnIfMissing(client, 'CitationStyle', 'fidelity', CITATION_STYLE_ADD_FIDELITY_DDL)
-  await addColumnIfMissing(
-    client,
-    'CitationStyle',
-    'fidelityNotesJson',
-    CITATION_STYLE_ADD_FIDELITY_NOTES_DDL
-  )
-  await client.$executeRawUnsafe(CITATION_STYLE_UNIQUE_STYLE_ID_DDL)
-  await client.$executeRawUnsafe(CITATION_STYLE_IMPORTED_AT_INDEX_DDL)
-  await client.$executeRawUnsafe(REFERENCE_UNIQUE_PROJECT_CITATION_KEY_DDL)
-  for (const ddl of REFERENCE_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  await client.$executeRawUnsafe(REFERENCE_COLLECTION_TABLE_DDL)
-  await client.$executeRawUnsafe(REFERENCE_ATTACHMENT_VERSION_TABLE_DDL)
-  for (const ddl of REFERENCE_ATTACHMENT_VERSION_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  await client.$executeRawUnsafe(REFERENCE_COLLECTION_UNIQUE_PROJECT_NAME_DDL)
-  await client.$executeRawUnsafe(REFERENCE_COLLECTION_PROJECT_INDEX_DDL)
-  await client.$executeRawUnsafe(COLLECTION_ITEM_TABLE_DDL)
-  await client.$executeRawUnsafe(COLLECTION_ITEM_UNIQUE_COLLECTION_REFERENCE_DDL)
-  await client.$executeRawUnsafe(COLLECTION_ITEM_REFERENCE_INDEX_DDL)
-
-  // Literature screening (v1.77): rule revisions, the AI verdict layer, the human override layer, and
-  // the run/item ledger. Every statement is IF NOT EXISTS, so an existing installation gets the tables
-  // without any of its reference data being touched.
-  await client.$executeRawUnsafe(SCREENING_RULE_REVISION_TABLE_DDL)
-  await client.$executeRawUnsafe(SCREENING_ASSESSMENT_TABLE_DDL)
-  await client.$executeRawUnsafe(SCREENING_OVERRIDE_TABLE_DDL)
-  await client.$executeRawUnsafe(SCREENING_RUN_TABLE_DDL)
-  await client.$executeRawUnsafe(SCREENING_RUN_ITEM_TABLE_DDL)
-  for (const ddl of SCREENING_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-
-  // PDF annotations (文档标注层 A1): the annotations themselves and the import receipt ledger. Two
-  // tables, neither referencing the other — a receipt survives its annotations and vice versa, which
-  // is the whole point of keeping them apart. Every statement is IF NOT EXISTS, so an existing
-  // installation gets both tables without any stored data being touched.
-  await client.$executeRawUnsafe(PDF_ANNOTATION_TABLE_DDL)
-  await client.$executeRawUnsafe(PDF_ANNOTATION_IMPORT_TABLE_DDL)
-  for (const ddl of PDF_ANNOTATION_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-
-  // Journals (R2): the venue as an identified entity plus its per-year, per-source metric history. The
-  // tables are additive like the rest; the two Reference columns are the first columns this sequence ever
-  // adds to an existing table, so they go through the guarded add that was already here for exactly this
-  // shape (it verifies the postcondition instead of trusting an engine error string), and their index is
-  // created after them.
-  await client.$executeRawUnsafe(JOURNAL_TABLE_DDL)
-  await client.$executeRawUnsafe(JOURNAL_METRIC_TABLE_DDL)
-  await client.$executeRawUnsafe(JOURNAL_ALIAS_TABLE_DDL)
-  for (const ddl of JOURNAL_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  for (const ddl of JOURNAL_ALIAS_INDEX_DDLS) {
-    await client.$executeRawUnsafe(ddl)
-  }
-  // The display name (R2-U4): the Journal table is already out in the world, so the column arrives through
-  // the guarded add rather than a CREATE — same shape as the two Reference columns below.
-  await addColumnIfMissing(
-    client,
-    'Journal',
-    'displayName',
-    `ALTER TABLE "Journal" ADD COLUMN "displayName" TEXT`
-  )
-  await addColumnIfMissing(
-    client,
-    'Reference',
-    'journalId',
-    `ALTER TABLE "Reference" ADD COLUMN "journalId" TEXT`
-  )
-  await addColumnIfMissing(
-    client,
-    'Reference',
-    'journalMatch',
-    `ALTER TABLE "Reference" ADD COLUMN "journalMatch" TEXT`
-  )
-  await client.$executeRawUnsafe(REFERENCE_JOURNAL_ID_INDEX_DDL)
+  await writeSchemaStamp(client, schemaVersion)
 }
 
 let clientPromise: Promise<PrismaClient> | undefined
@@ -1358,6 +1362,7 @@ const releaseProjectDbForShutdown = async (
 const isProjectDbReleased = (): boolean => releasedForShutdown
 
 export {
+  PROJECT_SCHEMA_FINGERPRINT,
   createProjectDbClient,
   disconnectProjectDbClient,
   ensureProjectSchema,

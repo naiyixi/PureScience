@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectRepository } from './repository'
 import {
+  PROJECT_SCHEMA_FINGERPRINT,
   createProjectDbClient,
   disconnectProjectDbClient,
   ensureProjectSchema,
@@ -28,6 +29,96 @@ afterEach(async () => {
     await rm(storageRoot, { recursive: true, force: true })
     storageRoot = undefined
   }
+})
+
+describe('project schema fingerprint', () => {
+  // The launch path must not re-run ~180 no-op statements on a database that is already current. Counting
+  // statements (not milliseconds) keeps the assertion deterministic on a loaded runner while still pinning
+  // the behaviour: the fast path is exactly the two file/connection pragmas plus one version read.
+  const countStatements = (client: PrismaClient): { total: () => number; restore: () => void } => {
+    const executeSpy = vi.spyOn(client, '$executeRawUnsafe')
+    const querySpy = vi.spyOn(client, '$queryRawUnsafe')
+    return {
+      total: () => executeSpy.mock.calls.length + querySpy.mock.calls.length,
+      restore: () => {
+        executeSpy.mockRestore()
+        querySpy.mockRestore()
+      }
+    }
+  }
+
+  it('records the derived fingerprint and then skips the schema sequence', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-project-schema-fingerprint-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    // First run: nothing recorded yet, so the whole sequence must run.
+    const cold = countStatements(client)
+    await ensureProjectSchema(client)
+    const coldStatements = cold.total()
+    cold.restore()
+
+    const recorded = await client.$queryRawUnsafe<Array<{ ddlFingerprint: number }>>(
+      'SELECT "ddlFingerprint" FROM "SchemaStamp" WHERE "id" = 1'
+    )
+    expect(Number(recorded[0]?.ddlFingerprint)).toBe(PROJECT_SCHEMA_FINGERPRINT)
+    // A fresh file cannot be opened by a handful of statements: this is the guard that the fast path is
+    // not taken before the schema exists.
+    expect(coldStatements).toBeGreaterThan(50)
+
+    // Second run on the recorded file: two pragmas + the stamp read + SQLite's own schema_version,
+    // and no DDL at all.
+    const warm = countStatements(client)
+    await ensureProjectSchema(client)
+    const warmStatements = warm.total()
+    warm.restore()
+
+    expect(warmStatements).toBe(4)
+    expect(warmStatements).toBeLessThan(coldStatements)
+  })
+
+  it('re-runs the sequence when the recorded fingerprint does not match', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-project-schema-drift-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+
+    // Simulate a database written by a build whose DDL differs: the recorded fingerprint must not be trusted.
+    await client.$executeRawUnsafe('UPDATE "SchemaStamp" SET "ddlFingerprint" = 1 WHERE "id" = 1')
+
+    const spied = countStatements(client)
+    await ensureProjectSchema(client)
+    const statements = spied.total()
+    spied.restore()
+
+    expect(statements).toBeGreaterThan(50)
+    const recorded = await client.$queryRawUnsafe<Array<{ ddlFingerprint: number }>>(
+      'SELECT "ddlFingerprint" FROM "SchemaStamp" WHERE "id" = 1'
+    )
+    expect(Number(recorded[0]?.ddlFingerprint)).toBe(PROJECT_SCHEMA_FINGERPRINT)
+  })
+
+  it('re-runs the sequence when something else changed the schema', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-project-schema-external-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    await ensureProjectSchema(client)
+
+    // A table dropped behind the app's back: the fingerprint still matches, so only SQLite's own
+    // schema_version can catch it. This is the shape the legacy-migration cases below rely on.
+    await client.$executeRawUnsafe('PRAGMA foreign_keys = OFF')
+    await client.$executeRawUnsafe('DROP TABLE "ProjectPreviewState"')
+    await client.$executeRawUnsafe('PRAGMA foreign_keys = ON')
+
+    const spied = countStatements(client)
+    await ensureProjectSchema(client)
+    const statements = spied.total()
+    spied.restore()
+
+    expect(statements).toBeGreaterThan(50)
+  })
 })
 
 describe('project prisma client (integration)', () => {

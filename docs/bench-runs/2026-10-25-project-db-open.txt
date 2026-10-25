@@ -1,0 +1,7 @@
+[project-db-open]
+runs=5
+client+SELECT 1: p50=8.2ms p90=19.6ms
+ensureProjectSchema: p50=38.4ms p90=55.0ms
+open step total: p50=48.6ms p90=63.3ms
+db bytes=255631360
+per-run: 55.0, 38.4, 24.2, 41.4, 14.8
