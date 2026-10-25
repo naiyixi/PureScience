@@ -2,6 +2,7 @@ import { freemem, loadavg, totalmem } from 'node:os'
 import { performance } from 'node:perf_hooks'
 
 import type { Logger } from '../logger'
+import { classifyCpuShare, cpuShareOf, type ActivityAttribution } from './cpu-attribution'
 import {
   createHostStallSampler,
   type HostStallReading,
@@ -47,13 +48,10 @@ const DEFAULT_STALL_THRESHOLD_MS = 500
 // idle 5 s). Rotation runs on the loop's own tick, never on a timer of its own: a timer could fire between
 // the stall ending and the tick that reads the record, throwing away exactly the samples it needs.
 const DEFAULT_PRESAMPLE_ROTATE_MS = 30_000
-// Named heuristics, not facts: measured on 2026-10-19 probes, a busy loop fills ~0.8 of its wall time with
-// CPU while an idle-but-descheduled process fills ~0.0. The band between them stays unresolved instead of
-// being forced into a verdict.
-const CPU_BOUND_SHARE = 0.6
-const DESCHEDULED_SHARE = 0.15
+// Named heuristics, not facts — see `cpu-attribution`, which holds the one band both this watchdog and the
+// compose/settings recorders classify against.
 
-export type StallAttribution = 'cpu-bound-in-process' | 'process-not-scheduled' | 'inconclusive'
+export type StallAttribution = ActivityAttribution
 
 export type { StallFrame, StackProfile }
 
@@ -136,13 +134,6 @@ const readMachine = (): MachineReading => {
   }
 }
 
-const classify = (share: number): StallAttribution => {
-  if (!Number.isFinite(share)) return 'inconclusive'
-  if (share >= CPU_BOUND_SHARE) return 'cpu-bound-in-process'
-  if (share <= DESCHEDULED_SHARE) return 'process-not-scheduled'
-  return 'inconclusive'
-}
-
 export const startEventLoopStallWatchdog = (
   input: EventLoopStallWatchdogInput
 ): EventLoopStallWatchdog => {
@@ -216,7 +207,7 @@ export const startEventLoopStallWatchdog = (
     heldWindows.record(current - lateMs, current)
 
     const cpuMs = Math.round((cpu.user + cpu.system) / 1000)
-    const cpuShare = windowMs > 0 ? Math.min(1, cpuMs / windowMs) : 0
+    const cpuShare = cpuShareOf(cpuMs, windowMs)
     // The stall ended now: both samplers are read against this instant minus the stall itself.
     const endedAtWall = wallClock()
     const base = {
@@ -225,7 +216,7 @@ export const startEventLoopStallWatchdog = (
       lateMs,
       cpuMs,
       cpuShare: Number(cpuShare.toFixed(3)),
-      attribution: classify(cpuShare)
+      attribution: classifyCpuShare(cpuShare, windowMs)
     }
 
     const hostSlice: Promise<HostStallReading> = hostSampler
@@ -244,10 +235,10 @@ export const startEventLoopStallWatchdog = (
       }
       // Main-thread run time is the stricter verdict: `cpuShare` also counts the libuv threadpool and V8
       // helper threads, which can be busy while the main thread itself was never scheduled.
-      const mainThreadShare = windowMs > 0 ? Math.min(1, profile.mainThreadMs / windowMs) : 0
+      const mainThreadShare = cpuShareOf(profile.mainThreadMs, windowMs)
       report({
         ...base,
-        attribution: classify(mainThreadShare),
+        attribution: classifyCpuShare(mainThreadShare, windowMs),
         stack: {
           status: 'profiled',
           mainThreadMs: profile.mainThreadMs,

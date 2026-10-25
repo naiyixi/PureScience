@@ -20,16 +20,36 @@ const setup = (
   log: ReturnType<typeof makeLogger>
   recorder: ReturnType<typeof createComposeStepRecorder>
   advance: (ms: number) => void
+  advanceWallOnly: (ms: number) => void
+  advanceWithCpu: (wallMs: number, cpuMs: number) => void
 } => {
   const log = makeLogger()
   let clock = 1_000
+  let cpu = { user: 0, system: 0 }
   const recorder = createComposeStepRecorder({
     log,
     now: () => clock,
+    cpuUsage: () => cpu,
     slowMs: options.slowMs ?? 250,
     summarySize: options.summarySize ?? 6
   })
-  return { log, recorder, advance: (ms: number) => (clock += ms) }
+  return {
+    log,
+    recorder,
+    // A step that spends 80 % of its window on CPU — the shape an in-process block has.
+    advance: (ms: number) => {
+      clock += ms
+      cpu = { user: cpu.user + ms * 800, system: cpu.system }
+    },
+    // Wall time without CPU: what a suspended laptop (or a descheduled process) looks like.
+    advanceWallOnly: (ms: number) => {
+      clock += ms
+    },
+    advanceWithCpu: (wallMs: number, cpuMs: number) => {
+      clock += wallMs
+      cpu = { user: cpu.user + cpuMs * 1000, system: cpu.system }
+    }
+  }
 }
 
 describe('compose step recorder', () => {
@@ -57,11 +77,58 @@ describe('compose step recorder', () => {
 
     expect(log.warn).toHaveBeenCalledWith('compose step slow', {
       step: 'restore-notification-inbox',
-      durationMs: 1_800
+      durationMs: 1_800,
+      cpuMs: 1_440,
+      cpuShare: 0.8,
+      attribution: 'cpu-bound-in-process'
     })
   })
 
-  it('records a failure with its category and rethrows', async () => {
+  it('names a step whose wall time was not work instead of reporting it as cost', async () => {
+    // Real record (2026-10-25, packaged build): `compose step slow { step: 'permission-grant-registry',
+    // durationMs: 22763287 }` whose own CPU share was 0 — a suspended laptop, read as six hours of work.
+    const { log, recorder, advanceWallOnly } = setup({ slowMs: 250 })
+
+    await recorder.step('permission-grant-registry', () => {
+      advanceWallOnly(22_763_287)
+      return Promise.resolve(undefined)
+    })
+    recorder.logSummary()
+
+    expect(log.warn).toHaveBeenCalledWith('compose step slow', {
+      step: 'permission-grant-registry',
+      durationMs: 22_763_287,
+      cpuMs: 0,
+      cpuShare: 0,
+      attribution: 'process-not-scheduled'
+    })
+    const fields = log.info.mock.calls[0][1] as Record<string, unknown>
+    expect(String(fields.slowest)).toContain('permission-grant-registry=22763287ms(not-scheduled)')
+  })
+
+  it('keeps the bare number when the share is inside the unresolved band', async () => {
+    const { log, recorder, advanceWithCpu } = setup({ slowMs: 250 })
+
+    await recorder.step('open-project-db', () => {
+      // 1 000 ms of wall time with 300 ms of CPU: neither ours-in-full nor descheduled.
+      advanceWithCpu(1_000, 300)
+      return Promise.resolve(undefined)
+    })
+    recorder.logSummary()
+
+    expect(log.warn).toHaveBeenCalledWith('compose step slow', {
+      step: 'open-project-db',
+      durationMs: 1_000,
+      cpuMs: 300,
+      cpuShare: 0.3,
+      attribution: 'inconclusive'
+    })
+    const fields = log.info.mock.calls[0][1] as Record<string, unknown>
+    expect(String(fields.slowest)).toContain('open-project-db=1000ms')
+    expect(String(fields.slowest)).not.toContain('(not-scheduled)')
+  })
+
+  it('reports a failure with its category and rethrows', async () => {
     const { log, recorder } = setup()
 
     await expect(

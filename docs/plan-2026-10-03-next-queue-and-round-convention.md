@@ -12219,3 +12219,80 @@ diagnostics **17 files / 107 passed**；`tsc node` **exit 0** / `tsc web` **exit
 - 用户实例上的日志读数（需重启用户实例，未做）。
 - 停顿记录进**轨迹包**（`trajectory/`）：本单元只进支持包；那段由会话线推进，不抢同一批文件。
 - 下一轮第一步见 §两百三十二。
+
+## 两百三十二、本轮追加（执行器，2026-10-25 20:2x–23:0x）—— 慢步骤的时长里有一半是「我们根本没在跑」：时间与 CPU 归属分离
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == 505858ad`（v2.18.0 发版材料，会话线刚发完），树上只有**我上一轮未提交的**
+  `src/main/diagnostics/**` + `src/main/settings/service.ts`，另有**会话线在制的** `src/main/projects/prisma-client*.ts`
+  与 `scripts/bench/project-db-open.bench.test.ts`、`docs/bench-runs/2026-10-25-project-db-open.txt`。
+- 队列 B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）复核仍为**耗尽** ⇒ 按约定收口自己的具名开项。
+- **并发形状（本轮实测到一次完整的「让路」）**：会话线在我跑用例期间把 `prisma-client*` + bench 提交成
+  `2458555f` 并推上 main（共享工作树 ⇒ 我一 `git add` 只能挑自己那 7 个路径）。它的提交**不含**我任何一行；
+  我这一笔因此落在 `2458555f` 之上，推送时它是 fast-forward（它已在 origin/main）。
+
+### 一 本单元：同一窗口三份记录互相矛盾
+
+产品自己的日志（只读）里，`runId=1c037550-…` 的同一次启动：
+
+| 记录 | 读数 |
+| --- | --- |
+| `compose step slow` | `permission-grant-registry` **22,763,287 ms**（另一天 635,268 ms） |
+| `settings key migration was slow` | `encryption-available=**22,763,345ms**` |
+| `event loop stalled` | 同一毫秒级窗口：`windowMs 22763558 / cpuMs 431 / cpuShare 0 / **process-not-scheduled**` |
+
+看门狗早已判对「进程没在跑」，而喂启动与设置分析的两条计时器把它报成六小时的工作量 ——
+下一个人会照着这个数去查钥匙串。
+
+### 二 交付（7 文件）
+
+| 文件 | 改动 |
+| --- | --- |
+| `diagnostics/cpu-attribution.ts`（新） | 唯一一份词汇：`cpuMillisecondsBetween` / `cpuShareOf` / `classifyCpuShare` / `attributionSuffix`；阈值 ≥0.60 / ≤0.15，中间 `inconclusive`；**零长度窗口判 `inconclusive`**（立刻返回的步最不该被怀疑） |
+| `diagnostics/compose-steps.ts` | 每步记 `cpuMs/cpuShare/attribution`（`slow` 与 `failed` 两行都带）；摘要里那类步带 `(not-scheduled)`；`steps()` 公开形状不变 |
+| `diagnostics/event-loop-stall-watchdog.ts` | 删掉自己那对阈值常量，改引用同一模块 —— 不再是第二套判断 |
+| `settings/service.ts` | 密钥迁移每阶段改 `{ ms, attribution }`、`phases` 逐项可带后缀；整段带 `cpuMs/cpuShare/attribution`；新增注入缝 `clock` / `cpuUsage` |
+| 三个 `.test.ts` | `cpu-attribution` 6 条、`compose-steps` 新增 2 条（含 6.3 小时那条）、`service.key-migration-attribution` 2 条 |
+
+### 三 真机读数（产品自己的 recorder + 真 Electron + 真信号去调度）
+
+esbuild 把**产品自己的** `compose-steps.ts`（含 `cpu-attribution.ts`）打进真 Electron 43.7.5 主进程；
+一步忙等 900 ms，一步由外部 `sh -c "sleep 3; kill -CONT <pid>"` 唤醒后自己 `SIGSTOP`（真被停住）：
+
+```
+WARN compose step slow {"step":"busy-in-process","durationMs":900,"cpuMs":826,"cpuShare":0.918,"attribution":"cpu-bound-in-process"}
+WARN compose step slow {"step":"stopped-by-signal","durationMs":3065,"cpuMs":13,"cpuShare":0.004,"attribution":"process-not-scheduled"}
+INFO compose runtime steps {"totalMs":3969,"stepCount":2,"slowest":"stopped-by-signal=3065ms(not-scheduled) busy-in-process=900ms"}
+versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
+```
+
+**忙等那一步不会被误判**（0.918 → 无后缀），**被停住的那一步自己说没在跑**（0.004 → `(not-scheduled)`）。
+
+### 四 没取到的那半边（具名，不当已验）
+
+设置侧那条日志只在**一次真的 ≥250 ms 迁移**发生时打印，没有可靠的按需制造方式。本轮试过：① 把
+`SettingsService` 打包进真 Electron —— 未打包的 Electron 里 `safeStorage` 要过钥匙串，探针卡死（240 s 超时）；
+② 注入时钟 —— 那是单测。⇒ 设置侧只有注入缝单例 + 「与 compose 共用同一分类器」这条结构事实作证据；
+真实那一次再现时同一行会自己长出新字段（`docs/evidence/2026-10-25-step-duration-attribution.md` §五）。
+
+### 五 门禁读数（实跑）
+
+| 门 | 读数 |
+| --- | --- |
+| 定向 3 文件 | `Test Files 3 passed` / `Tests 17 passed` |
+| 整域 `vitest src/main/diagnostics src/main/settings --maxWorkers=4` | `112 passed \| 1 skipped (113)` / `1589 passed \| 3 skipped (1592)` / `EXIT=0` |
+| 双 typecheck（`--composite false`，堆 8192） | node `EXIT=0`、web `EXIT=0` |
+| `npx eslint --no-cache .` | `0 errors, 127 warnings`（中途红过一次：新用例 `let cpu` 应为 `const`，已改） |
+| `prettier --check`（本单元 7 文件） | 全过（两个新文件先 `--write` 过） |
+| `bash scripts/pre-push-checks.sh` | `全部通过` |
+
+### 六 边界 + 下一轮第一步
+
+1. 阈值是**带名的经验档**（2026-10-19 探针：忙等 ~0.8、被去调度 ~0.0），中间带保持 `inconclusive`。
+2. 它不让慢步骤变快，只让下一个人不去查错地方；新字段全是**新增**，老日志照旧可读。
+3. **下一轮第一步**：把同一份词汇铺到剩下那些「只报墙钟」的慢行 —— `grep -rn "was slow" src/main --include=*.ts`
+   本轮数出 **10 处**（`ipc handler was slow`、`application command handler was slow`、`session save was slow`、
+   `project files read was slow`、`notebook state read was slow`、`storage info was slow`、`artifact version resolve
+   was slow`、`managed preview acquire was slow`、preflight / environment check 两条）。先从**通道级**那两条起
+   （§228 记的「20–30 秒簇」正是它们的读数），每处只加字段与后缀、不加计时器、不新开通道。

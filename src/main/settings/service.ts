@@ -91,6 +91,14 @@ import {
   type FunctionModelEvent
 } from '../function-models/event-log'
 import { detectFunctionModelTarget } from '../function-models/detect'
+import {
+  attributionSuffix,
+  classifyCpuShare,
+  cpuMillisecondsBetween,
+  cpuShareOf,
+  type ActivityAttribution,
+  type CpuUsageSample
+} from '../diagnostics/cpu-attribution'
 import { createLogger, diagnosticErrorFields } from '../logger'
 import { hasLegacyKeyRefs } from './legacy-key-refs'
 import type {
@@ -253,6 +261,13 @@ export type SettingsServiceOptions = {
   // Browser OAuth controller for claude-shared; default-constructed when omitted. Calls
   // `claude auth login --claudeai` to open the browser and stores credentials in ~/.claude.
   claudeSharedAuth?: ClaudeSharedAuthControllerPort
+  // Injectable clock and process-CPU source for the legacy key-ref migration. Two clocks are needed there:
+  // the wall one says how long the pass took, the CPU one says how much of it the process was actually
+  // running. Real record (2026-10-25, packaged build): `encryption-available=22763345ms` next to the
+  // watchdog's own `cpuShare 0 / process-not-scheduled` for the same gap — six hours of "keychain cost"
+  // that was a suspended laptop.
+  clock?: () => number
+  cpuUsage?: () => CpuUsageSample
 }
 
 // Orchestrates the settings units (repository + crypto + detect/install + validate) behind one
@@ -272,6 +287,9 @@ class SettingsService {
   private readonly executionProtection: ExecutionProtectionService
   private readonly storageRoot: string
   private readonly userClaudeDir: string
+  // Wall clock and process-CPU source for the key-ref migration's attribution (see `SettingsServiceOptions`).
+  private readonly clock: () => number
+  private readonly cpuUsage: () => CpuUsageSample
   private customServerAuthenticator?: (serverId: string) => Promise<void>
   private customServerAuthenticationCanceller?: (serverId: string) => Promise<void>
   private skillDeletionGuard?: (skillId: string) => Promise<void>
@@ -280,6 +298,8 @@ class SettingsService {
   constructor(options: SettingsServiceOptions = {}) {
     this.storageRoot = options.storageRoot ?? resolveStorageRoot()
     this.repository = options.repository ?? new SettingsRepository(this.storageRoot)
+    this.clock = options.clock ?? Date.now
+    this.cpuUsage = options.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
     this.preferences = new SettingsPreferencesModule(this.repository)
     // The protection service reads the egress allowlist and the remote policy back through this
     // service, so the level, the matrix and the settings the user sees can never disagree. The
@@ -1134,14 +1154,25 @@ class SettingsService {
     // of a settings document. This function is the only part of that step that touches the OS secret store,
     // so each phase is timed and named: "read-stored-settings took 10 s" cannot be acted on, "keychain
     // availability took 9.8 s" can. Nothing here changes behaviour — only where the number is attributed.
-    const phases: Record<string, number> = {}
-    const startedAt = Date.now()
+    //
+    // Every phase now also records the process CPU it consumed, because the wall clock alone produced a
+    // reading that was not about us at all: the same log has `encryption-available=22763345ms` and, a
+    // millisecond later, the watchdog's `windowMs 22763558 / cpuMs 287 / cpuShare 0 /
+    // attribution process-not-scheduled` for that exact gap (2026-10-25, packaged build). Six hours of
+    // "keychain cost" that was a suspended laptop — and it would have sent the next investigation to the
+    // secret store. A phase that was not scheduled says so instead of reporting the wall time as work.
+    const phases: Record<string, PhaseTiming> = {}
+    const startedAt = this.clock()
+    const cpuStartedAt = this.cpuUsage()
     const measure = async <T>(name: string, run: () => Promise<T> | T): Promise<T> => {
-      const phaseStartedAt = Date.now()
+      const phaseStartedAt = this.clock()
+      const phaseCpuStartedAt = this.cpuUsage()
       try {
         return await run()
       } finally {
-        phases[name] = Date.now() - phaseStartedAt
+        const ms = Math.max(0, this.clock() - phaseStartedAt)
+        const cpuMs = cpuMillisecondsBetween(phaseCpuStartedAt, this.cpuUsage())
+        phases[name] = { ms, attribution: classifyCpuShare(cpuShareOf(cpuMs, ms), ms) }
       }
     }
 
@@ -1150,13 +1181,13 @@ class SettingsService {
     // and "are there `plain:` references?" is answered by the document itself — on every launch after the
     // one that migrated them, this pass now touches nothing.
     if (!hasLegacyKeyRefs(settings)) {
-      this.logKeyMigration(startedAt, phases, 'unchanged')
+      this.logKeyMigration(startedAt, cpuStartedAt, phases, 'unchanged')
       return settings
     }
 
     const encryptionAvailable = await measure('encryption-available', () => isEncryptionAvailable())
     if (!encryptionAvailable) {
-      this.logKeyMigration(startedAt, phases, 'encryption-unavailable')
+      this.logKeyMigration(startedAt, cpuStartedAt, phases, 'encryption-unavailable')
       return settings
     }
 
@@ -1169,11 +1200,11 @@ class SettingsService {
       )) || changed
 
     if (!changed) {
-      this.logKeyMigration(startedAt, phases, 'unchanged')
+      this.logKeyMigration(startedAt, cpuStartedAt, phases, 'unchanged')
       return settings
     }
     const reloaded = await measure('reload', () => this.repository.getSettings())
-    this.logKeyMigration(startedAt, phases, 'migrated')
+    this.logKeyMigration(startedAt, cpuStartedAt, phases, 'migrated')
     return reloaded
   }
 
@@ -1181,18 +1212,27 @@ class SettingsService {
   // preflight and compose recorders.
   private logKeyMigration(
     startedAt: number,
-    phases: Record<string, number>,
+    cpuStartedAt: CpuUsageSample,
+    phases: Record<string, PhaseTiming>,
     outcome: 'migrated' | 'unchanged' | 'encryption-unavailable'
   ): void {
-    const totalMs = Date.now() - startedAt
+    const totalMs = Math.max(0, this.clock() - startedAt)
     if (totalMs < SETTINGS_KEY_MIGRATION_SLOW_MS) return
+    const cpuMs = cpuMillisecondsBetween(cpuStartedAt, this.cpuUsage())
+    const cpuShare = cpuShareOf(cpuMs, totalMs)
     createLogger('settings').warn('settings key migration was slow', {
       totalMs,
+      // The other half of the same window: a pass whose processes were barely running is named, not just
+      // timed. Both numbers are needed — `totalMs` alone is what produced a six-hour "keychain" claim.
+      cpuMs,
+      cpuShare: Number(cpuShare.toFixed(3)),
+      attribution: classifyCpuShare(cpuShare, totalMs),
       outcome,
-      // The phases that ran, largest first, in the same `name=12ms` shape the compose recorder prints.
+      // The phases that ran, largest first, in the same `name=12ms` shape the compose recorder prints, with
+      // `(not-scheduled)` on a phase whose wall time was not work.
       phases: Object.entries(phases)
-        .sort(([, left], [, right]) => right - left)
-        .map(([name, ms]) => `${name}=${ms}ms`)
+        .sort(([, left], [, right]) => right.ms - left.ms)
+        .map(([name, phase]) => `${name}=${phase.ms}ms${attributionSuffix(phase.attribution)}`)
         .join(',')
     })
   }
@@ -1904,6 +1944,9 @@ class SettingsService {
 // A key-migration pass under this is the normal case (in-memory maps, no keychain roundtrip) and stays
 // silent; the threshold matches the compose and preflight recorders, so one filter catches all of them.
 const SETTINGS_KEY_MIGRATION_SLOW_MS = 250
+
+/** One timed migration phase: how long it took, and whether the process was running for it. */
+type PhaseTiming = Readonly<{ ms: number; attribution: ActivityAttribution }>
 
 // Production service rooted at the shared storage root with real detection dependencies.
 const createDefaultSettingsService = (): SettingsService => new SettingsService()

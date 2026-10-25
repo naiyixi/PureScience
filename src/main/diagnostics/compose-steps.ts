@@ -12,6 +12,14 @@
 // healthy startup stays at one line, while a slow one is attributable without a profiler.
 
 import { diagnosticErrorFields } from '../logger'
+import {
+  attributionSuffix,
+  classifyCpuShare,
+  cpuMillisecondsBetween,
+  cpuShareOf,
+  type ActivityAttribution,
+  type CpuUsageSample
+} from './cpu-attribution'
 
 export type ComposeStepOutcome = 'ok' | 'failed'
 
@@ -20,6 +28,10 @@ export type ComposeStep = Readonly<{
   durationMs: number
   outcome: ComposeStepOutcome
 }>
+
+/** One recorded step plus what the process spent of it. Kept internal: `steps()` stays the public shape. */
+type TimedStep = ComposeStep &
+  Readonly<{ cpuMs: number; cpuShare: number; attribution: ActivityAttribution }>
 
 export type ComposeStepLogger = {
   info: (message: string, metadata: Record<string, unknown>) => void
@@ -41,6 +53,12 @@ export type ComposeStepRecorderOptions = {
   log: ComposeStepLogger
   /** Injectable clock so the recorder is testable without waiting on real time. */
   now?: () => number
+  /**
+   * Injectable process CPU source. A duration alone cannot separate our own blocking work from a window the
+   * process was not scheduled in — the same machine logged a compose step at 22,763,287 ms whose CPU share
+   * was 0 (see `cpu-attribution`), so every slow line now carries both halves.
+   */
+  cpuUsage?: () => CpuUsageSample
   /** A step at or above this duration logs its own `slow` line. */
   slowMs?: number
   /** How many slowest steps the summary keeps. */
@@ -72,33 +90,64 @@ export const createComposeStepRecorder = (
   options: ComposeStepRecorderOptions
 ): ComposeStepRecorder => {
   const now = options.now ?? ((): number => performance.now())
+  const cpuUsage = options.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
   const slowMs = options.slowMs ?? DEFAULT_SLOW_MS
   const summarySize = options.summarySize ?? DEFAULT_SUMMARY_SIZE
   const messages = options.messages ?? DEFAULT_MESSAGES
 
-  const recorded: ComposeStep[] = []
+  const recorded: TimedStep[] = []
   let startedAt: number | undefined
   let endedAt: number | undefined
 
   const step = async <T>(name: string, run: () => Promise<T> | T): Promise<T> => {
     const stepStart = now()
+    const cpuStart = cpuUsage()
     startedAt ??= stepStart
     try {
       const value = await run()
       const durationMs = Math.max(0, now() - stepStart)
       endedAt = now()
-      recorded.push({ name, durationMs, outcome: 'ok' })
+      const cpuMs = cpuMillisecondsBetween(cpuStart, cpuUsage())
+      const cpuShare = cpuShareOf(cpuMs, durationMs)
+      const attribution = classifyCpuShare(cpuShare, durationMs)
+      recorded.push({
+        name,
+        durationMs,
+        outcome: 'ok',
+        cpuMs,
+        cpuShare: Number(cpuShare.toFixed(3)),
+        attribution
+      })
       if (durationMs >= slowMs) {
-        options.log.warn(messages.slow, { step: name, durationMs: Math.round(durationMs) })
+        options.log.warn(messages.slow, {
+          step: name,
+          durationMs: Math.round(durationMs),
+          cpuMs,
+          cpuShare: Number(cpuShare.toFixed(3)),
+          attribution
+        })
       }
       return value
     } catch (error) {
       const durationMs = Math.max(0, now() - stepStart)
       endedAt = now()
-      recorded.push({ name, durationMs, outcome: 'failed' })
+      const cpuMs = cpuMillisecondsBetween(cpuStart, cpuUsage())
+      const cpuShare = cpuShareOf(cpuMs, durationMs)
+      const attribution = classifyCpuShare(cpuShare, durationMs)
+      recorded.push({
+        name,
+        durationMs,
+        outcome: 'failed',
+        cpuMs,
+        cpuShare: Number(cpuShare.toFixed(3)),
+        attribution
+      })
       options.log.error(messages.failed, {
         step: name,
         durationMs: Math.round(durationMs),
+        cpuMs,
+        cpuShare: Number(cpuShare.toFixed(3)),
+        attribution,
         ...diagnosticErrorFields(error)
       })
       throw error
@@ -108,7 +157,9 @@ export const createComposeStepRecorder = (
   return {
     step,
     steps: (): ComposeStep[] =>
-      [...recorded].sort((left, right) => right.durationMs - left.durationMs),
+      [...recorded]
+        .sort((left, right) => right.durationMs - left.durationMs)
+        .map(({ name, durationMs, outcome }) => ({ name, durationMs, outcome })),
     totalMs: (): number =>
       startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt),
     logSummary: (): void => {
@@ -117,7 +168,9 @@ export const createComposeStepRecorder = (
         .slice(0, summarySize)
         .map(
           (entry) =>
-            `${entry.name}=${Math.round(entry.durationMs)}ms${entry.outcome === 'failed' ? '(failed)' : ''}`
+            `${entry.name}=${Math.round(entry.durationMs)}ms${
+              entry.outcome === 'failed' ? '(failed)' : ''
+            }${attributionSuffix(entry.attribution)}`
         )
       options.log.info(messages.summary, {
         totalMs: Math.round(
