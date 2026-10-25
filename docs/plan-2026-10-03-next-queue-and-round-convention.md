@@ -12147,3 +12147,75 @@ preflight stays silent`）、`src/renderer/src/pages/workspace/session-plan/Sess
 ② `host` 这一族到此收口（第一段有栈、有机器读数、冻结可区分）⇒ 下一件：**在真机日志里确认 `event loop stalled`
 行真的带上 `stack.status: profiled` 与 `host.status: sampled`**（需要一次真机 stall，或从认证车道日志里找）；
 ③ 若桌面会话线起了新版本窗口（`gh release list` 当时 Latest 是 v2.17.7），先让开，不碰发版四文件。
+
+## 两百三十一、本轮追加（执行器，2026-10-25 18:0x–19:5x）—— 支持包自带「事件循环停顿」摘要：一次 grep 换成一份带 dropped 的环形记录
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == f46c514f`、`git status --short` **空**（树干净，没有别人的在制改动）。
+- 按队列约定核过「已完成（别再重做）」清单与 `git log --oneline --since="3 days ago"`：B 段三件
+  （A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）仍是**耗尽**状态；近三天的提交全是会话线的 v2.18/v2.19
+  （成本矩阵 `f46c514f`、agent card `9c51fb88`、轨迹包五笔），**没有一笔碰支持包的停顿摘要** ⇒ 不重复劳动。
+- 归属：本单元在 `src/main/diagnostics/**`（我这个执行体的既有面），与会话线正在推进的
+  `src/main/trajectory/**`、`src/main/features/a2a/**` **目录不相交**；`src/main/ipc.ts` 只有 4 行（import +
+  facts 一行），提交前 `git diff --cached` 逐行核过是自己的。
+- 上一轮 §两百三十 §八 ② 的「在真机日志里确认新字段」**仍未解**：用户常驻实例的日志里 162,018 条
+  `event loop stalled` 中最后两条还是 `no-second-stall` / `window-armed` ⇒ 那条要重启实例，属需用户点头的一条，
+  未动它（如实留在 §四.2 / §五）。
+
+### 一 交付（`66fe6cd7`，9 文件 / +408 −2）
+
+`diagnostics/event-loop-stalls.json`：支持包新增一段，内容来自 watchdog 自己的**有界环**
+（默认 16 条），不是日志解析 —— 解析器会在日志格式变化时报「零次停顿」，与健康机器同形。
+
+- 新 `stall-record-ring.ts`：`record / summary / clear`；`summary()` 给 `capacity / observed / dropped /
+  oldestAt / newestAt / status / records`；每条附观察时刻 `at`；空表具名 `no-stalls-observed`。
+- 看门狗：每条上报的停顿**先入环再写日志**（日志抛错时记录不丢），新增 `records?` 注入缝。
+- 支持包：`stalls` 是**必填** facts（与 `localParsingModels` 同一理由：导出时机就是「刚出过事」），
+  写进自建目录、走同一 scrubber 与归档回读门，README.txt 增一节。
+- 组合根 `ipc.ts` 接共享环的 `summary()` —— 生产只有一个读取方，不新造第二份。
+
+### 二 真机读数（产品代码 + 真 Electron 运行时，非用户实例）
+
+探针 = 产品自己的 watchdog + `createSupportBundle` esbuild 打单文件，`ELECTRON_RUN_AS_NODE=1 electron` 跑，
+主线程真忙等 1.6 s：`electron=43.7.5 / node=24.21.0 / v8=15.0.245.31-electron.0`；
+环 `observed=1 dropped=0`、`windowMs=1900 lateMs=1400 attribution=cpu-bound-in-process`、
+`stack.status=profiled`（`main (…:4379)` × 27 samples）、`host.status=sampled`（8 samples / maxGapMs=267 /
+freeMemMbMin=79 / pageouts=0）；日志同一行也是 `profiled` + `sampled`；包 **2163 bytes**、
+条目含 `diagnostics/event-loop-stalls.json` 与 `logs/main.log`，解包读回内容与环一致。
+
+### 二bis e2e 真窗口读数（隔离工作树 `/tmp/ps-e2e-bundle` @ `66fe6cd7`）
+
+改过 `src/main` ⇒ 必须 `build:e2e` 后跑；共享树里跑着 dev 实例（44100 LISTEN），会与 `build:e2e` 抢 `out/`，
+所以在**该提交的隔离工作树**里建、软链 `node_modules`、只跑这一支 spec。`build:e2e` 全量（main + preload +
+renderer 1m42s）通过后：
+
+```
+✓ exports a scrubbed support bundle from the running app (9.3s)
+✓ a cancelled export writes nothing and leaves the panel unchanged (6.3s)
+2 passed (17.3s)
+```
+
+即 §三 第 8 条那组断言（包内有该段、`status` 只在两个合法值、空表 `records` 必空、有记录必非空）是
+**跑过才交的**，不是「写下来就算」。（这也是上一轮的断点：当时 `build:e2e` 被迭代上限截断，spec 未执行，
+本轮第一件事就是把它跑完。）
+
+### 三 门禁（全部实跑）
+
+diagnostics **17 files / 107 passed**；`tsc node` **exit 0** / `tsc web` **exit 0**；全仓
+`eslint --no-cache .` **0 errors**（128 warnings，唯一一条在本单元新增的 e2e spec 上，已修并单文件复检 0）；
+`prettier --check` 通过；`scripts/pre-push-checks.sh` **exit 0**。
+
+### 四 边界（不许读成更强）
+
+1. 探针证明「组出来的摘要带真读数」，**不**证明主进程在真实 stall 时的端到端（停顿是探针自造的）。
+2. 用户常驻实例仍跑旧代码 ⇒「真机日志那一行带新字段」在该实例上**仍未取证**（需重启，待用户点头）。
+3. 环是进程内的：重启归零（`observed` 从 0 开始），历史在 `logs/` 里；两者不是同一份数据的两种写法。
+4. `continuity: unknown` 是具名缺态，不是「机器没停」。
+5. 代价只多 16 条记录，无新计时器、无新子进程。
+
+### 五 具名未办 + 下一轮第一步
+
+- 用户实例上的日志读数（需重启用户实例，未做）。
+- 停顿记录进**轨迹包**（`trajectory/`）：本单元只进支持包；那段由会话线推进，不抢同一批文件。
+- 下一轮第一步见 §两百三十二。
