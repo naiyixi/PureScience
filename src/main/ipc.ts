@@ -59,6 +59,7 @@ const capabilityGapsLog = createLogger('capabilities')
 
 import { createAcpRuntime } from './acp/runtime-composition'
 import type { TrajectoryInput } from './trajectory/bundle-payload'
+import { extractToolCalls } from './trajectory/extract-tool-calls'
 import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
 import { createAcpHandlerWorkflows } from './acp/handler-workflows'
 import { createAcpTaskAgentPort } from './acp/task-agent-port'
@@ -2590,10 +2591,14 @@ const createApplicationModules = async (
         (left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0)
       )[0]
       if (!newest) return undefined
+      const { calls } = extractToolCalls(newest)
       return {
         productVersion: app.getVersion(),
         sessionId: newest.id,
         session: newest,
+        // 工具名/耗时/结果大小来自 session.activities（与 bench-evidence 同一口径）。会话里没有
+        // activities 时这一段整段不写，而不是写一个空文件冒充「这轮没调工具」。
+        ...(calls.length > 0 ? { toolCalls: calls } : {}),
         needles: [homedir(), basename(homedir())].filter((needle) => needle.length > 2)
       }
     } catch {
