@@ -1,4 +1,5 @@
 import { basename, dirname, join } from 'node:path'
+import { homedir } from 'node:os'
 import { unresolvedExecutionProtectionSnapshot } from '../shared/execution-protection'
 
 import { randomUUID } from 'node:crypto'
@@ -57,6 +58,7 @@ const readSessionRecord = (raw: unknown): PersistedChatSession | null => {
 const capabilityGapsLog = createLogger('capabilities')
 
 import { createAcpRuntime } from './acp/runtime-composition'
+import type { TrajectoryInput } from './trajectory/bundle-payload'
 import { createAcpCreateSessionWorkflow } from './acp/create-session-workflow'
 import { createAcpHandlerWorkflows } from './acp/handler-workflows'
 import { createAcpTaskAgentPort } from './acp/task-agent-port'
@@ -2581,9 +2583,30 @@ const createApplicationModules = async (
   const logsCommandOwner = createLogsCommandOwner()
   // The support bundle records the storage location *class*, never the path, matching the storage log above:
   // a bundle that carried absolute paths would hand over the user name and folder layout it is meant to spare.
+  const readNewestSessionTrajectory = async (): Promise<TrajectoryInput | undefined> => {
+    try {
+      const { sessions } = await sessionRepository.loadAll()
+      const newest = [...sessions].sort(
+        (left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0)
+      )[0]
+      if (!newest) return undefined
+      return {
+        productVersion: app.getVersion(),
+        sessionId: newest.id,
+        session: newest,
+        needles: [homedir(), basename(homedir())].filter((needle) => needle.length > 2)
+      }
+    } catch {
+      return undefined
+    }
+  }
   const supportBundleCommandOwner = createSupportBundleCommandOwner({
     getLogDir: () => dirname(getLogFilePath() ?? join(resolveDataRoot(), 'logs')),
-    getFacts: () => ({
+    // The newest session rides along: a support bundle is normally exported right after something went
+    // wrong, and "which session" is the question a maintainer asks first. Absent when nothing can be read
+    // — the section is omitted rather than written empty (v2.19 §2 「做不到就不打」).
+    getFacts: async () => ({
+      trajectory: await readNewestSessionTrajectory(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

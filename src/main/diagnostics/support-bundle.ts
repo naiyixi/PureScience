@@ -13,6 +13,7 @@ import { cpus, release, totalmem, uptime } from 'node:os'
 import * as tar from 'tar'
 
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
+import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 
 export type SupportBundleVersions = {
   app: string
@@ -47,6 +48,12 @@ export type SupportBundleInput = {
    */
   localParsingModels: ModelWeightManifestReport
   counts?: { sessions?: number; projects?: number }
+  /**
+   * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
+   * everything else, and covered by the same read-back check — a bundle that still carried a credential
+   * is deleted, not handed over. Absent when the app could not read a session to describe.
+   */
+  trajectory?: TrajectoryInput
   /** Home directory to scrub from every copied file. Defaults to the environment's home. */
   homeDir?: string
   /** User name to scrub. Defaults to the base name of `homeDir`. */
@@ -102,7 +109,7 @@ Sharing
 Attach the .tar.gz to your support request. It contains no credentials and no paths from your machine.
 `
 
-const scrubText = (
+export const scrubText = (
   text: string,
   needles: readonly string[]
 ): { text: string; redactions: number } => {
@@ -125,7 +132,7 @@ const scrubText = (
   return { text: next, redactions }
 }
 
-const findLeak = (contents: string, needles: readonly string[]): string | undefined => {
+export const findLeak = (contents: string, needles: readonly string[]): string | undefined => {
   for (const needle of needles) {
     if (needle && contents.includes(needle)) return `"${needle}"`
   }
@@ -258,6 +265,24 @@ export const createSupportBundle = async (
   // gets here: the scrubber is the backstop, not the reason it is safe to include.
   await writeStaged('parsing-models.json', `${JSON.stringify(input.localParsingModels, null, 2)}\n`)
   await writeStaged('README.txt', README)
+  // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again
+  // plus the archive is re-read below. Three layers on purpose — this is the one section that carries a
+  // conversation.
+  if (input.trajectory) {
+    const bundle = await buildTrajectoryDocuments({
+      ...input.trajectory,
+      needles: [...(input.trajectory.needles ?? []), ...needles]
+    })
+    if (bundle.leak) {
+      await rm(input.outPath, { force: true })
+      await rm(staging, { recursive: true, force: true })
+      throw new Error(`Support bundle aborted: trajectory/${bundle.leak} still contains a secret.`)
+    }
+    for (const [relative, contents] of Object.entries(bundle.files)) {
+      await writeStaged(join('trajectory', relative), contents)
+    }
+    redactions += bundle.redactions
+  }
   // Newest logs first, stopping at the cap: a bundle too large to attach is as useless as a leaking one.
   let logBytes = 0
   for (const full of await listLogFilesNewestFirst(input.logDir)) {

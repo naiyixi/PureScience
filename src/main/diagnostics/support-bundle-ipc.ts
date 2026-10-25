@@ -18,7 +18,12 @@ export type SupportBundleCommandOwner = Readonly<{
 
 export type SupportBundleCommandDeps = Readonly<{
   getLogDir: () => string
-  getFacts: () => SupportBundleFacts
+  /**
+   * Async because the trajectory section needs to READ a session; everything else in the facts is
+   * synchronous. Returning a promise is allowed rather than required so existing callers and tests keep
+   * working unchanged.
+   */
+  getFacts: () => SupportBundleFacts | Promise<SupportBundleFacts>
   /**
    * Directory the save dialog opens in. Resolved lazily and defensively: `app.getPath` throws when the
    * folder cannot be resolved — a fresh Windows profile has no Downloads folder — and an export must not
@@ -104,7 +109,7 @@ export const createSupportBundleCommandOwner = (
 
       try {
         const result = await create({
-          ...deps.getFacts(),
+          ...(await deps.getFacts()),
           logDir: deps.getLogDir(),
           outPath: selected.filePath,
           now
