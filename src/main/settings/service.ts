@@ -92,6 +92,7 @@ import {
 } from '../function-models/event-log'
 import { detectFunctionModelTarget } from '../function-models/detect'
 import { createLogger, diagnosticErrorFields } from '../logger'
+import { hasLegacyKeyRefs } from './legacy-key-refs'
 import type {
   ExternalComputeEndpoint,
   CreateExternalComputeEndpointRequest
@@ -1142,6 +1143,15 @@ class SettingsService {
       } finally {
         phases[name] = Date.now() - phaseStartedAt
       }
+    }
+
+    // Ask the OS secret store only when this document actually has something to migrate. The keychain
+    // round-trip is the dominant cost of this function (measured 10,311 / 16,758 / 56,769 / 635,082 ms),
+    // and "are there `plain:` references?" is answered by the document itself — on every launch after the
+    // one that migrated them, this pass now touches nothing.
+    if (!hasLegacyKeyRefs(settings)) {
+      this.logKeyMigration(startedAt, phases, 'unchanged')
+      return settings
     }
 
     const encryptionAvailable = await measure('encryption-available', () => isEncryptionAvailable())
