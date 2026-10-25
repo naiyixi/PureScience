@@ -12296,3 +12296,87 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
    `project files read was slow`、`notebook state read was slow`、`storage info was slow`、`artifact version resolve
    was slow`、`managed preview acquire was slow`、preflight / environment check 两条）。先从**通道级**那两条起
    （§228 记的「20–30 秒簇」正是它们的读数），每处只加字段与后缀、不加计时器、不新开通道。
+
+## 二百三十三、本轮追加（执行器，2026-10-26 01:2x–）—— 认证回执读成空串的是**仪器**（`content-visibility` 跳过了布局），并把视觉闸门改成失败时自己说清差在哪
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == c1eec738`（会话线 23:25–23:40 三笔：`62b1d7e3` 基准文档 / `ae07ea8f` 分区底座 /
+  `c1eec738` 证据档），`git status --short` **为空** ⇒ 没有别人的在制品，也没有要我接手的半成品。
+- 队列 B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）复核仍**耗尽**；队列档「已完成（别再重做）」清单与本单元无交集。
+- **上一轮定的下一轮第一步（读 82512eff 判决）结果**（完整 40 位 SHA 查）：
+
+| 提交 | Windows Full Test | Nightly |
+| --- | --- | --- |
+| `e19a3094`（会话线） | cancelled | cancelled |
+| `82512eff`（本线，修分区底座） | **failure** | cancelled |
+| `ae07ea8f`（会话线，其后继） | **success** | **failure** |
+
+  82512eff 的 Windows 红落在**我上一批自己的诊断用例**上：`event-loop-stall-watchdog.test.ts > records real
+  stalls and never reports a profiled window with neither frames nor unobserved time`（shard 6/8，
+  `AssertionError: expected false to be true`，`:670`）；同一份代码在下一笔的 Windows 车道是绿的 ⇒ 间歇。
+  **但这条用例守的不变量是真的**（`status:'profiled'` 而 `frames.length === 0 && unobservedMs === 0` 时，
+  日志会声称「采到了栈」，其实一次都没采到）⇒ **不按抖动结案**，立案到 §五（下一轮单元）。
+
+### 一 Nightly 在 main 上的两处红（`ae07ea8f`，作业级读数）
+
+| 步骤 | 读数 | 归因 |
+| --- | --- | --- |
+| `Run P0 Electron certification` | 102 passed / **1 failed**：`pdf-annotation-search-evidence.spec.ts:332` → `Invalid Region PDF ready receipt: `（回执是**空串**）；重试 #1 死于 `electronApplication.firstWindow: Timeout 30000ms` | 前半是**读数仪器**（§二，机制已量出并修）；后半是基础设施（应用 2.45 s 到 `web-service-started` 却始终没开窗） |
+| `Run desktop visual regression` | `project-create-dialog.png` **3717 px（ratio 0.01）**，重试两次都是同量级 | **本机未复现**（同一份基准 `npx playwright test e2e/visual-regression.spec.ts` 13.5 s 通过），同一基线在 `505858ad` 的 Nightly（12:51）也通过 ⇒ 不猜、不放宽容差、不重画基准，先给闸门装读数（§三） |
+
+### 二 交付 A：回执读空的机制量出来了，15 处同形读数收进一个真源
+
+**机制（实测，不是推理）**：会话条目由 `message-scroller` 渲染，条目类名带
+`[contain-intrinsic-size:auto_10rem] [content-visibility:auto]`；**滚出视口的条目会被跳过布局**，而
+`innerText` 对被跳过的子树返回**空字符串**（`textContent` 仍在）。真 Electron、真窗口探针：
+
+```
+[cv-probe] {"containedHeight":160,"innerText":"\"\"","textContentLength":66,"plainInnerTextLength":66}
+```
+
+即 CI 那句 `Invalid Region PDF ready receipt: ` 的**空串**，与页面快照里明明写着
+`Region PDF ready for session e2e-session-1, artifact …, version ….` 是同一个事实的两面 —— 90 s 的流式输出
+把回执推出了视口。**这不是产品缺陷**（DOM 里有、只是没布局），也不是「偶发」。
+
+交付：
+
+| 位置 | 改动 |
+| --- | --- |
+| `e2e/certification/helpers.ts` | 新增 `receiptText(locator)`：`textContent` + 空白归一；头注写明机制与三组量值（容器 160 px 占位 / `innerText` 空 / `textContent` 66 字符） |
+| 12 个 spec / **15 处** | `page.getByText(/^…/).innerText()` → `receiptText(page.getByText(/^…/))`（pdf 六支 + artifact 三支 + search-evidence 等）。**判据只紧不放**：回执的身份正则一字未改，屏上可见性仍由周边断言负责 |
+
+### 三 交付 B：视觉闸门失败时自己说清「差在哪」
+
+`e2e/visual-regression.spec.ts`：截图不匹配时先打印**表面指纹**再抛原错 —— 焦点元素、`header` 文本、对话框
+文本与盒子、文档/视口尺寸、主题类名。理由：认证作业只上传 P0 产物，**diff 图留在 runner 上**，只有 job log 能带走
+证据；文本一致而像素有差 ⇒ 画面/环境；文本不同 ⇒ 点名了变化的那一块。
+
+**仪器自证（强制失败一次）**：把 `home-empty-darwin.png` 临时换成另一张基准跑一遍，日志确实打出
+
+```
+[visual] home-empty.png differs; surface fingerprint {"active":"BODY","header":"PureSciencev2.18.0Search sessions and artifacts…⌘KFollow systemNew project","dialog":null,"dialogBox":null,"documents":"1280x800","viewport":"1280x800","theme":""}
+```
+
+随后 `git checkout --` 复原基准（`git status` 该目录为空）。
+
+### 四 门禁读数（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 受影响的三支认证 spec（`--workers=1`） | `4 passed (58.6s)`（`pdf-annotation-search-evidence` + `pdf-region-bookmark` + `artifact-provenance` ×2） |
+| 视觉 spec（打补丁后） | `1 passed (9.5s)` |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 8192） | `EXIT=0` |
+| `eslint --no-cache`（本单元 14 文件） | `EXIT=0` |
+| `prettier --check` | 2 文件漂移，`--write` 后全过 |
+
+### 五 边界与下一轮第一步
+
+1. 本单元**只动测试台**（12 个 spec + 1 helper + 1 视觉 spec），产品代码零改动 ⇒ **不占补丁号、不发版**。
+2. 视觉那 3717 px **仍未定因**：本机两次通过、`505858ad` 的 CI 通过。下一笔若再红，`[visual] … surface
+   fingerprint` 就是判据（文本一致/不一致直接分开「环境」与「改动」两种）。
+3. **下一轮单元（已具名）**：`status:'profiled'` 的空栈窗口 —— 在栈采样器那里把「一帧没取到、也没有未观测时间」
+   降级成**具名态**，而不是继续报 `profiled`；同时给那条用例的失败信息补上该窗口的三个数
+   （`mainThreadMs / unobservedMs / frames.length`），让下一次 Windows 红自带判据。
+4. 上一轮具名未办的两条仍在：**用户常驻实例的日志读数**（需重启用户实例，等点头）；把 CPU 归属铺到剩下
+   10 处只报墙钟的慢行（本单元没动，仍在队列里）。

@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test, type ElectronApp } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the annotation toolbar on the narrowest pane a reader can reach.
 //
@@ -247,7 +247,7 @@ test('keeps the annotation tools and the panel toggle reachable with the panel o
   const projectId = await createProject(page, 'PDF annotation narrow pane')
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const identity = receipt.match(
     /^Region PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )

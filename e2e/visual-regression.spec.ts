@@ -26,12 +26,50 @@ const expectStableScreenshot = async (
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
   })
-  await expect(page).toHaveScreenshot(name, {
-    animations: 'disabled',
-    caret: 'hide',
-    maxDiffPixelRatio: process.platform === 'darwin' ? maxDiffPixelRatio : 0.035
-  })
+  try {
+    await expect(page).toHaveScreenshot(name, {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: process.platform === 'darwin' ? maxDiffPixelRatio : 0.035
+    })
+  } catch (error) {
+    // A pixel count names nothing by itself, and the diff image stays on the runner (the certification
+    // job uploads P0 artifacts only). Say what the surface actually held, so the next red is readable
+    // from the job log alone: identical text with a diff means paint/environment, different text names
+    // the element that changed.
+    console.log(
+      `[visual] ${name} differs; surface fingerprint ${JSON.stringify(await surfaceFingerprint(page))}`
+    )
+    throw error
+  }
 }
+
+// What a reader would see, as text plus the boxes that carry it — enough to tell "the copy changed"
+// from "the same copy rendered differently" without the diff image.
+const surfaceFingerprint = async (page: Page): Promise<Record<string, unknown>> =>
+  page.evaluate(() => {
+    const text = (element: Element | null): string | null =>
+      element === null ? null : (element.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const box = (element: Element | null): string | null => {
+      if (element === null) return null
+      const rect = element.getBoundingClientRect()
+      return `${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)}`
+    }
+    const dialog = document.querySelector('[role="dialog"]')
+    const active = document.activeElement
+    return {
+      active:
+        active === null
+          ? null
+          : `${active.tagName}${(active as HTMLElement).id ? `#${(active as HTMLElement).id}` : ''}`,
+      header: text(document.querySelector('header')),
+      dialog: text(dialog),
+      dialogBox: box(dialog),
+      documents: `${document.documentElement.scrollWidth}x${document.documentElement.scrollHeight}`,
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+      theme: document.documentElement.className
+    }
+  })
 
 test('keeps core desktop surfaces visually stable', async ({ app }) => {
   const page = await app.completeOnboarding()

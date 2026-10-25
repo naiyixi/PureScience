@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import type { Page } from 'playwright'
+import type { Locator, Page } from 'playwright'
 
 const createProject = async (page: Page, name: string): Promise<string> => {
   const existingProjectIds = await page.evaluate(async () => {
@@ -56,4 +56,16 @@ const openRecentSession = async (page: Page, prompt: string): Promise<void> => {
   await session.click()
 }
 
-export { createProject, openRecentSession, sendPrompt }
+// Conversation items are rendered inside `message-scroller`, whose items carry
+// `content-visibility: auto` with an intrinsic placeholder. An item the reader has scrolled past is
+// then *skipped for layout*, and `innerText` on a skipped subtree is the empty string even though the
+// text is still in the DOM — measured on this app: contained height 160 px (the placeholder),
+// `innerText` "", `textContent` 66 chars. A receipt read with `innerText` therefore fails on exactly
+// those runs where the conversation grew long enough to push the receipt out of view, and the failure
+// reads as "Invalid … receipt: " with the sentence plainly visible in the page snapshot.
+// What such a line asserts is *what the receipt says*, so read the DOM text; whether the surface is on
+// screen is asserted by the panel/message assertions around it.
+const receiptText = async (locator: Locator): Promise<string> =>
+  ((await locator.textContent()) ?? '').replace(/\s+/g, ' ').trim()
+
+export { createProject, openRecentSession, receiptText, sendPrompt }

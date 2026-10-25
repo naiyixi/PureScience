@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { expect } from '@playwright/test'
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 test.setTimeout(180_000)
 
@@ -18,7 +18,7 @@ test('retains an Artifact Version producer across Electron relaunch', async ({ a
     90_000
   )
 
-  const receipt = await page.getByText(/^Artifact provenance verified for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Artifact provenance verified for session /))
   const identity = receipt.match(
     /^Artifact provenance verified for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )
@@ -79,7 +79,7 @@ test('the provenance panel shows what the session read, recipe and window includ
     90_000
   )
 
-  const receipt = await page.getByText(/^Artifact provenance verified for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Artifact provenance verified for session /))
   const identity = receipt.match(
     /^Artifact provenance verified for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )

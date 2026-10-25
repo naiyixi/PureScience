@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for figure extraction on a real window: the page the fixture agent writes carries a picture
 // and a caption under it, and the app's own pdf:figures command must find them — through the same public
@@ -10,14 +10,18 @@ import { createProject, sendPrompt } from './helpers'
 
 test.setTimeout(180_000)
 
-test('extracts the figure and its caption from a real PDF through the app command', async ({ app }) => {
+test('extracts the figure and its caption from a real PDF through the app command', async ({
+  app
+}) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   const projectId = await createProject(page, 'PDF figure evidence')
   await sendPrompt(page, 'Create a region drawing PDF.', 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
-  const identity = receipt.match(/^Region PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/)
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
+  const identity = receipt.match(
+    /^Region PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
+  )
   if (!identity) throw new Error(`Invalid PDF artifact receipt: ${receipt}`)
   const [, sessionId] = identity
 
@@ -28,12 +32,16 @@ test('extracts the figure and its caption from a real PDF through the app comman
       const bridge = globalThis as unknown as {
         api: {
           sessions: {
-            readDocument: (request: { projectId: string; sessionId: string }) => Promise<
-              { artifacts?: Array<{ name?: string; path?: string }> } | undefined
-            >
+            readDocument: (request: {
+              projectId: string
+              sessionId: string
+            }) => Promise<{ artifacts?: Array<{ name?: string; path?: string }> } | undefined>
           }
           pdf: {
-            open: (request: { projectId: string; path: string }) => Promise<{ doc: { docId: string } }>
+            open: (request: {
+              projectId: string
+              path: string
+            }) => Promise<{ doc: { docId: string } }>
             figures: (request: { projectId: string; docId: string; page?: number }) => Promise<{
               figures: Array<{
                 page: number
@@ -50,7 +58,9 @@ test('extracts the figure and its caption from a real PDF through the app comman
         }
       }
       const document = await bridge.api.sessions.readDocument({ projectId, sessionId })
-      const artifact = (document?.artifacts ?? []).find((entry) => entry.name === 'region-evidence.pdf')
+      const artifact = (document?.artifacts ?? []).find(
+        (entry) => entry.name === 'region-evidence.pdf'
+      )
       if (!artifact?.path) throw new Error('the PDF artifact has no path in the session document')
       const opened = await bridge.api.pdf.open({ projectId, path: artifact.path })
       return bridge.api.pdf.figures({ projectId, docId: opened.doc.docId })

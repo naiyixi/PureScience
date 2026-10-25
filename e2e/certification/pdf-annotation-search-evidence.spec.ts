@@ -5,7 +5,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the annotation SEARCH + CITATION slice (文档标注层 A5), on a real window, over the real
 // IPC surface, a real project database and a real PDF on disk.
@@ -337,7 +337,7 @@ test('finds a note through the global search, cites its file version, and reads 
   const projectId = await createProject(page, PROJECT_NAME)
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Region PDF ready')
 
   await page.getByRole('button', { name: 'Preview generated file region-evidence.pdf' }).click()

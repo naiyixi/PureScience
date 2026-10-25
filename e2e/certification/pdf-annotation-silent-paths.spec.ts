@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the three gestures that used to leave nothing behind at all (issue #16).
 //
@@ -137,7 +137,7 @@ test('names the three gestures that used to be dropped without a word', async ({
   const projectId = await createProject(page, 'PDF annotation silent paths')
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const identity = receipt.match(
     /^Region PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )

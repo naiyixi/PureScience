@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, openRecentSession, sendPrompt } from './helpers'
+import { createProject, openRecentSession, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the annotation layer (文档标注层 A3) on a real window, over the real IPC surface and a real
 // project database.
@@ -320,7 +320,7 @@ test('keeps a drawn annotation on its own file version, across an Electron relau
   const projectId = await createProject(page, 'PDF annotation evidence')
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Region PDF ready')
 
   await openAnnotationPanel(page, 'region-evidence.pdf')
@@ -406,7 +406,7 @@ test('imports the markup a PDF carries, names what it skipped, and never claims 
   await sendPrompt(page, ANNOTATED_PROMPT, 'Annotated PDF ready for session', 90_000)
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Annotated PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Annotated PDF ready for session /))
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Annotated PDF ready')
 
   await openAnnotationPanel(page, 'annotated-evidence.pdf')
@@ -482,7 +482,7 @@ test('keeps an annotation on the bytes it was drawn on when the file moves on, a
   const projectId = await createProject(page, 'PDF annotation version evidence')
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Region PDF ready')
 
   await openAnnotationPanel(page, 'region-evidence.pdf')

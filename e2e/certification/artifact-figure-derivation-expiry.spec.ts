@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { expect } from '@playwright/test'
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 test.setTimeout(240_000)
 
@@ -27,7 +27,7 @@ test('the provenance panel marks a derivation superseded, and leaves the current
     90_000
   )
 
-  const receipt = await page.getByText(/^Artifact provenance verified for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Artifact provenance verified for session /))
   const identity = receipt.match(
     /^Artifact provenance verified for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )

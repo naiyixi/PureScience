@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the PDF table panel on a real window: the page the fixture agent writes carries a four
 // column table placed by the text matrix, and both sides of the app have to agree about it — the command
@@ -26,7 +26,7 @@ test('reads a real table through the command the agent is given, and shows the s
   const projectId = await createProject(page, 'PDF table extraction')
   await sendPrompt(page, 'Create a table PDF fixture.', 'Table PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Table PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Table PDF ready for session /))
   const identity = receipt.match(
     /^Table PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )

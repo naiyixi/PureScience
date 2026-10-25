@@ -6,7 +6,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the annotation export channels (文档标注层 A4), on a real window, over the real IPC
 // surface, a real project database and REAL files on disk.
@@ -131,7 +131,7 @@ test('writes an annotated copy and a notes list, and never touches the version i
   const projectId = await createProject(page, PROJECT_NAME)
   await sendPrompt(page, REGION_PROMPT, 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const { sessionId, artifactId } = receiptIdentity(receipt, 'Region PDF ready')
 
   await openAnnotationPanel(page, 'region-evidence.pdf')

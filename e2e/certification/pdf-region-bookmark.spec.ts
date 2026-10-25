@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
-import { createProject, sendPrompt } from './helpers'
+import { createProject, receiptText, sendPrompt } from './helpers'
 
 // Acceptance for the third bookmark anchor on a real window: a region drawn on a real PDF page becomes a
 // bookmark that names the page, the rectangle and the Artifact Version it was drawn on.
@@ -18,7 +18,7 @@ test('draws a region on a PDF page and keeps it as a bookmark of that version', 
   const projectId = await createProject(page, 'PDF region evidence')
   await sendPrompt(page, 'Create a region drawing PDF.', 'Region PDF ready for session', 90_000)
 
-  const receipt = await page.getByText(/^Region PDF ready for session /).innerText()
+  const receipt = await receiptText(page.getByText(/^Region PDF ready for session /))
   const identity = receipt.match(
     /^Region PDF ready for session ([^,]+), artifact ([^,]+), version ([^.]+)\.$/
   )
