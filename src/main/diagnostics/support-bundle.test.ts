@@ -366,6 +366,7 @@ describe('support bundle: trajectory section', () => {
         status: 'profiled' as const,
         mainThreadMs: 3_800,
         unobservedMs: 0,
+        samples: 76,
         frames: [{ frame: 'save (src/main/store/save.ts:42)', samples: 76 }]
       },
       host: {

@@ -12380,3 +12380,68 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
    （`mainThreadMs / unobservedMs / frames.length`），让下一次 Windows 红自带判据。
 4. 上一轮具名未办的两条仍在：**用户常驻实例的日志读数**（需重启用户实例，等点头）；把 CPU 归属铺到剩下
    10 处只报墙钟的慢行（本单元没动，仍在队列里）。
+
+## 二百三十四、本轮追加（执行器，2026-10-26 03:4x–）—— `profiled` 窗口的两个零：补上「这一窗到底采了几次」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == 74c5235f`（会话线 `b968d77e` 交接档 + `74c5235f` DMG 校验），
+  `git status --short` 里有 **3 个 diagnostics 在制品**（`event-loop-stall-watchdog.ts` /
+  `event-loop-stall-watchdog.test.ts` / `stall-stack-profile.ts`）—— 那是我上一轮 §二百三十三 §五 3 具名的单元，
+  不是别人的在制 ⇒ 本轮第一件事是把它做完，不开新单元。
+- **§二百三十三 §五 3 的下一轮第一步（读 `2dbdb00d` 判决）已取**（完整 40 位 SHA，作业级）：
+
+| 提交 | Windows Full Test | Nightly | 作业级结论 |
+| --- | --- | --- | --- |
+| `2dbdb00d` | **success** | **failure**（`40217040994`） | 红在 `Build macos-arm64`；但 **`Run P0 Electron certification` 与 `Run desktop visual regression` 两步都是 `outcome=failure`**（`continue-on-error` 让 step 显示 success，`P0_OUTCOME`/`VISUAL_OUTCOME` 才是判据）⇒ `Enforce platform certification` 拒收、`publish` skipped |
+
+  两处红都不是上一轮修的那两条：
+
+| 闸 | 读数 | 判据 |
+| --- | --- | --- |
+| P0 | `101 passed / 1 failed / 1 flaky`（32.6 min）；failed = `session-package-import-evidence.spec.ts:348`「landed.reviews 3 ≠ 2」，**重试同样 3**（确定性）；flaky = `pdf-table-extraction.spec.ts:21`（重试即绿）| 上一轮的 `pdf-annotation-search-evidence` 空回执**已消失** ⇒ `receiptText` 那半有效。新红是**另一支 spec 的计数**，见 §五 1 |
+| 视觉 | `project-create-dialog.png` **3708 px（ratio 0.01）**，两次同量级；日志已带新指纹：header 是 `PureScience**v2.18.0-nightly.g2dbdb00**…⌘K**Claude Code runtime needs attention**Environment…` | 指纹直接指出两处**环境相关**文本：版本串是 `-nightly.g<sha>`（打包态报真版本、本机报 `v2.18.0`），且 CI 上多一条运行时告警横幅 ⇒ **基准与发布版本/运行环境耦合**，见 §五 2 |
+
+### 一 交付：`StackProfile.samples`（窗口自己的采样数）
+
+`status:'profiled'` 而 `frames: []` 且 `unobservedMs: 0` 有三种成因，日志里却只有一种形状：① 采样器没跑（应记未观测）、
+② 采样全落在本模块**故意过滤**的帧上（native / node internals / `(program)` / GC / 我自己的埋点）、③ 主线程真的空转。
+②③ 在旧字段下**同形** —— 上一轮 Windows 那条红（`82512eff`，`expected false to be true`）就是它，读不出是哪一种。
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/diagnostics/stall-stack-profile.ts` | `StackProfile` 增 `samples`（窗口内的采样条数，与过滤无关），头注写明它分开「没跑」与「只看见不该报的代码」 |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | `StallStack` 的 `profiled` 变体增 `samples`，写入记录（该对象整份进日志行与支持包，字段有真消费方） |
+| `src/main/diagnostics/event-loop-stall-watchdog.test.ts` | 夹具 `presamplerStub` 按帧数补 `samples`，新增「全部落在被过滤代码」的定向用例（`frames=[]`、`unobservedMs=0`、`samples=3`）；真实时钟那条断言从 `frames>0 \|\| unobservedMs>0` 改成 `samples>0 \|\| unobservedMs>0`，并把三个数写进失败信息 |
+| `stall-record-ring.test.ts` / `support-bundle.test.ts` | 两处夹具与「环形保留原记录」的期望补 `samples`（`toEqual` 必须逐字，环不许投影） |
+
+**判据只紧不放**：不变量没变（`profiled` 的窗口必须自证），只是从「必须报得出帧」放宽到「必须报得出证据」——
+而「本测试文件在自己的 runner 上必须被采到」这类**测调度器**的断言仍然不许写（§二百二十三已立）。
+
+### 二 门禁读数（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/diagnostics --maxWorkers=4` | **18 files / 117 passed**，exit 0 |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | `EXIT=0` |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | `EXIT=0` |
+| `npx eslint --no-cache`（本单元 5 文件） | `EXIT=0` |
+| `prettier --check` | 5 文件全过 |
+| `scripts/pre-push-checks.sh` | 全过（含双语 README / 权重清单 / 入口可解析） |
+
+### 三 边界
+
+1. `samples` 是**计数**，不是归因：它只回答「这一窗有没有人看」，不回答「看的是谁」（帧仍是唯一归因面，
+   被过滤的帧按设计不报）。
+2. 本单元纯诊断侧，**不占补丁号、不发版**。
+3. 真机读数（用户常驻实例的日志里出现 `stack.samples`）**仍未取**：需要重启那个实例，会打断用户正在用的界面 ⇒
+   仍挂在「等点头」。
+
+### 四 下一轮第一步
+
+1. **P0 `session-package-import-evidence.spec.ts:348`**（确定性红，挡住发版）：`source reviews` 两条都是
+   `error/null:0`、`landed.reviews=3` 而期望 2 ⇒ 先在本机按同一支 spec 取一次真读数（`build:e2e` 后单跑），
+   分开「导入多写一行」与「spec 的 notLanded 判据算错」两种，再决定修产品还是修测试台。
+2. **视觉基准解耦**：把版本串与运行时告警横幅所在的 header 区域按「环境不许参与比较」遮蔽（skill 里
+   「遮蔽整个版本区，而不是放宽容差」的同一条），**不重画基准、不放大 `maxDiffPixelRatio`**。
+3. 队列 B 段复核仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 1、2 即自拟单元。

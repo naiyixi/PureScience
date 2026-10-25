@@ -29,7 +29,17 @@ const PROFILE_UNOBSERVED_DELTA_MS = 500
 
 export type StallFrame = { frame: string; samples: number }
 
-export type StackProfile = { mainThreadMs: number; unobservedMs: number; frames: StallFrame[] }
+// `samples` is how many samples the window itself contains — the denominator behind `frames`. It is kept
+// because "no frame worth reporting" has two very different causes: the sampler recorded nothing at all
+// (then the window is reported as unobserved), or it recorded samples that all sit on frames this module
+// filters on purpose (instrumentation, node internals, `(program)`, GC). Without the count the second case
+// printed `frames: []` with no unobserved time, which is the same two numbers an idle loop would produce.
+export type StackProfile = {
+  mainThreadMs: number
+  unobservedMs: number
+  samples: number
+  frames: StallFrame[]
+}
 
 export type V8Profile = {
   startTime: number
@@ -107,6 +117,9 @@ export const summarizeProfile = (
   return {
     mainThreadMs: Math.round(mainThreadUs / 1000),
     unobservedMs: Math.round(unobservedUs / 1000),
+    // The window's own sample count, independent of which frames survived the filter above: it is what
+    // separates "the sampler never ran" from "it ran and saw only code we do not report".
+    samples: inWindowSamples,
     frames
   }
 }

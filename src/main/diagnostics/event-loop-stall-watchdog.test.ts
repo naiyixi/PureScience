@@ -29,14 +29,23 @@ const quietHostSampler = (): HostStallSampler => ({
 const noPresampler = (): RollingStackProfile | undefined => undefined
 
 const presamplerStub = (
-  profile?: StackProfile
+  // `samples` is filled from the frames unless a case names it: a fixture that reports frames is describing
+  // samples that named them, while the "everything landed on filtered code" case has samples and no frames.
+  profile?: Omit<StackProfile, 'samples'> & { samples?: number }
 ): {
   presampler: RollingStackProfile
   take: ReturnType<typeof vi.fn>
   rotate: ReturnType<typeof vi.fn>
   stop: ReturnType<typeof vi.fn>
 } => {
-  const take = vi.fn(async () => profile)
+  const take = vi.fn(async () =>
+    profile
+      ? {
+          ...profile,
+          samples: profile.samples ?? profile.frames.reduce((sum, frame) => sum + frame.samples, 0)
+        }
+      : undefined
+  )
   const rotate = vi.fn()
   const stop = vi.fn()
   return { presampler: { take, rotate, stop }, take, rotate, stop }
@@ -259,6 +268,7 @@ describe('event loop stall watchdog', () => {
       status: 'profiled',
       mainThreadMs: 4_900,
       unobservedMs: 0,
+      samples: 46,
       frames
     })
     watchdog.stop()
@@ -564,6 +574,27 @@ describe('reading a V8 profile', () => {
     expect(profile.mainThreadMs).toBe(0)
     // 500 ms stall + the 50 ms coalescing slack the window is widened by.
     expect(profile.unobservedMs).toBe(550)
+    expect(profile.samples).toBe(0)
+  })
+
+  // The other zero-frame shape, and the one a runner actually produces: the sampler did take samples, but
+  // every one of them landed on a frame this module filters on purpose (native, node internals, `(program)`,
+  // GC, or our own instrumentation). Before `samples` existed this printed `frames: []` with no unobserved
+  // time — the same two numbers an idle loop gives — and a Windows lane failure could not be told from a
+  // quiet window. The count now says the sampler ran; the record still names nothing it cannot claim.
+  it('keeps the sample count when every sample landed on filtered code', () => {
+    const filtered: V8Profile = {
+      startTime: 1,
+      nodes: [{ id: 1, callFrame: { functionName: '(program)', url: '', lineNumber: -1 } }],
+      samples: [1, 1, 1],
+      timeDeltas: [11_000, 11_000, 11_000]
+    }
+
+    const profile = summarizeProfile(filtered, 50)
+    expect(profile.frames).toEqual([])
+    expect(profile.unobservedMs).toBe(0)
+    expect(profile.samples).toBe(3)
+    expect(profile.mainThreadMs).toBe(33)
   })
 
   // The coarse cadence means the last sample before the stall can be up to a whole interval early: the window
@@ -649,9 +680,10 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     }
   })
 
-  // The real-clock/real-sampler half: it must produce records, and every profiled record must be
-  // self-consistent — frames, or a named unobserved window. Which frames a starved runner's sampling thread
-  // manages to take is deliberately NOT asserted here (see the case above).
+  // The real-clock/real-sampler half: it must produce records, and every profiled record must account for
+  // its window — samples the sampler took (which may all sit on frames this module filters on purpose), or a
+  // named unobserved stretch. Which frames a starved runner's sampling thread manages to take is deliberately
+  // NOT asserted here (see the case above).
   it('records real stalls and never reports a profiled window with neither frames nor unobserved time', async () => {
     const { log, warned } = collect()
     const watchdog = startEventLoopStallWatchdog({ log, tickMs: 50, thresholdMs: 200 })
@@ -666,8 +698,15 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     expect(warned.length).toBeGreaterThan(0)
     for (const entry of warned) {
       if (entry.data.stack.status !== 'profiled') continue
-      // The two-zeros shape is what `summarizeProfile` made impossible; this pins it for real readings too.
-      expect(entry.data.stack.frames.length > 0 || entry.data.stack.unobservedMs > 0).toBe(true)
+      // A profiled window has to account for itself: either the sampler holds samples in it, or the window is
+      // named as unobserved. Two zeros is the one shape that must not exist — it reads exactly like an idle
+      // loop, and it is what the Windows lane produced once under the earlier summary. The message carries the
+      // numbers so the next red says which shape it was instead of only `expected false to be true`.
+      const stack = entry.data.stack
+      expect(
+        stack.samples > 0 || stack.unobservedMs > 0,
+        `profiled window accounted for neither samples nor unobserved time: ${JSON.stringify(stack)}`
+      ).toBe(true)
     }
   }, 15_000)
 })

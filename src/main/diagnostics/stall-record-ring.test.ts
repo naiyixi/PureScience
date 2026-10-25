@@ -15,6 +15,7 @@ const stall = (windowMs: number): EventLoopStallRecord => ({
     status: 'profiled',
     mainThreadMs: Math.round(windowMs * 0.9),
     unobservedMs: 0,
+    samples: 18,
     frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }]
   },
   host: {
@@ -74,6 +75,7 @@ describe('stall record ring', () => {
       status: 'profiled',
       mainThreadMs: 6_660,
       unobservedMs: 0,
+      samples: 18,
       frames: [{ frame: 'busy (src/main/busy.ts:1)', samples: 18 }]
     })
     expect(record.host).toMatchObject({ status: 'sampled', continuity: 'kept-sampling' })
