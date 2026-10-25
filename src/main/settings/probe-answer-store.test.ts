@@ -40,6 +40,31 @@ const storeAt = (
 }
 
 describe('probe answer store', () => {
+  it('drains a write that lands while a previous one is still finishing', async () => {
+    // The exact shape the Nightly lane hit: `persist()` replaces the chain, so a `set()` issued while
+    // the previous write was in flight used to escape a single `await flush()` — and teardown then
+    // removed the directory under an in-flight rename (`ENOTEMPTY`).
+    const writes: string[] = []
+    const store: ReturnType<typeof createProbeAnswerStore> = createProbeAnswerStore({
+      filePath: join(root, 'probe-answers.json'),
+      writeText: async (_path, contents) => {
+        writes.push(contents)
+        // Simulates a late answer arriving before the first write has settled.
+        if (writes.length === 1) store.set('late', '2')
+      }
+    })
+    created.push(store)
+
+    store.set('first', '1')
+    await store.flush()
+
+    expect(writes).toHaveLength(2)
+    expect((JSON.parse(writes[1] ?? '{}') as { entries?: unknown }).entries).toEqual({
+      first: '1',
+      late: '2'
+    })
+  })
+
   it('answers a later process for the same executable identity', async () => {
     const first = storeAt()
     await first.load()

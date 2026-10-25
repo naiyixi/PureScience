@@ -116,6 +116,17 @@ export const createProbeAnswerStore = (options: ProbeAnswerStoreOptions): ProbeA
       }
       void persist()
     },
-    flush: (): Promise<void> => pending
+    // Drains until the chain stops moving. `persist()` replaces `pending` rather than appending to the
+    // promise a caller is already awaiting, so an answer written while the previous chain is finishing
+    // would escape a single await — that gap is what made teardown race the rename and fail with
+    // `ENOTEMPTY …` on the Nightly lane (macOS, slow runner). Awaiting the *latest* chain is the
+    // contract this method advertises: every queued write has been attempted.
+    flush: async (): Promise<void> => {
+      for (;;) {
+        const current = pending
+        await current
+        if (current === pending) return
+      }
+    }
   }
 }
