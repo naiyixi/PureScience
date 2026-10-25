@@ -1,4 +1,4 @@
-{"framework":"claude-code","model":"deepseek-v4-flash","turns":200,"promptTokens":13882484,"cacheTokens":1122315264,"completionTokens":12946466,"providerTurns":200,"wallClockMs":2998162,"timedTurns":200}
-{"framework":"opencode","model":"deepseek-v4-flash","turns":23,"promptTokens":535103,"cacheTokens":9008384,"completionTokens":134060,"providerTurns":23,"wallClockMs":96050,"timedTurns":23}
-{"framework":"codex","model":"deepseek-v4-flash","turns":14,"promptTokens":236528,"cacheTokens":14995712,"completionTokens":470835,"providerTurns":14,"wallClockMs":580036,"timedTurns":14}
-{"framework":"claude-code","model":"unknown","turns":3,"promptTokens":82483,"cacheTokens":1370496,"completionTokens":25716,"providerTurns":3,"wallClockMs":740933,"timedTurns":3}
+{"framework":"claude-code","model":"deepseek-v4-flash","turns":200,"promptTokens":13882484,"cacheTokens":1122315264,"completionTokens":12946466,"providerTurns":200,"wallClockMs":2998162,"timedTurns":200,"turnMsP50":6749,"turnMsP90":27398}
+{"framework":"opencode","model":"deepseek-v4-flash","turns":23,"promptTokens":535103,"cacheTokens":9008384,"completionTokens":134060,"providerTurns":23,"wallClockMs":96050,"timedTurns":23,"turnMsP50":1937,"turnMsP90":7358}
+{"framework":"codex","model":"deepseek-v4-flash","turns":14,"promptTokens":236528,"cacheTokens":14995712,"completionTokens":470835,"providerTurns":14,"wallClockMs":580036,"timedTurns":14,"turnMsP50":35164,"turnMsP90":62522}
+{"framework":"claude-code","model":"unknown","turns":3,"promptTokens":82483,"cacheTokens":1370496,"completionTokens":25716,"providerTurns":3,"wallClockMs":740933,"timedTurns":3,"turnMsP50":0,"turnMsP90":0}

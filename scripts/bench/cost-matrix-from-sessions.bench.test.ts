@@ -34,6 +34,9 @@ type MatrixRow = {
   wallClockMs: number
   /** 墙钟只覆盖这么多轮（其余缺 completedAt）。 */
   timedTurns: number
+  /** 每轮墙钟的中位数与 p90：合计时长掩盖了「一轮很慢」，而慢的是体感。 */
+  turnMsP50: number
+  turnMsP90: number
 }
 
 const SKIP = /(summary|\.invalid-|catalog)/u
@@ -71,7 +74,9 @@ const addRow = (
       completionTokens: 0,
       providerTurns: 0,
       wallClockMs: 0,
-      timedTurns: 0
+      timedTurns: 0,
+      turnMsP50: 0,
+      turnMsP90: 0
     } satisfies MatrixRow)
   row.turns += 1
   row.providerTurns += 1
@@ -95,6 +100,7 @@ describe.skipIf(process.env.PURESCIENCE_BENCH_COST_MATRIX !== '1')('会话语料
       expect(files.length, '没有找到会话文件：先确认 sessions 根').toBeGreaterThan(0)
 
       const aggregate: Aggregate = new Map()
+      const turnSamples = new Map<string, number[]>()
       let scanned = 0
       let withUsage = 0
       for (const file of files) {
@@ -127,12 +133,31 @@ describe.skipIf(process.env.PURESCIENCE_BENCH_COST_MATRIX !== '1')('会话语料
             },
             wallClockMs
           )
+          if (wallClockMs !== undefined && wallClockMs >= 0) {
+            const key = `${framework}\u0000${model}`
+            const samples = turnSamples.get(key) ?? []
+            samples.push(wallClockMs)
+            turnSamples.set(key, samples)
+          }
         }
       }
 
-      const rows = [...aggregate.values()].sort(
-        (left, right) => right.promptTokens - left.promptTokens
-      )
+      const percentile = (samples: readonly number[], fraction: number): number => {
+        if (samples.length === 0) return 0
+        const sorted = [...samples].sort((left, right) => left - right)
+        const index = Math.min(sorted.length - 1, Math.floor(fraction * (sorted.length - 1)))
+        return sorted[index] ?? 0
+      }
+      const rows = [...aggregate.values()]
+        .map((row) => {
+          const samples = turnSamples.get(`${row.framework}\u0000${row.model}`) ?? []
+          return {
+            ...row,
+            turnMsP50: percentile(samples, 0.5),
+            turnMsP90: percentile(samples, 0.9)
+          }
+        })
+        .sort((left, right) => right.promptTokens - left.promptTokens)
       const lines = [
         '# 成本矩阵：token × 墙钟（来自已有会话语料）',
         '',
@@ -142,11 +167,11 @@ describe.skipIf(process.env.PURESCIENCE_BENCH_COST_MATRIX !== '1')('会话语料
         '- **本表不含金额**：计费单价与折扣没有接进产品，写美元就是把猜测当读数。',
         '- token 列只来自 `turnUsage`（provider 响应）；估算值在 `contextUsage`，两者不混。',
         '',
-        '| framework | model | 轮次 | prompt | cache | completion | 墙钟(ms) | 计墙钟轮次 |',
-        '|---|---|---|---|---|---|---|---|',
+        '| framework | model | 轮次 | prompt | cache | completion | 墙钟(ms) | p50/轮 | p90/轮 | 计墙钟轮次 |',
+        '|---|---|---|---|---|---|---|---|---|---|',
         ...rows.map(
           (row) =>
-            `| ${row.framework} | ${row.model} | ${row.turns} | ${row.promptTokens} | ${row.cacheTokens} | ${row.completionTokens} | ${row.wallClockMs} | ${row.timedTurns} |`
+            `| ${row.framework} | ${row.model} | ${row.turns} | ${row.promptTokens} | ${row.cacheTokens} | ${row.completionTokens} | ${row.wallClockMs} | ${row.turnMsP50} | ${row.turnMsP90} | ${row.timedTurns} |`
         ),
         '',
         '## 口径',
@@ -155,6 +180,8 @@ describe.skipIf(process.env.PURESCIENCE_BENCH_COST_MATRIX !== '1')('会话语料
         '- `turnUsage` 是**每轮聚合**（一轮内可能含多次模型请求，见消息上的 `turnCount`），不是累计值；' +
           '缓存读取之所以比 prompt 大两个量级，是因为同一轮里每次内层请求都会重读一次缓存前缀 —— ' +
           '这是 provider 真实计费的口径，不是重复计数。',
+        '- `p50/轮` 与 `p90/轮` 只覆盖「带墙钟」的轮次；**0 是真的 0**（该轮 `completedAt` 与 `createdAt` 相同），' +
+          '不是缺数据 —— 缺数据的轮次根本不计入 `计墙钟轮次`。',
         '- 只读保证：直接读 JSON 并用应用自己的 `normalizeSessionFile` 归一化，不调用任何会写索引或做修复的仓储方法。',
         ...(rows[0]
           ? [
