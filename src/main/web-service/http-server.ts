@@ -26,6 +26,7 @@ import {
   webRpcRequestSchema
 } from '../../shared/web-rpc-contract'
 import { RENDERER_CONTRACT_CATALOG } from '../../shared/renderer-contract-catalog'
+import { buildAgentCardPayload, type AgentCardPayload } from './agent-card-route'
 import { buildCapabilitiesPayload } from './capabilities-route'
 import { projectPublicTaskEvent, projectWebRendererEvent } from './application-event-projections'
 import { authenticateRequest, persistAuthCookie } from './auth'
@@ -319,6 +320,7 @@ const handleTaskApiRequest = async (
   tasks: NonNullable<WebServerOptions['tasks']>,
   callerContext: CallerContext,
   configRoot: string,
+  agentCard: AgentCardPayload,
   externalAuthorization?: ExternalWebAccessAuthorization
 ): Promise<boolean> =>
   tasks.runWithCallerContext(callerContext, async () => {
@@ -374,6 +376,13 @@ const handleTaskApiRequest = async (
             loadSession: (id) => tasks.capabilitySessionInputs(id)
           })
         })
+        return true
+      }
+      // Read-only capability statement (v2.19 §1). It says what this build can attach to a session and
+      // marks A2A interop as unverified — a machine-readable non-claim rather than a comment.
+      if (url.pathname === '/api/v1/agent-card' && request.method === 'GET') {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        json(response, 200, { data: agentCard })
         return true
       }
       // Headless approvals. A run that needs permission has no window to click in a `start --no-open`
@@ -591,6 +600,11 @@ const startWebHttpServer = async (options: WebServerOptions): Promise<RunningWeb
               : {})
           }),
           options.bootstrap.configRoot,
+          buildAgentCardPayload({
+            appName: options.bootstrap.appName,
+            appVersion: options.bootstrap.appVersion,
+            platform: options.bootstrap.platform
+          }),
           externalAuthorization
         ))
       ) {

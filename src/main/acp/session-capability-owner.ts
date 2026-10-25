@@ -90,7 +90,7 @@ import {
 
 const log = createLogger('acp')
 
-const CURRENT_PRIMARY_CAPABILITIES = [
+export const CURRENT_PRIMARY_CAPABILITIES = [
   'artifacts',
   'notebook',
   'skill-import',
