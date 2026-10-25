@@ -158,4 +158,41 @@ describe('buildTrajectoryDocuments', () => {
     expect(bundle.files['artifacts.json']).toBeUndefined()
     expect(bundle.files['capabilities.json']).toBeUndefined()
   })
+
+  it('says why a section is absent instead of leaving the reader to guess', async () => {
+    const partial = await build({
+      toolCalls: undefined,
+      artifacts: undefined,
+      capabilities: undefined
+    })
+    const manifest = JSON.parse(partial.files['manifest.json'] ?? '{}') as {
+      sections: Record<string, string>
+    }
+
+    // 「这一段没有内容」与「这一段没采到」必须写成两个不同的答案。
+    expect(manifest.sections.session).toBe('included')
+    expect(manifest.sections.toolCalls).toBe('absent:not-collected')
+    expect(manifest.sections.artifacts).toBe('absent:not-collected')
+    // capabilities 目前无持久化来源，这是具名状态而不是空文件。
+    expect(manifest.sections.capabilities).toBe('absent:not-persisted')
+  })
+
+  it('marks the session section as included-without-content when content is excluded', async () => {
+    const bundle = await build({ includeContent: false })
+    const manifest = JSON.parse(bundle.files['manifest.json'] ?? '{}') as {
+      sections: Record<string, string>
+    }
+
+    expect(manifest.sections.session).toBe('included-without-content')
+  })
+
+  it('marks capabilities as included once they are actually supplied', async () => {
+    const bundle = await build({ capabilities: { servers: ['purescience_memory'] } })
+    const manifest = JSON.parse(bundle.files['manifest.json'] ?? '{}') as {
+      sections: Record<string, string>
+    }
+
+    expect(manifest.sections.capabilities).toBe('included')
+    expect(bundle.files['capabilities.json']).toBeDefined()
+  })
 })

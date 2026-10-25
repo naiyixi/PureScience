@@ -173,6 +173,14 @@ export const buildTrajectoryDocuments = async (
     productVersion: input.productVersion,
     sessionId: input.sessionId,
     includeContent,
+    // 每段为什么在/不在，写在这里而不是让读者从「文件缺失」去猜：「这一段没有内容」与「这一段没采到」
+    // 是两个不同的答案（本仓对空读数的一贯要求）。
+    sections: {
+      session: includeContent ? 'included' : 'included-without-content',
+      toolCalls: input.toolCalls ? 'included' : 'absent:not-collected',
+      artifacts: input.artifacts ? 'included' : 'absent:not-collected',
+      capabilities: input.capabilities ? 'included' : 'absent:not-persisted'
+    },
     counts: {
       messages: countMessages(input.session),
       messagesWithProviderUsage: countTurnsWithUsage(input.session),
