@@ -76,11 +76,16 @@ const bundledSkillSignature = async (sourceDir: string): Promise<string> => {
   return signature.digest('hex')
 }
 
-let compatibilityCache: { signature: string; value: string } | undefined
+// Keyed by source directory, not a single slot. The signature is per directory, so a one-slot cache could
+// never hit: each skill evicted the previous one, and every `list()` re-hashed the contents of every skill.
+// Measured on the bundled tree (49 skills, 2.1 MB, 281 files) before this: 203 ms per pass, and the SECOND
+// pass was no cheaper (260 ms) — the proof the cache was dead. docs/bench-runs/2026-10-25-skill-catalog.txt
+const compatibilityCache = new Map<string, { signature: string; value: string }>()
 
 const bundledSkillCompatibility = async (sourceDir: string): Promise<string> => {
   const signature = await bundledSkillSignature(sourceDir)
-  if (compatibilityCache?.signature === signature) return compatibilityCache.value
+  const cached = compatibilityCache.get(sourceDir)
+  if (cached?.signature === signature) return cached.value
   const hash = createHash('sha256')
   const visit = async (directory: string, prefix = ''): Promise<void> => {
     const entries = await readdir(directory, { withFileTypes: true })
@@ -100,13 +105,13 @@ const bundledSkillCompatibility = async (sourceDir: string): Promise<string> => 
   }
   await visit(sourceDir)
   const value = `sha256:${hash.digest('hex')}`
-  compatibilityCache = { signature, value }
+  compatibilityCache.set(sourceDir, { signature, value })
   return value
 }
 
 /** Test seam: the module-level memo has to be resettable to prove a content change re-hashes. */
 const resetBundledSkillCompatibilityCache = (): void => {
-  compatibilityCache = undefined
+  compatibilityCache.clear()
 }
 
 // Reads and validates the manifest, dropping malformed entries.
@@ -154,42 +159,48 @@ class SkillRegistry {
 
   async list(): Promise<BundledSkill[]> {
     const entries = await readManifest(this.rootDir)
-    const skills: BundledSkill[] = []
 
-    for (const entry of entries) {
-      const sourceDir = join(this.rootDir, entry.id)
+    // One round of I/O instead of one directory walk per skill, sequentially: each entry only reads its own
+    // SKILL.md and its own directory, so the entries are independent. Order is preserved by `map`, and the
+    // sort below makes manifest order irrelevant anyway.
+    const resolved = await Promise.all(
+      entries.map(async (entry): Promise<BundledSkill | undefined> => {
+        const sourceDir = join(this.rootDir, entry.id)
 
-      try {
-        const raw = await readFile(join(sourceDir, 'SKILL.md'), 'utf8')
-        const { fields } = parseFrontmatter(raw)
+        try {
+          const raw = await readFile(join(sourceDir, 'SKILL.md'), 'utf8')
+          const { fields } = parseFrontmatter(raw)
 
-        skills.push({
-          id: entry.id,
-          name: entry.name,
-          description: fields.description ?? '',
-          source: entry.source,
-          updatedAt: entry.updatedAt,
-          sourceDir,
-          compatibility: await bundledSkillCompatibility(sourceDir),
-          author: fields.author,
-          license: fields.license,
-          licenseStatus: classifySkillLicense({
+          return {
+            id: entry.id,
+            name: entry.name,
+            description: fields.description ?? '',
+            source: entry.source,
+            updatedAt: entry.updatedAt,
+            sourceDir,
+            compatibility: await bundledSkillCompatibility(sourceDir),
+            author: fields.author,
             license: fields.license,
-            commercialUse: fields['commercial-use'] ?? fields.commercial_use
-          }),
-          // The "Third-party software, content, terms, and information" row; several key spellings.
-          thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
-          category: fields.category,
-          requirements: fields.requirements,
-          // Only present when the entry declares a trust state. Bundled/curated skills have none, which
-          // is different from an agent draft that has not been verified yet.
-          ...(fields[SKILL_TRUST_KEY] ? { provenance: parseSkillProvenance(fields) } : {})
-        })
-      } catch (error) {
-        log.warn('skipping bundled skill with unreadable SKILL.md', { id: entry.id, error })
-      }
-    }
+            licenseStatus: classifySkillLicense({
+              license: fields.license,
+              commercialUse: fields['commercial-use'] ?? fields.commercial_use
+            }),
+            // The "Third-party software, content, terms, and information" row; several key spellings.
+            thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
+            category: fields.category,
+            requirements: fields.requirements,
+            // Only present when the entry declares a trust state. Bundled/curated skills have none, which
+            // is different from an agent draft that has not been verified yet.
+            ...(fields[SKILL_TRUST_KEY] ? { provenance: parseSkillProvenance(fields) } : {})
+          }
+        } catch (error) {
+          log.warn('skipping bundled skill with unreadable SKILL.md', { id: entry.id, error })
+          return undefined
+        }
+      })
+    )
 
+    const skills = resolved.filter((skill): skill is BundledSkill => skill !== undefined)
     // Featured skills always display alphabetically by name; the manifest order is not significant.
     return skills.sort((a, b) => a.name.localeCompare(b.name))
   }

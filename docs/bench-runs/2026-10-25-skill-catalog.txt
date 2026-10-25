@@ -1,0 +1,6 @@
+[skill-catalog]
+runs=5 skills=49,49,49,49,49
+first pass:  p50=46.0ms p90=263.2ms
+second pass: p50=29.3ms p90=63.0ms
+first:  263.2, 46.0, 15.5, 17.5, 89.9
+second: 63.0, 29.3, 16.7, 24.9, 29.5
