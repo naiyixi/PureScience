@@ -58,13 +58,31 @@ test('exports a scrubbed support bundle from the running app', async ({ app }) =
 
     const entries = await listEntries(bundlePath)
     expect(entries).toEqual(
-      expect.arrayContaining(['manifest.json', 'environment.json', 'runtime.json', 'README.txt'])
+      expect.arrayContaining([
+        'manifest.json',
+        'environment.json',
+        'runtime.json',
+        'README.txt',
+        'diagnostics/event-loop-stalls.json'
+      ])
     )
     expect(entries.some((entry) => entry.startsWith('logs/'))).toBe(true)
 
     const extracted = join(root, 'extracted')
     await mkdir(extracted, { recursive: true })
     await tar.extract({ file: bundlePath, cwd: extracted })
+
+    // The stall section is assembled from the watchdog's own ring in the main process, so its presence here
+    // is the wiring: a bundle exported right after a hang must answer "what did the loop do" without a grep.
+    // An empty list is a real answer and carries its own name, so the assertion allows it instead of requiring
+    // a stall to have happened during the test.
+    const stalls: { status: string; observed: number; dropped: number; records: unknown[] } =
+      JSON.parse(await readFile(join(extracted, 'diagnostics/event-loop-stalls.json'), 'utf8'))
+    expect(['records', 'no-stalls-observed']).toContain(stalls.status)
+    expect(typeof stalls.observed).toBe('number')
+    expect(stalls.dropped).toBeGreaterThanOrEqual(0)
+    if (stalls.status === 'no-stalls-observed') expect(stalls.records).toEqual([])
+    else expect(stalls.records.length).toBeGreaterThan(0)
 
     const manifest: Record<string, unknown> = JSON.parse(
       await readFile(join(extracted, 'manifest.json'), 'utf8')

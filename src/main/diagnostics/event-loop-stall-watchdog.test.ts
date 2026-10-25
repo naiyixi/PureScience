@@ -8,6 +8,7 @@ import {
 } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
 import { createLoopHeldWindows } from './loop-held-windows'
+import { createStallRecordRing } from './stall-record-ring'
 import {
   createRollingStackProfile,
   summarizeProfile,
@@ -469,6 +470,47 @@ describe('event loop stall watchdog', () => {
     time.advance(2_000, 1_600)
     vi.advanceTimersByTime(100)
     expect(warned).toHaveLength(0)
+  })
+
+  // The log line is the full record, but it lives in a file the bundle copies under a byte cap and a
+  // maintainer has to grep. The ring is what the bundle reads, so the record has to land there too — and it
+  // has to land there even when the logger is the thing that fails, since the logger is the slower of the two.
+  it('keeps every reported stall in its ring, including when writing the log line throws', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const ring = createStallRecordRing({ now: () => new Date('2026-10-25T09:00:00.000Z') })
+    const frames: StallFrame[] = [{ frame: 'busy (src/main/busy.ts:7)', samples: 30 }]
+    const { presampler } = presamplerStub({ mainThreadMs: 1_800, unobservedMs: 0, frames })
+    const log = {
+      warn: vi.fn(() => {
+        throw new Error('disk full')
+      })
+    }
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 55 }),
+      createPresampler: () => presampler,
+      createHostSampler: quietHostSampler,
+      records: ring
+    })
+
+    time.advance(2_000, 1_600)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    const summary = ring.summary()
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    expect(summary.observed).toBe(1)
+    expect(summary.records[0]?.windowMs).toBe(2_000)
+    expect(summary.records[0]?.at).toBe('2026-10-25T09:00:00.000Z')
+    // The same record the log would have carried, not a reduced copy: the frames are what name the code.
+    expect(summary.records[0]?.stack).toMatchObject({ status: 'profiled', frames })
+    expect(summary.records[0]?.host).toMatchObject({ status: 'no-in-stall-samples' })
+    watchdog.stop()
   })
 })
 

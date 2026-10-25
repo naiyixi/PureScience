@@ -22,7 +22,8 @@ const facts: SupportBundleFacts = {
     state: 'usable',
     entryCount: 1,
     problems: []
-  }
+  },
+  stalls: { capacity: 16, observed: 0, dropped: 0, status: 'no-stalls-observed', records: [] }
 }
 
 const sender = {} as never

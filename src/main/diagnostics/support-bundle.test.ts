@@ -10,6 +10,7 @@ import {
   listSupportBundleEntries,
   type SupportBundleInput
 } from './support-bundle'
+import { createStallRecordRing } from './stall-record-ring'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 
 const roots: string[] = []
@@ -46,6 +47,7 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
       entryCount: 1,
       problems: []
     },
+    stalls: createStallRecordRing().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -342,5 +344,90 @@ describe('support bundle: trajectory section', () => {
 
     // Nothing left behind: a refused bundle must not leave a half-written archive.
     await expect(stat(input.outPath)).rejects.toThrow()
+  })
+
+  it('carries the watchdog records, with the counters that say how much of the history is missing', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const ring = createStallRecordRing({
+      capacity: 2,
+      now: () => new Date('2026-10-25T08:00:00.000Z')
+    })
+    const record = {
+      windowMs: 4_200,
+      lateMs: 3_700,
+      cpuMs: 3_900,
+      cpuShare: 0.93,
+      attribution: 'cpu-bound-in-process' as const,
+      stack: {
+        status: 'profiled' as const,
+        mainThreadMs: 3_800,
+        unobservedMs: 0,
+        frames: [{ frame: 'save (src/main/store/save.ts:42)', samples: 76 }]
+      },
+      host: {
+        status: 'sampled' as const,
+        intervalMs: 250,
+        stallMs: 4_200,
+        samples: 16,
+        expectedSamples: 17,
+        continuity: 'kept-sampling' as const,
+        freeMemMbMin: 84,
+        pageouts: 0
+      },
+      freeMemMb: 96,
+      loadAvg1m: 3.25
+    }
+    ring.record(record)
+    ring.record({ ...record, windowMs: 6_000 })
+    ring.record({ ...record, windowMs: 8_000 })
+    await writeFile(join(root, 'logs', 'purescience.log'), 'boot ok\n', 'utf8')
+
+    const result = await createSupportBundle({ ...input, stalls: ring.summary() })
+
+    expect(result.entries).toContain('diagnostics/event-loop-stalls.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/event-loop-stalls.json')) as {
+      capacity: number
+      observed: number
+      dropped: number
+      status: string
+      records: { windowMs: number; at: string; stack: { frames: { frame: string }[] } }[]
+    }
+    // Three stalls were seen, two are kept: the bundle must say both, or "we saw 16" becomes "we saw the
+    // last 16".
+    expect(summary.observed).toBe(3)
+    expect(summary.dropped).toBe(1)
+    expect(summary.capacity).toBe(2)
+    expect(summary.status).toBe('records')
+    expect(summary.records.map((entry) => entry.windowMs)).toEqual([6_000, 8_000])
+    // The stack and the observation clock both survive the trip: the frame is what names the blocking code,
+    // and `at` is what lets a maintainer line the record up with the logs.
+    expect(summary.records[1].stack.frames[0].frame).toBe('save (src/main/store/save.ts:42)')
+    expect(summary.records[0].at).toBe('2026-10-25T08:00:00.000Z')
+    // The logs still ship next to it: the section is the machine-readable tail, not a replacement.
+    expect(result.entries).toContain('logs/purescience.log')
+  })
+
+  it('writes the stall section even when nothing stalled, and names that state', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+
+    const result = await createSupportBundle(input)
+
+    // Present-and-empty rather than absent: a missing file would be indistinguishable from an export that
+    // silently stopped carrying the section.
+    expect(result.entries).toContain('diagnostics/event-loop-stalls.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/event-loop-stalls.json')) as {
+      status: string
+      observed: number
+      records: unknown[]
+    }
+    expect(summary.status).toBe('no-stalls-observed')
+    expect(summary.observed).toBe(0)
+    expect(summary.records).toEqual([])
   })
 })

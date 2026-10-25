@@ -8,6 +8,7 @@ import {
   type HostStallSampler
 } from './host-stall-sampler'
 import { sharedLoopHeldWindows, type LoopHeldWindows } from './loop-held-windows'
+import { sharedStallRecords, type StallRecordRing } from './stall-record-ring'
 import {
   createRollingStackProfile,
   type RollingStackProfile,
@@ -97,6 +98,10 @@ export type EventLoopStallWatchdogInput = {
   // Where the reported windows are remembered for the IPC slow-handler split (see `loop-held-windows`).
   // Defaults to the shared registry; tests inject their own so one case cannot see another's windows.
   heldWindows?: LoopHeldWindows
+  // Where the reported records are remembered for the support bundle (see `stall-record-ring`). Defaults to
+  // the shared ring for the same reason: the bundle facts are assembled in the composition root, which has
+  // no other way to reach the watchdog. Tests inject their own.
+  records?: StallRecordRing
   // Seams. Production passes nothing; tests drive time, CPU, machine state and both samplers directly.
   now?: () => number
   // Wall clock (epoch ms), used to line the sampler's timeline up with the stall: the sampler runs on its
@@ -152,6 +157,7 @@ export const startEventLoopStallWatchdog = (
   const thresholdMs = input.thresholdMs ?? DEFAULT_STALL_THRESHOLD_MS
   const presampleRotateMs = input.presampleRotateMs ?? DEFAULT_PRESAMPLE_ROTATE_MS
   const heldWindows = input.heldWindows ?? sharedLoopHeldWindows
+  const records = input.records ?? sharedStallRecords
 
   const presampler = createPresampler()
   // Both samplers are recording before the first stall: a timeline (or a stack) that starts *after* the event
@@ -165,6 +171,13 @@ export const startEventLoopStallWatchdog = (
   let stopped = false
 
   const report = (record: EventLoopStallRecord): void => {
+    // Remembered before the log call: a bundle exported after a hang must carry the reading even when the
+    // logger itself is the thing that is late. A diagnostic must never take down the loop it measures.
+    try {
+      records.record(record)
+    } catch {
+      // Ring is bounded and cannot throw in practice; if it ever did, logging is still the primary record.
+    }
     try {
       input.log.warn('event loop stalled', record)
     } catch {

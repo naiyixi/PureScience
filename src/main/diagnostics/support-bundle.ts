@@ -14,6 +14,7 @@ import * as tar from 'tar'
 
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
+import type { StallRecordSummary } from './stall-record-ring'
 
 export type SupportBundleVersions = {
   app: string
@@ -47,6 +48,14 @@ export type SupportBundleInput = {
    * device — carrying the path would hand over the folder layout this module exists to spare.
    */
   localParsingModels: ModelWeightManifestReport
+  /**
+   * The stall watchdog's recent records, from its own bounded ring (see `stall-record-ring`). Required, for
+   * the same reason as `localParsingModels`: a bundle is normally exported right after something hung, and
+   * this is the reading that question needs. The logs carry the whole history under a byte cap; this file is
+   * the machine-readable tail plus how many records no longer fit, so "no stalls" and "we stopped keeping
+   * them" stay two answers.
+   */
+  stalls: StallRecordSummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -96,6 +105,12 @@ environment.json   operating system, CPU model and count, memory, uptime
 runtime.json       storage location class (never the path), session and project counts
 parsing-models.json  the local-parsing-model manifest this build ships: which copy answered, whether it
                    validated, how many entries it declares (absent when there is no trustworthy count)
+diagnostics/event-loop-stalls.json
+                   the last event-loop stalls this process saw, as the watchdog recorded them: how long the
+                   loop was late, how much CPU that window used, what the machine looked like inside it
+                   (free memory, load, paging), the frames V8 sampled, and — when present — the timeline a
+                   sampler thread took while the loop was held. Its own counters say how many stalls were
+                   observed and how many are no longer kept, so an empty list never reads as "nothing wrong"
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -264,6 +279,15 @@ export const createSupportBundle = async (
   // The manifest reading goes through the same scrubber as everything else, but it is pathless before it
   // gets here: the scrubber is the backstop, not the reason it is safe to include.
   await writeStaged('parsing-models.json', `${JSON.stringify(input.localParsingModels, null, 2)}\n`)
+  // Its own directory, created here: staging only makes `logs/`, and a section that shares a directory with
+  // another one fails the day that other one stops being written (this is how `trajectory/` shipped an
+  // ENOENT). Scrubbed like everything else even though the records carry no user text — the backstop is
+  // cheap and a frame label could still contain a path.
+  await mkdir(join(staging, 'diagnostics'), { recursive: true })
+  await writeStaged(
+    'diagnostics/event-loop-stalls.json',
+    `${JSON.stringify(input.stalls, null, 2)}\n`
+  )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again
   // plus the archive is re-read below. Three layers on purpose — this is the one section that carries a

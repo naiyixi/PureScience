@@ -137,6 +137,7 @@ import {
   registerSupportBundleIpcHandlers,
   resolveDefaultSaveDirectory
 } from './diagnostics/support-bundle-ipc'
+import { sharedStallRecords } from './diagnostics/stall-record-ring'
 import { readShippedModelWeightManifest } from './engines/model-weight-manifest-file'
 import {
   createVisionEvidenceCommandOwner,
@@ -2624,6 +2625,9 @@ const createApplicationModules = async (
     // — the section is omitted rather than written empty (v2.19 §2 「做不到就不打」).
     getFacts: async () => ({
       trajectory: await readNewestSessionTrajectory(),
+      // The watchdog's own bounded ring, read in the same process that started it: a bundle is exported right
+      // after something hung, and this is the reading that question needs (see `stall-record-ring`).
+      stalls: sharedStallRecords.summary(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',
