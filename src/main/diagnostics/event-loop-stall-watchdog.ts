@@ -31,7 +31,9 @@ import {
 //   3. `host` — the same window sampled by a thread of our own (see `host-stall-sampler`), because the
 //      machine readings taken by the main thread only ever describe the moment the stall ended. That
 //      timeline says whether the machine kept running while we were held, and what it looked like inside
-//      the stall (free memory, load, paging counters).
+//      the stall (free memory, load, paging counters). It runs permanently behind a bounded ring for the
+//      same reason the profiler does: the first stall is often the longest, and a sampler created by that
+//      stall could only ever report that it started too late.
 //
 // Deliberately not a fix: this proves a stall existed and roughly what held it, not why the pages were
 // gone. Until a sample names a function (or the machine reading shows the memory is gone) the save path
@@ -39,10 +41,6 @@ import {
 
 const DEFAULT_TICK_MS = 500
 const DEFAULT_STALL_THRESHOLD_MS = 500
-// How long the sampler thread is kept alive after the first stall it serves. The profiler has no such window:
-// it rotates instead (see DEFAULT_PRESAMPLE_ROTATE_MS), because dropping it after a window would put us back
-// to "the next stall out of nowhere has nothing to sample".
-const DEFAULT_HOST_WINDOW_MS = 15_000
 // The always-recording profile is dropped and restarted this often, which keeps a permanently running
 // profiler from growing for the life of the process (measured at the fine cadence: 2,484 samples / 0.1 MB per
 // idle 5 s). Rotation runs on the loop's own tick, never on a timer of its own: a timer could fire between
@@ -94,8 +92,6 @@ export type EventLoopStallWatchdogInput = {
   log: Pick<Logger, 'warn'>
   tickMs?: number
   thresholdMs?: number
-  // How long the sampler thread lives after the first stall it serves.
-  hostWindowMs?: number
   // How often the always-recording profile is dropped and restarted.
   presampleRotateMs?: number
   // Where the reported windows are remembered for the IPC slow-handler split (see `loop-held-windows`).
@@ -154,46 +150,19 @@ export const startEventLoopStallWatchdog = (
   const createHostSampler = input.createHostSampler ?? (() => createHostStallSampler())
   const tickMs = input.tickMs ?? DEFAULT_TICK_MS
   const thresholdMs = input.thresholdMs ?? DEFAULT_STALL_THRESHOLD_MS
-  const hostWindowMs = input.hostWindowMs ?? DEFAULT_HOST_WINDOW_MS
   const presampleRotateMs = input.presampleRotateMs ?? DEFAULT_PRESAMPLE_ROTATE_MS
   const heldWindows = input.heldWindows ?? sharedLoopHeldWindows
 
   const presampler = createPresampler()
+  // Both samplers are recording before the first stall: a timeline (or a stack) that starts *after* the event
+  // can only describe the recovery. The host sampler keeps its own bounded ring and answers reads without
+  // being torn down, so there is no window to arm and no timer that could take it away mid-burst (see
+  // `host-stall-sampler`).
+  const hostSampler = createHostSampler()
   let lastTick = now()
   let lastCpu = cpuUsage()
   let nextRotateAt = lastTick + presampleRotateMs
-  // The sampler thread does not depend on the profiler, and it has to be running *before* a stall begins:
-  // sampling only after the fact could never describe the inside of a stall. Armed, not "has a sampler": the
-  // two samplers fail independently (DevTools may already own the inspector while the sampler thread works
-  // fine), so the window has to be tracked on its own.
-  let hostArmed = false
-  let hostSampler: HostStallSampler | undefined
-  let hostTimer: ReturnType<typeof setTimeout> | undefined
   let stopped = false
-
-  const releaseHost = (): void => {
-    hostArmed = false
-    if (hostTimer) {
-      clearTimeout(hostTimer)
-      hostTimer = undefined
-    }
-    hostSampler?.cancel()
-    hostSampler = undefined
-  }
-
-  // Whether this stall is the one that started the window: then the record says `window-armed` instead of
-  // pretending a thread that started after the stall had seen nothing inside it.
-  const armHostWindow = (): boolean => {
-    if (hostArmed) return false
-    hostArmed = true
-    hostSampler = createHostSampler()
-    hostTimer = setTimeout(() => {
-      hostTimer = undefined
-      releaseHost()
-    }, hostWindowMs)
-    hostTimer.unref?.()
-    return true
-  }
 
   const report = (record: EventLoopStallRecord): void => {
     try {
@@ -246,14 +215,9 @@ export const startEventLoopStallWatchdog = (
       attribution: classify(cpuShare)
     }
 
-    const justArmed = armHostWindow()
-    const pendingHost = hostSampler
-    const hostSlice: Promise<HostStallReading> =
-      !justArmed && pendingHost
-        ? pendingHost.stop(endedAtWall - windowMs, endedAtWall)
-        : Promise.resolve<HostStallReading>(
-            justArmed && pendingHost ? { status: 'window-armed' } : { status: 'unavailable' }
-          )
+    const hostSlice: Promise<HostStallReading> = hostSampler
+      ? hostSampler.read(endedAtWall - windowMs, endedAtWall)
+      : Promise.resolve<HostStallReading>({ status: 'unavailable' })
     // `take()` restarts the segment, so whatever happens next is recorded from this instant on.
     const stackSlice: Promise<StackProfile | undefined> = presampler
       ? presampler.take(windowMs)
@@ -290,7 +254,7 @@ export const startEventLoopStallWatchdog = (
     stop: () => {
       stopped = true
       clearInterval(timer)
-      releaseHost()
+      hostSampler?.stop()
       presampler?.stop()
     }
   }

@@ -83,7 +83,10 @@ describe('summarizing the stall window', () => {
         sample(1_000, 10, 118, 3.5),
         sample(1_250, 10, 90, 6),
         sample(1_500, 10, 61, 7.5),
-        sample(1_750, 10, 88, 4)
+        sample(1_750, 10, 88, 4),
+        // The sampler was still running when the window closed: without this edge the honest answer about
+        // continuity is `unknown`, which the next case pins.
+        sample(1_850, 10, 86, 4)
       ],
       fromMs: 1_000,
       toMs: 1_800,
@@ -104,6 +107,19 @@ describe('summarizing the stall window', () => {
       freeMemMbMax: 118,
       loadAvg1mMax: 7.5
     })
+  })
+
+  // A timeline that ends before the window does cannot say whether the sampler was still running at the far
+  // edge. Reporting `kept-sampling` there is how a SIGSTOP freeze was read as a healthy machine once.
+  it('says "unknown" when the timeline stops before the window does', () => {
+    const reading = summarizeHostWindow({
+      samples: [sample(900, 2, 120, 3), sample(1_250, 10, 90, 6), sample(1_750, 10, 88, 4)],
+      fromMs: 1_000,
+      toMs: 1_800,
+      intervalMs: 250
+    })
+
+    expect(reading).toMatchObject({ status: 'sampled', continuity: 'unknown', maxGapMs: 500 })
   })
 
   it('calls a hole exactly as wide as the stall a hole, and keeps "no CPU" out of it', () => {
@@ -168,6 +184,8 @@ describe('summarizing the stall window', () => {
     })
 
     expect(reading).toMatchObject({ status: 'sampled', pageouts: 1_000, swapouts: 10_000 })
+    // The two in-stall readings are 800 ms apart; that is the span the delta was read across.
+    expect(reading).toMatchObject({ pagingWindowMs: 800 })
 
     const unchanged = summarizeHostWindow({
       samples: [sample(1_100, 1, 40), sample(1_900, 1, 40)],
@@ -182,9 +200,48 @@ describe('summarizing the stall window', () => {
     })
     expect(unchanged).toMatchObject({ pageouts: 0, swapouts: 0 })
   })
+
+  // A 1 s paging cadence leaves a short stall with at most one reading inside it, and one reading is not a
+  // delta. Falling forward to the nearest reading *before* the stall is what keeps the counters available —
+  // and the span it covers is named, so "pages were thrown out around the stall" cannot be read as "during".
+  it('takes the paging delta across the nearest reading before the stall, and names the wider span', () => {
+    const withCounters = (pageouts: number): string =>
+      VM_STAT.replace(/^Pageouts:\s+\d+\.$/m, `Pageouts:   ${pageouts}.`).replace(
+        /^Swapouts:\s+\d+\.$/m,
+        `Swapouts:   ${pageouts}.`
+      )
+
+    const reading = summarizeHostWindow({
+      samples: [sample(1_100, 1, 40), sample(1_500, 1, 40)],
+      paging: [
+        { at: 400, text: withCounters(22_500_000) },
+        { at: 1_450, text: withCounters(22_500_400) }
+      ],
+      fromMs: 1_000,
+      toMs: 1_600,
+      intervalMs: 250,
+      platform: 'darwin'
+    })
+
+    expect(reading).toMatchObject({ status: 'sampled', pageouts: 400, swapouts: 400 })
+    // 400 ms → 1 450 ms: the delta covers the quiet second before the stall as well, and says so.
+    expect(reading).toMatchObject({ pagingWindowMs: 1_050 })
+
+    // One reading alone is still not a delta, however it is anchored.
+    const single = summarizeHostWindow({
+      samples: [sample(1_100, 1, 40)],
+      paging: [{ at: 1_450, text: withCounters(22_500_400) }],
+      fromMs: 1_000,
+      toMs: 1_600,
+      intervalMs: 250,
+      platform: 'darwin'
+    })
+    expect(single).not.toHaveProperty('pageouts')
+    expect(single).not.toHaveProperty('pagingWindowMs')
+  })
 })
 
-// The unit cases above are handed timelines. This one runs the real worker, because the whole point of the
+// The unit cases above are handed timelines. These run the real worker, because the whole point of the
 // module is a timeline the main thread cannot take: if the thread does not survive a blocked loop, every
 // case above passes on synthetic data while production records nothing.
 describe('host sampler on its own thread', () => {
@@ -201,12 +258,26 @@ describe('host sampler on its own thread', () => {
     if (!sampler) throw new Error('expected a host sampler')
 
     try {
-      // Let the thread take a couple of samples before the stall so the window has an anchor.
-      await new Promise((resolve) => setTimeout(resolve, 200))
+      // Wait until the thread has actually taken a sample, instead of sleeping a fixed time: on a thrashing
+      // machine the worker can be starved for hundreds of milliseconds, and then `from` would land before the
+      // first sample and the window would have no left edge at all.
+      const warmupFrom = Date.now()
+      let ready = await sampler.read(warmupFrom, Date.now())
+      for (
+        let attempt = 0;
+        attempt < 40 && (ready.status !== 'sampled' || ready.samples < 1);
+        attempt += 1
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        ready = await sampler.read(warmupFrom, Date.now())
+      }
+      expect(ready.status).toBe('sampled')
+
       const from = Date.now()
-      blockLoop(600)
+      // Long enough that even a badly starved sampler thread lands more than one sample inside it.
+      blockLoop(1_200)
       const to = Date.now()
-      const reading = await sampler.stop(from, to)
+      const reading = await sampler.read(from, to)
 
       expect(reading.status).toBe('sampled')
       if (reading.status !== 'sampled') throw new Error('expected a sampled reading')
@@ -218,18 +289,86 @@ describe('host sampler on its own thread', () => {
       // is asserted only where the timeline is synthetic.
       expect(['kept-sampling', 'gapped']).toContain(reading.continuity)
     } finally {
-      sampler.cancel()
+      sampler.stop()
+    }
+  }, 30_000)
+
+  // The reason the sampler is permanent: a read must not end the recording, or the next stall (and the one
+  // after it) would again be described by a thread that started after the event.
+  it('answers a second read from the same uninterrupted timeline', async () => {
+    const sampler = createHostStallSampler({ intervalMs: 50, pagingEveryMs: 1_000 })
+    if (!sampler) throw new Error('expected a host sampler')
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      const firstFrom = Date.now()
+      blockLoop(200)
+      const first = await sampler.read(firstFrom, Date.now())
+
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      const secondFrom = Date.now()
+      blockLoop(200)
+      const second = await sampler.read(secondFrom, Date.now())
+
+      expect(first.status).toBe('sampled')
+      expect(second.status).toBe('sampled')
+      if (first.status !== 'sampled' || second.status !== 'sampled') return
+      expect(second.samples).toBeGreaterThanOrEqual(2)
+    } finally {
+      sampler.stop()
+    }
+  }, 15_000)
+
+  // A permanent sampler has to hold a fixed amount of memory: the ring drops the oldest sample instead of
+  // growing. With the cap driven down to 10 and a 5 ms cadence, a window wider than the whole run can only
+  // report the cap — anything more would mean the ring never dropped anything.
+  it('drops the oldest samples when the ring is full, and still reports the recent past', async () => {
+    const sampler = createHostStallSampler({ intervalMs: 5, pagingEveryMs: 1_000, maxSamples: 10 })
+    if (!sampler) throw new Error('expected a host sampler')
+
+    try {
+      const from = Date.now()
+      // Wait for the ring to fill instead of sleeping a fixed time: a loaded machine can stretch the
+      // worker's own ticks, and a fixed sleep would then assert on the load rather than on the ring.
+      let reading = await sampler.read(from, Date.now())
+      for (
+        let attempt = 0;
+        attempt < 40 && (reading.status !== 'sampled' || reading.samples < 10);
+        attempt += 1
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        reading = await sampler.read(from, Date.now())
+      }
+
+      expect(reading.status).toBe('sampled')
+      if (reading.status !== 'sampled') return
+      // A window wider than the whole run can only report the cap: anything more would mean the ring never
+      // dropped anything, anything less would mean it dropped the samples the stall needs.
+      expect(reading.samples).toBe(10)
+      expect(reading.freeMemMbMin).toBeTypeOf('number')
+    } finally {
+      sampler.stop()
     }
   }, 15_000)
 
   it('reports "unavailable" when the thread never answers instead of pretending it saw nothing', async () => {
     const sampler = createHostStallSampler({
       workerSource: 'throw new Error("this sampler cannot start")',
-      flushTimeoutMs: 100
+      readTimeoutMs: 100
     })
     expect(sampler).toBeDefined()
     if (!sampler) throw new Error('expected a host sampler')
 
-    expect(await sampler.stop(0, 1_000)).toEqual({ status: 'unavailable' })
+    expect(await sampler.read(0, 1_000)).toEqual({ status: 'unavailable' })
+    sampler.stop()
+  }, 10_000)
+
+  it('reports "unavailable" after stop() rather than reading a closed thread', async () => {
+    const sampler = createHostStallSampler({ intervalMs: 50 })
+    if (!sampler) throw new Error('expected a host sampler')
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    sampler.stop()
+    expect(await sampler.read(0, Date.now())).toEqual({ status: 'unavailable' })
   }, 10_000)
 })

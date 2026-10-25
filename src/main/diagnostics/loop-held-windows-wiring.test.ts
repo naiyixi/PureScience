@@ -15,8 +15,8 @@ import { sharedLoopHeldWindows } from './loop-held-windows'
 // It lives in its own file because the registry is process-wide: sharing a file with the watchdog's other
 // cases would let their windows (driven on the same fake clock) answer for this one.
 const quietHostSampler = (): HostStallSampler => ({
-  stop: async () => ({ status: 'no-in-stall-samples' }),
-  cancel: () => undefined
+  read: async () => ({ status: 'no-in-stall-samples' }),
+  stop: () => undefined
 })
 
 const clock = (): {

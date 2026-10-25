@@ -19,8 +19,8 @@ import {
 // the one they advance. This stub answers as "the thread saw nothing inside the stall", which is the honest
 // answer for a window nobody sampled — and one case below drives a timeline through it.
 const quietHostSampler = (): HostStallSampler => ({
-  stop: async () => ({ status: 'no-in-stall-samples' }),
-  cancel: () => undefined
+  read: async () => ({ status: 'no-in-stall-samples' }),
+  stop: () => undefined
 })
 
 // A runtime without an inspector: every record then says `unavailable`, which is what these cases are not
@@ -337,9 +337,9 @@ describe('event loop stall watchdog', () => {
     expect(warned).toHaveLength(2)
     expect(warned[0]?.data.stack).toEqual({ status: 'unavailable' })
     expect(warned[1]?.data.stack).toEqual({ status: 'unavailable' })
-    // The two samplers fail independently: with no profiler the window is still armed, so the second stall
-    // is served by the sampler thread instead of arming a second window and leaking the first thread.
-    expect(warned[0]?.data.host).toEqual({ status: 'window-armed' })
+    // The two samplers fail independently: with no profiler the host thread is still there, so both stalls
+    // get their own reading instead of the first one being skipped while a window is "armed".
+    expect(warned[0]?.data.host).toEqual({ status: 'no-in-stall-samples' })
     expect(warned[1]?.data.host).toEqual({ status: 'no-in-stall-samples' })
     watchdog.stop()
   })
@@ -350,7 +350,7 @@ describe('event loop stall watchdog', () => {
     const { log, warned } = collect()
     const windows: [number, number][] = []
     const host: HostStallSampler = {
-      stop: async (fromMs, toMs) => {
+      read: async (fromMs, toMs) => {
         windows.push([fromMs, toMs])
         return {
           status: 'sampled',
@@ -365,13 +365,12 @@ describe('event loop stall watchdog', () => {
           freeMemMbMin: 38
         }
       },
-      cancel: () => undefined
+      stop: () => undefined
     }
     const watchdog = startEventLoopStallWatchdog({
       log,
       tickMs: 100,
       thresholdMs: 500,
-      hostWindowMs: 10_000,
       now: time.now,
       // The sampler stamps with the wall clock, so the window has to be expressed in the same clock.
       wallClock: time.now,
@@ -384,14 +383,23 @@ describe('event loop stall watchdog', () => {
     time.advance(2_000, 100)
     vi.advanceTimersByTime(100)
     await settle()
-    // The window is armed by the first stall; nothing has been sampled inside a stall yet.
-    expect(warned[0]?.data.host).toEqual({ status: 'window-armed' })
+    // The FIRST stall is read, not skipped: the thread was already sampling before it began.
+    expect(windows).toEqual([[1_000, 3_000]])
+    expect(warned[0]?.data.host).toMatchObject({
+      status: 'sampled',
+      samples: 19,
+      continuity: 'kept-sampling',
+      freeMemMbMin: 38
+    })
 
     time.advance(5_000, 20)
     vi.advanceTimersByTime(100)
     await settle()
 
-    expect(windows).toEqual([[3_000, 8_000]])
+    expect(windows).toEqual([
+      [1_000, 3_000],
+      [3_000, 8_000]
+    ])
     expect(warned[1]?.data.host).toMatchObject({
       status: 'sampled',
       samples: 19,

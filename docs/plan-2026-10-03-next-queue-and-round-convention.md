@@ -12017,3 +12017,122 @@ mtime 差在秒级）。修法是让这条用例不再依赖时间戳分辨率�
 `host-stall-sampler` 的 worker 改成**环形缓冲 + `read` 消息**（现在 `stop()` 是单次、flush 完就 terminate），
 让第一段 stall 的「机器在停顿里看到了什么」也不缺；③ 若桌面会话线起了新版本窗口，顺手在真机日志里
 确认 `event loop stalled` 行带 `stack.status: profiled`。
+
+## 两百三十、本轮追加（执行器，2026-10-25 11:0x–15:0x）—— 第一段停顿的「机器看见了什么」：采样线程常开 + 有界环 + 端点自证
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 本轮起步 `HEAD == origin/main == 37a7c3f2`（比上一轮的 `11e9e18f` 前进了 7 笔，全是桌面会话线的批次：
+  中文别名评测 75 %→100 %、settings 探针缓存、以及 §两百二十九 那一笔本身）。`git status --short` 里**只有本单元的
+  6 个文件**（5 改 + 1 新增证据档）—— 那是上一轮迭代上限时留下的在制品，**是我的**，本轮接着做完，不是别人的。
+- 防重做核对：`git log --oneline -5 -- src/main/diagnostics/` 最后一笔是 `28eb976d`（§两百二十九：把 **profiler**
+  改成常开 + 有界轮转）。本单元动的是**同一个 watchdog 的另一半 `host`**（`host-stall-sampler` 的机器读数），
+  两者载荷不同（栈 vs 内存/换页/CPU），且 `28eb976d` 的提交信息自己写着「host 窗口语义不变」⇒ 不是重复交付。
+- 队列档「已完成（别再重做）」清单与本单元无交集；B 段（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）已耗尽 ⇒
+  按「B 段耗尽即自拟单元」取上一轮 §六 的「下一轮第一步 ②」。与会话线在改的 `src/main/settings/**`、`src/renderer/**`
+  与发版四文件**不相交**。
+- 在飞车道现查（推前再查一次）：`9b5727e4` 的 `Windows Full Test` **success**、`Nightly` **pending**（同组里
+  `f87dacc8` 的 Nightly 还在跑 —— 该并发组不含 ref，新推送不会取消它）；`195bb941` 的 Nightly **failure**
+  （Typecheck，已由它自己后续一笔修掉）。
+- 机器状态照实记：`load1` 25–45（本轮中段最高 45）、空闲物理页 ~5,046（≈79 MB）、swap 8.83 GB / 10.24 GB 已用。
+  本轮所有耗时读数都在这个背景下取 —— **这也是下面那条「全量里三条慢阈值用例红」的唯一解释方向**（见 §四）。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/host-stall-sampler.ts`（worker 侧） | 环形缓冲（满了丢最旧：1,200 样本 ≈ 5 min @250 ms、120 份 paging ≈ 2 min @1 s）+ 新增 `read` 消息：**答快照、不终止**，且**答前先 `sample()` 一次**（§五 那条自证） |
+| 同上（主线程侧） | `HostStallSampler` 从 `stop(from,to)` 改为 `read(from,to)` + `stop()`；`requestId` 匹配（迟到的答复无害、无人等的答复丢弃）、读取串行化、超时 → `unavailable`、**连续 3 次超时**才关线程（机器被饿住时一次迟到不算坏） |
+| 同上 `summarizeHostWindow` | `continuity` 现在要求**窗口两端都有证据**（起点前、终点后各有样本），缺一端一律 `unknown`；paging 差值的锚点：窗口内有两份就用窗口内，否则接上**窗口前最近那份**，并新增 `pagingWindowMs` 报出实际跨度 |
+| `src/main/diagnostics/event-loop-stall-watchdog.ts` | 采样器**随 watchdog 启动即建**，删掉 `hostWindowMs`、arm 计时器与 `window-armed` 状态；每一段 stall 都读同一线程 |
+| 两个测试文件 + `loop-held-windows-wiring.test.ts` | 接缝改 `read`/`stop`；新增 5 条：同一时间线答第二次读、环满丢最旧、`stop()` 后读 `unavailable`、paging 跨停顿取锚并报跨度、时间线早于窗口结束时 `continuity=unknown` |
+| `docs/evidence/2026-10-25-host-sampler-always-on.md`（新） | 代价表、三次连续真机读数、一条「仪器说谎」的成因与修法、五条边界 |
+
+### 二 先量代价再决定「常开」（10 s 空转，同一台 8 核机）
+
+| 做什么 | 10 s 内 CPU | 折合单核 |
+|---|---|---|
+| 采样循环本身（250 ms 采 cpu/load/free/rss） | 4.4 ms | 0.04 % |
+| paging 每 500 ms（原默认，`vm_stat` 子进程 1.62 ms CPU / 13.3 ms 墙） | 48.4 ms | 0.48 % |
+| **paging 每 1000 ms（改为这个）** | 20.8 ms | **0.21 %** |
+
+⇒ 结论是「钱花在子进程上」，cadence 放宽到 1 s；常开不等于一直长，环缓冲给了上界。
+
+### 三 真机读数（Electron 43.7.5 / Node 24.21.0 / V8 15.0.245.31-electron.0，连续三次）
+
+真 host 线程 + 真 `vm_stat` + 真忙等，外加一次**真整进程冻结**（自身 `SIGSTOP` 1.5 s，外部 `SIGCONT` 恢复）：
+
+```
+first : host.status=sampled samples=6~8  continuity=kept-sampling maxGapMs=253~269 freeMemMbMin=65~71 pageouts=0
+freeze: host.status=sampled samples=0~1  continuity=gapped        maxGapMs=1602~1812 cpuMs=3~7
+second: host.status=sampled samples=5    continuity=kept-sampling maxGapMs=252~311 cpuMs=511~924
+```
+
+三件事同时成立：**第一段就有机器读数**（上一轮此处是 `window-armed`）、**第二段仍是同一线程答的**（读一次不等于用掉它）、
+**整进程冻结读成 `gapped` 而不是「机器很好」**。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/diagnostics` 整域 | **16 files / 96 passed**，exit 0（上一轮 91 ⇒ 本单元 +5 条） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **EXIT 0** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **EXIT 0** |
+| `eslint --no-cache .`（CI 同口径全仓） | **0 errors / 127 warnings，EXIT 0**（warning 不拦 CI；本笔 5 个文件单独跑 `**0 problems**`） |
+| `prettier --check`（本笔 6 个文件） | 全部通过（先 `--write` 修掉测试文件一处折行） |
+| 全量 `vitest run --maxWorkers=4` | **1393 passed \| 3 failed \| 18 skipped（1414 文件）**；**17,666 passed \| 4 failed \| 211 skipped（17,881）**；exit 1，**耗时 2,084 s**（同机 `load1` 33–45；三条失败见下，逐个 isolation 3 遍全绿） |
+| 三条失败的定性复跑 | 三个文件各 **3 遍**（`--maxWorkers=1`）：**9/9 全绿**（64 / 21 / 21 条各自全过）⇒ 按**负载抖动**记档，不当回归、也不谎报「全量绿」 |
+| 真机探针 | 三次连续运行，读数见 §三；探针与 bundle 都在仓外（scratch），不进仓 |
+
+**全量里那三条红与判定**（逐条按「失败文件是否本批碰过」归因，不拿「抽风」当挡箭牌）：
+`src/main/storage/ipc.test.ts`（`names the usage read when the call is slow…`）、
+`src/main/settings/agent-runtime-manager.test.ts`（`names the slow probe and logs one summary, while a fast
+preflight stays silent`）、`src/renderer/src/pages/workspace/session-plan/SessionPlanSurfaces.test.tsx`（2 条）。
+三条**都不在本批改动的路径里**，且形状一致 —— 都是**慢阈值/时序断言**在 `load1` 33–45 的机器上被负载推过阈值：
+
+- `storage/ipc.test.ts`：`AssertionError: expected 800 to be less than 412`（「够快就不该记慢日志」的阈值断言）；
+- `agent-runtime-manager.test.ts`：`expected "vi.fn()" to not be called at all, but actually been called 1 times`
+  （快路径被记成慢探针）；
+- `SessionPlanSurfaces.test.tsx` 两条：`expected <article …/> to be null`（批准/忽略后卡片应当消失；在全量里 10.8 s 的
+  该文件属于同一次负载下的渲染时序）。
+
+**定性复跑（判据，不是感觉）**：三个文件各 `--maxWorkers=1` 跑 **3 遍**，**9/9 全绿**（分别 64、21、21 条全过）
+⇒ 按**负载抖动**记档。**不谎报「全量绿」**：全量那一次的 exit 是 1，读数如实写在上表；改动面内（`src/main/diagnostics`
+整域、双 typecheck、全仓 eslint、prettier）全部独立为绿。
+
+### 五 一条「仪器自己说谎」：真机探针抓到的，不是单测
+
+冻结那一段第一次被记成 `continuity: kept-sampling`、`maxGapMs: 251` —— 1.5 s 整进程冻结读成「采样一直在跑」。
+成因不是采样线程没停（它停了），而是**读取时的快照停在窗口结束之前**：主线程恢复后立刻发 `read`，worker 先处理消息、
+再轮到自己的 250 ms 定时器 ⇒ 环里只有冻结**之前**的密集样本，缺口搜索能看见的唯一一对相邻样本是冻前的 251 ms。
+
+两条修法必须一起（缺一条都不够）：① worker 收到 `read` **先 `sample()` 再答**，时间线必定延伸到读取那一刻；
+② `continuity` 改为**两端都要有证据**才下结论，只有一端 ⇒ `unknown`。修后同一探针三次都是 `gapped`。
+
+**这条只有真线程能抓到**：合成时间线是「已知完整」的，单测里不存在「快照比窗口短」这种形状。
+
+### 六 边界（不许读成更强）
+
+1. 本单元证明「第一段 stall 也能拿到机器侧时间线」，**不**证明 10-23 那 20 秒是内存/换页造成的；真机冻结是探针自造。
+2. paging 差值可能跨到停顿之前（`pagingWindowMs` 报出来，本例 1.0–1.3 s vs 停顿 1.0–1.6 s）；`pageouts: 0` 只说明
+   那一段没换出页。
+3. 只在 Electron 的 **Node 运行时**取证，**没起带窗实例** ⇒ 产品主进程里那一行要等下一次真机 stall；
+   那一条仍在待办（下一轮第一步 ②）。
+4. 常开代价是「0.21 % 单核」，不是零；`vm_stat` 每 1 s 一个子进程仍是成本，平台若给出无子进程来源可再降。
+5. `no-in-stall-samples` / `unknown` 都是**具名缺态**，不许被读成「机器正常」。
+
+### 七 顺手修掉主干一处 typecheck 红（不是本单元，但不许累积）
+
+`11e9e18f` 的提交信息写着「tsc node exit 0」，实际 `tsc -p tsconfig.node.json` **红三条 `TS2322`**，全在它新增的
+`codex-adapter-version-probe.test.ts`：`vi.fn(async () => …)` 没给类型参数 ⇒ 推断成 `Mock<Procedure | Constructable>`，
+赋不进 `(executablePath: string) => Promise<ExecutableIdentity>`。`Nightly` 的判决与之一致：`40156739836` →
+`build / Verify` → 步骤 **Typecheck** 红（同提交的 `Windows Full Test` 是 success，它不跑类型检查）。
+修法按本仓既有写法（`version-probe-cache.test.ts` 用 `vi.fn<VersionProbe>(…)`）给该 mock 显式类型参数：修前 3 条 error、
+修后 **exit 0**。（该文件已由后续一笔 `b4614612` 独立修掉，本单元这一笔不再包含它。）
+
+### 八 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔的 Nightly + Windows 双车道（推前先看有没有在飞的车道，避免顶掉别人的判决）；
+② `host` 这一族到此收口（第一段有栈、有机器读数、冻结可区分）⇒ 下一件：**在真机日志里确认 `event loop stalled`
+行真的带上 `stack.status: profiled` 与 `host.status: sampled`**（需要一次真机 stall，或从认证车道日志里找）；
+③ 若桌面会话线起了新版本窗口（`gh release list` 当时 Latest 是 v2.17.7），先让开，不碰发版四文件。
