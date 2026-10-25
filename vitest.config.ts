@@ -75,6 +75,10 @@ const PROCESS_TEST_GLOBS = [
  */
 const DATABASE_TEST_GLOBS = [
   'src/main/projects/prisma-client.test.ts',
+  // The bench opens a real project database too. It is env-gated at runtime (`describe.runIf`), but the
+  // partition guard classifies by what a suite would do, not by whether it happens to run today — an
+  // ungated entry in the unbounded pool is exactly the contention this split exists to remove.
+  'scripts/bench/project-db-open.bench.test.ts',
   'src/main/projects/prisma-client-journal-mode.test.ts',
   'src/main/projects/preview-repository.test.ts',
   'src/main/compute/prisma-client.test.ts',
