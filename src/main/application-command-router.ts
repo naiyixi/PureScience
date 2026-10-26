@@ -1,4 +1,10 @@
 import type { CallerContext } from './caller-context'
+import {
+  cpuAttributionFields,
+  type ActivityAttribution,
+  type CpuUsageSample
+} from './diagnostics/cpu-attribution'
+import { sharedLoopHeldWindows } from './diagnostics/loop-held-windows'
 
 declare const applicationCommandTypes: unique symbol
 
@@ -96,8 +102,39 @@ export type ApplicationCommandDiagnosticCode =
 export type ApplicationCommandDiagnostic = Readonly<{
   code: ApplicationCommandDiagnosticCode
   commandName: string
-  // Present on 'slow-handler' only: how long the handler itself took, in milliseconds.
+  // Present on 'slow-handler' and 'handler-rejected': how long the handler itself took, in milliseconds.
   durationMs?: number
+  // Present alongside every duration: what this process actually consumed inside the same window. A
+  // duration alone cannot separate our own synchronous block from a machine that was not running us (see
+  // `cpu-attribution`), so every line that reports one also answers "was the time ours".
+  cpuMs?: number
+  cpuShare?: number
+  attribution?: ActivityAttribution
+  // Present only when the stall watchdog saw the loop held inside this window: how much of the wall time
+  // the process was not running at all, and the remainder that was ours.
+  heldMs?: number
+  ownMs?: number
+}>
+
+// What the invoke path measures around one handler call. Every field but `durationMs` is best-effort: when
+// the instrument itself fails, the line degrades to the plain duration rather than losing it.
+type HandlerTiming = Readonly<{
+  durationMs: number
+  cpuMs?: number
+  cpuShare?: number
+  attribution?: ActivityAttribution
+  heldMs?: number
+  ownMs?: number
+}>
+
+/**
+ * Test seam for the attribution instrument. Production passes nothing: the samples come from the process
+ * itself and the held windows from the registry the stall watchdog writes.
+ */
+export type ApplicationCommandRouterDiagnostics = Readonly<{
+  now?: () => number
+  cpuUsage?: () => CpuUsageSample
+  heldMs?: (startMs: number, endMs: number) => number
 }>
 
 // Above this, a command's own handler time is worth a log line. Chosen below the 130-430 ms hitches this
@@ -148,7 +185,8 @@ export const defineApplicationCommandGroup = <
   Object.freeze({ name, commands: Object.freeze([...commands]) as unknown as Readonly<Commands> })
 
 export const createApplicationCommandRouter = (
-  onDiagnostic?: (diagnostic: ApplicationCommandDiagnostic) => void
+  onDiagnostic?: (diagnostic: ApplicationCommandDiagnostic) => void,
+  diagnostics: ApplicationCommandRouterDiagnostics = {}
 ): ApplicationCommandRouter => {
   const commands = new Map<string, RegisteredCommand>()
   const scopes: ScopeState[] = []
@@ -157,14 +195,76 @@ export const createApplicationCommandRouter = (
   const report = (
     code: ApplicationCommandDiagnosticCode,
     commandName: string,
-    durationMs?: number
+    timing?: HandlerTiming
   ): void => {
     try {
       onDiagnostic?.(
-        Object.freeze(durationMs === undefined ? { code, commandName } : { code, commandName, durationMs })
+        Object.freeze(
+          timing === undefined ? { code, commandName } : { code, commandName, ...timing }
+        )
       )
     } catch {
       // Diagnostics must never mask or replace the command result.
+    }
+  }
+
+  // The held windows are recorded in `performance.now()` (the watchdog's clock, see `loop-held-windows`),
+  // while `durationMs` stays on `Date.now()` so the number in the log is the one callers already read.
+  const sampleNow = diagnostics.now ?? ((): number => performance.now())
+  const cpuUsage = diagnostics.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
+  const heldMsWithin =
+    diagnostics.heldMs ??
+    ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
+
+  // An instrument that throws must not reach the caller: a dispatch that failed because the diagnostic could
+  // not read a clock would be a new failure mode invented by the instrument itself.
+  const readNumber = (read: () => number): number | undefined => {
+    try {
+      const value = read()
+      return Number.isFinite(value) ? value : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  const readCpu = (read: () => CpuUsageSample): CpuUsageSample | undefined => {
+    try {
+      const sample = read()
+      const user = Number(sample?.user)
+      const system = Number(sample?.system)
+      return Number.isFinite(user) && Number.isFinite(system) ? { user, system } : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  // Best-effort by construction: whatever this cannot measure, the line simply does not carry. A missing
+  // field means "not measured" and never "zero" — the two read very differently in a log.
+  const measure = (
+    durationMs: number,
+    windowStartedAt: number | undefined,
+    cpuStartedAt: CpuUsageSample | undefined
+  ): HandlerTiming => {
+    if (cpuStartedAt === undefined) return { durationMs }
+    try {
+      const cpuEndedAt = readCpu(cpuUsage)
+      if (cpuEndedAt === undefined) return { durationMs }
+      const endedAt = windowStartedAt === undefined ? undefined : readNumber(sampleNow)
+      const heldMs =
+        windowStartedAt === undefined || endedAt === undefined
+          ? 0
+          : Math.max(
+              0,
+              Math.min(durationMs, Math.round(Number(heldMsWithin(windowStartedAt, endedAt)) || 0))
+            )
+      return {
+        durationMs,
+        ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, durationMs),
+        // Only when there is something to split, so an ordinary slow handler's line is unchanged.
+        ...(heldMs < 1 ? {} : { heldMs, ownMs: Math.max(0, durationMs - heldMs) })
+      }
+    } catch {
+      return { durationMs }
     }
   }
 
@@ -267,13 +367,24 @@ export const createApplicationCommandRouter = (
     }
 
     const startedAt = Date.now()
+    const windowStartedAt = readNumber(sampleNow)
+    const cpuStartedAt = readCpu(cpuUsage)
     try {
       const result = (await registered.handler(invocation)) as CommandResult<typeof command>
       const durationMs = Date.now() - startedAt
-      if (durationMs >= SLOW_HANDLER_THRESHOLD_MS) report('slow-handler', command.name, durationMs)
+      if (durationMs >= SLOW_HANDLER_THRESHOLD_MS) {
+        report('slow-handler', command.name, measure(durationMs, windowStartedAt, cpuStartedAt))
+      }
       return result
     } catch (error) {
-      report('handler-rejected', command.name)
+      // A rejection used to say nothing about how long we had already waited. A command that threw after
+      // 700 ms of our own CPU raises the same question the slow line answers, so it carries the same fields
+      // — the failure branch is exactly where "was the time ours" is hardest to reconstruct afterwards.
+      report(
+        'handler-rejected',
+        command.name,
+        measure(Date.now() - startedAt, windowStartedAt, cpuStartedAt)
+      )
       throw error
     }
   }

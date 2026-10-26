@@ -4089,9 +4089,15 @@ const createApplicationModules = async (
       // rejection codes stay at debug (they already surface to the caller as errors).
       const applicationCommandLog = createLogger('application-commands')
       const composition = createApplicationCommandComposition(dependencies, (diagnostic) => {
+        // Split out so the slow line carries the attribution fields the router measured around the same
+        // window, while every other code keeps its own (smaller) shape. `cpuMs`/`heldMs` are absent when the
+        // instrument could not read them — absent means "not measured", never "zero".
+        const { commandName, durationMs, cpuMs, cpuShare, attribution, heldMs, ownMs } = diagnostic
         const fields = {
-          commandName: diagnostic.commandName,
-          ...(diagnostic.durationMs === undefined ? {} : { durationMs: diagnostic.durationMs })
+          commandName,
+          ...(durationMs === undefined ? {} : { durationMs }),
+          ...(cpuMs === undefined ? {} : { cpuMs, cpuShare, attribution }),
+          ...(heldMs === undefined ? {} : { heldMs, ownMs })
         }
         if (diagnostic.code === 'slow-handler') {
           applicationCommandLog.warn('application command handler was slow', {

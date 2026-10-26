@@ -6,6 +6,7 @@ import {
   defineApplicationCommand,
   defineApplicationCommandGroup,
   type ApplicationCallerLease,
+  type ApplicationCommandDiagnostic,
   type ApplicationInvocation
 } from './application-command-router'
 
@@ -346,7 +347,20 @@ describe('application command router', () => {
     await expect(router.dispatcher.invoke(readValue, invocation(['secret'] as const))).rejects.toBe(
       privateError
     )
-    expect(diagnostics).toEqual([{ code: 'handler-rejected', commandName: 'sample.read' }])
+    expect(diagnostics).toHaveLength(1)
+    const rejection = diagnostics[0] as Record<string, unknown>
+    expect(rejection).toMatchObject({ code: 'handler-rejected', commandName: 'sample.read' })
+    // The whole vocabulary of a rejection line, pinned: nothing here can carry request arguments or caller
+    // identity without this list changing. The timing fields come from the attribution instrument, so a
+    // rejection can now say how long we had already waited and whether the time was ours.
+    expect(Object.keys(rejection).sort()).toEqual([
+      'attribution',
+      'code',
+      'commandName',
+      'cpuMs',
+      'cpuShare',
+      'durationMs'
+    ])
     expect(JSON.stringify(diagnostics)).not.toContain('secret')
     expect(JSON.stringify(diagnostics)).not.toContain('web-client')
     expect(JSON.stringify(diagnostics)).not.toContain('lease-1')
@@ -355,10 +369,59 @@ describe('application command router', () => {
 
   it('reports a handler that took too long, and stays quiet when one does not', async () => {
     // The instrument the packaged build's first-open hitches needed: nothing in main could say what the UI
-    // had waited for. Slow handlers carry their own duration; ordinary ones stay out of the log.
-    const diagnostics: Array<{ code: string; commandName: string; durationMs?: number }> = []
-    const router = createApplicationCommandRouter((diagnostic) => {
-      diagnostics.push(diagnostic as { code: string; commandName: string; durationMs?: number })
+    // had waited for. Slow handlers carry their own duration; ordinary ones stay out of the log. The CPU
+    // samples are injected, so what this asserts is the whole line production writes, not just its duration.
+    const diagnostics: ApplicationCommandDiagnostic[] = []
+    let cpuMicros = 0
+    const router = createApplicationCommandRouter((diagnostic) => diagnostics.push(diagnostic), {
+      now: () => 0,
+      cpuUsage: () => ({ user: cpuMicros, system: 0 }),
+      heldMs: () => 0
+    })
+    const scope = router.registrar.createScope()
+    const clock = vi.spyOn(Date, 'now')
+    scope.registerGroup(defineApplicationCommandGroup('read', [readValue] as const), {
+      // 180 ms of CPU inside the window: the slow line has to say the time was ours.
+      'sample.read': () => {
+        cpuMicros += 180_000
+        return Promise.resolve('ok')
+      }
+    })
+
+    // fast: no diagnostic at all
+    clock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_010)
+    await expect(router.dispatcher.invoke(readValue, invocation(['id-1'] as const))).resolves.toBe(
+      'ok'
+    )
+    expect(diagnostics).toEqual([])
+
+    // slow: one diagnostic, carrying the measured duration and what the process consumed in that window
+    clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_240)
+    await expect(router.dispatcher.invoke(readValue, invocation(['id-1'] as const))).resolves.toBe(
+      'ok'
+    )
+    expect(diagnostics).toEqual([
+      {
+        code: 'slow-handler',
+        commandName: 'sample.read',
+        durationMs: 240,
+        cpuMs: 180,
+        cpuShare: 0.75,
+        attribution: 'cpu-bound-in-process'
+      }
+    ])
+
+    clock.mockRestore()
+  })
+
+  it('splits a slow window the loop was held in, so a suspended process cannot read as our work', async () => {
+    // The packaged-build shape this answers: five channels finishing within 8 s of each other, all 93-100 %
+    // inside one window where the loop never ran. Without the split every one of them reads as app work.
+    const diagnostics: ApplicationCommandDiagnostic[] = []
+    const router = createApplicationCommandRouter((diagnostic) => diagnostics.push(diagnostic), {
+      now: () => 0,
+      cpuUsage: () => ({ user: 0, system: 0 }),
+      heldMs: () => 230
     })
     const scope = router.registrar.createScope()
     const clock = vi.spyOn(Date, 'now')
@@ -366,19 +429,55 @@ describe('application command router', () => {
       'sample.read': () => Promise.resolve('ok')
     })
 
-    // fast: no diagnostic at all
-    clock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_010)
-    await expect(
-      router.dispatcher.invoke(readValue, invocation(['id-1'] as const))
-    ).resolves.toBe('ok')
-    expect(diagnostics).toEqual([])
+    clock.mockReturnValueOnce(5_000).mockReturnValueOnce(5_240)
+    await expect(router.dispatcher.invoke(readValue, invocation(['id-1'] as const))).resolves.toBe(
+      'ok'
+    )
+    expect(diagnostics).toEqual([
+      {
+        code: 'slow-handler',
+        commandName: 'sample.read',
+        durationMs: 240,
+        cpuMs: 0,
+        cpuShare: 0,
+        attribution: 'process-not-scheduled',
+        heldMs: 230,
+        ownMs: 10
+      }
+    ])
 
-    // slow: one diagnostic, carrying the measured duration
-    clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_240)
-    await expect(
-      router.dispatcher.invoke(readValue, invocation(['id-1'] as const))
-    ).resolves.toBe('ok')
-    expect(diagnostics).toEqual([{ code: 'slow-handler', commandName: 'sample.read', durationMs: 240 }])
+    clock.mockRestore()
+  })
+
+  it('keeps the duration when the instrument itself fails, and never replaces a rejection', async () => {
+    // A diagnostic that throws must not become a new failure mode: the caller gets the handler's own error,
+    // and the line degrades to the plain duration instead of disappearing or claiming zeros.
+    const diagnostics: ApplicationCommandDiagnostic[] = []
+    const privateError = new Error('handler broke')
+    const router = createApplicationCommandRouter((diagnostic) => diagnostics.push(diagnostic), {
+      now: () => {
+        throw new Error('no clock')
+      },
+      cpuUsage: () => {
+        throw new Error('no cpu sample')
+      },
+      heldMs: () => {
+        throw new Error('no windows')
+      }
+    })
+    const scope = router.registrar.createScope()
+    const clock = vi.spyOn(Date, 'now')
+    scope.registerGroup(defineApplicationCommandGroup('read', [readValue] as const), {
+      'sample.read': () => Promise.reject(privateError)
+    })
+
+    clock.mockReturnValueOnce(3_000).mockReturnValueOnce(3_700)
+    await expect(router.dispatcher.invoke(readValue, invocation(['id-1'] as const))).rejects.toBe(
+      privateError
+    )
+    expect(diagnostics).toEqual([
+      { code: 'handler-rejected', commandName: 'sample.read', durationMs: 700 }
+    ])
 
     clock.mockRestore()
   })
