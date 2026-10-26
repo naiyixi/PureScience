@@ -45,6 +45,28 @@ provision 时再取。这动的是 `createProductionProvisioner` 的入参与其
 
 **收益上界**：冷启动 2.0–3.2 s 里，这一项占 0.7–2.5 s。
 
+## 端到端确认（真机 provision，2026-10-26）
+
+惰性 `channel` 之前只验到「值进了 argv」。现在有了一个真机用例
+（`src/main/notebook/real-provision.integration.test.ts`，`PURESCIENCE_REAL_PROVISION=1` 才跑），
+它做两件事，证明的也是两件事：
+
+1. **故意给一个不存在的渠道**（`file:///nonexistent-channel-<ts>`）→ micromamba 自己的报错文本里带着这个名字
+   ⇒ 解析出来的值真的流进了子进程，不是只写进日志；
+2. **用真实探测出的渠道**（本机没配镜像，也就是原来会挡住启动的那条路径）→ 环境建成功，
+   `…/envs/lazy-channel-proof/bin/python` 存在。
+
+读数（`docs/bench-runs/2026-10-26-real-provision.txt`）：
+
+```
+resolved channel (part 1, bogus)=file:///nonexistent-channel-1793026831672
+probed channel (part 2, real)=https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/
+interpreter=…/ps-real-provision-DAzvm4/envs/lazy-channel-proof/bin/python
+```
+
+耗时 28.9 s（包命中共享 `pkgs` 缓存，没有大下载）。也就是说：那次**668–2512 ms 的测速**现在只在真的要装环境时
+发生一次，结果被真实使用。
+
 ## 发布件确认（v2.18.2，从 GitHub Release 下载的 DMG）
 
 装机后（`CFBundleShortVersionString = 2.18.2`，asar 里 `channelName` / `composition stage` / `SchemaStamp` 都在）
