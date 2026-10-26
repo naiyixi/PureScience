@@ -179,55 +179,111 @@ describe('storage:get-info segment instrument', () => {
       clear: vi.fn()
     }) as never
 
-  it('names the usage read when the call is slow, and says nothing when it is served from cache', async () => {
+  // The wall clock this describe drives: it only moves where a test says it does, so no assertion here
+  // depends on how loaded the machine is.
+  const virtualClock = (): { advance: (ms: number) => void; restore: () => void } => {
+    let now = 1_760_000_000_000
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    return {
+      advance: (ms: number): void => {
+        now += ms
+      },
+      restore: (): void => spy.mockRestore()
+    }
+  }
+
+  const settingsWithProbe = (
+    advance: (ms: number) => void,
+    ms: number
+  ): FakeDeps['settingsService'] => ({
+    setDataRoot: vi.fn().mockResolvedValue(undefined),
+    markOnboardingComplete: vi.fn().mockResolvedValue(undefined),
+    dismissLegacyDataMovePrompt: vi.fn().mockResolvedValue(undefined),
+    getStoredSettings: vi.fn(
+      async (): Promise<Awaited<ReturnType<FakeDeps['settingsService']['getStoredSettings']>>> => {
+        advance(ms)
+        return {}
+      }
+    )
+  })
+
+  it('splits a slow read by segment using a clock the test drives, not the machine', async () => {
     // Seen on a real 7 GB root: storage:get-info took 13.7 s while three other IPC calls answered in 2-5 ms.
     // The split is what makes that reading self-explaining — the disk walk behind the usage read, not the root
     // resolution, the available-space probe or the settings read.
     //
-    // The deliberate read below has to dominate the three real probes that run beside it. Those probes touch a
-    // real filesystem, so on a busy machine (a CI runner, or a laptop running the whole suite in parallel) they
-    // can add up to tens of milliseconds — which made a short tick fail as if the instrument had misattributed
-    // the cost, twice in one day, on commits that never touched storage. The tick is an order of magnitude above
-    // that noise instead of beside it, so the assertion still fails when a genuinely slow read is attributed to
-    // the wrong segment, and stops failing when the machine is merely busy.
-    const SLOW_USAGE_READ_MS = 400
-    initDataRoot(dataRoot)
-    const slowLogger = fakeDiagnosticLogger()
-    const slowOwner = createStorageCommandOwner(
-      fakeDeps({
-        logger: slowLogger,
-        usageCache: usageCacheReading(async () => {
-          await tick(SLOW_USAGE_READ_MS)
-          return { categories: [{ key: 'artifacts', bytes: 2048 }], totalBytes: 2048 }
+    // The clock is virtual and moves in exactly two places: 30 ms inside the settings probe and 400 ms inside
+    // the usage walk. Both segments are therefore known exactly. The earlier version slept for real and only
+    // asked that the walk dominate the probes — and because those probes touch a real filesystem, a busy machine
+    // (a CI runner, or a laptop running the whole suite) could inflate them past the walk, failing the
+    // assertion as if the instrument had misattributed the cost. It happened twice in one day on commits that
+    // never touched storage. What is asserted now is the arithmetic and the attribution; a genuinely
+    // misattributed segment still fails, and no amount of machine load can move these numbers.
+    const SETTINGS_PROBE_MS = 30
+    const USAGE_WALK_MS = 400
+    const clock = virtualClock()
+    try {
+      initDataRoot(dataRoot)
+      const slowLogger = fakeDiagnosticLogger()
+      const slowOwner = createStorageCommandOwner(
+        fakeDeps({
+          logger: slowLogger,
+          settingsService: settingsWithProbe(clock.advance, SETTINGS_PROBE_MS),
+          usageCache: usageCacheReading(async () => {
+            clock.advance(USAGE_WALK_MS)
+            return { categories: [{ key: 'artifacts', bytes: 2048 }], totalBytes: 2048 }
+          })
         })
-      })
-    )
+      )
 
-    const info = await slowOwner.getInfo()
+      const info = await slowOwner.getInfo()
 
-    expect(info.usage.totalBytes).toBe(2048)
-    const [record] = slowStorageInfo(slowLogger)
-    expect(record).toBeDefined()
-    expect(Number(record.usageMs)).toBeGreaterThanOrEqual(SLOW_USAGE_READ_MS * 0.875)
-    expect(record.usageCategories).toBe(1)
-    // What the split has to say: the walk is the segment, the other three are noise beside it.
-    const overhead =
-      Number(record.dataRootMs) + Number(record.availableMs) + Number(record.settingsMs)
-    expect(overhead).toBeLessThan(Number(record.usageMs))
-    expect(overhead).toBeLessThanOrEqual(Number(record.totalMs))
+      expect(info.usage.totalBytes).toBe(2048)
+      const [record] = slowStorageInfo(slowLogger)
+      expect(record).toBeDefined()
+      // Exact, not approximate: each probe got the time it was given and nothing else.
+      expect(record.dataRootMs).toBe(0)
+      expect(record.availableMs).toBe(0)
+      expect(record.settingsMs).toBe(SETTINGS_PROBE_MS)
+      expect(record.usageMs).toBe(USAGE_WALK_MS)
+      expect(record.totalMs).toBe(SETTINGS_PROBE_MS + USAGE_WALK_MS)
+      expect(record.usageCategories).toBe(1)
+      // What the split has to say: the walk is the segment, the probes are noise beside it.
+      const overhead =
+        Number(record.dataRootMs) + Number(record.availableMs) + Number(record.settingsMs)
+      expect(overhead).toBe(SETTINGS_PROBE_MS)
+      expect(overhead).toBeLessThan(Number(record.usageMs))
+      expect(overhead).toBeLessThanOrEqual(Number(record.totalMs))
+      // The CPU attribution rides on this line as well. Its verdict is deliberately not asserted here: the
+      // wall clock is virtual while the CPU sample is real, so a zero share would be an artefact of the
+      // instrument, not a statement about the app. The verdicts themselves are pinned in
+      // session-persistence/coordinator.test.ts.
+      expect(Object.keys(record)).toEqual(
+        expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
+      )
+    } finally {
+      clock.restore()
+    }
+  })
 
-    const fastLogger = fakeDiagnosticLogger()
-    const fastOwner = createStorageCommandOwner(
-      fakeDeps({
-        logger: fastLogger,
-        usageCache: usageCacheReading(async () => ({ categories: [], totalBytes: 0 }))
-      })
-    )
-    await fastOwner.getInfo()
-    // An instant cache read can never be the slow segment: whatever that call reported, it did not blame the
-    // usage read. (Asserting silence outright would depend on how loaded the machine is at the 50 ms threshold.)
-    for (const record of slowStorageInfo(fastLogger)) {
-      expect(Number(record.usageMs)).toBeLessThan(50)
+  it('says nothing when the reading is served from a warm cache', async () => {
+    // Frozen clock: an instant read stays instant, so this asserts silence rather than "a line whose number
+    // happens to be small". Silence is what the panel actually reads as "nothing to explain".
+    const clock = virtualClock()
+    try {
+      initDataRoot(dataRoot)
+      const fastLogger = fakeDiagnosticLogger()
+      const fastOwner = createStorageCommandOwner(
+        fakeDeps({
+          logger: fastLogger,
+          usageCache: usageCacheReading(async () => ({ categories: [], totalBytes: 0 }))
+        })
+      )
+      const info = await fastOwner.getInfo()
+      expect(info.usage.totalBytes).toBe(0)
+      expect(slowStorageInfo(fastLogger)).toEqual([])
+    } finally {
+      clock.restore()
     }
   })
 })

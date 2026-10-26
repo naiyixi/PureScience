@@ -12831,3 +12831,73 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
    `startedAt`/三段探测/`totalMs` 的六个 `Date.now()` 全部固定，断言就与机器快慢无关；这属于改既有守卫，
    要单独一轮并说明「断言的是算术与归属，不是真实耗时」）。
 4. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
+
+## 二百四十一、本轮追加（执行器，2026-10-26 19:1x–）—— main 上那条红是「诊断 phase 插进了源码相邻断言」；顺手把一条负载敏感断言改成钉算术
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == 34f06ef8`（**不是**上一轮汇报的 `af3999af`：之间 `bab6e766`/`34f06ef8`
+  是另一条线的两笔）。工作树带着**上一轮我未提交的三处慢行 + 计划档 §二百四十**，另有
+  `src/main/ipc.ts`、`src/main/runtime-electron-wiring.ts` 是**并行执行器的在制品** ⇒ 本轮一个字节没碰。
+- 先闭合上一轮唯一未决读数：`af3999af` 的 `Nightly 40296457782` 与 `Windows Full Test 40296457778`
+  **均 success** ⇒ §二百四十 那两笔全部有判决。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 先修 main 上的红，再取自己的具名开项。
+
+### 一 先修 main 的红（`533f7f30`）
+
+- 现象：`34f06ef8` 的 `Windows Full Test 40312008155` **分片 8/8** 红在
+  `src/main/application-command-wiring.test.ts:169`（`expected 'const remoteAccess = await RemoteAcce…'
+  to match /…/`）。本地同一棵树**确定性复现**（不是负载、不是抽风）。
+- 根因：那笔在 `RemoteAccessService.create()` 与 `createWebServiceController` 之间插了两个
+  `startupDiagnostics?.phase(...)`，而这条断言用**原文相邻**匹配钉着「铸造唯一 owner → 绑定 → 只交给
+  Web 一个窄视图」。**这是全平台红**，Windows 分片只是先报出来。
+- 修法：只放行诊断标记（零到多个 `startupDiagnostics?.phase('<kebab>')`），产品调用仍不匹配。
+  **变异自证**：零 phase `MATCH`、两个 phase `MATCH`、bind 前插产品调用 `no-match`、bind 后插产品调用
+  `no-match`、宽视图 `no-match` ⇒ 断言没被削弱，只是不再把纯仪表行当契约变更。
+
+### 二 三处慢行落地（`7f225ef6`）
+
+| 行 | 文件 | 要点 |
+| --- | --- | --- |
+| `artifact version resolve was slow` | `artifacts/provenance-repository.ts` | 三段时间 + CPU 同窗；第二样本前置到 await canary 之前 |
+| `managed preview acquire was slow` | `managed-preview-resources.ts` | 与 `resolveMs+statMs` 同窗；同上 |
+| `notebook state read was slow` | `notebook/runtime-service.ts` | 该行用 `performance.now`，CPU 样本照样两次 `cpuUsage` |
+
+这一族至此铺到**九处**。
+
+### 三 把一条负载敏感断言改成钉算术（本笔）
+
+- `storage/ipc.test.ts` 的 `storage:get-info segment instrument` 原来真睡 400 ms，只断言「walk 压过三个
+  真实探测」。那三个探测走真文件系统，机器一忙就能涨到 488 ms ⇒ 断言红成「仪器归错段」（本机 load 15.8
+  时实测过，改前在干净提交上也复现过）。
+- 改法：**虚拟时钟**，只在两处前进 —— 设置探测 30 ms、usage walk 400 ms ⇒ 五个分段与 `totalMs` 全是精确值，
+  机器快慢不再参与。
+- **变异自证**：把生产端 `usageMs` 改成漏掉 `settingsMs`（即真的归错段）⇒ `expected 430 to be 400`
+  当场红；还原后 65 passed。「暖缓存不出行」那半改成冻结时钟 + `toEqual([])`，比「某个数小于 50」强。
+
+### 四 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 三处慢行定向（notebook+artifacts+managed-preview+diagnostics） | **130 files / 1874 passed（99 skipped）** |
+| `storage` 目录 | **16 files / 289 passed**；本文件 **65 passed** |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（逐文件） | **0 errors 0 warnings** |
+| `scripts/pre-push-checks.sh` | 全部通过（README 双语、权重清单、脚本入口、新增文件 lint） |
+
+### 五 边界（不许读成更强）
+
+1. **本轮没有真机日志行**：九处与这次都是日志字段/测试台改动，能取的真机读数是一次真实慢事件产生的行；
+   用户常驻 dev 实例仍是旧代码（重启要点头）⇒ 明确记为**未取**。
+2. 我那两笔是被**并行执行器的推送**带上 `origin/main` 的（`533f7f30`/`7f225ef6` 都是 `origin/main` 的祖先），
+   它的 `fd6ca1c8` 落在我的之上 —— 汇报里点名，别按提交顺序把这笔记到别人头上。
+3. `fd6ca1c8` 的 `Windows Full Test 40314476123` **success**（含本轮的修红），Nightly 尚在飞；本笔推送会把它顶掉，
+   届时按「包含它的后一笔」引用判决（祖先关系成立）。
+
+### 六 下一轮第一步
+
+1. 读本笔判决（Nightly + Windows Full Test，绑完整 40 位 SHA）。
+2. CPU 归属最后一处 `application command handler was slow`（`src/main/ipc.ts:4070`）——
+   **blocked-by**：并行执行器正在改 `ipc.ts` / `runtime-electron-wiring.ts`；解封条件 = `git status --short`
+   里不再出现这两个路径。铺完这一族收口。
+3. 仍等点头（不变）：重启用户常驻 dev 实例才能取真机 `stack.samples`。
