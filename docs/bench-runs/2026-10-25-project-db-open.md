@@ -68,6 +68,23 @@ DMG 下载完成后（GitHub CDN 在本机只有 ~20 KB/s，四轮断点续传�
 
 **所以这一版的收益不在 v2.18.0 里**：同一台机器、同一个库，发布件 406 ms vs 修复版 126 ms。
 
+## v2.18.1 发布件实测（同一个库、同一台机）
+
+DMG 拉全 **284,233,437** 字节（= 资产登记值）；`shasum -a 256` = `37021a4dd018214b1234d0c5aa180f79436fffd4f6cc5253548aa5c7e6abd506`，
+与 `SHA256SUMS.txt` 那行**逐字符一致**；asar 里 `SchemaStamp`、`ddlFingerprint`、`/api/v1/agent-card` 都在
+（先证明跑的是这棵树）。装机后两次启动：
+
+| 启动 | `open-project-db` | `compose runtime steps` 合计 |
+|---|---|---|
+| v2.18.0 发布件（对照） | **406 ms** | 497 ms |
+| v2.18.1 `23c2ad0d` | **148 ms** | 255 ms |
+| v2.18.1 `4f28496b` | **106 ms** | 214 ms |
+
+两次都**没有** `specialist-skill-catalog` 的慢步骤行（阈值 250 ms），而 v2.18.0 上是 324 / 374 ms。
+
+`23c2ad0d` 那次里还能看到另一条在制单元的改动在起作用：`read-stored-settings=29ms(not-scheduled)` —— 墙钟旁边
+开始记 CPU 归属，没被调度到的那段自己说出来。
+
 ## 做不到 / 没做
 
 - 剩下的 38 ms 里含引擎首次查询与 WAL 打开，不是这套 DDL 序列，没有继续压；
