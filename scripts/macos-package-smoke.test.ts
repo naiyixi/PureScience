@@ -7,11 +7,15 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   artifactVersion,
   assertPackagedResources,
+  describeStartupTimeout,
   findAppBundle,
   findArtifact,
   packagedLaunchArguments,
   parseArguments,
-  parsePackagedAppEndpoint
+  parsePackagedAppEndpoint,
+  redactServiceTokens,
+  toStartupFailure,
+  waitFor
 } from './macos-package-smoke.mjs'
 
 const roots: string[] = []
@@ -84,6 +88,95 @@ describe('macOS package smoke', () => {
       '--purescience-headless',
       '--serve=0'
     ])
+  })
+
+  it('names what it observed when the packaged service never arrives', () => {
+    const message = describeStartupTimeout({
+      label: 'DMG-mounted bundle zerolink-purescience-2.18.3-nightly.g6e1653e-mac-x64.dmg',
+      elapsedMs: 60_140,
+      timeoutMs: 60_000,
+      processState: { status: 'running', pid: 4242 },
+      output: [
+        'Provisioning runtime ...',
+        'PureScience Web: http://127.0.0.1:44100/?token=secret-value_1',
+        'warn: renderer not ready',
+        'tick'
+      ].join('\n')
+    })
+
+    // Which of the two bundles (DMG mount vs ZIP extract) stalled, and how long it really waited.
+    expect(message).toContain('DMG-mounted bundle zerolink-purescience-2.18.3-nightly')
+    expect(message).toContain('after 60140 ms (limit 60000 ms)')
+    // The process was alive: that rules out "it crashed at startup".
+    expect(message).toContain('still running (pid 4242)')
+    // An endpoint line did appear, so the format is what drifted — not the announcement.
+    expect(message).toContain('1 line(s) mentioned the endpoint')
+    expect(message).toContain('format drift')
+    // Evidence stays readable, the bearer token does not.
+    expect(message).toContain('http://127.0.0.1:44100/?token=<redacted>')
+    expect(message).not.toContain('secret-value_1')
+    expect(redactServiceTokens('a?token=abc_123&b=1')).toBe('a?token=<redacted>&b=1')
+  })
+
+  it('distinguishes "wrote nothing" from "printed something we cannot parse"', () => {
+    const silent = describeStartupTimeout({
+      label: 'ZIP-extracted bundle',
+      elapsedMs: 60_002,
+      timeoutMs: 60_000,
+      processState: { status: 'exited', code: 3, signal: null },
+      output: '   \n'
+    })
+    expect(silent).toContain('none — the app never announced a web endpoint')
+    expect(silent).toContain('(the app wrote nothing to stdout or stderr)')
+    expect(silent).toContain('already exited with code 3')
+
+    const killed = describeStartupTimeout({
+      label: 'ZIP-extracted bundle',
+      elapsedMs: 60_002,
+      timeoutMs: 60_000,
+      processState: { status: 'exited', code: null, signal: 'SIGSEGV' },
+      output: 'noise\n'
+    })
+    expect(killed).toContain('already exited on signal SIGSEGV')
+    expect(killed).toContain('noise')
+  })
+
+  it('bounds the output tail instead of dumping an unbounded log', () => {
+    const noise = Array.from({ length: 400 }, (_, index) => `line ${index} ${'x'.repeat(20)}`)
+    const message = describeStartupTimeout({
+      label: 'ZIP-extracted bundle',
+      elapsedMs: 60_000,
+      timeoutMs: 60_000,
+      processState: { status: 'running', pid: 1 },
+      output: noise.join('\n')
+    })
+    const tail = message.slice(message.indexOf('\n…') + 1)
+    expect(tail.startsWith('…')).toBe(true)
+    expect(tail.length).toBeLessThanOrEqual(2_001)
+    expect(tail).toContain('line 399')
+    expect(message).not.toContain('line 0 ')
+  })
+
+  it('tags a real timeout and rewrites only that branch', async () => {
+    // Producer: waitFor's own timeout is tagged, so the enrichment cannot depend on message text.
+    await expect(
+      waitFor('something that never arrives', async () => undefined, 20)
+    ).rejects.toMatchObject({ code: 'SMOKE_TIMEOUT' })
+
+    const context = {
+      label: 'ZIP-extracted bundle',
+      elapsedMs: 60_000,
+      timeoutMs: 60_000,
+      processState: { status: 'running', pid: 7 },
+      output: ''
+    }
+    const tagged = Object.assign(new Error('Timed out waiting for x.'), { code: 'SMOKE_TIMEOUT' })
+    expect(String(toStartupFailure(tagged, context).message)).toContain(
+      'Timed out waiting for the packaged macOS web service (ZIP-extracted bundle)'
+    )
+    // Every other cause already carries its own evidence — it must not be rewritten.
+    const other = new Error('Packaged macOS bootstrap returned HTTP 503.')
+    expect(toStartupFailure(other, context)).toBe(other)
   })
 
   it('requires the legacy ICNS fallback icon (no Xcode/actool Assets.car)', async () => {

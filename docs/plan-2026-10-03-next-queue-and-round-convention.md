@@ -13098,3 +13098,61 @@ ArrayContaining`）；还原后 33 passed。
    ② `notebook/runtime-service` 那条 spawn 断言（先量再改，不许加大超时）；
    ③ `src/main/ipc.ts` 里其余「有读数但没归属」的分支。
 3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
+
+## 二百四十五、本轮追加（执行器，2026-10-27 03:2x–）—— 一条读不出任何东西的门禁红：先让超时自己说清看见了什么
+
+### 〇 开工核对
+
+- `git fetch` 后 `origin/main = 6e1653e2`（上一轮我自己的两笔），**共享工作树干净**、无在飞车道。
+  B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽 ⇒ 从**上一轮判决**里取单元。
+- **先把判决闭合**：`Nightly @ 6e1653e2` **failure**、`Windows Full Test @ 6e1653e2` **success**；
+  `20978d05` 无自身 run（被后一笔顶掉，祖先关系成立）。
+- **failure 的归属**：作业级读数是 `build / Build macos-x64` → 步骤 `Smoke test macOS packages` 超时
+  （`Timed out waiting for the packaged macOS web service.`，步骤内 17:50:33 → 17:51:56）。随后
+  `Enforce the macOS Developer ID signature gate`（`macSignature=unproven`）与
+  `Enforce platform certification`（`MACOS_SMOKE_OUTCOME=failure`）**都是它的后果**。
+  三条对照 ⇒ **间歇红、非本笔引入**：同提交 arm64 同一步骤 passed（整支 20.8 s）；前一笔 `37b236cc`
+  的 x64 同一步骤 passed（整支 30.0 s）；本笔 18 个路径不含 `scripts/**`。**不重跑单作业**（抢并发组、
+  且「取消 ≠ 绿」），由下一次推送的 `Nightly` 给新数据点。
+
+### 一 交付（`scripts/macos-package-smoke.mjs` + 同名用例 + 证据档）
+
+原消息把四种情形压成一句：没起来 / 起来了但端点格式漂移 / 起来了什么都不打印 / runner 太慢。四种的
+下一步动作完全不同 ⇒ 按「仪器读不出值 ≠ 值不在」先修仪器：
+
+- 超时消息带 **哪个包**（DMG 挂载 vs ZIP 解出，含产物名 —— 冒烟会跑两次，原来分不出是哪一次卡住）、
+  **实测耗时与限值**、**进程状态**（`still running (pid N)` / `exited with code N` / `exited on signal S`）、
+  **有没有宣告过端点**（`none` 与「有行但解析不了 = 格式漂移」分开）、**输出尾巴**（≤2000 字符）。
+- `token=…` 一律 `<redacted>`（服务地址带 bearer token）；`exit before healthy` 与「非零退出」两条既有
+  分支的原文也一并脱敏。
+- **只有**被 `code: 'SMOKE_TIMEOUT'` 标记的那条被改写，其余错误**原对象透传**。
+- **`STARTUP_TIMEOUT_MS` 一个数字都没动**：健康基线是整支 30 s（x64）/ 20.8 s（arm64），60 s 限值不在刀口上。
+
+### 二 读数（实跑）
+
+| 环 | 读数 |
+|---|---|
+| 真进程探针（假包只会 `sleep`，走真 `launchAndProbe`） | `elapsed=60.2s`；消息含包标签 / `still running (pid 28144)` / `none — the app never announced a web endpoint` / `(the app wrote nothing to stdout or stderr)`；**6/6 PASS** |
+| `scripts/macos-package-smoke.test.ts` | **10 passed** |
+| 与该脚本相邻的 `scripts/windows-release-workflows.test.ts` | **12 passed**（合计 22 passed） |
+| 变异四条 | 去包标签 ⇒ 2 红；`redact` 恒等 ⇒ 1 红；`toStartupFailure` 透传 ⇒ 1 红；`waitFor` 不打标 ⇒ 1 红；还原后复绿 |
+| `eslint --no-cache`（两文件） | **0 error / 0 warning** |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+
+### 三 边界与具名未办
+
+1. **这一版保证「红的时候话变清楚」，不保证红变少**：真成因（x64 首启卡哪一步）要等一次带输出的红
+   才定得下来，届时看 `service announcements` 与尾巴。
+2. **`child.kill('SIGKILL')` 只到直接子进程**：探针里假包的孙进程继承了管道，父进程因此不退出（我自己
+   第一次探针就这么挂住，靠显式 `process.exit` 收场）。真实失败那一步 17:51:56 立刻结束 ⇒ 打包态没把
+   管道交给孙进程 ⇒ 记为**风险**；改成整进程组杀会动到产品子进程的信号语义，单独立项。
+3. **没有打包态读数**：本机无待测 `.app`，探针是「真子进程 + 假包」，不冒充打包态。
+
+### 四 下一轮第一步
+
+1. 读 `6e1653e2` 之后这一推的两条车道判决；`macos-x64` 若再红，按新消息里的 `service announcements`
+   与输出尾巴定因（这正是本轮把仪器修好的用途）。
+2. 候选（不需要发版窗口）：① 上一轮具名的**时钟域统一**（十三处 `Date.now` vs `performance.now`，
+   先量再改）；② `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）；
+   ③ `src/main/ipc.ts` 里其余「有读数但没归属」的分支。
+3. 仍等用户点头：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。

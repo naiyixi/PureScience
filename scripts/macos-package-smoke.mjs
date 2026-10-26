@@ -53,15 +53,61 @@ const parsePackagedAppEndpoint = (output) => {
   return token ? { endpoint: url.origin, auth: `token=${encodeURIComponent(token)}` } : undefined
 }
 
-const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS) => {
+// A bare "Timed out waiting for X" cannot be told apart from "the app never started", "the app
+// printed an endpoint we no longer parse", and "the runner was slow". Name the bundle, the process
+// state, whether any announcement arrived at all, and the output tail (tokens redacted).
+const DEFAULT_OUTPUT_TAIL_CHARS = 2_000
+
+export const redactServiceTokens = (text) =>
+  text.replace(/token=[A-Za-z0-9_-]+/g, 'token=<redacted>')
+
+const outputTail = (output, limit = DEFAULT_OUTPUT_TAIL_CHARS) => {
+  const trimmed = output.trim()
+  if (trimmed === '') return '(the app wrote nothing to stdout or stderr)'
+  const tail = trimmed.length > limit ? `…${trimmed.slice(-limit)}` : trimmed
+  return redactServiceTokens(tail)
+}
+
+const describeProcessState = (processState) =>
+  processState.status === 'running'
+    ? `still running (pid ${processState.pid}) when the limit expired`
+    : processState.code === null || processState.code === undefined
+      ? `already exited on signal ${processState.signal}`
+      : `already exited with code ${processState.code}`
+
+export const describeStartupTimeout = ({ label, elapsedMs, timeoutMs, processState, output }) => {
+  const announcements = output.split('\n').filter((line) => line.includes('PureScience Web:'))
+  const announcementSummary =
+    announcements.length === 0
+      ? 'none — the app never announced a web endpoint'
+      : `${announcements.length} line(s) mentioned the endpoint but none matched http://127.0.0.1:<port>/?token=… (format drift)`
+  return [
+    `Timed out waiting for the packaged macOS web service (${label}) after ${elapsedMs} ms (limit ${timeoutMs} ms).`,
+    `- process: ${describeProcessState(processState)}`,
+    `- service announcements: ${announcementSummary}`,
+    `- last output (${DEFAULT_OUTPUT_TAIL_CHARS} chars max, tokens redacted):`,
+    outputTail(output)
+  ].join('\n')
+}
+
+export const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS) => {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const value = await check().catch(() => undefined)
     if (value !== undefined && value !== false) return value
     await delay(250)
   }
-  throw new Error(`Timed out waiting for ${description}.`)
+  throw Object.assign(new Error(`Timed out waiting for ${description}.`), {
+    code: 'SMOKE_TIMEOUT'
+  })
 }
+
+// Only the timeout branch arrives without evidence of its own; every other failure already names its
+// cause, so it passes through untouched (same error object, same message).
+export const toStartupFailure = (error, context) =>
+  error instanceof Error && error.code === 'SMOKE_TIMEOUT'
+    ? new Error(describeStartupTimeout(context))
+    : error
 
 const runProcess = (executable, args, options = {}) =>
   new Promise((resolveProcess, rejectProcess) => {
@@ -103,26 +149,37 @@ const packagedLaunchArguments = (userDataRoot) => [
   '--serve=0'
 ]
 
-const launchAndProbe = async ({ executable, expectedVersion, env, userDataRoot }) => {
+// Exported so a probe can exercise the timeout seam against a real child process (the unit tests
+// can only reach the message builder).
+export const launchAndProbe = async ({ executable, expectedVersion, env, userDataRoot, label }) => {
+  const startedAt = Date.now()
   const child = spawn(executable, packagedLaunchArguments(userDataRoot), {
     env,
     stdio: ['ignore', 'pipe', 'pipe']
   })
   let output = ''
+  let processState = { status: 'running', pid: child.pid }
   child.stdout?.setEncoding('utf8')
   child.stderr?.setEncoding('utf8')
   child.stdout?.on('data', (chunk) => (output += chunk))
   child.stderr?.on('data', (chunk) => (output += `\n${chunk}`))
   const exit = new Promise((resolveExit, rejectExit) => {
     child.once('error', rejectExit)
-    child.once('exit', resolveExit)
+    child.once('exit', (code, signal) => {
+      processState = { status: 'exited', code, signal }
+      resolveExit(code)
+    })
   })
 
   try {
     const service = await Promise.race([
-      waitFor('the packaged macOS web service', async () => parsePackagedAppEndpoint(output)),
+      waitFor(`the packaged macOS web service (${label})`, async () =>
+        parsePackagedAppEndpoint(output)
+      ),
       exit.then((code) => {
-        throw new Error(`Packaged macOS app exited before becoming healthy (${code}).\n${output}`)
+        throw new Error(
+          `Packaged macOS app exited before becoming healthy (${code}).\n${redactServiceTokens(output)}`
+        )
       })
     ])
     const response = await fetch(`${service.endpoint}/api/bootstrap?${service.auth}`, {
@@ -151,14 +208,29 @@ const launchAndProbe = async ({ executable, expectedVersion, env, userDataRoot }
         throw new Error('Packaged macOS app did not exit after shutdown.')
       })
     ])
-    if (exitCode !== 0) throw new Error(`Packaged macOS app exited with ${exitCode}.\n${output}`)
+    if (exitCode !== 0) {
+      throw new Error(`Packaged macOS app exited with ${exitCode}.\n${redactServiceTokens(output)}`)
+    }
   } catch (error) {
     child.kill('SIGKILL')
-    throw error
+    throw toStartupFailure(error, {
+      label,
+      elapsedMs: Date.now() - startedAt,
+      timeoutMs: STARTUP_TIMEOUT_MS,
+      processState,
+      output
+    })
   }
 }
 
-const smokeAppBundle = async ({ appBundle, expectedVersion, env, gatekeeper, userDataRoot }) => {
+const smokeAppBundle = async ({
+  appBundle,
+  expectedVersion,
+  env,
+  gatekeeper,
+  userDataRoot,
+  label
+}) => {
   await runProcess(
     '/usr/bin/codesign',
     ['--verify', '--deep', '--strict', '--verbose=2', appBundle],
@@ -177,7 +249,7 @@ const smokeAppBundle = async ({ appBundle, expectedVersion, env, gatekeeper, use
   }
   const { executable, micromamba } = await assertPackagedResources(appBundle)
   await runProcess(micromamba, ['--version'], { env })
-  await launchAndProbe({ executable, expectedVersion, env, userDataRoot })
+  await launchAndProbe({ executable, expectedVersion, env, userDataRoot, label })
 }
 
 // The shipped bytes' signing state, written where the certification-evidence step can read it
@@ -265,7 +337,8 @@ const main = async () => {
         expectedVersion,
         env,
         gatekeeper: false,
-        userDataRoot
+        userDataRoot,
+        label: `DMG-mounted bundle ${basename(dmg)}`
       })
     } finally {
       await runProcess('/usr/bin/hdiutil', ['detach', '-force', mount])
@@ -278,7 +351,8 @@ const main = async () => {
       expectedVersion,
       env,
       gatekeeper: options.gatekeeper,
-      userDataRoot
+      userDataRoot,
+      label: `ZIP-extracted bundle ${basename(zip)}`
     })
     if (options.signatureReading) {
       await writeSignatureReading(options.signatureReading, {
