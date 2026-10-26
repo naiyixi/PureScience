@@ -1,5 +1,6 @@
 import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
+import { cpuAttributionFields, type CpuUsageSample } from './cpu-attribution'
 import { sharedLoopHeldWindows } from './loop-held-windows'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
@@ -18,6 +19,9 @@ type IpcRejectionDiagnosticInput<T> = {
   // How much of [startMs, endMs] the process was not running at all (loop-stall windows). Defaults to the
   // shared registry the watchdog writes; tests inject their own answer.
   heldMs?: (startMs: number, endMs: number) => number
+  // Process CPU around the same window, so a slow handler can say whether the time was ours or the process
+  // was not running (see `cpu-attribution`). Injected only by tests.
+  cpuUsage?: () => CpuUsageSample
 }
 
 const safeNow = (now: () => number): number => {
@@ -58,6 +62,8 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
     input.heldMs ??
     ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
   const startedAt = safeNow(now)
+  const cpuUsage = input.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
+  const cpuStart = cpuUsage()
   const recordRejection = (error: unknown): void => {
     try {
       input.log.warn('ipc handler rejected', {
@@ -92,6 +98,11 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         surface: input.callerContext.surface,
         location: input.callerContext.location,
         durationMs,
+        // Was this window ours? The held split above says how much of the wall time the loop was not running;
+        // this says what the process actually consumed. Five channels finishing together after a settings
+        // mount read as five slow handlers before, and the CPU share is what separates "we worked for 21 s"
+        // from "we were suspended for 21 s" without the next reader having to guess.
+        ...cpuAttributionFields(cpuStart, cpuUsage(), durationMs),
         // Present only when there is something to split, so an ordinary slow handler's line is unchanged.
         ...(heldMs < 1 ? {} : { heldMs, ownMs: Math.max(0, durationMs - heldMs) })
       })

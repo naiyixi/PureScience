@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   attributionSuffix,
   classifyCpuShare,
+  cpuAttributionFields,
   cpuMillisecondsBetween,
   cpuShareOf
 } from './cpu-attribution'
@@ -48,5 +49,31 @@ describe('cpu attribution', () => {
     expect(attributionSuffix('process-not-scheduled')).toBe('(not-scheduled)')
     expect(attributionSuffix('cpu-bound-in-process')).toBe('')
     expect(attributionSuffix('inconclusive')).toBe('')
+  })
+
+  it('computes the three fields a slow line carries from two samples of one window', () => {
+    // The helper exists so the ten call sites cannot drift in rounding. Microseconds in, milliseconds out, and
+    // the share is rounded to three places because a log line is read by a person, not compared to a threshold.
+    expect(cpuAttributionFields({ user: 0, system: 0 }, { user: 826_400, system: 0 }, 900)).toEqual(
+      {
+        cpuMs: 826,
+        cpuShare: 0.918,
+        attribution: 'cpu-bound-in-process'
+      }
+    )
+    // A window where the process consumed nothing at all is the 6.3-hour case: 22.7 million ms of wall time.
+    expect(
+      cpuAttributionFields({ user: 0, system: 0 }, { user: 13_000, system: 0 }, 3_065)
+    ).toEqual({ cpuMs: 13, cpuShare: 0.004, attribution: 'process-not-scheduled' })
+  })
+
+  it('keeps a zero-length window without a verdict, and never divides by it', () => {
+    expect(cpuAttributionFields({ user: 5_000, system: 0 }, { user: 9_000, system: 0 }, 0)).toEqual(
+      {
+        cpuMs: 4,
+        cpuShare: 0,
+        attribution: 'inconclusive'
+      }
+    )
   })
 })

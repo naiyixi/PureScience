@@ -12703,3 +12703,54 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
    推前 `gh run list` 确认没有在飞的主干车道。
 2. 仍敞着的具名候选：CPU 归属铺到剩下 10 处只报墙钟的慢行（`references/main-process-read-latency.md` 的 §9 口径）。
 3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
+
+## 二百三十九、本轮追加（执行器，2026-10-26 14:0x–）—— 通道级慢行第一个带 CPU 归属：`ipc handler was slow` 现在自己说时间是不是我们的
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 承接 §二百三十二 的具名开项「把 CPU 归属铺到剩下只报墙钟的慢行」：本轮**先把词汇抽成一个函数**，
+  再落**第一个通道级调用点**（`src/main/diagnostics/ipc-rejection.ts`）。剩余九处仍在队列里，逐处同形推进。
+- 与本轮已提交的三笔（`25d4c0a7` egress / `06e35aa2` preflight 时钟 / `7ff216a4` 支持包时间线）同一文件集里
+  只有 `diagnostics/**` 相交，且那三笔已落盘；本轮这笔在其上追加。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `diagnostics/cpu-attribution.ts` | 新增 `cpuAttributionFields(before, after, windowMs)`：一次算出 `cpuMs/cpuShare(3 位)/attribution`。**为什么抽函数**：这条铺开要落十处，各自内联一遍就会在四舍五入与分类器上分叉，而「时间是不是我们的」只允许一个答案 |
+| `diagnostics/ipc-rejection.ts` | 注入缝 `cpuUsage?`（默认 `process.cpuUsage()`），在 `startedAt` 旁取首样本，慢行里 spread 那三个字段 |
+| 两个 `.test.ts` | `cpuAttributionFields` 2 例（含零长度窗口不判「没在跑」）；`ipc handler was slow` 四条既有断言**改成显式带字段**（原来用整对象精确断言，正好在这里把新字段钉住），含一条「held 源抛错时仍由 CPU 说 `process-not-scheduled`」 |
+
+**消息串不加后缀**：`ipc handler was slow` 是日志检索键（值班与人手 grep 都靠它），后缀留给摘要行
+（`compose runtime steps`）那一层；这里只加字段。这条差异写进注释，免得下一处照抄时误加。
+
+### 二 读数（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/diagnostics` | **18 files / 127 tests** 全绿（本轮 +2 例） |
+| 两个改动文件 verbose | **15 passed**（含 4 条例外分支断言） |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 8192） | **EXIT=0** |
+| `eslint --no-cache`（本笔 4 文件） | **0 errors 0 warnings**（首轮 11 条 prettier 警告已 `--fix` 并复检为 0） |
+
+### 三 边界
+
+1. **不新开计时器**：样本就是两次 `process.cpuUsage()`，与既有墙钟同一窗口，代价是两次 syscall 级的读。
+2. 阈值/分类器**没有新口径**，仍取 §二百三十二 那一份（≥0.60 / ≤0.15，中间 `inconclusive`，零长度窗口 `inconclusive`）。
+3. 这条只让下一读者不去查错地方，不让慢通道变快。
+4. 剩余九处（`application command handler` / `session save` / `session runtime context read` / `project files read` /
+   `project file kinds read` / `storage info` / `artifact version resolve` / `managed preview acquire` /
+   `notebook state read`）逐个同形落地；其中 `application command handler` 要先让路由器诊断带上 CPU 样本，
+   代价明显高于其余八处，排在最后。
+
+### 四 v2.18.1 发布核验（会话线发版，本轮按发布核验口径复核）
+
+- `gh release list` → `PureScience v2.18.1` 为 **Latest**；`gh release view v2.18.1` → `draft=false`、`isPrerelease=false`、**assets=21**（mac arm64/x64 的 dmg+zip+blockmap、linux AppImage+deb、win setup.exe+zip、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest*.yml` 与 `arm64-mac.yml`/`x64-mac.yml`）。
+- `RELEASE-CERTIFICATION.json` 的 `sourceSha = d4b7b00cad4dc1fd927f05a59c9c628d8543cddb` 与 `git rev-parse 'v2.18.1^{commit}'` **逐字符一致**。
+- `Release` run `40271941033` 全作业 **success**（含 `windows-upgrade-smoke` 的静默升级钻取）；`notarize-mac` 按设计打印**具名 skipped 行**「UNSIGNED macOS assets, notarized: no Apple credentials」——不据此写「已公证」。
+
+### 五 下一轮第一步
+
+1. 推到 main 后读本轮四笔的**一条**判决（`Nightly` + `Windows Full Test`，绑 `7ff216a4`/本笔的完整 40 位 SHA）。
+2. 继续铺 CPU 归属：下一处取 `session save was slow`（它的 `queuedMs` 正是「没在跑」的典型形状），
+   其后 `storage info was slow`、`notebook state read was slow`。

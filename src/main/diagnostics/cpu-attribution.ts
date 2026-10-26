@@ -54,3 +54,28 @@ export const classifyCpuShare = (share: number, windowMs: number): ActivityAttri
  */
 export const attributionSuffix = (attribution: ActivityAttribution): string =>
   attribution === 'process-not-scheduled' ? '(not-scheduled)' : ''
+
+export type CpuAttributionFields = Readonly<{
+  cpuMs: number
+  cpuShare: number
+  attribution: ActivityAttribution
+}>
+
+/**
+ * The three fields a slow line carries, computed from the two `process.cpuUsage()` samples around the window.
+ * One function so ten call sites cannot drift in rounding or in which classifier they use — the whole point of
+ * this module is that there is one answer to "was the time ours".
+ */
+export const cpuAttributionFields = (
+  before: CpuUsageSample,
+  after: CpuUsageSample,
+  windowMs: number
+): CpuAttributionFields => {
+  const cpuMs = cpuMillisecondsBetween(before, after)
+  const share = cpuShareOf(cpuMs, windowMs)
+  return {
+    cpuMs,
+    cpuShare: Number(share.toFixed(3)),
+    attribution: classifyCpuShare(share, windowMs)
+  }
+}

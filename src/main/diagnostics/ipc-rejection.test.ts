@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { createWebCallerContext } from '../caller-context'
 import { invokeWithIpcRejectionDiagnostics } from './ipc-rejection'
 
+// Two CPU samples per call, injected so the attribution fields are deterministic: the claim under test is
+// which window the share is computed over, not how busy this machine was while the suite ran.
+const cpuPair = (cpuMs: number): (() => { user: number; system: number }) => {
+  let calls = 0
+  return () => (calls++ === 0 ? { user: 0, system: 0 } : { user: cpuMs * 1000, system: 0 })
+}
+
 describe('invokeWithIpcRejectionDiagnostics', () => {
   it('reports a slow successful handler with its duration, and says nothing about a fast one', async () => {
     // This adapter is the only place an Electron IPC cost can be seen in main: the renderer's session and
@@ -30,14 +37,20 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       callerContext,
       invoke: async () => 'document',
       log: { warn },
-      now: slowNow
+      now: slowNow,
+      cpuUsage: cpuPair(90)
     })
     expect(warn).toHaveBeenCalledOnce()
     expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
       channel: 'sessions:read-document',
       surface: 'web',
       location: 'local',
-      durationMs: 180
+      durationMs: 180,
+      // Half the window spent on the CPU: neither "our work" nor "we were suspended", so no verdict is
+      // printed — the band stays unresolved on purpose (see `cpu-attribution`).
+      cpuMs: 90,
+      cpuShare: 0.5,
+      attribution: 'inconclusive'
     })
 
     // A synchronous handler is measured the same way.
@@ -74,13 +87,19 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       invoke: async () => 'ok',
       log: { warn },
       now,
-      heldMs: () => 20_300
+      heldMs: () => 20_300,
+      cpuUsage: cpuPair(300)
     })
     expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
       channel: 'runtime:get-enablement',
       surface: 'web',
       location: 'local',
       durationMs: 21_700,
+      // 0.014 of the window on the CPU: the process was not running, and the line now says so twice — once
+      // from the held registry and once from what the process itself consumed.
+      cpuMs: 300,
+      cpuShare: 0.014,
+      attribution: 'process-not-scheduled',
       heldMs: 20_300,
       ownMs: 1_400
     })
@@ -111,13 +130,19 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       invoke: async () => 'ok',
       log: { warn },
       now: plain,
-      heldMs: () => 0
+      heldMs: () => 0,
+      // No held window at all, and the CPU share says the time was ours: this is the shape that must stay
+      // quiet about "not scheduled" while still carrying the number.
+      cpuUsage: cpuPair(540)
     })
     expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
       channel: 'sessions:read-document',
       surface: 'web',
       location: 'local',
-      durationMs: 600
+      durationMs: 600,
+      cpuMs: 540,
+      cpuShare: 0.9,
+      attribution: 'cpu-bound-in-process'
     })
 
     // A broken held source degrades to the plain duration rather than dropping the line.
@@ -129,6 +154,9 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       invoke: async () => 'ok',
       log: { warn },
       now: broken,
+      // Zero CPU over the window: the loop was not running, so this line must say `process-not-scheduled`
+      // even though the held registry could not answer.
+      cpuUsage: cpuPair(0),
       heldMs: () => {
         throw new Error('registry unavailable')
       }
@@ -137,7 +165,10 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       channel: 'sessions:list-catalog',
       surface: 'web',
       location: 'local',
-      durationMs: 600
+      durationMs: 600,
+      cpuMs: 0,
+      cpuShare: 0,
+      attribution: 'process-not-scheduled'
     })
   })
 
