@@ -1,5 +1,6 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
 import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { createLogger } from '../logger'
 
 import type {
@@ -71,7 +72,8 @@ const timedRead = async <Result>(
         queryMs: totalMs - recoveryMs,
         // Was that total ours, or was the process not running through part of it? Same vocabulary as the
         // channel-level line; without it a settings-mount burst reads as the Files panel being slow.
-        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs)
+        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs),
+        ...heldSplitFields(startedAt, totalMs)
       })
     } catch {
       // Best-effort only: a diagnostic must never replace the read result.

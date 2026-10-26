@@ -4,7 +4,7 @@ import {
   type ActivityAttribution,
   type CpuUsageSample
 } from './diagnostics/cpu-attribution'
-import { sharedLoopHeldWindows } from './diagnostics/loop-held-windows'
+import { heldSplitFromMeasured, sharedLoopHeldWindows } from './diagnostics/loop-held-windows'
 
 declare const applicationCommandTypes: unique symbol
 
@@ -261,7 +261,7 @@ export const createApplicationCommandRouter = (
         durationMs,
         ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, durationMs),
         // Only when there is something to split, so an ordinary slow handler's line is unchanged.
-        ...(heldMs < 1 ? {} : { heldMs, ownMs: Math.max(0, durationMs - heldMs) })
+        ...heldSplitFromMeasured(heldMs, durationMs)
       }
     } catch {
       return { durationMs }

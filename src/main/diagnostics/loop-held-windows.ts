@@ -55,3 +55,73 @@ export const createLoopHeldWindows = (
 
 // Written by the event-loop watchdog, read by the IPC slow-handler diagnostic.
 export const sharedLoopHeldWindows: LoopHeldWindows = createLoopHeldWindows()
+
+// Most timers in this app measure their window with `Date.now()`, which is a different domain from the
+// windows above. Rather than move a dozen call sites (and every test that fakes `Date`) onto a second
+// clock, each wall-clock window is converted here with a *paired reading taken at its own end*: the offset
+// is then exact for that window, so a wall-clock jump before or after it cannot shift it. What remains is
+// sub-millisecond pairing error, and the result is still clipped to the span asked about.
+export type ClockPair = Readonly<{ wallMs: number; perfMs: number }>
+
+export const readClockPair = (): ClockPair => ({ wallMs: Date.now(), perfMs: performance.now() })
+
+export const toMonotonicWindow = (
+  wallStartMs: number,
+  wallEndMs: number,
+  pair: ClockPair
+): { startMs: number; endMs: number } | undefined => {
+  if (
+    ![wallStartMs, wallEndMs, pair.wallMs, pair.perfMs].every((value) => Number.isFinite(value))
+  ) {
+    return undefined
+  }
+  if (wallEndMs < wallStartMs) return undefined
+  return {
+    startMs: pair.perfMs - (pair.wallMs - wallStartMs),
+    endMs: pair.perfMs + (wallEndMs - pair.wallMs)
+  }
+}
+
+export type HeldSplit = Readonly<{ heldMs: number; ownMs: number }>
+
+/**
+ * The two fields for a held reading that was already measured in this clock domain (the IPC adapters do
+ * that themselves, so they do not need the wall-clock bridge). One place computes the arithmetic: a site
+ * that inlined its own `ownMs` would be a second answer to "how much of this was ours".
+ */
+export const heldSplitFromMeasured = (heldMs: number, windowMs: number): HeldSplit | undefined => {
+  if (!Number.isFinite(windowMs) || !(windowMs > 0)) return undefined
+  if (!Number.isFinite(heldMs)) return undefined
+  const rounded = Math.min(Math.round(windowMs), Math.max(0, Math.round(heldMs)))
+  if (rounded < 1) return undefined
+  return { heldMs: rounded, ownMs: Math.max(0, Math.round(windowMs) - rounded) }
+}
+
+/**
+ * The held/own split for a window measured on the wall clock. `undefined` when the loop was never held
+ * inside it — the caller then prints no field at all, so "the loop was free" and "nobody measured" stay
+ * distinguishable by presence rather than by a zero.
+ */
+export const heldSplitForWallWindow = (
+  wallStartMs: number,
+  windowMs: number,
+  options: { source?: LoopHeldWindows; pair?: ClockPair } = {}
+): HeldSplit | undefined => {
+  if (!Number.isFinite(windowMs) || !(windowMs > 0)) return undefined
+  const window = toMonotonicWindow(
+    wallStartMs,
+    wallStartMs + windowMs,
+    options.pair ?? readClockPair()
+  )
+  if (!window) return undefined
+  const source = options.source ?? sharedLoopHeldWindows
+  return heldSplitFromMeasured(source.heldMsWithin(window.startMs, window.endMs), windowMs)
+}
+
+/** The two fields a slow line adds when part of it fell inside a loop-held window; nothing otherwise. */
+export const heldSplitFields = (
+  wallStartMs: number,
+  windowMs: number,
+  options: { source?: LoopHeldWindows; pair?: ClockPair } = {}
+): { heldMs?: number; ownMs?: number } =>
+  heldSplitForWallWindow(wallStartMs, windowMs, options) ?? {}

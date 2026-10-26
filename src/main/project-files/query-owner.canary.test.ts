@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectFilesQueryOwner } from './query-owner'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 
 // U11 proved a slow read here can be waiting on the shared Prisma engine rather than on its own query, and the
 // only way to tell those apart is the canary: a trivial `SELECT 1` started at the same moment and awaited
@@ -189,5 +190,47 @@ describe('ProjectFilesQueryOwner engine-queue canary', () => {
     })
     // Sampled twice around the same window, at the same instant as the two clock readings.
     expect(cpu).toHaveBeenCalledTimes(2)
+  })
+
+  // The held/own split reaches this line through the wall-clock bridge, and that is the half a unit test of the
+  // bridge cannot prove: the timer measures with `Date.now()`, the ring is written in `performance.now()`, and
+  // nothing is injected on either side. Reading the fields back off the emitted line is what makes a deleted
+  // spread visible — calling the bridge directly would stay green with the call site gone.
+  it('reports the part of its own wall-clock window the loop was held for', async () => {
+    process.env.PURESCIENCE_DB_CANARY = '1'
+    // The ring drops anything shorter than its own jitter floor (200 ms), so the recorded window is a real one.
+    const heldMs = 250
+    const client = {
+      $queryRawUnsafe: vi.fn(async () => []),
+      managedFile: {
+        findMany: vi.fn(async () => {
+          // Recorded from inside the read, so the held window sits wholly inside the measured one.
+          const start = performance.now()
+          sharedLoopHeldWindows.record(start, start + heldMs)
+          await new Promise((resolve) => setTimeout(resolve, heldMs + 10))
+          return []
+        }),
+        count: vi.fn(async () => 0)
+      }
+    }
+    const owner = new ProjectFilesQueryOwner(
+      () => Promise.resolve(client as never),
+      '/tmp/does-not-matter',
+      () => true
+    )
+
+    await owner.listFiles({
+      projectId: 'project-a',
+      collection: { kind: 'uploads' },
+      limit: 10,
+      omitOrigins: true
+    } as never)
+
+    const [message, fields] = warnSpy.mock.calls[0] as [string, Record<string, unknown>]
+    expect(message).toBe('listFiles segments were slow')
+    // The two halves partition the window the line already reports, so a reader never has to add them up from
+    // a different clock — and `ownMs` is what remains after the held part, not a second opinion about it.
+    expect(fields.heldMs).toBe(heldMs)
+    expect(fields.ownMs).toBe(Math.round(fields.totalMs as number) - heldMs)
   })
 })

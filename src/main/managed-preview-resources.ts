@@ -5,6 +5,7 @@ import type { FileHandle } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
 import { cpuAttributionFields } from './diagnostics/cpu-attribution'
+import { heldSplitFields } from './diagnostics/loop-held-windows'
 import { readEventLoopLatency, resetEventLoopLatency } from './diagnostics/event-loop-latency'
 import {
   beginFsOperation,
@@ -207,7 +208,8 @@ class ManagedPreviewResources {
           canaryMs: await canary,
           inFlightFsOperations: inFlightFsOperationCount(),
           ...readEventLoopLatency(),
-          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, acquireMs)
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, acquireMs),
+          ...heldSplitFields(startedAt, acquireMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the acquire result.

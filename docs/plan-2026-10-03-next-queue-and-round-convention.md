@@ -13156,3 +13156,79 @@ ArrayContaining`）；还原后 33 passed。
    先量再改）；② `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）；
    ③ `src/main/ipc.ts` 里其余「有读数但没归属」的分支。
 3. 仍等用户点头：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
+
+## 二百四十六、本轮追加（执行器，2026-10-27 05:4x–）—— 八处墙钟计时的慢行接上「这段时间循环被占住多少」；两处内联算术收敛成一份
+
+### 〇 开工核对（CI 判决 + 上一轮未提交在制品）
+
+- `git fetch` 后 `origin/main = 3a42efd3`（上一轮我自己的第一笔）。工作区里那 11 个路径**全是我的**上一轮未提交在制品
+  （`git diff --numstat` 逐条对得上，没有别人的行）⇒ 本轮先把它们跑绿落地，再谈下一单元。
+- **判决（绑完整 40 位 SHA）**：`Windows Full Test @ 3a42efd3` **success**；`Nightly @ 3a42efd3` **failure**。
+- **failure 的作业级归属**：`build / Build macos-x64`（job `121809411707`）**steps 全空、作业日志 HTTP 404**、
+  19:50:47 起 20:35:48 终（45 分钟）。同 run 的 `macos-arm64` / `linux-x64` / `windows-x64` 各 **26 步、全 success**
+  ⇒ 这个作业**一个步骤都没被记录**，属 runner 侧（不是断言、不是打包步骤），**不是本笔引入**，不重跑。
+- **一处读法更正（对上一笔 `6e1653e2` 的 x64 复读）**：`Smoke test macOS packages` 的**步骤结论是 `success`**，
+  而同一段日志里 17:51:56 有 `##[error] Error: Timed out waiting for the packaged macOS web service.` ——
+  因为该步骤带 `continue-on-error: true`（`.github/workflows/build.yml:437`）⇒ **steps API 说它成功，只有日志与
+  下游那道签名门说它失败**（审计结论：签名门 `macSignature=unproven` 是冒烟没产出读数文件的**后果**）。
+  这条写在这里备用：**判这一步不能读 steps 结论**，以后读 `##[error]` 与门自己的判词。
+
+### 一 交付（12 文件）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/loop-held-windows.ts` | 新增墙钟桥：`readClockPair`（同一刻读 `Date.now` 与 `performance.now`）、`toMonotonicWindow`（用**窗口末端那一对读数**把墙钟窗口换算进单调域）、`heldSplitForWallWindow`、`heldSplitFields`；另把「held/own 两半」的算术收敛成 `heldSplitFromMeasured`（一处算，别处不再各写一遍）。`undefined` 表示**没测到**，调用点因此**不印字段**，绝不印 `heldMs: 0`（0 会被读成一次测量） |
+| `application-command-router.ts`、`diagnostics/ipc-rejection.ts` | 两处各自内联的 `Math.max(0, durationMs - heldMs)` 改用 `heldSplitFromMeasured`（它们本来就在 `performance.now` 域，不需要桥） |
+| `artifacts/provenance-repository.ts`、`managed-preview-resources.ts`、`project-files/ipc.ts`、`project-files/query-owner.ts`（×2）、`reviewer/ipc.ts`（×2）、`storage/command-owner.ts` | **八处** `Date.now()` 慢行在 `cpuAttributionFields` 之后追加 `...heldSplitFields(startedAt, totalMs)`：从此这些行不只说「花了 2.1 s」，还能说「其中 1.9 s 是循环没在跑」 |
+| `loop-held-windows.test.ts`、`loop-held-windows-wiring.test.ts` | 桥与算术的用例（9 条 + 贯通 1 条） |
+| `project-files/query-owner.canary.test.ts` | **站点级**用例：真时钟、环里真记一段、从**实际发出的那行日志**读回 `heldMs`/`ownMs` |
+
+**两条设计判据**：① **为什么用「窗口末端的一对读数」而不是把八处搬到 `performance.now`** —— 搬站点要连带动一批
+fake `Date` 的用例，而 offset（`perfMs - wallMs`）只要在同一刻取就对**这个窗口**精确：窗口之前的钟跳不影响它，
+窗口之后的也不影响。② **算术只许有一个答案** —— `ownMs` 原先在两处各算一遍，桥接又要算第三遍；收敛成一个函数
+之后，「这段时间有多少是我们的」不会因为读的是哪一行而给出两个数。
+
+### 二 门禁与变异自证（数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向簇（router + diagnostics + project-files + reviewer + storage + artifacts + managed-preview） | **89 files / 1,124 passed** |
+| 全量 vitest `--maxWorkers=4` | **1,425 files：1,402 passed + 23 skipped**；**17,748 passed / 216 skipped（17,964）**；**exit 0** |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 12 文件） | **0 error / 0 warning** |
+
+**三条变异各自的结果（改完还原，还原后复绿）**：
+
+1. 删掉 `query-owner.listFiles` 那处的 `...heldSplitFields(...)` ⇒ **1 红**（正是本轮新加的那条站点级用例，其余 4 条照过）
+   ⇒ 证明这条用例守的是**接线**，不是纯函数。
+2. 把 `heldSplitFromMeasured` 里 `Math.min(Math.round(windowMs), …)` 的**窗口钳位**去掉 ⇒ **1 红**
+   （`expected { heldMs: 5000, ownMs: 0 } to deeply equal { heldMs: 700, ownMs: 0 }`）。
+3. 去掉 `ownMs` 上的 `Math.max(0, …)` ⇒ **零红** —— 这不是用例弱，而是**这段防御不可达**：`rounded` 已被上一行
+   钳到 `≤ round(windowMs)`，`ownMs` 不可能为负。**如实记为不可达的防御性代码**（保留，不改），并把这条写进用例注释，
+   免得下一个人以为它有覆盖。
+
+**一处只有用例抓得到的错（本轮实际踩到并已修）**：上一轮把 `heldSplitFromMeasured` 定义在 `loop-held-windows.ts`，而
+`application-command-router.ts` 的 import 仍指着 `./diagnostics/cpu-attribution` ⇒ 运行期拿到 `undefined`，被 router
+那段 `try/catch`（诊断永远不许顶替结果）**吞成一行只有 `durationMs` 的日志**——`vitest` 只转译不做类型检查、不会报错，
+症状是「字段悄悄不见了」而不是「抛错」。抓到它的是三条**既有**用例（它们钉了 `attribution` 等字段）。教训：
+**移动一个导出的落点之后，import 段必须靠 `tsc` 收口；vitest 绿不代表名字绑对了。**
+
+### 三 边界（不许读成更强）
+
+1. **没有真机日志行**：这仍是「日志里多两个字段」的改动，最强证据是一次真实慢事件产生的行；常驻 dev 实例跑的是旧
+   代码（重启要用户点头）⇒ 记**未取**，本轮证据 = 纯函数用例 + 站点级用例 + 变异自证 + 门禁。
+2. **换算不修「窗口之内的钟跳」**：窗口时长本来就来自 `Date.now()`，那一段里的系统时钟跳变仍在读数里；本轮只保证
+   窗口**之外**的跳变不会把窗口挪位。
+3. **八处里只有三处有字段级断言**（router、ipc-rejection、query-owner `listFiles`）；其余 6 处（provenance、managed-preview、
+   project-files/ipc、query-owner `listProjectFileKinds`、reviewer ×2、storage）的证据只到「纯函数 + 默认源贯通」⇒ **具名缺口**，
+   下一轮按同一写法补齐（真时钟 + 环里真记一段 + 从发出的行读回）。
+
+### 四 下一轮第一步
+
+1. 读本笔的 `Nightly` + `Windows Full Test` 判决（绑完整 40 位 SHA）。
+2. 候选（都不需要发版窗口）：
+   ① **让「没产出读数」与「没跑」可分辨**：冒烟脚本失败时写 `{state:'unreadable', reason}` 而不是什么都不写，
+      签名门就能报出真原因（**script-only，不动 workflow** —— 动 `build.yml` 得连 action ref 一起过完整性门）；
+   ② 其余 6 处站点的字段级断言（写法同本轮 `query-owner.canary.test.ts` 新增那条）；
+   ③ `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）。
+3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。

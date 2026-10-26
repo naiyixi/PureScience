@@ -32,6 +32,7 @@ import { broadcastToRenderers } from '../renderer-broadcast'
 import { ArtifactProvenanceRepository } from '../artifacts/provenance-repository'
 import { acquireDataRootWriter } from '../storage/migration-state'
 import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 
 const log = createLogger('reviewer:ipc')
 
@@ -189,7 +190,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         sessionUnavailable: true,
         flagMs: 0,
         totalMs: unavailableTotalMs,
-        ...cpuAttributionFields(cpuStartedAt, unavailableCpuEndedAt, unavailableTotalMs)
+        ...cpuAttributionFields(cpuStartedAt, unavailableCpuEndedAt, unavailableTotalMs),
+        ...heldSplitFields(startedAt, unavailableTotalMs)
       })
       return reviews
     }
@@ -211,7 +213,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         sessionLoadMs,
         flagMs,
         totalMs,
-        ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs)
+        ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs),
+        ...heldSplitFields(startedAt, totalMs)
       })
     }
     return flagged

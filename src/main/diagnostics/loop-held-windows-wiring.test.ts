@@ -4,7 +4,7 @@ import { createWebCallerContext } from '../caller-context'
 import { startEventLoopStallWatchdog } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
 import { invokeWithIpcRejectionDiagnostics } from './ipc-rejection'
-import { sharedLoopHeldWindows } from './loop-held-windows'
+import { heldSplitFields, sharedLoopHeldWindows } from './loop-held-windows'
 
 // The producer (the stall watchdog) and the consumer (the slow-handler line) meet through the shared registry,
 // not through a composition-root seam. That default path is what needs a case: an injected instance on both
@@ -83,5 +83,19 @@ describe('stall watchdog to slow-handler line (default wiring)', () => {
       'ipc handler was slow',
       expect.objectContaining({ durationMs: 1_700, heldMs: 1_700, ownMs: 0 })
     )
+  })
+
+  // The second consumer family: timers that measure with `Date.now()`. They reach the same ring through the
+  // wall-clock bridge, and the case that matters is that the bridge's *default* source is the shared
+  // registry — with an injected instance this would pass while production printed nothing.
+  it('lets a wall-clock timer read the same ring without being handed a source', () => {
+    sharedLoopHeldWindows.record(49_000, 50_500)
+
+    // A 2 000 ms window ending at wall 3 000, with the paired reading taken at that instant.
+    const fields = heldSplitFields(1_000, 2_000, { pair: { wallMs: 3_000, perfMs: 50_000 } })
+    // [48 000, 50 000] meets the recorded [49 000, 50 500] for exactly 1 000 ms.
+    expect(fields).toEqual({ heldMs: 1_000, ownMs: 1_000 })
+    // And a window that missed the ring says nothing at all, rather than 0.
+    expect(heldSplitFields(1_000, 2_000, { pair: { wallMs: 3_000, perfMs: 80_000 } })).toEqual({})
   })
 })

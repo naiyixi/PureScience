@@ -48,6 +48,7 @@ import {
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
 import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 import { startDiagnosticOperation } from '../diagnostics/operation'
 import { markApplicationShutdownTrigger } from '../application-shutdown-trigger'
@@ -199,7 +200,8 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
         usageMs,
         usageCategories: usage.categories.length,
         // `totalMs` is the panel's open cost; these three say whether the app was running while it accrued.
-        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs)
+        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs),
+        ...heldSplitFields(startedAt, totalMs)
       })
     }
 

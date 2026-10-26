@@ -1,7 +1,7 @@
 import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
 import { cpuAttributionFields, type CpuUsageSample } from './cpu-attribution'
-import { sharedLoopHeldWindows } from './loop-held-windows'
+import { heldSplitFromMeasured, sharedLoopHeldWindows } from './loop-held-windows'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
 
@@ -104,7 +104,7 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         // from "we were suspended for 21 s" without the next reader having to guess.
         ...cpuAttributionFields(cpuStart, cpuUsage(), durationMs),
         // Present only when there is something to split, so an ordinary slow handler's line is unchanged.
-        ...(heldMs < 1 ? {} : { heldMs, ownMs: Math.max(0, durationMs - heldMs) })
+        ...heldSplitFromMeasured(heldMs, durationMs)
       })
     } catch {
       // Diagnostic failures must never replace the handler's authoritative result.

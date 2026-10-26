@@ -2,6 +2,7 @@ import { Prisma, type ManagedFile } from '@prisma/client'
 
 import { startDbCanary } from '../diagnostics/db-queue-probe'
 import { cpuAttributionFields, type CpuUsageSample } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 
@@ -169,7 +170,8 @@ class ProjectFilesQueryOwner {
           rows: rows.length,
           totalMs,
           dbCanaryMs: dbCanary ? await dbCanary : undefined,
-          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs)
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs),
+          ...heldSplitFields(startedAt, totalMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the read result.
@@ -286,7 +288,8 @@ class ProjectFilesQueryOwner {
           originsMs: originsMs - rowsMs,
           mapMs: totalMs - originsMs,
           dbCanaryMs: dbCanary ? await dbCanary : undefined,
-          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs)
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs),
+          ...heldSplitFields(startedAt, totalMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the read result.

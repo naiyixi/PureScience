@@ -53,6 +53,7 @@ import {
 import { defaultArtifactDurability, type ArtifactDurability } from './durability'
 import { startDbCanary } from '../diagnostics/db-queue-probe'
 import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
@@ -4407,7 +4408,8 @@ class ArtifactProvenanceRepository {
           readMs,
           readEventLoopMaxMs,
           bytes: bytes.byteLength,
-          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalResolveMs)
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalResolveMs),
+          ...heldSplitFields(startedAt, totalResolveMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the resolve result.
