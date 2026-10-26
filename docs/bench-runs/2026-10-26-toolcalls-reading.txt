@@ -1,0 +1,4 @@
+session=cmvpfh9dk000iwfbup9trbm8o/84619487-2ea1-455d-9243-2ca649d9cda4.json
+activities=1
+extracted calls=1 unnamed=0
+- mcp__purescience_plan__generate_plan fields=tool,turnId

@@ -138,6 +138,16 @@ export class AcpPromptOutcomeFinalizer {
         ...(terminalWindow ? { terminalContextWindow: terminalWindow } : {}),
         raw: observedStop.response
       })
+      // The turn's token usage used to exist only in the session document, which made "reconcile usage
+      // against the logs" impossible: there was no second source to reconcile against (measured
+      // 2026-10-26 — zero token fields anywhere in main.log). One line here creates that source, so the
+      // document and the log can be compared for the same turn.
+      if (terminal.turnUsage) {
+        log.info('prompt usage', {
+          sessionId,
+          ...terminal.turnUsage
+        })
+      }
       return true
     }
     try {

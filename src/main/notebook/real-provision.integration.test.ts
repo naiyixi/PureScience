@@ -16,10 +16,16 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { effectiveMirrorAsync } from './mirror-probe'
-import { createProductionProvisioner } from './provisioner'
+import { createProductionProvisioner, type RuntimeProvisioner } from './provisioner'
 import { envPrefix } from './runtime-paths'
 
 const CHANNEL_TIMEOUT_MS = 20 * 60 * 1000
+
+// `createProductionProvisioner` is typed as the narrower `RuntimeProvisioner` interface; the concrete
+// instance is a DefaultRuntimeProvisioner, which is where named-env creation lives.
+type NamedEnvProvisioner = RuntimeProvisioner & {
+  createNamedEnvironment: (name: string, language: 'python', packages: string[]) => Promise<unknown>
+}
 
 describe.runIf(process.env.PURESCIENCE_REAL_PROVISION === '1')(
   'real provision with a lazily resolved channel',
@@ -40,7 +46,7 @@ describe.runIf(process.env.PURESCIENCE_REAL_PROVISION === '1')(
               return bogus
             },
             micromamba: { home: homedir() }
-          })
+          }) as NamedEnvProvisioner
 
           // Nothing may be resolved before the create is asked for: that is the whole point of the change.
           expect(resolved).toHaveLength(0)
@@ -69,7 +75,7 @@ describe.runIf(process.env.PURESCIENCE_REAL_PROVISION === '1')(
               return channel
             },
             micromamba: { home: homedir() }
-          })
+          }) as NamedEnvProvisioner
 
           expect(probed).toHaveLength(0)
           await provisioner.createNamedEnvironment('lazy-channel-proof', 'python', [])
