@@ -13029,3 +13029,72 @@ ArrayContaining`）；还原后 33 passed。
    （`git merge-base --is-ancestor b32b7544 4cb9b554`）。`db147e59` 是纯 `docs/**`，按 `paths:` 过滤不建 run。
 2. 下一单元候选（都不需要发版窗口）：`notebook/runtime-service` 那条 spawn 断言要不要收紧（**先量再改**）；
    以及 `src/main/ipc.ts` 里其余「有读数但没归属」的分支（本轮只做了应用命令这一族）。
+
+## 二百四十四、本轮追加（执行器，2026-10-27 01:0x–）—— 归因词表把「没被调度」降回它真正测到的东西；顺手补上第十三处调用点
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- `git fetch` 后 `HEAD == origin/main == 37b236cc`（v2.18.3 发版材料，另一条线落的），工作区干净
+  ⇒ 本轮只碰自己那 18 个文件，提交前 `git diff --cached --stat` 自证。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 取 §二百四十三 §三 第 3 条**自己具名立案**的那一条：
+  归因词表的诚实缺口（`process-not-scheduled` 把「在等进程外的东西」读成「机器没跑我们」）。
+- **CI 判决（绑完整 40 位 SHA）**：
+  - `Nightly @ 37b236cc` **success**（`40355425829`）、`Windows Full Test @ 37b236cc` **success**
+    （`40355425691`）⇒ 前两轮的改动全部有判决。
+  - `Nightly @ 9c4a0770` 报 **failure**（`40345206709`），但**根因是基础设施、不是代码红**：注解原文
+    `The job was not acquired by Runner of type hosted even after multiple attempts`，该作业 `steps` 为空、
+    `started_at 15:29:31`、`conclusion cancelled`，下游 `Build`/`publish` 全 skipped；而**包含这一笔**的
+    `37b236cc` 的 Nightly 是 success ⇒ 那棵树（含 9c4a0770）是绿的。**不据此改代码、不重跑**。
+  - `Nightly @ d9e38b53`（`40353450720`）与 `@ 4cb9b554`（`40342728570`）都是 **cancelled**（被后继推送顶掉）
+    ⇒ 无自身判决，由包含它们的 `37b236cc` 替代（`git merge-base --is-ancestor` 两笔都已核为真）。
+  - `Release @ 37b236cc` 起于 16:03Z、到本节点仍 `in_progress`；`v2.18.3` 的 Release 页已出现并成为 Latest。
+    **这不是本轮做的**，只是开工读到的读数（发版材料与 tag 都来自另一条线）。
+
+### 一 交付（`20978d05`，18 文件）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/cpu-attribution.ts` | 低带 `process-not-scheduled` → **`no-cpu-in-process`**，摘要后缀 `(not-scheduled)` → **`(no-cpu)`**；阈值、三档结构、判据一行未动。模块头新增「低带不携带成因」一段：三种成因（操作系统没调度 / 在等进程外的东西 / 工作跑在别的线程）`process.cpuUsage()` 一种都分不出来，本应用唯一的判别器是 loop-held 窗口（`heldMs` 覆盖 ⇒ 循环本身没在跑；没覆盖 ⇒ 循环在跑、时间花在进程外） |
+| 十三处 `cpuAttributionFields` 调用点 + watchdog / compose / settings 三处自算 | 词表跟上；逐条把「因此是被降级 / 被挂起」这类**因果措辞**改成读得出来的事实（文件：reviewer、provenance、query-owner ×2、project-files/ipc、managed-preview、storage、router、ipc-rejection、notebook、coordinator ×2、settings、compose、watchdog） |
+| `src/main/project-files/query-owner.ts` | **第十三处**：`listFiles segments were slow` 原先只有裸时长 —— 现在带 `cpuMs` / `cpuShare` / `attribution`。两个样本与 `totalMs` 同一刻取，**第二样本在 `await dbCanary` 之前**（否则另一条查询的 CPU 会被算进这个窗口）；新增可注入 CPU 源，判定被测试钉住而不是继承机器当时的忙闲 |
+| `repository.architecture.test.ts` | 依赖面清单按字母序显式扩到 `cpuUsage`，并在旁边写明「扩面必须是有意为之，这条 pin 就是评审」 |
+
+### 二 门禁与变异自证（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向（diagnostics + project-files） | **24 files / 195 passed** |
+| 定向（settings + reviewer + router + coordinator + notebook state-read） | **125 files：124 passed + 1 skipped；1,912 passed / 3 skipped** |
+| 全量 vitest `--maxWorkers=4` | **1,425 files：1,402 passed + 23 skipped**；**17,735 passed / 216 skipped**；**exit 0** |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache .`（与 CI 同口径） | **0 error / 119 warning**（与基线同数）；本笔 18 文件 **0 / 0** |
+| `scripts/pre-push-checks.sh` | **exit 0** |
+
+**变异自证三条各自变红**（改完还原，还原后 24 files / 195 passed 复绿）：
+① 去掉 `listFiles` 那条的 `cpuAttributionFields` 展开 ⇒ **2 条红**；
+② 把低带改回宣称成因的名字（含新加的「名字就是守卫」那条 pin）⇒ **4 条红**；
+③ 不用注入的 CPU 源、直接读真进程 ⇒ **1 条红**（`expect(cpu).toHaveBeenCalledTimes(2)`）。
+
+### 三 边界（不许读成更强）
+
+1. **没有真机日志行**：这仍是日志字段类改动，能取的真机读数是一次真实慢事件产生的行；用户常驻 dev 实例
+   跑的是旧代码（重启要用户点头）⇒ 明确记为**未取**，本轮的证据是单测 + 门禁 + 变异自证。
+2. **改名只把宣称降到读数的强度，没有新增分辨力**：低带依旧不能分辨「没被调度 / 在等进程外 / 在别的线程」。
+   唯一的判别器是 loop-held 窗口，而它**只在两处**（`ipc-rejection`、`application-command-router`）被算出来，
+   其余十一处没有 held 分裂 ⇒ **具名缺口**，不假装收口。要给全族补它，先得统一时钟域（loop-held 用
+   `performance.now`，多数调用点用 `Date.now`）⇒ 单独立案，下一轮第一步里点名。
+3. **旧日志与旧支持包里仍是旧名字**：读过 `stall-record-ring` 与 `support-bundle`，`attribution` 只是逐字透传，
+   没有按字面分派的读取方 ⇒ 改名不破坏读取，但同一条带在新旧两版日志里会有两个名字，读历史日志时要知道。
+4. 本轮推送前现查在飞车道：只有 `Release @ 37b236cc`（并发组 `release-<ref>`，推 main 不会腰斩它），
+   主干两条已 completed ⇒ **本次推送没有取消任何人的判决**。
+
+### 四 下一轮第一步
+
+1. 读 `20978d05` 的 `Nightly` + `Windows Full Test` 判决（绑完整 40 位 SHA）；红就按作业级日志归因，
+   先看是否落在本笔 18 个路径上。
+2. 候选（都不需要发版窗口）：
+   ① **给全族补 held 判别**要先统一时钟域 —— 第一步是**量**：十三处各自用的钟（`Date.now` vs `performance.now`）
+   与 `heldMsWithin` 的钟能否对齐，量不出来就不动；
+   ② `notebook/runtime-service` 那条 spawn 断言（先量再改，不许加大超时）；
+   ③ `src/main/ipc.ts` 里其余「有读数但没归属」的分支。
+3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
