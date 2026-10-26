@@ -476,6 +476,11 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         },
         listAppIconPreviews: () => buildAppIconPreviews(nativeImage, iconVariantPaths)
       })
+      // Everything between compose-runtime and web-service-started used to be one 1.27 s silence on the
+      // packaged build: `compose-runtime` is the last phase before this call, and the next one is the web
+      // service. Naming each awaited boundary is what turns that back into an answer — the phases below
+      // cost nothing when nothing is slow, and `startup timeline` already prints them in one line.
+      startupDiagnostics?.phase('ipc-handlers-registered')
 
       // The controller must exist before its IPC responder, while the responder calls back into the
       // controller. This box breaks that startup cycle without exposing unread ownership to renderer.
@@ -565,6 +570,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         unreadTaskRepository,
         sessionPersistenceCoordinator: sessionDeletionCapability
       })
+      startupDiagnostics?.phase('unread-task-runtime-bound')
       visibilityProbeBox.current = registerUnreadTaskIpc({
         getMainWindow: () => mainWindowGetterBox.current?.(),
         controller: unreadTaskController,
@@ -574,6 +580,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       // macOS deliberately leaves the packaged Icon Composer icon untouched until a renderer announces
       // its Theme; after that, nativeTheme keeps System mode live even with no BrowserWindow open.
       const initialVariant = await settingsService.getAppIconVariant()
+      startupDiagnostics?.phase('icon-variant-ready')
       appIconControllerBox.current = createAppIconController({
         electron: {
           app,
@@ -585,6 +592,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         initialVariant
       })
       const remoteAccess = await RemoteAccessService.create()
+      startupDiagnostics?.phase('remote-access-ready')
       bindRemoteAccess(remoteAccess)
       const webController = createWebServiceController({
         applicationCommands,
@@ -593,6 +601,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         applicationEvents,
         taskAgent
       })
+      startupDiagnostics?.phase('web-controller-created')
       remoteAccess.attachWebController(webController)
       registerRemoteAccessIpcHandlers(remoteAccess)
       // A launch that itself requested serving (a dedicated headless daemon, or an explicit --serve) is
