@@ -60,6 +60,7 @@ provision 时再取。这动的是 `createProductionProvisioner` 的入参与其
 （`ipc-handlers-registered` 2469 / 3021 / 4157 ms、`web-service-started` 2480 / 3177 / 4170 ms），
 镜像测速确实不在启动路径上了。
 
-字节校验：GitHub 记录的资产 digest（`sha256:02a53f21…4d7e`）与发布件自带 `SHA256SUMS.txt` 里那行**一致**；
-`SHA256SUMS.txt` 自身的 sha256（`bf35ec42…`）也与 GitHub digest 一致。本机到 CDN 太慢，没有完成「下载后本地
-重算」，这一条只到「两个独立来源互相印证」。
+字节校验：三个来源**逐字符一致**——本机对下载到的 DMG 重算 `shasum -a 256` =
+`02a53f212f7b16980a91d83ea321d882b4de84b2bb3b947617db3d00f15e4d7e`（文件 284,267,792 字节 = 资产登记值），
+发布件自带 `SHA256SUMS.txt` 里那行相同，GitHub 记录的资产 digest 也相同；
+`SHA256SUMS.txt` 自身的 sha256（`bf35ec42…`）同样与 GitHub digest 一致。
