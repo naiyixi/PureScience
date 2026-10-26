@@ -3144,6 +3144,7 @@ const createApplicationModules = async (
   )
   // Spawn-config changes rotate the coordinator's runtime for future sessions. Existing sessions retain
   // their owning runtime, so a framework/provider switch cannot interrupt an in-flight turn.
+  compositionStage('before-settings-workflows')
   const settingsWorkflows = createSettingsWorkflows(settingsService, {
     runtime: {
       requestProviderReconnect: () => void runtime.requestProviderReconnect(),
@@ -3227,6 +3228,7 @@ const createApplicationModules = async (
     loadSession: (projectId: string, sessionId: string) =>
       sessionRepository.loadSession(projectId, sessionId)
   }
+  compositionStage('before-session-persistence-handlers')
   const sessionPersistenceHandlers = createSessionPersistenceHandlers(
     sessionPersistenceBackend,
     reviewRepository,
@@ -3354,6 +3356,7 @@ const createApplicationModules = async (
   // Runtime selection UI (Settings/Onboarding): survey managed+external per language, persist the
   // choice, and pick an interpreter file. The runtime root MUST match the executor/service's
   // (getRuntimeRoot(<dataRoot>)); read lazily so a data-root switch is reflected without re-register.
+  compositionStage('before-runtime-selection-workflows')
   const runtimeSelectionWorkflows = createRuntimeSelectionWorkflows({
     settingsService,
     runtimeRoot: () => getRuntimeRoot(resolveDataRoot()),
@@ -3406,6 +3409,7 @@ const createApplicationModules = async (
       protocol
     )
   )
+  compositionStage('before-office-preview-supervisor')
   const officePreviewSupervisor = new OfficePreviewSupervisor({
     inspectResource: ({ source, path }) => previewResources.inspect({ source, path }),
     acquireResource: (ownerId, request, snapshot, maxBytes) =>
@@ -3500,6 +3504,7 @@ const createApplicationModules = async (
     }
   }
 
+  compositionStage('before-notebook-environment-lifecycle')
   const notebookEnvironmentLifecycle = createNotebookEnvironmentLifecycle({
     provisioner: serialized,
     root: provisioningRoot,
@@ -3526,6 +3531,7 @@ const createApplicationModules = async (
   }
 
   // Registered after the acp/notebook handlers exist: migration needs to interrupt both runtimes.
+  compositionStage('before-storage-command-owner')
   const storageCommandOwner = createStorageCommandOwner({
     runtime,
     notebook: notebookService,
@@ -3550,6 +3556,7 @@ const createApplicationModules = async (
       storageCommandOwner
     )
   )
+  compositionStage('before-artifact-handlers')
   const artifactHandlers = createArtifactHandlers(artifactRepository, artifactRunRegistry, {
     getActiveArtifactRunIds: () =>
       runtimeRef.current ? runtimeRef.current.getActiveArtifactRunIds() : [],
@@ -3652,6 +3659,7 @@ const createApplicationModules = async (
       )
     })
   })
+  compositionStage('before-conversation-export')
   const conversationExportService = createConversationExportService({
     loadSession: (projectId, sessionId) => sessionRepository.loadSession(projectId, sessionId),
     isSessionActive: (projectId, sessionId) =>
@@ -3705,6 +3713,7 @@ const createApplicationModules = async (
   declareElectronAdapter('local-fs', () => registerLocalFsIpcHandlers(localFsService))
   // D6 第二半：远程结构加载器。装配处是唯一同时握有这几样东西的地方：出网设置、保护级别、
   // 审批卡、会话工作区。渲染端只送 PDB id，URL 由共享层的**固定模板**拼（渲染端点不了名）。
+  compositionStage('before-remote-structure-loader')
   const remoteStructureLoader = createRemoteStructureLoader({
     egressSettings: () => settingsService.getEgress(),
     // 应用**自己**的出网请求没有隔离可言 ⇒ 这条路径的保护级别就是 unprotected，判决因此转成
@@ -3732,6 +3741,7 @@ const createApplicationModules = async (
   // One producer of fingerprints for the whole app: the reviewer's pins and the session-package import
   // both ask THIS instance, against the same loaded sessions the search reads. A second instance would be
   // a second recipe, and a fingerprint nobody else can recompute is not evidence.
+  compositionStage('before-search-evidence')
   const searchEvidenceService = createSearchEvidenceService({
     readSessionMessages: async (sessionId) => {
       // One document, not the corpus: this runs per citation pin, and the hydration pass it used to call
@@ -3769,7 +3779,9 @@ const createApplicationModules = async (
       }))
     }
   }
+  compositionStage('before-reviewer-command-owner')
   const reviewerCommandOwner = createReviewerCommandOwner(reviewerOptions)
+  compositionStage('after-reviewer-command-owner')
   declareElectronAdapter('reviewer', () => {
     registerReviewerIpcHandlers(reviewerOptions, reviewerCommandOwner)
   })
@@ -3783,6 +3795,7 @@ const createApplicationModules = async (
   // disk AFTER this event (measured on a real CLI turn: stop at 01:06:24.248, session written at
   // 01:06:26). Reading once at t+0 found no session, returned silently, and left the turn unaudited
   // with nothing in the log to say so.
+  compositionStage('before-auto-review-trigger')
   const triggerAutoReviewForTurn = createAutoReviewTrigger({
     readSession: (sessionId) => sessionPersistenceHandlers.readSessionById(sessionId),
     runReview: (request) => reviewerCommandOwner.run(request),
@@ -3933,6 +3946,7 @@ const createApplicationModules = async (
     registerHostQueryIpcHandlers(createHostQueryCommandOwner(hostQueryService))
   })
 
+  compositionStage('before-electron-sender')
   const electronSenderFor = (
     invocation: ApplicationInvocation<readonly unknown[]>
   ): WebContents => {
@@ -3944,6 +3958,7 @@ const createApplicationModules = async (
     }
     return sender
   }
+  compositionStage('before-command-dependencies')
   const applicationCommandDependencies: ApplicationCommandCompositionDependencies = {
     acp: { runtime, workflows: acpHandlerWorkflows, archiveAvailability: archiveCoordinator },
     notebook: {
