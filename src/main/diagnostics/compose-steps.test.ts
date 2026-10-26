@@ -100,10 +100,10 @@ describe('compose step recorder', () => {
       durationMs: 22_763_287,
       cpuMs: 0,
       cpuShare: 0,
-      attribution: 'process-not-scheduled'
+      attribution: 'no-cpu-in-process'
     })
     const fields = log.info.mock.calls[0][1] as Record<string, unknown>
-    expect(String(fields.slowest)).toContain('permission-grant-registry=22763287ms(not-scheduled)')
+    expect(String(fields.slowest)).toContain('permission-grant-registry=22763287ms(no-cpu)')
   })
 
   it('keeps the bare number when the share is inside the unresolved band', async () => {
@@ -125,7 +125,7 @@ describe('compose step recorder', () => {
     })
     const fields = log.info.mock.calls[0][1] as Record<string, unknown>
     expect(String(fields.slowest)).toContain('open-project-db=1000ms')
-    expect(String(fields.slowest)).not.toContain('(not-scheduled)')
+    expect(String(fields.slowest)).not.toContain('(no-cpu)')
   })
 
   it('reports a failure with its category and rethrows', async () => {

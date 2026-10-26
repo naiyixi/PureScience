@@ -25,7 +25,9 @@ import {
 //
 // This watchdog adds the three readings that can:
 //   1. `cpuShare` — process CPU time (all threads) against the wall time the loop was late. A stall that
-//      burns most of its wall time on CPU is ours; one that burns almost none was descheduled.
+//      burns most of its wall time on CPU is ours; one that burns almost none is not this process's work —
+//      descheduled, awaiting something outside it, or running on another thread — and the profiler below is
+//      what separates those (this watchdog overrides the low band with the main-thread reading when it has one).
 //   2. a V8 CPU profile that is already recording when the stall arrives, so the blocking frame is named
 //      instead of guessed (see `stall-stack-profile`). It used to be armed *only after* the first stall,
 //      which left the longest stall of a burst — the one worth naming — with no stack at all: it reported

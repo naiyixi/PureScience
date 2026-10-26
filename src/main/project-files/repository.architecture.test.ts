@@ -181,7 +181,10 @@ describe('Project Files repository architecture', () => {
       'incompleteSessions',
       'isReconciliationIncomplete'
     ])
-    expect(fields(queryOwner)).toEqual(['dataRoot', 'getClient', 'readIndexComplete'])
+    // `cpuUsage` joins the dependency list for the slowed-read lines: two samples around the same window let a
+    // line say whether the time was ours (`cpu-attribution`), and the seam is what lets a test pin the verdict
+    // instead of inheriting the machine's. Widening this list stays deliberate — this pin is the review.
+    expect(fields(queryOwner)).toEqual(['cpuUsage', 'dataRoot', 'getClient', 'readIndexComplete'])
     // listProjectFileKinds is a read for many projects at once: the Home page's chips asked one project at a
     // time and that fan-out is what queues behind the shared engine, so this method exists to replace it —
     // not as a second way to read the same shape one project at a time.

@@ -54,9 +54,10 @@ export type ComposeStepRecorderOptions = {
   /** Injectable clock so the recorder is testable without waiting on real time. */
   now?: () => number
   /**
-   * Injectable process CPU source. A duration alone cannot separate our own blocking work from a window the
-   * process was not scheduled in — the same machine logged a compose step at 22,763,287 ms whose CPU share
-   * was 0 (see `cpu-attribution`), so every slow line now carries both halves.
+   * Injectable process CPU source. A duration alone cannot separate our own blocking work from a window this
+   * process spent no CPU on (descheduled, awaiting something outside, or running on another thread) — the same
+   * machine logged a compose step at 22,763,287 ms whose CPU share was 0 (see `cpu-attribution`), so every slow
+   * line now carries both halves.
    */
   cpuUsage?: () => CpuUsageSample
   /** A step at or above this duration logs its own `slow` line. */

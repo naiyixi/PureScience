@@ -99,7 +99,7 @@ describe('notebook:state slow-read attribution', () => {
     // The attribution fields are on this line too. The verdict is whatever the machine did, so only the key
     // set and the vocabulary are pinned here — the two verdicts themselves are pinned in coordinator.test.ts.
     expect(Object.keys(data)).toEqual(expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution']))
-    expect(['cpu-bound-in-process', 'process-not-scheduled', 'inconclusive']).toContain(
+    expect(['cpu-bound-in-process', 'no-cpu-in-process', 'inconclusive']).toContain(
       data.attribution
     )
   })

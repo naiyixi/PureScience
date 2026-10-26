@@ -99,7 +99,7 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       // from the held registry and once from what the process itself consumed.
       cpuMs: 300,
       cpuShare: 0.014,
-      attribution: 'process-not-scheduled',
+      attribution: 'no-cpu-in-process',
       heldMs: 20_300,
       ownMs: 1_400
     })
@@ -132,7 +132,7 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       now: plain,
       heldMs: () => 0,
       // No held window at all, and the CPU share says the time was ours: this is the shape that must stay
-      // quiet about "not scheduled" while still carrying the number.
+      // quiet about the low band while still carrying the number.
       cpuUsage: cpuPair(540)
     })
     expect(warn).toHaveBeenCalledWith('ipc handler was slow', {
@@ -154,8 +154,8 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       invoke: async () => 'ok',
       log: { warn },
       now: broken,
-      // Zero CPU over the window: the loop was not running, so this line must say `process-not-scheduled`
-      // even though the held registry could not answer.
+      // Zero CPU over the window and the held registry cannot answer: the line carries the measurement
+      // (`no-cpu-in-process`) and claims nothing about why — the held split is the only thing that could.
       cpuUsage: cpuPair(0),
       heldMs: () => {
         throw new Error('registry unavailable')
@@ -168,7 +168,7 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       durationMs: 600,
       cpuMs: 0,
       cpuShare: 0,
-      attribution: 'process-not-scheduled'
+      attribution: 'no-cpu-in-process'
     })
   })
 

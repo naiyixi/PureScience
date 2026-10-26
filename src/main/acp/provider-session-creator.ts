@@ -136,7 +136,7 @@ export class AcpProviderSessionCreator {
       // The agent starts its 14 MCP servers inside this call and refuses the session if they are not
       // ready in time, answering with a bare `Internal error` that names nothing. On a loaded machine
       // that budget is routinely missed (measured: load 20, the app's own watchdog reporting
-      // `process-not-scheduled` with a 0.006 CPU share), so one retry is worth it — by then the servers
+      // `no-cpu-in-process` with a 0.006 CPU share), so one retry is worth it — by then the servers
       // are usually up. A second failure is reported as what it is instead of "Internal error".
       // Captured as a const: `capability` is a `let`, so its narrowing at this line does not survive
       // into the arrow function below.

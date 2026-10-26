@@ -264,7 +264,7 @@ export type SettingsServiceOptions = {
   // Injectable clock and process-CPU source for the legacy key-ref migration. Two clocks are needed there:
   // the wall one says how long the pass took, the CPU one says how much of it the process was actually
   // running. Real record (2026-10-25, packaged build): `encryption-available=22763345ms` next to the
-  // watchdog's own `cpuShare 0 / process-not-scheduled` for the same gap — six hours of "keychain cost"
+  // watchdog's own `cpuShare 0 / no-cpu-in-process` for the same gap — six hours of "keychain cost"
   // that was a suspended laptop.
   clock?: () => number
   cpuUsage?: () => CpuUsageSample
@@ -1158,9 +1158,9 @@ class SettingsService {
     // Every phase now also records the process CPU it consumed, because the wall clock alone produced a
     // reading that was not about us at all: the same log has `encryption-available=22763345ms` and, a
     // millisecond later, the watchdog's `windowMs 22763558 / cpuMs 287 / cpuShare 0 /
-    // attribution process-not-scheduled` for that exact gap (2026-10-25, packaged build). Six hours of
+    // attribution no-cpu-in-process` for that exact gap (2026-10-25, packaged build). Six hours of
     // "keychain cost" that was a suspended laptop — and it would have sent the next investigation to the
-    // secret store. A phase that was not scheduled says so instead of reporting the wall time as work.
+    // secret store. A phase that spent no CPU here says so instead of reporting the wall time as work.
     const phases: Record<string, PhaseTiming> = {}
     const startedAt = this.clock()
     const cpuStartedAt = this.cpuUsage()
@@ -1229,7 +1229,7 @@ class SettingsService {
       attribution: classifyCpuShare(cpuShare, totalMs),
       outcome,
       // The phases that ran, largest first, in the same `name=12ms` shape the compose recorder prints, with
-      // `(not-scheduled)` on a phase whose wall time was not work.
+      // `(no-cpu)` on a phase whose wall time was not work.
       phases: Object.entries(phases)
         .sort(([, left], [, right]) => right.ms - left.ms)
         .map(([name, phase]) => `${name}=${phase.ms}ms${attributionSuffix(phase.attribution)}`)

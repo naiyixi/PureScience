@@ -440,7 +440,7 @@ describe('application command router', () => {
         durationMs: 240,
         cpuMs: 0,
         cpuShare: 0,
-        attribution: 'process-not-scheduled',
+        attribution: 'no-cpu-in-process',
         heldMs: 230,
         ownMs: 10
       }

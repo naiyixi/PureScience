@@ -254,7 +254,7 @@ describe('event loop stall watchdog', () => {
     })
 
     // 5 s of wall time for a 100 ms tick, but only 0.6 s of CPU: `cpuShare` alone would call this
-    // `process-not-scheduled`. The profiled main-thread reading (4.9 of those 5 s) is the stricter verdict.
+    // `no-cpu-in-process`. The profiled main-thread reading (4.9 of those 5 s) is the stricter verdict.
     time.advance(5_000, 600)
     vi.advanceTimersByTime(100)
     await settle()
@@ -275,7 +275,7 @@ describe('event loop stall watchdog', () => {
     watchdog.stop()
   })
 
-  it('attributes a stall that burned almost no CPU to the process not being scheduled', async () => {
+  it('says a stall burned almost no CPU without saying why it burned none', async () => {
     vi.useFakeTimers()
     const time = drive()
     const { log, warned } = collect()
@@ -296,7 +296,7 @@ describe('event loop stall watchdog', () => {
 
     expect(warned).toHaveLength(1)
     expect(warned[0]?.data.cpuShare).toBe(0.008)
-    expect(warned[0]?.data.attribution).toBe('process-not-scheduled')
+    expect(warned[0]?.data.attribution).toBe('no-cpu-in-process')
     watchdog.stop()
   })
 

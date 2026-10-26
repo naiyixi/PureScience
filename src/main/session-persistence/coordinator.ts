@@ -1436,7 +1436,7 @@ class SessionPersistenceCoordinator {
         ...(times.blockers ? { queueBlockers: times.blockers } : {}),
         // Was that window ours? The three fields describe `totalMs` exactly — the wait included, because that
         // is the number this line reports and the one a reader acts on. A 50 s save on a suspended laptop now
-        // says `process-not-scheduled` instead of reading as 50 s of serialization, and a save whose queue
+        // says `no-cpu-in-process` instead of reading as 50 s of serialization, and a save whose queue
         // wait was filled by the holder's CPU still says `cpu-bound-in-process` (with `queueBlockers` naming
         // who held it) — the two readings answer different questions rather than one masking the other.
         ...cpuAttributionFields(times.cpuRequestedAt, process.cpuUsage(), totalMs),

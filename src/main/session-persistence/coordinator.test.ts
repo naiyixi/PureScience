@@ -4093,7 +4093,7 @@ describe('session save diagnostics', () => {
         totalMs: 5_000,
         cpuMs: 0,
         cpuShare: 0,
-        attribution: 'process-not-scheduled'
+        attribution: 'no-cpu-in-process'
       })
     } finally {
       clock.mockRestore()

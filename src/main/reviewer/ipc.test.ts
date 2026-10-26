@@ -622,7 +622,7 @@ describe('reviewer IPC handlers', () => {
         expect(Object.keys(entry.payload)).toEqual(
           expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
         )
-        expect(['cpu-bound-in-process', 'process-not-scheduled', 'inconclusive']).toContain(
+        expect(['cpu-bound-in-process', 'no-cpu-in-process', 'inconclusive']).toContain(
           entry.payload.attribution
         )
       } finally {

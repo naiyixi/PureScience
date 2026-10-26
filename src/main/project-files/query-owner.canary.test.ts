@@ -118,5 +118,76 @@ describe('ProjectFilesQueryOwner engine-queue canary', () => {
     expect(message).toBe('listFiles segments were slow')
     expect(typeof fields.dbCanaryMs).toBe('number')
     expect(fields.rows).toBe(1)
+    // The CPU half of the same window. Its verdict is whatever the machine did, so only the shape and the
+    // vocabulary are pinned here; the verdicts themselves are pinned with an injected source below.
+    expect(typeof fields.cpuMs).toBe('number')
+    expect(typeof fields.cpuShare).toBe('number')
+    expect(['cpu-bound-in-process', 'no-cpu-in-process', 'inconclusive']).toContain(
+      fields.attribution as string
+    )
+  })
+
+  it('says the listFiles window spent no CPU here when the machine was gone, and not why', async () => {
+    process.env.PURESCIENCE_DB_CANARY = '1'
+    const rows = [
+      {
+        seq: 2,
+        source: 'artifact',
+        sourceFileId: 'artifact-1',
+        sourceVersionId: 'version-1',
+        checksum: null,
+        projectId: 'project-a',
+        sessionId: 'session-a',
+        messageId: null,
+        displayName: 'table.csv',
+        storageKey: 'artifacts/table.csv',
+        mimeType: 'text/csv',
+        sizeBytes: BigInt(1024),
+        mtimeMs: BigInt(1),
+        sortAtMs: BigInt(2),
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+        deletedAt: null,
+        deleteOperationId: null
+      }
+    ]
+    const raw = vi.fn(async () => [])
+    const client = {
+      $queryRawUnsafe: raw,
+      managedFile: { findMany: vi.fn(async () => rows), count: vi.fn(async () => 1) }
+    }
+    // A suspended machine: the wall clock climbs 600 ms, the process burns nothing at all. Both numbers have to
+    // be injected — a real `Date.now()` makes the window as short as the mocked reads, and a zero-length window
+    // is `inconclusive` by design, which would make this test pass for the wrong reason.
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValueOnce(1_000).mockReturnValue(1_600)
+    const cpu = vi.fn().mockReturnValue({ user: 0, system: 0 })
+    const owner = new ProjectFilesQueryOwner(
+      () => Promise.resolve(client as never),
+      '/tmp/does-not-matter',
+      () => true,
+      cpu
+    )
+
+    try {
+      await owner.listFiles({
+        projectId: 'project-a',
+        collection: { kind: 'uploads' },
+        limit: 10,
+        omitOrigins: true
+      } as never)
+    } finally {
+      nowSpy.mockRestore()
+    }
+
+    const [message, fields] = warnSpy.mock.calls[0] as [string, Record<string, unknown>]
+    expect(message).toBe('listFiles segments were slow')
+    expect(fields).toMatchObject({
+      totalMs: 600,
+      cpuMs: 0,
+      cpuShare: 0,
+      attribution: 'no-cpu-in-process'
+    })
+    // Sampled twice around the same window, at the same instant as the two clock readings.
+    expect(cpu).toHaveBeenCalledTimes(2)
   })
 })

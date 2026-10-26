@@ -66,7 +66,7 @@ describe('legacy key migration attribution', () => {
 
   it('names a pass whose wall time was not work instead of blaming the secret store', async () => {
     // The real reading this is drawn from: `encryption-available=22763345ms` with the watchdog's own
-    // `cpuShare 0 / process-not-scheduled` for the same gap. The clock advances on every reading while the
+    // `cpuShare 0 / no-cpu-in-process` for the same gap. The clock advances on every reading while the
     // process spends no CPU at all.
     let clock = 1_000
     const cpu: CpuSample = { user: 0, system: 0 }
@@ -81,12 +81,12 @@ describe('legacy key migration attribution', () => {
 
     const line = migrationLine()
     expect(line).toMatchObject({
-      attribution: 'process-not-scheduled',
+      attribution: 'no-cpu-in-process',
       cpuMs: 0,
       cpuShare: 0
     })
     expect(Number(line.totalMs)).toBeGreaterThan(250)
-    expect(String(line.phases)).toContain('(not-scheduled)')
+    expect(String(line.phases)).toContain('(no-cpu)')
   })
 
   it('still calls a pass that really ran the clock its own work', async () => {
@@ -107,6 +107,6 @@ describe('legacy key migration attribution', () => {
 
     const line = migrationLine()
     expect(line).toMatchObject({ attribution: 'cpu-bound-in-process' })
-    expect(String(line.phases)).not.toContain('(not-scheduled)')
+    expect(String(line.phases)).not.toContain('(no-cpu)')
   })
 })
