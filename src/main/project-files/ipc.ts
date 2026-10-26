@@ -1,4 +1,5 @@
 import { ipcMainHandle } from '../ipc-handler-registry'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 import { createLogger } from '../logger'
 
 import type {
@@ -43,6 +44,10 @@ const timedRead = async <Result>(
   read: () => Promise<Result>
 ): Promise<Result> => {
   const startedAt = Date.now()
+  // The wall clock alone cannot tell a slow gate from an app that was not running: the Home page asks every
+  // project for its files, so one blocked loop reads as ~50 slow reads at once. The CPU sample is taken at
+  // the same instant as the clock, so the line can say whether those 120 ms were work at all.
+  const cpuStartedAt = process.cpuUsage()
   try {
     await recovery.recoverPendingDeletions()
   } catch (error) {
@@ -63,7 +68,10 @@ const timedRead = async <Result>(
         operation,
         totalMs,
         recoveryMs,
-        queryMs: totalMs - recoveryMs
+        queryMs: totalMs - recoveryMs,
+        // Was that total ours, or was the process not running through part of it? Same vocabulary as the
+        // channel-level line; without it a settings-mount burst reads as the Files panel being slow.
+        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs)
       })
     } catch {
       // Best-effort only: a diagnostic must never replace the read result.

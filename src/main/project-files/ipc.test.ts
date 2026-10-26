@@ -63,7 +63,14 @@ describe('project files read timing', () => {
   it('splits a slow read into the recovery gate and the query, and stays quiet when a read is fast', async () => {
     // The Files panel's cost is (gate + query); nothing said which half, and the Home page asks every
     // project for its files, so one slow half is multiplied by the project count.
-    const listFiles = vi.fn(async () => ({ items: [], nextCursor: undefined, totalCount: 0 }))
+    const cpu = vi.spyOn(process, 'cpuUsage')
+    let cpuMicros = 0
+    cpu.mockImplementation(() => ({ user: cpuMicros, system: 0 }))
+    const listFiles = vi.fn(async () => {
+      // The query is what burned the CPU in the slow window: the fake clock moves time, not CPU.
+      cpuMicros += 160_000
+      return { items: [], nextCursor: undefined, totalCount: 0 }
+    })
     const recoverPendingDeletions = vi.fn(async () => undefined)
     const handlersWithTiming = createProjectFilesHandlers(
       createRepository({ listFiles } as never),
@@ -79,17 +86,23 @@ describe('project files read timing', () => {
     await handlersWithTiming.listFiles({ projectId: 'project-1' } as never)
     expect(warnSpy).not.toHaveBeenCalled()
 
-    // slow: one line, with the split (gate 80 ms, query 120 ms, total 200 ms)
+    // slow: one line, with the split (gate 80 ms, query 120 ms, total 200 ms). The query reads as CPU work
+    // here (160 ms of CPU inside a 200 ms window) so the attribution fields are pinned to a verdict instead
+    // of being whatever the machine happened to be doing.
     clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_080).mockReturnValueOnce(2_200)
     await handlersWithTiming.listFiles({ projectId: 'project-1' } as never)
     expect(warnSpy).toHaveBeenCalledWith('project files read was slow', {
       operation: 'listFiles',
       totalMs: 200,
       recoveryMs: 80,
-      queryMs: 120
+      queryMs: 120,
+      cpuMs: 160,
+      cpuShare: 0.8,
+      attribution: 'cpu-bound-in-process'
     })
 
     clock.mockRestore()
+    cpu.mockRestore()
   })
 })
 

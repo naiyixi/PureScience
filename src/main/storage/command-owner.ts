@@ -47,6 +47,7 @@ import {
 } from './dedupe-sweep'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { RELOCATABLE_DATA_DIRS } from './data-directories'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 import { startDiagnosticOperation } from '../diagnostics/operation'
 import { markApplicationShutdownTrigger } from '../application-shutdown-trigger'
@@ -145,6 +146,9 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
 
   const getInfo = async (): Promise<StorageInfo> => {
     const startedAt = Date.now()
+    // The Storage panel's open cost was measured at 13.7 s on a real root, and `totalMs` alone cannot say
+    // whether that was the disk walk or the app not running. CPU is sampled at the same instant as the clock.
+    const cpuStartedAt = process.cpuUsage()
     const dataRoot = resolveDataRoot()
     const dataRootMs = Date.now() - startedAt
     let available = 0
@@ -193,7 +197,9 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
         availableMs,
         settingsMs,
         usageMs,
-        usageCategories: usage.categories.length
+        usageCategories: usage.categories.length,
+        // `totalMs` is the panel's open cost; these three say whether the app was running while it accrued.
+        ...cpuAttributionFields(cpuStartedAt, process.cpuUsage(), totalMs)
       })
     }
 

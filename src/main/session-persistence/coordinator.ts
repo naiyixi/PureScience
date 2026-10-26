@@ -35,6 +35,7 @@ import {
   type SessionDeletionReceipt
 } from '../artifacts/provenance-message-snapshot'
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
+import { cpuAttributionFields, type CpuUsageSample } from '../diagnostics/cpu-attribution'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 
 // `sessions:save-session` is the most frequent slow handler in nine days of real-machine logs (4,282 calls,
@@ -1002,6 +1003,10 @@ class SessionPersistenceCoordinator {
     // channel (726 calls, median 3,819 ms in nine days of development logs), so the tail has to say whether
     // that time is the wait or the durable-JSON load — the two answer different units.
     const requestedAt = Date.now()
+    // Same window rule as the save line: the CPU sample is taken at the call so the reported `totalMs` can
+    // say whether those 3.8 s were the process working or the process not running at all. Without it a
+    // suspended laptop and a 3.8 s summary read are the same number.
+    const cpuRequestedAt = process.cpuUsage()
     let startedAt = requestedAt
     return this.enqueue('read-session-runtime-context', async () => {
       startedAt = Date.now()
@@ -1020,6 +1025,7 @@ class SessionPersistenceCoordinator {
       this.reportSlowRuntimeContextRead({
         sessionId,
         requestedAt,
+        cpuRequestedAt,
         startedAt,
         readAt,
         finishedAt: Date.now(),
@@ -1045,6 +1051,8 @@ class SessionPersistenceCoordinator {
   private reportSlowRuntimeContextRead(times: {
     sessionId: string
     requestedAt: number
+    /** Process CPU sampled at `requestedAt`, for the same "was this window ours" answer as the save line. */
+    cpuRequestedAt: CpuUsageSample
     startedAt: number
     readAt: number
     finishedAt: number
@@ -1060,6 +1068,9 @@ class SessionPersistenceCoordinator {
         loadMs: times.readAt - times.startedAt,
         cloneMs: times.finishedAt - times.readAt,
         totalMs,
+        // Same three fields as the save line, over the same window it reports. `source` says which tier
+        // answered, so a slow read that was not running at all cannot be read as a slow document parse.
+        ...cpuAttributionFields(times.cpuRequestedAt, process.cpuUsage(), totalMs),
         hasPlan: times.hasPlan,
         source: times.source
       })
@@ -1247,7 +1258,14 @@ class SessionPersistenceCoordinator {
     // Measured from the CALL, not from inside the queued task: the wait for the queue is precisely what a
     // 50 s maximum beside a 100 ms median looks like, and it is invisible if the clock starts after
     // dequeuing. Every phase below is captured on the way past, so a slow save can say where it went.
+    //
+    // The CPU sample is taken at the same instant, because `totalMs` is the window it has to answer for: a
+    // save that waited 23 s behind another write and wrote in 15 ms used to read as 23 s of save work, and
+    // only the pair (wall clock, process CPU) separates "we were busy" from "the process was not running".
+    // While this save waits, the queue holder's work is still this process's CPU — `queuedMs` and
+    // `queueBlockers` are what name the holder, so the two readings do not compete for the same question.
     const requestedAt = Date.now()
+    const cpuRequestedAt = process.cpuUsage()
     // Ticket for "who held the queue while this save waited". The queue is strictly serial, so the
     // operations recorded after this mark are exactly the ones that delayed the save.
     const queueMark = this.markQueueTrace()
@@ -1377,6 +1395,7 @@ class SessionPersistenceCoordinator {
       }
       this.reportSlowSessionSave({
         requestedAt,
+        cpuRequestedAt,
         blockers: this.blockersSince(queueMark),
         startedAt,
         readAt,
@@ -1396,6 +1415,8 @@ class SessionPersistenceCoordinator {
    */
   private reportSlowSessionSave(times: {
     requestedAt: number
+    /** Process CPU sampled at `requestedAt`, so this window can say whether it was work or not running. */
+    cpuRequestedAt: CpuUsageSample
     /** Which queued operations ran ahead of this save — the answer to "what held the queue". */
     blockers?: string
     startedAt: number
@@ -1413,6 +1434,12 @@ class SessionPersistenceCoordinator {
       this.log.warn('session save was slow', {
         queuedMs: times.startedAt - times.requestedAt,
         ...(times.blockers ? { queueBlockers: times.blockers } : {}),
+        // Was that window ours? The three fields describe `totalMs` exactly — the wait included, because that
+        // is the number this line reports and the one a reader acts on. A 50 s save on a suspended laptop now
+        // says `process-not-scheduled` instead of reading as 50 s of serialization, and a save whose queue
+        // wait was filled by the holder's CPU still says `cpu-bound-in-process` (with `queueBlockers` naming
+        // who held it) — the two readings answer different questions rather than one masking the other.
+        ...cpuAttributionFields(times.cpuRequestedAt, process.cpuUsage(), totalMs),
         authorityMs: times.readAt - times.startedAt,
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,

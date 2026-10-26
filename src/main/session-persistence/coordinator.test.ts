@@ -4031,6 +4031,76 @@ describe('session save diagnostics', () => {
     clock.mockRestore()
   })
 
+  // `totalMs` alone cannot separate a save that spent its seconds working from one whose seconds were not
+  // running at all: the same log carries a 50 s maximum beside a 100 ms median, and a 23-minute startup step
+  // with `cpuShare 0`. The three fields come from the one classifier the compose and settings recorders use.
+  it('says whether the slow window was CPU the process spent or time it was not running', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    const cpu = vi.spyOn(process, 'cpuUsage')
+    try {
+      let now = 1_000_000
+      let cpuMicros = 0
+      clock.mockImplementation(() => now)
+      cpu.mockImplementation(() => ({ user: cpuMicros, system: 0 }))
+
+      // Busy: 4 s of process CPU inside a 5 s wait. The CPU belongs to whoever held the queue, and that is
+      // still this process working — `queueBlockers` names the holder, the share says the time was work.
+      const busy = coordinator.saveSession(createSession({ title: 'Busy' }))
+      now += 5_000
+      cpuMicros += 4_000_000
+      await busy
+
+      const [busyMessage, busyFields] = log.warn.mock.calls[0] as [
+        string,
+        Record<string, number | string>
+      ]
+      expect(busyMessage).toBe('session save was slow')
+      expect(busyFields).toMatchObject({
+        queuedMs: 5_000,
+        totalMs: 5_000,
+        cpuMs: 4_000,
+        cpuShare: 0.8,
+        attribution: 'cpu-bound-in-process'
+      })
+
+      // Suspended: the same 5 s window with no CPU consumed at all. Before this field the line reported
+      // those seconds as save work — the shape that once sent an investigation to the keychain.
+      log.warn.mockClear()
+      now += 5_000
+      const suspended = coordinator.saveSession(createSession({ title: 'Suspended' }))
+      now += 5_000
+      await suspended
+
+      const [suspendedMessage, suspendedFields] = log.warn.mock.calls[0] as [
+        string,
+        Record<string, number | string>
+      ]
+      expect(suspendedMessage).toBe('session save was slow')
+      expect(suspendedFields).toMatchObject({
+        totalMs: 5_000,
+        cpuMs: 0,
+        cpuShare: 0,
+        attribution: 'process-not-scheduled'
+      })
+    } finally {
+      clock.mockRestore()
+      cpu.mockRestore()
+    }
+  })
+
   // A save that waits 23 s and writes in 15 ms was waiting on other work, and `queuedMs` alone names no
   // culprit. The queue is strictly serial, so the operations that completed while a save waited ARE the
   // delay; this pins that the slow-save line names them.
@@ -4231,6 +4301,62 @@ describe('session runtime context read diagnostics', () => {
     expect(fields.hasPlan).toBe(false)
     expect(fields).not.toHaveProperty('plan')
     clock.mockRestore()
+  })
+  // Same window rule on the read side, and this channel's own numbers are why it matters: median 3,819 ms,
+  // max 125,341 ms. A wait that was not running and a wait spent on a summary read produce the same
+  // `totalMs`, so the share is computed over `totalMs` — not over `loadMs`, which is 0 in the queue-wait
+  // case and would label every slow open "no CPU at all".
+  it('carries the same CPU attribution as the save line, over the window it reports', async () => {
+    const durable = createSession({
+      runtimeContext: { version: 1, revision: 3, plan: createRuntimePlan() }
+    })
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics: vi.fn(async () => ({
+        status: 'found' as const,
+        session: durable
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    const cpu = vi.spyOn(process, 'cpuUsage')
+    try {
+      let now = 2_000_000
+      let cpuMicros = 0
+      clock.mockImplementation(() => now)
+      cpu.mockImplementation(() => ({ user: cpuMicros, system: 0 }))
+
+      const pending = coordinator.readSessionRuntimeContext('project-1', 'session-1')
+      now += 5_000
+      cpuMicros += 3_500_000
+      await pending
+
+      const [message, fields] = log.warn.mock.calls[0] as [
+        string,
+        Record<string, number | boolean | string>
+      ]
+      expect(message).toBe('session runtime context read was slow')
+      expect(fields).toMatchObject({
+        queuedMs: 5_000,
+        totalMs: 5_000,
+        cpuMs: 3_500,
+        cpuShare: 0.7,
+        attribution: 'cpu-bound-in-process'
+      })
+    } finally {
+      clock.mockRestore()
+      cpu.mockRestore()
+    }
   })
 })
 

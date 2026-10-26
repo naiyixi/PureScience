@@ -1,6 +1,7 @@
 import { Prisma, type ManagedFile } from '@prisma/client'
 
 import { startDbCanary } from '../diagnostics/db-queue-probe'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 
@@ -121,6 +122,10 @@ class ProjectFilesQueryOwner {
     }
     const client = await this.getClient()
     const startedAt = Date.now()
+    // The window starts at the query, not at the caller: `clientMs` (the pool wait) is a different unit and
+    // is reported by the page read. CPU is sampled here for the same reason as every other slow line — a
+    // 2 s row scan and a 2 s suspension are the same number on the wall clock.
+    const cpuStartedAt = process.cpuUsage()
     const dbCanary = withDbCanary(client, dbCanaryEnabled())
     const placeholders = projectIds.map(() => '?').join(', ')
     const rows = await client.$queryRawUnsafe<
@@ -147,6 +152,9 @@ class ProjectFilesQueryOwner {
       kinds: deriveProjectFileKinds(itemsByProject.get(projectId) ?? [])
     }))
     const totalMs = Date.now() - startedAt
+    // Sampled at the same instant as `totalMs`, before the canary below is awaited: the canary is its own
+    // query, and letting it run before this sample would put another query's CPU inside this window.
+    const cpuEndedAt = process.cpuUsage()
     const reportThreshold = dbCanary ? 0 : SLOW_LIST_SEGMENT_THRESHOLD_MS
     if (totalMs >= reportThreshold) {
       try {
@@ -154,7 +162,8 @@ class ProjectFilesQueryOwner {
           projects: projectIds.length,
           rows: rows.length,
           totalMs,
-          dbCanaryMs: dbCanary ? await dbCanary : undefined
+          dbCanaryMs: dbCanary ? await dbCanary : undefined,
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the read result.
