@@ -4,6 +4,7 @@ import { open, stat } from 'node:fs/promises'
 import type { FileHandle } from 'node:fs/promises'
 import { basename, extname } from 'node:path'
 
+import { cpuAttributionFields } from './diagnostics/cpu-attribution'
 import { readEventLoopLatency, resetEventLoopLatency } from './diagnostics/event-loop-latency'
 import {
   beginFsOperation,
@@ -181,6 +182,9 @@ class ManagedPreviewResources {
   ): Promise<ManagedPreviewResource> {
     // Resolve through the managed repository before minting an owner-scoped capability URL.
     const startedAt = Date.now()
+    // Nine slow acquires split 212 ms of blocking against 220 ms of call, and two of them were awaiting
+    // rather than working. The CPU sample says which without a profiler: same window as `startedAt`.
+    const cpuStartedAt = process.cpuUsage()
     resetEventLoopLatency()
     // Started alongside the work and awaited after it, so the canary covers the same window as the acquire.
     const canary = startCanaryRead()
@@ -190,7 +194,10 @@ class ManagedPreviewResources {
     const fileStat = await stat(filePath, { bigint: true })
     endFsOperation()
     const statMs = Date.now() - startedAt - resolveMs
-    if (resolveMs + statMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
+    const acquireMs = resolveMs + statMs
+    // Sampled at the same instant as the total, before the canary below is awaited.
+    const cpuEndedAt = process.cpuUsage()
+    if (acquireMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
       try {
         // The path itself is user data; only its segment costs, the source and the queue readings are reported.
         previewLog.warn('managed preview acquire was slow', {
@@ -199,7 +206,8 @@ class ManagedPreviewResources {
           statMs,
           canaryMs: await canary,
           inFlightFsOperations: inFlightFsOperationCount(),
-          ...readEventLoopLatency()
+          ...readEventLoopLatency(),
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, acquireMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the acquire result.

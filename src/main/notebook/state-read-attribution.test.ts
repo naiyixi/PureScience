@@ -96,6 +96,12 @@ describe('notebook:state slow-read attribution', () => {
     expect(data.ensureMs as number).toBeGreaterThanOrEqual(0)
     // The line carries a count, never a run: no code, no output, no session document content.
     expect(JSON.stringify(data)).not.toContain('stdout')
+    // The attribution fields are on this line too. The verdict is whatever the machine did, so only the key
+    // set and the vocabulary are pinned here — the two verdicts themselves are pinned in coordinator.test.ts.
+    expect(Object.keys(data)).toEqual(expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution']))
+    expect(['cpu-bound-in-process', 'process-not-scheduled', 'inconclusive']).toContain(
+      data.attribution
+    )
   })
 
   it('reports a warm read as not cold and stays silent below the threshold', async () => {

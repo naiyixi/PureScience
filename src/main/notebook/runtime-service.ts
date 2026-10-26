@@ -92,6 +92,7 @@ import {
   type NotebookSessionRuntimeBinding
 } from './session-aggregate'
 import { NotebookSessionRegistry } from './session-registry'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 import { createLogger, getLogFilePath } from '../logger'
 import { EnvironmentStateTracker, type EnvironmentCaptureTarget } from './environment-state-tracker'
 import { NotebookRuntimeBindingOwner } from './runtime-binding'
@@ -870,12 +871,17 @@ class NotebookRuntimeService {
     request: NotebookSessionRequest
   ): Promise<NotebookSessionState & { runtimeBindings: NotebookRuntimeBindings }> {
     const requestedAt = performance.now()
+    // `performance.now` here, the CPU sample beside it: the question the total raises ("is this a big
+    // document or a busy main thread") is answered by CPU, not by another wall clock.
+    const cpuRequestedAt = process.cpuUsage()
     const wasLive = this.sessions.get(request.sessionId) !== undefined
     const session = await this.sessionLifecycle.ensure(request)
     const ensuredAt = performance.now()
     const phases: NotebookStateReadPhases = {}
     const state = await this.sessionReadModel.state(session, phases)
     const finishedAt = performance.now()
+    // Sampled at the same instant as `totalMs`; the phase numbers above are wall clock only.
+    const cpuEndedAt = process.cpuUsage()
     const loadMs = phases.loadMs ?? 0
     const totalMs = finishedAt - requestedAt
     if (totalMs >= SLOW_NOTEBOOK_STATE_READ_THRESHOLD_MS) {
@@ -891,7 +897,10 @@ class NotebookRuntimeService {
           loadMs: Math.round(loadMs),
           projectMs: Math.round(finishedAt - ensuredAt - loadMs),
           totalMs: Math.round(totalMs),
-          runs: state.runs.length
+          runs: state.runs.length,
+          // Same three fields as every other slow line, over the same window it reports. `cold`/`loadMs`
+          // answer "which phase"; these answer "was the process running while it accrued".
+          ...cpuAttributionFields(cpuRequestedAt, cpuEndedAt, totalMs)
         })
       } catch {
         // Best-effort: a logging failure must never fail a read the window is waiting on.

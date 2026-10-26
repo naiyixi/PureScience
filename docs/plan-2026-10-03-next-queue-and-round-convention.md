@@ -12754,3 +12754,80 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 1. 推到 main 后读本轮四笔的**一条**判决（`Nightly` + `Windows Full Test`，绑 `7ff216a4`/本笔的完整 40 位 SHA）。
 2. 继续铺 CPU 归属：下一处取 `session save was slow`（它的 `queuedMs` 正是「没在跑」的典型形状），
    其后 `storage info was slow`、`notebook state read was slow`。
+
+## 二百四十、本轮追加（执行器，2026-10-26 16:4x–）—— CPU 归属铺开到九处：会话、文件、存储、产物、预览、笔记本
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == 6f67a43b`，工作树干净。先读完上一轮唯一未闭合的读数：
+  `Nightly 40277826883 @ 6f67a43b` **success**（`Verify` 与四条平台 build 全绿，含 P0 认证与视觉），
+  `Windows Full Test 40277826828` **success** ⇒ `6f67a43b` 那一批四笔全部有判决，无遗留红。
+- 队列 B 段耗尽（A7/S3 已交付、M2 卡在产品决定）⇒ 自拟单元；接的是 §二百三十二/§二百三十九 的具名开项
+  「把 CPU 归属铺到剩下只报墙钟的慢行」。上一轮已落 `ipc handler was slow` 与词汇函数，本轮在其上继续。
+- 与本轮无关的两个既有红已定位（见「四 边界」），没有为它们改产品。
+
+### 一 交付（两笔）
+
+第一笔 `af3999af`（已推）—— **五处慢行**：
+
+| 行 | 文件 | 样本位置 |
+| --- | --- | --- |
+| `session save was slow` | `session-persistence/coordinator.ts` | 调用那一刻（与 `totalMs` 同窗） |
+| `session runtime context read was slow` | 同上 | 同上 |
+| `project files read was slow` | `project-files/ipc.ts` | 恢复门之前 |
+| `project file kinds read was slow` | `project-files/query-owner.ts` | 查询前 + canary 前（两样本） |
+| `storage info was slow` | `storage/command-owner.ts` | `startedAt` 旁 |
+
+第二笔（本地已完成，待判决落定后推）—— 再 **三处**：
+
+| 行 | 文件 | 要点 |
+| --- | --- | --- |
+| `artifact version resolve was slow` | `artifacts/provenance-repository.ts` | 三段时间 + CPU 同一窗口；第二样本取在 await canary 之前 |
+| `managed preview acquire was slow` | `managed-preview-resources.ts` | 与 `resolveMs+statMs` 同窗 |
+| `notebook state read was slow` | `notebook/runtime-service.ts` | 该行用的是 `performance.now`，CPU 样本照样两次 `cpuUsage` |
+
+**窗口口径（写进代码注释，也是这一族唯一的判据）**：样本取在「读者看到的那个 `totalMs`」的同一窗口。
+队列等待期间别的工作烧掉的 CPU 仍是本进程的 CPU，`queuedMs`/`queueBlockers` 负责点名持有者 —— 两处读数
+回答两个不同问题，谁也不遮谁。需要 await canary/第二查询的地方，第二样本刻意前置到 await 之前：否则
+会把别人的 CPU 算进这个窗口。
+
+### 二 读数（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| session-persistence + project-files + diagnostics（第一笔） | **37 files / 451 tests 全绿** |
+| notebook + artifacts + managed-preview（第二笔） | **112 files（8 skipped）/ 1747 passed / 99 skipped** |
+| 定向新用例 | `coordinator.test.ts` +2（0.8 → `cpu-bound-in-process`；同窗口零 CPU → `process-not-scheduled`）；`project-files/ipc.test.ts` 整对象断言改显式带三字段 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（六 + 四文件） | **0 errors 0 warnings**（含一次 `--fix` 折行） |
+| `scripts/pre-push-checks.sh` | 全部通过；推送时「本次推送 6 个新增文件 lint 0 problems」 |
+
+### 三 门禁与 CI（绑完整 SHA）
+
+- `af3999afde62bfb8b0e592330bd5416e704d34d5`：`Nightly 40296457782` 与 `Windows Full Test 40296457778`
+  在推后即被建起，判决待读（同时间还有一条 `Scheduled Regression 40296656554`，不是本次推送触发）。
+- 推前 `gh run list` 确认无在飞车道（上一批四条已 completed）⇒ 本次推送**没有取消任何人的判决**。
+
+### 四 边界（不许读成更强）
+
+1. **本轮没有真机日志行**。这九处都是「日志字段」类改动，能取的真机读数是**一次真实慢事件**产生的行；
+   本机用户常驻 dev 实例跑的是旧代码（重启需用户点头，与既有那条「等点头」同源），所以本轮证据只有
+   单测断言与门禁读数。**明确记为未取**，不写成「已实机验证」。
+2. `storage/ipc.test.ts > storage:get-info segment instrument` 那条断言在本机**红**（`expected 488 to be
+   less than 400`），已在本笔**之前**的干净提交（隔离工作树，`/tmp/ps-head-check`）上用同一断言复现
+   （`490 < 403`）⇒ 与这两笔无关，是负载敏感的既有形状（本机 load 10.4、swap 9.0G/10G）。
+   **没有**为它改产品或放宽断言。
+3. `cancel-migrate` / `rejects a concurrent migrate` 两条在本机同样因负载超时（60 s），未在干净树上复现到
+   （两次跑里位置漂移）⇒ 记为负载相关，判决取 CI。
+4. CPU 归属回答「这段时间是不是我们的」，**不解释因果**：份额高不等于这件事值得优化，份额低也不等于它
+   无辜（可能只是在等 I/O）。它与 `heldMs`、`queuedMs`、`dbCanaryMs` 各答一问。
+
+### 五 下一轮第一步
+
+1. 读 `af3999af` 与第二笔的判决（完整 40 位 SHA）；红就按作业级日志归因，先看是否落在本批路径上。
+2. CPU 归属还剩**一处**：`application command handler was slow`（要先让路由器诊断带上 CPU 样本，代价高于
+   其余八处，刻意排最后）。铺完后这一族收口。
+3. 仍敞着的既有候选：`storage/ipc.test.ts` 那条负载敏感断言（建议改法：用 `mockReturnValueOnce` 序列把
+   `startedAt`/三段探测/`totalMs` 的六个 `Date.now()` 全部固定，断言就与机器快慢无关；这属于改既有守卫，
+   要单独一轮并说明「断言的是算术与归属，不是真实耗时」）。
+4. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。

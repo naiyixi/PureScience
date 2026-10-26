@@ -52,6 +52,7 @@ import {
 } from './repository'
 import { defaultArtifactDurability, type ArtifactDurability } from './durability'
 import { startDbCanary } from '../diagnostics/db-queue-probe'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 import { readEventLoopLatency, resetEventLoopLatency } from '../diagnostics/event-loop-latency'
 import { createLogger } from '../logger'
 import { NotebookRunRepository } from '../notebook/repository'
@@ -4359,6 +4360,10 @@ class ArtifactProvenanceRepository {
       ? assertSafeSegment(request.artifactId, 'artifact id')
       : undefined
     const startedAt = Date.now()
+    // Wall clock alone cannot say whether those 220 ms were the engine working or the app not running —
+    // the same file already splits the loop delay per segment for exactly that reason. Sampled at the
+    // same instant as `startedAt`, so the three segments and the CPU figure cover one window.
+    const cpuStartedAt = process.cpuUsage()
     const client = await this.options.getClient()
     const clientMs = Date.now() - startedAt
     // Event loop delay per segment, not just per call: six of nine slow acquires ran with a healthy loop
@@ -4389,7 +4394,10 @@ class ArtifactProvenanceRepository {
     }
     const readEventLoopMaxMs = readEventLoopLatency().maxMs
     const readMs = Date.now() - startedAt - clientMs - queryMs
-    if (clientMs + queryMs + readMs >= SLOW_VERSION_RESOLVE_THRESHOLD_MS) {
+    const totalResolveMs = clientMs + queryMs + readMs
+    // Sampled at the same instant as the total, before the canary is awaited below.
+    const cpuEndedAt = process.cpuUsage()
+    if (totalResolveMs >= SLOW_VERSION_RESOLVE_THRESHOLD_MS) {
       try {
         versionResolveLog.warn('artifact version resolve was slow', {
           clientMs,
@@ -4398,7 +4406,8 @@ class ArtifactProvenanceRepository {
           dbCanaryMs: await dbCanary,
           readMs,
           readEventLoopMaxMs,
-          bytes: bytes.byteLength
+          bytes: bytes.byteLength,
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalResolveMs)
         })
       } catch {
         // Best-effort: a diagnostic must never replace the resolve result.
