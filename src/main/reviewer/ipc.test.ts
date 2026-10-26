@@ -604,20 +604,27 @@ describe('reviewer IPC handlers', () => {
           { projectId: 'project-1', appSessionId: 'session-1' }
         )
 
-        expect(loggerWarnings).toEqual([
-          {
-            message: 'review load segments',
-            payload: {
-              projectId: 'project-1',
-              appSessionId: 'session-1',
-              reviews: 0,
-              reviewsQueryMs: 100,
-              sessionLoadMs: 50,
-              flagMs: 200,
-              totalMs: 350
-            }
-          }
-        ])
+        expect(loggerWarnings).toHaveLength(1)
+        const [entry] = loggerWarnings
+        expect(entry.message).toBe('review load segments')
+        expect(entry.payload).toMatchObject({
+          projectId: 'project-1',
+          appSessionId: 'session-1',
+          reviews: 0,
+          reviewsQueryMs: 100,
+          sessionLoadMs: 50,
+          flagMs: 200,
+          totalMs: 350
+        })
+        // The CPU reading rides on the same line. Its value is whatever the machine did, so only the key set
+        // and the vocabulary are pinned here — the two verdicts themselves are pinned in
+        // session-persistence/coordinator.test.ts.
+        expect(Object.keys(entry.payload)).toEqual(
+          expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
+        )
+        expect(['cpu-bound-in-process', 'process-not-scheduled', 'inconclusive']).toContain(
+          entry.payload.attribution
+        )
       } finally {
         vi.useRealTimers()
       }
@@ -655,6 +662,11 @@ describe('reviewer IPC handlers', () => {
         sessionUnavailable: true,
         flagMs: 0
       })
+      // The failure branch carries the same three fields: a line that exists to explain a failure must not be
+      // the one place where "was the process running" is missing.
+      expect(Object.keys(entry?.payload ?? {})).toEqual(
+        expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
+      )
     })
   })
 

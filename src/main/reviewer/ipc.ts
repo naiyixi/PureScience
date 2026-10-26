@@ -31,6 +31,7 @@ import { SessionRepository } from '../session-persistence/repository'
 import { broadcastToRenderers } from '../renderer-broadcast'
 import { ArtifactProvenanceRepository } from '../artifacts/provenance-repository'
 import { acquireDataRootWriter } from '../storage/migration-state'
+import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
 
 const log = createLogger('reviewer:ipc')
 
@@ -159,6 +160,10 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
   // does not present a stale verdict as current.
   const getForSession = async (request: ReviewSessionRequest): Promise<ReviewWithChecks[]> => {
     const startedAt = Date.now()
+    // The segments above answer "which step", not "was the process running while it accrued" — the same
+    // question every other slow line in the app now answers. Sampled at the same instant as `startedAt` so
+    // both cover one window.
+    const cpuStartedAt = process.cpuUsage()
     const reviews = await reviewRepository.getReviewsForProjectSession(
       request.projectId,
       request.appSessionId
@@ -172,15 +177,19 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
       // Unchanged behaviour (a deleted/unreadable Session has no evidence to recompute), but the
       // segments still go out: "the session could not be read" and "the session was read fast" look
       // identical to the channel log otherwise.
+      const sessionLoadMs = Date.now() - loadStartedAt
+      const unavailableTotalMs = Date.now() - startedAt
+      const unavailableCpuEndedAt = process.cpuUsage()
       log.warn('review load segments', {
         projectId: request.projectId,
         appSessionId: request.appSessionId,
         reviews: reviews.length,
         reviewsQueryMs,
-        sessionLoadMs: Date.now() - loadStartedAt,
+        sessionLoadMs,
         sessionUnavailable: true,
         flagMs: 0,
-        totalMs: Date.now() - startedAt
+        totalMs: unavailableTotalMs,
+        ...cpuAttributionFields(cpuStartedAt, unavailableCpuEndedAt, unavailableTotalMs)
       })
       return reviews
     }
@@ -191,6 +200,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     )
     const flagMs = Date.now() - flagStartedAt
     const totalMs = Date.now() - startedAt
+    // Sampled at the same instant as `totalMs`: the three segments are wall clock only.
+    const cpuEndedAt = process.cpuUsage()
     if (totalMs >= SLOW_REVIEW_LOAD_MS) {
       log.warn('review load segments', {
         projectId: request.projectId,
@@ -199,7 +210,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         reviewsQueryMs,
         sessionLoadMs,
         flagMs,
-        totalMs
+        totalMs,
+        ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs)
       })
     }
     return flagged
