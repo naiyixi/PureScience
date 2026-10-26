@@ -1,3 +1,4 @@
+import { createLogger } from './logger'
 import { installAcpIpcHandlers } from './acp/ipc'
 import type { AcpHandlerWorkflows } from './acp/handler-workflows'
 import type { AcpRuntimeCoordinator } from './acp/runtime-coordinator'
@@ -35,11 +36,18 @@ export const installElectronRuntimeAdapters = async ({
   afterAcp
 }: ElectronRuntimeAdapterInterfaces): Promise<InstalledElectronSurfaceAdapter> => {
   const installed: Array<{ name: string; installation: InstalledElectronSurfaceAdapter }> = []
+  // One line per surface, because this loop is the last unmeasured stretch of startup: `compose runtime
+  // steps` and the module inits together account for less than half of the time between `compose-runtime`
+  // and `web-service-started`, and the rest is these installations running one after another.
+  const installLog = createLogger('startup')
+  const timings: Array<{ surface: string; durationMs: number }> = []
   const install = async (
     name: string,
     operation: () => Awaitable<InstalledElectronSurfaceAdapter>
   ): Promise<void> => {
+    const startedAt = performance.now()
     installed.push({ name, installation: await operation() })
+    timings.push({ surface: name, durationMs: Math.round(performance.now() - startedAt) })
   }
   const uninstall = async (): Promise<void> => {
     const failures: unknown[] = []
@@ -73,6 +81,18 @@ export const installElectronRuntimeAdapters = async ({
     }
     throw error
   }
+
+  // One summary instead of one line per surface: on a real launch every surface installs in 0 ms and the
+  // only question is the total and the worst one, which is exactly what the compose summary reports for
+  // its own steps. The reading that motivated this: a 1,280 ms gap between `compose-runtime` and
+  // `web-service-started` had nothing naming what filled it.
+  const slowest = [...timings].sort((left, right) => right.durationMs - left.durationMs).slice(0, 3)
+  installLog.info('runtime surfaces installed', {
+    count: timings.length,
+    totalMs: timings.reduce((sum, entry) => sum + entry.durationMs, 0),
+    slowest: slowest.map((entry) => `${entry.surface}=${entry.durationMs}ms`).join(' '),
+    processMs: Math.round(performance.now())
+  })
 
   return { uninstall }
 }

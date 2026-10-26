@@ -604,7 +604,10 @@ const createApplicationModules = async (
   const compositionStage = (stage: string): void => {
     compositionLog.info('composition stage', {
       stage,
-      atMs: Math.round(performance.now() - compositionStartedAt)
+      atMs: Math.round(performance.now() - compositionStartedAt),
+      // Absolute too: the stages below start in one function and the reader has to line them up with
+      // `startup timeline` phases from another, and second-precision log timestamps cannot do that.
+      processMs: Math.round(performance.now())
     })
   }
   compositionStage('composition-start')
@@ -2835,6 +2838,7 @@ const createApplicationModules = async (
     archiveCoordinator.assertSessionAvailableById(sessionId)
   )
   const codeReconstructionLog = createLogger('artifacts:code-reconstruction')
+  compositionStage('before-code-reconstruction')
   const codeReconstructionRunner = await modules.add(
     {
       appVersion: app.getVersion(),
@@ -2868,6 +2872,7 @@ const createApplicationModules = async (
   // because the runner needs the agent runtime's settings service and the PDF reader — both of which are
   // created after the references module itself. Until this binding runs, the screening surface reports
   // runnerAvailable: false and refuses to start a pass, rather than opening one nothing could decide.
+  compositionStage('before-screening-model')
   const screeningModelRunner = await modules.add(
     {
       appVersion: app.getVersion(),
@@ -3101,6 +3106,7 @@ const createApplicationModules = async (
     registerUpdateIpcHandlers(updateStrategy, updateCommandOwner)
     stopUpdateScheduler = startUpdateScheduler(updateStrategy)
   })
+  compositionStage('before-permission-projection')
   const permissionGrantProjection = await modules.add(
     {
       registry: permissionGrantRegistry,
@@ -4042,6 +4048,7 @@ const createApplicationModules = async (
 
   // The shared coordinator remains the sole ACP + Notebook teardown owner. Register command routing
   // after it so reverse disposal removes adapters, then the router, before any underlying owner stops.
+  compositionStage('before-shutdown-coordinator')
   await modules.add({ shutdownCoordinator }, ({ shutdownCoordinator: coordinator }) => ({
     name: 'backend-shutdown-coordinator',
     capability: undefined,
@@ -4049,6 +4056,7 @@ const createApplicationModules = async (
     dispose: async () => BackendShutdownOutcomeError.assertClean(await coordinator.runForQuit())
   }))
   backendTeardownOwnedByCoordinator = true
+  compositionStage('before-command-composition')
   const applicationCommandComposition = await modules.add(
     applicationCommandDependencies,
     (dependencies) => {
@@ -4095,6 +4103,7 @@ const createApplicationModules = async (
       })
   })
   subAgentRef.current = subAgentExecutor.runSubAgent
+  compositionStage('before-subagent-executor')
   await modules.add({ subAgentExecutor }, ({ subAgentExecutor }) => ({
     name: 'delegate-sub-agent-executor',
     capability: undefined,
@@ -4128,10 +4137,16 @@ const createApplicationModules = async (
 }
 
 const registerIpcHandlers = async (options: IpcRegistrationOptions): Promise<IpcRegistration> => {
+  const handlersLog = createLogger('startup')
+  const registerHandlersStage = (stage: string): void => {
+    handlersLog.info('registration stage', { stage, processMs: Math.round(performance.now()) })
+  }
+  registerHandlersStage('register-start')
   const applicationRuntime = await composeApplicationRuntimeWithAdapters(
     (modules) => createApplicationModules(options, modules),
     installElectronRuntimeAdapters
   )
+  registerHandlersStage('runtime-composed')
   return {
     ...applicationRuntime.interfaces,
     dispose: applicationRuntime.dispose
