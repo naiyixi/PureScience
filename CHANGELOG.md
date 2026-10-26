@@ -1,5 +1,55 @@
 # PureScience 更新日记
 
+## v2.18.3 — 2026-10-26（把「验不了」的三条变成可验，并补上缺的那个来源）
+
+**成熟度自陈**：这一版没有新的用户界面功能。它做的是把三件**此前只能标「未验证」**的事真正验掉，其中一件
+验出**原口径不成立**，因此补了一个来源而不是改口径。
+
+### 一、usage 对账：原口径不成立，补上日志侧的来源
+
+v2.18 §2 第 4 条原本要「同一轮的 usage 与日志对得上」。真机实测：`main.log` 里
+`inputTokens` / `outputTokens` / `cacheTokens` 出现 **0 次**，`~/.purescience/` 下也没有任何 usage 台账
+——**日志侧从来没有第二来源**，按原口径无法对账。
+
+于是补来源：回合收口时打一条 `prompt usage`（`sessionId` + `turnUsage` 全字段）。此后同一轮的会话文档与
+日志可以互对。这一轮已有的内部一致性读数：`cacheTokens == cachedReadTokens + cachedWriteTokens` 两轮都成立；
+`turnCount(3) ≥ 工具调用(1) + 1`。
+
+### 二、模型驱动的工具调用：验实（走 HTTP 工具面）
+
+在已装机版本里发一条真实 prompt，会话里出现 `kind=tool` / `mcp__purescience_plan__generate_plan`——
+那是 v2.17.7 起切到 HTTP 的 14 个能力之一，**且经过权限门**（同会话日志有 `permission request received` /
+`permission decision`）。这是第一次由「模型自己决定去调」串通整条链路。
+
+### 三、轨迹包的 `toolCalls` 段：从 `absent:not-collected` 变成可产出
+
+用产品自己的 `extractToolCalls` 跑那条真实会话：`activities=1 → calls=1、unnamed=0`，
+条目为 `mcp__purescience_plan__generate_plan`（`fields=tool,turnId`；该活动没有 `status`/`durationMs`，
+按「做不到就不打」缺席）。此前夹具车道的缺席原因是夹具 agent 的 MCP 调用不进 `session.activities`，
+不是抽取器的问题。
+
+### 四、惰性 `channel`：从「值进了 argv」升级到真机装了
+
+新增 env-gated 真机用例：故意给不存在的渠道 → micromamba 报错里带着它（证明值流进子进程）；用真实探测出的
+渠道（本机没配镜像，即原来挡住启动的那条路径）→ 环境建成功，`envs/lazy-channel-proof/bin/python` 存在。
+探测结果 `https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/`，耗时 28.9 s（命中共享缓存）。
+
+### 五、启动归因收口
+
+两次冷启动的完整分段表明：`registerIpcHandlers` 的 517–610 ms 里 **412–516 ms 就是已计时的 compose
+步骤本身**，其余十几个已具名构造点合计 9–10 ms。「剩余 400–500 ms 未归因」不成立——那是汇总行排除了
+步骤间空隙造成的假差额。附一条方法教训：`phase()` 与 `compositionStage()` 不同零点，相位差只能看趋势。
+
+### 六、诊断（另一条在制单元）
+
+应用命令的慢行也带上 CPU 归属（第十一处），失败分支同样带。
+
+### 明确没做 / 未验证
+
+- **`prompt usage` 这条日志尚未被一次真实回合观察到**（这篇写成时构建刚装好）：字段与会话文档一致这一条，
+  要等下一轮真实 prompt 才能给读数。功能已在包里（asar 可 grep 到 `prompt usage`）。
+- A2A 互通仍需外部实现；F 机检③仍需钥匙串凭据。
+
 ## v2.18.2 — 2026-10-26（把「将来装包」的偏好从开窗路径上拿走）
 
 **成熟度自陈**：这一版的主题是**启动**。两件事：① 网络镜像测速从启动关键路径上移走（真机 0.6–2.3 s）；
