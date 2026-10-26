@@ -290,9 +290,19 @@ export class EgressProxy {
     let settled = false
     let established = false
     let targetConn: ReturnType<typeof tcpConnect> | undefined
-    const teardown = (): void => {
+    // Named, because a silent teardown makes two different things look identical: the tunnel that
+    // was torn down for an observed ending, and the tunnel whose ending never arrived at all (a real
+    // platform behaviour — see the note above the reset pin in `egress.test.ts`).
+    const teardown = (reason: string): void => {
       if (settled) return
       settled = true
+      log.info('egress tunnel torn down', {
+        host,
+        port,
+        established,
+        reason,
+        hadTarget: targetConn !== undefined
+      })
       try {
         if (targetConn) {
           socket.unpipe(targetConn)
@@ -315,13 +325,13 @@ export class EgressProxy {
         code: failure.code,
         error: error.message
       })
-      teardown()
+      teardown('client-error')
     })
     // A client can go away without an error: `destroy()` with nothing pending closes the socket
     // without ever raising `error`, and a reset the kernel reports only as a close behaves the same.
     // `error` alone therefore leaves the target connection open — the leak this tunnel exists to
     // prevent — so the close is its own teardown trigger. `settled` keeps the two paths idempotent.
-    socket.on('close', () => teardown())
+    socket.on('close', () => teardown('client-close'))
     const open = (): void => {
       if (settled) return
       log.info('egress tunnel opening', { host, port })
@@ -334,9 +344,9 @@ export class EgressProxy {
         // as protocol garbage, so the honest answer is a closed connection and this log line.
         if (!established) this.refuseTargetFailure(socket, host, error, port)
         else this.reportTargetFailure(host, error, port, 'established')
-        teardown()
+        teardown('target-error')
       })
-      connection.on('close', () => teardown())
+      connection.on('close', () => teardown('target-close'))
       connection.on('connect', () => {
         // The client may already be gone: a tunnel that is established for nobody would hold this
         // target socket open until the kernel gives up.
@@ -354,7 +364,7 @@ export class EgressProxy {
     }
     const deny = (): void => {
       this.refuse(socket, 'PureScience egress allowlist: host not permitted')
-      teardown()
+      teardown('denied')
     }
     if (!host || !this.isAllowed(host)) {
       if (!host || isHostDenied(host)) {

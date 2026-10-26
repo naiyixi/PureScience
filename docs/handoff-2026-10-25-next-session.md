@@ -64,3 +64,7 @@
 4. 评测脚本末尾的 `grep -c` 零匹配会返回 1，看起来像失败（判据读 `BENCH_EXIT` 与 `Tests passed`）。
 5. 打包版无头起 web 服务要 `--serve=<port>`，且**不支持** `--config-root`；dev 构建反过来（支持 env 根、不需要 `--serve`）。
 6. 同一工作树里跑全量前先确认没有别的写入者刚落下提交（vitest 启动时收集文件清单）。
+7. **`src/main/net/egress.test.ts` 的 reset 那条不是抖动、也不是产品漏关**（2026-10-26 定因并收口，队列档 §二百三十七）：
+   真 loopback 上约 3–5% 的 reset，对端 socket 仍是 `open`、无 `end`、**写一个字节还能 flush** ⇒ 代理拿不到事件。
+   现在真 TCP 一侧只在**观察到结束包**时断言目标被关，漏断言由两支确定性 pin 承担（`ECONNRESET`+destroy、
+   无 error 无 end 的静默 close）；`teardown` 也补了具名日志（`reason`/`hadTarget`）。改这块时别把它改回无条件等待。

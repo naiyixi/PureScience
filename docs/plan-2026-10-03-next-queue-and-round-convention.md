@@ -12577,3 +12577,66 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 2. 队列 B 段仍耗尽 ⇒ 自拟单元。仍敞着的具名候选：把 host 时间线并进 support bundle（`stall-record-ring` 之外的那半）、
    CPU 归属铺到剩下 10 处只报墙钟的慢行。
 3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
+
+## 二百三十七、本轮追加（执行器，2026-10-26 08:3x–）—— Nightly `Test (with coverage)` 那条红：**结束包有时根本没送到**，不是 teardown 漏了
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `HEAD == origin/main == 739ddd47`，工作树干净（上一轮两笔已推）。先读上一轮那两笔的判决：
+  `Windows Full Test`（`40239919178`）**success**；`Nightly`（`40239919273`）**failure**，
+  失败在 `build / Verify (lint + typecheck + test + package)` 的 **`Test (with coverage)`** 步骤
+  （其余步骤全绿，下游 `Build`/`publish` 因此 `skipped`）。
+- 失败用例与两笔改动**无关**：`fab900f1` 只动了 e2e spec + `HomePage.tsx` 两个 `data-slot`，`739ddd47` 只加了一支 e2e spec
+  ⇒ 红在 `src/main/net/egress.test.ts:452`（`expected 'timeout' to be 'settled'`，reset 那条隧道 10 秒内目标 socket 未关）。
+- 这不是新坑：`docs/handoff-2026-10-24-v2175-remaining.md` 已把它记为「时序抖动，先证抖动再决定改不改」（当时本地 3 跑 2 绿 1 红）。
+  本轮把它**证完并收口**，不再留给下一轮。
+
+### 一 先定因：三次探针，只改判定不改产品
+
+探针走**产品自己的 `EgressProxy`**（临时 spec，未提交），复用同一代理与同一目标，逐次记录
+「代理侧隧道 socket 到底看到了什么」以及失败瞬间的流状态：
+
+| 形态 | 次数 | 目标未被关 | 代理侧 socket 看到的事件 | 失败瞬间状态 |
+|---|---|---|---|---|
+| 客户端 reset（`resetAndDestroy`） | 200 ×3 轮 | **7 / 10 / 6** | `[]`（既无 `error`、也无 `close`、也无 `end`） | `readyState=open`、`readableEnded=false`、`writableEnded=false`、`flowing=true` |
+| 客户端 destroy（FIN） | 200 | **0** | `close` | — |
+
+决定性的一步：失败瞬间**往那条隧道 socket 写一个字节**——**写成功并 flush**（3 秒后仍无 `EPIPE`/`ECONNRESET`）。
+⇒ 对端内核根本不知道客户端已经走了；这不是「代理漏了关目标」，而是**代理拿不到任何可据以动作的事件**。
+（同一个洞在九天真机日志里的形状是「没有 client aborted、也没有 close」，与「teardown 没跑」完全同形。）
+
+### 二 交付（两文件）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/net/egress-proxy.ts` | `teardown(reason)` 具名：`client-error` / `client-close` / `target-error` / `target-close` / `denied`，并带 `established` 与 `hadTarget`。**为什么**：此前 teardown 静默，「结束了但没关目标」与「结束包没送到」在日志里同形，正是本轮定因卡住的那一步 |
+| `src/main/net/egress.test.ts` | ① `watchTunnelEnding(proxy)` 探针记录隧道 socket 实际看到的事件；② 真 TCP 那条改成**有条件断言**：观察到结束包 ⇒ 目标必须被关（不变），未观察到 ⇒ 打印**具名行**而不是静默通过；③ 新增确定性 pin：在自控 `Duplex` 上 `ECONNRESET` + `destroy()`，断言「不逃到进程级 + 目标被关」——与既有的「无 error 无 end 的静默 close」pin 并列 |
+
+**为什么不加 keepalive/超时之类的产品改动**：失败形态里对端仍会 ACK 我们的写，keepalive 探针同样会被 ACK，
+它解决不了这个洞；而闲时超时会误杀正常的长下载。没有可观察量时不编一个。
+
+### 三 读数（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| 探针（三次 200 轮） | reset 失败 **7 / 10 / 6**；destroy **0** |
+| 探针自证（判定能否区分） | 把 watcher 的三行事件记录临时去掉后，两条具名行 `[egress] the <ending> ending never reached the proxy…` **都出现且用例仍绿**（`TEMP-PROOF` 已删，`grep -c` = 0） |
+| 压力复跑（本笔之后） | `src/main/net/egress.test.ts` **12/12 绿**，其中未观察到结束包的次数 **0** |
+| `src/main/net` 目录 | **8 files / 93 tests** 全绿 |
+| 双 typecheck（`--composite false`） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 2 文件）/ prettier | **0** / 通过 |
+
+### 四 边界（不许读成更强）
+
+1. 真 TCP 那一侧现在**可能**走进「未观察到结束包」分支（约 3–5%），此时那条「目标被关」的断言**不由它承担**——
+   由两支确定性 pin 恒跑承担。这不是放宽：pin 断言的是同一性质，且**只在真正拿到事件时**才可能漏掉一次。
+2. 平台层成因未完全钉死到内核调用（是 `resetAndDestroy` 没发出 RST，还是栈把它丢了）：可观察层已经足够定因
+   （对端 `open` + 写穿透），再往下要抓包，代价不成比例 ⇒ **如实记为未定**。
+3. 本笔**不占补丁号、不发版**（产品侧只多一行具名日志）。
+
+### 五 下一轮第一步
+
+1. 读本笔两条车道（完整 40 位 SHA），重点确认 Nightly 的 `Test (with coverage)` 转绿。
+2. 队列 B 段仍耗尽 ⇒ 自拟单元；仍敞着的具名候选：把 host 时间线并进 support bundle（`stall-record-ring` 之外的那半）、
+   CPU 归属铺到剩下 10 处只报墙钟的慢行。
+3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
