@@ -12640,3 +12640,66 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
 2. 队列 B 段仍耗尽 ⇒ 自拟单元；仍敞着的具名候选：把 host 时间线并进 support bundle（`stall-record-ring` 之外的那半）、
    CPU 归属铺到剩下 10 处只报墙钟的慢行。
 3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。
+
+## 二百三十八、本轮追加（执行器，2026-10-26 13:4x–）—— 支持包自带「导出前那几分钟」：同一个采样线程的环，卡顿之外也读得到
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 起步 `HEAD == origin/main == d4b7b00c`（v2.18.1 发版提交，`Release` run `40271941033` 在飞），
+  工作树里是**上一轮三笔在制品**（egress 定因 + preflight 时钟 + 本单元）。本轮先把它们收敛成提交，
+  再取本单元的真窗口读数。
+- **两条在跑车道的红各自归位（按作业级日志，不按车道名）**：
+  ① `Nightly` `40239919273` @ `739ddd47` = `build / Verify` 的 `Test (with coverage)`，红在
+  `src/main/net/egress.test.ts:452` ⇒ 已由本轮 `25d4c0a7` 收口（§二百三十七）；
+  ② `Windows Full Test` `40271903697` @ `d4b7b00c` 的 **shard 3/8**，红在
+  `src/main/notebook/runtime-service.test.ts > executeShell > kills a command that outlasts the timeout…`，
+  `EBUSY: resource busy or locked, rmdir '…\\Temp\\purescience-notebook-runtime-…\\data'`。
+  **该提交只改了 `CHANGELOG.md`/两份 README/`package.json`**（`git show --stat` 四文件），
+  同一文件在 `739ddd47` 的 Windows 车道上是通过的 ⇒ 归为 Windows 临时目录清理的间歇红（该家族已知），
+  不是本提交引入；**没有**动产品去迁就它。
+- 本单元与在飞的两者都不相交（只有 `src/main/diagnostics/**`、`src/main/ipc.ts`、`e2e/support-bundle.spec.ts`）。
+
+### 一 交付
+
+| 文件 | 改动 |
+|---|---|
+| `host-stall-sampler.ts` | worker 的环**自报容量与丢弃数**（`push` 返回丢弃条数）；`HostStallSampler.snapshot()`（整环、不加窗）；纯函数 `summarizeHostTimeline()`（三态 `timeline`/`no-samples`/`unavailable`，paging 两态 + 具名 reason，样本时间转 ISO）；`sharedHostStallSampler()` / `peekSharedHostTimeline()`（**哨兵不建新实例**：未启动就报 `sampler-not-started`） |
+| `event-loop-stall-watchdog.ts` | 默认采样器改走共享实例（否则会开第二个线程、第二种时间线） |
+| `support-bundle.ts` | 新增**必填** `hostTimeline` → 写 `diagnostics/host-timeline.json`，README.txt 增一节 |
+| `ipc.ts` | 组合根把 `peekSharedHostTimeline()` 接进 facts（唯一生产消费方） |
+| 测试 4 文件 + `e2e/support-bundle.spec.ts` | 采样器 +6 例、支持包 +2 例（走真实 summarizer 而非手写夹具）、两处桩补 `snapshot`；真窗口断言新段三态 + `sampleCount === samples.length` + 时间跨度 + paging 两态，并**打印读数** |
+
+### 二 真机读数（本机，`build:e2e` 之后 · 真窗口点按钮）
+
+```
+[e2e] host-timeline status=timeline samples=21 capacity=1200 dropped=0 spanMs=4773 intervalMs=250 paging=readings:5
+  2 passed (14.5s)
+```
+
+应用起来约 4.8 s、250 ms 一拍 ⇒ 21 条；容量 1200（5 分钟）、丢弃 0；macOS 上 `vm_stat` 解析出 5 条计数读数。
+归档：`docs/evidence/2026-10-26-host-timeline-in-support-bundle.md`。
+
+### 三 门禁（实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `src/main/diagnostics` | **18 files / 125 tests** 全绿 |
+| 三簇合跑（net + diagnostics + preflight 那条） | **27 files / 239 tests** 全绿 |
+| 双 typecheck（`--composite false`，8 GB 堆） | node **0**；web **0** |
+| `eslint --no-cache`（diagnostics 目录 + `ipc.ts` + 两处 spec/测试） | **0 errors 0 warnings** |
+| 真窗口 e2e | `e2e/support-bundle.spec.ts` **2 passed (14.5s)** |
+
+### 四 边界（不许读成更强）
+
+1. 环是**有界**的（1200 条 ≈ 5 分钟），丢了多少由 worker 自报 `samplesDropped`；「只有 5 分钟」与
+   「刚起来」在读数上是两件事。
+2. `peekSharedHostTimeline()` 不新建采样器：导出早于看门狗启动时给 `sampler-not-started`，不是空表。
+3. 时间线**不解释因果**：它只有那一刻的 CPU/内存/负载/页换出，把某一步慢归因到它需要另一层读数。
+4. 本笔不占补丁号、不发版。
+
+### 五 下一轮第一步
+
+1. 等 `v2.18.1` 的 `Release` run 落定后**一次推完**（本轮三笔：`25d4c0a7`、`06e35aa2`、本笔），
+   推前 `gh run list` 确认没有在飞的主干车道。
+2. 仍敞着的具名候选：CPU 归属铺到剩下 10 处只报墙钟的慢行（`references/main-process-read-latency.md` 的 §9 口径）。
+3. 仍等点头的一条（不变）：用户常驻 dev 实例是旧代码，取「真机日志里的 `stack.samples`」必须重启它。

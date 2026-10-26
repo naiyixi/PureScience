@@ -137,6 +137,7 @@ import {
   registerSupportBundleIpcHandlers,
   resolveDefaultSaveDirectory
 } from './diagnostics/support-bundle-ipc'
+import { peekSharedHostTimeline } from './diagnostics/host-stall-sampler'
 import { sharedStallRecords } from './diagnostics/stall-record-ring'
 import { readShippedModelWeightManifest } from './engines/model-weight-manifest-file'
 import {
@@ -2628,6 +2629,10 @@ const createApplicationModules = async (
       // The watchdog's own bounded ring, read in the same process that started it: a bundle is exported right
       // after something hung, and this is the reading that question needs (see `stall-record-ring`).
       stalls: sharedStallRecords.summary(),
+      // The machine's own timeline in the minutes before the export, read from the sampler the watchdog
+      // started (same process, no second thread). Absent stalls do not make it empty: its `status` names
+      // `no-samples` / `sampler-not-started` instead of shipping a list that reads like a calm machine.
+      hostTimeline: await peekSharedHostTimeline(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

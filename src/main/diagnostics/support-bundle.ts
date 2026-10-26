@@ -14,6 +14,7 @@ import * as tar from 'tar'
 
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
+import type { HostTimelineSummary } from './host-stall-sampler'
 import type { StallRecordSummary } from './stall-record-ring'
 
 export type SupportBundleVersions = {
@@ -56,6 +57,15 @@ export type SupportBundleInput = {
    * them" stay two answers.
    */
   stalls: StallRecordSummary
+  /**
+   * The host sampler's ring in the minutes before the export (see `host-stall-sampler`). Required for the same
+   * reason as `stalls`: the stall records answer "what did the machine look like inside a hang", and every
+   * question a bundle is attached for that has *no* stall window — "it was slow for an hour", "it froze when I
+   * clicked save" — has no answer at all without this. Its own `status` names the three cases, so a bundle
+   * exported before the sampler started says so instead of shipping an empty list that reads like a calm
+   * machine.
+   */
+  hostTimeline: HostTimelineSummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -111,6 +121,13 @@ diagnostics/event-loop-stalls.json
                    (free memory, load, paging), the frames V8 sampled, and — when present — the timeline a
                    sampler thread took while the loop was held. Its own counters say how many stalls were
                    observed and how many are no longer kept, so an empty list never reads as "nothing wrong"
+diagnostics/host-timeline.json
+                   one reading per quarter second from a thread of our own: when each was taken, the CPU it
+                   used, free memory, load average and resident size, plus the paging counters while the
+                   platform exposes them. The section says how much history it holds and how much it has
+                   already discarded, because the machine moments before an export are the question when
+                   nothing crossed the stall threshold. Its status names "no samples yet" and "sampler not
+                   started" rather than leaving an empty list to be read as a calm machine
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -287,6 +304,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/event-loop-stalls.json',
     `${JSON.stringify(input.stalls, null, 2)}\n`
+  )
+  // The sampler's own ring, un-windowed: `event-loop-stalls.json` says what the machine looked like *inside*
+  // a hang, and a report that never crossed the stall threshold has none of those. Scrubbed like everything
+  // else even though it is numbers — the backstop is cheap and this section is the one that grows.
+  await writeStaged(
+    'diagnostics/host-timeline.json',
+    `${JSON.stringify(input.hostTimeline, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

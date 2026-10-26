@@ -11,6 +11,7 @@ import {
   type SupportBundleInput
 } from './support-bundle'
 import { createStallRecordRing } from './stall-record-ring'
+import { summarizeHostTimeline } from './host-stall-sampler'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 
 const roots: string[] = []
@@ -48,6 +49,14 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
       problems: []
     },
     stalls: createStallRecordRing().summary(),
+    // Built by the producer rather than written by hand: a fixture that invents its own shape stops testing
+    // the section the moment the summarizer changes.
+    hostTimeline: summarizeHostTimeline({
+      snapshot: { samples: [], paging: [] },
+      intervalMs: 250,
+      platform: 'darwin',
+      nowMs: 0
+    }),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -433,5 +442,91 @@ describe('support bundle: trajectory section', () => {
     expect(summary.status).toBe('no-stalls-observed')
     expect(summary.observed).toBe(0)
     expect(summary.records).toEqual([])
+  })
+
+  // The half the stall records cannot answer: no window, no threshold, just the machine over the last few
+  // minutes. This is the section a "it was slow for an hour" report needs.
+  it('carries the machine timeline itself, with the window and the counters it was read from', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const vmStat = (pageouts: number): string => `Pageouts:   ${pageouts}.\nSwapouts:   7.\n`
+
+    const result = await createSupportBundle({
+      ...input,
+      hostTimeline: summarizeHostTimeline({
+        snapshot: {
+          samples: [
+            { at: 1_000, cpuMs: 12, freeMemMb: 90, loadAvg1m: 3.5, rssMb: 210 },
+            { at: 1_250, cpuMs: 40, freeMemMb: 61, loadAvg1m: 7.25, rssMb: 214 },
+            { at: 1_500, cpuMs: 9, freeMemMb: 74, loadAvg1m: 5, rssMb: 216 }
+          ],
+          paging: [
+            { at: 1_000, text: vmStat(900) },
+            { at: 1_400, text: vmStat(940) }
+          ],
+          sampleCapacity: 1_200,
+          pagingCapacity: 120,
+          samplesDropped: 8_640,
+          pagingDropped: 610
+        },
+        intervalMs: 250,
+        platform: 'darwin',
+        nowMs: Date.parse('2026-10-26T10:00:00.000Z')
+      })
+    })
+
+    expect(result.entries).toContain('diagnostics/host-timeline.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const timeline = JSON.parse(await readFrom(target, 'diagnostics/host-timeline.json')) as {
+      status: string
+      capturedAt: string
+      sampleCount: number
+      samplesDropped: number
+      sampleCapacity: number
+      spanMs: number
+      oldestAt: string
+      newestAt: string
+      samples: { at: string; cpuMs: number; freeMemMb: number }[]
+      paging: {
+        status: string
+        dropped: number
+        readings: { pageouts: number; swapouts: number }[]
+      }
+    }
+
+    expect(timeline.status).toBe('timeline')
+    expect(timeline.sampleCount).toBe(3)
+    expect(timeline.spanMs).toBe(500)
+    expect(timeline.oldestAt).toBe(new Date(1_000).toISOString())
+    expect(timeline.newestAt).toBe(new Date(1_500).toISOString())
+    // The two numbers that keep "the sampler has been up for days" from reading as "this is all it saw".
+    expect(timeline.sampleCapacity).toBe(1_200)
+    expect(timeline.samplesDropped).toBe(8_640)
+    // Per-sample values survive the archive: free memory between readings is the whole point of a timeline.
+    expect(timeline.samples.map((entry) => entry.freeMemMb)).toEqual([90, 61, 74])
+    expect(timeline.paging.readings.map((entry) => entry.pageouts)).toEqual([900, 940])
+    expect(timeline.paging.readings[0].swapouts).toBe(7)
+  })
+
+  it('writes the timeline section when nothing was sampled, and names that state', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+
+    const result = await createSupportBundle(input)
+
+    // Present with a named empty state: an absent file and a section dropped by a bug would look identical,
+    // and so would an empty list that meant "the machine was calm".
+    expect(result.entries).toContain('diagnostics/host-timeline.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const timeline = JSON.parse(await readFrom(target, 'diagnostics/host-timeline.json')) as {
+      status: string
+      samples?: unknown[]
+      paging: { status: string; reason: string }
+    }
+    expect(timeline.status).toBe('no-samples')
+    expect(timeline.samples).toBeUndefined()
+    expect(timeline.paging).toEqual({ status: 'unavailable', reason: 'no-counters-parsed' })
   })
 })

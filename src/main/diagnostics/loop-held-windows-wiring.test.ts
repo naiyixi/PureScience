@@ -16,6 +16,7 @@ import { sharedLoopHeldWindows } from './loop-held-windows'
 // cases would let their windows (driven on the same fake clock) answer for this one.
 const quietHostSampler = (): HostStallSampler => ({
   read: async () => ({ status: 'no-in-stall-samples' }),
+  snapshot: async () => undefined,
   stop: () => undefined
 })
 

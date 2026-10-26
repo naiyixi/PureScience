@@ -62,6 +62,20 @@ export type PagingReading = { at: number; text: string }
 
 export type PagingCounters = { pageouts?: number; swapouts?: number }
 
+/**
+ * What the sampler's ring held when it was asked — before any window is applied to it. The capacities and
+ * drop counters come from the worker itself: without them a reader cannot tell "five minutes of history"
+ * from "the sampler started a minute ago", which is the difference between evidence and an empty list.
+ */
+export type HostTimelineSnapshot = {
+  samples: HostSample[]
+  paging: PagingReading[]
+  sampleCapacity?: number
+  pagingCapacity?: number
+  samplesDropped?: number
+  pagingDropped?: number
+}
+
 type HostStallSlice = {
   status: 'sampled'
   intervalMs: number
@@ -100,6 +114,11 @@ export type HostStallSampler = {
   // Answers what the thread saw inside `[fromMs, toMs]`. Reading does not stop the thread: the next stall
   // gets a timeline too, from a sampler that never had to start after the event.
   read: (fromMs: number, toMs: number) => Promise<HostStallReading>
+  // The ring as it stands, without a window applied. The stall records answer "what did the machine look
+  // like inside this hang"; this answers "what did it look like in the minutes before the user gave up and
+  // exported a bundle" — a question that has no stall window, and that the after-the-fact machine numbers
+  // in a stall record cannot answer at all.
+  snapshot: () => Promise<HostTimelineSnapshot | undefined>
   stop: () => void
 }
 
@@ -138,11 +157,18 @@ let previous = process.cpuUsage()
 let lastPagingAt = 0
 
 // Bounded from the oldest end: a permanent sampler must not grow for the life of the process, and the
-// recent past is the only part any stall can ask about.
+// recent past is the only part any stall can ask about. Returns how many entries the cap discarded, so the
+// reader learns that history exists that it is not being shown.
 const push = (list, value, cap) => {
   list.push(value)
-  if (list.length > cap) list.splice(0, list.length - cap)
+  if (list.length <= cap) return 0
+  const dropped = list.length - cap
+  list.splice(0, dropped)
+  return dropped
 }
+
+let droppedSamples = 0
+let droppedPaging = 0
 
 const readPaging = () => {
   if (!pagingSource) return
@@ -159,7 +185,7 @@ const readPaging = () => {
       return
     }
     lastPagingAt = Date.now()
-    push(paging, { at: lastPagingAt, text: text }, maxPaging)
+    droppedPaging += push(paging, { at: lastPagingAt, text: text }, maxPaging)
   } catch {
     // An unreadable counter stays absent; a missing reading is not a zero.
   }
@@ -170,7 +196,7 @@ const sample = () => {
   const cpu = process.cpuUsage(previous)
   previous = process.cpuUsage()
   const load = loadavg()[0]
-  push(samples, {
+  droppedSamples += push(samples, {
     at: at,
     cpuMs: Math.round((cpu.user + cpu.system) / 1000),
     freeMemMb: Math.round(freemem() / 1e6),
@@ -197,7 +223,11 @@ parentPort.on('message', (message) => {
       kind: 'read',
       requestId: message.requestId,
       samples: samples,
-      paging: paging
+      paging: paging,
+      sampleCapacity: maxSamples,
+      pagingCapacity: maxPaging,
+      samplesDropped: droppedSamples,
+      pagingDropped: droppedPaging
     })
     return
   }
@@ -368,6 +398,138 @@ type ReadReply = {
   requestId?: number
   samples?: HostSample[]
   paging?: PagingReading[]
+  sampleCapacity?: number
+  pagingCapacity?: number
+  samplesDropped?: number
+  pagingDropped?: number
+}
+
+/**
+ * One machine reading, as the bundle carries it. `at` is an ISO string for the same reason the stall records
+ * use one: a bundle reader lines these up against the logs, and epoch milliseconds do that badly by hand.
+ */
+export type HostTimelineSample = {
+  at: string
+  cpuMs: number
+  freeMemMb?: number
+  loadAvg1m?: number
+  rssMb?: number
+}
+
+export type HostTimelinePaging =
+  | {
+      status: 'readings'
+      capacity?: number
+      dropped?: number
+      // Only the counters, not the platform's raw text: the same two numbers the stall records report, so a
+      // reader compares like with like. Raw `vm_stat` output is 600 bytes of noise per second otherwise.
+      readings: { at: string; pageouts?: number; swapouts?: number }[]
+    }
+  | { status: 'unavailable'; reason: 'platform-exposes-no-counters' | 'no-counters-parsed' }
+
+export type HostTimelineSummary =
+  | {
+      status: 'timeline'
+      capturedAt: string
+      intervalMs: number
+      sampleCapacity?: number
+      sampleCount: number
+      samplesDropped?: number
+      oldestAt: string
+      newestAt: string
+      spanMs: number
+      paging: HostTimelinePaging
+      samples: HostTimelineSample[]
+    }
+  | {
+      status: 'no-samples'
+      capturedAt: string
+      intervalMs: number
+      sampleCapacity?: number
+      samplesDropped?: number
+      paging: HostTimelinePaging
+    }
+  // Never a missing field: a bundle with no timeline section at all cannot be told apart from one whose
+  // timeline was dropped by a bug, and the reason is different in each case.
+  | { status: 'unavailable'; capturedAt: string; reason: 'sampler-not-started' | 'no-answer' }
+
+/**
+ * Pure: turns a ring snapshot into the section the bundle carries. Every absent value is named — capacities
+ * and drop counters only when the worker reported them, paging only when the platform exposes counters and at
+ * least one reading parsed — because a zero here would read as "nothing happened" instead of "not measured".
+ */
+export const summarizeHostTimeline = (input: {
+  snapshot?: HostTimelineSnapshot
+  intervalMs: number
+  platform?: NodeJS.Platform
+  nowMs?: number
+}): HostTimelineSummary => {
+  const capturedAt = new Date(input.nowMs ?? Date.now()).toISOString()
+  const platform = input.platform ?? process.platform
+  const snapshot = input.snapshot
+  if (!snapshot) return { status: 'unavailable', capturedAt, reason: 'no-answer' }
+
+  const readings = [...snapshot.paging]
+    .sort((left, right) => left.at - right.at)
+    .map((reading) => ({
+      at: new Date(reading.at).toISOString(),
+      counters: parsePagingCounters(platform, reading.text)
+    }))
+    .filter(
+      (entry): entry is { at: string; counters: PagingCounters } => entry.counters !== undefined
+    )
+  const paging: HostTimelinePaging =
+    readings.length > 0
+      ? {
+          status: 'readings',
+          ...(snapshot.pagingCapacity !== undefined ? { capacity: snapshot.pagingCapacity } : {}),
+          ...(snapshot.pagingDropped !== undefined ? { dropped: snapshot.pagingDropped } : {}),
+          readings: readings.map((entry) => ({ at: entry.at, ...entry.counters }))
+        }
+      : {
+          status: 'unavailable',
+          reason:
+            PAGING_SOURCE[platform] === undefined
+              ? 'platform-exposes-no-counters'
+              : 'no-counters-parsed'
+        }
+
+  const timeline = [...snapshot.samples].sort((left, right) => left.at - right.at)
+  const first = timeline[0]
+  const last = timeline[timeline.length - 1]
+  const capacity =
+    snapshot.sampleCapacity !== undefined ? { sampleCapacity: snapshot.sampleCapacity } : {}
+  const dropped =
+    snapshot.samplesDropped !== undefined ? { samplesDropped: snapshot.samplesDropped } : {}
+  if (!first || !last) {
+    return {
+      status: 'no-samples',
+      capturedAt,
+      intervalMs: input.intervalMs,
+      ...capacity,
+      ...dropped,
+      paging
+    }
+  }
+  return {
+    status: 'timeline',
+    capturedAt,
+    intervalMs: input.intervalMs,
+    ...capacity,
+    sampleCount: timeline.length,
+    ...dropped,
+    oldestAt: new Date(first.at).toISOString(),
+    newestAt: new Date(last.at).toISOString(),
+    spanMs: Math.max(0, last.at - first.at),
+    paging,
+    samples: timeline.map((sample) => ({
+      at: new Date(sample.at).toISOString(),
+      cpuMs: sample.cpuMs,
+      ...(sample.freeMemMb !== undefined ? { freeMemMb: sample.freeMemMb } : {}),
+      ...(sample.loadAvg1m !== undefined ? { loadAvg1m: sample.loadAvg1m } : {}),
+      ...(sample.rssMb !== undefined ? { rssMb: sample.rssMb } : {})
+    }))
+  }
 }
 
 // A thread of our own, because the main thread is the thing being held: anything it samples is either
@@ -462,10 +624,18 @@ export const createHostStallSampler = (
 
   // One read at a time: two stalls can land back to back and each reply has to be matched to its own window.
   let chain: Promise<unknown> = Promise.resolve()
+  const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
+    const answer = chain.then(task)
+    chain = answer.then(
+      () => undefined,
+      () => undefined
+    )
+    return answer
+  }
 
   return {
-    read: (fromMs, toMs) => {
-      const answer = chain.then(async (): Promise<HostStallReading> => {
+    read: (fromMs, toMs) =>
+      enqueue(async (): Promise<HostStallReading> => {
         const reply = await request()
         if (!reply) return { status: 'unavailable' }
         return summarizeHostWindow({
@@ -476,13 +646,57 @@ export const createHostStallSampler = (
           intervalMs,
           platform
         })
-      })
-      chain = answer.then(
-        () => undefined,
-        () => undefined
-      )
-      return answer
-    },
+      }),
+    snapshot: () =>
+      enqueue(async (): Promise<HostTimelineSnapshot | undefined> => {
+        const reply = await request()
+        if (!reply) return undefined
+        return {
+          samples: reply.samples ?? [],
+          paging: reply.paging ?? [],
+          ...(reply.sampleCapacity !== undefined ? { sampleCapacity: reply.sampleCapacity } : {}),
+          ...(reply.pagingCapacity !== undefined ? { pagingCapacity: reply.pagingCapacity } : {}),
+          ...(reply.samplesDropped !== undefined ? { samplesDropped: reply.samplesDropped } : {}),
+          ...(reply.pagingDropped !== undefined ? { pagingDropped: reply.pagingDropped } : {})
+        }
+      }),
     stop: () => close()
   }
+}
+
+// The sampler is started once, by the watchdog, in `main`; the support bundle is assembled in the composition
+// root, which has no other way to reach it. Shared here for the same reason `sharedStallRecords` is: a second
+// sampler would be a second timeline (costing its own thread and its own `vm_stat` child every second) whose
+// ring would report less history than the one the watchdog uses. Tests build their own instance instead.
+let sharedSampler: HostStallSampler | undefined
+let sharedSamplerCreated = false
+
+export const sharedHostStallSampler = (): HostStallSampler | undefined => {
+  if (!sharedSamplerCreated) {
+    sharedSamplerCreated = true
+    sharedSampler = createHostStallSampler()
+  }
+  return sharedSampler
+}
+
+/**
+ * The timeline for a bundle, from the sampler that is already running. Deliberately does *not* start one: a
+ * bundle exported before the watchdog started must say `sampler-not-started` rather than spin up a thread and
+ * report an empty ring — "nothing was ever sampled" and "nothing had been sampled yet" are different answers.
+ */
+export const peekSharedHostTimeline = async (
+  input: {
+    nowMs?: number
+    platform?: NodeJS.Platform
+  } = {}
+): Promise<HostTimelineSummary> => {
+  const capturedAt = new Date(input.nowMs ?? Date.now()).toISOString()
+  if (!sharedSampler) return { status: 'unavailable', capturedAt, reason: 'sampler-not-started' }
+  const snapshot = await sharedSampler.snapshot()
+  return summarizeHostTimeline({
+    ...(snapshot ? { snapshot } : {}),
+    intervalMs: DEFAULT_INTERVAL_MS,
+    ...(input.platform ? { platform: input.platform } : {}),
+    ...(input.nowMs !== undefined ? { nowMs: input.nowMs } : {})
+  })
 }

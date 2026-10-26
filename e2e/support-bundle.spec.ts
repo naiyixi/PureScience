@@ -84,6 +84,54 @@ test('exports a scrubbed support bundle from the running app', async ({ app }) =
     if (stalls.status === 'no-stalls-observed') expect(stalls.records).toEqual([])
     else expect(stalls.records.length).toBeGreaterThan(0)
 
+    // The machine's own timeline: the sampler runs on its own thread from boot, so a bundle exported here must
+    // carry real readings (not an empty list) and say which of the three states it is in. This is the half the
+    // stall records cannot answer — a report with no stall window at all.
+    expect(entries).toContain('diagnostics/host-timeline.json')
+    const timeline: {
+      status: string
+      reason?: string
+      capturedAt: string
+      intervalMs?: number
+      sampleCount?: number
+      sampleCapacity?: number
+      spanMs?: number
+      oldestAt?: string
+      newestAt?: string
+      samples?: { at: string; cpuMs: number }[]
+      paging?: { status: string; reason?: string; readings?: unknown[] }
+    } = JSON.parse(await readFile(join(extracted, 'diagnostics/host-timeline.json'), 'utf8'))
+    expect(['timeline', 'no-samples', 'unavailable']).toContain(timeline.status)
+    expect(Date.parse(timeline.capturedAt)).not.toBeNaN()
+    if (timeline.status === 'timeline') {
+      // The sampler ticks four times a second and the app has been up for the whole test, so at least one
+      // reading must exist: an empty samples array here would mean the section shipped without its content.
+      expect(timeline.samples?.length ?? 0).toBeGreaterThan(0)
+      expect(timeline.sampleCount).toBe(timeline.samples?.length)
+      expect(timeline.spanMs).toBeGreaterThanOrEqual(0)
+      expect(Date.parse(timeline.oldestAt ?? '')).not.toBeNaN()
+      expect(Date.parse(timeline.newestAt ?? '')).not.toBeNaN()
+      expect(timeline.intervalMs).toBeGreaterThan(0)
+      expect(timeline.sampleCapacity).toBeGreaterThan(0)
+      // Printed so the reading is auditable from the log, not just an assertion that passed: the numbers a
+      // bundle reader sees are the evidence for this section existing at all.
+      console.log(
+        `[e2e] host-timeline status=${timeline.status} samples=${timeline.sampleCount} capacity=${timeline.sampleCapacity} dropped=${(timeline as { samplesDropped?: number }).samplesDropped ?? 'not-reported'} spanMs=${timeline.spanMs} intervalMs=${timeline.intervalMs} paging=${timeline.paging?.status}${timeline.paging?.status === 'readings' ? `:${timeline.paging.readings?.length}` : `:${timeline.paging?.reason}`}`
+      )
+      // Whichever platform this lane runs on: readings when the counters are readable, otherwise a named
+      // reason — never an empty list pretending nothing paged.
+      if (timeline.paging?.status === 'readings')
+        expect(timeline.paging.readings?.length).toBeGreaterThan(0)
+      else
+        expect(['platform-exposes-no-counters', 'no-counters-parsed']).toContain(
+          timeline.paging?.reason
+        )
+    } else if (timeline.status === 'no-samples') {
+      expect(timeline.samples).toBeUndefined()
+    } else {
+      expect(['sampler-not-started', 'no-answer']).toContain(timeline.reason)
+    }
+
     const manifest: Record<string, unknown> = JSON.parse(
       await readFile(join(extracted, 'manifest.json'), 'utf8')
     )

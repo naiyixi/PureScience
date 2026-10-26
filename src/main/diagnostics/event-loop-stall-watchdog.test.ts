@@ -21,6 +21,7 @@ import {
 // answer for a window nobody sampled — and one case below drives a timeline through it.
 const quietHostSampler = (): HostStallSampler => ({
   read: async () => ({ status: 'no-in-stall-samples' }),
+  snapshot: async () => undefined,
   stop: () => undefined
 })
 
@@ -376,6 +377,7 @@ describe('event loop stall watchdog', () => {
           freeMemMbMin: 38
         }
       },
+      snapshot: async () => undefined,
       stop: () => undefined
     }
     const watchdog = startEventLoopStallWatchdog({

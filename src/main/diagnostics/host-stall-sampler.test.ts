@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   createHostStallSampler,
   parsePagingCounters,
+  peekSharedHostTimeline,
+  sharedHostStallSampler,
+  summarizeHostTimeline,
   summarizeHostWindow
 } from './host-stall-sampler'
 
@@ -371,4 +374,142 @@ describe('host sampler on its own thread', () => {
     sampler.stop()
     expect(await sampler.read(0, Date.now())).toEqual({ status: 'unavailable' })
   }, 10_000)
+})
+
+// What the bundle carries: the ring as a whole, not a stall window. Pure cases first, because the section's
+// value is entirely in its named states — an empty list that could mean "calm machine", "just started" or
+// "never started" is worse than no section at all.
+describe('the timeline a bundle carries', () => {
+  const sample = (at: number, cpuMs: number): { at: number; cpuMs: number; freeMemMb: number } => ({
+    at,
+    cpuMs,
+    freeMemMb: 120
+  })
+
+  it('keeps the whole ring, in order, with the window and the drop counters it was read from', () => {
+    const timeline = summarizeHostTimeline({
+      snapshot: {
+        samples: [sample(3_000, 3), sample(1_000, 1), sample(2_000, 2)],
+        paging: [
+          { at: 1_000, text: VM_STAT.replace(/^Pageouts:\s+\d+\.$/m, 'Pageouts:   900.') },
+          { at: 2_000, text: VM_STAT.replace(/^Pageouts:\s+\d+\.$/m, 'Pageouts:   950.') }
+        ],
+        sampleCapacity: 1_200,
+        pagingCapacity: 120,
+        samplesDropped: 4_800,
+        pagingDropped: 300
+      },
+      intervalMs: 250,
+      platform: 'darwin',
+      nowMs: Date.parse('2026-10-26T10:00:00.000Z')
+    })
+
+    expect(timeline.status).toBe('timeline')
+    if (timeline.status !== 'timeline') throw new Error('expected a timeline')
+    expect(timeline.capturedAt).toBe('2026-10-26T10:00:00.000Z')
+    // Ordered by time, and every reading is present: a bundle that dropped the middle of a timeline would
+    // still report a plausible `sampleCount`.
+    expect(timeline.samples.map((entry) => entry.cpuMs)).toEqual([1, 2, 3])
+    expect(timeline.sampleCount).toBe(3)
+    expect(timeline.oldestAt).toBe(new Date(1_000).toISOString())
+    expect(timeline.newestAt).toBe(new Date(3_000).toISOString())
+    expect(timeline.spanMs).toBe(2_000)
+    // The two numbers that separate "five minutes of history" from "started a minute ago".
+    expect(timeline.sampleCapacity).toBe(1_200)
+    expect(timeline.samplesDropped).toBe(4_800)
+    expect(timeline.paging.status).toBe('readings')
+    if (timeline.paging.status !== 'readings') throw new Error('expected paging readings')
+    expect(timeline.paging.readings.map((entry) => entry.pageouts)).toEqual([900, 950])
+    expect(timeline.paging.dropped).toBe(300)
+  })
+
+  it('names "no samples yet" instead of shipping an empty list', () => {
+    const timeline = summarizeHostTimeline({
+      snapshot: { samples: [], paging: [], sampleCapacity: 1_200 },
+      intervalMs: 250,
+      platform: 'darwin',
+      nowMs: 0
+    })
+
+    expect(timeline.status).toBe('no-samples')
+    if (timeline.status !== 'no-samples') throw new Error('expected a named empty state')
+    expect(timeline.sampleCapacity).toBe(1_200)
+    // Nothing parsed is its own reason, distinct from a platform that exposes no such counters at all.
+    expect(timeline.paging).toEqual({ status: 'unavailable', reason: 'no-counters-parsed' })
+  })
+
+  it('says the platform exposes no paging counters rather than reporting zero paging', () => {
+    const timeline = summarizeHostTimeline({
+      snapshot: { samples: [sample(1_000, 1)], paging: [] },
+      intervalMs: 250,
+      platform: 'win32',
+      nowMs: 0
+    })
+
+    expect(timeline.status).toBe('timeline')
+    if (timeline.status !== 'timeline') throw new Error('expected a timeline')
+    expect(timeline.paging).toEqual({
+      status: 'unavailable',
+      reason: 'platform-exposes-no-counters'
+    })
+    // Absent, not zero: a machine whose counters cannot be read must not look like one that never paged.
+    expect(timeline.sampleCapacity).toBeUndefined()
+    expect(timeline.samplesDropped).toBeUndefined()
+  })
+
+  it('snapshots the live ring with its cap and how much the cap already discarded', async () => {
+    const sampler = createHostStallSampler({ intervalMs: 10, maxSamples: 3 })
+    if (!sampler) throw new Error('expected a host sampler')
+
+    try {
+      // Wait for the cap to bite: three samples arrive in ~30 ms, but a starved worker can take longer.
+      let snapshot = await sampler.snapshot()
+      for (let attempt = 0; attempt < 40 && (snapshot?.samplesDropped ?? 0) === 0; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        snapshot = await sampler.snapshot()
+      }
+
+      expect(snapshot?.sampleCapacity).toBe(3)
+      expect(snapshot?.samples).toHaveLength(3)
+      expect(snapshot?.samplesDropped).toBeGreaterThan(0)
+      // Oldest-first ring: the kept samples must be the newest ones, or the timeline would describe the past
+      // the sampler no longer has.
+      const times = (snapshot?.samples ?? []).map((entry) => entry.at)
+      expect([...times].sort((left, right) => left - right)).toEqual(times)
+    } finally {
+      sampler.stop()
+    }
+  }, 20_000)
+
+  it('reads the timeline from the sampler the watchdog started, through the shared accessor', async () => {
+    const shared = sharedHostStallSampler()
+    if (!shared) throw new Error('expected the shared sampler to start on this platform')
+
+    try {
+      const timeline = await peekSharedHostTimeline({
+        nowMs: Date.parse('2026-10-26T10:00:00.000Z')
+      })
+      expect(timeline.status).toBe('timeline')
+      if (timeline.status !== 'timeline') throw new Error('expected a timeline')
+      expect(timeline.capturedAt).toBe('2026-10-26T10:00:00.000Z')
+      // The worker samples once before answering, so a fresh sampler still has a reading to hand over.
+      expect(timeline.sampleCount).toBeGreaterThanOrEqual(1)
+      expect(timeline.sampleCapacity).toBeGreaterThan(0)
+    } finally {
+      shared.stop()
+    }
+  }, 20_000)
+
+  it('says "sampler-not-started" when a bundle is exported before the watchdog exists', async () => {
+    // A fresh module registry: the accessor above already started the shared instance in this one.
+    vi.resetModules()
+    const fresh = await import('./host-stall-sampler')
+    const timeline = await fresh.peekSharedHostTimeline({ nowMs: 0 })
+
+    expect(timeline).toEqual({
+      status: 'unavailable',
+      capturedAt: '1970-01-01T00:00:00.000Z',
+      reason: 'sampler-not-started'
+    })
+  })
 })

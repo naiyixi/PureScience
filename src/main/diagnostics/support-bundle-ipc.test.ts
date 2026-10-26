@@ -23,7 +23,12 @@ const facts: SupportBundleFacts = {
     entryCount: 1,
     problems: []
   },
-  stalls: { capacity: 16, observed: 0, dropped: 0, status: 'no-stalls-observed', records: [] }
+  stalls: { capacity: 16, observed: 0, dropped: 0, status: 'no-stalls-observed', records: [] },
+  hostTimeline: {
+    status: 'unavailable',
+    capturedAt: '2026-09-28T00:00:00.000Z',
+    reason: 'sampler-not-started'
+  }
 }
 
 const sender = {} as never

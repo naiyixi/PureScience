@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks'
 import type { Logger } from '../logger'
 import { classifyCpuShare, cpuShareOf, type ActivityAttribution } from './cpu-attribution'
 import {
-  createHostStallSampler,
+  sharedHostStallSampler,
   type HostStallReading,
   type HostStallSampler
 } from './host-stall-sampler'
@@ -151,7 +151,8 @@ export const startEventLoopStallWatchdog = (
   const machine = input.machine ?? readMachine
   const createPresampler =
     input.createPresampler ?? ((): RollingStackProfile | undefined => createRollingStackProfile())
-  const createHostSampler = input.createHostSampler ?? (() => createHostStallSampler())
+  const createHostSampler =
+    input.createHostSampler ?? ((): HostStallSampler | undefined => sharedHostStallSampler())
   const tickMs = input.tickMs ?? DEFAULT_TICK_MS
   const thresholdMs = input.thresholdMs ?? DEFAULT_STALL_THRESHOLD_MS
   const presampleRotateMs = input.presampleRotateMs ?? DEFAULT_PRESAMPLE_ROTATE_MS
