@@ -166,8 +166,12 @@ describe('production application command wiring', () => {
       )
     )
     expect(occurrences(indexSource, 'RemoteAccessService.create()')).toBe(1)
+    // Startup diagnostics (`startupDiagnostics?.phase('…')`) are add-only timeline markers: they carry no
+    // behaviour and two of them now sit inside this window. They are the *only* insert the pattern permits
+    // between the three statements, so the assertion keeps its meaning — mint the unique owner, bind it,
+    // hand Web a narrow view — and any new product call here still breaks the match.
     expect(startup).toMatch(
-      /const remoteAccess = await RemoteAccessService\.create\(\) bindRemoteAccess\(remoteAccess\) const webController = createWebServiceController\(\{[^}]*externalAccess: remoteAccess\.webAccess/
+      /const remoteAccess = await RemoteAccessService\.create\(\)(?: startupDiagnostics\?\.phase\('[a-z0-9-]+'\))* bindRemoteAccess\(remoteAccess\) const webController = createWebServiceController\(\{[^}]*externalAccess: remoteAccess\.webAccess/
     )
     expect(startup).toContain('remoteAccess.attachWebController(webController)')
     expect(startup).toContain('registerRemoteAccessIpcHandlers(remoteAccess)')
