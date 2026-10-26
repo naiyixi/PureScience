@@ -44,3 +44,22 @@ provision 时再取。这动的是 `createProductionProvisioner` 的入参与其
 不在「加诊断」这一笔里夹带。
 
 **收益上界**：冷启动 2.0–3.2 s 里，这一项占 0.7–2.5 s。
+
+## 发布件确认（v2.18.2，从 GitHub Release 下载的 DMG）
+
+装机后（`CFBundleShortVersionString = 2.18.2`，asar 里 `channelName` / `composition stage` / `SchemaStamp` 都在）
+的三次冷启动：
+
+| 读点 | 读数 |
+|---|---|
+| `compose runtime steps` | 294 / 299 / 298 ms（`open-project-db` 113–135 ms、`load-probe-answers` 77–124 ms） |
+| `compose-runtime` → `ipc-handlers-registered` | 1165 → 1719 ms（554 ms，其中已计时的 compose 步骤 479 ms） |
+| **`web-service-started`** | **1735 ms** |
+
+没有 `specialist-skill-catalog` 的慢步骤行（低于 250 ms 阈值）。对照改动前的同类读数
+（`ipc-handlers-registered` 2469 / 3021 / 4157 ms、`web-service-started` 2480 / 3177 / 4170 ms），
+镜像测速确实不在启动路径上了。
+
+字节校验：GitHub 记录的资产 digest（`sha256:02a53f21…4d7e`）与发布件自带 `SHA256SUMS.txt` 里那行**一致**；
+`SHA256SUMS.txt` 自身的 sha256（`bf35ec42…`）也与 GitHub digest 一致。本机到 CDN 太慢，没有完成「下载后本地
+重算」，这一条只到「两个独立来源互相印证」。
