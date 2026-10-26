@@ -595,6 +595,19 @@ const createApplicationModules = async (
   // against 7,834 ms of recorded steps), so every un-timed await is a hole in that attribution. A pin test
   // (`ipc-startup-attribution.test.ts`) enumerates these names — extending the surface must be intentional.
   const composeSteps = createComposeStepRecorder({ log: createLogger('startup') })
+  // Add-only instrumentation for the stretch the compose recorder cannot see. `compose-runtime` is set
+  // before this call and `web-service-started` after it, so the packaged build showed a 1,360 ms silence
+  // that belonged to *this* function (measured 2026-10-26: 1109 ms → 2469 ms). These lines name the
+  // boundaries between the untimed module inits; they log nothing else and change no behaviour.
+  const compositionLog = createLogger('startup')
+  const compositionStartedAt = performance.now()
+  const compositionStage = (stage: string): void => {
+    compositionLog.info('composition stage', {
+      stage,
+      atMs: Math.round(performance.now() - compositionStartedAt)
+    })
+  }
+  compositionStage('composition-start')
   const applicationEvents = await composeSteps.step('application-events', () =>
     modules.add(installRendererBroadcastEventHub, createApplicationEventModule)
   )
@@ -1057,6 +1070,7 @@ const createApplicationModules = async (
   })
   const profileService = new ProfileService(specialistRepository, builtinRegistry)
   await composeSteps.step('builtin-catalog-ready', () => profileService.ensureBuiltinCatalogReady())
+  compositionStage('after-timed-steps')
   const specialistPackageService = new SpecialistPackageService({
     storageDir: resolveStorageRoot(),
     repository: specialistRepository,
@@ -1276,6 +1290,7 @@ const createApplicationModules = async (
   // One MCP client manager backs both dispatch (ConnectorService.call → custom server) and skill-doc
   // generation (listTools) for user-added custom MCP servers (stdio + remote). It lazily connects per
   // server, so constructing it here does not spawn anything until a custom server is actually used.
+  compositionStage('before-mcp-client-manager')
   const mcpClientManager = await modules.add(undefined, () => {
     const manager = new McpClientManager({
       // Classified external navigation: only the shared protocol allowlist (http/https/mailto) may
@@ -2694,6 +2709,7 @@ const createApplicationModules = async (
       }
     }
   })
+  compositionStage('before-agent-runtime')
   const runtime = await modules.add(
     {
       mcpEntryPath: mainEntryPath,
@@ -2810,6 +2826,7 @@ const createApplicationModules = async (
       }
     }
   )
+  compositionStage('after-agent-runtime')
   surfaceAdapters = afterAcpAdapters
   runtimeRef.current = runtime
   // Archive availability is checked at the final admission point, rather than trusting renderer
