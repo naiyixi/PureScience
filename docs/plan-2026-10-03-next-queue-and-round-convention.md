@@ -12946,3 +12946,86 @@ ArrayContaining`）；还原后 33 passed。
 
 1. 读 `d8897e29` 的判决（`Nightly` + `Windows Full Test`，绑完整 40 位 SHA），再推 `9d1ba1a8` 并读它的判决。
 2. `ipc.ts` 一解封就补最后一处 `application command handler was slow`，这一族收口。
+
+
+## 二百四十三、本轮追加（执行器，2026-10-26 22:0x–）—— 第十一处（收口）：应用命令的慢行也会说「这段时间是不是我们的」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `HEAD == origin/main == f4417298`，工作区干净。上一节（§二百四十二）之后主干另有若干笔，
+  其中 `f4417298` 是 **v2.18.2 发版材料**、tag `v2.18.2` 指向它。**另一个会话同时在这棵树上工作**
+  （本轮开工后它又落了 `6f93dfbe` / `4cb9b554` / `db147e59` 三笔，并在用挂载的 DMG 核打包件）
+  ⇒ 本轮只碰自己那三个文件，提交前 `git diff --cached --stat` 自证。
+- **v2.18.2 已真发出去**（这不是我做的，只是本轮开工核对时读到的事实）：`Release 40329181094` 于 14:12Z
+  `completed/success`；页 `draft=false` / `pre=false`，**21 个资产**四平台齐（mac arm64/x64 的 dmg+zip+blockmap、
+  linux AppImage+deb、win setup.exe+zip）外加 `SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、
+  `latest*.yml` 与 `arm64-mac.yml`/`x64-mac.yml`；`sourceSha` 与 `git rev-parse 'v2.18.2^{commit}'` 逐字符相同
+  （`f4417298…`）。macOS 两个资产的公证作业是**具名 skipped**
+  （`SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)`）⇒ 那是「没有凭据」，不是「已公证」。
+- 该工作流的并发组是 `release-${{ github.ref }}`（读了 workflow 才敢下这句）⇒ **推 main 不会腰斩发版作业**。
+- 本轮取 §二百四十二 §四 第 2 条：`src/main/ipc.ts` 已无在制品 ⇒ 同族最后一处解封。
+
+### 一 交付（`b32b7544`）
+
+`application-command-router` 围一次 handler 调用采两态：`process.cpuUsage()` 两个样本 + 停摆窗口
+（**与通道级慢行同一份共享 registry、同一个 `performance.now()` 时钟域**）；`durationMs` 仍取 `Date.now()`，
+日志里既有那个数字的来源不变。三个字段（`cpuMs` / `cpuShare` / `attribution`）进诊断对象，`ipc.ts` 的 warn 行
+展开它们；循环确实被占住时再补 `heldMs` / `ownMs`。
+
+**为什么这一处特别要紧**：应用命令有两条派发路径 —— `ipc-handler-registry` 那条外层已有
+`invokeWithIpcRejectionDiagnostics`（通道级慢行会带归属），**web RPC 那条没有任何包装** ⇒ web 侧一个慢命令
+原先只有一句光秃秃的时长，既没有「是不是我们的」，也没有「是不是循环被占住」。
+
+**拒绝分支同样带**（沿用 §二百四十二 的口径）：`handler-rejected` 原先只说「这个命令拒了」，
+「等了 700 ms 才抛」与「一进来就抛」在日志里同形。
+
+**仪器坏掉时降级、绝不吃掉结果**：`readNumber` / `readCpu` 各自 try，拿不到就不带那个字段
+（**缺字段 = 未测，不是 0**），handler 自己的返回值与错误原样返回。
+
+### 二 门禁与变异自证（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向（router / composition / client / wiring / ipc-handler-registry / diagnostics） | **22 files / 161 passed** |
+| `src/main` 全树 | **813 files：796 passed + 16 skipped**；**11,045 passed / 206 skipped** |
+| `tsc --noEmit -p tsconfig.node.json` | **0** |
+| `tsc --noEmit -p tsconfig.web.json` | **0** |
+| `eslint --no-cache`（三个文件） | **0 error / 0 warning** |
+| `eslint --no-cache .`（全仓，与 CI 同口径） | **0 error / 119 warning**（warning 不是 CI 的红；本笔三文件 0/0） |
+| `scripts/pre-push-checks.sh` | **exit 0** |
+
+**三处变异各自变红**（同一份用例上验，改完还原）：① 去掉 `cpuAttributionFields` 的展开 ⇒ 3 条红
+（键集断言点名 `[ 'code', 'commandName', 'durationMs' ]` vs `[ 'attribution', … ]`）；② 去掉 held 拆分 ⇒
+「被占住的窗口要拆开」那条红；③ 拒绝分支不带时长 ⇒ 2 条红。
+
+**一个仪器坑（本轮咬了一次）**：第一次做变异，我把对象字面量里的展开换成了 `void heldMs` 这种**语句**，
+文件根本解析不了 ⇒ vitest 报 `Tests no tests`。那不是「变异没被抓到」，是**变异本身语法就错**；
+只看 `grep Tests` 的话，`no tests` 与「没跑到」同形。
+
+### 三 边界（不许读成更强）
+
+1. **没有真机日志行**：要一行真的 `application command handler was slow { cpuMs… }`，需要一次真实慢命令
+   + 重启用户常驻实例（等点头）。本轮的证据是单测 + 变异自证，**不冒充真机**。
+2. `cpuShare` 是**启发式**（≥0.6 判 cpu-bound、≤0.15 判 not-scheduled、中间留 `inconclusive`），与既有同一条；
+   停摆窗口只记 ≥200 ms 的停顿（既有常量），更短的抖动不算「被占住」。
+3. **这一族的词表有一个诚实缺口，本轮据实记下、没有私下修**：`attribution` 只有三档，而
+   `process-not-scheduled` 是从「CPU 份额 ≤0.15」推出来的 —— **「在等 I/O」（网络、慢查询、子进程）与
+   「进程根本没被调度」在这一档上同形**。对应用命令尤其要紧：它的 handler 可以 `await` 一次远端请求，
+   那样一段 300 ms 里 CPU 只有 5 ms ⇒ 会被读成「机器没跑我们」，而真相是「我们在等别人」。
+   既有十处（文件/数据库/存储读）多数是本地同步工作，这个混淆不明显；**这一处把它显式化了**。
+   修法需要全族一起改（新增一档如「awaiting-external」或把这档改名成不宣称「进程没在跑」的说法），
+   涉及 11 个消费点的词表与它们自己的断言 ⇒ **单独立案，不在本轮顺手改**。
+4. **全量套件这轮没有可归因读数**：全仓 `npx vitest run` 开跑时机器负载从 40 涨到 **126**
+   （点名：一个 **5 天 21 小时**前留下、还在空转的 `agent-browser` Chrome 树，四个子进程各占 80–100% CPU；
+   已 `TERM` 掉那个 5 天前的实例，**没碰**同时存在的那个 30 分钟的实例），那次读数**作废、不引用**。
+   改跑 `src/main` 全树，唯一红是 `notebook/runtime-service` 的
+   `executeShell … captures stdout`（`expected '' to contain 'hi'`，真实 spawn `sh`），
+   **单文件隔离 3/3 全绿** ⇒ 按负载抖动记档，不当回归、也不改断言（更不许加大超时）。
+
+### 四 下一轮第一步
+
+1. 读 `4cb9b554` 的那两条车道判决（`Nightly` / `Windows Full Test`，绑完整 40 位 SHA）——
+   我的 `b32b7544` 是被这棵树的推送带上主干的，**没有自己的 run**，替代关系是祖先成立
+   （`git merge-base --is-ancestor b32b7544 4cb9b554`）。`db147e59` 是纯 `docs/**`，按 `paths:` 过滤不建 run。
+2. 下一单元候选（都不需要发版窗口）：`notebook/runtime-service` 那条 spawn 断言要不要收紧（**先量再改**）；
+   以及 `src/main/ipc.ts` 里其余「有读数但没归属」的分支（本轮只做了应用命令这一族）。
