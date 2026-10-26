@@ -1,5 +1,53 @@
 # PureScience 更新日记
 
+## v2.18.2 — 2026-10-26（把「将来装包」的偏好从开窗路径上拿走）
+
+**成熟度自陈**：这一版的主题是**启动**。两件事：① 网络镜像测速从启动关键路径上移走（真机 0.6–2.3 s）；
+② 上一版里被记成「已知红」的 `egress` flaky **已经修掉**，这条口径要更正。另有诊断侧的一批改动（另一条在制
+单元），一并列出。
+
+### 一、启动：镜像测速不再挡着开窗
+
+`compose-runtime` → `ipc-handlers-registered` 之间那 1.28 s，经过逐层插桩（全部真机读数）收敛到三行代码：
+`getPackageMirror()` → **`effectiveMirrorAsync(...)`** → `createProductionProvisioner({ channel })`。往下是
+`pickFastestMirror()`——对候选 conda/pip 镜像做**网络测速**。而镜像的唯一用途是装 notebook 环境。
+
+| 指标（打包版，同一台机） | 改前 | 改后 |
+|---|---|---|
+| `ipc-handlers-registered` | 2469 / 3021 / 4157 ms | **1828 / 1571 / 1415 ms** |
+| `web-service-started` | 2480 / 3177 / 4170 ms | **1841 / 1581 / 1447 ms** |
+
+改法是把 `channel` 变成**惰性解析**（`string | (() => Promise<string>)`，创建环境时才解析一次），composition
+只用同步的 locale 默认值。**没有**用超时降级——那会让整个会话拿错镜像去装包，是正确性事故。
+
+### 二、启动归因：一段 1.27 s 的沉默被切成可读的层
+
+原来 `compose-runtime` 之后到 `web-service-started` 之间没有任何读数。加阶段行之后逐层排除（每一步都有
+读数，不是猜）：compose 之后那串 await **11 ms**、13 处 `modules.add` 里的 MCP manager + agent runtime
+**13 ms**、全部 electron runtime surface 安装 **0 ms**、code reconstruction **0 ms**、权限授权投影 **0 ms**、
+screening model **78 ms**。剩下的就是镜像测速。方法、读数、以及「为什么不加超时」都落在
+`docs/evidence/2026-10-26-startup-mirror-probe.md`。
+
+### 三、口径更正：上一版的「已知红」已修
+
+v2.18.1 的版记里写着 `src/main/net/egress.test.ts:452` 的 CONNECT 隧道用例有 3 秒内部看门狗、在 coverage
+车道会被争抢抢先。**这条已经修了**（`25d4c0a7`：隧道收口带具名原因，真 TCP 那条改按「观察到的结束包」断言），
+之后 Nightly 在这条上是绿的。上一版发布时它确实还没修，所以那行不是错的；但从这一版起它不再成立。
+
+### 四、诊断（另一条在制单元）
+
+- 慢行不只报时长，也报「这段时间是不是我们的」：CPU 归属铺到第九、第十处（产物版本、受管预览、笔记本
+  状态读、会话评审的慢读），失败分支同样带；
+- 支持包带上导出前那几分钟的机器时间线；
+- 通道级慢行第一个带 CPU 归属；慢探针那条的「安静半边」改用注入时钟，负载不再冒充回归。
+
+### 明确没做 / 未验证
+
+- **没有跑一次真实 notebook 环境创建**（要下载数百 MB）：「解析出的镜像值在真实装包时生效」只到
+  micromamba argv 的断言，不是端到端。
+- **`toolCalls` 一段**（轨迹包）仍需一次真 agent 回合；**usage↔日志对账**仍未做（要一次真实模型调用）。
+- 剩余的 `ipc-handlers-registered` 约 400–500 ms 尚未归因到具体构造。
+
 ## v2.18.1 — 2026-10-26（启动不再为「什么也没变」付钱）
 
 **成熟度自陈**：这一版的主体是**两处每次启动都要付、但什么都没做的开销**，读数全部来自真机；另有两处
