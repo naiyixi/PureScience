@@ -178,7 +178,10 @@ export const BASE_R_PACKAGES: string[] = ['r-base', 'r-jsonlite']
 export type ProvisionerDeps = {
   root: string
   mm: string
-  channel: string
+  // A string is the ordinary case. A resolver is how startup avoids a network mirror probe: the caller
+  // hands over the synchronous locale default, and the probed value is resolved only when an environment
+  // is actually created (see docs/evidence/2026-10-26-startup-mirror-probe.md).
+  channel: string | (() => Promise<string>)
   // Downloads the (spec, version) bundle into the pkgs cache and returns its local lock path, or
   // undefined when no bundle is published (the caller must fail closed rather than silently solving
   // online for the default envs).
@@ -351,6 +354,13 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
   private readonly liveUnconfirmedPrefixes = new Set<string>()
 
   constructor(private readonly deps: ProvisionerDeps) {}
+
+  // Resolved at the moment an environment is created, never at construction: the probed mirror is only
+  // needed here, and awaiting it during startup put a network race on the window's critical path.
+  private async channelName(): Promise<string> {
+    const value = this.deps.channel
+    return typeof value === 'function' ? value() : value
+  }
 
   private get cache(): MicromambaCache {
     return this.deps.cache ?? selectMicromambaCache(this.deps.root)
@@ -1146,7 +1156,7 @@ export class DefaultRuntimeProvisioner implements RuntimeProvisioner {
                 this.deps.mm,
                 this.deps.root,
                 prefix,
-                [this.deps.channel],
+                [await this.channelName()],
                 pkgs
               ),
               undefined,
@@ -1735,7 +1745,7 @@ export const planStartupAction = (root: string, expectedVersion: number): Startu
 // is resolved centrally when no override is supplied.
 export type ProductionProvisionerOptions = {
   root: string
-  channel: string
+  channel: string | (() => Promise<string>)
   micromamba?: MicromambaDeps
   // PEM CA bundle path (enterprise TLS proxy) exported into micromamba's env so an ONLINE provision /
   // named-env create verifies HTTPS against it. Offline bundle creates need no network, so this only

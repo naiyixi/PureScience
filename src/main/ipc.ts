@@ -195,6 +195,7 @@ import { registerRuntimeIpcHandlers } from './notebook/runtime-ipc'
 import { NotebookRunRepository, getNotebookDataRoot, getRuntimeRoot } from './notebook/repository'
 import { NotebookLocalRpcServer } from './notebook/local-rpc-server'
 import { NotebookInputRegistry } from './notebook/input-registry'
+import { effectiveMirror } from './notebook/mirror'
 import { effectiveMirrorAsync } from './notebook/mirror-probe'
 import { createProductionProvisioner, type RuntimeProvisioner } from './notebook/provisioner'
 import { createRuntimeSelectionWorkflows } from './notebook/runtime-selection-workflows'
@@ -3443,10 +3444,18 @@ const createApplicationModules = async (
   let serialized: RuntimeProvisioner | undefined
   try {
     const configuredMirror = await settingsService.getPackageMirror()
-    const mirror = await effectiveMirrorAsync(configuredMirror, app.getLocale())
+    // The mirror's speed probe is a network race whose result is only needed when a notebook environment is
+    // created — not to open a window. Awaiting it here put 0.7–2.5 s of network time on the startup path
+    // (measured, docs/evidence/2026-10-26-startup-mirror-probe.md), so startup uses the synchronous locale
+    // default and the probed value is resolved by the provisioner when it actually installs something.
+    const mirror = effectiveMirror(configuredMirror, app.getLocale())
+    const resolveChannel = async (): Promise<string> =>
+      (await effectiveMirrorAsync(configuredMirror, app.getLocale())).condaChannel ??
+      process.env.PURESCIENCE_CONDA_CHANNEL ??
+      'conda-forge'
     provisioner = createProductionProvisioner({
       root: provisioningRoot,
-      channel: mirror.condaChannel ?? process.env.PURESCIENCE_CONDA_CHANNEL ?? 'conda-forge',
+      channel: resolveChannel,
       caBundle: mirror.caBundle,
       micromamba: { resourcesPath: process.resourcesPath },
       // Self-guard the provisioner's prefix writes (startup restore/upgrade/repair, named create, lazy

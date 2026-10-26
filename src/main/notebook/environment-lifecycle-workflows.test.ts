@@ -793,4 +793,30 @@ describe('environment lifecycle startup', () => {
     expect(order[0]).toBe('recovery')
     expect(order).toEqual(['recovery', 'restore', 'upgrade'])
   })
+  it('resolves a lazy channel only when an environment is created, not at construction', async () => {
+    // The mirror speed probe is a network race; startup must not await it. `channel` therefore accepts a
+    // resolver, and the proof that it is lazy is that the counter is still 0 before any create call.
+    const { DefaultRuntimeProvisioner } = await import('./provisioner')
+    const dir = mkdtempSync(join(tmpdir(), 'os-lazy-channel-'))
+    let resolved = 0
+    const runArgv = vi.fn().mockResolvedValue(undefined)
+    const provisioner = new DefaultRuntimeProvisioner({
+      root: dir,
+      mm: '/mm',
+      channel: async () => {
+        resolved += 1
+        return 'probed-channel'
+      },
+      fetchBundle: async (spec) => ({ lockPath: join(dir, `${spec.name}.lock`) }),
+      runArgv,
+      verify: async () => undefined
+    })
+
+    expect(resolved).toBe(0)
+    await provisioner.createNamedEnvironment('lazy-env', 'python', [])
+    expect(resolved).toBe(1)
+    // The resolved value has to reach the actual create command, otherwise "lazy" changed behaviour.
+    const argv = JSON.stringify(runArgv.mock.calls)
+    expect(argv).toContain('probed-channel')
+  })
 })
