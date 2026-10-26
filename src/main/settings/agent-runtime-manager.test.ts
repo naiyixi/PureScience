@@ -328,7 +328,11 @@ describe('AgentRuntimeManager', () => {
     expect(String(summaryFields.slowest)).toContain('probe-opencode=')
 
     const quietLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-    manager = createManager({ preflightLog: quietLog, preflightSlowMs: 50 })
+    // A frozen clock, because the claim is about the plumbing — "a preflight with no slow step logs nothing" —
+    // and a real clock turns it into a claim about this machine's load. On a busy machine a settings read took
+    // 73 ms and the case went red with nothing in the code to fix. The slow half above still runs on the real
+    // clock, so the timing path itself remains covered.
+    manager = createManager({ preflightLog: quietLog, preflightSlowMs: 50, preflightNow: () => 0 })
     await manager.getPreflight(providers)
 
     expect(quietLog.warn).not.toHaveBeenCalled()
