@@ -12901,3 +12901,45 @@ versions electron=43.7.5 node=24.21.0 v8=15.0.245.31-electron.0
    **blocked-by**：并行执行器正在改 `ipc.ts` / `runtime-electron-wiring.ts`；解封条件 = `git status --short`
    里不再出现这两个路径。铺完这一族收口。
 3. 仍等点头（不变）：重启用户常驻 dev 实例才能取真机 `stack.samples`。
+
+## 二百四十二、本轮追加（执行器，2026-10-26 20:0x–）—— 第十处：会话评审的慢读，连「会话读不出来」那条分支一起
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 接 §二百四十一：`d8897e29` 已推上 `origin/main`；工作区里只剩**并行执行器**的 `src/main/ipc.ts` 与
+  `src/main/runtime-electron-wiring.ts` 在制 ⇒ 本轮对这两个路径一个字节没碰。
+- 同族最后一处 `application command handler was slow` 在 `src/main/ipc.ts:4073`，
+  **blocked-by 正是上面这两个在制路径**，本轮不取。改取同族里另一条没人认领的：`reviewer` 的
+  `review load segments`（三段墙钟已有，缺「时间是不是我们的」）。
+
+### 一 交付（`9d1ba1a8`）
+
+- 两处都带上 `cpuMs` / `cpuShare` / `attribution`，样本取在与 `totalMs` 同一刻：
+  慢分支，以及**会话读不出来时的提前返回分支**。后者必须带 —— 那行正是用来说明失败的，
+  缺这一问就变成「只有成功路径能回答时间是不是我们的」。
+- 顺手把该测试里钉整对象的那条 `toEqual` 改成 `toMatchObject` + 键集断言：新字段是产品侧合法新增，
+  整对象相等等于把「字段集」一起钉死，以后每加一个诊断字段都要改一次守卫。
+
+### 二 门禁与变异自证（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `reviewer` 目录 | **27 files / 306 passed** |
+| 本文件 | **33 passed** |
+| `tsc --noEmit -p tsconfig.node.json` | **0** |
+| `eslint --no-cache`（两个文件） | **0 errors 0 warnings** |
+
+变异自证：把慢分支里的展开去掉 ⇒ 键集断言当场红（`expected [ 'projectId', …(5) ] to deeply equal
+ArrayContaining`）；还原后 33 passed。
+
+### 三 边界（不许读成更强）
+
+1. 仍是**日志字段**类改动，**没有真机日志行**（真机行需要一次真实慢事件 + 用户实例重启，等点头）。
+2. 同族现状：11 处慢行里 **10 处**带 CPU 归属，剩下 1 处（`src/main/ipc.ts:4073`）被在制文件挡住 —— 具名，不假装收口。
+3. `9d1ba1a8` **刻意留在本地不推**：`d8897e29` 的两条车道还在飞，现在推会按 `cancel-in-progress` 把它们顶掉
+   （「取消 ≠ 绿」）。等它们落定再推。
+
+### 四 下一轮第一步
+
+1. 读 `d8897e29` 的判决（`Nightly` + `Windows Full Test`，绑完整 40 位 SHA），再推 `9d1ba1a8` 并读它的判决。
+2. `ipc.ts` 一解封就补最后一处 `application command handler was slow`，这一族收口。
