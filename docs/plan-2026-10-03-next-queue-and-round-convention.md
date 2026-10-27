@@ -13232,3 +13232,94 @@ fake `Date` 的用例，而 offset（`perfMs - wallMs`）只要在同一刻取�
    ② 其余 6 处站点的字段级断言（写法同本轮 `query-owner.canary.test.ts` 新增那条）；
    ③ `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）。
 3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
+
+## 二百四十七、本轮追加（执行器，2026-10-27 07:5x–）—— 「没产出读数」与「没跑」不再同形：冒烟失败自己留痕，门判词说出真因
+
+### 〇 开工核对（CI 判决 + 上一轮未提交在制品）
+
+- `git fetch` 后 `origin/main = 107ce89c`（上一轮我自己的第一笔）。工作区里那两个路径
+  （`scripts/macos-package-smoke.mjs`、`scripts/ci/mac-signing-status.mjs`）**全是我的**上一轮未提交在制品
+  ⇒ 本轮先把它们跑绿落地，再谈下一单元。
+- **判决闭合（绑完整 40 位 SHA）**：`107ce89c` 的 `Windows Full Test` **success**、`Nightly` **success**。
+  上一轮 `3a42efd3` 那条「`Build macos-x64` 零步骤、作业日志 404」的失败**没有复现**（同一作业本轮 26 步全
+  success）⇒ 上一轮把它归到 runner 侧的判断得到反向确认，**不是代码**、也不重跑。
+- B 段仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）⇒ 按队列约定先收口自己的遗留项。
+
+### 一 交付（4 文件）
+
+| 位置 | 改动 |
+|---|---|
+| `scripts/macos-package-smoke.mjs` | 失败时**写一份 `readable:false` + `reason` 的读数**（原本什么都不写 ⇒ 在文件层「冒烟挂了」与「步骤没跑」完全同形）；`toStartupFailure` 把 `SMOKE_TIMEOUT` 码保留到重写后的错误上；新增 `describeSmokeFailure`（取首行 / 截 300 字 / 复用既有 `redactServiceTokens` 脱敏）与 `signatureReadingPath`（用法错误也要留标记，所以不走 `parseArguments`） |
+| `scripts/ci/mac-signing-status.mjs` | 新增 `unobservedDetail`：三种成因（没人写文件 / 写了但读不出 / 写了但没有可用字段）各自一句；`readingSource` 在读数不可用时不再一律 `not-read`（`smoke-failure` 与「没人写」从此可分） |
+| `scripts/macos-package-smoke.test.ts`（+5 条，含一条**真起子进程**的接线用例） | 标记内容 +「仍然不算通过」、真因进判词、`describeSmokeFailure` 的四条性质（码 / 首行 / 脱敏 / 300 字上限）、`signatureReadingPath` 的宽松取法、**跑真脚本**证明失败分支真的调用了写入、没有路径时仍失败且不落文件 |
+| `scripts/ci/mac-signing-status.test.ts`（+2 条） | 三种成因三句话且都不是通过；不可用读数的来源可辨（`smoke-failure` vs `not-read`） |
+
+**门禁语义一字未改**：`readable:false` 仍不算通过，`ok:false` / `macSignature:unproven` 不变。**没动
+`build.yml`**（动它要连 action ref 一起过完整性门）——`--signature-reading` 早在 `build.yml:442` 就传进来了，
+脚本侧留痕即生效。
+
+### 二 真机读数（本机实跑两条命令，不是用例）
+
+```
+$ node scripts/macos-package-smoke.mjs --artifact-dir /tmp/smoke-dbg2/dist --signature-reading /tmp/smoke-dbg2/reading.json
+Error: Expected exactly one macOS dmg in /tmp/smoke-dbg2/dist; found 0.
+macOS signature reading not taken: Expected exactly one macOS dmg in /tmp/smoke-dbg2/dist; found 0.
+EXIT=1
+
+$ node scripts/ci/mac-signing-status.mjs verify --credentials present --reading /tmp/smoke-dbg2/reading.json
+real-probe: FAIL — macSignature=unproven: Apple credentials are configured but the macOS asset signature was never
+read — unobserved is not a pass (the run never read the bundle: Expected exactly one macOS dmg in
+/tmp/smoke-dbg2/dist; found 0.).
+
+# 对照：文件根本不存在
+probe-nofile: FAIL — ... — unobserved is not a pass (no reading file was written at all (the smoke step may not have run)).
+```
+
+两句判词**不同**、都**不是通过**：这就是本单元要的形状。上一版这两行是同一句「never read」。
+
+### 三 门禁与变异自证（数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `scripts/` 整套（受影响面） | **40 files passed / 6 skipped（46）**；**467 passed / 8 skipped（475）**；**exit 0** |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 4 文件） | **0 error / 0 warning**（先跑出 7 条 prettier warning，`npx prettier --write` 后复跑归零） |
+| `scripts/pre-push-checks.sh` | **exit 0** |
+
+**四条变异各自的结果（改完还原，还原后 `cmp` 逐字节一致并复绿）**：
+
+1. 删掉失败分支里的 `await writeUnobservedReading(...)` ⇒ **1 红**，正是那条**真起子进程**的接线用例
+   （其余 4 条照过）⇒ 它守的是**接线**，不是纯函数。
+2. 去掉 `describeSmokeFailure` 里的 `redactServiceTokens` ⇒ **1 红**（`token=<redacted>` 那条）。
+3. 把 `unobservedDetail` 的 `readable:false` 分支压回一句 `'the signature could not be read'` ⇒ **2 红**
+   （门侧成因用例 + 冒烟侧的「真因进判词」）。
+4. `readingSource` 恢复成「不可用就一律 `not-read`」⇒ **1 红**（来源可辨那条）。
+
+### 四 一条只有「真起子进程」才抓得到的错（本轮实际踩到并已修）
+
+上一轮我把 `describeSmokeFailure` / `writeUnobservedReading` / `signatureReadingPath` 写成 `export const`，
+而本文件用**末尾 `export { … }` 块**的约定 ⇒ 三个名字**重复导出**，脚本**作为 CLI 一加载就
+`SyntaxError: Duplicate export of 'writeUnobservedReading'`**（退出码 1，什么标记都不写）。
+
+- **`vitest` 的 import 用例对此全绿**（转译层容忍了重复导出），所以「函数级用例」根本看不见它；
+- 抓到它的正是本轮新加的**真子进程**用例（`execFile(process.execPath, [script, …])`）。
+- 教训：**脚本类单元的完成证据里必须有一条「真把脚本跑起来」的用例**——模块可 import ≠ 可执行；
+  这类崩溃在 CI 里的长相恰好是「冒烟红了但没留任何读数」，也就是本单元要治的那个症状本身。
+
+另一处顺手改正的断言：两个 `findArtifact` 在 `Promise.all` 里，**谁先抛是竞态**（本机第一次跑是 `dmg`、
+用例里是 `zip`）⇒ 断言改钉句子而不是扩展名，免得写成一条随机红的用例。
+
+### 五 边界（不许读成更强）
+
+1. **没有 CI 里那条真实失败步骤的读数**：本单元的证据是本机 CLI 双读数 + 用例 + 变异自证。
+   下一次 mac 打包真的挂了，判词里会多出这一句——那才是这条改动的完整闭环，此刻记**未取**。
+2. **只覆盖「冒烟脚本自己失败」这一路**：`continue-on-error` 让步骤结论恒为 `success`（见 §二百四十六），
+   所以本单元治的是**判词**，不是步骤结论；把步骤结论改成失败属另一个单元（要动 `build.yml`）。
+3. **标记里的 `reason` 是首行**：栈与后续行不入档（有意），排障仍需看作业日志。
+
+### 六 下一轮第一步
+
+1. 读本笔的 `Nightly` + `Windows Full Test` 判决（绑完整 40 位 SHA）。
+2. 候选（都不需要发版窗口）：① 其余 6 处墙钟站点的字段级断言（写法同 `query-owner.canary.test.ts` 那条，
+   §二百四十六 §三 具名缺口）；② `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）。
+3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。

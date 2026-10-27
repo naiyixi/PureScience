@@ -100,6 +100,26 @@ export const readingIsObserved = (reading) =>
   reading.readable !== false &&
   typeof reading.signed === 'boolean'
 
+// "Not read" has three causes that lead to different next steps: the step never ran, it ran and failed before
+// it could read anything, or it wrote something unusable. One sentence for all three leaves a red job with no
+// next step, so the reading's own account is carried into the verdict when there is one.
+export const unobservedDetail = (reading) => {
+  if (reading === undefined || reading === null) {
+    return 'no reading file was written at all (the smoke step may not have run)'
+  }
+  if (typeof reading !== 'object') return 'the reading file did not contain an object'
+  const reason =
+    typeof reading.reason === 'string' && reading.reason.trim() !== ''
+      ? reading.reason.trim()
+      : undefined
+  if (reading.readable === false) {
+    return reason === undefined
+      ? 'the bundle signature could not be read and the reading carried no reason'
+      : `the run never read the bundle: ${reason}`
+  }
+  return 'the reading carried no usable signature fields'
+}
+
 export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) => {
   const configured = credentialsPresent === true
   const observed = readingIsObserved(reading)
@@ -130,7 +150,7 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
       ok: false,
       reason:
         'Apple credentials are configured but the macOS asset signature was never read — ' +
-        'unobserved is not a pass.'
+        `unobserved is not a pass (${unobservedDetail(reading)}).`
     }
   }
   if (signed) {
@@ -156,7 +176,7 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
     ok: false,
     reason:
       'The macOS asset signature was not read and no credentials are configured — an unobserved ' +
-      'state must not be recorded as a pass.'
+      `state must not be recorded as a pass (${unobservedDetail(reading)}).`
   }
 }
 
@@ -171,7 +191,13 @@ export const macSignatureEvidence = ({ credentialsPresent, reading } = {}) => {
       teamIdExpected: OFFICIAL_MAC_TEAM_ID,
       identifier: observed ? (reading.identifier ?? null) : null,
       teamIdentifier: observed ? (reading.teamIdentifier ?? null) : null,
-      readingSource: observed ? (reading.source ?? 'unknown') : 'not-read'
+      // A reading that could not be used still says where it came from: 'smoke-failure' is the difference
+      // between "the run failed before reading" and "nobody wrote a reading at all".
+      readingSource: observed
+        ? (reading.source ?? 'unknown')
+        : typeof reading?.source === 'string'
+          ? reading.source
+          : 'not-read'
     }
   }
 }

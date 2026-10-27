@@ -103,10 +103,11 @@ export const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS
 }
 
 // Only the timeout branch arrives without evidence of its own; every other failure already names its
-// cause, so it passes through untouched (same error object, same message).
+// cause, so it passes through untouched (same error object, same message). The `code` is kept on the
+// rewritten error: the failure writer below uses it to say which kind of failure left no reading.
 export const toStartupFailure = (error, context) =>
   error instanceof Error && error.code === 'SMOKE_TIMEOUT'
-    ? new Error(describeStartupTimeout(context))
+    ? Object.assign(new Error(describeStartupTimeout(context)), { code: 'SMOKE_TIMEOUT' })
     : error
 
 const runProcess = (executable, args, options = {}) =>
@@ -266,6 +267,48 @@ const writeSignatureReading = async (path, { artifact, source, bundle }) => {
   return reading
 }
 
+// The first line of a failure, short enough to fit in a JSON field and safe to keep: this file is read by the
+// gate and copied into release evidence, and the packaged service address carries a bearer token.
+const describeSmokeFailure = (error) => {
+  const code = typeof error?.code === 'string' && error.code !== '' ? `${error.code}: ` : ''
+  const message = String(error?.message ?? error ?? '')
+  const firstLine = message.split('\n')[0].trim()
+  const head = firstLine.length > 300 ? `${firstLine.slice(0, 300)}…` : firstLine
+  return redactServiceTokens(
+    `${code}${head === '' ? 'the smoke run failed without a message' : head}`
+  )
+}
+
+// A smoke that fails never reaches the bundle's own reading, and until now that left the file absent — which
+// the gate reports exactly like "the step never ran". An unobserved reading keeps those apart: it is still not
+// a pass (`readable: false`), and the reason says what happened to this run.
+const writeUnobservedReading = async (path, reason) => {
+  const reading = {
+    schemaVersion: 1,
+    source: 'smoke-failure',
+    artifact: null,
+    bundle: null,
+    readable: false,
+    identifier: null,
+    teamIdentifier: null,
+    signed: false,
+    reason
+  }
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, `${JSON.stringify(reading, null, 2)}\n`, 'utf8')
+  console.log(`macOS signature reading not taken: ${reason}`)
+  return reading
+}
+
+// The reading path is needed by the failure writer, which runs after `main` has thrown — so it is taken from
+// argv leniently rather than through `parseArguments` (a usage error must still leave a marker).
+const signatureReadingPath = (argv) => {
+  const index = argv.indexOf('--signature-reading')
+  if (index === -1) return undefined
+  const path = argv[index + 1]
+  return path === undefined || path.startsWith('--') ? undefined : path
+}
+
 const parseArguments = (argv) => {
   const index = argv.indexOf('--artifact-dir')
   const artifactDirectory = index === -1 ? undefined : argv[index + 1]
@@ -370,8 +413,13 @@ const main = async () => {
 const invokedAsScript =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 if (invokedAsScript) {
-  main().catch((error) => {
+  main().catch(async (error) => {
     console.error(error)
+    const readingPath = signatureReadingPath(process.argv.slice(2))
+    if (readingPath !== undefined) {
+      // Best-effort: the marker must never replace the failure that caused it.
+      await writeUnobservedReading(readingPath, describeSmokeFailure(error)).catch(() => {})
+    }
     process.exitCode = 1
   })
 }
@@ -379,9 +427,12 @@ if (invokedAsScript) {
 export {
   artifactVersion,
   assertPackagedResources,
+  describeSmokeFailure,
   findAppBundle,
   findArtifact,
   packagedLaunchArguments,
   parseArguments,
-  parsePackagedAppEndpoint
+  parsePackagedAppEndpoint,
+  signatureReadingPath,
+  writeUnobservedReading
 }

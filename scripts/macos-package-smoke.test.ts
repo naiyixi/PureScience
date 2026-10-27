@@ -1,12 +1,16 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { evaluateMacSignatureGate, readingIsObserved } from './ci/mac-signing-status.mjs'
 import {
   artifactVersion,
   assertPackagedResources,
+  describeSmokeFailure,
   describeStartupTimeout,
   findAppBundle,
   findArtifact,
@@ -14,11 +18,26 @@ import {
   parseArguments,
   parsePackagedAppEndpoint,
   redactServiceTokens,
+  signatureReadingPath,
   toStartupFailure,
-  waitFor
+  waitFor,
+  writeUnobservedReading
 } from './macos-package-smoke.mjs'
 
 const roots: string[] = []
+
+const SMOKE_SCRIPT = fileURLToPath(new URL('./macos-package-smoke.mjs', import.meta.url))
+
+// Runs the script the way CI does (its own process, real argv) so the failure branch is exercised as
+// wiring rather than as a function call. `process.execPath` keeps this portable — a hardcoded local
+// node path passes here and resolves to nothing on the CI runners.
+const runSmokeScript = (args: string[]): Promise<{ exitCode: number | null; stderr: string }> =>
+  new Promise((resolveRun) => {
+    execFile(process.execPath, [SMOKE_SCRIPT, ...args], (error, _stdout, stderr) => {
+      const exitCode = error === null ? 0 : typeof error.code === 'number' ? error.code : null
+      resolveRun({ exitCode, stderr: String(stderr) })
+    })
+  })
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { force: true, recursive: true })))
@@ -212,5 +231,122 @@ describe('macOS package smoke', () => {
     // The legacy ICNS fallback is still mandatory.
     await rm(join(resources, 'icon.icns'))
     await expect(assertPackagedResources(appBundle)).rejects.toThrow()
+  })
+
+  // The smoke step runs with `continue-on-error`, so the job stays green while the reading file it was
+  // supposed to write never appears — and the signing gate then says "never read", which reads the same
+  // whether the step never ran or ran and failed. A failed run now leaves its own account behind.
+  it('leaves a reading behind when the run fails, and it is still not a pass', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-macos-unobserved-'))
+    roots.push(root)
+    const readingPath = join(root, 'nested', 'mac-signature.json')
+    const reason = describeSmokeFailure(
+      Object.assign(
+        new Error('Timed out waiting for the packaged macOS web service (ZIP-extracted bundle).'),
+        { code: 'SMOKE_TIMEOUT' }
+      )
+    )
+
+    await writeUnobservedReading(readingPath, reason)
+
+    const reading = JSON.parse(await readFile(readingPath, 'utf8')) as Record<string, unknown>
+    expect(reading).toMatchObject({
+      schemaVersion: 1,
+      source: 'smoke-failure',
+      readable: false,
+      signed: false
+    })
+    expect(String(reading.reason)).toContain('SMOKE_TIMEOUT')
+    expect(String(reading.reason)).toContain('Timed out waiting for the packaged macOS web service')
+    // A marker is an account of a failure, never evidence of a signature.
+    expect(readingIsObserved(reading)).toBe(false)
+    const decision = evaluateMacSignatureGate({ credentialsPresent: true, reading })
+    expect(decision).toMatchObject({ ok: false, macSignature: 'unproven' })
+    expect(decision.reason).toContain('Timed out waiting for the packaged macOS web service')
+    // ... and it says which cause this was, instead of reusing the sentence for "nobody wrote anything".
+    expect(decision.reason).not.toContain('no reading file was written at all')
+  })
+
+  it('says what kind of failure left no reading — code, one line, redacted, bounded', () => {
+    // Only the first line: a stack or a multi-line child-process dump is not a reason.
+    const timeout = Object.assign(
+      new Error(
+        'Timed out waiting for the packaged macOS web service (DMG-mounted bundle).\n  at waitFor (...)'
+      ),
+      { code: 'SMOKE_TIMEOUT' }
+    )
+    const described = describeSmokeFailure(timeout)
+    expect(described.startsWith('SMOKE_TIMEOUT: ')).toBe(true)
+    expect(described).toContain('DMG-mounted bundle')
+    expect(described).not.toContain('at waitFor')
+
+    // The packaged service address carries a bearer token, and the marker is copied into release evidence.
+    const leaked = describeSmokeFailure(
+      new Error('bootstrap failed for http://127.0.0.1:44100/?token=secret_1')
+    )
+    expect(leaked).toContain('token=<redacted>')
+    expect(leaked).not.toContain('secret_1')
+
+    expect(describeSmokeFailure(new Error('x'.repeat(400)))).toHaveLength(301)
+    expect(describeSmokeFailure(new Error(''))).toContain('failed without a message')
+    expect(describeSmokeFailure(undefined)).toContain('failed without a message')
+  })
+
+  it('finds the reading path leniently, so a usage error still leaves a marker', () => {
+    expect(
+      signatureReadingPath(['--artifact-dir', 'dist', '--signature-reading', '/tmp/r.json'])
+    ).toBe('/tmp/r.json')
+    expect(signatureReadingPath(['--artifact-dir', 'dist'])).toBeUndefined()
+    // A missing value and "the next token is another flag" are both "no path" — never the flag name.
+    expect(signatureReadingPath(['--artifact-dir', 'dist', '--signature-reading'])).toBeUndefined()
+    expect(signatureReadingPath(['--signature-reading', '--gatekeeper'])).toBeUndefined()
+  })
+
+  // The half above only proves the helpers. This one proves the script's own failure path calls them:
+  // a green job with `continue-on-error` and a missing reading file is exactly the shape that used to be
+  // reported as "the step never ran".
+  it('leaves the marker on disk when the script itself fails', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-macos-smoke-wiring-'))
+    roots.push(root)
+    const emptyArtifacts = join(root, 'dist')
+    await mkdir(emptyArtifacts, { recursive: true })
+    const readingPath = join(root, 'reading.json')
+
+    const run = await runSmokeScript([
+      '--artifact-dir',
+      emptyArtifacts,
+      '--signature-reading',
+      readingPath
+    ])
+
+    expect(run.exitCode).toBe(1)
+    const written = await readFile(readingPath, 'utf8').catch(() => undefined)
+    expect(written).toBeDefined()
+    const reading = JSON.parse(String(written)) as Record<string, unknown>
+    expect(reading).toMatchObject({
+      schemaVersion: 1,
+      source: 'smoke-failure',
+      readable: false,
+      signed: false
+    })
+    // The reason is the real one from this run, not a generic "it failed". Which artifact the parallel
+    // lookup reports first is a race, so the assertion pins the sentence, not the extension.
+    expect(String(reading.reason)).toMatch(/Expected exactly one macOS (dmg|zip) in /)
+    expect(readingIsObserved(reading)).toBe(false)
+  })
+
+  // Without a reading path there is nowhere to leave a marker, and the failure must still fail.
+  it('still fails when no reading path was given', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'purescience-macos-smoke-nopath-'))
+    roots.push(root)
+    const emptyArtifacts = join(root, 'dist')
+    await mkdir(emptyArtifacts, { recursive: true })
+
+    const run = await runSmokeScript(['--artifact-dir', emptyArtifacts])
+
+    expect(run.exitCode).toBe(1)
+    expect(
+      await readFile(join(root, 'reading.json'), 'utf8').catch(() => undefined)
+    ).toBeUndefined()
   })
 })

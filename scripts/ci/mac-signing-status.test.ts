@@ -10,7 +10,8 @@ import {
   macSigningDisclosureFromRecord,
   parseCodesignDescription,
   readMacBundleSignature,
-  readingIsObserved
+  readingIsObserved,
+  unobservedDetail
 } from './mac-signing-status.mjs'
 
 // A real Developer ID description, as `codesign -d --verbose=4` prints it.
@@ -119,6 +120,76 @@ describe('mac signing status gate', () => {
         readingSource: 'not-read'
       }
     })
+  })
+
+  // "Never read" has three causes with three different next steps: the step did not run, it ran and failed
+  // before reading, or it wrote something unusable. One sentence for all three leaves a red job with no next
+  // step — and the smoke step has `continue-on-error`, so the gate's own verdict is where this has to land.
+  it('names which cause left the signature unread instead of one sentence for three causes', () => {
+    const missing = evaluateMacSignatureGate({ credentialsPresent: true, reading: undefined })
+    const unreadable = evaluateMacSignatureGate({
+      credentialsPresent: true,
+      reading: {
+        schemaVersion: 1,
+        source: 'smoke-failure',
+        readable: false,
+        signed: false,
+        reason: 'SMOKE_TIMEOUT: Timed out waiting for the packaged macOS web service.'
+      }
+    })
+    const empty = evaluateMacSignatureGate({
+      credentialsPresent: true,
+      reading: { schemaVersion: 1 }
+    })
+
+    expect(missing.reason).toContain('no reading file was written at all')
+    expect(unreadable.reason).toContain(
+      'the run never read the bundle: SMOKE_TIMEOUT: Timed out waiting for the packaged macOS web service.'
+    )
+    expect(empty.reason).toContain('no usable signature fields')
+    // Three different next steps, three different sentences — and none of the three is a pass.
+    for (const decision of [missing, unreadable, empty]) {
+      expect(decision).toMatchObject({ ok: false, macSignature: 'unproven' })
+    }
+    expect(new Set([missing.reason, unreadable.reason, empty.reason]).size).toBe(3)
+
+    // An unreadable reading with no reason says exactly that instead of inventing one.
+    expect(unobservedDetail({ readable: false, signed: false })).toContain('carried no reason')
+    expect(unobservedDetail({ readable: false, signed: false, reason: '   ' })).toContain(
+      'carried no reason'
+    )
+    expect(
+      unobservedDetail({ readable: false, signed: false, reason: 'ENOENT: no such file' })
+    ).toContain('ENOENT: no such file')
+    expect(unobservedDetail('not an object')).toContain('did not contain an object')
+    expect(unobservedDetail(null)).toContain('no reading file was written at all')
+  })
+
+  it('keeps the source of an unusable reading, so "failed before reading" is not "not-read"', () => {
+    expect(
+      macSignatureEvidence({
+        credentialsPresent: true,
+        reading: {
+          schemaVersion: 1,
+          source: 'smoke-failure',
+          readable: false,
+          signed: false,
+          reason: 'boom'
+        }
+      }).macSignatureEvidence.readingSource
+    ).toBe('smoke-failure')
+
+    // No file at all stays "not-read": those two must never look the same in the evidence record.
+    expect(
+      macSignatureEvidence({ credentialsPresent: true, reading: undefined }).macSignatureEvidence
+        .readingSource
+    ).toBe('not-read')
+
+    // An observed reading still reports its own source, not the fallback.
+    expect(
+      macSignatureEvidence({ credentialsPresent: true, reading: signedReading })
+        .macSignatureEvidence.readingSource
+    ).toBe('shipped-zip')
   })
 
   it('reads a Developer ID signature and an ad-hoc signature apart', () => {
