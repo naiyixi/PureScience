@@ -13478,3 +13478,68 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
 1. 读本笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA）。
 2. 候选：① `src/main/ipc.ts` 里其余「有读数但没归属」的分支（§二百四十三 立案的那条线）；② A 段若有 ≥3 天无人动的项按约定接手。
 3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`；以及一次真实 agent 回合取 `bash_execute` 的产品级读数。
+
+## 二百五十、本轮追加（执行器，2026-10-27 20:2x–）—— 剩下的慢行补齐 held 拆分；启动汇总行自己说出「有多少不是我们在跑」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- 开工时 `HEAD == origin/main == 9ed5a5fc`，工作区带 **12 个未提交路径**（上一轮留下的在制品，那一轮未落提交）。
+  按「未提交路径即认领」的判据逐份读 diff：12 个文件全是诊断归属这条线的同一件事（6 处慢行 + 共享助手 + 5 份用例），
+  与当时并发写者正在改的 `src/main/web-service/http-server.ts`、`src/shared/session-persistence.ts`（A2A 那条线）
+  **无一处重叠** ⇒ 判定为本线在制品，接着做完，`git add` 只按路径点名这 12 个。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段唯一开项（egress 60 秒窗口读数）归会话。
+  按 §二百四十九 §六 ① 去核 `src/main/ipc.ts` 的「有读数但没归属」：`4095` 行早已把路由测到的 `heldMs/ownMs`
+  透传到慢行 ⇒ 该候选**已闭合**，不重做；改为把**其余仍只有 CPU 份额**的慢行逐个列出再补。
+- CI：`dae37ac3` 的 `Nightly` 红在 `Test (with coverage)`，读 check-run 注解定因 = `node_modules/electron/index.js:43`
+  抛 `Electron failed to install correctly`。落点在 `node_modules`、与源码无关，且同一批代码在 `cfeeea20` / `adbf5a07`
+  的 Nightly 是绿 ⇒ 判**基础设施抖动**（该 runner 上 Electron 二进制没装好），不改代码、不重打 tag。
+
+### 一 交付（两笔）
+
+1. `95856791`（12 文件）：新增 `heldSplitForMonotonicWindow` —— 「已在性能时钟上量好的窗口」只剩这一份算术
+   （裁剪、取整、`<1 ms` 不出字段都在里面）；`diagnostics/ipc-rejection.ts` 与应用命令路由两处**内联**裁剪取整改用它。
+   补上六处此前只有 CPU 份额、没有 held 拆分的慢行：compose 步骤（成功支 / 失败支各一处）、notebook 状态读、
+   `sessions:save`、runtime context 读、settings 旧密钥迁移。**无记录窗口时整对字段缺席**（不写 `heldMs: 0`），
+   与「循环确实是自由的」区分开。落点计数：HEAD 时 10 处 → 现在 16 处（生产侧，测试不计）。
+2. `72ff6763`（2 文件）：启动汇总行（`compose runtime steps`）在有步落进记录窗口时带 `heldMs` 合计，
+   并在该步条目后缀 `(held Nms)`；每步的 held 只算一次（慢行、记录项、汇总合计不可能互相矛盾）。
+   没有任何记录窗口时整行**保持原形**。
+
+### 二 变异自证（8 次，逐个删掉对应 spread/字段，各自变红一次）
+
+| 变异 | 结果 |
+|---|---|
+| compose 成功支删 spread | **1 failed / 12 passed** |
+| compose 失败支删 spread | **1 failed / 12 passed** |
+| notebook 状态读删 spread | **1 failed / 3 skipped** 中那 1 红 |
+| `session save` 删 spread | **1 failed / 116 skipped** 中那 1 红 |
+| runtime context 读删 spread | **1 failed / 116 skipped** 中那 1 红 |
+| settings 迁移删 spread | **1 failed / 2 skipped** 中那 1 红 |
+| 汇总合计删 spread | **1 failed / 12 passed** |
+| 记录项里的 `heldMs` 删掉 | **1 failed / 12 passed** |
+
+### 三 门禁读数（全部实跑，数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向：`src/main/{diagnostics,session-persistence,settings,notebook}`（第一笔） | **226 files / 3316 passed / 103 skipped（3419）**，EXIT 0 |
+| 定向：`src/main/{diagnostics,settings}`（第二笔） | **112 files / 1615 passed / 3 skipped（1618）**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**（两笔各跑一次） |
+| `eslint --no-cache`（本笔文件） | **0 error / 0 warning**（第一笔曾有 1 条 prettier 折行 warning，已按判词改成单行后复绿） |
+| `scripts/pre-push-checks.sh` | **EXIT 0**（12 个新增文件 0 problems；README 双语、权重清单、脚本可解析性一并过） |
+
+### 四 边界（不许读成更强）
+
+1. **仍无「生产里真的出现过 held 读数」的证据**：本单元的层级是「注入窗口 + 真算术 + 逐点变异」，不是产品回合读数。
+   取真机那一格要重启常驻 dev 实例（用户点头项），不变。
+2. 汇总行的 `heldMs` 是**各步 held 之和**，步骤之间若有间隙，它**不等于**窗口级 held —— 本行不声称覆盖间隙。
+3. 汇总行的排序仍是**墙钟最慢优先**（既有断言钉着 `permission-grant-registry=22763287ms(no-cpu)` 必须可见），
+   本轮只加标注不改排序；「按 own 时间排序」若要做，必须同时改写那条断言，留作下一轮候选。
+4. Windows 侧判决等本笔车道，汇报里不写成已绿。
+
+### 五 下一轮第一步
+
+1. 读 `95856791` / `72ff6763` 的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA）。注意第二次推送会顶掉第一次的
+   车道 ⇒ 以「后一笔的判决 + `git merge-base --is-ancestor 95856791 72ff6763` 成立」作前一笔的证据，并写明这个替代关系。
+2. 候选：① 汇总行按 **own 时间**排序（需同步改写那条既有断言，属「收紧」而非放宽）；② A 段若有 ≥3 天无人动的项接手。
+3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`；一次真实 agent 回合取 `bash_execute` 的产品级读数。
