@@ -13543,3 +13543,64 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
    车道 ⇒ 以「后一笔的判决 + `git merge-base --is-ancestor 95856791 72ff6763` 成立」作前一笔的证据，并写明这个替代关系。
 2. 候选：① 汇总行按 **own 时间**排序（需同步改写那条既有断言，属「收紧」而非放宽）；② A 段若有 ≥3 天无人动的项接手。
 3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`；一次真实 agent 回合取 `bash_execute` 的产品级读数。
+
+## 二百五十一、本轮追加（执行器，2026-10-28 01:4x–）—— 交接下来的那半截：启动窗口的分解不再只活在日志里，交接件也带它；汇总行挪回窗口末端（7 → 12 步）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + 发版窗口）
+
+- 开工时 `HEAD == origin/main == 190629d9`（v2.19.0 发版材料），工作区带 **9 个未提交路径**（7 改 2 新），
+  最后写入时间 2026-10-27 23:19–23:20，此后两小时无活动、无 vitest / playwright 进程 ⇒ 判为上一轮留下的
+  **同一线（诊断归属）在制品**，接着做完并按路径点名提交；`electron.vite.config.*.mjs` 那类构建临时件直接删掉、不入库。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段唯一开项（egress 60 秒窗口读数）归会话。
+- **发版窗口当时正开着**：`Release` run `40545233188`（sha `190629d9`，01:52 起）在跑，`build / Build macos-arm64`
+  仍在进行 ⇒ 本轮**先不推送**，等它落定再推（推了会把它腰斩）。
+- v2.19.0 发布核验（该 run 落定后现查）：页在、`isDraft=false` / `isPrerelease=false`、**21 资产**、
+  `RELEASE-CERTIFICATION.json` 的 `sourceSha = 190629d9…` 与 `git rev-parse 'v2.19.0^{commit}'` 逐字符一致、
+  正文 57,632 字符、`gh release list` 里为 Latest。
+
+### 一 交付（9 文件：7 改 2 新）
+
+1. `compose-steps.ts`：新增 `ComposeStepSnapshot` / `ComposeStepsSnapshot` 与 `recorder.snapshot()`。
+   `totalMs`（窗口）/ `stepMs`（命名步骤覆盖）/ `gapMs`（余数）**三数恒等**——`gapMs` 是算出来的余数、
+   不是第二次测量，所以取整后仍然正好相加；`heldMs` 只在确有记录窗口时出现（不写 0）。
+   汇总行改为**从这份快照派生**（`logSummary()` 先取 `snapshot()`）：同一批数字同时喂日志与交接件，两者不可能各说一套。
+2. `startup-steps-snapshot.ts`（新）：`StartupStepsHolder` —— 组合根写入、交接件读取的**唯一持有者**
+   （第二个实例＝对同一次启动的第二份事实）。缺席态**具名**（`status:'not-recorded'` + `reason:'composition-not-finished'`），
+   不交一份空步骤表让人读成「启动很快」。
+3. `support-bundle.ts`：`SupportBundleInput` 新增**必填** `startupSteps`，产出 `diagnostics/startup-steps.json`，
+   归档 README 的文件清单里写明三数恒等与缺席态。
+4. `ipc.ts`：`composeSteps.logSummary()` 从 `restore-notification-inbox` 之后**挪到窗口末端**
+   （`compositionStage('after-timed-steps')` 之后），并在同一处 `sharedStartupSteps.record(composeSteps.snapshot())`。
+   随手的更正：原注释写「13 步 / 20 of 20 行」，按日志实数改成 **12 步 / 45 行里的 15 行**。
+
+### 二 真机读数（改动前后都在这台机器的产品日志里，同一份 `logs/headless.out.log`，共 45 次启动）
+
+| 读数 | 改动前 | 改动后 |
+|---|---|---|
+| `stepCount` | 4（18 次）/ 6（6 次）/ **7（15 次）** | **12（6 次）** |
+| 最新一行 | —— | `totalMs: 5797, stepMs: 5772, gapMs: 25, heldMs: 675` |
+
+- 组合根现在 `await composeSteps.step(` **12 处**（`grep -c`）⇒ 旧汇总行的 7 步确实只覆盖窗口的前一半。
+- 三数在真数据上恒等：**5797 = 5772 + 25**；`slowest` 里 `open-project-db=1942ms(held 675ms)` 与合计 `heldMs: 675` 一致。
+- **边界（具名未取）**：`diagnostics/startup-steps.json` 的**真实归档**没取到——该通道是 ELECTRON-only 且走原生保存对话框
+  （web RPC 够不到；本机常驻实例的窗口不归我驱）⇒ 「交接件里有这一段」目前是单元/集成级证据
+  （`support-bundle.test.ts` 真写临时目录），不是真机归档读数。取它要一次带窗口的隔离实例，记在下一轮候选。
+
+### 三 门禁读数（全部实跑）
+
+| 环 | 读数 |
+|---|---|
+| 定向：`src/main/diagnostics` + `ipc-startup-attribution.test.ts` | **20 files / 156 passed**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**（空输出） |
+| `eslint --no-cache`（本笔 9 文件） | **0 error / 0 warning** |
+| `scripts/pre-push-checks.sh` | **EXIT 0**（敏感词零命中、README 双语、权重清单 1 条、53 个脚本入口可解析） |
+| 全量 `--maxWorkers=4` | **作废**：机器在 swap 8.3G/9.2G、空闲页 ~72MB 下跑 45 分钟未完（正常 ~6 分钟），7 条红全在**本批没碰过**的文件上、单条耗时 60s 级 ⇒ 按内存饥饿归因，进程已停 |
+| 上述 7 个文件 `--maxWorkers=1` 隔离复跑 | **7 files / 400 passed**，EXIT 0 ⇒ 那 7 条红是负载假红，不是回归 |
+
+### 四 下一轮第一步
+
+1. 本笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA）。若 Windows 分片再现间歇红，按「失败文件是否本批碰过」逐次判，
+   **不许加超时**。
+2. 候选：① 汇总行按 **own 时间**排序（要同步改写钉着 `permission-grant-registry=…(no-cpu)` 的那条既有断言，属收紧）；
+   ② 取 `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例，`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT` + 独立端口）。
+3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。

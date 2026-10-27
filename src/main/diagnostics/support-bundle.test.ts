@@ -12,6 +12,8 @@ import {
 } from './support-bundle'
 import { createStallRecordRing } from './stall-record-ring'
 import { summarizeHostTimeline } from './host-stall-sampler'
+import { createStartupStepsHolder } from './startup-steps-snapshot'
+import { createComposeStepRecorder } from './compose-steps'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 
 const roots: string[] = []
@@ -57,6 +59,9 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
       platform: 'darwin',
       nowMs: 0
     }),
+    // Same rule for the startup window: the holder's own absent state is what a bundle exported before
+    // composition closed carries, so that is the default fixture.
+    startupSteps: createStartupStepsHolder().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -528,5 +533,81 @@ describe('support bundle: trajectory section', () => {
     expect(timeline.status).toBe('no-samples')
     expect(timeline.samples).toBeUndefined()
     expect(timeline.paging).toEqual({ status: 'unavailable', reason: 'no-counters-parsed' })
+  })
+
+  // The question a "startup takes forever" report asks, which the logs cannot answer: which step spent it.
+  // The window here is built by the real recorder, so the arithmetic in the artifact is the product's own.
+  it('carries the startup window step by step, with the numbers adding up', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    let clock = 0
+    let cpu = { user: 0, system: 0 }
+    const recorder = createComposeStepRecorder({
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+      now: () => clock,
+      cpuUsage: () => cpu
+    })
+    await recorder.step('read-stored-settings', () => {
+      clock += 120
+      cpu = { user: cpu.user + 90_000, system: cpu.system }
+      return Promise.resolve(undefined)
+    })
+    // Time between two steps: module init no step can name, which is exactly what a reader would otherwise
+    // compute by subtraction and then investigate.
+    clock += 30
+    await recorder.step('open-project-db', () => {
+      clock += 210
+      cpu = { user: cpu.user + 40_000, system: cpu.system }
+      return Promise.resolve(undefined)
+    })
+
+    const holder = createStartupStepsHolder()
+    holder.record(recorder.snapshot())
+    const result = await createSupportBundle({ ...input, startupSteps: holder.summary() })
+
+    expect(result.entries).toContain('diagnostics/startup-steps.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/startup-steps.json')) as {
+      status: string
+      totalMs: number
+      stepMs: number
+      gapMs: number
+      steps: { name: string; durationMs: number; attribution: string; cpuMs: number }[]
+    }
+    expect(summary.status).toBe('recorded')
+    expect(summary.steps.map((entry) => entry.name)).toEqual([
+      'read-stored-settings',
+      'open-project-db'
+    ])
+    expect(summary.steps.map((entry) => entry.durationMs)).toEqual([120, 210])
+    // The halves travel with the duration: a step that spent no CPU here must not read as work.
+    expect(summary.steps[0].attribution).toBe('cpu-bound-in-process')
+    expect(summary.steps[0].cpuMs).toBe(90)
+    expect(summary.stepMs + summary.gapMs).toBe(summary.totalMs)
+    expect(summary.gapMs).toBe(30)
+    // The README has to describe the section, or the reader who opens the archive has to guess what it is.
+    expect(await readFrom(target, 'README.txt')).toContain('diagnostics/startup-steps.json')
+  })
+
+  it('says the startup window was not recorded rather than shipping an empty step list', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+
+    const result = await createSupportBundle(input)
+
+    // Present-and-named: an absent file would be indistinguishable from a section that silently stopped
+    // shipping, and `steps: []` would read as "startup took no time".
+    expect(result.entries).toContain('diagnostics/startup-steps.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/startup-steps.json')) as {
+      status: string
+      reason: string
+      steps?: unknown[]
+    }
+    expect(summary.status).toBe('not-recorded')
+    expect(summary.reason).toBe('composition-not-finished')
+    expect(summary.steps).toBeUndefined()
   })
 })

@@ -67,4 +67,22 @@ describe('startup composition attribution', () => {
     expect(occurrences(ipcSource, 'createComposeStepRecorder(')).toBe(1)
     expect(occurrences(ipcSource, 'composeSteps.logSummary()')).toBe(1)
   })
+
+  // The log line answers "how long did startup take" for whoever is looking at that launch. The support bundle
+  // answers the same question hours later, for a user who only has a .tar.gz to send — and it can only answer
+  // it if the composition root leaves the window where `getFacts` reads it. Twice now the missing piece in a
+  // slow-start report was exactly this: the reading existed and never reached the artifact.
+  it('leaves the same window where the support bundle reads it', () => {
+    expect(ipcSource).toContain("from './diagnostics/startup-steps-snapshot'")
+    const recorded = ipcSource.indexOf('sharedStartupSteps.record(composeSteps.snapshot())')
+    const summaryLine = ipcSource.indexOf('composeSteps.logSummary()')
+    const lastStep = ipcSource.lastIndexOf('await composeSteps.step(')
+    expect(recorded).toBeGreaterThan(lastStep)
+    // Recorded beside the summary line, not somewhere earlier: a snapshot taken before the last step would
+    // ship a window that is still open.
+    expect(recorded).toBeGreaterThan(summaryLine)
+    // And the facts the bundle is built from must actually carry it — a recorded window nobody reads is a
+    // reading the user never receives.
+    expect(ipcSource).toContain('startupSteps: sharedStartupSteps.summary()')
+  })
 })

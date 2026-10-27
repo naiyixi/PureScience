@@ -313,4 +313,79 @@ describe('compose step recorder', () => {
     expect(log.error.mock.calls[0][1]).toMatchObject({ step: 'probe-codex' })
     expect(log.info.mock.calls[0][0]).toBe('preflight steps')
   })
+
+  // The summary used to hand a reader only the window total and the step list, and the two did not add up:
+  // subtracting steps from the total produced a "400–500 ms unattributed" block that turned out to be the
+  // synchronous code between steps (docs/evidence/2026-10-26-startup-attribution-closed.md). The gap is now a
+  // number of its own, defined as the remainder so the three can never disagree after rounding.
+  it('accounts for the time between steps instead of leaving the reader to subtract', async () => {
+    const { log, recorder, advanceWithCpu } = setup()
+
+    await recorder.step('application-events', () => {
+      advanceWithCpu(100, 90)
+      return Promise.resolve(undefined)
+    })
+    // Time spent outside any step: the module init between two timed awaits.
+    advanceWithCpu(40, 0)
+    await recorder.step('settings-service', () => {
+      advanceWithCpu(60, 50)
+      return Promise.resolve(undefined)
+    })
+
+    expect(recorder.snapshot()).toMatchObject({ totalMs: 200, stepMs: 160, gapMs: 40 })
+
+    recorder.logSummary()
+    const fields = log.info.mock.calls[0][1] as Record<string, unknown>
+    expect(fields).toMatchObject({ totalMs: 200, stepMs: 160, gapMs: 40, stepCount: 2 })
+    // The arithmetic a reader will do in their head has to hold on the logged numbers themselves.
+    expect(Number(fields.stepMs) + Number(fields.gapMs)).toBe(Number(fields.totalMs))
+  })
+
+  it('keeps the old summary shape when the steps tile the window', async () => {
+    const { log, recorder, advanceWithCpu } = setup()
+
+    await recorder.step('application-events', () => {
+      advanceWithCpu(80, 70)
+      return Promise.resolve(undefined)
+    })
+
+    recorder.logSummary()
+    const fields = log.info.mock.calls[0][1] as Record<string, unknown>
+
+    // A zero gap is not worth a field: handing a reader `gapMs: 0` invites the question "so what is it".
+    expect(fields).not.toHaveProperty('gapMs')
+    expect(fields).not.toHaveProperty('stepMs')
+  })
+
+  it('carries each step’s own halves into the snapshot, held time included', async () => {
+    const { recorder, advanceWithCpu } = setup({
+      // The first step's window was held for 120 ms: recorded once, so the artifact and the line agree.
+      heldWindows: { heldMsWithin: (startMs: number) => (startMs === 1_000 ? 120 : 0) }
+    })
+
+    await recorder.step('permission-grant-registry', () => {
+      advanceWithCpu(300, 60)
+      return Promise.resolve(undefined)
+    })
+    // Between steps, not after the last one: the window closes when the last step ends, so trailing time is
+    // not part of it.
+    advanceWithCpu(25, 0)
+    await recorder.step('notebook-application', () => {
+      advanceWithCpu(50, 40)
+      return Promise.resolve(undefined)
+    })
+
+    const snapshot = recorder.snapshot()
+    expect(snapshot.steps).toHaveLength(2)
+    expect(snapshot.steps[0]).toMatchObject({
+      name: 'permission-grant-registry',
+      durationMs: 300,
+      outcome: 'ok',
+      heldMs: 120
+    })
+    // The second step was not held, so it carries no field at all: "not held" and "nobody measured" stay apart.
+    expect(snapshot.steps[1]).not.toHaveProperty('heldMs')
+    expect(snapshot.heldMs).toBe(120)
+    expect(snapshot).toMatchObject({ totalMs: 375, stepMs: 350, gapMs: 25 })
+  })
 })

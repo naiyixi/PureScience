@@ -166,6 +166,7 @@ import {
 } from './notebook/session-data-cleanup'
 import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
+import { sharedStartupSteps } from './diagnostics/startup-steps-snapshot'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
   createNotebookApplicationModule,
@@ -666,7 +667,6 @@ const createApplicationModules = async (
       createLogger('notifications').warn('message center operation failed', errorLogFields(error))
   })
   await composeSteps.step('restore-notification-inbox', () => notificationInbox.restore())
-  composeSteps.logSummary()
   // Deferred, not skipped: a reader that needs a decrypted key calls `getStoredSettings`, which migrates
   // inline, so the only thing this changes is whether a start waits for the secret store to answer.
   void settingsService.warmKeyMigration()
@@ -1075,6 +1075,18 @@ const createApplicationModules = async (
   const profileService = new ProfileService(specialistRepository, builtinRegistry)
   await composeSteps.step('builtin-catalog-ready', () => profileService.ensureBuiltinCatalogReady())
   compositionStage('after-timed-steps')
+  // The window closes HERE, not halfway through: this line used to sit after `restore-notification-inbox`,
+  // which left five timed steps (permission-grant-registry, notebook-application, both specialist catalogs,
+  // builtin-catalog-ready) outside the very summary that exists to attribute the launch. Readings from this
+  // machine's own log, counted over all 45 startup lines it holds: `stepCount: 7` on 15 of them (6 on six
+  // earlier ones, 4 on the eighteen before that) while the composition now times 12 steps — so `totalMs`
+  // described a window that ended a third of the way in. After the move the same log reports `stepCount: 12`
+  // on all six lines written since. One line, and it has to be the whole window.
+  composeSteps.logSummary()
+  // Keep the same reading where a support bundle can find it: the log line answers "how long did startup
+  // take", and this answers "which step spent it" for a user who reports a slow launch hours later. One
+  // snapshot feeds both, so they cannot disagree (see `startup-steps-snapshot`).
+  sharedStartupSteps.record(composeSteps.snapshot())
   const specialistPackageService = new SpecialistPackageService({
     storageDir: resolveStorageRoot(),
     repository: specialistRepository,
@@ -2652,6 +2664,10 @@ const createApplicationModules = async (
       // started (same process, no second thread). Absent stalls do not make it empty: its `status` names
       // `no-samples` / `sampler-not-started` instead of shipping a list that reads like a calm machine.
       hostTimeline: await peekSharedHostTimeline(),
+      // The startup window's own breakdown, recorded by the composition root in this same process (see
+      // `startup-steps-snapshot`). Its `status` separates "composition had not closed yet" from "startup was
+      // fast", which an empty step list could not.
+      startupSteps: sharedStartupSteps.summary(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

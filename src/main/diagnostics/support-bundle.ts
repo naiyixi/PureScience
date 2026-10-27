@@ -16,6 +16,7 @@ import type { ModelWeightManifestReport } from '../engines/model-weight-manifest
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 import type { HostTimelineSummary } from './host-stall-sampler'
 import type { StallRecordSummary } from './stall-record-ring'
+import type { StartupStepsSummary } from './startup-steps-snapshot'
 
 export type SupportBundleVersions = {
   app: string
@@ -66,6 +67,13 @@ export type SupportBundleInput = {
    * machine.
    */
   hostTimeline: HostTimelineSummary
+  /**
+   * The startup composition's own breakdown (see `startup-steps-snapshot`). Required for the same reason as
+   * `stalls`: a bundle is attached when the app "takes forever to start", and the logs already say how long the
+   * window took — what they cannot answer is which step spent it. Its `status` names the absent case, so a
+   * bundle exported before composition closed never ships an empty step list that reads like a fast startup.
+   */
+  startupSteps: StartupStepsSummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -128,6 +136,13 @@ diagnostics/host-timeline.json
                    already discarded, because the machine moments before an export are the question when
                    nothing crossed the stall threshold. Its status names "no samples yet" and "sampler not
                    started" rather than leaving an empty list to be read as a calm machine
+diagnostics/startup-steps.json
+                   the startup composition step by step: how long each named step took, the CPU it used,
+                   whether that time was ours, and any part of it the event loop spent held by other work.
+                   totalMs is the window, stepMs is what the named steps cover, gapMs is the rest (time
+                   between steps no step can name) — the three always add up. Its status says
+                   "not-recorded" when the bundle was exported before composition closed, so an absent
+                   breakdown never reads as a fast startup
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -311,6 +326,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/host-timeline.json',
     `${JSON.stringify(input.hostTimeline, null, 2)}\n`
+  )
+  // The startup window, step by step: the logs say how long composition took, this says which step spent it
+  // (and how much of the window no step covers). Scrubbed like everything else — the step names are ours, but
+  // the backstop costs nothing and this file is the one a slow-start report exists for.
+  await writeStaged(
+    'diagnostics/startup-steps.json',
+    `${JSON.stringify(input.startupSteps, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

@@ -28,7 +28,8 @@ const facts: SupportBundleFacts = {
     status: 'unavailable',
     capturedAt: '2026-09-28T00:00:00.000Z',
     reason: 'sampler-not-started'
-  }
+  },
+  startupSteps: { status: 'not-recorded', reason: 'composition-not-finished' }
 }
 
 const sender = {} as never

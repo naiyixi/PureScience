@@ -44,6 +44,40 @@ type TimedStep = ComposeStep &
     heldMs?: number
   }>
 
+/**
+ * One step as an artifact carries it: the same fields the slow line prints, so a support bundle and the log
+ * cannot describe the same step differently.
+ */
+export type ComposeStepSnapshot = Readonly<{
+  name: string
+  durationMs: number
+  outcome: ComposeStepOutcome
+  cpuMs: number
+  cpuShare: number
+  attribution: ActivityAttribution
+  /** Present only when part of this step fell inside a recorded stall. */
+  heldMs?: number
+}>
+
+/**
+ * The window as a whole. `totalMs` is wall time from the first step's start to the last step's end;
+ * `stepMs` is what the named steps cover, and `gapMs` is the remainder — the synchronous code and module
+ * init between steps, which no step can name. Without that third number a reader subtracts the steps from
+ * the total and gets a phantom "unattributed" block (this repository really did spend a round on that
+ * difference, see `docs/evidence/2026-10-26-startup-attribution-closed.md`).
+ *
+ * `gapMs` is defined as the remainder (`totalMs - stepMs`, floored at 0) rather than measured separately, so
+ * the three numbers always add up exactly even after rounding. `heldMs` is a per-step total and therefore
+ * says nothing about time between steps.
+ */
+export type ComposeStepsSnapshot = Readonly<{
+  totalMs: number
+  stepMs: number
+  gapMs: number
+  heldMs?: number
+  steps: ComposeStepSnapshot[]
+}>
+
 export type ComposeStepLogger = {
   info: (message: string, metadata: Record<string, unknown>) => void
   warn: (message: string, metadata: Record<string, unknown>) => void
@@ -91,6 +125,11 @@ export type ComposeStepRecorder = {
   steps: () => ComposeStep[]
   /** Wall time from the first step to the last completion. */
   totalMs: () => number
+  /**
+   * The window and its steps as one artifact. The same values the summary line logs — computed once here so a
+   * support bundle and that line cannot disagree, and so the total, the covered part and the gap always add up.
+   */
+  snapshot: () => ComposeStepsSnapshot
   /** Logs the one-line summary (called by the caller where the window closes). */
   logSummary: () => void
 }
@@ -194,6 +233,32 @@ export const createComposeStepRecorder = (
     }
   }
 
+  const snapshot = (): ComposeStepsSnapshot => {
+    const totalMs = Math.round(
+      startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt)
+    )
+    const steps: ComposeStepSnapshot[] = recorded.map((entry) => ({
+      name: entry.name,
+      durationMs: Math.round(entry.durationMs),
+      outcome: entry.outcome,
+      cpuMs: entry.cpuMs,
+      cpuShare: entry.cpuShare,
+      attribution: entry.attribution,
+      ...(entry.heldMs === undefined ? {} : { heldMs: Math.round(entry.heldMs) })
+    }))
+    const stepMs = steps.reduce((total, entry) => total + entry.durationMs, 0)
+    const heldMs = recorded.reduce((total, entry) => total + (entry.heldMs ?? 0), 0)
+    return {
+      totalMs,
+      stepMs,
+      // The remainder, not a second measurement: `totalMs = stepMs + gapMs` must hold exactly after rounding,
+      // or the next reader finds a millisecond-sized "unattributed" block and starts investigating it.
+      gapMs: Math.max(0, totalMs - stepMs),
+      ...(heldMs > 0 ? { heldMs: Math.round(heldMs) } : {}),
+      steps
+    }
+  }
+
   return {
     step,
     steps: (): ComposeStep[] =>
@@ -202,29 +267,37 @@ export const createComposeStepRecorder = (
         .map(({ name, durationMs, outcome }) => ({ name, durationMs, outcome })),
     totalMs: (): number =>
       startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt),
+    snapshot,
     logSummary: (): void => {
+      // One reading feeds both this line and the support bundle: the total, the covered part and the gap are
+      // the same three numbers there, so the two can never tell different stories about one startup.
+      const { totalMs, stepMs, gapMs, heldMs, steps } = snapshot()
       // A step that was suspended is still the longest wall time, but it did not do the work. The summary
       // carries the total once and marks the entries that were partly — or entirely — not running, so the
       // next reader does not have to open every step line to find that out.
-      const heldMs = recorded.reduce((total, entry) => total + (entry.heldMs ?? 0), 0)
-      const slowest = [...recorded]
-        .sort((left, right) => right.durationMs - left.durationMs)
+      const slowest = steps
+        .map((entry, index) => ({ entry, index }))
+        .sort(
+          (left, right) =>
+            right.entry.durationMs - left.entry.durationMs || left.index - right.index
+        )
         .slice(0, summarySize)
         .map(
-          (entry) =>
-            `${entry.name}=${Math.round(entry.durationMs)}ms${
+          ({ entry }) =>
+            `${entry.name}=${entry.durationMs}ms${
               entry.outcome === 'failed' ? '(failed)' : ''
             }${attributionSuffix(entry.attribution)}${
-              entry.heldMs === undefined ? '' : `(held ${Math.round(entry.heldMs)}ms)`
+              entry.heldMs === undefined ? '' : `(held ${entry.heldMs}ms)`
             }`
         )
       options.log.info(messages.summary, {
-        totalMs: Math.round(
-          startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt)
-        ),
-        stepCount: recorded.length,
+        totalMs,
+        stepCount: steps.length,
         // Only when some step was actually held: an ordinary run's summary keeps its existing shape.
-        ...(heldMs > 0 ? { heldMs: Math.round(heldMs) } : {}),
+        ...(heldMs === undefined ? {} : { heldMs }),
+        // Present only when the window holds time no step covers: a run whose steps tile the window keeps its
+        // old shape, and a reader is never handed a zero to interpret.
+        ...(gapMs > 0 ? { stepMs, gapMs } : {}),
         slowest: slowest.join(' ')
       })
     }
