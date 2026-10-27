@@ -99,6 +99,7 @@ import {
   type ActivityAttribution,
   type CpuUsageSample
 } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { createLogger, diagnosticErrorFields } from '../logger'
 import { hasLegacyKeyRefs } from './legacy-key-refs'
 import type {
@@ -1227,6 +1228,9 @@ class SettingsService {
       cpuMs,
       cpuShare: Number(cpuShare.toFixed(3)),
       attribution: classifyCpuShare(cpuShare, totalMs),
+      // Present only when the loop was actually held inside this pass: the six-hour `keychain` claim that
+      // started this line was a suspended process, and the split is what says so in one field.
+      ...heldSplitFields(startedAt, totalMs),
       outcome,
       // The phases that ran, largest first, in the same `name=12ms` shape the compose recorder prints, with
       // `(no-cpu)` on a phase whose wall time was not work.

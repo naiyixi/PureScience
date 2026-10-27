@@ -93,6 +93,7 @@ import {
 } from './session-aggregate'
 import { NotebookSessionRegistry } from './session-registry'
 import { cpuAttributionFields } from '../diagnostics/cpu-attribution'
+import { heldSplitForMonotonicWindow } from '../diagnostics/loop-held-windows'
 import { createLogger, getLogFilePath } from '../logger'
 import { EnvironmentStateTracker, type EnvironmentCaptureTarget } from './environment-state-tracker'
 import { NotebookRuntimeBindingOwner } from './runtime-binding'
@@ -900,7 +901,10 @@ class NotebookRuntimeService {
           runs: state.runs.length,
           // Same three fields as every other slow line, over the same window it reports. `cold`/`loadMs`
           // answer "which phase"; these answer "was the process running while it accrued".
-          ...cpuAttributionFields(cpuRequestedAt, cpuEndedAt, totalMs)
+          ...cpuAttributionFields(cpuRequestedAt, cpuEndedAt, totalMs),
+          // And, when the loop was actually held inside this window, how much of the read was that rather
+          // than our own work — the phase split alone cannot tell a big run.json from a suspended process.
+          ...heldSplitForMonotonicWindow(requestedAt, finishedAt, totalMs)
         })
       } catch {
         // Best-effort: a logging failure must never fail a read the window is waiting on.

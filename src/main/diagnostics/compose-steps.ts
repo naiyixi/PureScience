@@ -20,6 +20,11 @@ import {
   type ActivityAttribution,
   type CpuUsageSample
 } from './cpu-attribution'
+import {
+  heldSplitForMonotonicWindow,
+  sharedLoopHeldWindows,
+  type LoopHeldWindows
+} from './loop-held-windows'
 
 export type ComposeStepOutcome = 'ok' | 'failed'
 
@@ -60,6 +65,11 @@ export type ComposeStepRecorderOptions = {
    * line now carries both halves.
    */
   cpuUsage?: () => CpuUsageSample
+  /**
+   * Injectable loop-held window source, for the same reason `now` and `cpuUsage` are: the split has to be
+   * provable without the process actually freezing. Defaults to the windows the stall watchdog records.
+   */
+  heldWindows?: Pick<LoopHeldWindows, 'heldMsWithin'>
   /** A step at or above this duration logs its own `slow` line. */
   slowMs?: number
   /** How many slowest steps the summary keeps. */
@@ -95,6 +105,7 @@ export const createComposeStepRecorder = (
   const slowMs = options.slowMs ?? DEFAULT_SLOW_MS
   const summarySize = options.summarySize ?? DEFAULT_SUMMARY_SIZE
   const messages = options.messages ?? DEFAULT_MESSAGES
+  const heldWindows = options.heldWindows ?? sharedLoopHeldWindows
 
   const recorded: TimedStep[] = []
   let startedAt: number | undefined
@@ -125,7 +136,10 @@ export const createComposeStepRecorder = (
           durationMs: Math.round(durationMs),
           cpuMs,
           cpuShare: Number(cpuShare.toFixed(3)),
-          attribution
+          attribution,
+          // Present only when part of this step fell inside a loop-held window: a startup step that looked
+          // slow because the process was not running must not read like one that did work for that long.
+          ...heldSplitForMonotonicWindow(stepStart, stepStart + durationMs, durationMs, heldWindows)
         })
       }
       return value
@@ -149,6 +163,9 @@ export const createComposeStepRecorder = (
         cpuMs,
         cpuShare: Number(cpuShare.toFixed(3)),
         attribution,
+        // The failure branch carries the same split: a step that failed after being suspended must not be
+        // read as a step that spent that time failing.
+        ...heldSplitForMonotonicWindow(stepStart, stepStart + durationMs, durationMs, heldWindows),
         ...diagnosticErrorFields(error)
       })
       throw error

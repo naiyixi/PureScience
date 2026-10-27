@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { NotebookRunRepository } from './repository'
 import { NotebookRuntimeService } from './runtime-service'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 
 // A `notebook:state` read is slow for exactly two different reasons — a large run.json we parse
 // ourselves, or a main thread that was not running our code — and the field totals on this machine
@@ -139,5 +140,27 @@ describe('notebook:state slow-read attribution', () => {
 
     expect(state.sessionId).toBe('session-1')
     expect(state.runJsonPath).toContain('run.json')
+  })
+
+  // The phase split answers "which part of the read was it"; the held split answers "was the loop running
+  // while it accrued". A suspended process reads as a slow parse on `loadMs` alone. The window is written on
+  // the loop's own clock (what the stall watchdog records) and covers the whole measurement, so every
+  // measured millisecond has to be reported as held — deleting the spread at this call site leaves `heldMs`
+  // absent entirely, which is how "nobody measured" and "the loop was free" differ.
+  it('carries the held split, so a read that looked slow reads that way for a reason', async () => {
+    const root = await createStorageRoot()
+    const heldStart = performance.now() - 5_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+    const warn = vi.fn()
+    const service = makeService(root, {
+      repository: new DelayedReadRepository(root, 260),
+      logger: { warn }
+    })
+
+    await service.state({ sessionId: 'session-1', workspaceCwd: '/workspace' })
+
+    const [, data] = warn.mock.calls[0] as [string, Record<string, number | string | boolean>]
+    expect(data.heldMs).toBe(data.totalMs)
+    expect(data.ownMs).toBe(0)
   })
 })

@@ -36,6 +36,7 @@ import {
 } from '../artifacts/provenance-message-snapshot'
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
 import { cpuAttributionFields, type CpuUsageSample } from '../diagnostics/cpu-attribution'
+import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 
 // `sessions:save-session` is the most frequent slow handler in nine days of real-machine logs (4,282 calls,
@@ -1071,6 +1072,10 @@ class SessionPersistenceCoordinator {
         // Same three fields as the save line, over the same window it reports. `source` says which tier
         // answered, so a slow read that was not running at all cannot be read as a slow document parse.
         ...cpuAttributionFields(times.cpuRequestedAt, process.cpuUsage(), totalMs),
+        // `source` says which tier answered, so a slow read that came from the index is not misread as a slow
+        // document parse (and the reverse). The held split answers the third question — whether the loop was
+        // running at all while those three phases accrued.
+        ...heldSplitFields(times.requestedAt, totalMs),
         hasPlan: times.hasPlan,
         source: times.source
       })
@@ -1440,6 +1445,9 @@ class SessionPersistenceCoordinator {
         // wait was filled by the holder's CPU still says `cpu-bound-in-process` (with `queueBlockers` naming
         // who held it) — the two readings answer different questions rather than one masking the other.
         ...cpuAttributionFields(times.cpuRequestedAt, process.cpuUsage(), totalMs),
+        // The other half of the same question: `session save` is the slowest channel in the real logs, and a
+        // save that waited inside a window where the loop never ran is not a save that serialized for 50 s.
+        ...heldSplitFields(times.requestedAt, totalMs),
         authorityMs: times.readAt - times.startedAt,
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,

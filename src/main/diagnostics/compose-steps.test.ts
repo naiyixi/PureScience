@@ -15,7 +15,11 @@ const makeLogger = (): {
 })
 
 const setup = (
-  options: { slowMs?: number; summarySize?: number } = {}
+  options: {
+    slowMs?: number
+    summarySize?: number
+    heldWindows?: { heldMsWithin: (startMs: number, endMs: number) => number }
+  } = {}
 ): {
   log: ReturnType<typeof makeLogger>
   recorder: ReturnType<typeof createComposeStepRecorder>
@@ -31,7 +35,8 @@ const setup = (
     now: () => clock,
     cpuUsage: () => cpu,
     slowMs: options.slowMs ?? 250,
-    summarySize: options.summarySize ?? 6
+    summarySize: options.summarySize ?? 6,
+    ...(options.heldWindows ? { heldWindows: options.heldWindows } : {})
   })
   return {
     log,
@@ -142,6 +147,70 @@ describe('compose step recorder', () => {
       expect.objectContaining({ step: 'hydrate-child-proxy-runtime', errorCategory: 'system' })
     )
     expect(recorder.steps()[0]).toMatchObject({ outcome: 'failed' })
+  })
+
+  // Startup steps read as "slow startup" whether the process was working or suspended — the real record
+  // (`permission-grant-registry` at 22 763 287 ms with a CPU share of 0) is the second kind. The CPU share
+  // says that in aggregate; the held split says how much of the step fell inside a window where the loop
+  // never ran, which is the number a reader can subtract from the duration.
+  it('splits a slow step by how much of it fell inside a window the loop was held for', async () => {
+    // 1 200 of the step's 1 800 ms were inside a recorded stall, whatever the machine was doing.
+    const { log, recorder, advance } = setup({
+      slowMs: 250,
+      heldWindows: { heldMsWithin: (startMs, endMs) => Math.min(endMs - startMs, 1_200) }
+    })
+
+    await recorder.step('restore-notification-inbox', () => {
+      advance(1_800)
+      return Promise.resolve(undefined)
+    })
+
+    expect(log.warn).toHaveBeenCalledWith('compose step slow', {
+      step: 'restore-notification-inbox',
+      durationMs: 1_800,
+      cpuMs: 1_440,
+      cpuShare: 0.8,
+      attribution: 'cpu-bound-in-process',
+      heldMs: 1_200,
+      ownMs: 600
+    })
+  })
+
+  // The failure branch is a separate call site: deleting the spread there leaves the success branch green.
+  it('splits a failed step the same way, so a suspension is not read as slow failing', async () => {
+    const { log, recorder, advance } = setup({
+      heldWindows: { heldMsWithin: () => 400 }
+    })
+
+    await expect(
+      recorder.step('hydrate-child-proxy-runtime', () => {
+        advance(600)
+        throw Object.assign(new Error('keychain unavailable'), { code: 'ENOKEY' })
+      })
+    ).rejects.toThrow('keychain unavailable')
+
+    expect(log.error).toHaveBeenCalledWith(
+      'compose step failed',
+      expect.objectContaining({ step: 'hydrate-child-proxy-runtime', heldMs: 400, ownMs: 200 })
+    )
+  })
+
+  // No recorded stall inside the step means no fields at all — not `heldMs: 0`, which would read as a
+  // measurement that said "the loop was free" on a run where nobody watched the loop.
+  it('prints no held fields when no recorded stall overlaps the step', async () => {
+    const { log, recorder, advance } = setup({
+      slowMs: 250,
+      heldWindows: { heldMsWithin: () => 0 }
+    })
+
+    await recorder.step('settings-service', () => {
+      advance(400)
+      return Promise.resolve(undefined)
+    })
+
+    const [, fields] = log.warn.mock.calls[0] as [string, Record<string, unknown>]
+    expect(fields).not.toHaveProperty('heldMs')
+    expect(fields).not.toHaveProperty('ownMs')
   })
 
   it('summarizes the slowest steps in one line, with the window total', async () => {

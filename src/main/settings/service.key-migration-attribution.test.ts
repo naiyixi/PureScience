@@ -27,6 +27,7 @@ vi.mock('electron', () => ({
 
 const { SettingsService } = await import('./service')
 const { SettingsRepository } = await import('./repository')
+const { sharedLoopHeldWindows } = await import('../diagnostics/loop-held-windows')
 
 type CpuSample = { user: number; system: number }
 
@@ -108,5 +109,36 @@ describe('legacy key migration attribution', () => {
     const line = migrationLine()
     expect(line).toMatchObject({ attribution: 'cpu-bound-in-process' })
     expect(String(line.phases)).not.toContain('(no-cpu)')
+  })
+
+  // The CPU share already says the process was barely running; the held split says how much of the pass fell
+  // inside a window the loop never ran for, which is the number a reader subtracts from `totalMs`. The
+  // window is written on the loop's own clock (what the stall watchdog records) and covers the whole pass,
+  // so every measured millisecond has to be reported as held.
+  it('says how much of the pass the loop was held for, not only how much CPU it used', async () => {
+    // An epoch-based clock, like the other held-split tests: the wall reading has to be a real `Date.now()`
+    // value for the wall→monotonic bridge to mean anything, so the same number feeds both the injected
+    // clock and `Date.now()` (a pass that advances 1 500 ms per reading).
+    let now = 1_760_000_000_000
+    const clockSpy = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    const cpu: CpuSample = { user: 0, system: 0 }
+    const heldStart = performance.now() - 65_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 130_000)
+    const service = new SettingsService({
+      repository,
+      storageRoot: dir,
+      clock: () => (now += 1_500),
+      cpuUsage: () => cpu
+    })
+
+    try {
+      await service.getSettingsView()
+
+      const line = migrationLine()
+      expect(Number(line.heldMs)).toBe(Number(line.totalMs))
+      expect(line.ownMs).toBe(0)
+    } finally {
+      clockSpy.mockRestore()
+    }
   })
 })

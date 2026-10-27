@@ -1,7 +1,7 @@
 import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
 import { cpuAttributionFields, type CpuUsageSample } from './cpu-attribution'
-import { heldSplitFromMeasured, sharedLoopHeldWindows } from './loop-held-windows'
+import { heldSplitForMonotonicWindow, sharedLoopHeldWindows } from './loop-held-windows'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
 
@@ -89,10 +89,12 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
       // Split the wall duration by the same windows the stall watchdog reports. A settings-mount burst where
       // five channels all finish together is one blocked loop, not five slow handlers: without this split
       // every one of them reads as app work and the next round optimizes a channel that did nothing.
-      const heldMs = Math.max(
-        0,
-        Math.min(durationMs, Math.round(safeHeldMs(heldMsWithin, startedAt, endedAt)))
-      )
+      const held = heldSplitForMonotonicWindow(startedAt, endedAt, durationMs, {
+        // Guarded here rather than in the shared helper: a source that throws must still leave the line with
+        // its duration, which is what `safeHeldMs` did at this call site before the arithmetic moved.
+        heldMsWithin: (startMs: number, endMs: number): number =>
+          safeHeldMs(heldMsWithin, startMs, endMs)
+      })
       input.log.warn('ipc handler was slow', {
         channel: input.channel,
         surface: input.callerContext.surface,
@@ -104,7 +106,7 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         // from "we were suspended for 21 s" without the next reader having to guess.
         ...cpuAttributionFields(cpuStart, cpuUsage(), durationMs),
         // Present only when there is something to split, so an ordinary slow handler's line is unchanged.
-        ...heldSplitFromMeasured(heldMs, durationMs)
+        ...(held ?? {})
       })
     } catch {
       // Diagnostic failures must never replace the handler's authoritative result.

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createLoopHeldWindows,
   heldSplitFields,
+  heldSplitForMonotonicWindow,
   heldSplitForWallWindow,
   heldSplitFromMeasured,
   toMonotonicWindow
@@ -154,5 +155,25 @@ describe('the shared split arithmetic', () => {
     expect(heldSplitFromMeasured(10, 0)).toBeUndefined()
     expect(heldSplitFromMeasured(10, Number.NaN)).toBeUndefined()
     expect(heldSplitFromMeasured(Number.NaN, 100)).toBeUndefined()
+  })
+
+  // Three adapters (the IPC rejection floor, the application command router, and now the compose/session/
+  // settings slow lines) measure on `performance.now()` and used to clip-and-round the same arithmetic at
+  // their own call site. The helper is that arithmetic once; these cases pin the invariants a copy drifts from.
+  it('splits a window measured on the monotonic clock, from its own start and end', () => {
+    const held = createLoopHeldWindows({ minimumMs: 0 })
+    held.record(1_000, 1_600)
+
+    expect(heldSplitForMonotonicWindow(900, 2_000, 1_100, held)).toEqual({
+      heldMs: 600,
+      ownMs: 500
+    })
+    // A window that missed every recorded stall prints nothing at all, rather than `heldMs: 0`.
+    expect(heldSplitForMonotonicWindow(5_000, 5_700, 700, held)).toBeUndefined()
+    // The split never hands out more held time than the reading it is cutting up.
+    expect(heldSplitForMonotonicWindow(1_000, 1_600, 200, held)).toEqual({ heldMs: 200, ownMs: 0 })
+    // Unusable inputs stay silent instead of producing a made-up split.
+    expect(heldSplitForMonotonicWindow(Number.NaN, 2_000, 1_100, held)).toBeUndefined()
+    expect(heldSplitForMonotonicWindow(900, 900, 0, held)).toBeUndefined()
   })
 })

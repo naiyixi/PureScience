@@ -19,6 +19,7 @@ import {
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
 import { FinalizedArtifactBindingConflictError } from '../artifacts/provenance-message-snapshot'
 import type { Logger } from '../logger'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import {
   OrphanLegacyUploadAuthorityMissingError,
@@ -4474,6 +4475,89 @@ describe('session runtime context read sources', () => {
     ]
     expect(message).toBe('session runtime context read was slow')
     expect(fields).toMatchObject({ source: 'index', hasPlan: false })
+    clock.mockRestore()
+  })
+})
+
+// Both lines here already answer "how much CPU did this use" and "which phase". The third question a reader
+// of the real machine logs asks is "was the loop running at all while that accrued": a save that waited 50 s
+// inside a window where nothing ran is not a 50 s serialization. The window is written on the loop's own
+// clock (what the stall watchdog records) and covers the whole measurement, so every measured millisecond
+// has to be reported as held — deleting the spread at either call site leaves `heldMs` absent entirely,
+// which is how "nobody measured" and "the loop was free" differ.
+describe('held split on the session slow lines', () => {
+  it('says how much of a slow save the loop was held for', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const heldStart = performance.now() - 5_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+
+    const pending = coordinator.saveSession(createSession({ title: 'Slow' }))
+    now += 5_000
+    await pending
+
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, number>]
+    expect(message).toBe('session save was slow')
+    expect(fields.totalMs).toBe(5_000)
+    expect(fields.heldMs).toBe(5_000)
+    expect(fields.ownMs).toBe(0)
+    clock.mockRestore()
+  })
+
+  it('says how much of a slow runtime-context read the loop was held for', async () => {
+    const durable = createSession({
+      runtimeContext: { version: 1, revision: 3, plan: createRuntimePlan() }
+    })
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics: vi.fn(async () => ({
+        status: 'found' as const,
+        session: durable
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const heldStart = performance.now() - 5_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+    const clock = vi.spyOn(Date, 'now')
+    let now = 2_000_000
+    clock.mockImplementation(() => now)
+
+    const pending = coordinator.readSessionRuntimeContext('project-1', 'session-1')
+    now += 5_000
+    await pending
+
+    const [message, fields] = log.warn.mock.calls[0] as [
+      string,
+      Record<string, number | boolean | string>
+    ]
+    expect(message).toBe('session runtime context read was slow')
+    expect(fields.totalMs).toBe(5_000)
+    expect(fields.heldMs).toBe(5_000)
+    expect(fields.ownMs).toBe(0)
     clock.mockRestore()
   })
 })

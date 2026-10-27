@@ -98,6 +98,23 @@ export const heldSplitFromMeasured = (heldMs: number, windowMs: number): HeldSpl
 }
 
 /**
+ * The held/own split for a window already measured on a monotonic clock (`performance.now()`), with the
+ * measurement's own start/end rather than a width. Three adapters used to clip and round this arithmetic
+ * themselves — a fourth copy would be a fourth answer to "how much of this was ours".
+ */
+export const heldSplitForMonotonicWindow = (
+  startMs: number,
+  endMs: number,
+  windowMs: number,
+  source: Pick<LoopHeldWindows, 'heldMsWithin'> = sharedLoopHeldWindows
+): HeldSplit | undefined => {
+  if (![startMs, endMs, windowMs].every((value) => Number.isFinite(value))) return undefined
+  if (!(windowMs > 0)) return undefined
+  const heldMs = Math.min(windowMs, Math.max(0, source.heldMsWithin(startMs, endMs)))
+  return heldSplitFromMeasured(heldMs, windowMs)
+}
+
+/**
  * The held/own split for a window measured on the wall clock. `undefined` when the loop was never held
  * inside it — the caller then prints no field at all, so "the loop was free" and "nobody measured" stay
  * distinguishable by presence rather than by a zero.
