@@ -1,5 +1,49 @@
 # PureScience 更新日记
 
+## v2.18.6 — 2026-10-27（框架选择不再被静默忽略）
+
+**成熟度自陈**：这一版修一个**用户可见**的缺陷——在设置里选中的 agent 框架可能被静默忽略，而且它让
+「四个 runtime 各有一个可查会话」这项机检一直出不了读数。修完读数是 3/4，剩下那一个不在我们的代码里。
+
+### 一、缺陷：联合类型有四个框架，两处白名单只认三个
+
+`AgentFrameworkId` 是 `claude-code | opencode | codex | codebuddy`，而两处**手写**的白名单只列了前三个：
+
+| 位置 | 后果 |
+|---|---|
+| `src/main/settings/repository.ts`（读取规范化） | `setAgentFramework('codebuddy')` 返回成功，**下次解析即被丢弃** |
+| `src/shared/session-persistence.ts`（持久化） | codebuddy 会话落盘时框架 id 被丢弃，读回成默认 `claude-code` |
+
+### 二、修法：一个来源 + 编译期完整性检查
+
+`shared/settings.ts` 导出 `AGENT_FRAMEWORK_IDS` 与 `isAgentFrameworkId` 守卫，并加了一条**编译期完整性检查**：
+联合类型里每个 id 都必须出现在列表里，漏一个就编译不过。两处调用点改用它，各自的白名单删除。
+
+用例：四个 id 逐个 round-trip（settings 仓储 + session 持久化）。
+
+### 三、真机读数
+
+```
+framework selection { forced: null, stored: 'codebuddy', resolved: 'codebuddy' }
+framework selection { forced: null, stored: 'codex',     resolved: 'codex' }
+```
+
+**codex 由此第一次拿到可复现读数**：会话 `01a17e35`，`fw=codex`、`servers=14`、run 退出码 0（回合答 `ok`）。
+
+机检③ **3/4**：opencode / claude-code / codex 可复现。codebuddy 的选择已正确生效，但
+`codebuddy --acp` 在这台机器上握手不成立（应用日志 `ensureConnected: connect failed`，手工发 `initialize`
+两秒无回应）——阻塞在它的 ACP 运行时，不在本仓代码里。
+
+### 四、诊断：框架选择现在会自报
+
+新增一行 `[settings:backend] framework selection { forced, stored, resolved }`。这次正是它把范围从「猜」
+缩到一行读数——「设置没被读到」与「读到了被改写」从此不同形。
+
+### 明确没做 / 未验证
+
+- **codebuddy 的读数**：等它的 ACP 握手可用；我们这侧不再缺什么；
+- **A2A 的流式/取消/推送与跨机配对**：沿用 v2.18.5 的边界（卡里写 `false`）。
+
 ## v2.18.5 — 2026-10-27（A2A：先把「做不到」证明，再把它做出来）
 
 **成熟度自陈**：这一版加了一条**新的对外协议面**（A2A 的卡与 `message/send`），并且把此前挂着的那句
