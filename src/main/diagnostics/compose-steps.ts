@@ -36,7 +36,13 @@ export type ComposeStep = Readonly<{
 
 /** One recorded step plus what the process spent of it. Kept internal: `steps()` stays the public shape. */
 type TimedStep = ComposeStep &
-  Readonly<{ cpuMs: number; cpuShare: number; attribution: ActivityAttribution }>
+  Readonly<{
+    cpuMs: number
+    cpuShare: number
+    attribution: ActivityAttribution
+    /** Present only when part of the step fell inside a recorded stall. */
+    heldMs?: number
+  }>
 
 export type ComposeStepLogger = {
   info: (message: string, metadata: Record<string, unknown>) => void
@@ -122,13 +128,22 @@ export const createComposeStepRecorder = (
       const cpuMs = cpuMillisecondsBetween(cpuStart, cpuUsage())
       const cpuShare = cpuShareOf(cpuMs, durationMs)
       const attribution = classifyCpuShare(cpuShare, durationMs)
+      // Computed once, so the slow line, the recorded entry and the summary total cannot disagree about the
+      // same step.
+      const held = heldSplitForMonotonicWindow(
+        stepStart,
+        stepStart + durationMs,
+        durationMs,
+        heldWindows
+      )
       recorded.push({
         name,
         durationMs,
         outcome: 'ok',
         cpuMs,
         cpuShare: Number(cpuShare.toFixed(3)),
-        attribution
+        attribution,
+        ...(held === undefined ? {} : { heldMs: held.heldMs })
       })
       if (durationMs >= slowMs) {
         options.log.warn(messages.slow, {
@@ -139,7 +154,7 @@ export const createComposeStepRecorder = (
           attribution,
           // Present only when part of this step fell inside a loop-held window: a startup step that looked
           // slow because the process was not running must not read like one that did work for that long.
-          ...heldSplitForMonotonicWindow(stepStart, stepStart + durationMs, durationMs, heldWindows)
+          ...(held ?? {})
         })
       }
       return value
@@ -149,13 +164,20 @@ export const createComposeStepRecorder = (
       const cpuMs = cpuMillisecondsBetween(cpuStart, cpuUsage())
       const cpuShare = cpuShareOf(cpuMs, durationMs)
       const attribution = classifyCpuShare(cpuShare, durationMs)
+      const held = heldSplitForMonotonicWindow(
+        stepStart,
+        stepStart + durationMs,
+        durationMs,
+        heldWindows
+      )
       recorded.push({
         name,
         durationMs,
         outcome: 'failed',
         cpuMs,
         cpuShare: Number(cpuShare.toFixed(3)),
-        attribution
+        attribution,
+        ...(held === undefined ? {} : { heldMs: held.heldMs })
       })
       options.log.error(messages.failed, {
         step: name,
@@ -165,7 +187,7 @@ export const createComposeStepRecorder = (
         attribution,
         // The failure branch carries the same split: a step that failed after being suspended must not be
         // read as a step that spent that time failing.
-        ...heldSplitForMonotonicWindow(stepStart, stepStart + durationMs, durationMs, heldWindows),
+        ...(held ?? {}),
         ...diagnosticErrorFields(error)
       })
       throw error
@@ -181,6 +203,10 @@ export const createComposeStepRecorder = (
     totalMs: (): number =>
       startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt),
     logSummary: (): void => {
+      // A step that was suspended is still the longest wall time, but it did not do the work. The summary
+      // carries the total once and marks the entries that were partly — or entirely — not running, so the
+      // next reader does not have to open every step line to find that out.
+      const heldMs = recorded.reduce((total, entry) => total + (entry.heldMs ?? 0), 0)
       const slowest = [...recorded]
         .sort((left, right) => right.durationMs - left.durationMs)
         .slice(0, summarySize)
@@ -188,13 +214,17 @@ export const createComposeStepRecorder = (
           (entry) =>
             `${entry.name}=${Math.round(entry.durationMs)}ms${
               entry.outcome === 'failed' ? '(failed)' : ''
-            }${attributionSuffix(entry.attribution)}`
+            }${attributionSuffix(entry.attribution)}${
+              entry.heldMs === undefined ? '' : `(held ${Math.round(entry.heldMs)}ms)`
+            }`
         )
       options.log.info(messages.summary, {
         totalMs: Math.round(
           startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt)
         ),
         stepCount: recorded.length,
+        // Only when some step was actually held: an ordinary run's summary keeps its existing shape.
+        ...(heldMs > 0 ? { heldMs: Math.round(heldMs) } : {}),
         slowest: slowest.join(' ')
       })
     }

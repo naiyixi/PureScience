@@ -213,6 +213,32 @@ describe('compose step recorder', () => {
     expect(fields).not.toHaveProperty('ownMs')
   })
 
+  // The summary is the line a reader scans first, and a suspended step keeps the longest wall time in it.
+  // Without a total, "startup took 9 s" reads as work; with it, the reader subtracts in one glance instead
+  // of opening every step line.
+  it('reports in the summary how much of the window the loop was held for', async () => {
+    const { log, recorder, advance } = setup({
+      summarySize: 3,
+      heldWindows: { heldMsWithin: (startMs, endMs) => Math.min(endMs - startMs, 1_200) }
+    })
+
+    await recorder.step('permission-grant-registry', () => {
+      advance(1_800)
+      return Promise.resolve(undefined)
+    })
+    await recorder.step('open-project-db', () => {
+      advance(300)
+      return Promise.resolve(undefined)
+    })
+    recorder.logSummary()
+
+    const [, fields] = log.info.mock.calls[0] as [string, Record<string, unknown>]
+    expect(fields.heldMs).toBe(1_500)
+    expect(String(fields.slowest)).toBe(
+      'permission-grant-registry=1800ms(held 1200ms) open-project-db=300ms(held 300ms)'
+    )
+  })
+
   it('summarizes the slowest steps in one line, with the window total', async () => {
     const { log, recorder, advance } = setup({ summarySize: 2 })
 
@@ -231,6 +257,8 @@ describe('compose step recorder', () => {
     const [message, fields] = log.info.mock.calls[0] as [string, Record<string, unknown>]
     expect(message).toBe('compose runtime steps')
     expect(fields).toMatchObject({ totalMs: 9_500, stepCount: 3 })
+    // No recorded stall anywhere in this run ⇒ no total, and no per-entry remark either.
+    expect(fields).not.toHaveProperty('heldMs')
     // Slowest first, and only the configured number of entries.
     expect(String(fields.slowest)).toBe(
       'read-stored-settings=9000ms restore-notification-inbox=500ms'
