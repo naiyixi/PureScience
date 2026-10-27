@@ -232,6 +232,39 @@ describe('notebook shell process behavior', () => {
         exitCode: null
       })
     })
+
+    // The shell exits before a backgrounded child, and that child inherits the same stdout pipe. The
+    // bytes it writes still belong to this run, so the result waits for the pipe rather than reporting
+    // whatever had arrived when the shell itself exited.
+    it('keeps the tail a backgrounded child writes while its inherited pipe is still open', async () => {
+      const started = Date.now()
+      const result = await execute('echo hi; (sleep 0.1; echo late) &')
+
+      expect(result).toEqual({ stdout: 'hi\nlate\n', stderr: '', exitCode: 0 })
+      expect(Date.now() - started).toBeLessThan(2_000)
+    })
+
+    // A background child can also hold the pipe indefinitely. Waiting for it would turn a successful
+    // command into a timeout, so the drain is bounded and the result names what it could not collect:
+    // "nothing printed yet" and "the tail is still in the pipe" must not look the same.
+    it('says the tail was still in the pipe when a background child outlives the drain grace', async () => {
+      const started = Date.now()
+      const result = await execute('echo hi; (sleep 5; echo never) &', 4_000)
+
+      expect(result.stdout).toBe('hi\n')
+      expect(result.exitCode).toBe(0)
+      expect(result.stderr).toContain('output pipe was still open')
+      expect(result.stderr).toContain('400ms after exit is not included')
+      expect(Date.now() - started).toBeLessThan(3_000)
+    })
+
+    it('adds no drain note when the pipe already closed with the shell', async () => {
+      await expect(execute('printf "plain"')).resolves.toEqual({
+        stdout: 'plain',
+        stderr: '',
+        exitCode: 0
+      })
+    })
   })
 })
 

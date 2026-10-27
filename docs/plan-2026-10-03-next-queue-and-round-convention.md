@@ -13413,3 +13413,68 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
 1. 读本笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA；Windows 分片 8 是这次的重点）。
 2. 候选：① `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）；② A 段若有 ≥3 天无人动的项按约定接手。
 3. 仍等用户点头（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
+
+## 二百四十九、本轮追加（执行器，2026-10-27 16:0x–）—— 「尾部还在管道里」不再与「命令没有输出」同形
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- `HEAD == origin/main == cfeeea20`，工作区干净；`cfeeea20` 的 `Nightly` 与 `Windows Full Test` **双绿**
+  （绑完整 40 位 SHA 查，分片 8 也绿） ⇒ 上一轮那句「Windows 那条修复只有本机背书」已由车道收口。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）⇒ 取 §二百四十八 §六 第 2 条候选 ①：
+  `notebook/runtime-service` 的 spawn 断言，规矩是**先量再改**、不许加大超时。与会话线无交集（只碰 `notebook/` 两个文件）。
+
+### 一 先量：四个探针（结论与最初假设不符的那半，据实记下）
+
+| 探针 | 读数 | 结论 |
+|---|---|---|
+| 同一形状 `'exit'` vs `'close'` 结算，空载 300×2 / 8 路满载 400×4 | 丢字节 **0**、空 stdout **0**、spawn error **0**、null exit **0** | 「exit 抢跑丢输出」在空载/常规满载下**量不出来**，不能凭理论改代码 |
+| 16 路满载下量 `'exit'` 时刻的 `stdout.readableEnded` | 普通 `echo hi` **236/400（59%）管道仍未读完**；这批字节都在事件队列里到了 | 「exit 早于排空」是**观测到的常态**，不是偶发 —— 上一轮那条 `expected '' to contain 'hi'`（负载 126）就是这个窗口 |
+| 确定性场景 `echo hi; (sleep 0.4; echo late) &` | `'exit'` **6 ms 返回、丢掉 `late`**；`'close'` **475 ms 拿全** | 后台尾部（继承同一管道）确实会被静默截断 |
+| 判据探针：`'exit'` 时刻的 `readableEnded` | 后台尾部 `false`；`echo hi` / `true`（真空输出）/ `& wait` 均 `true` | 能把「尾部还在管道里」与「本来就没输出」分开，**不用猜** |
+
+由此定两条腿，并且**没有**把 `'close'` 直接当结算事件：那会让 `nohup long_job &` 把一次成功命令拖成 120 s 超时
+（判据：`backgrounded-then-wait` 一例里 `'close'` 与 `'exit'` 同刻到达，说明「等关闭」等于「等后台工作结束」）。
+
+### 二 交付（2 文件，`src/main/notebook/`）
+
+- `shell-process.ts`：新增 `SHELL_DRAIN_GRACE_MS = 400`；`'exit'` 后若 `stdout`/`stderr` 仍**未** `readableEnded`，
+  按有界宽限等 `'close'` 收尾（宽限内到达的字节照常算进本次结果）；宽限用完仍开着，就在 `stderr` 追加一行具名说明
+  —— 与既有超时诊断**同一条通道、同一句法**，不新增结果字段（保持 `{stdout, stderr, exitCode}` 契约不变）。
+- `shell-process.test.ts`：三条新用例（真 `sh`、真管道，无替身）：
+  ① 后台尾部在宽限内到达 ⇒ `stdout` 是 `hi\nlate\n`、`stderr` 为空、总耗时 < 2 s；
+  ② 后台子进程超出宽限 ⇒ `stdout` 仍是 `hi\n`、`exitCode 0`、`stderr` 里是那句说明、耗时 < 3 s（**不会**等到 4 s 超时）；
+  ③ 管道随机退已关 ⇒ 精确相等 `{stdout:'plain', stderr:'', exitCode:0}`（说明**不会**滥发）。
+
+### 三 变异自证（两条腿分别被钉住）
+
+| 变异 | 结果 |
+|---|---|
+| A：`finishAfterDrain(code)` 换回原 `finish({stdout, stderr, exitCode: code})` | **2 红**，正是新增的「尾部」与「说明」两条；其余 16 过 |
+| B：保留排空、只删掉那句说明（宽限到期直接 `finish`） | **1 红**，只有「说明」那条；16 过 ⇒ 排空与说明是可分的两件事 |
+
+### 四 门禁读数（取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `shell-process.test.ts` 定向 | **18 passed**（verbose 逐条看过，三条新用例各 ~124 ms / ~413 ms / ~19 ms） |
+| `src/main/notebook` 整目录（`--maxWorkers=4`） | **1441 passed / 100 skipped（1541）**，EXIT 0 |
+| 全量 vitest（`--maxWorkers=4`） | **1402 files passed / 23 skipped（1425）**；**17764 passed / 216 skipped（17980）**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `npx eslint --no-cache`（本笔 2 文件） | **exit 0**（0 error / 0 warning） |
+
+### 五 边界（不许读成更强）
+
+1. **没有真机 agent 回合读数**：`executeShell` 既不在 web RPC 面、也不在 preload 面（两处 grep 均 0 命中），
+   唯一产品入口是 agent 的 `bash_execute` 工具 ⇒ 取它要一次真实 agent 回合（花 token），归入待拍板项。
+   本单元的证据层级是「真进程 + 真管道 + 真 `sh`」，与仓内既有 `process results` / `windows-shell.integration` 同档，
+   **不是替身**，但**不是**产品回合读数。
+2. **400 ms 的取值只有本机读数背书**：Windows 侧的判决等本笔的 `Windows Full Test`；汇报里不写成已绿。
+3. 后台子进程长期占着管道时，宽限到期后我们只是**不再等**——那行说明不宣称后台工作已被终止，也不宣称没被终止。
+4. 每次 `bash_execute` 的延迟影响只落在「管道仍开」的那部分（本机满载实测占 59%），且以 `'close'` 到达即结束
+   （普通命令为毫秒级）；空载下 `readableEnded` 已在 `'exit'` 时刻为真 ⇒ 该路径不进入宽限。
+
+### 六 下一轮第一步
+
+1. 读本笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA）。
+2. 候选：① `src/main/ipc.ts` 里其余「有读数但没归属」的分支（§二百四十三 立案的那条线）；② A 段若有 ≥3 天无人动的项按约定接手。
+3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`；以及一次真实 agent 回合取 `bash_execute` 的产品级读数。

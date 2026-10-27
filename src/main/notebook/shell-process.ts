@@ -11,6 +11,10 @@ import { manualProxyEnvironment } from '../net/proxy-runtime'
 const DEFAULT_SHELL_TIMEOUT_MS = 120_000
 // Grace between the POSIX process group's polite termination and an uncatchable group kill.
 const SHELL_KILL_GRACE_MS = 2_000
+// Bounded drain after the shell exits while its output pipe is still open. Ordinary bytes in flight
+// land well inside this window; a backgrounded child that keeps the inherited handle does not, and
+// the result says so instead of letting a truncated tail look like the whole output.
+const SHELL_DRAIN_GRACE_MS = 400
 
 // Result of one stateless bash_execute run. No status/traceback classification: the shell is
 // expected to fail non-zero sometimes, so the caller inspects exitCode directly instead of a
@@ -344,11 +348,41 @@ const runShellCommand = (
     child.stderr.on('data', (chunk: string) => {
       stderr += chunk
     })
+    // A child that has exited can leave its pipe open: either bytes are still in flight (ordinary
+    // under load) or a backgrounded process kept the inherited handle. Settle only after a bounded
+    // drain, and name the gap when the drain runs out — "the tail is still in the pipe" and "the
+    // command printed nothing" must not reach the caller as the same result.
+    const pipeStillOpen = (): boolean =>
+      child.stdout?.readableEnded === false || child.stderr?.readableEnded === false
+
+    const finishAfterDrain = (exitCode: number | null): void => {
+      if (settled) return
+      if (!pipeStillOpen()) {
+        finish({ stdout, stderr, exitCode })
+        return
+      }
+
+      const drainTimer = setTimeout(() => {
+        finish({
+          stdout,
+          stderr:
+            stderr +
+            `${stderr && !stderr.endsWith('\n') ? '\n' : ''}Shell command exited while its output pipe was still open; output written more than ${SHELL_DRAIN_GRACE_MS}ms after exit is not included.`,
+          exitCode
+        })
+      }, SHELL_DRAIN_GRACE_MS)
+
+      child.once('close', () => {
+        clearTimeout(drainTimer)
+        finish({ stdout, stderr, exitCode })
+      })
+    }
+
     child.once('error', (error) => {
       if (!timedOut) finish({ stdout, stderr: stderr || error.message, exitCode: null })
     })
     child.once('exit', (code) => {
-      if (!timedOut) finish({ stdout, stderr, exitCode: code })
+      if (!timedOut) finishAfterDrain(code)
     })
   })
 
