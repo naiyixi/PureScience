@@ -420,7 +420,16 @@ export type SaveSessionOptions = {
 export const INTERRUPTED_SESSION_ERROR = 'Session was interrupted before the app closed.'
 
 const MESSAGE_ROLES = new Set<PersistedMessageRole>(['user', 'agent'])
-const AGENT_FRAMEWORK_IDS = new Set<AgentFrameworkId>(['claude-code', 'opencode', 'codex'])
+// Every id in the AgentFrameworkId union, not a subset: the framework id decides which runtime reopens a
+// session, and dropping one silently wrote a codebuddy session back as the default framework (measured
+// 2026-10-27: a run under codebuddy answered fine, but its persisted session read `claude-code`, which is
+// also why the four-runtime machine check could not produce a codebuddy reading).
+const AGENT_FRAMEWORK_IDS = new Set<AgentFrameworkId>([
+  'claude-code',
+  'opencode',
+  'codex',
+  'codebuddy'
+])
 const MESSAGE_STATUSES = new Set<PersistedMessageStatus>(['complete', 'streaming', 'error'])
 const TOOL_ACTIVITY_STATUSES = new Set<PersistedToolActivityStatus>([
   'pending',

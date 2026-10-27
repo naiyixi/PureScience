@@ -2,8 +2,9 @@
 //
 // 它声明的是**这个构建能做什么**，不是「兼容 A2A」。计划档 §4 写着：任何「兼容 A2A」的说法在实测之前
 // 都不成立 —— 所以这里把那条边界写成机器可读字段（`interop.a2a: 'unverified'`），而不是靠注释约束人。
-// 等真做过互通测试（另一台机器上的实现能读这张卡并跑通 message/send），才允许把它改成 'verified'，
-// 并且那时要附测试读数。
+// 2026-10-27 起是 'verified'：一个独立客户端（另一进程、只用 HTTP + JSON-RPC、不 import 本仓代码）读了
+// `/.well-known/agent-card.json` 并对打包版跑通 `message/send`（task `completed`、artifact `ok`、29.8 s）。
+// 读数在 docs/evidence/2026-10-27-a2a-interop-probe.md；若哪天撤掉这个面，同一次改动里把它改回 'unverified'。
 //
 // 数据来源刻意少：版本/平台来自 bootstrap（index.ts 已备好），能力清单来自会话能力契约本身
 // （CURRENT_PRIMARY_CAPABILITIES）—— 不新造一份「能力清单」，那会随时间与真实契约漂移。
@@ -20,8 +21,14 @@ export type AgentCardPayload = {
   /** App-owned capability names this build can attach to a session. */
   capabilities: string[]
   interop: {
-    /** Explicitly unverified: no interop test has been run against another implementation. */
-    a2a: 'unverified'
+    /**
+     * `verified` since 2026-10-27: an independent client (separate process, HTTP + JSON-RPC only, no import
+     * from this tree) read `/.well-known/agent-card.json` and completed a `message/send` round-trip against
+     * the packaged build — task `completed`, artifact text `ok`, 29.8 s. Readings:
+     * docs/evidence/2026-10-27-a2a-interop-probe.md. If the surface is ever withdrawn, this goes back to
+     * `unverified` in the same change that withdraws it.
+     */
+    a2a: 'unverified' | 'verified'
     /** The protocol this app itself drives sessions over. */
     acp: 'primary'
   }
@@ -41,5 +48,6 @@ export const buildAgentCardPayload = (input: AgentCardInput): AgentCardPayload =
   version: input.appVersion,
   platform: input.platform,
   capabilities: [...(input.capabilityNames ?? CURRENT_PRIMARY_CAPABILITIES)],
-  interop: { a2a: 'unverified', acp: 'primary' }
+  // Flipped after the round-trip below actually ran against the packaged build, not before it.
+  interop: { a2a: 'verified', acp: 'primary' }
 })

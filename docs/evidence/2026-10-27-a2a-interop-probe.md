@@ -1,52 +1,51 @@
-# A2A 互通的实机检查：卡在、协议面不在
+# A2A 互通：先证明它做不到，再把它做出来，最后用独立客户端验通
 
-2026-10-27，对着**已认证的本机后端**（`purescience status` → PID/port 44100，`purescience url` 给出带 token 的
-地址）做检查。这是「另一台机器上的实现能读这张卡并跑通 message/send」这一步能做到的最大程度。
+2026-10-27。这条排期分三步走完：**实测缺口 → 实现最小面 → 独立实现跑通**。
 
-## 1. 卡片能读，但它不是 A2A AgentCard
+## 一、实测缺口（实现之前）
 
-`GET /api/v1/agent-card?token=…` → 200，内容：
+对着已认证的本机后端（`purescience url` 给带 token 的地址）：
 
-```json
-{ "schema": …, "name": "PureScience (DEV)", "version": "2.18.3", "platform": …,
-  "capabilities": [ … 15 项 … ],
-  "interop": { "a2a": "unverified", "acp": "primary" } }
+- `GET /api/v1/agent-card` → 200，但它**不是 A2A AgentCard**：缺 `url`、`protocolVersion`、
+  `preferredTransport`、`skills[]`、`defaultInputModes`/`defaultOutputModes`；
+- A2A 的 `message/send`（JSON-RPC）在 `/`、`/a2a`、`/api/v1/a2a`、`/message/send` 四处 **全 404**，
+  代码里只有注释没有路由。
+
+所以当时 `interop.a2a: 'unverified'` 是**真话**，而且这条排期不是「差一次测试」而是「差一块功能」。
+
+## 二、实现的最小面
+
+- `src/main/web-service/a2a.ts`：
+  - `buildA2AAgentCard()` —— A2A 形态的卡（`protocolVersion 0.2.3`、`url`、`preferredTransport: JSONRPC`、
+    `capabilities{streaming:false, pushNotifications:false}`、`defaultInputModes/OutputModes`、
+    把构建能力投影成 `skills[]`）；
+  - `handleA2ARequest()` —— `message/send`（阻塞式，超时答 `working`）与 `tasks/get`；
+  - 刻意**没有**实现 `message/stream`、`tasks/cancel`、push：卡里就写 `false`，让客户端能看出来而不是猜。
+- 路由挂在 `/.well-known/agent-card.json`（GET）与 `/a2a`（POST），与其它端点共用同一个 token 闸门
+  —— 未认证的对端连卡都读不到，这是有意的：给已配对的对端用，不是给公网。
+- 不猜项目：消息里没有 `metadata.project` 时，只有「实例恰好只有一个项目」才用它，否则返回具名
+  `-32602` 说明需要 `message.metadata.project`。
+- 只有 `completed` 的 run 才带 artifact —— `working` 期间不把半截文本当结果发出去。
+
+## 三、独立客户端跑通（这就是「另一个实现」）
+
+`/tmp/a2a-client.mjs`：**另一个进程**，只用 `fetch` + JSON-RPC，不 import 本仓任何代码。
+
+```
+card.status=200 protocolVersion=0.2.3 url=http://127.0.0.1:44541
+card.skills=15
+card.streaming=false
+task.id=c462c661-9320-4876-ba0c-306e01a30fd6 state=completed elapsedMs=29847
+task.artifact.text="ok"
+ROUNDTRIP OK
 ```
 
-按 A2A 规范的 AgentCard 必备字段对照：
+即：读卡（必备字段齐全）→ 发 `message/send` → 收到 `completed` 的 task 与文本 artifact。
+**因此 `interop.a2a` 由 `unverified` 改为 `verified`**；`agent-card-route.test.ts` 现在会去读这份文件，
+声明与读数必须同时存在，否则测试不放过。
 
-| 必备字段                                       | 本卡 | 说明                                                          |
-| ---------------------------------------------- | ---- | ------------------------------------------------------------- |
-| `name` / `version`                             | ✅   | 有                                                            |
-| `description`                                  | ❌   | 无                                                            |
-| **`url`**（对端要连的端点）                    | ❌   | 无 —— 对端读完卡也无处可发                                    |
-| `protocolVersion` / `preferredTransport`       | ❌   | 无                                                            |
-| `capabilities.streaming` / `pushNotifications` | ❌   | 本卡的 `capabilities` 是「能挂什么」的列表，不是 A2A 的能力位 |
-| `defaultInputModes` / `defaultOutputModes`     | ❌   | 无                                                            |
-| `skills[]`                                     | ❌   | 无                                                            |
+## 仍未做（照实写明）
 
-也就是说：这是**PureScience 自己的能力声明**，不是可被 A2A 客户端直接消费的 AgentCard。
-
-## 2. 没有 JSON-RPC 端点
-
-对四处候选路径发 A2A 的 `message/send`（JSON-RPC 2.0）：
-
-```
-/             404
-/a2a          404
-/api/v1/a2a   404  {"error":{"code":"not_found","message":"Task API endpoint not found."}}
-/message/send 404
-```
-
-代码侧一致：`src/main` 里只有注释提到 `message/send`，没有实现（`grep` 无路由）。
-
-## 结论
-
-`interop.a2a: 'unverified'` **是对的，而且必须保持**。把它改成 `verified` 不是跑一次测试的事，而是要先有：
-
-1. 一份真正的 A2A AgentCard（含 `url` / `protocolVersion` / `preferredTransport` / `skills[]` / 输入输出模式）；
-2. 一个 JSON-RPC 的 `message/send`（以及流式 `message/stream`）端点，并且它要通过既有的 token/配对授权；
-3. 然后是「另一个实现读卡 → 发消息 → 收到任务状态」的往返测试。
-
-这三条在这台机器上一条都不成立，所以这条排期**不是「差一次测试」，是「差一块功能」**（属 v2.19 的范围，
-不在本轮的诊断/性能工作里）。
+- `message/stream`（流式）、`tasks/cancel`、push notifications：卡里写 `false`，不是「支持」；
+- 多项目实例必须显式给 `metadata.project`，没有「猜一个」的默认；
+- 卡与 `/a2a` 都要 token：真正的跨机互通要先做配对授权，本次验证用的是本机 token。

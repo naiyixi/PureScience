@@ -31,6 +31,17 @@
 skillIds/modelId），`PURESCIENCE_AGENT_FRAMEWORK` 对 CLI 驱动的运行不生效（三次不同取值都产出 claude-code
 会话）。**没有**继续断定具体成因（是选择被忽略、还是 codebuddy 不可用后回退），因为手上没有那条日志。
 
+## 补记（同日，codebuddy 的根因缩小到一处并修了一半）
+
+`session-persistence.ts` 的 `AGENT_FRAMEWORK_IDS` 是 `AgentFrameworkId` 联合类型的**子集**
+（缺 `codebuddy`），于是 codebuddy 会话落盘时框架 id 被丢弃、读回成默认的 claude-code。已补上并加用例
+（四值逐个 round-trip），会话可以正确记录了。
+
+但补完之后**读数仍出 claude-code**：`purescience ready` 显示 `CodeBuddy 2.174.0 is ready`
+（`/opt/homebrew/bin/codebuddy`），不是「运行时不可用」；而探针实例的日志里解析结果是
+`framework: 'claude-code'`——也就是说设置里的 `agentFrameworkId=codebuddy` 在**解析阶段**就没被采纳。
+这一步没有再往下断定（缺那条决策日志），如实留在这里。
+
 ## 结论
 
 机检③ **3/4**（opencode、claude-code、codex），codebuddy 缺一次可归因的读数。下一步只有两条路：

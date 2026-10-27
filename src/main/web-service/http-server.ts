@@ -26,6 +26,8 @@ import {
   webRpcRequestSchema
 } from '../../shared/web-rpc-contract'
 import { RENDERER_CONTRACT_CATALOG } from '../../shared/renderer-contract-catalog'
+import { CURRENT_PRIMARY_CAPABILITIES } from '../acp/session-capability-owner'
+import { buildA2AAgentCard, handleA2ARequest } from './a2a'
 import { buildAgentCardPayload, type AgentCardPayload } from './agent-card-route'
 import { buildCapabilitiesPayload } from './capabilities-route'
 import { projectPublicTaskEvent, projectWebRendererEvent } from './application-event-projections'
@@ -580,6 +582,35 @@ const startWebHttpServer = async (options: WebServerOptions): Promise<RunningWeb
         }
         json(response, 202, { ok: true })
         setImmediate(options.onShutdownRequest)
+        return
+      }
+
+      // The A2A surface (v2.19 §5 step 4): a card in A2A shape and one JSON-RPC method. It lives here,
+      // not under /api/v1/, because those are the paths an A2A client looks for: `/.well-known/` for the
+      // card, and whatever `url` the card advertises for RPC. Same token gate as everything else — an
+      // unauthenticated peer cannot even read the card, which is deliberate: this is for a paired agent,
+      // not for the open internet.
+      if (
+        options.tasks &&
+        request.method === 'GET' &&
+        url.pathname === '/.well-known/agent-card.json'
+      ) {
+        json(
+          response,
+          200,
+          buildA2AAgentCard({
+            baseUrl: `http://${request.headers.host ?? '127.0.0.1'}`,
+            version: options.bootstrap.appVersion,
+            platform: options.bootstrap.platform,
+            capabilities: [...CURRENT_PRIMARY_CAPABILITIES]
+          })
+        )
+        return
+      }
+      if (options.tasks && request.method === 'POST' && url.pathname === '/a2a') {
+        const payload = await readJsonBody(request)
+        const outcome = await handleA2ARequest(payload, { tasks: options.tasks })
+        json(response, outcome.status, outcome.body)
         return
       }
 

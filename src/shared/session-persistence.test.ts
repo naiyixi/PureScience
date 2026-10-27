@@ -1200,6 +1200,20 @@ describe('normalizeSessionFile with activities', () => {
     expect(malformed?.filesRevision).toBeUndefined()
   })
 
+  it('round-trips every framework id the type allows, codebuddy included', () => {
+    // The allowlist here used to be a subset of the AgentFrameworkId union, so a codebuddy session was
+    // written back with the default framework — the id decides which runtime reopens the session, so a
+    // silent drop is a real defect, not a cosmetic one.
+    for (const frameworkId of ['claude-code', 'opencode', 'codex', 'codebuddy'] as const) {
+      const session = normalizeSessionFile({
+        ...createSessionWithActivity(undefined),
+        activities: undefined,
+        agentFrameworkId: frameworkId
+      })
+      expect(session?.agentFrameworkId).toBe(frameworkId)
+    }
+  })
+
   it('round-trips the agent backend identity and run model used for diagnostics', () => {
     const session = normalizeSessionFile({
       ...createSessionWithActivity(undefined),
