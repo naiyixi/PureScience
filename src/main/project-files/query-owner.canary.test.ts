@@ -199,6 +199,9 @@ describe('ProjectFilesQueryOwner engine-queue canary', () => {
   it('reports the part of its own wall-clock window the loop was held for', async () => {
     process.env.PURESCIENCE_DB_CANARY = '1'
     // The ring drops anything shorter than its own jitter floor (200 ms), so the recorded window is a real one.
+    // It also stays clear of that floor: a window of exactly 200 was dropped once, because
+    // `(start + 220) - (start + 20)` can land a hair under 200 in floating point. And it is offset into the
+    // read, which outlasts it, so the wall clock's whole-millisecond reading cannot clip its tail.
     const heldMs = 250
     const client = {
       $queryRawUnsafe: vi.fn(async () => []),
@@ -206,8 +209,8 @@ describe('ProjectFilesQueryOwner engine-queue canary', () => {
         findMany: vi.fn(async () => {
           // Recorded from inside the read, so the held window sits wholly inside the measured one.
           const start = performance.now()
-          sharedLoopHeldWindows.record(start, start + heldMs)
-          await new Promise((resolve) => setTimeout(resolve, heldMs + 10))
+          sharedLoopHeldWindows.record(start + 20, start + 20 + heldMs)
+          await new Promise((resolve) => setTimeout(resolve, heldMs + 70))
           return []
         }),
         count: vi.fn(async () => 0)
@@ -230,6 +233,43 @@ describe('ProjectFilesQueryOwner engine-queue canary', () => {
     expect(message).toBe('listFiles segments were slow')
     // The two halves partition the window the line already reports, so a reader never has to add them up from
     // a different clock — and `ownMs` is what remains after the held part, not a second opinion about it.
+    expect(fields.heldMs).toBe(heldMs)
+    expect(fields.ownMs).toBe(Math.round(fields.totalMs as number) - heldMs)
+  })
+
+  // The other slow line in this class reads through a different query, so the spread has to be proven per call
+  // site: pinning the fields on one line says nothing about the other.
+  it('reports the held part on the project-file kinds line too', async () => {
+    process.env.PURESCIENCE_DB_CANARY = '1'
+    // Same shape as the case above, for the same reasons: clear of the 200 ms jitter floor (a window of
+    // exactly 200 can be dropped by floating-point subtraction) and offset into a read that outlasts it.
+    const heldMs = 250
+    const client = {
+      $queryRawUnsafe: vi.fn(async (query: string) => {
+        // The canary (`SELECT 1`) fires first but is only awaited after the window has closed, so slowing it
+        // would put the held window outside the measured span and prove nothing. Slow the read itself.
+        if (!String(query).includes('SELECT 1')) {
+          const start = performance.now()
+          sharedLoopHeldWindows.record(start + 20, start + 20 + heldMs)
+          await new Promise((resolve) => setTimeout(resolve, heldMs + 70))
+        }
+        return []
+      }),
+      managedFile: {
+        findMany: vi.fn(async () => []),
+        count: vi.fn(async () => 0)
+      }
+    }
+    const owner = new ProjectFilesQueryOwner(
+      () => Promise.resolve(client as never),
+      '/tmp/does-not-matter',
+      () => true
+    )
+
+    await owner.listProjectFileKinds({ projectIds: ['project-a'] })
+
+    const [message, fields] = warnSpy.mock.calls[0] as [string, Record<string, unknown>]
+    expect(message).toBe('project file kinds read was slow')
     expect(fields.heldMs).toBe(heldMs)
     expect(fields.ownMs).toBe(Math.round(fields.totalMs as number) - heldMs)
   })

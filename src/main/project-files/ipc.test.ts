@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 import {
   createProjectFilesHandlers,
   registerProjectFilesIpcHandlers,
@@ -491,6 +492,42 @@ describe('registerProjectFilesIpcHandlers', () => {
     await invoke('project-files:repair-index', { projectId: 'p1' })
 
     expect(recoveryBackend.recoverPendingDeletions).toHaveBeenCalledTimes(5)
+  })
+})
+
+// Last in the file on purpose: the held ring is a process-wide singleton, so a window recorded here would be
+// visible to any later window that overlaps it. Nothing after this test asserts on those fields.
+describe('project files read timing, held split', () => {
+  // The gate above splits the read into (recovery + query), which says where the time went but not whether the
+  // process was running through it. Reading the emitted line back is what proves this call site carries the
+  // held half — calling the bridge directly would stay green with the spread deleted.
+  it('reports the part of the read the loop was held for', async () => {
+    // Two properties keep this arithmetic rather than luck: the window is offset into the read and the read
+    // outlasts it (a window starting exactly at the sample has its tail clipped by the wall clock's
+    // whole-millisecond reading — measured 249 of 250), and it stays clear of the ring's own 200 ms jitter
+    // floor (a window of exactly 200 was dropped on one run in three, because `(start + 220) - (start + 20)`
+    // can land a hair under 200 in floating point; the symptom was `heldMs: undefined`).
+    const heldMs = 250
+    const listFiles = vi.fn(async () => {
+      const start = performance.now()
+      sharedLoopHeldWindows.record(start + 20, start + 20 + heldMs)
+      await new Promise((resolve) => setTimeout(resolve, heldMs + 70))
+      return { items: [], nextCursor: undefined, totalCount: 0 }
+    })
+    const handlers = createProjectFilesHandlers(
+      createRepository({ listFiles } as never),
+      { repairProjectFiles: vi.fn() } as never,
+      { recoverPendingDeletions: vi.fn(async () => undefined) } as never
+    )
+    warnSpy.mockClear()
+
+    await handlers.listFiles({ projectId: 'project-1' } as never)
+
+    const slow = warnSpy.mock.calls.find(([message]) => message === 'project files read was slow')
+    expect(slow).toBeDefined()
+    const fields = slow![1] as Record<string, unknown>
+    expect(fields.heldMs).toBe(heldMs)
+    expect(fields.ownMs).toBe(Math.round(fields.totalMs as number) - heldMs)
   })
 })
 

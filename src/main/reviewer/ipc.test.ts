@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewRunRequest } from '../../shared/reviewer'
 import { REVIEWER_IPC } from '../../shared/reviewer'
 import type { AcpRuntime } from '../acp/runtime'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 
 // Distinct roots so a config-vs-data mix-up is unambiguous: artifacts must read from the data root.
 const CONFIG_ROOT = '/tmp/purescience-config-root'
@@ -667,6 +668,53 @@ describe('reviewer IPC handlers', () => {
       expect(Object.keys(entry?.payload ?? {})).toEqual(
         expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
       )
+    })
+    // Both branches of that line are separate call sites, and the split has to be proven per site: deleting
+    // the spread from one leaves the other green. The window is written on the loop's own clock (what the
+    // stall watchdog records) and covers the whole measurement, so the line has to account for all of it as
+    // held time and none of it as this handler's own work.
+    it('says how much of each branch the loop was held for', async () => {
+      const heldStart = performance.now() - 5_000
+      sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+      vi.useFakeTimers({ toFake: ['Date'] })
+      try {
+        vi.setSystemTime(new Date('2026-10-19T00:00:00.000Z'))
+        getReviewsForSession
+          .mockImplementationOnce(async () => {
+            vi.setSystemTime(new Date('2026-10-19T00:00:00.300Z'))
+            return []
+          })
+          .mockImplementationOnce(async () => {
+            vi.setSystemTime(new Date('2026-10-19T00:00:00.600Z'))
+            return []
+          })
+        registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+
+        loggerWarnings.length = 0
+        await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+          {},
+          { projectId: 'project-1', appSessionId: 'session-1' }
+        )
+        // The same line on the branch where the session cannot be read: that branch exists to explain a
+        // failure, so it must not be the one place where the held split is missing.
+        sessionLoadOne.mockRejectedValueOnce(new Error('session store unavailable'))
+        await handlers.get(REVIEWER_IPC.GET_FOR_SESSION)?.(
+          {},
+          { projectId: 'project-1', appSessionId: 'session-1' }
+        )
+
+        const segments = loggerWarnings.filter((w) => w.message === 'review load segments')
+        expect(segments).toHaveLength(2)
+        const [normal, unavailable] = segments
+        expect(normal.payload).toMatchObject({ totalMs: 300, heldMs: 300, ownMs: 0 })
+        expect(unavailable.payload).toMatchObject({
+          sessionUnavailable: true,
+          heldMs: 300,
+          ownMs: 0
+        })
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 

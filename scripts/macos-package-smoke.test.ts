@@ -331,7 +331,13 @@ describe('macOS package smoke', () => {
     })
     // The reason is the real one from this run, not a generic "it failed". Which artifact the parallel
     // lookup reports first is a race, so the assertion pins the sentence, not the extension.
-    expect(String(reading.reason)).toMatch(/Expected exactly one macOS (dmg|zip) in /)
+    //
+    // On a non-macOS runner the script refuses before it looks at the artifacts at all, so the real reason
+    // there is the refusal. Pin that instead of skipping the case: the wiring being proven (a marker on
+    // disk, `readable: false`, exit 1) is platform-independent, and only the sentence differs.
+    expect(String(reading.reason)).toMatch(
+      process.platform === 'darwin' ? /Expected exactly one macOS (dmg|zip) in / : /requires macOS/
+    )
     expect(readingIsObserved(reading)).toBe(false)
   })
 

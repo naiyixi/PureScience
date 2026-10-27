@@ -9,6 +9,23 @@ import {
   ManagedPreviewResources,
   readExactRange
 } from './managed-preview-resources'
+import { sharedLoopHeldWindows } from './diagnostics/loop-held-windows'
+
+// Capture the preview diagnostics so the slow-acquire line can be asserted. Nothing else here depends on the
+// real logger: it only writes once `initLogger` has run, which this file never does.
+const { previewWarnings } = vi.hoisted(() => ({
+  previewWarnings: [] as { message: string; payload: Record<string, unknown> }[]
+}))
+vi.mock('./logger', () => ({
+  createLogger: () => ({
+    debug: () => undefined,
+    info: () => undefined,
+    warn: (message: string, payload: Record<string, unknown>) => {
+      previewWarnings.push({ message, payload })
+    },
+    error: () => undefined
+  })
+}))
 
 describe('ManagedPreviewResources', () => {
   let temporaryDirectory: string | undefined
@@ -444,6 +461,43 @@ describe('ManagedPreviewResources', () => {
     await expect(resources.resolveProtocolResource('not-a-real-id')).rejects.toThrow(
       /not available/i
     )
+  })
+
+  // The slow line already names its segments; the split is what says whether the app was running while they
+  // accrued. The wall clock only moves inside the injected resolver, so the arithmetic is not the machine's
+  // business — and with the registry window covering the whole acquire, every measured millisecond is held.
+  it('says how much of a slow acquire the loop was held for', async () => {
+    const filePath = await createFile(Buffer.from('slow-acquire'))
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-19T00:00:00.000Z'))
+      const heldStart = performance.now() - 5_000
+      sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+      const resources = new ManagedPreviewResources({
+        resolvePath: async () => {
+          vi.setSystemTime(new Date('2026-10-19T00:00:00.100Z'))
+          return filePath
+        },
+        createId: () => 'resource-1'
+      })
+
+      previewWarnings.length = 0
+      await resources.acquire(17, { source: 'artifact', path: filePath })
+
+      const [entry] = previewWarnings.filter(
+        (warning) => warning.message === 'managed preview acquire was slow'
+      )
+      expect(entry).toBeDefined()
+      expect(entry.payload).toMatchObject({
+        source: 'artifact',
+        resolveMs: 100,
+        statMs: 0,
+        heldMs: 100,
+        ownMs: 0
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('fills a requested range across short filesystem reads', async () => {

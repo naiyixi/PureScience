@@ -28,6 +28,23 @@ import {
   ArtifactProvenanceRepository
 } from './provenance-repository'
 import { ArtifactRepository } from './repository'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
+
+// Capture the provenance diagnostics so the slow-resolve line can be asserted. Nothing else here depends on
+// the real logger: it only writes once `initLogger` has run, which this file never does.
+const { artifactResolveWarnings } = vi.hoisted(() => ({
+  artifactResolveWarnings: [] as { message: string; payload: Record<string, unknown> }[]
+}))
+vi.mock('../logger', () => ({
+  createLogger: () => ({
+    debug: () => undefined,
+    info: () => undefined,
+    warn: (message: string, payload: Record<string, unknown>) => {
+      artifactResolveWarnings.push({ message, payload })
+    },
+    error: () => undefined
+  })
+}))
 
 let storageRoot: string | undefined
 let disconnect: (() => Promise<void>) | undefined
@@ -4516,5 +4533,94 @@ describe('artifact provenance repository', () => {
     })
     expect(current?.figureDerivation?.page).toBe(9)
     expect(current?.figureDerivationStatus).toEqual({ state: 'current' })
+  })
+
+  // The resolve line already splits client/query/read; the held split is what says whether the app was
+  // running while those millis accrued. The wall clock moves only in the injected client hand-off, so the
+  // arithmetic is exact — and with the registry window covering the whole resolve, every measured
+  // millisecond has to be reported as held rather than as this resolver's own work.
+  it('says how much of a slow version resolve the loop was held for', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-resolve-split-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const contentStorageKey = 'artifacts/project-1/session-1/.provenance/versions/version-1/content'
+    const contentPath = join(storageRoot, ...contentStorageKey.split('/'))
+    const bytes = Buffer.from('artifact bytes')
+    await mkdir(dirname(contentPath), { recursive: true })
+    await writeFile(contentPath, bytes)
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'plot.png',
+        filename: 'plot.png'
+      }
+    })
+    await client.artifactVersion.create({
+      data: {
+        id: 'version-1',
+        artifactId: 'artifact-1',
+        versionNumber: 1,
+        filename: 'plot.png',
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'root-1',
+        agentFrameId: 'agent-1',
+        messageBranchId: 'branch-1',
+        runtimeSegmentId: 'segment-1',
+        promptMessageId: 'prompt-1',
+        state: 'finalized',
+        contentStorageKey,
+        evidenceStorageKey:
+          'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
+        sizeBytes: BigInt(bytes.byteLength),
+        checksum: createHash('sha256').update(bytes).digest('hex'),
+        evidenceJson: '{}',
+        evidenceChecksum: 'b'.repeat(64)
+      }
+    })
+
+    const base = new Date('2026-10-19T00:00:00.000Z').getTime()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(base)
+      const heldStart = performance.now() - 5_000
+      sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+      const repository = new ArtifactProvenanceRepository({
+        storageRoot,
+        // The hand-off is where this test puts the cost: one segment, so the split is arithmetic.
+        getClient: async () => {
+          vi.setSystemTime(base + 100)
+          return client
+        }
+      })
+
+      artifactResolveWarnings.length = 0
+      await expect(
+        repository.resolveVersionContent({
+          projectId: 'project-1',
+          appSessionId: 'session-1',
+          artifactId: 'artifact-1',
+          versionId: 'version-1'
+        })
+      ).resolves.toMatchObject({ path: contentPath, filename: 'plot.png' })
+
+      const [entry] = artifactResolveWarnings.filter(
+        (warning) => warning.message === 'artifact version resolve was slow'
+      )
+      expect(entry?.payload).toMatchObject({
+        clientMs: 100,
+        queryMs: 0,
+        readMs: 0,
+        heldMs: 100,
+        ownMs: 0
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

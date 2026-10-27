@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
 
 import type { Logger } from '../logger'
+import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 
 // Capture ipcMain.handle registrations; stub dialog/BrowserWindow/app so handlers can be invoked
 // directly without a real Electron runtime. isPackaged: true means dataFolderName() === 'PureScience'.
@@ -261,6 +262,39 @@ describe('storage:get-info segment instrument', () => {
       expect(Object.keys(record)).toEqual(
         expect.arrayContaining(['cpuMs', 'cpuShare', 'attribution'])
       )
+    } finally {
+      clock.restore()
+    }
+  })
+
+  // The segments say where the millis went; the held split says whether the process was running while they
+  // accrued. The window is recorded on the loop's own clock (what the stall watchdog writes) and covers the
+  // whole measurement, so every measured millisecond has to be reported as held — deleting the spread at this
+  // call site leaves `heldMs` absent entirely, which is how "nobody measured" and "the loop was free" differ.
+  it('carries the held split, so a read that looked slow reads that way for a reason', async () => {
+    const heldStart = performance.now() - 5_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+    const clock = virtualClock()
+    try {
+      initDataRoot(dataRoot)
+      const logger = fakeDiagnosticLogger()
+      const owner = createStorageCommandOwner(
+        fakeDeps({
+          logger,
+          settingsService: settingsWithProbe(clock.advance, 30),
+          usageCache: usageCacheReading(async () => {
+            clock.advance(400)
+            return { categories: [], totalBytes: 0 }
+          })
+        })
+      )
+
+      await owner.getInfo()
+
+      const [record] = slowStorageInfo(logger)
+      expect(record.totalMs).toBe(430)
+      expect(record.heldMs).toBe(430)
+      expect(record.ownMs).toBe(0)
     } finally {
       clock.restore()
     }
