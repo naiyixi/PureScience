@@ -1,18 +1,22 @@
-# 真回合 usage 对账：3 个字段对上了，3 个被脱敏抹掉（已修）
+# 真回合 usage 对账：先 3/6，修掉脱敏后 6/6
+
+> **结论（2026-10-27T10:43Z，session `5701eafe-cf02-4e23-a88e-9635a9e34949`）**：修完之后，日志与会话文档
+> **六个字段全部逐字段相同** —— `inputTokens 77849`、`cacheTokens 5285632`、`cachedReadTokens 5285632`、
+> `cachedWriteTokens 0`、`outputTokens 103085`、`turnCount 80`。下面 3/6 那一节保留，用来记这段修复的由来。
 
 2026-10-27，已装机版本里做了真实回合（session `8aa9f8e9-6462-44c4-a58e-b837972b711f`，日志时间
 `2026-10-27T10:15:28.777Z`）。这是「usage ↔ 日志对账」第一次有真实两侧可比。
 
 ## 对账结果
 
-| 字段 | 日志 `prompt usage` | 会话文档 `turnUsage` | 一致 |
-|---|---|---|---|
-| `inputTokens` | 83042 | 83042 | ✅ |
-| `outputTokens` | 143014 | 143014 | ✅ |
-| `turnCount` | 79 | 79 | ✅ |
-| `cacheTokens` | **`[redacted]`** | 9276544 | ❌ |
-| `cachedReadTokens` | **`[redacted]`** | 9276544 | ❌ |
-| `cachedWriteTokens` | **`[redacted]`** | 0 | ❌ |
+| 字段                | 日志 `prompt usage` | 会话文档 `turnUsage` | 一致 |
+| ------------------- | ------------------- | -------------------- | ---- |
+| `inputTokens`       | 83042               | 83042                | ✅   |
+| `outputTokens`      | 143014              | 143014               | ✅   |
+| `turnCount`         | 79                  | 79                   | ✅   |
+| `cacheTokens`       | **`[redacted]`**    | 9276544              | ❌   |
+| `cachedReadTokens`  | **`[redacted]`**    | 9276544              | ❌   |
+| `cachedWriteTokens` | **`[redacted]`**    | 0                    | ❌   |
 
 ## 根因（不是日志没打，是脱敏把它当秘密）
 
@@ -29,6 +33,19 @@
 只把 `cache` / `read` / `write` 这三个**计数词**补进名单。判据本身没变：键仍必须含 `token(s)`、且每个词都在
 名单内；后缀名单（`*token` / `*secret` / `*apikey` …）照旧拦真凭据形状。用例把这三个键加进「应原样保留」的
 断言（`src/main/logger.test.ts`），并把 `[redacted]` 一侧的规则原样留着。
+
+## 修复后的复验（同一台机、同一版本逻辑）
+
+```
+日志  2026-10-27T10:43:03.132Z  session 5701eafe
+      inputTokens 77849  cacheTokens 5285632  cachedReadTokens 5285632
+      cachedWriteTokens 0  outputTokens 103085  turnCount 80
+文档  cmvpaw0gl0000wf7idiw1i6x4/5701eafe-….json
+      inputTokens 77849  cacheTokens 5285632  cachedReadTokens 5285632
+      cachedWriteTokens 0  outputTokens 103085  turnCount 80
+```
+
+六项全等 ⇒ 「usage ↔ 日志对账」这一条**验实**（v2.18 §2 第 4 条）。
 
 ## 这一步教了什么
 
