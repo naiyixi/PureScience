@@ -1,6 +1,15 @@
 import type { PromptResponse } from '@agentclientprotocol/sdk'
 import { describe, expect, it, vi } from 'vitest'
 
+// The turn's usage is now logged as well as published on the stop event: the log is the second source
+// that makes "reconcile usage against the logs" possible at all (before it, main.log carried no token
+// numbers). These spies are how the test proves the line is emitted with the same fields.
+const loggerSpies = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+vi.mock('../logger', () => ({
+  createLogger: () => loggerSpies,
+  errorLogFields: (error: unknown) => ({ error: String(error) })
+}))
+
 import type { AcpRuntimeEvent } from '../../shared/acp'
 import type { ContextUsageTurnHandle } from './context-usage-tracker'
 import {
@@ -106,6 +115,26 @@ const stopped = (
 })
 
 describe('AcpPromptOutcomeFinalizer', () => {
+  it('logs the turn usage so the session document has a second source to reconcile against', async () => {
+    const harness = createHarness({ now: () => 1234 })
+    expect(harness.interactions.captureTerminal(harness.interaction, 'stop')).toBe(true)
+    loggerSpies.info.mockClear()
+
+    await new AcpPromptOutcomeFinalizer().finalize(harness.handles, stopped())
+
+    const usageLine = loggerSpies.info.mock.calls.find(([message]) => message === 'prompt usage')
+    expect(usageLine).toBeDefined()
+    // Same fields the session document records: a line that dropped one of them could not be reconciled
+    // field by field, which is the only reason this log exists.
+    expect(usageLine?.[1]).toEqual({
+      sessionId: 's1',
+      inputTokens: 10,
+      cacheTokens: 2,
+      outputTokens: 3,
+      turnCount: 4
+    })
+  })
+
   it('sequences provider facts, context, Artifact, stop publication, and cleanup', async () => {
     const harness = createHarness({ now: () => 1234 })
     expect(harness.interactions.captureTerminal(harness.interaction, 'stop')).toBe(true)
