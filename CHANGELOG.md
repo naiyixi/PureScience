@@ -1,5 +1,55 @@
 # PureScience 更新日记
 
+## v2.18.5 — 2026-10-27（A2A：先把「做不到」证明，再把它做出来）
+
+**成熟度自陈**：这一版加了一条**新的对外协议面**（A2A 的卡与 `message/send`），并且把此前挂着的那句
+「兼容 A2A 未验证」变成了有读数支撑的 `verified`。做法是三步：实测缺口 → 实现最小面 → **另一进程**跑通。
+
+### 一、先说结论：A2A 互通已验
+
+独立客户端（另一个进程，只用 `fetch` + JSON-RPC，不 import 本仓任何代码）对**打包版**：
+
+```
+card: protocolVersion=0.2.3  url=http://127.0.0.1:44541  skills=15  streaming=false
+task: id=415f586b…  state=completed  elapsedMs=36137  artifact.text="ok"
+ROUNDTRIP OK
+```
+
+两轮都过（29.8 s / 36.1 s）。装机后实测卡：`interop: { 'a2a': 'verified', 'acp': 'primary' }`。
+
+### 二、实现的最小面
+
+- `GET /.well-known/agent-card.json` —— A2A 形态的卡：`protocolVersion`、`url`、`preferredTransport: JSONRPC`、
+  `capabilities { streaming: false, pushNotifications: false }`、`defaultInputModes`/`defaultOutputModes`，
+  以及把本构建的 15 个能力投影成 `skills[]`；
+- `POST /a2a` —— JSON-RPC `message/send`（阻塞式，超预算答 `working`）与 `tasks/get`；
+- **刻意没有** `message/stream`、`tasks/cancel`、push：卡里就写 `false`，让客户端看得出边界而不是猜；
+- 与其它端点共用同一个 token 闸门：未认证的对端连卡都读不到——这是给已配对对端用的面，不是公网面；
+- 不猜项目：实例有多个项目时必须显式给 `message.metadata.project`，否则返回具名 `-32602`；
+- 只有 `completed` 的 run 才带 artifact，`working` 期间不把半截文本当结果发出去。
+
+### 三、声明与读数被绑在一起
+
+`agent-card-route.test.ts` 里那条用例改成：只要 `a2a === 'verified'`，就去读证据文件并要求里面含
+`message/send` 与 `ROUNDTRIP`。也就是说**只改字段不补读数会被判红**——这条比原来那句「必须是 unverified」
+更难糊弄。
+
+### 四、顺带修的一处真缺陷
+
+`session-persistence` 的 `AGENT_FRAMEWORK_IDS` 是 `AgentFrameworkId` 联合类型的子集（缺 `codebuddy`），
+所以 codebuddy 会话落盘时框架 id 被丢弃、读回成默认的 claude-code。已补齐并加四值 round-trip 用例。
+
+### 五、诊断（另一条在制单元）
+
+六处慢行接上「这段时间循环被占住多少」；启动汇总行自己说出「这段时间有多少不是我们在跑」。
+
+### 明确没做 / 未验证
+
+- **`message/stream`、`tasks/cancel`、push notifications**：卡里写 `false`；
+- **跨机互通**：本次用的是本机 token，真正的跨机要先做配对授权；
+- **机检③ 仍 3/4**：codebuddy 读数仍出 `claude-code`。`purescience ready` 显示 CodeBuddy 2.174.0 可用，
+  所以不是运行时不可用；补完持久化白名单后读数不变，问题在**框架解析阶段**没采纳设置——未断定具体成因。
+
 ## v2.18.4 — 2026-10-27（对账验实：6/6 字段，且修掉了吃掉它们的那条脱敏规则）
 
 **成熟度自陈**：这一版的主题是**把一个"已完成"的说法验到字段级，并修掉途中发现的真缺陷**。另外三处来自同一
