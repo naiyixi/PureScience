@@ -1,5 +1,50 @@
 # PureScience 更新日记
 
+## v2.19.0 — 2026-10-28（框架选择不再被静默忽略；A2A 线归并到这一版）
+
+**编号更正（先认）**：A2A 的卡与 `message/send` 实际是在 **v2.18.5** 发的——那是我按「每个可验证改动发一个小
+版本」的惯性推的，与计划档 `plan-2026-10-24-v2.19-a2a-trajectory.md` 的编号脱节。从这一版起，A2A 算作 v2.19
+线的一部分；v2.18 系列停在 2.18.5，不再往下发。原定的 v2.18.6（只有下面这两笔）已撤销 tag 与发版材料。
+
+### 一、缺陷：联合类型有四个框架，两处白名单只认三个
+
+`AgentFrameworkId` 是 `claude-code | opencode | codex | codebuddy`，而两处**手写**白名单只列了前三个：
+
+| 位置 | 后果 |
+|---|---|
+| `src/main/settings/repository.ts`（读取规范化） | `setAgentFramework('codebuddy')` 返回成功，**下次解析即被丢弃** |
+| `src/shared/session-persistence.ts`（持久化） | codebuddy 会话落盘时框架 id 被丢弃，读回成 `claude-code` |
+
+### 二、修法：一个来源 + 编译期完整性检查
+
+`shared/settings.ts` 导出 `AGENT_FRAMEWORK_IDS` 与 `isAgentFrameworkId`，并加**编译期完整性检查**：联合类型里
+每个 id 都必须出现在列表里，漏一个就编译不过。两处调用点改用它，各自的白名单删除。用例覆盖四个 id 在两处的
+round-trip。
+
+### 三、真机读数
+
+```
+framework selection { forced: null, stored: 'codebuddy', resolved: 'codebuddy' }
+framework selection { forced: null, stored: 'codex',     resolved: 'codex' }
+```
+
+- **codex**：会话 `01a17e35`，`fw=codex`、`servers=14`、run 退出码 0（回合答 `ok`）——第一次**可复现**读数；
+- **codebuddy**：选择已正确生效，但 `codebuddy --acp` 在这台机器上握手不成立
+  （`ensureConnected: connect failed`；手工 `initialize` 两秒无回应）——阻塞在它的 ACP 运行时；
+- 机检③ 因此记 **3/4**（opencode / claude-code / codex）。
+
+### 四、新增诊断
+
+`[settings:backend] framework selection { forced, stored, resolved }`：让「设置没被读到」与「读到了被改写」
+不再同形。这次正是它把范围从猜测缩到一行读数。
+
+### 明确没做（都是「刻意不做」，不是漏了）
+
+- **`tasks/cancel`**：task-api 与 runner 里没有任何取消通道，要动 ACP 提示的生命周期，属产品级改动；
+- **`message/stream`**：可做（轮询式 SSE），但计划档未要求；卡里 `streaming: false` 是如实边界；
+- **跨机配对**：A2A 的卡与 `/a2a` 目前都走本机 token，跨机要先设计配对授权；
+- **codebuddy 读数**：等它自己的 ACP 握手可用。
+
 ## v2.18.5 — 2026-10-27（A2A：先把「做不到」证明，再把它做出来）
 
 **成熟度自陈**：这一版加了一条**新的对外协议面**（A2A 的卡与 `message/send`），并且把此前挂着的那句
