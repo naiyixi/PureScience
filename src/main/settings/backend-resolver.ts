@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 
+import { createLogger } from '../logger'
+
+const log = createLogger('settings:backend')
+
 import { z } from 'zod'
 
 import type { ReasoningEffort } from '../../shared/settings'
@@ -540,9 +544,20 @@ export class AgentBackendResolver {
 
   private resolveConfiguredFrameworkId(settings: StoredSettings): AgentFrameworkId {
     const forced = this.readFrameworkOverride()
-    return forced === 'opencode' || forced === 'claude-code' || forced === 'codex'
-      ? forced
-      : (settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID)
+    // Logged because this choice is otherwise invisible: a run under a framework the settings ask for can
+    // silently come back as another one, and without these three values there is no way to tell "the
+    // setting was never read" from "it was read and overridden" (2026-10-27: a codebuddy session kept
+    // resolving to claude-code and this line is what pinned the stage).
+    const resolved =
+      forced === 'opencode' || forced === 'claude-code' || forced === 'codex'
+        ? forced
+        : (settings.agentFrameworkId ?? DEFAULT_AGENT_FRAMEWORK_ID)
+    log.info('framework selection', {
+      forced: forced ?? null,
+      stored: settings.agentFrameworkId ?? null,
+      resolved
+    })
+    return resolved
   }
 
   private resolveConfiguredProviderTarget(

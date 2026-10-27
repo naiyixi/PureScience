@@ -42,9 +42,39 @@ skillIds/modelId），`PURESCIENCE_AGENT_FRAMEWORK` 对 CLI 驱动的运行不�
 `framework: 'claude-code'`——也就是说设置里的 `agentFrameworkId=codebuddy` 在**解析阶段**就没被采纳。
 这一步没有再往下断定（缺那条决策日志），如实留在这里。
 
-## 结论
+## 第二次补记（同日，框架选择这一层的决定性读数）
 
-机检③ **3/4**（opencode、claude-code、codex），codebuddy 缺一次可归因的读数。下一步只有两条路：
+加了 `[settings:backend] framework selection { forced, stored, resolved }` 这一行日志后跑 codebuddy 探针：
 
-1. 在 GUI 里把框架切成 codebuddy（有选择界面），再跑一次并读会话文档；
-2. 给 `StartTaskRunRequest` 加 framework 字段（这是功能改动，不是测量改动）。
+```
+[settings:backend] framework selection { forced: null, stored: null, resolved: 'claude-code' }
+```
+
+**`stored` 是 null** —— 说明应用的设置存储里根本没有 `agentFrameworkId` 这个键。查两个候选文件：
+
+```
+~/.purescience/settings.json          agentFrameworkId -> None
+~/.purescience-project/settings.json  agentFrameworkId -> None
+```
+
+两边都没有。所以前面那些「把 settings.json 里的 agentFrameworkId 改成 X」的实验**从来没有被应用读到过**；
+session 落在哪个框架由「设置里没有该键 → 默认 claude-code」决定。这也解释了为什么补了持久化白名单后读数
+仍然不变，以及为什么 codex 那次「成功」不可复现（那次读数不能算证据，我在下面撤销它）。
+
+## 结论（更正后）
+
+机检③ **2/4 可复现**：
+
+| runtime     | 读数                                                             | 可复现                                                                |
+| ----------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| opencode    | 此前一轮 `declared=28 session=read readings=28`                  | ✅                                                                    |
+| claude-code | 本次会话 `483ebdff` 等，`servers=14`，且无头打包实例完成真实回合 | ✅                                                                    |
+| codex       | 会话 `01a17d43`，`servers=14`                                    | ⚠️ **撤销**：它来自「改 settings.json」这条已被证伪的注入路，不可复现 |
+| codebuddy   | 无                                                               | ❌                                                                    |
+
+**真实阻塞**：不存在「把框架注入一次无头 run」的缝——`StartTaskRunRequest` 没有 framework 字段，
+`PURESCIENCE_AGENT_FRAMEWORK` 只允许 opencode/claude-code/codex（且本次实测对 CLI 驱动的 run 无效），
+而设置存储里**没有** `agentFrameworkId` 键可改。下一步只有两条，都需要产品侧决定：
+
+1. 在 GUI 里用它自己的框架选择界面切换，再跑一次并读会话文档（需要界面操作权限）；
+2. 给 `StartTaskRunRequest`（或设置）加一个显式的 framework 字段——这是功能改动，不是测量改动。
