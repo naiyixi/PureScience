@@ -28,7 +28,7 @@ import {
   normalizePermissionProfile,
   type PermissionProfileId
 } from './permission-profiles'
-import type { AgentFrameworkId } from './settings'
+import { isAgentFrameworkId, type AgentFrameworkId } from './settings'
 import { sanitizeActivityGroupTitle } from './activity-groups'
 import {
   parsePlanDocumentV1,
@@ -420,16 +420,11 @@ export type SaveSessionOptions = {
 export const INTERRUPTED_SESSION_ERROR = 'Session was interrupted before the app closed.'
 
 const MESSAGE_ROLES = new Set<PersistedMessageRole>(['user', 'agent'])
-// Every id in the AgentFrameworkId union, not a subset: the framework id decides which runtime reopens a
-// session, and dropping one silently wrote a codebuddy session back as the default framework (measured
-// 2026-10-27: a run under codebuddy answered fine, but its persisted session read `claude-code`, which is
-// also why the four-runtime machine check could not produce a codebuddy reading).
-const AGENT_FRAMEWORK_IDS = new Set<AgentFrameworkId>([
-  'claude-code',
-  'opencode',
-  'codex',
-  'codebuddy'
-])
+// One source for the admissible ids (shared/settings), not a local subset: the framework id decides which
+// runtime reopens a session, and dropping one silently wrote a codebuddy session back as the default
+// framework (measured 2026-10-27: a run under codebuddy answered fine, but its persisted session read
+// `claude-code`). The same omission existed in the settings parser — both now use this list.
+// (uses the shared `isAgentFrameworkId` guard; see the note above)
 const MESSAGE_STATUSES = new Set<PersistedMessageStatus>(['complete', 'streaming', 'error'])
 const TOOL_ACTIVITY_STATUSES = new Set<PersistedToolActivityStatus>([
   'pending',
@@ -1563,7 +1558,7 @@ const sanitizeConversationGraph = (
           !id ||
           !agentFrameId ||
           !frameworkId ||
-          !AGENT_FRAMEWORK_IDS.has(frameworkId) ||
+          !isAgentFrameworkId(frameworkId) ||
           startedAt === undefined
         ) {
           return []
@@ -1768,7 +1763,7 @@ const sanitizeSession = (
   if (error) sanitized.error = error
   // Only meaningful alongside an error; persisted only when explicitly false (absent = reportable).
   if (error && session.errorReportable === false) sanitized.errorReportable = false
-  if (agentFrameworkId && AGENT_FRAMEWORK_IDS.has(agentFrameworkId)) {
+  if (agentFrameworkId && isAgentFrameworkId(agentFrameworkId)) {
     sanitized.agentFrameworkId = agentFrameworkId
   }
   if (agentBackendId) sanitized.agentBackendId = agentBackendId

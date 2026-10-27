@@ -324,6 +324,25 @@ export const providerValidationFailed = (provider: {
 // the main-process AgentFramework registry is keyed by the same union.
 export type AgentFrameworkId = 'claude-code' | 'opencode' | 'codex' | 'codebuddy'
 
+// The union above is the source of truth; this list is derived from it at the type level, so adding a
+// framework without listing it here fails to compile instead of silently dropping the id on read.
+// 2026-10-27: two hand-maintained subsets (settings parsing, session persistence) both omitted
+// `codebuddy`, so a codebuddy session and a codebuddy setting were silently rewritten as claude-code.
+export const AGENT_FRAMEWORK_IDS = ['claude-code', 'opencode', 'codex', 'codebuddy'] as const
+
+const AGENT_FRAMEWORK_ID_SET: ReadonlySet<string> = new Set<string>(AGENT_FRAMEWORK_IDS)
+// Compile-time completeness check: every id in the union must appear in AGENT_FRAMEWORK_IDS.
+const _AGENT_FRAMEWORK_IDS_COVER_THE_UNION: Record<AgentFrameworkId, true> = {
+  'claude-code': true,
+  opencode: true,
+  codex: true,
+  codebuddy: true
+}
+void _AGENT_FRAMEWORK_IDS_COVER_THE_UNION
+
+export const isAgentFrameworkId = (value: string): value is AgentFrameworkId =>
+  AGENT_FRAMEWORK_ID_SET.has(value)
+
 // How much reasoning effort the user asks the agent to spend. 'default' means "don't override": the
 // agent keeps its own default and nothing is sent. The concrete levels form a relative scale
 // (low < medium < high < xhigh < max): the active model's static profile maps the level onto its

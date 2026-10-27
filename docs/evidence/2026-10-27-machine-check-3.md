@@ -78,3 +78,40 @@ session 落在哪个框架由「设置里没有该键 → 默认 claude-code」�
 
 1. 在 GUI 里用它自己的框架选择界面切换，再跑一次并读会话文档（需要界面操作权限）；
 2. 给 `StartTaskRunRequest`（或设置）加一个显式的 framework 字段——这是功能改动，不是测量改动。
+
+## 第三次补记（同日，收口：3/4 且各自可复现）
+
+两处真缺陷修完后重跑（**关键前提**：探针实例的 config root 就是 `~/.purescience`，此前我一直在改
+`~/.purescience/settings.json` 却对着一个 config root 是 `~/.purescience-project` 的 DEV 实例测 —— 那才是
+`stored: null` 的由来）：
+
+1. `src/main/settings/repository.ts` 的读取/规范化只认三个 id（漏 `codebuddy`），所以
+   `setAgentFramework('codebuddy')` 返回成功、下次解析即被丢弃；
+2. `session-persistence` 有同样的子集问题（此前已修）。
+
+现在两处都改成 `shared/settings` 里的**单一来源** `isAgentFrameworkId`，并加了一个编译期完整性检查
+（联合类型里每个 id 都必须出现在列表里）。真机读数：
+
+```
+framework selection { forced: null, stored: 'codebuddy', resolved: 'codebuddy' }
+framework selection { forced: null, stored: 'codex',     resolved: 'codex' }
+```
+
+| runtime     | 读数                                                                              | 可复现                       |
+| ----------- | --------------------------------------------------------------------------------- | ---------------------------- |
+| opencode    | `declared=28 session=read readings=28`                                            | ✅                           |
+| claude-code | 会话 `415f586b` / `aa9b7f3a`，`servers=14`，回合答 `ok`                           | ✅                           |
+| codex       | 会话 **`01a17e35`**，`fw=codex`、`servers=14`、run 退出码 0（`ok`）               | ✅（本轮新拿到的可复现读数） |
+| codebuddy   | **无会话**：选择已生效（`stored/resolved` 都是 codebuddy），但 ACP 连接建立即失败 | ❌                           |
+
+codebuddy 的失败证据（应用日志）：
+
+```
+[acp] ensureConnected: connect failed { errorCategory: 'error', framework: 'codebuddy', status: 'error' }
+[acp] createSession: failed
+```
+
+并且**直接**跑 `codebuddy --acp` 发 `initialize` 在 2 秒内无任何回应（此前手工探针即如此）。也就是说这不是
+我们的测量缺口，也不是选择被忽略，而是 **codebuddy CLI 的 ACP 模式在这台机器上握手不成立**。
+
+**结论：机检③ = 3/4**（opencode / claude-code / codex 均可复现），codebuddy 阻塞在它自己的 ACP 运行时。

@@ -263,6 +263,17 @@ describe('settings repository', () => {
     expect(settings.opencodeVersion).toBe('1.18.3')
   })
 
+  it('keeps every framework id across a sanitized read, codebuddy included', async () => {
+    // The sanitizer used to hard-code three of the four ids, so `setAgentFramework('codebuddy')` answered
+    // successfully and the setting came back as the default on the next read — a silent downgrade that made
+    // the four-runtime machine check produce a claude-code session no matter what was selected.
+    for (const frameworkId of ['claude-code', 'opencode', 'codex', 'codebuddy'] as const) {
+      const repository = new SettingsRepository(await createStorageRoot())
+      await repository.setAgentFramework(frameworkId)
+      expect((await repository.getSettings()).agentFrameworkId).toBe(frameworkId)
+    }
+  })
+
   it('persists the reasoning effort across a sanitized read and a reload', async () => {
     const root = await createStorageRoot()
     const repository = new SettingsRepository(root)

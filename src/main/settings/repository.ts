@@ -27,7 +27,7 @@ import {
 } from '../../shared/execution-protection'
 import { sanitizeFunctionModels, type FunctionModels } from '../../shared/function-models'
 import { sanitizeSkillAvailability, type SkillAvailability } from '../../shared/skill-availability'
-import { SCENARIO_MODEL_IDS } from '../../shared/settings'
+import { isAgentFrameworkId, SCENARIO_MODEL_IDS } from '../../shared/settings'
 import type { ScenarioModels } from '../../shared/settings'
 import type { ExternalComputeEndpoint } from '../../shared/compute'
 import {
@@ -877,11 +877,10 @@ const sanitizeSettings = (value: unknown): StoredSettings => {
   // Selected agent backend; only the known ids survive so a bad value can't leak through.
   const agentFrameworkId = asString(value.agentFrameworkId)
 
-  if (
-    agentFrameworkId === 'claude-code' ||
-    agentFrameworkId === 'opencode' ||
-    agentFrameworkId === 'codex'
-  ) {
+  // Every id in the AgentFrameworkId union is admissible. This used to hard-code three of the four, so a
+  // successfully persisted `codebuddy` selection was dropped the next time the document was parsed — which
+  // is why `settings:set-agent-framework` answered ok and the setting stayed claude-code.
+  if (agentFrameworkId && isAgentFrameworkId(agentFrameworkId)) {
     settings.agentFrameworkId = agentFrameworkId
   }
 
