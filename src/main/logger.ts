@@ -114,6 +114,13 @@ const SENSITIVE_KEY_WORDS = new Set([
 ])
 const TOKEN_METRIC_WORDS = new Set([
   'budget',
+  // Cache read/write counts. Without these three, a `turnUsage` logged as-is lost exactly the numbers a
+  // usage reconciliation needs: `cacheTokens` / `cachedReadTokens` / `cachedWriteTokens` were emitted as
+  // `[redacted]` because one word in each key was not on this list (measured 2026-10-27 against a real
+  // turn: inputTokens, outputTokens and turnCount matched the session document, the three cache counts did
+  // not survive). A key made only of these words is a count, never a credential — the suffix list below
+  // still catches `*token`, `*secret` and the like.
+  'cache',
   'cached',
   'count',
   'counts',
@@ -121,10 +128,12 @@ const TOKEN_METRIC_WORDS = new Set([
   'limit',
   'max',
   'output',
+  'read',
   'reasoning',
   'remaining',
   'total',
-  'usage'
+  'usage',
+  'write'
 ])
 
 // Mutable budget shared across one errorLogFields call: `nodes` bounds how many values are emitted,

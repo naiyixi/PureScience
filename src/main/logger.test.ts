@@ -104,20 +104,31 @@ describe('logger: formatLine', () => {
       formatLine('info', 'usage', 'counted', {
         tokenUsage: { inputTokens: 21, outputTokens: 8, cachedInputTokens: 5 },
         tokenCount: 29,
-        maxOutputTokens: 100
+        maxOutputTokens: 100,
+        // A real turn's usage: these three used to arrive as `[redacted]` and made usage reconciliation
+        // impossible, because 'cache' / 'read' / 'write' were not metric words.
+        cacheTokens: 9276544,
+        cachedReadTokens: 9276544,
+        cachedWriteTokens: 0
       })
     ) as {
       data: {
         tokenUsage: { inputTokens: number; outputTokens: number; cachedInputTokens: number }
         tokenCount: number
         maxOutputTokens: number
+        cacheTokens: number
+        cachedReadTokens: number
+        cachedWriteTokens: number
       }
     }
 
     expect(preserved.data).toEqual({
       tokenUsage: { inputTokens: 21, outputTokens: 8, cachedInputTokens: 5 },
       tokenCount: 29,
-      maxOutputTokens: 100
+      maxOutputTokens: 100,
+      cacheTokens: 9276544,
+      cachedReadTokens: 9276544,
+      cachedWriteTokens: 0
     })
   })
 
