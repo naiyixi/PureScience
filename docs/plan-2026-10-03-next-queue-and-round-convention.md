@@ -13323,3 +13323,93 @@ probe-nofile: FAIL — ... — unobserved is not a pass (no reading file was wri
 2. 候选（都不需要发版窗口）：① 其余 6 处墙钟站点的字段级断言（写法同 `query-owner.canary.test.ts` 那条，
    §二百四十六 §三 具名缺口）；② `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）。
 3. 仍等用户点头的一条（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
+
+## 二百四十八、本轮追加（执行器，2026-10-27 10:0x–）—— 八处墙钟站点全部有了字段级断言；一条只在 Windows 上错的红当场归因
+
+### 〇 开工核对（CI 判决 + 上一轮未提交在制品）
+
+- 上一轮那笔 `e2739d31` 的双车道判决读到了，而且**有一半是红的**：`Nightly` **success**、
+  `Windows Full Test` **failure**（`Windows full test (8/8)`，其余 7 个分片 success）。
+- 作业级日志把它定在一处：`scripts/macos-package-smoke.test.ts > leaves the marker on disk when the script
+  itself fails` —— `AssertionError: expected 'macOS package smoke requires macOS.' to match /Expected exactly one
+  macOS (dmg|zip) …/`。**是我上一轮新加的那条真子进程用例**：脚本在非 macOS runner 上先按平台拒绝，
+  标记确实写了、`readable:false` 也对，只有那句原因属平台相关。
+- 归因不是「抖动」、也不是产品缺陷 ⇒ 修断言而不是跳过：**接线（落盘 + `readable:false` + exit 1）是跨平台的，
+  变的只是那句话**。改成按平台钉真因（darwin 钉「找到 0 个产物」、其余钉平台拒绝）—— 跳过会把 Windows 上的
+  接线证据一起扔掉。
+- 工作区里上一轮那两个未提交的用例文件（`project-files/ipc.test.ts`、`query-owner.canary.test.ts`）**全是我的**
+  ⇒ 本轮连本单元一起跑绿落地。B 段仍耗尽（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）。
+
+### 一 交付（7 文件，全是测试；产品代码一字未改）
+
+`heldSplitFields` 的 8 处墙钟调用点，此前只有 3 处有字段级断言（`§二百四十六` 一处 + 上一轮两处）。
+本单元把剩下 **5 处补齐**，并复核了上一轮那 3 处（写法修正见 §四）：
+
+| 站点 | 用例文件 | 读数（恒定，不依赖机器） |
+|---|---|---|
+| `artifact-provenance` 的 `resolveVersionContent` | `artifacts/provenance-repository.test.ts` | 墙钟只走「取 client」这一段 ⇒ `clientMs 100 / queryMs 0 / readMs 0`，`heldMs 100 / ownMs 0` |
+| `preview-resources` 的慢 acquire | `managed-preview-resources.test.ts` | 墙钟只在注入的 `resolvePath` 里走 ⇒ `resolveMs 100 / statMs 0`，`heldMs 100 / ownMs 0` |
+| `reviewer` 慢读（正常分支） | `reviewer/ipc.test.ts`（一条用例覆盖两个分支） | `totalMs 300`，`heldMs 300 / ownMs 0` |
+| `reviewer` 慢读（会话读不出来的分支） | 同上 | 同样带 `heldMs/ownMs`，且 `sessionUnavailable:true` |
+| `storage:get-info` 慢读 | `storage/ipc.test.ts` | `totalMs 430`，`heldMs 430 / ownMs 0` |
+
+写法统一成「窗口盖住整个测量」：在环上记一条 `[now-5s, now+65s]` 的窗口，于是每一毫秒都必须被算成 held、
+own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站点的 spread 会让 `heldMs` **整个缺席**（不是 0）。
+`reviewer` 与 `storage` 两处沿用文件里既有的虚拟时钟（`vi.setSystemTime`），`provenance` 把成本放在注入的
+`getClient` 里 —— 都不靠 `sleep` 抢时间。
+
+`heldMs` 缺席即为红的这条判据，也正是本仓「没人测」与「循环没被占住」必须可分的理由：`heldSplitFields`
+在无重叠时返回 `{}`，一个 0 会把两件事糊成一件。
+
+### 二 变异自证（8 处，逐个删 spread，改完还原并复绿）
+
+| 变异 | 结果 |
+|---|---|
+| `provenance-repository.ts:4412` 删 spread | **1 红**，正是 `says how much of a slow version resolve …` |
+| `managed-preview-resources.ts:212` 删 spread | **1 红**，正是 `says how much of a slow acquire …` |
+| `reviewer/ipc.ts:194`（不可用分支） | **1 红**，正是 `says how much of each branch …` |
+| `reviewer/ipc.ts:217`（正常分支） | **1 红**，同一用例（两个分支各一次） |
+| `storage/command-owner.ts:204` | **1 红**，正是 `carries the held split …` |
+| `project-files/query-owner.ts:174`（上一轮那处，复核） | **1 红**，`reports the held part on the project-file kinds line too` |
+| `project-files/query-owner.ts:292`（同上） | **1 红**，`reports the part of its own wall-clock window …` |
+| `project-files/ipc.ts:76`（同上） | **1 红**，`reports the part of the read the loop was held for` |
+
+每次都只咬住守它的那一条，其余全过 ⇒ 断言钉的是**这个站点的接线**，不是桥本身。
+
+### 三 门禁读数（取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 受影响面 vitest（`artifacts` + `reviewer` + `storage` + `project-files` + `managed-preview-resources` + `diagnostics` + `scripts`，`--maxWorkers=4`） | **128 files passed / 6 skipped（134）**；**1582 passed / 8 skipped（1590）**，exit 0 |
+| 稳定性复跑（`project-files` 整套 ×5） | **5/5 全绿**（第一次修完是 2/3 —— 见 §四；改完窗口尺寸后连跑 5 次全绿才记档） |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**（web 第一次漏了 `--composite false` ⇒ 一屏 `TS6307`，**用法错不是代码错**，补上即 0） |
+| `eslint --no-cache`（本笔 7 文件） | **0 error / 0 warning** |
+| `scripts/pre-push-checks.sh` | **exit 0**（品牌词、双语 README、脚本入口 `node --check` 全过） |
+
+### 四 一条只有「多跑几遍」才抓得到的坑（本轮实际踩到并已修）
+
+上一轮那两处用例把「窗口宽度」写成**正好等于环的抖动下限 200 ms**：`record(start + 20, start + 20 + 200)`。
+环的判据是 `endMs - startMs < minimumMs` 就丢弃，而浮点减法 `(start + 220) - (start + 20)` 可能落在
+`199.99999999999997` ⇒ **窗口被静默丢弃**，读数变成 `heldMs: undefined`。表现是 3 次里红 1 次（单跑绿、连跑才露），
+最容易被读成「产品侧偶发」。
+
+- 修法不是放宽断言，是**把窗口挪开这道边界**：宽度取 250（离 200 有 50 ms 余量），并让读取比窗口更长
+  （`sleep = 宽度 + 70`），于是墙钟整毫秒截断也剪不到尾巴。
+- 顺带记一条更早的坑（同一处、上一轮）：窗口**起点就是取样点**时，墙钟是整毫秒、`performance.now()` 是浮点，
+  尾巴会被裁掉 1 ms（实测 249/250）⇒ 窗口要**偏移进**被测区间，两侧都留余量。
+- 本轮新加的 5 处用「窗口盖住整个测量」（±65 s），天生不受这两种边界影响；`heldMs` 因此是**恒定的**，
+  而不是「大概 250」。
+
+### 五 边界（不许读成更强）
+
+1. **这 8 处都是「代码里真的接了环」的证据，不是「生产里出现过 held 读数」的证据**：后者要真机日志行，
+   仍卡在「重启常驻 dev 实例」这一步（要用户点头）。
+2. **Windows 那条红的修复只有本机读数背书**：真正的判决要等本笔推上去的 `Windows Full Test`
+   （绑完整 40 位 SHA），本轮汇报里不写成已绿。
+3. `heldMs` 的**数值**在真机上仍是「环记录的窗口 ∩ 测量窗口」，环容量 64、下限 200 ms 都没动 —— 本单元只动断言。
+
+### 六 下一轮第一步
+
+1. 读本笔的 `Nightly` + `Windows Full Test` 判决（完整 40 位 SHA；Windows 分片 8 是这次的重点）。
+2. 候选：① `notebook/runtime-service` 的 spawn 断言（先量再改，不许加大超时）；② A 段若有 ≥3 天无人动的项按约定接手。
+3. 仍等用户点头（不变）：重启常驻 dev 实例才能取真机日志行 / `stack.samples`。
