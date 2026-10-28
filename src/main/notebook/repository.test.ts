@@ -22,6 +22,65 @@ afterEach(async () => {
 })
 
 describe('notebook run repository', () => {
+  // The cache is the difference between a 20 ms and a 250 ms `notebook:state`; these two cases pin the
+  // two ways it could lie: an external rewrite it never sees, and our own write it forgets to drop.
+  it('serves a cached document but notices an external rewrite', async () => {
+    const root = await createStorageRoot()
+    const repository = new NotebookRunRepository(root)
+    const request = {
+      projectName: 'default-project',
+      sessionId: 'session-cache',
+      workspaceCwd: '/workspace',
+      pythonPath: '/usr/bin/python3',
+      kernelName: 'python3'
+    }
+
+    const created = await repository.loadOrCreate(request)
+    expect(created.runs).toHaveLength(0)
+
+    // Second read is a cache hit and still returns an independent object.
+    const second = await repository.loadOrCreate(request)
+    expect(second).not.toBe(created)
+    second.runs.push({ ...second.runs[0] } as never)
+
+    // An external writer (another process, a restored backup) rewrites the file. Asserting on the kernel
+    // status rather than on runs keeps this about the cache: a hand-written run record would be dropped
+    // by normalization for its own reasons and say nothing about staleness.
+    const filePath = join(root, 'notebooks', 'default-project', 'session-cache', 'run.json')
+    const onDisk = JSON.parse(await readFile(filePath, 'utf8')) as {
+      kernel: { lastKnownStatus: string }
+    }
+    onDisk.kernel.lastKnownStatus = 'busy'
+    await writeFile(filePath, JSON.stringify(onDisk, null, 2), 'utf8')
+
+    const afterExternalWrite = await repository.loadOrCreate(request)
+    expect(afterExternalWrite.kernel.lastKnownStatus).toBe('busy')
+  })
+
+  it('drops the cached document when it writes one itself', async () => {
+    const root = await createStorageRoot()
+    const repository = new NotebookRunRepository(root)
+    const request = {
+      projectName: 'default-project',
+      sessionId: 'session-invalidate',
+      workspaceCwd: '/workspace',
+      pythonPath: '/usr/bin/python3',
+      kernelName: 'python3'
+    }
+
+    expect((await repository.loadOrCreate(request)).kernel.lastKnownStatus).toBe('idle')
+
+    await repository.updateKernelStatus({
+      projectName: request.projectName,
+      sessionId: request.sessionId,
+      workspaceCwd: request.workspaceCwd,
+      pythonPath: request.pythonPath,
+      status: 'busy'
+    } as never)
+
+    expect((await repository.loadOrCreate(request)).kernel.lastKnownStatus).toBe('busy')
+  })
+
   it('creates run.json under the notebook session workspace with runtime and data roots', async () => {
     const root = await createStorageRoot()
     const repository = new NotebookRunRepository(root)

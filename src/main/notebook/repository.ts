@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 import type {
@@ -179,6 +179,16 @@ class NotebookRunRepository {
   private saveQueue: Promise<void> = Promise.resolve()
   private saveSequence = 0
 
+  // Parsed+decoded run.json documents, validated by mtime+size. Every `notebook:state` read used to pay
+  // a full readFile + JSON.parse of a file that reaches 60 MB on this machine; that parse was the whole
+  // of the 207–902 ms `loadMs` samples (ensureMs/projectMs were noise, `cold: 0` every time).
+  // Read-only by construction: `loadOrCreate`'s callers only read, and every write goes through
+  // `loadExisting`, which re-reads from disk.
+  private readonly documentCache = new Map<
+    string,
+    { mtimeMs: number; size: number; document: NotebookRunDocument }
+  >()
+
   constructor(private readonly storageRoot: string) {}
 
   // Loads an existing history file or creates the directory skeleton and first run.json.
@@ -188,11 +198,27 @@ class NotebookRunRepository {
     const filePath = getNotebookRunJsonPath(this.storageRoot, projectName, sessionId)
 
     try {
+      const info = await stat(filePath).catch(() => undefined)
+      const cached = this.documentCache.get(filePath)
+      if (info && cached && cached.mtimeMs === info.mtimeMs && cached.size === info.size) {
+        // No clone: `normalizeDocument` already returns a fresh document whose runs are fresh objects,
+        // and the only `loadOrCreate` callers are readers. Write paths never come through here — they
+        // go via `loadExisting`, which always re-reads the file — so a cached object is never mutated.
+        return normalizeDocument(this.storageRoot, request, cached.document)
+      }
+
       const rawDocument = await readFile(filePath, 'utf8')
       const document = JSON.parse(rawDocument) as NotebookRunDocument
       // Decode $DATA sentinels against the current data root before recomputing session roots,
       // so a relocated data root and the decoded working-file paths agree.
       const decoded = decodeRunDocumentDataPaths(document, this.storageRoot)
+      if (info) {
+        this.documentCache.set(filePath, {
+          mtimeMs: info.mtimeMs,
+          size: info.size,
+          document: decoded
+        })
+      }
 
       return normalizeDocument(this.storageRoot, request, decoded)
     } catch (error) {
@@ -410,6 +436,9 @@ class NotebookRunRepository {
     const encoded = encodeRunDocumentDataPaths(document, this.storageRoot)
     await writeFile(temporaryPath, `${JSON.stringify(encoded, null, 2)}\n`, 'utf8')
     await rename(temporaryPath, filePath)
+    // Our own write invalidates: mtime+size would usually catch it, but a same-size rewrite inside the
+    // same millisecond would be served from cache.
+    this.documentCache.delete(filePath)
   }
 }
 
