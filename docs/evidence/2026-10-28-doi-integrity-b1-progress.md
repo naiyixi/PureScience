@@ -65,6 +65,23 @@
    （理由：这三类要的动作不同，静默放行等于让「没查过」冒充「查过没问题」）；
 4. 面板测试补两例：有 retracted 时拒绝、只有未检查时导出并列出缺口。
 
+## 二·六 面板接线的完整清单（7 处，下次照做）
+
+主进程侧已全部就绪（`be950e65`）：`references:read-integrity-summary` 三端同源。渲染层还差七处：
+
+| #   | 文件                                                              | 改什么                                                                                           |
+| --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | `src/preload/index.ts`（≈730 行，`fetchByIdentifier` 旁）         | 加 `readIntegritySummary: (projectId) => invoke('references.read-integrity-summary', projectId)` |
+| 2   | `src/preload/renderer-api.d.ts`（≈1072 行）                       | 加同名方法与返回类型（retracted / gaps / checked / total）                                       |
+| 3   | `src/preload/index.test.ts`（≈440 行的频道清单）                  | 清单加 `'references.read-integrity-summary'`                                                     |
+| 4   | `ReferencesScreeningPanel.tsx`（`handleExportIncluded`，≈664 行） | 导出前调 1 的命令；`retracted` 与导出范围有交集 ⇒ `onError(...)` 并 return                       |
+| 5   | 同上                                                              | 否则把三类 `gaps` 并入导出文本块（与标注证据块同级、同风格）                                     |
+| 6   | i18n（`references.screening.export.*` 邻近）                      | 三条文案：拒绝（点名 + doi.org + 检查时间）、缺口表头、三类缺口各行                              |
+| 7   | `ReferencesScreeningPanel.render.test.tsx`                        | 两例：有 retracted 时拒绝且不写文件；只有 never-checked 时导出并列出缺口                         |
+
+**判定口径**：`retracted` ⇒ 拒绝（决定）；三类 `gaps` ⇒ 照常导出但逐条写明（指令）。
+不把两者混为一谈，也不静默放行——「没查过」不能冒充「查过没问题」。
+
 ## 三 口径提醒
 
 - 不做「检查失败就当干净」；`unavailable` 必须一路显式到 UI 与导出结论里；
