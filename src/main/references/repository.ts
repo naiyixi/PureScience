@@ -279,6 +279,82 @@ export class ReferenceRepository {
     }
   }
 
+  // What an export would have to refuse: references that carry a DOI but whose integrity is unknown.
+  // Three distinct gaps, kept apart on purpose — "never checked" is a missing action, "unavailable" is a
+  // failed one, and "stale" is a fact that expired. Collapsing them into one list would tell the reader
+  // to re-check everything, which is how a gate gets bypassed instead of used.
+  async listIntegrityGaps(
+    projectId: string,
+    options: { maxAgeDays?: number; now?: () => Date } = {}
+  ): Promise<
+    Array<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      reason: 'never-checked' | 'unavailable' | 'stale'
+      checkedAt?: string
+    }>
+  > {
+    const client = await this.getClient()
+    const nowMs = (options.now?.() ?? new Date()).getTime()
+    const maxAgeMs = (options.maxAgeDays ?? Number.POSITIVE_INFINITY) * 24 * 60 * 60 * 1000
+
+    const rows = await client.reference.findMany({
+      where: { projectId, doi: { not: null } },
+      select: {
+        id: true,
+        citationKey: true,
+        doi: true,
+        integrityStatus: true,
+        integrityCheckedAt: true
+      }
+    })
+
+    const gaps: Array<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      reason: 'never-checked' | 'unavailable' | 'stale'
+      checkedAt?: string
+    }> = []
+
+    for (const row of rows) {
+      const doi = (row.doi ?? '').trim()
+      if (doi.length === 0) continue
+      if (!row.integrityStatus || !row.integrityCheckedAt) {
+        gaps.push({
+          referenceId: row.id,
+          citationKey: row.citationKey,
+          doi,
+          reason: 'never-checked'
+        })
+        continue
+      }
+      const checkedAt = row.integrityCheckedAt.getTime()
+      if (row.integrityStatus === 'unavailable') {
+        gaps.push({
+          referenceId: row.id,
+          citationKey: row.citationKey,
+          doi,
+          reason: 'unavailable',
+          checkedAt: row.integrityCheckedAt.toISOString()
+        })
+        continue
+      }
+      if (nowMs - checkedAt > maxAgeMs) {
+        gaps.push({
+          referenceId: row.id,
+          citationKey: row.citationKey,
+          doi,
+          reason: 'stale',
+          checkedAt: row.integrityCheckedAt.toISOString()
+        })
+      }
+    }
+
+    return gaps
+  }
+
   async getReference(id: string): Promise<Reference | null> {
     const client = await this.getClient()
     const row = await client.reference.findUnique({ where: { id } })

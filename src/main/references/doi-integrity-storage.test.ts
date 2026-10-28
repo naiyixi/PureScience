@@ -116,4 +116,82 @@ describe('reference DOI integrity', () => {
     expect(stored?.status).toBe('corrected')
     expect(stored?.checkedAt).toBe('2026-10-28T00:00:00.000Z')
   })
+
+  // The export gate reads this list. The three reasons must stay distinguishable: a reference never
+  // checked needs an action, one whose lookup failed needs a retry, one that is stale needs a refresh —
+  // reporting them as one bucket tells the reader to redo everything, which is how a gate gets ignored.
+  it('lists exactly the references an export cannot vouch for', async () => {
+    const repository = await createRepository()
+    const now = new Date('2026-10-28T00:00:00.000Z')
+
+    const make = async (citationKey: string, doi: string | undefined): Promise<string> => {
+      const reference = await repository.createReference({
+        projectId: 'project-gaps',
+        citationKey,
+        title: citationKey,
+        authors: [],
+        ...(doi ? { doi } : {})
+      })
+      return reference.id
+    }
+
+    const neverChecked = await make('NeverChecked', '10.1000/never')
+    const unavailable = await make('Unavailable', '10.1000/unavailable')
+    const stale = await make('Stale', '10.1000/stale')
+    const fresh = await make('Fresh', '10.1000/fresh')
+    const retractedButChecked = await make('Retracted', '10.1000/retracted')
+    // No DOI at all: an export cannot check what has no identifier, so it is not a gap.
+    await make('NoDoi', undefined)
+
+    const stamp = (
+      iso: string
+    ): {
+      doi: string
+      checkedAt: string
+      sourceUrl: string
+      notices: never[]
+    } => ({
+      doi: '',
+      checkedAt: iso,
+      sourceUrl: 'https://api.crossref.org/works/x',
+      notices: []
+    })
+
+    await repository.recordDoiIntegrity(unavailable, {
+      ...stamp('2026-10-27T00:00:00.000Z'),
+      doi: '10.1000/unavailable',
+      status: 'unavailable'
+    })
+    await repository.recordDoiIntegrity(stale, {
+      ...stamp('2026-09-01T00:00:00.000Z'),
+      doi: '10.1000/stale',
+      status: 'clean'
+    })
+    await repository.recordDoiIntegrity(fresh, {
+      ...stamp('2026-10-27T00:00:00.000Z'),
+      doi: '10.1000/fresh',
+      status: 'clean'
+    })
+    // A retracted-but-checked reference is not a *gap*: the verdict exists and is auditable. Whether to
+    // block on it is a different decision, taken by the caller that sees the status.
+    await repository.recordDoiIntegrity(retractedButChecked, {
+      ...stamp('2026-10-27T00:00:00.000Z'),
+      doi: '10.1000/retracted',
+      status: 'retracted'
+    })
+
+    const gaps = await repository.listIntegrityGaps('project-gaps', {
+      maxAgeDays: 30,
+      now: () => now
+    })
+
+    const byKey = new Map(gaps.map((gap) => [gap.citationKey, gap.reason]))
+    expect(byKey.get('NeverChecked')).toBe('never-checked')
+    expect(byKey.get('Unavailable')).toBe('unavailable')
+    expect(byKey.get('Stale')).toBe('stale')
+    expect(byKey.has('Fresh')).toBe(false)
+    expect(byKey.has('Retracted')).toBe(false)
+    expect(byKey.has('NoDoi')).toBe(false)
+    expect(gaps.find((gap) => gap.citationKey === 'NeverChecked')?.referenceId).toBe(neverChecked)
+  })
 })
