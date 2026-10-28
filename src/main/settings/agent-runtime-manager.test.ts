@@ -4,10 +4,11 @@ import { dirname, join, posix } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ClaudeInstallEvent } from '../../shared/settings'
+import type { AgentFrameworkId, ClaudeInstallEvent } from '../../shared/settings'
 import type { ConnectorSettingsModule } from './connector-settings'
 import type { ClaudeDetectDeps } from './claude-detect'
 import type { CodexDetectDeps } from './codex-detect'
+import type { CodeBuddyDetectDeps } from './codebuddy-detect'
 import type { OpencodeDetectDeps } from './opencode-detect'
 import type { ProviderPreflightAccess } from './agent-runtime-manager'
 import type { SkillCatalogModule } from './skill-catalog'
@@ -37,13 +38,15 @@ type RuntimeInventory = {
   opencode: Map<string, string | undefined>
   codexAdapter: Map<string, string | undefined>
   codexNative: Map<string, string | undefined>
+  codebuddy: Map<string, string | undefined>
 }
 
 const createInventory = (): RuntimeInventory => ({
   claude: new Map(),
   opencode: new Map(),
   codexAdapter: new Map(),
-  codexNative: new Map()
+  codexNative: new Map(),
+  codebuddy: new Map()
 })
 
 const createClaudeDeps = (inventory: RuntimeInventory): ClaudeDetectDeps => ({
@@ -61,6 +64,17 @@ const createOpencodeDeps = (inventory: RuntimeInventory): OpencodeDetectDeps => 
   platform: 'linux',
   isExecutable: (path) => Promise.resolve(inventory.opencode.has(path)),
   getVersion: (path) => Promise.resolve(inventory.opencode.get(path)),
+  resolveNpmBinDirs: () => Promise.resolve([])
+})
+
+// C1: CodeBuddy has its own detector — the framework→binary mapping is where a framework once resolved to a
+// neighbouring framework's executable, so the guard below needs an inventory it can point at.
+const createCodebuddyDeps = (inventory: RuntimeInventory): CodeBuddyDetectDeps => ({
+  env: {},
+  homePath: '/home',
+  platform: 'linux',
+  isExecutable: (path) => Promise.resolve(inventory.codebuddy.has(path)),
+  getVersion: (path) => Promise.resolve(inventory.codebuddy.get(path)),
   resolveNpmBinDirs: () => Promise.resolve([])
 })
 
@@ -775,5 +789,79 @@ describe('AgentRuntimeManager', () => {
     ])
 
     await expect(readFile(configPath, 'utf8')).resolves.toBe('{"runtime":"managed"}\n')
+  })
+
+  // C1 — the nightly guard for "framework == binary".
+  //
+  // The defect this exists for was silent: the framework id said codebuddy while the process that actually
+  // ran was opencode, so every reading taken from that session described the wrong tool. Nothing in the type
+  // system notices a mis-tabled mapping, and CI runners do not have the four CLIs installed — so the guard
+  // asserts the MAPPING (which binary each framework's row names), and the four real binaries are probed on a
+  // machine that has them (docs/evidence/2026-10-27-machine-check-3.md).
+  it('names each framework’s own binary, never a neighbour’s', async () => {
+    const claudePath = posix.join('/opt/claude/bin', 'claude')
+    const opencodePath = posix.join('/opt/opencode/bin', 'opencode')
+    const codebuddyPath = posix.join('/opt/codebuddy/bin', 'codebuddy')
+    inventory.claude.set(claudePath, '2.1.0')
+    inventory.opencode.set(opencodePath, '1.19.0')
+    inventory.codexAdapter.set(managedAdapterPath, 'codex-acp 1.1.4')
+    inventory.codexNative.set(managedCodexPath, 'codex-cli 0.144.6')
+    inventory.codebuddy.set(codebuddyPath, '2.174.0')
+
+    manager = createManager({
+      detectDeps: { ...createClaudeDeps(inventory), env: { PATH: posix.dirname(claudePath) } },
+      opencodeDetectDeps: {
+        ...createOpencodeDeps(inventory),
+        env: { PATH: posix.dirname(opencodePath) }
+      },
+      codebuddyDetectDeps: {
+        ...createCodebuddyDeps(inventory),
+        env: { PATH: posix.dirname(codebuddyPath) }
+      }
+    })
+
+    // The selection is what the process will actually be: set each framework in turn and read back both
+    // the id the check reports and the binary its row names.
+    const expected: Array<[AgentFrameworkId, string]> = [
+      ['claude-code', claudePath],
+      ['opencode', opencodePath],
+      ['codex', managedAdapterPath],
+      ['codebuddy', codebuddyPath]
+    ]
+    const seen: string[] = []
+    for (const [frameworkId, expectedPath] of expected) {
+      await repository.setAgentFramework(frameworkId)
+      const result = await manager.checkEnvironment()
+      expect(result.agentFrameworkId).toBe(frameworkId)
+      expect(result.runtime).toMatchObject({ found: true, path: expectedPath })
+      if (result.runtime.path !== undefined) seen.push(result.runtime.path)
+    }
+
+    // Four frameworks, four distinct executables: a duplicated path is exactly the mis-tabled mapping.
+    expect(new Set(seen).size).toBe(4)
+  })
+
+  it('reports a framework as missing rather than borrowing another one’s binary', async () => {
+    const opencodePath = posix.join('/opt/opencode/bin', 'opencode')
+    inventory.opencode.set(opencodePath, '1.19.0')
+    // CodeBuddy is NOT installed: its row must be `found: false`, not the opencode path.
+    manager = createManager({
+      opencodeDetectDeps: {
+        ...createOpencodeDeps(inventory),
+        env: { PATH: posix.dirname(opencodePath) }
+      },
+      codebuddyDetectDeps: { ...createCodebuddyDeps(inventory), env: { PATH: '/nowhere' } }
+    })
+
+    await repository.setAgentFramework('codebuddy')
+    const selected = await manager.checkEnvironment()
+    // The selection is respected, and its runtime row is honestly empty — not opencode wearing the name.
+    expect(selected.agentFrameworkId).toBe('codebuddy')
+    expect(selected.runtime.found).toBe(false)
+    expect(selected.runtime.path).not.toBe(opencodePath)
+
+    await repository.setAgentFramework('opencode')
+    const opencodeSelected = await manager.checkEnvironment()
+    expect(opencodeSelected.runtime).toMatchObject({ found: true, path: opencodePath })
   })
 })
