@@ -62,3 +62,25 @@
 1. **先读已有字段，再决定埋点**：三条通道本来就都有分阶段字段，第一反应若是「加埋点」会白加一轮。
 2. **日志中位数不等于进程内耗时**：`settings:list-skills` 的 662 ms 在进程内是 50/11 ms，直接照日志调参会优化噪声。
 3. **真实文件才是基线**：合成的 133 KB `run.json` 只需 1 ms，真机 60 MB 才是 358 ms 的来源；bench 必须指向真文件。
+
+## 五 `sessions:save-session` 的写盘一半：已到 I/O 下限，剩下的读数是争用
+
+补测（同一台机器、同卷）：
+
+| 量                                 | 读数                                                |
+| ---------------------------------- | --------------------------------------------------- |
+| 写 5.5 MB（临时目录）              | `write_p50` **9.5 ms**                              |
+| 写 5.5 MB（`~/.purescience` 同卷） | `write_p50` **10.7 ms**                             |
+| `rename` 到最终名                  | **0.2–0.3 ms**                                      |
+| `JSON.stringify(session, null, 2)` | **17.3 ms**（紧凑 13.1 ms，文件 5.44 MB → 5.01 MB） |
+| `structuredClone(session)`         | 6.2 ms                                              |
+| **一条保存的理论下限**             | **≈ 28 ms**                                         |
+
+真机慢存样本里 `writeDiskMs` 150–211 ms、`writeReplaceMs` 116–176 ms，是下限的 5–7 倍，而
+`attribution` 多为 `inconclusive`、`cpuShare` 0–1 —— 即**不是我们的算法**，是同一时刻的 I/O/事件循环争用。
+
+因此这一步**不做**：把 `JSON.stringify` 改成紧凑格式只能省 ~4 ms 与 8% 体积，却要改变磁盘格式（多处解析与
+用例依赖现有形状），性价比为负。真正的杠杆在上一节那次 400 ms 查询，已经修掉。
+
+bench 落档：`scripts/bench/session-file-write.bench.test.ts`（写/rename 下限）、
+`scripts/bench/session-serialize.bench.test.ts`（序列化与拷贝成本）。
