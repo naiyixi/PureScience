@@ -62,6 +62,10 @@ import {
 import type { SettingsRepository } from './repository'
 import type { StoredSettings } from './types'
 
+import { createLogger } from '../logger'
+
+const log = createLogger('skills')
+
 type SkillCatalogEntry = {
   name: string
   description: string
@@ -121,10 +125,31 @@ class SkillCatalogModule {
   }
 
   async listSkills(): Promise<SkillView[]> {
-    const [skills, settings] = await Promise.all([
-      this.catalog(),
-      this.options.repository.getSettings()
+    // Attribution instead of guessing: the 2.19.0 logs showed this channel at 662 ms median with a high
+    // CPU share, while the same path costs ~50 ms cold / ~8 ms warm in-process. When it is slow in the
+    // app, these three numbers say which half to look at (asar reads vs user dirs vs settings I/O).
+    const timed = async <T>(run: () => Promise<T>): Promise<[T, number]> => {
+      const started = performance.now()
+      const value = await run()
+      return [value, performance.now() - started]
+    }
+    const startedAt = performance.now()
+    const [[featured, registryMs], [user, userMs], [settings, settingsMs]] = await Promise.all([
+      timed(() => this.skillRegistry.list()),
+      timed(() => this.userSkills.list()),
+      timed(() => this.options.repository.getSettings())
     ])
+    const skills = [...featured, ...user]
+    const totalMs = performance.now() - startedAt
+    if (totalMs > 150) {
+      log.info('skill list attribution', {
+        totalMs: Math.round(totalMs),
+        registryMs: Math.round(registryMs),
+        userMs: Math.round(userMs),
+        settingsMs: Math.round(settingsMs),
+        skills: skills.length
+      })
+    }
     const disabled = this.withoutAlwaysOnSkillIds(settings.disabledSkillIds ?? [], skills)
     const allowed = settings.trustedSkillIds ?? []
     return skills.map((skill) => this.toSkillView(skill, disabled, allowed))

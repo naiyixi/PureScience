@@ -26,7 +26,7 @@ import {
   type FetchedSkillFile,
   type ScannedSkill
 } from './github-import'
-import { parseSkillDocument } from './frontmatter'
+import { parseFrontmatter, parseSkillDocument } from './frontmatter'
 import type { BundledSkill } from './registry'
 import { parseSkillProvenance, SKILL_TRUST_KEY } from '../../shared/skill-provenance'
 import { readSkillFile } from './skill-files'
@@ -341,11 +341,82 @@ const discoverSkillRoots = (zip: Buffer): SkillDiscovery => {
 class UserSkillRepository {
   private readonly mutationOwner: SkillMutationOwner
 
+  // Parsed SKILL.md frontmatter, keyed by directory and validated against the file's mtime+size.
+  // The listing runs on every settings panel open; before this, each call re-read and re-parsed every
+  // skill (three sequential I/O ops per skill: SKILL.md, package metadata, stat).
+  private readonly skillFileCache = new Map<
+    string,
+    { mtimeMs: number; size: number; fields: Record<string, string>; atMs: number }
+  >()
+
+  // Specialist package metadata, cached the same way (most skills have no such file, so the negative
+  // result is cached too — otherwise every listing pays one ENOENT per skill).
+  private readonly packageMetadataCache = new Map<
+    string,
+    { mtimeMs: number; size: number; metadata: unknown }
+  >()
+
+  // Specialist package metadata, validated by the metadata file's mtime+size. Non-specialist skills cache
+  // the ENOENT too (mtimeMs -1), otherwise every listing pays one failed open per skill.
+  private async readPackageMetadataCached(
+    skillDir: string
+  ): Promise<Awaited<ReturnType<typeof readSpecialistPackageSkillMetadata>>> {
+    const file = join(skillDir, SPECIALIST_PACKAGE_SKILL_METADATA)
+    const info = await stat(file).catch(() => undefined)
+    const cached = this.packageMetadataCache.get(skillDir)
+    if (info === undefined) {
+      if (cached && cached.mtimeMs === -1) {
+        return cached.metadata as Awaited<ReturnType<typeof readSpecialistPackageSkillMetadata>>
+      }
+      this.packageMetadataCache.set(skillDir, { mtimeMs: -1, size: 0, metadata: undefined })
+      return undefined
+    }
+    if (cached && cached.mtimeMs === info.mtimeMs && cached.size === info.size) {
+      return cached.metadata as Awaited<ReturnType<typeof readSpecialistPackageSkillMetadata>>
+    }
+    const metadata = await readSpecialistPackageSkillMetadata(skillDir)
+    this.packageMetadataCache.set(skillDir, {
+      mtimeMs: info.mtimeMs,
+      size: info.size,
+      metadata
+    })
+    return metadata
+  }
+
   constructor(
     private readonly storageRoot: string,
     mutationOwner: SkillMutationOwner = skillMutationOwnerFor(storageRoot)
   ) {
     this.mutationOwner = mutationOwner
+  }
+
+  // Reads SKILL.md only when its mtime/size moved; a repeat listing costs one stat per skill.
+  private async readSkillFileCached(
+    skillDir: string
+  ): Promise<{ fields: Record<string, string>; mtimeMs: number }> {
+    const file = join(skillDir, 'SKILL.md')
+    const info = await stat(file)
+    const cached = this.skillFileCache.get(skillDir)
+    if (cached && cached.mtimeMs === info.mtimeMs && cached.size === info.size) {
+      return { fields: cached.fields, mtimeMs: info.mtimeMs }
+    }
+    const raw = await readFile(file, 'utf8')
+    const { fields } = parseFrontmatter(raw)
+    this.skillFileCache.set(skillDir, {
+      mtimeMs: info.mtimeMs,
+      size: info.size,
+      fields,
+      atMs: Date.now()
+    })
+    return { fields, mtimeMs: info.mtimeMs }
+  }
+
+  // Explicit invalidation for our own writes: mtime+size is enough for outside edits, but a same-size
+  // write inside the same millisecond would otherwise be served from cache. Mutations are rare and the
+  // caches are small, so clearing is cheaper than tracking per-slug keys.
+  private invalidateSkillCaches(): void {
+    this.skillFileCache.clear()
+    this.packageMetadataCache.clear()
   }
 
   private sourceDir(source: (typeof USER_SOURCES)[number]): string {
@@ -472,35 +543,52 @@ class UserSkillRepository {
   // The listing itself, without acquiring the lock or running recovery — call only from within a
   // critical section that has already recovered (avoids re-entrant locking / deadlock).
   private async listSkillsInternal(): Promise<BundledSkill[]> {
-    const skills: BundledSkill[] = []
+    // One parallel pass instead of three sequential I/O ops per skill. The settings panel lists on every
+    // open, and this used to be the slowest IPC channel in the app (median 662 ms on 2.19.0).
+    const pending = await Promise.all(
+      USER_SOURCES.map(async (source) => {
+        const slugs = await this.listSlugs(source)
+        return slugs.map((slug) => ({ source, slug, skillDir: this.skillDir(source, slug) }))
+      })
+    )
+    const targets = pending.flat()
 
-    for (const source of USER_SOURCES) {
-      for (const slug of await this.listSlugs(source)) {
-        const skillDir = this.skillDir(source, slug)
-
+    const resolved = await Promise.all(
+      targets.map(async ({ source, slug, skillDir }) => {
         try {
-          const { fields } = await readSkillFile(skillDir)
-          const packageMetadata = await readSpecialistPackageSkillMetadata(skillDir)
-          const updatedAt = (await stat(join(skillDir, 'SKILL.md'))).mtime.toISOString()
-
-          skills.push({
-            id: packageMetadata?.id ?? `${source}-${slug}`,
-            name: fields.name || slug,
-            description: fields.description ?? '',
-            source,
-            updatedAt,
-            sourceDir: skillDir,
-            author: fields.author,
-            license: fields.license,
-            thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
-            // Trust state of learnt knowledge (see shared/skill-provenance). Personal and imported skills
-            // are where learnt entries actually live, so the verification gate has to read it here too —
-            // parsing it only for bundled skills left the gate inert exactly where it matters.
-            ...(fields[SKILL_TRUST_KEY] ? { provenance: parseSkillProvenance(fields) } : {})
-          })
+          const [{ fields, mtimeMs }, packageMetadata] = await Promise.all([
+            this.readSkillFileCached(skillDir),
+            this.readPackageMetadataCached(skillDir)
+          ])
+          return { source, slug, skillDir, fields, packageMetadata, mtimeMs }
         } catch (error) {
           log.warn('skipping user skill with unreadable SKILL.md', { source, slug, error })
+          return undefined
         }
+      })
+    )
+
+    const skills: BundledSkill[] = []
+    for (const entry of resolved) {
+      if (entry) {
+        const { source, slug, skillDir, fields, packageMetadata, mtimeMs } = entry
+        const updatedAt = new Date(mtimeMs).toISOString()
+
+        skills.push({
+          id: packageMetadata?.id ?? `${source}-${slug}`,
+          name: fields.name || slug,
+          description: fields.description ?? '',
+          source,
+          updatedAt,
+          sourceDir: skillDir,
+          author: fields.author,
+          license: fields.license,
+          thirdParty: fields['third-party'] ?? fields['third_party'] ?? fields.thirdparty,
+          // Trust state of learnt knowledge (see shared/skill-provenance). Personal and imported skills
+          // are where learnt entries actually live, so the verification gate has to read it here too —
+          // parsing it only for bundled skills left the gate inert exactly where it matters.
+          ...(fields[SKILL_TRUST_KEY] ? { provenance: parseSkillProvenance(fields) } : {})
+        })
       }
     }
 
@@ -535,6 +623,7 @@ class UserSkillRepository {
   // used verbatim (validated, and rejected if already taken); otherwise a slug is derived from the
   // name and collisions get a numeric suffix.
   async createPersonal(input: WriteSkillInput, requestedSlug?: string): Promise<string> {
+    this.invalidateSkillCaches()
     return this.runExclusive(async () => {
       if (requestedSlug !== undefined) {
         const slug = requestedSlug.trim()
@@ -557,6 +646,7 @@ class UserSkillRepository {
 
   // Rewrites an existing personal skill's SKILL.md in place.
   async updatePersonal(id: string, input: WriteSkillInput): Promise<void> {
+    this.invalidateSkillCaches()
     const parsed = parseUserSkillId(id)
     if (!parsed || parsed.source !== 'personal') throw new Error(`Not a personal skill id: ${id}`)
 
@@ -651,6 +741,7 @@ class UserSkillRepository {
 
   // Deletes a personal or imported skill directory.
   async delete(id: string, guard?: (skillId: string) => Promise<void>): Promise<void> {
+    this.invalidateSkillCaches()
     return this.runExclusive(async () => {
       // Recover first, so a skill left only in a crash backup is restored to its live dir and then
       // actually removed here — otherwise a later recovery would "resurrect" the deleted skill.
