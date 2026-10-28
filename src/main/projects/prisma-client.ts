@@ -128,6 +128,13 @@ const REVIEW_EVIDENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ReviewEvidence" (
 
 const REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "ReviewEvidence_reviewId_idx" ON "ReviewEvidence"("reviewId")`
 
+// The reviewer panel loads by session; without this index it scanned the whole Review table, and each
+// row carries `scope`/`reviewerLog` JSON — 244–498 ms for a single review on the real machine.
+const REVIEW_SESSION_ID_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "Review_sessionId_idx" ON "Review"("sessionId")`
+
+// Checks are read per review in sort order; the table had no index beyond its primary key.
+const FINDING_REVIEW_ID_SORT_INDEX_DDL = `CREATE INDEX IF NOT EXISTS "Finding_reviewId_sortIndex_idx" ON "Finding"("reviewId", "sortIndex")`
+
 // Background result deliveries: the ledger that returns a finished job's result to its session even
 // when no window is alive to notice it. `claimToken` + `claimExpiresAt` are the crash-safety pair: a
 // delivery is only moved by the holder of a live lease, so a worker that dies mid-delivery can be
@@ -1063,6 +1070,8 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
     REVIEW_SCOPE_SNAPSHOT_TABLE_DDL,
     REVIEW_EVIDENCE_TABLE_DDL,
     REVIEW_EVIDENCE_REVIEW_ID_INDEX_DDL,
+    REVIEW_SESSION_ID_INDEX_DDL,
+    FINDING_REVIEW_ID_SORT_INDEX_DDL,
     BACKGROUND_DELIVERY_TABLE_DDL,
     ...BACKGROUND_DELIVERY_INDEX_DDLS
   ),

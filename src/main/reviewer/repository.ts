@@ -650,24 +650,33 @@ class ReviewRepository {
       orderBy: { createdAt: 'desc' }
     })
 
-    return Promise.all(
-      rows.map(async (row) => {
-        const checkRows = await client.finding.findMany({
-          where: { reviewId: row.id },
-          orderBy: { sortIndex: 'asc' }
-        })
-
-        const checks = checkRows.map(toCheck)
-        return {
-          ...toReview(row),
-          checks,
-          // Legacy: expose findings as alias for checks (same data).
-          get findings() {
-            return checks
-          }
-        } as ReviewWithChecks
+    // One query for every review's checks instead of one per review: the panel used to issue N+1 reads
+    // against a table that had no `reviewId` index, so each of them scanned all Findings.
+    const checkRowsByReview = new Map<string, Awaited<ReturnType<typeof client.finding.findMany>>>()
+    if (rows.length > 0) {
+      const allChecks = await client.finding.findMany({
+        where: { reviewId: { in: rows.map((row) => row.id) } },
+        orderBy: [{ reviewId: 'asc' }, { sortIndex: 'asc' }]
       })
-    )
+      for (const check of allChecks) {
+        const bucket = checkRowsByReview.get(check.reviewId)
+        if (bucket) bucket.push(check)
+        else checkRowsByReview.set(check.reviewId, [check])
+      }
+    }
+
+    return rows.map((row) => {
+      const checkRows = checkRowsByReview.get(row.id) ?? []
+      const checks = checkRows.map(toCheck)
+      return {
+        ...toReview(row),
+        checks,
+        // Legacy: expose findings as alias for checks (same data).
+        get findings() {
+          return checks
+        }
+      } as ReviewWithChecks
+    })
   }
 
   // Removes a session's reviews and their checks. Checks are deleted explicitly (not relying on the

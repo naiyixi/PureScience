@@ -90,6 +90,10 @@ model Review {
   causedDispositions ReviewFindingDisposition[]
   scopeSnapshot       ReviewScopeSnapshot?
   evidence            ReviewEvidence[]
+
+  // The reviewer panel loads by session. Without this every open scanned the whole table, and the row
+  // carries `scope`/`reviewerLog` JSON, so the reading on the device was 244–498 ms for ONE review.
+  @@index([sessionId])
 }
 
 // Evidence a person pinned to a review from a verified search hit. Deliberately kept apart from
@@ -131,6 +135,10 @@ model Finding {
   reflagCount       Int     @default(0)
   review            Review  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   dispositions      ReviewFindingDisposition[]
+
+  // Checks are always read as "this review's checks, in order". Without the index each read scanned the
+  // whole Finding table (1436 rows of JSON on the real machine) once per review.
+  @@index([reviewId, sortIndex])
 }
 
 model ProjectDeletionIntent {
