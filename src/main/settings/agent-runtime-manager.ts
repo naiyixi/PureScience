@@ -874,6 +874,21 @@ export class AgentRuntimeManager {
     throw new Error(CLAUDE_EXECUTABLE_MISSING_MESSAGE)
   }
 
+  // CodeBuddy's resolved path was stored by `detectCodebuddy` but never read back by the backend
+  // resolver, so `framework: 'codebuddy'` silently spawned opencode's binary. Reading it here is what
+  // makes "selected framework" and "executable" the same thing.
+  async resolveCodebuddyExecutable(storedPath: string | undefined): Promise<string> {
+    if (storedPath && (await this.pathExists(storedPath))) return storedPath
+
+    const detected = await detectCodeBuddy(this.codebuddyDetectDeps)
+    if (!detected) {
+      throw new Error(
+        'CodeBuddy executable not found. Install CodeBuddy or set its path in settings.'
+      )
+    }
+    return detected.resolvedPath
+  }
+
   async resolveOpencodeExecutable(storedPath: string | undefined): Promise<string> {
     if (storedPath && (await this.pathExists(storedPath))) return storedPath
 

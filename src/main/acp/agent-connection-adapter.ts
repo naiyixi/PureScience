@@ -1,4 +1,16 @@
 import * as acp from '@agentclientprotocol/sdk'
+
+import { createLogger } from '../logger'
+const log = createLogger('acp')
+
+const SPAWN_ARG_SECRET = /(key|token|secret|password|authorization)/i
+
+/** Redacts secret-bearing argv pairs (`--api-key sk-…`) before they reach the log. */
+const redactSpawnArgs = (args: string[]): string[] =>
+  args.map((arg, index) =>
+    SPAWN_ARG_SECRET.test(arg) && !arg.startsWith('-') && index > 0 ? '<redacted>' : arg
+  )
+
 import type {
   AuthenticateRequest,
   ClientConnection,
@@ -182,6 +194,21 @@ class AcpAgentConnectionAdapter {
             args: backend.args ?? [],
             proxyEnvironmentMode: backend.proxyEnvironmentMode
           })
+      // Forensic line for spawn failures: when the same argv works from a shell but the packaged app
+      // gets an immediate exit, the only useful data is what we actually launched. Kept to one line per
+      // connection and redacted, because args can carry provider keys on some adapters.
+      log.info('agent spawn', {
+        framework,
+        executablePath: backend.executablePath,
+        args: redactSpawnArgs(backend.args ?? []),
+        // `process` in this scope is the spawned child, not Node's global — and tests may install a
+        // shim without `cwd`. Go through globalThis and probe the shape instead of assuming it.
+        cwd: typeof globalThis.process?.cwd === 'function' ? globalThis.process.cwd() : null,
+        pid: process.pid ?? null,
+        pathEntryCount: (backend.env?.PATH ?? globalThis.process?.env?.PATH ?? '')
+          .split(':')
+          .filter(Boolean).length
+      })
       hooks.onProcessSpawned(framework)
       if (input.isShuttingDown() || !input.isCurrent()) {
         throw new Error(

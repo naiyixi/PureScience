@@ -115,6 +115,7 @@ export type AgentSpawnConfig = {
 export type AgentBackendRuntimePort = Pick<
   AgentRuntimeManager,
   | 'resolveClaudeExecutable'
+  | 'resolveCodebuddyExecutable'
   | 'resolveOpencodeExecutable'
   | 'resolveCodexExecutable'
   | 'probeCodexNativeVersion'
@@ -711,13 +712,19 @@ export class AgentBackendResolver {
       }
     }
 
+    // Each framework must resolve its OWN binary. This used to be a two-way ternary
+    // (codex | everything else → opencode), which meant `framework: 'codebuddy'` spawned
+    // `/opt/homebrew/bin/opencode` with codebuddy's argv — the process printed a banner and exited 1,
+    // and the failure surfaced as `ensureConnected: connect failed` with no useful stderr.
     const executablePath =
       framework.id === 'codex'
         ? await this.runtime.resolveCodexExecutable(
             settings.codex?.resolvedPath,
             settings.codex?.nativePath
           )
-        : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
+        : framework.id === 'codebuddy'
+          ? await this.runtime.resolveCodebuddyExecutable(settings.codebuddyPath)
+          : await this.runtime.resolveOpencodeExecutable(settings.opencodePath)
     const codexNativeVersion =
       framework.id === 'codex'
         ? await this.runtime.probeCodexNativeVersion(settings.codex?.nativePath)

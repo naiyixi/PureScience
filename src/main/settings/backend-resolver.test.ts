@@ -232,6 +232,7 @@ const makeHarness = (options: HarnessOptions = {}) => {
 
   const runtime = {
     resolveClaudeExecutable: vi.fn(async () => '/runtime/claude'),
+    resolveCodebuddyExecutable: vi.fn(async () => '/runtime/codebuddy'),
     resolveOpencodeExecutable: vi.fn(async () => '/runtime/opencode'),
     resolveCodexExecutable: vi.fn(async () => '/runtime/codex-acp'),
     probeCodexNativeVersion: vi.fn(async () => '0.144.6'),
@@ -1176,7 +1177,10 @@ describe('AgentBackendResolver runtime delegation', () => {
   it.each([
     { frameworkId: 'claude-code' as const, executableMethod: 'resolveClaudeExecutable' as const },
     { frameworkId: 'opencode' as const, executableMethod: 'resolveOpencodeExecutable' as const },
-    { frameworkId: 'codex' as const, executableMethod: 'resolveCodexExecutable' as const }
+    { frameworkId: 'codex' as const, executableMethod: 'resolveCodexExecutable' as const },
+    // Regression guard: codebuddy used to fall through the `codex | everything-else` ternary into
+    // opencode's resolver, so `framework: 'codebuddy'` spawned the opencode binary with codebuddy argv.
+    { frameworkId: 'codebuddy' as const, executableMethod: 'resolveCodebuddyExecutable' as const }
   ])('delegates $frameworkId preparation through the S5a runtime port', async (testCase) => {
     const harness = makeHarness()
 
@@ -1192,6 +1196,9 @@ describe('AgentBackendResolver runtime delegation', () => {
 
     expect(backend.framework.id).toBe(testCase.frameworkId)
     expect(harness.runtime[testCase.executableMethod]).toHaveBeenCalledTimes(1)
+    if (testCase.frameworkId !== 'opencode') {
+      expect(harness.runtime.resolveOpencodeExecutable).not.toHaveBeenCalled()
+    }
     if (testCase.frameworkId === 'claude-code') {
       expect(harness.runtime.provisionClaudeRuntimeConfig).toHaveBeenCalledWith(
         harness.getSettings(),
