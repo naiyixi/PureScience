@@ -121,8 +121,6 @@ export type ComposeStepRecorderOptions = {
 export type ComposeStepRecorder = {
   /** Times one composition step. Rethrows failures after recording them. */
   step: <T>(name: string, run: () => Promise<T> | T) => Promise<T>
-  /** Every step recorded so far, wall-slowest first (the summary line ranks by own time instead). */
-  steps: () => ComposeStep[]
   /** Wall time from the first step to the last completion. */
   totalMs: () => number
   /**
@@ -261,10 +259,6 @@ export const createComposeStepRecorder = (
 
   return {
     step,
-    steps: (): ComposeStep[] =>
-      [...recorded]
-        .sort((left, right) => right.durationMs - left.durationMs)
-        .map(({ name, durationMs, outcome }) => ({ name, durationMs, outcome })),
     totalMs: (): number =>
       startedAt === undefined || endedAt === undefined ? 0 : Math.max(0, endedAt - startedAt),
     snapshot,

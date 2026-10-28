@@ -67,7 +67,7 @@ describe('compose step recorder', () => {
     // A healthy startup must not pay a line per step: only the summary is written by the caller.
     expect(log.warn).not.toHaveBeenCalled()
     expect(log.info).not.toHaveBeenCalled()
-    expect(recorder.steps()).toEqual([
+    expect(recorder.snapshot().steps).toMatchObject([
       { name: 'read-stored-settings', durationMs: 0, outcome: 'ok' }
     ])
   })
@@ -149,7 +149,7 @@ describe('compose step recorder', () => {
       'compose step failed',
       expect.objectContaining({ step: 'hydrate-child-proxy-runtime', errorCategory: 'system' })
     )
-    expect(recorder.steps()[0]).toMatchObject({ outcome: 'failed' })
+    expect(recorder.snapshot().steps[0]).toMatchObject({ outcome: 'failed' })
   })
 
   // Startup steps read as "slow startup" whether the process was working or suspended — the real record
@@ -364,7 +364,7 @@ describe('compose step recorder', () => {
     const { recorder } = setup()
 
     expect(recorder.totalMs()).toBe(0)
-    expect(recorder.steps()).toEqual([])
+    expect(recorder.snapshot().steps).toEqual([])
   })
 
   it('uses caller-supplied line names while the defaults stay as they were', async () => {
