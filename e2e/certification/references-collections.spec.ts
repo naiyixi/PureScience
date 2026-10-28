@@ -52,7 +52,9 @@ test('a collection can be filled, emptied, deleted — and its name reused', asy
 
   // File the record into it with the per-item collection menu, then confirm it shows up inside.
   const item = library.locator('li', { hasText: RECORD_TITLE })
-  await item.locator('select').selectOption({ label: COLLECTION_NAME })
+  await item.getByTestId('reference-collection-select').selectOption({
+    label: COLLECTION_NAME
+  })
   await collectionRow.click()
   await expect(library.getByText(RECORD_TITLE).first()).toBeVisible()
 

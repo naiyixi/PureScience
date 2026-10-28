@@ -1843,6 +1843,7 @@ export function ReferencesLibraryDialog({
                                 <select
                                   className="max-w-24 rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
                                   aria-label={t('references.manualAdd')}
+                                  data-testid="reference-collection-select"
                                   defaultValue=""
                                   onChange={(event) => {
                                     if (event.target.value) {

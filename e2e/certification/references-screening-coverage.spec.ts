@@ -231,9 +231,12 @@ test('reconciles one collection’s coverage tiers against a real corpus', async
   const collectionRow = library.getByRole('button', { name: COLLECTION_NAME, exact: true })
   await expect(collectionRow).toBeVisible()
   for (const title of ALL_TITLES) {
-    await library.locator('li', { hasText: title }).locator('select').selectOption({
-      label: COLLECTION_NAME
-    })
+    await library
+      .locator('li', { hasText: title })
+      .getByTestId('reference-collection-select')
+      .selectOption({
+        label: COLLECTION_NAME
+      })
   }
   await collectionRow.click()
 

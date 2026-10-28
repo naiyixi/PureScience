@@ -98,9 +98,12 @@ test('screens a collection, overrides two records, and exports only the included
   const collectionRow = library.getByRole('button', { name: COLLECTION_NAME, exact: true })
   await expect(collectionRow).toBeVisible()
   for (const title of [INCLUDED_TITLE, EXCLUDED_TITLE, UNTOUCHED_TITLE]) {
-    await library.locator('li', { hasText: title }).locator('select').selectOption({
-      label: COLLECTION_NAME
-    })
+    await library
+      .locator('li', { hasText: title })
+      .getByTestId('reference-collection-select')
+      .selectOption({
+        label: COLLECTION_NAME
+      })
   }
   await collectionRow.click()
 
