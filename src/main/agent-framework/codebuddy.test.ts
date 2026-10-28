@@ -2,9 +2,23 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { codeBuddyFramework, codeBuddyStorageDir } from './codebuddy'
+import { codeBuddyAcpArgs, codeBuddyFramework, codeBuddyStorageDir } from './codebuddy'
 
 describe('codeBuddyFramework', () => {
+  // Regression guard with a measured reason: CodeBuddy's `--help` calls stdio the default transport for
+  // `--acp`, but a bare `--acp` answered a valid `initialize` with zero bytes for 40s on 2.174.0 and
+  // 2.177.1 (process alive, no output), while `--acp-transport stdio` answered in under a second.
+  it('always passes --acp-transport stdio, because bare --acp never answers initialize', () => {
+    expect(codeBuddyAcpArgs()).toEqual(['--acp', '--acp-transport', 'stdio'])
+    expect(codeBuddyAcpArgs(['--model', 'm'])).toEqual([
+      '--acp',
+      '--acp-transport',
+      'stdio',
+      '--model',
+      'm'
+    ])
+  })
+
   it('is registered under the codebuddy id with openai-only endpoints', () => {
     expect(codeBuddyFramework.id).toBe('codebuddy')
     expect(codeBuddyFramework.displayName).toBe('CodeBuddy')

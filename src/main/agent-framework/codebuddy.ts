@@ -71,6 +71,19 @@ const CODEBUDDY_CLEANUP_PERIOD_DAYS = 7
 
 // One switchable agent backend: CodeBuddy. The ACP runtime stays generic; this object owns only the
 // framework-coupled decisions (spawn shape, model config translation, session setup, permissions).
+/**
+ * argv for the ACP subprocess. `--acp-transport stdio` must be passed explicitly even though `--help`
+ * calls stdio the default: on 2.174.0 and 2.177.1 a bare `--acp` stays alive and answers a spec-shaped
+ * `initialize` with **nothing** (0 bytes over 40s), while the explicit flag answers in under a second.
+ * A silent server reads as a hung connection, so this is a correctness flag, not a preference.
+ */
+export const codeBuddyAcpArgs = (extra: string[] = []): string[] => [
+  '--acp',
+  '--acp-transport',
+  'stdio',
+  ...extra
+]
+
 export const codeBuddyFramework: AgentFramework = {
   id: 'codebuddy',
   displayName: 'CodeBuddy',
@@ -96,14 +109,20 @@ export const codeBuddyFramework: AgentFramework = {
   supportedApiTypes: ['openai'],
 
   spawn(input: AgentSpawnInput): ChildProcessWithoutNullStreams {
-    // `codebuddy --acp` starts the ACP subprocess over stdio. On Windows an npm-installed CodeBuddy is
+    // `codebuddy --acp --acp-transport stdio` starts the ACP subprocess. The transport flag is not
+    // optional in practice: `--help` documents "stdio" as the default for `--acp-transport`, but measured
+    // on 2.174.0 and 2.177.1 a bare `--acp` accepts a spec-shaped `initialize` on stdin and answers
+    // **nothing** (0 bytes in 40s, process alive), while adding the flag returns `initialize`'s result
+    // (agentCapabilities, loadSession) within a second. A silent ACP server is indistinguishable from a
+    // slow one, which is why this surfaced as `ensureConnected: connect failed`. On Windows an
+    // npm-installed CodeBuddy is
     // a `.cmd`/`.bat` shim that Node cannot launch without a shell, so those go through the shell with
     // the path quoted; a native `.exe`/Unix binary spawns directly.
     const needsShell = process.platform === 'win32' && /\\.(cmd|bat)$/i.test(input.executablePath)
 
     return spawn(
       needsShell ? `"${input.executablePath}"` : input.executablePath,
-      ['--acp', ...input.args],
+      codeBuddyAcpArgs(input.args),
       {
         env: { ...augmentedPathEnv(process.env), ...input.env },
         stdio: 'pipe',
