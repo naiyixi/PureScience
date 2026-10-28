@@ -15,7 +15,10 @@ import { ReviewRepository } from '../reviewer/repository'
 import { createPngInlineSource } from './artifact-test-fixtures'
 import { ArtifactRepository } from './repository'
 import { ArtifactProvenanceRepository } from './provenance-repository'
-import { ProvenanceMessageSnapshotRepository } from './provenance-message-snapshot'
+import {
+  noteArtifactFinalized,
+  ProvenanceMessageSnapshotRepository
+} from './provenance-message-snapshot'
 
 let storageRoot: string | undefined
 let disconnect: (() => Promise<void>) | undefined
@@ -780,5 +783,63 @@ describe('Provenance Message snapshots', () => {
       retainedReviewIdsJson: null,
       deletedAt: new Date('2026-07-27T13:00:00.000Z')
     })
+  })
+
+  // The skip is a latency fix for autosave: on the real machine `captureFinalizedMessages` measured
+  // 394–403 ms with only 35 ms of CPU, while graph materialization is under 9 ms — the time is the query.
+  // The skip may only fire when nothing can have changed, so the finalize path bumps a counter (a version
+  // can be finalized without touching messages) and deletion forces a fresh answer.
+  it('skips the artifact-version query only when nothing can have changed', async () => {
+    const findMany = vi.fn(async () => [])
+    const client = { artifactVersion: { findMany } } as never
+    const snapshots = new ProvenanceMessageSnapshotRepository({
+      storageRoot: '/tmp/provenance-skip',
+      getClient: () => Promise.resolve(client)
+    })
+    const base = {
+      id: 'session-skip',
+      projectId: 'project-skip',
+      title: 'Skip',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [{ id: 'message-1' }],
+      activities: [{ id: 'activity-1' }],
+      activityGroups: [],
+      createdAt: 1,
+      updatedAt: 2
+    } as never
+
+    await snapshots.captureFinalizedMessages(base)
+    expect(findMany).toHaveBeenCalledTimes(1)
+
+    // Nothing changed: no second query.
+    await snapshots.captureFinalizedMessages(base)
+    expect(findMany).toHaveBeenCalledTimes(1)
+
+    // A new message is a real change.
+    await snapshots.captureFinalizedMessages({
+      ...(base as Record<string, unknown>),
+      messages: [{ id: 'message-1' }, { id: 'message-2' }]
+    } as never)
+    expect(findMany).toHaveBeenCalledTimes(2)
+
+    // A finalization with no message change must still be captured — this is the case a shape-based
+    // fingerprint got wrong, and an existing test caught it.
+    noteArtifactFinalized()
+    await snapshots.captureFinalizedMessages({
+      ...(base as Record<string, unknown>),
+      messages: [{ id: 'message-1' }, { id: 'message-2' }]
+    } as never)
+    expect(findMany).toHaveBeenCalledTimes(3)
+
+    // `force` (session deletion) bypasses the skip entirely.
+    await snapshots.captureFinalizedMessages(
+      {
+        ...(base as Record<string, unknown>),
+        messages: [{ id: 'message-1' }, { id: 'message-2' }]
+      } as never,
+      { force: true }
+    )
+    expect(findMany).toHaveBeenCalledTimes(4)
   })
 })

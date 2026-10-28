@@ -95,6 +95,7 @@ import {
   sanitizeToolActivity
 } from '../../shared/session-persistence'
 import { resolveMessageBranchPath } from '../../shared/conversation-graph'
+import { noteArtifactFinalized } from './provenance-message-snapshot'
 
 const SAFE_SEGMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 // Reconciliation can also run from a read path while an active writer is between copying bytes and
@@ -2740,7 +2741,11 @@ class ArtifactProvenanceRepository {
 
   async finalizeRun(request: FinalizeArtifactVersionsRequest): Promise<ArtifactVersionFile[]> {
     const durableSession = await this.loadFinalizationSession(request)
-    return this.finalizeRunWithDurableSession(request, durableSession)
+    const finalized = await this.finalizeRunWithDurableSession(request, durableSession)
+    // Tells the Message-snapshot capture that a finalization happened, so the next save cannot skip the
+    // query on the grounds that "nothing changed": a version can be finalized without touching messages.
+    noteArtifactFinalized()
+    return finalized
   }
 
   private async finalizeRunWithDurableSession(
