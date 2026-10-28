@@ -173,3 +173,21 @@ Run completed（exit 0）
    provider key 就能过（codebuddy 会话成功建立即为证）。`session/new` 在**无凭据**时的 `-32000` 是真实行为，
    但它不是本产品的阻塞点。
 3. 版本与传输开关的发现仍然有效（裸 `--acp` 在 2.174+ 默认不再是 stdio），只是它不是这次「连不上」的原因。
+
+## 十一 四框架回归（装机件 2.19.0 + `5003afc8`，同一台机器）
+
+修复「框架 → 二进制」的解析之后，把四个框架各自跑了一次真实会话，读 `agent spawn` 行的
+`executablePath`：
+
+| 框架        | 实际启动                                             | connect failed | run    |
+| ----------- | ---------------------------------------------------- | -------------- | ------ |
+| claude-code | `/opt/homebrew/bin/claude`                           | 0              | exit 0 |
+| opencode    | `/opt/homebrew/bin/opencode`                         | 0              | exit 0 |
+| codex       | `~/.purescience/codex-managed/adapter/dist/index.js` | 0              | exit 0 |
+| codebuddy   | `/Users/totota/.local/bin/codebuddy`                 | 0              | exit 0 |
+
+四个各不相同、且都是该框架自己的入口——这是「选中的框架 == 实际启动的二进制」这一条契约的
+可复现读数，也是这次修复真正被验证的地方（不是「某个框架能连上」，而是「四个都对上自己的」）。
+
+装载方式：`rm -rf /Applications/PureScience.app && cp -R dist/mac-arm64/PureScience.app /Applications/`，
+版本 2.19.0，asar 里 `resolveCodebuddyExecutable` 计数 2（修复前为 0）。
