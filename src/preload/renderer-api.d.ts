@@ -39,6 +39,10 @@ import type {
   Reference,
   ReferenceCollection
 } from '../shared/references'
+import type {
+  CitationDirection,
+  CitationDiscoveryResult
+} from '../shared/references-citation-discovery'
 import type { IdentifierKind } from '../main/references/service'
 import type {
   LocalParsingDownloadView,
@@ -1128,6 +1132,13 @@ export interface PureScienceAPI {
     checkIntegrity(
       projectId: string
     ): Promise<import('../shared/references-integrity').ReferenceIntegrityCheckSummary>
+    // B2: what this record cites, and who cites it. Identity in, one bounded walk out — `examined` and
+    // `incomplete` say how much of the set was actually read, and `unavailable` is never `empty`.
+    discoverCitations(
+      projectId: string,
+      referenceId: string,
+      direction: CitationDirection
+    ): Promise<CitationDiscoveryResult>
     // Aliases and the explicit merge (R2-U4): re-attributes the source journal's metrics and references to the
     // target and keeps the source's spelling as an alias. Never a fuzzy merge; every refusal is named.
     mergeJournals(

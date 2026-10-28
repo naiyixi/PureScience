@@ -760,6 +760,15 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('references.readIntegritySummary', projectId),
     checkIntegrity: (projectId) =>
       electronRendererContracts.invoke('references.checkIntegrity', projectId),
+    // B2: one direction per call, from ONE stored record. The renderer sends identity only — the DOI is
+    // resolved in the main process from its own record, never named by the window.
+    discoverCitations: (projectId, referenceId, direction) =>
+      electronRendererContracts.invoke(
+        'references.discoverCitations',
+        projectId,
+        referenceId,
+        direction
+      ),
     // The explicit merge (R2-U4): the merged journal's spelling survives as an alias, so the older name keeps
     // resolving to the surviving record instead of registering a second identity for one venue.
     mergeJournals: (input) => electronRendererContracts.invoke('references.mergeJournals', input),

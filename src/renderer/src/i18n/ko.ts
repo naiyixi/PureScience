@@ -4875,5 +4875,23 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     '내보내기를 중단했습니다. 이 범위에 철회된 문헌이 {count}건 있습니다 — {detail}',
   'references.screening.export.integrity.unreadable':
-    '인용 무결성 기록을 읽을 수 없어({message}) 아무것도 내보내지 않았습니다.'
+    '인용 무결성 기록을 읽을 수 없어({message}) 아무것도 내보내지 않았습니다.',
+  'references.citation.discover': '인용 관계 찾기',
+  'references.citation.discovering': '검색 중…',
+  'references.citation.panelTitle': '인용 네트워크: {title}',
+  'references.citation.referencesHeading': '이 문헌이 인용한 문헌',
+  'references.citation.citationsHeading': '이 문헌을 인용한 문헌',
+  'references.citation.empty': '결과 없음(색인이 응답함)',
+  'references.citation.unavailable': '가져올 수 없음: {reason}',
+  'references.citation.examined': '{total}건 중 {examined}건 확인 · 중국어 출처 판정 {chinese}건',
+  'references.citation.incomplete': '일부만 확인',
+  'references.citation.close': '인용 패널 닫기',
+  'references.citation.costNote':
+    '방향별로 앞의 50건까지만 읽습니다. 필요할 때만 조회하며 저장하지 않습니다.',
+  'references.citation.reason.fromReferences': '이 기록의 참고문헌 목록에서',
+  'references.citation.reason.citedByOthers': '다른 문헌이 이 문헌을 인용함',
+  'references.citation.reason.chineseTitle': '제목이 중국어',
+  'references.citation.reason.chineseDoiPrefix': '중국 출판사의 DOI',
+  'references.citation.reason.chineseJournal': '저널 언어가 중국어',
+  'references.citation.reason.noChineseSignal': '중국어 출처 판정 없음'
 }

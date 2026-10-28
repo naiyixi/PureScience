@@ -190,7 +190,9 @@ describe('application command composition', () => {
     // two plain reference writes, reachable from the local Web view.
     // 367 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
     // profile, so it is reachable from the local Web view too.
-    expect(composition.localWeb.commandNames()).toHaveLength(370)
+    // 369 with the citation walk (references:discover-citations, LOCAL): installed on the local Web view
+    // like the integrity check beside it, refused only on the paired remote surface.
+    expect(composition.localWeb.commandNames()).toHaveLength(371)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -219,7 +221,8 @@ describe('application command composition', () => {
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.
     // One more for the window's PDF translation entry (pdf:translation): same profile again.
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(132)
+    // One more for the citation walk (references:discover-citations, LOCAL): the fail-closed set takes it.
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(133)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

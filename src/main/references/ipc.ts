@@ -9,6 +9,10 @@ import { resolveStorageRoot } from '../storage-root'
 import type { ReferenceIntegritySummary } from '../../shared/references-integrity'
 import type { ReferenceReadingStatus } from '../../shared/references-reading'
 import type {
+  CitationDirection,
+  CitationDiscoveryResult
+} from '../../shared/references-citation-discovery'
+import type {
   AddReferenceResult,
   CollectionItem,
   CreateReferenceCollectionInput,
@@ -56,6 +60,7 @@ import type { ScreeningModelRunner } from './screening-engine'
 import type { ScreeningFullTextReader } from './screening-full-text-cache'
 import { ScreeningRepository } from './screening-repository'
 import { checkDoiIntegrity } from './doi-integrity'
+import { discoverCitations } from './citation-discovery'
 
 // Renderer-callable surface of the project reference library (v1.51).
 export type ReferencesHandlers = {
@@ -79,6 +84,14 @@ export type ReferencesHandlers = {
   }>
   // The export gate's read: no network, so one click cannot turn into tens of Crossref round-trips.
   readIntegritySummary(projectId: string): Promise<ReferenceIntegritySummary>
+  // B2: walk one direction from ONE stored record. The surface passes identity (project + record +
+  // direction) and the main process resolves the DOI from its own store — a surface that could name the
+  // query target would be borrowing this process's outbound access for anything it liked.
+  discoverCitations(
+    projectId: string,
+    referenceId: string,
+    direction: CitationDirection
+  ): Promise<CitationDiscoveryResult>
   // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
@@ -302,6 +315,34 @@ export const createReferencesIpcModule = (
     // claiming three. A verdict older than a year is reported as stale rather than assumed current.
     readIntegritySummary: (projectId) =>
       repository.summarizeIntegrity(projectId, { maxAgeDays: INTEGRITY_VERDICT_MAX_AGE_DAYS }),
+    // B2: the DOI is read from OUR record, never from the caller. A record that is not in this project is
+    // a named refusal rather than an empty answer — the two would otherwise look the same on screen.
+    discoverCitations: async (projectId, referenceId, direction) => {
+      const references = await repository.listReferences(projectId)
+      const reference = references.find((entry) => entry.id === referenceId)
+      if (!reference) {
+        return {
+          status: 'unavailable',
+          direction,
+          referenceId,
+          doi: '',
+          total: null,
+          examined: 0,
+          candidates: [],
+          chineseCount: 0,
+          sourceUrl: '',
+          checkedAt: new Date().toISOString(),
+          incomplete: false,
+          error: 'this record is not in the requested project'
+        }
+      }
+      return discoverCitations({
+        referenceId: reference.id,
+        doi: reference.doi ?? '',
+        direction,
+        fetchImpl: fetch
+      })
+    },
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
@@ -370,6 +411,11 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:read-integrity-summary', (_event, projectId: string) =>
       handlers.readIntegritySummary(projectId)
+    )
+    ipcMainHandle(
+      'references:discover-citations',
+      (_event, projectId: string, referenceId: string, direction: CitationDirection) =>
+        handlers.discoverCitations(projectId, referenceId, direction)
     )
     ipcMainHandle('references:remove', (_event, id: string) => handlers.remove(id))
     ipcMainHandle('references:list-collections', (_event, projectId: string) =>

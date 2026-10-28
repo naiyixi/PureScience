@@ -164,6 +164,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.createCollection': 'references:create-collection',
   'references.deleteCollection': 'references:delete-collection',
   'references.detachPdf': 'references:detach-pdf',
+  'references.discoverCitations': 'references:discover-citations',
   'references.fetchByIdentifier': 'references:fetch-by-identifier',
   'references.getScreening': 'references:get-screening',
   'references.importCitationStyle': 'references:import-citation-style',

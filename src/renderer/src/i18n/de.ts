@@ -5133,5 +5133,24 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     'Export zurückgehalten: {count} zurückgezogene Datensätze in diesem Bereich — {detail}',
   'references.screening.export.integrity.unreadable':
-    'Das Integritätsverzeichnis war nicht lesbar ({message}); es wurde nichts exportiert.'
+    'Das Integritätsverzeichnis war nicht lesbar ({message}); es wurde nichts exportiert.',
+  'references.citation.discover': 'Zitationen ermitteln',
+  'references.citation.discovering': 'Suche läuft…',
+  'references.citation.panelTitle': 'Zitationsnetz: {title}',
+  'references.citation.referencesHeading': 'Werke, die dieser Eintrag zitiert',
+  'references.citation.citationsHeading': 'Werke, die diesen Eintrag zitieren',
+  'references.citation.empty': 'Keine Treffer (der Index hat geantwortet)',
+  'references.citation.unavailable': 'Nicht verfügbar: {reason}',
+  'references.citation.examined':
+    '{examined} von {total} gelesen · {chinese} mit chinesischem Quellensignal',
+  'references.citation.incomplete': 'Teilweise gelesen',
+  'references.citation.close': 'Zitationsfenster schließen',
+  'references.citation.costNote':
+    'Je Richtung nur die ersten 50; auf Anfrage abgefragt, nicht gespeichert.',
+  'references.citation.reason.fromReferences': 'Aus der Literaturliste dieses Eintrags',
+  'references.citation.reason.citedByOthers': 'Ein anderes Werk zitiert diesen Eintrag',
+  'references.citation.reason.chineseTitle': 'Chinesischer Titel',
+  'references.citation.reason.chineseDoiPrefix': 'DOI eines chinesischen Verlags',
+  'references.citation.reason.chineseJournal': 'Zeitschriftensprache ist Chinesisch',
+  'references.citation.reason.noChineseSignal': 'Kein Signal für chinesische Quelle'
 }

@@ -4990,5 +4990,24 @@ export const en: Record<ZhKey, string> = {
   'references.screening.export.integrity.held':
     'Export held back: {count} retracted record(s) in this range — {detail}',
   'references.screening.export.integrity.unreadable':
-    'The citation-integrity ledger could not be read ({message}), so nothing was exported.'
+    'The citation-integrity ledger could not be read ({message}), so nothing was exported.',
+  'references.citation.discover': 'Discover citations',
+  'references.citation.discovering': 'Searching…',
+  'references.citation.panelTitle': 'Citation network: {title}',
+  'references.citation.referencesHeading': 'Works this record cites',
+  'references.citation.citationsHeading': 'Works citing this record',
+  'references.citation.empty': 'No hits (the index answered)',
+  'references.citation.unavailable': 'Not available: {reason}',
+  'references.citation.examined':
+    'Read {examined} of {total} · {chinese} with a Chinese-source signal',
+  'references.citation.incomplete': 'Partial read',
+  'references.citation.close': 'Close the citation panel',
+  'references.citation.costNote':
+    'Bounded to the first 50 per direction; queried on demand and not stored.',
+  'references.citation.reason.fromReferences': "From this record's reference list",
+  'references.citation.reason.citedByOthers': 'Another work cites this one',
+  'references.citation.reason.chineseTitle': 'Chinese title',
+  'references.citation.reason.chineseDoiPrefix': 'DOI from a Chinese publisher',
+  'references.citation.reason.chineseJournal': 'Journal language is Chinese',
+  'references.citation.reason.noChineseSignal': 'No Chinese-source signal'
 }

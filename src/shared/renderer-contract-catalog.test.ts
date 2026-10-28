@@ -68,7 +68,9 @@ describe('renderer contract catalog', () => {
     // three while the local-Web "unavailable" set moves with them.
     // 498 with the session run-data measurement (sessions:read-notebook-usage): one more capability-owned
     // request contract in the sessions group.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(501)
+    // 500 with the citation walk (references.discover-citations): one more capability-owned request
+    // contract in the references group.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(502)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -81,7 +83,8 @@ describe('renderer contract catalog', () => {
     // 375 with the session run-data measurement (sessions:read-notebook-usage): one more invoke map entry.
     // 377 with the DOI integrity pair: both are invoke-map entries (the check is LOCAL-only, which the
     // remote rejection set reflects, not the map).
-    expect(Object.keys(projection.invoke)).toHaveLength(378)
+    // 378 with the citation walk (references:discover-citations): one more invoke-map entry.
+    expect(Object.keys(projection.invoke)).toHaveLength(379)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -100,9 +103,11 @@ describe('renderer contract catalog', () => {
     // local Web surface, like the reference writes they sit beside.
     // 405 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
     // channel, callable on the local Web surface like the session reads it sits beside.
+    // 407 with the citation walk (references.discoverCitations, LOCAL): installed on the local Web surface
+    // like the integrity check it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(408)
+    ).toHaveLength(409)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -134,12 +139,15 @@ describe('renderer contract catalog', () => {
     // 83 with the deployed-plugin catalogue: it is unreachable from the Web surfaces too, so it joins
     // this one rather than a Web installation set.
     // 88 with the knowledge copy sweep: desktop-only, so the Web installation stays unavailable for it.
+    // 94 would be wrong here: the citation walk (references.discover-citations, LOCAL) is installable on
+    // the local Web surface, so it lands on the 409 side — only the paired remote set grows below.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
     ).toHaveLength(93)
+    // 133 with the citation walk: LOCAL earns the rejecting stub on the paired remote surface.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(132)
+    ).toHaveLength(133)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

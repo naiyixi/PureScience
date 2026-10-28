@@ -328,6 +328,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['getScreening', 'references:get-screening'], ['listScreeningRuleRevisions', 'references:list-screening-rule-revisions'],
     ['appendScreeningRuleRevision', 'references:append-screening-rule-revision'], ['startScreeningRun', 'references:start-screening-run'],
     ['checkIntegrity', 'references:check-integrity', LOCAL], ['readIntegritySummary', 'references:read-integrity-summary'],
+    ['discoverCitations', 'references:discover-citations', LOCAL],
     ['cancelScreeningRun', 'references:cancel-screening-run'], ['setScreeningOverride', 'references:set-screening-override'],
     ['setScreeningOverrides', 'references:set-screening-overrides'], ['clearScreeningOverride', 'references:clear-screening-override'],
   ]),

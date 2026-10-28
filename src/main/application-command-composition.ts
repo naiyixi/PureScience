@@ -200,7 +200,9 @@ const GROUP_COUNT = 40
 // preload bridge — so the Web counts below do not move with them.
 // +1 for the reading-state write (references:set-reading-status): an ordinary reference write, reachable
 // from the window, so it counts on the internal surface and on both Web surfaces.
-const INTERNAL_COMMAND_COUNT = 372
+// +1 for the citation walk (references:discover-citations, B2): reachable from the window, refused on the
+// remote surface. It egresses to the index, so it is LOCAL like the integrity check it sits beside.
+const INTERNAL_COMMAND_COUNT = 373
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -217,7 +219,9 @@ const INTERNAL_COMMAND_COUNT = 372
 // +2 for the DOI integrity pair: the explicit check (references:check-integrity, LOCAL) is refused
 // on the remote surface, the export gate's read (references:read-integrity-summary) is a plain Web
 // request, and each exposes one bridge method — so every surface count here moves with them.
-const LOCAL_WEB_COMMAND_COUNT = 370
+// +1 for the citation walk (references:discover-citations, LOCAL): it exposes one bridge method on the
+// local Web surface too, and earns the rejecting stub on the remote one.
+const LOCAL_WEB_COMMAND_COUNT = 371
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 // 236 with the session run-data measurement (sessions:read-notebook-usage), which is mapped the same way.
@@ -232,7 +236,9 @@ const REMOTE_WEB_COMMAND_COUNT = 238
 // +2 for the DOI integrity pair: the explicit check (references:check-integrity, LOCAL) is refused
 // on the remote surface, the export gate's read (references:read-integrity-summary) is a plain Web
 // request, and each exposes one bridge method — so every surface count here moves with them.
-const REMOTE_REJECTED_COMMAND_COUNT = 132
+// +1 for the citation walk (references:discover-citations, LOCAL): refused on the remote surface, so it
+// lands in the fail-closed set rather than the remote dispatch count.
+const REMOTE_REJECTED_COMMAND_COUNT = 133
 const TASK_COMMAND_COUNT = 13
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([

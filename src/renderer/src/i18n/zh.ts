@@ -4642,7 +4642,24 @@ export const zh = {
   'references.screening.export.integrity.held':
     '已拦下本次导出：本范围内有 {count} 条已撤稿记录 — {detail}',
   'references.screening.export.integrity.unreadable':
-    '无法读取引文完整性台账（{message}），因此没有导出任何内容。'
+    '无法读取引文完整性台账（{message}），因此没有导出任何内容。',
+  'references.citation.discover': '发现引用',
+  'references.citation.discovering': '正在检索…',
+  'references.citation.panelTitle': '引文网络：{title}',
+  'references.citation.referencesHeading': '它引用的文献',
+  'references.citation.citationsHeading': '引用它的文献',
+  'references.citation.empty': '没有命中（来源已答复）',
+  'references.citation.unavailable': '无法检索：{reason}',
+  'references.citation.examined': '读了 {examined}/{total} 条 · 其中带中文源判据 {chinese} 条',
+  'references.citation.incomplete': '只读了前面一部分',
+  'references.citation.close': '关闭引文面板',
+  'references.citation.costNote': '每个方向只读前 50 条；按需查询，不落库。',
+  'references.citation.reason.fromReferences': '来自本记录的参考文献表',
+  'references.citation.reason.citedByOthers': '有别的文献引用了它',
+  'references.citation.reason.chineseTitle': '标题为中文',
+  'references.citation.reason.chineseDoiPrefix': 'DOI 属中文出版机构',
+  'references.citation.reason.chineseJournal': '期刊语种为中文',
+  'references.citation.reason.noChineseSignal': '未命中中文源判据'
 }
 
 export type ZhKey = keyof typeof zh

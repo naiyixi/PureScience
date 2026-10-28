@@ -4981,5 +4981,24 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     'Экспорт остановлен: в этом диапазоне {count} отозванных записей — {detail}',
   'references.screening.export.integrity.unreadable':
-    'Не удалось прочитать реестр целостности ссылок ({message}), поэтому ничего не экспортировано.'
+    'Не удалось прочитать реестр целостности ссылок ({message}), поэтому ничего не экспортировано.',
+  'references.citation.discover': 'Найти цитирования',
+  'references.citation.discovering': 'Идёт поиск…',
+  'references.citation.panelTitle': 'Сеть цитирований: {title}',
+  'references.citation.referencesHeading': 'Работы, которые цитирует эта запись',
+  'references.citation.citationsHeading': 'Работы, которые цитируют эту запись',
+  'references.citation.empty': 'Совпадений нет (индекс ответил)',
+  'references.citation.unavailable': 'Недоступно: {reason}',
+  'references.citation.examined':
+    'Прочитано {examined} из {total} · {chinese} с признаком китайского источника',
+  'references.citation.incomplete': 'Прочитано частично',
+  'references.citation.close': 'Закрыть панель цитирований',
+  'references.citation.costNote':
+    'Не более первых 50 на направление; запрос по требованию, без сохранения.',
+  'references.citation.reason.fromReferences': 'Из списка литературы этой записи',
+  'references.citation.reason.citedByOthers': 'Другая работа цитирует эту запись',
+  'references.citation.reason.chineseTitle': 'Название на китайском',
+  'references.citation.reason.chineseDoiPrefix': 'DOI китайского издательства',
+  'references.citation.reason.chineseJournal': 'Язык журнала — китайский',
+  'references.citation.reason.noChineseSignal': 'Признак китайского источника не найден'
 }

@@ -4587,5 +4587,22 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     '已攔下本次匯出：本範圍內有 {count} 筆已撤稿紀錄 — {detail}',
   'references.screening.export.integrity.unreadable':
-    '無法讀取引文完整性台帳（{message}），因此沒有匯出任何內容。'
+    '無法讀取引文完整性台帳（{message}），因此沒有匯出任何內容。',
+  'references.citation.discover': '發現引用',
+  'references.citation.discovering': '正在檢索…',
+  'references.citation.panelTitle': '引文網路：{title}',
+  'references.citation.referencesHeading': '它引用的文獻',
+  'references.citation.citationsHeading': '引用它的文獻',
+  'references.citation.empty': '沒有命中（來源已回覆）',
+  'references.citation.unavailable': '無法檢索：{reason}',
+  'references.citation.examined': '讀了 {examined}/{total} 條 · 其中帶中文源判據 {chinese} 條',
+  'references.citation.incomplete': '僅讀了前面一部分',
+  'references.citation.close': '關閉引文面板',
+  'references.citation.costNote': '每個方向僅讀前 50 條；按需查詢，不落庫。',
+  'references.citation.reason.fromReferences': '來自本記錄的參考文獻表',
+  'references.citation.reason.citedByOthers': '有別的文獻引用了它',
+  'references.citation.reason.chineseTitle': '標題為中文',
+  'references.citation.reason.chineseDoiPrefix': 'DOI 屬中文出版機構',
+  'references.citation.reason.chineseJournal': '期刊語種為中文',
+  'references.citation.reason.noChineseSignal': '未命中中文源判據'
 }

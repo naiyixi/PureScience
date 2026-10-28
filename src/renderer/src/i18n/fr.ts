@@ -5104,5 +5104,24 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     'Export suspendu : {count} notice(s) rétractée(s) dans cette sélection — {detail}',
   'references.screening.export.integrity.unreadable':
-    "Le registre d'intégrité des références est illisible ({message}) ; rien n'a donc été exporté."
+    "Le registre d'intégrité des références est illisible ({message}) ; rien n'a donc été exporté.",
+  'references.citation.discover': 'Rechercher les citations',
+  'references.citation.discovering': 'Recherche en cours…',
+  'references.citation.panelTitle': 'Réseau de citations : {title}',
+  'references.citation.referencesHeading': 'Travaux cités par cette notice',
+  'references.citation.citationsHeading': 'Travaux citant cette notice',
+  'references.citation.empty': 'Aucun résultat (l’index a répondu)',
+  'references.citation.unavailable': 'Indisponible : {reason}',
+  'references.citation.examined':
+    '{examined} sur {total} lus · {chinese} avec un indice de source chinoise',
+  'references.citation.incomplete': 'Lecture partielle',
+  'references.citation.close': 'Fermer le panneau des citations',
+  'references.citation.costNote':
+    'Limité aux 50 premiers par sens ; interrogé à la demande, non stocké.',
+  'references.citation.reason.fromReferences': 'Depuis la bibliographie de cette notice',
+  'references.citation.reason.citedByOthers': 'Un autre travail cite cette notice',
+  'references.citation.reason.chineseTitle': 'Titre en chinois',
+  'references.citation.reason.chineseDoiPrefix': 'DOI d’un éditeur chinois',
+  'references.citation.reason.chineseJournal': 'Langue de la revue : chinois',
+  'references.citation.reason.noChineseSignal': 'Aucun indice de source chinoise'
 }

@@ -34,6 +34,9 @@ type ReferencesCommandOwner = Pick<
   | 'fetchByIdentifier'
   | 'checkIntegrity'
   | 'readIntegritySummary'
+  // B2: the two literature directions a reader walks from one record. Picked here so the Web profile
+  // and the desktop surface reach the same handler through the same registry.
+  | 'discoverCitations'
   | 'attachPdf'
   // v2.6.0 A2: the citation mark, picked from the same handler interface as the notes write.
   | 'markCited'
@@ -82,6 +85,13 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'readIntegritySummary'>,
     OwnerResult<ReferencesCommandOwner, 'readIntegritySummary'>
   >('references:read-integrity-summary'),
+  // B2: what a record cites, and who cites it — one direction per call, because the two walks hit
+  // different endpoints and a reader may want only one of them.
+  discoverCitations: defineApplicationCommand<
+    'references:discover-citations',
+    OwnerArgs<ReferencesCommandOwner, 'discoverCitations'>,
+    OwnerResult<ReferencesCommandOwner, 'discoverCitations'>
+  >('references:discover-citations'),
   remove: defineApplicationCommand<
     'references:remove',
     OwnerArgs<ReferencesCommandOwner, 'remove'>,
@@ -256,6 +266,8 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   // B1: one call checks every DOI-bearing reference and reports the three shapes an export must refuse on.
   referencesApplicationCommands.checkIntegrity,
   referencesApplicationCommands.readIntegritySummary,
+  // B2: the citation walk, registered beside the integrity pair it reads the same records beside.
+  referencesApplicationCommands.discoverCitations,
   referencesApplicationCommands.list,
   referencesApplicationCommands.listCollections,
   referencesApplicationCommands.merge,
@@ -301,6 +313,8 @@ const registerReferencesApplicationCommands = (
       'references:check-integrity': ({ args }) => dependencies.references.checkIntegrity(args[0]),
       'references:read-integrity-summary': ({ args }) =>
         dependencies.references.readIntegritySummary(args[0]),
+      'references:discover-citations': ({ args }) =>
+        dependencies.references.discoverCitations(args[0], args[1], args[2]),
       'references:remove': ({ args }) => dependencies.references.remove(args[0]),
       'references:list-collections': ({ args }) => dependencies.references.listCollections(args[0]),
       'references:create-collection': ({ args }) =>

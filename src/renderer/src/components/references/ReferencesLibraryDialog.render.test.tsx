@@ -78,7 +78,25 @@ vi.mock('@/i18n', () => ({
       'references.reading.reading': 'Reading',
       'references.reading.read': 'Read',
       'references.reading.citedNotRead': 'Cited but not read: {count}',
-      'references.reading.statusSaved': 'Marked as “{status}”'
+      'references.reading.statusSaved': 'Marked as “{status}”',
+      'references.citation.discover': 'Discover citations',
+      'references.citation.discovering': 'Searching…',
+      'references.citation.panelTitle': 'Citation network: {title}',
+      'references.citation.referencesHeading': 'Works this record cites',
+      'references.citation.citationsHeading': 'Works citing this record',
+      'references.citation.empty': 'No hits (the index answered)',
+      'references.citation.unavailable': 'Not available: {reason}',
+      'references.citation.examined':
+        'Read {examined} of {total} · {chinese} with a Chinese-source signal',
+      'references.citation.incomplete': 'Partial read',
+      'references.citation.close': 'Close the citation panel',
+      'references.citation.costNote': 'Bounded to the first 50 per direction',
+      'references.citation.reason.fromReferences': "From this record's reference list",
+      'references.citation.reason.citedByOthers': 'Another work cites this one',
+      'references.citation.reason.chineseTitle': 'Chinese title',
+      'references.citation.reason.chineseDoiPrefix': 'DOI from a Chinese publisher',
+      'references.citation.reason.chineseJournal': 'Journal language is Chinese',
+      'references.citation.reason.noChineseSignal': 'No Chinese-source signal'
     }
 
     return {
@@ -149,6 +167,7 @@ describe('ReferencesLibraryDialog collections', () => {
   let readIntegritySummary: ReturnType<typeof vi.fn>
   let checkIntegrity: ReturnType<typeof vi.fn>
   let setReadingStatus: ReturnType<typeof vi.fn>
+  let discoverCitations: ReturnType<typeof vi.fn>
 
   const findButton = (name: string | RegExp): HTMLButtonElement => {
     // Radix renders the dialog into a portal on document.body, not into the container div.
@@ -231,6 +250,32 @@ describe('ReferencesLibraryDialog collections', () => {
       readingStatus: status,
       readingStatusUpdatedAt: 1
     }))
+    // B2: the two directions answer independently, so the stub is keyed by the direction argument.
+    discoverCitations = vi.fn(
+      async (_projectId: string, referenceId: string, direction: 'references' | 'citations') => ({
+        status: 'found' as const,
+        direction,
+        referenceId,
+        doi: '10.3760/cma.j.issn.0254-6450.2020.02.003',
+        total: 40,
+        examined: 2,
+        candidates: [
+          {
+            openAlexId: direction === 'references' ? 'W100' : 'W200',
+            doi: '10.3760/cma.j.issn.0376-2491.2019.01.001',
+            title: direction === 'references' ? 'Earlier trial' : 'Later systematic review',
+            year: 2021,
+            language: 'zh',
+            chineseSignals: ['doi-prefix'],
+            sourceUrl: `https://openalex.org/${direction === 'references' ? 'W100' : 'W200'}`
+          }
+        ],
+        chineseCount: 1,
+        sourceUrl: '',
+        checkedAt: '2026-10-29T00:00:00.000Z',
+        incomplete: false
+      })
+    )
     window.api = {
       references: {
         list: vi.fn().mockResolvedValue([reference]),
@@ -246,7 +291,8 @@ describe('ReferencesLibraryDialog collections', () => {
         setNotes,
         readIntegritySummary,
         checkIntegrity,
-        setReadingStatus
+        setReadingStatus,
+        discoverCitations
       },
       projectFiles: { listFiles }
     } as unknown as typeof window.api
@@ -860,5 +906,96 @@ describe('ReferencesLibraryDialog collections', () => {
     expect(shown.some((text) => text.includes('Cited and unread'))).toBe(true)
     expect(shown.some((text) => text.includes('Cited and halfway'))).toBe(true)
     expect(shown.some((text) => text.includes('Cited and read'))).toBe(false)
+  })
+
+  it('walks both citation directions from one row and prints a reason for every hit (B2)', async () => {
+    await render()
+
+    const trigger = document.querySelector<HTMLButtonElement>(
+      '[data-testid="reference-discover-citations"]'
+    )
+    expect(trigger).not.toBeNull()
+    await act(async () => {
+      trigger?.click()
+      await Promise.resolve()
+    })
+    await flush()
+    await flush()
+
+    // Identity, not a query target: the record's id and one direction per call.
+    expect(discoverCitations).toHaveBeenCalledWith('project-1', 'reference-1', 'references')
+    expect(discoverCitations).toHaveBeenCalledWith('project-1', 'reference-1', 'citations')
+
+    const panel = document.querySelector('[data-testid="citation-discovery-panel"]')
+    expect(panel).not.toBeNull()
+    const text = panel?.textContent ?? ''
+    expect(text).toContain('Citation network: A screen for variants')
+    expect(text).toContain('Works this record cites')
+    expect(text).toContain('Works citing this record')
+    // How much was read, not "all of it" — and the Chinese-signal count is stated, not implied.
+    expect(text).toContain('Read 2 of 40 · 1 with a Chinese-source signal')
+    // Every row names the direction it came from and the criterion that fired.
+    expect(text).toContain("From this record's reference list · DOI from a Chinese publisher")
+    expect(text).toContain('Another work cites this one · DOI from a Chinese publisher')
+    expect(document.querySelectorAll('[data-testid="citation-discovery-row"]')).toHaveLength(2)
+
+    // Closing removes the panel rather than leaving an empty frame behind.
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="citation-discovery-close"]')?.click()
+      await Promise.resolve()
+    })
+    await flush()
+    expect(document.querySelector('[data-testid="citation-discovery-panel"]')).toBeNull()
+  })
+
+  it('keeps "could not reach the index" apart from "nothing cites this" (B2)', async () => {
+    discoverCitations.mockImplementation(
+      async (_projectId: string, referenceId: string, direction: 'references' | 'citations') =>
+        direction === 'citations'
+          ? {
+              status: 'unavailable' as const,
+              direction,
+              referenceId,
+              doi: '10.3760/x',
+              total: null,
+              examined: 0,
+              candidates: [],
+              chineseCount: 0,
+              sourceUrl: '',
+              checkedAt: '2026-10-29T00:00:00.000Z',
+              incomplete: false,
+              error: 'OpenAlex answered HTTP 503'
+            }
+          : {
+              status: 'empty' as const,
+              direction,
+              referenceId,
+              doi: '10.3760/x',
+              total: 0,
+              examined: 0,
+              candidates: [],
+              chineseCount: 0,
+              sourceUrl: '',
+              checkedAt: '2026-10-29T00:00:00.000Z',
+              incomplete: false
+            }
+    )
+
+    await render()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="reference-discover-citations"]')
+        ?.click()
+      await Promise.resolve()
+    })
+    await flush()
+    await flush()
+
+    const references = document.querySelector('[data-testid="citation-discovery-references"]')
+    const citations = document.querySelector('[data-testid="citation-discovery-citations"]')
+    expect(references?.textContent ?? '').toContain('No hits (the index answered)')
+    expect(citations?.textContent ?? '').toContain('Not available: OpenAlex answered HTTP 503')
+    // The failed direction must not borrow the empty direction's wording.
+    expect(citations?.textContent ?? '').not.toContain('No hits')
   })
 })

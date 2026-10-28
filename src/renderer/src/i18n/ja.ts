@@ -4959,5 +4959,23 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     '書き出しを中止しました。この範囲に撤回済みの文献が {count} 件あります — {detail}',
   'references.screening.export.integrity.unreadable':
-    '引用の完全性の記録を読み取れなかったため（{message}）、何も書き出していません。'
+    '引用の完全性の記録を読み取れなかったため（{message}）、何も書き出していません。',
+  'references.citation.discover': '引用関係を調べる',
+  'references.citation.discovering': '検索中…',
+  'references.citation.panelTitle': '引用ネットワーク：{title}',
+  'references.citation.referencesHeading': 'この文献が引用している文献',
+  'references.citation.citationsHeading': 'この文献を引用している文献',
+  'references.citation.empty': '該当なし（インデックスは応答済み）',
+  'references.citation.unavailable': '取得できません：{reason}',
+  'references.citation.examined':
+    '{total} 件中 {examined} 件を読み取り · 中国語ソースの判定 {chinese} 件',
+  'references.citation.incomplete': '一部のみ読み取り',
+  'references.citation.close': '引用パネルを閉じる',
+  'references.citation.costNote': '各方向とも先頭 50 件まで。必要時のみ照会し、保存はしません。',
+  'references.citation.reason.fromReferences': 'この記録の参考文献リストから',
+  'references.citation.reason.citedByOthers': '他の文献がこれを引用しています',
+  'references.citation.reason.chineseTitle': 'タイトルが中国語',
+  'references.citation.reason.chineseDoiPrefix': '中国の出版機関の DOI',
+  'references.citation.reason.chineseJournal': 'ジャーナルの言語が中国語',
+  'references.citation.reason.noChineseSignal': '中国語ソースの判定なし'
 }

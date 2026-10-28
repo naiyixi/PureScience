@@ -1,6 +1,6 @@
 import { Dialog } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookMarked, Library, Plus, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-react'
+import { BookMarked, Library, Network, Plus, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
@@ -24,6 +24,13 @@ import {
   type ReferenceReadingStatus
 } from '../../../../shared/references-reading'
 import type { ProjectFileItem } from '../../../../shared/project-files'
+import {
+  citationReasonCodes,
+  type CitationDirection,
+  type CitationDiscoveryResult,
+  type CitationReasonCode
+} from '../../../../shared/references-citation-discovery'
+import { ExternalTextLink } from '../ExternalTextLink'
 import {
   citationItemFromReference,
   compareCitationStyles,
@@ -140,6 +147,17 @@ const EVIDENCE_LABEL_KEYS: Record<ReferenceIntegrityEvidence, TranslationKey> = 
   none: 'references.integrity.evidence.none'
 }
 
+// B2: each reason code owns one sentence. The codes come from the shared module, so a row's reason can
+// never drift from the signal that produced it — and every language writes its own sentence.
+const CITATION_REASON_KEYS: Record<CitationReasonCode, TranslationKey> = {
+  'from-references': 'references.citation.reason.fromReferences',
+  'cited-by-others': 'references.citation.reason.citedByOthers',
+  'chinese-title': 'references.citation.reason.chineseTitle',
+  'chinese-doi-prefix': 'references.citation.reason.chineseDoiPrefix',
+  'chinese-journal': 'references.citation.reason.chineseJournal',
+  'no-chinese-signal': 'references.citation.reason.noChineseSignal'
+}
+
 // B3: the three states, each labelled by its own key — one list so the row control and the filter cannot
 // drift apart about what the states are called.
 const READING_STATUS_KEYS: Record<ReferenceReadingStatus, TranslationKey> = {
@@ -199,6 +217,14 @@ export function ReferencesLibraryDialog({
   const [readingFilter, setReadingFilter] = useState<ReferenceReadingFilter>('any')
   const [readingBusyId, setReadingBusyId] = useState<string | null>(null)
   const [integrityResult, setIntegrityResult] = useState<string | undefined>(undefined)
+  // B2: one citation walk, on demand, for one row. The two directions are two calls (different endpoints),
+  // and both answers are kept so a failure of one direction does not erase the other's result.
+  const [discovery, setDiscovery] = useState<{
+    reference: Reference
+    references?: CitationDiscoveryResult
+    citations?: CitationDiscoveryResult
+  } | null>(null)
+  const [discoveryBusyId, setDiscoveryBusyId] = useState<string | null>(null)
 
   // Identifier-import state.
   const [kind, setKind] = useState<IdentifierKind>('doi')
@@ -411,6 +437,33 @@ export function ReferencesLibraryDialog({
       setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
       setIntegrityBusy(false)
+    }
+  }
+
+  // B2: one row's two directions, asked together — each walk is already bounded to two pages, so the pair
+  // costs at most eight requests and one click. A failed call leaves the panel closed with the error line,
+  // rather than opening an empty panel that reads like "nothing cites this".
+  const handleDiscoverCitations = async (reference: Reference): Promise<void> => {
+    if (!projectId || discoveryBusyId !== null) return
+    setDiscoveryBusyId(reference.id)
+    setError(undefined)
+    try {
+      const directions: CitationDirection[] = ['references', 'citations']
+      const answers = await Promise.all(
+        directions.map((direction) =>
+          window.api.references.discoverCitations(projectId, reference.id, direction)
+        )
+      )
+      setDiscovery({
+        reference,
+        references: answers[0],
+        citations: answers[1]
+      })
+    } catch (cause) {
+      setDiscovery(null)
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setDiscoveryBusyId(null)
     }
   }
 
@@ -918,6 +971,111 @@ export function ReferencesLibraryDialog({
               </button>
             ) : null}
           </div>
+
+          {/* B2: the citation network of ONE record, asked for on demand. Two sections, because the two
+              directions answer different questions; every row carries its own reason line, and the header
+              states how much of the set was read instead of implying "all of it". */}
+          {discovery ? (
+            <div
+              className="mx-4 mt-2 rounded-lg border border-[var(--border)] px-3 py-2"
+              data-testid="citation-discovery-panel"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="min-w-0 truncate text-xs font-medium text-[var(--foreground)]">
+                  {t('references.citation.panelTitle', { title: discovery.reference.title })}
+                </p>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  data-testid="citation-discovery-close"
+                  aria-label={t('references.citation.close')}
+                  onClick={() => setDiscovery(null)}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="mt-1 max-h-64 overflow-y-auto">
+                {(
+                  [
+                    ['references', discovery.references],
+                    ['citations', discovery.citations]
+                  ] as const
+                ).map(([direction, result]) =>
+                  result ? (
+                    <div
+                      key={direction}
+                      className="mt-2"
+                      data-testid={`citation-discovery-${direction}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-semibold text-[var(--foreground)]">
+                          {direction === 'references'
+                            ? t('references.citation.referencesHeading')
+                            : t('references.citation.citationsHeading')}
+                        </span>
+                        <span className="text-[10px] text-[var(--muted-foreground)]">
+                          {result.status === 'unavailable'
+                            ? t('references.citation.unavailable', { reason: result.error ?? '' })
+                            : result.status === 'empty'
+                              ? t('references.citation.empty')
+                              : t('references.citation.examined', {
+                                  examined: result.examined,
+                                  total: result.total ?? result.examined,
+                                  chinese: result.chineseCount
+                                })}
+                        </span>
+                        {result.incomplete ? (
+                          <span
+                            className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] text-[var(--muted-foreground)]"
+                            data-testid={`citation-discovery-${direction}-partial`}
+                          >
+                            {t('references.citation.incomplete')}
+                          </span>
+                        ) : null}
+                      </div>
+                      {result.candidates.length > 0 ? (
+                        <ul className="mt-1 flex flex-col gap-1">
+                          {result.candidates.map((candidate) => (
+                            <li
+                              key={candidate.openAlexId}
+                              className="rounded border border-[var(--border)] px-2 py-1"
+                              data-testid="citation-discovery-row"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <ExternalTextLink
+                                  href={candidate.sourceUrl}
+                                  className="min-w-0 text-[11px]"
+                                >
+                                  <span className="truncate">
+                                    {candidate.title || candidate.doi || candidate.openAlexId}
+                                  </span>
+                                </ExternalTextLink>
+                                <span className="shrink-0 text-[10px] text-[var(--muted-foreground)]">
+                                  {candidate.year ?? ''}
+                                </span>
+                              </div>
+                              <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
+                                {citationReasonCodes({
+                                  direction: result.direction,
+                                  candidate
+                                })
+                                  .map((code) => t(CITATION_REASON_KEYS[code]))
+                                  .join(' · ')}
+                                {candidate.doi ? ` · ${candidate.doi}` : ''}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null
+                )}
+              </div>
+              <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
+                {t('references.citation.costNote')}
+              </p>
+            </div>
+          ) : null}
 
           {showPdfPicker ? (
             <div className="mx-4 mt-2 rounded-lg border border-[var(--border)] px-3 py-2">
@@ -1491,6 +1649,24 @@ export function ReferencesLibraryDialog({
                                   ))}
                                 </select>
                               </label>
+                              {/* B2: the walk starts from this row, so the row says whose network the
+                                  panel is showing. Disabled while any walk runs — one keyless endpoint
+                                  answers them all, and a second click would just queue behind it. */}
+                              <button
+                                type="button"
+                                data-testid="reference-discover-citations"
+                                disabled={!projectId || discoveryBusyId !== null}
+                                onClick={() => void handleDiscoverCitations(reference)}
+                                className="mt-1 inline-flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] disabled:opacity-50"
+                              >
+                                <Network
+                                  className={`size-3 ${discoveryBusyId === reference.id ? 'animate-pulse' : ''}`}
+                                  aria-hidden="true"
+                                />
+                                {discoveryBusyId === reference.id
+                                  ? t('references.citation.discovering')
+                                  : t('references.citation.discover')}
+                              </button>
                               {retractedByReferenceId.has(reference.id) ? (
                                 <p
                                   className="mt-1 inline-flex items-center gap-1 rounded-full border border-danger-000/30 bg-danger-000/10 px-2 py-0.5 text-[10px] font-semibold text-danger-000"

@@ -161,6 +161,8 @@ describe('references IPC: the screening surface', () => {
         // B1: DOI integrity check over the project's references.
         'references:check-integrity',
         'references:read-integrity-summary',
+        // B2: the citation walk from one stored record.
+        'references:discover-citations',
         'references:clear-screening-override',
         'references:create-collection',
         'references:delete-collection',

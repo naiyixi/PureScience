@@ -5073,5 +5073,24 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.screening.export.integrity.held':
     'Exportación detenida: {count} registro(s) retractado(s) en este rango — {detail}',
   'references.screening.export.integrity.unreadable':
-    'No se pudo leer el registro de integridad de las referencias ({message}), así que no se exportó nada.'
+    'No se pudo leer el registro de integridad de las referencias ({message}), así que no se exportó nada.',
+  'references.citation.discover': 'Buscar citas',
+  'references.citation.discovering': 'Buscando…',
+  'references.citation.panelTitle': 'Red de citas: {title}',
+  'references.citation.referencesHeading': 'Trabajos que cita este registro',
+  'references.citation.citationsHeading': 'Trabajos que citan este registro',
+  'references.citation.empty': 'Sin resultados (el índice respondió)',
+  'references.citation.unavailable': 'No disponible: {reason}',
+  'references.citation.examined':
+    'Leídos {examined} de {total} · {chinese} con señal de fuente china',
+  'references.citation.incomplete': 'Lectura parcial',
+  'references.citation.close': 'Cerrar el panel de citas',
+  'references.citation.costNote':
+    'Limitado a los primeros 50 por sentido; se consulta a demanda y no se guarda.',
+  'references.citation.reason.fromReferences': 'De la bibliografía de este registro',
+  'references.citation.reason.citedByOthers': 'Otro trabajo cita este registro',
+  'references.citation.reason.chineseTitle': 'Título en chino',
+  'references.citation.reason.chineseDoiPrefix': 'DOI de una editorial china',
+  'references.citation.reason.chineseJournal': 'Idioma de la revista: chino',
+  'references.citation.reason.noChineseSignal': 'Sin señal de fuente china'
 }
