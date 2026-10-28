@@ -78,6 +78,31 @@ if ! $DRY_RUN && gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
   exit 1
 fi
 
+# ---------- CI digest for this commit (plan C2) ----------
+# A release must not start on a commit whose lanes are red, and the release output has to say what state
+# they are in. Until now that check lived only in whoever remembered to look at the Actions page: the
+# failure digest answered "why is this red" but nothing on the release path ever asked "is it red".
+# The digest line is printed in every case (all-green / red / incomplete / no-runs) — a missing lane and a
+# passing one must not look the same in the release log. It never blocks a build when CI cannot be read;
+# it does stop the release when a completed lane for this commit really failed.
+echo "==> CI digest for $(git rev-parse --short=8 HEAD)…"
+DIGEST_EXIT=0
+DIGEST_OUT="$(node scripts/release-digest-line.mjs --repo "$REPO" 2>&1)" || DIGEST_EXIT=$?
+printf '%s\n' "$DIGEST_OUT" | sed 's/^/[release] digest: /'
+case "$DIGEST_EXIT" in
+  0) ;;
+  4)
+    echo "error: a completed CI lane for this commit is red — a release must not start on it (see the run ids above)" >&2
+    exit 1
+    ;;
+  3)
+    echo "warning: this commit produced no CI lanes at all; that is not a pass — check the digest line above" >&2
+    ;;
+  *)
+    echo "warning: the CI digest could not be read (exit $DIGEST_EXIT); this release carries no CI evidence" >&2
+    ;;
+esac
+
 # ---------- build ----------
 echo "==> building $TARGET ($VERSION)…"
 $BUILD_CMD

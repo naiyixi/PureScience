@@ -13891,3 +13891,43 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
    + `build:e2e`，先问用户放行）；(b) 环容量是否该随慢调用密度自适应（**先量**：本机 3,005 条慢调用分布在 224 次启动里，
    中位 0 条 —— 24 条对多数启动是够的，对 `acp:get-plan-projection` 那种 burst 不够，量完再说）；(c) 慢通道 top 那张表
    里 `sessions:save-session` 400 条、p50 315 ms —— 归因已由 §「排队型慢通道」的分段口径覆盖，无需重做。
+
+## 二百五十六、本轮追加（执行器，2026-10-28 18:5x–）—— 发版输出里必须有一行 CI 判定：C2 落地
+
+上一节的收口推上去之后，本轮接着做两版计划里的 **C2**（`docs/plan-2026-10-28-two-releases.md` §三）：
+失败定因脚本（`scripts/ci-failure-digest.mjs`）早已交付，但它此前只能在「有人先注意到红车道」之后才被用；
+**发版路径本身从不问一句「这个提交的车道是什么状态」**，于是发版输出里对 CI 一字不提。
+
+### 一 交付（3 文件：1 新脚本 + 1 新测试 + 1 处接线）
+
+| 位置 | 改动 |
+|---|---|
+| `scripts/release-digest-line.mjs`（新） | 给「要发版的那个提交」打一行判定：逐个车道 `名|状态|结论`，再给 `digest: sha=… runs=N red=N incomplete=N verdict=…`。四态**具名**：`all-green` / `red` / `incomplete`（在跑或 `cancelled` —— 被新推送顶掉的运行没有判决，既不算绿也不算这笔提交的失败）/ `no-runs`（纯文档提交就是这一态，绝不能读成绿）。只认**完整 40 位** SHA（脚本自己 `git rev-parse <ref>^{commit}`），短 SHA 查回空列表会被读成「没触发」 |
+| `scripts/publish-release.sh` | 构建之前插入这一段：把上面那行打出来（每行前缀 `[release] digest: `），并在 `verdict=red` 时**拒绝发版**；读不到 CI（网络/凭据）只告警、不阻塞构建，但会明说「这次发版没有 CI 证据」 |
+| `scripts/release-digest-line.test.ts`（新，7 例） | 四态各一条 + 「结论缺失与具名结论分开」+ 源码级接线断言（发版脚本真的调用它、真的打印 `digest:` 行） |
+
+### 二 真机读数（对真实 API 跑，不是单测里的替身）
+
+| 提交 | 输出 | 退出码 | 说明 |
+|---|---|---|---|
+| `d90e0d8b`（本轮刚推的那笔） | `Nightly\|in_progress\|none`、`Windows Full Test\|in_progress\|none`，`digest: sha=d90e0d8b runs=2 red=0 incomplete=2 verdict=incomplete` | **0** | 在跑就是 `incomplete`，不会被读成绿 |
+| `ef40c2cc`（纯文档提交） | `digest: sha=ef40c2cc runs=0 red=0 incomplete=0 verdict=no-runs` | **3** | 没有任何车道 ⇒ 具名，不推成绿 |
+| `dae37ac3`（已知红的那笔） | `Release\|completed\|success`、`Nightly\|completed\|failure`、`Windows Full Test\|completed\|success`；`digest: sha=dae37ac3 runs=3 red=1 … verdict=red` + `red run id 40492038901` | **4** | 红车道给出 run id，接着就能 `ci-failure-digest.mjs <id>` 定因 |
+
+三态都在真实 API 上验过；`all-green` 那一态只有单测（本轮手上的提交都已不是全绿，不去造一个假读数）。
+
+### 三 门禁读数
+
+| 环 | 读数 |
+|---|---|
+| `scripts/release-digest-line.test.ts` | **7 passed**，EXIT 0（prettier 复核后复跑同一读数） |
+| `bash -n scripts/publish-release.sh` / `node --check scripts/release-digest-line.mjs` | 两者 EXIT 0 |
+| `eslint --no-cache`（两个新文件） | **0 error / 0 warning**（首轮 4 条 prettier warning，`prettier --write` 后复检归零） |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0**（`grep -c 'error TS'` 两边都是 0） |
+
+### 四 边界
+
+1. 这条线**只回答「这个提交的车道是什么状态」**，不回答「为什么红」——后者仍是 `ci-failure-digest.mjs`，两条命令分开跑，输出可以原样引用。
+2. 「读不到 CI」不阻塞构建是**故意**的：发版窗口里网络/凭据抖动不该把一次已经验过的发版卡死；代价是这一格必须显式告警，不许静默略过。
+3. `cancelled` 归到 `incomplete` 而不是 `red`：被后一笔推送顶掉的运行没有判决；把它当红会让连续推送时的发版永远发不出去，把它当绿则会掩盖一次真的没跑完。
+4. 本笔**没有**动 `release.yml`（受保护的工作流），也没有新增任何运行时通道或界面：这是发版工具链的一层，不涉及产品行为。
