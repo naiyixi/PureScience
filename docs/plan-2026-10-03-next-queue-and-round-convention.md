@@ -13736,3 +13736,11 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
    (b) `steps()` 访问器只剩测试在用 ⇒ 要么补一条生产消费者、要么就地删掉（本仓不许「已建但生产无人调用」）；
    (c) 其余慢行站点的字段级断言（§二百四十八已收 8 处，剩余各处逐个核）。
 3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
+
+### 六 同一轮第二笔：只剩测试在用的步骤访问器删掉（本仓不许「已建但生产无人调用」）
+
+`ComposeStepRecorder.steps()` 在**生产里没有调用方**（`grep -rn "\.steps()" src/ e2e/ scripts/` 空；真入口用的是
+`step` / `snapshot` / `logSummary`），而它带着一份自己的排序（墙钟降序）与一份自己的投影（只留三个字段）——
+两处各说一套正是本轮要收掉的那种形状。删掉访问器与其排序，三处用例改读 `snapshot().steps`（记录顺序，
+`toMatchObject` / `toHaveLength` 级断言，语义等价或更严）。门禁：`compose-steps.test.ts` **18 passed**、
+双 typecheck **0**、`eslint --no-cache` **0**。
