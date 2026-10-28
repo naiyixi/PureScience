@@ -39,6 +39,24 @@
    检查过期」的条目；非空即拒绝导出并把这三类**点名列出**。这是与对标「只给提示」的差异化点。
 4. 用例：命令层（真实 DB + stub fetch）、闸门纯函数（三类 gap 各一例 + 全通过一例）。
 
+## 二·五 导出闸门的落点已定位（2026-10-28 补）
+
+本仓没有独立的 reports 模块，导出发生在**渲染层的筛选面板引用导出**：
+
+- `src/renderer/src/components/references/screening-export-citations.ts` —— 组装导出内容，且已经用
+  `ScreeningExportCitationGap { referenceId, title, reason: 'file-not-in-index' | 'read-failed' }`
+  这套「读不到就具名报告」的模式；
+- `src/renderer/src/components/references/ReferencesScreeningPanel.tsx` —— 调它的面板；
+- 渲染层测试已存在（`ReferencesScreeningPanel.render.test.tsx`）。
+
+所以闸门应当长在**这里**，复用同一套 gaps 表达：
+
+1. 导出前调用 `references:check-integrity`（命令已通，`0bc8347a`）拿到 `gaps` 与 `retracted`；
+2. `retracted` 的条目在导出范围内 ⇒ **拒绝导出**并点名（附 doi.org 链接与检查时间）；
+3. `never-checked / unavailable / stale` ⇒ 允许导出但把三类缺口**逐条列在导出物里**
+   （理由：这三类要的动作不同，静默放行等于让「没查过」冒充「查过没问题」）；
+4. 面板测试补两例：有 retracted 时拒绝、只有未检查时导出并列出缺口。
+
 ## 三 口径提醒
 
 - 不做「检查失败就当干净」；`unavailable` 必须一路显式到 UI 与导出结论里；
