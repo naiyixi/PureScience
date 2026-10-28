@@ -345,7 +345,7 @@ describe('renderer surface inventory', () => {
     // 494 with the knowledge copy sweep (+1) and the inverse-folding pair (+2).
     // 498 with the session run-data measurement (sessions.readNotebookUsage): one preload method for the one
     // contract, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(500)
+    expect(electronPaths).toHaveLength(501)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -361,7 +361,7 @@ describe('renderer surface inventory', () => {
     // 375 with the session run-data measurement (sessions.readNotebookUsage): a plain Web request channel,
     // so the invoke map moves with it.
     // 377 with the DOI integrity pair: two more invoke entries in the generated map.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(377)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(378)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

@@ -459,6 +459,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.removeJournalAlias',
       // IC26: the record's own notes.
       'references.setNotes',
+      'references.setReadingStatus',
       'references.setScreeningOverride',
       'references.setScreeningOverrides',
       'references.startScreeningRun',
@@ -894,7 +895,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // so they count here while neither Web map does.
     // 253 with the session run-data measurement (sessions.readNotebookUsage): one more plain Web request
     // contract beside readDocument, so the Web maps move with it exactly as they do here.
-    expect(coreContracts).toHaveLength(255)
+    expect(coreContracts).toHaveLength(256)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -907,7 +908,7 @@ describe('preload bridge — core renderer contract catalog', () => {
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
       // 217 with the DOI integrity pair: two more core request contracts.
-    }).toEqual({ requests: 217, events: 27, sends: 10, surfaceNative: 1 })
+    }).toEqual({ requests: 218, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -916,7 +917,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(217)
+    expect(requestContracts).toHaveLength(218)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

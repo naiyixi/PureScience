@@ -219,7 +219,7 @@ describe('renderer argument-shape characterization', () => {
     // request channels, callable on this surface like the reference writes they sit beside.
     // 405 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
     // channel, callable on this surface like the session reads it sits beside.
-    expect(actualPaths).toHaveLength(407)
+    expect(actualPaths).toHaveLength(408)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

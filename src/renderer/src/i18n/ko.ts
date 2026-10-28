@@ -4835,6 +4835,16 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 세션의 노트북 실행 데이터 크기를 측정할 수 없습니다. 생성된 내용은 세션과 함께 삭제됩니다.',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': '읽기 상태',
+  'references.reading.all': '모든 읽기 상태',
+  'references.reading.unread': '안 읽음',
+  'references.reading.reading': '읽는 중',
+  'references.reading.read': '다 읽음',
+  'references.reading.citedNotReadFilter': '인용됨 · 읽지 않음',
+  'references.reading.citedNotRead': '본문에서 인용되었지만 읽지 않음 {count}건',
+  'references.reading.statusSaved': '「{status}」(으)로 표시했습니다',
   'references.integrity.check': '철회·정정 확인',
   'references.integrity.checking': '한 건씩 확인하는 중…',
   'references.integrity.summary':

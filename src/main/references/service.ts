@@ -12,6 +12,7 @@ import {
   normalizeTitleForDedupe,
   referenceIdentity
 } from '../../shared/references'
+import type { ReferenceReadingStatus } from '../../shared/references-reading'
 
 // Bounded snapshot size stored in provenanceJson (never mirrors a full paper).
 const MAX_SNAPSHOT_CHARS = 64_000
@@ -347,6 +348,14 @@ export class ReferenceService {
     const updated = await this.repository.getReference(referenceId)
     if (!updated) throw new Error('Reference not found.')
     return updated
+  }
+
+  // B3: where the record stands in the reader's queue. The write carries its own time (kept on the row), and
+  // the re-read record comes back so a surface shows what landed instead of what it hoped landed.
+  async setReadingStatus(referenceId: string, status: ReferenceReadingStatus): Promise<Reference> {
+    const existing = await this.repository.getReference(referenceId)
+    if (!existing) throw new Error('Reference not found.')
+    return this.repository.setReadingStatus(referenceId, status)
   }
 
   // v2.6.0 A2: record that this reference was cited — a fact with a time and (when there is one) the

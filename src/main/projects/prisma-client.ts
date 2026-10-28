@@ -695,6 +695,8 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "integritySourceUrl" TEXT,
     "integrityNoticesJson" TEXT,
     "integrityEvidence" TEXT,
+    "readingStatus" TEXT,
+    "readingStatusUpdatedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 )`
@@ -703,6 +705,9 @@ const REFERENCE_ADD_INTEGRITY_CHECKED_AT_DDL = `ALTER TABLE "Reference" ADD COLU
 const REFERENCE_ADD_INTEGRITY_SOURCE_URL_DDL = `ALTER TABLE "Reference" ADD COLUMN "integritySourceUrl" TEXT`
 const REFERENCE_ADD_INTEGRITY_NOTICES_DDL = `ALTER TABLE "Reference" ADD COLUMN "integrityNoticesJson" TEXT`
 const REFERENCE_ADD_INTEGRITY_EVIDENCE_DDL = `ALTER TABLE "Reference" ADD COLUMN "integrityEvidence" TEXT`
+// B3: additive reading-state columns, so a record imported before the layer keeps reading as `unread`.
+const REFERENCE_ADD_READING_STATUS_DDL = `ALTER TABLE "Reference" ADD COLUMN "readingStatus" TEXT`
+const REFERENCE_ADD_READING_STATUS_AT_DDL = `ALTER TABLE "Reference" ADD COLUMN "readingStatusUpdatedAt" DATETIME`
 const REFERENCE_ADD_PDF_CONTENT_HASH_DDL = `ALTER TABLE "Reference" ADD COLUMN "pdfContentHash" TEXT`
 // Citation-style layer (v1.65): additive columns on Reference, added to existing databases too.
 const REFERENCE_ADD_VOLUME_DDL = `ALTER TABLE "Reference" ADD COLUMN "volume" TEXT`
@@ -1113,6 +1118,8 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
   column('Reference', 'integritySourceUrl', REFERENCE_ADD_INTEGRITY_SOURCE_URL_DDL),
   column('Reference', 'integrityNoticesJson', REFERENCE_ADD_INTEGRITY_NOTICES_DDL),
   column('Reference', 'integrityEvidence', REFERENCE_ADD_INTEGRITY_EVIDENCE_DDL),
+  column('Reference', 'readingStatus', REFERENCE_ADD_READING_STATUS_DDL),
+  column('Reference', 'readingStatusUpdatedAt', REFERENCE_ADD_READING_STATUS_AT_DDL),
   // Citation-style layer: bibliographic columns on Reference for existing databases.
   column('Reference', 'volume', REFERENCE_ADD_VOLUME_DDL),
   column('Reference', 'issue', REFERENCE_ADD_ISSUE_DDL),

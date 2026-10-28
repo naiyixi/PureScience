@@ -734,6 +734,9 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('references.attachPdf', referenceId, pdfManagedFileId),
     setNotes: (referenceId, notes) =>
       electronRendererContracts.invoke('references.setNotes', referenceId, notes),
+    // B3: the reader's queue state on the record itself (unread / reading / read).
+    setReadingStatus: (referenceId, status) =>
+      electronRendererContracts.invoke('references.setReadingStatus', referenceId, status),
     markCited: (referenceId, sessionId) =>
       electronRendererContracts.invoke('references.markCited', referenceId, sessionId),
     clearCited: (referenceId) =>

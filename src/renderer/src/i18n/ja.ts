@@ -4919,6 +4919,16 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このセッションのノートブック実行データは測定できませんでした。生成された内容はセッションとともに削除されます。',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': '閲覧状態',
+  'references.reading.all': 'すべての閲覧状態',
+  'references.reading.unread': '未読',
+  'references.reading.reading': '読書中',
+  'references.reading.read': '既読',
+  'references.reading.citedNotReadFilter': '引用済み・未読',
+  'references.reading.citedNotRead': '本文で引用済みだが未読 {count} 件',
+  'references.reading.statusSaved': '「{status}」に変更しました',
   'references.integrity.check': '撤回・訂正を確認',
   'references.integrity.checking': '1件ずつ確認しています…',
   'references.integrity.summary':

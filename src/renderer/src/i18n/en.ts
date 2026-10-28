@@ -4947,6 +4947,16 @@ export const en: Record<ZhKey, string> = {
     'Its notebook run data could not be measured — anything it produced is deleted with the session.',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': 'Reading state',
+  'references.reading.all': 'Any reading state',
+  'references.reading.unread': 'Unread',
+  'references.reading.reading': 'Reading',
+  'references.reading.read': 'Read',
+  'references.reading.citedNotReadFilter': 'Cited but not read',
+  'references.reading.citedNotRead': 'Cited in the text but not read: {count}',
+  'references.reading.statusSaved': 'Marked as “{status}”',
   'references.integrity.check': 'Check retractions/corrections',
   'references.integrity.checking': 'Checking, one DOI at a time…',
   'references.integrity.summary':

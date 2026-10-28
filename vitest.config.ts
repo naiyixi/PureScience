@@ -89,6 +89,7 @@ const DATABASE_TEST_GLOBS = [
   'src/main/vision/vision-evidence-repository.test.ts',
   'src/main/references/citation-style-probe.test.ts',
   'src/main/references/doi-integrity-storage.test.ts',
+  'src/main/references/reading-status-storage.test.ts',
   'src/main/skills/conversation-import.test.ts',
   'src/main/notebook/input-registry.test.ts',
   'src/main/reviewer/repository.test.ts',

@@ -7,6 +7,7 @@ import { getProjectDbClient } from '../projects/prisma-client'
 import { resolveStorageRoot } from '../storage-root'
 
 import type { ReferenceIntegritySummary } from '../../shared/references-integrity'
+import type { ReferenceReadingStatus } from '../../shared/references-reading'
 import type {
   AddReferenceResult,
   CollectionItem,
@@ -85,6 +86,8 @@ export type ReferencesHandlers = {
   // IC26: the record's own notes. The column, the create path and the list projection all existed; there was
   // simply no way to change them on an existing record.
   setNotes(referenceId: string, notes: string): Promise<Reference>
+  // B3: the reader's queue state (unread / reading / read). Returns the re-read record, like setNotes.
+  setReadingStatus(referenceId: string, status: ReferenceReadingStatus): Promise<Reference>
   // v2.6.0 A2: a citation is a fact recorded on the record — when it was declared cited, and by
   // which session. Both come back as the re-read record, so the surface shows what landed.
   markCited(referenceId: string, sessionId?: string): Promise<Reference>
@@ -304,6 +307,7 @@ export const createReferencesIpcModule = (
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
     detachPdf: (referenceId) => service.detachPdf(referenceId),
     setNotes: (referenceId, notes) => service.setNotes(referenceId, notes),
+    setReadingStatus: (referenceId, status) => service.setReadingStatus(referenceId, status),
     markCited: (referenceId, sessionId) => service.markCited(referenceId, sessionId),
     clearCited: (referenceId) => service.clearCited(referenceId),
     importJournalMetrics: (input) => journalMetrics.importMetrics(input),
@@ -410,6 +414,11 @@ export const installReferencesIpcHandlers = (
     )
     ipcMainHandle('references:set-notes', (_event, referenceId: string, notes: string) =>
       handlers.setNotes(referenceId, notes)
+    )
+    ipcMainHandle(
+      'references:set-reading-status',
+      (_event, referenceId: string, status: ReferenceReadingStatus) =>
+        handlers.setReadingStatus(referenceId, status)
     )
     ipcMainHandle(
       'references:import-journal-metrics',

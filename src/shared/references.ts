@@ -3,6 +3,8 @@
 // tables are pure-additive and keep no relational constraints, matching the runtime-DDL schema).
 // Timestamps are epoch milliseconds at the repository boundary.
 
+import type { ReferenceReadingStatus } from './references-reading'
+
 export type ReferenceSourceConnector = 'openalex' | 'pubmed' | 'arxiv' | 'europepmc' | 'manual'
 
 // What kind of record this is; drives the GB/T type tag and the CSL type mapping. Optional: a record
@@ -84,6 +86,10 @@ export type Reference = {
   // would read as "not cited" if the two were folded together.
   citedAt?: number
   citedSessionId?: string
+  // B3: where this record stands in the reader's own queue. Absent means `unread` — the column is additive
+  // so every record that predates it keeps its meaning (see shared/references-reading).
+  readingStatus?: ReferenceReadingStatus
+  readingStatusUpdatedAt?: number
   createdAt: number
   updatedAt: number
 }

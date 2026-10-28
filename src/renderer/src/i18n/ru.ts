@@ -4937,6 +4937,16 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Не удалось измерить данные выполнения блокнота этого сеанса — всё, что он создал, будет удалено вместе с ним.',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': 'Статус чтения',
+  'references.reading.all': 'Любой статус чтения',
+  'references.reading.unread': 'Не прочитано',
+  'references.reading.reading': 'Читается',
+  'references.reading.read': 'Прочитано',
+  'references.reading.citedNotReadFilter': 'Цитируется, не прочитано',
+  'references.reading.citedNotRead': 'Цитируется в тексте, но не прочитано: {count}',
+  'references.reading.statusSaved': 'Отмечено как «{status}»',
   'references.integrity.check': 'Проверить отзывы/исправления',
   'references.integrity.checking': 'Проверка, по одному DOI…',
   'references.integrity.summary':

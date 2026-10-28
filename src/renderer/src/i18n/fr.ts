@@ -5059,6 +5059,16 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Les données d’exécution de notebook de cette session n’ont pas pu être mesurées — tout ce qu’elle a produit sera supprimé avec elle.',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': 'État de lecture',
+  'references.reading.all': 'Tous les états de lecture',
+  'references.reading.unread': 'Non lu',
+  'references.reading.reading': 'En cours de lecture',
+  'references.reading.read': 'Lu',
+  'references.reading.citedNotReadFilter': 'Cité, non lu',
+  'references.reading.citedNotRead': 'Cité dans le texte mais non lu : {count}',
+  'references.reading.statusSaved': 'Marqué « {status} »',
   'references.integrity.check': 'Vérifier rétractations/corrections',
   'references.integrity.checking': 'Vérification, un DOI à la fois…',
   'references.integrity.summary':

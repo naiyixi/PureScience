@@ -184,6 +184,7 @@ export const WEB_INVOKE_CHANNELS = {
   'references.removeFromCollection': 'references:remove-from-collection',
   'references.removeJournalAlias': 'references:remove-journal-alias',
   'references.setNotes': 'references:set-notes',
+  'references.setReadingStatus': 'references:set-reading-status',
   'references.setScreeningOverride': 'references:set-screening-override',
   'references.setScreeningOverrides': 'references:set-screening-overrides',
   'references.startScreeningRun': 'references:start-screening-run',

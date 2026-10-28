@@ -155,6 +155,8 @@ describe('references IPC: the screening surface', () => {
         'references:append-screening-rule-revision',
         'references:attach-pdf',
         'references:set-notes',
+        // B3: the reading-state write, beside the notes write it follows the same path as.
+        'references:set-reading-status',
         'references:cancel-screening-run',
         // B1: DOI integrity check over the project's references.
         'references:check-integrity',

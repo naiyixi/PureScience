@@ -15,6 +15,14 @@ import type {
   ReferenceIntegrityEvidence,
   ReferenceIntegritySummary
 } from '../../../../shared/references-integrity'
+import {
+  countCitedNotRead,
+  matchesReadingFilter,
+  referenceReadingStatusOf,
+  REFERENCE_READING_STATUSES,
+  type ReferenceReadingFilter,
+  type ReferenceReadingStatus
+} from '../../../../shared/references-reading'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import {
   citationItemFromReference,
@@ -132,6 +140,23 @@ const EVIDENCE_LABEL_KEYS: Record<ReferenceIntegrityEvidence, TranslationKey> = 
   none: 'references.integrity.evidence.none'
 }
 
+// B3: the three states, each labelled by its own key — one list so the row control and the filter cannot
+// drift apart about what the states are called.
+const READING_STATUS_KEYS: Record<ReferenceReadingStatus, TranslationKey> = {
+  unread: 'references.reading.unread',
+  reading: 'references.reading.reading',
+  read: 'references.reading.read'
+}
+
+const READING_FILTER_KEYS: Record<ReferenceReadingFilter, TranslationKey> = {
+  any: 'references.reading.all',
+  unread: 'references.reading.unread',
+  reading: 'references.reading.reading',
+  read: 'references.reading.read',
+  // The callout's own view: wider than `unread`, because halfway is not read either.
+  'cited-not-read': 'references.reading.citedNotReadFilter'
+}
+
 const STYLE_REJECTION_KEYS: Record<string, TranslationKey> = {
   'xml-parse-failed': 'references.styleRejection.xmlParseFailed',
   'not-a-style': 'references.styleRejection.notAStyle',
@@ -168,6 +193,11 @@ export function ReferencesLibraryDialog({
   // whether a bibliography can be written.
   const [integrity, setIntegrity] = useState<ReferenceIntegritySummary | undefined>(undefined)
   const [integrityBusy, setIntegrityBusy] = useState(false)
+  // B3: the reading queue. The filter is local state — the library list already carries every record, so
+  // narrowing it never waits on the main process. The busy id keeps one row's control from disarming the
+  // others while its write lands.
+  const [readingFilter, setReadingFilter] = useState<ReferenceReadingFilter>('any')
+  const [readingBusyId, setReadingBusyId] = useState<string | null>(null)
   const [integrityResult, setIntegrityResult] = useState<string | undefined>(undefined)
 
   // Identifier-import state.
@@ -384,6 +414,27 @@ export function ReferencesLibraryDialog({
     }
   }
 
+  // B3: one row's mark. The re-read record replaces the row, so the control shows what landed — and a
+  // failed write leaves the row as it was rather than showing a state nobody stored.
+  const handleSetReadingStatus = async (
+    referenceId: string,
+    status: ReferenceReadingStatus
+  ): Promise<void> => {
+    if (readingBusyId !== null) return
+    setReadingBusyId(referenceId)
+    try {
+      const updated = await window.api.references.setReadingStatus(referenceId, status)
+      setReferences((current) =>
+        current.map((item) => (item.id === referenceId ? { ...item, ...updated } : item))
+      )
+      setNotice(t('references.reading.statusSaved', { status: t(READING_STATUS_KEYS[status]) }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setReadingBusyId(null)
+    }
+  }
+
   const retractedByReferenceId = useMemo(
     () => new Map((integrity?.retracted ?? []).map((entry) => [entry.referenceId, entry])),
     [integrity]
@@ -417,12 +468,25 @@ export function ReferencesLibraryDialog({
     }
   }, [open, projectId])
 
-  const shownReferences = useMemo(() => {
+  const collectionReferences = useMemo(() => {
     if (selectedCollectionId === null) return references
     return references.filter(
       (reference) => reference.collectionIds?.includes(selectedCollectionId) ?? false
     )
   }, [references, selectedCollectionId])
+
+  const shownReferences = useMemo(
+    () =>
+      collectionReferences.filter((reference) => matchesReadingFilter(reference, readingFilter)),
+    [collectionReferences, readingFilter]
+  )
+
+  // B3: the callout this feature exists for — records the manuscript cites that nobody has read. Counted on
+  // the collection's own set, not on the filtered view, so turning the filter on does not erase the number.
+  const citedNotReadCount = useMemo(
+    () => countCitedNotRead(collectionReferences),
+    [collectionReferences]
+  )
 
   // Leaving the collection leaves the screening view too: the state on screen belongs to one collection,
   // so the toggle is reset where the selection is made rather than in an effect.
@@ -829,6 +893,30 @@ export function ReferencesLibraryDialog({
             <span className="text-[10px] text-[var(--muted-foreground)]">
               {t('references.integrity.costNote')}
             </span>
+            {/* B3: the reader's queue. The filter narrows the list in memory (the list already carries every
+                record), and the callout names the records this feature exists for: cited, not read. */}
+            <select
+              value={readingFilter}
+              onChange={(event) => setReadingFilter(event.target.value as ReferenceReadingFilter)}
+              aria-label={t('references.reading.filterLabel')}
+              className="rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-[11px]"
+            >
+              {(Object.keys(READING_FILTER_KEYS) as ReferenceReadingFilter[]).map((value) => (
+                <option key={value} value={value}>
+                  {t(READING_FILTER_KEYS[value])}
+                </option>
+              ))}
+            </select>
+            {citedNotReadCount > 0 ? (
+              <button
+                type="button"
+                data-testid="cited-not-read-callout"
+                className="inline-flex items-center gap-1 rounded-full border border-danger-000/30 bg-danger-000/10 px-2 py-0.5 text-[10px] font-semibold text-danger-000"
+                onClick={() => setReadingFilter('cited-not-read')}
+              >
+                {t('references.reading.citedNotRead', { count: citedNotReadCount })}
+              </button>
+            ) : null}
           </div>
 
           {showPdfPicker ? (
@@ -1381,6 +1469,28 @@ export function ReferencesLibraryDialog({
                               <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
                                 {reference.title}
                               </p>
+                              {/* B3: the reading mark, on the row it belongs to. A record with no stored
+                                  value reads as unread, so the control shows the same state the filter counts. */}
+                              <label className="mt-1 flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">
+                                <select
+                                  value={referenceReadingStatusOf(reference.readingStatus)}
+                                  disabled={readingBusyId !== null}
+                                  data-testid="reference-reading-status"
+                                  onChange={(event) =>
+                                    void handleSetReadingStatus(
+                                      reference.id,
+                                      event.target.value as ReferenceReadingStatus
+                                    )
+                                  }
+                                  className="rounded border border-[var(--border)] bg-transparent px-1 py-0.5 text-[10px]"
+                                >
+                                  {REFERENCE_READING_STATUSES.map((value) => (
+                                    <option key={value} value={value}>
+                                      {t(READING_STATUS_KEYS[value])}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
                               {retractedByReferenceId.has(reference.id) ? (
                                 <p
                                   className="mt-1 inline-flex items-center gap-1 rounded-full border border-danger-000/30 bg-danger-000/10 px-2 py-0.5 text-[10px] font-semibold text-danger-000"

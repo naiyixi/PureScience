@@ -531,6 +531,11 @@ model Reference {
   // Stored because "retracted" without its evidence cannot be audited, and a clean verdict that does not
   // say which queries came back empty hides the difference between "checked" and "could not check".
   integrityEvidence   String?
+  // B3: the reader's own queue state, plus when it was last set. Null means the record predates the layer
+  // and reads as `unread`; the timestamp is what lets a surface say "marked read on X" instead of implying
+  // the state has always been true.
+  readingStatus       String?
+  readingStatusUpdatedAt DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

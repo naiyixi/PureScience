@@ -316,6 +316,7 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
   ]),
   group('references', 'references', [
     ['add', 'references:add'], ['addToCollection', 'references:add-to-collection'], ['attachPdf', 'references:attach-pdf'], ['setNotes', 'references:set-notes'],
+    ['setReadingStatus', 'references:set-reading-status'],
     ['createCollection', 'references:create-collection'], ['deleteCollection', 'references:delete-collection'], ['detachPdf', 'references:detach-pdf'],
     ['markCited', 'references:mark-cited'], ['clearCited', 'references:clear-cited'],
     ['fetchByIdentifier', 'references:fetch-by-identifier'], ['importDoisFromPdf', 'references:import-dois-from-pdf'], ['importCitationStyle', 'references:import-citation-style'], ['importJournalMetrics', 'references:import-journal-metrics'], ['list', 'references:list'],

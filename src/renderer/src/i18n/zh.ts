@@ -4604,6 +4604,16 @@ export const zh = {
     '无法测量本会话的笔记本运行数据——它产出的内容会随会话一起删除。',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': '阅读状态',
+  'references.reading.all': '全部阅读状态',
+  'references.reading.unread': '未读',
+  'references.reading.reading': '在读',
+  'references.reading.read': '读完',
+  'references.reading.citedNotReadFilter': '已引用但未读',
+  'references.reading.citedNotRead': '正文已引用但未读 {count} 条',
+  'references.reading.statusSaved': '已标记为「{status}」',
   'references.integrity.check': '检查撤稿/更正',
   'references.integrity.checking': '正在逐条检查…',
   'references.integrity.summary':

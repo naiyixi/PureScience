@@ -71,7 +71,14 @@ vi.mock('@/i18n', () => ({
       'references.integrity.costNote': 'Walks Crossref one DOI at a time (no API key)',
       'references.integrity.checkDone':
         'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
-      'references.integrity.retractedBadge': 'Retracted'
+      'references.integrity.retractedBadge': 'Retracted',
+      'references.reading.filterLabel': 'Reading state',
+      'references.reading.all': 'Any reading state',
+      'references.reading.unread': 'Unread',
+      'references.reading.reading': 'Reading',
+      'references.reading.read': 'Read',
+      'references.reading.citedNotRead': 'Cited but not read: {count}',
+      'references.reading.statusSaved': 'Marked as “{status}”'
     }
 
     return {
@@ -141,6 +148,7 @@ describe('ReferencesLibraryDialog collections', () => {
   let setNotes: ReturnType<typeof vi.fn>
   let readIntegritySummary: ReturnType<typeof vi.fn>
   let checkIntegrity: ReturnType<typeof vi.fn>
+  let setReadingStatus: ReturnType<typeof vi.fn>
 
   const findButton = (name: string | RegExp): HTMLButtonElement => {
     // Radix renders the dialog into a portal on document.body, not into the container div.
@@ -217,6 +225,12 @@ describe('ReferencesLibraryDialog collections', () => {
       retracted: 0,
       gaps: []
     })
+    setReadingStatus = vi.fn(async (id: string, status: 'unread' | 'reading' | 'read') => ({
+      ...reference,
+      id,
+      readingStatus: status,
+      readingStatusUpdatedAt: 1
+    }))
     window.api = {
       references: {
         list: vi.fn().mockResolvedValue([reference]),
@@ -231,7 +245,8 @@ describe('ReferencesLibraryDialog collections', () => {
         attachPdf,
         setNotes,
         readIntegritySummary,
-        checkIntegrity
+        checkIntegrity,
+        setReadingStatus
       },
       projectFiles: { listFiles }
     } as unknown as typeof window.api
@@ -745,5 +760,105 @@ describe('ReferencesLibraryDialog collections', () => {
     expect(badges).toHaveLength(1)
     // The badge belongs to the retracted row, not to whichever row happens to be first.
     expect(badges[0].closest('li')?.textContent ?? '').toContain('A retracted trial')
+  })
+
+  // B3: the reading queue. The write goes through the record's own channel, the row shows what came back,
+  // the filter narrows on the same reading, and the callout names records the manuscript cites but nobody
+  // has read — including the ones someone is halfway through.
+  const rowOf = (text: string): HTMLElement => {
+    const row = Array.from(document.querySelectorAll('li')).find((candidate) =>
+      (candidate.textContent ?? '').includes(text)
+    )
+    if (!row) throw new Error(`no row containing ${text}`)
+    return row as HTMLElement
+  }
+
+  const setRowStatus = async (text: string, status: string): Promise<void> => {
+    const select = rowOf(text).querySelector<HTMLSelectElement>(
+      '[data-testid="reference-reading-status"]'
+    )
+    if (!select) throw new Error('no reading control in that row')
+    await act(async () => {
+      select.value = status
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await flush()
+    await flush()
+  }
+
+  it('marks a record and shows what the write returned (B3)', async () => {
+    await render()
+    // Nothing stored reads as unread — the control must not invent a state.
+    const before = rowOf('A screen for variants').querySelector<HTMLSelectElement>(
+      '[data-testid="reference-reading-status"]'
+    )
+    expect(before?.value).toBe('unread')
+
+    await setRowStatus('A screen for variants', 'read')
+
+    expect(setReadingStatus).toHaveBeenCalledWith('reference-1', 'read')
+    expect(document.body.textContent ?? '').toContain('Marked as “Read”')
+    const after = rowOf('A screen for variants').querySelector<HTMLSelectElement>(
+      '[data-testid="reference-reading-status"]'
+    )
+    expect(after?.value).toBe('read')
+  })
+
+  it('filters the library on the reading state (B3)', async () => {
+    vi.mocked(window.api.references.list).mockResolvedValue([
+      { ...reference, id: 'r-unread', title: 'Never opened', readingStatus: 'unread' },
+      { ...reference, id: 'r-read', title: 'Already read', readingStatus: 'read' }
+    ] as never)
+    await render()
+
+    const filter = document.querySelector<HTMLSelectElement>('select[aria-label="Reading state"]')
+    expect(filter).not.toBeNull()
+    await act(async () => {
+      filter!.value = 'read'
+      filter!.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(document.body.textContent ?? '').toContain('Already read')
+    expect(document.body.textContent ?? '').not.toContain('Never opened')
+  })
+
+  it('names cited-but-unread records and turns the filter onto them (B3)', async () => {
+    vi.mocked(window.api.references.list).mockResolvedValue([
+      { ...reference, id: 'r-cited', title: 'Cited and unread', citedAt: 1710000000000 },
+      {
+        ...reference,
+        id: 'r-reading',
+        title: 'Cited and halfway',
+        citedAt: 1710000000001,
+        readingStatus: 'reading'
+      },
+      {
+        ...reference,
+        id: 'r-done',
+        title: 'Cited and read',
+        citedAt: 1710000000002,
+        readingStatus: 'read'
+      }
+    ] as never)
+    await render()
+
+    const callout = document.querySelector('[data-testid="cited-not-read-callout"]')
+    expect(callout).not.toBeNull()
+    // `reading` counts: halfway is not read.
+    expect(callout?.textContent ?? '').toContain('Cited but not read: 2')
+
+    await act(async () => {
+      ;(callout as HTMLElement).click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    const shown = Array.from(document.querySelectorAll('li')).map((li) => li.textContent ?? '')
+    expect(shown.some((text) => text.includes('Cited and unread'))).toBe(true)
+    expect(shown.some((text) => text.includes('Cited and halfway'))).toBe(true)
+    expect(shown.some((text) => text.includes('Cited and read'))).toBe(false)
   })
 })

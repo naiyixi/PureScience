@@ -4548,6 +4548,16 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '無法測量本工作階段的筆記本執行資料——它產出的內容會隨工作階段一併刪除。',
   // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
   // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  // B3: the reading queue — the three states, the filter label, and the callout for records the
+  // manuscript cites that nobody has read yet.
+  'references.reading.filterLabel': '閱讀狀態',
+  'references.reading.all': '全部閱讀狀態',
+  'references.reading.unread': '未讀',
+  'references.reading.reading': '在讀',
+  'references.reading.read': '讀完',
+  'references.reading.citedNotReadFilter': '已引用但未讀',
+  'references.reading.citedNotRead': '正文已引用但未讀 {count} 條',
+  'references.reading.statusSaved': '已標記為「{status}」',
   'references.integrity.check': '檢查撤稿/更正',
   'references.integrity.checking': '正在逐條檢查…',
   'references.integrity.summary':

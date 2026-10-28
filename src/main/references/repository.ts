@@ -11,6 +11,7 @@ import type {
   ReferenceProvenance
 } from '../../shared/references'
 import { JournalRepository, type JournalClient } from './journal-repository'
+import type { ReferenceReadingStatus } from '../../shared/references-reading'
 import type {
   DoiIntegrityCheck,
   DoiIntegrityEvidence,
@@ -71,6 +72,8 @@ const mapReference = (row: {
   notes: string | null
   citedAt: Date | null
   citedSessionId: string | null
+  readingStatus: string | null
+  readingStatusUpdatedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }): Reference => ({
@@ -100,6 +103,9 @@ const mapReference = (row: {
   notes: row.notes ?? undefined,
   citedAt: row.citedAt?.getTime(),
   citedSessionId: row.citedSessionId ?? undefined,
+  // B3: absent in storage means "never marked", which reads as unread — the additive-column contract.
+  readingStatus: row.readingStatus ? (row.readingStatus as ReferenceReadingStatus) : undefined,
+  readingStatusUpdatedAt: row.readingStatusUpdatedAt?.getTime(),
   createdAt: row.createdAt.getTime(),
   updatedAt: row.updatedAt.getTime()
 })
@@ -239,6 +245,17 @@ export class ReferenceRepository {
       .map((item) => byId.get(item.referenceId))
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
       .map(mapReference)
+  }
+
+  // B3: the reader's own queue state. Written on the record, and the write time is kept beside it so a
+  // surface can say when the mark was made instead of implying it has always been true.
+  async setReadingStatus(referenceId: string, status: ReferenceReadingStatus): Promise<Reference> {
+    const client = await this.getClient()
+    const row = await client.reference.update({
+      where: { id: referenceId },
+      data: { readingStatus: status, readingStatusUpdatedAt: new Date() }
+    })
+    return mapReference(row)
   }
 
   // Persists one DOI integrity verdict. Written as a unit (status + when + which record), because a stored

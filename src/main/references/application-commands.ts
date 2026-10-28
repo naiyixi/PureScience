@@ -39,6 +39,7 @@ type ReferencesCommandOwner = Pick<
   | 'markCited'
   | 'clearCited'
   | 'setNotes'
+  | 'setReadingStatus'
   | 'detachPdf'
   | 'importDoisFromPdf'
   | 'importJournalMetrics'
@@ -166,6 +167,12 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'setNotes'>,
     OwnerResult<ReferencesCommandOwner, 'setNotes'>
   >('references:set-notes'),
+  // B3: the reader's queue state, registered on the same path as the notes write it sits beside.
+  setReadingStatus: defineApplicationCommand<
+    'references:set-reading-status',
+    OwnerArgs<ReferencesCommandOwner, 'setReadingStatus'>,
+    OwnerResult<ReferencesCommandOwner, 'setReadingStatus'>
+  >('references:set-reading-status'),
   // v2.6.0 A2: the citation mark is a command like the notes write it sits beside — the Web profile
   // and the agent surface both reach it through the same registry.
   markCited: defineApplicationCommand<
@@ -263,6 +270,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.listJournalClaims,
   referencesApplicationCommands.attachPdf,
   referencesApplicationCommands.setNotes,
+  referencesApplicationCommands.setReadingStatus,
   // v2.6.0 A2: the citation mark, registered beside the notes write it follows the same path as.
   referencesApplicationCommands.markCited,
   referencesApplicationCommands.clearCited,
@@ -320,6 +328,8 @@ const registerReferencesApplicationCommands = (
         dependencies.references.listJournalClaims(args[0]),
       'references:attach-pdf': ({ args }) => dependencies.references.attachPdf(args[0], args[1]),
       'references:set-notes': ({ args }) => dependencies.references.setNotes(args[0], args[1]),
+      'references:set-reading-status': ({ args }) =>
+        dependencies.references.setReadingStatus(args[0], args[1]),
       'references:mark-cited': ({ args }) => dependencies.references.markCited(args[0], args[1]),
       'references:clear-cited': ({ args }) => dependencies.references.clearCited(args[0]),
       'references:detach-pdf': ({ args }) => dependencies.references.detachPdf(args[0]),

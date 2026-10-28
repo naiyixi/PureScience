@@ -190,7 +190,7 @@ describe('application command composition', () => {
     // two plain reference writes, reachable from the local Web view.
     // 367 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
     // profile, so it is reachable from the local Web view too.
-    expect(composition.localWeb.commandNames()).toHaveLength(369)
+    expect(composition.localWeb.commandNames()).toHaveLength(370)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -214,7 +214,7 @@ describe('application command composition', () => {
     // 235 for the same two channels: they are plain Web requests, so the paired remote profile
     // carries them too rather than rejecting them before dispatch.
     // 236 for the same profile: the session run-data measurement is mapped on the remote surface too.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(237)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(238)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.
