@@ -121,7 +121,7 @@ export type ComposeStepRecorderOptions = {
 export type ComposeStepRecorder = {
   /** Times one composition step. Rethrows failures after recording them. */
   step: <T>(name: string, run: () => Promise<T> | T) => Promise<T>
-  /** Every step recorded so far, slowest first. */
+  /** Every step recorded so far, wall-slowest first (the summary line ranks by own time instead). */
   steps: () => ComposeStep[]
   /** Wall time from the first step to the last completion. */
   totalMs: () => number
@@ -272,24 +272,45 @@ export const createComposeStepRecorder = (
       // One reading feeds both this line and the support bundle: the total, the covered part and the gap are
       // the same three numbers there, so the two can never tell different stories about one startup.
       const { totalMs, stepMs, gapMs, heldMs, steps } = snapshot()
-      // A step that was suspended is still the longest wall time, but it did not do the work. The summary
-      // carries the total once and marks the entries that were partly — or entirely — not running, so the
-      // next reader does not have to open every step line to find that out.
-      const slowest = steps
+      // Rank by the time the STEP ITSELF used, not by the wall time it occupied. A step caught inside a
+      // loop-held window is the longest wall time in the run while having done none of it — measured on this
+      // machine: 22,763,287 ms with a 0 cpu share (see `cpu-attribution`) — so ranked by wall time it takes a
+      // slot away from a step that really spent the window, and the line then answers "who cost us" with a
+      // list of steps that were merely parked.
+      //
+      // Two lists, because re-ranking alone would leave `stepMs` unexplainable: the parked step's wall time is
+      // still inside `stepMs` (it sums durations), so it has to be nameable from this same line or the next
+      // reader finds millions of milliseconds covered by no entry. Entries keep printing the wall time — the
+      // number every other record calls `durationMs` — followed by the held part, so `wall = own + held` is
+      // readable without opening another line.
+      const ownMs = (entry: ComposeStepSnapshot): number =>
+        Math.max(0, entry.durationMs - (entry.heldMs ?? 0))
+      const format = (entry: ComposeStepSnapshot): string =>
+        `${entry.name}=${entry.durationMs}ms${entry.outcome === 'failed' ? '(failed)' : ''}${attributionSuffix(
+          entry.attribution
+        )}${entry.heldMs === undefined ? '' : `(held ${entry.heldMs}ms)`}`
+      const byOwnTime = steps
         .map((entry, index) => ({ entry, index }))
         .sort(
           (left, right) =>
-            right.entry.durationMs - left.entry.durationMs || left.index - right.index
+            ownMs(right.entry) - ownMs(left.entry) ||
+            // A run in which nothing was measured as parked keeps wall-time order (and was never held).
+            right.entry.durationMs - left.entry.durationMs ||
+            left.index - right.index
+        )
+      const slowest = byOwnTime.slice(0, summarySize).map(({ entry }) => format(entry))
+      // Ranked by the part nothing of this step ran in. The same entry can appear in both lists — a step can
+      // be both expensive and partly parked — and a step that is entirely parked appears here even when its
+      // own time keeps it out of `slowest`.
+      const suspended = steps
+        .map((entry, index) => ({ entry, index }))
+        .filter(({ entry }) => (entry.heldMs ?? 0) > 0)
+        .sort(
+          (left, right) =>
+            (right.entry.heldMs ?? 0) - (left.entry.heldMs ?? 0) || left.index - right.index
         )
         .slice(0, summarySize)
-        .map(
-          ({ entry }) =>
-            `${entry.name}=${entry.durationMs}ms${
-              entry.outcome === 'failed' ? '(failed)' : ''
-            }${attributionSuffix(entry.attribution)}${
-              entry.heldMs === undefined ? '' : `(held ${entry.heldMs}ms)`
-            }`
-        )
+        .map(({ entry }) => format(entry))
       options.log.info(messages.summary, {
         totalMs,
         stepCount: steps.length,
@@ -298,7 +319,9 @@ export const createComposeStepRecorder = (
         // Present only when the window holds time no step covers: a run whose steps tile the window keeps its
         // old shape, and a reader is never handed a zero to interpret.
         ...(gapMs > 0 ? { stepMs, gapMs } : {}),
-        slowest: slowest.join(' ')
+        slowest: slowest.join(' '),
+        // Absent when no step had a held part at all, so an ordinary startup's line keeps its old shape.
+        ...(suspended.length === 0 ? {} : { suspended: suspended.join(' ') })
       })
     }
   }

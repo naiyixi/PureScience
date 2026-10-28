@@ -108,6 +108,9 @@ describe('compose step recorder', () => {
       attribution: 'no-cpu-in-process'
     })
     const fields = log.info.mock.calls[0][1] as Record<string, unknown>
+    // It is the only step, so it is still the one named — what this pins is the suffix, not a ranking (a
+    // parked step's ranking against a cheaper wall-time step is pinned in
+    // 'keeps a fully parked step out of the cost list while still naming it').
     expect(String(fields.slowest)).toContain('permission-grant-registry=22763287ms(no-cpu)')
   })
 
@@ -213,17 +216,24 @@ describe('compose step recorder', () => {
     expect(fields).not.toHaveProperty('ownMs')
   })
 
-  // The summary is the line a reader scans first, and a suspended step keeps the longest wall time in it.
-  // Without a total, "startup took 9 s" reads as work; with it, the reader subtracts in one glance instead
-  // of opening every step line.
-  it('reports in the summary how much of the window the loop was held for', async () => {
+  // The summary is the line a reader scans first. Two things it must not do: let a parked step (one that sat
+  // inside a loop-held window) take a cost slot from a step that really spent the window, and hide that
+  // parked step's wall time — which is still inside `stepMs`.
+  it('ranks the summary by own time and names the parked step separately', async () => {
     const { log, recorder, advance } = setup({
       summarySize: 3,
-      heldWindows: { heldMsWithin: (startMs, endMs) => Math.min(endMs - startMs, 1_200) }
+      // Only the 1 800 ms window was held, and for 1 200 ms of it: own 600 ms. The others ran.
+      heldWindows: {
+        heldMsWithin: (startMs, endMs) => (endMs - startMs === 1_800 ? 1_200 : 0)
+      }
     })
 
     await recorder.step('permission-grant-registry', () => {
       advance(1_800)
+      return Promise.resolve(undefined)
+    })
+    await recorder.step('read-stored-settings', () => {
+      advance(1_150)
       return Promise.resolve(undefined)
     })
     await recorder.step('open-project-db', () => {
@@ -233,9 +243,78 @@ describe('compose step recorder', () => {
     recorder.logSummary()
 
     const [, fields] = log.info.mock.calls[0] as [string, Record<string, unknown>]
-    expect(fields.heldMs).toBe(1_500)
+    expect(fields.heldMs).toBe(1_200)
+    // Ranked by own time: 1 150 > 600 > 300. Wall time alone would have put the 1 800 ms step first, and its
+    // 1 200 held ms were the only reason it was that long.
     expect(String(fields.slowest)).toBe(
-      'permission-grant-registry=1800ms(held 1200ms) open-project-db=300ms(held 300ms)'
+      'read-stored-settings=1150ms permission-grant-registry=1800ms(held 1200ms) open-project-db=300ms'
+    )
+    expect(String(fields.suspended)).toBe('permission-grant-registry=1800ms(held 1200ms)')
+  })
+
+  it('keeps a fully parked step out of the cost list while still naming it', async () => {
+    // Real record (2026-10-25, packaged build): `permission-grant-registry` at 22,763,287 ms with a 0 cpu
+    // share — the whole step sat inside one stall. It is the longest wall time of the run and cost nothing.
+    const { log, recorder, advance, advanceWallOnly } = setup({
+      summarySize: 2,
+      heldWindows: {
+        heldMsWithin: (startMs, endMs) => (endMs - startMs === 22_763_287 ? 22_763_287 : 0)
+      }
+    })
+
+    await recorder.step('permission-grant-registry', () => {
+      // Wall time with no CPU at all: the shape a suspended laptop leaves behind.
+      advanceWallOnly(22_763_287)
+      return Promise.resolve(undefined)
+    })
+    await recorder.step('open-project-db', () => {
+      advance(1_942)
+      return Promise.resolve(undefined)
+    })
+    await recorder.step('read-stored-settings', () => {
+      advance(900)
+      return Promise.resolve(undefined)
+    })
+    recorder.logSummary()
+
+    const [, fields] = log.info.mock.calls[0] as [string, Record<string, unknown>]
+    // The parked step is not offered as a cost: it did none of that time.
+    expect(String(fields.slowest)).toBe('open-project-db=1942ms read-stored-settings=900ms')
+    expect(String(fields.slowest)).not.toContain('permission-grant-registry')
+    // …but its wall time is inside `stepMs`, so the same line has to name it.
+    expect(String(fields.suspended)).toBe(
+      'permission-grant-registry=22763287ms(no-cpu)(held 22763287ms)'
+    )
+    // Nothing is subtracted away: the window total still contains every step's wall time, parked one included.
+    // (`stepMs` itself is absent here because the steps tile the window — `gapMs 0` is not handed to a reader.)
+    expect(fields.totalMs).toBe(22_763_287 + 1_942 + 900)
+    expect(fields).not.toHaveProperty('gapMs')
+    expect(fields.heldMs).toBe(22_763_287)
+  })
+
+  it('falls back to wall-time order when every step was parked', async () => {
+    const { log, recorder, advance } = setup({
+      summarySize: 2,
+      heldWindows: { heldMsWithin: (startMs, endMs) => endMs - startMs }
+    })
+
+    await recorder.step('restore-notification-inbox', () => {
+      advance(400)
+      return Promise.resolve(undefined)
+    })
+    await recorder.step('open-project-db', () => {
+      advance(2_000)
+      return Promise.resolve(undefined)
+    })
+    recorder.logSummary()
+
+    const [, fields] = log.info.mock.calls[0] as [string, Record<string, unknown>]
+    // Own time is 0 for both, so the tie-break has to be the wall time the reader can still see.
+    expect(String(fields.slowest)).toBe(
+      'open-project-db=2000ms(held 2000ms) restore-notification-inbox=400ms(held 400ms)'
+    )
+    expect(String(fields.suspended)).toBe(
+      'open-project-db=2000ms(held 2000ms) restore-notification-inbox=400ms(held 400ms)'
     )
   })
 
@@ -259,6 +338,8 @@ describe('compose step recorder', () => {
     expect(fields).toMatchObject({ totalMs: 9_500, stepCount: 3 })
     // No recorded stall anywhere in this run ⇒ no total, and no per-entry remark either.
     expect(fields).not.toHaveProperty('heldMs')
+    // …and no second ranking: an ordinary run's line keeps exactly the shape it had before.
+    expect(fields).not.toHaveProperty('suspended')
     // Slowest first, and only the configured number of entries.
     expect(String(fields.slowest)).toBe(
       'read-stored-settings=9000ms restore-notification-inbox=500ms'

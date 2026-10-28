@@ -13676,3 +13676,63 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
   (b) `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例）；
   (c) 给 digest 加 `--json` 只在这三者都不合适时再考虑（现在没有第二个消费者）。
 - 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
+
+## 二百五十三、本轮追加（执行器，2026-10-28 10:4x–）—— 汇总行按「自己花的时间」排序：被挂起的步骤不再占成本位，仍在这行里被点名
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- 开工时 `HEAD == origin/main == bd63a0fa`，工作区**干净**（`git status --short` 空），无并发写入者的在制品。
+- **CI 判决（完整 40 位 SHA `bd63a0fadbba1f4d5dab7ed631ea7f75df2ff07f`）**：`Nightly` **completed / success**、
+  `Windows Full Test` **completed / success** ⇒ 上一笔双绿，本单元可以直接起。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段无 ≥3 天无人动的项 ⇒ 按 §二百五十二 §五 的候选
+  (a) 取本单元（那份候选正是上一轮自己留下的，不是新起的）。
+- 发版窗口：无（v2.19.0 已是 Latest，本笔不碰发版四文件）。
+
+### 一 交付（2 改 + 1 新证据档 + 本节）
+
+`compose-steps.ts`：汇总行从「按墙钟排」改成**按 own 时间（`durationMs - heldMs`）排**，并新增 `suspended` 列
+（按 `heldMs` 降序、最多 `summarySize` 条、无步骤被挂起时整列缺席）。条目文本一字不改（仍印墙钟 + `(held Nms)`），
+所以 `墙钟 = own + held` 能同一行读出来。**两列而不是一列**的原因写在源码注释里：`stepMs` 是各步墙钟之和，
+被挂起的步骤墙钟仍在里面，只重排会让那几个百万毫秒无人认领。
+
+### 二 真数据回放（两次真实启动的具名步骤，重放进生产记录器）
+
+| 启动 | 旧序 | 新序 | `suspended` |
+|---|---|---|---|
+| A（`totalMs 5797` / `heldMs 675`） | `open-project-db=1942(held 675)` 第一 | **`specialist-skill-catalog=1883` 升到第一**（own 1883 > 1267） | `open-project-db=1942ms(held 675ms)` |
+| B（`totalMs 15245` / `heldMs 1071`） | `specialist-skill-catalog=11221` 第一，`load-probe-answers=1818(held 1071)` 第二 | 第一不变，**`load-probe-answers` 退到第三**（own 747 < 1225） | `load-probe-answers=1818ms(held 1071ms)` |
+
+**边界**：回放只含具名的 6 条（真实各 12 条）⇒ 回放 `totalMs` 更短；回放注入的 CPU 源恒为 0 ⇒ 每条的 `(no-cpu)`
+是回放副作用、**不是**那次启动的归属；真正的**新鲜真机行**没取到（重建 `out/` 会被在跑 dev 实例的 watcher 接住 =
+未经同意重启用户的实例，且当时空闲页 ~60 MB），与既有「重启常驻 dev 实例」同一张待办。详见
+`docs/evidence/2026-10-28-startup-summary-own-time.md`。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `compose-steps.test.ts` | **18 passed** |
+| 定向：`src/main/diagnostics` + `agent-runtime-manager.test.ts` + `ipc-startup-attribution.test.ts` | **21 files / 179 passed** |
+| 定向：`src/main/settings`（另一族消费者，`--maxWorkers=2`） | **94 passed / 1 skipped（95）**、**1475 passed / 3 skipped（1478）** |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache` + `prettier --check`（本笔 2 文件） | **0 error / 0 warning**；格式通过 |
+| 全量 vitest | **未跑**：swap 已用 9,350/10,240 MB、空闲页 3,847（≈60 MB）；受影响面（两族消费者 + 整目录）已取读数 |
+
+变异自证 4 次，逐个删掉改动的一部分（own 排序键 / `suspended` 列 / own 相同时的墙钟次级键 / `suspended` 的 held 降序），
+各自变红 **2 / 3 / 1 / 1** 条，改完复原后 `diff` 为空。
+
+### 四 边界（不许读成更强）
+
+1. **own ≠ CPU**：`ownMs = 墙钟 - held`，所以「等外部 I/O 的步骤」仍按它自己那段墙钟计成本（B 跑的
+   `specialist-skill-catalog=11221ms` 就是这样，cpu 份额 0 但没有被挂起记录 ⇒ 照旧第一）。这条正合语义：
+   它花的是这个窗口的时间，只是没花 CPU。
+2. `suspended` **不是失败标记**，只是「这段时间没在跑它」的排序；一次普通启动没有它。
+3. `steps()` 访问器语义不动（墙钟序，仅测试在用），注释已注明与汇总行的差别。
+
+### 五 下一轮第一步
+
+1. 读本笔两条车道判决（完整 40 位 SHA）；被顶掉就按「包含它的后一笔」取证。
+2. 候选（按连锁从小到大）：(a) `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例，且**别碰在跑实例的 `out/`**）；
+   (b) `steps()` 访问器只剩测试在用 ⇒ 要么补一条生产消费者、要么就地删掉（本仓不许「已建但生产无人调用」）；
+   (c) 其余慢行站点的字段级断言（§二百四十八已收 8 处，剩余各处逐个核）。
+3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
