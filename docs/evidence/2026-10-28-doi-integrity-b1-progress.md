@@ -82,6 +82,26 @@
 **判定口径**：`retracted` ⇒ 拒绝（决定）；三类 `gaps` ⇒ 照常导出但逐条写明（指令）。
 不把两者混为一谈，也不静默放行——「没查过」不能冒充「查过没问题」。
 
+## 二·七 一次失败尝试的读数：渲染层不是「加一行」，改的是契约目录
+
+我按清单第 1–3 项动手（preload 实现 + 类型 + 频道清单），结果 **7 条清单测试当场红**，`npm run typecheck`
+还以 **134** 退出（V8 堆上限，不是类型错误）：
+
+| 现象                                                                                  | 真因                                                                                                           |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `preload/index.test.ts`「pins every callable path」红                                 | 新增可调用路径必须同步 `src/shared/renderer-contract-catalog.ts`（渲染层能力的**单一来源**），不是只改 preload |
+| `renderer-contract-catalog.test.ts`「pins the complete capability-owned inventory」红 | 目录里有分组与 profile 语义，新命令要归到 `references` 组并指定 profile                                        |
+| `npm run check:web-api-map` 起初通过但映射表里没有新频道                              | 映射表由 `scripts/generate-web-api-map.mjs` **从契约目录生成**；目录没登记就不会出现                           |
+| `npm run typecheck` exit 134                                                          | 需要 `NODE_OPTIONS=--max-old-space-size=8192`（与 `npm run build` 同）                                         |
+
+**处置**：把这四处改动整批回滚（`git checkout --`），回到干净树并复测 —— preload+shared **148 文件 1690 例**
+全绿。宁可留在「后端全通、界面待接」，也不留 7 条红测试。
+
+**给下一次的准确结论**：渲染层接线的最小改动面是
+① `renderer-contract-catalog.ts`（登记 + 组 + profile）→ ② `npm run gen:web-api-map` → ③ preload 实现与类型
+→ ④ 两处清单测试的期望值 → ⑤ 面板调用与 i18n → ⑥ 渲染测试。
+即 **6 组，其中 3 组是清单期望值**；先跑 `check:web-api-map` 与两条 inventory 用例再动面板。
+
 ## 三 口径提醒
 
 - 不做「检查失败就当干净」；`unavailable` 必须一路显式到 UI 与导出结论里；
