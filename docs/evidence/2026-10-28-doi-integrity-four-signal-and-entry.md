@@ -101,3 +101,27 @@ FAIL src/shared/renderer-contract-entry-coverage.test.ts
 
 - **装机实测**：`/Applications/PureScience.app` 仍是上一版；本轮提交后需重装并在真实项目里跑一次
   「建项目 → 加 3 条 DOI（含 Wakefield）→ 点检查 → 看角标 → 导出被拒」的完整链路，读数落本篇追加节。
+
+## 7 追加：真机链路实测（2026-10-29 00:20 CST，`out/` 构建 + 独立 headless 实例）
+
+构建：`out/main` 由 `electron-vite dev` 于 00:18 产出（含本次全部改动）。
+实例：`Electron . --purescience-headless --disable-gpu --user-data-dir=~/.purescience/electron-userdata-b1-b`，
+端口 44662，`readiness_http=200`（不与常驻 dev 实例抢单实例锁）。
+
+| 步骤                            | 读数                                                                                                                                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/v1/projects`         | `project_id=cmvsboo4g0000jtfe4fz3pfsv`                                                                                                                                                 |
+| `references:add` ×3             | 三条均 `status: created`（Wakefield 1998 / Deep learning / 伪造 DOI）                                                                                                                  |
+| 检查前 `read-integrity-summary` | `checked=0 total=3 retracted=0 gap_reasons=['never-checked']`                                                                                                                          |
+| `references:check-integrity`    | `{"checked":3,"unavailable":1,"retracted":1}`，**耗时 5931 ms**（3 条串行，≈2 s/条，含反向检索）                                                                                       |
+| 检查后 `read-integrity-summary` | `checked=3 total=3`                                                                                                                                                                    |
+| 撤稿判定                        | `RETRACTED 10.1016/S0140-6736(97)11096-0 evidence=reverse-update`，通知两条真 DOI：`10.1016/s0140-6736(04)15715-2`（Retraction of an interpretation）、`10.1016/s0140-6736(10)60175-4` |
+| 不可达判定                      | `GAP 10.9999/not-a-real-doi-xyz unavailable`（**没有**被读成 clean）                                                                                                                   |
+| 落库 `Reference`                | `retracted                                                                                                                                                                             | reverse-update`、`clean | none`、`unavailable | none` |
+
+**这条读数的意义**：Wakefield 这条正是旧判定器（只读 `relation['is-retracted-by']`）会报成 `clean` 的记录，
+现在由第三路信号（反向检索）判出，并把两条撤稿声明的 DOI 一并存下 —— 四路信号的修法在真机链路上成立。
+
+尚未覆盖：UI 点击路径（按钮／角标／导出被拒）需要**打包版**（`/Applications/PureScience.app`）才能验，
+本轮只验到命令与数据层。UI 侧的渲染行为由 `ReferencesLibraryDialog.render.test.tsx` 的 3 例钉住，
+但「实机点击」仍未做，不并入「已完成」。
