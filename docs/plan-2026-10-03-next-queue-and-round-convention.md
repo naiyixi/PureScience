@@ -13931,3 +13931,96 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
 2. 「读不到 CI」不阻塞构建是**故意**的：发版窗口里网络/凭据抖动不该把一次已经验过的发版卡死；代价是这一格必须显式告警，不许静默略过。
 3. `cancelled` 归到 `incomplete` 而不是 `red`：被后一笔推送顶掉的运行没有判决；把它当红会让连续推送时的发版永远发不出去，把它当绿则会掩盖一次真的没跑完。
 4. 本笔**没有**动 `release.yml`（受保护的工作流），也没有新增任何运行时通道或界面：这是发版工具链的一层，不涉及产品行为。
+
+## 二百五十七、本轮追加（执行器，2026-10-29 06:0x–）—— 接手上一次被中断的那批：三笔推送 + B2 的真机读数落档
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `HEAD = f0d3bd45`、`origin/main = 66e3fba3`：**本地有 3 笔未推送**（`97a105fd` B2 实现 /
+  `c47ce922` 五条认证 spec 按专属锚点取名 / `f0d3bd45` 中文前缀表按真机命中补齐），工作区**干净**、无别人的在制路径。
+  归属判据：上一轮 cron 以 `Operation interrupted: waiting for the provider to recover` 收场，三笔的时间戳（03:59–04:06）
+  都落在那一轮里 ⇒ **本轮不重做实现**，只自己重跑门禁再收口（与 §二百五十五 同一处置）。
+- **main 上那条红已定因**（不是猜）：`66e3fba3` 的 `Nightly`（run `40732176629`）红在
+  `build / Build macos-arm64 → Enforce platform certification`，四类候选原因里**三类是同一条**：
+  `li … locator('select') resolved to 2 elements`（`A record to file` / `table evidence` / `Adults with a measured primary endpoint` 三行）
+  —— 正是 B3 在记录行里加了阅读状态下拉之后，五条认证 spec 的行级 `select` 同时命中两个元素 ⇒ `c47ce922` 就是把定位收紧到
+  `[data-testid="reference-collection-select"]`（**断言一条没动**）。
+- 队列 B 段仍耗尽；v2.20.0 范围（`docs/plan-2026-10-28-two-releases.md` §三）里只剩 **B2 的读数与落档**。
+
+### 一 推送（三笔一次，`66e3fba3..f0d3bd45`）
+
+推前现查在飞车道：六条全 `completed` ⇒ **本次推送没有取消任何人的判决**。推送时 pre-push 钩子 8 段全过
+（33 个文件 0 problems）。
+
+### 二 门禁（全部本轮实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（references/shared 两份 pin/preload/组合根/web 面/i18n） | **47 files passed ｜ 1 skipped（48）**，**597 passed ｜ 1 skipped**，EXIT 0 |
+| 全量 vitest（`--maxWorkers=2`，堆 8192） | **1419 files passed ｜ 30 skipped（1449）**，**17,914 passed ｜ 225 skipped（18,139）**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（本批 33 文件里的 `.ts/.tsx/.mjs`） | **0 error / 0 warning**（EXIT 0，无输出） |
+| `bash scripts/pre-push-checks.sh` | **EXIT 0**，8 段全绿 |
+
+### 三 B2 的真机读数（本轮自己重跑，**不是**引用上一轮的自述）
+
+探针直接 import 产品模块 `src/main/references/citation-discovery.ts` 的 `discoverCitations`，注入真实 `fetch`，
+公开 API、无 key；取完即删（**探针不入库**）。证据档 `docs/evidence/2026-10-29-b2-citation-discovery.md`。
+
+| 记录 | 方向 | status | total | examined | chinese | incomplete |
+| --- | --- | --- | --- | --- | --- | --- |
+| `10.1038/nature14539`（英文） | references | `found` | 53 | 49 | 0 | **true**（53 条只读前 50）|
+| 同上 | citations | `found` | **83,700** | 50 | 0 | false |
+| `10.53388/ccmr2022022` | citations | `found` | 113 | 50 | **49** | false |
+| `10.53388/ccmr2021015` | citations | `found` | 89 | 50 | **50** | false |
+| `10.26549/yzlcyxzz.v4i3.6890` | citations | `found` | 116 | 50 | **50** | false |
+| `10.26549/yzlcyxzz.v3i4.3108` | citations | `found` | 163 | 50 | **47** | false |
+
+**三条中文判据在 200 行样本上的分布**（四个中文出版方记录各 50 行）：`doi-prefix` **194** / `title-han` **2** /
+`journal-language` **0** / 三条皆无 4。交叉核对：`language === 'zh'` 只有 **2 行**且都被 `title-han` 抓到（漏 0 行），
+而 **194 行带中文源信号却被源标成 `en`** ⇒ 用 `language:zh` 当判据会漏掉这 194 行（模块头注里那条「不许只按 language 判」
+现在有了自己的读数，不再只是经验陈述）。
+
+**边界（不许读成更强）**：① 本轮**没有活实例（窗口/IPC）读数**——探针走的是主进程模块本体，通道外壳与渲染层由
+`screening-ipc.test.ts` / `ReferencesLibraryDialog.render.test.tsx` 覆盖；未取的原因具名：本机空闲物理页 ≈68 MB、
+swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔离实例会与它抢资源。② `references` 方向在中文刊上
+三条 `empty`、两条全英文 ⇒ 这是源没给参考文献表，模块如实报 `empty` 而不是 `unavailable`。
+
+### 四 同一轮读到的、还没结的一条红（具名，未认领）
+
+`66e3fba3` 的认证作业里**还有第二条失败**：`e2e/visual-regression.spec.ts:87` 的 `project-create-dialog.png`
+**3615 px（ratio 0.01）**，重试一次同量级（`maxDiffPixelRatio` 在 darwin 上是 0.002）。
+
+- **不是本批引入**：`5003afc8`（`Nightly` success，06:54Z）之后到 `66e3fba3` 之间，渲染层改动**全在文献库面板**
+  （`git diff --stat 5003afc8..66e3fba3 -- src/renderer` 里没有 home / 项目对话框）；同一份 spec 的第一张
+  `home-empty.png`（同一页面、同一套归一化）**通过**，只有打开对话框那张红 ⇒ 差异被限制在对话框与其背板。
+- **指纹说文本没变**：`dialog` = `New project … NameDescription (optional)CancelCreate project`、
+  `dialogBox` = `410,220 460x360`（与历史读数同形）⇒ 差的是绘制，不是文案。历史上同一条比较
+  （§「3717 px / ratio 0.01，本机未复现」）已被判为**环境相关**并做了具名归一化（版本徽章 + 环境提示按钮），
+  这次两处都已归一，仍差 3615 px。
+- **本机未复现，且这一轮不去猜**：复现要 `build:e2e` + 起 Electron（本机内存口径见 §三 边界），
+  而「改容差 / 重画基准」是明令禁止的收法。
+- **判决已落（同一天、同一份 spec 的第二次读数）**：`f0d3bd45` 的认证作业里 **`Run desktop visual regression` = success**
+  ⇒ 这张图**只出现一次**，按车道抖动记档：**两条读数并列**（`66e3fba3` 差 3615 px；`f0d3bd45` 通过），
+  **不重画基准、不动 `maxDiffPixelRatio`**。同一提交的 `Run P0 Electron certification` 也从 failure 转 **success**
+  ⇒ §〇 那条「行级 `select` 命中两个元素」的根因判定被证实（五条 spec 的断言一条没改，只把定位收紧）。
+  若第三次再出现同量级，判据就升级为「车道可复现」，那时优先怀疑对话框进场的 `opacity`/`transform` 未落定
+  （收紧前先断言它已到终态，而不是放宽像素容差）。
+
+### 四·补 CI 判决（`f0d3bd45`，按完整 40 位 SHA 查）
+
+| 车道 | 读数 |
+| --- | --- |
+| `Nightly`（run `40779139791`） | **completed / success** —— `Verify` success、四平台 build 全 success、`Run P0 Electron certification` **success**、`Run desktop visual regression` **success**、`publish` success |
+| `Windows Full Test`（run `40779139735`） | **completed / success** |
+
+⇒ 这一笔是**双绿**；`66e3fba3` 认证作业的两条红（五条 spec 的 strict-mode、加上 §四 的视觉差）在这一笔上**都没有复发**，
+前者由 `c47ce922` 修掉、后者按抖动记档。
+
+### 五 下一轮第一步
+
+1. 按**完整 40 位 SHA** 读 `f0d3bd45` 的两条车道（`Nightly` 40779139791 / `Windows Full Test` 40779139735）终态；
+   红的先读**作业级**注解归因（`scripts/ci-failure-digest.mjs <run-id>`）。
+2. 若认证作业只剩 §四 那条视觉红：按上面的判据处理；若五条认证 spec 仍红，说明收紧后的锚点没落到真元素上，就地修。
+3. v2.20.0 范围（A1–A5、B1–B3、C1–C2）到此**代码与读数齐**；剩下的是发版窗口（`docs/plan-2026-10-28-two-releases.md` §三 的退出条件
+   要求 A 组用发布件读数）——开窗口前先 `hermes cron pause` 本执行器、并确认没有在飞车道。
