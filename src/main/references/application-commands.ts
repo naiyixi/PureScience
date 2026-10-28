@@ -32,6 +32,7 @@ type ReferencesCommandOwner = Pick<
   | 'removeFromCollection'
   | 'merge'
   | 'fetchByIdentifier'
+  | 'checkIntegrity'
   | 'attachPdf'
   // v2.6.0 A2: the citation mark, picked from the same handler interface as the notes write.
   | 'markCited'
@@ -69,6 +70,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'add'>,
     OwnerResult<ReferencesCommandOwner, 'add'>
   >('references:add'),
+  checkIntegrity: defineApplicationCommand<
+    'references:check-integrity',
+    OwnerArgs<ReferencesCommandOwner, 'checkIntegrity'>,
+    OwnerResult<ReferencesCommandOwner, 'checkIntegrity'>
+  >('references:check-integrity'),
   remove: defineApplicationCommand<
     'references:remove',
     OwnerArgs<ReferencesCommandOwner, 'remove'>,
@@ -234,6 +240,8 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.createCollection,
   referencesApplicationCommands.deleteCollection,
   referencesApplicationCommands.fetchByIdentifier,
+  // B1: one call checks every DOI-bearing reference and reports the three shapes an export must refuse on.
+  referencesApplicationCommands.checkIntegrity,
   referencesApplicationCommands.list,
   referencesApplicationCommands.listCollections,
   referencesApplicationCommands.merge,
@@ -275,6 +283,7 @@ const registerReferencesApplicationCommands = (
     scope.registerGroup(referencesApplicationCommandGroup, {
       'references:list': ({ args }) => dependencies.references.list(args[0]),
       'references:add': ({ args }) => dependencies.references.add(args[0]),
+      'references:check-integrity': ({ args }) => dependencies.references.checkIntegrity(args[0]),
       'references:remove': ({ args }) => dependencies.references.remove(args[0]),
       'references:list-collections': ({ args }) => dependencies.references.listCollections(args[0]),
       'references:create-collection': ({ args }) =>

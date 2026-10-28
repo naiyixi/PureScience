@@ -53,6 +53,7 @@ import { ScreeningRunnerUnavailableError, ScreeningService } from './screening-s
 import type { ScreeningModelRunner } from './screening-engine'
 import type { ScreeningFullTextReader } from './screening-full-text-cache'
 import { ScreeningRepository } from './screening-repository'
+import { checkDoiIntegrity } from './doi-integrity'
 
 // Renderer-callable surface of the project reference library (v1.51).
 export type ReferencesHandlers = {
@@ -66,6 +67,16 @@ export type ReferencesHandlers = {
   removeFromCollection(collectionId: string, referenceId: string): Promise<void>
   merge(keeperId: string, duplicateIds: readonly string[]): Promise<Reference>
   fetchByIdentifier(kind: IdentifierKind, identifier: string): Promise<CreateReferenceInput | null>
+  // DOI integrity (B1): check every DOI-bearing reference in a project, persist each verdict, and return
+  // what is still unknown in the three shapes an export has to distinguish.
+  checkIntegrity(
+    projectId: string
+  ): Promise<{
+    checked: number
+    unavailable: number
+    retracted: number
+    gaps: ReadonlyArray<{ citationKey: string; doi: string; reason: string }>
+  }>
   // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
@@ -248,6 +259,35 @@ export const createReferencesIpcModule = (
       service.removeFromCollection(collectionId, referenceId),
     merge: (keeperId, duplicateIds) => service.mergeReferences(keeperId, duplicateIds),
     fetchByIdentifier: (kind, identifier) => fetchReferenceByIdentifier(kind, identifier),
+    // Sequential on purpose: Crossref's public API has no key here, so this walks the list one DOI at a
+    // time and stores each verdict as it lands. A failure to reach Crossref stays `unavailable` in the
+    // record and in the summary — an export must not read it as "nothing found".
+    checkIntegrity: async (projectId) => {
+      const references = await repository.listReferences(projectId)
+      let checked = 0
+      let unavailable = 0
+      let retracted = 0
+      for (const reference of references) {
+        const doi = reference.doi?.trim()
+        if (!doi) continue
+        const result = await checkDoiIntegrity(doi, { fetchImpl: fetch })
+        await repository.recordDoiIntegrity(reference.id, result)
+        checked += 1
+        if (result.status === 'unavailable') unavailable += 1
+        if (result.status === 'retracted') retracted += 1
+      }
+      const gaps = await repository.listIntegrityGaps(projectId)
+      return {
+        checked,
+        unavailable,
+        retracted,
+        gaps: gaps.map((gap) => ({
+          citationKey: gap.citationKey,
+          doi: gap.doi,
+          reason: gap.reason
+        }))
+      }
+    },
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
@@ -310,6 +350,9 @@ export const installReferencesIpcHandlers = (
     const { handlers } = module
     ipcMainHandle('references:list', (_event, projectId: string) => handlers.list(projectId))
     ipcMainHandle('references:add', (_event, input: CreateReferenceInput) => handlers.add(input))
+    ipcMainHandle('references:check-integrity', (_event, projectId: string) =>
+      handlers.checkIntegrity(projectId)
+    )
     ipcMainHandle('references:remove', (_event, id: string) => handlers.remove(id))
     ipcMainHandle('references:list-collections', (_event, projectId: string) =>
       handlers.listCollections(projectId)
