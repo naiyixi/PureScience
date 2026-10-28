@@ -136,3 +136,40 @@ PATH），要定位得给 spawn 加一次性诊断（实际 argv / cwd / PATH / 
 
 我们照抄这三条，才是把 codebuddy 做到 4/4 的正路；继续在「探测任意版本 + 自拟变量」上加参数，
 只会不断遇到下一个同类差异。
+
+## 十 结局：真正的根因是「框架 → 二进制」的解析，不是 ACP 也不是凭据
+
+新增的 spawn 诊断行给出了答案，一行字：
+
+```
+[acp] agent spawn { framework: 'codebuddy', executablePath: '/opt/homebrew/bin/opencode', … }
+```
+
+`backend-resolver` 里那个三元只特判 `codex`，**其余框架一律走 `resolveOpencodeExecutable`**；而 codebuddy
+的探测结果（`setCodebuddyInfo` 存下的路径）在 `src/main` 里**没有任何一处读它**（grep 计数为 0）。所以
+「选中 codebuddy」实际执行的是「用 codebuddy 的 argv 去跑 opencode」——opencode 不认识 `--acp`，打印 banner
+后 `exit 1`，上层只能看到 `ensureConnected: connect failed`，stderr 里没有有用的东西。
+
+**这同时解释了为什么我前面所有手动实验都成功**：那些实验跑的是真 codebuddy，而应用跑的是 opencode。
+我把差异归因到 PATH / 版本 / env / cwd，全是错的——它们不是差异所在，因为被测对象根本不同。
+
+修好之后（`5003afc8`）的打包版读数：
+
+```
+framework selection { stored: 'codebuddy', resolved: 'codebuddy' }
+agent spawn { executablePath: '/Users/totota/.local/bin/codebuddy' }
+connect failed 计数：0
+session capabilities built { framework: 'codebuddy', transport: 'stdio', count: 14, groups: '5 core,9 deferred' }
+Run completed（exit 0）
+```
+
+⇒ **机检③ 4/4**。
+
+### 两条留作教训的判断失误
+
+1. **「用手动能跑」不等于「产品在跑同一件东西」**。定因的第一步应该是确认**被测对象身份**（这里一行
+   `executablePath` 就能省掉后面全部实验），而不是先怀疑环境差异。
+2. 我曾据此写下「4/4 卡在凭据形态，需要交互式组织登录」——**这条结论是错的**，已作废。凭据那关由应用注入
+   provider key 就能过（codebuddy 会话成功建立即为证）。`session/new` 在**无凭据**时的 `-32000` 是真实行为，
+   但它不是本产品的阻塞点。
+3. 版本与传输开关的发现仍然有效（裸 `--acp` 在 2.174+ 默认不再是 stdio），只是它不是这次「连不上」的原因。
