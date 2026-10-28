@@ -62,7 +62,16 @@ vi.mock('@/i18n', () => ({
       'references.unmarkCited': 'Remove citation mark',
       'references.citedBadge': 'Cited',
       'references.citedNotice': 'Marked “{title}” as cited.',
-      'references.uncitedNotice': 'Citation mark removed from “{title}”.'
+      'references.uncitedNotice': 'Citation mark removed from “{title}”.',
+      'references.integrity.check': 'Check retractions/corrections',
+      'references.integrity.checking': 'Checking, one DOI at a time…',
+      'references.integrity.summary':
+        '{checked}/{total} records checked · {gaps} verdicts still unknown · {retracted} retracted',
+      'references.integrity.unknown': 'Integrity verdicts unreadable',
+      'references.integrity.costNote': 'Walks Crossref one DOI at a time (no API key)',
+      'references.integrity.checkDone':
+        'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
+      'references.integrity.retractedBadge': 'Retracted'
     }
 
     return {
@@ -130,6 +139,8 @@ describe('ReferencesLibraryDialog collections', () => {
   let addReference: ReturnType<typeof vi.fn>
   let attachPdf: ReturnType<typeof vi.fn>
   let setNotes: ReturnType<typeof vi.fn>
+  let readIntegritySummary: ReturnType<typeof vi.fn>
+  let checkIntegrity: ReturnType<typeof vi.fn>
 
   const findButton = (name: string | RegExp): HTMLButtonElement => {
     // Radix renders the dialog into a portal on document.body, not into the container div.
@@ -193,6 +204,19 @@ describe('ReferencesLibraryDialog collections', () => {
     })
     attachPdf = vi.fn().mockResolvedValue(undefined)
     setNotes = vi.fn().mockResolvedValue(reference)
+    // Stored verdicts are read on open; the check is only ever reached through the button.
+    readIntegritySummary = vi.fn().mockResolvedValue({
+      retracted: [],
+      gaps: [],
+      checked: 0,
+      total: 0
+    })
+    checkIntegrity = vi.fn().mockResolvedValue({
+      checked: 0,
+      unavailable: 0,
+      retracted: 0,
+      gaps: []
+    })
     window.api = {
       references: {
         list: vi.fn().mockResolvedValue([reference]),
@@ -205,7 +229,9 @@ describe('ReferencesLibraryDialog collections', () => {
         remove: vi.fn().mockResolvedValue(undefined),
         add: addReference,
         attachPdf,
-        setNotes
+        setNotes,
+        readIntegritySummary,
+        checkIntegrity
       },
       projectFiles: { listFiles }
     } as unknown as typeof window.api
@@ -622,5 +648,102 @@ describe('ReferencesLibraryDialog collections', () => {
     expect(markCited).toHaveBeenCalledWith('reference-1')
     expect(document.body.textContent).toContain('as cited')
     expect(findButton('Cited')).toBeTruthy()
+  })
+
+  // Citation integrity (B1): the module, the command and the export gate all existed — what was missing was
+  // any way for a reader to make their references carry a verdict. These pin the three things that makes
+  // real: the stored summary is read on open, the check runs only when clicked, and a retracted record is
+  // named in the list itself.
+  it('reads the stored verdicts when the library opens, without checking anything (B1)', async () => {
+    readIntegritySummary.mockResolvedValue({
+      retracted: [],
+      gaps: [
+        {
+          referenceId: 'reference-1',
+          citationKey: 'Author2026',
+          doi: '10.1/x',
+          reason: 'never-checked'
+        }
+      ],
+      checked: 0,
+      total: 1
+    })
+
+    await render()
+
+    expect(readIntegritySummary).toHaveBeenCalledWith('project-1')
+    expect(checkIntegrity).not.toHaveBeenCalled()
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('0/1 records checked')
+    expect(text).toContain('1 verdicts still unknown')
+  })
+
+  it('runs the check only from its own button and states what it reached (B1)', async () => {
+    checkIntegrity.mockResolvedValue({
+      checked: 3,
+      unavailable: 1,
+      retracted: 1,
+      gaps: []
+    })
+    readIntegritySummary
+      .mockResolvedValueOnce({ retracted: [], gaps: [], checked: 0, total: 3 })
+      .mockResolvedValueOnce({
+        retracted: [
+          {
+            referenceId: 'reference-1',
+            citationKey: 'Author2026',
+            doi: '10.1/retracted',
+            checkedAt: '2026-10-28T00:00:00.000Z',
+            noticeUrls: ['https://doi.org/10.1/notice']
+          }
+        ],
+        gaps: [],
+        checked: 3,
+        total: 3
+      })
+
+    await render()
+    expect(checkIntegrity).not.toHaveBeenCalled()
+
+    act(() => findButton('Check retractions/corrections').click())
+    await flush()
+    await flush()
+
+    expect(checkIntegrity).toHaveBeenCalledWith('project-1')
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Checked 3: 1 retracted, 1 could not reach the registry')
+    // The re-read summary is what the toolbar and the badge then speak from.
+    expect(text).toContain('3/3 records checked')
+    expect(document.querySelector('[data-testid="reference-retracted-badge"]')).not.toBeNull()
+  })
+
+  it('names a retracted record in the list and leaves a clean one unmarked (B1)', async () => {
+    readIntegritySummary.mockResolvedValue({
+      retracted: [
+        {
+          referenceId: 'reference-2',
+          citationKey: 'Other2025',
+          doi: '10.1/retracted',
+          checkedAt: '2026-10-28T00:00:00.000Z',
+          noticeUrls: ['https://doi.org/10.1/notice']
+        }
+      ],
+      gaps: [],
+      checked: 2,
+      total: 2
+    })
+    vi.mocked(window.api.references.list).mockResolvedValue([
+      reference,
+      { ...reference, id: 'reference-2', title: 'A retracted trial', citationKey: 'Other2025' }
+    ] as never)
+
+    await render()
+
+    const badges = Array.from(
+      document.querySelectorAll('[data-testid="reference-retracted-badge"]')
+    )
+    expect(badges).toHaveLength(1)
+    // The badge belongs to the retracted row, not to whichever row happens to be first.
+    expect(badges[0].closest('li')?.textContent ?? '').toContain('A retracted trial')
   })
 })

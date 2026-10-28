@@ -155,6 +155,24 @@ vi.mock('@/i18n', () => {
       'Annotations left out, by reason: {reasons}',
     'references.screening.export.citationGap':
       'No annotation evidence could be read for {count} record(s): {detail}',
+    // The citation-integrity block of the export (B1 gate).
+    'references.screening.export.integrity.header': 'Citation integrity',
+    'references.screening.export.integrity.scope': 'stored verdicts only',
+    'references.screening.export.integrity.counts':
+      '{checked} of {total} DOI-bearing records have a stored verdict · gaps {gaps}',
+    'references.screening.export.integrity.none':
+      'No gaps: every DOI-bearing record in this range has a stored verdict.',
+    'references.screening.export.integrity.gapHeader': 'Verdicts still unknown',
+    'references.screening.export.integrity.gapLine': '{key} ({doi}) — {reason}',
+    'references.screening.export.integrity.reason.neverChecked': 'never checked',
+    'references.screening.export.integrity.reason.unavailable':
+      'the check could not reach the registry',
+    'references.screening.export.integrity.reason.stale':
+      'the check is old enough to need repeating',
+    'references.screening.export.integrity.held':
+      'Export held back: {count} retracted record(s) in this range — {detail}',
+    'references.screening.export.integrity.unreadable':
+      'The citation-integrity ledger could not be read ({message}), so nothing was exported.',
     // The citation labels the panel renders (shared with the annotation panel; en's own wording).
     'pdfAnnotation.citation.header': 'Citation',
     'pdfAnnotation.citation.file': 'File',
@@ -375,7 +393,9 @@ describe('ReferencesScreeningPanel', () => {
     setScreeningOverride: vi.fn(),
     setScreeningOverrides: vi.fn(),
     clearScreeningOverride: vi.fn(),
-    listCitationStyles: vi.fn()
+    listCitationStyles: vi.fn(),
+    // The export gate's read (B1): stored verdicts only.
+    readIntegritySummary: vi.fn()
   }
   // The app's file-save channel, which is how a real export reaches disk (and how the acceptance spec
   // reads a real file back).
@@ -501,6 +521,15 @@ describe('ReferencesScreeningPanel', () => {
     api.listScreeningRuleRevisions.mockResolvedValue([])
     api.listCitationStyles.mockReset()
     api.listCitationStyles.mockResolvedValue([])
+    api.readIntegritySummary.mockReset()
+    // Default: nobody has checked these DOIs yet. The file says so rather than staying silent, which is
+    // also what the export tests that do not care about integrity read.
+    api.readIntegritySummary.mockResolvedValue({
+      retracted: [],
+      gaps: [],
+      checked: 0,
+      total: 0
+    })
     saveBlobFile.mockReset()
     saveBlobFile.mockResolvedValue({ saved: true, filePath: '/tmp/references-screen-hits.txt' })
     // Default: a project whose index holds no file at all — the honest answer for a bibliography whose
@@ -1404,6 +1433,120 @@ describe('ReferencesScreeningPanel', () => {
     })
     await flush()
     expect(api.getScreening.mock.calls.length).toBeGreaterThan(readsAfterMount)
+  })
+
+  // The citation-integrity gate (B1). Two outcomes the export must never blur: a retracted record inside
+  // the range stops the file, and an unknown verdict inside the range does not — it is written into the
+  // file, because "we never looked" must not read like "we looked and it was fine".
+  it('holds the export back when a retracted record is inside the range, and names it', async () => {
+    const references = [reference('ref-retracted', 'Later cohort')]
+    api.getScreening.mockResolvedValue(snapshot([item('ref-retracted', 'included')]))
+    api.readIntegritySummary.mockResolvedValue({
+      retracted: [
+        {
+          referenceId: 'ref-retracted',
+          citationKey: 'key-ref-retracted',
+          doi: '10.1000/retracted',
+          checkedAt: '2026-10-01T00:00:00.000Z',
+          noticeUrls: ['https://doi.org/10.1000/retracted']
+        }
+      ],
+      gaps: [],
+      checked: 1,
+      total: 1
+    })
+    const onError = vi.fn()
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          projectId="project-1"
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={() => {}}
+          onError={onError}
+        />
+      )
+    })
+    await flush()
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    // Nothing was written, and the record is named with a link to its own DOI rather than a count.
+    expect(saveBlobFile).not.toHaveBeenCalled()
+    const message = String(onError.mock.calls[0]?.[0] ?? '')
+    expect(message).toContain('Export held back: 1')
+    expect(message).toContain('key-ref-retracted')
+    expect(message).toContain('https://doi.org/10.1000/retracted')
+  })
+
+  it('exports when the only gap is an unchecked DOI, and writes the gap into the file', async () => {
+    const references = [reference('ref-unchecked', 'Later cohort')]
+    api.getScreening.mockResolvedValue(snapshot([item('ref-unchecked', 'included')]))
+    api.readIntegritySummary.mockResolvedValue({
+      retracted: [],
+      gaps: [
+        {
+          referenceId: 'ref-unchecked',
+          citationKey: 'key-ref-unchecked',
+          doi: '10.1000/unchecked',
+          reason: 'never-checked'
+        }
+      ],
+      checked: 0,
+      total: 1
+    })
+    await render(snapshot([item('ref-unchecked', 'included')]), references)
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(saveBlobFile).toHaveBeenCalledTimes(1)
+    const text = new TextDecoder().decode(
+      (saveBlobFile.mock.calls[0]?.[0] as { data: ArrayBuffer }).data
+    )
+    expect(text).toContain('Citation integrity: stored verdicts only')
+    expect(text).toContain('0 of 1 DOI-bearing records have a stored verdict · gaps 1')
+    expect(text).toContain('Verdicts still unknown: 1')
+    expect(text).toContain('key-ref-unchecked (10.1000/unchecked) — never checked')
+    // The bibliography is still all of the first part: the integrity block sits below it.
+    expect(text.split('\n\n')[0]).toContain('Later cohort')
+  })
+
+  it('treats an unreadable integrity ledger as a refusal, not as a clean record', async () => {
+    const references = [reference('ref-unreadable', 'Later cohort')]
+    api.getScreening.mockResolvedValue(snapshot([item('ref-unreadable', 'included')]))
+    api.readIntegritySummary.mockRejectedValueOnce(new Error('the ledger is locked'))
+    const onError = vi.fn()
+    await act(async () => {
+      root.render(
+        <ReferencesScreeningPanel
+          projectId="project-1"
+          collectionId="collection-1"
+          collectionName="Screen hits"
+          references={references}
+          onNotice={() => {}}
+          onError={onError}
+        />
+      )
+    })
+    await flush()
+
+    await act(async () => {
+      findExactButton('Export included').click()
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(saveBlobFile).not.toHaveBeenCalled()
+    expect(String(onError.mock.calls[0]?.[0] ?? '')).toContain('the ledger is locked')
   })
 
   it('re-reads the ledger when export is pressed, so a range that moved cannot be written', async () => {

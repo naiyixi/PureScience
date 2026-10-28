@@ -11,7 +11,17 @@ import type {
   ReferenceProvenance
 } from '../../shared/references'
 import { JournalRepository, type JournalClient } from './journal-repository'
-import type { DoiIntegrityCheck, DoiIntegrityNotice, DoiIntegrityStatus } from './doi-integrity'
+import type {
+  DoiIntegrityCheck,
+  DoiIntegrityEvidence,
+  DoiIntegrityNotice,
+  DoiIntegrityStatus
+} from './doi-integrity'
+import type {
+  ReferenceIntegrityGap,
+  ReferenceIntegrityRetraction,
+  ReferenceIntegritySummary
+} from '../../shared/references-integrity'
 // Only the delegates this repository needs; typing to the subset keeps it unit-testable with a
 // lightweight mock instead of a real (engine-backed) PrismaClient.
 export type ReferenceClient = Pick<
@@ -242,7 +252,10 @@ export class ReferenceRepository {
         integrityStatus: check.status,
         integrityCheckedAt: new Date(check.checkedAt),
         integritySourceUrl: check.sourceUrl,
-        integrityNoticesJson: JSON.stringify(check.notices)
+        integrityNoticesJson: JSON.stringify(check.notices),
+        // Which field decided it. Recorded because a verdict without its evidence cannot be audited later,
+        // and because a `title-label` clean-up differs in weight from Crossref's own cross-link.
+        integrityEvidence: check.evidence
       }
     })
   }
@@ -253,6 +266,7 @@ export class ReferenceRepository {
         checkedAt: string
         sourceUrl: string
         notices: DoiIntegrityNotice[]
+        evidence?: DoiIntegrityEvidence
       }
     | undefined
   > {
@@ -263,7 +277,8 @@ export class ReferenceRepository {
         integrityStatus: true,
         integrityCheckedAt: true,
         integritySourceUrl: true,
-        integrityNoticesJson: true
+        integrityNoticesJson: true,
+        integrityEvidence: true
       }
     })
     // A row without a status has never been checked — distinct from a check that came back clean.
@@ -275,7 +290,8 @@ export class ReferenceRepository {
       sourceUrl: row.integritySourceUrl,
       notices: row.integrityNoticesJson
         ? (JSON.parse(row.integrityNoticesJson) as DoiIntegrityNotice[])
-        : []
+        : [],
+      evidence: (row.integrityEvidence as DoiIntegrityEvidence | null) ?? undefined
     }
   }
 
@@ -286,15 +302,7 @@ export class ReferenceRepository {
   async listIntegrityGaps(
     projectId: string,
     options: { maxAgeDays?: number; now?: () => Date } = {}
-  ): Promise<
-    Array<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      reason: 'never-checked' | 'unavailable' | 'stale'
-      checkedAt?: string
-    }>
-  > {
+  ): Promise<ReferenceIntegrityGap[]> {
     const client = await this.getClient()
     const nowMs = (options.now?.() ?? new Date()).getTime()
     const maxAgeMs = (options.maxAgeDays ?? Number.POSITIVE_INFINITY) * 24 * 60 * 60 * 1000
@@ -310,13 +318,7 @@ export class ReferenceRepository {
       }
     })
 
-    const gaps: Array<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      reason: 'never-checked' | 'unavailable' | 'stale'
-      checkedAt?: string
-    }> = []
+    const gaps: ReferenceIntegrityGap[] = []
 
     for (const row of rows) {
       const doi = (row.doi ?? '').trim()
@@ -361,24 +363,7 @@ export class ReferenceRepository {
   async summarizeIntegrity(
     projectId: string,
     options: { maxAgeDays?: number; now?: () => Date } = {}
-  ): Promise<{
-    retracted: Array<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      checkedAt: string
-      noticeUrls: string[]
-    }>
-    gaps: Array<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      reason: string
-      checkedAt?: string
-    }>
-    checked: number
-    total: number
-  }> {
+  ): Promise<ReferenceIntegritySummary> {
     const client = await this.getClient()
     const rows = await client.reference.findMany({
       where: { projectId, doi: { not: null } },
@@ -388,17 +373,12 @@ export class ReferenceRepository {
         doi: true,
         integrityStatus: true,
         integrityCheckedAt: true,
-        integrityNoticesJson: true
+        integrityNoticesJson: true,
+        integrityEvidence: true
       }
     })
 
-    const retracted: Array<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      checkedAt: string
-      noticeUrls: string[]
-    }> = []
+    const retracted: ReferenceIntegrityRetraction[] = []
     let checked = 0
     for (const row of rows) {
       const doi = (row.doi ?? '').trim()
@@ -413,7 +393,8 @@ export class ReferenceRepository {
         citationKey: row.citationKey,
         doi,
         checkedAt: row.integrityCheckedAt.toISOString(),
-        noticeUrls: notices.map((notice) => notice.url).filter((url): url is string => !!url)
+        noticeUrls: notices.map((notice) => notice.url).filter((url): url is string => !!url),
+        evidence: (row.integrityEvidence as DoiIntegrityEvidence | null) ?? undefined
       })
     }
 

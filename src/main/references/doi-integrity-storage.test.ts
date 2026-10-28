@@ -48,7 +48,8 @@ describe('reference DOI integrity', () => {
       sourceUrl: 'https://api.crossref.org/works/10.1000%2Fretracted',
       notices: [
         { kind: 'retraction', doi: '10.1000/notice', url: 'https://doi.org/10.1000/notice' }
-      ]
+      ],
+      evidence: 'relation'
     })
 
     const stored = await repository.getDoiIntegrity(reference.id)
@@ -58,7 +59,10 @@ describe('reference DOI integrity', () => {
       sourceUrl: 'https://api.crossref.org/works/10.1000%2Fretracted',
       notices: [
         { kind: 'retraction', doi: '10.1000/notice', url: 'https://doi.org/10.1000/notice' }
-      ]
+      ],
+      // The field that decided it travels with the verdict: a stored "retracted" that cannot say which
+      // Crossref field produced it is a claim nobody can audit later.
+      evidence: 'relation'
     })
   })
 
@@ -80,6 +84,7 @@ describe('reference DOI integrity', () => {
       checkedAt: '2026-10-28T01:00:00.000Z',
       sourceUrl: 'https://api.crossref.org/works/10.1000%2Foffline',
       notices: [],
+      evidence: 'none',
       error: 'getaddrinfo ENOTFOUND api.crossref.org'
     })
 
@@ -102,7 +107,8 @@ describe('reference DOI integrity', () => {
       doi: '10.1000/rechecked',
       checkedAt: '2026-10-01T00:00:00.000Z',
       sourceUrl: 'https://api.crossref.org/works/10.1000%2Frechecked',
-      notices: []
+      notices: [],
+      evidence: 'none' as const
     }
     await repository.recordDoiIntegrity(reference.id, { ...base, status: 'clean' })
     await repository.recordDoiIntegrity(reference.id, {
@@ -150,11 +156,13 @@ describe('reference DOI integrity', () => {
       checkedAt: string
       sourceUrl: string
       notices: never[]
+      evidence: 'none'
     } => ({
       doi: '',
       checkedAt: iso,
       sourceUrl: 'https://api.crossref.org/works/x',
-      notices: []
+      notices: [],
+      evidence: 'none'
     })
 
     await repository.recordDoiIntegrity(unavailable, {
@@ -216,9 +224,10 @@ describe('reference DOI integrity', () => {
     await make('NeverChecked', '10.1000/never')
     await make('NoDoi', undefined)
 
-    const stamp = (iso: string): { checkedAt: string; sourceUrl: string } => ({
+    const stamp = (iso: string): { checkedAt: string; sourceUrl: string; evidence: 'none' } => ({
       checkedAt: iso,
-      sourceUrl: 'https://api.crossref.org/works/x'
+      sourceUrl: 'https://api.crossref.org/works/x',
+      evidence: 'none'
     })
 
     await repository.recordDoiIntegrity(retractedId, {
@@ -243,7 +252,9 @@ describe('reference DOI integrity', () => {
         citationKey: 'Retracted',
         doi: '10.1000/retracted',
         checkedAt: '2026-10-27T00:00:00.000Z',
-        noticeUrls: ['https://doi.org/10.1000/notice']
+        noticeUrls: ['https://doi.org/10.1000/notice'],
+        // Carried through the summary so the library and the export can name the evidence.
+        evidence: 'none'
       }
     ])
     // 3 DOI-bearing references (NoDoi excluded), 2 already checked.

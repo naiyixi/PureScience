@@ -44,6 +44,10 @@ import {
   readScreeningExportCitations,
   type ScreeningExportCitationGap
 } from './screening-export-citations'
+import {
+  buildScreeningExportIntegrityBlock,
+  type ScreeningExportIntegrityBlock
+} from './screening-export-integrity'
 import { buildScreeningCoverageChecklist } from '../../../../shared/references-screening-coverage'
 import { ReferencesScreeningCoverageList } from './ReferencesScreeningCoverageList'
 
@@ -688,6 +692,68 @@ export function ReferencesScreeningPanel({
         return
       }
       const exportedAt = Date.now()
+      // Citation integrity (B1 gate): the STORED verdicts are read before anything is written — no
+      // network at export time, so a rate-limited service cannot decide whether a bibliography exists
+      // today. Retracted inside this range is a decision, not a note: the file is not written and the
+      // records are named with the notice links to check. A read that fails is not "clean" either — it
+      // stops the export, because a file that cannot say what was checked must not look like one that can.
+      let integrity: ScreeningExportIntegrityBlock
+      try {
+        // No project in context means no ledger to read — which is a refusal, not a clean bill: a file
+        // that cannot say what was checked must not look like one that can.
+        if (projectId === undefined) throw new Error('no project in context')
+        const summary = await window.api.references.readIntegritySummary(projectId)
+        integrity = buildScreeningExportIntegrityBlock({
+          summary,
+          includedReferenceIds: scope.includedReferenceIds,
+          labels: {
+            header: t('references.screening.export.integrity.header'),
+            scope: t('references.screening.export.integrity.scope'),
+            counts: (counts) =>
+              t('references.screening.export.integrity.counts', {
+                checked: counts.checked,
+                total: counts.total,
+                gaps: counts.gaps
+              }),
+            none: t('references.screening.export.integrity.none'),
+            gapHeader: t('references.screening.export.integrity.gapHeader'),
+            gapLine: (entry) =>
+              t('references.screening.export.integrity.gapLine', {
+                key: entry.citationKey,
+                doi: entry.doi,
+                reason: entry.reasonLabel
+              }),
+            reasonLabels: {
+              'never-checked': t('references.screening.export.integrity.reason.neverChecked'),
+              unavailable: t('references.screening.export.integrity.reason.unavailable'),
+              stale: t('references.screening.export.integrity.reason.stale')
+            }
+          }
+        })
+      } catch (cause) {
+        onError(
+          t('references.screening.export.integrity.unreadable', {
+            message: cause instanceof Error ? cause.message : String(cause)
+          })
+        )
+        return
+      }
+      if (integrity.held.length > 0) {
+        onError(
+          t('references.screening.export.integrity.held', {
+            count: integrity.held.length,
+            detail: integrity.held
+              .map(
+                (entry) =>
+                  `${entry.citationKey} (https://doi.org/${entry.doi}, ${when(
+                    Date.parse(entry.checkedAt)
+                  )})`
+              )
+              .join(' · ')
+          })
+        )
+        return
+      }
       const style = styles.find((entry) => entry.id === styleId) ?? styles[0]
       // The evidence block is numbered exactly when the bibliography is: `formatCitationList` numbers a
       // numeric convention (`[1] …`) and leaves an author-date list unnumbered, so the block asks the
@@ -762,9 +828,11 @@ export function ReferencesScreeningPanel({
       const saved = await window.api.saveBlobFile({
         suggestedName: fileName,
         mimeType: 'text/plain',
-        // The two parts are separated by a blank line, so a reader (and a check) can take the numbered
-        // bibliography as everything above the first blank line.
-        data: new TextEncoder().encode(`${text}\n\n${citationBlock}\n`).buffer
+        // The three parts are separated by blank lines: the bibliography, what the evidence supports, and
+        // what is still unknown about the citations themselves. The last part is written even when every
+        // record has a clean verdict — a file silent about integrity could not be told apart from one
+        // nobody checked.
+        data: new TextEncoder().encode(`${text}\n\n${citationBlock}\n\n${integrity.block}\n`).buffer
       })
       if (!saved.saved) {
         // A cancelled save is not an export: no receipt may claim a file nobody wrote.

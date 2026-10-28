@@ -5024,5 +5024,44 @@ export const es: Partial<Record<ZhKey, string>> = {
     'También se eliminarán {size} de datos de ejecución del notebook producidos en esta sesión.',
   'workspace.deleteSessionNoRunData': 'Esta sesión no generó datos de ejecución del notebook.',
   'workspace.deleteSessionRunDataUnmeasured':
-    'No se han podido medir los datos de ejecución del notebook de esta sesión: lo que haya producido se eliminará con ella.'
+    'No se han podido medir los datos de ejecución del notebook de esta sesión: lo que haya producido se eliminará con ella.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': 'Comprobar retractaciones/correcciones',
+  'references.integrity.checking': 'Comprobando, un DOI a la vez…',
+  'references.integrity.summary':
+    '{checked}/{total} registros comprobados · {gaps} dictámenes sin determinar · {retracted} retractados',
+  'references.integrity.unknown':
+    'Los dictámenes de integridad no se pueden leer (eso no significa «todo correcto»)',
+  'references.integrity.costNote':
+    'Consulta Crossref DOI a DOI en serie (sin clave de API), así que una biblioteca grande tarda minutos; las exportaciones solo leen dictámenes guardados y nunca se conectan.',
+  'references.integrity.evidence.relation': 'Evidencia: enlace cruzado de Crossref',
+  'references.integrity.evidence.update-to':
+    'Evidencia: el puntero de actualización del propio registro',
+  'references.integrity.evidence.reverse-update':
+    'Evidencia: el aviso hallado por la consulta inversa',
+  'references.integrity.evidence.title-label':
+    'Evidencia: la etiqueta de retractación en el título del registro de Crossref',
+  'references.integrity.evidence.none': 'Evidencia: ninguna (ninguna señal coincidió)',
+  'references.integrity.checkDone':
+    'Comprobados {checked}: {retracted} retractados, {unavailable} sin conexión con el registro.',
+  'references.integrity.retractedBadge': 'Retractado',
+  'references.screening.export.integrity.header': 'Integridad de las referencias',
+  'references.screening.export.integrity.scope':
+    'solo los veredictos guardados; no se volvió a comprobar nada al exportar',
+  'references.screening.export.integrity.counts':
+    '{checked} de {total} registros con DOI tienen veredicto guardado · pendientes {gaps}',
+  'references.screening.export.integrity.none':
+    'Sin pendientes: cada registro con DOI de este rango tiene un veredicto guardado.',
+  'references.screening.export.integrity.gapHeader': 'Veredictos aún desconocidos',
+  'references.screening.export.integrity.gapLine': '{key} · DOI {doi} — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': 'nunca se comprobó',
+  'references.screening.export.integrity.reason.unavailable':
+    'la comprobación no llegó al registro',
+  'references.screening.export.integrity.reason.stale':
+    'la comprobación es demasiado antigua y debe repetirse',
+  'references.screening.export.integrity.held':
+    'Exportación detenida: {count} registro(s) retractado(s) en este rango — {detail}',
+  'references.screening.export.integrity.unreadable':
+    'No se pudo leer el registro de integridad de las referencias ({message}), así que no se exportó nada.'
 }

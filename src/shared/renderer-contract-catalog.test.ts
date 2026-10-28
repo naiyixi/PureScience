@@ -68,7 +68,7 @@ describe('renderer contract catalog', () => {
     // three while the local-Web "unavailable" set moves with them.
     // 498 with the session run-data measurement (sessions:read-notebook-usage): one more capability-owned
     // request contract in the sessions group.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(498)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(500)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -79,7 +79,9 @@ describe('renderer contract catalog', () => {
     // invoke map and the local-only set move together.
     // 374 with the citation mark (v2.6.0 A2): the two reference-write channels, same profile as above.
     // 375 with the session run-data measurement (sessions:read-notebook-usage): one more invoke map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(375)
+    // 377 with the DOI integrity pair: both are invoke-map entries (the check is LOCAL-only, which the
+    // remote rejection set reflects, not the map).
+    expect(Object.keys(projection.invoke)).toHaveLength(377)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -100,7 +102,7 @@ describe('renderer contract catalog', () => {
     // channel, callable on the local Web surface like the session reads it sits beside.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(405)
+    ).toHaveLength(407)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -137,7 +139,7 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(93)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(131)
+    ).toHaveLength(132)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

@@ -1,6 +1,6 @@
 import { Dialog } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookMarked, Library, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { BookMarked, Library, Plus, RefreshCw, ShieldCheck, Trash2, X } from 'lucide-react'
 
 import { useLanguage, type TranslationKey } from '@/i18n'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
@@ -11,6 +11,10 @@ import type {
   ReferenceCollection
 } from '../../../../shared/references'
 import { normalizeTitleForDedupe } from '../../../../shared/references'
+import type {
+  ReferenceIntegrityEvidence,
+  ReferenceIntegritySummary
+} from '../../../../shared/references-integrity'
 import type { ProjectFileItem } from '../../../../shared/project-files'
 import {
   citationItemFromReference,
@@ -120,6 +124,14 @@ const describeCitationWarning = (warning: string, t: TranslateFn): string => {
   }
 }
 
+const EVIDENCE_LABEL_KEYS: Record<ReferenceIntegrityEvidence, TranslationKey> = {
+  relation: 'references.integrity.evidence.relation',
+  'update-to': 'references.integrity.evidence.update-to',
+  'reverse-update': 'references.integrity.evidence.reverse-update',
+  'title-label': 'references.integrity.evidence.title-label',
+  none: 'references.integrity.evidence.none'
+}
+
 const STYLE_REJECTION_KEYS: Record<string, TranslationKey> = {
   'xml-parse-failed': 'references.styleRejection.xmlParseFailed',
   'not-a-style': 'references.styleRejection.notAStyle',
@@ -150,6 +162,13 @@ export function ReferencesLibraryDialog({
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
+  // Citation integrity (B1): the STORED verdicts, read when the library opens (zero network) and re-read
+  // after an explicit check. The check itself is a separate button because it walks Crossref one DOI at a
+  // time — an export or an open must never pay for that, and a rate-limited registry must never decide
+  // whether a bibliography can be written.
+  const [integrity, setIntegrity] = useState<ReferenceIntegritySummary | undefined>(undefined)
+  const [integrityBusy, setIntegrityBusy] = useState(false)
+  const [integrityResult, setIntegrityResult] = useState<string | undefined>(undefined)
 
   // Identifier-import state.
   const [kind, setKind] = useState<IdentifierKind>('doi')
@@ -331,19 +350,62 @@ export function ReferencesLibraryDialog({
     }
   }, [projectId])
 
+  // The stored verdicts. A failed read leaves the previous summary in place instead of rendering an empty
+  // one: "we could not read the ledger" must not look like "nothing has a verdict".
+  const loadIntegrity = useCallback(async (): Promise<void> => {
+    if (!projectId) return
+    try {
+      setIntegrity(await window.api.references.readIntegritySummary(projectId))
+    } catch {
+      setIntegrity(undefined)
+    }
+  }, [projectId])
+
+  // The explicit check: one click, one Crossref walk (serial, no API key). The result line states what it
+  // actually reached — an unavailable lookup is counted as such and never folded into "clean".
+  const handleCheckIntegrity = async (): Promise<void> => {
+    if (!projectId || integrityBusy) return
+    setIntegrityBusy(true)
+    setIntegrityResult(undefined)
+    try {
+      const result = await window.api.references.checkIntegrity(projectId)
+      await loadIntegrity()
+      setIntegrityResult(
+        t('references.integrity.checkDone', {
+          checked: result.checked,
+          unavailable: result.unavailable,
+          retracted: result.retracted
+        })
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setIntegrityBusy(false)
+    }
+  }
+
+  const retractedByReferenceId = useMemo(
+    () => new Map((integrity?.retracted ?? []).map((entry) => [entry.referenceId, entry])),
+    [integrity]
+  )
+
   useEffect(() => {
     if (!open || !projectId) return
     let alive = true
     void Promise.all([
       window.api.references.list(projectId),
       window.api.references.listCollections(projectId),
-      window.api.references.listCitationStyles()
+      window.api.references.listCitationStyles(),
+      // Stored verdicts only — no network on open. A failed read resolves to `undefined`, which the toolbar
+      // renders as "unreadable" rather than as "nothing has a verdict".
+      window.api.references.readIntegritySummary(projectId).catch(() => undefined)
     ])
-      .then(([items, folders, styles]) => {
+      .then(([items, folders, styles, summary]) => {
         if (!alive) return
         setReferences(items)
         setCollections(folders)
         setImportedStyles(styles)
+        setIntegrity(summary)
         setError(undefined)
       })
       .catch((cause: unknown) => {
@@ -729,6 +791,44 @@ export function ReferencesLibraryDialog({
             <button type="button" className={ghostClass} onClick={() => setShowManual((v) => !v)}>
               <Plus className="size-3.5" aria-hidden="true" /> {t('references.manualAdd')}
             </button>
+          </div>
+
+          {/* Citation integrity (B1): what the project's stored verdicts say, and the one explicit action
+              that adds to them. The cost note is part of the control because the check is serial and the
+              registry is keyless — a reader deciding whether to click it deserves that number up front. */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-2">
+            <button
+              type="button"
+              className={ghostClass}
+              disabled={integrityBusy || !projectId}
+              onClick={() => void handleCheckIntegrity()}
+            >
+              <ShieldCheck
+                className={`size-3.5 ${integrityBusy ? 'animate-pulse' : ''}`}
+                aria-hidden="true"
+              />
+              {integrityBusy ? t('references.integrity.checking') : t('references.integrity.check')}
+            </button>
+            {integrity ? (
+              <span className="text-[11px] text-[var(--muted-foreground)]">
+                {t('references.integrity.summary', {
+                  checked: integrity.checked,
+                  total: integrity.total,
+                  gaps: integrity.gaps.length,
+                  retracted: integrity.retracted.length
+                })}
+              </span>
+            ) : (
+              <span className="text-[11px] text-[var(--muted-foreground)]">
+                {t('references.integrity.unknown')}
+              </span>
+            )}
+            {integrityResult ? (
+              <span className="text-[11px] text-[var(--foreground)]">{integrityResult}</span>
+            ) : null}
+            <span className="text-[10px] text-[var(--muted-foreground)]">
+              {t('references.integrity.costNote')}
+            </span>
           </div>
 
           {showPdfPicker ? (
@@ -1281,6 +1381,19 @@ export function ReferencesLibraryDialog({
                               <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
                                 {reference.title}
                               </p>
+                              {retractedByReferenceId.has(reference.id) ? (
+                                <p
+                                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-danger-000/30 bg-danger-000/10 px-2 py-0.5 text-[10px] font-semibold text-danger-000"
+                                  data-testid="reference-retracted-badge"
+                                  title={t(
+                                    EVIDENCE_LABEL_KEYS[
+                                      retractedByReferenceId.get(reference.id)?.evidence ?? 'none'
+                                    ]
+                                  )}
+                                >
+                                  {t('references.integrity.retractedBadge')}
+                                </p>
+                              ) : null}
                               <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
                                 {reference.authors
                                   .slice(0, 3)

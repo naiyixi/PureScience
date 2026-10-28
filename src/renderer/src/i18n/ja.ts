@@ -4916,5 +4916,38 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このセッションが生成したノートブック実行データ（{size}）も削除されます。',
   'workspace.deleteSessionNoRunData': 'このセッションはノートブック実行データを生成していません。',
   'workspace.deleteSessionRunDataUnmeasured':
-    'このセッションのノートブック実行データは測定できませんでした。生成された内容はセッションとともに削除されます。'
+    'このセッションのノートブック実行データは測定できませんでした。生成された内容はセッションとともに削除されます。',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': '撤回・訂正を確認',
+  'references.integrity.checking': '1件ずつ確認しています…',
+  'references.integrity.summary':
+    '{checked}/{total} 件を検証済み · 未確定 {gaps} 件 · 撤回 {retracted} 件',
+  'references.integrity.unknown': '整合性の判定を読み取れません（「問題なし」とは異なります）',
+  'references.integrity.costNote':
+    'Crossref に 1 件ずつ直列で問い合わせます（API キーなし）。件数が多いと数分かかります。書き出しは保存済みの判定のみを読み、通信しません。',
+  'references.integrity.evidence.relation': '根拠：Crossref の相互リンク',
+  'references.integrity.evidence.update-to': '根拠：レコード自身の更新ポインタ',
+  'references.integrity.evidence.reverse-update': '根拠：逆引きで見つかった撤回通知',
+  'references.integrity.evidence.title-label': '根拠：Crossref レコードのタイトルにある撤回表示',
+  'references.integrity.evidence.none': '根拠：なし（どのシグナルにも一致しません）',
+  'references.integrity.checkDone':
+    '{checked} 件を確認：撤回 {retracted} 件、登録機関に到達できず {unavailable} 件。',
+  'references.integrity.retractedBadge': '撤回済み',
+  'references.screening.export.integrity.header': '引用の完全性',
+  'references.screening.export.integrity.scope':
+    '保存済みの判定のみを読みます。書き出し中に再確認は行いません',
+  'references.screening.export.integrity.counts':
+    'DOI を持つ {total} 件のうち {checked} 件に保存済みの判定があります · 未確定 {gaps}',
+  'references.screening.export.integrity.none':
+    '未確定はありません。この範囲の DOI 付き文献はすべて判定が保存されています。',
+  'references.screening.export.integrity.gapHeader': 'まだ確定していない判定',
+  'references.screening.export.integrity.gapLine': '{key}（{doi}）— {reason}',
+  'references.screening.export.integrity.reason.neverChecked': '未確認',
+  'references.screening.export.integrity.reason.unavailable': '確認が登録機関に届きませんでした',
+  'references.screening.export.integrity.reason.stale': '判定が古く、再確認が必要です',
+  'references.screening.export.integrity.held':
+    '書き出しを中止しました。この範囲に撤回済みの文献が {count} 件あります — {detail}',
+  'references.screening.export.integrity.unreadable':
+    '引用の完全性の記録を読み取れなかったため（{message}）、何も書き出していません。'
 }

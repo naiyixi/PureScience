@@ -173,6 +173,10 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   'notebook-env': ['cancel', 'provision', 'repair'],
   notebook: ['export-ipynb', 'export-ipynb-all'],
   preview: ['load-remote-structure'],
+  // A paired browser does not get to make this host egress to Crossref, even though the DOIs are the
+  // project's own records: the check is a deliberate local action, so it is refused on the remote surface
+  // and counted in the fail-closed set.
+  references: ['check-integrity'],
   routine: ['list-all', 'remove', 'set-enabled', 'upsert'],
   goal: ['list-all'],
   endpoint: ['approve', 'list-all', 'register', 'remove', 'start', 'stop'],
@@ -341,7 +345,7 @@ describe('renderer surface inventory', () => {
     // 494 with the knowledge copy sweep (+1) and the inverse-folding pair (+2).
     // 498 with the session run-data measurement (sessions.readNotebookUsage): one preload method for the one
     // contract, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(498)
+    expect(electronPaths).toHaveLength(500)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -356,7 +360,8 @@ describe('renderer surface inventory', () => {
     // channel.
     // 375 with the session run-data measurement (sessions.readNotebookUsage): a plain Web request channel,
     // so the invoke map moves with it.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(375)
+    // 377 with the DOI integrity pair: two more invoke entries in the generated map.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(377)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -398,7 +403,7 @@ describe('renderer surface inventory', () => {
     // in the fail-closed set.
     // 131 with the local parsing models: both are local-only Web commands, so they are refused on the
     // remote surface and counted in the fail-closed set.
-    expect(expectedRemoteLocalOnly).toHaveLength(131)
+    expect(expectedRemoteLocalOnly).toHaveLength(132)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

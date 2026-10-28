@@ -6,6 +6,7 @@ import {
 import { getProjectDbClient } from '../projects/prisma-client'
 import { resolveStorageRoot } from '../storage-root'
 
+import type { ReferenceIntegritySummary } from '../../shared/references-integrity'
 import type {
   AddReferenceResult,
   CollectionItem,
@@ -76,24 +77,7 @@ export type ReferencesHandlers = {
     gaps: ReadonlyArray<{ citationKey: string; doi: string; reason: string }>
   }>
   // The export gate's read: no network, so one click cannot turn into tens of Crossref round-trips.
-  readIntegritySummary(projectId: string): Promise<{
-    retracted: ReadonlyArray<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      checkedAt: string
-      noticeUrls: readonly string[]
-    }>
-    gaps: ReadonlyArray<{
-      referenceId: string
-      citationKey: string
-      doi: string
-      reason: string
-      checkedAt?: string
-    }>
-    checked: number
-    total: number
-  }>
+  readIntegritySummary(projectId: string): Promise<ReferenceIntegritySummary>
   // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
   attachPdf(referenceId: string, pdfManagedFileId: string | null): Promise<Reference>
@@ -178,6 +162,11 @@ export type ReferencesIpcModule = {
 
 const createDefaultReferenceRepository = (): ReferenceRepository =>
   new ReferenceRepository(() => getProjectDbClient(resolveStorageRoot()))
+
+// How long a stored DOI-integrity verdict is taken at face value. Crossref notices arrive months after a
+// paper is flagged, so a verdict is a dated observation, not a permanent fact: past this horizon the
+// export gate reports the record as `stale` (re-check it) rather than quoting a year-old clean reading.
+const INTEGRITY_VERDICT_MAX_AGE_DAYS = 365
 
 // Same lazy-client seam for the screening store: it lives in the same project database, so a
 // schema-ensure failure can recover exactly like the reference library does.
@@ -305,7 +294,11 @@ export const createReferencesIpcModule = (
         }))
       }
     },
-    readIntegritySummary: (projectId) => repository.summarizeIntegrity(projectId),
+    // The gate reads stored verdicts only — no network here. The horizon matters: without one the
+    // `stale` gap class could never be produced, and an export would silently speak in two classes while
+    // claiming three. A verdict older than a year is reported as stale rather than assumed current.
+    readIntegritySummary: (projectId) =>
+      repository.summarizeIntegrity(projectId, { maxAgeDays: INTEGRITY_VERDICT_MAX_AGE_DAYS }),
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),

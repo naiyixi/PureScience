@@ -4944,5 +4944,41 @@ export const en: Record<ZhKey, string> = {
     'This also deletes {size} of notebook run data this session produced.',
   'workspace.deleteSessionNoRunData': 'This session produced no notebook run data.',
   'workspace.deleteSessionRunDataUnmeasured':
-    'Its notebook run data could not be measured — anything it produced is deleted with the session.'
+    'Its notebook run data could not be measured — anything it produced is deleted with the session.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': 'Check retractions/corrections',
+  'references.integrity.checking': 'Checking, one DOI at a time…',
+  'references.integrity.summary':
+    '{checked}/{total} records checked · {gaps} verdicts still unknown · {retracted} retracted',
+  'references.integrity.unknown':
+    'Integrity verdicts unreadable (that is not the same as “all clear”)',
+  'references.integrity.costNote':
+    'Walks Crossref one DOI at a time (no API key), so a large library takes minutes; exports read stored verdicts and never go online.',
+  'references.integrity.evidence.relation': 'Evidence: Crossref cross-link',
+  'references.integrity.evidence.update-to': "Evidence: the record's own update pointer",
+  'references.integrity.evidence.reverse-update': 'Evidence: the notice found by the reverse query',
+  'references.integrity.evidence.title-label':
+    'Evidence: the retraction label in the Crossref record title',
+  'references.integrity.evidence.none': 'Evidence: none (no signal matched)',
+  'references.integrity.checkDone':
+    'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
+  'references.integrity.retractedBadge': 'Retracted',
+  'references.screening.export.integrity.header': 'Citation integrity',
+  'references.screening.export.integrity.scope':
+    'stored verdicts only; nothing was re-checked while exporting',
+  'references.screening.export.integrity.counts':
+    '{checked} of {total} DOI-bearing records have a stored verdict · gaps {gaps}',
+  'references.screening.export.integrity.none':
+    'No gaps: every DOI-bearing record in this range has a stored verdict.',
+  'references.screening.export.integrity.gapHeader': 'Verdicts still unknown',
+  'references.screening.export.integrity.gapLine': '{key} ({doi}) — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': 'never checked',
+  'references.screening.export.integrity.reason.unavailable':
+    'the check could not reach the registry',
+  'references.screening.export.integrity.reason.stale': 'the check is old enough to need repeating',
+  'references.screening.export.integrity.held':
+    'Export held back: {count} retracted record(s) in this range — {detail}',
+  'references.screening.export.integrity.unreadable':
+    'The citation-integrity ledger could not be read ({message}), so nothing was exported.'
 }

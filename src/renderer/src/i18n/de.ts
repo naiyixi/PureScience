@@ -5085,5 +5085,43 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Damit werden außerdem {size} an Notebook-Laufdaten gelöscht, die diese Sitzung erzeugt hat.',
   'workspace.deleteSessionNoRunData': 'Diese Sitzung hat keine Notebook-Laufdaten erzeugt.',
   'workspace.deleteSessionRunDataUnmeasured':
-    'Die Notebook-Laufdaten dieser Sitzung konnten nicht gemessen werden — was sie erzeugt hat, wird mit der Sitzung gelöscht.'
+    'Die Notebook-Laufdaten dieser Sitzung konnten nicht gemessen werden — was sie erzeugt hat, wird mit der Sitzung gelöscht.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': 'Rücknahmen/Korrekturen prüfen',
+  'references.integrity.checking': 'Prüfe, ein DOI nach dem anderen…',
+  'references.integrity.summary':
+    '{checked}/{total} Datensätze geprüft · {gaps} Urteile offen · {retracted} zurückgezogen',
+  'references.integrity.unknown':
+    'Integritätsurteile nicht lesbar (das ist nicht dasselbe wie „alles in Ordnung“)',
+  'references.integrity.costNote':
+    'Fragt Crossref DOI für DOI seriell ab (kein API-Schlüssel), bei großen Bibliotheken dauert das Minuten; Exporte lesen nur gespeicherte Urteile und gehen nie online.',
+  'references.integrity.evidence.relation': 'Beleg: Crossref-Querverweis',
+  'references.integrity.evidence.update-to':
+    'Beleg: eigener Aktualisierungsverweis des Datensatzes',
+  'references.integrity.evidence.reverse-update':
+    'Beleg: über die Rückwärtssuche gefundene Rücknahmemeldung',
+  'references.integrity.evidence.title-label': 'Beleg: Rücknahme-Kennzeichnung im Crossref-Titel',
+  'references.integrity.evidence.none': 'Beleg: keiner (kein Signal traf zu)',
+  'references.integrity.checkDone':
+    '{checked} geprüft: {retracted} zurückgezogen, {unavailable} ohne Verbindung zum Register.',
+  'references.integrity.retractedBadge': 'Zurückgezogen',
+  'references.screening.export.integrity.header': 'Belegintegrität',
+  'references.screening.export.integrity.scope':
+    'nur gespeicherte Befunde; beim Export wurde nichts erneut geprüft',
+  'references.screening.export.integrity.counts':
+    '{checked} von {total} Datensätzen mit DOI haben einen gespeicherten Befund · offen {gaps}',
+  'references.screening.export.integrity.none':
+    'Keine Lücken: Für jeden Datensatz mit DOI in diesem Bereich liegt ein Befund vor.',
+  'references.screening.export.integrity.gapHeader': 'Noch ungeklärte Befunde',
+  'references.screening.export.integrity.gapLine': '{key} · DOI {doi} — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': 'nie geprüft',
+  'references.screening.export.integrity.reason.unavailable':
+    'die Prüfung erreichte das Register nicht',
+  'references.screening.export.integrity.reason.stale':
+    'die Prüfung ist zu alt und muss wiederholt werden',
+  'references.screening.export.integrity.held':
+    'Export zurückgehalten: {count} zurückgezogene Datensätze in diesem Bereich — {detail}',
+  'references.screening.export.integrity.unreadable':
+    'Das Integritätsverzeichnis war nicht lesbar ({message}); es wurde nichts exportiert.'
 }

@@ -5056,5 +5056,43 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'workspace.deleteSessionNoRunData':
     'Cette session n’a produit aucune donnée d’exécution de notebook.',
   'workspace.deleteSessionRunDataUnmeasured':
-    'Les données d’exécution de notebook de cette session n’ont pas pu être mesurées — tout ce qu’elle a produit sera supprimé avec elle.'
+    'Les données d’exécution de notebook de cette session n’ont pas pu être mesurées — tout ce qu’elle a produit sera supprimé avec elle.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': 'Vérifier rétractations/corrections',
+  'references.integrity.checking': 'Vérification, un DOI à la fois…',
+  'references.integrity.summary':
+    '{checked}/{total} notices vérifiées · {gaps} verdicts indéterminés · {retracted} rétractées',
+  'references.integrity.unknown':
+    'Les verdicts d’intégrité sont illisibles (ce n’est pas « tout va bien »)',
+  'references.integrity.costNote':
+    'Interroge Crossref DOI par DOI, en série (sans clé d’API) : une grande bibliothèque prend donc plusieurs minutes ; les exports ne lisent que les verdicts enregistrés et ne se connectent jamais.',
+  'references.integrity.evidence.relation': 'Preuve : lien croisé Crossref',
+  'references.integrity.evidence.update-to':
+    'Preuve : le pointeur de mise à jour du dossier lui-même',
+  'references.integrity.evidence.reverse-update': 'Preuve : l’avis trouvé par la requête inverse',
+  'references.integrity.evidence.title-label':
+    'Preuve : la mention de rétractation dans le titre du dossier Crossref',
+  'references.integrity.evidence.none': 'Preuve : aucune (aucun signal ne correspond)',
+  'references.integrity.checkDone':
+    '{checked} vérifiées : {retracted} rétractées, {unavailable} sans réponse du registre.',
+  'references.integrity.retractedBadge': 'Rétracté',
+  'references.screening.export.integrity.header': 'Intégrité des références',
+  'references.screening.export.integrity.scope':
+    "uniquement les verdicts enregistrés ; rien n'a été revérifié pendant l'export",
+  'references.screening.export.integrity.counts':
+    '{checked} sur {total} notices avec DOI ont un verdict enregistré · lacunes {gaps}',
+  'references.screening.export.integrity.none':
+    'Aucune lacune : chaque notice avec DOI de cette sélection possède un verdict enregistré.',
+  'references.screening.export.integrity.gapHeader': 'Verdicts encore inconnus',
+  'references.screening.export.integrity.gapLine': '{key} · DOI {doi} — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': 'jamais vérifiée',
+  'references.screening.export.integrity.reason.unavailable':
+    "la vérification n'a pas atteint le registre",
+  'references.screening.export.integrity.reason.stale':
+    'la vérification est trop ancienne et doit être refaite',
+  'references.screening.export.integrity.held':
+    'Export suspendu : {count} notice(s) rétractée(s) dans cette sélection — {detail}',
+  'references.screening.export.integrity.unreadable':
+    "Le registre d'intégrité des références est illisible ({message}) ; rien n'a donc été exporté."
 }

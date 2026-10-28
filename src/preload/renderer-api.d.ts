@@ -1112,6 +1112,17 @@ export interface PureScienceAPI {
     ): Promise<import('../shared/journal-metrics').JournalMetricImportResult>
     // Read side of the journal library (R2-U3): the screening view filters this in memory.
     listJournalMetrics(): Promise<import('../shared/journal-metrics-overview').JournalMetricLibrary>
+    // DOI integrity (B1): the export gate's read — stored verdicts only, zero network. A record with a DOI
+    // that was never checked, or whose check came back unavailable, is a `gap` with its own reason; the
+    // three reasons take different actions, so they are never merged into one. The types are the shared
+    // vocabulary every surface agrees on (main, preload, export gate) — not a second copy of it.
+    readIntegritySummary(
+      projectId: string
+    ): Promise<import('../shared/references-integrity').ReferenceIntegritySummary>
+    // The explicit "check now" action: walks the project's DOI-bearing references, writes each verdict.
+    checkIntegrity(
+      projectId: string
+    ): Promise<import('../shared/references-integrity').ReferenceIntegrityCheckSummary>
     // Aliases and the explicit merge (R2-U4): re-attributes the source journal's metrics and references to the
     // target and keeps the source's spelling as an alias. Never a fuzzy merge; every refusal is named.
     mergeJournals(

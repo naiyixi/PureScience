@@ -26,7 +26,16 @@ const installApiStub = (): void => {
     references: {
       list: vi.fn(async () => []),
       listCollections: vi.fn(async () => []),
-      listCitationStyles: vi.fn(async () => [])
+      listCitationStyles: vi.fn(async () => []),
+      // The library reads stored citation-integrity verdicts when it opens (B1): a stub without them
+      // makes the dialog throw inside its own effect, which would fail these keyboard tests for a reason
+      // that has nothing to do with dismissal.
+      readIntegritySummary: vi.fn(async () => ({
+        retracted: [],
+        gaps: [],
+        checked: 0,
+        total: 0
+      }))
     }
   }
 }

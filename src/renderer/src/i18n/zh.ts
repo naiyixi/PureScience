@@ -4601,7 +4601,38 @@ export const zh = {
   'workspace.deleteSessionRunData': '这还会删除本会话产出的笔记本运行数据（{size}）。',
   'workspace.deleteSessionNoRunData': '本会话没有产出笔记本运行数据。',
   'workspace.deleteSessionRunDataUnmeasured':
-    '无法测量本会话的笔记本运行数据——它产出的内容会随会话一起删除。'
+    '无法测量本会话的笔记本运行数据——它产出的内容会随会话一起删除。',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': '检查撤稿/更正',
+  'references.integrity.checking': '正在逐条检查…',
+  'references.integrity.summary':
+    '已核验 {checked}/{total} 条 · 未确定判定 {gaps} 条 · 已判定撤稿 {retracted} 条',
+  'references.integrity.unknown': '完整性判定不可读（这不等于“都没问题”）',
+  'references.integrity.costNote':
+    '逐条串行访问 Crossref（无 API key），条数多时需要几分钟；导出只读已存判定，不联网。',
+  'references.integrity.evidence.relation': '依据：Crossref 交叉链接',
+  'references.integrity.evidence.update-to': '依据：记录自带的更新指向',
+  'references.integrity.evidence.reverse-update': '依据：反向检索到的撤稿声明',
+  'references.integrity.evidence.title-label': '依据：Crossref 记录标题的撤稿标注',
+  'references.integrity.evidence.none': '依据：无（没有命中任何信号）',
+  'references.integrity.checkDone':
+    '本轮检查 {checked} 条：撤稿 {retracted} 条，无法连上登记库 {unavailable} 条。',
+  'references.integrity.retractedBadge': '已撤稿',
+  'references.screening.export.integrity.header': '引文完整性',
+  'references.screening.export.integrity.scope': '只读已存判定；导出时没有联网复查',
+  'references.screening.export.integrity.counts':
+    '{total} 条带 DOI 的记录中 {checked} 条有已存判定 · 缺口 {gaps}',
+  'references.screening.export.integrity.none': '无缺口：本范围内每一条带 DOI 的记录都有已存判定。',
+  'references.screening.export.integrity.gapHeader': '仍未确定的判定',
+  'references.screening.export.integrity.gapLine': '{key}（{doi}）— {reason}',
+  'references.screening.export.integrity.reason.neverChecked': '从未检查',
+  'references.screening.export.integrity.reason.unavailable': '检查未能连上登记库',
+  'references.screening.export.integrity.reason.stale': '检查结果已过时，需要复查',
+  'references.screening.export.integrity.held':
+    '已拦下本次导出：本范围内有 {count} 条已撤稿记录 — {detail}',
+  'references.screening.export.integrity.unreadable':
+    '无法读取引文完整性台账（{message}），因此没有导出任何内容。'
 }
 
 export type ZhKey = keyof typeof zh

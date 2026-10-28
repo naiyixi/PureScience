@@ -4545,5 +4545,37 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'workspace.deleteSessionRunData': '這還會刪除本工作階段產出的筆記本執行資料（{size}）。',
   'workspace.deleteSessionNoRunData': '本工作階段沒有產出筆記本執行資料。',
   'workspace.deleteSessionRunDataUnmeasured':
-    '無法測量本工作階段的筆記本執行資料——它產出的內容會隨工作階段一併刪除。'
+    '無法測量本工作階段的筆記本執行資料——它產出的內容會隨工作階段一併刪除。',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': '檢查撤稿/更正',
+  'references.integrity.checking': '正在逐條檢查…',
+  'references.integrity.summary':
+    '已核驗 {checked}/{total} 條 · 未確定判定 {gaps} 條 · 已判定撤稿 {retracted} 條',
+  'references.integrity.unknown': '完整性判定不可讀（這不等於「都沒問題」）',
+  'references.integrity.costNote':
+    '逐條串行存取 Crossref（無 API key），條數多時需要數分鐘；匯出只讀已存判定，不連網。',
+  'references.integrity.evidence.relation': '依據：Crossref 交叉連結',
+  'references.integrity.evidence.update-to': '依據：記錄自帶的更新指向',
+  'references.integrity.evidence.reverse-update': '依據：反向檢索到的撤稿聲明',
+  'references.integrity.evidence.title-label': '依據：Crossref 記錄標題的撤稿標註',
+  'references.integrity.evidence.none': '依據：無（沒有命中任何信號）',
+  'references.integrity.checkDone':
+    '本輪檢查 {checked} 條：撤稿 {retracted} 條，無法連上登錄庫 {unavailable} 條。',
+  'references.integrity.retractedBadge': '已撤稿',
+  'references.screening.export.integrity.header': '引文完整性',
+  'references.screening.export.integrity.scope': '只讀已存判定；匯出時沒有連網複查',
+  'references.screening.export.integrity.counts':
+    '{total} 筆帶 DOI 的紀錄中 {checked} 筆有已存判定 · 缺口 {gaps}',
+  'references.screening.export.integrity.none':
+    '沒有缺口：本範圍內每一筆帶 DOI 的紀錄都有已存判定。',
+  'references.screening.export.integrity.gapHeader': '仍未確定的判定',
+  'references.screening.export.integrity.gapLine': '{key}（{doi}）— {reason}',
+  'references.screening.export.integrity.reason.neverChecked': '從未檢查',
+  'references.screening.export.integrity.reason.unavailable': '檢查未能連上登錄庫',
+  'references.screening.export.integrity.reason.stale': '檢查結果已過時，需要複查',
+  'references.screening.export.integrity.held':
+    '已攔下本次匯出：本範圍內有 {count} 筆已撤稿紀錄 — {detail}',
+  'references.screening.export.integrity.unreadable':
+    '無法讀取引文完整性台帳（{message}），因此沒有匯出任何內容。'
 }

@@ -432,6 +432,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.appendScreeningRuleRevision',
       'references.attachPdf',
       'references.cancelScreeningRun',
+      'references.checkIntegrity',
       'references.clearCited',
       'references.clearScreeningOverride',
       'references.createCollection',
@@ -451,6 +452,7 @@ describe('preload bridge — public surface inventory', () => {
       'references.markCited',
       'references.merge',
       'references.mergeJournals',
+      'references.readIntegritySummary',
       'references.remove',
       'references.removeCitationStyle',
       'references.removeFromCollection',
@@ -892,7 +894,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // so they count here while neither Web map does.
     // 253 with the session run-data measurement (sessions.readNotebookUsage): one more plain Web request
     // contract beside readDocument, so the Web maps move with it exactly as they do here.
-    expect(coreContracts).toHaveLength(253)
+    expect(coreContracts).toHaveLength(255)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -904,7 +906,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       surfaceNative: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'surface-native'
       ).length
-    }).toEqual({ requests: 215, events: 27, sends: 10, surfaceNative: 1 })
+      // 217 with the DOI integrity pair: two more core request contracts.
+    }).toEqual({ requests: 217, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -913,7 +916,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(215)
+    expect(requestContracts).toHaveLength(217)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -4934,5 +4934,42 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Вместе с ним будут удалены данные выполнения блокнота, созданные в этом сеансе ({size}).',
   'workspace.deleteSessionNoRunData': 'Этот сеанс не создавал данных выполнения блокнота.',
   'workspace.deleteSessionRunDataUnmeasured':
-    'Не удалось измерить данные выполнения блокнота этого сеанса — всё, что он создал, будет удалено вместе с ним.'
+    'Не удалось измерить данные выполнения блокнота этого сеанса — всё, что он создал, будет удалено вместе с ним.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': 'Проверить отзывы/исправления',
+  'references.integrity.checking': 'Проверка, по одному DOI…',
+  'references.integrity.summary':
+    'Проверено {checked}/{total} · неопределённых вердиктов {gaps} · отозвано {retracted}',
+  'references.integrity.unknown':
+    'Вердикты целостности недоступны (это не то же самое, что «всё чисто»)',
+  'references.integrity.costNote':
+    'Crossref опрашивается по одному DOI последовательно (без ключа API), поэтому большая библиотека займёт минуты; экспорт читает только сохранённые вердикты и не выходит в сеть.',
+  'references.integrity.evidence.relation': 'Основание: перекрёстная ссылка Crossref',
+  'references.integrity.evidence.update-to': 'Основание: собственный указатель обновления записи',
+  'references.integrity.evidence.reverse-update':
+    'Основание: уведомление, найденное обратным запросом',
+  'references.integrity.evidence.title-label':
+    'Основание: пометка об отзыве в заголовке записи Crossref',
+  'references.integrity.evidence.none': 'Основание: нет (ни один сигнал не совпал)',
+  'references.integrity.checkDone':
+    'Проверено {checked}: отозвано {retracted}, не удалось связаться с реестром {unavailable}.',
+  'references.integrity.retractedBadge': 'Отозвано',
+  'references.screening.export.integrity.header': 'Целостность ссылок',
+  'references.screening.export.integrity.scope':
+    'только сохранённые вердикты; при экспорте ничего не перепроверялось',
+  'references.screening.export.integrity.counts':
+    'из {total} записей с DOI сохранённый вердикт есть у {checked} · пробелов {gaps}',
+  'references.screening.export.integrity.none':
+    'Пробелов нет: у каждой записи с DOI в этом диапазоне есть сохранённый вердикт.',
+  'references.screening.export.integrity.gapHeader': 'Вердикты, которые ещё неизвестны',
+  'references.screening.export.integrity.gapLine': '{key} · DOI {doi} — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': 'никогда не проверялось',
+  'references.screening.export.integrity.reason.unavailable':
+    'проверка не смогла связаться с реестром',
+  'references.screening.export.integrity.reason.stale': 'проверка слишком старая и требует повтора',
+  'references.screening.export.integrity.held':
+    'Экспорт остановлен: в этом диапазоне {count} отозванных записей — {detail}',
+  'references.screening.export.integrity.unreadable':
+    'Не удалось прочитать реестр целостности ссылок ({message}), поэтому ничего не экспортировано.'
 }

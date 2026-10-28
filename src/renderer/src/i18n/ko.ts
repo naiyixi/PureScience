@@ -4832,5 +4832,38 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 세션이 생성한 노트북 실행 데이터({size})도 함께 삭제됩니다.',
   'workspace.deleteSessionNoRunData': '이 세션은 노트북 실행 데이터를 생성하지 않았습니다.',
   'workspace.deleteSessionRunDataUnmeasured':
-    '이 세션의 노트북 실행 데이터 크기를 측정할 수 없습니다. 생성된 내용은 세션과 함께 삭제됩니다.'
+    '이 세션의 노트북 실행 데이터 크기를 측정할 수 없습니다. 생성된 내용은 세션과 함께 삭제됩니다.',
+  // Citation integrity (B1): the library's own toolbar — what the stored verdicts say, and the
+  // explicit check that adds to them. The badge names a record a reader must not cite as it stands.
+  'references.integrity.check': '철회·정정 확인',
+  'references.integrity.checking': '한 건씩 확인하는 중…',
+  'references.integrity.summary':
+    '{checked}/{total}건 검증됨 · 판정 미정 {gaps}건 · 철회 {retracted}건',
+  'references.integrity.unknown': '무결성 판정을 읽을 수 없습니다(“이상 없음”과 다릅니다)',
+  'references.integrity.costNote':
+    'API 키 없이 Crossref에 한 건씩 순차 조회하므로 항목이 많으면 몇 분 걸립니다. 내보내기는 저장된 판정만 읽고 네트워크를 쓰지 않습니다.',
+  'references.integrity.evidence.relation': '근거: Crossref 상호 링크',
+  'references.integrity.evidence.update-to': '근거: 레코드 자체의 갱신 포인터',
+  'references.integrity.evidence.reverse-update': '근거: 역방향 조회로 찾은 철회 공지',
+  'references.integrity.evidence.title-label': '근거: Crossref 레코드 제목의 철회 표기',
+  'references.integrity.evidence.none': '근거: 없음(어떤 신호도 일치하지 않음)',
+  'references.integrity.checkDone':
+    '{checked}건 확인: 철회 {retracted}건, 등록기관 연결 실패 {unavailable}건.',
+  'references.integrity.retractedBadge': '철회됨',
+  'references.screening.export.integrity.header': '인용 무결성',
+  'references.screening.export.integrity.scope':
+    '저장된 판정만 읽습니다. 내보내는 동안 다시 확인하지 않습니다',
+  'references.screening.export.integrity.counts':
+    'DOI가 있는 {total}건 중 {checked}건에 저장된 판정이 있습니다 · 미확정 {gaps}',
+  'references.screening.export.integrity.none':
+    '미확정 항목이 없습니다. 이 범위의 DOI 보유 문헌은 모두 판정이 저장되어 있습니다.',
+  'references.screening.export.integrity.gapHeader': '아직 확정되지 않은 판정',
+  'references.screening.export.integrity.gapLine': '{key} · DOI {doi} — {reason}',
+  'references.screening.export.integrity.reason.neverChecked': '확인한 적 없음',
+  'references.screening.export.integrity.reason.unavailable': '확인이 등록 기관에 닿지 못했습니다',
+  'references.screening.export.integrity.reason.stale': '판정이 오래되어 다시 확인해야 합니다',
+  'references.screening.export.integrity.held':
+    '내보내기를 중단했습니다. 이 범위에 철회된 문헌이 {count}건 있습니다 — {detail}',
+  'references.screening.export.integrity.unreadable':
+    '인용 무결성 기록을 읽을 수 없어({message}) 아무것도 내보내지 않았습니다.'
 }

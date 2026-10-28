@@ -527,6 +527,10 @@ model Reference {
   integrityCheckedAt  DateTime?
   integritySourceUrl  String?
   integrityNoticesJson String?
+  // Which Crossref field decided the verdict: relation | update-to | reverse-update | title-label | none.
+  // Stored because "retracted" without its evidence cannot be audited, and a clean verdict that does not
+  // say which queries came back empty hides the difference between "checked" and "could not check".
+  integrityEvidence   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

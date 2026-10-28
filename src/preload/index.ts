@@ -551,7 +551,8 @@ const api: PureScienceAPI = {
     registerSource: (request) =>
       electronRendererContracts.invoke('knowledge.registerSource', request),
     removeSource: (request) => electronRendererContracts.invoke('knowledge.removeSource', request),
-    removeSources: (request) => electronRendererContracts.invoke('knowledge.removeSources', request),
+    removeSources: (request) =>
+      electronRendererContracts.invoke('knowledge.removeSources', request),
     sweepCopies: () => electronRendererContracts.invoke('knowledge.sweepCopies'),
     search: (request) => electronRendererContracts.invoke('knowledge.search', request)
   },
@@ -750,6 +751,12 @@ const api: PureScienceAPI = {
     // Read side of the same library (R2-U3): journals + every claim in one call; the screening panel
     // filters in memory with the shared pure view.
     listJournalMetrics: () => electronRendererContracts.invoke('references.listJournalMetrics'),
+    // DOI integrity (B1). The read is what the export gate consults: stored verdicts only, no network. The
+    // explicit check is the separate, deliberate action — one click there is tens of Crossref round-trips.
+    readIntegritySummary: (projectId) =>
+      electronRendererContracts.invoke('references.readIntegritySummary', projectId),
+    checkIntegrity: (projectId) =>
+      electronRendererContracts.invoke('references.checkIntegrity', projectId),
     // The explicit merge (R2-U4): the merged journal's spelling survives as an alias, so the older name keeps
     // resolving to the surviving record instead of registering a second identity for one venue.
     mergeJournals: (input) => electronRendererContracts.invoke('references.mergeJournals', input),
