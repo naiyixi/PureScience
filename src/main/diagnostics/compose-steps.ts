@@ -23,7 +23,8 @@ import {
 import {
   heldSplitForMonotonicWindow,
   sharedLoopHeldWindows,
-  type LoopHeldWindows
+  type HeldReading,
+  type HeldSplitSource
 } from './loop-held-windows'
 
 export type ComposeStepOutcome = 'ok' | 'failed'
@@ -42,6 +43,8 @@ type TimedStep = ComposeStep &
     attribution: ActivityAttribution
     /** Present only when part of the step fell inside a recorded stall. */
     heldMs?: number
+    /** Present only when the stall ring no longer covers this span — see `HeldUnsplittable`. */
+    heldUnmeasured?: 'windows-dropped'
   }>
 
 /**
@@ -57,6 +60,12 @@ export type ComposeStepSnapshot = Readonly<{
   attribution: ActivityAttribution
   /** Present only when part of this step fell inside a recorded stall. */
   heldMs?: number
+  /**
+   * Present only when the stall ring no longer covers this step's span (it dropped the oldest windows). The
+   * step then carries no `heldMs` and contributes nothing to the window's `heldMs` total: not measured is not
+   * the same answer as zero, and this marker is what keeps them apart in the archive.
+   */
+  heldUnmeasured?: 'windows-dropped'
 }>
 
 /**
@@ -109,7 +118,7 @@ export type ComposeStepRecorderOptions = {
    * Injectable loop-held window source, for the same reason `now` and `cpuUsage` are: the split has to be
    * provable without the process actually freezing. Defaults to the windows the stall watchdog records.
    */
-  heldWindows?: Pick<LoopHeldWindows, 'heldMsWithin'>
+  heldWindows?: HeldSplitSource
   /** A step at or above this duration logs its own `slow` line. */
   slowMs?: number
   /** How many slowest steps the summary keeps. */
@@ -149,6 +158,16 @@ export const createComposeStepRecorder = (
   const summarySize = options.summarySize ?? DEFAULT_SUMMARY_SIZE
   const messages = options.messages ?? DEFAULT_MESSAGES
   const heldWindows = options.heldWindows ?? sharedLoopHeldWindows
+  // The recorded entry keeps the same reading the slow line prints: a split when there is one, the named
+  // marker when the ring cannot answer, and neither when the loop was free.
+  const heldFields = (
+    held: HeldReading | undefined
+  ): { heldMs?: number; heldUnmeasured?: 'windows-dropped' } =>
+    held === undefined
+      ? {}
+      : 'heldMs' in held
+        ? { heldMs: held.heldMs }
+        : { heldUnmeasured: held.heldUnmeasured }
 
   const recorded: TimedStep[] = []
   let startedAt: number | undefined
@@ -180,7 +199,7 @@ export const createComposeStepRecorder = (
         cpuMs,
         cpuShare: Number(cpuShare.toFixed(3)),
         attribution,
-        ...(held === undefined ? {} : { heldMs: held.heldMs })
+        ...heldFields(held)
       })
       if (durationMs >= slowMs) {
         options.log.warn(messages.slow, {
@@ -214,7 +233,7 @@ export const createComposeStepRecorder = (
         cpuMs,
         cpuShare: Number(cpuShare.toFixed(3)),
         attribution,
-        ...(held === undefined ? {} : { heldMs: held.heldMs })
+        ...heldFields(held)
       })
       options.log.error(messages.failed, {
         step: name,
@@ -242,7 +261,8 @@ export const createComposeStepRecorder = (
       cpuMs: entry.cpuMs,
       cpuShare: entry.cpuShare,
       attribution: entry.attribution,
-      ...(entry.heldMs === undefined ? {} : { heldMs: Math.round(entry.heldMs) })
+      ...(entry.heldMs === undefined ? {} : { heldMs: Math.round(entry.heldMs) }),
+      ...(entry.heldUnmeasured === undefined ? {} : { heldUnmeasured: entry.heldUnmeasured })
     }))
     const stepMs = steps.reduce((total, entry) => total + entry.durationMs, 0)
     const heldMs = recorded.reduce((total, entry) => total + (entry.heldMs ?? 0), 0)

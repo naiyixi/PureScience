@@ -114,6 +114,9 @@ export type ApplicationCommandDiagnostic = Readonly<{
   // the process was not running at all, and the remainder that was ours.
   heldMs?: number
   ownMs?: number
+  // Present instead of the split when the stall ring had already dropped the oldest windows: the span cannot
+  // be answered for, and reading that as `heldMs: 0` would call a frozen process our own slow work.
+  heldUnmeasured?: 'windows-dropped'
 }>
 
 // What the invoke path measures around one handler call. Every field but `durationMs` is best-effort: when
@@ -125,6 +128,7 @@ type HandlerTiming = Readonly<{
   attribution?: ActivityAttribution
   heldMs?: number
   ownMs?: number
+  heldUnmeasured?: 'windows-dropped'
 }>
 
 /**
@@ -135,6 +139,7 @@ export type ApplicationCommandRouterDiagnostics = Readonly<{
   now?: () => number
   cpuUsage?: () => CpuUsageSample
   heldMs?: (startMs: number, endMs: number) => number
+  heldCoverageStartMs?: () => number | undefined
 }>
 
 // Above this, a command's own handler time is worth a log line. Chosen below the 130-430 ms hitches this
@@ -215,6 +220,11 @@ export const createApplicationCommandRouter = (
   const heldMsWithin =
     diagnostics.heldMs ??
     ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
+  // Same registry, same question: how far back are the retained windows complete? Defaults to the shared ring
+  // so the marker works in production and not just where a test hands the source over.
+  const heldCoverageStartMs =
+    diagnostics.heldCoverageStartMs ??
+    ((): number | undefined => sharedLoopHeldWindows.coverageStartMs())
 
   // An instrument that throws must not reach the caller: a dispatch that failed because the diagnostic could
   // not read a clock would be a new failure mode invented by the instrument itself.
@@ -253,7 +263,10 @@ export const createApplicationCommandRouter = (
       const held =
         windowStartedAt === undefined || endedAt === undefined
           ? undefined
-          : heldSplitForMonotonicWindow(windowStartedAt, endedAt, durationMs, { heldMsWithin })
+          : heldSplitForMonotonicWindow(windowStartedAt, endedAt, durationMs, {
+              heldMsWithin,
+              coverageStartMs: heldCoverageStartMs
+            })
       return {
         durationMs,
         ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, durationMs),

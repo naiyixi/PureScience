@@ -13744,3 +13744,76 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
 两处各说一套正是本轮要收掉的那种形状。删掉访问器与其排序，三处用例改读 `snapshot().steps`（记录顺序，
 `toMatchObject` / `toHaveLength` 级断言，语义等价或更严）。门禁：`compose-steps.test.ts` **18 passed**、
 双 typecheck **0**、`eslint --no-cache` **0**。
+
+## 二百五十四、本轮追加（执行器，2026-10-28 13:5x–）—— 环丢掉的窗口不再读成「循环没被占住」：第三种答案是具名的
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- 开工时 `HEAD == origin/main == 69f3ffb6`（会话在 13:0x–13:4x 落的三笔 codebuddy 定因与证据档），工作区带
+  **1 个未提交路径**：`src/main/acp/agent-connection-adapter.ts`（+24 行「spawn 取证行」）。
+  判据：那 24 行与同一小时内的 `3cd515ee`（codebuddy 传输开关）、`docs/evidence/2026-10-28-codebuddy-acp-transport.md`
+  是同一条线，且本机有 `electron-vite dev` 在跑 25 分钟 ⇒ **不是我的**，一个字节没碰（提交时不 add）。
+- **上一轮的 `typecheck` 会在它那 24 行上报 3 条 `TS2339`**（`ChildProcessWithoutNullStreams` 上没有 `cwd`/`env`）⇒
+  本笔的读数一律在隔离工作树 `/tmp/ps-holdcov`（HEAD + 本笔 7 文件、`node_modules` 软链）里取，主树上的那 3 条红
+  不认领、不修。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段无 ≥3 天无人动的项。
+  **上一轮 §五 的三条候选逐条核过，全部已闭**：① `diagnostics/startup-steps.json` 的真机归档读数要带窗口的隔离实例
+  + `build:e2e`，会与在跑的 dev 实例抢 `out/`（未获准重启用户实例）⇒ 仍挂着；② `steps()` 访问器已在 §二百五十三 §六 删掉；
+  ③ 「其余慢行站点的字段级断言」经核**已无缺口** —— 11 处调用点里 8 处由 §二百四十八 覆盖，剩下的
+  `settings/service.ts:1233`（`service.key-migration-attribution.test.ts:138`）、
+  `session-persistence/coordinator.ts:1078/1450`（`coordinator.test.ts:4516/4559`）都已有字段级断言。
+- 发版窗口：无（v2.19.0 已是 Latest，本笔不碰发版四文件）。
+
+### 一 交付（7 文件：5 改 2 新，全是诊断仪器；产品界面与其他能力一字未动）
+
+`loop-held-windows.ts` 的环有界（64 条、≥200 ms），满了就丢最旧的，注释写着「少报是安全方向」。可**读侧**把少报
+变成了假话：`heldMsWithin` 对已丢弃区间只能答 0 ⇒ 拆分为空 ⇒ 慢行一个字段都不打 ⇒ **「这段没有窗口覆盖」与
+「循环根本没被占住」在日志里同形**。本笔补上第三种答案：
+
+| 位置 | 改动 |
+|---|---|
+| `loop-held-windows.ts` | `LoopHeldWindows` 新增 `coverageStartMs()`（还完整覆盖的起点；一条都没丢时 `undefined`）；新增 `HeldUnsplittable = { heldUnmeasured: 'windows-dropped' }`，读侧三态：**拆开了 / 答不了（具名）/ 没有可拆的（字段缺席）**。`coverageStartMs` 是可选方法 ⇒ 只用 `heldMsWithin` 的替身保持原行为；它抛错也退回原行为 |
+| `diagnostics/ipc-rejection.ts`、`application-command-router.ts` | 慢 IPC 行与慢命令行**默认**从共享环取覆盖起点（注入项仅为测试）⇒ 标记在生产默认路径上成立 |
+| `diagnostics/compose-steps.ts` | 启动步骤快照条目带 `heldUnmeasured`（不写 `heldMs`）；窗口 `heldMs` 合计**不把未知当 0 加进去**；慢行与归档件同一个词 |
+
+同目录的兄弟环 `stall-record-ring` 早有 `observed/kept/dropped/capacity` 说明自己丢了什么 —— 本笔把这一半补齐。
+
+### 二 真机读数（本机 `logs/headless.out.log`，只读；按每次启动都打印的 `PureScience Web:` 切分启动边界）
+
+| 读数 | 值 |
+|---|---|
+| 日志内启动次数 | **224** |
+| 每次启动的停顿条数：中位 / p90 / 最大 | **0 / 2 / 160,367** |
+| 撑满过环（≥64）的启动 | **3** 次（94 / 1,505 / 160,367） |
+| 最严重那次 | 160,367 条，`stallMs` 中位 **502**、最大 1,880 ⇒ 累计约 **39,665 秒** |
+| 改前环能覆盖的那一段 | 最后 64 条 ≈ **32 秒** |
+
+⇒「环被撑满」不是假设，本机真发生过，且有过一次极端风暴（11 小时量级）。**边界**：这证明的是**前提**，不是
+「标记已经在新构建上被打出来」—— 常驻实例加载的是旧包，取那条读数要一次新构建的长会话（与「重启常驻 dev 实例
+要用户点头」同一张待办）。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向：`src/main/diagnostics` + `application-command-router.test.ts` + `notebook/runtime-service.test.ts` + `settings/service.key-migration-attribution.test.ts` + `ipc-startup-attribution.test.ts`（`--maxWorkers=2`） | **24 files / 368 passed**，EXIT 0 |
+| 新增用例 | 单元 4 条 + 默认接线 1 条（撑满共享环后慢行行带标记且**没有** `heldMs`）+ 启动步骤 1 条（归档件与慢行同词、合计不加未知） |
+| 变异自证 4 次 | 删单调侧检查 **1 红** / 不记丢弃边界 **3 红** / `ipc-rejection` 不传覆盖起点 **1 红** / 归档标记拍平为 0 **1 红**；每次都只咬住守它的那一条，改完复原 |
+| 双 typecheck（`--composite false`，堆 8192，隔离工作树） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 7 文件）+ `prettier --check` | **0 error / 0 warning**；格式全过 |
+| 全量 vitest | **未跑**：swap 已用 9,352/10,240 MB、空闲页 4,983（≈78 MB）；受影响面（两族适配器 + 设置族 + 启动归因）逐个取过读数 |
+
+### 四 边界（不许读成更强）
+
+1. 旧风暴里的慢行**无法回填**：那是旧代码打的，没有这个词；本笔只保证下一次同样形状会具名。
+2. `heldUnmeasured` **不是失败标记**，也不推断「这段时间是我们的」：它只说这段覆盖不够。
+3. 窗口下限（200 ms）与容量（64）都没动：只让「丢了什么」可读，不改测量本身。
+4. `heldMs` 合计在有条目带标记时会**少算**那一格 —— 这是有意的（未知不是 0），归档件里逐条标着。
+
+### 五 下一轮第一步
+
+1. 读本笔两条车道判决（完整 40 位 SHA `git rev-parse HEAD`）；被 `cancel-in-progress` 顶掉就按「包含它的后一笔」取证。
+2. 候选（按连锁从小到大）：(a) 取 `heldUnmeasured` 的**生产读数**（要一次新构建的长会话，先问用户放行重启）；
+   (b) `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例，且**别碰在跑实例的 `out/`**）；
+   (c) 环容量是否该随停顿密度自适应（**先量**再说：本机 224 次启动里 221 次连一条都放不下溢出）。
+3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。

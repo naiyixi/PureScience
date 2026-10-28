@@ -6,7 +6,8 @@ import {
   heldSplitForMonotonicWindow,
   heldSplitForWallWindow,
   heldSplitFromMeasured,
-  toMonotonicWindow
+  toMonotonicWindow,
+  type LoopHeldWindows
 } from './loop-held-windows'
 
 // These windows exist to split a wall duration into "the process was running" and "it was not". Everything
@@ -175,5 +176,62 @@ describe('the shared split arithmetic', () => {
     // Unusable inputs stay silent instead of producing a made-up split.
     expect(heldSplitForMonotonicWindow(Number.NaN, 2_000, 1_100, held)).toBeUndefined()
     expect(heldSplitForMonotonicWindow(900, 900, 0, held)).toBeUndefined()
+  })
+})
+
+// The ring is bounded, so on a machine that stalls often it drops its oldest windows and `heldMsWithin` then
+// answers less than the truth — including zero, and zero is what every slow line prints as "the loop was free".
+// These cases pin the third answer that keeps a dropped window from reading as a quiet process.
+describe('what the ring no longer covers', () => {
+  // capacity 2 with three stalls: the oldest ([0, 1 000]) is dropped, so coverage is complete from its end on.
+  const overfull = (): LoopHeldWindows => {
+    const held = createLoopHeldWindows({ capacity: 2, minimumMs: 0 })
+    held.record(0, 1_000)
+    held.record(2_000, 3_000)
+    held.record(4_000, 5_000)
+    return held
+  }
+
+  it('reports where its coverage starts once a window has been dropped', () => {
+    // Nothing dropped yet: coverage reaches back to the first recorded window, so there is nothing to declare.
+    expect(createLoopHeldWindows({ capacity: 2, minimumMs: 0 }).coverageStartMs()).toBeUndefined()
+    expect(overfull().coverageStartMs()).toBe(1_000)
+  })
+
+  it('names the gap for a span that starts before that boundary', () => {
+    const held = overfull()
+    // The dropped window is exactly the one that covered this span: answering 0 here would be a lie.
+    expect(heldSplitForMonotonicWindow(0, 1_000, 1_000, held)).toEqual({
+      heldUnmeasured: 'windows-dropped'
+    })
+    // Straddling the boundary: part of it may sit inside the window that was dropped.
+    expect(heldSplitForMonotonicWindow(500, 4_500, 4_000, held)).toEqual({
+      heldUnmeasured: 'windows-dropped'
+    })
+  })
+
+  it('still splits a span the retained windows answer for', () => {
+    const held = overfull()
+    // Starts where the dropped window ended, so nothing dropped can have covered it: 1 000 + 500 kept.
+    expect(heldSplitForMonotonicWindow(1_000, 4_500, 3_500, held)).toEqual({
+      heldMs: 1_500,
+      ownMs: 2_000
+    })
+    // A covered span that missed both kept windows says nothing at all, rather than zero.
+    expect(heldSplitForMonotonicWindow(5_500, 6_000, 500, held)).toBeUndefined()
+  })
+
+  it('carries the marker through the wall-clock bridge', () => {
+    const held = createLoopHeldWindows({ capacity: 1, minimumMs: 0 })
+    held.record(0, 1_000)
+    held.record(2_000, 3_000)
+    held.record(4_000, 5_000)
+    expect(held.coverageStartMs()).toBe(3_000)
+
+    const options = { source: held, pair: { wallMs: 3_000, perfMs: 5_000 } }
+    // Wall [500, 3 500] → perf [2 500, 5 500]: starts before the boundary.
+    expect(heldSplitFields(500, 3_000, options)).toEqual({ heldUnmeasured: 'windows-dropped' })
+    // Wall [1 000, 3 000] → perf [3 000, 5 000]: from the boundary on, so the kept window answers 1 000 ms.
+    expect(heldSplitFields(1_000, 2_000, options)).toEqual({ heldMs: 1_000, ownMs: 1_000 })
   })
 })

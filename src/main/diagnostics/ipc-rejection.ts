@@ -19,6 +19,10 @@ type IpcRejectionDiagnosticInput<T> = {
   // How much of [startMs, endMs] the process was not running at all (loop-stall windows). Defaults to the
   // shared registry the watchdog writes; tests inject their own answer.
   heldMs?: (startMs: number, endMs: number) => number
+  // How far back those windows are complete. The ring drops its oldest entries, so a long handler can start
+  // before the retained coverage; without this the line would call that window "loop free". Defaults to the
+  // shared registry, injected only by tests.
+  heldCoverageStartMs?: () => number | undefined
   // Process CPU around the same window, so a slow handler can say whether the time was ours or the process
   // was not running (see `cpu-attribution`). Injected only by tests.
   cpuUsage?: () => CpuUsageSample
@@ -61,6 +65,8 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
   const heldMsWithin =
     input.heldMs ??
     ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
+  const heldCoverageStartMs =
+    input.heldCoverageStartMs ?? ((): number | undefined => sharedLoopHeldWindows.coverageStartMs())
   const startedAt = safeNow(now)
   const cpuUsage = input.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
   const cpuStart = cpuUsage()
@@ -93,7 +99,8 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         // Guarded here rather than in the shared helper: a source that throws must still leave the line with
         // its duration, which is what `safeHeldMs` did at this call site before the arithmetic moved.
         heldMsWithin: (startMs: number, endMs: number): number =>
-          safeHeldMs(heldMsWithin, startMs, endMs)
+          safeHeldMs(heldMsWithin, startMs, endMs),
+        coverageStartMs: heldCoverageStartMs
       })
       input.log.warn('ipc handler was slow', {
         channel: input.channel,

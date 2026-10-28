@@ -16,6 +16,16 @@ export type LoopHeldWindows = {
   record(startMs: number, endMs: number): void
   // Clipped sum of the recorded windows inside [startMs, endMs]: never more than the span asked about.
   heldMsWithin(startMs: number, endMs: number): number
+  // The instant from which this ring's coverage is complete: every qualifying stall that ended at or after it
+  // is still retained. `undefined` while nothing has been dropped, which in production means coverage reaches
+  // back to the first recorded window.
+  //
+  // Why this is a reading of its own: a span that begins before it may have lost stalls to the ring, and
+  // `heldMsWithin` then answers less than the truth — including zero, and zero is what every caller prints as
+  // "the loop was free". The stall-record ring beside this module keeps a `dropped` count for exactly this
+  // reason; without the same number here, "we dropped those windows" and "the loop never stalled" are the
+  // same line in a postmortem.
+  coverageStartMs(): number | undefined
 }
 
 // Long enough to cover the settings-mount burst above many times over, short enough to stay a few KB.
@@ -30,14 +40,22 @@ export const createLoopHeldWindows = (
   const capacity = Math.max(1, Math.floor(options.capacity ?? DEFAULT_CAPACITY))
   const minimumMs = Math.max(0, options.minimumMs ?? DEFAULT_MINIMUM_MS)
   const windows: { startMs: number; endMs: number }[] = []
+  // The end of the newest window the ring has dropped. Everything from here on is still retained, so a span
+  // that starts before it cannot be answered from what is left — see `coverageStartMs`.
+  let droppedThroughMs: number | undefined
 
   const record = (startMs: number, endMs: number): void => {
     if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return
     if (endMs - startMs < minimumMs) return
     windows.push({ startMs, endMs })
     // Oldest first: a handler that started before the oldest kept window simply loses that coverage, which
-    // under-reports held time (the safe direction — it never invents time the process did not lose).
-    while (windows.length > capacity) windows.shift()
+    // under-reports held time (the safe direction — it never invents time the process did not lose). What the
+    // under-report must not do is stay silent: the dropped boundary is remembered below so the reader can tell
+    // "no window covered this span" from "the loop was free".
+    while (windows.length > capacity) {
+      const dropped = windows.shift()
+      if (dropped) droppedThroughMs = Math.max(droppedThroughMs ?? dropped.endMs, dropped.endMs)
+    }
   }
 
   const heldMsWithin = (startMs: number, endMs: number): number => {
@@ -50,7 +68,7 @@ export const createLoopHeldWindows = (
     return Math.min(total, endMs - startMs)
   }
 
-  return { record, heldMsWithin }
+  return { record, heldMsWithin, coverageStartMs: (): number | undefined => droppedThroughMs }
 }
 
 // Written by the event-loop watchdog, read by the IPC slow-handler diagnostic.
@@ -85,6 +103,39 @@ export const toMonotonicWindow = (
 export type HeldSplit = Readonly<{ heldMs: number; ownMs: number }>
 
 /**
+ * A span the ring cannot answer for: it starts before the oldest stall still kept, so whatever the loop lost
+ * before that boundary is unknown. Reported instead of a split, because the alternative readings are both
+ * wrong — `heldMs: 0` says "the loop was free", and saying nothing at all prints the wall duration as if all
+ * of it had been our own work.
+ */
+export type HeldUnsplittable = Readonly<{ heldUnmeasured: 'windows-dropped' }>
+
+/** What a slow line may carry about its window: the split, or the named reason there is none. */
+export type HeldReading = HeldSplit | HeldUnsplittable
+
+/** A source that can also say how far back its coverage is complete; the method is optional so a test double
+ *  built from `heldMsWithin` alone keeps its old behaviour (nothing dropped ⇒ nothing to declare). */
+export type HeldSplitSource = Pick<LoopHeldWindows, 'heldMsWithin'> &
+  Partial<Pick<LoopHeldWindows, 'coverageStartMs'>>
+
+/** The named gap for a span the retained windows no longer cover. A source that cannot answer, or throws,
+ *  leaves the reading exactly as it was before this distinction existed. */
+const unsplittableWithin = (
+  source: HeldSplitSource,
+  startMs: number
+): HeldUnsplittable | undefined => {
+  if (!source.coverageStartMs) return undefined
+  let coverageStartMs: number | undefined
+  try {
+    coverageStartMs = source.coverageStartMs()
+  } catch {
+    return undefined
+  }
+  if (coverageStartMs === undefined || !Number.isFinite(coverageStartMs)) return undefined
+  return startMs < coverageStartMs ? { heldUnmeasured: 'windows-dropped' } : undefined
+}
+
+/**
  * The two fields for a held reading that was already measured in this clock domain (the IPC adapters do
  * that themselves, so they do not need the wall-clock bridge). One place computes the arithmetic: a site
  * that inlined its own `ownMs` would be a second answer to "how much of this was ours".
@@ -106,10 +157,12 @@ export const heldSplitForMonotonicWindow = (
   startMs: number,
   endMs: number,
   windowMs: number,
-  source: Pick<LoopHeldWindows, 'heldMsWithin'> = sharedLoopHeldWindows
-): HeldSplit | undefined => {
+  source: HeldSplitSource = sharedLoopHeldWindows
+): HeldReading | undefined => {
   if (![startMs, endMs, windowMs].every((value) => Number.isFinite(value))) return undefined
   if (!(windowMs > 0)) return undefined
+  const unsplittable = unsplittableWithin(source, startMs)
+  if (unsplittable) return unsplittable
   const heldMs = Math.min(windowMs, Math.max(0, source.heldMsWithin(startMs, endMs)))
   return heldSplitFromMeasured(heldMs, windowMs)
 }
@@ -122,8 +175,8 @@ export const heldSplitForMonotonicWindow = (
 export const heldSplitForWallWindow = (
   wallStartMs: number,
   windowMs: number,
-  options: { source?: LoopHeldWindows; pair?: ClockPair } = {}
-): HeldSplit | undefined => {
+  options: { source?: HeldSplitSource; pair?: ClockPair } = {}
+): HeldReading | undefined => {
   if (!Number.isFinite(windowMs) || !(windowMs > 0)) return undefined
   const window = toMonotonicWindow(
     wallStartMs,
@@ -132,13 +185,18 @@ export const heldSplitForWallWindow = (
   )
   if (!window) return undefined
   const source = options.source ?? sharedLoopHeldWindows
+  const unsplittable = unsplittableWithin(source, window.startMs)
+  if (unsplittable) return unsplittable
   return heldSplitFromMeasured(source.heldMsWithin(window.startMs, window.endMs), windowMs)
 }
 
-/** The two fields a slow line adds when part of it fell inside a loop-held window; nothing otherwise. */
+/**
+ * The two fields a slow line adds when part of it fell inside a loop-held window; the named `heldUnmeasured`
+ * marker when the ring no longer covers that span; nothing otherwise.
+ */
 export const heldSplitFields = (
   wallStartMs: number,
   windowMs: number,
-  options: { source?: LoopHeldWindows; pair?: ClockPair } = {}
-): { heldMs?: number; ownMs?: number } =>
+  options: { source?: HeldSplitSource; pair?: ClockPair } = {}
+): { heldMs?: number; ownMs?: number; heldUnmeasured?: 'windows-dropped' } =>
   heldSplitForWallWindow(wallStartMs, windowMs, options) ?? {}

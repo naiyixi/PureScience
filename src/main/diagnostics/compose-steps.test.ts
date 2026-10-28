@@ -18,7 +18,10 @@ const setup = (
   options: {
     slowMs?: number
     summarySize?: number
-    heldWindows?: { heldMsWithin: (startMs: number, endMs: number) => number }
+    heldWindows?: {
+      heldMsWithin: (startMs: number, endMs: number) => number
+      coverageStartMs?: () => number | undefined
+    }
   } = {}
 ): {
   log: ReturnType<typeof makeLogger>
@@ -468,5 +471,34 @@ describe('compose step recorder', () => {
     expect(snapshot.steps[1]).not.toHaveProperty('heldMs')
     expect(snapshot.heldMs).toBe(120)
     expect(snapshot).toMatchObject({ totalMs: 375, stepMs: 350, gapMs: 25 })
+  })
+
+  // The ring keeps a bounded number of windows, so a long step can start before the coverage it still has. The
+  // artifact then has to say so: a step recorded as `heldMs: 0` claims the process was running for all of it,
+  // which is the exact reading this whole split exists to prevent.
+  it('names a step the ring can no longer cover instead of splitting it as zero', async () => {
+    const { log, recorder, advanceWithCpu } = setup({
+      // Nothing dropped would answer honestly; a coverage that starts after the step began cannot.
+      heldWindows: { heldMsWithin: () => 0, coverageStartMs: () => 2_000 }
+    })
+
+    await recorder.step('specialist-skill-catalog', () => {
+      advanceWithCpu(900, 20)
+      return Promise.resolve(undefined)
+    })
+
+    const snapshot = recorder.snapshot()
+    expect(snapshot.steps[0]).toMatchObject({ heldUnmeasured: 'windows-dropped' })
+    expect(snapshot.steps[0]).not.toHaveProperty('heldMs')
+    // An unknown contributes nothing to the window total — it must not become a zero there either.
+    expect(snapshot).not.toHaveProperty('heldMs')
+    // And the slow line carries the same word the artifact does.
+    expect(log.warn).toHaveBeenCalledWith(
+      'compose step slow',
+      expect.objectContaining({
+        step: 'specialist-skill-catalog',
+        heldUnmeasured: 'windows-dropped'
+      })
+    )
   })
 })
