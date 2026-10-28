@@ -355,6 +355,72 @@ export class ReferenceRepository {
     return gaps
   }
 
+  // Read-only summary for a gate that must not touch the network: an export click cannot afford tens of
+  // Crossref round-trips, so it reads what is already stored. `retracted` is reported separately because
+  // it is a decision (refuse), while the gaps are instructions (check / retry / refresh).
+  async summarizeIntegrity(
+    projectId: string,
+    options: { maxAgeDays?: number; now?: () => Date } = {}
+  ): Promise<{
+    retracted: Array<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      checkedAt: string
+      noticeUrls: string[]
+    }>
+    gaps: Array<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      reason: string
+      checkedAt?: string
+    }>
+    checked: number
+    total: number
+  }> {
+    const client = await this.getClient()
+    const rows = await client.reference.findMany({
+      where: { projectId, doi: { not: null } },
+      select: {
+        id: true,
+        citationKey: true,
+        doi: true,
+        integrityStatus: true,
+        integrityCheckedAt: true,
+        integrityNoticesJson: true
+      }
+    })
+
+    const retracted: Array<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      checkedAt: string
+      noticeUrls: string[]
+    }> = []
+    let checked = 0
+    for (const row of rows) {
+      const doi = (row.doi ?? '').trim()
+      if (doi.length === 0 || !row.integrityCheckedAt) continue
+      checked += 1
+      if (row.integrityStatus !== 'retracted') continue
+      const notices = row.integrityNoticesJson
+        ? (JSON.parse(row.integrityNoticesJson) as Array<{ url?: string }>)
+        : []
+      retracted.push({
+        referenceId: row.id,
+        citationKey: row.citationKey,
+        doi,
+        checkedAt: row.integrityCheckedAt.toISOString(),
+        noticeUrls: notices.map((notice) => notice.url).filter((url): url is string => !!url)
+      })
+    }
+
+    const gaps = await this.listIntegrityGaps(projectId, options)
+    return { retracted, gaps, checked, total: rows.length }
+  }
+
   async getReference(id: string): Promise<Reference | null> {
     const client = await this.getClient()
     const row = await client.reference.findUnique({ where: { id } })

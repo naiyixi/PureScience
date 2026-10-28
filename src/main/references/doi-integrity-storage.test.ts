@@ -194,4 +194,61 @@ describe('reference DOI integrity', () => {
     expect(byKey.has('NoDoi')).toBe(false)
     expect(gaps.find((gap) => gap.citationKey === 'NeverChecked')?.referenceId).toBe(neverChecked)
   })
+
+  // The export gate reads this summary and must not touch the network. A retracted reference is a decision
+  // (refuse and name it); a gap is an instruction (check / retry / refresh) — the two are reported apart so
+  // the surface can act on each without re-deriving the difference.
+  it('summarizes a project without any network access', async () => {
+    const repository = await createRepository()
+    const make = async (citationKey: string, doi: string | undefined): Promise<string> => {
+      const reference = await repository.createReference({
+        projectId: 'project-summary',
+        citationKey,
+        title: citationKey,
+        authors: [],
+        ...(doi ? { doi } : {})
+      })
+      return reference.id
+    }
+
+    const retractedId = await make('Retracted', '10.1000/retracted')
+    const cleanId = await make('Clean', '10.1000/clean')
+    await make('NeverChecked', '10.1000/never')
+    await make('NoDoi', undefined)
+
+    const stamp = (iso: string): { checkedAt: string; sourceUrl: string } => ({
+      checkedAt: iso,
+      sourceUrl: 'https://api.crossref.org/works/x'
+    })
+
+    await repository.recordDoiIntegrity(retractedId, {
+      doi: '10.1000/retracted',
+      status: 'retracted',
+      ...stamp('2026-10-27T00:00:00.000Z'),
+      notices: [
+        { kind: 'retraction', doi: '10.1000/notice', url: 'https://doi.org/10.1000/notice' }
+      ]
+    })
+    await repository.recordDoiIntegrity(cleanId, {
+      doi: '10.1000/clean',
+      status: 'clean',
+      ...stamp('2026-10-27T00:00:00.000Z'),
+      notices: []
+    })
+
+    const summary = await repository.summarizeIntegrity('project-summary')
+    expect(summary.retracted).toEqual([
+      {
+        referenceId: retractedId,
+        citationKey: 'Retracted',
+        doi: '10.1000/retracted',
+        checkedAt: '2026-10-27T00:00:00.000Z',
+        noticeUrls: ['https://doi.org/10.1000/notice']
+      }
+    ])
+    // 3 DOI-bearing references (NoDoi excluded), 2 already checked.
+    expect(summary.total).toBe(3)
+    expect(summary.checked).toBe(2)
+    expect(summary.gaps.map((gap) => gap.citationKey)).toEqual(['NeverChecked'])
+  })
 })
