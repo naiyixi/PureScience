@@ -49,9 +49,17 @@
 - `src/renderer/src/components/references/ReferencesScreeningPanel.tsx` —— 调它的面板；
 - 渲染层测试已存在（`ReferencesScreeningPanel.render.test.tsx`）。
 
-所以闸门应当长在**这里**，复用同一套 gaps 表达：
+所以闸门应当长在**这里**，复用同一套 gaps 表达。
 
-1. 导出前调用 `references:check-integrity`（命令已通，`0bc8347a`）拿到 `gaps` 与 `retracted`；
+**先修正一处设计错误**：导出时**不能**调用 `check-integrity`——那会同步逐条查 Crossref（公共接口、无 key、
+有限流），把一次点击变成几十次网络往返。导出只该读**已存的判定**。因此闸门需要一个只读摘要命令，
+联网的 `check-integrity` 保持为显式的「现在检查」动作：
+
+- 新增 `ReferenceRepository.summarizeIntegrity(projectId)`：返回 `{ retracted: [...], gaps: [...] }`，
+  全部来自库里的 `integrity*` 列，零网络；
+- 新增命令 `references:read-integrity-summary`（与 `check-integrity` 并列，三端同源）。
+
+1. 导出前调用 `references:read-integrity-summary` 拿到 `retracted` 与三类 `gaps`；
 2. `retracted` 的条目在导出范围内 ⇒ **拒绝导出**并点名（附 doi.org 链接与检查时间）；
 3. `never-checked / unavailable / stale` ⇒ 允许导出但把三类缺口**逐条列在导出物里**
    （理由：这三类要的动作不同，静默放行等于让「没查过」冒充「查过没问题」）；
