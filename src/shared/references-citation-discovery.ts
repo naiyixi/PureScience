@@ -23,6 +23,13 @@
 // The honest consequence: a work may be Chinese with none of the three firing (an English-titled
 // paper from a Chinese group with no journal record). We report the signals, never a bare
 // "Chinese / not Chinese" verdict.
+//
+// WHAT A LIVE QUERY ACTUALLY RETURNED (2026-10-29, all four directions on real records): the
+// `journal-language` signal almost never fires, because OpenAlex leaves `primary_location.source.
+// language` null for the Chinese journals sampled (亚洲临床医学杂志, 临床医学前沿, 经典中医研究,
+// 实用医学研究 all null). The signal that does the work in practice is `doi-prefix`: of the 50 works
+// citing a Chinese-language paper, 49 carried a Hans Publishers DOI and one a Japanese one. So the
+// prefix list is where coverage comes from, and it is deliberately one observed publisher per line.
 
 export const CITATION_DIRECTIONS = ['references', 'citations'] as const
 
@@ -34,9 +41,31 @@ export type CitationDiscoveryStatus = 'found' | 'empty' | 'unavailable'
 
 export type ChineseSourceSignal = 'title-han' | 'doi-prefix' | 'journal-language'
 
-/** Registrant prefixes of Chinese publishers, each observed in a live OpenAlex query (2026-10-29):
- *  10.3760 / 10.3321 — Chinese Medical Association journals; 10.11946 — 中国科技期刊研究. */
-export const CHINESE_DOI_PREFIXES: readonly string[] = ['10.3760', '10.3321', '10.11946']
+/** Registrant prefixes of publishers based in China, each observed in a live OpenAlex query
+ *  (2026-10-29). The four marked *zh* were confirmed at the work level — a fetch of one of their
+ *  DOIs returned `language: zh` with a Han-character title:
+ *
+ *    10.3760 / 10.3321        Chinese Medical Association journals
+ *    10.11946                  中国科技期刊研究
+ *    10.26549                 Synergy Publishing — 亚洲临床医学杂志 *zh*
+ *    10.37155                 临床医学前沿 / 国际全科医学 *zh*
+ *    10.53388                 TMR — 经典中医研究 *zh*
+ *    10.36012                 实用医学研究 *zh*
+ *    10.12677                 Hans Publishers (汉斯出版社) — English-language journals
+ *
+ *  The signal says "a publisher based in China", which is what the DOI prefix can support; it does
+ *  not say the text is in Chinese (`10.12677` publishes in English). Adding a prefix without a probe
+ *  would be a guess, and a guess here becomes a false claim on screen. */
+export const CHINESE_DOI_PREFIXES: readonly string[] = [
+  '10.3760',
+  '10.3321',
+  '10.11946',
+  '10.26549',
+  '10.37155',
+  '10.53388',
+  '10.36012',
+  '10.12677'
+]
 
 /** A title counts as Han-written when at least this share of its visible characters are Han.
  *  Measured separation was wide (0.74+ versus 0.00), so the exact cut is not load-bearing. */

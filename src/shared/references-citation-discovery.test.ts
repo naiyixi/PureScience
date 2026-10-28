@@ -35,6 +35,10 @@ describe('doiPrefix / chineseDoiPrefix', () => {
     expect(doiPrefix('10.3760/j:issn:0376-2491.2005.36.002')).toBe('10.3760')
     expect(chineseDoiPrefix('10.3760/cma.j.issn.0376-2491.2013.16.001')).toBe('10.3760')
     expect(chineseDoiPrefix('10.1038/nature14539')).toBe('')
+    // Observed in a live walk of what cites a Chinese-language paper: 49 of 50 rows were Hans Publishers.
+    expect(chineseDoiPrefix('10.12677/ae.2022.124146')).toBe('10.12677')
+    // A Japanese publisher's prefix is not a Chinese one, and the list must not grow by resemblance.
+    expect(chineseDoiPrefix('10.3937/kampomed.73.117')).toBe('')
     expect(chineseDoiPrefix(undefined)).toBe('')
     expect(doiPrefix('not-a-doi')).toBe('')
   })
