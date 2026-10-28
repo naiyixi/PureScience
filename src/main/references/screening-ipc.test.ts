@@ -158,6 +158,7 @@ describe('references IPC: the screening surface', () => {
         'references:cancel-screening-run',
         // B1: DOI integrity check over the project's references.
         'references:check-integrity',
+        'references:read-integrity-summary',
         'references:clear-screening-override',
         'references:create-collection',
         'references:delete-collection',

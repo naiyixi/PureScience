@@ -33,6 +33,7 @@ type ReferencesCommandOwner = Pick<
   | 'merge'
   | 'fetchByIdentifier'
   | 'checkIntegrity'
+  | 'readIntegritySummary'
   | 'attachPdf'
   // v2.6.0 A2: the citation mark, picked from the same handler interface as the notes write.
   | 'markCited'
@@ -75,6 +76,11 @@ const referencesApplicationCommands = Object.freeze({
     OwnerArgs<ReferencesCommandOwner, 'checkIntegrity'>,
     OwnerResult<ReferencesCommandOwner, 'checkIntegrity'>
   >('references:check-integrity'),
+  readIntegritySummary: defineApplicationCommand<
+    'references:read-integrity-summary',
+    OwnerArgs<ReferencesCommandOwner, 'readIntegritySummary'>,
+    OwnerResult<ReferencesCommandOwner, 'readIntegritySummary'>
+  >('references:read-integrity-summary'),
   remove: defineApplicationCommand<
     'references:remove',
     OwnerArgs<ReferencesCommandOwner, 'remove'>,
@@ -242,6 +248,7 @@ const referencesApplicationCommandGroup = defineApplicationCommandGroup('referen
   referencesApplicationCommands.fetchByIdentifier,
   // B1: one call checks every DOI-bearing reference and reports the three shapes an export must refuse on.
   referencesApplicationCommands.checkIntegrity,
+  referencesApplicationCommands.readIntegritySummary,
   referencesApplicationCommands.list,
   referencesApplicationCommands.listCollections,
   referencesApplicationCommands.merge,
@@ -284,6 +291,8 @@ const registerReferencesApplicationCommands = (
       'references:list': ({ args }) => dependencies.references.list(args[0]),
       'references:add': ({ args }) => dependencies.references.add(args[0]),
       'references:check-integrity': ({ args }) => dependencies.references.checkIntegrity(args[0]),
+      'references:read-integrity-summary': ({ args }) =>
+        dependencies.references.readIntegritySummary(args[0]),
       'references:remove': ({ args }) => dependencies.references.remove(args[0]),
       'references:list-collections': ({ args }) => dependencies.references.listCollections(args[0]),
       'references:create-collection': ({ args }) =>

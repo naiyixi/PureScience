@@ -69,13 +69,30 @@ export type ReferencesHandlers = {
   fetchByIdentifier(kind: IdentifierKind, identifier: string): Promise<CreateReferenceInput | null>
   // DOI integrity (B1): check every DOI-bearing reference in a project, persist each verdict, and return
   // what is still unknown in the three shapes an export has to distinguish.
-  checkIntegrity(
-    projectId: string
-  ): Promise<{
+  checkIntegrity(projectId: string): Promise<{
     checked: number
     unavailable: number
     retracted: number
     gaps: ReadonlyArray<{ citationKey: string; doi: string; reason: string }>
+  }>
+  // The export gate's read: no network, so one click cannot turn into tens of Crossref round-trips.
+  readIntegritySummary(projectId: string): Promise<{
+    retracted: ReadonlyArray<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      checkedAt: string
+      noticeUrls: readonly string[]
+    }>
+    gaps: ReadonlyArray<{
+      referenceId: string
+      citationKey: string
+      doi: string
+      reason: string
+      checkedAt?: string
+    }>
+    checked: number
+    total: number
   }>
   // Imports the references a PDF cites, by reading the DOIs off its pages (3.4).
   importDoisFromPdf(projectId: string, pdfPath: string, limit?: number): Promise<PdfDoiImportResult>
@@ -288,6 +305,7 @@ export const createReferencesIpcModule = (
         }))
       }
     },
+    readIntegritySummary: (projectId) => repository.summarizeIntegrity(projectId),
     importDoisFromPdf: (projectId, pdfPath, limit) =>
       pdfDoi.importFromPdf(projectId, pdfPath, limit === undefined ? {} : { limit }),
     attachPdf: (referenceId, pdfManagedFileId) => service.attachPdf(referenceId, pdfManagedFileId),
@@ -352,6 +370,9 @@ export const installReferencesIpcHandlers = (
     ipcMainHandle('references:add', (_event, input: CreateReferenceInput) => handlers.add(input))
     ipcMainHandle('references:check-integrity', (_event, projectId: string) =>
       handlers.checkIntegrity(projectId)
+    )
+    ipcMainHandle('references:read-integrity-summary', (_event, projectId: string) =>
+      handlers.readIntegritySummary(projectId)
     )
     ipcMainHandle('references:remove', (_event, id: string) => handlers.remove(id))
     ipcMainHandle('references:list-collections', (_event, projectId: string) =>
