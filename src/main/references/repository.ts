@@ -11,6 +11,7 @@ import type {
   ReferenceProvenance
 } from '../../shared/references'
 import { JournalRepository, type JournalClient } from './journal-repository'
+import type { DoiIntegrityCheck, DoiIntegrityNotice, DoiIntegrityStatus } from './doi-integrity'
 // Only the delegates this repository needs; typing to the subset keeps it unit-testable with a
 // lightweight mock instead of a real (engine-backed) PrismaClient.
 export type ReferenceClient = Pick<
@@ -228,6 +229,54 @@ export class ReferenceRepository {
       .map((item) => byId.get(item.referenceId))
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
       .map(mapReference)
+  }
+
+  // Persists one DOI integrity verdict. Written as a unit (status + when + which record), because a stored
+  // verdict missing either of the last two cannot be audited — and `unavailable` is a verdict here, not a
+  // reason to leave the fields empty.
+  async recordDoiIntegrity(referenceId: string, check: DoiIntegrityCheck): Promise<void> {
+    const client = await this.getClient()
+    await client.reference.update({
+      where: { id: referenceId },
+      data: {
+        integrityStatus: check.status,
+        integrityCheckedAt: new Date(check.checkedAt),
+        integritySourceUrl: check.sourceUrl,
+        integrityNoticesJson: JSON.stringify(check.notices)
+      }
+    })
+  }
+
+  async getDoiIntegrity(referenceId: string): Promise<
+    | {
+        status: DoiIntegrityStatus
+        checkedAt: string
+        sourceUrl: string
+        notices: DoiIntegrityNotice[]
+      }
+    | undefined
+  > {
+    const client = await this.getClient()
+    const row = await client.reference.findUnique({
+      where: { id: referenceId },
+      select: {
+        integrityStatus: true,
+        integrityCheckedAt: true,
+        integritySourceUrl: true,
+        integrityNoticesJson: true
+      }
+    })
+    // A row without a status has never been checked — distinct from a check that came back clean.
+    if (!row?.integrityStatus || !row.integrityCheckedAt || !row.integritySourceUrl)
+      return undefined
+    return {
+      status: row.integrityStatus as DoiIntegrityStatus,
+      checkedAt: row.integrityCheckedAt.toISOString(),
+      sourceUrl: row.integritySourceUrl,
+      notices: row.integrityNoticesJson
+        ? (JSON.parse(row.integrityNoticesJson) as DoiIntegrityNotice[])
+        : []
+    }
   }
 
   async getReference(id: string): Promise<Reference | null> {

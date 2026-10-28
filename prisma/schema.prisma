@@ -520,6 +520,13 @@ model Reference {
   // record nobody has cited, which is distinguishable from a record cited at an unknown time.
   citedAt          DateTime?
   citedSessionId   String?
+  // DOI integrity (B1): the verdict, when it was taken, and the exact Crossref record it came from.
+  // A stored verdict without `checkedAt` and `sourceUrl` cannot be audited, so they are written together
+  // and an unavailable lookup is stored as such rather than as "clean".
+  integrityStatus     String?
+  integrityCheckedAt  DateTime?
+  integritySourceUrl  String?
+  integrityNoticesJson String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

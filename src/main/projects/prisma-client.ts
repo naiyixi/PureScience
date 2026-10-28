@@ -690,9 +690,17 @@ const REFERENCE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Reference" (
     "notes" TEXT,
     "citedAt" DATETIME,
     "citedSessionId" TEXT,
+    "integrityStatus" TEXT,
+    "integrityCheckedAt" DATETIME,
+    "integritySourceUrl" TEXT,
+    "integrityNoticesJson" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 )`
+const REFERENCE_ADD_INTEGRITY_STATUS_DDL = `ALTER TABLE "Reference" ADD COLUMN "integrityStatus" TEXT`
+const REFERENCE_ADD_INTEGRITY_CHECKED_AT_DDL = `ALTER TABLE "Reference" ADD COLUMN "integrityCheckedAt" DATETIME`
+const REFERENCE_ADD_INTEGRITY_SOURCE_URL_DDL = `ALTER TABLE "Reference" ADD COLUMN "integritySourceUrl" TEXT`
+const REFERENCE_ADD_INTEGRITY_NOTICES_DDL = `ALTER TABLE "Reference" ADD COLUMN "integrityNoticesJson" TEXT`
 const REFERENCE_ADD_PDF_CONTENT_HASH_DDL = `ALTER TABLE "Reference" ADD COLUMN "pdfContentHash" TEXT`
 // Citation-style layer (v1.65): additive columns on Reference, added to existing databases too.
 const REFERENCE_ADD_VOLUME_DDL = `ALTER TABLE "Reference" ADD COLUMN "volume" TEXT`
@@ -1096,6 +1104,12 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
   column('ComputeJob', 'notificationConsumedAt', COMPUTE_JOB_ADD_NOTIFICATION_CONSUMED_AT_DDL),
   ...sql(VISION_EVIDENCE_TABLE_DDL, ...VISION_EVIDENCE_INDEX_DDLS),
   ...sql(REFERENCE_TABLE_DDL),
+  // DOI integrity columns for databases created before they existed. Ordered after the table DDL: a
+  // step that runs before its table exists is skipped, which is how the first version of this failed.
+  column('Reference', 'integrityStatus', REFERENCE_ADD_INTEGRITY_STATUS_DDL),
+  column('Reference', 'integrityCheckedAt', REFERENCE_ADD_INTEGRITY_CHECKED_AT_DDL),
+  column('Reference', 'integritySourceUrl', REFERENCE_ADD_INTEGRITY_SOURCE_URL_DDL),
+  column('Reference', 'integrityNoticesJson', REFERENCE_ADD_INTEGRITY_NOTICES_DDL),
   // Citation-style layer: bibliographic columns on Reference for existing databases.
   column('Reference', 'volume', REFERENCE_ADD_VOLUME_DDL),
   column('Reference', 'issue', REFERENCE_ADD_ISSUE_DDL),
