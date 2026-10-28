@@ -13604,3 +13604,75 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
 2. 候选：① 汇总行按 **own 时间**排序（要同步改写钉着 `permission-grant-registry=…(no-cpu)` 的那条既有断言，属收紧）；
    ② 取 `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例，`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT` + 独立端口）。
 3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
+
+## 二百五十二、本轮追加（执行器，2026-10-28 08:0x–）—— CI 红了不用再手翻 12 MB：`gh run view --log` 读回 0 字节还退出 0，改走 `gh api` 并把它变成一个命令
+
+### 〇 开工核对（防重做 + 并发 + 该谁做 + CI 判决）
+
+- 开工时 `HEAD == origin/main == 2ccb6f8c`（上一轮被供应商中断前已提交并推上去的那笔 act 环境修复），工作区带
+  **2 个未提交路径**（`docs/handoff-2026-10-25-next-session.md` 改 + `docs/evidence/2026-10-28-ci-log-act-warning-flood.md` 新），
+  内容是那一轮的证据与交接更正 ⇒ 判为**上一轮同一线的尾巴**，按路径点名提交，不重做那笔的功能。
+- **CI 判决（完整 40 位 SHA `2ccb6f8c349de9a3fe223457275faf8e1d7c6302`）**：`Nightly` `40592751497` **completed/success**
+  （含 `build / Verify`、四平台打包、`publish`）、`Windows Full Test` `40592751279` **completed/success** ⇒ 双绿。
+  那笔的 CI 侧读数顺带取到并落进证据档（Verify 日志 **12,416,905 B / 119,643 行 → 2,999,734 B / 30,568 行**，act 警告 77,419 → 0）。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段无 ≥3 天无人动的项 ⇒ 按队列自己的结论
+  「从新能力面自拟单元（可离线判、差异化点能写成断言）」取本单元。
+- 发版窗口：无（v2.19.0 已是 Latest，本轮不动发版四文件）；推送前现查在飞车道，见 §五。
+
+### 一 交付（2 新 + 2 证据/交接更新）
+
+1. `scripts/ci-failure-digest.mjs`（新，323 行）：给一个 run id 或 ref，取该 run 的失败作业日志（走
+   `gh api …/actions/jobs/<id>/logs`），打印**失败步骤名 + vitest 三个汇总数 + 失败测试文件清单（去重、超限写明藏了几条）
+   + 根因候选（带下一行的栈帧、`Caused by:` 链折叠）+ `##[error]` 行数与最后一条**，完整日志落盘并打印路径与字节数。
+   四种「没有答案」各自具名且**都不退出 0**：`no-failed-jobs`(2) / `logs-unavailable`(3) / `no-failure-markers`(4) / 用法错(1)。
+2. `scripts/ci-failure-digest.test.ts`（新，258 行 / **18 例**）：钉住真实日志形态（ANSI、RFC3339 前缀、
+   `FAIL   unit  <path>`、vitest 汇总块、`##[error]`、`Caused by: Caused by:`），并逐条钉住四个具名缺态与 CLI 的 `--help` / 未知选项。
+3. `docs/evidence/2026-10-28-ci-failure-digest.md`（新）：量法、读数表、负例、边界。
+4. 交接档两处：**「CI 失败原因不可见」的残留两半**就地更新（① 已量清并给出可读路径；② junit 仍不做）；
+   **A2A 那一行就地更正** —— 它写着「未做（`interop.a2a` 恒为 `unverified`）」，而代码 `agent-card-route.ts:52` 已是
+   `{ a2a: 'verified' }`、且有 2026-10-27 的独立客户端往返证据 ⇒ 把已交付的写成未做同样是失真，本条正是纪律 ④ 说的过时条目。
+
+### 二 真机读数（本机实跑三条命令 + 一次历史反查）
+
+- **缺口的第一手读数**（动手之前）：`gh run view 40492038901 --log` / `--log-failed` **0 字节，退出 0**；
+  同一 run 的三个作业逐个 `--job <id> --log` 也是 **0 字节**，而 `gh api …/jobs/<id>/logs` 分别给
+  **4,823 B / 11,849,514 B / 215 B**。`GH_DEBUG=api` 的请求序列只到 `actions/jobs/<id>`、`actions/runs/<id>`、
+  `actions/workflows/<id>`，**从未请求 logs 端点**。
+- **红的 run**（`40492038901`，退出码 **0**）：`failing step(s): Test (with coverage)`、
+  `Test Files 112 failed | 1290 passed | 21 skipped (1423)`、`… and 97 more`、两条根因
+  （`Error: Electron failed to install correctly. · at getElectronPath node_modules/electron/index.js:43:13`、
+  `Error: [vitest] There was an error when mocking a module. …`）、`##[error] lines: 6`。
+- **绿的提交**（`HEAD`）⇒ 退出码 **2**、两行 `no-failed-jobs`；**不存在的 ref** ⇒ 退出码 **1**、
+  第一行是 `git` 的原话；**日志过期**在历史里真实存在（`run 40388037491` 的 `Build macos-x64` = HTTP 404）⇒
+  那一段打 `logs-unavailable` 并退出 3。
+
+### 三 门禁读数（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| `npx vitest run scripts/ci-failure-digest.test.ts` | **18 passed**，EXIT 0 |
+| `npx vitest run scripts`（整族，防 `check-script-entrypoints` / 审查族连锁） | **41 files / 485 passed + 8 skipped（47 files / 493 例）**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `npx eslint --no-cache`（本笔 2 个文件） | **0 error / 0 warning** |
+| `scripts/pre-push-checks.sh` | **EXIT 0**（敏感词零命中；脚本入口 **54** 个可解析 —— 新增这个被 `node --check` 真解析到了） |
+| 全量 vitest | **未跑**：本机 swap 已用 10,061 MB / 11,264 MB、空闲页 4,282（≈67 MB）⇒ 上一轮在这个水位下跑全量 45 分钟未完且 7 条假红。本单元不碰 `src/`，受影响面是脚本族（已整族绿）与 typecheck（双 0） |
+
+### 四 边界（不许读成更强）
+
+1. **digest 不替代读日志**：它只给引文与落盘路径；失败原因在产物层（某步 `exit 1` 而无任何 `Error:` 行）时它只给
+   `##[error]` 计数与步骤名，**不编根因**。
+2. **`gh` 的行为只按本机实测记录**（2.73.0），未追到底是版本缺陷还是本机网络/代理交互；也不需要它成立 ——
+   `gh api` 那条路本来就存在。
+3. **本单元是开发侧仪器，不是产品能力**：没有新界面、没有新通道，因此不产生「实机 UI 读数」。它的消费者是
+   下一轮的执行器与会话（交接档与本节都写了入口），不是最终用户。
+4. 首版有两处**真踩到并被用例/读数抓回**的坑，已写进源码注释：解析不出 ref 时 `head_sha=` 空值会让 API 返回
+   **最近 50 个 run**（首版把 5 个无关历史失败当本次结果 digest 了出来）；eslint 的 `✖ N problems` 汇总不是根因（首版把它当 root cause 打在第一位）。
+
+### 五 推送与下一轮第一步
+
+- 推送前现查在飞车道（`gh run list --limit 6`）：无在跑 ⇒ 本次推送不取消任何人的判决。
+- **下一轮第一步**：① 读本笔两条车道的判决（完整 40 位 SHA）；② 候选（按连锁从小到大）：
+  (a) 汇总行按 **own 时间**排序（§251 ①，要同步收紧钉着 `permission-grant-registry=…(no-cpu)` 的那条断言）；
+  (b) `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例）；
+  (c) 给 digest 加 `--json` 只在这三者都不合适时再考虑（现在没有第二个消费者）。
+- 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
