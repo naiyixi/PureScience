@@ -2,6 +2,7 @@ import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
 import { cpuAttributionFields, type CpuUsageSample } from './cpu-attribution'
 import { heldSplitForMonotonicWindow, sharedLoopHeldWindows } from './loop-held-windows'
+import { sharedSlowOperations, type SlowOperationFacts } from './slow-operation-ring'
 
 type IpcRejectionLogger = Pick<Logger, 'warn'>
 
@@ -26,6 +27,10 @@ type IpcRejectionDiagnosticInput<T> = {
   // Process CPU around the same window, so a slow handler can say whether the time was ours or the process
   // was not running (see `cpu-attribution`). Injected only by tests.
   cpuUsage?: () => CpuUsageSample
+  // Where a slow record is remembered for the support bundle, in the same fields the log line carries (see
+  // `slow-operation-ring`). Defaults to the shared ring, so the record exists in production and not only
+  // where a test hands a sink over. Injected only by tests.
+  slowOperationSink?: (facts: SlowOperationFacts) => void
 }
 
 const safeNow = (now: () => number): number => {
@@ -67,6 +72,11 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
     ((startMs: number, endMs: number): number => sharedLoopHeldWindows.heldMsWithin(startMs, endMs))
   const heldCoverageStartMs =
     input.heldCoverageStartMs ?? ((): number | undefined => sharedLoopHeldWindows.coverageStartMs())
+  // Defaults to the shared ring here rather than at the call site so every production IPC path records
+  // without each caller having to know the ring exists.
+  const slowOperationSink =
+    input.slowOperationSink ??
+    ((facts: SlowOperationFacts): void => sharedSlowOperations.record(facts))
   const startedAt = safeNow(now)
   const cpuUsage = input.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
   const cpuStart = cpuUsage()
@@ -102,6 +112,9 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
           safeHeldMs(heldMsWithin, startMs, endMs),
         coverageStartMs: heldCoverageStartMs
       })
+      // Measured once and spread into both consumers: a second `process.cpuUsage()` call would describe a
+      // different window, and the log line and the bundle record would then disagree about the same call.
+      const cpuFields = cpuAttributionFields(cpuStart, cpuUsage(), durationMs)
       input.log.warn('ipc handler was slow', {
         channel: input.channel,
         surface: input.callerContext.surface,
@@ -111,8 +124,20 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
         // this says what the process actually consumed. Five channels finishing together after a settings
         // mount read as five slow handlers before, and the CPU share is what separates "we worked for 21 s"
         // from "we were suspended for 21 s" without the next reader having to guess.
-        ...cpuAttributionFields(cpuStart, cpuUsage(), durationMs),
+        ...cpuFields,
         // Present only when there is something to split, so an ordinary slow handler's line is unchanged.
+        ...(held ?? {})
+      })
+      // The same record, machine-readable, for the support bundle: the log this line lands in is capped and
+      // rotated, and the bundle is exported right when someone needs this call explained (see
+      // `slow-operation-ring`). Best-effort like the line itself.
+      slowOperationSink({
+        kind: 'ipc',
+        name: input.channel,
+        surface: input.callerContext.surface,
+        location: input.callerContext.location,
+        durationMs,
+        ...cpuFields,
         ...(held ?? {})
       })
     } catch {

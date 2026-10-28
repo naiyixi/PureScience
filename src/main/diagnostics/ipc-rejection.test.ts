@@ -70,6 +70,76 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
     )
   })
 
+  it('hands the same measurement to the bundle sink, and nothing at all for a fast call', async () => {
+    // The line answers whoever is reading that launch; the bundle answers the same question hours later, from
+    // a .tar.gz. Both must describe one measurement, or a maintainer finds two answers for the same call.
+    const warn = vi.fn()
+    const sink = vi.fn()
+    const callerContext = createWebCallerContext('client-2', {
+      location: 'remote',
+      principalKind: 'human',
+      actionOrigin: 'human'
+    })
+
+    const fastNow = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(1_010)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:list-catalog',
+      callerContext,
+      invoke: async () => 'ok',
+      log: { warn },
+      now: fastNow,
+      slowOperationSink: sink
+    })
+    expect(sink).not.toHaveBeenCalled()
+
+    const slowNow = vi.fn().mockReturnValueOnce(2_000).mockReturnValueOnce(2_500)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:read-document',
+      callerContext,
+      invoke: async () => 'document',
+      log: { warn },
+      now: slowNow,
+      cpuUsage: cpuPair(250),
+      heldMs: () => 400,
+      slowOperationSink: sink
+    })
+    expect(sink).toHaveBeenCalledOnce()
+    expect(sink).toHaveBeenCalledWith({
+      kind: 'ipc',
+      name: 'sessions:read-document',
+      surface: 'web',
+      location: 'remote',
+      durationMs: 500,
+      cpuMs: 250,
+      cpuShare: 0.5,
+      attribution: 'inconclusive',
+      heldMs: 400,
+      ownMs: 100
+    })
+    expect(warn).toHaveBeenCalledWith(
+      'ipc handler was slow',
+      expect.objectContaining({ durationMs: 500, heldMs: 400, ownMs: 100 })
+    )
+  })
+
+  it('does not let a sink that throws replace the handler result', async () => {
+    const callerContext = createWebCallerContext('client-3', { location: 'local' })
+    const sink = vi.fn(() => {
+      throw new Error('sink exploded')
+    })
+    const now = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(900)
+    const result = await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:read-document',
+      callerContext,
+      invoke: async () => 'document',
+      log: { warn: vi.fn() },
+      now,
+      slowOperationSink: sink
+    })
+    expect(result).toBe('document')
+    expect(sink).toHaveBeenCalledOnce()
+  })
+
   it('splits a slow handler into the part we ran and the part the process was not running', async () => {
     // The settings-mount burst: five channels starting together, all finishing within seconds of each other,
     // each 93-100 % inside one 15-23 s window where the loop never ran. The wall duration alone read as five

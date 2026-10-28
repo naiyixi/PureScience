@@ -13817,3 +13817,77 @@ own 必须是 0 —— 这个数**不随机器负载变化**，而删掉该站�
    (b) `diagnostics/startup-steps.json` 的真机归档读数（要带窗口的隔离实例，且**别碰在跑实例的 `out/`**）；
    (c) 环容量是否该随停顿密度自适应（**先量**再说：本机 224 次启动里 221 次连一条都放不下溢出）。
 3. 仍等用户点头（不变）：重启常驻 dev 实例取真机日志行 / `stack.samples`。
+
+## 二百五十五、本轮追加（执行器，2026-10-28 18:2x–）—— 慢调用那份读数不再只活在日志里：支援包自己带一份可机读的尾巴
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `HEAD == origin/main == fb13d5c8`，工作区带 **11 个未提交路径**（8 改 3 新 + 1 份证据档），全部落在
+  `src/main/diagnostics/**`、`application-command-router.ts`、`ipc.ts` 与 `docs/evidence/2026-10-28-slow-operations-bundle.md`。
+  归属判据：这批文件与证据档是同一条线（`slow-operation-ring`），档头写着「执行器本轮」；上一轮 cron（13:56）以
+  `Operation interrupted` 收场 —— 也就是**同一个执行器**在提交前被打断。⇒ 本轮**不重做实现**，只自己重跑门禁再收口。
+- 工作区里没有别人的在制路径（无 `src/main/acp/**`、无 i18n 文件），发版窗口：无（v2.19.0 是 Latest，本笔不碰发版四文件）。
+- 队列 B 段仍耗尽（A7 ✅ / S3 ✅ 含 S4 / M2 ⛔ 卡产品决定）；A 段无 ≥3 天无人动的项 ⇒ 本轮把上一轮那半截收口，
+  并把它缺的两样补上：证据档引用的一节计划（本节）、以及一份**我自己重取**的前提读数。
+
+### 一 交付（11 文件：8 改 3 新）
+
+慢调用的两族日志行（`ipc handler was slow` 与命令侧的 `slow-handler`）早就带上了「这段时间是我们的还是进程没在跑」
+的拆分（`cpuMs` / `cpuShare` / `heldMs` / `ownMs` / `heldUnmeasured`）。问题不在测量，在**载体**：它们只落在日志里，
+而支援包（用户真正发出来的那个 `.tar.gz`）只按**字节上限**从最新日志往回拷 8 MB ⇒ 解释一次「这个窗口怎么卡了 20 秒」
+的那一行，很可能已经被顶出去了。
+
+| 位置 | 改动 |
+|---|---|
+| `diagnostics/slow-operation-ring.ts`（新） | 有界环（24 条）：`observed` / `dropped` / `capacity` 三个数分开答；空态具名为 `no-slow-operations-observed`；`at` 记墙钟、最新在末尾。写入前归一：**只保留真正测到的字段** —— `heldUnmeasured: 'windows-dropped'` 必须存活（拍平成 0 会被读成「循环没被占住」），`cpuShare: 0` 这种**测到的零**也必须保留 |
+| `diagnostics/ipc-rejection.ts` | 新增 `slowOperationSink` 接缝，**默认写共享环**；CPU 一次采样同时喂日志行与环（两次 `process.cpuUsage()` 会描述两个窗口，两处就会各说一套） |
+| `application-command-router.ts` | 同上：`report()` 里对 `slow-handler` / `handler-rejected` 且**耗时过阈值**的记录入环。阈值不能省 —— 路由对每次抛错都报 `handler-rejected`，不过阈值的那条不该进一个叫「慢」的文件 |
+| `diagnostics/support-bundle.ts` | 新增**必填** `slowOperations`，写 `diagnostics/slow-operations.json`，README 里写明这一段是什么（含计数含义） |
+| `ipc.ts` | 组合根的包事实里追加 `slowOperations: sharedSlowOperations.summary()`（写进环却没人读＝用户永远收不到） |
+
+三份测试：环的单元用例（4 条）、**默认接线**用例（3 条：IPC 默认环、命令默认环、组合根↔包源码链）、两个生产者的
+同源断言（日志行与环记录来自同一次测量；sink 抛错不改结果）。
+
+### 二 前提读数（本轮自己重取，只读 `logs/headless.out.log`）
+
+上一轮的档里写着这组数；本轮不照抄，用一条独立脚本按「一条日志记录」为单位重新解析（记录头是行首的 `[`，
+字段是未加引号的 `util.inspect` 形状 —— 按行 grep 会把多行记录读错，这正是我第一次跑出「慢行 0 条」的原因）：
+
+| 读数 | 本轮读数 | 上一轮档里 |
+|---|---|---|
+| 文件大小 / 行数 | **77,196,834 B / 3,754,742 行** | 77,191,907 B / 3,754,483 行（文件在长） |
+| 启动次数（按每次启动都打印的 `PureScience Web:` 切分） | **224** | 224 |
+| `ipc handler was slow` 记录条数 | **3,005** | 3,005 |
+| 落在最新 8 MB 之内的 | **276（9.2 %）** ⇒ 2,729 条随包发不出去 | 276 |
+| 耗时 p50 / p90 / 最大 | **315 ms / 14,550 ms / 2,507,409 ms** | 同 |
+| 已带 `heldMs` 的行 | **2** | 2 |
+| 最常出现的慢通道 | `acp:get-plan-projection` 727、`sessions:save-session` 400、`sessions:list-catalog` 280、`settings:get-preflight` 198、`settings:npm-available` 197、`storage:get-info` 190 | 同 |
+
+⇒ 前提成立：这类记录在真机上大量存在，而按字节上限走的包里只剩 9.2 %。**这组数不证明**新那一段已被真机归档（见 §四）。
+
+### 三 门禁读数（本节数字全部由本轮实跑取，不用上一轮的自述）
+
+| 环 | 读数 |
+|---|---|
+| 定向：`src/main/diagnostics` + `application-command-router.test.ts` + `ipc-startup-attribution.test.ts`（`--maxWorkers=2`） | **24 files / 191 passed**，EXIT 0 |
+| 双 typecheck（`--composite false`，堆 8192） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 11 文件） | **0 error / 0 warning**（EXIT 0，无输出） |
+| 全量 vitest（`--maxWorkers=2`，堆 8192） | **1432 files：1409 passed / 23 skipped**，**18,049 例：17,833 passed / 216 skipped**，EXIT 0（578 s） |
+| 变异自证 | 上一轮记了 4 次（IPC 默认 sink 改空操作 / 路由去掉耗时阈值 / 包段改名 / 环归一里删掉 `heldUnmeasured` 传递，各 1–2 红）。**本轮没有重跑**：改 `src/main/**` 会触发在跑的 `electron-vite dev` 重建并重启用户那个实例，那不是本执行器可自行决定的事 ⇒ 这一格按「取自上一轮记录、本轮未复核」记，不当成本轮读数 |
+
+### 四 边界（不许读成更强）
+
+1. **包里这一段是集成级证据**：`support-bundle.test.ts` 真的写出一个 `.tar.gz` 再解出来读回内容（含 README 的描述），
+   但**真机窗口导出**没取 —— 那条通道是 ELECTRON-only 且走原生保存对话框，带窗口的隔离实例要先 `build:e2e`
+   （会与在跑的 dev 实例抢 `out/`）。**具名未取，不冒充。**
+2. **不改变日志行为**：这些行照旧写日志，本笔只多一个机读落点 —— 两种不同寿命的载体（日志按 8 MB 截断，环按 24 条滚动且自己说丢了几个）。
+3. **环不是请求日志**：只有过阈值的调用才进来（IPC 与命令同一个阈值常量语义），快速调用一个都不记，由「快速抛错不入环」那条用例钉住。
+4. **没有新增界面文案**：这一段只出现在支援包里的 `README.txt`，不涉及 i18n 字典。
+
+### 五 下一轮第一步
+
+1. 读本笔两条车道判决（完整 40 位 SHA `git rev-parse HEAD`）。
+2. 候选（连锁从小到大）：(a) 支援包这一段与 `startup-steps.json` 的**真机窗口导出**读数（同一条待办：要带窗口的隔离实例
+   + `build:e2e`，先问用户放行）；(b) 环容量是否该随慢调用密度自适应（**先量**：本机 3,005 条慢调用分布在 224 次启动里，
+   中位 0 条 —— 24 条对多数启动是够的，对 `acp:get-plan-projection` 那种 burst 不够，量完再说）；(c) 慢通道 top 那张表
+   里 `sessions:save-session` 400 条、p50 315 ms —— 归因已由 §「排队型慢通道」的分段口径覆盖，无需重做。

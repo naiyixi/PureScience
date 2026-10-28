@@ -5,6 +5,7 @@ import {
   type CpuUsageSample
 } from './diagnostics/cpu-attribution'
 import { heldSplitForMonotonicWindow, sharedLoopHeldWindows } from './diagnostics/loop-held-windows'
+import { sharedSlowOperations, type SlowOperationFacts } from './diagnostics/slow-operation-ring'
 
 declare const applicationCommandTypes: unique symbol
 
@@ -140,6 +141,10 @@ export type ApplicationCommandRouterDiagnostics = Readonly<{
   cpuUsage?: () => CpuUsageSample
   heldMs?: (startMs: number, endMs: number) => number
   heldCoverageStartMs?: () => number | undefined
+  // Where a slow command is remembered for the support bundle, in the same fields the diagnostic carries
+  // (see `slow-operation-ring`). Defaults to the shared ring, so the record exists on the production path
+  // and not only where a test hands a sink over.
+  slowOperationSink?: (facts: SlowOperationFacts) => void
 }>
 
 // Above this, a command's own handler time is worth a log line. Chosen below the 130-430 ms hitches this
@@ -211,6 +216,21 @@ export const createApplicationCommandRouter = (
     } catch {
       // Diagnostics must never mask or replace the command result.
     }
+    // Remembered for the support bundle in the same fields the diagnostic carries: the log line this pairs
+    // with is capped and rotated, and a bundle is exported right after a slow window (see
+    // `slow-operation-ring`). Only records that are actually slow: the ring is a tail, not a request log.
+    if (timing !== undefined && timing.durationMs >= SLOW_HANDLER_THRESHOLD_MS) {
+      try {
+        slowOperationSink({
+          kind: 'command',
+          name: commandName,
+          ...(code === 'slow-handler' || code === 'handler-rejected' ? { code } : {}),
+          ...timing
+        })
+      } catch {
+        // A diagnostic must never replace the command's authoritative result.
+      }
+    }
   }
 
   // The held windows are recorded in `performance.now()` (the watchdog's clock, see `loop-held-windows`),
@@ -225,6 +245,10 @@ export const createApplicationCommandRouter = (
   const heldCoverageStartMs =
     diagnostics.heldCoverageStartMs ??
     ((): number | undefined => sharedLoopHeldWindows.coverageStartMs())
+  // Defaults to the shared ring here so every command path records without its callers knowing the ring exists.
+  const slowOperationSink =
+    diagnostics.slowOperationSink ??
+    ((facts: SlowOperationFacts): void => sharedSlowOperations.record(facts))
 
   // An instrument that throws must not reach the caller: a dispatch that failed because the diagnostic could
   // not read a clock would be a new failure mode invented by the instrument itself.

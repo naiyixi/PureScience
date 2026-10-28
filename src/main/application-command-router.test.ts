@@ -9,6 +9,7 @@ import {
   type ApplicationCommandDiagnostic,
   type ApplicationInvocation
 } from './application-command-router'
+import type { SlowOperationFacts } from './diagnostics/slow-operation-ring'
 
 const readValue = defineApplicationCommand<'sample.read', readonly [id: string], string>(
   'sample.read'
@@ -477,6 +478,76 @@ describe('application command router', () => {
     )
     expect(diagnostics).toEqual([
       { code: 'handler-rejected', commandName: 'sample.read', durationMs: 700 }
+    ])
+
+    clock.mockRestore()
+  })
+
+  it('leaves a slow command for the support bundle, with the same split, and only when it was slow', async () => {
+    // Same reading, second destination: the diagnostic answers the caller's log, and the bundle answers the
+    // same question from a .tar.gz days later. One measurement feeds both, and a fast command records nothing.
+    const recorded: SlowOperationFacts[] = []
+    const router = createApplicationCommandRouter(undefined, {
+      now: () => 0,
+      cpuUsage: () => ({ user: 0, system: 0 }),
+      heldMs: () => 230,
+      slowOperationSink: (facts) => recorded.push(facts)
+    })
+    const scope = router.registrar.createScope()
+    const clock = vi.spyOn(Date, 'now')
+    scope.registerGroup(defineApplicationCommandGroup('read', [readValue] as const), {
+      'sample.read': () => Promise.resolve('ok')
+    })
+    scope.registerGroup(defineApplicationCommandGroup('write', [writeValue] as const), {
+      'sample.write': () => Promise.reject(new Error('handler broke'))
+    })
+
+    clock.mockReturnValueOnce(1_000).mockReturnValueOnce(1_040)
+    await expect(router.dispatcher.invoke(readValue, invocation(['id-1'] as const))).resolves.toBe(
+      'ok'
+    )
+    expect(recorded).toEqual([])
+
+    // A fast rejection is still a rejection: the router reports every throw with its duration, and only the
+    // slow ones belong in a file named "slow operations". Without this case the threshold could quietly stop
+    // being applied and every error path would push its record into the tail.
+    clock.mockReturnValueOnce(2_000).mockReturnValueOnce(2_010)
+    await expect(
+      router.dispatcher.invoke(writeValue, invocation(['id-2', 'v'] as const))
+    ).rejects.toThrow('handler broke')
+    expect(recorded).toEqual([])
+
+    clock.mockReturnValueOnce(5_000).mockReturnValueOnce(5_240)
+    await router.dispatcher.invoke(readValue, invocation(['id-1'] as const))
+    // A command that threw has no result, so its record carries the code: a duration alone would not say that.
+    clock.mockReturnValueOnce(7_000).mockReturnValueOnce(7_700)
+    await expect(
+      router.dispatcher.invoke(writeValue, invocation(['id-2', 'v'] as const))
+    ).rejects.toThrow('handler broke')
+
+    expect(recorded).toEqual([
+      {
+        kind: 'command',
+        name: 'sample.read',
+        code: 'slow-handler',
+        durationMs: 240,
+        cpuMs: 0,
+        cpuShare: 0,
+        attribution: 'no-cpu-in-process',
+        heldMs: 230,
+        ownMs: 10
+      },
+      {
+        kind: 'command',
+        name: 'sample.write',
+        code: 'handler-rejected',
+        durationMs: 700,
+        cpuMs: 0,
+        cpuShare: 0,
+        attribution: 'no-cpu-in-process',
+        heldMs: 230,
+        ownMs: 470
+      }
     ])
 
     clock.mockRestore()

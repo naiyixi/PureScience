@@ -11,6 +11,7 @@ import {
   type SupportBundleInput
 } from './support-bundle'
 import { createStallRecordRing } from './stall-record-ring'
+import { createSlowOperationRing } from './slow-operation-ring'
 import { summarizeHostTimeline } from './host-stall-sampler'
 import { createStartupStepsHolder } from './startup-steps-snapshot'
 import { createComposeStepRecorder } from './compose-steps'
@@ -62,6 +63,8 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     // Same rule for the startup window: the holder's own absent state is what a bundle exported before
     // composition closed carries, so that is the default fixture.
     startupSteps: createStartupStepsHolder().summary(),
+    // Same rule again: the empty ring's own named state is what a bundle exported from a fast process carries.
+    slowOperations: createSlowOperationRing().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -609,5 +612,114 @@ describe('support bundle: trajectory section', () => {
     expect(summary.status).toBe('not-recorded')
     expect(summary.reason).toBe('composition-not-finished')
     expect(summary.steps).toBeUndefined()
+  })
+
+  it('carries the slow calls with the held split, and the counters that say what is missing', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    let at = 0
+    // Built by the producer, not written by hand: a fixture that invents its own shape stops testing this
+    // section the moment the ring changes (same rule as the other sections).
+    const ring = createSlowOperationRing({
+      capacity: 2,
+      now: () => new Date(1_790_000_000_000 + at)
+    })
+    // Three records into a two-record ring: the newest two are kept, and `dropped` is what stops a short list
+    // from reading as "only two calls were slow".
+    ring.record({
+      kind: 'ipc',
+      name: 'sessions:save-session',
+      surface: 'renderer',
+      location: 'workbench',
+      durationMs: 2_400,
+      cpuMs: 40,
+      cpuShare: 0.017,
+      attribution: 'no-cpu-in-process',
+      heldMs: 2_300,
+      ownMs: 100
+    })
+    at = 1_000
+    ring.record({
+      kind: 'command',
+      name: 'storage:get-info',
+      code: 'slow-handler',
+      durationMs: 900,
+      cpuMs: 850,
+      cpuShare: 0.944,
+      attribution: 'cpu-bound-in-process',
+      // The one state that must survive normalisation: the split was needed and the windows were gone.
+      heldUnmeasured: 'windows-dropped'
+    })
+    at = 2_000
+    ring.record({
+      kind: 'command',
+      name: 'settings:list-skills',
+      code: 'handler-rejected',
+      durationMs: 120
+    })
+
+    const result = await createSupportBundle({ ...input, slowOperations: ring.summary() })
+
+    expect(result.entries).toContain('diagnostics/slow-operations.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/slow-operations.json')) as {
+      status: string
+      capacity: number
+      observed: number
+      dropped: number
+      oldestAt?: string
+      newestAt?: string
+      records: {
+        kind: string
+        name: string
+        code?: string
+        durationMs: number
+        heldMs?: number
+        ownMs?: number
+        heldUnmeasured?: string
+        cpuShare?: number
+        at: string
+      }[]
+    }
+    expect(summary.status).toBe('records')
+    expect(summary.capacity).toBe(2)
+    expect(summary.observed).toBe(3)
+    expect(summary.dropped).toBe(1)
+    // Oldest first: the tail has to read as a timeline.
+    expect(summary.records.map((entry) => entry.name)).toEqual([
+      'storage:get-info',
+      'settings:list-skills'
+    ])
+    // An unmeasurable split stays named, and does not turn into a zero that reads as "the loop was free".
+    expect(summary.records[0].heldUnmeasured).toBe('windows-dropped')
+    expect(summary.records[0]).not.toHaveProperty('heldMs')
+    expect(summary.records[0].cpuShare).toBe(0.944)
+    // A rejected command's duration is still a duration; fields nobody measured are simply absent.
+    expect(summary.records[1].code).toBe('handler-rejected')
+    expect(summary.records[1]).not.toHaveProperty('cpuShare')
+    // The README has to describe the section, or the reader who opens the archive has to guess what it is.
+    expect(await readFrom(target, 'README.txt')).toContain('diagnostics/slow-operations.json')
+  })
+
+  it('says nothing was slow rather than shipping an empty list', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+
+    const result = await createSupportBundle(input)
+
+    // Present-and-named: for a process that served nothing this is the honest answer, and it is a different
+    // sentence from "a file that stopped being written".
+    expect(result.entries).toContain('diagnostics/slow-operations.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/slow-operations.json')) as {
+      status: string
+      observed: number
+      records: unknown[]
+    }
+    expect(summary.status).toBe('no-slow-operations-observed')
+    expect(summary.observed).toBe(0)
+    expect(summary.records).toEqual([])
   })
 })

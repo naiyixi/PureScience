@@ -167,6 +167,7 @@ import {
 import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { sharedStartupSteps } from './diagnostics/startup-steps-snapshot'
+import { sharedSlowOperations } from './diagnostics/slow-operation-ring'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
   createNotebookApplicationModule,
@@ -2668,6 +2669,10 @@ const createApplicationModules = async (
       // `startup-steps-snapshot`). Its `status` separates "composition had not closed yet" from "startup was
       // fast", which an empty step list could not.
       startupSteps: sharedStartupSteps.summary(),
+      // The slow calls themselves, from the ring both producers write in this same process (see
+      // `slow-operation-ring`): the log lines that explain a slow window are capped and rotated, and the
+      // bundle is exported exactly when someone needs one of them explained.
+      slowOperations: sharedSlowOperations.summary(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

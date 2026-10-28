@@ -15,6 +15,7 @@ import * as tar from 'tar'
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 import type { HostTimelineSummary } from './host-stall-sampler'
+import type { SlowOperationSummary } from './slow-operation-ring'
 import type { StallRecordSummary } from './stall-record-ring'
 import type { StartupStepsSummary } from './startup-steps-snapshot'
 
@@ -74,6 +75,14 @@ export type SupportBundleInput = {
    * bundle exported before composition closed never ships an empty step list that reads like a fast startup.
    */
   startupSteps: StartupStepsSummary
+  /**
+   * The slow calls this process served, from their bounded ring (see `slow-operation-ring`). Required for the
+   * same reason as `stalls`: the lines that explain a slow window are log lines, and the log they land in is
+   * large enough that the newest-first byte cap can already have rotated them out by the time a bundle is
+   * exported. This is the machine-readable tail, with the same held/own split, plus how many records no
+   * longer fit — its `status` names the empty case instead of shipping a list that reads like a fast app.
+   */
+  slowOperations: SlowOperationSummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -143,6 +152,11 @@ diagnostics/startup-steps.json
                    between steps no step can name) — the three always add up. Its status says
                    "not-recorded" when the bundle was exported before composition closed, so an absent
                    breakdown never reads as a fast startup
+diagnostics/slow-operations.json
+                   the slow calls this process served, newest last: which channel or application command, how
+                   long the caller waited, the CPU that window consumed, and the part of it the event loop
+                   spent held by other work. Its counters say how many were observed and how many are no
+                   longer kept, so a short list never reads as "nothing was slow"
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -333,6 +347,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/startup-steps.json',
     `${JSON.stringify(input.startupSteps, null, 2)}\n`
+  )
+  // The slow calls themselves, in the fields their log lines carry: which channel/command, how long the caller
+  // waited, how much of that the process was running, and the part the loop spent held. Scrubbed like
+  // everything else — channel names and surfaces are ours, but the backstop costs nothing.
+  await writeStaged(
+    'diagnostics/slow-operations.json',
+    `${JSON.stringify(input.slowOperations, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

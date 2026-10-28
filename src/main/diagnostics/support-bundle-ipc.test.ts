@@ -29,7 +29,14 @@ const facts: SupportBundleFacts = {
     capturedAt: '2026-09-28T00:00:00.000Z',
     reason: 'sampler-not-started'
   },
-  startupSteps: { status: 'not-recorded', reason: 'composition-not-finished' }
+  startupSteps: { status: 'not-recorded', reason: 'composition-not-finished' },
+  slowOperations: {
+    capacity: 24,
+    observed: 0,
+    dropped: 0,
+    status: 'no-slow-operations-observed',
+    records: []
+  }
 }
 
 const sender = {} as never
