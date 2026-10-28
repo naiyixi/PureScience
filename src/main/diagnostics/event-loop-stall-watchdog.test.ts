@@ -6,6 +6,7 @@ import {
   type StallFrame
 } from './event-loop-stall-watchdog'
 import type { HostStallSampler } from './host-stall-sampler'
+import type { GcPauseMonitor } from './gc-pause-monitor'
 import { createLoopHeldWindows } from './loop-held-windows'
 import { createStallRecordRing } from './stall-record-ring'
 import {
@@ -28,6 +29,17 @@ const quietHostSampler = (): HostStallSampler => ({
 // A runtime without an inspector: every record then says `unavailable`, which is what these cases are not
 // about. Cases that do exercise the stack inject a stub that answers with a profile.
 const noPresampler = (): RollingStackProfile | undefined => undefined
+
+// The two instruments behind `cause` are defaulted here, not in the module, for the same reason the samplers
+// are: these cases drive their own clock, so a real `PerformanceObserver` would report pauses on
+// `performance.now()` while the windows are on the fake one, and a real canary read (a temp file, one I/O)
+// would keep the record from ever being reported to a case that only advances timers. One case below leaves
+// both at their production defaults on a real clock and asserts what they produce.
+const noGcMonitor = (): GcPauseMonitor | undefined => undefined
+const quietFsProbe = {
+  inFlight: (): number => 0,
+  startCanaryRead: async (): Promise<number> => 1
+}
 
 const presamplerStub = (
   // `samples` is filled from the frames unless a case names it: a fixture that reports frames is describing
@@ -116,7 +128,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 120 }),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     for (let index = 0; index < 5; index += 1) {
@@ -140,7 +154,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 70 }),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     for (const step of [500, 501, 502, 500, 503, 500]) {
@@ -177,7 +193,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 40, loadAvg1m: 12.5 }),
       createPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
     // Created once, at start-up: that is the whole point — nothing waits for a stall to begin sampling.
     expect(createPresampler).toHaveBeenCalledTimes(1)
@@ -214,6 +232,8 @@ describe('event loop stall watchdog', () => {
       machine: () => ({ freeMemMb: 90 }),
       createPresampler: noPresampler,
       createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe,
       heldWindows: held
     })
 
@@ -250,7 +270,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: () => presampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     // 5 s of wall time for a 100 ms tick, but only 0.6 s of CPU: `cpuShare` alone would call this
@@ -287,7 +309,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 12 }),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     time.advance(5_000, 40)
@@ -312,7 +336,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     time.advance(5_000, 2_000)
@@ -336,7 +362,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     time.advance(2_000, 1_600)
@@ -390,7 +418,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({ freeMemMb: 40 }),
       createPresampler: noPresampler,
-      createHostSampler: () => host
+      createHostSampler: () => host,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     time.advance(2_000, 100)
@@ -439,7 +469,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: () => presampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     // Three on-time ticks, 1.1 s of loop time: one rotation, on the tick that crosses the interval.
@@ -474,7 +506,9 @@ describe('event loop stall watchdog', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: noPresampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
 
     watchdog.stop()
@@ -506,6 +540,8 @@ describe('event loop stall watchdog', () => {
       machine: () => ({ freeMemMb: 55 }),
       createPresampler: () => presampler,
       createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe,
       records: ring
     })
 
@@ -657,7 +693,9 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: () => presampler,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: quietFsProbe
     })
     try {
       // Two stalls in a row: the record for the second one must be as usable as the first (the original
@@ -682,6 +720,144 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     }
   })
 
+  // The cause is what a reader acts on, so each case here pins one instrument deciding the verdict — and the
+  // compatibility half: `attribution` keeps its measured meaning (`no-cpu-in-process`) instead of being
+  // overloaded into a cause.
+  it('names garbage collection when V8 pauses fill the window', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: () => ({
+        pauseMsWithin: () => ({ status: 'measured', pauseMs: 400, pauses: 3 }),
+        stop: () => undefined
+      }),
+      fsProbe: quietFsProbe
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    const record = warned[0]?.data
+    // The measurement stays what it was: almost no CPU here. The cause is the addition, not a redefinition.
+    expect(record?.attribution).toBe('no-cpu-in-process')
+    expect(record?.cause.kind).toBe('garbage-collection')
+    expect(record?.cause.gc).toEqual({ status: 'measured', pauseMs: 400, pauses: 3 })
+    expect(record?.cause.basis).toContain('gc 400 ms')
+    watchdog.stop()
+  })
+
+  it('names the file-system pool when the canary waited behind other work', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const httpInFlight = 7
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: () => ({
+        pauseMsWithin: () => ({ status: 'measured', pauseMs: 0, pauses: 0 }),
+        stop: () => undefined
+      }),
+      fsProbe: { inFlight: () => httpInFlight, startCanaryRead: async () => 250 }
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.kind).toBe('fs-queue-saturated')
+    expect(warned[0]?.data.cause.fs).toEqual({
+      status: 'measured',
+      canaryMs: 250,
+      inFlight: httpInFlight
+    })
+    watchdog.stop()
+  })
+
+  it('says the stall was unexplained when both instruments ran and neither accounts for it', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: () => ({
+        pauseMsWithin: () => ({ status: 'measured', pauseMs: 0, pauses: 0 }),
+        stop: () => undefined
+      }),
+      fsProbe: quietFsProbe
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.kind).toBe('unexplained')
+    // The sentence has to carry the numbers that were ruled out, or the reader is back to trusting a label.
+    expect(warned[0]?.data.cause.basis).toContain('gc 0 ms')
+    expect(warned[0]?.data.cause.basis).toContain('fs canary 1 ms')
+    watchdog.stop()
+  })
+
+  it('says unmeasured when an instrument is missing instead of implying the machine was calm', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: {
+        inFlight: () => 0,
+        startCanaryRead: async () => {
+          throw new Error('no canary file')
+        }
+      }
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.kind).toBe('unmeasured')
+    expect(warned[0]?.data.cause.gc).toEqual({ status: 'unavailable' })
+    // A failed canary is not a fast canary: the reading has to say it was not taken.
+    expect(warned[0]?.data.cause.fs).toEqual({ status: 'unavailable' })
+    watchdog.stop()
+  })
+
   // The real-clock/real-sampler half: it must produce records, and every profiled record must account for
   // its window — samples the sampler took (which may all sit on frames this module filters on purpose), or a
   // named unobserved stretch. Which frames a starved runner's sampling thread manages to take is deliberately
@@ -699,6 +875,16 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
 
     expect(warned.length).toBeGreaterThan(0)
     for (const entry of warned) {
+      // Both instruments are the production ones here (a real `PerformanceObserver` and a real canary read), so
+      // this is the case that says the defaults actually produce a reading rather than `unavailable` — the
+      // shape a stubbed seam can never prove.
+      expect(entry.data.cause.gc.status).toBe('measured')
+      expect([
+        'garbage-collection',
+        'fs-queue-saturated',
+        'cpu-in-process',
+        'unexplained'
+      ]).toContain(entry.data.cause.kind)
       if (entry.data.stack.status !== 'profiled') continue
       // A profiled window has to account for itself: either the sampler holds samples in it, or the window is
       // named as unobserved. Two zeros is the one shape that must not exist — it reads exactly like an idle

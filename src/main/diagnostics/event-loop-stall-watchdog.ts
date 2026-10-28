@@ -3,6 +3,9 @@ import { performance } from 'node:perf_hooks'
 
 import type { Logger } from '../logger'
 import { classifyCpuShare, cpuShareOf, type ActivityAttribution } from './cpu-attribution'
+import { inFlightFsOperationCount, startCanaryRead } from './fs-queue-probe'
+import { createGcPauseMonitor, type GcPauseMonitor, type GcPauseReading } from './gc-pause-monitor'
+import { classifyStallCause, type StallCause, type StallFsReading } from './stall-cause'
 import {
   sharedHostStallSampler,
   type HostStallReading,
@@ -38,6 +41,10 @@ import {
 //      the stall (free memory, load, paging counters). It runs permanently behind a bounded ring for the
 //      same reason the profiler does: the first stall is often the longest, and a sampler created by that
 //      stall could only ever report that it started too late.
+//   4. `cause` — one named verdict with the measurements behind it (see `stall-cause`): V8's own pause
+//      report (`gc-pause-monitor`) and the file-system canary this app already uses for slow previews
+//      (`fs-queue-probe`). Without it every stall in the low CPU band said `no-cpu-in-process`, which is a
+//      measurement and not a cause — 24 shipped-build records, three possible situations, one word.
 //
 // Deliberately not a fix: this proves a stall existed and roughly what held it, not why the pages were
 // gone. Until a sample names a function (or the machine reading shows the memory is gone) the save path
@@ -91,6 +98,10 @@ export type EventLoopStallRecord = MachineReading & {
   cpuMs: number
   cpuShare: number
   attribution: StallAttribution
+  // What the three instruments say held the loop, in one named verdict plus the numbers behind it (see
+  // `stall-cause`). Present on every record: the low CPU band used to be the end of the story, and it never
+  // distinguished a collection from a saturated thread pool from a descheduled process.
+  cause: StallCause
   stack: StallStack
   // What another thread saw while the loop was held. Always present: "not measured" has to be a named
   // state, never a missing field that reads like a healthy machine.
@@ -110,6 +121,12 @@ export type EventLoopStallWatchdogInput = {
   // the shared ring for the same reason: the bundle facts are assembled in the composition root, which has
   // no other way to reach the watchdog. Tests inject their own.
   records?: StallRecordRing
+  // Seams for the two instruments behind `cause` (see `stall-cause`). Production passes nothing: the GC
+  // monitor is a `PerformanceObserver` on V8's own pauses, and the fs probe is the canary the preview-acquire
+  // path already uses. Both are created at start-up, for the same reason the stack sampler is: an instrument
+  // armed by the stall would only ever describe the recovery.
+  createGcMonitor?: () => GcPauseMonitor | undefined
+  fsProbe?: { inFlight: () => number; startCanaryRead: () => Promise<number> }
   // Seams. Production passes nothing; tests drive time, CPU, machine state and both samplers directly.
   now?: () => number
   // Wall clock (epoch ms), used to line the sampler's timeline up with the stall: the sampler runs on its
@@ -160,6 +177,9 @@ export const startEventLoopStallWatchdog = (
   const presampleRotateMs = input.presampleRotateMs ?? DEFAULT_PRESAMPLE_ROTATE_MS
   const heldWindows = input.heldWindows ?? sharedLoopHeldWindows
   const records = input.records ?? sharedStallRecords
+  const createGcMonitor =
+    input.createGcMonitor ?? ((): GcPauseMonitor | undefined => createGcPauseMonitor())
+  const fsProbe = input.fsProbe ?? { inFlight: inFlightFsOperationCount, startCanaryRead }
 
   const presampler = createPresampler()
   // Both samplers are recording before the first stall: a timeline (or a stack) that starts *after* the event
@@ -167,6 +187,9 @@ export const startEventLoopStallWatchdog = (
   // being torn down, so there is no window to arm and no timer that could take it away mid-burst (see
   // `host-stall-sampler`).
   const hostSampler = createHostSampler()
+  // Created here, not at the stall: V8 reports a pause only after it ends, and a monitor started by the stall
+  // would have no pause to report for the very window that needs one (the same trap the presampler had).
+  const gcMonitor = createGcMonitor()
   let lastTick = now()
   let lastCpu = cpuUsage()
   let nextRotateAt = lastTick + presampleRotateMs
@@ -233,23 +256,39 @@ export const startEventLoopStallWatchdog = (
     const hostSlice: Promise<HostStallReading> = hostSampler
       ? hostSampler.read(endedAtWall - windowMs, endedAtWall)
       : Promise.resolve<HostStallReading>({ status: 'unavailable' })
+    // Both instruments behind `cause` are read at the stall's edge. The GC window is the one that just ended;
+    // the canary read is issued here and awaited with the samplers, because a canary started after the report
+    // would measure a pool that had already caught up.
+    const gc: GcPauseReading = gcMonitor
+      ? gcMonitor.pauseMsWithin(current - windowMs, current)
+      : { status: 'unavailable' }
+    const fsInFlight = fsProbe.inFlight()
+    const fsSlice: Promise<StallFsReading> = fsProbe.startCanaryRead().then(
+      (canaryMs): StallFsReading => ({ status: 'measured', canaryMs, inFlight: fsInFlight }),
+      // A failed canary is not a reading: say it was unavailable instead of reporting it as fast.
+      (): StallFsReading => ({ status: 'unavailable' })
+    )
     // `take()` restarts the segment, so whatever happens next is recorded from this instant on.
     const stackSlice: Promise<StackProfile | undefined> = presampler
       ? presampler.take(windowMs)
       : Promise.resolve(undefined)
     nextRotateAt = current + presampleRotateMs
 
-    void Promise.all([stackSlice, hostSlice]).then(([profile, host]) => {
+    void Promise.all([stackSlice, hostSlice, fsSlice]).then(([profile, host, fs]) => {
+      const attribution = profile
+        ? // Main-thread run time is the stricter verdict: `cpuShare` also counts the libuv threadpool and V8
+          // helper threads, which can be busy while the main thread itself was never scheduled.
+          classifyCpuShare(cpuShareOf(profile.mainThreadMs, windowMs), windowMs)
+        : base.attribution
+      const cause = classifyStallCause({ lateMs, attribution, gc, fs })
       if (!profile) {
-        report({ ...base, stack: { status: 'unavailable' }, host })
+        report({ ...base, attribution, cause, stack: { status: 'unavailable' }, host })
         return
       }
-      // Main-thread run time is the stricter verdict: `cpuShare` also counts the libuv threadpool and V8
-      // helper threads, which can be busy while the main thread itself was never scheduled.
-      const mainThreadShare = cpuShareOf(profile.mainThreadMs, windowMs)
       report({
         ...base,
-        attribution: classifyCpuShare(mainThreadShare, windowMs),
+        attribution,
+        cause,
         stack: {
           status: 'profiled',
           mainThreadMs: profile.mainThreadMs,
@@ -272,6 +311,7 @@ export const startEventLoopStallWatchdog = (
       clearInterval(timer)
       hostSampler?.stop()
       presampler?.stop()
+      gcMonitor?.stop()
     }
   }
 }

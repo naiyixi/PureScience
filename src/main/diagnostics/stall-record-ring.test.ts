@@ -11,6 +11,12 @@ const stall = (windowMs: number): EventLoopStallRecord => ({
   cpuMs: Math.round(windowMs * 0.9),
   cpuShare: 0.9,
   attribution: 'cpu-bound-in-process',
+  cause: {
+    kind: 'cpu-in-process',
+    basis: 'cpu-bound in this process, gc 0 ms in 0 pause(s), fs canary 1 ms with 0 in flight',
+    gc: { status: 'measured', pauseMs: 0, pauses: 0 },
+    fs: { status: 'measured', canaryMs: 1, inFlight: 0 }
+  },
   stack: {
     status: 'profiled',
     mainThreadMs: Math.round(windowMs * 0.9),

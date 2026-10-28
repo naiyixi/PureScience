@@ -136,7 +136,10 @@ diagnostics/event-loop-stalls.json
                    the last event-loop stalls this process saw, as the watchdog recorded them: how long the
                    loop was late, how much CPU that window used, what the machine looked like inside it
                    (free memory, load, paging), the frames V8 sampled, and — when present — the timeline a
-                   sampler thread took while the loop was held. Its own counters say how many stalls were
+                   sampler thread took while the loop was held. Each record also carries a cause: one of
+                   garbage-collection, fs-queue-saturated, cpu-in-process, unexplained or unmeasured, with
+                   the pause time and file-system canary reading it follows from, so the verdict can be
+                   checked against the numbers instead of trusted. Its own counters say how many stalls were
                    observed and how many are no longer kept, so an empty list never reads as "nothing wrong"
 diagnostics/host-timeline.json
                    one reading per quarter second from a thread of our own: when each was taken, the CPU it

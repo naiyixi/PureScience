@@ -20,6 +20,10 @@ const quietHostSampler = (): HostStallSampler => ({
   stop: () => undefined
 })
 
+// The two instruments behind `cause` are not what this file is about, and a real canary read (a temp file)
+// would outlive the fake clock the window is driven on.
+const quietFsProbe = { inFlight: (): number => 0, startCanaryRead: async (): Promise<number> => 1 }
+
 const clock = (): {
   now: () => number
   cpuUsage: () => NodeJS.CpuUsage
@@ -51,7 +55,9 @@ describe('stall watchdog to slow-handler line (default wiring)', () => {
       cpuUsage: time.cpuUsage,
       machine: () => ({}),
       createPresampler: () => undefined,
-      createHostSampler: quietHostSampler
+      createHostSampler: quietHostSampler,
+      createGcMonitor: () => undefined,
+      fsProbe: quietFsProbe
     })
 
     // On time, then 2 s late: the remembered part is the 1.9 s past the schedule.

@@ -379,6 +379,14 @@ describe('support bundle: trajectory section', () => {
       cpuMs: 3_900,
       cpuShare: 0.93,
       attribution: 'cpu-bound-in-process' as const,
+      // The cause travels with the record into the bundle: a fixture without it would type-check as a record
+      // that a reader could still read, which is the shape this field exists to rule out.
+      cause: {
+        kind: 'cpu-in-process' as const,
+        basis: 'cpu-bound in this process, gc 0 ms in 0 pause(s), fs canary 1 ms with 0 in flight',
+        gc: { status: 'measured' as const, pauseMs: 0, pauses: 0 },
+        fs: { status: 'measured' as const, canaryMs: 1, inFlight: 0 }
+      },
       stack: {
         status: 'profiled' as const,
         mainThreadMs: 3_800,

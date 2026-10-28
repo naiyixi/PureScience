@@ -81,8 +81,21 @@ test('exports a scrubbed support bundle from the running app', async ({ app }) =
     expect(['records', 'no-stalls-observed']).toContain(stalls.status)
     expect(typeof stalls.observed).toBe('number')
     expect(stalls.dropped).toBeGreaterThanOrEqual(0)
-    if (stalls.status === 'no-stalls-observed') expect(stalls.records).toEqual([])
-    else expect(stalls.records.length).toBeGreaterThan(0)
+    if (stalls.status === 'no-stalls-observed') {
+      expect(stalls.records).toEqual([])
+    } else {
+      expect(stalls.records.length).toBeGreaterThan(0)
+      // Every record names what held the loop, not just how much CPU the window burned: the low band used to
+      // be the end of the story. A record without a cause — or with one of the two states that admit the
+      // instruments did not decide it — is a reading a maintainer cannot act on.
+      for (const record of stalls.records as Array<{ cause?: { kind?: string; basis?: string } }>) {
+        expect(
+          record.cause?.kind,
+          `stall record without a cause: ${JSON.stringify(record)}`
+        ).toBeDefined()
+        expect(record.cause?.basis, 'a cause has to carry the numbers behind it').toBeTruthy()
+      }
+    }
 
     // The machine's own timeline: the sampler runs on its own thread from boot, so a bundle exported here must
     // carry real readings (not an empty list) and say which of the three states it is in. This is the half the
