@@ -14024,3 +14024,65 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
 2. 若认证作业只剩 §四 那条视觉红：按上面的判据处理；若五条认证 spec 仍红，说明收紧后的锚点没落到真元素上，就地修。
 3. v2.20.0 范围（A1–A5、B1–B3、C1–C2）到此**代码与读数齐**；剩下的是发版窗口（`docs/plan-2026-10-28-two-releases.md` §三 的退出条件
    要求 A 组用发布件读数）——开窗口前先 `hermes cron pause` 本执行器、并确认没有在飞车道。
+
+## 二百五十八、本轮追加（执行器，2026-10-29 08:1x–10:5x）—— v2.20.0 出手：四件套 + 隔离门禁，由 tag 驱动的三条车道确认
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `HEAD = origin/main = 44e1fd23`，工作区**干净**；上一轮 §二百五十七 已把三笔推完、B2 读数落档 ⇒ 本轮**不重做实现**。
+- 队列 B 段耗尽；v2.20.0 范围（A1–A5 / B1–B3 / C1–C2）**代码与读数齐**（见 §二百五十七 §二/§三）⇒ 本轮开窗口。
+  这不是「把已做完的先发出去」：范围项逐条有实现与读数，缺的只有退出条件里那一格发布件读数（见 §五）。
+- 并发：`hermes cron list` 没有第二条在跑的执行器；推前现查在飞车道 **6 条全 completed** ⇒ 本次推送没有取消任何人的判决。
+
+### 一 发版材料（四件，`09e0d027`）
+
+| 文件 | 读数 |
+| --- | --- |
+| `package.json` | 2.19.0 → **2.20.0**（`package-lock` 按惯例不动）|
+| `CHANGELOG.md` | 新段 **6,633 字符**，覆盖 `v2.19.0..HEAD` 的 **51 笔** |
+| `README.md` + `README.en.md` | 横幅 **2,233 字符逐字一致**；成熟度块前插本版头条 **3,761 字符**，并把 v2.19.0 折成独立从句（`Previously it made a framework selection stop being silently ignored`）；`Previous:` 行由 v2.15.2 改指 **v2.19.0**（两文件同改）|
+
+判据：`node scripts/check-readme-sync.mjs` ✓；`node scripts/release-notes.mjs 2.20.0 --print` 出 **71,764 字节**且含 `## v2.20.0` 段；
+`scripts/release-notes.test.ts` 三个套件 **22 例**全过。
+
+`prettier --check README/CHANGELOG` 三文件红，但**基线也红**（`git show v2.19.0:<file> | npx prettier --check --stdin-filepath <file>` 三红）
+⇒ 不是本批引入；**没有**跑 `--write`（那会重排数千行既有散文，把不可评审的 churn 塞进发版提交）。
+
+### 二 门禁（隔离工作树 `/tmp/ps-gate-09e0`，对 `09e0d027`；共享树一个字节未动）
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .` | **0 error / 118 warnings**（既有 prettier 告警；门只判 error）|
+| `tsc --noEmit`（`--composite false`，堆 8192） | node **0**；web **0** |
+| 全量 vitest（`--maxWorkers=4`） | **1417 files passed ｜ 30 skipped（1447）**，**17,888 passed ｜ 225 skipped（18,113）**，EXIT 0，338 s |
+| 仓规五查 | 汇总行 `repo-checks|OK`；按纪律**另单跑** `bash scripts/pre-push-checks.sh` = **EXIT 0**（八段全过）|
+| 定向 vitest | `scripts/` 三个套件 **3 files / 22 passed** |
+
+### 三 tag 与车道（判决按完整 SHA / run id）
+
+- annotated tag **v2.20.0 → `09e0d027`**（`git cat-file -t` = `tag`；`git rev-parse 'v2.20.0^{commit}'` = `09e0d0277c48…`）；
+  先推 `main`（`44e1fd23..09e0d027`）再推 tag。
+- 三条车道**全绿**：`Release` run **40801188845** success（Release preflight、四平台 build、`Run P0 Electron certification`、
+  visual、publish、`windows-upgrade-smoke` 全 success）、`Nightly` run **40800261992** success、`Windows Full Test` run **40800261990** success。
+
+### 四 发布核验（按资产清单判，不按「有页面」判）
+
+- 页：`PureScience v2.20.0` = **Latest**，`isDraft=false`、`isPrerelease=false`、**21 资产**（四平台 dmg/zip/blockmap/setup/AppImage/deb +
+  `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest.yml`/`latest-mac.yml`/`latest-linux.yml` + `arm64-mac.yml`/`x64-mac.yml`）。
+- `RELEASE-CERTIFICATION.json`：`sourceSha = 09e0d0277c48578211158e9ab073a6dc4f8a532c`（与 `^{commit}` 逐字符相同）；
+  `macos-arm64` 的 `electronP0`/`visualRegression`/`packageSmoke` 全 **passed**，四平台 `packageSmoke` 全 passed，`macSignature: unsigned`。
+- 正文：按规范组合重写后 **66,255 字符**，首行 `## Maturity and Known Limitations`，含 **1 处**未签名声明与 **1 处** `## v2.20.0` 段。
+  与工作流生成版的差异只有声明位置（工作流放在段末，规范组合放在成熟度块下）⇒ 已按规范落，`--keep-generated` 保住了生成尾部。
+- `version.json`：version=2.20.0、notes **6,579 字符**（= 本版 CHANGELOG 段）、四个平台条目各带 size+sha256
+  （mac-arm64 284,473,173 / mac-x64 299,940,887 / win-x64 235,173,385 / linux deb 232,001,356）。
+
+### 五 没取到的一格（具名，别在旧汇报里当已完成）
+
+退出条件要求 **A 组的发布件读数**（同一台机器、打包产物上七条通道的中位与 `ipc handler was slow` 条数）。本轮**未取**，三条具名原因：
+
+1. **取回速度实测**：对 284 MB 的 `mac-arm64.dmg` 发 4 MB range 请求，**200 秒未完成**（≈20 KB/s）⇒ 完整下载要数小时；
+2. **内存**：空闲物理页 4,190（×16 KB ≈ **65 MB**）、swap **10.7 / 11.2 GB 已用** ⇒ 起打包实例 + 五个真会话会与用户常驻 dev 实例抢资源；
+3. **凭据**：真会话要模型凭据，打包实例的 `enc:` 密钥走 Keychain，无人值守下会卡在授权。
+
+下一轮第一步：任一条件恢复后下载该 DMG → 装到 `/tmp` 隔离目录 → 独立 `--user-data-dir` + 独立 `PURESCIENCE_STORAGE_ROOT`
+→ 连跑 5 个真会话 → 按通道取中位与慢条数（判据：七条通道中位 <80 ms、无单次 >400 ms、`ipc handler was slow` 条数降 ≥80%）。
