@@ -61,6 +61,13 @@
    删临时文件；权限门由命令侧既有实现负责，remote 面直接 401；
 5. 契约面记账：三处命令计数（internal/local-web 各 +2，remote 不变）、四处清单 pin、生成物重生成。
 
+**方案 A 更便宜的实测依据（2026-10-29 14:20 读码确认）**：owner 与 import 侧**本来就是路径制、无对话框也能跑** ——
+`owner.exportPackage(request, { showSaveDialog })` 在 `request.destinationPath` 存在时**根本不会弹框**
+（`src/main/session-package/owner.ts:92`），`SessionPackageImportRequest = { packagePath, confirm? }`
+（`src/shared/session-package-import.ts:76`），预览/导入都吃 `packagePath`。也就是说方案 A 不需要改 owner，
+只需要：把这两条能力从「仅 ipcMainHandle」提升成 application commands（handler 直接透传 request）→ 契约目录标 `LOCAL`
+→ 计数 +2/+2 → HTTP 两条路由 → CLI 两个动词。
+
 **方案 B（绕过命令）**：给 `TaskApi` 注入一个 session-package 端口直接调 `service.ts`。
 不推荐：等于给 Web 面开一条绕过命令注册表的旁路，权限门与审计要重做一遍，且与既有 artifact 路径不一致。
 
