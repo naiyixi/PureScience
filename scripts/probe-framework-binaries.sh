@@ -7,20 +7,29 @@
 #
 # 用法：bash scripts/probe-framework-binaries.sh [端口]
 # 输出：每个框架一行 stored / resolved / path，四行路径必须互不相同。
+#
+# 隔离要求（吃过代价，别改回去）：探针会调用 settings:set-agent-framework，那是**持久化**写入。
+# 第一次跑这脚本时它直接写进了真实配置根 ~/.purescience，把正在用的应用切成了 codebuddy，
+# 用户随后的三次请求全被 codebuddy 拒绝（stopReason: refusal）、第四次挂起 15 分钟。
+# 所以这里必须用**自己的配置根**：从真实根只拷 settings.json 与 web-token，其余一律新建。
 set -u
 PORT="${1:-44670}"
-ROOT="${PURESCIENCE_CONFIG_ROOT:-$HOME/.purescience}"
-ROOT="${ROOT/#\~/$HOME}"
+LIVE_ROOT="${PURESCIENCE_CONFIG_ROOT:-$HOME/.purescience}"
+LIVE_ROOT="${LIVE_ROOT/#\~/$HOME}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-UD="$ROOT/electron-userdata-probe-$PORT"
+ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ps-probe-root-XXXXXX")"
+UD="$ROOT/electron-userdata"
+cp "$LIVE_ROOT/settings.json" "$ROOT/settings.json" 2>/dev/null || true
+cp "$LIVE_ROOT/web-token" "$ROOT/web-token" 2>/dev/null || true
 TOKEN=$(tr -d '\n' < "$ROOT/web-token")
+echo "probe_config_root=$ROOT (真实根 $LIVE_ROOT 只读) "
 
 # 独立 user-data-dir：主实例通常已在运行，共用目录会因单实例锁直接退出。
 PURESCIENCE_CONFIG_ROOT="$ROOT" PURESCIENCE_STORAGE_ROOT="$ROOT" PURESCIENCE_WEB_PORT="$PORT" \
   "$REPO/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" "$REPO" \
   --purescience-headless --disable-gpu --user-data-dir="$UD" > "/tmp/ps-probe-$PORT.log" 2>&1 &
 PID=$!
-trap 'kill -TERM "$PID" 2>/dev/null; sleep 1; kill -9 "$PID" 2>/dev/null' EXIT
+trap 'kill -TERM "$PID" 2>/dev/null; sleep 1; kill -9 "$PID" 2>/dev/null; rm -rf "$ROOT"' EXIT
 
 for _ in $(seq 1 60); do
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 "http://127.0.0.1:$PORT/api/v1/readiness?token=$TOKEN")
@@ -56,6 +65,19 @@ print('%-11s stored=%-11s resolved=%-11s found=%-5s path=%s' % ('$FW', '$STORED'
 $(echo "$LINE" | sed -n 's/.*path=//p')"
 done
 
-DISTINCT=$(printf '%s\n' "$PATHS" | sed '/^$/d' | sort -u | wc -l | tr -d ' ')
-echo "distinct_paths=$DISTINCT (应为 4)"
-[ "$DISTINCT" = "4" ]
+# 判据：①任何两个框架都不得共用同一个路径（串味的定义）；②解析到的路径去重后条数 = found 的条数；
+# ③本机应至少解析到三个框架（codex 走托管 adapter，隔离的临时存储根下可以确实不存在 —— 那种情况必须
+# 报 found=False，而不是借用别人的路径）。
+FOUND_PATHS=$(printf '%s\n' "$PATHS" | sed '/^$/d' | grep -v '^None$' | sort)
+DISTINCT=$(printf '%s\n' "$FOUND_PATHS" | sed '/^$/d' | sort -u | wc -l | tr -d ' ')
+FOUND_COUNT=$(printf '%s\n' "$PATHS" | sed '/^$/d' | grep -vc '^None$' | tr -d ' ')
+echo "resolved=$FOUND_COUNT distinct_paths=$DISTINCT"
+if [ "$FOUND_COUNT" -lt 3 ]; then
+  echo "至少应解析到 3 个框架（claude/opencode/codebuddy 之一缺失？）" >&2
+  exit 1
+fi
+if [ "$DISTINCT" != "$FOUND_COUNT" ]; then
+  echo "有两个框架解析到同一个二进制 —— 这就是串味" >&2
+  exit 1
+fi
+echo "ok"
