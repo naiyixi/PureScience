@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import type { SessionPackageManifest, SessionPackageMode } from '../../shared/session-package'
 import { createSessionPackage, type SessionPackageFile } from './export'
+import { buildToolCallReadings } from './tool-readings'
 
 // Everything the exporter needs from the rest of the app. Ports rather than direct imports so the
 // wiring step can point them at the real stores and the tests can drive real files without a database.
@@ -138,6 +139,9 @@ export const exportSessionPackage = async (
       unreadableReferenceFiles: readReferenceFiles.unreadable,
       environment,
       reproductionOutputs,
+      // Tool-call readings come from the session document that was just loaded — the same one the
+      // conversation slice came from, read through the one extraction the trajectory bundle uses.
+      toolReadings: buildToolCallReadings(loaded.session),
       maxFileBytes: request.maxFileBytes
     },
     request.mode

@@ -161,7 +161,10 @@ export const importSessionPackage = async (
     },
     posture: SESSION_PACKAGE_IMPORT_POSTURE,
     assertion: described.assertion,
-    notes: described.notes
+    notes: described.notes,
+    // What the importer recomputed from the bytes it just read. Persisted with the record so the answer
+    // outlives the process that computed it.
+    readings: described.readings
   }
 
   try {
@@ -209,6 +212,7 @@ export const importSessionPackage = async (
     sessionId,
     posture: SESSION_PACKAGE_IMPORT_POSTURE,
     notes: described.notes,
+    readings: described.readings,
     landed
   }
 }

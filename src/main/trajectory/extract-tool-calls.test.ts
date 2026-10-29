@@ -55,4 +55,17 @@ describe('extractToolCalls', () => {
     expect(extractToolCalls({ activities: [] }).calls).toEqual([])
     expect(extractToolCalls(undefined).calls).toEqual([])
   })
+
+  it('reports how many activity rows the session held, so "no tools" is not read as "none named"', () => {
+    const named = extractToolCalls({
+      activities: [{ id: 'a1', providerToolName: 'notebook_state' }]
+    })
+    const unnamed = extractToolCalls({ activities: [{ id: 'a1' }, { id: 'a2' }] })
+    const none = extractToolCalls({ activities: [] })
+
+    expect(named.activities).toBe(1)
+    expect(unnamed.activities).toBe(2)
+    expect(unnamed.unnamed).toBe(2)
+    expect(none.activities).toBe(0)
+  })
 })

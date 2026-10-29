@@ -1534,6 +1534,12 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.exportedAt': '내보낸 시각 {when}',
   'sessions.importPosture.notVerified':
     '이 컴퓨터에서 검증되지 않음 — 모든 결론은 보낸 사람의 주장입니다.',
+  'sessions.importPosture.usageVerified':
+    '이 패키지의 바이트에서 다시 계산한 측정값: {turns}턴 · 입력 {input} / 출력 {output} 토큰 · 비용 기록이 없는 턴 {unrecorded}',
+  'sessions.importPosture.toolCallsVerified':
+    '도구 호출 측정값을 패키지 바이트와 대조함: {rows}행 · 이름 없는 활동 {unnamed}',
+  'sessions.importPosture.readingsNotRecorded':
+    '이 패키지에는 측정값이 없어 다시 계산하지 않았습니다.',
   'sessions.packageImport.confirm': '가져오기',
   'sessions.packageImport.cancel': '취소',
   'sessions.packageImport.refused': '이 패키지는 가져올 수 없습니다: {reason}',
@@ -4893,5 +4899,10 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.citation.reason.chineseTitle': '제목이 중국어',
   'references.citation.reason.chineseDoiPrefix': '중국 출판사의 DOI',
   'references.citation.reason.chineseJournal': '저널 언어가 중국어',
-  'references.citation.reason.noChineseSignal': '중국어 출처 판정 없음'
+  'references.citation.reason.noChineseSignal': '중국어 출처 판정 없음',
+  'sessions.packageImport.toolReadings':
+    '도구 호출 기록 {rows}건(이름 없는 활동 {unnamed}건) — 패키지 내부 바이트와 대조 완료',
+  'sessions.packageImport.toolReadingsNone': '이 세션은 도구를 호출하지 않았습니다.',
+  'sessions.packageImport.toolReadingsNotCarried':
+    '이 패키지는 이전 버전에서 내보내져 도구 호출 기록을 포함하지 않습니다.'
 }

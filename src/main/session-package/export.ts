@@ -14,6 +14,10 @@ import {
   type SessionPackageNoteCode
 } from '../../shared/session-package'
 import { deriveSessionPackageUsage } from '../../shared/session-package-usage'
+import {
+  TOOL_CALL_READINGS_RECIPE,
+  type SessionPackageToolReadings
+} from '../../shared/tool-call-readings'
 
 // A single file that would bloat the package is named and left out rather than silently dropped or
 // silently included. 25 MB keeps an essential package mailable while still carrying figures.
@@ -54,6 +58,14 @@ export type SessionPackageInput = {
   unreadableFiles?: readonly string[]
   environment?: unknown
   reproductionOutputs?: readonly SessionPackageFile[]
+  /**
+   * 工具调用读数（会话包 D2）。`file` 缺席时必须对应「没有读数」的两种缺席态之一 —— 导出器会
+   * 断言这一点，以及文件字节的 sha256 与清单声明一致（见下方自检）。
+   */
+  toolReadings?: {
+    file?: SessionPackageFile
+    summary: SessionPackageToolReadings
+  }
   maxFileBytes?: number
 }
 
@@ -95,6 +107,22 @@ export const createSessionPackage = (
   addJson('evidence/citations.json', input.citations)
   addJson('evidence/review-findings.json', input.reviewFindings)
   addJson('evidence/verifications.json', input.verificationRecords)
+
+  // Tool-call readings travel in BOTH modes: they are derived from the session document, not from the
+  // session's files, and they are the only place a receiver can see what the tools cost. No file when
+  // the session recorded no calls at all — the manifest says which absence it is.
+  const toolReadings: SessionPackageToolReadings = input.toolReadings
+    ? input.toolReadings.summary
+    : { recipe: TOOL_CALL_READINGS_RECIPE, state: 'absent:not-collected' }
+  if (input.toolReadings?.file) {
+    const normalized = normalizeEntryPath(input.toolReadings.file.path)
+    write[normalized] = input.toolReadings.file.contents
+    entries.push({
+      path: normalized,
+      bytes: input.toolReadings.file.contents.byteLength,
+      sha256: sha256(input.toolReadings.file.contents)
+    })
+  }
 
   const candidateFiles: SessionPackageFile[] = [...(input.files ?? [])]
   let fileCount = 0
@@ -220,6 +248,7 @@ export const createSessionPackage = (
     entries: entries.sort((left, right) => left.path.localeCompare(right.path)),
     assertion: { ...SESSION_PACKAGE_ASSERTION },
     ...(usage ? { usage } : {}),
+    toolReadings,
     notes
   }
 
@@ -246,6 +275,19 @@ export const createSessionPackage = (
   }
   if (SESSION_PACKAGE_ALWAYS_INCLUDED.length !== evidencePaths.length) {
     throw new Error('Session package evidence list and written evidence disagree.')
+  }
+
+  // The tool-call declaration is checked against the bytes actually packed, here, before the archive is
+  // returned: a manifest that says "included, N rows, digest X" must be a statement about this archive.
+  if (toolReadings.state === 'included') {
+    const file = input.toolReadings?.file
+    if (!file) throw new Error('Session package declared tool readings it did not carry.')
+    const digest = sha256(file.contents)
+    if (digest !== toolReadings.sha256) {
+      throw new Error('Session package tool-readings digest disagrees with the bytes it packed.')
+    }
+  } else if (input.toolReadings?.file) {
+    throw new Error('Session package carried tool readings its manifest says are absent.')
   }
 
   return { archive, manifest }

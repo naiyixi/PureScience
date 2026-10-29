@@ -42,17 +42,24 @@ export type ToolCallExtraction = {
   calls: TrajectoryToolCall[]
   /** activities that carried no usable tool name — named rather than silently dropped. */
   unnamed: number
+  /** Every activity row the session document held (named or not). `0` is the one honest answer to
+   *  "this session never ran a tool"; it is what separates a session without tool calls from a
+   *  session whose call rows simply could not be named. */
+  activities: number
 }
 
 export const extractToolCalls = (session: unknown): ToolCallExtraction => {
-  if (typeof session !== 'object' || session === null) return { calls: [], unnamed: 0 }
+  if (typeof session !== 'object' || session === null)
+    return { calls: [], unnamed: 0, activities: 0 }
   const activities = (session as { activities?: unknown }).activities
-  if (!Array.isArray(activities)) return { calls: [], unnamed: 0 }
+  if (!Array.isArray(activities)) return { calls: [], unnamed: 0, activities: 0 }
 
   const calls: TrajectoryToolCall[] = []
   let unnamed = 0
+  let counted = 0
   for (const raw of activities) {
     if (typeof raw !== 'object' || raw === null) continue
+    counted += 1
     const activity = raw as ActivityLike
     const tool =
       asString(activity.providerToolName) ?? asString(activity.toolKind) ?? asString(activity.title)
@@ -71,5 +78,5 @@ export const extractToolCalls = (session: unknown): ToolCallExtraction => {
         : {})
     })
   }
-  return { calls, unnamed }
+  return { calls, unnamed, activities: counted }
 }

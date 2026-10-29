@@ -1559,6 +1559,12 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.exportedAt': 'Экспортировано {when}',
   'sessions.importPosture.notVerified':
     'Не проверено на этой машине — каждый вывод является утверждением отправителя.',
+  'sessions.importPosture.usageVerified':
+    'Показатели пересчитаны по байтам этого пакета: {turns} ходов · {input} на входе / {output} на выходе токенов · {unrecorded} ходов без записи о стоимости',
+  'sessions.importPosture.toolCallsVerified':
+    'Показатели вызовов инструментов сверены с байтами пакета: {rows} строк · {unnamed} безымянных активностей',
+  'sessions.importPosture.readingsNotRecorded':
+    'В этом пакете не было показателей, поэтому пересчитывать было нечего.',
   'sessions.packageImport.confirm': 'Импортировать',
   'sessions.packageImport.cancel': 'Отмена',
   'sessions.packageImport.refused': 'Этот пакет нельзя импортировать: {reason}',
@@ -5000,5 +5006,10 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.citation.reason.chineseTitle': 'Название на китайском',
   'references.citation.reason.chineseDoiPrefix': 'DOI китайского издательства',
   'references.citation.reason.chineseJournal': 'Язык журнала — китайский',
-  'references.citation.reason.noChineseSignal': 'Признак китайского источника не найден'
+  'references.citation.reason.noChineseSignal': 'Признак китайского источника не найден',
+  'sessions.packageImport.toolReadings':
+    'Вызовы инструментов: {rows} (безымянные действия: {unnamed}) — сверено с байтами пакета',
+  'sessions.packageImport.toolReadingsNone': 'В этой сессии инструменты не вызывались.',
+  'sessions.packageImport.toolReadingsNotCarried':
+    'Пакет создан более ранней версией и не содержит записей о вызовах инструментов.'
 }

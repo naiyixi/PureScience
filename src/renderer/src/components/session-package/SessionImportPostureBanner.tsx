@@ -40,6 +40,35 @@ const SessionImportPostureBanner = ({
       <p data-testid="session-import-posture-unverified">
         {t('sessions.importPosture.notVerified')} {t('sessions.packageImport.readOnly')}
       </p>
+      {/* The readings the import recomputed against the package's own bytes. Shown here, not only in the
+          import dialog: reopening the session months later must still answer "was anything checked". */}
+      {record.readings ? (
+        <>
+          {record.readings.usage.state === 'match' ? (
+            <p data-testid="session-import-posture-usage">
+              {t('sessions.importPosture.usageVerified', {
+                turns: String(record.readings.usage.derived.turns),
+                input: String(record.readings.usage.derived.inputTokens),
+                output: String(record.readings.usage.derived.outputTokens),
+                unrecorded: String(record.readings.usage.derived.turnsWithoutUsage)
+              })}
+            </p>
+          ) : null}
+          {record.readings.toolCalls.state === 'match' &&
+          record.readings.toolCallsDeclared?.state === 'included' ? (
+            <p data-testid="session-import-posture-tool-calls">
+              {t('sessions.importPosture.toolCallsVerified', {
+                rows: String(record.readings.toolCalls.rows),
+                unnamed: String(record.readings.toolCalls.unnamed)
+              })}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p data-testid="session-import-posture-readings-missing">
+          {t('sessions.importPosture.readingsNotRecorded')}
+        </p>
+      )}
     </div>
   )
 }

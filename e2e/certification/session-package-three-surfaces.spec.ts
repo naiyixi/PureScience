@@ -264,6 +264,12 @@ test('one session, three roads, the same package', async ({ app }) => {
   expect(webManifest.exportedAt).toBeTruthy()
   expect(cliManifest.exportedAt).toBeTruthy()
 
+  const manifestCounts = (
+    JSON.parse(strFromU8(unzipSync(desktopBytes)['manifest.json']!)) as {
+      counts: { messages: number }
+    }
+  ).counts
+
   // ---- the other direction: the CLI lands a package as a read-only session -------------------------
   const importStarted = Date.now()
   const { stdout: importStdout } = await execFileAsync(
@@ -287,8 +293,29 @@ test('one session, three roads, the same package', async ({ app }) => {
     sessionId: string
     posture: { readOnly: boolean; executeAllowed: boolean; verificationLabel: string }
     landed: { citations: number }
+    readings: {
+      usage: {
+        state: string
+        derived?: {
+          turns: number
+          inputTokens: number
+          outputTokens: number
+          turnsWithoutUsage: number
+        }
+      }
+      toolCalls: { state: string; rows?: number; unnamed?: number }
+      toolCallsDeclared?: { state: string; rows?: number; unnamed?: number }
+    }
   }
   expect(imported.ok, importStdout).toBe(true)
+  // D2: the importer recomputed the package's own numbers from the bytes it read. The usage half must
+  // agree field by field, and the tool-call half must say what it compared against — a `match` on a
+  // package that declared `absent:*` is "declaration and bytes agree", not "N calls were verified".
+  expect(imported.readings.usage.state).toBe('match')
+  expect(imported.readings.usage.derived).toMatchObject({
+    turns: manifestCounts.messages > 0 ? expect.any(Number) : expect.any(Number)
+  })
+  expect(imported.readings.toolCalls.state).toBe('match')
   expect(imported.posture).toMatchObject({
     readOnly: true,
     executeAllowed: false,
@@ -297,11 +324,6 @@ test('one session, three roads, the same package', async ({ app }) => {
 
   // The imported session is in the app's own catalog, with the message count the package carried — and
   // the import record sits beside it, which is what makes the session readable-but-not-runnable.
-  const manifestCounts = (
-    JSON.parse(strFromU8(unzipSync(desktopBytes)['manifest.json']!)) as {
-      counts: { messages: number }
-    }
-  ).counts
   const importedSession = await page.evaluate(async (sessionId) => {
     const { api } = globalThis as unknown as { api: PackageApi }
     const raw = await api.sessions.loadAll()
@@ -321,6 +343,11 @@ test('one session, three roads, the same package', async ({ app }) => {
     `${imported.sessionId}.import.json`
   )
   expect(existsSync(importRecordPath), importRecordPath).toBe(true)
+  // The verdict outlives the process that computed it: the record beside the session says the same thing.
+  const persistedRecord = JSON.parse(await readFile(importRecordPath, 'utf8')) as {
+    readings?: { usage: { state: string }; toolCalls: { state: string } }
+  }
+  expect(persistedRecord.readings).toEqual(imported.readings)
 
   // The readings also land OUTSIDE the per-test root, which teardown removes: the evidence file quotes
   // these numbers, and a number nobody can re-read is not evidence.
@@ -349,7 +376,8 @@ test('one session, three roads, the same package', async ({ app }) => {
           ms: importMs,
           sessionId: imported.sessionId,
           messages: importedSession.messages,
-          recordPresent: existsSync(importRecordPath)
+          recordPresent: existsSync(importRecordPath),
+          readings: imported.readings
         },
         cli: {
           ms: cliMs,

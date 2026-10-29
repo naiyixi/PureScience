@@ -57,6 +57,13 @@ const owner = (
       verificationLabel: 'source-party' as const
     },
     notes: [],
+    readings: {
+      usage: {
+        state: 'match' as const,
+        derived: { turns: 2, inputTokens: 0, outputTokens: 0, turnsWithoutUsage: 0 }
+      },
+      toolCalls: { state: 'not-recorded' as const }
+    },
     landed: {
       citations: 0,
       reviews: 0,

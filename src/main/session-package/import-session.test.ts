@@ -83,7 +83,18 @@ describe('session package import', () => {
       sessionId: 'imported-session-id',
       posture: SESSION_PACKAGE_IMPORT_POSTURE,
       notes: [],
-      landed: NO_LANDING
+      landed: NO_LANDING,
+      // D2: what the importer recomputed from the package's own bytes, field by field. The tool-call half
+      // says `match` (the declaration and the bytes agree) AND that the declaration was
+      // `absent:not-collected` — the second half is why a reader cannot take this as "0 tool calls".
+      readings: {
+        usage: {
+          state: 'match',
+          derived: { turns: 1, inputTokens: 0, outputTokens: 0, turnsWithoutUsage: 1 }
+        },
+        toolCalls: { state: 'match', rows: 0, unnamed: 0 },
+        toolCallsDeclared: { recipe: 'tool-call-readings:v1', state: 'absent:not-collected' }
+      }
     })
     expect(harness.drafts).toHaveLength(1)
     const draft = harness.drafts[0]

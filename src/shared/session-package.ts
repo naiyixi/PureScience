@@ -8,6 +8,7 @@
 //   · everything inside is the SOURCE PARTY's assertion. `locallyVerified` is pinned to `false` by the
 //     type, so no package can claim a verification this machine did not run.
 import type { SessionPackageUsage } from './session-package-usage'
+import type { SessionPackageToolReadings } from './tool-call-readings'
 
 export const SESSION_PACKAGE_EXTENSION = '.science'
 export const SESSION_PACKAGE_MANIFEST_PATH = 'manifest.json'
@@ -81,6 +82,14 @@ export type SessionPackageManifest = {
    * carry none, and the importer reports that as `not-recorded` rather than assuming agreement.
    */
   usage?: SessionPackageUsage
+  /**
+   * 这次会话的工具调用读数：逐条的耗时/结果大小/结果摘要 + 未命名活动数 + 那份文件的字节摘要。
+   *
+   * 为什么它与 `usage` 分开放：`usage` 是从**随包的消息**里重算出来的（成本），而工具活动在包里
+   * 只剩这份投影 —— 它自己就是被携带的事实，所以它的校验是「清单声明 vs 包内字节」，不是
+   * 「声明 vs 重算」。老包没有这一段，接收端读作 `not-recorded`。
+   */
+  toolReadings?: SessionPackageToolReadings
   notes: SessionPackageNoteCode[]
 }
 

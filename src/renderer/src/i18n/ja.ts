@@ -1552,6 +1552,12 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{project} / {session} からインポート（アプリ {appVersion}）',
   'sessions.importPosture.exportedAt': 'エクスポート日時 {when}',
   'sessions.importPosture.notVerified': 'このマシンでは未検証 — すべての結論は送信者の主張です。',
+  'sessions.importPosture.usageVerified':
+    'このパッケージのバイト列から再計算した測定値：{turns} ターン · 入力 {input} / 出力 {output} トークン · コスト記録のないターン {unrecorded}',
+  'sessions.importPosture.toolCallsVerified':
+    'ツール呼び出しの測定値をパッケージのバイト列と照合済み：{rows} 行 · 名前のないアクティビティ {unnamed}',
+  'sessions.importPosture.readingsNotRecorded':
+    'このパッケージには測定値が含まれていないため、再計算は行っていません。',
   'sessions.packageImport.confirm': '読み込む',
   'sessions.packageImport.cancel': 'キャンセル',
   'sessions.packageImport.refused': 'このパッケージは読み込めません：{reason}',
@@ -4977,5 +4983,10 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.citation.reason.chineseTitle': 'タイトルが中国語',
   'references.citation.reason.chineseDoiPrefix': '中国の出版機関の DOI',
   'references.citation.reason.chineseJournal': 'ジャーナルの言語が中国語',
-  'references.citation.reason.noChineseSignal': '中国語ソースの判定なし'
+  'references.citation.reason.noChineseSignal': '中国語ソースの判定なし',
+  'sessions.packageImport.toolReadings':
+    'ツール呼び出しの記録 {rows} 件（名前のない操作 {unnamed} 件）— パッケージ内のバイト列と照合済み',
+  'sessions.packageImport.toolReadingsNone': 'このセッションはツールを呼び出していません。',
+  'sessions.packageImport.toolReadingsNotCarried':
+    'このパッケージは古い版で書き出されたため、ツール呼び出しの記録を含みません。'
 }

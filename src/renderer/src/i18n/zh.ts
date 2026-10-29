@@ -1818,6 +1818,11 @@ export const zh = {
   'sessions.importPosture.importedFrom': '导入自 {project} / {session}（应用 {appVersion}）',
   'sessions.importPosture.exportedAt': '导出于 {when}',
   'sessions.importPosture.notVerified': '本机未验证 — 每一条结论都是发送方的主张。',
+  'sessions.importPosture.usageVerified':
+    '按包内字节复算的读数：{turns} 轮 · 输入 {input} / 输出 {output} tokens · {unrecorded} 轮没有成本记录',
+  'sessions.importPosture.toolCallsVerified':
+    '工具调用读数已对包内字节核对：{rows} 条 · 未命名活动 {unnamed} 条',
+  'sessions.importPosture.readingsNotRecorded': '这个包没有带读数，因此没有复算任何数字。',
   'sessions.packageImport.confirm': '导入',
   'sessions.packageImport.cancel': '取消',
   'sessions.packageImport.refused': '这个包不能导入：{reason}',
@@ -4659,7 +4664,11 @@ export const zh = {
   'references.citation.reason.chineseTitle': '标题为中文',
   'references.citation.reason.chineseDoiPrefix': 'DOI 属中文出版机构',
   'references.citation.reason.chineseJournal': '期刊语种为中文',
-  'references.citation.reason.noChineseSignal': '未命中中文源判据'
+  'references.citation.reason.noChineseSignal': '未命中中文源判据',
+  'sessions.packageImport.toolReadings':
+    '工具调用读数 {rows} 条（未命名活动 {unnamed} 条）—— 已与包内字节核对一致',
+  'sessions.packageImport.toolReadingsNone': '这个会话没有调用过工具。',
+  'sessions.packageImport.toolReadingsNotCarried': '这个包由较早版本导出，没有携带工具调用读数。'
 }
 
 export type ZhKey = keyof typeof zh

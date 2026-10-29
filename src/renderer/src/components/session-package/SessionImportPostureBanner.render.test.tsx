@@ -23,7 +23,21 @@ const record: SessionPackageImportRecord = {
     verificationLabel: 'source-party'
   },
   assertion: { origin: 'source-party', locallyVerified: false },
-  notes: ['environment-lock-unavailable']
+  notes: ['environment-lock-unavailable'],
+  readings: {
+    usage: {
+      state: 'match',
+      derived: { turns: 3, inputTokens: 4200, outputTokens: 900, turnsWithoutUsage: 0 }
+    },
+    toolCalls: { state: 'match', rows: 5, unnamed: 0 },
+    toolCallsDeclared: {
+      recipe: 'tool-call-readings:v1',
+      state: 'included',
+      rows: 5,
+      unnamed: 0,
+      sha256: 'a'.repeat(64)
+    }
+  }
 }
 
 let container: HTMLDivElement
@@ -72,6 +86,52 @@ describe('SessionImportPostureBanner', () => {
     expect(container.textContent ?? '').toContain(
       'you can read and cite them, never run or continue them'
     )
+  })
+
+  it('shows the readings the import recomputed, with their numbers', () => {
+    render()
+
+    const usage = container.querySelector('[data-testid="session-import-posture-usage"]')
+    expect(usage?.textContent ?? '').toContain('3 turns')
+    expect(usage?.textContent ?? '').toContain('4200')
+    expect(usage?.textContent ?? '').toContain('900')
+    const toolCalls = container.querySelector('[data-testid="session-import-posture-tool-calls"]')
+    expect(toolCalls?.textContent ?? '').toContain('5 rows')
+  })
+
+  it('says nothing was recomputed when the record carries no readings', () => {
+    const withoutReadings: SessionPackageImportRecord = { ...record }
+    delete withoutReadings.readings
+    act(() => {
+      root.render(<SessionImportPostureBanner record={withoutReadings} />)
+    })
+
+    expect(
+      container.querySelector('[data-testid="session-import-posture-readings-missing"]')
+        ?.textContent
+    ).toContain('no readings')
+    expect(container.querySelector('[data-testid="session-import-posture-usage"]')).toBeNull()
+  })
+
+  it('does not show a tool-call count when the package only said it never collected them', () => {
+    // `match` on the comparison means "declaration and bytes agree", NOT "5 rows were verified": a package
+    // that declared `absent:not-collected` must not surface a row count.
+    act(() => {
+      root.render(
+        <SessionImportPostureBanner
+          record={{
+            ...record,
+            readings: {
+              usage: record.readings!.usage,
+              toolCalls: { state: 'match', rows: 0, unnamed: 0 },
+              toolCallsDeclared: { recipe: 'tool-call-readings:v1', state: 'absent:not-collected' }
+            }
+          }}
+        />
+      )
+    })
+
+    expect(container.querySelector('[data-testid="session-import-posture-tool-calls"]')).toBeNull()
   })
 
   it('does not reword the posture into a softer claim', () => {

@@ -13,6 +13,31 @@ import type {
   SessionPackageNoteCode
 } from './session-package'
 import type { ReplayReport } from './replay-verification'
+import type { SessionPackageUsageComparison } from './session-package-usage'
+import type { SessionPackageToolReadings, ToolCallReadingsComparison } from './tool-call-readings'
+
+/**
+ * 一个包「与自己带来的字节核对过什么」的结论：成本摘要与工具调用读数，各自逐字段。
+ *
+ * 为什么它是导入结果的一部分而不是只在预览里说一句：接收方要能**事后**回答「这个包里的数字，
+ * 在这台机器上复算过没有、哪几项对上了」。写进结果与导入记录，重启后仍然可读；只放在一次性的
+ * 预览里，就等于要求用户当场记住。
+ *
+ * 三种状态都保留原名（match / not-recorded / underivable / mismatch），绝不压成一句「一致」：
+ * 「老包没有这段」与「复算后一致」是两件事。
+ */
+export type SessionPackageImportReadings = {
+  usage: SessionPackageUsageComparison
+  toolCalls: ToolCallReadingsComparison
+  /**
+   * 清单里那句工具读数声明，原样带出。
+   *
+   * 必须与 `toolCalls` 一起读：`match` 只说明「声明与包内字节一致」，而声明本身可能是「这次没调
+   * 工具」或「这一版导出器没采这一段」。只看到一个 `match` 会被读成「核对过 N 条」，那正是本文件
+   * 反复禁止的「把缺席说成没有」。老包没有这段声明时省略。
+   */
+  toolCallsDeclared?: SessionPackageToolReadings
+}
 
 // Hard ceilings for reading a package. Named here so the reader and any UI can state the same numbers.
 export const SESSION_PACKAGE_LIMITS = Object.freeze({
@@ -68,6 +93,13 @@ export type SessionPackageImportPreview = {
     counts: SessionPackageCounts
     assertion: SessionPackageAssertion
     notes: readonly SessionPackageNoteCode[]
+    /**
+     * 包里带的工具调用读数（已与包内字节核对一致才会走到 accepted 这里）。缺席态的两种说法
+     * 分别是「这次没调工具」与「老包没带这一段」—— 界面要分开讲，别合成一句「没有」。
+     */
+    toolReadings?: SessionPackageToolReadings
+    /** 逐字段复算的结论：成本摘要 + 工具调用读数，都是对着包内字节算的。 */
+    readings: SessionPackageImportReadings
   }
   /** Named when the package is refused; never a prose apology. */
   reason?: SessionPackageRejectionReason
@@ -131,6 +163,13 @@ export type SessionPackageImportResult =
       notes: readonly SessionPackageNoteCode[]
       /** What the package's evidence became on this machine. */
       landed: SessionPackageEvidenceLanding
+      /**
+       * 导入时对着包内字节复算过的结论（成本摘要 / 工具调用读数）。
+       *
+       * 与 `landed` 分开：`landed` 说的是「哪些行进了这台机器的库」，这里说的是「包里的自述数字
+       * 与它自己带来的字节是否对得上」。两件事都会有一个不是「是」的答案，合成一句就会丢掉一个。
+       */
+      readings: SessionPackageImportReadings
     }
   | {
       ok: false
@@ -154,6 +193,10 @@ export type SessionPackageImportRecord = {
   /** The sender's provenance claim, verbatim. Never rewritten into this machine's voice. */
   assertion: SessionPackageAssertion
   notes: readonly SessionPackageNoteCode[]
+  /**
+   * 这次导入复算过的结论。可选：本字段之前的记录没有它，缺它就是「没复算过」，绝不能读成一致。
+   */
+  readings?: SessionPackageImportReadings
 }
 
 /** Suffix for the sidecar file that carries the record above next to an imported session. */

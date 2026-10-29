@@ -11,6 +11,8 @@ import {
 } from '../../shared/session-package-usage'
 import { readZipDirectory } from './zip-directory'
 import { readZipEntries } from './zip-reader'
+import { verifyToolCallReadings } from './tool-readings'
+import { SESSION_PACKAGE_TOOL_READINGS_PATH } from '../../shared/tool-call-readings'
 
 import { verifySessionPackageIntegrity } from './integrity'
 import {
@@ -126,7 +128,19 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
     return refusal('manifest-invalid')
   }
   const usage = compareSessionPackageUsage(manifest.usage, deriveSessionPackageUsage(conversation))
-  if (usage.state === 'mismatch' || usage.state === 'underivable') return refusal('manifest-invalid')
+  if (usage.state === 'mismatch' || usage.state === 'underivable')
+    return refusal('manifest-invalid')
+
+  // 4. 工具调用读数：清单里的行数 / 未命名活动数 / 字节摘要，逐条对回包内那份文件的**原始字节**。
+  //    对不上就是「这个包与它自己的记录不符」，与 usage 的处理一致；老包没有这一段则读作
+  //    `not-recorded`，继续导入，但永远不算作「已验证一致」。
+  const toolReadings = verifyToolCallReadings(
+    manifest.toolReadings,
+    entries.get(SESSION_PACKAGE_TOOL_READINGS_PATH)
+  )
+  if (toolReadings.state === 'mismatch' || toolReadings.state === 'underivable') {
+    return refusal('manifest-invalid')
+  }
 
   return {
     accepted: true,
@@ -146,7 +160,17 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
       counts: manifest.counts,
       // Carried through verbatim: the reader must be able to show that these are the sender's claims.
       assertion: manifest.assertion,
-      notes: manifest.notes ?? []
+      notes: manifest.notes ?? [],
+      // Already checked against the bytes above; the reader shows it as a reading, not as a promise.
+      ...(manifest.toolReadings ? { toolReadings: manifest.toolReadings } : {}),
+      // The conclusion itself travels with the description: what was recomputed, field by field, and how
+      // it came out. A caller that only sees the package path can read the verdict instead of re-deriving
+      // it (and, importantly, instead of assuming that acceptance meant agreement).
+      readings: {
+        usage,
+        toolCalls: toolReadings,
+        ...(manifest.toolReadings ? { toolCallsDeclared: manifest.toolReadings } : {})
+      }
     }
   }
 }

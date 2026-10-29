@@ -17,8 +17,6 @@
 export type SessionPackageUsage = {
   /** User prompts in the carried transcript. */
   turns: number
-  /** Durable tool activity rows the transcript carries. */
-  toolCalls: number
   /** Sum of the per-turn input token records, over turns that recorded it. */
   inputTokens: number
   /** Sum of the per-turn output token records, over turns that recorded it. */
@@ -28,7 +26,9 @@ export type SessionPackageUsage = {
 }
 
 export type SessionPackageUsageComparison =
-  | { state: 'match' }
+  // 一致的结论要带上**复算出来的数**：只说「match」而不给数，接收方仍然无法展示「这条包花了多少」，
+  // 也就无法在几个月后核对当时到底对上了什么。
+  | { state: 'match'; derived: SessionPackageUsage }
   | { state: 'mismatch'; fields: readonly (keyof SessionPackageUsage)[] }
   // The manifest carries no summary at all (older exporter). Not a failure, and never read as a match.
   | { state: 'not-recorded' }
@@ -37,7 +37,6 @@ export type SessionPackageUsageComparison =
 
 const USAGE_FIELDS: readonly (keyof SessionPackageUsage)[] = [
   'turns',
-  'toolCalls',
   'inputTokens',
   'outputTokens',
   'turnsWithoutUsage'
@@ -94,9 +93,11 @@ export const deriveSessionPackageUsage = (conversation: unknown): SessionPackage
 
   const activities = conversation.activities
   if (activities !== undefined && !Array.isArray(activities)) return null
-  const toolCalls = Array.isArray(activities) ? activities.length : 0
 
-  return { turns, toolCalls, inputTokens, outputTokens, turnsWithoutUsage }
+  // 这里**不再**统计工具调用条数。会话包不带 `activities`（它随消息过桥），所以从这个转录里算出
+  // 来的工具数永远是 0 —— 一个恒为 0 的声明比不给更糟：它读起来像「这次没调工具」。工具读数改由
+  // `tool-call-readings.ts` 携带，并带自己那份文件的字节摘要，校验的是「声明 vs 包内字节」。
+  return { turns, inputTokens, outputTokens, turnsWithoutUsage }
 }
 
 const isDeclaredUsage = (value: unknown): value is SessionPackageUsage => {
@@ -120,5 +121,5 @@ export const compareSessionPackageUsage = (
   if (!isDeclaredUsage(declared)) return { state: 'underivable' }
 
   const fields = USAGE_FIELDS.filter((field) => declared[field] !== derived[field])
-  return fields.length === 0 ? { state: 'match' } : { state: 'mismatch', fields }
+  return fields.length === 0 ? { state: 'match', derived } : { state: 'mismatch', fields }
 }

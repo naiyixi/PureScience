@@ -1588,6 +1588,12 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.exportedAt': 'Exportada el {when}',
   'sessions.importPosture.notVerified':
     'Sin verificar en este equipo: cada conclusión es la afirmación del remitente.',
+  'sessions.importPosture.usageVerified':
+    'Lecturas recalculadas a partir de este paquete: {turns} turnos · {input} de entrada / {output} de salida tokens · {unrecorded} turnos sin registro de coste',
+  'sessions.importPosture.toolCallsVerified':
+    'Lecturas de llamadas a herramientas verificadas contra los bytes del paquete: {rows} filas · {unnamed} actividades sin nombre',
+  'sessions.importPosture.readingsNotRecorded':
+    'Este paquete no traía lecturas, así que no se recalculó nada.',
   'sessions.packageImport.confirm': 'Importar',
   'sessions.packageImport.cancel': 'Cancelar',
   'sessions.packageImport.refused': 'Este paquete no se puede importar: {reason}',
@@ -5092,5 +5098,10 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.citation.reason.chineseTitle': 'Título en chino',
   'references.citation.reason.chineseDoiPrefix': 'DOI de una editorial china',
   'references.citation.reason.chineseJournal': 'Idioma de la revista: chino',
-  'references.citation.reason.noChineseSignal': 'Sin señal de fuente china'
+  'references.citation.reason.noChineseSignal': 'Sin señal de fuente china',
+  'sessions.packageImport.toolReadings':
+    'Llamadas a herramientas: {rows} (actividades sin nombre: {unnamed}) — comprobadas con los bytes del paquete',
+  'sessions.packageImport.toolReadingsNone': 'Esta sesión no ejecutó ninguna herramienta.',
+  'sessions.packageImport.toolReadingsNotCarried':
+    'Este paquete lo escribió una versión anterior y no incluye lecturas de llamadas.'
 }

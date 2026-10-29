@@ -14,14 +14,12 @@
 // 「模型说了什么」。
 
 import { scrubText } from '../diagnostics/support-bundle'
+import type { ToolCallReading } from '../../shared/tool-call-readings'
 
-export type TrajectoryToolCall = {
-  turnId: string
-  tool: string
-  durationMs?: number
-  resultBytes?: number
-  resultSha256?: string
-}
+// 工具调用的读数形状只有一份定义（`shared/tool-call-readings.ts`）：轨迹包与会话包说的是同一件事
+// ——「哪一次调用、花了多久、结果多大、结果摘要是什么」。这里保留 `TrajectoryToolCall` 这个名字，
+// 因为轨迹包的清单与测试一直这么叫它；但它不再是第二份结构。
+export type TrajectoryToolCall = ToolCallReading
 
 export type TrajectoryArtifact = {
   artifactVersionId: string

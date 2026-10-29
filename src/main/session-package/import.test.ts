@@ -36,6 +36,53 @@ describe('session package inspection', () => {
     expect(preview.described?.assertion).toEqual({ origin: 'source-party', locallyVerified: false })
   })
 
+  it('reports what it recomputed — usage and the tool-call readings — with the declaration beside them', () => {
+    // A package whose transcript records one turn with a usage record, and whose tool readings were
+    // actually collected: both halves must come back as `match`, and the tool half must say it was
+    // `included` so a reader can tell a verified row count from a "nothing was collected" absence.
+    const rows = [{ turnId: 'turn-1', tool: 'repl_execute', durationMs: 12, resultBytes: 3 }]
+    const file = strToU8(JSON.stringify({ recipe: 'tool-call-readings:v1', rows, unnamed: 0 }))
+    const archive = packageBytes({
+      conversation: {
+        messages: [
+          { role: 'user', text: '模拟一下分子对接' },
+          {
+            role: 'agent',
+            text: '完成',
+            turnUsage: { inputTokens: 1200, outputTokens: 300 }
+          }
+        ]
+      },
+      toolReadings: {
+        summary: {
+          recipe: 'tool-call-readings:v1',
+          state: 'included',
+          rows: rows.length,
+          unnamed: 0,
+          sha256: createHash('sha256').update(file).digest('hex')
+        },
+        file: { path: 'evidence/tool-calls.json', contents: file }
+      }
+    })
+
+    const preview = inspectSessionPackage(archive)
+    expect(preview.accepted).toBe(true)
+    expect(preview.described?.readings).toEqual({
+      usage: {
+        state: 'match',
+        derived: { turns: 1, inputTokens: 1200, outputTokens: 300, turnsWithoutUsage: 0 }
+      },
+      toolCalls: { state: 'match', rows: 1, unnamed: 0 },
+      toolCallsDeclared: {
+        recipe: 'tool-call-readings:v1',
+        state: 'included',
+        rows: 1,
+        unnamed: 0,
+        sha256: createHash('sha256').update(file).digest('hex')
+      }
+    })
+  })
+
   it('refuses bytes that are not an archive at all', () => {
     expect(inspectSessionPackage(strToU8('this is not a zip'))).toEqual({
       accepted: false,
@@ -161,5 +208,114 @@ describe('session package inspection', () => {
     })
 
     expect(inspectSessionPackage(legacyArchive).accepted).toBe(true)
+  })
+})
+
+describe('the importer checks the tool-call readings against the bytes', () => {
+  const readingsInput = (): Partial<SessionPackageInput> => {
+    const contents = strToU8(
+      JSON.stringify({
+        recipe: 'tool-call-readings:v1',
+        rows: [{ turnId: 'a1', tool: 'notebook_execute', durationMs: 120 }],
+        unnamed: 1
+      })
+    )
+    return {
+      toolReadings: {
+        file: { path: 'evidence/tool-calls.json', contents },
+        summary: {
+          recipe: 'tool-call-readings:v1',
+          state: 'included',
+          rows: 1,
+          unnamed: 1,
+          sha256: createHash('sha256').update(contents).digest('hex')
+        }
+      }
+    }
+  }
+
+  const rebuild = (
+    archive: Uint8Array,
+    change: (entries: Record<string, Uint8Array>) => Record<string, Uint8Array>
+  ): Uint8Array => zipSync(change(unzipSync(archive)))
+
+  it('accepts the package and describes the readings it verified', () => {
+    const { archive } = createSessionPackage({ ...input(), ...readingsInput() }, 'essential')
+    const preview = inspectSessionPackage(archive)
+
+    expect(preview.accepted).toBe(true)
+    expect(preview.described?.toolReadings).toEqual({
+      recipe: 'tool-call-readings:v1',
+      state: 'included',
+      rows: 1,
+      unnamed: 1,
+      sha256: createHash('sha256')
+        .update(
+          strToU8(
+            JSON.stringify({
+              recipe: 'tool-call-readings:v1',
+              rows: [{ turnId: 'a1', tool: 'notebook_execute', durationMs: 120 }],
+              unnamed: 1
+            })
+          )
+        )
+        .digest('hex')
+    })
+  })
+
+  it('refuses a package whose readings bytes no longer hash to its own record', () => {
+    const { archive } = createSessionPackage({ ...input(), ...readingsInput() }, 'essential')
+    const tampered = rebuild(archive, (entries) => ({
+      ...entries,
+      'evidence/tool-calls.json': strToU8(
+        JSON.stringify({
+          recipe: 'tool-call-readings:v1',
+          rows: [{ turnId: 'a1', tool: 'something-else', durationMs: 120 }],
+          unnamed: 1
+        })
+      )
+    }))
+
+    expect(inspectSessionPackage(tampered)).toEqual({
+      accepted: false,
+      reason: 'manifest-invalid'
+    })
+  })
+
+  it('refuses a declaration that overstates how many calls the file holds', () => {
+    const { archive } = createSessionPackage({ ...input(), ...readingsInput() }, 'essential')
+    const inflated = rebuild(archive, (entries) => {
+      const manifest = JSON.parse(strFromU8(entries['manifest.json'])) as {
+        toolReadings?: Record<string, unknown>
+      }
+      return {
+        ...entries,
+        'manifest.json': strToU8(
+          JSON.stringify({
+            ...manifest,
+            toolReadings: { ...manifest.toolReadings, rows: 40 }
+          })
+        )
+      }
+    })
+
+    expect(inspectSessionPackage(inflated)).toEqual({
+      accepted: false,
+      reason: 'manifest-invalid'
+    })
+  })
+
+  it('still accepts a package written before readings travelled, and names the absence', () => {
+    const { archive } = createSessionPackage(input(), 'essential')
+    const legacy = rebuild(archive, (entries) => {
+      const manifest = JSON.parse(strFromU8(entries['manifest.json'])) as Record<string, unknown>
+      const { toolReadings: _omitted, ...rest } = manifest
+      return { ...entries, 'manifest.json': strToU8(JSON.stringify(rest)) }
+    })
+    const preview = inspectSessionPackage(legacy)
+
+    expect(preview.accepted).toBe(true)
+    // 老包没有这一段：界面上它必须与「这次没调工具」分开讲，所以这里读到的是「没有字段」。
+    expect(preview.described?.toolReadings).toBeUndefined()
   })
 })

@@ -1947,6 +1947,12 @@ export const en: Record<ZhKey, string> = {
   'sessions.importPosture.exportedAt': 'Exported {when}',
   'sessions.importPosture.notVerified':
     'Not verified on this machine — every conclusion is the sender’s assertion.',
+  'sessions.importPosture.usageVerified':
+    'Readings recomputed from this package: {turns} turns · {input} in / {output} out tokens · {unrecorded} turns without a cost record',
+  'sessions.importPosture.toolCallsVerified':
+    'Tool-call readings verified against the package bytes: {rows} rows · {unnamed} unnamed activities',
+  'sessions.importPosture.readingsNotRecorded':
+    'This package carried no readings, so nothing was recomputed.',
   'sessions.packageImport.confirm': 'Import',
   'sessions.packageImport.cancel': 'Cancel',
   'sessions.packageImport.refused': 'This package cannot be imported: {reason}',
@@ -5009,5 +5015,10 @@ export const en: Record<ZhKey, string> = {
   'references.citation.reason.chineseTitle': 'Chinese title',
   'references.citation.reason.chineseDoiPrefix': 'DOI from a Chinese publisher',
   'references.citation.reason.chineseJournal': 'Journal language is Chinese',
-  'references.citation.reason.noChineseSignal': 'No Chinese-source signal'
+  'references.citation.reason.noChineseSignal': 'No Chinese-source signal',
+  'sessions.packageImport.toolReadings':
+    'Tool call readings: {rows} · unnamed activities: {unnamed} — checked against the bytes this package carries',
+  'sessions.packageImport.toolReadingsNone': 'This session ran no tools.',
+  'sessions.packageImport.toolReadingsNotCarried':
+    'This package was written before tool call readings travelled; it carries none.'
 }

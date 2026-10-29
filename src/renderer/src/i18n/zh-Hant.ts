@@ -1454,6 +1454,11 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.importedFrom': '匯入自 {project} / {session}（應用程式 {appVersion}）',
   'sessions.importPosture.exportedAt': '匯出於 {when}',
   'sessions.importPosture.notVerified': '本機未驗證 — 每一條結論都是傳送方的主張。',
+  'sessions.importPosture.usageVerified':
+    '按包內位元組複算的讀數：{turns} 輪 · 輸入 {input} / 輸出 {output} tokens · {unrecorded} 輪沒有成本記錄',
+  'sessions.importPosture.toolCallsVerified':
+    '工具呼叫讀數已對包內位元組核對：{rows} 條 · 未命名活動 {unnamed} 條',
+  'sessions.importPosture.readingsNotRecorded': '這個包沒有帶讀數，因此沒有複算任何數字。',
   'sessions.packageImport.confirm': '匯入',
   'sessions.packageImport.cancel': '取消',
   'sessions.packageImport.refused': '這個包不能匯入：{reason}',
@@ -4604,5 +4609,9 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.citation.reason.chineseTitle': '標題為中文',
   'references.citation.reason.chineseDoiPrefix': 'DOI 屬中文出版機構',
   'references.citation.reason.chineseJournal': '期刊語種為中文',
-  'references.citation.reason.noChineseSignal': '未命中中文源判據'
+  'references.citation.reason.noChineseSignal': '未命中中文源判據',
+  'sessions.packageImport.toolReadings':
+    '工具調用讀數 {rows} 條（未命名活動 {unnamed} 條）—— 已與包內位元組核對一致',
+  'sessions.packageImport.toolReadingsNone': '這個會話沒有調用過工具。',
+  'sessions.packageImport.toolReadingsNotCarried': '這個包由較早版本匯出，沒有攜帶工具調用讀數。'
 }

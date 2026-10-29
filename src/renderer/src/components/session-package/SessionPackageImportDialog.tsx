@@ -145,6 +145,17 @@ const SessionPackageImportDialog = ({
                 .replace('{files}', String(described.counts.files))}
             </p>
             <p className="mt-2 text-xs">{t('sessions.packageImport.sourceParty')}</p>
+            {described.toolReadings ? (
+              <p role="status" data-testid="package-tool-readings" className="mt-2 text-xs">
+                {described.toolReadings.state === 'included'
+                  ? t('sessions.packageImport.toolReadings')
+                      .replace('{rows}', String(described.toolReadings.rows))
+                      .replace('{unnamed}', String(described.toolReadings.unnamed))
+                  : described.toolReadings.state === 'absent:no-tool-calls'
+                    ? t('sessions.packageImport.toolReadingsNone')
+                    : t('sessions.packageImport.toolReadingsNotCarried')}
+              </p>
+            ) : null}
             {described.notes.length > 0 ? (
               <ul className="mt-2 list-disc pl-4 text-xs text-muted-foreground">
                 {described.notes.map((note) => (

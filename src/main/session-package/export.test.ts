@@ -171,3 +171,89 @@ describe('session package export', () => {
     ).toThrow(/escapes the archive root/)
   })
 })
+
+describe('tool-call readings ride with the package', () => {
+  const readings = (): NonNullable<SessionPackageInput['toolReadings']> => {
+    const contents = bytes('{"recipe":"tool-call-readings:v1","rows":[],"unnamed":1}')
+    return {
+      file: { path: 'evidence/tool-calls.json', contents },
+      summary: {
+        recipe: 'tool-call-readings:v1',
+        state: 'included',
+        rows: 0,
+        unnamed: 1,
+        sha256: sha256(contents)
+      }
+    }
+  }
+
+  it('writes the readings in both modes and declares exactly the bytes it packed', () => {
+    for (const mode of ['essential', 'full'] as const) {
+      const { archive, manifest } = createSessionPackage(input({ toolReadings: readings() }), mode)
+      const entries = unzip(archive)
+      const carried = entries['evidence/tool-calls.json']
+
+      expect(carried, mode).toBeDefined()
+      expect(manifest.toolReadings).toMatchObject({ state: 'included', rows: 0, unnamed: 1 })
+      expect(manifest.entries.find((entry) => entry.path === 'evidence/tool-calls.json')).toEqual({
+        path: 'evidence/tool-calls.json',
+        bytes: carried.byteLength,
+        sha256: sha256(carried)
+      })
+      if (manifest.toolReadings?.state !== 'included') throw new Error('expected an included entry')
+      expect(manifest.toolReadings.sha256).toBe(sha256(carried))
+    }
+  })
+
+  it('says "not collected" when the caller supplies no readings at all', () => {
+    const { manifest } = createSessionPackage(input(), 'essential')
+    expect(manifest.toolReadings).toEqual({
+      recipe: 'tool-call-readings:v1',
+      state: 'absent:not-collected'
+    })
+  })
+
+  it('records "this session ran no tools" without writing a file', () => {
+    const { archive, manifest } = createSessionPackage(
+      input({
+        toolReadings: {
+          summary: { recipe: 'tool-call-readings:v1', state: 'absent:no-tool-calls', unnamed: 0 }
+        }
+      }),
+      'essential'
+    )
+    expect(unzip(archive)['evidence/tool-calls.json']).toBeUndefined()
+    expect(manifest.toolReadings).toEqual({
+      recipe: 'tool-call-readings:v1',
+      state: 'absent:no-tool-calls',
+      unnamed: 0
+    })
+  })
+
+  it('refuses to pack a declaration that disagrees with the bytes it was given', () => {
+    // 清单说这条路走不通时应当在导出侧就抛，而不是产出一个「自己与自己不符」的包。
+    expect(() =>
+      createSessionPackage(
+        input({
+          toolReadings: {
+            ...readings(),
+            summary: { ...readings().summary, sha256: 'f'.repeat(64) } as never
+          }
+        }),
+        'essential'
+      )
+    ).toThrow(/tool-readings digest disagrees/)
+
+    expect(() =>
+      createSessionPackage(
+        input({
+          toolReadings: {
+            file: readings().file,
+            summary: { recipe: 'tool-call-readings:v1', state: 'absent:no-tool-calls', unnamed: 0 }
+          }
+        }),
+        'essential'
+      )
+    ).toThrow(/carried tool readings its manifest says are absent/)
+  })
+})
