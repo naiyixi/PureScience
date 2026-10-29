@@ -1455,7 +1455,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessions.importPosture.exportedAt': '匯出於 {when}',
   'sessions.importPosture.notVerified': '本機未驗證 — 每一條結論都是傳送方的主張。',
   'sessions.importPosture.usageVerified':
-    '按包內位元組複算的讀數：{turns} 輪 · 輸入 {input} / 輸出 {output} tokens · {unrecorded} 輪沒有成本記錄',
+    '按包內位元組複算的讀數：{turns} 輪 · 輸入 {input} / 輸出 {output} 詞元 · {unrecorded} 輪沒有成本記錄',
   'sessions.importPosture.toolCallsVerified':
     '工具呼叫讀數已對包內位元組核對：{rows} 條 · 未命名活動 {unnamed} 條',
   'sessions.importPosture.readingsNotRecorded': '這個包沒有帶讀數，因此沒有複算任何數字。',

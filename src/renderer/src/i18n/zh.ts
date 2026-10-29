@@ -1819,7 +1819,7 @@ export const zh = {
   'sessions.importPosture.exportedAt': '导出于 {when}',
   'sessions.importPosture.notVerified': '本机未验证 — 每一条结论都是发送方的主张。',
   'sessions.importPosture.usageVerified':
-    '按包内字节复算的读数：{turns} 轮 · 输入 {input} / 输出 {output} tokens · {unrecorded} 轮没有成本记录',
+    '按包内字节复算的读数：{turns} 轮 · 输入 {input} / 输出 {output} 词元 · {unrecorded} 轮没有成本记录',
   'sessions.importPosture.toolCallsVerified':
     '工具调用读数已对包内字节核对：{rows} 条 · 未命名活动 {unnamed} 条',
   'sessions.importPosture.readingsNotRecorded': '这个包没有带读数，因此没有复算任何数字。',
