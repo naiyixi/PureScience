@@ -14086,3 +14086,65 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
 
 下一轮第一步：任一条件恢复后下载该 DMG → 装到 `/tmp` 隔离目录 → 独立 `--user-data-dir` + 独立 `PURESCIENCE_STORAGE_ROOT`
 → 连跑 5 个真会话 → 按通道取中位与慢条数（判据：七条通道中位 <80 ms、无单次 >400 ms、`ipc handler was slow` 条数降 ≥80%）。
+
+## 二百五十九、本轮追加（执行器，2026-10-30 03:2x–）—— main 上两条认证红各自定因：都是「取了错误时刻的快照」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `HEAD = origin/main = bf389fd8`；**工作树带着 4 个不属于本轮的路径**（`e2e/certification/long-session-collapse.spec.ts`、
+  `e2e/certification/session-turn-readings-real-window.spec.ts`、`src/renderer/src/pages/workspace/WorkspaceActivityGroup.interaction.test.tsx`、
+  `M docs/evidence/2026-10-29-e1-e2-long-session-readings.md`）—— 那是 D1/D2/E1/E2 那条线的在制读数，**一个字节没碰**。
+- v2.21.0 范围（`docs/plan-2026-10-28-two-releases.md` §四）当下：D1/D2（`02595d06`/`93e623a1`）、E1/E2（`28ff118a`/`ba50f69e`）
+  已提交，**E1/E2 的真机读数仍在上面那批在制文件里** ⇒ 本轮的活不是重复它们。
+- 本轮先处理的是**挡所有人的那一件**：`bf389fd8` 的 `Nightly` = **failure**（run `40896010463`）。
+
+### 一 定因（作业级日志，不是猜）
+
+`scripts/ci-failure-digest.mjs 40896010463` → 唯一失败作业 `build / Build macos-arm64`，
+失败步骤 `Enforce platform certification`，两条失败各自读原文：
+
+| spec | 读数 | 判据 |
+| --- | --- | --- |
+| `e2e/certification/connector-custom-sign-out.spec.ts:78` | 第一次 `after.hasTokens = true`（期望 false）；**同一用例重试读到 false 并全程通过**（`the row now offers Sign in` / `after a restart the server is still signed out` 都打出来了）| 点击的处理是异步的，用例只采样一次 |
+| `e2e/certification/support-bundle-trajectory-readback.spec.ts:216` | `manifest.counts.messages` **4** vs 窗口读数 **3**；重试同样 4 vs 3 | 归档里 4 才是对的（两轮对话各 2 条）。归档是**导出那一刻**的快照，而用例比的是**导出之前**取的读数 ⇒ 回复上屏早于文档落盘，这段时间差被当成了不一致 |
+
+**两条都不是产品行为变了**：第一条重试即通过；第二条归档的 4 与「两轮各一问一答」自洽。
+
+### 二 修法（只收紧，不放宽）
+
+| 文件 | 改动 |
+| --- | --- |
+| `connector-custom-sign-out.spec.ts` | 对「token 已清」下一条**会重试**的断言（30 s），断言强度不变；末尾仍显式断 `hasTokens === false` 与 `isOauth === true` |
+| `support-bundle-trajectory-readback.spec.ts` | 计数改在**导出完成后**读窗口（与归档同一时刻），日志同时打出「归档 / 窗口 / 导出前」三组数 ⇒ 会话若真的在导出期间变化，仍会以不一致现形；顺带把两处重复的 `evaluate` 合成一个 `readSessionsInWindow`（`known` / `only` 两种选法），读法逐字不变 |
+
+**没有动**：`maxDiffPixelRatio`、超时、基准图、任何断言的对象与期望值。
+
+### 三 门禁（本轮实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（堆 8192；e2e 归 node 项目） | **EXIT 0** |
+| `eslint --no-cache` 两个 spec | **0 error**（首轮 20 条 prettier warning 是我自己的缩进，`prettier --write` 后 0 problem） |
+| `npx playwright test <两个 spec> --list` | **2 tests in 2 files**（收集阶段无同名 `const` 之类） |
+| `bash scripts/pre-push-checks.sh` | **EXIT 0**（八段全过；推送那次它自己报「2 个文件通过（0 problems）」） |
+
+**没在本机跑这两支 spec**：空闲物理页 4,145（×16 KB ≈ 65 MB）、swap 6.76 / 7.17 GB 已用、用户常驻 dev 实例占着 `out/`
+⇒ 起 Electron 会与它抢资源；判决按纪律交给 `macos-arm64` 那条车道（认证 spec 只在它上面执行）。
+
+### 四 推送
+
+`7f3e86a7`（`bf389fd8..7f3e86a7`，2 files / +87 −48）。推前现查在飞车道：**六条全 completed** ⇒ 本次推送没有取消任何人的判决。
+
+### 五 F1 的开工勘察（已落施工单）
+
+`docs/plan-2026-10-30-f1-external-mcp.md` —— 缺口证据（CLI 无 `mcp` 动词、现有 stdio 服务器全靠框架注入的 env、
+主体只有 human/automation 两种）、可复用的三块（`local-rpc-transport` / `reviewer/mcp-stdio-proxy` 的形制 /
+`recordPermissionDecision` 这一行是唯一审计正本）、**否决「CLI 直接转发 web RPC」的理由**（那会把外部客户端抬成 human，
+绕开权限门）、六步施工顺序、真外部客户端的验收口径、第一片只放只读工具的边界。
+
+### 六 下一轮第一步
+
+1. 按**完整 40 位 SHA** 读 `7f3e86a7` 两条车道的终态（`Nightly` / `Windows Full Test`）；若认证作业仍红，读作业级日志，
+   先判是「又一处取错时刻」还是「产品行为变了」——两者的修法方向不同。
+2. F1 按施工单 §5 第 1 步开工（`surface.ts` 纯数据 + 成对的处理器用例），**不碰** E1/E2 那批在制路径。
+3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：本机资源口径同上，取不到就继续具名挂着，不许写 0。
