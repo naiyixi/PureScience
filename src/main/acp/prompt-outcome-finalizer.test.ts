@@ -420,12 +420,26 @@ describe('AcpPromptOutcomeFinalizer', () => {
     )
     expect(refusal).toHaveLength(1)
     expect(String(refusal[0].text ?? '')).toMatch(/switch|rephras/i)
+    // The reason a runtime gives (if it gives one at all) rides on the raw response; it must be in the
+    // log as well, so a recurrence is diagnosable without another live incident.
+    expect(
+      harness.events.find((event) => event.title === 'Prompt refused by the runtime')?.raw
+    ).toEqual({
+      stopReason: 'refusal'
+    })
+    expect(loggerSpies.warn).toHaveBeenCalledWith(
+      'prompt refused by the runtime',
+      expect.objectContaining({ response: { stopReason: 'refusal' } })
+    )
   })
 
   it('does not add a refusal note for an ordinary end of turn', async () => {
     const harness = createHarness()
 
-    await new AcpPromptOutcomeFinalizer().finalize(harness.handles, stopped({ stopReason: 'end_turn' }))
+    await new AcpPromptOutcomeFinalizer().finalize(
+      harness.handles,
+      stopped({ stopReason: 'end_turn' })
+    )
 
     expect(harness.events.filter((event) => event.kind === 'error')).toHaveLength(0)
   })
