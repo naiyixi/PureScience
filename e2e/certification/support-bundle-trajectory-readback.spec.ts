@@ -65,45 +65,58 @@ const listSessionIds = (page: Page): Promise<string[]> =>
     return (sessions as Array<Record<string, unknown>>).map((candidate) => String(candidate.id))
   })
 
-const readSeededSession = async (
+type SessionReading = { id: string; messages: number; title: string; artifactIds: number }
+
+// One reading of the sessions the window holds, through the bridge (the app's own read, not a second parse
+// of the document on disk). `known` selects the sessions this test did not start with; `only` selects one
+// id when the test already knows which session it means.
+const readSessionsInWindow = async (
   page: Page,
-  knownIds: string[]
-): Promise<{ id: string; messages: number; title: string; artifactIds: number }> => {
-  let session: { id: string; messages: number; title: string; artifactIds: number } | undefined
+  selector: { known?: string[]; only?: string }
+): Promise<SessionReading[]> =>
+  page.evaluate(async (input) => {
+    const bridge = globalThis as unknown as Bridge
+    const raw = await bridge.api.sessions.loadAll()
+    const list = Array.isArray(raw)
+      ? raw
+      : ((raw as { sessions?: unknown }).sessions ?? (raw as { items?: unknown }).items)
+    const sessions = Array.isArray(list) ? (list as Array<Record<string, unknown>>) : []
+    const wanted = sessions.filter((candidate) => {
+      const id = String(candidate.id)
+      if (input.only !== undefined) return id === input.only
+      return !(input.known ?? []).includes(id)
+    })
+    return wanted.map((candidate) => {
+      const messages = (candidate.messages ?? []) as Array<{ artifactIds?: unknown }>
+      // Counted the way the extractor does (distinct, non-empty ids across messages), so the manifest's
+      // count can be checked against the window's own reading instead of against the bundle itself.
+      const artifactIds = new Set(
+        messages.flatMap((message) =>
+          Array.isArray(message.artifactIds)
+            ? message.artifactIds.filter(
+                (id): id is string => typeof id === 'string' && id.trim().length > 0
+              )
+            : []
+        )
+      )
+      return {
+        id: String(candidate.id),
+        messages: messages.length,
+        title: String(candidate.title ?? ''),
+        artifactIds: artifactIds.size
+      }
+    })
+  }, selector)
+
+const readSeededSession = async (page: Page, knownIds: string[]): Promise<SessionReading> => {
+  let session: SessionReading | undefined
   await expect
     .poll(
       async () => {
-        session = await page.evaluate(async (known) => {
-          const bridge = globalThis as unknown as Bridge
-          const raw = await bridge.api.sessions.loadAll()
-          const list = Array.isArray(raw)
-            ? raw
-            : ((raw as { sessions?: unknown }).sessions ?? (raw as { items?: unknown }).items)
-          const sessions = Array.isArray(list) ? list : []
-          const found = (sessions as Array<Record<string, unknown>>).find(
-            (candidate) => !known.includes(String(candidate.id))
-          )
-          if (!found) return undefined
-          const messages = (found.messages ?? []) as Array<{ artifactIds?: unknown }>
-          if (messages.length === 0) return undefined
-          // Counted the way the extractor does (distinct, non-empty ids across messages), so the manifest's
-          // count can be checked against the window's own reading instead of against the bundle itself.
-          const artifactIds = new Set(
-            messages.flatMap((message) =>
-              Array.isArray(message.artifactIds)
-                ? message.artifactIds.filter(
-                    (id): id is string => typeof id === 'string' && id.trim().length > 0
-                  )
-                : []
-            )
-          )
-          return {
-            id: String(found.id),
-            messages: messages.length,
-            title: String(found.title ?? ''),
-            artifactIds: artifactIds.size
-          }
-        }, knownIds)
+        // The first session this test created that already carries messages; one with none yet is not it.
+        session = (await readSessionsInWindow(page, { known: knownIds })).find(
+          (candidate) => candidate.messages > 0
+        )
         return session
       },
       { timeout: 60_000 }
@@ -212,17 +225,29 @@ test('the bundle carries the trajectory section, and its checksums can be recomp
     }
 
     // 3. The manifest's message count is the session the app holds — read through the window bridge, so it
-    //    is the renderer's own reading, not a second parse of the same document.
-    expect(manifest.counts.messages).toBe(seeded.messages)
+    //    is the renderer's own reading, not a second parse of the same document. Read HERE, right after the
+    //    archive was written, because the archive is a snapshot of that same moment: the last turn's
+    //    document lands slightly after its reply is on screen (measured 2026-10-29 on the certification
+    //    lane: the earlier reading said 3, the archive said 4, and the archive was the right answer). A
+    //    reading taken before the export therefore compares a snapshot with an earlier state; taken at the
+    //    snapshot's own moment it means what the sentence says, and a session that really changes under the
+    //    export still shows up as a mismatch.
+    const held = (await readSessionsInWindow(page, { only: seeded.id }))[0]
+    if (!held) throw new Error(`the window no longer holds session ${seeded.id}`)
+    console.log(
+      `[trajectory-readback] messages: archive ${manifest.counts.messages} / window ${held.messages} ` +
+        `(before export the window said ${seeded.messages})`
+    )
+    expect(manifest.counts.messages).toBe(held.messages)
     // …and the artifact count is the same session's `artifactIds`, counted the way the extractor counts
     // them. Zero on both sides is a real answer here; a manifest that claims more than the session carries
     // would mean the bundle counts something nobody can point at.
-    expect(manifest.counts.artifacts).toBe(seeded.artifactIds)
+    expect(manifest.counts.artifacts).toBe(held.artifactIds)
     if (manifest.sections.artifacts === 'included') {
       const artifacts = JSON.parse(await readFile(join(sectionDir, 'artifacts.json'), 'utf8')) as {
         artifacts: Array<{ artifactVersionId: string }>
       }
-      expect(artifacts.artifacts.length).toBe(seeded.artifactIds)
+      expect(artifacts.artifacts.length).toBe(held.artifactIds)
       for (const artifact of artifacts.artifacts) {
         expect(artifact.artifactVersionId.trim().length).toBeGreaterThan(0)
       }

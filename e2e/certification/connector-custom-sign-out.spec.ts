@@ -65,15 +65,29 @@ test('signing out of a user-added server clears the session and survives a resta
   await signOut.click()
 
   // Read back through main: the tokens are gone while the server stays an OAuth server (so it can sign in
-  // again).
-  const after = await reopened.evaluate(
-    async (id: string): Promise<{ hasTokens: boolean; isOauth: boolean }> => {
-      const snapshot = await window.api.settings.listConnectors()
-      const server = snapshot.customServers?.find((entry) => entry.id === id)
-      return { hasTokens: Boolean(server?.oauth?.hasTokens), isOauth: Boolean(server?.oauth) }
-    },
-    added
-  )
+  // again). Polled rather than read once: the click's handler finishes asynchronously, so an immediate read
+  // can catch the snapshot before the write lands (measured on the certification lane 2026-10-29: the first
+  // attempt read `hasTokens: true`, the retry read `false` and the rest of the test passed). The assertion is
+  // unchanged in strength — the tokens still have to be gone — it just waits for the transition it is about
+  // instead of sampling once.
+  let after: { hasTokens: boolean; isOauth: boolean } | undefined
+  await expect
+    .poll(
+      async () => {
+        after = await reopened.evaluate(
+          async (id: string): Promise<{ hasTokens: boolean; isOauth: boolean }> => {
+            const snapshot = await window.api.settings.listConnectors()
+            const server = snapshot.customServers?.find((entry) => entry.id === id)
+            return { hasTokens: Boolean(server?.oauth?.hasTokens), isOauth: Boolean(server?.oauth) }
+          },
+          added
+        )
+        return after.hasTokens
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(false)
+  if (!after) throw new Error('[ic21] the window never answered the connector snapshot')
   console.log(`[ic21] after the click, main reports: ${JSON.stringify(after)}`)
   expect(after.hasTokens).toBe(false)
   expect(after.isOauth).toBe(true)
