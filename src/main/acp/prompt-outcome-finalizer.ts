@@ -196,7 +196,31 @@ export class AcpPromptOutcomeFinalizer {
       if (context?.complete()) handles.emitState()
       await emitArtifact()
       safeLog('info', 'prompt stopped', { stopReason: response.stopReason })
-      publishObservedStop()
+      // A refusal ends the turn WITHOUT producing an answer. It used to leave only an info-level "Prompt
+      // stopped" row, so a reader who never opens the activity list saw a prompt that did nothing —
+      // measured 2026-10-29: three attempts in a row ended with `stopReason: refusal` and the surface
+      // showed no result at all. A refusal is an outcome the reader must see, stated in words, because
+      // the remedy is on their side (switch backend / rephrase) and nothing else in the UI says so.
+      // `publishObservedStop` settles the interaction and emits the stop row; the refusal note rides AFTER
+      // it so the timeline reads "stopped (refusal)" and then the reason, without settling twice.
+      const publishedStop = publishObservedStop()
+      if (publishedStop && response.stopReason === 'refusal') {
+        // The measured incident carried no reason beyond the stop reason itself: the runtime connected,
+        // created the session, then answered the prompt with `refusal` and nothing else. Anything a
+        // runtime DOES attach lives on the raw response, so it is logged and kept on the event — the
+        // next occurrence is diagnosable without re-running the incident.
+        safeLog('warn', 'prompt refused by the runtime', { response })
+        handles.pushEvent({
+          kind: 'error',
+          level: 'error',
+          sessionId,
+          ...eventIdentity,
+          timestamp: Date.now(),
+          title: 'Prompt refused by the runtime',
+          text: 'The runtime refused this prompt and produced no answer. Switching the agent backend or rephrasing the request is what changes the outcome — retrying it unchanged will be refused again.',
+          raw: response
+        })
+      }
       try {
         await handles.autoCompactIfNeeded()
       } catch (error) {

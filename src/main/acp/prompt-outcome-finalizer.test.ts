@@ -397,6 +397,39 @@ describe('AcpPromptOutcomeFinalizer', () => {
     expect(harness.handles.skill.close).toHaveBeenCalledWith('cancelled')
   })
 
+  // Measured 2026-10-29: three prompts in a row ended with `stopReason: refusal`, the runtime produced no
+  // answer, and the surface showed nothing at all — the only trace was an info-level log line. A refusal
+  // must reach the reader as an error with the remedy stated, not as silence.
+  it('surfaces a refusal as a visible error, not as silence', async () => {
+    const harness = createHarness()
+    // The executor captures the terminal before the finalizer settles it; without that the settle is a
+    // no-op and no stop row can be published (this is the same wiring the ordering test relies on).
+    harness.interactions.captureTerminal(harness.interaction, 'stop')
+
+    await expect(
+      new AcpPromptOutcomeFinalizer().finalize(harness.handles, stopped({ stopReason: 'refusal' }))
+    ).resolves.toEqual({ stopReason: 'refusal' })
+
+    // The stop row still publishes (the timeline keeps its "Prompt stopped" fact)…
+    expect(harness.events).toContainEqual(
+      expect.objectContaining({ kind: 'stop', text: 'refusal' })
+    )
+    // …and a refusal adds one error row that says what happened and what to do.
+    const refusal = harness.events.filter(
+      (event) => event.kind === 'error' && /refused/i.test(String(event.title ?? ''))
+    )
+    expect(refusal).toHaveLength(1)
+    expect(String(refusal[0].text ?? '')).toMatch(/switch|rephras/i)
+  })
+
+  it('does not add a refusal note for an ordinary end of turn', async () => {
+    const harness = createHarness()
+
+    await new AcpPromptOutcomeFinalizer().finalize(harness.handles, stopped({ stopReason: 'end_turn' }))
+
+    expect(harness.events.filter((event) => event.kind === 'error')).toHaveLength(0)
+  })
+
   it('treats a failure on a user-cancelled interaction as a normal cancellation', async () => {
     const harness = createHarness({ now: () => 789 })
     harness.handles.interactions = Object.assign(harness.handles.interactions, {
