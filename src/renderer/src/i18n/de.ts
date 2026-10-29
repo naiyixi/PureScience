@@ -536,6 +536,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'boot.retry': 'Erneut versuchen',
   'boot.loadingSaved': 'Gespeicherte Gespräche werden geladen…',
   'ui.sessionInterrupted': 'Die Sitzung wurde unterbrochen, bevor die App geschlossen wurde.',
+  'toolActivity.turnTokens': '{count} Tokens',
+  'toolActivity.turnTokensUnavailable': 'Verbrauch nicht aufgezeichnet',
   'toolActivity.webSearch': 'Websuche',
   'toolActivity.query': 'Abfrage',
   'remoteError.approvalCancelled':

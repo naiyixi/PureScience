@@ -16,6 +16,7 @@ import {
   formatActivityGroupElapsed,
   formatActivityGroupTitle,
   formatStepCount,
+  formatTurnTokens,
   getActivityGroupElapsedMs,
   getRenderableActivityEntries,
   isSearchActivity
@@ -38,6 +39,15 @@ type WorkspaceActivityGroupProps = {
   // Map of job_id → JobSummary for jobs bound to activities in this group.
   jobsByActivityId?: Map<string, JobSummary>
   onOpenJobDetail?: (job: JobSummary) => void
+  /**
+   * 这一轮的成本读数，来自该轮 agent 消息上记的 `turnUsage`（E2）。
+   *
+   * 三种输入分开表达，绝不合并成 0 个词元：
+   *   · 数字 —— 该轮确实记录了用量；
+   *   · `'unavailable'` —— 该轮明确标注「没有记录用量」（显示成一句话，不显示 0）；
+   *   · `undefined` —— 这段活动之后没有属于它的 agent 消息（老会话/流式中），什么都不显示。
+   */
+  turnUsage?: { inputTokens: number; cacheTokens?: number; outputTokens: number } | 'unavailable'
 }
 
 const ACTIVE_ELAPSED_TICK_MS = 100
@@ -70,7 +80,8 @@ const WorkspaceActivityGroup = ({
   onToggleRow,
   contentPaddingClassName,
   jobsByActivityId,
-  onOpenJobDetail
+  onOpenJobDetail,
+  turnUsage
 }: WorkspaceActivityGroupProps): React.JSX.Element => {
   const { t } = useLanguage()
   // Localized labels for the framework-free search row (the row module itself is i18n-free).
@@ -111,6 +122,23 @@ const WorkspaceActivityGroup = ({
             <span className="ml-auto shrink-0 whitespace-nowrap text-[12px] tabular-nums text-text-100">
               {formatStepCount(visibleActivities)} ·{' '}
               <ActivityGroupElapsed activities={visibleActivities} />
+              {turnUsage === undefined ? null : (
+                <>
+                  {' · '}
+                  <span data-testid="tool-group-turn-tokens">
+                    {turnUsage === 'unavailable'
+                      ? t('toolActivity.turnTokensUnavailable')
+                      : t('toolActivity.turnTokens').replace(
+                          '{count}',
+                          formatTurnTokens(
+                            turnUsage.inputTokens +
+                              (turnUsage.cacheTokens ?? 0) +
+                              turnUsage.outputTokens
+                          )
+                        )}
+                  </span>
+                </>
+              )}
             </span>
           </button>
           {isExpanded ? (

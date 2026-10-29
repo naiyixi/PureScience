@@ -533,6 +533,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'boot.retry': 'Reintentar',
   'boot.loadingSaved': 'Cargando conversaciones guardadas…',
   'ui.sessionInterrupted': 'La sesión se interrumpió antes de que la aplicación se cerrara.',
+  'toolActivity.turnTokens': '{count} tokens usados',
+  'toolActivity.turnTokensUnavailable': 'uso no registrado',
   'toolActivity.webSearch': 'Búsqueda web',
   'toolActivity.query': 'consulta',
   'remoteError.approvalCancelled':

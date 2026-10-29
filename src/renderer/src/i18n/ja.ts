@@ -523,6 +523,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'boot.retry': '再試行',
   'boot.loadingSaved': '保存済みの会話を読み込み中…',
   'ui.sessionInterrupted': 'アプリが閉じる前にセッションが中断されました。',
+  'toolActivity.turnTokens': '{count} トークン',
+  'toolActivity.turnTokensUnavailable': '使用量の記録なし',
   'toolActivity.webSearch': 'ウェブ検索',
   'toolActivity.query': 'クエリ',
   'remoteError.approvalCancelled':

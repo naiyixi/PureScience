@@ -280,6 +280,17 @@ const getRenderableActivityEntries = (activities: ToolActivity[]): RenderableAct
 }
 
 // Formats the group header's total visible-step count, flagging any failed steps.
+// 一轮的 token 总量，压成一位小数级别：1_234 -> "1.2k"，24_890 -> "25k"，512 -> "512"。
+// 与 ComposerContextUsage 的量级写法一致 —— 同屏出现两个「k」写法不同的数字会让人以为两个都不是读数。
+const formatTurnTokens = (tokens: number): string => {
+  if (tokens >= 1_000_000) {
+    const millions = tokens / 1_000_000
+    return `${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M`
+  }
+  if (tokens >= 1_000) return `${Math.round(tokens / 1_000)}k`
+  return String(Math.round(tokens))
+}
+
 const formatStepCount = (activities: ToolActivity[]): string => {
   const activityCount = activities.length
   const stepLabel = activityCount === 1 ? '1 step' : `${activityCount} steps`
@@ -316,6 +327,7 @@ export {
   formatActivityGroupElapsed,
   formatActivityGroupTitle,
   formatStepCount,
+  formatTurnTokens,
   getActivityGroupElapsedMs,
   getRenderableActivityEntries,
   groupConversationItems,

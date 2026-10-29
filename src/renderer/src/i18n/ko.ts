@@ -519,6 +519,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'boot.retry': '다시 시도',
   'boot.loadingSaved': '저장된 대화를 불러오는 중…',
   'ui.sessionInterrupted': '앱이 종료되기 전에 세션이 중단되었습니다.',
+  'toolActivity.turnTokens': '{count} 토큰',
+  'toolActivity.turnTokensUnavailable': '사용량 기록 없음',
   'toolActivity.webSearch': '웹 검색',
   'toolActivity.query': '쿼리',
   'remoteError.approvalCancelled':

@@ -524,6 +524,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'boot.retry': 'Повторить',
   'boot.loadingSaved': 'Загрузка сохранённых бесед…',
   'ui.sessionInterrupted': 'Сеанс был прерван до закрытия приложения.',
+  'toolActivity.turnTokens': '{count} токенов',
+  'toolActivity.turnTokensUnavailable': 'расход не записан',
   'toolActivity.webSearch': 'Веб-поиск',
   'toolActivity.query': 'запрос',
   'remoteError.approvalCancelled':

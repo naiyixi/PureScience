@@ -3076,6 +3076,8 @@ export const en: Record<ZhKey, string> = {
   'boot.retry': 'Retry',
   'boot.loadingSaved': 'Loading saved conversations…',
   'ui.sessionInterrupted': 'Session was interrupted before the app closed.',
+  'toolActivity.turnTokens': '{count} tokens',
+  'toolActivity.turnTokensUnavailable': 'usage not recorded',
   'toolActivity.webSearch': 'Web Search',
   'toolActivity.query': 'query',
   'remoteError.approvalCancelled':

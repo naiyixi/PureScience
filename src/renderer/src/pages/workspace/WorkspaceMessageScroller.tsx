@@ -571,6 +571,55 @@ const WorkspaceMessageScrollerImpl = ({
 
     return footerIds
   }, [conversationItems])
+  // E2：每一组工具活动属于它后面那条 agent 消息的那一轮 —— 成本读数（token 总量）就记在那条消息上。
+  // 分组之间没有「轮」的显式 id，所以按时间顺序取**紧跟在组后面的第一条 agent 消息**：
+  //   · 有 `turnUsage` → 数字；
+  //   · 有 `turnUsageUnavailable` → 'unavailable'（明确「没记录」，不是 0）；
+  //   · 后面没有 agent 消息（流式中的活动、或老会话）→ 不出现，界面不显示这一段。
+  const turnUsageByActivityGroupId = useMemo(() => {
+    const usageByGroupId = new Map<
+      string,
+      { inputTokens: number; cacheTokens?: number; outputTokens: number } | 'unavailable'
+    >()
+    const usageOf = (
+      message: Extract<(typeof conversationItems)[number], { type: 'message' }>['message']
+    ):
+      | { inputTokens: number; cacheTokens?: number; outputTokens: number }
+      | 'unavailable'
+      | undefined => {
+      if (message.turnUsage) {
+        return {
+          inputTokens: message.turnUsage.inputTokens,
+          // Cache tokens are real tokens the provider processed, so they belong in the turn total; the
+          // panel that breaks usage down still shows them as their own line.
+          cacheTokens: message.turnUsage.cacheTokens,
+          outputTokens: message.turnUsage.outputTokens
+        }
+      }
+      return message.turnUsageUnavailable ? 'unavailable' : undefined
+    }
+    // A group's reading lives on the agent message of ITS turn. Item order alone does not answer which
+    // turn that is (activity groups and messages can share a timestamp, and the reply may be split into
+    // several fragments), so the turn is found by time: the first agent message at or after the group's
+    // own timestamp, and failing that the last one before it. A bounded search over the same items the
+    // list already walks — no second traversal of the whole session.
+    const agents = conversationItems.flatMap((item) =>
+      item.type === 'message' && item.message.role === 'agent'
+        ? [{ id: item.id, createdAt: item.message.createdAt, message: item.message }]
+        : []
+    )
+    for (const item of conversationItems) {
+      if (item.type !== 'activity-group') continue
+      const after = agents.find((agent) => agent.createdAt >= item.createdAt)
+      const before = [...agents].reverse().find((agent) => agent.createdAt < item.createdAt)
+      const owner = (after ?? before)?.message
+      if (!owner) continue
+      const reading = usageOf(owner)
+      if (reading === undefined) continue
+      usageByGroupId.set(item.id, reading)
+    }
+    return usageByGroupId
+  }, [conversationItems])
   const agentLoadingPhase = getAgentLoadingPhase(activeSession)
   const messageCreatedAtById = new Map(
     activeSession?.messages.map((message) => [message.id, message.createdAt]) ?? []
@@ -1118,6 +1167,7 @@ const WorkspaceMessageScrollerImpl = ({
                           onToggleRow={toggleActivityRow}
                           jobsByActivityId={jobsByActivityId}
                           onOpenJobDetail={handleOpenJobDetail}
+                          turnUsage={turnUsageByActivityGroupId.get(item.id)}
                         />
                       )
                     })}

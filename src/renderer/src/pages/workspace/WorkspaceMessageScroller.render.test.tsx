@@ -1660,3 +1660,57 @@ describe('WorkspaceMessageScroller unbound completed job deduplication', () => {
     mockJobsById = new Map()
   })
 })
+
+describe('WorkspaceMessageScroller turn readings on the tool-group summary', () => {
+  // E2: the group header is the summary row a long session collapses into, so the turn's cost has to be
+  // readable there. The three inputs are pinned apart — a number, an explicit "not recorded", and no
+  // reading at all — because collapsing them would render "unknown" as "free".
+  const sessionWith = (agentOverrides: Partial<ChatMessage>): ChatSession =>
+    createSession({
+      status: 'idle',
+      messages: [
+        createMessage({ id: 'prompt-1' }),
+        createMessage({
+          id: 'reply-1',
+          role: 'agent',
+          content: 'Done',
+          responseToMessageId: 'prompt-1',
+          ...agentOverrides
+        })
+      ],
+      activities: [
+        createActivity({
+          id: 'tool-read-1',
+          title: 'Read file',
+          toolKind: 'read',
+          createdAt: 1_000,
+          updatedAt: 1_250
+        })
+      ]
+    })
+
+  it('prints the turn token total on the collapsed summary row', async () => {
+    const html = await renderScroller(
+      sessionWith({ turnUsage: { inputTokens: 1_200, cacheTokens: 0, outputTokens: 45 } })
+    )
+
+    expect(html).toContain('data-testid="tool-group-turn-tokens"')
+    // 1_245 tokens, compacted the way the composer's context meter compacts it.
+    expect(html).toContain('1k')
+  })
+
+  it('says the usage was not recorded rather than showing zero', async () => {
+    const html = await renderScroller(sessionWith({ turnUsageUnavailable: true }))
+
+    const tokenCell = html.match(/data-testid="tool-group-turn-tokens"[^>]*>(.*?)<\/span>/s)?.[1]
+    expect(tokenCell).toBeDefined()
+    expect(tokenCell).not.toMatch(/\d/)
+    expect(tokenCell).toMatch(/usage not recorded/i)
+  })
+
+  it('adds no reading when the following message carries none', async () => {
+    const html = await renderScroller(sessionWith({}))
+
+    expect(html).not.toContain('data-testid="tool-group-turn-tokens"')
+  })
+})

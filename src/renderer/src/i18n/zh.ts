@@ -2869,6 +2869,8 @@ export const zh = {
   'boot.retry': '重试',
   'boot.loadingSaved': '正在加载已保存的会话…',
   'ui.sessionInterrupted': '会话在应用关闭前被中断。',
+  'toolActivity.turnTokens': '{count} 词元',
+  'toolActivity.turnTokensUnavailable': '未记录用量',
   'toolActivity.webSearch': 'Web 搜索',
   'toolActivity.query': '查询',
   'remoteError.approvalCancelled': '管理员审批已取消，或 Remote.It 无法完成该命令。',

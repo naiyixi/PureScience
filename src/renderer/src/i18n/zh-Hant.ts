@@ -451,6 +451,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'boot.retry': '重試',
   'boot.loadingSaved': '正在載入已儲存的會話…',
   'ui.sessionInterrupted': '工作階段在應用程式關閉前被中斷。',
+  'toolActivity.turnTokens': '{count} 詞元',
+  'toolActivity.turnTokensUnavailable': '未記錄用量',
   'toolActivity.webSearch': 'Web 搜尋',
   'toolActivity.query': '查詢',
   'remoteError.approvalCancelled': '管理員審批已取消，或 Remote.It 無法完成該命令。',
