@@ -45,6 +45,25 @@
 - `http-server`：路由匹配、`content-disposition` 文件名转义、未授权 401、字节响应不被 JSON 包装；
 - CLI：动词解析 + 退出码。
 
+## 4.1 代码级拦点（勘察到此为止的真实原因）
+
+`TaskApi.invoke()`（`src/main/web-service/task-api.ts:68` 起大量使用）只能触达**web profile**里的命令；
+而 `sessions:export-package` / `import-package` 在契约目录里是 `ELECTRON`，不在 web profile 里
+⇒ headless task API **今天根本调不到**这两个命令。所以 D1 不是「加两条路由」，而是下面二选一：
+
+**方案 A（推荐，路径交接，零 base64）**
+
+1. 契约目录把两条标成 `LOCAL`（导入会创建会话 ⇒ remote 面必须被拒，不能进远端计数）；
+2. 命令签名沿用既有的 `destinationPath`：导出写到临时文件后返回 `{path, bytes, fileName}`；
+3. HTTP `GET /api/v1/sessions/:id/package` 调命令 → 流式返回该临时文件（参照 artifact 下载的
+   `content-disposition` 写法）→ 响应结束即删临时文件；
+4. HTTP `POST /api/v1/sessions/package/import` 收字节到临时文件 → 调 `sessions:import-package` 传路径 →
+   删临时文件；权限门由命令侧既有实现负责，remote 面直接 401；
+5. 契约面记账：三处命令计数（internal/local-web 各 +2，remote 不变）、四处清单 pin、生成物重生成。
+
+**方案 B（绕过命令）**：给 `TaskApi` 注入一个 session-package 端口直接调 `service.ts`。
+不推荐：等于给 Web 面开一条绕过命令注册表的旁路，权限门与审计要重做一遍，且与既有 artifact 路径不一致。
+
 ## 5 为什么这一轮没开工
 
 D1 要新增一个 HTTP 传输面 + 一个 CLI 动词 + 权限痕，并且验收要求三端逐字节比对。这在一个已经跑了很长、
