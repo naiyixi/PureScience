@@ -1,5 +1,135 @@
 # PureScience 更新日记
 
+## v2.20.0 — 2026-10-29（可靠性：慢的地方说清代价，文献三件可查、可读、可点名）
+
+**成熟度自陈**：这一版做两件事——把「卡」从体感变成**能归因的读数**再逐条修；把文献链路从「能导入」推到
+「能查撤稿、能找到引用它的论文、能记住读到哪一步」。凡是读数来自本机真机日志或进程内实跑，文中给的是那个数字；
+凡是没做到的，写在同一段后面。
+
+### 一、慢通道：先归因，再改（A1–A4）
+
+数据窗口是近 7 天 `~/Library/Logs/PureScience/main.log`：error/warn 共 214 条，其中慢 IPC **141 条（66%）**。
+方法一律是先读**已有的分阶段字段**，再决定改什么。
+
+- **`notebook:state`**（42 条慢 IPC）：`totalMs ≈ loadMs`，冷会话标记全为 0，`cpuShare` 30–50% ⇒ 不是在算，是在等 I/O。
+  真机证据：`~/.purescience/notebooks` 下 174 个 `run.json`，最大 **60.1 MB**，读它就是整份 `readFile + JSON.parse`。
+  同一份 60.1 MB / 80 runs 的真实文件：**热 p50 358.2 ms → 1.6 ms**（冷启 222.7 → 165.1）。改法是 mtime+size 缓存
+  且**不深拷贝**——依据是 `loadOrCreate` 的两个调用点都只读、写路径每次都重新读盘，两条用例守着缓存不能撒谎。
+- **`reviewer:get-for-session`**：`Review`/`Finding` 两张表都只有主键索引，后面还挂着一个 N+1 ⇒ 补两个索引、把 N+1
+  合成一次查询，开评审面板不再扫全表。
+- **`notifications:get-snapshot`**：索引是齐的，真因是**读排在写队列后面** ⇒ 读不再排队。
+- **`artifacts:read-preview`**：**不改**。同一时刻的对照读数 `resolveMs 430 / canaryMs 261`（线程池被占）⇒ 是事件循环与
+  FS 阻塞，不是算法；把 canary 留作判据，而不是拿「改了点什么」冒充修好。
+- **`sessions:save-session`**（28 条慢 IPC / 32 条慢存样本）：五段归因读出两种不同的慢——「写后捕获」`writeMs 3 ms` 而
+  `provenanceMs 394–403 ms`（`cpuShare 0` ⇒ 在等数据库），以及真在写盘的 `writeDiskMs 211 / writeReplaceMs 176 ms`。
+  已修的是前半：**没有新的终结版本就不查**，那 400 ms 是查询、不是物化；后半已到 I/O 下限（60 MB 级文档的写与 rename），
+  不再动。
+- **`settings:list-skills`（这一条是「没达标」而不是「改好了」）**：日志中位 662 ms、最大 1448 ms，但进程内**复现不出来**
+  ——完整 `listSkills()` 在 67 个真实技能上冷启 50.8 ms、热 11.0 ms。做的是结构性改进：并行读 + 按 mtime/size 缓存
+  （热 11.0 → 8.1 ms）、写路径显式失效、以及总耗时 >150 ms 时输出 `skill list attribution { totalMs, registryMs, userMs, settingsMs, skills }`。
+  **没有宣布达标**：基线拿不到时，「改了多少」不能冒充「达标多少」。
+
+### 二、事件循环停顿：一个词变成五个类别（A5）
+
+24 条 `event loop stalled` 的低 CPU 段全部落在同一个词上：`attribution: "no-cpu-in-process"`——它是**测量**，不是原因。
+现在每条记录带 `cause`：`garbage-collection` / `fs-queue-saturated` / `cpu-in-process` / `unexplained` / `unmeasured`。
+
+- GC 用 `PerformanceObserver('gc')` 的**有界环（512 条）**，按**交集**把一个暂停裁剪给相邻两个窗口（同一段暂停不被算两次）；
+  运行时拒绝观察 ⇒ `unavailable`，不是 0；
+- 线程池 canary 的饱和门槛取 **20 ms**，来自设备自己的分布：57 个样本 最小 1 / 中位 24 / p90 180 / 最大 **686 ms**，
+  其中 ≤2 ms（池空闲）5 条、≥20 ms（池被占）29 条；再加「窗口的 10%」上限，防「24 ms 的排队」被写成「1.2 s 停顿的原因」；
+- **`unexplained` 与 `unmeasured` 分开**：前者是两个仪器都跑了、都不解释这个窗口（`basis` 里点名被排除的毫秒数），
+  后者是有仪器缺席、什么都没排除。把这两态合成一个词，正是「没人看着」开始读成「机器没事」的机制；
+- 两个仪器都在**启动时**就建好——停顿发生后才建的仪器只能描述恢复期。
+
+### 三、文献完整性：判据选错，等于永远判不出来（B1）
+
+`checkIntegrity` 三端已通，但**判定器只读 `relation['is-retracted-by']`**。真机抽样（Crossref 公共 API，12 条真实撤稿通知
+指向的原作）：该字段命中 **0/12**，而「自身 `update-to` 含 retraction」6/12、「标题带撤稿标注」9/12 ⇒ 旧判据下这些撤稿
+论文全部会被报成 `clean`。这正是计划档里「`retraction` 命中 0」的根因，不是没测到，是判据选错。
+
+改成**四路信号**，按序取第一条命中的并落库证据类型（`relation` / `update-to` / `reverse-update` / `title-label` / `none`）：
+反向检索 `filter=updates:<doi>` 只采纳 `update-to` 指回本 DOI 的通知，Wakefield 1998 那条因此命中两条撤稿通知。
+导出闸门改为**只读已存判定**（`references:read-integrity-summary`，零网络），三类缺口分开报；文献库里给了真入口：
+检查按钮、摘要行、行上的撤稿角标。
+
+### 四、引文发现：两个方向，中文源按三条判据分别报（B2）
+
+跑在真实 OpenAlex 上（无 key、公开 API，探针直接驱动主进程那个模块本体）：
+
+| 记录 | 方向 | total（源） | examined | 其中中文 | incomplete |
+| --- | --- | --- | --- | --- | --- |
+| `10.1038/nature14539`（英文） | references | 53 | 49 | 0 | **true**（「53 条只读前 50」）|
+| 同上 | citations | **83,700** | 50 | 0 | false |
+| `10.53388/ccmr2022022` | citations | 113 | 50 | **49** | false |
+| `10.53388/ccmr2021015` | citations | 89 | 50 | **50** | false |
+| `10.26549/yzlcyxzz.v4i3.6890` | citations | 116 | 50 | **50** | false |
+| `10.26549/yzlcyxzz.v3i4.3108` | citations | 163 | 50 | **47** | false |
+
+**三条中文判据在 200 行样本上的分布**：`doi-prefix` **194** / `title-han` **2** / `journal-language` **0**。
+交叉核对：源的 `language === 'zh'` 只有 **2 行**且都被 `title-han` 抓到 ⇒ **194 行带中文源信号却被源标成 `en`**，
+拿 `language` 当判据会漏掉这 194 行——这就是模块头注那条「不许只按 `language` 判」的读数依据。
+
+### 五、阅读状态：三态，且点名「正文引用了但没读完」（B3）
+
+`readingStatus` 在全仓命中 0，是新建项。做成一条完整链路：词汇表（`src/shared/references-reading.ts`）→ 落库
+（`readingStatus` + `readingStatusUpdatedAt` 两列，含运行时 DDL 与 `addColumnIfMissing`）→ 一条写通道
+（`references:set-reading-status`）→ 文献库每行三态控件、工具栏过滤器、`正文已引用但未读 N 条` 点名条 → 九语文案。
+
+为什么是三态而不是布尔：`reading` 与 `unread` 的可执行动作不同；点名条要的是「正文引用了但没读完」，**在读也算没读完**；
+没存值时必须读作 `unread`（加列前的历史记录语义不变）。过滤器与点名条共用同一个谓词，两者不可能给出不同答案——
+这条差异真的踩到过一次：初版把点名条接到 `unread`，渲染用例当场红（计数 2、列表只显示 1 条）。
+
+真机读数（独立 headless 实例，真库）：建项目 → 加 2 条 → 标 `reading`（`Ref1 reading 1793205116356`）→ 标 `read`
+（时间戳随写入变化）→ 重读 `references:list` 仍是 `read`、另一条仍 `(none)` → 库内直读 `Reference` 行一致。
+
+### 六、守护与发版（C1、C2）
+
+- **C1「框架 == 二进制」**：历史事故的形态是静默的——会话写着 `codebuddy`，真正跑起来的是 `opencode`。CI 段两例：
+  四个框架各自解析到**自己的**可执行文件（四行路径去重必须是 4），以及缺一个框架时如实报 `found: false` 而不借邻居的路径。
+  真机段（`scripts/probe-framework-binaries.sh`，独立 `--user-data-dir` 实例、跑完自清）：
+
+  ```
+  claude-code found=True path=/opt/homebrew/bin/claude
+  opencode    found=True path=/opt/homebrew/bin/opencode
+  codex       found=True path=~/.purescience/codex-managed/adapter/dist/index.js
+  codebuddy   found=True path=~/.local/bin/codebuddy
+  distinct_paths=4
+  ```
+
+- **C2 发版前必须有一行 CI 判定**：`scripts/release-digest-line.mjs` 先逐条车道给 `名|状态|结论`，再给
+  `digest: sha=… runs=N red=N incomplete=N verdict=…`，四态具名 `all-green` / `red` / `incomplete`（在跑或被新推送顶掉，
+  没有判决）/ `no-runs`（纯文档提交）。`publish-release.sh` 在构建之前调用它，`verdict=red` 时**拒绝发版**并给出 red run id；
+  读不到 CI 只告警，但明说「这次发版没有 CI 证据」。真机读数三态各一条（`incomplete`、`no-runs` exit 3、`red` exit 4）。
+
+### 七、诊断：红了不用手翻 12 MB
+
+- `scripts/ci-failure-digest.mjs`：一条命令给出失败作业的步骤、汇总行与根因候选（含其下一行栈帧，`Caused by:` 链折叠），
+  完整日志落盘并打印路径与字节数。起因是实测 `gh run view --log` 读回 **0 字节还退出 0**，改走 `gh api` 一次拿到 11.8 MB；
+  绿提交退出码 2、不存在的 ref 退出码 1、失败作业退出码 3，三种结局不同码。
+- 支持包自带 `diagnostics/slow-operations.json`：24 条有界环，`observed` / `dropped` / `capacity` 三个数分开答，
+  空时具名 `no-slow-operations-observed`；`heldUnmeasured: 'windows-dropped'` 这种具名缺态必须存活（拍平成 0 会被读成
+  「循环没被占住」），而 `cpuShare: 0` 这种**测到的零**也必须保留。
+- 启动汇总行按「自己花的时间」排序，被挂起的步骤不再占成本位、改由 `suspended` 列点名；启动窗口的分解从 7 步到 12 步，
+  并随交接件一起带走（不再只活在日志里）。
+- act 环境只声明一处：每一次 act 更新不再各印一行警告，消掉 Verify 日志里 **62%** 的水位。
+
+### 明确没做、已立案的
+
+- **`settings:list-skills` 未宣布达标**（见第一节）：日志说 662 ms、进程内 11.0 ms，缺的是一条与生产同量级的基线；
+  在没有它之前不写「已达标」。
+- **同步 fs 没有被直接观测**：`fs-queue-saturated` 是线程池 canary + 在飞计数的**代理**，不是「同步 fs 已归因」；
+  数据库那一路（`db-queue-probe`）需要 Prisma 客户端，watchdog 在组合根更外层，本版没接——低 CPU + GC 静默 + 池空闲的窗口
+  仍落 `unexplained`，不被假装解释。
+- **B2 的 `references` 方向在中文刊上多为空**：三条 `empty`、两条全英文。这是源的事实（OpenAlex 没给这些记录建参考文献表），
+  模块如实报 `empty`（源回答了、没有）而不是 `unavailable`。
+- **B3 还差三件**：打包版窗口里真的点三态/点名条/过滤器（`/Applications` 里那份尚未重装本轮构建，界面行为目前由渲染用例钉住）；
+  正文引用标记联动标黄（`citedAt` 已有，缺正文渲染侧的样式钩子）；记录数到数千条时把 `readingStatus` 下推到查询并加索引。
+- **本版性能读数取自本机真机日志与进程内实跑**；同一批通道在**发布件**上的复核安排在发版之后（它必须跑在打包产物上，
+  而本机空闲物理内存与下载带宽都不允许在发版窗口内完成）——这一格尚未取，不在本版声称之内。
+- **v2.21.0 的范围**（会话包桌面/CLI/Web 三处对称、长会话可折叠、CLI 对外 MCP、签名与更新、用例画廊、DOCX 保真）
+  不在本版，按两版收口计划留给下一版。
+
 ## v2.19.0 — 2026-10-28（框架选择不再被静默忽略；A2A 线归并到这一版）
 
 **编号更正（先认）**：A2A 的卡与 `message/send` 实际是在 **v2.18.5** 发的——那是我按「每个可验证改动发一个小
