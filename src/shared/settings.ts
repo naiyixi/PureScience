@@ -946,6 +946,20 @@ export type EnvironmentCheckId =
   | 'python'
   // The selected agent runtime (Claude or OpenCode); label/summary are framework-specific.
   | 'agent'
+  // Whether the SELECTED backend can actually serve a turn (provider + endpoint + model + key), not just
+  // whether its binary exists — a green check followed by "requires an API key" on the first turn is the
+  // worst answer the check can give (measured 2026-10-29).
+  | 'backend'
+
+// What the preflight knows about the SELECTED backend being able to serve a turn. Two facts rather than one
+// because they fail differently: no runtime means "install it", no provider means "configure a key/model".
+export type BackendReadiness = {
+  frameworkId: AgentFrameworkId
+  /** The selected framework's runtime resolves AND a provider for it is compatible. */
+  agentReady: boolean
+  /** The active provider has a usable endpoint and (when it was validated) a usable key. */
+  activeProviderReady: boolean
+}
 
 export type EnvironmentCheckStatus = 'passed' | 'warning' | 'failed'
 

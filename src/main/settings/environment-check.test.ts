@@ -614,4 +614,62 @@ describe('runEnvironmentCheck', () => {
     ])
     expect(result.checks.find((check) => check.id === 'install-network')?.status).toBe('failed')
   })
+
+  // 2026-10-29: a machine passed every check and then failed its first turn with
+  // "CodeBuddy requires an OpenAI-compatible base URL, API key, and model." The runtime row cannot see that —
+  // it only knows the binary exists — so the backend item states what the preflight measured.
+  it('names an unconfigured provider as a warning beside a runtime that does exist', async () => {
+    const result = await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'codebuddy',
+      frameworks: [
+        { id: 'codebuddy', label: 'CodeBuddy', runtime: { found: true, path: '/bin/codebuddy' } }
+      ],
+      encryptionAvailable: true,
+      backendReadiness: { frameworkId: 'codebuddy', agentReady: true, activeProviderReady: false },
+      deps: baseDeps()
+    })
+
+    expect(result.checks.find((check) => check.id === 'agent')).toMatchObject({ status: 'passed' })
+    const backend = result.checks.find((check) => check.id === 'backend')
+    expect(backend?.status).toBe('warning')
+    expect(backend?.summary).toContain('CodeBuddy')
+    expect(backend?.summary).toContain('first turn will fail')
+    // A warning does not block onboarding: the machine is still usable, the gap is merely visible.
+    expect(result.ready).toBe(true)
+  })
+
+  it('passes the backend item only when the provider is configured too', async () => {
+    const result = await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'codebuddy',
+      frameworks: [
+        { id: 'codebuddy', label: 'CodeBuddy', runtime: { found: true, path: '/bin/codebuddy' } }
+      ],
+      encryptionAvailable: true,
+      backendReadiness: { frameworkId: 'codebuddy', agentReady: true, activeProviderReady: true },
+      deps: baseDeps()
+    })
+
+    expect(result.checks.find((check) => check.id === 'backend')).toMatchObject({
+      status: 'passed'
+    })
+  })
+
+  // "We did not look" must never render as "it is configured".
+  it('reports an uninspected backend instead of assuming it is fine', async () => {
+    const result = await runEnvironmentCheck({
+      storageRoot: '/data',
+      agentFrameworkId: 'claude-code',
+      frameworks: [
+        { id: 'claude-code', label: 'Claude', runtime: { found: true, path: '/bin/claude' } }
+      ],
+      encryptionAvailable: true,
+      deps: baseDeps()
+    })
+
+    const backend = result.checks.find((check) => check.id === 'backend')
+    expect(backend?.status).toBe('warning')
+    expect(backend?.summary).toContain('not inspected')
+  })
 })

@@ -9,6 +9,7 @@ import type {
   ClaudeDetectResult,
   ClaudeInstallEvent,
   ClaudeInstallResult,
+  BackendReadiness,
   EnvironmentCheckResult,
   InstallClaudeRequest,
   InstallCodebuddyRequest,
@@ -459,7 +460,7 @@ export class AgentRuntimeManager {
     })
   }
 
-  async checkEnvironment(): Promise<EnvironmentCheckResult> {
+  async checkEnvironment(backendReadiness?: BackendReadiness): Promise<EnvironmentCheckResult> {
     // Per-step attribution for a handler the packaged build logged as slow 17 times (median 5.3 s, max
     // 42.2 s) with nothing in the line saying which phase spent the time. Four runtime detections run in
     // parallel (a Codex detection even smoke-initializes the ACP adapter), then the check adds a storage
@@ -511,6 +512,9 @@ export class AgentRuntimeManager {
         }
       ],
       encryptionAvailable: isEncryptionAvailable(),
+      // Only what the caller measured: the environment check must not invent a green for a provider it never
+      // inspected (see BackendReadiness in shared/settings).
+      ...(backendReadiness ? { backendReadiness } : {}),
       // The phases below live in environment-check; they report their times through the same recorder,
       // so one slow answer is one summary naming every phase it paid for.
       deps: { ...this.environmentCheckDeps, recordStep: (name, run) => steps.step(name, run) }

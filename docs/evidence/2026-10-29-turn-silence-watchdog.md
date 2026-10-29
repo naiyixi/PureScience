@@ -58,7 +58,32 @@ CodeBuddy requires an OpenAI-compatible base URL, API key, and model.
 **结论：这条路径没能复现「沉默 10 分钟」** —— codebuddy 这次不是挂起，而是 1 秒内直接报配置错误。
 因此 10 分钟看门狗路径的真机读数**仍然缺**，本节的单测与接线是当前全部证据。
 
-### 3.2 由此定下的下一项（已勘察，未动代码）
+### 3.2 机检补「后端配置」一项（已实施 + 真机读数）
+
+`Preflight` 里本来就 `agentReady` / `activeProviderReady`，缺的是把它们送进机检。已补：
+`EnvironmentCheckId` 增 `backend`、`runEnvironmentCheck` 增可选入参 `backendReadiness`、
+`AgentRuntimeManager.checkEnvironment(backendReadiness?)` 透传、`SettingsService.checkEnvironment()` 先取
+preflight 再传。未就绪是 **warning 而不是 failed**：`ready` 判的是「这台机器能不能用」，onboarding 期间
+没有 provider 是正常状态，做成 failed 会让新装第一屏就红、掩盖真正的机器问题；调用方没给读数时也是 warning
+并写明「未检查」——没看 ≠ 配置好了。
+
+真机读数（2026-10-29 14:05 CST，隔离根，`readiness=200`，`out/` 现树构建）：
+
+```
+=== framework=codebuddy ===
+  - agent passed   | CodeBuddy 2.177.1 is ready.
+  - backend warning | CodeBuddy is selected, but its provider is not ready — the first turn will fail.
+=== framework=claude-code ===
+  - agent passed   | Claude Code 2.1.212 is ready.
+  - backend warning | Claude Code is selected, but its provider is not ready — the first turn will fail.
+```
+
+codebuddy 那行正是事故缺口：**二进制 ready + API 配置未就绪**，以前机检到这里是全绿。
+claude-code 在隔离根里也是 warning 是**正确**的：临时根没有钥匙串里的 key 材料，`activeProviderReady` 本就为假；
+所以「passed 形态」本轮只有用例覆盖（provider 齐备 → passed），没有真机读数 —— 真机上要看它得用真实配置根跑，
+而那是用户正在用的实例，不擅自起。
+
+### 3.3 由此定下的下一项（已勘察，未动代码）
 
 `Preflight`（`src/shared/settings.ts`）里**已经有** `agentReady`、`activeProviderReady` 两个现成事实，
 但 `checkEnvironment()` 没有把它们放进机检项里 —— 所以「机检全绿」与「一用就报缺 base URL / API key / model」

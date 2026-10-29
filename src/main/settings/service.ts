@@ -1585,7 +1585,16 @@ class SettingsService {
   // a runtime installed outside PureScience between launches is picked up and onboarding can be
   // completed with Claude or OpenCode alone.
   async checkEnvironment(): Promise<EnvironmentCheckResult> {
-    return this.runtimeManager.checkEnvironment()
+    // Two facts decide "can this machine run the selected backend": the runtime binary (probed by the
+    // environment check) and whether its provider is configured (known to the preflight). Reporting only the
+    // first is how a machine passed every check and then failed on the first turn with
+    // "requires an OpenAI-compatible base URL, API key, and model" (measured 2026-10-29).
+    const preflight = await this.runtimeManager.getPreflight(this.providers)
+    return this.runtimeManager.checkEnvironment({
+      frameworkId: preflight.agentFrameworkId,
+      agentReady: preflight.agentReady,
+      activeProviderReady: preflight.activeProviderReady
+    })
   }
 
   // Detects claude and persists the resolved path/version for later spawns.

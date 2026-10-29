@@ -5,6 +5,7 @@ import { join } from 'node:path'
 
 import type {
   AgentFrameworkId,
+  BackendReadiness,
   ClaudeDetectResult,
   EnvironmentCheckItem,
   EnvironmentCheckResult,
@@ -145,6 +146,7 @@ const runEnvironmentCheck = async ({
   agentFrameworkId,
   frameworks,
   encryptionAvailable,
+  backendReadiness,
   deps = {}
 }: {
   storageRoot: string
@@ -154,6 +156,10 @@ const runEnvironmentCheck = async ({
   // and detection result in the shared shape.
   frameworks: { id: AgentFrameworkId; label: string; runtime: ClaudeDetectResult }[]
   encryptionAvailable: boolean
+  // What the preflight already knows about the SELECTED backend being usable: a provider, an endpoint, a
+  // model and a stored key. Omitted when the caller has no provider access — reported as unverified rather
+  // than green, because "we did not look" and "it is configured" are different answers.
+  backendReadiness?: BackendReadiness
   deps?: EnvironmentCheckDeps
 }): Promise<EnvironmentCheckResult> => {
   // The selected framework's runtime drives the required gate; the others are shown for context only.
@@ -411,13 +417,45 @@ const runEnvironmentCheck = async ({
     ]
   })
 
+  // The backend item answers the question the runtime item cannot: the binary may be present while the
+  // provider behind it has no base URL / model / key, and that combination used to pass every check and then
+  // fail on the first turn (2026-10-29: `CodeBuddy requires an OpenAI-compatible base URL, API key, and model.`).
+  const backendCheck: EnvironmentCheckItem | undefined = backendReadiness
+    ? backendReadiness.agentReady && backendReadiness.activeProviderReady
+      ? {
+          id: 'backend',
+          label: 'Agent backend configuration',
+          status: 'passed',
+          summary: `${selectedLabel} is configured: a provider, an endpoint, a model and a stored key are all present.`
+        }
+      : {
+          id: 'backend',
+          label: 'Agent backend configuration',
+          // `warning`, not `failed`: the machine itself is usable and onboarding legitimately runs before any
+          // provider exists. What this item promises is that the gap is VISIBLE before the first turn, not
+          // that it blocks setup.
+          status: 'warning',
+          summary: `${selectedLabel} is selected, but its provider is not ready — the first turn will fail.`,
+          detail:
+            'Set an active provider with a base URL, a model, and an API key in Settings → Providers, then run this check again.'
+        }
+    : {
+        id: 'backend',
+        label: 'Agent backend configuration',
+        status: 'warning',
+        summary: 'Backend configuration was not inspected in this run.',
+        detail:
+          'Open Settings → Providers to confirm the selected backend has a base URL, model and key.'
+      }
+
   const checks = [
     systemCheck,
     storageCheck,
     secureStorageCheck,
     networkCheck,
     pythonCheck,
-    ...runtimeChecks
+    ...runtimeChecks,
+    backendCheck
   ]
   const passedIds = new Set(
     checks.filter((check) => check.status === 'passed').map((check) => check.id)
