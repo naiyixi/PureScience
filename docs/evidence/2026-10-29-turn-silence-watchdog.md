@@ -45,6 +45,24 @@ idleTimeout` 在 `src/main/acp` 与 `src/main/tasks` 下零命中。回合一旦
 | `src/main/acp` 全目录                              | 见提交时的套件读数（下面补）                                                                                                                               |
 | `tsc -p tsconfig.node.json`                        | 见提交时读数                                                                                                                                               |
 
+### 3.1 真机复现尝试（2026-10-29 13:40 CST，隔离配置根，codebuddy）
+
+隔离根（`mktemp -d`，真实 `~/.purescience` 只读）、`readiness=200`、框架切 codebuddy 成功
+（`framework=codebuddy path=/Users/totota/.local/bin/codebuddy`）、建项目成功，然后发一条真实科研 prompt：
+
+```
+run_exit=1  elapsed_s=1
+CodeBuddy requires an OpenAI-compatible base URL, API key, and model.
+```
+
+**结论：这条路径没能复现「沉默 10 分钟」** —— codebuddy 这次不是挂起，而是 1 秒内直接报配置错误。
+因此 10 分钟看门狗路径的真机读数**仍然缺**，本节的单测与接线是当前全部证据。
+
+**顺带查清了事故里 refusal 的真正原因**：codebuddy 被选中但没有配置 OpenAI 兼容的 base URL / API key / model。
+它在会话建立后立刻失败，而 2026-10-29 12:00 那次只有一条 `stopReason: refusal` 进日志、界面无任何提示 ——
+所以用户看到的是「点了没反应」。这也说明机检（`settings:check-environment`）只验二进制存在，
+不验「这个框架有没有可用凭据/模型」，选了也照样 `found: true`。这是下一个该补的口子。
+
 **未验证（如实记）**：10 分钟真机挂起路径**没有**做端到端复现。复现需要真让运行时沉默 10 分钟（codebuddy
 是现成的挂起源），成本是 10 分钟机器时间；本轮只到「单测 + 接线 + 类型检查」。要在真机确认，做法是：
 用隔离配置根把框架设成 codebuddy → 发一条 prompt → 观察到 10 分钟时出现 aborted + 上述文本，日志出现
