@@ -323,6 +323,26 @@ const formatActivityGroupElapsed = (elapsedMs: number): string => {
   return `${seconds}s`
 }
 
+// Which activity groups start open. Two facts decide it, and an explicit user toggle beats both:
+//
+//   · `isNewestTurn` — the group sits after the last user prompt. That is the work the reader is following,
+//     so it opens; every earlier turn is settled history and starts collapsed. Without this a forty-turn
+//     session opens as one wall of tool rows and the answer the reader came back for is off-screen.
+//   · `hasActiveActivity` — a group holding a live tool call never hides it, whatever the turn says. A
+//     collapsed group whose only row is still running looks exactly like a group that did nothing.
+//
+// The rule reads the transcript order, not a clock or a streaming flag: whether a user prompt follows the
+// group does not change mid-turn, so a group never collapses under the reader while the turn is streaming.
+const resolveActivityGroupExpansion = ({
+  override,
+  isNewestTurn,
+  activities
+}: {
+  override: boolean | undefined
+  isNewestTurn: boolean
+  activities: readonly ToolActivity[]
+}): boolean => override ?? (isNewestTurn || activities.some(isActivityActive))
+
 export {
   formatActivityGroupElapsed,
   formatActivityGroupTitle,
@@ -331,7 +351,8 @@ export {
   getActivityGroupElapsedMs,
   getRenderableActivityEntries,
   groupConversationItems,
-  isSearchActivity
+  isSearchActivity,
+  resolveActivityGroupExpansion
 }
 export type {
   ActivityExpansionOverrides,

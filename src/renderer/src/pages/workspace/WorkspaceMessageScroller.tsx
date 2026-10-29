@@ -53,7 +53,7 @@ import {
   selectLiveSessionActivities,
   selectLiveSessionActivityGroups
 } from './activity-subscription'
-import { groupConversationItems } from './workspace-tool-activity-groups'
+import { groupConversationItems, resolveActivityGroupExpansion } from './workspace-tool-activity-groups'
 import type { ActivityExpansionOverrides } from './workspace-tool-activity-groups'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import type { GoToTranscriptIntent, ReviewWithChecks } from '../../../../shared/reviewer'
@@ -80,11 +80,6 @@ type WorkspaceMessageScrollerProps = {
   // Events are read-only projections; retry sends an intent that main validates against its state.
   handoffLifecycleSource?: HandoffLifecycleEventSource
   onRetryHandoff?: (request: HandoffRetryRequest) => Promise<void>
-}
-
-type SessionScopedActivityGroupState = {
-  sessionId: string | undefined
-  groupIds: Set<string>
 }
 
 type SessionScopedActivityExpansionState = {
@@ -460,11 +455,13 @@ const WorkspaceMessageScrollerImpl = ({
     return () => window.removeEventListener('focus', onFocus)
   }, [currentProjectId, currentSessionId, loadReviewsForSession])
 
-  // Group expansion is keyed by session so switching conversations never reuses stale UI state.
-  const [collapsedActivityGroupState, setCollapsedActivityGroupState] =
-    useState<SessionScopedActivityGroupState>(() => ({
+  // Group expansion is keyed by session so switching conversations never reuses stale UI state. Only an
+  // explicit toggle is remembered; the default comes from the transcript itself (see
+  // `resolveActivityGroupExpansion`), so a group whose turn is no longer the newest collapses on its own.
+  const [activityGroupExpansionState, setActivityGroupExpansionState] =
+    useState<SessionScopedActivityExpansionState>(() => ({
       sessionId: undefined,
-      groupIds: new Set()
+      overrides: {}
     }))
   // Individual detail rows default collapsed; overrides remember only explicit user toggles.
   const [activityExpansionOverrideState, setActivityExpansionOverrideState] =
@@ -472,10 +469,10 @@ const WorkspaceMessageScrollerImpl = ({
       sessionId: undefined,
       overrides: {}
     }))
-  const collapsedActivityGroups =
-    collapsedActivityGroupState.sessionId === currentSessionId
-      ? collapsedActivityGroupState.groupIds
-      : new Set<string>()
+  const activityGroupExpansionOverrides =
+    activityGroupExpansionState.sessionId === currentSessionId
+      ? activityGroupExpansionState.overrides
+      : {}
   const activityExpansionOverrides =
     activityExpansionOverrideState.sessionId === currentSessionId
       ? activityExpansionOverrideState.overrides
@@ -512,6 +509,17 @@ const WorkspaceMessageScrollerImpl = ({
       ),
     [sessionForItems, liveActivityGroups, handoffEvents]
   )
+  // Where the newest turn begins. A tool group before this index has a user prompt after it, so it is
+  // settled history: it starts collapsed, and the summary row is what the reader sees (E1). Reading the
+  // order instead of a streaming flag keeps the answer stable: a prompt arriving later cannot make an
+  // already-open group close under the reader mid-turn.
+  const lastUserPromptIndex = useMemo(() => {
+    for (let index = conversationItems.length - 1; index >= 0; index -= 1) {
+      const item = conversationItems[index]
+      if (item?.type === 'message' && item.message.role === 'user') return index
+    }
+    return -1
+  }, [conversationItems])
   // Revisions grouped once per render. This used to be filtered and sorted inside every message slot,
   // which made the transcript list quadratic in the number of messages per streaming chunk — the cost
   // showed up as the residual >50ms tasks at 45 turns.
@@ -816,21 +824,16 @@ const WorkspaceMessageScrollerImpl = ({
   }, [])
 
   // Toggles a whole adjacent tool-activity group without affecting other sessions.
-  const toggleActivityGroup = (groupId: string): void => {
-    setCollapsedActivityGroupState((currentState) => {
-      const currentGroupIds =
-        currentState.sessionId === currentSessionId ? currentState.groupIds : new Set<string>()
-      const nextGroupIds = new Set(currentGroupIds)
-
-      if (nextGroupIds.has(groupId)) {
-        nextGroupIds.delete(groupId)
-      } else {
-        nextGroupIds.add(groupId)
-      }
+  // Records the user's explicit choice for one activity group. The computed default (newest turn open,
+  // settled history closed) yields to it for the rest of the session.
+  const toggleActivityGroup = (groupId: string, nextExpanded: boolean): void => {
+    setActivityGroupExpansionState((currentState) => {
+      const currentOverrides =
+        currentState.sessionId === currentSessionId ? currentState.overrides : {}
 
       return {
         sessionId: currentSessionId,
-        groupIds: nextGroupIds
+        overrides: { ...currentOverrides, [groupId]: nextExpanded }
       }
     })
   }
@@ -1161,7 +1164,11 @@ const WorkspaceMessageScrollerImpl = ({
                         <WorkspaceActivityGroup
                           key={item.id}
                           group={item}
-                          isExpanded={!collapsedActivityGroups.has(item.id)}
+                          isExpanded={resolveActivityGroupExpansion({
+                            override: activityGroupExpansionOverrides[item.id],
+                            isNewestTurn: itemIndex > lastUserPromptIndex,
+                            activities: item.activities
+                          })}
                           onToggleGroup={toggleActivityGroup}
                           expansionOverrides={activityExpansionOverrides}
                           onToggleRow={toggleActivityRow}

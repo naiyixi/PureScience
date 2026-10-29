@@ -435,10 +435,10 @@ const ProvenanceMessagesTimeline = ({
                     key={conversationItem.id}
                     group={conversationItem}
                     isExpanded={!collapsedGroups.has(conversationItem.id)}
-                    onToggleGroup={(groupId) =>
+                    onToggleGroup={(groupId, nextExpanded) =>
                       setCollapsedGroups((current) => {
                         const next = new Set(current)
-                        if (next.has(groupId)) next.delete(groupId)
+                        if (nextExpanded) next.delete(groupId)
                         else next.add(groupId)
                         return next
                       })

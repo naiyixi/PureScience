@@ -9,7 +9,8 @@ import {
   getActivityGroupElapsedMs,
   getRenderableActivityEntries,
   groupConversationItems,
-  isSearchActivity
+  isSearchActivity,
+  resolveActivityGroupExpansion
 } from './workspace-tool-activity-groups'
 
 const createActivity = (overrides: Partial<ToolActivity>): ToolActivity => ({
@@ -319,5 +320,49 @@ describe('activity group elapsed time', () => {
     ]
 
     expect(getActivityGroupElapsedMs(activities, 9_000)).toBe(1_500)
+  })
+})
+
+describe('resolveActivityGroupExpansion', () => {
+  // E1's contract, stated once: a settled turn that is no longer the newest collapses into its summary row,
+  // the turn still in flight stays open, and an explicit toggle from the user wins over both. "Folded" is
+  // not "hidden" — the summary row is what carries the step count, the elapsed time and (E2) the tokens.
+  const settled = [createActivity({ id: 'a1', status: 'completed' })]
+  const running = [createActivity({ id: 'a2', status: 'in_progress' })]
+
+  it('folds a settled turn that is no longer the newest', () => {
+    expect(
+      resolveActivityGroupExpansion({
+        override: undefined,
+        isNewestTurn: false,
+        activities: settled
+      })
+    ).toBe(false)
+  })
+
+  it('keeps the newest turn open, and keeps a running group open whatever its position', () => {
+    expect(
+      resolveActivityGroupExpansion({
+        override: undefined,
+        isNewestTurn: true,
+        activities: settled
+      })
+    ).toBe(true)
+    expect(
+      resolveActivityGroupExpansion({
+        override: undefined,
+        isNewestTurn: false,
+        activities: running
+      })
+    ).toBe(true)
+  })
+
+  it('lets an explicit toggle win in both directions', () => {
+    expect(
+      resolveActivityGroupExpansion({ override: true, isNewestTurn: false, activities: settled })
+    ).toBe(true)
+    expect(
+      resolveActivityGroupExpansion({ override: false, isNewestTurn: true, activities: running })
+    ).toBe(false)
   })
 })

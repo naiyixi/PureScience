@@ -412,8 +412,12 @@ describe('conversation message scroller integration', () => {
     expect(workspaceMessageScrollerSource).toMatch(/import \{[^}]*\buseState\b[^}]*\} from 'react'/)
     expect(workspaceMessageScrollerSource).toContain('const currentSessionId = activeSession?.id')
     expect(workspaceMessageScrollerSource).toContain(
-      'collapsedActivityGroupState.sessionId === currentSessionId'
+      'activityGroupExpansionState.sessionId === currentSessionId'
     )
+    // E1: whether a group starts open is decided by the transcript order (a later user prompt makes the
+    // group settled history), and the user's own toggle is stored as an explicit override.
+    expect(workspaceMessageScrollerSource).toContain('itemIndex > lastUserPromptIndex')
+    expect(workspaceMessageScrollerSource).toContain('resolveActivityGroupExpansion({')
     expect(workspaceMessageScrollerSource).toContain(
       'activityExpansionOverrideState.sessionId === currentSessionId'
     )

@@ -31,7 +31,7 @@ import { formatWebSearchDetails } from './workspace-web-search-details'
 type WorkspaceActivityGroupProps = {
   group: ConversationActivityGroupItem
   isExpanded: boolean
-  onToggleGroup: (groupId: string) => void
+  onToggleGroup: (groupId: string, nextExpanded: boolean) => void
   expansionOverrides: ActivityExpansionOverrides
   onToggleRow: (activityId: string, nextExpanded: boolean) => void
   // Embedded transcript surfaces can supply their own horizontal gutter without changing live chat.
@@ -106,7 +106,7 @@ const WorkspaceActivityGroup = ({
             aria-expanded={isExpanded}
             data-testid="tool-group-header"
             className="flex w-full items-center gap-2 rounded-lg py-[5px] pl-1.5 pr-2.5 text-[13px] transition-colors hover:bg-bg-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-            onClick={() => onToggleGroup(group.id)}
+            onClick={() => onToggleGroup(group.id, !isExpanded)}
           >
             <span
               className={cn(
