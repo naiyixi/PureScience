@@ -58,6 +58,21 @@ CodeBuddy requires an OpenAI-compatible base URL, API key, and model.
 **结论：这条路径没能复现「沉默 10 分钟」** —— codebuddy 这次不是挂起，而是 1 秒内直接报配置错误。
 因此 10 分钟看门狗路径的真机读数**仍然缺**，本节的单测与接线是当前全部证据。
 
+### 3.2 由此定下的下一项（已勘察，未动代码）
+
+`Preflight`（`src/shared/settings.ts`）里**已经有** `agentReady`、`activeProviderReady` 两个现成事实，
+但 `checkEnvironment()` 没有把它们放进机检项里 —— 所以「机检全绿」与「一用就报缺 base URL / API key / model」
+可以同时成立。补法：
+
+1. `runEnvironmentCheck` 的入参加一个可选的 `backendReadiness?: { frameworkId; agentReady; activeProviderReady }`，
+   产出一条 `id: 'backend'` 的检查项：`found/ready` 与选中框架名，未就绪时正文点名缺哪一类配置；
+2. `AgentRuntimeManager.checkEnvironment()` 目前在装配时**拿不到** provider 访问（`computePreflight` 在
+   `getPreflight(providers)` 里才拿得到）⇒ 需要把 provider 访问透传到 `checkEnvironment`（composition + IPC 各一处）；
+3. 用例：选中 codebuddy 且 provider 缺 key 时，机检出现非绿项并点名；provider 齐备时为绿。
+
+这一项没有动代码：它要改 `checkEnvironment` 的签名并透传 provider 访问，属于「接线 + 装配」改动，
+按本仓规矩要么一次做完（含用例与真机读数），要么不落半截 —— 记在这里作为下一批的第一项。
+
 **顺带查清了事故里 refusal 的真正原因**：codebuddy 被选中但没有配置 OpenAI 兼容的 base URL / API key / model。
 它在会话建立后立刻失败，而 2026-10-29 12:00 那次只有一条 `stopReason: refusal` 进日志、界面无任何提示 ——
 所以用户看到的是「点了没反应」。这也说明机检（`settings:check-environment`）只验二进制存在，
