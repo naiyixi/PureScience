@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -722,7 +722,13 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
+      sessionEvidence: vi.fn(async () => ({
+        found: false,
+        evidence: null,
+        capabilityNotice: null
+      })),
+      sessionPackageExport: vi.fn(),
+      sessionPackageImport: vi.fn()
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1311,7 +1317,13 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null })),
+      sessionEvidence: vi.fn(async () => ({
+        found: false,
+        evidence: null,
+        capabilityNotice: null
+      })),
+      sessionPackageExport: vi.fn(),
+      sessionPackageImport: vi.fn(),
       dispose: vi.fn()
     }
     const server = await startTestWebHttpServer({
@@ -1507,7 +1519,13 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
+      sessionEvidence: vi.fn(async () => ({
+        found: false,
+        evidence: null,
+        capabilityNotice: null
+      })),
+      sessionPackageExport: vi.fn(),
+      sessionPackageImport: vi.fn()
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1585,7 +1603,13 @@ describe('startWebHttpServer', () => {
         attachments: [],
         usedCapabilities: []
       })),
-      sessionEvidence: vi.fn(async () => ({ found: false, evidence: null, capabilityNotice: null }))
+      sessionEvidence: vi.fn(async () => ({
+        found: false,
+        evidence: null,
+        capabilityNotice: null
+      })),
+      sessionPackageExport: vi.fn(),
+      sessionPackageImport: vi.fn()
     }
     const server = await startTestWebHttpServer({
       host: '127.0.0.1',
@@ -1631,5 +1655,176 @@ describe('startWebHttpServer', () => {
       },
       { timeout: COORDINATION_WINDOW_MS }
     )
+  })
+})
+
+describe('session package transport', () => {
+  const bootstrap = {
+    appName: 'PureScience',
+    appVersion: '0.0.0',
+    configRoot: '/fake/root',
+    platform: 'test',
+    versions: { electron: '1', chrome: '1', node: '1' }
+  }
+
+  const tasksWith = (overrides: Record<string, unknown>): Record<string, unknown> => ({
+    runWithCallerContext,
+    listProjects: vi.fn(),
+    createProject: vi.fn(),
+    listSessions: vi.fn(),
+    getSession: vi.fn(),
+    startRun: vi.fn(),
+    getRun: vi.fn(),
+    readiness: vi.fn(),
+    runtimes: vi.fn(),
+    connectors: vi.fn(),
+    replayArtifactVersion: vi.fn(),
+    listArtifacts: vi.fn(),
+    acquireArtifact: vi.fn(),
+    releaseArtifact: vi.fn(),
+    pendingPermissions: vi.fn(),
+    respondPermission: vi.fn(),
+    capabilitySessionInputs: vi.fn(),
+    sessionEvidence: vi.fn(),
+    sessionPackageExport: vi.fn(),
+    sessionPackageImport: vi.fn(),
+    ...overrides
+  })
+
+  const startServer = async (
+    tasks: Record<string, unknown>,
+    externalAccess?: {
+      authorizeHttp: () => Promise<unknown>
+      authorizeWebSocket: () => Promise<unknown>
+    }
+  ): Promise<RunningWebServer> => {
+    const server = await startTestWebHttpServer({
+      host: '127.0.0.1',
+      port: 0,
+      token: 'test-token',
+      staticRoot: '/unused',
+      rpc: { channels: () => [], invoke: vi.fn(), releaseClient: vi.fn(), dispose: vi.fn() },
+      tasks: tasks as never,
+      ...(externalAccess ? { externalAccess: externalAccess as never } : {}),
+      bootstrap
+    })
+    servers.push(server)
+    return server
+  }
+
+  it('streams an exported package as an attachment and deletes the temporary copy', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'purescience-web-package-'))
+    roots.push(directory)
+    const sessionPackageExport = vi.fn(async (request: { destinationPath: string }) => {
+      // The route names a temporary destination and the exporter writes there; the response body must be
+      // those bytes, not a re-serialization of them.
+      await writeFile(request.destinationPath, 'PK-session-package-bytes')
+      return { ok: true, path: request.destinationPath, bytes: 24, notes: [] }
+    })
+    const server = await startServer(tasksWith({ sessionPackageExport }))
+
+    const response = await fetch(
+      `http://127.0.0.1:${server.port}/api/v1/sessions/session-1/package?mode=full&projectId=project-1`,
+      { headers: { authorization: 'Bearer test-token' } }
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('application/zip')
+    expect(await response.text()).toBe('PK-session-package-bytes')
+    expect(response.headers.get('content-disposition')).toMatch(
+      /^attachment; filename\*=UTF-8''purescience-session-package-/
+    )
+    expect(sessionPackageExport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        projectId: 'project-1',
+        mode: 'full'
+      })
+    )
+    const temporaryPath = (sessionPackageExport.mock.calls[0]![0] as { destinationPath: string })
+      .destinationPath
+    // The removal happens after the stream drains, which can be a moment after the client has the body:
+    // this waits for that side effect rather than assuming it already happened.
+    await vi.waitFor(
+      async () => {
+        await expect(stat(temporaryPath)).rejects.toThrow()
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
+  })
+
+  it('answers a refused export with the refusal status and never an empty file', async () => {
+    const notFound = vi.fn(async () => ({ ok: false, error: 'session-not-found' }))
+    const unreadable = vi.fn(async () => ({ ok: false, error: 'session-unreadable' }))
+    let server = await startServer(tasksWith({ sessionPackageExport: notFound }))
+    let response = await fetch(`http://127.0.0.1:${server.port}/api/v1/sessions/missing/package`, {
+      headers: { authorization: 'Bearer test-token' }
+    })
+    expect(response.status).toBe(404)
+    expect(await response.json()).toMatchObject({ error: { code: 'session-not-found' } })
+
+    server = await startServer(tasksWith({ sessionPackageExport: unreadable }))
+    response = await fetch(`http://127.0.0.1:${server.port}/api/v1/sessions/broken/package`, {
+      headers: { authorization: 'Bearer test-token' }
+    })
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ error: { code: 'session-unreadable' } })
+  })
+
+  it('lands an uploaded package and hands the importer a path that still holds the bytes', async () => {
+    let uploadedBytes = ''
+    const sessionPackageImport = vi.fn(async (request: { packagePath: string }) => {
+      uploadedBytes = await readFile(request.packagePath, 'utf8')
+      return {
+        ok: true,
+        sessionId: 'imported-1',
+        posture: {},
+        notes: [],
+        landed: { citations: 0, reviews: 0, reviewFindings: 0, verificationRecords: 0, skipped: [] }
+      }
+    })
+    const server = await startServer(tasksWith({ sessionPackageImport }))
+
+    const response = await fetch(
+      `http://127.0.0.1:${server.port}/api/v1/sessions/package/import?projectId=project-1`,
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer test-token', 'content-type': 'application/octet-stream' },
+        body: 'PK-uploaded-package'
+      }
+    )
+
+    expect(response.status).toBe(201)
+    expect(uploadedBytes).toBe('PK-uploaded-package')
+    expect(sessionPackageImport).toHaveBeenCalledWith({
+      packagePath: expect.any(String),
+      targetProjectId: 'project-1'
+    })
+    const { packagePath } = sessionPackageImport.mock.calls[0]![0] as { packagePath: string }
+    await vi.waitFor(
+      async () => {
+        await expect(stat(packagePath)).rejects.toThrow()
+      },
+      { timeout: COORDINATION_WINDOW_MS }
+    )
+    expect(await response.json()).toMatchObject({ data: { ok: true, sessionId: 'imported-1' } })
+  })
+
+  it('refuses a remote import outright instead of letting a paired browser create a session', async () => {
+    const sessionPackageImport = vi.fn()
+    const server = await startServer(tasksWith({ sessionPackageImport }), {
+      authorizeHttp: vi.fn().mockResolvedValue(authorizedExternalAccess()),
+      authorizeWebSocket: vi.fn().mockResolvedValue({})
+    })
+
+    const response = await fetch(`http://127.0.0.1:${server.port}/api/v1/sessions/package/import`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: 'PK-uploaded-package'
+    })
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toMatchObject({ error: { code: 'unauthorized' } })
+    expect(sessionPackageImport).not.toHaveBeenCalled()
   })
 })

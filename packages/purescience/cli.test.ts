@@ -1,3 +1,8 @@
+import { createHash } from 'node:crypto'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it, vi } from 'vitest'
 
 import { PUBLIC_TERMINAL_FIXTURE } from '../../test/fixtures/renderer-contract-certification'
@@ -9,6 +14,8 @@ import {
   runCli,
   runTaskCommand
 } from './cli.mjs'
+
+const scratchRoot = (): string => tmpdir()
 
 describe('task CLI', () => {
   it('parses the first milestone run interface', () => {
@@ -305,6 +312,151 @@ describe('task CLI', () => {
     expect(client.listArtifacts).toHaveBeenCalledWith('session-1')
     expect(client.downloadArtifact).toHaveBeenCalledWith('artifact-1')
     expect(writeDownload).toHaveBeenCalledWith(expect.any(Response), 'report.md')
+  })
+
+  it('parses the package verbs as a group with their own destination flag', () => {
+    expect(
+      parseCliArgs(['package', 'export', 'session-1', '--out', '/tmp/p.science'])
+    ).toMatchObject({
+      command: 'package',
+      subcommand: 'export',
+      positionals: ['session-1'],
+      options: { out: '/tmp/p.science' }
+    })
+    expect(
+      parseCliArgs(['package', 'import', '/tmp/p.science', '--project', 'research', '--json'])
+    ).toMatchObject({
+      command: 'package',
+      subcommand: 'import',
+      positionals: ['/tmp/p.science'],
+      options: { project: 'research', json: true }
+    })
+  })
+
+  it('writes the exported package where --out says and reports its own bytes and digest', async () => {
+    const directory = await mkdtemp(join(scratchRoot(), 'purescience-cli-package-'))
+    const output = join(directory, 'session.science')
+    const client = {
+      downloadSessionPackage: vi.fn().mockResolvedValue(new Response('PK-package-bytes'))
+    }
+    const log = vi.fn()
+    // The real download path streams the response to the file, then the verb reads that file back: the
+    // numbers it prints are the bytes on disk, not the bytes the response claimed.
+    const writeDownload = vi.fn(async (response: Response, destination: string) => {
+      await writeFile(destination, Buffer.from(await response.arrayBuffer()))
+    })
+
+    await runTaskCommand(
+      {
+        command: 'package',
+        subcommand: 'export',
+        positionals: ['session-1'],
+        options: { out: output, mode: 'full', project: 'research', json: true, jsonl: false }
+      },
+      { connect: vi.fn().mockResolvedValue(client), log, writeDownload }
+    )
+
+    expect(client.downloadSessionPackage).toHaveBeenCalledWith('session-1', {
+      mode: 'full',
+      projectId: 'research'
+    })
+    const reported = JSON.parse(log.mock.calls[0][0])
+    const onDisk = await readFile(output)
+    expect(reported).toEqual({
+      sessionId: 'session-1',
+      output,
+      mode: 'full',
+      bytes: onDisk.byteLength,
+      sha256: createHash('sha256').update(onDisk).digest('hex')
+    })
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  it('maps a package refusal to exit 2 and a transport failure to exit 3', async () => {
+    const refusal = Object.assign(new Error('Session not found: gone'), {
+      code: 'session-not-found',
+      status: 404
+    })
+    const refusing = {
+      downloadSessionPackage: vi.fn().mockRejectedValue(refusal),
+      importSessionPackage: vi.fn().mockRejectedValue(refusal)
+    }
+    const unreachable = {
+      downloadSessionPackage: vi.fn().mockRejectedValue(new TypeError('fetch failed')),
+      importSessionPackage: vi.fn().mockRejectedValue(new TypeError('fetch failed'))
+    }
+    const directory = await mkdtemp(join(scratchRoot(), 'purescience-cli-package-'))
+    const packagePath = join(directory, 'in.science')
+    await writeFile(packagePath, 'PK')
+
+    await expect(
+      runTaskCommand(
+        {
+          command: 'package',
+          subcommand: 'export',
+          positionals: ['gone'],
+          options: { out: join(directory, 'out.science'), json: true, jsonl: false }
+        },
+        { connect: vi.fn().mockResolvedValue(refusing), log: vi.fn(), writeDownload: vi.fn() }
+      )
+    ).rejects.toMatchObject({ exitCode: 2, code: 'session-not-found' })
+
+    await expect(
+      runTaskCommand(
+        {
+          command: 'package',
+          subcommand: 'import',
+          positionals: [packagePath],
+          options: { json: true, jsonl: false }
+        },
+        { connect: vi.fn().mockResolvedValue(refusing), log: vi.fn() }
+      )
+    ).rejects.toMatchObject({ exitCode: 2 })
+
+    await expect(
+      runTaskCommand(
+        {
+          command: 'package',
+          subcommand: 'import',
+          positionals: [packagePath],
+          options: { json: true, jsonl: false }
+        },
+        { connect: vi.fn().mockResolvedValue(unreachable), log: vi.fn() }
+      )
+    ).rejects.toMatchObject({ exitCode: 3, code: 'package_transport_failed' })
+    await rm(directory, { recursive: true, force: true })
+  })
+
+  it('imports a package by handing its bytes to the app', async () => {
+    const directory = await mkdtemp(join(scratchRoot(), 'purescience-cli-package-'))
+    const packagePath = join(directory, 'in.science')
+    await writeFile(packagePath, 'PK-package-bytes')
+    const client = {
+      importSessionPackage: vi.fn().mockResolvedValue({
+        ok: true,
+        sessionId: 'imported-1',
+        posture: { readOnly: true },
+        notes: [],
+        landed: { citations: 0, reviews: 0, reviewFindings: 0, verificationRecords: 0, skipped: [] }
+      })
+    }
+    const log = vi.fn()
+
+    await runTaskCommand(
+      {
+        command: 'package',
+        subcommand: 'import',
+        positionals: [packagePath],
+        options: { project: 'research', json: true, jsonl: false }
+      },
+      { connect: vi.fn().mockResolvedValue(client), log }
+    )
+
+    const [sentBytes, sentOptions] = client.importSessionPackage.mock.calls[0]
+    expect(Buffer.from(sentBytes).toString()).toBe('PK-package-bytes')
+    expect(sentOptions).toEqual({ projectId: 'research' })
+    expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({ ok: true, sessionId: 'imported-1' })
+    await rm(directory, { recursive: true, force: true })
   })
 
   it('reads stdin, emits JSONL events, and sets a failed-run exit code', async () => {

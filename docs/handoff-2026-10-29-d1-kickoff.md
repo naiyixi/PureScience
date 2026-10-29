@@ -98,7 +98,7 @@ HTTP 层照既有 `tasks.sessionEvidence(...)` 的写法调用，不直接读文
 
 - 仓库 `/Users/totota/purescience`；`typecheck` 必须 `NODE_OPTIONS=--max-old-space-size=8192`（否则 tsc 会 exit 134）；`npm run build` 同；
 - 改 `prisma/schema.prisma` 后必须 `./node_modules/.bin/prisma generate`；
-- 新增/改通道 ⇒ 按 `openscience-dev` 的 `references/contract-surfaces.md` A 节**八面**逐条勾，漏一面 CI 会在你没跑的分片点名；
+- 新增/改通道 ⇒ 按开发技能里的 `references/contract-surfaces.md` A 节**八面**逐条勾，漏一面 CI 会在你没跑的分片点名；
   并会撞 `renderer-contract-entry-coverage`（「建了没人调」）；
 - 提交前跑 `scripts/pre-push-checks.sh`（它**不做类型检查**，类型要自己跑 tsc）；推送用 `git -c core.hooksPath=/dev/null push`；
 - **探针/脚本绝不能写真实配置根** `~/.purescience`：本轮就吃过这个亏——把在用的应用切成了 codebuddy，用户三次请求被拒、

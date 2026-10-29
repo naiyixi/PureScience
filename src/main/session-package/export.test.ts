@@ -40,6 +40,22 @@ const input = (overrides: Partial<SessionPackageInput> = {}): SessionPackageInpu
 const unzip = (archive: Uint8Array): Record<string, Uint8Array> => unzipSync(archive)
 
 describe('session package export', () => {
+  it('writes the same bytes for the same session, whatever moment it is written at', () => {
+    // The archive has to be a function of the package, not of the clock: without a fixed entry timestamp,
+    // fflate stamps "now" into every header and two exports of one unchanged session differ everywhere —
+    // which made "the Web download is the file the desktop produced" impossible to check.
+    const first = createSessionPackage(input(), 'full')
+    const second = createSessionPackage(input(), 'full')
+    expect(sha256(second.archive)).toBe(sha256(first.archive))
+
+    // The one field that legitimately differs is the provenance stamp, and it changes nothing else: the
+    // entry list and every entry's digest stay identical.
+    const later = createSessionPackage(input({ exportedAt: '2026-09-16T00:00:00.000Z' }), 'full')
+    expect(later.manifest.entries).toEqual(first.manifest.entries)
+    expect(later.manifest.exportedAt).toBe('2026-09-16T00:00:00.000Z')
+    expect(sha256(later.archive)).not.toBe(sha256(first.archive))
+  })
+
   it('carries every required evidence kind in essential mode too', () => {
     // The caller names how many files it left behind: an essential package never reads them, but a
     // reader must not conclude the session had none.

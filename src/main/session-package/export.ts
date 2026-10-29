@@ -19,6 +19,10 @@ import { deriveSessionPackageUsage } from '../../shared/session-package-usage'
 // silently included. 25 MB keeps an essential package mailable while still carrying figures.
 export const DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES = 25 * 1024 * 1024
 
+// The one timestamp every archive entry carries. Zip cannot represent anything before 1980, and using
+// "now" would make the package bytes depend on when the export ran rather than on what it carries.
+const SESSION_PACKAGE_ENTRY_MTIME = new Date(1980, 0, 1, 0, 0, 0)
+
 export type SessionPackageFile = {
   /** Path inside the package, e.g. `files/figures/figA.png`. */
   path: string
@@ -223,7 +227,12 @@ export const createSessionPackage = (
   const manifestEntry = strToU8(`${JSON.stringify(manifest, null, 2)}\n`)
   write[SESSION_PACKAGE_MANIFEST_PATH] = manifestEntry
 
-  const archive = zipSync(write, { level: 6 })
+  // A fixed entry timestamp, so the archive is a function of the SESSION and not of the instant it was
+  // written. fflate stamps "now" into every local header and central-directory record, which made two
+  // exports of one unchanged session differ in every one of those fields — and made "the file the Web
+  // download produced is the file the desktop produced" unverifiable. 1980-01-01 is the zip epoch: the
+  // only timestamp the format can hold that means "not a fact about this export".
+  const archive = zipSync(write, { level: 6, mtime: SESSION_PACKAGE_ENTRY_MTIME })
 
   // A reader must be able to see all four evidence kinds without unpacking anything else.
   const evidencePaths = [

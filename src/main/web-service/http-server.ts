@@ -1,7 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { readFile, stat } from 'node:fs/promises'
-import { extname, resolve, sep } from 'node:path'
-import { Readable } from 'node:stream'
+import { createReadStream, createWriteStream } from 'node:fs'
+import { readFile, rm, stat } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { basename, extname, join, resolve, sep } from 'node:path'
+import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { promisify } from 'node:util'
@@ -33,10 +36,19 @@ import { buildCapabilitiesPayload } from './capabilities-route'
 import { projectPublicTaskEvent, projectWebRendererEvent } from './application-event-projections'
 import { authenticateRequest, persistAuthCookie } from './auth'
 import type { StartTaskRunRequest } from '../../shared/task-api'
+import type { ExportSessionPackageRequest } from '../../shared/session-package'
 import { TaskApiError, type HeadlessTaskApi } from './task-api'
+import { createLogger } from '../logger'
 
 const MAX_RPC_BODY_BYTES = 64 * 1024 * 1024
 const MIN_GZIP_BYTES = 1_024
+
+const sessionPackageLog = createLogger('web-service:session-package')
+
+// A package is a zip a receiver opens, not a stream this server can invent: the ceiling is the same one
+// the reader applies to an archive's total size, so an upload cannot be larger than an importable one.
+const MAX_SESSION_PACKAGE_UPLOAD_BYTES = 512 * 1024 * 1024
+const SESSION_PACKAGE_CONTENT_TYPE = 'application/zip'
 const gzipAsync = promisify(gzip)
 
 // Remote Browser access is an application session, not authority over native host lifecycle and
@@ -98,6 +110,8 @@ type WebServerOptions = {
     | 'respondPermission'
     | 'capabilitySessionInputs'
     | 'sessionEvidence'
+    | 'sessionPackageExport'
+    | 'sessionPackageImport'
     | 'runWithCallerContext'
   >
   onShutdownRequest?: () => void
@@ -228,6 +242,12 @@ const taskError = (response: ServerResponse, error: unknown): void => {
     })
     return
   }
+  if (error instanceof SessionPackageUploadTooLargeError) {
+    json(response, 413, {
+      error: { code: 'package_too_large', message: error.message }
+    })
+    return
+  }
   if (error instanceof ExternalAuthorizationExpiredError) {
     json(response, 401, {
       error: { code: 'unauthorized', message: error.message }
@@ -313,6 +333,74 @@ const streamPreviewResource = async (
     response.off('close', abortOnDisconnect)
     response.off('error', abortOnDisconnect)
   }
+}
+
+class SessionPackageUploadTooLargeError extends Error {
+  constructor() {
+    super('The uploaded session package is larger than this server accepts.')
+    this.name = 'SessionPackageUploadTooLargeError'
+  }
+}
+
+const packageModeFromQuery = (raw: string | null): ExportSessionPackageRequest['mode'] =>
+  raw === 'full' ? 'full' : 'essential'
+
+// The temporary file an export produced, streamed back and then removed whatever happens: a package left
+// behind in the temp directory is a copy of a session the caller may have meant to keep private.
+const streamSessionPackageFile = async (
+  request: IncomingMessage,
+  response: ServerResponse,
+  packagePath: string,
+  fileName: string
+): Promise<void> => {
+  const info = await stat(packagePath)
+  response.writeHead(200, {
+    'content-type': SESSION_PACKAGE_CONTENT_TYPE,
+    'content-length': String(info.size),
+    // Same encoding rule as an artifact download: the name may hold anything, the header may not.
+    'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff'
+  })
+  if (request.method === 'HEAD') {
+    response.end()
+    return
+  }
+  await pipeline(createReadStream(packagePath), response)
+}
+
+// The upload half: bytes land in a temporary file the importer then reads by PATH, because that is the
+// only shape the import owner has ever taken (there is no base64 seam to add and none is added here).
+const receiveSessionPackageUpload = async (
+  request: IncomingMessage,
+  destinationPath: string
+): Promise<number> => {
+  let size = 0
+  const limiter = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      size += chunk.length
+      if (size > MAX_SESSION_PACKAGE_UPLOAD_BYTES) {
+        callback(new SessionPackageUploadTooLargeError())
+        return
+      }
+      callback(null, chunk)
+    }
+  })
+  await pipeline(request, limiter, createWriteStream(destinationPath, { mode: 0o600 }))
+  return size
+}
+
+const sessionPackageRefusalStatus = (error: string): number => {
+  if (error === 'session-not-found') return 404
+  // The session exists but its document cannot be read: the request was understood, the resource is not
+  // in a state that can be packaged. Never a 200 with an empty file.
+  return 422
+}
+
+const sessionPackageImportRefusalStatus = (reason: string): number => {
+  if (reason === 'no-target-project' || reason === 'not-confirmed') return 400
+  if (reason === 'write-failed') return 500
+  return 422
 }
 
 const handleTaskApiRequest = async (
@@ -443,6 +531,82 @@ const handleTaskApiRequest = async (
         json(response, 200, {
           data: await tasks.sessionEvidence(decodeURIComponent(sessionEvidenceMatch[1]))
         })
+        return true
+      }
+      // D1: the portable-session package, both directions, over the same task surface the rest of this
+      // API uses. The package is the one a human would mail: the desktop writes it with a save sheet, and
+      // these routes write it to a temporary file instead, then stream it back and delete it.
+      const sessionPackageMatch = url.pathname.match(/^\/api\/v1\/sessions\/([^/]+)\/package$/)
+      if (sessionPackageMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        const sessionId = decodeURIComponent(sessionPackageMatch[1]!)
+        const mode = packageModeFromQuery(url.searchParams.get('mode'))
+        const projectId = url.searchParams.get('projectId') ?? undefined
+        const temporaryPath = join(tmpdir(), `purescience-session-package-${randomUUID()}.science`)
+        const exported = await tasks.sessionPackageExport({
+          sessionId,
+          ...(projectId ? { projectId } : {}),
+          mode,
+          destinationPath: temporaryPath
+        })
+        if (!exported.ok) {
+          // A refusal is a status, not a zero-byte attachment: a caller that downloaded an empty file
+          // would believe it holds a package.
+          await rm(temporaryPath, { force: true })
+          json(response, sessionPackageRefusalStatus(exported.error), {
+            error: { code: exported.error, message: `Session package refused: ${exported.error}` }
+          })
+          return true
+        }
+        try {
+          await streamSessionPackageFile(request, response, exported.path, basename(exported.path))
+        } finally {
+          await rm(exported.path, { force: true })
+        }
+        return true
+      }
+      if (url.pathname === '/api/v1/sessions/package/import' && request.method === 'POST') {
+        // An import CREATES a session on this machine. That is local-only authority: it is refused
+        // whenever the request arrived through the remote-access adapter, and the refusal is recorded as
+        // a permission decision rather than disappearing into a 401 body.
+        if (externalAuthorization) {
+          sessionPackageLog.warn('permission decision', {
+            decision: 'denied',
+            surface: 'remote-web',
+            channel: 'sessions:import-package',
+            reason: 'local-only-authority'
+          })
+          json(response, 401, {
+            error: {
+              code: 'unauthorized',
+              message:
+                'Importing a session package is only available from the local app: it creates a session.'
+            }
+          })
+          return true
+        }
+        assertExternalAuthorizationCurrent(externalAuthorization)
+        const temporaryPath = join(tmpdir(), `purescience-package-upload-${randomUUID()}.science`)
+        try {
+          await receiveSessionPackageUpload(request, temporaryPath)
+          const targetProjectId = url.searchParams.get('projectId') ?? undefined
+          const imported = await tasks.sessionPackageImport({
+            packagePath: temporaryPath,
+            ...(targetProjectId ? { targetProjectId } : {})
+          })
+          if (!imported.ok) {
+            json(response, sessionPackageImportRefusalStatus(imported.reason), {
+              error: {
+                code: imported.reason,
+                message: `Session package was not imported: ${imported.reason}`
+              }
+            })
+            return true
+          }
+          json(response, 201, { data: imported })
+        } finally {
+          await rm(temporaryPath, { force: true })
+        }
         return true
       }
       const sessionMatch = url.pathname.match(/^\/api\/v1\/sessions\/([^/]+)$/)

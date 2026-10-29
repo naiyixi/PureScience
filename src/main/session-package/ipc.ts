@@ -1,5 +1,4 @@
 import { BrowserWindow, dialog } from 'electron'
-import { readFile } from 'node:fs/promises'
 
 import { SESSION_PACKAGE_EXTENSION } from '../../shared/session-package'
 import type {
@@ -12,6 +11,7 @@ import { inspectSessionPackage } from './import'
 import type { SessionPackageImportOwner } from './import-owner'
 import { createSessionPackageOwner, type SessionPackageOwnerDeps } from './owner'
 import { importSessionPackage, type SessionPackageImportDeps } from './import-session'
+import { readPackageFile } from './package-bytes'
 
 // The desktop side of the export. The dialog lives here, not in the owner, because only the adapter
 // knows which window invoked the channel — and the sheet must belong to that window.
@@ -61,9 +61,6 @@ export type SessionPackageImportIpcDeps = {
     sessionId: string
   ) => Promise<SessionPackageImportRecord | undefined>
 }
-
-const readPackageFile = async (path: string): Promise<Uint8Array> =>
-  new Uint8Array(await readFile(path))
 
 export const registerSessionPackageImportIpcHandlers = (
   deps: SessionPackageImportIpcDeps

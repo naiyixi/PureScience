@@ -66,6 +66,11 @@ import {
   settingsRuntimeApplicationCommandGroup,
   type RuntimeSettingsApplicationCommandDependencies
 } from './settings/runtime-application-commands'
+import {
+  registerSessionPackageApplicationCommands,
+  sessionPackageApplicationCommandGroup,
+  type SessionPackageApplicationCommandDependencies
+} from './session-package/application-commands'
 
 type AnyApplicationCommand = ApplicationCommand<string, readonly unknown[], unknown>
 type NotebookEnvironmentDependencies = Parameters<
@@ -97,6 +102,7 @@ type ApplicationCommandCompositionDependencies = Readonly<{
   permissionGrants: PermissionGrantDependencies
   references: ReferencesApplicationCommandDependencies
   dataContent: DataContentApplicationCommandDependencies
+  sessionPackage: SessionPackageApplicationCommandDependencies
   host: Omit<HostApplicationCommandDependencies, 'remoteAccess'>
 }>
 
@@ -108,7 +114,7 @@ type ApplicationCommandComposition = Readonly<{
   dispose: () => void
 }>
 
-const GROUP_COUNT = 40
+const GROUP_COUNT = 41
 // +1 group: the PDF annotation group (pdf-annotations:create / import / list / reattach / remove) sits
 // beside the PDF reading surface it belongs to, and every one of its channels is local-only.
 // +1 group: the saved-search-filter-set group (searchPins.list / remove / save) sits beside the bookmarks
@@ -202,7 +208,11 @@ const GROUP_COUNT = 40
 // from the window, so it counts on the internal surface and on both Web surfaces.
 // +1 for the citation walk (references:discover-citations, B2): reachable from the window, refused on the
 // remote surface. It egresses to the index, so it is LOCAL like the integrity check it sits beside.
-const INTERNAL_COMMAND_COUNT = 373
+// +2 for the portable-session package (D1: sessions:export-package / sessions:import-package): the two
+// directions a package travels in were Electron-only channels with no command identity, so neither the
+// local Web profile nor the command line could reach them. Both are LOCAL — they read and write this
+// machine's disk, and an import CREATES a session, which a remote caller must never be able to do.
+const INTERNAL_COMMAND_COUNT = 375
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -221,7 +231,9 @@ const INTERNAL_COMMAND_COUNT = 373
 // request, and each exposes one bridge method — so every surface count here moves with them.
 // +1 for the citation walk (references:discover-citations, LOCAL): it exposes one bridge method on the
 // local Web surface too, and earns the rejecting stub on the remote one.
-const LOCAL_WEB_COMMAND_COUNT = 371
+// +2 for the package pair above: both are reachable from the local Web profile (the headless CLI lands
+// there), and neither is in the fail-closed set.
+const LOCAL_WEB_COMMAND_COUNT = 373
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 // 236 with the session run-data measurement (sessions:read-notebook-usage), which is mapped the same way.
@@ -238,8 +250,13 @@ const REMOTE_WEB_COMMAND_COUNT = 238
 // request, and each exposes one bridge method — so every surface count here moves with them.
 // +1 for the citation walk (references:discover-citations, LOCAL): refused on the remote surface, so it
 // lands in the fail-closed set rather than the remote dispatch count.
-const REMOTE_REJECTED_COMMAND_COUNT = 133
-const TASK_COMMAND_COUNT = 13
+// +2 for the package pair: LOCAL, so they are refused on the remote surface — an import that creates a
+// session is exactly the thing a paired browser must not be handed.
+const REMOTE_REJECTED_COMMAND_COUNT = 135
+// +2 for the portable-session package: the command line exports and imports through the same narrow
+// Task view the rest of its machine-readable work uses, so these two land here as well as on the local
+// Web profile. They are LOCAL, so they add nothing to the remote dispatch.
+const TASK_COMMAND_COUNT = 15
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -266,7 +283,11 @@ const TASK_COMMAND_NAMES = Object.freeze([
   // are readable and answerable from the same narrow view (GET /api/v1/permissions and its approve
   // route). Without these two the command line can start a run but never unblock one.
   'acp:get-state',
-  'acp:respond-permission'
+  'acp:respond-permission',
+  // D1: the portable-session package. The command line is where a package is scripted in and out, and
+  // the HTTP routes underneath `purescience package export|import` reach these through the same view.
+  'sessions:export-package',
+  'sessions:import-package'
 ])
 
 const APPLICATION_COMMAND_GROUPS = Object.freeze([
@@ -282,6 +303,7 @@ const APPLICATION_COMMAND_GROUPS = Object.freeze([
   computeApplicationCommandGroup,
   permissionGrantApplicationCommandGroup,
   referencesApplicationCommandGroup,
+  sessionPackageApplicationCommandGroup,
   ...dataContentApplicationCommandGroups,
   ...hostApplicationCommandGroups
 ])
@@ -432,7 +454,11 @@ const createApplicationCommandComposition = (
       registerHostApplicationCommands(router.registrar, {
         ...dependencies.host,
         remoteAccess: remoteAccess.owner
-      })
+      }),
+    // D1: registered last. The order is otherwise unchanged on purpose — the package commands sit on top
+    // of the host surface they read sessions through, and keeping them at the end leaves every existing
+    // install index where it was.
+    () => registerSessionPackageApplicationCommands(router.registrar, dependencies.sessionPackage)
   ] as const
 
   try {

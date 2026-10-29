@@ -219,7 +219,9 @@ describe('renderer argument-shape characterization', () => {
     // request channels, callable on this surface like the reference writes they sit beside.
     // 405 with the session run-data measurement (sessions:read-notebook-usage): a plain Web request
     // channel, callable on this surface like the session reads it sits beside.
-    expect(actualPaths).toHaveLength(409)
+    // 411 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): both are
+    // LOCAL, so they are callable here and refused at dispatch on the paired remote surface.
+    expect(actualPaths).toHaveLength(411)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

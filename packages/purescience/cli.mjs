@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
+import { createHash } from 'node:crypto'
 import { closeSync, openSync } from 'node:fs'
 import { createWriteStream } from 'node:fs'
 import { mkdir, readFile, rm } from 'node:fs/promises'
@@ -32,6 +33,10 @@ Commands:
   run --project <id-or-name> (--prompt <text> | --prompt-file <path>) [--wait]
   run status <run-id>
   session status <session-id>
+  package export <session-id> --out <path> [--mode full] [--project <id-or-name>]
+                         Write the portable session package (.science) this app would hand you
+  package import <path> [--project <id-or-name>]
+                         Land a package as a new read-only session on this machine
   artifacts list <session-id>
   artifacts download <artifact-id> --output <path>
   ready                  Print the environment readiness judgement as it stands
@@ -85,6 +90,10 @@ const VALUE_OPTIONS = {
   '--timeout-ms': 'timeoutMs',
   '--description': 'description',
   '--output': 'output',
+  // The package verbs name their destination separately from an artifact `--output`: one is a package
+  // this app wrote, the other is a file it received.
+  '--out': 'out',
+  '--mode': 'mode',
   // Option id to answer a pending permission request with (see `approve`).
   '--option': 'option'
 }
@@ -93,6 +102,7 @@ const TASK_COMMANDS = new Set([
   'project',
   'run',
   'session',
+  'package',
   'artifacts',
   // Read-only machine-readable state (P3-8). Each projects what the settings window already shows.
   'ready',
@@ -106,7 +116,14 @@ const TASK_COMMANDS = new Set([
   // Capability contracts and per-session readiness, projected from the app's own registry.
   'capabilities'
 ])
-const GROUP_COMMANDS = new Set(['project', 'session', 'artifacts', 'runtime', 'connectors'])
+const GROUP_COMMANDS = new Set([
+  'project',
+  'session',
+  'package',
+  'artifacts',
+  'runtime',
+  'connectors'
+])
 
 export class CliUsageError extends Error {
   constructor(message) {
@@ -565,6 +582,32 @@ const writeDownload = async (response, output) => {
   await pipeline(Readable.fromWeb(response.body), createWriteStream(output))
 }
 
+// The package verbs' two named reasons for failing differently from everything else: a server that
+// answered and refused is a verdict on the request (exit 2), while a service that could not be reached is a
+// transport failure (exit 3). Collapsing them into one code makes a script unable to tell "this package is
+// not a package" from "the app is not running".
+const packageMode = (raw) => {
+  if (raw === undefined) return 'essential'
+  // `lean` is what the plan called the essentials-only mode; the wire contract calls it `essential`.
+  if (raw === 'lean') return 'essential'
+  if (raw !== 'essential' && raw !== 'full') {
+    throw new CliUsageError(`Invalid package mode: ${raw} (expected essential or full)`)
+  }
+  return raw
+}
+
+const packageRequest = async (operation) => {
+  try {
+    return await operation()
+  } catch (error) {
+    const refused = error?.status !== undefined
+    const wrapped = new Error(error instanceof Error ? error.message : String(error))
+    wrapped.code = refused ? (error.code ?? 'package_refused') : 'package_transport_failed'
+    wrapped.exitCode = refused ? 2 : 3
+    throw wrapped
+  }
+}
+
 const TASK_DEPS = {
   connect: (options) => connectToPureScience(options),
   readFile: (path) => readFile(path, 'utf8'),
@@ -717,6 +760,44 @@ export const runTaskCommand = async (parsed, dependencies = {}) => {
     const sessionId = positionals[0]
     if (!sessionId) throw new CliUsageError('Session id is required.')
     outputValue(await client.getSession(sessionId), options, deps)
+    return
+  }
+  // D1: the portable-session package, scripted. Both verbs ride the same HTTP endpoints the Web
+  // download/upload routes expose, so the CLI has no transport of its own to get wrong.
+  if (command === 'package' && subcommand === 'export') {
+    const sessionId = positionals[0]
+    if (!sessionId) throw new CliUsageError('Session id is required.')
+    if (!options.out) throw new CliUsageError('--out is required.')
+    const mode = packageMode(options.mode)
+    const response = await packageRequest(() =>
+      client.downloadSessionPackage(sessionId, { mode, projectId: options.project })
+    )
+    await deps.writeDownload(response, options.out)
+    const output = resolve(options.out)
+    // Bytes and digest, read from the file that was just written: a caller comparing three surfaces
+    // needs the numbers, not a claim that the copy worked.
+    const written = await readFile(output)
+    outputValue(
+      {
+        sessionId,
+        output,
+        mode,
+        bytes: written.byteLength,
+        sha256: createHash('sha256').update(written).digest('hex')
+      },
+      options,
+      deps
+    )
+    return
+  }
+  if (command === 'package' && subcommand === 'import') {
+    const packagePath = positionals[0]
+    if (!packagePath) throw new CliUsageError('Package path is required.')
+    const bytes = await readFile(packagePath)
+    const result = await packageRequest(() =>
+      client.importSessionPackage(bytes, { projectId: options.project })
+    )
+    outputValue(result, options, deps)
     return
   }
   if (command === 'artifacts' && subcommand === 'list') {

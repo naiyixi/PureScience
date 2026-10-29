@@ -101,6 +101,57 @@ describe('HeadlessTaskApi adapter', () => {
     ])
   })
 
+  it('resolves the project a package export names, and refuses an unknown session by name', async () => {
+    const invoke = vi.fn(async (channel: string, _context: CallerContext, _args: unknown[]) => {
+      if (channel === 'sessions:load-all') return { sessions: [sessionWithInputs] }
+      if (channel === 'sessions:export-package')
+        return { ok: true, bytes: 1, path: '/tmp/x', notes: [] }
+      throw new Error(`unexpected channel ${channel}`)
+    })
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    await expect(
+      api.sessionPackageExport({
+        sessionId: 'session-1',
+        mode: 'essential',
+        destinationPath: '/tmp/x.science'
+      })
+    ).resolves.toMatchObject({ ok: true })
+    // The caller named only the session; the project came from the catalog the app already lists.
+    expect(invoke).toHaveBeenCalledWith('sessions:export-package', expect.anything(), [
+      {
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        mode: 'essential',
+        destinationPath: '/tmp/x.science'
+      }
+    ])
+
+    await expect(
+      api.sessionPackageExport({
+        sessionId: 'missing',
+        mode: 'essential',
+        destinationPath: '/tmp/y.science'
+      })
+    ).rejects.toMatchObject({ code: 'session_not_found' })
+  })
+
+  it('imports a package into the only project, and only confirms what the caller asked for', async () => {
+    const invoke = vi.fn(async (channel: string, _context: CallerContext, _args: unknown[]) => {
+      if (channel === 'projects:list') return [{ id: 'project-9', name: 'only', path: '/p' }]
+      if (channel === 'sessions:import-package') return { ok: true, sessionId: 'imported-1' }
+      throw new Error(`unexpected channel ${channel}`)
+    })
+    const api = new HeadlessTaskApi({ commands: commandsFrom(invoke), agent: createAgent() })
+
+    await expect(
+      api.sessionPackageImport({ packagePath: '/tmp/in.science' })
+    ).resolves.toMatchObject({ ok: true })
+    expect(invoke).toHaveBeenCalledWith('sessions:import-package', expect.anything(), [
+      { packagePath: '/tmp/in.science', confirm: { targetProjectId: 'project-9' } }
+    ])
+  })
+
   it("collects a session's evidence for benchmark grading", async () => {
     const invoke = vi.fn(async (channel: string) =>
       channel === 'sessions:load-all'
@@ -135,7 +186,11 @@ describe('HeadlessTaskApi adapter', () => {
     expect(found.evidence?.artifacts).toEqual(['out/figure.png'])
     expect(found.evidence?.collected).toMatchObject({ transcript: true, numbers: false })
 
-    await expect(api.sessionEvidence('missing')).resolves.toEqual({ found: false, evidence: null, capabilityNotice: null })
+    await expect(api.sessionEvidence('missing')).resolves.toEqual({
+      found: false,
+      evidence: null,
+      capabilityNotice: null
+    })
   })
 
   it('names artifacts from the file library instead of grading blob paths', async () => {

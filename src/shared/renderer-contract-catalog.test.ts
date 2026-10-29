@@ -84,7 +84,9 @@ describe('renderer contract catalog', () => {
     // 377 with the DOI integrity pair: both are invoke-map entries (the check is LOCAL-only, which the
     // remote rejection set reflects, not the map).
     // 378 with the citation walk (references:discover-citations): one more invoke-map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(379)
+    // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
+    // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
+    expect(Object.keys(projection.invoke)).toHaveLength(381)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -105,9 +107,10 @@ describe('renderer contract catalog', () => {
     // channel, callable on the local Web surface like the session reads it sits beside.
     // 407 with the citation walk (references.discoverCitations, LOCAL): installed on the local Web surface
     // like the integrity check it sits beside — LOCAL keeps it off the paired remote surface only.
+    // 411 with the portable-session package (D1): two more methods installed on the local Web surface.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(409)
+    ).toHaveLength(411)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -141,13 +144,15 @@ describe('renderer contract catalog', () => {
     // 88 with the knowledge copy sweep: desktop-only, so the Web installation stays unavailable for it.
     // 94 would be wrong here: the citation walk (references.discover-citations, LOCAL) is installable on
     // the local Web surface, so it lands on the 409 side — only the paired remote set grows below.
+    // 91 with the portable-session package (D1): both directions left this set when they became LOCAL.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'unavailable')
-    ).toHaveLength(93)
+    ).toHaveLength(91)
     // 133 with the citation walk: LOCAL earns the rejecting stub on the paired remote surface.
+    // 135 with the portable-session package pair (D1), same reason.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(133)
+    ).toHaveLength(135)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

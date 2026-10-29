@@ -47,6 +47,7 @@ const dependencies = (): ApplicationCommandCompositionDependencies =>
     compute: EMPTY_OWNER,
     permissionGrants: EMPTY_OWNER,
     references: EMPTY_OWNER,
+    sessionPackage: EMPTY_OWNER,
     dataContent: EMPTY_OWNER,
     host: EMPTY_OWNER
   }) as ApplicationCommandCompositionDependencies
@@ -192,7 +193,10 @@ describe('application command composition', () => {
     // profile, so it is reachable from the local Web view too.
     // 369 with the citation walk (references:discover-citations, LOCAL): installed on the local Web view
     // like the integrity check beside it, refused only on the paired remote surface.
-    expect(composition.localWeb.commandNames()).toHaveLength(371)
+    // +2 for the portable-session package (D1): sessions:export-package / sessions:import-package are
+    // LOCAL, so the local Web view (where the headless CLI lands) carries them and the fail-closed set
+    // takes them on the remote surface.
+    expect(composition.localWeb.commandNames()).toHaveLength(373)
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {
@@ -222,7 +226,9 @@ describe('application command composition', () => {
     // the fail-closed set takes it and the remote dispatch count stays.
     // One more for the window's PDF translation entry (pdf:translation): same profile again.
     // One more for the citation walk (references:discover-citations, LOCAL): the fail-closed set takes it.
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(133)
+    // +2 for the same pair: LOCAL means refused on the paired remote surface, and these are the two that
+    // must never be reachable from a remote browser — an import creates a session.
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(135)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')
@@ -236,7 +242,7 @@ describe('application command composition', () => {
     expect(listProjects).toHaveBeenCalledOnce()
   })
 
-  it('exposes only the thirteen Task commands and no transport-wide capability', async () => {
+  it('exposes only the fifteen Task commands and no transport-wide capability', async () => {
     const composition = createApplicationCommandComposition(dependencies())
 
     expect(composition.task.commandNames()).toEqual([
@@ -253,7 +259,10 @@ describe('application command composition', () => {
       'artifacts:replay-version',
       // Headless approvals (no window in `start --no-open`): read the pending cards, answer one.
       'acp:get-state',
-      'acp:respond-permission'
+      'acp:respond-permission',
+      // D1: the portable-session package, scripted from the command line through the same narrow view.
+      'sessions:export-package',
+      'sessions:import-package'
     ])
     await expect(
       composition.localWeb.invoke('sessions:export-conversation', invocation())
@@ -324,7 +333,8 @@ describe('application command composition', () => {
       'permissionGrants',
       'references',
       'dataContent',
-      'host'
+      'host',
+      'sessionPackage'
     ] as const satisfies readonly (keyof ApplicationCommandCompositionDependencies)[]
     const source = dependencies()
     const reads: string[] = []
@@ -345,7 +355,8 @@ describe('application command composition', () => {
     expect(reads).toEqual(orderedNames)
     expect(normalEvents).toEqual(orderedNames.map((_, index) => `install:${index}`))
     composition.dispose()
-    expect(normalEvents.slice(12)).toEqual([
+    expect(normalEvents.slice(13)).toEqual([
+      'uninstall:12',
       'uninstall:11',
       'uninstall:10',
       'uninstall:9',
@@ -436,7 +447,8 @@ describe('application command composition', () => {
     expect(
       (disposalFailure as AggregateError).errors.map((error) => (error as Error).message)
     ).toEqual(['uninstall failed:10', 'uninstall failed:3', 'router dispose failed'])
-    expect(disposeFailureEvents.slice(12)).toEqual([
+    expect(disposeFailureEvents.slice(13)).toEqual([
+      'uninstall:12',
       'uninstall:11',
       'uninstall:10',
       'uninstall:9',

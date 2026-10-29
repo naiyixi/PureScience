@@ -34,6 +34,9 @@ describe('PureScienceClient', () => {
         'waitForRun',
         'listArtifacts',
         'downloadArtifact',
+        // D1: the portable-session package, both directions over the documented HTTP endpoints.
+        'downloadSessionPackage',
+        'importSessionPackage',
         'getReadiness',
         'listRuntimes',
         'listConnectors',
@@ -46,6 +49,46 @@ describe('PureScienceClient', () => {
         'throwResponseError'
       ].sort()
     )
+  })
+
+  // D1: the two package endpoints, with their query shape. The export stays a response (the caller streams
+  // it to a path it named); the import sends the file's bytes as the body rather than base64 in JSON.
+  it('reaches the package endpoints the Web route exposes, and imports raw bytes', async () => {
+    const fetch = vi.fn().mockImplementation(async (url: string) =>
+      url.includes('/package/import')
+        ? new Response(JSON.stringify({ data: { ok: true, sessionId: 'imported-1' } }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' }
+          })
+        : new Response('PK-bytes', { status: 200, headers: { 'content-type': 'application/zip' } })
+    )
+    const client = new PureScienceClient({
+      baseUrl: 'http://127.0.0.1:44100',
+      token: 'token',
+      fetch
+    })
+
+    const exported = await client.downloadSessionPackage('session 1', {
+      mode: 'full',
+      projectId: 'project-1'
+    })
+    expect(await exported.text()).toBe('PK-bytes')
+    expect(fetch.mock.calls[0]![0]).toBe(
+      'http://127.0.0.1:44100/api/v1/sessions/session%201/package?mode=full&projectId=project-1'
+    )
+
+    await expect(
+      client.importSessionPackage(new Uint8Array([80, 75]), { projectId: 'project-1' })
+    ).resolves.toMatchObject({ ok: true, sessionId: 'imported-1' })
+    const [importUrl, importInit] = fetch.mock.calls[1]!
+    expect(importUrl).toBe(
+      'http://127.0.0.1:44100/api/v1/sessions/package/import?projectId=project-1'
+    )
+    expect(importInit).toMatchObject({
+      method: 'POST',
+      body: expect.anything(),
+      headers: expect.objectContaining({ 'content-type': 'application/octet-stream' })
+    })
   })
 
   // P3-8: the CLI reads readiness/runtimes/connectors from the app rather than deciding anything for

@@ -199,6 +199,37 @@ purescience artifacts download <artifact-id> --output ./report.md --json
 
 Artifact output paths are resolved relative to the current working directory.
 
+## Session packages
+
+A session package (`.science`) is one session's conversation plus the evidence that travels with it —
+citations, review findings and verification records, all labelled as the sending party's assertions.
+The desktop exports and imports one from the session menu; these two verbs do the same over the local
+service, so a package can be scripted in and out:
+
+```bash
+purescience package export <session-id> --out ./session.science --json
+purescience package export <session-id> --out ./session.science --mode full --project <id-or-name>
+purescience package import ./session.science --json
+purescience package import ./session.science --project <id-or-name>
+```
+
+`--mode` is `essential` (default: conversation and evidence, not the files) or `full` (adds the
+session's files, the environment lock and reproduction outputs). The export result reports the bytes
+it wrote and their SHA-256, read back from the file — so two ends that produced "the same package" can
+be compared rather than believed.
+
+An imported session is **read-only**: its history can be read and cited, it can never be continued or
+executed on this machine, and the record beside it says where it came from. Without `--project` the
+import lands in this machine's only project; with several it is refused rather than guessed.
+
+Both verbs share the package's own failure vocabulary:
+
+| Exit | Meaning                                                                    |
+| ---- | -------------------------------------------------------------------------- |
+| `0`  | The package was written, or imported.                                      |
+| `2`  | The app answered and refused (unknown session, not a package, no project). |
+| `3`  | The local service could not be reached.                                    |
+
 ## Machine state
 
 Read what the application already decided about this machine — the same readiness judgement, runtime

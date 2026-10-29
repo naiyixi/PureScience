@@ -86,8 +86,6 @@ const GENERATED_SOURCE_OMISSIONS = [
   'officePreview.reportState',
   'roCrate.exportProject',
   'roCrate.inspectExternal',
-  'sessions.exportPackage',
-  'sessions.importPackage',
   'sessions.importPosture',
   'sessions.onFlushRequest',
   'sessions.previewPackage',
@@ -177,6 +175,9 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   // project's own records: the check is a deliberate local action, so it is refused on the remote surface
   // and counted in the fail-closed set.
   references: ['check-integrity', 'discover-citations'],
+  // D1: the portable-session package. Export writes a file on this machine and import CREATES a session,
+  // so a paired browser is refused before dispatch on both.
+  sessions: ['export-package', 'import-package'],
   routine: ['list-all', 'remove', 'set-enabled', 'upsert'],
   goal: ['list-all'],
   endpoint: ['approve', 'list-all', 'register', 'remove', 'start', 'stop'],
@@ -364,7 +365,9 @@ describe('renderer surface inventory', () => {
     // so the invoke map moves with it.
     // 377 with the DOI integrity pair: two more invoke entries in the generated map.
     // 378 with the citation walk (references:discover-citations): one more invoke entry in the generated map.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(379)
+    // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
+    // directions a package travels in are local Web invoke channels now, so the generated map carries them.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(381)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -408,7 +411,9 @@ describe('renderer surface inventory', () => {
     // remote surface and counted in the fail-closed set.
     // 133 with the citation walk (references:discover-citations, LOCAL): one more local-only Web command
     // refused on the remote surface and counted in the fail-closed set.
-    expect(expectedRemoteLocalOnly).toHaveLength(133)
+    // 135 with the portable-session package (D1): both directions are LOCAL, so a paired remote browser is
+    // refused before dispatch — an import there would create a session on this machine.
+    expect(expectedRemoteLocalOnly).toHaveLength(135)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

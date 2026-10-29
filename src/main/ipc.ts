@@ -419,6 +419,9 @@ import {
   createSessionPackageImportOwner,
   readSessionPackageImportRecord
 } from './session-package/import-owner'
+import { createSessionPackageOwner } from './session-package/owner'
+import { importSessionPackage } from './session-package/import-session'
+import { readPackageFile } from './session-package/package-bytes'
 import { landImportedEvidence } from './session-package/import-evidence'
 import { createSessionPackageFileLister } from './session-package/files'
 import {
@@ -3846,86 +3849,89 @@ const createApplicationModules = async (
   // Kept referenced: the subscription lives for the process lifetime, and a future teardown path can
   // call it without rediscovering who owns the listener.
   void unsubscribeAutoReview
+  // One set of dependencies, two surfaces: the window reaches the exporter through IPC (with the save
+  // sheet the adapter owns) and the Web/CLI surface reaches the SAME owner through the application
+  // command registry. A second wiring would be a second exporter, and the two would drift.
+  const sessionPackageOwnerDeps = {
+    loadSession: (projectId, sessionId) =>
+      sessionRepository.loadSessionWithDiagnostics(projectId, sessionId),
+    listReviews: (sessionId) => reviewRepository.getReviewsForSession(sessionId),
+    // The evidence store answers by request; an attach-only answer is not evidence, so it is dropped
+    // rather than passed off as a list.
+    listEvidence: async (reviewIds) => {
+      const result = await reviewerCommandOwner.evidence({ action: 'list', reviewIds })
+      return 'attachments' in result ? result.attachments : []
+    },
+    listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
+    files: (() => {
+      // A session's files live in the project's file catalog, tagged with the session they belong to —
+      // NOT in the session document, which carries none.
+      const lister = createSessionPackageFileLister({
+        listProjectFiles: (request) => artifactHandlers.listProjectFiles(request),
+        readPreview: (request) => artifactHandlers.readPreview(request),
+        maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+      })
+      return { countFiles: lister.countFiles, listFiles: lister.listFiles }
+    })(),
+    referenceFiles: (() => {
+      // The library's records carry the PDF that is CURRENTLY attached (see currentReferencePdfId —
+      // the history table holds only superseded files). This module reads the records; the naming and
+      // the bound stay in session-package/reference-files, where a test can drive them.
+      const library = createSessionPackageReferenceLibrary({
+        listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
+        readManagedFileBytes,
+        maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+      })
+      const lister = createSessionPackageReferenceFileLister({
+        listReferenceAttachments: library.listReferenceAttachments,
+        countReferenceAttachments: library.countReferenceAttachments,
+        maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
+      })
+      return {
+        countReferenceFiles: lister.countReferenceFiles,
+        listReferenceFiles: lister.listReferenceFiles
+      }
+    })(),
+    appVersion: app.getVersion()
+  }
+  const sessionPackageExportOwner = createSessionPackageOwner(sessionPackageOwnerDeps)
+  const sessionPackageImportOwner = createSessionPackageImportOwner({
+    configRoot: resolveConfigRoot(),
+    saveSession: (session: PersistedChatSession) => sessionRepository.saveSession(session),
+    workspaceFor: (sessionId: string) => join(resolveDataRoot(), 'workspaces', sessionId),
+    // The evidence a package carries becomes rows in the stores this app already reads: citations in
+    // the target project's library, the reviewer's findings under the imported session, and human
+    // pins re-derived (never copied) through the app's own fingerprint producer.
+    landEvidence: (input) =>
+      landImportedEvidence(
+        {
+          listReferenceKeys: async (projectId) =>
+            (await referencesRepository.listReferences(projectId)).map((row) => row.citationKey),
+          createReference: (reference) => referencesRepository.createReference(reference),
+          createReview: (review) => reviewRepository.createReview(review),
+          addFindings: (reviewId, findings) =>
+            reviewRepository.addFindings(reviewId, [...findings]),
+          captureEvidence: (request) =>
+            searchEvidenceService.capture({
+              action: 'capture',
+              projectId: request.projectId,
+              sessionId: request.sessionId,
+              messageId: request.messageId,
+              query: request.query,
+              terms: [...request.terms]
+            }),
+          appendReviewEvidence: (evidence) => reviewRepository.appendReviewEvidence(evidence)
+        },
+        input
+      )
+  })
+
   declareElectronAdapter('session-package', () =>
-    registerSessionPackageIpcHandlers({
-      loadSession: (projectId, sessionId) =>
-        sessionRepository.loadSessionWithDiagnostics(projectId, sessionId),
-      listReviews: (sessionId) => reviewRepository.getReviewsForSession(sessionId),
-      // The evidence store answers by request; an attach-only answer is not evidence, so it is dropped
-      // rather than passed off as a list.
-      listEvidence: async (reviewIds) => {
-        const result = await reviewerCommandOwner.evidence({ action: 'list', reviewIds })
-        return 'attachments' in result ? result.attachments : []
-      },
-      listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
-      files: (() => {
-        // A session's files live in the project's file catalog, tagged with the session they belong to —
-        // NOT in the session document, which carries none.
-        const lister = createSessionPackageFileLister({
-          listProjectFiles: (request) => artifactHandlers.listProjectFiles(request),
-          readPreview: (request) => artifactHandlers.readPreview(request),
-          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
-        })
-        return { countFiles: lister.countFiles, listFiles: lister.listFiles }
-      })(),
-      referenceFiles: (() => {
-        // The library's records carry the PDF that is CURRENTLY attached (see currentReferencePdfId —
-        // the history table holds only superseded files). This module reads the records; the naming and
-        // the bound stay in session-package/reference-files, where a test can drive them.
-        const library = createSessionPackageReferenceLibrary({
-          listReferences: (projectId) => referencesIpcModule.handlers.list(projectId),
-          readManagedFileBytes,
-          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
-        })
-        const lister = createSessionPackageReferenceFileLister({
-          listReferenceAttachments: library.listReferenceAttachments,
-          countReferenceAttachments: library.countReferenceAttachments,
-          maxFileBytes: DEFAULT_SESSION_PACKAGE_MAX_FILE_BYTES
-        })
-        return {
-          countReferenceFiles: lister.countReferenceFiles,
-          listReferenceFiles: lister.listReferenceFiles
-        }
-      })(),
-      appVersion: app.getVersion()
-    })
+    registerSessionPackageIpcHandlers(sessionPackageOwnerDeps, sessionPackageExportOwner)
   )
   declareElectronAdapter('session-package-import', () =>
     registerSessionPackageImportIpcHandlers({
-      owner: createSessionPackageImportOwner({
-        configRoot: resolveConfigRoot(),
-        saveSession: (session: PersistedChatSession) => sessionRepository.saveSession(session),
-        workspaceFor: (sessionId: string) => join(resolveDataRoot(), 'workspaces', sessionId),
-        // The evidence a package carries becomes rows in the stores this app already reads: citations in
-        // the target project's library, the reviewer's findings under the imported session, and human
-        // pins re-derived (never copied) through the app's own fingerprint producer.
-        landEvidence: (input) =>
-          landImportedEvidence(
-            {
-              listReferenceKeys: async (projectId) =>
-                (await referencesRepository.listReferences(projectId)).map(
-                  (row) => row.citationKey
-                ),
-              createReference: (reference) => referencesRepository.createReference(reference),
-              createReview: (review) => reviewRepository.createReview(review),
-              addFindings: (reviewId, findings) =>
-                reviewRepository.addFindings(reviewId, [...findings]),
-              captureEvidence: (request) =>
-                searchEvidenceService.capture({
-                  action: 'capture',
-                  projectId: request.projectId,
-                  sessionId: request.sessionId,
-                  messageId: request.messageId,
-                  query: request.query,
-                  terms: [...request.terms]
-                }),
-              appendReviewEvidence: (evidence) => reviewRepository.appendReviewEvidence(evidence)
-            },
-            input
-          )
-      }),
-      // The posture reader is the SAME one the run guard uses, so what the window shows is exactly
-      // what refuses execution — not a parallel notion of "imported".
+      owner: sessionPackageImportOwner,
       readImportRecord: (projectId, sessionId) =>
         readSessionPackageImportRecord(resolveConfigRoot(), projectId, sessionId),
       // The picker lives at the edge, like the export's save dialog: only the adapter knows the window.
@@ -4026,6 +4032,15 @@ const createApplicationModules = async (
     },
     permissionGrants: permissionGrantProjection,
     references: { references: referencesIpcModule.handlers },
+    // D1: the portable-session package on the command registry. The exporter keeps the dialog OUT of
+    // reach here on purpose — a Web/CLI caller names its destination, and the owner answers
+    // `no-destination` (a named refusal) when it does not. The import is the same owner the window's
+    // adapter uses, so both surfaces land a package the same way, including the import record it writes.
+    sessionPackage: {
+      exportPackage: (request) => sessionPackageExportOwner.exportPackage(request),
+      importPackage: (request) =>
+        importSessionPackage(sessionPackageImportOwner.ports(readPackageFile), request)
+    },
     dataContent: {
       artifacts: artifactHandlers,
       electron: {

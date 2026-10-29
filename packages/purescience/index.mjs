@@ -150,6 +150,44 @@ export class PureScienceClient {
     return response
   }
 
+  /**
+   * The portable-session package for one session, as the HTTP response that carries the bytes. Same
+   * shape as `downloadArtifact` on purpose: both are "stream this file to a path the caller named", and
+   * the CLI must not grow a second way to receive a file.
+   */
+  async downloadSessionPackage(sessionId, { mode, projectId, signal } = {}) {
+    const query = new URLSearchParams()
+    if (mode) query.set('mode', mode)
+    if (projectId) query.set('projectId', projectId)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    const response = await this.fetch(
+      `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(sessionId)}/package${suffix}`,
+      {
+        headers: { authorization: `Bearer ${this.token}` },
+        signal
+      }
+    )
+    if (!response.ok) await this.throwResponseError(response)
+    return response
+  }
+
+  /**
+   * Hands a package's bytes to the app, which lands it as a new read-only session. The bytes go over the
+   * wire as the request body — the app writes them to a temporary file and calls the same importer the
+   * window calls, so there is one import path and not two.
+   */
+  async importSessionPackage(bytes, { projectId, signal } = {}) {
+    const query = new URLSearchParams()
+    if (projectId) query.set('projectId', projectId)
+    const suffix = query.toString() ? `?${query.toString()}` : ''
+    return this.request(`/api/v1/sessions/package/import${suffix}`, {
+      method: 'POST',
+      body: bytes,
+      contentType: 'application/octet-stream',
+      signal
+    })
+  }
+
   events({ signal, WebSocket: WebSocketImpl = globalThis.WebSocket } = {}) {
     if (!WebSocketImpl) throw new Error('A WebSocket implementation is required.')
     signal?.throwIfAborted()
@@ -217,16 +255,19 @@ export class PureScienceClient {
     }
   }
 
-  async request(path, { method = 'GET', body, signal } = {}) {
+  async request(path, { method = 'GET', body, contentType, signal } = {}) {
     const headers = {
       authorization: `Bearer ${this.token}`,
       accept: 'application/json'
     }
-    if (body !== undefined) headers['content-type'] = 'application/json'
+    // A raw body (a package's bytes) is sent as-is: wrapping it in JSON would base64 a file the receiving
+    // end already accepts as bytes.
+    const rawBody = contentType !== undefined && !contentType.includes('json')
+    if (body !== undefined) headers['content-type'] = contentType ?? 'application/json'
     const response = await this.fetch(`${this.baseUrl}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : rawBody ? body : JSON.stringify(body),
       signal
     })
     if (!response.ok) await this.throwResponseError(response)

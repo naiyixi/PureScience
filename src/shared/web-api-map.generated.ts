@@ -232,6 +232,8 @@ export const WEB_INVOKE_CHANNELS = {
   'searchPins.save': 'search-pins:save',
   'sessions.deleteSession': 'sessions:delete-session',
   'sessions.exportConversation': 'sessions:export-conversation',
+  'sessions.exportPackage': 'sessions:export-package',
+  'sessions.importPackage': 'sessions:import-package',
   'sessions.listCatalog': 'sessions:list-catalog',
   'sessions.loadAll': 'sessions:load-all',
   'sessions.readDocument': 'sessions:read-document',

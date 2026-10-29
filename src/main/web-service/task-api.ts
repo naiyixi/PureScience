@@ -12,6 +12,11 @@ import type {
 import type { ReplayVersionRequest } from '../../shared/artifact-replay'
 import { benchEvidenceFromSession, type SessionEvidence } from '../../shared/bench-evidence'
 import type { Project } from '../../shared/projects'
+import type {
+  ExportSessionPackageRequest,
+  ExportSessionPackageResult
+} from '../../shared/session-package'
+import type { SessionPackageImportResult } from '../../shared/session-package-import'
 import type { PersistedArtifact, PersistedChatSession } from '../../shared/session-persistence'
 import {
   readCapabilityNoticeTally,
@@ -195,6 +200,57 @@ class HeadlessTaskApi {
   }
 
   /**
+   * The portable-session package, exported to a path the caller names.
+   *
+   * `purescience package export` and the Web download route both land here, and both call the same
+   * application command the window's own export dialog calls — so the three surfaces cannot disagree
+   * about what a package contains. A missing destination is the exporter's named refusal
+   * (`no-destination`), not a dialog this caller cannot show.
+   */
+  async sessionPackageExport(request: {
+    sessionId: string
+    /** Omitted by a caller that only knows the session id; resolved from the catalog it already lists. */
+    projectId?: string
+    mode: ExportSessionPackageRequest['mode']
+    destinationPath: string
+  }): Promise<ExportSessionPackageResult> {
+    const projectId = request.projectId ?? (await this.projectIdForSession(request.sessionId))
+    if (!projectId) {
+      throw new TaskRunnerError('session_not_found', `Session not found: ${request.sessionId}`)
+    }
+    return this.invoke('sessions:export-package', {
+      projectId,
+      sessionId: request.sessionId,
+      mode: request.mode,
+      destinationPath: request.destinationPath
+    }) as Promise<ExportSessionPackageResult>
+  }
+
+  /**
+   * Lands a package as a new, read-only session. The caller hands over a PATH (the transport writes the
+   * bytes to one first), so this stays a thin pass-through to the importer the window also uses.
+   */
+  async sessionPackageImport(request: {
+    packagePath: string
+    /**
+     * Where the new session lands. Omitted only when this machine has exactly one project — the importer
+     * never guesses between several, because importing into the wrong library is silent and permanent.
+     */
+    targetProjectId?: string
+  }): Promise<SessionPackageImportResult> {
+    const targetProjectId = request.targetProjectId ?? (await this.soleProjectId())
+    return this.invoke('sessions:import-package', {
+      packagePath: request.packagePath,
+      confirm: { ...(targetProjectId ? { targetProjectId } : {}) }
+    }) as Promise<SessionPackageImportResult>
+  }
+
+  private async soleProjectId(): Promise<string | undefined> {
+    const projects = (await this.invoke('projects:list')) as Project[]
+    return projects.length === 1 ? projects[0]!.id : undefined
+  }
+
+  /**
    * Re-runs a recorded artifact version and reports whether the result came back the same, for
    * `purescience replay`. It calls the same command the window calls: a second replay implementation is
    * exactly what would let the command line and the app disagree about what "reproduced" means.
@@ -240,6 +296,18 @@ class HeadlessTaskApi {
    *
    * `usedCapabilities` is a MENTION list, not an execution log — the caller words it that way.
    */
+  /**
+   * The project a session belongs to, from the same catalog the rest of this surface lists. A package
+   * request names a session; the exporter needs the project it lives in, and asking the caller to repeat
+   * something the app already knows is how the two get out of step.
+   */
+  private async projectIdForSession(sessionId: string): Promise<string | null> {
+    const result = (await this.invoke('sessions:load-all', { allowCachedCatalog: true })) as {
+      sessions: PersistedChatSession[]
+    }
+    return result.sessions.find((session) => session.id === sessionId)?.projectId ?? null
+  }
+
   async capabilitySessionInputs(sessionId: string): Promise<{
     found: boolean
     attachments: { name: string }[]
