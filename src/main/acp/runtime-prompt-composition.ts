@@ -1,6 +1,7 @@
 import type { AcpPromptRequest } from '../../shared/acp'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
 import { AcpContextCompactionWorkflow } from './context-compaction-workflow'
+import { touchTurnSilenceWatchdog } from './turn-silence-watchdog'
 import { createInputNoticeResolver } from './input-notice'
 import { structureMeasurementNotice, structureSelectionNotice } from './structure-context'
 import { createLogger, errorLogFields } from '../logger'
@@ -349,8 +350,13 @@ const composeAcpRuntimePromptOwners = (
       emitSkillActivities,
       onSkillImportAttachmentEligible: callbacks.onSkillImportAttachmentEligible,
       onProviderPromptAccepted: callbacks.onProviderPromptAccepted,
-      routeNotification: (notification, sessionId) =>
-        session.sessionUpdateProjector.route(notification, { appSessionId: sessionId }),
+      routeNotification: (notification, sessionId) => {
+        // Every inbound provider notification proves the turn is still alive: it is the only signal that
+        // resets the silence watchdog (see turn-silence-watchdog). Routed before projection so a throwing
+        // projector cannot hide the liveness of the event itself.
+        touchTurnSilenceWatchdog(sessionId)
+        return session.sessionUpdateProjector.route(notification, { appSessionId: sessionId })
+      },
       diagnosticContext,
       pushUserMessage: ({ sessionId, promptMessageId, text }) =>
         session.publication.pushEvent({

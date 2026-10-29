@@ -65,6 +65,8 @@ type Harness = {
     isCancellationAccepted: Mock<AcpSessionInteractionOwner['isCancellationAccepted']>
     settle: Mock<AcpSessionInteractionOwner['settle']>
     release: Mock<AcpSessionInteractionOwner['release']>
+    // The silence watchdog's abort path: required by the workflow's options, a no-op in these cases.
+    abortActivePrompt: Mock<AcpSessionInteractionOwner['abortActivePrompt']>
   }
   journal: string[]
   onProviderPromptAccepted: Mock<
@@ -180,6 +182,9 @@ const createHarness = (
     }
   }))
   const interactions: Harness['interactions'] = {
+    abortActivePrompt: vi.fn((sessionId: string, reason: Error) =>
+      owner.abortActivePrompt(sessionId, reason)
+    ),
     current: vi.fn((sessionId: string) => owner.current(sessionId)),
     reservePrompt: vi.fn((request: Parameters<typeof owner.reservePrompt>[0]) => {
       journal.push('reserve')

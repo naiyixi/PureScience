@@ -224,6 +224,19 @@ export class AcpSessionInteractionOwner {
     }
   }
 
+  /**
+   * Aborts the live prompt interaction with a named reason. Used by the silence watchdog: unlike
+   * `cancelPrompt` this is not a user cancellation, so it must NOT mark the interaction cancelled — the turn
+   * failed, and the reason travels as the abort error so the finalizer can surface it verbatim.
+   * Returns false when nothing is live for that session.
+   */
+  abortActivePrompt(sessionId: string, reason: Error): boolean {
+    const active = this.activeInteractions.get(sessionId)
+    if (!active) return false
+    active.abortController.abort(reason)
+    return true
+  }
+
   async cancelPrompt(request: AcpSessionInteractionCancellationRequest): Promise<void> {
     let settle!: () => void
     const attempt: CancellationAttempt = {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import { strToU8, unzipSync, zipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import { createSessionPackage, type SessionPackageInput } from './export'
@@ -131,5 +131,35 @@ describe('session package inspection', () => {
 
     expect(preview.accepted).toBe(true)
     expect(conversationEntry?.sha256).toBe(createHash('sha256').update(bytes).digest('hex'))
+  })
+
+  it('refuses a manifest whose cost summary disagrees with the transcript it carries', () => {
+    const { archive } = createSessionPackage(input(), 'essential')
+    const entries = unzipSync(archive)
+    const manifest = JSON.parse(strFromU8(entries['manifest.json'])) as {
+      usage?: Record<string, unknown>
+    }
+    // The sender's own summary, inflated: the transcript that travelled does not support it.
+    const tampered = zipSync({
+      ...Object.fromEntries(Object.entries(entries)),
+      'manifest.json': strToU8(
+        JSON.stringify({ ...manifest, usage: { ...manifest.usage, inputTokens: 999_999 } })
+      )
+    })
+
+    expect(inspectSessionPackage(tampered)).toEqual({ accepted: false, reason: 'manifest-invalid' })
+  })
+
+  it('accepts a package written before the summary existed, and never reads absence as a match', () => {
+    const { archive } = createSessionPackage(input(), 'essential')
+    const entries = unzipSync(archive)
+    const manifest = JSON.parse(strFromU8(entries['manifest.json'])) as Record<string, unknown>
+    const { usage: _omitted, ...legacy } = manifest
+    const legacyArchive = zipSync({
+      ...Object.fromEntries(Object.entries(entries)),
+      'manifest.json': strToU8(JSON.stringify(legacy))
+    })
+
+    expect(inspectSessionPackage(legacyArchive).accepted).toBe(true)
   })
 })

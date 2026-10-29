@@ -13,6 +13,7 @@ import {
   type SessionPackageMode,
   type SessionPackageNoteCode
 } from '../../shared/session-package'
+import { deriveSessionPackageUsage } from '../../shared/session-package-usage'
 
 // A single file that would bloat the package is named and left out rather than silently dropped or
 // silently included. 25 MB keeps an essential package mailable while still carrying figures.
@@ -201,6 +202,10 @@ export const createSessionPackage = (
     referenceFiles: referenceFileCount
   }
 
+  // The summary the receiver will recompute and compare against. Omitted when the carried transcript is
+  // not a shape we can read: an absent summary is honest, a fabricated one is not.
+  const usage = deriveSessionPackageUsage(input.conversation)
+
   const manifest: SessionPackageManifest = {
     formatVersion: SESSION_PACKAGE_FORMAT_VERSION,
     mode,
@@ -210,6 +215,7 @@ export const createSessionPackage = (
     counts,
     entries: entries.sort((left, right) => left.path.localeCompare(right.path)),
     assertion: { ...SESSION_PACKAGE_ASSERTION },
+    ...(usage ? { usage } : {}),
     notes
   }
 

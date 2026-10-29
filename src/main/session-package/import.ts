@@ -5,6 +5,10 @@ import {
   SESSION_PACKAGE_MANIFEST_PATH,
   type SessionPackageManifest
 } from '../../shared/session-package'
+import {
+  compareSessionPackageUsage,
+  deriveSessionPackageUsage
+} from '../../shared/session-package-usage'
 import { readZipDirectory } from './zip-directory'
 import { readZipEntries } from './zip-reader'
 
@@ -109,6 +113,20 @@ export const inspectSessionPackage = (archiveBytes: Uint8Array): SessionPackageI
   for (const required of REQUIRED_PACKAGE_EVIDENCE) {
     if (!entries.has(required)) return refusal('required-evidence-missing')
   }
+
+  // 3. The manifest's cost summary is recomputed from the transcript that actually travelled. The
+  //    numbers are part of what an importer is asked to believe, so they are checked here rather than
+  //    trusted: a summary that disagrees with the package's own bytes is an invalid manifest, and so is
+  //    a summary whose transcript cannot be read at all. A package that carries no summary (written
+  //    before this check existed) is accepted — absence is reported as `not-recorded`, never as a match.
+  let conversation: unknown
+  try {
+    conversation = JSON.parse(strFromU8(entries.get('conversation.json') as Uint8Array))
+  } catch {
+    return refusal('manifest-invalid')
+  }
+  const usage = compareSessionPackageUsage(manifest.usage, deriveSessionPackageUsage(conversation))
+  if (usage.state === 'mismatch' || usage.state === 'underivable') return refusal('manifest-invalid')
 
   return {
     accepted: true,

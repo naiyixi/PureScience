@@ -8,6 +8,13 @@ import {
   DEFAULT_PERMISSION_PROFILE,
   type PermissionProfileId
 } from '../../shared/permission-profiles'
+import {
+  armTurnSilenceWatchdog,
+  disarmTurnSilenceWatchdog,
+  TURN_SILENCE_TIMEOUT_MS,
+  TURN_SILENT_ABORT_MESSAGE,
+  type TurnSilenceWatchdogClock
+} from './turn-silence-watchdog'
 import { createLogger, errorLogFields } from '../logger'
 import { PLAN_FIRST_TURN_PROMPT_REMINDER } from '../session-plan/guidance'
 import type { ArtifactTurnHandle } from './artifact-turn-owner'
@@ -113,8 +120,11 @@ type AcpPromptTurnFinalization = Readonly<{
 
 type AcpPromptTurnWorkflowOptions = Readonly<{
   registry: Pick<AcpSessionRegistry, 'lookup' | 'select'>
+  /** Injectable clock/timers for the silence watchdog; production omits it and uses the real ones. */
+  turnSilenceWatchdogClock?: TurnSilenceWatchdogClock
   interactions: Pick<
     AcpSessionInteractionOwner,
+    | 'abortActivePrompt'
     | 'activatePrompt'
     | 'cancellationCheckpoint'
     | 'captureTerminal'
@@ -376,11 +386,34 @@ class AcpPromptTurnWorkflow {
           })
       })
     }
+    // Silence bound (2026-10-29 incident): the turn is armed for exactly the span in which the runtime owes
+    // us events, and any inbound notification resets it (see routeNotification below). Only total silence
+    // aborts — a turn that keeps streaming tool calls or thoughts is healthy however long it runs.
+    armTurnSilenceWatchdog(
+      sessionId,
+      (silentFor) => {
+        log.warn('prompt turn went silent; stopping it', {
+          sessionId,
+          silentForMs: silentFor,
+          timeoutMs: TURN_SILENCE_TIMEOUT_MS,
+          ...env.diagnosticContext()
+        })
+        // The abort reason is what the finalizer surfaces as the turn's failure text, so it names the
+        // measurement instead of leaving the reader with a bare "aborted". The owner aborts without marking
+        // this a user cancellation — the turn failed, it was not cancelled.
+        interactions.abortActivePrompt(sessionId, new Error(TURN_SILENT_ABORT_MESSAGE))
+      },
+      this.options.turnSilenceWatchdogClock ?? {}
+    )
     let outcome: AcpPromptFinalizationOutcome
     try {
       outcome = await execute()
     } catch (error) {
       outcome = Object.freeze({ kind: 'failed', error })
+    } finally {
+      // Disarmed before finalization: a turn that has ended can no longer be silent, and a late fire would
+      // report a reason for a turn that no longer exists.
+      disarmTurnSilenceWatchdog(sessionId)
     }
     // 任务完成/失败系统通知 (科学家长任务提醒; 不阻塞流程)
     notifyTurnOutcome(outcome.kind === 'failed' ? 'failed' : 'completed')

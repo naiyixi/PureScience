@@ -7,6 +7,8 @@
 //     in EVERY mode, including `essential`. A package without its evidence is not a package.
 //   · everything inside is the SOURCE PARTY's assertion. `locallyVerified` is pinned to `false` by the
 //     type, so no package can claim a verification this machine did not run.
+import type { SessionPackageUsage } from './session-package-usage'
+
 export const SESSION_PACKAGE_EXTENSION = '.science'
 export const SESSION_PACKAGE_MANIFEST_PATH = 'manifest.json'
 export const SESSION_PACKAGE_FORMAT_VERSION = 1
@@ -73,6 +75,12 @@ export type SessionPackageManifest = {
   counts: SessionPackageCounts
   entries: SessionPackageEntry[]
   assertion: SessionPackageAssertion
+  /**
+   * What the carried transcript cost, derived by the exporter and re-derived by the importer from the
+   * same bytes (`session-package-usage.ts`). Optional: packages written before this summary existed
+   * carry none, and the importer reports that as `not-recorded` rather than assuming agreement.
+   */
+  usage?: SessionPackageUsage
   notes: SessionPackageNoteCode[]
 }
 
