@@ -1719,25 +1719,28 @@ describe('WorkspaceMessageScroller settled-turn collapse (E1)', () => {
   // E1: a long session opened as one wall of tool rows. The rule is read off the transcript order — a group
   // with a later user prompt after it is settled history and starts collapsed, while the newest turn stays
   // open — so the reader lands on the answer, and the summary row says what the folded work did.
+  // Timestamps are the transcript's primary order (see `createConversationItems`), so the two turns are
+  // laid out in time rather than by array position: prompt, work, answer, next prompt, work, answer.
+  const base = 1_710_000_000_000
   const twoTurnSession = (earlierStatus: ToolActivity['status']): ChatSession =>
     createSession({
       status: 'idle',
       messages: [
-        createMessage({ id: 'prompt-1', sortIndex: 0 }),
+        createMessage({ id: 'prompt-1', createdAt: base }),
         createMessage({
           id: 'reply-1',
           role: 'agent',
           content: 'First answer',
           responseToMessageId: 'prompt-1',
-          sortIndex: 1
+          createdAt: base + 400
         }),
-        createMessage({ id: 'prompt-2', sortIndex: 4 }),
+        createMessage({ id: 'prompt-2', createdAt: base + 500 }),
         createMessage({
           id: 'reply-2',
           role: 'agent',
           content: 'Second answer',
           responseToMessageId: 'prompt-2',
-          sortIndex: 7
+          createdAt: base + 900
         })
       ],
       activities: [
@@ -1746,18 +1749,34 @@ describe('WorkspaceMessageScroller settled-turn collapse (E1)', () => {
           title: 'Read older one',
           toolKind: 'read',
           status: earlierStatus,
-          sortIndex: 2
+          createdAt: base + 100
         }),
         createActivity({
           id: 'older-2',
           title: 'Read older two',
           toolKind: 'read',
-          sortIndex: 3
+          createdAt: base + 200
         }),
-        createActivity({ id: 'newer-1', title: 'Read newer one', toolKind: 'read', sortIndex: 5 }),
-        createActivity({ id: 'newer-2', title: 'Read newer two', toolKind: 'read', sortIndex: 6 })
+        createActivity({
+          id: 'newer-1',
+          title: 'Read newer one',
+          toolKind: 'read',
+          createdAt: base + 600
+        }),
+        createActivity({
+          id: 'newer-2',
+          title: 'Read newer two',
+          toolKind: 'read',
+          createdAt: base + 700
+        })
       ]
     })
+
+  // The group headers in transcript order, read off the markup: `aria-expanded` is what a reader sees.
+  const groupExpansionInOrder = (html: string): string[] =>
+    [...html.matchAll(/aria-expanded="(true|false)" data-testid="tool-group-header"/g)].map(
+      (match) => match[1] ?? ''
+    )
 
   it('collapses the earlier turn and leaves the newest turn open', async () => {
     const html = await renderScroller(twoTurnSession('completed'))
@@ -1765,18 +1784,15 @@ describe('WorkspaceMessageScroller settled-turn collapse (E1)', () => {
     expect(html.match(/data-testid="tool-group"/g)).toHaveLength(2)
     // Both summary rows stay on screen: the folded one still says how many steps it ran.
     expect(html.match(/2 steps/g)).toHaveLength(2)
-    // The earlier turn's rows are gone until the reader opens it…
-    expect(html).not.toContain('Read older one')
-    expect(html).not.toContain('Read older two')
-    // …and the work belonging to the turn the reader is looking at stays visible.
-    expect(html).toContain('Read newer one')
-    expect(html).toContain('Read newer two')
+    expect(groupExpansionInOrder(html)).toEqual(['false', 'true'])
+    // Only the open group renders its rows (one chip per tool call); the folded one renders none.
+    expect(html.match(/data-testid="tool-chip"/g)).toHaveLength(2)
   })
 
   it('never hides a live row, even in an earlier turn', async () => {
     const html = await renderScroller(twoTurnSession('in_progress'))
 
-    expect(html).toContain('Read older one')
-    expect(html).toContain('Read older two')
+    expect(groupExpansionInOrder(html)).toEqual(['true', 'true'])
+    expect(html.match(/data-testid="tool-chip"/g)).toHaveLength(4)
   })
 })
