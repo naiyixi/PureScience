@@ -14148,3 +14148,52 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
    先判是「又一处取错时刻」还是「产品行为变了」——两者的修法方向不同。
 2. F1 按施工单 §5 第 1 步开工（`surface.ts` 纯数据 + 成对的处理器用例），**不碰** E1/E2 那批在制路径。
 3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：本机资源口径同上，取不到就继续具名挂着，不许写 0。
+
+## 二百六十、本轮追加（执行器，2026-10-30 14:3x–）—— F1 落地并推上 main：一条假红是「读盘读错了字段」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `HEAD = 720d1e71`（**未推**），`origin/main = 7f3e86a7`；工作树带着上一轮（12:37 那轮）的 **F1 在制品**
+  （`src/main/external-mcp/**`、`packages/purescience/external-mcp-bridge.mjs`、CLI 动词、四处接线、一支认证用例、证据档）
+  + 更早的 E1/E2 两条草稿用例。⇒ 本轮的活是**把 F1 收口**，不是重做。
+- 并发：`hermes cron list` 只有本轮一条在跑；推前现查在飞车道 **八条全 completed** ⇒ 本次推送没有取消任何人的判决。
+- v2.21.0 范围当下：D1/D2、E1/E2 已提交；F1 本轮落地；G1 等拍板（钱）；H1/H2 未开工。
+
+### 一 门禁（本轮实跑，共享树）
+
+| 环 | 读数 |
+| --- | --- |
+| `typecheck:node` / `typecheck:web`（堆 8192、`--composite false`） | **0 / 0**（EXIT 0） |
+| 定向 vitest（`src/main/external-mcp`、`packages/purescience`、组合根两套、caller-context） | **10 files / 104 passed** |
+| 全量 vitest（`--maxWorkers=4`） | **1428 files passed ｜ 30 skipped（1458）**，**18,030 passed ｜ 225 skipped（18,255）**，EXIT 0 |
+| `eslint --no-cache .`（全仓） | **0 error / 117 warnings** |
+| `bash scripts/pre-push-checks.sh` | **EXIT 0**（八段全过；新增 19 个文件 0 problems） |
+
+### 二 认证用例里有两处「读法错」，都不是产品缺陷
+
+| 症状 | 真因 | 修法 |
+| --- | --- | --- |
+| 盘上会话文档读到 `messageCount 0`，看着像「回合没落盘」 | **写侧不写扁平数组**：`createSessionFile` 在 `conversationGraph` 存在时无条件丢掉 `messages`（注释写明「reader rebuilds it」），文件里 `session` 没有 `messages` 键 | 改用应用自己的读模型 `normalizeSessionFile()`（把 graph 投影回 `messages`），**不手搓字段名** |
+| 第一次扫盘读到 `messageCount 1`（只有提问） | 回复上屏**早于**文档落盘 | 保留轮询（等 ≥2），并把这次时序写进证据档 |
+
+另一支 E1/E2 真机用例的两处假设也错（夹具回复是**固定一句**、不回显提示；两轮活动被**并进同一组**，
+没有「settled 组 / 最新组」两个对象可比）⇒ 拿不到 E1 要的那一对读数。**没有凑绿**：两版草稿已移除，
+证据档写下具名立案（下一步先给夹具加「按轮控制工具事件」）。同期入库一条折叠交互用例。
+
+### 三 F1 真机读数（一次真跑，逐条在 `docs/evidence/2026-10-30-f1-external-mcp.md`）
+
+`npx playwright test e2e/certification/external-mcp-client.spec.ts --workers=1` → **1 passed (7.8s)**（同日两次通过）。
+`tools/list` 四条与登记表逐条相同；`list_projects` 1 条；`list_sessions`/`read_session` 的 `messageCount 2`
+与盘上文档一致；拒绝具名 `session-not-found`；主日志 **5 条** `external mcp call`（4 `ok` 1–2 ms + 1 `refused` 1 ms），
+每条带 `toolCallId`/`risk`/`durationMs`，同一 `clientId` 一进程一租约。
+
+### 四 推送
+
+`7f3e86a7..31a83bf3` 三笔：`720d1e71`（台账 + F1 施工单）、`6ce3fc5a`（F1 落地，20 files/+2484）、
+`31a83bf3`（E1 交互用例 + 真机尝试立案）。推前在飞 0 ⇒ 本次推送没有取消任何人的判决。
+
+### 五 下一轮第一步
+
+1. 按完整 40 位 SHA 读 `31a83bf3` 两条车道（`Nightly` / `Windows Full Test`）；认证作业仍红就读作业级日志定因。
+2. 然后开 **H2（DOCX 表格/边框/版式保真口径）**：它自足、不碰界面、可无人值守推进；H1（用例画廊）留一段完整窗口做。
+3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：资源口径同上，取不到继续具名挂着，不许写 0。
