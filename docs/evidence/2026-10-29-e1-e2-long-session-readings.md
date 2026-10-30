@@ -13,7 +13,11 @@
   `override ?? (isNewestTurn || activities.some(isActive))`
   ⇒ **settled 且不是最新一轮 ⇒ 自己折起来**；最新一轮与正在跑的工具保持展开；用户的手动开关优先。
 
-所以 E1 的目标「折叠后的摘要行可展开」在代码层面已成立，本轮**没有改行为**，只补了缺失的回归用例：
+所以 E1 的目标「折叠后的摘要行可展开」在代码层面已成立，本轮**没有改行为**，只补了缺失的回归用例。
+（补充：旧一轮不折叠只在**夹具排序错**时出现 —— transcript 的主序是 `createdAt`（见 `createConversationItems`），
+不是 `sortIndex`；用 sortIndex 造夹具会让两轮的工具并成一组、旧组看起来「没折」，那是夹具 bug。
+`WorkspaceMessageScroller.render.test.tsx` 的 `settled-turn collapse (E1)` 三条用例按 createdAt 排，
+断言 `aria-expanded` 依次是 `['false','true']`、折叠组不渲染明细、运行中的组永不折叠。）
 
 - `workspace-tool-activity-groups.test.ts` › `resolveActivityGroupExpansion`：三条（settled 非最新 ⇒ 折；
   最新 / 运行中 ⇒ 开；override 双向优先）；
@@ -44,3 +48,21 @@
 ⚠️ 未做真机截图验收：e2e 的确定性 fake agent 不产生工具调用，因此真实窗口里没有工具组可看。
 要让 E2 有真机读数，需要给 fake agent 加一个「产生一次工具调用」的脚本分支 —— 列入下一步，
 在此之前不声称 E2 已在真机窗口验证。
+
+## 真机尝试（2026-10-30，未成 —— 具名立案）
+
+夹具**已经**能在 `PURESCIENCE_E2E_TOOL_EVENTS=<n>` 下吐工具调用生命周期，所以本轮写了两版认证用例去取读数，
+两版都拿不到 E1 要的那一对（settled 组折 / 最新组开），原因逐条如下（都是**用例的假设错**，不是产品行为）：
+
+1. **回复文案**：夹具对任何未特判的提示回同一句固定文本
+   （`Deterministic reply: Summarize the deterministic fixture.`，见 `e2e/fixtures/fake-opencode.mjs`），
+   **不回显提示**。用例里写 `Deterministic reply: ${prompt}` 的版本会一直等一句没人会说的话。
+2. **分组**：两轮各带 2 次工具调用，但真实窗口里只渲染出**一个** `[data-testid="tool-group"]`
+   （122 次轮询恒为 1，期望 2）。也就是说这两轮的活动被并进了同一组，于是「较早一轮折起来 / 最新一轮展开」
+   这个对比**在这个夹具下根本没有两个对象可比**。要造出两个可比的组，夹具需要能按轮把活动分开
+   （例如只在一轮吐工具事件，或加一轮「无工具」的纯文本回合把两组隔开）。
+
+结论：E1/E2 的真机读数**不是**这轮能取到的，也不该用一版「凑到绿」的用例冒充。
+下一步（立案）：先给夹具加「按轮控制工具事件」的能力，再写一支只断言「settled 组折、最新组开、点开后明细回来」
+的认证用例；在那之前本单元的真机那半边一栏记为未取。
+两版草稿已从工作区移除（未提交），避免把一条红用例留进认证车道。
