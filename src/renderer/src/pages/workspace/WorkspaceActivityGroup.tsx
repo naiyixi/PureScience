@@ -97,15 +97,21 @@ const WorkspaceActivityGroup = ({
   return (
     <MessageScrollerItem key={group.id} messageId={group.id} className="min-w-0">
       <div className={cn('px-4 pb-0.5 pt-2.5 md:px-6', contentPaddingClassName)}>
+        {/* Folded, this is one 24px line — not a card. A card per turn pushes the answer off screen in a
+            long session; the summary row is what a reader scans, and it only grows into a surface when it is
+            opened. */}
         <div
-          className="w-full overflow-hidden rounded-[14px] bg-bg-200/70 px-1.5 py-1"
+          className={cn(
+            'w-full overflow-hidden rounded-lg px-1',
+            isExpanded ? 'bg-bg-200/70 py-1' : 'py-0'
+          )}
           data-testid="tool-group"
         >
           <button
             type="button"
             aria-expanded={isExpanded}
             data-testid="tool-group-header"
-            className="flex w-full items-center gap-2 rounded-lg py-[5px] pl-1.5 pr-2.5 text-[13px] transition-colors hover:bg-bg-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            className="flex h-6 w-full items-center gap-2 rounded-md px-1.5 text-[12.5px] transition-colors hover:bg-bg-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
             onClick={() => onToggleGroup(group.id, !isExpanded)}
           >
             <span
@@ -119,7 +125,7 @@ const WorkspaceActivityGroup = ({
             <span className="min-w-0 truncate text-left font-medium text-text-000">
               {formatActivityGroupTitle(group.activities, group.title)}
             </span>
-            <span className="ml-auto shrink-0 whitespace-nowrap text-[12px] tabular-nums text-text-100">
+            <span className="ml-auto shrink-0 whitespace-nowrap text-[11.5px] tabular-nums text-text-100">
               {formatStepCount(visibleActivities)} ·{' '}
               <ActivityGroupElapsed activities={visibleActivities} />
               {turnUsage === undefined ? null : (

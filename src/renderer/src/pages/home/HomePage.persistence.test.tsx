@@ -50,6 +50,17 @@ vi.mock('./DeleteProjectDialog', () => ({
   )
 }))
 vi.mock('radix-ui', () => ({
+  // The gallery's dialog is closed on this page unless someone clicks a card, so a passthrough stub is
+  // enough; it exists because `radix-ui` is mocked as a whole and a missing export is a hard error.
+  Dialog: {
+    Root: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Portal: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Overlay: () => null,
+    Content: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Title: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Description: ({ children }: { children: ReactNode }) => <>{children}</>,
+    Close: ({ children }: { children: ReactNode }) => <>{children}</>
+  },
   DropdownMenu: {
     Root: ({ children }: { children: ReactNode }) => <>{children}</>,
     Trigger: ({ children }: { children: ReactNode }) => <>{children}</>,

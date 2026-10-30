@@ -61,6 +61,12 @@ test('a finished turn folds into one summary row that opens, and that row states
   expect(summary).toMatch(/\d+ steps?/)
   expect(summary).toMatch(/\d+(ms|s)\b/)
 
+  // The folded summary is ONE 24px line, not a card: that is the layout claim this spec is here to keep.
+  const foldedBox = await header.boundingBox()
+  console.log(`[layout] folded summary row height: ${foldedBox?.height ?? 'unmeasured'}px`)
+  expect(foldedBox?.height ?? 0).toBeGreaterThanOrEqual(20)
+  expect(foldedBox?.height ?? 0).toBeLessThanOrEqual(28)
+
   // 3: the cost cell is a reading, never an invented zero.
   const reading = (
     await group.locator('[data-testid="tool-group-turn-tokens"]').textContent()

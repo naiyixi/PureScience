@@ -91,3 +91,24 @@
 下一步（立案）：先给夹具加「按轮控制工具事件」的能力，再写一支只断言「settled 组折、最新组开、点开后明细回来」
 的认证用例；在那之前本单元的真机那半边一栏记为未取。
 两版草稿已从工作区移除（未提交），避免把一条红用例留进认证车道。
+
+## E3（排版）—— 正文阅读尺度 + 折叠摘要行 24px
+
+用户问「怎么排版能让软件工作得更好」后落地的两项（第三项「每轮轮脊」未做，见末条）：
+
+| 改动                                                                      | 位置                                             | 读数                                                  |
+| ------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- |
+| 正文收窄到 68ch，表格/代码/图保持满列（`[&_table]:max-w-[56rem]` 等）     | `WorkspaceMessageItem.tsx` 包一层 `max-w-[68ch]` | 896px @15px ≈ 95 字符/行 → 68ch ≈ 640px               |
+| 折叠摘要从卡片降级成一行：24px 高、无背景、hover 才提亮；展开时才长成卡片 | `WorkspaceActivityGroup.tsx`                     | 真机 `folded summary row height: 24px`（此前约 56px） |
+
+真机读数（`e2e/certification/session-turn-readings-real-window.spec.ts`，**1 passed (31.9 s)**）：
+
+```
+[e1-e2] summary row: Fetched 2 pages · 2 steps · 4ms · usage not recorded
+[layout] folded summary row height: 24px
+[e2]    cost cell:    "usage not recorded"
+[e1]    newest turn open → folded (0 rows) → open again (2 rows)
+```
+
+**未做**：「每轮一根 2px 轮脊」跨消息画一条连续轨 —— 它需要把一轮内的多个 transcript item 包进同一个容器，
+属于结构性改动（现在是逐项 `MessageScrollerItem`），单独一步做，不塞进这次排版。

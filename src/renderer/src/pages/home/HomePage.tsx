@@ -40,6 +40,7 @@ import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
+import { UseCaseGallery } from './UseCaseGallery'
 
 const RECENT_SESSION_LIMIT = 10
 
@@ -710,6 +711,8 @@ const HomePage = ({
             )}
           </section>
         </div>
+
+        <UseCaseGallery />
       </div>
 
       <ProjectFormDialog

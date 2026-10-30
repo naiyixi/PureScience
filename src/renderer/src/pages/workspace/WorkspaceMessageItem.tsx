@@ -1175,11 +1175,16 @@ const WorkspaceMessageItemImpl = ({
         ) : (
           <div className={cn(assistantMessageSurfaceClassName, 'select-text overflow-visible')}>
             {content ? (
-              <AgentMarkdown
-                content={content}
-                isAnimating={message.status === 'streaming'}
-                sessionLinks
-              />
+              // Prose is capped at a reading measure (~68 characters); data blocks inside it keep the full
+              // column. 896px at 15px is ~95 characters per line, which is a wall of text in a long
+              // session — the tables and code are the part that actually needs the width.
+              <div className="max-w-[68ch] [&_img]:max-w-none [&_pre]:max-w-[56rem] [&_table]:max-w-[56rem]">
+                <AgentMarkdown
+                  content={content}
+                  isAnimating={message.status === 'streaming'}
+                  sessionLinks
+                />
+              </div>
             ) : null}
             <MessageImageList images={message.images ?? []} onAnnotateImage={onAnnotateImage} />
             <MessageArtifactList onPreviewArtifact={onPreviewArtifact} artifacts={artifacts} />
