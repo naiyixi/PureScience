@@ -14270,3 +14270,44 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
 - **下一轮第一步**：按完整 40 位 SHA 读这一笔的 `Nightly`（覆盖车道才是 egress 那条红的口径）与 `Windows Full Test`；
   绿了就开 **H1（用例画廊）**——它要一段完整窗口，别和发版窗口抢；红了先按作业级日志定因，别重跑。
 - A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：网络/内存恢复后再取，取不到继续具名挂着。
+
+## 二百六十二、本轮追加（执行器，2026-10-31 05:0x–07:1x）—— F1 第二片勘察收口：把「写入 + 权限门」勘察到可照写，代码未开工（不留半截）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 87f6db59`；本地 `HEAD` 与远端同点，**无领先提交**。共享工作树里躺着并行会话的两份在制：
+  `src/main/references/screening-service.ts`（+19 行：给筛查失败原因加一条有界日志）与
+  `docs/plan-2026-10-28-two-releases.md`（H1/H2 两行状态）⇒ **一个字节没碰**，本轮只新增/追加文档。
+- 队列档的 §三 表已把 v2.21.0 的 D1/D2/E1/E2/F1/H1/H2 逐条记账：D1 `02595d06`、D2 `93e623a1`、E2 `ba50f69e`、
+  H1 与 H2 已在表内标「已交付」，G1 按用户决定挂起。**剩下的只有 F1 的写入面**（第二片），E1 的收尾仍在并行会话手里。
+- CI 读数（按完整 40 位 SHA）：`87f6db59` 的 `Windows Full Test` **success**；同 SHA 的 `Nightly` **cancelled**
+  （取消不等于绿，也不等于红；本提交没有自己的 Nightly 判决，不为它重跑）。
+- 内存现取：空闲页 **4128**（≈67 MB）、swap **3.9 G / 5.0 G** 已用 ⇒ A 组「发布件读数」那一格本轮仍不可行（装机 + 五个真会话会 thrash），继续具名挂着。
+
+### 一 本轮交付：`docs/plan-2026-10-30-f1-external-mcp.md` §9（施工判据，143 行文件）
+
+勘察把第二片从「接一条门」纠成「**十一处改动 + 一支真机 spec**」，四条决定形状的实测约束（都带 file:line）：
+
+1. **卡的可见性按当前会话过滤**（`session-permissions.ts:5-11`）⇒ 卡挂在用户没在看的会话上是死控件；无窗口走 CLI `permissions`/`approve`（`cli.mjs:862-876`）。
+2. **`acp:send-prompt` 当不了第一件写**（`prompt-turn-workflow.ts:166-168`：要求会话已附着，force-load 只在 skill reload 分支）⇒ 换 `sessions:update-archive`。
+3. **归档请求要自己凑** `{projectId, sessionId, archived, expectedArchivedAt}`（`session-persistence.ts:2058-2063`）；**不许**用 `read-document` + `save-session` 整份往返（投影丢 `activities`/`conversationGraph`，回写损坏），输入取 `list-catalog` 的行（`session-catalog-summary.ts:20-46`）。
+4. **审计行已经有了**：`enqueuePermissionRequest` 无条件 `recordPermissionDecision(request,'card')`（`permission-broker.ts:1120-1132`）⇒ 只要 request 带 `isMcp:true` + `mcpIdentity`，`permission decision` 与 `tool` 自动出现，**不造第二套词表**。
+
+接线路径也定死了：组合根 `index.ts:610-613` 没有 runtime ⇒ 端口从 `dependencies.acp.runtime`（就是 coordinator，`ipc.ts:4002`）透出，
+把 `requestAppApproval` 加进 `AcpApplicationCommandRuntime` 的 `Pick<>`（`acp/application-commands.ts:132-147`），
+**不**在 index.ts 另开一条直达 broker 的路。§9.3 给了九步清单与三条 server 用例、一支 e2e 的逐条断言。
+
+### 二 为什么本轮不写代码（判断依据，不是推脱）
+
+按上面清单：**11 个源文件 + 3 处签名透传 + 组合根两处白名单 + 一支要 `build:e2e` 才跑得起来的认证 spec**。
+05:30 之后开工、07:00 是下一次派发点，中途必然把红或半截留在树上（本轮纪律：不许），而「先提交一半」正是
+§261 记过的那条坑。因此本轮把「不可逆的准备工作」做干净（判据 + 清单 + 限制），下一轮从 §9.3 第 1 步直接写码。
+
+### 三 下一轮第一步
+
+1. 按 §9.3 第 1–7 步实现（surface → server 门 → broker 外部身份 → 三处透传 → 组合 expose → ipc 白名单 → index 传端口），
+   `npx tsc --noEmit -p tsconfig.node.json --composite false` 与 `-p tsconfig.web.json` 各跑一次；
+2. 第 8 步三条用例（**拒时不得 invoke** 那条是门在动作之前的唯一机器判据）；
+3. `npm run build:e2e` 后跑 `external-mcp-client.spec.ts`（既有 4 条只读断言必须仍绿），再加第 9 步的
+   approve / cancel 两段，取 `permission decision` 与 `external mcp call` 的 `toolCallId` 配对读数；
+4. 开工前先 `git status --short` 认领在制件（并行会话的 `screening-service.ts` 仍可能在里面，**别碰**）。

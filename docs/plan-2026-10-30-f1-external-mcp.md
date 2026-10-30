@@ -87,3 +87,57 @@
 按 §5 第 1 步建 `surface.ts`（纯数据 + 一条「登记表里每个工具都在 server 侧有处理器」的成对用例），
 再按 §5 第 5 步把 CLI 动词接上（先只做 `listTools` + 一个只读工具），拿 §6 第 1 条的真客户端读数；
 权限门（§5 第 2 步）在读数之后再接，这样每一步都有可交付的观察面。
+
+## 9 第二片（写入 + 权限门）的施工判据 —— 2026-10-31 勘察，**未开工**
+
+> 结论先说：第二片不是「照 §5 第 2 步接一条门」那么小。本轮（cron 执行器 05:0x–07:0x）把它勘察到
+> **可直接照着写**的程度就收手，没有留下半截代码（工作树里那两份在制件属并行会话，未碰）。
+> 下面每一条都带 file:line，动手前重读一遍即可。
+
+### 9.1 四条实测约束（决定形状，不是喜好）
+
+| # | 约束 | 读数 |
+| --- | --- | --- |
+| 1 | **卡的可见性按当前会话过滤** | `src/renderer/src/pages/workspace/session-permissions.ts:5-11` 只保留 `request.sessionId === activeSessionId` ⇒ 把外部调用的卡挂在用户没在看的会话上，卡永远不出现（死控件）。无窗口时靠 CLI：`packages/purescience/cli.mjs:862-876` 的 `permissions` / `approve --option|--cancel` |
+| 2 | **`acp:send-prompt` 不能当第一件写** | `src/main/acp/prompt-turn-workflow.ts:166-168` 要求会话已附着；force-load 只在 skill reload 分支（:196-210）⇒ 外部客户端对没打开的会话发提示必然失败 |
+| 3 | **`sessions:update-archive` 的请求要自己凑齐** | 形状 `{projectId, sessionId, archived, expectedArchivedAt}`（`src/shared/session-persistence.ts:2058-2063`）。**不要**用 `read-document` + `save-session` 走整份文档往返：投影丢掉 `activities`/`conversationGraph`，回写会损坏文档。正解是从 `sessions:list-catalog` 的行取（`SessionCatalogSummary` 用 `...rest` 投影，带 `projectId` 与 `archivedAt`，`src/shared/session-catalog-summary.ts:20-46`） |
+| 4 | **审计行已经存在，别造第二套** | `enqueuePermissionRequest` 无条件 `recordPermissionDecision(request, 'card')`（`src/main/acp/permission-broker.ts:1120-1132`）⇒ 只要 request 带 `isMcp: true` + `mcpIdentity`，`permission decision` 行与 `tool` 字段自动出现（`isMcp`/`tool` 的落点见 :369-382） |
+
+### 9.2 接线路径（`startExternalMcpServer` 拿不到 ACP 运行时）
+
+组合根 `src/main/index.ts:610-613` 调用 `startExternalMcpServer({ commands, configRoot })`，那里**没有** runtime。
+端口要从组合对象透出：`dependencies.acp.runtime` 就是 coordinator（`src/main/ipc.ts:4002` 的 `acp: { runtime, … }`），
+而 `AcpApplicationCommandRuntime` 是 coordinator 的 `Pick<>`（`src/main/acp/application-commands.ts:132-147`）
+⇒ 把 `requestAppApproval` 加进这个 Pick，组合里 expose 一个 `externalApproval`，index.ts 传进去。
+**不要**在 index.ts 里另开一条直达 broker 的路（那就是第二套审批语义）。
+
+### 9.3 九处改动清单（缺一处＝半截）
+
+1. `src/main/external-mcp/surface.ts`：`ExternalMcpToolRisk = 'read' | 'write'`；新增 `archive_session{sessionId}`
+   （risk `write`，command `sessions:update-archive`）；`EXTERNAL_MCP_COMMAND_COUNT` 4→5（`application-command-composition.ts:405` 的清点会挡住漏改）。
+2. `src/main/external-mcp/server.ts`：`options.requestApproval` 端口；`risk === 'write'` 时**先过门再 invoke**
+   （现有 `externalMcpRiskGate` 的 fail-closed 分支就是给它留的位置，:218-234）；拒绝码具名
+   `not-approved` / `approval-unavailable`，句子要说清「会做什么、什么都没改」；`external mcp call` 行加 `decision`，
+   与 broker 那行**共享同一个 `toolCallId`**（否则事后配不上对）。
+3. `src/main/acp/permission-broker.ts`：`requestAppApproval` 增加可选 `external?: { tool: string; toolCallId: string }`
+   ⇒ 设 `isMcp: true`、`mcpIdentity: 'purescience_external/<tool>'`、`toolCallId`。**必须走 `requestAppApproval`**
+   （永远一张卡），**不走** `requestPermission` —— 后者按会话 profile 自动放行，等于把外部客户端塞进 agent 的自动批准。
+4. `src/main/acp/runtime.ts:1169-1176` + `src/main/acp/permission-context.ts:573-580` + `src/main/acp/runtime-coordinator.ts:766-773`：三处签名同步透传。
+5. `src/main/application-command-composition.ts`：`AcpApplicationCommandRuntime` 的 Pick 加 `requestAppApproval`；
+   组合对象 expose `externalApproval`；`ApplicationCommandComposition` 类型加该字段（:112-120）。
+6. `src/main/ipc.ts`：`applicationCommands: Pick<…>` 白名单（:526 附近）加 `externalApproval`。
+7. `src/main/index.ts`：`startExternalMcpServer({ commands, configRoot, requestApproval: applicationCommands.externalApproval })`。
+8. 用例：`surface.test.ts` 登记表↔白名单成对（含新增工具的 risk）；`server.test.ts` 三条——无端口 ⇒ `approval-unavailable`
+   且**没有 invoke**；端口答拒 ⇒ `not-approved` 且**没有 invoke**；端口答批 ⇒ invoke 一次、返回体是真结果；
+   `permission-broker.test.ts` 一条——外部身份的 request 走进 `permission decision`（`isMcp: true` + `tool`）。
+9. `e2e/certification/external-mcp-client.spec.ts` 追加：`archive_session` → `node packages/purescience/cli.mjs permissions --config-root <root>`
+   看到那张卡 → `approve <requestId> --option <optionId>` → 工具返回、`list_sessions` 不再列出该会话、
+   主日志出现 `permission decision`（`isMcp` 真、`tool`=`purescience_external/archive_session`、`toolCallId` 与
+   `external mcp call` 同一）；再走一次 `approve <requestId> --cancel` ⇒ 具名拒绝、会话仍在。
+
+### 9.4 要写进证据档的限制（不许读成更强）
+
+- 卡的落点是**目标会话**：会话必须在窗口里打开（或 headless 下用 CLI 批）；目标会话未附着 ⇒ `approval-unavailable`
+  具名拒且不动数据。这是 fail-closed 不是缺陷，但**必须**同时写进工具 `description` 与 `packages/purescience/CLI.md`，
+  否则外部模型的第一次调用就会撞上一个它读不懂的失败。
+- 第一件写只到「归档一个会话」；写入类的其余动作（跑笔记本、派发回合、改产物）各自要一条提权论证，不并进这一片。
