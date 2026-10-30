@@ -304,8 +304,14 @@ describe('external MCP transport guards', () => {
     expect(published.endpoint).toBe(endpoint)
     expect(published.token).toBe(token)
     expect(published.pid).toBe(process.pid)
-    // Own-user only: the token is a secret that must not be world-readable.
-    expect((await stat(statePath)).mode & 0o077).toBe(0)
+    // Own-user only: the token is a secret that must not be world-readable. NTFS has no POSIX mode bits —
+    // Node synthesises them from the file's ACL, so a correctly-protected file still reports 0o66 here and
+    // an assertion on the mode would fail for the wrong reason. The property that matters on Windows (the
+    // ACL inherits from the per-user config directory) is not expressible as a mode, so this half of the
+    // assertion is POSIX-only, the same way the repository's other mode checks are.
+    if (process.platform !== 'win32') {
+      expect((await stat(statePath)).mode & 0o077).toBe(0)
+    }
 
     await server.stop()
     await expect(stat(statePath)).rejects.toMatchObject({ code: 'ENOENT' })
