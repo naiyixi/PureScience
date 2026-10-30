@@ -30,6 +30,21 @@ type RenderableActivityEntry = {
 
 const WEB_SEARCH_PROVIDER_TOOL_NAME = 'websearch'
 
+// A session's transcript carries activities from two places: the hydrated document (every turn the
+// session ever ran) and the live run (the one in flight). Picking one over the other drops a whole side:
+// preferring the live list erases every finished turn's summary row, which is what a long session is
+// supposed to be made of. So they are merged — hydrated first, live appended, deduped by id so a finished
+// run that has already been folded into the document is not shown twice.
+const mergeActivityLists = <Item extends { id: string }>(
+  persisted: readonly Item[] | undefined,
+  live: readonly Item[] | undefined
+): Item[] | undefined => {
+  if (!persisted) return live ? [...live] : undefined
+  if (!live) return [...persisted]
+  const liveIds = new Set(live.map((item) => item.id))
+  return [...persisted.filter((item) => !liveIds.has(item.id)), ...live]
+}
+
 // Collapses consecutive activity items into one transcript group between chat messages.
 const groupConversationItems = (
   items: ConversationItem[],
@@ -352,6 +367,7 @@ export {
   getRenderableActivityEntries,
   groupConversationItems,
   isSearchActivity,
+  mergeActivityLists,
   resolveActivityGroupExpansion
 }
 export type {

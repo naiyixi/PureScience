@@ -53,7 +53,11 @@ import {
   selectLiveSessionActivities,
   selectLiveSessionActivityGroups
 } from './activity-subscription'
-import { groupConversationItems, resolveActivityGroupExpansion } from './workspace-tool-activity-groups'
+import {
+  groupConversationItems,
+  mergeActivityLists,
+  resolveActivityGroupExpansion
+} from './workspace-tool-activity-groups'
 import type { ActivityExpansionOverrides } from './workspace-tool-activity-groups'
 import { useSessionJobStore } from '@/stores/session-job-store'
 import type { GoToTranscriptIntent, ReviewWithChecks } from '../../../../shared/reviewer'
@@ -496,8 +500,11 @@ const WorkspaceMessageScrollerImpl = ({
         ? undefined
         : {
             ...activeSession,
-            activities: liveActivities ?? activeSession.activities,
-            activityGroups: liveActivityGroups ?? activeSession.activityGroups
+            // Both sides matter: the hydrated document holds every finished turn, the live list holds the
+            // one in flight. `??` would drop the finished ones and leave a long session with a single
+            // summary row.
+            activities: mergeActivityLists(activeSession.activities, liveActivities),
+            activityGroups: mergeActivityLists(activeSession.activityGroups, liveActivityGroups)
           },
     [activeSession, liveActivities, liveActivityGroups]
   )

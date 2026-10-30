@@ -134,3 +134,20 @@
 「每个已结束的回合都留下自己的摘要行」，而今天只有当前 run 的活动在视图里 —— 这与 E1 那条
 「settled 组 vs 最新组」是同一个根因，应当作为一个单元一起解决（取样路径：重新加载后的转录，
 或用持久化的 `activityGroups` 回填实时视图）。
+
+## E4：活动列表合并（半程）——为什么一对一还取不到
+
+诊断往下走了一层，结论与修法都更清楚了：
+
+1. **`??` 丢掉了历史上半**：`WorkspaceMessageScroller` 里 `activities: liveActivities ?? activeSession.activities`
+   在没有 live 列表时才回落到文档那份 —— 只要本轮有活动，之前所有回合的摘要行就整体消失。已改为
+   `mergeActivityLists(文档, live)`（按 id 去重、文档在前），三条例用钉住（保持历史、不重复、单边/双空）。
+2. **但只合并还不够**：真实窗口两轮仍然只有 **1** 个摘要行（`[e1-pair] groups=1`）。原因是**在跑着的会话里
+   `activeSession.activities` 本身也是按 run 重算的**，历史活动只存在于 `conversationGraph` 里 ——
+   渲染层那份扁平列表没有它们，合并没有东西可合。
+3. **修法已经现成**：`resolveActiveConversationActivities(conversationGraph)` 就是 graph → 扁平活动/分组的投影，
+   store 在切分支时已经在用（`session-store-message-graph-owner.ts:634-645`）。下一步是把它接到转录的取数处，
+   与 live 列表合并 —— 这样每个结束的回合都留下自己的 24px 摘要行，E1 的「settled 折 / 最新开」也就有了两个对象。
+
+本轮**没有**把这对读数写成红用例：`session-turn-readings-real-window.spec.ts` 末尾留的是说明而不是断言，
+认证车道保持绿（1 passed）。

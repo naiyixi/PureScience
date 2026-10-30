@@ -88,3 +88,9 @@ test('a finished turn folds into one summary row that opens, and that row states
   await expect(group.locator('[data-testid="tool-chip"]')).toHaveCount(2)
   console.log('[e1] newest turn open → folded (0 rows) → open again (2 rows), on a real window')
 })
+// NOT a test yet — "two turns keep two summary rows". Measured on a real window (2026-10-31), two turns
+// still produce ONE summary row even after merging the hydrated activity list with the live one: in a live
+// session `activeSession.activities` is run-scoped too. The projection that would fix it already exists —
+// `resolveActiveConversationActivities(conversationGraph)`, used by the branch switch in
+// session-store-message-graph-owner.ts:634-645 — and wiring it into the transcript's item source is the
+// next unit. Writing the assertion before that would only leave a red spec in the certification lane.

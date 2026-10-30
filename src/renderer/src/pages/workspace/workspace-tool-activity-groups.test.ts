@@ -10,6 +10,7 @@ import {
   getRenderableActivityEntries,
   groupConversationItems,
   isSearchActivity,
+  mergeActivityLists,
   resolveActivityGroupExpansion
 } from './workspace-tool-activity-groups'
 
@@ -364,5 +365,36 @@ describe('resolveActivityGroupExpansion', () => {
     expect(
       resolveActivityGroupExpansion({ override: false, isNewestTurn: true, activities: running })
     ).toBe(false)
+  })
+})
+
+describe('mergeActivityLists', () => {
+  // The transcript reads activities from two sources: the hydrated document (every finished turn) and the
+  // live run (the one in flight). Keeping only one side is what left a long session with a single summary
+  // row — these cases pin the merge, including the case that would otherwise print a run twice.
+  const ids = (items: { id: string }[] | undefined): string[] =>
+    (items ?? []).map((item) => item.id)
+
+  it('keeps finished turns and appends the live one', () => {
+    expect(
+      ids(
+        mergeActivityLists(
+          [{ id: 'turn-1-tool' }, { id: 'turn-1-tool-2' }],
+          [{ id: 'turn-2-tool' }]
+        )
+      )
+    ).toEqual(['turn-1-tool', 'turn-1-tool-2', 'turn-2-tool'])
+  })
+
+  it('does not show a finished run twice when it is already in the document', () => {
+    expect(ids(mergeActivityLists([{ id: 'a' }, { id: 'b' }], [{ id: 'b' }, { id: 'c' }]))).toEqual(
+      ['a', 'b', 'c']
+    )
+  })
+
+  it('passes through whichever side exists, and nothing when neither does', () => {
+    expect(ids(mergeActivityLists([{ id: 'a' }], undefined))).toEqual(['a'])
+    expect(ids(mergeActivityLists(undefined, [{ id: 'b' }]))).toEqual(['b'])
+    expect(mergeActivityLists(undefined, undefined)).toBeUndefined()
   })
 })
