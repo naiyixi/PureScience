@@ -104,6 +104,11 @@ v2.20.0 已发布：tag `v2.20.0` → 提交 `09e0d027`，Release run 4080118884
 **G1 需要拍板**：Apple Developer Program 99 美元/年 + Windows 代码签名证书（OV 约 200–400 美元/年，
 EV 更贵）。这是唯一「花钱就能明显追平」的一项；不拍板则本轮只做「未签名但可安装」的提示文案与校验。
 
+> **2026-10-30 用户决定：暂不花钱认证，等准备商业化时再谈。**
+> ⇒ G1 只保留「未签名但可安装」那一半（已落地：`purescience doctor` 的 `signature` 项，真机读数见
+> `docs/evidence/2026-10-30-g1-signature-check.md`）；Developer ID + 公证、Authenticode、原位更新、
+> Homebrew tap 四件**挂起**，等商业化拍板后再开，不计入 v2.21.0 的退出条件。
+
 **退出条件**：D/F/E 组有真机读数；G1 视拍板结果；H 组各一条用例。
 
 ---
