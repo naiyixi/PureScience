@@ -566,3 +566,51 @@ export const validateOfficePackage = async (
 
   await verifyActualInflatedSizes(bytes, entries, getMaxZipTotalBytes(extension), extension, signal)
 }
+
+/**
+ * Reads one Word part through the same index and inflate path validation just used, so the limits that
+ * bound a preview also bound what a second pass can hold. A part the package does not carry, or one
+ * that will not decode as UTF-8, is reported as absent rather than thrown: callers treat both the same.
+ */
+export const readDocxPartText = async (
+  bytes: Uint8Array,
+  partName: string,
+  signal?: AbortSignal
+): Promise<string | undefined> => {
+  throwIfAborted(signal)
+  let entries: OoxmlPackageEntry[]
+  try {
+    entries = inspectOoxmlPackage(bytes, 'docx').entries
+  } catch {
+    return undefined
+  }
+  const wanted = partName.toLowerCase()
+  const entry = entries.find((candidate) => candidate.name.toLowerCase() === wanted)
+  if (!entry) return undefined
+
+  const capture: EntryCapture = {
+    maxBytes: MAX_DOCX_DOCUMENT_XML_BYTES,
+    tooLargeError: () => resourceLimit('A Word part is too large to read for the preview')
+  }
+  let inflated: InflatedEntry
+  try {
+    inflated = await measureInflatedEntry(
+      bytes,
+      entry,
+      0,
+      MAX_DOCX_TOTAL_BYTES,
+      MAX_DOCX_DOCUMENT_XML_BYTES,
+      capture,
+      signal
+    )
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    return undefined
+  }
+  if (!inflated.data) return undefined
+  try {
+    return new TextDecoder('utf-8').decode(inflated.data)
+  } catch {
+    return undefined
+  }
+}

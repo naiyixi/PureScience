@@ -1,4 +1,6 @@
 import type { OfficeFileExtension } from './office-package'
+import { readDocxPartText } from './office-package'
+import { applyDocxTableBorders, readDocxTableFacts } from './docx-table-borders'
 
 export type OfficeRenderCleanup = () => void | Promise<void>
 export type OfficeRenderStatus = {
@@ -540,6 +542,32 @@ const getSpreadsheetParseError = (container: HTMLElement): Error | undefined => 
   return new Error(message || 'Spreadsheet preview could not parse this workbook')
 }
 
+// Table rules are re-applied after the vendor renderer paints, because it collapses a table's frame
+// and its inner rules into one style. A failure here costs fidelity, never the preview, so it is
+// reported with its counts and swallowed.
+const reconcileDocxTableBorders = async (
+  bytes: Uint8Array,
+  container: HTMLElement
+): Promise<void> => {
+  try {
+    const [documentXml, stylesXml] = await Promise.all([
+      readDocxPartText(bytes, 'word/document.xml'),
+      readDocxPartText(bytes, 'word/styles.xml')
+    ])
+    if (!documentXml) {
+      // Named rather than silent: a preview whose table rules could not be read still renders, but the
+      // reason it fell back to the vendor renderer's borders has to be findable in the log.
+      console.warn('[office-preview] docx table rules not read (document part unavailable)')
+      return
+    }
+    const application = applyDocxTableBorders(container, readDocxTableFacts(documentXml, stylesXml))
+    if (application.tablesInSource === 0) return
+    console.info('[office-preview] docx table borders reconciled', application)
+  } catch (error) {
+    console.warn('[office-preview] docx table border reconciliation skipped', error)
+  }
+}
+
 // Dynamically loads the selected renderer and returns one cleanup function that owns all generated
 // DOM, workers, Blob URLs, and vendor instances for that preview generation.
 export const renderOfficeFile = async ({
@@ -569,6 +597,7 @@ export const renderOfficeFile = async ({
       throw error
     }
     neutralizeDocxLinks(container)
+    await reconcileDocxTableBorders(bytes, container)
     const wrapper = container.querySelector<HTMLElement>('.docx-wrapper')
     const disposeFit = wrapper ? installDocxFit(container, wrapper) : undefined
     const blobUrls = collectBlobUrls(container)
