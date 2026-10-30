@@ -151,3 +151,23 @@
 
 本轮**没有**把这对读数写成红用例：`session-turn-readings-real-window.spec.ts` 末尾留的是说明而不是断言，
 认证车道保持绿（1 passed）。
+
+### E4 定论（同日，第四次取样）：写侧才是瓶颈
+
+把三个可能的层都测了，只有最后一个给了答案：
+
+| 取样                                                 | 读数                                                                       |
+| ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| 实时扁平列表                                         | 两轮 → **1** 个摘要行                                                      |
+| 与文档扁平列表合并                                   | 还是 1（在跑着的会话里 `activeSession.activities` 按 run 重算）            |
+| 与 `resolveActiveConversationActivities(graph)` 合并 | 还是 1（渲染层内存里的 graph 也没有早先那轮）                              |
+| **盘上的会话文档**                                   | `{"graphActivities":2,"graphGroups":0}` —— **两轮只留下 2 条活动、0 个组** |
+
+⇒ **不是渲染层丢的，是写侧只保留当前这次 run**：盘上文档就只有最后一轮那 2 条活动，历史那轮从来没进过
+`conversationGraph`。所以「每个已结束回合都留下自己的摘要行」要改在会话持久化/图同步那一侧
+（`synchronizeActiveConversationActivities` 的输入就是 `session.activities`，而它是按 run 的）。
+
+本轮据此**回退**了渲染层的 graph 投影（在写侧修好之前它只会白算一遍整张图），保留 `mergeActivityLists`
+（形状正确、有用例、写侧修好后立刻生效）。取样用例留在
+`e2e/certification/session-activity-persistence-probe.spec.ts`，它打印的那一行就是下一步的验收基线：
+两个回合之后应当是 `graphActivities≥4`、`graphGroups≥1`，而今天读到的是 `2 / 0`。

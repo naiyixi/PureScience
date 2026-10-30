@@ -88,9 +88,8 @@ test('a finished turn folds into one summary row that opens, and that row states
   await expect(group.locator('[data-testid="tool-chip"]')).toHaveCount(2)
   console.log('[e1] newest turn open → folded (0 rows) → open again (2 rows), on a real window')
 })
-// NOT a test yet — "two turns keep two summary rows". Measured on a real window (2026-10-31), two turns
-// still produce ONE summary row even after merging the hydrated activity list with the live one: in a live
-// session `activeSession.activities` is run-scoped too. The projection that would fix it already exists —
-// `resolveActiveConversationActivities(conversationGraph)`, used by the branch switch in
-// session-store-message-graph-owner.ts:634-645 — and wiring it into the transcript's item source is the
-// next unit. Writing the assertion before that would only leave a red spec in the certification lane.
+// The pair "two turns → two summary rows" is still NOT asserted. Measured three ways (live flat list, merged
+// with the hydrated list, merged with resolveActiveConversationActivities(graph)) a real window still shows
+// ONE summary row — so the finished turn's activity is not in the renderer's in-memory graph yet either.
+// The remaining question is whether the write path persisted it at all; session-activity-persistence-probe
+// answers that from the file, and the fix goes wherever that reading points.

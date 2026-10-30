@@ -500,9 +500,10 @@ const WorkspaceMessageScrollerImpl = ({
         ? undefined
         : {
             ...activeSession,
-            // Both sides matter: the hydrated document holds every finished turn, the live list holds the
-            // one in flight. `??` would drop the finished ones and leave a long session with a single
-            // summary row.
+            // Both sides matter: the session's own list holds what was hydrated, the live list holds the run
+            // in flight. `??` dropped one side entirely. (Measured 2026-10-31: the earlier turns are not in
+            // either list yet — the write path keeps only the current run — so this merge is the right shape
+            // but not yet sufficient; see docs/evidence/2026-10-29-e1-e2-long-session-readings.md §E4.)
             activities: mergeActivityLists(activeSession.activities, liveActivities),
             activityGroups: mergeActivityLists(activeSession.activityGroups, liveActivityGroups)
           },
