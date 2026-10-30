@@ -94,7 +94,9 @@ test('draws a DOCX table frame and its inner grid as the file declares them', as
   expect(innerBottom.color).toBe('rgb(153, 153, 153)')
   expect(farInnerLeft.style).toBe('solid')
   expect(farInnerLeft.color).toBe('rgb(153, 153, 153)')
-  expect(frameTop.widthPx).toBeGreaterThan(innerRight.widthPx * 2)
+  // 外框必须比内网格重 —— 这是这条断言真正要说的事。**不**断言倍数：CSS 像素宽度随预览的缩放走，
+  // 本机量到 3.21 vs 0.80（4×），CI runner 上量到 3.89 vs 1.95（恰好 2×，`>` 就假红了）。
+  expect(frameTop.widthPx).toBeGreaterThan(innerRight.widthPx)
 
   // A table that declares rules only between cells draws the dotted grid and no outline on any side.
   expect(outline.top.widthPx).toBe(0)
