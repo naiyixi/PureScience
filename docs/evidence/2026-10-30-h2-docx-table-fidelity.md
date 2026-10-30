@@ -62,16 +62,40 @@
 配套回归：`npx vitest run src/renderer/src/pages/workspace/previews src/renderer/src/office-preview`
 → **43 files / 353 passed**（预览家族全绿，含既有 12 条被替身驱动的 docx 缩放/链接用例）。
 
-## 四 边界（不许读成更强）
+## 四 真机读数（真窗口 + 真 OOPIF 预览页，2026-10-30 19:5x）
 
-1. **没有真窗口读数**。上面所有读数来自 jsdom + 真 `docx-preview` + 真 docx 字节，**不是**真机窗口里
-   的 office 预览 OOPIF。真机取证要一支认证 spec（`e2e/certification/` 目前**没有** office 预览的用例），
-   本轮未做，已立案为下一步：夹具新增「按提示写一份带表格的 docx 产物」→ 真窗口点
-   `Preview generated file …` → `page.frameLocator('[data-office-preview-frame]')` 读 `toHaveCSS`。
+```bash
+npm run build:e2e                       # e2e 实例加载的是 e2e 产物，少这一步读数会落在旧渲染包上
+npx playwright test e2e/certification/office-preview-docx-tables.spec.ts --workers=1
+# → 1 passed (7.0s)
+```
+
+夹具（`e2e/fixtures/fake-opencode.mjs` 的 `Create a table DOCX fixture.` 分支）按提示写一份真 docx 产物
+（两张表：外框双线 3pt 绿 + 内网格 0.5pt 灰；另一张只声明 `insideH`/`insideV`），spec 走真入口
+`Preview generated file table-fidelity.docx` → `[data-office-preview-frame]` 的 OOPIF 里读每个格子的
+`getComputedStyle` 四条边。
+
+| 量 | 修复后（真窗口） | 同一份 spec、把 `reconcileDocxTableBorders` 关掉（变异探针，未提交） |
+|---|---|---|
+| 表 1 外框上边 | `double` 3.21 px `rgb(0,170,0)` | `double` 3.25 px `rgb(0,170,0)` |
+| 表 1 内部右边 / 下边、远角左邻边 | `solid` 0.80 px `rgb(153,153,153)` | **`double` 3.25 px `rgb(0,170,0)`**（外框被折进内网格） |
+| 表 2 内部右边 / 下边 | `dotted` 0.80 px `rgb(255,0,255)` | **0 px**（一条都没画） |
+| 表 2 四边外框 | 四条全是 **0 px** | 四条也是 0 px |
+
+两条结论里只有第一条是「修好了」，第二条是**没画过头**：表 2 的外框在关掉协调之后同样是 0 px
+⇒ 我们的代码没有替作者发明框线，读数在两版里相同正是它该有的样子。
+
+**「没有框线」按画出来的宽度判，不按 `border-*-style` 关键字判**：渲染器给未声明边写的是
+`0px solid #000`，关键字是 `solid` 而宽度是 0（本 spec 第一版就是按关键字写的，于是把一条看不见的
+规则判成看得见的，跑出一次假红）。判据改成四条边 `widthPx === 0`，同时把内部两条改成
+`style === 'dotted'` 且 `widthPx > 0` —— 这是**收紧**（原来只断关键字，现在连「画出来多重」一起断）。
+
+## 五 边界（不许读成更强）
+
+1. **样式只解析一层**：`basedOn` 继承链没有解析；那种表的结论是「没有规则」，与「表里没写」同形，
+   预览保持渲染器原样。
 2. **测试里的 docx 用 stored（不压缩）条目**：jsdom 的 `Blob.stream()` 不是 Node 流，真预览走的
    deflate 解压路径在这个环境里跑不起来。压缩路径由产品自己的 `validateOfficePackage` 在每次预览中走到
    （它对每个条目都做一次解压），不是本单元新引入的。
-3. **样式只解析一层**：`basedOn` 继承链没有解析；那种表的结论是「没有规则」，与「表里没写」同形，
-   预览保持渲染器原样。
-4. 上/下/左/右之外还有 `tblCellMar`（格内边距）、`tblInd`（整表缩进）两类版式量，本轮**没做**：
+3. 上/下/左/右之外还有 `tblCellMar`（格内边距）、`tblInd`（整表缩进）两类版式量，本轮**没做**：
    渲染器当前行为未量，先不声称。

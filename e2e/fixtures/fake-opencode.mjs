@@ -21,6 +21,7 @@ const PDF_PROSE_PROMPT = 'Create a prose PDF fixture.'
 const PDF_ROTATED_TABLE_PROMPT = 'Create a rotated table PDF fixture.'
 const PDF_REGION_PROMPT = 'Create a region drawing PDF.'
 const PDF_ANNOTATED_PROMPT = 'Create an annotated PDF fixture.'
+const DOCX_TABLE_PROMPT = 'Create a table DOCX fixture.'
 const INTERRUPTED_TURN_PROMPT = 'Continue the interrupted turn fixture.'
 // Literature screening: the app asks this agent to screen ONE record per session. The fixture answers in
 // the shape the app's guardrails demand (a citation of an inclusion criterion, or an explicit
@@ -538,6 +539,173 @@ const createPdfRegionArtifact = async (sessionId) =>
     return `Region PDF ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
   })
 
+// DOCX fixture bytes, built by hand for the same reason the PDFs above are: the fixture depends on no
+// generator. Entries are STORED rather than deflated, which the app's package validation accepts and
+// which keeps this file free of a compression dependency.
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let index = 0; index < 256; index += 1) {
+    let value = index
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1
+    }
+    table[index] = value >>> 0
+  }
+  return table
+})()
+
+const crc32 = (bytes) => {
+  let crc = 0xffffffff
+  for (const byte of bytes) crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+const zipStored = (entries) => {
+  const locals = []
+  const centrals = []
+  let offset = 0
+  for (const [name, text] of entries) {
+    const nameBytes = Buffer.from(name, 'utf8')
+    const data = Buffer.from(text, 'utf8')
+    const checksum = crc32(data)
+
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(0x04034b50, 0)
+    local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(0, 6)
+    local.writeUInt16LE(0, 8)
+    local.writeUInt16LE(0, 10)
+    local.writeUInt16LE(0, 12)
+    local.writeUInt32LE(checksum, 14)
+    local.writeUInt32LE(data.length, 18)
+    local.writeUInt32LE(data.length, 22)
+    local.writeUInt16LE(nameBytes.length, 26)
+    local.writeUInt16LE(0, 28)
+    locals.push(local, nameBytes, data)
+
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(0x02014b50, 0)
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
+    central.writeUInt16LE(0, 8)
+    central.writeUInt16LE(0, 10)
+    central.writeUInt16LE(0, 12)
+    central.writeUInt16LE(0, 14)
+    central.writeUInt32LE(checksum, 16)
+    central.writeUInt32LE(data.length, 20)
+    central.writeUInt32LE(data.length, 24)
+    central.writeUInt16LE(nameBytes.length, 28)
+    central.writeUInt16LE(0, 30)
+    central.writeUInt16LE(0, 32)
+    central.writeUInt16LE(0, 34)
+    central.writeUInt16LE(0, 36)
+    central.writeUInt32LE(0, 38)
+    central.writeUInt32LE(offset, 42)
+    centrals.push(central, nameBytes)
+
+    offset += local.length + nameBytes.length + data.length
+  }
+
+  const centralBytes = Buffer.concat(centrals)
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0)
+  end.writeUInt16LE(0, 4)
+  end.writeUInt16LE(0, 6)
+  end.writeUInt16LE(entries.length, 8)
+  end.writeUInt16LE(entries.length, 10)
+  end.writeUInt32LE(centralBytes.length, 12)
+  end.writeUInt32LE(offset, 16)
+  end.writeUInt16LE(0, 20)
+
+  return Buffer.concat([...locals, centralBytes, end]).toString('base64')
+}
+
+const WORD_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+// Two tables, each wrong in a different way under a renderer that folds a table's frame into its inner
+// rules: one keeps a heavy frame and a hairline grid apart, the other declares rules only between cells.
+const docxTableReport = () => {
+  const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="${WORD_NS}"><w:body>
+<w:p><w:r><w:t>Table fidelity evidence</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblBorders>
+<w:top w:val="double" w:sz="24" w:space="0" w:color="00AA00"/>
+<w:left w:val="double" w:sz="24" w:space="0" w:color="00AA00"/>
+<w:bottom w:val="double" w:sz="24" w:space="0" w:color="00AA00"/>
+<w:right w:val="double" w:sz="24" w:space="0" w:color="00AA00"/>
+<w:insideH w:val="single" w:sz="4" w:space="0" w:color="999999"/>
+<w:insideV w:val="single" w:sz="4" w:space="0" w:color="999999"/>
+</w:tblBorders></w:tblPr>
+<w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/></w:tblGrid>
+<w:tr><w:tc><w:p><w:r><w:t>Frame A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Frame B</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:t>Frame C</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Frame D</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl>
+<w:p><w:r><w:t>Inner rules only</w:t></w:r></w:p>
+<w:tbl><w:tblPr><w:tblBorders>
+<w:insideH w:val="dotted" w:sz="8" w:space="0" w:color="FF00FF"/>
+<w:insideV w:val="dotted" w:sz="8" w:space="0" w:color="FF00FF"/>
+</w:tblBorders></w:tblPr>
+<w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/></w:tblGrid>
+<w:tr><w:tc><w:p><w:r><w:t>Inner A</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Inner B</w:t></w:r></w:p></w:tc></w:tr>
+<w:tr><w:tc><w:p><w:r><w:t>Inner C</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Inner D</w:t></w:r></w:p></w:tc></w:tr>
+</w:tbl>
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>
+</w:body></w:document>`
+
+  return zipStored([
+    [
+      '[Content_Types].xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`
+    ],
+    [
+      '_rels/.rels',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`
+    ],
+    [
+      'word/_rels/document.xml.rels',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+    ],
+    [
+      'word/styles.xml',
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="${WORD_NS}"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>`
+    ],
+    ['word/document.xml', document]
+  ])
+}
+
+const createDocxTableArtifact = async (sessionId) =>
+  withMcpClient(sessionId, 'purescience_artifacts', async (client) => {
+    const stored = toolResult(
+      'write_artifact_file',
+      await client.callTool({
+        name: 'write_artifact_file',
+        arguments: {
+          filename: 'table-fidelity.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          encoding: 'base64',
+          content: docxTableReport()
+        }
+      })
+    )
+    if (!stored.artifact?.artifact_id || !stored.artifact.version_id) {
+      throw new Error('The table DOCX artifact was not stored with a Version.')
+    }
+    return `Table DOCX ready for session ${sessionId}, artifact ${stored.artifact.artifact_id}, version ${stored.artifact.version_id}.`
+  })
+
 if (process.argv.includes('--version')) {
   process.stdout.write(`${VERSION}\n`)
 } else {
@@ -634,6 +802,8 @@ if (process.argv.includes('--version')) {
           reply = await createPdfRegionArtifact(context.params.sessionId)
         } else if (prompt.includes(PDF_ANNOTATED_PROMPT)) {
           reply = await createPdfAnnotatedArtifact(context.params.sessionId)
+        } else if (prompt.includes(DOCX_TABLE_PROMPT)) {
+          reply = await createDocxTableArtifact(context.params.sessionId)
         } else if (prompt.includes(PERMISSION_PROMPT)) {
           const permission = await context.client.request(
             acp.methods.client.session.requestPermission,
