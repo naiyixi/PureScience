@@ -14197,3 +14197,76 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
 1. 按完整 40 位 SHA 读 `31a83bf3` 两条车道（`Nightly` / `Windows Full Test`）；认证作业仍红就读作业级日志定因。
 2. 然后开 **H2（DOCX 表格/边框/版式保真口径）**：它自足、不碰界面、可无人值守推进；H1（用例画廊）留一段完整窗口做。
 3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：资源口径同上，取不到继续具名挂着，不许写 0。
+
+## 二百六十一、本轮追加（执行器，2026-10-30 19:2x–20:4x）—— H2 的真机取证（真 OOPIF 里读四条边 + 变异探针），外加一条真红定因：`stop()` 在等一个永不松手的隧道
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = d08ff4fb`；本地 `HEAD` 领先一笔 `3aae09d5`（H2 实现本体），工作树里还躺着两份**同一条线的在制**：
+  `e2e/fixtures/fake-opencode.mjs`（+170 行 DOCX 夹具）与未跟踪的 `e2e/certification/office-preview-docx-tables.spec.ts`（94 行）。
+  §二百六十 §五 第 2 条写的「然后开 H2」就是这条线 ⇒ 本轮接着把它做完，不重写、不并行开第二个单元。
+- 在飞车道：`gh run list` 六条全 `completed` ⇒ 本次推送不取消任何人的判决（推前现查，不是感觉）。
+
+### 一 交付：H2 从「jsdom 有读数」补到「真窗口有读数」
+
+| 位置 | 改动 |
+| --- | --- |
+| `e2e/fixtures/fake-opencode.mjs` | 新增 `Create a table DOCX fixture.` 分支：手写 stored（不压缩）ZIP 的两张表 docx（外框双线 3pt 绿 + 内网格 0.5pt 灰；另一张只声明 `insideH`/`insideV`），走产品自己的 `write_artifact_file` 存成真产物 |
+| `e2e/certification/office-preview-docx-tables.spec.ts` | 新增：真窗口 → `Preview generated file table-fidelity.docx` → `[data-office-preview-frame]` 的 OOPIF 里逐格读 `getComputedStyle` 四条边 |
+| `docs/evidence/2026-10-30-h2-docx-table-fidelity.md` | §四 换成真机读数（含变异探针的两列），原「没有真窗口读数」的边界条删除 |
+
+### 二 真机读数（`build:e2e` 后 `npx playwright test … --workers=1`）
+
+`1 passed (7.0 s)`，两列是同一份 spec 跑两次：第二列把 `reconcileDocxTableBorders` 调用注释掉（变异探针，未提交）后重建再跑。
+
+| 量 | 修复后 | 关掉协调（改之前） |
+| --- | --- | --- |
+| 表 1 外框上边 | `double` 3.21 px `rgb(0,170,0)` | `double` 3.25 px `rgb(0,170,0)` |
+| 表 1 内部右边/下边、远角左邻边 | `solid` 0.80 px `rgb(153,153,153)` | **`double` 3.25 px `rgb(0,170,0)`**（外框折进内网格） |
+| 表 2 内部右边/下边 | `dotted` 0.80 px `rgb(255,0,255)` | **0 px**（一条都没画） |
+| 表 2 四边外框 | 四条全 0 px | 四条也 0 px |
+
+最后一行是**「没画过头」**的证据：关掉协调之后外框同样是 0 px ⇒ 我们没替作者发明框线。这也让「变异探针」这一栏不是可有可无的：它证明这四条断言真的在断我们的那段逻辑，而不是在断渲染器的默认值。
+
+**一条本 spec 自己的假红（已修）**：第一版把「没有框线」写成 `border-*-style === 'none'`，而渲染器给未声明边写的是
+`0px solid #000` ⇒ 关键字是 `solid`、宽度是 0，一条看不见的规则被判成看得见的，跑出一次假红。判据改成四条边
+`widthPx === 0`，内部两条加 `widthPx > 0` —— 这是收紧，不是放宽。
+
+### 三 `d08ff4fb` 的 Nightly 红：不是抖动，是 `stop()` 会等一个客户端永不松手的隧道
+
+归因路径（读数都在）：作业级日志里 `build / Verify` 的 `Test (with coverage)` 步骤红，唯一失败是
+`src/main/net/egress.test.ts > EgressProxy > tears an established tunnel down when the client is resetd…`
+（`Test timed out in 60000ms`），紧跟 `afterEach` 的 `Hook timed out in 60000ms`（钩子里第一条就是 `await proxy.stop()`）。
+我先按纪律单文件复跑 **5 遍全绿**（3 遍普通 + 2 遍带覆盖），本可记成「负载抖动」，但**写一条钉住判据的用例比记一次抖动便宜**：
+
+- 新用例：建一条真的 CONNECT 隧道、客户端**保持不放**，然后 `settledWithin(proxy.stop(), 5 000)` 应为 `settled`。
+- 修之前：**确定性失败**（`expected 'timeout' to be 'settled'`，且 `afterEach` 同样 `Hook timed out`）——
+  与 CI 那次红的形态逐字相同 ⇒ 这条红不是抖动，是「隧道还开着时 `stop()` 永不返回」。
+- 机制：`node:http` 的 `server.close()` 要等所有连接结束，而 **CONNECT 隧道态下的 socket 不受
+  `closeAllConnections()` 管**（单独探针实测：`_connections` 仍是 1、close 回调不触发）。先只加
+  `closeAllConnections()` 的版本**照样超时**（被这条新用例当场否掉），正解是代理自己记住每条隧道的幂等
+  `teardown`，`stop()` 先逐条收掉再 `server.close()`。
+- 影响面不止测试：`applyEgressSettings` 关闭网络出口时就是 `await proxy.stop()` —— 用户把开关关掉会卡在那里。
+
+### 四 门禁（全部实跑，数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/net/egress.test.ts` | **33 passed（3 遍）**；带覆盖单文件 **33 passed**（`EXIT=1` 只因 scoped run 让未跑文件的覆盖率阈值为 0） |
+| `src/main/net` 整个目录 | **8 files / 94 passed** |
+| H2 认证 spec（`build:e2e` 后） | **1 passed（7.0 s）**；变异版 **1 failed**（读数见 §二） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **0**（中途一次 `TS2345`：`Set<() => void>` 收不下带 reason 的 teardown ⇒ 把集合类型改成 `Set<(reason: string) => void>`，`stop()` 传具名原因 `proxy-stop`） |
+| `eslint --no-cache`（本批 4 个代码文件） | **0 error / 0 warning**（新用例里那处模板字面量被 prettier 判折行，`prettier --write` 后复跑为 0） |
+| 全量 `vitest run --maxWorkers=4` | **1459 files（1428 passed / 30 skipped / 1 failed）；18,265 例（18,039 passed / 225 skipped / 1 failed）；214 s** |
+
+全量那 1 条失败**不是本批**：`src/main/session-persistence/catalog-index.test.ts > rebuilds the whole index when it is missing, then serves from it again`
+（`expected { hits: 1, parsedDocuments: 1 } to deeply equal { hits: 2, parsedDocuments: 0 }` —— 第二次读没走缓存）。
+单文件 3 遍全绿 ⇒ 按**负载敏感**记档，不谎报「全量绿」，也不当回归去改它；本批两个字都没碰那个模块。
+下次它再在同一处红，就按「缓存命中计数」这条判据去修，不靠加大超时。
+
+### 五 推送与下一轮第一步
+
+- 推送范围：`3aae09d5`（H2 实现）+ 本批两笔（H2 取证 / egress 收口）。推前在飞 0（见 §〇）。
+- **下一轮第一步**：按完整 40 位 SHA 读这一笔的 `Nightly`（覆盖车道才是 egress 那条红的口径）与 `Windows Full Test`；
+  绿了就开 **H1（用例画廊）**——它要一段完整窗口，别和发版窗口抢；红了先按作业级日志定因，别重跑。
+- A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：网络/内存恢复后再取，取不到继续具名挂着。
