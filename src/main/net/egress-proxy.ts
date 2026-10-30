@@ -63,6 +63,11 @@ export class EgressProxy {
   private allowlist: string[] | undefined
   private listeningPort = 0
   private approvalHandler: EgressApprovalHandler | undefined
+  // Live CONNECT tunnels, each represented by its own idempotent teardown. `server.close()` waits for
+  // every connection and Node does not destroy a socket that is in a CONNECT tunnel state (measured:
+  // `closeAllConnections()` leaves it open and the close callback never fires), so a shutdown that only
+  // relied on the server would wait for a client that may never let go.
+  private readonly tunnelTeardowns = new Set<(reason: string) => void>()
 
   constructor(options: { approvalTimeoutMs?: number } = {}) {
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS
@@ -87,7 +92,16 @@ export class EgressProxy {
 
   async stop(): Promise<void> {
     if (!this.server.listening) return
-    await new Promise<void>((resolve) => this.server.close(() => resolve()))
+    // End every live tunnel first: a CONNECT socket is a raw connection the client may hold as long as
+    // it likes, and this method's callers are a settings toggle (turning egress off) and process
+    // teardown — both must not wait for a client (measured 2026-10-30: the coverage lane timed out here
+    // at 60 s). The teardowns are the same idempotent ones the tunnel handlers use, so a tunnel that is
+    // already closing is not touched twice.
+    for (const teardown of [...this.tunnelTeardowns]) teardown('proxy-stop')
+    const closed = new Promise<void>((resolve) => this.server.close(() => resolve()))
+    // Plain HTTP keep-alive sockets are not tunnels; `closeAllConnections` ends those.
+    ;(this.server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.()
+    await closed
   }
 
   setAllowlist(allowlist: string[] | undefined): void {
@@ -296,6 +310,7 @@ export class EgressProxy {
     const teardown = (reason: string): void => {
       if (settled) return
       settled = true
+      this.tunnelTeardowns.delete(teardown)
       log.info('egress tunnel torn down', {
         host,
         port,
@@ -314,6 +329,8 @@ export class EgressProxy {
         // A diagnostic-free teardown: nothing here may throw into the server's connect handler.
       }
     }
+    // Registered so `stop()` can end this tunnel instead of waiting for the client to let go.
+    this.tunnelTeardowns.add(teardown)
     socket.on('error', (error: Error) => {
       // Named, because this used to be an uncaught exception: the client went away mid-request.
       const failure = describeEgressFailure(error)

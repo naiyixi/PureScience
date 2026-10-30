@@ -511,13 +511,58 @@ describe('EgressProxy', () => {
         expect(again).toContain('200 Connection Established')
       } finally {
         process.off('uncaughtException', onEscaped)
-        // A leaked target socket would otherwise make cleanup hang and hide the assertion above.
+        // A leaked target socket would otherwise make cleanup hang and hide the assertion above — and a
+        // hang here is not free: it rides the suite's 60 s timeout and then hangs `afterEach` on
+        // `proxy.stop()` too, which is how this file turned the whole coverage lane red (measured
+        // 2026-10-30 on the full suite: `Test timed out in 60000ms` at this test, then `Hook timed out`
+        // in afterEach; the same file alone is green 5/5). The leak itself is asserted above, so the
+        // teardown is bounded and *says* when it had to force the server side shut.
         targetSocket?.destroy()
-        await new Promise<void>((resolve) => target.close(() => resolve()))
+        const targetClosed = new Promise<void>((resolve) => target.close(() => resolve()))
+        if ((await settledWithin(targetClosed, 5_000)) === 'timeout') {
+          process.stdout.write(
+            `[egress] target server still had an open connection 5 s after the ${ending} ending; forcing it shut\n`
+          )
+          // The reset ending sometimes never reaches the proxy (a platform event documented above), so
+          // the tunnel socket is legitimately still open here — force the acceptor, don't wait for it.
+          ;(target as unknown as { closeAllConnections?: () => void }).closeAllConnections?.()
+          await settledWithin(targetClosed, 5_000)
+        }
       }
       expect(escaped).toEqual([])
     })
   }
+
+  // Stop is a settings action (turning egress off) and the teardown of every test in this file: it must
+  // not wait for a client to let go of its tunnel. Before the fix `stop()` awaited `server.close()`,
+  // which waits for every open connection — a client holding a CONNECT tunnel kept the await from ever
+  // returning (the coverage lane's only red on 2026-10-30, and a settings toggle that hangs for the user).
+  it('stops while a CONNECT tunnel is still open instead of waiting for the client', async () => {
+    proxy = new EgressProxy()
+    proxy.setAllowlist(['127.0.0.1'])
+    const peerPort = (peer.address() as { port: number }).port
+    const port = await proxy.start()
+
+    const socket = tcpConnect({ host: '127.0.0.1', port })
+    await new Promise<void>((resolve, reject) => {
+      let data = ''
+      socket.on('connect', () => {
+        socket.write(
+          `CONNECT 127.0.0.1:${peerPort} HTTP/1.1\r\nHost: 127.0.0.1:${peerPort}\r\n\r\n`
+        )
+      })
+      socket.on('data', (chunk) => {
+        data += chunk.toString()
+        if (data.includes('200 Connection Established')) resolve()
+      })
+      socket.on('error', reject)
+      socket.on('close', () => reject(new Error('the tunnel closed before it was established')))
+    })
+
+    // The client keeps the tunnel open and does nothing else — the shape that used to block `stop()`.
+    expect(await settledWithin(proxy.stop(), 5_000)).toBe('settled')
+    socket.destroy()
+  })
 
   // Deterministic pin for the ending that carries no error: a socket the test owns emits `close` and
   // nothing else, and a teardown that only listened for `error` left the target connection open. Over
