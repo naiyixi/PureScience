@@ -32,6 +32,7 @@ import {
   type ApplicationInvocation
 } from './application-command-router'
 import { createCallerContext } from './caller-context'
+import { EXTERNAL_MCP_TOOLS, externalMcpCommandNames } from './external-mcp/surface'
 
 const EMPTY_OWNER = Object.freeze({})
 
@@ -197,6 +198,28 @@ describe('application command composition', () => {
     // LOCAL, so the local Web view (where the headless CLI lands) carries them and the fail-closed set
     // takes them on the remote surface.
     expect(composition.localWeb.commandNames()).toHaveLength(373)
+  })
+
+  it('gives the outside MCP client exactly the surface it declares, and nothing wider', async () => {
+    const composition = createApplicationCommandComposition(dependencies())
+
+    // One list, two consumers: the surface module declares the tools and derives the command names from
+    // them; the composition certifies that same list and hands back a view of exactly those names.
+    expect(composition.externalMcp.commandNames()).toEqual([...externalMcpCommandNames])
+    for (const tool of EXTERNAL_MCP_TOOLS) {
+      expect(composition.externalMcp.commandNames()).toContain(tool.command)
+    }
+
+    // A channel that exists on the local Web view but is not part of the outside surface is unreachable
+    // through it — the package export is the sharpest example: an outside client must not be able to pull
+    // a whole session out of this machine.
+    for (const command of ['sessions:export-package', 'acp:send-prompt', 'projects:create']) {
+      await expect(composition.externalMcp.invoke(command, invocation('local'))).rejects.toThrow(
+        'Application command is unavailable in this view'
+      )
+    }
+
+    composition.dispose()
   })
 
   it('partitions remote Web dispatch from fail-closed pre-dispatch rejections', async () => {

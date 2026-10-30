@@ -1,7 +1,10 @@
-export type CallerSurface = 'electron' | 'web' | 'task'
+// `external-mcp` is an outside MCP client (a desktop assistant, a script) talking to this app through
+// `purescience mcp`. It is deliberately NOT `human`: nothing outside this process may satisfy an
+// approval, and the read-only slice it can reach today never crosses the permission gate at all.
+export type CallerSurface = 'electron' | 'web' | 'task' | 'external-mcp'
 export type CallerLocation = 'local' | 'remote'
-export type CallerPrincipalKind = 'human' | 'automation' | 'agent-session'
-export type CallerActionOrigin = 'human' | 'automation' | 'agent-session'
+export type CallerPrincipalKind = 'human' | 'automation' | 'agent-session' | 'external-mcp'
+export type CallerActionOrigin = 'human' | 'automation' | 'agent-session' | 'external-mcp'
 export type CallerAuthority = 'manage-remote-pairing' | 'satisfy-approval'
 
 export type CallerContext = Readonly<{
@@ -85,6 +88,20 @@ const createTaskCallerContext = (options: CreateTaskCallerContextOptions = {}): 
     isAuthorizationCurrent: options.isAuthorizationCurrent
   })
 
+// An outside MCP client. No authorities are granted by construction: it cannot satisfy an approval, and
+// `canSatisfyHumanApproval` is false for it because both the principal and the action origin are
+// `external-mcp`. `clientId` is the transport's per-connection id so two clients keep separate leases.
+const createExternalMcpCallerContext = (clientId: string): CallerContext =>
+  createCallerContext({
+    clientId,
+    lifecycleClientId: `external-mcp:${clientId}`,
+    leaseId: `external-mcp:${clientId}`,
+    surface: 'external-mcp',
+    location: 'local',
+    principalKind: 'external-mcp',
+    actionOrigin: 'external-mcp'
+  })
+
 const hasCallerAuthority = (context: CallerContext, authority: CallerAuthority): boolean =>
   context.isAuthorizationCurrent() && context.authorities.includes(authority)
 
@@ -165,6 +182,7 @@ export {
   canSatisfyHumanApproval,
   createCallerContext,
   createElectronCallerContext,
+  createExternalMcpCallerContext,
   createTaskCallerContext,
   createWebCallerContext,
   hasCallerAuthority

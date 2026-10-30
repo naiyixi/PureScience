@@ -136,7 +136,12 @@ describe('production application command wiring', () => {
     expect(returnedViews).toContain('localWeb: applicationCommandComposition.localWeb')
     expect(returnedViews).toContain('remoteWeb: applicationCommandComposition.remoteWeb')
     expect(returnedViews).toContain('task: applicationCommandComposition.task')
-    expect(occurrences(returnedViews, 'applicationCommandComposition.')).toBe(3)
+    // F1: the outside MCP client's view is handed out here too, because the listener is started by the
+    // composition root after this call and must be given the narrow external view rather than a dispatcher.
+    // Four narrow views is the deliberate number — the rule this asserts is "no full router leaks out of
+    // composition", and this view is narrower than the three above (four read-only commands).
+    expect(returnedViews).toContain('externalMcp: applicationCommandComposition.externalMcp')
+    expect(occurrences(returnedViews, 'applicationCommandComposition.')).toBe(4)
   })
 
   it('adds transport adapters after composition and disposes the router before its owners', () => {

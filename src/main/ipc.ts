@@ -523,7 +523,10 @@ type IpcRegistrationOptions = {
 }
 
 export type ApplicationRuntimeInterfaces = {
-  applicationCommands: Pick<ApplicationCommandComposition, 'localWeb' | 'remoteWeb' | 'task'>
+  applicationCommands: Pick<
+    ApplicationCommandComposition,
+    'localWeb' | 'remoteWeb' | 'task' | 'externalMcp'
+  >
   applicationEvents: ApplicationEventSource
   bindRemoteAccess: ApplicationCommandComposition['bindRemoteAccess']
   taskNotifications: Pick<
@@ -4180,7 +4183,10 @@ const createApplicationModules = async (
     applicationCommands: {
       localWeb: applicationCommandComposition.localWeb,
       remoteWeb: applicationCommandComposition.remoteWeb,
-      task: applicationCommandComposition.task
+      task: applicationCommandComposition.task,
+      // Handed out here as well because the outside MCP listener is started in the composition root after
+      // this call returns; it must be this narrow view, never the Web or desktop dispatcher.
+      externalMcp: applicationCommandComposition.externalMcp
     },
     applicationEvents,
     bindRemoteAccess: applicationCommandComposition.bindRemoteAccess,

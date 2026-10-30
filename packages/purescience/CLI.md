@@ -230,6 +230,39 @@ Both verbs share the package's own failure vocabulary:
 | `2`  | The app answered and refused (unknown session, not a package, no project). |
 | `3`  | The local service could not be reached.                                    |
 
+## Connect an outside MCP client
+
+The app can serve a read-only set of its own tools over the Model Context Protocol, so an assistant you
+already run can read this machine's projects and conversations without being given the app's whole
+authority:
+
+```bash
+purescience mcp                 # speaks MCP over stdio until the client closes it
+purescience mcp --list-tools    # print what the running app exposes, then exit
+```
+
+Register the command in that client's MCP configuration exactly as written (`purescience mcp`); it finds
+the running app itself and needs no arguments. The app must be running — `purescience mcp` reads the
+endpoint and token the app published for this machine, and never accepts one from the client.
+
+What it exposes today, all read-only:
+
+| Tool | What it returns |
+| --- | --- |
+| `list_projects` | the projects on this machine, with their ids |
+| `list_sessions` | conversations as summaries, optionally narrowed to one project (id or exact name) |
+| `read_session` | one conversation's messages, with `messageCount` and `truncated` |
+| `list_project_files` | the files the app holds for one project |
+
+Narrowing by a project name that does not exist is refused by name (`project-not-found`) rather than
+answered with every project, and a long conversation states how many messages it left out instead of
+looking complete. Nothing here can change data; tools that would change data are not exposed until they
+carry the same approval the app's own agent needs.
+
+The exit code says which of the three situations you are in: `0` the client closed the stream, `3` the
+app is not reachable, `4` the app is running but its published endpoint is stale (`purescience start`
+then reconnect). The token is never printed.
+
 ## Machine state
 
 Read what the application already decided about this machine — the same readiness judgement, runtime

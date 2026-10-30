@@ -71,6 +71,9 @@ import {
   sessionPackageApplicationCommandGroup,
   type SessionPackageApplicationCommandDependencies
 } from './session-package/application-commands'
+// F1: the external MCP surface's command whitelist is derived from its own tool table, so a tool cannot be
+// declared against a command an outside client may not reach. Read-only slice: four reads, no writes.
+import { externalMcpCommandNames } from './external-mcp/surface'
 
 type AnyApplicationCommand = ApplicationCommand<string, readonly unknown[], unknown>
 type NotebookEnvironmentDependencies = Parameters<
@@ -110,6 +113,8 @@ type ApplicationCommandComposition = Readonly<{
   localWeb: ApplicationCommandByNameDispatcher
   remoteWeb: RemoteWebApplicationCommandDispatcher
   task: ApplicationCommandByNameDispatcher
+  /** The narrow view an outside MCP client reaches (`purescience mcp`). Read-only tools only. */
+  externalMcp: ApplicationCommandByNameDispatcher
   bindRemoteAccess: (owner: RemoteAccessOwner) => void
   dispose: () => void
 }>
@@ -257,6 +262,10 @@ const REMOTE_REJECTED_COMMAND_COUNT = 135
 // Task view the rest of its machine-readable work uses, so these two land here as well as on the local
 // Web profile. They are LOCAL, so they add nothing to the remote dispatch.
 const TASK_COMMAND_COUNT = 15
+// The external MCP tools this app exposes to an outside client (`purescience mcp`). The list itself lives
+// with the tool table in `external-mcp/surface.ts`; this count certifies that adding a tool to the surface
+// also reaches the boot-time inventory check instead of silently widening the reachable set.
+const EXTERNAL_MCP_COMMAND_COUNT = 4
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -392,7 +401,8 @@ const certifyInventory = (): Readonly<{
     [localWebNames, LOCAL_WEB_COMMAND_COUNT, 'local Web commands'],
     [remoteWebNames, REMOTE_WEB_COMMAND_COUNT, 'remote Web commands'],
     [remoteRejectedNames, REMOTE_REJECTED_COMMAND_COUNT, 'remote Web rejections'],
-    [TASK_COMMAND_NAMES, TASK_COMMAND_COUNT, 'Task commands']
+    [TASK_COMMAND_NAMES, TASK_COMMAND_COUNT, 'Task commands'],
+    [externalMcpCommandNames, EXTERNAL_MCP_COMMAND_COUNT, 'external MCP commands']
   ] as const
   for (const [names, count, label] of expectedCounts) {
     if (names.length !== count)
@@ -515,11 +525,13 @@ const createApplicationCommandComposition = (
     rejectedCommandNames: (): readonly string[] => certified.remoteRejectedNames
   })
   const task = view(TASK_COMMAND_NAMES)
+  const externalMcp = view(externalMcpCommandNames)
 
   return Object.freeze({
     localWeb,
     remoteWeb,
     task,
+    externalMcp,
     bindRemoteAccess: remoteAccess.bind,
     dispose: (): void => {
       if (disposed) return

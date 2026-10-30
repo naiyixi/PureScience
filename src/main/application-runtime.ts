@@ -46,6 +46,9 @@ export type ApplicationSurfaceShutdown = {
   disposeApplicationRuntime(): Awaitable<void>
   shutdownRemoteAccess(): Awaitable<void>
   disposeWebController(): Awaitable<void>
+  // The outside MCP listener. Absent when it could not be started (or was never offered), which is a normal
+  // state rather than a failure — `purescience mcp` reports the app as unreachable in that case.
+  disposeExternalMcp?: () => Awaitable<void>
   disposeIpcHandlers(): Awaitable<void>
   log?: Pick<Logger, 'error'>
 }
@@ -54,6 +57,7 @@ export type ApplicationLifecycleShutdownDependencies = {
   disposeApplicationRuntime: ApplicationSurfaceShutdown['disposeApplicationRuntime']
   remoteAccess: { shutdown(): Awaitable<void> }
   webController: { dispose(): Awaitable<void> }
+  externalMcp?: { stop(): Awaitable<void> }
   disposeIpcHandlers: ApplicationSurfaceShutdown['disposeIpcHandlers']
   log?: ApplicationSurfaceShutdown['log']
 }
@@ -65,6 +69,7 @@ export const shutdownApplicationSurfaces = async ({
   disposeApplicationRuntime,
   shutdownRemoteAccess,
   disposeWebController,
+  disposeExternalMcp,
   disposeIpcHandlers,
   log
 }: ApplicationSurfaceShutdown): Promise<ShutdownStepOutcome> => {
@@ -116,6 +121,10 @@ export const shutdownApplicationSurfaces = async ({
     }
   }
 
+  // The outside MCP listener closes first: it invokes application commands through its own caller leases, so
+  // it must be gone before the router (disposeApplicationRuntime) is. Closing it withdraws the discovery file,
+  // which is what makes `purescience mcp` say "not running" instead of dialling a dead port.
+  if (disposeExternalMcp) await dispose('external-mcp', disposeExternalMcp)
   await dispose('web-controller', disposeWebController)
   await dispose('application-runtime', disposeApplicationRuntime)
   await dispose('remote-access', shutdownRemoteAccess)
@@ -129,6 +138,7 @@ export const createApplicationLifecycleShutdown = ({
   disposeApplicationRuntime,
   remoteAccess,
   webController,
+  externalMcp,
   disposeIpcHandlers,
   log
 }: ApplicationLifecycleShutdownDependencies): (() => Promise<ShutdownStepOutcome>) => {
@@ -137,6 +147,7 @@ export const createApplicationLifecycleShutdown = ({
       disposeApplicationRuntime,
       shutdownRemoteAccess: () => remoteAccess.shutdown(),
       disposeWebController: () => webController.dispose(),
+      ...(externalMcp ? { disposeExternalMcp: () => externalMcp.stop() } : {}),
       disposeIpcHandlers,
       log
     })

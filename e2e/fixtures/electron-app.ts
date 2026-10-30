@@ -114,6 +114,13 @@ type ElectronApp = {
    * container path.
    */
   readonly storageRoot: string
+  /**
+   * The captured stdout/stderr file of this harness's most recent launch — the only place a spec can read
+   * a log line that belongs to *this* instance. `~/Library/Logs/…/main.log` is shared with whatever else is
+   * running on the machine, so an assertion made against it can be satisfied by another process's line.
+   * Undefined only before the first launch.
+   */
+  readonly currentLaunchLogPath: string | undefined
   completeOnboarding: () => Promise<Page>
   configureFakeAgent: () => Promise<Page>
   createTestDirectory: (name: string) => Promise<string>

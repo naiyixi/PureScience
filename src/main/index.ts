@@ -366,7 +366,8 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         { bindUnreadTaskDeletionRuntime },
         { registerUnreadTaskIpc },
         { getProjectDbClient },
-        { resolveStorageRoot, resolveDataRoot }
+        { resolveStorageRoot, resolveDataRoot, resolveConfigRoot },
+        { startExternalMcpServer }
       ] = await Promise.all([
         import('./ipc'),
         import('./windows'),
@@ -390,7 +391,8 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         import('./notifications/task-notification-runtime'),
         import('./notifications/unread-task-ipc'),
         import('./projects/prisma-client'),
-        import('./storage-root')
+        import('./storage-root'),
+        import('./external-mcp')
       ])
 
       protocol.registerSchemesAsPrivileged([
@@ -604,6 +606,17 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       startupDiagnostics?.phase('web-controller-created')
       remoteAccess.attachWebController(webController)
       registerRemoteAccessIpcHandlers(remoteAccess)
+      // F1: the outside MCP surface (`purescience mcp`). Bound to the narrow external-MCP command view, so an
+      // outside client reads what the app already holds and nothing else. Failure-tolerant on purpose: a
+      // listener that cannot bind must not abort startup — `purescience mcp` then reports the app as not
+      // reachable instead of the user losing the app.
+      const externalMcp = await startExternalMcpServer({
+        commands: applicationCommands.externalMcp,
+        configRoot: resolveConfigRoot()
+      })
+      startupDiagnostics?.phase('external-mcp-started', {
+        endpoint: externalMcp?.endpoint ?? 'not-offered'
+      })
       // A launch that itself requested serving (a dedicated headless daemon, or an explicit --serve) is
       // not attached: stopping it quits the process. On-demand starts for a running instance are attached.
       if (webMode.enabled) await webController.ensureStarted(webMode.port, { attached: false })
@@ -655,6 +668,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
         webMode,
         webController,
         remoteAccess,
+        externalMcp,
         disposeIpcHandlerRegistry
       }
     },
@@ -735,6 +749,7 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
             disposeApplicationRuntime: ctx.disposeApplicationRuntime,
             remoteAccess: ctx.remoteAccess,
             webController: ctx.webController,
+            externalMcp: ctx.externalMcp,
             disposeIpcHandlers: ctx.disposeIpcHandlerRegistry,
             log: ctx.log
           }

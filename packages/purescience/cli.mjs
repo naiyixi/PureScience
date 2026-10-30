@@ -13,6 +13,14 @@ import { spawn, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 import { findServiceState, readWebToken, resolveConfigRoot, STATE_FILE } from './config-root.mjs'
+import {
+  EXIT_APP_NOT_RUNNING,
+  EXIT_STATE_UNUSABLE,
+  findExternalMcpState,
+  linesOf,
+  listExternalMcpTools,
+  runExternalMcpBridge
+} from './external-mcp-bridge.mjs'
 import { connectToPureScience } from './index.mjs'
 import { locateApp } from './locate-app.mjs'
 import { formatDoctor, formatInit, runDoctor, runInit } from './doctor.mjs'
@@ -49,6 +57,9 @@ Commands:
   connectors list        List connectors and whether each is enabled
   capabilities [--session <session-id>]
                          List capability contracts; with --session, say what each still needs
+  mcp                    Serve this app's read-only tools over stdio to an outside MCP client
+                         (requires the app to be running; --list-tools prints what it exposes)
+                         Exit codes: 0 normal end, 3 app not reachable, 4 published state unusable
   rollback-to-0.7.3 --yes [--output <path>]
 
 Options:
@@ -72,6 +83,7 @@ Options:
   --json                 Emit one machine-readable result
   --option <optionId>    Answer a pending permission request with this option (approve)
   --cancel               Deny a pending permission request (approve)
+  --list-tools           With mcp: print the tools the running app exposes, then exit
   -h, --help             Show this help`
 
 // Flags that take a value, mapped to their camelCase option key (explicit so new hyphenated flags
@@ -157,6 +169,7 @@ export const parseCliArgs = (argv) => {
     else if (arg === '--jsonl') options.jsonl = true
     else if (arg === '--wait') options.wait = true
     else if (arg === '--cancel') options.cancel = true
+    else if (arg === '--list-tools') options.listTools = true
     else if (arg === '--skill') {
       const value = args.shift()
       if (!value) throw new CliUsageError('--skill requires a value.')
@@ -206,6 +219,9 @@ export const parseCliArgs = (argv) => {
   }
   if (options.dataRoot && command !== 'rollback-to-0.7.3') {
     throw new CliUsageError('--data-root requires rollback-to-0.7.3.')
+  }
+  if (options.listTools && command !== 'mcp') {
+    throw new CliUsageError('--list-tools requires mcp.')
   }
   return {
     command,
@@ -971,6 +987,46 @@ const doctorCommand = async (options) => {
   if (report.summary.fail > 0) process.exitCode = 1
 }
 
+// `purescience mcp`: the process an outside MCP client launches. stdout carries protocol bytes only — every
+// diagnostic goes to stderr, because one stray `console.log` would corrupt the stream for the client.
+const mcpCommand = async (options) => {
+  const state = await findExternalMcpState({ override: options.configRoot })
+  if (!state) {
+    console.error(
+      'PureScience is not running: no external MCP endpoint is published for this config root. ' +
+        'Start the app (purescience start) and try again.'
+    )
+    process.exitCode = EXIT_APP_NOT_RUNNING
+    return
+  }
+
+  if (options.listTools) {
+    const listed = await listExternalMcpTools(state)
+    if (!listed.ok) {
+      console.error(
+        `PureScience is running but its external MCP endpoint did not answer (${listed.detail}). ` +
+          'Restart the app so it republishes the endpoint.'
+      )
+      process.exitCode = listed.exitCode ?? EXIT_STATE_UNUSABLE
+      return
+    }
+    if (options.json) {
+      console.log(JSON.stringify({ endpoint: state.endpoint, tools: listed.tools }, null, 2))
+      return
+    }
+    for (const tool of listed.tools) {
+      console.log(`${tool.name}\t${tool.title ?? ''}\t${tool.description ?? ''}`)
+    }
+    return
+  }
+
+  process.exitCode = await runExternalMcpBridge({
+    state,
+    input: linesOf(process.stdin),
+    write: (line) => process.stdout.write(line)
+  })
+}
+
 export const runCli = async (argv = process.argv.slice(2)) => {
   const parsed = parseCliArgs(argv)
   const { command, options } = parsed
@@ -985,6 +1041,7 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   else if (command === 'status') await statusCommand(options)
   else if (command === 'url') await urlCommand(options)
   else if (command === 'rollback-to-0.7.3') await rollbackCommand(options)
+  else if (command === 'mcp') await mcpCommand(options)
   else if (TASK_COMMANDS.has(command)) await runTaskCommand(parsed)
   else throw new CliUsageError(`Unknown command: ${command}\n\n${usage}`)
 }
