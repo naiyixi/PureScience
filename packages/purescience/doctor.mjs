@@ -5,7 +5,14 @@ import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { locateApp } from './locate-app.mjs'
-import { readStateFromRoot, readWebToken, resolveConfigRoot, STATE_FILE, TOKEN_FILE } from './config-root.mjs'
+import { checkSignature } from './signature.mjs'
+import {
+  readStateFromRoot,
+  readWebToken,
+  resolveConfigRoot,
+  STATE_FILE,
+  TOKEN_FILE
+} from './config-root.mjs'
 
 // `purescience doctor` and `purescience init`.
 //
@@ -84,7 +91,9 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
 
   const rootState = await probe(root)
   if (!rootState.exists) {
-    checks.push(check('config_root', 'warn', { path: root, detail: '不存在；`purescience init` 会创建它' }))
+    checks.push(
+      check('config_root', 'warn', { path: root, detail: '不存在；`purescience init` 会创建它' })
+    )
   } else {
     const writable = rootState.isDirectory ? await writableProbe(root) : { writable: false }
     checks.push(
@@ -102,9 +111,19 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
   const stateProbe = await probe(statePath)
   const state = stateProbe.exists ? await readStateFromRoot(root) : undefined
   if (!stateProbe.exists) {
-    checks.push(check('service_state', 'warn', { path: statePath, detail: '没有状态文件：后台服务未运行过或被清理' }))
+    checks.push(
+      check('service_state', 'warn', {
+        path: statePath,
+        detail: '没有状态文件：后台服务未运行过或被清理'
+      })
+    )
   } else if (!state) {
-    checks.push(check('service_state', 'fail', { path: statePath, detail: '状态文件存在但解析不出 pid/port/startedAt' }))
+    checks.push(
+      check('service_state', 'fail', {
+        path: statePath,
+        detail: '状态文件存在但解析不出 pid/port/startedAt'
+      })
+    )
   } else {
     const alive = pidAlive(state.pid)
     checks.push(
@@ -122,14 +141,26 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
   const tokenPath = join(root, TOKEN_FILE)
   const tokenProbe = await probe(tokenPath)
   if (!tokenProbe.exists) {
-    checks.push(check('web_token', 'warn', { path: tokenPath, detail: '还没有令牌：服务启动时才会生成' }))
+    checks.push(
+      check('web_token', 'warn', { path: tokenPath, detail: '还没有令牌：服务启动时才会生成' })
+    )
   } else {
     try {
       const token = await readWebToken(root)
       // Presence and length only — the value itself never enters this output.
-      checks.push(check('web_token', token.length > 0 ? 'ok' : 'fail', { path: tokenPath, length: token.length }))
+      checks.push(
+        check('web_token', token.length > 0 ? 'ok' : 'fail', {
+          path: tokenPath,
+          length: token.length
+        })
+      )
     } catch (error) {
-      checks.push(check('web_token', 'fail', { path: tokenPath, error: error instanceof Error ? error.message : String(error) }))
+      checks.push(
+        check('web_token', 'fail', {
+          path: tokenPath,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      )
     }
   }
 
@@ -150,6 +181,28 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
           ...(appResolved && appResolved.error ? { error: appResolved.error } : {})
         })
   )
+
+  // G1 的非花钱半边：这一版没有证书，所以要能回答「装得上吗、系统会怎么拦我」。签名状态是本机实测的，
+  // 每种状态都带一句下一步怎么走（见 signature.mjs）。开发运行的二进制没有发布签名，如实说「开发运行」，
+  // 不写成「未签名」让人以为安装包有问题。
+  if (appResolved && !appResolved.error && appResolved.command) {
+    const signature = await checkSignature({ command: appResolved.command })
+    const status =
+      signature.state === 'invalid'
+        ? 'fail'
+        : signature.state === 'adhoc' || signature.state === 'unsigned'
+          ? 'warn'
+          : 'ok'
+    checks.push(
+      check('signature', status, {
+        state: signature.state,
+        ...(signature.authority ? { authority: signature.authority } : {}),
+        ...(signature.status ? { osStatus: signature.status } : {}),
+        ...(signature.gatekeeper ? { gatekeeper: signature.gatekeeper } : {}),
+        detail: signature.detail
+      })
+    )
+  }
 
   const required = await readEnginesRequirement()
   const nodeOk = meetsRequirement(process.versions.node, required)
@@ -174,8 +227,7 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
     readiness: {
       decidedBy: 'purescience ready',
       // Said in as many words so a reader cannot mistake this report for the verdict itself.
-      note:
-        '就绪判定不在这里：`purescience ready` 会给出应用侧的就绪结论。本命令只报告在本机测得的事实（路径、pid、权限、版本）。'
+      note: '就绪判定不在这里：`purescience ready` 会给出应用侧的就绪结论。本命令只报告在本机测得的事实（路径、pid、权限、版本）。'
     }
   }
 }
@@ -190,7 +242,10 @@ export const formatDoctor = (report) => {
       .join(' ')
     lines.push(`  [${mark}] ${entry.check}  ${evidence}`)
   }
-  lines.push('', `measured: ${String(report.summary.ok)} ok, ${String(report.summary.warn)} warn, ${String(report.summary.fail)} fail`)
+  lines.push(
+    '',
+    `measured: ${String(report.summary.ok)} ok, ${String(report.summary.warn)} warn, ${String(report.summary.fail)} fail`
+  )
   lines.push(report.readiness.note)
   return lines.join('\n')
 }

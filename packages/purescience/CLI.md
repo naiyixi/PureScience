@@ -64,6 +64,23 @@ purescience doctor
 purescience doctor --json        # for scripts: every check carries {check, status, evidence}
 ```
 
+## Signing status (doctor)
+
+`purescience doctor` also reports what this machine can say about the build's publisher identity — the
+consequence of shipping without a code-signing certificate:
+
+```
+[ok  ] app_binary  command=/Applications/PureScience.app/Contents/MacOS/PureScience packaged=true
+[warn] signature  state=adhoc gatekeeper=rejected detail=首次打开会被 Gatekeeper 拦下：…
+```
+
+`state` is one of `developer-id` / `authenticode` (signed, and the OS can name the publisher), `adhoc`
+(signed without a certificate), `unsigned`, `invalid` (a signature that does not verify — a real failure),
+`development` (a dev run, which has no release signature at all) or `not-applicable` (Linux). macOS reads
+`codesign` **and** asks Gatekeeper with `spctl`; Windows reads the Authenticode status. A `warn` here means
+"installable, but the system cannot vouch for the publisher", and the `detail` is the way past the dialog the
+first launch will show. It does **not** mean the build is defective.
+
 ## Service lifecycle
 
 Start the service without opening a browser, check its status, or stop it:
@@ -247,12 +264,12 @@ endpoint and token the app published for this machine, and never accepts one fro
 
 What it exposes today, all read-only:
 
-| Tool | What it returns |
-| --- | --- |
-| `list_projects` | the projects on this machine, with their ids |
-| `list_sessions` | conversations as summaries, optionally narrowed to one project (id or exact name) |
-| `read_session` | one conversation's messages, with `messageCount` and `truncated` |
-| `list_project_files` | the files the app holds for one project |
+| Tool                 | What it returns                                                                   |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `list_projects`      | the projects on this machine, with their ids                                      |
+| `list_sessions`      | conversations as summaries, optionally narrowed to one project (id or exact name) |
+| `read_session`       | one conversation's messages, with `messageCount` and `truncated`                  |
+| `list_project_files` | the files the app holds for one project                                           |
 
 Narrowing by a project name that does not exist is refused by name (`project-not-found`) rather than
 answered with every project, and a long conversation states how many messages it left out instead of
