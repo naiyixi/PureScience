@@ -36,14 +36,14 @@
 
 ### 二 交付（三个产品文件 + 九语一条键 + 两支用例）
 
-| 位置 | 改动 |
-| --- | --- |
-| `src/shared/storage.ts` | `availableBytes: number` → `number \| null`，头注写明 **null 不是 0**：0 是「磁盘满了」的断言，null 是「没读到」 |
-| `src/main/storage/command-owner.ts` | 初值改 `null`、失败保持 `null`（日志照旧具名），头注写明「新鲜安装的默认根还没建出来也会走到这一支」 |
-| `src/renderer/src/pages/settings/StoragePanel.tsx` | 两态渲染：`null` → `settings.availableOnDiskUnreadable`，有值 → `formatBytes(...)`；行上补 `data-testid="storage-available-bytes"` |
-| `src/renderer/src/i18n/{en,zh,zh-Hant,ja,ko,de,fr,es,ru}.ts` | 新增一条键（九语齐平，zh ≠ en，zh-Hant 用繁体）：`Could not read free space` / `无法读取可用空间` / … |
-| `src/main/storage/ipc.test.ts` | 「不存在的根 ⇒ `availableBytes` 为 **null**（不是 0），其余读数照常返回、失败仍进日志」 |
-| `StoragePanel.render.test.tsx` | 两支成对：「null ⇒ 屏上写『读不到』且不含 `0 B`」/「有值 ⇒ 印数字」，防这条分支烂成永远说读不到 |
+| 位置                                                         | 改动                                                                                                                               |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/storage.ts`                                      | `availableBytes: number` → `number \| null`，头注写明 **null 不是 0**：0 是「磁盘满了」的断言，null 是「没读到」                   |
+| `src/main/storage/command-owner.ts`                          | 初值改 `null`、失败保持 `null`（日志照旧具名），头注写明「新鲜安装的默认根还没建出来也会走到这一支」                               |
+| `src/renderer/src/pages/settings/StoragePanel.tsx`           | 两态渲染：`null` → `settings.availableOnDiskUnreadable`，有值 → `formatBytes(...)`；行上补 `data-testid="storage-available-bytes"` |
+| `src/renderer/src/i18n/{en,zh,zh-Hant,ja,ko,de,fr,es,ru}.ts` | 新增一条键（九语齐平，zh ≠ en，zh-Hant 用繁体）：`Could not read free space` / `无法读取可用空间` / …                              |
+| `src/main/storage/ipc.test.ts`                               | 「不存在的根 ⇒ `availableBytes` 为 **null**（不是 0），其余读数照常返回、失败仍进日志」                                            |
+| `StoragePanel.render.test.tsx`                               | 两支成对：「null ⇒ 屏上写『读不到』且不含 `0 B`」/「有值 ⇒ 印数字」，防这条分支烂成永远说读不到                                    |
 
 **变异自证（本机实跑，改完即还原）**：
 把 `command-owner.ts` 的初值改回 `0` ⇒ 主进程那条用例 **`expected +0 to be null`** 当场红；
@@ -51,19 +51,23 @@
 
 ### 三 门禁（全部实跑；数字取自最后一次改动之后）
 
-| 环 | 读数 |
-| --- | --- |
-| 定向：`src/main/storage` + `src/renderer/src/pages/settings` + `host-application-commands.test.ts` + `pages/onboarding` | **93 文件 / 1101 passed, 1 skipped** |
-| `src/renderer/src/i18n`（含 `translation-quality`）+ StoragePanel 渲染 | **5 文件 / 85 passed** |
-| 双 typecheck（`--composite false`） | 本笔 0 错；全仓余 4 条**全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），与本节无关，未去改 |
-| `eslint --no-cache`（本笔 5 个源/测试文件） | **0 error** |
-| `prettier --check` | 本笔 5 个文件过；**九份 i18n 字典在本笔之前就不是 prettier-clean**（实测 `--check` 在未改动的 `en.ts`/`zh.ts` 上已报 warn）⇒ 只按局部风格插入一行，**没有**顺手 `--write`（那会把 gallery 一批长行一起改写，制造与本次无关的 hunk） |
+| 环                                                                                                                      | 读数                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 定向：`src/main/storage` + `src/renderer/src/pages/settings` + `host-application-commands.test.ts` + `pages/onboarding` | **93 文件 / 1101 passed, 1 skipped**                                                                                                                                                                                                |
+| `src/renderer/src/i18n`（含 `translation-quality`）+ StoragePanel 渲染                                                  | **5 文件 / 85 passed**                                                                                                                                                                                                              |
+| 双 typecheck（`--composite false`）                                                                                     | 本笔 0 错；全仓余 4 条**全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），与本节无关，未去改                                                                                                                  |
+| `eslint --no-cache`（本笔 5 个源/测试文件）                                                                             | **0 error**                                                                                                                                                                                                                         |
+| `prettier --check`                                                                                                      | 本笔 5 个文件过；**九份 i18n 字典在本笔之前就不是 prettier-clean**（实测 `--check` 在未改动的 `en.ts`/`zh.ts` 上已报 warn）⇒ 只按局部风格插入一行，**没有**顺手 `--write`（那会把 gallery 一批长行一起改写，制造与本次无关的 hunk） |
 
 ### 四 边界与具名未办
 
 1. **没有窗口读数**：本轮是「契约改成两态 + 两条成对用例」，真机面（面板那一行）**未取词**。要取的话需要一次真窗口
    打开 Storage 面板并让 `statfs` 失败（可把数据根设到一个已删目录），本机当前没有空闲实例可安全驱动，不冒充已取。
-2. **232 秒那一半没修**（见 §一 边界）：`statfs` 与同刻的 `update-check` 一起结束，分不清是 IO 卡住还是整机挂起；
-   若要收，需要一条「同一时钟下的两个独立调用是否同时结束」的探针，记作下一轮候选。
+2. **232 秒那一半没修，但已定因到「机器侧」**（本轮补齐读数）：同一次爆发里**六个通道在 0.7 秒内先后结束**
+   ——`settings:encryption-available` 231.8 s、`sessions:list-catalog` 232.2 s、`network:check-connectivity` 232.6 s、
+   `settings:get-settings` 232.4 s、`settings:get-preflight` 232.4 s、`storage:get-info` 232.4 s（全部 `no-cpu-in-process`）
+   ⇒ 不是 `statfs` 自己卡住，而是整机在那 232 s 里一起停住（典型的挂起/深睡）。同一份日志里 10-29 16:16–17:50 连续出现
+   100–250 s 的同类间隔，形态一致。**因此本轮只修「失败被印成 0」，不声称修好了那 232 秒**；若要真收，
+   需要一条与本次不同的判据（例如同刻两个独立调用是否同时结束），而不是加大超时。
 3. **`availableBytes` 的其它读者**：全仓只有 `StoragePanel` 一处渲染（另有 5 处测试夹具给的是真实数字），web 面无读者 ⇒ 类型放宽不牵动通道与计数 pin。
 4. **并回台账**：等并行会话提交它的 §268 之后，下一轮把本节并入 `docs/plan-2026-10-03-…` 的末尾（本轮不碰它的在制文本）。

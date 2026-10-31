@@ -14624,3 +14624,133 @@ at AcpConnectionLifecycleWorkflow.connectFresh (…-lifecycle-workflow.ts:129 / 
   （判据：逐条 `名|completed|success`；`cancelled` 不算绿）；② `git fetch -q origin && git log --oneline origin/main -3
   && git status --short`：并行会话的两份在制件仍在就不碰；③ 并行会话若已把 screening SIGTERM 定到具体一方，
   等它那条落定后**先走 v2.21.0 的删 tag 重打**（那是唯一挡发布的一项），再谈新的功能单元。
+
+## 二百六十八、本轮追加（执行器，2026-11-01 00:25–01:5x）—— 发版窗口里只做「不推也能做完」的两件：同步收尾入口的诊断行、升级演练取「正在发布的那个 tag」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 0e8b99c3`，本地与远端同点。工作树两份**并行会话**在制件（`docs/plan-2026-10-28-two-releases.md` 的 H1/H2 两行状态、
+  `src/main/references/screening-service.ts` +19 行 logger 注入）—— 一个字节没碰。
+- **本轮不开新的功能单元**：v2.21.0 的发版窗口在并行会话手里（`workflow_dispatch` run `41215912145`），它的并发组是
+  `release-${{ github.ref }}` ⇒ 往 `main` 上推任何一笔都会把它腰斩。所以本轮只取**不推送也能做完**的两件，推送推迟到该 run 落定之后
+  （实测 01:03 落定 success，推送在其后 2 分钟）。
+- 上一轮 notepad 四条「下一轮第一步」逐条核：
+  ① `565a2f3c` / `ee6e99fc` 的 `Nightly` = **cancelled**（被后续推送顶掉，`cancelled` 不算绿）；两者的 `Windows Full Test` = **success**
+  （`565a2f3c` 那次正是原先红的分片 5/8）。按祖先判据用含它们的后一笔 `0e8b99c3` 的读数替代：Nightly **success**、
+  Windows Full Test **success**（`git merge-base --is-ancestor` 成立，CI 跑的是整棵树）。
+  ② 「假红注解 4→0」在 `0e8b99c3` 的绿 `Verify` 作业（`124580327358` / `124580147530`）上核到：`failure` 级注解 **0**（notice 1 / warning 10）
+  ⇒ 上一轮那笔的收口成立。
+  ③ v2.21.0 已由并行会话走通（§四）。
+  ④ `connection-resource-owner.ts` 那条 blocker 已解封（并行会话最后一次动该文件是 19:15 的 `4de8a2ce`，当前在制件在 `references/`，
+  与本文件不相交）⇒ 本轮取它。
+
+### 一 交付一 `53286f6b`：同步收尾入口的诊断行不得改变收尾结果
+
+`shutdownSynchronously` 的第一行是裸 `log.warn('acp connection shutdown requested')`，位于 `shuttingDown = true` 与 `supersede()`
+**之前** ⇒ 日志一抛错：标志位不置、连接不被 supersede，调用方看到的是日志错误而不是它请求的收尾。与 `565a2f3c` 修的那处同形
+（那一处曾在车道上真红过）。
+
+- 改法：新增 `safeLogWarning`（try/catch，头注写明两种后果与先例），该行**保留**（谁要求的、走的是不是同步路径正是事后要读的）。
+- 用例：`still shuts down when the request line itself cannot be written` —— 让 `warn` 抛错，断言标志位、`supersede` 回调、
+  `close` 与 `kill` 各一次。
+- 变异自证：把包裹撤回裸 `log.warn`，该用例逐字红在 `Error: warn boom` 上（本机实跑，`1 failed | 16 skipped`）。
+
+### 二 交付二 `78f72ceb`（并就地更正为 `fbc84dbc`）：升级演练取「正在发布的那个 tag」
+
+v2.21.0 发布 run 的 `windows-upgrade-smoke` 作业里，装机 / 回滚 / 重启三步 **success**，但
+`Certify Windows electron-updater differential update` 报 `Error: Updater certification needs two versions.`，随后
+`Report Windows update-drill outcome` 按设计 `exit 1` 把这一步标红
+（各 step 带 `continue-on-error`，真判决在 `steps.*.outcome`）。
+
+定因读源：该作业取「上一个稳定版」时用 `CURRENT_TAG: github.ref_name` 去排除当前版本，而 `workflow_dispatch` 发布既有 tag 时
+`github.ref_name` 是 **main** ⇒ 排除条件匹配不到任何条目，列表第一条就是本次刚建出来的那个 Release ⇒ previous 目录里装的是
+当前版本的第二份拷贝。
+
+- 改法：`CURRENT_TAG: ${{ inputs.release_tag || github.ref_name }}`（tag 推送取被推的 tag，dispatch 取它点名的 tag）。
+- 仪器自证：下载成功后打印 `previous stable = X; publishing = Y` —— 否则「更新器坏了」与「取错了两个版本」在日志里是同一句话。
+- **`fbc84dbc` 是对 `78f72ceb` 的具名更正**：我原先新建了 `scripts/ci/release-workflow.test.ts` 去钉这条，而
+  `scripts/windows-release-workflows.test.ts:367` 本来就钉着同一个字段（我 grep 的范围只到 `scripts/ci/` 就下了结论）。全量套件当场抓到
+  （`1 failed | 18046 passed`，红的正是那条旧 pin）⇒ 删掉第二份断言、把两条断言折进既有那支、旧 pin 就地改成新表达式并写明理由。
+
+### 三 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/acp/` 整目录 | **93 文件 / 1496 passed** |
+| `scripts/windows-release-workflows.test.ts` | **12 passed** |
+| 全量 vitest（隔离工作树 `/tmp/ps-cro` = `78f72ceb`，`--maxWorkers=4`） | `1 failed | 1431 passed | 30 skipped`；`1 failed | 18046 passed` —— **红的就是被更正的那条旧 pin** |
+| 全量 vitest（同一工作树 = `fbc84dbc`） | **1431 passed | 30 skipped（1461 文件）；18045 passed | 225 skipped；0 failed**，372.9 s |
+| 双 typecheck（同一工作树，`--composite false`） | node **0**；web **0** |
+| `eslint --no-cache`（三个改动文件） | **0 error**（一处 prettier 折行告警已就地修掉） |
+| `prettier --check` | 全过 |
+| `scripts/pre-push-checks.sh` | **全部通过**（两次推送前各一次） |
+
+### 四 发布核验（v2.21.0，只读）
+
+- `gh release list`：`PureScience v2.21.0` = **Latest**；`isDraft=false` / `isPrerelease=false`；**21 个资产**（四平台 dmg/zip/blockmap、
+  AppImage、deb、win setup+zip，外加 `SHA256SUMS.txt` / `RELEASE-CERTIFICATION.json` / `version.json` / `latest*.yml` /
+  `arm64-mac.yml` / `x64-mac.yml`）。
+- `RELEASE-CERTIFICATION.json`（`gh release download` 按逐字文件名取回）：`sourceSha = 0e8b99c3…`，四平台 `source.runId = 41215912145`、
+  `checks.packageSmoke = passed`、`macSignature = unsigned`（`credentialsPresent: false`，与「暂不花钱认证」的拍板一致）。
+- **对账有一处差额，如实记**：tag `v2.21.0` 指向 `8d913539`，认证件记的是 `0e8b99c3`；两者差 **6 个文件（5 支 workflow + 1 支 CI 测试）**，
+  `git diff --stat 8d913539 0e8b99c3` 里**产品代码零差异**。原因是 tag 在 `63960160`（macos-14 灰停）与 `0e8b99c3`（PR Gate 断言跟到
+  macos-15）之前就打好，发版走 `workflow_dispatch` 从 `main` 起跑。**没有擅自移动 tag**：`release.yml` 的触发器含 `push: tags: v*`，
+  force 移动既有 tag 会真起一条 tag 触发的 Release run（重建 + 重复上传），风险大于收益 ⇒ 留作具名开项（§五 第 5 条）。
+- 发布正文 68,872 字符，含成熟度自陈（✅/🚧/🗺️）与「不放松的规则」段。
+- `windows-upgrade-smoke` 作业 = **failure**，但 run 结论是 **success**（该作业 job 级 `continue-on-error: true`）——
+  「作业是绿的」不等于「它做了事」，这里反过来也一样：run 绿不等于那个作业绿。定因见 §二。
+
+### 五 边界（不许读成更强）与具名未办
+
+1. 本轮两笔都在**测试台与 CI 配置**层：`53286f6b` 的行为面是「日志抛错时收尾仍完成」（界面/真机面不变），`fbc84dbc` 是 CI 配置 +
+   一支源读测试。没有窗口读数，也不声称有。
+2. **`78f72ceb` 是红的并且已记账**：它只跑了定向簇与双 tsc，没跑全量 ⇒ 撞上那条旧 pin。它的两条车道：`Windows Full Test` = **failure**
+   （真红）、`Nightly` 在第二推之后仍在跑（Nightly 的并发组是 `nightly-<event>`，不含 ref ⇒ 旧 run 不被取消、新 run 排队）。
+   **不要引它的读数**，只认 `fbc84dbc`。
+3. **A 组的「发布件读数」仍敞着**（v2.20.0 唯一未满足的退出条件）：网络与空闲物理页现状未变，取不到就不假装取到。
+4. **M2（本地解析模型资产）仍卡产品决定**；B 段（A7 / S3）已交付。
+5. **tag ↔ 认证件的 6 文件差额**（§四）：不动 tag，留作下一窗口的开项；解封条件 = 一次「无在飞车道 + 允许一条 tag 触发的
+   Release run 重跑」的窗口，届时二选一：把 tag 移到 `sourceSha`，或在认证件旁边写清「tag 落后于构建源，差额全是 CI 配置」。
+
+## 二百六十九、本轮追加（执行器，2026-11-01 05:3x–）—— 收获在落库前抛错时不再无声：两条同形的失败被分开命名
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = fa5b58a5`，本地与远端同点；工作树三份在制：**并行会话**的 `src/main/references/screening-service.ts`
+  （10-31 03:00 起就在，仍是半截：`createLogger`/`boundReason` 声明了没接、`logger` 属性未初始化 ⇒ 双类检查报 4 条）
+  与 `docs/plan-2026-10-28-two-releases.md` 的 H1/H2 两行状态 —— **一个字节没碰**；另外两份是**我自己上一轮**留下的
+  （`src/main/compute/job-poller.*` 的实现与用例、`docs/plan-2026-11-01-free-space-honesty.md` 的补记、本文档 §268）——
+  上一轮在收尾汇报前被网关掐断（`GatewayUnavailableError`），代码写完了没提交。本轮先把它收口。
+- 在飞车道：`fa5b58a5` 的 `Nightly` = **success**、`Windows Full Test` = **success**，无 `in_progress` 的 run
+  ⇒ 本次推送不顶掉任何人的判决。
+
+### 一 交付：`src/main/compute/job-poller.ts`（+ 两支用例）
+
+`harvestJob` 自己会把失败写进 job 行（`harvestError`），所以**能到达 poller 的拒绝**只可能是它在**落库之前**抛的。
+那一支原本是 `.catch(() => {})` —— 于是「收获早早炸了」与「收获根本没开始」在日志与 job 列表里**完全同形**，
+事后没人能区分（本仓已吃过同族亏：`prunedFiles: 0` 被读成「存储没读数」）。
+
+- 改法：`JobPollerDeps` 增加可选 `logger`（缺省 `createLogger('compute')`），catch 里写一行
+  `harvest failed before recording a result` + `{ jobId, ...diagnosticErrorFields(error) }`。
+- **只记类别、不记 message**：远端路径/URL 常在 message 里（用例拿 `ENOENT: open /Users/someone/private/workspace/result.csv`
+  当输入，断言的是**完整对象相等** —— 消息里那段路径一旦泄进日志，这条断言就红）。
+- **诊断本身不许变成失败**：`warn` 外面再包一层 try/catch —— 否则日志一抛错就成了未处理的 Promise 拒绝，
+  把一次已被隔离的收获失败升级成轮询器的问题（同族先例：`53286f6b` 的同步收尾入口）。
+- 两支用例：① 具名（含「message 不进日志」的完整对象断言）；② `warn` 抛错时槽位仍归还 —— 下一次 tick 仍能收获。
+
+### 二 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/compute/job-poller.test.ts` | **1 文件 / 31 passed** |
+| `src/main/compute`（整目录） | **28 文件 passed、1 skipped（29）**；**574 passed、5 skipped（579）** |
+| 变异自证 | 在 catch 首行插 `if (error) return`（等于退回静默）⇒ 两支新用例各 30 s 超时**当场红**（`2 failed \| 29 passed`），还原即绿 |
+| 双 typecheck（`--composite false`，node） | 本笔 **0 错**；全仓余 **4 条全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改 |
+| `eslint --no-cache`（本笔两文件） | **0 error** |
+
+### 三 边界（不许读成更强）与具名未办
+
+1. **没有窗口读数，也不声称有**：这是主进程一条诊断行，界面/真机面不变。
+2. **不覆盖「收获跑完了但没写结果」**：那一半由 `harvestJob` 自己的 `harvestError` 承担（`recordResult` 之后的行状态），
+   本节只补「连那一行都没写出来」的那段。
+3. 同族未修：`screening-service.ts` 那处（并行会话在制，本轮不碰）。
