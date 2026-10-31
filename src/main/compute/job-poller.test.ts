@@ -894,6 +894,107 @@ describe('JobPoller — harvest wiring', () => {
     expect(harvestFn).toHaveBeenCalledOnce()
   })
 
+  // `harvestJob` writes its own failures into the job row (`harvestError`), so a rejection reaching the
+  // poller means it threw *before* that write — the job then looks exactly like one whose harvest never
+  // started. The two states must not be identical in the log, and the line must carry the job id plus a
+  // bounded category only (a remote path can be inside the message).
+  it('names a harvest that threw before recording a result', async () => {
+    const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    const harvestFn: HarvestFn = vi.fn(() =>
+      Promise.reject(new Error('ENOENT: open /Users/someone/private/workspace/result.csv'))
+    )
+
+    const job = makeJob()
+    const update = vi.fn((_id: string, u: unknown) => Promise.resolve({ ...job, ...(u as object) }))
+    const jobRepo = {
+      findNonTerminal: vi.fn(() => Promise.resolve([job])),
+      findTerminalUnharvested: vi.fn(() => Promise.resolve([])),
+      update
+    } as unknown as ComputeJobRepository
+    const hostRepo = {
+      get: vi.fn(() => Promise.resolve(sampleHost()))
+    } as unknown as ComputeHostRepository
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: makeTerminalPollOutput('job-1', 0),
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+
+    const poller = new JobPoller({
+      runner,
+      hostRepository: hostRepo,
+      jobRepository: jobRepo,
+      makeNonce: () => NONCE,
+      harvestFn,
+      logger
+    })
+
+    await poller.tick()
+    await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+
+    // Exact object: this is what proves the message (and the path inside it) never reaches the log.
+    expect(logger.warn).toHaveBeenCalledWith('harvest failed before recording a result', {
+      jobId: 'job-1',
+      errorCategory: 'error'
+    })
+  })
+
+  it('keeps harvesting when the diagnostics themselves throw', async () => {
+    // A throwing warn must not become an unhandled rejection: the slot has to come back, so the next
+    // tick still harvests.
+    const logger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(() => {
+        throw new Error('warn boom')
+      }),
+      error: vi.fn()
+    }
+    const harvestFn = vi.fn<HarvestFn>(() => Promise.reject(new Error('harvest boom')))
+
+    const job = makeJob()
+    const update = vi.fn((_id: string, u: unknown) => Promise.resolve({ ...job, ...(u as object) }))
+    const jobRepo = {
+      findNonTerminal: vi.fn(() => Promise.resolve([job])),
+      findTerminalUnharvested: vi.fn(() => Promise.resolve([])),
+      update
+    } as unknown as ComputeJobRepository
+    const hostRepo = {
+      get: vi.fn(() => Promise.resolve(sampleHost()))
+    } as unknown as ComputeHostRepository
+    const runner = makeSshRunner({
+      exitCode: 0,
+      stdout: makeTerminalPollOutput('job-1', 0),
+      stderr: '',
+      truncated: false,
+      timedOut: false
+    })
+
+    const poller = new JobPoller({
+      runner,
+      hostRepository: hostRepo,
+      jobRepository: jobRepo,
+      makeNonce: () => NONCE,
+      harvestFn,
+      logger
+    })
+
+    await poller.tick()
+    await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled(), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+
+    harvestFn.mockResolvedValue(undefined)
+    await poller.tick()
+    await vi.waitFor(() => expect(harvestFn).toHaveBeenCalledTimes(2), {
+      timeout: COORDINATION_WINDOW_MS
+    })
+  })
+
   it('dispatches harvest for failed and timeout terminal states', async () => {
     const harvestFn: HarvestFn = vi.fn(() => Promise.resolve())
 

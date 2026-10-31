@@ -15,6 +15,7 @@ import {
 } from './remote-job-kill'
 import { sharedDispatchTracker, type DispatchTracker } from './dispatch-tracker'
 import { emitJobNotification } from './job-notifier'
+import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 
 // Polling interval: 15 seconds (design.md §8).
 export const POLL_INTERVAL_MS = 15_000
@@ -86,6 +87,13 @@ export type JobPollerDeps = {
    * Required when broadcast is set; used to compute the harvest dir path.
    */
   storageRoot?: string
+  /**
+   * Where a harvest that threw *before* it could record a result is named. Injected so a test can read
+   * it; the default writes to the main-process log under the compute scope. Without this line the
+   * swallow below is invisible: a harvest that died before `finalize` and a harvest that never ran both
+   * leave the job untouched, so a person reading the job list cannot tell them apart.
+   */
+  logger?: Logger
 }
 
 // Per-job vanish counter (lives here because the poller is the only thing that increments it).
@@ -108,6 +116,9 @@ export class JobPoller {
   private readonly dispatchTracker: DispatchTracker
   // Optional injectable harvest function (design §3).
   private readonly harvestFn: HarvestFn | undefined
+  // Named diagnostics only: a harvest failure must not propagate into the poller, but it must not be
+  // silent either (see JobPollerDeps.logger).
+  private readonly log: Logger
 
   // Harvest concurrency state (design §3):
   //   inFlightHarvests: jobIds whose harvest is currently running — prevents duplicate dispatches
@@ -126,6 +137,7 @@ export class JobPoller {
     this.makeNonceFn = deps.makeNonce ?? (() => randomBytes(12).toString('hex') + '_')
     this.dispatchTracker = deps.dispatchTracker ?? sharedDispatchTracker
     this.harvestFn = deps.harvestFn
+    this.log = deps.logger ?? createLogger('compute')
   }
 
   // Starts the poller. Polls once immediately (picks up jobs that were running before restart),
@@ -237,8 +249,21 @@ export class JobPoller {
 
     // Fire-and-forget: intentionally not awaited.
     void this.harvestFn(job)
-      .catch(() => {
+      .catch((error: unknown) => {
         // Individual harvest failures must not propagate to the poller (design §3: error isolation).
+        // They must not vanish either: `harvestJob` records its own failures in the job row, so reaching
+        // this branch means it threw *before* recording anything — the job then looks exactly like one
+        // whose harvest never started. Name the job and the category (a bounded vocabulary, never the
+        // message: a remote path or a URL can be part of it), and never let the diagnostic itself become
+        // the failure by throwing out of this catch.
+        try {
+          this.log.warn('harvest failed before recording a result', {
+            jobId: job.job_id,
+            ...diagnosticErrorFields(error)
+          })
+        } catch {
+          // Diagnostics must not turn an isolated harvest failure into an unhandled rejection.
+        }
       })
       .finally(() => {
         this.inFlightHarvests.delete(job.job_id)
