@@ -54,13 +54,55 @@ test('reads the session document and says how many turns of activity it kept', a
   await dialog.getByRole('button', { name: 'Create project' }).click()
   await expect(page.getByRole('heading', { name: 'New conversation' })).toBeVisible()
 
+  const readStore = async (): Promise<unknown> =>
+    page.evaluate(async () => {
+      const { api } = globalThis as unknown as {
+        api: { sessions: { loadAll: () => Promise<unknown> } }
+      }
+      const raw = await api.sessions.loadAll()
+      const sessions = (
+        Array.isArray(raw) ? raw : ((raw as { sessions?: unknown[] }).sessions ?? [])
+      ) as Array<{ id: string; activities?: unknown[]; activityGroups?: unknown[] }>
+      return sessions.map((session) => ({
+        activities: session.activities?.length ?? 0,
+        activityGroups: session.activityGroups?.length ?? 0
+      }))
+    })
+
   await sendTurn(page, 'First turn.', 1)
+  await page.waitForTimeout(1_500)
+  console.log(`[persist] after turn 1: ${JSON.stringify(await readStore())}`)
+
   await sendTurn(page, 'Second turn.', 2)
   // The app writes the session document on turn completion; give that a beat before reading it.
   await page.waitForTimeout(3_000)
+  console.log(`[persist] after turn 2: ${JSON.stringify(await readStore())}`)
 
   const liveGroups = await page.locator('[data-testid="tool-group"]').count()
-  const readings = []
+
+  // What the renderer itself holds — the missing link between "the store says N" and "the file says M".
+  const rendererView = await page.evaluate(async () => {
+    const { api } = globalThis as unknown as {
+      api: {
+        sessions: {
+          loadAll: () => Promise<unknown>
+        }
+      }
+    }
+    const raw = await api.sessions.loadAll()
+    const sessions = (
+      Array.isArray(raw) ? raw : ((raw as { sessions?: unknown[] }).sessions ?? [])
+    ) as Array<{ id: string; activities?: unknown[]; activityGroups?: unknown[] }>
+    return sessions.map((session) => ({
+      id: session.id,
+      activities: session.activities?.length ?? 0,
+      activityGroups: session.activityGroups?.length ?? 0
+    }))
+  })
+  console.log(`[persist] renderer view: ${JSON.stringify(rendererView)}`)
+  // Typed explicitly: an empty `[]` infers `never[]` under the node project's strict settings, so pushing a
+  // reading into it is a type error rather than a probe that runs.
+  const readings: { file: string; graphActivities: number; graphGroups: number }[] = []
   for (const file of await sessionFiles(app.storageRoot)) {
     const raw = JSON.parse(await readFile(file, 'utf8')) as {
       session?: { conversationGraph?: { activities?: unknown[]; activityGroups?: unknown[] } }

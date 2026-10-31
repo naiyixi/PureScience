@@ -171,3 +171,24 @@
 （形状正确、有用例、写侧修好后立刻生效）。取样用例留在
 `e2e/certification/session-activity-persistence-probe.spec.ts`，它打印的那一行就是下一步的验收基线：
 两个回合之后应当是 `graphActivities≥4`、`graphGroups≥1`，而今天读到的是 `2 / 0`。
+
+### E4 再收窄：丢在 store，而且是「每轮替换」
+
+再补一次取样（同一支探针，在**第一轮结束之后**也读一次渲染层自己的 store）：
+
+```
+[persist] after turn 1: [{"activities":2,"activityGroups":0}]
+[persist] after turn 2: [{"activities":2,"activityGroups":0}]   ← 第二轮没有让 2 变成 4
+[persist] renderer view: [{"activities":2,"activityGroups":0}]
+[persist] 盘上文档:     {"graphActivities":2,"graphGroups":0}
+```
+
+⇒ 结论链完整了：**渲染层 store 在第二轮就把第一轮的活动替换掉**（不是追加），持久化只是忠实地存下了这份 2 条。
+所以修点不在持久化、也不在转录投影，而在 **store 里写 `activities` 的那一处**。
+
+`activityGroups` 一直是 0，另记一条：这次工具调用没有生成持久化的组（渲染时按相邻活动临时成组），
+所以「每轮一个组」要等 store 先累积出活动、且组的创建路径被触达。
+
+只碰 `activities` 的文件已经收窄到五个（`session-store-run-activity-helpers` / `-message-graph-helpers` /
+`-persistence-owner` / `-message-graph-owner` / `-run-terminal-helpers`）。下一步的探针：在 store 每次写入
+`activities` 时打一行（条数 + 触发来源），一次运行就能点名是谁replace了它 —— 不再靠读代码猜。
