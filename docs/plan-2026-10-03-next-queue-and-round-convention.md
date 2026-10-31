@@ -14525,3 +14525,102 @@ release 之后下一次冷启动是 `{ hits: 2, parsedDocuments: 0 }`、`reads=[
    本节的更正只改「它是否阻塞发版」这一条，不改定因。
 3. **A 组发布件读数**（v2.20.0 唯一未满足的退出条件）仍敞着：网络与空闲物理页现状未变，取不到就不假装取到。
 4. 下一轮第一步：先看并行会话是否已把 SIGTERM 定到具体一方；它落定后**才**走「删 tag 重打」的恢复路径（那时也要先确认 tag 仍无页）。
+
+## 二百六十七、本轮追加（执行器，2026-10-31 21:3x–22:0x）—— main 上那条「唯一红」定因并修掉（不是抖动、不是用例错）；顺带关掉绿车道上的四条假红注解
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 2d08d046`（并行会话 §266 的台账提交），本地与远端同点、`git log origin/main..HEAD` 为空。
+- 工作树两份**并行会话**在制件：`src/main/references/screening-service.ts`（+19 行，当前带 4 条 TS 错）、
+  `docs/plan-2026-10-28-two-releases.md`（H1/H2 两行状态）—— **一个字节没碰**。
+- 并行会话的最近两笔都在 `src/main/acp/**` 且是**screening 打包态 SIGTERM 那条线**（`f7604b2b` 19:15、`4de8a2ce`）
+  ⇒ 那条线归它；本轮只碰它**没有在制件的那个文件**，并在提交信息里点明这属于「main 红」而不是它的单元。
+- 推送前现查在飞：六条 run 全 `completed` ⇒ **本次推送没有取消任何人的判决**。
+
+### 一 开工第一件事：读 `2d08d046` 的两条车道（两条都红在同一处）
+
+| 车道 | run | 失败作业/步骤 | 注解原文 |
+| --- | --- | --- | --- |
+| `Nightly` | 41197048829 | `build / Verify` → step 7 `Test (with coverage)` | `src/main/acp/runtime.test.ts:19885`：`expected [Function] to throw error matching /superseded/i but got 'warn boom'` |
+| `Windows Full Test` | 41197048811 | 分片 **5/8**（其余 7 片 success） | **同一文件、同一行、同一句** |
+
+- **不是「一条 flaky」也不是「两条车道互相矛盾」**：作业日志里 `Test Files 1 failed | 1429 passed | 31 skipped (1461)`，
+  全仓只有这一条红；Windows 另 7 片全绿。
+- **本机同提交复现得出来**（`npx vitest run src/main/acp/runtime.test.ts -t "<用例名>"` ⇒ 1 failed，与 CI 逐字同句）
+  ⇒ 这是**主干上的确定性红**，不是 runner 差异，也不是负载。
+- **同一作业里那 4 条 `##[error] mac update feed … is missing / is not complete` 不是失败**：它们是
+  `scripts/merge-mac-feed.test.ts` 的**预期失败输出**（该文件 21 tests 全绿）。详见 §三。
+
+### 二 定因：一条诊断日志可以把「拆会话」拆一半、并把因由换掉
+
+用临时探针（把 `warnLogSpy` 抛错的栈打出来，取证后立即 `git checkout --` 该测试文件、一个字节没留）读到抛点：
+
+```
+at AcpConnectionCloseWorkflow.disconnectCurrent (src/main/acp/connection-close-workflow.ts:122)
+at disconnectCurrent (src/main/acp/runtime-lifecycle-composition.ts:175)
+at AcpConnectionLifecycleWorkflow.connectFresh (…-lifecycle-workflow.ts:129 / :221)
+```
+
+`disconnectCurrent` 在**「连接已被 supersede、会话能力与活会话尚未释放」的中间点**直接 `log.warn`。
+日志一抛错（磁盘写失败一类）：① 拆除就地中断 —— `disposeSessionCapabilities` / `disposeActiveSessions` /
+`teardown` 全没跑到；② 那个日志错成了调用方看到的因由，真正该报的 `ACP connection was superseded.` 被顶掉。
+**用例是对的**（它钉的正是「诊断行不参与判决」这条判据，`connection-lifecycle-workflow.ts` 的 `safeLogWarning`
+就是同一条判据做对了的先例）。
+
+### 三 交付一：`565a2f3c` —— 两处诊断日志改 `safeWarn`
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/acp/connection-close-workflow.ts` | 新增 `safeWarn`（try/catch，头注写明「诊断行不得改变拆除结果」及其两种后果）；`disconnect()` 入口那条 `acp disconnect requested`、`disconnectCurrent()` 中段那条 `acp disposing session capabilities` 改用它。**日志文案与位置一个字节未改**。 |
+
+### 四 交付二：`85ce3986` —— 让绿的车道不再带四条假红注解
+
+`execFileSync` 的**同步**子进程默认把 stderr 直接继承给父进程（实测探针：`node -e` 里 `console.error('::error::…')`
+直接出现在父进程输出里）。`merge-mac-feed.test.ts` 的 `runCli` 故意驱动 CLI 的失败分支，而 CLI 把失败印成
+`::error::` 工作流命令 ⇒ **该文件全绿，作业日志里仍有 4 条 failure 级注解**（实测 `grep -c '::error::'` = 4，
+本机跑该文件同样复现）。分诊的人会看见四条从未发生的红。
+
+改法只动取数：`stdio: ['ignore','pipe','pipe']`。断言一字未改（它们读 `status.stderr`）。
+**读数：同一文件 `21 passed`；日志里 `::error::` 行数 4 → 0。**
+
+### 五 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 全量 vitest（`--maxWorkers=4`，共享树） | **1463 文件（1433 passed / 30 skipped）；18,070 passed / 225 skipped；0 failed** |
+| `src/main/acp` 整目录 | **93 文件 / 1495 passed** |
+| `scripts/merge-mac-feed.test.ts` | **21 passed**（改前/改后各一次；`:error:` 行数 4 → 0） |
+| 双 typecheck（隔离工作树 `/tmp/ps-red` = `85ce3986`，`--composite false`） | node **0**；web **0** |
+| `eslint --no-cache`（两个改动文件） | **0**；`prettier --check` 全过 |
+
+> 共享树里 `tsc` 会报 4 条错，全落在并行会话在制的 `screening-service.ts` ⇒ 类型读数只取**只含本笔的隔离工作树**。
+> 全量那一轮跑在共享树上（含并行会话在制的 `screening-service.ts`，它没有破坏任何用例）。
+
+### 六 边界（不许读成更强）与具名未办
+
+1. **没有真机读数**：两笔都在**测试台与日志层**（第一笔改的是产品代码，但它的证据正是真实 CI 上的那条红；
+   它的行为面是「日志抛错时拆除仍完成」。界面/真机面不变）。
+2. **同族还有一处没动**：`src/main/acp/connection-resource-owner.ts:227` 的 `shutdownSynchronously` 开头也是裸
+   `log.warn` —— 日志一抛错，`shuttingDown = true` 与 supersede 整段都不会发生（比这处更重）。**本轮不动它**，
+   `blocked-by` = 并行会话正在同一文件里做 screening SIGTERM 的进程层打点（`4de8a2ce`）；解封条件 = 它那条落定后
+   再改 + 为它补一条「日志抛错时仍完成 shutdown」的用例。
+3. **v2.21.0 的发布恢复仍被 P0 拦着**（§266：`Enforce platform certification` 判 `P0_OUTCOME=failure`，
+   `publish` 被 skip、Release 页不存在）⇒ 那 4 条 screening 红归并行会话，**本轮不出手**（它正在同一条线上）。
+   恢复路径不变：P0 绿后 `git tag -d v2.21.0` → 在新提交上重打 → 推 tag（无页才可删）。
+4. **A 组的发布件读数**（v2.20.0 唯一未满足的退出条件）仍敞着：网络与空闲物理页未变，取不到就不假装取到。
+
+### 七 推送与下一轮第一步
+
+- `565a2f3c` 于 21:52 推送（推前在飞 = 0，没有取消任何人的判决）。**它这一笔的判决（按完整 40 位 SHA 读）**：
+  `Windows Full Test`（41207492624）**completed / success**（原本红的分片 5/8 这次 success、其余 7 片 success）；
+  `Nightly`（41207492646）的 **`build / Verify` 已完成 success** —— 正是原来红的那一步；其余四平台 build 在本文落笔时仍在跑。
+  ⇒ **那条「唯一红」在真 CI 上已闭**（两处独立读数，不是本机自证）。
+- 顺带在**绿的那条 Verify 作业**（124555456343）上量到「假红注解」的 before 读数：**failure 级注解 4 条，全部是
+  merge-mac-feed 测试的预期输出** ⇒ 上一节那条改动的判据成立（next run 应为 0）。
+- `85ce3986` 与本节**一并推送**，
+  以减少「推一次顶掉一次判决」的次数（并在此点名：若 `85ce3986` 这一推把 `565a2f3c` 的两条车道取消，
+  按祖先判据用含它的后一笔代替，不写「绿」）。
+- **下一轮第一步**：① 按完整 40 位 SHA 读 `565a2f3c` / `85ce3986` 的 `Nightly` + `Windows Full Test` 终态
+  （判据：逐条 `名|completed|success`；`cancelled` 不算绿）；② `git fetch -q origin && git log --oneline origin/main -3
+  && git status --short`：并行会话的两份在制件仍在就不碰；③ 并行会话若已把 screening SIGTERM 定到具体一方，
+  等它那条落定后**先走 v2.21.0 的删 tag 重打**（那是唯一挡发布的一项），再谈新的功能单元。
