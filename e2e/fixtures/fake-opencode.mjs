@@ -866,7 +866,11 @@ if (process.argv.includes('--version')) {
         const step = steps[stepIndex]
         const isLastStep = stepIndex === steps.length - 1
         if (step.kind === 'tool') {
-          const toolCallId = `e2e-${process.pid}-tool-${step.index}`
+          // The turn has to be part of the id. Two turns used to emit the SAME ids (pid + index are both
+          // stable across turns), so the app treated turn 2's tool calls as updates to turn 1's rows: the
+          // transcript kept one turn of activity no matter how many turns ran. A real agent's ids are unique
+          // per call, which is what makes "each finished turn keeps its own rows" observable at all.
+          const toolCallId = `e2e-${process.pid}-${replyMessageId}-tool-${step.index}`
           const notify = async (update) =>
             context.client.notify(acp.methods.client.session.update, {
               sessionId: context.params.sessionId,

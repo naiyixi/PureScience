@@ -192,3 +192,45 @@
 只碰 `activities` 的文件已经收窄到五个（`session-store-run-activity-helpers` / `-message-graph-helpers` /
 `-persistence-owner` / `-message-graph-owner` / `-run-terminal-helpers`）。下一步的探针：在 store 每次写入
 `activities` 时打一行（条数 + 触发来源），一次运行就能点名是谁replace了它 —— 不再靠读代码猜。
+
+### E4 结案：根因在**夹具**，不在产品
+
+第四次取样读到 `after turn 1: 2` / `after turn 2: 2`，我据此怀疑 store 每轮替换。真正的原因更简单：
+
+```js
+// e2e/fixtures/fake-opencode.mjs（改前）
+const toolCallId = `e2e-${process.pid}-tool-${step.index}`
+```
+
+`process.pid` 与 `step.index` **跨回合不变** ⇒ 第二轮的工具调用带着和第一轮**完全相同**的 id，应用把它当作
+「第一轮那两条的更新」，于是无论跑几轮，转录里永远只有一轮的活动。真实 agent 的 id 每次调用都不同，
+所以这个夹具从来没暴露出「每个回合各自留档」这件事。改成把 `replyMessageId` 拼进 id 后：
+
+```
+after turn 1: activities=2
+after turn 2: activities=4          ← 追加，而不是替换
+盘上文档:      graphActivities=4
+live tool-groups: 2                 ← 两个摘要行
+```
+
+于是 E1 的那对读数**第一次在真机窗口取到**（`session-turn-readings-real-window.spec.ts`，**2 passed (21.1 s)**）：
+
+```
+[e1-pair] groups=2
+  [{expanded:"false", text:"Fetched 2 pages · 2 steps · 3ms · usage not recorded"},
+   {expanded:"true",  text:"Fetched 2 pages · 2 steps · 1ms · usage not recorded"}]
+```
+
+密度也随之可测（`session-density-reading.spec.ts`，4 个回合）：
+
+```
+{"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}
+```
+
+- **四个回合四条 24px 摘要行**（改前：只有一条，因为夹具 id 碰撞）；
+- 一屏 806 ÷ 143 ≈ **5.6 轮**；
+- 折叠行改前是卡片（约 56px，未单独测量）⇒ 四个回合会多占约 128px，同屏约 4.6 轮。这一栏是**由两个已测量量
+  推算**的，不是直接读数，这里标明以免被当成实测。
+
+⇒ 之前那句「密度收益比原型小」的结论**作废**：那条结论建立在「只有一轮活动」的假象上。修正后的结论是：
+夹具修好之后，24px 折叠行对长会话是实打实的收益，而 E1/E2 的真机读数也齐了。

@@ -88,8 +88,39 @@ test('a finished turn folds into one summary row that opens, and that row states
   await expect(group.locator('[data-testid="tool-chip"]')).toHaveCount(2)
   console.log('[e1] newest turn open → folded (0 rows) → open again (2 rows), on a real window')
 })
-// The pair "two turns → two summary rows" is still NOT asserted. Measured three ways (live flat list, merged
-// with the hydrated list, merged with resolveActiveConversationActivities(graph)) a real window still shows
-// ONE summary row — so the finished turn's activity is not in the renderer's in-memory graph yet either.
-// The remaining question is whether the write path persisted it at all; session-activity-persistence-probe
-// answers that from the file, and the fix goes wherever that reading points.
+test('two turns keep two summary rows — the finished one folded, the newest open', async ({
+  app
+}) => {
+  // The pair the earlier drafts could not get. The cause turned out to be in the fixture, not the app: every
+  // turn emitted the same tool-call ids (pid + index are stable across turns), so turn 2 was applied as an
+  // UPDATE of turn 1's rows and the transcript kept one turn of activity however many turns ran. With unique
+  // ids the pair exists, and this is what it must look like.
+  await app.completeOnboarding()
+  const page = await app.configureFakeAgent()
+  await page.getByRole('button', { name: 'New project' }).click()
+  const dialog = page.getByRole('dialog', { name: 'New project' })
+  await dialog.getByLabel('Name').fill('Two turns, two rows')
+  await dialog.getByRole('button', { name: 'Create project' }).click()
+  await expect(page.getByRole('heading', { name: 'New conversation' })).toBeVisible()
+
+  await sendTurn(page, 'First turn of the pair.', 1)
+  await sendTurn(page, 'Second turn of the pair.', 2)
+  await page.waitForTimeout(2_000)
+
+  const groups = page.locator('[data-testid="tool-group"]')
+  const headers = page.locator('[data-testid="tool-group-header"]')
+  const count = await groups.count()
+  const summaries = await headers.evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      expanded: node.getAttribute('aria-expanded'),
+      text: (node.textContent ?? '').replace(/\s+/g, ' ').trim()
+    }))
+  )
+  console.log(`[e1-pair] groups=${String(count)} ${JSON.stringify(summaries)}`)
+
+  expect(count).toBe(2)
+  expect(summaries[0]?.text).toMatch(/\d+ steps?/)
+  expect(summaries[1]?.text).toMatch(/\d+ steps?/)
+  expect(summaries[0]?.expanded).toBe('false')
+  expect(summaries[1]?.expanded).toBe('true')
+})
