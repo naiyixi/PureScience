@@ -224,6 +224,7 @@ export class AcpConnectionResourceOwner {
   }
 
   shutdownSynchronously(onSuperseded: () => void): void {
+    log.warn('acp connection shutdown requested', { reason: 'shutdown-synchronously' })
     this.shuttingDown = true
     const teardownEpoch = this.supersede()
     try {
