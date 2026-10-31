@@ -5,6 +5,7 @@ import { expect } from '@playwright/test'
 import type { Locator, Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 import { createProject, sendPrompt } from './helpers'
 
 // Acceptance for S5, on a real window over the real IPC surface and a real project database: the
@@ -39,6 +40,8 @@ const ALL_TITLES = [PDF_TITLE, ABSTRACT_TITLE, ...METADATA_TITLES]
 /** Where a screenshot of the checklist is written when asked for (see the S5 evidence record). */
 const EVIDENCE_DIR = process.env.PURESCIENCE_EVIDENCE_DIR
 
+// Named skip for the packaged lane; see e2e/certification/packaged-screening-skip.ts.
+test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
 test.setTimeout(240_000)
 
 const openLibrary = async (page: Page): Promise<ReturnType<Page['getByRole']>> => {

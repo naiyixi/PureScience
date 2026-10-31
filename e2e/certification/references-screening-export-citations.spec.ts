@@ -6,6 +6,7 @@ import { expect } from '@playwright/test'
 import type { Locator, Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 import { createProject, sendPrompt } from './helpers'
 
 // Acceptance for 文档标注层 A5 接线: the triage export now carries the ANNOTATION EVIDENCE of the range it
@@ -34,6 +35,8 @@ import { createProject, sendPrompt } from './helpers'
 //     hashed before the export and again after, and the two digests must be equal. The citation block is
 //     text appended to a text file; nothing may touch the PDFs it describes.
 
+// Named skip for the packaged lane; see e2e/certification/packaged-screening-skip.ts.
+test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
 test.setTimeout(420_000)
 
 const REGION_PROMPT = 'Create a region drawing PDF.'
