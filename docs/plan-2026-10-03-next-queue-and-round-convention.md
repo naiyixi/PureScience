@@ -14754,3 +14754,63 @@ v2.21.0 发布 run 的 `windows-upgrade-smoke` 作业里，装机 / 回滚 / 重
 2. **不覆盖「收获跑完了但没写结果」**：那一半由 `harvestJob` 自己的 `harvestError` 承担（`recordResult` 之后的行状态），
    本节只补「连那一行都没写出来」的那段。
 3. 同族未修：`screening-service.ts` 那处（并行会话在制，本轮不碰）。
+
+## 二百七十、本轮追加（执行器，2026-11-01 06:0x–）—— A 组那条「中位 < 80 ms」原本无法被测出来：补上每通道 p50/p95 的调用窗口
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 本轮先收了上一轮被网关掐断的那一笔（`185a0079` + `49ae163b`，见 §269），推在 `fa5b58a5` 之上，推前现查在飞车道
+  （该 SHA 的 `Nightly` / `Windows Full Test` 均 **success**、无 `in_progress`）⇒ 本次推送没有顶掉任何人的判决。
+- 工作树里仍是并行会话的两份在制（`src/main/references/screening-service.ts`、`docs/plan-2026-10-28-two-releases.md`）——
+  **一个字节没碰**；本轮改的文件与它们不相交。
+- **本轮的单元来源**：`docs/plan-2026-10-28-two-releases.md` §三 的 v2.20.0 退出条件「A 组发布件读数：上述通道中位全部 < 80 ms」。
+  读源后确认这条**当下根本测不出来** —— 见下。
+
+### 一 缺口：慢阈值把「中位」挡在读数之外
+
+`src/main/diagnostics/ipc-rejection.ts` 的 `SLOW_IPC_HANDLER_THRESHOLD_MS = 50`：只有**超过 50 ms** 的成功调用才落日志行
+（`ipc handler was slow`）与 `slow-operation-ring`。于是「某通道中位 12 ms」这件事在产品里**没有任何记录位置**：
+
+- 慢记录只能证明「有过慢的」，`no-slow-operations-observed` 同时描述「很快」与「没人看着」；
+- 一个通道从 20 ms 退化到 70 ms，跨一个版本**完全看不见**（都没过阈值）；
+- 因此 A 组那条中位数口径**写完就不可核**——不是没人跑，是没有仪器。
+
+这是「先有仪器再优化」那条纪律的直接缺口，也解释了为什么历次只能在慢日志的**尾部**上做归因。
+
+### 二 交付
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/diagnostics/ipc-channel-latency.ts`（新） | 每通道保留**最近 N 次**完成时长的精确窗口（typed array 环形，逐调用零分配）：`observed`（自启动以来的完成数）、`windowSamples`、`p50Ms`/`p95Ms`（最近秩，窗口内精确）、`windowMaxMs`、`maxMs`（历史峰值，滚出窗口也不忘）、`rejectedInWindow`。空态具名 `no-calls-observed`；超过 `maxChannels` 的调用计入 `untrackedCalls`（不静默丢）；摘要按 p95 降序列前 32 条并报 `omitted` |
+| `src/main/diagnostics/ipc-rejection.ts` | 新增可选 `latencySink`，缺省即写共享累加器；**每一次**完成都记（在 50 ms 阈值**之前**），失败路径记 `rejected: true`；sink 抛错被就地吞掉，绝不改变调用方拿到的结果/拒绝 |
+| `src/main/diagnostics/support-bundle.ts` | 支持包新增 `diagnostics/ipc-channel-latency.json`（必填字段，与 `slowOperations` 同纪律），README.txt 写明这一段是什么、空态叫什么 |
+| `src/main/ipc.ts` | 组合根传 `ipcChannelLatency: sharedIpcChannelLatency.summary()` |
+| 用例 | 新 8 条（窗口滚动/精确分位/拒绝计数/截断与 omitted/超通道上限/非测量值不记成 0/clear）+ 适配器 3 条（**低于阈值的成功也被记**、拒绝记成 rejected、sink 抛错不改结果）+ 支持包 1 条（含 README 描述）+ 接线守卫 3 条（缺省 sink、写文件、组合根那一行）|
+| 认证 spec（**加强既有那条**） | `e2e/certification/support-bundle-export-readback.spec.ts` 追加：从**应用真写出的包**里读回该段，先断 `status` 再断数字（`p95 ≥ p50`、`max ≥ p95`），并打印实测通道数与最差尾部 |
+
+**两条设计判据**：① **窗口必须精确且尺寸写在值上** —— 用桶近似会让「中位」变成一个没有精度的词；窗口是「最近 N 次」，
+`observed > windowSamples` 就说明它滚过，读者不必猜。② **空态与快慢必须两态** —— `status` 先于数字断言，否则「没记录」
+会被读成「很快」（本仓已有两次同形误读）。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向：`src/main/diagnostics`（整目录） | **26 文件 / 199 passed**（含本笔新增：窗口 8 条、适配器 3 条、支持包 1 条、接线守卫 3 条）|
+| `src/main`（整目录，改的是组合根 + 通用适配器） | **11259 passed、207 skipped（11466）**，155.9 s，**exit 0** |
+| 双 typecheck（`--composite false`，node + web） | 本笔 **0 错**；余 **4 条全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改 |
+| `eslint --no-cache`（本笔 10 个文件） | **0 error**（3 处 prettier 折行告警已就地 `--write`，无跨行 churn） |
+| 变异自证 | 把 `recordLatency` 移到阈值判断**之后** ⇒ 适配器那条「低于阈值的成功也被记」当场红（它断的是 12 ms 那次调用）；把默认 sink 去掉 ⇒ 接线守卫红在「缺省 sink」那一行 |
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **只覆盖 Electron IPC 面**。`:112` 的 `ipcMain.handle` 包裹是这条面的唯一咽喉（所有业务通道都过它），
+   而 **Web RPC 面走另一条栈**，本段不覆盖 ⇒ A 组里 **web 面通道的中位读数仍然没有仪器**，这一条具名留着，不声称已收。
+2. **窗口是「每通道最近 128 次」**，不是全程分位：`observed > windowSamples` 就是「它滚过」的读数，读者据此选解释。
+   换代、重启后归零——峰值 `maxMs` 同样只活一个进程。
+3. **本机没有窗口读数**：本单元改的是 `src/main`，真机取证要先 `npm run build:e2e` 再起隔离实例，而本机当前在跑 dev 常驻实例
+   （`build:e2e` 会与它抢 `out/`，且并行会话可能在写），所以读数改由**认证车道**给：`support-bundle-export-readback.spec.ts`
+   已加强（从**应用真写出的包**里读回该段，先断 `status` 再断 `p95 ≥ p50`、`max ≥ p95`），判决挂在推送后 `Nightly` 的
+   `macos-arm64` 构建作业（P0 步骤）上。**读数未到手之前不写「已取真机读数」**；下一轮第一步就是去那个作业的日志里读
+   `[ic37] channels measured:` 那一行。
+4. **拒绝也计入**：`rejectedInWindow` 单列，因为「快速失败」不是「快」；这也让 `p50` 不被「全是拒绝」的通道衬托成优秀。
