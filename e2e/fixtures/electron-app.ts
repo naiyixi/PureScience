@@ -191,6 +191,10 @@ const launchEnvironment = (
   // derives its data root from HOME, so a certification spec reads and writes the developer's real
   // ~/PureScience-DEV and can fail on one machine while passing on CI. Set it for every run.
   environment.PURESCIENCE_E2E_STORAGE_ROOT = storageRoot
+  // Where the fake agent writes its own transcript (what it was asked, what it answered). Inside the run's
+  // test-results directory so CI's failure artifact carries it: a packaged-app stall is currently
+  // indistinguishable between "the prompt never arrived" and "the answer never came back".
+  environment.PURESCIENCE_E2E_AGENT_LOG = join(TEST_RESULTS_ROOT, 'fake-agent.log')
   if (fakeRemoteItRoot) {
     environment.PURESCIENCE_FAKE_REMOTEIT_STATE = join(storageRoot, 'fake-remoteit-state.json')
     environment.PURESCIENCE_REMOTEIT_BIN = process.execPath

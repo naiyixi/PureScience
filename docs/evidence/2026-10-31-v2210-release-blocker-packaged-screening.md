@@ -133,3 +133,46 @@ acp connection shutdown requested          ← 没有
 
 下一处（也是最后）该打的日志：在那个受限 runtime 的实例上记「runtime id / 谁在什么时候 deleteSession 或
 dispose」。要动的是 `runtime-*.ts` 这些被大量用例依赖的文件，所以这轮停在这里，没有硬改。
+
+## 8 重要更正：本机打包态复现**不忠实**（它跑的是真 opencode）
+
+复查本机那次打包运行的 app 日志，发现关键一行：
+
+```
+[acp] agent spawn {
+  executablePath: '/opt/homebrew/bin/opencode',     ← 本机装着的真 opencode
+  cwd: '/Users/totota/purescience', pid: 1433 }
+```
+
+而 CI 的同一份日志里是：
+
+```
+executablePath: '<tmp>/fake-agent-bin/opencode'     ← 夹具的假 agent（CI 没装 opencode ⇒ 走 PATH 上的夹具）
+```
+
+⇒ **本机那几轮「40.2 s / Active session disposed / agent process exit」的读数描述的是另一个故障**
+（真 opencode 不被夹具认知，prompt 自然没有答案），**不能当作 CI 那条红的定因**。§2–§7 的排除结论因此只对
+「本机真 opencode 路径」成立，对 CI 那条红**尚未排除**。
+
+CI 现场的**真实**读数（p0 产物里的 app 日志）：
+
+```
+[acp] agent initialized
+[acp] createSession: completed successfully ×2（sessionId e2e-session-1 / -2）
+[acp-prompt-turn-workflow] prompt start { sessionId: 'e2e-session-1', textLength: 2705 }
+[acp-prompt-turn-workflow] prompt start { sessionId: 'e2e-session-2', textLength: 2705 }
+[acp] agent process exit
+（之后再无该 session 的任何事件）
+```
+
+即：**假 agent 起来了、两个 session 建好了、两条 2705 字符的筛选 prompt 也发出去了，然后没有回音、进程退出。**
+
+## 9 这一轮的可交付：让「prompt 有没有到、回了什么」进 CI 产物
+
+夹具的 agent 自己有一份日志（`session.prompt …` / `reply -> …`），但它写在 `tmpdir()`，CI 产物里没有 ——
+这正是分辨「prompt 没到」「prompt 错了」「答了但没人收」所缺的那一份。已改为：
+
+- `fake-opencode.mjs`：`agentLogPath()` 支持 `PURESCIENCE_E2E_AGENT_LOG`；
+- `electron-app.ts`：启动时把该变量指向 `test-results/fake-agent.log`（CI 失败时上传的就是 `test-results/`）。
+
+下一次 p0 失败，产物里就会有那句 `session.prompt e2e-session-1: …` 与 `reply -> …`，这条红就能一次定死。

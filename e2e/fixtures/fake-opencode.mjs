@@ -84,7 +84,12 @@ const screeningReply = (prompt) => {
 // below is written when the turn is left hanging and read by the process that serves the continuation.
 // The app spawns this agent with the configuration's environment rather than its own, so the log cannot be
 // keyed by a variable the app sets. It goes to one path in the temp directory instead, cleared per run.
-const agentLogPath = () => join(tmpdir(), 'purescience-e2e-agent.log')
+// The fixture's own transcript of what it was asked and what it answered. Written under the test-results
+// root by default: that directory is what the CI job uploads on failure, so an agent that never got a
+// prompt, got the wrong one, or answered into the void can be told apart from a product that never
+// dispatched it — the packaged-app screening stall needed exactly this and it lived in tmpdir, unavailable.
+const agentLogPath = () =>
+  process.env.PURESCIENCE_E2E_AGENT_LOG ?? join(tmpdir(), 'purescience-e2e-agent.log')
 const agentLog = (line) => {
   try {
     appendFileSync(agentLogPath(), `${new Date().toISOString()} pid=${process.pid} ${line}\n`)
