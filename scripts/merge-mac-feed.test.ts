@@ -66,11 +66,18 @@ const independentSha512 = (path: string): string =>
 
 // The CLI's real exit code, from a real process (not the in-process return value): the release gate
 // is judged on `$?`, so that is the contract worth pinning.
+// stderr is captured rather than inherited: this test drives the failure branches on purpose, and the
+// CLI prints them as `::error::…` workflow commands. A sync child's stderr otherwise goes straight to
+// the parent's stderr, so a green run of this file still landed four failure-level annotations on the
+// CI job (measured: `grep -c '::error::'` over the job log = 4) — anyone triaging that job saw four
+// reds that never happened. Capturing keeps the same assertions (they read `status.stderr`) and
+// leaves the log honest.
 const runCli = (args: string[]): { status: number; stdout: string; stderr: string } => {
   try {
     const stdout = execFileSync('node', ['scripts/merge-mac-feed.mjs', ...args], {
       cwd: process.cwd(),
-      encoding: 'utf8'
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
     })
     return { status: 0, stdout, stderr: '' }
   } catch (error) {
