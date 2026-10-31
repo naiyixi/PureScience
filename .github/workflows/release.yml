@@ -122,7 +122,14 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CURRENT_TAG: ${{ github.ref_name }}
+          # The tag this run publishes to, not the ref it was started from. A dispatch to publish an
+          # existing tag has `github.ref_name` = `main`, so an exclusion written against the ref matches
+          # nothing: the list's first entry is then the release this very run just created, "previous"
+          # becomes a second copy of the current version, and the updater certification below fails with
+          # `Updater certification needs two versions` -- a red that says nothing about the product
+          # (measured on the v2.21.0 publish). Taking the published tag keeps the exclusion meaningful in
+          # both shapes: a tag run publishes the tag it was pushed for, a dispatch publishes the tag it names.
+          CURRENT_TAG: ${{ inputs.release_tag || github.ref_name }}
           PREVIOUS_VERSION: ${{ inputs.previous_version }}
         run: |
           New-Item -ItemType Directory -Force previous | Out-Null
@@ -140,6 +147,9 @@ jobs:
           }
           gh release download $tag --pattern '*-win-x64-setup.exe' --pattern '*-win-x64-setup.exe.blockmap' --dir previous
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Name the pair the drill will compare. Without this line a red here reads as "the updater broke"
+          # when what actually happened can be "the wrong two versions were fetched".
+          Write-Host "previous stable = $tag; publishing = $env:CURRENT_TAG"
           "available=true" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
 
