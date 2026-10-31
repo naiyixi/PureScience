@@ -63,6 +63,24 @@ type AcpConnectionCloseWorkflowOptions = Readonly<{
 }>
 const log = createLogger('acp:close')
 
+/**
+ * Diagnostic lines inside a teardown must never be able to change its outcome.
+ *
+ * A logger that throws (a full disk, a failed write) used to abort `disconnectCurrent` part-way — after
+ * the connection was superseded but before the session capabilities and active sessions were disposed —
+ * and its own error replaced the cause the caller needed to see (`ACP connection was superseded.` became
+ * `warn boom`). Two harms at once: a half-torn-down connection, and a failure message that names the
+ * logger instead of the connection. The count line is worth keeping, so the call is wrapped instead of
+ * dropped.
+ */
+const safeWarn = (message: string, data: unknown): void => {
+  try {
+    log.warn(message, data)
+  } catch {
+    return
+  }
+}
+
 class AcpConnectionCloseWorkflow {
   private candidateTreeKillReaped = true
   private readonly expectedProcessExits = new WeakSet<ChildProcessWithoutNullStreams>()
@@ -71,7 +89,7 @@ class AcpConnectionCloseWorkflow {
     // Who tears the connection down, and with how many sessions live, is the last link in the chain that
     // explains a screening pass dying at ~40 s with 'Active session disposed'. Logged at the entry, before
     // anything is superseded, so the counts describe the state at the moment the teardown was asked for.
-    log.warn('acp disconnect requested', {
+    safeWarn('acp disconnect requested', {
       emitClosedStatus,
       generation: this.options.currentGeneration(),
       activeSessions: this.options.state.activeSessionIds().length
@@ -119,7 +137,7 @@ class AcpConnectionCloseWorkflow {
     this.options.state.clearContextUsage()
     this.options.state.clearAppliedSessionModels()
     const activeSessionIds = this.options.state.activeSessionIds()
-    log.warn('acp disposing session capabilities', {
+    safeWarn('acp disposing session capabilities', {
       teardownGeneration,
       sessions: activeSessionIds.length
     })
