@@ -4931,5 +4931,6 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '도구 호출 기록 {rows}건(이름 없는 활동 {unnamed}건) — 패키지 내부 바이트와 대조 완료',
   'sessions.packageImport.toolReadingsNone': '이 세션은 도구를 호출하지 않았습니다.',
   'sessions.packageImport.toolReadingsNotCarried':
-    '이 패키지는 이전 버전에서 내보내져 도구 호출 기록을 포함하지 않습니다.'
+    '이 패키지는 이전 버전에서 내보내져 도구 호출 기록을 포함하지 않습니다.',
+  'settings.availableOnDiskUnreadable': '여유 공간을 확인할 수 없습니다'
 }

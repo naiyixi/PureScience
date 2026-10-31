@@ -5047,5 +5047,6 @@ export const en: Record<ZhKey, string> = {
     'Tool call readings: {rows} · unnamed activities: {unnamed} — checked against the bytes this package carries',
   'sessions.packageImport.toolReadingsNone': 'This session ran no tools.',
   'sessions.packageImport.toolReadingsNotCarried':
-    'This package was written before tool call readings travelled; it carries none.'
+    'This package was written before tool call readings travelled; it carries none.',
+  'settings.availableOnDiskUnreadable': 'Could not read free space'
 }

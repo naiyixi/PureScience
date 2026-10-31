@@ -620,6 +620,33 @@ describe('storage IPC handlers', () => {
     expect(info.availableBytes).toBeGreaterThan(0)
   })
 
+  // The lookup is answered by `statfs` on the data root, which fails when that directory does not exist
+  // yet (a fresh install's default `~/PureScience`) or when the volume does not respond. Reporting 0 there
+  // is a claim nobody measured — the panel would print `0 B` free, i.e. "the disk is full". Kept as null so
+  // the row can say it could not be read, and the failure is still named in the log.
+  it('get-info reports an unreadable free-space lookup as null, not as zero', async () => {
+    const missingRoot = join(currentParent, 'not-created-yet')
+    initDataRoot(missingRoot)
+    const logger = fakeDiagnosticLogger()
+    registerStorageIpcHandlers(fakeDeps({ logger }))
+
+    const info = (await invoke('storage:get-info')) as {
+      dataRoot: string
+      availableBytes: number | null
+      usage: { totalBytes: number }
+    }
+
+    expect(info.dataRoot).toBe(missingRoot)
+    expect(info.availableBytes).toBeNull()
+    // The rest of the reading still arrives: an unknown free-space figure must not blank the panel.
+    expect(info.usage.totalBytes).toBe(0)
+    const failures = (logger.warn as unknown as Mock).mock.calls.filter(
+      ([message]) => message === 'available storage lookup failed'
+    )
+    expect(failures).toHaveLength(1)
+    expect(failures[0][1]).toMatchObject({ errorCategory: 'not-found' })
+  })
+
   it('get-info reports dataRootMissing false for a fresh install (unset dataRoot, default dir absent)', async () => {
     initDataRoot(undefined)
     registerStorageIpcHandlers(fakeDeps())

@@ -5190,5 +5190,6 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Werkzeugaufrufe: {rows} (unbenannte Aktivitäten: {unnamed}) – gegen die Bytes des Pakets geprüft',
   'sessions.packageImport.toolReadingsNone': 'Diese Sitzung hat keine Werkzeuge ausgeführt.',
   'sessions.packageImport.toolReadingsNotCarried':
-    'Dieses Paket wurde von einer älteren Version geschrieben und enthält keine Werkzeugaufrufe.'
+    'Dieses Paket wurde von einer älteren Version geschrieben und enthält keine Werkzeugaufrufe.',
+  'settings.availableOnDiskUnreadable': 'Freier Speicherplatz nicht lesbar'
 }

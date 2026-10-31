@@ -176,6 +176,39 @@ describe('StoragePanel', () => {
     expect(row?.textContent?.trim()).not.toBe('')
   })
 
+  // A failed `statfs` (fresh install whose default root isn't created yet, or a volume that never answers)
+  // used to arrive here as 0 and render as `0 B` free — a full-disk claim nobody measured. The row now keeps
+  // the two states apart; the measured case is asserted beside it so the branch can't rot into always saying
+  // "could not read".
+  it('says free space could not be read instead of printing a zero nobody measured', async () => {
+    ;(
+      window as unknown as { api: { storage: { getInfo: ReturnType<typeof vi.fn> } } }
+    ).api.storage.getInfo.mockResolvedValue({
+      dataRoot: '/home/u/.purescience',
+      isDefault: true,
+      usage: { categories: [], totalBytes: 35_600_000 },
+      availableBytes: null
+    })
+
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+
+    const row = document.body.querySelector('[data-testid="storage-available-bytes"]')
+    expect(row?.textContent?.trim()).toBe('Could not read free space')
+    expect(row?.textContent).not.toContain('0 B')
+  })
+
+  it('prints the measured free space when the lookup did answer', async () => {
+    await act(async () => {
+      root.render(<StoragePanel />)
+    })
+
+    const row = document.body.querySelector('[data-testid="storage-available-bytes"]')
+    expect(row?.textContent).not.toContain('Could not read free space')
+    expect(row?.textContent).toMatch(/\d/)
+  })
+
   it('renders no sharing row when the walk found nothing shared', async () => {
     // A permanent "0 B saved" line would read as furniture and stop being read at all.
     ;(

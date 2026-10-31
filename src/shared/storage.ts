@@ -63,8 +63,7 @@ export type DuplicateSweepResult = {
 // A user-triggered maintenance call reports failure as data rather than as a bare rejection, so the
 // panel can say what went wrong instead of showing nothing.
 export type DuplicateSweepOutcome =
-  | ({ ok: true } & DuplicateSweepResult)
-  | { ok: false; error: string }
+  ({ ok: true } & DuplicateSweepResult) | { ok: false; error: string }
 
 export type StorageInfo = {
   dataRoot: string
@@ -84,7 +83,11 @@ export type StorageInfo = {
   // Drives the first-run LegacyDataMoveDialog; once answered (moved/relocated/declined) it stays false.
   legacyDataMovePrompt: boolean
   usage: StorageUsage
-  availableBytes: number
+  // Free space on the data root's volume, or null when the lookup could not be answered (the root does
+  // not exist yet, or the volume did not respond). Null is deliberately NOT zero: a surface that prints
+  // `0 B` here claims the disk is full, which is a measurement nobody took. A reader of this field must
+  // keep the two states apart and say "could not read" for null.
+  availableBytes: number | null
 }
 
 export type RevealAppStorageResult = {

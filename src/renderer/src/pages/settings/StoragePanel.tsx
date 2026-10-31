@@ -672,7 +672,13 @@ const StoragePanel = ({ onContinueToAgent }: StoragePanelProps): React.JSX.Eleme
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{t('settings.availableOnDisk')}</span>
-              <span className="tabular-nums">{formatBytes(info.availableBytes)}</span>
+              {/* Two states, not one: a failed lookup keeps null, and printing `0 B` for it would claim a
+                  full disk. The row says it could not be read instead of inventing a number. */}
+              <span className="tabular-nums" data-testid="storage-available-bytes">
+                {info.availableBytes === null
+                  ? t('settings.availableOnDiskUnreadable')
+                  : formatBytes(info.availableBytes)}
+              </span>
             </div>
           </div>
 

@@ -4695,7 +4695,8 @@ export const zh = {
   'sessions.packageImport.toolReadings':
     '工具调用读数 {rows} 条（未命名活动 {unnamed} 条）—— 已与包内字节核对一致',
   'sessions.packageImport.toolReadingsNone': '这个会话没有调用过工具。',
-  'sessions.packageImport.toolReadingsNotCarried': '这个包由较早版本导出，没有携带工具调用读数。'
+  'sessions.packageImport.toolReadingsNotCarried': '这个包由较早版本导出，没有携带工具调用读数。',
+  'settings.availableOnDiskUnreadable': '无法读取可用空间'
 }
 
 export type ZhKey = keyof typeof zh

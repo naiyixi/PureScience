@@ -5130,5 +5130,6 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Llamadas a herramientas: {rows} (actividades sin nombre: {unnamed}) — comprobadas con los bytes del paquete',
   'sessions.packageImport.toolReadingsNone': 'Esta sesión no ejecutó ninguna herramienta.',
   'sessions.packageImport.toolReadingsNotCarried':
-    'Este paquete lo escribió una versión anterior y no incluye lecturas de llamadas.'
+    'Este paquete lo escribió una versión anterior y no incluye lecturas de llamadas.',
+  'settings.availableOnDiskUnreadable': 'No se pudo leer el espacio libre'
 }

@@ -5161,5 +5161,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Appels d'outils : {rows} (activités sans nom : {unnamed}) — vérifiés contre les octets du paquet",
   'sessions.packageImport.toolReadingsNone': "Cette session n'a lancé aucun outil.",
   'sessions.packageImport.toolReadingsNotCarried':
-    "Ce paquet a été écrit par une version antérieure et ne contient aucun relevé d'appels d'outils."
+    "Ce paquet a été écrit par une version antérieure et ne contient aucun relevé d'appels d'outils.",
+  'settings.availableOnDiskUnreadable': 'Espace libre illisible'
 }

@@ -152,7 +152,10 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     const cpuStartedAt = process.cpuUsage()
     const dataRoot = resolveDataRoot()
     const dataRootMs = Date.now() - startedAt
-    let available = 0
+    // Stays null when the lookup fails: reporting 0 would read as "the disk is full", which is a
+    // measurement nobody took (the panel says it could not read the number instead). A missing default
+    // root on a fresh install reaches this branch — the volume is fine, the path simply isn't there yet.
+    let available: number | null = null
     try {
       available = await availableBytes(dataRoot)
     } catch (err) {

@@ -5015,5 +5015,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'ツール呼び出しの記録 {rows} 件（名前のない操作 {unnamed} 件）— パッケージ内のバイト列と照合済み',
   'sessions.packageImport.toolReadingsNone': 'このセッションはツールを呼び出していません。',
   'sessions.packageImport.toolReadingsNotCarried':
-    'このパッケージは古い版で書き出されたため、ツール呼び出しの記録を含みません。'
+    'このパッケージは古い版で書き出されたため、ツール呼び出しの記録を含みません。',
+  'settings.availableOnDiskUnreadable': '空き容量を取得できません'
 }

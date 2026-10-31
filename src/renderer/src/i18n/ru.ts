@@ -5038,5 +5038,6 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Вызовы инструментов: {rows} (безымянные действия: {unnamed}) — сверено с байтами пакета',
   'sessions.packageImport.toolReadingsNone': 'В этой сессии инструменты не вызывались.',
   'sessions.packageImport.toolReadingsNotCarried':
-    'Пакет создан более ранней версией и не содержит записей о вызовах инструментов.'
+    'Пакет создан более ранней версией и не содержит записей о вызовах инструментов.',
+  'settings.availableOnDiskUnreadable': 'Не удалось прочитать свободное место'
 }

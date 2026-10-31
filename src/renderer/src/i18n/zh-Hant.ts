@@ -4640,5 +4640,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadings':
     '工具調用讀數 {rows} 條（未命名活動 {unnamed} 條）—— 已與包內位元組核對一致',
   'sessions.packageImport.toolReadingsNone': '這個會話沒有調用過工具。',
-  'sessions.packageImport.toolReadingsNotCarried': '這個包由較早版本匯出，沒有攜帶工具調用讀數。'
+  'sessions.packageImport.toolReadingsNotCarried': '這個包由較早版本匯出，沒有攜帶工具調用讀數。',
+  'settings.availableOnDiskUnreadable': '無法讀取可用空間'
 }
