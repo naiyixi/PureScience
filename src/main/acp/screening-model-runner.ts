@@ -282,6 +282,13 @@ export class ScreeningAcpModelRunner implements ScreeningModelRunner {
   }
 
   async shutdown(): Promise<void> {
+    // Who ends a pass, and with how many records still waiting, is exactly what a stalled "0 / N processed"
+    // needs to say. Without this line the caller and the engine's own per-record failures look identical
+    // in the log (both surface as 'Active session disposed').
+    log.warn('screening runner shutting down', {
+      recordsInFlight: this.collectors.size,
+      preparedBackend: this.prepared?.backend.backendId
+    })
     this.shuttingDown = true
     const runtime = this.runtime
     this.runtime = undefined

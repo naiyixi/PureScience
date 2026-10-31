@@ -65,3 +65,23 @@ dev 构建 13.3 s 就通过，因此这是**打包态才出现**的路径差异 
 
 tag `v2.21.0` 在 `dd984e5a`，**没有 Release 页** ⇒ 可以 `git tag -d v2.21.0` → 在新提交上重打 → 推 tag
 → Release 自动 publish。（有页的 tag 不能删；这次没有页。）
+
+## 5 又一轮取样：不是 runner 自己关的
+
+加了第二处日志（`ScreeningAcpModelRunner.shutdown()` 会打印 `screening runner shutting down` + 在飞记录数），
+重打打包态、再跑一次，读数：
+
+```
+[screening:model] screening record started ×2
+[screening:model] screening record failed ×2   （仍是 Active session disposed / timedOut=false / ~40.2 s）
+（没有出现 `screening runner shutting down`）
+```
+
+⇒ **runner 的 shutdown 没有被调用**，pass 并不是被自己的生命周期收掉的。那么 40 秒时那条会话是被
+**ACP 运行时**那一侧 dispose 的（伴随 `[acp] agent process exit { signal: 'SIGTERM' }`）：最可能是
+后端**代际切换**（`backendGeneration.supersede` → `connection-close-workflow.disconnect` 会
+`disposeSessionCapabilities(activeSessionIds())`），或某个会话生命周期回收。
+
+下一处该打日志的位置（还没做）：`connection-close-workflow.disconnect()` / `runtime` 的
+`supersede` 入口，记录「谁要求关、当时的 generation、在飞会话数」。那是这条链的最后一环 ——
+拿到它就能指名道姓地修，而不是继续从现象倒推。
