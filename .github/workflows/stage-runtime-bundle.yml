@@ -41,10 +41,10 @@ jobs:
         # binaries, so this is safe (see stage-default-envs.mjs).
         include:
           - subdir: osx-arm64
-            os: macos-14
+            os: macos-15
             runner_subdir: osx-arm64
           - subdir: osx-64
-            os: macos-14
+            os: macos-15
             runner_subdir: osx-arm64
           - subdir: linux-64
             os: ubuntu-latest

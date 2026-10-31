@@ -38,7 +38,11 @@ jobs:
     name: Verify (lint + typecheck + test + package)
     # Skipped by the notarization dry-run (skip_verify), which only needs a signed mac build.
     if: ${{ !inputs.skip_verify }}
-    runs-on: macos-14
+    # macos-15, not macos-14: GitHub is brownouting the macOS 14 runner image (retired 2026-11-02) and a job
+    # pinned to it is CANCELLED before it runs a single step — measured 2026-10-31 on four consecutive
+    # Release runs, whose only trace was a check-run annotation ("scheduled macOS 14 runner image
+    # brownout"), not a failing step. A cancelled job is not a green one, so the label had to move.
+    runs-on: macos-15
     # Hosted runners give a Node process about a 2 GB V8 heap by default, and the node typecheck now needs
     # more: on 2026-10-02 two different commits died with `FATAL ERROR: Reached heap limit` inside
     # `typecheck:node`, while the same trees typecheck cleanly at the same limit on a dev machine — so the red

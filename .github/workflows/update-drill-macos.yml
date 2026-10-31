@@ -42,7 +42,7 @@ jobs:
     name: macOS update drill
     # Apple Silicon: electron-updater's MacUpdater picks the arm64 entry from the feed on an arm64 host,
     # so the published arm64 zip is the artifact this drill must exercise.
-    runs-on: macos-14
+    runs-on: macos-15
     # Hard ceiling so a stuck hand-off can never hold the runner; the drill step below is bounded
     # separately so a hang fails with its own log intact.
     timeout-minutes: 60
