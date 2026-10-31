@@ -9,7 +9,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { EXTERNAL_MCP_STATE_FILE } from './state-file'
 import { EXTERNAL_MCP_TOOLS } from './surface'
-import { ExternalMcpServer, externalMcpRiskGate, type ExternalMcpInvoke } from './server'
+import {
+  EXTERNAL_MCP_WRITE_TOOL_IDS,
+  ExternalMcpServer,
+  type ExternalMcpInvoke,
+  type ExternalMcpRequestApproval
+} from './server'
 
 // Capture the operational line without a real logger: the record shape is what the audit contract names,
 // so it is asserted as data rather than as console formatting.
@@ -114,6 +119,15 @@ const fakeInvoke = (): ExternalMcpInvoke & {
     if (input.commandName === 'artifacts:list-project-files') {
       return [{ id: 'f1', kind: 'file', name: 'notes.md', path: '/tmp/a/notes.md' }]
     }
+    if (input.commandName === 'sessions:update-archive') {
+      const request = input.args[0] as {
+        projectId: string
+        sessionId: string
+        archived: boolean
+        expectedArchivedAt: number | null
+      }
+      return { ...(documents[request.sessionId] as object), archivedAt: 1_700_000_900_000 }
+    }
     throw new Error(`unexpected command ${input.commandName}`)
   }) as ExternalMcpInvoke & { calls: typeof calls }
   invoke.calls = calls
@@ -121,10 +135,15 @@ const fakeInvoke = (): ExternalMcpInvoke & {
 }
 
 const startServer = async (
-  invoke: ExternalMcpInvoke
+  invoke: ExternalMcpInvoke,
+  requestApproval?: ExternalMcpRequestApproval
 ): Promise<{ server: ExternalMcpServer; endpoint: string; token: string; configRoot: string }> => {
   const configRoot = await scratchRoot()
-  const server = new ExternalMcpServer({ invoke, configRoot })
+  const server = new ExternalMcpServer({
+    invoke,
+    configRoot,
+    ...(requestApproval ? { requestApproval } : {})
+  })
   servers.push(server)
   const started = await server.start()
   return { server, endpoint: started.endpoint, token: started.token, configRoot }
@@ -276,17 +295,175 @@ describe('external MCP server', () => {
     expect(invoke.calls).toEqual([])
   })
 
-  it('fails closed on any tool whose risk is not a read', () => {
-    // The gate is the value that decides; today every declared tool is a read, and this is what the first
-    // write tool would hit before it could act.
-    expect(externalMcpRiskGate({ id: 'read_thing', risk: 'read' })).toEqual({ allowed: true })
-    const refused = externalMcpRiskGate({ id: 'write_thing', risk: 'write' })
-    expect(refused.allowed).toBe(false)
-    if (!refused.allowed) {
-      expect(refused.code).toBe('permission-gate-not-wired')
-      // The refusal has to say what it would have done, not just "denied".
-      expect(refused.message).toContain('write_thing')
-      expect(refused.message).toContain('Nothing was changed.')
+  it('refuses a write tool when no approval surface is reachable, and changes nothing', async () => {
+    // No port at all: an app started without an approval surface must not perform an outside client's
+    // write on that client's word. The refusal is named and the command is never invoked.
+    const invoke = fakeInvoke()
+    const { endpoint, token } = await startServer(invoke)
+    const client = await connect(endpoint, token)
+
+    const refused = await client.callTool({
+      name: 'archive_session',
+      arguments: { sessionId: 's1' }
+    })
+    expect(refused.isError).toBe(true)
+    expect(textOf(refused)).toMatchObject({ error: { code: 'approval-unavailable' } })
+    // The message has to say what did not happen, not just "denied".
+    expect(JSON.stringify(textOf(refused))).toContain('Nothing was changed.')
+    // The target lookup is a read and runs first (that is how the card can name the conversation); the
+    // write itself is never sent.
+    expect(invoke.calls.map((call) => call.commandName)).toEqual(['sessions:list-catalog'])
+
+    const line = externalMcpLogs
+      .filter((entry) => entry.message === 'external mcp call')
+      .at(-1)?.payload
+    expect(line).toMatchObject({
+      tool: 'archive_session',
+      risk: 'write',
+      outcome: 'refused',
+      code: 'approval-unavailable'
+    })
+  })
+
+  it('runs a write only after the card approves it, and audits the decision on the same call line', async () => {
+    const invoke = fakeInvoke()
+    const approvalRequests: {
+      toolId: string
+      toolCallId: string
+      sessionId: string | undefined
+      title: string
+      rawInput: unknown
+    }[] = []
+    const requestApproval: ExternalMcpRequestApproval = async (input) => {
+      approvalRequests.push({
+        toolId: input.toolId,
+        toolCallId: input.toolCallId,
+        sessionId: input.sessionId,
+        title: input.title,
+        rawInput: input.rawInput
+      })
+      return 'approved'
+    }
+    const { endpoint, token } = await startServer(invoke, requestApproval)
+    const client = await connect(endpoint, token)
+
+    const result = await client.callTool({
+      name: 'archive_session',
+      arguments: { sessionId: 's1' }
+    })
+    expect(result.isError).toBeUndefined()
+    expect(textOf(result)).toEqual({
+      sessionId: 's1',
+      projectId: 'p1',
+      archived: true,
+      archivedAt: 1_700_000_900_000
+    })
+
+    // The request the app actually sent: project id and the expected prior state come from the list row,
+    // not from the client's argument list.
+    const archiveCall = invoke.calls.find((call) => call.commandName === 'sessions:update-archive')
+    expect(archiveCall?.args).toEqual([
+      { projectId: 'p1', sessionId: 's1', archived: true, expectedArchivedAt: null }
+    ])
+
+    // The card asked about this conversation, and the id it was parked under is the one the audit line
+    // carries — that pairing is how "who approved what" is answerable afterwards.
+    expect(approvalRequests).toHaveLength(1)
+    expect(approvalRequests[0]).toMatchObject({
+      toolId: 'archive_session',
+      sessionId: 's1',
+      // The card shows what the plan resolved — the project id came from the list row, not from the client.
+      rawInput: { sessionId: 's1', projectId: 'p1', archived: true }
+    })
+    // …and it names the conversation, so the reader approves something recognisable.
+    expect(approvalRequests[0]?.title).toContain('Docking run')
+    // The read that resolved the target happened before the card was shown.
+    expect(invoke.calls.map((call) => call.commandName)).toEqual([
+      'sessions:list-catalog',
+      'sessions:update-archive'
+    ])
+
+    const line = externalMcpLogs
+      .filter((entry) => entry.message === 'external mcp call')
+      .at(-1)?.payload
+    expect(line).toMatchObject({
+      tool: 'archive_session',
+      risk: 'write',
+      outcome: 'ok',
+      decision: 'approved'
+    })
+    expect(line?.toolCallId).toBe(approvalRequests[0]?.toolCallId)
+  })
+
+  it('does not run a write the user declined, and reports the refusal by name', async () => {
+    const invoke = fakeInvoke()
+    const requestApproval: ExternalMcpRequestApproval = async () => 'declined'
+    const { endpoint, token } = await startServer(invoke, requestApproval)
+    const client = await connect(endpoint, token)
+
+    const refused = await client.callTool({
+      name: 'archive_session',
+      arguments: { sessionId: 's1' }
+    })
+    expect(refused.isError).toBe(true)
+    expect(textOf(refused)).toMatchObject({ error: { code: 'not-approved' } })
+    // Declined means declined: the target lookup is the only command that ran.
+    expect(invoke.calls.map((call) => call.commandName)).toEqual(['sessions:list-catalog'])
+
+    const line = externalMcpLogs
+      .filter((entry) => entry.message === 'external mcp call')
+      .at(-1)?.payload
+    expect(line).toMatchObject({
+      tool: 'archive_session',
+      outcome: 'refused',
+      code: 'not-approved',
+      decision: 'declined'
+    })
+  })
+
+  it('refuses archiving a session it does not hold, before asking anybody', async () => {
+    const invoke = fakeInvoke()
+    let asked = 0
+    const requestApproval: ExternalMcpRequestApproval = async () => {
+      asked += 1
+      return 'approved'
+    }
+    const { endpoint, token } = await startServer(invoke, requestApproval)
+    const client = await connect(endpoint, token)
+
+    const refused = await client.callTool({
+      name: 'archive_session',
+      arguments: { sessionId: 'no-such-session' }
+    })
+    expect(refused.isError).toBe(true)
+    expect(textOf(refused)).toMatchObject({ error: { code: 'session-not-found' } })
+    // A card for a session that does not exist would waste the reader's attention on a call that cannot
+    // work; the lookup happens first.
+    expect(asked).toBe(0)
+    expect(invoke.calls.map((call) => call.commandName)).toEqual(['sessions:list-catalog'])
+  })
+
+  it('keeps the write ids in one list, paired with the surface', async () => {
+    // The dispatch path decides "needs the card" from `risk`, and picks the planner from the id list. If the
+    // two disagree, a write either loses its gate or has no planner at all — both are wiring bugs, and the
+    // only place they can be caught before a real client hits them is here.
+    expect(
+      EXTERNAL_MCP_TOOLS.filter((tool) => tool.risk === 'write').map((tool) => tool.id)
+    ).toEqual([...EXTERNAL_MCP_WRITE_TOOL_IDS])
+    // And every declared tool answers through the real dispatch path: none of them is a surface row with no
+    // implementation behind it.
+    const invoke = fakeInvoke()
+    const { endpoint, token } = await startServer(invoke, async () => 'approved')
+    const client = await connect(endpoint, token)
+    for (const tool of EXTERNAL_MCP_TOOLS) {
+      const argument =
+        tool.id === 'list_project_files'
+          ? { project: 'p1' }
+          : tool.id === 'archive_session' || tool.id === 'read_session'
+            ? { sessionId: 's1' }
+            : {}
+      const result = await client.callTool({ name: tool.id, arguments: argument })
+      expect(JSON.stringify(textOf(result))).not.toContain('permission-gate-not-wired')
     }
   })
 })

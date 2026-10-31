@@ -40,9 +40,19 @@ describe('external MCP surface', () => {
       expect(tool.description.length).toBeGreaterThan(40)
       expect(tool.inputSchema.type).toBe('object')
       expect(tool.inputSchema.additionalProperties).toBe(false)
-      expect(tool.risk).toBe('read')
+      // The risk is a two-value contract, and the dispatch path branches on it. A value outside the union
+      // would fall through to the read path, so it is checked here rather than trusted.
+      expect(['read', 'write']).toContain(tool.risk)
       expect(tool.command).toMatch(/^[a-z][a-z0-9-]*:[a-z0-9:-]+$/)
     }
+  })
+
+  it('keeps the write set explicit, so a write cannot appear by adding a table row', () => {
+    // Widening this set is meant to be a decision that also wires a planner and an approval argument; the
+    // suite fails here first if a row is marked `write` without that decision.
+    expect(
+      EXTERNAL_MCP_TOOLS.filter((tool) => tool.risk === 'write').map((tool) => tool.id)
+    ).toEqual(['archive_session'])
   })
 
   it('keeps the tool ids and the reachable command list unique and derived from the table', () => {
@@ -102,6 +112,34 @@ describe('external MCP projections', () => {
       messageCount: 0
     })
     expect('updatedAt' in withoutTimestamp).toBe(false)
+  })
+
+  it('says when a conversation is archived, so the write that archived it is observable', () => {
+    // The write tool's effect has to be readable through the read tier; otherwise a client archives a
+    // conversation and its next list looks identical.
+    const archived = sessionRow({
+      id: 's4',
+      projectId: 'p1',
+      title: 't',
+      status: 'done',
+      messageCount: 2,
+      archivedAt: 1_700_000_900_000
+    })
+    expect(archived.archived).toBe('2023-11-14T22:28:20.000Z')
+    // Live conversations say nothing, and an unusable value is absence rather than a wrong timestamp.
+    expect(
+      'archived' in sessionRow({ id: 's5', projectId: 'p1', title: 't', status: 'idle' })
+    ).toBe(false)
+    expect(
+      'archived' in
+        sessionRow({
+          id: 's6',
+          projectId: 'p1',
+          title: 't',
+          status: 'idle',
+          archivedAt: Number.NaN
+        })
+    ).toBe(false)
   })
 
   it('does not let a count-only row claim the messages it does not carry', () => {

@@ -1,6 +1,6 @@
 // `external-mcp` is an outside MCP client (a desktop assistant, a script) talking to this app through
 // `purescience mcp`. It is deliberately NOT `human`: nothing outside this process may satisfy an
-// approval, and the read-only slice it can reach today never crosses the permission gate at all.
+// approval, and the one write tool it can reach parks on the app's own card instead of acting.
 export type CallerSurface = 'electron' | 'web' | 'task' | 'external-mcp'
 export type CallerLocation = 'local' | 'remote'
 export type CallerPrincipalKind = 'human' | 'automation' | 'agent-session' | 'external-mcp'

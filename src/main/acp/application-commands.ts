@@ -144,6 +144,7 @@ type AcpApplicationCommandRuntime = Pick<
   | 'getSessionPlanProjection'
   | 'respondSessionPlan'
   | 'respondElicitation'
+  | 'requestAppApproval'
 >
 
 type AcpApplicationCommandDependencies = Readonly<{

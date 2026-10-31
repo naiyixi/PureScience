@@ -575,6 +575,7 @@ class AcpPermissionContext {
     title: string
     rawInput: unknown
     riskReview?: NotebookRunRiskReceipt
+    external?: { tool: string; toolCallId: string }
   }): Promise<boolean> {
     return this.broker.requestAppApproval(input)
   }

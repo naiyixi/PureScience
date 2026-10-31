@@ -1171,6 +1171,7 @@ class AcpRuntime {
     title: string
     rawInput: unknown
     riskReview?: NotebookRunRiskReceipt
+    external?: { tool: string; toolCallId: string }
   }): Promise<boolean> {
     return this.permissionContext.requestAppApproval(input)
   }

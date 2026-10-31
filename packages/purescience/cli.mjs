@@ -57,7 +57,8 @@ Commands:
   connectors list        List connectors and whether each is enabled
   capabilities [--session <session-id>]
                          List capability contracts; with --session, say what each still needs
-  mcp                    Serve this app's read-only tools over stdio to an outside MCP client
+  mcp                    Serve this app's tools over stdio to an outside MCP client
+                         (reads, plus an archive that the app's own approval card gates)
                          (requires the app to be running; --list-tools prints what it exposes)
                          Exit codes: 0 normal end, 3 app not reachable, 4 published state unusable
   rollback-to-0.7.3 --yes [--output <path>]

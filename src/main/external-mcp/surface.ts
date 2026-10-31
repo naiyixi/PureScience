@@ -7,9 +7,11 @@
 // `server.ts` owns transport and dispatch, and the command whitelist lives in
 // `application-command-composition.ts` (`EXTERNAL_MCP_COMMAND_NAMES`) so the reachable set is one list.
 //
-// This slice is READ-ONLY on purpose. Write tools need the permission gate wired first and a per-tool
-// argument for why an outside client holding no authority may perform that specific write; until then
-// they do not exist here, which is stronger than existing and being refused.
+// This slice declares four read tools and one write tool. The write tool is why the permission gate
+// exists: `dispatchToolCall` asks the app's own approval card before it invokes anything for a
+// `risk: 'write'` tool, and refuses (named, nothing changed) when that card cannot be answered. A further
+// write tool needs its own argument for why an outside client holding no authority may perform it; the
+// read tools need none because they change nothing.
 //
 // Everything in this file is pure data or a pure projection: no Electron, no filesystem, no clock. That is
 // what lets the paired suite assert the registry, the schemas and the projections without a running app.
@@ -17,12 +19,12 @@
 import type { PersistedChatSession } from '../../shared/session-persistence'
 
 export type ExternalMcpToolId =
-  'list_projects' | 'list_sessions' | 'read_session' | 'list_project_files'
+  'list_projects' | 'list_sessions' | 'read_session' | 'list_project_files' | 'archive_session'
 
-// `read` is the only risk level that exists today. A second level (`write`) must not be added until the
-// permission gate is wired, because the dispatch path branches on this value and a write that slips into
-// the read branch would perform an action with no approval.
-export type ExternalMcpToolRisk = 'read'
+// `read` touches nothing. `write` changes what the app holds, so it must pass the approval card first —
+// the dispatch path branches on this value, and a write slipping into the read branch would perform an
+// action nobody approved. Do not add a third level here without wiring it in `server.ts` first.
+export type ExternalMcpToolRisk = 'read' | 'write'
 
 // Plain JSON Schema (draft-07 subset) rather than a zod shape: the tool list is served verbatim through
 // `tools/list`, so what a client sees is exactly what this table declares. Validation of the few
@@ -64,7 +66,8 @@ const EXTERNAL_MCP_TOOLS: readonly ExternalMcpTool[] = Object.freeze([
     title: 'List sessions',
     description:
       'List the conversations in this library as summaries: id, project, title, status, updated time and ' +
-      'message count. Pass `project` (an id from list_projects, or an exact project name) to narrow it.',
+      'message count, plus `archived` (an ISO timestamp) on the ones that have been archived. Pass ' +
+      '`project` (an id from list_projects, or an exact project name) to narrow it.',
     inputSchema: Object.freeze({
       type: 'object' as const,
       properties: Object.freeze({
@@ -121,6 +124,30 @@ const EXTERNAL_MCP_TOOLS: readonly ExternalMcpTool[] = Object.freeze([
     }),
     risk: 'read' as const,
     command: 'artifacts:list-project-files'
+  }),
+  Object.freeze({
+    id: 'archive_session' as const,
+    title: 'Archive a session',
+    description:
+      'Archive one conversation so it leaves the default list without being deleted; its messages are not ' +
+      "erased. This changes what the app holds, so it is not performed on the client's word: the app asks " +
+      'its own user to approve each call, and that card is shown in this conversation — which therefore has ' +
+      'to be open in the app. When the app is also serving its web API, the card can be answered from a ' +
+      'terminal instead (`purescience permissions`, then `purescience approve`). When no card can be shown, ' +
+      'the call is refused and nothing changes.',
+    inputSchema: Object.freeze({
+      type: 'object' as const,
+      properties: Object.freeze({
+        sessionId: Object.freeze({
+          type: 'string',
+          description: 'Session id from list_sessions (the conversation to archive)'
+        })
+      }),
+      required: Object.freeze(['sessionId']),
+      additionalProperties: false as const
+    }),
+    risk: 'write' as const,
+    command: 'sessions:update-archive'
   })
 ])
 
@@ -154,6 +181,11 @@ export type ExternalMcpSessionRow = Readonly<{
   // ISO 8601, converted from the stored epoch milliseconds. Absent when the record has no timestamp —
   // a client must be able to tell "no timestamp" from "the epoch".
   updatedAt?: string
+  // ISO 8601, present only while the conversation is archived. Without it an outside client could archive
+  // a conversation and then list it again seeing no difference at all — a write whose effect its own author
+  // cannot observe. Absent means "in the default list", which is the honest reading rather than a claim
+  // that it was never archived.
+  archived?: string
   messageCount: number
 }>
 
@@ -195,6 +227,7 @@ const sessionRow = (session: {
   title: string
   status: string
   updatedAt?: number
+  archivedAt?: number
   messageCount?: number
   messages?: readonly unknown[]
 }): ExternalMcpSessionRow => {
@@ -207,8 +240,15 @@ const sessionRow = (session: {
   }
   // The stored value is epoch milliseconds. An unusable value is reported as absent rather than as
   // `Invalid Date`, so a client never has to parse a string that is not a timestamp.
-  if (session.updatedAt === undefined || !Number.isFinite(session.updatedAt)) return row
-  return { ...row, updatedAt: new Date(session.updatedAt).toISOString() }
+  const stamped = (value: number | undefined): string | undefined =>
+    value === undefined || !Number.isFinite(value) ? undefined : new Date(value).toISOString()
+  const updatedAt = stamped(session.updatedAt)
+  const archived = stamped(session.archivedAt)
+  return {
+    ...row,
+    ...(updatedAt === undefined ? {} : { updatedAt }),
+    ...(archived === undefined ? {} : { archived })
+  }
 }
 
 // The most recent messages, in conversation order. `limit` is clamped rather than rejected: a client

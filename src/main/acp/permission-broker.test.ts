@@ -1893,6 +1893,48 @@ describe('ACP permission broker', () => {
     expect('riskReview' in emitted[0]).toBe(false)
   })
 
+  it('marks an outside client’s approval with its identity, and pairs it with the caller’s own call id', async () => {
+    infoLog.mockClear()
+    const emitted: EmittedPermissionRequest[] = []
+    const broker = new AcpPermissionBroker((request) => emitted.push(request))
+
+    const approved = broker.requestAppApproval({
+      sessionId: 'session-external',
+      title: 'An outside MCP client asks to archive “Docking run”',
+      rawInput: { sessionId: 's1', projectId: 'p1', archived: true },
+      external: { tool: 'archive_session', toolCallId: 'call-42' }
+    })
+
+    // What the window renders, and what a log reader can join on: MCP-marked with the client's tool, and
+    // carrying the caller's own id so `permission decision` lines up with `external mcp call`.
+    expect(emitted).toHaveLength(1)
+    expect(emitted[0]).toMatchObject({
+      sessionId: 'session-external',
+      isMcp: true,
+      mcpIdentity: 'purescience_external/archive_session',
+      toolCallId: 'call-42'
+    })
+
+    broker.respond({
+      requestId: emitted[0].requestId,
+      optionId: emitted[0].options.find((option) => option.kind === 'allow_once')?.optionId
+    })
+    await expect(approved).resolves.toBe(true)
+
+    const decision = infoLog.mock.calls
+      .map(([, data]) => data as Record<string, unknown> | undefined)
+      .filter((data): data is Record<string, unknown> => data?.decision !== undefined)
+      .at(-1)
+    // `card` is the whole point: this path cannot auto-approve, whatever profile the app's own agent runs
+    // under, because an outside client holds none of the authority the user granted to their agent.
+    expect(decision).toMatchObject({
+      decision: 'card',
+      isMcp: true,
+      tool: 'purescience_external/archive_session',
+      toolCallId: 'call-42'
+    })
+  })
+
   it('reviews a notebook cell call and leaves every other tool unreviewed', async () => {
     const notebookEmitted: EmittedPermissionRequest[] = []
     const notebookBroker = new AcpPermissionBroker((request) => notebookEmitted.push(request))

@@ -885,16 +885,28 @@ class AcpPermissionBroker {
     // Set by a caller that has already run the notebook risk review, so the card can name the rules
     // in the reader's language. Callers that have not run it pass nothing (see the field's note).
     riskReview?: NotebookRunRiskReceipt
+    /**
+     * Set when the request comes from an outside MCP client rather than from the app's own UI. It changes
+     * two things and nothing else: the request is marked `isMcp` with the client's tool identity, so the
+     * `permission decision` line says who asked, and `toolCallId` is the caller's own id so that line pairs
+     * with the caller's `external mcp call` line. It does **not** open a profile-based shortcut: a caller
+     * that needs an answer always gets a card, whatever permission profile the conversation is on — an
+     * outside client must never inherit the auto-approval the user granted to their own agent.
+     */
+    external?: { tool: string; toolCallId: string }
   }): Promise<boolean> {
     const requestId = randomUUID()
     const approveOptionId = `${requestId}:approve`
     const request: AcpPermissionRequest = {
       requestId,
       sessionId: input.sessionId,
-      toolCallId: `app-approval:${requestId}`,
+      toolCallId: input.external?.toolCallId ?? `app-approval:${requestId}`,
       title: input.title,
       providerToolName: 'PureScience',
       rawInput: input.rawInput,
+      ...(input.external
+        ? { isMcp: true, mcpIdentity: `purescience_external/${input.external.tool}` }
+        : {}),
       ...(input.riskReview ? { riskReview: input.riskReview } : {}),
       options: [
         { optionId: approveOptionId, name: 'Approve', kind: 'allow_once', scope: 'once' },

@@ -47,25 +47,26 @@ type UseCaseSample = {
 const USE_CASE_SAMPLES: UseCaseSample[] = [
   {
     id: 'external-mcp',
-    evidence: ['docs/evidence/2026-10-30-f1-external-mcp.md'],
+    evidence: ['docs/evidence/2026-10-31-f1-external-mcp-write.md'],
     command: 'npx playwright test e2e/certification/external-mcp-client.spec.ts --workers=1',
     readings: [
       {
         label: 'tools/list',
-        value: '["list_project_files","list_projects","list_sessions","read_session"]'
+        value:
+          '["archive_session","list_project_files","list_projects","list_sessions","read_session"]'
       },
-      { label: 'spec', value: '1 passed (7.8s)' },
-      { label: 'read_session(no-such-session)', value: 'session-not-found' },
-      { label: 'audit rows in one run', value: 'external mcp call' }
+      { label: 'spec', value: '2 passed (18.3s)' },
+      { label: 'archive_session, card cancelled', value: 'not-approved' },
+      { label: 'external mcp call, approved', value: "decision: 'approved'" }
     ],
     quotes: [
       {
-        text: "external MCP server started { transport: 'tcp', host: '127.0.0.1', port: 63607, tools: 4 }",
-        origin: 'main.log'
+        text: 'An outside MCP client asks to archive “First question”',
+        origin: 'the approval card, as the app published it'
       },
       {
-        text: 'Call list_sessions for the ids this machine holds.',
-        origin: 'refusal message returned to the client'
+        text: "permission decision { sessionId: 'e2e-session-1', toolCallId: '833308df…', decision: 'card', isMcp: true",
+        origin: 'main.log (broker)'
       }
     ]
   },

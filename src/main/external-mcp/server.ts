@@ -9,13 +9,14 @@
 // 2. The caller is not `human`. `invoke` builds an `external-mcp` caller context, so a command that gates
 //    on a human principal refuses it. (`canSatisfyHumanApproval` is false for it by construction.)
 // 3. Every call leaves one line. `external mcp call` carries the tool, its risk, the outcome, the refusal
-//    code when refused, and the duration — the operational counterpart of the broker's audit line, which
-//    becomes the audit of record once a write tool exists.
+//    code when refused, the approval decision when there was one, and the duration — the operational
+//    counterpart of the broker's `permission decision` line, which carries the same `toolCallId`.
 //
-// This slice declares only `risk: 'read'` tools, so no call can cross the permission gate yet. That is a
-// property of the surface, not an omission in the dispatch path: `dispatchToolCall` refuses any tool whose
-// risk is not `read` before it invokes anything, so adding a write tool without wiring the gate fails
-// closed instead of performing an unapproved write.
+// One tool declares `risk: 'write'` (`archive_session`), and its path has three steps that cannot be
+// reordered or skipped: resolve the target with reads, park the act on the app's own approval card (the
+// same broker the agent's tool calls use), and only then perform it. A write with no planner, a card
+// nobody can answer, and an answer that is not "approved" each end in a named refusal with nothing
+// changed, so this gate can fail closed but never open.
 
 import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server } from 'node:http'
@@ -56,6 +57,11 @@ export type ExternalMcpServerOptions = Readonly<{
   invoke: ExternalMcpInvoke
   /** Where the discovery file (endpoint + token) is published for `purescience mcp`. */
   configRoot: string
+  /**
+   * Parks an outside client's write on the app's approval card. Absent means "no approval surface" — every
+   * write tool then refuses with `approval-unavailable` instead of running unapproved.
+   */
+  requestApproval?: ExternalMcpRequestApproval
   createId?: () => string
   now?: () => number
 }>
@@ -78,6 +84,28 @@ type ToolCallInput = Readonly<{
 }>
 
 type ToolHandler = (input: ToolCallInput) => Promise<unknown>
+
+// The ids whose surface entry says `risk: 'write'`. Typing them here (and pairing the list with the surface
+// in the suite) is what turns "this tool needs the gate" into a compile-time fact: the read handlers are a
+// total record over the remaining ids, so a new read tool without an implementation does not compile, and a
+// write tool that is not listed here has no planner and is refused at runtime.
+export const EXTERNAL_MCP_WRITE_TOOL_IDS = Object.freeze(['archive_session'] as const)
+type WriteToolId = (typeof EXTERNAL_MCP_WRITE_TOOL_IDS)[number]
+type ReadToolId = Exclude<ExternalMcpToolId, WriteToolId>
+
+// What a write tool knows once it has resolved its target: a sentence for the card, the arguments the card
+// shows (the resolved ones, not only what the client typed), and the act itself. Planning performs reads
+// only, which is why the card can name the target and a typo never costs the reader an approval.
+type WritePlan = Readonly<{
+  title: string
+  /** The conversation the card is parked on, so the reader answers where the change applies. */
+  sessionId?: string
+  rawInput: Record<string, unknown>
+  /** Performs the change. Called only after the card answered "approved". */
+  act: () => Promise<unknown>
+}>
+
+type WritePlanner = (input: ToolCallInput) => Promise<WritePlan>
 
 const optionalString = (args: Record<string, unknown>, field: string): string | undefined => {
   const value = args[field]
@@ -121,9 +149,9 @@ type SessionCatalogResult = {
   })[]
 }
 
-// Handlers are a total record over the declared ids: adding a tool to the surface without writing its
-// handler is a type error, and the paired suite asserts the same thing at runtime.
-const createToolHandlers = (invoke: ExternalMcpInvoke): Record<ExternalMcpToolId, ToolHandler> => {
+// Handlers are a total record over the declared read ids: adding a read tool to the surface without
+// writing its handler is a type error, and the paired suite asserts the same thing at runtime.
+const createReadHandlers = (invoke: ExternalMcpInvoke): Record<ReadToolId, ToolHandler> => {
   // A project may be named by id or by exact name. The resolution is against the app's own list, and an
   // unknown value is a named refusal: answering with every project's data for a typo is a wrong answer
   // that looks right. Both tools that take a project go through here so they cannot disagree.
@@ -214,24 +242,89 @@ const createToolHandlers = (invoke: ExternalMcpInvoke): Record<ExternalMcpToolId
   }
 }
 
+// The write tools, each as a plan rather than a handler. The dispatcher builds the plan (reads only), shows
+// the card with what the plan resolved, and calls `act` only after the answer is "approved" — so the target
+// lookup that names a typo happens before anybody is asked, and the act cannot run on its own.
+const createWritePlans = (invoke: ExternalMcpInvoke): Record<WriteToolId, WritePlanner> => ({
+  // Two things about archiving are deliberate:
+  //
+  // 1. It resolves the row from the list tier instead of round-tripping the whole document. The archive
+  //    request needs `projectId` and the current `archivedAt` for its optimistic-concurrency check, and the
+  //    list row carries both; a read-document/save-session round trip would write back a document whose
+  //    heavy members (`activities`, `conversationGraph`) the list projection does not carry.
+  // 2. A conversation that is already archived is refused here rather than re-sent as an identical write:
+  //    the card would be asking the reader to approve a change that changes nothing.
+  archive_session: async ({ clientId, args }) => {
+    const sessionId = requiredString(args, 'sessionId')
+    const catalog = (await invoke({
+      clientId,
+      commandName: 'sessions:list-catalog',
+      args: []
+    })) as SessionCatalogResult
+    const entry = (catalog.sessions ?? []).find((session) => session.id === sessionId)
+    if (!entry) {
+      throw new ExternalMcpRefusal(
+        'session-not-found',
+        `No session has id "${sessionId}". Call list_sessions for the ids this machine holds.`
+      )
+    }
+    if (typeof entry.archivedAt === 'number' && entry.archivedAt > 0) {
+      throw new ExternalMcpRefusal(
+        'already-archived',
+        `Session "${sessionId}" is already archived; nothing was changed.`
+      )
+    }
+    const titled = typeof entry.title === 'string' ? entry.title.trim() : ''
+    return {
+      // The card names the conversation, not just an id: the reader is being asked to approve a change to
+      // something they can recognise, and the id alone would make that a guess.
+      title: `An outside MCP client asks to archive ${titled === '' ? `session “${sessionId}”` : `“${titled}”`}`,
+      sessionId,
+      // The card shows what was resolved, so what it describes is what will happen.
+      rawInput: { sessionId, projectId: entry.projectId, archived: true },
+      act: async () => {
+        const updated = (await invoke({
+          clientId,
+          commandName: 'sessions:update-archive',
+          args: [
+            {
+              projectId: entry.projectId,
+              sessionId,
+              archived: true,
+              // The row said this conversation is live, so the state the write expects to find is "no
+              // archivedAt". A concurrent archive makes the command refuse instead of overwriting.
+              expectedArchivedAt: null
+            }
+          ]
+        })) as { archivedAt?: number }
+        return {
+          sessionId,
+          projectId: entry.projectId,
+          archived: true,
+          ...(typeof updated.archivedAt === 'number' ? { archivedAt: updated.archivedAt } : {})
+        }
+      }
+    }
+  }
+})
+
 type ToolOutcome = 'ok' | 'refused' | 'failed'
 
-// The permission gate for the external surface, as a value that can be tested without registering a write
-// tool: today every declared tool is a read, so this returns "allowed" for all of them. The refused branch
-// is what a future write tool hits before it can act — it fails closed and says what would have happened.
-const externalMcpRiskGate = (tool: {
-  id: string
-  risk: string
-}): Readonly<{ allowed: true }> | Readonly<{ allowed: false; code: string; message: string }> => {
-  if (tool.risk === 'read') return { allowed: true }
-  return {
-    allowed: false,
-    code: 'permission-gate-not-wired',
-    message:
-      `"${tool.id}" would change data, and an outside client has no authority to approve that yet. ` +
-      'Nothing was changed.'
-  }
-}
+// How an outside client's write reaches the app's own approval card. Bound by the composition root to the
+// same broker the agent's tool calls use, so there is one approval surface and one audit line — not a
+// second consent mechanism invented for outside clients.
+export type ExternalMcpApprovalOutcome = 'approved' | 'declined' | 'unavailable'
+
+export type ExternalMcpRequestApproval = (input: {
+  toolId: string
+  /** Shared with this call's `external mcp call` line and the broker's `permission decision` line. */
+  toolCallId: string
+  /** What the card says the client is asking to do, in the reader's words. */
+  title: string
+  rawInput: unknown
+  /** The conversation the tool acts on; the card is parked there, so the reader answers where it applies. */
+  sessionId: string | undefined
+}) => Promise<ExternalMcpApprovalOutcome>
 
 const refusalResult = (
   error: unknown
@@ -257,7 +350,8 @@ const refusalResult = (
 export class ExternalMcpServer {
   private readonly token: string
   private readonly httpServer: Server
-  private readonly handlers: Record<ExternalMcpToolId, ToolHandler>
+  private readonly handlers: Record<ReadToolId, ToolHandler>
+  private readonly writePlans: Record<WriteToolId, WritePlanner>
   private readonly transports = new Map<string, StreamableHTTPServerTransport>()
   private readonly servers = new Set<ModelContextProtocolServer>()
   private _endpoint: string | undefined
@@ -269,7 +363,8 @@ export class ExternalMcpServer {
 
   constructor(private readonly options: ExternalMcpServerOptions) {
     this.token = randomUUID()
-    this.handlers = createToolHandlers(options.invoke)
+    this.handlers = createReadHandlers(options.invoke)
+    this.writePlans = createWritePlans(options.invoke)
     this.httpServer = createServer((request, response) => {
       void this.handleHttpRequest(request, response)
     })
@@ -377,7 +472,7 @@ export class ExternalMcpServer {
         ? (rawArguments as Record<string, unknown>)
         : {}
 
-    const finish = (outcome: ToolOutcome, code?: string): void => {
+    const finish = (outcome: ToolOutcome, code?: string, decision?: string): void => {
       log.info('external mcp call', {
         toolCallId,
         tool: name,
@@ -385,6 +480,9 @@ export class ExternalMcpServer {
         risk: tool?.risk ?? 'unknown',
         outcome,
         ...(code ? { code } : {}),
+        // Present only for a tool that needed an answer. The same `toolCallId` is on the broker's
+        // `permission decision` line, so a call and its approval pair up without guessing.
+        ...(decision ? { decision } : {}),
         durationMs: this.now() - startedAt
       })
     }
@@ -399,27 +497,99 @@ export class ExternalMcpServer {
       )
     }
 
-    if (tool.risk !== 'read') {
-      // Fail closed. Nothing declared today reaches this branch; it exists so the first write tool cannot
-      // run before the permission gate is wired, and the refusal says what it would have done.
-      const gate = externalMcpRiskGate(tool)
-      if (!gate.allowed) {
-        finish('refused', gate.code)
-        return refusalResult(new ExternalMcpRefusal(gate.code, gate.message))
+    let approvalDecision: ExternalMcpApprovalOutcome | undefined
+    let act: () => Promise<unknown>
+
+    if (tool.risk === 'write') {
+      // Step 1: resolve what the write is about with reads only. This is where a typo, a stale id, or an
+      // already-archived conversation is named — before anybody is asked, and with nothing changed.
+      let plan: WritePlan
+      try {
+        const planner = this.writePlans[tool.id as WriteToolId]
+        if (!planner) {
+          // A surface entry that says `risk: 'write'` without a planner would otherwise fall through to the
+          // read path and act unapproved. Refusing here keeps that mistake impossible rather than unlikely.
+          finish('refused', 'permission-gate-not-wired')
+          return refusalResult(
+            new ExternalMcpRefusal(
+              'permission-gate-not-wired',
+              `"${tool.id}" would change data, and this build has no approval path for it. Nothing was ` +
+                'changed.'
+            )
+          )
+        }
+        plan = await planner({ clientId, args })
+      } catch (error) {
+        const code = error instanceof ExternalMcpRefusal ? error.code : 'command-failed'
+        finish(error instanceof ExternalMcpRefusal ? 'refused' : 'failed', code)
+        return refusalResult(error)
       }
+
+      // Step 2: the card, before the act. A write that has already happened cannot be refused, so a
+      // refusal that arrives afterwards would be a report instead of a gate.
+      approvalDecision = await this.requestApproval(tool, toolCallId, plan)
+      if (approvalDecision !== 'approved') {
+        const decision = approvalDecision
+        const code = decision === 'declined' ? 'not-approved' : 'approval-unavailable'
+        const message =
+          decision === 'declined'
+            ? `"${tool.id}" changes data, and the app's user did not approve this call. Nothing was changed.`
+            : `"${tool.id}" changes data, and no approval card could be shown for it: the conversation it ` +
+              'acts on is not open in the app. Open that conversation and call again. Nothing was changed.'
+        log.warn('external mcp write refused', { toolCallId, tool: tool.id, decision })
+        finish('refused', code, decision)
+        return refusalResult(new ExternalMcpRefusal(code, message))
+      }
+
+      // Step 3: the act, and only now.
+      act = plan.act
+    } else {
+      // A read: its surface entry says so, and the handler record is total over the read ids.
+      const readId = tool.id as ReadToolId
+      act = () => this.handlers[readId]({ clientId, args })
     }
 
     try {
-      const payload = await this.handlers[tool.id]({ clientId, args })
-      finish('ok')
+      const payload = await act()
+      // One line per call, and the decision rides on it: a write that ran approved and a write that
+      // never ran must not both read as `outcome: ok`.
+      finish('ok', undefined, approvalDecision)
       return { content: [{ type: 'text', text: JSON.stringify(payload) }] }
     } catch (error) {
       // A refusal and a failure are different facts for whoever reads the log: the first means the client
       // asked for something that is not there (or asked wrongly) and nothing was attempted; the second
       // means the app tried and could not answer. Both carry a code, so neither is a silent empty result.
       const code = error instanceof ExternalMcpRefusal ? error.code : 'command-failed'
-      finish(error instanceof ExternalMcpRefusal ? 'refused' : 'failed', code)
+      finish(error instanceof ExternalMcpRefusal ? 'refused' : 'failed', code, approvalDecision)
       return refusalResult(error)
+    }
+  }
+
+  // Asks the app's own approval surface about a plan the caller already resolved. A port that is absent, or
+  // one that throws (the conversation is not loaded in this process, so there is nobody to ask), is
+  // `unavailable` — never "allowed".
+  private async requestApproval(
+    tool: { id: string; title: string },
+    toolCallId: string,
+    plan: Pick<WritePlan, 'title' | 'sessionId' | 'rawInput'>
+  ): Promise<ExternalMcpApprovalOutcome> {
+    const requestApproval = this.options.requestApproval
+    if (!requestApproval) return 'unavailable'
+    try {
+      return await requestApproval({
+        toolId: tool.id,
+        toolCallId,
+        title: plan.title,
+        rawInput: plan.rawInput,
+        sessionId: plan.sessionId
+      })
+    } catch (error) {
+      log.warn('external mcp approval unavailable', {
+        toolCallId,
+        tool: tool.id,
+        message: error instanceof Error ? error.message : String(error)
+      })
+      return 'unavailable'
     }
   }
 
@@ -489,4 +659,4 @@ export class ExternalMcpServer {
   }
 }
 
-export { EXTERNAL_MCP_SERVER_NAME, ExternalMcpRefusal, externalMcpRiskGate }
+export { EXTERNAL_MCP_SERVER_NAME, ExternalMcpRefusal }

@@ -54,7 +54,8 @@ const createDependencies = (): AcpApplicationCommandDependencies => ({
     respondSessionPlan: vi.fn(async () => ({ projection: {} as never, changed: true })),
     setPermissionProfile: vi.fn(async () => snapshot),
     revokePermissionGrant: vi.fn(async () => snapshot),
-    respondElicitation: vi.fn(() => true)
+    respondElicitation: vi.fn(() => true),
+    requestAppApproval: vi.fn(async () => true)
   },
   workflows: {
     createSession: vi.fn(async () => sessionResponse),

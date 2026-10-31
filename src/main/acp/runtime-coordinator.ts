@@ -768,6 +768,7 @@ class AcpRuntimeCoordinator {
     title: string
     rawInput: unknown
     riskReview?: NotebookRunRiskReceipt
+    external?: { tool: string; toolCallId: string }
   }): Promise<boolean> {
     return this.runtimeForSession(input.sessionId).requestAppApproval(input)
   }

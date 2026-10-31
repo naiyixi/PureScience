@@ -525,7 +525,7 @@ type IpcRegistrationOptions = {
 export type ApplicationRuntimeInterfaces = {
   applicationCommands: Pick<
     ApplicationCommandComposition,
-    'localWeb' | 'remoteWeb' | 'task' | 'externalMcp'
+    'localWeb' | 'remoteWeb' | 'task' | 'externalMcp' | 'externalApproval'
   >
   applicationEvents: ApplicationEventSource
   bindRemoteAccess: ApplicationCommandComposition['bindRemoteAccess']
@@ -4186,7 +4186,11 @@ const createApplicationModules = async (
       task: applicationCommandComposition.task,
       // Handed out here as well because the outside MCP listener is started in the composition root after
       // this call returns; it must be this narrow view, never the Web or desktop dispatcher.
-      externalMcp: applicationCommandComposition.externalMcp
+      externalMcp: applicationCommandComposition.externalMcp,
+      // The write gate: the same approval card the app's own actions use, so an outside client's write
+      // cannot happen on its own word. Exported from here because the listener is started where no ACP
+      // runtime exists.
+      externalApproval: applicationCommandComposition.externalApproval
     },
     applicationEvents,
     bindRemoteAccess: applicationCommandComposition.bindRemoteAccess,

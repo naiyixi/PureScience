@@ -612,6 +612,9 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
       // reachable instead of the user losing the app.
       const externalMcp = await startExternalMcpServer({
         commands: applicationCommands.externalMcp,
+        // A write tool crosses the app's approval card before it acts; without this port the listener would
+        // only be able to refuse them, so it is passed here rather than resolved inside the listener.
+        requestApproval: applicationCommands.externalApproval,
         configRoot: resolveConfigRoot()
       })
       startupDiagnostics?.phase('external-mcp-started', {

@@ -14311,3 +14311,72 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
 3. `npm run build:e2e` 后跑 `external-mcp-client.spec.ts`（既有 4 条只读断言必须仍绿），再加第 9 步的
    approve / cancel 两段，取 `permission decision` 与 `external mcp call` 的 `toolCallId` 配对读数；
 4. 开工前先 `git status --short` 认领在制件（并行会话的 `screening-service.ts` 仍可能在里面，**别碰**）。
+
+## 二百六十三、本轮追加（执行器，2026-10-31 11:2x–）—— F1 第二片落地：写入面 + 权限门，含真机读数（CLI 作答两条路径都真跑）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = a85e7b06`，本地 `HEAD` 与远端同点；工作树里躺着**上一轮（本执行器、09:2x 那次被网关超时打断的）**
+  的 F1 第二片在制品（`src/main/external-mcp/**`、`src/main/acp/**`、组合根、`ipc.ts`、`index.ts`）
+  ⇒ 本轮的活是**把它做完并取证**，不是重做。
+- 并行会话的在制件**一个字节没碰**：`src/main/references/screening-service.ts`（+19 行）与
+  `docs/plan-2026-10-28-two-releases.md`（H1/H2 两行状态）。前者当前**类型检查报错**（`TS6133`×3 + `TS2564`），
+  属它在途半成品，不修、不提交。
+- 在飞车道：`gh run list` 查时全 `completed`（推前现查，见 §四）。
+
+### 一 交付（§9.3 九处改动，逐条落地）
+
+| 步 | 落点 | 结论 |
+| --- | --- | --- |
+| 1 | `external-mcp/surface.ts` | `risk: 'read' \| 'write'`；新增 `archive_session{sessionId}`（write / `sessions:update-archive`）；`list_sessions` 行加 `archived`；`EXTERNAL_MCP_COMMAND_COUNT` 4→5 |
+| 2 | `external-mcp/server.ts` | `options.requestApproval` 端口；写路径三步不可换序（**先只读解析目标 → 挂卡 → 才 act**）；拒码具名 `not-approved` / `approval-unavailable` / `permission-gate-not-wired` / `already-archived`；`external mcp call` 行加 `decision`，与 broker 共享 `toolCallId` |
+| 3 | `acp/permission-broker.ts` | `requestAppApproval` 加可选 `external{tool,toolCallId}` ⇒ `isMcp:true` + `mcpIdentity: purescience_external/<tool>` + `toolCallId`；**仍走 `requestAppApproval`（永远一张卡）**，不走按 profile 自动放行的 `requestPermission` |
+| 4 | `acp/runtime.ts` + `permission-context.ts` + `runtime-coordinator.ts` | 三处签名同批透传（少一处就静默丢键） |
+| 5 | `application-command-composition.ts` | Pick 加 `requestAppApproval`；组合 expose `externalApproval`（端口绑到 coordinator）；类型加该字段 |
+| 6 | `ipc.ts` | `applicationCommands` 白名单加 `externalApproval` |
+| 7 | `index.ts` | `startExternalMcpServer({… requestApproval: applicationCommands.externalApproval })` |
+| 8 | 用例 | `surface.test.ts`：写集合显式成表（`['archive_session']`）+ `archived` 三态；`server.test.ts`：**无端口拒且不 invoke** / **答拒不 invoke** / 答批才 invoke 一次且审计带 `decision` / 目标不存在在问人**之前**拒；`permission-broker.test.ts`：外部身份进 `permission decision`（`card` + `isMcp` + `tool` + `toolCallId`）；`application-command-wiring.test.ts`：窄视图数 4→5 并点名 `externalApproval` 是函数端口不是视图 |
+| 9 | `e2e/certification/external-mcp-client.spec.ts` | 追加第二支用例（取消 / 批准两条路径 + 两本账配对），见 §三 |
+
+文案与文档同批：`CLI.md`（工具表加 `archive_session` + `permissions`/`approve` 两步）、`cli.mjs` 帮助行、
+`caller-context.ts` 与 `surface.ts` 头注（把「只读切片」改成本片的事实）、工具 `description`（把「终端可答」
+限定为「应用同时开着 web API 时」）。
+
+### 二 门禁（本轮实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（external-mcp / acp / 组合根两套 / data-content / 首页画廊 / i18n / renderer web / shared / preload） | **265 files / 3,375 passed**，EXIT 0 |
+| `eslint --no-cache`（本批全部改动文件） | **0 error / 112 warnings**（全为 prettier 既有漂移，未 `--fix` 以免卷进无关 hunk） |
+| `tsc -p tsconfig.node.json --composite false`（共享树） | 只剩 `screening-service.ts` 那 4 条（**并行会话在制**）；本批文件 0 错 |
+| 全量 vitest / 双 typecheck（干净隔离工作树） | 见 §四 |
+
+### 三 真机读数（`build:e2e` → `npx playwright test … --workers=1`）
+
+**2 passed (18.3s)**（用例 1 = 第一片只读 7.5s；用例 2 = 本片写入 10.1s）。逐条在
+`docs/evidence/2026-10-31-f1-external-mcp-write.md`。两条最要紧的：
+
+- **取消 ⇒ 数据未动**：`not-approved` + 紧接着 `list_sessions` 里该行**没有** `archived`；
+- **批准 ⇒ 写入发生且可读回**：`archived: true` + `archivedAt`，同一客户端再列表可见 `archived`。
+- **两本账配对**：两条 `permission decision`（`decision: 'card'`、`isMcp: true`、
+  `tool: 'purescience_external/archive_session'`）的 `toolCallId` 与两条 `external mcp call`
+  （`risk: 'write'`，`decision: declined` / `approved`）**逐个相同**。
+
+**CLI 那条路是真跑通的，不是构造的**：CLI 需要应用发布 `web-service.json`（`purescience start` 总会写），
+本轮 e2e 在重启时给 `PURESCIENCE_WEB_PORT=0` 让应用自己发布，CLI 自己发现端口与令牌（地址与凭据都没有
+传给它）。这条也解释了一个真实边界：**纯窗口启动不发布该文件 ⇒ 那时只能用窗口作答**，已写进工具
+`description` 与 `CLI.md`。
+
+### 四 与计划的一处偏离（具名，不悄悄改）
+
+计划 §9.3 第 9 步写「`list_sessions` 不再列出该会话」。实测 `sessions:list-catalog` 仍返回 archived 行，
+本片改为**在行上带 `archived`（ISO）**而不是把它藏起来。理由：让外部客户端看不见自己刚归档的会话，等于
+让它无法确认写入生效；「默认不列出」是界面视图的过滤，不是数据面的语义。判据据此改写成「同一客户端再列表
+能看到 `archived`」，并在 `docs/evidence/2026-10-31-f1-external-mcp-write.md` §四 记明。
+
+### 五 下一轮第一步
+
+1. 按完整 40 位 SHA 读本轮推送的 `Nightly`（覆盖车道）与 `Windows Full Test`；认证 spec 只在 macos-arm64
+   的构建作业里跑 ⇒ 要它的判决得看那条作业。
+2. 然后开 **H1（用例画廊）** 剩下的窗口级读数（卡片已随本片更新：指向新证据档 + 九语 claim/judgment 同步）。
+3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：内存/网络恢复后再取，取不到继续具名挂着。

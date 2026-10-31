@@ -1,5 +1,8 @@
 # F1 真机读数：外部 MCP 客户端经 CLI 读本机（2026-10-30）
 
+> **本档是第一片（只读）的读数，已被第二片取代的部分在 §五 具名更正。**
+> 当前的完整读数看 `docs/evidence/2026-10-31-f1-external-mcp-write.md`（五个工具、写入面与权限门）。
+
 单元：F1「CLI 对外 MCP」第一片（只读）。施工单：`docs/plan-2026-10-30-f1-external-mcp.md`。
 本档只记**本机实跑**的数字；没有跑到的项具名列出，不用推断补齐。
 
@@ -52,3 +55,13 @@ spec 起初自己拼读盘：`JSON.parse(doc).session.messages.length`。读数�
    用远端 profile 复跑一次。
 4. **打包态**：本轮读数取自 dev 构建（`build:e2e`）。打包产物的 CLI 是否带 `mcp` 动词，要等下一个版本装机后
    才验；本档不声称已验。
+
+## 五 2026-10-31 更正（第二片落地后回看本档）
+
+| 本档原话 | 现在的状态 |
+| --- | --- |
+| §一「1 passed (7.8s)」、§三「tools: 4」「`tools/list` 四条」 | 第一片当时的读数，**留作历史**。同一支 spec 现在是**两支用例 / 五个工具**：`2 passed (18.3s)`（7.5s + 10.1s），`tools/list` 多了 `archive_session` |
+| §四 1「写入类工具不在第一片」 | **已补**：`archive_session`（`risk: 'write'`）在第二片落地，且不是「先有写工具再补门」，门与工具同批 |
+| §四 2「窗口内弹卡与 `permission decision` 行本轮不会出现」 | **已取到读数**：两次问卡各一条 `permission decision`（`decision: 'card'`、`isMcp: true`、`tool: 'purescience_external/archive_session'`），与 `external mcp call` 的 `toolCallId` 逐个配对 —— 见 `2026-10-31-f1-external-mcp-write.md` §二 |
+| §四 3、4（远端 profile、打包态） | 仍未取证，结论不变 |
+

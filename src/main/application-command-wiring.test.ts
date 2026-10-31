@@ -138,10 +138,15 @@ describe('production application command wiring', () => {
     expect(returnedViews).toContain('task: applicationCommandComposition.task')
     // F1: the outside MCP client's view is handed out here too, because the listener is started by the
     // composition root after this call and must be given the narrow external view rather than a dispatcher.
-    // Four narrow views is the deliberate number — the rule this asserts is "no full router leaks out of
-    // composition", and this view is narrower than the three above (four read-only commands).
+    // Five narrow views is the deliberate number — the rule this asserts is "no full router leaks out of
+    // composition", and this view is narrower than the three above (four reads and one gated write).
     expect(returnedViews).toContain('externalMcp: applicationCommandComposition.externalMcp')
-    expect(occurrences(returnedViews, 'applicationCommandComposition.')).toBe(4)
+    // The write gate is a single function port, not a view: what an outside client may *do* stays the tool
+    // table's decision, and this is what parks one of those tools on the app's own approval card.
+    expect(returnedViews).toContain(
+      'externalApproval: applicationCommandComposition.externalApproval'
+    )
+    expect(occurrences(returnedViews, 'applicationCommandComposition.')).toBe(5)
   })
 
   it('adds transport adapters after composition and disposes the router before its owners', () => {

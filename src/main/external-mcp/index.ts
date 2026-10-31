@@ -13,7 +13,11 @@ import type { ApplicationCommandByNameDispatcher } from '../application-command-
 import { createApplicationCommandClient } from '../application-command-client'
 import { createExternalMcpCallerContext } from '../caller-context'
 import { createLogger } from '../logger'
-import { ExternalMcpServer, type ExternalMcpInvoke } from './server'
+import {
+  ExternalMcpServer,
+  type ExternalMcpInvoke,
+  type ExternalMcpRequestApproval
+} from './server'
 
 const log = createLogger('external-mcp')
 
@@ -24,17 +28,28 @@ export type ExternalMcpHandle = Readonly<{
 
 const startExternalMcpServer = async ({
   commands,
+  requestApproval,
   configRoot
 }: {
   /** The composition's external-MCP view — not the Web or desktop dispatcher. */
   commands: ApplicationCommandByNameDispatcher
+  /**
+   * The app's own approval card, as a port. A write tool calls it before it acts; when it is absent the
+   * listener still starts and every write is refused with `approval-unavailable`, which keeps an
+   * unapproved write impossible rather than merely unlikely.
+   */
+  requestApproval?: ExternalMcpRequestApproval
   configRoot: string
 }): Promise<ExternalMcpHandle | undefined> => {
   const client = createApplicationCommandClient()
   const invoke: ExternalMcpInvoke = ({ clientId, commandName, args }) =>
     client.invoke(commands, commandName, createExternalMcpCallerContext(clientId), args)
 
-  const server = new ExternalMcpServer({ invoke, configRoot })
+  const server = new ExternalMcpServer({
+    invoke,
+    configRoot,
+    ...(requestApproval ? { requestApproval } : {})
+  })
   try {
     const { endpoint } = await server.start()
     return Object.freeze({

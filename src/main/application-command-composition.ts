@@ -1,4 +1,5 @@
 import { RENDERER_CONTRACT_CATALOG } from '../shared/renderer-contract-catalog'
+import { createLogger } from './logger'
 import {
   acpApplicationCommands,
   registerAcpCommands,
@@ -72,8 +73,10 @@ import {
   type SessionPackageApplicationCommandDependencies
 } from './session-package/application-commands'
 // F1: the external MCP surface's command whitelist is derived from its own tool table, so a tool cannot be
-// declared against a command an outside client may not reach. Read-only slice: four reads, no writes.
+// declared against a command an outside client may not reach. Four reads and one write; the write is gated
+// by `externalApproval` below, which parks it on the app's own approval card.
 import { externalMcpCommandNames } from './external-mcp/surface'
+import type { ExternalMcpRequestApproval } from './external-mcp/server'
 
 type AnyApplicationCommand = ApplicationCommand<string, readonly unknown[], unknown>
 type NotebookEnvironmentDependencies = Parameters<
@@ -113,8 +116,15 @@ type ApplicationCommandComposition = Readonly<{
   localWeb: ApplicationCommandByNameDispatcher
   remoteWeb: RemoteWebApplicationCommandDispatcher
   task: ApplicationCommandByNameDispatcher
-  /** The narrow view an outside MCP client reaches (`purescience mcp`). Read-only tools only. */
+  /** The narrow view an outside MCP client reaches (`purescience mcp`). Four reads, one gated write. */
   externalMcp: ApplicationCommandByNameDispatcher
+  /**
+   * Parks an outside client's write on the app's own approval card — the same broker the agent's tool
+   * calls use, so there is one consent surface and one `permission decision` line. The external MCP server
+   * is started from a place that holds no ACP runtime, so the port is exported here rather than wired
+   * there; a second route into the broker from that file would be a second consent mechanism.
+   */
+  externalApproval: ExternalMcpRequestApproval
   bindRemoteAccess: (owner: RemoteAccessOwner) => void
   dispose: () => void
 }>
@@ -264,8 +274,9 @@ const REMOTE_REJECTED_COMMAND_COUNT = 135
 const TASK_COMMAND_COUNT = 15
 // The external MCP tools this app exposes to an outside client (`purescience mcp`). The list itself lives
 // with the tool table in `external-mcp/surface.ts`; this count certifies that adding a tool to the surface
-// also reaches the boot-time inventory check instead of silently widening the reachable set.
-const EXTERNAL_MCP_COMMAND_COUNT = 4
+// also reaches the boot-time inventory check instead of silently widening the reachable set. Five since the
+// write tool (`archive_session`) joined the four reads — the write is the one the approval gate covers.
+const EXTERNAL_MCP_COMMAND_COUNT = 5
 
 const ELECTRON_NATIVE_COMMAND_NAMES = Object.freeze([
   'sessions:export-conversation',
@@ -526,12 +537,44 @@ const createApplicationCommandComposition = (
   })
   const task = view(TASK_COMMAND_NAMES)
   const externalMcp = view(externalMcpCommandNames)
+  // The gate an outside client's write crosses. Deliberately routed through `requestAppApproval` (always a
+  // card) and not through the provider permission path (which honours the conversation's profile): an
+  // outside client must never inherit the auto-approval the user granted to their own agent. A conversation
+  // this process has not loaded cannot be asked — that is `unavailable`, i.e. refused, never allowed.
+  const externalApprovalLog = createLogger('external-mcp')
+  const externalApproval: ExternalMcpRequestApproval = async (input) => {
+    if (!input.sessionId) return 'unavailable'
+    try {
+      const approved = await dependencies.acp.runtime.requestAppApproval({
+        sessionId: input.sessionId,
+        title: input.title,
+        rawInput: input.rawInput,
+        external: { tool: input.toolId, toolCallId: input.toolCallId }
+      })
+      externalApprovalLog.info('external mcp approval answered', {
+        toolCallId: input.toolCallId,
+        tool: input.toolId,
+        sessionId: input.sessionId,
+        approved
+      })
+      return approved ? 'approved' : 'declined'
+    } catch (error) {
+      externalApprovalLog.warn('external mcp approval unavailable', {
+        toolCallId: input.toolCallId,
+        tool: input.toolId,
+        sessionId: input.sessionId,
+        message: error instanceof Error ? error.message : String(error)
+      })
+      return 'unavailable'
+    }
+  }
 
   return Object.freeze({
     localWeb,
     remoteWeb,
     task,
     externalMcp,
+    externalApproval,
     bindRemoteAccess: remoteAccess.bind,
     dispose: (): void => {
       if (disposed) return

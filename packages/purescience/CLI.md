@@ -249,9 +249,9 @@ Both verbs share the package's own failure vocabulary:
 
 ## Connect an outside MCP client
 
-The app can serve a read-only set of its own tools over the Model Context Protocol, so an assistant you
-already run can read this machine's projects and conversations without being given the app's whole
-authority:
+The app can serve a narrow set of its own tools over the Model Context Protocol, so an assistant you
+already run can read this machine's projects and conversations — and archive one conversation — without
+being given the app's whole authority:
 
 ```bash
 purescience mcp                 # speaks MCP over stdio until the client closes it
@@ -262,7 +262,7 @@ Register the command in that client's MCP configuration exactly as written (`pur
 the running app itself and needs no arguments. The app must be running — `purescience mcp` reads the
 endpoint and token the app published for this machine, and never accepts one from the client.
 
-What it exposes today, all read-only:
+What it exposes today:
 
 | Tool                 | What it returns                                                                   |
 | -------------------- | --------------------------------------------------------------------------------- |
@@ -270,11 +270,25 @@ What it exposes today, all read-only:
 | `list_sessions`      | conversations as summaries, optionally narrowed to one project (id or exact name) |
 | `read_session`       | one conversation's messages, with `messageCount` and `truncated`                  |
 | `list_project_files` | the files the app holds for one project                                           |
+| `archive_session`    | archives one conversation (a **write**, gated by the app's approval card)         |
 
 Narrowing by a project name that does not exist is refused by name (`project-not-found`) rather than
 answered with every project, and a long conversation states how many messages it left out instead of
-looking complete. Nothing here can change data; tools that would change data are not exposed until they
-carry the same approval the app's own agent needs.
+looking complete. The four reads cannot change data at all.
+
+`archive_session` is the only tool that changes anything, and it does not act on the client's word: the
+app asks its own user to approve that call, on the conversation the call names. The card is shown in that
+conversation, so the conversation has to be open in the app; with no window — a `start --no-open`
+service — answer it from a terminal instead:
+
+```bash
+purescience permissions                                  # list the cards, with the session and tool each concerns
+purescience approve <requestId> --option <optionId>      # allow
+purescience approve <requestId> --cancel                 # refuse
+```
+
+When no card can be shown the call is refused (`approval-unavailable`), and when the answer is not an
+approval it is refused as `not-approved`. Both leave the data exactly as it was.
 
 The exit code says which of the three situations you are in: `0` the client closed the stream, `3` the
 app is not reachable, `4` the app is running but its published endpoint is stale (`purescience start`
