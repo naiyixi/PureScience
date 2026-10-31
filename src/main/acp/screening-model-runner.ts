@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import type { AcpRuntimeEvent } from '../../shared/acp'
+import { createLogger } from '../logger'
 import type { ResolvedAgentBackend } from '../agent-framework'
 import { ScreeningTransportError, type ScreeningModelRunner } from '../references/screening-engine'
 import type { ExplicitAgentBackendTarget } from '../settings/backend-resolver'
@@ -34,7 +35,9 @@ import { AcpRuntime, type AcpRuntimeOptions } from './runtime'
 // transport-shaped failure is ScreeningTransportError (retried by a resume), a tool use or an unusable
 // turn is a model failure (recorded for inspection), and neither is collapsed into "it broke".
 
-export const SCREENING_AGENT_NAME = 'purescience-screening'
+export const log = createLogger('screening:model')
+
+const SCREENING_AGENT_NAME = 'purescience-screening'
 export const SCREENING_DEFAULT_TIMEOUT_MS = 120_000
 const STALE_PROFILE_AGE_MS = 24 * 60 * 60 * 1000
 const PROVIDER_DEFAULT_MODEL = 'provider-default'
@@ -170,8 +173,20 @@ export class ScreeningAcpModelRunner implements ScreeningModelRunner {
   async run(prompt: string): Promise<{ text: string }> {
     if (this.shuttingDown)
       throw new ScreeningTransportError('Literature screening is shutting down.')
+    const startedAt = this.now()
     const prepared = await this.resolveBackend()
     this.label = resolveReconstructionModel(prepared.backend, prepared.target)
+    // One line per record, before anything can hang: a pass that never finishes has to leave a trace that
+    // says whether the model call was even issued, against which backend, and how long it had. Until this
+    // existed, a packaged build that stalled at "0 / 2 processed" was indistinguishable from one that was
+    // still thinking (the only evidence was the panel's counter).
+    log.info('screening record started', {
+      backend: prepared.backend.backendId,
+      framework: prepared.backend.framework,
+      model: this.label,
+      promptChars: prompt.length,
+      timeoutMs: this.timeoutMs
+    })
     const runtime = this.ensureRuntime(prepared)
 
     const sessionId = await this.openSession(runtime, prepared)
@@ -227,8 +242,23 @@ export class ScreeningAcpModelRunner implements ScreeningModelRunner {
       if (text.trim().length === 0) {
         throw new ScreeningModelError('The screening turn ended without any answer text.')
       }
+      log.info('screening record answered', {
+        backend: prepared.backend.backendId,
+        durationMs: this.now() - startedAt,
+        chars: text.length
+      })
       return { text }
     } catch (error) {
+      // The failure line carries the classification the engine will act on (retried vs recorded), so a
+      // stalled pass can be told apart from a slow one without guessing from the panel's counter.
+      log.warn('screening record failed', {
+        backend: prepared.backend.backendId,
+        durationMs: this.now() - startedAt,
+        timedOut,
+        toolUse,
+        kind: error instanceof ScreeningTransportError ? 'transport' : 'model-or-other',
+        message: error instanceof Error ? error.message : String(error)
+      })
       if (error instanceof ScreeningModelError || error instanceof ScreeningTransportError)
         throw error
       if (timedOut || looksLikeTransportFailure(error)) {
