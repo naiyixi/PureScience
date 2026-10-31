@@ -1,5 +1,122 @@
 # PureScience 更新日记
 
+## v2.21.0 — 2026-10-31（交付形态：包出去再回来能复算，长会话可读，外部客户端走同一张审批卡）
+
+**成熟度自陈**：这一版没有新的科学计算能力，做的是**交付形态**——同一个会话包能从窗口、Web、CLI 三条路出去并且回来时自带复算；
+长会话里每个已结束的回合留下自己的摘要行；一个外部 MCP 客户端只能通过应用自己的审批卡写入；首页的用例画廊里
+每一个数字与每一句原话都必须在它自己的证据档里逐字存在；DOCX 表格按文档字面写的规则画。凡是给读数的地方都是本机实跑
+（真窗口 / 真 HTTP / 真 CLI），凡是不成立的地方写在同一段后面。
+
+### 一、会话包：三端对称，导入后逐字段复算（D1 / D2）
+
+同一个会话（`e2e-session-1`）经三条路导出：窗口 `sessions:export-package`、Web `GET /api/v1/sessions/:id/package`、
+CLI `purescience package export`。此前后两条根本调不到——契约目录里这两条是 `ELECTRON`，而 Web 面的 `TaskApi.invoke`
+只触得到 web profile。本版把两条包通道升成 **application command + LOCAL**，Web/CLI 走同一条链。
+
+| 路   | 耗时   | 字节 | 整包 SHA-256（前 12） | payload 摘要（前 12） |
+| ---- | ------ | ---- | --------------------- | --------------------- |
+| 桌面 | 24 ms  | 2274 | `a83ed9856bee`        | `d36518b53a7d`        |
+| Web  | 49 ms  | 2273 | `4261ba974e32`        | `d36518b53a7d`        |
+| CLI  | 326 ms | 2273 | `7b34d1935f56`        | `d36518b53a7d`        |
+
+- **payload 摘要三端完全一致**：payload = 除 `manifest.json` 外每个 entry 的 `path → sha256`，按路径排序后整体再哈希
+  ⇒ 会话内容、证据 JSON、文件条目逐字节相同；
+- **整包 SHA 不等，且只差在一个字段**：`manifest.exportedAt`（真实导出时刻）。为了让三个数一致去伪造同一个时间戳，
+  等于伪造来源记录，所以不伪造；
+- 导出本身现在可复现：zip entry 固定 1980 纪元（第三方库默认写「现在」），同内容同时间戳两次打包字节相同。
+- 导入（反方向）：CLI `purescience package import web.science --project <id> --json` 退出码 0、322 ms，新会话消息数 2
+  与包内 `manifest.counts.messages` 相等，`posture` 为 `{ readOnly: true, executeAllowed: false, verificationLabel: 'source-party' }`，
+  导入记录落 `sessions/<projectId>/<sessionId>.import.json`（运行守卫读的就是这一份）。
+- **未授权的远程导入被直接拒**：经 remote-access 适配器授权后的请求打 `POST /api/v1/sessions/package/import` → **401**，
+  导入器一次都没被调用，并留下具名决定 `local-only-authority`。命令层三种拒绝也各自具名：`no-destination` /
+  404 `session-not-found` / 422 `session-unreadable`（不返回空文件）。
+
+**D2 复算**：导入结果里带 `readings`，`usage` 按 `conversation.json` 逐字段复算后与清单比（本轮真机 `state: match`，
+`turns: 1`、`turnsWithoutUsage` 单独计数），`toolCalls` 判的是**声明与包内字节相符**（本轮 `match` + `absent:no-tool-calls`
+——清单说「这次没调工具」，包里也确实没有那份文件，因此**不**出现「核对过 0 条」这种说法）。两种「一致」在界面与 CLI
+上分开渲染；读数同时写进导入记录，用例断言 `persistedRecord.readings === imported.readings` ⇒ 结论不依赖算它的那个进程。
+
+### 二、长会话可读（E1 / E2 / E3）
+
+- **每轮成本（E2）**：工具组摘要行右侧给这一轮的 token 总量（`input + cache + output`，量级写法与写作区计量一致）。
+  三种输入分开：有 `turnUsage` → 数字；有 `turnUsageUnavailable` → 「未记录用量」；该轮没有任何读数 → 整段不出现。
+  **不写 0，也不写 unknown**。
+- **折叠（E1）**：已结束且不是最新一轮的回合自己折起来（`resolveActivityGroupExpansion`），最新一轮与正在跑的工具保持展开，
+  用户手动开关优先。真机一对读数（两轮）：
+
+  ```
+  [e1-pair] groups=2
+    [{expanded:"false", text:"Fetched 2 pages · 2 steps · 3ms · usage not recorded"},
+     {expanded:"true",  text:"Fetched 2 pages · 2 steps · 1ms · usage not recorded"}]
+  ```
+
+- **一对读数为什么取了四次**：一直只渲染出**一个**摘要行。前三次分别怀疑渲染层投影、持久化、store 写入；第四次把探针
+  放在每轮结束时读 store，才定因到**确定性夹具**：`toolCallId` 里的 `process.pid` 与 `step.index` 跨回合不变，第二轮的工具
+  调用带着与第一轮**完全相同**的 id，应用（正确地）把它们当成第一轮那两条的更新 ⇒ 无论跑几轮都只有一轮的活动。
+  真实 agent 的 id 每次不同，所以这个夹具从来没暴露过「每个回合各自留档」。修夹具后：`after turn 1: 2` → `after turn 2: 4`，
+  盘上 `graphActivities=4`，`live tool-groups: 2`。**产品侧另有一处真修**：转录的活动列表改为「文档 + 本轮」合并，
+  不再让本轮把历史整体顶掉（`mergeActivityLists`）。
+- **排版（E3）**：正文收窄到 68ch（表格/代码/图保持满列），折叠摘要从卡片降级成 **24px 一行**。四个带工具调用的真实回合：
+
+  ```
+  {"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}
+  ```
+
+  同一支探针也打掉了我先前的一个说法：在「只有一个摘要行」的假象下得出的「密度收益比原型小」**作废**——夹具修好后
+  24px 折叠行对长会话是实打实的收益。**未做**：跨消息画一条连续的「每轮轮脊」，属结构性改动，单独一步。
+
+### 三、CLI 对外 MCP：读写都走应用自己的审批卡（F1）
+
+- **第一片（只读）**：窄命令视图四个工具（`list_projects` / `list_project_files` / `list_sessions` / `read_session`），
+  每次调用留一行 `external mcp call` 审计。
+- **第二片（写入）**：`archive_session`。写路径三步**不可换序**：先只读解析目标 → 再挂应用自己的审批卡 → 最后才 act；
+  绝不走按 profile 自动放行的那条（外部身份一律一张卡）。拒绝码具名：`not-approved` / `approval-unavailable` /
+  `permission-gate-not-wired` / `already-archived`。目标不存在时在**问人之前**就拒。
+- **两本账配对**：`permission decision`（`decision: 'card'`、`isMcp: true`、`tool: 'purescience_external/archive_session'`）
+  与 `external mcp call`（`risk: 'write'`、`decision: declined|approved`）的 `toolCallId` 逐个相同。
+- 真机读数 **2 passed (18.3 s)**：取消 ⇒ `not-approved` 且数据未动（紧接着 `list_sessions` 里该行**没有** `archived`）；
+  批准 ⇒ `archived: true` + `archivedAt`，同一客户端再列表可见。
+- 一处**与计划的偏离**（具名）：计划写「归档后 `list_sessions` 不再列出该会话」，实测目录通道仍返回该行，本版改为
+  **行上带 `archived`**。让外部客户端看不见自己刚归档的会话，等于让它无法确认写入生效；「默认不列出」是界面视图的过滤，
+  不是数据面的语义。
+- 边界：外部客户端作答需要应用发布 `web-service.json`（无窗口启动总会写）；**纯窗口启动不发布该文件 ⇒ 那时只能用窗口作答**，
+  这句写在工具 `description` 与 `CLI.md` 里。
+
+### 四、用例画廊（H1）与 DOCX 表格保真（H2）
+
+- **H1**：首页五张卡片，每张的读数、原话、复跑命令都取自本仓已有的真机读数档；**守卫测试逐字对着证据档核**（把 `1 passed (7.8s)`
+  改成 `7.9s` 就红），复跑命令里点到的 spec 必须**在盘上存在**。真机 **1 passed (6.8s)**：点开卡片 → 面板显示读数与原话 →
+  复制按钮变「已复制」（窗口的 `navigator.clipboard` 被拒，走的是**主进程剪贴板桥**，所以这行意味着桥真的答了）→ 关闭后
+  焦点回到开它的那张卡。
+- **H2**：DOCX 预览把「表格外框」与「格内规则」折成同一套样式——只写 `insideH`/`insideV` 的表**一条边都不画**，外框双线
+  会把内部边也画成双线，只写 `tblStyle="TableGrid"` 的表**全部无边**。本版从文档字面读每张表的六条边（表自己没写时按
+  `tblStyle` 解析一层），按**渲染出来的格子几何**判断每条边属于外框还是内部，**单元格自己写的边优先**，表里一条规则都没写
+  就一个像素也不动。对比用例 9 条全绿（真渲染器 + 真 docx 字节）；真窗口读数 **1 passed (7.0s)**：3 pt 绿色双线外框配
+  0.5 pt 灰色网格，量到 **3.21 px / 0.80 px**。读不到文档部件时打一条具名 warn 再照常显示——这一段永远不许拖垮预览。
+
+### 五、沿途修掉的真缺陷（不是顺手）
+
+- **出口代理 `stop()` 会永久卡住**：客户端不松手时关出口永远不返回，`closeAllConnections` 也管不到 CONNECT 隧道。这是
+  从一条红车道定因出来的真缺陷，修法是先收掉在飞隧道再关服务器。
+- **回合静默看门狗**：运行时静默 10 分钟就把这一轮停掉并说明原因，不再让一个回合无声地挂着。
+- **运行时拒绝变成界面上可见的结果**：此前拒绝可能只剩沉默。
+- **机检补「后端配置」一项**：二进制存在不等于这个后端能用。
+- **探针不得写真实配置根**：曾把在用应用切到另一个后端，代价是三次请求被拒、一次挂起 15 分钟。
+- **`purescience doctor` 报发布签名状态**：装得上但系统不认发布者时，给一句下一步。
+
+### 六、明确没做 / 不成立（与上面同权）
+
+1. **签名与更新四件全部挂起**：Developer ID + 公证、Authenticode、原位更新、Homebrew tap —— 用户已决定暂不花钱认证、
+   商业化时再谈，本版只做了「如实报签名状态」那一半，**不计入本版退出条件**。
+2. **A 组的发布件读数仍未取**（v2.20.0 唯一未满足的退出条件）：本机发布件取回 ≈20 KB/s（4 MB range 请求 200 s 未完成）、
+   空闲物理页 ≈65 MB，装机与五个真会话在当前机器上不可行。**具名挂着**，不并入已完成。
+3. **语义检索仍是词法**：每个响应带 `mode: lexical`，每行带 `lexicalOnly`，不预埋空壳语义端口。
+4. **会话包不含 `activities` 原文**：工具活动在导出时剥成消息上的投影，所以读数只能来自导出方采到的声明，接收端复算的是
+   「声明 vs 包内字节」，**不是**把工具重跑一遍。
+5. **夹具不产生工具调用的那一路是实机**；有工具调用的那一路（D2 的行数、H2 的格数）由用例钉住，不靠推断。
+6. **DOCX 只解析一层样式继承**；渲染格数与文档格数对不上时记 `unpairedCells` 并**不做逐格覆盖**（只落表级规则）。
+7. **每轮轮脊未做**；E1 的折叠控制只在最新一轮上取到真机读数，settled 组那一对是同一支 spec 的第二轮。
+
 ## v2.20.0 — 2026-10-29（可靠性：慢的地方说清代价，文献三件可查、可读、可点名）
 
 **成熟度自陈**：这一版做两件事——把「卡」从体感变成**能归因的读数**再逐条修；把文献链路从「能导入」推到
