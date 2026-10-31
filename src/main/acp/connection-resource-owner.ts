@@ -18,6 +18,24 @@ const safeLogCleanupError = (message: string, error: unknown): void => {
     // Physical cleanup and the original failure take precedence over diagnostic sinks.
   }
 }
+/**
+ * A line that records *that* a shutdown was asked for must not be able to prevent it.
+ *
+ * This one sits at the head of `shutdownSynchronously`, ahead of `shuttingDown = true` and ahead of the
+ * supersede. If the sink throws there, the flag stays false, the connection is never superseded, and the
+ * caller sees the logger's error instead of the shutdown it asked for -- a torn-down half state that
+ * looks like a shutdown failure. The same shape already cost a CI red at the sibling site in
+ * `connection-close-workflow.ts`; `safeWarn` there and `safeLogWarning` in
+ * `connection-lifecycle-workflow.ts` are the precedent, and the line itself is kept (wrapped, not
+ * dropped) because "who asked, and was it the synchronous path" is exactly what a post-mortem needs.
+ */
+const safeLogWarning = (message: string, data: unknown): void => {
+  try {
+    log.warn(message, data)
+  } catch {
+    return
+  }
+}
 
 export type AcpConnectionCapabilities = Readonly<{
   close: boolean
@@ -224,7 +242,7 @@ export class AcpConnectionResourceOwner {
   }
 
   shutdownSynchronously(onSuperseded: () => void): void {
-    log.warn('acp connection shutdown requested', { reason: 'shutdown-synchronously' })
+    safeLogWarning('acp connection shutdown requested', { reason: 'shutdown-synchronously' })
     this.shuttingDown = true
     const teardownEpoch = this.supersede()
     try {

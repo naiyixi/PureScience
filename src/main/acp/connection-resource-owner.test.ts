@@ -31,12 +31,17 @@ const terminateProcessTree = vi.hoisted(() =>
   })
 )
 const ownerErrorLog = vi.hoisted(() => vi.fn())
+const ownerWarnLog = vi.hoisted(() => vi.fn())
 vi.mock('../process-tree', () => ({ terminateProcessTree }))
 vi.mock('../logger', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../logger')>()
   return {
     ...actual,
-    createLogger: () => ({ ...actual.createLogger('acp'), error: ownerErrorLog })
+    createLogger: () => ({
+      ...actual.createLogger('acp'),
+      error: ownerErrorLog,
+      warn: ownerWarnLog
+    })
   }
 })
 
@@ -364,6 +369,41 @@ describe('AcpConnectionResourceOwner', () => {
       expect(owner.connection).toBeUndefined()
     } finally {
       ownerErrorLog.mockReset()
+    }
+  })
+
+  it('still shuts down when the request line itself cannot be written', async () => {
+    // The line at the head of `shutdownSynchronously` records *that* the shutdown was asked for. If a
+    // throwing sink there could stop the method, the flag would stay false and the connection would never
+    // be superseded -- the caller would see the logger's error instead of a shutdown. Same shape as the
+    // sibling site that produced a real CI red, so the assertion set is the three facts of "it happened":
+    // the flag, the supersede callback and the physical close.
+    const owner = new AcpConnectionResourceOwner()
+    const close = vi.fn()
+    const kill = vi.fn()
+    const superseded = vi.fn()
+    await owner.connect(async (attempt) => {
+      attempt.attach({
+        process: { killed: false, kill } as unknown as ChildProcessWithoutNullStreams,
+        connection: { close } as unknown as ClientConnection,
+        framework: 'claude-code',
+        bridgeLease: undefined
+      })
+      return attempt.publish({ close: true, delete: false, resume: true })
+    })
+
+    ownerWarnLog.mockImplementation(() => {
+      throw new Error('warn boom')
+    })
+    try {
+      expect(() => owner.shutdownSynchronously(superseded)).not.toThrow()
+      expect(owner.isShuttingDown).toBe(true)
+      expect(superseded).toHaveBeenCalledOnce()
+      expect(close).toHaveBeenCalledOnce()
+      expect(kill).toHaveBeenCalledOnce()
+      expect(owner.connection).toBeUndefined()
+    } finally {
+      ownerWarnLog.mockReset()
     }
   })
 
