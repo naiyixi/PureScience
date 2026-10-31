@@ -85,3 +85,24 @@ tag `v2.21.0` 在 `dd984e5a`，**没有 Release 页** ⇒ 可以 `git tag -d v2.
 下一处该打日志的位置（还没做）：`connection-close-workflow.disconnect()` / `runtime` 的
 `supersede` 入口，记录「谁要求关、当时的 generation、在飞会话数」。那是这条链的最后一环 ——
 拿到它就能指名道姓地修，而不是继续从现象倒推。
+
+## 6 再取样：连 ACP 的关闭工作流都没跑过
+
+第三处日志（`connection-close-workflow.disconnect()` 入口 + `disposeSessionCapabilities` 前）重跑打包态：
+
+```
+[screening:model] screening record started ×2
+[screening:model] screening record failed  ×2   （Active session disposed / ~40.2 s）
+[acp] agent process exit { … }                  ← 有
+（`acp disconnect requested` / `acp disposing session capabilities` —— 一条都没有）
+```
+
+⇒ 40 秒时**不是**应用主动做会话拆除：关闭工作流一次都没被调用。而 agent 进程确实退了
+（`[acp] agent process exit`，且信号是 SIGTERM）。所以这一版把链路收到最后一层：
+
+**screening 专用后端的 agent 进程在 ~40 s 被终止（信号级），会话随之失效** —— 终止不是来自
+`disconnect()` 这条应用层路径，而是进程层面的清理/终止（`connection-resource-owner` 的
+`shutdownSynchronously` 未被调用；`reapProcessTree` 只会在「已退出」之后收子进程）。
+
+下一处唯一还没打日志的位置：真正执行 kill 的那一层（`process-tree` / `connection-resource-owner`
+的 kill 点），记录「谁要求终止、当时的 reason」。这一步再走完，就能直接修而不用继续倒推。

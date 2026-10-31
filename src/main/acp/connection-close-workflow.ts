@@ -4,6 +4,7 @@ import type { AcpBackendGenerationOwner } from './backend-generation-owner'
 import type { AcpConnectionResourceOwner } from './connection-resource-owner'
 import type { AcpConnectionTransitionOwner } from './connection-transition-owner'
 import type { AcpModelChangeWorkflow } from './model-change-workflow'
+import { createLogger } from '../logger'
 type CleanupFailure = (stage: string, error: unknown) => void
 type CloseStatus = AcpStateSnapshot['status']
 type DisconnectCurrent = (...args: [boolean, number]) => Promise<AcpStateSnapshot>
@@ -60,11 +61,21 @@ type AcpConnectionCloseWorkflowOptions = Readonly<{
   state: CloseState
   reportFailure: (message: string, error: unknown) => void
 }>
+const log = createLogger('acp:close')
+
 class AcpConnectionCloseWorkflow {
   private candidateTreeKillReaped = true
   private readonly expectedProcessExits = new WeakSet<ChildProcessWithoutNullStreams>()
   constructor(private readonly options: AcpConnectionCloseWorkflowOptions) {}
   async disconnect(emitClosedStatus = true): Promise<AcpStateSnapshot> {
+    // Who tears the connection down, and with how many sessions live, is the last link in the chain that
+    // explains a screening pass dying at ~40 s with 'Active session disposed'. Logged at the entry, before
+    // anything is superseded, so the counts describe the state at the moment the teardown was asked for.
+    log.warn('acp disconnect requested', {
+      emitClosedStatus,
+      generation: this.options.currentGeneration(),
+      activeSessions: this.options.state.activeSessionIds().length
+    })
     this.options.modelChanges.cancel()
     return this.options.transitions.settleTeardown(async () => {
       const teardownGeneration = this.options.resources.supersede()
@@ -108,6 +119,10 @@ class AcpConnectionCloseWorkflow {
     this.options.state.clearContextUsage()
     this.options.state.clearAppliedSessionModels()
     const activeSessionIds = this.options.state.activeSessionIds()
+    log.warn('acp disposing session capabilities', {
+      teardownGeneration,
+      sessions: activeSessionIds.length
+    })
     this.options.state.disposeSessionCapabilities(activeSessionIds)
     this.options.state.disposeActiveSessions((stage, error) => recordFailure(stage, error))
     this.options.state.detachSessionConnections(true)
