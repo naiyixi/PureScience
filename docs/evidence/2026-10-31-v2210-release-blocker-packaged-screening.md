@@ -106,3 +106,30 @@ tag `v2.21.0` 在 `dd984e5a`，**没有 Release 页** ⇒ 可以 `git tag -d v2.
 
 下一处唯一还没打日志的位置：真正执行 kill 的那一层（`process-tree` / `connection-resource-owner`
 的 kill 点），记录「谁要求终止、当时的 reason」。这一步再走完，就能直接修而不用继续倒推。
+
+## 7 第四轮排除：进程层的两条拆除路径也没走
+
+在 `connection-resource-owner` 的 `cleanupUnexpectedClose`（意外关闭）与 `shutdownSynchronously`（主动关）
+各打一行后重跑打包态：
+
+```
+screening record started ×2 / failed ×2（Active session disposed / ~40.2 s）
+[acp] agent process exit          ← 有
+acp agent connection closed unexpectedly   ← 没有
+acp connection shutdown requested          ← 没有
+```
+
+⇒ 连**进程层**这两条拆除路径都没有走。结合前几轮，可以排掉的已经有四条：
+
+| 排除                    | 依据                                      |
+| ----------------------- | ----------------------------------------- |
+| 不是超时                | `timedOut:false`，40.2 s vs 120 s 截止    |
+| 不是 runner 主动关      | `screening runner shutting down` 从未出现 |
+| 不是 ACP 关闭工作流     | `acp disconnect requested` 从未出现       |
+| 不是本 owner 的进程拆除 | 上面两行都没有出现                        |
+
+剩下的范围收得很窄了：**screening 用的是一个为每次 pass 准备的受限后端，它有自己的 `AcpRuntime` 实例**
+（`ScreeningAcpModelRunner.ensureRuntime`）。会话在 ~40 s 被那一侧 dispose，而本 owner 的三条路径都不涉及它。
+
+下一处（也是最后）该打的日志：在那个受限 runtime 的实例上记「runtime id / 谁在什么时候 deleteSession 或
+dispose」。要动的是 `runtime-*.ts` 这些被大量用例依赖的文件，所以这轮停在这里，没有硬改。
