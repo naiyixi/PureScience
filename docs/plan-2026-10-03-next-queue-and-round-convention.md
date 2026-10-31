@@ -14380,3 +14380,76 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
    的构建作业里跑 ⇒ 要它的判决得看那条作业。
 2. 然后开 **H1（用例画廊）** 剩下的窗口级读数（卡片已随本片更新：指向新证据档 + 九语 claim/judgment 同步）。
 3. A 组发布件读数那一格仍敞着（v2.20.0 唯一未满足的退出条件）：内存/网络恢复后再取，取不到继续具名挂着。
+## 二百六十四、本轮追加（执行器，2026-10-31 13:4x–）—— **v2.21.0 发版**：范围逐条核完 ⇒ 四文件 + 隔离门禁 + tag，Release run 在飞
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 40f7dc1c`，本地 `HEAD` 与远端同点。工作树里两份**并行会话**的在制件（`src/main/references/screening-service.ts` +19 行、
+  `docs/plan-2026-10-28-two-releases.md` 的 H1/H2 两行状态）—— **一个字节没碰**，发版提交只 `git add` 那四个文件（提交后 `git diff --cached --stat` 自证 4 files）。
+- **§263 的「下一轮先开 H1 窗口级读数」这句是陈旧的**（按「先确认缺口还在不在」核过）：H1 已有 `e2e/certification/use-case-gallery-evidence.spec.ts`
+  与 `docs/evidence/2026-10-31-h1-use-case-gallery.md`（真机 1 passed 6.8s / 7.7s + 变异探针），E1/E2 的一对读数也在 `a85e7b06` 之后取到
+  （`[e1-pair] groups=2`，改前根因是夹具 `toolCallId` 跨回合重复，不是产品）。⇒ 本轮不去重取读数，改判**版本边界**。
+- **v2.21.0 范围逐条核（`docs/plan-2026-10-28-two-releases.md` §四）**：D1 `02595d06`（evidence 2026-10-29-d1）、D2 `93e623a1`（…-d2）、
+  E1 `28ff118a`+`a85e7b06`、E2 `ba50f69e`、F1 `6ce3fc5a`+`4562f122`、H1、H2 `3aae09d5`+`99aac370` —— **七项都有实现 + 真机读数**；
+  G1 按用户 2026-10-30 决定挂起（只留「如实报签名状态」那一半 `fe9d3d12`）。⇒ 按「一版范围项做完＝立刻走发版流程」，本轮发 v2.21.0。
+- CI 读数（按完整 40 位 SHA）：`40f7dc1c` 的 `Windows Full Test` **success**；同 SHA 的 `Nightly`（`41169365429`）**Verify(lint+typecheck+test+package) success**、
+  macos-x64 / linux-x64 / windows-x64 打包 **success**，只有 `Build macos-arm64` 到本节落笔仍 `in_progress`（`startedAt` 非空 ⇒ 拿到过 runner，长步骤不是卡死）。
+  这次推送把它的 **Nightly 判决**记成「以包含它的后一笔 `dd984e5a` 的 Nightly 代替」（`git merge-base --is-ancestor 40f7dc1c dd984e5a` 为真）。
+
+### 一 交付：四文件（`dd984e5a`）
+
+| 文件 | 改动 |
+| --- | --- |
+| `CHANGELOG.md` | 新段 v2.21.0：会话包三端对称 + 导入复算（三端读数表、payload 摘要 `d36518b53a7d`、只差 `exportedAt` 的理由）、长会话可读（E1 一对读数 + 四次定因到夹具）、CLI 对外 MCP（拒绝码、两本账配 toolCallId、2 passed 18.3s）、用例画廊与 DOCX 保真、沿途五处真缺陷、**六条「明确没做」** |
+| `README.md` / `README.en.md` | 发布横幅 → v2.21.0；成熟度块**前插**本版头条并把上一条改写成 `**The previous version gave the wait a name and a price …**`；两份共享块由同一常量插入 ⇒ 逐字节一致（`check-readme-sync.mjs` ✓） |
+| `package.json` | 2.20.0 → 2.21.0（`package-lock` 版本位按本仓惯例不动） |
+
+### 二 门禁（隔离工作树 `/tmp/ps-release-gate`，被测提交 `dd984e5a`）
+
+| 环 | 读数 |
+| --- | --- |
+| `eslint --no-cache .` | **0 error / 219 warnings** |
+| `tsc -p tsconfig.node.json --composite false` | **0** |
+| `tsc -p tsconfig.web.json --composite false` | **0** |
+| 全量 vitest（`--maxWorkers=4`） | **1461 文件（1431 passed / 30 skipped）；18,268 例（18,043 passed / 225 skipped）；0 failed**；491.15 s |
+| 仓规五查（`pre-push-checks.sh`） | OK（本笔无新增可 lint 文件；品牌扫描零命中；README 版本与 CHANGELOG 条目均已核） |
+| 汇总行 | `eslint|OK / typecheck:node|OK / typecheck:web|OK / vitest|OK / repo-checks|OK`，`GATE_EXIT=0` |
+
+> 每环自证行都打印了 `cwd=/tmp/ps-release-gate version=2.21.0` ⇒ 五个环跑的是同一个隔离树、同一个版本，
+> 判决可归因（共享树里并行会话的在制品不进这个工作树）。
+> 上一轮全量那 1 条 `catalog-index` 缓存命中失败本轮**没有复现**（同一判据下 0 failed）——按负载敏感记档不变，不据此说「已修」。
+
+### 三 推送与 tag
+
+- `git merge-base --is-ancestor dd984e5a origin/main` **为真**（Release 工作流首位作业判的就是这条）。
+- tag `v2.21.0` 是**附注 tag**（`git cat-file -t` = `tag`），`v2.21.0^{commit}` = `dd984e5a`；自 `v2.20.0` 起 **44 笔**（`git rev-list v2.20.0..dd984e5a --count`，写进 tag 标注，不手抄）。
+- Release run `41174576716`（`refs/tags/v2.21.0`，`event=push`）：`Release preflight` success，`build/…` 在跑（见 §四 收尾读数）。
+- 推送前现查在飞：`Nightly`(40f7dc1c) 在跑 —— 本次 `git push origin main` 会按 nightly 的并发组（`nightly-${{ github.event_name }}`，**不含 ref**）把它顶掉/排队，
+  已在汇报里点名；Release 的并发组是 `release-${{ github.ref }}`，**tag 那条与 main 推送不同组 ⇒ main 的推送不会腰斩它**（这是本次敢在并发会话旁边开发版的依据）。
+
+### 四 收尾读数与下一轮第一步
+
+（Release 页与 21 资产的核对结果在下一节追加；本节先固定判据：`gh release view v2.21.0 --json name,tagName,isDraft,isPrerelease,assets` 要 `draft=false`、
+`isPrerelease=false`、四平台产物 + `SHA256SUMS.txt` + `RELEASE-CERTIFICATION.json` + `version.json` + `latest*.yml` + 每架构 `*-mac.yml`；
+`RELEASE-CERTIFICATION.json` 的 `sourceSha` 与 `git rev-parse 'v2.21.0^{commit}'` 逐字符相同；正文用 `npm run release:notes -- v2.21.0 --keep-generated --apply` 写并回读字节数。）
+
+1. 按完整 40 位 SHA 读 `dd984e5a` 的 `Nightly`（含 `Build macos-arm64` 那条）与 `Windows Full Test`；红则按作业级日志定因，不重跑单个 job。
+2. 仍未闭的具名项：**A 组的发布件读数**（v2.20.0 唯一未满足退出条件；≈20 KB/s 取回、空闲物理页 ≈65 MB）—— 本轮内存现取仍不可行，继续挂着。
+3. 并行会话的 `screening-service.ts`（+19 行，当前 4 条 TS 错）不属本执行器：下一轮开工前先 `git status --short` 认领，别碰。
+
+
+## 二百六十五、本轮补记（执行器，2026-10-31 14:2x）—— 发版之后：认证车道那 5 条红，一条是 spec 陈旧（已修），四条在**本机同提交上绿**
+
+发版推送后按完整 40 位 SHA 读车道时，`40f7dc1c` 的 `Nightly`（`41169365429`，已被本笔推送按 nightly 并发组顶掉，结论记 `cancelled`）
+在 `build / Build macos-arm64` 里留下了 **5 failed / 1 flaky / 107 passed (56.2m)**。逐条定因（不重跑、不凑绿）：
+
+| # | spec | 判据 | 处置 |
+| --- | --- | --- | --- |
+| 1 | `use-case-gallery-evidence.spec.ts` | 断言 `["list_project_files",…,"read_session"]`（四个名字）与 `1 passed (7.8s)`，而卡片随 F1 写入面已改成**五个名字**（含 `archive_session`）与 `2 passed (18.3s)`；原话那一条也从 `external MCP server started … tools: 4` 换成了 `permission decision { … toolCallId: '833308df…', decision: 'card', isMcp: true` | **spec 陈旧**（卡片是对的，`use-case-gallery.test.ts` 逐字对证据档核是绿的）⇒ `d0f7b568` 把断言跟到卡片；同一条在 `a85e7b06` 的 Nightly 里还没有（那时卡片未改） |
+| 2–5 | `references-screening.spec.ts` / `-export` / `-export-citations` / `-coverage` | 全部红在同一句：点 `Screen collection` 后等 `panel.getByText(/AI decisions 5 · human overrides 0/)`，`element(s) not found`（60–120 s）；同一作业里另有一条 `Electron app never opened a window: Timeout 30000ms`（runner 侧） | **本机同提交复现不出来**：隔离工作树 `/tmp/ps-diag` 于 `dd984e5a` 上 `npm run build:e2e`（`BUILD_EXIT=0`，36.44 s）后跑 `references-screening.spec.ts --workers=1` ⇒ **1 passed (13.3s)**。⇒ 记「runner 侧 / 打包态」差异，**不**记成产品回归、也**不**说已修 |
+
+- 首次出现位置：同 4 条在 `4ab79588` 的 Nightly（2026-10-30T17:09Z）与 `a85e7b06`（04:30Z）里就已红，而 `31a83bf3` 的 Nightly（10-30T06:58Z）是 success
+  ⇒ 区间落在 `31a83bf3..4ab79588` 那 13 笔里；本机复现不出 ⇒ 先按**测试台/打包态**立案，下一轮用它那条作业的 `error-context.md`
+  （artifact `p0-test-results-macos-arm64`，本轮 `gh run download` 在本机网络下 180 s 零字节，未取到）与逐条 console 输出定因，**不许**用「加大超时」收口。
+- 这 5 条**不阻塞**本版发布：`release.yml` 的 P0 步骤是 `continue-on-error: true`，`publish` 判的是四平台打包与签名门，不是 P0；但它是**真机的验收红**，不许当绿看。
+- 诊断件与临时工作树已清理（`git worktree prune`；`/tmp/ps-diag` 已删），共享树只剩并行会话那两份在制件。
