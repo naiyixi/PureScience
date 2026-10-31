@@ -364,12 +364,21 @@ describe('post-merge Windows validation', () => {
       'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'
     )
     const previous = findStep(upgrade, 'Download previous stable Windows installer')
-    expect(previous.env?.CURRENT_TAG).toBe('${{ github.ref_name }}')
+    // The exclusion below drops "the version being published" from the stable list. It has to name the
+    // published TAG, not the ref the run started from: a dispatch that publishes an existing tag carries
+    // `github.ref_name` = `main`, so a ref-based exclusion matches nothing, the first entry left is the
+    // Release this very run just created, and the certification then fails with
+    // `Updater certification needs two versions` — a red that reads like a product defect while the
+    // drill's own install / rollback / restart steps passed (measured on the v2.21.0 publish).
+    expect(previous.env?.CURRENT_TAG).toBe('${{ inputs.release_tag || github.ref_name }}')
     expect(previous.run).toContain('gh release download')
     expect(previous.run).toContain('*-win-x64-setup.exe.blockmap')
     expect(previous.run).not.toContain('Get-AuthenticodeSignature')
     expect(previous.run).toContain("$_.tagName -like 'v*'")
     expect(previous.run).toContain('$_.tagName -ne $env:CURRENT_TAG')
+    // When the drill does go red, the log has to say which two versions it compared: without this line
+    // "the updater broke" and "the wrong two versions were fetched" print the same sentence.
+    expect(previous.run).toContain('previous stable = $tag; publishing = $env:CURRENT_TAG')
     expect(findStep(upgrade, 'Certify Windows electron-updater differential update')).toMatchObject(
       {
         id: 'updater',
