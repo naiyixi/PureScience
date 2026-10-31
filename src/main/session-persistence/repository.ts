@@ -1014,7 +1014,11 @@ class SessionRepository {
       }
 
       const restored = decodeSessionDataPaths({ ...session, projectId })
-      // Warm the summary cache so the next startup skips the full parse.
+      // Warm the summary cache so the next startup skips the full parse. Deliberately NOT awaited: a scan
+      // answers from the documents it parsed rather than from the cache it writes beside them, so a first
+      // launch over N documents does not wait on N small writes. The consequence is that "the entry
+      // landed" runs on a later clock than "the scan returned" — a caller that needs the next read to be
+      // index-only (a test, a restart handler) waits for it explicitly rather than assuming it.
       void this.writeSessionSummary(filePath, restored)
       return { session: restored, isComplete: true }
     } catch {

@@ -183,6 +183,11 @@ describe('SessionRepository catalog index', () => {
     expect(scan.index).toEqual({ hits: 1, parsedDocuments: 1 })
     expect(reads).toEqual([join(documentPaths(dir), 'sess-external.json')])
 
+    // Same warm-up, same clock: the parse wrote an entry for the file it parsed, and the next cold start
+    // can only read nothing once that entry has landed. Without this wait the assertion below is a race
+    // with the writer's I/O, not a statement about the index.
+    await waitForColdStartToReadNothing(dir)
+
     const next = coldStart(dir)
     await next.repository.loadCatalogWithDiagnostics()
     expect(next.reads).toEqual([])
@@ -219,7 +224,60 @@ describe('SessionRepository catalog index', () => {
     expect(rebuild.reads).toHaveLength(2)
     expect(rebuilt.result.sessions).toHaveLength(2)
 
-    // The rebuild persisted the entries, so the next scan is index-only.
+    // The rebuild persisted the entries, so the next scan is index-only — but "persisted" arrives on the
+    // warm-up's own clock, not the scan's: the read path never awaits it (see the test below). Waiting for
+    // the state this assertion is about is what keeps it measuring the index instead of the scheduler; it
+    // is the same remedy the entry-rewrite case above already carries, applied to the rebuild case that
+    // failed on a loaded runner with exactly one entry still missing (`{ hits: 1, parsedDocuments: 1 }`).
+    await waitForColdStartToReadNothing(dir)
+
+    const next = coldStart(dir)
+    const served = await next.repository.loadCatalogWithDiagnostics()
+    expect(served.index).toEqual({ hits: 2, parsedDocuments: 0 })
+    expect(next.reads).toEqual([])
+  })
+
+  // The warm-up is deliberately not awaited: a cold start answers from the documents it parses instead of
+  // waiting for the cache it writes beside them, so a first launch is not held up by N small writes. This
+  // test pins that intent — hold every summary write open and the scan must still answer — and then shows
+  // the entries it warmed are served on the next start. Without the pin, "make the other tests
+  // deterministic" has an invisible wrong answer: awaiting the writes would pass every other case here
+  // while making startup wait on the cache.
+  it('answers a cold start without waiting for the index entries it warms', async () => {
+    const { dir, writes } = await setup()
+    await writes.saveSession(buildSession({ id: 'sess-1' }))
+    await writes.saveSession(buildSession({ id: 'sess-2' }))
+    await waitForIndexEntries(documentPaths(dir), 2)
+    for (const name of await readdir(documentPaths(dir))) {
+      if (name.endsWith('.summary.json')) await rm(join(documentPaths(dir), name))
+    }
+
+    let releaseWrites: (() => void) | undefined
+    const held = new Promise<void>((resolve) => {
+      releaseWrites = resolve
+    })
+    const warmed: string[] = []
+    const heldWrites = new SessionRepository(dir, {
+      writeSummaryFile: async (path, content) => {
+        warmed.push(path)
+        await held
+        await writeFile(path, content, 'utf8')
+      }
+    })
+
+    // If the scan ever awaited the warm-up this would never resolve, and the test would fail on its
+    // timeout with `held` still open — a loud wrong answer rather than a silent extra few hundred ms.
+    const scan = await heldWrites.loadCatalogWithDiagnostics()
+
+    expect(scan.index).toEqual({ hits: 0, parsedDocuments: 2 })
+    expect(scan.result.sessions).toHaveLength(2)
+
+    releaseWrites?.()
+    await waitForIndexEntries(documentPaths(dir), 2)
+    // One warm-up per parsed document: the scan did not skip the cache, it just did not block on it.
+    expect(warmed).toHaveLength(2)
+    await waitForColdStartToReadNothing(dir)
+
     const next = coldStart(dir)
     const served = await next.repository.loadCatalogWithDiagnostics()
     expect(served.index).toEqual({ hits: 2, parsedDocuments: 0 })
