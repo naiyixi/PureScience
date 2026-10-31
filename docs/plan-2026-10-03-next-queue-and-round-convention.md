@@ -14453,3 +14453,75 @@ swap 11.4/12.3 GB 已用、用户常驻 dev 实例正占着 `out/`，再起隔�
   （artifact `p0-test-results-macos-arm64`，本轮 `gh run download` 在本机网络下 180 s 零字节，未取到）与逐条 console 输出定因，**不许**用「加大超时」收口。
 - 这 5 条**不阻塞**本版发布：`release.yml` 的 P0 步骤是 `continue-on-error: true`，`publish` 判的是四平台打包与签名门，不是 P0；但它是**真机的验收红**，不许当绿看。
 - 诊断件与临时工作树已清理（`git worktree prune`；`/tmp/ps-diag` 已删），共享树只剩并行会话那两份在制件。
+
+## 二百六十六、本轮追加（执行器，2026-10-31 19:1x–）—— 发版真被 P0 拦着（就地更正 §265 那句「不阻塞」）；顺手关掉 `catalog-index` 两次红的定因
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 4de8a2ce`，本地 HEAD 与远端同点。工作树两份**并行会话**的在制件（`src/main/references/screening-service.ts` +19 行、
+  `docs/plan-2026-10-28-two-releases.md` 的 H1/H2 两行状态）—— **一个字节没碰**。
+- 并行会话**正在跑**打包态 e2e（`playwright test e2e/certification/references-screening.spec.ts`，19:18 起，`dist/mac-arm64/PureScience.app`）
+  ⇒ 打包态 screening 这条线**归它**。本轮不碰 `src/main/acp/**`、`src/main/references/**`、`dist/`、`out/`，也不重跑它那支 spec
+  （同机并发会给它那 40 秒的读数加负载，把它的证据变成噪声）。
+- B 段（A7 / S3 / M2）已耗尽、A 段无 ≥3 天无人动项 ⇒ 本轮取一条**已具名、判据现成**的红：`catalog-index` 那条负载敏感用例
+  （§261 原文：「下次它再在同一处红，就按『缓存命中计数』这条判据去修」）。
+
+### 一 发版状态：读 Release 页与作业级日志（闭 §264 的承诺）
+
+| 项 | 读数 |
+| --- | --- |
+| Release run `41174576716`（`refs/tags/v2.21.0`） | **completed / failure** |
+| 失败作业与步骤 | `build / Build macos-arm64` → **step 23 `Enforce platform certification`**（step 10 `Build & package` success；step 14 `Run P0 Electron certification` 的 step 级结论是 success —— `continue-on-error` 把失败折成 success，真值在 env 里） |
+| 该步骤 env | `PACKAGED_APP_OUTCOME=success`、`P0_OUTCOME=failure`、`MACOS_SMOKE_OUTCOME=success`、`VISUAL_OUTCOME=failure`；判词一行 `p0 ended with failure` |
+| 视觉那条 | **未 gate**：脚本注释写明 environment-sensitive，`VISUAL_OUTCOME` 不参与 `check` |
+| 下游 | `publish` / `notarize-mac` / `windows-upgrade-smoke` 全 **skipped** |
+| Release 页 | `gh release view v2.21.0` → `release not found`（**无页**） |
+| tag | 远端 `refs/tags/v2.21.0` 在；`v2.21.0^{commit}` = `dd984e5a` |
+
+⇒ **恢复发布的唯一路径**：P0 绿了之后 `git tag -d v2.21.0` → 在新提交上重打 → 推 tag（**无页才可删**；本版确实无页）。
+**在此之前重打 tag 只会再红一次**，不做。
+
+**§265 就地更正**：那一节末句写「这 5 条**不阻塞**本版发布：`release.yml` 的 P0 步骤是 `continue-on-error: true`，
+`publish` 判的是四平台打包与签名门，不是 P0」—— **这句是错的**。`continue-on-error` 只让 P0 的失败不中断**同一作业的后续步骤**；
+`build.yml` 末尾的 `Enforce platform certification` 仍把 `P0_OUTCOME` 计入判词并以 1 退出 ⇒ **该 build 作业红 ⇒ `publish` 被 skip**。
+本版发布**正是**被 P0 红拦住的（上面六行读数），不是「不阻塞」。据此：screening 的 40 秒 SIGTERM 是**发版阻塞项**，不是「真机验收红」而已。
+
+### 二 交付：`catalog-index` 那条两次红不是抖动，是「暖写不等」被当成了「已落地」
+
+**判据（台账 §261 已写死）**：第二次读没走缓存。**定因**：`readSessionFile` 里那条暖写是 `void this.writeSessionSummary(...)`
+—— 扫描按设计不等它，于是「条目落地」比「扫描返回」晚一个时钟；只落地一条时，下一次冷启动正好读到
+`{ hits: 1, parsedDocuments: 1 }`（CI 两次都是这个形状，期望 `{ hits: 2, parsedDocuments: 0 }`）。
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/session-persistence/catalog-index.test.ts` | 重建那条、以及「外部新建的会话」那条，都改成**先等状态再断言**（走同一文件里既有的 `waitForColdStartToReadNothing`，另一条用例本来就这么写并留了注释）；新增一条把「不等」这个**意图**钉住的用例 |
+| `src/main/session-persistence/repository.ts` | 就地补注释：写明「故意不 await」及其后果（条目落地与扫描返回是两个时钟），免得下一个人把它「修」成启动等待 |
+
+**新用例的两段读数**：把 `writeSummaryFile` 挂起不返回 ⇒ 扫描照样答出 `{ hits: 0, parsedDocuments: 2 }`；
+release 之后下一次冷启动是 `{ hits: 2, parsedDocuments: 0 }`、`reads=[]`，且 `warmed` 恰为 2（每次解析各一次暖写，不是跳过了缓存）。
+
+**变异探针（证明这条在用）**：把产品临时改成 `await this.writeSessionSummary(...)` ⇒ 新用例当场 **60 s 超时**，
+其余 6 条全绿（`1 failed | 6 passed`）。⇒ 这条断的是「扫描不等暖写」这件事本身；没有它，「把等待补上」与「把产品改成 await」
+在其他 6 条用例上完全同形。改回后复跑绿。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `catalog-index.test.ts` | **7 passed**；8 次串行 + 3 次并发（同机三份同时跑，模拟装载）**各 7 passed / 0 failed** |
+| `src/main/session-persistence/` 整目录 | **13 files / 261 passed** |
+| `tsc -p tsconfig.node.json --composite false`（隔离工作树 `/tmp/ps-mine`，被测提交 `27d4f96b`） | **0 error** |
+| `tsc -p tsconfig.web.json --composite false`（同一工作树） | **0 error** |
+| `eslint --no-cache`（两个文件） | **0 error / 0 warning** |
+
+> 共享树里 `tsc` 会报 4 条错，全部落在并行会话在制的 `src/main/references/screening-service.ts`（`TS6133`×3 / `TS2564`×1）
+> —— 那是它写了一半（logger 注入了没用上），**不属本笔**，也没有去改它；本笔的类型读数取自只含自己那笔的隔离工作树。
+
+### 四 边界与具名未办
+
+1. **没有跑全量 vitest**：本笔只动一条测试文件与一段注释，受影响面（整目录 261 例）已跑。发版门禁会在隔离树上跑全量，
+   那一轮的数字才是发版读数。
+2. **screening 的 40 秒 SIGTERM 仍归并行会话**（它的证据档已收到最后一层：关闭工作流从没跑过、进程层 kill 点还没打日志）。
+   本节的更正只改「它是否阻塞发版」这一条，不改定因。
+3. **A 组发布件读数**（v2.20.0 唯一未满足的退出条件）仍敞着：网络与空闲物理页现状未变，取不到就不假装取到。
+4. 下一轮第一步：先看并行会话是否已把 SIGTERM 定到具体一方；它落定后**才**走「删 tag 重打」的恢复路径（那时也要先确认 tag 仍无页）。
