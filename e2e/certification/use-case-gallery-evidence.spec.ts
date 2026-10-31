@@ -28,18 +28,19 @@ test('a gallery card opens onto its readings, its own words, and a rerun command
   await expect(dialog).toBeVisible()
 
   const readings = await page.locator('[data-slot="use-case-gallery-readings"]').innerText()
-  // The four tool names are copied from the evidence file; if the panel shows anything else, the card and
-  // the reading have drifted apart.
+  // The tool names are copied from the evidence file; if the panel shows anything else, the card and
+  // the reading have drifted apart. The list grew from four to five when the write tool landed
+  // (`archive_session`), so this assertion follows the card rather than the other way round.
   await expect(page.locator('[data-slot="use-case-gallery-readings"]')).toContainText(
-    '["list_project_files","list_projects","list_sessions","read_session"]'
+    '["archive_session","list_project_files","list_projects","list_sessions","read_session"]'
   )
   await expect(page.locator('[data-slot="use-case-gallery-readings"]')).toContainText(
-    '1 passed (7.8s)'
+    '2 passed (18.3s)'
   )
 
   const quotes = await page.locator('[data-slot="use-case-gallery-quotes"]').innerText()
   await expect(page.locator('[data-slot="use-case-gallery-quotes"]')).toContainText(
-    "external MCP server started { transport: 'tcp', host: '127.0.0.1', port: 63607, tools: 4 }"
+    "permission decision { sessionId: 'e2e-session-1', toolCallId: '833308df…', decision: 'card', isMcp: true"
   )
 
   const command = await page.locator('[data-slot="use-case-gallery-command"]').innerText()
