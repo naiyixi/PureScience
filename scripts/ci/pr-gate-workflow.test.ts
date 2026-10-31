@@ -243,7 +243,9 @@ describe('PR Gate workflow', () => {
 
     expect(legacyCoverage).toMatchObject({
       name: 'Legacy coverage plan compatibility',
-      'runs-on': 'macos-14'
+      // macos-15 since 2026-10-31: the macOS 14 runner image is brownouted (retired 2026-11-02) and a job
+      // pinned to it is cancelled before it runs a step.
+      'runs-on': 'macos-15'
     })
     expect(coverageOnly).toMatchObject({
       if: "${{ !contains(fromJSON(needs.preflight.outputs.plan).bundles, 'unit') }}",
@@ -258,7 +260,7 @@ describe('PR Gate workflow', () => {
     expect(legacyCoverage.steps?.filter(({ run }) => run === 'npm ci')).toHaveLength(1)
     expect(unit).toMatchObject({
       name: 'Module tests (macOS)',
-      'runs-on': 'macos-14'
+      'runs-on': 'macos-15'
     })
     expect(checkout?.with).toMatchObject({ 'fetch-depth': 0 })
     expect(related).toMatchObject({
