@@ -367,4 +367,66 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
       })
     ).toThrow(rejection)
   })
+
+  // The reason the every-call window exists at all: this adapter's other two outputs both start at 50 ms, so
+  // a channel whose ordinary cost is 12 ms appeared in no reading anywhere in the product, and a target
+  // written as "median under 80 ms" could not be checked. These cases pin that the sub-threshold calls are
+  // counted, that a rejection is counted too (a channel that fails fast is not a fast channel), and that the
+  // extra work stays a diagnostic rather than becoming the failure.
+  it('counts a fast success the slow threshold deliberately ignores', async () => {
+    const warn = vi.fn()
+    const latencySink = vi.fn()
+    const now = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(1_012)
+
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'settings:get-settings',
+      callerContext: createWebCallerContext('client-1'),
+      invoke: async () => 'settings',
+      log: { warn },
+      now,
+      latencySink
+    })
+
+    expect(warn).not.toHaveBeenCalled()
+    expect(latencySink).toHaveBeenCalledOnce()
+    expect(latencySink).toHaveBeenCalledWith('settings:get-settings', 12, { rejected: false })
+  })
+
+  it('counts a rejection as a rejection rather than as a fast completion', async () => {
+    const warn = vi.fn()
+    const latencySink = vi.fn()
+    const now = vi.fn().mockReturnValueOnce(5_000).mockReturnValueOnce(5_003)
+
+    await expect(
+      invokeWithIpcRejectionDiagnostics({
+        channel: 'storage:get-info',
+        callerContext: createWebCallerContext('client-1'),
+        invoke: async () => {
+          throw new Error('denied')
+        },
+        log: { warn },
+        now,
+        latencySink
+      })
+    ).rejects.toThrow('denied')
+
+    expect(latencySink).toHaveBeenCalledOnce()
+    expect(latencySink).toHaveBeenCalledWith('storage:get-info', 3, { rejected: true })
+  })
+
+  it('returns the handler result unchanged when the latency sink itself throws', async () => {
+    const warn = vi.fn()
+    const result = invokeWithIpcRejectionDiagnostics({
+      channel: 'projects:list',
+      callerContext: createWebCallerContext('client-1'),
+      invoke: () => ({ projects: [] }),
+      log: { warn },
+      now: vi.fn().mockReturnValueOnce(7_000).mockReturnValueOnce(7_004),
+      latencySink: () => {
+        throw new Error('accumulator unavailable')
+      }
+    })
+
+    expect(result).toEqual({ projects: [] })
+  })
 })

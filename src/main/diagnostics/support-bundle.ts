@@ -15,6 +15,7 @@ import * as tar from 'tar'
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 import type { HostTimelineSummary } from './host-stall-sampler'
+import type { IpcChannelLatencySummary } from './ipc-channel-latency'
 import type { SlowOperationSummary } from './slow-operation-ring'
 import type { StallRecordSummary } from './stall-record-ring'
 import type { StartupStepsSummary } from './startup-steps-snapshot'
@@ -83,6 +84,14 @@ export type SupportBundleInput = {
    * longer fit — its `status` names the empty case instead of shipping a list that reads like a fast app.
    */
   slowOperations: SlowOperationSummary
+  /**
+   * Every IPC completion this process counted, per channel, from its own bounded window (see
+   * `ipc-channel-latency`). Required for the same reason as `slowOperations`, and it is the half that one
+   * cannot answer: those records only start at the 50 ms threshold, so a channel's ordinary cost — the median
+   * a target like "under 80 ms" is written about — has no other reading anywhere. Its `status` names the case
+   * where nothing was recorded instead of shipping an empty list that reads like a fast application.
+   */
+  ipcChannelLatency: IpcChannelLatencySummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -160,6 +169,13 @@ diagnostics/slow-operations.json
                    long the caller waited, the CPU that window consumed, and the part of it the event loop
                    spent held by other work. Its counters say how many were observed and how many are no
                    longer kept, so a short list never reads as "nothing was slow"
+diagnostics/ipc-channel-latency.json
+                   every IPC call this process completed, per channel, not just the ones over 50 ms: how many
+                   were counted since it started, how many the window keeps, and the median, 95th percentile,
+                   window maximum and all-time maximum of that window, plus how many of them were rejected (a
+                   channel that fails immediately is not a fast channel). The window is the most recent calls
+                   per channel, so a channel whose median moved after a change can be checked; its status says
+                   "no-calls-observed" rather than leaving an empty list to be read as a fast application
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -357,6 +373,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/slow-operations.json',
     `${JSON.stringify(input.slowOperations, null, 2)}\n`
+  )
+  // The other half of the same question, and the only reading of it that exists: the slow ring starts at
+  // 50 ms, so a channel's ordinary cost is here or nowhere. Same scrubber as every other section — the
+  // channel names are ours, but the backstop costs nothing and this is the file a "it feels slow" report needs.
+  await writeStaged(
+    'diagnostics/ipc-channel-latency.json',
+    `${JSON.stringify(input.ipcChannelLatency, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

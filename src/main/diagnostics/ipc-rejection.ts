@@ -1,6 +1,7 @@
 import type { CallerContext } from '../caller-context'
 import { diagnosticErrorFields, type Logger } from '../logger'
 import { cpuAttributionFields, type CpuUsageSample } from './cpu-attribution'
+import { sharedIpcChannelLatency } from './ipc-channel-latency'
 import { heldSplitForMonotonicWindow, sharedLoopHeldWindows } from './loop-held-windows'
 import { sharedSlowOperations, type SlowOperationFacts } from './slow-operation-ring'
 
@@ -31,6 +32,11 @@ type IpcRejectionDiagnosticInput<T> = {
   // `slow-operation-ring`). Defaults to the shared ring, so the record exists in production and not only
   // where a test hands a sink over. Injected only by tests.
   slowOperationSink?: (facts: SlowOperationFacts) => void
+  // Where *every* completion is counted, not only the ones over the threshold (see `ipc-channel-latency`).
+  // The threshold above is what makes this necessary: a channel's ordinary cost has no other record anywhere
+  // in the product, so "median under 80 ms" was unverifiable by construction. Defaults to the shared
+  // accumulator; injected only by tests.
+  latencySink?: (channel: string, durationMs: number, outcome: { rejected: boolean }) => void
 }
 
 const safeNow = (now: () => number): number => {
@@ -77,18 +83,34 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
   const slowOperationSink =
     input.slowOperationSink ??
     ((facts: SlowOperationFacts): void => sharedSlowOperations.record(facts))
+  // Same reason, for the every-call window: production must not have to opt in.
+  const latencySink =
+    input.latencySink ??
+    ((channel: string, durationMs: number, outcome: { rejected: boolean }): void =>
+      sharedIpcChannelLatency.record(channel, durationMs, outcome))
   const startedAt = safeNow(now)
   const cpuUsage = input.cpuUsage ?? ((): CpuUsageSample => process.cpuUsage())
   const cpuStart = cpuUsage()
+  // Counted for *every* completion, before the slow threshold can return early. A diagnostic must never
+  // replace the handler's result, so a sink that throws is swallowed here rather than at each call site.
+  const recordLatency = (durationMs: number, rejected: boolean): void => {
+    try {
+      latencySink(input.channel, durationMs, { rejected })
+    } catch {
+      // The result (or the rejection) the caller is about to receive is authoritative.
+    }
+  }
   const recordRejection = (error: unknown): void => {
     try {
+      const durationMs = Math.max(0, safeNow(now) - startedAt)
+      recordLatency(durationMs, true)
       input.log.warn('ipc handler rejected', {
         channel: input.channel,
         surface: input.callerContext.surface,
         location: input.callerContext.location,
         principalKind: input.callerContext.principalKind,
         actionOrigin: input.callerContext.actionOrigin,
-        durationMs: Math.max(0, safeNow(now) - startedAt),
+        durationMs,
         ...diagnosticErrorFields(error)
       })
     } catch {
@@ -101,6 +123,8 @@ export const invokeWithIpcRejectionDiagnostics = <T>(
     try {
       const endedAt = safeNow(now)
       const durationMs = Math.max(0, endedAt - startedAt)
+      // Before the threshold: a 12 ms call is exactly what the median is made of.
+      recordLatency(durationMs, false)
       if (durationMs < SLOW_IPC_HANDLER_THRESHOLD_MS) return
       // Split the wall duration by the same windows the stall watchdog reports. A settings-mount burst where
       // five channels all finish together is one blocked loop, not five slow handlers: without this split

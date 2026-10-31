@@ -168,6 +168,7 @@ import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { sharedStartupSteps } from './diagnostics/startup-steps-snapshot'
 import { sharedSlowOperations } from './diagnostics/slow-operation-ring'
+import { sharedIpcChannelLatency } from './diagnostics/ipc-channel-latency'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
   createNotebookApplicationModule,
@@ -2679,6 +2680,9 @@ const createApplicationModules = async (
       // `slow-operation-ring`): the log lines that explain a slow window are capped and rotated, and the
       // bundle is exported exactly when someone needs one of them explained.
       slowOperations: sharedSlowOperations.summary(),
+      // The half the ring cannot answer: it only starts at 50 ms, so this is the only reading of a channel's
+      // ordinary cost (see `ipc-channel-latency`). Both are written in this process by the IPC adapter.
+      ipcChannelLatency: sharedIpcChannelLatency.summary(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

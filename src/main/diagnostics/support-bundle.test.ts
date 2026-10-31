@@ -16,6 +16,7 @@ import { summarizeHostTimeline } from './host-stall-sampler'
 import { createStartupStepsHolder } from './startup-steps-snapshot'
 import { createComposeStepRecorder } from './compose-steps'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
+import { createIpcChannelLatency } from './ipc-channel-latency'
 
 const roots: string[] = []
 
@@ -65,6 +66,8 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     startupSteps: createStartupStepsHolder().summary(),
     // Same rule again: the empty ring's own named state is what a bundle exported from a fast process carries.
     slowOperations: createSlowOperationRing().summary(),
+    // And for the every-call window: its factory's own empty state, not a hand-written shape.
+    ipcChannelLatency: createIpcChannelLatency().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -729,5 +732,48 @@ describe('support bundle: trajectory section', () => {
     expect(summary.status).toBe('no-slow-operations-observed')
     expect(summary.observed).toBe(0)
     expect(summary.records).toEqual([])
+  })
+
+  it('carries the ordinary-cost window per channel, which the slow ring never has', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    // Ten-to-fourteen-millisecond calls: every one of them below the ring's 50 ms threshold, so before this
+    // section the only durable evidence of them anywhere in the product was nothing at all.
+    const latency = createIpcChannelLatency()
+    for (const durationMs of [10, 11, 12, 13, 14])
+      latency.record('settings:get-settings', durationMs)
+
+    const result = await createSupportBundle({ ...input, ipcChannelLatency: latency.summary() })
+
+    expect(result.entries).toContain('diagnostics/ipc-channel-latency.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const summary = JSON.parse(await readFrom(target, 'diagnostics/ipc-channel-latency.json')) as {
+      status: string
+      capacity: number
+      channelsObserved: number
+      untrackedCalls: number
+      channels: {
+        channel: string
+        observed: number
+        windowSamples: number
+        p50Ms: number
+        p95Ms: number
+      }[]
+    }
+    expect(summary.status).toBe('records')
+    expect(summary.capacity).toBeGreaterThan(0)
+    expect(summary.channelsObserved).toBe(1)
+    expect(summary.untrackedCalls).toBe(0)
+    expect(summary.channels[0]).toMatchObject({
+      channel: 'settings:get-settings',
+      observed: 5,
+      windowSamples: 5,
+      // Sorted 10..14 ⇒ nearest-rank median 12, p95 14.
+      p50Ms: 12,
+      p95Ms: 14
+    })
+    // The README has to describe the section, or the reader who opens the archive has to guess what it is.
+    expect(await readFrom(target, 'README.txt')).toContain('diagnostics/ipc-channel-latency.json')
   })
 })

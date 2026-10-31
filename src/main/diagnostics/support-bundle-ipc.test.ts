@@ -36,6 +36,14 @@ const facts: SupportBundleFacts = {
     dropped: 0,
     status: 'no-slow-operations-observed',
     records: []
+  },
+  ipcChannelLatency: {
+    capacity: 128,
+    channelsObserved: 0,
+    untrackedCalls: 0,
+    status: 'no-calls-observed',
+    channels: [],
+    omitted: 0
   }
 }
 
