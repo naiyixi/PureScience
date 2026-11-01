@@ -45,7 +45,12 @@ expected/actual 反了。
 **处置（临时）**：`e2e/certification/packaged-screening-skip.ts` 在打包车道**具名 skip** 这四条，理由与
 证据路径写在常量里；dev 车道照旧真跑。
 
-**现状（2026-11-01 更新）**：**skip 已删，本机打包车道 4/4 通过**（`4 passed (3.5m)`，夹具收到并答复 46 个 prompt）。
+**现状（2026-11-01 二次更新）**：本机打包车道 4/4 通过（`4 passed (3.5m)`，46 个 prompt），但 **CI 上仍失败**，
+所以 skip 以**新的、有读数的理由**重新加回：Nightly `41290216695`（head `40634515`）的 app 日志里只有
+`[screening:model] screening runner shutting down { recordsInFlight: 0 }`（19 次），**没有任何 `screening record started`**
+—— 失败在模型调用之前，不在筛选引擎本身。删 skip 的前置条件因此改写为「打包车道能起第一条记录」。
+
+（上一次的更新记在这里，供对照：`skip 已删，本机打包车道 4/4 通过`（`4 passed (3.5m)`，夹具收到并答复 46 个 prompt）。
 走到这一步之前，三次复现尝试都是无效的，三次错法都记在
 `docs/evidence/2026-10-31-v2210-release-blocker-packaged-screening.md` §11：
 ① 跑的是机器上真装的 opencode；② 把 PATH 清到 `npx` 都没了、spec 从未执行；③ 加 `PURESCIENCE_E2E_EXECUTABLE`

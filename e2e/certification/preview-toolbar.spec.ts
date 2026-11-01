@@ -71,7 +71,9 @@ test('offers the file actions as toolbar buttons, and they are the same actions 
   const rendered = await panel
     .locator('[data-testid^="pdf-table-row-"]')
     .evaluateAll((rows) =>
-      rows.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent ?? ''))
+      rows.map((row) =>
+        Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent ?? '')
+      )
     )
   expect(rendered).toEqual(EXPECTED_ROWS)
 })

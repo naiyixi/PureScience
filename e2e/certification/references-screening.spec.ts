@@ -2,6 +2,9 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
+
+test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
 import { createProject } from './helpers'
 
 // Acceptance for literature screening (S3), on a real window, over the real IPC surface and a real

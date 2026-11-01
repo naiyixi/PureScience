@@ -51,5 +51,7 @@ test('the manual proxy names itself inactive while the network allowlist owns th
   await master.click()
   await expect(note).toHaveCount(0, { timeout: 30_000 })
   expect(await modes.first().isDisabled()).toBe(false)
-  console.log('[ic32] with the allowlist off again, the manual proxy is live and the sentence is gone')
+  console.log(
+    '[ic32] with the allowlist off again, the manual proxy is live and the sentence is gone'
+  )
 })

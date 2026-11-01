@@ -116,9 +116,9 @@ test('releases a merged name through the panel, and moves no numbers', async ({ 
     (afterRelease.aliases ?? []).some((entry) => entry.normalizedName === releasedName),
     `the alias is still stored: ${JSON.stringify(afterRelease.aliases)}`
   ).toBe(false)
-  expect(
-    JSON.stringify((afterRelease.journals ?? []).map((journal) => ({ id: journal.id })))
-  ).toBe(mergedMetricsBefore)
+  expect(JSON.stringify((afterRelease.journals ?? []).map((journal) => ({ id: journal.id })))).toBe(
+    mergedMetricsBefore
+  )
   console.log(
     `[ic56alias] after the release: aliases=${JSON.stringify(afterRelease.aliases)} journals=${JSON.stringify((afterRelease.journals ?? []).map((journal) => journal.id))}`
   )

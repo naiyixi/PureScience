@@ -36,7 +36,9 @@ test('reaches the checklist from the session itself, before any review exists', 
 
   if ((await page.getByTestId('reviewer-tab-checks').count()) === 0) {
     // No review in this session: the surface has to say so rather than render an empty checks tab.
-    await expect(page.getByTestId('reviewer-no-review')).toContainText('No review yet for this session')
+    await expect(page.getByTestId('reviewer-no-review')).toContainText(
+      'No review yet for this session'
+    )
   }
 
   // The folded-context tab works without a review too.

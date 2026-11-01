@@ -13,7 +13,9 @@ import { createProject, sendPrompt } from './helpers'
 
 test.setTimeout(180_000)
 
-test('re-runs a recorded notebook cell from the pane, and says why when it cannot', async ({ app }) => {
+test('re-runs a recorded notebook cell from the pane, and says why when it cannot', async ({
+  app
+}) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Notebook rerun')

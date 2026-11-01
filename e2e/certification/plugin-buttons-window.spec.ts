@@ -16,7 +16,9 @@ test.setTimeout(180_000)
 // whole point: both buttons are disabled until it is ticked, and the window can only ever send
 // `confirmed: true` from that tick, so "disabled → enabled" is an executable reading of the promise rather
 // than a sentence about it.
-test('the deploy and run-once buttons a reader presses answer in a real window', async ({ app }) => {
+test('the deploy and run-once buttons a reader presses answer in a real window', async ({
+  app
+}) => {
   const page = await app.completeOnboarding()
 
   await page.getByRole('button', { name: 'Model settings' }).click()

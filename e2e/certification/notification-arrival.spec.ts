@@ -25,9 +25,16 @@ test('the bell lights up on its own when a task finishes', async ({ app }) => {
   console.log(`[ic7] bell before the turn: ${before}`)
   expect(before).toBe('Messages, no unread messages')
 
-  await sendPrompt(page, 'Create a provenance artifact.', 'Artifact provenance verified for session', 90_000)
+  await sendPrompt(
+    page,
+    'Create a provenance artifact.',
+    'Artifact provenance verified for session',
+    90_000
+  )
 
   // No click on the bell anywhere above or below: the number appearing is the arrival of the change.
-  await expect(bell).toHaveAttribute('aria-label', /Messages, [1-9][0-9]* unread/, { timeout: 30_000 })
+  await expect(bell).toHaveAttribute('aria-label', /Messages, [1-9][0-9]* unread/, {
+    timeout: 30_000
+  })
   console.log(`[ic7] bell after a finished turn: ${await bell.getAttribute('aria-label')}`)
 })

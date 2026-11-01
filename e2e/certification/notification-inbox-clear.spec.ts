@@ -67,8 +67,13 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
 
   // The trigger is the bell itself: its accessible name is "Messages, N unread". "Message center" is the
   // PANEL's name (role=dialog) — the first attempt looked for that as a button and never found it.
-  await page.getByRole('button', { name: /^Messages,/ }).first().click()
-  await expect(page.getByRole('dialog', { name: 'Message center' })).toBeVisible({ timeout: 15_000 })
+  await page
+    .getByRole('button', { name: /^Messages,/ })
+    .first()
+    .click()
+  await expect(page.getByRole('dialog', { name: 'Message center' })).toBeVisible({
+    timeout: 15_000
+  })
 
   // Cancelling the clear must change nothing — the warning is a decision point, not a decoration.
   await page.locator('[data-slot="notifications-clear-all"]').click()
@@ -101,9 +106,7 @@ test('deletes one notice, clears them all, and cancelling changes nothing', asyn
   await page.locator('[data-slot="notifications-clear-all"]').click()
   await page.locator('[data-slot="notifications-clear-confirm-button"]').click()
 
-  await expect
-    .poll(async () => (await readInbox(page)).items.length, { timeout: 30_000 })
-    .toBe(0)
+  await expect.poll(async () => (await readInbox(page)).items.length, { timeout: 30_000 }).toBe(0)
   const cleared = await readInbox(page)
   console.log(
     `[notifclear] after clearing all: items=${cleared.items.length}, unread=${cleared.unreadCount}`

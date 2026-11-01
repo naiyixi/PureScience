@@ -40,7 +40,10 @@ test('the approval card counts down, and past its deadline it explains itself in
       const bridge = globalThis as unknown as {
         api: { settings: { setEgress: (settings: unknown) => Promise<unknown> } }
       }
-      return bridge.api.settings.setEgress({ ...(current as Record<string, unknown>), enabled: true })
+      return bridge.api.settings.setEgress({
+        ...(current as Record<string, unknown>),
+        enabled: true
+      })
     },
     egressBefore as Record<string, unknown>
   )
@@ -51,13 +54,16 @@ test('the approval card counts down, and past its deadline it explains itself in
     return bridge.api.settings.getEgress()
   })) as { enabled?: unknown }
   console.log(`[ic33] egress after: ${JSON.stringify(egressAfter)}`)
-  expect(egressAfter.enabled, 'egress could not be turned on, so no proxy exists and no card can appear').toBe(
-    true
-  )
+  expect(
+    egressAfter.enabled,
+    'egress could not be turned on, so no proxy exists and no card can appear'
+  ).toBe(true)
 
   // Sent WITHOUT waiting for the reply: the turn is blocked inside the request while the proxy holds it for its
   // approval timeout, and that pending window is exactly when the card has to be on screen.
-  await page.getByRole('textbox', { name: 'Ask anything' }).fill('Request a blocked outbound connection.')
+  await page
+    .getByRole('textbox', { name: 'Ask anything' })
+    .fill('Request a blocked outbound connection.')
   await page.getByRole('button', { name: 'Send message' }).click()
 
   const countdown = page.locator('[data-slot="egress-approval-countdown"]')
@@ -77,11 +83,16 @@ test('the approval card counts down, and past its deadline it explains itself in
       console.log(`[ic33] it moved to: "${now}"`)
     }
   }
-  expect(moved, 'the countdown never moved within 25s, so it is not a live remaining validity').toBe(true)
+  expect(
+    moved,
+    'the countdown never moved within 25s, so it is not a live remaining validity'
+  ).toBe(true)
 
   // Past the deadline: the fact stated in words, and nothing to press.
   const expired = page.locator('[data-slot="egress-approval-expired"]')
-  await expect(expired, 'the card never reached its expired state').toBeVisible({ timeout: 150_000 })
+  await expect(expired, 'the card never reached its expired state').toBeVisible({
+    timeout: 150_000
+  })
   const text = (await expired.innerText()).replace(/\s+/g, ' ').trim()
   console.log(`[ic33] past the deadline it says: "${text}"`)
   console.log(
