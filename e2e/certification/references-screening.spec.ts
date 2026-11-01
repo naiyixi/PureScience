@@ -2,7 +2,6 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 import { createProject } from './helpers'
 
 // Acceptance for literature screening (S3), on a real window, over the real IPC surface and a real
@@ -47,7 +46,10 @@ const addRecord = async (library: ReturnType<Page['getByRole']>, title: string):
   await expect(library.getByText(title).first()).toBeVisible()
 }
 
-test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
+// The packaged lane builds the app from scratch and macOS scans a bundle it has never seen before the
+// first window paints (measured 51.8 s on one machine); this spec's own budget therefore covers the cold
+// start, not just the assertions.
+test.setTimeout(300000)
 test('screens a collection, names its reasons, and layers a human override over the AI verdict', async ({
   app
 }) => {

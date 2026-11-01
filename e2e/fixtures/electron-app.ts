@@ -336,8 +336,13 @@ const openMainWindow = async (
     else child.once('exit', (code, signal) => resolve({ code, signal }))
   })
 
+  // A packaged bundle that macOS has never seen is scanned before its first window paints; on this machine
+  // that took 51.8 s (`install-lifecycle` totalPhaseMs) and Playwright's 30 s default expired first, which
+  // reports "never opened a window" for an app that is merely cold. The default stays 30 s so a real hang
+  // is still a hang; a reproduction can raise it with PURESCIENCE_E2E_WINDOW_TIMEOUT_MS.
+  const windowTimeoutMs = Number(process.env.PURESCIENCE_E2E_WINDOW_TIMEOUT_MS ?? 30_000)
   const page = await openWindowOrNameFailure({
-    firstWindow: () => application.firstWindow(),
+    firstWindow: () => application.firstWindow({ timeout: windowTimeoutMs }),
     exited,
     logPath,
     readTail: () => readTailLines(logPath, 20),

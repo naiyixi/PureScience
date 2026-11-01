@@ -5,7 +5,6 @@ import { expect } from '@playwright/test'
 import type { Locator, Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 import { createProject, sendPrompt } from './helpers'
 
 // Acceptance for S5, on a real window over the real IPC surface and a real project database: the
@@ -41,8 +40,6 @@ const ALL_TITLES = [PDF_TITLE, ABSTRACT_TITLE, ...METADATA_TITLES]
 const EVIDENCE_DIR = process.env.PURESCIENCE_EVIDENCE_DIR
 
 // Named skip for the packaged lane; see e2e/certification/packaged-screening-skip.ts.
-test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
-test.setTimeout(240_000)
 
 const openLibrary = async (page: Page): Promise<ReturnType<Page['getByRole']>> => {
   await page.getByTestId('workspace-references-toggle').click()
@@ -138,6 +135,10 @@ const collectChecklistReadings = async (
   ]
 }
 
+// The packaged lane builds the app from scratch and macOS scans a bundle it has never seen before the
+// first window paints (measured 51.8 s on one machine); this spec's own budget therefore covers the cold
+// start, not just the assertions.
+test.setTimeout(360000)
 test('reconciles one collection’s coverage tiers against a real corpus', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()

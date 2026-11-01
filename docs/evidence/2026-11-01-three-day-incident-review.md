@@ -45,11 +45,17 @@ expected/actual 反了。
 **处置（临时）**：`e2e/certification/packaged-screening-skip.ts` 在打包车道**具名 skip** 这四条，理由与
 证据路径写在常量里；dev 车道照旧真跑。
 
-**现状**：**未修**。本机三次复现尝试全部无效，三次错法都记在
+**现状（2026-11-01 更新）**：**skip 已删，本机打包车道 4/4 通过**（`4 passed (3.5m)`，夹具收到并答复 46 个 prompt）。
+走到这一步之前，三次复现尝试都是无效的，三次错法都记在
 `docs/evidence/2026-10-31-v2210-release-blocker-packaged-screening.md` §11：
 ① 跑的是机器上真装的 opencode；② 把 PATH 清到 `npx` 都没了、spec 从未执行；③ 加 `PURESCIENCE_E2E_EXECUTABLE`
-后命中了我自己写的 skip，结果是 `1 skipped`。现已补 `PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS=1` 复现开关，
-并确认它能让打包态真正执行（`1 failed`，本地可复现）。**删掉 skip 之前，必须先修好这条。**
+后命中了我自己写的 skip，结果是 `1 skipped`。现已补 `PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS=1` 复现开关（`1 skipped → 1 failed`，证明开关生效）。
+
+真正的变因是**预算**：包体第一次被 macOS 扫描时 `install-lifecycle` 花了 **51.8 s**，而夹具等首窗只等 30 s、
+spec 的全局预算是 120 s —— 打包车道于是「在应用开窗前就超时」，看起来像筛选停摆。修法三条一并落地：
+① 夹具首窗超时可由 `PURESCIENCE_E2E_WINDOW_TIMEOUT_MS` 抬升（默认仍 30 s，真挂起还是挂起）；
+② 四条筛选 spec 各自 `test.setTimeout(300–420 s)`，覆盖冷启动而不是只覆盖断言；
+③ 删掉 `packaged-screening-skip.ts` 与四处 `test.skip`。
 
 ## 5 夹具的工具调用 id 跨回合重复，把产品缺陷「测没了」
 
