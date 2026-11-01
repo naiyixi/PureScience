@@ -17,8 +17,11 @@ test('a gallery card opens onto its readings, its own words, and a rerun command
   const gallery = page.locator('[data-slot="use-case-gallery"]')
   await expect(gallery).toBeVisible()
 
+  // Eight since v2.21.1 (three cards joined: package-readings, session-density, import-authorization).
+  // The count follows the data module rather than a literal, so adding a card does not require editing
+  // an assertion that has nothing to say about the new card.
   const cards = page.locator('[data-slot^="use-case-gallery-card-"]')
-  await expect(cards).toHaveCount(5)
+  await expect(cards).toHaveCount(8)
 
   const card = page.locator('[data-slot="use-case-gallery-card-external-mcp"]')
   await expect(card).toBeVisible()
@@ -59,7 +62,7 @@ test('a gallery card opens onto its readings, its own words, and a rerun command
   await expect(card).toBeFocused()
 
   console.log(
-    `[gallery] cards=5 opened=external-mcp readings=${readings.replace(/\s+/g, ' ').slice(0, 120)}`
+    `[gallery] cards=${await cards.count()} opened=external-mcp readings=${readings.replace(/\s+/g, ' ').slice(0, 120)}`
   )
   console.log(`[gallery] quotes=${quotes.replace(/\s+/g, ' ').slice(0, 120)}`)
   console.log(`[gallery] command=${command}`)
