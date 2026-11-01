@@ -15048,3 +15048,80 @@ markSessionCompletionsRead / deleteItems / clearAll` 各自在动作后再读一
    与 §二 同口径对照（同一台机器、同类回合），确认「builds/s ≈ 送达次数」；
 ③ 若 `meanMs` 反而上升，先查是不是单次构建变贵（例如窗口更久 ⇒ 事件更多），**不要**据此加减窗口毫秒数凑数；
 ④ 并行会话两份在制件仍在就不碰：`git fetch -q origin && git log --oneline origin/main -3 && git status --short`。
+
+## 二百七十四、本轮追加（执行器，2026-11-01 22:0x–）—— 未读任务的落库在真机上被事务超时整个丢掉：改成一次批量事务，并让失败带上「多大一盘状态」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = a2839c4d`；本笔起步时工作树里**并行会话**的在制件是
+  `src/main/references/screening-service.ts`、`docs/plan-2026-10-28-two-releases.md`、`src/main/reviewer/{ipc.ts,ipc.test.ts}` +
+  `src/shared/reviewer.ts` + `docs/evidence/2026-11-01-reviewer-fix-loop-double-review.md` —— **一个字节没碰**，本笔只改 `src/main/notifications/**`。
+- **先收口上一轮的§273**：它写完了但未提交（那一轮以 `GatewayUnavailableError` 收场）⇒ 我先复跑了它的门禁
+  （`src/main/acp` + 窗口模块 94 文件 / 1,503 例全绿；eslint 5 文件 0/0；双 typecheck 本笔 0 错），提交 `2c4d0588` 并推送。
+- 推送时 `pre-push-checks.sh` 被**别人一笔已提交文件里的一处措辞**挡下（`e2e/certification/packaged-screening-skip.ts` 注释里的
+  一个禁用词）⇒ 按「改说法、不绕门」，另起一笔 `9ae29074` 改掉那个词（判据不变，只是措辞）。推送区间 `a2839c4d..9ae29074`。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍**耗尽**；A 段无 ≥3 天无人动项 ⇒ 本轮**按真机日志自拟单元**（与 §270–§273 同一取法）。
+
+### 一 缺口：一次事务超时，整盘未读状态被丢掉，而且没人知道丢了多少
+
+真机主日志（`~/Library/Logs/PureScience/main.log`，13,176 行，窗口 2026-10-29 14:42Z → 11-01 13:54Z，打包版 v2.21.1 运行中）里
+`unread task state failed` 出现 **2 次**，两次都是同一个形状（原字段照抄）：
+
+```
+{"t":"2026-11-01T01:15:58.401Z","level":"warn","scope":"main","msg":"unread task state failed",
+ "data":{"name":"PrismaClientKnownRequestError","message":"Invalid `transaction.unreadTaskSession.findMany()`
+ invocation in /Applications/PureScience.app/Contents/Resources/app.asar/out/main/unread-task-repository-YmavVEWF.js:66:56
+ … Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction …"}}
+```
+
+（另一次 `2026-10-29T17:39:10.501Z`，同一行、同一个方法。）
+
+打包产物里的 `:66` 就是 `reconcile()` 里那条 `findMany`。**它连第一条查询都没发出，事务就已经过期了** ——
+因为实现是「交互式事务 + 回调里逐条 `create`」：Prisma 给回调 **5 s** 预算，而回调里的每一次 `await` 都要等事件循环；
+同一份日志里 `event loop stalled` 有 **1,390 条**（11-01 单日 1,260 条，`lateMs` 最大 268,736 ms，一段典型窗口 2.4 s）。
+超时一到，**整盘快照被丢掉**（不是部分写），`onError` 只是 `log.warn`，内存态与落库态就此分叉；
+下次启动 `restore()` 读回的是旧那一盘 —— 用户已经读过的会话，重启后徽标又亮起来。
+
+快照上限 `MAX_UNREAD_TASK_SESSIONS = 1000`，而旧实现在回调里对**每一条缺失会话**各发一条 `create` ⇒ 最坏 1,000 次 `await`
+挤在同一个 5 s 预算里。这不是「慢」，是**结构上注定会撞**。
+
+### 二 交付（2 文件，`src/main/notifications/`）
+
+| 位置 | 改动 |
+| --- | --- |
+| `unread-task-repository.ts` | `reconcile()`：读 → 算差 → **一次批量事务**（`$transaction([...语句])`，数组形态）。删除仍按 400 分块，新增改 `createMany`（同样分块）；语句数从 `1 + N` 降到 `≤ ceil(删除/400) + ceil(新增/400)`（本机典型 2 条）。`reconcileSessionCatalog()` 同形改造（原来也是回调里 1 读 + 最多 3 删） |
+| 同上 | 新增 `UnreadTaskReconcileError`：消息里带 `desired/existing/created/deleted` 四个数与原错因（`cause` 保留），它经 `onError` 落到 `unread task state failed` 那一行的 `data.message` —— 从此「3 条的快照失败」与「900 条的快照失败」不再同形 |
+| `unread-task-repository.test.ts`（真 SQLite 项目库，不是替身） | +2 例：① 600 条快照 ⇒ `$transaction` **只被调 1 次、参数是数组、长度 2**（旧形态是回调 ⇒ 结构上不可能通过），且 `load()` 逐条等于快照顺序；② 触发器拒收时抛出的是 `UnreadTaskReconcileError`、消息含 `desired=2 existing=1 created=2 deleted=1`、且整盘回滚（旧行仍在） |
+
+**三条设计判据**：① **批量而不是交互式** —— 语句由 Prisma 一次发完，中间没有我们的 `await`，事件循环停住也过期不了；
+② **读在事务外** —— `enqueue` 已把本类的每个操作串起来，且**没有第二个写者**碰这张表，所以「读到的差」就是「批量写的差」；
+③ **语义一字未改** —— 保留行仍不重写（id 稳定）、失败的整盘仍回滚（触发器用例照旧绿）、
+`load()` 的插入顺序照旧（对「保留行 + 新增行交错」时顺序按 id 而非按快照这一**既有**行为，本笔没动也未声称修掉）。
+
+### 三 门禁与自证（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向：`src/main/notifications` 整目录 | **11 文件 / 169 例全绿** |
+| 变异自证（改完即还原） | 把 `reconcile` 改回「交互式事务 + 逐条 `create`」⇒「一次批量事务」那条**当场红**（`$transaction` 参数不是数组），其余 10 条仍绿 |
+| `eslint --no-cache`（本笔 2 文件） | **0 error / 0 warning** |
+| 双 typecheck（`--composite false`） | 本笔 **0 错**；两边各余 **4 条全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改 |
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **没有「超时不再发生」的真机读数**：本机此刻跑的是**打包版 v2.21.1**，本笔代码要等到下一次装包才会在真实会话里跑。
+   本笔能给的证据是**结构性**的（语句数从 `1+N` 降到常数级、事务里没有回调）与上表那两条确定性用例；
+   **拿到新读数之前不写「已消除」**。判据留给下一版：`unread task state failed` 的出现次数（现在应先于超时消失），
+   以及新的 `UnreadTaskReconcileError` 一旦出现时消息里那四个数。
+2. **本笔没动「事件循环为什么停」**：1,390 条 stall 里绝大多数与 `loadAvg1m ≈ 71`、`freeMemMb ≈ 60` 的那几段重合（同机并发跑认证/打包），
+   归因在机器侧；本笔只保证**这张表不再因为停一下就整盘丢**。
+3. **`save()` 仍是「整盘快照」语义**：没有改成增量或去抖 —— 那是另一个单元（真机上 `sessions:save-session` 的 `writeMs` 已有分段读数与结论，
+   见 P0-4），别把本笔当它的前置。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读 `2c4d0588`/`9ae29074` 与本笔的 `Nightly` / `Windows Full Test` 终态（`cancelled` 不算绿）；
+② 继续按真机日志取下一个单元：本轮聚合里还剩两条未归因的候选 —— `notifications:get-snapshot` 的 `ownMs` 峰值（149.7 s，与 §272 那次整包重读同域）
+   与 `notebook:state` 读的 `loadMs`（123 条慢读、`cold` 全为 false，`loadMs` median **401 ms** / p95 1,269 ms / max 2,424 ms，而它几乎等于 `totalMs` ⇒ 钱全在「解析/归一」这一段，可能是缓存命中后仍每次全量 `normalizeDocument`）——
+   动手前先按 §272/§273 的口径核一遍「是不是已经有人量过并结了案」；
+③ 并行会话在制件仍在就不碰：`git fetch -q origin && git log --oneline origin/main -3 && git status --short`。

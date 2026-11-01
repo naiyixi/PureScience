@@ -6,7 +6,11 @@ import type { PrismaClient } from '@prisma/client'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
-import { MAX_UNREAD_TASK_SESSIONS, UnreadTaskDbRepository } from './unread-task-repository'
+import {
+  MAX_UNREAD_TASK_SESSIONS,
+  UnreadTaskDbRepository,
+  UnreadTaskReconcileError
+} from './unread-task-repository'
 
 let storageRoot: string | undefined
 let client: PrismaClient | undefined
@@ -155,5 +159,61 @@ describe('UnreadTaskDbRepository', () => {
     ])
 
     await expect(repository.load()).resolves.toEqual(['active-session'])
+  })
+
+  it('applies a whole snapshot as one batch transaction instead of a callback chain', async () => {
+    await createRepository()
+    const transactionArguments: unknown[] = []
+    const counted = new Proxy(client!, {
+      get(target, property) {
+        if (property === '$transaction') {
+          return (argument: unknown) => {
+            transactionArguments.push(argument)
+            return target.$transaction(argument as never)
+          }
+        }
+        const value = Reflect.get(target, property, target)
+        return typeof value === 'function' ? value.bind(target) : value
+      }
+    })
+    const repository = new UnreadTaskDbRepository(async () => counted as unknown as PrismaClient)
+    const snapshot = Array.from({ length: 600 }, (_, index) => `session-${index}`)
+
+    await repository.save(snapshot)
+
+    // One call, and its argument is an ARRAY of statements: nothing of ours runs between them, so an
+    // event-loop stall cannot expire the transaction mid-way (the interactive shape could and did).
+    expect(transactionArguments).toHaveLength(1)
+    expect(Array.isArray(transactionArguments[0])).toBe(true)
+    // 600 inserts fit in two chunks (400 + 200); a per-row loop would have produced 600.
+    expect((transactionArguments[0] as unknown[]).length).toBe(2)
+    await expect(repository.load()).resolves.toEqual(snapshot)
+  })
+
+  it('reports how much state a refused snapshot would have written', async () => {
+    const repository = await createRepository()
+    await repository.save(['session-before-failure'])
+    await client!.$executeRawUnsafe(`CREATE TRIGGER "block_unread_session"
+      BEFORE INSERT ON "UnreadTaskSession"
+      WHEN NEW."sessionId" = 'blocked'
+      BEGIN
+        SELECT RAISE(ABORT, 'blocked session');
+      END;`)
+
+    const failure = await repository
+      .save(['session-added-first', 'blocked'])
+      .then(() => undefined)
+      .catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(UnreadTaskReconcileError)
+    const named = failure as UnreadTaskReconcileError
+    expect(named.name).toBe('UnreadTaskReconcileError')
+    expect(named.message).toContain('desired=2 existing=1 created=2 deleted=1')
+    // The cause's own words travel too, whatever Prisma ends up calling the refusal.
+    expect((named.cause as Error).message.length).toBeGreaterThan(0)
+    expect(named.message.length).toBeGreaterThan('unread task reconcile failed '.length + 40)
+    expect(named.cause).toBeInstanceOf(Error)
+    // The sizes are the reading, not the write: nothing of the refused snapshot may have landed.
+    await expect(repository.load()).resolves.toEqual(['session-before-failure'])
   })
 })
