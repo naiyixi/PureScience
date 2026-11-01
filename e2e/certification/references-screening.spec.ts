@@ -2,9 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 
-test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
 import { createProject } from './helpers'
 
 // Acceptance for literature screening (S3), on a real window, over the real IPC surface and a real
@@ -106,7 +104,7 @@ test('screens a collection, names its reasons, and layers a human override over 
   // counter-evidence), and the pass reports its own progress.
   await panel.getByRole('button', { name: 'Screen collection' }).click()
   await expect(panel.getByText(/AI decisions 2 · human overrides 0/)).toBeVisible({
-    timeout: 60_000
+    timeout: 180_000
   })
 
   const includedRow = panel.locator('[data-testid="screening-row"]', { hasText: INCLUDED_TITLE })

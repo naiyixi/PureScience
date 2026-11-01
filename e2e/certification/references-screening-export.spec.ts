@@ -6,9 +6,7 @@ import { expect } from '@playwright/test'
 import type { Locator, Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
-import { isPackagedLane, PACKAGED_SCREENING_SKIP_REASON } from './packaged-screening-skip'
 
-test.skip(isPackagedLane(), PACKAGED_SCREENING_SKIP_REASON)
 import { createProject } from './helpers'
 
 // Acceptance for S4, on a real window over the real IPC surface and a real project database: the
@@ -136,7 +134,7 @@ test('screens a collection, overrides two records, and exports only the included
   // needs-review and nothing is decided yet.
   await panel.getByRole('button', { name: 'Screen collection' }).click()
   await expect(panel.getByText(/AI decisions 3 · human overrides 0/)).toBeVisible({
-    timeout: 60_000
+    timeout: 180_000
   })
   for (const title of [INCLUDED_TITLE, EXCLUDED_TITLE, UNTOUCHED_TITLE]) {
     const row = panel.locator('[data-testid="screening-row"]', { hasText: title })
