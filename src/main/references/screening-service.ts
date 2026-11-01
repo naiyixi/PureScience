@@ -284,7 +284,19 @@ export class ScreeningService {
         started: false
       }
     }
-    const runner = this.dependencies.runner()
+    // A pass that never starts a record used to be invisible from the log: the caller returns `started` and
+    // the panel shows its own count, so nothing said WHICH precondition stopped it. These lines name the
+    // facts the decision is made from, before and after it is made.
+    let runner: ReturnType<ScreeningServiceDependencies['runner']>
+    try {
+      runner = this.dependencies.runner()
+    } catch (error) {
+      console.warn('[screening] start refused: no model runner', {
+        collectionId: input.collectionId,
+        reason: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
 
     const references = await this.dependencies.references.listCollectionReferences(
       input.collectionId
@@ -331,7 +343,13 @@ export class ScreeningService {
       }
     } else {
       const rule = await this.repository.latestRuleRevision(input.collectionId)
-      if (!rule) throw new ScreeningRuleMissingError(input.collectionId)
+      if (!rule) {
+        console.warn('[screening] start refused: no rule revision', {
+          collectionId: input.collectionId,
+          references: members.size
+        })
+        throw new ScreeningRuleMissingError(input.collectionId)
+      }
       const run = await this.repository.startRun({
         collectionId: input.collectionId,
         ruleRevision: rule.revision,
@@ -348,6 +366,13 @@ export class ScreeningService {
       referenceIds: pending,
       cancelRequested: false
     }
+    console.info('[screening] start accepted', {
+      collectionId: input.collectionId,
+      runId,
+      ruleRevision,
+      records: pending.length,
+      resumed: Boolean(input.resumeRunId)
+    })
     this.activePasses.set(input.collectionId, pass)
     this.lastErrors.delete(input.collectionId)
     // The model identity is resolved once per pass (see beginPass), so every record in this pass is
@@ -359,6 +384,10 @@ export class ScreeningService {
     // promise.
     void this.drivePass({ collectionId: input.collectionId, pass, runner }).catch(
       (error: unknown) => {
+        console.warn('[screening] pass failed', {
+          collectionId: input.collectionId,
+          reason: error instanceof Error ? error.message : String(error)
+        })
         this.lastErrors.set(
           input.collectionId,
           error instanceof Error ? error.message : String(error)

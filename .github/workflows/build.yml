@@ -428,6 +428,25 @@ jobs:
           echo "=== screening lines from the app log ==="
           grep -hE "screening|agent spawn" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no app log"
 
+      # The packaged lane starts no screening record on CI — measured on 41290216695: nineteen
+      # `screening runner shutting down { recordsInFlight: 0 }` lines and not one `screening record started`
+      # — while the same four specs pass against the same bundle on a real machine. Skipping them keeps P0
+      # honest, but a skip that nobody measures again becomes a rumour, so this step runs the same spec with
+      # the skip bypassed, never gates, and prints what the app said. The `[screening] start accepted/refused`
+      # lines are what make the next reading an answer instead of another guess.
+      - name: Diagnose packaged screening (non-gating)
+        if: ${{ always() && matrix.name == 'macos-arm64' }}
+        continue-on-error: true
+        env:
+          PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
+          PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS: '1'
+        run: |
+          npx playwright test e2e/certification/references-screening.spec.ts --workers=1 --reporter=line || true
+          echo "=== [screening] lines from the app"
+          grep -hE "\[screening\]|screening record|recordsInFlight" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no screening lines in the app log"
+          echo "=== fixture transcript (screening only)"
+          grep -hE "screen ONE bibliographic record" test-results/fake-agent.log 2>/dev/null | head -5 || echo "no screening prompt reached the fixture"
+
       # Visual behavior uses the same renderer bundle on every package. Keep one canonical hard gate
       # beside P0 instead of multiplying antialiasing and launch variance across four native runners.
       - name: Run desktop visual regression
