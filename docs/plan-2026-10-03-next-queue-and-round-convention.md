@@ -14892,3 +14892,72 @@ v2.21.0 发布 run 的 `windows-upgrade-smoke` 作业里，装机 / 回滚 / 重
 ② 从本笔之后第一次打包跑的 `support-bundle-export-readback` 日志里读 `[ic37] web face window:` 那一行（那是本单元的窗口读数）；
 ③ 拿支持包里 `diagnostics/ipc-channel-latency.json` 的**完整**段落判 A 组那七条通道（不再只看前 5 条）；
 ④ `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：并行会话两份在制件仍在就不碰。
+
+## 二百七十二、本轮追加（执行器，2026-11-01 14:2x–）—— 消息中心不再「每个变更事件都整包重读」：事件本来就带着那几个数
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 83e06caf`（14:01 那笔视觉基准），本地与远端同点、`origin/main..HEAD` 为空。
+- 工作树两份**并行会话**在制件（`src/main/references/screening-service.ts`、`docs/plan-2026-10-28-two-releases.md`）
+  **一个字节没碰**；本笔改的三个文件与它们不相交。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）复核仍**耗尽**；A 段无 ≥3 天无人动项 ⇒ 自拟单元。
+- **开工时在飞车道**：`83e06caf` 的 `Nightly` / `Release` 均 `in_progress`（Windows Full Test 已 success）⇒
+  本笔**只本地提交、不推**，等它落定再推（推早一步会把 §271 那条要读的打包作业顶掉）。上一笔的两条红已定因：
+  `2ad7c98e` 的 Nightly 红在 `Test (with coverage)` = README 工具数 292 vs 282（`b62213f1` 已修）；
+  `b62213f1` 的 `Build macos-arm64` 红在用例画廊计数与 `home-empty.png` 基准（`83e06caf` 已修）——**都不是产品缺陷**。
+
+### 一 单元从哪来：先按真机日志聚合，再看源码能不能解释它
+
+`~/Library/Logs/PureScience/main.log`（4,410 行，2026-10-29 → 11-01）按 `level|scope|msg` 聚合后，
+排除掉已知的「整机挂起 232 s」那一族（六个通道在 0.7 s 内先后结束），剩下一条**产品自己造成的**成本：
+
+```
+  30  warn  ipc  notifications:get-snapshot  p50 879 ms / max 151,946 ms
+```
+
+读源后确认形状：主进程发出的变更事件**本来就带着** `revision / unreadCount / latestSequence`
+（`src/shared/notifications.ts` 的 `NotificationInboxChanged`，前载也已按该类型声明），而渲染层的
+`listen()` 把载荷整个丢掉、每来一条事件就 `getSnapshot()` 重读整包；同时 `markRead / markAllRead /
+markSessionCompletionsRead / deleteItems / clearAll` 各自在动作后再读一次 —— 而那次动作**自己就会触发一条
+`changed` 事件**，于是**一次用户动作 = 两次整包读**。仓库自己记着 600 行收件箱的快照耗时 425 ms。
+
+### 二 交付（`88cacd0c`，3 文件 / +333 −95）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/renderer/src/stores/notification-inbox-store.ts` | 新增 `requestRefresh()`（**宏任务**合并，一轮突变只读一次）；`listen()` 消费事件载荷：徽标两个数**即刻**落值（不动 items）、`revision ≤ 屏上值`视为重放**零读取**、载荷缺字段时照旧读；五个写动作改走合并读取，与它们自己引发的那条事件**共享同一次读** |
+| `notification-inbox-store.test.ts`（新） | 5 条：突发三条事件 ⇒ 一次读且徽标立刻是 3 / 同 revision 与更旧 revision ⇒ 零读、更新 ⇒ 一读 / 突变与它引发的事件共读 / 载荷缺字段仍读且不编数 / 失败可见并在下一条事件恢复 |
+| `NotificationBell.render.test.tsx` | 两处动作后补 `flushMergedRead()`（合并读在下一个宏任务；`act` 只冲微任务）——**断言一个字没改**（仍断 `getSnapshot` 恰 2 次、删除后恰剩 1 张卡） |
+
+**三条设计判据**：① **合并在宏任务而不是微任务** —— React 会在 promise 续体里恢复挂起的渲染，微任务里写 store
+正好落在渲染中途（与运行期广播那条纪律同源）；② **载荷只用来画数，不用来造数** —— 缺字段就退回读取，
+绝不替读者推一个 `unreadCount`；③ **重放不读** —— `revision` 是后端对「它描述的那个状态」的编号，已经画在屏上的
+那个编号再送来一次，没有新行可看。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向：`src/renderer/src/stores` + `src/renderer/src/components`（整两目录） | **98 文件 / 1058 passed** |
+| `src/renderer/src/App.test.tsx`（订阅那条集成断言） | passed（13 例内） |
+| 双 typecheck（`--composite false`） | 本笔 **0 错**；余 4 条**全在并行会话在制的 `screening-service.ts`**（`TS6133`×3 / `TS2564`×1），未去改 |
+| `eslint --no-cache`（本笔 3 文件） | **0 error / 0 warning** |
+| 变异自证（两次都实跑、改完即还原） | ① 让 `requestRefresh` 直接读（即合并之前的形状）⇒ 「突发一次读」「突变与事件共读」**两条红**；② 把事件载荷置空（即监听器只读不用的形状）⇒ 「徽标从载荷落值」「重放零读」**两条红** |
+
+### 四 边界（不许读成更强）与具名未办
+
+1. **没有本机真机读数**：本机此刻跑着 dev 常驻实例（`build:e2e` 会抢 `out/`），空闲物理页 4.4k（≈68 MB）、
+   swap 5.1 G / 6.0 G ⇒ 不起打包实例。真窗口面由**既有两支认证 spec** 兜（`notification-arrival`：事件到达后
+   铃铛自己亮；`notification-inbox-clear`：删一张 / 清空后列表与存储都跟着变），它们随下一次打包跑给出判决；
+   **「一次动作只读一次」这个数在真窗口里没有直接读数**（要读主进程的通道计数才能取，未做），本笔只以
+   单测钉住它 —— 这一条具名留着。
+2. **合并会推迟一个宏任务**：读者点「全部已读」后列表晚一个 tick 刷新（徽标由事件载荷即刻更新）。这是合并的
+   代价，不是缺陷；若将来需要「点完立刻看到行变化」，正确做法是动作后用返回值就地更新行，而不是取消合并。
+3. **A 组七条目标通道的完整中位仍未判**（§271 §五 3 的那条，需要包里 `ipc-channel-latency.json` 的完整段落）。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读 `83e06caf` 与 `88cacd0c` 的 `Nightly` / `Windows Full Test` 终态（`cancelled` 不算绿）；
+② 从 `88cacd0c` 之后的打包跑里读 `[ic37] channels measured:` 与 `[ic37] web face window:` 两行（§271 ② 的那条读数）；
+③ 若两支通知认证 spec 在打包跑里红了，按「是不是本笔引入」逐条定因（本笔零主进程改动）；
+④ `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：并行会话两份在制件仍在就不碰。
