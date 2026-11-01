@@ -14814,3 +14814,81 @@ v2.21.0 发布 run 的 `windows-upgrade-smoke` 作业里，装机 / 回滚 / 重
    `macos-arm64` 构建作业（P0 步骤）上。**读数未到手之前不写「已取真机读数」**；下一轮第一步就是去那个作业的日志里读
    `[ic37] channels measured:` 那一行。
 4. **拒绝也计入**：`rejectedInWindow` 单列，因为「快速失败」不是「快」；这也让 `p50` 不被「全是拒绝」的通道衬托成优秀。
+
+## 二百七十一、本轮追加（执行器，2026-11-01 11:1x–）—— Web 面也进「每通道中位」窗口：同一个通道名跨两种传输，读数此前只有一半
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = e259ceb7`（10:27 那笔 e2e 复现开关），本地与远端同点，`origin/main..HEAD` 为空。
+- 工作树两份**并行会话**在制件：`src/main/references/screening-service.ts`（+19 行，10-31 03:00 起）、
+  `docs/plan-2026-10-28-two-releases.md` 的 H1/H2 两行状态 —— **一个字节没碰**；本笔改的文件与它们不相交。
+- 在飞车道：`e259ceb7` 的 `Nightly`（41265267732）开工时 `in_progress`（`build / Build macos-arm64` 自 02:44Z 起跑）
+  ⇒ **本轮先做完本地门禁与提交，等它落定再推**（推早一步就会按 `cancel-in-progress` 把它顶掉，而那正是我要读的那一份）。
+- 单元来源：§二百七十 §四 1 自己写下的具名未办 ——「Web RPC 面走另一条栈，本段不覆盖 ⇒ A 组里 **web 面通道的中位读数仍然没有仪器**」。
+  本轮补的就是这一条（不需要新通道、不需要发版窗口）。
+
+### 一 先把 §270 的待取读数取掉（作业日志原话，不是自述）
+
+`e259ceb7` 的 `Nightly` = **completed / success**（`build / Verify`、四平台 build、`build / Build macos-arm64`（P0 认证）、
+`publish` 全 success；`Windows Full Test` 同为 success）。macos-arm64 作业（`124730124077`）日志里：
+
+```
+[ic37] the panel says: "Support bundle saved to …/support-bundle.zip — 680.9 KB, 377 fields redacted"
+[ic37] channels measured: 26, listed: 26, untracked: 0
+[ic37] worst tail: settings:check-environment p50=1351.7ms p95=1351.7ms
+        | network:check-connectivity p50=622.4ms p95=962.7ms
+        | github:get-stars p50=390.7ms p95=390.7ms
+        | settings:npm-available p50=8.2ms p95=314.7ms
+        | sessions:list-catalog p50=32.0ms p95=103.2ms
+```
+
+⇒ §270 的仪器在**打包态真机**上活着：26 个通道被记、`untrackedCalls=0`、支持包里读得到。
+**但「A 组七个目标通道中位 < 80 ms」这一条不能据此判过**：摘要只印 p95 前 5 条（按设计），
+另外 21 条在包里的完整段落中 —— 判过要读包里那一份，记成下一步（不拿「没进前五」当「达标」）。
+
+### 二 缺口核实（对着当前源码、按机制名 grep）
+
+`grep -rn "slowOperation\|recordLatency\|latency" src/main/web-service/*.ts`（除测试）**零命中** ⇒
+`/rpc/` 派发整条路没有任何计数器；而 `ipc-channel-latency` 的唯一生产者是 IPC 适配器（`ipc-rejection.ts`）。
+于是「这个通道在 Web 面上多快」在支持包里**没有位置**：慢环只收超过 50 ms 的，而网络面连环都不挂。
+
+### 三 交付（`7a5e2198`，9 文件 / +247 −2）
+
+| 位置 | 改动 |
+| --- | --- |
+| `diagnostics/ipc-channel-latency.ts` | 新增 `sharedWebRpcChannelLatency`（同一工厂的**第二个实例**）：两种传输的调用**刻意不混进同一个累加器** —— 混在一起恰好抹掉读者打开支持包要看的那一处差别 |
+| `web-service/http-server.ts` | 只在**实际派发**那段计时（授权断言 + `commandClient.invoke`），成功与拒绝两条出口都记；未知通道 / 坏 JSON / 协议版本不符在更早处被拒，**那些不记** |
+| `diagnostics/support-bundle.ts` | 新增必填段 `webRpcChannelLatency` + `diagnostics/web-rpc-channel-latency.json` + README 里说明「为什么要分两段看」 |
+| `ipc.ts`（组合根） | 传 `sharedWebRpcChannelLatency.summary()` —— **不是**桌面那份的副本 |
+| 用例 | 支持包：同一通道名 12 ms 与 140 ms 各在各的段（互不串味）+ README 逐字断言 4 条；真 socket 往返 2 条（成功记一次 / 拒绝记成 `rejected` / **拒在派发之前的请求一次都不记**）；接线守卫 3 条（记录点必须在派发之后、段要写盘、组合根不许传两份桌面 summary） |
+| 认证 spec（加强既有那条） | `support-bundle-export-readback.spec.ts` 追加：从**应用真写出的包**里读回这一段，先断 `status` 再断数字；本次打包跑用 IPC 驱动渲染层，所以诚实的期望是具名空态 `no-calls-observed`，`records` 时按同一口径断顺序 |
+
+**两条设计判据**：① **同一个通道名不等于同一批调用** —— 两段分开写，才能把「到处都慢」与「只有过 socket 才慢」分开；
+② **派发之前就拒的请求不进窗口** —— 否则任何探测 socket 的客户端都能把真通道的中位数拉到接近零，读数会被客户端行为污染。
+
+### 四 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向：`src/main/diagnostics` + `src/main/web-service`（整目录） | **36 文件 / 283 passed**（含本笔新增 7 条）；复跑一次出现 `event-loop-stall-watchdog` 一条红（真时钟用例，单跑 **3/3 绿**）⇒ 按负载抖动记档 |
+| 全量 vitest（隔离工作树 `/tmp/ps-webface` = `7a5e2198`，`--maxWorkers=4`） | `1461 文件（1 failed / 1430 passed / 30 skipped）`；`18,283 例（1 failed / 18,057 passed / 225 skipped）`；**1427.67 s**（正常 ~370 s，机器当时 swap 8.2 G / 9.2 G）|
+| 全量里那 1 条红 | `ZoomablePreview.render.test.tsx`「reset 后读数回到 100%」得到 `165%`；**与本笔不相交**（本笔零渲染层改动），单跑 **3/3 绿** ⇒ 与同轮两条 `Failed to start forks worker … Timeout waiting for worker to respond` 同属基础设施/负载，未当回归 |
+| 双 typecheck（同一隔离工作树，`--composite false`） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 9 文件） | **0 error**；3 条 prettier 折行告警已就地 `--write`，`prettier --check` 全过 |
+| `scripts/pre-push-checks.sh` | **exit 0**，8 段全过（本次推送 9 个文件 lint **0 problems**） |
+
+### 五 边界（不许读成更强）与具名未办
+
+1. **没有本机真机读数**：本机此刻跑着 dev 常驻实例（`build:e2e` 会抢 `out/`）、空闲物理页 4.2k（≈66 MB）、
+   swap 8.2 G/9.2 G ⇒ 不起打包实例。窗口读数由**认证 spec** 给，判决挂在下一轮打包车道；
+   **读数到手之前不写「已取真机读数」**。
+2. **两个面的对照要有意义，得同一通道被两边都打过**：本笔只保证两段都在、同一口径；「过 socket 慢了」这个结论要等一次真的 Web 面驱动。
+3. **A 组七条目标通道的完整中位仍未判**：包里已有 26 条，但日志只印前 5 条（见 §一）。
+4. **打包态 screening 那条 P0 仍归并行会话**：本轮的 v2.21.0 恢复路径不变（有页的 tag 不删）。
+
+### 六 下一轮第一步
+
+① 按**完整 40 位 SHA** 读本笔两条车道的终态（`cancelled` 不算绿）；
+② 从本笔之后第一次打包跑的 `support-bundle-export-readback` 日志里读 `[ic37] web face window:` 那一行（那是本单元的窗口读数）；
+③ 拿支持包里 `diagnostics/ipc-channel-latency.json` 的**完整**段落判 A 组那七条通道（不再只看前 5 条）；
+④ `git fetch -q origin && git log --oneline origin/main -3 && git status --short`：并行会话两份在制件仍在就不碰。
