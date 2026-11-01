@@ -7,6 +7,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // A7 real-window acceptance for the Runtimes lock-import entry.
 //
@@ -26,7 +27,19 @@ const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 // The isolated instance is not a packaged build, so it ships no micromamba of its own and the provisioner
 // refuses every environment command with "provisioning unavailable". Point it at the real binary through
 // the documented override BEFORE the fixture launches the app (the fixture inherits this process's env).
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_MICROMAMBA_BIN: join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(300_000)
 

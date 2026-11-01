@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
 
 // IC15 real-window acceptance for the kernel controls.
@@ -24,7 +25,19 @@ const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 const MANAGED_ENV = 'default-python'
 
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_MICROMAMBA_BIN: join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(900_000)
 

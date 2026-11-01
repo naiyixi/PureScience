@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
 
 // IC16 on a real window: the environment-preparation gate has to be escapable.
@@ -18,17 +19,29 @@ import { createProject, sendPrompt } from './helpers'
 // that provision is made DETERMINISTICALLY slow: the runtime download base points at a socket that
 // accepts and never answers.
 const STALL_PORT = 41997
-process.env.PURESCIENCE_ENV_CDN_BASE = `http://127.0.0.1:${STALL_PORT}`
-// The isolated instance ships no micromamba of its own and would refuse before downloading anything; the
-// lock-import spec points it at the real binary the same way.
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(
-  homedir(),
-  '.purescience',
-  'runtime',
-  'micromamba',
-  'bin',
-  'micromamba'
-)
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_ENV_CDN_BASE: `http://127.0.0.1:${STALL_PORT}`,
+    // The isolated instance ships no micromamba of its own and would refuse before downloading
+    // anything; the lock-import spec points it at the real binary the same way.
+    PURESCIENCE_MICROMAMBA_BIN: join(
+      homedir(),
+      '.purescience',
+      'runtime',
+      'micromamba',
+      'bin',
+      'micromamba'
+    )
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
 // The drip must be FAST ENOUGH TO EMIT PROGRESS: at one byte per tick the app publishes no progress

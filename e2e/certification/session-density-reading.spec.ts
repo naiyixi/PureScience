@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // Reading: does the transcript actually fit more conversation on one screen?
 //
@@ -9,13 +10,21 @@ import { test } from '../fixtures/electron-app'
 // finished turn occupies. This walks four real turns with tool activity, then reports — in pixels — the
 // height of the transcript, the height of one folded summary row, and how many turns fit in the viewport.
 // Run it on two builds (before / after a layout change) and the difference is the claim.
-process.env.PURESCIENCE_E2E_TOOL_EVENTS = '2'
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
 
-test.setTimeout(600_000)
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_E2E_TOOL_EVENTS: '2'
+  })
+})
 
 test.afterAll(() => {
-  delete process.env.PURESCIENCE_E2E_TOOL_EVENTS
+  restoreEnvironment()
 })
+
+test.setTimeout(600_000)
 
 const FIXTURE_REPLY = 'Deterministic reply: Summarize the deterministic fixture.'
 const TURNS = 4

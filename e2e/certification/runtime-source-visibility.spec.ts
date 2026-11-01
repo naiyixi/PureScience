@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // IC18 real-window acceptance: the window says WHERE the app-managed runtime comes from.
 //
@@ -10,7 +11,19 @@ import { test } from '../fixtures/electron-app'
 // because the source is part of the status the panel already loads. (The unit's first attempt found the
 // field missing entirely on the no-provisioner fallback path; the fallback now reports it too, which is
 // also the moment a user most wants to know: before anything is downloaded.)
-process.env.PURESCIENCE_ENV_CDN_BASE = 'http://127.0.0.1:41999'
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_ENV_CDN_BASE: 'http://127.0.0.1:41999'
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(180_000)
 

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
 
 // IC14 real-window acceptance for the session's runtime binding.
@@ -26,7 +27,19 @@ const MANAGED_ENV = 'default-python'
 
 // The isolated instance is not a packaged build, so it ships no micromamba of its own; point it at the
 // real binary through the documented override BEFORE the fixture launches the app.
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_MICROMAMBA_BIN: join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(900_000)
 

@@ -6,6 +6,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 import { createProject, sendPrompt } from './helpers'
 
 // V6, second attempt. The first attempt reached the last step and produced a NEGATIVE result: the kernel
@@ -35,7 +36,19 @@ const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 const ENV_NAME = 'lock-import-env'
 
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_MICROMAMBA_BIN: join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(600_000)
 

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // IC17 real-window acceptance for the SETTINGS page's download detail.
 //
@@ -25,15 +26,27 @@ import { test } from '../fixtures/electron-app'
 // asserts both, so a red run names WHICH half is missing (transit vs rendering) instead of leaving it to
 // prose: the raw broadcast the renderer receives, and the card's rendered line.
 const STALL_PORT = 41998
-process.env.PURESCIENCE_ENV_CDN_BASE = `http://127.0.0.1:${STALL_PORT}`
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(
-  homedir(),
-  '.purescience',
-  'runtime',
-  'micromamba',
-  'bin',
-  'micromamba'
-)
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_ENV_CDN_BASE: `http://127.0.0.1:${STALL_PORT}`,
+    PURESCIENCE_MICROMAMBA_BIN: join(
+      homedir(),
+      '.purescience',
+      'runtime',
+      'micromamba',
+      'bin',
+      'micromamba'
+    )
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
 const PACK_BYTES = 16_777_216

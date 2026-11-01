@@ -8,6 +8,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // V5 / A7: the DOWNLOAD half of the lock import. v1.81.0's release page carries this as an open item —
 // 「A7 的下载路径未实测（`allowDownload:true` 时从锁里的 URL 取包并建成环境）：验收用例刻意关掉下载以保证
@@ -29,7 +30,19 @@ const PACK_SUBDIR = process.platform === 'darwin' ? 'osx-arm64' : 'linux-64'
 const PACK_DIR = join(REAL_RUNTIME_ROOT, 'packs', '1', PACK_SUBDIR, 'python-3.12')
 const PACK_LOCK = join(PACK_DIR, 'python-3.12.lock')
 
-process.env.PURESCIENCE_MICROMAMBA_BIN = join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_MICROMAMBA_BIN: join(REAL_RUNTIME_ROOT, 'micromamba', 'bin', 'micromamba')
+  })
+})
+
+test.afterAll(() => {
+  restoreEnvironment()
+})
 
 test.setTimeout(600_000)
 

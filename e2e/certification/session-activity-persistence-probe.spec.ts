@@ -5,6 +5,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // Where do a finished turn's activities go? Two turns with tool activity, then the session document is read
 // straight off disk: does IT carry both turns' activities, or only the last?
@@ -13,13 +14,21 @@ import { test } from '../fixtures/electron-app'
 //             the fix is to hydrate finished runs into the graph the moment a run ends.
 //   · one   ⇒ the write path drops finished runs' activities, and the fix is in session persistence.
 // The two have nothing in common, so this is measured instead of guessed.
-process.env.PURESCIENCE_E2E_TOOL_EVENTS = '2'
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
 
-test.setTimeout(300_000)
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_E2E_TOOL_EVENTS: '2'
+  })
+})
 
 test.afterAll(() => {
-  delete process.env.PURESCIENCE_E2E_TOOL_EVENTS
+  restoreEnvironment()
 })
+
+test.setTimeout(300_000)
 
 const FIXTURE_REPLY = 'Deterministic reply: Summarize the deterministic fixture.'
 

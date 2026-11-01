@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // E1 / E2 on a real window — what this machine can actually show, stated as what it is.
 //
@@ -18,13 +19,21 @@ import { test } from '../fixtures/electron-app'
 //      folds them back;
 //   3. the row's cost cell says "usage not recorded" for a turn whose provider reported no usage. It never
 //      prints a `0`, which would claim a measured cost of nothing.
-process.env.PURESCIENCE_E2E_TOOL_EVENTS = '2'
+// The value belongs to this spec only — see e2e/fixtures/spec-environment.ts for why a
+// module-scope assignment reaches every spec in the worker.
+let restoreEnvironment = (): void => {}
 
-test.setTimeout(300_000)
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({
+    PURESCIENCE_E2E_TOOL_EVENTS: '2'
+  })
+})
 
 test.afterAll(() => {
-  delete process.env.PURESCIENCE_E2E_TOOL_EVENTS
+  restoreEnvironment()
 })
+
+test.setTimeout(300_000)
 
 const FIXTURE_REPLY = 'Deterministic reply: Summarize the deterministic fixture.'
 

@@ -15185,3 +15185,73 @@ markSessionCompletionsRead / deleteItems / clearAll` 各自在动作后再读一
 
 ① 按完整 40 位 SHA 读本笔两条车道（`cancelled` 不算绿）；② 下一单元候选：上面第 2 条（写侧全量解析 + 美化序列化）
 与 `notifications:get-snapshot` 的 `ownMs` 峰值；③ 并行会话在制件仍在就不碰（先 `git status --short`）。
+
+## 二百七十六、本轮追加（执行器，2026-11-02 03:4x–）—— P0 那四条筛选红不是「余量不够」：一条模块级 env 赋值漏进了整个 worker
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = b96f7851`；工作树里**并行会话**的在制件仍是
+  `src/main/references/screening-service.ts`、`src/main/reviewer/{ipc.ts,ipc.test.ts}`、`src/shared/reviewer.ts`、
+  `docs/plan-2026-10-28-two-releases.md` + `docs/evidence/2026-11-01-reviewer-fix-loop-double-review.md`
+  —— **一个字节没碰**；本笔只碰 `e2e/**` 与 `test/**`（目录不相交）。
+- CI 判决（按完整 40 位 SHA 现查）：`b96f7851` 的 `Windows Full Test` **success**、**`Nightly` = failure**
+  （run `41332332874`，作业级：`build / Build macos-arm64` 红在末步 `Enforce platform certification`，
+  `P0_OUTCOME=failure`；同 run 的 `Verify`、linux/windows/macos-x64 三条 build 与 visual 全绿，`publish` 按设计 skipped）。
+- 上一轮 §275 §六 ② 留的候选（写侧全量解析 + 美化序列化）**让位**：main 上有红先修红。
+
+### 一 归因：不是预算、不是产品缺陷，是「模块级 env 赋值覆盖了整个 worker」
+
+- 现场（该 run 的 `p0-test-results-macos-arm64`，9.3 MB）：四条 spec 全红在同一句
+  `getByText(/AI decisions N · human overrides 0/)`；各自 90–180 s 的预算、两次重试全部等到超时。应用日志给出机制：
+
+  ```
+  [screening:model] screening record failed {
+    backend: 'opencode:p_…', durationMs: 696, timedOut: false, toolUse: true,
+    message: 'The selected agent attempted to use a tool during literature screening.'
+  }
+  ```
+
+  即假代理在答复里**夹了工具调用**，而筛选运行器按契约拒收「用了工具的代理」。
+- 为什么单独跑就过：同一作业里的非门禁诊断步骤，在同一份 `dist` 产物上单跑该 spec ⇒ `1 passed (10.7s)`。
+  两次唯一的差别是「同一进程里还装着哪些 spec」。
+- 机制在 `playwright.config.ts`：`workers: 1` + `fullyParallel: false` ⇒ Playwright 在**运行第一条用例之前
+  就 import 了全部测试文件**，所以模块级 `process.env.X = …` 从**收集那一刻**起对整条套件生效，文件自己的
+  `afterAll` 来得太晚。三条 spec（`session-activity-persistence-probe` #106、`session-density-reading` #107、
+  `session-turn-readings-real-window` #114）都在模块级写了 `PURESCIENCE_E2E_TOOL_EVENTS = '2'`，而四条筛选在
+  **#88–#95 更早**跑 ⇒ 从第 1 条起假代理每次答复都插工具事件。
+- **3700efcb 的判断（「整套跑时没有足够余量」）被证伪**：那次只把两条的预算抬到 180 s，本轮四条仍全红，本机变异探针也复现同一句。
+
+### 二 先量后改（本机真机读数，前后对照）
+
+| 条件 | 命令 | 读数 |
+|---|---|---|
+| 修复后两条 spec 同处一个进程（先跑设值的那条，验证值确实只对它生效） | `playwright test session-density-reading references-screening --workers=1` | **2 passed (41.6s)** |
+| **变异探针**：把泄露的值从外部塞进环境（等价于模块级赋值的效果），只跑筛选 | `PURESCIENCE_E2E_TOOL_EVENTS=2 playwright test references-screening` | **1 failed**，同一行 `106:71`；应用日志两条 `attempted to use a tool during literature screening` —— 与 CI 逐字同形 |
+| 修复后四条筛选同跑 | `playwright test references-screening{,-export,-export-citations,-coverage}` | **4 passed (1.1m)** |
+
+### 三 交付
+
+| 位置 | 改动 |
+|---|---|
+| `e2e/fixtures/spec-environment.ts`（新） | `scopeEnvironmentToThisSpec(values)`：`beforeAll` 里设，返回的 restore 在 `afterAll` 里**还原上一份值**（原来没有才 delete —— 值可能来自车道，无条件 delete 一样会改下一次启动）。头注写清机制与那次实测。 |
+| 13 条 spec | 模块级赋值全部搬进 `test.beforeAll` / `test.afterAll`：3 条 `PURESCIENCE_E2E_TOOL_EVENTS`、3 条 `PURESCIENCE_ENV_CDN_BASE`、8 条 `PURESCIENCE_MICROMAMBA_BIN`（其中 2 条两者都有）。同族一次收干净：被泄露的 CDN base 指向一个**只连不答**的端口、micromamba 指向真实二进制，都是会改「下一次启动」行为的量。 |
+| `test/spec-environment-scope.test.ts`（新） | 静态守卫：① 任何 spec 在**模块级**赋值 `process.env` 即红；② 设了某个变量却没有任何还原（`delete` 或用了 helper）也红。自带自检「至少扫到 120 个文件」，遍历写错不会静默全绿。 |
+
+**先红后绿的自证**：守卫第一次跑 = **红**，逐条点名 12 个 `文件:行`；改完 = **1 passed**。
+
+### 四 边界与具名未办
+
+1. **本笔给不出「CI 已绿」**：判据是推上去之后 `Nightly` 的打包车道，见 §五。
+2. **只有 `macos-arm64` 的读数**：四条筛选 spec 只在标签为 macos-arm64 的构建作业里执行（P0 步骤带平台条件）
+   ⇒ Windows / linux 车道的绿**不覆盖**它们。
+3. **同族另外 9 条只做了静态核对，没有各自单跑**：核对口径是「谁引用了这两个量」——全树只有那 3 条 spec 引用
+   `PURESCIENCE_ENV_CDN_BASE`，`micromamba` 只在 `notebook-declined-copy` 的**注释**里出现、不依赖该量
+   ⇒ 没有「靠泄露才绿」的消费者。这是**推理 + 静态核对**，不是真机读数。
+4. **应用侧未改一行**：筛选运行器「拒收使用工具的代理」这条契约是对的，本笔不动它（并行会话正在该文件上工作）。
+
+### 五 推送与下一轮第一步
+
+- 推前现查在飞车道；本笔不碰发版四文件（v2.21.1 已抬号未发，属会话或下一窗口）。
+- **下一轮第一步**：① 按完整 40 位 SHA 读本笔 `Nightly` 的**作业级**判决（看 `Build macos-arm64` →
+  `Run P0 Electron certification` 的 `N passed`，不看作业名绿）；② 若仍红，先读失败 spec 名与那条
+  `screening record failed` 的 `toolUse`/`message`，别再从预算下手；③ 并行会话在制件仍在就不碰。
