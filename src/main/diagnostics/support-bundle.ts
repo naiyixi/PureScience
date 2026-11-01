@@ -92,6 +92,15 @@ export type SupportBundleInput = {
    * where nothing was recorded instead of shipping an empty list that reads like a fast application.
    */
   ipcChannelLatency: IpcChannelLatencySummary
+  /**
+   * The same window for the local Web RPC face (see `ipc-channel-latency`), required for the same reason: the
+   * desktop median describes calls that never crossed a socket, and the Web UI — headless service and browser
+   * tab alike — runs the very same command names over HTTP. Kept as its own section instead of blended into
+   * `ipcChannelLatency` because the difference between the two is the reading: a channel that is fast
+   * in-process and slow over the socket is a different problem from one that is slow everywhere. Its `status`
+   * names the case where nothing was recorded, so an empty list never reads as a fast Web face.
+   */
+  webRpcChannelLatency: IpcChannelLatencySummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -176,6 +185,14 @@ diagnostics/ipc-channel-latency.json
                    channel that fails immediately is not a fast channel). The window is the most recent calls
                    per channel, so a channel whose median moved after a change can be checked; its status says
                    "no-calls-observed" rather than leaving an empty list to be read as a fast application
+diagnostics/web-rpc-channel-latency.json
+                   the same window for the other face: the calls the Web UI made over its HTTP socket, per
+                   channel, in the same fields. It is a separate section on purpose — these are the same
+                   command names the desktop calls in-process, and the two medians are what tells "slow
+                   everywhere" apart from "slow only once it crosses the socket". Requests a client rejected
+                   before a command was reached (unknown channel, malformed body, wrong protocol version) are
+                   not counted, so a noisy client cannot make a channel look fast; its status says
+                   "no-calls-observed" when the Web face served nothing
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -380,6 +397,13 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/ipc-channel-latency.json',
     `${JSON.stringify(input.ipcChannelLatency, null, 2)}\n`
+  )
+  // The same question asked of the other face: these are the calls the Web UI made over the socket. Written
+  // separately so a reader can compare the two medians for one channel instead of averaging them, which is
+  // exactly what a single blended list would have done.
+  await writeStaged(
+    'diagnostics/web-rpc-channel-latency.json',
+    `${JSON.stringify(input.webRpcChannelLatency, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

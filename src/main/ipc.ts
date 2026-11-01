@@ -168,7 +168,10 @@ import { startDiagnosticOperation } from './diagnostics/operation'
 import { createComposeStepRecorder } from './diagnostics/compose-steps'
 import { sharedStartupSteps } from './diagnostics/startup-steps-snapshot'
 import { sharedSlowOperations } from './diagnostics/slow-operation-ring'
-import { sharedIpcChannelLatency } from './diagnostics/ipc-channel-latency'
+import {
+  sharedIpcChannelLatency,
+  sharedWebRpcChannelLatency
+} from './diagnostics/ipc-channel-latency'
 import { broadcastNotebookEnvProgress, registerNotebookEnvIpcHandlers } from './notebook/env-ipc'
 import {
   createNotebookApplicationModule,
@@ -2683,6 +2686,9 @@ const createApplicationModules = async (
       // The half the ring cannot answer: it only starts at 50 ms, so this is the only reading of a channel's
       // ordinary cost (see `ipc-channel-latency`). Both are written in this process by the IPC adapter.
       ipcChannelLatency: sharedIpcChannelLatency.summary(),
+      // …and the same reading for the calls the Web UI made over its socket, in its own section: a channel
+      // that is fast in-process and slow over HTTP is a different problem, and one blended median would hide it.
+      webRpcChannelLatency: sharedWebRpcChannelLatency.summary(),
       versions: {
         app: app.getVersion(),
         electron: process.versions.electron ?? 'unknown',

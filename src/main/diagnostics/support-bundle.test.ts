@@ -68,6 +68,9 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     slowOperations: createSlowOperationRing().summary(),
     // And for the every-call window: its factory's own empty state, not a hand-written shape.
     ipcChannelLatency: createIpcChannelLatency().summary(),
+    // The Web face's window is a second instance of the same factory, so its empty default comes from there
+    // too — the fixture never invents the shape it is supposed to be testing.
+    webRpcChannelLatency: createIpcChannelLatency().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -775,5 +778,52 @@ describe('support bundle: trajectory section', () => {
     })
     // The README has to describe the section, or the reader who opens the archive has to guess what it is.
     expect(await readFrom(target, 'README.txt')).toContain('diagnostics/ipc-channel-latency.json')
+  })
+
+  it('keeps the Web face in its own section, not blended into the desktop window', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    // One channel name, two transports. The desktop saw it in-process; the Web UI saw the same name over a
+    // socket. Two sections are what lets a reader tell "slow everywhere" from "slow only across the socket";
+    // one blended list would have averaged the 12 ms and the 140 ms into a median nobody could act on.
+    const ipc = createIpcChannelLatency()
+    for (const durationMs of [10, 11, 12]) ipc.record('notebook:state', durationMs)
+    const web = createIpcChannelLatency()
+    for (const durationMs of [130, 140, 150]) web.record('notebook:state', durationMs)
+
+    const result = await createSupportBundle({
+      ...input,
+      ipcChannelLatency: ipc.summary(),
+      webRpcChannelLatency: web.summary()
+    })
+
+    expect(result.entries).toContain('diagnostics/web-rpc-channel-latency.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const webSummary = JSON.parse(
+      await readFrom(target, 'diagnostics/web-rpc-channel-latency.json')
+    ) as { status: string; channels: { channel: string; observed: number; p50Ms: number }[] }
+    const ipcSummary = JSON.parse(
+      await readFrom(target, 'diagnostics/ipc-channel-latency.json')
+    ) as { channels: { channel: string; observed: number; p50Ms: number }[] }
+    expect(webSummary.status).toBe('records')
+    expect(webSummary.channels[0]).toMatchObject({
+      channel: 'notebook:state',
+      observed: 3,
+      p50Ms: 140
+    })
+    // The other section is untouched: the same channel name in one does not mean the same calls.
+    // Nearest rank of three samples [10, 11, 12] is the second one: 11, not an interpolated 11.5.
+    expect(ipcSummary.channels[0]).toMatchObject({
+      channel: 'notebook:state',
+      observed: 3,
+      p50Ms: 11
+    })
+    // …and the README names this file too, for the same reason as the section above.
+    const readme = await readFrom(target, 'README.txt')
+    expect(readme).toContain('diagnostics/web-rpc-channel-latency.json')
+    // The two lines a reader compares. Kept as an assertion so the README cannot describe a comparison the
+    // archive does not actually support.
+    expect(readme).toContain('slow only once it crosses the socket')
   })
 })

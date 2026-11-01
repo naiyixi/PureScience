@@ -44,6 +44,14 @@ const facts: SupportBundleFacts = {
     status: 'no-calls-observed',
     channels: [],
     omitted: 0
+  },
+  webRpcChannelLatency: {
+    capacity: 128,
+    channelsObserved: 0,
+    untrackedCalls: 0,
+    status: 'no-calls-observed',
+    channels: [],
+    omitted: 0
   }
 }
 

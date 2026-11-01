@@ -102,4 +102,28 @@ test('the support-bundle export reports the size and the redaction count', async
   expect(Number(measured?.p95Ms)).toBeGreaterThanOrEqual(Number(measured?.p50Ms))
   expect(Number(measured?.maxMs)).toBeGreaterThanOrEqual(Number(measured?.p95Ms))
   expect(Number(measured?.rejectedInWindow)).toBeGreaterThanOrEqual(0)
+
+  // The Web face's own section, read back the same way. This run drives the renderer over IPC, so the honest
+  // expectation here is the named empty state — and that is exactly why the assertion is on the *status* rather
+  // than on a number: a section that stopped being written and a Web face nobody called must not look alike, and
+  // neither may be read as "the Web face is fast". When the app did serve HTTP calls (a headless instance shares
+  // this bundle writer), the ordering of that window is held to the same rule as the desktop one.
+  const webLatency = JSON.parse(
+    await readFile(join(extracted, 'diagnostics/web-rpc-channel-latency.json'), 'utf8')
+  ) as {
+    status: string
+    capacity: number
+    channelsObserved: number
+    channels: { channel: string; p50Ms: number; p95Ms: number }[]
+  }
+  console.log(
+    `[ic37] web face window: status=${webLatency.status}, channels=${webLatency.channelsObserved}, capacity=${webLatency.capacity}`
+  )
+  expect(['records', 'no-calls-observed']).toContain(webLatency.status)
+  expect(webLatency.capacity).toBeGreaterThan(0)
+  if (webLatency.status === 'records') {
+    const webMeasured = webLatency.channels.find((entry) => Number.isFinite(entry.p50Ms))
+    expect(webMeasured).toBeDefined()
+    expect(Number(webMeasured?.p95Ms)).toBeGreaterThanOrEqual(Number(webMeasured?.p50Ms))
+  }
 })

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { net } from 'electron'
 import { WebSocket } from 'ws'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => [] },
@@ -16,6 +16,7 @@ import { WEB_INVOKE_CHANNELS } from '../../shared/web-api-map.generated'
 import { isWebRpcChannel, WEB_RPC_PROTOCOL_VERSION } from '../../shared/web-rpc-contract'
 import { ApplicationEventHub } from '../application-events'
 import type { CallerContext } from '../caller-context'
+import { sharedWebRpcChannelLatency } from '../diagnostics/ipc-channel-latency'
 import {
   REMOTE_LOCAL_ONLY_RPC_CHANNELS,
   startWebHttpServer,
@@ -1826,5 +1827,79 @@ describe('session package transport', () => {
     expect(response.status).toBe(401)
     expect(await response.json()).toMatchObject({ error: { code: 'unauthorized' } })
     expect(sessionPackageImport).not.toHaveBeenCalled()
+  })
+})
+
+describe('the Web RPC face keeps its own latency window', () => {
+  // A real socket and a real dispatch, not a stubbed module: the reading only exists if the recording sits on
+  // the path a browser actually takes. The window is process-wide by design, so each test starts from empty.
+  const startLatencyServer = (
+    invoke: (channel: string, callerContext: CallerContext, args: unknown[]) => Promise<unknown>
+  ): ReturnType<typeof startWebHttpServer> => {
+    const serverPromise = startTestWebHttpServer({
+      host: '127.0.0.1',
+      port: 0,
+      token: 'test-token',
+      staticRoot: '/unused',
+      rpc: { channels: () => ['projects:list'], invoke },
+      bootstrap: {
+        appName: 'PureScience',
+        appVersion: '0.0.0',
+        configRoot: '/fake/root',
+        platform: 'test',
+        versions: { electron: '1', chrome: '1', node: '1' }
+      }
+    })
+    return serverPromise
+  }
+  const postTo = (port: number, channel: string): Promise<Response> =>
+    fetch(`http://127.0.0.1:${port}/rpc/${channel}`, {
+      method: 'POST',
+      headers: { authorization: 'Bearer test-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ protocolVersion: WEB_RPC_PROTOCOL_VERSION, args: [] })
+    })
+
+  beforeEach(() => sharedWebRpcChannelLatency.clear())
+  afterEach(() => sharedWebRpcChannelLatency.clear())
+
+  it('records a completed dispatch under the channel the browser called', async () => {
+    const server = await startLatencyServer(vi.fn(async () => ({ ok: true })))
+    servers.push(server)
+
+    const response = await postTo(server.port, 'projects%3Alist')
+
+    expect(response.status).toBe(200)
+    const summary = sharedWebRpcChannelLatency.summary()
+    expect(summary.status).toBe('records')
+    const entry = summary.channels.find((candidate) => candidate.channel === 'projects:list')
+    expect(entry).toBeDefined()
+    expect(entry?.observed).toBe(1)
+    expect(entry?.rejectedInWindow).toBe(0)
+    // A duration, not a placeholder: the window's whole point is the number being readable.
+    expect(Number.isFinite(entry?.p50Ms)).toBe(true)
+    expect(entry?.p95Ms).toBeGreaterThanOrEqual(entry?.p50Ms ?? 0)
+  })
+
+  it('counts a rejection as a completion, and never counts a request that reached no command', async () => {
+    const server = await startLatencyServer(
+      vi.fn(async () => {
+        throw new Error('command exploded')
+      })
+    )
+    servers.push(server)
+
+    // Refused before dispatch (unknown channel). Counting these would let any client that probes the socket
+    // drag a real channel's median down to nothing.
+    const refused = await postTo(server.port, 'test%3Aunsafe')
+    expect(refused.status).toBe(404)
+    expect(sharedWebRpcChannelLatency.summary().status).toBe('no-calls-observed')
+
+    const failed = await postTo(server.port, 'projects%3Alist')
+    expect(failed.status).toBe(500)
+    const entry = sharedWebRpcChannelLatency
+      .summary()
+      .channels.find((candidate) => candidate.channel === 'projects:list')
+    // A channel that fails immediately is not a fast channel: the rejection is counted as one completion.
+    expect(entry).toMatchObject({ observed: 1, rejectedInWindow: 1 })
   })
 })

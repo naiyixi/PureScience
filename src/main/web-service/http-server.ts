@@ -39,6 +39,7 @@ import type { StartTaskRunRequest } from '../../shared/task-api'
 import type { ExportSessionPackageRequest } from '../../shared/session-package'
 import { TaskApiError, type HeadlessTaskApi } from './task-api'
 import { createLogger } from '../logger'
+import { sharedWebRpcChannelLatency } from '../diagnostics/ipc-channel-latency'
 
 const MAX_RPC_BODY_BYTES = 64 * 1024 * 1024
 const MIN_GZIP_BYTES = 1_024
@@ -876,6 +877,12 @@ const startWebHttpServer = async (options: WebServerOptions): Promise<RunningWeb
               }
             : {})
         })
+        // Measured around the dispatch only, and into the Web face's own window (see
+        // `ipc-channel-latency`): the same command names travel over this socket when the app serves its
+        // Web UI, and the desktop median says nothing about that path. Requests rejected before this point
+        // — unknown channel, malformed body, unsupported protocol version — never reached a command, and
+        // counting them would let a noisy client make a channel look fast.
+        const dispatchStartedAt = performance.now()
         try {
           assertExternalAuthorizationCurrent(externalAuthorization)
           const dispatcher = auth.ok
@@ -887,12 +894,17 @@ const startWebHttpServer = async (options: WebServerOptions): Promise<RunningWeb
             callerContext,
             parsed.data.args
           )
+          sharedWebRpcChannelLatency.record(channel, performance.now() - dispatchStartedAt)
           json(response, 200, {
             protocolVersion: WEB_RPC_PROTOCOL_VERSION,
             ok: true,
             result: result ?? null
           })
         } catch (error) {
+          // A rejection is a completion too: a channel that fails immediately is not a fast channel.
+          sharedWebRpcChannelLatency.record(channel, performance.now() - dispatchStartedAt, {
+            rejected: true
+          })
           if (error instanceof ExternalAuthorizationExpiredError) {
             webRpcError(response, 401, 'invalid_request', error.message)
             return

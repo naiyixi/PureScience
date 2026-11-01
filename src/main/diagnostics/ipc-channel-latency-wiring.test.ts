@@ -51,4 +51,41 @@ describe('the every-call latency window reaches the support bundle', () => {
     expect(composition).toContain("from './diagnostics/ipc-channel-latency'")
     expect(composition).toContain('ipcChannelLatency: sharedIpcChannelLatency.summary()')
   })
+
+  // The Web face is the same reading for the calls a browser makes. It is a separate seam with its own ways to
+  // be absent: a server that never records (the window stays empty in production), a section nobody writes, a
+  // composition root that passes the desktop summary twice. Each assertion names the shape of its absence.
+  it('records from the Web RPC dispatch, rejections included', () => {
+    const server = read('src/main/web-service/http-server.ts')
+
+    expect(server).toContain("from '../diagnostics/ipc-channel-latency'")
+    expect(server).toContain('sharedWebRpcChannelLatency.record(')
+    // Recorded on both exits: a channel that always fails would otherwise look like a channel nobody called.
+    expect(server).toContain('rejected: true')
+    // …and only after the request reached a command. A malformed body or an unknown channel is refused earlier
+    // in this same handler, and counting those would let a probing client flatten a real channel's median.
+    const dispatch = server.indexOf('const result = await commandClient.invoke(')
+    const recorded = server.indexOf('sharedWebRpcChannelLatency.record(', dispatch)
+    const validated = server.indexOf('const parsed = webRpcRequestSchema.safeParse(body)')
+    expect(validated).toBeGreaterThan(0)
+    expect(validated).toBeLessThan(dispatch)
+    expect(recorded).toBeGreaterThan(dispatch)
+  })
+
+  it('writes the Web face as its own section, described in the bundle README', () => {
+    const bundle = read('src/main/diagnostics/support-bundle.ts')
+
+    expect(bundle).toContain("'diagnostics/web-rpc-channel-latency.json'")
+    expect(bundle).toContain('webRpcChannelLatency: IpcChannelLatencySummary')
+    expect(bundle).toContain('diagnostics/web-rpc-channel-latency.json\n')
+  })
+
+  it('passes the Web face summary from the composition root, not a second copy of the desktop one', () => {
+    const composition = read('src/main/ipc.ts')
+
+    expect(composition).toContain('webRpcChannelLatency: sharedWebRpcChannelLatency.summary()')
+    // Two sections that read the same accumulator would look like two faces that agree, which is the one thing
+    // this pair of readings must not claim on its own.
+    expect(composition).not.toContain('webRpcChannelLatency: sharedIpcChannelLatency.summary()')
+  })
 })

@@ -197,3 +197,12 @@ export const createIpcChannelLatency = (input: IpcChannelLatencyInput = {}): Ipc
 
 /** The process-wide accumulator the IPC adapter records into; the support bundle reads its summary. */
 export const sharedIpcChannelLatency: IpcChannelLatency = createIpcChannelLatency()
+
+/**
+ * The local Web RPC face's window. Same shape, same factory, deliberately a *second* instance: when the app
+ * serves its Web UI (the headless service, or the browser tab it prints), the same command names travel over
+ * an HTTP socket instead of Electron IPC. Averaging both faces into one median would erase the difference a
+ * reader opens this bundle to find — a channel that is fast in-process and slow over the socket, or the
+ * reverse — so the bundle carries them as two sections rather than one blended list.
+ */
+export const sharedWebRpcChannelLatency: IpcChannelLatency = createIpcChannelLatency()
