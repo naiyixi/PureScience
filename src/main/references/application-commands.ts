@@ -357,8 +357,17 @@ const registerReferencesApplicationCommands = (
         dependencies.references.listScreeningRuleRevisions(args[0]),
       'references:append-screening-rule-revision': ({ args }) =>
         dependencies.references.appendScreeningRuleRevision(args[0]),
-      'references:start-screening-run': ({ args }) =>
-        dependencies.references.startScreeningRun(args[0]),
+      // The packaged lane on CI showed a pass that never started a record, and the service's own
+      // `start accepted/refused` lines were absent entirely — which means the command was never invoked, not
+      // that it was refused. This line is the boundary that tells those two apart: it prints before the owner
+      // is called, so "no `invoked` line" now means the window never asked.
+      'references:start-screening-run': ({ args }) => {
+        console.info('[screening] start-run invoked', {
+          collectionId: (args[0] as { collectionId?: string } | undefined)?.collectionId,
+          argumentKeys: Object.keys((args[0] as object | undefined) ?? {})
+        })
+        return dependencies.references.startScreeningRun(args[0])
+      },
       'references:cancel-screening-run': ({ args }) =>
         dependencies.references.cancelScreeningRun(args[0]),
       'references:set-screening-override': ({ args }) =>
