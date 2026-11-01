@@ -24,5 +24,9 @@ export const PACKAGED_SCREENING_SKIP_REASON =
  * packaged binary and is never set by a development run, which is exactly the boundary this skip needs.
  */
 export const isPackagedLane = (): boolean =>
+  // Escape hatch for reproducing the packaged stall itself: a packaged run WITH
+  // PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS=1 executes these specs on purpose, so the failure that this skip
+  // stands in for can be measured instead of guessed at. Nothing else reads this variable.
+  process.env.PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS !== '1' &&
   typeof process.env.PURESCIENCE_E2E_EXECUTABLE === 'string' &&
   process.env.PURESCIENCE_E2E_EXECUTABLE.length > 0

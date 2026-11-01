@@ -88,13 +88,25 @@ const screeningReply = (prompt) => {
 // root by default: that directory is what the CI job uploads on failure, so an agent that never got a
 // prompt, got the wrong one, or answered into the void can be told apart from a product that never
 // dispatched it — the packaged-app screening stall needed exactly this and it lived in tmpdir, unavailable.
-const agentLogPath = () =>
-  process.env.PURESCIENCE_E2E_AGENT_LOG ?? join(tmpdir(), 'purescience-e2e-agent.log')
+// Two candidate paths, both written: the app spawns this agent with a SANITISED environment (measured
+// 2026-10-31: PURESCIENCE_E2E_AGENT_LOG never arrived), so an env-only path is invisible exactly where it
+// is needed. `<cwd>/test-results/` is always written because the agent's cwd is the repository root and
+// that directory is what the CI job uploads on failure.
+const agentLogPaths = () => {
+  const paths = [join(process.cwd(), 'test-results', 'fake-agent.log')]
+  const fromEnv = process.env.PURESCIENCE_E2E_AGENT_LOG
+  if (fromEnv) paths.push(fromEnv)
+  paths.push(join(tmpdir(), 'purescience-e2e-agent.log'))
+  return paths
+}
 const agentLog = (line) => {
-  try {
-    appendFileSync(agentLogPath(), `${new Date().toISOString()} pid=${process.pid} ${line}\n`)
-  } catch {
-    /* logging must never break the fixture */
+  const entry = `${new Date().toISOString()} pid=${process.pid} ${line}\n`
+  for (const path of agentLogPaths()) {
+    try {
+      appendFileSync(path, entry)
+    } catch {
+      /* logging must never break the fixture */
+    }
   }
 }
 
