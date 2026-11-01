@@ -1330,6 +1330,13 @@ export type ConnectorToolView = {
 // Which section a bundled connector belongs to in the settings list.
 export type ConnectorGroup = 'featured' | 'directory'
 
+/**
+ * The scientific area shown as a section heading in Settings → Connectors. Kept in the shared layer so the
+ * main process is the only place that decides which connector is in which area.
+ */
+export type ConnectorDomain =
+  'genomics' | 'structures' | 'omics' | 'clinical' | 'literature' | 'tools'
+
 // Renderer-safe view of one bundled connector (no tool schemas).
 export type ConnectorView = {
   id: string
@@ -1340,6 +1347,8 @@ export type ConnectorView = {
   enabled: boolean // !disabledConnectorIds.includes(id)
   autoAllow: boolean // autoAllowIds.includes(id) — "Skip approvals"
   group: ConnectorGroup
+  /** Scientific area; absent only in fixtures written before the field existed. */
+  domain?: ConnectorDomain
 }
 
 // A connector view plus its tools and metadata, for the detail page.

@@ -1,5 +1,14 @@
 import type { ConnectorGroup } from '../../shared/settings'
 
+/**
+ * The scientific area a connector belongs to. The panel groups by this instead of showing 31 rows in one
+ * list: a reader looking for structures should not have to know that `chembl` is separate from `structures`.
+ * `tools` is the honest bucket for the ones that are not a data source at all (`delegate`, the Chinese term
+ * table) — putting them under a science would claim something untrue.
+ */
+export type ConnectorDomain =
+  'genomics' | 'structures' | 'omics' | 'clinical' | 'literature' | 'tools'
+
 export type ConnectorMeta = {
   id: string
   displayName: string
@@ -18,12 +27,15 @@ export type ConnectorMeta = {
   // Settings-list section. Absent = "featured" (built-in research connectors);
   // "directory" connectors mirror the in-app connector directory catalog.
   group?: ConnectorGroup
+  /** Scientific area; every catalog entry carries one (pinned by `catalog.test.ts`). */
+  domain?: ConnectorDomain
 }
 
 // Static connector metadata for the settings UI (tool lists come from the registry).
 export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   {
     id: 'chemistry',
+    domain: 'structures',
     displayName: '化学',
     description: '通过 PubChem、ChEBI、Rhea 和 BindingDB 获取小分子化学数据。',
     useWhen:
@@ -34,6 +46,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'rna-encori',
+    domain: 'genomics',
     displayName: 'ENCORI',
     aliases: ['starBase', 'miRNA target', 'RBP', 'ceRNA'],
     description:
@@ -47,6 +60,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'proteomics-pdc',
+    domain: 'omics',
     displayName: 'PDC',
     aliases: ['Proteome Data Commons', 'proteomics', 'CPTAC'],
     description:
@@ -60,6 +74,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'delegate',
+    domain: 'tools',
     displayName: '多代理编排',
     description: '并行子代理委派——将独立子任务作为全新代理会话运行。',
     useWhen:
@@ -69,6 +84,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'literature',
+    domain: 'literature',
     displayName: '文献图谱',
     description: '学术文献图谱——OpenAlex 作品/作者/期刊/引用、arXiv 元数据。',
     useWhen:
@@ -79,6 +95,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'molecule',
+    domain: 'structures',
     displayName: '分子查看器',
     description:
       '验证并预览 2D 分子结构和反应（OpenChemLib）。支撑 .mol/.sdf/.smi/.smiles/.rxn 工件查看器。',
@@ -89,6 +106,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'pubmed',
+    domain: 'literature',
     displayName: 'PubMed',
     aliases: ['NCBI literature', 'PMC', 'Europe PMC'],
     description:
@@ -102,6 +120,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'genes',
+    domain: 'genomics',
     displayName: '基因与本体',
     aliases: ['MyGene', 'mygene.info', 'UniProt', 'gene information', 'gene annotation'],
     description:
@@ -124,6 +143,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'genomes',
+    domain: 'genomics',
     displayName: '基因组',
     description: '基因组注释、变异、同源性、序列和浏览器轨道——Ensembl REST 与 UCSC 基因组浏览器。',
     useWhen:
@@ -134,6 +154,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'variants',
+    domain: 'genomics',
     displayName: '变异',
     aliases: ['gnomAD', 'ClinVar', 'dbSNP', 'CADD', 'genetic variant'],
     description:
@@ -146,6 +167,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'clinical_trials',
+    domain: 'clinical',
     displayName: '临床试验',
     description: 'ClinicalTrials.gov 临床试验——搜索、详情、赞助方、研究者、终点和入组标准。',
     useWhen:
@@ -157,6 +179,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'clinical_genomics',
+    domain: 'clinical',
     displayName: '临床基因组学',
     aliases: ['ClinGen', 'CIViC', 'Open Targets'],
     description: '临床基因组学知识库：ClinGen 策展、CIViC 临床证据和 Open Targets 平台。',
@@ -168,6 +191,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'structures',
+    domain: 'structures',
     displayName: '结构与相互作用',
     description:
       '结构与分子相互作用——PDB 结构、AlphaFold 预测、EMDB 冷冻电镜条目、Complex Portal 复合物、IntAct 相互作用网络。',
@@ -179,6 +203,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'structures-pdbe',
+    domain: 'structures',
     displayName: 'PDBe',
     aliases: ['Protein Data Bank in Europe'],
     description:
@@ -191,6 +216,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'chembl',
+    domain: 'structures',
     displayName: 'ChEMBL',
     description: '通过 ChEMBL REST API 获取生物活性化合物、药物、靶点、生物活性和作用机制。',
     useWhen:
@@ -202,6 +228,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'biorxiv',
+    domain: 'literature',
     displayName: 'bioRxiv',
     description:
       'bioRxiv/medRxiv 预印本——按日期/类别搜索、按 DOI 获取元数据、期刊发表链接、资助方列表和平台统计。',
@@ -214,6 +241,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'drug_regulatory',
+    domain: 'clinical',
     displayName: '药物监管',
     description: '通过 openFDA 获取 Drugs@FDA 申请、标签、语料统计，以及 FAERS 不良事件报告。',
     useWhen:
@@ -224,6 +252,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'human_genetics',
+    domain: 'genomics',
     displayName: '人类遗传学',
     description:
       '人类遗传关联证据——GWAS Catalog、eQTL Catalogue 和 PheWeb PheWAS 门户（FinnGen、BioBank Japan）。',
@@ -235,6 +264,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'expression',
+    domain: 'genomics',
     displayName: '表达',
     description:
       '通过 GTEx 门户获取人类组织表达和 eQTL 数据；PanglaoDB 规范标记基因（离线）用于单细胞注释。',
@@ -246,6 +276,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'protein_annotation',
+    domain: 'genomics',
     displayName: '蛋白质注释',
     description:
       '蛋白质结构域架构、家族/进化枝成员、表达图谱和相互作用网络——InterPro/Pfam、人类蛋白质图谱和 STRING。',
@@ -257,6 +288,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'immune_epitopes',
+    domain: 'genomics',
     displayName: '免疫表位',
     aliases: ['IEDB', 'epitope', 'MHC restriction', 'T-cell assay', 'B-cell assay', '免疫表位'],
     description:
@@ -269,6 +301,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'cancer_models',
+    domain: 'clinical',
     displayName: '癌症模型',
     description: '通过 cBioPortal REST API 获取癌症基因组学研究记录；DepMap 癌细胞系依赖性评分。',
     useWhen:
@@ -279,6 +312,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'rna',
+    domain: 'genomics',
     displayName: 'RNA',
     description: '通过 Rfam 获取非编码 RNA 家族数据（元数据、比对、模型、结构）。',
     useWhen:
@@ -289,6 +323,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'sequence_tools',
+    domain: 'genomics',
     displayName: '序列分析',
     aliases: ['BLAST', 'Clustal Omega', 'InterProScan', 'sequence alignment', 'similarity search'],
     description:
@@ -303,6 +338,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'omics_archives',
+    domain: 'omics',
     displayName: '组学数据库',
     description:
       '组学数据档案——表达（ArrayExpress、GEO）、代谢组学（MetaboLights）、宏基因组学（MGnify）和蛋白质组学（PRIDE）。',
@@ -314,6 +350,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'cellguide',
+    domain: 'omics',
     displayName: 'CellGuide',
     description: '通过 CELLxGENE CellGuide 获取细胞类型身份、标记基因、来源数据集和组织。',
     useWhen:
@@ -324,6 +361,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'regulation',
+    domain: 'genomics',
     displayName: '基因调控',
     description:
       '基因调控功能基因组学——ENCODE 实验/生物样本/文件、JASPAR 转录因子结合谱和 UniBind ChIP-seq TFBS。',
@@ -335,6 +373,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'research_resources',
+    domain: 'literature',
     displayName: '研究资源',
     description: '资助机会搜索（Grants.gov）和抗体目录查询（Antibody Registry）。',
     useWhen:
@@ -345,6 +384,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'biomart',
+    domain: 'genomics',
     displayName: 'BioMart',
     description: 'Ensembl BioMart 属性查询和标识符转换。',
     useWhen:
@@ -355,6 +395,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'zinc',
+    domain: 'structures',
     displayName: 'ZINC',
     description:
       'ZINC22 可购买化学空间（CartBlanche22）——按 ZINC ID 查询化合物、SMILES 精确/相似度搜索、供应商代码解析、随机采样、用于对接的 3D 结构定位。',
@@ -366,6 +407,7 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
   },
   {
     id: 'zh_medical_terms',
+    domain: 'tools',
     displayName: '中文术语',
     aliases: ['Wikidata', '术语归一化', '中文医学术语', 'Chinese term', 'cross-lingual', 'QID'],
     description:

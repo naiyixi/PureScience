@@ -10,6 +10,16 @@ describe('registry + catalog', () => {
   it('lists tools for a connector', () => {
     expect(getConnectorTools('pubmed').map((t) => t.id)).toContain('search_articles')
   })
+  // The panel labels every row with its scientific area. A connector added without one would silently drop
+  // the label — the reader would see a row that claims nothing while its neighbours claim a field.
+  it('every catalog entry states the scientific area it belongs to', () => {
+    const allowed = new Set(['genomics', 'structures', 'omics', 'clinical', 'literature', 'tools'])
+    for (const meta of CONNECTOR_CATALOG) {
+      expect(meta.domain, `${meta.id} has no domain`).toBeDefined()
+      expect(allowed.has(String(meta.domain)), `${meta.id}: ${meta.domain}`).toBe(true)
+    }
+  })
+
   it('catalog ids and registry ids are consistent', () => {
     for (const meta of CONNECTOR_CATALOG) expect(ALL_CONNECTOR_IDS).toContain(meta.id)
     for (const id of ALL_CONNECTOR_IDS) expect(CONNECTOR_CATALOG.map((c) => c.id)).toContain(id)

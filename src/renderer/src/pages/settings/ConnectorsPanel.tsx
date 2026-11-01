@@ -20,6 +20,7 @@ import type { SpecialistListItem } from '../../../../shared/specialist'
 import type { SetConnectorsEnabledItemResult } from '../../../../shared/settings'
 import type {
   ConnectorTemplateDefinition,
+  ConnectorDomain,
   ConnectorView,
   CustomServerView
 } from '../../../../shared/settings'
@@ -64,6 +65,17 @@ export type ConnectorsView =
   | { kind: 'export'; id: string }
 
 type GroupFilter = 'all' | 'featured' | 'directory' | 'custom'
+
+// Section labels typed as translation keys: a domain added to the shared union without copy is a compile
+// error here rather than a raw key rendered on screen.
+const DOMAIN_LABELS: Record<ConnectorDomain, TranslationKey> = {
+  genomics: 'settings.connectors.domain.genomics',
+  structures: 'settings.connectors.domain.structures',
+  omics: 'settings.connectors.domain.omics',
+  clinical: 'settings.connectors.domain.clinical',
+  literature: 'settings.connectors.domain.literature',
+  tools: 'settings.connectors.domain.tools'
+}
 
 const FILTER_LABELS: Record<GroupFilter, TranslationKey> = {
   all: 'settings.all',
@@ -396,6 +408,17 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
                       </span>
                     </button>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {connector.domain ? (
+                        // The area a connector belongs to, on the row itself: the list is 31 connectors, and
+                        // without this a reader has to open each one to learn whether it is genomics,
+                        // structures, chemistry, clinical, literature or a tool that is not a data source.
+                        <span
+                          data-slot="connector-domain"
+                          className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-muted-foreground"
+                        >
+                          {t(DOMAIN_LABELS[connector.domain])}
+                        </span>
+                      ) : null}
                       <CatalogTagEditor
                         resourceId={`connector:${connector.id}`}
                         addLabel={t('settings.addTag')}

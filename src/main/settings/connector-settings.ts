@@ -626,7 +626,8 @@ class ConnectorSettingsModule {
       requiresNcbi: meta.requiresNcbi,
       enabled: !disabled.has(meta.id),
       autoAllow: autoAllow.has(meta.id),
-      group: meta.group ?? 'featured'
+      group: meta.group ?? 'featured',
+      domain: meta.domain
     })).sort((a, b) => a.displayName.localeCompare(b.displayName))
   }
 
