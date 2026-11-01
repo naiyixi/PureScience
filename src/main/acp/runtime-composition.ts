@@ -34,7 +34,6 @@ import type { UploadRepository } from '../uploads/repository'
 import type { SessionPersistenceCoordinator } from '../session-persistence/coordinator'
 import { ElicitationBroker } from '../elicitation-broker'
 import { createBoundedEventAdmission } from '../event-admission'
-import { createLatestSnapshotBroadcast } from '../latest-snapshot-broadcast'
 import { createStateSnapshotEventsTrimmer } from './state-snapshot-events'
 import { AgentMcpHttpHost } from './mcp-http-host'
 import { projectRegistrySessionGrants } from './permission-broker'
@@ -168,10 +167,15 @@ const createAcpRuntime = ({
   // log to what this renderer has not been sent yet (see `state-snapshot-events.ts`): without it every
   // message re-shipped the full 500-event log (≈209KB) however few events had actually arrived. The pull path
   // (`acp.getState`) still returns the untrimmed log for a window that mounts or reloads.
+  //
+  // The newest-wins window itself lives one layer up, inside the coordinator: collapsing here would still
+  // have built one aggregate snapshot per state change and thrown all but one per window away. Here the
+  // sender is a plain send -- a second window at this layer could only drop a snapshot whose build was
+  // already paid for.
   const trimStateEvents = createStateSnapshotEventsTrimmer()
-  const broadcastState = createLatestSnapshotBroadcast<AcpStateSnapshot>((state) =>
+  const broadcastState = (state: AcpStateSnapshot): void => {
     broadcastToRenderers('acp:state', trimStateEvents(state))
-  )
+  }
   const callbacks: AcpRuntimeCallbacks = {
     onStateChanged: (state: AcpStateSnapshot) => broadcastState(state),
     onEvent: (event: AcpRuntimeEvent) => {

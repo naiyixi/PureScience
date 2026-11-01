@@ -2454,45 +2454,103 @@ describe('AcpRuntimeCoordinator snapshot rate probe', () => {
 // fresh snapshot still has to read the runtime live.
 describe('AcpRuntimeCoordinator fresh snapshot reuse', () => {
   it('does not re-read the runtime that just published, and publishes what a full read would', async () => {
-    const created: ReturnType<typeof createFakeRuntime>[] = []
-    const emitted: AcpStateSnapshot[] = []
-    const coordinator = new AcpRuntimeCoordinator(
-      (callbacks) => {
-        const fake = createFakeRuntime({
-          frameworkId: 'codex',
-          sessionIds: ['session-1'],
-          callbacks
+    vi.useFakeTimers()
+    try {
+      const created: ReturnType<typeof createFakeRuntime>[] = []
+      const emitted: AcpStateSnapshot[] = []
+      const coordinator = new AcpRuntimeCoordinator(
+        (callbacks) => {
+          const fake = createFakeRuntime({
+            frameworkId: 'codex',
+            sessionIds: ['session-1'],
+            callbacks
+          })
+          created.push(fake)
+          return fake.runtime
+        },
+        { onStateChanged: (snapshot) => emitted.push(snapshot) },
+        ''
+      )
+      await coordinator.createSession()
+
+      const runtime = created[0]!.runtime
+      const reads = vi.spyOn(runtime, 'getSnapshot')
+      reads.mockClear()
+      emitted.length = 0
+
+      created[0]!.emitEvent({
+        id: 'reuse-event',
+        timestamp: 3,
+        kind: 'system',
+        level: 'info',
+        sessionId: 'session-1',
+        title: 'published once'
+      })
+
+      // A state change right after the previous delivery sits inside the newest-wins window: the build
+      // happens when the window closes, not per state change (see `emitState`).
+      vi.advanceTimersByTime(200)
+
+      // The emitting runtime's snapshot is already in hand: the emission must not read it a second time.
+      expect(reads).not.toHaveBeenCalled()
+      expect(emitted).toHaveLength(1)
+      // Same projection, not a lossy shortcut: an independent full read of the same state agrees field for
+      // field with what the emission published.
+      expect(emitted[0]).toEqual(coordinator.getSnapshot())
+
+      // The pull path has no snapshot in hand, so it still reads the runtime live.
+      expect(reads).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('collapses a burst of state changes into one build that still carries every event', async () => {
+    vi.useFakeTimers()
+    try {
+      const created: ReturnType<typeof createFakeRuntime>[] = []
+      const emitted: AcpStateSnapshot[] = []
+      const coordinator = new AcpRuntimeCoordinator(
+        (callbacks) => {
+          const fake = createFakeRuntime({
+            frameworkId: 'codex',
+            sessionIds: ['session-1'],
+            callbacks
+          })
+          created.push(fake)
+          return fake.runtime
+        },
+        { onStateChanged: (snapshot) => emitted.push(snapshot) },
+        ''
+      )
+      await coordinator.createSession()
+      emitted.length = 0
+
+      // 40 streamed chunks in one window: what a single turn looks like when the provider streams fast.
+      for (let index = 0; index < 40; index += 1) {
+        created[0]!.emitEvent({
+          id: `burst-${index}`,
+          timestamp: 10 + index,
+          kind: 'message',
+          level: 'info',
+          sessionId: 'session-1',
+          title: `chunk ${index}`,
+          text: `chunk ${index}`
         })
-        created.push(fake)
-        return fake.runtime
-      },
-      { onStateChanged: (snapshot) => emitted.push(snapshot) },
-      ''
-    )
-    await coordinator.createSession()
+      }
 
-    const runtime = created[0]!.runtime
-    const reads = vi.spyOn(runtime, 'getSnapshot')
-    reads.mockClear()
-    emitted.length = 0
+      // The window that opened with the session's own emission is still running: all 40 changes are
+      // requests inside it, so none of them was built or delivered yet.
+      expect(emitted).toHaveLength(0)
 
-    created[0]!.emitEvent({
-      id: 'reuse-event',
-      timestamp: 3,
-      kind: 'system',
-      level: 'info',
-      sessionId: 'session-1',
-      title: 'published once'
-    })
-
-    // The emitting runtime's snapshot is already in hand: the emission must not read it a second time.
-    expect(reads).not.toHaveBeenCalled()
-    expect(emitted).toHaveLength(1)
-    // Same projection, not a lossy shortcut: an independent full read of the same state agrees field for
-    // field with what the emission published.
-    expect(emitted[0]).toEqual(coordinator.getSnapshot())
-
-    // The pull path has no snapshot in hand, so it still reads the runtime live.
-    expect(reads).toHaveBeenCalled()
+      vi.advanceTimersByTime(200)
+      expect(emitted).toHaveLength(1)
+      // Nothing was dropped from the renderer's view: the single snapshot built for this window carries
+      // all 40 events, and the pull path agrees.
+      expect(emitted.at(-1)!.events).toHaveLength(40)
+      expect(coordinator.getSnapshot().events).toHaveLength(40)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

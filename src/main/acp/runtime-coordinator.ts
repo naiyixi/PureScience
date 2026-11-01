@@ -23,6 +23,7 @@ import { AcpRuntime, type AcpRuntimeCallbacks } from './runtime'
 import type { AcpRuntimeActivity, AcpRuntimeActivityOptions } from './runtime-activity'
 import { ConversationPermissionGrantStore } from './permission-broker'
 import type { SnapshotPathSource, SnapshotRateProbe } from '../diagnostics/snapshot-rate-probe'
+import { createDeferredSnapshotBroadcast } from '../latest-snapshot-broadcast'
 import type { ApprovedSwitchReadBack, ClaudeCodeReplayInput } from '../agents/claude-code-handoff'
 import type { ShutdownStepOutcome } from '../lifecycle-shutdown'
 import type { AgentModelChangeTarget } from '../agent-framework'
@@ -122,6 +123,8 @@ class AcpRuntimeCoordinator {
   private readonly latestPromptRequests = new Map<string, AcpPromptRequest>()
   private activeRuntime: AcpRuntime | undefined
   private lastRuntime: AcpRuntime | undefined
+  // Newest-wins window in front of the aggregate state build (see emitState).
+  private stateBroadcast: ((build: () => AcpStateSnapshot) => void) | undefined
 
   constructor(
     private readonly createRuntime: RuntimeFactory,
@@ -153,8 +156,17 @@ class AcpRuntimeCoordinator {
   // the same projection of the same state computed a second time in the same stack -- a published event
   // used to cost two full runtime snapshot builds instead of one. Callers with no fresh snapshot
   // (permission grants, session ownership, teardown) pass nothing and every runtime is read live.
+  //
+  // The build is deferred behind the newest-wins window rather than done here: a burst of state changes
+  // used to build one aggregate snapshot per change (measured 0.46–0.90 ms each, up to ~80 per second
+  // during streaming) and the broadcast then dropped all but ~7 per second. The renderer receives the same
+  // snapshots at the same moments -- it already only saw the newest one per window -- so the only thing
+  // that changes is that the discarded builds are no longer paid for.
   private emitState(fresh?: { runtime: AcpRuntime; snapshot: AcpStateSnapshot }): void {
-    this.callbacks.onStateChanged?.(
+    this.stateBroadcast ??= createDeferredSnapshotBroadcast<AcpStateSnapshot>((snapshot) =>
+      this.callbacks.onStateChanged?.(snapshot)
+    )
+    this.stateBroadcast(() =>
       this.measureSnapshotBuild('emission', () => this.buildSnapshot(fresh))
     )
   }
