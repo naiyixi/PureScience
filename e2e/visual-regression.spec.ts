@@ -23,6 +23,13 @@ const expectStableScreenshot = async (
   await page.locator('a[aria-label*="GitHub"]').evaluateAll((elements) => {
     for (const element of elements) element.style.visibility = 'hidden'
   })
+  // The use-case gallery is content, not shell: its cards are copy and measured readings that change when a
+  // capability ships, and it has its own certification spec. Keeping it inside the home baseline meant every
+  // card addition re-baselined the page, and a baseline regenerated off-runner drifted 4% against the lane.
+  // `evaluateAll` runs in the page, where TypeScript types are not in play — no cast inside.
+  await page.locator('[data-slot="use-case-gallery"]').evaluateAll((elements) => {
+    for (const element of elements) element.style.visibility = 'hidden'
+  })
   // Two header items describe THIS machine rather than the product, and both were measured on the lane:
   // the version badge reads `v2.18.0` here but `v2.18.0-nightly.g2dbdb00` on a nightly build (the job log's
   // surface fingerprint printed the lane's header verbatim), and the runtime-attention button only exists
