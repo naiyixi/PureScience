@@ -101,6 +101,16 @@ const openCentre = async (): Promise<HTMLElement> => {
 const clearAllButton = (): HTMLButtonElement | null =>
   document.querySelector<HTMLButtonElement>('[data-slot="notifications-clear-all"]')
 
+// A mutation's post-write read is merged onto the next task (a burst of changes must cost one read, and the
+// merge boundary is a macro-task — see the store). `act` flushes micro-tasks only, so the cases below wait
+// for that merged read explicitly instead of pretending the list refreshed inside the click.
+const flushMergedRead = async (): Promise<void> => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
 const deleteButtons = (): HTMLButtonElement[] => [
   ...document.querySelectorAll<HTMLButtonElement>('[data-slot="notification-item-delete"]')
 ]
@@ -141,6 +151,7 @@ describe('message centre reader deletions', () => {
     await act(async () => {
       deleteButtons()[0]?.click()
     })
+    await flushMergedRead()
 
     expect(bridge.deleteItems).toHaveBeenCalledWith({ ids: ['notif-1'] })
     expect(bridge.getSnapshot).toHaveBeenCalledTimes(2)
@@ -178,6 +189,7 @@ describe('message centre reader deletions', () => {
         .querySelector<HTMLButtonElement>('[data-slot="notifications-clear-confirm-button"]')
         ?.click()
     })
+    await flushMergedRead()
 
     // Bounded by the sequence that was on screen when the reader confirmed.
     expect(bridge.clearAll).toHaveBeenCalledWith({ throughSequence: 2 })
