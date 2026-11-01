@@ -436,9 +436,26 @@ class NotebookRunRepository {
     const encoded = encodeRunDocumentDataPaths(document, this.storageRoot)
     await writeFile(temporaryPath, `${JSON.stringify(encoded, null, 2)}\n`, 'utf8')
     await rename(temporaryPath, filePath)
-    // Our own write invalidates: mtime+size would usually catch it, but a same-size rewrite inside the
-    // same millisecond would be served from cache.
-    this.documentCache.delete(filePath)
+    // Our own write REFRESHES the cache instead of dropping it. The bytes on disk are exactly the document
+    // just serialized, so the shape this machine actually produces — a running session rewrites run.json
+    // for every run/kernel-status update while the panel re-reads `notebook:state` — can be served without
+    // re-parsing a document that reaches 63 MB (field log: 112 slow reads in 37 min for a single 12.5 MB
+    // session, `loadMs` 205–626 ms, every one of them a cache miss, i.e. every one preceded by a write).
+    // The stat is taken AFTER the rename so the entry is validated against the file that is actually there.
+    // Dropping the entry used to be the guard against "a same-size rewrite inside the same millisecond would
+    // be served from cache"; it no longer can be stale, because the entry holds the document just written.
+    // An external writer (another instance sharing this data root, a restored backup) still changes
+    // mtime/size and misses exactly as before.
+    const written = await stat(filePath).catch(() => undefined)
+    if (written) {
+      this.documentCache.set(filePath, {
+        mtimeMs: written.mtimeMs,
+        size: written.size,
+        document
+      })
+    } else {
+      this.documentCache.delete(filePath)
+    }
   }
 }
 

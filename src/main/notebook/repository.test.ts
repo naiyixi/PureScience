@@ -23,7 +23,7 @@ afterEach(async () => {
 
 describe('notebook run repository', () => {
   // The cache is the difference between a 20 ms and a 250 ms `notebook:state`; these two cases pin the
-  // two ways it could lie: an external rewrite it never sees, and our own write it forgets to drop.
+  // two ways it could lie: an external rewrite it never sees, and our own write it forgets to refresh.
   it('serves a cached document but notices an external rewrite', async () => {
     const root = await createStorageRoot()
     const repository = new NotebookRunRepository(root)
@@ -57,7 +57,7 @@ describe('notebook run repository', () => {
     expect(afterExternalWrite.kernel.lastKnownStatus).toBe('busy')
   })
 
-  it('drops the cached document when it writes one itself', async () => {
+  it('serves the document it just wrote, and never the one before it', async () => {
     const root = await createStorageRoot()
     const repository = new NotebookRunRepository(root)
     const request = {
@@ -78,7 +78,22 @@ describe('notebook run repository', () => {
       status: 'busy'
     } as never)
 
+    // The write refreshes the entry with the document it just serialized, so the read that follows a write
+    // (the shape a running session produces) is answered from memory — and answers 'busy', never 'idle'.
     expect((await repository.loadOrCreate(request)).kernel.lastKnownStatus).toBe('busy')
+    expect((await repository.loadOrCreate(request)).kernel.lastKnownStatus).toBe('busy')
+
+    // A refreshed entry is still validated against the file: an external rewrite is noticed, so write-through
+    // cannot become "our in-memory copy wins forever". Written compactly on purpose (a different byte count
+    // from the pretty-printed file) so the case does not lean on mtime resolution alone.
+    const filePath = join(root, 'notebooks', 'default-project', 'session-invalidate', 'run.json')
+    const onDisk = JSON.parse(await readFile(filePath, 'utf8')) as {
+      kernel: { lastKnownStatus: string }
+    }
+    onDisk.kernel.lastKnownStatus = 'idle'
+    await writeFile(filePath, JSON.stringify(onDisk), 'utf8')
+
+    expect((await repository.loadOrCreate(request)).kernel.lastKnownStatus).toBe('idle')
   })
 
   it('creates run.json under the notebook session workspace with runtime and data roots', async () => {

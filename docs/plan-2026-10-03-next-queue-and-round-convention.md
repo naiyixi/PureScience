@@ -15125,3 +15125,63 @@ markSessionCompletionsRead / deleteItems / clearAll` 各自在动作后再读一
    与 `notebook:state` 读的 `loadMs`（123 条慢读、`cold` 全为 false，`loadMs` median **401 ms** / p95 1,269 ms / max 2,424 ms，而它几乎等于 `totalMs` ⇒ 钱全在「解析/归一」这一段，可能是缓存命中后仍每次全量 `normalizeDocument`）——
    动手前先按 §272/§273 的口径核一遍「是不是已经有人量过并结了案」；
 ③ 并行会话在制件仍在就不碰：`git fetch -q origin && git log --oneline origin/main -3 && git status --short`。
+
+## 二百七十五、本轮追加（执行器，2026-11-02 00:2x–）—— `notebook:state` 的慢读不是「归一化太贵」，是**我们自己写完就把缓存删了**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = cade899b`；工作树里**并行会话**的在制件是
+  `src/main/references/screening-service.ts`、`docs/plan-2026-10-28-two-releases.md`、
+  `src/main/reviewer/{ipc.ts,ipc.test.ts}`、`src/shared/reviewer.ts` + `docs/evidence/2026-11-01-reviewer-fix-loop-double-review.md`
+  —— **一个字节没碰**，本笔只改 `src/main/notebook/**`（目录不相交）。
+- **先收口上一轮的 CI**（按完整 40 位 SHA 现查）：`b1f70af0` = Windows Full Test **success** / Nightly **cancelled**
+  （被后一笔顶掉，祖先关系成立 ⇒ 引后一笔）；`acfc086b` = Nightly + Windows Full Test **双 success**；
+  `cade899b` = Visual baseline (macOS) success、Windows Full Test success、Nightly 当时 `in_progress`。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔）仍耗尽；A 段无 ≥3 天无人动项 ⇒ 取 **§274 §五 ② 点名的第二条候选**（按真机日志自拟）。
+- **就地更正 §274 §五 ② 的假设**：那里写「`loadMs` 几乎等于 `totalMs` ⇒ 可能是缓存命中后仍每次全量 `normalizeDocument`」。
+  实测**不是**：命中时 `loadOrCreate` 是 **0.7–2.25 ms**，归一化不贵；贵的是**从来就没命中**。判据见 §一/§二。
+
+### 一 缺口（真机日志，打包版 v2.21.1，窗口 10-29 14:42Z → 11-01 16:26Z，17,309 行）
+
+- `notebook state read was slow` **130 行**，其中**同一会话 `d79576e8…` 占 112 行**（37 分钟内，`loadMs` 205–626 ms，
+  `cold` 全 false，`runs` 50→100）；同窗口 `notebook:state` 慢 IPC 175 条、中位 283.7 ms、**合计 70.0 s 主线程**。
+- 该会话的两次慢读常相隔 **30–45 ms** 且 `runs` 不变（13:18:10.718 / .763 均为 54） ⇒ **两次都未命中** ⇒ 区间内有写。
+- 机制在代码里可直接读出：`persist()` 落盘后 `documentCache.delete(filePath)` —— **我们自己的一次写入**
+  把下一次读打成全量重新解析，而活跃会话每轮执行要写很多次（起跑 / 终态 / 内核状态 / 文件证据）。
+
+### 二 先量后改（生产函数 + 真文档副本，真数据根只读）
+
+| 文档 | 字节 | runs | 未命中读 | 命中读 | 一次写 | 写后立刻读（改前） | 写后立刻读（改后） |
+|---|---|---|---|---|---|---|---|
+| 活跃会话 `d79576e8…` | 12.50 MB | 100 | 61.4 ms | 0.7 ms | 118.8 ms | 61.4 ms | **0.7 ms** |
+| 全库最大 | 63.04 MB | 80 | 147.7 ms | 0.9 ms | 1,110.2 ms | 147.7 ms | **5.2 ms** |
+
+### 三 交付（2 文件）
+
+`src/main/notebook/repository.ts`：`persist()` 的 `rename` 之后**不再删缓存**，改**写穿** —— `stat` 真文件后把
+**刚写出的那份文档**连同 `mtimeMs`/`size` 放进缓存（`stat` 失败才退回删除）；条目仍按文件校验，外部写者照旧不命中。
+`repository.test.ts`：原「写完就丢缓存」那条改成「**服务刚写出的那份、绝不服务上一份**」，并**新增**一段
+「写穿之后外部改写仍被读到」（故意用压缩格式写出，字节数与 pretty 文件不同，不靠 mtime 分辨率）。测试只加不减。
+
+### 四 门禁（实跑）
+
+| 环 | 读数 |
+|---|---|
+| 定向 `src/main/notebook` 整目录 | **91 文件 / 1,444 例全绿** |
+| 双 typecheck（`--composite false`） | 本笔 **0 错**；两边各余 4 条**全在并行会话在制的 `screening-service.ts`** |
+| `eslint --no-cache`（本笔 2 文件） | **exit 0，0 error / 0 warning** |
+
+### 五 边界与具名未办
+
+1. **没有「字段读数已下降」的真机读数**：打包版要等下一次装包；判据已写进证据档（写后读那部分先消失 + `loadMs` 分布）。
+2. **写侧更贵且未动**：`mutate()` 每次写都全量解析 + `JSON.stringify(…, null, 2)`，实测 12.50 MB **118.8 ms** /
+   63.04 MB **1,110.2 ms** ⇒ 下一轮候选（它落在执行路径，不在读通道分段里）。已顺手取的分段读数（同一份真文档、
+   三次取中位）：`JSON.parse` 19.8 / 69.5 ms，美化 `JSON.stringify` 30.6 / **262.4 ms**，紧凑序列化 19.0 / 213.5 ms，
+   美化输出比紧凑多 3.9 MB（12.12 vs 8.20 MB）—— 下一次动手先从这里下手，别先猜「解析太慢」。
+3. **缓存仍无淘汰上限**（按会话增长，解码后的 63 MB 文档驻内存）——本笔没有变好，具名立案。
+4. **`findExisting()` / `ipc.ts` 三处 ad-hoc 只读实例不吃缓存**，本单元不声称覆盖。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔两条车道（`cancelled` 不算绿）；② 下一单元候选：上面第 2 条（写侧全量解析 + 美化序列化）
+与 `notifications:get-snapshot` 的 `ownMs` 峰值；③ 并行会话在制件仍在就不碰（先 `git status --short`）。
