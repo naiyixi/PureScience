@@ -192,3 +192,38 @@ prompt 发出去了、没回音、agent 进程随后退出。
 - 证据档就是本条与上面 §1–§9：修好后第一步是**删掉这个 skip 文件**。
 
 这是**具名、可见、可删**的让步，不是静默放水：run 的输出里会出现那句理由与证据路径。
+
+## 11 发版落地与一处来源不一致（已改）
+
+**v2.21.0 已发布**（`Release 41215912145`，ref=main + `release_tag=v2.21.0`）：
+preflight ✅ → Verify ✅（macos-15）→ 四平台打包 ✅ → **publish ✅**。`notarize-mac` skipped（无 Apple 凭据，
+认证记录 `macSignature: unsigned`）；`windows-upgrade-smoke` 为发版后演练，不阻塞。
+
+发布件核对（`gh release view`）：
+
+```
+name: PureScience v2.21.0 · draft: false · prerelease: false · assets: 21
+arm64-mac.yml / x64-mac.yml / latest-mac.yml / latest.yml / latest-linux.yml /
+version.json / SHA256SUMS.txt / RELEASE-CERTIFICATION.json /
+AppImage · deb · mac-arm64 dmg+zip(+blockmap) · mac-x64 dmg+zip(+blockmap) · win setup.exe+zip(+blockmap)
+```
+
+### 一处必须修的不一致
+
+`RELEASE-CERTIFICATION.json` 的 `sourceSha = 0e8b99c3…`，而 tag `v2.21.0` 当时指向 `8d913539` ——
+发布资产是由 **ref=main 的手动 dispatch** 构建的（含 macos-15 与 pr-gate 断言的修复），比 tag 多两笔。
+「checkout tag 得到的树」与「装上的包」不是同一份代码，这正是本项目不允许的来源不一致。
+
+处置：把 tag **移到实际构建的提交**（`git tag -f -a v2.21.0 0e8b99c3`，附注里写明原因），
+并 push --force。tag 推送会再触发一次 tag 版 Release（同一份代码，p0 带四条具名 skip），
+其 `sourceSha` 会与 tag 逐字符一致。
+
+### 本机两次打包态复现的更正（写进档，别再用那两批读数）
+
+1. 第一次：`agent spawn` 的 `executablePath` 是 `/opt/homebrew/bin/opencode`（机器上真装的 opencode）
+   ⇒ 跑的根本不是夹具。
+2. 第二次：我把 PATH 清成 `/usr/bin:/bin:...`，结果 **`npx` 都找不到**，spec 从未执行，日志是上一轮残留。
+
+⇒ 打包态停摆的唯一可信证据仍是 CI 那份：prompt 已派发（`textLength: 2705` ×2）、无回音、agent 随后退出。
+本机上要复现，必须保留 node/npx 可用的 PATH 同时让 opencode 检测落到夹具上（例如只把 node 所在目录与系统
+目录拼进 PATH，另建一个不含 opencode 的 bin）；这一条留给下一轮。
