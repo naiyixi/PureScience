@@ -15255,3 +15255,87 @@ markSessionCompletionsRead / deleteItems / clearAll` 各自在动作后再读一
 - **下一轮第一步**：① 按完整 40 位 SHA 读本笔 `Nightly` 的**作业级**判决（看 `Build macos-arm64` →
   `Run P0 Electron certification` 的 `N passed`，不看作业名绿）；② 若仍红，先读失败 spec 名与那条
   `screening record failed` 的 `toolUse`/`message`，别再从预算下手；③ 并行会话在制件仍在就不碰。
+
+## 二百七十七、本轮追加（执行器，2026-11-02 05:5x–）—— `fs-queue-saturated` 在 98.8% 的记录上没有证据：一次「循环不在了」被记成了「线程池满了」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = 643d9334`，本地无领先提交。上一轮那笔的判决按完整 40 位 SHA 现查：
+  `Nightly` = **success**（run 41344322017，作业级 `build / Build macos-arm64` success、`publish` success），
+  `Windows Full Test` = **success**（run 41344322011）。并且**读的是作业日志而不是作业名**：P0 里四条筛选 spec
+  全部执行（`[91/125]`…`[92/125]` 逐条打印路径），整套 **112 passed (28.0m)** ⇒ §276 那笔「模块级 env 泄漏」
+  的修复在真机车道上是真的，不是被跳过、也不是绿在别的作业上。
+- 工作树仍有并行会话的 5 个在制路径（`src/main/references/screening-service.ts`、`src/main/reviewer/{ipc.ts,ipc.test.ts}`、
+  `src/shared/reviewer.ts`、`docs/plan-2026-10-28-two-releases.md` + 一份证据档）—— **一个字节没碰**；
+  本笔只碰 `src/main/diagnostics/**` 与两份文档（目录不相交）。
+- **就地更正一处陈旧记录**：上一轮 notepad 写着「v2.21.1 已抬号未发」。现查 `gh release list` 与
+  `gh release view v2.21.1`：`draft=false`、`isPrerelease=false`、**21 个资产**、页面为 Latest ⇒ **v2.21.1 已发布**，那条记录作废。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽、A 段无 ≥3 天无人动项 ⇒ 自拟单元，来源是真机日志而不是计划里的猜测。
+
+### 一 单元从哪来：先聚合真机日志，再只查被点到的那一处
+
+三份 `~/Library/Logs/PureScience/` 日志（窗口 10-28T06:35Z → 11-01T21:57Z，19,192 行）按 `scope|msg` 聚合，
+`diagnostics | event loop stalled` 是最大的一族（3,585 条）。再按 `cause.kind` 分：**3,460 条被判成
+`fs-queue-saturated`**，而它们自己带的两条读数互相打架 —— 典型三条原文：
+
+```
+lateMs 507  canaryMs 5826  inFlight 0
+lateMs 973  canaryMs 5723  inFlight 0
+lateMs 801  canaryMs 5496  inFlight 0
+```
+
+读源码定因（`stall-cause.ts`）：判据只有两条（`canaryMs ≥ 20` 且 `≥ lateMs × 0.1`），**完全不看 `inFlight`**。
+而 canary 是一次 `readFile()`，它的完成回调就是事件循环回调 —— 看门狗在停滞结束那一刻发起、随后 await
+（`event-loop-stall-watchdog.ts:266`）⇒ **「循环不在了」与「线程池忙」在读数上逐字同形**；实测
+`canaryMs / lateMs` 中位 **4.1**、p90 **9.9**（canary 比自己要解释的那段停滞还长 4–10 倍），正是「它量的是循环」的形状。
+`inFlight` 是这个判决唯一的正面证据（停滞结束那一刻我们自己的读还在排队的条数），却被判据忽略了。
+
+### 二 读数（真机日志，改前）
+
+| 项 | 读数 |
+|---|---|
+| 可回放的停滞记录 | **3,503**（3,585 条里 82 条 fs 读数不可用） |
+| 改前判为 `fs-queue-saturated` | **3,460** |
+| 其中 `inFlight = 0` | **3,436（99.3%）**；`inFlight` 为 1–3 的只有 **24** 条 |
+| `canaryMs / lateMs` | 中位 **4.1**、p90 **9.9** |
+| 同批机器读数 | `freeMemMb 115 / totalMemMb 8590`、`loadAvg1m 7.31` |
+
+即：这些窗口里机器在换页、循环没被调度，而记录上写的是我们自己的文件系统线程池满了。
+
+### 三 交付（4 文件）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/diagnostics/stall-cause.ts` | `fsSaturated` 增加硬前提 **`fs.inFlight > 0`**；`describeFs()` 改两态（`with N of our reads waiting` / `with nothing of ours queued`）；`unexplained` 句子在「canary 慢而无人排队」时补一句 `; that canary waited on a loop that was gone, not on a busy pool`；类型注释写明 `inFlight` **不是池深度**（只统计 `beginFsOperation` 的调用方，当前只有 managed preview acquire 一条路），0 的含义是「没有证据」而不是「池空闲」 |
+| `stall-cause.test.ts` | share 门槛那条的三处夹具补上「有排在队里的读」（让它继续测**份额**、不被新闸顺带决定）；**新增两条成对用例**：真机形状（507 / 5826 / 0）必须**不是**池判决且句子点名原因；`inFlight ≥ 1` 时**仍然是**池判决（防止把闸满足成「永不再点名池」） |
+| `event-loop-stall-watchdog.test.ts` | 走**真报道路径**再加一例：`inFlight: () => 0` + canary 5,826 ⇒ `unexplained`，`basis` 含两句点名语，`fs` 读数原样保留 |
+| `support-bundle.ts` | `event-loop-stalls.json` 的说明补一句：池判决只在「我们自己的读也在等同一个池」时才给；canary 慢而无人排队＝循环不在了 —— 导出件是外部读者唯一的说明书，说明与判据必须同步 |
+
+证据档：`docs/evidence/2026-11-02-stall-cause-fs-verdict.md`（含回放复现步骤与边界）。
+
+### 四 门禁（全部实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+|---|---|
+| 定向 `npx vitest run src/main/diagnostics` | **26 文件 / 206 passed** |
+| 全量 `npx vitest run --maxWorkers=4` | **1437 files passed \| 30 skipped（1467）**；**18,113 passed \| 225 skipped（18338）**；**exit 0** |
+| 双 typecheck（`--composite false`） | 本笔 **0 错**；全仓余 4 条**全在并行会话在制的 `screening-service.ts`**（TS6133×3 / TS2564×1），未去改 |
+| `eslint --no-cache`（本笔 4 个文件） | **0 问题** |
+| `prettier --check`（同 4 文件） | **全过** |
+| 变异自证 | 撤掉 `fs.inFlight > 0` 那一行 ⇒ **恰好两条新用例当红**，其余 35 条仍绿 ⇒ 红只在被测行为被撤掉时出现 |
+
+### 五 边界（不许读成更强）与具名未办
+
+1. **回放不是窗口读数**：分类器是纯函数，回放（真实记录 → 生产函数，改前/改后各一次：3,460 → **24**，移动 3,436 条，
+   留下的 24 条 `inFlight` 全是 1–3）证明「同一段代码对真实输入给出这个判决」，不证明「重启后的进程会这样写日志」。
+   要取实时读数需重启一个实例并等它真停滞一次，**本轮不动用户正在跑的实例**。
+2. **不是把「池满」测准了**，而是把「没有证据时不点名池」立起来：`beginFsOperation()` 在生产里只有一个调用方
+   （`managed-preview-resources.ts:192`）⇒ `inFlight` 覆盖面很窄。要真测池，得让更多读路径自报（会牵动多个调用方的独立单元，未立项）。
+3. **不声称长停滞被解释**（`lateMs` 最大 268,736 ms；同刻机器读数百兆级空闲内存、`loadAvg` 数十）—— 本轮只修「读数被贴错标签」这一半。
+4. GC 与 `cpu-in-process` 两个分支一个字节没动。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔两条车道的**作业级**判决；② 若绿，按同一份聚合表的**分段字段**取下一个真机缺口
+（`session save was slow` 455 条、`notebook:state` 668 条，先量再改）；③ 并行会话在制件仍在就不碰
+`src/main/references/**` 与 `src/main/reviewer/**`。

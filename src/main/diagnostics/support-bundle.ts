@@ -157,8 +157,11 @@ diagnostics/event-loop-stalls.json
                    sampler thread took while the loop was held. Each record also carries a cause: one of
                    garbage-collection, fs-queue-saturated, cpu-in-process, unexplained or unmeasured, with
                    the pause time and file-system canary reading it follows from, so the verdict can be
-                   checked against the numbers instead of trusted. Its own counters say how many stalls were
-                   observed and how many are no longer kept, so an empty list never reads as "nothing wrong"
+                   checked against the numbers instead of trusted. fs-queue-saturated is only named when a
+                   read of ours was also waiting on that pool — a slow canary with nothing of ours queued
+                   is a loop that was gone, and the record says so instead of blaming the pool. Its own
+                   counters say how many stalls were observed and how many are no longer kept, so an empty
+                   list never reads as "nothing wrong"
 diagnostics/host-timeline.json
                    one reading per quarter second from a thread of our own: when each was taken, the CPU it
                    used, free memory, load average and resident size, plus the paging counters while the

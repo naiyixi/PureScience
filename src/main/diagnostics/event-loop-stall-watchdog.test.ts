@@ -792,6 +792,41 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     watchdog.stop()
   })
 
+  it('does not name the pool when the canary waited with nothing queued', async () => {
+    // The record the shipped build actually wrote 3,436 times: a canary seconds long, nothing of ours waiting.
+    // Through the real report path the verdict has to come out as anything but `fs-queue-saturated`, and the
+    // sentence has to say why — otherwise the only number a reader sees (5,826 ms) points at the thread pool.
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: () => ({
+        pauseMsWithin: () => ({ status: 'measured', pauseMs: 0, pauses: 0 }),
+        stop: () => undefined
+      }),
+      fsProbe: { inFlight: () => 0, startCanaryRead: async () => 5_826 }
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.kind).toBe('unexplained')
+    expect(warned[0]?.data.cause.basis).toContain('nothing of ours queued')
+    expect(warned[0]?.data.cause.basis).toContain('waited on a loop that was gone')
+    expect(warned[0]?.data.cause.fs).toEqual({ status: 'measured', canaryMs: 5_826, inFlight: 0 })
+    watchdog.stop()
+  })
+
   it('says the stall was unexplained when both instruments ran and neither accounts for it', async () => {
     vi.useFakeTimers()
     const time = drive()

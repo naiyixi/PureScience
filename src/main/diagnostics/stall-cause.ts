@@ -20,7 +20,14 @@ import type { GcPauseReading } from './gc-pause-monitor'
 export type StallCauseKind =
   'garbage-collection' | 'fs-queue-saturated' | 'cpu-in-process' | 'unexplained' | 'unmeasured'
 
-/** The fs reading taken at the instant the stall ended: a canary read and what was already in flight. */
+/**
+ * The fs reading taken at the instant the stall ended: a canary read and how many of our instrumented reads
+ * were already waiting on the same pool.
+ *
+ * `inFlight` is not a pool depth. It counts only the callers that report themselves (`beginFsOperation`, today
+ * the managed preview acquire path), so 0 means "no evidence that anything of ours was queueing" — never "the
+ * pool was idle", and never something a verdict can treat as calm.
+ */
 export type StallFsReading =
   { status: 'measured'; canaryMs: number; inFlight: number } | { status: 'unavailable' }
 
@@ -40,16 +47,22 @@ const GC_DOMINANT_SHARE = 0.4
 // on this machine, in the shipped build's own `managed preview acquire was slow` lines (57 samples): 5 read in
 // 2 ms or less, 29 took 20 ms or more, median 24, p90 180, max 686. So 20 ms is where the pool stops being
 // idle, and a tenth of the window keeps a 24 ms wait from being reported as the cause of a 900 ms stall.
+// The canary alone cannot decide saturation. Its completion callback runs on the loop, so a loop that was gone
+// measures exactly like a pool that was busy — a canary started at the stall's edge and awaited after it always
+// includes the stall itself. What separates the two is whether anything of ours was already waiting on the pool
+// when the stall ended, and that is `inFlight`: the verdict requires it (see the gate below).
 const FS_SATURATED_MIN_MS = 20
 const FS_SATURATED_SHARE = 0.1
 
 const describeGc = (gc: GcPauseReading): string =>
   gc.status === 'measured' ? `gc ${gc.pauseMs} ms in ${gc.pauses} pause(s)` : 'gc not observed'
 
-const describeFs = (fs: StallFsReading): string =>
-  fs.status === 'measured'
-    ? `fs canary ${fs.canaryMs} ms with ${fs.inFlight} in flight`
-    : 'fs canary unavailable'
+const describeFs = (fs: StallFsReading): string => {
+  if (fs.status !== 'measured') return 'fs canary unavailable'
+  return fs.inFlight > 0
+    ? `fs canary ${fs.canaryMs} ms with ${fs.inFlight} of our reads waiting`
+    : `fs canary ${fs.canaryMs} ms with nothing of ours queued`
+}
 
 export const classifyStallCause = (input: {
   lateMs: number
@@ -71,8 +84,15 @@ export const classifyStallCause = (input: {
     }
   }
 
+  // A slow canary with nothing of ours queued is not saturation: the only thing it can have been waiting for is
+  // the loop, which is what stalled in the first place. Six days of packaged-build logs say why this gate has to
+  // be here — of 3,460 records labelled `fs-queue-saturated` (3,585 stalls total), 3,436 carried `inFlight: 0`
+  // and a canary that outlived the stall 4.1× at the median (p90 9.9×), so the label was describing a loop that
+  // was gone and pointing the next reader at the wrong subsystem.
+  // docs/evidence/2026-11-02-stall-cause-fs-verdict.md
   const fsSaturated =
     fs.status === 'measured' &&
+    fs.inFlight > 0 &&
     fs.canaryMs >= FS_SATURATED_MIN_MS &&
     fs.canaryMs >= lateMs * FS_SATURATED_SHARE
   if (fsSaturated && fs.status === 'measured') {
@@ -95,9 +115,15 @@ export const classifyStallCause = (input: {
 
   // Both instruments ran: neither GC nor the file-system pool accounts for the window.
   if (gc.status === 'measured' && fs.status === 'measured') {
+    // A canary that waited with nothing of ours queued is the number a reader will trip over, so the sentence
+    // says what it was instead of leaving the reader to conclude the pool was busy after all.
+    const unqueuedCanary =
+      fs.canaryMs >= FS_SATURATED_MIN_MS && fs.inFlight === 0
+        ? '; that canary waited on a loop that was gone, not on a busy pool'
+        : ''
     return {
       kind: 'unexplained',
-      basis: `${lateMs} ms late with ${describeGc(gc)} and ${describeFs(fs)}; held outside what this process measures`,
+      basis: `${lateMs} ms late with ${describeGc(gc)} and ${describeFs(fs)}${unqueuedCanary}; held outside what this process measures`,
       gc,
       fs
     }

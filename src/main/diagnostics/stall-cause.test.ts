@@ -97,12 +97,13 @@ describe('stall cause', () => {
 
   it('keeps a short canary wait from being called the cause of a long stall', () => {
     // Device distribution: the canary's median during a slow acquire is 24 ms. That says the pool was busy,
-    // not that it held a 1.2 s stall — the share gate is what keeps the label from overclaiming.
+    // not that it held a 1.2 s stall — the share gate is what keeps the label from overclaiming. All three
+    // cases carry a waiting read, so what moves them is the share gate and not the queueing gate below.
     const shortWait = classifyStallCause({
       lateMs: 1_200,
       attribution: 'no-cpu-in-process',
       gc: gcMeasured(0, 0),
-      fs: fsMeasured(24)
+      fs: fsMeasured(24, 2)
     })
     expect(shortWait.kind).toBe('unexplained')
 
@@ -112,7 +113,7 @@ describe('stall cause', () => {
         lateMs: 200,
         attribution: 'no-cpu-in-process',
         gc: gcMeasured(0, 0),
-        fs: fsMeasured(24)
+        fs: fsMeasured(24, 2)
       }).kind
     ).toBe('fs-queue-saturated')
 
@@ -122,9 +123,40 @@ describe('stall cause', () => {
         lateMs: 100,
         attribution: 'no-cpu-in-process',
         gc: gcMeasured(0, 0),
-        fs: fsMeasured(5)
+        fs: fsMeasured(5, 2)
       }).kind
     ).toBe('unexplained')
+  })
+
+  it('refuses the pool verdict when nothing of ours was waiting on it', () => {
+    // The shape six days of packaged-build logs produced 3,436 times: a canary that outlived the stall by an
+    // order of magnitude while `inFlight` was 0. The canary's callback is a loop callback, so that wait is the
+    // loop being gone — not the thread pool being busy. Naming the pool here sends the next reader to the wrong
+    // subsystem, which is the failure this record exists to prevent. Numbers below are a real log record.
+    const cause = classifyStallCause({
+      lateMs: 507,
+      attribution: 'no-cpu-in-process',
+      gc: gcMeasured(0, 0),
+      fs: fsMeasured(5_826, 0)
+    })
+    expect(cause.kind).toBe('unexplained')
+    expect(cause.basis).toContain('nothing of ours queued')
+    expect(cause.basis).toContain('waited on a loop that was gone')
+    // The measurement stays in the record: a refused verdict is not a missing one.
+    expect(cause.fs).toEqual({ status: 'measured', canaryMs: 5_826, inFlight: 0 })
+  })
+
+  it('still names the pool when a read of ours was waiting behind it', () => {
+    // The other direction, so the gate cannot be satisfied by simply never naming the pool. 24 of the logged
+    // stalls did carry a waiting read (`inFlight` 1–3); those are the ones where the label is the finding.
+    const cause = classifyStallCause({
+      lateMs: 800,
+      attribution: 'no-cpu-in-process',
+      gc: gcMeasured(0, 0),
+      fs: fsMeasured(250, 1)
+    })
+    expect(cause.kind).toBe('fs-queue-saturated')
+    expect(cause.basis).toContain('1 of our reads waiting')
   })
 
   it('keeps a single missing instrument from being read as a calm one', () => {
