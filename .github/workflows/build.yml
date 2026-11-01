@@ -416,6 +416,18 @@ jobs:
           retention-days: 5
           if-no-files-found: warn
 
+      # The fixture agent's own transcript, in the job log: an artifact can be hundreds of megabytes and this
+      # session's network could not pull one down in under an hour, but the line "session.prompt <id>: …" and
+      # the reply that followed are what say whether a stalled pass ever reached the agent at all.
+      - name: Print the fixture transcript on failure
+        if: ${{ steps.p0.outcome == 'failure' }}
+        continue-on-error: true
+        run: |
+          echo "=== test-results/fake-agent.log (head) ==="
+          head -120 test-results/fake-agent.log 2>/dev/null || echo "no fixture log at test-results/fake-agent.log"
+          echo "=== screening lines from the app log ==="
+          grep -hE "screening|agent spawn" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no app log"
+
       # Visual behavior uses the same renderer bundle on every package. Keep one canonical hard gate
       # beside P0 instead of multiplying antialiasing and launch variance across four native runners.
       - name: Run desktop visual regression
