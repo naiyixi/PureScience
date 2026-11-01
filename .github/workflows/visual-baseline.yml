@@ -1,0 +1,50 @@
+# Regenerates the darwin visual baselines on the SAME runner image the certification lane uses, and uploads
+# them as an artifact.
+#
+# Why this exists: baselines regenerated on a developer machine do not match the lane's rendering. That was
+# measured twice — 33578 px (4%) with the gallery in the frame, then 4946 px (1%) after the gallery was hidden
+# — and neither number was a product defect, it was two different renderers. The only baseline worth
+# committing is one the lane itself produced, so this job produces it and a person commits the artifact.
+#
+# Manual only: it writes screenshots, and a scheduled job that rewrites baselines would erase the signal the
+# baseline exists to carry.
+name: Visual baseline (macOS)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshots:
+    name: Regenerate darwin baselines
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the app the visual lane screenshots
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run build
+
+      - name: Regenerate baselines
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots --workers=1
+
+      - name: Upload baselines
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: visual-baselines-darwin
+          path: e2e/visual-regression.spec.ts-snapshots/*.png
+          retention-days: 7

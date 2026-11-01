@@ -441,6 +441,8 @@ jobs:
           PURESCIENCE_E2E_EXECUTABLE: ${{ steps.packaged_app.outputs.executable }}
           PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS: '1'
         run: |
+          echo "diag env: EXE=$PURESCIENCE_E2E_EXECUTABLE BYPASS=$PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS"
+          node -e "console.log('diag skip decision:', JSON.stringify({ packaged: Boolean(process.env.PURESCIENCE_E2E_EXECUTABLE), bypass: process.env.PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS, wouldSkip: process.env.PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS !== '1' && Boolean(process.env.PURESCIENCE_E2E_EXECUTABLE) }))"
           npx playwright test e2e/certification/references-screening.spec.ts --workers=1 --reporter=line || true
           echo "=== [screening] lines from the app"
           grep -hE "\[screening\]|screening record|recordsInFlight" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no screening lines in the app log"
