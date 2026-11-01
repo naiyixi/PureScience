@@ -882,7 +882,8 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.sessions': '對話',
   'home.sessionsPlaceholder': '你啟動的對話會顯示在這裡。',
   'home.useCaseGallery': '用例畫廊',
-  'home.useCaseGalleryIntro': '每張卡片都是本機實機跑出來的。點開能看到讀數、原話，以及怎麼自己重跑一遍。',
+  'home.useCaseGalleryIntro':
+    '每張卡片都是本機實機跑出來的。點開能看到讀數、原話，以及怎麼自己重跑一遍。',
   'gallery.open': '開啟樣例：{title}',
   'gallery.readings': '實機讀數',
   'gallery.quotes': '原話',
@@ -892,20 +893,44 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'gallery.copied': '已複製',
   'gallery.close': '關閉',
   'gallery.sample.external-mcp.title': '外部 MCP 用戶端：讀，並有一件受卡的寫',
-  'gallery.sample.external-mcp.claim': '登記在冊的四個唯讀工具，加一件受卡的寫：歸檔只在應用程式自己的卡答覆之後發生，每次呼叫仍留一條稽核行。',
-  'gallery.sample.external-mcp.judgment': '跑完應得 2 passed；工具名與登記表相符，卡被取消時資料一個位元組未動，稽核行的呼叫 id 與 broker 的判詞逐條相同。',
+  'gallery.sample.external-mcp.claim':
+    '登記在冊的四個唯讀工具，加一件受卡的寫：歸檔只在應用程式自己的卡答覆之後發生，每次呼叫仍留一條稽核行。',
+  'gallery.sample.external-mcp.judgment':
+    '跑完應得 2 passed；工具名與登記表相符，卡被取消時資料一個位元組未動，稽核行的呼叫 id 與 broker 的判詞逐條相同。',
   'gallery.sample.citation-discovery.title': '找出誰引用了這篇論文，含中文來源',
   'gallery.sample.citation-discovery.claim': '每行都帶理由；判據是出版方所在國，不是期刊語種。',
-  'gallery.sample.citation-discovery.judgment': '200 行樣本裡，194 行靠出版方國別命中，語種欄位只抓到 2 行。',
+  'gallery.sample.citation-discovery.judgment':
+    '200 行樣本裡，194 行靠出版方國別命中，語種欄位只抓到 2 行。',
   'gallery.sample.session-package.title': '匯入後數字可以複算的對話包',
-  'gallery.sample.session-package.claim': '桌面、Web、CLI 匯出的 payload 摘要相同；匯入的複算結論落進一筆能跨程序讀的記錄。',
-  'gallery.sample.session-package.judgment': '三端 payload 摘要必須相同；整包摘要允許不同，且唯一允許的差異來自匯出時間戳。',
+  'gallery.sample.session-package.claim':
+    '桌面、Web、CLI 匯出的 payload 摘要相同；匯入的複算結論落進一筆能跨程序讀的記錄。',
+  'gallery.sample.session-package.judgment':
+    '三端 payload 摘要必須相同；整包摘要允許不同，且唯一允許的差異來自匯出時間戳。',
   'gallery.sample.long-session.title': '長對話仍然可讀，每輪都說清花了多少',
-  'gallery.sample.long-session.claim': '已結束的輪次折成摘要行，最新一輪保持展開，摘要行帶這一輪的詞元數。',
-  'gallery.sample.long-session.judgment': '點摘要行：最新一輪折到 0 行、再點回來；沒有用量上報時行上寫「未記錄用量」，不寫 0。',
+  'gallery.sample.long-session.claim':
+    '已結束的輪次折成摘要行，最新一輪保持展開，摘要行帶這一輪的詞元數。',
+  'gallery.sample.long-session.judgment':
+    '點摘要行：最新一輪折到 0 行、再點回來；沒有用量上報時行上寫「未記錄用量」，不寫 0。',
   'gallery.sample.docx-fidelity.title': 'DOCX 表格按檔案裡寫的規則來畫',
-  'gallery.sample.docx-fidelity.claim': '外框與內部格線分開，表樣式能解析，沒寫規則的表格不會被憑空補上框線。',
-  'gallery.sample.docx-fidelity.judgment': '真預覽裡同一個格子的外框是雙線綠、內部邊是細灰線；把協調關掉，內部邊就變成外框那種綠。',
+  'gallery.sample.docx-fidelity.claim':
+    '外框與內部格線分開，表樣式能解析，沒寫規則的表格不會被憑空補上框線。',
+  'gallery.sample.docx-fidelity.judgment':
+    '真預覽裡同一個格子的外框是雙線綠、內部邊是細灰線；把協調關掉，內部邊就變成外框那種綠。',
+  'gallery.sample.package-readings.title': '匯入判定是可以複算的數字',
+  'gallery.sample.package-readings.claim':
+    '存檔把「複算後相等」與「只是宣告相符」分開，絕不把 0 當成測量值。',
+  'gallery.sample.package-readings.judgment':
+    '期望 usage 相符（turns 1）、toolCalls 相符（rows 0）並附 absent:no-tool-calls —— 那個 0 是標註過的，不是推出來的。',
+  'gallery.sample.session-density.title': '一屏裝得下四輪',
+  'gallery.sample.session-density.claim':
+    '已結束的回合折成 24px 一行，轉錄把空間留給答案，而不是鷹架。',
+  'gallery.sample.session-density.judgment':
+    '期望 perTurn 143、轉錄區 572px：捲動前約五輪，每條折疊行實測 24px。',
+  'gallery.sample.import-authorization.title': '遠端面的匯入在執行前就被拒絕',
+  'gallery.sample.import-authorization.claim':
+    '匯入通道只限本機：遠端請求拿到 401，並留下寫明理由的權限決定。',
+  'gallery.sample.import-authorization.judgment':
+    '這是路由層用例，不是真實配對遠端工作階段 —— 它證明拒絕路徑已接通，不等於現場實測。',
   'home.someArtifactsMissing': '部分產物結果可能遺失。',
   'home.unknownProject': '未知專案',
   'home.unknownSession': '未知對話',

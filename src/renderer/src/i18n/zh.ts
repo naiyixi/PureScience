@@ -307,7 +307,8 @@ export const zh = {
   'home.noProjects': '暂无项目。创建一个开始使用。',
   'home.sessionsPlaceholder': '你启动的会话将显示在这里。',
   'home.useCaseGallery': '用例画廊',
-  'home.useCaseGalleryIntro': '每张卡片都是本机真机跑出来的。点开能看到读数、原话，以及怎么自己复跑一遍。',
+  'home.useCaseGalleryIntro':
+    '每张卡片都是本机真机跑出来的。点开能看到读数、原话，以及怎么自己复跑一遍。',
   'gallery.open': '打开样例：{title}',
   'gallery.readings': '真机读数',
   'gallery.quotes': '原话',
@@ -317,20 +318,44 @@ export const zh = {
   'gallery.copied': '已复制',
   'gallery.close': '关闭',
   'gallery.sample.external-mcp.title': '外部 MCP 客户端：读，并有一件受卡的写',
-  'gallery.sample.external-mcp.claim': '登记在册的四个只读工具，加一件受卡的写：归档只在应用自己的卡答复之后发生，每次调用仍留一条审计行。',
-  'gallery.sample.external-mcp.judgment': '跑完应得 2 passed；工具名与登记表相符，卡被取消时数据一个字节未动，审计行的调用 id 与 broker 的判词逐条相同。',
+  'gallery.sample.external-mcp.claim':
+    '登记在册的四个只读工具，加一件受卡的写：归档只在应用自己的卡答复之后发生，每次调用仍留一条审计行。',
+  'gallery.sample.external-mcp.judgment':
+    '跑完应得 2 passed；工具名与登记表相符，卡被取消时数据一个字节未动，审计行的调用 id 与 broker 的判词逐条相同。',
   'gallery.sample.citation-discovery.title': '找出谁引用了这篇论文，含中文源',
   'gallery.sample.citation-discovery.claim': '每行都带理由；判据是出版方所在国，不是期刊语种。',
-  'gallery.sample.citation-discovery.judgment': '200 行样本里，194 行靠出版方国别命中，语种字段只抓到 2 行。',
+  'gallery.sample.citation-discovery.judgment':
+    '200 行样本里，194 行靠出版方国别命中，语种字段只抓到 2 行。',
   'gallery.sample.session-package.title': '导入后数字可以复算的会话包',
-  'gallery.sample.session-package.claim': '桌面、Web、CLI 导出的 payload 摘要相同；导入的复算结论落进一条能跨进程读的记录。',
-  'gallery.sample.session-package.judgment': '三端 payload 摘要必须相同；整包摘要允许不同，且唯一允许的差异来自导出时间戳。',
+  'gallery.sample.session-package.claim':
+    '桌面、Web、CLI 导出的 payload 摘要相同；导入的复算结论落进一条能跨进程读的记录。',
+  'gallery.sample.session-package.judgment':
+    '三端 payload 摘要必须相同；整包摘要允许不同，且唯一允许的差异来自导出时间戳。',
   'gallery.sample.long-session.title': '长会话仍然可读，每轮都说清花了多少',
-  'gallery.sample.long-session.claim': '已结束的轮次折成摘要行，最新一轮保持展开，摘要行带这一轮的词元数。',
-  'gallery.sample.long-session.judgment': '点摘要行：最新一轮折到 0 行、再点回来；没有用量上报时行上写「未记录用量」，不写 0。',
+  'gallery.sample.long-session.claim':
+    '已结束的轮次折成摘要行，最新一轮保持展开，摘要行带这一轮的词元数。',
+  'gallery.sample.long-session.judgment':
+    '点摘要行：最新一轮折到 0 行、再点回来；没有用量上报时行上写「未记录用量」，不写 0。',
   'gallery.sample.docx-fidelity.title': 'DOCX 表格按文件里写的规则来画',
-  'gallery.sample.docx-fidelity.claim': '外框与内部网格分开，表样式能解析，没写规则的表格不会被凭空补上框线。',
-  'gallery.sample.docx-fidelity.judgment': '真预览里同一个格子的外框是双线绿、内部边是细灰线；把协调关掉，内部边就变成外框那种绿。',
+  'gallery.sample.docx-fidelity.claim':
+    '外框与内部网格分开，表样式能解析，没写规则的表格不会被凭空补上框线。',
+  'gallery.sample.docx-fidelity.judgment':
+    '真预览里同一个格子的外框是双线绿、内部边是细灰线；把协调关掉，内部边就变成外框那种绿。',
+  'gallery.sample.package-readings.title': '导入判定是能复算的数字',
+  'gallery.sample.package-readings.claim':
+    '存档把「复算后相等」与「只是声明相符」分开，绝不把 0 当成测量值。',
+  'gallery.sample.package-readings.judgment':
+    '期望 usage 匹配（turns 1）、toolCalls 匹配（rows 0）并附 absent:no-tool-calls —— 那个 0 是标注过的，不是推出来的。',
+  'gallery.sample.session-density.title': '一屏装得下四轮',
+  'gallery.sample.session-density.claim':
+    '已结束的回合折成 24px 一行，转录把空间留给答案，而不是脚手架。',
+  'gallery.sample.session-density.judgment':
+    '期望 perTurn 143、转录区 572px：滚动前约五轮，每条折叠行实测 24px。',
+  'gallery.sample.import-authorization.title': '远端面的导入在执行前就被拒绝',
+  'gallery.sample.import-authorization.claim':
+    '导入通道只限本机：远端请求拿到 401，并留下写明理由的权限决定。',
+  'gallery.sample.import-authorization.judgment':
+    '这是路由层用例，不是真实配对远端会话 —— 它证明拒绝路径已接通，不等于现场实测。',
   'home.projects': '项目',
   'home.envAttentionOne': '{label} 需要处理',
   'home.envAttentionMany': '{n} 项环境问题需要处理',

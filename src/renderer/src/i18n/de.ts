@@ -956,7 +956,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.sessions': 'Sitzungen',
   'home.sessionsPlaceholder': 'Sitzungen, die Sie starten, erscheinen hier.',
   'home.useCaseGallery': 'Anwendungsgalerie',
-  'home.useCaseGalleryIntro': 'Jede Karte ist ein Lauf auf diesem Rechner. Öffnen Sie eine, um Messwerte, Originalwortlaut und die Wiederholung zu sehen.',
+  'home.useCaseGalleryIntro':
+    'Jede Karte ist ein Lauf auf diesem Rechner. Öffnen Sie eine, um Messwerte, Originalwortlaut und die Wiederholung zu sehen.',
   'gallery.open': 'Beispiel öffnen: {title}',
   'gallery.readings': 'Auf diesem Rechner gemessen',
   'gallery.quotes': 'Im Originalwortlaut',
@@ -965,21 +966,53 @@ export const de: Partial<Record<ZhKey, string>> = {
   'gallery.copyCommand': 'Befehl kopieren',
   'gallery.copied': 'Kopiert',
   'gallery.close': 'Schließen',
-  'gallery.sample.external-mcp.title': 'Externer MCP-Client: Lesen und ein Schreibvorgang hinter der Karte',
-  'gallery.sample.external-mcp.claim': 'Vier registrierte Lesezugriffe und ein Schreibvorgang hinter der Karte: Das Archivieren läuft erst nach der Antwort der app-eigenen Karte, und jeder Aufruf hinterlässt eine Prüfzeile.',
-  'gallery.sample.external-mcp.judgment': 'Erwartet werden 2 passed; die Werkzeugnamen stimmen mit dem Verzeichnis überein, eine abgelehnte Karte ändert nichts, und jede Prüfzeile teilt ihre Aufruf-ID mit der Entscheidung des Brokers.',
-  'gallery.sample.citation-discovery.title': 'Finden, wer eine Arbeit zitiert — auch chinesische Quellen',
-  'gallery.sample.citation-discovery.claim': 'Jede Zeile trägt ihren Grund; entscheidend ist das Land des Verlags, nicht die Sprache der Zeitschrift.',
-  'gallery.sample.citation-discovery.judgment': 'In einer Stichprobe von 200 Zeilen treffen 194 über das Verlagsland, das Sprachfeld nur 2.',
-  'gallery.sample.session-package.title': 'Ein Paket, dessen Zahlen nach dem Import nachgerechnet werden können',
-  'gallery.sample.session-package.claim': 'Desktop, Web und CLI erzeugen denselben Payload-Abdruck, und das Importurteil bleibt in einem Datensatz, der den Prozess überlebt.',
-  'gallery.sample.session-package.judgment': 'Die drei Payload-Abdrucke müssen gleich sein; die Paketabdrucke dürfen abweichen, und die einzige zulässige Ursache ist der Exportzeitpunkt.',
-  'gallery.sample.long-session.title': 'Eine lange Sitzung bleibt lesbar, und jede Runde nennt ihre Kosten',
-  'gallery.sample.long-session.claim': 'Abgeschlossene Runden falten sich in eine Sammelzeile, die neueste bleibt offen, und die Zeile trägt die Token dieser Runde.',
-  'gallery.sample.long-session.judgment': 'Klicken Sie die Sammelzeile: Die neueste Runde faltet auf null Zeilen und öffnet wieder, und ohne gemeldete Nutzung steht das da statt einer Null.',
-  'gallery.sample.docx-fidelity.title': 'Eine DOCX-Tabelle zeichnet die Regeln, die die Datei nennt',
-  'gallery.sample.docx-fidelity.claim': 'Rahmen und Innenraster bleiben getrennt, ein Tabellenstil wird aufgelöst, und eine Tabelle ohne Regeln bekommt keinen erfundenen Rahmen.',
-  'gallery.sample.docx-fidelity.judgment': 'In der echten Vorschau liest eine Zelle einen doppelten grünen Rahmen, während ihre Innenkanten hauchdünn grau bleiben; schaltet man den Abgleich ab, werden diese Innenkanten grün wie der Rahmen.',
+  'gallery.sample.external-mcp.title':
+    'Externer MCP-Client: Lesen und ein Schreibvorgang hinter der Karte',
+  'gallery.sample.external-mcp.claim':
+    'Vier registrierte Lesezugriffe und ein Schreibvorgang hinter der Karte: Das Archivieren läuft erst nach der Antwort der app-eigenen Karte, und jeder Aufruf hinterlässt eine Prüfzeile.',
+  'gallery.sample.external-mcp.judgment':
+    'Erwartet werden 2 passed; die Werkzeugnamen stimmen mit dem Verzeichnis überein, eine abgelehnte Karte ändert nichts, und jede Prüfzeile teilt ihre Aufruf-ID mit der Entscheidung des Brokers.',
+  'gallery.sample.citation-discovery.title':
+    'Finden, wer eine Arbeit zitiert — auch chinesische Quellen',
+  'gallery.sample.citation-discovery.claim':
+    'Jede Zeile trägt ihren Grund; entscheidend ist das Land des Verlags, nicht die Sprache der Zeitschrift.',
+  'gallery.sample.citation-discovery.judgment':
+    'In einer Stichprobe von 200 Zeilen treffen 194 über das Verlagsland, das Sprachfeld nur 2.',
+  'gallery.sample.session-package.title':
+    'Ein Paket, dessen Zahlen nach dem Import nachgerechnet werden können',
+  'gallery.sample.session-package.claim':
+    'Desktop, Web und CLI erzeugen denselben Payload-Abdruck, und das Importurteil bleibt in einem Datensatz, der den Prozess überlebt.',
+  'gallery.sample.session-package.judgment':
+    'Die drei Payload-Abdrucke müssen gleich sein; die Paketabdrucke dürfen abweichen, und die einzige zulässige Ursache ist der Exportzeitpunkt.',
+  'gallery.sample.long-session.title':
+    'Eine lange Sitzung bleibt lesbar, und jede Runde nennt ihre Kosten',
+  'gallery.sample.long-session.claim':
+    'Abgeschlossene Runden falten sich in eine Sammelzeile, die neueste bleibt offen, und die Zeile trägt die Token dieser Runde.',
+  'gallery.sample.long-session.judgment':
+    'Klicken Sie die Sammelzeile: Die neueste Runde faltet auf null Zeilen und öffnet wieder, und ohne gemeldete Nutzung steht das da statt einer Null.',
+  'gallery.sample.docx-fidelity.title':
+    'Eine DOCX-Tabelle zeichnet die Regeln, die die Datei nennt',
+  'gallery.sample.docx-fidelity.claim':
+    'Rahmen und Innenraster bleiben getrennt, ein Tabellenstil wird aufgelöst, und eine Tabelle ohne Regeln bekommt keinen erfundenen Rahmen.',
+  'gallery.sample.docx-fidelity.judgment':
+    'In der echten Vorschau liest eine Zelle einen doppelten grünen Rahmen, während ihre Innenkanten hauchdünn grau bleiben; schaltet man den Abgleich ab, werden diese Innenkanten grün wie der Rahmen.',
+  'gallery.sample.package-readings.title':
+    'Das Import-Urteil ist eine Zahl, die sich nachrechnen lässt',
+  'gallery.sample.package-readings.claim':
+    'Der Datensatz trennt „abgeleitet und verglichen“ von „nur erklärt und bestätigt“ — eine Null wird nie als Messung ausgegeben.',
+  'gallery.sample.package-readings.judgment':
+    'Erwartet: usage match mit turns 1 und toolCalls match mit rows 0 plus absent:no-tool-calls — die Null ist gekennzeichnet, nicht erschlossen.',
+  'gallery.sample.session-density.title': 'Vier Runden passen auf einen Bildschirm',
+  'gallery.sample.session-density.claim':
+    'Abgeschlossene Runden falten sich zu einer 24-px-Zeile, damit der Verlauf Platz für die Antwort hat statt für das Gerüst.',
+  'gallery.sample.session-density.judgment':
+    'Erwartet: perTurn 143 bei 572 px Verlauf — rund fünf Runden bis zum Scrollen, jede gefaltete Zeile 24 px.',
+  'gallery.sample.import-authorization.title':
+    'Ein Import von einer entfernten Oberfläche wird vor der Ausführung abgelehnt',
+  'gallery.sample.import-authorization.claim':
+    'Der Importkanal ist nur lokal: eine entfernte Anfrage erhält 401 und hinterlässt eine Berechtigungsentscheidung mit Begründung.',
+  'gallery.sample.import-authorization.judgment':
+    'Dies ist eine Prüfung der Routenschicht, keine gekoppelte entfernte Sitzung — sie belegt den Ablehnungspfad, nicht einen Feldtest.',
   'home.someArtifactsMissing': 'Einige Artefaktergebnisse fehlen möglicherweise.',
   'home.unknownProject': 'Unbekanntes Projekt',
   'home.unknownSession': 'Unbekannte Sitzung',

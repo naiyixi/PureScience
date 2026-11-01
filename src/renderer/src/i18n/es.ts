@@ -947,7 +947,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'home.sessions': 'Sesiones',
   'home.sessionsPlaceholder': 'Las sesiones que inicies aparecerán aquí.',
   'home.useCaseGallery': 'Galería de casos de uso',
-  'home.useCaseGalleryIntro': 'Cada tarjeta es una ejecución real en este equipo. Ábrela para ver las mediciones, las palabras originales y cómo repetirla.',
+  'home.useCaseGalleryIntro':
+    'Cada tarjeta es una ejecución real en este equipo. Ábrela para ver las mediciones, las palabras originales y cómo repetirla.',
   'gallery.open': 'Abrir muestra: {title}',
   'gallery.readings': 'Medido en este equipo',
   'gallery.quotes': 'Palabras originales',
@@ -957,20 +958,49 @@ export const es: Partial<Record<ZhKey, string>> = {
   'gallery.copied': 'Copiado',
   'gallery.close': 'Cerrar',
   'gallery.sample.external-mcp.title': 'Cliente MCP externo: lectura y una escritura con tarjeta',
-  'gallery.sample.external-mcp.claim': 'Cuatro lecturas registradas y una escritura con tarjeta: el archivado solo ocurre tras la respuesta de la tarjeta de la propia aplicación, y cada llamada deja una línea de auditoría.',
-  'gallery.sample.external-mcp.judgment': 'Se esperan 2 passed; los nombres coinciden con el registro, una tarjeta cancelada no cambia nada y cada línea de auditoría comparte su id de llamada con la decisión del broker.',
+  'gallery.sample.external-mcp.claim':
+    'Cuatro lecturas registradas y una escritura con tarjeta: el archivado solo ocurre tras la respuesta de la tarjeta de la propia aplicación, y cada llamada deja una línea de auditoría.',
+  'gallery.sample.external-mcp.judgment':
+    'Se esperan 2 passed; los nombres coinciden con el registro, una tarjeta cancelada no cambia nada y cada línea de auditoría comparte su id de llamada con la decisión del broker.',
   'gallery.sample.citation-discovery.title': 'Ver quién cita un artículo, incluidas fuentes chinas',
-  'gallery.sample.citation-discovery.claim': 'Cada fila lleva su motivo; decide el país del editor, no el idioma de la revista.',
-  'gallery.sample.citation-discovery.judgment': 'En una muestra de 200 filas, 194 se detectan por el país del editor y el campo de idioma solo 2.',
-  'gallery.sample.session-package.title': 'Un paquete cuyas cifras se pueden recalcular tras importarlo',
-  'gallery.sample.session-package.claim': 'El escritorio, la Web y la CLI producen el mismo resumen del payload, y el veredicto de importación queda en un registro que sobrevive al proceso.',
-  'gallery.sample.session-package.judgment': 'Los tres resúmenes del payload deben coincidir; los del paquete pueden diferir y la única causa admitida es la marca de tiempo de exportación.',
-  'gallery.sample.long-session.title': 'Una sesión larga sigue siendo legible y cada turno dice cuánto costó',
-  'gallery.sample.long-session.claim': 'Los turnos cerrados se pliegan en una fila de resumen, el más reciente queda abierto y la fila lleva los tokens de ese turno.',
-  'gallery.sample.long-session.judgment': 'Pulsa la fila de resumen: el turno más reciente se pliega a cero filas y se abre de nuevo, y sin uso informado lo dice en lugar de mostrar un cero.',
+  'gallery.sample.citation-discovery.claim':
+    'Cada fila lleva su motivo; decide el país del editor, no el idioma de la revista.',
+  'gallery.sample.citation-discovery.judgment':
+    'En una muestra de 200 filas, 194 se detectan por el país del editor y el campo de idioma solo 2.',
+  'gallery.sample.session-package.title':
+    'Un paquete cuyas cifras se pueden recalcular tras importarlo',
+  'gallery.sample.session-package.claim':
+    'El escritorio, la Web y la CLI producen el mismo resumen del payload, y el veredicto de importación queda en un registro que sobrevive al proceso.',
+  'gallery.sample.session-package.judgment':
+    'Los tres resúmenes del payload deben coincidir; los del paquete pueden diferir y la única causa admitida es la marca de tiempo de exportación.',
+  'gallery.sample.long-session.title':
+    'Una sesión larga sigue siendo legible y cada turno dice cuánto costó',
+  'gallery.sample.long-session.claim':
+    'Los turnos cerrados se pliegan en una fila de resumen, el más reciente queda abierto y la fila lleva los tokens de ese turno.',
+  'gallery.sample.long-session.judgment':
+    'Pulsa la fila de resumen: el turno más reciente se pliega a cero filas y se abre de nuevo, y sin uso informado lo dice en lugar de mostrar un cero.',
   'gallery.sample.docx-fidelity.title': 'Una tabla DOCX dibuja las reglas que declara el archivo',
-  'gallery.sample.docx-fidelity.claim': 'El marco y la rejilla interior quedan separados, el estilo de tabla se resuelve y una tabla sin reglas no recibe un borde inventado.',
-  'gallery.sample.docx-fidelity.judgment': 'En la vista previa real, una celda muestra un marco verde doble mientras sus bordes interiores siguen grises y finos; si se desactiva la reconciliación, esos bordes interiores pasan al verde del marco.',
+  'gallery.sample.docx-fidelity.claim':
+    'El marco y la rejilla interior quedan separados, el estilo de tabla se resuelve y una tabla sin reglas no recibe un borde inventado.',
+  'gallery.sample.docx-fidelity.judgment':
+    'En la vista previa real, una celda muestra un marco verde doble mientras sus bordes interiores siguen grises y finos; si se desactiva la reconciliación, esos bordes interiores pasan al verde del marco.',
+  'gallery.sample.package-readings.title':
+    'El veredicto de importación es un número que se puede recalcular',
+  'gallery.sample.package-readings.claim':
+    'El registro separa «derivado y comparado» de «solo declarado y coincidente», así que un cero nunca se presenta como medición.',
+  'gallery.sample.package-readings.judgment':
+    'Espera usage match con turns 1 y toolCalls match con rows 0 más absent:no-tool-calls: el cero está etiquetado, nunca supuesto.',
+  'gallery.sample.session-density.title': 'Cuatro turnos caben en una pantalla',
+  'gallery.sample.session-density.claim':
+    'Los turnos cerrados se pliegan en una fila de 24 px, así la transcripción gasta su espacio en la respuesta y no en el andamiaje.',
+  'gallery.sample.session-density.judgment':
+    'Espera perTurn 143 sobre una transcripción de 572 px: unos cinco turnos antes de desplazar, y cada fila plegada mide 24 px.',
+  'gallery.sample.import-authorization.title':
+    'Una importación desde una superficie remota se rechaza antes de ejecutarse',
+  'gallery.sample.import-authorization.claim':
+    'El canal de importación es solo local: una petición remota recibe 401 y deja una decisión de permiso que nombra el motivo.',
+  'gallery.sample.import-authorization.judgment':
+    'Esto es una prueba de la capa de rutas, no una sesión remota emparejada: muestra que la ruta de rechazo está conectada, no una prueba de campo.',
   'home.someArtifactsMissing': 'Es posible que falten algunos resultados de artefactos.',
   'home.unknownProject': 'Proyecto desconocido',
   'home.unknownSession': 'Sesión desconocida',

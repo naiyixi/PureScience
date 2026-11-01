@@ -918,7 +918,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.sessions': '세션',
   'home.sessionsPlaceholder': '시작한 세션이 여기에 표시됩니다.',
   'home.useCaseGallery': '사용 사례 갤러리',
-  'home.useCaseGalleryIntro': '각 카드는 이 컴퓨터에서 실제로 실행한 기록입니다. 열면 측정값, 원문, 다시 실행하는 방법이 표시됩니다.',
+  'home.useCaseGalleryIntro':
+    '각 카드는 이 컴퓨터에서 실제로 실행한 기록입니다. 열면 측정값, 원문, 다시 실행하는 방법이 표시됩니다.',
   'gallery.open': '샘플 열기: {title}',
   'gallery.readings': '실측값',
   'gallery.quotes': '원문 그대로',
@@ -928,20 +929,45 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'gallery.copied': '복사됨',
   'gallery.close': '닫기',
   'gallery.sample.external-mcp.title': '외부 MCP 클라이언트: 읽기와 승인 카드를 거치는 쓰기 1건',
-  'gallery.sample.external-mcp.claim': '등록된 읽기 4개와 승인 카드를 거치는 쓰기 1개. 보관은 앱 자체의 카드 응답 이후에만 실행되고, 호출마다 감사 줄이 한 줄 남습니다.',
-  'gallery.sample.external-mcp.judgment': '2 passed가 나와야 합니다. 도구 이름이 등록부와 일치하고, 카드를 취소하면 아무것도 바뀌지 않으며, 감사 줄은 호출 id를 브로커의 판정과 공유합니다.',
+  'gallery.sample.external-mcp.claim':
+    '등록된 읽기 4개와 승인 카드를 거치는 쓰기 1개. 보관은 앱 자체의 카드 응답 이후에만 실행되고, 호출마다 감사 줄이 한 줄 남습니다.',
+  'gallery.sample.external-mcp.judgment':
+    '2 passed가 나와야 합니다. 도구 이름이 등록부와 일치하고, 카드를 취소하면 아무것도 바뀌지 않으며, 감사 줄은 호출 id를 브로커의 판정과 공유합니다.',
   'gallery.sample.citation-discovery.title': '누가 인용했는지 찾기(중국어 출처 포함)',
-  'gallery.sample.citation-discovery.claim': '각 행에 근거가 붙고, 판단 기준은 출판사의 국가이지 저널 언어가 아닙니다.',
-  'gallery.sample.citation-discovery.judgment': '200행 표본에서 194행이 출판사 국가로 잡히고 언어 필드로는 2행만 잡힙니다.',
+  'gallery.sample.citation-discovery.claim':
+    '각 행에 근거가 붙고, 판단 기준은 출판사의 국가이지 저널 언어가 아닙니다.',
+  'gallery.sample.citation-discovery.judgment':
+    '200행 표본에서 194행이 출판사 국가로 잡히고 언어 필드로는 2행만 잡힙니다.',
   'gallery.sample.session-package.title': '가져온 뒤 숫자를 다시 계산할 수 있는 패키지',
-  'gallery.sample.session-package.claim': '데스크톱, 웹, CLI가 같은 payload 다이제스트를 내고 가져오기 판정은 프로세스가 끝나도 남는 기록에 남습니다.',
-  'gallery.sample.session-package.judgment': '세 payload 다이제스트는 같아야 합니다. 패키지 전체는 달라도 되며 허용되는 이유는 내보내기 시각뿐입니다.',
+  'gallery.sample.session-package.claim':
+    '데스크톱, 웹, CLI가 같은 payload 다이제스트를 내고 가져오기 판정은 프로세스가 끝나도 남는 기록에 남습니다.',
+  'gallery.sample.session-package.judgment':
+    '세 payload 다이제스트는 같아야 합니다. 패키지 전체는 달라도 되며 허용되는 이유는 내보내기 시각뿐입니다.',
   'gallery.sample.long-session.title': '긴 세션도 읽을 수 있고 각 턴이 비용을 말합니다',
-  'gallery.sample.long-session.claim': '끝난 턴은 요약 줄로 접히고 최신 턴은 열린 채로 남으며, 요약 줄에 그 턴의 토큰 수가 표시됩니다.',
-  'gallery.sample.long-session.judgment': '요약 줄을 클릭하면 최신 턴이 0행으로 접히고 다시 열립니다. 사용량 보고가 없으면 0 대신 기록되지 않음으로 표시합니다.',
+  'gallery.sample.long-session.claim':
+    '끝난 턴은 요약 줄로 접히고 최신 턴은 열린 채로 남으며, 요약 줄에 그 턴의 토큰 수가 표시됩니다.',
+  'gallery.sample.long-session.judgment':
+    '요약 줄을 클릭하면 최신 턴이 0행으로 접히고 다시 열립니다. 사용량 보고가 없으면 0 대신 기록되지 않음으로 표시합니다.',
   'gallery.sample.docx-fidelity.title': 'DOCX 표는 파일이 선언한 규칙대로 그립니다',
-  'gallery.sample.docx-fidelity.claim': '바깥 테두리와 안쪽 격자를 분리하고 표 스타일을 해석하며, 규칙이 없는 표에 테두리를 임의로 더하지 않습니다.',
-  'gallery.sample.docx-fidelity.judgment': '실제 미리보기에서 한 셀의 바깥 테두리는 녹색 이중선이고 안쪽 변은 가는 회색으로 남습니다. 조정을 끄면 그 안쪽 변이 바깥 테두리의 녹색이 됩니다.',
+  'gallery.sample.docx-fidelity.claim':
+    '바깥 테두리와 안쪽 격자를 분리하고 표 스타일을 해석하며, 규칙이 없는 표에 테두리를 임의로 더하지 않습니다.',
+  'gallery.sample.docx-fidelity.judgment':
+    '실제 미리보기에서 한 셀의 바깥 테두리는 녹색 이중선이고 안쪽 변은 가는 회색으로 남습니다. 조정을 끄면 그 안쪽 변이 바깥 테두리의 녹색이 됩니다.',
+  'gallery.sample.package-readings.title': '가져오기 판정은 다시 계산할 수 있는 숫자입니다',
+  'gallery.sample.package-readings.claim':
+    '기록은 ‘파생해 비교함’과 ‘선언만 일치함’을 구분합니다. 0을 측정값으로 제시하지 않습니다.',
+  'gallery.sample.package-readings.judgment':
+    'usage match(turns 1)와 toolCalls match(rows 0)에 absent:no-tool-calls가 붙기를 기대합니다. 0은 표시된 값이며 추정이 아닙니다.',
+  'gallery.sample.session-density.title': '한 화면에 네 턴이 들어갑니다',
+  'gallery.sample.session-density.claim':
+    '끝난 턴은 24px 한 줄로 접혀, 기록이 골격이 아니라 답에 공간을 씁니다.',
+  'gallery.sample.session-density.judgment':
+    '572px 기록에서 perTurn 143을 기대합니다. 스크롤 전 약 다섯 턴이고, 접힌 줄은 모두 24px입니다.',
+  'gallery.sample.import-authorization.title': '원격 면에서의 가져오기는 실행 전에 거부됩니다',
+  'gallery.sample.import-authorization.claim':
+    '가져오기 경로는 로컬 전용입니다. 원격 요청은 401을 받고 이유를 적은 권한 결정을 남깁니다.',
+  'gallery.sample.import-authorization.judgment':
+    '이것은 라우트 계층 검사이며 실제로 페어링된 원격 세션이 아닙니다. 거부 경로가 연결되었음을 보여줄 뿐, 현장 시험은 아닙니다.',
   'home.someArtifactsMissing': '일부 산출물 결과가 누락되었을 수 있습니다.',
   'home.unknownProject': '알 수 없는 프로젝트',
   'home.unknownSession': '알 수 없는 세션',

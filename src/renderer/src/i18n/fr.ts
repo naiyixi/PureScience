@@ -953,7 +953,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.sessions': 'Sessions',
   'home.sessionsPlaceholder': 'Les sessions que vous démarrez apparaîtront ici.',
   'home.useCaseGallery': 'Galerie de cas d’usage',
-  'home.useCaseGalleryIntro': 'Chaque carte correspond à une exécution réelle sur cette machine. Ouvrez-la pour voir les mesures, les mots d’origine et la façon de la rejouer.',
+  'home.useCaseGalleryIntro':
+    'Chaque carte correspond à une exécution réelle sur cette machine. Ouvrez-la pour voir les mesures, les mots d’origine et la façon de la rejouer.',
   'gallery.open': 'Ouvrir l’exemple : {title}',
   'gallery.readings': 'Mesuré sur cette machine',
   'gallery.quotes': 'Mots d’origine',
@@ -962,21 +963,52 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'gallery.copyCommand': 'Copier la commande',
   'gallery.copied': 'Copié',
   'gallery.close': 'Fermer',
-  'gallery.sample.external-mcp.title': 'Client MCP externe : lecture et une écriture soumise à la carte',
-  'gallery.sample.external-mcp.claim': 'Quatre lectures enregistrées et une écriture soumise à la carte : l’archivage n’a lieu qu’après la réponse de la carte de l’application, et chaque appel laisse une ligne d’audit.',
-  'gallery.sample.external-mcp.judgment': 'Attendez 2 passed ; les noms correspondent au registre, une carte annulée ne change rien et chaque ligne d’audit partage son identifiant d’appel avec la décision du broker.',
-  'gallery.sample.citation-discovery.title': 'Trouver qui cite un article, sources chinoises comprises',
-  'gallery.sample.citation-discovery.claim': 'Chaque ligne porte sa raison ; c’est le pays de l’éditeur, non la langue de la revue, qui décide.',
-  'gallery.sample.citation-discovery.judgment': 'Sur un échantillon de 200 lignes, 194 sont trouvées par le pays de l’éditeur et 2 seulement par le champ de langue.',
+  'gallery.sample.external-mcp.title':
+    'Client MCP externe : lecture et une écriture soumise à la carte',
+  'gallery.sample.external-mcp.claim':
+    'Quatre lectures enregistrées et une écriture soumise à la carte : l’archivage n’a lieu qu’après la réponse de la carte de l’application, et chaque appel laisse une ligne d’audit.',
+  'gallery.sample.external-mcp.judgment':
+    'Attendez 2 passed ; les noms correspondent au registre, une carte annulée ne change rien et chaque ligne d’audit partage son identifiant d’appel avec la décision du broker.',
+  'gallery.sample.citation-discovery.title':
+    'Trouver qui cite un article, sources chinoises comprises',
+  'gallery.sample.citation-discovery.claim':
+    'Chaque ligne porte sa raison ; c’est le pays de l’éditeur, non la langue de la revue, qui décide.',
+  'gallery.sample.citation-discovery.judgment':
+    'Sur un échantillon de 200 lignes, 194 sont trouvées par le pays de l’éditeur et 2 seulement par le champ de langue.',
   'gallery.sample.session-package.title': 'Un paquet dont les chiffres se recalculent après import',
-  'gallery.sample.session-package.claim': 'Le bureau, le Web et la CLI produisent la même empreinte de charge utile, et le verdict d’import reste dans un enregistrement qui survit au processus.',
-  'gallery.sample.session-package.judgment': 'Les trois empreintes de charge utile doivent être identiques ; celles du paquet peuvent différer, et la seule cause admise est l’horodatage d’export.',
-  'gallery.sample.long-session.title': 'Une longue session reste lisible, et chaque tour annonce son coût',
-  'gallery.sample.long-session.claim': 'Les tours terminés se replient en une ligne de résumé, le plus récent reste ouvert, et la ligne porte les jetons de ce tour.',
-  'gallery.sample.long-session.judgment': 'Cliquez la ligne de résumé : le tour le plus récent se replie à zéro ligne puis se rouvre, et sans usage remonté la ligne le dit au lieu d’afficher zéro.',
-  'gallery.sample.docx-fidelity.title': 'Un tableau DOCX dessine les règles déclarées par le fichier',
-  'gallery.sample.docx-fidelity.claim': 'Le cadre et la grille intérieure restent distincts, un style de tableau est résolu, et un tableau sans règles ne reçoit pas de bordure inventée.',
-  'gallery.sample.docx-fidelity.judgment': 'Dans l’aperçu réel, une cellule affiche un cadre vert double tandis que ses bords intérieurs restent gris et fins ; en désactivant la réconciliation, ces bords intérieurs prennent le vert du cadre.',
+  'gallery.sample.session-package.claim':
+    'Le bureau, le Web et la CLI produisent la même empreinte de charge utile, et le verdict d’import reste dans un enregistrement qui survit au processus.',
+  'gallery.sample.session-package.judgment':
+    'Les trois empreintes de charge utile doivent être identiques ; celles du paquet peuvent différer, et la seule cause admise est l’horodatage d’export.',
+  'gallery.sample.long-session.title':
+    'Une longue session reste lisible, et chaque tour annonce son coût',
+  'gallery.sample.long-session.claim':
+    'Les tours terminés se replient en une ligne de résumé, le plus récent reste ouvert, et la ligne porte les jetons de ce tour.',
+  'gallery.sample.long-session.judgment':
+    'Cliquez la ligne de résumé : le tour le plus récent se replie à zéro ligne puis se rouvre, et sans usage remonté la ligne le dit au lieu d’afficher zéro.',
+  'gallery.sample.docx-fidelity.title':
+    'Un tableau DOCX dessine les règles déclarées par le fichier',
+  'gallery.sample.docx-fidelity.claim':
+    'Le cadre et la grille intérieure restent distincts, un style de tableau est résolu, et un tableau sans règles ne reçoit pas de bordure inventée.',
+  'gallery.sample.docx-fidelity.judgment':
+    'Dans l’aperçu réel, une cellule affiche un cadre vert double tandis que ses bords intérieurs restent gris et fins ; en désactivant la réconciliation, ces bords intérieurs prennent le vert du cadre.',
+  'gallery.sample.package-readings.title':
+    'Le verdict d’import est un nombre que l’on peut recalculer',
+  'gallery.sample.package-readings.claim':
+    'L’enregistrement sépare « dérivé et comparé » de « seulement déclaré et concordant » : un zéro n’est jamais présenté comme une mesure.',
+  'gallery.sample.package-readings.judgment':
+    'Attendez usage match avec turns 1, et toolCalls match avec rows 0 plus absent:no-tool-calls — le zéro est étiqueté, jamais supposé.',
+  'gallery.sample.session-density.title': 'Quatre tours tiennent sur un écran',
+  'gallery.sample.session-density.claim':
+    'Les tours terminés se replient en une ligne de 24 px, la transcription garde donc sa place pour la réponse plutôt que pour l’échafaudage.',
+  'gallery.sample.session-density.judgment':
+    'Attendez perTurn 143 pour une transcription de 572 px : environ cinq tours avant de faire défiler, et chaque ligne repliée mesure 24 px.',
+  'gallery.sample.import-authorization.title':
+    'Un import depuis une surface distante est refusé avant de s’exécuter',
+  'gallery.sample.import-authorization.claim':
+    'Le canal d’import est local uniquement : une requête distante reçoit 401 et laisse une décision de permission qui en donne le motif.',
+  'gallery.sample.import-authorization.judgment':
+    'C’est un contrôle de la couche routage, pas une session distante appairée — il montre que le refus est câblé, pas un essai sur le terrain.',
   'home.someArtifactsMissing': 'Certains résultats d’artefacts peuvent manquer.',
   'home.unknownProject': 'Projet inconnu',
   'home.unknownSession': 'Session inconnue',

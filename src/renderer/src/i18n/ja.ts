@@ -928,7 +928,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.sessions': 'セッション',
   'home.sessionsPlaceholder': '開始したセッションがここに表示されます。',
   'home.useCaseGallery': 'ユースケースギャラリー',
-  'home.useCaseGalleryIntro': '各カードはこのマシンで実際に実行した記録です。開くと測定値・原文・再実行の手順が表示されます。',
+  'home.useCaseGalleryIntro':
+    '各カードはこのマシンで実際に実行した記録です。開くと測定値・原文・再実行の手順が表示されます。',
   'gallery.open': 'サンプルを開く: {title}',
   'gallery.readings': '実機での測定値',
   'gallery.quotes': '原文のまま',
@@ -937,21 +938,47 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'gallery.copyCommand': 'コマンドをコピー',
   'gallery.copied': 'コピーしました',
   'gallery.close': '閉じる',
-  'gallery.sample.external-mcp.title': '外部 MCP クライアント：読み取りと、承認カード越しの書き込み1件',
-  'gallery.sample.external-mcp.claim': '登録済みの読み取り4つと、承認カード越しの書き込み1つ。アーカイブはアプリ自身のカードへの回答後にだけ実行され、呼び出しごとに監査行が1行残ります。',
-  'gallery.sample.external-mcp.judgment': '2 passed になるはずです。ツール名は登録表と一致し、カードを取り消した場合は何も変わらず、監査行は呼び出し id をブローカーの判定と共有します。',
+  'gallery.sample.external-mcp.title':
+    '外部 MCP クライアント：読み取りと、承認カード越しの書き込み1件',
+  'gallery.sample.external-mcp.claim':
+    '登録済みの読み取り4つと、承認カード越しの書き込み1つ。アーカイブはアプリ自身のカードへの回答後にだけ実行され、呼び出しごとに監査行が1行残ります。',
+  'gallery.sample.external-mcp.judgment':
+    '2 passed になるはずです。ツール名は登録表と一致し、カードを取り消した場合は何も変わらず、監査行は呼び出し id をブローカーの判定と共有します。',
   'gallery.sample.citation-discovery.title': '誰が引用しているかを探す（中国語圏の出典も）',
-  'gallery.sample.citation-discovery.claim': '各行に理由が付き、判定は出版元の国であって誌の言語ではありません。',
-  'gallery.sample.citation-discovery.judgment': '200 行の標本では 194 行が出版元の国で当たり、言語フィールドでは 2 行だけです。',
+  'gallery.sample.citation-discovery.claim':
+    '各行に理由が付き、判定は出版元の国であって誌の言語ではありません。',
+  'gallery.sample.citation-discovery.judgment':
+    '200 行の標本では 194 行が出版元の国で当たり、言語フィールドでは 2 行だけです。',
   'gallery.sample.session-package.title': '取り込み後に数字を再計算できるパッケージ',
-  'gallery.sample.session-package.claim': 'デスクトップ・Web・CLI が同じ payload ダイジェストを出し、取り込みの判定はプロセスを超えて残る記録に入ります。',
-  'gallery.sample.session-package.judgment': '3つの payload ダイジェストは一致する必要があります。パッケージ全体は異なってよく、許される理由はエクスポート時刻だけです。',
+  'gallery.sample.session-package.claim':
+    'デスクトップ・Web・CLI が同じ payload ダイジェストを出し、取り込みの判定はプロセスを超えて残る記録に入ります。',
+  'gallery.sample.session-package.judgment':
+    '3つの payload ダイジェストは一致する必要があります。パッケージ全体は異なってよく、許される理由はエクスポート時刻だけです。',
   'gallery.sample.long-session.title': '長いセッションでも読め、各ターンが消費量を語る',
-  'gallery.sample.long-session.claim': '終わったターンは要約行に畳まれ、最新は開いたままです。要約行にはそのターンのトークン数が入ります。',
-  'gallery.sample.long-session.judgment': '要約行をクリックすると最新ターンが 0 行に畳まれ、再度開きます。使用量の報告が無い場合は 0 ではなく「未記録」と表示します。',
+  'gallery.sample.long-session.claim':
+    '終わったターンは要約行に畳まれ、最新は開いたままです。要約行にはそのターンのトークン数が入ります。',
+  'gallery.sample.long-session.judgment':
+    '要約行をクリックすると最新ターンが 0 行に畳まれ、再度開きます。使用量の報告が無い場合は 0 ではなく「未記録」と表示します。',
   'gallery.sample.docx-fidelity.title': 'DOCX の表はファイルに書かれた罫線どおりに描く',
-  'gallery.sample.docx-fidelity.claim': '外枠と内側の罫線を分け、表スタイルも解決します。規則の無い表に枠を勝手に足しません。',
-  'gallery.sample.docx-fidelity.judgment': '実際のプレビューでは、あるセルの外枠は緑の二重線、内側の辺は細い灰色のままです。調整を切ると、その内側の辺が外枠と同じ緑になります。',
+  'gallery.sample.docx-fidelity.claim':
+    '外枠と内側の罫線を分け、表スタイルも解決します。規則の無い表に枠を勝手に足しません。',
+  'gallery.sample.docx-fidelity.judgment':
+    '実際のプレビューでは、あるセルの外枠は緑の二重線、内側の辺は細い灰色のままです。調整を切ると、その内側の辺が外枠と同じ緑になります。',
+  'gallery.sample.package-readings.title': 'インポートの判定は再計算できる数値です',
+  'gallery.sample.package-readings.claim':
+    '記録は「導出して比較した」と「宣言が一致しただけ」を分けます。0 を測定値として出すことはありません。',
+  'gallery.sample.package-readings.judgment':
+    'usage match（turns 1）と toolCalls match（rows 0）に absent:no-tool-calls が付くことを期待します。0 はラベル付きで、推測ではありません。',
+  'gallery.sample.session-density.title': '4 ターンが 1 画面に収まります',
+  'gallery.sample.session-density.claim':
+    '終わったターンは 24px の 1 行に畳まれ、記録は足場ではなく答えに場所を使えます。',
+  'gallery.sample.session-density.judgment':
+    '572px の記録で perTurn 143 を期待します。スクロール前に約 5 ターン、畳んだ行はどれも 24px です。',
+  'gallery.sample.import-authorization.title': 'リモート面からのインポートは実行前に拒否されます',
+  'gallery.sample.import-authorization.claim':
+    'インポート経路はローカル専用です。リモート要求は 401 を受け取り、理由を記した権限判断を残します。',
+  'gallery.sample.import-authorization.judgment':
+    'これはルート層の検査で、実際にペアリングしたリモートセッションではありません。拒否経路が配線済みであることを示すもので、現場試験ではありません。',
   'home.someArtifactsMissing': '一部の成果物の結果が欠落している可能性があります。',
   'home.unknownProject': '不明なプロジェクト',
   'home.unknownSession': '不明なセッション',

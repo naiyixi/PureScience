@@ -31,7 +31,14 @@ type UseCaseQuote = {
 /** The closed set of sample ids. A literal union so a mistyped id is a compile error, not a missing
  *  translation that silently renders the key. */
 type SampleId =
-  'external-mcp' | 'citation-discovery' | 'session-package' | 'long-session' | 'docx-fidelity'
+  | 'external-mcp'
+  | 'citation-discovery'
+  | 'session-package'
+  | 'long-session'
+  | 'docx-fidelity'
+  | 'package-readings'
+  | 'session-density'
+  | 'import-authorization'
 
 type UseCaseSample = {
   /** Stable id; also the DOM slot suffix and the i18n key segment. */
@@ -139,6 +146,61 @@ const USE_CASE_SAMPLES: UseCaseSample[] = [
       {
         text: '[office-preview] docx table borders reconciled',
         origin: 'console.info from the reconciliation step'
+      }
+    ]
+  },
+  {
+    id: 'package-readings',
+    evidence: ['docs/evidence/2026-10-29-d2-package-readings-recompute.md'],
+    command:
+      'npx playwright test e2e/certification/session-package-three-surfaces.spec.ts --workers=1',
+    readings: [
+      { label: 'readings.usage', value: '"usage": { "state": "match",' },
+      {
+        label: 'readings.toolCalls',
+        value: '"toolCalls": { "state": "match", "rows": 0, "unnamed": 0 }'
+      },
+      { label: 'CLI import', value: '233 ms' }
+    ],
+    quotes: [
+      {
+        text: '"toolCallsDeclared": { "recipe": "tool-call-readings:v1", "state": "absent:no-tool-calls", "unnamed": 0 }',
+        origin: 'the import record, as the app wrote it on disk'
+      }
+    ]
+  },
+  {
+    id: 'session-density',
+    evidence: ['docs/evidence/2026-10-29-e1-e2-long-session-readings.md'],
+    command: 'npx playwright test e2e/certification/session-density-reading.spec.ts --workers=1',
+    readings: [
+      {
+        label: 'four turns, one screen',
+        value:
+          '{"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}'
+      },
+      { label: 'folded summary row', value: 'folded summary row height: 24px' }
+    ],
+    quotes: [
+      {
+        text: 'Fetched 2 pages · 2 steps · 3ms · usage not recorded',
+        origin: 'the folded row, as the app rendered it'
+      }
+    ]
+  },
+  {
+    id: 'import-authorization',
+    evidence: ['docs/evidence/2026-10-29-d1-session-package-transport.md'],
+    command: 'npx vitest run src/main/web-service/http-server.test.ts',
+    readings: [
+      { label: 'desktop export, whole-package digest', value: 'a83ed9856bee' },
+      { label: 'desktop export, bytes', value: '2274' },
+      { label: 'import from a remote surface', value: '401' }
+    ],
+    quotes: [
+      {
+        text: "permission decision { decision: 'denied', surface: 'remote-web', channel: 'sessions:import-package',",
+        origin: 'main.log, before the importer is reached'
       }
     ]
   }

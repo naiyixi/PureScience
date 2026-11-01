@@ -321,7 +321,8 @@ export const en: Record<ZhKey, string> = {
   'home.noProjects': 'No projects yet. Create one to get started.',
   'home.sessionsPlaceholder': 'Sessions you start will appear here.',
   'home.useCaseGallery': 'Use-case gallery',
-  'home.useCaseGalleryIntro': 'Every card is a run this machine performed. Open one to see its readings, its own words, and how to rerun it.',
+  'home.useCaseGalleryIntro':
+    'Every card is a run this machine performed. Open one to see its readings, its own words, and how to rerun it.',
   'gallery.open': 'Open sample: {title}',
   'gallery.readings': 'Measured on this machine',
   'gallery.quotes': 'In its own words',
@@ -331,20 +332,47 @@ export const en: Record<ZhKey, string> = {
   'gallery.copied': 'Copied',
   'gallery.close': 'Close',
   'gallery.sample.external-mcp.title': 'Outside MCP client, with one gated write',
-  'gallery.sample.external-mcp.claim': 'Four registered reads and one gated write: the archive runs only after the app’s own card answers, and every call leaves one audit line.',
-  'gallery.sample.external-mcp.judgment': 'Expect 2 passed; the tool names match the registry, a cancelled card changes nothing, and each audit line shares its call id with the broker’s decision.',
+  'gallery.sample.external-mcp.claim':
+    'Four registered reads and one gated write: the archive runs only after the app’s own card answers, and every call leaves one audit line.',
+  'gallery.sample.external-mcp.judgment':
+    'Expect 2 passed; the tool names match the registry, a cancelled card changes nothing, and each audit line shares its call id with the broker’s decision.',
   'gallery.sample.citation-discovery.title': 'Find who cites a paper, Chinese sources included',
-  'gallery.sample.citation-discovery.claim': 'Every row carries its reason, and the publisher’s country — not the journal language — is what decides.',
-  'gallery.sample.citation-discovery.judgment': 'Over a 200-row sample, 194 rows are found by the publisher’s country and only 2 by the language field.',
+  'gallery.sample.citation-discovery.claim':
+    'Every row carries its reason, and the publisher’s country — not the journal language — is what decides.',
+  'gallery.sample.citation-discovery.judgment':
+    'Over a 200-row sample, 194 rows are found by the publisher’s country and only 2 by the language field.',
   'gallery.sample.session-package.title': 'A package whose numbers can be recomputed after import',
-  'gallery.sample.session-package.claim': 'Desktop, Web and CLI produce the same payload digest, and the import verdict is kept in a record that outlives the process.',
-  'gallery.sample.session-package.judgment': 'The three payload digests must be identical; the whole-package digests may differ, and the only allowed cause is the export timestamp.',
-  'gallery.sample.long-session.title': 'A long session stays readable, and each turn says what it cost',
-  'gallery.sample.long-session.claim': 'Settled turns fold into a summary row, the newest stays open, and the row carries that turn’s tokens.',
-  'gallery.sample.long-session.judgment': 'Click the summary row: the newest turn folds to zero rows and opens again, and with no usage reported the row says so instead of showing a zero.',
+  'gallery.sample.session-package.claim':
+    'Desktop, Web and CLI produce the same payload digest, and the import verdict is kept in a record that outlives the process.',
+  'gallery.sample.session-package.judgment':
+    'The three payload digests must be identical; the whole-package digests may differ, and the only allowed cause is the export timestamp.',
+  'gallery.sample.long-session.title':
+    'A long session stays readable, and each turn says what it cost',
+  'gallery.sample.long-session.claim':
+    'Settled turns fold into a summary row, the newest stays open, and the row carries that turn’s tokens.',
+  'gallery.sample.long-session.judgment':
+    'Click the summary row: the newest turn folds to zero rows and opens again, and with no usage reported the row says so instead of showing a zero.',
   'gallery.sample.docx-fidelity.title': 'A DOCX table draws the rules the file declares',
-  'gallery.sample.docx-fidelity.claim': 'The frame and the inner grid are kept apart, a table style is resolved, and a table with no rules gets no invented outline.',
-  'gallery.sample.docx-fidelity.judgment': 'In the real preview, one cell reads a double green frame while its inner edges stay hairline grey; switch the reconciliation off and those inner edges turn into the frame’s green.',
+  'gallery.sample.docx-fidelity.claim':
+    'The frame and the inner grid are kept apart, a table style is resolved, and a table with no rules gets no invented outline.',
+  'gallery.sample.docx-fidelity.judgment':
+    'In the real preview, one cell reads a double green frame while its inner edges stay hairline grey; switch the reconciliation off and those inner edges turn into the frame’s green.',
+  'gallery.sample.package-readings.title': 'The import verdict is a number you can recompute',
+  'gallery.sample.package-readings.claim':
+    'The record separates “derived and compared” from “declared and merely matched”, so a zero is never presented as a measurement.',
+  'gallery.sample.package-readings.judgment':
+    'Expect usage match with turns 1, and toolCalls match with rows 0 plus absent:no-tool-calls — the zero is labelled, never implied.',
+  'gallery.sample.session-density.title': 'Four turns fit on one screen',
+  'gallery.sample.session-density.claim':
+    'Settled turns fold into a 24px row, so the transcript spends its space on the answer instead of the scaffolding.',
+  'gallery.sample.session-density.judgment':
+    'Expect perTurn 143 against a 572px transcript: about five turns before scrolling, and every folded row measures 24px.',
+  'gallery.sample.import-authorization.title':
+    'An import from a remote surface is refused before it runs',
+  'gallery.sample.import-authorization.claim':
+    'The import channel is local-only: a remote request gets 401 and leaves a permission decision that names the reason.',
+  'gallery.sample.import-authorization.judgment':
+    'This is a route-layer check, not a paired remote session — it shows the denial path is wired, not a field test.',
   'home.projects': 'Projects',
   'home.envAttentionOne': '{label} needs attention',
   'home.envAttentionMany': '{n} environment items need attention',

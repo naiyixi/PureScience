@@ -1,5 +1,44 @@
 # PureScience 更新日记
 
+## v2.21.1 — 2026-11-01（画廊补三张能核的卡；打包态复现手段修对；三天问题复盘落档）
+
+**成熟度自陈**：这一版没有新的科学计算能力，做的是「让声称的东西更难造假」——画廊从 5 张到 8 张，新增的三张
+每一个数字都必须逐字出现在它自己的证据档里；打包态复现那套仪器修对了（之前的两次复现都是无效的，本文档里写明）；
+三天里遇到的问题逐条落档，包括**还没修的那一条**。凡是没修的，写在「未做」里，不写成「已完成」。
+
+### 一、用例画廊 5 → 8 张（H1 续）
+
+新增三张，全部来自本机实跑读数，不是描述：
+
+| 卡 | 读数（逐字取自证据档） | 重跑 |
+| --- | --- | --- |
+| `package-readings` 导入判定可复算 | `"usage": { "state": "match",` · `"toolCalls": { "state": "match", "rows": 0, "unnamed": 0 }` · CLI 导入 `233 ms` | `e2e/certification/session-package-three-surfaces.spec.ts` |
+| `session-density` 一屏四轮 | `{"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}` · `folded summary row height: 24px` | `e2e/certification/session-density-reading.spec.ts` |
+| `import-authorization` 远端导入被拒 | 桌面整包 `a83ed9856bee` / `2274` 字节 · 远端面 `401` | `src/main/web-service/http-server.test.ts` |
+
+判据仍是 `use-case-gallery.test.ts` 的硬守卫：卡上每个读数、每句引文必须在它点名的证据档里**逐字存在**，
+命令里的文件路径必须真实存在，9 国语言三个键齐全。改一个数就会红 —— 这是它存在的理由。
+
+### 二、打包态复现的仪器修对了（修的是「怎么查」，不是那条缺陷）
+
+- `PURESCIENCE_E2E_PACKAGED_SKIP_BYPASS=1`：打包跑但故意执行被 skip 的四条，否则「打包态停摆」永远只能靠猜。
+  实测：不加这个开关，本地打包跑一直是 `1 skipped`；加上之后 `1 failed` —— 真的执行了。
+- 夹具日志改写到 `<cwd>/test-results/fake-agent.log`：**应用给 agent 的是收敛过的 env**，
+  `PURESCIENCE_E2E_AGENT_LOG` 到不了子进程，上一版那条路是死的。
+
+### 三、三天问题复盘（`docs/evidence/2026-11-01-three-day-incident-review.md`）
+
+11 条，逐条写症状 / 定因 / 处置 / 现状。其中三条是这一版之前修掉的（macOS 14 runner 灰停、tag 与 `sourceSha`
+不一致、夹具工具调用 id 跨回合重复），两条是「没修但不再靠猜」（打包态筛选停摆、冷启动 51.8 秒），
+一条是**信息架构**而不是缺陷（31 个连接器 = 分组数，工具约 292 条）。
+
+### 未做（写在这里，不写进「已完成」）
+
+- **打包态文献筛选仍停在 0/N**：四条认证在打包车道具名 skip，dev 车道照真跑（16.2 s 通过）。
+  删掉 skip 的前提是修好它。
+- **连接器没有按学科领域分组**：现在只有 `featured` / `directory` 两种策展分类；31 是连接器数、不是能力数。
+- **打包 App 冷启动 51.8 秒未优化**：`ipc-handlers-registered=51016ms`，会伪装成别的症状（`firstWindow` 30 s 超时先到）。
+
 ## v2.21.0 — 2026-10-31（交付形态：包出去再回来能复算，长会话可读，外部客户端走同一张审批卡）
 
 **成熟度自陈**：这一版没有新的科学计算能力，做的是**交付形态**——同一个会话包能从窗口、Web、CLI 三条路出去并且回来时自带复算；
