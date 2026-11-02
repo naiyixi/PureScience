@@ -714,7 +714,24 @@ export class AgentRuntimeManager {
       // difference between installing and not. Existing callers without a list are unaffected.
       registries: DEFAULT_REGISTRIES
     })
-    if (result.ok) await this.detectCodebuddy()
+    if (result.ok) {
+      await this.detectCodebuddy()
+      // npm can exit 0 and leave nothing the app can use — a global prefix the app does not probe, a shim
+      // that exists but cannot report a version, a cache that short-circuits the install. Saying "installed"
+      // on the strength of an exit code is how a user ends up pressing Install forever while the card says
+      // "not installed", so the answer is checked before it is reported.
+      const after = await this.repository.getSettings()
+      if (!after.codebuddyPath) {
+        return {
+          ...result,
+          ok: false,
+          error:
+            "npm finished, but no runnable codebuddy was found afterwards. The install went to npm's global prefix (" +
+            'run `npm prefix -g` to see it) and the app probes `<prefix>/bin`, ~/.local/bin, ~/.codebuddy/bin, ' +
+            '/opt/homebrew/bin and /usr/local/bin. Nothing was changed for you.'
+        }
+      }
+    }
     return result
   }
 
