@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 
-import { CONNECTOR_TOOL_COUNTS } from '../../connectors/registry'
+import { CONNECTOR_TOOL_COUNTS } from '../connectors/registry'
 
 import type {
   AddCustomServerRequest,

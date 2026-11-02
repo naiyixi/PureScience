@@ -11,6 +11,7 @@ import type { ToolContext } from './types'
 const live = process.env.PURESCIENCE_LIVE_CONNECTORS === '1'
 
 const ctx: ToolContext = {
+  credentials: {},
   fetchJson: async (url) => (await fetch(url)).json(),
   fetchText: async (url) => (await fetch(url)).text(),
   fetchJsonWithHeaders: async (url) => {
@@ -28,7 +29,11 @@ const ctx: ToolContext = {
   postForm: async (url, form) => {
     const res = await fetch(url, { method: 'POST', body: form })
     return res.json()
-  }
+  },
+  // Required by the contract since the NCBI etiquette rewrite (`credentials` is read for the email/api key
+  // a tool has to send along). A live probe sends none — an empty bag is the honest value here, not a
+  // fabricated pair.
+  credentials: {}
 }
 
 describe.skipIf(!live)('live connector probes', () => {
