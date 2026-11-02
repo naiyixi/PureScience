@@ -14,7 +14,21 @@ test('a gallery card opens onto its readings, its own words, and a rerun command
 }) => {
   const page = await app.completeOnboarding()
 
+  // The samples live behind a disclosure (`data-slot="capability-samples"`): the home page leads with the
+  // reader's own cases, and the capability cards are what you open when you want the evidence. The entry is
+  // therefore the summary, not an always-on grid — this spec expands it with a real click instead of
+  // asserting that something the page deliberately folds away is already on screen (which is how it read
+  // as `resolved to <section …> — unexpected value "hidden"` on the certification lane).
+  const samples = page.locator('[data-slot="capability-samples"]')
+  const summary = samples.locator('summary')
+  await expect(summary).toBeVisible()
+
   const gallery = page.locator('[data-slot="use-case-gallery"]')
+  // Folded until asked. Pinning that keeps the disclosure honest: a grid that is always open would mean the
+  // home page leads with samples rather than with the work this machine actually did.
+  await expect(gallery).toBeHidden()
+
+  await summary.click()
   await expect(gallery).toBeVisible()
 
   // Eight since v2.21.1 (three cards joined: package-readings, session-density, import-authorization).

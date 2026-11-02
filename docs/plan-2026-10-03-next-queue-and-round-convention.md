@@ -15615,3 +15615,68 @@ lateMs 801  canaryMs 5496  inFlight 0
 `catalog-index.test.ts` 是它的在制品）⇒ 它落定前只登记、不落笔；落定后第一件事是量「每次保存是否都全量重扫文件索引」。
 ② `reviewer:get-for-session`（self-borne、7.6%）同样落在在制目录，继续不碰。
 ③ 并行会话在制件清单仍以 `git status --short` 为准；它落定前不碰上面那批路径。
+
+## 二百八十二、本轮追加（执行器，2026-11-03）—— P0 那条红不是 flaky：首页把样例折进了 disclosure，认证 spec 还在等它「常显」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git status --short` 里 11 个改动 + 1 份证据档**不是我的**（`src/main/notebook/repository*.ts`、`src/main/references/screening-service.ts`、
+  `src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/acp/runtime-coordinator.ts`、`src/shared/{reviewer,session-persistence}.ts`、
+  `docs/plan-2026-10-28-two-releases.md`、`docs/evidence/2026-11-01-reviewer-fix-loop-double-review.md`）⇒ **一个字节没碰**。
+  本轮只碰 `e2e/certification/use-case-gallery-evidence.spec.ts` 与这份台账。
+- 车道判决（`1010125c`，完整 40 位 `1010125c7252e7a92539136b1c14f42aefa91059`）：
+  - `Windows Full Test` **success**；
+  - `Nightly` **failure** —— 唯一失败作业是 `build / Build macos-arm64`（这次 `startedAt` 非空，**真跑了**）。
+    作业内 `Run P0 Electron certification` 为 **failure**（`1 failed / 3 flaky / 110 passed (35.3m)`），
+    随后的 `Record platform certification evidence` 被 skip，最后的 `Enforce platform certification` 读到 `P0_OUTCOME=failure` 才红
+    ⇒ 红的是 **P0 本身**，不是打包、不是签名、不是 `packaged_app`。
+  - 上一笔 `fe84e636` 的同一作业 `startedAt=null`（从未拿到 runner）⇒ `ccc741e5` 引入的这条红直到 `1010125c` 才被跑到。
+
+### 一 归因：元素在 DOM 里但不可见
+
+唯一失败用例 `e2e/certification/use-case-gallery-evidence.spec.ts:12`，断言 `[data-slot="use-case-gallery"]` `toBeVisible()`：
+`42 × locator resolved to <section class="mt-8 sm:mt-10" data-slot="use-case-gallery" …>` + `unexpected value "hidden"`；
+重试 #1 同样 hidden（20 s 轮询 42 次）⇒ **不是 flake**。
+
+读源：`ccc741e5`（首页「用例画廊」→「我的案例」广场）把 `<UseCaseGallery />` 包进了
+`<details data-slot="capability-samples">`，**默认折叠**（注释写明「首页先讲用户自己的活」）。折叠 `details` 的子元素在 DOM 里存在但 hidden
+—— 正是上面那句报错。spec 自 `83e06caf` 起没再动过 ⇒ 是首页改版时漏跟，不是渲染缺陷。
+
+### 二 修法（改 spec，不改产品）
+
+入口按新的信息架构取，并把设计意图钉住：
+
+| 断言 | 作用 |
+| --- | --- |
+| `<summary>` 可见 | 折叠的入口确实在屏上（可发现性） |
+| 展开前 `gallery` **hidden** | 钉住「首页先讲用户自己的案例，样例折叠」这条决定；哪天真变成常显，这条会红 |
+| 真点 `summary` 再断言 `gallery` 可见 | 走用户的手势，不靠 `open` 属性或 evaluate 掀开 |
+| 其余全部原样 | 卡片数 8、五工具名、`2 passed (18.3s)`、引文、命令、复制确认、Esc 后焦点回卡片 —— 一条都没放松 |
+
+### 三 门禁与读数（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npm run build:e2e` | 退出 0；`out/main/index.js` mtime **05:49**（晚于 `ccc741e5` 的 01:03）⇒ 跑的是含首页改版的产物 |
+| 真机认证 spec（`--workers=1`） | **1 passed (4.3s)**；`[gallery] cards=8 opened=external-mcp …`、命令与复制确认都打印出来 |
+| 变异自证（把 `summary.click()` 注释掉） | **红**：`Expected: visible / Received: hidden` —— 与 CI 同一句 ⇒ 新加那一步是承重的 |
+| `npx eslint --no-cache <spec>` | 0 error / 0 warning |
+| `npx prettier --check <spec>` | 通过 |
+| `tsc -p tsconfig.node.json`（隔离工作树 `/tmp/ps-gate-282`＝HEAD + 本 spec） | **0 error**（退出 0） |
+| `tsc -p tsconfig.web.json`（同一工作树） | **0 error**（退出 0） |
+
+共享树里两条 typecheck 各 4 条错，**全部落在 `src/main/references/screening-service.ts`**（`TS6133 ×3` + `TS2564`），
+那是并行会话的在制品 ⇒ 不是本笔的红，也不去替它改。
+
+### 四 边界（不许读成更强）与具名未办
+
+- 3 条 flaky（`pdf-figure-extraction`、`remote-job-cancel`、`session-package-round-trip`）重试后通过 ⇒ 记为抖动，**不改代码、不加超时**。
+- `visual regression` 那条红（`home-empty`，2,075 px / ratio 0.01）是 `ccc741e5` 改了首页之后的**陈旧基准**；
+  该步骤在工作流里是 informational（步骤结论 `success`，只写进 `VISUAL_OUTCOME`）⇒ 不是本次门禁红。刷新基准要在**打包态**下跑，本轮不动。
+- 本笔**没有产品侧改动**：不声称界面变了；只是把认证 spec 跟到已经交付的信息架构上。
+- **具名未办**：新首页主面「我的案例」广场（`CasePlaza`）目前**没有任何认证 spec** 覆盖（`grep -rn case-plaza e2e/` 只命中 store 白名单那条与视觉基准的遮蔽）⇒ 立为下一单元。
+
+### 五 下一轮第一步
+
+① 给 `CasePlaza` 写一支认证 spec（隔离根下的空态那句 + 造一个带会话的项目后卡片真能打开），并跑真机；
+② `home-empty` 视觉基准在打包态刷新（先确认 CI 与本机的差异只来自首页改版）。
