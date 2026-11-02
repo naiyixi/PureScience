@@ -446,6 +446,12 @@ jobs:
           npx playwright test e2e/certification/references-screening.spec.ts --workers=1 --reporter=line || true
           echo "=== [screening] lines from the app"
           grep -hE "\[screening\]|screening record|recordsInFlight" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no screening lines in the app log"
+          echo "=== page state when the screening specs gave up"
+          for context in test-results/electron/*screening*/error-context.md; do
+            [ -f "$context" ] || continue
+            echo "--- $context"
+            sed -n '1,120p' "$context"
+          done
           echo "=== fixture transcript (screening only)"
           grep -hE "screen ONE bibliographic record" test-results/fake-agent.log 2>/dev/null | head -5 || echo "no screening prompt reached the fixture"
 

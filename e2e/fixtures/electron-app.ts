@@ -340,13 +340,14 @@ const openMainWindow = async (
   // that took 51.8 s (`install-lifecycle` totalPhaseMs) and Playwright's 30 s default expired first, which
   // reports "never opened a window" for an app that is merely cold. The default stays 30 s so a real hang
   // is still a hang; a reproduction can raise it with PURESCIENCE_E2E_WINDOW_TIMEOUT_MS.
-  // The packaged lane gets 90 s by default: a bundle macOS has never scanned takes ~50 s to paint its first
-  // window on a cold runner (measured: `install-lifecycle totalPhaseMs=51790`), and a 30 s wait reports "the
-  // app never opened a window" for a bundle that is merely being scanned. The dev lane keeps 30 s, so a real
+  // The packaged lane gets 180 s by default: a bundle macOS has never scanned takes ~50 s to paint its first
+  // window on a cold machine (`install-lifecycle totalPhaseMs=51790`), and on a loaded CI runner the gallery
+  // spec measured `firstWindow: Timeout 90000ms exceeded` — 90 s was not enough while 125 specs shared the
+  // host. A 30 s wait reported "the app never opened a window" for a bundle that was merely being scanned. The dev lane keeps 30 s, so a real
   // hang is still a hang; both can be overridden.
   const packagedLane = Boolean(process.env.PURESCIENCE_E2E_EXECUTABLE)
   const windowTimeoutMs = Number(
-    process.env.PURESCIENCE_E2E_WINDOW_TIMEOUT_MS ?? (packagedLane ? 90_000 : 30_000)
+    process.env.PURESCIENCE_E2E_WINDOW_TIMEOUT_MS ?? (packagedLane ? 180_000 : 30_000)
   )
   const page = await openWindowOrNameFailure({
     firstWindow: () => application.firstWindow({ timeout: windowTimeoutMs }),
