@@ -36,10 +36,15 @@ type FoldseekAlignment = {
   taxname?: string
 }
 
-type FoldseekResult = {
+type FoldseekTicket = { status?: string; id?: string }
+
+// The result payload is `{type, queries: [{header, alignments: [...]}]}` — measured on a runner
+// 2026-11-02 at `/api/result/<id>/0`, which is also the only result route that answers 200: `/api/result/<id>`,
+// its `?format=json` and `.json` variants all answer `404 page not found`, and `/api/ticket/<id>` reports only
+// the status.
+type FoldseekResults = {
   status?: string
-  id?: string
-  results?: Array<{ alignments?: FoldseekAlignment[][] }>
+  queries?: Array<{ header?: string; alignments?: FoldseekAlignment[] }>
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -125,9 +130,9 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
       for (const database of databases) form.append('database[]', database)
       form.append('mode', '3diaa')
 
-      let ticket: FoldseekResult
+      let ticket: FoldseekTicket
       try {
-        ticket = (await ctx.postForm(`${FOLDSEEK}/ticket`, form)) as FoldseekResult
+        ticket = (await ctx.postForm(`${FOLDSEEK}/ticket`, form)) as FoldseekTicket
       } catch (error) {
         return {
           error: 'unavailable',
@@ -144,32 +149,31 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
 
       // Step 2 — poll. Bounded on purpose: a tool call that waits forever is worse than one that says how far
       // it got, so an unfinished search returns `incomplete: true` with whatever existed.
-      let result: FoldseekResult | undefined
+      let status: FoldseekTicket | undefined
       for (let poll = 0; poll < MAX_POLLS; poll++) {
         await sleep(POLL_INTERVAL_MS)
         try {
-          result = (await ctx.fetchJson(
-            `${FOLDSEEK}/result/${ticketId}?format=json`
-          )) as FoldseekResult
+          status = (await ctx.fetchJson(`${FOLDSEEK}/ticket/${ticketId}`)) as FoldseekTicket
         } catch {
           continue
         }
-        if (result?.status === 'COMPLETE' || result?.status === 'ERROR') break
+        if (status?.status === 'COMPLETE' || status?.status === 'ERROR') break
       }
-      if (!result) {
-        return {
-          error: 'unavailable',
-          message: `FoldSeek accepted the search (ticket ${ticketId}) but answered nothing within this call.`
-        }
-      }
-      if (result.status === 'ERROR') {
+      if (status?.status === 'ERROR') {
         return {
           error: 'unavailable',
           message: `FoldSeek reported the search as failed (ticket ${ticketId}).`
         }
       }
+      if (status?.status !== 'COMPLETE') {
+        return {
+          error: 'unavailable',
+          message: `FoldSeek accepted the search (ticket ${ticketId}) but had not finished within this call; call again to read the hits.`
+        }
+      }
+      const result = (await ctx.fetchJson(`${FOLDSEEK}/result/${ticketId}/0`)) as FoldseekResults
 
-      const alignments = (result.results ?? []).flatMap((entry) => entry.alignments ?? []).flat()
+      const alignments = (result.queries ?? []).flatMap((entry) => entry.alignments ?? [])
       const hits = alignments.slice(0, maxHits).map((hit) => ({
         target: hit.target ?? null,
         probability: hit.prob ?? null,
@@ -191,7 +195,7 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
         query: pdbId,
         databases,
         n_hits: hits.length,
-        incomplete: result.status !== 'COMPLETE',
+        incomplete: false,
         hits
       }
     }
