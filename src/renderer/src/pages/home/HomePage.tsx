@@ -388,7 +388,7 @@ const HomePage = ({
     formState?.mode === 'edit' ? t('home.saveChanges') : t('home.createProject')
 
   return (
-    <main className="min-h-svh bg-bg-10 text-text-000">
+    <main className="h-svh overflow-y-auto overscroll-contain bg-bg-10 text-text-000">
       <div className="mx-auto max-w-[1080px] px-4 py-5 pb-12 sm:px-8 sm:py-7 sm:pb-16">
         <header className="flex items-start justify-between gap-3">
           <div>
