@@ -377,6 +377,20 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: true
   },
   {
+    id: 'cancer-imaging',
+    domain: 'clinical',
+    displayName: 'TCIA',
+    aliases: ['TCIA', 'cancer imaging', 'NBIA', '影像'],
+    description:
+      '通过 TCIA（The Cancer Imaging Archive，NCI）查询公开影像队列：集合目录、患者与研究、以及按模态/部位/序列描述的序列检索；只取元数据，不下载任何像素。',
+    useWhen:
+      'Use when a question is about public cancer imaging cohorts rather than molecules — which collections exist, which patients and studies a collection holds, or which series match a modality / body part / description — and the identifiers a later download would need. Metadata only: no pixel data leaves the archive. Sourced from TCIA (The Cancer Imaging Archive, NCI).',
+    sources: ['TCIA'],
+    termsUrl: 'https://www.cancerimagingarchive.net/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
     id: 'cellguide',
     domain: 'omics',
     displayName: 'CellGuide',

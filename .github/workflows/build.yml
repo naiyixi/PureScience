@@ -428,6 +428,18 @@ jobs:
           echo "=== screening lines from the app log ==="
           grep -hE "screening|agent spawn" test-results/app-process/*.log 2>/dev/null | tail -40 || echo "no app log"
 
+      # Live connector probes, non-gating: some sources are unreachable from a developer machine (TCIA
+      # answers 000 to every request from this one) while a runner reaches them. A connector that cannot be
+      # measured locally is measured here, with its reading printed into the job log, instead of being
+      # written up as verified on the strength of its code.
+      - name: Probe live connectors (non-gating)
+        if: ${{ always() && matrix.name == 'macos-arm64' }}
+        continue-on-error: true
+        env:
+          PURESCIENCE_LIVE_CONNECTORS: '1'
+        run: |
+          npx vitest run src/main/connectors/live-probes.test.ts --reporter=verbose 2>&1 | grep -E "LIVE|Tests " | head -20 || true
+
       # The packaged lane starts no screening record on CI — measured on 41290216695: nineteen
       # `screening runner shutting down { recordsInFlight: 0 }` lines and not one `screening record started`
       # — while the same four specs pass against the same bundle on a real machine. Skipping them keeps P0
