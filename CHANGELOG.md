@@ -19,8 +19,8 @@
 | --- | --- | --- |
 | `lipid-maps` | `lipidmaps_compound_lookup` | 本机实测 `pubchem_cid=5997` → `LMST01010001 / Cholesterol / C27H46O / exact_mass 386.354866`。该 API **没有名称检索**（服务原话列出 11 种合法标识符），`name` 是具名拒绝 |
 | `omnipath` | interactions / annotations / enzyme-substrate | 本机实测：`TP53` → 2 条互作（`P04637→Q9BRQ8`，`is_stimulation`+`consensus`）；`TP53` 注释 `PROGENy/pathway/PI3K`；`CDK1` → `O15392 T34 phosphorylation`。抓到 `/annotations` **不接受 `organisms`**，已改成不发并在结果里写 `organismFilterApplied: false` |
-| `cancer-imaging`（TCIA） | collections / patient studies / series search | 本机四个地址全 `000`（DNS 正常）⇒ 读数由 CI 探针产生。记录按服务原样透传并附 `fields[]`；缺参数时 NBIA 用 **200 + HTML** 回应，这种情况报 `source-unreadable` 而不是「没有数据」 |
-| `structure-similarity` | `pdb_structure_similarity` | RCSB 公开面无结构相似服务（`service:"structure"` 400 / `value` 500，同构造 `chemical` 204）；改用 FoldSeek，要上传坐标 ⇒ 为此给 `ToolContext` 加了 `postForm`。读数同样由 CI 探针产生 |
+| `cancer-imaging`（TCIA） | collections / patient studies / series search | 本机四个地址全 `000`（DNS 正常）⇒ 读数由 CI 探针产生：`5` 个集合（4D-Lung / A091105 / ACNS0332 / ACRIN-6698 / ACRIN-Contralateral-Breast-MR）、`4D-Lung` 的 `3` 个病人、`3` 条序列（字段含 `ImageCount` / `FileSize` / `LicenseName`）。记录原样透传并附 `fields[]`；缺参数时 NBIA 用 **200 + HTML** 回应，这种情况报 `source-unreadable` 而不是「没有数据」 |
+| `structure-similarity` | `pdb_structure_similarity` | RCSB 公开面无结构相似服务（`service:"structure"` 400 / `value` 500，同构造 `chemical` 204）；改用 FoldSeek，要上传坐标 ⇒ 为此给 `ToolContext` 加了 `postForm`。CI 实测：`1CBS` 查询 **`status=COMPLETE, hits=1000`**，首条 `AF-A0A9X9LGA4-F1-model_v6`（`seqId=95.6`、`alnLength=137`）。字段名与端点都是试出来的：`database[]` 才收、`/api/result/<id>/0` 才是结果，另三个 404；`alignments` 是**二维**，读浅一层就会在千条命中上报 0 |
 
 面板：每行标出领域（genomics / structures / omics / clinical / literature / tools），目录区在领域变化处插入小标题
 （**不新增折叠层**），头部显示 **N 个连接器 · M 个工具**，两个数字与注册表同源
