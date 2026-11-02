@@ -1,0 +1,42 @@
+# A fast loop for the two connectors whose sources a developer machine cannot reach (TCIA answers 000 from
+# CN, FoldSeek is intermittent). The certification lane measures them too, but that probe sits behind a
+# ~35-minute P0 run, so every payload fix would cost an hour. This workflow does one thing: run the live
+# connector probes (or a payload experiment) on a runner and print what the services said.
+name: Connector probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Which probe to run: tcia | foldseek | all'
+        required: false
+        default: 'all'
+      foldseek_payload:
+        description: 'FoldSeek multipart field name to try (database / database[] / databases)'
+        required: false
+        default: 'database'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Live connector probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: TCIA (three reads)
+        if: ${{ inputs.only == 'all' || inputs.only == 'tcia' }}
+        run: node scripts/probe-connectors.mjs tcia
+
+      - name: FoldSeek payload experiment
+        if: ${{ inputs.only == 'all' || inputs.only == 'foldseek' }}
+        env:
+          FOLDSEEK_FIELD: ${{ inputs.foldseek_payload }}
+        run: node scripts/probe-connectors.mjs foldseek
