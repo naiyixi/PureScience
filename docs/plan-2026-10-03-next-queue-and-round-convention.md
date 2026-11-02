@@ -15680,3 +15680,61 @@ lateMs 801  canaryMs 5496  inFlight 0
 
 ① 给 `CasePlaza` 写一支认证 spec（隔离根下的空态那句 + 造一个带会话的项目后卡片真能打开），并跑真机；
 ② `home-empty` 视觉基准在打包态刷新（先确认 CI 与本机的差异只来自首页改版）。
+
+## 二百八十三、本轮追加（执行器，2026-11-03）—— 「我的案例」广场上线两天零覆盖：补真机认证 + 6 条规则用例（每条都做过变异自证）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 上一笔 `956feb47` 是本轮第一单元（样例区折进 disclosure 后认证 spec 的补跟）；本轮只新增两个文件 + 这份台账，
+  并行会话那 11 个在制品（`screening-service.ts` / `reviewer/**` / `session-persistence/**` / `notebook/repository*` / `acp/runtime-coordinator.ts` / 两个 shared）**一个字节没碰**。
+- 缺口是 grep 出来的，不是猜的：`grep -rn "case-plaza" e2e/` 只命中 store 白名单那条与视觉基准的遮蔽
+  ⇒ `ccc741e5` 交付的首页主面「我的案例」广场**没有任何认证 spec**；`ls src/renderer/src/pages/home/` 也没有
+  `CasePlaza.render.test.tsx` ⇒ 它的三条规则（无会话不算案例 / 样例项目排除 / 缺时间戳不编）**一条都没被钉住**。
+
+### 一 顺带查出的具名发现：`isExample` 是读侧有、写侧从来没有写入方
+
+`isExample` 在 `src/shared/projects.ts:10` 声明、`CasePlaza.tsx:51` 与 `HomePage.tsx:569` 读它（后者渲染「样例」徽标），
+而全树 `grep -rn "isExample" src --include=*.ts --include=*.tsx | grep -v 测试` 只有这三处读点 + Prisma 默认 `false`
+⇒ **「样例项目」这一态今天不可达**。本轮**不替它造写入方**（要不要随包发样例项目是产品决定），只记档；
+认证 spec 里也不假装能证一个不可达的状态（把这条写进 spec 头注）。
+
+### 二 交付（2 个新文件）
+
+| 位置 | 内容 |
+| --- | --- |
+| `e2e/certification/home-case-plaza.spec.ts`（新） | 真窗口三段：① 空态原句（隔离根＝没跑过任何东西的机器）；② 建了项目但**没跑过** ⇒ 项目列表里有它、广场里没有它（这样「被排除」不会与「丢了」同形）；③ 跑过一轮后卡片出现、带真读数、点开进项目。locator 在每次 `app.restart()` 后重建 —— 重启返回的是**新 page**，读旧 locator 会得到 `Received: undefined`，读起来像元素不存在（本轮先踩了一次） |
+| `src/renderer/src/pages/home/CasePlaza.render.test.tsx`（新） | 6 条规则：空态 / 有会话才算案例 / 归档排除 / 样例排除 / 不编时间戳（`Ran here` 且不出现 `last active`）/ 点卡片把 navigation 切到该项目的 workspace |
+
+### 三 真机读数与变异自证（本机，隔离根）
+
+- 认证 spec：`1 passed (8.5s)`；打印 `[plaza] empty state: No project has a session yet — start one and it will appear here.`、
+  `[plaza] a project with no session is listed, but is not a case`、`[plaza] card: Plaza case last active Nov 3`、`[plaza] after click: plaza_count=0`。
+  与本轮第一单元那支一起跑：`2 passed (12.1s)`。
+- 变异自证做在**产品代码**上（不是改断言）：把「必须有过会话」的门拆掉 ⇒ 认证 spec 红在第 ②段；
+  `!project.isExample` / `archivedAt === undefined` / 时间戳兜底 `|| undefined` 三处各自变异 ⇒ 对应单测用例逐条转红
+  （`× leaves a sample project out…` / `× leaves an archived project out…` / `× does not invent a timestamp…`），
+  每次变异后 `git checkout --` 复原并复查 `git status` 干净 ⇒ 6 条用例都承重。
+
+### 四 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache`（两个新文件） | 0 error / 0 warning（首次红在「箭头函数缺显式返回类型」，已按门禁指示补 `(): { … }`） |
+| `npx prettier --check`（两个新文件） | 通过 |
+| `npx vitest run src/renderer/src/pages/home` | **7 文件 / 41 例全绿** |
+| `tsc -p tsconfig.node.json`（隔离工作树＝`956feb47` + 本轮两文件） | **0 error** |
+| `tsc -p tsconfig.web.json`（同一工作树） | **0 error** |
+| 真机认证（两支一起，`--workers=1`） | **2 passed (12.1s)** |
+
+### 五 边界（不许读成更强）
+
+- 认证 spec 覆盖「空态 / 无会话 / 有会话 / 点开」四态；「样例项目排除」今天不可达（见第一节），**只在单测里钉住**。
+- 「卡片不显示会话数」这条**不该出现**的规则没有独立断言：我能断言它显示了时间读数，但断言不了「里面没有计数」
+  而不去数一个可能出现在项目名里的数字 ⇒ 具名未办，不写成已验。
+- 单机、开发机负载下取的读数；不据此声称用户端体感。
+
+### 六 下一轮第一步
+
+① 取 `956feb47` 与本笔的车道判决（Nightly 的 `Build macos-arm64` 里 P0 是否转绿是唯一要看的门）；
+② 仍是那条 `session save was slow` 的 `writeDiskMs` 4,340 s / `fileIndexMs` 1,452 s —— 落点在 `src/main/session-persistence/**`，
+   **并行会话在制中**，它落定后第一件事是量「每次保存是否全量重扫文件索引」。
