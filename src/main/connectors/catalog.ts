@@ -230,6 +230,20 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'structure-similarity',
+    domain: 'structures',
+    displayName: 'Structure similarity',
+    aliases: ['FoldSeek', 'fold seek', '结构相似', 'shape search'],
+    description:
+      '按三维形状（不是序列）找相似结构：拿一个 PDB 条目的坐标上传到 FoldSeek，在 afdb50 / pdb100 等库里搜索形状相近的条目，返回置信度、TM-score 与比对长度。',
+    useWhen:
+      'Use when the question is “what else looks like this structure” — a fold nobody has annotated, a shape match across families, or checking whether an unusual architecture has precedent — rather than “what is homologous in sequence”. Sourced from FoldSeek using RCSB coordinates.',
+    sources: ['FoldSeek', 'RCSB PDB'],
+    termsUrl: 'https://search.foldseek.com/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
     id: 'structures-pdbe',
     domain: 'structures',
     displayName: 'PDBe',

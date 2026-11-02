@@ -24,6 +24,7 @@ import { OMICS_ARCHIVES_TOOLS } from './descriptors/omics-archives'
 import { OMICS_ENA_TOOLS } from './descriptors/omics-ena'
 import { PROTEIN_ANNOTATION_TOOLS } from './descriptors/protein-annotation'
 import { PROTEOMICS_PDC_TOOLS } from './descriptors/proteomics-pdc'
+import { PDB_SIMILARITY_TOOLS } from './descriptors/pdb-similarity'
 import { PUBMED_TOOLS } from './descriptors/pubmed'
 import { REGULATION_TOOLS } from './descriptors/regulation'
 import { RESEARCH_RESOURCES_TOOLS } from './descriptors/research-resources'
@@ -67,6 +68,7 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...OMNIPATH_TOOLS,
   ...OMICS_ENA_TOOLS,
   ...PROTEIN_ANNOTATION_TOOLS,
+  ...PDB_SIMILARITY_TOOLS,
   ...PUBMED_TOOLS,
   ...REGULATION_TOOLS,
   ...RESEARCH_RESOURCES_TOOLS,

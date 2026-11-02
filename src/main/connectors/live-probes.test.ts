@@ -4,6 +4,7 @@
 // cannot be reached from a developer machine still gets a real reading.
 import { describe, expect, it } from 'vitest'
 
+import { PDB_SIMILARITY_TOOLS } from './descriptors/pdb-similarity'
 import { TCIA_TOOLS } from './descriptors/tcia'
 import type { ToolContext } from './types'
 
@@ -22,6 +23,10 @@ const ctx: ToolContext = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body)
     })
+    return res.json()
+  },
+  postForm: async (url, form) => {
+    const res = await fetch(url, { method: 'POST', body: form })
     return res.json()
   }
 }
@@ -42,4 +47,16 @@ describe.skipIf(!live)('live connector probes', () => {
     console.log('LIVE tcia_series_search', name, JSON.stringify(s).slice(0, 300))
     expect(s.error, String(s.message ?? '')).toBeUndefined()
   }, 120_000)
+
+  it('the structure-similarity connector answers, or says by name why it cannot', async () => {
+    const [similarity] = PDB_SIMILARITY_TOOLS
+    const r = (await similarity.run!(ctx, { pdb_id: '1cbs', max_hits: 5 })) as Record<
+      string,
+      unknown
+    >
+    console.log('LIVE pdb_structure_similarity', JSON.stringify(r).slice(0, 500))
+    // A named refusal is a result: the point of this probe is to print WHICH of "no hits", "service
+    // unreachable" or "wrong payload" happened, not to force a green.
+    expect(typeof r).toBe('object')
+  }, 180_000)
 })

@@ -10,6 +10,10 @@ export type ToolContext = {
   fetchJsonWithHeaders(url: string): Promise<{ body: unknown; headers: Headers }>
   // POST a JSON body and parse the JSON response — for GraphQL / POST-only APIs (e.g. gnomAD).
   postJson(url: string, body: unknown): Promise<unknown>
+  // POST a multipart form and parse the JSON response — for services that only accept an uploaded file
+  // (FoldSeek's structure search takes the coordinates themselves, not an id). Optional so a transport that
+  // cannot upload still satisfies the type; a tool that needs it says so by name instead.
+  postForm?(url: string, form: FormData): Promise<unknown>
   // Optional sub-agent executor injected when this tool call happens inside a live agent session
   // (ACP runtime). Lets a tool delegate independent parallel sub-tasks to fresh agent sessions —
   // the building block for multi-agent orchestration (parallel literature reviews, decompose-run).

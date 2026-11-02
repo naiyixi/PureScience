@@ -256,7 +256,11 @@ export class ParserEngine {
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(body)
           })
-        )
+        ),
+      // The multipart boundary is set by fetch itself, so no content-type header is passed here: setting one
+      // by hand is the classic way this request answers "no multipart boundary param in Content-Type".
+      postForm: async (url, form) =>
+        bodyJson(await doFetch(url, 'application/json', { method: 'POST', body: form }))
     }
   }
 }
