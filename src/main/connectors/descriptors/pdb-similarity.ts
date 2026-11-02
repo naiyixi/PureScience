@@ -78,9 +78,14 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
       'const result = await host.mcp("structure-similarity", "pdb_structure_similarity", {"pdb_id": "1cbs", "max_hits": 10})',
     format: 'json',
     run: async (ctx: ToolContext, a: Record<string, unknown>): Promise<Record<string, unknown>> => {
-      const pdbId = String(a.pdb_id ?? '').trim().toUpperCase()
+      const pdbId = String(a.pdb_id ?? '')
+        .trim()
+        .toUpperCase()
       if (!/^[0-9][A-Z0-9]{3}$/.test(pdbId)) {
-        return { error: 'argument-rejected', message: `"${pdbId}" is not a PDB id (four characters, first a digit).` }
+        return {
+          error: 'argument-rejected',
+          message: `"${pdbId}" is not a PDB id (four characters, first a digit).`
+        }
       }
       if (!ctx.postForm) {
         return {
@@ -89,7 +94,9 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
             'This transport cannot upload a file, and FoldSeek takes coordinates rather than an id. Nothing was sent.'
         }
       }
-      const requested = Array.isArray(a.databases) ? a.databases.map((d) => String(d)) : DEFAULT_DATABASES
+      const requested = Array.isArray(a.databases)
+        ? a.databases.map((d) => String(d))
+        : DEFAULT_DATABASES
       const databases = [...new Set(requested.filter((d) => ALLOWED_DATABASES.includes(d)))]
       if (databases.length === 0) {
         return {
@@ -113,7 +120,9 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
       // tool needed a multipart transport.
       const form = new FormData()
       form.append('q', new Blob([coordinates], { type: 'chemical/x-pdb' }), `${pdbId}.pdb`)
-      for (const database of databases) form.append('database', database)
+      // The field name is `database[]` — measured on a runner 2026-11-02: `database` answers
+      // "Key: 'JobRequest.Job.Database' … failed on the 'required' tag", `database[]` answers a ticket.
+      for (const database of databases) form.append('database[]', database)
       form.append('mode', '3diaa')
 
       let ticket: FoldseekResult
@@ -139,7 +148,9 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
       for (let poll = 0; poll < MAX_POLLS; poll++) {
         await sleep(POLL_INTERVAL_MS)
         try {
-          result = (await ctx.fetchJson(`${FOLDSEEK}/result/${ticketId}?format=json`)) as FoldseekResult
+          result = (await ctx.fetchJson(
+            `${FOLDSEEK}/result/${ticketId}?format=json`
+          )) as FoldseekResult
         } catch {
           continue
         }
@@ -168,8 +179,10 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
         qtmscore: hit.qtmscore ?? null,
         ttmscore: hit.ttmscore ?? null,
         aln_len: hit.alnLen ?? null,
-        query_range: hit.qStartPos != null && hit.qEndPos != null ? [hit.qStartPos, hit.qEndPos] : null,
-        target_range: hit.dbStartPos != null && hit.dbEndPos != null ? [hit.dbStartPos, hit.dbEndPos] : null,
+        query_range:
+          hit.qStartPos != null && hit.qEndPos != null ? [hit.qStartPos, hit.qEndPos] : null,
+        target_range:
+          hit.dbStartPos != null && hit.dbEndPos != null ? [hit.dbStartPos, hit.dbEndPos] : null,
         taxonomy: hit.taxname ?? null
       }))
 

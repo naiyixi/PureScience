@@ -56,9 +56,22 @@ const foldseek = async () => {
   }
   if (!ticket?.id) return
 
+  const candidates = [
+    `https://search.foldseek.com/api/result/${ticket.id}`,
+    `https://search.foldseek.com/api/result/${ticket.id}?format=json`,
+    `https://search.foldseek.com/api/result/${ticket.id}.json`,
+    `https://search.foldseek.com/api/ticket/${ticket.id}`,
+    `https://search.foldseek.com/api/result/${ticket.id}/0`
+  ]
+  for (const url of candidates) {
+    const probeRes = await fetch(url)
+    const probeText = await probeRes.text()
+    console.log(`LIVE foldseek_result_probe ${url.replace(ticket.id, '<id>')} status=${probeRes.status} body=${probeText.slice(0, 120)}`)
+  }
+
   for (let attempt = 0; attempt < 12; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 1500))
-    const statusRes = await fetch(`https://search.foldseek.com/api/result/${ticket.id}?format=json`)
+    const statusRes = await fetch(`https://search.foldseek.com/api/ticket/${ticket.id}`)
     const statusText = await statusRes.text()
     let parsed
     try {
