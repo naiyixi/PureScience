@@ -11,6 +11,7 @@ import type {
   EnvProvenance,
   RuntimeRegistration
 } from '../../shared/notebook-runtime'
+import { createInterpreterProbeMemo } from './interpreter-probe-memo'
 import { probeInterpreterVersion } from './python-command'
 import { parseRVersion, rHasJsonlite } from './r-command'
 import {
@@ -36,6 +37,20 @@ const PROBE_EXEC_OPTS = { timeout: PROBE_TIMEOUT_MS, windowsHide: true } as cons
 // Upper bound on concurrent interpreter probes so a machine with many envs doesn't spawn a burst of
 // subprocesses / exhaust file descriptors; fast enough to keep discovery responsive.
 const PROBE_CONCURRENCY = 8
+
+// One process-wide memo for the two probe answers ("which version", "can R back the kernel"). Discovery
+// itself still re-enumerates on every read, so a removed env disappears from the list as before; only the
+// subprocess answer is remembered, keyed on the binary's mtime+size. See `interpreter-probe-memo.ts` for
+// the real readings (3,777 ms median handler cost, 37 of 65 calls landing within 10 s of the previous one)
+// and for why a negative answer is bounded rather than kept.
+const probeMemo = createInterpreterProbeMemo()
+
+/**
+ * Forgets every memoised probe answer. The env write paths call this after they install into, create, or
+ * import an environment, so a row that said "Needs jsonlite" cannot outlive the install that fixed it.
+ */
+export const clearInterpreterProbeCache = (): void => probeMemo.clear()
+
 const isWin = (): boolean => process.platform === 'win32'
 
 // Injectable so discovery is unit-testable without a real machine. The real defaults enumerate PATH,
@@ -523,29 +538,36 @@ export const defaultDiscoveryDeps = (
   }
   return {
     candidatePaths: defaultCandidatePaths(runtimeRoot, manualPaths),
-    probeVersion: async (interpreterPath, language) => {
-      if (language === 'python') return probeInterpreterVersion(interpreterPath)
-      try {
-        // No shell: execFile runs the interpreter directly, so a path with spaces/metacharacters is
-        // handled safely (shell:true would break "C:\Program Files\…" and allow injection).
-        const { stdout, stderr } = await exec(
-          interpreterPath,
-          ['--version'],
-          probeOptions(interpreterPath)
-        )
-        return parseRVersion(`${stdout}\n${stderr}`)
-      } catch {
-        return undefined
-      }
-    },
-    rRunnable: (rInterpreterPath) =>
-      rHasJsonlite({
-        exec: async (args) => {
-          // No shell (see probeVersion): Rscript is run directly with a static arg vector.
-          const rscript = rscriptFor(rInterpreterPath)
-          return exec(rscript, args, probeOptions(rscript, 15_000))
+    probeVersion: (interpreterPath, language) =>
+      probeMemo.read(
+        `version\u0000${language}\u0000${interpreterPath}`,
+        interpreterPath,
+        async () => {
+          if (language === 'python') return probeInterpreterVersion(interpreterPath)
+          try {
+            // No shell: execFile runs the interpreter directly, so a path with spaces/metacharacters is
+            // handled safely (shell:true would break "C:\Program Files\…" and allow injection).
+            const { stdout, stderr } = await exec(
+              interpreterPath,
+              ['--version'],
+              probeOptions(interpreterPath)
+            )
+            return parseRVersion(`${stdout}\n${stderr}`)
+          } catch {
+            return undefined
+          }
         }
-      }),
+      ),
+    rRunnable: (rInterpreterPath) =>
+      probeMemo.read(`runnable\u0000${rInterpreterPath}`, rInterpreterPath, () =>
+        rHasJsonlite({
+          exec: async (args) => {
+            // No shell (see probeVersion): Rscript is run directly with a static arg vector.
+            const rscript = rscriptFor(rInterpreterPath)
+            return exec(rscript, args, probeOptions(rscript, 15_000))
+          }
+        })
+      ),
     realpath: safeRealpath,
     runtimeRoot
   }

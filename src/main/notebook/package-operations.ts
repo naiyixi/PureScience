@@ -7,6 +7,7 @@ import type {
   EnvironmentStateTracker,
   PackageInspectionResult
 } from './environment-state-tracker'
+import { clearInterpreterProbeCache } from './environment-discovery'
 import { effectiveMirrorAsync, type ProbeDeps } from './mirror-probe'
 import { NotebookPackageAdmissionOwner } from './package-admission'
 import type { InstallDeps, InstallRequest, InstallResult } from './package-manager'
@@ -225,7 +226,15 @@ class NotebookPackageOperations {
     )
     const admission = await this.admission.admit(request)
     if (admission.status === 'refused') return admission.result
-    const result = await this.mutation.mutate({ target: admission.target, mirror })
+    let result: InstallResult
+    try {
+      result = await this.mutation.mutate({ target: admission.target, mirror })
+    } finally {
+      // An install changes what an interpreter probe answers — a row that reads "Needs jsonlite" gets that
+      // from a `Rscript` probe, not from the package list — so the memoised answers are dropped rather than
+      // left to expire. Unconditional: a failed install can still have written part of the env.
+      clearInterpreterProbeCache()
+    }
     if (result.ok && result.needsRestart && request.language === 'r') {
       this.options.environmentOperations.recommendRestart('r', admission.target.environmentName)
       for (const session of this.options.sessions()) this.options.notifyChanged(session)

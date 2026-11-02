@@ -12,6 +12,7 @@ import type {
 } from '../../shared/notebook-env'
 import type { NotebookEnvironmentOperations } from './environment-operations'
 import { ImportLockIncompleteError } from './provisioner'
+import { clearInterpreterProbeCache } from './environment-discovery'
 import { measureDirectorySize } from '../storage/usage'
 import { assertSafeEnvName, DEFAULT_PY_ENV, DEFAULT_R_ENV, envPrefix } from './runtime-paths'
 import type { NotebookRuntimeRepairOwner } from './runtime-repair'
@@ -85,8 +86,13 @@ class NotebookEnvironmentManagementOwner {
         await this.options.ensureRecovered()
         this.options.assertPrefixRecoverable(envPrefix(this.options.runtimeRoot, name))
         return this.options.environmentOperations.runMutation(name, async () => {
-          await manager.createNamedEnvironment(name, request.language, request.packages)
-          return { environments: manager.listEnvironments() }
+          try {
+            await manager.createNamedEnvironment(name, request.language, request.packages)
+            return { environments: manager.listEnvironments() }
+          } finally {
+            // The new interpreter has never been probed; drop any answer an earlier env at this path left.
+            clearInterpreterProbeCache()
+          }
         })
       }
       case 'list':
@@ -122,6 +128,8 @@ class NotebookEnvironmentManagementOwner {
           const measurement = await measureDirectorySize(prefix, new Set())
           const environments = manager.removeEnvironment(name)
           this.options.runtimeRepair.completeRemovedManagedEnvironment(name)
+          // The prefix is gone; any memoised answer for its interpreter must not outlive it.
+          clearInterpreterProbeCache()
           return measurement.state === 'measured'
             ? { environments, freedBytes: measurement.bytes }
             : { environments }
@@ -218,6 +226,9 @@ class NotebookEnvironmentManagementOwner {
           return { status: 'incomplete', coverage: error.coverage }
         }
         throw error
+      } finally {
+        // A partial import still writes interpreters, so the memo is dropped on both outcomes.
+        clearInterpreterProbeCache()
       }
     })
   }

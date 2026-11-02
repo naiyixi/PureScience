@@ -15339,3 +15339,70 @@ lateMs 801  canaryMs 5496  inFlight 0
 ① 按完整 40 位 SHA 读本笔两条车道的**作业级**判决；② 若绿，按同一份聚合表的**分段字段**取下一个真机缺口
 （`session save was slow` 455 条、`notebook:state` 668 条，先量再改）；③ 并行会话在制件仍在就不碰
 `src/main/references/**` 与 `src/main/reviewer/**`。
+
+## 二百七十八、本轮追加（执行器，2026-11-02 18:47–）—— `list-runtimes` 3.8 s 中位：同一批解释器被反复 spawn
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = 9e0fc8a4`（v2.21.2 版本四文件），本地上轮那笔 `4dd6ab55` 的判决按完整 40 位 SHA 现查：
+  `Nightly` = **success**（run 41355945836）、`Windows Full Test` = **success**（run 41355945690）——§277 那笔在两条车道上都有判决。
+- 工作树里有并行会话的在制件（`src/main/notebook/repository.ts`、`src/main/references/screening-service.ts`、
+  `src/main/reviewer/**`、`src/main/session-persistence/**`、`docs/plan-2026-10-28-two-releases.md` + 一份证据档）——
+  **一个字节没碰**；本笔只碰 `src/main/notebook/` 里它没在编的四个文件 + `docs/evidence/`。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽、A 段无 ≥3 天无人动项 ⇒ 自拟单元，来源是真机日志。
+- **上一轮 notepad 指的那条「`session save was slow` 455 条的队列分段」在本轮被量掉、假设不成立**（见 §一 的 2），
+  不再按它开工，也不再留给下一轮。
+
+### 一 先量：两条假设，一条被读数否掉
+
+1. **`session save was slow` 不是排队问题**：921 条慢行里 `queuedMs` 中位 0、**p90 只有 2 ms**（最大 361 s 是极端一条），
+   `queueBlockers` 只在最近 78 条上出现。⇒ 「排队分段」这条假设不成立，慢在过程中的阶段（authority / write / fileIndex）。
+   其中 `attribution` 仍有 534 条 `inconclusive`（cpuShare 落在 0.15–0.6 带宽内），已带 `heldMs/ownMs` 的 74 条里
+   held 中位占 76% ⇒ 这些是「循环被别的窗口占住」，不是我们的序列化。**这条按「已量清、不立项」记档。**
+2. **`notebook:list-runtimes` 才是最大的读类慢通道**：66 次慢行、中位 **3,777 ms**、最大 21,926 ms；
+   `inconclusive` 44 + `no-cpu` 14 = **58/66（88%）** ⇒ 时间花在等进程外的东西；同前置的 `notebook:state` 只有 168 ms
+   ⇒ 差的就是 discovery；且 **37/65 段相邻调用间隔 ≤ 10 s**（一次面板打开就是一阵，每阵都重新清点）。
+
+### 二 交付（5 个源文件 + 2 个新用例文件 + 证据档）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/notebook/interpreter-probe-memo.ts`（新） | 有界探测记忆：键＝探测种类+路径，值＝答案+二进制指纹（mtime+size）+时刻。每次读**重新 stat**；stat 不到**不记**；否定答案**同样只有有限龄期**；同键并发**合并**；上限 512。 |
+| `src/main/notebook/environment-discovery.ts` | `probeVersion` / `rRunnable` 走记忆；导出 `clearInterpreterProbeCache()`；**枚举未改**（env 目录删掉仍然立刻消失，那由目录判断）。 |
+| `src/main/notebook/package-operations.ts` | 装包结束（`finally`）清空记忆 —— 「Needs jsonlite」那句来自 `Rscript` 探测，不是包列表。 |
+| `src/main/notebook/environment-management.ts` | 建 / 删 / 从锁导入（含 `incomplete` 终态）后清空记忆。 |
+| 两个新用例文件（8+2 例） | 命中、换指纹即失效、超龄失效、stat 不到不记、否定有界、并发合并、`clear` 全忘、条目上限；**接线那一半**：生产 `defaultDiscoveryDeps().rRunnable` 两次只起一次 `Rscript`，换掉二进制后立刻重探。 |
+
+证据档：`docs/evidence/2026-11-02-interpreter-probe-memo.md`。
+
+### 三 真机读数（生产函数 + 真实运行时根，本机）
+
+| 语言 | 首轮 | 第二轮 | 第三轮 |
+|---|---|---|---|
+| python（28 个解释器） | 388 ms | **46 ms** | 47 ms |
+| r（1 个，含 500 ms 的 `Rscript` jsonlite 探测） | 892 ms | **41 ms** | 38 ms |
+
+改动前同机同路径的第二轮是 python 76 ms / r **523 ms**；行内容与行数逐字相同（`JSON.stringify` 相等）。
+首轮不变（不动「第一次清点」的成本，那是另一单）。日志侧前后对照要等新版本跑起来，**本笔不声称窗口读数**。
+
+### 四 顺手清掉的两处「已提交的红」
+
+- `9e0fc8a4` 那笔把树带成红的（两处确定性类型错）：`src/main/settings/connector-settings.ts` 的
+  `'../../connectors/registry'` 多了一层（应为 `'../connectors/registry'`）、`src/main/connectors/live-probes.test.ts`
+  的 `ToolContext` 桩缺 `credentials`（`ab3a8453` 把 `credentials` 变成必填）。同在跑的另一路在 `9b52c70b` 里修了**同样两处**，
+  而我的同向改动当时就在工作树里 ⇒ 两笔撞成一个**重复键**（esbuild 报 `Duplicate key "credentials"`）⇒ 本笔只保留一份。
+- 教训（写在这里而不是只写在会话里）：**共享树里「我也在修同一处红」时，先看对方是否刚落同一提交**（`git log --oneline -1`），
+  撞上了就只留一份、并把归属写清；重复键这类红只有 typecheck/esbuild 看得见。
+
+### 五 门禁与边界
+
+- 见本轮汇报的读数表（`src/main/notebook` 94 文件 / 1505 例绿、新用例 10 例、`tsc -p tsconfig.node.json` 本笔 0 错、
+  `eslint --no-cache` 本笔 0 问题、`prettier --check` 全过）。
+- **边界**：第一次调用仍需清点；龄期 60 s；只覆盖两处探测；读数来自生产函数而非窗口；`Rscript` 冷启动本身没变快。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读本笔两条车道的**作业级**判决；② 若绿，按同一份聚合表取下一个读类慢通道
+（`reviewer:get-for-session` 中位 537 ms / `sessions:import-posture` 307 ms，先量再改；前者在并行会话在制的
+`src/main/reviewer/**` 里 ⇒ 它没落定就不碰）；③ 并行会话在制件仍在就不碰 `src/main/references/**`、
+`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/notebook/repository.ts`。
