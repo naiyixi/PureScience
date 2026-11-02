@@ -15545,3 +15545,73 @@ lateMs 801  canaryMs 5496  inFlight 0
 但它落在并行会话在制的 `src/main/reviewer/**` 里 ⇒ 它没落定就不碰；
 ④ 并行会话在制件仍在就不碰 `src/main/references/**`、`src/main/reviewer/**`、`src/main/session-persistence/**`、
 `src/main/notebook/repository.ts`、`src/main/acp/runtime-coordinator.ts`、`docs/plan-2026-10-28-two-releases.md`。
+
+## 二百八十一、本轮追加（执行器，2026-11-03）—— 停摆行的「采样帧」不是占着循环的人：17% 已观测 / 80% 进程没在跑
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = fe84e636`，本地 0 ahead / 0 behind。工作树里 11 个改动 + 1 份证据档**不是我的**
+  （`src/main/notebook/repository*.ts`、`src/main/references/screening-service.ts`、`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、`src/main/acp/runtime-coordinator.ts`、`src/shared/{reviewer,session-persistence}.ts`、
+  `docs/plan-2026-10-28-two-releases.md`、`docs/evidence/2026-11-01-reviewer-fix-loop-double-review.md`）⇒ **一个字节没碰**。
+- 车道判决（`fe84e636`，完整 40 位 `fe84e6364cc0570bbb097e028d6bab750687ed7a`）：`Windows Full Test` **success**；
+  `Nightly` 的 `build / Verify (lint + typecheck + test + package)` **success**，唯一的红是
+  `Build macos-arm64`——它的 `startedAt` 为 `null`、`steps` 为空 ⇒ **从未拿到 runner**（基础设施），不是代码红；
+  同一 run 的另外三个平台 build 与 Verify 都已完成。上一轮那笔 `ccc741e5` 的 Windows 红（门面白名单）已被 `fe84e636` 修掉并转绿。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽 ⇒ 自拟单元，来源是真机日志。
+
+### 一 量：先把「谁占着循环」这个问题问成可回答的形状
+
+`npm run diag:slow-ipc -- --exclude acp:send-prompt --gap 800 --top 12`：`sessions:save-session` 3,600 行 / 67.3%；
+最大的窗口大多是**单条** `sessions:save-session`（最大 2,551,022 ms），它们全落在 `event loop stalled` 的同一分钟里。
+
+于是改用停摆行自带的采样剖面问归属（`event loop stalled` 共 4,206 条）：
+
+| 项 | 读数 |
+| --- | --- |
+| 墙钟合计 / 中位 / p90 / 最大 | 25,323.3 s / 1,904 ms / 6,905 ms / 269,236 ms |
+| **已观测主线程 / 未观测** | **17% / 80%**（其余是窗口边界 slack） |
+| 带剖面 / 不带剖面 | 2,292 / 1,914 |
+| 成因 | `fs-queue-saturated` 4,079、`not-recorded` 82、`gc` 18、`cpu-in-process` 15、`unexplained` 12 |
+| 主机（3,233 条带指标） | `loadAvg1m` 峰值 **587.74**、`swapouts` 合计 3.51 亿、`freeMemMb` 最低 **15** |
+
+### 二 交付（1 个新脚本 + 入口 + 证据档）
+
+| 位置 | 改动 |
+| --- | --- |
+| `scripts/stall-profile-report.mjs`（新） | 停摆归因报表：成因/按天/主机压力 + 逐帧 `events / samples / perEvent / topIn / share`，表头先打 `observedShare`；`--since` / `--min-window-ms` 过滤具名打印丢掉多少行；空答案具名（退出 2/3/1/4）；`--selftest` 钉观测份额算法、逐事件票数、缺 `windowMs` 不许当 0 ms、空输入不许除零 |
+| `package.json` | `"diag:stalls": "node scripts/stall-profile-report.mjs"` |
+| `docs/evidence/2026-11-03-stall-profile-attribution.md`（新） | 取数口径、读数表、被否掉的假设、仪器口径、边界、下一条线索 |
+
+### 三 被否掉的假设（写清楚是为了不再上门）
+
+`renderAppMcpToolReferences` 按样本总和是第一名（6,895 样本 / 44%，出现在 872 条事件里）——**实测否掉**：
+生产函数本体（esbuild 打包后跑）4 / 20 / 60 / 200 KB 文本下分别是 0.056–0.159 / 0.079–0.119 / 0.139–0.144 / 0.510–0.573 ms/次，
+线性约 2.6 µs/KB。它每条事件只占约 8 个样本（≈8 ms），相对 1.9 s 的中位停摆是 0.4% ⇒ 它是**循环回来以后先跑的那段工作**，
+不是把它占住的人。这条结论已写进报表尾注，防止下一次再按样本总数下结论。
+
+### 四 门禁与读数（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `node scripts/stall-profile-report.mjs --selftest` | **OK**（退出 0） |
+| 真机报表（`npm run diag:stalls -- --top 12`） | 退出 0；4,206 条 / 25,323.3 s / 已观测 17% |
+| 过滤具名 | `--min-window-ms 5000` ⇒ 丢掉 3,609 行、597 条事件、已观测 13% |
+| `node scripts/check-script-entrypoints.mjs` | ✓ 60 个入口全部可在 Node 下解析 |
+| `npx eslint --no-cache scripts/stall-profile-report.mjs` | **0 error / 0 warning** |
+| `npx prettier --check`（两个新文件 + `package.json`） | 全过 |
+
+### 五 边界（不许读成更强）
+
+- 不是「谁占着循环」的定因工具：它只能证明采样帧解释不了 80% 的停摆墙钟。真定因要靠主机读数与 `fs` 队列可观测性。
+- 单机、且这 5 天本机在跑构建与测试（`loadAvg1m` 峰值就出现在这种时段）⇒ 描述的是开发机，不许据此声称用户端体感。
+- `fs-queue-saturated` 的 `basis` 里那个 `canaryMs` 是**排队等待**，不是 CPU 时间。
+- 本轮**没有产品侧改动**：不声称变快。
+
+### 六 下一轮第一步
+
+① `session save was slow` 925 行里 `writeDiskMs` 合计 4,340 s（36%）、`fileIndexMs` 1,452 s 且≈`aftermathMs`
+（写完紧接着的文件索引）——这条线索的落点在 `src/main/session-persistence/**`，**正被并行会话改**（`repository.ts` /
+`catalog-index.test.ts` 是它的在制品）⇒ 它落定前只登记、不落笔；落定后第一件事是量「每次保存是否都全量重扫文件索引」。
+② `reviewer:get-for-session`（self-borne、7.6%）同样落在在制目录，继续不碰。
+③ 并行会话在制件清单仍以 `git status --short` 为准；它落定前不碰上面那批路径。
