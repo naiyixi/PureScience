@@ -29,7 +29,7 @@ const ctx: ToolContext = {
   postForm: async (url, form) => {
     const res = await fetch(url, { method: 'POST', body: form })
     return res.json()
-  },
+  }
 }
 
 describe.skipIf(!live)('live connector probes', () => {
