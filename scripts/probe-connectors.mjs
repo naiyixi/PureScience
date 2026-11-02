@@ -82,8 +82,7 @@ const foldseek = async () => {
     }
     if (parsed.status === 'COMPLETE' || parsed.status === 'ERROR') {
       const body = await fetch(`https://search.foldseek.com/api/result/${ticket.id}/0`).then((r) => r.json())
-      console.log(`LIVE foldseek_body keys=${Object.keys(body).join(',')} head=${JSON.stringify(body).slice(0, 700)}`)
-      const alignments = (body.queries ?? []).flatMap((q) => q.alignments ?? [])
+      const alignments = (body.results ?? []).flatMap((r) => r.alignments ?? []).flat()
       console.log(
         `LIVE foldseek_result status=${parsed.status} hits=${alignments.length} first=${JSON.stringify(alignments[0] ?? null).slice(0, 240)}`
       )

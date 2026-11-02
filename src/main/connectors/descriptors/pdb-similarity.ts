@@ -20,15 +20,16 @@ const POLL_INTERVAL_MS = 1500
 type FoldseekAlignment = {
   target?: string
   prob?: number
-  evalue?: number
+  eval?: number
   score?: number
+  seqId?: number
+  alnLength?: number
   qStartPos?: number
   qEndPos?: number
   dbStartPos?: number
   dbEndPos?: number
   qLen?: number
   dbLen?: number
-  alnLen?: number
   tmscore?: number
   qtmscore?: number
   ttmscore?: number
@@ -44,7 +45,11 @@ type FoldseekTicket = { status?: string; id?: string }
 // the status.
 type FoldseekResults = {
   status?: string
-  queries?: Array<{ header?: string; alignments?: FoldseekAlignment[] }>
+  // Measured on a runner 2026-11-02: `results` is one entry per database, and each entry's `alignments` is an
+  // array PER QUERY — `alignments[][]`, not a flat list. Reading one level too shallow yields zero hits from a
+  // completed, non-empty search, which is exactly what the first version did.
+  results?: Array<{ db?: string; alignments?: FoldseekAlignment[][] }>
+  queries?: Array<{ header?: string }>
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -173,16 +178,17 @@ export const PDB_SIMILARITY_TOOLS: ToolDescriptor[] = [
       }
       const result = (await ctx.fetchJson(`${FOLDSEEK}/result/${ticketId}/0`)) as FoldseekResults
 
-      const alignments = (result.queries ?? []).flatMap((entry) => entry.alignments ?? [])
+      const alignments = (result.results ?? []).flatMap((entry) => entry.alignments ?? []).flat()
       const hits = alignments.slice(0, maxHits).map((hit) => ({
         target: hit.target ?? null,
         probability: hit.prob ?? null,
-        evalue: hit.evalue ?? null,
+        evalue: hit.eval ?? null,
+        sequence_identity: hit.seqId ?? null,
         score: hit.score ?? null,
         tmscore: hit.tmscore ?? null,
         qtmscore: hit.qtmscore ?? null,
         ttmscore: hit.ttmscore ?? null,
-        aln_len: hit.alnLen ?? null,
+        aln_len: hit.alnLength ?? null,
         query_range:
           hit.qStartPos != null && hit.qEndPos != null ? [hit.qStartPos, hit.qEndPos] : null,
         target_range:
