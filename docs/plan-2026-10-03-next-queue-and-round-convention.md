@@ -15475,3 +15475,73 @@ lateMs 801  canaryMs 5496  inFlight 0
 | 专项单测 | 绿 | `managed-runtime-guard.test.ts` **130 passed**、`kernel-executor.test.ts` **56 passed \| 6 skipped** |
 
 推这一笔之前看过在飞的车道：只有本 SHA 自己的两条，没有被顶掉的他人判决；推送后等两条都落定才写这一节。
+
+## 二百八十、本轮追加（执行器，2026-11-03）—— 慢 IPC 的「窗口」视角：读类慢通道的两条候选被自己的读数否掉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = ccc741e5`（并行会话的首页广场三笔）。工作树里有一批**不是我的**在制品
+  （`src/main/notebook/repository.ts`+`.test.ts`、`src/main/references/screening-service.ts`、`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、`src/main/acp/runtime-coordinator.ts`、`src/shared/reviewer.ts`、
+  `src/shared/session-persistence.ts`、`docs/plan-2026-10-28-two-releases.md`、一份证据档）⇒ **一个字节没碰**。
+- 上一轮 notepad 指的两条候选（`notifications:get-snapshot`、`artifacts:read-preview`）本轮**量掉并否掉**，
+  不再留给下一轮（见 §一/§三）。
+- 在飞车道：`ccc741e5` 的 Nightly + Windows Full Test 均在跑；`f210366d` 的 Nightly 是 **cancelled**
+  （`build / Verify` 被并发组取消、publish 与四平台 build 全部 skipped）⇒ 那一笔只有 Windows 车道的判决，
+  **无 Nightly 判决**，不许写成红也不许写成绿。
+- B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍耗尽、A 段无 ≥3 天无人动项 ⇒ 自拟单元，来源是真机日志。
+
+### 一 量：逐行汇总把一次忙碌算成了 N 个慢通道
+
+- 5,601 条慢行 / 1,681 段窗口（gap 1500 ms）；**70%（4,152/5,569，排除 turn 类 `acp:send-prompt`）的慢行
+  落在「≥3 条慢处理器」的窗口里**；gap 300/3000 下分别是 40%/80%（参数敏感性已记档）。
+- 原样形状：`read-preview` 有 22/59 段突发是多行同一毫秒完成（5 行时间戳跨度 ~1 ms、耗时差 2.29 ms），
+  同窗口里 `sessions:save-session`、`notebook:state`、`artifact version resolve`、`acp:get-plan-projection`
+  一起慢 —— 一次忙碌，不是五条通道各自慢。
+- 排除 turn 类后的慢行时间分布：`sessions:save-session` **67.3%**、`reviewer:get-for-session` 7.6%（self-borne）、
+  `notebook:state` 4.5%、`notifications:get-snapshot` **1.6%**、`artifacts:read-preview` **0.5%**。
+
+### 二 交付（1 个新脚本 + 入口 + 证据档）
+
+| 位置 | 改动 |
+|---|---|
+| `scripts/slow-ipc-windows.mjs`（新） | 窗口归并、每通道三态判词（`window-borne` >50% / `mixed` =50% / `self-borne` <50%）、最大窗口表；`--exclude` 把 turn 类从阻塞时间里拿掉并**具名打印排除条数**（0 条也打印）；空答案具名（`no-log-files` 退出 2、`no-slow-rows` 退出 3、用法错 1）；`--selftest` 钉窗口归并、三态判词、`durationMs` 缺失的行不许当 0 ms 行 |
+| `package.json` | `"diag:slow-ipc": "node scripts/slow-ipc-windows.mjs"`（`check:script-entrypoints` 的入口约定） |
+| `docs/evidence/2026-11-03-slow-ipc-window-lens.md`（新） | 取数口径、读数表、被否掉的两条假设、边界、下一单元的接续做法 |
+
+### 三 被否掉的两条假设（写清楚是为了不再上门）
+
+1. **read-preview「成对出现 = 同一份读多遍 ⇒ 加单飞/去重」不成立**：同一窗口里 `artifact version resolve` 的
+   `bytes` 是 5546/5188/30490/5662/5111/30444/5188 —— 同一秒被点开的是**多份不同产物**。按「重复」去写缓存
+   会为一个没有证据的成本加一层新机制。它全额只占慢行时间 0.5%，且 90% 的行落在忙碌窗口里。
+2. **get-snapshot「中位 740 ms 值得单独优化」量级不支持**：87 行 / 1.6% / 20–30% 落在忙碌窗口、最大两条
+   （120.5 s、151.9 s）是整段循环停顿（`cpuShare` 0.071 / 0.061）。
+
+### 四 门禁与读数（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| `node scripts/slow-ipc-windows.mjs --selftest` | **OK**（退出 0） |
+| 真机日志报表（`npm run diag:slow-ipc -- --exclude acp:send-prompt --top 4`） | 退出 0；5,569 行 / 1,682 段 / 70% peer；排除条数具名打印（32 条） |
+| 空答案三态 | 缺文件退出 **2**、无慢行退出 **3**、`--gap abc` 退出 **1** |
+| 参数敏感性 | gap 300/1500/3000 ⇒ 段数 3,457/1,682/1,306，peer 比例 40%/70%/80%；两条通道判词在三档下稳定 |
+
+### 五 边界（不许读成更强）
+
+- 不是窗口读数：只含已有 50 ms 阈值的行，低于阈值的一次调用不在样本里 ⇒ 占比是「慢行时间里的占比」。
+- 本机单机日志，CI runner 与其他机器未取；段数是**参数**（gap）的函数，别当客观量。
+- 逐行 `cpuMs` 是**进程级**（`process.cpuUsage()` 含所有线程）⇒ 同窗口 N 条行会重复计入，这是「一次忙碌读成 N 份成本」
+  的成因；本轮修的是读法，不是那条日志本身。
+- 本轮**没有产品侧改动**：不声称任何体感变快。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读 `ccc741e5` 的 Nightly + Windows Full Test 作业级判决（`f210366d` 的 Nightly 无判决，
+只能引它的 Windows 绿）；
+② 排除 turn 类后 `sessions:save-session` 占 67.3%，但 §277 已量到 `queuedMs` 中位 0 / p90 2 ms、带 `heldMs`
+的 74 条里 held 占 76% ⇒ 下一单元问「同一窗口里谁占着循环」：`--exclude acp:send-prompt --gap 800 --top 20`
+取大窗口，配 `event loop stalled` / `heldMs` 判归属；
+③ `reviewer:get-for-session`（self-borne 30%、7.6%、中位 438 ms）是唯一「自己的窗口占多数」的中量通道，
+但它落在并行会话在制的 `src/main/reviewer/**` 里 ⇒ 它没落定就不碰；
+④ 并行会话在制件仍在就不碰 `src/main/references/**`、`src/main/reviewer/**`、`src/main/session-persistence/**`、
+`src/main/notebook/repository.ts`、`src/main/acp/runtime-coordinator.ts`、`docs/plan-2026-10-28-two-releases.md`。
