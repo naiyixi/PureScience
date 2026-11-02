@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+/* eslint-disable @typescript-eslint/explicit-function-return-type -- this is a probe script run by Node
+   directly (no build step); adding JSDoc return types to four throwaway helpers would be more noise than the
+   lint rule is worth, and the rule is about a compiled surface this file does not have. */
 // Live probes for the two connectors a developer machine cannot reach, run on a CI runner and printed into
 // the job log. Plain Node (no build step) so it costs seconds, not a package build.
 //
@@ -8,7 +11,10 @@
 // A probe never fails the job: the reading IS the result, including "the service said no".
 const TCIA = 'https://services.cancerimagingarchive.net/nbia-api/services/v1'
 
-const show = (label, value) => console.log(`LIVE ${label} ${typeof value === 'string' ? value : JSON.stringify(value).slice(0, 400)}`)
+const show = (label, value) =>
+  console.log(
+    `LIVE ${label} ${typeof value === 'string' ? value : JSON.stringify(value).slice(0, 400)}`
+  )
 
 const getJson = async (url) => {
   const res = await fetch(url)
@@ -19,15 +25,32 @@ const getJson = async (url) => {
 
 const tcia = async () => {
   const collections = await getJson(`${TCIA}/getCollectionValues`)
-  show('tcia_collections', { status: collections.status, count: collections.body?.length, first: collections.body?.[0], nonJson: collections.nonJson })
+  show('tcia_collections', {
+    status: collections.status,
+    count: collections.body?.length,
+    first: collections.body?.[0],
+    nonJson: collections.nonJson
+  })
 
   const name = collections.body?.[0]?.Collection
   if (!name) return
   const patients = await getJson(`${TCIA}/getPatient?Collection=${encodeURIComponent(name)}`)
-  show('tcia_patient_studies', { collection: name, status: patients.status, count: patients.body?.length, fields: patients.body?.[0] ? Object.keys(patients.body[0]) : [], nonJson: patients.nonJson })
+  show('tcia_patient_studies', {
+    collection: name,
+    status: patients.status,
+    count: patients.body?.length,
+    fields: patients.body?.[0] ? Object.keys(patients.body[0]) : [],
+    nonJson: patients.nonJson
+  })
 
   const series = await getJson(`${TCIA}/getSeries?Collection=${encodeURIComponent(name)}`)
-  show('tcia_series_search', { collection: name, status: series.status, count: series.body?.length, fields: series.body?.[0] ? Object.keys(series.body[0]) : [], nonJson: series.nonJson })
+  show('tcia_series_search', {
+    collection: name,
+    status: series.status,
+    count: series.body?.length,
+    fields: series.body?.[0] ? Object.keys(series.body[0]) : [],
+    nonJson: series.nonJson
+  })
 }
 
 const foldseek = async () => {
@@ -66,7 +89,9 @@ const foldseek = async () => {
   for (const url of candidates) {
     const probeRes = await fetch(url)
     const probeText = await probeRes.text()
-    console.log(`LIVE foldseek_result_probe ${url.replace(ticket.id, '<id>')} status=${probeRes.status} body=${probeText.slice(0, 120)}`)
+    console.log(
+      `LIVE foldseek_result_probe ${url.replace(ticket.id, '<id>')} status=${probeRes.status} body=${probeText.slice(0, 120)}`
+    )
   }
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
@@ -81,7 +106,9 @@ const foldseek = async () => {
       return
     }
     if (parsed.status === 'COMPLETE' || parsed.status === 'ERROR') {
-      const body = await fetch(`https://search.foldseek.com/api/result/${ticket.id}/0`).then((r) => r.json())
+      const body = await fetch(`https://search.foldseek.com/api/result/${ticket.id}/0`).then((r) =>
+        r.json()
+      )
       const alignments = (body.results ?? []).flatMap((r) => r.alignments ?? []).flat()
       console.log(
         `LIVE foldseek_result status=${parsed.status} hits=${alignments.length} first=${JSON.stringify(alignments[0] ?? null).slice(0, 240)}`
