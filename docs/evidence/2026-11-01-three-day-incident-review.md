@@ -45,7 +45,12 @@ expected/actual 反了。
 **处置（临时）**：`e2e/certification/packaged-screening-skip.ts` 在打包车道**具名 skip** 这四条，理由与
 证据路径写在常量里；dev 车道照旧真跑。
 
-**现状（2026-11-01 三次更新，最新）**：skip **已删**。决定性读数来自诊断步骤（Nightly `41323944195`，head `cade899b`）：
+**现状（2026-11-02 收口）**：**已修，四条不再 skip 且在打包车道通过**。读数来自 Nightly `41389845159`
+（head `dd42f459`，macos-arm64）：p0 **109 passed / 4 flaky / 12 skipped，31.5 分钟**，`P0_OUTCOME: success`；
+skip 数从 16 降到 12，正好是那四条回到了队列里。修法两条：打包车道首窗默认 **180 s**（90 s 在 runner 上实测
+被 `firstWindow` 超时打过脸）、四条 spec 各自 300–420 s 预算且等 `AI decisions N` 的窗口 60 s → **180 s**。
+
+历史（三次更新）：skip **已删**。决定性读数来自诊断步骤（Nightly `41323944195`，head `cade899b`）：
 同一份打包产物、同一个 spec、`BYPASS=1`，**单独跑 `1 passed (25.6s)`** —— 也就是说筛选在打包车道上**是通的**；
 而它放进整套 p0（125 条）里跑时，60 s 的等待先到、日志里连一条 `screening record started` 都没有。
 处理：① 主用例与导出用例的「等 AI decisions」从 60 s 放宽到 **180 s**；② 四条重新不跳过（`packaged-screening-skip.ts` 删除）；
