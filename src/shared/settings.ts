@@ -1349,6 +1349,8 @@ export type ConnectorView = {
   group: ConnectorGroup
   /** Scientific area; absent only in fixtures written before the field existed. */
   domain?: ConnectorDomain
+  /** How many tools this connector exposes, counted from the registry (not from the catalog). */
+  toolCount?: number
 }
 
 // A connector view plus its tools and metadata, for the detail page.

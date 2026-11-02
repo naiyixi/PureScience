@@ -2177,6 +2177,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'settings.favoriteSpecialist': '전문가 {name} 즐겨찾기',
   'settings.favorites': '즐겨찾기',
   'settings.featured': '추천',
+  'settings.connectors.counts': '커넥터 {connectors}개 · 도구 {tools}개',
   'settings.featuredFilter': '추천',
   'settings.fetchingPackages': '{hosts}에서 패키지를 가져오는 중',
   'settings.fileModified': '수정 날짜',

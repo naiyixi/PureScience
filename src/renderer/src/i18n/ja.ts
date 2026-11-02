@@ -2207,6 +2207,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'settings.favoriteSpecialist': 'スペシャリスト {name} をお気に入りに追加',
   'settings.favorites': 'お気に入り',
   'settings.featured': '注目',
+  'settings.connectors.counts': '{connectors} 個のコネクタ · {tools} 個のツール',
   'settings.featuredFilter': '注目',
   'settings.fetchingPackages': '{hosts} からパッケージを取得中',
   'settings.fileModified': '更新日時',

@@ -726,6 +726,7 @@ export const zh = {
   'settings.batchSkippedProtected': '跳过 {n} 个内置技能',
   'settings.batchError': '部分批量操作失败，请重试',
   'settings.featured': '精选',
+  'settings.connectors.counts': '{connectors} 个连接器 · {tools} 个工具',
   'settings.directory': '目录',
   'settings.custom': '自定义',
   'settings.localCommand': '本地命令',

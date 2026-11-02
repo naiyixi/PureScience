@@ -2272,6 +2272,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'settings.favoriteSpecialist': 'Spécialiste favori {name}',
   'settings.favorites': 'Favoris',
   'settings.featured': 'À la une',
+  'settings.connectors.counts': '{connectors} connecteurs · {tools} outils',
   'settings.featuredFilter': 'À la une',
   'settings.fetchingPackages': 'Récupération des paquets depuis {hosts}',
   'settings.fileModified': 'Modifié',

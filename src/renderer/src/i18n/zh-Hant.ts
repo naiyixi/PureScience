@@ -2055,6 +2055,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'settings.favoriteSpecialist': '收藏專才 {name}',
   'settings.favorites': '收藏',
   'settings.featured': '精選',
+  'settings.connectors.counts': '{connectors} 個連接器 · {tools} 個工具',
   'settings.featuredFilter': '精選',
   'settings.fetchingPackages': '正在從 {hosts} 取得套件',
   'settings.fileModified': '修改時間',

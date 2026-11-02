@@ -81,6 +81,18 @@ const ALL_TOOLS: ToolDescriptor[] = [
 export const ALL_CONNECTOR_IDS = [...new Set(ALL_TOOLS.map((t) => t.connector))]
 
 /**
+ * Tools per connector id. The Settings panel states "N connectors · M tools" and needs this number from the
+ * registry rather than from a second hand-kept list: a count that lives beside the catalog would drift the
+ * first time a tool is added.
+ */
+export const CONNECTOR_TOOL_COUNTS: Record<string, number> = ALL_TOOLS.reduce<
+  Record<string, number>
+>((counts, tool) => {
+  counts[tool.connector] = (counts[tool.connector] ?? 0) + 1
+  return counts
+}, {})
+
+/**
  * Connector-declared contracts, for the capability registry. Connector tools are where most facts are
  * actually established, so without these the preflight could name a missing `evidence:literature_set`
  * and no producer even though two tools can make one.

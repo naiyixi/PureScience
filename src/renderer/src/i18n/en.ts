@@ -756,6 +756,7 @@ export const en: Record<ZhKey, string> = {
   'settings.batchSkippedProtected': 'Skipped {n} built-in skills',
   'settings.batchError': 'Some batch actions failed, please retry',
   'settings.featured': 'Featured',
+  'settings.connectors.counts': '{connectors} connectors · {tools} tools',
   'settings.directory': 'Directory',
   'settings.custom': 'Custom',
   'settings.localCommand': 'Local command',

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 
+import { CONNECTOR_TOOL_COUNTS } from '../../connectors/registry'
+
 import type {
   AddCustomServerRequest,
   ConnectorDetailView,
@@ -627,7 +629,8 @@ class ConnectorSettingsModule {
       enabled: !disabled.has(meta.id),
       autoAllow: autoAllow.has(meta.id),
       group: meta.group ?? 'featured',
-      domain: meta.domain
+      domain: meta.domain,
+      toolCount: CONNECTOR_TOOL_COUNTS[meta.id] ?? 0
     })).sort((a, b) => a.displayName.localeCompare(b.displayName))
   }
 

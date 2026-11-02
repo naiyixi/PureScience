@@ -1,3 +1,5 @@
+import { Fragment } from 'react'
+
 import { useLanguage, type TranslationKey } from '@/i18n'
 import {
   AlertTriangle,
@@ -347,6 +349,11 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
   const showFeatured = filter === 'all' || filter === 'featured'
   const showDirectory = filter === 'all' || filter === 'directory'
   const showCustom = filter === 'all' || filter === 'custom'
+  // Stated from the registry through the view (main decides both halves), so the panel never claims a total
+  // it counted from a filtered list: with a search active the header still says what the install holds.
+  const connectorTotal = connectors.length
+  const toolTotal = connectors.reduce((sum, connector) => sum + (connector.toolCount ?? 0), 0)
+
   const featuredConnectors = visibleConnectors.filter((c) => (c.group ?? 'featured') === 'featured')
   const directoryConnectors = visibleConnectors.filter((c) => c.group === 'directory')
   const customExpanded = !collapsed.custom
@@ -383,57 +390,77 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
         {expanded ? (
           rows.length > 0 ? (
             <ul className="mt-2 flex flex-col divide-y divide-border">
-              {rows.map((connector) => (
-                <li
-                  key={connector.id}
-                  data-slot="settings-list-row"
-                  className="flex min-h-14 items-center gap-3 py-2.5"
-                >
-                  <ConnectorGlyph size={24} />
-                  <CatalogFavoriteButton
-                    resourceId={`connector:${connector.id}`}
-                    label={t('settings.favoriteConnector').replace('{name}', connector.displayName)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate({ kind: 'detail', id: connector.id })}
-                      className="block w-full text-left"
+              {rows.map((connector, index) => {
+                // Directory rows are grouped by scientific area in place — a heading appears when the area
+                // changes, so the list reads as sections without a second level of collapse to click through.
+                const showDomainHeading =
+                  groupKey === 'directory' &&
+                  (index === 0 ||
+                    (rows[index - 1].domain ?? 'tools') !== (connector.domain ?? 'tools'))
+                return (
+                  <Fragment key={connector.id}>
+                    {showDomainHeading ? (
+                      <li
+                        data-slot="connector-domain-heading"
+                        className="pt-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+                      >
+                        {t(DOMAIN_LABELS[connector.domain ?? 'tools'])}
+                      </li>
+                    ) : null}
+                    <li
+                      data-slot="settings-list-row"
+                      className="flex min-h-14 items-center gap-3 py-2.5"
                     >
-                      <span className="block truncate text-sm text-foreground">
-                        {connector.displayName}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {connector.description}
-                      </span>
-                    </button>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {connector.domain ? (
-                        // The area a connector belongs to, on the row itself: the list is 31 connectors, and
-                        // without this a reader has to open each one to learn whether it is genomics,
-                        // structures, chemistry, clinical, literature or a tool that is not a data source.
-                        <span
-                          data-slot="connector-domain"
-                          className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-muted-foreground"
-                        >
-                          {t(DOMAIN_LABELS[connector.domain])}
-                        </span>
-                      ) : null}
-                      <CatalogTagEditor
+                      <ConnectorGlyph size={24} />
+                      <CatalogFavoriteButton
                         resourceId={`connector:${connector.id}`}
-                        addLabel={t('settings.addTag')}
-                        tagsLabel={t('settings.tags')}
-                        placeholder={t('settings.addTag')}
+                        label={t('settings.favoriteConnector').replace(
+                          '{name}',
+                          connector.displayName
+                        )}
                       />
-                    </div>
-                  </div>
-                  <SettingsToggle
-                    enabled={connector.enabled}
-                    aria-label={connector.displayName}
-                    onToggle={() => void setConnectorEnabled(connector.id, !connector.enabled)}
-                  />
-                </li>
-              ))}
+                      <div className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate({ kind: 'detail', id: connector.id })}
+                          className="block w-full text-left"
+                        >
+                          <span className="block truncate text-sm text-foreground">
+                            {connector.displayName}
+                          </span>
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {connector.description}
+                          </span>
+                        </button>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {connector.domain ? (
+                            // The area a connector belongs to, on the row itself: the list is 31 connectors, and
+                            // without this a reader has to open each one to learn whether it is genomics,
+                            // structures, chemistry, clinical, literature or a tool that is not a data source.
+                            <span
+                              data-slot="connector-domain"
+                              className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-muted-foreground"
+                            >
+                              {t(DOMAIN_LABELS[connector.domain])}
+                            </span>
+                          ) : null}
+                          <CatalogTagEditor
+                            resourceId={`connector:${connector.id}`}
+                            addLabel={t('settings.addTag')}
+                            tagsLabel={t('settings.tags')}
+                            placeholder={t('settings.addTag')}
+                          />
+                        </div>
+                      </div>
+                      <SettingsToggle
+                        enabled={connector.enabled}
+                        aria-label={connector.displayName}
+                        onToggle={() => void setConnectorEnabled(connector.id, !connector.enabled)}
+                      />
+                    </li>
+                  </Fragment>
+                )
+              })}
             </ul>
           ) : (
             <p className="mt-2 py-2 text-xs text-muted-foreground">
@@ -745,6 +772,12 @@ export function ConnectorsPanel({ onNavigate }: ConnectorsPanelProps): React.JSX
             </div>
           ) : null}
         </div>
+
+        <p data-slot="connector-counts" className="text-xs text-muted-foreground">
+          {t('settings.connectors.counts')
+            .replace('{connectors}', String(connectorTotal))
+            .replace('{tools}', String(toolTotal))}
+        </p>
 
         {showFeatured
           ? connectorGroup(

@@ -2211,6 +2211,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'settings.favoriteSpecialist': 'В избранное: специалист {name}',
   'settings.favorites': 'Избранное',
   'settings.featured': 'Рекомендуемое',
+  'settings.connectors.counts': '{connectors} коннекторов · {tools} инструментов',
   'settings.featuredFilter': 'Рекомендуемое',
   'settings.fetchingPackages': 'Получение пакетов с {hosts}',
   'settings.fileModified': 'Изменён',
