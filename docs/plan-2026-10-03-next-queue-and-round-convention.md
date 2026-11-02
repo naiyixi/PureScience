@@ -15406,3 +15406,62 @@ lateMs 801  canaryMs 5496  inFlight 0
 （`reviewer:get-for-session` 中位 537 ms / `sessions:import-posture` 307 ms，先量再改；前者在并行会话在制的
 `src/main/reviewer/**` 里 ⇒ 它没落定就不碰）；③ 并行会话在制件仍在就不碰 `src/main/references/**`、
 `src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/notebook/repository.ts`。
+
+## 二百七十九、本轮追加（执行器，2026-11-02 21:2x–）—— v2.21.2 落地复核 + Windows 车道的红：seatbelt 策略在 Windows 上把授权根解析成了反斜杠路径
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3`：`af9ca9b5`（Release lint 修）/ `7916ae02`（连接器读数落档 + 打 v2.21.2 tag）/ `7a67451b`。工作树有一批**不是我的**在制品
+  （`src/main/notebook/repository.ts`+`repository.test.ts`、`src/main/references/screening-service.ts`、`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、`src/main/acp/runtime-coordinator.ts`、`src/shared/reviewer.ts`、`src/shared/session-persistence.ts`、
+  `docs/plan-2026-10-28-two-releases.md`）⇒ 本轮**一律不碰**这些路径。
+- 在飞判决：`af9ca9b5` 的 Release 正在跑（macos-arm64 构建）⇒ 本轮**先不发任何推送**，等它落定。
+- 开工前不重做核对：`managed-runtime-guard` 一对文件不在任何人的在制里；本轮只改这两处。
+
+### 一 交付（本笔 `fabb94c5`）
+
+| 文件 | 改法 |
+|---|---|
+| `src/main/notebook/managed-runtime-guard.ts` | 新增 `resolveForTarget(root, platform)`：**目标平台是 darwin 时用 `posix.resolve`**，其余用宿主 `resolve`；`protectManagedRuntimeWrites` 与 `physicalRoots`（`confineKernelWrites` 的允许根/只读根）都改走它 |
+| `src/main/notebook/managed-runtime-guard.test.ts` | 在「授权根被允许」那条既有断言旁**加**一条跨平台断言：darwin profile 里不得出现盘符形态路径（`/[A-Za-z]:[\\/]/`）|
+
+### 二 红是什么、怎么定的因
+
+- Windows 车道 `af9ca9b5` 的 `Windows full test (3/8)` 唯一失败文件：
+  `src/main/notebook/managed-runtime-guard.test.ts > confineKernelWrites > writes are denied by default and allowed back only inside the authorised roots`，
+  `AssertionError: expected '(version 1)\n(allow default)\n(deny f…' to contain '(allow file-write* (subpath "/Users/s…'`。
+- 真因（`node -e` 直接取两条解析器的读数，不是推断）：`path.win32.resolve('/Users/someone/project')` → `\Users\someone\project`，
+  `path.posix.resolve('/Users/someone/project')` → `/Users/someone/project`。`physicalRoots` 用的是**宿主** `resolve` ⇒ 在 Windows 上
+  授权根被写成 Windows 形态并 JSON 转义进 profile，既让断言必红，也让那份 profile 指向一个内核机器上不存在的路径
+  （声称允许、实际允许不了）。
+- 边界（不许读成更强）：生产里 `confineKernelWrites` 在 `platform !== 'darwin'` 时**原样返回**，所以这处缺陷在 Windows 产品运行时**不可达**，
+  它是「跨平台用例 + 策略装配函数」的缺陷，不是 Windows 用户能踩到的写保护漏洞。修的是「目标平台参数必须权威」这条缝。
+
+### 三 门禁与读数（本机实跑）
+
+- `npx vitest run src/main/notebook/managed-runtime-guard.test.ts` → **130 passed**；
+  `src/main/notebook/kernel-executor.test.ts`（唯一生产调用方所在簇）→ **56 passed | 6 skipped**。
+- `NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p tsconfig.node.json --composite false` → 本笔 **0 错**
+  （余 4 条全在并行会话在制的 `src/main/references/screening-service.ts`，`grep -c managed-runtime-guard` = 0）。
+- `npx eslint --no-cache <两个文件>` → **EXIT=0**；`bash scripts/pre-push-checks.sh` → **EXIT=0**（推送门自报 2 文件 0 problems）。
+- Windows 车道的判决只能由车道给：本条改动**不以本机绿代替 Windows 绿**，判据是 `fabb94c5` 的 `Windows Full Test`。
+
+### 四 v2.21.2 发布复核（Release 页与资产，非日志）
+
+| 判据 | 读数 |
+|---|---|
+| 页 | `gh release list` → `PureScience v2.21.2  Latest  v2.21.2` |
+| draft / prerelease | `draft=false pre=false` |
+| 资产 | **21 个**：mac arm64/x64 的 dmg+zip+blockmap、linux AppImage+deb、win setup.exe+zip+blockmap、`SHA256SUMS.txt`、`RELEASE-CERTIFICATION.json`、`version.json`、`latest*.yml`、`arm64-mac.yml`/`x64-mac.yml` |
+| 页↔提交 | `RELEASE-CERTIFICATION.json.sourceSha` = `af9ca9b5b5a7227f57e087a7b38bffbcd4e9e099` = `git rev-parse 'v2.21.2^{commit}'` |
+| Release run | 全绿（verify + 四平台 build + publish + windows-upgrade-smoke）|
+| **签名边界** | mac 作业具名打印 `SKIPPED — UNSIGNED macOS assets, not notarized (no Apple credentials)` ⇒ 本版 mac 资产**未签名未公证**，不许写成「已签名」 |
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读 `fabb94c5` 的 `Nightly` + `Windows Full Test` 作业级判决（Nightly 的 P0 约 28 分钟）；
+② 若 Windows 绿：这一族（跨平台断言/宿主路径）可结案，按聚合表取下一个读类慢通道；
+`notifications:get-snapshot`（740 ms 中位 / cpu 0.25）与 `artifacts:read-preview`（482 ms 中位 / 7.97 s 最大，且**成对出现**：
+同一秒两条几乎相同耗时）**都还只有日志分布、没有归因**，先量再改；后者要先把「为何一次预览被请求两次」读出来再谈缓存；
+③ 并行会话在制件仍在就不碰 `src/main/references/**`、`src/main/reviewer/**`、`src/main/session-persistence/**`、
+`src/main/notebook/repository.ts`、`src/main/acp/runtime-coordinator.ts`、`docs/plan-2026-10-28-two-releases.md`。
