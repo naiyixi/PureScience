@@ -15465,3 +15465,13 @@ lateMs 801  canaryMs 5496  inFlight 0
 同一秒两条几乎相同耗时）**都还只有日志分布、没有归因**，先量再改；后者要先把「为何一次预览被请求两次」读出来再谈缓存；
 ③ 并行会话在制件仍在就不碰 `src/main/references/**`、`src/main/reviewer/**`、`src/main/session-persistence/**`、
 `src/main/notebook/repository.ts`、`src/main/acp/runtime-coordinator.ts`、`docs/plan-2026-10-28-two-releases.md`。
+
+### 六 车道判决（`fabb94c5`，完整 40 位 `fabb94c536e87a101cf7ad197ce86c703534ea62`）
+
+| 车道 | 结论 | 读数 |
+|---|---|---|
+| `Windows Full Test` | **success** | 八个分片 **8/8 success**，其中原来红的分片 3 现为 success ⇒ 这条红是那一处解析器引起的，且已随本笔消失 |
+| `Nightly` | **success** | `Verify (lint + typecheck + test + package)` success；四平台 build 全 success（含 `macos-arm64` 的打包态认证）；`publish` success |
+| 专项单测 | 绿 | `managed-runtime-guard.test.ts` **130 passed**、`kernel-executor.test.ts` **56 passed \| 6 skipped** |
+
+推这一笔之前看过在飞的车道：只有本 SHA 自己的两条，没有被顶掉的他人判决；推送后等两条都落定才写这一节。
