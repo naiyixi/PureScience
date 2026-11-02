@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { realpathSync } from 'node:fs'
-import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, posix, relative, resolve, sep } from 'node:path'
 
 import type { NotebookLanguage } from '../../shared/notebook'
 
@@ -1155,6 +1155,14 @@ export const detectManagedRuntimeMutation = ({
 
 const seatbeltString = (value: string): string => JSON.stringify(value)
 
+// A seatbelt profile always speaks macOS paths, so its roots must be resolved with POSIX rules even
+// when the profile is assembled on another host. The host resolver would prefix `/Users/...` with the
+// current drive on Windows (`C:\Users\...`) and the root would then be quoted into the profile as a
+// path that does not exist on the machine running the kernel — a policy that silently allows nothing
+// while claiming to allow the workspace.
+const resolveForTarget = (root: string, platform: NodeJS.Platform): string =>
+  platform === 'darwin' ? posix.resolve(root) : resolve(root)
+
 // macOS Seatbelt is the hard filesystem layer beneath the semantic policy above. It applies to the
 // whole child process tree, so dynamically constructed paths and nested R/Python/subprocess writers
 // cannot modify the app-owned runtime. The trusted main-process package manager is spawned outside
@@ -1167,7 +1175,7 @@ export const protectManagedRuntimeWrites = (
 ): RuntimeProcessInvocation => {
   if (platform !== 'darwin') return invocation
 
-  const resolvedRoot = resolve(runtimeRoot)
+  const resolvedRoot = resolveForTarget(runtimeRoot, platform)
   let physicalRoot = resolvedRoot
   try {
     physicalRoot = realpathSync(resolvedRoot)
@@ -1206,10 +1214,10 @@ export type NotebookWriteConfinement = {
   readOnlyRoots?: string[]
 }
 
-const physicalRoots = (roots: string[]): string[] => {
+const physicalRoots = (roots: string[], platform: NodeJS.Platform): string[] => {
   const out: string[] = []
   for (const root of roots) {
-    const resolved = resolve(root)
+    const resolved = resolveForTarget(root, platform)
     out.push(resolved)
     try {
       out.push(realpathSync(resolved))
@@ -1231,9 +1239,9 @@ export const confineKernelWrites = (
   // otherwise would report a protection that is not applied. The gap is named in the settings copy.
   if (platform !== 'darwin') return invocation
 
-  const allowed = physicalRoots(confinement.allowedRoots)
+  const allowed = physicalRoots(confinement.allowedRoots, platform)
   if (allowed.length === 0) return invocation
-  const readOnly = physicalRoots(confinement.readOnlyRoots ?? [])
+  const readOnly = physicalRoots(confinement.readOnlyRoots ?? [], platform)
 
   const profile = [
     '(version 1)',

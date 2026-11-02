@@ -315,6 +315,9 @@ describe('confineKernelWrites', () => {
     const profile = confined.args[1]
     expect(profile).toContain('(deny file-write*)')
     expect(profile).toContain('(allow file-write* (subpath "/Users/someone/project"))')
+    // A profile assembled on a non-POSIX host must still speak macOS paths: the host resolver would
+    // turn these roots into `C:\Users\...`, which the kernel's machine does not have.
+    expect(profile).not.toMatch(/[A-Za-z]:[\\/]/)
     // The runtime deny comes AFTER the allows because seatbelt is last-match-wins; a runtime that sits under
     // an authorised root must still be read-only.
     expect(profile.lastIndexOf('/Users/someone/runtime')).toBeGreaterThan(
