@@ -357,6 +357,12 @@ export const zh = {
   'gallery.sample.import-authorization.judgment':
     '这是路由层用例，不是真实配对远端会话 —— 它证明拒绝路径已接通，不等于现场实测。',
   'home.projects': '项目',
+  'home.casePlaza.title': '我的案例',
+  'home.casePlaza.subtitle': '这台机器上真的跑过的项目',
+  'home.casePlaza.empty': '还没有跑过会话的项目 —— 开始一个会话，它就会出现在这里。',
+  'home.casePlaza.lastActive': '最近 {when}',
+  'home.casePlaza.ranHere': '在本机跑过',
+  'home.casePlaza.capabilitySamples': '能力样例',
   'home.envAttentionOne': '{label} 需要处理',
   'home.envAttentionMany': '{n} 项环境问题需要处理',
   'home.loadProjectsFailed': '无法加载项目：{error}',

@@ -901,6 +901,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.projectActions': '프로젝트 작업',
   'home.projectDescription': '설명',
   'home.projects': '프로젝트',
+  'home.casePlaza.title': '내 사례',
+  'home.casePlaza.subtitle': '이 컴퓨터에서 실제로 실행한 프로젝트',
+  'home.casePlaza.empty':
+    '아직 세션이 있는 프로젝트가 없습니다. 세션을 시작하면 여기에 표시됩니다.',
+  'home.casePlaza.lastActive': '최근 {when}',
+  'home.casePlaza.ranHere': '이 기기에서 실행',
+  'home.casePlaza.capabilitySamples': '기능 예시',
   'home.envAttentionOne': '{label} 처리가 필요합니다',
   'home.envAttentionMany': '환경 문제 {n}개가 처리 필요합니다',
   'home.loadProjectsFailed': '프로젝트를 불러오지 못했습니다: {error}',

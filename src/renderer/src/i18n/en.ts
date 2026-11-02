@@ -374,6 +374,12 @@ export const en: Record<ZhKey, string> = {
   'gallery.sample.import-authorization.judgment':
     'This is a route-layer check, not a paired remote session — it shows the denial path is wired, not a field test.',
   'home.projects': 'Projects',
+  'home.casePlaza.title': 'Your cases',
+  'home.casePlaza.subtitle': 'Projects run on this machine',
+  'home.casePlaza.empty': 'No project has a session yet — start one and it will appear here.',
+  'home.casePlaza.lastActive': 'last active {when}',
+  'home.casePlaza.ranHere': 'Ran here',
+  'home.casePlaza.capabilitySamples': 'Capability samples',
   'home.envAttentionOne': '{label} needs attention',
   'home.envAttentionMany': '{n} environment items need attention',
   'home.loadProjectsFailed': 'Could not load projects: {error}',
