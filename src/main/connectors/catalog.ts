@@ -83,6 +83,34 @@ export const CONNECTOR_CATALOG: ConnectorMeta[] = [
     requiresNcbi: false
   },
   {
+    id: 'lipid-maps',
+    domain: 'structures',
+    displayName: 'LIPID MAPS',
+    aliases: ['LMSD', 'lipid', 'Lipid Maps', '脂质'],
+    description:
+      '通过 LIPID MAPS 结构数据库（LMSD）按标识符精确查找一个脂质：结构、分子式、精确质量、SMILES/InChI、分类层级与同义词，不下载任何结构文件。',
+    useWhen:
+      'Use when a question names a specific lipid and needs its authoritative identity — the LMSD id (LM…), systematic name, formula, exact mass, SMILES/InChIKey, abbreviation, the core/main-class/sub-class it sits under, or its synonyms; typically after a common name has been resolved to an LMSD, PubChem, HMDB, KEGG or ChEBI identifier, since LMSD has no name search. Sourced from LIPID MAPS Structure Database.',
+    sources: ['LIPID MAPS'],
+    termsUrl: 'https://www.lipidmaps.org/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
+    id: 'omnipath',
+    domain: 'genomics',
+    displayName: 'OmniPath',
+    aliases: ['OmniPath', 'signalling', '信号通路', 'enzyme-substrate'],
+    description:
+      '通过 OmniPath 获取整合后的信号传导相互作用、蛋白注释与酶–底物修饰关系，每条边保留方向、激活/抑制与来源资源。',
+    useWhen:
+      'Use when a question needs direction or sign between molecules rather than mere co-mention — who activates or inhibits whom, which resource recorded it, what a protein is annotated as (transcription-factor type, location, indication), or which kinase modifies which residue on which substrate. Sourced from OmniPath (Saezlab).',
+    sources: ['OmniPath'],
+    termsUrl: 'https://omnipathdb.org/',
+    requiresNcbi: false,
+    group: 'directory'
+  },
+  {
     id: 'literature',
     domain: 'literature',
     displayName: '文献图谱',

@@ -16,8 +16,10 @@ import { GENOMES_NCBI_TOOLS } from './descriptors/genomes-ncbi'
 import { GENOMES_TOOLS } from './descriptors/genomes'
 import { HUMAN_GENETICS_TOOLS } from './descriptors/human-genetics'
 import { IMMUNE_EPITOPES_TOOLS } from './descriptors/immune-epitopes'
+import { LIPID_MAPS_TOOLS } from './descriptors/lipid-maps'
 import { LITERATURE_TOOLS } from './descriptors/literature'
 import { MOLECULE_TOOLS } from './descriptors/molecule'
+import { OMNIPATH_TOOLS } from './descriptors/omnipath'
 import { OMICS_ARCHIVES_TOOLS } from './descriptors/omics-archives'
 import { OMICS_ENA_TOOLS } from './descriptors/omics-ena'
 import { PROTEIN_ANNOTATION_TOOLS } from './descriptors/protein-annotation'
@@ -57,9 +59,11 @@ const ALL_TOOLS: ToolDescriptor[] = [
   ...GENOMES_TOOLS,
   ...HUMAN_GENETICS_TOOLS,
   ...IMMUNE_EPITOPES_TOOLS,
+  ...LIPID_MAPS_TOOLS,
   ...LITERATURE_TOOLS,
   ...MOLECULE_TOOLS,
   ...OMICS_ARCHIVES_TOOLS,
+  ...OMNIPATH_TOOLS,
   ...OMICS_ENA_TOOLS,
   ...PROTEIN_ANNOTATION_TOOLS,
   ...PUBMED_TOOLS,
