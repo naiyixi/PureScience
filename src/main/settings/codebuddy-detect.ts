@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { homedir } from 'node:os'
-import path from 'node:path'
+import path, { delimiter } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
@@ -123,6 +123,13 @@ const parseVersion = (output: string): string | undefined => {
   return match ? match[0] : output.trim() || undefined
 }
 
+// The directory a binary lives in, so the version probe can put it on PATH: npm's shims need the node that
+// sits beside them, and `#!/usr/bin/env node` cannot find it otherwise.
+const partitionDir = (executablePath: string): string | undefined => {
+  const dir = path.dirname(executablePath)
+  return dir && dir !== '.' ? dir : undefined
+}
+
 // Real `<path> --version` runner. On Windows a `.cmd`/`.bat` shim cannot be launched by execFile
 // directly, so route it through the shell with the path quoted; native `.exe`/Unix binaries run
 // without a shell. Short timeout so a hung binary can't stall detection.
@@ -130,18 +137,32 @@ const runCodeBuddyVersion =
   (platform: NodeJS.Platform) =>
   async (path: string): Promise<string | undefined> => {
     try {
+      // npm's global shim is `#!/usr/bin/env node`, so the probe needs `node` on PATH — and on a machine
+      // where node came from npm itself (`<prefix>/bin/node`), the only reliable place to find it is the
+      // shim's own directory. Measured 2026-11-02: with a GUI-like PATH the same binary answers
+      // "env: node: No such file or directory", and a detection built on that reports "not installed" for
+      // an install that is perfectly usable from a login shell.
+      const dir = partitionDir(path)
+      const baseEnv = augmentedPathEnv(process.env)
+      const env = dir
+        ? {
+            ...baseEnv,
+            PATH: [dir, baseEnv.PATH ?? ''].filter((entry) => entry.length > 0).join(delimiter)
+          }
+        : baseEnv
+
       const { stdout } =
         platform === 'win32'
           ? await execFileAsync(`"${path}"`, ['--version'], {
               timeout: 5000,
               shell: true,
               windowsHide: true,
-              env: augmentedPathEnv(process.env)
+              env
             })
           : await execFileAsync(path, ['--version'], {
               timeout: 5000,
               windowsHide: true,
-              env: augmentedPathEnv(process.env)
+              env
             })
 
       return parseVersion(stdout)
