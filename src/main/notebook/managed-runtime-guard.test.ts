@@ -5,7 +5,11 @@ import { performance } from 'node:perf_hooks'
 
 import { describe, expect, it } from 'vitest'
 
-import { detectManagedRuntimeMutation, protectManagedRuntimeWrites } from './managed-runtime-guard'
+import {
+  confineKernelWrites,
+  detectManagedRuntimeMutation,
+  protectManagedRuntimeWrites
+} from './managed-runtime-guard'
 
 describe('detectManagedRuntimeMutation', () => {
   const runtimeRoot = '/tmp/purescience/runtime'
@@ -295,5 +299,41 @@ describe('protectManagedRuntimeWrites', () => {
 
     expect(protectedInvocation.executable).toBe('/usr/bin/sandbox-exec')
     expect(protectedInvocation.args.slice(-2)).toEqual([executable, '--inspect'])
+  })
+})
+
+describe('confineKernelWrites', () => {
+  const invocation = { executable: 'python3', args: ['-c', 'pass'] }
+
+  it('writes are denied by default and allowed back only inside the authorised roots', () => {
+    const confined = confineKernelWrites(
+      invocation,
+      { allowedRoots: ['/Users/someone/project'], readOnlyRoots: ['/Users/someone/runtime'] },
+      'darwin'
+    )
+    expect(confined.executable).toBe('/usr/bin/sandbox-exec')
+    const profile = confined.args[1]
+    expect(profile).toContain('(deny file-write*)')
+    expect(profile).toContain('(allow file-write* (subpath "/Users/someone/project"))')
+    // The runtime deny comes AFTER the allows because seatbelt is last-match-wins; a runtime that sits under
+    // an authorised root must still be read-only.
+    expect(profile.lastIndexOf('/Users/someone/runtime')).toBeGreaterThan(
+      profile.indexOf('/Users/someone/project')
+    )
+  })
+
+  it('keeps the temp trees writable, because Python and matplotlib write there', () => {
+    const confined = confineKernelWrites(invocation, { allowedRoots: ['/p'] }, 'darwin')
+    expect(confined.args[1]).toContain('(allow file-write* (subpath "/private/tmp"))')
+    expect(confined.args[1]).toContain('(allow file-write* (subpath "/private/var/folders"))')
+  })
+
+  it('is not applied where this build has no verified write-guard', () => {
+    expect(confineKernelWrites(invocation, { allowedRoots: ['/p'] }, 'linux')).toBe(invocation)
+    expect(confineKernelWrites(invocation, { allowedRoots: ['/p'] }, 'win32')).toBe(invocation)
+  })
+
+  it('does nothing without an authorised root', () => {
+    expect(confineKernelWrites(invocation, { allowedRoots: [] }, 'darwin')).toBe(invocation)
   })
 })

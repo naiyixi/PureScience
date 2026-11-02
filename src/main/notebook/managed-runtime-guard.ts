@@ -1189,3 +1189,70 @@ export const protectManagedRuntimeWrites = (
     args: ['-p', profile, invocation.executable, ...invocation.args]
   }
 }
+
+/**
+ * Where a notebook kernel may write, when the workspace confinement is on.
+ *
+ * This is a real seatbelt profile, not a convention: `(deny file-write*)` first, then the authorised roots
+ * allowed back, then the managed runtime denied again (SBPL is last-match-wins, so the runtime stays
+ * read-only even when it sits under an authorised root). The process can still READ anywhere — a kernel that
+ * cannot import its own libraries is not a safer kernel — and it can still write to the two temp trees,
+ * because Python, BLAS and matplotlib all write there and refusing them breaks ordinary analysis.
+ */
+export type NotebookWriteConfinement = {
+  /** Directories the kernel may write inside. */
+  allowedRoots: string[]
+  /** Directories that must stay read-only even when they sit under an allowed root. */
+  readOnlyRoots?: string[]
+}
+
+const physicalRoots = (roots: string[]): string[] => {
+  const out: string[] = []
+  for (const root of roots) {
+    const resolved = resolve(root)
+    out.push(resolved)
+    try {
+      out.push(realpathSync(resolved))
+    } catch {
+      // A path that does not exist yet still protects itself once created.
+    }
+  }
+  return [...new Set(out)]
+}
+
+const TEMP_WRITE_ROOTS = ['/private/tmp', '/private/var/folders', '/tmp', '/var/folders']
+
+export const confineKernelWrites = (
+  invocation: RuntimeProcessInvocation,
+  confinement: NotebookWriteConfinement,
+  platform: NodeJS.Platform = process.platform
+): RuntimeProcessInvocation => {
+  // Linux/Windows stay unchanged for now: this build has no verified write-guard there, and pretending
+  // otherwise would report a protection that is not applied. The gap is named in the settings copy.
+  if (platform !== 'darwin') return invocation
+
+  const allowed = physicalRoots(confinement.allowedRoots)
+  if (allowed.length === 0) return invocation
+  const readOnly = physicalRoots(confinement.readOnlyRoots ?? [])
+
+  const profile = [
+    '(version 1)',
+    '(allow default)',
+    '(deny file-write*)',
+    `(allow file-write* (literal "/dev/null"))`,
+    `(allow file-write* (literal "/dev/stdout"))`,
+    `(allow file-write* (literal "/dev/stderr"))`,
+    ...allowed.map((root) => `(allow file-write* (subpath ${seatbeltString(root)}))`),
+    ...TEMP_WRITE_ROOTS.map((root) => `(allow file-write* (subpath ${seatbeltString(root)}))`),
+    // Denied last: last match wins, so the managed runtime stays read-only even inside an allowed root.
+    ...readOnly.flatMap((root) => [
+      `(deny file-write* (literal ${seatbeltString(root)}))`,
+      `(deny file-write* (subpath ${seatbeltString(root)}))`
+    ])
+  ].join('\n')
+
+  return {
+    executable: '/usr/bin/sandbox-exec',
+    args: ['-p', profile, invocation.executable, ...invocation.args]
+  }
+}

@@ -21,7 +21,7 @@ import {
   type KernelVariable
 } from './kernel-protocol'
 import { mapLoopOutputs, type MappedFigure } from './loop-output-mapper'
-import { protectManagedRuntimeWrites } from './managed-runtime-guard'
+import { confineKernelWrites, protectManagedRuntimeWrites } from './managed-runtime-guard'
 import {
   capturedReadEvidence,
   classifyReadFiles,
@@ -661,11 +661,21 @@ class NotebookKernelExecutor implements NotebookExecutor {
     // app-owned runtime read-only to the complete persistent-kernel process tree as well, covering
     // dynamically constructed R/Python/REPL calls. manage_packages runs in the main process outside
     // this wrapper and remains the only package writer.
-    const invocation = protectManagedRuntimeWrites(
-      { executable: command, args },
-      request.runtimeRoot,
-      this.platform
-    )
+    // Confinement when it can actually be applied (darwin), the older runtime-only guard otherwise.
+    // `PURESCIENCE_NOTEBOOK_CONFINE_WRITES=0` turns the confinement off without a code change, because a
+    // guard that cannot be lifted from settings is a guard people work around by leaving the app.
+    const confineWrites =
+      process.env.PURESCIENCE_NOTEBOOK_CONFINE_WRITES !== '0' && this.platform === 'darwin' && Boolean(spawnCwd)
+    const invocation = confineWrites
+      ? confineKernelWrites(
+          { executable: command, args },
+          {
+            allowedRoots: [spawnCwd as string, figuresDir],
+            readOnlyRoots: [request.runtimeRoot]
+          },
+          this.platform
+        )
+      : protectManagedRuntimeWrites({ executable: command, args }, request.runtimeRoot, this.platform)
     // POSIX: spawn the kernel as the leader of its own process group so teardown can signal the whole tree
     // in one call (terminateProcessTree still verifies the kernel's real pgid before using it). A helper a
     // kernel forks while shutting down is then covered by that same signal instead of being found late and
