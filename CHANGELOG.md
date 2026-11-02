@@ -1,5 +1,46 @@
 # PureScience 更新日记
 
+## v2.21.2 — 2026-11-02（四个新连接器；面板按领域分组并报总数；notebook 只能在授权目录内写）
+
+**成熟度自陈**：这一版把「能力数」和「能在哪写」两件事说清楚，并补上竞品这一版新增的四个连接器。
+四个里两个（LIPID MAPS、OmniPath）在本机对真实服务跑通并留下读数；另外两个（TCIA、structure similarity）
+**本机网络到不了源站**，所以它们的读数由 CI 上的实机探针产生并打进任务日志 —— 没有写成「已验证」。
+
+### 一 打包态筛选：收口（上一版遗留）
+
+四条文献筛选认证在打包车道重新入列并通过：p0 **109 passed / 4 flaky / 12 skipped，31.5 分钟**，
+`P0_OUTCOME: success`（skip 数从 16 降到 12）。两个真原因：打包车道首窗 30 s 不够（实测冷启动 51.8 s），
+以及等 `AI decisions N` 的窗口 60 s 对一条要在打包态跑完整筛选链的用例太紧。现在首窗默认 180 s、
+四条 spec 各自 300–420 s、等待窗口 180 s。
+
+### 二 连接器：四个新源 + 面板终于说了两句人话
+
+| 连接器 | 工具 | 读数 |
+| --- | --- | --- |
+| `lipid-maps` | `lipidmaps_compound_lookup` | 本机实测 `pubchem_cid=5997` → `LMST01010001 / Cholesterol / C27H46O / exact_mass 386.354866`。该 API **没有名称检索**（服务原话列出 11 种合法标识符），`name` 是具名拒绝 |
+| `omnipath` | interactions / annotations / enzyme-substrate | 本机实测：`TP53` → 2 条互作（`P04637→Q9BRQ8`，`is_stimulation`+`consensus`）；`TP53` 注释 `PROGENy/pathway/PI3K`；`CDK1` → `O15392 T34 phosphorylation`。抓到 `/annotations` **不接受 `organisms`**，已改成不发并在结果里写 `organismFilterApplied: false` |
+| `cancer-imaging`（TCIA） | collections / patient studies / series search | 本机四个地址全 `000`（DNS 正常）⇒ 读数由 CI 探针产生。记录按服务原样透传并附 `fields[]`；缺参数时 NBIA 用 **200 + HTML** 回应，这种情况报 `source-unreadable` 而不是「没有数据」 |
+| `structure-similarity` | `pdb_structure_similarity` | RCSB 公开面无结构相似服务（`service:"structure"` 400 / `value` 500，同构造 `chemical` 204）；改用 FoldSeek，要上传坐标 ⇒ 为此给 `ToolContext` 加了 `postForm`。读数同样由 CI 探针产生 |
+
+面板：每行标出领域（genomics / structures / omics / clinical / literature / tools），目录区在领域变化处插入小标题
+（**不新增折叠层**），头部显示 **N 个连接器 · M 个工具**，两个数字与注册表同源
+（`ALL_TOOLS → CONNECTOR_TOOL_COUNTS → ConnectorView.toolCount`）。计数现在是 **35 个连接器 / 290 个工具**，
+README 双语与 ROADMAP 由守卫测试钉住。
+
+### 三 Notebook：只能在授权目录内写（默认开）
+
+`confineKernelWrites()` 生成 macOS seatbelt 策略：`(deny file-write*)` 打头 → 放回会话工作目录、figures 目录
+与两个临时树 → **最后 deny 受管运行时**（SBPL last-match-wins，所以运行时即使坐落在放行的临时树里也拒写）。
+本机三向实测：授权目录内 `WROTE`、`/Users/…/guard_outside.txt` `DENIED PermissionError`、
+`…/runtime/b.txt` `DENIED PermissionError`。Python 与 R 走同一条 spawn 路径，因此都覆盖。
+
+### 未做（写在这里，不写进「已完成」）
+
+- `shell` 与后台作业面**没有**纳入写限制（本轮只做 notebook 内核）；
+- Linux / Windows **未覆盖**：没有经过验证的写保护就不假装，返回原始调用；
+- 限制的开关目前是环境变量 `PURESCIENCE_NOTEBOOK_CONFINE_WRITES=0`，设置界面里的「授权目录」编辑还没做；
+- TCIA 与 structure similarity 的实机读数只在 CI 上取（本机网络到不了源站），本地无缓存、无离线样本。
+
 ## v2.21.1 — 2026-11-01（画廊补三张能核的卡；打包态复现手段修对；三天问题复盘落档）
 
 **成熟度自陈**：这一版没有新的科学计算能力，做的是「让声称的东西更难造假」——画廊从 5 张到 8 张，新增的三张
