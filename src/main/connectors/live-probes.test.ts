@@ -30,10 +30,6 @@ const ctx: ToolContext = {
     const res = await fetch(url, { method: 'POST', body: form })
     return res.json()
   },
-  // Required by the contract since the NCBI etiquette rewrite (`credentials` is read for the email/api key
-  // a tool has to send along). A live probe sends none — an empty bag is the honest value here, not a
-  // fabricated pair.
-  credentials: {}
 }
 
 describe.skipIf(!live)('live connector probes', () => {
