@@ -16126,3 +16126,63 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 ③ 下一单元 = **OCR 真机认证 spec**（排期档 v2.26.0 首条）：先解决「图片怎么进 Files 面板」这一格
 （现成配方：`src/main/settings/ocr-service.real.test.ts` 用 `cupsfilter` + `sips` 现场渲染 PNG，无需提交二进制）；
 ④ 仍让开的两处（并行会话在制）：`src/main/reviewer/**`、`src/main/session-persistence/**`。
+
+## 二百八十九、本轮追加（执行器，2026-11-04 07:5x–）—— 图片取字的真机认证规格：走读者自己的上传路径，本机拿到正向分支
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 3bbe25e0`，工作树里 **17 个改动 + 2 份未跟踪不是我的**（`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、`src/main/references/screening-service.ts`、`src/main/notebook/**`、
+  `src/main/ipc.ts`、`src/shared/**`、`docs/plan-2026-10-28-two-releases.md` 等；未跟踪的是 reviewer 的证据档）
+  ⇒ 一个字节没碰，未 stash、未提交。今天没有并行会话在跑 e2e/构建进程（`ps` 里只有常驻 headless 实例）。
+- 本单元不是自拟：排期档 `docs/plan-2026-11-04-v2.22-v2.27-schedule.md` v2.26.0 首条即「图片取字的真机认证 spec」，
+  且上一轮 notepad 的 `round-next ②` 点名同一件 ⇒ **本笔认领该条**。
+- 五份计划档里没有第二处已交付的同名规格（开工时 `e2e/certification/` 全树 grep `ocr` 零命中）。
+
+### 一 这一格真正的难点：图片怎么进 Files 面板
+
+不是造 artifact，而是**走读者自己的路**：两张文件（一张现场渲染的 PNG 扫描页 + 一个 markdown 备注）经 composer 的
+`input[type="file"][multiple]` 附上，随那一轮发出后落进项目文件索引，Files 面板才看得到。
+扫描页用 `cupsfilter` 印成 PDF、再用 `sips` 转 PNG（两者都是 macOS 自带，仓里不放二进制）；两者不可用时退回 1×1 PNG
+并在日志里写 `rendered=false` —— 那一轮只走「无字/失败」一侧，不假装印出了页面。
+
+第二处坑：composer 只对**声明接受图像**的模型给图片入口，而夹具的假 agent 建 provider 时没开这个标志。
+规格改用应用自己的 `settings:upsertProvider` 打开 `supportsImageInput`（`baseUrl`/`model`/密钥从既有记录继承，
+不能给假的；`provider-accounts.ts` 的 custom 分支已确认是「缺省沿用既有」）⇒ 被测的取字路径一个字节没改。
+
+### 二 读数（本机真窗口，非单测）
+
+| 项 | 读数 |
+| --- | --- |
+| 命令 | `npx playwright test e2e/certification/file-ocr.spec.ts --reporter=list`（先 `npm run build:e2e`，`✓ built in 22.98s`） |
+| 判决 | **1 passed (9.6s)**，`EXIT=0` |
+| 实际分支 | `[ocr-cert] rendered=true branch=text` —— 正文含 `HEMOGLOBIN` / `12.4`（引擎自己的读法） |
+| 出处句 | `Read with eng.traineddata (tesseract eng) in 95 ms. This text came from an image, not from a text layer.` |
+| 主进程侧 | `[ipc] ipc handler was slow { channel: 'pdf:ocr', durationMs: 144.89, cpuMs: 11, cpuShare: 0.076, attribution: 'no-cpu-in-process' }` ⇒ 真走桥接、识别在外部进程 |
+| 反向对照 | 同面板的 `lab-notes.md` 无该按钮；`[data-slot="file-ocr-action"]` 恰好 1 个 |
+| 空框 | 六个结果节点里**恰有一个**可见（按正条件计数，不等「正在读取」消失） |
+| 焦点 | `Escape` 关闭后 `activeElement` 的 `aria-label` 回到「Read text from lab-scan.png」 |
+
+证据档：`docs/evidence/2026-11-04-file-ocr-real-window.md`。
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | 本笔文件 **0 error**；余 4 条全在并行会话的 `src/main/references/screening-service.ts`（未读变量 / 未初始化成员），非本笔 |
+| `npx eslint --no-cache`（新增 spec） | 见提交前一节的实测读数 |
+| `bash scripts/pre-push-checks.sh` | 提交后跑（只扫已跟踪文件，未提交时跑＝假绿） |
+
+### 四 边界（不许读成更强）
+
+- **CI 的 macos-arm64 有没有 tesseract 未知** ⇒ 该车道可能落到「缺引擎」那支。规格两种都接受并把分支打进日志，
+  车道的判决要等这次推送后 `Nightly` 的 P0 作业给出；本笔只有本机读数。
+- 9.6 s 不能当性能基线：本机是 8 GB、swap 已用 6.0 GB 的机器。
+- 这一步只补**取证**，`FileOcrAction` 与 `pdf:ocr` 的产品行为零改动。
+
+### 五 下一轮第一步
+
+① 按完整 40 位 SHA 读这次推送的 `Nightly` P0 作业日志，grep `[ocr-cert]` 拿车道上的实际分支（若为 `tool-missing`
+即车道无 tesseract，属诚实结局，不改断言）；② 下一单元回到 v2.26.0 的第二条（排序改主进程聚合）与第三条
+（案例命名落进数据），两条都踩在「126 vs 0」那个结论上 ⇒ 先读证据档再决定是改代码还是先修索引；
+③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`。
