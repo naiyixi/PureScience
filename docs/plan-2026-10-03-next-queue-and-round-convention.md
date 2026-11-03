@@ -16051,3 +16051,78 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 核 21 个资产 + `sourceSha` 与 tag 提交逐字符一致；② 若同一条 spec 再红，按本次新增的判据读 —— 日志里会出现
 「拉了多少、停在多少」，先比这两个数再决定改 spec 还是改产品；③ 仍让开的两条：`sessions:save-session` 的分段
 读数（`src/main/session-persistence/**`）、`reviewer:get-for-session`（同域在制）。
+
+## 二百八十八、本轮追加（执行器，2026-11-04 02:3x–）—— main 上那六条红是同一个漏登的账：`pdf:ocr` 只登了两处，四处跨面清单没跟
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch -q origin` 前先看盘：`origin/main = 467126f4`，工作树里 **15 个改动 + 1 份证据档不是我的**
+  （`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/screening-service.ts`、
+  `src/main/notebook/repository*`、两个 `src/shared/**`、`docs/plan-2026-10-28-two-releases.md`；最后写入 23:14，
+  距本轮约 3.5 小时）⇒ **一个字节没碰**，也未 stash/提交它。
+- 上一轮 notepad 的「删 v2.23.0 tag 并在 6a6c2ed9 重建」**已被实际发布取代**：`gh release list` 首行 = `v2.23.0`
+  （Latest，21 资产，tag 指 `63537765`），另有 `v2.25.0` 的 Release run `41688404660` 在飞 ⇒ 不按旧 notepad 重打 tag、
+  也不在发版窗口里做会顶掉车道的事（本轮唯一那次 `push` 前查过：在飞的只有那条 tag 驱动的 Release，分支推送不影响它）。
+- 五份计划/排期档里没有本单元 ⇒ 不重复劳动。**本轮不是自拟单元**：`Nightly`（41683787190）与
+  `Windows Full Test`（41683787203）在同一次 `398eaf84` 上同时红，main 的判决是红的，先修红。
+
+### 一 归因：两条车道的红是**同样六条**（读作业级日志，不按车道整体猜）
+
+`Nightly` 失败的那一步是 `Test (with coverage)`（`Lint`/`Typecheck` 都 success），`Windows` 三片（2/7/8）失败的那一步是
+`Test complete suite shard`。两边点名的用例与期望值一字不差：
+
+| 文件 | 用例 | 期望 → 实际 |
+| --- | --- | --- |
+| `src/shared/renderer-contract-catalog.test.ts` | 能力面清单 | 503 → **504**；`localWeb` 可安装 412 → **413**；`projection.invoke` 382 → **383**；远端 `rejecting-stub` 135 → **136** |
+| `src/shared/renderer-surface-inventory.test.ts` | 跨面清单 | 503 → **504**；`WEB_INVOKE_CHANNELS` 382 → **383**；远端本地专用集少了 **`pdf:ocr`**（135 → **136**） |
+| `src/renderer/web/renderer-argument-shape-characterization.test.ts` | 本地 Web 可调用面 | 412 → **413** |
+| `src/renderer/src/components/ui/dialog-focus-restore-coverage.test.ts` | 无 Trigger 的对话框必须自己还焦点 | 违规清单里新增 **`pages/workspace/FileOcrAction.tsx (Dialog)`** |
+
+⇒ 根因只有一个：图片取字那条通道（`3143b758`）+ 它的用例（`4aa778c7`）**在别处登了账**
+（`host-application-commands.test.ts` 88、`preload/index.test.ts` 221、`application-command-composition.ts` 的注释），
+但**四处跨面清单与焦点钩子没跟**；四个文件各自的断言互相独立 ⇒ 定向跑哪一个都看不见，只有全量/分片才撞上。
+（本轮顺带量到一处**假绿机制**：同一份期望值在 catalog 那条用例里排在 503 之后，第一条断言先红就把后面的三条遮住 ——
+补到 504 之后才依次露出 412/382/135 三条，所以**一次只改一条计数会在四轮里反复红**，必须一次把同一族的四处都补上。）
+
+### 二 交付（4 个文件，产品行为零改动 + 一处真接线）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/shared/renderer-contract-catalog.test.ts` | 四条账目 + 各自的「为什么 +1」注释（503→504 / 412→413 / 382→383 / 135→136） |
+| `src/shared/renderer-surface-inventory.test.ts` | 两条账目 + `REMOTE_LOCAL_ONLY_CHANNELS.pdf` 补 `ocr`（本地专用：它在本机起识别程序，配对的远端浏览器拒在派发前） |
+| `src/renderer/web/renderer-argument-shape-characterization.test.ts` | 一条账目 412→413 |
+| `src/renderer/src/pages/workspace/FileOcrAction.tsx` | 接 `useDialogFocusRestore`：面板由页面状态打开、Root 里没有 Trigger，不留钩子则关闭后焦点掉到 `<body>`；**钩子放在 `isImageFileName` 早退之前**（否则非图片那次渲染的 hook 顺序会变） |
+
+### 三 门禁（各自实跑，读数取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run`（四个文件，改动前先复现） | 改动前 **3 failed / 15 passed**（复现成功）→ 改动后 **4 文件 / 18 例全绿** |
+| `npx vitest run src/renderer/src/pages/workspace/FileOcrAction.render.test.tsx` | **5 passed**（新钩子没有打断既有 5 条） |
+| **全量**（隔离工作树 `/tmp/ps-pin-10397fb0` @ `10397fb0`，`--maxWorkers=4`，堆 8192） | **1478 文件 / 18170 passed / 227 skipped**，`EXIT=0` |
+| `tsc --noEmit -p tsconfig.node.json --composite false` / `…web…` | 两个 **0 error**（`grep -c "error TS"` = 0，exit 0） |
+| `npx eslint --no-cache`（4 个改动文件）+ `prettier --check` | **0 problem** / 通过 |
+| `bash scripts/pre-push-checks.sh` | 通过（品牌扫描零命中、双语 README 一致、脚本入口 60 个可解析、本次 4 个文件 lint 0） |
+
+### 四 判决（绑到具体 SHA）
+
+| 提交 | Windows Full Test | Nightly |
+| --- | --- | --- |
+| `398eaf84`（修理前） | run 41683787203 **failure**（2/7/8 片） | run 41683787190 **failure**（`Test (with coverage)`），打包/发布全 skipped |
+| `10397fb0`（本笔） | run 41696229707 **success**（8/8 片） | run 41696229886：`Test (with coverage)` **success**、四平台 Build 已起（03:11 仍在跑） |
+
+### 五 边界（不许读成更强）
+
+- 本轮只把**账目与焦点**补齐，`pdf:ocr` 的产品行为一个字节没改。
+- **OCR 的真机认证 spec 仍然没有**（`e2e/certification/` 全树 grep `ocr` 零命中）⇒ 这一条入口的「真机 UI 路径」**未取证**，
+  已按 v2.26.0 首条立案（含判据与 CI 无 tesseract 的处置），不在本轮冒充完成。
+- `v2.25.0` 的发布页本轮**未核**：`Release`（41688404660）的 `Build macos-arm64` 还停在 `Run P0 Electron certification`
+  （`startedAt` 非空，属正常长步骤），`publish` 尚未开始 ⇒ 21 资产与 `sourceSha` 的核对留给下一轮。
+
+### 六 下一轮第一步
+
+① 按完整 40 位 SHA 读 `10397fb0` 的 `Nightly` 判决（`41696229886`），若 `Test (with coverage)` 转绿即本条收口；
+② `v2.25.0` 发布页落定后核 21 资产 + `sourceSha` 与 `git rev-parse 'v2.25.0^{commit}'`（`aeec0d7f`）逐字符一致；
+③ 下一单元 = **OCR 真机认证 spec**（排期档 v2.26.0 首条）：先解决「图片怎么进 Files 面板」这一格
+（现成配方：`src/main/settings/ocr-service.real.test.ts` 用 `cupsfilter` + `sips` 现场渲染 PNG，无需提交二进制）；
+④ 仍让开的两处（并行会话在制）：`src/main/reviewer/**`、`src/main/session-persistence/**`。
