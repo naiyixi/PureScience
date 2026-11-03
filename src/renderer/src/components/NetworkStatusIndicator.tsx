@@ -49,6 +49,7 @@ const NetworkStatusIndicator = ({
         <TooltipTrigger asChild>
           <button
             type="button"
+            data-slot="network-status"
             onClick={() => openSettingsToPanel('network')}
             aria-label={label}
             className={

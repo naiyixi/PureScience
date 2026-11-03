@@ -15,6 +15,27 @@ const prepareVisualPage = async (page: Page): Promise<void> => {
   await expect(page.locator('html')).not.toHaveClass(/dark/)
 }
 
+// The header's own text, which is what changes when one of the machine-describing items below appears or
+// disappears. Two agreeing readings 250ms apart mean the checks that feed it have landed; the loop is capped
+// so a surface that keeps changing still gets its screenshot (and its diff) rather than hanging here.
+const waitForStableHeader = async (page: Page): Promise<void> => {
+  const header = (): Promise<string> =>
+    page.evaluate(() => document.querySelector('header')?.textContent ?? '')
+  let previous = await header()
+  let agreements = 0
+  for (let reading = 0; reading < 40; reading += 1) {
+    await page.waitForTimeout(250)
+    const current = await header()
+    if (current === previous) {
+      agreements += 1
+      if (agreements >= 2) return
+    } else {
+      agreements = 0
+    }
+    previous = current
+  }
+}
+
 const expectStableScreenshot = async (
   page: Page,
   name: string,
@@ -30,18 +51,24 @@ const expectStableScreenshot = async (
   await page.locator('[data-slot="use-case-gallery"]').evaluateAll((elements) => {
     for (const element of elements) element.style.visibility = 'hidden'
   })
-  // Two header items describe THIS machine rather than the product, and both were measured on the lane:
-  // the version badge reads `v2.18.0` here but `v2.18.0-nightly.g2dbdb00` on a nightly build (the job log's
-  // surface fingerprint printed the lane's header verbatim), and the runtime-attention button only exists
-  // when the environment check FAILS — a CI runner has no agent runtime installed, so the lane's header
-  // carried `Claude Code runtime needs attention` while this machine's carried nothing. Normalize both:
-  // the badge is not compared at all, and the attention button is taken out of the layout so its presence
-  // cannot shift anything else. Everything else stays strictly compared — no tolerance is loosened.
+  // Four header items describe THIS machine rather than the product, and each arrives from a check that
+  // finishes when it finishes: the version badge (`v2.18.0` here, `v2.18.0-nightly.g2dbdb00` on a nightly
+  // build — the job log's surface fingerprint printed the lane's header verbatim), the update capsule (only
+  // while the feed carries a newer build), the network pill (only while the probe says the link is missing or
+  // its path out is broken) and the runtime-attention button (only while the environment check FAILS — a CI
+  // runner has no agent runtime). A mask that ran before one of them appeared left it in the layout, and the
+  // same page then diffed differently on each attempt (measured on the lane: 0.2% on one attempt, 0.6% on the
+  // retry, both over the 0.2% budget). So the header is waited for until it stops changing, and all four are
+  // taken out of the layout before the shot. Everything else stays strictly compared — no tolerance loosened.
+  await waitForStableHeader(page)
   await page.evaluate(() => {
     const badge = document.querySelector('[data-slot="app-version"]')
     if (badge instanceof HTMLElement) badge.style.visibility = 'hidden'
-    const attention = document.querySelector('[data-slot="environment-attention"]')
-    if (attention instanceof HTMLElement) attention.style.display = 'none'
+    for (const slot of ['environment-attention', 'update-capsule', 'network-status']) {
+      for (const element of document.querySelectorAll(`[data-slot="${slot}"]`)) {
+        if (element instanceof HTMLElement) element.style.display = 'none'
+      }
+    }
   })
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur()

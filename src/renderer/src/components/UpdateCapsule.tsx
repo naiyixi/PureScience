@@ -19,6 +19,7 @@ const UpdateCapsule = ({ className }: { className?: string }): React.JSX.Element
   return (
     <button
       type="button"
+      data-slot="update-capsule"
       onClick={() => openDialog()}
       aria-label={t('update.availableAria').replace('{v}', status.latest ?? '')}
       className={cn(

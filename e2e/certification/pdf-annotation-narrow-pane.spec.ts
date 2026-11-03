@@ -413,11 +413,18 @@ test('holds the same ground when the reader pulls the pane narrower than the win
   // The pane this window actually lays out, read back from the renderer: the width the reader's gesture is
   // measured against is this one, not a size this file assumed the window would give.
   await setNarrowWindow(app, page)
-  const splitWidth = await settledPaneWidth(page)
 
   // The panel is opened first, so the divider is pulled with the pane already in the state this case is about.
   await toggle.click()
   await expect(panel).toBeVisible()
+
+  // …and the split is read AFTER the panel is open, because opening it re-lays the pane out (measured on the
+  // lane: 318px before the panel, 375px with it open) and the divider is inert while that transition runs.
+  // The earlier reading was taken in the pre-panel layout, so the pull was compared against a width it was
+  // never applied to — it "widened" the pane by exactly the panel's own re-layout and the case went red on
+  // a layout the reader never sees. `settledPaneWidth` waits for three agreeing readings, which also outlasts
+  // the panel's open transition, so the divider is live again by the time the gesture starts.
+  const splitWidth = await settledPaneWidth(page)
 
   // The reader's gesture, driven from that measurement: pull the divider by a share of the pane this window
   // laid out. A fixed 90px was a guess at a 423px pane — where the window gives a smaller pane the same pull

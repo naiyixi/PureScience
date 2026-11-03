@@ -15978,3 +15978,76 @@ lateMs 801  canaryMs 5496  inFlight 0
   同步 `workspace-components.test.tsx:415` 的 pin、再给面板加一条命令 —— 估一个工作窗口，别顺手开工；
 ③ 仍挂着的两条：`sessions:save-session` 的 `writeDiskMs`/`fileIndexMs`（`src/main/session-persistence/**` 并行会话在改）、
   `reviewer:get-for-session`（同域在制）。
+
+## 二百八十七、本轮追加（执行器，2026-11-03 20:4x–）—— v2.21.4 没有发布页：拦它的两条红都不是产品缺陷，是**量的布局不对**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch -q origin` 后 `origin/main = 5e209a5f`（§286 那笔已推 + 一次 `release: v2.21.4` + CodeBuddy 探测器修复），
+  工作树里 **15 个改动 + 1 份证据档不是我的**（`src/main/**`、两个 `src/shared/**`、`docs/plan-2026-10-28-two-releases.md`）
+  ⇒ 一个字节没碰；本轮全部在隔离工作树 `/tmp/ps-rel2214`（头 `5e209a5f`，`node_modules` 软链）里做。
+- 上一轮 `round-next ①` 的判决取到了：`5e209a5f` 的 `Nightly`（41615912357）与 `Windows Full Test` 双 **success**。
+- **本轮不是自拟单元**：`gh release list` 里 `Latest` 仍是 `v2.21.3`，而 `v2.21.4` 的 tag 已在、**Release 页没有**
+  ⇒ 发版链断在发布车道上，优先修。
+
+### 一 归因：两条红分别是什么（读作业级日志，不按车道整体猜）
+
+`Release` run `41614796257`（跑 `2e563207`，tag `v2.21.4`）：`Release preflight` / `Verify` / 三个平台的 Build 全 success，
+`build / Build macos-arm64` **failure**，`notarize-mac`、`publish`、`windows-upgrade-smoke` 因它 skipped ⇒ 页与资产一个都没落。
+该作业里失败的那一步是 `Enforce platform certification`，而它读的两个 env 给出了真凶：**`P0_OUTCOME=failure`、
+`VISUAL_OUTCOME=failure`**（那两步自身 `conclusion=success` 是因为 `continue-on-error`，只有汇总步把它们判死）。
+
+| 红 | 读数（日志原文） | 归因 |
+| --- | --- | --- |
+| P0 `pdf-annotation-narrow-pane.spec.ts:401` | `the pane did not get narrower than the window's own 318px split (pulled 48px)` / `Expected: < 318` `Received: 375`；重试 `350 / pulled 53` → `Received: 370`；同跑 `113 passed`、`1 failed`、`2 flaky` | 拖拽被丢弃：宽度停在**面板打开后**的宽度上，一次都没被拖动 |
+| 视觉 `visual-regression.spec.ts:94` | `home-empty.png` 2075 px（0.01）差；重试 **6279 px** | 同一页两次差量不同 ⇒ 头部有东西在两次之间出现/消失 |
+
+**第二条红与 `5e209a5f` 无关（同 spec 在它上面 `Run desktop visual regression` = success，5458c92d / adf70a97 亦然）**：
+这是「包含它的后一笔」的对照读数，不是「大概又抖了」。
+
+### 二 交付（4 个文件，**产品行为零改动**）
+
+| 位置 | 改动 |
+| --- | --- |
+| `e2e/certification/pdf-annotation-narrow-pane.spec.ts` | 把「分割线宽度」的读数从**面板打开之前**挪到**面板打开并落定之后**（`settledPaneWidth` 要三次一致读数 ≈240ms，长于 220ms 的开启过渡）。原顺序是量完旧布局再开面板再拖 ⇒ 手势落在另一个布局上，且过渡没结束时手势被丢 |
+| `e2e/visual-regression.spec.ts` | 新增 `waitForStableHeader`（两次一致读数才继续，上限 10s）；「只描述这台机器」的头部条目从 2 个补到 **4 个**（版本徽章、环境提醒、**更新胶囊**、**网络提示**），全部 `display:none` 出布局 |
+| `src/renderer/src/components/UpdateCapsule.tsx` / `NetworkStatusIndicator.tsx` | 各加一个 `data-slot`（`update-capsule` / `network-status`），供上一条按名遮蔽 —— 与既有 `app-version` / `environment-attention` 同一手法；`aria-label` 是本地化文案，不能拿来当锚点 |
+
+判据（为什么是「量的布局不对」而不是产品缺陷）：本机在同一个 spec 上量到 **面板打开后 423px、面板本身 320px、
+拉 200px 得到 314px、再拉 300px 才折叠** ⇒ 开着注解面板的预览栏**没有 375px 的地板**，车道上停在 375 只能是拖拽没生效。
+
+### 三 真机读数（本机隔离工作树，`npm run build:e2e` 之后；`EXIT=0`、`✓ built in 20.87s`）
+
+```
+npx playwright test e2e/visual-regression.spec.ts          → 1 passed (6.6s)
+npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
+                                                          → 2 passed (11.7s)   # 含 :242 那条兄弟用例
+[probe]（临时探针，已删）post-open split=423 panel=320 window=1100
+[probe]（临时探针，已删）after pull=314 pulled=200
+[probe]（临时探针，已删）pull 300 more => 折叠（读回 0px，符合文件头注释）
+```
+
+### 四 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache`（4 个改动文件） | **0 error / 0 warning**（首次 1 条 prettier 折行 warning，`--write` 后复检 0） |
+| `npx prettier --check`（同上） | 通过 |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | **0 error**（`grep -c "error TS"` = 0，exit 0） |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | **0 error**（同上） |
+| `npx vitest run …/NetworkStatusIndicator.render.test.tsx …/UpdateCapsule.render.test.tsx` | **2 文件 / 9 例全绿**（`data-slot` 是纯附加属性，没有 pin 拿它当契约） |
+
+### 五 边界（不许读成更强）
+
+- **两条 spec 的修复都只有本机读数**，车道上是否真的转绿要等这次 Release 跑完；本轮的替代证据是「同一棵树在
+  另一条车道（`5e209a5f` 的 `Nightly`）上 P0 + 视觉 + 汇总三步全 success」。
+- 视觉基准**没有重新生成**，容差（`maxDiffPixelRatio` 0.002 / 非 darwin 0.035）一个字没动 ⇒ 这不是「把基准改到能过」。
+- `P0` 其余两条 `flaky`（`notebook-lifecycle`、`pdf-scanned-pages`）本轮没动：它们重试即过，属负载敏感，未据此改代码。
+- 发版口径：`v2.21.4` 的 tag 原来指 `2e563207`（无发布页）⇒ 本轮**删 tag 重建**到新提交（不删页，因为没有页）。
+
+### 六 下一轮第一步
+
+① 盯本次 tag 的 `Release` 作业（`Build macos-arm64` 里才有真 P0；约 28–40 分钟），落定后按 `gh release view v2.21.4`
+核 21 个资产 + `sourceSha` 与 tag 提交逐字符一致；② 若同一条 spec 再红，按本次新增的判据读 —— 日志里会出现
+「拉了多少、停在多少」，先比这两个数再决定改 spec 还是改产品；③ 仍让开的两条：`sessions:save-session` 的分段
+读数（`src/main/session-persistence/**`）、`reviewer:get-for-session`（同域在制）。
