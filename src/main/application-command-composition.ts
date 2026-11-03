@@ -227,7 +227,7 @@ const GROUP_COUNT = 41
 // directions a package travels in were Electron-only channels with no command identity, so neither the
 // local Web profile nor the command line could reach them. Both are LOCAL — they read and write this
 // machine's disk, and an import CREATES a session, which a remote caller must never be able to do.
-const INTERNAL_COMMAND_COUNT = 376
+const INTERNAL_COMMAND_COUNT = 377
 // +1 each on internal, local Web and the remote Web dispatch for the screening read
 // (references:list-journal-metrics): it is a window-reachable read with no local-only flag, so it is
 // counted on both Web surfaces and not on the fail-closed set.
@@ -248,7 +248,7 @@ const INTERNAL_COMMAND_COUNT = 376
 // local Web surface too, and earns the rejecting stub on the remote one.
 // +2 for the package pair above: both are reachable from the local Web profile (the headless CLI lands
 // there), and neither is in the fail-closed set.
-const LOCAL_WEB_COMMAND_COUNT = 374
+const LOCAL_WEB_COMMAND_COUNT = 375
 // Two more as well: the same two channels are mapped, so they count on both the local and the remote Web
 // surfaces. The rejected (fail-closed) and task counts are untouched.
 // 236 with the session run-data measurement (sessions:read-notebook-usage), which is mapped the same way.
@@ -260,6 +260,9 @@ const REMOTE_WEB_COMMAND_COUNT = 239
 // the fail-closed set instead of the remote dispatch count.
 // +1 for the window's PDF translation entry (pdf:translation): local-only, so it lands in the fail-closed
 // set instead of the remote dispatch count.
+// +1 for reading text out of an image (pdf:ocr): local-only for the same reason — it spawns a program on
+// this machine — so it lands in the local Web surface and not in the remote dispatch count, and a paired
+// browser is refused it.
 // +2 for the DOI integrity pair: the explicit check (references:check-integrity, LOCAL) is refused
 // on the remote surface, the export gate's read (references:read-integrity-summary) is a plain Web
 // request, and each exposes one bridge method — so every surface count here moves with them.
@@ -267,7 +270,8 @@ const REMOTE_WEB_COMMAND_COUNT = 239
 // lands in the fail-closed set rather than the remote dispatch count.
 // +2 for the package pair: LOCAL, so they are refused on the remote surface — an import that creates a
 // session is exactly the thing a paired browser must not be handed.
-const REMOTE_REJECTED_COMMAND_COUNT = 135
+
+const REMOTE_REJECTED_COMMAND_COUNT = 136
 // +2 for the portable-session package: the command line exports and imports through the same narrow
 // Task view the rest of its machine-readable work uses, so these two land here as well as on the local
 // Web profile. They are LOCAL, so they add nothing to the remote dispatch.

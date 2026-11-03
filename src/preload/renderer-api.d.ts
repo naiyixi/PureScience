@@ -425,6 +425,7 @@ import type {
   PdfTranslationWindowRequest,
   PdfTranslationWindowResult
 } from '../shared/pdf'
+import type { OcrRecogniseOutcome, OcrRecogniseRequest } from '../shared/ocr'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import type {
@@ -1554,6 +1555,12 @@ export interface PureScienceAPI {
      * addressed by the reader's own path — the main process owns the registration.
      */
     translation(request: PdfTranslationWindowRequest): Promise<PdfTranslationWindowResult>
+    /**
+     * Reads text out of an image with the local tesseract. The request names the file the way the file list
+     * does (source + path) and the main process resolves it with the previews' own resolver. The answer says
+     * which pack read the text, or which pack is missing — it never falls back to another language.
+     */
+    ocr(request: OcrRecogniseRequest): Promise<OcrRecogniseOutcome>
   }
   // PDF annotations (文档标注层 A3/A4): list / create / remove / re-anchor, the import channel, and the
   // two export channels — an annotated copy of the version's bytes, and a plain-text notes list. Every

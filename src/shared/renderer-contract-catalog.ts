@@ -378,6 +378,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['tables', 'pdf:tables', LOCAL],
     ['figures', 'pdf:figures', LOCAL],
     ['translation', 'pdf:translation', LOCAL],
+    // Reads text out of an image with the reader's own tesseract. In the PDF group because it answers the same
+    // question for the pages the text layer cannot, and local-only because it runs a program on this machine.
+    ['ocr', 'pdf:ocr', LOCAL],
   ]),
   group('pdfAnnotations', 'pdfAnnotations', [
     ['create', 'pdf-annotations:create', LOCAL], ['exportAnnotated', 'pdf-annotations:export-annotated', LOCAL],

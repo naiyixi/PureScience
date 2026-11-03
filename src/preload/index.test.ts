@@ -382,6 +382,7 @@ describe('preload bridge — public surface inventory', () => {
       'officePreview.open',
       'officePreview.reportState',
       'pdf.figures',
+      'pdf.ocr',
       'pdf.open',
       'pdf.outline',
       'pdf.pages',
@@ -901,7 +902,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // contract, so it counts here while neither Web dispatch map moves.
     // 258 with the batched project-file overviews (projectFiles.getOverviews): one more plain Web
     // request contract — the Home page reads a project batch in one round trip.
-    expect(coreContracts).toHaveLength(258)
+    expect(coreContracts).toHaveLength(259)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -916,7 +917,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       // 217 with the DOI integrity pair: two more core request contracts.
       // 219 with the citation walk above (references.discoverCitations, LOCAL).
       // 220 with the batched project-file overviews (projectFiles.getOverviews).
-    }).toEqual({ requests: 220, events: 27, sends: 10, surfaceNative: 1 })
+      // 221 with OCR (pdf.ocr, LOCAL).
+    }).toEqual({ requests: 221, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -925,7 +927,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(220)
+    expect(requestContracts).toHaveLength(221)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

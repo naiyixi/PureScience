@@ -805,6 +805,19 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'fileHeader.moreActions': 'その他の操作',
   'fileHeader.reload': 'ファイルを再読み込み',
   'fileHeader.reloadFromDisk': 'ディスクから再読み込み',
+  'files.ocr.open': '{name} の文字を読み取る',
+  'files.ocr.title': '読み取った文字',
+  'files.ocr.running': '画像を読み取っています…',
+  'files.ocr.provenance':
+    '{pack}（tesseract {language}）で {ms} ミリ秒で読み取りました。この文字は画像から得たもので、テキストレイヤーではありません。',
+  'files.ocr.empty': 'この画像からは文字が検出されませんでした。',
+  'files.ocr.toolMissing':
+    '画像の読み取りには tesseract が必要です。インストール（brew install tesseract）してから再試行してください。',
+  'files.ocr.packMissing':
+    'この画像には {pack} 言語パックが必要ですが、インストールされていません。インストール済み: {installed}。',
+  'files.ocr.unsupported':
+    'この表示言語（{language}）に対応する OCR 言語パックがありません。別の言語で無理に読み取ることはしません。',
+  'files.ocr.unreadable': '画像を読み取れませんでした: {message}',
   'files.annotationsAdd': 'メモを追加',
   'files.annotationsEmpty': 'このファイルにはまだ注釈がありません。',
   'files.annotationsLoading': '注釈を読み込み中…',

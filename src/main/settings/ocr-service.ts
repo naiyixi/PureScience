@@ -1,7 +1,12 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 
-import { ocrLanguageForUi, parseTesseractLanguages, type OcrLanguageCode } from '../../shared/ocr'
+import {
+  ocrLanguageForUi,
+  parseTesseractLanguages,
+  type OcrLanguageCode,
+  type OcrRecogniseOutcome
+} from '../../shared/ocr'
 import { createLogger } from '../logger'
 import { augmentedPathEnv } from './shell-path'
 
@@ -20,27 +25,8 @@ export type OcrRun = (
   args: readonly string[]
 ) => Promise<{ stdout: string; stderr: string }>
 
-export type OcrRecogniseResult =
-  | {
-      status: 'recognised'
-      // Text as the engine produced it, one trailing form feed per page removed.
-      text: string
-      language: OcrLanguageCode
-      packFile: string
-      durationMs: number
-    }
-  // No tesseract on this machine: the reader is told to install it rather than shown an empty result.
-  | { status: 'tool-missing' }
-  // tesseract is there but the pack is not: the exact pack file and the packs that do exist are reported, and
-  // nothing is recognised in another language.
-  | {
-      status: 'pack-missing'
-      language: OcrLanguageCode
-      packFile: string
-      installed: OcrLanguageCode[]
-    }
-  | { status: 'unsupported-language'; uiLanguage: string }
-  | { status: 'unreadable'; message: string }
+// The outcome union lives in shared/ocr.ts: the window renders it, so it is not a main-process-only shape.
+export type OcrRecogniseResult = OcrRecogniseOutcome
 
 export type OcrServiceDeps = {
   run?: OcrRun

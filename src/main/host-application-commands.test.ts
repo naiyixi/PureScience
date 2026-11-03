@@ -295,6 +295,7 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
     save: vi.fn()
   },
   pdf: {
+    ocr: vi.fn(),
     open: vi.fn(async (_projectId: string, path: string): Promise<PdfOpenResult> => ({
       doc: { docId: 'doc-1', title: path, pageCount: 3, outline: [] },
       textPageCount: 3,
@@ -505,7 +506,8 @@ describe('Host application commands', () => {
     // the on-demand duplicate reclaim.
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
     // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(87)
+    // 88 with OCR (pdf:ocr, LOCAL): one more host channel.
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(88)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -523,7 +525,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(87)
+    expect(router.dispatcher.commandNames()).toHaveLength(88)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -920,6 +922,17 @@ describe('Host application commands', () => {
     // No arguments: the reclaim takes its root from main, never from the caller.
     expect(dependencies.storage.sweepDuplicateContent).toHaveBeenCalledWith()
 
+    // OCR is addressed the way the file list addresses a file — source + path — and the main process resolves
+    // the path itself; the window never hands it an absolute path.
+    const ocrRequest = {
+      source: 'artifact' as const,
+      path: pdfPath,
+      projectId: 'project-1',
+      uiLanguage: 'en'
+    }
+    await router.dispatcher.invoke(hostApplicationCommands.pdf.ocr, invocation([ocrRequest]))
+    expect(dependencies.pdf.ocr).toHaveBeenCalledWith(ocrRequest)
+
     // The goals panel reads the whole inventory with no arguments, like the routine panel beside it.
     await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))
     expect(dependencies.goal.listAll).toHaveBeenCalledWith()
@@ -1014,7 +1027,7 @@ describe('Host application commands', () => {
     // browser never gets to point the sweep at a directory of its choosing.
     // 59 with the goals panel's read-only channel (goal:list-all, LOCAL): a reader with no session
     // context still only ever reads.
-    expect(localOnlyChannels).toHaveLength(59)
+    expect(localOnlyChannels).toHaveLength(60)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

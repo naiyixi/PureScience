@@ -114,6 +114,7 @@ export const WEB_INVOKE_CHANNELS = {
   'notifications.peekPendingOpenSession': 'notifications:peek-pending-open-session',
   'notifications.takePendingOpenSession': 'notifications:take-pending-open-session',
   'pdf.figures': 'pdf:figures',
+  'pdf.ocr': 'pdf:ocr',
   'pdf.open': 'pdf:open',
   'pdf.outline': 'pdf:outline',
   'pdf.pages': 'pdf:pages',

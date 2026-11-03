@@ -828,6 +828,19 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'fileHeader.moreActions': 'Plus d’actions',
   'fileHeader.reload': 'Recharger le fichier',
   'fileHeader.reloadFromDisk': 'Recharger depuis le disque',
+  'files.ocr.open': 'Lire le texte de {name}',
+  'files.ocr.title': 'Texte reconnu',
+  'files.ocr.running': 'Lecture de l’image…',
+  'files.ocr.provenance':
+    'Lu avec {pack} (tesseract {language}) en {ms} ms. Ce texte vient d’une image, pas d’une couche de texte.',
+  'files.ocr.empty': 'Le moteur n’a reconnu aucun caractère sur cette image.',
+  'files.ocr.toolMissing':
+    'Lire des images nécessite le programme tesseract. Installez-le (brew install tesseract) puis réessayez.',
+  'files.ocr.packMissing':
+    'Cette image nécessite le paquet de langue {pack}, qui n’est pas installé. Paquets installés : {installed}.',
+  'files.ocr.unsupported':
+    'Cette langue d’interface ({language}) n’a pas de paquet OCR ; aucune lecture n’est tentée dans une autre langue.',
+  'files.ocr.unreadable': 'L’image n’a pas pu être lue : {message}',
   'files.annotationsAdd': 'Ajouter une note',
   'files.annotationsEmpty': 'Aucune annotation pour ce fichier pour l’instant.',
   'files.annotationsLoading': 'Chargement des annotations…',

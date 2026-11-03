@@ -237,6 +237,8 @@ import {
 import { SearchPinRepository } from './settings/search-pin-repository'
 import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
+import { createOcrCommandOwner } from './settings/ocr-ipc'
+import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
 import {
@@ -3977,9 +3979,17 @@ const createApplicationModules = async (
   declareElectronAdapter('searchPins', () => {
     registerSearchPinIpcHandlers(createSearchPinCommandOwner(searchPinRepository))
   })
+  // OCR reads a managed file: the resolver is the previews' own, so the window cannot ask it to read a path it
+  // was not already allowed to show.
+  const ocrCommandOwner = createOcrCommandOwner(new OcrService(), resolveManagedFilePath)
   declareElectronAdapter('pdf', () => {
     registerClipboardIpcHandlers()
-    registerPdfIpcHandlers(createPdfCommandOwner(pdfService, { translation: windowTranslation }))
+    registerPdfIpcHandlers(
+      createPdfCommandOwner(pdfService, {
+        translation: windowTranslation,
+        ocr: ocrCommandOwner.recognise
+      })
+    )
   })
   declareElectronAdapter('pdfAnnotations', () => {
     registerPdfAnnotationIpcHandlers(
@@ -4105,7 +4115,10 @@ const createApplicationModules = async (
       annotation: createAnnotationCommandOwner(annotationRepository),
       bookmark: createBookmarkCommandOwner(bookmarkRepository),
       searchPins: createSearchPinCommandOwner(searchPinRepository),
-      pdf: createPdfCommandOwner(pdfService, { translation: windowTranslation }),
+      pdf: createPdfCommandOwner(pdfService, {
+        translation: windowTranslation,
+        ocr: ocrCommandOwner.recognise
+      }),
       pdfAnnotations: createPdfAnnotationCommandOwner(
         pdfAnnotationService,
         pdfAnnotationExportService

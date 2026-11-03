@@ -134,6 +134,19 @@ export const en: Record<ZhKey, string> = {
   'common.save': 'Save',
   'common.delete': 'Delete',
   'common.close': 'Close',
+  'files.ocr.open': 'Read text from {name}',
+  'files.ocr.title': 'Recognised text',
+  'files.ocr.running': 'Reading the image…',
+  'files.ocr.provenance':
+    'Read with {pack} (tesseract {language}) in {ms} ms. This text came from an image, not from a text layer.',
+  'files.ocr.empty': 'The engine recognised no characters on this image.',
+  'files.ocr.toolMissing':
+    'Reading images needs the tesseract program. Install it (brew install tesseract) and try again.',
+  'files.ocr.packMissing':
+    'This image needs the {pack} language pack, which is not installed. Installed packs: {installed}.',
+  'files.ocr.unsupported':
+    'This interface language ({language}) has no OCR language pack; recognition is not attempted in another language.',
+  'files.ocr.unreadable': 'The image could not be read: {message}',
   'files.annotationsTitle': 'File annotations',
   'files.annotationsLoading': 'Loading annotations…',
   'files.annotationsEmpty': 'No annotations for this file yet.',

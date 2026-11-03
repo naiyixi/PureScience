@@ -7,6 +7,7 @@ import type {
   FolderGrantsSnapshot
 } from '../shared/folder-grants'
 import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
+import type { OcrRecogniseOutcome, OcrRecogniseRequest } from '../shared/ocr'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type { OpenSessionFromNotificationRequest } from '../shared/notifications'
 import type {
@@ -465,7 +466,14 @@ const pdfCommands = Object.freeze({
     'pdf:translation',
     readonly [request: PdfTranslationWindowRequest],
     PdfTranslationWindowResult
-  >('pdf:translation')
+  >('pdf:translation'),
+  // Reads text out of an image with the local tesseract. The request names the file the way the file list does
+  // (source + path), and the main process resolves it with the previews' own resolver.
+  ocr: defineApplicationCommand<
+    'pdf:ocr',
+    readonly [request: OcrRecogniseRequest],
+    OcrRecogniseOutcome
+  >('pdf:ocr')
 })
 
 // Declared in the same order the contract catalogue lists them, which for this group is the channel
@@ -851,7 +859,9 @@ const registerHostApplicationCommands = (
       'pdf:translation': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf:translation', () =>
           dependencies.pdf.translation(args[0].projectId, args[0])
-        )
+        ),
+      'pdf:ocr': ({ args, callerContext }) =>
+        localCommand(callerContext, 'pdf:ocr', () => dependencies.pdf.ocr(args[0]))
     })
     scope.registerGroup(hostApplicationCommandGroups[12], {
       'figure:review': ({ args, callerContext }) =>

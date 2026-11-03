@@ -1,6 +1,8 @@
 // OCR is only as good as the language pack that reads it: English tesseract reading a Chinese scan returns
 // plausible-looking Latin noise, and a reader who is not told that will believe it. So the nine languages this
 // product is written in are mapped to their tessdata codes once, here, and anything else is refused by name.
+import type { ManagedPreviewSource } from './preview-resources'
+
 export type OcrLanguageCode =
   'eng' | 'chi_sim' | 'chi_tra' | 'jpn' | 'kor' | 'deu' | 'fra' | 'spa' | 'rus'
 
@@ -68,3 +70,33 @@ export const missingOcrPack = (
   packFile: language.packFile,
   installed: [...installed]
 })
+
+/**
+ * The window's request. `source` + `path` go through the same resolver the file previews use, so OCR reads
+ * exactly the file the reader is looking at and cannot be pointed at an arbitrary host path.
+ */
+export type OcrRecogniseRequest = {
+  source: ManagedPreviewSource
+  path: string
+  projectId?: string
+  sessionId?: string
+  uiLanguage: string
+}
+
+export type OcrRecogniseOutcome =
+  | {
+      status: 'recognised'
+      text: string
+      language: OcrLanguageCode
+      packFile: string
+      durationMs: number
+    }
+  | { status: 'tool-missing' }
+  | {
+      status: 'pack-missing'
+      language: OcrLanguageCode
+      packFile: string
+      installed: OcrLanguageCode[]
+    }
+  | { status: 'unsupported-language'; uiLanguage: string }
+  | { status: 'unreadable'; message: string }

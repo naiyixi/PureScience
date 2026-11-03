@@ -21,6 +21,7 @@ import {
 import { ToggleGroup } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLanguage } from '@/i18n'
+import { FileOcrAction } from './FileOcrAction'
 import { useProjectArtifactFiles } from './use-project-artifact-files'
 
 import {
@@ -545,6 +546,8 @@ const FileActionButtons = ({
   source,
   path,
   name,
+  projectId,
+  sessionId,
   disabled,
   className,
   onOpenInPanel
@@ -552,6 +555,8 @@ const FileActionButtons = ({
   source: 'artifact' | 'upload'
   path: string
   name: string
+  projectId: string
+  sessionId: string
   disabled: boolean
   className: string
   onOpenInPanel: () => void
@@ -564,6 +569,16 @@ const FileActionButtons = ({
         className
       )}
     >
+      {/* Only images get the OCR button: for everything else the text layer is the answer. */}
+      <FileOcrAction
+        source={source}
+        path={path}
+        name={name}
+        projectId={projectId}
+        sessionId={sessionId}
+        disabled={disabled}
+        className="cursor-pointer bg-bg-000/95 text-text-100 shadow-sm"
+      />
       <ManagedFileDownloadButton
         source={source}
         path={path}
@@ -686,6 +701,8 @@ const FileTile = ({
         source={source}
         path={previewArtifact.path}
         name={name}
+        projectId={projectId}
+        sessionId={sessionId}
         disabled={missing}
         className="right-1.5 top-1.5"
         onOpenInPanel={onOpenInPanel}
@@ -757,6 +774,8 @@ const FileListRow = ({
         source={file.source}
         path={file.path}
         name={file.name}
+        projectId={file.projectId}
+        sessionId={file.sessionId}
         disabled={missing}
         className="right-2 top-1/2 -translate-y-1/2"
         onOpenInPanel={onOpenInPanel}

@@ -798,6 +798,19 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'fileHeader.moreActions': '추가 작업',
   'fileHeader.reload': '파일 다시 로드',
   'fileHeader.reloadFromDisk': '디스크에서 다시 로드',
+  'files.ocr.open': '{name}의 글자 읽기',
+  'files.ocr.title': '인식된 글자',
+  'files.ocr.running': '이미지를 읽는 중…',
+  'files.ocr.provenance':
+    '{pack}(tesseract {language})로 {ms}ms 만에 읽었습니다. 이 글자는 이미지에서 나온 것이며 텍스트 레이어가 아닙니다.',
+  'files.ocr.empty': '이 이미지에서 글자를 찾지 못했습니다.',
+  'files.ocr.toolMissing':
+    '이미지 인식에는 tesseract가 필요합니다. 설치(brew install tesseract) 후 다시 시도하세요.',
+  'files.ocr.packMissing':
+    '이 이미지에는 {pack} 언어 팩이 필요하지만 설치되어 있지 않습니다. 설치된 팩: {installed}.',
+  'files.ocr.unsupported':
+    '현재 표시 언어({language})에 해당하는 OCR 언어 팩이 없습니다. 다른 언어로 억지로 읽지 않습니다.',
+  'files.ocr.unreadable': '이미지를 읽을 수 없습니다: {message}',
   'files.annotationsAdd': '메모 추가',
   'files.annotationsEmpty': '이 파일에는 아직 주석이 없습니다.',
   'files.annotationsLoading': '주석을 불러오는 중…',

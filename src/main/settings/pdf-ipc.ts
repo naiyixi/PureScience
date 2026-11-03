@@ -4,6 +4,7 @@
 
 import { ipcMainHandle } from '../ipc-handler-registry'
 import type { PdfService } from './pdf-service'
+import type { OcrRecogniseOutcome, OcrRecogniseRequest } from '../../shared/ocr'
 import type {
   PdfFiguresResult,
   PdfOpenResult,
@@ -22,7 +23,11 @@ export const PDF_IPC = {
   SCAN: 'pdf:scan',
   TABLES: 'pdf:tables',
   FIGURES: 'pdf:figures',
-  TRANSLATION: 'pdf:translation'
+  TRANSLATION: 'pdf:translation',
+  // Reads text out of an image (a scan, a photographed figure) with the local tesseract. It sits in the PDF
+  // group because it answers the same question the other channels do — what does this document say — for the
+  // pages the text layer cannot answer.
+  OCR: 'pdf:ocr'
 } as const
 
 /**
@@ -35,6 +40,8 @@ export type PdfTranslationHandler = (
   request: PdfTranslationWindowRequest
 ) => Promise<PdfTranslationWindowResult>
 
+export type PdfOcrHandler = (request: OcrRecogniseRequest) => Promise<OcrRecogniseOutcome>
+
 export type PdfCommandOwnerOptions = {
   /**
    * Absent ⇒ the channel refuses by name. That is deliberate: a window command that silently answers
@@ -42,6 +49,11 @@ export type PdfCommandOwnerOptions = {
    * surface that was never connected.
    */
   translation?: PdfTranslationHandler
+  /**
+   * Absent for the same reason `translation` may be: the OCR service and the managed-path resolver are the
+   * composition site's dependencies, not this service's. Absent ⇒ the channel refuses by name.
+   */
+  ocr?: PdfOcrHandler
 }
 
 export type PdfCommandOwner = {
@@ -55,6 +67,7 @@ export type PdfCommandOwner = {
     projectId: string,
     request: PdfTranslationWindowRequest
   ) => Promise<PdfTranslationWindowResult>
+  ocr: (request: OcrRecogniseRequest) => Promise<OcrRecogniseOutcome>
 }
 
 export const createPdfCommandOwner = (
@@ -71,6 +84,11 @@ export const createPdfCommandOwner = (
     const handler = options.translation
     if (!handler) throw new Error('pdf:translation is not configured.')
     return handler(projectId, request)
+  },
+  ocr: (request) => {
+    const handler = options.ocr
+    if (!handler) throw new Error('pdf:ocr is not configured.')
+    return handler(request)
   }
 })
 
@@ -106,6 +124,7 @@ export const registerPdfIpcHandlers = (owner: PdfCommandOwner): PdfCommandOwner 
   ipcMainHandle(PDF_IPC.TRANSLATION, (_event, request: PdfTranslationWindowRequest) =>
     owner.translation(request.projectId, request)
   )
+  ipcMainHandle(PDF_IPC.OCR, (_event, request: OcrRecogniseRequest) => owner.ocr(request))
   return owner
 }
 

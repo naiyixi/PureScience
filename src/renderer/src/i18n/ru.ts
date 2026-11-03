@@ -807,6 +807,19 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'fileHeader.moreActions': 'Другие действия',
   'fileHeader.reload': 'Перезагрузить файл',
   'fileHeader.reloadFromDisk': 'Перезагрузить с диска',
+  'files.ocr.open': 'Распознать текст на {name}',
+  'files.ocr.title': 'Распознанный текст',
+  'files.ocr.running': 'Читаю изображение…',
+  'files.ocr.provenance':
+    'Прочитано с {pack} (tesseract {language}) за {ms} мс. Этот текст получен из изображения, а не из текстового слоя.',
+  'files.ocr.empty': 'Движок не распознал на этом изображении ни одного символа.',
+  'files.ocr.toolMissing':
+    'Для чтения изображений нужен tesseract. Установите его (brew install tesseract) и повторите.',
+  'files.ocr.packMissing':
+    'Этому изображению нужен языковой пакет {pack}, но он не установлен. Установлены: {installed}.',
+  'files.ocr.unsupported':
+    'Для этого языка интерфейса ({language}) нет пакета OCR; читать другим языком не пытаемся.',
+  'files.ocr.unreadable': 'Не удалось прочитать изображение: {message}',
   'files.annotationsAdd': 'Добавить заметку',
   'files.annotationsEmpty': 'Для этого файла ещё нет аннотаций.',
   'files.annotationsLoading': 'Загрузка аннотаций…',

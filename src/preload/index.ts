@@ -95,6 +95,7 @@ import type {
 } from '../shared/pdf-annotation-surface'
 import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type { PdfTranslationWindowRequest } from '../shared/pdf'
+import type { OcrRecogniseRequest } from '../shared/ocr'
 import type { FigureReviewRequest } from '../shared/figure'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -1137,6 +1138,9 @@ const api: PureScienceAPI = {
       electronRendererContracts.invoke('pdf.pages', request),
     outline: (request: { projectId: string; docId: string }) =>
       electronRendererContracts.invoke('pdf.outline', request),
+    // Reads text out of an image with the local tesseract; the request names the file the way the file list does.
+    ocr: (request: OcrRecogniseRequest) =>
+      electronRendererContracts.invoke('pdf.ocr', request),
     scan: (request: { projectId: string; docId: string; query: string }) =>
       electronRendererContracts.invoke('pdf.scan', request),
     tables: (request: { projectId: string; docId: string; page?: number }) =>
