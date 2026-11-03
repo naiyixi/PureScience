@@ -55,6 +55,19 @@ test('answers a palette query with a command that lands on its destination', asy
   await expect(page.getByTestId('shortcut-row-settings')).toContainText(',')
   await expect(page.getByTestId('shortcut-row-close')).toContainText('W')
 
+  // ⌘⇧E toggles every turn of the transcript and has no other affordance in the app, so this sheet is the
+  // only place a reader can learn it. Checked by keycap, in the platform's own spelling.
+  const expandAllKeys = await page
+    .getByTestId('shortcut-row-expandAllTurns')
+    .locator('kbd')
+    .allInnerTexts()
+  console.log(`[discoverability] ⌘⇧E is taught as: ${expandAllKeys.join(' ')}`)
+  expect(expandAllKeys).toEqual([
+    process.platform === 'darwin' ? '⌘' : 'Ctrl',
+    process.platform === 'darwin' ? '⇧' : 'Shift',
+    'E'
+  ])
+
   await page.keyboard.press('Escape')
   await expect(sheet).toHaveCount(0)
 

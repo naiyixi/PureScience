@@ -225,6 +225,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'shortcuts.commandPalette': 'コマンドパレットを開く',
   'shortcuts.openSettings': '設定を開く',
   'shortcuts.closeActivePane': '現在のタブ、次にパネル、最後にウインドウを閉じる',
+  'shortcuts.expandAllTurns': '開いているセッションのすべてのターンを展開／折りたたむ',
   'shortcuts.moveInList': 'リスト内を移動',
   'shortcuts.runRow': '選択中の項目を実行',
   'shortcuts.dismiss': 'ダイアログまたはパネルを閉じる',

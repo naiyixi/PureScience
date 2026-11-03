@@ -224,6 +224,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'shortcuts.commandPalette': 'Открыть палитру команд',
   'shortcuts.openSettings': 'Открыть настройки',
   'shortcuts.closeActivePane': 'Закрыть текущую вкладку, затем панель, затем окно',
+  'shortcuts.expandAllTurns': 'Развернуть или свернуть все ходы в открытом сеансе',
   'shortcuts.moveInList': 'Перемещение по списку',
   'shortcuts.runRow': 'Выполнить выбранный пункт',
   'shortcuts.dismiss': 'Закрыть диалог или панель',

@@ -1269,6 +1269,7 @@ export const en: Record<ZhKey, string> = {
   'shortcuts.commandPalette': 'Open the command palette',
   'shortcuts.openSettings': 'Open settings',
   'shortcuts.closeActivePane': 'Close the current tab, then the panel, then the window',
+  'shortcuts.expandAllTurns': 'Expand or collapse every turn in the open session',
   'shortcuts.moveInList': 'Move through the list',
   'shortcuts.runRow': 'Run the highlighted item',
   'shortcuts.dismiss': 'Close the dialog or panel',

@@ -44,7 +44,33 @@ describe('KeyboardShortcutsDialog', () => {
     expect(close?.textContent).toContain('⌘')
     expect(close?.textContent).toContain('W')
 
-    expect(document.querySelectorAll('[data-testid^="shortcut-row-"]')).toHaveLength(6)
+    // The transcript toggle had no visible affordance anywhere in the app; this row is its only teacher.
+    // Asserted on the keycaps, not the row text: the label itself contains letters, so a text match would
+    // pass even if the keys were rendered wrong.
+    const expandAll = document.querySelector('[data-testid="shortcut-row-expandAllTurns"]')
+    const keycaps = Array.from(expandAll?.querySelectorAll('kbd') ?? []).map(
+      (cap) => cap.textContent
+    )
+    expect(keycaps).toEqual(['⌘', '⇧', 'E'])
+
+    expect(document.querySelectorAll('[data-testid^="shortcut-row-"]')).toHaveLength(7)
+  })
+
+  it('prints the shift key as a word where the platform has no glyph', async () => {
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: { platform: 'win32' }
+    })
+    await act(async () => {
+      root.render(<KeyboardShortcutsDialog open onOpenChange={vi.fn()} />)
+    })
+
+    // ⌘ on macOS, Ctrl + Shift elsewhere: a hardcoded glyph would teach the wrong key on Windows.
+    const expandAll = document.querySelector('[data-testid="shortcut-row-expandAllTurns"]')
+    const keycaps = Array.from(expandAll?.querySelectorAll('kbd') ?? []).map(
+      (cap) => cap.textContent
+    )
+    expect(keycaps).toEqual(['Ctrl', 'Shift', 'E'])
   })
 
   it('renders nothing while it is closed', async () => {

@@ -1201,6 +1201,7 @@ export const zh = {
   'shortcuts.commandPalette': '打开命令面板',
   'shortcuts.openSettings': '打开设置',
   'shortcuts.closeActivePane': '依次关闭：当前标签页 → 面板 → 窗口',
+  'shortcuts.expandAllTurns': '展开或折叠当前会话里的全部回合',
   'shortcuts.moveInList': '在列表中移动',
   'shortcuts.runRow': '执行选中项',
   'shortcuts.dismiss': '关闭对话框或面板',

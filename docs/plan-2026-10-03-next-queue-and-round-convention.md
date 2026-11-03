@@ -15888,3 +15888,93 @@ lateMs 801  canaryMs 5496  inFlight 0
 ② 两条线索不变：`sessions:save-session` 的 `writeDiskMs`/`fileIndexMs`（`src/main/session-persistence/**` 正被并行会话改）、
 `reviewer:get-for-session`（同域在制）—— 落定后再量；
 ③ 可发现性缺口（⌘⇧E 无可见入口）单独立项，走命令面那套（命令源 + 快捷键清单）。
+
+## 二百八十六、本轮追加（执行器，2026-11-03）—— ⌘⇧E 的「没人教」收口：键盘清单补一行，并当场量出全局弦只有四条
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch -q origin` 后 `origin/main = HEAD = 5458c92d`（§285），0 ahead / 0 behind。上一轮 `round-next ①` 的判决取到了（见 §一）。
+- 工作树里 15 个改动 + 1 份证据档**不是我的**（`src/main/**`、两个 `src/shared/**`、`docs/plan-2026-10-28-two-releases.md`）⇒ 一个字节没碰；
+  本轮所有构建与真机跑都在隔离工作树 `/tmp/ps-286`（头 `5458c92d`）里做。
+- 单元来源不是自拟：§285 §六 逐字写着「⌘⇧E 目前没有任何可见入口，可发现性仍是既有缺口（命令面板与快捷键清单里都没有它）」，
+  §285 §七 ③ 把它立为下一项。
+
+### 一 上一笔的 CI 判决（`round-next ①` 的实际落点）
+
+| 车道 | 结论 | 取法 |
+| --- | --- | --- |
+| `Windows Full Test` | **success** | `gh api …/actions/runs?head_sha=5458c92dc13323b1284562b85c6da54767089471` |
+| `Nightly` | **success** | 同上（含 macos-arm64 上的 P0 认证作业，本笔那支 ⌘⇧E spec 在其中真跑） |
+
+### 二 单元：把「只有键盘、没人教」的那条弦放进清单（顺带把四条全局弦数了一遍）
+
+先按参考规程做了**全局弦普查**（`grep metaKey|ctrlKey` 于 `src/renderer/src`，排除测试与输入框内的撤销/重做）：
+
+| 弦 | 处理函数 | 原清单里有吗 |
+| --- | --- | --- |
+| ⌘K 命令面板 | `App.tsx` `toggleGlobalSearch`（门控：其它浮层开着就退让） | 有 |
+| ⌘, 设置 | `App.tsx` `openSettingsFromShortcut`（同一份门控清单） | 有 |
+| ⌘W 关标签→折叠面板→关窗 | 主进程 `onCloseActivePane` + `useCloseActivePaneShortcut` 三级阶梯 | 有 |
+| **⌘⇧E 展开/折叠全部回合** | `WorkspaceMessageScroller` 的 window 监听（输入框内不生效） | **没有** |
+
+交付 = 清单里补第 4 条，并把 `shift` 也做成**按平台渲染**（darwin 出 `⇧`，其它平台出 `Shift`）——原来只有 `mod` 有这层映射，
+直接写死 `⇧` 会让 Windows 读者看到按不出来的键。
+
+### 三 真机读数（`npx playwright test e2e/certification/palette-commands.spec.ts`，在 `/tmp/ps-286` 上跑）
+
+```
+[discoverability] ⌘⇧E is taught as: ⌘ ⇧ E
+1 passed (7.1s)
+```
+
+断言取的是**键帽本身**（`shortcut-row-expandAllTurns` 下三个 `kbd` 的 `allInnerTexts()` 逐字相等），不是行文本：
+行文本里本来就有 `E`（`Expand … Every`），按文本断言即便键帽画错了也会绿。
+
+### 四 变异自证（改在**产品代码**上，每次改完重建 `build:e2e`）
+
+| 变异 | 结果 |
+| --- | --- |
+| 键位改回 `['mod', 'E']`（去掉 shift） | **红在那一条断言**：真机读数 `⌘ E`，`expect(received).toEqual(expected)` |
+| 渲染式改回 `{key === 'mod' ? modifier : key}`（不映射 shift） | **两条 jsdom 用例同时红**：`['⌘','shift','E']`、`['Ctrl','shift','E']` |
+
+两次都用备份复原（`git diff --stat` 只剩本轮那 12 个文件）。
+
+### 五 门禁（各自实跑，读数取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache`（12 个改动文件） | **0 error / 0 warning** |
+| `npx prettier --check`（同上） | 通过（首次 2 条警告是折行，已 `--write` 后复检） |
+| `tsc --noEmit -p tsconfig.web.json --composite false`（隔离工作树） | **0 error** |
+| `tsc --noEmit -p tsconfig.node.json --composite false`（同一工作树，堆 8192） | **0 error** |
+| `npx vitest run src/renderer/src/components/global-search src/renderer/src/i18n` | **11 文件 / 131 例全绿** |
+| `npx vitest run src/renderer/src/components/KeyboardShortcutsDialog.test.tsx` | **3 例全绿** |
+| `npx playwright test e2e/certification/palette-commands.spec.ts` | **1 passed (7.1s)** |
+| `bash scripts/pre-push-checks.sh` | 通过（品牌扫描零命中、双语 README 一致、脚本入口可解析、新增文件 lint 过） |
+
+### 六 本轮吃到的坑（下一轮别再吃）
+
+**手动跑 `tsc` 漏掉 `--noEmit` 会把编译产物写进 `src/`，而 emit 出来的 `.js` 会在 vite 解析里遮蔽同名 `.tsx`。**
+本仓 `tsconfig.web.json` / `tsconfig.node.json` **自己不带** `noEmit`（它在 `package.json` 的 `typecheck:node|web` 脚本里）。
+代价实测：一条手敲的 `npx tsc -p tsconfig.web.json --composite false` 生出 **1,870 个 `.js`**（外加 2 个在 `test/fixtures/`），
+随后 `build:e2e` 解析 `./KeyboardShortcutsDialog` 时优先取 **`.js`** 而不是 `.tsx` ⇒ **改了 `.tsx` 而产物一字不变、连构建哈希都不变**，
+连续两次把「变异没红」读成「e2e 读了旧包」。判据：`git status --short | grep '^??'` 里成片 `src/**/*.js` 就是它；
+清理只删**未跟踪**的（`git ls-files --others --exclude-standard src e2e | grep '\.js$'`），`src/main/settings/codex-detect.js` 这类真源码是跟踪的。
+
+### 七 边界（不许读成更强）
+
+- 只补了**快捷键清单**这半边。**命令面板里仍然没有它**：`⌘⇧E` 的展开态是 `WorkspaceMessageScroller` 的组件内 `useState`
+  （`{sessionId, overrides}`），面板拿不到当前会话的 group 清单 ⇒ 要让面板能执行，得把这份状态提到 store 并让组件改成订阅
+  （牵动 `workspace-components.test.tsx:415` 那条源码扫描式 pin），本轮**按连锁最小**只做了清单那半边。
+- 这份清单本身也只在**命令面板里**可达（⌘K → 键盘快捷键），所以「可发现」= 比上一轮多一层，不是「界面上直接看得到」。
+- 平台覆盖：darwin 有真窗口读数；`Ctrl+Shift+E` 只有 jsdom 的 `win32` 分支读数（键帽文案），**没有 Windows 真窗口读数**。
+- 清单行文案写明了作用范围（「当前会话里的全部回合」），没有顺手改 `shortcuts.hint` 里「各处可用」那句；
+  两者靠标签自身限定，不构成新的假承诺。
+
+### 八 下一轮第一步
+
+① 等本笔推送后的 `Nightly` + `Windows Full Test` 判决（按完整 40 位 SHA，别读 `/tmp/ci-verdict.txt`）；
+② 若要做「面板可执行」那半边，先量连锁：把 expansion 状态提到 store、改 `WorkspaceMessageScroller` 的三处读写、
+  同步 `workspace-components.test.tsx:415` 的 pin、再给面板加一条命令 —— 估一个工作窗口，别顺手开工；
+③ 仍挂着的两条：`sessions:save-session` 的 `writeDiskMs`/`fileIndexMs`（`src/main/session-persistence/**` 并行会话在改）、
+  `reviewer:get-for-session`（同域在制）。

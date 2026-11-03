@@ -222,6 +222,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'shortcuts.commandPalette': '명령 팔레트 열기',
   'shortcuts.openSettings': '설정 열기',
   'shortcuts.closeActivePane': '현재 탭을 닫고, 그다음 패널, 마지막으로 창을 닫습니다',
+  'shortcuts.expandAllTurns': '열린 세션의 모든 턴 펼치기/접기',
   'shortcuts.moveInList': '목록에서 이동',
   'shortcuts.runRow': '선택한 항목 실행',
   'shortcuts.dismiss': '대화 상자 또는 패널 닫기',

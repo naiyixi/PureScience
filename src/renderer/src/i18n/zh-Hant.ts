@@ -166,6 +166,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'shortcuts.commandPalette': '開啟命令面板',
   'shortcuts.openSettings': '開啟設定',
   'shortcuts.closeActivePane': '依序關閉：目前分頁 → 面板 → 視窗',
+  'shortcuts.expandAllTurns': '展開或收合目前工作階段裡的全部回合',
   'shortcuts.moveInList': '在清單中移動',
   'shortcuts.runRow': '執行選取項目',
   'shortcuts.dismiss': '關閉對話框或面板',

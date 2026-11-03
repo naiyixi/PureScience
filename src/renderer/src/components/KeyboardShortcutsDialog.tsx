@@ -6,19 +6,23 @@ import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 
 type ShortcutRow = {
   id: string
-  // Rendered as separate keycaps, with `mod` standing in for the platform's modifier so the sheet reads
-  // correctly on Windows and Linux too.
+  // Rendered as separate keycaps. `mod` stands in for the platform's modifier and `shift` for the word
+  // or glyph each platform prints, so the sheet reads correctly on Windows and Linux too.
   keys: readonly string[]
   labelKey: TranslationKey
 }
 
 // Only chords that are actually wired are listed. A shortcut sheet that lies about what exists is worse
-// than no sheet: ⌘K opens this palette (gated on other dialogs being closed), ⌘, opens settings, and ⌘W
-// walks the tab → pane → window ladder (see useCloseActivePaneShortcut).
+// than no sheet. The audit behind this list found exactly four global chords: ⌘K opens this palette (gated
+// on other dialogs being closed), ⌘, opens settings, ⌘W walks the tab → pane → window ladder (see
+// useCloseActivePaneShortcut), and ⌘⇧E toggles every turn of the open transcript (see
+// WorkspaceMessageScroller). The sheet listed the first three; the fourth had no visible affordance
+// anywhere in the app, so its row names the place it acts on instead of claiming to work everywhere.
 const SHORTCUT_ROWS: readonly ShortcutRow[] = [
   { id: 'palette', keys: ['mod', 'K'], labelKey: 'shortcuts.commandPalette' },
   { id: 'settings', keys: ['mod', ','], labelKey: 'shortcuts.openSettings' },
   { id: 'close', keys: ['mod', 'W'], labelKey: 'shortcuts.closeActivePane' },
+  { id: 'expandAllTurns', keys: ['mod', 'shift', 'E'], labelKey: 'shortcuts.expandAllTurns' },
   { id: 'move', keys: ['↑', '↓'], labelKey: 'shortcuts.moveInList' },
   { id: 'run', keys: ['↵'], labelKey: 'shortcuts.runRow' },
   { id: 'dismiss', keys: ['esc'], labelKey: 'shortcuts.dismiss' }
@@ -37,6 +41,8 @@ export const KeyboardShortcutsDialog = ({
   const { t } = useLanguage()
   const focusRestore = useDialogFocusRestore(open)
   const modifier = window.api?.platform === 'darwin' ? '⌘' : 'Ctrl'
+  // The shift glyph is platform-specific for the same reason: a Windows reader should see the word.
+  const shiftKey = window.api?.platform === 'darwin' ? '⇧' : 'Shift'
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -63,7 +69,7 @@ export const KeyboardShortcutsDialog = ({
                 <span className="flex shrink-0 items-center gap-1">
                   {row.keys.map((key) => (
                     <kbd key={key} className={keycapClassName}>
-                      {key === 'mod' ? modifier : key}
+                      {key === 'mod' ? modifier : key === 'shift' ? shiftKey : key}
                     </kbd>
                   ))}
                 </span>

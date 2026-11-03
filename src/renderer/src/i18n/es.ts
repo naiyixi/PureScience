@@ -225,6 +225,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'shortcuts.commandPalette': 'Abrir la paleta de comandos',
   'shortcuts.openSettings': 'Abrir ajustes',
   'shortcuts.closeActivePane': 'Cerrar la pestaña actual, luego el panel y luego la ventana',
+  'shortcuts.expandAllTurns': 'Expandir o contraer todos los turnos de la sesión abierta',
   'shortcuts.moveInList': 'Moverse por la lista',
   'shortcuts.runRow': 'Ejecutar el elemento resaltado',
   'shortcuts.dismiss': 'Cerrar el diálogo o el panel',
