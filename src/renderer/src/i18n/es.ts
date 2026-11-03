@@ -975,6 +975,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': 'Se puede reproducir',
   'home.userCases.standing.conversationOnly': 'Solo conversación',
   'home.userCases.readings': '{artifacts} artefactos · {files} archivos · {size}',
+  'home.userCases.detail.newSession': 'Iniciar una sesión desde este caso',
   'home.userCases.detail.files': 'Archivos que entrega este caso',
   'home.userCases.detail.hint':
     'Todos los archivos listados están en esta máquina. Abrir el caso retoma el trabajo que los produjo.',

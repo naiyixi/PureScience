@@ -244,6 +244,37 @@ describe('UserCases', () => {
     expect(useNavigationStore.getState().activeProjectId).toBe('p5')
   })
 
+  it('starts a new session inside the case instead of resuming the old one', async () => {
+    await render(
+      [{ id: 'p6', name: 'rich three', description: 'Docking audit' }],
+      [session('p6')],
+      {
+        p6: { artifacts: richFiles }
+      }
+    )
+    // A previous conversation is selected, as it would be after opening the project once. Starting a session
+    // from the case has to clear it — otherwise the reader lands back in that conversation.
+    useSessionStore.getState().selectSession('p6-s1')
+    expect(useSessionStore.getState().selectedSessionId).toBe('p6-s1')
+
+    const card = container.querySelector('[data-slot="case-plaza-card"]') as HTMLElement
+    await act(async () => {
+      card.click()
+    })
+    const start = document.querySelector(
+      '[data-slot="case-plaza-detail-new-session"]'
+    ) as HTMLElement
+    expect(start.textContent).toContain('Start a session from this case')
+    await act(async () => {
+      start.click()
+    })
+
+    expect(useNavigationStore.getState().activeProjectId).toBe('p6')
+    expect(useSessionStore.getState().selectedSessionId).toBeUndefined()
+    // The panel closes: the point of the click is the composer, not the case.
+    expect(document.querySelector('[data-slot="case-plaza-detail"]')).toBeNull()
+  })
+
   it('leaves example and archived projects out: they are not this reader’s work', async () => {
     await render(
       [

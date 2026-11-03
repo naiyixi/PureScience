@@ -394,6 +394,7 @@ export const zh = {
   'home.userCases.standing.reproducible': '可复现',
   'home.userCases.standing.conversationOnly': '仅对话',
   'home.userCases.readings': '{artifacts} 份产物 · {files} 个文件 · {size}',
+  'home.userCases.detail.newSession': '从该案例新建会话',
   'home.userCases.detail.files': '这个案例交付的文件',
   'home.userCases.detail.hint': '这些文件都在本机。打开案例即可接着跑产生它们的那份工作。',
   'home.userCases.detail.noFiles': '这个案例还没有产物 —— 跑一轮，它写出的文件就会出现在这里。',

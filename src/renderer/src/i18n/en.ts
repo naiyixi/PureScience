@@ -416,6 +416,7 @@ export const en: Record<ZhKey, string> = {
   'home.userCases.standing.reproducible': 'Reproducible',
   'home.userCases.standing.conversationOnly': 'Conversation only',
   'home.userCases.readings': '{artifacts} artifacts · {files} files · {size}',
+  'home.userCases.detail.newSession': 'Start a session from this case',
   'home.userCases.detail.files': 'Files this case hands over',
   'home.userCases.detail.hint':
     'Every file listed here is on this machine. Opening the case resumes the work that produced them.',

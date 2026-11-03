@@ -944,6 +944,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': '재현 가능',
   'home.userCases.standing.conversationOnly': '대화만',
   'home.userCases.readings': '산출물 {artifacts} · 파일 {files} · {size}',
+  'home.userCases.detail.newSession': '이 사례에서 새 세션 시작',
   'home.userCases.detail.files': '이 사례가 넘겨주는 파일',
   'home.userCases.detail.hint':
     '여기 나열된 파일은 모두 이 컴퓨터에 있습니다. 사례를 열면 그 파일을 만든 작업을 이어서 실행할 수 있습니다.',

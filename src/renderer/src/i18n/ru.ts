@@ -956,6 +956,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': 'Воспроизводимый',
   'home.userCases.standing.conversationOnly': 'Только диалог',
   'home.userCases.readings': 'артефактов: {artifacts} · файлов: {files} · {size}',
+  'home.userCases.detail.newSession': 'Начать сеанс из этого кейса',
   'home.userCases.detail.files': 'Файлы, которые передаёт этот кейс',
   'home.userCases.detail.hint':
     'Все перечисленные файлы лежат на этой машине. Открыв кейс, вы продолжите работу, которая их создала.',

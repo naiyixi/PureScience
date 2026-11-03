@@ -75,11 +75,16 @@ type CaseWithEvidence = UserCase & { evidence?: ProjectCaseEvidence }
 const CaseDetail = ({
   item,
   onClose,
-  onOpen
+  onOpen,
+  onStartSession
 }: {
   item: CaseWithEvidence | undefined
   onClose: () => void
   onOpen: (projectId: string) => void
+  // A case is a place to keep working, not just a trophy: starting a session from it is the same move the
+  // command palette's "New session" makes inside a project — open it and clear the selection so the empty
+  // composer is the thing in front of you.
+  onStartSession: (projectId: string) => void
 }): React.JSX.Element => {
   const { t } = useLanguage()
   const focusRestore = useDialogFocusRestore(Boolean(item))
@@ -164,6 +169,14 @@ const CaseDetail = ({
                   data-slot="case-plaza-detail-open"
                 >
                   {t('home.userCases.detail.open')}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-border-200/70 px-3 py-1.5 text-sm text-text-000 transition-colors hover:border-text-300/60"
+                  onClick={() => onStartSession(item.projectId)}
+                  data-slot="case-plaza-detail-new-session"
+                >
+                  {t('home.userCases.detail.newSession')}
                 </button>
               </div>
             </>
@@ -348,6 +361,15 @@ export const UserCases = (): React.JSX.Element => {
     openProject(projectId)
   }
 
+  // Starting a session inside a case: same two moves the command palette makes for "New session" — open the
+  // project as the user's own, then clear the selection so the composer is empty rather than resuming the last
+  // conversation.
+  const startSessionInCase = (projectId: string): void => {
+    setSelected(undefined)
+    openProject(projectId, 'user')
+    useSessionStore.getState().clearSelection()
+  }
+
   if (candidates.length === 0) {
     return (
       <section className="mt-8" aria-label={t('home.userCases.title')} data-slot="case-plaza">
@@ -471,7 +493,12 @@ export const UserCases = (): React.JSX.Element => {
         </p>
       ) : null}
 
-      <CaseDetail item={selectedCase} onClose={() => setSelected(undefined)} onOpen={openCase} />
+      <CaseDetail
+        item={selectedCase}
+        onClose={() => setSelected(undefined)}
+        onOpen={openCase}
+        onStartSession={startSessionInCase}
+      />
     </section>
   )
 }

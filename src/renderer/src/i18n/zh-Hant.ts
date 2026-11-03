@@ -903,6 +903,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': '可重現',
   'home.userCases.standing.conversationOnly': '僅對話',
   'home.userCases.readings': '{artifacts} 份產物 · {files} 個檔案 · {size}',
+  'home.userCases.detail.newSession': '從此案例新增對話',
   'home.userCases.detail.files': '這個案例交付的檔案',
   'home.userCases.detail.hint': '這些檔案都在本機。開啟案例即可接著跑產生它們的那份工作。',
   'home.userCases.detail.noFiles': '這個案例還沒有產物 —— 跑一輪，它寫出的檔案就會出現在這裡。',

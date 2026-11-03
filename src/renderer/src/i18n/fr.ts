@@ -982,6 +982,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': 'Reproductible',
   'home.userCases.standing.conversationOnly': 'Conversation seule',
   'home.userCases.readings': '{artifacts} artefacts · {files} fichiers · {size}',
+  'home.userCases.detail.newSession': 'Démarrer une session depuis ce cas',
   'home.userCases.detail.files': 'Fichiers remis par ce cas',
   'home.userCases.detail.hint':
     'Chaque fichier listé ici se trouve sur cette machine. Ouvrir le cas reprend le travail qui les a produits.',

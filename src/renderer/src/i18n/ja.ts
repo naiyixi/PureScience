@@ -956,6 +956,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.userCases.standing.reproducible': '再現可能',
   'home.userCases.standing.conversationOnly': '会話のみ',
   'home.userCases.readings': '{artifacts} 成果物 · {files} ファイル · {size}',
+  'home.userCases.detail.newSession': 'このケースから新しいセッションを開始',
   'home.userCases.detail.files': 'このケースが引き渡すファイル',
   'home.userCases.detail.hint':
     'ここに並ぶファイルはすべてこのマシン上にあります。ケースを開けば、それらを生んだ作業を再開できます。',
