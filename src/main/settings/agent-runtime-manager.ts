@@ -716,12 +716,14 @@ export class AgentRuntimeManager {
     })
     if (result.ok) {
       await this.detectCodebuddy()
-      // npm can exit 0 and leave nothing the app can use — a global prefix the app does not probe, a shim
-      // that exists but cannot report a version, a cache that short-circuits the install. Saying "installed"
-      // on the strength of an exit code is how a user ends up pressing Install forever while the card says
-      // "not installed", so the answer is checked before it is reported.
-      const after = await this.repository.getSettings()
-      if (!after.codebuddyPath) {
+      // npm can exit 0 and leave nothing the app can use. Saying "installed" on the strength of an exit code is
+      // how a user ends up pressing Install forever while the card says "not installed", so it is checked.
+      // Verify by asking the detector, not by re-reading settings: `settings-read` measured 12 s (held 11.9 s)
+      // on a machine where two app instances share one storage root, so a snapshot taken right after an install
+      // can lag behind the write the install just made and report a perfectly good install as missing. The
+      // detector's own answer is the thing the card will show anyway.
+      const detected = await detectCodeBuddy(this.codebuddyDetectDeps)
+      if (!detected) {
         return {
           ...result,
           ok: false,
