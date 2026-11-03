@@ -1488,6 +1488,8 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Heruntergeladen — klicken Sie auf „Zum Aktualisieren neu starten“, um PureScience zu beenden und die Installation abzuschließen.',
   'update.readyInstallerHint':
     'Heruntergeladen — klicken Sie auf „Installer öffnen“, um das Update abzuschließen.',
+  'update.macManualInstallNote':
+    'macOS-Builds sind derzeit ad-hoc signiert; das System ersetzt keine laufende App an Ort und Stelle. Installer herunterladen und die App von Hand ersetzen.',
   'update.quitBeforeInstall':
     'Beenden Sie PureScience vor der Installation — eine laufende App kann nicht ersetzt werden.',
   'update.downloadManually': 'Manuell herunterladen',

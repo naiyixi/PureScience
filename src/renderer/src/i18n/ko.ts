@@ -1426,6 +1426,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '다운로드 완료 — “업데이트하려면 다시 시작”을 누르면 PureScience가 종료되고 설치가 완료됩니다.',
   'update.readyInstallerHint':
     '다운로드 완료 — “설치 프로그램 열기”를 누르면 업데이트가 완료됩니다.',
+  'update.macManualInstallNote':
+    'macOS 판은 현재 ad-hoc 서명이라 실행 중인 앱을 제자리에서 교체할 수 없습니다. 설치 파일을 내려받아 직접 교체해 주세요.',
   'update.quitBeforeInstall':
     '설치 전에 PureScience를 종료하세요. 실행 중인 앱은 교체할 수 없습니다.',
   'update.downloadManually': '수동 다운로드',

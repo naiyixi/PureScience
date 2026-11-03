@@ -168,8 +168,13 @@ npmRebuild: false
 # electron-builder runs with --publish never, so this block only shapes app-update.yml + the feed
 # files, it does not upload anything.
 publish:
-  provider: generic
-  url: https://statics.zerolink.com/purescience/app/stable
+  # GitHub Releases is the only feed that exists today: the mirror host this block used to name
+  # (`statics.zerolink.com`) never resolved, so every packaged build's first update check failed and
+  # users only learned about a release through the GitHub fallback anyway. electron-updater reads this
+  # through the generated app-update.yml; a public repository needs no token for reads.
+  provider: github
+  owner: naiyixi
+  repo: PureScience
   channel: latest
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

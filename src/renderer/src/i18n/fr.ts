@@ -1487,6 +1487,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Téléchargée — cliquez sur « Redémarrer pour mettre à jour » pour quitter PureScience et terminer l’installation.',
   'update.readyInstallerHint':
     'Téléchargée — cliquez sur « Ouvrir l’installateur » pour terminer la mise à jour.',
+  'update.macManualInstallNote':
+    "Les versions macOS sont signées ad-hoc pour l'instant : le système refuse de remplacer une application en cours d'exécution. Téléchargez l'installeur et remplacez-la à la main.",
   'update.quitBeforeInstall':
     'Quittez PureScience avant l’installation — une application en cours d’exécution ne peut pas être remplacée.',
   'update.downloadManually': 'Télécharger manuellement',

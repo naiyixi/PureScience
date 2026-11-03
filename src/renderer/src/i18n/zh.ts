@@ -2493,6 +2493,8 @@ export const zh = {
     'PureScience 正在停止后台任务并将关闭以完成安装。此过程可能需要片刻，期间请勿重新打开应用；更新完成后会自动重新打开。',
   'update.readyRestartHint': '下载完成 — 点「重启以更新」即可退出并完成安装。',
   'update.readyInstallerHint': '下载完成 — 点「打开安装程序」即可完成更新。',
+  'update.macManualInstallNote':
+    'macOS 版目前是 ad-hoc 签名，系统不允许原地替换正在运行的应用 —— 请下载安装包手动替换。',
   'update.quitBeforeInstall': '安装前请先退出 PureScience——应用正在运行时无法替换旧版本。',
   'fileBrowser.close': '关闭文件浏览器',
   'fileBrowser.directoryContents': '目录内容',

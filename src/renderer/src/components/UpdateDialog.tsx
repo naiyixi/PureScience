@@ -162,6 +162,14 @@ const UpdateDialog = (): React.JSX.Element | null => {
                     {t('update.quitBeforeInstall')}
                   </p>
                 ) : null}
+                {/* The signed-in-place path does not exist on macOS yet: without our own Developer ID,
+                    the OS refuses to swap a running bundle, so say that instead of letting the user
+                    discover it mid-drag. */}
+                {window.api?.platform === 'darwin' && dialogStatus.applyKind !== 'restart' ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('update.macManualInstallNote')}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 

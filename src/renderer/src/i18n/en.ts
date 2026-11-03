@@ -2676,6 +2676,8 @@ export const en: Record<ZhKey, string> = {
   'update.readyRestartHint':
     'Downloaded — click “Restart to update” to quit PureScience and finish installing.',
   'update.readyInstallerHint': 'Downloaded — click “Open installer” to finish updating.',
+  'update.macManualInstallNote':
+    'macOS builds are ad-hoc signed for now, so macOS refuses to replace a running app in place — download the installer and replace it by hand.',
   'update.quitBeforeInstall':
     'Quit PureScience before installing — a running app cannot be replaced.',
   'fileBrowser.close': 'Close file browser',

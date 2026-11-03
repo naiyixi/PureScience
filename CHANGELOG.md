@@ -1,5 +1,43 @@
 # PureScience 更新日记
 
+## v2.22.0 — 2026-11-04（更新通道指向一个不存在的域名，以及一个借来的 Team ID）
+
+**一句话**：打包后的应用第一次检查更新必然失败 —— `electron-builder.yml` 的 feed 指向
+`https://statics.zerolink.com/purescience/app/stable`，这个域名从没解析过；macOS 上"能不能原地更新"
+的判断里又写死了对标产品的 Team ID，等于拿别人的签名当自己的前提。
+
+### 证据
+
+```
+$ dig +short statics.zerolink.com A
+（空 —— NXDOMAIN，无 A 记录）
+$ curl -sS -m 12 https://repo/releases/latest/download/version.json   # GitHub 兜底
+{"version":"2.21.4","result":"up-to-date"}          2.1 s  200
+$ codesign -d --verbose=4 /Applications/PureScience.app 2>&1 | grep TeamIdentifier
+TeamIdentifier=not set                                # ad-hoc，spctl rejected
+```
+
+README 里那句 "a measured 51.8 s cold start is unoptimised" 也被本机冷启动实测推翻：首窗中位
+**2.26 s**（2.54 / 2.26 / 2.11），对标同机 **3.20 s**（3.93 / 2.07 / 3.20）。
+
+### 改法
+
+1. **feed 换到 GitHub Releases**（`publish.provider: github`，owner/repo）。electron-builder 仍然
+   `--publish never`，这一块只影响 `app-update.yml` 与 feed 文件；公开仓库读不需要 token。
+2. **Team ID 改为装配期注入**（`PURESCIENCE_MAC_TEAM_ID`）：没配就是"还没签发"，macOS 一律走手动
+   安装包，并写一条 `in-place update not offered / mac-team-id-not-provisioned` 的日志说明原因，
+   不再沿用任何外部 Team ID 当默认值。
+3. **更新弹窗在 macOS 明说**：ad-hoc 签名下系统不允许原地替换正在运行的应用，请下载安装包手动替换
+   （`update.macManualInstallNote`，九语言）。
+4. **README 自陈更正**：51.8 s 那句改为实测读数，并标明"撤回，而不是被优化掉了"。
+
+### 门禁
+
+- `create-strategy.test.ts` 13 项（含新增"未注入 Team ID 时不提供原地更新且说明原因、且从未调用
+  codesign"）。
+- i18n 覆盖率九语言 100%（`node scripts/i18n-coverage.mjs`）。
+- `tsc -p tsconfig.web` 与主进程 tsc 均无新增错误。
+
 ## v2.21.4 — 2026-11-03（CodeBuddy「装完了却报没找到」：改的是我的验收，不是安装）
 
 **一句话**：v2.21.3 修对了探测 PATH，但安装后的验收仍在读 settings 快照；这台机器上两个实例共用一个

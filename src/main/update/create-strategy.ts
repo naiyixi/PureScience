@@ -19,13 +19,19 @@ export type CreateStrategyOptions = {
 }
 
 const OFFICIAL_MAC_BUNDLE_ID = 'com.zerolink.purescience'
-const OFFICIAL_MAC_TEAM_ID = '87G9WFU9H3'
+
+// A stable mac build may only be updated in place when this machine can prove the installed bundle and
+// the replacement carry the same Team signature. That Team is our own Developer ID, passed in at
+// package time; an unset variable means "not provisioned yet" and must fail closed to the manual
+// installer rather than trust some other publisher's identity.
+const expectedMacTeamId = (): string => (process.env.PURESCIENCE_MAC_TEAM_ID ?? '').trim()
 
 // Read the installed bundle's signing metadata without performing a trust evaluation. The latter can
 // depend on machine policy/keychain state, while Squirrel.Mac only needs the current and replacement
 // bundles to carry compatible designated requirements. Stable CI releases are signed by this bundle
 // ID + Team ID; local packages are ad-hoc signed and report no TeamIdentifier.
-const hasOfficialMacSignature = (): boolean => {
+const hasExpectedMacSignature = (expectedTeamId: string): boolean => {
+  if (!expectedTeamId) return false
   const bundlePath = resolve(dirname(app.getPath('exe')), '../..')
   const result = spawnSync('/usr/bin/codesign', ['-d', '--verbose=4', bundlePath], {
     encoding: 'utf8'
@@ -35,17 +41,20 @@ const hasOfficialMacSignature = (): boolean => {
   const details = new Set(`${result.stdout ?? ''}\n${result.stderr ?? ''}`.split(/\r?\n/))
   return (
     details.has(`Identifier=${OFFICIAL_MAC_BUNDLE_ID}`) &&
-    details.has(`TeamIdentifier=${OFFICIAL_MAC_TEAM_ID}`)
+    details.has(`TeamIdentifier=${expectedTeamId}`)
   )
 }
 
 // macOS in-place auto-update (electron-updater / Squirrel.Mac) only works on a packaged build that is
-// signed with the same Developer ID as the replacement. CI signs stable mac builds; local packages
-// and nightlies are ad-hoc, so ShipIt rejects an official replacement at apply time. Check the actual
-// installed signature rather than inferring it from the version, and fail closed to the manual
-// installer flow whenever compatibility cannot be established.
-const macCanAutoUpdate = (isPackaged: boolean, version: string): boolean =>
-  isPackaged && !version.includes('-') && hasOfficialMacSignature()
+// signed with the same Developer ID as the replacement. Our own Team ID is provisioned at package time;
+// local packages and nightlies are ad-hoc, so ShipIt rejects an official replacement at apply time.
+// Check the actual installed signature rather than inferring it from the version, and fail closed to
+// the manual installer flow whenever compatibility cannot be established.
+const macCanAutoUpdate = (
+  isPackaged: boolean,
+  version: string,
+  expectedTeamId: string = expectedMacTeamId()
+): boolean => isPackaged && !version.includes('-') && hasExpectedMacSignature(expectedTeamId)
 
 // Picks the update strategy for the host platform. Windows/Linux always get true in-place auto-update
 // via electron-updater. macOS gets it too on signed stable builds (see macCanAutoUpdate); otherwise
@@ -67,6 +76,14 @@ export const createUpdateStrategy = (
   const version = opts.version ?? app?.getVersion?.() ?? '0.0.0'
   if (platform === 'darwin' && macCanAutoUpdate(isPackaged, version)) {
     return createInPlaceStrategy()
+  }
+  // Name the gap instead of leaving a packaged mac user wondering why every update is a manual
+  // reinstall: an unprovisioned Team ID is the reason, and it is our reason, not theirs.
+  if (platform === 'darwin' && isPackaged && !version.includes('-') && expectedMacTeamId() === '') {
+    log.info('in-place update not offered', {
+      operation: 'update-strategy',
+      reason: 'mac-team-id-not-provisioned'
+    })
   }
   return new UpdateService({ log })
 }

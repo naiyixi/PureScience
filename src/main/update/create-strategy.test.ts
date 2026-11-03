@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const spawnSync = vi.hoisted(() => vi.fn())
 const quitAndInstall = vi.hoisted(() => vi.fn())
@@ -38,8 +38,13 @@ import { createUpdateStrategy } from './create-strategy'
 import { ElectronUpdaterStrategy } from './electron-updater-strategy'
 import { UpdateService } from './service'
 
+// The Team ID a stable build must carry is provisioned at package time, so these tests set one instead
+// of inheriting whatever the machine happens to have. An unset variable is its own case, below.
+const TEST_TEAM_ID = 'TEAMTEST01'
+
 describe('createUpdateStrategy', () => {
   beforeEach(() => {
+    process.env.PURESCIENCE_MAC_TEAM_ID = TEST_TEAM_ID
     spawnSync.mockReset()
     quitAndInstall.mockReset()
     loggerMocks.createLogger.mockClear()
@@ -47,8 +52,12 @@ describe('createUpdateStrategy', () => {
     spawnSync.mockReturnValue({
       status: 0,
       stdout: '',
-      stderr: 'Identifier=com.zerolink.purescience\nTeamIdentifier=87G9WFU9H3\n'
+      stderr: `Identifier=com.zerolink.purescience\nTeamIdentifier=${TEST_TEAM_ID}\n`
     })
+  })
+
+  afterEach(() => {
+    delete process.env.PURESCIENCE_MAC_TEAM_ID
   })
 
   it('uses ElectronUpdaterStrategy on win32', () => {
@@ -117,11 +126,11 @@ describe('createUpdateStrategy', () => {
     )
   })
 
-  it('falls back to the installer on darwin for another app signed by the official team', () => {
+  it('falls back to the installer on darwin for another app signed by the expected team', () => {
     spawnSync.mockReturnValueOnce({
       status: 0,
       stdout: '',
-      stderr: 'Identifier=com.zerolink.another-app\nTeamIdentifier=87G9WFU9H3\n'
+      stderr: `Identifier=com.zerolink.another-app\nTeamIdentifier=${TEST_TEAM_ID}\n`
     })
 
     expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
@@ -139,6 +148,20 @@ describe('createUpdateStrategy', () => {
     expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
       UpdateService
     )
+  })
+
+  it('offers no in-place update on darwin until a Team ID is provisioned, and names why', () => {
+    delete process.env.PURESCIENCE_MAC_TEAM_ID
+
+    expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
+      UpdateService
+    )
+    expect(loggerMocks.log.info).toHaveBeenCalledWith(
+      'in-place update not offered',
+      expect.objectContaining({ reason: 'mac-team-id-not-provisioned' })
+    )
+    // Nothing was signed with a borrowed identity: the check never reached /usr/bin/codesign.
+    expect(spawnSync).not.toHaveBeenCalled()
   })
 
   it('falls back to UpdateService on darwin for a nightly (prerelease) build', () => {

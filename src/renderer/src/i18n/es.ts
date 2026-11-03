@@ -1475,6 +1475,8 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Descargada: pulsa «Reiniciar para actualizar» para salir de PureScience y completar la instalación.',
   'update.readyInstallerHint':
     'Descargada: pulsa «Abrir instalador» para completar la actualización.',
+  'update.macManualInstallNote':
+    'Las versiones de macOS están firmadas ad-hoc por ahora, así que el sistema no reemplaza una app en ejecución: descarga el instalador y sustitúyela a mano.',
   'update.quitBeforeInstall':
     'Sal de PureScience antes de instalar: una app en ejecución no puede sustituirse.',
   'update.downloadManually': 'Descargar manualmente',
