@@ -11,6 +11,7 @@ import type {
   ReferenceCollection
 } from '../../../../shared/references'
 import { normalizeTitleForDedupe } from '../../../../shared/references'
+import { planZoteroImport } from '../../../../shared/zotero-import'
 import { searchReferences, type ReferenceSearchField } from '../../../../shared/reference-search'
 import type {
   ReferenceIntegrityEvidence,
@@ -226,6 +227,7 @@ export function ReferencesLibraryDialog({
   // others while its write lands.
   const [readingFilter, setReadingFilter] = useState<ReferenceReadingFilter>('any')
   const [searchQuery, setSearchQuery] = useState('')
+  const [zoteroBusy, setZoteroBusy] = useState(false)
   const [readingBusyId, setReadingBusyId] = useState<string | null>(null)
   const [integrityResult, setIntegrityResult] = useState<string | undefined>(undefined)
   // B2: one citation walk, on demand, for one row. The two directions are two calls (different endpoints),
@@ -329,6 +331,8 @@ export function ReferencesLibraryDialog({
   const [compareTarget, setCompareTarget] = useState<Reference | null>(null)
   const [styleBusy, setStyleBusy] = useState(false)
   const styleFileInputRef = useRef<HTMLInputElement | null>(null)
+  // Zotero hands its library over as JSON; the picker is the only file the import reads.
+  const zoteroFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const citationStyles = useMemo<readonly CitationStyleDefinition[]>(
     () => resolveCitationStyles(importedStyles.map((style) => citationStyleFromImport(style))),
@@ -640,6 +644,35 @@ export function ReferencesLibraryDialog({
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  // Import a Zotero JSON export: plan first (what would be written, what is refused and why), then write one
+  // record at a time so a failure halfway leaves the records already written in place and reports the error.
+  const handleZoteroImport = async (file: File): Promise<void> => {
+    setZoteroBusy(true)
+    setError(undefined)
+    try {
+      const plan = planZoteroImport(await file.text(), references)
+      if ('error' in plan) {
+        setError(t('references.zotero.notAnExport'))
+        return
+      }
+      if (plan.records.length === 0) {
+        setNotice(t('references.zotero.nothingToImport', { skipped: plan.skipped.length }))
+        return
+      }
+      let imported = 0
+      for (const record of plan.records) {
+        const result = await addReference(projectId ?? '', record.input)
+        if (result.status === 'created') imported += 1
+      }
+      await refresh()
+      setNotice(t('references.zotero.imported', { imported, skipped: plan.skipped.length }))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setZoteroBusy(false)
     }
   }
 
@@ -1551,6 +1584,27 @@ export function ReferencesLibraryDialog({
                   <BookMarked className="size-3" aria-hidden="true" />{' '}
                   {t('references.pdfImport.open')}
                 </button>
+                <button
+                  type="button"
+                  className={ghostClass}
+                  disabled={zoteroBusy}
+                  onClick={() => zoteroFileInputRef.current?.click()}
+                  data-slot="references-zotero-import"
+                >
+                  <Plus className="size-3" aria-hidden="true" /> {t('references.zotero.import')}
+                </button>
+                <input
+                  ref={zoteroFileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  aria-label={t('references.zotero.import')}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ''
+                    if (file) void handleZoteroImport(file)
+                  }}
+                />
               </div>
               {importedStyles.length > 0 ? (
                 <div className="border-b border-[var(--border)] px-3 py-1">

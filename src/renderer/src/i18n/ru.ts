@@ -3639,6 +3639,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Происхождение',
   'reviewer.label': 'Рецензент',
   'reviewer.fixLimitReached': 'достигнут предел исправлений',
+  'references.zotero.import': 'Импорт из Zotero',
+  'references.zotero.notAnExport':
+    'Этот файл — не экспорт Zotero в JSON. Экспортируйте библиотеку в JSON и повторите.',
+  'references.zotero.nothingToImport':
+    'Нечего импортировать: все {skipped} записей отклонены (дубль, без названия или это не запись).',
+  'references.zotero.imported':
+    'Импортировано {imported} записей · отклонено {skipped} (дубль, без названия или это не запись).',
   'references.search.label': 'Поиск по библиотеке',
   'references.search.placeholder': 'Название, автор, журнал, DOI, год, аннотация',
   'references.search.clear': 'Очистить поиск',

@@ -552,6 +552,13 @@ export const en: Record<ZhKey, string> = {
   'preview.provenance': 'Provenance',
   'reviewer.label': 'Reviewer',
   'reviewer.fixLimitReached': 'fix limit reached',
+  'references.zotero.import': 'Import from Zotero',
+  'references.zotero.notAnExport':
+    'That file is not a Zotero JSON export — export the library as JSON and try again.',
+  'references.zotero.nothingToImport':
+    'Nothing to import: all {skipped} records were refused (duplicate, no title, or not an item).',
+  'references.zotero.imported':
+    'Imported {imported} records · {skipped} refused (duplicate, no title, or not an item).',
   'references.search.label': 'Search the library',
   'references.search.placeholder': 'Title, author, journal, DOI, year, abstract',
   'references.search.clear': 'Clear search',

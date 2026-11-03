@@ -3636,6 +3636,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '来歴',
   'reviewer.label': 'レビュアー',
   'reviewer.fixLimitReached': '修正回数の上限に達しました',
+  'references.zotero.import': 'Zotero から取り込む',
+  'references.zotero.notAnExport':
+    'このファイルは Zotero の JSON 書き出しではありません。ライブラリを JSON で書き出してから再試行してください。',
+  'references.zotero.nothingToImport':
+    '取り込める項目がありません: {skipped} 件すべてが拒否されました（重複・タイトルなし・項目でない）。',
+  'references.zotero.imported':
+    '{imported} 件を取り込みました · {skipped} 件を拒否（重複・タイトルなし・項目でない）。',
   'references.search.label': 'ライブラリを検索',
   'references.search.placeholder': 'タイトル・著者・雑誌・DOI・年・要旨',
   'references.search.clear': '検索を消去',

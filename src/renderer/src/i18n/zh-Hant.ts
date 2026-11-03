@@ -3373,6 +3373,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '溯源',
   'reviewer.label': '複核員',
   'reviewer.fixLimitReached': '已達修復次數上限',
+  'references.zotero.import': '從 Zotero 匯入',
+  'references.zotero.notAnExport':
+    '這個檔案不是 Zotero 的 JSON 匯出 —— 請把文獻庫匯出為 JSON 再試。',
+  'references.zotero.nothingToImport':
+    '沒有可匯入的記錄：{skipped} 筆全被拒絕（重複、無標題或不是條目）。',
+  'references.zotero.imported':
+    '已匯入 {imported} 筆 · 拒絕 {skipped} 筆（重複、無標題或不是條目）。',
   'references.search.label': '檢索文獻庫',
   'references.search.placeholder': '標題、作者、期刊、DOI、年份、摘要',
   'references.search.clear': '清除檢索',

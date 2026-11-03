@@ -3572,6 +3572,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'preview.provenance': '출처',
   'reviewer.label': '리뷰어',
   'reviewer.fixLimitReached': '수정 한도에 도달했습니다',
+  'references.zotero.import': 'Zotero에서 가져오기',
+  'references.zotero.notAnExport':
+    '이 파일은 Zotero JSON 내보내기가 아닙니다. 라이브러리를 JSON으로 내보낸 뒤 다시 시도하세요.',
+  'references.zotero.nothingToImport':
+    '가져올 항목이 없습니다: {skipped}건 모두 거부되었습니다(중복, 제목 없음 또는 항목 아님).',
+  'references.zotero.imported':
+    '{imported}건을 가져왔습니다 · {skipped}건 거부(중복, 제목 없음 또는 항목 아님).',
   'references.search.label': '라이브러리 검색',
   'references.search.placeholder': '제목, 저자, 저널, DOI, 연도, 초록',
   'references.search.clear': '검색 지우기',

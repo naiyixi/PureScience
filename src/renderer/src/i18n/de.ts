@@ -3744,6 +3744,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Herkunft',
   'reviewer.label': 'Prüfer',
   'reviewer.fixLimitReached': 'Korrekturlimit erreicht',
+  'references.zotero.import': 'Aus Zotero importieren',
+  'references.zotero.notAnExport':
+    'Diese Datei ist kein Zotero-JSON-Export — exportieren Sie die Bibliothek als JSON und versuchen Sie es erneut.',
+  'references.zotero.nothingToImport':
+    'Nichts zu importieren: alle {skipped} Einträge wurden abgelehnt (Duplikat, ohne Titel oder kein Eintrag).',
+  'references.zotero.imported':
+    '{imported} Einträge importiert · {skipped} abgelehnt (Duplikat, ohne Titel oder kein Eintrag).',
   'references.search.label': 'Bibliothek durchsuchen',
   'references.search.placeholder': 'Titel, Autor, Zeitschrift, DOI, Jahr, Abstract',
   'references.search.clear': 'Suche leeren',

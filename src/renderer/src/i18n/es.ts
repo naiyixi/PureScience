@@ -3706,6 +3706,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'preview.provenance': 'Procedencia',
   'reviewer.label': 'Revisor',
   'reviewer.fixLimitReached': 'límite de correcciones alcanzado',
+  'references.zotero.import': 'Importar desde Zotero',
+  'references.zotero.notAnExport':
+    'Ese archivo no es una exportación JSON de Zotero: exporte la biblioteca como JSON e inténtelo de nuevo.',
+  'references.zotero.nothingToImport':
+    'Nada que importar: se rechazaron los {skipped} registros (duplicado, sin título o no es un registro).',
+  'references.zotero.imported':
+    'Importados {imported} registros · {skipped} rechazados (duplicado, sin título o no es un registro).',
   'references.search.label': 'Buscar en la biblioteca',
   'references.search.placeholder': 'Título, autor, revista, DOI, año, resumen',
   'references.search.clear': 'Borrar búsqueda',

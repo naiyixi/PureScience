@@ -72,6 +72,10 @@ vi.mock('@/i18n', () => ({
       'references.integrity.checkDone':
         'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
       'references.integrity.retractedBadge': 'Retracted',
+      'references.zotero.import': 'Import from Zotero',
+      'references.zotero.notAnExport': 'That file is not a Zotero JSON export.',
+      'references.zotero.nothingToImport': 'Nothing to import: {skipped} refused.',
+      'references.zotero.imported': 'Imported {imported} records · {skipped} refused.',
       'references.search.label': 'Search the library',
       'references.search.placeholder': 'Title, author, journal, DOI, year, abstract',
       'references.search.clear': 'Clear search',
@@ -1053,5 +1057,62 @@ describe('ReferencesLibraryDialog collections', () => {
     await type('')
     expect(document.body.textContent).toContain('A screen for variants')
     expect(document.body.textContent).not.toContain('records match')
+  })
+
+  it('imports a Zotero JSON export and reports the records it refused', async () => {
+    await render()
+
+    const input = document.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')
+    expect(input).not.toBeNull()
+
+    const payload = JSON.stringify([
+      {
+        type: 'article-journal',
+        title: 'Zotero work',
+        DOI: '10.1000/z1',
+        author: [{ family: 'Chen', given: 'Wei' }],
+        issued: { 'date-parts': [[2021]] }
+      },
+      // Refused: no title. The count in the notice is the claim that it was not silently dropped.
+      { type: 'article-journal', DOI: '10.1000/no-title' }
+    ])
+    const file = new File([payload], 'zotero.json', { type: 'application/json' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+
+    await act(async () => {
+      input?.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await flush()
+    await flush()
+
+    expect(addReference).toHaveBeenCalledTimes(1)
+    expect(addReference).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'project-1',
+        title: 'Zotero work',
+        doi: '10.1000/z1',
+        year: 2021,
+        authors: [{ name: 'Wei Chen' }]
+      })
+    )
+    expect(document.body.textContent).toContain('Imported 1 records · 1 refused')
+  })
+
+  it('refuses a file that is not a Zotero export instead of importing nothing quietly', async () => {
+    await render()
+
+    const input = document.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')
+    const file = new File(['{"nope":true}'], 'other.json', { type: 'application/json' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+
+    await act(async () => {
+      input?.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+    await flush()
+
+    expect(addReference).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain('That file is not a Zotero JSON export')
   })
 })

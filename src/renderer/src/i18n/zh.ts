@@ -526,6 +526,13 @@ export const zh = {
   'preview.provenance': '溯源',
   'reviewer.label': '复核员',
   'reviewer.fixLimitReached': '已达修复次数上限',
+  'references.zotero.import': '从 Zotero 导入',
+  'references.zotero.notAnExport':
+    '这个文件不是 Zotero 的 JSON 导出 —— 请把文献库导出为 JSON 再试。',
+  'references.zotero.nothingToImport':
+    '没有可导入的记录：{skipped} 条全部被拒（重复、无标题或不是条目）。',
+  'references.zotero.imported':
+    '已导入 {imported} 条 · 拒绝 {skipped} 条（重复、无标题或不是条目）。',
   'references.search.label': '检索文献库',
   'references.search.placeholder': '标题、作者、期刊、DOI、年份、摘要',
   'references.search.clear': '清除检索',
