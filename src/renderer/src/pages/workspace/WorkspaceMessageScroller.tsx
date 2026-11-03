@@ -55,6 +55,7 @@ import {
 } from './activity-subscription'
 import {
   groupConversationItems,
+  isActivityGroupItem,
   mergeActivityLists,
   resolveActivityGroupExpansion
 } from './workspace-tool-activity-groups'
@@ -854,10 +855,13 @@ const WorkspaceMessageScrollerImpl = ({
   //   * the shortcut is registered on the window and ignores the composer: a reader pressing it while typing
   //     must not lose a keystroke to a transcript toggle.
   const setAllActivityGroups = (expanded: boolean): void => {
-    setActivityGroupExpansionState((currentState) => {
+    // Expand/collapse-all intentionally replaces the override map instead of merging into it: the
+    // reader asked for one state across every group in view, so a per-group value left over from an
+    // earlier click must not survive. The updater therefore reads no previous state.
+    setActivityGroupExpansionState(() => {
       const overrides: Record<string, boolean> = {}
       for (const item of conversationItems) {
-        if (item.type === 'activityGroup') overrides[item.id] = expanded
+        if (isActivityGroupItem(item)) overrides[item.id] = expanded
       }
       return { sessionId: currentSessionId, overrides }
     })
@@ -875,7 +879,7 @@ const WorkspaceMessageScrollerImpl = ({
       if (typing) return
       event.preventDefault()
       const anyCollapsed = conversationItems.some(
-        (item) => item.type === 'activityGroup' && activityExpansionOverrides[item.id] !== true
+        (item) => isActivityGroupItem(item) && activityGroupExpansionOverrides[item.id] !== true
       )
       setAllActivityGroups(anyCollapsed)
     }

@@ -358,6 +358,13 @@ const resolveActivityGroupExpansion = ({
   activities: readonly ToolActivity[]
 }): boolean => override ?? (isNewestTurn || activities.some(isActivityActive))
 
+// One place names the activity-group discriminant. The literal shows up in string form only here, so a
+// caller that compares against a near-miss (`'activityGroup'`) is a type error instead of a control that
+// renders but does nothing.
+const isActivityGroupItem = (
+  item: GroupedConversationItem
+): item is ConversationActivityGroupItem => item.type === 'activity-group'
+
 export {
   formatActivityGroupElapsed,
   formatActivityGroupTitle,
@@ -366,6 +373,7 @@ export {
   getActivityGroupElapsedMs,
   getRenderableActivityEntries,
   groupConversationItems,
+  isActivityGroupItem,
   isSearchActivity,
   mergeActivityLists,
   resolveActivityGroupExpansion

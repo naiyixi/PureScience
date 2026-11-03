@@ -2,7 +2,12 @@
 import { act, useCallback, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { PropsWithChildren } from 'react'
-import { useSessionStore, type ChatMessage, type ChatSession } from '@/stores/session-store'
+import {
+  useSessionStore,
+  type ChatMessage,
+  type ChatSession,
+  type ToolActivity
+} from '@/stores/session-store'
 import {
   createInitialReviewState,
   selectProjectSessionReviews,
@@ -141,6 +146,19 @@ const createSession = (overrides: Partial<ChatSession>): ChatSession => ({
   messages: [],
   createdAt: 1710000000000,
   updatedAt: 1710000000000,
+  ...overrides
+})
+
+const createActivity = (overrides: Partial<ToolActivity>): ToolActivity => ({
+  id: 'tool-1',
+  kind: 'tool',
+  title: 'Read file',
+  status: 'completed',
+  eventIds: [],
+  sortIndex: 1,
+  toolKind: 'read',
+  createdAt: 1710000000001,
+  updatedAt: 1710000000002,
   ...overrides
 })
 
@@ -1134,5 +1152,101 @@ describe('WorkspaceMessageScroller artifact click behavior', () => {
     // Keep this exact. A regression means the slot's prop set is unstable again — check for a closure
     // recreated per render in the scroller (handlers, notices), which is what defeated the item's memo.
     expect(renderedContents).toEqual(['partial more'])
+  })
+
+  // ⌘⇧E shipped as a keyboard-only feature with no coverage of its own. Two things can rot silently
+  // without a test: the shortcut can stop firing (or start firing while the reader is typing), and the
+  // action can turn into a merge that keeps an earlier per-group click alive, which looks right on the
+  // first press and quietly stops working on the second.
+  it('toggles every activity group on ⌘⇧E and ignores the shortcut while typing', async () => {
+    const { WorkspaceMessageScroller } = await import('./WorkspaceMessageScroller')
+    const { WorkspaceMessageEditStateProvider } = await import('./workspace-message-edit-state')
+
+    // Two turns, one group each. The default this starts from is the one the transcript really uses:
+    // settled history collapsed, the newest turn open.
+    const session = createSession({
+      status: 'idle',
+      messages: [
+        createMessage({ id: 'prompt-1', createdAt: 1_000 }),
+        createMessage({
+          id: 'reply-1',
+          role: 'agent',
+          content: 'First turn',
+          responseToMessageId: 'prompt-1',
+          createdAt: 1_300
+        }),
+        createMessage({ id: 'prompt-2', createdAt: 2_000 }),
+        createMessage({
+          id: 'reply-2',
+          role: 'agent',
+          content: 'Second turn',
+          responseToMessageId: 'prompt-2',
+          createdAt: 2_200
+        })
+      ],
+      activities: [
+        createActivity({ id: 'tool-a', createdAt: 1_100, updatedAt: 1_150 }),
+        createActivity({ id: 'tool-b', createdAt: 1_200, updatedAt: 1_250 }),
+        createActivity({ id: 'tool-c', createdAt: 2_100, updatedAt: 2_150 })
+      ]
+    })
+    useSessionStore.setState({ sessions: [session], selectedSessionId: session.id })
+
+    const onSendEditedMessage = vi.fn()
+    const Parent = (): React.JSX.Element => {
+      const activeSession = useSessionStore((state) =>
+        state.sessions.find((candidate) => candidate.id === session.id)
+      )
+      return (
+        <WorkspaceMessageEditStateProvider canEditMessage>
+          <WorkspaceMessageScroller
+            activeSession={activeSession}
+            onSendEditedMessage={onSendEditedMessage}
+          />
+        </WorkspaceMessageEditStateProvider>
+      )
+    }
+
+    root = createRoot(container)
+    await act(async () => {
+      root.render(<Parent />)
+    })
+
+    const groupExpansion = (): string[] =>
+      Array.from(container.querySelectorAll('[data-testid="tool-group-header"]')).map(
+        (button) => button.getAttribute('aria-expanded') ?? 'missing'
+      )
+    const pressToggle = async (target: EventTarget): Promise<boolean> => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'e',
+        metaKey: true,
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true
+      })
+      await act(async () => {
+        target.dispatchEvent(event)
+      })
+      return event.defaultPrevented
+    }
+
+    expect(groupExpansion()).toEqual(['false', 'true'])
+
+    // First press: something is collapsed, so the reader is asking for everything open.
+    expect(await pressToggle(window)).toBe(true)
+    expect(groupExpansion()).toEqual(['true', 'true'])
+
+    // Second press: nothing is collapsed any more, so it closes everything — including the newest turn.
+    await pressToggle(window)
+    expect(groupExpansion()).toEqual(['false', 'false'])
+
+    // Back open, then prove the composer keeps its keystroke: a reader typing must not toggle the
+    // transcript, and the event must stay unhandled so the character lands.
+    await pressToggle(window)
+    expect(groupExpansion()).toEqual(['true', 'true'])
+    const composer = document.createElement('textarea')
+    container.appendChild(composer)
+    expect(await pressToggle(composer)).toBe(false)
+    expect(groupExpansion()).toEqual(['true', 'true'])
   })
 })
