@@ -51,6 +51,10 @@ updateForwardRef 2.6% + reconcileChildFibers 2.2%`，代价平摊在 React 提�
 
 ## v2.22.0 — 2026-11-04（更新通道指向一个不存在的域名，以及一个借来的 Team ID）
 
+> **这一版没有单独发安装包。** 发布前置检查只接受 **main 上的提交**（`Verify release commit is on main`），
+> 而 v2.22.0 发布时认证车道被一条过期的 e2e 规格挡住（见 v2.23.0 的说明），修复无法在同一个提交上完成。
+> v2.22.0 的全部内容随 **v2.23.0** 一起发布；tag `v2.22.0` 保留为历史标记，不产出资产。
+
 **一句话**：打包后的应用第一次检查更新必然失败 —— `electron-builder.yml` 的 feed 指向
 `https://statics.zerolink.com/purescience/app/stable`，这个域名从没解析过；macOS 上"能不能原地更新"
 的判断里又写死了对标产品的 Team ID，等于拿别人的签名当自己的前提。
