@@ -222,12 +222,14 @@ import type { RoCrateInspectRequest, RoCrateInspectResult } from '../shared/ro-c
 import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
+  GetProjectFilesOverviewsRequest,
   ListArtifactGroupsRequest,
   ListProjectFileKindsRequest,
   ListProjectFilesRequest,
   ProjectFileKindsSummary,
   ProjectFilesChangedEvent,
   ProjectFilesOverview,
+  ProjectFilesOverviewEntry,
   ProjectFilesPage,
   SearchArtifactsRequest,
   SearchArtifactsResult
@@ -996,6 +998,7 @@ export interface PureScienceAPI {
   }
   projectFiles: {
     getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
+    getOverviews(request: GetProjectFilesOverviewsRequest): Promise<ProjectFilesOverviewEntry[]>
     listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
     listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
     listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>

@@ -197,7 +197,7 @@ describe('application command composition', () => {
     // +2 for the portable-session package (D1): sessions:export-package / sessions:import-package are
     // LOCAL, so the local Web view (where the headless CLI lands) carries them and the fail-closed set
     // takes them on the remote surface.
-    expect(composition.localWeb.commandNames()).toHaveLength(373)
+    expect(composition.localWeb.commandNames()).toHaveLength(374)
   })
 
   it('gives the outside MCP client exactly the surface it declares, and nothing wider', async () => {
@@ -243,7 +243,7 @@ describe('application command composition', () => {
     // 235 for the same two channels: they are plain Web requests, so the paired remote profile
     // carries them too rather than rejecting them before dispatch.
     // 236 for the same profile: the session run-data measurement is mapped on the remote surface too.
-    expect(composition.remoteWeb.commandNames()).toHaveLength(238)
+    expect(composition.remoteWeb.commandNames()).toHaveLength(239)
     expect(composition.remoteWeb.rejectedCommandNames()).toEqual(expectedRemoteRejections())
     // One more for verifying a recorded reading (artifacts:verify-reading): a local-only Web command, so
     // the fail-closed set takes it and the remote dispatch count stays.

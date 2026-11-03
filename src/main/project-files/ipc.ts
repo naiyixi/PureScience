@@ -6,11 +6,13 @@ import { createLogger } from '../logger'
 import type {
   ArtifactGroupPage,
   GetProjectFilesOverviewRequest,
+  GetProjectFilesOverviewsRequest,
   ListArtifactGroupsRequest,
   ListProjectFileKindsRequest,
   ListProjectFilesRequest,
   ProjectFileKindsSummary,
   ProjectFilesOverview,
+  ProjectFilesOverviewEntry,
   ProjectFilesPage,
   SearchArtifactsRequest,
   SearchArtifactsResult
@@ -18,6 +20,7 @@ import type {
 
 type ProjectFilesQueryRepository = {
   getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
+  getOverviews(request: GetProjectFilesOverviewsRequest): Promise<ProjectFilesOverviewEntry[]>
   listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
   listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
   listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>
@@ -84,6 +87,7 @@ const timedRead = async <Result>(
 
 type ProjectFilesHandlers = {
   getOverview(request: GetProjectFilesOverviewRequest): Promise<ProjectFilesOverview>
+  getOverviews(request: GetProjectFilesOverviewsRequest): Promise<ProjectFilesOverviewEntry[]>
   listFiles(request: ListProjectFilesRequest): Promise<ProjectFilesPage>
   listKinds(request: ListProjectFileKindsRequest): Promise<ProjectFileKindsSummary[]>
   listArtifactGroups(request: ListArtifactGroupsRequest): Promise<ArtifactGroupPage>
@@ -100,6 +104,9 @@ const createProjectFilesHandlers = (
 ): ProjectFilesHandlers => ({
   getOverview: (request) =>
     timedRead('getOverview', recoveryBackend, () => repository.getOverview(request)),
+  // The batched counts read the user-case section ranks on: same recovery gate, same slow-read line.
+  getOverviews: (request) =>
+    timedRead('getOverviews', recoveryBackend, () => repository.getOverviews(request)),
   listFiles: (request) =>
     timedRead('listFiles', recoveryBackend, () => repository.listFiles(request)),
   // The Home page reads one kind list per project; batching it is what keeps that fan-out off the shared
@@ -130,6 +137,9 @@ const registerProjectFilesIpcHandlers = (
 ): void => {
   ipcMainHandle('project-files:get-overview', (_event, request: GetProjectFilesOverviewRequest) =>
     handlers.getOverview(request)
+  )
+  ipcMainHandle('project-files:get-overviews', (_event, request: GetProjectFilesOverviewsRequest) =>
+    handlers.getOverviews(request)
   )
   ipcMainHandle('project-files:list-files', (_event, request: ListProjectFilesRequest) =>
     handlers.listFiles(request)

@@ -1,5 +1,54 @@
 # PureScience 更新日记
 
+## v2.23.0 — 2026-11-04（首页计数先砍成一次往返；性能基线先量，不先吹）
+
+**一句话**：首页"用户案例"按产物给所有跑过的项目排序，此前是 56 个项目 = 56 次 IPC + 224 条 count
+查询，全排在首屏其他读取前面；现在一次批量读取。同时把性能测量本身当成交付物：同一构建两次运行差
+1.6–2.0 倍，这个事实写进了证据文件，任何"变快了 X%"都在它之上受质询。
+
+### 改了什么
+
+`projectFiles.getOverviews({ projectIds })` —— 两条分组查询回答一批项目的 `totalCount` /
+`uploadCount` / `artifactCount` / `artifactGroupCount`，`isIndexComplete` 仍逐项目问索引器。
+端到端接通：shared 类型、query-owner、repository、ipc（含直接 `ipcMainHandle`）、命令表、契约清单、
+preload 类型声明、`web-api-map.generated.ts`。首页两段式扫描的第一段从 N 次调用变成 1 次。
+
+启动时的命令面清单是硬门禁，计数一并核准：内部 375→376、本地 Web 373→374、远端 Web 238→239，
+契约条目 502→503（Web 安装 411→412），invoke 映射 381→382。
+
+### 证据
+
+```
+候选项目 56 个（真实库 88 MB）
+旧：4 条 count × 56 项目    1.6 / 1.6 / 5.3 ms（三次，SQL 侧）
+新：2 条分组查询             1.0 / 1.3 / 1.6 ms
+IPC 往返：56 → 1
+```
+
+诚实换算：SQL 侧只省 0.6 ms；省下的是 55 次往返与恢复闸门排队（同机空闲 `project.list` p50 5 ms）。
+不写成"首页快 275 ms"——那是把队列时间当墙钟时间。
+
+### 没做到的，写在前面
+
+消费侧还是每执行一次校验一次，`artifactCount>0` 的 `IN` 过滤还没下推到 SQL。立案 v2.23.1。
+
+### 性能基线（同构建两次运行，同一台机器）
+
+```
+A: streaming task=99.0ms/turn  script=59.3ms/turn | palette 37ms | reopen 58ms
+B: streaming task=198.7ms/turn script=114.5ms/turn | palette 61ms | reopen 85ms
+每键运行 B：script=14.46ms task=17.04ms
+滚动 p95=33ms（两次一致）；最长长任务 62ms；无 >500ms 卡死
+```
+
+CPU 剖面（2678 ms 采样）没有可摘掉的元凶：`commitHostUpdate 4.1% + updateProperties 2.7% +
+updateForwardRef 2.6% + reconcileChildFibers 2.2%`，代价平摊在 React 提交阶段的整树更新上；
+`MessageTimestamp` 单独 1.7%（每次渲染重走 `Intl.DateTimeFormat`）。
+
+因此本版**不宣称**打字或流式变快。渲染层改造（局部订阅/增量追加/虚拟化）立案 v2.23.1，判据：打字
+≤8 ms/键、流式 ≤100 ms/轮，**n≥3 次运行取中位数**，用同一套仪器复测。完整读数与可信区间见
+`docs/evidence/2026-11-04-perf-baseline.md`。
+
 ## v2.22.0 — 2026-11-04（更新通道指向一个不存在的域名，以及一个借来的 Team ID）
 
 **一句话**：打包后的应用第一次检查更新必然失败 —— `electron-builder.yml` 的 feed 指向

@@ -140,6 +140,7 @@ export const WEB_INVOKE_CHANNELS = {
   'previewResources.readRange': 'preview-resources:read-range',
   'previewResources.release': 'preview-resources:release',
   'projectFiles.getOverview': 'project-files:get-overview',
+  'projectFiles.getOverviews': 'project-files:get-overviews',
   'projectFiles.listArtifactGroups': 'project-files:list-artifact-groups',
   'projectFiles.listFiles': 'project-files:list-files',
   'projectFiles.listKinds': 'project-files:list-kinds',

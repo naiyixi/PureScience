@@ -70,7 +70,7 @@ describe('renderer contract catalog', () => {
     // request contract in the sessions group.
     // 500 with the citation walk (references.discover-citations): one more capability-owned request
     // contract in the references group.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(502)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(503)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -86,7 +86,7 @@ describe('renderer contract catalog', () => {
     // 378 with the citation walk (references:discover-citations): one more invoke-map entry.
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
-    expect(Object.keys(projection.invoke)).toHaveLength(381)
+    expect(Object.keys(projection.invoke)).toHaveLength(382)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -110,7 +110,7 @@ describe('renderer contract catalog', () => {
     // 411 with the portable-session package (D1): two more methods installed on the local Web surface.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(411)
+    ).toHaveLength(412)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])

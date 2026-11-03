@@ -348,7 +348,7 @@ describe('renderer surface inventory', () => {
     // contract, so the inventory and the catalog move together.
     // 499 with the citation walk (references.discover-citations): one preload method for the one
     // contract, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(502)
+    expect(electronPaths).toHaveLength(503)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -367,7 +367,7 @@ describe('renderer surface inventory', () => {
     // 378 with the citation walk (references:discover-citations): one more invoke entry in the generated map.
     // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(381)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(382)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),

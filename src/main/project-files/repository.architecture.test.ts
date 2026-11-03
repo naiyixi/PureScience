@@ -134,6 +134,7 @@ describe('Project Files repository architecture', () => {
     expect(publicMethods(facade)).toEqual(
       [
         'getOverview',
+        'getOverviews',
         'listArtifactGroups',
         'listFiles',
         'listKinds',
@@ -191,6 +192,7 @@ describe('Project Files repository architecture', () => {
     expect(publicMethods(queryOwner)).toEqual(
       [
         'getOverview',
+        'getOverviews',
         'listArtifactGroups',
         'listFiles',
         'listProjectFileKinds',

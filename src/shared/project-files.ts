@@ -39,6 +39,17 @@ export type GetProjectFilesOverviewRequest = {
   search?: ProjectFilesSearch
 }
 
+// One round-trip for many projects' counts. The user-case section on the Home page ranks every project
+// that ran by what it produced, and asking `getOverview` once per project put that many count queries in
+// front of everything else in the same engine queue — the fan-out the chips already had to remove.
+export type GetProjectFilesOverviewsRequest = {
+  projectIds: string[]
+}
+
+export type ProjectFilesOverviewEntry = ProjectFilesOverview & {
+  projectId: string
+}
+
 export type ListProjectFilesRequest = {
   projectId: string
   // Uploads and each session's artifacts are deliberately separate collections with independent

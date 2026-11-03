@@ -11,10 +11,12 @@ import type {
   ListProjectFileKindsRequest,
   ProjectFileKindsSummary,
   GetProjectFilesOverviewRequest,
+  GetProjectFilesOverviewsRequest,
   ListArtifactGroupsRequest,
   ListProjectFilesRequest,
   ProjectFileItem,
   ProjectFilesOverview,
+  ProjectFilesOverviewEntry,
   ProjectFilesPage,
   SearchArtifactsRequest,
   SearchArtifactsResult
@@ -107,6 +109,87 @@ class ProjectFilesQueryOwner {
       artifactGroupCount,
       isIndexComplete: this.readIndexComplete(projectId)
     }
+  }
+
+  // The counts half of the same fan-out: the Home page's user-case section needs every running project's
+  // artifact total before it can decide which handful deserve a file listing, and four counts per project
+  // meant that many queries queuing ahead of the reads a reader is waiting on. Two grouped queries answer
+  // for the whole batch, and the per-project numbers are identical to `getOverview`'s.
+  async getOverviews(
+    request: GetProjectFilesOverviewsRequest
+  ): Promise<ProjectFilesOverviewEntry[]> {
+    if (!Array.isArray(request?.projectIds)) return []
+    const projectIds = [
+      ...new Set(request.projectIds.filter((id): id is string => typeof id === 'string'))
+    ]
+    for (const projectId of projectIds) requireIdentifier(projectId, 'projectId')
+    if (projectIds.length === 0) return []
+    if (projectIds.length > MAX_PROJECT_FILE_KINDS_PROJECTS) {
+      throw new Error(
+        `Project file overviews accepts at most ${MAX_PROJECT_FILE_KINDS_PROJECTS} projects per read.`
+      )
+    }
+    const client = await this.getClient()
+    const startedAt = Date.now()
+    const cpuStartedAt = this.cpuUsage()
+    const dbCanary = withDbCanary(client, dbCanaryEnabled())
+    const placeholders = projectIds.map(() => '?').join(', ')
+    const counts = await client.$queryRawUnsafe<
+      Array<{
+        projectId: string
+        totalCount: bigint | number | string
+        uploadCount: bigint | number | string
+        artifactCount: bigint | number | string
+      }>
+    >(
+      `SELECT projectId,
+              COUNT(*) AS totalCount,
+              SUM(CASE WHEN source = 'upload' THEN 1 ELSE 0 END) AS uploadCount,
+              SUM(CASE WHEN source = 'artifact' THEN 1 ELSE 0 END) AS artifactCount
+         FROM "ManagedFile"
+         WHERE projectId IN (${placeholders}) AND deletedAt IS NULL
+         GROUP BY projectId`,
+      ...projectIds
+    )
+    const groups = await client.$queryRawUnsafe<
+      Array<{ projectId: string; artifactGroupCount: bigint | number | string }>
+    >(
+      `SELECT projectId, COUNT(*) AS artifactGroupCount
+         FROM "ManagedFileSessionSync"
+         WHERE projectId IN (${placeholders}) AND deletedAt IS NULL AND artifactCount > 0
+         GROUP BY projectId`,
+      ...projectIds
+    )
+    const countsByProject = new Map(counts.map((row) => [row.projectId, row]))
+    const groupsByProject = new Map(groups.map((row) => [row.projectId, row.artifactGroupCount]))
+    const entries = projectIds.map((projectId) => {
+      const row = countsByProject.get(projectId)
+      return {
+        projectId,
+        totalCount: Number(row?.totalCount ?? 0),
+        uploadCount: Number(row?.uploadCount ?? 0),
+        artifactCount: Number(row?.artifactCount ?? 0),
+        artifactGroupCount: Number(groupsByProject.get(projectId) ?? 0),
+        isIndexComplete: this.readIndexComplete(projectId)
+      }
+    })
+    const totalMs = Date.now() - startedAt
+    const cpuEndedAt = this.cpuUsage()
+    const reportThreshold = dbCanary ? 0 : SLOW_LIST_SEGMENT_THRESHOLD_MS
+    if (totalMs >= reportThreshold) {
+      try {
+        queryLog.warn('project file overviews read was slow', {
+          projects: projectIds.length,
+          totalMs,
+          dbCanaryMs: dbCanary ? await dbCanary : undefined,
+          ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs),
+          ...heldSplitFields(startedAt, totalMs)
+        })
+      } catch {
+        // Best-effort: a diagnostic must never replace the read result.
+      }
+    }
+    return entries
   }
 
   // One round-trip answers for many projects. The chips on the Home page need a project's newest file kinds,

@@ -230,6 +230,8 @@ const dataContentApplicationCommands = Object.freeze({
     void
   >('preview-resources:release'),
   projectFilesGetOverview: projectFilesCommand('project-files:get-overview', 'getOverview'),
+  // Batched counts: the user-case section ranks every project that ran, one read instead of one per project.
+  projectFilesGetOverviews: projectFilesCommand('project-files:get-overviews', 'getOverviews'),
   projectFilesListArtifactGroups: projectFilesCommand(
     'project-files:list-artifact-groups',
     'listArtifactGroups'
@@ -332,6 +334,7 @@ const dataContentApplicationCommandGroups = Object.freeze([
   ] as const),
   defineApplicationCommandGroup('project-files', [
     dataContentApplicationCommands.projectFilesGetOverview,
+    dataContentApplicationCommands.projectFilesGetOverviews,
     dataContentApplicationCommands.projectFilesListArtifactGroups,
     dataContentApplicationCommands.projectFilesListFiles,
     dataContentApplicationCommands.projectFilesListKinds,
@@ -486,6 +489,7 @@ const registerDataContentApplicationCommands = (
     })
     scope.registerGroup(dataContentApplicationCommandGroups[4], {
       'project-files:get-overview': ({ args }) => dependencies.projectFiles.getOverview(args[0]),
+      'project-files:get-overviews': ({ args }) => dependencies.projectFiles.getOverviews(args[0]),
       'project-files:list-artifact-groups': ({ args }) =>
         dependencies.projectFiles.listArtifactGroups(args[0]),
       'project-files:list-files': ({ args }) => dependencies.projectFiles.listFiles(args[0]),

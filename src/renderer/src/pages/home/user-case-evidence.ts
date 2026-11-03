@@ -69,6 +69,40 @@ export const loadCaseOverview = async (
   return request
 }
 
+/**
+ * Counts for many projects in one round-trip. The section ranks *every* project that ran before choosing a
+ * shortlist, so per-project reads made that many count queries queue ahead of the reads the reader is
+ * waiting for; main answers the whole batch with two grouped queries instead.
+ */
+export const loadCaseOverviews = async (
+  projectIds: string[],
+  now = Date.now()
+): Promise<Record<string, ProjectFilesOverview | undefined>> => {
+  const api = window.api?.projectFiles
+  const wanted = [...new Set(projectIds)]
+  if (!api?.getOverviews || wanted.length === 0) return {}
+  const fresh: string[] = []
+  const result: Record<string, ProjectFilesOverview | undefined> = {}
+  for (const projectId of wanted) {
+    const hit = overviewCache.get(projectId)
+    if (hit && now - hit.at < CACHE_TTL_MS) result[projectId] = hit.value
+    else fresh.push(projectId)
+  }
+  if (fresh.length === 0) return result
+  try {
+    const entries = await api.getOverviews({ projectIds: fresh })
+    for (const entry of entries) {
+      const { projectId, ...overview } = entry
+      overviewCache.set(projectId, { at: now, value: overview })
+      result[projectId] = overview
+    }
+  } catch {
+    // A failed batch read says less, never zero: the cards fall back to per-project reads below.
+    for (const projectId of fresh) result[projectId] = await loadCaseOverview(projectId, now)
+  }
+  return result
+}
+
 const readEvidence = async (projectId: string): Promise<ProjectCaseEvidence | undefined> => {
   const api = window.api?.projectFiles
   if (!api?.listFiles) return undefined

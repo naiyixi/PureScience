@@ -25,7 +25,7 @@ import {
   caseFilesFromEvidence,
   footprintFromEvidence,
   loadCaseEvidence,
-  loadCaseOverview
+  loadCaseOverviews
 } from './user-case-evidence'
 import type { CaseDomain, UserCase } from './user-cases'
 import {
@@ -57,7 +57,6 @@ import {
 // claims this component makes.
 
 const CASE_SCAN_LIMIT = 18
-const OVERVIEW_CONCURRENCY = 6
 const EVIDENCE_CONCURRENCY = 4
 
 const domainLabelKey = (domain: CaseDomain): TranslationKey =>
@@ -230,26 +229,18 @@ export const UserCases = (): React.JSX.Element => {
     let cancelled = false
 
     const run = async (): Promise<void> => {
-      for (let index = 0; index < ids.length; index += OVERVIEW_CONCURRENCY) {
-        if (cancelled || overviewToken.current !== token) return
-        const batch = ids.slice(index, index + OVERVIEW_CONCURRENCY)
-        const results = await Promise.all(
-          batch.map((projectId) => loadCaseOverview(projectId).catch(() => undefined))
-        )
-        if (cancelled || overviewToken.current !== token) return
-        setOverviews((current) => {
-          const next = { ...current }
-          batch.forEach((projectId, offset) => {
-            next[projectId] = results[offset]?.artifactCount
-          })
-          return next
-        })
-        setCounted((current) => {
-          const next = { ...current }
-          for (const projectId of batch) next[projectId] = true
-          return next
-        })
-      }
+      const read = await loadCaseOverviews(ids).catch(() => ({}))
+      if (cancelled || overviewToken.current !== token) return
+      setOverviews((current) => {
+        const next = { ...current }
+        for (const projectId of ids) next[projectId] = read[projectId]?.artifactCount
+        return next
+      })
+      setCounted((current) => {
+        const next = { ...current }
+        for (const projectId of ids) next[projectId] = true
+        return next
+      })
     }
 
     void run()

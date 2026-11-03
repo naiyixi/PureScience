@@ -40,6 +40,7 @@ const createRepository = (
   overrides: Partial<ProjectFilesQueryRepository> = {}
 ): ProjectFilesQueryRepository => ({
   getOverview: vi.fn(),
+  getOverviews: vi.fn(),
   listFiles: vi.fn(),
   listKinds: vi.fn(),
   listArtifactGroups: vi.fn(),
@@ -49,6 +50,7 @@ const createRepository = (
 
 const createHandlers = (overrides: Partial<ProjectFilesHandlers> = {}): ProjectFilesHandlers => ({
   getOverview: vi.fn(),
+  getOverviews: vi.fn(),
   listFiles: vi.fn(),
   listKinds: vi.fn(),
   listArtifactGroups: vi.fn(),

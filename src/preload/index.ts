@@ -625,6 +625,9 @@ const api: PureScienceAPI = {
   // artifact/upload APIs after a visible item has been selected or rendered.
   projectFiles: {
     getOverview: (request) => electronRendererContracts.invoke('projectFiles.getOverview', request),
+    // Batched counts for the user-case section: one read for every project that ran, not one per project.
+    getOverviews: (request) =>
+      electronRendererContracts.invoke('projectFiles.getOverviews', request),
     listFiles: (request) => electronRendererContracts.invoke('projectFiles.listFiles', request),
     // One batched read for the Home chips: a project's file-type list is derived in main, so the renderer
     // never has to ask once per project.

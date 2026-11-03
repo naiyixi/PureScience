@@ -39,19 +39,33 @@ let container: HTMLDivElement
 let root: Root
 
 const installCatalogue = (catalogue: Catalogue): void => {
+  const overviewFor = (
+    projectId: string
+  ): {
+    totalCount: number
+    uploadCount: number
+    artifactCount: number
+    artifactGroupCount: number
+    isIndexComplete: boolean
+  } => {
+    const entry = catalogue[projectId]
+    const artifacts = entry?.artifacts ?? []
+    return {
+      totalCount: artifacts.length + (entry?.uploads ?? 0),
+      uploadCount: entry?.uploads ?? 0,
+      artifactCount: artifacts.length,
+      artifactGroupCount: artifacts.length > 0 ? 1 : 0,
+      isIndexComplete: true
+    }
+  }
   vi.stubGlobal('api', {
     projectFiles: {
-      getOverview: async ({ projectId }: { projectId: string }) => {
-        const entry = catalogue[projectId]
-        const artifacts = entry?.artifacts ?? []
-        return {
-          totalCount: artifacts.length + (entry?.uploads ?? 0),
-          uploadCount: entry?.uploads ?? 0,
-          artifactCount: artifacts.length,
-          artifactGroupCount: artifacts.length > 0 ? 1 : 0,
-          isIndexComplete: true
-        }
-      },
+      getOverviews: async ({ projectIds }: { projectIds: string[] }) =>
+        projectIds.map((projectId) => ({
+          projectId,
+          ...overviewFor(projectId)
+        })),
+      getOverview: async ({ projectId }: { projectId: string }) => overviewFor(projectId),
       listFiles: async ({ projectId }: { projectId: string }) => {
         const entry = catalogue[projectId]
         const items = (entry?.artifacts ?? []).map((artifact, index) => ({
@@ -170,7 +184,9 @@ describe('UserCases', () => {
   })
 
   it('keeps a project that ran but produced nothing, and says what it is', async () => {
-    await render([{ id: 'p2', name: 'Chat only project' }], [session('p2')], { p2: { artifacts: [] } })
+    await render([{ id: 'p2', name: 'Chat only project' }], [session('p2')], {
+      p2: { artifacts: [] }
+    })
     const card = container.querySelector('[data-slot="case-plaza-card"]') as HTMLElement | null
     expect(card).not.toBeNull()
     expect(card?.textContent).toContain('Conversation only')
