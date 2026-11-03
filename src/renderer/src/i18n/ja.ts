@@ -861,6 +861,15 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'HTML をコピー',
   'pdf.table.copied': 'コピーしました',
   'pdf.table.unavailable': 'この画面では PDF リーダーを利用できません。',
+  'pdf.explore.readingHeading': '読む順序',
+  'pdf.explore.readingSummary': '精読 {read} · 斜め読み {skim} · 省く {skip}',
+  'pdf.explore.readingEmpty':
+    'この文書はブックマークを持たないため、並べ替えられる構造がありません。',
+  'pdf.explore.readingHint':
+    'ブックマークだけから並べ替えています。参考文献と謝辞は読み飛ばす印で、削除ではありません。',
+  'pdf.explore.readingRead': '精読',
+  'pdf.explore.readingSkim': '斜め読み',
+  'pdf.explore.readingSkip': '省く',
   'pdf.explore.title': '目次と図表',
   'figureReview.title': '図のレビュー',
   'figureReview.hint':

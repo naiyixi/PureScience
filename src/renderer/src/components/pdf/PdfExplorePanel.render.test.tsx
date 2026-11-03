@@ -184,4 +184,40 @@ describe('PdfExplorePanel', () => {
 
     expect(container.querySelector('[data-testid="pdf-explore-empty-pages"]')).toBeNull()
   })
+
+  it('reorders the bookmarks into the order the argument reads, and marks what not to read', async () => {
+    await mount({
+      outline: [
+        { title: '1 Introduction', page: 1, level: 1 },
+        { title: '2 Methods', page: 3, level: 1 },
+        { title: '3 Results', page: 6, level: 1 },
+        { title: '4 References', page: 12, level: 1 },
+        { title: 'Abstract', page: 1, level: 1 }
+      ]
+    })
+
+    const rows = [...container.querySelectorAll('[data-testid^="pdf-explore-reading-"]')].filter(
+      (node) => node.tagName === 'LI'
+    )
+    expect(rows.map((node) => node.getAttribute('data-role'))).toEqual([
+      'abstract',
+      'introduction',
+      'methods',
+      'results',
+      'references'
+    ])
+    // References are marked, not dropped: the row is still there, with its own page.
+    expect(rows.at(-1)?.getAttribute('data-action')).toBe('skip')
+    expect(rows.at(-1)?.textContent).toContain('References')
+    expect(
+      container.querySelector('[data-testid="pdf-explore-reading-summary"]')?.textContent
+    ).toContain('4')
+  })
+
+  it('says there is nothing to reorder when the document declares no bookmarks', async () => {
+    await mount({ outline: [] })
+
+    expect(container.querySelector('[data-testid="pdf-explore-reading-empty"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="pdf-explore-reading"]')).toBeNull()
+  })
 })

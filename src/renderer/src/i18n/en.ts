@@ -249,6 +249,15 @@ export const en: Record<ZhKey, string> = {
   'pdf.table.copyHtml': 'Copy HTML',
   'pdf.table.copied': 'Copied',
   'pdf.table.unavailable': 'The PDF reader is unavailable on this surface.',
+  'pdf.explore.readingHeading': 'Reading order',
+  'pdf.explore.readingSummary': 'Read {read} · skim {skim} · skip {skip}',
+  'pdf.explore.readingEmpty':
+    'This document declares no bookmarks, so there is no structure to reorder.',
+  'pdf.explore.readingHint':
+    'Reordered from the bookmarks only — references and acknowledgements are marked, never read.',
+  'pdf.explore.readingRead': 'read',
+  'pdf.explore.readingSkim': 'skim',
+  'pdf.explore.readingSkip': 'skip',
   'pdf.explore.title': 'Contents and figures',
   'figureReview.title': 'Figure review',
   'figureReview.hint':

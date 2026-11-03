@@ -852,6 +852,14 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'HTML 복사',
   'pdf.table.copied': '복사했습니다',
   'pdf.table.unavailable': '이 화면에서는 PDF 리더를 사용할 수 없습니다.',
+  'pdf.explore.readingHeading': '읽기 순서',
+  'pdf.explore.readingSummary': '정독 {read} · 훑어보기 {skim} · 건너뛰기 {skip}',
+  'pdf.explore.readingEmpty': '이 문서는 책갈피가 없어 재배열할 구조가 없습니다.',
+  'pdf.explore.readingHint':
+    '책갈피만으로 재배열했습니다. 참고문헌과 감사의 글은 표시일 뿐 삭제가 아닙니다.',
+  'pdf.explore.readingRead': '정독',
+  'pdf.explore.readingSkim': '훑어보기',
+  'pdf.explore.readingSkip': '건너뛰기',
   'pdf.explore.title': '목차와 그림',
   'figureReview.title': '그림 검토',
   'figureReview.hint':

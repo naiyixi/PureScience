@@ -884,6 +884,15 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'Copier le HTML',
   'pdf.table.copied': 'Copié',
   'pdf.table.unavailable': 'Le lecteur PDF n’est pas disponible sur cette interface.',
+  'pdf.explore.readingHeading': 'Ordre de lecture',
+  'pdf.explore.readingSummary': 'Lire {read} · Parcourir {skim} · Sauter {skip}',
+  'pdf.explore.readingEmpty':
+    'Ce document ne déclare aucun signet : il n’y a pas de structure à réordonner.',
+  'pdf.explore.readingHint':
+    'Réordonné à partir des seuls signets — la bibliographie et les remerciements sont signalés, pas lus.',
+  'pdf.explore.readingRead': 'lire',
+  'pdf.explore.readingSkim': 'parcourir',
+  'pdf.explore.readingSkip': 'sauter',
   'pdf.explore.title': 'Sommaire et figures',
   'figureReview.title': 'Revue de figure',
   'figureReview.hint':

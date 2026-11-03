@@ -862,6 +862,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'Копировать HTML',
   'pdf.table.copied': 'Скопировано',
   'pdf.table.unavailable': 'На этом экране PDF-модуль недоступен.',
+  'pdf.explore.readingHeading': 'Порядок чтения',
+  'pdf.explore.readingSummary': 'Читать {read} · Просмотреть {skim} · Пропустить {skip}',
+  'pdf.explore.readingEmpty': 'В документе нет закладок — структуры для переупорядочивания нет.',
+  'pdf.explore.readingHint':
+    'Порядок построен только по закладкам: литература и благодарности помечены, а не прочитаны.',
+  'pdf.explore.readingRead': 'читать',
+  'pdf.explore.readingSkim': 'просмотреть',
+  'pdf.explore.readingSkip': 'пропустить',
   'pdf.explore.title': 'Содержание и рисунки',
   'figureReview.title': 'Проверка рисунка',
   'figureReview.hint':

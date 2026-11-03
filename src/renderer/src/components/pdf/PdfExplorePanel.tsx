@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
 
-import { useLanguage } from '@/i18n'
+import { useLanguage, type TranslationKey } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import type { PdfFigureForAgent, PdfOutlineEntry } from '../../../../shared/pdf'
+import { planReadingOrder, summarizeReadingOrder } from '../../../../shared/reading-order'
+
+const READING_ACTION_KEYS: Record<'read' | 'skim' | 'skip', TranslationKey> = {
+  read: 'pdf.explore.readingRead',
+  skim: 'pdf.explore.readingSkim',
+  skip: 'pdf.explore.readingSkip'
+}
 
 // The document's own structure, from the reader the agent already uses (`pdf.outline` + `pdf.figures`):
 // the bookmark tree as the document declares it, and every placement the extractor accepted as a figure,
@@ -113,6 +120,12 @@ const PdfExplorePanel = ({
     }
   }, [projectId, sourcePath, sourceSessionId, t])
 
+  // The same bookmarks, in the order the argument reads. Computed here rather than fetched: the outline is
+  // already in hand, and a reorder is a pure function over it — no second round-trip for a derived view.
+  const readingPlan =
+    outline.status === 'ready' ? planReadingOrder(outline.entries) : { items: [], empty: null }
+  const readingSummary = summarizeReadingOrder(readingPlan)
+
   const pagesByNumber = new Map<number, PdfFigureForAgent[]>()
   if (figures.status === 'ready') {
     for (const figure of figures.figures) {
@@ -198,6 +211,62 @@ const PdfExplorePanel = ({
                 ))}
               </ul>
               <p className="py-1 text-[11px] text-text-400">{t('pdf.explore.outlineHint')}</p>
+            </>
+          )}
+        </section>
+
+        <section aria-labelledby="pdf-explore-reading-heading" className="mt-3">
+          <h3
+            id="pdf-explore-reading-heading"
+            className="text-xs font-medium uppercase text-text-300"
+          >
+            {t('pdf.explore.readingHeading')}
+          </h3>
+          {readingPlan.items.length === 0 ? (
+            <p className="py-1 text-xs text-text-300" data-testid="pdf-explore-reading-empty">
+              {t('pdf.explore.readingEmpty')}
+            </p>
+          ) : (
+            <>
+              <p
+                className="py-1 text-[11px] text-text-400"
+                data-testid="pdf-explore-reading-summary"
+              >
+                {t('pdf.explore.readingSummary', {
+                  read: readingSummary.read,
+                  skim: readingSummary.skim,
+                  skip: readingSummary.skip
+                })}
+              </p>
+              <ol data-testid="pdf-explore-reading" className="flex flex-col">
+                {readingPlan.items.map((item, index) => (
+                  <li
+                    key={`${item.documentIndex}-${item.entry.page}`}
+                    data-testid={`pdf-explore-reading-${index}`}
+                    data-role={item.role}
+                    data-action={item.action}
+                    className="flex items-baseline gap-2 py-0.5 text-xs"
+                  >
+                    <span className="w-5 shrink-0 text-text-400 tabular-nums">{index + 1}</span>
+                    <span
+                      className={
+                        item.action === 'skip'
+                          ? 'min-w-0 flex-1 break-words text-text-400 line-through'
+                          : 'min-w-0 flex-1 break-words'
+                      }
+                    >
+                      {item.entry.title}
+                    </span>
+                    <span className="shrink-0 text-[10px] uppercase text-text-400">
+                      {t(READING_ACTION_KEYS[item.action])}
+                    </span>
+                    <span className="shrink-0 text-text-400 tabular-nums">
+                      {t('pdf.explore.figurePage', { page: item.entry.page })}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className="py-1 text-[11px] text-text-400">{t('pdf.explore.readingHint')}</p>
             </>
           )}
         </section>

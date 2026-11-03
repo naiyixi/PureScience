@@ -879,6 +879,15 @@ export const es: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'Copiar HTML',
   'pdf.table.copied': 'Copiado',
   'pdf.table.unavailable': 'El lector de PDF no está disponible en esta interfaz.',
+  'pdf.explore.readingHeading': 'Orden de lectura',
+  'pdf.explore.readingSummary': 'Leer {read} · Hojear {skim} · Omitir {skip}',
+  'pdf.explore.readingEmpty':
+    'Este documento no declara marcadores, así que no hay estructura que reordenar.',
+  'pdf.explore.readingHint':
+    'Reordenado solo a partir de los marcadores: bibliografía y agradecimientos se marcan, no se leen.',
+  'pdf.explore.readingRead': 'leer',
+  'pdf.explore.readingSkim': 'hojear',
+  'pdf.explore.readingSkip': 'omitir',
   'pdf.explore.title': 'Índice y figuras',
   'figureReview.title': 'Revisión de la figura',
   'figureReview.hint':

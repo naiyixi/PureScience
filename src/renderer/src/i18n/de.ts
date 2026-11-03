@@ -887,6 +887,15 @@ export const de: Partial<Record<ZhKey, string>> = {
   'pdf.table.copyHtml': 'HTML kopieren',
   'pdf.table.copied': 'Kopiert',
   'pdf.table.unavailable': 'Der PDF-Leser ist auf dieser Oberfläche nicht verfügbar.',
+  'pdf.explore.readingHeading': 'Lesereihenfolge',
+  'pdf.explore.readingSummary': 'Lesen {read} · Überfliegen {skim} · Überspringen {skip}',
+  'pdf.explore.readingEmpty':
+    'Dieses Dokument enthält keine Lesezeichen — es gibt keine Struktur zum Umsortieren.',
+  'pdf.explore.readingHint':
+    'Nur aus den Lesezeichen umsortiert — Literatur und Danksagung werden markiert, nicht gelesen.',
+  'pdf.explore.readingRead': 'lesen',
+  'pdf.explore.readingSkim': 'überfliegen',
+  'pdf.explore.readingSkip': 'überspringen',
   'pdf.explore.title': 'Inhalt und Abbildungen',
   'figureReview.title': 'Abbildungsprüfung',
   'figureReview.hint':
