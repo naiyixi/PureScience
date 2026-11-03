@@ -912,12 +912,6 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.projectActions': 'プロジェクト操作',
   'home.projectDescription': '説明',
   'home.projects': 'プロジェクト',
-  'home.casePlaza.title': '自分のケース',
-  'home.casePlaza.subtitle': 'このマシンで実際に走ったプロジェクト',
-  'home.casePlaza.empty':
-    'まだセッションのあるプロジェクトがありません。開始するとここに表示されます。',
-  'home.casePlaza.lastActive': '最終 {when}',
-  'home.casePlaza.ranHere': 'この端末で実行',
   'home.casePlaza.capabilitySamples': '機能サンプル',
   'home.userCases.title': 'ユーザーケース',
   'home.userCases.subtitle': 'このマシンで実際に走ったケース — 再現できるものを先に',

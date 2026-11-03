@@ -937,12 +937,6 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.projectActions': 'Actions du projet',
   'home.projectDescription': 'Description',
   'home.projects': 'Projets',
-  'home.casePlaza.title': 'Vos cas',
-  'home.casePlaza.subtitle': 'Projets réellement exécutés sur cette machine',
-  'home.casePlaza.empty':
-    'Aucun projet n’a encore de session — démarrez-en une et il apparaîtra ici.',
-  'home.casePlaza.lastActive': 'dernier {when}',
-  'home.casePlaza.ranHere': 'Exécuté ici',
   'home.casePlaza.capabilitySamples': 'Exemples de capacités',
   'home.userCases.title': 'Cas utilisateurs',
   'home.userCases.subtitle':
