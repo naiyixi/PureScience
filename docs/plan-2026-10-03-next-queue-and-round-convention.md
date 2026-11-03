@@ -15809,3 +15809,82 @@ lateMs 801  canaryMs 5496  inFlight 0
 → `git tag -a v2.21.3 2556d4ad` → `git push origin v2.21.3`，让 tag 事件驱动完整链路，再按「发布核验」查页与资产。
 ② 仍挂着的线索：`sessions:save-session` 的 `writeDiskMs` 4,340 s / `fileIndexMs` 1,452 s，落点 `src/main/session-persistence/**`
 **正被并行会话改**，它落定后再量「每次保存是否全量重扫文件索引」。
+
+## 二百八十五、本轮追加（执行器，2026-11-03）—— ⌘⇧E 补真窗口认证：两次变异分别红在「第一次按」与「第二次按」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch -q origin` 后 `origin/main = HEAD = 741690ed`（`docs(plan): §284`），0 ahead / 0 behind。
+- 工作树里 15 个改动 + 1 份证据档**不是我的**（`session-persistence/**`、`reviewer/ipc*`、`references/screening-service.ts`、
+  `notebook/repository*`、`acp/runtime-coordinator.ts`、`diagnostics/operation.ts`、`logger.ts`、`update/service.ts`、
+  两个 shared、`docs/plan-2026-10-28-two-releases.md`）⇒ 一个字节没碰；构建与真机跑都在**另一个工作树**
+  （`git worktree add /tmp/ps-e2e-agg 741690ed` + 软链 `node_modules`）里做，读数属于那个干净提交。
+- 上一轮 §284 §六 ① 的收口本回合完成（见 §一）：tag 已重建到 `741690ed`，发布页与资产都在。
+- 单元来源不是自拟：§284 §五 边界里逐字写着「用例跑在 jsdom 上，不是真窗口……（后者由认证车道负责）」。
+
+### 一 v2.21.3 发布核验（§284 §六 ① 的实际落点）
+
+| 项 | 读数 |
+| --- | --- |
+| Release 页 | `v2.21.3`：`isDraft=false` / `isPrerelease=false` / **21 资产** / `gh release list` 首行 = **Latest** |
+| 页 ↔ 提交 | `RELEASE-CERTIFICATION.json.sourceSha = 741690edd8e23f9908e86e55c3bcb00411b3a2d4`，与 `git rev-parse 'v2.21.3^{commit}'` 逐字符一致 |
+| 发布车道 | `workflow_dispatch` run `41574629000` **success**：preflight / Verify / 四平台 Build / publish / windows-upgrade-smoke 全 success；`notarize-mac` = `skipped`（未签名口径，与 G1 拍板一致） |
+
+该 tag 的第一版指向 `a3989d40`（lint 红、无发布页），按「删 tag 重建」规程重指向 `741690ed`；页与资产以现页为准。
+
+### 二 单元：给 ⌘⇧E 补一支真窗口认证 spec
+
+`e2e/certification/workspace-activity-group-expand-all.spec.ts`（新增，1 例）：真项目 + 假 agent（`PURESCIENCE_E2E_TOOL_EVENTS=2`）
+发两轮 ⇒ 两个 activity group；`Meta+Shift+E` 连按三次；最后在 composer 里再按一次。断言的是**状态链条**，不是「有变化」：
+
+- 默认态（settled 折叠 / 最新一轮展开）；
+- 第一次按：**全部展开**；
+- 第二次按：**全部折叠**（这正是「永远只会展开」那个缺陷唯一活得下去的地方）；
+- 第三次按：重新全部展开；
+- composer 内按：transcript 一态不变，且刚敲进去的文字还在（键既没被吞也没被当成快捷键）。
+
+### 三 真机读数（`npx playwright test e2e/certification/workspace-activity-group-expand-all.spec.ts`，在 `/tmp/ps-e2e-agg` 上跑）
+
+```
+[cert] default group expansion = ["false","true"]
+[cert] after first ⌘⇧E = ["true","true"]
+[cert] after second ⌘⇧E = ["false","false"]
+[cert] shortcut ignored inside the composer; transcript unchanged
+1 passed (11.9s)
+```
+
+### 四 变异自证（改在**产品代码**上；每次改完重建 `build:e2e` 再跑）
+
+| 变异 | 结果 |
+| --- | --- |
+| `anyCollapsed` 改回读 `activityExpansionOverrides`（逐行表） | **红在第二次按** —— 读数停在 `["true","true"]`，`expect(received).toEqual(expected)` |
+| `isActivityGroupItem` 的字面量改回 `'activityGroup'` | **红在第一次按** —— 默认态 `["false","true"]` 一动不动 |
+
+两次都复原（`git status` 只剩那个未跟踪的 spec 文件）。
+
+### 五 门禁（各自实跑，读数取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx eslint --no-cache <该 spec>` | 0 error / 0 warning |
+| `npx prettier --check <该 spec>` | 通过 |
+| `tsc -p tsconfig.node.json --composite false`（隔离工作树） | **0 error** |
+| `tsc -p tsconfig.web.json --composite false`（同一工作树） | **0 error** |
+| `npx playwright test <该 spec>`（真窗口） | **1 passed (11.9s)** |
+
+共享主树里 `tsc -p tsconfig.node.json` 现在有 42 条 error，**全在并行会话的未提交在制品上**（`update/service.ts` 处于半句法状态、
+`screening-service.ts` 四条）⇒ 本笔的类型检查读数只取隔离工作树那一棵，不拿主树那 42 条当本笔的判决。
+
+### 六 边界（不许读成更强）
+
+- 这支 spec 证的是**按键真的抵达窗口 + 折叠态真的变了 + 输入框不吞键**；不证「用户知道有这个快捷键」——⌘⇧E 目前没有任何可见入口，
+  可发现性仍是既有缺口（命令面板与快捷键清单里都没有它）。
+- 只在 macOS（`Meta`）上跑过；`Ctrl+Shift+E` 由同一段代码的 `event.ctrlKey` 处理，但**没有真机读数**。
+- 该 spec 在 `e2e/certification/**` 下 ⇒ 会进 macos-arm64 的 P0 认证作业；本机这次是 darwin 真窗口读数，不是 CI 车道的判决。
+
+### 七 下一轮第一步
+
+① 等本笔推送后的 `Nightly` + `Windows Full Test` 判决（按完整 40 位 SHA）；
+② 两条线索不变：`sessions:save-session` 的 `writeDiskMs`/`fileIndexMs`（`src/main/session-persistence/**` 正被并行会话改）、
+`reviewer:get-for-session`（同域在制）—— 落定后再量；
+③ 可发现性缺口（⌘⇧E 无可见入口）单独立项，走命令面那套（命令源 + 快捷键清单）。
