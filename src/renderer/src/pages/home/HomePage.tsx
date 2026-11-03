@@ -40,7 +40,7 @@ import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
-import { CasePlaza } from './CasePlaza'
+import { UserCases } from './UserCases'
 import { UseCaseGallery } from './UseCaseGallery'
 
 const RECENT_SESSION_LIMIT = 10
@@ -713,10 +713,10 @@ const HomePage = ({
           </section>
         </div>
 
-        <CasePlaza />
+        <UserCases />
 
-        {/* The evidence cards stay, but they are samples of what the product can do rather than the demos of
-            this workspace — the plaza above is that. Kept behind a disclosure so the home page leads with the
+        {/* The evidence cards stay, but they are samples of what the product can do rather than the cases of
+            this workspace — `UserCases` above is that. Kept behind a disclosure so the home page leads with the
             user's own work. */}
         <details data-slot="capability-samples" className="mt-8">
           <summary className="cursor-pointer text-sm font-semibold text-text-000">
