@@ -409,6 +409,7 @@ describe('preload bridge — public surface inventory', () => {
       'previewResources.readRange',
       'previewResources.release',
       'projectFiles.getOverview',
+      'projectFiles.getOverviews',
       'projectFiles.listArtifactGroups',
       'projectFiles.listFiles',
       'projectFiles.listKinds',
@@ -898,7 +899,9 @@ describe('preload bridge — core renderer contract catalog', () => {
     // contract beside readDocument, so the Web maps move with it exactly as they do here.
     // 254 with the citation walk (references.discoverCitations, LOCAL): one more local-only request
     // contract, so it counts here while neither Web dispatch map moves.
-    expect(coreContracts).toHaveLength(257)
+    // 258 with the batched project-file overviews (projectFiles.getOverviews): one more plain Web
+    // request contract — the Home page reads a project batch in one round trip.
+    expect(coreContracts).toHaveLength(258)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -912,7 +915,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       ).length
       // 217 with the DOI integrity pair: two more core request contracts.
       // 219 with the citation walk above (references.discoverCitations, LOCAL).
-    }).toEqual({ requests: 219, events: 27, sends: 10, surfaceNative: 1 })
+      // 220 with the batched project-file overviews (projectFiles.getOverviews).
+    }).toEqual({ requests: 220, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -921,7 +925,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(219)
+    expect(requestContracts).toHaveLength(220)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

@@ -116,6 +116,7 @@ const createDependencies = () => {
   }
   const projectFiles = {
     getOverview: vi.fn(),
+    getOverviews: vi.fn(),
     listArtifactGroups: vi.fn(),
     listFiles: vi.fn(),
     listKinds: vi.fn(),
@@ -259,7 +260,7 @@ const dispatchCommand = (
 }
 
 describe('Data and content application commands', () => {
-  it('owns exactly the 56 current data and content invoke channels', () => {
+  it('owns exactly the 61 current data and content invoke channels', () => {
     expect(registeredCommands()).toEqual(
       [
         'artifacts:finalize-run',
@@ -289,6 +290,7 @@ describe('Data and content application commands', () => {
         'preview-resources:read-range',
         'preview-resources:release',
         'project-files:get-overview',
+        'project-files:get-overviews',
         'project-files:list-artifact-groups',
         'project-files:list-files',
         'project-files:list-kinds',
@@ -452,6 +454,11 @@ describe('Data and content application commands', () => {
         key: 'projectFilesGetOverview',
         args: [request('project-files-overview')],
         owner: deps.projectFiles.getOverview
+      },
+      {
+        key: 'projectFilesGetOverviews',
+        args: [request('project-files-overviews')],
+        owner: deps.projectFiles.getOverviews
       },
       {
         key: 'projectFilesListArtifactGroups',

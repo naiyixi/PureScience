@@ -221,7 +221,9 @@ describe('renderer argument-shape characterization', () => {
     // channel, callable on this surface like the session reads it sits beside.
     // 411 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): both are
     // LOCAL, so they are callable here and refused at dispatch on the paired remote surface.
-    expect(actualPaths).toHaveLength(411)
+    // 412 with the batched project-file overviews (projectFiles.getOverviews): a plain Web request
+    // channel, callable on this surface like the per-project read it sits beside.
+    expect(actualPaths).toHaveLength(412)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
