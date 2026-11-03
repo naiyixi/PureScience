@@ -3387,7 +3387,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': '標題',
   'references.search.field.authors': '作者',
   'references.search.field.venue': '期刊',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'DOI 編號',
   'references.search.field.year': '年份',
   'references.search.field.abstract': '摘要',
   'references.collectionDeleteLabel': '刪除合集 {name}',

@@ -3654,7 +3654,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': 'название',
   'references.search.field.authors': 'автор',
   'references.search.field.venue': 'журнал',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'идентификатор DOI',
   'references.search.field.year': 'год',
   'references.search.field.abstract': 'аннотация',
   'references.collectionDeleteLabel': 'Удалить коллекцию {name}',

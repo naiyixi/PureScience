@@ -3760,7 +3760,7 @@ export const de: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': 'Titel',
   'references.search.field.authors': 'Autor',
   'references.search.field.venue': 'Zeitschrift',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'DOI-Kennung',
   'references.search.field.year': 'Jahr',
   'references.search.field.abstract': 'Abstract',
   'references.collectionDeleteLabel': 'Sammlung {name} löschen',

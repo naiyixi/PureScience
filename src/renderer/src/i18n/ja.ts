@@ -3652,7 +3652,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': 'タイトル',
   'references.search.field.authors': '著者',
   'references.search.field.venue': '雑誌',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'DOI 番号',
   'references.search.field.year': '年',
   'references.search.field.abstract': '要旨',
   'references.collectionDeleteLabel': 'コレクション「{name}」を削除',

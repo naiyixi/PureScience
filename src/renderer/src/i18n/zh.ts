@@ -540,7 +540,7 @@ export const zh = {
   'references.search.field.title': '标题',
   'references.search.field.authors': '作者',
   'references.search.field.venue': '期刊',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'DOI 号',
   'references.search.field.year': '年份',
   'references.search.field.abstract': '摘要',
   'references.collectionDeleteLabel': '删除合集 {name}',

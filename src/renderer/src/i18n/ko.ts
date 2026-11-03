@@ -3588,7 +3588,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': '제목',
   'references.search.field.authors': '저자',
   'references.search.field.venue': '저널',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'DOI 번호',
   'references.search.field.year': '연도',
   'references.search.field.abstract': '초록',
   'references.collectionDeleteLabel': '컬렉션 {name} 삭제',

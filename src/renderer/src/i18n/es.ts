@@ -3721,7 +3721,7 @@ export const es: Partial<Record<ZhKey, string>> = {
   'references.search.field.title': 'título',
   'references.search.field.authors': 'autor',
   'references.search.field.venue': 'revista',
-  'references.search.field.doi': 'DOI',
+  'references.search.field.doi': 'identificador DOI',
   'references.search.field.year': 'año',
   'references.search.field.abstract': 'resumen',
   'references.collectionDeleteLabel': 'Eliminar la colección {name}',
