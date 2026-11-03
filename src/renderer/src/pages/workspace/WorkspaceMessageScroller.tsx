@@ -846,6 +846,43 @@ const WorkspaceMessageScrollerImpl = ({
     })
   }
 
+  // Expand-all / collapse-all for settled turns, and the keyboard shortcut that drives it (⌘⇧E / Ctrl+Shift+E).
+  //
+  // Two things this is careful about:
+  //   * it writes the same per-group overrides a click writes, so "expand everything" is not a second state
+  //     machine — a later click on one group still means what it always meant;
+  //   * the shortcut is registered on the window and ignores the composer: a reader pressing it while typing
+  //     must not lose a keystroke to a transcript toggle.
+  const setAllActivityGroups = (expanded: boolean): void => {
+    setActivityGroupExpansionState((currentState) => {
+      const overrides: Record<string, boolean> = {}
+      for (const item of conversationItems) {
+        if (item.type === 'activityGroup') overrides[item.id] = expanded
+      }
+      return { sessionId: currentSessionId, overrides }
+    })
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      const isToggle =
+        (event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'e'
+      if (!isToggle) return
+      const target = event.target
+      const typing =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      if (typing) return
+      event.preventDefault()
+      const anyCollapsed = conversationItems.some(
+        (item) => item.type === 'activityGroup' && activityExpansionOverrides[item.id] !== true
+      )
+      setAllActivityGroups(anyCollapsed)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
+
   // Records the user's explicit expansion choice for a single tool-activity detail row.
   const toggleActivityRow = (activityId: string, nextExpanded: boolean): void => {
     setActivityExpansionOverrideState((currentState) => {
