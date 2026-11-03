@@ -70,7 +70,9 @@ describe('renderer contract catalog', () => {
     // request contract in the sessions group.
     // 500 with the citation walk (references.discover-citations): one more capability-owned request
     // contract in the references group.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(503)
+    // 504 with reading text out of an image (pdf.ocr, LOCAL): one more capability-owned request contract
+    // in the pdf group.
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(504)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -86,7 +88,8 @@ describe('renderer contract catalog', () => {
     // 378 with the citation walk (references:discover-citations): one more invoke-map entry.
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
-    expect(Object.keys(projection.invoke)).toHaveLength(382)
+    // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke-map entry.
+    expect(Object.keys(projection.invoke)).toHaveLength(383)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -108,9 +111,11 @@ describe('renderer contract catalog', () => {
     // 407 with the citation walk (references.discoverCitations, LOCAL): installed on the local Web surface
     // like the integrity check it sits beside — LOCAL keeps it off the paired remote surface only.
     // 411 with the portable-session package (D1): two more methods installed on the local Web surface.
+    // 413 with reading text out of an image (pdf.ocr, LOCAL): installed on the local Web surface, like the
+    // pdf reads it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(412)
+    ).toHaveLength(413)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -150,9 +155,10 @@ describe('renderer contract catalog', () => {
     ).toHaveLength(91)
     // 133 with the citation walk: LOCAL earns the rejecting stub on the paired remote surface.
     // 135 with the portable-session package pair (D1), same reason.
+    // 136 with reading text out of an image (pdf.ocr, LOCAL), same reason.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(135)
+    ).toHaveLength(136)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

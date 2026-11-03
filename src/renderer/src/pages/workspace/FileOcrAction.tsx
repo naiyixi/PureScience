@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useLanguage } from '@/i18n'
 import { isImageFileName } from './file-ocr-name'
 import { Button } from '@/components/ui/button'
+import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import type { OcrRecogniseOutcome } from '../../../../shared/ocr'
 import type { ManagedPreviewSource } from '../../../../shared/preview-resources'
 
@@ -36,6 +37,10 @@ export const FileOcrAction = ({
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
   const [outcome, setOutcome] = useState<OcrRecogniseOutcome | null>(null)
+  // The panel opens from page state and renders no `Dialog.Trigger`, so Radix has no opener to hand focus
+  // back to: without this the button that started the read is replaced by <body> when the panel closes.
+  // Called before the early return below — the image-only guard must not sit between hook calls.
+  const focusRestore = useDialogFocusRestore(open)
 
   if (!isImageFileName(name)) return null
 
@@ -83,6 +88,8 @@ export const FileOcrAction = ({
           <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/40" />
           <Dialog.Content
             data-slot="file-ocr-dialog"
+            onOpenAutoFocus={focusRestore.onOpenAutoFocus}
+            onCloseAutoFocus={focusRestore.onCloseAutoFocus}
             className="fixed left-1/2 top-1/2 z-[81] flex max-h-[80vh] w-[min(720px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-lg border border-border-300 bg-bg-000 p-4 shadow-xl"
           >
             <div className="flex items-start justify-between gap-3">

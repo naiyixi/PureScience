@@ -184,7 +184,7 @@ const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
   bookmark: ['list', 'remove', 'set', 'update-note'],
   'search-pins': ['list', 'remove', 'save'],
   annotation: ['list', 'remove', 'set'],
-  pdf: ['figures', 'open', 'outline', 'pages', 'scan', 'tables', 'translation'],
+  pdf: ['figures', 'ocr', 'open', 'outline', 'pages', 'scan', 'tables', 'translation'],
   'pdf-annotations': [
     'create',
     'export-annotated',
@@ -348,7 +348,9 @@ describe('renderer surface inventory', () => {
     // contract, so the inventory and the catalog move together.
     // 499 with the citation walk (references.discover-citations): one preload method for the one
     // contract, so the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(503)
+    // 504 with reading text out of an image (pdf.ocr, LOCAL): one preload method for the one contract, so
+    // the inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(504)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -367,7 +369,8 @@ describe('renderer surface inventory', () => {
     // 378 with the citation walk (references:discover-citations): one more invoke entry in the generated map.
     // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(382)
+    // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke entry in the generated map.
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(383)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -413,7 +416,9 @@ describe('renderer surface inventory', () => {
     // refused on the remote surface and counted in the fail-closed set.
     // 135 with the portable-session package (D1): both directions are LOCAL, so a paired remote browser is
     // refused before dispatch — an import there would create a session on this machine.
-    expect(expectedRemoteLocalOnly).toHaveLength(135)
+    // 136 with reading text out of an image (pdf.ocr, LOCAL): it spawns a reader on this machine, so a
+    // paired remote browser is refused before dispatch.
+    expect(expectedRemoteLocalOnly).toHaveLength(136)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

@@ -223,7 +223,9 @@ describe('renderer argument-shape characterization', () => {
     // LOCAL, so they are callable here and refused at dispatch on the paired remote surface.
     // 412 with the batched project-file overviews (projectFiles.getOverviews): a plain Web request
     // channel, callable on this surface like the per-project read it sits beside.
-    expect(actualPaths).toHaveLength(412)
+    // 413 with reading text out of an image (pdf.ocr, LOCAL): callable here, refused at dispatch on the
+    // paired remote surface.
+    expect(actualPaths).toHaveLength(413)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
