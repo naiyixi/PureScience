@@ -11,6 +11,7 @@ import type {
   ReferenceCollection
 } from '../../../../shared/references'
 import { normalizeTitleForDedupe } from '../../../../shared/references'
+import { searchReferences, type ReferenceSearchField } from '../../../../shared/reference-search'
 import type {
   ReferenceIntegrityEvidence,
   ReferenceIntegritySummary
@@ -186,6 +187,15 @@ const STYLE_REJECTION_KEYS: Record<string, TranslationKey> = {
   'too-large': 'references.styleRejection.tooLarge'
 }
 
+const SEARCH_FIELD_KEYS: Record<ReferenceSearchField, TranslationKey> = {
+  title: 'references.search.field.title',
+  authors: 'references.search.field.authors',
+  venue: 'references.search.field.venue',
+  doi: 'references.search.field.doi',
+  year: 'references.search.field.year',
+  abstract: 'references.search.field.abstract'
+}
+
 export function ReferencesLibraryDialog({
   open,
   onClose,
@@ -215,6 +225,7 @@ export function ReferencesLibraryDialog({
   // narrowing it never waits on the main process. The busy id keeps one row's control from disarming the
   // others while its write lands.
   const [readingFilter, setReadingFilter] = useState<ReferenceReadingFilter>('any')
+  const [searchQuery, setSearchQuery] = useState('')
   const [readingBusyId, setReadingBusyId] = useState<string | null>(null)
   const [integrityResult, setIntegrityResult] = useState<string | undefined>(undefined)
   // B2: one citation walk, on demand, for one row. The two directions are two calls (different endpoints),
@@ -528,10 +539,26 @@ export function ReferencesLibraryDialog({
     )
   }, [references, selectedCollectionId])
 
+  // The library's search box. It runs over the list this dialog already holds (every record, in memory), so a
+  // keystroke costs a pass over an array instead of a round-trip — and the ranking comes from the shared
+  // module, which also says which field each hit came from.
+  const searching = searchQuery.trim().length > 0
+  const searchResults = useMemo(
+    () => (searching ? searchReferences(collectionReferences, searchQuery) : []),
+    [collectionReferences, searchQuery, searching]
+  )
+  const searchMatchesById = useMemo(
+    () => new Map(searchResults.map((result) => [result.reference.id, result])),
+    [searchResults]
+  )
+  const searchedReferences = useMemo(
+    () => (searching ? searchResults.map((result) => result.reference) : collectionReferences),
+    [collectionReferences, searchResults, searching]
+  )
+
   const shownReferences = useMemo(
-    () =>
-      collectionReferences.filter((reference) => matchesReadingFilter(reference, readingFilter)),
-    [collectionReferences, readingFilter]
+    () => searchedReferences.filter((reference) => matchesReadingFilter(reference, readingFilter)),
+    [searchedReferences, readingFilter]
   )
 
   // B3: the callout this feature exists for — records the manuscript cites that nobody has read. Counted on
@@ -948,6 +975,39 @@ export function ReferencesLibraryDialog({
             </span>
             {/* B3: the reader's queue. The filter narrows the list in memory (the list already carries every
                 record), and the callout names the records this feature exists for: cited, not read. */}
+            <div className="flex items-center gap-1">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t('references.search.placeholder')}
+                aria-label={t('references.search.label')}
+                className="w-56 rounded-md border border-[var(--border)] bg-transparent px-2 py-1 text-[11px]"
+              />
+              {searching ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label={t('references.search.clear')}
+                  className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+            {searching ? (
+              <p
+                className="text-[11px] text-[var(--muted-foreground)]"
+                data-testid="reference-search-count"
+              >
+                {shownReferences.length === 0
+                  ? t('references.search.noMatches', { query: searchQuery.trim() })
+                  : t('references.search.count', {
+                      shown: shownReferences.length,
+                      total: collectionReferences.length
+                    })}
+              </p>
+            ) : null}
             <select
               value={readingFilter}
               onChange={(event) => setReadingFilter(event.target.value as ReferenceReadingFilter)}
@@ -1627,6 +1687,22 @@ export function ReferencesLibraryDialog({
                               <p className="text-xs font-medium leading-snug text-[var(--foreground)]">
                                 {reference.title}
                               </p>
+                              {/* The search says which field it hit, so a DOI match is not read as a title
+                                  match. Absent when the box is empty: no query, no attribution to make. */}
+                              {searchMatchesById.get(reference.id) ? (
+                                <p
+                                  className="mt-0.5 text-[10px] text-[var(--muted-foreground)]"
+                                  data-testid="reference-search-match"
+                                >
+                                  {t('references.search.matchedIn', {
+                                    fields:
+                                      searchMatchesById
+                                        .get(reference.id)
+                                        ?.matches.map((match) => t(SEARCH_FIELD_KEYS[match.field]))
+                                        .join(' · ') ?? ''
+                                  })}
+                                </p>
+                              ) : null}
                               {/* B3: the reading mark, on the row it belongs to. A record with no stored
                                   value reads as unread, so the control shows the same state the filter counts. */}
                               <label className="mt-1 flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">

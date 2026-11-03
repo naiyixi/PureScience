@@ -72,6 +72,19 @@ vi.mock('@/i18n', () => ({
       'references.integrity.checkDone':
         'Checked {checked}: {retracted} retracted, {unavailable} could not reach the registry.',
       'references.integrity.retractedBadge': 'Retracted',
+      'references.search.label': 'Search the library',
+      'references.search.placeholder': 'Title, author, journal, DOI, year, abstract',
+      'references.search.clear': 'Clear search',
+      'references.search.count': '{shown} of {total} records match',
+      'references.search.noMatches':
+        'No record matches “{query}” in title, author, journal, DOI, year or abstract.',
+      'references.search.matchedIn': 'matched in {fields}',
+      'references.search.field.title': 'title',
+      'references.search.field.authors': 'author',
+      'references.search.field.venue': 'journal',
+      'references.search.field.doi': 'DOI',
+      'references.search.field.year': 'year',
+      'references.search.field.abstract': 'abstract',
       'references.reading.filterLabel': 'Reading state',
       'references.reading.all': 'Any reading state',
       'references.reading.unread': 'Unread',
@@ -997,5 +1010,48 @@ describe('ReferencesLibraryDialog collections', () => {
     expect(citations?.textContent ?? '').toContain('Not available: OpenAlex answered HTTP 503')
     // The failed direction must not borrow the empty direction's wording.
     expect(citations?.textContent ?? '').not.toContain('No hits')
+  })
+
+  it('narrows the library to what the query hits and says which field matched', async () => {
+    await render()
+
+    const input = document.querySelector<HTMLInputElement>('input[type="search"]')
+    expect(input).not.toBeNull()
+
+    // A React input needs the native setter plus an input event; setting .value alone leaves state untouched
+    // and the test would pass against a box that does nothing.
+    const type = async (value: string): Promise<void> => {
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value'
+        )?.set
+        setter?.call(input, value)
+        input?.dispatchEvent(new Event('input', { bubbles: true }))
+        await Promise.resolve()
+      })
+      await flush()
+    }
+
+    await type('author')
+    expect(document.body.textContent).toContain('1 of 1 records match')
+    expect(document.body.textContent).toContain('matched in author')
+    expect(document.body.textContent).toContain('A screen for variants')
+
+    await type('variant')
+    expect(document.body.textContent).toContain('matched in title')
+
+    await type('2026')
+    expect(document.body.textContent).toContain('matched in year')
+
+    // A query that hits nothing says so, and names the fields it looked in rather than a bare "no results".
+    await type('nothing-here')
+    expect(document.body.textContent).toContain('No record matches')
+    expect(document.body.textContent).not.toContain('A screen for variants')
+
+    // Clearing restores the library: the count line belongs to the query, not to the list.
+    await type('')
+    expect(document.body.textContent).toContain('A screen for variants')
+    expect(document.body.textContent).not.toContain('records match')
   })
 })
