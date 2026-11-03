@@ -1,5 +1,34 @@
 # PureScience 更新日记
 
+## v2.21.4 — 2026-11-03（CodeBuddy「装完了却报没找到」：改的是我的验收，不是安装）
+
+**一句话**：v2.21.3 修对了探测 PATH，但安装后的验收仍在读 settings 快照；这台机器上两个实例共用一个
+存储根（`~/.purescience`），`settings-read` 实测 **12,225 ms（held 11,918 ms）**，安装刚写完的值还没被
+快照看见，于是一个完全可用的安装被报成「no runnable codebuddy was found」。
+
+### 证据
+
+```
+2026-11-03T07:14:16  settings-preflight  steps  settings-read=12225ms (held 11918ms)
+2026-11-03T07:36:10  settings:install-codebuddy  durationMs=1057445（17.6 分钟）
+~/.purescience/settings.json  codebuddyPath=/Users/totota/.local/bin/codebuddy  version=2.179.2
+```
+
+`settings.json` 里路径与版本都在 —— 说明探测器当时**是成功的**，被写成失败的是回读那一步。
+
+### 改法
+
+安装验收直接调 `detectCodeBuddy()`，用探测器自己的答案（也正是卡片要显示的东西），不回读快照。
+
+### 本机复证（GUI 形状 PATH）
+
+```
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
+detectCodeBuddy() → {"resolvedPath":"/Users/totota/.local/bin/codebuddy","version":"2.179.2"}
+```
+
+即：探测链路本身是通的；v2.21.3 的 PATH 修复有效，v2.21.4 只移除那个假阴性。
+
 ## v2.21.3 — 2026-11-03（首页能滚了；演示换成本机真跑过的项目；CodeBuddy 探测修好）
 
 **成熟度自陈**：这一版全部是「你每天都会碰到」的三件事 —— 首页滚不动、演示不是自己的、装完 CodeBuddy 仍显示未安装。
