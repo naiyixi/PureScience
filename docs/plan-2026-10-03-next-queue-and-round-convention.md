@@ -15738,3 +15738,74 @@ lateMs 801  canaryMs 5496  inFlight 0
 ① 取 `956feb47` 与本笔的车道判决（Nightly 的 `Build macos-arm64` 里 P0 是否转绿是唯一要看的门）；
 ② 仍是那条 `session save was slow` 的 `writeDiskMs` 4,340 s / `fileIndexMs` 1,452 s —— 落点在 `src/main/session-persistence/**`，
    **并行会话在制中**，它落定后第一件事是量「每次保存是否全量重扫文件索引」。
+
+## 二百八十四、本轮追加（执行器，2026-11-03）—— v2.21.3 没有发布页：拦它的那条红后面还有两个真缺陷（⌘⇧E 是死控件）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch -q origin && git log --oneline origin/main -3`：`origin/main = HEAD = a3989d40`（`release: v2.21.3 版本四文件`），0 ahead / 0 behind。
+  工作树里 15 个改动 + 1 份证据档**不是我的**（`session-persistence/**`、`reviewer/**`、`references/screening-service.ts`、
+  `notebook/repository*`、`acp/runtime-coordinator.ts`、`diagnostics/operation.ts`、`logger.ts`、`update/service.ts`、
+  两个 shared、`docs/plan-2026-10-28-two-releases.md`）⇒ **一个字节没碰**。
+- 车道读数（完整 40 位 `a3989d40b92158fcd47683e3b6df87e827e474bb`）：`Windows Full Test` **success**；
+  `Nightly` 与 `Release` **failure**，两条都停在同一个作业 `build / Verify (lint + typecheck + test + package)`
+  ⇒ 下游 `Build ${{ matrix.name }}` / `publish` 全部 `skipped`。`gh release list` 上 `Latest` 仍是 v2.21.2，
+  **v2.21.3 没有发布页**（tag 在远端，`refs/tags/v2.21.3` → `a3989d40`）。
+- 作业级日志（`gh api …/actions/jobs/<id>/logs`）里唯一的 error 是
+  `src/renderer/src/pages/workspace/WorkspaceMessageScroller.tsx:857 'currentState' is defined but never used`。
+  在同一提交上另建隔离工作树跑 `tsc -p tsconfig.web.json`：**5 条 error**，其中 4 条是同一段代码的两个真缺陷（见下）。
+  ⇒ 这个提交在 lint 之前就没过类型检查，只是门禁先停在 lint。
+
+### 一 单元：修红 + 把那两个缺陷钉住
+
+`⌘⇧E 一键展开/折叠全部回合`（`10afc680`）当初没有任何用例，提交信息里的 `1906 passed` 跑的是既有断言。它有两处错：
+
+1. **判别字面量写错**：`item.type === 'activityGroup'`，而真实字面量是 `'activity-group'`（`conversationItems.map(i => i.type)`
+   实测打出 `["message","activity-group","message","message","activity-group","message"]`）。于是 `overrides` 永远是 `{}`
+   ⇒ 快捷键一个组都不改；tsc 同时报 `TS2367`（no overlap）与 `TS2339`（`never` 上取 `id`）。
+2. **读错了另一张表**：`anyCollapsed` 读的是 `activityExpansionOverrides`（**明细行**的 overrides），而它问的是**整组**展开态。
+   即便字面量修好，这张表也只由「点开某一行」写入 ⇒ `anyCollapsed` 恒为 true ⇒ 只会「一直展开、永不折叠」。
+
+修法：判别字面量收进 `isActivityGroupItem` 谓词（`workspace-tool-activity-groups.ts`，全仓只有这一处字符串，
+写错即类型错），`anyCollapsed` 改读 `activityGroupExpansionOverrides`；`setAllActivityGroups` 的 updater 不再读前一版状态
+（这是「全部按一个状态」，与单组点击的 merge 语义不同，注释写明）。
+
+### 二 交付（3 个文件，一笔 `2556d4ad`）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/renderer/src/pages/workspace/workspace-tool-activity-groups.ts` | 新增 `isActivityGroupItem` 类型谓词 + 导出 |
+| `src/renderer/src/pages/workspace/WorkspaceMessageScroller.tsx` | 两处比较改走谓词；`anyCollapsed` 改读整组 overrides；清掉未使用形参（lint 那条 error） |
+| `src/renderer/src/pages/workspace/WorkspaceMessageScroller.interaction.test.tsx`（改） | 新用例走真键盘事件：默认态 `['false','true']` → 第一次按 `['true','true']` → 第二次按 `['false','false']` → 输入框里按不生效且 `defaultPrevented=false`（不吞按键） |
+
+### 三 变异自证（改在**产品代码**上，不是改断言）
+
+| 变异 | 结果 |
+| --- | --- |
+| `anyCollapsed` 改回读 `activityExpansionOverrides` | 红在第二次按：`expected [ 'true', 'true' ] to deeply equal [ 'false', 'false' ]` |
+| 谓词字面量改回 `'activityGroup'` | 红在第一次按：`expected [ 'false', 'true' ] to deeply equal [ 'true', 'true' ]` |
+
+两次变异后都用备份复原，`git diff --stat` 只剩本轮那 3 个文件。
+
+### 四 门禁（本机实跑；数字取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/renderer/src/pages/workspace --maxWorkers=3` | **175 文件 / 1907 例全绿**（上一版是 1906，多出来的是本用例） |
+| `tsc -p tsconfig.web.json --composite false`（隔离工作树＝`2556d4ad`） | **0 error**（同一环在 `a3989d40` 上是 5 条） |
+| `tsc -p tsconfig.node.json --composite false`（同一工作树） | **0 error** |
+| `npx eslint --no-cache`（3 个改动文件） | 0 error（1 条 warning 是既有测试里那条 `no-console` 指令，非本笔引入） |
+| `bash scripts/pre-push-checks.sh` | 通过（品牌扫描零命中、README 双语一致、60 个脚本入口可解析、新增文件 lint 过） |
+
+### 五 边界（不许读成更强）
+
+- 这条修的是**键盘开关**；CHANGELOG v2.21.3 §四 里那句「在输入框内不生效」现在被用例钉住了，但**搜索/原生查找揭示折叠内容**仍未做（已在 CHANGELOG「未做」段里）。
+- 用例跑在 jsdom（`act` + 真 `KeyboardEvent`）上，不是真窗口：它证明事件路径与状态语义，不证明 macOS 上的按键真的抵达窗口（后者由认证车道负责）。
+- 隔离工作树读的是 `2556d4ad`（本笔）那一棵，不含并行会话的在制品；本机读数不许当成用户端体感。
+
+### 六 下一轮第一步
+
+① 等 `2556d4ad` 的 `Nightly` 判决；绿了以后按恢复规程**删 tag 重建**（该 tag 没有发布页）：`git push origin --delete v2.21.3`
+→ `git tag -a v2.21.3 2556d4ad` → `git push origin v2.21.3`，让 tag 事件驱动完整链路，再按「发布核验」查页与资产。
+② 仍挂着的线索：`sessions:save-session` 的 `writeDiskMs` 4,340 s / `fileIndexMs` 1,452 s，落点 `src/main/session-persistence/**`
+**正被并行会话改**，它落定后再量「每次保存是否全量重扫文件索引」。
