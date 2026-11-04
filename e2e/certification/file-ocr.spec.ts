@@ -147,21 +147,26 @@ test('reads text out of an uploaded image, or says by name why it cannot', async
   const dialog = page.locator('[data-slot="file-ocr-dialog"]')
   await expect(dialog).toBeVisible()
 
+  // One key per rendered outcome, spelled exactly like the branch a run reports. The keys and the switch below
+  // are the same literals on purpose: a name that only exists in one of the two places makes the run fall
+  // through to the wrong assertion, and on this laptop that is invisible because the engine branch always wins
+  // here — the lane that has no tesseract is the only one that ever sees it.
   const outcomeNodes = {
     text: dialog.getByTestId('file-ocr-text'),
     empty: dialog.getByTestId('file-ocr-empty'),
-    toolMissing: dialog.getByTestId('file-ocr-tool-missing'),
-    packMissing: dialog.getByTestId('file-ocr-pack-missing'),
+    'tool-missing': dialog.getByTestId('file-ocr-tool-missing'),
+    'pack-missing': dialog.getByTestId('file-ocr-pack-missing'),
     unsupported: dialog.getByTestId('file-ocr-unsupported'),
     unreadable: dialog.getByTestId('file-ocr-unreadable')
-  }
+  } satisfies Record<string, ReturnType<typeof dialog.getByTestId>>
+  type OutcomeName = keyof typeof outcomeNodes
 
   // The panel must never be an empty box: exactly one of "here is the text" and the named failures is on
   // screen, counted as a positive condition rather than by waiting for the running line to disappear.
-  const visibleOutcomes = async (): Promise<string[]> => {
-    const seen: string[] = []
-    for (const [name, locator] of Object.entries(outcomeNodes)) {
-      if (await locator.isVisible()) seen.push(name)
+  const visibleOutcomes = async (): Promise<OutcomeName[]> => {
+    const seen: OutcomeName[] = []
+    for (const name of Object.keys(outcomeNodes) as OutcomeName[]) {
+      if (await outcomeNodes[name].isVisible()) seen.push(name)
     }
     return seen
   }
@@ -173,34 +178,48 @@ test('reads text out of an uploaded image, or says by name why it cannot', async
     `[ocr-cert] rendered=${image.rendered} branch=${branch} dialog="${bodyText.replace(/\s+/g, ' ').slice(0, 240)}"`
   )
 
-  if (branch === 'text') {
-    const recognised = (await outcomeNodes.text.innerText()).trim()
-    const provenance = await dialog.getByTestId('file-ocr-provenance').innerText()
-    console.log(`[ocr-cert] provenance="${provenance}"`)
-    expect(recognised.length).toBeGreaterThan(0)
-    // The sentence that says where the text came from names the pack, the engine and how long it took.
-    expect(provenance).toContain('eng.traineddata')
-    expect(provenance).toContain('tesseract eng')
-    expect(provenance).toMatch(/\d+ ms/)
-    expect(provenance).toContain('came from an image')
-    if (image.rendered) {
-      // The engine's own reading of the page the fixture printed: the numbers matter more than the words.
-      expect(recognised.toUpperCase()).toContain('HEMOGLOBIN')
-      expect(recognised.toUpperCase()).toContain('12.4')
+  switch (branch) {
+    case 'text': {
+      const recognised = (await outcomeNodes.text.innerText()).trim()
+      const provenance = await dialog.getByTestId('file-ocr-provenance').innerText()
+      console.log(`[ocr-cert] provenance="${provenance}"`)
+      expect(recognised.length).toBeGreaterThan(0)
+      // The sentence that says where the text came from names the pack, the engine and how long it took.
+      expect(provenance).toContain('eng.traineddata')
+      expect(provenance).toContain('tesseract eng')
+      expect(provenance).toMatch(/\d+ ms/)
+      expect(provenance).toContain('came from an image')
+      if (image.rendered) {
+        // The engine's own reading of the page the fixture printed: the numbers matter more than the words.
+        expect(recognised.toUpperCase()).toContain('HEMOGLOBIN')
+        expect(recognised.toUpperCase()).toContain('12.4')
+      }
+      break
     }
-  } else if (branch === 'tool-missing') {
-    await expect(outcomeNodes.toolMissing).toContainText('needs the tesseract program')
-  } else if (branch === 'packMissing') {
-    await expect(outcomeNodes.packMissing).toContainText('language pack')
-    if (image.rendered) {
-      await expect(outcomeNodes.packMissing).toContainText('eng.traineddata')
+    case 'tool-missing':
+      await expect(outcomeNodes['tool-missing']).toContainText('needs the tesseract program')
+      break
+    case 'pack-missing':
+      await expect(outcomeNodes['pack-missing']).toContainText('language pack')
+      if (image.rendered) {
+        await expect(outcomeNodes['pack-missing']).toContainText('eng.traineddata')
+      }
+      break
+    case 'unsupported':
+      await expect(outcomeNodes.unsupported).toContainText('has no OCR language pack')
+      break
+    case 'unreadable':
+      await expect(outcomeNodes.unreadable).toContainText('could not be read')
+      break
+    case 'empty':
+      await expect(outcomeNodes.empty).toContainText('recognised no characters')
+      break
+    default: {
+      // Exhaustiveness, checked by the compiler: a new outcome that is never asserted here cannot be added
+      // without this line failing to typecheck.
+      const unexpected: never = branch
+      throw new Error(`[ocr-cert] unhandled outcome ${String(unexpected)}`)
     }
-  } else if (branch === 'unsupported') {
-    await expect(outcomeNodes.unsupported).toContainText('has no OCR language pack')
-  } else if (branch === 'unreadable') {
-    await expect(outcomeNodes.unreadable).toContainText('could not be read')
-  } else {
-    await expect(outcomeNodes.empty).toContainText('recognised no characters')
   }
 
   // The panel is opened from page state and renders no Dialog.Trigger, so the control that started the read is
