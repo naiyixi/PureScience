@@ -161,6 +161,9 @@ const WEB_UNAVAILABLE_CHANNELS = [
 ] as const
 
 const REMOTE_LOCAL_ONLY_CHANNELS: GroupedInventory = {
+  // A case bundle reads and writes this machine's disk in both directions, so a paired browser is refused.
+  // The route prefix is `cases` although the capability is `caseBundles`; this map is expanded into channels.
+  cases: ['export-bundle', 'import-bundle'],
   artifacts: ['open-file', 'reveal-file', 'verify-reading', 'write-user-edited-version'],
   cli: ['install', 'uninstall'],
   // 'jobs:cancel' keeps its own colon: this group's prefix is the capability, so the expanded channel
@@ -350,7 +353,9 @@ describe('renderer surface inventory', () => {
     // contract, so the inventory and the catalog move together.
     // 504 with reading text out of an image (pdf.ocr, LOCAL): one preload method for the one contract, so
     // the inventory and the catalog move together.
-    expect(electronPaths).toHaveLength(504)
+    // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL): two preload methods
+    // for two contracts, so the inventory and the catalog move together.
+    expect(electronPaths).toHaveLength(506)
     expectSameSet(
       electronPaths,
       RENDERER_CONTRACT_CATALOG.map(({ publicPath }) => publicPath)
@@ -370,7 +375,7 @@ describe('renderer surface inventory', () => {
     // 381 with the portable-session package (D1: sessions.exportPackage / sessions.importPackage): the two
     // directions a package travels in are local Web invoke channels now, so the generated map carries them.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke entry in the generated map.
-    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(383)
+    expect(Object.keys(WEB_INVOKE_CHANNELS)).toHaveLength(385)
     expect(Object.keys(WEB_EVENT_CHANNELS)).toHaveLength(34)
     expectSameSet(
       electronPaths.filter((path) => !generatedPaths.has(path)),
@@ -418,7 +423,8 @@ describe('renderer surface inventory', () => {
     // refused before dispatch — an import there would create a session on this machine.
     // 136 with reading text out of an image (pdf.ocr, LOCAL): it spawns a reader on this machine, so a
     // paired remote browser is refused before dispatch.
-    expect(expectedRemoteLocalOnly).toHaveLength(136)
+    // 138 with the case bundle pair: both read and write this machine's disk, so a paired browser is refused.
+    expect(expectedRemoteLocalOnly).toHaveLength(138)
     expect(
       expectedRemoteLocalOnly.every((channel) => WEB_RPC_ALLOWED_CHANNELS.includes(channel))
     ).toBe(true)

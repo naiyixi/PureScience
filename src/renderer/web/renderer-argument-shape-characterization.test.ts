@@ -225,7 +225,9 @@ describe('renderer argument-shape characterization', () => {
     // channel, callable on this surface like the per-project read it sits beside.
     // 413 with reading text out of an image (pdf.ocr, LOCAL): callable here, refused at dispatch on the
     // paired remote surface.
-    expect(actualPaths).toHaveLength(413)
+    // 415 with the case bundle pair (LOCAL): callable on the local Web profile, refused before dispatch on the
+    // paired remote one.
+    expect(actualPaths).toHaveLength(415)
     expect(actualPaths).toEqual(expectedPaths)
   })
 
