@@ -45,6 +45,13 @@ jobs:
           VERSION: ${{ inputs.version }}
           MESSAGE: ${{ inputs.message }}
         run: |
+          # Deprecating twice with the same message is a 422 from the registry, not a second success. Read first, so a
+          # re-run of this workflow reports the state instead of failing on it.
+          current=$(npm view "purescience@${VERSION}" deprecated 2>/dev/null || true)
+          if [ "$current" = "$MESSAGE" ]; then
+            echo "purescience@${VERSION} already deprecated with this message; nothing to write"
+            exit 0
+          fi
           npm deprecate "purescience@${VERSION}" "$MESSAGE"
           # Read it back: a deprecation that did not land must not be reported as done. The registry document lags the
           # write by a few seconds, so an empty field means "not visible yet", not "failed" — retry before deciding.
