@@ -64,7 +64,17 @@ const expectStableScreenshot = async (
   await page.evaluate(() => {
     const badge = document.querySelector('[data-slot="app-version"]')
     if (badge instanceof HTMLElement) badge.style.visibility = 'hidden'
-    for (const slot of ['environment-attention', 'update-capsule', 'network-status']) {
+    // The case market is the one section whose contents come off the network: the shelf is a GitHub release asset,
+    // so its rows change whenever anyone publishes (measured: 2,984 px — 1% — between two runs of this same tree,
+    // after a republished archive moved one case from 6 files to 15 and its size from 1.7 MB to 2.7 MB). Its
+    // height follows that data, so hiding only the cards would shift everything below them; the whole section comes
+    // out of the layout, and what stays compared is the part of the home page that this repository owns.
+    for (const slot of [
+      'environment-attention',
+      'update-capsule',
+      'network-status',
+      'case-market'
+    ]) {
       for (const element of document.querySelectorAll(`[data-slot="${slot}"]`)) {
         if (element instanceof HTMLElement) element.style.display = 'none'
       }
