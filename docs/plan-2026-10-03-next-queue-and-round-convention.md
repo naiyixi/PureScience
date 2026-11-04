@@ -16186,3 +16186,63 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 即车道无 tesseract，属诚实结局，不改断言）；② 下一单元回到 v2.26.0 的第二条（排序改主进程聚合）与第三条
 （案例命名落进数据），两条都踩在「126 vs 0」那个结论上 ⇒ 先读证据档再决定是改代码还是先修索引；
 ③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`。
+
+## 二百九十、本轮追加（执行器，2026-11-04 12:0x–）—— `bed955ef` 的车道红：不是缺引擎，是**上传被探针判成缺失**（动作全灰）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = bed955ef`，工作树 **41 处改动 + 1 份未跟踪全都不是我的**（`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、`src/main/notebook/**`、`src/main/references/screening-service.ts`、
+  `src/main/artifacts/ipc.ts`、`src/main/ipc.ts`、`src/renderer/src/pages/home/**`、九份 i18n、`prisma/schema.prisma`
+  与三份计划档）⇒ 一个字节没碰、未 stash、未提交。
+- **本轮不做产品修复**：`artifacts.probeAvailability` 的上传分支正是并行会话在工作区里改的那一处
+  （`resolveUploadPath` 依赖已加、`src/main/ipc.ts:3656` 装配点也已接线，尚未提交）⇒ 我若再写一遍就是重复交付。
+- 推送前 `gh run list` 在飞车道为空；本轮只提交认证规格与两份文档。
+
+### 一 归因（读作业级日志，不按车道整体猜）
+
+- `Nightly` run `41742969126` 绑 `bed955ef`：`build / Verify` success、三平台 Build success、
+  **`Build macos-arm64` failure**、`publish` skipped；汇总 `1 failed / 2 flaky / 12 skipped / 113 passed (35.7m)`。
+- 唯一失败是我上一笔的 `e2e/certification/file-ocr.spec.ts:51`：`locator.click: Timeout 30000ms exceeded`、
+  `element is not enabled`。下载该作业的 `p0-test-results-macos-arm64` 取两张失败截图：
+  **`lab-scan.png` 与 `lab-notes.md` 两张上传磁贴都带 `MISSING` 角标、三个动作全灰**。
+- 根因：上传的 `upload-version:<project>/<session>/<version>` 定位符被交给 artifact 根解析器
+  （`src/main/artifacts/ipc.ts` 里那条 `resolveManagedFilePath`），上传物住在 `uploads/` 根下、只有上传仓库答得出来
+  ⇒ `useUnavailablePreviewProbe` 判 `missing` ⇒ 磁贴打角标、`FileOcrAction`/下载/分栏一起 `disabled`。
+- 另一半是**我的断言早于答案**：探针异步，答案回来前磁贴读作「可用」，于是 `toHaveCount(0)`/`toBeEnabled()` 当场通过，
+  几秒后点击撞在已 `disabled` 的按钮上 —— 失败只剩一句 30 s 超时，看不出是那一格坏了。
+  （本机上一轮「通过」正是探针答案比点击晚到。）
+
+### 二 交付（3 个文件，产品行为零改动）
+
+1. `e2e/certification/file-ocr.spec.ts` —— 面板可见后给探针一个记账窗口，**角标一出现立即以具名句失败**；
+   干净磁贴才继续，并在点击前再断言「无角标 + 可用」。文案用应用自己的 `Missing`，不新增选择器。
+2. `docs/evidence/2026-11-04-file-ocr-real-window.md` §六 —— 车道判决、根因 file:line、两向实跑读数与边界。
+3. 本档本节。
+
+### 三 两向实跑（同一棵主树代码，只还原被改的那两个文件）
+
+| 场景 | 读数 |
+| --- | --- |
+| 带并行会话的上传修复（`build:e2e` 30.85s） | **1 passed (18.7s)**，`[ocr-cert] tile=ready`，`branch=text`，出处句 `in 108 ms`，正文含 `HEMOGLOBIN`/`12.4` |
+| 把 `src/main/ipc.ts` + `src/main/artifacts/ipc.ts` 还原到 `bed955ef`（30.64s） | **1 failed**，`[ocr-cert] tile=missing`，失败句点名「上传被探针判成不可用」 |
+
+⇒ 缺陷**在本机也复现**，不是车道独有；具名句也确实会在磁贴变灰时先一步报出来。
+
+### 四 边界（不许读成更强）
+
+- **产品缺陷仍未修**（修在并行会话手里）。因此这次推送后车道预期仍红，但红的理由会是上面那条具名句，
+  `[ocr-cert] branch=` 要等修复落地后才会第一次真的到达引擎。
+- 两条 flaky（`connector-custom-sign-out` 的 `Electron app never opened a window`、`pdf-annotation-overlay-pane`
+  的 `pane changed width 273≠423`）只按「重试转绿」记档，未做多遍 isolation 定性。
+- 本轮没在隔离工作树上跑全量：`/tmp` 的 `git worktree` 与共享 `node_modules` 的 Prisma client 不同代
+  （工作区 schema 已加 `caseTitle`）⇒ 工作树里 `projects:list` 直接 `The column main.Project.caseTitle does not exist`。
+  改用「主树源码副本 + 软链 node_modules」才对齐，代价是只验了本支 spec。
+
+### 五 下一轮第一步
+
+① 等上传修复（`resolveUploadPath` 那两处）被提交并推送后，按完整 40 位 SHA 读 `Nightly` 的
+`Build macos-arm64`，grep `[ocr-cert]` 拿车道上的真实分支（`text` / `tool-missing` / `pack-missing` 都算诚实结局）；
+② 若并行会话迟迟不提交，下一轮就以「认领该修复」的方式接手（先 `git log --oneline origin/main -3` 核一遍，
+并在提交信息里点名认领），不再重复写第二套；
+③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/notebook/**`。

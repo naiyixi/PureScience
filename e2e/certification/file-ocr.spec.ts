@@ -106,11 +106,34 @@ test('reads text out of an uploaded image, or says by name why it cannot', async
 
   const ocrButton = page.getByRole('button', { name: 'Read text from lab-scan.png' })
   await expect(ocrButton).toBeVisible({ timeout: 60_000 })
+
   // An uploaded file is not a missing one: the tile must not carry the "Missing" badge, and the action must be
   // usable. These two used to be false for every upload, because the availability probe asked the artifact
   // resolver about a path that lives under the uploads root.
-  await expect(page.getByText('Missing', { exact: true })).toHaveCount(0)
-  await expect(ocrButton).toBeEnabled()
+  //
+  // The probe answers on its own timeline and the tile reads "available" until it does, so an assertion made
+  // straight after the panel opens can pass and the click then dies as an opaque 30 s locator timeout — that is
+  // how the macos-arm64 lane reported a tile that was badged a moment later. The DOM paints no "answered"
+  // state, so this reads the tile after a settle window instead, and a badged tile fails here, by name.
+  const missingBadge = page.getByText('Missing', { exact: true })
+  const readTileAfterProbe = async (): Promise<'missing' | 'disabled' | 'ready'> => {
+    for (let attempt = 0; attempt <= 10; attempt += 1) {
+      if ((await missingBadge.count()) > 0) return 'missing'
+      if (attempt === 10) return (await ocrButton.isEnabled()) ? 'ready' : 'disabled'
+      await page.waitForTimeout(200)
+    }
+    return 'disabled'
+  }
+  const tile = await readTileAfterProbe()
+  console.log(`[ocr-cert] tile=${tile} before the read`)
+  if (tile !== 'ready') {
+    throw new Error(
+      `[ocr-cert] the upload tile reads "${tile}": an uploaded file was probed as unavailable, which disables ` +
+        'every action on it. The probe has to resolve uploads through the upload repository, not the artifact root.'
+    )
+  }
+  await expect(missingBadge, 'an uploaded file must not be badged Missing').toHaveCount(0)
+  await expect(ocrButton, 'the tile must let the reader read the image').toBeEnabled()
 
   // Reverse control: the note is on the same panel and gets no OCR button, and the panel holds exactly one —
   // so the button is a property of the image, not of the panel.
