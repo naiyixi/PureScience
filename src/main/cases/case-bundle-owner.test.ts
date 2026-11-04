@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { CASE_MARKETPLACE_FORMAT, type CaseMarketplaceIndex } from '../../shared/case-marketplace'
 import type {
   CaseBundleFileEnumerator,
+  CaseInstallRunner,
+  CaseMarketplaceIndexReader,
   CaseBundleReader,
   CaseBundleWriter,
   CaseBundlePathResolver
@@ -22,6 +25,8 @@ const owner = (overrides: {
   read?: CaseBundleReader
   resolvePath?: CaseBundlePathResolver
   enumerate?: CaseBundleFileEnumerator
+  marketplace?: CaseMarketplaceIndexReader
+  install?: CaseInstallRunner
   materialise?: (
     bundleDir: string,
     targetDir: string
@@ -51,6 +56,40 @@ const owner = (overrides: {
     overrides.resolvePath ?? vi.fn(async ({ path }: { path: string }) => `/abs/${path}`)
   const enumerate: CaseBundleFileEnumerator =
     overrides.enumerate ?? vi.fn(async () => ({ ok: true as const, files: [] }))
+  const marketplace: CaseMarketplaceIndexReader =
+    overrides.marketplace ??
+    (async () => ({
+      ok: true as const,
+      index: {
+        format: CASE_MARKETPLACE_FORMAT,
+        version: 1,
+        updatedAt: 7,
+        cases: [
+          {
+            id: 'a',
+            name: 'A',
+            domain: 'general',
+            summary: 's',
+            author: 'x',
+            license: 'MIT',
+            bundleUrl: 'https://example.test/a.tar.gz',
+            bundleSha256: 'b'.repeat(64),
+            fileCount: 1,
+            totalBytes: 1,
+            publishedAt: 1
+          }
+        ]
+      } as CaseMarketplaceIndex
+    }))
+  const install: CaseInstallRunner =
+    overrides.install ??
+    (async () => ({
+      ok: true as const,
+      name: 'A',
+      fileCount: 1,
+      totalBytes: 1,
+      installedTo: '/cases/a'
+    }))
   const materialise =
     overrides.materialise ??
     (async (_bundleDir: string, targetDir: string) => ({
@@ -65,7 +104,15 @@ const owner = (overrides: {
     resolvePath,
     enumerate,
     materialise,
-    commands: createCaseBundleCommandOwner({ write, read, resolvePath, enumerate, materialise })
+    commands: createCaseBundleCommandOwner({
+      write,
+      read,
+      resolvePath,
+      enumerate,
+      materialise,
+      marketplace,
+      install
+    })
   }
 }
 
@@ -225,6 +272,87 @@ describe('export by project id', () => {
       })
     ).toEqual({ status: 'refused', reason: 'unreadable', detail: 'index unreadable' })
     expect(write).not.toHaveBeenCalled()
+  })
+})
+
+describe('the marketplace half', () => {
+  it('passes the index through with its own update stamp, and no destination for anything', async () => {
+    const { commands } = owner({})
+    const result = await commands.marketplace({})
+    expect(result).toMatchObject({ status: 'ok', updatedAt: 7 })
+    if (result.status !== 'ok') return
+    expect(result.cases.map((entry) => entry.id)).toEqual(['a'])
+  })
+
+  it('carries the reader’s refusal instead of an empty shelf', async () => {
+    const { commands } = owner({
+      marketplace: async () => ({
+        ok: false as const,
+        problem: 'bad-index' as const,
+        detail: 'unknown-format'
+      })
+    })
+    expect(await commands.marketplace({})).toEqual({
+      status: 'refused',
+      reason: 'bad-index',
+      detail: 'unknown-format'
+    })
+  })
+
+  it('re-validates a renderer-supplied entry before anything is downloaded', async () => {
+    const install = vi.fn()
+    const { commands } = owner({ install })
+    // A renderer that invents an http link, or drops the digest, does not get to reach the downloader.
+    expect(
+      await commands.install({
+        entry: {
+          id: 'evil',
+          name: 'Evil',
+          domain: 'general',
+          summary: 's',
+          author: 'x',
+          license: 'MIT',
+          bundleUrl: 'http://example.test/a.tar.gz',
+          bundleSha256: 'b'.repeat(64),
+          fileCount: 1,
+          totalBytes: 1,
+          publishedAt: 1
+        }
+      })
+    ).toMatchObject({ status: 'refused', reason: 'bad-entry' })
+    expect(install).not.toHaveBeenCalled()
+  })
+
+  it('hands a valid entry to the installer and reports where it landed', async () => {
+    const install = vi.fn(async () => ({
+      ok: true as const,
+      name: 'A',
+      fileCount: 3,
+      totalBytes: 99,
+      installedTo: '/cases/a'
+    }))
+    const { commands } = owner({ install })
+    const entry = {
+      id: 'a',
+      name: 'A',
+      domain: 'general',
+      summary: 's',
+      author: 'x',
+      license: 'MIT',
+      bundleUrl: 'https://example.test/a.tar.gz',
+      bundleSha256: 'b'.repeat(64),
+      fileCount: 3,
+      totalBytes: 99,
+      publishedAt: 1
+    }
+    expect(await commands.install({ entry })).toEqual({
+      status: 'installed',
+      name: 'A',
+      fileCount: 3,
+      totalBytes: 99,
+      installedTo: '/cases/a'
+    })
+    expect(install).toHaveBeenCalledWith(entry)
   })
 })
 

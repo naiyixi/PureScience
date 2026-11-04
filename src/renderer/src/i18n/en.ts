@@ -5179,5 +5179,27 @@ export const en: Record<ZhKey, string> = {
   'home.userCases.bundle.importUnreadable': 'That bundle could not be read.',
   'home.userCases.bundle.missingFiles': 'Missing: {names}',
   'home.userCases.bundle.mismatchedFiles': 'Changed since it was packed: {names}',
-  'home.userCases.bundle.unexpectedFiles': 'Not in the manifest: {names}'
+  'home.userCases.bundle.unexpectedFiles': 'Not in the manifest: {names}',
+  'home.userCases.market.title': 'Case market',
+  'home.userCases.market.subtitle':
+    'Cases published as bundles. Every archive is pinned by SHA-256 in the index, and verified again on download.',
+  'home.userCases.market.refresh': 'Reload',
+  'home.userCases.market.search': 'Search the shelf',
+  'home.userCases.market.loading': 'Reading the index…',
+  'home.userCases.market.empty': 'Nothing published yet, or nothing matches this search.',
+  'home.userCases.market.unreachable': 'The index could not be reached.',
+  'home.userCases.market.badResponse': 'The index answered with an error.',
+  'home.userCases.market.tooLarge': 'That index is larger than an index can be.',
+  'home.userCases.market.badIndex': 'That document is not a case index.',
+  'home.userCases.market.unavailable': 'This build has no case market channel.',
+  'home.userCases.market.install': 'Install',
+  'home.userCases.market.installing': 'Installing…',
+  'home.userCases.market.installed': 'Installed {count} files into {directory}.',
+  'home.userCases.market.files': '{count} files',
+  'home.userCases.market.digestMismatch':
+    'The archive does not match the digest the index pins, so nothing was unpacked.',
+  'home.userCases.market.incomplete':
+    'The bundle inside does not add up, so nothing was installed.',
+  'home.userCases.market.badEntry': 'That entry is not a valid case.',
+  'home.userCases.market.installFailed': 'The case could not be installed.'
 }

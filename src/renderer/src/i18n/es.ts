@@ -5267,5 +5267,26 @@ export const es: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': 'Ese paquete no se pudo leer.',
   'home.userCases.bundle.missingFiles': 'Faltan: {names}',
   'home.userCases.bundle.mismatchedFiles': 'Cambiados desde el empaquetado: {names}',
-  'home.userCases.bundle.unexpectedFiles': 'Fuera del manifiesto: {names}'
+  'home.userCases.bundle.unexpectedFiles': 'Fuera del manifiesto: {names}',
+  'home.userCases.market.title': 'Mercado de casos',
+  'home.userCases.market.subtitle':
+    'Casos publicados como paquetes. Cada archivo está fijado por SHA-256 en el índice y se verifica otra vez al descargar.',
+  'home.userCases.market.refresh': 'Recargar',
+  'home.userCases.market.search': 'Buscar en el estante',
+  'home.userCases.market.loading': 'Leyendo el índice…',
+  'home.userCases.market.empty': 'Nada publicado, o nada coincide con esta búsqueda.',
+  'home.userCases.market.unreachable': 'No se pudo alcanzar el índice.',
+  'home.userCases.market.badResponse': 'El índice respondió con un error.',
+  'home.userCases.market.tooLarge': 'Ese índice es más grande de lo que un índice puede ser.',
+  'home.userCases.market.badIndex': 'Ese documento no es un índice de casos.',
+  'home.userCases.market.unavailable': 'Esta compilación no tiene canal de mercado de casos.',
+  'home.userCases.market.install': 'Instalar',
+  'home.userCases.market.installing': 'Instalando…',
+  'home.userCases.market.installed': 'Se instalaron {count} archivos en {directory}.',
+  'home.userCases.market.files': '{count} archivos',
+  'home.userCases.market.digestMismatch':
+    'El archivo no coincide con el resumen fijado, así que no se descomprimió nada.',
+  'home.userCases.market.incomplete': 'El paquete no cuadra, así que no se instaló nada.',
+  'home.userCases.market.badEntry': 'Esa entrada no es un caso válido.',
+  'home.userCases.market.installFailed': 'Ese caso no se pudo instalar.'
 }

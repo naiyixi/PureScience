@@ -40,6 +40,7 @@ import { getEnvironmentRepairPanel } from '../settings/settings-navigation'
 
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectFormDialog } from './ProjectFormDialog'
+import { CaseMarketplace } from './CaseMarketplace'
 import { UserCases } from './UserCases'
 import { UseCaseGallery } from './UseCaseGallery'
 
@@ -714,6 +715,7 @@ const HomePage = ({
         </div>
 
         <UserCases />
+        <CaseMarketplace />
 
         {/* The evidence cards stay, but they are samples of what the product can do rather than the cases of
             this workspace — `UserCases` above is that. Kept behind a disclosure so the home page leads with the

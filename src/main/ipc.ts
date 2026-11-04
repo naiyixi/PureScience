@@ -241,6 +241,8 @@ import { createOcrCommandOwner } from './settings/ocr-ipc'
 import { createCaseBundleCommandOwner } from './cases/case-bundle-owner'
 import { exportCaseBundle } from './cases/export-bundle'
 import { importCaseBundle, materialiseCaseBundle } from './cases/import-bundle'
+import { fetchCaseMarketplaceIndex, installCaseFromMarketplace } from './cases/marketplace'
+import { CASE_MARKETPLACE_INDEX_URL } from '../shared/case-marketplace'
 import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
@@ -3995,6 +3997,10 @@ const createApplicationModules = async (
     write: exportCaseBundle,
     read: importCaseBundle,
     materialise: materialiseCaseBundle,
+    marketplace: (indexUrl) => fetchCaseMarketplaceIndex(indexUrl ?? CASE_MARKETPLACE_INDEX_URL),
+    // Installed cases live in this machine's data root, not wherever a renderer asks: the window does not choose.
+    install: (entry) =>
+      installCaseFromMarketplace(entry, { targetDir: join(resolveDataRoot(), 'cases') }),
     // What a project has is the file catalogue's answer, not the window's: page through it here rather than
     // letting the renderer assemble a list it would then have to be trusted about.
     enumerate: async (projectId) => {

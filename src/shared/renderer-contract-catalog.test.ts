@@ -73,7 +73,7 @@ describe('renderer contract catalog', () => {
     // 504 with reading text out of an image (pdf.ocr, LOCAL): one more capability-owned request contract
     // in the pdf group.
     // 506 with the case bundle pair (cases.export-bundle / cases.import-bundle, both LOCAL): two more.
-    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(506)
+    expect(RENDERER_CONTRACT_CATALOG).toHaveLength(508)
     expect(projection.invoke).toEqual(WEB_INVOKE_CHANNELS)
     expect(projection.event).toEqual(WEB_EVENT_CHANNELS)
     // 344 with the PDF annotation export channels (pdfAnnotations.exportAnnotated / exportNotes):
@@ -90,7 +90,7 @@ describe('renderer contract catalog', () => {
     // 381 with the portable-session package (D1: sessions:exportPackage / sessions:importPackage): both are
     // LOCAL invoke channels, so the map grows by two while the remote surface gains two rejections.
     // 383 with reading text out of an image (pdf.ocr, LOCAL): one more invoke-map entry.
-    expect(Object.keys(projection.invoke)).toHaveLength(385)
+    expect(Object.keys(projection.invoke)).toHaveLength(387)
     expect(Object.keys(projection.event)).toHaveLength(34)
   })
 
@@ -116,7 +116,7 @@ describe('renderer contract catalog', () => {
     // pdf reads it sits beside — LOCAL keeps it off the paired remote surface only.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb !== 'unavailable')
-    ).toHaveLength(415)
+    ).toHaveLength(417)
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.localWeb === 'browser-native')
     ).toEqual(['getRuntimeVersions', 'saveBlobFile', 'saveManagedFile', 'window.close'])
@@ -160,7 +160,7 @@ describe('renderer contract catalog', () => {
     // 138 with the case bundle pair (cases.export-bundle / cases.import-bundle, LOCAL), same reason.
     expect(
       paths(({ surfaceInstallation }) => surfaceInstallation.remoteWeb === 'rejecting-stub')
-    ).toHaveLength(138)
+    ).toHaveLength(140)
     expect(
       paths(({ eventDeliverability }) =>
         Object.values(eventDeliverability).includes('installed-undelivered')

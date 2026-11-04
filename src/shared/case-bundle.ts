@@ -9,6 +9,8 @@
 
 import type { ManagedPreviewSource } from './preview-resources'
 
+import type { CaseMarketplaceEntry } from './case-marketplace'
+
 export const CASE_BUNDLE_FORMAT = 'purescience.case-bundle'
 export const CASE_BUNDLE_VERSION = 1
 // A case that hands over hundreds of outputs is not something a person re-runs; the limit keeps a malformed or
@@ -294,3 +296,46 @@ export const caseBundleIsComplete = (reconciliation: CaseBundleReconciliation): 
   reconciliation.missing.length === 0 &&
   reconciliation.checksumMismatch.length === 0 &&
   reconciliation.unexpected.length === 0
+
+/**
+ * What the window may ask of the case marketplace. Note what is absent: no destination directory. Where an installed
+ * case lands is this machine's decision, not the renderer's.
+ */
+export type CaseMarketplaceRequest = { indexUrl?: string }
+
+export type CaseMarketplaceOutcome =
+  | { status: 'ok'; cases: ReadonlyArray<CaseMarketplaceEntry>; updatedAt: number }
+  | {
+      status: 'refused'
+      reason: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'
+      detail?: string
+    }
+
+export type CaseInstallRequest = { entry: CaseMarketplaceEntry }
+
+export type CaseInstallOutcome =
+  | {
+      status: 'installed'
+      name: string
+      fileCount: number
+      totalBytes: number
+      installedTo: string
+    }
+  | {
+      status: 'refused'
+      reason:
+        | 'bad-entry'
+        | 'unreachable'
+        | 'bad-response'
+        | 'too-large'
+        | 'checksum-mismatch'
+        | 'unsafe-entry'
+        | 'unpack-failed'
+        | 'incomplete'
+        | 'invalid-bundle'
+        | 'destination-unusable'
+        // Every refusal the bundle reader can produce travels through to the window unchanged.
+        | CaseBundleImportProblem
+      detail?: string
+      problematic?: { missing: string[]; checksumMismatch: string[]; unexpected: string[] }
+    }

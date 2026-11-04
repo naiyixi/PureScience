@@ -510,7 +510,10 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     // A case bundle is a folder with a manifest: exporting reads files this window could already preview, and
     // importing verifies every byte before anything is handed on. Both are local-only — the request names paths
     // on this machine, and a browser has no business reading them.
-    ['exportBundle', 'cases:export-bundle', LOCAL], ['importBundle', 'cases:import-bundle', LOCAL],
+    ['exportBundle', 'cases:export-bundle', LOCAL],
+    ['fetchMarketplace', 'cases:marketplace', LOCAL],
+    ['importBundle', 'cases:import-bundle', LOCAL],
+    ['installFromMarketplace', 'cases:install', LOCAL],
   ]),
   group('update', 'update', [
     ['apply', 'update:apply', LOCAL], ['cancel', 'update:cancel', LOCAL], ['check', 'update:check'], ['download', 'update:download', LOCAL],

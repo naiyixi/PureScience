@@ -5332,5 +5332,27 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': 'Dieses Bundle ließ sich nicht lesen.',
   'home.userCases.bundle.missingFiles': 'Fehlt: {names}',
   'home.userCases.bundle.mismatchedFiles': 'Seit dem Packen geändert: {names}',
-  'home.userCases.bundle.unexpectedFiles': 'Nicht im Manifest: {names}'
+  'home.userCases.bundle.unexpectedFiles': 'Nicht im Manifest: {names}',
+  'home.userCases.market.title': 'Fall-Marktplatz',
+  'home.userCases.market.subtitle':
+    'Fälle, veröffentlicht als Bundles. Jedes Archiv ist im Index per SHA-256 festgelegt und wird nach dem Download erneut geprüft.',
+  'home.userCases.market.refresh': 'Neu laden',
+  'home.userCases.market.search': 'Regal durchsuchen',
+  'home.userCases.market.loading': 'Index wird gelesen…',
+  'home.userCases.market.empty': 'Noch nichts veröffentlicht oder nichts passt zu dieser Suche.',
+  'home.userCases.market.unreachable': 'Der Index war nicht erreichbar.',
+  'home.userCases.market.badResponse': 'Der Index antwortete mit einem Fehler.',
+  'home.userCases.market.tooLarge': 'Dieser Index ist größer, als ein Index sein darf.',
+  'home.userCases.market.badIndex': 'Dieses Dokument ist kein Fall-Index.',
+  'home.userCases.market.unavailable': 'Dieser Build hat keinen Fall-Marktplatz-Kanal.',
+  'home.userCases.market.install': 'Installieren',
+  'home.userCases.market.installing': 'Wird installiert…',
+  'home.userCases.market.installed': '{count} Dateien nach {directory} installiert.',
+  'home.userCases.market.files': '{count} Dateien',
+  'home.userCases.market.digestMismatch':
+    'Das Archiv passt nicht zum festgelegten Digest, daher wurde nichts entpackt.',
+  'home.userCases.market.incomplete':
+    'Das Bundle in sich stimmt nicht, daher wurde nichts installiert.',
+  'home.userCases.market.badEntry': 'Dieser Eintrag ist kein gültiger Fall.',
+  'home.userCases.market.installFailed': 'Dieser Fall ließ sich nicht installieren.'
 }

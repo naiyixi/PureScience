@@ -4813,7 +4813,27 @@ export const zh = {
   'home.userCases.bundle.importUnreadable': '这个包读不出来。',
   'home.userCases.bundle.missingFiles': '缺失：{names}',
   'home.userCases.bundle.mismatchedFiles': '打包后被改过：{names}',
-  'home.userCases.bundle.unexpectedFiles': '清单之外：{names}'
+  'home.userCases.bundle.unexpectedFiles': '清单之外：{names}',
+  'home.userCases.market.title': '案例市场',
+  'home.userCases.market.subtitle':
+    '以案例包形式发布的案例。每个归档都在索引里用 SHA-256 钉住，下载后再核对一次。',
+  'home.userCases.market.refresh': '刷新',
+  'home.userCases.market.search': '搜索货架',
+  'home.userCases.market.loading': '正在读取索引…',
+  'home.userCases.market.empty': '还没有人发布，或这次搜索没有结果。',
+  'home.userCases.market.unreachable': '连不上索引。',
+  'home.userCases.market.badResponse': '索引返回了错误。',
+  'home.userCases.market.tooLarge': '这个索引大得不像一个索引。',
+  'home.userCases.market.badIndex': '这份文档不是案例索引。',
+  'home.userCases.market.unavailable': '这个构建没有案例市场通道。',
+  'home.userCases.market.install': '安装',
+  'home.userCases.market.installing': '正在安装…',
+  'home.userCases.market.installed': '已把 {count} 个文件安装到 {directory}。',
+  'home.userCases.market.files': '{count} 个文件',
+  'home.userCases.market.digestMismatch': '归档与索引钉住的摘要不一致，因此没有解包。',
+  'home.userCases.market.incomplete': '包内文件对不上账，因此没有安装。',
+  'home.userCases.market.badEntry': '这条不是合法的案例条目。',
+  'home.userCases.market.installFailed': '这个案例安装不了。'
 }
 
 export type ZhKey = keyof typeof zh

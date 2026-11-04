@@ -5301,5 +5301,26 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': 'Ce lot n’a pas pu être lu.',
   'home.userCases.bundle.missingFiles': 'Manquants : {names}',
   'home.userCases.bundle.mismatchedFiles': 'Modifiés depuis l’emballage : {names}',
-  'home.userCases.bundle.unexpectedFiles': 'Absents du manifeste : {names}'
+  'home.userCases.bundle.unexpectedFiles': 'Absents du manifeste : {names}',
+  'home.userCases.market.title': 'Marché des cas',
+  'home.userCases.market.subtitle':
+    'Des cas publiés sous forme de lots. Chaque archive est épinglée par SHA-256 dans l’index et revérifiée au téléchargement.',
+  'home.userCases.market.refresh': 'Recharger',
+  'home.userCases.market.search': 'Rechercher dans l’étagère',
+  'home.userCases.market.loading': 'Lecture de l’index…',
+  'home.userCases.market.empty': 'Rien de publié, ou rien ne correspond à cette recherche.',
+  'home.userCases.market.unreachable': 'L’index est injoignable.',
+  'home.userCases.market.badResponse': 'L’index a répondu par une erreur.',
+  'home.userCases.market.tooLarge': 'Cet index est plus gros qu’un index ne peut l’être.',
+  'home.userCases.market.badIndex': 'Ce document n’est pas un index de cas.',
+  'home.userCases.market.unavailable': 'Cette version n’a pas de canal marché des cas.',
+  'home.userCases.market.install': 'Installer',
+  'home.userCases.market.installing': 'Installation…',
+  'home.userCases.market.installed': '{count} fichiers installés dans {directory}.',
+  'home.userCases.market.files': '{count} fichiers',
+  'home.userCases.market.digestMismatch':
+    'L’archive ne correspond pas au condensat épinglé, donc rien n’a été décompressé.',
+  'home.userCases.market.incomplete': 'Le lot ne concorde pas, donc rien n’a été installé.',
+  'home.userCases.market.badEntry': 'Cette entrée n’est pas un cas valide.',
+  'home.userCases.market.installFailed': 'Ce cas n’a pas pu être installé.'
 }

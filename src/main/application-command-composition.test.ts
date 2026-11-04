@@ -197,7 +197,7 @@ describe('application command composition', () => {
     // +2 for the portable-session package (D1): sessions:export-package / sessions:import-package are
     // LOCAL, so the local Web view (where the headless CLI lands) carries them and the fail-closed set
     // takes them on the remote surface.
-    expect(composition.localWeb.commandNames()).toHaveLength(377)
+    expect(composition.localWeb.commandNames()).toHaveLength(379)
   })
 
   it('gives the outside MCP client exactly the surface it declares, and nothing wider', async () => {
@@ -251,7 +251,7 @@ describe('application command composition', () => {
     // One more for the citation walk (references:discover-citations, LOCAL): the fail-closed set takes it.
     // +2 for the same pair: LOCAL means refused on the paired remote surface, and these are the two that
     // must never be reachable from a remote browser — an import creates a session.
-    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(138)
+    expect(composition.remoteWeb.rejectedCommandNames()).toHaveLength(140)
     await expect(
       composition.remoteWeb.invoke('compute:download', invocation('remote'))
     ).rejects.toThrow('Application command is rejected before dispatch: compute:download')

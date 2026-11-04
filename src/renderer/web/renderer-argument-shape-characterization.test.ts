@@ -227,7 +227,7 @@ describe('renderer argument-shape characterization', () => {
     // paired remote surface.
     // 415 with the case bundle pair (LOCAL): callable on the local Web profile, refused before dispatch on the
     // paired remote one.
-    expect(actualPaths).toHaveLength(415)
+    expect(actualPaths).toHaveLength(417)
     expect(actualPaths).toEqual(expectedPaths)
   })
 

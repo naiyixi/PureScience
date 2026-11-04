@@ -959,7 +959,9 @@ export interface PureScienceAPI {
   // the folder. Both answer with a refusal vocabulary the window renders verbatim, and both are local-only.
   caseBundles: {
     exportBundle(request: CaseBundleExportRequest): Promise<CaseBundleExportOutcome>
+    fetchMarketplace(request: CaseMarketplaceRequest): Promise<CaseMarketplaceOutcome>
     importBundle(request: CaseBundleImportRequest): Promise<CaseBundleImportOutcome>
+    installFromMarketplace(request: CaseInstallRequest): Promise<CaseInstallOutcome>
   }
   cli: {
     getStatus(): Promise<CliLauncherStatus>

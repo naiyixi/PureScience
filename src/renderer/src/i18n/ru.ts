@@ -5173,5 +5173,26 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': 'Этот пакет не удалось прочитать.',
   'home.userCases.bundle.missingFiles': 'Отсутствуют: {names}',
   'home.userCases.bundle.mismatchedFiles': 'Изменены после упаковки: {names}',
-  'home.userCases.bundle.unexpectedFiles': 'Нет в манифесте: {names}'
+  'home.userCases.bundle.unexpectedFiles': 'Нет в манифесте: {names}',
+  'home.userCases.market.title': 'Рынок кейсов',
+  'home.userCases.market.subtitle':
+    'Кейсы, опубликованные как пакеты. Каждый архив закреплён в индексе по SHA-256 и перепроверяется после загрузки.',
+  'home.userCases.market.refresh': 'Обновить',
+  'home.userCases.market.search': 'Поиск по полке',
+  'home.userCases.market.loading': 'Чтение индекса…',
+  'home.userCases.market.empty': 'Пока ничего не опубликовано или ничего не совпало.',
+  'home.userCases.market.unreachable': 'Индекс недоступен.',
+  'home.userCases.market.badResponse': 'Индекс ответил ошибкой.',
+  'home.userCases.market.tooLarge': 'Этот индекс больше, чем может быть индекс.',
+  'home.userCases.market.badIndex': 'Этот документ не является индексом кейсов.',
+  'home.userCases.market.unavailable': 'В этой сборке нет канала рынка кейсов.',
+  'home.userCases.market.install': 'Установить',
+  'home.userCases.market.installing': 'Установка…',
+  'home.userCases.market.installed': 'Установлено {count} файлов в {directory}.',
+  'home.userCases.market.files': '{count} файлов',
+  'home.userCases.market.digestMismatch':
+    'Архив не совпадает с закреплённым дайджестом, поэтому ничего не распаковано.',
+  'home.userCases.market.incomplete': 'Пакет не сходится, поэтому ничего не установлено.',
+  'home.userCases.market.badEntry': 'Эта запись не является корректным кейсом.',
+  'home.userCases.market.installFailed': 'Этот кейс не удалось установить.'
 }

@@ -9,6 +9,17 @@ import type {
   CaseBundleManifest
 } from '../../shared/case-bundle'
 import type { ManagedPreviewSource } from '../../shared/preview-resources'
+import {
+  validateCaseMarketplaceIndex,
+  type CaseMarketplaceEntry,
+  type CaseMarketplaceIndex
+} from '../../shared/case-marketplace'
+import type {
+  CaseInstallOutcome,
+  CaseInstallRequest,
+  CaseMarketplaceOutcome,
+  CaseMarketplaceRequest
+} from '../../shared/case-bundle'
 
 // The command side of case bundles: the window names files the way the file list names them (`source` + `path`),
 // never as absolute paths, and this module is where those names become paths the export may read.
@@ -61,9 +72,40 @@ export type CaseBundleFileEnumerator = (projectId: string) => Promise<
   | { ok: false; detail?: string }
 >
 
+export type CaseMarketplaceIndexReader = (url: string | undefined) => Promise<
+  | { ok: true; index: CaseMarketplaceIndex }
+  | {
+      ok: false
+      problem: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'
+      detail?: string
+    }
+>
+
+export type CaseInstallRunner = (entry: CaseMarketplaceEntry) => Promise<
+  | { ok: true; name: string; fileCount: number; totalBytes: number; installedTo: string }
+  | {
+      ok: false
+      problem:
+        | 'unreachable'
+        | 'bad-response'
+        | 'too-large'
+        | 'checksum-mismatch'
+        | 'unsafe-entry'
+        | 'unpack-failed'
+        | 'incomplete'
+        | 'invalid-bundle'
+        | 'destination-unusable'
+        | CaseBundleImportProblem
+      detail?: string
+      problematic?: { missing: string[]; checksumMismatch: string[]; unexpected: string[] }
+    }
+>
+
 export type CaseBundleCommandOwner = {
   export: (request: CaseBundleExportRequest) => Promise<CaseBundleExportOutcome>
   import: (request: CaseBundleImportRequest) => Promise<CaseBundleImportOutcome>
+  marketplace: (request: CaseMarketplaceRequest) => Promise<CaseMarketplaceOutcome>
+  install: (request: CaseInstallRequest) => Promise<CaseInstallOutcome>
 }
 
 export const createCaseBundleCommandOwner = (options: {
@@ -71,6 +113,8 @@ export const createCaseBundleCommandOwner = (options: {
   read: CaseBundleReader
   resolvePath: CaseBundlePathResolver
   enumerate: CaseBundleFileEnumerator
+  marketplace: CaseMarketplaceIndexReader
+  install: CaseInstallRunner
   materialise: (
     bundleDir: string,
     targetDir: string
@@ -182,6 +226,59 @@ export const createCaseBundleCommandOwner = (options: {
       totalBytes: read.bundle.totalBytes,
       manifest,
       ...(materialisedTo === undefined ? {} : { materialisedTo })
+    }
+  },
+
+  // The marketplace half. Note what does not happen here: the window does not get to say where an installed case
+  // lands, and it does not get to hand over an entry that has not been through the same validator the index was.
+  marketplace: async (request) => {
+    const read = await options.marketplace(request.indexUrl)
+    if (!read.ok) {
+      return {
+        status: 'refused',
+        reason: read.problem,
+        ...(read.detail === undefined ? {} : { detail: read.detail })
+      }
+    }
+    return {
+      status: 'ok',
+      cases: read.index.cases,
+      updatedAt: read.index.updatedAt
+    }
+  },
+
+  install: async (request) => {
+    // Re-validate the single entry: it arrived as data from a renderer, and the checks that matter (https only, a
+    // pinned digest) are the same ones the index had to pass.
+    const validated = validateCaseMarketplaceIndex({
+      format: 'purescience.case-marketplace',
+      version: 1,
+      updatedAt: 0,
+      cases: [request.entry]
+    })
+    if (!validated.ok) {
+      return {
+        status: 'refused',
+        reason: 'bad-entry',
+        detail: `${validated.problem}${validated.detail ? `: ${validated.detail}` : ''}`
+      }
+    }
+    const entry = validated.index.cases[0]
+    const installed = await options.install(entry)
+    if (!installed.ok) {
+      return {
+        status: 'refused',
+        reason: installed.problem,
+        ...(installed.detail === undefined ? {} : { detail: installed.detail }),
+        ...(installed.problematic === undefined ? {} : { problematic: installed.problematic })
+      }
+    }
+    return {
+      status: 'installed',
+      name: installed.name,
+      fileCount: installed.fileCount,
+      totalBytes: installed.totalBytes,
+      installedTo: installed.installedTo
     }
   }
 })

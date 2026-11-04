@@ -5152,5 +5152,27 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': 'そのバンドルは読めませんでした。',
   'home.userCases.bundle.missingFiles': '欠落：{names}',
   'home.userCases.bundle.mismatchedFiles': 'パック後に変更：{names}',
-  'home.userCases.bundle.unexpectedFiles': 'マニフェストにない：{names}'
+  'home.userCases.bundle.unexpectedFiles': 'マニフェストにない：{names}',
+  'home.userCases.market.title': 'ケースマーケット',
+  'home.userCases.market.subtitle':
+    'ケースバンドルとして公開されたケース。各アーカイブは索引で SHA-256 に固定され、ダウンロード後に再検証されます。',
+  'home.userCases.market.refresh': '再読み込み',
+  'home.userCases.market.search': '棚を検索',
+  'home.userCases.market.loading': '索引を読んでいます…',
+  'home.userCases.market.empty': 'まだ公開されたものがないか、この検索に一致しません。',
+  'home.userCases.market.unreachable': '索引に到達できませんでした。',
+  'home.userCases.market.badResponse': '索引がエラーを返しました。',
+  'home.userCases.market.tooLarge': 'この索引は索引としては大きすぎます。',
+  'home.userCases.market.badIndex': 'この文書はケース索引ではありません。',
+  'home.userCases.market.unavailable': 'このビルドにはケースマーケットの経路がありません。',
+  'home.userCases.market.install': 'インストール',
+  'home.userCases.market.installing': 'インストール中…',
+  'home.userCases.market.installed': '{count} 個のファイルを {directory} にインストールしました。',
+  'home.userCases.market.files': '{count} 個のファイル',
+  'home.userCases.market.digestMismatch':
+    'アーカイブが索引のダイジェストと一致しないため、展開していません。',
+  'home.userCases.market.incomplete':
+    'バンドル内のファイルが一致しないため、インストールしていません。',
+  'home.userCases.market.badEntry': 'この項目は有効なケースではありません。',
+  'home.userCases.market.installFailed': 'このケースはインストールできませんでした。'
 }

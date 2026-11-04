@@ -4758,5 +4758,25 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': '這個包讀不出來。',
   'home.userCases.bundle.missingFiles': '缺失：{names}',
   'home.userCases.bundle.mismatchedFiles': '打包後被改過：{names}',
-  'home.userCases.bundle.unexpectedFiles': '清單之外：{names}'
+  'home.userCases.bundle.unexpectedFiles': '清單之外：{names}',
+  'home.userCases.market.title': '案例市場',
+  'home.userCases.market.subtitle':
+    '以案例包形式發布的案例。每個歸檔都在索引裡用 SHA-256 釘住，下載後再核對一次。',
+  'home.userCases.market.refresh': '重新整理',
+  'home.userCases.market.search': '搜尋貨架',
+  'home.userCases.market.loading': '正在讀取索引…',
+  'home.userCases.market.empty': '還沒有人發布，或這次搜尋沒有結果。',
+  'home.userCases.market.unreachable': '連不上索引。',
+  'home.userCases.market.badResponse': '索引回傳了錯誤。',
+  'home.userCases.market.tooLarge': '這個索引大得不像一個索引。',
+  'home.userCases.market.badIndex': '這份文件不是案例索引。',
+  'home.userCases.market.unavailable': '這個建置沒有案例市場通道。',
+  'home.userCases.market.install': '安裝',
+  'home.userCases.market.installing': '正在安裝…',
+  'home.userCases.market.installed': '已把 {count} 個檔案安裝到 {directory}。',
+  'home.userCases.market.files': '{count} 個檔案',
+  'home.userCases.market.digestMismatch': '歸檔與索引釘住的摘要不一致，因此沒有解包。',
+  'home.userCases.market.incomplete': '包內檔案對不上帳，因此沒有安裝。',
+  'home.userCases.market.badEntry': '這條不是合法的案例條目。',
+  'home.userCases.market.installFailed': '這個案例安裝不了。'
 }

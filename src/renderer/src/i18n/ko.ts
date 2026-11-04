@@ -5063,5 +5063,26 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.userCases.bundle.importUnreadable': '그 번들을 읽을 수 없습니다.',
   'home.userCases.bundle.missingFiles': '누락: {names}',
   'home.userCases.bundle.mismatchedFiles': '묶은 뒤 변경됨: {names}',
-  'home.userCases.bundle.unexpectedFiles': '매니페스트에 없음: {names}'
+  'home.userCases.bundle.unexpectedFiles': '매니페스트에 없음: {names}',
+  'home.userCases.market.title': '사례 마켓',
+  'home.userCases.market.subtitle':
+    '사례 번들로 공개된 사례. 각 압축 파일은 색인에서 SHA-256으로 고정되고 내려받은 뒤 다시 검증됩니다.',
+  'home.userCases.market.refresh': '새로 고침',
+  'home.userCases.market.search': '선반 검색',
+  'home.userCases.market.loading': '색인을 읽는 중…',
+  'home.userCases.market.empty': '아직 공개된 사례가 없거나 이 검색과 맞지 않습니다.',
+  'home.userCases.market.unreachable': '색인에 연결할 수 없습니다.',
+  'home.userCases.market.badResponse': '색인이 오류를 반환했습니다.',
+  'home.userCases.market.tooLarge': '이 색인은 색인으로 보기에는 너무 큽니다.',
+  'home.userCases.market.badIndex': '이 문서는 사례 색인이 아닙니다.',
+  'home.userCases.market.unavailable': '이 빌드에는 사례 마켓 경로가 없습니다.',
+  'home.userCases.market.install': '설치',
+  'home.userCases.market.installing': '설치 중…',
+  'home.userCases.market.installed': '{count}개 파일을 {directory}에 설치했습니다.',
+  'home.userCases.market.files': '{count}개 파일',
+  'home.userCases.market.digestMismatch':
+    '압축 파일이 색인이 고정한 다이제스트와 달라 아무것도 풀지 않았습니다.',
+  'home.userCases.market.incomplete': '번들 안의 파일이 맞지 않아 설치하지 않았습니다.',
+  'home.userCases.market.badEntry': '이 항목은 올바른 사례가 아닙니다.',
+  'home.userCases.market.installFailed': '이 사례를 설치할 수 없습니다.'
 }

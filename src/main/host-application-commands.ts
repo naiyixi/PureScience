@@ -12,6 +12,10 @@ import type {
   CaseBundleExportOutcome,
   CaseBundleExportRequest,
   CaseBundleImportOutcome,
+  CaseInstallOutcome,
+  CaseInstallRequest,
+  CaseMarketplaceOutcome,
+  CaseMarketplaceRequest,
   CaseBundleImportRequest
 } from '../shared/case-bundle'
 import type { CaseBundleCommandOwner } from './cases/case-bundle-owner'
@@ -552,11 +556,23 @@ const caseBundleCommands = Object.freeze({
     readonly [request: CaseBundleExportRequest],
     CaseBundleExportOutcome
   >('cases:export-bundle'),
+  // The marketplace reads a document over this machine's network and installs onto this machine's disk: both are
+  // local-only, and the request carries no destination — where cases land is not the renderer's decision.
+  fetchMarketplace: defineApplicationCommand<
+    'cases:marketplace',
+    readonly [request: CaseMarketplaceRequest],
+    CaseMarketplaceOutcome
+  >('cases:marketplace'),
   importBundle: defineApplicationCommand<
     'cases:import-bundle',
     readonly [request: CaseBundleImportRequest],
     CaseBundleImportOutcome
-  >('cases:import-bundle')
+  >('cases:import-bundle'),
+  installFromMarketplace: defineApplicationCommand<
+    'cases:install',
+    readonly [request: CaseInstallRequest],
+    CaseInstallOutcome
+  >('cases:install')
 })
 
 const hostApplicationCommands = Object.freeze({
@@ -1031,6 +1047,14 @@ const registerHostApplicationCommands = (
       'cases:import-bundle': ({ args, callerContext }) =>
         localCommand(callerContext, 'cases:import-bundle', () =>
           dependencies.caseBundles.import(args[0])
+        ),
+      'cases:marketplace': ({ args, callerContext }) =>
+        localCommand(callerContext, 'cases:marketplace', () =>
+          dependencies.caseBundles.marketplace(args[0])
+        ),
+      'cases:install': ({ args, callerContext }) =>
+        localCommand(callerContext, 'cases:install', () =>
+          dependencies.caseBundles.install(args[0])
         )
     })
     return scope.complete()

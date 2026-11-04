@@ -457,7 +457,12 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
   },
   caseBundles: {
     export: vi.fn(async () => ({ status: 'refused' as const, reason: 'no-files' as const })),
-    import: vi.fn(async () => ({ status: 'refused' as const, reason: 'manifest-missing' as const }))
+    import: vi.fn(async () => ({
+      status: 'refused' as const,
+      reason: 'manifest-missing' as const
+    })),
+    marketplace: vi.fn(async () => ({ status: 'refused' as const, reason: 'bad-index' as const })),
+    install: vi.fn(async () => ({ status: 'refused' as const, reason: 'bad-entry' as const }))
   },
   update: {
     getAppInfo: vi.fn(() => ({ name: 'PureScience', version: '1.0.0', copyright: 'Zerolink' })),
@@ -480,6 +485,20 @@ const invocation = <Args extends readonly unknown[]>(
     isCurrent: () => true
   })
   return Object.freeze({ args, callerContext, callerLease })
+}
+
+const marketEntry = {
+  id: 'a',
+  name: 'A',
+  domain: 'general',
+  summary: 's',
+  author: 'x',
+  license: 'MIT',
+  bundleUrl: 'https://example.test/a.tar.gz',
+  bundleSha256: 'b'.repeat(64),
+  fileCount: 1,
+  totalBytes: 1,
+  publishedAt: 1
 }
 
 const commandByName = (name: string): ApplicationCommand<string, readonly unknown[], unknown> => {
@@ -512,7 +531,7 @@ describe('Host application commands', () => {
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
     // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
     // 88 with OCR (pdf:ocr, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(90)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(92)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -530,7 +549,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(90)
+    expect(router.dispatcher.commandNames()).toHaveLength(92)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -944,7 +963,9 @@ describe('Host application commands', () => {
       caseName: 'GPCR 激活途径',
       domain: 'structure' as const,
       destinationDir: '/out',
-      files: [{ name: 'report.md', source: 'artifact' as const, path: 'v1/report.md', projectId: 'p1' }]
+      files: [
+        { name: 'report.md', source: 'artifact' as const, path: 'v1/report.md', projectId: 'p1' }
+      ]
     }
     await router.dispatcher.invoke(
       hostApplicationCommands.caseBundles.exportBundle,
@@ -956,6 +977,17 @@ describe('Host application commands', () => {
       invocation([{ bundleDir: '/in/case' }])
     )
     expect(dependencies.caseBundles.import).toHaveBeenCalledWith({ bundleDir: '/in/case' })
+    // The marketplace pair: one reads a document over this machine's network, one installs onto this disk.
+    await router.dispatcher.invoke(
+      hostApplicationCommands.caseBundles.fetchMarketplace,
+      invocation([{}])
+    )
+    expect(dependencies.caseBundles.marketplace).toHaveBeenCalledWith({})
+    await router.dispatcher.invoke(
+      hostApplicationCommands.caseBundles.installFromMarketplace,
+      invocation([{ entry: marketEntry }])
+    )
+    expect(dependencies.caseBundles.install).toHaveBeenCalledWith({ entry: marketEntry })
 
     // The goals panel reads the whole inventory with no arguments, like the routine panel beside it.
     await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))
@@ -984,6 +1016,8 @@ describe('Host application commands', () => {
         { projectId: 'p1', caseName: 'c', domain: 'general', destinationDir: '/out' }
       ],
       'cases:import-bundle': [{ bundleDir: '/in/case' }],
+      'cases:marketplace': [{}],
+      'cases:install': [{ entry: marketEntry }],
       'local-fs:list-dir': ['/data'],
       'local-fs:open-path': ['/data/result.txt'],
       'local-fs:read-preview': [previewRequest],
@@ -1055,7 +1089,7 @@ describe('Host application commands', () => {
     // browser never gets to point the sweep at a directory of its choosing.
     // 59 with the goals panel's read-only channel (goal:list-all, LOCAL): a reader with no session
     // context still only ever reads.
-    expect(localOnlyChannels).toHaveLength(62)
+    expect(localOnlyChannels).toHaveLength(64)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

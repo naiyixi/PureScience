@@ -98,7 +98,9 @@ import type { PdfTranslationWindowRequest } from '../shared/pdf'
 import type { OcrRecogniseRequest } from '../shared/ocr'
 import type {
   CaseBundleExportRequest,
-  CaseBundleImportRequest
+  CaseBundleImportRequest,
+  CaseInstallRequest,
+  CaseMarketplaceRequest
 } from '../shared/case-bundle'
 import type { FigureReviewRequest } from '../shared/figure'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
@@ -595,8 +597,12 @@ const api: PureScienceAPI = {
   caseBundles: {
     exportBundle: (request: CaseBundleExportRequest) =>
       electronRendererContracts.invoke('caseBundles.exportBundle', request),
+    fetchMarketplace: (request: CaseMarketplaceRequest) =>
+      electronRendererContracts.invoke('caseBundles.fetchMarketplace', request),
     importBundle: (request: CaseBundleImportRequest) =>
-      electronRendererContracts.invoke('caseBundles.importBundle', request)
+      electronRendererContracts.invoke('caseBundles.importBundle', request),
+    installFromMarketplace: (request: CaseInstallRequest) =>
+      electronRendererContracts.invoke('caseBundles.installFromMarketplace', request)
   },
   cli: {
     getStatus: () => electronRendererContracts.invoke('cli.getStatus'),
