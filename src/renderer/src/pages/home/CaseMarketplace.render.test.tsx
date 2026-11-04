@@ -41,6 +41,21 @@ const installButton = (): HTMLElement =>
   document.querySelector('[data-slot="case-market-install"]') as HTMLElement
 
 describe('the case marketplace shelf', () => {
+  // The rejection branch, not the refusal branch: a window whose main process has no such channel answers by
+  // throwing, and an unhandled throw here is what once took the whole home surface down instead of saying one
+  // section was unavailable.
+  it('says the shelf is unavailable when the channel itself is missing, instead of throwing', async () => {
+    fetchMarketplace.mockRejectedValue(
+      new Error("Error invoking remote method 'cases:marketplace': Error: No handler registered")
+    )
+    render(<CaseMarketplace />)
+
+    await waitFor(() => expect(useCaseMarketStore.getState().shelf.kind).toBe('unavailable'))
+    expect(useCaseMarketStore.getState().shelf).toMatchObject({
+      detail: expect.stringContaining('No handler registered')
+    })
+  })
+
   it('shows what a published index says: whose it is, what it holds, and its licence', async () => {
     fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
     render(<CaseMarketplace />)

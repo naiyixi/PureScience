@@ -80,17 +80,24 @@ export const PublishCase = ({
 
   const run = async (): Promise<void> => {
     setStatus({ kind: 'working' })
-    const outcome = await window.api.caseBundles.publish({
-      projectId,
-      draft: {
-        id: id.trim(),
-        name: name.trim(),
-        domain: field.trim(),
-        summary: summary.trim(),
-        author: author.trim(),
-        license: license.trim()
-      }
-    })
+    let outcome: Awaited<ReturnType<typeof window.api.caseBundles.publish>>
+    try {
+      outcome = await window.api.caseBundles.publish({
+        projectId,
+        draft: {
+          id: id.trim(),
+          name: name.trim(),
+          domain: field.trim(),
+          summary: summary.trim(),
+          author: author.trim(),
+          license: license.trim()
+        }
+      })
+    } catch (error) {
+      // The channel itself missing reads as a refusal with the message kept, not as a page error.
+      setStatus({ kind: 'refused', reason: error instanceof Error ? error.message : String(error) })
+      return
+    }
     if (outcome.status === 'published') {
       setStatus({
         kind: 'published',

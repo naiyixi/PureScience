@@ -148,6 +148,14 @@ const StatusLine = ({ status }: { status: Status }): React.JSX.Element | null =>
   )
 }
 
+// A channel that is not there answers by throwing (`No handler registered for 'cases:export-bundle'`), and an
+// unhandled throw leaves a page error instead of a line the reader can act on. Both surfaces below turn that into
+// the same refusal shape they already render — with the message kept verbatim, as this file does everywhere.
+const channelFailure = (error: unknown): Status => ({
+  kind: 'refused',
+  reason: error instanceof Error ? error.message : String(error)
+})
+
 const actionButtonClassName =
   'rounded-lg border border-border-200/70 px-3 py-1.5 text-sm text-text-000 transition-colors hover:border-text-300/60 disabled:opacity-50'
 
@@ -171,12 +179,18 @@ export const ExportCaseBundle = ({
       setStatus({ kind: 'idle' })
       return
     }
-    const outcome = await window.api.caseBundles.exportBundle({
-      projectId,
-      caseName,
-      domain,
-      destinationDir: directory
-    })
+    let outcome: Awaited<ReturnType<typeof window.api.caseBundles.exportBundle>>
+    try {
+      outcome = await window.api.caseBundles.exportBundle({
+        projectId,
+        caseName,
+        domain,
+        destinationDir: directory
+      })
+    } catch (error) {
+      setStatus(channelFailure(error))
+      return
+    }
     if (outcome.status === 'exported') {
       setStatus({
         kind: 'exported',
@@ -221,7 +235,13 @@ export const ImportCaseBundle = (): React.JSX.Element => {
       return
     }
     // First question: is this bundle whole? Only a whole bundle is offered a destination.
-    const verified = await window.api.caseBundles.importBundle({ bundleDir })
+    let verified: Awaited<ReturnType<typeof window.api.caseBundles.importBundle>>
+    try {
+      verified = await window.api.caseBundles.importBundle({ bundleDir })
+    } catch (error) {
+      setStatus(channelFailure(error))
+      return
+    }
     if (verified.status !== 'imported') {
       setStatus(describeImportRefusal(t, verified))
       return
@@ -236,10 +256,16 @@ export const ImportCaseBundle = (): React.JSX.Element => {
       })
       return
     }
-    const copied = await window.api.caseBundles.importBundle({
-      bundleDir,
-      materialiseTo: destination
-    })
+    let copied: Awaited<ReturnType<typeof window.api.caseBundles.importBundle>>
+    try {
+      copied = await window.api.caseBundles.importBundle({
+        bundleDir,
+        materialiseTo: destination
+      })
+    } catch (error) {
+      setStatus(channelFailure(error))
+      return
+    }
     if (copied.status === 'imported') {
       setStatus({
         kind: 'imported',

@@ -18,7 +18,10 @@ export type CaseShelf =
       reason: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'
       detail?: string
     }
-  | { kind: 'unavailable' }
+  // A window whose main process has no such channel (an older main under a newer window, or a surface that failed
+  // to install) reads as unavailable with the reason it gave — never as a thrown rejection, which would leave the
+  // home page's error channel carrying a TypeError the reader cannot act on.
+  | { kind: 'unavailable'; detail?: string }
 
 export type CaseInstallState =
   | { kind: 'idle' }
@@ -51,7 +54,20 @@ export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
       return
     }
     set({ shelf: { kind: 'loading' } })
-    const outcome = await window.api.caseBundles.fetchMarketplace({})
+    let outcome: Awaited<ReturnType<typeof window.api.caseBundles.fetchMarketplace>>
+    try {
+      outcome = await window.api.caseBundles.fetchMarketplace({})
+    } catch (error) {
+      // `No handler registered for 'cases:marketplace'` arrives as a rejection, not as a refusal: the channel
+      // itself is missing. That is exactly the case this branch is for, and the message is kept verbatim.
+      set({
+        shelf: {
+          kind: 'unavailable',
+          detail: error instanceof Error ? error.message : String(error)
+        }
+      })
+      return
+    }
     set({
       shelf:
         outcome.status === 'ok'
@@ -66,7 +82,20 @@ export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
 
   installCase: async (entry) => {
     set({ install: { kind: 'working', id: entry.id } })
-    const outcome = await window.api.caseBundles.installFromMarketplace({ entry })
+    let outcome: Awaited<ReturnType<typeof window.api.caseBundles.installFromMarketplace>>
+    try {
+      outcome = await window.api.caseBundles.installFromMarketplace({ entry })
+    } catch (error) {
+      set({
+        install: {
+          kind: 'refused',
+          id: entry.id,
+          reason: 'unreachable',
+          detail: error instanceof Error ? error.message : String(error)
+        }
+      })
+      return
+    }
     if (outcome.status === 'installed') {
       set({
         install: {
