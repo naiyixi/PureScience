@@ -56,6 +56,8 @@ beforeEach(() => {
         id: 'project-a',
         name: 'Alpha',
         description: '',
+        caseTitle: '',
+        caseSummary: '',
         isExample: false,
         createdAt: 1,
         updatedAt: 2
@@ -64,6 +66,8 @@ beforeEach(() => {
         id: 'project-b',
         name: 'Beta',
         description: '',
+        caseTitle: '',
+        caseSummary: '',
         isExample: false,
         createdAt: 1,
         updatedAt: 1

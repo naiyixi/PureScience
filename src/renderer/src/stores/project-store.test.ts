@@ -7,6 +7,8 @@ const createProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
   name: 'Research',
   description: '',
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   createdAt: 1,
   updatedAt: 1,

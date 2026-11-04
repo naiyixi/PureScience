@@ -6,6 +6,8 @@ const project = {
   id: 'project-1',
   name: 'Project',
   description: '',
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   createdAt: 1,
   updatedAt: 1,

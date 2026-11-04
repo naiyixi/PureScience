@@ -415,6 +415,13 @@ export const en: Record<ZhKey, string> = {
   'home.userCases.domain.general': 'General',
   'home.userCases.standing.reproducible': 'Reproducible',
   'home.userCases.standing.conversationOnly': 'Conversation only',
+  'home.userCases.name.label': 'Case name',
+  'home.userCases.name.hint':
+    'Stored on the project itself, so it survives a different machine or data root.',
+  'home.userCases.name.saved': 'Saved to the project.',
+  'home.userCases.name.failed': 'Not saved: {reason}',
+  'home.userCases.summary.label': 'One line',
+  'home.userCases.summary.hint': 'Shown on the card and here; leave empty to show readings only.',
   'home.userCases.readings': '{artifacts} artifacts · {files} files · {size}',
   'home.userCases.detail.newSession': 'Start a session from this case',
   'home.userCases.detail.files': 'Files this case hands over',

@@ -97,6 +97,8 @@ const createProject = (overrides: Partial<Project> = {}): Project => ({
   description: 'Protein folding notes',
   createdAt: 1710000000000,
   updatedAt: 1710000000000,
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   ...overrides
 })

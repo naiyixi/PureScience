@@ -955,6 +955,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.userCases.domain.general': '一般',
   'home.userCases.standing.reproducible': '再現可能',
   'home.userCases.standing.conversationOnly': '会話のみ',
+  'home.userCases.name.label': 'ケース名',
+  'home.userCases.name.hint':
+    '名前はプロジェクト自体に保存されるため、別のマシンやデータルートでも残ります。',
+  'home.userCases.name.saved': 'プロジェクトに保存しました。',
+  'home.userCases.name.failed': '保存できませんでした：{reason}',
+  'home.userCases.summary.label': 'ひとこと',
+  'home.userCases.summary.hint': 'カードとここに表示されます。空欄なら計測値のみ表示します。',
   'home.userCases.readings': '{artifacts} 成果物 · {files} ファイル · {size}',
   'home.userCases.detail.newSession': 'このケースから新しいセッションを開始',
   'home.userCases.detail.files': 'このケースが引き渡すファイル',

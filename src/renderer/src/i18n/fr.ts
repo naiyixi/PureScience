@@ -981,6 +981,14 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.userCases.domain.general': 'Général',
   'home.userCases.standing.reproducible': 'Reproductible',
   'home.userCases.standing.conversationOnly': 'Conversation seule',
+  'home.userCases.name.label': 'Nom du cas',
+  'home.userCases.name.hint':
+    'Le nom est stocké dans le projet lui-même : il survit à un autre poste ou à une autre racine de données.',
+  'home.userCases.name.saved': 'Enregistré dans le projet.',
+  'home.userCases.name.failed': 'Non enregistré : {reason}',
+  'home.userCases.summary.label': 'Une ligne',
+  'home.userCases.summary.hint':
+    "Affichée sur la carte et ici ; laissez vide pour n'afficher que les mesures.",
   'home.userCases.readings': '{artifacts} artefacts · {files} fichiers · {size}',
   'home.userCases.detail.newSession': 'Démarrer une session depuis ce cas',
   'home.userCases.detail.files': 'Fichiers remis par ce cas',

@@ -24,6 +24,8 @@ const PROJECT_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "Project" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
+    "caseTitle" TEXT NOT NULL DEFAULT '',
+    "caseSummary" TEXT NOT NULL DEFAULT '',
     "isExample" BOOLEAN NOT NULL DEFAULT false,
     "archivedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -224,6 +226,11 @@ const PROJECT_DELETION_INTENT_TABLE_DDL = `CREATE TABLE IF NOT EXISTS "ProjectDe
 // Existing installations create their Project table before Archive existed. Keep the migration
 // additive so no stored Project or its activity ordering is rewritten.
 const PROJECT_ADD_ARCHIVED_AT_DDL = `ALTER TABLE "Project" ADD COLUMN "archivedAt" DATETIME`
+
+// The case name moved out of a renderer-side table keyed by project id and into the row itself. Additive:
+// an existing Project keeps its name/description, and an empty title means "not named yet".
+const PROJECT_ADD_CASE_TITLE_DDL = `ALTER TABLE "Project" ADD COLUMN "caseTitle" TEXT NOT NULL DEFAULT ''`
+const PROJECT_ADD_CASE_SUMMARY_DDL = `ALTER TABLE "Project" ADD COLUMN "caseSummary" TEXT NOT NULL DEFAULT ''`
 
 // ManagedFile is a metadata projection only: storageKey points back into the existing managed roots,
 // while soft-delete fields keep Files queries reversible during durable session/project deletion.
@@ -1047,6 +1054,8 @@ const PROJECT_SCHEMA_STEPS: readonly ProjectSchemaStep[] = [
   ...sql(SCHEMA_STAMP_TABLE_DDL),
   ...sql(PROJECT_TABLE_DDL),
   column('Project', 'archivedAt', PROJECT_ADD_ARCHIVED_AT_DDL),
+  column('Project', 'caseTitle', PROJECT_ADD_CASE_TITLE_DDL),
+  column('Project', 'caseSummary', PROJECT_ADD_CASE_SUMMARY_DDL),
   ...sql(PERMISSION_GRANT_TABLE_DDL, ...PERMISSION_GRANT_INDEX_DDLS),
   ...sql(PREVIEW_STATE_TABLE_DDL),
   ...sql(UNREAD_TASK_SESSION_TABLE_DDL, UNREAD_TASK_SESSION_SESSION_ID_INDEX_DDL),

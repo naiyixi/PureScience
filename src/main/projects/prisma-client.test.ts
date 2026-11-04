@@ -77,6 +77,43 @@ describe('project schema fingerprint', () => {
     expect(warmStatements).toBeLessThan(coldStatements)
   })
 
+  it('adds the case name columns to a Project table written before they existed', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-project-case-title-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+
+    // The shape this build shipped before the column: no caseTitle / caseSummary, and a row already in it.
+    await client.$executeRawUnsafe(
+      `CREATE TABLE "Project" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "description" TEXT NOT NULL DEFAULT '',
+        "isExample" BOOLEAN NOT NULL DEFAULT false,
+        "archivedAt" DATETIME,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL
+      )`
+    )
+    await client.$executeRawUnsafe(
+      `INSERT INTO "Project" ("id", "name", "description", "isExample", "createdAt", "updatedAt")
+       VALUES ('old', 'Old project', 'kept', false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+    )
+
+    await ensureProjectSchema(client)
+
+    const columns = await client.$queryRawUnsafe<Array<{ name: string }>>(
+      'SELECT "name" FROM pragma_table_info(\'Project\')'
+    )
+    expect(columns.map((column) => column.name)).toEqual(
+      expect.arrayContaining(['caseTitle', 'caseSummary'])
+    )
+    const rows = await client.$queryRawUnsafe<Array<{ name: string; caseTitle: string }>>(
+      'SELECT "name", "caseTitle" FROM "Project" WHERE "id" = \'old\''
+    )
+    // The migration is additive: the row survives and reads as "not named yet", not as an error.
+    expect(rows[0]).toEqual({ name: 'Old project', caseTitle: '' })
+  })
+
   it('re-runs the sequence when the recorded fingerprint does not match', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-project-schema-drift-'))
     const client = createProjectDbClient(storageRoot)

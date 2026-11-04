@@ -43,6 +43,8 @@ const project: Project = {
   id: 'project-locale',
   name: '单细胞分析',
   description: '',
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   createdAt: 1,
   updatedAt: 1
@@ -109,9 +111,13 @@ describe('DeleteProjectDialog 文案随语言走', () => {
     const text = await renderIn('en')
 
     expect(text).toContain('Delete project?')
-    expect(text).toContain('This will permanently delete "单细胞分析". This action cannot be undone.')
+    expect(text).toContain(
+      'This will permanently delete "单细胞分析". This action cannot be undone.'
+    )
     expect(text).toContain('This deletes its 3 saved conversations too.')
-    expect(text).toContain('Generated artifacts and uploaded files stored by PureScience will also be deleted.')
+    expect(text).toContain(
+      'Generated artifacts and uploaded files stored by PureScience will also be deleted.'
+    )
     expect(text).toContain("Files in the project's working folder are not deleted.")
     expect(text).not.toContain(' be undone. and its')
   })

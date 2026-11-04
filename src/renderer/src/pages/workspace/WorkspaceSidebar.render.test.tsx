@@ -526,6 +526,8 @@ describe('WorkspaceSidebar accessible render', () => {
           name: 'Current project',
           description: 'Active project description',
           createdAt: 1,
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           updatedAt: 3
         },
@@ -534,6 +536,8 @@ describe('WorkspaceSidebar accessible render', () => {
           name: 'Genomics pipeline',
           description: 'Variant calling on cohort data',
           createdAt: 1,
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           updatedAt: 2
         },
@@ -542,6 +546,8 @@ describe('WorkspaceSidebar accessible render', () => {
           name: 'Protein folding',
           description: '',
           createdAt: 1,
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           updatedAt: 1
         }
@@ -587,6 +593,8 @@ describe('WorkspaceSidebar accessible render', () => {
           name: 'Current project',
           description: '',
           createdAt: 1,
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           updatedAt: 2
         },
@@ -595,6 +603,8 @@ describe('WorkspaceSidebar accessible render', () => {
           name: 'Genomics pipeline',
           description: 'Variant calling',
           createdAt: 1,
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           updatedAt: 1
         }
@@ -631,6 +641,8 @@ describe('WorkspaceSidebar accessible render', () => {
         name: 'Current project',
         description: '',
         createdAt: 1,
+        caseTitle: '',
+        caseSummary: '',
         isExample: false,
         updatedAt: 10
       },
@@ -639,6 +651,8 @@ describe('WorkspaceSidebar accessible render', () => {
         name: `Project ${index}`,
         description: '',
         createdAt: 1,
+        caseTitle: '',
+        caseSummary: '',
         isExample: false,
         updatedAt: 9 - index
       }))

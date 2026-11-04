@@ -16,6 +16,8 @@ const toProject = (row: PrismaProject): Project => ({
   id: row.id,
   name: row.name,
   description: row.description,
+  caseTitle: row.caseTitle,
+  caseSummary: row.caseSummary,
   isExample: row.isExample,
   ...(row.archivedAt ? { archivedAt: row.archivedAt.getTime() } : {}),
   createdAt: row.createdAt.getTime(),
@@ -64,7 +66,8 @@ class ProjectRepository {
 
   // Updates name and/or description, ignoring undefined fields so callers can patch either one.
   async update(request: UpdateProjectRequest): Promise<Project> {
-    const data: { name?: string; description?: string } = {}
+    const data: { name?: string; description?: string; caseTitle?: string; caseSummary?: string } =
+      {}
 
     if (request.name !== undefined) {
       const name = request.name.trim()
@@ -78,6 +81,16 @@ class ProjectRepository {
 
     if (request.description !== undefined) {
       data.description = request.description.trim()
+    }
+
+    // A case name is a label the reader typed, so it is trimmed and length-capped rather than rejected:
+    // an empty value is meaningful (it clears the name back to "derive one").
+    if (request.caseTitle !== undefined) {
+      data.caseTitle = request.caseTitle.trim().slice(0, 120)
+    }
+
+    if (request.caseSummary !== undefined) {
+      data.caseSummary = request.caseSummary.trim().slice(0, 400)
     }
 
     const client = await this.getClient()

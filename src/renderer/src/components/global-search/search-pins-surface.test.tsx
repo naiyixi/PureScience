@@ -133,6 +133,8 @@ beforeEach(() => {
         id: 'project-a',
         name: 'Alpha',
         description: '',
+        caseTitle: '',
+        caseSummary: '',
         isExample: false,
         createdAt: 1,
         updatedAt: 2

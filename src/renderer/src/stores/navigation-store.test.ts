@@ -32,6 +32,8 @@ const createProject = (id: string): Project => ({
   id,
   name: id,
   description: '',
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   createdAt: 1,
   updatedAt: 1

@@ -955,6 +955,14 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.userCases.domain.general': 'Общее',
   'home.userCases.standing.reproducible': 'Воспроизводимый',
   'home.userCases.standing.conversationOnly': 'Только диалог',
+  'home.userCases.name.label': 'Название кейса',
+  'home.userCases.name.hint':
+    'Имя хранится в самом проекте, поэтому переживает другую машину или другой корень данных.',
+  'home.userCases.name.saved': 'Сохранено в проекте.',
+  'home.userCases.name.failed': 'Не сохранено: {reason}',
+  'home.userCases.summary.label': 'Одна строка',
+  'home.userCases.summary.hint':
+    'Показывается на карточке и здесь; пустое поле — только измерения.',
   'home.userCases.readings': 'артефактов: {artifacts} · файлов: {files} · {size}',
   'home.userCases.detail.newSession': 'Начать сеанс из этого кейса',
   'home.userCases.detail.files': 'Файлы, которые передаёт этот кейс',

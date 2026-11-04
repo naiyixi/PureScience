@@ -104,6 +104,41 @@ describe('project repository', () => {
     })
   })
 
+  it('carries the stored case name and summary out of the row', async () => {
+    const { client } = createMockClient({
+      findMany: () =>
+        Promise.resolve([
+          createRow({ caseTitle: 'EGFR 选择性审计', caseSummary: '一句话说清这个案例' })
+        ])
+    })
+    const repository = new ProjectRepository(() => Promise.resolve(client))
+
+    const [project] = await repository.list()
+
+    expect(project?.caseTitle).toBe('EGFR 选择性审计')
+    expect(project?.caseSummary).toBe('一句话说清这个案例')
+  })
+
+  it('writes the case name and summary to the project, trimmed and capped', async () => {
+    const { client, project } = createMockClient({
+      update: () =>
+        Promise.resolve(createRow({ caseTitle: 'EGFR 选择性审计', caseSummary: 'one line' }))
+    })
+    const repository = new ProjectRepository(() => Promise.resolve(client))
+
+    const updated = await repository.update({
+      id: 'project-1',
+      caseTitle: `  ${'长'.repeat(200)}  `,
+      caseSummary: '  one line  '
+    })
+
+    const data = (project.update.mock.calls[0] as [{ data: Record<string, unknown> }])[0].data
+    // A label the reader typed is trimmed and capped, never rejected: 120 chars is the card's budget.
+    expect((data.caseTitle as string).length).toBe(120)
+    expect(data.caseSummary).toBe('one line')
+    expect(updated.caseTitle).toBe('EGFR 选择性审计')
+  })
+
   it('deletes a project by id', async () => {
     const { client, project } = createMockClient({
       delete: () => Promise.resolve(createRow())

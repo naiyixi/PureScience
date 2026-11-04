@@ -391,6 +391,8 @@ describe('startWebHttpServer', () => {
       id: 'project-1',
       name: 'Test project',
       description: '',
+      caseTitle: '',
+      caseSummary: '',
       isExample: false,
       createdAt: 1,
       updatedAt: 1

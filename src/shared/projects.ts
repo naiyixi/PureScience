@@ -7,6 +7,10 @@ export type Project = {
   id: string
   name: string
   description: string
+  // The case name and the one-line summary the home page shows. Empty means the case has not been
+  // named yet; the renderer then falls back to deriving one, and saving that field writes it here.
+  caseTitle: string
+  caseSummary: string
   isExample: boolean
   // An absent timestamp keeps the Project on active surfaces. Archive is reversible and does not
   // affect the Project's research activity ordering.
@@ -24,6 +28,8 @@ export type UpdateProjectRequest = {
   id: string
   name?: string
   description?: string
+  caseTitle?: string
+  caseSummary?: string
 }
 
 export type DeleteProjectRequest = {

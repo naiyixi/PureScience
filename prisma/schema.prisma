@@ -23,6 +23,11 @@ model Project {
   id          String   @id @default(cuid())
   name        String
   description String   @default("")
+  // The case name the reader sees on the home page. It lives in the row, not in a table keyed by
+  // project id in the renderer: a curated table only holds on the machine whose ids it was written
+  // from, and the name is a fact about the case, not about this build.
+  caseTitle   String   @default("")
+  caseSummary String   @default("")
   isExample   Boolean  @default(false)
   archivedAt  DateTime?
   createdAt   DateTime @default(now())

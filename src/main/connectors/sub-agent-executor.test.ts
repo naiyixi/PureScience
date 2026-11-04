@@ -13,6 +13,8 @@ const makeProject = (name: string, id = `project-${name}`): Project => ({
   id,
   name,
   description: '',
+  caseTitle: '',
+  caseSummary: '',
   isExample: false,
   createdAt: 1,
   updatedAt: 1

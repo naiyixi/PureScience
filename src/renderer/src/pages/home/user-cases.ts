@@ -53,7 +53,10 @@ export type UserCase = {
   projectId: string
   /** The case's own name. Never the project name unless a curator typed it there on purpose. */
   name: string
-  nameSource: 'curated' | 'derived'
+  /** `project` = the name stored on the Project row; `curated` = the legacy table; `derived` = computed here. */
+  nameSource: 'project' | 'curated' | 'derived'
+  /** The one-line summary stored on the project, when the reader wrote one. */
+  summary?: string
   domain: CaseDomain
   standing: CaseStanding
   footprint: CaseFootprint
@@ -64,9 +67,10 @@ export type UserCase = {
 }
 
 /**
- * Case titles curated on the machine this build ships from, keyed by project id. A curated title is a
- * judgement about the work ("this is the EGFR selectivity audit"), so it is not derived and not
- * translated. Projects without an entry fall through to `deriveCaseName`; nothing breaks off-machine.
+ * Case titles that used to be the only way a case got a name, keyed by project id. Kept as a fallback for
+ * projects that predate the `caseTitle` column: a title typed here is still a judgement about the work
+ * ("this is the EGFR selectivity audit"), so it is not derived and not translated. New names are written
+ * to the row instead — this table stops being load-bearing the moment a project carries its own title.
  */
 export const CURATED_CASE_TITLES: Readonly<Record<string, string>> = {
   // Named from what each project actually delivered (its own figures and reports), never from the folder
@@ -224,9 +228,14 @@ const normaliseForCompare = (text: string): string => text.replace(/\s+/g, ' ').
 export const deriveCaseName = (input: {
   projectId: string
   projectName: string
+  /** The name stored on the Project row. Wins over everything: it travels with the data. */
+  caseTitle?: string
   description?: string
   files: readonly string[]
-}): { name: string; source: 'curated' | 'derived' } => {
+}): { name: string; source: 'project' | 'curated' | 'derived' } => {
+  const stored = (input.caseTitle ?? '').trim()
+  if (stored) return { name: stored, source: 'project' }
+
   const curated = CURATED_CASE_TITLES[input.projectId]
   if (curated && curated.trim()) return { name: curated.trim(), source: 'curated' }
 

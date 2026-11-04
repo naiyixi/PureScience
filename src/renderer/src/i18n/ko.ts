@@ -943,6 +943,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.userCases.domain.general': '일반',
   'home.userCases.standing.reproducible': '재현 가능',
   'home.userCases.standing.conversationOnly': '대화만',
+  'home.userCases.name.label': '사례 이름',
+  'home.userCases.name.hint':
+    '이름은 프로젝트 자체에 저장되므로 다른 컴퓨터나 다른 데이터 루트에서도 남습니다.',
+  'home.userCases.name.saved': '프로젝트에 저장했습니다.',
+  'home.userCases.name.failed': '저장하지 못했습니다: {reason}',
+  'home.userCases.summary.label': '한 줄 소개',
+  'home.userCases.summary.hint': '카드와 여기에 표시됩니다. 비워 두면 측정값만 보입니다.',
   'home.userCases.readings': '산출물 {artifacts} · 파일 {files} · {size}',
   'home.userCases.detail.newSession': '이 사례에서 새 세션 시작',
   'home.userCases.detail.files': '이 사례가 넘겨주는 파일',

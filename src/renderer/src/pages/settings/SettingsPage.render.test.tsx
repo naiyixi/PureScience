@@ -227,6 +227,8 @@ describe('SettingsPage layout', () => {
           id: 'project-1',
           name: 'Archived project',
           description: '',
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           createdAt: 1,
           updatedAt: 1,

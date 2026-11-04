@@ -131,6 +131,8 @@ describe('WorkspacePage notebook entry hydration', () => {
           id: 'proj-1',
           name: 'Project One',
           description: '',
+          caseTitle: '',
+          caseSummary: '',
           isExample: false,
           createdAt: Date.now(),
           updatedAt: Date.now()

@@ -47,6 +47,29 @@ describe('deriveCaseName', () => {
     expect(named).toEqual({ name: 'EGFR TKI 选择性审计：三库交叉', source: 'derived' })
   })
 
+  it('prefers the name stored on the project over every code-side table', () => {
+    const named = derive({
+      projectId: 'cmt31dz5c0005wfeiv2aqqmsv',
+      projectName: '化合物结构与靶点选择性审计',
+      caseTitle: '  EGFR 选择性审计  ',
+      description: '这段描述不该盖掉读者自己起的名字',
+      files: ['report.md']
+    })
+    // A name that lives in the data wins and is reported as such: nothing here consults the shipped table.
+    expect(named).toEqual({ name: 'EGFR 选择性审计', source: 'project' })
+  })
+
+  it('treats a blank stored name as "not named yet" and derives one', () => {
+    const named = derive({
+      projectId: 'unknown',
+      projectName: 'test 5',
+      caseTitle: '   ',
+      description: 'EGFR TKI 选择性审计：三库交叉。',
+      files: ['report.md']
+    })
+    expect(named).toEqual({ name: 'EGFR TKI 选择性审计：三库交叉', source: 'derived' })
+  })
+
   it('uses a curated title when the machine has one, and says so', () => {
     const named = derive({
       projectId: 'cmt31dz5c0005wfeiv2aqqmsv',

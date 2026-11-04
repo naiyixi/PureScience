@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useLanguage } from '@/i18n'
+import { CaseNameEditor } from './CaseNameEditor'
 import { ExportCaseBundle, ImportCaseBundle } from './CaseBundleActions'
 import { PublishCase } from './PublishCase'
 import type { TranslationKey } from '@/i18n'
@@ -124,6 +125,12 @@ const CaseDetail = ({
                 </Dialog.Close>
               </div>
 
+              {item.summary ? (
+                <p className="mt-2 text-sm text-text-100" data-slot="case-plaza-detail-summary">
+                  {item.summary}
+                </p>
+              ) : null}
+
               <p className="mt-4 text-sm text-text-100">
                 {t('home.userCases.readings', {
                   artifacts: String(item.footprint.artifactCount),
@@ -162,6 +169,13 @@ const CaseDetail = ({
                     : t('home.userCases.detail.noFiles')}
                 </p>
               )}
+
+              <CaseNameEditor
+                key={item.projectId}
+                projectId={item.projectId}
+                title={item.nameSource === 'project' ? item.name : ''}
+                summary={item.summary}
+              />
 
               <div className={`${dialogFooterClassName} sticky bottom-0 bg-card`}>
                 <button
@@ -274,9 +288,12 @@ export const UserCases = (): React.JSX.Element => {
   // read failed is still eligible, at the end — a failed read must not delete a case from the page.
   const scanned = useMemo(() => {
     const ready = candidates.filter((entry) => counted[entry.project.id])
-    const pinned = (projectId: string): number => (CURATED_CASE_TITLES[projectId] ? 0 : 1)
+    // A named case sorts ahead of an unnamed one. The name may now live on the project row, so this reads
+    // both: rows written by this build, and ids still served by the shipped table on an older data root.
+    const pinned = (entry: { project: { id: string; caseTitle?: string } }): number =>
+      (entry.project.caseTitle ?? '').trim() || CURATED_CASE_TITLES[entry.project.id] ? 0 : 1
     const ranked = [...ready].sort((left, right) => {
-      const byPin = pinned(left.project.id) - pinned(right.project.id)
+      const byPin = pinned(left) - pinned(right)
       if (byPin !== 0) return byPin
       const leftCount = overviews[left.project.id]
       const rightCount = overviews[right.project.id]
@@ -337,6 +354,7 @@ export const UserCases = (): React.JSX.Element => {
       const named = deriveCaseName({
         projectId: entry.project.id,
         projectName: entry.project.name,
+        caseTitle: entry.project.caseTitle,
         description: entry.project.description,
         files
       })
@@ -344,6 +362,8 @@ export const UserCases = (): React.JSX.Element => {
         projectId: entry.project.id,
         name: named.name || t('home.userCases.untitled'),
         nameSource: named.source,
+        // A project list that predates the column (or a cached one) simply has no summary.
+        ...(entry.project.caseSummary?.trim() ? { summary: entry.project.caseSummary.trim() } : {}),
         domain: classifyDomain(files),
         standing: judgeStanding(footprint),
         footprint,
@@ -464,6 +484,14 @@ export const UserCases = (): React.JSX.Element => {
                     className="mt-0.5 size-4 shrink-0 text-text-300 transition-colors group-hover:text-text-000"
                   />
                 </span>
+                {item.summary ? (
+                  <span
+                    className="line-clamp-2 text-xs leading-snug text-text-300"
+                    data-slot="case-plaza-case-summary"
+                  >
+                    {item.summary}
+                  </span>
+                ) : null}
                 <span className="flex flex-wrap items-center gap-1.5 text-xs">
                   <span
                     className={`rounded-full px-2 py-0.5 ${
