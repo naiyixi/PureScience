@@ -14,22 +14,32 @@ vi.mock('../ipc-handler-registry', () => ({
 }))
 
 const { CASE_BUNDLE_IPC, registerCaseBundleIpcHandlers } = await import('./ipc')
+type CaseBundleCommandOwner = import('./case-bundle-owner').CaseBundleCommandOwner
 const { RENDERER_CONTRACT_CATALOG } = await import('../../shared/renderer-contract-catalog')
 
-type Owner = {
-  export: ReturnType<typeof vi.fn>
-  import: ReturnType<typeof vi.fn>
-  marketplace: ReturnType<typeof vi.fn>
-  install: ReturnType<typeof vi.fn>
-  publish: ReturnType<typeof vi.fn>
-}
-
-const owner = (): Owner => ({
-  export: vi.fn(async () => ({ status: 'refused' as const, reason: 'no-files' as const })),
-  import: vi.fn(async () => ({ status: 'refused' as const, reason: 'missing-manifest' as const })),
-  marketplace: vi.fn(async () => ({ status: 'unreachable' as const })),
-  install: vi.fn(async () => ({ status: 'refused' as const, reason: 'unreachable' as const })),
-  publish: vi.fn(async () => ({ status: 'refused' as const, reason: 'no-credential' as const }))
+// The owner is the composition's own type, not a loose record: a stub that merely looks alike typechecks here but
+// not where the channels are actually registered, which is how a red arrived from CI on a tree that passed locally.
+const owner = (): CaseBundleCommandOwner => ({
+  export: vi.fn<CaseBundleCommandOwner['export']>(async () => ({
+    status: 'refused',
+    reason: 'no-files'
+  })),
+  import: vi.fn<CaseBundleCommandOwner['import']>(async () => ({
+    status: 'refused',
+    reason: 'manifest-missing'
+  })),
+  marketplace: vi.fn<CaseBundleCommandOwner['marketplace']>(async () => ({
+    status: 'refused',
+    reason: 'unreachable'
+  })),
+  install: vi.fn<CaseBundleCommandOwner['install']>(async () => ({
+    status: 'refused',
+    reason: 'unreachable'
+  })),
+  publish: vi.fn<CaseBundleCommandOwner['publish']>(async () => ({
+    status: 'refused',
+    reason: 'no-credential'
+  }))
 })
 
 describe('the window reach of a case bundle', () => {
@@ -57,7 +67,7 @@ describe('the window reach of a case bundle', () => {
     const target = owner()
     registerCaseBundleIpcHandlers(target)
 
-    const calls: Array<[string, keyof Owner, unknown]> = [
+    const calls: Array<[string, keyof CaseBundleCommandOwner, unknown]> = [
       [
         CASE_BUNDLE_IPC.EXPORT,
         'export',
@@ -71,7 +81,7 @@ describe('the window reach of a case bundle', () => {
     for (const [channel, method, request] of calls) {
       const answer = await handlers.get(channel)!({}, request)
       expect(target[method]).toHaveBeenCalledWith(request)
-      expect(answer).toEqual(await target[method].mock.results[0].value)
+      expect(answer).toEqual(await vi.mocked(target[method]).mock.results[0]?.value)
     }
   })
 })
