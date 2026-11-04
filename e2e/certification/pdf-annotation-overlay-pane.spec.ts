@@ -247,7 +247,10 @@ const expectCoverContract = (
   open: { pageWidth: number; paneWidth: number; panelWidth: number }
 ): void => {
   expect(closed.pageWidth, 'the page had no width to compare against').toBeGreaterThan(0)
-  expect(open.paneWidth, 'the pane changed width between the two readings').toBe(closed.paneWidth)
+  expect(
+    open.paneWidth,
+    `the pane changed width between the two readings (closed ${closed.paneWidth}px, open ${open.paneWidth}px)`
+  ).toBe(closed.paneWidth)
 
   // (a) The page's width is the pane's, not the pane's minus the panel's. The two readings are the same
   // number: the panel is an overlay and takes no room in the flow the pages are laid out in.
@@ -343,6 +346,11 @@ test('covers the page instead of narrowing it, with both surfaces reachable and 
 
   await toggle.click()
   await expect(panel).toBeVisible()
+  // The same rule on this side. A lane run read the pane 150px narrower right after the panel opened and
+  // 423px a moment later: the layout was still catching up with the click, not a panel taking room (the
+  // page's own width never moved). Settling first separates "still laying out" from "squeezed" — a panel that
+  // really took room holds its narrower pane however long the reader waits.
+  await settledPaneWidth(page)
   const open = await readWidths(page)
   const probe = await readOverlay(page)
 
