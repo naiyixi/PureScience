@@ -7,8 +7,11 @@ import {
   reconcileCaseBundle,
   validateCaseBundle,
   type CaseBundleFile,
+  type CaseBundleImportProblem,
   type CaseBundleManifest
 } from '../../shared/case-bundle'
+
+export type { CaseBundleImportProblem }
 import { CASE_BUNDLE_FILES_DIR, CASE_BUNDLE_MANIFEST_NAME } from './export-bundle'
 
 // Reading a case bundle back: the mirror of export. Where export promises "all or nothing", import promises
@@ -25,15 +28,6 @@ import { CASE_BUNDLE_FILES_DIR, CASE_BUNDLE_MANIFEST_NAME } from './export-bundl
 //    the reader agreed to open.
 //
 // A bundle that fails any of these is reported as `incomplete` with the exact names — never partially imported.
-
-export type CaseBundleImportProblem =
-  | 'not-a-directory'
-  | 'manifest-missing'
-  | 'manifest-unreadable'
-  | 'invalid-bundle'
-  | 'files-missing'
-  | 'bad-file-name'
-  | 'incomplete'
 
 export type CaseBundleContent = {
   manifest: CaseBundleManifest

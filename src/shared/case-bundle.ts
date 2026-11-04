@@ -32,6 +32,69 @@ export type CaseBundleManifest = {
   files: CaseBundleFile[]
 }
 
+export type CaseBundleFileRequest = {
+  name: string
+  source: ManagedPreviewSource
+  path: string
+  kind?: string
+  projectId?: string
+  sessionId?: string
+}
+
+export type CaseBundleExportRequest = {
+  caseName: string
+  domain: string
+  summary?: string
+  files: ReadonlyArray<CaseBundleFileRequest>
+  destinationDir: string
+}
+
+export type CaseBundleExportOutcome =
+  | { status: 'exported'; bundleDir: string; fileCount: number; totalBytes: number }
+  | {
+      status: 'refused'
+      reason: CaseBundleExportProblem | 'unreadable'
+      detail?: string
+    }
+
+export type CaseBundleImportRequest = { bundleDir: string }
+
+export type CaseBundleImportOutcome =
+  | {
+      status: 'imported'
+      name: string
+      domain: string
+      fileCount: number
+      totalBytes: number
+      manifest: CaseBundleManifest
+    }
+  | {
+      status: 'refused'
+      reason: CaseBundleImportProblem
+      detail?: string
+      problematic?: { missing: string[]; checksumMismatch: string[]; unexpected: string[] }
+    }
+
+// Refusal vocabularies live here, next to the wire contract, because the window renders them verbatim: "why this
+// export did not happen" is a sentence the reader sees, not a main-process detail.
+export type CaseBundleExportProblem =
+  | 'no-files'
+  | 'too-many-files'
+  | 'bad-file-name'
+  | 'duplicate-file-name'
+  | 'source-missing'
+  | 'source-not-a-file'
+  | 'destination-unusable'
+
+export type CaseBundleImportProblem =
+  | 'not-a-directory'
+  | 'manifest-missing'
+  | 'manifest-unreadable'
+  | 'invalid-bundle'
+  | 'files-missing'
+  | 'bad-file-name'
+  | 'incomplete'
+
 export type BuildCaseBundleInput = {
   name: string
   summary?: string

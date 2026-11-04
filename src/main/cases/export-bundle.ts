@@ -5,9 +5,12 @@ import { basename, join } from 'node:path'
 import {
   CASE_BUNDLE_FILE_LIMIT,
   buildCaseBundle,
+  type CaseBundleExportProblem,
   type CaseBundleFile,
   type CaseBundleManifest
 } from '../../shared/case-bundle'
+
+export type { CaseBundleExportProblem }
 
 // Writing a case bundle to disk: the half of "export" that touches the file system.
 //
@@ -44,15 +47,6 @@ export type CaseBundleExportInput = {
   files: ReadonlyArray<CaseBundleSourceFile>
   createdAt?: number
 }
-
-export type CaseBundleExportProblem =
-  | 'no-files'
-  | 'too-many-files'
-  | 'bad-file-name'
-  | 'duplicate-file-name'
-  | 'source-missing'
-  | 'source-not-a-file'
-  | 'destination-unusable'
 
 export type CaseBundleExportResult =
   | {
