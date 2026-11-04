@@ -1,0 +1,55 @@
+name: Deprecate npm version
+
+# Marking a published version as broken is the only correction npm allows after the first 72 hours, and it needs the
+# same write credential as publishing. Keeping it here means it is done with the repository's token, is logged, and
+# does not depend on anyone's local npm login.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version to deprecate, e.g. 0.1.0
+        required: true
+        type: string
+      message:
+        description: What a reader should do instead (this is shown on the package page)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deprecate:
+    name: Deprecate ${{ inputs.version }}
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Configure token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PURESCIENCE_TOKEN || secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::No npm token configured; refusing to pretend this worked."
+            exit 1
+          fi
+          npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+
+      - name: Deprecate
+        env:
+          VERSION: ${{ inputs.version }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          npm deprecate "purescience@${VERSION}" "$MESSAGE"
+          # Read it back: a deprecation that did not land must not be reported as done.
+          noted=$(npm view "purescience@${VERSION}" deprecated)
+          if [ "$noted" != "$MESSAGE" ]; then
+            echo "::error::deprecated field reads '${noted}', expected the message just set"
+            exit 1
+          fi
+          echo "purescience@${VERSION} deprecated: ${noted}"
