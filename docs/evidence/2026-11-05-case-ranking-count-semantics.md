@@ -62,3 +62,40 @@ artifacts.db  artifacts.db-shm  artifacts.db-wal  blobs/  partial/
 - 做：把上述计数口径与磁盘核对写成文档（就是本文），让"126 vs 0"这句话从传闻变成可复算的数字。
 - 没做：没改排序（`artifactCount` → `artifactGroupCount` 等都不改）；没改索引；没写"数据丢了"的结论。
 - 排期项"排序改主进程聚合"保持未勾，理由从"没时间"变成"**前置歧义未解**"。
+
+## 5. 歧义已判：是「两个数据根」，不是「字节不在了」（2026-11-04 复核）
+
+上一节留下的判定方法这一轮做完了（用库里的 `storageKey` 直接对数据根求值，再拿应用自己的根复核）：
+
+```bash
+sqlite3 ~/.purescience/purescience.db \
+  "SELECT COUNT(*), SUM(source='artifact'), COUNT(DISTINCT displayName), SUM(sizeBytes)
+     FROM ManagedFile WHERE projectId='cmvceawow0000wf81cnzqbjx2' AND deletedAt IS NULL;"
+# 126 | 126 | 122 | 13125262
+
+sqlite3 ~/.purescience/purescience.db \
+  "SELECT storageKey FROM ManagedFile WHERE projectId='cmvceawow0000wf81cnzqbjx2';" \
+  | while read -r key; do test -e "$HOME/.purescience/$key" || echo "missing $key"; done | wc -l
+# 0   —— 126 个 key 全部落在磁盘上
+```
+
+- **`内部评测` 的 126 行全部可解析**：126 行、全部 `source='artifact'`、122 个不同 `displayName`、
+  合计 13,125,262 字节；`storageKey` 形如 `artifacts/<projectId>/<fileId>/.provenance/...`，
+  相对于**数据根**，不是绝对路径。
+- **两个根，两台库**：`~/.purescience`（442 MB，今晚 23:54 仍在写 = 打包应用在用）与
+  `~/.purescience-project`（88 MB，10-30 之后没动 = 开发构建的隔离根）。上一轮"磁盘 0 个文件"的读数来自
+  **后者**：那份库里的 `storageKey` 在本根下抽样 20 条、0 条存在——因为它的字节从来不在这个根里。
+  代码里两条根的名称也在同一个仓库里：`PROD_SESSION_DIR_NAME='.purescience'`、
+  `DEV_SESSION_DIR_NAME='.purescience-project'`（`src/main/session-persistence/repository.ts:172-173`）。
+- 所以歧义按第 3 节的可能 2 settle：**应用解析的根不是读那份库的根**。没有数据丢失，也没有索引脱节。
+
+## 6. 因此这一项的收口（审计归档，无代码改动）
+
+- 主进程聚合**已经存在**：`src/main/project-files/query-owner.ts` 的 `getOverviews` 用两条 `GROUP BY`
+  查询回答整批项目（`ManagedFile` 一条、`ManagedFileSessionSync` 一条），不是每项目四次查询；窗口一次
+  `project-files:get-overviews` 拿回全部计数，排序只在这批已聚合的数上做。
+- 既然计数口径已对得上磁盘、聚合已在主进程，再把"排序"搬进主进程只会多开一条通道、改不了读者看到的任何
+  一个数字 ⇒ 按 2026-09 的口径以**审计归档**收口，不造功能。
+- 唯一遗留的事实记在这里，不掩饰：**同一台机器上开发构建与打包应用各有一份数据根**，而 CLI（未打包）
+  默认读开发根。谁在开发根上读案例计数，就会看到"有行、磁盘没有"的样子。这不是排序问题，根也不该由
+  CLI 猜——要消除它得让 doctor 同时报出两条根以及各自解析命中率，属新面，另立案。
