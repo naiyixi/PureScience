@@ -46,10 +46,17 @@ jobs:
           MESSAGE: ${{ inputs.message }}
         run: |
           npm deprecate "purescience@${VERSION}" "$MESSAGE"
-          # Read it back: a deprecation that did not land must not be reported as done.
-          noted=$(npm view "purescience@${VERSION}" deprecated)
+          # Read it back: a deprecation that did not land must not be reported as done. The registry document lags the
+          # write by a few seconds, so an empty field means "not visible yet", not "failed" — retry before deciding.
+          noted=''
+          for attempt in 1 2 3 4 5 6 7 8; do
+            noted=$(npm view "purescience@${VERSION}" deprecated 2>/dev/null || true)
+            if [ "$noted" = "$MESSAGE" ]; then break; fi
+            echo "read-back attempt ${attempt}: '${noted}'"
+            sleep 8
+          done
           if [ "$noted" != "$MESSAGE" ]; then
-            echo "::error::deprecated field reads '${noted}', expected the message just set"
+            echo "::error::deprecated field reads '${noted}' after 8 attempts, expected the message just set"
             exit 1
           fi
           echo "purescience@${VERSION} deprecated: ${noted}"
