@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 
 import { createHash } from 'node:crypto'
-import { closeSync, openSync } from 'node:fs'
+import { closeSync, openSync, realpathSync } from 'node:fs'
 import { createWriteStream } from 'node:fs'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -1047,8 +1047,17 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   else throw new CliUsageError(`Unknown command: ${command}\n\n${usage}`)
 }
 
-const isEntryPoint =
-  process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))
+// npm installs a bin as a symlink (node_modules/.bin/purescience -> ../purescience/cli.mjs), so argv[1] and this
+// module's path are the same file under two names. Comparing the raw paths made the installed CLI a silent no-op:
+// it exited 0 having printed nothing. Resolve both sides before comparing.
+const isEntryPoint = (() => {
+  if (!process.argv[1]) return false
+  try {
+    return realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))
+  } catch {
+    return false
+  }
+})()
 if (isEntryPoint) {
   runCli().catch((error) => reportCliError(error))
 }
