@@ -22,6 +22,7 @@ const buildHandlers = (): {
   resolveVersionPaths: ReturnType<typeof vi.fn>
   resolveVersionContent: ReturnType<typeof vi.fn>
   resolveManagedFilePath: ReturnType<typeof vi.fn>
+  resolveUploadPath: ReturnType<typeof vi.fn>
 } => {
   const resolveVersionPaths = vi.fn(async ({ versionIds }: { versionIds: string[] }) => {
     const paths = new Map<string, string>()
@@ -37,14 +38,27 @@ const buildHandlers = (): {
     if (path === '/managed/missing.txt') return join(root, 'gone.txt')
     return join(root, 'present.txt')
   })
+  // Uploads are their own addressing scheme: they resolve through the upload repository, not the artifact
+  // root, so the double has to know which of the two it is answering for.
+  const resolveUploadPath = vi.fn(async ({ path }: { path: string }) => {
+    if (path.includes('unavailable')) throw new Error(`Upload Version is unavailable: ${path}`)
+    return join(root, 'present.txt')
+  })
   const repository = {
     resolveManagedFilePath,
     readManagedFilePreview: vi.fn()
   }
   const handlers = createArtifactHandlers(repository as never, new ArtifactRunRegistry(), {
-    provenance: { resolveVersionPaths, resolveVersionContent } as never
+    provenance: { resolveVersionPaths, resolveVersionContent } as never,
+    resolveUploadPath
   })
-  return { handlers, resolveVersionPaths, resolveVersionContent, resolveManagedFilePath }
+  return {
+    handlers,
+    resolveVersionPaths,
+    resolveVersionContent,
+    resolveManagedFilePath,
+    resolveUploadPath
+  }
 }
 
 beforeEach(async () => {
@@ -87,15 +101,45 @@ describe('artifacts probeAvailability', () => {
 
     const result = await handlers.probeAvailability({
       items: [
-        { path: '/managed/present.txt', source: 'upload' },
-        { path: '/managed/missing.txt', source: 'upload' },
-        { path: '/unresolvable/outside.txt', source: 'upload' }
+        { path: '/managed/present.txt', source: 'artifact' },
+        { path: '/managed/missing.txt', source: 'artifact' },
+        { path: '/unresolvable/outside.txt', source: 'artifact' }
       ]
     })
 
     // No locator in the batch, so no engine query at all.
     expect(resolveVersionPaths).not.toHaveBeenCalled()
     expect(result.unavailable).toEqual(['/managed/missing.txt', '/unresolvable/outside.txt'])
+  })
+
+  it('resolves an upload through the upload repository, not the artifact root', async () => {
+    const { handlers, resolveUploadPath, resolveManagedFilePath } = buildHandlers()
+
+    const result = await handlers.probeAvailability({
+      items: [
+        {
+          path: 'upload-version:project-1/session-1/upload-present',
+          source: 'upload',
+          projectId: 'project-1',
+          sessionId: 'session-1'
+        },
+        {
+          path: 'upload-version:project-1/session-1/upload-unavailable',
+          source: 'upload',
+          projectId: 'project-1',
+          sessionId: 'session-1'
+        }
+      ]
+    })
+
+    // The uploads root is not the artifact root: asking the artifact resolver would have reported every one
+    // of these as missing, which is what the window used to show.
+    expect(resolveManagedFilePath).not.toHaveBeenCalled()
+    expect(resolveUploadPath).toHaveBeenCalledWith(
+      { path: 'upload-version:project-1/session-1/upload-present' },
+      { projectId: 'project-1', sessionId: 'session-1' }
+    )
+    expect(result.unavailable).toEqual(['upload-version:project-1/session-1/upload-unavailable'])
   })
 
   it('deduplicates paths, ignores malformed items and refuses an oversized batch', async () => {

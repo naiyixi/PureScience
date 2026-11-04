@@ -3652,7 +3652,11 @@ const createApplicationModules = async (
       })
     },
     withSessionMutation: (projectId, sessionId, mutation) =>
-      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
+      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation),
+    // Availability probes for uploads need the upload repository: their locators and their bytes live under
+    // the uploads root, which the artifact resolver rightly refuses. Without this the window badged every
+    // uploaded file "Missing" and disabled every action on it, OCR included.
+    resolveUploadPath: (request, scope) => uploadRepository.resolveManagedUploadPath(request, scope)
   })
   // Now that the artifact surface exists, the search can read artifact file text through it.
   artifactPreviewForSearch = (request) => artifactHandlers.readPreview(request)

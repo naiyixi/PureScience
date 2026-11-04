@@ -127,6 +127,14 @@ type ArtifactHandlerDependencies = {
     | 'listUnpublishedProjectVersions'
   >
   verifyReading?: (request: VerifyReadingRequest) => Promise<ReadingVerification>
+  // Uploads carry their own locator (`upload-version:<project>/<session>/<version>`) and live under the
+  // uploads root, which the artifact-root resolver refuses by design. Supplied by the composition, which
+  // owns the upload repository: without it every uploaded file read as missing — the tile was badged
+  // "Missing" and every action on it, OCR included, was disabled.
+  resolveUploadPath?: (
+    request: { path: string },
+    scope: { projectId?: string; sessionId?: string }
+  ) => Promise<string>
   codeReconstruction?: {
     get(request: GetArtifactCodeReconstructionRequest): Promise<ArtifactCodeReconstructionState>
     generate(
@@ -278,6 +286,24 @@ const createArtifactHandlers = (
       for (const item of unique) {
         const identity = parseArtifactVersionLocator(item.path)
         if (!identity) {
+          // An upload is addressed by its own locator and resolved through the upload repository, which is
+          // the only layer that can answer for the uploads root. Asking the artifact resolver instead made
+          // every upload unresolvable, so the window showed each one as Missing.
+          const resolveUploadPath = dependencies.resolveUploadPath
+          if (item.source === 'upload' && resolveUploadPath) {
+            try {
+              resolved.set(
+                item.path,
+                await resolveUploadPath(
+                  { path: item.path },
+                  { projectId: item.projectId, sessionId: item.sessionId }
+                )
+              )
+            } catch {
+              // Unresolvable is an answer, not an error: the caller is asking whether it exists.
+            }
+            continue
+          }
           try {
             resolved.set(item.path, await repository.resolveManagedFilePath({ path: item.path }))
           } catch {
