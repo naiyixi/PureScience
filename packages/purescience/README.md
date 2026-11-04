@@ -1,4 +1,4 @@
-# @zerolink/purescience
+# purescience
 
 Node.js SDK and command-line client for an PureScience daemon running on the local machine.
 
@@ -9,7 +9,7 @@ Node.js SDK and command-line client for an PureScience daemon running on the loc
 ## SDK quick start
 
 ```js
-import { connectToPureScience } from '@zerolink/purescience'
+import { connectToPureScience } from 'purescience'
 
 const client = await connectToPureScience()
 const run = await client.startRun({

@@ -1,22 +1,24 @@
 # npm Package Release
 
-> [!IMPORTANT]
-> The first npm publication is deferred. Do not create `npm-v0.1.0` or publish the package until the
-> standalone CLI runtime direction is resolved. This workflow and guide are release preparation only.
+> [!NOTE]
+> The package is published unscoped as `purescience`. An earlier scoped name (`@zerolink/purescience`)
+> could not be created: the registry answered `E404` on the first `PUT`, which is what npm returns when
+> the scope's organization does not exist or when a scoped token may only publish to packages that are
+> already there. A scope buys nothing here — one package, one owner — and costs an organization plus a
+> wider token, so the release uses the plain name.
 
-The `@zerolink/purescience` SDK and CLI use a version and release tag namespace independent of the
+The `purescience` SDK and CLI use a version and release tag namespace independent of the
 desktop application. Desktop releases use `v*`; npm releases use `npm-v*`.
 
 ## One-time setup
 
-1. Ensure the `zerolink` scope exists on npm and the publishing account can create
-   `@zerolink/purescience` as a public package.
+1. The publishing account owns `purescience` on npm. No organization or scope is involved.
 2. Create a GitHub Environment named `npm`. Add required reviewers to keep publishing behind an
    explicit approval.
 3. Because Trusted Publisher cannot be configured until the package exists, add a short-lived npm
    publish token as the `NPM_TOKEN` secret in that environment for the first release only.
 4. After the first release, configure the package's npm Trusted Publisher with:
-   - organization or user: `zerolink`
+   - organization or user: the publishing account
    - repository: `purescience`
    - workflow: `publish-npm.yml`
    - environment: `npm`
@@ -35,7 +37,7 @@ provenance for the released tarball.
 4. Create and push a tag that exactly matches `npm-v<package-version>`:
 
    ```bash
-   git tag -a npm-v0.1.0 -m "@zerolink/purescience 0.1.0"
+   git tag -a npm-v0.1.0 -m "purescience 0.1.0"
    git push origin npm-v0.1.0
    ```
 

@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const PACKAGE_NAME = '@zerolink/purescience'
+const PACKAGE_NAME = 'purescience'
 
 export const validateNpmReleaseTag = (tag, manifest) => {
   if (manifest?.name !== PACKAGE_NAME) {

@@ -21,7 +21,7 @@ The npm package requires Node.js 22.5 or later and an installed PureScience desk
 Install it globally after the package is published:
 
 ```bash
-npm install --global @zerolink/purescience
+npm install --global purescience
 purescience --help
 ```
 

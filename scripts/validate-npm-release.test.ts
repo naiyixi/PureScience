@@ -6,11 +6,11 @@ describe('validateNpmReleaseTag', () => {
   it('accepts the npm release tag matching the package version', () => {
     expect(
       validateNpmReleaseTag('npm-v0.1.0', {
-        name: '@zerolink/purescience',
+        name: 'purescience',
         version: '0.1.0'
       })
     ).toEqual({
-      name: '@zerolink/purescience',
+      name: 'purescience',
       version: '0.1.0',
       tag: 'npm-v0.1.0'
     })
@@ -19,7 +19,7 @@ describe('validateNpmReleaseTag', () => {
   it.each(['npm-v0.2.0', 'v0.1.0'])('rejects non-matching release tag %s', (tag) => {
     expect(() =>
       validateNpmReleaseTag(tag, {
-        name: '@zerolink/purescience',
+        name: 'purescience',
         version: '0.1.0'
       })
     ).toThrow(`Release tag ${tag} does not match npm-v0.1.0.`)
@@ -31,13 +31,13 @@ describe('validateNpmReleaseTag', () => {
         name: '@example/purescience',
         version: '0.1.0'
       })
-    ).toThrow('Expected package name @zerolink/purescience, received @example/purescience.')
+    ).toThrow('Expected package name purescience, received @example/purescience.')
   })
 
   it.each([undefined, '', '  '])('rejects a missing package version (%s)', (version) => {
     expect(() =>
       validateNpmReleaseTag('npm-v0.1.0', {
-        name: '@zerolink/purescience',
+        name: 'purescience',
         version
       })
     ).toThrow('The npm package version is missing.')
