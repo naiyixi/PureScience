@@ -6,7 +6,9 @@ import type {
   CaseBundleImportProblem,
   CaseBundleImportRefusal,
   CaseBundleImportRequest,
-  CaseBundleManifest
+  CaseBundleManifest,
+  CaseBundleSourceFile,
+  CaseBundleFileRequest
 } from '../../shared/case-bundle'
 import type { ManagedPreviewSource } from '../../shared/preview-resources'
 import {
@@ -14,6 +16,11 @@ import {
   type CaseMarketplaceEntry,
   type CaseMarketplaceIndex
 } from '../../shared/case-marketplace'
+import type {
+  CasePublishDraft,
+  CasePublishOutcome,
+  CasePublishRequest
+} from '../../shared/case-publish'
 import type {
   CaseInstallOutcome,
   CaseInstallRequest,
@@ -81,6 +88,12 @@ export type CaseMarketplaceIndexReader = (url: string | undefined) => Promise<
     }
 >
 
+/** Runs the publish path: bundle the files, upload, upsert one index entry, read the shelf back. */
+export type CasePublishRunner = (input: {
+  draft: CasePublishDraft
+  files: ReadonlyArray<CaseBundleSourceFile>
+}) => Promise<CasePublishOutcome>
+
 export type CaseInstallRunner = (entry: CaseMarketplaceEntry) => Promise<
   | { ok: true; name: string; fileCount: number; totalBytes: number; installedTo: string }
   | {
@@ -106,6 +119,7 @@ export type CaseBundleCommandOwner = {
   import: (request: CaseBundleImportRequest) => Promise<CaseBundleImportOutcome>
   marketplace: (request: CaseMarketplaceRequest) => Promise<CaseMarketplaceOutcome>
   install: (request: CaseInstallRequest) => Promise<CaseInstallOutcome>
+  publish: (request: CasePublishRequest) => Promise<CasePublishOutcome>
 }
 
 export const createCaseBundleCommandOwner = (options: {
@@ -115,6 +129,7 @@ export const createCaseBundleCommandOwner = (options: {
   enumerate: CaseBundleFileEnumerator
   marketplace: CaseMarketplaceIndexReader
   install: CaseInstallRunner
+  publish: CasePublishRunner
   materialise: (
     bundleDir: string,
     targetDir: string
@@ -227,6 +242,58 @@ export const createCaseBundleCommandOwner = (options: {
       manifest,
       ...(materialisedTo === undefined ? {} : { materialisedTo })
     }
+  },
+
+  // Reading side of publishing: the same file resolution export uses, so a published case is exactly what the export
+  // button would have written. Everything after that (archive, upload, index) is the injected runner.
+  publish: async (request) => {
+    let named: ReadonlyArray<CaseBundleFileRequest> | undefined = request.files
+    if (!named) {
+      const enumerated = await options.enumerate(request.projectId)
+      if (!enumerated.ok) {
+        return {
+          status: 'refused',
+          reason: 'export-failed',
+          ...(enumerated.detail === undefined ? {} : { detail: enumerated.detail })
+        }
+      }
+      named = enumerated.files.map((file) => ({
+        name: file.name,
+        source: file.source,
+        path: file.path,
+        ...(file.kind === undefined ? {} : { kind: file.kind })
+      }))
+    }
+    if (named.length === 0) return { status: 'refused', reason: 'no-files' }
+
+    const resolved: CaseBundleSourceFile[] = []
+    for (const file of named) {
+      let sourcePath: string
+      try {
+        sourcePath = await options.resolvePath({
+          source: file.source,
+          path: file.path,
+          projectId: file.projectId ?? request.projectId,
+          ...(file.sessionId === undefined ? {} : { sessionId: file.sessionId })
+        })
+      } catch (cause) {
+        return {
+          status: 'refused',
+          reason: 'export-failed',
+          detail: cause instanceof Error ? cause.message : String(cause)
+        }
+      }
+      if (typeof sourcePath !== 'string' || sourcePath === '') {
+        return { status: 'refused', reason: 'export-failed', detail: file.name }
+      }
+      resolved.push({
+        name: file.name,
+        sourcePath,
+        ...(file.kind === undefined ? {} : { kind: file.kind })
+      })
+    }
+
+    return options.publish({ draft: request.draft, files: resolved })
   },
 
   // The marketplace half. Note what does not happen here: the window does not get to say where an installed case

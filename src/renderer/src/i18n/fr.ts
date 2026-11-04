@@ -5280,6 +5280,35 @@ export const fr: Partial<Record<ZhKey, string>> = {
     "Ce paquet a été écrit par une version antérieure et ne contient aucun relevé d'appels d'outils.",
   'settings.availableOnDiskUnreadable': 'Espace libre illisible',
   'home.userCases.bundle.exportAction': 'Exporter comme lot de cas',
+  'home.userCases.publish.open': 'Publier sur le marché des cas',
+  'home.userCases.publish.idLabel':
+    'Identifiant (nomme le fichier ; republier le même remplace ce cas)',
+  'home.userCases.publish.nameLabel': 'Nom du cas',
+  'home.userCases.publish.domainLabel': 'Domaine',
+  'home.userCases.publish.authorLabel': 'Auteur',
+  'home.userCases.publish.licenseLabel': 'Licence du cas',
+  'home.userCases.publish.summaryLabel': 'Résumé en une ligne',
+  'home.userCases.publish.identityHint':
+    "L'identifiant est définitif pour ce cas : le republier remplace l'entrée au lieu d'en ajouter une seconde.",
+  'home.userCases.publish.submit': 'Téléverser et publier',
+  'home.userCases.publish.working': 'Téléversement…',
+  'home.userCases.publish.cancel': 'Annuler',
+  'home.userCases.publish.published':
+    "Publié : {count} fichiers, {size}, empreinte {digest}… — l'étagère montre exactement ce que cette machine a empaqueté.",
+  'home.userCases.publish.noCredential':
+    "Cette machine n'a pas d'identifiant GitHub. Lancez `gh auth login` dans un terminal, puis réessayez.",
+  'home.userCases.publish.badId':
+    "L'identifiant n'accepte que des minuscules, des chiffres et des traits d'union, 64 caractères au plus.",
+  'home.userCases.publish.missingMetadata':
+    'Nom, domaine, résumé, auteur et licence doivent tous être renseignés : sans eux, une fiche ne dit rien.',
+  'home.userCases.publish.noFiles': "Ce projet n'a aucun fichier à publier.",
+  'home.userCases.publish.indexUnreadable':
+    "L'index publié n'a pas pu être lu, donc rien n'a été écrit par-dessus. Vérifiez la version avant de republier.",
+  'home.userCases.publish.indexUnreachable': 'Le marché des cas est injoignable.',
+  'home.userCases.publish.verifyFailed':
+    "Le téléversement a abouti, mais la relecture de l'étagère ne montre pas ce cas avec l'empreinte calculée ici. Rien n'est annoncé comme publié.",
+  'home.userCases.publish.uploadFailed': 'GitHub a refusé le téléversement.',
+  'home.userCases.publish.refused': "Le cas n'a pas été publié.",
   'home.userCases.bundle.importAction': 'Importer un lot de cas',
   'home.userCases.bundle.working': 'Traitement…',
   'home.userCases.bundle.exported': '{count} fichiers ({size}) écrits dans {directory}.',

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { CASE_MARKETPLACE_FORMAT, type CaseMarketplaceIndex } from '../../shared/case-marketplace'
 import type {
   CaseBundleFileEnumerator,
+  CasePublishRunner,
   CaseInstallRunner,
   CaseMarketplaceIndexReader,
   CaseBundleReader,
@@ -27,6 +28,7 @@ const owner = (overrides: {
   enumerate?: CaseBundleFileEnumerator
   marketplace?: CaseMarketplaceIndexReader
   install?: CaseInstallRunner
+  publish?: CasePublishRunner
   materialise?: (
     bundleDir: string,
     targetDir: string
@@ -81,6 +83,18 @@ const owner = (overrides: {
         ]
       } as CaseMarketplaceIndex
     }))
+  const publish: CasePublishRunner =
+    overrides.publish ??
+    (async ({ files }) => ({
+      status: 'published' as const,
+      id: 'a',
+      fileCount: files.length,
+      totalBytes: 1,
+      bundleSha256: 'a'.repeat(64),
+      archiveBytes: 1,
+      indexUrl: 'https://example.test/index.json',
+      verified: true as const
+    }))
   const install: CaseInstallRunner =
     overrides.install ??
     (async () => ({
@@ -111,7 +125,8 @@ const owner = (overrides: {
       enumerate,
       materialise,
       marketplace,
-      install
+      install,
+      publish
     })
   }
 }

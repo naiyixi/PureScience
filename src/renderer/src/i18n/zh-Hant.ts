@@ -4741,6 +4741,33 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNotCarried': '這個包由較早版本匯出，沒有攜帶工具調用讀數。',
   'settings.availableOnDiskUnreadable': '無法讀取可用空間',
   'home.userCases.bundle.exportAction': '匯出案例包',
+  'home.userCases.publish.open': '發佈到案例市場',
+  'home.userCases.publish.idLabel': '識別碼（決定檔名；再次發佈同一識別碼會替換這個案例）',
+  'home.userCases.publish.nameLabel': '案例名稱',
+  'home.userCases.publish.domainLabel': '領域',
+  'home.userCases.publish.authorLabel': '作者',
+  'home.userCases.publish.licenseLabel': '授權',
+  'home.userCases.publish.summaryLabel': '一句話摘要',
+  'home.userCases.publish.identityHint':
+    '識別碼對這個案例是固定的：再次發佈同一識別碼會替換原條目，而不是新增一筆。',
+  'home.userCases.publish.submit': '上傳並發佈',
+  'home.userCases.publish.working': '正在上傳…',
+  'home.userCases.publish.cancel': '取消',
+  'home.userCases.publish.published':
+    '已發佈：{count} 個檔案，{size}，摘要 {digest}…——貨架上顯示的就是本機產出的那一份。',
+  'home.userCases.publish.noCredential':
+    '本機沒有 GitHub 憑證。在終端執行 `gh auth login`，然後再試。',
+  'home.userCases.publish.badId': '識別碼只能用小寫字母、數字和連字號，最長 64 個字元。',
+  'home.userCases.publish.missingMetadata':
+    '名稱、領域、摘要、作者、授權都必須填寫——少一項，卡片就等於什麼都沒說。',
+  'home.userCases.publish.noFiles': '這個專案沒有可發佈的檔案。',
+  'home.userCases.publish.indexUnreadable':
+    '讀不到線上索引，所以沒有覆蓋它。重新發佈前先看看那個 release。',
+  'home.userCases.publish.indexUnreachable': '連不上案例市場。',
+  'home.userCases.publish.verifyFailed':
+    '上傳完成了，但回讀貨架時沒有看到帶著本機所算摘要的這條案例。這不計為已發佈。',
+  'home.userCases.publish.uploadFailed': 'GitHub 拒絕了這次上傳。',
+  'home.userCases.publish.refused': '這個案例沒有發佈。',
   'home.userCases.bundle.importAction': '匯入案例包',
   'home.userCases.bundle.working': '正在處理…',
   'home.userCases.bundle.exported': '已寫入 {count} 個檔案（{size}）到 {directory}。',

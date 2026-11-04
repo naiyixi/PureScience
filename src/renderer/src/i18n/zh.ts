@@ -4796,6 +4796,33 @@ export const zh = {
   'sessions.packageImport.toolReadingsNotCarried': '这个包由较早版本导出，没有携带工具调用读数。',
   'settings.availableOnDiskUnreadable': '无法读取可用空间',
   'home.userCases.bundle.exportAction': '导出案例包',
+  'home.userCases.publish.open': '发布到案例市场',
+  'home.userCases.publish.idLabel': '标识符（决定文件名；再次发布同一标识符会替换这个案例）',
+  'home.userCases.publish.nameLabel': '案例名称',
+  'home.userCases.publish.domainLabel': '领域',
+  'home.userCases.publish.authorLabel': '作者',
+  'home.userCases.publish.licenseLabel': '许可',
+  'home.userCases.publish.summaryLabel': '一句话摘要',
+  'home.userCases.publish.identityHint':
+    '标识符对这个案例是固定的：再次发布同一标识符会替换原条目，而不是新增一条。',
+  'home.userCases.publish.submit': '上传并发布',
+  'home.userCases.publish.working': '正在上传…',
+  'home.userCases.publish.cancel': '取消',
+  'home.userCases.publish.published':
+    '已发布：{count} 个文件，{size}，摘要 {digest}…——货架上显示的就是本机打出来的那份。',
+  'home.userCases.publish.noCredential':
+    '本机没有 GitHub 凭据。在终端执行 `gh auth login`，然后再试。',
+  'home.userCases.publish.badId': '标识符只能用小写字母、数字和连字符，最长 64 个字符。',
+  'home.userCases.publish.missingMetadata':
+    '名称、领域、摘要、作者、许可都必须填写——少一项，卡片就等于什么都没说。',
+  'home.userCases.publish.noFiles': '这个项目没有可发布的文件。',
+  'home.userCases.publish.indexUnreadable':
+    '读不到线上索引，所以没有覆盖它。重新发布前先看看那个 release。',
+  'home.userCases.publish.indexUnreachable': '连不上案例市场。',
+  'home.userCases.publish.verifyFailed':
+    '上传完成了，但回读货架时没有看到带着本机所算摘要的这条案例。这不计为已发布。',
+  'home.userCases.publish.uploadFailed': 'GitHub 拒绝了这次上传。',
+  'home.userCases.publish.refused': '这个案例没有发布。',
   'home.userCases.bundle.importAction': '导入案例包',
   'home.userCases.bundle.working': '正在处理…',
   'home.userCases.bundle.exported': '已写入 {count} 个文件（{size}）到 {directory}。',

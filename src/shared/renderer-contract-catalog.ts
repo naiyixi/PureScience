@@ -514,6 +514,9 @@ export const RENDERER_CONTRACT_GROUPS = Object.freeze([
     ['fetchMarketplace', 'cases:marketplace', LOCAL],
     ['importBundle', 'cases:import-bundle', LOCAL],
     ['installFromMarketplace', 'cases:install', LOCAL],
+    // Publishing uploads to this repository's release with the credential `gh` holds on this machine. There is no
+    // destination in the request: which repository, which release, and which file names are the app's call.
+    ['publish', 'cases:publish', LOCAL],
   ]),
   group('update', 'update', [
     ['apply', 'update:apply', LOCAL], ['cancel', 'update:cancel', LOCAL], ['check', 'update:check'], ['download', 'update:download', LOCAL],

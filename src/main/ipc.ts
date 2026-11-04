@@ -241,7 +241,12 @@ import { createOcrCommandOwner } from './settings/ocr-ipc'
 import { createCaseBundleCommandOwner } from './cases/case-bundle-owner'
 import { exportCaseBundle } from './cases/export-bundle'
 import { importCaseBundle, materialiseCaseBundle } from './cases/import-bundle'
-import { fetchCaseMarketplaceIndex, installCaseFromMarketplace } from './cases/marketplace'
+import {
+  fetchCaseMarketplaceIndex,
+  installCaseFromMarketplace,
+  packCaseArchive
+} from './cases/marketplace'
+import { publishCaseBundle, readGitHubCredential } from './cases/publish'
 import { CASE_MARKETPLACE_INDEX_URL } from '../shared/case-marketplace'
 import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
@@ -3998,6 +4003,19 @@ const createApplicationModules = async (
     read: importCaseBundle,
     materialise: materialiseCaseBundle,
     marketplace: (indexUrl) => fetchCaseMarketplaceIndex(indexUrl ?? CASE_MARKETPLACE_INDEX_URL),
+    // Publishing goes to this repository's release, using the GitHub credential `gh` already holds. The app does
+    // not collect a token of its own; if `gh` is missing, publishing refuses and says so.
+    publish: ({ draft, files }) =>
+      publishCaseBundle(
+        { draft, files },
+        {
+          exportBundle: exportCaseBundle,
+          packArchive: packCaseArchive,
+          readCredential: readGitHubCredential,
+          fetch: globalThis.fetch.bind(globalThis),
+          now: () => Date.now()
+        }
+      ),
     // Installed cases live in this machine's data root, not wherever a renderer asks: the window does not choose.
     install: (entry) =>
       installCaseFromMarketplace(entry, { targetDir: join(resolveDataRoot(), 'cases') }),

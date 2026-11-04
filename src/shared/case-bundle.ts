@@ -17,6 +17,15 @@ export const CASE_BUNDLE_VERSION = 1
 // hostile bundle from being accepted as a legitimate one.
 export const CASE_BUNDLE_FILE_LIMIT = 500
 
+/** A file the window has already resolved on this machine: the bundle carries `name`, and reads `sourcePath`. */
+export type CaseBundleSourceFile = {
+  /** The name the bundle will carry. Sanitised: no separators, no `..`, not empty after trimming. */
+  name: string
+  /** An absolute path this machine has already resolved and is allowed to read. */
+  sourcePath: string
+  kind?: string
+}
+
 export type CaseBundleFile = {
   name: string
   kind: string

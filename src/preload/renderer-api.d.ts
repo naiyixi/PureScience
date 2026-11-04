@@ -962,6 +962,7 @@ export interface PureScienceAPI {
     fetchMarketplace(request: CaseMarketplaceRequest): Promise<CaseMarketplaceOutcome>
     importBundle(request: CaseBundleImportRequest): Promise<CaseBundleImportOutcome>
     installFromMarketplace(request: CaseInstallRequest): Promise<CaseInstallOutcome>
+    publish(request: CasePublishRequest): Promise<CasePublishOutcome>
   }
   cli: {
     getStatus(): Promise<CliLauncherStatus>

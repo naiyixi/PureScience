@@ -46,6 +46,7 @@ export const WEB_INVOKE_CHANNELS = {
   'caseBundles.fetchMarketplace': 'cases:marketplace',
   'caseBundles.importBundle': 'cases:import-bundle',
   'caseBundles.installFromMarketplace': 'cases:install',
+  'caseBundles.publish': 'cases:publish',
   'cli.getStatus': 'cli:get-status',
   'cli.install': 'cli:install',
   'cli.uninstall': 'cli:uninstall',

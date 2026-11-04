@@ -462,7 +462,8 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       reason: 'manifest-missing' as const
     })),
     marketplace: vi.fn(async () => ({ status: 'refused' as const, reason: 'bad-index' as const })),
-    install: vi.fn(async () => ({ status: 'refused' as const, reason: 'bad-entry' as const }))
+    install: vi.fn(async () => ({ status: 'refused' as const, reason: 'bad-entry' as const })),
+    publish: vi.fn(async () => ({ status: 'refused' as const, reason: 'no-credential' as const }))
   },
   update: {
     getAppInfo: vi.fn(() => ({ name: 'PureScience', version: '1.0.0', copyright: 'Zerolink' })),
@@ -501,6 +502,15 @@ const marketEntry = {
   publishedAt: 1
 }
 
+const publishDraft = {
+  id: 'gpcr-activation',
+  name: 'GPCR 激活途径',
+  domain: 'structure',
+  summary: '采样收敛与滞后审计',
+  author: 'naiyixi',
+  license: 'MIT'
+}
+
 const commandByName = (name: string): ApplicationCommand<string, readonly unknown[], unknown> => {
   for (const { commands } of hostApplicationCommandGroups) {
     const command = (
@@ -531,7 +541,7 @@ describe('Host application commands', () => {
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
     // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
     // 88 with OCR (pdf:ocr, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(92)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(93)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -549,7 +559,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(92)
+    expect(router.dispatcher.commandNames()).toHaveLength(93)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -989,6 +999,14 @@ describe('Host application commands', () => {
     )
     expect(dependencies.caseBundles.install).toHaveBeenCalledWith({ entry: marketEntry })
 
+    // Publishing: the window names a project and writes the words on the card; it does not name a repository.
+    const publishRequest = { projectId: 'project-1', draft: publishDraft }
+    await router.dispatcher.invoke(
+      hostApplicationCommands.caseBundles.publish,
+      invocation([publishRequest])
+    )
+    expect(dependencies.caseBundles.publish).toHaveBeenCalledWith(publishRequest)
+
     // The goals panel reads the whole inventory with no arguments, like the routine panel beside it.
     await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))
     expect(dependencies.goal.listAll).toHaveBeenCalledWith()
@@ -1018,6 +1036,7 @@ describe('Host application commands', () => {
       'cases:import-bundle': [{ bundleDir: '/in/case' }],
       'cases:marketplace': [{}],
       'cases:install': [{ entry: marketEntry }],
+      'cases:publish': [{ projectId: 'project-1', draft: publishDraft }],
       'local-fs:list-dir': ['/data'],
       'local-fs:open-path': ['/data/result.txt'],
       'local-fs:read-preview': [previewRequest],
@@ -1089,7 +1108,7 @@ describe('Host application commands', () => {
     // browser never gets to point the sweep at a directory of its choosing.
     // 59 with the goals panel's read-only channel (goal:list-all, LOCAL): a reader with no session
     // context still only ever reads.
-    expect(localOnlyChannels).toHaveLength(64)
+    expect(localOnlyChannels).toHaveLength(65)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

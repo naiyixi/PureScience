@@ -26,7 +26,11 @@ const VITEST_EXCLUDE_PATTERNS = [
   '**/.pnpm-store/**',
   '**/tmp/**',
   '**/.worktrees/**',
-  '**/.worktree/**'
+  '**/.worktree/**',
+  // Tests that talk to the live network — a real GitHub release, a real `gh` credential. They never belong on a CI
+  // runner: no credential there, and a red build would be reporting on GitHub's uptime rather than on this
+  // repository. Run one by hand with VITEST_LOCAL=1, which puts them back into discovery for that invocation only.
+  ...(process.env.VITEST_LOCAL === '1' ? [] : ['**/*.local.test.ts'])
 ]
 
 // ---------------------------------------------------------------------------------------------

@@ -5041,6 +5041,34 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '이 패키지는 이전 버전에서 내보내져 도구 호출 기록을 포함하지 않습니다.',
   'settings.availableOnDiskUnreadable': '여유 공간을 확인할 수 없습니다',
   'home.userCases.bundle.exportAction': '사례 번들로 내보내기',
+  'home.userCases.publish.open': '사례 마켓에 게시',
+  'home.userCases.publish.idLabel':
+    '식별자(파일 이름이 되며, 같은 식별자로 다시 게시하면 이 사례가 교체됩니다)',
+  'home.userCases.publish.nameLabel': '사례 이름',
+  'home.userCases.publish.domainLabel': '분야',
+  'home.userCases.publish.authorLabel': '작성자',
+  'home.userCases.publish.licenseLabel': '라이선스',
+  'home.userCases.publish.summaryLabel': '한 줄 요약',
+  'home.userCases.publish.identityHint':
+    '식별자는 이 사례에서 고정입니다. 같은 식별자로 다시 게시하면 새 항목이 아니라 기존 항목을 교체합니다.',
+  'home.userCases.publish.submit': '업로드하고 게시',
+  'home.userCases.publish.working': '업로드 중…',
+  'home.userCases.publish.cancel': '취소',
+  'home.userCases.publish.published':
+    '게시했습니다: 파일 {count}개, {size}, 다이제스트 {digest}… — 진열대에 보이는 것은 이 컴퓨터가 만든 그대로입니다.',
+  'home.userCases.publish.noCredential':
+    '이 컴퓨터에는 GitHub 자격 증명이 없습니다. 터미널에서 `gh auth login`을 실행한 뒤 다시 시도하세요.',
+  'home.userCases.publish.badId': '식별자는 소문자, 숫자, 하이픈만 쓸 수 있고 최대 64자입니다.',
+  'home.userCases.publish.missingMetadata':
+    '이름, 분야, 요약, 작성자, 라이선스는 모두 값이 있어야 합니다. 하나라도 비면 카드는 아무 말도 하지 못합니다.',
+  'home.userCases.publish.noFiles': '이 프로젝트에는 게시할 파일이 없습니다.',
+  'home.userCases.publish.indexUnreadable':
+    '게시된 인덱스를 읽지 못해 덮어쓰지 않았습니다. 다시 게시하기 전에 릴리스를 확인하세요.',
+  'home.userCases.publish.indexUnreachable': '사례 마켓에 연결하지 못했습니다.',
+  'home.userCases.publish.verifyFailed':
+    '업로드는 끝났지만, 진열대를 다시 읽어도 여기서 계산한 다이제스트를 가진 항목이 보이지 않았습니다. 게시된 것으로 처리하지 않습니다.',
+  'home.userCases.publish.uploadFailed': 'GitHub가 업로드를 거부했습니다.',
+  'home.userCases.publish.refused': '이 사례는 게시되지 않았습니다.',
   'home.userCases.bundle.importAction': '사례 번들 가져오기',
   'home.userCases.bundle.working': '처리 중…',
   'home.userCases.bundle.exported': '{count}개 파일({size})을 {directory}에 기록했습니다.',

@@ -5159,6 +5159,35 @@ export const en: Record<ZhKey, string> = {
     'This package was written before tool call readings travelled; it carries none.',
   'settings.availableOnDiskUnreadable': 'Could not read free space',
   'home.userCases.bundle.exportAction': 'Export as a case bundle',
+  'home.userCases.publish.open': 'Publish to the case market',
+  'home.userCases.publish.idLabel':
+    'Identifier (names the file; publishing it again replaces this case)',
+  'home.userCases.publish.nameLabel': 'Case name',
+  'home.userCases.publish.domainLabel': 'Domain',
+  'home.userCases.publish.authorLabel': 'Author',
+  'home.userCases.publish.licenseLabel': 'Licence',
+  'home.userCases.publish.summaryLabel': 'One-line summary',
+  'home.userCases.publish.identityHint':
+    'The identifier is permanent for this case: publishing it again replaces the entry instead of adding a second one.',
+  'home.userCases.publish.submit': 'Upload and publish',
+  'home.userCases.publish.working': 'Uploading…',
+  'home.userCases.publish.cancel': 'Cancel',
+  'home.userCases.publish.published':
+    'Published: {count} files, {size}, digest {digest}… — the shelf now shows what this machine packaged.',
+  'home.userCases.publish.noCredential':
+    'This machine holds no GitHub credential. Run `gh auth login` in a terminal, then try again.',
+  'home.userCases.publish.badId':
+    'The identifier may only use lowercase letters, digits and hyphens, at most 64 characters.',
+  'home.userCases.publish.missingMetadata':
+    'Name, domain, summary, author and licence each need a value — a card without them says nothing.',
+  'home.userCases.publish.noFiles': 'This project has no files to publish.',
+  'home.userCases.publish.indexUnreadable':
+    'The published index could not be read, so nothing was written over it. Check the release before republishing.',
+  'home.userCases.publish.indexUnreachable': 'The case market could not be reached.',
+  'home.userCases.publish.verifyFailed':
+    'The upload finished, but reading the shelf back did not show this case with the digest computed here. Nothing is being claimed as published.',
+  'home.userCases.publish.uploadFailed': 'GitHub refused the upload.',
+  'home.userCases.publish.refused': 'The case was not published.',
   'home.userCases.bundle.importAction': 'Import a case bundle',
   'home.userCases.bundle.working': 'Working…',
   'home.userCases.bundle.exported': 'Wrote {count} files ({size}) to {directory}.',

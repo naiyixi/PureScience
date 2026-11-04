@@ -7,7 +7,8 @@ import {
   buildCaseBundle,
   type CaseBundleExportProblem,
   type CaseBundleFile,
-  type CaseBundleManifest
+  type CaseBundleManifest,
+  type CaseBundleSourceFile
 } from '../../shared/case-bundle'
 
 export type { CaseBundleExportProblem }
@@ -31,13 +32,7 @@ export const CASE_BUNDLE_MANIFEST_NAME = 'manifest.json'
 export const CASE_BUNDLE_FILES_DIR = 'files'
 export const CASE_BUNDLE_STAGING_PREFIX = '.case-bundle-staging-'
 
-export type CaseBundleSourceFile = {
-  // The name the bundle will carry. Sanitised: no separators, no `..`, not empty after trimming.
-  name: string
-  // An absolute path this machine has already resolved and is allowed to read.
-  sourcePath: string
-  kind?: string
-}
+export type { CaseBundleSourceFile }
 
 export type CaseBundleExportInput = {
   caseName: string

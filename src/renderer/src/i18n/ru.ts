@@ -5151,6 +5151,35 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Пакет создан более ранней версией и не содержит записей о вызовах инструментов.',
   'settings.availableOnDiskUnreadable': 'Не удалось прочитать свободное место',
   'home.userCases.bundle.exportAction': 'Экспортировать как пакет кейса',
+  'home.userCases.publish.open': 'Опубликовать на рынке кейсов',
+  'home.userCases.publish.idLabel':
+    'Идентификатор (задаёт имя файла; повторная публикация заменит этот кейс)',
+  'home.userCases.publish.nameLabel': 'Название кейса',
+  'home.userCases.publish.domainLabel': 'Область',
+  'home.userCases.publish.authorLabel': 'Автор',
+  'home.userCases.publish.licenseLabel': 'Лицензия',
+  'home.userCases.publish.summaryLabel': 'Краткое описание в одну строку',
+  'home.userCases.publish.identityHint':
+    'Идентификатор для кейса постоянный: повторная публикация заменяет запись, а не добавляет вторую.',
+  'home.userCases.publish.submit': 'Загрузить и опубликовать',
+  'home.userCases.publish.working': 'Загрузка…',
+  'home.userCases.publish.cancel': 'Отмена',
+  'home.userCases.publish.published':
+    'Опубликовано: файлов {count}, {size}, хеш {digest}… — на полке именно то, что упаковала эта машина.',
+  'home.userCases.publish.noCredential':
+    'На этой машине нет учётных данных GitHub. Выполните `gh auth login` в терминале и повторите.',
+  'home.userCases.publish.badId':
+    'В идентификаторе допустимы только строчные буквы, цифры и дефисы, не более 64 символов.',
+  'home.userCases.publish.missingMetadata':
+    'Название, область, описание, автор и лицензия обязательны: без них карточка ничего не сообщает.',
+  'home.userCases.publish.noFiles': 'В этом проекте нет файлов для публикации.',
+  'home.userCases.publish.indexUnreadable':
+    'Опубликованный индекс прочитать не удалось, поэтому он не перезаписан. Проверьте релиз перед повторной публикацией.',
+  'home.userCases.publish.indexUnreachable': 'Рынок кейсов недоступен.',
+  'home.userCases.publish.verifyFailed':
+    'Загрузка прошла, но при повторном чтении полки кейс не появился с вычисленным здесь хешем. Опубликованным он не считается.',
+  'home.userCases.publish.uploadFailed': 'GitHub отклонил загрузку.',
+  'home.userCases.publish.refused': 'Кейс не опубликован.',
   'home.userCases.bundle.importAction': 'Импортировать пакет кейса',
   'home.userCases.bundle.working': 'Обработка…',
   'home.userCases.bundle.exported': 'Записано {count} файлов ({size}) в {directory}.',

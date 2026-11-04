@@ -5310,6 +5310,35 @@ export const de: Partial<Record<ZhKey, string>> = {
     'Dieses Paket wurde von einer älteren Version geschrieben und enthält keine Werkzeugaufrufe.',
   'settings.availableOnDiskUnreadable': 'Freier Speicherplatz nicht lesbar',
   'home.userCases.bundle.exportAction': 'Als Fall-Bundle exportieren',
+  'home.userCases.publish.open': 'Im Fall-Markt veröffentlichen',
+  'home.userCases.publish.idLabel':
+    'Kennung (bestimmt den Dateinamen; erneutes Veröffentlichen ersetzt diesen Fall)',
+  'home.userCases.publish.nameLabel': 'Fallname',
+  'home.userCases.publish.domainLabel': 'Bereich',
+  'home.userCases.publish.authorLabel': 'Autor',
+  'home.userCases.publish.licenseLabel': 'Lizenz',
+  'home.userCases.publish.summaryLabel': 'Einzeilige Zusammenfassung',
+  'home.userCases.publish.identityHint':
+    'Die Kennung ist für diesen Fall fest: erneutes Veröffentlichen ersetzt den Eintrag, statt einen zweiten anzulegen.',
+  'home.userCases.publish.submit': 'Hochladen und veröffentlichen',
+  'home.userCases.publish.working': 'Wird hochgeladen…',
+  'home.userCases.publish.cancel': 'Abbrechen',
+  'home.userCases.publish.published':
+    'Veröffentlicht: {count} Dateien, {size}, Prüfsumme {digest}… — im Regal steht genau das, was dieser Rechner gepackt hat.',
+  'home.userCases.publish.noCredential':
+    'Dieser Rechner hat keine GitHub-Anmeldedaten. Führe `gh auth login` in einem Terminal aus und versuche es erneut.',
+  'home.userCases.publish.badId':
+    'Die Kennung darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten, höchstens 64 Zeichen.',
+  'home.userCases.publish.missingMetadata':
+    'Name, Bereich, Zusammenfassung, Autor und Lizenz brauchen jeweils einen Wert — ohne sie sagt eine Karte nichts.',
+  'home.userCases.publish.noFiles': 'Dieses Projekt hat keine Dateien zum Veröffentlichen.',
+  'home.userCases.publish.indexUnreadable':
+    'Der veröffentlichte Index war nicht lesbar, deshalb wurde nichts darübergeschrieben. Prüfe das Release, bevor du erneut veröffentlichst.',
+  'home.userCases.publish.indexUnreachable': 'Der Fall-Markt war nicht erreichbar.',
+  'home.userCases.publish.verifyFailed':
+    'Der Upload lief durch, aber beim erneuten Lesen des Regals erschien dieser Fall nicht mit der hier berechneten Prüfsumme. Er gilt nicht als veröffentlicht.',
+  'home.userCases.publish.uploadFailed': 'GitHub hat den Upload abgelehnt.',
+  'home.userCases.publish.refused': 'Der Fall wurde nicht veröffentlicht.',
   'home.userCases.bundle.importAction': 'Fall-Bundle importieren',
   'home.userCases.bundle.working': 'Wird verarbeitet…',
   'home.userCases.bundle.exported': '{count} Dateien ({size}) nach {directory} geschrieben.',

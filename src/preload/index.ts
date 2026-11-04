@@ -102,6 +102,7 @@ import type {
   CaseInstallRequest,
   CaseMarketplaceRequest
 } from '../shared/case-bundle'
+import type { CasePublishRequest } from '../shared/case-publish'
 import type { FigureReviewRequest } from '../shared/figure'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -602,7 +603,9 @@ const api: PureScienceAPI = {
     importBundle: (request: CaseBundleImportRequest) =>
       electronRendererContracts.invoke('caseBundles.importBundle', request),
     installFromMarketplace: (request: CaseInstallRequest) =>
-      electronRendererContracts.invoke('caseBundles.installFromMarketplace', request)
+      electronRendererContracts.invoke('caseBundles.installFromMarketplace', request),
+    publish: (request: CasePublishRequest) =>
+      electronRendererContracts.invoke('caseBundles.publish', request)
   },
   cli: {
     getStatus: () => electronRendererContracts.invoke('cli.getStatus'),

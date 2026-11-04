@@ -14,6 +14,7 @@ import {
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useLanguage } from '@/i18n'
 import { ExportCaseBundle, ImportCaseBundle } from './CaseBundleActions'
+import { PublishCase } from './PublishCase'
 import type { TranslationKey } from '@/i18n'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import { useNavigationStore } from '@/stores/navigation-store'
@@ -184,6 +185,7 @@ const CaseDetail = ({
                   caseName={item.name}
                   domain={item.domain}
                 />
+                <PublishCase projectId={item.projectId} caseName={item.name} domain={item.domain} />
               </div>
             </>
           ) : null}

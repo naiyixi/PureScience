@@ -18,6 +18,7 @@ import type {
   CaseMarketplaceRequest,
   CaseBundleImportRequest
 } from '../shared/case-bundle'
+import type { CasePublishOutcome, CasePublishRequest } from '../shared/case-publish'
 import type { CaseBundleCommandOwner } from './cases/case-bundle-owner'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type { OpenSessionFromNotificationRequest } from '../shared/notifications'
@@ -572,7 +573,14 @@ const caseBundleCommands = Object.freeze({
     'cases:install',
     readonly [request: CaseInstallRequest],
     CaseInstallOutcome
-  >('cases:install')
+  >('cases:install'),
+  // Publishing uploads to this repository's release with the credential `gh` already holds — local-only, and the
+  // request names no repository: where a case is published is the app's decision, not the window's.
+  publish: defineApplicationCommand<
+    'cases:publish',
+    readonly [request: CasePublishRequest],
+    CasePublishOutcome
+  >('cases:publish')
 })
 
 const hostApplicationCommands = Object.freeze({
@@ -1055,6 +1063,10 @@ const registerHostApplicationCommands = (
       'cases:install': ({ args, callerContext }) =>
         localCommand(callerContext, 'cases:install', () =>
           dependencies.caseBundles.install(args[0])
+        ),
+      'cases:publish': ({ args, callerContext }) =>
+        localCommand(callerContext, 'cases:publish', () =>
+          dependencies.caseBundles.publish(args[0])
         )
     })
     return scope.complete()

@@ -5246,6 +5246,35 @@ export const es: Partial<Record<ZhKey, string>> = {
     'Este paquete lo escribió una versión anterior y no incluye lecturas de llamadas.',
   'settings.availableOnDiskUnreadable': 'No se pudo leer el espacio libre',
   'home.userCases.bundle.exportAction': 'Exportar como paquete de caso',
+  'home.userCases.publish.open': 'Publicar en el mercado de casos',
+  'home.userCases.publish.idLabel':
+    'Identificador (nombra el archivo; volver a publicarlo reemplaza este caso)',
+  'home.userCases.publish.nameLabel': 'Nombre del caso',
+  'home.userCases.publish.domainLabel': 'Dominio',
+  'home.userCases.publish.authorLabel': 'Autor',
+  'home.userCases.publish.licenseLabel': 'Licencia',
+  'home.userCases.publish.summaryLabel': 'Resumen de una línea',
+  'home.userCases.publish.identityHint':
+    'El identificador es fijo para este caso: volver a publicarlo reemplaza la entrada en lugar de añadir otra.',
+  'home.userCases.publish.submit': 'Subir y publicar',
+  'home.userCases.publish.working': 'Subiendo…',
+  'home.userCases.publish.cancel': 'Cancelar',
+  'home.userCases.publish.published':
+    'Publicado: {count} archivos, {size}, huella {digest}… — el estante muestra exactamente lo que empaquetó esta máquina.',
+  'home.userCases.publish.noCredential':
+    'Esta máquina no tiene credenciales de GitHub. Ejecuta `gh auth login` en una terminal y vuelve a intentarlo.',
+  'home.userCases.publish.badId':
+    'El identificador solo admite minúsculas, dígitos y guiones, como máximo 64 caracteres.',
+  'home.userCases.publish.missingMetadata':
+    'Nombre, dominio, resumen, autor y licencia necesitan un valor: sin ellos, una ficha no dice nada.',
+  'home.userCases.publish.noFiles': 'Este proyecto no tiene archivos que publicar.',
+  'home.userCases.publish.indexUnreadable':
+    'No se pudo leer el índice publicado, así que no se escribió encima. Revisa la versión antes de volver a publicar.',
+  'home.userCases.publish.indexUnreachable': 'No se pudo alcanzar el mercado de casos.',
+  'home.userCases.publish.verifyFailed':
+    'La subida terminó, pero al releer el estante este caso no apareció con la huella calculada aquí. No se da por publicado.',
+  'home.userCases.publish.uploadFailed': 'GitHub rechazó la subida.',
+  'home.userCases.publish.refused': 'El caso no se publicó.',
   'home.userCases.bundle.importAction': 'Importar un paquete de caso',
   'home.userCases.bundle.working': 'Procesando…',
   'home.userCases.bundle.exported': '{count} archivos ({size}) escritos en {directory}.',

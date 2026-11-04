@@ -5128,6 +5128,35 @@ export const ja: Partial<Record<ZhKey, string>> = {
     'このパッケージは古い版で書き出されたため、ツール呼び出しの記録を含みません。',
   'settings.availableOnDiskUnreadable': '空き容量を取得できません',
   'home.userCases.bundle.exportAction': 'ケースバンドルとして書き出す',
+  'home.userCases.publish.open': 'ケースマーケットに公開',
+  'home.userCases.publish.idLabel':
+    '識別子（ファイル名になります。同じ識別子で再公開すると置き換わります）',
+  'home.userCases.publish.nameLabel': 'ケース名',
+  'home.userCases.publish.domainLabel': '領域',
+  'home.userCases.publish.authorLabel': '作者',
+  'home.userCases.publish.licenseLabel': 'ライセンス',
+  'home.userCases.publish.summaryLabel': '一行の要約',
+  'home.userCases.publish.identityHint':
+    '識別子はこのケースで固定です。同じ識別子で再公開すると、新しい項目を増やさず既存の項目を置き換えます。',
+  'home.userCases.publish.submit': 'アップロードして公開',
+  'home.userCases.publish.working': 'アップロード中…',
+  'home.userCases.publish.cancel': 'キャンセル',
+  'home.userCases.publish.published':
+    '公開しました：{count} ファイル、{size}、ダイジェスト {digest}…——棚に並ぶのは、このマシンが梱包したそのものです。',
+  'home.userCases.publish.noCredential':
+    'このマシンには GitHub の資格情報がありません。ターミナルで `gh auth login` を実行してから再試行してください。',
+  'home.userCases.publish.badId':
+    '識別子に使えるのは小文字・数字・ハイフンだけで、64 文字までです。',
+  'home.userCases.publish.missingMetadata':
+    '名前・領域・要約・作者・ライセンスはすべて必要です。欠けるとカードは何も語りません。',
+  'home.userCases.publish.noFiles': 'このプロジェクトには公開できるファイルがありません。',
+  'home.userCases.publish.indexUnreadable':
+    '公開済みの索引を読めなかったため、上書きしていません。再公開の前にリリースを確認してください。',
+  'home.userCases.publish.indexUnreachable': 'ケースマーケットに接続できませんでした。',
+  'home.userCases.publish.verifyFailed':
+    'アップロードは完了しましたが、棚を読み直しても、ここで計算したダイジェストを持つ項目が見つかりませんでした。公開済みとは扱いません。',
+  'home.userCases.publish.uploadFailed': 'GitHub がアップロードを拒否しました。',
+  'home.userCases.publish.refused': 'このケースは公開されていません。',
   'home.userCases.bundle.importAction': 'ケースバンドルを読み込む',
   'home.userCases.bundle.working': '処理中…',
   'home.userCases.bundle.exported':
