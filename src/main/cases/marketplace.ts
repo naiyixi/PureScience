@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
 import { mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
 
@@ -233,7 +233,9 @@ export const unpackCaseArchive = async (
       strict: true,
       preservePaths: false,
       filter: (entryPath) => {
-        const segments = entryPath.split('/').filter((segment) => segment.length > 0)
+        // Both separators: an archive is posix-named, but the filter is the last line of defence on a host where
+        // the extractor may hand back native separators, and a traversal is a traversal either way.
+        const segments = entryPath.split(/[\\/]+/).filter((segment) => segment.length > 0)
         // The archive holds one bundle directory: <name>/manifest.json and <name>/files/<file>.
         const ok = segments.length > 0 && segments.slice(1).every(isSingleSegment)
         if (!ok) unsafe = entryPath
@@ -367,8 +369,14 @@ export const packCaseArchive = async (
   bundleDir: string,
   archiveFile: string
 ): Promise<CaseArchivePackResult> => {
-  const folder = bundleDir.split('/').pop()
-  if (!folder) return { ok: false, problem: 'unpackable', detail: 'bundleDir' }
+  // `basename`, not `split('/')`: on Windows a bundle directory arrives as `C:\…\out\<name>`, which splitting on a
+  // forward slash leaves whole — the archive then carried the publisher's absolute path and every reader unpacked
+  // a `Users\…` tree instead of the one bundle directory it looks for. Verified by the Windows lane: two installs
+  // refused a bundle this code had just packed.
+  const folder = basename(bundleDir)
+  if (!folder || folder === '.' || folder === '..') {
+    return { ok: false, problem: 'unpackable', detail: 'bundleDir' }
+  }
   await mkdir(dirname(archiveFile), { recursive: true })
   try {
     // The archive carries the bundle directory itself, so unpacking it yields a directory the reader accepts.

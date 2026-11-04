@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, readdir, rm, stat, writeFile, mkdir } from 'node:fs/promises'
 import { Blob as NodeBlob } from 'node:buffer'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import * as tar from 'tar'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -182,6 +182,31 @@ describe('reading the index', () => {
     expect(
       await fetchCaseMarketplaceIndex('https://example.test/i.json', { fetchImpl: notFound })
     ).toMatchObject({ problem: 'bad-response', detail: 'HTTP 404' })
+  })
+})
+
+describe('packing a case archive', () => {
+  it('carries the bundle directory name, never the absolute path it happened to live at', async () => {
+    const archive = await buildBundle()
+    const entries: string[] = []
+    await tar.t({
+      file: archive.archiveFile,
+      onReadEntry: (entry): void => {
+        entries.push(entry.path)
+      }
+    })
+    expect(entries.length).toBeGreaterThan(0)
+    // The reader looks for exactly one directory in the archive and reads the manifest inside it. Packing has to
+    // name that directory the way the destination filesystem spells it — a Windows bundle directory is
+    // `C:\…\out\<name>`, and any splitting on a forward slash leaves it whole, so every entry gets buried under
+    // `Users/…` and the install then refuses a bundle this code packed itself (measured on the Windows lane).
+    const tops = new Set(entries.map((path) => path.split('/')[0]))
+    expect([...tops]).toEqual([basename(archive.bundleDir)])
+    for (const path of entries) {
+      expect(path).not.toMatch(/^[A-Za-z]:/)
+      expect(path.startsWith('/') || path.startsWith('\\')).toBe(false)
+      expect(path).not.toContain('\\')
+    }
   })
 })
 
