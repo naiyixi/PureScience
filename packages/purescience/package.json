@@ -1,6 +1,6 @@
 {
   "name": "purescience",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Node.js SDK and CLI for the PureScience local daemon",
   "type": "module",
   "exports": {

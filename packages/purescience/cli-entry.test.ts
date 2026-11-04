@@ -1,4 +1,4 @@
-import { mkdtemp, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -41,6 +41,15 @@ describe.skipIf(process.platform === 'win32')(
       const { stdout, status } = await runThroughLink(['--help'])
       expect(status).toBe(0)
       expect(stdout).toContain('Usage: purescience <command>')
+    })
+
+    it('answers which version it is', async () => {
+      const manifest = JSON.parse(
+        await readFile(new URL('./package.json', import.meta.url), 'utf8')
+      ) as { version: string }
+      const { stdout, status } = await runThroughLink(['--version'])
+      expect(status).toBe(0)
+      expect(stdout.trim()).toBe(manifest.version)
     })
 
     it('still refuses an unknown command over the link', async () => {

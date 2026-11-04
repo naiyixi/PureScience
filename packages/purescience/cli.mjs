@@ -1035,6 +1035,13 @@ export const runCli = async (argv = process.argv.slice(2)) => {
     console.log(usage)
     return
   }
+  // Which build am I? Anyone filing a bug needs this to be one flag away, and the answer is the published version,
+  // read from the package itself rather than duplicated in a constant that drifts.
+  if (options.version || command === '-v' || command === '--version') {
+    const manifest = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'))
+    console.log(manifest.version)
+    return
+  }
   if (command === 'init') await initCommand(options)
   else if (command === 'doctor') await doctorCommand(options)
   else if (command === 'start') await startCommand(options)
