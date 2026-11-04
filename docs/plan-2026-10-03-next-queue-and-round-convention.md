@@ -16246,3 +16246,11 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 ② 若并行会话迟迟不提交，下一轮就以「认领该修复」的方式接手（先 `git log --oneline origin/main -3` 核一遍，
 并在提交信息里点名认领），不再重复写第二套；
 ③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/notebook/**`。
+
+> 补记（同一轮，read-only 观察，不改代码）：工作区里那份上传修复是在 `artifacts/ipc.ts` 上**新加一条
+> `resolveUploadPath` 依赖**，而同一次装配里已经有一条**按来源分派的共享解析器**
+> `resolveManagedFilePath(source, request)`（`src/main/ipc.ts:757-789`，头注写着「One source-neutral resolver keeps
+> previews and user-requested exports on identical trust checks」），artifact / upload / notebook-input / local 四支都覆盖。
+> 两条并存＝同一个问题两套答案。建议把探针接到那条共享解析器上（而不是只加一支），并把 `source` 一起传下去；
+> 现状下 `source: 'notebook-input'` 的条目仍会被 artifact 根解析器判不可用 —— 目前**没有界面在探它**
+> （`NotebookInputDataStrip` 走自己的预览读取器），所以这是**潜在缺口，不是今天用户可见的缺陷**。
