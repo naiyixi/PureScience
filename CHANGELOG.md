@@ -1,5 +1,54 @@
 # PureScience 更新日记
 
+## v2.26.0 — 2026-11-06（案例能带走了：导出、导入、市场，以及把它传上去）
+
+**一句话**：案例此前只活在那台跑过它的机器上。这一版让它成为一个文件夹（清单 + 文件），能被导出、能被别人
+导入、能挂在货架上，也能从这里发上去；发上去这件事，只有读回索引、看见本机算出的摘要，才算数。
+
+### 改了什么
+
+- **案例包格式** `src/shared/case-bundle.ts`：清单只认它自己带着的文件；名字取路径最后一段，`..`、分隔符、
+  重名一律在写盘前拒掉；摘要按字节算，不按时间。
+- **写盘 / 读入** `main/cases/export-bundle.ts`、`import-bundle.ts`：导出是"全写成或全不写"，导入是"清单是
+  陌生人写的"——先逐文件重算，任何一条不符就整包拒绝并列出是哪些文件（`checksumMismatch: ["AAV5_LP1_F9Padua.fasta"]`）。
+- **两个入口**：案例详情里的「导出案例包」与「导入案例包」。窗口只给项目名和目录，文件清单由主进程自己问
+  文件目录要，窗口不能点一份目录之外的文件。
+- **市场货架** `main/cases/marketplace.ts` + `CaseMarketplace.tsx`：索引是 GitHub Release 上的一个 JSON
+  文件，每个案例一个 `.tar.gz`。安装是"下载边算摘要 → 比索引 → 解包 → 逐文件再算一遍 → 才落盘"；卡片上只
+  有发布者写的字段和能从归档量出来的数（文件数、字节数），没有评分、没有下载量。
+- **发布** `main/cases/publish.ts` + `PublishCase.tsx`：详情页脚填一张卡片（id / 名称 / 领域 / 作者 / 许可 /
+  摘要），主进程打与导出完全相同的包，上传后 upsert 自己那一条、其余条目逐字节不动，然后读回索引核对摘要。
+  凭据只认 `gh` 已持有的：应用不收集 GitHub token，也不自建 OAuth 应用；请求里没有仓库、没有 release 名。
+
+### 证据
+
+- `publish.test.ts` 10 项：假 GitHub 有状态（release、资产、索引文档），打包与摘要是真实现。覆盖首发、别人
+  的条目逐字节不动、同 id 重发替换、无凭据一次请求都不发、空摘要、索引读不懂就不覆盖、读回摘要不符记
+  `verify-failed`、上传被拒、空项目在碰网络前拒绝。
+- `PublishCase.render.test.tsx` 3 项；`renderer-contract-entry-coverage` 认到界面入口；21 键 × 9 语言，
+  i18n 覆盖率 100%。
+- **真机**（`VITEST_LOCAL=1 npx vitest run src/main/cases/real-publish.local.test.ts`）：本机真实项目
+  10 个文件、1,808,617 字节上传到 `case-index` release，`internal-evaluation-22998ece92bc8a56.tar.gz`；读回
+  索引拿到同一摘要，下载归档解包后与磁盘源文件逐字节相等。
+- 计数：catalog 509 / invoke 388 / localWeb 380 / remote 拒绝 141 / host channels 93 / preload 226 /
+  core contracts 264 / 参数形状 418；`--project unit` 17062 passed。
+
+### 跑真机才发现的两个缺陷
+
+- **归档是"先删再传"，删完传失败，索引就指向一个不存在的文件。** 线上货架真被这么弄坏过一次。改成内容寻址
+  命名 `<id>-<sha256前16位>.tar.gz`，上传时不删任何东西；旧归档只在索引读回验证通过后才清扫。
+- **上传一直 400**：Node 的 fetch 用流式 body 会发 chunked，GitHub 的资产接口要 `content-length`。
+- 顺带一条：索引的读回原来走 `releases/download`（到 `github.com` 的那条线路，某些网络下超时），改成走 API
+  读同一个 release 的资产——写和读走同一条路。
+
+### 没做到的
+
+- **封面图没有**：卡片没有这个字段，货架上也不显示。
+- **案例排序仍在窗口里做**，没有改主进程聚合：`内部评测` 的 126 行 vs 磁盘 0 个文件的歧义未解，见
+  `docs/evidence/2026-11-05-case-ranking-count-semantics.md`。
+- **案例命名仍是按 projectId 硬编码的表**（`CURATED_CASE_TITLES`），没有落成项目字段，换机器不成立。
+- **OCR 的 8 个语言包未验**：本机只有 `eng`/`osd`，按"没有 SHA256 不下载权重"的规矩没装。
+
 ## v2.25.0 — 2026-11-05（文献库会检索了，也能从 Zotero 搬进来，PDF 知道该按什么顺序读）
 
 **一句话**：文献库此前只能按合集和阅读状态过滤，找一条记录靠肉眼翻；Zotero 用户要迁移一个库只能一条条手抄；
@@ -227,12 +276,12 @@ detectCodeBuddy() → {"resolvedPath":"/Users/totota/.local/bin/codebuddy","vers
 
 ### 二 连接器：四个新源 + 面板终于说了两句人话
 
-| 连接器 | 工具 | 读数 |
-| --- | --- | --- |
-| `lipid-maps` | `lipidmaps_compound_lookup` | 本机实测 `pubchem_cid=5997` → `LMST01010001 / Cholesterol / C27H46O / exact_mass 386.354866`。该 API **没有名称检索**（服务原话列出 11 种合法标识符），`name` 是具名拒绝 |
-| `omnipath` | interactions / annotations / enzyme-substrate | 本机实测：`TP53` → 2 条互作（`P04637→Q9BRQ8`，`is_stimulation`+`consensus`）；`TP53` 注释 `PROGENy/pathway/PI3K`；`CDK1` → `O15392 T34 phosphorylation`。抓到 `/annotations` **不接受 `organisms`**，已改成不发并在结果里写 `organismFilterApplied: false` |
-| `cancer-imaging`（TCIA） | collections / patient studies / series search | 本机四个地址全 `000`（DNS 正常）⇒ 读数由 CI 探针产生：`5` 个集合（4D-Lung / A091105 / ACNS0332 / ACRIN-6698 / ACRIN-Contralateral-Breast-MR）、`4D-Lung` 的 `3` 个病人、`3` 条序列（字段含 `ImageCount` / `FileSize` / `LicenseName`）。记录原样透传并附 `fields[]`；缺参数时 NBIA 用 **200 + HTML** 回应，这种情况报 `source-unreadable` 而不是「没有数据」 |
-| `structure-similarity` | `pdb_structure_similarity` | RCSB 公开面无结构相似服务（`service:"structure"` 400 / `value` 500，同构造 `chemical` 204）；改用 FoldSeek，要上传坐标 ⇒ 为此给 `ToolContext` 加了 `postForm`。CI 实测：`1CBS` 查询 **`status=COMPLETE, hits=1000`**，首条 `AF-A0A9X9LGA4-F1-model_v6`（`seqId=95.6`、`alnLength=137`）。字段名与端点都是试出来的：`database[]` 才收、`/api/result/<id>/0` 才是结果，另三个 404；`alignments` 是**二维**，读浅一层就会在千条命中上报 0 |
+| 连接器                   | 工具                                          | 读数                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lipid-maps`             | `lipidmaps_compound_lookup`                   | 本机实测 `pubchem_cid=5997` → `LMST01010001 / Cholesterol / C27H46O / exact_mass 386.354866`。该 API **没有名称检索**（服务原话列出 11 种合法标识符），`name` 是具名拒绝                                                                                                                                                                                                                                                               |
+| `omnipath`               | interactions / annotations / enzyme-substrate | 本机实测：`TP53` → 2 条互作（`P04637→Q9BRQ8`，`is_stimulation`+`consensus`）；`TP53` 注释 `PROGENy/pathway/PI3K`；`CDK1` → `O15392 T34 phosphorylation`。抓到 `/annotations` **不接受 `organisms`**，已改成不发并在结果里写 `organismFilterApplied: false`                                                                                                                                                                             |
+| `cancer-imaging`（TCIA） | collections / patient studies / series search | 本机四个地址全 `000`（DNS 正常）⇒ 读数由 CI 探针产生：`5` 个集合（4D-Lung / A091105 / ACNS0332 / ACRIN-6698 / ACRIN-Contralateral-Breast-MR）、`4D-Lung` 的 `3` 个病人、`3` 条序列（字段含 `ImageCount` / `FileSize` / `LicenseName`）。记录原样透传并附 `fields[]`；缺参数时 NBIA 用 **200 + HTML** 回应，这种情况报 `source-unreadable` 而不是「没有数据」                                                                           |
+| `structure-similarity`   | `pdb_structure_similarity`                    | RCSB 公开面无结构相似服务（`service:"structure"` 400 / `value` 500，同构造 `chemical` 204）；改用 FoldSeek，要上传坐标 ⇒ 为此给 `ToolContext` 加了 `postForm`。CI 实测：`1CBS` 查询 **`status=COMPLETE, hits=1000`**，首条 `AF-A0A9X9LGA4-F1-model_v6`（`seqId=95.6`、`alnLength=137`）。字段名与端点都是试出来的：`database[]` 才收、`/api/result/<id>/0` 才是结果，另三个 404；`alignments` 是**二维**，读浅一层就会在千条命中上报 0 |
 
 面板：每行标出领域（genomics / structures / omics / clinical / literature / tools），目录区在领域变化处插入小标题
 （**不新增折叠层**），头部显示 **N 个连接器 · M 个工具**，两个数字与注册表同源
@@ -263,11 +312,11 @@ README 双语与 ROADMAP 由守卫测试钉住。
 
 新增三张，全部来自本机实跑读数，不是描述：
 
-| 卡 | 读数（逐字取自证据档） | 重跑 |
-| --- | --- | --- |
-| `package-readings` 导入判定可复算 | `"usage": { "state": "match",` · `"toolCalls": { "state": "match", "rows": 0, "unnamed": 0 }` · CLI 导入 `233 ms` | `e2e/certification/session-package-three-surfaces.spec.ts` |
-| `session-density` 一屏四轮 | `{"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}` · `folded summary row height: 24px` | `e2e/certification/session-density-reading.spec.ts` |
-| `import-authorization` 远端导入被拒 | 桌面整包 `a83ed9856bee` / `2274` 字节 · 远端面 `401` | `src/main/web-service/http-server.test.ts` |
+| 卡                                  | 读数（逐字取自证据档）                                                                                                             | 重跑                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `package-readings` 导入判定可复算   | `"usage": { "state": "match",` · `"toolCalls": { "state": "match", "rows": 0, "unnamed": 0 }` · CLI 导入 `233 ms`                  | `e2e/certification/session-package-three-surfaces.spec.ts` |
+| `session-density` 一屏四轮          | `{"viewport":806,"transcriptHeight":572,"perTurn":143,"summaryRows":[24,24,24,24],"groups":4}` · `folded summary row height: 24px` | `e2e/certification/session-density-reading.spec.ts`        |
+| `import-authorization` 远端导入被拒 | 桌面整包 `a83ed9856bee` / `2274` 字节 · 远端面 `401`                                                                               | `src/main/web-service/http-server.test.ts`                 |
 
 判据仍是 `use-case-gallery.test.ts` 的硬守卫：卡上每个读数、每句引文必须在它点名的证据档里**逐字存在**，
 命令里的文件路径必须真实存在，9 国语言三个键齐全。改一个数就会红 —— 这是它存在的理由。
@@ -466,14 +515,14 @@ CLI `purescience package export`。此前后两条根本调不到——契约目
 
 跑在真实 OpenAlex 上（无 key、公开 API，探针直接驱动主进程那个模块本体）：
 
-| 记录 | 方向 | total（源） | examined | 其中中文 | incomplete |
-| --- | --- | --- | --- | --- | --- |
-| `10.1038/nature14539`（英文） | references | 53 | 49 | 0 | **true**（「53 条只读前 50」）|
-| 同上 | citations | **83,700** | 50 | 0 | false |
-| `10.53388/ccmr2022022` | citations | 113 | 50 | **49** | false |
-| `10.53388/ccmr2021015` | citations | 89 | 50 | **50** | false |
-| `10.26549/yzlcyxzz.v4i3.6890` | citations | 116 | 50 | **50** | false |
-| `10.26549/yzlcyxzz.v3i4.3108` | citations | 163 | 50 | **47** | false |
+| 记录                          | 方向       | total（源） | examined | 其中中文 | incomplete                     |
+| ----------------------------- | ---------- | ----------- | -------- | -------- | ------------------------------ |
+| `10.1038/nature14539`（英文） | references | 53          | 49       | 0        | **true**（「53 条只读前 50」） |
+| 同上                          | citations  | **83,700**  | 50       | 0        | false                          |
+| `10.53388/ccmr2022022`        | citations  | 113         | 50       | **49**   | false                          |
+| `10.53388/ccmr2021015`        | citations  | 89          | 50       | **50**   | false                          |
+| `10.26549/yzlcyxzz.v4i3.6890` | citations  | 116         | 50       | **50**   | false                          |
+| `10.26549/yzlcyxzz.v3i4.3108` | citations  | 163         | 50       | **47**   | false                          |
 
 **三条中文判据在 200 行样本上的分布**：`doi-prefix` **194** / `title-han` **2** / `journal-language` **0**。
 交叉核对：源的 `language === 'zh'` 只有 **2 行**且都被 `title-han` 抓到 ⇒ **194 行带中文源信号却被源标成 `en`**，
@@ -549,10 +598,10 @@ CLI `purescience package export`。此前后两条根本调不到——契约目
 
 `AgentFrameworkId` 是 `claude-code | opencode | codex | codebuddy`，而两处**手写**白名单只列了前三个：
 
-| 位置 | 后果 |
-|---|---|
+| 位置                                            | 后果                                                            |
+| ----------------------------------------------- | --------------------------------------------------------------- |
 | `src/main/settings/repository.ts`（读取规范化） | `setAgentFramework('codebuddy')` 返回成功，**下次解析即被丢弃** |
-| `src/shared/session-persistence.ts`（持久化） | codebuddy 会话落盘时框架 id 被丢弃，读回成 `claude-code` |
+| `src/shared/session-persistence.ts`（持久化）   | codebuddy 会话落盘时框架 id 被丢弃，读回成 `claude-code`        |
 
 ### 二、修法：一个来源 + 编译期完整性检查
 
@@ -643,12 +692,12 @@ ROUNDTRIP OK
 
 v2.18.3 给回合收口加了 `prompt usage` 日志（第二来源）。真回合一验，**六个字段里只有三个能对上**：
 
-| 字段 | 修前日志 | 文档 | 结果 |
-|---|---|---|---|
-| `inputTokens` | 83042 | 83042 | ✅ |
-| `outputTokens` | 143014 | 143014 | ✅ |
-| `turnCount` | 79 | 79 | ✅ |
-| `cacheTokens` / `cachedReadTokens` / `cachedWriteTokens` | **`[redacted]`** | 9276544 / 9276544 / 0 | ❌ |
+| 字段                                                     | 修前日志         | 文档                  | 结果 |
+| -------------------------------------------------------- | ---------------- | --------------------- | ---- |
+| `inputTokens`                                            | 83042            | 83042                 | ✅   |
+| `outputTokens`                                           | 143014           | 143014                | ✅   |
+| `turnCount`                                              | 79               | 79                    | ✅   |
+| `cacheTokens` / `cachedReadTokens` / `cachedWriteTokens` | **`[redacted]`** | 9276544 / 9276544 / 0 | ❌   |
 
 根因是自家脱敏规则：`isTokenMetricKey` 要求键名里**每个词**都在 `TOKEN_METRIC_WORDS` 名单内，而名单里有
 `cached`、`input`、`output`、`count`，**没有 `cache` / `read` / `write`**。于是 `cachedReadTokens` 因为一个
@@ -748,10 +797,10 @@ v2.18 §2 第 4 条原本要「同一轮的 usage 与日志对得上」。真机
 `getPackageMirror()` → **`effectiveMirrorAsync(...)`** → `createProductionProvisioner({ channel })`。往下是
 `pickFastestMirror()`——对候选 conda/pip 镜像做**网络测速**。而镜像的唯一用途是装 notebook 环境。
 
-| 指标（打包版，同一台机） | 改前 | 改后 |
-|---|---|---|
+| 指标（打包版，同一台机）  | 改前                  | 改后                      |
+| ------------------------- | --------------------- | ------------------------- |
 | `ipc-handlers-registered` | 2469 / 3021 / 4157 ms | **1828 / 1571 / 1415 ms** |
-| `web-service-started` | 2480 / 3177 / 4170 ms | **1841 / 1581 / 1447 ms** |
+| `web-service-started`     | 2480 / 3177 / 4170 ms | **1841 / 1581 / 1447 ms** |
 
 改法是把 `channel` 变成**惰性解析**（`string | (() => Promise<string>)`，创建环境时才解析一次），composition
 只用同步的 locale 默认值。**没有**用超时降级——那会让整个会话拿错镜像去装包，是正确性事故。
@@ -792,10 +841,10 @@ v2.18.1 的版记里写着 `src/main/net/egress.test.ts:452` 的 CONNECT 隧道�
 
 ### 一、性能（真机读数，同一台机器、同一个 255 MB 库）
 
-| 项 | 改前 | 改后 | 提交 |
-|---|---|---|---|
-| `open-project-db` | **330 / 406 ms** | **125–127 ms**（第一次 432 ms，写戳） | `2458555f` |
-| `specialist-skill-catalog` | **324 / 374 ms**（历史峰值 1,160 ms） | **未再触发 250 ms 阈值行** | `e19a3094` |
+| 项                         | 改前                                  | 改后                                  | 提交       |
+| -------------------------- | ------------------------------------- | ------------------------------------- | ---------- |
+| `open-project-db`          | **330 / 406 ms**                      | **125–127 ms**（第一次 432 ms，写戳） | `2458555f` |
+| `specialist-skill-catalog` | **324 / 374 ms**（历史峰值 1,160 ms） | **未再触发 250 ms 阈值行**            | `e19a3094` |
 
 **项目库**：`ensureProjectSchema` 每次启动都把 ~40 建表 / ~60 建索引 / ~40 个守卫式加列（每个先读
 `sqlite_master` 再读 `PRAGMA table_info`）/ 6 组 CHECK 迁移串行跑一遍，在已是最新的库上全部是 no-op。
@@ -848,10 +897,10 @@ v2.18.1 的版记里写着 `src/main/net/egress.test.ts:452` 的 CONNECT 隧道�
 
 ### 一、性能：两处「每次启动都付」的开销
 
-| 改动 | 前 | 后 |
-|---|---|---|
+| 改动                                                     | 前                                                                                                                                                                 | 后                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | 没有待迁移 `keyRef` 就不再问钥匙串（`hasLegacyKeyRefs`） | `encryption-available` 实测 **10,311 / 16,758 / 56,769 / 635,082 ms**（四次启动），且每个读设置的路径各付一遍（`permission-grant-registry` 同窗口被拖 635,268 ms） | 文档自己回答「有没有 `plain:` 引用」；升级后第一次启动之外不再触碰秘密存储 |
-| codex 适配器版本探针走身份键控缓存 | 每次启动裸 spawn 一次 `--version`，实测 **989 / 384 / 332 / 300 ms** | 按 `mtime+size` 记忆、跨进程落盘、失败永不记忆、并发共享一次 spawn |
+| codex 适配器版本探针走身份键控缓存                       | 每次启动裸 spawn 一次 `--version`，实测 **989 / 384 / 332 / 300 ms**                                                                                               | 按 `mtime+size` 记忆、跨进程落盘、失败永不记忆、并发共享一次 spawn         |
 
 两者都保留了失败语义：拿不到就重探（不缓存失败），安全网（`getStoredSettings` 内联迁移）没动。
 
@@ -914,13 +963,13 @@ servers: …`），随后 `createSession: first attempt failed, retrying once` �
 新增的逐服务探针（`PURESCIENCE_MCP_READINESS_PROBE=1`，按客户端真实顺序发
 `initialize → notifications/initialized → tools/list`）在同一台机器上量到：
 
-| 事实 | 读数 |
-|---|---|
-| 我方装配（`session capabilities built` 的 `buildMs`） | **5 ms** |
-| 单个子进程：只引导 node | 123 ms |
-| 单个子进程：到模块就绪（安装版） | **305 ms**（其中 ~180 ms 是 MCP SDK + 服务模块） |
-| 14 个并发 burst（真实会话） | 中位 **2,635 ms** / 最大 **2,729 ms** |
-| 代理侧就绪预算（我们自己 patch 的 `MCP_STARTUP_TIMEOUT_MS`） | 10,000 ms |
+| 事实                                                         | 读数                                             |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| 我方装配（`session capabilities built` 的 `buildMs`）        | **5 ms**                                         |
+| 单个子进程：只引导 node                                      | 123 ms                                           |
+| 单个子进程：到模块就绪（安装版）                             | **305 ms**（其中 ~180 ms 是 MCP SDK + 服务模块） |
+| 14 个并发 burst（真实会话）                                  | 中位 **2,635 ms** / 最大 **2,729 ms**            |
+| 代理侧就绪预算（我们自己 patch 的 `MCP_STARTUP_TIMEOUT_MS`） | 10,000 ms                                        |
 
 `tools/list` 只比 `initialize` 多 8–150 ms ⇒ 工具清单不是成本，**冷启动才是**。本机安静时仍有 3–4 倍
 余量，说明生产超时发生在系统争抢时——所以不调预算值（那只是掩盖），而是把 14 个进程变成 0 个。
@@ -943,7 +992,13 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
 ### 验收读数（隔离实例 + claude-code，真机）
 
 ```json
-{"framework":"claude-code","transport":"http","count":14,"groups":"5 core,9 deferred","buildMs":3}
+{
+  "framework": "claude-code",
+  "transport": "http",
+  "count": 14,
+  "groups": "5 core,9 deferred",
+  "buildMs": 3
+}
 ```
 
 - **count = 14**，十四个服务名逐个在列（切之前是 `count: 4`）；
@@ -973,18 +1028,17 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
   `docs/bench-runs/2026-10-25-mcp-readiness-per-server.md` §5，防止下一个会话重做。
 - 机检③、`probe-codex` 尾巴、钥匙串那一次调用、v2.18.0 / v2.19.0 仍未开工。
 
-
 ## v2.17.6 — 2026-10-24（启动不再等钥匙串：迁移挪到启动之后）
 
 **成熟度自陈**：这一版只有一件事——**启动不再等 OS 秘密存储**。依据是真机三次启动的同一项读数，不是猜测；改法是把不受它影响的读（dataRoot、子进程代理）先走，迁移挪到启动之后。装后读数见 CHANGELOG；本文件写完时**尚未装机测量**，所以这一版不宣称启动数字。
 
 ### 读数：57 秒里 56.8 秒是「问一次钥匙串」
 
-| 启动次序 | `encryption-available` | providers | connectors | `read-stored-settings` |
-|---|---|---|---|---|
-| 2.17.3 首次 | 10,286 ms（≈10,311 总）| 24 ms | 1 ms | 10,311 ms |
-| 2.17.4 | **16,758 ms** | 24 ms | 1 ms | 16,878 ms |
-| 2.17.5 | **56,769 ms** | 20 ms | 0 ms | 56,898 ms |
+| 启动次序    | `encryption-available`  | providers | connectors | `read-stored-settings` |
+| ----------- | ----------------------- | --------- | ---------- | ---------------------- |
+| 2.17.3 首次 | 10,286 ms（≈10,311 总） | 24 ms     | 1 ms       | 10,311 ms              |
+| 2.17.4      | **16,758 ms**           | 24 ms     | 1 ms       | 16,878 ms              |
+| 2.17.5      | **56,769 ms**           | 20 ms     | 0 ms       | 56,898 ms              |
 
 同一台机器、同一份设置文档，只有那一次「能不能用」的判断在变慢，且随机器状态剧烈波动。
 
@@ -998,10 +1052,10 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
 
 ### 装后真机读数（2.17.6 已安装并重启）
 
-| 指标 | 2.17.5 | 2.17.6 |
-|---|---|---|
-| `read-stored-settings` | **56,898 ms** | **未出现在慢步骤里**（低于 250 ms 阈值）|
-| `compose runtime steps totalMs` | ≈57,000 ms | **685 ms**（唯一超阈值的只剩 `open-project-db` 455 ms）|
+| 指标                            | 2.17.5        | 2.17.6                                                  |
+| ------------------------------- | ------------- | ------------------------------------------------------- |
+| `read-stored-settings`          | **56,898 ms** | **未出现在慢步骤里**（低于 250 ms 阈值）                |
+| `compose runtime steps totalMs` | ≈57,000 ms    | **685 ms**（唯一超阈值的只剩 `open-project-db` 455 ms） |
 
 也就是说：这次启动**没有等待钥匙串**，启动阶段本身回到了亚秒级。钥匙串那一次调用仍然存在，只是挪到了
 启动之后（`warmKeyMigration`，失败只 warn）。
@@ -1035,12 +1089,12 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
 
 - **能力清单点名生效**（真实 Claude 主会话）：
   `session capabilities built { framework: "claude-code", role: "primary", transport: "stdio", count: 14,
-  servers: "purescience_annotations,purescience_artifacts,purescience_context_summary,purescience_endpoints,
-  purescience_figure,purescience_goal,purescience_host_query,purescience_knowledge,purescience_memory,
-  purescience_notebook,…", groups: "5 core,9 deferred" }`
+servers: "purescience_annotations,purescience_artifacts,purescience_context_summary,purescience_endpoints,
+purescience_figure,purescience_goal,purescience_host_query,purescience_knowledge,purescience_memory,
+purescience_notebook,…", groups: "5 core,9 deferred" }`
   —— 从这一版起，就绪超时可以和这行日志对上「哪一组在抢预算」。
 - **钥匙串那一步又变慢了，而且是同一处**：`settings key migration was slow { totalMs: 56793,
-  phases: "encryption-available=56769ms,providers=20ms,connectors=0ms" }`，`read-stored-settings = 56,898 ms`。
+phases: "encryption-available=56769ms,providers=20ms,connectors=0ms" }`，`read-stored-settings = 56,898 ms`。
   三次启动的同一项读数：**10,311 → 16,758 → 56,769 ms**。它随机器状态剧烈波动，是当前启动的头号成本，
   也是下一版 C 必须动手的地方（延迟到首次用密钥 / 后台预热）。
 - `load-probe-answers = 368 ms`（探针答案文件读取，正常）。
@@ -1060,13 +1114,13 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
 
 真机日志按 step 名统计（`preflight step slow` / `environment check step slow`）：
 
-| step | n | p50 | max |
-|---|---|---|---|
-| **probe-codex** | 17 | 1,856 ms | **5,128 ms** |
-| probe-claude | 3 | 3,975 ms | 4,457 ms |
-| probe-opencode | 3 | 3,803 ms | 3,937 ms |
-| detect-codebuddy | 4 | 2,148 ms | 3,164 ms |
-| detect-codex | 4 | 728 ms | 2,237 ms |
+| step             | n   | p50      | max          |
+| ---------------- | --- | -------- | ------------ |
+| **probe-codex**  | 17  | 1,856 ms | **5,128 ms** |
+| probe-claude     | 3   | 3,975 ms | 4,457 ms     |
+| probe-opencode   | 3   | 3,803 ms | 3,937 ms     |
+| detect-codebuddy | 4   | 2,148 ms | 3,164 ms     |
+| detect-codex     | 4   | 728 ms   | 2,237 ms     |
 
 本机实测（走产品自己的 cache 实现）：`opencode --version` 冷 **4,035.9 ms**、暖 **1.062 ms**（**3,800×**）。也就是说进程内的缓存早就生效，剩下的 4 秒是**每次进程启动的第一次**，而那期间二进制没变过。
 
@@ -1075,6 +1129,7 @@ skill-import / plan 四类——所以直接切 http 会**静默丢掉十个能�
 新增 `src/main/settings/probe-answer-store.ts`：答案写到 `<storageRoot>/settings/probe-answers.json`，键 = `sha256(路径 + "\0" + mtimeMs:size)`（与内存缓存同一个指纹）。启动时 `load-probe-answers` 读一次，`withVersionProbeCache` 命中磁盘就不再 spawn。
 
 三条纪律（与内存缓存一致，且都不是超时窗口）：
+
 - **失败永不落盘**：spawn 失败是机器瞬时状态，缓存它会把"已安装"读成"未安装"直到文件变化；
 - **指纹变化即失效**：重装/升级后 mtime+size 变了，重新探测；
 - **读不懂就丢**：损坏文件、异版本文件、非字符串条目一律忽略；写入走 temp+rename 与单链排队，半个文件不会毁掉整批答案。
@@ -1105,10 +1160,10 @@ compose step slow { step: "read-stored-settings", durationMs: 16878 }
 
 **读数 1 的效果：新进程第一次 preflight 从 6,116 ms 降到 634 ms**
 
-| 场景 | preflight 总耗时 | 逐步 |
-|---|---|---|
-| 装后首次（缓存文件刚生成） | **6,116 ms** | probe-opencode 5,055 / probe-codex 5,373 / probe-claude 5,954 |
-| 重启后（同一进程第一次 preflight） | **634 ms** | 只剩 probe-codex 585 ms；opencode/claude/codebuddy 全部未达阈值（未 spawn）|
+| 场景                               | preflight 总耗时 | 逐步                                                                        |
+| ---------------------------------- | ---------------- | --------------------------------------------------------------------------- |
+| 装后首次（缓存文件刚生成）         | **6,116 ms**     | probe-opencode 5,055 / probe-codex 5,373 / probe-claude 5,954               |
+| 重启后（同一进程第一次 preflight） | **634 ms**       | 只剩 probe-codex 585 ms；opencode/claude/codebuddy 全部未达阈值（未 spawn） |
 
 缓存文件内容（真机）：`settings/probe-answers.json` 五条身份键控答案 —— `opencode 1.19.3`、`claude 2.1.212`、
 `codebuddy 2.173.0`、managed `codex 0.144.6`、`npm 10.9.8`，每条键都带自己的 mtime+size 指纹。
@@ -1132,13 +1187,13 @@ managed codex 的版本已经命中磁盘答案——而是 `probeCodexRuntime` 
 
 真机日志 `/Users/totota/Library/Logs/PureScience/main.log`（22 小时窗口）重读：
 
-| 指标 | 读数 |
-|---|---|
-| 慢保存（`session save was slow`） | **280** 次 |
-| 其中排队 > 0 | 87 次：p50 **20,143 ms**、p90 **48,306 ms**、max **97,930 ms** |
-| 其中排队 ≥ 1 s | **73** 次，**73/73** 有 ≥50% 的等待落在一次 `session-hydration`（`mode=reconcile`）窗口内 |
-| 最坏样本 | `queuedMs 97,930` ↔ 同期 hydration `durationMs 97,949`（`scanDurationMs 27,939` + `reconcile-derived-state 27,957`）|
-| 窗口内 hydration 次数 / 累计占用 | **81** 次 / **2,336.8 s**（约 39 分钟，占墙钟 3%）|
+| 指标                              | 读数                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 慢保存（`session save was slow`） | **280** 次                                                                                                           |
+| 其中排队 > 0                      | 87 次：p50 **20,143 ms**、p90 **48,306 ms**、max **97,930 ms**                                                       |
+| 其中排队 ≥ 1 s                    | **73** 次，**73/73** 有 ≥50% 的等待落在一次 `session-hydration`（`mode=reconcile`）窗口内                            |
+| 最坏样本                          | `queuedMs 97,930` ↔ 同期 hydration `durationMs 97,949`（`scanDurationMs 27,939` + `reconcile-derived-state 27,957`） |
+| 窗口内 hydration 次数 / 累计占用  | **81** 次 / **2,336.8 s**（约 39 分钟，占墙钟 3%）                                                                   |
 
 **读数口径说明（不进则退的地方）**：本机安装的是 **v2.17.1**，日志里没有 `queueBlockers` 字段（那是 2.17.2 才加的仪器），所以上面是**时间窗重叠归因**，不是 `queueBlockers` 直读。两者的区别写在明面上，不混用。
 
@@ -1163,13 +1218,13 @@ managed codex 的版本已经命中磁盘答案——而是 `probeCodexRuntime` 
 
 用户批准安装后，本机 `/Applications/PureScience.app` 由 **2.17.1** 换到 **2.17.3**（`CFBundleShortVersionString 2.17.3`），重启后的第一段日志：
 
-| 指标 | 修复前（最坏样本） | 修复后（本机启动 pass） |
-|---|---|---|
-| 单次 hydration 总时长 | **97,949 ms** | **17,476 ms** |
-| 其中权威扫描 | 27,939 ms（**占着队列**） | 4,340 ms（**不占队列**） |
-| 扫描期间其它请求 | 只能排队 | `session catalog read` 照常给出 154 条；IPC 处理在 pass 期间正常返回（1.2 s / 1.8 s / 2.4 s / 4.2 s）|
-| 重启后 hydration 次数（5 分钟窗口） | 22 小时窗口内 **81 次** | **1 次**（启动那一pass）|
-| 重启后慢保存 | 280 次 / 22 h | **0 次**（窗口内还没有真实轮次负载）|
+| 指标                                | 修复前（最坏样本）        | 修复后（本机启动 pass）                                                                               |
+| ----------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 单次 hydration 总时长               | **97,949 ms**             | **17,476 ms**                                                                                         |
+| 其中权威扫描                        | 27,939 ms（**占着队列**） | 4,340 ms（**不占队列**）                                                                              |
+| 扫描期间其它请求                    | 只能排队                  | `session catalog read` 照常给出 154 条；IPC 处理在 pass 期间正常返回（1.2 s / 1.8 s / 2.4 s / 4.2 s） |
+| 重启后 hydration 次数（5 分钟窗口） | 22 小时窗口内 **81 次**   | **1 次**（启动那一pass）                                                                              |
+| 重启后慢保存                        | 280 次 / 22 h             | **0 次**（窗口内还没有真实轮次负载）                                                                  |
 
 口径：这三行是**启动 pass** 的读数，不是「真实轮次跑起来的 p90」。`queuedMs` 的 p90/max 需要真实会话负载才有意义，因此仍记为未验证（见下）。
 
@@ -1179,22 +1234,22 @@ managed codex 的版本已经命中磁盘答案——而是 `probeCodexRuntime` 
 
 ### 修复后对照读数（2.17.3 装上并重启后，同一台机器）
 
-| 指标 | 修复前（22 h 窗口） | 修复后（装后约 20 分钟窗口） |
-|---|---|---|
-| 慢保存次数 | 280 | 17 |
-| `queuedMs` p50 | 20,143 ms（排队 >0 的 87 次里） | **0 ms** |
-| `queuedMs` p90 | **48,306 ms** | **0 ms** |
-| `queuedMs` max | **97,930 ms** | **7 ms** |
-| 唯一一次非零排队 | — | `7 ms`，`queueBlockers: read-session-runtime-context=13ms,assert-session-available=5ms` |
-| 单次保存总耗时 max | 97,949 ms | **855 ms**（慢在自身工作，不在排队）|
-| hydration pass 次数 | 81 次 / 22 h | **2 次**（启动 17,476 ms + 12:29:07 的 17,924 ms）|
+| 指标                | 修复前（22 h 窗口）             | 修复后（装后约 20 分钟窗口）                                                            |
+| ------------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
+| 慢保存次数          | 280                             | 17                                                                                      |
+| `queuedMs` p50      | 20,143 ms（排队 >0 的 87 次里） | **0 ms**                                                                                |
+| `queuedMs` p90      | **48,306 ms**                   | **0 ms**                                                                                |
+| `queuedMs` max      | **97,930 ms**                   | **7 ms**                                                                                |
+| 唯一一次非零排队    | —                               | `7 ms`，`queueBlockers: read-session-runtime-context=13ms,assert-session-available=5ms` |
+| 单次保存总耗时 max  | 97,949 ms                       | **855 ms**（慢在自身工作，不在排队）                                                    |
+| hydration pass 次数 | 81 次 / 22 h                    | **2 次**（启动 17,476 ms + 12:29:07 的 17,924 ms）                                      |
 
 `queueBlockers` 这一版第一次真正派上用场：那次 7 ms 的等待直接点名了排在前面的两个短操作，正是 2.17.2 加该字段想要的效果。
+
 - **未做**：队列锁粒度（按 projectId 分桶 / 读写分离）没有动。按读数，占用者是大块工作而不是大量短操作，所以这一版只做「移出每轮路径 + 扫描出队列」，不做分桶。
 - **未做**：写半段仍是一次成块的 reconcile（一个队列槽）。把它切成可让位的小片，需要在每次写前重读目标会话以免覆盖并发保存，属于独立设计，未在本版实现。
 - **未做**：语料级前后对比基准。尝试过在真机语料的副本上跑 `SessionRepository` 对比「全量解析」与「索引 + 单文档」，但副本里的文档被该仓库判为 `corrupt`（同一份字节在本机是正常的），读数无效，**因此不引用任何该基准的数字**。
 - 上一版列出的其他真机缺口（settings 预检 4.5 s、启动 `read-stored-settings` 12 s、MCP 就绪超时、机检③ 1/4）**仍然存在**，按排期在后续版本处理。
-
 
 ## v2.17.2 — 2026-10-24（只做一件事：慢保存要说清谁在占队列）
 
@@ -1204,11 +1259,11 @@ managed codex 的版本已经命中磁盘答案——而是 `probeCodexRuntime` 
 
 用户机器 17:00–18:00 窗口，149 次 `sessions:save-session` 被判慢。最慢三条：
 
-| queuedMs | writeMs | writeDiskMs |
-|---|---|---|
-| **23,294** | 15 | 6 |
-| **15,099** | 35 | 27 |
-| **14,800** | 7 | 5 |
+| queuedMs   | writeMs | writeDiskMs |
+| ---------- | ------- | ----------- |
+| **23,294** | 15      | 6           |
+| **15,099** | 35      | 27          |
+| **14,800** | 7       | 5           |
 
 p90 排队 **14.2 秒**，写盘始终 < 40 ms ⇒ 时间全花在**排队等待**，而不是磁盘。
 
@@ -1286,10 +1341,10 @@ p90 排队 **14.2 秒**，写盘始终 < 40 ms ⇒ 时间全花在**排队等待
 
 v2.16.0 加的每轮注入，每回合要做「扫 4 个技能目录（80+ 个 SKILL.md）+ 遍历所有项目查会话」。实测（同机同模型，只切换 `PURESCIENCE_CAPABILITY_NOTICE`）：
 
-| 阶段 | 关闭 | 开启 |
-|---|---|---|
-| 修之前 | 13.1s | **38.3s**（≈2.9×，每轮 +23s）|
-| 修之后 A/B 两遍 | 12,914 / 12,961 ms | 11,410 / 10,669 ms |
+| 阶段            | 关闭               | 开启                          |
+| --------------- | ------------------ | ----------------------------- |
+| 修之前          | 13.1s              | **38.3s**（≈2.9×，每轮 +23s） |
+| 修之后 A/B 两遍 | 12,914 / 12,961 ms | 11,410 / 10,669 ms            |
 
 两处修：技能扫描按**目录 mtime 签名**缓存（`VITEST` 下禁用，否则测试写完文件立刻读会命旧缓存）；`sessionId → projectId` 记忆，把每轮 O(项目数) 的会话读降到 1 次，失效自然回落全量扫描。
 
@@ -1341,6 +1396,7 @@ v2.16.0 加的每轮注入，每回合要做「扫 4 个技能目录（80+ 个 S
 - 重试日志**不写错误原文**：ACP 失败可能携带 provider 材料（安全用例当场抓到过）。
 
 **性能**：**每轮能力缺口注入改为默认关闭**（`PURESCIENCE_CAPABILITY_NOTICE=on` 可恢复）。两个理由都已测：
+
 1. 它不改变行为——10 次运行、0 次打开技能文件、分数无差异；
 2. 它让每一轮都付一次「4 个技能目录扫描 + 遍历所有项目查会话」的代价，而这正是会饿死新会话所等待的 MCP 子进程的那类主进程工作。
 
@@ -1377,13 +1433,13 @@ v2.16.0 加的每轮注入，每回合要做「扫 4 个技能目录（80+ 个 S
 
 **实测（真机，非推断）**
 
-| 观测 | 结果 |
-|---|---|
-| 契约命中可查 | opencode `declared=28` / codebuddy `28` / codex `31`，`evidence-grading` 均为 `missing_state` |
-| 注入是否发生 | 每轮发生（12 行），20/20 记录通过操纵自检 |
-| 行为是否改变 | **否** —— 10 次运行、工具调用 12–41 次，`skillsRead` 全为 0 |
-| 分数是否改变 | **否** —— 天花板题上无可分辨差异（同条件方差本身就能到 0.33） |
-| 缺前置时的输出 | `missing_state` 读数，载荷可 JSON 往返且不含 stack/traceback |
+| 观测           | 结果                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| 契约命中可查   | opencode `declared=28` / codebuddy `28` / codex `31`，`evidence-grading` 均为 `missing_state` |
+| 注入是否发生   | 每轮发生（12 行），20/20 记录通过操纵自检                                                     |
+| 行为是否改变   | **否** —— 10 次运行、工具调用 12–41 次，`skillsRead` 全为 0                                   |
+| 分数是否改变   | **否** —— 天花板题上无可分辨差异（同条件方差本身就能到 0.33）                                 |
+| 缺前置时的输出 | `missing_state` 读数，载荷可 JSON 往返且不含 stack/traceback                                  |
 
 **明确没做**
 
@@ -1750,7 +1806,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - **从运行记录编译，而不是从调用方的正文**：`skillCreate` 多了 `from_run_id` —— 带它时由**应用自己的运行记录**编译该技能；调用方同时送 `instructions` / `kind` / `evidence` 中任何一个都被**具名拒答**（理由写在代码注释里：两个真源里静默取一个，正是「一段转述被当成方法归档」的来路）。
 - **工具面（agent 面向）**：`createSkill` 的返回类型张开为「草稿 ∪ 编译结果」；schema 新增 `from_run_id`（snake→camel **显式**映射 ⇒ 不为改名静默丢字段）；`instructions` 改为**可选**（否则模型被迫送出一份它不被允许送的正文），由处理器强制「二者取一」；新增 `createLocalSkillCreator` 让 stdio 传输**按每种形态需要什么**分流 —— **草稿仍就地写**（与改动前逐字一致），**编译走应用 RPC**（运行记录只在主进程里）。
 - **读数**（**我会话独立复跑**，数字以复跑为准）：相关 5 个测试文件 **5 passed / 26 passed**；`src/main/skills` + `src/main/notebook` **110 文件 / 1717 passed（99 skipped）**；全树双 typecheck **0 error**；并在该提交自己的隔离工作树里复跑类型检查 = **0 error**。执行器证据档另载其服务层「实机」（真 TCP + 真 token + 运行记录由应用自己的仓储写出）与真机数据读数（2489 条运行、二次编译指纹稳定）✓
-**服务层「实机」**（真 TCP 监听 + 真 token + 运行记录由**应用自己的仓储**写出 + 文档从盘上读回断言）：编译出的 `SKILL.md` 含该记录里的脚本文本、`trust_origin: "run-7"` 与指纹，且**只**写出一份文档；`from_run_id` 指向不存在的运行 ⇒ `refused / not-found` 且**一个文件都没写**（`readdir` 得 ENOENT ✓）。**真机记录读数**（只读复制到 /tmp）：本机 81 份记录里 **2489 条**「已完成且有正文」的运行，取其一（678 字节正文）编译 ⇒ `documentBytes: 2192 / scriptBytes: 678 / skillsWritten: 1`，**二次编译指纹稳定**（`fingerprintStable: true` ✓）。
+  **服务层「实机」**（真 TCP 监听 + 真 token + 运行记录由**应用自己的仓储**写出 + 文档从盘上读回断言）：编译出的 `SKILL.md` 含该记录里的脚本文本、`trust_origin: "run-7"` 与指纹，且**只**写出一份文档；`from_run_id` 指向不存在的运行 ⇒ `refused / not-found` 且**一个文件都没写**（`readdir` 得 ENOENT ✓）。**真机记录读数**（只读复制到 /tmp）：本机 81 份记录里 **2489 条**「已完成且有正文」的运行，取其一（678 字节正文）编译 ⇒ `documentBytes: 2192 / scriptBytes: 678 / skillsWritten: 1`，**二次编译指纹稳定**（`fingerprintStable: true` ✓）。
 
 ### 本版交付 · 乙（**插件创建器**：把第三方公开仓库引入为一种可核验的专家来源，会话）
 
@@ -1889,6 +1945,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **本轮只收最常见的手段词**：还有「PET/CT」「数字减影血管造影」「免疫组化双染」一类未收；门槛不变 ——**英文侧必须能在 MeSH 定位到**，否则不进表。
 - 🚧 **类目只做了一次归位**（method → procedure 的 6 行）；其余类目未重审（不顺手扩大改动面）。
 - 🗺️ 中文源连接器四家仍挂账（只回 `text/html`，无机读契约）；IC54/M2 卡产品决定；IC40/IC6 缺真算力主机与真后台投递。
+
 ## v1.101.0 — 2026-10-10（主题词 33 条：机制/分子生物学词汇；设计与数据来自自主执行器，本版照它的重放配方落地）
 
 **成熟度自陈**：本版把中文表补齐到**主题词**这一层 —— 「细胞凋亡 肺癌」这类「**机制 + 疾病**」的问法此前问不出口（机制那一半落进未映射 ⇒ 具名拒答、0 次请求）。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -1919,6 +1976,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **检查/实验手段词（`procedure` 类，20 条）仍备着未落**：`磁共振成像` D008279、`计算机断层扫描` D014057、`超声检查` D014463、`内镜` D004724、`活检` D001706、`高通量测序` D059014…… 逐条已取到 MeSH 描述符，等词表这一线不再有多方同时改动时落。
 - 🚧 **刻意未收的词**：执行器的档 §三 逐条写明理由（如 `分子机制` 在 MeSH `match=exact` 零命中、`免疫逃逸` 最近的描述符比中文词窄、`信号通路` 与 signal transduction 指的是过程而非结构）——**宁可缺不要错**。
 - 🗺️ 中文源连接器四家仍挂账（只回 `text/html`，无机读契约）；IC54/M2 卡产品决定；IC40/IC6 缺真算力主机与真后台投递。
+
 ## v1.100.0 — 2026-10-10（把「逐条可核对」做成可跑的检查：全表 53 行与 MeSH 逐条比对，53/53 一致）
 
 **成熟度自陈**：本版一件事 —— 词表里每一行 `mesh:D…` 都在说"我的英文侧是从这个 MeSH 描述符读来的"，此前这句话**只能信或手工查**；现在它是一个**任何人可跑的工具**。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -1941,6 +1999,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **影像/检验词（`procedure` 类）本版未落**：20 条已备好并逐条取到 MeSH 描述符（磁共振成像 D008279、计算机断层扫描 D014057、超声检查 D014463、内镜 D004724、活检 D001706、高通量测序 D059014 …），**等词表文件不再被执行器占用**时作为独立一笔落。
 - 🚧 **工具与 CI 分离是刻意的**：需要人手在改表时跑，而不是让车道因第三方慢而红。
 - 🗺️ 中文源连接器四家仍挂账（只回 `text/html`，无机读契约）；IC54/M2 卡产品决定；IC40/IC6 缺真算力主机与真后台投递。
+
 ## v1.99.0 — 2026-10-10（研究方法类中文词 30 条：英文侧逐条取自 MeSH，来源写进表里）
 
 **成熟度自陈**：批次 ① 的中文表是**医学向**的，所以**研究方法**类的中文词（队列研究、随机对照试验、荟萃分析……）此前一律"未映射"：在 PubMed/arXiv 上**具名拒答**、在 OpenAlex 上按原样搜。而中文临床问题**通常就是"设计词 + 主题"**（「随机对照试验 阿司匹林」）—— 设计那一半被拒，等于问题问不全。本版把最常见的 30 条补上。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -1965,6 +2024,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **只收最常见的设计/统计/组学词**（30 条）：还有大量未收（如「真实世界研究」「影像组学」「单臂试验」）。收词门槛是**英文侧能在 MeSH 定位到**（或换一个同样可核对的权威），不够格的不进表。
 - 🚧 **未收 ≠ 被当成阴性**：未映射的中文在各连接器上按各自政策处理（arXiv/PubMed 具名拒答；OpenAlex 原样搜并点名）。
 - 🗺️ 中文源连接器四家仍挂账（只回 `text/html`，无机读契约）；IC54/M2 卡产品决定；IC40/IC6 缺真算力主机与真后台投递。
+
 ## v1.98.0 — 2026-10-10（中文查询接到 arXiv：先踩到一个"看起来像答案的 1"，再按对照读数定政策）
 
 **成熟度自陈**：上一版把中文归一化接到 OpenAlex 时，**arXiv 那条读数取不到**（端点 429），我立案而未编政策。本版取到了，并且过程里有一处值得所有做"读数"的地方记住。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -1990,6 +2050,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🗺️ **中文源连接器四家**（chictr/nmpa/cde/chinadrugtrials）仍挂账：实测只回 `text/html`，**无机读契约**。
 - 🗺️ IC54/M2（本地解析模型资产）仍卡**产品决定**；IC40/IC6 仍缺真算力主机与真后台投递。
 - 🗺️ **其余带自由文本入口的连接器未接**（普查到 20 个自由文本入口，多数是基因/蛋白 ID 类而非自然语言）：只对**自然语言文献检索**这一族（PubMed / OpenAlex / arXiv）做了归一化；是否扩到别的族**需要先有一条判断依据**（它们对中文的行为），不凭"看着像"就接。
+
 ## v1.97.0 — 2026-10-10（中文查询接到 OpenAlex；政策按来源实测行为决定，不照抄 PubMed）
 
 **成熟度自陈**：本版一件事 —— 批次 ① 的中文归一化此前只接进了 PubMed，现在接到 **OpenAlex**（全学科文献源）。**关键在于政策不能照抄**：PubMed 索引拉丁文（实测 `term=阿司匹林` → **0**，发出去只能换来看起来像答案的 0），而 OpenAlex **索引并回答中文**（实测 `search=阿司匹林` → **11,867**、`search=高血压` → **47,119**）。对后者拒答等于**拿掉一个能用的检索**。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -2015,6 +2076,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **arXiv 本轮未接**：要选政策就必须知道它对中文的行为，而探它时 `export.arxiv.org` 连续回 **429 `Rate exceeded.`**（隔数分钟仍是）⇒ 这条读数取不到。按仓规**不替它编政策**，已在证据档**立案**并写明"下一轮取它的一步"（单次探测读 `totalResults`；非零用 `keep`，为零用 `refuse`）。
 - 🗺️ **中文源连接器四家**（chictr/nmpa/cde/chinadrugtrials）仍挂账：实测只回 `text/html`，**无机读契约**。
 - 🗺️ IC54/M2（本地解析模型资产）仍卡**产品决定**；IC40/IC6 仍缺真算力主机与真后台投递。
+
 ## v1.96.0 — 2026-10-09（读数能在界面里一键核对：重发同一请求，比对摘要）
 
 **成熟度自陈**：本版一件事 —— **把"读数可核对"这条链补到用户手上**。此前**外部人**能按已发布的配方离线复算，而**用户在界面里做不到**：面板只印摘要与配方，没有任何东西能把"记录过的摘要"变成"刚核对过的摘要"。之所以必须重发，是因为摘要算在**响应字节**上、而字节刻意不存 —— 不向来源再要一次，就没有可比的东西。✅ 已交付即下；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -2040,6 +2102,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🚧 **本版新增按钮的真机覆盖只到"具名拒答"这一条确定性路径**：真正重发并拿到来源第二个答案的情形，由复核器自己的用例（响应受控）覆盖，**没有**在认证车道里断言一个活的第三方响应体 —— 那会让车道取决于某个公共服务那一分钟回什么。
 - 🗺️ **中文源连接器仍挂账**：四源实测仍只回 `text/html`，**无机读契约**，不写只读抓取器。
 - 🗺️ **一处我看到的、不是本版造成的**不一致：`preload` 那条用例的标题仍写着「35-group, 209-contract」，而它断言的是 236/198。我没有去改这个我无法核实的数字，只记在这里。
+
 ## v1.95.0 — 2026-10-09（读数归属收到「就是那次 run」；窗兑现不了时不再印承诺）
 
 **成熟度自陈**：本版两件事，一件是**新能力面**、一件是**把我上一版留下的一处失真收掉**。① **逐 run 归属**：产物溯源里的每条读数现在能标明**它是由哪次运行记录的** —— 而且这是**可核对**的：源是主进程自己的会话状态，不是推断；由**产出本版本的那次 run** 记下的那一条会在屏上被**单独标出**。② **窗兑现不了时不再担保**：上一版把「读数只看窗内」变成真的，但那份承诺依赖证据里可解析的 `created_at`；一旦没有，实现会列出整个会话**而界面照样印「before this version was written」** ⇒ 现在归属降级为 `session` 并在屏上说明。✅ 已交付即下三条；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -2065,6 +2128,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🗺️ **校验器未回挂**：把「核对一个已记录的读数」做成界面动作（重发同一请求比摘要）需要一个主进程通道。
 - 🗺️ **中文源连接器仍挂账**：四源实测仍只回 `text/html`，**无机读契约**，不写只读抓取器。
 - 🗺️ **逐 run 归属只覆盖「有 run 在跑」的读数**：会话空闲时记下的读数**没有** run 可指（条目不带该字段，屏上也不标）—— 这是事实上的边界，不是缺失。
+
 ## v1.94.1 — 2026-10-09（把「时间窗」从一句话变成真的；并更正一处我自己的双向失真）
 
 **成熟度自陈**：本版两件事，都指向同一类失真 —— **说出来的比实际成立的更强，或更弱**。① **读数归属的窗是真的了**：面板与类型注释都写着「本版本写入**之前**本会话读到的内容」，而投影此前**根本没过滤** —— 一个 10:00 写的版本会把 15:00 才发生的读数一并列上，还贴着 `attribution: 'session-window'`。② **更正一处「把已交付写成未做」**：我曾在上一版正文里写「读数分区的真机读数仍未取」，而它**早已在 CI 认证车道上取到并绿**。✅ 已交付即下两条；🚧/🗺️ 在文末「明确没做」里逐条具名。
@@ -2089,6 +2153,7 @@ sha256 存进 `<数据根>/knowledge/contents/<digest>`（幂等，文件名里�
 - 🗺️ **读数归属仍只到会话+时间窗**：逐 run 因果需要一条**可信**的 run id 通道。权威源已定位（`runtime-service.ts` → `session-lifecycle` → 聚合的 `activeRunId`），但要穿四层 + 桥接，属下一个单元。
 - 🗺️ **校验器未回挂**：把「核对一个已记录的读数」做成界面动作（重发同一请求比摘要）需要一个主进程通道。
 - 🗺️ **中文源连接器仍挂账**：四源实测仍只回 `text/html`，**无机读契约**，不写只读抓取器。
+
 ## v1.94.0 — 2026-10-09（读数那条链的三处收口：代价、并发、以及没人调用的代码）
 
 **成熟度自陈**：本版是对 v1.93.0/v1.93.1「从产物版本走回读数」的**三处收口**，都是自查与实测揪出来的，不是新能力面。① **代价**：读数日志是一次文件读，**只有答案里装得下读数的那条读才该付它** —— 这条在 v1.93.1 的正文里承诺过，但代码里没有守住（复现判定、代码重建、批量列卡片三条路径在白白付）。② **并发**：同一会话里连接器调用可以并发，而日志是「读—改—写」⇒ **8 个并发调用只有 1 条留下，7 条无声消失、`dropped` 仍报 0** —— 面板会只显示一条且不告诉任何人少了七条。③ **死代码**：v1.93.0 发过 5 个**零消费方**的导出，按「提交里不留死代码」撤掉。✅ 已交付即下三条（各带读数）；🚧/🗺️ 在文末「明确没做」里逐条具名。
