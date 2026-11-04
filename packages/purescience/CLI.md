@@ -64,6 +64,31 @@ purescience doctor
 purescience doctor --json        # for scripts: every check carries {check, status, evidence}
 ```
 
+## Data roots (doctor)
+
+The application keeps its database and the bytes that database points at under one directory, and a machine
+that has run both a development build and a packaged build has two of them. Reading one root's row counts while
+looking for the files under the other produces the shape that looks like data loss — rows in the table, nothing
+on disk. `doctor` therefore reports every root it can find, with only what was measured in each:
+
+```
+data roots (2):
+  dev  /Users/you/.purescience-project  db=83.8 MB  rows=496  live=470  resolvable=0/20  last write=2026-10-30T03:40:33Z
+  prod /Users/you/.purescience          db=421.5 MB rows=1176 live=1176 resolvable=20/20 last write=2026-11-04T15:54:31Z
+```
+
+`resolvable` is a sample (up to 20 of the newest live `storageKey` values) checked for the existence of the
+bytes underneath **that same root**. Three states stay distinct on purpose:
+
+- **no database** — the root exists but holds no database; the row count is reported as absent, never as `0`;
+- **not measured** — a database is there but this runtime could not open it (the reason is printed);
+- **rows** — the query ran; `live` is `null` when there are no live rows at all, because `SUM` over none is not
+  the same answer as zero.
+
+A `warn` on `data_roots` means some root holds rows whose bytes are not under it. That is a fact about which root
+was read, not a claim that anything was deleted. An explicit `--config-root` narrows the report to that one root,
+because that is what the caller asked this process to look at.
+
 ## Signing status (doctor)
 
 `purescience doctor` also reports what this machine can say about the build's publisher identity — the

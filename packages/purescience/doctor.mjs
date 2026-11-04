@@ -5,6 +5,7 @@ import { access, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { locateApp } from './locate-app.mjs'
+import { formatDataRoots, inspectDataRoots, summariseDataRoots } from './data-roots.mjs'
 import { checkSignature } from './signature.mjs'
 import {
   readStateFromRoot,
@@ -85,7 +86,13 @@ const writableProbe = async (root) => {
 
 const check = (name, status, evidence) => ({ check: name, status, evidence })
 
-export const runDoctor = async ({ configRoot, appPath, env = process.env } = {}) => {
+export const runDoctor = async ({
+  configRoot,
+  appPath,
+  env = process.env,
+  roots,
+  sampleSize
+} = {}) => {
   const root = resolveConfigRoot({ override: configRoot, env })
   const checks = []
 
@@ -214,6 +221,44 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
     })
   )
 
+  // Two roots on one machine is the shape that made this check necessary: rows in one database, no bytes under
+  // the root a different build reads. Each root is reported with what was measured there, and "not measured"
+  // stays distinguishable from "measured nothing".
+  const dataRoots = await inspectDataRoots({
+    ...(roots ? { roots } : configRoot ? { configRoot: root } : { env }),
+    ...(sampleSize === undefined ? {} : { sampleSize })
+  })
+  const rootsSummary = summariseDataRoots(dataRoots)
+  const unresolved = dataRoots.filter(
+    (entry) =>
+      entry.measured === 'rows' &&
+      entry.sample &&
+      entry.sample.size > 0 &&
+      entry.sample.resolved < entry.sample.size
+  )
+  const shortOfKeys = unresolved.length > 0
+  checks.push(
+    check('data_roots', shortOfKeys || rootsSummary.measured === 0 ? 'warn' : 'ok', {
+      roots: rootsSummary.roots,
+      withDatabase: rootsSummary.withDatabase,
+      measured: rootsSummary.measured,
+      ...(shortOfKeys
+        ? {
+            unresolved: unresolved
+              .map(
+                (entry) =>
+                  `${entry.kind}:${String(entry.sample.resolved)}/${String(entry.sample.size)}`
+              )
+              .join(','),
+            detail: '这些根里有行，但抽样的 storageKey 在本根下找不到字节：读数要连同根一起看'
+          }
+        : {}),
+      ...(!shortOfKeys && rootsSummary.measured === 0
+        ? { detail: '没有任何数据根里有可读的数据库（不是 0 行；这一项没有读数）' }
+        : {})
+    })
+  )
+
   const summary = {
     ok: checks.filter((entry) => entry.status === 'ok').length,
     warn: checks.filter((entry) => entry.status === 'warn').length,
@@ -223,6 +268,7 @@ export const runDoctor = async ({ configRoot, appPath, env = process.env } = {})
   return {
     configRoot: root,
     checks,
+    dataRoots,
     summary,
     readiness: {
       decidedBy: 'purescience ready',
@@ -242,6 +288,7 @@ export const formatDoctor = (report) => {
       .join(' ')
     lines.push(`  [${mark}] ${entry.check}  ${evidence}`)
   }
+  lines.push('', ...formatDataRoots(report.dataRoots).split('\n'))
   lines.push(
     '',
     `measured: ${String(report.summary.ok)} ok, ${String(report.summary.warn)} warn, ${String(report.summary.fail)} fail`
