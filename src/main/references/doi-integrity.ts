@@ -207,6 +207,31 @@ export type FetchLike = (
   json: () => Promise<unknown>
 }>
 
+// Every DOI belongs to exactly one registration agency, and Crossref is only one of them. A 404 from
+// Crossref therefore says nothing about whether the DOI exists — DataCite (Zenodo, Dryad, figshare, most
+// data journals) answers for its own DOIs and Crossref has never seen them. Asking the resolver which
+// agency holds the DOI is what turns "not found" into a statement about coverage. `undefined` when the
+// answer did not arrive: the prefix cannot stand in for it (prefixes are allocated per repository).
+const DOI_RA_URL = 'https://doi.org/ra/'
+
+const registrationAgency = async (
+  fetchImpl: FetchLike,
+  doi: string
+): Promise<string | undefined> => {
+  try {
+    const response = await fetchImpl(`${DOI_RA_URL}${encodeURIComponent(doi)}`, {
+      headers: { accept: 'application/json' }
+    })
+    if (!response.ok) return undefined
+    const payload = await response.json()
+    if (!Array.isArray(payload)) return undefined
+    const agency = (payload[0] as { RA?: unknown } | undefined)?.RA
+    return typeof agency === 'string' && agency.trim() ? agency.trim() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export const checkDoiIntegrity = async (
   rawDoi: string,
   options: { fetchImpl: FetchLike; now?: () => Date }
@@ -232,6 +257,14 @@ export const checkDoiIntegrity = async (
       headers: { accept: 'application/json' }
     })
     if (!response.ok) {
+      // A 404 is the one status that does not speak about the DOI itself: another agency may hold it. Name
+      // the agency so a reader sees a coverage gap rather than a suspected bad identifier.
+      const agency =
+        response.status === 404 ? await registrationAgency(options.fetchImpl, doi) : undefined
+      const coverage =
+        agency && agency !== 'Crossref'
+          ? ` — the DOI is registered with ${agency}, and this check reads Crossref notices only`
+          : ''
       return {
         doi,
         status: 'unavailable',
@@ -239,7 +272,7 @@ export const checkDoiIntegrity = async (
         sourceUrl,
         notices: [],
         evidence: 'none',
-        error: `Crossref answered HTTP ${response.status}`
+        error: `Crossref answered HTTP ${response.status}${coverage}`
       }
     }
 

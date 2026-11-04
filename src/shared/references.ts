@@ -5,7 +5,11 @@
 
 import type { ReferenceReadingStatus } from './references-reading'
 
-export type ReferenceSourceConnector = 'openalex' | 'pubmed' | 'arxiv' | 'europepmc' | 'manual'
+// `datacite` is a registration agency, not a connector an agent calls: it is the only registry that
+// holds a dataset/software DOI (Zenodo, Dryad, figshare …), and a record that came from it must say so
+// rather than claim it was read from the service that covers journal articles.
+export type ReferenceSourceConnector =
+  'openalex' | 'pubmed' | 'arxiv' | 'europepmc' | 'datacite' | 'manual'
 
 // What kind of record this is; drives the GB/T type tag and the CSL type mapping. Optional: a record
 // without one is presented by the style's own fallback rather than by our guess (see citation/format).

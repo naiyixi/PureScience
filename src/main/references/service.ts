@@ -48,10 +48,19 @@ export const fetchReferenceByIdentifier = async (
     if (kind === 'doi') {
       const url = `https://api.openalex.org/works?filter=doi:${encodeURIComponent(value)}&per-page=1`
       const response = await fetchImpl(url, { signal: controller.signal })
-      if (!response.ok) return null
-      const body = (await response.json()) as { results?: Array<Record<string, unknown>> }
+      const body = response.ok
+        ? ((await response.json()) as { results?: Array<Record<string, unknown>> })
+        : {}
       const hit = body.results?.[0]
-      if (!hit) return null
+      if (!hit) {
+        // A DOI is registered with exactly one agency, and this service only indexes one of them. A
+        // DataCite DOI (Zenodo, Dryad, figshare, a data journal) is therefore a *miss* here even when
+        // the record exists — measured 2026-11-04: `filter=doi:10.5281/zenodo.23942881` → count 0 while
+        // `api.datacite.org` served the full record. Answering `null` at this point would tell the
+        // library "not found" for a DOI that resolves everywhere else, so the other registry gets the
+        // turn before that answer is given.
+        return await fetchDataCiteDoi(value, fetchImpl, controller.signal)
+      }
       return {
         projectId: '',
         title: String(hit.title ?? '').slice(0, MAX_TITLE_CHARS),
@@ -237,6 +246,145 @@ export const openAlexBibliographicDetail = (work: Record<string, unknown>): Bibl
     pages,
     publisher: trimmedOrUndefined(source?.host_organization_name),
     itemType: openAlexItemType(work)
+  }
+}
+
+// ---- DataCite: the other DOI registration agency -------------------------------------------------
+// A DOI is registered with exactly one agency. Crossref covers journal articles; DataCite covers
+// datasets, software and preprints from Zenodo, Dryad, figshare, institutional repositories and the
+// data journals. The open-index lookup above only sees the Crossref half, so without this second read
+// a dataset DOI is indistinguishable from a nonexistent one — measured 2026-11-04 against a real
+// record: `api.openalex.org/works?filter=doi:10.5281/zenodo.23942881` → count 0, while
+// `api.datacite.org/dois/10.5281/zenodo.23942881` → 200 (8,577 bytes: title, three creators,
+// publisher Zenodo, publicationYear, resourceTypeGeneral Dataset).
+//
+// What it does NOT do: judge retraction. DataCite's relation vocabulary has no retraction predicate, so
+// the integrity check keeps reporting `unavailable` for these DOIs rather than calling them clean.
+
+const DATACITE_DOI_URL = 'https://api.datacite.org/dois/'
+
+type DataCiteAttributes = {
+  doi?: unknown
+  titles?: unknown
+  creators?: unknown
+  publisher?: unknown
+  publicationYear?: unknown
+  types?: unknown
+  descriptions?: unknown
+  url?: unknown
+}
+
+const dataCiteTitle = (titles: unknown): string | undefined => {
+  if (!Array.isArray(titles)) return undefined
+  for (const entry of titles) {
+    const title = trimmedOrUndefined((entry as { title?: unknown } | null)?.title)
+    if (title) return title
+  }
+  return undefined
+}
+
+const dataCiteAuthors = (creators: unknown): Array<{ name: string }> => {
+  if (!Array.isArray(creators)) return []
+  const names: Array<{ name: string }> = []
+  for (const entry of creators) {
+    const creator = (entry ?? {}) as { name?: unknown; givenName?: unknown; familyName?: unknown }
+    const given = trimmedOrUndefined(creator.givenName)
+    const family = trimmedOrUndefined(creator.familyName)
+    // DataCite's `name` is "Family, Given"; the given/family pair is what prints in a citation without
+    // being re-inverted by us. Use the pair when the record states it, otherwise keep the record's own
+    // string rather than guessing where the family name ends.
+    const name = given && family ? `${given} ${family}` : trimmedOrUndefined(creator.name)
+    if (name) names.push({ name })
+  }
+  return names
+}
+
+const dataCiteItemType = (types: unknown): BibliographicDetail['itemType'] => {
+  const general = trimmedOrUndefined(
+    (types as { resourceTypeGeneral?: unknown } | null)?.resourceTypeGeneral
+  )
+  switch (general) {
+    case 'Dataset':
+      return 'dataset'
+    case 'Preprint':
+      return 'preprint'
+    case 'JournalArticle':
+      return 'journal-article'
+    case 'ConferencePaper':
+      return 'conference-paper'
+    case 'Book':
+      return 'book'
+    case 'BookChapter':
+      return 'chapter'
+    case 'Dissertation':
+      return 'thesis'
+    case 'Report':
+      return 'report'
+    // Software, Image, Model, Workflow … are real DataCite types with no counterpart in the citation
+    // vocabulary here; an absent type is presented by the style's own fallback (see ReferenceItemType).
+    default:
+      return undefined
+  }
+}
+
+const dataCiteAbstract = (descriptions: unknown): string | undefined => {
+  if (!Array.isArray(descriptions)) return undefined
+  for (const entry of descriptions) {
+    const record = (entry ?? {}) as { description?: unknown; descriptionType?: unknown }
+    if (trimmedOrUndefined(record.descriptionType)?.toLowerCase() !== 'abstract') continue
+    const text = trimmedOrUndefined(record.description)
+    if (text) return text.replace(/\s+/g, ' ').slice(0, MAX_ABSTRACT_CHARS)
+  }
+  return undefined
+}
+
+const normalizeDoiInput = (raw: string): string =>
+  raw.trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')
+
+const fetchDataCiteDoi = async (
+  rawDoi: string,
+  fetchImpl: typeof fetch,
+  signal: AbortSignal
+): Promise<CreateReferenceInput | null> => {
+  const doi = normalizeDoiInput(rawDoi)
+  if (!doi) return null
+  const url = `${DATACITE_DOI_URL}${encodeURIComponent(doi)}`
+  const response = await fetchImpl(url, { signal })
+  if (!response.ok) return null
+  const payload = (await response.json()) as {
+    data?: { id?: unknown; attributes?: DataCiteAttributes }
+  }
+  const attributes = payload.data?.attributes
+  const title = dataCiteTitle(attributes?.titles)
+  // A record with no title is unreadable input, not a match: the library's first column would be blank
+  // and the citation key would be invented from nothing.
+  if (!attributes || !title) return null
+  const recordId = trimmedOrUndefined(payload.data?.id) ?? doi
+  return {
+    projectId: '',
+    title: title.slice(0, MAX_TITLE_CHARS),
+    authors: dataCiteAuthors(attributes.creators),
+    venue: trimmedOrUndefined(attributes.publisher),
+    year:
+      typeof attributes.publicationYear === 'number'
+        ? attributes.publicationYear
+        : trimmedOrUndefined(attributes.publicationYear)
+          ? Number.parseInt(String(attributes.publicationYear).slice(0, 4), 10) || undefined
+          : undefined,
+    publisher: trimmedOrUndefined(attributes.publisher),
+    itemType: dataCiteItemType(attributes.types),
+    doi: trimmedOrUndefined(attributes.doi) ?? doi,
+    url: trimmedOrUndefined(attributes.url) ?? `https://doi.org/${doi}`,
+    abstractSnippet: dataCiteAbstract(attributes.descriptions),
+    sourceConnector: 'datacite',
+    sourceRecordId: recordId,
+    provenance: {
+      connector: 'datacite',
+      fetchedAt: new Date().toISOString(),
+      sourceUrl: url,
+      sourceRecordId: recordId,
+      snapshotJson: JSON.stringify(payload.data ?? payload).slice(0, MAX_SNAPSHOT_CHARS)
+    }
   }
 }
 

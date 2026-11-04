@@ -63,6 +63,7 @@ const REFERENCE_CONNECTORS: readonly ReferenceSourceConnector[] = [
   'pubmed',
   'arxiv',
   'europepmc',
+  'datacite',
   'manual'
 ]
 

@@ -109,6 +109,29 @@ describe('DOI integrity check', () => {
     expect(result.error).toBeUndefined()
   })
 
+  // A 404 does not say the DOI is bad: another agency may hold it. Naming the agency is the difference
+  // between "we could not check" and "we looked in the wrong registry".
+  it('names the registration agency when Crossref does not hold the DOI', async () => {
+    const fetchImpl = stubFetchByUrl([
+      { match: 'api.crossref.org', body: { message: {} }, status: 404 },
+      { match: 'doi.org/ra/', body: [{ DOI: '10.5281/zenodo.1', RA: 'DataCite' }] }
+    ])
+    const result = await check('10.5281/zenodo.1', fetchImpl)
+    expect(result.status).toBe('unavailable')
+    expect(result.error).toContain('404')
+    expect(result.error).toContain('DataCite')
+    expect(result.error).toContain('Crossref')
+
+    // The agency answer failing leaves the plain message: an unknown agency is not "Crossref".
+    const noAgency = stubFetchByUrl([
+      { match: 'api.crossref.org', body: { message: {} }, status: 404 },
+      { match: 'doi.org/ra/', body: [], status: 500 }
+    ])
+    const plain = await check('10.5281/zenodo.1', noAgency)
+    expect(plain.error).toContain('404')
+    expect(plain.error).not.toContain('registered with')
+  })
+
   // The honesty rule: an unreachable registry must never read as "no retraction found".
   it('is unavailable — never clean — when the lookup fails', async () => {
     const http404 = await check('10.1000/missing', stubFetch({}, 404))

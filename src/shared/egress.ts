@@ -20,6 +20,9 @@ export const EGRESS_DOMAIN_GROUPS = [
       'eutils.ncbi.nlm.nih.gov',
       'openalex.org',
       'doi.org',
+      // The other DOI registration agency: Zenodo, Dryad, figshare and the data journals answer here,
+      // and nothing under crossref.org covers them.
+      'datacite.org',
       'orcid.org',
       'crossref.org',
       'semanticscholar.org',

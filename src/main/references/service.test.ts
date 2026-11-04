@@ -227,6 +227,96 @@ describe('fetchReferenceByIdentifier', () => {
     expect(result?.provenance?.connector).toBe('openalex')
   })
 
+  // Measured 2026-11-04: `filter=doi:10.5281/zenodo.23942881` → count 0 while api.datacite.org served
+  // the full record. Before this fallback the library answered "not found" for a DOI that resolves
+  // everywhere else, which is why the second registry is asserted here by URL, not just by title.
+  it('falls back to DataCite for a DOI the open index does not hold', async () => {
+    const urls: string[] = []
+    const fetchImpl = vi.fn((input: unknown) => {
+      const url = String(input)
+      urls.push(url)
+      if (url.startsWith('https://api.openalex.org/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ results: [] })
+        } as Response)
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              id: '10.5281/zenodo.23942881',
+              attributes: {
+                doi: '10.5281/zenodo.23942881',
+                titles: [{ title: 'Evaluating Transferability of Process-Guided Neural Networks' }],
+                creators: [
+                  { name: 'Habenicht, Hannah', givenName: 'Hannah', familyName: 'Habenicht' },
+                  { name: 'Raum, Hanne' }
+                ],
+                publisher: 'Zenodo',
+                publicationYear: 2026,
+                types: { resourceTypeGeneral: 'Dataset' },
+                descriptions: [
+                  { descriptionType: 'Abstract', description: 'Line one.\n  Line two.' }
+                ],
+                url: 'https://zenodo.org/records/23942881'
+              }
+            }
+          })
+      } as Response)
+    })
+    const result = await fetchReferenceByIdentifier(
+      'doi',
+      'https://doi.org/10.5281/zenodo.23942881',
+      { fetchImpl: fetchImpl as never }
+    )
+    expect(urls[1]).toBe('https://api.datacite.org/dois/10.5281%2Fzenodo.23942881')
+    expect(result).toMatchObject({
+      title: 'Evaluating Transferability of Process-Guided Neural Networks',
+      venue: 'Zenodo',
+      year: 2026,
+      itemType: 'dataset',
+      doi: '10.5281/zenodo.23942881',
+      sourceConnector: 'datacite'
+    })
+    // The given/family pair wins over DataCite's inverted `name`; a creator stating only `name` keeps that
+    // string rather than being re-inverted by a guess about where the family name ends.
+    expect(result?.authors).toEqual([{ name: 'Hannah Habenicht' }, { name: 'Raum, Hanne' }])
+    expect(result?.abstractSnippet).toBe('Line one. Line two.')
+    expect(result?.provenance?.connector).toBe('datacite')
+    expect(result?.provenance?.sourceUrl).toBe(
+      'https://api.datacite.org/dois/10.5281%2Fzenodo.23942881'
+    )
+  })
+
+  it('answers null when neither registry holds the DOI', async () => {
+    const fetchImpl = vi.fn((input: unknown) =>
+      String(input).startsWith('https://api.openalex.org/')
+        ? Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) } as Response)
+        : Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
+    )
+    const result = await fetchReferenceByIdentifier('doi', '10.9999/not-registered', {
+      fetchImpl: fetchImpl as never
+    })
+    expect(result).toBeNull()
+  })
+
+  it('does not turn a title-less DataCite record into a reference', async () => {
+    const fetchImpl = vi.fn((input: unknown) =>
+      String(input).startsWith('https://api.openalex.org/')
+        ? Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) } as Response)
+        : Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: { id: '10.1/x', attributes: { titles: [] } } })
+          } as Response)
+    )
+    const result = await fetchReferenceByIdentifier('doi', '10.1/x', {
+      fetchImpl: fetchImpl as never
+    })
+    expect(result).toBeNull()
+  })
+
   it('returns null on a non-OK response', async () => {
     const fetchImpl = vi.fn(() => Promise.resolve({ ok: false } as Response))
     const result = await fetchReferenceByIdentifier('pmid', '123', {

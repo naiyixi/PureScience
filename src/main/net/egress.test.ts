@@ -161,6 +161,9 @@ describe('egress allowlist helpers', () => {
     })
     expect(allowlist).toBeDefined()
     expect(allowlist).toContain('arxiv.org')
+    // The other DOI registration agency: Zenodo, Dryad and figshare DOIs resolve only here
+    // (measured 2026-11-04 against api.datacite.org), so the literature group must name it.
+    expect(allowlist).toContain('datacite.org')
     expect(allowlist).toContain('lab.example.com')
     // Protocol/path stripped, lowercased.
     expect(allowlist).toContain('data.example.org')
