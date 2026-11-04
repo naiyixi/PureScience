@@ -74,6 +74,8 @@ Open the [latest release](https://github.com/naiyixi/PureScience/releases/latest
 
 **Windows:** the installer is **not code-signed**, so Windows will warn about an unknown publisher — compare the package against `SHA256SUMS.txt` on the release page before running it; signed Windows builds wait for a certificate and a signing identity. **macOS** packages are signed and notarized by Apple when release signing credentials are configured. **Linux** packages are not signed.
 
+**macOS (Homebrew):** `brew tap naiyixi/tap && brew trust naiyixi/tap && brew install --cask purescience`. Homebrew asks once before it loads a third-party tap (`brew trust`), and this build is signed ad-hoc rather than notarized, so pass `--no-quarantine` if macOS refuses the first launch. The cask pins the SHA-256 of each architecture's `.dmg` as published in `SHA256SUMS.txt`.
+
 Review the assets and verification information published on the release page. See [Verifying your download](SECURITY.md#verifying-your-download) before installation if you need to validate a package.
 
 > If macOS shows an unidentified-developer warning, verify that the package came from the official Releases page before continuing.
