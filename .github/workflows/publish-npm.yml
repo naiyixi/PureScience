@@ -60,8 +60,10 @@ jobs:
             --pack-destination npm-package \
             --cache ./node_modules/.cache/npm-pack
 
+      # `./` is load-bearing: without it npm 11 reads `npm-package/x.tgz` as GitHub shorthand (`owner/repo`)
+      # and tries to clone ssh://git@github.com/npm-package/... — which is how this step failed.
       - name: Verify npm publish input
-        run: npm publish npm-package/*.tgz --dry-run --access public
+        run: npm publish ./npm-package/*.tgz --dry-run --access public
 
       - name: Upload verified tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -103,4 +105,4 @@ jobs:
           fi
 
       - name: Publish with provenance
-        run: npm publish npm-package/*.tgz --access public --provenance --registry https://registry.npmjs.org
+        run: npm publish ./npm-package/*.tgz --access public --provenance --registry https://registry.npmjs.org
