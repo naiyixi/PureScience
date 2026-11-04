@@ -238,6 +238,9 @@ import { SearchPinRepository } from './settings/search-pin-repository'
 import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { createOcrCommandOwner } from './settings/ocr-ipc'
+import { createCaseBundleCommandOwner } from './cases/case-bundle-owner'
+import { exportCaseBundle } from './cases/export-bundle'
+import { importCaseBundle, materialiseCaseBundle } from './cases/import-bundle'
 import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
@@ -3982,6 +3985,51 @@ const createApplicationModules = async (
   // OCR reads a managed file: the resolver is the previews' own, so the window cannot ask it to read a path it
   // was not already allowed to show.
   const ocrCommandOwner = createOcrCommandOwner(new OcrService(), resolveManagedFilePath)
+  // Case bundles read the same managed files the window can preview, through the same resolver: exporting a
+  // case must not become a way to read a file the window was never allowed to show.
+  const caseBundleCommandOwner = createCaseBundleCommandOwner({
+    write: exportCaseBundle,
+    read: importCaseBundle,
+    materialise: materialiseCaseBundle,
+    // What a project has is the file catalogue's answer, not the window's: page through it here rather than
+    // letting the renderer assemble a list it would then have to be trusted about.
+    enumerate: async (projectId) => {
+      const files: Array<{
+        name: string
+        source: ManagedPreviewSource
+        path: string
+        kind?: string
+      }> = []
+      let cursor: string | undefined
+      do {
+        const page = await projectFilesHandlers.listFiles({
+          projectId,
+          collection: { kind: 'all' },
+          limit: 200,
+          omitOrigins: true,
+          ...(cursor === undefined ? {} : { cursor })
+        })
+        for (const item of page.items) {
+          files.push({
+            name: item.name,
+            source: item.source,
+            path: item.path,
+            ...(item.name.includes('.') ? { kind: item.name.split('.').pop()!.toLowerCase() } : {})
+          })
+        }
+        cursor = page.nextCursor
+        // The bundle format caps a case at 500 files; stop reading past the cap instead of paging a whole
+        // project only to refuse it.
+      } while (cursor !== undefined && files.length <= 500)
+      return { ok: true as const, files }
+    },
+    resolvePath: (request) =>
+      resolveManagedFilePath(request.source, {
+        path: request.path,
+        ...(request.projectId === undefined ? {} : { projectId: request.projectId }),
+        ...(request.sessionId === undefined ? {} : { sessionId: request.sessionId })
+      })
+  })
   declareElectronAdapter('pdf', () => {
     registerClipboardIpcHandlers()
     registerPdfIpcHandlers(
@@ -4128,7 +4176,8 @@ const createApplicationModules = async (
       ),
       query: createHostQueryCommandOwner(hostQueryService),
       storage: storageCommandOwner,
-      update: updateCommandOwner
+      update: updateCommandOwner,
+      caseBundles: caseBundleCommandOwner
     }
   }
 

@@ -7,6 +7,8 @@
 // records each file's checksum, so the importing side can verify the bytes it received rather than trusting
 // the name; and a bundle whose manifest and payload disagree is rejected whole, not partially imported.
 
+import type { ManagedPreviewSource } from './preview-resources'
+
 export const CASE_BUNDLE_FORMAT = 'purescience.case-bundle'
 export const CASE_BUNDLE_VERSION = 1
 // A case that hands over hundreds of outputs is not something a person re-runs; the limit keeps a malformed or
@@ -42,11 +44,16 @@ export type CaseBundleFileRequest = {
 }
 
 export type CaseBundleExportRequest = {
+  // The case is a project: main resolves the project's files itself, so a window does not have to know how
+  // the file catalogue names them, and cannot ask for a set of files the catalogue never offered.
+  projectId: string
   caseName: string
   domain: string
   summary?: string
-  files: ReadonlyArray<CaseBundleFileRequest>
   destinationDir: string
+  // Optional: a caller that already holds specific file identities may name them instead. Omitted is the
+  // normal case — the whole project's files.
+  files?: ReadonlyArray<CaseBundleFileRequest>
 }
 
 export type CaseBundleExportOutcome =
@@ -57,7 +64,12 @@ export type CaseBundleExportOutcome =
       detail?: string
     }
 
-export type CaseBundleImportRequest = { bundleDir: string }
+export type CaseBundleImportRequest = {
+  bundleDir: string
+  // When given, the verified bytes are also copied here. Omitted means "show me what this bundle holds"
+  // — verification still runs, nothing is written.
+  materialiseTo?: string
+}
 
 export type CaseBundleImportOutcome =
   | {
@@ -67,10 +79,12 @@ export type CaseBundleImportOutcome =
       fileCount: number
       totalBytes: number
       manifest: CaseBundleManifest
+      /** Where the bytes were copied, when the caller asked for that. */
+      materialisedTo?: string
     }
   | {
       status: 'refused'
-      reason: CaseBundleImportProblem
+      reason: CaseBundleImportRefusal
       detail?: string
       problematic?: { missing: string[]; checksumMismatch: string[]; unexpected: string[] }
     }
@@ -85,6 +99,10 @@ export type CaseBundleExportProblem =
   | 'source-missing'
   | 'source-not-a-file'
   | 'destination-unusable'
+
+// Copying a verified bundle can fail on the *destination* rather than on the bundle itself, which is why the
+// refusal vocabulary the window renders is one name wider than the problems a bundle can have.
+export type CaseBundleImportRefusal = CaseBundleImportProblem | 'destination-unusable'
 
 export type CaseBundleImportProblem =
   | 'not-a-directory'

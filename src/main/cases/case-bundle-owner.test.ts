@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import type {
+  CaseBundleFileEnumerator,
   CaseBundleReader,
   CaseBundleWriter,
   CaseBundlePathResolver
@@ -20,10 +21,26 @@ const owner = (overrides: {
   write?: CaseBundleWriter
   read?: CaseBundleReader
   resolvePath?: CaseBundlePathResolver
+  enumerate?: CaseBundleFileEnumerator
+  materialise?: (
+    bundleDir: string,
+    targetDir: string
+  ) => Promise<
+    | { ok: true; directory: string; fileCount: number; totalBytes: number }
+    | { ok: false; problem: 'incomplete'; detail?: string }
+  >
 }): {
   write: CaseBundleWriter
   read: CaseBundleReader
   resolvePath: CaseBundlePathResolver
+  enumerate: CaseBundleFileEnumerator
+  materialise: (
+    bundleDir: string,
+    targetDir: string
+  ) => Promise<
+    | { ok: true; directory: string; fileCount: number; totalBytes: number }
+    | { ok: false; problem: 'incomplete'; detail?: string }
+  >
   commands: ReturnType<typeof createCaseBundleCommandOwner>
 } => {
   const write: CaseBundleWriter =
@@ -32,11 +49,23 @@ const owner = (overrides: {
   const read: CaseBundleReader = overrides.read ?? vi.fn()
   const resolvePath: CaseBundlePathResolver =
     overrides.resolvePath ?? vi.fn(async ({ path }: { path: string }) => `/abs/${path}`)
+  const enumerate: CaseBundleFileEnumerator =
+    overrides.enumerate ?? vi.fn(async () => ({ ok: true as const, files: [] }))
+  const materialise =
+    overrides.materialise ??
+    (async (_bundleDir: string, targetDir: string) => ({
+      ok: true as const,
+      directory: targetDir,
+      fileCount: 1,
+      totalBytes: 7
+    }))
   return {
     write,
     read,
     resolvePath,
-    commands: createCaseBundleCommandOwner({ write, read, resolvePath })
+    enumerate,
+    materialise,
+    commands: createCaseBundleCommandOwner({ write, read, resolvePath, enumerate, materialise })
   }
 }
 
@@ -49,6 +78,7 @@ describe('case bundle export command', () => {
   it('resolves every name through the shared resolver before writing', async () => {
     const { commands, write, resolvePath } = owner({})
     const result = await commands.export({
+      projectId: 'p1',
       caseName: manifest.name,
       domain: 'structure',
       destinationDir: '/out',
@@ -62,7 +92,8 @@ describe('case bundle export command', () => {
     })
     expect(resolvePath).toHaveBeenNthCalledWith(1, {
       source: 'upload',
-      path: 'uploads/report.md'
+      path: 'uploads/report.md',
+      projectId: 'p1'
     })
     // Optional scope keys are passed through when present and omitted when not — never undefined.
     expect(resolvePath).toHaveBeenNthCalledWith(2, {
@@ -88,6 +119,7 @@ describe('case bundle export command', () => {
     })
     const { commands, write } = owner({ resolvePath })
     const result = await commands.export({
+      projectId: 'p1',
       caseName: 'c',
       domain: 'general',
       destinationDir: '/out',
@@ -106,6 +138,7 @@ describe('case bundle export command', () => {
     const { commands, resolvePath } = owner({})
     expect(
       await commands.export({
+        projectId: 'p1',
         caseName: 'c',
         domain: 'general',
         destinationDir: '/out',
@@ -124,12 +157,74 @@ describe('case bundle export command', () => {
     const { commands } = owner({ write })
     expect(
       await commands.export({
+        projectId: 'p1',
         caseName: 'c',
         domain: 'general',
         destinationDir: '/out',
         files: [file('a.csv')]
       })
     ).toEqual({ status: 'refused', reason: 'duplicate-file-name', detail: 'a.csv' })
+  })
+})
+
+describe('export by project id', () => {
+  it('asks the main process for the project’s files when the window names none', async () => {
+    const enumerate = vi.fn(async () => ({
+      ok: true as const,
+      files: [
+        { name: 'report.md', source: 'artifact' as const, path: 'v1/report.md', kind: 'md' },
+        { name: 'scan.png', source: 'upload' as const, path: 'uploads/scan.png' }
+      ]
+    }))
+    const { commands, write } = owner({ enumerate })
+    const result = await commands.export({
+      projectId: 'p1',
+      caseName: 'c',
+      domain: 'general',
+      destinationDir: '/out'
+    })
+    expect(result).toMatchObject({ status: 'exported' })
+    expect(enumerate).toHaveBeenCalledWith('p1')
+    // The project id travels with each file: an enumerated file belongs to the project being exported.
+    expect(write).toHaveBeenCalledWith({
+      caseName: 'c',
+      domain: 'general',
+      destinationDir: '/out',
+      files: [
+        { name: 'report.md', sourcePath: '/abs/v1/report.md', kind: 'md' },
+        { name: 'scan.png', sourcePath: '/abs/uploads/scan.png' }
+      ]
+    })
+  })
+
+  it('refuses when the project has nothing to hand over, and says nothing was written', async () => {
+    const { commands, write } = owner({
+      enumerate: vi.fn(async () => ({ ok: true as const, files: [] }))
+    })
+    expect(
+      await commands.export({
+        projectId: 'p1',
+        caseName: 'c',
+        domain: 'general',
+        destinationDir: '/out'
+      })
+    ).toEqual({ status: 'refused', reason: 'no-files' })
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  it('carries the catalogue’s own failure instead of exporting a partial case', async () => {
+    const { commands, write } = owner({
+      enumerate: vi.fn(async () => ({ ok: false as const, detail: 'index unreadable' }))
+    })
+    expect(
+      await commands.export({
+        projectId: 'p1',
+        caseName: 'c',
+        domain: 'general',
+        destinationDir: '/out'
+      })
+    ).toEqual({ status: 'refused', reason: 'unreadable', detail: 'index unreadable' })
+    expect(write).not.toHaveBeenCalled()
   })
 })
 
@@ -149,6 +244,45 @@ describe('case bundle import command', () => {
       manifest
     })
     expect(read).toHaveBeenCalledWith('/in/case')
+  })
+
+  it('copies the verified bytes only when a destination was asked for', async () => {
+    const read: CaseBundleReader = vi.fn(async () => ({
+      ok: true as const,
+      bundle: { manifest, totalBytes: 7 }
+    }))
+    const materialise = vi.fn(async (_dir: string, target: string) => ({
+      ok: true as const,
+      directory: target,
+      fileCount: 1,
+      totalBytes: 7
+    }))
+    const { commands } = owner({ read, materialise })
+    expect(
+      await commands.import({ bundleDir: '/in/case', materialiseTo: '/chosen' })
+    ).toMatchObject({
+      status: 'imported',
+      materialisedTo: '/chosen'
+    })
+    expect(materialise).toHaveBeenCalledWith('/in/case', '/chosen')
+  })
+
+  it('reports a failed copy as a refusal, not as an import that half happened', async () => {
+    const read: CaseBundleReader = vi.fn(async () => ({
+      ok: true as const,
+      bundle: { manifest, totalBytes: 7 }
+    }))
+    const materialise = vi.fn(async () => ({
+      ok: false as const,
+      problem: 'incomplete' as const,
+      detail: 'report.md'
+    }))
+    const { commands } = owner({ read, materialise })
+    expect(await commands.import({ bundleDir: '/in/case', materialiseTo: '/chosen' })).toEqual({
+      status: 'refused',
+      reason: 'incomplete',
+      detail: 'report.md'
+    })
   })
 
   it('passes the reconciliation detail through, so the window can list the offending names', async () => {

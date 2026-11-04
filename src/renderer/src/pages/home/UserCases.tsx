@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog-chrome'
 import { useDialogFocusRestore } from '@/components/ui/dialog-focus-restore'
 import { useLanguage } from '@/i18n'
+import { ExportCaseBundle, ImportCaseBundle } from './CaseBundleActions'
 import type { TranslationKey } from '@/i18n'
 import { formatRelativeTime } from '@/lib/format-relative-time'
 import { useNavigationStore } from '@/stores/navigation-store'
@@ -178,6 +179,11 @@ const CaseDetail = ({
                 >
                   {t('home.userCases.detail.newSession')}
                 </button>
+                <ExportCaseBundle
+                  projectId={item.projectId}
+                  caseName={item.name}
+                  domain={item.domain}
+                />
               </div>
             </>
           ) : null}
@@ -391,8 +397,12 @@ export const UserCases = (): React.JSX.Element => {
           </h3>
           <p className="mt-1 text-sm text-text-300">{t('home.userCases.subtitle')}</p>
         </div>
-        <span className="text-xs text-text-300" data-slot="case-plaza-count">
+        <span
+          className="flex items-center gap-3 text-xs text-text-300"
+          data-slot="case-plaza-count"
+        >
           {t('home.userCases.count', { count: String(cases.length) })}
+          <ImportCaseBundle />
         </span>
       </div>
 

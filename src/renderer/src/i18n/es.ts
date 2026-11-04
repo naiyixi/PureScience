@@ -5244,5 +5244,28 @@ export const es: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': 'Esta sesión no ejecutó ninguna herramienta.',
   'sessions.packageImport.toolReadingsNotCarried':
     'Este paquete lo escribió una versión anterior y no incluye lecturas de llamadas.',
-  'settings.availableOnDiskUnreadable': 'No se pudo leer el espacio libre'
+  'settings.availableOnDiskUnreadable': 'No se pudo leer el espacio libre',
+  'home.userCases.bundle.exportAction': 'Exportar como paquete de caso',
+  'home.userCases.bundle.importAction': 'Importar un paquete de caso',
+  'home.userCases.bundle.working': 'Procesando…',
+  'home.userCases.bundle.exported': '{count} archivos ({size}) escritos en {directory}.',
+  'home.userCases.bundle.imported':
+    '{count} archivos ({size}) de «{name}» copiados en {directory}.',
+  'home.userCases.bundle.verified':
+    '«{name}» está verificado: {count} archivos, {size}. No se copió nada.',
+  'home.userCases.bundle.exportNoFiles': 'Este caso aún no tiene archivos que entregar.',
+  'home.userCases.bundle.exportUnreadable':
+    'Un archivo no se pudo resolver, así que no se escribió nada.',
+  'home.userCases.bundle.exportBadName':
+    'Dos archivos de este caso quieren el mismo nombre, así que no se escribió nada.',
+  'home.userCases.bundle.exportSourceGone':
+    'Falta en el disco un archivo listado, así que no se escribió nada.',
+  'home.userCases.bundle.exportDestination': 'No se pudo escribir en esa carpeta.',
+  'home.userCases.bundle.importIncomplete': 'Este paquete no cuadra, así que no se copió nada.',
+  'home.userCases.bundle.importForeign': 'Esa carpeta no es un paquete de casos de PureScience.',
+  'home.userCases.bundle.importNotABundle': 'No hay manifest.json en esa carpeta.',
+  'home.userCases.bundle.importUnreadable': 'Ese paquete no se pudo leer.',
+  'home.userCases.bundle.missingFiles': 'Faltan: {names}',
+  'home.userCases.bundle.mismatchedFiles': 'Cambiados desde el empaquetado: {names}',
+  'home.userCases.bundle.unexpectedFiles': 'Fuera del manifiesto: {names}'
 }

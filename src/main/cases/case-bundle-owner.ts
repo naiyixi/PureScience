@@ -4,6 +4,7 @@ import type {
   CaseBundleExportRequest,
   CaseBundleImportOutcome,
   CaseBundleImportProblem,
+  CaseBundleImportRefusal,
   CaseBundleImportRequest,
   CaseBundleManifest
 } from '../../shared/case-bundle'
@@ -44,6 +45,22 @@ export type CaseBundleReader = (bundleDir: string) => Promise<
     }
 >
 
+// The main process owns what a project *has*: the window asks for a case by project id, and this asks the file
+// catalogue for that project's files. The identities it returns are the same (`source` + `path`) a window would
+// have handed over, so the resolver below stays the single decision point about readability.
+export type CaseBundleFileEnumerator = (projectId: string) => Promise<
+  | {
+      ok: true
+      files: ReadonlyArray<{
+        name: string
+        source: ManagedPreviewSource
+        path: string
+        kind?: string
+      }>
+    }
+  | { ok: false; detail?: string }
+>
+
 export type CaseBundleCommandOwner = {
   export: (request: CaseBundleExportRequest) => Promise<CaseBundleExportOutcome>
   import: (request: CaseBundleImportRequest) => Promise<CaseBundleImportOutcome>
@@ -53,18 +70,44 @@ export const createCaseBundleCommandOwner = (options: {
   write: CaseBundleWriter
   read: CaseBundleReader
   resolvePath: CaseBundlePathResolver
+  enumerate: CaseBundleFileEnumerator
+  materialise: (
+    bundleDir: string,
+    targetDir: string
+  ) => Promise<
+    | { ok: true; directory: string; fileCount: number; totalBytes: number }
+    | { ok: false; problem: CaseBundleImportRefusal; detail?: string }
+  >
 }): CaseBundleCommandOwner => ({
   export: async (request) => {
-    if (request.files.length === 0) return { status: 'refused', reason: 'no-files' }
+    let named = request.files
+    if (!named) {
+      const enumerated = await options.enumerate(request.projectId)
+      if (!enumerated.ok) {
+        return {
+          status: 'refused',
+          reason: 'unreadable',
+          ...(enumerated.detail === undefined ? {} : { detail: enumerated.detail })
+        }
+      }
+      named = enumerated.files.map((file) => ({
+        name: file.name,
+        source: file.source,
+        path: file.path,
+        ...(file.kind === undefined ? {} : { kind: file.kind })
+      }))
+    }
+    if (named.length === 0) return { status: 'refused', reason: 'no-files' }
 
     const resolved: Array<{ name: string; sourcePath: string; kind?: string }> = []
-    for (const file of request.files) {
+    for (const file of named) {
       let sourcePath: string
       try {
         sourcePath = await options.resolvePath({
           source: file.source,
           path: file.path,
-          ...(file.projectId === undefined ? {} : { projectId: file.projectId }),
+          // A file enumerated from the project belongs to that project; a named one says so itself.
+          projectId: file.projectId ?? request.projectId,
           ...(file.sessionId === undefined ? {} : { sessionId: file.sessionId })
         })
       } catch (cause) {
@@ -119,13 +162,26 @@ export const createCaseBundleCommandOwner = (options: {
       }
     }
     const { manifest } = read.bundle
+    let materialisedTo: string | undefined
+    if (request.materialiseTo !== undefined) {
+      const written = await options.materialise(request.bundleDir, request.materialiseTo)
+      if (!written.ok) {
+        return {
+          status: 'refused',
+          reason: written.problem,
+          ...(written.detail === undefined ? {} : { detail: written.detail })
+        }
+      }
+      materialisedTo = written.directory
+    }
     return {
       status: 'imported',
       name: manifest.name,
       domain: manifest.domain,
       fileCount: manifest.files.length,
       totalBytes: read.bundle.totalBytes,
-      manifest
+      manifest,
+      ...(materialisedTo === undefined ? {} : { materialisedTo })
     }
   }
 })

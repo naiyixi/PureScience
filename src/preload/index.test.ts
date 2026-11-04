@@ -127,6 +127,10 @@ type PreloadApi = {
     savePackageReport: (request: unknown) => unknown
     onPendingSwitch: (listener: (payload: unknown) => void) => () => void
   }
+  caseBundles: {
+    exportBundle: (request: unknown) => unknown
+    importBundle: (request: unknown) => unknown
+  }
   cli: {
     getStatus: () => unknown
     install: () => unknown
@@ -271,6 +275,8 @@ describe('preload bridge — public surface inventory', () => {
       'bookmark.remove',
       'bookmark.set',
       'bookmark.updateNote',
+      'caseBundles.exportBundle',
+      'caseBundles.importBundle',
       'cli.getStatus',
       'cli.install',
       'cli.uninstall',
@@ -874,6 +880,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       'query',
       'sessions',
       'storage',
+      // Case bundles: export reads what the window can preview, import verifies every byte first.
+      'caseBundles',
       'update',
       'uploads',
       'window'
@@ -902,7 +910,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     // contract, so it counts here while neither Web dispatch map moves.
     // 258 with the batched project-file overviews (projectFiles.getOverviews): one more plain Web
     // request contract — the Home page reads a project batch in one round trip.
-    expect(coreContracts).toHaveLength(259)
+    expect(coreContracts).toHaveLength(261)
     expect({
       requests: coreContracts.filter(
         ({ dispatchPolicy }) => dispatchPolicy.electron === 'electron-ipc-request'
@@ -918,7 +926,8 @@ describe('preload bridge — core renderer contract catalog', () => {
       // 219 with the citation walk above (references.discoverCitations, LOCAL).
       // 220 with the batched project-file overviews (projectFiles.getOverviews).
       // 221 with OCR (pdf.ocr, LOCAL).
-    }).toEqual({ requests: 221, events: 27, sends: 10, surfaceNative: 1 })
+      // 223 with the case bundle pair (cases.export-bundle / cases.import-bundle, both LOCAL).
+    }).toEqual({ requests: 223, events: 27, sends: 10, surfaceNative: 1 })
   })
 
   it('routes every core request method through its cataloged Electron channel', async () => {
@@ -927,7 +936,7 @@ describe('preload bridge — core renderer contract catalog', () => {
     )
     const localFile = { name: 'catalog.csv' } as File
 
-    expect(requestContracts).toHaveLength(221)
+    expect(requestContracts).toHaveLength(223)
 
     for (const contract of requestContracts) {
       invokeMock.mockClear()

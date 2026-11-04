@@ -46,6 +46,7 @@ import {
 } from './host-application-commands'
 
 const HOST_CAPABILITIES = [
+  'caseBundles',
   'cli',
   'folderGrants',
   'github',
@@ -454,6 +455,10 @@ const createDependencies = (): HostApplicationCommandDependencies => ({
       elapsedMs: 0
     }))
   },
+  caseBundles: {
+    export: vi.fn(async () => ({ status: 'refused' as const, reason: 'no-files' as const })),
+    import: vi.fn(async () => ({ status: 'refused' as const, reason: 'manifest-missing' as const }))
+  },
   update: {
     getAppInfo: vi.fn(() => ({ name: 'PureScience', version: '1.0.0', copyright: 'Zerolink' })),
     getStatus: vi.fn(() => updateStatus),
@@ -507,7 +512,7 @@ describe('Host application commands', () => {
     // 86 with the window's PDF translation entry (pdf:translation, LOCAL): one more host channel.
     // 87 with the goals panel's read-only channel (goal:list-all, LOCAL): one more host channel.
     // 88 with OCR (pdf:ocr, LOCAL): one more host channel.
-    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(88)
+    expect(expected.flatMap(({ channels }) => channels)).toHaveLength(90)
     const actualGroups = hostApplicationCommandGroups
       .map(({ name, commands }) => ({
         capability: name,
@@ -525,7 +530,7 @@ describe('Host application commands', () => {
       {} as HostApplicationCommandDependencies
     )
 
-    expect(router.dispatcher.commandNames()).toHaveLength(88)
+    expect(router.dispatcher.commandNames()).toHaveLength(90)
     installation.uninstall()
     expect(router.dispatcher.commandNames()).toEqual([])
   })
@@ -933,6 +938,25 @@ describe('Host application commands', () => {
     await router.dispatcher.invoke(hostApplicationCommands.pdf.ocr, invocation([ocrRequest]))
     expect(dependencies.pdf.ocr).toHaveBeenCalledWith(ocrRequest)
 
+    // Case bundles: export names files the way the file list does, import names a folder.
+    const exportRequest = {
+      projectId: 'p1',
+      caseName: 'GPCR 激活途径',
+      domain: 'structure' as const,
+      destinationDir: '/out',
+      files: [{ name: 'report.md', source: 'artifact' as const, path: 'v1/report.md', projectId: 'p1' }]
+    }
+    await router.dispatcher.invoke(
+      hostApplicationCommands.caseBundles.exportBundle,
+      invocation([exportRequest])
+    )
+    expect(dependencies.caseBundles.export).toHaveBeenCalledWith(exportRequest)
+    await router.dispatcher.invoke(
+      hostApplicationCommands.caseBundles.importBundle,
+      invocation([{ bundleDir: '/in/case' }])
+    )
+    expect(dependencies.caseBundles.import).toHaveBeenCalledWith({ bundleDir: '/in/case' })
+
     // The goals panel reads the whole inventory with no arguments, like the routine panel beside it.
     await router.dispatcher.invoke(hostApplicationCommands.goal.listAll, invocation([]))
     expect(dependencies.goal.listAll).toHaveBeenCalledWith()
@@ -956,6 +980,10 @@ describe('Host application commands', () => {
       note: 'Refactor the parsing loop.'
     }
     const argsByChannel: Readonly<Record<string, readonly unknown[]>> = {
+      'cases:export-bundle': [
+        { projectId: 'p1', caseName: 'c', domain: 'general', destinationDir: '/out' }
+      ],
+      'cases:import-bundle': [{ bundleDir: '/in/case' }],
       'local-fs:list-dir': ['/data'],
       'local-fs:open-path': ['/data/result.txt'],
       'local-fs:read-preview': [previewRequest],
@@ -1027,7 +1055,7 @@ describe('Host application commands', () => {
     // browser never gets to point the sweep at a directory of its choosing.
     // 59 with the goals panel's read-only channel (goal:list-all, LOCAL): a reader with no session
     // context still only ever reads.
-    expect(localOnlyChannels).toHaveLength(60)
+    expect(localOnlyChannels).toHaveLength(62)
     for (const channel of localOnlyChannels) {
       await expect(
         router.dispatcher.invoke(

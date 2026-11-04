@@ -426,6 +426,12 @@ import type {
   PdfTranslationWindowResult
 } from '../shared/pdf'
 import type { OcrRecogniseOutcome, OcrRecogniseRequest } from '../shared/ocr'
+import type {
+  CaseBundleExportOutcome,
+  CaseBundleExportRequest,
+  CaseBundleImportOutcome,
+  CaseBundleImportRequest
+} from '../shared/case-bundle'
 import type { FigureReviewRequest, FigureReviewResult } from '../shared/figure'
 import type { HostQueryResult } from '../shared/host-query'
 import type {
@@ -948,6 +954,12 @@ export interface PureScienceAPI {
   network: {
     getInfo(): Promise<NetworkInfo>
     checkConnectivity(): Promise<boolean>
+  }
+  // Case bundles: a folder with a manifest. Export names the files the way the file list does; import names
+  // the folder. Both answer with a refusal vocabulary the window renders verbatim, and both are local-only.
+  caseBundles: {
+    exportBundle(request: CaseBundleExportRequest): Promise<CaseBundleExportOutcome>
+    importBundle(request: CaseBundleImportRequest): Promise<CaseBundleImportOutcome>
   }
   cli: {
     getStatus(): Promise<CliLauncherStatus>

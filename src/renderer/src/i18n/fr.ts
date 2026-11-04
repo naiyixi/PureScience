@@ -5278,5 +5278,28 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': "Cette session n'a lancé aucun outil.",
   'sessions.packageImport.toolReadingsNotCarried':
     "Ce paquet a été écrit par une version antérieure et ne contient aucun relevé d'appels d'outils.",
-  'settings.availableOnDiskUnreadable': 'Espace libre illisible'
+  'settings.availableOnDiskUnreadable': 'Espace libre illisible',
+  'home.userCases.bundle.exportAction': 'Exporter comme lot de cas',
+  'home.userCases.bundle.importAction': 'Importer un lot de cas',
+  'home.userCases.bundle.working': 'Traitement…',
+  'home.userCases.bundle.exported': '{count} fichiers ({size}) écrits dans {directory}.',
+  'home.userCases.bundle.imported':
+    '{count} fichiers ({size}) de « {name} » copiés dans {directory}.',
+  'home.userCases.bundle.verified':
+    '« {name} » est vérifié : {count} fichiers, {size}. Rien n’a été copié.',
+  'home.userCases.bundle.exportNoFiles': 'Ce cas n’a pas encore de fichiers à transmettre.',
+  'home.userCases.bundle.exportUnreadable':
+    'Un fichier n’a pas pu être résolu, donc rien n’a été écrit.',
+  'home.userCases.bundle.exportBadName':
+    'Deux fichiers de ce cas veulent le même nom, donc rien n’a été écrit.',
+  'home.userCases.bundle.exportSourceGone':
+    'Un fichier listé manque sur le disque, donc rien n’a été écrit.',
+  'home.userCases.bundle.exportDestination': 'Impossible d’écrire dans ce dossier.',
+  'home.userCases.bundle.importIncomplete': 'Ce lot ne concorde pas, donc rien n’a été copié.',
+  'home.userCases.bundle.importForeign': 'Ce dossier n’est pas un lot de cas PureScience.',
+  'home.userCases.bundle.importNotABundle': 'Aucun manifest.json dans ce dossier.',
+  'home.userCases.bundle.importUnreadable': 'Ce lot n’a pas pu être lu.',
+  'home.userCases.bundle.missingFiles': 'Manquants : {names}',
+  'home.userCases.bundle.mismatchedFiles': 'Modifiés depuis l’emballage : {names}',
+  'home.userCases.bundle.unexpectedFiles': 'Absents du manifeste : {names}'
 }

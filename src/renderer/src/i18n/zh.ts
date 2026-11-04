@@ -4794,7 +4794,26 @@ export const zh = {
     '工具调用读数 {rows} 条（未命名活动 {unnamed} 条）—— 已与包内字节核对一致',
   'sessions.packageImport.toolReadingsNone': '这个会话没有调用过工具。',
   'sessions.packageImport.toolReadingsNotCarried': '这个包由较早版本导出，没有携带工具调用读数。',
-  'settings.availableOnDiskUnreadable': '无法读取可用空间'
+  'settings.availableOnDiskUnreadable': '无法读取可用空间',
+  'home.userCases.bundle.exportAction': '导出案例包',
+  'home.userCases.bundle.importAction': '导入案例包',
+  'home.userCases.bundle.working': '正在处理…',
+  'home.userCases.bundle.exported': '已写入 {count} 个文件（{size}）到 {directory}。',
+  'home.userCases.bundle.imported': '已把「{name}」的 {count} 个文件（{size}）复制到 {directory}。',
+  'home.userCases.bundle.verified': '「{name}」核验通过：{count} 个文件，{size}。未复制任何文件。',
+  'home.userCases.bundle.exportNoFiles': '这个案例还没有可交付的文件。',
+  'home.userCases.bundle.exportUnreadable': '有文件解析不出来，因此一个字节都没写。',
+  'home.userCases.bundle.exportBadName': '这个案例里有两个文件重名，因此一个字节都没写。',
+  'home.userCases.bundle.exportSourceGone':
+    '案例里列出的某个文件在磁盘上已不在，因此一个字节都没写。',
+  'home.userCases.bundle.exportDestination': '那个目录写不进去。',
+  'home.userCases.bundle.importIncomplete': '这个包对不上账，因此什么都没复制。',
+  'home.userCases.bundle.importForeign': '这个目录不是 PureScience 案例包。',
+  'home.userCases.bundle.importNotABundle': '该目录里没有 manifest.json。',
+  'home.userCases.bundle.importUnreadable': '这个包读不出来。',
+  'home.userCases.bundle.missingFiles': '缺失：{names}',
+  'home.userCases.bundle.mismatchedFiles': '打包后被改过：{names}',
+  'home.userCases.bundle.unexpectedFiles': '清单之外：{names}'
 }
 
 export type ZhKey = keyof typeof zh

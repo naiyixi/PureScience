@@ -96,6 +96,10 @@ import type {
 import type { GlobalSearchPinFilters } from '../shared/global-search-pins'
 import type { PdfTranslationWindowRequest } from '../shared/pdf'
 import type { OcrRecogniseRequest } from '../shared/ocr'
+import type {
+  CaseBundleExportRequest,
+  CaseBundleImportRequest
+} from '../shared/case-bundle'
 import type { FigureReviewRequest } from '../shared/figure'
 import { announceWindowFindReady, subscribeCloseActivePane } from '../shared/window-controls'
 
@@ -586,6 +590,13 @@ const api: PureScienceAPI = {
   network: {
     getInfo: () => electronRendererContracts.invoke('network.getInfo'),
     checkConnectivity: () => electronRendererContracts.invoke('network.checkConnectivity')
+  },
+  // Case bundles travel between machines as a folder with a manifest; both directions are local-only.
+  caseBundles: {
+    exportBundle: (request: CaseBundleExportRequest) =>
+      electronRendererContracts.invoke('caseBundles.exportBundle', request),
+    importBundle: (request: CaseBundleImportRequest) =>
+      electronRendererContracts.invoke('caseBundles.importBundle', request)
   },
   cli: {
     getStatus: () => electronRendererContracts.invoke('cli.getStatus'),
@@ -1139,8 +1150,7 @@ const api: PureScienceAPI = {
     outline: (request: { projectId: string; docId: string }) =>
       electronRendererContracts.invoke('pdf.outline', request),
     // Reads text out of an image with the local tesseract; the request names the file the way the file list does.
-    ocr: (request: OcrRecogniseRequest) =>
-      electronRendererContracts.invoke('pdf.ocr', request),
+    ocr: (request: OcrRecogniseRequest) => electronRendererContracts.invoke('pdf.ocr', request),
     scan: (request: { projectId: string; docId: string; query: string }) =>
       electronRendererContracts.invoke('pdf.scan', request),
     tables: (request: { projectId: string; docId: string; page?: number }) =>

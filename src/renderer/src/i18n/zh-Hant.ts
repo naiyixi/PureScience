@@ -4739,5 +4739,24 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
     '工具調用讀數 {rows} 條（未命名活動 {unnamed} 條）—— 已與包內位元組核對一致',
   'sessions.packageImport.toolReadingsNone': '這個會話沒有調用過工具。',
   'sessions.packageImport.toolReadingsNotCarried': '這個包由較早版本匯出，沒有攜帶工具調用讀數。',
-  'settings.availableOnDiskUnreadable': '無法讀取可用空間'
+  'settings.availableOnDiskUnreadable': '無法讀取可用空間',
+  'home.userCases.bundle.exportAction': '匯出案例包',
+  'home.userCases.bundle.importAction': '匯入案例包',
+  'home.userCases.bundle.working': '正在處理…',
+  'home.userCases.bundle.exported': '已寫入 {count} 個檔案（{size}）到 {directory}。',
+  'home.userCases.bundle.imported': '已把「{name}」的 {count} 個檔案（{size}）複製到 {directory}。',
+  'home.userCases.bundle.verified': '「{name}」核驗通過：{count} 個檔案，{size}。未複製任何檔案。',
+  'home.userCases.bundle.exportNoFiles': '這個案例還沒有可交付的檔案。',
+  'home.userCases.bundle.exportUnreadable': '有檔案解析不出來，因此一個位元組都沒寫。',
+  'home.userCases.bundle.exportBadName': '這個案例裡有兩個檔案重名，因此一個位元組都沒寫。',
+  'home.userCases.bundle.exportSourceGone':
+    '案例裡列出的某個檔案在磁碟上已不在，因此一個位元組都沒寫。',
+  'home.userCases.bundle.exportDestination': '那個目錄寫不進去。',
+  'home.userCases.bundle.importIncomplete': '這個包對不上帳，因此什麼都沒複製。',
+  'home.userCases.bundle.importForeign': '這個目錄不是 PureScience 案例包。',
+  'home.userCases.bundle.importNotABundle': '該目錄裡沒有 manifest.json。',
+  'home.userCases.bundle.importUnreadable': '這個包讀不出來。',
+  'home.userCases.bundle.missingFiles': '缺失：{names}',
+  'home.userCases.bundle.mismatchedFiles': '打包後被改過：{names}',
+  'home.userCases.bundle.unexpectedFiles': '清單之外：{names}'
 }

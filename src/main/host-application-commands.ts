@@ -8,6 +8,13 @@ import type {
 } from '../shared/folder-grants'
 import type { LocalDirListing, LocalRoots } from '../shared/local-fs'
 import type { OcrRecogniseOutcome, OcrRecogniseRequest } from '../shared/ocr'
+import type {
+  CaseBundleExportOutcome,
+  CaseBundleExportRequest,
+  CaseBundleImportOutcome,
+  CaseBundleImportRequest
+} from '../shared/case-bundle'
+import type { CaseBundleCommandOwner } from './cases/case-bundle-owner'
 import type { OpenLogFileResult, RevealLogFileResult } from '../shared/logs'
 import type { OpenSessionFromNotificationRequest } from '../shared/notifications'
 import type {
@@ -536,6 +543,22 @@ const goalCommands = Object.freeze({
   listAll: defineApplicationCommand<'goal:list-all', readonly [], GoalOverview>('goal:list-all')
 })
 
+// Cases travel between machines as a folder with a manifest. Export reads the files the window can already
+// preview; import verifies every byte before any of it is handed on. Both are local-only: a case bundle names
+// paths on this machine.
+const caseBundleCommands = Object.freeze({
+  exportBundle: defineApplicationCommand<
+    'cases:export-bundle',
+    readonly [request: CaseBundleExportRequest],
+    CaseBundleExportOutcome
+  >('cases:export-bundle'),
+  importBundle: defineApplicationCommand<
+    'cases:import-bundle',
+    readonly [request: CaseBundleImportRequest],
+    CaseBundleImportOutcome
+  >('cases:import-bundle')
+})
+
 const hostApplicationCommands = Object.freeze({
   cli: cliCommands,
   folderGrants: folderGrantsCommands,
@@ -556,7 +579,8 @@ const hostApplicationCommands = Object.freeze({
   figure: figureCommands,
   query: queryCommands,
   storage: storageCommands,
-  update: updateCommands
+  update: updateCommands,
+  caseBundles: caseBundleCommands
 })
 
 const hostApplicationCommandGroups = Object.freeze([
@@ -585,7 +609,8 @@ const hostApplicationCommandGroups = Object.freeze([
   defineApplicationCommandGroup('pdfAnnotations', Object.values(pdfAnnotationCommands)),
   // Appended last on purpose: the dispatcher registers groups BY INDEX, so inserting in the middle would
   // silently shift every group registered after it.
-  defineApplicationCommandGroup('goal', Object.values(goalCommands))
+  defineApplicationCommandGroup('goal', Object.values(goalCommands)),
+  defineApplicationCommandGroup('caseBundles', Object.values(caseBundleCommands))
 ] as const)
 
 type HostApplicationCommandDependencies = Readonly<{
@@ -626,6 +651,7 @@ type HostApplicationCommandDependencies = Readonly<{
     ) => Promise<RoutineSchedule | null>
   }>
   goal: GoalCommandOwner
+  caseBundles: CaseBundleCommandOwner
   endpoint: EndpointCommandOwner
   annotation: AnnotationCommandOwner
   // Session bookmarks: renderer-only, with no agent-facing owner beside it.
@@ -995,6 +1021,16 @@ const registerHostApplicationCommands = (
       'pdf-annotations:remove': ({ args, callerContext }) =>
         localCommand(callerContext, 'pdf-annotations:remove', () =>
           dependencies.pdfAnnotations.remove(args[0])
+        )
+    })
+    scope.registerGroup(hostApplicationCommandGroups[20], {
+      'cases:export-bundle': ({ args, callerContext }) =>
+        localCommand(callerContext, 'cases:export-bundle', () =>
+          dependencies.caseBundles.export(args[0])
+        ),
+      'cases:import-bundle': ({ args, callerContext }) =>
+        localCommand(callerContext, 'cases:import-bundle', () =>
+          dependencies.caseBundles.import(args[0])
         )
     })
     return scope.complete()

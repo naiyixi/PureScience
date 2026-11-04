@@ -42,6 +42,8 @@ export const WEB_INVOKE_CHANNELS = {
   'bookmark.remove': 'bookmark:remove',
   'bookmark.set': 'bookmark:set',
   'bookmark.updateNote': 'bookmark:update-note',
+  'caseBundles.exportBundle': 'cases:export-bundle',
+  'caseBundles.importBundle': 'cases:import-bundle',
   'cli.getStatus': 'cli:get-status',
   'cli.install': 'cli:install',
   'cli.uninstall': 'cli:uninstall',

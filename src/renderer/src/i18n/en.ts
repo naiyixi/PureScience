@@ -5157,5 +5157,27 @@ export const en: Record<ZhKey, string> = {
   'sessions.packageImport.toolReadingsNone': 'This session ran no tools.',
   'sessions.packageImport.toolReadingsNotCarried':
     'This package was written before tool call readings travelled; it carries none.',
-  'settings.availableOnDiskUnreadable': 'Could not read free space'
+  'settings.availableOnDiskUnreadable': 'Could not read free space',
+  'home.userCases.bundle.exportAction': 'Export as a case bundle',
+  'home.userCases.bundle.importAction': 'Import a case bundle',
+  'home.userCases.bundle.working': 'Working…',
+  'home.userCases.bundle.exported': 'Wrote {count} files ({size}) to {directory}.',
+  'home.userCases.bundle.imported': 'Copied {count} files ({size}) from “{name}” to {directory}.',
+  'home.userCases.bundle.verified':
+    '“{name}” checks out: {count} files, {size}. Nothing was copied.',
+  'home.userCases.bundle.exportNoFiles': 'This case has no files to hand over yet.',
+  'home.userCases.bundle.exportUnreadable':
+    'One of the files could not be resolved, so nothing was written.',
+  'home.userCases.bundle.exportBadName':
+    'Two files in this case want the same name, so nothing was written.',
+  'home.userCases.bundle.exportSourceGone':
+    'A file this case lists is missing from disk, so nothing was written.',
+  'home.userCases.bundle.exportDestination': 'That folder could not be written to.',
+  'home.userCases.bundle.importIncomplete': 'This bundle does not add up, so nothing was copied.',
+  'home.userCases.bundle.importForeign': 'This folder is not a PureScience case bundle.',
+  'home.userCases.bundle.importNotABundle': 'No manifest.json in that folder.',
+  'home.userCases.bundle.importUnreadable': 'That bundle could not be read.',
+  'home.userCases.bundle.missingFiles': 'Missing: {names}',
+  'home.userCases.bundle.mismatchedFiles': 'Changed since it was packed: {names}',
+  'home.userCases.bundle.unexpectedFiles': 'Not in the manifest: {names}'
 }

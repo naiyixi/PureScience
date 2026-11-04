@@ -5126,5 +5126,31 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': 'このセッションはツールを呼び出していません。',
   'sessions.packageImport.toolReadingsNotCarried':
     'このパッケージは古い版で書き出されたため、ツール呼び出しの記録を含みません。',
-  'settings.availableOnDiskUnreadable': '空き容量を取得できません'
+  'settings.availableOnDiskUnreadable': '空き容量を取得できません',
+  'home.userCases.bundle.exportAction': 'ケースバンドルとして書き出す',
+  'home.userCases.bundle.importAction': 'ケースバンドルを読み込む',
+  'home.userCases.bundle.working': '処理中…',
+  'home.userCases.bundle.exported':
+    '{count} 個のファイル（{size}）を {directory} に書き出しました。',
+  'home.userCases.bundle.imported':
+    '「{name}」の {count} 個のファイル（{size}）を {directory} にコピーしました。',
+  'home.userCases.bundle.verified':
+    '「{name}」は検証済みです：{count} 個のファイル、{size}。コピーはしていません。',
+  'home.userCases.bundle.exportNoFiles': 'このケースにはまだ渡せるファイルがありません。',
+  'home.userCases.bundle.exportUnreadable':
+    'ファイルを解決できなかったため、1 バイトも書き出していません。',
+  'home.userCases.bundle.exportBadName':
+    'このケースに同名のファイルが 2 つあるため、1 バイトも書き出していません。',
+  'home.userCases.bundle.exportSourceGone':
+    'ケースに載っているファイルがディスク上に見つからないため、1 バイトも書き出していません。',
+  'home.userCases.bundle.exportDestination': 'そのフォルダーには書き込めませんでした。',
+  'home.userCases.bundle.importIncomplete':
+    'このバンドルは内容が一致しないため、何もコピーしていません。',
+  'home.userCases.bundle.importForeign':
+    'このフォルダーは PureScience のケースバンドルではありません。',
+  'home.userCases.bundle.importNotABundle': 'そのフォルダーに manifest.json がありません。',
+  'home.userCases.bundle.importUnreadable': 'そのバンドルは読めませんでした。',
+  'home.userCases.bundle.missingFiles': '欠落：{names}',
+  'home.userCases.bundle.mismatchedFiles': 'パック後に変更：{names}',
+  'home.userCases.bundle.unexpectedFiles': 'マニフェストにない：{names}'
 }

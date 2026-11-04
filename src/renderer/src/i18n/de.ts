@@ -5308,5 +5308,29 @@ export const de: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': 'Diese Sitzung hat keine Werkzeuge ausgeführt.',
   'sessions.packageImport.toolReadingsNotCarried':
     'Dieses Paket wurde von einer älteren Version geschrieben und enthält keine Werkzeugaufrufe.',
-  'settings.availableOnDiskUnreadable': 'Freier Speicherplatz nicht lesbar'
+  'settings.availableOnDiskUnreadable': 'Freier Speicherplatz nicht lesbar',
+  'home.userCases.bundle.exportAction': 'Als Fall-Bundle exportieren',
+  'home.userCases.bundle.importAction': 'Fall-Bundle importieren',
+  'home.userCases.bundle.working': 'Wird verarbeitet…',
+  'home.userCases.bundle.exported': '{count} Dateien ({size}) nach {directory} geschrieben.',
+  'home.userCases.bundle.imported':
+    '{count} Dateien ({size}) aus „{name}“ nach {directory} kopiert.',
+  'home.userCases.bundle.verified':
+    '„{name}“ ist geprüft: {count} Dateien, {size}. Nichts wurde kopiert.',
+  'home.userCases.bundle.exportNoFiles': 'Dieser Fall hat noch keine Dateien zum Weitergeben.',
+  'home.userCases.bundle.exportUnreadable':
+    'Eine Datei ließ sich nicht auflösen, daher wurde nichts geschrieben.',
+  'home.userCases.bundle.exportBadName':
+    'Zwei Dateien in diesem Fall wollen denselben Namen, daher wurde nichts geschrieben.',
+  'home.userCases.bundle.exportSourceGone':
+    'Eine gelistete Datei fehlt auf der Platte, daher wurde nichts geschrieben.',
+  'home.userCases.bundle.exportDestination': 'In diesen Ordner konnte nicht geschrieben werden.',
+  'home.userCases.bundle.importIncomplete':
+    'Dieses Bundle stimmt nicht, daher wurde nichts kopiert.',
+  'home.userCases.bundle.importForeign': 'Dieser Ordner ist kein PureScience-Fall-Bundle.',
+  'home.userCases.bundle.importNotABundle': 'In diesem Ordner fehlt manifest.json.',
+  'home.userCases.bundle.importUnreadable': 'Dieses Bundle ließ sich nicht lesen.',
+  'home.userCases.bundle.missingFiles': 'Fehlt: {names}',
+  'home.userCases.bundle.mismatchedFiles': 'Seit dem Packen geändert: {names}',
+  'home.userCases.bundle.unexpectedFiles': 'Nicht im Manifest: {names}'
 }

@@ -5039,5 +5039,29 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': '이 세션은 도구를 호출하지 않았습니다.',
   'sessions.packageImport.toolReadingsNotCarried':
     '이 패키지는 이전 버전에서 내보내져 도구 호출 기록을 포함하지 않습니다.',
-  'settings.availableOnDiskUnreadable': '여유 공간을 확인할 수 없습니다'
+  'settings.availableOnDiskUnreadable': '여유 공간을 확인할 수 없습니다',
+  'home.userCases.bundle.exportAction': '사례 번들로 내보내기',
+  'home.userCases.bundle.importAction': '사례 번들 가져오기',
+  'home.userCases.bundle.working': '처리 중…',
+  'home.userCases.bundle.exported': '{count}개 파일({size})을 {directory}에 기록했습니다.',
+  'home.userCases.bundle.imported':
+    '“{name}”의 {count}개 파일({size})을 {directory}에 복사했습니다.',
+  'home.userCases.bundle.verified':
+    '“{name}” 검증 완료: {count}개 파일, {size}. 복사한 파일은 없습니다.',
+  'home.userCases.bundle.exportNoFiles': '이 사례에는 아직 넘겨줄 파일이 없습니다.',
+  'home.userCases.bundle.exportUnreadable':
+    '파일을 확인할 수 없어 한 바이트도 기록하지 않았습니다.',
+  'home.userCases.bundle.exportBadName':
+    '이 사례에 이름이 같은 파일이 둘 있어 한 바이트도 기록하지 않았습니다.',
+  'home.userCases.bundle.exportSourceGone':
+    '사례에 적힌 파일이 디스크에 없어 한 바이트도 기록하지 않았습니다.',
+  'home.userCases.bundle.exportDestination': '그 폴더에 쓸 수 없습니다.',
+  'home.userCases.bundle.importIncomplete':
+    '이 번들은 내용이 맞지 않아 아무것도 복사하지 않았습니다.',
+  'home.userCases.bundle.importForeign': '이 폴더는 PureScience 사례 번들이 아닙니다.',
+  'home.userCases.bundle.importNotABundle': '그 폴더에 manifest.json이 없습니다.',
+  'home.userCases.bundle.importUnreadable': '그 번들을 읽을 수 없습니다.',
+  'home.userCases.bundle.missingFiles': '누락: {names}',
+  'home.userCases.bundle.mismatchedFiles': '묶은 뒤 변경됨: {names}',
+  'home.userCases.bundle.unexpectedFiles': '매니페스트에 없음: {names}'
 }

@@ -5149,5 +5149,29 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'sessions.packageImport.toolReadingsNone': 'В этой сессии инструменты не вызывались.',
   'sessions.packageImport.toolReadingsNotCarried':
     'Пакет создан более ранней версией и не содержит записей о вызовах инструментов.',
-  'settings.availableOnDiskUnreadable': 'Не удалось прочитать свободное место'
+  'settings.availableOnDiskUnreadable': 'Не удалось прочитать свободное место',
+  'home.userCases.bundle.exportAction': 'Экспортировать как пакет кейса',
+  'home.userCases.bundle.importAction': 'Импортировать пакет кейса',
+  'home.userCases.bundle.working': 'Обработка…',
+  'home.userCases.bundle.exported': 'Записано {count} файлов ({size}) в {directory}.',
+  'home.userCases.bundle.imported':
+    'Скопировано {count} файлов ({size}) из «{name}» в {directory}.',
+  'home.userCases.bundle.verified':
+    '«{name}» проверен: {count} файлов, {size}. Ничего не скопировано.',
+  'home.userCases.bundle.exportNoFiles': 'У этого кейса пока нет файлов для передачи.',
+  'home.userCases.bundle.exportUnreadable':
+    'Один файл не удалось разрешить, поэтому ничего не записано.',
+  'home.userCases.bundle.exportBadName':
+    'Два файла в этом кейсе претендуют на одно имя, поэтому ничего не записано.',
+  'home.userCases.bundle.exportSourceGone':
+    'Файл из списка отсутствует на диске, поэтому ничего не записано.',
+  'home.userCases.bundle.exportDestination': 'В эту папку не удалось записать.',
+  'home.userCases.bundle.importIncomplete':
+    'Этот пакет не сходится, поэтому ничего не скопировано.',
+  'home.userCases.bundle.importForeign': 'Эта папка не является пакетом кейса PureScience.',
+  'home.userCases.bundle.importNotABundle': 'В этой папке нет manifest.json.',
+  'home.userCases.bundle.importUnreadable': 'Этот пакет не удалось прочитать.',
+  'home.userCases.bundle.missingFiles': 'Отсутствуют: {names}',
+  'home.userCases.bundle.mismatchedFiles': 'Изменены после упаковки: {names}',
+  'home.userCases.bundle.unexpectedFiles': 'Нет в манифесте: {names}'
 }
