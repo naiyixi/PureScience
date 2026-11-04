@@ -43,6 +43,9 @@
   `No handler registered for 'cases:marketplace'`，发版 CI 的 macos-arm64 认证车道因此红了一片，视觉回归也跟着红。
   修法是 `main/cases/ipc.ts` 显式登记五个通道，并加一条"目录里声明的每一条 case 通道都必须有 ipcMain 处理器"的
   测试——这类缺口单元测试看不见，只有真窗口会喊。
+- **窗口那一侧的兜底也是后补的**：通道不存在时，`ipcRenderer.invoke` 是抛（`No handler registered`），不是返回
+  一句拒绝；货架和导出/导入/发布三处原先直接 `await`，于是一个缺失的通道就变成首页的 page error。现在四处都把它
+  读成"不可用 / 拒绝"并保留原文，页面只少一块，不会整片报错。
 - 顺带一条：索引的读回原来走 `releases/download`（到 `github.com` 的那条线路，某些网络下超时），改成走 API
   读同一个 release 的资产——写和读走同一条路。
 
