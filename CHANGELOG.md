@@ -33,11 +33,16 @@
 - 计数：catalog 509 / invoke 388 / localWeb 380 / remote 拒绝 141 / host channels 93 / preload 226 /
   core contracts 264 / 参数形状 418；`--project unit` 17062 passed。
 
-### 跑真机才发现的两个缺陷
+### 跑真机和发版 CI 才发现的三个缺陷
 
 - **归档是"先删再传"，删完传失败，索引就指向一个不存在的文件。** 线上货架真被这么弄坏过一次。改成内容寻址
   命名 `<id>-<sha256前16位>.tar.gz`，上传时不删任何东西；旧归档只在索引读回验证通过后才清扫。
 - **上传一直 400**：Node 的 fetch 用流式 body 会发 chunked，GitHub 的资产接口要 `content-length`。
+- **打包后的窗口里一条 `cases:*` 处理器都没有。** 五个通道只登记在应用命令组合里（Web view / 命令行 / Task
+  能到），窗口走的是 `ipcMain`，两条路不通；首页一挂载就读货架，于是整个窗口的渲染进程报
+  `No handler registered for 'cases:marketplace'`，发版 CI 的 macos-arm64 认证车道因此红了一片，视觉回归也跟着红。
+  修法是 `main/cases/ipc.ts` 显式登记五个通道，并加一条"目录里声明的每一条 case 通道都必须有 ipcMain 处理器"的
+  测试——这类缺口单元测试看不见，只有真窗口会喊。
 - 顺带一条：索引的读回原来走 `releases/download`（到 `github.com` 的那条线路，某些网络下超时），改成走 API
   读同一个 release 的资产——写和读走同一条路。
 

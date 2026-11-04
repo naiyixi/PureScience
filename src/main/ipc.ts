@@ -239,6 +239,7 @@ import { registerClipboardIpcHandlers } from './clipboard-ipc'
 import { createPdfCommandOwner, registerPdfIpcHandlers } from './settings/pdf-ipc'
 import { createOcrCommandOwner } from './settings/ocr-ipc'
 import { createCaseBundleCommandOwner } from './cases/case-bundle-owner'
+import { registerCaseBundleIpcHandlers } from './cases/ipc'
 import { exportCaseBundle } from './cases/export-bundle'
 import { importCaseBundle, materialiseCaseBundle } from './cases/import-bundle'
 import {
@@ -4057,6 +4058,13 @@ const createApplicationModules = async (
         ...(request.projectId === undefined ? {} : { projectId: request.projectId }),
         ...(request.sessionId === undefined ? {} : { sessionId: request.sessionId })
       })
+  })
+
+  // The window reaches these five channels through `ipcMain`, not through the Web command view. Without this the
+  // home page's shelf read throws "No handler registered for 'cases:marketplace'" and takes the window's own error
+  // channel with it — the packaged certification lane is what found that, not a unit test.
+  declareElectronAdapter('case-bundles', () => {
+    registerCaseBundleIpcHandlers(caseBundleCommandOwner)
   })
   declareElectronAdapter('pdf', () => {
     registerClipboardIpcHandlers()
