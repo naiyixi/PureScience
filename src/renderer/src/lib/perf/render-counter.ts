@@ -353,3 +353,42 @@ export const installEditCounts = (): void => {
   lastEditValue = undefined
   if (host) host[EDIT_KEY] = { renders: 0, flips: 0 }
 }
+
+// Render attribution by role: user rows and agent rows take different component paths, so a per-role split
+// says which path to look at without relying on message-id prefixes.
+const ROLE_KEY = '__PURESCIENCE_ROLE_RENDERS__'
+const roleLastSignature = new Map<string, string>()
+
+export const recordRenderForRole = (
+  rowId: string,
+  role: string,
+  inputs: { contentLength: number; status: string; edit: boolean }
+): void => {
+  const host = scope()
+  const bucket = host?.[ROLE_KEY] as
+    { totals: Record<string, number>; changes: Record<string, number> } | undefined
+  if (!bucket) return
+  bucket.totals[role] = (bucket.totals[role] ?? 0) + 1
+  const signature = `${inputs.contentLength}|${inputs.status}|${inputs.edit}`
+  const previous = roleLastSignature.get(rowId)
+  roleLastSignature.set(rowId, signature)
+  if (previous !== undefined && previous !== signature) {
+    bucket.changes[role] = (bucket.changes[role] ?? 0) + 1
+  }
+}
+
+export const installRoleCounts = (): void => {
+  const host = scope()
+  roleLastSignature.clear()
+  if (host) host[ROLE_KEY] = { totals: {}, changes: {} }
+}
+
+export const readRoleCounts = (): {
+  totals: Record<string, number>
+  changes: Record<string, number>
+} =>
+  (scope()?.[ROLE_KEY] as
+    { totals: Record<string, number>; changes: Record<string, number> } | undefined) ?? {
+    totals: {},
+    changes: {}
+  }

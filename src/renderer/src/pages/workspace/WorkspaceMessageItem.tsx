@@ -10,6 +10,7 @@ import {
   countSelectorValue,
   recordRenderAtCommit,
   recordRenderCauses,
+  recordRenderForRole,
   recordRenderReason
 } from '@/lib/perf/render-counter'
 import { useTranscriptCapabilities } from './transcript-capabilities-context'
@@ -934,6 +935,11 @@ const WorkspaceMessageItemImpl = ({
   // change, or neither.
   countRenderReason(recordRenderReason(message.id, content, message.status))
   // No-op unless a perf spec installed the bucket: names the input that actually moved on this render.
+  recordRenderForRole(message.id, message.role, {
+    contentLength: content.length,
+    status: message.status,
+    edit: canEditMessage
+  })
   recordRenderCauses(message.id, {
     content,
     status: message.status,
