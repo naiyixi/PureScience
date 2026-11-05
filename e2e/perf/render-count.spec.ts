@@ -54,6 +54,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
     host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
     host.__PURESCIENCE_RENDER_REASONS__ = { first: 0, content: 0, status: 0, other: 0 }
+    host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map() }
+    host.__PURESCIENCE_RENDER_AT_COMMIT__ = { sameCommit: 0, afterCommit: 0 }
   })
 
   for (let index = 0; index < turns; index += 1) {
@@ -83,6 +85,16 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     // the cause is above the row; if the scroller renders once and one row renders hundreds of times, the
     // cause is inside the row's own subscriptions.
     const scrollerRenders = renders.__scroller__ ?? 0
+    const commits = (
+      window as unknown as Record<
+        string,
+        { count: number; rowsByCommit: Map<number, number> } | undefined
+      >
+    ).__PURESCIENCE_COMMITS__ ?? { count: 0, rowsByCommit: new Map<number, number>() }
+    const commitRows = [...commits.rowsByCommit.values()]
+    const sameCommit =
+      (window as unknown as Record<string, { sameCommit: number } | undefined>)
+        .__PURESCIENCE_RENDER_AT_COMMIT__?.sameCommit ?? 0
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -104,6 +116,11 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       markdownRenders: markdown.count,
       scrollerRenders,
       reasons,
+      commits: commits.count,
+      maxRowsPerCommit: commitRows.length > 0 ? Math.max(...commitRows) : 0,
+      rowsRenderedPerCommit:
+        commitRows.length > 0 ? commitRows.reduce((a, b) => a + b, 0) / commitRows.length : 0,
+      sameCommitRenders: sameCommit,
       chunks: chunks.total,
       chunksCommitted: chunks.committed,
       markdownChars: markdown.chars,
@@ -135,6 +152,11 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
   // The ratio that makes the row-render number meaningful: one render per chunk means the cost *is* the
   // chunk rate; several renders per chunk is a bug in the row, not a property of the session length.
   console.log(`[render-count] scroller renders: ${readings.scrollerRenders}`)
+  console.log(
+    `[commits] ${turns} turns: commits=${readings.commits} (${(readings.commits / turns).toFixed(1)}/turn)` +
+      ` rows/commit avg=${readings.rowsRenderedPerCommit.toFixed(2)} max=${readings.maxRowsPerCommit}` +
+      ` | renders with no new commit: ${readings.sameCommitRenders}`
+  )
   console.log(
     `[render-reason] ${Object.entries(readings.reasons)
       .map(([reason, count]) => `${reason}=${count}`)

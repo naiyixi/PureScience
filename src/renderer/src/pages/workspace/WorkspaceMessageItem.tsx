@@ -3,7 +3,12 @@ import { memo } from 'react'
 import { useLanguage } from '@/i18n'
 import { getUiLocale } from '@/lib/ui-locale'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
-import { countRender, countRenderReason, recordRenderReason } from '@/lib/perf/render-counter'
+import {
+  countRender,
+  countRenderReason,
+  recordRenderAtCommit,
+  recordRenderReason
+} from '@/lib/perf/render-counter'
 import { useTranscriptCapabilities } from './transcript-capabilities-context'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
@@ -917,6 +922,7 @@ const WorkspaceMessageItemImpl = ({
   // No-op unless a perf spec installed the buckets: says whether this render carried new text, a status
   // change, or neither.
   countRenderReason(recordRenderReason(message.id, content, message.status))
+  recordRenderAtCommit(message.id)
   const isUserMessage = message.role === 'user'
   const uploads = message.uploads ?? []
   const hasTurnUsage = Boolean(message.turnUsage || message.turnUsageUnavailable)

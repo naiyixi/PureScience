@@ -157,3 +157,67 @@ export const readRenderReasons = (): Record<RenderReason, number> =>
     status: 0,
     other: 0
   }
+
+// Store-commit attribution. Each write to the session store bumps a counter; a row render records which
+// commit was current when it ran. Two shapes are then distinguishable and need different fixes:
+//   · one commit → many rows rendered  = a write that invalidates the whole transcript
+//   · many renders against one commit  = renders with no store write behind them at all (local state,
+//     effects, or a cascade), which is what a 0.4 ms cadence in a single turn looks like
+const COMMIT_KEY = '__PURESCIENCE_COMMITS__'
+const AT_COMMIT_KEY = '__PURESCIENCE_RENDER_AT_COMMIT__'
+const lastCommitByRow = new Map<string, number>()
+
+export const bumpStoreCommit = (): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = host[COMMIT_KEY] as
+    { count: number; rowsByCommit: Map<number, number> } | undefined
+  if (!bucket) return
+  bucket.count += 1
+  bucket.rowsByCommit.set(bucket.count, 0)
+}
+
+export const installCommitCounts = (): void => {
+  const host = scope()
+  lastCommitByRow.clear()
+  if (!host) return
+  host[COMMIT_KEY] = { count: 0, rowsByCommit: new Map<number, number>() }
+  host[AT_COMMIT_KEY] = { sameCommit: 0, afterCommit: 0 }
+}
+
+export const recordRenderAtCommit = (rowId: string): 'same-commit' | 'after-commit' => {
+  const host = scope()
+  const bucket = host?.[COMMIT_KEY] as
+    { count: number; rowsByCommit: Map<number, number> } | undefined
+  if (!bucket) return 'after-commit'
+  const current = bucket.count
+  const previous = lastCommitByRow.get(rowId)
+  lastCommitByRow.set(rowId, current)
+  const tally = host?.[AT_COMMIT_KEY] as { sameCommit: number; afterCommit: number } | undefined
+  if (previous === current) {
+    if (tally) tally.sameCommit += 1
+    return 'same-commit'
+  }
+  bucket.rowsByCommit.set(current, (bucket.rowsByCommit.get(current) ?? 0) + 1)
+  if (tally) tally.afterCommit += 1
+  return 'after-commit'
+}
+
+export const readCommitCounts = (): {
+  commits: number
+  maxRowsPerCommit: number
+  rowsPerCommitHistogram: Record<number, number>
+} => {
+  const bucket = scope()?.[COMMIT_KEY] as
+    { count: number; rowsByCommit: Map<number, number> } | undefined
+  if (!bucket || bucket.count === 0)
+    return { commits: 0, maxRowsPerCommit: 0, rowsPerCommitHistogram: {} }
+  const values = [...bucket.rowsByCommit.values()]
+  const histogram: Record<number, number> = {}
+  for (const value of values) histogram[value] = (histogram[value] ?? 0) + 1
+  return {
+    commits: bucket.count,
+    maxRowsPerCommit: Math.max(...values),
+    rowsPerCommitHistogram: histogram
+  }
+}

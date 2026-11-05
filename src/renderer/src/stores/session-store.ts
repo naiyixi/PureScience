@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import { bumpStoreCommit } from '@/lib/perf/render-counter'
+
 import type { AcpContextUsage } from '../../../shared/acp'
 import type { PermissionProfileId } from '../../../shared/permission-profiles'
 import type { PersistedChatSession } from '../../../shared/session-persistence'
@@ -100,361 +102,371 @@ export const countUserTurnsAfter = (sessionId: string | undefined, messageId: st
 }
 
 // Stores all transient workspace conversation state for the renderer process.
-export const useSessionStore = create<SessionStore>((set, get) => ({
-  ...createInitialSessionState(),
+export const useSessionStore = create<SessionStore>((rawSet, get) => {
+  // Every write bumps a perf commit counter (no-op unless a perf spec installed the bucket). Row renders
+  // record which commit was current, which separates "one write invalidated the transcript" from "renders
+  // with no write behind them at all".
+  const set = ((...args: Parameters<typeof rawSet>): ReturnType<typeof rawSet> => {
+    bumpStoreCommit()
+    return rawSet(...args)
+  }) as typeof rawSet
 
-  // Selects only existing sessions so deleted ids cannot remain active.
-  selectSession: (sessionId) => {
-    if (!get().sessions.some((session) => session.id === sessionId)) return
+  return {
+    ...createInitialSessionState(),
 
-    set({ selectedSessionId: sessionId })
-    get().markSessionRead(sessionId)
-  },
+    // Selects only existing sessions so deleted ids cannot remain active.
+    selectSession: (sessionId) => {
+      if (!get().sessions.some((session) => session.id === sessionId)) return
 
-  // Marks a session read (now) and persists the timestamp for the sidebar unread indicator.
-  markSessionRead: (sessionId) => {
-    const current = get().lastReadAtBySession[sessionId]
-    const now = Date.now()
-    if (current !== undefined && current >= now) return
-    set({ lastReadAtBySession: { ...get().lastReadAtBySession, [sessionId]: now } })
-    saveLastReadTimestamps(get().lastReadAtBySession)
-  },
+      set({ selectedSessionId: sessionId })
+      get().markSessionRead(sessionId)
+    },
 
-  // Clears visible conversation selection without deleting session history.
-  clearSelection: () => {
-    set({ selectedSessionId: undefined })
-  },
+    // Marks a session read (now) and persists the timestamp for the sidebar unread indicator.
+    markSessionRead: (sessionId) => {
+      const current = get().lastReadAtBySession[sessionId]
+      const now = Date.now()
+      if (current !== undefined && current >= now) return
+      set({ lastReadAtBySession: { ...get().lastReadAtBySession, [sessionId]: now } })
+      saveLastReadTimestamps(get().lastReadAtBySession)
+    },
 
-  ...createSessionMessageGraphOwner<SessionStore>(set, get),
-  ...createSessionPersistenceOwner<SessionStore>(set),
+    // Clears visible conversation selection without deleting session history.
+    clearSelection: () => {
+      set({ selectedSessionId: undefined })
+    },
 
-  ...createSessionRunProjectionOwner<SessionStore>(set, get),
+    ...createSessionMessageGraphOwner<SessionStore>(set, get),
+    ...createSessionPersistenceOwner<SessionStore>(set),
 
-  // Clears the interrupted/error state after a successful resume so the composer is usable again.
-  markResumed: (sessionId, agentFrameworkId, agentBackendId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              status: 'idle',
-              error: undefined,
-              errorReportable: undefined,
-              interrupted: undefined,
-              agentFrameworkId: agentFrameworkId ?? session.agentFrameworkId,
-              agentBackendId: agentBackendId ?? session.agentBackendId,
-              compacting: undefined,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
+    ...createSessionRunProjectionOwner<SessionStore>(set, get),
 
-  // Flags a session dropped by a live connection loss so the Resume banner appears; like failRun it
-  // settles any half-streamed message/open tool so nothing hangs in a perpetually-running state.
-  markDisconnected: (sessionId, reason) => {
-    // Preserve the specific failure cause (e.g. "Connection timeout") when the caller has one,
-    // while keeping the Resume affordance. Fall back to a generic message otherwise.
-    const trimmedReason = reason?.trim()
-    const error = trimmedReason
-      ? `${trimmedReason} — Resume to reconnect and continue.`
-      : 'Connection lost — Resume to reconnect and continue.'
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId ? projectDisconnectedSession(session, error) : session
-      )
-    }))
-  },
-
-  setBranchSwitchBlocked: (sessionId, blocked) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId && Boolean(session.branchSwitchBlocked) !== blocked
-          ? { ...session, branchSwitchBlocked: blocked || undefined }
-          : session
-      )
-    }))
-  },
-
-  clearBranchContextReset: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId ? { ...session, branchContextResetRequired: undefined } : session
-      )
-    }))
-  },
-
-  // Marks that a specialist switch replaced the live agent session; the next send replays history
-  // into the fresh session so the new specialist keeps conversation continuity. Distinct from
-  // branchContextResetRequired because it must NOT shut down the notebook kernel.
-  markSpecialistSwitchResetRequired: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId ? { ...session, specialistSwitchResetRequired: true } : session
-      )
-    }))
-  },
-
-  clearSpecialistSwitchResetRequired: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? { ...session, specialistSwitchResetRequired: undefined }
-          : session
-      )
-    }))
-  },
-
-  // Marks a session as blocked on a user permission decision.
-  setPermissionPending: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              status: 'waiting-permission',
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  // Restores a permission-blocked session to running or idle state.
-  clearPermissionPending: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              status: session.activeRun ? 'running' : 'idle',
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  // Stores the approval posture with the conversation so resumes and provider switches reapply it.
-  setPermissionProfile: (sessionId, profile) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              permissionProfile: profile,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  // Persists the per-session auto-review toggle so finishRun can skip a review when disabled.
-  setDelegationEnabled: (sessionId, enabled) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              delegationEnabled: enabled,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  setAutoReviewEnabled: (sessionId, enabled) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              autoReviewEnabled: enabled,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  setContextUsage: (sessionId, contextUsage) => {
-    set((state) => {
-      const session = state.sessions.find((candidate) => candidate.id === sessionId)
-      if (!session || JSON.stringify(session.contextUsage) === JSON.stringify(contextUsage)) {
-        return state
-      }
-
-      return {
-        sessions: state.sessions.map((candidate) =>
-          candidate.id === sessionId ? { ...candidate, contextUsage } : candidate
-        )
-      }
-    })
-  },
-
-  setEnabledComputeHosts: (sessionId, providerIds) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              enabledComputeHosts: providerIds.length > 0 ? providerIds : undefined,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  // Updates the persisted specialist UUID for an existing session (called after reconfigure succeeds).
-  // Passing undefined clears the binding (Main Agent). Session persistence stores only the UUID.
-  setSessionSpecialistId: (sessionId, specialistId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              specialistId: specialistId ?? undefined,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
-
-  // Flips the pinned flag so the sidebar can float the conversation into its pinned section. The flag
-  // is persisted via the durable projection, but updatedAt is deliberately left untouched so pinning
-  // never disturbs the "last active" ordering within a section.
-  togglePinned: (sessionId) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId ? { ...session, pinned: !session.pinned } : session
-      )
-    }))
-  },
-
-  updateSessionArchive: async (request) => {
-    const persisted = await window.api.sessions.updateArchive(request)
-    let updated: ChatSession | undefined
-
-    set((state) => {
-      const existing = state.sessions.find((session) => session.id === persisted.id)
-      if (existing) {
-        const withoutPreviousArchive = { ...existing }
-        delete withoutPreviousArchive.archivedAt
-        updated =
-          persisted.archivedAt === undefined
-            ? withoutPreviousArchive
-            : { ...withoutPreviousArchive, archivedAt: persisted.archivedAt }
-      } else {
-        updated = hydrateSession(persisted)
-      }
-      return {
+    // Clears the interrupted/error state after a successful resume so the composer is usable again.
+    markResumed: (sessionId, agentFrameworkId, agentBackendId) => {
+      set((state) => ({
         sessions: state.sessions.map((session) =>
-          session.id === persisted.id ? updated! : session
+          session.id === sessionId
+            ? {
+                ...session,
+                status: 'idle',
+                error: undefined,
+                errorReportable: undefined,
+                interrupted: undefined,
+                agentFrameworkId: agentFrameworkId ?? session.agentFrameworkId,
+                agentBackendId: agentBackendId ?? session.agentBackendId,
+                compacting: undefined,
+                updatedAt: Date.now()
+              }
+            : session
         )
-      }
-    })
+      }))
+    },
 
-    return updated ?? hydrateSession(persisted)
-  },
+    // Flags a session dropped by a live connection loss so the Resume banner appears; like failRun it
+    // settles any half-streamed message/open tool so nothing hangs in a perpetually-running state.
+    markDisconnected: (sessionId, reason) => {
+      // Preserve the specific failure cause (e.g. "Connection timeout") when the caller has one,
+      // while keeping the Resume affordance. Fall back to a generic message otherwise.
+      const trimmedReason = reason?.trim()
+      const error = trimmedReason
+        ? `${trimmedReason} — Resume to reconnect and continue.`
+        : 'Connection lost — Resume to reconnect and continue.'
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId ? projectDisconnectedSession(session, error) : session
+        )
+      }))
+    },
 
-  // Sets or clears the per-session fix loop active flag. The flag is transient (never persisted)
-  // and gates canSendMessage in WorkspacePage: true blocks send for the duration of the fix loop.
-  setFixLoopActive: (sessionId, active) => {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              fixLoopActive: active,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
+    setBranchSwitchBlocked: (sessionId, blocked) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId && Boolean(session.branchSwitchBlocked) !== blocked
+            ? { ...session, branchSwitchBlocked: blocked || undefined }
+            : session
+        )
+      }))
+    },
 
-  // Renames a session while ignoring blank titles.
-  renameSession: (sessionId, title) => {
-    const trimmedTitle = title.trim()
+    clearBranchContextReset: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId ? { ...session, branchContextResetRequired: undefined } : session
+        )
+      }))
+    },
 
-    if (!trimmedTitle) return
+    // Marks that a specialist switch replaced the live agent session; the next send replays history
+    // into the fresh session so the new specialist keeps conversation continuity. Distinct from
+    // branchContextResetRequired because it must NOT shut down the notebook kernel.
+    markSpecialistSwitchResetRequired: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId ? { ...session, specialistSwitchResetRequired: true } : session
+        )
+      }))
+    },
 
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              title: trimmedTitle,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
+    clearSpecialistSwitchResetRequired: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? { ...session, specialistSwitchResetRequired: undefined }
+            : session
+        )
+      }))
+    },
 
-  // Updates a session's summary description (blank clears it).
-  setSessionDescription: (sessionId, description) => {
-    const trimmed = description.trim()
+    // Marks a session as blocked on a user permission decision.
+    setPermissionPending: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                status: 'waiting-permission',
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
 
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === sessionId
-          ? {
-              ...session,
-              description: trimmed.length > 0 ? trimmed : undefined,
-              updatedAt: Date.now()
-            }
-          : session
-      )
-    }))
-  },
+    // Restores a permission-blocked session to running or idle state.
+    clearPermissionPending: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                status: session.activeRun ? 'running' : 'idle',
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
 
-  // Removes a session and falls selection back to the next session within the same project.
-  deleteSession: (sessionId) => {
-    set((state) => {
-      const deletedSession = state.sessions.find((session) => session.id === sessionId)
-      if (!deletedSession) return state
+    // Stores the approval posture with the conversation so resumes and provider switches reapply it.
+    setPermissionProfile: (sessionId, profile) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                permissionProfile: profile,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
 
-      const sessions = state.sessions.filter((session) => session.id !== sessionId)
+    // Persists the per-session auto-review toggle so finishRun can skip a review when disabled.
+    setDelegationEnabled: (sessionId, enabled) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                delegationEnabled: enabled,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
 
-      if (state.selectedSessionId !== sessionId) {
+    setAutoReviewEnabled: (sessionId, enabled) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                autoReviewEnabled: enabled,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    setContextUsage: (sessionId, contextUsage) => {
+      set((state) => {
+        const session = state.sessions.find((candidate) => candidate.id === sessionId)
+        if (!session || JSON.stringify(session.contextUsage) === JSON.stringify(contextUsage)) {
+          return state
+        }
+
+        return {
+          sessions: state.sessions.map((candidate) =>
+            candidate.id === sessionId ? { ...candidate, contextUsage } : candidate
+          )
+        }
+      })
+    },
+
+    setEnabledComputeHosts: (sessionId, providerIds) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                enabledComputeHosts: providerIds.length > 0 ? providerIds : undefined,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    // Updates the persisted specialist UUID for an existing session (called after reconfigure succeeds).
+    // Passing undefined clears the binding (Main Agent). Session persistence stores only the UUID.
+    setSessionSpecialistId: (sessionId, specialistId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                specialistId: specialistId ?? undefined,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    // Flips the pinned flag so the sidebar can float the conversation into its pinned section. The flag
+    // is persisted via the durable projection, but updatedAt is deliberately left untouched so pinning
+    // never disturbs the "last active" ordering within a section.
+    togglePinned: (sessionId) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId ? { ...session, pinned: !session.pinned } : session
+        )
+      }))
+    },
+
+    updateSessionArchive: async (request) => {
+      const persisted = await window.api.sessions.updateArchive(request)
+      let updated: ChatSession | undefined
+
+      set((state) => {
+        const existing = state.sessions.find((session) => session.id === persisted.id)
+        if (existing) {
+          const withoutPreviousArchive = { ...existing }
+          delete withoutPreviousArchive.archivedAt
+          updated =
+            persisted.archivedAt === undefined
+              ? withoutPreviousArchive
+              : { ...withoutPreviousArchive, archivedAt: persisted.archivedAt }
+        } else {
+          updated = hydrateSession(persisted)
+        }
+        return {
+          sessions: state.sessions.map((session) =>
+            session.id === persisted.id ? updated! : session
+          )
+        }
+      })
+
+      return updated ?? hydrateSession(persisted)
+    },
+
+    // Sets or clears the per-session fix loop active flag. The flag is transient (never persisted)
+    // and gates canSendMessage in WorkspacePage: true blocks send for the duration of the fix loop.
+    setFixLoopActive: (sessionId, active) => {
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                fixLoopActive: active,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    // Renames a session while ignoring blank titles.
+    renameSession: (sessionId, title) => {
+      const trimmedTitle = title.trim()
+
+      if (!trimmedTitle) return
+
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                title: trimmedTitle,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    // Updates a session's summary description (blank clears it).
+    setSessionDescription: (sessionId, description) => {
+      const trimmed = description.trim()
+
+      set((state) => ({
+        sessions: state.sessions.map((session) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                description: trimmed.length > 0 ? trimmed : undefined,
+                updatedAt: Date.now()
+              }
+            : session
+        )
+      }))
+    },
+
+    // Removes a session and falls selection back to the next session within the same project.
+    deleteSession: (sessionId) => {
+      set((state) => {
+        const deletedSession = state.sessions.find((session) => session.id === sessionId)
+        if (!deletedSession) return state
+
+        const sessions = state.sessions.filter((session) => session.id !== sessionId)
+
+        if (state.selectedSessionId !== sessionId) {
+          return {
+            sessions,
+            selectedSessionId: state.selectedSessionId
+          }
+        }
+
+        // Fall back within the deleted session's own project. `sessions` is newest-first, so this picks the
+        // most recent sibling. Using the global sessions[0] could select another project's conversation,
+        // which the project-scoped workspace then filters out — leaving a blank center panel.
+        const fallbackSession = deletedSession
+          ? sessions.find((session) => session.projectId === deletedSession.projectId)
+          : undefined
+
         return {
           sessions,
-          selectedSessionId: state.selectedSessionId
+          selectedSessionId: fallbackSession?.id
         }
-      }
+      })
+    },
 
-      // Fall back within the deleted session's own project. `sessions` is newest-first, so this picks the
-      // most recent sibling. Using the global sessions[0] could select another project's conversation,
-      // which the project-scoped workspace then filters out — leaving a blank center panel.
-      const fallbackSession = deletedSession
-        ? sessions.find((session) => session.projectId === deletedSession.projectId)
-        : undefined
+    // Drops every session belonging to a deleted project; the persistence bridge removes their files.
+    removeSessionsForProject: (projectId) => {
+      set((state) => {
+        const sessions = state.sessions.filter((session) => session.projectId !== projectId)
+        if (sessions.length === state.sessions.length) return state
 
-      return {
-        sessions,
-        selectedSessionId: fallbackSession?.id
-      }
-    })
-  },
+        const selectedRemoved = !sessions.some((session) => session.id === state.selectedSessionId)
 
-  // Drops every session belonging to a deleted project; the persistence bridge removes their files.
-  removeSessionsForProject: (projectId) => {
-    set((state) => {
-      const sessions = state.sessions.filter((session) => session.projectId !== projectId)
-      if (sessions.length === state.sessions.length) return state
-
-      const selectedRemoved = !sessions.some((session) => session.id === state.selectedSessionId)
-
-      return {
-        sessions,
-        selectedSessionId: selectedRemoved ? sessions[0]?.id : state.selectedSessionId
-      }
-    })
+        return {
+          sessions,
+          selectedSessionId: selectedRemoved ? sessions[0]?.id : state.selectedSessionId
+        }
+      })
+    }
   }
-}))
+})
