@@ -122,8 +122,19 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
     .click()
   const checkNow = settings.getByRole('button', { name: 'Check now' })
   await expect(checkNow).toBeEnabled({ timeout: 60_000 })
-  // Where the count starts: the launch may already have run its own check, and this spec is about the one
-  // the reader asks for.
+  // The launch's own automatic check (the update scheduler fires one at start) is the first half of the
+  // criterion: a cold start must cost exactly one manifest request and record no failure. Counted on this
+  // launch's own output, and waited for — onboarding can finish before the scheduler's request lands.
+  await expect
+    .poll(async () => manifestRequestLines(await launchLogLines(logPath)).length, {
+      timeout: 30_000
+    })
+    .toBe(1)
+  const coldStartRequests = manifestRequestLines(await launchLogLines(logPath)).length
+  const coldStartFailures = updateFailureLines(await launchLogLines(logPath))
+  expect(coldStartRequests).toBe(1)
+  expect(coldStartFailures).toEqual([])
+  // Where the count starts for the reader's own check: everything above belongs to the cold start.
   const requestsBefore = manifestRequestLines(await launchLogLines(logPath)).length
   await checkNow.click()
   const updateButton = settings.getByRole('button', { name: `Update to ${RELEASE_VERSION}` })
@@ -181,7 +192,7 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
   expect(updateFailures).toEqual([])
 
   console.log(
-    `[update-cert] state=ready artifact=${host.file} bytes=${written.byteLength} sha256=${writtenDigest.slice(0, 12)} installer=${'yes'} manifestRequests=${appendedRequests.length - requestsBefore} updateFailures=${updateFailures.length}`
+    `[update-cert] state=ready artifact=${host.file} bytes=${written.byteLength} sha256=${writtenDigest.slice(0, 12)} installer=${'yes'} coldStartRequests=${coldStartRequests} coldStartFailures=${coldStartFailures.length} manifestRequests=${appendedRequests.length - requestsBefore} updateFailures=${updateFailures.length}`
   )
 
   await rm(downloadDir, { recursive: true, force: true })

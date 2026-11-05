@@ -71,6 +71,19 @@
 | 判决 | **1 passed (7.9 s)**，退出码 0 |
 | 变异自证 | 把增量断言改成 `toBe(2)` 后重跑：`Expected: 2 / Received: 1` ⇒ 计数器确实只读到一次请求，断言不是恒真 |
 
+**冷启动那一半（2026-11-06 补测）**：判据写的是「冷启动一次更新检查」，而上面那张表数的是读者点的那一次。
+`scheduler.ts` 在启动时就 `void strategy.check()` 一次 ⇒ 冷启动自己那次也要数。同一支规格现在在点 `Check now`
+**之前**先等这次自动检查落定（`expect.poll` 30 s 窗口，因为 onboarding 可能先完成、请求后到），断言
+「本次启动自己的日志里清单请求恰为 1、`[update]` 无失败措辞」。读数：
+
+```
+[update-cert] state=ready … coldStartRequests=1 coldStartFailures=0 manifestRequests=1 updateFailures=0
+1 passed (7.8s)
+```
+
+两半合起来才是判据的原话：**冷启动 1 次请求 + 读者那次 1 次请求，各自都没有失败记录**。口径同前：
+计数只读本次启动自己的 console 镜像（别的实例写不进这份），失败仍按更新作用域的措辞判而非 `level=error`。
+
 ## 六 同批补上的一条死循环：检查没有自己的截止时间
 
 「无 error 级日志」这条判据的反面是**根本没有日志**：`UpdateService.check` 只 `await` 清单请求，而
