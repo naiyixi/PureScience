@@ -85,12 +85,7 @@ const labelOf = (node: ProfileNode): string => {
 }
 
 // Walks up from a hot node to name the code path that produced it.
-const callerChain = (
-  profile: SamplingProfile,
-  nodeId: number,
-  byId: Map<number, ProfileNode>,
-  depth: number
-): string => {
+const callerChain = (nodeId: number, byId: Map<number, ProfileNode>, depth: number): string => {
   const chain: string[] = []
   let current = byId.get(nodeId)?.parent
   while (current !== undefined && chain.length < depth) {
@@ -181,7 +176,7 @@ appTest(
     for (const [nodeId] of hotNodes) {
       const node = byId.get(nodeId)
       if (!node) continue
-      console.log(`[callers] ${labelOf(node)}  ←  ${callerChain(profile, nodeId, byId, 6)}`)
+      console.log(`[callers] ${labelOf(node)}  ←  ${callerChain(nodeId, byId, 6)}`)
     }
     expect(ranked.length).toBeGreaterThan(0)
   }
