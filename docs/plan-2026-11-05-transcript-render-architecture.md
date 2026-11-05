@@ -198,3 +198,27 @@ isElementHiddenForAria 98.2 · renderWithHooks 96.7 · normalizeWhiteSpace 87.5 
 相关**的原生函数：`isElementHiddenForAria`、`elementText`、`querySelectorAll`、`query`、
 `normalizeWhiteSpace`。它们不是行渲染，更像「每回合有人在整篇文档上做可访问名/文本计算」。这是下一步的
 排查方向，不能靠猜，要先定位是谁在调用。
+
+## 十三 度量本身有偏差：等待方式影响读数（已修正并复测）
+
+§十二 留下的疑问是「行已经不怎么重渲了，成本还在长」。查剖析时看到一批原生函数——
+`isElementHiddenForAria`、`elementText`、`querySelectorAll`、`query`、`normalizeWhiteSpace`——它们不在
+我们的 bundle 里（`grep` 出 0 处），是 Blink 内部帧，于是回头查**测量方式本身**。
+
+原来的等待是 `expect.poll(() => page.getByText('Deterministic reply').count())`：**流式期间每 ~100ms 在整篇
+文档上重新解析一次文本定位器**。这段工作在渲染进程主线程上，正好落在它等的那段测量区间里，且随会话长度
+线性增长——读数的斜率里混进了探针自己的成本。
+
+改法：给助手正文加稳定锚点 `data-slot="assistant-message-body"`，`PERF_WAIT=selector` 时改用
+`page.waitForFunction` 只数这个节点（结构比较，不做文本解析），默认模式保留旧行为以便对照。
+
+| 口径                | 文本轮询（旧） | 结构等待（新） |
+| ------------------- | -------------- | -------------- |
+| 10 回合 每回合 task | 59.9 ms        | **54.3 ms**    |
+| 80 回合 每回合 task | 81.2 / 98.0 ms | **71.3 ms**    |
+| 10 → 80 增长        | +47%           | **+31%**       |
+
+结论两条，都要写进账：
+
+1. **旧读数里有一部分是探针自己造的**（每回合 5–9 ms，80 回合更多），斜率也被它抬高了；
+2. 修正后**增长仍然存在**（54.3 → 71.3 = +31%），所以「越聊越卡」不是纯测量假象——只是幅度比以前小。

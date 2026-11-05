@@ -12,11 +12,29 @@ import {
 // The certification helper waits for a reply by text, which assumes that text is unique in the
 // transcript. A perf baseline deliberately repeats the same canned reply, so each turn is awaited by the
 // reply count increasing instead.
+// PERF_WAIT=selector swaps the text-locator poll for a structural wait. The default wait re-resolves a
+// text locator over the whole document every ~100ms while the reply streams; that work lands on the
+// renderer's main thread and therefore inside the very measurement it is waiting on, and it grows with
+// transcript length. The structural wait only counts nodes matching a data-slot, which isolates app cost
+// from harness cost — the two modes exist so the difference can be measured instead of assumed.
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
+  const structuralWait = process.env.PERF_WAIT === 'selector'
   const replies = page.getByText('Deterministic reply', { exact: false })
-  const before = await replies.count()
+  const bodies = (): Promise<number> =>
+    page.evaluate(() => document.querySelectorAll('[data-slot="assistant-message-body"]').length)
+
+  const before = structuralWait ? await bodies() : await replies.count()
   await page.getByRole('textbox', { name: 'Ask anything' }).fill(prompt)
   await page.getByRole('button', { name: 'Send message' }).click()
+  if (structuralWait) {
+    await page.waitForFunction(
+      (expected) =>
+        document.querySelectorAll('[data-slot="assistant-message-body"]').length > expected,
+      before,
+      { timeout: 60_000, polling: 200 }
+    )
+    return
+  }
   await expect.poll(async () => replies.count(), { timeout: 60_000 }).toBeGreaterThan(before)
 }
 
