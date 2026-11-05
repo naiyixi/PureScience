@@ -11,6 +11,7 @@ import { useSessionStore, type ChatMessage, type ChatSession } from '@/stores/se
 
 import type { ComposerDoc } from './composer/composer-doc'
 import { WorkspaceMessageItem } from './WorkspaceMessageItem'
+import { WorkspaceMessageEditStateProvider } from './workspace-message-edit-state'
 
 // Keep the transcript row and markdown surface as thin wrappers so the test never loads Shiki.
 vi.mock('@/components/ui/message-scroller', () => ({
@@ -82,19 +83,20 @@ const renderItem = async (
   seedLaterTurns(options.laterUserTurns ?? 0)
   await act(async () => {
     root.render(
-      <WorkspaceMessageItem
-        message={message}
-        sessionId={SESSION_ID}
-        onPreviewArtifact={noop}
-        onPreviewUploadAttachment={noop}
-        onOpenSkillMention={noop}
-        onPreviewMentionArtifact={noop}
-        onOpenSessionMention={noop}
-        canEditMessage={options.canEditMessage ?? false}
-        showUserActions={options.showUserActions}
-        onSendEditedMessage={options.onSendEditedMessage}
-        revisionNavigation={options.revisionNavigation}
-      />
+      <WorkspaceMessageEditStateProvider canEditMessage={options.canEditMessage ?? false}>
+        <WorkspaceMessageItem
+          message={message}
+          sessionId={SESSION_ID}
+          onPreviewArtifact={noop}
+          onPreviewUploadAttachment={noop}
+          onOpenSkillMention={noop}
+          onPreviewMentionArtifact={noop}
+          onOpenSessionMention={noop}
+          showUserActions={options.showUserActions}
+          onSendEditedMessage={options.onSendEditedMessage}
+          revisionNavigation={options.revisionNavigation}
+        />
+      </WorkspaceMessageEditStateProvider>
     )
   })
 }

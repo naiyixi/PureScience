@@ -49,7 +49,6 @@ import { WorkspaceAgentLoadingRow } from './WorkspaceAgentLoadingRow'
 import { EmptyConversationBanner } from './EmptyConversationBanner'
 import { WorkspaceMessageItem } from './WorkspaceMessageItem'
 import type { ArtifactMentionPart } from './WorkspaceMessageItem'
-import { useWorkspaceMessageEditState } from './workspace-message-edit-state-context'
 import { createConversationItems } from './workspace-conversation-items'
 import {
   selectLiveSessionActivities,
@@ -347,25 +346,13 @@ const WorkspaceMessageReview = ({
   )
 }
 
-type EditableWorkspaceMessageItemProps = Omit<
-  ComponentProps<typeof WorkspaceMessageItem>,
-  'canEditMessage'
->
-
-// Only user-message edit controls subscribe to review-sensitive edit availability. Agent rows remain
-// outside this context subscription, so a reviewer lifecycle transition cannot rebuild rich output.
-const EditableWorkspaceMessageItem = (
-  props: EditableWorkspaceMessageItemProps
-): React.JSX.Element => {
-  const canEditMessage = useWorkspaceMessageEditState()
-  return <WorkspaceMessageItem {...props} canEditMessage={canEditMessage} />
-}
-
 // Owns transcript scrolling and session-scoped expansion state for activity groups.
 // Provider-scoped transcript body: the visibility hook MUST run inside MessageScrollerProvider,
 // so this tiny wrapper lives under it and hands the computed bounded window back to the impl's
 // render callback (which keeps all of the impl's closures). Without this split the hook threw
 // "useMessageScroller must be used within a MessageScroller" and the workspace white-screened.
+type MessageItemProps = ComponentProps<typeof WorkspaceMessageItem>
+
 const WorkspaceMessageScrollerInner = ({
   conversationItems,
   render
@@ -536,12 +523,8 @@ const WorkspaceMessageScrollerImpl = ({
   // showed up as the residual >50ms tasks at 45 turns.
   // Per-slot caches: a streaming chunk rebuilds this list, and anything it hands a slot that did not
   // actually change has to keep its identity, or the message item's memo never gets to skip it.
-  const artifactsCacheRef = useRef(
-    new Map<string, EditableWorkspaceMessageItemProps['artifacts']>()
-  )
-  const runtimeIdentityCacheRef = useRef(
-    new Map<string, EditableWorkspaceMessageItemProps['runtimeIdentity']>()
-  )
+  const artifactsCacheRef = useRef(new Map<string, MessageItemProps['artifacts']>())
+  const runtimeIdentityCacheRef = useRef(new Map<string, MessageItemProps['runtimeIdentity']>())
   // Two callbacks reach the rows as raw props — every other handler in this file has its own
   // `useCallback` wrapper above. A streaming chunk re-renders this container several times a second and
   // the callers re-create these two on every render, so passing them straight down re-minted every row's
@@ -566,7 +549,7 @@ const WorkspaceMessageScrollerImpl = ({
   )
 
   const itemPropsCacheRef = useRef(
-    new Map<string, { deps: readonly unknown[]; value: EditableWorkspaceMessageItemProps }>()
+    new Map<string, { deps: readonly unknown[]; value: MessageItemProps }>()
   )
   const previousRevisionsRef = useRef<Map<string, GraphMessage[]>>(undefined)
   // Read during render on purpose: the ref only ever holds the PREVIOUS grouping, and passing it in is
@@ -1088,7 +1071,7 @@ const WorkspaceMessageScrollerImpl = ({
                             stableActionHandlers.onBranchInNewSession
                           ]
                           const cachedProps = itemPropsCacheRef.current.get(item.message.id)
-                          let messageItemProps: EditableWorkspaceMessageItemProps
+                          let messageItemProps: MessageItemProps
                           // No-op unless a perf spec installed the bucket: one lookup on the rare miss path.
                           recordPropChurn(item.message.id, cachedProps?.deps, propsDeps)
                           if (cachedProps && sameElements(cachedProps.deps, propsDeps)) {
@@ -1150,14 +1133,7 @@ const WorkspaceMessageScrollerImpl = ({
                                     </div>
                                   </MessageScrollerItem>
                                 ))}
-                                {item.message.role === 'user' ? (
-                                  <EditableWorkspaceMessageItem {...messageItemProps} />
-                                ) : (
-                                  <WorkspaceMessageItem
-                                    {...messageItemProps}
-                                    canEditMessage={false}
-                                  />
-                                )}
+                                <WorkspaceMessageItem {...messageItemProps} />
                                 {currentSessionId && item.message.role === 'agent' ? (
                                   <WorkspaceMessageReview
                                     projectId={currentProjectId}

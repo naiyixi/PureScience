@@ -14,6 +14,10 @@ import {
   recordRenderReason
 } from '@/lib/perf/render-counter'
 import { useTranscriptCapabilities } from './transcript-capabilities-context'
+import {
+  readWorkspaceMessageCanEdit,
+  useWorkspaceMessageEditState
+} from './workspace-message-edit-state-context'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -94,7 +98,6 @@ type WorkspaceMessageItemProps = {
   artifacts?: MessageArtifact[]
   // Inline editing is only enabled once the session's run settles; confirming forks the
   // conversation at this message and resends the adjusted doc as a fresh turn.
-  canEditMessage?: boolean
   // Immutable transcript surfaces can reuse the normal message renderer without live actions.
   showUserActions?: boolean
   // Embedded transcript surfaces can supply their own horizontal gutter without changing live chat.
@@ -511,6 +514,14 @@ const assistantMessageSurfaceClassName =
 // ACP message images are already MIME- and size-checked at runtime and persistence boundaries.
 // memoized: stable message objects (the common re-render case in long transcripts) skip the
 // base64 data-URL rebuild entirely, and lazy/async decoding keeps off-screen images cheap.
+// Only the edit-affecting controls subscribe to edit availability. Wrapping them here keeps the broadcast
+// out of the whole row: without this boundary every user row re-renders whenever availability moves.
+const EditAvailability = ({
+  children
+}: {
+  children: (canEdit: boolean) => React.ReactNode
+}): React.ReactNode => children(useWorkspaceMessageEditState())
+
 const MessageImageList = memo(function MessageImageList({
   images,
   onAnnotateImage
@@ -900,7 +911,6 @@ const WorkspaceMessageItemImpl = ({
   onPreviewMentionArtifact,
   onOpenSessionMention,
   onAnnotateImage,
-  canEditMessage = false,
   showUserActions = true,
   contentPaddingClassName,
   onSendEditedMessage,
@@ -938,12 +948,12 @@ const WorkspaceMessageItemImpl = ({
   recordRenderForRole(message.id, message.role, {
     contentLength: content.length,
     status: message.status,
-    edit: canEditMessage
+    edit: readWorkspaceMessageCanEdit()
   })
   recordRenderCauses(message.id, {
     content,
     status: message.status,
-    edit: canEditMessage,
+    edit: readWorkspaceMessageCanEdit(),
     capsPresent: true,
     messageId: message.id
   })
@@ -1041,7 +1051,7 @@ const WorkspaceMessageItemImpl = ({
   // count is read from the store here rather than arriving as a prop, so an edit is judged against the
   // transcript as it stands at click time.
   const handleConfirmEdit = (): void => {
-    if (!canEditMessage || docIsEmpty(editDoc)) return
+    if (!readWorkspaceMessageCanEdit() || docIsEmpty(editDoc)) return
 
     const laterTurns = countUserTurnsAfter(sessionId, message.id)
     if (laterTurns >= EDIT_TRUNCATION_WARNING_TURNS) {
@@ -1086,14 +1096,18 @@ const WorkspaceMessageItemImpl = ({
                   >
                     {t('common.cancel')}
                   </button>
-                  <button
-                    type="button"
-                    className={editSendButtonClassName}
-                    disabled={!canEditMessage || docIsEmpty(editDoc)}
-                    onClick={handleConfirmEdit}
-                  >
-                    {t('common.send')}
-                  </button>
+                  <EditAvailability>
+                    {(canEdit) => (
+                      <button
+                        type="button"
+                        className={editSendButtonClassName}
+                        disabled={!canEdit || docIsEmpty(editDoc)}
+                        onClick={handleConfirmEdit}
+                      >
+                        {t('common.send')}
+                      </button>
+                    )}
+                  </EditAvailability>
                 </div>
               </div>
             </div>
@@ -1122,15 +1136,19 @@ const WorkspaceMessageItemImpl = ({
                         </button>
                       </UserMessageActionTooltip>
                       <UserMessageActionTooltip label={t('wsMessage.editMessage')}>
-                        <button
-                          type="button"
-                          className={userMessageActionButtonClassName}
-                          aria-label={t('wsMessage.editMessage')}
-                          disabled={!canEditMessage}
-                          onClick={handleStartEdit}
-                        >
-                          <Pencil className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                        </button>
+                        <EditAvailability>
+                          {(canEdit) => (
+                            <button
+                              type="button"
+                              className={userMessageActionButtonClassName}
+                              aria-label={t('wsMessage.editMessage')}
+                              disabled={!canEdit}
+                              onClick={handleStartEdit}
+                            >
+                              <Pencil className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                            </button>
+                          )}
+                        </EditAvailability>
                       </UserMessageActionTooltip>
                     </div>
                   </TooltipProvider>
@@ -1201,15 +1219,19 @@ const WorkspaceMessageItemImpl = ({
                         className="flex items-center gap-0.5 text-[13px] text-text-100"
                       >
                         <UserMessageActionTooltip label={t('wsMessage.previousRevision')}>
-                          <button
-                            type="button"
-                            className={userMessageActionButtonClassName}
-                            aria-label={t('wsMessage.previousRevision')}
-                            disabled={!revisionNavigation.onPrevious || !canEditMessage}
-                            onClick={revisionNavigation.onPrevious}
-                          >
-                            <ChevronLeft className="size-3.5" aria-hidden="true" />
-                          </button>
+                          <EditAvailability>
+                            {(canEdit) => (
+                              <button
+                                type="button"
+                                className={userMessageActionButtonClassName}
+                                aria-label={t('wsMessage.previousRevision')}
+                                disabled={!revisionNavigation.onPrevious || !canEdit}
+                                onClick={revisionNavigation.onPrevious}
+                              >
+                                <ChevronLeft className="size-3.5" aria-hidden="true" />
+                              </button>
+                            )}
+                          </EditAvailability>
                         </UserMessageActionTooltip>
                         <GitBranch
                           data-slot="user-message-revision-icon"
@@ -1223,15 +1245,19 @@ const WorkspaceMessageItemImpl = ({
                           {revisionNavigation.index + 1}/{revisionNavigation.total}
                         </span>
                         <UserMessageActionTooltip label={t('wsMessage.nextRevision')}>
-                          <button
-                            type="button"
-                            className={userMessageActionButtonClassName}
-                            aria-label={t('wsMessage.nextRevision')}
-                            disabled={!revisionNavigation.onNext || !canEditMessage}
-                            onClick={revisionNavigation.onNext}
-                          >
-                            <ChevronRight className="size-3.5" aria-hidden="true" />
-                          </button>
+                          <EditAvailability>
+                            {(canEdit) => (
+                              <button
+                                type="button"
+                                className={userMessageActionButtonClassName}
+                                aria-label={t('wsMessage.nextRevision')}
+                                disabled={!revisionNavigation.onNext || !canEdit}
+                                onClick={revisionNavigation.onNext}
+                              >
+                                <ChevronRight className="size-3.5" aria-hidden="true" />
+                              </button>
+                            )}
+                          </EditAvailability>
                         </UserMessageActionTooltip>
                       </div>
                     </TooltipProvider>
