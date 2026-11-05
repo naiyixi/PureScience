@@ -387,3 +387,27 @@ CPU: PureScience.app 42% · SkyLight 42% · Hermes 桌面 25%+20% · PureScience
 
 要把 160 回合这一档做成可跨天比较的指标，得先解决环境：要么在这台机器上单独占测量（关掉其它应用），
 要么把 perf 基线搬到 CI 的专用 runner 上。在解决之前，我不会再用 160 回合的绝对读数下任何结论。
+
+## 十九 四个交互场景的场景基线（附负载带，只能同批次比较）
+
+`PERF_WAIT=selector npx playwright test e2e/perf/smoothness.spec.ts` 一次跑完流式、输入、滚动、命令面板、
+重开重会话五个场景。本次读数（**宿主 load 6.98 / 10.38 / 14.14，属高负载带**）：
+
+```
+instrument: usable — idle cadence 17ms ≥50fps（仪器自证通过，说明测量机制本身有效）
+streaming  10 turns  每回合 task 128.8 ms · script 68.0 ms · frames=201 · p95=32ms
+typing              longest=77ms · 1/1 超 50ms · frames=108 · p95=33ms
+scrolling           p50=18ms/帧 共 240 帧 · longest=0ms · 0 个超 50ms · mutation 0.00/帧
+command palette     105ms 到可见 · longest=71ms（6 帧，样本不足 20 不取 p95）
+reopen heavy session 145ms 到可见 · longest=0ms
+ipc project.list    p50=0ms p95=1–3ms max=5ms
+```
+
+两条可直接用的结论：
+
+1. **滚动是干净的**：240 帧 p50=18ms、零长任务、零 mutation —— 滚动路径没有可改的东西；
+2. **流式 10 回合这次是 128.8 ms，而低负载时同 spec 是 62.4 ms** —— 同一份代码、同一个 spec，**环境差异 2 倍**。
+   这就是为什么这一节的数字只能和同一批次的其它数字比，不能和 §十四 那批比。
+
+命令面板 105ms 与重开重会话 145ms 是目前唯一两个"用户会直接感知"的绝对值，都发生在高负载带，需要在
+干净环境下复测才能定性。
