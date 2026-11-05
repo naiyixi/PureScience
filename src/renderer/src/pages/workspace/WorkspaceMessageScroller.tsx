@@ -540,6 +540,29 @@ const WorkspaceMessageScrollerImpl = ({
   const runtimeIdentityCacheRef = useRef(
     new Map<string, EditableWorkspaceMessageItemProps['runtimeIdentity']>()
   )
+  // Two callbacks reach the rows as raw props — every other handler in this file has its own
+  // `useCallback` wrapper above. A streaming chunk re-renders this container several times a second and
+  // the callers re-create these two on every render, so passing them straight down re-minted every row's
+  // prop bundle and the row memo never bailed: measured as 15,259 dependency flips for each across a
+  // 40-turn session. Rows only *call* them when the user acts, so they can hold a trampoline that reads
+  // the latest reference — stable identity for the row, and no stale closure, because this ref is
+  // refreshed on every render (a click can only happen after the render that installed what it sees).
+  const liveActionHandlersRef = useRef({ onSendEditedMessage, onBranchInNewSession })
+  // Written during render on purpose: the trampolines below must call the handler of the render the user
+  // is looking at, and a layout effect would leave one commit's worth of staleness for no benefit. Same
+  // previous/next-value pattern as `previousRevisionsRef` above.
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-value write, read only from click handlers
+  liveActionHandlersRef.current = { onSendEditedMessage, onBranchInNewSession }
+  const stableActionHandlers = useMemo(
+    () => ({
+      onSendEditedMessage: (...args: Parameters<typeof onSendEditedMessage>) =>
+        liveActionHandlersRef.current.onSendEditedMessage(...args),
+      onBranchInNewSession: (...args: Parameters<NonNullable<typeof onBranchInNewSession>>) =>
+        liveActionHandlersRef.current.onBranchInNewSession?.(...args)
+    }),
+    []
+  )
+
   const itemPropsCacheRef = useRef(
     new Map<string, { deps: readonly unknown[]; value: EditableWorkspaceMessageItemProps }>()
   )
@@ -1062,9 +1085,9 @@ const WorkspaceMessageScrollerImpl = ({
                           onPreviewMentionArtifact,
                           onOpenSessionMention,
                           onAnnotateImage,
-                          onSendEditedMessage,
+                          stableActionHandlers.onSendEditedMessage,
                           canBranchInNewSession,
-                          onBranchInNewSession
+                          stableActionHandlers.onBranchInNewSession
                         ]
                         const cachedProps = itemPropsCacheRef.current.get(item.message.id)
                         let messageItemProps: EditableWorkspaceMessageItemProps
@@ -1083,9 +1106,9 @@ const WorkspaceMessageScrollerImpl = ({
                             onPreviewMentionArtifact,
                             onOpenSessionMention,
                             onAnnotateImage,
-                            onSendEditedMessage,
+                            onSendEditedMessage: stableActionHandlers.onSendEditedMessage,
                             canBranchInNewSession,
-                            onBranchInNewSession,
+                            onBranchInNewSession: stableActionHandlers.onBranchInNewSession,
                             turnStartedAt,
                             runtimeIdentity,
                             showAssistantFooter,

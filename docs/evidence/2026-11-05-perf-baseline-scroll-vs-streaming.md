@@ -240,3 +240,36 @@ prop-dep churn by tuple index: 15=15259 17=15259 16=3280 4=1680 6=1640 0=40 2=40
 
 修的时候要守住一件事：**不能靠「把回调从依赖里拿掉」来让它稳**——那样缓存里的闭包会引用旧的
 `activeSessionId`，切换会话后编辑/分支会打到错误的会话上。必须让调用链更上方给出真正稳定的引用。
+
+## 十四 修掉之后的同一命令对照（同机、同 spec 版本、背靠背）
+
+把两个"每增量换身份"的回调在 `WorkspaceMessageScroller` 里换成读最新引用的跳板（行只拿到一个恒定的函数，
+点击时永远读到本次渲染装上的那个，因此不会有旧闭包），然后**同一条命令**跑两次，中间只换这一处代码：
+
+| 读数（40 回合）   | 修前        | 修后        |
+| ----------------- | ----------- | ----------- |
+| 每回合主线程 task | **99.7 ms** | **74.7 ms** |
+| 每回合 script     | **67.6 ms** | **42.4 ms** |
+| 流式总 task       | 3,987 ms    | 2,988 ms    |
+| 最长单任务        | 53 ms       | 59 ms       |
+
+**script −37%、task −25%。** 收口判据（每回合 task 明显下降）达成。
+
+说明两点，避免把这份读数读大：
+
+1. 修后还跑过一次，出现 `task=193.3 ms`、单任务 2,541 ms、命令面板 321 ms 的异常值——那是构建刚结束、
+   同机还在编译的负载噪声，不是回归；紧接着的安静环境复现为 74.7 ms。
+2. 帧级重渲还没有消失：`mutation ≈0.92 批/帧` 与修前 0.85 持平，`revisions` / `subsequentTurns` /
+   `canBranchInNewSession` 仍按回合换身份（探针里各约 1,600–3,300 次）。它们只在回合边界变，所以下一步
+   若还要压，是把这三项按消息 id 记忆化，而不是再动回调。
+
+## 十五 复算这一节
+
+```bash
+git stash push -- src/renderer/src/pages/workspace/WorkspaceMessageScroller.tsx
+npm run build:e2e && PERF_TURNS=40 npx playwright test e2e/perf/smoothness.spec.ts --reporter=line
+git stash pop
+npm run build:e2e && PERF_TURNS=40 npx playwright test e2e/perf/smoothness.spec.ts --reporter=line
+```
+
+日志：`/tmp/ps_perf40_base2.log`（修前）、`/tmp/ps_perf40_fix2.log`（修后）。
