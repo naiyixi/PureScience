@@ -228,7 +228,12 @@ describe('the GB/T [EB/OL] block carries the issuing body', () => {
     )
 
     const bare = formatCitation(
-      citationItemFromReference({ ...guideline, year: undefined, url: undefined, doi: '10.3760/x' }),
+      citationItemFromReference({
+        ...guideline,
+        year: undefined,
+        url: undefined,
+        doi: '10.3760/x'
+      }),
       'gbt7714-2015'
     )
     expect(bare.text).toBe(
@@ -254,5 +259,79 @@ describe('comparison and list rendering', () => {
     const authorDate = formatCitationList(items, 'apa-7').split('\n')
     expect(authorDate[0].startsWith('[1]')).toBe(false)
     expect(authorDate).toHaveLength(2)
+  })
+})
+
+describe('arXiv and Zenodo records are citable, not just storable', () => {
+  // An arXiv preprint carries no DOI for most of its life, and a Zenodo dataset's DOI lives at DataCite. The
+  // invariant every style must keep: the rendered citation contains something a reader can act on. A
+  // citation that ends at the year is not "minimal", it is unusable.
+  const preprint = citationItemFromReference({
+    title: 'Attention Is All You Need',
+    authors: [{ name: 'Ashish Vaswani' }, { name: 'Noam Shazeer' }],
+    year: 2017,
+    arxivId: '1706.03762'
+  })
+
+  const dataset = citationItemFromReference({
+    title: 'Single-cell atlas of the HCC immune microenvironment',
+    authors: [{ name: 'San Zhang' }, { name: 'Si Li' }],
+    year: 2026,
+    publisher: 'Zenodo',
+    doi: '10.5281/zenodo.23942881',
+    itemType: 'dataset'
+  })
+
+  const STYLE_IDS = [
+    'gbt7714-2015',
+    'apa-7',
+    'vancouver-nlm',
+    'ieee-11',
+    'nature',
+    'ama-11',
+    'harvard-ctr-12',
+    'chicago-18-author-date',
+    'mla-9'
+  ]
+
+  for (const styleId of STYLE_IDS) {
+    it(`${styleId} locates a DOI-less arXiv preprint`, () => {
+      const { text, warnings } = formatCitation(preprint, styleId, {
+        retrievedAt: '2026-11-05'
+      })
+      const locatable = text.includes('arXiv:1706.03762') || text.includes('1706.03762')
+      expect(locatable, `${styleId} rendered: ${text}`).toBe(true)
+      expect(warnings).not.toContain('style:no-locator')
+    })
+  }
+
+  it('APA marks the record kind and names the repository for a dataset', () => {
+    const { text } = formatCitation(dataset, 'apa-7')
+    expect(text).toContain('[Data set]')
+    expect(text).toContain('Zenodo')
+    expect(text).toContain('https://doi.org/10.5281/zenodo.23942881')
+  })
+
+  it('APA marks a preprint as a preprint', () => {
+    const { text } = formatCitation(preprint, 'apa-7')
+    expect(text).toContain('[Preprint]')
+    expect(text).toContain('https://arxiv.org/abs/1706.03762')
+  })
+
+  it('GB/T 7714 tags a dataset as [DS] and keeps the DOI', () => {
+    const { text } = formatCitation(dataset, 'gbt7714-2015')
+    expect(text).toContain('[DS]')
+    expect(text).toContain('10.5281/zenodo.23942881')
+  })
+
+  it('a record with a DOI is unchanged: no arXiv tag is invented for it', () => {
+    const withDoi = citationItemFromReference({
+      ...journalRecord,
+      arxivId: '1706.03762'
+    })
+    for (const styleId of STYLE_IDS) {
+      const text = formatCitation(withDoi, styleId, { retrievedAt: '2026-11-05' }).text
+      expect(text.includes('arXiv:'), `${styleId} invented an arXiv tag: ${text}`).toBe(false)
+    }
   })
 })

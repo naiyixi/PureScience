@@ -294,6 +294,60 @@
       "name": "研究设计",
       "source": "featured",
       "updatedAt": "2026-09-07T03:15:52.000Z"
+    },
+    {
+      "id": "survival-and-competing-risk",
+      "name": "生存分析与竞争风险",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "diagnostic-accuracy",
+      "name": "诊断试验与阈值",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "sample-size-power",
+      "name": "样本量与把握度",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "real-world-evidence",
+      "name": "真实世界证据与倾向评分",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "mendelian-randomization",
+      "name": "孟德尔随机化",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "systematic-review-meta",
+      "name": "系统综述与 meta 分析",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "clinical-data-deidentification",
+      "name": "临床数据脱敏与合规",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "missing-data-handling",
+      "name": "缺失数据的机制与处理",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
+    },
+    {
+      "id": "grant-proposal-audit",
+      "name": "基金申请书结构审计",
+      "source": "featured",
+      "updatedAt": "2026-11-05T00:00:00.000Z"
     }
   ]
 }

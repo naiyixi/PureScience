@@ -63,6 +63,20 @@ We label every capability the way we build it: ✅ shipped **and verified on a r
 - [Get Involved](#get-involved)
 - [License](#license)
 
+## 文档地图
+
+README 只留"是什么、怎么装、能做什么"。需要细节时去这里：
+
+| 想了解                                 | 去哪                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 构建、打包、发版、本地真机测试         | [`docs/development.md`](docs/development.md)                                                     |
+| 九类对抗场景的实测记录（含失败与修复） | [`docs/evidence/adversarial-stress-tests.md`](docs/evidence/adversarial-stress-tests.md)         |
+| 真实跑过的案例与截图                   | [`docs/showcase.md`](docs/showcase.md)                                                           |
+| 常见问题                               | [`docs/faq.md`](docs/faq.md)                                                                     |
+| 与同类产品的逐项对比                   | [`docs/comparison-2026-10-28-competitor-gaps.md`](docs/comparison-2026-10-28-competitor-gaps.md) |
+| 路线图（逐项能力与验收判据）           | [`ROADMAP.md`](ROADMAP.md)                                                                       |
+| 命令行                                 | [`packages/purescience/CLI.md`](packages/purescience/CLI.md)                                     |
+
 ## 🚀 Quick Start
 
 ### 1. Download the app
@@ -151,41 +165,7 @@ PureScience is an independent product built from scratch. It is not a proxy, uno
 
 ## Showcase
 
-One natural-language prompt → multi-step agentic research → **traceable, reproducible science**. The demo below ran end-to-end in ~11 minutes: the agent queried three scientific databases (ChEMBL, ClinicalTrials.gov, PubMed — 19 connector calls), executed 34 notebook cells (Python + pandas + matplotlib), caught and fixed two of its own bugs, and delivered three artifacts with provenance.
-
-![Top-5 EGFR T790M inhibitors — the potency chart the agent produced](docs/demo-verification/egfr_t790m_ic50.png)
-
-**The task (verbatim):**
-
-```
-Build a drug-discovery intelligence dossier for EGFR T790M (non-small cell lung cancer).
-
-1. Use the ChEMBL connector to retrieve published small-molecule inhibitors of
-   EGFR T790M (Homo sapiens, IC50 < 100 nM). Rank by potency, take the top 5.
-2. Cross-reference those 5 compounds against ClinicalTrials.gov: which are in
-   active clinical trials for NSCLC? Record trial phase, status, and sponsor.
-3. Use PubMed to find up to 3 key papers per compound (mechanism / clinical evidence).
-4. Write a Python script to merge everything into one table (compound, target,
-   IC50, trial phase, status, sponsor) and generate a bar chart of IC50 values.
-5. Deliver three artifacts: (a) the merged table as CSV, (b) the potency figure,
-   (c) a one-page markdown dossier with citations. Explicitly state which data
-   was verified via connectors and which could not be found.
-```
-
-**What it produced — every file real, every number independently verified:**
-
-| Deliverable                                                              | File                                                                               |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| One-page dossier with citations and a verified-vs-not-found statement    | [egfr_t790m_dossier.md](docs/demo-verification/egfr_t790m_dossier.md)              |
-| Merged table (compound · target · IC50 · trial phase · status · sponsor) | [egfr_t790m_merged.csv](docs/demo-verification/egfr_t790m_merged.csv)              |
-| Potency figure (log scale; green = active trials, grey = none)           | [egfr_t790m_ic50.png](docs/demo-verification/egfr_t790m_ic50.png)                  |
-| In-app preview of the generated chart                                    | [shot4-figure-preview.png](docs/demo-verification/assets/shot4-figure-preview.png) |
-
-All key data points were re-checked against the public APIs after the run: 5/5 ChEMBL IC50 values, the representative FLAURA2 trial (NCT04035486) on ClinicalTrials.gov, and the cited PMIDs on PubMed all match. The agent also disclosed its own limits in the dossier — records it could not resolve, connector pagination constraints, and compounds with no active trials — instead of guessing. Full details: [demo verification report](docs/demo-verification/egfr-t790m-dossier-verification.md).
-
-<p align="center">
-  <img src="docs/demo-verification/assets/shot1-timeline.png" alt="PureScience session — tool activity timeline in the transcript" width="620" />
-</p>
+真实跑过的案例与截图已移到 [`docs/showcase.md`](docs/showcase.md)。
 
 ## Real Runs Behind the Claims: the AI4S dry-wet loop, in action
 
@@ -217,75 +197,7 @@ _SARS-CoV-2 Mpro (PDB 7VH8) + nirmatrelvir: 280 docking poses scored by interact
 
 ## Extreme Adversarial Stress Tests (Sep 2026)
 
-Between 2026-09-04 and 2026-09-07, PureScience was handed **30 adversarial research challenges** by external reviewers — no demo data, no curated inputs. The reviewer spread them across five daily sessions, and the runs themselves finished in **~6 hours of total runtime on a single Apple M2 laptop with 8 GB of RAM**. Each challenge described a state-of-the-art but deeply flawed research claim (a kinase "selectivity" chemistry cannot support, an antibody whose affinity defeats its own brain delivery, a condensate drug that "dissolves" a transcription factory by gelling it, a CAR whose affinity can never compensate sparse antigen…) and demanded a mechanism-level verdict. Every run ended with a versioned deliverable set: a Chinese adjudication report (with its own Data-Gap list), the solver code, and publication-grade figures — visible in the project's Files panel and replayable from the conversation. Every wave also carries an external reviewer scorecard — see the [scoring archive](docs/extreme-tests-2026-09/SCORECARD.md).
-
-The complete evidence is archived case-by-case: **all 30 reports, solvers, and figures live under [`docs/extreme-tests-2026-09/cases/`](docs/extreme-tests-2026-09/cases/)**, with an in-app session screenshot per flagship case in the [full evidence gallery](docs/extreme-tests-2026-09/README.md). Below is a condensed tour.
-
-![30 stress-test projects, each row showing its real artifact types](docs/extreme-tests-2026-09/stress-projects-home.png)
-_The projects page after the marathon — every row lists the actual file types its session produced (MD · PY · PNG · CSV · HTML)._
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/session-llps-files.png" alt="LLPS adjudication session: conversation left, versioned Files panel right" width="860" />
-</p>
-*LLPS condensate-drug session — the conversation (left) includes the agent catching a coordinate mismatch in its own figure and re-rendering it; the Files panel (right) holds the versioned report, solver, figures and data.*
-
-More sessions, same pattern — each with its own solver outputs in the Files panel:
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/shots/42-bbb-session.png" alt="BBB transcytosis session" width="640" />
-  <img src="docs/extreme-tests-2026-09/shots/46-cd8-session.png" alt="CD8 pseudotime session" width="640" />
-  <img src="docs/extreme-tests-2026-09/shots/48-tpd-session.png" alt="TPD futile-cycle session" width="640" />
-  <img src="docs/extreme-tests-2026-09/shots/16-adc-session.png" alt="ADC multiscale session" width="640" />
-</p>
-
-Sampled verdicts — each row is a direct summary of a real session's report:
-
-| Challenge area                            | The trap in the claim                                                            | What the run concluded                                                                                                                                                         |
-| ----------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Kinase selectivity (TNIK vs its paralogs) | Hinge backbone H-bonds + a high docking score ⇒ "1,000× selective"               | Contact residues are 100% conserved between paralogs; the thermodynamic upper bound (≤1.5 kcal/mol) cannot encode a 1,000× difference                                          |
-| BBB transcytosis (TfR bispecific)         | Higher affinity ⇒ more antibody reaches the brain                                | Off-rate half-life 9.6 h vs a ~3.3 min endosomal sorting window ⇒ ~92 % routed to lysosomal degradation; the working regime is 50–300 nM affinity with a pH-sensitive release  |
-| Condensate-targeted drug (LLPS)           | Partition ratio > 300 into the condensate ⇒ dissolution of the oncogenic network | High partitioning deepens the thermodynamic well first: percolation/gelation (θc ≈ 0.28) happens long before any dissolution threshold — a physical sequestration trap for p53 |
-| Single-cell trajectory (CD8 exhaustion)   | Trajectory endpoint = true terminal state                                        | Dissociation-stress cells are injected into the "terminal" branch (~48 % of it); gene-set filtering / regression restores terminal classification F1 from 0.52 to 0.96         |
-| CAR-T killing at low antigen density      | Near-infinite affinity compensates sparse antigen                                | Below ~500 copies per cell the membrane cannot be pinned to exclude CD45 — signaling output stays ≈0 regardless of affinity                                                    |
-| Synthetic ecology (engineered bacteria)   | A synchronized lysis circuit releases drug forever                               | Every lysis pulse amplifies non-lysis "cheater" mutants 20–50×; the clock stops within a few pulses (spatial structure delays, never prevents it)                              |
-
-Every one of the 30 runs has its own archived case folder with the full report, solver and figures — see the [case index](docs/extreme-tests-2026-09/cases/) and per-case one-line verdicts (EN + 中文) in the [gallery](docs/extreme-tests-2026-09/README.md).
-
-Every figure below is a real artifact produced by that session's own numerical solver (ODE / PDE / lattice Monte-Carlo) — not a stock graphic:
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-llps-thermo.png" alt="LLPS thermodynamics phase diagram + curing heatmaps" width="860" />
-</p>
-*LLPS condensate drug: Flory-Huggins phase diagram, curing heatmaps — Cahn–Hilliard phase-field solver.*
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-bbb-3d.png" alt="BBB affinity–brain-exposure 3D phase diagram" width="860" />
-</p>
-*BBB/TfR transcytosis: affinity × dose × brain-exposure phase diagram — the high-affinity plateau where delivery collapses.*
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-adc-contour.png" alt="ADC perivascular concentration contours at 168 h" width="860" />
-</p>
-*ADC multiscale barrier: radial concentration contours around a vessel at 168 h — high-affinity arm pinned within 1–2 cell diameters.*
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-tnik-ploop.png" alt="TNIK P-loop static conformational bias" width="860" />
-</p>
-*TNIK vs paralog selectivity audit: P-loop conformational snapshots across crystal forms — the "1,000× selectivity" has no physical basis.*
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-tpd-heatmap.png" alt="TPD degradation-efficiency heatmap" width="860" />
-</p>
-*TPD futile-cycle model: degradation efficiency over ternary-complex lifetime × DUB activity — too-tight binding burns ATP and degrades nothing.*
-
-<p align="center">
-  <img src="docs/extreme-tests-2026-09/fig-bnab-epistasis.png" alt="bNAb epistasis deviation heatmap" width="860" />
-</p>
-*bNAb directed evolution: pairwise epistasis deviations — greedy mutation stacking loses ~10× affinity to negative epistasis.*
-
-…and **24 more challenge figures** (RNA polyelectrolyte entropy, lyophilization water-percolation, CAR-T synapse phase diagrams, engineered-bacteria cheater sweeps, antibody ΔCₚ cold reversal, …) are archived with their reports and solver code in the [full evidence gallery](docs/extreme-tests-2026-09/README.md).
-
-> **中文速览（2026-09 极限压测）**：30 道研发委员会级对抗性压测（激酶同源选择性 → 血脑屏障转胞吞 → 相分离凝胶化 → 免疫突触 → 演化博弈…）于 09-04 → 09-07 在一台 Apple M2 8GB 笔记本上完成 —— **合计计算 ≈6 小时，评审分 5 天逐批发出**；每题交付「中文裁决研报 + 数值求解器 + 出版级图件」，全部保留在会话 Files 面板、可版本回放；报告延续「Data Gap 清单」与「已验证 / 无法核实」分离口径。压测中系统还多次驳回出题方的诱导性前提（如「强表达必致混沌」被数值结论直接否定）。**全量证据已入库**：30 个案例文件夹（研报/代码/图件）见 [`docs/extreme-tests-2026-09/cases/`](docs/extreme-tests-2026-09/cases/)，带会话截图与逐题一句话裁决的完整图库见 [`docs/extreme-tests-2026-09/README.md`](docs/extreme-tests-2026-09/README.md)，**历轮评审打分**（外部评审 1–10 分/等级制原表）见 [`SCORECARD.md`](docs/extreme-tests-2026-09/SCORECARD.md)；实证介绍 PPT（含会话截图与产物图）随 Release 资产与演示素材提供。
+九类对抗场景的完整实测记录（含失败与修复）已移到 [`docs/evidence/adversarial-stress-tests.md`](docs/evidence/adversarial-stress-tests.md)。
 
 ## How PureScience Compares
 
@@ -408,72 +320,7 @@ PureScience assists execution and record-keeping; researchers remain responsible
 
 ## Development & Packaging
 
-PureScience is an Electron application built with React, TypeScript, Prisma/SQLite, and an ACP-based agent runtime.
-
-Prerequisites for source development:
-
-- Node.js LTS or newer with npm
-- Git
-- Python 3 only if you want Notebook execution
-
-```bash
-git clone https://github.com/naiyixi/PureScience.git
-cd purescience
-npm install
-npm run dev
-```
-
-`npm install` automatically generates the Prisma client and installs Electron native dependencies. `npm run dev` builds the Electron main/preload bundles, starts the renderer, and opens the desktop app. Development data is isolated under `~/.purescience-project`.
-
-Useful commands:
-
-| Command                | Purpose                                  |
-| ---------------------- | ---------------------------------------- |
-| `npm run dev`          | Start the development application        |
-| `npm run dev:web`      | Dev app + localhost web UI (127.0.0.1)   |
-| `npm run dev:headless` | Dev backend + web UI, no Electron window |
-| `npm run lint`         | Run ESLint                               |
-| `npm run typecheck`    | Type-check main and renderer code        |
-| `npm test`             | Run the Vitest suite                     |
-| `npm run build`        | Type-check and build the application     |
-| `npm run build:web`    | Build the optional localhost web UI      |
-| `npm run build:mac`    | Package macOS builds                     |
-| `npm run build:win`    | Package Windows builds                   |
-| `npm run build:linux`  | Package Linux builds                     |
-
-Packaged output is written under `dist/`.
-
-### Localhost web and headless modes
-
-The desktop backend can optionally serve the same renderer to a browser on the local computer. This
-feature is off by default and binds only to `127.0.0.1`.
-
-```bash
-npm run build:web
-npm run dev:web
-```
-
-Open the authenticated URL printed by the application. Use `npm run dev:headless` to start the
-backend, tray, agent runtime, and localhost web service without opening an Electron window.
-Set `PURESCIENCE_WEB_PORT` to choose a port (default `44100`). Explicitly quitting the
-application still shuts down agent and Notebook processes normally.
-
-### Mobile remote access
-
-The same localhost web UI can be reached from a phone or tablet through Remote.It pairing. Pair
-a browser with a six-digit PureScience code, approve it once on the desktop, and the workspace
-stays reachable without exposing the loopback server directly. Browser trust is revocable, and
-mode changes or service shutdown immediately invalidate active remote sessions.
-
-### Headless CLI and SDK
-
-The headless CLI and zero-dependency Node.js SDK use the same local daemon, projects, sessions,
-credentials, and permissions as the desktop and web interfaces. Detailed usage lives with the
-publishable package so there is one command reference to maintain:
-
-- [CLI guide](packages/purescience/CLI.md) - installation, service lifecycle, task automation,
-  artifacts, output formats, and exit codes
-- [SDK package overview](packages/purescience/README.md) - Node.js quick start and package entry point
+构建、打包、发版与本地真机测试的完整步骤已移到 [`docs/development.md`](docs/development.md)。
 
 ## Brand & Ecosystem
 
@@ -501,51 +348,13 @@ PureScience is a research execution and record-keeping tool, not a generic chat 
 
 ## Frequently Asked Questions
 
-### **Q: What should I do the first time I open PureScience?**
-
-A: Complete the five setup steps: **Environment**, **Agent runtime**, **Model provider**, **Notebook runtime**, and **Data location**. Fix required rows marked `Action needed`, install or repair the selected agent if offered, and test the model connection. Notebook setup and a custom data location are optional.
-
-### **Q: What is an API Key, and where do I get one?**
-
-A: An API Key is a secret credential issued by a model provider. Create or copy one from that provider's developer/API console. The provider may bill requests made with the key. Treat it like a password: never share it or commit it to a repository.
-
-### **Q: Do I need an API Key?**
-
-A: Not if you reuse an existing subscription login — a Claude subscription through shared browser login or an isolated app-managed `claude setup-token` flow, or a ChatGPT/Codex subscription login on the Codex backend. Built-in cloud providers and custom gateways require their own keys.
-
-### **Q: Which model providers can I use?**
-
-A: Open the provider picker during setup or under `Settings → Model` for the choices supported by your installed app and selected agent backend. You can use a built-in cloud provider, a compatible Custom Gateway, a Claude subscription through shared or isolated login, or a Codex subscription on the Codex backend.
-
-### **Q: Why does the model connection test fail?**
-
-A: Check the API Key for missing characters or spaces, verify the Base URL and region, use the provider's exact model ID, and confirm network access and account balance. For a Claude subscription, retry the shared browser login or refresh the isolated `claude setup-token` credential, depending on the selected mode.
-
-### **Q: Why is `Continue` disabled during setup?**
-
-A: The current step has not met its required condition. Fix any environment row marked `Action needed`, install or repair the selected agent runtime, or validate the model provider, depending on the active step. Notebook setup is optional and only affects Notebook execution.
-
-### **Q: Setup is complete. How do I start a research task?**
-
-A: Create or open a project, start a session, attach any source files, and describe the goal, constraints, expected output, and validation criteria. Use `@` to reference a project file and `/` to select an enabled skill.
-
-### **Q: How do I run jobs on a remote HPC cluster?**
-
-A: Enable the **Remote Compute (SSH)** skill under **Settings → Skills**, register your cluster under **Settings → Compute**, then start a session and select the skill with `/remote-compute-ssh`. The skill handles host registration, short commands via SSH, and fully async job submission — the app automatically starts an analysis turn when the job finishes, so you never write a polling loop.
-
-### **Q: Is there a command-line interface?**
-
-A: Yes. Install it in one click from **Settings → General → Command line tool → Install command** (adds `purescience` to your PATH; no separate Node.js needed). The CLI controls the local service and submits research tasks without opening a browser.
-
-If you want the same CLI, and the Node SDK beside it, without installing the desktop app's command line tool, the package is also on npm — `npm i -g purescience` (Needs Node ≥ 22.5. It talks to the app over the local service, so the app still has to be running):
-
-```bash
-npm i -g purescience
-purescience doctor     # what this machine actually has: config root, service state, app binary, signature
+完整问答已移到 [`docs/faq.md`](docs/faq.md)。
 
 # Or programmatically, from your own script:
-#   import { connectToPureScience } from 'purescience'
-```
+
+# import { connectToPureScience } from 'purescience'
+
+````
 
 ```bash
 # Start the service in the background
@@ -562,7 +371,7 @@ purescience run --project "Systematic review" \
 # Download a generated artifact
 purescience artifacts list <session-id> --json
 purescience artifacts download <artifact-id> --output ./report.md
-```
+````
 
 See the [CLI guide](packages/purescience/CLI.md) for the full command reference, JSON/JSONL output formats, exit codes, and headless service options.
 

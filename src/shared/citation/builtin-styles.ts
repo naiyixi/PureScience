@@ -46,6 +46,31 @@ const result = (text: string, warnings: readonly string[] = []): CitationFormatR
   warnings: [...warnings]
 })
 
+// ---- locators for records the DOI registry does not cover ----------------------------------
+// An arXiv preprint has no DOI in most of its life, and a Zenodo dataset's DOI is DataCite's. Before this,
+// a DOI-less preprint rendered in Vancouver/AMA/IEEE/Nature/Harvard/Chicago with **no locator at all** — a
+// citation a reader cannot find the work by. These two helpers give every style the one identifier such a
+// record actually has. They never fire when a DOI is present, so every citation that existed before keeps
+// its exact bytes.
+const arxivTag = (item: CitationItem): string =>
+  item.arxivId?.trim() ? `arXiv:${item.arxivId.trim()}` : ''
+
+const arxivUrl = (item: CitationItem): string =>
+  item.arxivId?.trim() ? `https://arxiv.org/abs/${item.arxivId.trim()}` : ''
+
+// APA 7 states the record kind in the title bracket and names the archive/repository before the locator.
+// A dataset cited as if it were a journal article is the mistake this prevents.
+const apaTypeSuffix = (item: CitationItem): string => {
+  switch (item.itemType) {
+    case 'dataset':
+      return ' [Data set]'
+    case 'preprint':
+      return ' [Preprint]'
+    default:
+      return ''
+  }
+}
+
 // ---- GB/T 7714-2015 (顺序编码制) ------------------------------------------------------------
 // Chinese-journal practice style; the record's own script decides the truncation wording (等/et al.).
 const gbtTypeTag = (item: CitationItem): string => {
@@ -157,7 +182,13 @@ const formatVancouver = (item: CitationItem): CitationFormatResult => {
     ],
     ''
   )
-  const doi = item.doi?.trim() ? `doi: ${item.doi.trim()}.` : ''
+  // NLM prints the DOI when there is one; a preprint without a DOI is located by its arXiv id instead of
+  // being left with no locator.
+  const doi = item.doi?.trim()
+    ? `doi: ${item.doi.trim()}.`
+    : arxivTag(item)
+      ? `${arxivTag(item)}.`
+      : ''
   const head = authors ? `${authors}.` : ''
   const body = container
     ? joinSegments([`${item.title.trim()}.`, `${container}.`])
@@ -180,7 +211,7 @@ const apaAuthors = (authors: readonly { name: string }[]): string => {
 const formatApa7 = (item: CitationItem): CitationFormatResult => {
   const authors = apaAuthors(item.authors)
   const year = item.year ? `(${item.year}).` : '(n.d.).'
-  const title = `${item.title.trim()}.`
+  const title = `${item.title.trim()}${apaTypeSuffix(item)}.`
   const container = item.containerTitle?.trim()
   // APA journal block: Journal, 12(3), 45-67.
   const volume = item.volume?.trim()
@@ -193,9 +224,17 @@ const formatApa7 = (item: CitationItem): CitationFormatResult => {
         pages ? `, ${pages}` : ''
       ].join('') + '.'
     : ''
-  const locator = item.doi?.trim() ? `https://doi.org/${item.doi.trim()}` : (item.url?.trim() ?? '')
+  const locator = item.doi?.trim()
+    ? `https://doi.org/${item.doi.trim()}`
+    : (item.url?.trim() ?? arxivUrl(item))
+  // APA names the archive/repository between the title and the locator for datasets and preprints; a
+  // journal article's container already plays that role in `serial`, so this slot only opens for them.
+  const repository =
+    !container && (item.itemType === 'dataset' || item.itemType === 'preprint')
+      ? (item.publisher?.trim() ?? '')
+      : ''
   return result(
-    joinSegments([authors, year, title, serial, locator]),
+    joinSegments([authors, year, title, serial, repository, locator]),
     missingFieldWarnings(item, item.year ? ['containerTitle'] : ['year', 'containerTitle'])
   )
 }
@@ -258,7 +297,11 @@ const formatChicago18 = (item: CitationItem): CitationFormatResult => {
         item.issue?.trim() ? ` (${item.issue.trim()})` : ''
       }${item.pages?.trim() ? `: ${item.pages.trim()}` : ''}`
     : ''
-  const locator = item.doi?.trim() ? `https://doi.org/${item.doi.trim()}.` : ''
+  const locator = item.doi?.trim()
+    ? `https://doi.org/${item.doi.trim()}.`
+    : arxivUrl(item)
+      ? `${arxivUrl(item)}.`
+      : ''
   return result(
     joinSegments([
       authors ? `${authors}.` : '',
@@ -292,12 +335,24 @@ const formatIeee11 = (item: CitationItem, context: CitationFormatContext): Citat
     ],
     ', '
   )
+  // IEEE expects a DOI or a locator after the imprint. Journal rows already carry the container and pages;
+  // a preprint row carries neither, so without the arXiv id it ended at "2017." with nothing to follow.
+  // Only the container-less rows gain a locator: a journal row's imprint already ends the citation, and
+  // changing those bytes would rewrite every IEEE citation this build has already produced.
+  const locator = !container
+    ? item.doi?.trim()
+      ? `doi: ${item.doi.trim()}.`
+      : arxivTag(item)
+        ? `${arxivTag(item)}.`
+        : ''
+    : ''
   return result(
     `${number}${joinSegments([
       authors ? `${authors},` : '',
       `"${item.title.trim()},"`,
       container ? `${container},` : '',
-      details ? `${details}.` : ''
+      details ? `${details}.` : '',
+      locator
     ])}`,
     missingFieldWarnings(item, ['year', 'containerTitle'])
   )
@@ -322,11 +377,14 @@ const formatNature = (item: CitationItem): CitationFormatResult => {
     .filter((part): part is string => Boolean(part))
     .join(', ')
   const imprint = joinSegments([container ?? '', details])
+  // Nature locates a preprint as "Preprint at <url>"; a journal row keeps its journal/volume/pages slot.
+  const preprintAt = !container && arxivUrl(item) ? `Preprint at ${arxivUrl(item)}` : ''
   return result(
     joinSegments([
       authors ? `${authors.replace(/\.$/, '')}.` : '',
       `${item.title.trim()}.`,
       imprint ? `${imprint}` : '',
+      preprintAt,
       item.year ? `(${item.year}).` : ''
     ]),
     missingFieldWarnings(item, ['year', 'containerTitle'])
@@ -353,7 +411,11 @@ const formatAma11 = (item: CitationItem): CitationFormatResult => {
     ],
     ''
   )
-  const doi = item.doi?.trim() ? `doi:${item.doi.trim()}` : ''
+  const doi = item.doi?.trim()
+    ? `doi:${item.doi.trim()}`
+    : arxivTag(item)
+      ? `${arxivTag(item)}.`
+      : ''
   return result(
     joinSegments([
       authors ? `${authors}.` : '',
@@ -387,7 +449,11 @@ const formatHarvardCtr = (item: CitationItem): CitationFormatResult => {
   const source = [container, serial, pages]
     .filter((part): part is string => Boolean(part))
     .join(', ')
-  const doi = item.doi?.trim() ? `doi: ${item.doi.trim()}.` : ''
+  const doi = item.doi?.trim()
+    ? `doi: ${item.doi.trim()}.`
+    : arxivUrl(item)
+      ? `Available at: ${arxivUrl(item)}.`
+      : ''
   return result(
     joinSegments([
       authors,
