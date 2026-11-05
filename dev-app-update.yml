@@ -1,4 +1,11 @@
-provider: generic
-url: https://statics.zerolink.com/purescience/app/stable
+# What a development build reads instead of the packaged `app-update.yml`.
+#
+# This file named the same dead mirror the packaged build used to name
+# (`https://statics.zerolink.com/purescience/app/stable`, which has never resolved), so a dev build's
+# first update check failed too — the one thing that made "it works in dev" look true while every
+# packaged build logged an error. It now points at the only feed that exists.
+provider: github
+owner: naiyixi
+repo: PureScience
 channel: latest
 updaterCacheDirName: purescience-updater

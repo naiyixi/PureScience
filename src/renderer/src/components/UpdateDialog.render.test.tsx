@@ -362,3 +362,61 @@ describe('UpdateDialog', () => {
     expect(document.body.textContent).toContain('42%')
   })
 })
+
+describe('UpdateDialog — what a macOS user must do when the OS cannot swap the app', () => {
+  // Without our own Developer ID macOS refuses to replace a running bundle, so the dialog has to say
+  // "download and replace it by hand" instead of letting the user discover it mid-drag. This sentence
+  // existed in nine dictionaries but nothing rendered it: the branch could have been deleted and every
+  // test would still pass.
+  const readyInstaller = {
+    state: 'ready' as const,
+    current: '0.1.0',
+    latest: '0.2.0',
+    applyKind: 'installer' as const
+  }
+  const readyRestart = {
+    state: 'ready' as const,
+    current: '0.1.0',
+    latest: '0.2.0',
+    applyKind: 'restart' as const
+  }
+
+  const withPlatform = (platform: string, run: () => void): void => {
+    const original = window.api
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: { ...(original as object), platform }
+    })
+    try {
+      run()
+    } finally {
+      Object.defineProperty(window, 'api', { configurable: true, value: original })
+    }
+  }
+
+  it('says the mac build is ad-hoc signed and must be replaced by hand', () => {
+    withPlatform('darwin', () => {
+      useUpdateStore.setState({ isDialogOpen: true, status: readyInstaller })
+      act(() => root.render(<UpdateDialog />))
+      expect(document.body.textContent).toContain('ad-hoc signed for now')
+      expect(document.body.textContent).toContain('replace it by hand')
+    })
+  })
+
+  it('does not tell a Windows user about macOS ad-hoc signing', () => {
+    withPlatform('win32', () => {
+      useUpdateStore.setState({ isDialogOpen: true, status: readyInstaller })
+      act(() => root.render(<UpdateDialog />))
+      expect(document.body.textContent).not.toContain('ad-hoc signed for now')
+    })
+  })
+
+  it('stays quiet when the update can restart in place', () => {
+    withPlatform('darwin', () => {
+      useUpdateStore.setState({ isDialogOpen: true, status: readyRestart })
+      act(() => root.render(<UpdateDialog />))
+      expect(document.body.textContent).not.toContain('ad-hoc signed for now')
+      expect(document.body.textContent).toContain('Restart to update')
+    })
+  })
+})

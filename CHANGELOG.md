@@ -54,6 +54,15 @@ README 只留「是什么、怎么装、能做什么」，长文移出：
 - 顶部加「文档地图 / Documentation map」表；README.md 593 → 401 行、README.en.md 520 → 395 行；
   九份文件的相对链接**逐个核过，0 处断裂**；徽章与成熟度块两语逐字节不变。
 
+### 开发构建的更新源也换了（只剩它一处）
+
+打包侧的 `publish:` 早已指向 GitHub，`dev-app-update.yml` 还指着那个从未解析的 `generic` 镜像——于是「开发里
+更新正常」与「打包后每次首查报错」能同时成立。现在两个文件同源；`src/main/update/feed-config.test.ts` 盯住
+「活配置行不得出现该死域名」与「两条 feed 的 owner/repo 必须等于 `APP` 常量」（注释里保留域名是允许的）。
+
+macOS「正式签名前必须手动重装」那句话之前只存在、从未被渲染验证过：新补 3 项交互测试（darwin + 安装包 → 出现；
+win32 → 不出现；darwin + 可原地重启 → 不出现且显示「Restart to update」）。
+
 ### 证据
 
 - `repository.test.ts` 两项：名字/一句话随行进出仓库，写入时裁剪并截到 120/400。
