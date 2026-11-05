@@ -1036,6 +1036,13 @@ const WorkspaceMessageScrollerImpl = ({
                           const revisionIndex = revisions.findIndex(
                             (message) => message.id === item.message.id
                           )
+                          // The conversation graph is rebuilt on every chunk, so the bucket array can be a
+                          // fresh instance even when nothing in it changed. The row only reads the ids and
+                          // the branch each revision came from, so the cache is keyed on that content
+                          // instead of on the array's identity.
+                          const revisionSignature = revisions
+                            .map((message) => `${message.id}:${message.introducedOnBranchId ?? ''}`)
+                            .join('|')
                           const activateRevision = (index: number): (() => void) | undefined => {
                             const revision = revisions[index]
                             return revision && activeSession
@@ -1063,7 +1070,7 @@ const WorkspaceMessageScrollerImpl = ({
                             artifacts,
                             runtimeIdentity,
                             revisionIndex,
-                            revisions,
+                            revisionSignature,
                             showAssistantFooter,
                             turnStartedAt,
                             activeSession?.id,
