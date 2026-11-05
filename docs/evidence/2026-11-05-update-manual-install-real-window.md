@@ -1,0 +1,51 @@
+# 更新链路的真机读数：安装包下载 → 摘要校验 → ready，以及 macOS「必须手动替换」那句
+
+> 单元范围：用户在更新这条路上的两句承诺。① 打包版是 ad-hoc 签名，macOS 拒绝原地替换运行中的应用，
+> 所以界面要说「下载安装包、自己替换」——这句话（`update.macManualInstallNote`）此前**只被渲染测试覆盖过，
+> 从未在真窗口出现**；② 从清单到 `ready` 的整段（下载、流式 sha256、状态广播、对话框）没有真机读数，
+> 既有规格停在 `available` 就断言完了。
+
+## 零 同批发现并修掉的一处红：写死的发行版本号
+
+`e2e/update-release-notes.spec.ts` 把待发行的版本写死成 `1.99.0`，而应用自身已经是 `2.26.0` ⇒
+更新检查按 `isNewer` 判定「已是最新」，对话框根本不打开，本机实跑 **1 failed**，
+报错是「找不到 `更新到 1.99.0` 按钮」，读起来像产品缺陷。两份规格改为从 `package.json` 的主版本号 +1 推导，
+应用再不升级也不会把这两支规格悄悄变成「断言一个不存在的对话框」。
+
+## 一 被替换的缝，与留下的真路径
+
+| 项 | 是真的 | 唯一被替换的 |
+| --- | --- | --- |
+| 更新检查 / 下载 | `UpdateService`、`downloader`（流式写入 + 逐块 sha256）、状态广播、update store、对话框、Chromium 布局 | Electron `net.fetch` 收到的**字节**：`version.json` 与安装包本体都由夹具按路径名应答 |
+| 保存位置 | 应用自己算默认文件名、自己走保存对话框 | 原生保存对话框（没有任何测试能操作它）——`stubSaveDialog` 指到隔离目录 |
+
+安装包字节是规格自己造的 64 KiB 确定性数据，清单里的 `sha256` 由规格现算；**应用仍按清单摘要校验**，
+摘要不对就是一次失败的下载（见第三节的变异自证）。所以「到达 `ready`」这件事本身证明了字节对得上。
+
+## 二 读数（本机真窗口）
+
+| 项 | 读数 |
+| --- | --- |
+| 命令 | `npx playwright test e2e/certification/update-manual-install.spec.ts e2e/update-release-notes.spec.ts --reporter=list`（先 `npm run build:e2e`，`✓ built in 21.30s`） |
+| 判决 | **2 passed (12.0s)**，`EXIT=0`；本支 `1 passed (5.3s)` |
+| 规格自己的读数 | `[update-cert] state=ready artifact=PureScience-3.0.0-arm64.dmg bytes=65536 sha256=755682d23142 installer=yes` |
+| 主进程日志 | `[update] operation started { operation: 'update-download', strategy: 'manifest' }` → 四个阶段 `validate-source=1ms select-target=1ms prepare-target=1ms transfer=2ms` → `completed { result: 'ready' }` |
+| 出网那一行 | `[http-request] req-86b3d206 …/releases/download/v3.0.0/PureScience-3.0.0-arm64.dmg -> 200` |
+| 磁盘 | 目标文件 65 536 字节，摘要与清单逐字符相等；`.part` 兄弟文件不存在（流式写入收尾干净） |
+| 上屏的三句 | 「Downloaded — click “Open installer” to finish updating.」+「Quit PureScience before installing — a running app cannot be replaced.」+「macOS builds are ad-hoc signed for now, so macOS refuses to replace a running app in place — download the installer and replace it by hand.」 |
+| 动作按钮 | `Open installer` 在屏，`Restart to update` **恰好 0 个**（安装包路线不承诺原地重启） |
+
+## 三 反向对照与变异自证
+
+- **反向对照（同一支规格内）**：`available` 态下三句提示与 `Open installer` 全部计数为 0 —— 这些句子属于
+  `ready`，不是「一有更新就出现」的装饰。
+- **变异自证**：把清单里钉的摘要改成 `'b'.repeat(64)`（服务端字节不动），同一支规格 **1 failed**，
+  停在「`update-ready-hint` 不可见」⇒ 这一次通过确实是「字节被哈希过」换来的，不是把状态机说服了。
+
+## 四 边界（不许读成更强）
+
+- 这支规格是 **macOS 专属**（`test.skip(process.platform !== 'darwin')`）；CI 上它只会在 `macos-arm64`
+  的构建作业里被执行，其他平台的车道绿不构成它的证据。
+- 三句文案是**逐字复制**进规格的：改文案就必须同步改这里，这是有意为之（规格要钉读者看到的话）。
+- 没点 `Open installer`：那一步是 `shell.openPath`（打开真实安装包），规格不替用户启动安装器。
+- 5.3 s 不是性能基线，只是这支规格的墙钟。

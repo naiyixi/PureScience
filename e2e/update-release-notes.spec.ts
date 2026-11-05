@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
@@ -19,7 +20,13 @@ import { test } from './fixtures/electron-app'
 //   R3  the Chinese copy + a 2000-character unbreakable token cause no horizontal overflow, no
 //       ellipsis-clipping and no element spilling outside the panel.
 
-const RELEASE_VERSION = '1.99.0'
+// The release has to be NEWER than the app under test, or the check answers "up to date" and this spec
+// asserts against a dialog that never opens (there is no pinned number any more: it drifted past the
+// hardcoded one when the app's own version moved, and the failure looked like a product bug).
+const APP_VERSION = (
+  JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8')) as { version: string }
+).version
+const RELEASE_VERSION = `${Number(APP_VERSION.split('.')[0]) + 1}.0.0`
 const CDN = `https://github.com/naiyixi/PureScience/releases/download/v${RELEASE_VERSION}`
 const SHA = 'a'.repeat(64)
 

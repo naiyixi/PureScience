@@ -107,3 +107,18 @@ not from a text layer."
 - `macos-arm64` 车道有没有 tesseract 仍未知：修复落地后才第一次真正到达引擎，届时看 `[ocr-cert] branch=` 那一行。
 - 两条 flaky 只按「重试转绿」记档，未做多遍 isolation 定性；它们与本笔无交集。
 
+
+### 车道读数（2026-11-05 补：那条「未知」现在有答案了）
+
+上面「`macos-arm64` 车道有没有 tesseract 仍未知」这一条，按该轮写下的取法读到了：
+
+| 项 | 读数 |
+| --- | --- |
+| 车道 | `Nightly` run `41969799634` / 作业 `build / Build macos-arm64`（job `127059347603`），提交 `4a369a9e`，**success** |
+| 规格行 | `e2e/certification/file-ocr.spec.ts`：`✓` 通过，`117 passed / 1 flaky (29.9m)` |
+| 实际分支 | `[ocr-cert] tile=ready before the read` → `[ocr-cert] rendered=true branch=tool-missing dialog="Recognised text lab-scan.png × Reading images needs the tesseract program. Install it (brew install tesseract) and try again."` |
+
+⇒ 三条都清楚了：① 车道**没有** tesseract，规格落到的是「缺引擎」那一支，属于**具名失败**而不是空框；
+② 上传探针的修复在车道上也生效了（`tile=ready`，磁贴不再被判 Missing）；③ 「绝不空框」那条断言在车道上
+真的跑了（对话框里是那句解释，不是一个空壳）。不影响本档前面「本机走的是 `branch=text`」那条读数 ——
+两侧是同一支规格在不同环境下的两个诚实分支。

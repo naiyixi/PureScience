@@ -162,8 +162,16 @@ type ElectronApp = {
    * process through Electron's `net.fetch`, so no page-level route can intercept it; replacing that one
    * call is the smallest seam that keeps everything downstream real (real UpdateService, real status
    * broadcast, real update store, real dialog). Every other request is passed through untouched.
+   *
+   * `artifacts` additionally serves installer bytes for a request whose pathname ends with `fileName`, so
+   * a spec can drive the real download → digest check → ready transition with no network round trip. The
+   * app still hashes what it received against the manifest's sha256: a wrong digest here is a failed
+   * download in the product, which is what makes a `ready` assertion mean something.
    */
-  stubUpdateManifest: (manifest: unknown) => Promise<void>
+  stubUpdateManifest: (
+    manifest: unknown,
+    artifacts?: ReadonlyArray<{ fileName: string; base64: string }>
+  ) => Promise<void>
   requestMainWindowClose: () => Promise<void>
   /**
    * Quits the app the way its own tray/menu Quit does (`app.quit()`). Deliberately NOT
@@ -608,26 +616,53 @@ class ElectronAppHarness implements ElectronApp {
     )
   }
 
-  async stubUpdateManifest(manifest: unknown): Promise<void> {
-    await this.runningApplication.evaluate(({ net }, payload) => {
-      const originalFetch = net.fetch.bind(net)
-      const body = JSON.stringify(payload)
-      // Read at call time by the app's fetch wrapper, so replacing the property is enough — no module
-      // is reloaded and every other request keeps going to the real network stack.
-      net.fetch = ((input: unknown, init?: unknown) => {
-        const url =
-          typeof input === 'string' ? input : String((input as { url?: unknown } | null)?.url ?? '')
-        if (url.split('?')[0].endsWith('/version.json')) {
-          return Promise.resolve(
-            new Response(body, {
-              status: 200,
-              headers: { 'content-type': 'application/json' }
-            })
-          )
-        }
-        return originalFetch(input as never, init as never)
-      }) as unknown as typeof net.fetch
-    }, manifest)
+  async stubUpdateManifest(
+    manifest: unknown,
+    artifacts: ReadonlyArray<{ fileName: string; base64: string }> = []
+  ): Promise<void> {
+    await this.runningApplication.evaluate(
+      ({ net }, payload) => {
+        const originalFetch = net.fetch.bind(net)
+        const body = JSON.stringify(payload.manifest)
+        const files = new Map<string, ArrayBuffer>(
+          payload.artifacts.map((artifact) => [
+            artifact.fileName,
+            Uint8Array.from(Buffer.from(artifact.base64, 'base64')).buffer as ArrayBuffer
+          ])
+        )
+        // Read at call time by the app's fetch wrapper, so replacing the property is enough — no module
+        // is reloaded and every other request keeps going to the real network stack.
+        net.fetch = ((input: unknown, init?: unknown) => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : String((input as { url?: unknown } | null)?.url ?? '')
+          const path = url.split('?')[0]
+          if (path.endsWith('/version.json')) {
+            return Promise.resolve(
+              new Response(body, {
+                status: 200,
+                headers: { 'content-type': 'application/json' }
+              })
+            )
+          }
+          const bytes = files.get(path.slice(path.lastIndexOf('/') + 1))
+          if (bytes) {
+            return Promise.resolve(
+              new Response(bytes, {
+                status: 200,
+                headers: {
+                  'content-type': 'application/octet-stream',
+                  'content-length': String(bytes.byteLength)
+                }
+              })
+            )
+          }
+          return originalFetch(input as never, init as never)
+        }) as unknown as typeof net.fetch
+      },
+      { manifest, artifacts }
+    )
   }
 
   async requestMainWindowClose(): Promise<void> {
