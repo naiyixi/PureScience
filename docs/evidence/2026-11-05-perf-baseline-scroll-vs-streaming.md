@@ -102,6 +102,34 @@ React 的提交路径（`renderWithHooks` / `commitHostUpdate` / `updateProperti
 这条读数决定了修法：不该去找热点函数优化，而该让**已沉淀的回合不再参与提交**（记忆化失效的 props、
 或列表虚拟化二选一，先量再选）。
 
+## 九 补测：滚动样本到 227/241 帧，p50 与 p95 才第一次可读（同日）
+
+§六 那句「滚动 33 ms / 42 帧」仍然是同一个缺陷：**42 帧的 p95 与最大值几乎重合**，读不出「滚动顺不顺」。
+这一轮只改滚动场景本身——六步滚轮换成三组「下滚 10 步 / 上滚 10 步」（每步 60 ms，约 3.6 s），
+并在报告里**同时**打印 p50（预算口径要的是中位，不是尾部）：
+
+```
+PERF_TURNS=40  # 第一次
+[perf] scrolling the transcript: longest=0ms | >50ms=0 of 0 | frames=227 max=38ms p95=33ms
+[perf] scrolling the transcript: p50=17ms over 227 frames (one frame at 60 Hz = 16.7ms)
+PERF_TURNS=40  # 第二次（复现）
+[perf] scrolling the transcript: longest=0ms | >50ms=0 of 0 | frames=241 max=35ms p95=33ms
+[perf] scrolling the transcript: p50=17ms over 241 frames (one frame at 60 Hz = 16.7ms)
+```
+
+怎么读：
+
+- **滚动 p50 = 17 ms**，与一帧 16.7 ms 同级（四舍五入落在同一格），即「滚动大体跟得上」；**p95 = 33 ms**
+  且**没有一次超过 50 ms 的任务** —— 滚动不是「卡」的来源。这是四项预算里滚动一项的第一份可读读数。
+- 两次运行的帧数（227 / 241）与 p50 / p95 完全一致 ⇒ 这不是一次运气好的采样。
+- **只能说滚动达标，不能说四项预算达标**：长任务与弹窗、首屏有读数，但「每回合成本随记录长度增长」那条
+  仍未修（§六/§七 的修法尚未动工），用户主观「卡」的那一半没有消失。
+
+附带修掉一处**只在类型检查里现形**的缺陷（与读数无关但会让门禁红）：`e2e/perf/profile-turns.spec.ts` 把
+`{ timeout: 240_000 }` 作为第三个参数传给 `appTest(...)`，而 Playwright 的 `TestDetails` 只认
+tag/annotation —— `typecheck:node` 当场报 `TS2559/TS2353`，运行时却静默沿用默认 30 s 超时（40 回合的
+剖析会在中途被切断，末尾样本看起来像「流结束了」）。改为在用例体内 `appTest.setTimeout(240_000)`。
+
 ## 八 复算第二份
 
 ```bash

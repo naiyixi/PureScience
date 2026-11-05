@@ -84,7 +84,11 @@ const topSelfTime = (
 
 appTest(
   'profiles where a streamed turn spends its script time',
+  // The budget is set from inside the test: Playwright's `TestDetails` carries tag/annotation only, so a
+  // third argument with `timeout` fails the type check while the runtime keeps the default 30 s — a 40-turn
+  // profile would then be cut off mid-run, with the last sample looking like the end of the stream.
   async ({ app }) => {
+    appTest.setTimeout(240_000)
     let page = await app.completeOnboarding()
     page = await app.configureFakeAgent()
     await createProject(page, 'Turn profile')
@@ -110,6 +114,5 @@ appTest(
       console.log(`[profile] ${entry.ms.toFixed(1).padStart(8)}ms  ${entry.label}`)
     }
     expect(ranked.length).toBeGreaterThan(0)
-  },
-  { timeout: 240_000 }
+  }
 )

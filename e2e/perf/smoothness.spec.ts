@@ -96,7 +96,7 @@ const stopProbe = async (
   page: import('playwright').Page,
   label: string,
   instrument: FrameCadenceSummary
-): Promise<void> => {
+): Promise<{ gapsMs: number[] }> => {
   const raw = (await page.evaluate('window.__perf')) as RawProbe
   const durations = raw.longTasks.map((task) => task.duration).sort((a, b) => b - a)
   const gaps = raw.frames
@@ -120,6 +120,7 @@ const stopProbe = async (
   // a throttled instrument would fail a release for the desk arrangement.
   expect(durations[0] ?? 0).toBeLessThan(5000)
   if (instrument.verdict === 'usable' && p95 !== null) expect(p95).toBeLessThan(500)
+  return { gapsMs: gaps }
 }
 
 const measureIpc = async (page: import('playwright').Page, label: string): Promise<void> => {
@@ -197,13 +198,25 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   })
   await stopProbe(page, 'typing into the composer', instrument)
 
-  // Scrolling the transcript.
+  // Scrolling the transcript. Six wheel steps produced 37 frames in the baseline, and a nearest-rank p95 of
+  // 37 samples sits within a hair of the maximum — the reading could not be told apart from one stall. Three
+  // down/up sweeps at 60 ms per step run for ~3.6 s, which is what a percentile needs (>=200 frames), and
+  // p50 is printed as well: the budget this scenario is judged against is the median, not the tail.
   await startProbe(page)
-  for (let index = 0; index < 6; index += 1) {
-    await page.mouse.wheel(0, 1200)
-    await page.waitForTimeout(120)
+  for (let round = 0; round < 3; round += 1) {
+    for (const direction of [1, -1]) {
+      for (let step = 0; step < 10; step += 1) {
+        await page.mouse.wheel(0, direction * 1200)
+        await page.waitForTimeout(60)
+      }
+    }
   }
-  await stopProbe(page, 'scrolling the transcript', instrument)
+  const scroll = await stopProbe(page, 'scrolling the transcript', instrument)
+  const scrollP50 = percentile(scroll.gapsMs, 0.5)
+  console.log(
+    `[perf] scrolling the transcript: p50=${scrollP50 === null ? 'n/a' : `${Math.round(scrollP50)}ms`}` +
+      ` over ${scroll.gapsMs.length} frames (one frame at 60 Hz = 16.7ms)`
+  )
 
   // Opening the command palette (U17) — a keystroke to first paint.
   await startProbe(page)
