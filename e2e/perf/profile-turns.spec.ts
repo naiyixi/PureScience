@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import type { Page } from 'playwright'
+import type { Locator, Page } from 'playwright'
 
 import { createProject } from '../certification/helpers'
 import { test as appTest } from '../fixtures/electron-app'
@@ -16,14 +16,34 @@ import { test as appTest } from '../fixtures/electron-app'
 // Self time, not inclusive: a wrapper that calls a hot function would otherwise look hot too, and the
 // question here is which function's own body burns the milliseconds.
 
+// Same switch as the smoothness baseline: PERF_WAIT=selector keeps the harness's own text-locator polling
+// out of the profile.
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
+  const structuralWait = process.env.PERF_WAIT === 'selector'
+  if (structuralWait) {
+    const bodies = (): Promise<number> =>
+      page.evaluate(() => document.querySelectorAll('[data-slot="assistant-message-body"]').length)
+    const before = await bodies()
+    await composerInput(page).fill(prompt)
+    await composerSend(page).click()
+    await page.waitForFunction(
+      (expected) =>
+        document.querySelectorAll('[data-slot="assistant-message-body"]').length > expected,
+      before,
+      { timeout: 60_000, polling: 200 }
+    )
+    return
+  }
   const replies = page.getByText('Deterministic reply', { exact: false })
   const before = await replies.count()
-  await page.getByRole('textbox', { name: 'Ask anything' }).fill(prompt)
-  await page.getByRole('button', { name: 'Send message' }).click()
+  await composerInput(page).fill(prompt)
+  await composerSend(page).click()
   await expect.poll(async () => replies.count(), { timeout: 60_000 }).toBeGreaterThan(before)
 }
 
+// CSS hooks, not role/name lookups: resolving an accessible name walks the whole document, and in a
+// long transcript that walk is bigger than the work being measured. The role-based locators remain the
+// real-user path and are exercised by the functional e2e suite.
 interface CallFrame {
   functionName: string
   url: string
@@ -34,6 +54,9 @@ interface CallFrame {
 interface ProfileNode {
   id: number
   callFrame: CallFrame
+  // Set by CDP; the root node has none. Used to attribute a hot function to whoever called it — a self-time
+  // ranking says what burned the milliseconds, the caller chain says which of our code paths asked for it.
+  parent?: number
 }
 
 interface SamplingProfile {
@@ -42,12 +65,43 @@ interface SamplingProfile {
   timeDeltas: number[]
 }
 
+// CSS hooks, not role/name lookups: resolving an accessible name walks the whole document, and in a long
+// transcript that walk costs more than the work being measured. The role-based locators stay the real-user
+// path and are exercised by the functional e2e suite.
+const composerInput = (page: Page): Locator => page.locator('[data-perf="composer-input"]')
+const composerSend = (page: Page): Locator => page.locator('[data-perf="composer-send"]').first()
+
 const shortUrl = (url: string): string => {
   if (!url) return '(native)'
   const marker = url.indexOf('/out/renderer/')
   return marker === -1
     ? url.split('/').slice(-2).join('/')
     : url.slice(marker + '/out/renderer/'.length)
+}
+
+const labelOf = (node: ProfileNode): string => {
+  const { functionName, url, lineNumber } = node.callFrame
+  return `${functionName || '(anonymous)'}@${shortUrl(url)}:${lineNumber + 1}`
+}
+
+// Walks up from a hot node to name the code path that produced it.
+const callerChain = (
+  profile: SamplingProfile,
+  nodeId: number,
+  byId: Map<number, ProfileNode>,
+  depth: number
+): string => {
+  const chain: string[] = []
+  let current = byId.get(nodeId)?.parent
+  while (current !== undefined && chain.length < depth) {
+    const node = byId.get(current)
+    if (!node) break
+    const label = labelOf(node)
+    // Collapse the profiler's own trampolines so the chain shows application frames.
+    if (!/^\(anonymous\)@\(native\)/.test(label) && !/(program|idle)/.test(label)) chain.push(label)
+    current = node.parent
+  }
+  return chain.reverse().join(' ← ') || '(root)'
 }
 
 const topSelfTime = (
@@ -112,6 +166,22 @@ appTest(
     const ranked = topSelfTime(profile, 20)
     for (const entry of ranked) {
       console.log(`[profile] ${entry.ms.toFixed(1).padStart(8)}ms  ${entry.label}`)
+    }
+
+    // Attribution: for the hottest nodes, name the application frames that led there.
+    const byId = new Map(profile.nodes.map((node) => [node.id, node]))
+    const hotNodes = [
+      ...profile.samples.reduce((totals, nodeId, index) => {
+        totals.set(nodeId, (totals.get(nodeId) ?? 0) + (profile.timeDeltas[index] ?? 0))
+        return totals
+      }, new Map<number, number>())
+    ]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 8)
+    for (const [nodeId] of hotNodes) {
+      const node = byId.get(nodeId)
+      if (!node) continue
+      console.log(`[callers] ${labelOf(node)}  ←  ${callerChain(profile, nodeId, byId, 6)}`)
     }
     expect(ranked.length).toBeGreaterThan(0)
   }

@@ -329,6 +329,9 @@ export const ComposerEditor = ({
         ref={editorRef}
         role="textbox"
         aria-multiline="true"
+        // Stable hook for perf specs: they must reach the composer without a role/name lookup, because
+        // resolving an accessible name walks the whole document and would land in the measurement.
+        data-perf="composer-input"
         aria-label={ariaLabel}
         aria-describedby={`${historyDescriptionId} ${historyStatusId}`}
         aria-disabled={disabled || undefined}

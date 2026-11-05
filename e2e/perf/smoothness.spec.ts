@@ -1,7 +1,7 @@
 import { test } from '../fixtures/electron-app'
 import { createProject } from '../certification/helpers'
 import { expect } from '@playwright/test'
-import type { Page } from 'playwright'
+import type { Locator, Page } from 'playwright'
 import {
   describeFrameMetric,
   percentile,
@@ -17,6 +17,12 @@ import {
 // renderer's main thread and therefore inside the very measurement it is waiting on, and it grows with
 // transcript length. The structural wait only counts nodes matching a data-slot, which isolates app cost
 // from harness cost — the two modes exist so the difference can be measured instead of assumed.
+// CSS hooks, not role/name lookups: resolving an accessible name walks the whole document, and in a long
+// transcript that walk costs more than the work being measured. The role-based locators stay the real-user
+// path and are exercised by the functional e2e suite.
+const composerInput = (page: Page): Locator => page.locator('[data-perf="composer-input"]')
+const composerSend = (page: Page): Locator => page.locator('[data-perf="composer-send"]').first()
+
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
   const structuralWait = process.env.PERF_WAIT === 'selector'
   const replies = page.getByText('Deterministic reply', { exact: false })
@@ -24,8 +30,8 @@ const sendTurn = async (page: Page, prompt: string): Promise<void> => {
     page.evaluate(() => document.querySelectorAll('[data-slot="assistant-message-body"]').length)
 
   const before = structuralWait ? await bodies() : await replies.count()
-  await page.getByRole('textbox', { name: 'Ask anything' }).fill(prompt)
-  await page.getByRole('button', { name: 'Send message' }).click()
+  await composerInput(page).fill(prompt)
+  await composerSend(page).click()
   if (structuralWait) {
     await page.waitForFunction(
       (expected) =>

@@ -1231,6 +1231,7 @@ const ConversationPanel = ({
                                       onClick={handleSubmit}
                                       disabled={!canSendMessage}
                                       className={composerSplitSendPrimaryButtonClassName}
+                                      data-perf="composer-send"
                                       aria-label={t('ws.sendMessage')}
                                     >
                                       <ArrowUp
