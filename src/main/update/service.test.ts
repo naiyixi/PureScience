@@ -114,6 +114,41 @@ describe('UpdateService.check', () => {
     expect(status.error).toBe('offline')
   })
 
+  // A manifest request can stall and never settle, and an abort is not a settlement guarantee: without a
+  // deadline the broadcast status stays 'checking' for the rest of the session, so the UI never offers a
+  // retry and no failure is ever recorded.
+  it('settles as a named failure when the manifest fetch never settles', async () => {
+    vi.useFakeTimers()
+    try {
+      const log = createLogSpy()
+      const broadcast = vi.fn()
+      const service = new UpdateService({
+        fetchImpl: (() => new Promise(() => {})) as unknown as typeof fetch,
+        currentVersion: '0.2.0',
+        broadcast,
+        log
+      })
+
+      const pending = service.check()
+      await vi.advanceTimersByTimeAsync(15_001)
+      const status = await pending
+
+      expect(status.state).toBe('error')
+      expect(status.error).toContain('did not settle within 15000 ms')
+      expect(broadcast).toHaveBeenCalledWith(
+        'update:status',
+        expect.objectContaining({ state: 'error' })
+      )
+      expect(diagnosticRecords(log)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ operation: 'update-check', outcome: 'failed' })
+        ])
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('records a failed manifest check without the provider error message', async () => {
     const log = createLogSpy()
     const service = new UpdateService({

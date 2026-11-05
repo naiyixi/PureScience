@@ -70,3 +70,20 @@
 | 规格自己打印 | `[update-cert] state=ready … manifestRequests=1 updateFailures=0` |
 | 判决 | **1 passed (7.9 s)**，退出码 0 |
 | 变异自证 | 把增量断言改成 `toBe(2)` 后重跑：`Expected: 2 / Received: 1` ⇒ 计数器确实只读到一次请求，断言不是恒真 |
+
+## 六 同批补上的一条死循环：检查没有自己的截止时间
+
+「无 error 级日志」这条判据的反面是**根本没有日志**：`UpdateService.check` 只 `await` 清单请求，而
+`manifest.ts` 给的 `AbortSignal.timeout(10_000)` 只保证「请求被叫停」，不保证那个 `await` 会落定
+（重定向链在传输层内部处理、套接字半死时，abort 之后 promise 仍可能悬着）。悬着的代价是状态广播停在
+`checking`：界面不报错、也不再提供重试，读者只能重启应用。
+
+修法是给检查自己一条 15 s 的兜底期限（`CHECK_DEADLINE_MS`，让传输层自己的 10 s 先说话），超时即落成
+**具名的失败**并照常记一条 `update-check / failed` 诊断。单测 `settles as a named failure when the
+manifest fetch never settles`（假计时器把 15 001 ms 推过去，断言 `state=error`、错误句带 `did not settle
+within 15000 ms`、广播收到 `error`、诊断里有 `update-check / failed`）。
+
+**具名边界**：本轮**没有**复现出「真实请求悬停」那一次现场，因此这半的证据是**结构性的**——一个没有
+结算上限的 `await` 会让状态永远停在 `checking`，这一点由代码形状可读；单测证明的是「期限到了会落成
+具名失败」，不是「线上一定悬停」。要把它写实，得在断网/半死套接字的机器上跑一次打包版并留下日志，
+那一份读数目前**没有**。

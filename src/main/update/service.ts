@@ -51,6 +51,37 @@ const NOOP_LOGGER: Logger = {
 const defaultBroadcast: UpdateBroadcast = (channel, payload) =>
   broadcastToRenderers(channel, payload)
 
+// A check must own its own deadline. The transport already carries `AbortSignal.timeout(10_000)`, but an
+// abort is a request to stop, not a promise that the awaited call settles: a fetch that stalls below the
+// abort (a redirect chain the network stack handles itself, a socket that never finishes) leaves this
+// `await` pending, and with it the broadcast status stuck at 'checking' for the rest of the session — no
+// retry offered, no failure line recorded. A backstop here turns that into a named failure; 15 s leaves
+// the transport's own 10 s the first word.
+const CHECK_DEADLINE_MS = 15_000
+
+// Resolves/rejects with whichever settles first. The losing promise is drained on the way out: a stalled
+// request that only fails minutes later must not surface as an unhandled rejection after we already
+// reported the bounded failure.
+const withinDeadline = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> => {
+  let handle: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    handle = setTimeout(
+      () => reject(new Error(`${label} did not settle within ${timeoutMs} ms`)),
+      timeoutMs
+    )
+  })
+  try {
+    return await Promise.race([promise, deadline])
+  } finally {
+    if (handle) clearTimeout(handle)
+    void promise.catch(() => {})
+  }
+}
+
 // Derive a safe on-disk installer name from the URL path only (never the query string), so a
 // query-polluted or malformed URL still yields a sane default filename.
 const installerFileName = (url: string): string => {
@@ -144,7 +175,11 @@ export class UpdateService implements UpdateStrategy {
     this.setStatus({ state: 'checking', current: this.currentVersion })
     operation.phase('fetch-manifest')
     try {
-      const manifest = await fetchManifest(this.manifestUrl, this.fetchImpl)
+      const manifest = await withinDeadline(
+        fetchManifest(this.manifestUrl, this.fetchImpl),
+        CHECK_DEADLINE_MS,
+        'Update check'
+      )
       if (!isNewer(manifest.version, this.currentVersion)) {
         this.setStatus({
           state: 'up-to-date',
