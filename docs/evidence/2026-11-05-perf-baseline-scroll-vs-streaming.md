@@ -206,3 +206,37 @@ renders over 40 turns: rows=82 total=17672 median=226 max=402
 **下一步（顺序固定）**：读增量应用的落点，确认它是否重建未改动消息的对象；如果是，就让它保持这些对象的
 身份（未改动的消息复用原对象），再看同一条 40 回合命令下每回合 task 是否从 94.2 ms 掉下来。如果不是，则
 问题在 `propsDeps` 的判据（该用字段而不是对象身份），改判据同样以那条命令收口。
+
+## 十三 定位到具体依赖：两个回调在每个增量都换身份
+
+渲染计数说明「整条记录每个增量都重渲」，但没说是哪个 props 变了。第二次探针（同样是临时、跑完即删）
+在 `WorkspaceMessageScroller` 复用判定失败的那一刻，逐位记录 `propsDeps` 元组里**哪一位**不相等：
+
+```
+prop-dep churn by tuple index: 15=15259 17=15259 16=3280 4=1680 6=1640 0=40 2=40
+```
+
+按 `propsDeps` 的字面顺序对号：
+
+| 位     | 依赖                                  | 位移次数（40 回合） |
+| ------ | ------------------------------------- | ------------------- |
+| **15** | **`onSendEditedMessage`**             | **15,259**          |
+| **17** | **`onBranchInNewSession`**            | **15,259**          |
+| 16     | `canBranchInNewSession`（布尔表达式） | 3,280               |
+| 4      | `revisions`                           | 1,680               |
+| 6      | `subsequentTurns`                     | 1,640               |
+| 0      | `item.message`                        | 40                  |
+
+结论：**消息对象本身是稳的（40 次，一回合一次）**，坏在回调。位 15/17 各 15,259 次 ≈ 每个增量把所有槽位
+都判成"变了"——所以逐槽 props 缓存形同虚设，行 memo 必然失效。位 0 只有 40 次这件事同时**排除了**先前
+那个假设（「增量重建了未改动消息的对象」），不必再去改消息身份。
+
+### 调用链更上方的两处（下一手的落点）
+
+- `onBranchInNewSession` 来自 `WorkspacePage` 里的 `branchFromAgentMessage`（普通箭头函数，**未 useCallback**），
+  每次 WorkspacePage 重渲都是新引用。
+- `onSendEditedMessage` 在 `WorkspacePage` 已经 `useCallback`，但依赖里的 `resendEditedMessage` 自身不稳，
+  `useCallback` 等于没上锁——要么让那个依赖来源稳定，要么把它的实现改成读 `getState()` 的零依赖形式。
+
+修的时候要守住一件事：**不能靠「把回调从依赖里拿掉」来让它稳**——那样缓存里的闭包会引用旧的
+`activeSessionId`，切换会话后编辑/分支会打到错误的会话上。必须让调用链更上方给出真正稳定的引用。
