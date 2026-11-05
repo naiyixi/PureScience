@@ -164,3 +164,37 @@ PERF_TURNS=40 npx playwright test e2e/perf/render-count.spec.ts --reporter=line
 **capability 翻转时只重渲消费者、不重渲旁边 memo 过的「沉淀行」**（第三条正是这次改动的目的）。
 
 真正需要真机确认的那一步（真实模型会话里回合结束按钮变可用）留给 P1 全部完成后的整机验证，记录在此。
+
+## 十二 P1-b 已落地：`subsequentTurns` 移出渲染期（读数）
+
+改法：新增 `countUserTurnsAfter(sessionId, messageId)`（`session-store.ts`），行的编辑确认在**点击时**从
+store 现算后续 user 轮数；确认框用点击瞬间捕获的值。同时删掉 scroller 每次渲染都为**全部消息**重建的
+`subsequentTurnCountByMessageMap`（那本身是每次渲染一趟 O(行数)）。
+
+### 读数（同机同 spec）
+
+| 口径                  | P1-a                      | P1-b                                                   |
+| --------------------- | ------------------------- | ------------------------------------------------------ |
+| props 漂移（40 回合） | `4=1680 6=1640 0=40 2=40` | **`4=1680 0=40 2=40`**（位 6 归零）                    |
+| 渲染计数（40 回合）   | total 2906 median 29      | **total 2288 median 2** max=120                        |
+| 40 回合 每回合 task   | 60.4 ms                   | **59.3 ms**（script 31.5）                             |
+| 80 回合 每回合 task   | 86.3 ms                   | **81.2 ms**（script 44.0）；另一次同 spec 跑出 98.0 ms |
+
+中位渲染次数从 29 掉到 **2** —— 说明「沉淀行每回合重渲」这条路径已经断掉。但**每回合成 wall-clock 只降了
+1.8%（40 回合）/ 5.9%（80 回合）**，且 80 回合有一次 98.0 ms 的落后样本。结论要诚实：**行的重渲不再是
+成本主项，剩余成本在别处**，P1-c 不足以把它压到 10% 以内。
+
+### 80 回合采样剖析（新读数，指向下一次要查的地方）
+
+```
+sampled 11362ms across 7639 samples
+idle 4614.8 · program 1461.0 · GC 269.7
+removeChild 194.1 · commitHostUpdate 171.1 · elementText 142.8 · updateProperties 135.0
+querySelectorAll 133.4 · propagateContextChanges 120.9 · query 101.6
+isElementHiddenForAria 98.2 · renderWithHooks 96.7 · normalizeWhiteSpace 87.5 ms
+```
+
+比 P1 之前那版榜（`removeChild 205`、`commitHostUpdate 559`）已经降下来，但出现了一批**与无障碍/文本提取
+相关**的原生函数：`isElementHiddenForAria`、`elementText`、`querySelectorAll`、`query`、
+`normalizeWhiteSpace`。它们不是行渲染，更像「每回合有人在整篇文档上做可访问名/文本计算」。这是下一步的
+排查方向，不能靠猜，要先定位是谁在调用。

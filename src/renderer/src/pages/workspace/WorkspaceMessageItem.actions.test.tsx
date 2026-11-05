@@ -7,7 +7,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import type { JSX, PropsWithChildren } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ChatMessage } from '@/stores/session-store'
+import { useSessionStore, type ChatMessage, type ChatSession } from '@/stores/session-store'
 
 import type { ComposerDoc } from './composer/composer-doc'
 import { WorkspaceMessageItem } from './WorkspaceMessageItem'
@@ -45,13 +45,32 @@ const createMessage = (overrides: Partial<ChatMessage> = {}): ChatMessage => ({
 
 const noop = (): void => {}
 
+const SESSION_ID = 'session-under-test'
+
+const seedLaterTurns = (laterUserTurns: number): void => {
+  const messages: ChatMessage[] = [
+    createMessage(),
+    ...Array.from({ length: laterUserTurns }, (_, index) =>
+      createMessage({
+        id: `later-turn-${index}`,
+        content: `Later prompt ${index}`,
+        createdAt: 1710000000000 + index + 1
+      })
+    )
+  ]
+  useSessionStore.setState({
+    sessions: [{ id: SESSION_ID, title: 'Actions', messages } as unknown as ChatSession]
+  })
+}
+
 const renderItem = async (
   message: ChatMessage,
   options: {
     canEditMessage?: boolean
     showUserActions?: boolean
     onSendEditedMessage?: (messageId: string, doc: ComposerDoc) => void
-    subsequentTurns?: number
+    // Seeded into the session store: the warning count is read at click time, not passed as a prop.
+    laterUserTurns?: number
     revisionNavigation?: {
       index: number
       total: number
@@ -60,10 +79,12 @@ const renderItem = async (
     }
   } = {}
 ): Promise<void> => {
+  seedLaterTurns(options.laterUserTurns ?? 0)
   await act(async () => {
     root.render(
       <WorkspaceMessageItem
         message={message}
+        sessionId={SESSION_ID}
         onPreviewArtifact={noop}
         onPreviewUploadAttachment={noop}
         onOpenSkillMention={noop}
@@ -72,7 +93,6 @@ const renderItem = async (
         canEditMessage={options.canEditMessage ?? false}
         showUserActions={options.showUserActions}
         onSendEditedMessage={options.onSendEditedMessage}
-        subsequentTurns={options.subsequentTurns ?? 0}
         revisionNavigation={options.revisionNavigation}
       />
     )
@@ -332,7 +352,7 @@ describe('WorkspaceMessageItem user message actions', () => {
     await renderItem(createMessage(), {
       canEditMessage: true,
       onSendEditedMessage,
-      subsequentTurns: 1
+      laterUserTurns: 1
     })
 
     await click(getButton('Edit message'))
@@ -355,7 +375,7 @@ describe('WorkspaceMessageItem user message actions', () => {
     await renderItem(createMessage(), {
       canEditMessage: true,
       onSendEditedMessage,
-      subsequentTurns: 3
+      laterUserTurns: 3
     })
 
     await click(getButton('Edit message'))
@@ -380,7 +400,7 @@ describe('WorkspaceMessageItem user message actions', () => {
     await renderItem(createMessage(), {
       canEditMessage: true,
       onSendEditedMessage,
-      subsequentTurns: 2
+      laterUserTurns: 2
     })
 
     await click(getButton('Edit message'))

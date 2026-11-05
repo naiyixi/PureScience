@@ -84,6 +84,21 @@ type SessionStore = SessionStoreData &
     markSessionRead: (sessionId: string) => void
   }
 
+// Counts the user turns that come after a message, read on demand instead of being pushed down as a
+// transcript prop. The destructive-resend warning keys off turns, not raw messages, and it is only ever
+// needed at the moment the user confirms an edit — computing it then keeps a per-turn number out of
+// every row's props (docs/plan-2026-11-05-transcript-render-architecture.md §5.1).
+export const countUserTurnsAfter = (sessionId: string | undefined, messageId: string): number => {
+  if (!sessionId) return 0
+  const session = useSessionStore
+    .getState()
+    .sessions.find((candidate) => candidate.id === sessionId)
+  if (!session) return 0
+  const index = session.messages.findIndex((message) => message.id === messageId)
+  if (index < 0) return 0
+  return session.messages.slice(index + 1).filter((message) => message.role === 'user').length
+}
+
 // Stores all transient workspace conversation state for the renderer process.
 export const useSessionStore = create<SessionStore>((set, get) => ({
   ...createInitialSessionState(),

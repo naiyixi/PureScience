@@ -10,7 +10,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn, formatByteSize } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
-import { useSessionStore } from '@/stores/session-store'
+import { useSessionStore, countUserTurnsAfter } from '@/stores/session-store'
 import { resolveMessageContent, selectLiveMessageContent } from './message-content-subscription'
 import type { ChatMessage, ChatSession } from '@/stores/session-store'
 import { Collapsible } from 'radix-ui'
@@ -100,7 +100,6 @@ type WorkspaceMessageItemProps = {
   // whole-turn completion/elapsed/usage footer. Other transcript surfaces default to showing it.
   showAssistantFooter?: boolean
   // Number of user turns after this message; drives the destructive-resend warning threshold.
-  subsequentTurns?: number
   revisionNavigation?: {
     index: number
     total: number
@@ -900,7 +899,6 @@ const WorkspaceMessageItemImpl = ({
   turnStartedAt,
   runtimeIdentity,
   showAssistantFooter = true,
-  subsequentTurns = 0,
   revisionNavigation,
   artifacts = [],
   staticParts
@@ -945,6 +943,8 @@ const WorkspaceMessageItemImpl = ({
   const [editDoc, setEditDoc] = useState<ComposerDoc>(emptyDoc)
   // True while the destructive-resend confirmation dialog is open.
   const [isConfirmingEdit, setIsConfirmingEdit] = useState(false)
+  // Captured when the confirmation opens, so the dialog quotes the count it was opened with.
+  const [confirmTurns, setConfirmTurns] = useState(0)
   const copyResetTimeoutRef = useRef<number | null>(null)
 
   // Clear a pending copied-state reset so it never fires setState after unmount.
@@ -1003,11 +1003,15 @@ const WorkspaceMessageItemImpl = ({
     setIsEditing(false)
   }
 
-  // Confirms the inline edit; with several later turns changing visibility, ask before branching.
+  // Confirms the inline edit; with several later turns changing visibility, ask before branching. The
+  // count is read from the store here rather than arriving as a prop, so an edit is judged against the
+  // transcript as it stands at click time.
   const handleConfirmEdit = (): void => {
     if (!canEditMessage || docIsEmpty(editDoc)) return
 
-    if (subsequentTurns >= EDIT_TRUNCATION_WARNING_TURNS) {
+    const laterTurns = countUserTurnsAfter(sessionId, message.id)
+    if (laterTurns >= EDIT_TRUNCATION_WARNING_TURNS) {
+      setConfirmTurns(laterTurns)
       setIsConfirmingEdit(true)
       return
     }
@@ -1299,7 +1303,7 @@ const WorkspaceMessageItemImpl = ({
       </div>
       <EditMessageConfirmDialog
         open={isConfirmingEdit}
-        subsequentTurns={subsequentTurns}
+        subsequentTurns={confirmTurns}
         onCancel={() => setIsConfirmingEdit(false)}
         onConfirm={confirmEditedResend}
       />

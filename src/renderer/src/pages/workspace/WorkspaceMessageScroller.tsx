@@ -667,18 +667,6 @@ const WorkspaceMessageScrollerImpl = ({
     activeSession?.messages.map((message) => [message.id, message.createdAt]) ?? []
   )
 
-  // Counts the user turns after each message; the destructive-resend warning keys off turns, not
-  // raw message count, so a single follow-up turn stays warning-free.
-  const subsequentTurnCountByMessageId = new Map<string, number>()
-  if (activeSession) {
-    let subsequentTurns = 0
-    for (let index = activeSession.messages.length - 1; index >= 0; index -= 1) {
-      const message = activeSession.messages[index]
-      subsequentTurnCountByMessageId.set(message.id, subsequentTurns)
-      if (message.role === 'user') subsequentTurns += 1
-    }
-  }
-
   // Build a map from job_id → JobSummary for all session jobs (used in binding)
   const sessionJobs = useMemo((): JobSummary[] => {
     if (!currentSessionId) return []
@@ -1063,8 +1051,6 @@ const WorkspaceMessageScrollerImpl = ({
                           const showAssistantFooter =
                             item.message.role !== 'agent' ||
                             assistantFooterMessageIds.has(item.message.id)
-                          const subsequentTurns =
-                            subsequentTurnCountByMessageId.get(item.message.id) ?? 0
                           const turnStartedAt = item.message.responseToMessageId
                             ? messageCreatedAtById.get(item.message.responseToMessageId)
                             : undefined
@@ -1079,7 +1065,6 @@ const WorkspaceMessageScrollerImpl = ({
                             revisionIndex,
                             revisions,
                             showAssistantFooter,
-                            subsequentTurns,
                             turnStartedAt,
                             activeSession?.id,
                             onPreviewArtifact,
@@ -1115,7 +1100,6 @@ const WorkspaceMessageScrollerImpl = ({
                               turnStartedAt,
                               runtimeIdentity,
                               showAssistantFooter,
-                              subsequentTurns,
                               revisionNavigation:
                                 revisionIndex >= 0 && revisions.length > 1
                                   ? {
