@@ -53,6 +53,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_PROP_CHURN__ = {}
     host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
     host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
+    host.__PURESCIENCE_RENDER_REASONS__ = { first: 0, content: 0, status: 0, other: 0 }
   })
 
   for (let index = 0; index < turns; index += 1) {
@@ -82,6 +83,9 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     // the cause is above the row; if the scroller renders once and one row renders hundreds of times, the
     // cause is inside the row's own subscriptions.
     const scrollerRenders = renders.__scroller__ ?? 0
+    const reasons =
+      (window as unknown as Record<string, Record<string, number> | undefined>)
+        .__PURESCIENCE_RENDER_REASONS__ ?? {}
     const counts = Object.entries(renders)
       .filter(([key]) => key !== '__scroller__')
       .map(([, count]) => count)
@@ -99,6 +103,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       max: sorted[0] ?? 0,
       markdownRenders: markdown.count,
       scrollerRenders,
+      reasons,
       chunks: chunks.total,
       chunksCommitted: chunks.committed,
       markdownChars: markdown.chars,
@@ -130,6 +135,11 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
   // The ratio that makes the row-render number meaningful: one render per chunk means the cost *is* the
   // chunk rate; several renders per chunk is a bug in the row, not a property of the session length.
   console.log(`[render-count] scroller renders: ${readings.scrollerRenders}`)
+  console.log(
+    `[render-reason] ${Object.entries(readings.reasons)
+      .map(([reason, count]) => `${reason}=${count}`)
+      .join(' ')}`
+  )
   console.log(
     `[chunks] ${turns} turns: total=${readings.chunks} (${(readings.chunks / turns).toFixed(1)}/turn)` +
       ` committed=${readings.chunksCommitted} | row renders per chunk: ` +

@@ -114,3 +114,46 @@ export const readStreamChunkCounts = (): { total: number; committed: number; cha
     committed: 0,
     chars: 0
   }
+
+// Why a row re-rendered, bucketed by which of its own inputs moved. A render count alone cannot say
+// whether 300 renders per chunk are 300 text updates (the stream itself) or 3 text updates and 297
+// re-renders for some other reason — and those two need opposite fixes.
+const REASON_KEY = '__PURESCIENCE_RENDER_REASONS__'
+const lastInputsByRow = new Map<string, { content: string; status: string }>()
+
+export type RenderReason = 'first' | 'content' | 'status' | 'other'
+
+export const recordRenderReason = (
+  rowId: string,
+  content: string,
+  status: string
+): RenderReason => {
+  const previous = lastInputsByRow.get(rowId)
+  lastInputsByRow.set(rowId, { content, status })
+  if (!previous) return 'first'
+  if (previous.content !== content) return 'content'
+  if (previous.status !== status) return 'status'
+  return 'other'
+}
+
+export const installRenderReasons = (): void => {
+  const host = scope()
+  lastInputsByRow.clear()
+  if (host) host[REASON_KEY] = { first: 0, content: 0, status: 0, other: 0 }
+}
+
+export const countRenderReason = (reason: RenderReason): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = host[REASON_KEY] as Record<RenderReason, number> | undefined
+  if (!bucket) return
+  bucket[reason] += 1
+}
+
+export const readRenderReasons = (): Record<RenderReason, number> =>
+  (scope()?.[REASON_KEY] as Record<RenderReason, number> | undefined) ?? {
+    first: 0,
+    content: 0,
+    status: 0,
+    other: 0
+  }
