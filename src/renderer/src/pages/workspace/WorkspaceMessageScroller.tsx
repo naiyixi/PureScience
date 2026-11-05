@@ -17,7 +17,7 @@ import {
 import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
-import { recordPropChurn } from '@/lib/perf/render-counter'
+import { countRender, recordPropChurn } from '@/lib/perf/render-counter'
 import { TranscriptCapabilitiesProvider } from './transcript-capabilities'
 import { groupRevisionsByRoot } from './revision-groups'
 import { carriesSameTranscriptStructure } from './transcript-render-identity'
@@ -572,6 +572,10 @@ const WorkspaceMessageScrollerImpl = ({
   // Read during render on purpose: the ref only ever holds the PREVIOUS grouping, and passing it in is
   // what keeps item/revision identities stable across streaming deltas (see stable-identity.ts). The
   // effect below is the only writer.
+  // Counted under its own key so a high row count can be attributed: when the scroller renders as often
+  // as its rows the cause is above the row; when the scroller renders once while one row renders hundreds
+  // of times, the cause is inside that row's subscriptions. No-op unless a perf spec installed the bucket.
+  countRender('__scroller__')
   // eslint-disable-next-line react-hooks/refs -- intentional previous-value read, updated in an effect
   const revisionsByRootMessageId = useMemo(() => {
     const grouped = groupRevisionsByRoot(

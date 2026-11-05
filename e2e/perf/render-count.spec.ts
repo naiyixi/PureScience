@@ -52,6 +52,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_RENDER_COUNTS__ = {}
     host.__PURESCIENCE_PROP_CHURN__ = {}
     host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
+    host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
   })
 
   for (let index = 0; index < turns; index += 1) {
@@ -70,7 +71,20 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       window as unknown as Record<string, { count: number; chars: number } | undefined>
     ).__PURESCIENCE_MARKDOWN_RENDERS__ ?? { count: 0, chars: 0 }
 
-    const counts = Object.values(renders)
+    const chunks = (
+      window as unknown as Record<
+        string,
+        { total: number; committed: number; chars: number } | undefined
+      >
+    ).__PURESCIENCE_STREAM_CHUNKS__ ?? { total: 0, committed: 0, chars: 0 }
+
+    // Separated out so a high row count can be attributed: if the scroller renders as often as its rows,
+    // the cause is above the row; if the scroller renders once and one row renders hundreds of times, the
+    // cause is inside the row's own subscriptions.
+    const scrollerRenders = renders.__scroller__ ?? 0
+    const counts = Object.entries(renders)
+      .filter(([key]) => key !== '__scroller__')
+      .map(([, count]) => count)
     const sorted = [...counts].sort((left, right) => right - left)
     const churnTotals: Record<number, number> = {}
     for (const bucket of Object.values(churn)) {
@@ -84,6 +98,9 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       median: sorted[Math.floor(sorted.length / 2)] ?? 0,
       max: sorted[0] ?? 0,
       markdownRenders: markdown.count,
+      scrollerRenders,
+      chunks: chunks.total,
+      chunksCommitted: chunks.committed,
       markdownChars: markdown.chars,
       churn: Object.entries(churnTotals)
         .map(([index, count]) => ({ index: Number(index), count }))
@@ -108,6 +125,15 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     `[markdown] ${turns} turns: renders=${readings.markdownRenders}` +
       ` (${(readings.markdownRenders / turns).toFixed(1)}/turn)` +
       ` chars=${readings.markdownChars} (${Math.round(readings.markdownChars / turns)}/turn)`
+  )
+
+  // The ratio that makes the row-render number meaningful: one render per chunk means the cost *is* the
+  // chunk rate; several renders per chunk is a bug in the row, not a property of the session length.
+  console.log(`[render-count] scroller renders: ${readings.scrollerRenders}`)
+  console.log(
+    `[chunks] ${turns} turns: total=${readings.chunks} (${(readings.chunks / turns).toFixed(1)}/turn)` +
+      ` committed=${readings.chunksCommitted} | row renders per chunk: ` +
+      `${readings.chunks > 0 ? (readings.total / readings.chunks).toFixed(2) : 'n/a'}`
   )
 
   expect(readings.rows).toBeGreaterThan(0)

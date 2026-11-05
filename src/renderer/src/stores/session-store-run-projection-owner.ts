@@ -1,3 +1,4 @@
+import { countStreamChunk } from '@/lib/perf/render-counter'
 import type { AcpRecoverableFailure } from '../../../shared/acp'
 import type { StoreApi } from 'zustand'
 
@@ -98,6 +99,8 @@ export const createSessionRunProjectionOwner = <
       if (!session) return undefined
       const projection = projectAgentMessageChunk(session, input)
       if (!projection.result) return undefined
+      // No-op unless a perf spec installed the bucket; tells chunk arrival rate apart from render count.
+      countStreamChunk(input.content?.length ?? 0, projection.shouldCommit === true)
       if (projection.shouldCommit)
         setSessionState({
           sessions: state.sessions.map((candidate) =>

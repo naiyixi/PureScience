@@ -87,3 +87,30 @@ export const readMarkdownCounts = (): { count: number; chars: number } =>
     count: 0,
     chars: 0
   }
+
+// Streamed chunks, counted where they enter the store. Row renders per turn only mean something divided
+// by this: a row that renders 300 times while receiving 300 chunks is doing exactly one render per
+// chunk, while the same 300 renders against 30 chunks is ten renders per chunk — different bugs.
+const CHUNK_KEY = '__PURESCIENCE_STREAM_CHUNKS__'
+
+export const countStreamChunk = (chars: number, committed: boolean): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = host[CHUNK_KEY] as { total: number; committed: number; chars: number } | undefined
+  if (!bucket) return
+  bucket.total += 1
+  if (committed) bucket.committed += 1
+  bucket.chars += chars
+}
+
+export const installStreamChunkCounts = (): void => {
+  const host = scope()
+  if (host) host[CHUNK_KEY] = { total: 0, committed: 0, chars: 0 }
+}
+
+export const readStreamChunkCounts = (): { total: number; committed: number; chars: number } =>
+  (scope()?.[CHUNK_KEY] as { total: number; committed: number; chars: number } | undefined) ?? {
+    total: 0,
+    committed: 0,
+    chars: 0
+  }
