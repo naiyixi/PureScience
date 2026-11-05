@@ -135,3 +135,32 @@ PERF_TURNS=40 npx playwright test e2e/perf/render-count.spec.ts --reporter=line
 - **props 漂移**：与临时探针读数**逐位一致**，说明固化成工具后没有失真，可以当判据。
 
 这组数就是 P1 的验收基线：**16/4/6 三项必须归零（或只剩本回合新出现的行）**，否则 P1 不算完成。
+
+## 十一 P1-a 已落地：`canBranchInNewSession` 改走 context（读数）
+
+改法：新增 `TranscriptCapabilitiesContext`（`transcript-capabilities-context.ts` 放 context 与 hook，
+`transcript-capabilities.tsx` 只放 Provider，避免 react-refresh 报错），把「能否在新会话分支」从行 props
+移到 context；分支按钮抽成 `BranchInNewSessionButton` 自己订阅——capability 翻转只重渲这个小按钮。
+
+### 读数（同机同 spec）
+
+| 口径                  | 改前                                 | 改后                                        |
+| --------------------- | ------------------------------------ | ------------------------------------------- |
+| props 漂移（40 回合） | `16=3280 4=1680 6=1640 0=40 2=40`    | **`4=1680 6=1640 0=40 2=40`**（位 16 归零） |
+| 渲染计数（40 回合）   | rows=82 total=4835 median=52 max=159 | rows=82 **total=2906 median=29** max=106    |
+| 40 回合 每回合 task   | 74.4 ms                              | **60.4 ms**                                 |
+| 40 回合 每回合 script | 41.6 ms                              | **32.8 ms**                                 |
+| 80 回合 每回合 task   | 103.5 ms                             | **86.3 ms**                                 |
+| 80 回合 每回合 script | 61.0 ms                              | **48.8 ms**                                 |
+
+只挪一个布尔，40 回合 task 再降 19%、80 回合再降 17%。斜率仍在（60.4 → 86.3 = +43%），因为位 4/6
+两项还没动。
+
+### 一个没验成的地方，如实写
+
+本来想用真窗口验证「回合结束后分支按钮可用」，写了 e2e 读按钮 disabled 状态——**基线代码同样失败**
+（假 agent 会话里 `canSendMessage` 为 false，按钮在改动前就是 disabled）。这说明该 e2e 无法区分改动前后，
+不能当选据；已删除该 spec，改为 `transcript-capabilities.test.tsx` 三条契约测试：默认关闭、provider 传值、
+**capability 翻转时只重渲消费者、不重渲旁边 memo 过的「沉淀行」**（第三条正是这次改动的目的）。
+
+真正需要真机确认的那一步（真实模型会话里回合结束按钮变可用）留给 P1 全部完成后的整机验证，记录在此。

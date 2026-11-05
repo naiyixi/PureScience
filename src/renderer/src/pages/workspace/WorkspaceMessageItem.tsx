@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n'
 import { getUiLocale } from '@/lib/ui-locale'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import { countRender } from '@/lib/perf/render-counter'
+import { useTranscriptCapabilities } from './transcript-capabilities-context'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -90,7 +91,6 @@ type WorkspaceMessageItemProps = {
   // Embedded transcript surfaces can supply their own horizontal gutter without changing live chat.
   contentPaddingClassName?: string
   onSendEditedMessage?: (messageId: string, doc: ComposerDoc) => void
-  canBranchInNewSession?: boolean
   onBranchInNewSession?: (messageId: string) => void
   // Prompt send time for an Agent response; paired with its completion time for elapsed duration.
   turnStartedAt?: number
@@ -856,6 +856,33 @@ const MessagePartsContent = ({
 }
 
 // Renders one chat message with user bubbles and full-width assistant markdown surfaces.
+// Reads its own capability from context so a turn-boundary flip of "can branch" re-renders this button
+// instead of every row in the transcript (see transcript-capabilities.tsx).
+const BranchInNewSessionButton = ({
+  messageId,
+  onBranchInNewSession
+}: {
+  messageId: string
+  onBranchInNewSession?: (messageId: string) => void
+}): React.JSX.Element => {
+  const { t } = useLanguage()
+  const { canBranchInNewSession } = useTranscriptCapabilities()
+  return (
+    <UserMessageActionTooltip label={t('ws.branchInNewSession')}>
+      <button
+        type="button"
+        data-slot="branch-in-new-session"
+        className={userMessageActionButtonClassName}
+        aria-label={t('ws.branchInNewSession')}
+        disabled={!canBranchInNewSession}
+        onClick={() => onBranchInNewSession?.(messageId)}
+      >
+        <GitBranch className="size-3.5" strokeWidth={2} aria-hidden="true" />
+      </button>
+    </UserMessageActionTooltip>
+  )
+}
+
 const WorkspaceMessageItemImpl = ({
   message,
   sessionId,
@@ -869,7 +896,6 @@ const WorkspaceMessageItemImpl = ({
   showUserActions = true,
   contentPaddingClassName,
   onSendEditedMessage,
-  canBranchInNewSession = false,
   onBranchInNewSession,
   turnStartedAt,
   runtimeIdentity,
@@ -1245,17 +1271,10 @@ const WorkspaceMessageItemImpl = ({
                           />
                         </button>
                       </UserMessageActionTooltip>
-                      <UserMessageActionTooltip label={t('ws.branchInNewSession')}>
-                        <button
-                          type="button"
-                          className={userMessageActionButtonClassName}
-                          aria-label={t('ws.branchInNewSession')}
-                          disabled={!canBranchInNewSession}
-                          onClick={() => onBranchInNewSession(message.id)}
-                        >
-                          <GitBranch className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                        </button>
-                      </UserMessageActionTooltip>
+                      <BranchInNewSessionButton
+                        messageId={message.id}
+                        onBranchInNewSession={onBranchInNewSession}
+                      />
                     </div>
                   </TooltipProvider>
                 ) : null}
