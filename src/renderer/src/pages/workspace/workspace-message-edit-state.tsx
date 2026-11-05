@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { countEditAvailability } from '@/lib/perf/render-counter'
+
 import { WorkspaceMessageEditStateContext } from './workspace-message-edit-state-context'
 
 type WorkspaceMessageEditStateProviderProps = {
@@ -12,10 +14,14 @@ type WorkspaceMessageEditStateProviderProps = {
 const WorkspaceMessageEditStateProvider = ({
   canEditMessage,
   children
-}: WorkspaceMessageEditStateProviderProps): React.JSX.Element => (
-  <WorkspaceMessageEditStateContext.Provider value={canEditMessage}>
-    {children}
-  </WorkspaceMessageEditStateContext.Provider>
-)
+}: WorkspaceMessageEditStateProviderProps): React.JSX.Element => {
+  // No-op unless a perf spec installed the bucket: counts how often edit availability itself moves.
+  countEditAvailability(canEditMessage)
+  return (
+    <WorkspaceMessageEditStateContext.Provider value={canEditMessage}>
+      {children}
+    </WorkspaceMessageEditStateContext.Provider>
+  )
+}
 
 export { WorkspaceMessageEditStateProvider }

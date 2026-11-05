@@ -293,3 +293,63 @@ export const installRowMountCounts = (): void => {
 
 export const readRowMountCounts = (): { count: number } =>
   (scope()?.[MOUNT_KEY] as { count: number } | undefined) ?? { count: 0 }
+
+// Per-input cause counters: every input a row could plausibly re-render for gets its own bucket, so the
+// render that "nothing explains" can be attributed instead of guessed at.
+const CAUSE_KEY = '__PURESCIENCE_RENDER_CAUSES__'
+const causeInputsByRow = new Map<string, string>()
+
+export const installRenderCauses = (): void => {
+  const host = scope()
+  causeInputsByRow.clear()
+  if (host) host[CAUSE_KEY] = {}
+}
+
+export const recordRenderCauses = (rowId: string, inputs: Record<string, unknown>): void => {
+  const host = scope()
+  const bucket = host?.[CAUSE_KEY] as Record<string, number> | undefined
+  if (!bucket) return
+  const signature = JSON.stringify(inputs)
+  const previous = causeInputsByRow.get(rowId)
+  causeInputsByRow.set(rowId, signature)
+  if (previous === undefined) {
+    bucket.first = (bucket.first ?? 0) + 1
+    return
+  }
+  const previousInputs = JSON.parse(previous) as Record<string, unknown>
+  let changed = false
+  for (const key of Object.keys(inputs)) {
+    if (JSON.stringify(previousInputs[key]) !== JSON.stringify(inputs[key])) {
+      bucket[key] = (bucket[key] ?? 0) + 1
+      changed = true
+    }
+  }
+  if (!changed) bucket.unchanged = (bucket.unchanged ?? 0) + 1
+}
+
+export const readRenderCauses = (): Record<string, number> =>
+  (scope()?.[CAUSE_KEY] as Record<string, number> | undefined) ?? {}
+
+// Provider-level flip counting: the row cause bucket says `canEditMessage` changes on almost every render.
+// This counts the provider's own value changes, so "the row re-renders because edit availability flips" can
+// be told apart from "the row's props object is rebuilt with the same value".
+const EDIT_KEY = '__PURESCIENCE_EDIT_FLIPS__'
+let lastEditValue: boolean | undefined
+
+export const countEditAvailability = (value: boolean): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = host[EDIT_KEY] as { renders: number; flips: number } | undefined
+  if (!bucket) return
+  bucket.renders += 1
+  if (lastEditValue !== value) {
+    bucket.flips += 1
+    lastEditValue = value
+  }
+}
+
+export const installEditCounts = (): void => {
+  const host = scope()
+  lastEditValue = undefined
+  if (host) host[EDIT_KEY] = { renders: 0, flips: 0 }
+}

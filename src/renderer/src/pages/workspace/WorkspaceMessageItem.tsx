@@ -9,6 +9,7 @@ import {
   countRenderReason,
   countSelectorValue,
   recordRenderAtCommit,
+  recordRenderCauses,
   recordRenderReason
 } from '@/lib/perf/render-counter'
 import { useTranscriptCapabilities } from './transcript-capabilities-context'
@@ -932,6 +933,14 @@ const WorkspaceMessageItemImpl = ({
   // No-op unless a perf spec installed the buckets: says whether this render carried new text, a status
   // change, or neither.
   countRenderReason(recordRenderReason(message.id, content, message.status))
+  // No-op unless a perf spec installed the bucket: names the input that actually moved on this render.
+  recordRenderCauses(message.id, {
+    content,
+    status: message.status,
+    edit: canEditMessage,
+    capsPresent: true,
+    messageId: message.id
+  })
   recordRenderAtCommit(message.id)
   const isUserMessage = message.role === 'user'
   const uploads = message.uploads ?? []

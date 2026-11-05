@@ -57,6 +57,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map(), samples: [] }
     host.__PURESCIENCE_SELECTOR__ = { calls: 0, changes: 0 }
     host.__PURESCIENCE_ROW_MOUNTS__ = { count: 0 }
+    host.__PURESCIENCE_RENDER_CAUSES__ = {}
+    host.__PURESCIENCE_EDIT_FLIPS__ = { renders: 0, flips: 0 }
     host.__PURESCIENCE_RENDER_AT_COMMIT__ = { sameCommit: 0, afterCommit: 0 }
   })
 
@@ -102,6 +104,13 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     const samples =
       (window as unknown as Record<string, { samples?: Array<{ commit: number; ids: string[] }> }>)
         .__PURESCIENCE_COMMITS__?.samples ?? []
+    const domRowCount = document.querySelectorAll('[data-message-id]').length
+    const scrollerItems = document.querySelectorAll('[data-slot="message-scroller-item"]').length
+    const uniqueIds = new Set(
+      [...document.querySelectorAll('[data-message-id]')].map((el) =>
+        el.getAttribute('data-message-id')
+      )
+    ).size
     const order = [...document.querySelectorAll('[data-message-id]')].map(
       (element) => element.getAttribute('data-message-id') ?? ''
     )
@@ -126,6 +135,12 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     ).__PURESCIENCE_SELECTOR__ ?? { calls: 0, changes: 0 }
     const mounts = (window as unknown as Record<string, { count: number } | undefined>)
       .__PURESCIENCE_ROW_MOUNTS__ ?? { count: 0 }
+    const causes =
+      (window as unknown as Record<string, Record<string, number> | undefined>)
+        .__PURESCIENCE_RENDER_CAUSES__ ?? {}
+    const editFlips = (
+      window as unknown as Record<string, { renders: number; flips: number } | undefined>
+    ).__PURESCIENCE_EDIT_FLIPS__ ?? { renders: 0, flips: 0 }
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -161,6 +176,11 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       sameCommitRenders: sameCommit,
       rowMounts: mounts.count,
       topRows,
+      causes,
+      editFlips,
+      domRowCount,
+      scrollerItems,
+      uniqueIds,
       selectorCalls: selector.calls,
       selectorChanges: selector.changes,
       shapes,
@@ -216,6 +236,18 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
         ` | samples=${readings.sampleCount} sizes=${readings.sampleSizes.join(',')}`
     )
   }
+  console.log(
+    `[causes] ${Object.entries(readings.causes)
+      .map(([key, count]) => `${key}=${count}`)
+      .join(' ')}`
+  )
+  console.log(
+    `[edit-flips] provider renders=${readings.editFlips.renders} flips=${readings.editFlips.flips}`
+  )
+  console.log(
+    `[dom] message-ids=${readings.domRowCount} unique=${readings.uniqueIds}` +
+      ` scroller-items=${readings.scrollerItems} counted-rows=${readings.rows}`
+  )
   console.log(`[hot-rows] top: ${readings.topRows.join(' ')}`)
   console.log(
     `[mounts] ${turns} turns: mounts=${readings.rowMounts} (${(readings.rowMounts / turns).toFixed(1)}/turn)` +
