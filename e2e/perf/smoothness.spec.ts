@@ -2,6 +2,12 @@ import { test } from '../fixtures/electron-app'
 import { createProject } from '../certification/helpers'
 import { expect } from '@playwright/test'
 import type { Page } from 'playwright'
+import {
+  describeFrameMetric,
+  percentile,
+  summarizeFrameCadence,
+  type FrameCadenceSummary
+} from '../../src/shared/perf-frame-cadence'
 
 // The certification helper waits for a reply by text, which assumes that text is unique in the
 // transcript. A perf baseline deliberately repeats the same canned reply, so each turn is awaited by the
@@ -63,31 +69,57 @@ const startProbe = async (page: import('playwright').Page): Promise<void> => {
   await page.evaluate(PROBE)
 }
 
-const stopProbe = async (page: import('playwright').Page, label: string): Promise<void> => {
+/**
+ * The harness measures its own cadence before it measures the app. macOS throttles
+ * `requestAnimationFrame` to roughly 12 Hz while a window is occluded or not foreground, which floors every
+ * frame reading near 80 ms — the reading then describes the window manager, not the product. Calibrating
+ * first turns that into a named "no reading" instead of a number nobody can act on.
+ */
+const calibrateInstrument = async (page: Page): Promise<FrameCadenceSummary> => {
+  const gaps = (await page.evaluate(async () => {
+    const ticks: number[] = []
+    await new Promise<void>((resolve) => {
+      const started = performance.now()
+      const sample = (time: number): void => {
+        ticks.push(time)
+        if (time - started < 750) requestAnimationFrame(sample)
+        else resolve()
+      }
+      requestAnimationFrame(sample)
+    })
+    return ticks.slice(1).map((time, index) => time - ticks[index]!)
+  })) as number[]
+  return summarizeFrameCadence(gaps)
+}
+
+const stopProbe = async (
+  page: import('playwright').Page,
+  label: string,
+  instrument: FrameCadenceSummary
+): Promise<void> => {
   const raw = (await page.evaluate('window.__perf')) as RawProbe
   const durations = raw.longTasks.map((task) => task.duration).sort((a, b) => b - a)
   const gaps = raw.frames
     .slice(1)
     .map((time, index) => time - raw.frames[index]!)
     .sort((a, b) => a - b)
-  const p95 = (values: number[]): number =>
-    values.length === 0
-      ? 0
-      : Math.round(values[Math.min(values.length - 1, Math.floor(values.length * 0.95))]!)
+  const p95 = percentile(gaps, 0.95)
 
   console.log(
     `[perf] ${label}: longest=${Math.round(durations[0] ?? 0)}ms | >50ms=${durations.filter((d) => d > 50).length} of ${durations.length}` +
       // The max gap is the stall signal that matters: a dropped-frame pileup shows up here even when
-      // average cadence looks fine.
-      ` | frames=${gaps.length} p95=${p95(gaps)}ms max=${Math.max(...gaps, 0).toFixed(0)}ms`
+      // average cadence looks fine. Percentiles are withheld when the phase was too short to support them.
+      ` | ${describeFrameMetric(instrument, { frames: gaps.length, p95Ms: p95, maxMs: Math.max(...gaps, 0) })}`
   )
   console.log(
     `[perf] ${label}: mutation batches≈${raw.batches} commits over frames=${raw.frames.length}` +
       ` | per frame: ${(raw.batches / Math.max(raw.frames.length, 1)).toFixed(2)}`
   )
-  // Catastrophic-only ceilings: a hang or a multi-second block is the signal worth failing on.
+  // Catastrophic-only ceilings: a hang or a multi-second block is the signal worth failing on. The frame
+  // ceiling only means something while the window is producing frames at a usable cadence — asserting it on
+  // a throttled instrument would fail a release for the desk arrangement.
   expect(durations[0] ?? 0).toBeLessThan(5000)
-  expect(p95(gaps)).toBeLessThan(500)
+  if (instrument.verdict === 'usable' && p95 !== null) expect(p95).toBeLessThan(500)
 }
 
 const measureIpc = async (page: import('playwright').Page, label: string): Promise<void> => {
@@ -96,22 +128,32 @@ const measureIpc = async (page: import('playwright').Page, label: string): Promi
       api: { projects: { list: () => Promise<unknown> } }
     }
     const timings: number[] = []
-    for (let index = 0; index < 12; index += 1) {
+    // 30 round trips: the previous 12 could not support a p95 at all, so its "p95" was the maximum.
+    for (let index = 0; index < 30; index += 1) {
       const started = performance.now()
       await bridge.api.projects.list()
       timings.push(performance.now() - started)
     }
     return timings.sort((left, right) => left - right)
   })) as number[]
-  const at = (fraction: number): number =>
-    Math.round(samples[Math.min(samples.length - 1, Math.floor(samples.length * fraction))]!)
-  console.log(`[perf] ${label}: project.list p50=${at(0.5)}ms p95=${at(0.95)}ms max=${at(1)}ms`)
+  const show = (value: number | null): string => (value === null ? 'n/a' : `${Math.round(value)}ms`)
+  console.log(
+    `[perf] ${label}: project.list n=${samples.length} p50=${show(percentile(samples, 0.5))}` +
+      ` p95=${show(percentile(samples, 0.95))} max=${show(samples[samples.length - 1] ?? null)}`
+  )
 }
 
 test('measures smoothness of the interactions a user feels', async ({ app }) => {
   let page = await app.completeOnboarding()
   page = await app.configureFakeAgent()
   await createProject(page, 'Smoothness baseline')
+
+  // A measurement taken while the window sits behind another app measures the window manager, so raise it
+  // first and then establish the cadence this run can actually produce.
+  await page.bringToFront()
+  const instrument = await calibrateInstrument(page)
+  test.info().annotations.push({ type: 'perf-instrument', description: instrument.detail })
+  console.log(`[perf] instrument: ${instrument.verdict} — ${instrument.detail}`)
 
   await measureIpc(page, 'ipc idle')
 
@@ -137,7 +179,7 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   for (let index = 0; index < turns; index += 1) {
     await sendTurn(page, `Baseline turn ${index}`)
   }
-  await stopProbe(page, `streaming ${turns} turns`)
+  await stopProbe(page, `streaming ${turns} turns`, instrument)
   const afterStream = await readClock()
   const taskDelta = afterStream.taskMs - beforeStream.taskMs
   const scriptDelta = afterStream.scriptMs - beforeStream.scriptMs
@@ -153,7 +195,7 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   await composer.pressSequentially('Measuring how long each keystroke takes to land.', {
     delay: 30
   })
-  await stopProbe(page, 'typing into the composer')
+  await stopProbe(page, 'typing into the composer', instrument)
 
   // Scrolling the transcript.
   await startProbe(page)
@@ -161,7 +203,7 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
     await page.mouse.wheel(0, 1200)
     await page.waitForTimeout(120)
   }
-  await stopProbe(page, 'scrolling the transcript')
+  await stopProbe(page, 'scrolling the transcript', instrument)
 
   // Opening the command palette (U17) — a keystroke to first paint.
   await startProbe(page)
@@ -170,7 +212,7 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 })
   console.log(`[perf] palette open: ${Date.now() - opened}ms to visible`)
   await page.keyboard.press('Escape')
-  await stopProbe(page, 'command palette')
+  await stopProbe(page, 'command palette', instrument)
 
   // Switching back into the heavy session from the workspace session list (the entry carries a status
   // prefix, so it is matched by its turn name).
@@ -187,7 +229,7 @@ test('measures smoothness of the interactions a user feels', async ({ app }) => 
   await session.click()
   await expect(page.getByText('Deterministic reply').first()).toBeVisible({ timeout: 30_000 })
   console.log(`[perf] reopen heavy session: ${Date.now() - switched}ms to visible`)
-  await stopProbe(page, 'reopening a heavy session')
+  await stopProbe(page, 'reopening a heavy session', instrument)
 
   await measureIpc(page, 'ipc after heavy session')
 })
