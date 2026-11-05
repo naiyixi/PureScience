@@ -55,6 +55,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
     host.__PURESCIENCE_RENDER_REASONS__ = { first: 0, content: 0, status: 0, other: 0 }
     host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map(), samples: [] }
+    host.__PURESCIENCE_SELECTOR__ = { calls: 0, changes: 0 }
+    host.__PURESCIENCE_ROW_MOUNTS__ = { count: 0 }
     host.__PURESCIENCE_RENDER_AT_COMMIT__ = { sameCommit: 0, afterCommit: 0 }
   })
 
@@ -119,6 +121,11 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
           tail: order.length - 1 - (indices[indices.length - 1] ?? 0)
         }
       })
+    const selector = (
+      window as unknown as Record<string, { calls: number; changes: number } | undefined>
+    ).__PURESCIENCE_SELECTOR__ ?? { calls: 0, changes: 0 }
+    const mounts = (window as unknown as Record<string, { count: number } | undefined>)
+      .__PURESCIENCE_ROW_MOUNTS__ ?? { count: 0 }
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -126,6 +133,13 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       .filter(([key]) => key !== '__scroller__')
       .map(([, count]) => count)
     const sorted = [...counts].sort((left, right) => right - left)
+    // Which rows carry the cost: a handful of ids with hundreds of renders each is a different problem from
+    // every row rendering a few times.
+    const topRows = Object.entries(renders)
+      .filter(([key]) => key !== '__scroller__')
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 5)
+      .map(([id, count]) => `${id}=${count}`)
     const churnTotals: Record<number, number> = {}
     for (const bucket of Object.values(churn)) {
       for (const [index, count] of Object.entries(bucket)) {
@@ -145,6 +159,10 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       rowsRenderedPerCommit:
         commitRows.length > 0 ? commitRows.reduce((a, b) => a + b, 0) / commitRows.length : 0,
       sameCommitRenders: sameCommit,
+      rowMounts: mounts.count,
+      topRows,
+      selectorCalls: selector.calls,
+      selectorChanges: selector.changes,
       shapes,
       sampleCount: samples.length,
       sampleSizes: samples.slice(-5).map((sample) => sample.ids.length),
@@ -198,6 +216,18 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
         ` | samples=${readings.sampleCount} sizes=${readings.sampleSizes.join(',')}`
     )
   }
+  console.log(`[hot-rows] top: ${readings.topRows.join(' ')}`)
+  console.log(
+    `[mounts] ${turns} turns: mounts=${readings.rowMounts} (${(readings.rowMounts / turns).toFixed(1)}/turn)` +
+      ` rows=${readings.rows} renders=${readings.total}` +
+      ` rendersPerMount=${readings.rowMounts > 0 ? (readings.total / readings.rowMounts).toFixed(2) : 'n/a'}`
+  )
+  console.log(
+    `[selector] ${turns} turns: calls=${readings.selectorCalls}` +
+      ` (${(readings.selectorCalls / turns).toFixed(1)}/turn) changes=${readings.selectorChanges}` +
+      ` (${(readings.selectorChanges / turns).toFixed(2)}/turn)` +
+      ` ratio=${readings.selectorCalls > 0 ? (readings.selectorChanges / readings.selectorCalls).toFixed(3) : 'n/a'}`
+  )
   console.log(
     `[render-reason] ${Object.entries(readings.reasons)
       .map(([reason, count]) => `${reason}=${count}`)

@@ -5,7 +5,9 @@ import { getUiLocale } from '@/lib/ui-locale'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
 import {
   countRender,
+  countRowMount,
   countRenderReason,
+  countSelectorValue,
   recordRenderAtCommit,
   recordRenderReason
 } from '@/lib/perf/render-counter'
@@ -910,14 +912,22 @@ const WorkspaceMessageItemImpl = ({
 }: WorkspaceMessageItemProps): React.JSX.Element => {
   // No-op unless a perf spec installed the bucket (see lib/perf/render-counter).
   countRender(message.id)
+  // Runs once per mount only: a lazy state initialiser is the cheapest reliable mount probe.
+  useState(() => {
+    countRowMount()
+    return null
+  })
   const { t } = useLanguage()
   // The message's own text comes from the store rather than from props: the transcript's containers hold
   // their props across a streamed chunk on purpose (see transcript-render-identity), so the streamed text
   // has to arrive through a subscription. Every other message's value is identical across a chunk, so a
   // chunk re-renders the one message it is streaming into and nothing else.
-  const liveContent = useSessionStore((state) =>
-    selectLiveMessageContent(state, sessionId, message.id)
-  )
+  const liveContent = useSessionStore((state) => {
+    // No-op unless a perf spec installed the bucket: separates "the store notified every row" from "this
+    // row's subscribed value actually changed" — the second is what re-renders it, memo or not.
+    const next = selectLiveMessageContent(state, sessionId, message.id)
+    return countSelectorValue(message.id, next)
+  })
   const content = resolveMessageContent(liveContent, message.content)
   // No-op unless a perf spec installed the buckets: says whether this render carried new text, a status
   // change, or neither.

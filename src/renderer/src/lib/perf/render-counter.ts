@@ -243,3 +243,53 @@ export const readCommitSamples = (): Array<{ commit: number; ids: string[] }> =>
     { samples: Array<{ commit: number; ids: string[] }> } | undefined
   return bucket?.samples ?? []
 }
+
+// Selector-fired accounting: how often the store notified a row's subscription versus how often the value
+// it subscribes to actually changed. The second number is the one that re-renders the row, memo or not.
+const SELECTOR_KEY = '__PURESCIENCE_SELECTOR__'
+const lastSelectorValueByRow = new Map<string, unknown>()
+
+export const installSelectorCounts = (): void => {
+  const host = scope()
+  lastSelectorValueByRow.clear()
+  if (host) host[SELECTOR_KEY] = { calls: 0, changes: 0 }
+}
+
+export const countSelectorValue = <T>(rowId: string, value: T): T => {
+  const host = scope()
+  const bucket = host?.[SELECTOR_KEY] as { calls: number; changes: number } | undefined
+  if (!bucket) return value
+  bucket.calls += 1
+  const previous = lastSelectorValueByRow.get(rowId)
+  if (previous !== value) {
+    bucket.changes += 1
+    lastSelectorValueByRow.set(rowId, value)
+  }
+  return value
+}
+
+export const readSelectorCounts = (): { calls: number; changes: number } =>
+  (scope()?.[SELECTOR_KEY] as { calls: number; changes: number } | undefined) ?? {
+    calls: 0,
+    changes: 0
+  }
+
+// Mounts, counted separately from renders: a row whose list key changes is unmounted and mounted again,
+// which always produces a render no matter how the row is memoised — and it also throws away the row's own
+// state. Comparing mounts per turn with renders per turn says whether "re-render" is really "remount".
+const MOUNT_KEY = '__PURESCIENCE_ROW_MOUNTS__'
+
+export const countRowMount = (): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = host[MOUNT_KEY] as { count: number } | undefined
+  if (bucket) bucket.count += 1
+}
+
+export const installRowMountCounts = (): void => {
+  const host = scope()
+  if (host) host[MOUNT_KEY] = { count: 0 }
+}
+
+export const readRowMountCounts = (): { count: number } =>
+  (scope()?.[MOUNT_KEY] as { count: number } | undefined) ?? { count: 0 }
