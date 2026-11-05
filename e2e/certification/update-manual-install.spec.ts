@@ -53,6 +53,25 @@ const hostArtifactKey = (): ArtifactKey => {
 
 const sha256Of = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex')
 
+// The console mirror of the app's logger is `[scope] msg` (plus the record's data on the next line), and
+// it wraps with colour escapes. Both helpers work on this launch's own captured output — the only log a
+// spec can attribute to *this* instance — never on `~/Library/Logs/…/main.log`, which a developer instance
+// on the same machine also appends to.
+const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
+
+const launchLogLines = async (logPath: string): Promise<string[]> =>
+  (await readFile(logPath, 'utf8')).replace(ANSI, '').split('\n')
+
+// One line per manifest fetch: the app's correlated-fetch wrapper logs `req-… <url> -> <status>`.
+const manifestRequestLines = (lines: readonly string[]): string[] =>
+  lines.filter((line) => line.includes('[http-request]') && line.includes('/version.json'))
+
+// Anything the update scope calls a failure. The mirror carries no level field, so this is the wording the
+// scope would have to use to report one; a `ready` status plus zero such lines is what "no error-level
+// record on one check" can honestly be read as here.
+const updateFailureLines = (lines: readonly string[]): string[] =>
+  lines.filter((line) => line.includes('[update]') && /error|failed|refus/i.test(line))
+
 const manifestWith = (digest: string): unknown => ({
   version: RELEASE_VERSION,
   releaseDate: new Date().toISOString(),
@@ -78,6 +97,11 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
   app
 }) => {
   const page = await app.completeOnboarding()
+  // This launch's own captured output: the app's logger mirror. A record here cannot belong to another
+  // process, which `~/Library/Logs/…/main.log` cannot promise on a developer's machine.
+  const launchLogPath = app.currentLaunchLogPath
+  expect(launchLogPath).toBeTruthy()
+  const logPath = launchLogPath as string
   const host = ARTIFACTS[hostArtifactKey()]
   const downloadDir = join(app.storageRoot, 'update-cert-download')
   const target = join(downloadDir, host.file)
@@ -98,6 +122,9 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
     .click()
   const checkNow = settings.getByRole('button', { name: 'Check now' })
   await expect(checkNow).toBeEnabled({ timeout: 60_000 })
+  // Where the count starts: the launch may already have run its own check, and this spec is about the one
+  // the reader asks for.
+  const requestsBefore = manifestRequestLines(await launchLogLines(logPath)).length
   await checkNow.click()
   const updateButton = settings.getByRole('button', { name: `Update to ${RELEASE_VERSION}` })
   await expect(updateButton).toBeVisible({ timeout: 30_000 })
@@ -137,8 +164,24 @@ test('the update installer downloads, verifies, and tells a macOS reader to repl
   // No half-written sibling left behind by the streaming write.
   await expect(readFile(`${target}.part`)).rejects.toThrow()
 
+  // --- The unit's completion criterion: one check → one network request, no failure record -------------
+  // Poll rather than read once: the logger appends on a promise chain, so the record lands a moment after
+  // the UI already shows `ready`.
+  await expect
+    .poll(async () => manifestRequestLines(await launchLogLines(logPath)).length - requestsBefore, {
+      timeout: 30_000
+    })
+    .toBe(1)
+  // And still one after the download: a second manifest fetch here would be a check the reader never asked
+  // for (a retry storm), which is exactly what the criterion rules out.
+  const appendedRequests = manifestRequestLines(await launchLogLines(logPath))
+  expect(appendedRequests.length - requestsBefore).toBe(1)
+  expect(appendedRequests[appendedRequests.length - 1]).toContain('-> 200')
+  const updateFailures = updateFailureLines(await launchLogLines(logPath))
+  expect(updateFailures).toEqual([])
+
   console.log(
-    `[update-cert] state=ready artifact=${host.file} bytes=${written.byteLength} sha256=${writtenDigest.slice(0, 12)} installer=${'yes'}`
+    `[update-cert] state=ready artifact=${host.file} bytes=${written.byteLength} sha256=${writtenDigest.slice(0, 12)} installer=${'yes'} manifestRequests=${appendedRequests.length - requestsBefore} updateFailures=${updateFailures.length}`
   )
 
   await rm(downloadDir, { recursive: true, force: true })
