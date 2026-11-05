@@ -261,3 +261,31 @@ CSS 锚点（`data-perf="composer-input"` / `data-perf="composer-send"`）。理
    常数，不是随长度增长的斜率**——斜率此前被我自己的探针放大了。
 3. 160 回合那一档需要单独剖析（下一次用 `PERF_TURNS=160 PERF_WAIT=selector` 跑 profile），在此之前不再声称
    任何与长度相关的结论。
+
+## 十五 长会话的 DOM 事实：优化在用，但文档本身已经很高
+
+新增非门禁诊断 `e2e/perf/content-visibility.spec.ts`（`PERF_TURNS=120 npx playwright test …`），
+在 120 回合的真实会话里读 DOM 事实，而不是猜：
+
+```
+turns=120  bodies=120  domNodes=7560
+nodesWithContentVisibilityAuto=240      ← 沉淀行确实带 content-visibility: auto
+流式行                          cv:visible（预期的例外）
+正文容器高度                    24,035 px（视口 819 px）
+单行最高                        124 px
+```
+
+祖先链（自下而上）：`assistant-message-body` → … → `div[data-slot=message-scroller-item]{cv:auto,h:80}` →
+`div[data-slot=message-scroller-item]{cv:visible,h:124}` → 内容容器 `h:24035` → scroller。
+
+三条事实：
+
+1. **`content-visibility: auto` 是生效的**（240/480 个 item 节点带 auto），不是「优化没写上」；
+2. 渲染窗口也在生效（150 阈值那一侧），但 §十四 的实验已经说明它**净成本是正的 9%** —— 因为卸载/重挂
+   比常驻更贵（`streamdown` 要重新解析整段 markdown）；
+3. 文档高度 **24,035 px / 819 px 视口 = 29 屏**，7560 个 DOM 节点。160 回合那 23 ms/回合的 `(program)`
+   就是在这种体量下的样式重算与布局维护，`content-visibility` 只能跳掉离屏行的**绘制**，跳不掉容器层面的
+   布局账。
+
+所以「让重挂变便宜」不是可选项，是让窗口化转为净收益的前提：先给 markdown 结果做内容哈希缓存，重挂时复用
+已解析结果，窗口化才能把常驻节点从 240 降下来而不付解析代价。这是 P2，仍未开工。
