@@ -17,6 +17,7 @@ import {
 import { selectProjectSessionReviews, useReviewStore } from '@/stores/review-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSessionStore, type ChatSession } from '@/stores/session-store'
+import { recordPropChurn } from '@/lib/perf/render-counter'
 import { groupRevisionsByRoot } from './revision-groups'
 import { carriesSameTranscriptStructure } from './transcript-render-identity'
 import { sameElements, stableArray, stableValue } from './stable-identity'
@@ -1091,6 +1092,8 @@ const WorkspaceMessageScrollerImpl = ({
                         ]
                         const cachedProps = itemPropsCacheRef.current.get(item.message.id)
                         let messageItemProps: EditableWorkspaceMessageItemProps
+                        // No-op unless a perf spec installed the bucket: one lookup on the rare miss path.
+                        recordPropChurn(item.message.id, cachedProps?.deps, propsDeps)
                         if (cachedProps && sameElements(cachedProps.deps, propsDeps)) {
                           messageItemProps = cachedProps.value
                         } else {

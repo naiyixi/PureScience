@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { useLanguage } from '@/i18n'
 import { getUiLocale } from '@/lib/ui-locale'
 import { AgentMarkdown } from '@/components/streamdown/AgentMarkdown'
+import { countRender } from '@/lib/perf/render-counter'
 import { MessageScrollerItem } from '@/components/ui/message-scroller'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -878,6 +879,8 @@ const WorkspaceMessageItemImpl = ({
   artifacts = [],
   staticParts
 }: WorkspaceMessageItemProps): React.JSX.Element => {
+  // No-op unless a perf spec installed the bucket (see lib/perf/render-counter).
+  countRender(message.id)
   const { t } = useLanguage()
   // The message's own text comes from the store rather than from props: the transcript's containers hold
   // their props across a streamed chunk on purpose (see transcript-render-identity), so the streamed text
