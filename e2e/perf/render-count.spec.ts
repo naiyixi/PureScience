@@ -20,12 +20,21 @@ import { test as appTest } from '../fixtures/electron-app'
 // Recorded baseline (2026-11-05, 40 turns, before the subscription work): rows=82 total=17672
 // median=226 max=402; churn 16=3280 4=1680 6=1640 0=40 2=40.
 
+// CSS hooks + structural wait, same as the smoothness baseline: a text/role locator re-resolves an
+// accessible name over the whole document on every poll, and that work lands inside the window these
+// counters describe.
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
-  const replies = page.getByText('Deterministic reply', { exact: false })
-  const before = await replies.count()
-  await page.getByRole('textbox', { name: 'Ask anything' }).fill(prompt)
-  await page.getByRole('button', { name: 'Send message' }).click()
-  await expect.poll(async () => replies.count(), { timeout: 60_000 }).toBeGreaterThan(before)
+  const before = await page.evaluate(
+    () => document.querySelectorAll('[data-slot="assistant-message-body"]').length
+  )
+  await page.locator('[data-perf="composer-input"]').fill(prompt)
+  await page.locator('[data-perf="composer-send"]').first().click()
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelectorAll('[data-slot="assistant-message-body"]').length > expected,
+    before,
+    { timeout: 60_000, polling: 200 }
+  )
 }
 
 appTest('counts transcript row renders and props churn', async ({ app }) => {
@@ -39,8 +48,10 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
   await sendTurn(page, 'Warm-up turn')
 
   await page.evaluate(() => {
-    ;(window as unknown as Record<string, unknown>).__PURESCIENCE_RENDER_COUNTS__ = {}
-    ;(window as unknown as Record<string, unknown>).__PURESCIENCE_PROP_CHURN__ = {}
+    const host = window as unknown as Record<string, unknown>
+    host.__PURESCIENCE_RENDER_COUNTS__ = {}
+    host.__PURESCIENCE_PROP_CHURN__ = {}
+    host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
   })
 
   for (let index = 0; index < turns; index += 1) {
@@ -55,6 +66,10 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       (window as unknown as Record<string, Record<string, Record<number, number>> | undefined>)
         .__PURESCIENCE_PROP_CHURN__ ?? {}
 
+    const markdown = (
+      window as unknown as Record<string, { count: number; chars: number } | undefined>
+    ).__PURESCIENCE_MARKDOWN_RENDERS__ ?? { count: 0, chars: 0 }
+
     const counts = Object.values(renders)
     const sorted = [...counts].sort((left, right) => right - left)
     const churnTotals: Record<number, number> = {}
@@ -68,6 +83,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       total: counts.reduce((sum, count) => sum + count, 0),
       median: sorted[Math.floor(sorted.length / 2)] ?? 0,
       max: sorted[0] ?? 0,
+      markdownRenders: markdown.count,
+      markdownChars: markdown.chars,
       churn: Object.entries(churnTotals)
         .map(([index, count]) => ({ index: Number(index), count }))
         .sort((left, right) => right.count - left.count)
@@ -82,6 +99,15 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     `[render-count] props churn by tuple index: ${
       readings.churn.map((entry) => `${entry.index}=${entry.count}`).join(' ') || '(none)'
     }`
+  )
+
+  // Parsing is the expensive half of a remount and is invisible to a row-render count, so it gets its own
+  // line: renders/turn ≈ 1 means one parse per chunk, more than that means the render window (or a
+  // remount) is re-parsing text that did not change.
+  console.log(
+    `[markdown] ${turns} turns: renders=${readings.markdownRenders}` +
+      ` (${(readings.markdownRenders / turns).toFixed(1)}/turn)` +
+      ` chars=${readings.markdownChars} (${Math.round(readings.markdownChars / turns)}/turn)`
   )
 
   expect(readings.rows).toBeGreaterThan(0)

@@ -14,6 +14,7 @@ import { RemoteMediaImage } from './RemoteMediaImage'
 import { SourceLink } from './SourceLink'
 import { normalizeAgentMarkdown } from './normalize-agent-markdown'
 import { cn } from '@/lib/utils'
+import { countMarkdownRender } from '@/lib/perf/render-counter'
 
 type AgentMarkdownProps = {
   content: string
@@ -160,6 +161,8 @@ const RichAgentMarkdown = memo(
     allowMedia = true,
     sessionLinks = false
   }: AgentMarkdownProps): React.JSX.Element => {
+    // No-op unless a perf spec installed the bucket (see lib/perf/render-counter).
+    countMarkdownRender(content.length)
     const renderedContent = useMemo(() => normalizeAgentMarkdown(content), [content])
 
     return (

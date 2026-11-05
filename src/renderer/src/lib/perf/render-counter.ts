@@ -60,3 +60,30 @@ export const installPropChurn = (): void => {
 
 export const readPropChurn = (): Record<string, Record<number, number>> =>
   (scope()?.[CHURN_KEY] as Record<string, Record<number, number>> | undefined) ?? {}
+
+// Markdown renders, counted separately from row renders: a row can re-render without re-parsing its
+// markdown (the component is memoised on content), and a remount can re-parse without the row "rendering"
+// in the transcript's sense. Parsing is the expensive half of a remount, so the window experiment needs
+// its own counter to answer "how much parsing does the render window cost?" without depending on
+// wall-clock readings, which this host cannot reproduce across batches.
+const MARKDOWN_KEY = '__PURESCIENCE_MARKDOWN_RENDERS__'
+
+export const countMarkdownRender = (contentLength: number): void => {
+  const host = scope()
+  if (!host) return
+  const bucket = (host[MARKDOWN_KEY] as { count: number; chars: number } | undefined) ?? undefined
+  if (!bucket) return
+  bucket.count += 1
+  bucket.chars += contentLength
+}
+
+export const installMarkdownCounts = (): void => {
+  const host = scope()
+  if (host) host[MARKDOWN_KEY] = { count: 0, chars: 0 }
+}
+
+export const readMarkdownCounts = (): { count: number; chars: number } =>
+  (scope()?.[MARKDOWN_KEY] as { count: number; chars: number } | undefined) ?? {
+    count: 0,
+    chars: 0
+  }
