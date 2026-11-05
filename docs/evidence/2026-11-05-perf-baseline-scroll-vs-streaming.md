@@ -111,3 +111,50 @@ npx playwright test e2e/perf/profile-turns.spec.ts --reporter=line
 ```
 
 日志：`/tmp/ps_perf_40.log`、`/tmp/ps_profile.log`。
+
+## 九 40 回合的剖析：提交路径的增长远快于总数
+
+同一剖析工具换成 40 回合（warm-up 那一回合仍不计入），采样窗口 16,295 ms / 9,790 样本。把两次的自耗时
+并排，比值才是这条读数的重点（总数只涨 6×，提交路径涨了 20–47×）：
+
+| 函数（自耗时）                  | 10 回合 | 40 回合      | 倍数    |
+| ------------------------------- | ------- | ------------ | ------- |
+| `commitHostUpdate`              | 11.9 ms | **559.1 ms** | **47×** |
+| `updateProperties`              | 11.6 ms | 386.3 ms     | 33×     |
+| `mergeProps`（framer-motion）   | 8.3 ms  | 314.1 ms     | 38×     |
+| `renderWithHooks`               | 13.1 ms | 301.8 ms     | 23×     |
+| `createWorkInProgress`          | 5.5 ms  | 220.5 ms     | 40×     |
+| `removeChild`（原生）           | 13.4 ms | 205.2 ms     | 15×     |
+| `beginWork`                     | 6.5 ms  | 203.7 ms     | 31×     |
+| `formatMessageTimestampTitle`   | 4.7 ms  | **192.2 ms** | **41×** |
+| `areHookInputsEqual`            | —       | 172.5 ms     | —       |
+| `reconcileChildFibersImpl`      | 7.0 ms  | 162.0 ms     | 23×     |
+| `react_production.cloneElement` | —       | 163.0 ms     | —       |
+
+而 CDP 的脚本总量只从 412 ms 涨到 2,492 ms（**6×**）。也就是说：**记录变长时，多出来的成本主要不是
+「渲染新内容」，而是「把老内容再提交一遍」** —— 提交路径（`commitHostUpdate` / `updateProperties` /
+`mergeProps` / `cloneElement` / `removeChild`）是超线性增长的那一半。
+
+## 十 目前能确定与不能确定的
+
+**能确定**：超线性增长在老内容的重复提交上；时间戳格式化（`formatMessageTimestampTitle`，每次渲染都调
+`Intl.DateTimeFormat.format`）在 40 回合里被调了 192 ms，是「整行参与重渲」的直接旁证 —— 它不是原因，
+但它的量级能当**指示器**：修好重复提交后这个数应当跟着掉。
+
+**不能确定（不写结论）**：究竟是谁让老行重渲。已经排掉的两个假设：
+
+- 列表容器每次新造 props —— 排掉：`WorkspaceMessageScroller` 有 `itemPropsCacheRef` 逐槽缓存 props，
+  依赖元组相同就复用，闭包也在缓存内；
+- 行组件在每次增量都重新挂载 —— 未证实：`mutation` 只有 0.87 批/帧，不像整树重挂。
+
+下一步要用**计数**而不是推断来定位：在每个行组件里数一次渲染次数（探针，不进产品），40 回合跑一遍，
+看「渲染次数 × 行数」是否随帧线性增长。只有那个读数能区分「订阅选择器没回到同一个值」和
+「`MessageScroller` 的虚拟化/containment 在重排」。
+
+## 十一 复算第三份
+
+```bash
+PERF_TURNS=40 npx playwright test e2e/perf/profile-turns.spec.ts --reporter=line
+```
+
+日志：`/tmp/ps_profile40.log`。
