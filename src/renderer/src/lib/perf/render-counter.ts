@@ -11,8 +11,12 @@ export type RenderCounts = Record<string, number>
 
 const BUCKET_KEY = '__PURESCIENCE_RENDER_COUNTS__'
 
-const bucket = (): RenderCounts | undefined =>
-  (window as unknown as Record<string, RenderCounts | undefined>)[BUCKET_KEY]
+// Server-side rendering and jsdom-free unit tests have no `window`, and a perf counter must never be the
+// reason a render throws.
+const scope = (): Record<string, unknown> | undefined =>
+  typeof window === 'undefined' ? undefined : (window as unknown as Record<string, unknown>)
+
+const bucket = (): RenderCounts | undefined => scope()?.[BUCKET_KEY] as RenderCounts | undefined
 
 export const countRender = (slotId: string): void => {
   const counts = bucket()
@@ -21,11 +25,12 @@ export const countRender = (slotId: string): void => {
 }
 
 export const installRenderCounts = (): void => {
-  ;(window as unknown as Record<string, RenderCounts>)[BUCKET_KEY] = {}
+  const host = scope()
+  if (host) host[BUCKET_KEY] = {}
 }
 
 export const readRenderCounts = (): RenderCounts =>
-  (window as unknown as Record<string, RenderCounts | undefined>)[BUCKET_KEY] ?? {}
+  (scope()?.[BUCKET_KEY] as RenderCounts | undefined) ?? {}
 
 // Which slot-props dependency changed. The transcript caches a props bundle per row and reuses it while
 // its dependency tuple is unchanged; when the row re-renders on every chunk the first question is
@@ -38,10 +43,10 @@ export const recordPropChurn = (
   previous: readonly unknown[] | undefined,
   next: readonly unknown[]
 ): void => {
-  const buckets = (
-    window as unknown as Record<string, Record<string, Record<number, number>> | undefined>
-  )[CHURN_KEY]
-  if (!buckets || !previous) return
+  const host = scope()
+  if (!host || !previous) return
+  const buckets = host[CHURN_KEY] as Record<string, Record<number, number>> | undefined
+  if (!buckets) return
   const bucket = (buckets[slotId] ??= {})
   previous.forEach((value, index) => {
     if (!Object.is(value, next[index])) bucket[index] = (bucket[index] ?? 0) + 1
@@ -49,10 +54,9 @@ export const recordPropChurn = (
 }
 
 export const installPropChurn = (): void => {
-  ;(window as unknown as Record<string, Record<string, Record<number, number>>>)[CHURN_KEY] = {}
+  const host = scope()
+  if (host) host[CHURN_KEY] = {}
 }
 
 export const readPropChurn = (): Record<string, Record<number, number>> =>
-  (window as unknown as Record<string, Record<string, Record<number, number>> | undefined>)[
-    CHURN_KEY
-  ] ?? {}
+  (scope()?.[CHURN_KEY] as Record<string, Record<number, number>> | undefined) ?? {}
