@@ -67,3 +67,47 @@ grep '\[perf\]' <playwright 输出>
 ```
 
 本次日志：`/tmp/ps_perf_baseline.log`（构建 `/tmp/psbuild_perf.log`）。
+
+## 六 加测：成本随记录长度增长（2026-11-05 同日，PERF_TURNS=40）
+
+10 回合那一份只能说明「每回合 63.9 ms」，说明不了「长会话会不会更糟」。把同一个场景拉到 40 回合：
+
+| 回合数 | 每回合主线程 task | 每回合 script | 重开重会话到可见 |
+| ------ | ----------------- | ------------- | ---------------- |
+| 10     | 63.9 ms           | 41.2 ms       | 61 ms            |
+| **40** | **94.2 ms**       | **62.3 ms**   | **97 ms**        |
+
+**每回合成本随记录长度上升：63.9 → 94.2 ms（+47%），脚本 41.2 → 62.3 ms（+51%）。** 这不是「固定每回合
+开销」，而是「每回合重做的活随消息数变多」。40 回合时一次流式回合已经接近 100 ms 主线程，用户在同一条会话里
+继续聊只会更慢 —— 用户说的「卡」在这里有了可复算的形状。
+
+同一份 40 回合读数里：长任务仍然 0 个（>50 ms 阈值下无单点），帧距 p95 仍是 18 ms，滚动 33 ms / 42 帧，
+`mutation 330 commits / 380 帧 = 0.87`。也就是说**卡的不是某一帧**，是每回合压进来的主线程总量。
+
+## 七 采样剖析：没有单点热点，工作是散的
+
+`e2e/perf/profile-turns.spec.ts`（CDP 采样剖析，10 回合，warm-up 回合不计入）自证 1489 ms / 1512 样本：
+
+```
+831.6ms (idle)   234.1ms (program)   26.5ms (garbage collector)
+ 13.4ms removeChild(native)   13.1ms renderWithHooks   11.9ms commitHostUpdate
+ 11.6ms updateProperties      8.3ms mergeProps         7.4ms usePresence
+  6.5ms beginWork             5.0ms elementText(native) 4.7ms formatMessageTimestampTitle
+```
+
+结论：**没有哪一帧函数吃掉大头**——最大的单项只有 13.4 ms（十回合累计，约 1.3 ms/回合）。工作量摊在
+React 的提交路径（`renderWithHooks` / `commitHostUpdate` / `updateProperties` / `mergeProps` / `usePresence`）
+与原生 DOM 操作上，形态是「每回合把整条记录再提交一遍」，而不是「某个函数写得慢」。
+
+这条读数决定了修法：不该去找热点函数优化，而该让**已沉淀的回合不再参与提交**（记忆化失效的 props、
+或列表虚拟化二选一，先量再选）。
+
+## 八 复算第二份
+
+```bash
+cd <repo> && npm run build:e2e
+PERF_TURNS=40 npx playwright test e2e/perf/smoothness.spec.ts --reporter=line
+npx playwright test e2e/perf/profile-turns.spec.ts --reporter=line
+```
+
+日志：`/tmp/ps_perf_40.log`、`/tmp/ps_profile.log`。
