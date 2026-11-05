@@ -54,7 +54,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
     host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
     host.__PURESCIENCE_RENDER_REASONS__ = { first: 0, content: 0, status: 0, other: 0 }
-    host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map() }
+    host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map(), samples: [] }
     host.__PURESCIENCE_RENDER_AT_COMMIT__ = { sameCommit: 0, afterCommit: 0 }
   })
 
@@ -95,6 +95,30 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     const sameCommit =
       (window as unknown as Record<string, { sameCommit: number } | undefined>)
         .__PURESCIENCE_RENDER_AT_COMMIT__?.sameCommit ?? 0
+    // Shape of the commits that rendered several rows: a contiguous run means a window boundary is being
+    // crossed; scattered ids mean the rows' memo keys themselves are unstable.
+    const samples =
+      (window as unknown as Record<string, { samples?: Array<{ commit: number; ids: string[] }> }>)
+        .__PURESCIENCE_COMMITS__?.samples ?? []
+    const order = [...document.querySelectorAll('[data-message-id]')].map(
+      (element) => element.getAttribute('data-message-id') ?? ''
+    )
+    const indexById = new Map(order.map((id, index) => [id, index]))
+    const shapes = samples
+      .filter((sample) => sample.ids.length >= 2)
+      .map((sample) => {
+        const indices = sample.ids
+          .map((id) => indexById.get(id))
+          .filter((index): index is number => index !== undefined)
+          .sort((left, right) => left - right)
+        const span = indices.length > 0 ? indices[indices.length - 1] - indices[0] + 1 : 0
+        return {
+          rows: indices.length,
+          span,
+          contiguous: span === indices.length,
+          tail: order.length - 1 - (indices[indices.length - 1] ?? 0)
+        }
+      })
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -121,6 +145,9 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       rowsRenderedPerCommit:
         commitRows.length > 0 ? commitRows.reduce((a, b) => a + b, 0) / commitRows.length : 0,
       sameCommitRenders: sameCommit,
+      shapes,
+      sampleCount: samples.length,
+      sampleSizes: samples.slice(-5).map((sample) => sample.ids.length),
       chunks: chunks.total,
       chunksCommitted: chunks.committed,
       markdownChars: markdown.chars,
@@ -157,6 +184,20 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       ` rows/commit avg=${readings.rowsRenderedPerCommit.toFixed(2)} max=${readings.maxRowsPerCommit}` +
       ` | renders with no new commit: ${readings.sameCommitRenders}`
   )
+  {
+    const contiguous = readings.shapes.filter((shape) => shape.contiguous).length
+    const rows = readings.shapes.map((shape) => shape.rows)
+    const spans = readings.shapes.map((shape) => shape.span)
+    const tails = readings.shapes.map((shape) => shape.tail)
+    const avg = (values: number[]): string =>
+      values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 'n/a'
+    console.log(
+      `[commit-shape] sampled=${readings.shapes.length} contiguous=${contiguous}` +
+        ` rows avg=${avg(rows)} span avg=${avg(spans)}` +
+        ` distanceFromLastRow avg=${avg(tails)} rowsInDom=${readings.rows}` +
+        ` | samples=${readings.sampleCount} sizes=${readings.sampleSizes.join(',')}`
+    )
+  }
   console.log(
     `[render-reason] ${Object.entries(readings.reasons)
       .map(([reason, count]) => `${reason}=${count}`)

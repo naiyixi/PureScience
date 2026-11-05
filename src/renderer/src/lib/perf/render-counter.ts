@@ -171,24 +171,38 @@ export const bumpStoreCommit = (): void => {
   const host = scope()
   if (!host) return
   const bucket = host[COMMIT_KEY] as
-    { count: number; rowsByCommit: Map<number, number> } | undefined
+    | {
+        count: number
+        rowsByCommit: Map<number, number>
+        samples: Array<{ commit: number; ids: string[] }>
+      }
+    | undefined
   if (!bucket) return
   bucket.count += 1
   bucket.rowsByCommit.set(bucket.count, 0)
+  // Rolling window over the most recent commits: a contiguous run of ids means a window boundary is
+  // crossed, scattered ids mean the rows' own memo keys are unstable.
+  bucket.samples.push({ commit: bucket.count, ids: [] })
+  if (bucket.samples.length > 60) bucket.samples.shift()
 }
 
 export const installCommitCounts = (): void => {
   const host = scope()
   lastCommitByRow.clear()
   if (!host) return
-  host[COMMIT_KEY] = { count: 0, rowsByCommit: new Map<number, number>() }
+  host[COMMIT_KEY] = { count: 0, rowsByCommit: new Map<number, number>(), samples: [] }
   host[AT_COMMIT_KEY] = { sameCommit: 0, afterCommit: 0 }
 }
 
 export const recordRenderAtCommit = (rowId: string): 'same-commit' | 'after-commit' => {
   const host = scope()
   const bucket = host?.[COMMIT_KEY] as
-    { count: number; rowsByCommit: Map<number, number> } | undefined
+    | {
+        count: number
+        rowsByCommit: Map<number, number>
+        samples: Array<{ commit: number; ids: string[] }>
+      }
+    | undefined
   if (!bucket) return 'after-commit'
   const current = bucket.count
   const previous = lastCommitByRow.get(rowId)
@@ -199,6 +213,8 @@ export const recordRenderAtCommit = (rowId: string): 'same-commit' | 'after-comm
     return 'same-commit'
   }
   bucket.rowsByCommit.set(current, (bucket.rowsByCommit.get(current) ?? 0) + 1)
+  const sample = bucket.samples[bucket.samples.length - 1]
+  if (sample && sample.commit === current) sample.ids.push(rowId)
   if (tally) tally.afterCommit += 1
   return 'after-commit'
 }
@@ -220,4 +236,10 @@ export const readCommitCounts = (): {
     maxRowsPerCommit: Math.max(...values),
     rowsPerCommitHistogram: histogram
   }
+}
+
+export const readCommitSamples = (): Array<{ commit: number; ids: string[] }> => {
+  const bucket = scope()?.[COMMIT_KEY] as
+    { samples: Array<{ commit: number; ids: string[] }> } | undefined
+  return bucket?.samples ?? []
 }
