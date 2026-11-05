@@ -49,3 +49,24 @@
 - 三句文案是**逐字复制**进规格的：改文案就必须同步改这里，这是有意为之（规格要钉读者看到的话）。
 - 没点 `Open installer`：那一步是 `shell.openPath`（打开真实安装包），规格不替用户启动安装器。
 - 5.3 s 不是性能基线，只是这支规格的墙钟。
+
+## 五 补上 v2.22 的完成判据：一次检查 = 一次请求，且更新作用域没有说过失败
+
+排期档给这一版写的完成判据是「冷启动一次更新检查只打一次网络请求、无 error 级日志」，此前没有任何读数
+（既有规格停在「对话打开」或「下载到 ready」，都不数请求）。现在同一支规格在 `ready` 之后补两件事：
+
+- **计数口径**：读**本次启动自己那份被捕获的输出**（`app.currentLaunchLogPath`，即主进程日志的 console 镜像），
+  而不是 `~/Library/Logs/PureScience/main.log` —— 后者在本机同时被常驻的 dev 实例写入，读到的一行可能属于
+  另一个进程。基线取在点击 `Check now` **之前**，断言的是**增量恰好 1**，因此启动时那次自动检查不会混进来。
+- **失败那一半**：更新作用域（`[update]`）在本窗口内不得出现 `error|failed|refus` 措辞。**具名边界**：console
+  镜像不带 `level` 字段，所以这一半不是「没有 `level=error` 的记录」，而是「更新作用域没有说过失败」；
+  要按 `level` 判定只能去读共享的 JSONL 主日志，而它在窗口期内被别的实例写入、本轮又正好到 5 MB 轮转线，
+  读数不可归因，故不采用，也不把它写成已测。
+
+读数（本机真窗口；`npm run build:e2e` 后 `npx playwright test e2e/certification/update-manual-install.spec.ts`）：
+
+| 项 | 读数 |
+| --- | --- |
+| 规格自己打印 | `[update-cert] state=ready … manifestRequests=1 updateFailures=0` |
+| 判决 | **1 passed (7.9 s)**，退出码 0 |
+| 变异自证 | 把增量断言改成 `toBe(2)` 后重跑：`Expected: 2 / Received: 1` ⇒ 计数器确实只读到一次请求，断言不是恒真 |
