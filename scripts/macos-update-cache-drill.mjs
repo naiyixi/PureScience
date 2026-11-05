@@ -48,6 +48,7 @@ import { dump, load } from 'js-yaml'
 import { _electron as electron } from 'playwright'
 
 import { artifactVersion, findAppBundle } from './macos-package-smoke.mjs'
+import { expectedMacTeamId } from './ci/mac-signing-status.mjs'
 
 const SMOKE_ROOT_PREFIX = 'purescience-update-cache-drill-'
 const APP_ROOT = resolve(process.cwd())
@@ -277,9 +278,10 @@ const BUNDLE_SWAP_TIMEOUT_MS = 180_000
 const PURGE_TIMEOUT_MS = 90_000
 // The signature the shipped strategy demands before it will auto-update in place
 // (src/main/update/create-strategy.ts -> macCanAutoUpdate). Checked early so a signature problem is
-// reported as such instead of as a puzzling "the feed offered nothing" a minute later.
+// reported as such instead of as a puzzling "the feed offered nothing" a minute later. The team is
+// resolved from PURESCIENCE_MAC_TEAM_ID (one variable for the app and for the certification gate);
+// unprovisioned is a named stop, never a wildcard.
 const OFFICIAL_MAC_BUNDLE_ID = 'com.zerolink.purescience'
-const OFFICIAL_MAC_TEAM_ID = '87G9WFU9H3'
 
 const runProcess = (executable, args, options = {}) =>
   new Promise((resolveProcess, rejectProcess) => {
@@ -577,10 +579,27 @@ const runRealUpdateDrill = async (options) => {
             `(Identifier=${signature.identifier ?? '<none>'}); mac in-place update is unavailable`
         )
       }
-      if (signature.teamIdentifier !== OFFICIAL_MAC_TEAM_ID) {
+    }
+    // One expectation for the drill and for the release gate: PURESCIENCE_MAC_TEAM_ID. Without it the
+    // comparison below would have nothing to compare against, and "any Developer ID" is exactly the
+    // reading that let an ad-hoc build look certified — so an unset variable stops here by name.
+    const expectedTeamId = expectedMacTeamId()
+    if (expectedTeamId === '') {
+      throw new Error(
+        'PURESCIENCE_MAC_TEAM_ID is not set, so the drill cannot say whether these bundles carry ' +
+          "this project's Developer ID signature (an unattributable signature is not a pass). Set it " +
+          'to the shipping team id and re-run.'
+      )
+    }
+    for (const [label, signature] of [
+      ['previous', previousSignature],
+      ['update', updateSignature]
+    ]) {
+      if (signature.teamIdentifier !== expectedTeamId) {
         throw new Error(
-          `the ${label} bundle is not Developer ID signed (TeamIdentifier=` +
-            `${signature.teamIdentifier ?? '<none>'}); mac in-place update is unavailable`
+          `the ${label} bundle is not signed by the expected team (TeamIdentifier=` +
+            `${signature.teamIdentifier ?? '<none>'}, expected ${expectedTeamId}); ` +
+            'mac in-place update is unavailable'
         )
       }
     }

@@ -27,11 +27,17 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-// The Developer ID team the shipped mac builds must carry. Mirrors OFFICIAL_MAC_TEAM_ID in
-// src/main/update/create-strategy.ts: Squirrel.Mac only accepts a replacement bundle signed by the
-// same team, so "signed" means "signed by THIS team" — an ad-hoc signature (TeamIdentifier=not set)
-// or a certificate from another team is not a signed mac release.
-export const OFFICIAL_MAC_TEAM_ID = '87G9WFU9H3'
+// The Developer ID team the shipped mac builds must carry. There is exactly one source for it:
+// PURESCIENCE_MAC_TEAM_ID, the variable the app itself reads before it offers a mac in-place update
+// (src/main/update/create-strategy.ts -> expectedMacTeamId). Unset means "not provisioned yet" — an
+// honest state, not a value to guess: a hard-coded team would certify a signature nobody in this
+// project owns, and "any Developer ID will do" would accept a stranger's. Squirrel.Mac only accepts a
+// replacement bundle signed by the same team as the installed one, so "signed" means "signed by THIS
+// team", not "carries some team identifier".
+export const MAC_TEAM_ID_ENV = 'PURESCIENCE_MAC_TEAM_ID'
+export const expectedMacTeamId = (env = process.env) => String(env?.[MAC_TEAM_ID_ENV] ?? '').trim()
+export const teamIdExpectation = (expected) =>
+  String(expected ?? '').trim() === '' ? 'not-configured' : 'configured'
 export const MAC_SIGNATURE_STATES = ['signed', 'unsigned', 'unproven']
 
 // The release page marks the disclosure with this exact prefix; scripts/release-notes.mjs keeps a
@@ -59,26 +65,37 @@ export const macSigningDisclosure = (macSignature) => {
 }
 
 // `codesign -d` writes its description to stderr and still exits 0, so the reading is taken from the
-// merged output. An ad-hoc signature reports `TeamIdentifier=not set`; only the shipping Developer ID
-// carries the team.
-export const parseCodesignDescription = (text) => {
+// merged output. An ad-hoc signature reports `TeamIdentifier=not set`; only a Developer ID carries a
+// team. `signed` is deliberately false when no expected team is provisioned: a signature nobody can
+// attribute is not this project's signed release.
+export const parseCodesignDescription = (text, { expectedTeamId = expectedMacTeamId() } = {}) => {
   const description = String(text ?? '')
   const identifier = description.match(/^Identifier=(.+)$/m)?.[1]?.trim()
   const teamIdentifier = description.match(/^TeamIdentifier=(.+)$/m)?.[1]?.trim()
+  const signerTeam =
+    teamIdentifier === undefined || teamIdentifier === 'not set' ? null : teamIdentifier
+  const expected = String(expectedTeamId ?? '').trim()
   return {
     identifier: identifier ?? null,
     teamIdentifier: teamIdentifier ?? null,
-    signed: teamIdentifier === OFFICIAL_MAC_TEAM_ID
+    signerTeam,
+    teamIdExpectation: teamIdExpectation(expected),
+    signed: expected !== '' && signerTeam === expected
   }
 }
 
 // Read a bundle's signature on this machine. Never throws: an unreadable bundle is an UNOBSERVED
 // reading (readable: false), which the gate treats as "not a pass" rather than as "unsigned".
-export const readMacBundleSignature = (bundlePath, { source = 'app-directory', artifact } = {}) => {
+export const readMacBundleSignature = (
+  bundlePath,
+  { source = 'app-directory', artifact, expectedTeamId = expectedMacTeamId() } = {}
+) => {
   const result = spawnSync('/usr/bin/codesign', ['-d', '--verbose=4', bundlePath], {
     encoding: 'utf8'
   })
-  const parsed = parseCodesignDescription(`${result.stdout ?? ''}\n${result.stderr ?? ''}`)
+  const parsed = parseCodesignDescription(`${result.stdout ?? ''}\n${result.stderr ?? ''}`, {
+    expectedTeamId
+  })
   const readable = Boolean(parsed.identifier || parsed.teamIdentifier)
   return {
     schemaVersion: 1,
@@ -88,6 +105,8 @@ export const readMacBundleSignature = (bundlePath, { source = 'app-directory', a
     readable,
     identifier: parsed.identifier,
     teamIdentifier: parsed.teamIdentifier,
+    signerTeam: parsed.signerTeam,
+    teamIdExpectation: parsed.teamIdExpectation,
     signed: readable && parsed.signed
   }
 }
@@ -120,10 +139,25 @@ export const unobservedDetail = (reading) => {
   return 'the reading carried no usable signature fields'
 }
 
-export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) => {
+// The verdict, with the expectation as an input rather than as a constant. Two things stay true here:
+// an unobserved asset is never a pass, and "signed" means "signed by the team THIS project provisions
+// (PURESCIENCE_MAC_TEAM_ID)", recomputed from the reading's own team identifier — a reading file that
+// merely claims `signed: true` cannot buy a pass for a team we do not own.
+export const evaluateMacSignatureGate = ({
+  credentialsPresent,
+  reading,
+  expectedTeamId = expectedMacTeamId()
+} = {}) => {
   const configured = credentialsPresent === true
   const observed = readingIsObserved(reading)
-  const signed = observed && reading.signed === true
+  const expected = String(expectedTeamId ?? '').trim()
+  const signerTeam =
+    typeof reading?.signerTeam === 'string'
+      ? reading.signerTeam
+      : typeof reading?.teamIdentifier === 'string' && reading.teamIdentifier !== 'not set'
+        ? reading.teamIdentifier
+        : null
+  const signed = observed && expected !== '' && signerTeam === expected
 
   if (configured && signed) {
     return {
@@ -131,7 +165,18 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
       ok: true,
       reason:
         'Apple credentials are configured and the macOS asset is Developer ID signed ' +
-        `(TeamIdentifier=${reading.teamIdentifier}).`
+        `(TeamIdentifier=${signerTeam}).`
+    }
+  }
+  if (configured && observed && expected === '') {
+    return {
+      macSignature: 'unsigned',
+      ok: false,
+      reason:
+        'Apple credentials are configured but no expected signing team is provisioned ' +
+        `(${MAC_TEAM_ID_ENV} is unset), so the macOS asset's signature ` +
+        `(TeamIdentifier=${reading.teamIdentifier ?? 'not set'}) cannot be attributed to this ` +
+        'project — unprovisioned is not a pass.'
     }
   }
   if (configured && observed) {
@@ -139,9 +184,9 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
       macSignature: 'unsigned',
       ok: false,
       reason:
-        'Apple credentials are configured but the macOS asset is NOT Developer ID signed ' +
-        `(TeamIdentifier=${reading.teamIdentifier ?? 'not set'}) — a credentialed run must not ` +
-        'record or publish an unsigned macOS asset.'
+        'Apple credentials are configured but the macOS asset is NOT signed by the expected team ' +
+        `(TeamIdentifier=${reading.teamIdentifier ?? 'not set'}, expected ${expected}) — a ` +
+        'credentialed run must not record or publish a macOS asset signed by another team.'
     }
   }
   if (configured) {
@@ -159,7 +204,7 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
       ok: true,
       reason:
         'The macOS asset is Developer ID signed ' +
-        `(TeamIdentifier=${reading.teamIdentifier}); no credentials were needed in this run.`
+        `(TeamIdentifier=${signerTeam}); no credentials were needed in this run.`
     }
   }
   if (observed) {
@@ -180,15 +225,23 @@ export const evaluateMacSignatureGate = ({ credentialsPresent, reading } = {}) =
   }
 }
 
-// The fields the certification record carries, next to the state they came from.
-export const macSignatureEvidence = ({ credentialsPresent, reading } = {}) => {
-  const { macSignature } = evaluateMacSignatureGate({ credentialsPresent, reading })
+// The fields the certification record carries, next to the state they came from. `teamIdExpected`
+// names its own absence (`not-configured`) instead of going empty: a record that reads "expected: null"
+// leaves the next reader guessing whether nothing was expected or nothing was measured.
+export const macSignatureEvidence = ({
+  credentialsPresent,
+  reading,
+  expectedTeamId = expectedMacTeamId()
+} = {}) => {
+  const { macSignature } = evaluateMacSignatureGate({ credentialsPresent, reading, expectedTeamId })
   const observed = readingIsObserved(reading)
+  const expected = String(expectedTeamId ?? '').trim()
   return {
     macSignature,
     macSignatureEvidence: {
       credentialsPresent: credentialsPresent === true,
-      teamIdExpected: OFFICIAL_MAC_TEAM_ID,
+      teamIdExpected: expected === '' ? 'not-configured' : expected,
+      teamIdExpectation: teamIdExpectation(expected),
       identifier: observed ? (reading.identifier ?? null) : null,
       teamIdentifier: observed ? (reading.teamIdentifier ?? null) : null,
       // A reading that could not be used still says where it came from: 'smoke-failure' is the difference
@@ -273,9 +326,11 @@ const verifyCommand = (argv) => {
   const label = argumentValue(argv, '--label') ?? 'macOS signing'
   const reading =
     readingArgument && readingArgument !== 'none' ? readJsonFile(readingArgument) : undefined
+  const expectedTeam = String(argumentValue(argv, '--team-id') ?? expectedMacTeamId()).trim()
   const decision = evaluateMacSignatureGate({
     credentialsPresent: credentials === 'present',
-    reading
+    reading,
+    expectedTeamId: expectedTeam
   })
 
   console.log(`${label}: ${summarise(decision)}`)
@@ -292,6 +347,11 @@ const verifyCommand = (argv) => {
     `- result: **${decision.ok ? 'ok' : 'FAIL'}**\n` +
     `- macSignature: **${decision.macSignature}**\n` +
     `- credentials configured: ${credentials === 'present'}\n` +
+    `- expected signing team: ${
+      expectedTeam === ''
+        ? `**not provisioned** (\`${MAC_TEAM_ID_ENV}\` is unset, so no signature can be attributed)`
+        : expectedTeam
+    }\n` +
     `- signature reading: ${
       readingIsObserved(reading)
         ? `Identifier=${reading.identifier ?? '<none>'}, TeamIdentifier=${reading.teamIdentifier ?? '<none>'} (${reading.source ?? 'unknown'})`

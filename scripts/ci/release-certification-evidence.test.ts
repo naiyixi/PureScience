@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   aggregateEvidence,
@@ -15,7 +15,20 @@ import {
 
 const platforms = ['linux-x64', 'macos-arm64', 'macos-x64', 'windows-x64']
 
+// A team id that belongs to nobody: the expected signing team is configuration
+// (PURESCIENCE_MAC_TEAM_ID), never a constant checked into this repository.
+const TEST_TEAM_ID = 'TESTTEAM01'
+
 describe('release certification evidence', () => {
+  // Set once for the file so the signed/unsigned arms are deterministic whatever the ambient
+  // environment says; the unprovisioned case is exercised in mac-signing-status.test.ts.
+  beforeAll(() => {
+    process.env.PURESCIENCE_MAC_TEAM_ID = TEST_TEAM_ID
+  })
+  afterAll(() => {
+    delete process.env.PURESCIENCE_MAC_TEAM_ID
+  })
+
   it('hashes only user-facing distributables in stable order', async () => {
     const root = await mkdtemp(join(tmpdir(), 'release-evidence-artifacts-'))
     await writeFile(join(root, 'latest.yml'), 'ignored')
@@ -232,7 +245,8 @@ describe('release certification evidence', () => {
             macSignature: 'unsigned',
             macSignatureEvidence: {
               credentialsPresent: false,
-              teamIdExpected: '87G9WFU9H3',
+              teamIdExpected: TEST_TEAM_ID,
+              teamIdExpectation: 'configured',
               identifier: 'com.zerolink.purescience',
               teamIdentifier: 'not set',
               readingSource: 'shipped-zip'
@@ -422,7 +436,7 @@ describe('release certification evidence', () => {
         readable: true,
         identifier: 'com.zerolink.purescience',
         teamIdentifier,
-        signed: teamIdentifier === '87G9WFU9H3'
+        signed: teamIdentifier === TEST_TEAM_ID
       })
     await writeFile(join(root, 'app.zip'), 'artifact')
 
@@ -441,7 +455,8 @@ describe('release certification evidence', () => {
       macSignature: 'unsigned',
       macSignatureEvidence: {
         credentialsPresent: false,
-        teamIdExpected: '87G9WFU9H3',
+        teamIdExpected: TEST_TEAM_ID,
+        teamIdExpectation: 'configured',
         teamIdentifier: 'not set',
         readingSource: 'shipped-zip'
       }
@@ -454,12 +469,16 @@ describe('release certification evidence', () => {
     ).rejects.toThrow(/macOS signature gate failed for macos-arm64/)
 
     // Credentials configured and the bundle carries the shipping Developer ID: signed.
-    await writeFile(reading, readingFor('87G9WFU9H3'))
+    await writeFile(reading, readingFor(TEST_TEAM_ID))
     await expect(
       writePlatformEvidence({ argv: macArguments('present'), environment })
     ).resolves.toMatchObject({
       macSignature: 'signed',
-      macSignatureEvidence: { credentialsPresent: true, teamIdentifier: '87G9WFU9H3' }
+      macSignatureEvidence: {
+        credentialsPresent: true,
+        teamIdentifier: TEST_TEAM_ID,
+        teamIdExpected: TEST_TEAM_ID
+      }
     })
 
     // macOS evidence without the credentials input is refused by name rather than defaulted.

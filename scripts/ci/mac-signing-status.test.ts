@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   MAC_SIGNING_DISCLOSURE_MARKER,
-  OFFICIAL_MAC_TEAM_ID,
+  MAC_TEAM_ID_ENV,
   ensureDisclosureInBody,
   evaluateMacSignatureGate,
+  expectedMacTeamId,
   macSignatureEvidence,
   macSigningDisclosure,
   macSigningDisclosureFromRecord,
@@ -14,13 +15,19 @@ import {
   unobservedDetail
 } from './mac-signing-status.mjs'
 
+// A team id that belongs to nobody. The gate must take the expectation as configuration (the same
+// PURESCIENCE_MAC_TEAM_ID the app reads), never as a constant in this repository — a constant would
+// certify a signature this project does not own.
+const TEST_TEAM_ID = 'TESTTEAM01'
+const OTHER_TEAM_ID = 'OTHERTEAM1'
+
 // A real Developer ID description, as `codesign -d --verbose=4` prints it.
 const DEVELOPER_ID_DESCRIPTION = [
   'Executable=/tmp/PureScience.app/Contents/MacOS/PureScience',
   'Identifier=com.zerolink.purescience',
   'Format=app bundle with Mach-O thin (arm64)',
   'CodeDirectory v=20500 size=1234 flags=0x10000(runtime) hashes=1+3 location=embedded',
-  `TeamIdentifier=${OFFICIAL_MAC_TEAM_ID}`,
+  `TeamIdentifier=${TEST_TEAM_ID}`,
   'Authority=Developer ID Application: ZEROLINK'
 ].join('\n')
 
@@ -38,7 +45,7 @@ const signedReading = {
   artifact: 'zerolink-purescience-1.0.0-mac-arm64.zip',
   readable: true,
   identifier: 'com.zerolink.purescience',
-  teamIdentifier: OFFICIAL_MAC_TEAM_ID,
+  teamIdentifier: TEST_TEAM_ID,
   signed: true
 }
 
@@ -53,28 +60,80 @@ const unsignedReading = {
 }
 
 describe('mac signing status gate', () => {
+  it('reads the expected team from configuration, never from a constant in the repository', () => {
+    expect(expectedMacTeamId({ [MAC_TEAM_ID_ENV]: ' TEAM123456 ' })).toBe('TEAM123456')
+    expect(expectedMacTeamId({})).toBe('')
+    expect(expectedMacTeamId({ [MAC_TEAM_ID_ENV]: '   ' })).toBe('')
+  })
+
   it('passes signed assets when the signing credentials are configured', () => {
-    const decision = evaluateMacSignatureGate({ credentialsPresent: true, reading: signedReading })
+    const decision = evaluateMacSignatureGate({
+      credentialsPresent: true,
+      reading: signedReading,
+      expectedTeamId: TEST_TEAM_ID
+    })
 
     expect(decision).toMatchObject({ macSignature: 'signed', ok: true })
-    expect(decision.reason).toContain(OFFICIAL_MAC_TEAM_ID)
+    expect(decision.reason).toContain(TEST_TEAM_ID)
   })
 
   it('fails unsigned assets when the signing credentials are configured (fail-closed)', () => {
     const decision = evaluateMacSignatureGate({
       credentialsPresent: true,
-      reading: unsignedReading
+      reading: unsignedReading,
+      expectedTeamId: TEST_TEAM_ID
     })
 
     expect(decision).toMatchObject({ macSignature: 'unsigned', ok: false })
-    expect(decision.reason).toContain('NOT Developer ID signed')
+    expect(decision.reason).toContain('NOT signed by the expected team')
     expect(decision.reason).toContain('not set')
+    expect(decision.reason).toContain(TEST_TEAM_ID)
+  })
+
+  // A credentialed run whose team was never provisioned has nothing to compare against. It must stop
+  // and name the variable, not fall back to "any Developer ID" (that reading is what let an ad-hoc
+  // build look certified in the first place).
+  it('fails a credentialed run when no expected team is provisioned, naming the variable', () => {
+    const decision = evaluateMacSignatureGate({
+      credentialsPresent: true,
+      reading: signedReading,
+      expectedTeamId: ''
+    })
+
+    expect(decision).toMatchObject({ macSignature: 'unsigned', ok: false })
+    expect(decision.reason).toContain(MAC_TEAM_ID_ENV)
+    expect(decision.reason).toContain('unprovisioned is not a pass')
+  })
+
+  it('fails a credentialed run signed by another team, naming both ids', () => {
+    const decision = evaluateMacSignatureGate({
+      credentialsPresent: true,
+      reading: { ...signedReading, teamIdentifier: OTHER_TEAM_ID },
+      expectedTeamId: TEST_TEAM_ID
+    })
+
+    expect(decision).toMatchObject({ macSignature: 'unsigned', ok: false })
+    expect(decision.reason).toContain(OTHER_TEAM_ID)
+    expect(decision.reason).toContain(TEST_TEAM_ID)
+  })
+
+  // The reading is written by the smoke step, but the verdict is not: a file that claims signed: true
+  // for a team we do not own must not become a pass.
+  it('does not let a reading claim a signature for a team the project does not own', () => {
+    const decision = evaluateMacSignatureGate({
+      credentialsPresent: false,
+      reading: { ...signedReading, teamIdentifier: OTHER_TEAM_ID },
+      expectedTeamId: TEST_TEAM_ID
+    })
+
+    expect(decision).toMatchObject({ macSignature: 'unsigned', ok: true })
   })
 
   it('passes but labels an unsigned asset when no credentials are configured', () => {
     const decision = evaluateMacSignatureGate({
       credentialsPresent: false,
-      reading: unsignedReading
+      reading: unsignedReading,
+      expectedTeamId: TEST_TEAM_ID
     })
 
     expect(decision).toMatchObject({ macSignature: 'unsigned', ok: true })
@@ -99,27 +158,50 @@ describe('mac signing status gate', () => {
   })
 
   it('records the readings that produced the verdict', () => {
-    expect(macSignatureEvidence({ credentialsPresent: false, reading: unsignedReading })).toEqual({
+    expect(
+      macSignatureEvidence({
+        credentialsPresent: false,
+        reading: unsignedReading,
+        expectedTeamId: TEST_TEAM_ID
+      })
+    ).toEqual({
       macSignature: 'unsigned',
       macSignatureEvidence: {
         credentialsPresent: false,
-        teamIdExpected: OFFICIAL_MAC_TEAM_ID,
+        teamIdExpected: TEST_TEAM_ID,
+        teamIdExpectation: 'configured',
         identifier: 'com.zerolink.purescience',
         teamIdentifier: 'not set',
         readingSource: 'shipped-zip'
       }
     })
 
-    expect(macSignatureEvidence({ credentialsPresent: true, reading: undefined })).toEqual({
+    expect(
+      macSignatureEvidence({
+        credentialsPresent: true,
+        reading: undefined,
+        expectedTeamId: TEST_TEAM_ID
+      })
+    ).toEqual({
       macSignature: 'unproven',
       macSignatureEvidence: {
         credentialsPresent: true,
-        teamIdExpected: OFFICIAL_MAC_TEAM_ID,
+        teamIdExpected: TEST_TEAM_ID,
+        teamIdExpectation: 'configured',
         identifier: null,
         teamIdentifier: null,
         readingSource: 'not-read'
       }
     })
+
+    // Unprovisioned names itself in the record instead of leaving an empty field behind.
+    expect(
+      macSignatureEvidence({
+        credentialsPresent: false,
+        reading: unsignedReading,
+        expectedTeamId: ''
+      }).macSignatureEvidence
+    ).toMatchObject({ teamIdExpected: 'not-configured', teamIdExpectation: 'not-configured' })
   })
 
   // "Never read" has three causes with three different next steps: the step did not run, it ran and failed
@@ -193,22 +275,41 @@ describe('mac signing status gate', () => {
   })
 
   it('reads a Developer ID signature and an ad-hoc signature apart', () => {
-    expect(parseCodesignDescription(DEVELOPER_ID_DESCRIPTION)).toEqual({
+    expect(
+      parseCodesignDescription(DEVELOPER_ID_DESCRIPTION, { expectedTeamId: TEST_TEAM_ID })
+    ).toEqual({
       identifier: 'com.zerolink.purescience',
-      teamIdentifier: OFFICIAL_MAC_TEAM_ID,
+      teamIdentifier: TEST_TEAM_ID,
+      signerTeam: TEST_TEAM_ID,
+      teamIdExpectation: 'configured',
       signed: true
     })
-    expect(parseCodesignDescription(AD_HOC_DESCRIPTION)).toEqual({
+    expect(parseCodesignDescription(AD_HOC_DESCRIPTION, { expectedTeamId: TEST_TEAM_ID })).toEqual({
       identifier: 'com.zerolink.purescience',
       teamIdentifier: 'not set',
+      signerTeam: null,
+      teamIdExpectation: 'configured',
       signed: false
     })
     // A certificate from another team is not a signed mac release for this updater.
-    expect(parseCodesignDescription('TeamIdentifier=OTHERTEAM1').signed).toBe(false)
+    expect(
+      parseCodesignDescription(`TeamIdentifier=${OTHER_TEAM_ID}`, { expectedTeamId: TEST_TEAM_ID })
+        .signed
+    ).toBe(false)
+    // Nor is a signature nobody can attribute to this project (no expectation provisioned).
+    expect(
+      parseCodesignDescription(`TeamIdentifier=${TEST_TEAM_ID}`, { expectedTeamId: '' })
+    ).toMatchObject({
+      signerTeam: TEST_TEAM_ID,
+      teamIdExpectation: 'not-configured',
+      signed: false
+    })
   })
 
   it('reports an unreadable bundle as unobserved rather than as unsigned', () => {
-    const reading = readMacBundleSignature('/nonexistent/PureScience.app')
+    const reading = readMacBundleSignature('/nonexistent/PureScience.app', {
+      expectedTeamId: TEST_TEAM_ID
+    })
 
     expect(reading.readable).toBe(false)
     expect(reading.signed).toBe(false)
