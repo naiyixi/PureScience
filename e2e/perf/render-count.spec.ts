@@ -46,7 +46,15 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
   await page.bringToFront()
 
   const turns = Number(process.env.PERF_TURNS ?? 10)
-  await sendTurn(page, 'Warm-up turn')
+  // The reply corpus decides what share of a row is message body vs chrome. The deterministic reply is a
+  // single sentence (three elements), so a body/chrome split read off it is a floor for the body and says
+  // nothing about a turn that carries a heading, a list, a fenced block and a table. `PERF_RICH_MARKDOWN=1`
+  // asks the fixture agent for that corpus; the reply is unchanged for every other spec.
+  const richMarkdown = process.env.PERF_RICH_MARKDOWN === '1'
+  const corpus = richMarkdown ? 'rich-markdown' : 'short'
+  const turnPrompt = (label: string): string =>
+    richMarkdown ? `Rich markdown fixture turn. (${label})` : `Counted turn ${label}`
+  await sendTurn(page, richMarkdown ? 'Rich markdown fixture turn. (warm-up)' : 'Warm-up turn')
 
   await page.evaluate(() => {
     const host = window as unknown as Record<string, unknown>
@@ -66,7 +74,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
   })
 
   for (let index = 0; index < turns; index += 1) {
-    await sendTurn(page, `Counted turn ${index}`)
+    await sendTurn(page, turnPrompt(String(index)))
   }
 
   const readings = await page.evaluate(() => {
@@ -403,7 +411,17 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
         for (const node of Array.from(row.querySelectorAll(selector)))
           body += node.querySelectorAll('*').length
       }
-      return { total: all.length, body, chrome: all.length - body }
+      // A row is either an agent turn (markdown body) or the user's prompt bubble. Their node budgets are
+      // not comparable — a one-line prompt is ~3 body nodes while a reply with a table is hundreds — so a
+      // median taken over both kinds mostly reports which kind happens to be more numerous.
+      const kind: 'agent' | 'user' | 'other' = row.querySelector(
+        '[data-slot="assistant-message-body"]'
+      )
+        ? 'agent'
+        : row.querySelector('[data-slot="user-message-bubble"]')
+          ? 'user'
+          : 'other'
+      return { kind, total: all.length, body, chrome: all.length - body }
     })
     const histogram: Record<string, number> = {}
     const bySlot: Record<string, number> = {}
@@ -420,12 +438,36 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       const sorted = [...values].sort((left, right) => left - right)
       return sorted[Math.floor(sorted.length / 2)] ?? 0
     }
+    const group = (
+      kind: 'agent' | 'user' | 'other'
+    ): {
+      rows: number
+      total: number
+      medianTotal: number
+      medianBody: number
+      medianChrome: number
+      bodyShare: number
+    } => {
+      const members = perRow.filter((row) => row.kind === kind)
+      const sumOf = (
+        pick: (row: { total: number; body: number; chrome: number }) => number
+      ): number => members.reduce((sum, row) => sum + pick(row), 0)
+      const total = sumOf((row) => row.total)
+      return {
+        rows: members.length,
+        total,
+        medianTotal: median(members.map((row) => row.total)),
+        medianBody: median(members.map((row) => row.body)),
+        medianChrome: median(members.map((row) => row.chrome)),
+        bodyShare: total === 0 ? 0 : sumOf((row) => row.body) / total
+      }
+    }
     return {
       rows: perRow.length,
       total: perRow.reduce((sum, row) => sum + row.total, 0),
-      medianTotal: median(perRow.map((row) => row.total)),
-      medianBody: median(perRow.map((row) => row.body)),
-      medianChrome: median(perRow.map((row) => row.chrome)),
+      agent: group('agent'),
+      user: group('user'),
+      other: group('other'),
       histogram,
       bySlot
     }
@@ -436,9 +478,17 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       .slice(0, limit)
       .map(([key, count]) => `${key}=${count}`)
       .join(' ')
+  const share = (group: { bodyShare: number }): string => `${Math.round(group.bodyShare * 100)}%`
   console.log(
-    `[row-nodes] ${turns} turns: rows=${nodeShape.rows} total=${nodeShape.total}` +
-      ` median=${nodeShape.medianTotal} (body=${nodeShape.medianBody} chrome=${nodeShape.medianChrome})` +
+    `[row-nodes] corpus=${corpus} ${turns} turns: rows=${nodeShape.rows}` +
+      ` (agent=${nodeShape.agent.rows} user=${nodeShape.user.rows} other=${nodeShape.other.rows})` +
+      ` total=${nodeShape.total}`
+  )
+  console.log(
+    `[row-nodes-kind] agent median=${nodeShape.agent.medianTotal}` +
+      ` (body=${nodeShape.agent.medianBody} chrome=${nodeShape.agent.medianChrome}) share=${share(nodeShape.agent)}` +
+      ` | user median=${nodeShape.user.medianTotal}` +
+      ` (body=${nodeShape.user.medianBody} chrome=${nodeShape.user.medianChrome}) share=${share(nodeShape.user)}` +
       ` | top tags ${topOf(nodeShape.histogram, 8)}`
   )
   console.log(`[row-nodes-slots] ${topOf(nodeShape.bySlot, 10)}`)

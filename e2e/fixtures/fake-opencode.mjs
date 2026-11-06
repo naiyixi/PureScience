@@ -30,6 +30,43 @@ const SCREENING_PROMPT_MARKER = 'You screen ONE bibliographic record'
 const SCREENING_EXCLUDE_MARKER = 'Please exclude me'
 const PARTIAL_TURN_REPLY = 'Part of the answer arrived before the app went down.'
 const CONTINUED_TURN_REPLY = 'The interrupted turn continued from where it stopped.'
+// Nodes-per-row readings taken on a one-sentence reply are a floor for the message body: the reply renders
+// as three elements, so 90% of every row is chrome *for that corpus*. A real scientific turn carries
+// headings, lists, a fenced block and a table, and the body then dominates. The marker lets a spec ask for
+// that corpus explicitly; no other spec sends it, so every existing expectation keeps the short reply.
+const RICH_MARKDOWN_PROMPT = 'Rich markdown fixture turn.'
+const RICH_MARKDOWN_REPLY = [
+  '## Summary of the fitted model',
+  '',
+  'The residual structure is **not** explained by the covariate we added; the fit below is the one to keep.',
+  '',
+  '- Inclusion stayed at 18 of 24 records.',
+  '- Two studies were excluded for overlapping cohorts (`NCT04280705`, `NCT04605705`).',
+  '- Heterogeneity dropped from *I² = 61%* to *I² = 38%*.',
+  '',
+  '### Reproduction steps',
+  '',
+  '```python',
+  'import pandas as pd',
+  'from sklearn.linear_model import LogisticRegression',
+  '',
+  'frame = pd.read_csv("cohort.csv")',
+  'model = LogisticRegression(max_iter=2000)',
+  'model.fit(frame[["age", "bmi", "egfr"]], frame["event"])',
+  'print(dict(zip(model.feature_names_in_, model.coef_[0].round(3))))',
+  '```',
+  '',
+  '| Field | Before | After |',
+  '| ----- | ------ | ----- |',
+  '| Events | 412 | 398 |',
+  '| Person-years | 2,140 | 2,077 |',
+  '| I² | 61% | 38% |',
+  '',
+  '> The point estimate moved by less than its own standard error, so the direction is stable even though',
+  '> the magnitude is not.',
+  '',
+  'Next: re-run the sensitivity analysis with the two excluded cohorts restored.'
+].join('\n')
 
 const sessionRoutes = new Map()
 
@@ -799,7 +836,9 @@ if (process.argv.includes('--version')) {
       }
       agentLog(`session.prompt ${context.params.sessionId}: ${prompt.slice(0, 90)}`)
       try {
-        if (prompt.includes(SCREENING_PROMPT_MARKER)) {
+        if (prompt.includes(RICH_MARKDOWN_PROMPT)) {
+          reply = RICH_MARKDOWN_REPLY
+        } else if (prompt.includes(SCREENING_PROMPT_MARKER)) {
           reply = screeningReply(prompt)
         } else if (prompt.includes(PROVIDER_BRIDGE_PROMPT)) {
           reply = verifyProviderBridge()
