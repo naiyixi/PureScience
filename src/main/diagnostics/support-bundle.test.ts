@@ -17,6 +17,7 @@ import { createStartupStepsHolder } from './startup-steps-snapshot'
 import { createComposeStepRecorder } from './compose-steps'
 import { readShippedModelWeightManifest } from '../engines/model-weight-manifest-file'
 import { createIpcChannelLatency } from './ipc-channel-latency'
+import { createKernelCpuRing } from '../notebook/kernel-idle-spin'
 
 const roots: string[] = []
 
@@ -71,6 +72,9 @@ const baseInput = async (root: string): Promise<SupportBundleInput> => {
     // The Web face's window is a second instance of the same factory, so its empty default comes from there
     // too — the fixture never invents the shape it is supposed to be testing.
     webRpcChannelLatency: createIpcChannelLatency().summary(),
+    // The kernel cpu ring's own empty state: `monitor-not-started`, which is what a bundle exported before any
+    // kernel spawned carries. Written by the factory, not by hand.
+    notebookKernelCpu: createKernelCpuRing().summary(),
     homeDir: HOME_DIR,
     userName: 'example-user',
     now: () => new Date('2026-09-28T00:00:00.000Z')
@@ -529,6 +533,82 @@ describe('support bundle: trajectory section', () => {
     expect(timeline.samples.map((entry) => entry.freeMemMb)).toEqual([90, 61, 74])
     expect(timeline.paging.readings.map((entry) => entry.pageouts)).toEqual([900, 940])
     expect(timeline.paging.readings[0].swapouts).toBe(7)
+  })
+
+  // The question behind "the machine got slow and the fan never stopped": was a kernel still burning a core
+  // after its cell returned? The log line that says so rotates; this section is the part that travels.
+  it('carries the idle-kernel cpu windows, both the quiet and the spinning ones', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+    const ring = createKernelCpuRing({ now: () => new Date('2026-11-07T02:00:00.000Z') })
+    ring.noteMonitorStarted()
+    ring.record({
+      key: 'python:default',
+      kind: 'python',
+      env: 'default',
+      pid: 79142,
+      cpuPercent: 3,
+      windowMs: 15_000,
+      thresholdPercent: 50
+    })
+    ring.record({
+      key: 'python:default',
+      kind: 'python',
+      env: 'default',
+      pid: 79142,
+      cpuPercent: 97.6,
+      windowMs: 15_000,
+      thresholdPercent: 50
+    })
+
+    const result = await createSupportBundle({ ...input, notebookKernelCpu: ring.summary() })
+
+    expect(result.entries).toContain('diagnostics/notebook-kernel-cpu.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const section = JSON.parse(await readFrom(target, 'diagnostics/notebook-kernel-cpu.json')) as {
+      status: string
+      monitor: string
+      observed: number
+      dropped: number
+      latest: { pid: number; cpuPercent: number; spinning: boolean }[]
+      records: { cpuPercent: number; spinning: boolean; windowMs: number }[]
+    }
+    expect(section.status).toBe('samples')
+    expect(section.monitor).toBe('running')
+    expect(section.observed).toBe(2)
+    expect(section.dropped).toBe(0)
+    // The quiet window is the comparison the spinning one needs; dropping it would leave 97.6% unexplained.
+    expect(section.records.map((record) => record.cpuPercent)).toEqual([3, 97.6])
+    expect(section.records.map((record) => record.spinning)).toEqual([false, true])
+    expect(section.records[0].windowMs).toBe(15_000)
+    expect(section.latest).toHaveLength(1)
+    expect(section.latest[0]).toMatchObject({ pid: 79142, cpuPercent: 97.6, spinning: true })
+  })
+
+  it('names the state where no kernel cpu was ever looked at, instead of shipping an empty list', async () => {
+    const root = await createRoot()
+    const input = await baseInput(root)
+
+    const result = await createSupportBundle(input)
+
+    expect(result.entries).toContain('diagnostics/notebook-kernel-cpu.json')
+    const target = join(root, 'extracted')
+    await extractTo(result.path, target)
+    const section = JSON.parse(await readFrom(target, 'diagnostics/notebook-kernel-cpu.json')) as {
+      status: string
+      monitor: string
+      records: unknown[]
+      latest: unknown[]
+      unsampledReasons: string[]
+    }
+    // A bundle exported before any kernel spawned: nobody was watching, which is not the same answer as
+    // "the kernels were quiet".
+    expect(section.status).toBe('monitor-not-started')
+    expect(section.monitor).toBe('never-started')
+    expect(section.records).toEqual([])
+    expect(section.latest).toEqual([])
+    expect(section.unsampledReasons).toEqual([])
   })
 
   it('writes the timeline section when nothing was sampled, and names that state', async () => {

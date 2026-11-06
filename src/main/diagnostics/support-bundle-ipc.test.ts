@@ -52,6 +52,16 @@ const facts: SupportBundleFacts = {
     status: 'no-calls-observed',
     channels: [],
     omitted: 0
+  },
+  notebookKernelCpu: {
+    capacity: 120,
+    observed: 0,
+    dropped: 0,
+    status: 'monitor-not-started',
+    monitor: 'never-started',
+    unsampledReasons: [],
+    latest: [],
+    records: []
   }
 }
 

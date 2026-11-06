@@ -13,6 +13,7 @@ import { cpus, release, totalmem, uptime } from 'node:os'
 import * as tar from 'tar'
 
 import type { ModelWeightManifestReport } from '../engines/model-weight-manifest-file'
+import type { NotebookKernelCpuSummary } from '../notebook/kernel-idle-spin'
 import { buildTrajectoryDocuments, type TrajectoryInput } from '../trajectory/bundle-payload'
 import type { HostTimelineSummary } from './host-stall-sampler'
 import type { IpcChannelLatencySummary } from './ipc-channel-latency'
@@ -101,6 +102,16 @@ export type SupportBundleInput = {
    * names the case where nothing was recorded, so an empty list never reads as a fast Web face.
    */
   webRpcChannelLatency: IpcChannelLatencySummary
+  /**
+   * What the notebook kernels were doing while idle (see `kernel-idle-spin` in `../notebook`). Required for
+   * the same reason as the other rings, and with one extra: a kernel that keeps burning a core after its
+   * cell returned is *the* explanation of "the whole machine got slow, the fan never stopped" — and the
+   * only place it was recorded is a log line that rotates. Every completed window is here, not just the
+   * over-threshold ones, so a reader can compare. Its `status` names `monitor-not-started`,
+   * `unsupported-platform` and `probe-failed` instead of shipping an empty list that would read as a quiet
+   * machine.
+   */
+  notebookKernelCpu: NotebookKernelCpuSummary
   counts?: { sessions?: number; projects?: number }
   /**
    * Optional trajectory section (v2.19 §2). Written under `trajectory/` through the same scrubber as
@@ -196,6 +207,16 @@ diagnostics/web-rpc-channel-latency.json
                    before a command was reached (unknown channel, malformed body, wrong protocol version) are
                    not counted, so a noisy client cannot make a channel look fast; its status says
                    "no-calls-observed" when the Web face served nothing
+diagnostics/notebook-kernel-cpu.json
+                   what the notebook kernels were doing while idle, one record per completed sampling window:
+                   the kernel, its pid, the CPU that window consumed as a percentage of one core, and whether
+                   it crossed the reporting threshold. Every window is kept, not only the over-threshold
+                   ones, so a spinning kernel has quiet readings to be compared against; the newest window
+                   per kernel is kept even after the tail rotates. Its status names "monitor-not-started"
+                   (no kernel has spawned, so nothing was ever looked at), "unsupported-platform" (no
+                   portable cumulative-CPU probe) and "probe-failed" (the probe could not read the pid)
+                   instead of an empty list that would read as a quiet machine — a CPU reading of zero is
+                   never invented
 logs/              the most recent runtime logs, scrubbed
 
 Privacy
@@ -407,6 +428,14 @@ export const createSupportBundle = async (
   await writeStaged(
     'diagnostics/web-rpc-channel-latency.json',
     `${JSON.stringify(input.webRpcChannelLatency, null, 2)}\n`
+  )
+  // What the kernels were doing while idle. Its own file rather than a line in `slow-operations.json`: those
+  // records are calls the app served, and a kernel spinning two seconds after its cell returned serves
+  // nothing at all — which is exactly why it went unnoticed. Scrubbed like everything else; kernel keys and
+  // environment names are ours, but the backstop costs nothing.
+  await writeStaged(
+    'diagnostics/notebook-kernel-cpu.json',
+    `${JSON.stringify(input.notebookKernelCpu, null, 2)}\n`
   )
   await writeStaged('README.txt', README)
   // Trajectory section: the documents are already redacted value-by-value, and `writeStaged` scrubs again

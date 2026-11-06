@@ -16309,3 +16309,47 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 ② 下一单元候选：把这条读数做成运行状态可见（面板一行「某内核空闲却占 N% CPU」）或挂进既有诊断面——
 先数连锁（是否要新通道）再动手；
 ③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/ipc.ts`、i18n 九文件。
+
+## 二百九十三、本轮追加（执行器，2026-11-07 03:5x–）—— 空闲内核的 CPU 读数：从「只在日志里」变成「能随诊断包离机」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -4`：`af2e77e6`（富语料每行节点数，判「DOM 节点这一刀不做」）是上一轮的下一单元，
+  **已交付**；它的 `Nightly` 与 `Windows Full Test` 按完整 40 位 SHA 读到的结论都是 `success`（`gh run list`），
+  上一轮记的 P0 `pdf-annotation` 红**已收口**，不再重做。
+- 主工作区（`/Users/totota/purescience`）带着并行会话 40+ 项在制（`reviewer/**`、`session-persistence/**`、i18n 九文件、
+  `UserCases*`、`prisma/schema.prisma`、`kernel-idle-loop-guard.test.ts` 未跟踪），且本地 `main` 停在一段旧位点、
+  与 `origin/main` 分叉（还带着两笔与远端同内容的重复提交）⇒ **一个字节没碰**，本笔全部在隔离工作树
+  `/tmp/ps-cron-kernelcpu`（`af2e77e6` + 软链 node_modules）里做。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无活；`292` 节自己写的下一单元候选是「把空闲内核读数做成可见」，
+  按它取：先数连锁再动手 ⇒ 面板一行要新通道 + 九语言（约 30 处），诊断包是**既有出口**（连锁 4 处），选后者。
+- 与并行会话不相交：它没有在写 `src/main/notebook/kernel-idle-spin.ts`、`src/main/diagnostics/**`；
+  `src/main/ipc.ts` 只加一行 facts（它正在改这个文件的其他段，隔离工作树里无冲突）。
+
+### 一 交付（4 处源 + 2 处测试 + 认证 spec 一段 + 证据档）
+
+见 `docs/evidence/2026-11-07-kernel-cpu-in-support-bundle.md`：进程级环 `sharedKernelCpu`（安静窗也记、每内核最新窗
+独立于轮转、五种具名状态）、监控器写入、诊断包新增必填段 `notebookKernelCpu` → `diagnostics/notebook-kernel-cpu.json`、
+`ipc.ts` 的 facts 一行。**无新通道 / 无新 IPC / 无新文案。**
+
+### 二 读数
+
+- 真窗口（认证车道那条导出路径，本机 e2e 产物）：`1 passed (7.5s)`，`[ic37] the bundle on disk: 292541 bytes`，
+  `[ic37] kernel cpu section: status=monitor-not-started, monitor=never-started, observed=0, latest=0, reasons=(none)`
+  ⇒ 段确实随包离机，且空态是**具名**的，不是空列表。
+- 真实 `ps` 探针 + 真实 6 s 忙循环子进程：环里出现 `spinning: true`、`cpuPercent > 50`、pid 相符、`latest` 一条。
+- 定向 4 文件 50 passed；双 typecheck exit 0；`eslint --no-cache` 0 error/0 warning；`build:e2e` 41.16 s。
+
+### 三 边界（不许读成更强）
+
+- 带内核的真机导出（`status=samples` 且带真 pid/百分比）**未在打包版窗口跑过**，要等一次起内核 + ≥1 个 15 s 采样窗；
+  `samples` 分支目前由真探针 + 真子进程的单测覆盖。
+- 仍只观测、不处置；回收策略仍属需拍板项。Windows 具名 `unsupported-platform`。
+- 对用户不可见：诊断包要主动导出；面板一行（新通道 + 九语言）**没做**，具名留待拍板。
+
+### 四 下一轮第一步
+
+① 读本笔的 `Nightly` + `Windows Full Test`（按完整 40 位 SHA）；红了先读**作业级**日志归因；
+② 下一个候选（按连锁从小到大）：给 `notebook:env` 的运行状态面**只读**加一行「内核空闲却占 N%」的入口，
+  先数它到底要不要新通道；若仍要新通道则维持诊断包这条出口，转而做 v2.23.0 的「长任务」预算口径（需要独占测量）；
+③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、i18n 九文件、`UserCases*`。

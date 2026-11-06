@@ -59,6 +59,193 @@ export const DEFAULT_IDLE_SPIN_INTERVAL_MS = 15_000
 export const DEFAULT_IDLE_SPIN_THRESHOLD_PERCENT = 50
 export const DEFAULT_IDLE_SPIN_CONSECUTIVE_SAMPLES = 2
 
+// -- the process-wide ring the support bundle reads -------------------------------------------
+//
+// The named log line above answers "a kernel is burning cpu" for whoever is looking at the log at that
+// moment. It does not travel: the log is capped and rotated (this machine's reached 81 MB), and the
+// support bundle copies logs newest-first under an 8 MB cap — so a bundle exported about "the machine was
+// slow for an hour, the fan never stopped" can arrive after the line that explained it has rotated out.
+//
+// This ring is the machine-readable tail of the same windows, written by the monitor and read by the
+// bundle facts in the same process. Two properties matter more than the shape:
+//
+//   * Every completed window is kept, not only the over-threshold ones. Without the quiet readings, "97%"
+//     has nothing to be compared against, and "12% while idle" would look like no signal at all.
+//   * A window that could not be measured is never written as a zero — see `status` and
+//     `unsampledReasons`: `probe-failed` and `unsupported-platform` are answers, and 0% is not one of them.
+//
+// Deliberately a process-wide singleton, for the same reason as `slow-operation-ring`: the monitor is
+// created where its executor is built and the bundle facts are assembled in the composition root, so a
+// hand-off would add a seam neither side needs. Tests inject their own ring.
+
+/** One completed cpu window for one idle kernel. */
+export type KernelCpuSample = Readonly<{
+  /** Wall clock the window ended at (ISO 8601). */
+  at: string
+  key: string
+  kind: string
+  env: string
+  pid: number
+  /** Percent of one core averaged over `windowMs`; a kernel with several spinners can exceed 100. */
+  cpuPercent: number
+  windowMs: number
+  thresholdPercent: number
+  /** Whether this window would have been reported as a spin episode. */
+  spinning: boolean
+}>
+
+export type KernelCpuWindow = Omit<KernelCpuSample, 'at' | 'spinning'>
+
+/**
+ * Named states instead of an empty list. `no-samples` means the monitor ran and no window completed
+ * (kernels had just spawned, or none was idle); `monitor-not-started` means nothing was ever looked at.
+ * Merging those two is how "nobody was watching" starts reading as "the machine was fine".
+ */
+export type NotebookKernelCpuStatus =
+  'samples' | 'no-samples' | 'monitor-not-started' | 'unsupported-platform' | 'probe-failed'
+
+export type NotebookKernelCpuSummary = Readonly<{
+  capacity: number
+  /** Windows recorded since the ring was created (kept + dropped). */
+  observed: number
+  /** Recorded but no longer kept: the oldest ones, dropped first. */
+  dropped: number
+  oldestAt?: string
+  newestAt?: string
+  status: NotebookKernelCpuStatus
+  /** Whether a monitor is sampling right now. A stopped one is not a clean machine. */
+  monitor: 'running' | 'stopped' | 'never-started'
+  /** Every named reason the observation could not run; empty when it could. */
+  unsampledReasons: IdleSpinUnsampledReason[]
+  /**
+   * The newest window per kernel, kept independently of the tail's rotation: with eleven kernels alive a
+   * 120-record tail covers about three minutes, and "which kernel is burning what" must survive that.
+   */
+  latest: KernelCpuSample[]
+  /** Oldest first, so the tail reads as a timeline. */
+  records: KernelCpuSample[]
+}>
+
+export type KernelCpuRing = Readonly<{
+  record: (window: KernelCpuWindow) => void
+  noteMonitorStarted: () => void
+  noteMonitorStopped: () => void
+  noteUnsampled: (reason: IdleSpinUnsampledReason) => void
+  summary: () => NotebookKernelCpuSummary
+  /** Test seam: forget everything without rebuilding the ring. */
+  clear: () => void
+}>
+
+export type KernelCpuRingInput = Readonly<{
+  /** Windows kept. 120 at the 15 s interval is a quarter hour for one kernel, and a few KB. */
+  capacity?: number
+  /** Kernels whose newest window is kept regardless of rotation. */
+  latestCapacity?: number
+  /** Seam. Production leaves it alone. */
+  now?: () => Date
+}>
+
+export const DEFAULT_KERNEL_CPU_RING_CAPACITY = 120
+export const DEFAULT_KERNEL_CPU_LATEST_CAPACITY = 32
+
+export const createKernelCpuRing = (input: KernelCpuRingInput = {}): KernelCpuRing => {
+  const capacity = Math.max(1, Math.floor(input.capacity ?? DEFAULT_KERNEL_CPU_RING_CAPACITY))
+  const latestCapacity = Math.max(
+    1,
+    Math.floor(input.latestCapacity ?? DEFAULT_KERNEL_CPU_LATEST_CAPACITY)
+  )
+  const now = input.now ?? ((): Date => new Date())
+  const records: KernelCpuSample[] = []
+  const latest = new Map<string, KernelCpuSample>()
+  const unsampledReasons = new Set<IdleSpinUnsampledReason>()
+  let observed = 0
+  let everStarted = false
+  let running = false
+
+  const record = (window: KernelCpuWindow): void => {
+    // A window whose percentage is not a number is a broken probe, not a quiet kernel: dropping it is the
+    // honest move, and `noteUnsampled('probe-failed')` is what records why it is missing.
+    if (!Number.isFinite(window.cpuPercent) || !Number.isFinite(window.windowMs)) return
+    const sample: KernelCpuSample = {
+      at: now().toISOString(),
+      key: window.key,
+      kind: window.kind,
+      env: window.env,
+      pid: window.pid,
+      cpuPercent: window.cpuPercent,
+      windowMs: window.windowMs,
+      thresholdPercent: window.thresholdPercent,
+      spinning: window.cpuPercent >= window.thresholdPercent
+    }
+    records.push(sample)
+    observed += 1
+    while (records.length > capacity) records.shift()
+    latest.set(sample.key, sample)
+    if (latest.size > latestCapacity) {
+      // Oldest by the window's own clock, so a replaced kernel does not pin an entry forever.
+      const oldest = [...latest.entries()].sort((left, right) =>
+        left[1].at.localeCompare(right[1].at)
+      )[0]
+      if (oldest) latest.delete(oldest[0])
+    }
+  }
+
+  const summary = (): NotebookKernelCpuSummary => {
+    const kept = records.length
+    const oldestAt = kept > 0 ? records[0].at : undefined
+    const newestAt = kept > 0 ? records[kept - 1].at : undefined
+    const reasons = [...unsampledReasons]
+    const status: NotebookKernelCpuStatus =
+      kept > 0
+        ? 'samples'
+        : reasons.includes('unsupported-platform')
+          ? 'unsupported-platform'
+          : reasons.includes('probe-failed')
+            ? 'probe-failed'
+            : everStarted
+              ? 'no-samples'
+              : 'monitor-not-started'
+    return {
+      capacity,
+      observed,
+      dropped: observed - kept,
+      ...(oldestAt ? { oldestAt } : {}),
+      ...(newestAt ? { newestAt } : {}),
+      status,
+      monitor: running ? 'running' : everStarted ? 'stopped' : 'never-started',
+      unsampledReasons: reasons,
+      latest: [...latest.values()].sort((left, right) => left.at.localeCompare(right.at)),
+      records: records.map((sample) => ({ ...sample }))
+    }
+  }
+
+  return {
+    record,
+    noteMonitorStarted: (): void => {
+      everStarted = true
+      running = true
+    },
+    noteMonitorStopped: (): void => {
+      running = false
+    },
+    noteUnsampled: (reason): void => {
+      unsampledReasons.add(reason)
+    },
+    summary,
+    clear: (): void => {
+      records.length = 0
+      latest.clear()
+      unsampledReasons.clear()
+      observed = 0
+      everStarted = false
+      running = false
+    }
+  }
+}
+
+// Written by every idle-spin monitor in this process, read by the support bundle facts.
+export const sharedKernelCpu: KernelCpuRing = createKernelCpuRing()
+
 // `[DD-]HH:MM:SS[.ss]` and `MM:SS.ss`. ps prints the short form until an hour is reached, so the last two
 // components are always minutes and seconds.
 const CUMULATIVE_CPU_PATTERN = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/
@@ -118,6 +305,8 @@ export type KernelIdleSpinMonitorOptions = {
   consecutiveSamples?: number
   now?: () => number
   schedule?: IntervalScheduler
+  /** Where completed windows land. Defaults to the process-wide ring the support bundle reads. */
+  ring?: KernelCpuRing
 }
 
 type SampleState = {
@@ -142,6 +331,7 @@ export class KernelIdleSpinMonitor {
   private readonly consecutiveSamples: number
   private readonly now: () => number
   private readonly schedule: IntervalScheduler
+  private readonly ring: KernelCpuRing
   private readonly samples = new Map<string, SampleState>()
   private readonly unsampledReasons = new Set<IdleSpinUnsampledReason>()
   private handle: IntervalHandle | undefined
@@ -158,16 +348,21 @@ export class KernelIdleSpinMonitor {
     this.consecutiveSamples = options.consecutiveSamples ?? DEFAULT_IDLE_SPIN_CONSECUTIVE_SAMPLES
     this.now = options.now ?? Date.now
     this.schedule = options.schedule ?? defaultIntervalScheduler
+    this.ring = options.ring ?? sharedKernelCpu
   }
 
   // Idempotent: the executor calls this whenever it spawns a kernel.
   start(): void {
     if (this.handle) return
     if (this.platform === 'win32') {
+      this.ring.noteUnsampled('unsupported-platform')
       this.reportUnsampled('unsupported-platform')
       return
     }
     this.handle = this.schedule(() => void this.sampleOnce(), this.intervalMs)
+    // Recorded in the ring as well as in the field: a bundle exported while nothing is sampling must be
+    // able to say whether a monitor ever existed, which is a different answer from "the kernel was quiet".
+    this.ring.noteMonitorStarted()
   }
 
   // Stops sampling and forgets every baseline: a later start() must not compare against cpu time taken
@@ -176,6 +371,7 @@ export class KernelIdleSpinMonitor {
     this.handle?.cancel()
     this.handle = undefined
     this.samples.clear()
+    this.ring.noteMonitorStopped()
   }
 
   get running(): boolean {
@@ -206,6 +402,9 @@ export class KernelIdleSpinMonitor {
       for (const { target, reading } of readings) {
         if (reading.status === 'unsampled') {
           this.samples.delete(target.key)
+          // Both ledgers say why: the callback dedupes its own log line, the ring keeps the named reason for
+          // a bundle exported from a process whose log has already rotated past it.
+          this.ring.noteUnsampled(reading.reason)
           this.reportUnsampled(reading.reason)
           continue
         }
@@ -228,6 +427,17 @@ export class KernelIdleSpinMonitor {
 
         const cpuPercent = Math.round(((reading.cpuMs - previous.cpuMs) / windowMs) * 1000) / 10
         const spinning = cpuPercent >= this.thresholdPercent
+        // Every completed window is kept, not only the ones that cross the threshold: "97% while idle"
+        // only means something beside the quiet readings around it.
+        this.ring.record({
+          key: target.key,
+          kind: target.kind,
+          env: target.env,
+          pid: target.pid,
+          cpuPercent,
+          windowMs,
+          thresholdPercent: this.thresholdPercent
+        })
         const state: SampleState = {
           pid: target.pid,
           cpuMs: reading.cpuMs,

@@ -126,4 +126,49 @@ test('the support-bundle export reports the size and the redaction count', async
     expect(webMeasured).toBeDefined()
     expect(Number(webMeasured?.p95Ms)).toBeGreaterThanOrEqual(Number(webMeasured?.p50Ms))
   }
+
+  // The idle-kernel cpu section: what a kernel was doing *after* its cell returned — the reading behind "the
+  // whole machine got slow and the fan never stopped", whose only other record is a log line that rotates.
+  // This run drives no notebook, so the honest expectation is the named state, and that is why the assertion
+  // is on `status` first: a section that stopped being written and one whose monitor never started must not
+  // look alike, and neither may be read as "the kernels were quiet". When a kernel did run (a headless
+  // instance shares this writer), the windows are held to the same rule the unit tests pin: a percentage that
+  // is a finite number, and the newest window per kernel present.
+  const kernelCpu = JSON.parse(
+    await readFile(join(extracted, 'diagnostics/notebook-kernel-cpu.json'), 'utf8')
+  ) as {
+    status: string
+    monitor: string
+    capacity: number
+    observed: number
+    dropped: number
+    unsampledReasons: string[]
+    latest: { key: string; pid: number; cpuPercent: number; spinning: boolean }[]
+    records: { key: string; pid: number; cpuPercent: number; windowMs: number }[]
+  }
+  console.log(
+    `[ic37] kernel cpu section: status=${kernelCpu.status}, monitor=${kernelCpu.monitor}, observed=${kernelCpu.observed}, latest=${kernelCpu.latest.length}, reasons=${kernelCpu.unsampledReasons.join(',') || '(none)'}`
+  )
+  expect([
+    'samples',
+    'no-samples',
+    'monitor-not-started',
+    'unsupported-platform',
+    'probe-failed'
+  ]).toContain(kernelCpu.status)
+  expect(kernelCpu.capacity).toBeGreaterThan(0)
+  expect(kernelCpu.dropped).toBeGreaterThanOrEqual(0)
+  expect(kernelCpu.observed).toBeGreaterThanOrEqual(kernelCpu.records.length)
+  for (const record of kernelCpu.records) {
+    expect(Number.isFinite(record.cpuPercent)).toBe(true)
+    expect(record.windowMs).toBeGreaterThan(0)
+    expect(record.key.length).toBeGreaterThan(0)
+  }
+  // A status that claims samples must actually carry them — the empty list and the claim cannot both ship.
+  if (kernelCpu.status === 'samples') {
+    expect(kernelCpu.records.length).toBeGreaterThan(0)
+    expect(kernelCpu.latest.length).toBeGreaterThan(0)
+  } else {
+    expect(kernelCpu.records).toHaveLength(0)
+  }
 })
