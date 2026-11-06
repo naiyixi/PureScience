@@ -278,6 +278,9 @@ jobs:
           # Windows remains unsigned until a code-signing certificate is provisioned. Stable macOS
           # jobs consume the explicitly prepared keychain without exposing CSC_LINK to electron-builder.
           CSC_KEYCHAIN: ${{ steps.mac_signing.outputs.keychain }}
+          # Baked into the main bundle by electron.vite.config.ts. The packaged app reads it to decide
+          # whether this machine may update in place, so it must be present at package time, not at run time.
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         run: |
           npm run build:e2e
           npm run build:web
@@ -503,6 +506,8 @@ jobs:
       # an unreadable reading is never accepted as a pass. Nothing is relaxed to make either case green.
       - name: Enforce the macOS Developer ID signature gate
         if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
+        env:
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         run: >-
           node scripts/ci/mac-signing-status.mjs verify
           --credentials "${{ steps.mac_signing.outputs.enabled == 'true' && 'present' || 'absent' }}"

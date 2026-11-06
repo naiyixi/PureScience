@@ -5,7 +5,16 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  main: {},
+  main: {
+    define: {
+      // The Team ID has to be baked into the bundle: a packaged app launched from Finder inherits no
+      // environment, so `process.env.PURESCIENCE_MAC_TEAM_ID` is empty there and the in-place mac update
+      // would fail closed forever. A runtime env still wins (drills set it), the baked value is the fallback.
+      __PURESCIENCE_MAC_TEAM_ID__: JSON.stringify(
+        (process.env.PURESCIENCE_MAC_TEAM_ID ?? '').trim()
+      )
+    }
+  },
   preload: {
     build: {
       rollupOptions: {

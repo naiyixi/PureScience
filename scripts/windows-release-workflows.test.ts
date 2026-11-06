@@ -116,7 +116,9 @@ describe('post-merge Windows validation', () => {
     expect(prepareMacSigning.run).toContain('-k "$keychain_password"')
     expect(prepareMacSigning.run).toContain("grep -q 'Developer ID Application:'")
     expect(packageStep.env).toEqual({
-      CSC_KEYCHAIN: '${{ steps.mac_signing.outputs.keychain }}'
+      CSC_KEYCHAIN: '${{ steps.mac_signing.outputs.keychain }}',
+      // Baked into the main bundle: the packaged app reads it to decide whether it may update in place.
+      PURESCIENCE_MAC_TEAM_ID: '${{ vars.PURESCIENCE_MAC_TEAM_ID }}'
     })
     expect(packageStep.run).toContain(
       'if [ "${{ steps.mac_signing.outputs.enabled }}" = "true" ]; then'

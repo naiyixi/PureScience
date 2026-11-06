@@ -24,7 +24,15 @@ const OFFICIAL_MAC_BUNDLE_ID = 'com.zerolink.purescience'
 // the replacement carry the same Team signature. That Team is our own Developer ID, passed in at
 // package time; an unset variable means "not provisioned yet" and must fail closed to the manual
 // installer rather than trust some other publisher's identity.
-const expectedMacTeamId = (): string => (process.env.PURESCIENCE_MAC_TEAM_ID ?? '').trim()
+declare const __PURESCIENCE_MAC_TEAM_ID__: string
+
+const expectedMacTeamId = (): string =>
+  (process.env.PURESCIENCE_MAC_TEAM_ID ?? '').trim() || bakedMacTeamId()
+
+// `electron.vite.config.ts` replaces this identifier with the value present at package time. Packaged apps
+// launched from Finder have no environment, so without the baked copy the gate could never pass in the field.
+const bakedMacTeamId = (): string =>
+  typeof __PURESCIENCE_MAC_TEAM_ID__ === 'string' ? __PURESCIENCE_MAC_TEAM_ID__ : ''
 
 // Read the installed bundle's signing metadata without performing a trust evaluation. The latter can
 // depend on machine policy/keychain state, while Squirrel.Mac only needs the current and replacement

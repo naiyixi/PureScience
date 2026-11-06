@@ -400,6 +400,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          # Without it the disclosure reports "not provisioned" even when the assets are signed with our Team.
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         run: >-
           node scripts/ci/mac-signing-status.mjs disclose
           --record artifacts/RELEASE-CERTIFICATION.json

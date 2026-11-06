@@ -290,6 +290,8 @@ jobs:
       # green path that ships an unsigned mac asset (issue #19). Nothing is loosened to pass this.
       - name: Enforce the Developer ID signature on the stapled mac assets
         if: steps.gate.outputs.enabled == 'true'
+        env:
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         run: >-
           node scripts/ci/mac-signing-status.mjs verify
           --credentials present
