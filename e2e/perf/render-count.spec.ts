@@ -108,6 +108,12 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       (window as unknown as Record<string, { samples?: Array<{ commit: number; ids: string[] }> }>)
         .__PURESCIENCE_COMMITS__?.samples ?? []
     const domRowCount = document.querySelectorAll('[data-message-id]').length
+    const rowIdCount = document.querySelectorAll('[data-row-id]').length
+    const uniqueRowIdCount = new Set(
+      Array.from(document.querySelectorAll('[data-row-id]')).map((element) =>
+        element.getAttribute('data-row-id')
+      )
+    ).size
     const scrollerItems = document.querySelectorAll('[data-slot="message-scroller-item"]').length
     const uniqueIds = new Set(
       [...document.querySelectorAll('[data-message-id]')].map((el) =>
@@ -197,6 +203,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       origins,
       editInputs,
       domRowCount,
+      rowIdCount,
+      uniqueRowIdCount,
       scrollerItems,
       uniqueIds,
       selectorCalls: selector.calls,
@@ -280,7 +288,8 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     `[edit-flips] provider renders=${readings.editFlips.renders} flips=${readings.editFlips.flips}`
   )
   console.log(
-    `[dom] message-ids=${readings.domRowCount} unique=${readings.uniqueIds}` +
+    `[dom] row-ids=${readings.rowIdCount} unique-rows=${readings.uniqueRowIdCount}` +
+      ` message-ids=${readings.domRowCount} unique=${readings.uniqueIds}` +
       ` scroller-items=${readings.scrollerItems} counted-rows=${readings.rows}`
   )
   console.log(`[hot-rows] top: ${readings.topRows.join(' ')}`)
