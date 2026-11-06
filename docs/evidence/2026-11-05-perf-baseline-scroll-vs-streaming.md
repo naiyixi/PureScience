@@ -398,3 +398,52 @@ padding 60 之所以看着"没生效"，恰恰是它大到几乎不产生重挂�
 - 在这个行重量级下，**卸载/重挂比常驻更贵**；虚拟化的收益前提是"行便宜"或"重挂不频繁"，两者都不成立。
 - 要把虚拟化做成，需要先做到"重挂便宜"（例如行内 markdown 结果可缓存复用），那是另一条更大的工程线。
 - 因此**当前保留 padding 60 的行为**是正确的取舍；80 回合 103.5 ms/回合的增长继续存在，作为已知限制记录。
+
+## 二十一 容器 memo 被回调身份击穿（2026-11-06）
+
+前面二十几节修的都是**行**。这一节修**容器**：`WorkspaceMessageScroller` 是 `memo` 的，但每回合仍渲染
+11 次，每次都要把整条记录走一遍（逐条建 props 依赖、建修订签名、查逐槽缓存）。行便宜了，容器没便宜。
+
+### 先量出是哪一支击穿的
+
+给比较器加临时计数（跑完即删），40 回合：
+
+```
+[compare] {"calls":434,"send":434,"structure":157}
+```
+
+434 次比较、434 次因为 `onSendEditedMessage` 换了身份而拒绝 ⇒ 容器那 11 次/回合里约 7 次与记录内容无关。
+根因：`WorkspacePage` 的 `sendEditedMessage` 依赖了运行时钩子的 `resendEditedMessage`，后者每次渲染换身份。
+
+### 改法与读数
+
+`WorkspacePage` 用「最新引用桥」：实现放 ref（渲染期写，理由与 `eslint-disable react-hooks/refs` 就地写明），
+回调只依赖 `activeSessionId`，调用时读最新实现 ⇒ 身份恒定、无旧闭包风险。读数（确定性计数）：
+
+| 口径                        | 改前              | 改后              |
+| --------------------------- | ----------------- | ----------------- |
+| 容器渲染 40 回合             | 455（11.4/回合）  | **149（3.7/回合）** |
+| 容器渲染 160 回合            | 1,668（10.4/回合） | **606（3.8/回合）** |
+| 比较器 `send` 拒绝           | 434 / 434         | **0**             |
+| LayoutCount / RecalcStyleCount（160，每回合） | 15 / 27 | **11 / 20**  |
+| 行渲染总数（40 / 160）       | 120 / 480         | 120 / 480（未变） |
+
+**容器每回合的渲染次数不再随长度增长**（长度 4 倍，3.7 → 3.8）。同批次（back-to-back，load 16.25 / 16.77）
+每回合 task 114 → 125 ms（+10%）；改前那一批同口径是 57.3 → 116.7（+104%）。
+
+### 新增仪器与复算
+
+`e2e/perf/render-count.spec.ts` 末尾多发一个回合，读 CDP 计数器（负载无关）并打印宿主 load：
+
+```bash
+npm run build:e2e
+PERF_TURNS=40  npx playwright test e2e/perf/render-count.spec.ts --reporter=line | grep -E '\[turn-cost\]|scroller renders'
+PERF_TURNS=160 npx playwright test e2e/perf/render-count.spec.ts --reporter=line | grep -E '\[turn-cost\]|scroller renders'
+```
+
+本次日志：`/tmp/ps-rc40final.log`、`/tmp/ps-rc160final.log`（改前：`/tmp/ps-rc40.log`、`/tmp/ps-rc160.log`）。
+
+### 边界
+
+- 宿主 load 全程 16–33 ⇒ **绝对**每回合成本（50 ms 预算）这一档不判；判的是结构与同批次相对差。
+- 160 回合仍有 >50 ms 的单次任务；「首屏可交互」「弹窗开启」只有墙钟读数，需独占测量才能定性。

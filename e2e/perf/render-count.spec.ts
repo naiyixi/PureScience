@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { loadavg } from 'node:os'
 import type { Page } from 'playwright'
 
 import { createProject } from '../certification/helpers'
@@ -281,6 +282,36 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     `[chunks] ${turns} turns: total=${readings.chunks} (${(readings.chunks / turns).toFixed(1)}/turn)` +
       ` committed=${readings.chunksCommitted} | row renders per chunk: ` +
       `${readings.chunks > 0 ? (readings.total / readings.chunks).toFixed(2) : 'n/a'}`
+  )
+
+  // One more turn, measured with CDP counters instead of a stopwatch. `LayoutCount` / `RecalcStyleCount`
+  // are counts: the host's load changes how LONG each one takes, not how many happen, so two runs at
+  // different transcript lengths can be compared even on a busy machine. Wall clock is printed too, but
+  // only as context — the same spec has produced 57 and 189 ms/turn for identical code on different days.
+  // This is the reading that says whether a commit's *structural* cost grows with the transcript.
+  const turnCdp = await page.context().newCDPSession(page)
+  await turnCdp.send('Performance.enable')
+  const readCounters = async (): Promise<Record<string, number>> => {
+    const { metrics } = await turnCdp.send('Performance.getMetrics')
+    const map: Record<string, number> = {}
+    for (const metric of metrics) map[metric.name] = metric.value
+    return map
+  }
+  const beforeTurn = await readCounters()
+  await sendTurn(page, 'Measured turn')
+  const afterTurn = await readCounters()
+  const counter = (key: string): number => (afterTurn[key] ?? 0) - (beforeTurn[key] ?? 0)
+  const load = loadavg()
+    .map((value) => value.toFixed(2))
+    .join(' / ')
+  console.log(
+    `[turn-cost] ${turns} turns + 1 measured turn: LayoutCount=${counter('LayoutCount')}` +
+      ` RecalcStyleCount=${counter('RecalcStyleCount')}` +
+      ` LayoutDuration=${(counter('LayoutDuration') * 1000).toFixed(0)}ms` +
+      ` RecalcStyleDuration=${(counter('RecalcStyleDuration') * 1000).toFixed(0)}ms` +
+      ` TaskDuration=${(counter('TaskDuration') * 1000).toFixed(0)}ms` +
+      ` ScriptDuration=${(counter('ScriptDuration') * 1000).toFixed(0)}ms` +
+      ` NodesNet=${counter('Nodes')} | host load ${load}`
   )
 
   expect(readings.rows).toBeGreaterThan(0)

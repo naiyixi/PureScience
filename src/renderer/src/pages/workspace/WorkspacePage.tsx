@@ -2001,18 +2001,31 @@ const WorkspacePage = ({
   // Resends an inline-edited prompt: the conversation is truncated at the edited message, the agent
   // context resets, and the kept turns replay as a preamble on the resent prompt. The gate mirrors
   // canEditMessage so a resend never overlaps an in-flight turn.
+  // `resendEditedMessage` changes identity on every render of the runtime hook, which made this callback —
+  // and therefore the transcript container's memo — reject a comparison ~11 times per turn. The container
+  // re-walks every row on each of those renders, so the transcript's per-turn cost grew with its length.
+  // The bridge keeps the identity stable while still invoking the freshest implementation: the ref is
+  // reassigned on every render of this page, which happens at least as often as the old identity churn did.
+  const resendEditedMessageRef = useRef(resendEditedMessage)
+  // Written during render on purpose (same pattern as `liveActionHandlersRef` in the transcript
+  // container): the bridge must call the implementation of the render the user is looking at, and a
+  // layout effect would leave one commit's worth of staleness for no benefit. The ref is only ever read
+  // from the click handler inside `sendEditedMessage`.
+  // eslint-disable-next-line react-hooks/refs -- intentional latest-value write, read only from a click handler
+  resendEditedMessageRef.current = resendEditedMessage
+
   const sendEditedMessage = useCallback(
     (messageId: string, doc: ComposerDoc): void => {
       if (!canEditMessageRef.current || docIsEmpty(doc) || !activeSessionId) return
 
-      void resendEditedMessage(activeSessionId, messageId, {
+      void resendEditedMessageRef.current(activeSessionId, messageId, {
         text: docToText(doc),
         parts: doc.nodes,
         forcedSkillIds: docToSkillIds(doc),
         referencedArtifacts: docToArtifactRefs(doc)
       })
     },
-    [activeSessionId, resendEditedMessage]
+    [activeSessionId]
   )
 
   // Restart recovery intentionally does not revive the expired generate_plan interaction. Each card
