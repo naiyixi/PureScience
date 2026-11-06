@@ -104,6 +104,7 @@ import { JobDetailModal } from '@/components/JobDetailModal'
 import { getVisiblePermissionRequests } from './session-permissions'
 import { WorkspaceSidebar } from './WorkspaceSidebar'
 import { selectActiveBranchPlan } from './session-plan/active-branch-plan'
+import { recordEditInputs } from '@/lib/perf/render-counter'
 
 type WorkspacePageProps = {
   isSessionPersistenceHydrated: boolean
@@ -1517,6 +1518,18 @@ const WorkspacePage = ({
     !activeSession?.conversationGraphSyncBlocked &&
     !activeSession?.compacting &&
     !sessionDeletionInProgressIds.has(activeSession?.id ?? '')
+  // Perf only (no-op outside a perf spec): names which input moved, since each move writes the store.
+  recordEditInputs({
+    persistence: isSessionPersistenceReady,
+    transfers: attachmentTransfers.length,
+    status: activeSession?.status ?? 'none',
+    runtimeInteraction: activeSessionHasRuntimeInteraction,
+    reviewing: isReviewing,
+    fixLoop: Boolean(activeSession?.fixLoopActive),
+    graphSync: Boolean(activeSession?.conversationGraphSyncBlocked),
+    compacting: Boolean(activeSession?.compacting),
+    deleting: sessionDeletionInProgressIds.has(activeSession?.id ?? '')
+  })
   const canEditMessageRef = useRef(canEditMessage)
   useLayoutEffect(() => {
     canEditMessageRef.current = canEditMessage

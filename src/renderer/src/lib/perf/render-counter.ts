@@ -410,3 +410,30 @@ export const readRoleCounts = (): {
     totals: {},
     changes: {}
   }
+
+// Edit-availability input attribution: canEditMessage moves several times per turn, and each move is a real
+// store notification (it writes branchSwitchBlocked). Naming the input that flipped says where the churn is.
+const EDIT_INPUT_KEY = '__PURESCIENCE_EDIT_INPUTS__'
+const lastEditInputs = new Map<string, string>()
+
+export const installEditInputs = (): void => {
+  const host = scope()
+  lastEditInputs.clear()
+  if (host) host[EDIT_INPUT_KEY] = {}
+}
+
+export const recordEditInputs = (inputs: Record<string, boolean | number | string>): void => {
+  const host = scope()
+  const bucket = host?.[EDIT_INPUT_KEY] as Record<string, number> | undefined
+  if (!bucket) return
+  const signature = JSON.stringify(inputs)
+  const previous = lastEditInputs.get('session')
+  lastEditInputs.set('session', signature)
+  if (previous === undefined) return
+  const before = JSON.parse(previous) as Record<string, unknown>
+  for (const key of Object.keys(inputs)) {
+    if (JSON.stringify(before[key]) !== JSON.stringify(inputs[key])) {
+      bucket[key] = (bucket[key] ?? 0) + 1
+    }
+  }
+}

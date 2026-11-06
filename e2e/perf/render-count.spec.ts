@@ -61,6 +61,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_RENDER_CAUSES__ = {}
     host.__PURESCIENCE_EDIT_FLIPS__ = { renders: 0, flips: 0 }
     host.__PURESCIENCE_ROLE_RENDERS__ = { totals: {}, changes: {} }
+    host.__PURESCIENCE_EDIT_INPUTS__ = {}
     host.__PURESCIENCE_RENDER_AT_COMMIT__ = { sameCommit: 0, afterCommit: 0 }
   })
 
@@ -152,6 +153,9 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     const origins =
       (window as unknown as Record<string, { origins?: Record<string, number> } | undefined>)
         .__PURESCIENCE_COMMITS__?.origins ?? {}
+    const editInputs =
+      (window as unknown as Record<string, Record<string, number> | undefined>)
+        .__PURESCIENCE_EDIT_INPUTS__ ?? {}
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -191,6 +195,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       editFlips,
       roleRenders,
       origins,
+      editInputs,
       domRowCount,
       scrollerItems,
       uniqueIds,
@@ -259,6 +264,12 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       .sort((left, right) => right[1] - left[1])
       .slice(0, 8)
       .map(([label, count]) => `${label}=${count}`)
+      .join(' | ')}`
+  )
+  console.log(
+    `[edit-inputs] ${Object.entries(readings.editInputs)
+      .sort((left, right) => right[1] - left[1])
+      .map(([key, count]) => `${key}=${count}`)
       .join(' | ')}`
   )
   console.log(

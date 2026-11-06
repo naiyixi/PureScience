@@ -107,8 +107,13 @@ export const useSessionStore = create<SessionStore>((rawSet, get) => {
   // record which commit was current, which separates "one write invalidated the transcript" from "renders
   // with no write behind them at all".
   const set = ((...args: Parameters<typeof rawSet>): ReturnType<typeof rawSet> => {
-    bumpStoreCommit()
-    return rawSet(...args)
+    // Count a commit only when the store state actually changed identity. Setters that return the current
+    // state for a no-op (setContextUsage does) do not wake subscribers, so counting the call would inflate
+    // the number this perf run is trying to explain.
+    const previous = get()
+    const result = rawSet(...args)
+    if (!Object.is(get(), previous)) bumpStoreCommit()
+    return result
   }) as typeof rawSet
 
   return {
