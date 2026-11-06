@@ -747,3 +747,48 @@ load 16.25 / 16.77）：每回合 task **114 → 125 ms（+10%）**，而在改�
 ```
 
 计数的意义：负载改变每一段**耗时**，不改变**次数**，所以 40 与 160 两档即使换天也能比。
+## 三十 一半的 store 提交是空写：setBranchSwitchBlocked
+
+行渲染降到个位数之后，下一层的成本是「提交本身」——每次提交会唤醒全部订阅者（每回合选择器被调用 794 次）、
+并让容器重渲一次。于是给提交加了来源归因：store 的每个 action 在调用前后打上标签，提交记到该 action 名下
+（压栈式取函数名在压缩产物里只能得到 `set2`，无用）。
+
+40 回合首测：
+
+```
+[origins] setBranchSwitchBlocked=380 | setContextUsage=93 | appendUserMessage=40 | completeActivityGroup=40
+          appendAgentMessageChunk=40 | finishRun=40 | applyDurableSessionProjection=34 | setAgentPromptInFlight=34
+```
+
+**`setBranchSwitchBlocked` 一个人占 735 次提交里的 380 次（52%）**。两处浪费：
+
+1. 这个 setter 内部有「值没变就不改」的判断，但**仍然调用 `set(...)`**：`sessions.map` 每次返回新数组 ⇒
+   新 state 对象 ⇒ 全部订阅者被唤醒。判断写在 map 内部，挡不住「分配」这一步；
+2. 调用它的 effect 把「复位成 false」写进了 cleanup：编辑可用性每翻转一次，先写 `false` 再写 `true`，
+   一次翻转两条提交。
+
+修法：setter 先 `get()` 查一次，值相同直接 return；effect 的复位挪到只依赖 sessionId 的独立 effect（只在
+卸载/换会话时复位）。
+
+改后：
+
+```
+[commits] 735 → 495（每回合 18.4 → 12.4，−33%）
+[origins] setBranchSwitchBlocked=380 → 186
+[render-count] 行渲染仍为 120（40 回合），每次提交 0.16 → 0.24
+```
+
+行渲染没有变差（0.24 行/提交，仍 ≤1），但**每回合的提交少了三分之一**，意味着订阅者扫描与容器重渲同比减少。
+
+### 还没解决：编辑可用性本身在抖
+
+剩下的 186 次提交不是空写——`branchSwitchBlocked` 真的在 true/false 之间来回切，也就是 `canEditMessage`
+每个回合翻转约 4.7 次。按定义它一回合只该变两次（开始跑→不可编辑、跑完→可编辑）。多出来的翻转来自它的
+某个输入在流式过程中抖动（`activeSessionHasRuntimeInteraction` 最可疑），这一项还没定位，记在这里。
+
+### 验证
+
+- 全量 unit：**1,464 files / 18,325 passed / 227 skipped / 0 failed**；
+- `e2e/workspace-conversation.spec.ts`（编辑→修订持久化→重开）：**3 passed**；
+- `typecheck:web` 0；同批次 160 回合墙钟 task **205.8** / script **126.1 ms**（上一批次 226.7 / 140.4），
+  方向一致但跨批次不可当结论。

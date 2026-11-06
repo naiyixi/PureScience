@@ -55,7 +55,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     host.__PURESCIENCE_MARKDOWN_RENDERS__ = { count: 0, chars: 0 }
     host.__PURESCIENCE_STREAM_CHUNKS__ = { total: 0, committed: 0, chars: 0 }
     host.__PURESCIENCE_RENDER_REASONS__ = { first: 0, content: 0, status: 0, other: 0 }
-    host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map(), samples: [] }
+    host.__PURESCIENCE_COMMITS__ = { count: 0, rowsByCommit: new Map(), samples: [], origins: {} }
     host.__PURESCIENCE_SELECTOR__ = { calls: 0, changes: 0 }
     host.__PURESCIENCE_ROW_MOUNTS__ = { count: 0 }
     host.__PURESCIENCE_RENDER_CAUSES__ = {}
@@ -149,6 +149,9 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
         { totals: Record<string, number>; changes: Record<string, number> } | undefined
       >
     ).__PURESCIENCE_ROLE_RENDERS__ ?? { totals: {}, changes: {} }
+    const origins =
+      (window as unknown as Record<string, { origins?: Record<string, number> } | undefined>)
+        .__PURESCIENCE_COMMITS__?.origins ?? {}
     const reasons =
       (window as unknown as Record<string, Record<string, number> | undefined>)
         .__PURESCIENCE_RENDER_REASONS__ ?? {}
@@ -187,6 +190,7 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       causes,
       editFlips,
       roleRenders,
+      origins,
       domRowCount,
       scrollerItems,
       uniqueIds,
@@ -249,6 +253,13 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
     `[causes] ${Object.entries(readings.causes)
       .map(([key, count]) => `${key}=${count}`)
       .join(' ')}`
+  )
+  console.log(
+    `[origins] ${Object.entries(readings.origins)
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 8)
+      .map(([label, count]) => `${label}=${count}`)
+      .join(' | ')}`
   )
   console.log(
     `[roles] totals=${JSON.stringify(readings.roleRenders.totals)}` +

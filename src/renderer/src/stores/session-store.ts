@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import { bumpStoreCommit } from '@/lib/perf/render-counter'
+import { bumpStoreCommit, setCommitLabel } from '@/lib/perf/render-counter'
 
 import type { AcpContextUsage } from '../../../shared/acp'
 import type { PermissionProfileId } from '../../../shared/permission-profiles'
@@ -179,11 +179,16 @@ export const useSessionStore = create<SessionStore>((rawSet, get) => {
     },
 
     setBranchSwitchBlocked: (sessionId, blocked) => {
+      // Returning early matters: an unconditional set() allocates a new state object even when the flag is
+      // already right, and every allocation wakes every store subscriber — this flag is written on each
+      // edit-availability change, so no-op writes used to dominate the commit count.
+      const session = get().sessions.find((candidate) => candidate.id === sessionId)
+      if (!session || Boolean(session.branchSwitchBlocked) === blocked) return
       set((state) => ({
-        sessions: state.sessions.map((session) =>
-          session.id === sessionId && Boolean(session.branchSwitchBlocked) !== blocked
-            ? { ...session, branchSwitchBlocked: blocked || undefined }
-            : session
+        sessions: state.sessions.map((candidate) =>
+          candidate.id === sessionId
+            ? { ...candidate, branchSwitchBlocked: blocked || undefined }
+            : candidate
         )
       }))
     },
@@ -470,3 +475,21 @@ export const useSessionStore = create<SessionStore>((rawSet, get) => {
     }
   }
 })
+
+// Perf attribution only: bracket every store action so a commit can be traced to the action that caused it.
+// No-op in production (setCommitLabel only records while a perf spec installed the bucket).
+{
+  const state = useSessionStore.getState() as unknown as Record<string, unknown>
+  for (const [key, value] of Object.entries(state)) {
+    if (typeof value !== 'function') continue
+    const original = value as (...args: unknown[]) => unknown
+    state[key] = (...args: unknown[]) => {
+      setCommitLabel(key)
+      try {
+        return original(...args)
+      } finally {
+        setCommitLabel(null)
+      }
+    }
+  }
+}

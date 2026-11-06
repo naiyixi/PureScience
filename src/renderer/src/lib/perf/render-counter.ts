@@ -163,6 +163,12 @@ export const readRenderReasons = (): Record<RenderReason, number> =>
 //   · one commit → many rows rendered  = a write that invalidates the whole transcript
 //   · many renders against one commit  = renders with no store write behind them at all (local state,
 //     effects, or a cascade), which is what a 0.4 ms cadence in a single turn looks like
+let pendingCommitLabel: string | null = null
+
+export const setCommitLabel = (label: string | null): void => {
+  pendingCommitLabel = label
+}
+
 const COMMIT_KEY = '__PURESCIENCE_COMMITS__'
 const AT_COMMIT_KEY = '__PURESCIENCE_RENDER_AT_COMMIT__'
 const lastCommitByRow = new Map<string, number>()
@@ -175,6 +181,7 @@ export const bumpStoreCommit = (): void => {
         count: number
         rowsByCommit: Map<number, number>
         samples: Array<{ commit: number; ids: string[] }>
+        origins: Record<string, number>
       }
     | undefined
   if (!bucket) return
@@ -184,13 +191,24 @@ export const bumpStoreCommit = (): void => {
   // crossed, scattered ids mean the rows' own memo keys are unstable.
   bucket.samples.push({ commit: bucket.count, ids: [] })
   if (bucket.samples.length > 60) bucket.samples.shift()
+  // Which action asked for this commit. Minified stacks are useless, so the store brackets each of its
+  // actions with setCommitLabel and the commit is attributed to that name.
+  if (bucket.origins) {
+    const label = pendingCommitLabel ?? 'unlabelled'
+    bucket.origins[label] = (bucket.origins[label] ?? 0) + 1
+  }
 }
 
 export const installCommitCounts = (): void => {
   const host = scope()
   lastCommitByRow.clear()
   if (!host) return
-  host[COMMIT_KEY] = { count: 0, rowsByCommit: new Map<number, number>(), samples: [] }
+  host[COMMIT_KEY] = {
+    count: 0,
+    rowsByCommit: new Map<number, number>(),
+    samples: [],
+    origins: {}
+  }
   host[AT_COMMIT_KEY] = { sameCommit: 0, afterCommit: 0 }
 }
 

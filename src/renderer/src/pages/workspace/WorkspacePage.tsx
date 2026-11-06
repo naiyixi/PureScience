@@ -1525,8 +1525,14 @@ const WorkspacePage = ({
     const sessionId = activeSession?.id
     if (!sessionId) return
     useSessionStore.getState().setBranchSwitchBlocked(sessionId, !canEditMessage)
-    return () => useSessionStore.getState().setBranchSwitchBlocked(sessionId, false)
+    // The reset belongs to unmount / session change only. Cleaning up on every value change wrote
+    // `false` and then `true` for each flip, doubling the commits this flag produces.
   }, [activeSession?.id, canEditMessage])
+  useEffect(() => {
+    const sessionId = activeSession?.id
+    if (!sessionId) return
+    return () => useSessionStore.getState().setBranchSwitchBlocked(sessionId, false)
+  }, [activeSession?.id])
   const canChangeAgentControls =
     isSessionPersistenceReady &&
     activeSession?.status !== 'running' &&
