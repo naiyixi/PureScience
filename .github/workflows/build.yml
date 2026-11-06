@@ -504,6 +504,15 @@ jobs:
       # fails the build here instead of shipping unsigned behind a green job. Without credentials this
       # step does not fail — it reports and records `macSignature: unsigned` (today's real state) — but
       # an unreadable reading is never accepted as a pass. Nothing is relaxed to make either case green.
+      # The Team ID is baked by a `define`, and the main process is code-split, so the literal lands in a
+      # chunk rather than in index.js. This asserts it is in *some* chunk — without it a packaged app could
+      # never allow an in-place update and nothing else in this workflow would notice.
+      - name: Verify the Team ID reached the main bundle
+        if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
+        env:
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
+        run: node scripts/ci/assert-baked-team-id.mjs --expected "${PURESCIENCE_MAC_TEAM_ID:-}"
+
       - name: Enforce the macOS Developer ID signature gate
         if: ${{ matrix.platform == 'mac' && !inputs.skip_verify }}
         env:
