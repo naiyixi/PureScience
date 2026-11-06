@@ -39,7 +39,10 @@ const startLoop = (
   const waiters = new Map<string, (v: LoopResponse) => void>()
   rl.on('line', (line) => {
     try {
-      const msg = JSON.parse(line) as LoopResponse
+      const msg = JSON.parse(line) as LoopResponse & { started?: boolean }
+      // The loop writes an "execution started" frame first (same req_id, no result fields) and the
+      // result frame second. Resolving on the ack would hand the test a frame with `error: undefined`.
+      if (msg.started === true && msg.stdout === undefined) return
       const w = waiters.get(msg.req_id)
       if (w) {
         waiters.delete(msg.req_id)
@@ -108,6 +111,47 @@ gate('python_loop.py', () => {
     } finally {
       child.kill()
       rmSync(figuresDir, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  it('stops a package redraw loop from spinning the kernel while it has no request in flight', async () => {
+    const stubDir = mkdtempSync(join(tmpdir(), 'os-python-idle-loop-guard-'))
+    // A stand-in for the real package: the launcher sets the loop flag itself (that is the shape that
+    // makes the real no-GUI loop never block), and the second module carries the draw the loop calls.
+    writeFileSync(
+      join(stubDir, 'pymol.py'),
+      [
+        'class _Options:',
+        '    keep_thread_alive = 0',
+        'class _Invocation:',
+        '    options = _Options()',
+        'invocation = _Invocation()',
+        'def finish_launching(*args, **kwargs):',
+        '    invocation.options.keep_thread_alive = 1',
+        ''
+      ].join('\n')
+    )
+    writeFileSync(
+      join(stubDir, 'pymol2.py'),
+      ['class SingletonPyMOL:', '    def draw(self):', '        return None', ''].join('\n')
+    )
+    const { child, send } = startLoop(pyBin as string, { PYTHONPATH: stubDir })
+    try {
+      const launch = await send(
+        `import sys; sys.path.insert(0, ${JSON.stringify(stubDir)}); import pymol, pymol2; pymol.finish_launching(['pymol','-cq'])`
+      )
+      expect(launch.error).toBeNull()
+      // The guard runs after the cell, so its effect is only readable from the next request.
+      const after = await send(
+        'print("KEEP", pymol.invocation.options.keep_thread_alive); ' +
+          'print("CAPPED", getattr(pymol2.SingletonPyMOL.draw, "_purescience_throttled", False))'
+      )
+      expect(after.error).toBeNull()
+      expect(after.stdout).toContain('KEEP 0')
+      expect(after.stdout).toContain('CAPPED True')
+    } finally {
+      child.kill()
+      rmSync(stubDir, { recursive: true, force: true })
     }
   }, 60_000)
 

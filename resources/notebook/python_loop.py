@@ -9,6 +9,7 @@ import inspect
 import json
 import os
 import sys
+import time
 import traceback
 
 # Protocol output must survive user code that reassigns fd 1; keep a private handle to the real stdout.
@@ -461,6 +462,50 @@ def _capture_environment():
     }
 
 
+# Some scientific packages start a redraw thread when they are initialised and never yield it back.
+# PyMOL is the one measured here: `pymol.finish_launching()` sets `invocation.options.keep_thread_alive`
+# to 1 itself, then runs a no-GUI loop `while (p.idle() or p.getRedisplay() or keep_thread_alive or ...):
+# p.draw()` with no sleep anywhere — with no display to drive it, the loop never blocks. Real reading
+# (2026-11-06, this kernel, one cell `import pymol; pymol.finish_launching(['pymol','-cq'])`):
+# 97.6% CPU while the kernel had no request in flight, one core per kernel; two such kernels had been
+# spinning 15 h+ and held the host load average above 20, which is felt as "the whole machine is slow".
+# The package's own launch documentation calls the threaded launcher unsupported on macOS, so the
+# fix has to live on our side of the boundary.
+#
+# The guard is deliberately applied at the END of a cell and not at import time: a cell that imports
+# PyMOL and never launches it is untouched, and nothing here changes what PyMOL computes.
+#   1. clearing `keep_thread_alive` lets the loop finish on its own (the in-process session stays live:
+#      a later cell still runs `cmd.fragment()` / `count_atoms()` and reports `cmd._COb is not None`);
+#   2. if something else keeps reporting a redisplay, the redraw is capped at 20 Hz instead of spinning.
+# It is idempotent and silent: a healthy kernel pays two attribute reads per cell.
+def _apply_idle_loop_guards():
+    module = sys.modules.get("pymol")
+    if module is None:
+        return
+    try:
+        options = getattr(getattr(module, "invocation", None), "options", None)
+        if options is not None and getattr(options, "keep_thread_alive", 0):
+            options.keep_thread_alive = 0
+    except Exception:
+        # A different PyMOL build may not carry the flag; the redraw cap below still applies.
+        pass
+    try:
+        import pymol2
+        singleton = getattr(pymol2, "SingletonPyMOL", None)
+        draw = getattr(singleton, "draw", None)
+        if callable(draw) and not getattr(draw, "_purescience_throttled", False):
+
+            def _throttled_draw(self, *args, **kwargs):
+                time.sleep(0.05)
+                return draw(self, *args, **kwargs)
+
+            _throttled_draw._purescience_throttled = True
+            singleton.draw = _throttled_draw
+    except Exception:
+        # pymol2 missing means the thread cannot be running either; nothing to cap.
+        pass
+
+
 # Runs one request against the persistent namespace: execs all but a trailing bare expression, then
 # evals that expression so its repr echoes like a REPL. KeyboardInterrupt (from a SIGINT timeout) is
 # caught so the process survives and the driver can map the reply to a timeout.
@@ -498,6 +543,7 @@ def _run(code):
         error = traceback.format_exc()
     finally:
         _globals["_read_capture_active"] = False
+        _apply_idle_loop_guards()
         sys.stdout, sys.stderr = old_out, old_err
     figures = _capture_figures()
     # The audit event fires BEFORE the open happens, so an attempt on a file that is not there would
