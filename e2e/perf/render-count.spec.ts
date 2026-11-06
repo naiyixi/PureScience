@@ -379,5 +379,69 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       ` NodesNet=${counter('Nodes')} | host load ${load}`
   )
 
+  // NODES PER ROW — the deterministic half of "does a longer transcript cost more". The 2026-11-06 reading
+  // put the growth in the *price* of each style recalc rather than in how many times anything runs
+  // (rows/commit and rowRendersPerTurn are flat across 40 vs 160 turns), and that price is proportional to
+  // the number of elements in the document. So the remaining lever is nodes per row; this classifies them
+  // (message body vs row chrome, and which `data-slot` subtree they hang off) so a reduction is proposed
+  // against a number instead of a guess.
+  //
+  // Outermost rows only: one message id is carried by BOTH the scroller wrapper and the row root, so a bare
+  // `[data-message-id]` selector counts every node twice (see the "one message appears twice" finding).
+  const nodeShape = await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('[data-message-id]')).filter(
+      (row) => row.parentElement?.closest('[data-message-id]') == null
+    )
+    const bodySelectors = [
+      '[data-slot="assistant-message-body"]',
+      '[data-slot="user-message-bubble"]'
+    ]
+    const perRow = rows.map((row) => {
+      const all = Array.from(row.querySelectorAll('*'))
+      let body = 0
+      for (const selector of bodySelectors) {
+        for (const node of Array.from(row.querySelectorAll(selector)))
+          body += node.querySelectorAll('*').length
+      }
+      return { total: all.length, body, chrome: all.length - body }
+    })
+    const histogram: Record<string, number> = {}
+    const bySlot: Record<string, number> = {}
+    for (const row of rows) {
+      for (const element of Array.from(row.querySelectorAll('*'))) {
+        const tag = element.tagName.toLowerCase()
+        histogram[tag] = (histogram[tag] ?? 0) + 1
+        const slot = element.closest('[data-slot]')?.getAttribute('data-slot') ?? '(row root)'
+        bySlot[slot] = (bySlot[slot] ?? 0) + 1
+      }
+    }
+    const median = (values: number[]): number => {
+      if (values.length === 0) return 0
+      const sorted = [...values].sort((left, right) => left - right)
+      return sorted[Math.floor(sorted.length / 2)] ?? 0
+    }
+    return {
+      rows: perRow.length,
+      total: perRow.reduce((sum, row) => sum + row.total, 0),
+      medianTotal: median(perRow.map((row) => row.total)),
+      medianBody: median(perRow.map((row) => row.body)),
+      medianChrome: median(perRow.map((row) => row.chrome)),
+      histogram,
+      bySlot
+    }
+  })
+  const topOf = (record: Record<string, number>, limit: number): string =>
+    Object.entries(record)
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, limit)
+      .map(([key, count]) => `${key}=${count}`)
+      .join(' ')
+  console.log(
+    `[row-nodes] ${turns} turns: rows=${nodeShape.rows} total=${nodeShape.total}` +
+      ` median=${nodeShape.medianTotal} (body=${nodeShape.medianBody} chrome=${nodeShape.medianChrome})` +
+      ` | top tags ${topOf(nodeShape.histogram, 8)}`
+  )
+  console.log(`[row-nodes-slots] ${topOf(nodeShape.bySlot, 10)}`)
+
   expect(readings.rows).toBeGreaterThan(0)
 })
