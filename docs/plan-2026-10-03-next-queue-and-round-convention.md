@@ -16254,3 +16254,58 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 > 两条并存＝同一个问题两套答案。建议把探针接到那条共享解析器上（而不是只加一支），并把 `source` 一起传下去；
 > 现状下 `source: 'notebook-input'` 的条目仍会被 artifact 根解析器判不可用 —— 目前**没有界面在探它**
 > （`NotebookInputDataStrip` 走自己的预览读取器），所以这是**潜在缺口，不是今天用户可见的缺陷**。
+
+## 二百九十二、本轮追加（执行器，2026-11-06 17:4x–）—— 空闲内核在烧 CPU：补上主进程侧的观测
+
+> 编号跳过 §291：它在主工作区里是**另一执行体未提交的在制件**（上传探针那节），本笔不去占它的号。
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -5`：`35ecbcd1` 是我上一单元（PyMOL 刷新循环守卫），其 `Nightly` 与
+  `Windows Full Test` 本轮读到的结论**都是 success**（按完整 40 位 SHA 取 run 列表），上一轮「待复核」在此收口。
+- 主工作区（`/Users/totota/purescience`）带着并行会话的 40+ 项在制，且 `main` 停在一段旧位点、与
+  `origin/main` 分叉（`git status` 里那批「被修改」多数其实是它与 HEAD 的差）⇒ **一个字节没碰**，
+  本笔全部在隔离工作树 `/private/tmp/ps-cron-kernel`（`35ecbcd1` + 软链 node_modules）里做。
+- 队列 B 段三件早已收口/入版（A7 ✅、S3 ✅ 含 S4、M2 ⛔ 卡产品决定）⇒ 按队列约定推进自己的具名未闭项：
+  上一轮记事本那条「主进程观测空闲内核烧 CPU」。
+- 与并行会话不相交：它占 `reviewer/**`、`session-persistence/**`、`src/main/ipc.ts`、i18n 九文件、`UserCases*`；
+  本笔只碰 `src/main/notebook/**`。
+
+### 一 交付（2 改 + 2 新，外加证据档）
+
+- 新增 `src/main/notebook/kernel-idle-spin.ts`：累计 CPU 采样（`ps -o time=` 差分为窗口占用）、连续两窗
+  ≥ 50% 才报、一次空转只落一行、静默后重新武装、换 pid 取新基线、探针失败与 Windows 各自具名。
+  **只观测不处置**——理由写在文件头：cell 返回后自起的后台线程可能是用户真要的计算，按 CPU 拆掉等于替用户否决分析。
+- `kernel-executor.ts`：`logger` 注入且**只有注入时才启动**；`listIdleKernels()` 用 executor 自己的 `pending`
+  定义「空闲」；`shutdown()` 停止观测并丢基线。
+- `runtime-service.ts`：把 `notebook:runtime` 的 logger 经既有 `resolveDefaultExecutorOptions` 注进去
+  （facade 仍 1199 行，1200 行上限未被顶破）。
+- 证据：`docs/evidence/2026-11-06-kernel-idle-cpu-observation.md`。
+
+### 二 真机读数（真内核 + 真 ps + 真日志文件）
+
+一次性探针（跑完即删，未进仓库）：真实 repl 内核、cell 返回后留一个每 tick 烧 40 ms 的定时器，日志原文
+`cpuPercent: 82.4, windowMs: 255, pid: 79142, action: "observed-only"`；另有真实 `ps` 校准读数
+（`yes > /dev/null`：1.58 s → 4.27 s / 3 s ≈ 90% 单核，死 pid 时 ps 退出 1、输出为空 ⇒ 记 probe-failed 而非 0）。
+
+### 三 门禁（各自实跑，读数取自最后一次改动之后）
+
+- 定向 5 文件（`kernel-idle-spin` + `kernel-executor` + `session-lifecycle` + `runtime-service` +
+  `runtime-service.architecture`）：**267 passed / 6 skipped，exit 0**；新文件 12 项里有一条用**真实探针
+  对真实空转进程**（`process.execPath` 起 6 s 忙循环，实测 `cpuPercent > 50`）。
+- `tsc --noEmit -p tsconfig.node.json --composite false`：exit 0。
+- `eslint --no-cache` 五个文件：0 error。`kernel-executor.ts` 的两条 prettier warning 是 `35ecbcd1` 上既有的
+  （`git show HEAD:` 那份同样不过 `prettier --check`），没顺手改，免得把无关 hunk 卷进本笔。
+
+### 四 边界（不许读成更强）
+
+- **只落日志，没有面板徽标**：把它做成运行状态可见是下一单元候选，本轮不是用户可见能力。
+- **Windows 无探针** ⇒ 具名 `unsupported-platform`，不采样、不编数字。
+- 上一单元的 PyMOL 守卫与本单元的观测都要等**下一次发版**才进打包版。
+
+### 五 下一轮第一步
+
+① 读本笔的 `Nightly` + `Windows Full Test`（按完整 40 位 SHA），红了先读**作业级**日志归因；
+② 下一单元候选：把这条读数做成运行状态可见（面板一行「某内核空闲却占 N% CPU」）或挂进既有诊断面——
+先数连锁（是否要新通道）再动手；
+③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、`src/main/ipc.ts`、i18n 九文件。

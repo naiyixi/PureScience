@@ -21,6 +21,13 @@ import {
   type KernelVariable
 } from './kernel-protocol'
 import { mapLoopOutputs, type MappedFigure } from './loop-output-mapper'
+import {
+  KernelIdleSpinMonitor,
+  type IdleSpinReport,
+  type IdleSpinUnsampledReason,
+  type KernelCpuProbe
+} from './kernel-idle-spin'
+import type { Logger } from '../logger'
 import { confineKernelWrites, protectManagedRuntimeWrites } from './managed-runtime-guard'
 import {
   capturedReadEvidence,
@@ -139,6 +146,14 @@ export type NotebookKernelExecutorOptions = {
   onTerminated?: (kind: KernelProcessKind, env: string) => void
   // Injectable only to exercise the Windows conda activation contract on non-Windows test hosts.
   platform?: NodeJS.Platform
+  // Where the idle-cpu observation below reports. Absent means the observation does not run at all: a
+  // reading nobody can read is work for nothing.
+  logger?: Pick<Logger, 'info' | 'warn'>
+  // Injectable cpu probe + interval so a test can drive the observation with a fake clock/sample instead
+  // of waiting out a real 15 s window against a real spinning process.
+  idleSpinProbe?: KernelCpuProbe
+  idleSpinIntervalMs?: number
+  idleSpinThresholdPercent?: number
 }
 
 // One in-flight request awaiting a matching loop response line.
@@ -364,6 +379,10 @@ class NotebookKernelExecutor implements NotebookExecutor {
   private readonly onIdleShutdown?: (kind: KernelProcessKind, env: string) => void
   private readonly onTerminated?: (kind: KernelProcessKind, env: string) => void
   private readonly platform: NodeJS.Platform
+  private readonly logger?: Pick<Logger, 'info' | 'warn'>
+  // Watches the cpu time of kernels that are idle. Observation only — see kernel-idle-spin.ts for why it
+  // never kills or throttles anything.
+  private readonly idleSpinMonitor: KernelIdleSpinMonitor
 
   constructor(options: NotebookKernelExecutorOptions = {}) {
     this.pythonLoopPath = options.pythonLoopPath ?? defaultPythonLoopPath()
@@ -375,6 +394,52 @@ class NotebookKernelExecutor implements NotebookExecutor {
     this.onIdleShutdown = options.onIdleShutdown
     this.onTerminated = options.onTerminated
     this.platform = options.platform ?? process.platform
+    this.logger = options.logger
+    this.idleSpinMonitor = new KernelIdleSpinMonitor({
+      listIdleKernels: () => this.listIdleKernels(),
+      onSpin: (report) => this.reportIdleSpin(report),
+      onUnsampled: (reason) => this.reportIdleSpinUnsampled(reason),
+      probe: options.idleSpinProbe,
+      platform: this.platform,
+      intervalMs: options.idleSpinIntervalMs,
+      thresholdPercent: options.idleSpinThresholdPercent
+    })
+  }
+
+  // Kernels that are spawned, alive, and have no request in flight. This is the only place that decides
+  // "idle": `pending` is the executor's own record of a request awaiting its loop response.
+  private listIdleKernels(): { key: string; kind: string; env: string; pid: number }[] {
+    const idle: { key: string; kind: string; env: string; pid: number }[] = []
+    for (const proc of this.procs.values()) {
+      if (proc.pending || !this.isLiveProc(proc)) continue
+      const pid = proc.child.pid
+      if (pid === undefined) continue
+      idle.push({ key: proc.key, kind: proc.kind, env: proc.env, pid })
+    }
+    return idle
+  }
+
+  // The reading itself. `action: 'observed-only'` is part of the record: nothing was throttled, killed,
+  // or restarted, and a reader of the log must not have to infer that from silence.
+  private reportIdleSpin(report: IdleSpinReport): void {
+    this.logger?.warn('notebook kernel idle spin detected', {
+      key: report.key,
+      kind: report.kind,
+      env: report.env,
+      pid: report.pid,
+      cpuPercent: report.cpuPercent,
+      windowMs: report.windowMs,
+      thresholdPercent: report.thresholdPercent,
+      consecutiveSamples: report.consecutiveSamples,
+      action: 'observed-only'
+    })
+  }
+
+  private reportIdleSpinUnsampled(reason: IdleSpinUnsampledReason): void {
+    this.logger?.info('notebook kernel idle spin observation unavailable', {
+      reason,
+      action: 'observed-only'
+    })
   }
 
   // Sends one cell to the kind's loop and resolves with the mapped execution result.
@@ -460,6 +525,7 @@ class NotebookKernelExecutor implements NotebookExecutor {
   // interruption instead of a failure; a caller that must refuse before this runs (the quit path) can call
   // refuseInflightRuns() first — this method then reaps exactly the loops that call cleared.
   async shutdown(options: NotebookKernelShutdownOptions = {}): Promise<ProcessTreeKillResult> {
+    this.idleSpinMonitor.stop()
     this.refuseInflightRuns(options)
     const procs = this.refusedProcs.splice(0, this.refusedProcs.length)
 
@@ -621,6 +687,9 @@ class NotebookKernelExecutor implements NotebookExecutor {
     })
 
     this.procs.set(key, proc)
+    // First kernel spawned: start the idle-cpu observation. Only when someone can read the reading —
+    // without a logger there is no consumer, and sampling would be work for nothing.
+    if (this.logger) this.idleSpinMonitor.start()
     return proc
   }
 

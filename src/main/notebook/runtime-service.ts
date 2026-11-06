@@ -322,14 +322,13 @@ const resolveLoopScriptPaths = (): {
 // this no longer pins a single pythonBin/rEnvPrefix — it returns only the loop-script paths. Kept as a
 // pure function separate from `new NotebookKernelExecutor(...)` so tests can assert the resolved paths
 // without spawning a real loop process.
-const resolveDefaultExecutorOptions = (): NotebookKernelExecutorOptions => {
+const resolveDefaultExecutorOptions = (
+  logger?: NotebookKernelExecutorOptions['logger']
+): NotebookKernelExecutorOptions => {
   const { pythonLoopPath, rLoopPath, replLoopPath } = resolveLoopScriptPaths()
-
-  return {
-    pythonLoopPath,
-    rLoopPath,
-    replLoopPath
-  }
+  // The idle-cpu observation reports through this logger; with none supplied it does not run at all
+  // (kernel-idle-spin.ts explains why it is an observation and never a control).
+  return { pythonLoopPath, rLoopPath, replLoopPath, logger }
 }
 
 // Coordinates notebook cells, shared interpreters, persisted run history, and UI notifications.
@@ -430,7 +429,7 @@ class NotebookRuntimeService {
       sessions: this.sessions,
       runtimeBindings: this.runtimeBindingOwner,
       executorFactory: options.executorFactory,
-      defaultExecutorOptions: resolveDefaultExecutorOptions,
+      defaultExecutorOptions: () => resolveDefaultExecutorOptions(this.runtimeLogger),
       platform: options.platform,
       callbacks: options.callbacks,
       toSessionReference: (session) => this.sessionReadModel.toSessionReference(session)
