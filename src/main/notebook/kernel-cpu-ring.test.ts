@@ -50,7 +50,10 @@ const makeHarness = (
     intervalMs: 15_000,
     thresholdPercent: 50,
     ring,
-    ...(options.platform === undefined ? {} : { platform: options.platform })
+    // A fixed platform, not the host's: half of these tests read what `start()` wrote to the ring, and on a
+    // host that has no probe `start()` names `unsupported-platform` instead of ever becoming `running`
+    // (that is what the Windows lane caught — the same seam the sibling monitor suite already pins).
+    platform: options.platform ?? 'darwin'
   })
   return {
     ring,
