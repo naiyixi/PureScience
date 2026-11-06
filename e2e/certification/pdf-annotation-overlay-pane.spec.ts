@@ -197,20 +197,42 @@ const readOverlay = (page: Page): Promise<OverlayProbe> =>
 /** The page's width and the pane's, read together: the page is sized from the pane's content box. */
 const readWidths = (
   page: Page
-): Promise<{ pageWidth: number; paneWidth: number; panelWidth: number; pageLeftOfPanel: number }> =>
+): Promise<{
+  pageWidth: number
+  paneWidth: number
+  panelWidth: number
+  pageLeftOfPanel: number
+  /** The pane's BORDER box: the layout width the panel would have to steal from. */
+  paneBoxWidth: number
+  /** offsetWidth - clientWidth: what a classic scrollbar takes from the pane's content box. */
+  paneGutter: number
+  /** The scroll container's gutter — the box the page is actually sized from. */
+  scrollGutter: number
+  windowWidth: number
+  paneTag: string
+}> =>
   page.evaluate(() => {
     const round = (value: number): number => Math.round(value * 10) / 10
     const pageEl = document.querySelector('[data-page-number]')
     const panel = document.querySelector('[data-testid="pdf-annotation-panel"]')
     const pane = document.querySelector('[data-slot="pdf-annotation-panel-toggle"]')?.parentElement
       ?.parentElement as HTMLElement | null
+    const scroller = pane?.querySelector<HTMLElement>(
+      '[role="region"][aria-label$="scrollable preview"]'
+    )
     const pageRect = pageEl?.getBoundingClientRect()
     const panelRect = panel?.getBoundingClientRect()
+    const paneRect = pane?.getBoundingClientRect()
     return {
       pageWidth: pageRect ? round(pageRect.width) : 0,
       paneWidth: pane?.clientWidth ?? 0,
       panelWidth: panelRect ? round(panelRect.width) : 0,
-      pageLeftOfPanel: pageRect ? round(Math.max(0, (panelRect?.x ?? pageRect.x) - pageRect.x)) : 0
+      pageLeftOfPanel: pageRect ? round(Math.max(0, (panelRect?.x ?? pageRect.x) - pageRect.x)) : 0,
+      paneBoxWidth: paneRect ? round(paneRect.width) : 0,
+      paneGutter: pane ? pane.offsetWidth - pane.clientWidth : 0,
+      scrollGutter: scroller ? scroller.offsetWidth - scroller.clientWidth : 0,
+      windowWidth: window.innerWidth,
+      paneTag: pane ? `${pane.tagName.toLowerCase()}#${pane.className.slice(0, 40)}` : 'none'
     }
   })
 
@@ -243,22 +265,54 @@ const expectEveryControlReachable = (probe: OverlayProbe): void => {
 /** The cover contract, at whatever pane width the case is running on. */
 const expectCoverContract = (
   probe: OverlayProbe,
-  closed: { pageWidth: number; paneWidth: number },
-  open: { pageWidth: number; paneWidth: number; panelWidth: number }
+  closed: {
+    pageWidth: number
+    paneWidth: number
+    paneBoxWidth: number
+    paneGutter: number
+    scrollGutter: number
+    windowWidth: number
+    paneTag: string
+  },
+  open: {
+    pageWidth: number
+    paneWidth: number
+    panelWidth: number
+    paneBoxWidth: number
+    paneGutter: number
+    scrollGutter: number
+    windowWidth: number
+    paneTag: string
+  }
 ): void => {
-  expect(closed.pageWidth, 'the page had no width to compare against').toBeGreaterThan(0)
-  expect(
-    open.paneWidth,
-    `the pane changed width between the two readings (closed ${closed.paneWidth}px, open ${open.paneWidth}px)`
-  ).toBe(closed.paneWidth)
+  // The diagnostics every judgement below carries. `clientWidth` is the pane's PADDING box, so a classic
+  // scrollbar is subtracted from it and from nothing else: on a machine that shows scrollbars, a pane can
+  // read 14px narrower with the panel closed and 14px wider once the content no longer scrolls, with the
+  // layout never having moved. Naming the boxes, the gutters and the window separates that from the defect
+  // this case is about (the panel taking room from the page).
+  const shape =
+    `[pane box ${closed.paneBoxWidth}->${open.paneBoxWidth} client ${closed.paneWidth}->${open.paneWidth}` +
+    ` gutter ${closed.paneGutter}->${open.paneGutter} scroller gutter ${closed.scrollGutter}->${open.scrollGutter}` +
+    ` window ${closed.windowWidth}->${open.windowWidth} element ${open.paneTag}]`
 
-  // (a) The page's width is the pane's, not the pane's minus the panel's. The two readings are the same
-  // number: the panel is an overlay and takes no room in the flow the pages are laid out in.
+  expect(closed.pageWidth, 'the page had no width to compare against').toBeGreaterThan(0)
+
+  // (a) The page's width is the pane's, not the pane's minus the panel's. Asserted FIRST and as the
+  // equality it is, because this is what a reader sees: the panel is an overlay and takes no room in the
+  // flow the pages are laid out in.
   expect(
     Math.abs(open.pageWidth - closed.pageWidth),
     `the page is ${open.pageWidth}px wide with the panel open and ${closed.pageWidth}px with it closed ` +
-      `(tolerance ${PAGE_WIDTH_TOLERANCE}px) on a ${open.paneWidth}px pane`
+      `(tolerance ${PAGE_WIDTH_TOLERANCE}px) on a ${open.paneBoxWidth}px pane ${shape}`
   ).toBeLessThanOrEqual(PAGE_WIDTH_TOLERANCE)
+
+  // The panel may never NARROW the pane it covers: a panel that took room would take its own 20rem off it.
+  // The border box is the ruler, not `clientWidth` — a scrollbar leaving the pane grows the content box by
+  // itself, and that is not room the panel gave back.
+  expect(
+    open.paneBoxWidth,
+    `the pane narrowed from ${closed.paneBoxWidth}px to ${open.paneBoxWidth}px when the panel opened ${shape}`
+  ).toBeGreaterThanOrEqual(closed.paneBoxWidth)
 
   // And in the form the defect would take: a side-by-side layout leaves the page the band left of the
   // panel (on the narrowest window: 423 - 320 = 103px). The page is far wider than that band.
