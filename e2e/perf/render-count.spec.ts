@@ -309,6 +309,40 @@ appTest('counts transcript row renders and props churn', async ({ app }) => {
       .map(([reason, count]) => `${reason}=${count}`)
       .join(' ')}`
   )
+  // Budget assertions. These are counts, not durations, so they mean the same thing on a loaded laptop and on a
+  // CI runner — which is why this spec can gate a nightly while the wall-clock perf spec cannot. Limits are set
+  // roughly 3x above the current readings: tight enough to catch a regression that re-broadcasts a value into
+  // every row (that mistake was 5.67 rows/commit and 18.4 commits/turn), loose enough not to flake.
+  const budget = {
+    rowsRenderedPerCommit: 1,
+    commitsPerTurn: 20,
+    rowRendersPerTurn: 5,
+    maxRendersPerRow: 10
+  }
+  const measured = {
+    rowsRenderedPerCommit: readings.rowsRenderedPerCommit,
+    commitsPerTurn: readings.commits / turns,
+    rowRendersPerTurn: readings.total / turns,
+    maxRendersPerRow: readings.max
+  }
+  const overBudget = Object.entries(budget).filter(
+    ([key, limit]) => measured[key as keyof typeof measured] > limit
+  )
+  console.log(
+    `[budget] ${Object.entries(measured)
+      .map(
+        ([key, value]) =>
+          `${key}=${value.toFixed(2)}/${budget[key as keyof typeof budget].toFixed(2)}`
+      )
+      .join(
+        ' '
+      )} | ${overBudget.length === 0 ? 'within budget' : `OVER: ${overBudget.map(([key]) => key).join(',')}`}`
+  )
+  expect(
+    overBudget,
+    `per-row render budget exceeded: ${overBudget.map(([k]) => k).join(',')}`
+  ).toEqual([])
+
   console.log(
     `[chunks] ${turns} turns: total=${readings.chunks} (${(readings.chunks / turns).toFixed(1)}/turn)` +
       ` committed=${readings.chunksCommitted} | row renders per chunk: ` +

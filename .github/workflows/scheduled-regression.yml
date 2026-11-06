@@ -182,7 +182,7 @@ jobs:
 
   track:
     name: Track the result in an issue
-    needs: [vitest_stability, e2e_stability, perf_leak_check]
+    needs: [vitest_stability, e2e_stability, perf_leak_check, transcript_render_budget]
     # Runs on red and on green: green is what closes the issue, so it cannot be skipped.
     if: always()
     runs-on: ubuntu-latest
@@ -209,3 +209,39 @@ jobs:
           --lane e2e=${{ needs.e2e_stability.result }}
           --lane perf_leak=${{ needs.perf_leak_check.result }}
           --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  transcript_render_budget:
+    name: Transcript render budget (deterministic counters)
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify the Electron binary is provisioned
+        shell: bash
+        run: |
+          if [ -f node_modules/electron/path.txt ]; then
+            echo "electron binary: $(cat node_modules/electron/path.txt)"
+            exit 0
+          fi
+          echo "::warning::Electron binary missing after npm ci — retrying the postinstall"
+          node node_modules/electron/install.js
+          test -f node_modules/electron/path.txt
+
+      # Counts, not durations: how many times a row renders per store commit, and how many commits a turn
+      # produces. A loaded runner changes how long each render takes, never how many happen, so this lane can
+      # fail on a real regression without flaking on a busy host. The budget lives in the spec.
+      - name: Run the render budget spec
+        run: |
+          npm run build:e2e
+          PERF_TURNS=40 PERF_WAIT=selector npx playwright test e2e/perf/render-count.spec.ts --reporter=line
