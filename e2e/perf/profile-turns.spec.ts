@@ -25,7 +25,8 @@ import { test as appTest } from '../fixtures/electron-app'
 // computes text and visibility for every candidate. Those frames then rank near the top under names that
 // belong to the measurement tool — `elementText`, `query`, `normalizeWhiteSpace`, `shouldSkipForTextMatching`
 // — and the reading invites a fix in application code that does not exist. Measured at 40 turns on one
-// machine: those four frames are 249 ms with the text wait and below the top-20 cut with this one.
+// machine: those four frames are 200 ms (7.7% of active time) with the text wait and below the top-20 cut
+// with this one.
 // `PERF_WAIT=text` still reproduces the old mode on purpose; the header line records which mode produced a
 // reading so it can never be quoted without it.
 const waitMode: 'selector' | 'text' = process.env.PERF_WAIT === 'text' ? 'text' : 'selector'

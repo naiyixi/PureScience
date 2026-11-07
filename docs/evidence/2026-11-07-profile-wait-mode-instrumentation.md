@@ -36,9 +36,12 @@
 | `updateProperties` | 36.3 ms · 1.6% | 27.1 ms · 1.0% |
 | 采样 / 活跃 | 9 458 ms / 2 233 ms | 6 707 ms / 2 626 ms |
 
+四项（`elementText` + `query` + `normalizeWhiteSpace` + `shouldSkipForTextMatching`）合计：
+**`selector` 9.1 ms / 0.4%，`text` 172.2 ms / 6.6%**。
+
 同一提交上，改动前那次缺省模式的读数（同一场景）是
 `elementText 74.3` / `query 50.5` / `normalizeWhiteSpace 47.4` / `shouldSkipForTextMatching 28.3`，
-合计 **249.7 ms / 活跃 2 609 ms = 9.6%** —— 与上表同向、量级一致。
+合计 **200.5 ms / 活跃 2 609 ms = 7.7%**（74.3 + 50.5 + 47.4 + 28.3）—— 与上表同向、量级一致。
 
 ## 三 结论（三条，都能被上面两列各自否掉）
 

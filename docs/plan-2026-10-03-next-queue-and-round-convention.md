@@ -16456,8 +16456,14 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 | `removeChild` | 75.6 ms · 3.4% | 62.5 ms · 2.4% |
 | 采样 / 活跃 | 9 458 / 2 233 ms | 6 707 / 2 626 ms |
 
-两次各 `1 passed`（18.6 s / 14.6 s）。干净读数里 `(program)` 777.7 ms = 活跃时间的 **34.8%**，
+两次各 `1 passed`（18.6 s / 14.6 s）。四项（`elementText` + `query` + `normalizeWhiteSpace` +
+`shouldSkipForTextMatching`）合计：`selector` 9.1 ms / 0.4%、`text` 172.2 ms / 6.6%；
+改动前那次 `text` 读数合计 200.5 ms / 7.7%。干净读数里 `(program)` 777.7 ms = 活跃时间的 **34.8%**，
 应用侧无单点热点 —— 与「增长在单价不在次数」那条既有结论同向。
+
+> **本笔的具名更正（下一笔提交）**：上面这段第一次写的时候，把改动前那次的四项合计写成
+> `249.7 ms / 9.6%` —— 那是手抄相加错（正确 200.5 ms / 7.7%，`74.3+50.5+47.4+28.3`）。以本行为准；
+> 同一处错字也出现在 `profile-turns.spec.ts` 的注释里，一并改正。
 
 ### 三 门禁（隔离工作树 `/tmp/ps-r297` @ `68a3a8b9` + 本轮改动）
 
