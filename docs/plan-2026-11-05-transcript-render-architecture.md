@@ -929,3 +929,23 @@ CI runner 上，`rows/commit` 是同一个数。所以这套读数可以当门�
    不该在没量过之前动手。
 
 这是本立项的终点，不是一个待办。
+
+## 三十六 更正：§十二 末尾那批无障碍/文本帧是量具，不是下一步方向
+
+§十二 的 80 回合剖析榜里出现 `isElementHiddenForAria` / `elementText` / `querySelectorAll` / `query` /
+`normalizeWhiteSpace` 一簇，当时写下「更像有人在整篇文档上做可访问名/文本计算，这是下一步的排查方向，
+不能靠猜，要先定位是谁在调用」。**这个方向撤回**，理由是同场景两读数（`2026-11-07`）：
+
+只把回合之间的等待方式从文本定位器换成结构性等待，`elementText` / `normalizeWhiteSpace` /
+`shouldSkipForTextMatching` 三项从 68.4 / 32.6 / 25.7 ms 变成 **0.0 ms**，`query` 只剩 9.1 ms；
+`isElementHiddenForAria` 两列都是 **0.0 ms**（本场景根本没复现过）。它们是文本定位器在页面内的
+文本/可见性计算，属于**量具**。这与更早那份交互流畅度证据的结论一致，本轮把它补齐成「两列 + 具名帧」。
+
+工具侧同时改掉重复发生的条件：`e2e/perf/profile-turns.spec.ts` 的缺省改成结构性等待（`PERF_WAIT=text`
+保留旧模式），每次读数打印 `[profile] wait=<模式>`，并把十帧按名字打印毫秒与占活跃时间的百分比。
+证据档：`docs/evidence/2026-11-07-profile-wait-mode-instrumentation.md`。
+
+**对 §五 5.1 P1-c（`revisions` 那一位）的处置：不做。** 判据来自上面两列：干净读数里应用侧没有单点热点
+（`(program)` 34.8%、`removeChild` 3.4%、`propagateContextChanges` 2.4%、`updateProperties` +
+`commitHostUpdate` 3.0%），而渲染次数中位已降到 2 —— 再挪一位 map 改不动 `removeChild` 与 `(program)`。
+要做就得先有一段「可归因」的读数支持它，否则是凭立项档的旧假设动手。

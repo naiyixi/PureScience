@@ -11,15 +11,43 @@ import { test as appTest } from '../fixtures/electron-app'
 // only rules out "re-render per delta". This walks the same scenario under CDP's sampling profiler and
 // prints self time per function, so the fix is chosen from readings instead of from a guess.
 //
-//   npm run build:e2e && PERF_TURNS=10 npx playwright test e2e/perf/profile-turns.spec.ts --reporter=line
+//   npm run build:e2e && PERF_TURNS=40 npx playwright test e2e/perf/profile-turns.spec.ts --reporter=line
+//   PERF_TURNS=40 PERF_WAIT=text npx playwright test e2e/perf/profile-turns.spec.ts   # the old, polluted mode
 //
 // Self time, not inclusive: a wrapper that calls a hot function would otherwise look hot too, and the
 // question here is which function's own body burns the milliseconds.
 
-// Same switch as the smoothness baseline: PERF_WAIT=selector keeps the harness's own text-locator polling
-// out of the profile.
+// Which wait the harness uses between turns decides what the ranking is allowed to name.
+//
+// The default here is the structural wait, unlike the smoothness baseline: a self-time ranking is read as
+// "this is where the application spends its time", and the text-locator wait (`getByText(…).count()` polled
+// while the reply streams) does its own work *inside this page*: resolving a text locator walks the document,
+// computes text and visibility for every candidate. Those frames then rank near the top under names that
+// belong to the measurement tool — `elementText`, `query`, `normalizeWhiteSpace`, `shouldSkipForTextMatching`
+// — and the reading invites a fix in application code that does not exist. Measured at 40 turns on one
+// machine: those four frames are 249 ms with the text wait and below the top-20 cut with this one.
+// `PERF_WAIT=text` still reproduces the old mode on purpose; the header line records which mode produced a
+// reading so it can never be quoted without it.
+const waitMode: 'selector' | 'text' = process.env.PERF_WAIT === 'text' ? 'text' : 'selector'
+
+// Frames whose presence in a ranking has to be explainable: four of these belong to the text-locator wait
+// (the measurement tool), the rest are application/React work. Printed by name so a mode change shows up as
+// a number, not as a disappearance from a truncated list.
+const WATCHED_FRAMES = [
+  'elementText',
+  'query',
+  'normalizeWhiteSpace',
+  'shouldSkipForTextMatching',
+  'isElementHiddenForAria',
+  'querySelectorAll',
+  'propagateContextChanges',
+  'removeChild',
+  'commitHostUpdate',
+  'updateProperties'
+]
+
 const sendTurn = async (page: Page, prompt: string): Promise<void> => {
-  const structuralWait = process.env.PERF_WAIT === 'selector'
+  const structuralWait = waitMode === 'selector'
   if (structuralWait) {
     const bodies = (): Promise<number> =>
       page.evaluate(() => document.querySelectorAll('[data-slot="assistant-message-body"]').length)
@@ -158,9 +186,27 @@ appTest(
     }
     const { profile } = (await cdp.send('Profiler.stop')) as { profile: SamplingProfile }
 
-    const ranked = topSelfTime(profile, 20)
-    for (const entry of ranked) {
+    const frames = topSelfTime(profile, 400)
+    console.log(`[profile] wait=${waitMode} turns=${turns}`)
+    for (const entry of frames.slice(0, 20)) {
       console.log(`[profile] ${entry.ms.toFixed(1).padStart(8)}ms  ${entry.label}`)
+    }
+
+    // Frames named in advance, so the two wait modes compare as numbers rather than as "absent from the top
+    // 20". The share is of active time (everything but `idle`): a ranking without its denominator invites
+    // reading a bigger sample as a bigger cost.
+    const activeMs = frames.reduce(
+      (sum, entry) => sum + (entry.label.startsWith('(idle)') ? 0 : entry.ms),
+      0
+    )
+    for (const name of WATCHED_FRAMES) {
+      const ms = frames
+        .filter((entry) => entry.label.startsWith(`${name} @`))
+        .reduce((sum, entry) => sum + entry.ms, 0)
+      const share = activeMs === 0 ? 0 : (ms / activeMs) * 100
+      console.log(
+        `[watch] ${name.padEnd(24)} ${ms.toFixed(1).padStart(7)}ms  ${share.toFixed(1).padStart(5)}% of active`
+      )
     }
 
     // Attribution: for the hottest nodes, name the application frames that led there.
@@ -178,6 +224,6 @@ appTest(
       if (!node) continue
       console.log(`[callers] ${labelOf(node)}  ←  ${callerChain(nodeId, byId, 6)}`)
     }
-    expect(ranked.length).toBeGreaterThan(0)
+    expect(frames.length).toBeGreaterThan(0)
   }
 )

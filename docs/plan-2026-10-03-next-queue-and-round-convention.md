@@ -16416,3 +16416,70 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 ① 读本轮推送后的 `Nightly`：`Build macos-x64` 若再次红在同一处，按仪器口径给
 `launchAndProbe` 的 bootstrap 超时补一句具名（端点 + 端口可连性 + 应用输出尾巴），不再只抛 `aborted due to timeout`；
 ② 若该车道绿，回到队列档 B 段取下一件大件；③ 仍让开 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*`。
+
+## 二百九十五、本轮追加（执行器，2026-11-07 18:4x–）—— 剖析榜上那四个「应用热点」是量具自己：等待模式两读数 + 缺省翻身
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 68a3a8b9`；本地 `main` 停在 `f10fb8d9`、落后远端一大段，另有两笔
+  （`f10fb8d9` / `0f5dffb9`）与远端 `3f628550` / `046d09f4` 的 patch-id 逐字相同 ⇒ 是同一批改动的重复落地，
+  不是该我推的东西，本轮一个字节没动。
+- 上一轮的判据兑现：`68a3a8b9` 的 `Nightly`（含 `Build macos-x64`）、`Windows Full Test`、
+  `Scheduled Regression` **三条全绿** ⇒ 「x64 冒烟是 runner 侧间歇」的归因由后续车道兑现——不再立案，不再立案。
+- 主工作区带着并行会话 46 处未提交（`reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*`、
+  `screening-service.ts`、`prisma/schema.prisma`…）⇒ 一个字节没碰、未 stash、未提交；本轮全部作业在
+  隔离工作树 `/private/tmp/ps-r297`（`node_modules` 软链，签到 `68a3a8b9`）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无活；排期档的未闭项只有签名三件（外部阻塞）与
+  性能两件（一件本机不可判、一件待拍板）⇒ 取「本机不可判的那件」的**前置**：先把上一轮写下的
+  「下一步查谁在算可访问名」证伪或证实。与本轮不相交（只碰 `e2e/perf/**` 与 docs）。
+
+### 一 交付：两读数把一簇帧归位 + 量具缺省翻身
+
+- `e2e/perf/profile-turns.spec.ts`：缺省等待从文本定位器改为结构性等待（`PERF_WAIT=text` 保留旧模式）；
+  每次读数打印 `[profile] wait=<模式> turns=<n>`；新增 `[watch]` 十行（毫秒 + 占活跃时间百分比），
+  判据不再依赖「是否进得了前 20」。
+- `docs/evidence/2026-11-07-profile-wait-mode-instrumentation.md`（两列对照表、机器负载、方法、边界）。
+- `docs/plan-2026-11-05-transcript-render-architecture.md` §三十六：撤回 §十二 末尾那条方向，
+  并把 P1-c 判为**不做**（理由在档里）。
+
+### 二 读数（同提交、同产物、背靠背；分母 = 采样总时长减 `(idle)`）
+
+| 帧 | `wait=selector` | `wait=text` |
+| --- | --- | --- |
+| `elementText` | **0.0 ms · 0.0%** | 68.4 ms · 2.6% |
+| `query` | 9.1 ms · 0.4% | 45.5 ms · 1.7% |
+| `normalizeWhiteSpace` | **0.0 ms · 0.0%** | 32.6 ms · 1.2% |
+| `shouldSkipForTextMatching` | **0.0 ms · 0.0%** | 25.7 ms · 1.0% |
+| `isElementHiddenForAria` | 0.0 ms · 0.0% | 0.0 ms · 0.0% |
+| `querySelectorAll`（结构性等待自己） | 37.7 ms · 1.7% | 42.0 ms · 1.6% |
+| `propagateContextChanges` | 54.2 ms · 2.4% | 54.7 ms · 2.1% |
+| `removeChild` | 75.6 ms · 3.4% | 62.5 ms · 2.4% |
+| 采样 / 活跃 | 9 458 / 2 233 ms | 6 707 / 2 626 ms |
+
+两次各 `1 passed`（18.6 s / 14.6 s）。干净读数里 `(program)` 777.7 ms = 活跃时间的 **34.8%**，
+应用侧无单点热点 —— 与「增长在单价不在次数」那条既有结论同向。
+
+### 三 门禁（隔离工作树 `/tmp/ps-r297` @ `68a3a8b9` + 本轮改动）
+
+| 环 | 读数 |
+| --- | --- |
+| `npm run build:e2e`（`NODE_OPTIONS=8192`） | exit 0，`built in 39.12s` |
+| `eslint --no-cache e2e/perf/profile-turns.spec.ts` | 0 error / 0 warning（prettier 两处折行已用 `--write` 修） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0，`error TS` 0 条 |
+| `npx playwright test e2e/perf/profile-turns.spec.ts`（两模式） | 各 1 passed |
+
+### 四 边界（不许读成更强）
+
+- **绝对毫秒不可比**：本机 `load 6.02`、交换区用掉 10.28 G / 11.26 G ⇒ 本轮只主张同批两列之差与「0 与非 0」，
+  不主张任何「每回合 X 毫秒」。
+- **没有改产品代码**，不声称流畅度改善；本轮只是把「下一步查什么」从一条错的线索挪开，
+  并把重复发生的条件（缺省模式）改掉。
+- `isElementHiddenForAria` 只在**本场景**被否掉；角色/名称定位的 spec 里它可能真的出现。
+- 四项性能预算的判决仍**不可**在本机给出（需专用机），这一条没变。
+
+### 五 下一轮第一步
+
+① 若并行会话落定（主工作区 `git status --short` 只剩我的空），回到排期档把「长会话结构性优化」按审计归档
+收口（判据已在 2026-11-07 富语料档与本轮两读数里，**零代码**），不再开工 P1-c；
+② 否则取一件与 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*` 不相交的单元；
+③ 签名三件仍属外部阻塞（证书未下来），不动。
