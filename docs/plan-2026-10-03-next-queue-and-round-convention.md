@@ -16353,3 +16353,66 @@ npx playwright test e2e/certification/pdf-annotation-narrow-pane.spec.ts
 ② 下一个候选（按连锁从小到大）：给 `notebook:env` 的运行状态面**只读**加一行「内核空闲却占 N%」的入口，
   先数它到底要不要新通道；若仍要新通道则维持诊断包这条出口，转而做 v2.23.0 的「长任务」预算口径（需要独占测量）；
 ③ 仍让开：`src/main/reviewer/**`、`src/main/session-persistence/**`、i18n 九文件、`UserCases*`。
+
+## 二百九十四、本轮追加（执行器，2026-11-07 09:1x–）—— 两次红都被读成「不是这批代码」，并把「带内核的诊断包」补成真机读数
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = f08e7fb3`；**本地 main 落后 92 笔**，另有两笔（`f10fb8d9` / `0f5dffb9`）与远端
+  `3f628550` / `046d09f4` 的 **patch-id 逐字相同** ⇒ 是同一批改动的重复落地，不是我该推的东西。
+- 共享工作树 **46 处未提交**（`reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*`、
+  `screening-service.ts`、`prisma/schema.prisma`…）一个字节没碰、未 stash、未提交；
+  本轮全部作业在隔离工作树 `/tmp/ps-r294`（`node_modules` 软链）。
+- 上一轮 `08efb017` 的两条车道：`Windows Full Test` 红已被 `f08e7fb3` 修掉（平台字面量），
+  `Nightly` 红在 `build / Build macos-x64` 的打包冒烟上 —— 本轮的入口就是它。
+
+### 一 交付 1：macos-x64 冒烟的三次读数与归因（证据档 `2026-11-07-macos-x64-smoke-intermittent.md`）
+
+| 提交 | 结论 | 停在哪 |
+|---|---|---|
+| `af2e77e6` | passed | 整支 62.2 s |
+| `08efb017` | failure | 启动 2 290 ms 后停在 `load-application-modules`，等满 60 032 ms |
+| `f08e7fb3` | failure | 启动 2 558 ms 后停在**同一处**，等满 60 285 ms |
+| `f08e7fb3` 复跑 | failure | **换形状**：端点已宣告，`/api/bootstrap` 15 s 超时 |
+
+判据：同一提交 arm64 冒烟 passed、`Verify` 全绿、本笔改动零 `scripts/**`，且**复跑换了停点**
+⇒ 读作 runner 侧间歇，不读作某一处代码的确定性缺陷。**不加大超时**（健康基线 15–25 s/次启动）。
+
+### 二 交付 2：诊断包里的内核 CPU 第一次读到 `status=samples`（证据档 `2026-11-07-kernel-cpu-bundle-samples.md`）
+
+上一轮 `08efb017` 的真机读数只到 `status=monitor-not-started`（那支 spec 不跑 notebook，诚实但只覆盖一半）。
+本轮新增 `e2e/certification/support-bundle-kernel-cpu.spec.ts`：
+
+- 起内核**不经 agent 回合**：`sessions.saveSession` → `runtime.listEnvironments` + `setEnvironmentEnabled`
+  → `notebook.bindRuntime` → `notebook.execute`。理由有两条：被测对象是主进程的采样环；且本机的真
+  `opencode` 会盖掉 e2e 的假 agent（首启把真路径写进 `settings.opencodePath`），prompt 那条路在本机根本走不通。
+- 等 35 s（间隔 15 s，**第一拍只取基线**），走设置页导出，解压读 `diagnostics/notebook-kernel-cpu.json`。
+
+读数（两次独立运行）：
+
+```
+status=samples monitor=running observed=1 latest=1 reasons=(none)
+pid=97496 cpuPercent=0 windowMs=14993 spinning=false env=default-python   → 1 passed (1.1m)
+pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 passed (46.1s)
+```
+
+### 三 门禁（隔离工作树 `/tmp/ps-r294` @ `f08e7fb3`）
+
+| 环 | 读数 |
+|---|---|
+| `eslint --no-cache`（新 spec） | 0 error / 0 warning |
+| `typecheck:node`（`NODE_OPTIONS=8192`） | 0 error，exit 0 |
+| 真机 e2e（`playwright test e2e/certification/support-bundle-kernel-cpu.spec.ts`） | 2 次 1 passed（46.1 s / 1.1m） |
+| `scripts/pre-push-checks.sh` | 见下一轮汇报（本笔提交后跑） |
+
+### 四 边界
+
+- x64 冒烟**没有在本机复现**（本机 arm64 跑不了 x64 包）⇒ 记「未复现」，不写「已排除」。
+- 新 spec 只证明导出侧；`spinning>50` 由单测与本档另一处的真忙循环探针覆盖，不在此重复。
+- 没有可运行 python 的机器上，这支 spec 以**具名原因 skip**，不伪造绿。
+
+### 五 下一轮第一步
+
+① 读本轮推送后的 `Nightly`：`Build macos-x64` 若再次红在同一处，按仪器口径给
+`launchAndProbe` 的 bootstrap 超时补一句具名（端点 + 端口可连性 + 应用输出尾巴），不再只抛 `aborted due to timeout`；
+② 若该车道绿，回到队列档 B 段取下一件大件；③ 仍让开 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*`。
