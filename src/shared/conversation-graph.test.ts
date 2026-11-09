@@ -8,6 +8,7 @@ import {
   forkEditedConversationMessage,
   getActiveConversationContext,
   resolveActiveConversationMessages,
+  resolveInheritablePromptContext,
   synchronizeActiveConversationMessages
 } from './conversation-graph'
 
@@ -211,5 +212,89 @@ describe('conversation graph', () => {
 
     const visibleAgain = activateConversationBranch(hidden, originalBranchId)
     expect(visibleAgain.activeFrameId).toBe(hidden.rootFrameId)
+  })
+})
+
+describe('inheritable Prompt context (an app-owned turn after a restart)', () => {
+  const linear = (
+    messages: PersistedChatMessage[],
+    sessionId = 'session-anchor'
+  ): ReturnType<typeof createLinearConversationGraph> =>
+    createLinearConversationGraph({
+      sessionId,
+      messages,
+      frameworkId: 'claude-code',
+      createdAt: 1,
+      updatedAt: messages.length + 1
+    })
+
+  it('resolves the delivered results message as the Prompt the turn answers', () => {
+    const graph = linear([
+      message('u1', 'user', 'original question', 1),
+      message('a1', 'agent', 'original answer', 2),
+      message('u2', 'user', 'a background job finished: result.csv', 3)
+    ])
+
+    expect(resolveInheritablePromptContext(graph)).toMatchObject({
+      promptMessageId: 'u2',
+      rootFrameId: 'root-frame-session-anchor',
+      agentFrameId: 'root-frame-session-anchor',
+      messageBranchId: 'message-branch-session-anchor',
+      runtimeSegmentId: 'runtime-segment-session-anchor'
+    })
+  })
+
+  it('skips a Prompt that is not complete rather than anchoring the turn to it', () => {
+    const graph = linear([message('u1', 'user', 'original question', 1)])
+    graph.messages.push({
+      ...message('u2', 'user', 'still streaming', 2),
+      status: 'streaming',
+      agentFrameId: 'root-frame-session-anchor',
+      introducedOnBranchId: 'message-branch-session-anchor',
+      parentMessageId: 'u1',
+      runtimeSegmentId: 'runtime-segment-session-anchor'
+    })
+    graph.branches[0].headMessageId = 'u2'
+
+    expect(resolveInheritablePromptContext(graph)?.promptMessageId).toBe('u1')
+  })
+
+  it('refuses a Prompt from an earlier Runtime Segment: the reply will not share its Segment', () => {
+    const graph = linear([
+      message('u1', 'user', 'original question', 1),
+      message('a1', 'agent', 'original answer', 2)
+    ])
+    const switched = ensureConversationRuntimeSegment(graph, {
+      id: 'runtime-segment-after-reconnect',
+      frameworkId: 'claude-code',
+      model: 'another-model',
+      startedAt: 3
+    })
+
+    expect(resolveInheritablePromptContext(switched)).toBeUndefined()
+  })
+
+  it('refuses a Prompt introduced on the parent of the active Branch', () => {
+    const forked = forkEditedConversationMessage(
+      linear([
+        message('u0', 'user', 'original question', 1),
+        message('a0', 'agent', 'original answer', 2),
+        message('u1', 'user', 'an edited question', 3)
+      ]),
+      'u1',
+      'branch-forked',
+      4
+    )
+
+    expect(forked.frames[0].activeBranchId).toBe('branch-forked')
+    // The Branch's only user Message was introduced on its parent, so the ownership proof would refuse
+    // it under this Branch. No anchor is better than one the proof refuses terminally.
+    expect(resolveInheritablePromptContext(forked)).toBeUndefined()
+  })
+
+  it('returns nothing when the session has no user Prompt at all', () => {
+    const graph = linear([message('a1', 'agent', 'a greeting nobody asked for', 1)])
+
+    expect(resolveInheritablePromptContext(graph)).toBeUndefined()
   })
 })

@@ -16642,3 +16642,60 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 
 ① 取本笔双车道判决（完整 40 位 SHA）；② 机器空闲页回到可起窗的量级时补那条真机读数（隔离 `PURESCIENCE_STORAGE_ROOT` + 独立端口 + `--user-data-dir`）；
 ③ 若真机读数证明「跨重启首回合」是真实高频路径，再按 §297 §三 A 的完整形态注入从盘解析的锚点解析器（组合根 + 解析器 + 两条用例）。
+
+## 二百九十九、本轮追加（执行器，2026-11-10 01:4x–）—— 重启之后的后台投递回合：锚点从**持久图**里取，产物不再注定定不了稿
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = c481d17d`（上一轮那笔）。**双车道判决已到手**（完整 40 位 SHA 现查）：
+  `Windows Full Test` `success`、`Nightly` `success` —— 上一轮「待取判决」在此收口。
+- 共享工作树 `git status --short` 只有三份**不是我的**未跟踪证据档（`2026-11-01-reviewer-fix-loop-double-review.md`、
+  `2026-11-04-file-ocr-branch-name.md`、`2026-11-04-upload-probe-availability.md`）⇒ 不碰、不提交。
+  `src/` 下无并行写入者；进程表只有本机 dev 无头实例（launchd），未起 vitest/playwright。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 继续 §298 §四 ③ 的既定下一步所指向的那一格：
+  「跨重启的 app-owned 首回合」。上一轮把它写成「若真机读数证明是高频路径再做」——本轮**先读产品自己的代码**
+  把这条路径的存在定死（后台投递由主进程写会话并立即起回合，与窗口在不在无关），再决定做它。
+
+### 一 结论（先读路径，再决定动不动手）
+
+**重启后的投递回合不是推测中的路径，而是既有设计的正面路径**：`src/main/ipc.ts` 头注写着「a job that
+finishes while the app is closed and is restarted later」。而投递**把结果本身写成一条 `role:'user'` 的真实
+消息**（`owner.ts deliverClaimed`），所以这个回合本来就有合法、durable 的 Prompt 可认领 —— 缺的只是
+派发处在重启后（进程内表为空）**没人去图上把它找出来**，于是一律铸 `prompt-<uuid>`，产物定稿以
+`prompt-not-owned` 终态被拒。**不放宽任何证明**：找出来的锚点必须自己满足证明的四条约束。
+
+### 二 交付（2 产品文件 + 3 测试文件 + 1 证据档）
+
+1. `src/shared/conversation-graph.ts`：新增 `resolveInheritablePromptContext(graph)` —— 在活跃 Frame 的活跃
+   Branch 上从后往前取第一条 `user`/`complete`/`introducedOnBranchId` 等于活跃 Branch/`runtimeSegmentId`
+   等于该 Frame 最新 Segment 的消息，复用既有 `getActiveConversationContext()` 产出四条身份；**不满足就返回
+   `undefined`**（会被证明拒绝的锚点比没有更糟：那个拒绝是终态）。
+2. `src/main/background-delivery/owner.ts`：`startTurn` 入参加可选 `provenanceContext`，由
+   `promptAnchorFor(session)` 在结果写入之后从会话图解析（同一份 `materializeSessionConversationGraph`，
+   不新造第二套图）；图材料化失败＝无锚点，不让一次投递因此失败。
+3. `src/main/ipc.ts`：透传给 `runtime.sendPrompt`，并落具名日志（有锚点 `info` / 无锚点 `warn` 带
+   `consequence: 'prompt-not-owned'`）—— 一次真机读数就能分开「入参没到」与「到了没生效」。
+
+### 三 门禁（全部实跑，读数取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/shared/conversation-graph.test.ts` | 11 passed（5 条新增） |
+| `vitest run src/main/background-delivery` | 4 文件 / 34 passed（新增 1 条：真 SQLite + 真会话文件上，投递回合拿到**结果消息**的四条身份） |
+| `vitest run src/main/artifacts/provenance-repository.test.ts -t "delivered result"` | 1 passed（**证明级**：同一 run 上 `prompt-<uuid>` 被拒、投递消息锚点定稿成功） |
+| 受影响面批量（acp / background-delivery / artifacts / shared/session-persistence / conversation-graph） | 120 文件 / **1879 passed**，exit 0 |
+| `tsc --noEmit` node / web（`--composite false`） | 各自 exit 0 |
+| `eslint --no-cache`（本批 6 文件） | 0 errors / 0 warnings |
+
+证据：`docs/evidence/2026-11-10-delivery-prompt-anchor-after-restart.md`。
+
+### 四 边界与下一轮第一步
+
+- **真机窗口读数仍未取**：空闲页 3,874 × 16 KB ≈ 62 MB、swap 7,236 / 8,192 MB 已用、本机有 dev 无头实例在跑
+  ⇒ 不起 Electron。本轮证到的是「锚点满足真实证明」+「投递路径确实把它交出去」，**不是**「界面上看到了定稿的产物」。
+- 仍为终态的一种情形已具名：投递时若活跃 Segment 已换（重启后模型变了、采纳阶段新开 Segment 且已落盘），
+  返回 `undefined`，该回合产物照样会被拒；不做「猜一个更接近的锚点」。
+- **下一轮第一步**：① 取本笔双车道判决（完整 40 位 SHA）；② 机器空闲页回到可起窗量级时补那条真机读数
+  （隔离 `PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` + 独立端口 + `--user-data-dir`：造一次投递 → 读版本行
+  五条身份与 `delivery turn answers the delivered results message` 那行日志）；③ 若读数显示活跃 Segment 会换，
+  再把「按即将使用的 Segment 取锚点」单独立项。

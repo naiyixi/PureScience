@@ -414,6 +414,48 @@ describe('background delivery owner against a real database and session file', (
     expect((await readSession(sessionId)).messages).toHaveLength(2)
   })
 
+  // The restart case: the job finished while no process held the session, so the in-memory table of the
+  // last user Prompt is gone. The results were written into the session as a user message, and that
+  // message is the Prompt this app-owned turn answers — resolved from the durable graph, not memory.
+  it('hands the delivery turn the delivered results message as its Prompt anchor', async () => {
+    const sessionId = 'session-turn-anchor'
+    await writeSession(sessionId, seedSession(sessionId))
+    const started: {
+      provenanceContext?: {
+        promptMessageId: string
+        rootFrameId?: string
+        agentFrameId?: string
+        messageBranchId?: string
+        runtimeSegmentId?: string
+      }
+    }[] = []
+    const app = owner({ now: () => 80_000, startTurn: async (input) => void started.push(input) })
+
+    await app.registerJobResult({
+      jobId: 'job-turn-anchor',
+      projectId: 'project-a',
+      sessionId,
+      outputFiles: ['hpc/anchor.csv'],
+      fingerprint: 'sha256:anchor'
+    })
+
+    const run = await app.deliverSession(sessionId)
+    expect(run.startedTurn).toBe(true)
+
+    const delivered = (await readSession(sessionId)).messages.at(-1)!
+    expect(delivered.role).toBe('user')
+    expect(delivered.backgroundDelivery?.jobId).toBe('job-turn-anchor')
+    // The four identities are the ones the session file itself materializes — not a minted
+    // `prompt-<uuid>`, which nothing durable could ever own.
+    expect(started[0].provenanceContext).toMatchObject({
+      promptMessageId: delivered.id,
+      rootFrameId: `root-frame-${sessionId}`,
+      agentFrameId: `root-frame-${sessionId}`,
+      messageBranchId: `message-branch-${sessionId}`,
+      runtimeSegmentId: `runtime-segment-${sessionId}`
+    })
+  })
+
   it('never starts a turn for a result that could not be read', async () => {
     const sessionId = 'session-turn-blocked'
     await writeSession(sessionId, seedSession(sessionId))

@@ -619,3 +619,43 @@ export const getActiveConversationContext = (
     runtimeSegmentId: runtimeSegment.id
   }
 }
+
+export type ActiveConversationContext = ReturnType<typeof getActiveConversationContext>
+
+// The Prompt an app-owned turn answers, read from the durable graph instead of from process memory.
+//
+// An app-owned turn (a background result's continuation, a screening run) suppresses its own user
+// message, so it has no user Prompt of its own in the graph. Its artifacts still belong to the
+// conversation they were raised for: the ownership proof requires a `complete` user Prompt on the
+// claimed Branch, under the claimed Agent Frame, in the same Runtime Segment, and ordered before the
+// reply. So this returns only a Prompt that satisfies all four, and `undefined` when none does — an
+// anchor the proof would refuse is worse than no anchor, because that refusal is terminal (no retry can
+// turn a wrong identity into a right one).
+//
+// This is the restart case: a job that finishes while the app is closed is delivered into its session by
+// the main process, but the in-memory table of the last user Prompt died with the previous process.
+export const resolveInheritablePromptContext = (
+  graph: PersistedConversationGraph
+): ActiveConversationContext | undefined => {
+  const frame = graph.frames.find((candidate) => candidate.id === graph.activeFrameId)
+  if (!frame) return undefined
+  // The Segment a new message is appended under (`synchronizeActiveConversationMessages` uses the same
+  // rule), so a Prompt from an earlier Segment cannot be the answer this turn is writing under.
+  const segment = graph.runtimeSegments
+    .filter((candidate) => candidate.agentFrameId === frame.id)
+    .at(-1)
+  if (!segment) return undefined
+  const path = resolveMessageBranchPath(graph, frame.activeBranchId)
+  for (let index = path.length - 1; index >= 0; index -= 1) {
+    const message = path[index]
+    if (
+      message.role === 'user' &&
+      message.status === 'complete' &&
+      message.introducedOnBranchId === frame.activeBranchId &&
+      message.runtimeSegmentId === segment.id
+    ) {
+      return getActiveConversationContext(graph, message.id)
+    }
+  }
+  return undefined
+}

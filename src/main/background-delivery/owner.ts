@@ -10,6 +10,7 @@
 
 import { randomUUID } from 'node:crypto'
 
+import type { AcpPromptRequest } from '../../shared/acp'
 import {
   buildBackgroundDeliveryContinuation,
   type BackgroundDelivery,
@@ -17,8 +18,15 @@ import {
   type BackgroundDeliveryReason,
   type BackgroundDeliveryRef
 } from '../../shared/background-delivery'
-import type { PersistedChatSession, PersistedChatMessage } from '../../shared/session-persistence'
+import { resolveInheritablePromptContext } from '../../shared/conversation-graph'
+import {
+  materializeSessionConversationGraph,
+  type PersistedChatSession,
+  type PersistedChatMessage
+} from '../../shared/session-persistence'
 import { BACKGROUND_DELIVERY_LEASE_MS, BackgroundDeliveryRepository } from './repository'
+
+type PromptProvenance = NonNullable<AcpPromptRequest['provenanceContext']>
 
 export type BackgroundDeliveryOwnerDeps = {
   deliveries: BackgroundDeliveryRepository
@@ -38,6 +46,10 @@ export type BackgroundDeliveryOwnerDeps = {
     projectId: string
     deliveryIds: readonly string[]
     prompt: string
+    // The delivered results were written into the session as a user message, so that message is the
+    // Prompt this app-owned turn answers. It is resolved from the durable graph here rather than from
+    // process memory, because the job may have finished while no process was holding the session.
+    provenanceContext?: PromptProvenance
   }) => Promise<void>
   // Reports a delivery sitting in needs-attention, so a surface outside the delivery's own session can
   // say so (IC40). Called once per blocked ledger row per pass — not once per transition — which is what
@@ -189,9 +201,26 @@ export class BackgroundDeliveryOwner {
       sessionId,
       projectId: deliverable[0].projectId,
       deliveryIds: deliverable.map((delivery) => delivery.id),
-      prompt: buildBackgroundDeliveryContinuation(deliverable, await this.labels())
+      prompt: buildBackgroundDeliveryContinuation(deliverable, await this.labels()),
+      ...(this.promptAnchorFor(session) ?? {})
     })
     return true
+  }
+
+  // Read AFTER the results were written, so the graph includes them: the newest user Prompt on the
+  // active Branch is the delivered results themselves. `undefined` is the honest answer when the
+  // session has no durable Prompt the ownership proof would accept (a fresh session, or a Prompt from
+  // an earlier Runtime Segment) — the dispatch site then names the consequence instead of letting the
+  // turn's artifacts die silently. A graph that cannot be materialized is the same answer: a delivery
+  // pass must not fail because an anchor could not be read.
+  private promptAnchorFor(session: PersistedChatSession): { provenanceContext?: PromptProvenance } {
+    try {
+      const graph = materializeSessionConversationGraph(session).conversationGraph
+      const anchor = graph ? resolveInheritablePromptContext(graph) : undefined
+      return anchor ? { provenanceContext: anchor } : {}
+    } catch {
+      return {}
+    }
   }
 
   private async deliverClaimed(

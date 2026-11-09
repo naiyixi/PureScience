@@ -15,7 +15,10 @@ import { dirname, join, sep } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { ArtifactVersionFile } from '../../shared/artifact-provenance'
-import { createLinearConversationGraph } from '../../shared/conversation-graph'
+import {
+  createLinearConversationGraph,
+  resolveInheritablePromptContext
+} from '../../shared/conversation-graph'
 import type { NotebookEnvironmentManifest } from '../../shared/notebook'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { recordSessionReadings } from '../connectors/reading-journal'
@@ -4622,5 +4625,123 @@ describe('artifact provenance repository', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+// A background delivery after a restart: the job finished while no process held the session, so the
+// results were written into the session as a user message and the turn that works on them is app-owned
+// (its own user message is suppressed). The anchor therefore has to come from the durable graph. These
+// two tests are the pair that decides whether that anchor is accepted by the real proof — the shape
+// tests in `conversation-graph.test.ts` cannot answer that on their own.
+describe('a delivered result is the Prompt its app-owned turn answers', () => {
+  it('accepts the delivered message and refuses a minted Prompt id for the same run', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-delivered-anchor-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+
+    const delivered = {
+      id: 'message-delivered',
+      role: 'user' as const,
+      content: 'The background job finished. Result: hpc/anchor.csv',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 1,
+      updatedAt: 1
+    }
+    const reply = {
+      id: 'message-reply',
+      role: 'agent' as const,
+      content: 'read it',
+      status: 'complete' as const,
+      eventIds: [],
+      createdAt: 2,
+      updatedAt: 2
+    }
+    const conversationGraph = createLinearConversationGraph({
+      sessionId: 'session-1',
+      messages: [delivered, reply],
+      frameworkId: 'claude-code',
+      createdAt: 1,
+      updatedAt: 2
+    })
+    const anchor = resolveInheritablePromptContext(conversationGraph)!
+    expect(anchor.promptMessageId).toBe(delivered.id)
+
+    const session: PersistedChatSession = {
+      id: 'session-1',
+      projectId: 'project-1',
+      title: 'Delivered result',
+      cwd: '/workspace',
+      status: 'idle',
+      messages: [delivered, reply],
+      conversationGraph,
+      createdAt: 1,
+      updatedAt: 2
+    }
+    const compatibilityRepository = new ArtifactRepository(storageRoot)
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client),
+      compatibilityRepository,
+      loadSession: async () => session
+    })
+    const common = {
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactStorageSessionId: 'artifact-session-1',
+      artifactRunId: 'artifact-run-1',
+      rootFrameId: anchor.rootFrameId,
+      agentFrameId: anchor.agentFrameId,
+      messageBranchId: anchor.messageBranchId,
+      runtimeSegmentId: anchor.runtimeSegmentId,
+      promptMessageId: anchor.promptMessageId,
+      filename: 'anchor.csv'
+    } as const
+    await compatibilityRepository.writePendingFile({
+      projectName: common.projectId,
+      sessionId: common.artifactStorageSessionId,
+      runId: common.artifactRunId,
+      filename: common.filename,
+      source: createPngInlineSource('anchor')
+    })
+    const version = await repository.createVersion({
+      ...common,
+      writeOperationId: 'write-1',
+      writeRequestChecksum: 'a'.repeat(64)
+    })
+
+    // The identity the previous process would have minted: nothing durable owns it, and that refusal is
+    // terminal — which is why the delivery path resolves a real Prompt instead of falling back to this.
+    await expect(
+      repository.finalizeRun({
+        projectId: common.projectId,
+        appSessionId: common.appSessionId,
+        artifactRunId: common.artifactRunId,
+        artifactVersionIds: [version.versionId],
+        rootFrameId: common.rootFrameId,
+        agentFrameId: common.agentFrameId,
+        messageBranchId: common.messageBranchId,
+        runtimeSegmentId: common.runtimeSegmentId,
+        promptMessageId: 'prompt-2f3c6d1e-0000-4000-8000-000000000000',
+        messageId: reply.id
+      })
+    ).rejects.toThrow(/prompt does not match the declared durable ownership/i)
+
+    // The delivered message IS owned by the same Frame, Branch and Runtime Segment as the reply.
+    await expect(
+      repository.finalizeRun({
+        projectId: common.projectId,
+        appSessionId: common.appSessionId,
+        artifactRunId: common.artifactRunId,
+        artifactVersionIds: [version.versionId],
+        rootFrameId: anchor.rootFrameId,
+        agentFrameId: anchor.agentFrameId,
+        messageBranchId: anchor.messageBranchId,
+        runtimeSegmentId: anchor.runtimeSegmentId,
+        promptMessageId: anchor.promptMessageId,
+        messageId: reply.id
+      })
+    ).resolves.toHaveLength(1)
   })
 })

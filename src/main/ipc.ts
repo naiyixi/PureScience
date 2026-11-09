@@ -1749,6 +1749,7 @@ const createApplicationModules = async (
     getProjectDbClient(resolveStorageRoot())
   )
   deliveryLedgerReader.list = (sessionId) => backgroundDeliveries.listForSession(sessionId)
+  const deliveryLog = createLogger('background-delivery')
   const backgroundDeliveryOwner = new BackgroundDeliveryOwner({
     deliveries: backgroundDeliveries,
     // Surface a delivery that could not be delivered outside its own conversation (IC40). The card is
@@ -1771,11 +1772,28 @@ const createApplicationModules = async (
     // A delivery turn has no window behind it, so it must attach the session itself: resume when the
     // runtime does not hold it, then send the continuation the ledger already wrote into the session.
     // That text is app-owned and already persisted, so it must not be stored as a user message twice.
-    startTurn: async ({ sessionId, projectId, prompt }) => {
+    startTurn: async ({ sessionId, projectId, prompt, provenanceContext }) => {
       const runtime = runtimeRef.current
       if (!runtime) throw new Error('Agent runtime is unavailable.')
       const session = await sessionRepository.loadSession(projectId, sessionId)
       if (!session) throw new Error(`Unknown session: ${sessionId}`)
+      // Named here so a reader can tell the two restart outcomes apart without reproducing them: the
+      // turn carries the delivered results message as its Prompt anchor, or it does not — and the
+      // second case is exactly the one whose artifacts cannot be finalized (`prompt-not-owned`).
+      if (provenanceContext) {
+        deliveryLog.info('delivery turn answers the delivered results message', {
+          sessionId,
+          promptMessageId: provenanceContext.promptMessageId
+        })
+      } else {
+        deliveryLog.warn(
+          'delivery turn has no durable Prompt to answer; its artifacts cannot finalize',
+          {
+            sessionId,
+            consequence: 'prompt-not-owned'
+          }
+        )
+      }
       // One session runs one turn at a time. If the person is mid-turn there, wait for it to finish
       // rather than racing it; a runtime that never frees up gives up loudly after the bound (the message
       // is already in the session, so the result itself is not lost).
@@ -1796,10 +1814,14 @@ const createApplicationModules = async (
           ...(session.specialistId ? { specialistId: session.specialistId } : {})
         })
       }
-      await runtime.sendPrompt({ sessionId, text: prompt, suppressUserMessage: true })
+      await runtime.sendPrompt({
+        sessionId,
+        text: prompt,
+        suppressUserMessage: true,
+        ...(provenanceContext ? { provenanceContext } : {})
+      })
     }
   })
-  const deliveryLog = createLogger('background-delivery')
   // Sessions this process delivered into, so a clean stop can hand its leases back immediately instead of
   // making the next run wait the lease out.
   const deliveredSessions = new Set<string>()
