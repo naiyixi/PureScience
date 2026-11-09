@@ -43,6 +43,22 @@ const isOwnershipScopedControlEvent = (event: AcpRuntimeEvent): boolean =>
 const hasArtifactProvenance = (event: AcpRuntimeEvent): boolean =>
   Boolean(event.runId && event.promptMessageId && event.artifactClaimId)
 
+type PromptProvenance = NonNullable<AcpPromptRequest['provenanceContext']>
+
+// The four identities `getActiveConversationContext` produces for a Prompt that is really in the
+// graph. A provenance carrying only a `promptMessageId` is itself a fallback (see the dispatch site):
+// inheriting it would copy one unowned identity onto the next turn, so it is not reusable.
+const completeGraphAnchor = (
+  context: PromptProvenance | undefined
+): PromptProvenance | undefined =>
+  context?.promptMessageId &&
+  context.rootFrameId &&
+  context.agentFrameId &&
+  context.messageBranchId &&
+  context.runtimeSegmentId
+    ? context
+    : undefined
+
 type RuntimeFactory = (
   callbacks: AcpRuntimeCallbacks,
   permissionGrantStore: ConversationPermissionGrantStore
@@ -116,6 +132,8 @@ class AcpRuntimeCoordinator {
   // One diagnostic per session: a caller that omits graph provenance does so for every turn it runs,
   // and the consequence (unfinalizable artifacts) is a property of the caller, not of the turn.
   private readonly unownedPromptWarned = new Set<string>()
+  // Once per session, same reason as the warning above: a background delivery can raise many turns.
+  private readonly anchorInheritanceNoted = new Set<string>()
   private readonly activePromptRequests = new Map<string, ActivePromptRequest>()
   private readonly activePromptCounts = new Map<string, number>()
   private readonly interactionReleaseWaiters = new Map<string, Set<() => void>>()
@@ -687,13 +705,30 @@ class AcpRuntimeCoordinator {
     // `prompt-not-owned` (verified against this machine's own logs on 2026-11-09: the claim carried
     // `prompt-<uuid>` while the session graph only had `message-…`/`prompt-…` nodes that were minted
     // elsewhere). Say so once per session instead of letting every artifact of the turn die silently.
+    // An app-owned turn (a suppressed prompt: background delivery, screening/restricted inference, the
+    // reviewer's artifact-code rebuild) has no user action of its own, so it arrives without provenance.
+    // Its artifacts belong to the conversation it was raised for: the graph's own projection rule puts
+    // every new node on the active branch under the latest user Prompt. Reuse that Prompt's four
+    // identities while this process still holds them; only a session with no user prompt yet falls
+    // back to a minted identity that nothing durable can own.
+    const appOwned = !retainAsLatestUserPrompt || request.suppressUserMessage === true
+    const inheritedAnchor =
+      !request.provenanceContext && appOwned
+        ? completeGraphAnchor(this.latestPromptRequests.get(request.sessionId)?.provenanceContext)
+        : undefined
     const taskRequest: AcpPromptRequest = request.provenanceContext
       ? request
-      : {
-          ...request,
-          provenanceContext: { promptMessageId: `prompt-${randomUUID()}` }
-        }
-    if (!request.provenanceContext && !this.unownedPromptWarned.has(request.sessionId)) {
+      : inheritedAnchor
+        ? { ...request, provenanceContext: inheritedAnchor }
+        : {
+            ...request,
+            provenanceContext: { promptMessageId: `prompt-${randomUUID()}` }
+          }
+    if (
+      !request.provenanceContext &&
+      !inheritedAnchor &&
+      !this.unownedPromptWarned.has(request.sessionId)
+    ) {
       this.unownedPromptWarned.add(request.sessionId)
       log.warn(
         'prompt dispatched without conversation-graph provenance; artifacts from this turn cannot be finalized',
@@ -704,6 +739,16 @@ class AcpRuntimeCoordinator {
           promptMessageId: taskRequest.provenanceContext?.promptMessageId
         }
       )
+    }
+    if (inheritedAnchor && !this.anchorInheritanceNoted.has(request.sessionId)) {
+      this.anchorInheritanceNoted.add(request.sessionId)
+      // Named so a reader can tell "no user prompt in this session yet" from "the anchor was
+      // inherited": the turn's artifacts will finalize against the Prompt named here, not its own.
+      log.info('app-owned prompt inherited the session anchor from its latest user prompt', {
+        sessionId: request.sessionId,
+        operation,
+        promptMessageId: inheritedAnchor.promptMessageId
+      })
     }
     const activePrompt: ActivePromptRequest = {
       request: taskRequest,

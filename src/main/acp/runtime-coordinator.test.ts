@@ -386,6 +386,147 @@ describe('AcpRuntimeCoordinator', () => {
     expect(created[0].sendPrompt).not.toHaveBeenCalled()
   })
 
+  it('app-owned continuations inherit the anchor of the session\u2019s latest user prompt', async () => {
+    const created: ReturnType<typeof createFakeRuntime>[] = []
+    const coordinator = new AcpRuntimeCoordinator((callbacks) => {
+      const fake = createFakeRuntime({
+        frameworkId: 'claude-code',
+        sessionIds: ['session-1'],
+        callbacks
+      })
+      created.push(fake)
+      return fake.runtime
+    })
+    const session = await coordinator.createSession()
+    const anchor = {
+      promptMessageId: 'prompt-message-1',
+      rootFrameId: 'frame-root',
+      agentFrameId: 'frame-agent',
+      messageBranchId: 'branch-active',
+      messageBranchAncestry: ['branch-root', 'branch-active'],
+      messageAncestry: ['prompt-message-1'],
+      runtimeSegmentId: 'segment-1'
+    }
+    await coordinator.sendPrompt({
+      sessionId: session.sessionId,
+      text: 'first user turn',
+      provenanceContext: anchor
+    })
+    const continuation = { sessionId: session.sessionId, text: 'background delivery' }
+
+    await coordinator.sendAppContinuation(continuation)
+
+    // The four identities travel verbatim: the artifact this turn writes must be owned by a Prompt the
+    // graph really contains, so the daemon-side proof has something to find.
+    expect(created[0].sendAppContinuation).toHaveBeenCalledWith(
+      { ...continuation, provenanceContext: anchor },
+      'prompt-attempt-2'
+    )
+  })
+
+  it('a suppressed prompt (background delivery) inherits the anchor of the latest user prompt', async () => {
+    const created: ReturnType<typeof createFakeRuntime>[] = []
+    const coordinator = new AcpRuntimeCoordinator((callbacks) => {
+      const fake = createFakeRuntime({
+        frameworkId: 'claude-code',
+        sessionIds: ['session-1'],
+        callbacks
+      })
+      created.push(fake)
+      return fake.runtime
+    })
+    const session = await coordinator.createSession()
+    const anchor = {
+      promptMessageId: 'prompt-message-1',
+      rootFrameId: 'frame-root',
+      agentFrameId: 'frame-agent',
+      messageBranchId: 'branch-active',
+      runtimeSegmentId: 'segment-1'
+    }
+    await coordinator.sendPrompt({
+      sessionId: session.sessionId,
+      text: 'first user turn',
+      provenanceContext: anchor
+    })
+
+    // This is the shape the background delivery and the artifact-code rebuild actually dispatch.
+    await coordinator.sendPrompt({
+      sessionId: session.sessionId,
+      text: 'background result',
+      suppressUserMessage: true
+    })
+
+    const dispatched = created[0].sendPrompt.mock.calls[1]?.[0] as {
+      provenanceContext?: typeof anchor
+    }
+    expect(dispatched.provenanceContext).toEqual(anchor)
+  })
+
+  it('app-owned continuations mint a fallback when the latest prompt anchor is itself one', async () => {
+    const created: ReturnType<typeof createFakeRuntime>[] = []
+    const coordinator = new AcpRuntimeCoordinator((callbacks) => {
+      const fake = createFakeRuntime({
+        frameworkId: 'claude-code',
+        sessionIds: ['session-1'],
+        callbacks
+      })
+      created.push(fake)
+      return fake.runtime
+    })
+    const session = await coordinator.createSession()
+    // A legacy user turn that omitted provenance: only the message id exists, so there is nothing a
+    // later turn could truthfully inherit.
+    await coordinator.sendPrompt({
+      sessionId: session.sessionId,
+      text: 'legacy user turn',
+      provenanceContext: { promptMessageId: 'prompt-legacy' }
+    })
+
+    await coordinator.sendAppContinuation({
+      sessionId: session.sessionId,
+      text: 'background delivery'
+    })
+
+    const dispatched = created[0].sendAppContinuation.mock.calls[0]?.[0] as {
+      provenanceContext?: { promptMessageId: string; rootFrameId?: string }
+    }
+    expect(dispatched.provenanceContext?.promptMessageId).toMatch(/^prompt-[0-9a-f-]{36}$/u)
+    expect(dispatched.provenanceContext?.rootFrameId).toBeUndefined()
+  })
+
+  it('a user turn without provenance never inherits the previous turn\u2019s anchor', async () => {
+    const created: ReturnType<typeof createFakeRuntime>[] = []
+    const coordinator = new AcpRuntimeCoordinator((callbacks) => {
+      const fake = createFakeRuntime({
+        frameworkId: 'claude-code',
+        sessionIds: ['session-1'],
+        callbacks
+      })
+      created.push(fake)
+      return fake.runtime
+    })
+    const session = await coordinator.createSession()
+    await coordinator.sendPrompt({
+      sessionId: session.sessionId,
+      text: 'first user turn',
+      provenanceContext: {
+        promptMessageId: 'prompt-message-1',
+        rootFrameId: 'frame-root',
+        agentFrameId: 'frame-agent',
+        messageBranchId: 'branch-active',
+        runtimeSegmentId: 'segment-1'
+      }
+    })
+
+    await coordinator.sendPrompt({ sessionId: session.sessionId, text: 'second user turn' })
+
+    const dispatched = created[0].sendPrompt.mock.calls[1]?.[0] as {
+      provenanceContext?: { promptMessageId: string }
+    }
+    // A fresh user action is a new Prompt: its own artifacts must not be attributed to the turn before.
+    expect(dispatched.provenanceContext?.promptMessageId).toMatch(/^prompt-[0-9a-f-]{36}$/u)
+  })
+
   it('acknowledges prompt ownership release only after the owning runtime publishes drain', async () => {
     const promptResult = createDeferred<{ stopReason: 'end_turn' }>()
     const coordinator = new AcpRuntimeCoordinator(

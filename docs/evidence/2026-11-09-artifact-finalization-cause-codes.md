@@ -147,3 +147,46 @@
 - 本节全部读数为**只读字段数据**（SQLite `-readonly`、会话 JSON、日志）；没有起 Electron：
   `vm_stat` 空闲页 4,251 × 16 KB ≈ 66 MB、`vm.swapusage` 7,888 / 9,216 MB 已用 ⇒ 起窗读数不可信，真机窗口取证仍未取。
 - 三个会话只读到 `d8da1631…` 与 `16abfdab…` 两份 JSON；第三条版本行 `4490f3e9…` 所属会话与前者相同。
+
+## 八 写侧修复（2026-11-09 第三轮）：app-owned 回合继承「本会话最近一条用户 Prompt」的锚点
+
+按计划档 §297 §三 A 落地。判据不是「补上一枚更像样的 id」，而是**让声明的那条 Prompt 在持久图里真的存在**：
+所有权证明按 `promptIndex < 0` 拒，唯一能让它不拒的办法就是声明一条图里有的 Prompt。
+
+### 一 改动（1 个产品文件 + 1 个测试文件）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/acp/runtime-coordinator.ts` | 派发处先判「这是产品自己的回合」（`!retainAsLatestUserPrompt` 或 `request.suppressUserMessage === true`）；这类回合**缺 provenance** 时，从 `latestPromptRequests` 取该会话最近一条用户 Prompt 的 `provenanceContext`，四条身份**原样**用；取不到（无用户 Prompt / 那条本身是 fallback）才落回 uuid 身份 + 既有告警 |
+| 同上 | `completeGraphAnchor()`：只有 `promptMessageId` + `rootFrameId` + `agentFrameId` + `messageBranchId` + `runtimeSegmentId` 全在才算「图里的锚点」。**fallback 自带的那枚 uuid 不满足这五条 ⇒ 不会被下一代继承**（否则只是把一条不可拥有的身份复制给下一回合） |
+| 同上 | 继承成功每会话记一条 `info`（`promptMessageId` 具名）：让「这回合的产物会记到谁名下」在日志里可查，而不是与 fallback 同形 |
+| `src/main/acp/runtime-coordinator.test.ts` | 四条：① app-owned continuation 继承四条身份（逐字）；② 被抑制的 `sendPrompt`（后台投递真实形状）继承；③ 最近那条本身是 fallback（只有 `promptMessageId`）⇒ 仍然新铸；④ **普通用户回合不继承**（新用户动作是新的 Prompt，不能记到上一回合名下） |
+
+### 二 为什么是这条链而不是注入持久图解析器
+
+调用方四处（`src/main/ipc.ts:1799` 后台投递、`screening-model-runner.ts:220`、
+`restricted-inference-runner.ts:260`、`artifact-code-reconstruction-runner.ts:300`）都在**同一个进程**里派发，
+而用户那条 Prompt 的 `provenanceContext` 就是渲染端从图上取的（`getActiveConversationContext` 的四条身份）。
+因此「最近一条用户 Prompt 的锚点」在进程内已经拿得到，不需要再加一条 `sessionId → projectId → loadSession → 图` 的异步链
+（那会牵动组合根，并让派发路径多一次 DB 读）。语义与 §297 §三 A 一致：产物归属**本会话最近的用户 Prompt**。
+
+### 三 门禁读数（最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/main/acp/runtime-coordinator.test.ts src/main/acp/unowned-prompt-anchor.test.ts` | 2 文件 / **63 passed**，exit 0 |
+| `npx vitest run src/main/acp`（整目录） | 见本轮提交前的实测（见计划档 §298 §三） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` / `web` | 两环各自 exit 0 |
+| `npx eslint --no-cache`（本批 2 个文件） | 0 errors / 0 warnings |
+
+### 四 边界（不许读成更强）
+
+- **跨重启的 app-owned 回合仍走 fallback**：`latestPromptRequests` 是进程内表。应用重启后若第一条回合就是后台投递
+  （没有先经过用户 Prompt），锚点仍然取不到 ⇒ 仍会以 `prompt-not-owned` 被拒并留告警。要继续收这一格，得按
+  `sessionId → projectId → loadSession → conversationGraph` 从盘上解析（§297 §三 A 的完整形态），本轮未做。
+- **语义**：被抑制回合写出的产物，归属到**本会话最近一条用户 Prompt**（不是它自己的、它自己永远不会有）。这与图自己的投影规则
+  （新节点落在活跃分支、最近一条 Prompt 之下）一致，不代表证明被放宽——`prompt-not-owned` 仍按原样拒绝不存在的 id。
+- **真机窗口读数未取**：本轮 `vm_stat` 空闲页 4,450 × 16 KB ≈ 70 MB、`vm.swapusage` 6,722 / 8,192 MB 已用 ⇒ 起 Electron
+  只会把机器拖进抖动，读数不可信。要证「后台投递回合产出的产物能定稿」，需一次隔离数据根的真机回合（造一次投递 → 读版本行五条身份）。
+  本轮证据是**协调器行为（单元级）+ 双 typecheck + lint + 整目录 ACP 套件**，不是实机 UI 取证——按仓规，这一格仍记「未取证」。
+

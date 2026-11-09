@@ -16596,3 +16596,49 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 ① 取本笔双车道判决（完整 40 位 SHA，`cancelled` 不算绿）；② 按 §三 A 落地写侧修复（先读 `sessionRepository` 是否已有
 「按 sessionId 取会话 + projectId」的入口，没有就复用组合根里已有的解析；解析器与协调器各一条用例，锚点必须是持久图里真实存在的 id）；
 ③ 修完补一条**真机读数**：在隔离数据根造一次「后台投递回合产出产物 → 定稿」，读版本行五条身份与图逐字比对。
+
+## 二百九十八、本轮追加（执行器，2026-11-09 23:0x–）—— 写侧修复：app-owned 回合继承会话最近的用户 Prompt 锚点
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 上轮 `56976108` 的双车道判决**已到手**：`Nightly` / `Windows Full Test` 均 `success`（`gh run list` 现查，非记忆）。
+- **共享工作树整体滞后且已分叉**：本地 `main` 停在 `f10fb8d9`（比 origin 旧 99 笔、另有 2 笔内容已以别的 SHA 在 origin 落地）。
+  开工前把三份凭证留档（`git diff HEAD > /tmp/ps-worktree-backup-*.patch`）后 `git reset --mixed origin/main` +
+  `git checkout -- .`，树回到 `56976108`，**逐条核对过**：工作区里那 219 个「改动/删除」全是旧版本快照、
+  其内容（含内核 CPU 那份证据档与守卫用例）在 origin 上都有同名同义文件 ⇒ 没有抹掉任何未交付的在制品。
+- 单元来源：§297 §六 ② 的既定下一步（§三 A）。`src/` 下 6 小时内零改动、无 vitest/playwright 在跑 ⇒ 无并行写入者。
+
+### 一 交付（1 个产品文件 + 1 个测试文件）
+
+写侧修复落在**派发处**：`src/main/acp/runtime-coordinator.ts` 里，产品自己的回合
+（`!retainAsLatestUserPrompt` 或 `request.suppressUserMessage === true`）缺 provenance 时，
+继承本会话**最近一条用户 Prompt** 的 `provenanceContext`（四条身份原样），取不到才落回 uuid 身份 + 既有告警。
+`completeGraphAnchor()` 要求五条身份齐全 ⇒ **fallback 自带的那枚 uuid 不会被下一代继承**。继承成功每会话记一条 `info`。
+
+`src/main/acp/runtime-coordinator.test.ts` 新增四条：continuation 继承逐字、被抑制的 `sendPrompt`（后台投递真实形状）继承、
+最近那条本身是 fallback ⇒ 仍新铸、**普通用户回合不继承**。
+
+为什么不再加持久图解析器：四处调用方都在同一进程派发，用户那条 Prompt 的锚点本来就由渲染端从图上取（`getActiveConversationContext`），
+进程内拿得到；再加 `sessionId → projectId → loadSession` 的异步链要牵动组合根并让每条派发多一次 DB 读（连锁 3 文件 vs 1 文件）。
+语义与 §三 A 一致（产物归属本会话最近的用户 Prompt）。跨重启仍走 fallback，已在证据档 §八 §四 具名。
+
+### 二 门禁（最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/main/acp/runtime-coordinator.test.ts src/main/acp/unowned-prompt-anchor.test.ts` | 2 文件 / **63 passed**，exit 0 |
+| `npx vitest run src/main/acp` | 94 文件 / **1505 passed**，exit 0（较上轮 1501 多出的 4 例即本批新用例） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
+| `npx eslint --no-cache`（本批 2 个文件） | 0 errors / 0 warnings |
+
+### 三 边界
+
+- **真机读数未取**：`vm_stat` 空闲页 4,450 × 16 KB ≈ 70 MB、swap 6,722 / 8,192 MB 已用 ⇒ 起 Electron 只会把机器拖进抖动。
+  要证「后台投递回合的产物能定稿」需一次隔离数据根的实机回合（造一次投递 → 读版本行五条身份），本格仍记**未取证**。
+- 跨重启的 app-owned 首回合仍会以 `prompt-not-owned` 被拒（进程内表为空），这是本轮**故意没收**的一格。
+
+### 四 下一轮第一步
+
+① 取本笔双车道判决（完整 40 位 SHA）；② 机器空闲页回到可起窗的量级时补那条真机读数（隔离 `PURESCIENCE_STORAGE_ROOT` + 独立端口 + `--user-data-dir`）；
+③ 若真机读数证明「跨重启首回合」是真实高频路径，再按 §297 §三 A 的完整形态注入从盘解析的锚点解析器（组合根 + 解析器 + 两条用例）。
