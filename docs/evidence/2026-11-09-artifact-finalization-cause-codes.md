@@ -1,7 +1,7 @@
 # 产物定稿的失败行说不出「哪条规则拒了它」
 
 日期：2026-11-09（执行器轮次）
-状态：**诊断面已交付**（原因码 + 日志字段 + 源码守卫）；**根因仍未定**（两条候选立案，见 §五）。
+状态：**诊断面已交付**（原因码 + 日志字段 + 源码守卫）；**根因已定（2026-11-09 第二轮，见 §七）** —— 不是占位身份被改写，也不是段每同步新铸，而是「声明的 Prompt 从未成为图里的节点」。
 
 ## 一 症状（来自用户自己的真机日志，不是推测）
 
@@ -90,3 +90,60 @@
 - 隔离工作树 `/tmp/ps-r298`（`origin/main` 738227d1 + 本轮改动），提交后即删；真实配置根 `~/.purescience-project`
   与 `~/.purescience` 全程**只读**（本单元的 SQLite 查询一律 `-readonly`）。
 - 未打 tag、未抬版本号：本单元只改诊断字段，不构成运行时行为对用户可见的变化。
+
+## 七 根因（2026-11-09 第二轮，只读字段数据定因）
+
+### 一 三份真实数据放在一起看，缺口是哪一条规则就唯一了
+
+| 来源 | 读数 |
+| --- | --- |
+| 日志（`~/Library/Logs/PureScience/main*.log`，只读） | 20 条失败行的 `data.messageId` 形如 `message-1793807367479-88`（**图里的 id 形态**），而 `data.promptMessageId` 形如 `prompt-a3cfe235-5ed5-4fdb-a077-c9b994382fc7`（**uuid 形态**），四条身份里另外三条与图逐字相同 |
+| SQLite（`~/.purescience/purescience.db`，`-readonly`） | 五个失败版本行的 `promptMessageId` 全部是 `prompt-<uuid>`；`rootFrameId` / `messageBranchId` / `runtimeSegmentId` 全部是 `*-pending-session-1793…` 形态 |
+| 会话 JSON（`~/.purescience/sessions/<project>/<session>.json`，只读） | `d8da1631…` 图里 73 个节点，其中 **32 个是 `prompt-<uuid>`**（app-routed 且未抑制的回合确实会落节点），但声明的那一个 `prompt-ec3409d2…` **不在图里**；`16abfdab…` 图里 **0 个** `prompt-` 前缀节点，两个声明都不在图里。两图的 `rootFrameId`/`messageBranchId`/`runtimeSegmentId` 与日志里那三条约 **逐字相同** |
+
+⇒ 命中的是 `prompt-not-owned`（`src/main/artifacts/provenance-repository.ts:396-404`：`promptIndex < 0` 即拒），
+而它在原因码里属**终态**（不是两条可重试的 race 之一）⇒ 与日志里 `failureKind: invalid-proof`、
+`provenanceRetries: 0`、同一 claim 重试 15 次仍失败完全一致。
+
+### 二 两条旧候选的判决
+
+- **候选 2（「段每同步一次新铸一枚」）否证**：`ensureConversationRuntimeSegment`
+  （`src/shared/conversation-graph.ts:543-570`）在 framework/backend/model 未变时**直接复用当前段**、丢弃新铸的那个 id；
+  `synchronizeActiveConversationMessages`（同文件 `:330-370`）只给**新节点**分配段，对已知节点只在该消息 `updatedAt` 更新时同步载荷，
+  **从不重指 `runtimeSegmentId`**。所以段 id 不会因为多同步一次而与声明侧分叉。
+- **候选 1（占位身份）部分成立，但不是这条失败的原因**：`bindPendingSession`
+  （`src/renderer/src/stores/session-store-message-graph-owner.ts`）确实只改 `session.id`、图内 id 保持 `pending-session-…` 形态 ——
+  但**两侧用的是同一份**，所以 root/branch/segment 三条都对得上（上表第三行）。占位身份是**背景**，不是缺口。
+
+### 三 真正的原因：被抑制的 Prompt 永远不会变成节点
+
+没有 `provenanceContext` 的调用方，在派发处被补上一枚 uuid 形态的 Prompt 身份：
+
+| 位置 | 行为 |
+| --- | --- |
+| `src/main/acp/runtime-coordinator.ts:690-695`（本轮改动后行号；告警在 `:696-708`） | `request.provenanceContext` 缺席 ⇒ 铸 `prompt-${randomUUID()}` |
+| `src/main/acp/artifact-turn-owner.ts:364-401` | 四支 fallback：`root-frame-${appSessionId}`（:364） / `message-branch-${appSessionId}`（:366） / `prompt-${runId}`（:367） / `runtime-segment-${appSessionId}`（:401） |
+
+而 `suppressUserMessage: true` 的回合**不发射用户消息事件**（`src/main/acp/prompt-turn-workflow.ts:294` 的
+`emitUserMessage` 在该标志下直接 return），于是那枚 id 永远不会成为图里的节点，证明的 `prompt-not-owned` 必然成立。
+已知的无 provenance 调用方四处：`src/main/ipc.ts:1799`（后台结果投递 `startTurn`）、
+`screening-model-runner.ts:220`、`restricted-inference-runner.ts:260`、`artifact-code-reconstruction-runner.ts:300`。
+四处都是**产品自己的**回合（后台投递最典型：它在一个真实用户会话里跑一整轮 agent，能写出产物）。
+副作用：这类回合写出的产物**永远不会定稿**（版本停在 `pending`/`unpublished`），用户看到产物但看不到它被发布。
+
+### 四 本轮交付（诊断面收口，不改语义）
+
+1. `src/main/acp/runtime-coordinator.ts` —— 派发处**一次性具名告警**（每会话一条）：句子写明后果，
+   字段 `consequence: 'prompt-not-owned'` 直接指向那条规则；去重表 `unownedPromptWarned` 让「调用方少带 provenance」
+   这件事只报一次，而不是每个回合一报。
+2. `src/main/acp/unowned-prompt-anchor.test.ts` —— 源码守卫：fallback 身份只有一处铸造、告警必须与它同段、
+   `consequence` 必须是 `ArtifactFinalizationProofCause` 里真的存在且真的被构造的原因码（防止文案漂到一条不存在的规则上）、
+   去重只在同一处生效。
+
+### 五 边界（不许读成更强）
+
+- **产品缺陷仍未修**：写侧修复要把锚点解析成持久图里**真实存在**的那条 Prompt（或把「app-owned 回合」这一形态在契约里具名），
+  三条候选与连锁规模见计划档 §297。本轮只让下一次失败**在日志里自己说是哪一类**，不改变任何用户可见行为。
+- 本节全部读数为**只读字段数据**（SQLite `-readonly`、会话 JSON、日志）；没有起 Electron：
+  `vm_stat` 空闲页 4,251 × 16 KB ≈ 66 MB、`vm.swapusage` 7,888 / 9,216 MB 已用 ⇒ 起窗读数不可信，真机窗口取证仍未取。
+- 三个会话只读到 `d8da1631…` 与 `16abfdab…` 两份 JSON；第三条版本行 `4490f3e9…` 所属会话与前者相同。

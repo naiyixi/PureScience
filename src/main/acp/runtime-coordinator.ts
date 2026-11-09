@@ -30,6 +30,9 @@ import type { AgentModelChangeTarget } from '../agent-framework'
 import { ElicitationBroker } from '../elicitation-broker'
 import type { ElicitationRespondRequest } from '../../shared/elicitation'
 import type { NotebookRunRiskReceipt } from '../../shared/notebook'
+import { createLogger } from '../logger'
+
+const log = createLogger('acp-runtime-coordinator')
 
 const MAX_EVENTS = 500
 const QUIT_PREPARATION_TIMEOUT_MS = 4_000
@@ -110,6 +113,9 @@ class AcpRuntimeCoordinator {
   private promptAttemptSequence = 0
   private readonly sessionCancellationGenerations = new Map<string, number>()
   private readonly pendingPromptStarts = new Map<string, PendingPromptStart[]>()
+  // One diagnostic per session: a caller that omits graph provenance does so for every turn it runs,
+  // and the consequence (unfinalizable artifacts) is a property of the caller, not of the turn.
+  private readonly unownedPromptWarned = new Set<string>()
   private readonly activePromptRequests = new Map<string, ActivePromptRequest>()
   private readonly activePromptCounts = new Map<string, number>()
   private readonly interactionReleaseWaiters = new Map<string, Set<() => void>>()
@@ -674,12 +680,31 @@ class AcpRuntimeCoordinator {
     // Legacy callers may omit graph provenance. Give the originating task one stable identity before
     // its first runtime run so an app-owned continuation reuses that identity instead of receiving a
     // second per-run fallback from AcpRuntime.activateArtifactRun().
+    //
+    // That identity is *not* a graph message id: a suppressed prompt never becomes a Message node, so
+    // nothing durable can ever own it. An Artifact written by such a turn therefore declares a Prompt
+    // anchor that the ownership proof can never find, and finalization is refused terminally as
+    // `prompt-not-owned` (verified against this machine's own logs on 2026-11-09: the claim carried
+    // `prompt-<uuid>` while the session graph only had `message-…`/`prompt-…` nodes that were minted
+    // elsewhere). Say so once per session instead of letting every artifact of the turn die silently.
     const taskRequest: AcpPromptRequest = request.provenanceContext
       ? request
       : {
           ...request,
           provenanceContext: { promptMessageId: `prompt-${randomUUID()}` }
         }
+    if (!request.provenanceContext && !this.unownedPromptWarned.has(request.sessionId)) {
+      this.unownedPromptWarned.add(request.sessionId)
+      log.warn(
+        'prompt dispatched without conversation-graph provenance; artifacts from this turn cannot be finalized',
+        {
+          sessionId: request.sessionId,
+          operation,
+          consequence: 'prompt-not-owned',
+          promptMessageId: taskRequest.provenanceContext?.promptMessageId
+        }
+      )
+    }
     const activePrompt: ActivePromptRequest = {
       request: taskRequest,
       runtime,

@@ -16536,3 +16536,63 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 ② 用隔离数据根复现「新会话里产出产物 → 立刻定稿」，读版本行与持久会话图的 root/agent/branch/segment
   四个 id 逐字对比，定候选 1 还是候选 2（这个复现同时会把 `proofCause` 的真实取值打到日志里，属真机读数）；
 ③ 与 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*` 不相交才开工。
+
+## 二百九十七、本轮追加（执行器，2026-11-09 20:2x–）—— 定稿失败的根因定死了：被抑制的 Prompt 从来不进图
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 7c64d0ca`（上一轮那笔，`Nightly` / `Windows Full Test` / `Scheduled Regression` 三条都 **success**，已核）。
+- **共享工作树整体滞后**：本地 `main` 停在 `f10fb8d9`，与 origin 分叉（那两笔内容早已以别的 SHA 在 origin 落地 ⇒ 不推、也不 rebase）；
+  工作树里 219 个路径相对 origin 是「旧版本 / 已删」。`src/` 下 **6 小时内没有任何文件被改动** ⇒ 并行执行体这一轮没在写。
+  因此本轮全部动作在隔离工作树 `/tmp/ps-r299`（`origin/main` + 本轮改动，APFS 克隆 `node_modules` + 自己 `prisma generate`），
+  共享工作树**一个字节没碰**。
+- 单元来源：§296 §四 ② 的既定下一步（「用真实数据定候选 1 还是候选 2」）。避让面照旧：`src/main/reviewer/**`、
+  `src/main/session-persistence/**`、九份 i18n、`UserCases*` —— 本轮只动 `src/main/acp/runtime-coordinator.ts` 与新增一份守卫用例。
+
+### 一 结论（只读字段数据，不靠推测）
+
+**根因 = 被抑制的 Prompt 永远不会成为持久图里的节点**，而不是旧候选里的两条（占位身份被改写 / 段每同步新铸）。
+逐条读数、被否证的候选与 file:line 见 `docs/evidence/2026-11-09-artifact-finalization-cause-codes.md` §七。
+一句话形态：`suppressUserMessage` 的回合（后台结果投递、筛查/受限推理、产物代码重建）在派发处被补一枚
+`prompt-<uuid>` 身份，而这类回合不发射用户消息事件 ⇒ 图上没有对应节点 ⇒ 证明按 `prompt-not-owned` **终态**拒绝
+（与日志里 `invalid-proof` + `provenanceRetries=0` + 同一 claim 重试 15 次仍失败完全一致）。
+用户可见后果：这类回合写出的产物**永远不定稿**。
+
+### 二 本轮交付
+
+1. `src/main/acp/runtime-coordinator.ts` —— 派发处**每会话一次性具名告警**，字段 `consequence: 'prompt-not-owned'`
+   直接指向那条规则（下一次真实失败在日志里就能分类，不必再复现四天）。
+2. `src/main/acp/unowned-prompt-anchor.test.ts` —— 源码守卫：fallback 身份只有一处铸造、告警必须与它同段、
+   `consequence` 必须是 `ArtifactFinalizationProofCause` 里真的存在的原因码、去重只在同一处生效。
+3. 证据档 §七 + 本节。
+
+### 三 写侧修复：三条候选（已量连锁规模，等你点头）
+
+| 支 | 做法 | 连锁 | 代价 / 风险 |
+| --- | --- | --- | --- |
+| **A（推荐）** | 派发处缺 provenance 时，用**持久会话图**解析真实锚点：取该会话活跃分支上最近一条用户 Prompt，`getActiveConversationContext` 给出四条身份 | ≈ 3 个产品文件（协调器加一个解析器选项、组合根接线、解析器本体）+ 2 个测试文件 | 语义：后台投递回合的产物归属「本会话最近一条用户 prompt」——这与图自己的投影规则一致（新节点落在活跃分支/段）；**不放宽任何校验** |
+| B | 契约里给「app-owned 回合」一个具名状态：版本行允许 Prompt 锚点为空 + 新增来源字段 | ≈ 8–10 个文件（DDL/迁移 + 证明规则 + 投影 + 若干 pin） | 最诚实、面最大；要迁移真实库 |
+| C | 这类回合不产出可定稿产物（派发处拒绝带产物写入的 app-owned 回合） | ≈ 1–2 个文件 | 用户拿到的是「后台投递的结果不能带文件」，功能倒退 |
+
+**没有等你答复时按 A 继续推进**（拒绝项：不放宽证明、不新造第二套身份）。
+
+### 四 门禁（隔离工作树）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx prisma generate` | exit 0（避免共享客户端与本次 schema 不同代） |
+| `vitest run unowned-prompt-anchor.test.ts runtime-coordinator.test.ts` | 2 文件 / **59 passed**，exit 0 |
+| `tsc --noEmit -p tsconfig.node.json --composite false` / `web` | 见提交前实测（两环各自 exit 0 才提交） |
+| `npx eslint --no-cache`（本批 3 个文件） | exit 0 |
+
+### 五 边界
+
+- 产品行为**零改动**：本轮只加诊断与守卫；那条缺陷（产物永不定稿）仍开着，写侧修复按 §三 A 走。
+- 真机窗口读数**未取**：`vm_stat` 空闲页 4,251 × 16 KB ≈ 66 MB、`vm.swapusage` 7,888 / 9,216 MB 已用，起 Electron 只会把机器拖进抖动；
+  本轮读数是 SQLite（`-readonly`）+ 会话 JSON + 既有日志三种**只读字段数据**，不是实机 UI 取证。
+
+### 六 下一轮第一步
+
+① 取本笔双车道判决（完整 40 位 SHA，`cancelled` 不算绿）；② 按 §三 A 落地写侧修复（先读 `sessionRepository` 是否已有
+「按 sessionId 取会话 + projectId」的入口，没有就复用组合根里已有的解析；解析器与协调器各一条用例，锚点必须是持久图里真实存在的 id）；
+③ 修完补一条**真机读数**：在隔离数据根造一次「后台投递回合产出产物 → 定稿」，读版本行五条身份与图逐字比对。
