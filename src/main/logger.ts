@@ -541,6 +541,47 @@ const bestEffortMessage = (error: unknown): string => {
 // and identifier-shaped system codes are classified rather than copied, so a hostile `code` or `name`
 // property cannot smuggle arbitrary text into the log. Callers that explicitly own richer diagnostics
 // can continue to use errorLogFields instead.
+// Chromium reports a failed fetch as `net::ERR_<TOKEN>` inside the message it throws. A boundary is not
+// allowed to retain that message (it can carry a URL, a credential stuffed into a query string, or content
+// the provider echoed back), so the ONE diagnosable bit is classified instead of copied: the token shape is
+// matched inside a bounded window and only a value from the closed vocabulary below is emitted.
+// Field reading that motivated it: an update check failing in 28 ms whose only line said
+// `errorCategory: 'error'` — indistinguishable from a broken feed, while the real cause was the network
+// changing mid-request (`net::ERR_NETWORK_CHANGED`, visible only in the HTTP layer's own warn line).
+const NET_ERROR_PATTERN = /net::(ERR_[A-Z0-9_]{3,40})/
+/** How much of a message is scanned before the token is declared absent — a hostile getter stays cheap. */
+const NET_ERROR_SCAN_WINDOW = 400
+const netErrorCategories: Record<string, string> = {
+  ERR_NETWORK_CHANGED: 'network-changed',
+  ERR_INTERNET_DISCONNECTED: 'offline',
+  ERR_NAME_NOT_RESOLVED: 'dns',
+  ERR_NAME_RESOLUTION_FAILED: 'dns',
+  ERR_CONNECTION_REFUSED: 'connection-refused',
+  ERR_CONNECTION_RESET: 'connection-reset',
+  ERR_CONNECTION_CLOSED: 'connection-reset',
+  ERR_TIMED_OUT: 'network-timeout',
+  ERR_CONNECTION_TIMED_OUT: 'network-timeout'
+}
+
+const netFailureCategory = (error: object): string | undefined => {
+  try {
+    const message = safeRead(error, 'message')
+    if (typeof message !== 'string') return undefined
+
+    const match = NET_ERROR_PATTERN.exec(message.slice(0, NET_ERROR_SCAN_WINDOW))
+    if (!match) return undefined
+
+    const token = match[1]!
+    if (Object.hasOwn(netErrorCategories, token)) return netErrorCategories[token]
+    // An unrecognised Chromium network code still belongs to the same family: saying `network` beats
+    // saying `error`, which is what sent the first field investigation down the wrong path.
+    if (token.startsWith('ERR_CERT_')) return 'certificate'
+    return 'network'
+  } catch {
+    return undefined
+  }
+}
+
 const diagnosticErrorFields = (error: unknown): { errorCategory: string } => {
   try {
     if (error === null) return { errorCategory: 'null' }
@@ -571,6 +612,9 @@ const diagnosticErrorFields = (error: unknown): { errorCategory: string } => {
         return { errorCategory: 'system' }
       }
     }
+
+    const netCategory = netFailureCategory(error as object)
+    if (netCategory !== undefined) return { errorCategory: netCategory }
 
     const name = safeRead(error as object, 'name')
     const categoriesByName: Record<string, string> = {

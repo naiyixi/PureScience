@@ -386,6 +386,46 @@ describe('logger: diagnosticErrorFields', () => {
       expect(JSON.stringify(fields)).not.toContain(secret)
     }
   })
+
+  it('classifies the Chromium network failure the field log recorded as a bare category', () => {
+    // Verbatim from the app's own log: `update · operation failed · phase=fetch-manifest=28ms ·
+    // errorCategory:"error"` — the reason was only visible in the HTTP layer's separate warn line.
+    const error = new Error(
+      'ERR_FAILED (-2) loading https://github.com/…/version.json: net::ERR_NETWORK_CHANGED'
+    )
+
+    expect(diagnosticErrorFields(error)).toEqual({ errorCategory: 'network-changed' })
+    expect(diagnosticErrorFields(new Error('net::ERR_NAME_NOT_RESOLVED'))).toEqual({
+      errorCategory: 'dns'
+    })
+    expect(diagnosticErrorFields(new Error('net::ERR_CERT_DATE_INVALID'))).toEqual({
+      errorCategory: 'certificate'
+    })
+    // An unseen Chromium code stays inside the closed vocabulary instead of falling back to `error`.
+    expect(diagnosticErrorFields(new Error('net::ERR_SOMETHING_NEW'))).toEqual({
+      errorCategory: 'network'
+    })
+  })
+
+  it('keeps an explicit system code ahead of the network mapping and copies no message text', () => {
+    const secret = 'token=abcdef012345'
+    const withCode = Object.assign(new Error(`net::ERR_CONNECTION_REFUSED ${secret}`), {
+      code: 'ENOENT'
+    })
+    expect(diagnosticErrorFields(withCode)).toEqual({ errorCategory: 'not-found' })
+
+    const network = new Error(`net::ERR_CONNECTION_REFUSED ${secret}`)
+    const fields = diagnosticErrorFields(network)
+    expect(fields).toEqual({ errorCategory: 'connection-refused' })
+    expect(JSON.stringify(fields)).not.toContain(secret)
+    expect(JSON.stringify(fields)).not.toContain('net::')
+  })
+
+  it('leaves an ordinary error classified by name, not by its prose', () => {
+    expect(diagnosticErrorFields(new Error('something went wrong'))).toEqual({
+      errorCategory: 'error'
+    })
+  })
 })
 
 describe('logger: errorLogFields', () => {
