@@ -629,7 +629,7 @@ describe('Data and content application commands', () => {
     ).resolves.toEqual({ ok: true, artifacts: [] })
 
     deps.artifacts.finalizeRunArtifacts.mockRejectedValueOnce(
-      new ArtifactOwnershipPersistenceRaceError('ownership is pending')
+      new ArtifactOwnershipPersistenceRaceError('message-not-durable', 'ownership is pending')
     )
     await expect(
       router.dispatcher.invoke(

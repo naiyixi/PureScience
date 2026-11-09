@@ -173,11 +173,13 @@ describe('artifact IPC handlers', () => {
       .fn()
       .mockRejectedValueOnce(
         new ArtifactOwnershipPersistenceRaceError(
+          'message-not-durable',
           'Artifact finalization message is not durable yet.'
         )
       )
       .mockRejectedValueOnce(
         new ArtifactOwnershipPersistenceRaceError(
+          'message-not-durable',
           'Artifact finalization message is not durable yet.'
         )
       )
@@ -217,7 +219,10 @@ describe('artifact IPC handlers', () => {
     } as unknown as ArtifactRepository
     const runRegistry = new ArtifactRunRegistry()
     const notDurableYet = (): ArtifactOwnershipPersistenceRaceError =>
-      new ArtifactOwnershipPersistenceRaceError('Artifact finalization message is not durable yet.')
+      new ArtifactOwnershipPersistenceRaceError(
+        'message-not-durable',
+        'Artifact finalization message is not durable yet.'
+      )
     const finalizeRun = vi
       .fn()
       .mockRejectedValueOnce(notDurableYet())
@@ -270,16 +275,19 @@ describe('artifact IPC handlers', () => {
 
   it('does not retry a terminal proof failure', async () => {
     const runRegistry = new ArtifactRunRegistry()
+    const diagnosticLogger = { error: vi.fn(), info: vi.fn() }
     const finalizeRun = vi
       .fn()
-      .mockRejectedValue(new ArtifactFinalizationProofError('root Frame does not match'))
+      .mockRejectedValue(
+        new ArtifactFinalizationProofError('root-frame-mismatch', 'root Frame does not match')
+      )
     const handlers = createArtifactHandlers(
       {
         finalizeRunArtifacts: vi.fn(),
         listMessageFiles: vi.fn().mockResolvedValue([])
       } as unknown as ArtifactRepository,
       runRegistry,
-      { provenance: { finalizeRun } as never }
+      { provenance: { finalizeRun } as never, logger: diagnosticLogger }
     )
     const claimId = runRegistry.register({
       projectName: 'default-project',
@@ -298,6 +306,11 @@ describe('artifact IPC handlers', () => {
       handlers.finalizeRunArtifacts({ claimId, messageId: 'message-1' })
     ).rejects.toBeInstanceOf(ArtifactFinalizationProofError)
     expect(finalizeRun).toHaveBeenCalledTimes(1)
+    // A terminal rejection is not retried, so the cause code is the only thing a reader can act on.
+    expect(diagnosticLogger.error).toHaveBeenCalledWith(
+      'artifact finalization attempt failed',
+      expect.objectContaining({ failureKind: 'invalid-proof', proofCause: 'root-frame-mismatch' })
+    )
   })
 
   it('serializes concurrent finalize requests for the same claim', async () => {
@@ -407,6 +420,7 @@ describe('artifact IPC handlers', () => {
         .fn()
         .mockRejectedValue(
           new ArtifactFinalizationProofError(
+            'execution-snapshot-invalid',
             'corrupt Artifact Version proof for /Users/private/result.txt: secret artifact contents'
           )
         )
@@ -441,6 +455,9 @@ describe('artifact IPC handlers', () => {
       expect.objectContaining({
         stage: 'durable-finalization',
         failureKind: 'invalid-proof',
+        // Which rule refused it, as a code: the message below stays out of the log (asserted just after),
+        // and before this field a terminal rejection named nothing at all.
+        proofCause: 'execution-snapshot-invalid',
         durableFinalizationCompleted: false,
         compatibilityPublicationCompleted: false,
         claimId,
@@ -1287,6 +1304,7 @@ describe('artifact IPC handler registration', () => {
         .fn()
         .mockRejectedValue(
           new ArtifactOwnershipPersistenceRaceError(
+            'message-not-durable',
             'The durable graph projection has not caught up with the selected owner.'
           )
         )

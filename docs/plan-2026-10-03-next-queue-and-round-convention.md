@@ -16489,3 +16489,50 @@ pid=723   cpuPercent=0 windowMs=14996 spinning=false env=default-python   → 1 
 收口（判据已在 2026-11-07 富语料档与本轮两读数里，**零代码**），不再开工 P1-c；
 ② 否则取一件与 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*` 不相交的单元；
 ③ 签名三件仍属外部阻塞（证书未下来），不动。
+
+## 二百九十六、本轮追加（执行器，2026-11-09 18:0x–）—— 产物定稿失败说不出哪条规则拒的：20 条真机错误先给它们名字
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 738227d1`（上一轮推的那笔，`Nightly` / `Windows Full Test` 两车道 **success**，已核）。
+- **前两轮都在「等模型回复」处被平台中断**（694.8 s / 606.0 s），断点不在树里：本地 main 仍是 `f10fb8d9`
+  （领先 origin 2 笔、落后 97 笔，那 2 笔内容早已在 origin 以别的 SHA 落地 ⇒ **不推**）；共享工作树里
+  37 个 Nov-4 路径（`prisma/schema.prisma`、`projects/**`、九份 i18n、`reviewer/**`、`logger.ts`…）
+  **一个字节没碰**，本轮全部动作在隔离工作树 `/tmp/ps-r298` 里做。
+- 单元来源：真机日志自拟（`~/Library/Logs/PureScience/main*.log` 只读聚合），与 `logger.ts`（并发写者
+  的在制品）不相交 —— 本单元只动 `src/main/artifacts/**` 与 `data-content-application-commands.test.ts`。
+
+### 一 症状与交付
+
+真机日志里 `artifact finalization attempt failed` **20 条、3 个 claim、时间跨 2026-11-04 → 11-07**，
+其中 `artifact-claim-1793897553264-38` **重试 15 次**（1→15）仍未成功；每条的 `failureKind` 一律
+`invalid-proof`，**没有任何字段说是哪条证明规则拒的**（该异常有 19 个抛出点）。交付 = 闭集原因码
+`ArtifactFinalizationProofCause` + 失败行 `proofCause` 字段 + 源码守卫（构造数==具名数、声明集==使用集）。
+证据与两条根因候选（`pending-session` 占位身份 / 段每同步一次新铸）见
+`docs/evidence/2026-11-09-artifact-finalization-cause-codes.md`。
+
+### 二 门禁读数
+
+| 环 | 读数 |
+| --- | --- |
+| `ipc.test.ts` + `proof-cause-naming.test.ts` | 2 files / **39 passed**，exit 0 |
+| `provenance-repository.test.ts` | 1 file / **41 passed**，exit 0 |
+| `data-content-application-commands.test.ts` | 1 file / **9 passed**，exit 0 |
+| `typecheck:node` / `typecheck:web` | **exit 0 / exit 0**（node 侧修复前抓到一处漏改构造点 `TS2345`） |
+| `eslint --no-cache`（本批 5 文件） | **exit 0**，0 error |
+
+### 三 边界（不许读成更强）
+
+- **真机窗口读数未取**：要看到 `proofCause` 上屏需要一次真实证明失败，claim 表是内存结构、重启即丢，
+  脚本伪造不出「重启前的 claim」；且本机 `vm_stat` 空闲页 3,981×16 KB ≈ 62 MB、swap 13.0/14.3 GB 已用
+  ⇒ 不起 Electron。这是「缺口已由真机日志证明 + 新字段由单测/守卫证明」，不是「实机跑通」。
+- 根因**未定**：三条失败版本行的帧/分支/段都是 `pending-session` 占位形态（只读 SQLite 读数），
+  这是线索不是结论；两条候选的核法与写侧修法方向见证据档 §五。
+- 本单元不改运行时对用户可见的行为，不抬版本号、不打 tag。
+
+### 四 下一轮第一步
+
+① 取本笔的双车道判决（完整 40 位 SHA；`cancelled` 不算绿）；
+② 用隔离数据根复现「新会话里产出产物 → 立刻定稿」，读版本行与持久会话图的 root/agent/branch/segment
+  四个 id 逐字对比，定候选 1 还是候选 2（这个复现同时会把 `proofCause` 的真实取值打到日志里，属真机读数）；
+③ 与 `reviewer/**`、`session-persistence/**`、九份 i18n、`UserCases*` 不相交才开工。

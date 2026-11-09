@@ -504,11 +504,13 @@ export const finalizeRunArtifacts = async (
         !claim.promptMessageId
       ) {
         throw new ArtifactFinalizationProofError(
+          'provenance-context-incomplete',
           'Artifact run claim is missing complete provenance context.'
         )
       }
       if (!claim.artifactVersionIds || claim.artifactVersionIds.length === 0) {
         throw new ArtifactFinalizationProofError(
+          'claim-version-ids-missing',
           'Artifact run claim is missing exact Artifact Version ids.'
         )
       }
@@ -593,6 +595,12 @@ export const finalizeRunArtifacts = async (
     logger.error('artifact finalization attempt failed', {
       stage,
       failureKind,
+      // Which proof rule refused the claim. A terminal proof rejection is not retryable, so this code is
+      // the whole actionable content of the line: without it the reader can only see "invalid-proof" and
+      // has to reproduce the run to learn anything (the same claim also retried 15 times silently before
+      // this field existed). Bounded to the closed union in `provenance-repository`, so no id or path
+      // reaches the log through it.
+      ...(error instanceof ArtifactFinalizationProofError ? { proofCause: error.proofCause } : {}),
       durableFinalizationCompleted,
       compatibilityPublicationCompleted,
       attempt,
