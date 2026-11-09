@@ -16699,3 +16699,63 @@ finishes while the app is closed and is restarted later」。而投递**把结�
   （隔离 `PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` + 独立端口 + `--user-data-dir`：造一次投递 → 读版本行
   五条身份与 `delivery turn answers the delivered results message` 那行日志）；③ 若读数显示活跃 Segment 会换，
   再把「按即将使用的 Segment 取锚点」单独立项。
+
+## 三百、本轮追加（执行器，2026-11-10 04:0x–）—— app-owned 锚点覆盖面审计：两条重启路径都从持久图取，无图会话的续跑改成**具名失败**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = fcc2bb4b`（上轮那笔）。判决现查（完整 40 位 SHA）：`c481d17d` **双车道 success**（上轮的「待取判决」在此收口）；
+  `fcc2bb4b` 的 `Windows Full Test` **success**，`Nightly` 的 `Verify` 在起了 runner 15 分钟后被判 `cancelled`（`startedAt` 非空、
+  步骤清单为空、同 SHA 无更新的 run 顶它）⇒ 按纪律**取消不算红**，已 `gh run rerun --failed` 复跑；本笔推送会顶掉那一轮，
+  判决以本次推送的 SHA 为准（`git merge-base --is-ancestor fcc2bb4b <新SHA>` 为真 ⇒ 新跑覆盖旧树）。
+- 共享工作树 `git status --short` 只有三份**不是我的**未跟踪证据档（`2026-11-01-reviewer-fix-loop-double-review.md`、
+  `2026-11-04-file-ocr-branch-name.md`、`2026-11-04-upload-probe-availability.md`）⇒ 不碰、不提交。`src/` 无并行写入者。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；本轮取 §299 §四 ③ 那一格**先判它该不该立**。
+
+### 一 结论（先读代码再决定不动手）
+
+按 `grep -rn "suppressUserMessage" src/ --include=*.ts` 把所有「没有用户动作的回合」入口列全，逐条判锚点来源：
+
+| 入口 | 锚点来源 | 重启后可用 |
+| --- | --- | --- |
+| 后台投递（`ipc.ts:1820` → `background-delivery/owner.ts:216`） | 结果写入**之后**从持久图解析 | ✅ |
+| 中断回合续跑（`interrupted-turn-continuation.ts:71`） | 持久图 `getActiveConversationContext` | ✅ |
+| 筛选 / 受限推理 / 产物代码重建 / handoff / reviewer | 派发处继承进程内最近用户 Prompt（`runtime-coordinator.ts:714`） | ⚠️ 进程内，但这些入口只由**正在进行的回合**触发，重启后不自己发起 |
+| 兜底（`runtime-coordinator.ts:736`） | 铸 uuid + 每会话一条具名 warn | 终态且**已具名** |
+
+⇒ §299 §四 ③「按即将使用的 Segment 取锚点」**不立项**：投递的锚点在结果写入之后解析，写入本身会把 Segment 开在帧末，
+解析到的就是下一条消息要落的那个；真正跨 Segment（换了模型/框架）的情形按产权证明语义本来就不该被认领，强行认领＝放宽证明。
+
+### 二 交付（1 产品文件 + 1 测试文件 + 1 证据档）
+
+`src/main/acp/interrupted-turn-continuation.ts`：`resolveProvenanceContext` 在 `session.conversationGraph` 缺失时
+（会话图之前的旧会话，重启后续跑中断回合的唯一落点）原本静默返回裸 `{ promptMessageId }` —— 那个 id 在产权证明里
+永远找不到节点，产物以 `prompt-not-owned` 终态被拒而日志里一行都没有。补一条 `warn`（`sessionId` / `promptMessageId` /
+`consequence: 'prompt-not-owned'`），**返回值一字未改**：不是放宽证明，是让拒绝可被读到。
+
+`src/main/acp/interrupted-turn-continuation.test.ts`（新建 2 例）：① 无图会话 → 仍是裸 id（证明没偷偷放宽）+ warn 带具名 consequence；
+② 有图会话 → 四条身份取自持久图，且**不**产生那条 warn。
+证据档 `docs/evidence/2026-11-10-app-owned-anchor-coverage-audit.md`。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/main/acp/interrupted-turn-continuation.test.ts` | 1 文件 / **2 passed**，exit 0 |
+| `vitest run src/main/acp src/shared/conversation-graph.test.ts --maxWorkers=4` | 96 文件 / **1518 passed**，exit 0（较上轮 94 文件 / 1505 例，多出的是本批 2 例 + `conversation-graph.test.ts` 11 例） |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0（默认堆会 `Abort trap: 6`，抬到 4096 后通过） |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
+| `eslint --no-cache`（本批 2 文件） | 0 errors / 0 warnings |
+
+### 四 边界（不许读成更强）
+
+- **真机窗口读数未取**：`vm_stat` 空闲页 7,703 × 16 KB ≈ 120 MB、swap 已用 7,568 / 9,216 MB，起 Electron 会把机器拖进抖动；
+  本机占用前几名是打包版 PureScience（1,833 MB，带 `--remote-debugging-port=9340` 的旧自动化实例）、wpsoffice（1,141 MB）、
+  Ventura（1,116 MB）——后两个是用户的其它应用，**不动**。取证配方仍按 §299 §四 ②。
+- 进程内继承仍不跨重启，本轮确认其四个调用方都不会在重启后自己发起 ⇒ 不改派发处（会多一次 DB 读并牵动组合根，连锁 3 文件 vs 1 文件）。
+
+### 五 下一轮第一步
+
+① 取本笔双车道判决（完整 40 位 SHA；`cancelled` 不算绿）；② 机器空闲页回到可起窗量级（或用户关掉那两个占用过 GB 的应用）时，
+补 §299 §四 ② 那条真机读数（隔离 `PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` + 独立端口 + `--user-data-dir`：
+造一次投递 → 读版本行五条身份 + `delivery turn answers the delivered results message` 那行）；③ 之后再往 B 段之外取新单元。

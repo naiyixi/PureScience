@@ -8,6 +8,9 @@ import { buildSessionHistoryReplay } from '../../shared/session-history-replay'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { toRuntimeUploadedAttachment } from '../../shared/uploads'
 import type { TaskNotificationService } from '../notifications/task-notifications'
+import { createLogger } from '../logger'
+
+const log = createLogger('acp-interrupted-turn-continuation')
 
 const INTERRUPTED_TURN_CONTINUATION_PROMPT =
   'Continue the interrupted turn from where it stopped. Do not repeat completed work or completed tool calls unless needed to finish the original request.'
@@ -73,7 +76,21 @@ const resolveProvenanceContext = (
   request: AcpContinueInterruptedTurnRequest
 ): NonNullable<AcpPromptRequest['provenanceContext']> => {
   const graph = session.conversationGraph
-  if (!graph) return { promptMessageId: request.promptMessageId }
+  if (!graph) {
+    // A session written before Conversation Graphs existed has nothing durable that could own this
+    // turn, so the bare id below can never satisfy the ownership proof and every artifact of the
+    // continuation is refused as `prompt-not-owned`. Name that here: the alternative is a turn that
+    // looks healthy and dies once its artifacts are finalized.
+    log.warn(
+      'interrupted-turn continuation has no Conversation Graph; artifacts from this turn cannot be finalized',
+      {
+        sessionId: session.id,
+        promptMessageId: request.promptMessageId,
+        consequence: 'prompt-not-owned'
+      }
+    )
+    return { promptMessageId: request.promptMessageId }
+  }
 
   const provenance = getActiveConversationContext(graph, request.promptMessageId)
   const contextReset = request.contextReset
