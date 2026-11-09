@@ -16759,3 +16759,56 @@ finishes while the app is closed and is restarted later」。而投递**把结�
 ① 取本笔双车道判决（完整 40 位 SHA；`cancelled` 不算绿）；② 机器空闲页回到可起窗量级（或用户关掉那两个占用过 GB 的应用）时，
 补 §299 §四 ② 那条真机读数（隔离 `PURESCIENCE_STORAGE_ROOT` + `settings.dataRoot` + 独立端口 + `--user-data-dir`：
 造一次投递 → 读版本行五条身份 + `delivery turn answers the delivered results message` 那行）；③ 之后再往 B 段之外取新单元。
+
+## 三百零一、本轮追加（执行器，2026-11-10 06:3x–）—— 日志写不出去时应用把自己记成 54 次系统故障：控制台管道的 EPIPE 从「每次一行日志一次」变成「一次具名」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = cb047dd2`。§三百 §五 ① 的待取判决**已到手**（完整 40 位 SHA 现查）：`Windows Full Test` **success**、
+  `Nightly` **success**。共享工作树 `git status --short` 只有三份**不是我的**未跟踪证据档（`2026-11-01-reviewer-fix-loop-double-review.md`、
+  `2026-11-04-file-ocr-branch-name.md`、`2026-11-04-upload-probe-availability.md`）⇒ 不碰、不提交；`src/` 无并行写入者。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；§299 §四 ② 的真机窗口读数**仍被资源闸门挡着**
+  （空闲页 5,680 × 16 KB ≈ 89 MB、swap 7,372 / 8,192 MB 已用）⇒ 本轮自拟一个**不需要起窗**的单元（先量真机日志再查被点到的那处）。
+
+### 一 读数与归因（先量后改）
+
+打包版 `main.log`（2.26.0，5,347 条）里 11 条 error 中有一族形态完全一致：`uncaughtException` / `message: "write EPIPE"` /
+`frame: afterWriteDispatched (stream_base_commons:159:15)`，折叠后 **54 次**，`firstAt 16:17:47.635Z → lastAt 16:27:10.648Z`。
+**同一窗口共 56 条记录**（54 次 EPIPE + 53 条正常记录，另有折叠记录本身）⇒ 近似「每写一行日志就一次 EPIPE」，而窗口内没有任何
+会话/回合活动。读源码定死这条路：`logger.emit()` 默认 `mirrorToConsole: true`，每条记录调一次 `console.*` ⇒ 写 `process.stdout`
+/`process.stderr`；Node 的进程级流默认无 `error` 监听 ⇒ 读端消失后下次写抛 `EPIPE`，未处理的流 `error` 被重抛成
+`uncaughtException` ⇒ `index.ts:245` 按 `errorCategory: 'system'` 记一条 error。`egress-proxy.ts` 在 10-23 修过同族的 socket 版，
+本笔修的是它的另一条入口（控制台流）。
+
+### 二 交付（2 产品文件 + 1 新模块 + 1 测试 + 1 证据档）
+
+- `src/main/console-pipe-guard.ts`（新）：给两条进程级流挂 `error` 监听，**每条流只报一次**、`code` 缺席报 `no-code`、
+  `install()` 重复调用不叠监听器、两个 guard 各自独立；`isBroken()` 供调用方查询。
+- `src/main/logger.ts`：新增 `suppressConsoleMirror()`（只关不开）——**文件记录照旧**，只停控制台镜像。
+- `src/main/index.ts`：在既有进程级失败捕获旁装 guard，回调**先**关镜像、**再**记一条 `warn`
+  `console output pipe closed` + `stream`/`code`/`consequence: 'console-mirroring-disabled'`（关于死管道的记录不能再写进死管道）。
+- 证据档 `docs/evidence/2026-11-10-console-pipe-epipe-guard.md`（含归因读数、变异自证、五条边界）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `vitest run src/main/console-pipe-guard.test.ts` | 1 文件 / **8 passed**，exit 0 |
+| 受影响簇（`logger` + 本文件 + `crash-diagnostics.capture` + `src/main/diagnostics`） | **29 文件 / 294 passed**，exit 0 |
+| 双 typecheck（`--composite false`，node 侧堆 4096） | node / web 各自 exit 0 |
+| `eslint --no-cache`（本批 4 文件） | **0 error / 0 warning** |
+
+**变异自证**：① 监听从 `'error'` 改成 `'close'` ⇒ 6 红（仍绿的恰是镜像抑制与真管道那两条，它们验别的机制）；
+② `emit()` 的 `mirror` 无视抑制 ⇒ 「抑制后不再镜像」红。**真机制读数**：测试末尾用真 OS 管道跑两个子进程，父进程 250 ms 后
+销毁读端 —— 无监听的臂写出 `UNCAUGHT EPIPE`，有监听的臂写出 `PIPE-ERROR EPIPE` 且无 `UNCAUGHT`。
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- **真机窗口读数未取**（资源闸门同上）；证据是「真日志读数 + 真管道机制复现 + 单测」，**不是**「打包版不再出现 EPIPE」——
+  那要下一版发出去之后再看同机 `main.log`。
+- **归因是推出来的**：`frame` 通用、日志不带流名，支撑是「56 条记录 / 54 次 EPIPE」的近似 1:1。若下一版仍出现同形态且次数远少于
+  记录数 ⇒ 归因作废，转查子进程 stdio 那一族（guard 修的那一处仍是真的）。
+- 抑制是**全局不可逆**（任一流死掉后两条流都不再镜像），文件日志不受影响；不覆盖子进程 stdio（已具名）。
+- **下一轮第一步**：① 取本笔双车道判决（完整 40 位 SHA）；② 资源闸门一开就补 §299 §四 ② 的真机读数；③ 同一条日志里另两族开项
+  按序取：`reviewer:correction` 的 `An ACP prompt is already running for this session`（同 run 3 次，随后
+  `correction failed in fix loop — marking remaining checks unaddressed` ⇒ 修复环静默降级）、`egress approval timed out`（11 次）。

@@ -35,6 +35,11 @@ let config: LoggerConfig | undefined
 let writeChain: Promise<void> = Promise.resolve()
 // Running size of the live file; undefined until seeded from disk on the first write after init.
 let currentBytes: number | undefined
+// Console mirroring can be switched off for the rest of the process's life. Set by the console pipe guard
+// when a process-level stream's reader goes away: writing to that stream can no longer succeed, and each
+// attempt re-raises `EPIPE` as a process-level uncaught exception (measured one per mirrored line — see
+// `console-pipe-guard.ts`). File logging is unaffected.
+let consoleMirrorSuppressed = false
 
 // Turns arbitrary log payloads into JSON-safe values, unwrapping Errors (whose fields are non-enumerable)
 // so a stack trace actually lands in the log instead of `{}`.
@@ -866,8 +871,17 @@ const getLogFilePath = (): string | undefined =>
 // Resolves once all queued writes have flushed. Useful for tests and orderly shutdown.
 const flushLogs = (): Promise<void> => writeChain
 
+/**
+ * Stops mirroring log records to the console for the rest of the process's life (file logging continues).
+ * There is no counterpart that turns it back on: a stream that has failed once is not worth writing to
+ * again, and re-enabling it would restore exactly the failure this exists to stop.
+ */
+const suppressConsoleMirror = (): void => {
+  consoleMirrorSuppressed = true
+}
+
 const emit = (level: LogLevel, scope: string, message: string, data?: unknown): void => {
-  const mirror = config?.mirrorToConsole ?? true
+  const mirror = !consoleMirrorSuppressed && (config?.mirrorToConsole ?? true)
   const line = formatLine(level, scope, message, data, config?.runId)
 
   if (mirror) {
@@ -906,5 +920,6 @@ export {
   flushLogs,
   formatLine,
   getLogFilePath,
-  initLogger
+  initLogger,
+  suppressConsoleMirror
 }

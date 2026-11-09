@@ -41,8 +41,9 @@ import {
   reportApplicationStartupFailure
 } from './diagnostics/startup'
 import { startEventLoopStallWatchdog } from './diagnostics/event-loop-stall-watchdog'
-import { createLogger, diagnosticErrorFields, flushLogs } from './logger'
+import { createLogger, diagnosticErrorFields, flushLogs, suppressConsoleMirror } from './logger'
 import { createProcessFailureCapture } from './crash-diagnostics'
+import { createConsolePipeGuard } from './console-pipe-guard'
 import { classifyPreviousShutdown, createShutdownBreadcrumbWriter } from './shutdown-breadcrumb'
 import { randomUUID } from 'node:crypto'
 import { measureSpace, pruneUnreferencedContent } from './storage/content-store'
@@ -244,6 +245,25 @@ async function startElectronApp(mainEntryPath: string): Promise<void> {
   const captureProcessFailure = createProcessFailureCapture({ log: createLogger('main') })
   process.on('uncaughtException', (error) => captureProcessFailure(error, 'uncaughtException'))
   process.on('unhandledRejection', (reason) => captureProcessFailure(reason, 'unhandledRejection'))
+
+  // Console output is a pipe, and its reader can disappear (the terminal that launched the app closes, a
+  // supervisor goes away). Node's process-level streams carry no `error` listener by default, so the next
+  // `console.*` write raises `EPIPE` and lands in the handler above as a "system" failure — measured: 54
+  // such records in ten minutes, ~one per mirrored log line (see the module header). Suppress the mirror
+  // FIRST so the record about the dead pipe is not itself written to it.
+  createConsolePipeGuard({
+    stdout: process.stdout,
+    stderr: process.stderr,
+    onPipeClosed: (failure) => {
+      suppressConsoleMirror()
+      log.warn('console output pipe closed', {
+        stream: failure.stream,
+        code: failure.code,
+        message: failure.message,
+        consequence: 'console-mirroring-disabled'
+      })
+    }
+  }).install()
   // A quitting process must not lose the failures it folded: flush the open windows before the logger's
   // write queue is drained for the last time.
   process.on('exit', () => {
