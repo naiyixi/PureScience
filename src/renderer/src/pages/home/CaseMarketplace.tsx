@@ -106,7 +106,7 @@ export const CaseMarketplace = (): React.JSX.Element => {
         <button
           type="button"
           className={actionClass}
-          onClick={() => void load()}
+          onClick={() => void load({ force: true })}
           data-slot="case-market-refresh"
         >
           {t('home.userCases.market.refresh')}

@@ -38,22 +38,36 @@ export type CaseInstallState =
 type CaseMarketStore = {
   shelf: CaseShelf
   install: CaseInstallState
-  load: () => Promise<void>
+  /** True while a read is in flight, so two mounts in the same tick do not both ask. */
+  reading: boolean
+  /** Epoch ms when this session last finished a read (a refusal counts); null until one finishes. */
+  readAt: number | null
+  /** Reads the index unless this session already read it; `force` re-reads (the refresh control uses it). */
+  load: (options?: { force?: boolean }) => Promise<void>
   installCase: (entry: CaseMarketplaceEntry) => Promise<void>
 }
 
-export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
+export const useCaseMarketStore = create<CaseMarketStore>((set, get) => ({
   shelf: { kind: 'loading' },
   install: { kind: 'idle' },
+  reading: false,
+  readAt: null,
 
-  load: async () => {
+  load: async (options) => {
+    // One read per session. The comment above promised this and the code did not do it: every mount of the shelf
+    // asked again, so a reader who left the home page and came back paid for the index again — and on a network
+    // where that host does not answer, paid the whole deadline again (measured: the same reader, four slow reads
+    // in twenty minutes). A refusal is kept, not retried on mount: the refresh control is how a reader asks again.
+    if (options?.force !== true && (get().reading === true || typeof get().readAt === 'number')) {
+      return
+    }
     const api = window.api?.caseBundles?.fetchMarketplace
     // A window built without the channel simply has no shelf; it must not throw.
     if (!api) {
-      set({ shelf: { kind: 'unavailable' } })
+      set({ shelf: { kind: 'unavailable' }, reading: false, readAt: Date.now() })
       return
     }
-    set({ shelf: { kind: 'loading' } })
+    set({ shelf: { kind: 'loading' }, reading: true })
     let outcome: Awaited<ReturnType<typeof window.api.caseBundles.fetchMarketplace>>
     try {
       outcome = await window.api.caseBundles.fetchMarketplace({})
@@ -64,7 +78,9 @@ export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
         shelf: {
           kind: 'unavailable',
           detail: error instanceof Error ? error.message : String(error)
-        }
+        },
+        reading: false,
+        readAt: Date.now()
       })
       return
     }
@@ -76,7 +92,9 @@ export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
               kind: 'refused',
               reason: outcome.reason,
               ...(outcome.detail === undefined ? {} : { detail: outcome.detail })
-            }
+            },
+      reading: false,
+      readAt: Date.now()
     })
   },
 
@@ -122,7 +140,12 @@ export const useCaseMarketStore = create<CaseMarketStore>((set) => ({
 
 /** Test seam: forget the shelf so the next render reads it again. */
 export const resetCaseMarketStore = (): void => {
-  useCaseMarketStore.setState({ shelf: { kind: 'loading' }, install: { kind: 'idle' } })
+  useCaseMarketStore.setState({
+    shelf: { kind: 'loading' },
+    install: { kind: 'idle' },
+    reading: false,
+    readAt: null
+  })
 }
 
 export const selectIsWorking = (state: CaseMarketStore): boolean =>

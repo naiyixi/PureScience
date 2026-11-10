@@ -27,8 +27,14 @@ const entry = (overrides: Record<string, unknown> = {}): Record<string, unknown>
 beforeEach(() => {
   fetchMarketplace.mockReset()
   installFromMarketplace.mockReset()
-  // The shelf lives in a store, so every test starts from "nothing read yet".
-  useCaseMarketStore.setState({ shelf: { kind: 'loading' }, install: { kind: 'idle' } })
+  // The shelf lives in a store, so every test starts from "nothing read yet" — including the read bookkeeping the
+  // store uses to answer once per session.
+  useCaseMarketStore.setState({
+    shelf: { kind: 'loading' },
+    install: { kind: 'idle' },
+    reading: false,
+    readAt: null
+  })
   Object.defineProperty(window, 'api', {
     configurable: true,
     value: { caseBundles: { fetchMarketplace, installFromMarketplace } }
@@ -139,5 +145,41 @@ describe('the case marketplace shelf', () => {
     await waitFor(() =>
       expect(document.querySelectorAll('[data-slot="case-market-card"]')).toHaveLength(1)
     )
+  })
+
+  // The section renders on the home page, so "open the app, then come back to it" used to mean a second network read
+  // of another machine's document — and where that host does not answer, a second full deadline of waiting. Measured
+  // in the machine's own log: the same window asked four times in twenty minutes, each read either slow or timing out.
+  it('reads the shelf once per session, even when the section is opened again', async () => {
+    fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
+    const first = render(<CaseMarketplace />)
+    await waitFor(() => expect(useCaseMarketStore.getState().shelf.kind).toBe('ready'))
+    first.unmount()
+
+    render(<CaseMarketplace />)
+    await waitFor(() =>
+      expect(document.querySelector('[data-slot="case-market-card"]')).toBeTruthy()
+    )
+    expect(fetchMarketplace).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a refusal and lets the reader ask again with the refresh control', async () => {
+    fetchMarketplace.mockResolvedValue({
+      status: 'refused',
+      reason: 'unreachable',
+      detail: 'timed-out after 20000ms'
+    })
+    const first = render(<CaseMarketplace />)
+    await waitFor(() => expect(useCaseMarketStore.getState().shelf.kind).toBe('refused'))
+    first.unmount()
+
+    render(<CaseMarketplace />)
+    await waitFor(() =>
+      expect(document.querySelector('[data-slot="case-market-refused"]')).toBeTruthy()
+    )
+    expect(fetchMarketplace).toHaveBeenCalledTimes(1)
+
+    ;(document.querySelector('[data-slot="case-market-refresh"]') as HTMLElement).click()
+    await waitFor(() => expect(fetchMarketplace).toHaveBeenCalledTimes(2))
   })
 })

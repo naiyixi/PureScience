@@ -17262,3 +17262,67 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
   机器休眠（`heldMs` ≈ 整段），**不立案**。
 - 下一轮第一步：① 取本笔双车道判决（完整 40 位）；② 若 `macos-x64` 冒烟复跑仍红在同一停点，按证据档口径升级立案；
   ③ 分桶里下一个候选：`sessions:save-session` 的持有窗口（其 `queueBlockers` 已可具名，等装机新行）。
+
+## 三百一十、本轮追加（执行器，2026-11-11 03:1x–）—— 案例市场：每次打开都重下索引，等满 20 秒后只说「操作被中止」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = HEAD = 03a9dcd7`；工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）
+  ⇒ 一个字节没碰、不提交。开工前 `git log --since="3 days ago" -- src/main/cases src/renderer/src/stores` **零命中**
+  ⇒ 这一族最近没人动过，不重复劳动。
+- **双车道判决已取**（完整 40 位 `03a9dcd7f76ec0bce1b289c2d11b51ad8ef3e259`）：`Windows Full Test` success、
+  `Nightly` success（同一时刻 `gh run list` 里没有在飞车道 ⇒ 本次推送不会顶掉谁的判决）。
+- **`c760dbfe` 的 Nightly 那条红有了自己的判决**：`build / Build macos-x64` 的 `macos_smoke` 在 `--failed` 复跑里
+  **success**（同一 run 其余三平台本就 success）⇒ 按 `docs/evidence/2026-11-07-macos-x64-smoke-intermittent.md`
+  记作同形间歇，**不改代码、不重打 tag**，本条结案（复跑的那次 run 整体 `cancelled` 只因 `publish` 按设计被取消）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 取慢 IPC 分桶里唯一一条「self-borne 且中位 10.5 s」的
+  `cases:marketplace`（其余高位族：`acp:send-prompt` 是回合本身的工作量、`network:check-connectivity` 已判机器休眠、
+  `sessions:save-session` 已立「等装机新行」）。
+
+### 一 读数与缺陷
+
+见 `docs/evidence/2026-11-11-case-marketplace-index-read.md`。三条要点：分桶里该通道 **23 条 / 中位 10.5 s / 9 条落在
+20,004–20,041 ms 且 `cpuShare` 0.02–0.12**（在等）；首页无条件渲染这一节（`HomePage.tsx:718`）而 store 每次挂载都
+重下（与它自己的头注相反）；`detail` 实测是 `TypeError: fetch failed` / `AbortError: This operation was aborted`
+（成因与等待时长都不在句子里），且 deadline 被**两段各 20 秒**地用了两次（最坏 40 s，日志未出现 40 s 行 ⇒ 这条按
+代码形状修，不按读数修）。
+
+### 二 交付（3 产品文件 + 2 测试文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/cases/marketplace.ts` | 一条 `AbortController` 覆盖取头与读体；超时 `detail` 由预算派生（`timed-out after 20000ms`）；新增 `describeFetchError`（最多 3 层 `cause`） |
+| `src/renderer/src/stores/case-market-store.ts` | `reading` / `readAt` + `load({force})`：本会话读过（含拒绝）就不再问 |
+| `src/renderer/src/pages/home/CaseMarketplace.tsx` | 刷新按钮 `load({ force: true })` |
+| `src/main/cases/marketplace.test.ts` | +3 例：超时说出预算、body 用同一条预算（`Promise.race` 2 s 兜底）、`cause` 链保留 |
+| `src/renderer/src/pages/home/CaseMarketplace.render.test.tsx` | 夹具补桩 + 2 例：卸载再挂载只读一次、拒绝保留且刷新才再读 |
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/cases` + `src/renderer/src/pages/home` | **18 files / 137 passed** |
+| `src/renderer/src/pages/home` + `App.test.tsx` + `src/renderer/src/stores` | **45 files / 661 passed** |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`) | node 0；web 0 |
+| `eslint --no-cache`（5 文件） | 0 error / 0 warning |
+
+**变异自证三次均还原**：关「读过就不再问」⇒ 两条渲染用例红；取头后 `clearTimeout` ⇒ body 用例红；把预算句换回
+中止原文 ⇒ 两条主进程用例红。
+
+### 四 真机读数（本机常驻 dev 实例重启到本笔代码之后）
+
+| 请求 | 改前 | 改后 |
+| --- | --- | --- |
+| 本地服务器读掉请求不应答 | 20.06 s，`AbortError: This operation was aborted` | 20.15 s，`timed-out after 20000ms` |
+| `https://10.255.255.1/…` | 11.0 s，`TypeError: fetch failed` | 10.16 s，`fetch failed ← Connect Timeout Error (attempted address: 10.255.255.1:443, timeout: 10000ms)` |
+| 默认索引地址 | 2.27 s（那一刻通） | 20.17 s / 10.66 s / 10.63 s（那一刻不通，`curl -L` 同期两次 30 s 超时作对照） |
+
+### 五 边界与下一轮第一步
+
+- 等待上限**未缩短**（仍是 20 s）：缩短属产品决定，本单元只把它变成「真的 20 s」并让句子可操作。
+- 渲染层「一次会话只读一次」只有渲染用例证据（不发请求，界面同形）；装机判据 = 同一天多次打开的时段里
+  `cases:marketplace` 慢行条数下降、不再成对出现 20 秒行。
+- 同一通道里 `cpu-bound-in-process` 的几条（cpuMs 11–27 s）是进程同时在算别的，**未归因、不并入本单元**。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位）；② 分桶里下一个「self-borne 且中位过秒」的候选
+  （`notifications:get-snapshot` 75 条 / med 470 ms / max 10 s，`cases:install` 3 条 / med 18.8 s）；
+  ③ `sessions:save-session` 的持有窗口仍等装机新行（其 `queueBlockers` 已具名）。

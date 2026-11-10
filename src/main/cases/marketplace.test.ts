@@ -183,6 +183,86 @@ describe('reading the index', () => {
       await fetchCaseMarketplaceIndex('https://example.test/i.json', { fetchImpl: notFound })
     ).toMatchObject({ problem: 'bad-response', detail: 'HTTP 404' })
   })
+
+  // Measured on this machine against the live channel: an unreachable host answered `TypeError: fetch failed` — one
+  // generic line, with the actionable part (`connect ETIMEDOUT <host>`) hidden in `cause`.
+  it('keeps the network layer cause instead of one generic line', async () => {
+    const refused: CaseMarketplaceFetch = () =>
+      Promise.reject(
+        new TypeError('fetch failed', {
+          cause: new Error('connect ETIMEDOUT 10.255.255.1:443')
+        })
+      )
+    expect(
+      await fetchCaseMarketplaceIndex('https://nowhere.test/i.json', { fetchImpl: refused })
+    ).toEqual({
+      ok: false,
+      problem: 'unreachable',
+      detail: 'fetch failed ← connect ETIMEDOUT 10.255.255.1:443'
+    })
+  })
+
+  // The refusal sentence is the only thing a reader gets when the index does not arrive. This host is routinely
+  // unreachable from this machine, and the abort's own message ("This operation was aborted") names what we did
+  // rather than what happened, so the deadline itself has to be in the string — and it is derived from the budget,
+  // not typed next to it.
+  it('says how long it waited instead of repeating the abort message', async () => {
+    const hanging: CaseMarketplaceFetch = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener(
+          'abort',
+          () => reject(new Error('This operation was aborted')),
+          {
+            once: true
+          }
+        )
+      })
+    expect(
+      await fetchCaseMarketplaceIndex('https://example.test/i.json', {
+        fetchImpl: hanging,
+        timeoutMs: 40
+      })
+    ).toEqual({ ok: false, problem: 'unreachable', detail: 'timed-out after 40ms' })
+  })
+
+  // Headers are not the read. Before this, the deadline was applied once to the fetch and again to the body, so a
+  // server that answered headers and then stalled held the caller for two budgets while the name said one. The
+  // signal handed to the fetch is the same one that governs the body — that is the whole assertion.
+  it('keeps one budget for the body, not a second one after the headers', async () => {
+    let signal: AbortSignal | undefined
+    const headersThenStall: CaseMarketplaceFetch = (_url, init) => {
+      signal = init.signal
+      const body = {
+        [Symbol.asyncIterator]: () => ({
+          next: () =>
+            new Promise<IteratorResult<Uint8Array>>((_resolve, reject) => {
+              init.signal.addEventListener(
+                'abort',
+                () => reject(new Error('This operation was aborted')),
+                { once: true }
+              )
+            })
+        })
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: body as unknown as ReadableStream<Uint8Array>,
+        json: async () => null
+      })
+    }
+    const result = await Promise.race([
+      fetchCaseMarketplaceIndex('https://example.test/i.json', {
+        fetchImpl: headersThenStall,
+        timeoutMs: 40
+      }),
+      // A stalled body with no clock of its own would otherwise sit here until the runner's own timeout.
+      new Promise<'still-waiting'>((resolve) => setTimeout(() => resolve('still-waiting'), 2_000))
+    ])
+    expect(result).toEqual({ ok: false, problem: 'unreachable', detail: 'timed-out after 40ms' })
+    expect(signal?.aborted).toBe(true)
+  })
 })
 
 describe('packing a case archive', () => {

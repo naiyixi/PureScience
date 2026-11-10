@@ -54,17 +54,20 @@ export type CaseMarketplaceFetchResult =
       detail?: string
     }
 
-const withTimeout = async <T>(
-  timeoutMs: number,
-  run: (signal: AbortSignal) => Promise<T>
-): Promise<T> => {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  try {
-    return await run(controller.signal)
-  } finally {
-    clearTimeout(timer)
+/**
+ * The network layer's own message, plus the cause chain it hides behind one line. Undici answers a refused or
+ * unreachable endpoint with `TypeError: fetch failed` and puts the actionable part (`connect ETIMEDOUT 10.255.255.1:443`,
+ * `EAI_AGAIN`) in `cause` — measured on this machine: a reader who only saw the refusal got "fetch failed" and nothing
+ * about what failed. Bounded depth, because a cause chain can be a cycle or arbitrarily long.
+ */
+const describeFetchError = (error: unknown): string => {
+  const parts: string[] = []
+  let current: unknown = error
+  for (let depth = 0; depth < 3 && current instanceof Error; depth += 1) {
+    if (current.message) parts.push(current.message)
+    current = (current as { cause?: unknown }).cause
   }
+  return parts.length > 0 ? parts.join(' ← ') : String(error)
 }
 
 export const fetchCaseMarketplaceIndex = async (
@@ -72,24 +75,42 @@ export const fetchCaseMarketplaceIndex = async (
   options: { fetchImpl?: CaseMarketplaceFetch; timeoutMs?: number } = {}
 ): Promise<CaseMarketplaceFetchResult> => {
   const fetchImpl = options.fetchImpl ?? (globalThis.fetch as unknown as CaseMarketplaceFetch)
-  let response
+  const budgetMs = options.timeoutMs ?? CASE_MARKETPLACE_TIMEOUT_MS
+  // One budget for the whole document, not one per stage. Headers arriving is not the read finishing, and with a
+  // deadline per stage a server that sent headers and then stalled held the reader for two full deadlines while the
+  // reported name said "20 s". The same signal therefore covers the body read: when the budget expires the body
+  // stream itself errors, instead of the body read starting with a fresh clock.
+  const controller = new AbortController()
+  let expired = false
+  const timer = setTimeout(() => {
+    expired = true
+    controller.abort()
+  }, budgetMs)
+  const timedOut = (): CaseMarketplaceFetchResult => ({
+    ok: false,
+    problem: 'unreachable',
+    // Not the abort message: "This operation was aborted" says what we did, not what happened or for how long.
+    detail: `timed-out after ${budgetMs}ms`
+  })
   try {
-    response = await withTimeout(options.timeoutMs ?? CASE_MARKETPLACE_TIMEOUT_MS, (signal) =>
-      fetchImpl(url, { signal, redirect: 'follow' })
-    )
-  } catch (error) {
-    return { ok: false, problem: 'unreachable', detail: String(error) }
-  }
-  if (!response.ok) return { ok: false, problem: 'bad-response', detail: `HTTP ${response.status}` }
+    let response
+    try {
+      response = await fetchImpl(url, { signal: controller.signal, redirect: 'follow' })
+    } catch (error) {
+      return expired
+        ? timedOut()
+        : { ok: false, problem: 'unreachable', detail: describeFetchError(error) }
+    }
+    if (!response.ok)
+      return { ok: false, problem: 'bad-response', detail: `HTTP ${response.status}` }
 
-  const declared = Number(response.headers.get('content-length') ?? Number.NaN)
-  if (Number.isFinite(declared) && declared > CASE_MARKETPLACE_INDEX_BYTES_LIMIT) {
-    return { ok: false, problem: 'too-large', detail: `${declared}` }
-  }
+    const declared = Number(response.headers.get('content-length') ?? Number.NaN)
+    if (Number.isFinite(declared) && declared > CASE_MARKETPLACE_INDEX_BYTES_LIMIT) {
+      return { ok: false, problem: 'too-large', detail: `${declared}` }
+    }
 
-  let text: string
-  try {
-    text = await withTimeout(options.timeoutMs ?? CASE_MARKETPLACE_TIMEOUT_MS, async () => {
+    let text: string
+    try {
       const body = response.body
       if (!body) throw new Error('empty body')
       let received = 0
@@ -100,30 +121,31 @@ export const fetchCaseMarketplaceIndex = async (
         if (received > CASE_MARKETPLACE_INDEX_BYTES_LIMIT) throw new Error('too-large')
         chunks.push(Buffer.from(chunk))
       }
-      return Buffer.concat(chunks).toString('utf8')
-    })
-  } catch (error) {
-    const message = String(error)
-    return message.includes('too-large')
-      ? { ok: false, problem: 'too-large' }
-      : { ok: false, problem: 'bad-response', detail: message }
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    return { ok: false, problem: 'bad-index', detail: 'not-json' }
-  }
-  const validated = validateCaseMarketplaceIndex(parsed)
-  if (!validated.ok) {
-    return {
-      ok: false,
-      problem: 'bad-index',
-      detail: `${validated.problem}${validated.detail ? `: ${validated.detail}` : ''}`
+      text = Buffer.concat(chunks).toString('utf8')
+    } catch (error) {
+      const message = String(error)
+      if (message.includes('too-large')) return { ok: false, problem: 'too-large' }
+      return expired ? timedOut() : { ok: false, problem: 'bad-response', detail: message }
     }
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      return { ok: false, problem: 'bad-index', detail: 'not-json' }
+    }
+    const validated = validateCaseMarketplaceIndex(parsed)
+    if (!validated.ok) {
+      return {
+        ok: false,
+        problem: 'bad-index',
+        detail: `${validated.problem}${validated.detail ? `: ${validated.detail}` : ''}`
+      }
+    }
+    return { ok: true, index: validated.index }
+  } finally {
+    clearTimeout(timer)
   }
-  return { ok: true, index: validated.index }
 }
 
 export type CaseArchiveDownload =
