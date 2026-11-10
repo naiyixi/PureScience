@@ -96,6 +96,13 @@ export type ProcessFailureRecord = {
   message: string
   /** `function (file:line:col)` with a basename-only file, or 'unavailable' when no stack exists. */
   frame: string
+  /**
+   * The first stack frame that is *not* a Node internal — i.e. the frame in this product's own code.
+   * `frame` alone is not enough: a rejection raised inside a built-in (`async open (promises:1345:25)`)
+   * makes `frame` name the internal, and the record then cannot be attributed at all. Measured on the
+   * shipped 2.26.0 build: six `unhandledRejection` ENOENT records carried only that internal frame.
+   */
+  origin: string
   /** 1 for a single event; >1 when repeats inside the window were folded into this record. */
   occurrences: number
   firstAt: string
@@ -177,6 +184,35 @@ const firstStackFrame = (stack: unknown): string => {
   return 'unavailable'
 }
 
+// A frame that belongs to the runtime rather than to this product: `node:…`, or a module name with no
+// file extension (`promises:1345:25`, `stream_base_commons:159:15`). Transpiled bundles keep their
+// extension (`index.js:12:3`), so this does not hide our own frames.
+const isRuntimeFrame = (location: string): boolean => {
+  if (location.startsWith('node:')) return true
+  const parts = location.split(':')
+  const file = parts.length >= 3 ? parts.slice(0, -2).join(':') : location
+  const base = (file.split(/[\\/]/).pop() ?? file).trim()
+  return base.length === 0 || !base.includes('.')
+}
+
+/** The first frame in this product's own code, in the same privacy projection as `firstStackFrame`. */
+const firstApplicationFrame = (stack: unknown): string => {
+  if (typeof stack !== 'string') return 'unavailable'
+  for (const line of stack.split('\n').slice(1)) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith('at ')) continue
+    const body = trimmed.slice(3)
+    const withParens = /^(.+?)\s+\((.+)\)$/.exec(body)
+    const location = withParens ? withParens[2] : body
+    if (isRuntimeFrame(location)) continue
+    const caller = withParens ? withParens[1] : ''
+    const parts = location.split(/[\\/]/)
+    const tail = parts[parts.length - 1] ?? location
+    return caller ? `${caller} (${tail})` : tail
+  }
+  return 'unavailable'
+}
+
 const normalizeFailure = (
   failure: unknown,
   source: ProcessFailureSource,
@@ -197,13 +233,15 @@ const normalizeFailure = (
 
   const rawName = isObject ? safeRead(failure, 'name') : undefined
   const errorName = typeof rawName === 'string' && rawName !== '' ? rawName : 'Unknown'
+  const stack = isObject ? safeRead(failure, 'stack') : undefined
 
   return {
     failureSource: source,
     errorCategory: fields.errorCategory,
     errorName,
     message,
-    frame: firstStackFrame(isObject ? safeRead(failure, 'stack') : undefined)
+    frame: firstStackFrame(stack),
+    origin: firstApplicationFrame(stack)
   }
 }
 
@@ -245,6 +283,7 @@ export const createProcessFailureCapture = (
       errorName: record.errorName,
       message: record.message,
       frame: record.frame,
+      origin: record.origin,
       occurrences: state.count,
       firstAt: new Date(state.firstAtMs).toISOString(),
       lastAt: new Date(state.lastAtMs).toISOString(),
@@ -276,7 +315,10 @@ export const createProcessFailureCapture = (
       normalized.errorName,
       normalized.errorCategory,
       normalized.message,
-      normalized.frame
+      normalized.frame,
+      // Two sites can raise the same text from the same internal frame (an ENOENT inside `open` is the
+      // case in the log); folding them together would hide which of them is the caller.
+      normalized.origin
     ].join('\u0000')
 
     const existing = states.get(signature)

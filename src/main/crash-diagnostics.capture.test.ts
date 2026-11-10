@@ -48,6 +48,53 @@ describe('process failure capture: what a record must carry', () => {
     expect(String(fields.message)).not.toContain('api.example.com')
     expect(String(fields.frame)).toBe('sendPrompt (client.ts:412:19)')
     expect(String(fields.frame)).not.toContain('/Users/')
+    // The caller is the same frame when the first frame already is ours.
+    expect(String(fields.origin)).toBe('sendPrompt (client.ts:412:19)')
+  })
+
+  it('names the caller even when the rejection is raised inside a built-in', () => {
+    // The shipped 2.26.0 log holds six `unhandledRejection` ENOENT records whose only frame was
+    // `async open (promises:1345:25)`: nothing in them said which read had failed, so the defect could
+    // not be attributed at all. `frame` keeps its meaning; `origin` names the first frame of our own.
+    const { log, capture } = setupCapture()
+    const error = new Error(
+      "ENOENT: no such file or directory, open '/Users/researcher/.purescience/x.bin'"
+    )
+    error.stack = [
+      'Error: ENOENT: no such file or directory',
+      '    at async open (node:internal/fs/promises:1345:25)',
+      '    at async readFilePrefix (/Users/researcher/purescience/src/main/artifacts/storage-access.ts:153:24)',
+      '    at async pendingUpload (/Users/researcher/purescience/src/main/artifacts/pending-file-transaction.ts:116:20)'
+    ].join('\n')
+
+    capture(error, 'unhandledRejection')
+
+    const fields = recordsOf(log)[0]
+    expect(String(fields.frame)).toBe('async open (promises:1345:25)')
+    expect(String(fields.origin)).toBe('async readFilePrefix (storage-access.ts:153:24)')
+    expect(String(fields.origin)).not.toContain('/Users/')
+  })
+
+  it('keeps two sites apart when they share the internal frame and the message', () => {
+    // Folding these into one record would answer "how often did a read fail" but never "which read".
+    const { log, capture } = setupCapture()
+    const at = (caller: string): Error => {
+      const error = new Error("ENOENT: no such file or directory, open '/tmp/x'")
+      error.stack = [
+        'Error: ENOENT',
+        '    at async open (node:internal/fs/promises:1345:25)',
+        `    at async ${caller} (/tmp/src/main/a.ts:10:3)`
+      ].join('\n')
+      return error
+    }
+
+    capture(at('readFilePrefix'), 'unhandledRejection')
+    capture(at('readEvidenceMirror'), 'unhandledRejection')
+
+    expect(recordsOf(log).map((fields) => fields.origin)).toEqual([
+      'async readFilePrefix (a.ts:10:3)',
+      'async readEvidenceMirror (a.ts:10:3)'
+    ])
   })
 
   it('redacts identifiers and opaque tokens, and bounds the message', () => {

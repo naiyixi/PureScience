@@ -16934,3 +16934,39 @@ at the deadline…`）；还原后 46 例全绿。
 - **下一轮第一步**：① 取 `2eaf5100` 与本笔的双车道判决（完整 40 位 SHA）；② 同一份日志里再取一族开项
   （`reviewer:correction` 之外的候选：`egress tunnel client aborted` 的 `reset` 族占比、`Session was
   interrupted` 的分布）；③ 资源闸门一开就补 §299 §四 ② 的真机窗口读数。
+
+## 三百零四、本轮追加（执行器，2026-11-10 12:0x–）—— 六条 unhandledRejection 认不出是谁抛的：记录只留了内置模块那一帧
+
+### 〇 开工核对
+
+同轮第二单元，与 §303 同一棵树、同一批门禁（不触碰 §303 的文件）；读数取自同一份真机 `main.log`。
+`src/main/crash-diagnostics.ts` 全树只有 `src/main/index.ts` 一个生产消费方，`origin` 无导出面、无 i18n、无契约 pin。
+
+### 一 读数
+
+`unhandledRejection` 三条记录（折叠计数累计 **6 次**，2026-11-09 10:58 → 11:08）：消息是
+`ENOENT: no such file or directory, open '<path>'`（路径已脱敏，正确），但**唯一的帧是 `async open
+(promises:1345:25)`** —— 内置模块那一帧。六次读失败，日志没有任何一处能指出是哪一处读。
+
+### 二 交付
+
+`ProcessFailureRecord` 增 `origin`（第一个**非**运行时栈帧：`node:…` 与 `promises:1345:25` 这类无扩展名
+模块名判为运行时），`frame` 语义不变，签名并入 `origin`（两处站点共用同一个内置帧不再折叠），投影仍是
+「函数名 + basename + 行:列」。三条新用例：平常错误两者相同 / 被内置帧包住时指到我方调用点 / 两处站点分开。
+
+### 三 门禁
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（`crash-diagnostics.capture.test.ts` + `crash-diagnostics.test.ts`） | **2 files / 14 passed** |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
+| `eslint --no-cache`（2 文件） | **0 error**（1 条 prettier 折行已收） |
+
+**变异自证**：`isRuntimeFrame` 短路成永远 `false` ⇒ 两条新用例红；还原全绿。
+证据档 `docs/evidence/2026-11-10-unattributed-rejection-origin.md`。
+
+### 四 边界与下一轮第一步
+
+- **不修那个 ENOENT 本身**：先要能说出是哪一处读，本笔补的正是这一半。下一版装出去后按新记录的
+  `origin` 定位调用点再立案；旧日志里那 6 次仍不可归因（是读数，不是缺口）。
+- 下一轮第一步：见 §303 §四（双车道判决 + 资源闸门放开后的 §299 真机读数）。
