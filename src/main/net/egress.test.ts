@@ -17,7 +17,7 @@ import {
   isHostDenied,
   resolveEgressAllowlist
 } from '../../shared/egress'
-import { EgressProxy } from './egress-proxy'
+import { EgressProxy, type EgressApprovalRequest } from './egress-proxy'
 import {
   allowImplicitEgressHost,
   applyEgressSettings,
@@ -25,6 +25,7 @@ import {
   egressProxyEnv,
   implicitEgressHostsForTest,
   normalizeImplicitHost,
+  pendingEgressApprovalsForTest,
   resetEgressRuntimeForTest
 } from './egress-runtime'
 
@@ -799,7 +800,11 @@ describe('EgressProxy', () => {
   // hangs until the process-level timeout and the user sees a card vanish while the request is still open.
   // The budget is injected (production keeps 60s) so this proves the branch in milliseconds with real I/O.
   it('refuses a suspended request at the approval deadline, and ignores a decision that arrives late', async () => {
-    proxy = new EgressProxy({ approvalTimeoutMs: 80 })
+    const expired: Array<{ requestId: string; host: string }> = []
+    proxy = new EgressProxy({
+      approvalTimeoutMs: 80,
+      onApprovalExpired: (request) => expired.push(request)
+    })
     proxy.setAllowlist(['allowed.test'])
     // The peer is the "target host"; a late `allow_once` that resurrected the request would reach it.
     let peerHits = 0
@@ -820,7 +825,7 @@ describe('EgressProxy', () => {
     const port = await proxy.start()
     const peerPort = (peer.address() as { port: number }).port
 
-    const pending = new Promise<number>((resolve, reject) => {
+    const pending = new Promise<{ status: number; body: string }>((resolve, reject) => {
       const req = httpRequest(
         {
           hostname: '127.0.0.1',
@@ -829,8 +834,12 @@ describe('EgressProxy', () => {
           headers: { host: `127.0.0.1:${peerPort}` }
         },
         (res) => {
-          res.resume()
-          res.on('end', () => resolve(res.statusCode ?? 0))
+          let body = ''
+          res.setEncoding('utf8')
+          res.on('data', (chunk: string) => {
+            body += chunk
+          })
+          res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
         }
       )
       req.on('error', reject)
@@ -838,7 +847,15 @@ describe('EgressProxy', () => {
     })
 
     // The suspended request is refused without an answer — this is what the card's countdown promises.
-    expect(await pending).toBe(403)
+    const answered = await pending
+    expect(answered.status).toBe(403)
+    // And the refusal says which of the two 403s this is: a destination that was never allowed reads
+    // "host not permitted", a destination nobody answered for says so and can be asked again.
+    expect(answered.body).toContain(`approval expired for 127.0.0.1:${peerPort}`)
+    // The owner is told, once, so its pending table can drop the entry instead of keeping it forever.
+    expect(expired).toEqual([
+      { requestId: expect.stringMatching(/^egress-\d+$/), host: `127.0.0.1:${peerPort}` }
+    ])
     // And the card's number is the proxy's own deadline, not a second copy that can drift.
     expect(seen).toEqual([{ host: `127.0.0.1:${peerPort}`, expiresInSec: 0.08 }])
 
@@ -910,6 +927,46 @@ describe('EgressProxy', () => {
       resetEgressRuntimeForTest()
       // Stops the proxy, so one test's listener cannot leak into the next.
       await applyEgressSettings(undefined)
+    })
+
+    it('releases a suspended approval at the deadline and names the expiry, not a policy denial', async () => {
+      const seen: EgressApprovalRequest[] = []
+      await applyEgressSettings(
+        { enabled: true, groups: {}, customDomains: ['allowed.test'] },
+        {
+          onApprovalRequest: (request) => seen.push(request),
+          approvalTimeoutMs: 80
+        }
+      )
+      const proxyUrl = new URL(egressProxyEnv()?.HTTP_PROXY ?? 'http://127.0.0.1:0')
+
+      const answered = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const req = httpRequest(
+          {
+            hostname: proxyUrl.hostname,
+            port: Number(proxyUrl.port),
+            path: '/probe',
+            headers: { host: 'blocked.test' }
+          },
+          (res) => {
+            let body = ''
+            res.setEncoding('utf8')
+            res.on('data', (chunk: string) => {
+              body += chunk
+            })
+            res.on('end', () => resolve({ status: res.statusCode ?? 0, body }))
+          }
+        )
+        req.on('error', reject)
+        req.end()
+      })
+
+      expect(answered.status).toBe(403)
+      expect(seen).toHaveLength(1)
+      expect(answered.body).toContain('approval expired for blocked.test')
+      // The shipped build's own `pending` count only ever grew (23 → 39 across four days) while 17 of
+      // those entries had already timed out: the expiry never released the suspended request.
+      expect(pendingEgressApprovalsForTest()).toBe(0)
     })
 
     it('leaves a child env untouched while egress is off', () => {

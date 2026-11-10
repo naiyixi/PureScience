@@ -16868,3 +16868,69 @@ finishes while the app is closed and is restarted later」。而投递**把结�
 - 闸只管自动路径（手动「请求复核」在修正轮次里仍可启动，有意为之）；回合身份（`turnMessageId`）不动，属独立单元。
 - **下一轮第一步**：① 取本笔双车道判决（完整 40 位 SHA）；② 资源闸门一开就补 §299 §四 ② 的真机读数；
   ③ 同一条日志里最后一族开项：`egress approval timed out`（11 次）。
+
+## 三百零三、本轮追加（执行器，2026-11-10 11:5x–）—— 出站审批的 17 次超时：没人回答被写成了「不许去」，挂起表只增不减
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 2eaf5100`：上一轮 §302 的整笔**已推**（`e031864e..2eaf5100`，推前现查在飞车道为**空** ⇒
+  本次推送没有取消任何人的判决）；**本笔的双车道判决待取**（`2eaf5100` 的 `Nightly` 与 `Windows Full Test`
+  已在跑，看门器写 `/tmp/ci-verdict.txt`）。
+- 共享工作树 `git status --short` 仍只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、`2026-11-04-…` 两份）
+  ⇒ 一个字节没碰、不提交，归属仍是会话侧的。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项；§302 §四 ③ 点名的那一族开项（**同一条真机日志**）
+  就是本单元 ⇒ 本单元即该条，做完即销。
+
+### 一 读数（先量后改）
+
+同一份真机日志（`main.log` + `main.1.log`，2026-11-05 → 11-09）里的出站审批四类记录：
+**requested 21 / timed out 17 / decision applied 4**。两件事同时成立：
+
+1. **17 次等满 60 秒后被拒，而客户端读到的是 `host not permitted`** —— 与「这个目的地根本不许去」逐字相同。
+   其实 `requested` 那几行都记着 `hasRenderer: true`：用户被问过，只是没答。按这句读，下一次会去申请一个
+   用户从来没有拒绝过的权限。
+2. **挂起表只增不减**：`pending` 从 11-05 的 **23** 涨到 11-09 的 **39**（中间 4 次真实决定才减过），
+   17 次超时**一次都没减**。根因读源码定死：代理的超时分支只调 `onDenied()`，而运行时的 `pendingDecisions`
+   只在 `respondToEgressApproval()` 里被删 ⇒ 过期这条路没有第二个出口；每条滞留条目还牵着已结束请求的
+   响应对象（`res` / CONNECT 的 `socket`），所以不只是计数器错。
+
+### 二 交付（产品 3 文件 + 测试 2 文件 + 证据档）
+
+- `src/main/net/egress-proxy.ts`：`EgressApprovalRefusal = 'denied' | 'expired' | 'no-handler'`；超时分支调
+  新增的 `onApprovalExpired`、日志补 `outcome: 'expired'`（行名不变，既有 grep 配方仍能 join）；过期那条 403
+  换句（`approval expired for <host> — no decision arrived within <n> s; ask the user to approve it again`），
+  策略拒绝的句子提成 `POLICY_REFUSAL` 常量（一处真源）。
+- `src/main/net/egress-runtime.ts`：接 `onApprovalExpired` ⇒ 删条目 + 记 `egress approval expired`
+  （带 `released` 与删后 `pending`）；`EgressRuntimeOptions.approvalTimeoutMs` 只作测试缝。
+- `src/main/net/egress-failure.ts`：`describeEgressFailure` 在家族循环**之前**认出过期句（否则 `allowlist`
+  那条通用规则先命中，动作句会继续写「去申请权限」）；家族仍 `blocked`，reason/action 换成「到点没人答」。
+- 证据档 `docs/evidence/2026-11-10-egress-approval-expiry.md`（含复跑配方、变异自证、验收判据）。
+
+判据：**过期是「有人被问过、没答」，不是「不许」**——两者对读者的下一个动作不同，所以句子必须不同；
+时钟仍只有代理那一个，运行时只是被通知，不再自己算一份会漂移的期限。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（`egress.test.ts` / `egress-failure.test.ts`） | **2 files / 46 passed** |
+| 受影响簇（`src/main/net` + `src/main/settings`） | **105 files / 1589 passed**（3 skipped），exit 0 |
+| 双 typecheck（`--composite false`，堆 4096） | node **0**；web **0** |
+| `eslint --no-cache`（本笔 5 文件） | **0 error**（1 条 prettier 换行警告，已 `prettier --write` 收掉） |
+
+**变异自证**：注释掉 `onApprovalExpired` 调用、并把 `refusalMessage` 短路成永远返回 `POLICY_REFUSAL`
+⇒ 两条用例当场红（`refuses a suspended request at the approval deadline…`、`releases a suspended approval
+at the deadline…`）；还原后 46 例全绿。
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- **没做「无窗口就立即拒」**：审批卡也能被浏览器/远端客户端回答，而主进程的 `hasRenderer` 只表示
+  「处理器接上了」。按窗口数判定会把 Web 侧审批一起关掉，属另一件事，未做；本版诚实表述是
+  「没人答时到点会拒，并且说出来是过期」。
+- **渲染层未改**（卡片本来就在 deadline 上标过期并收起按钮）；本笔只动主进程与失败词汇。
+- 真机读数未取（资源闸门：空闲页 / swap 未开）⇒ 证据 = 真机日志读数 + 源码归因 + 受影响簇单测；
+  下一版装出去之后的判据写在证据档 §四（`egress approval expired` 出现且 `pending` 不再单调增长、
+  客户端文字含 `approval expired`、过期后重试且有人答即放行）。
+- **下一轮第一步**：① 取 `2eaf5100` 与本笔的双车道判决（完整 40 位 SHA）；② 同一份日志里再取一族开项
+  （`reviewer:correction` 之外的候选：`egress tunnel client aborted` 的 `reset` 族占比、`Session was
+  interrupted` 的分布）；③ 资源闸门一开就补 §299 §四 ② 的真机窗口读数。

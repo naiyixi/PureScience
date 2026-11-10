@@ -25,6 +25,10 @@ type EgressRuntimeOptions = {
   onApprovalRequest?: (request: EgressApprovalRequest) => void
   // Persists a host into the egress customDomains (allow_always) and re-applies settings.
   persistCustomDomain?: (host: string) => Promise<void>
+  // The proxy's approval deadline. Injectable for the same reason `EgressProxy` takes it: the 60 s
+  // deadline is the behaviour under test, and a test that has to wait a real minute gets skipped.
+  // Production never sets it; the singleton proxy keeps the first value it was built with.
+  approvalTimeoutMs?: number
 }
 
 let proxy: EgressProxy | undefined
@@ -37,6 +41,20 @@ const pendingDecisions = new Map<
   { host: string; decide: (d: EgressApprovalDecision) => void }
 >()
 let runtimeOptions: EgressRuntimeOptions | undefined
+
+// The proxy's deadline owns the clock; this is only told after the fact. Before, an expired request
+// stayed in `pendingDecisions` forever (the `decide` callback is never called on expiry) — the recorded
+// `pending` count on the shipped build only grew while 17 of its entries had already timed out, and each
+// stale entry also kept the suspended response object alive.
+const handleApprovalExpired = ({ requestId, host }: { requestId: string; host: string }): void => {
+  const released = pendingDecisions.delete(requestId)
+  log.info('egress approval expired', {
+    requestId,
+    host,
+    released,
+    pending: pendingDecisions.size
+  })
+}
 
 const approvalHandler: EgressApprovalHandler = (request, decide) => {
   pendingDecisions.set(request.requestId, { host: request.host, decide })
@@ -104,7 +122,10 @@ export const applyEgressSettings = async (
     return undefined
   }
 
-  proxy ??= new EgressProxy()
+  proxy ??= new EgressProxy({
+    onApprovalExpired: handleApprovalExpired,
+    approvalTimeoutMs: runtimeOptions?.approvalTimeoutMs
+  })
   // Implicit hosts (the app's own configured endpoints) ride along with the settings allowlist, so a
   // settings change never drops them.
   proxy.setAllowlist(mergedAllowlist())

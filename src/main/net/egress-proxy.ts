@@ -29,6 +29,11 @@ export type EgressProxyState = {
 // Outcome of a conversation approval decision for one blocked destination.
 export type EgressApprovalDecision = 'deny' | 'allow_once' | 'allow_always'
 
+// Why a suspended request was refused. The three are not the same to the client: a policy denial says
+// "this destination is not allowed", while an expiry says "someone was asked and did not answer" — the
+// second is worth retrying when a reader is present, the first will fail identically forever.
+export type EgressApprovalRefusal = 'denied' | 'expired' | 'no-handler'
+
 // A blocked destination surfaced for in-conversation approval. The proxy suspends the
 // offending request (HTTP response or CONNECT tunnel) until the decision arrives or the
 // approval times out, so the user's choice applies to the exact request that triggered it.
@@ -47,6 +52,9 @@ export type EgressApprovalHandler = (
 ) => void
 
 const APPROVAL_TIMEOUT_MS = 60_000
+// What a policy refusal says. Kept as one constant because the failure vocabulary classifies this text
+// (`egress-failure.ts`) and the expiry sentence must stay a different sentence, not a rewording.
+const POLICY_REFUSAL = 'PureScience egress allowlist: host not permitted'
 let approvalSequence = 0
 
 // Local loopback egress proxy. Exposes an HTTP server that handles plain HTTP requests (via the
@@ -60,6 +68,12 @@ export class EgressProxy {
   // that has to sleep a real minute to prove it either gets skipped or gets flaky (see the expiry case in
   // `egress.test.ts`). Production always takes the default.
   private readonly approvalTimeoutMs: number
+  // Told when a suspended request expires without an answer. The approval handler's `decide` is only
+  // reached for a real decision, so without this the owner's own bookkeeping (the runtime's pending
+  // table) keeps the entry forever — measured on the shipped build: the recorded `pending` count only
+  // ever grew (23 → 39 across four days) while 17 of those requests had already timed out.
+  private readonly onApprovalExpired:
+    ((request: { requestId: string; host: string }) => void) | undefined
   private allowlist: string[] | undefined
   private listeningPort = 0
   private approvalHandler: EgressApprovalHandler | undefined
@@ -69,8 +83,14 @@ export class EgressProxy {
   // relied on the server would wait for a client that may never let go.
   private readonly tunnelTeardowns = new Set<(reason: string) => void>()
 
-  constructor(options: { approvalTimeoutMs?: number } = {}) {
+  constructor(
+    options: {
+      approvalTimeoutMs?: number
+      onApprovalExpired?: (request: { requestId: string; host: string }) => void
+    } = {}
+  ) {
     this.approvalTimeoutMs = options.approvalTimeoutMs ?? APPROVAL_TIMEOUT_MS
+    this.onApprovalExpired = options.onApprovalExpired
     this.server = createServer((req, res) => this.handleHttp(req, res))
     this.server.on('connect', (req, socket, head) => this.handleConnect(req, socket, head))
   }
@@ -133,10 +153,10 @@ export class EgressProxy {
     method: string,
     path: string,
     onAllowed: () => void,
-    onDenied: () => void
+    onDenied: (refusal: EgressApprovalRefusal) => void
   ): void {
     if (!this.approvalHandler) {
-      onDenied()
+      onDenied('no-handler')
       return
     }
     const requestId = `egress-${++approvalSequence}`
@@ -145,8 +165,16 @@ export class EgressProxy {
     const timeout = setTimeout(() => {
       if (settled) return
       settled = true
-      log.warn('egress approval timed out', { requestId, host })
-      onDenied()
+      log.warn('egress approval timed out', {
+        requestId,
+        host,
+        // The line name is kept so existing log recipes still join across this change; `outcome` is
+        // what distinguishes an unanswered request from a denial in the same record.
+        outcome: 'expired',
+        expiresInSec: this.approvalTimeoutMs / 1000
+      })
+      this.onApprovalExpired?.({ requestId, host })
+      onDenied('expired')
     }, this.approvalTimeoutMs)
     this.approvalHandler(
       { requestId, host, method, path, expiresInSec: this.approvalTimeoutMs / 1000 },
@@ -164,7 +192,7 @@ export class EgressProxy {
         clearTimeout(timeout)
         log.info('egress approval decided', { requestId, host, decision })
         if (decision === 'deny') {
-          onDenied()
+          onDenied('denied')
           return
         }
         // allow_once / allow_always both let this exact request through; the allowlist for
@@ -172,6 +200,15 @@ export class EgressProxy {
         onAllowed()
       }
     )
+  }
+
+  // What the client reads when a request was refused. An expiry gets its own sentence: answering
+  // "host not permitted" to a destination the user simply did not get to is the same mislabel as
+  // reporting a dead source as an authorization decision (see `refuseTargetFailure`).
+  private refusalMessage(host: string, refusal: EgressApprovalRefusal): string {
+    if (refusal !== 'expired') return POLICY_REFUSAL
+    const seconds = Math.round(this.approvalTimeoutMs / 1000)
+    return `${POLICY_REFUSAL}: approval expired for ${host} — no decision arrived within ${seconds} s; ask the user to approve it again`
   }
 
   private refuse(res: ServerResponse | Duplex, message: string, status = 403): void {
@@ -197,7 +234,7 @@ export class EgressProxy {
     if (!host || !this.isAllowed(host)) {
       const forward = (): void => {
         if (!host) {
-          this.refuse(res, 'PureScience egress allowlist: host not permitted')
+          this.refuse(res, POLICY_REFUSAL)
           return
         }
         const url = new URL(req.url ?? '/', `http://${host}`)
@@ -219,8 +256,8 @@ export class EgressProxy {
         })
         req.pipe(sourceReq)
       }
-      const deny = (): void => {
-        this.refuse(res, 'PureScience egress allowlist: host not permitted')
+      const deny = (refusal: EgressApprovalRefusal = 'denied'): void => {
+        this.refuse(res, host ? this.refusalMessage(host, refusal) : POLICY_REFUSAL)
       }
       if (!host || isHostDenied(host)) {
         deny()
@@ -379,9 +416,9 @@ export class EgressProxy {
         connection.pipe(socket)
       })
     }
-    const deny = (): void => {
-      this.refuse(socket, 'PureScience egress allowlist: host not permitted')
-      teardown('denied')
+    const deny = (refusal: EgressApprovalRefusal = 'denied'): void => {
+      this.refuse(socket, this.refusalMessage(host, refusal))
+      teardown(refusal === 'expired' ? 'approval-expired' : 'denied')
     }
     if (!host || !this.isAllowed(host)) {
       if (!host || isHostDenied(host)) {

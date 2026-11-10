@@ -101,6 +101,23 @@ describe('describeEgressFailure', () => {
     expect(describeEgressFailure(tunnel).family).toBe('blocked')
   })
 
+  it('keeps an expired approval blocked but says nobody answered, not "not permitted"', () => {
+    // Same family (a user can lift it) but a different move: this one is worth asking again while
+    // someone is at the screen, and the policy sentence would send the agent to request a permission
+    // the user never refused.
+    const http = new Error(
+      'Proxy response (403) !== 200 when HTTP Tunneling PureScience egress allowlist: host not permitted: approval expired for hf-mirror.com — no decision arrived within 60 s; ask the user to approve it again'
+    )
+
+    const described = describeEgressFailure(http)
+
+    expect(described.family).toBe('blocked')
+    expect(described.reason).toContain('approval expired')
+    expect(described.action).toMatch(/approve that host now/)
+    // The policy wording must not be the action any more: it is the sentence that was wrong.
+    expect(described.action).not.toContain('instead of retrying')
+  })
+
   it('covers every family it can name with a reason and an action', () => {
     // Guards future additions: a family without a reason would reach the log as a bare token.
     for (const family of EGRESS_FAILURE_FAMILIES) {

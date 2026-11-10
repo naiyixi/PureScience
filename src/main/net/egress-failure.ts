@@ -127,6 +127,15 @@ const errorChain = (error: unknown): unknown[] => {
   return chain
 }
 
+// A refusal the proxy answered because its approval deadline passed is still `blocked` (a user can lift
+// it), but it is not the same news as a policy denial: one is "allow it and retry", the other is "nobody
+// answered". Reading them as one sentence sends the agent to ask for a permission the user already has.
+const APPROVAL_EXPIRED = /approval expired/i
+const APPROVAL_EXPIRED_REASON =
+  'the outbound approval expired before anyone answered it — the request was refused at the deadline'
+const APPROVAL_EXPIRED_ACTION =
+  'Ask the user to approve that host now, or add it to the allowlist; an unanswered request is refused at the deadline every time.'
+
 const familyFromText = (text: string): EgressFailureFamily | null => {
   const lower = text.toLowerCase()
   if (
@@ -197,6 +206,16 @@ export const describeEgressFailure = (error: unknown): EgressFailure => {
     if (typeof error === 'string') {
       const asText = safeText(error)
       if (asText !== null) messages.push(asText)
+    }
+    // Before the family loop: the expiry sentence also contains `allowlist`, so the generic rule below
+    // would otherwise classify it as an ordinary policy refusal and keep the wrong action text.
+    if (messages.some((message) => APPROVAL_EXPIRED.test(message))) {
+      return {
+        family: 'blocked',
+        code: null,
+        reason: APPROVAL_EXPIRED_REASON,
+        action: APPROVAL_EXPIRED_ACTION
+      }
     }
     for (const message of messages) {
       const family = familyFromText(message)
