@@ -591,7 +591,9 @@ describe('reviewer IPC handlers', () => {
         reviews,
         expect.objectContaining({ id: 'session-1' }),
         DATA_ROOT,
-        expect.any(Function)
+        expect.any(Function),
+        // The load path also hands the flag pass a collector for how many recompositions it needed.
+        expect.objectContaining({ scopeComputations: expect.any(Number) })
       )
       expect(result).toEqual(flagged)
     })
@@ -619,7 +621,8 @@ describe('reviewer IPC handlers', () => {
         reviews,
         undefined,
         DATA_ROOT,
-        expect.any(Function)
+        expect.any(Function),
+        expect.objectContaining({ scopeComputations: expect.any(Number) })
       )
       expect(result).toBe(reviews)
     })

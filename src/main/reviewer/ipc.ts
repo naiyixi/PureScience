@@ -197,8 +197,16 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     }
     const sessionLoadMs = Date.now() - loadStartedAt
     const flagStartedAt = Date.now()
-    const flagged = await flagStaleReviews(reviews, session, dataRoot, (versionRequest) =>
-      artifactProvenanceRepository.resolveVersionContent(versionRequest)
+    // Counted by the flag pass itself: how many scope recompositions the reviews actually needed. The
+    // same session can hold sixty completed reviews over thirty-three turns, and the difference is what
+    // an earlier reading could not see (it only ever showed one flagMs for the whole list).
+    const scopeStats = { scopeComputations: 0, scopeReuses: 0 }
+    const flagged = await flagStaleReviews(
+      reviews,
+      session,
+      dataRoot,
+      (versionRequest) => artifactProvenanceRepository.resolveVersionContent(versionRequest),
+      scopeStats
     )
     const flagMs = Date.now() - flagStartedAt
     const totalMs = Date.now() - startedAt
@@ -213,6 +221,9 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         sessionLoadMs,
         flagMs,
         totalMs,
+        // How many recompositions the flag pass needed for those reviews. Present only on this slow line,
+        // so an ordinary load's record is unchanged.
+        ...(scopeStats.scopeComputations > 0 ? { ...scopeStats } : {}),
         ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, totalMs),
         ...heldSplitFields(startedAt, totalMs)
       })

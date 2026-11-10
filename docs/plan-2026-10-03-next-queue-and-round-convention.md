@@ -16970,3 +16970,59 @@ at the deadline…`）；还原后 46 例全绿。
 - **不修那个 ENOENT 本身**：先要能说出是哪一处读，本笔补的正是这一半。下一版装出去后按新记录的
   `origin` 定位调用点再立案；旧日志里那 6 次仍不可归因（是读数，不是缺口）。
 - 下一轮第一步：见 §303 §四（双车道判决 + 资源闸门放开后的 §299 真机读数）。
+
+## 三百零五、本轮追加（执行器，2026-11-10 14:4x–）—— 慢 IPC 分桶之后那一处真缺口：同一回合的复核只重算一次
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = 58aa8bc8`，工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、`2026-11-04-…` 两份）
+  ⇒ 一个字节没碰、不提交。
+- **`58aa8bc8` 的双车道判决已取**（完整 40 位 `58aa8bc80152d059b12ee88e02889cf6b64754e3`）：
+  `Windows Full Test` success、`Nightly` success（2026-11-10T04:15:20Z）⇒ §304 那笔有自身判决，不必再借后一笔。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 本单元取自记事本第 ④ 条（同一份真机日志再取一族：
+  `ipc handler was slow` 的分桶）。分桶之后唯一站得住的缺口在 `reviewer:get-for-session` 的 flag 段。
+- 资源闸门未开（空闲页 3,816 ≈ 62 MB、swap 9.2 G 用 7.7 G）⇒ §299 §四 ② 的真机窗口读数**仍取不到**，本单元不碰它。
+
+### 一 读数（先量后改；全部取自真机日志与打包版库只读查询）
+
+`ipc handler was slow` 三份日志合计 **4,920** 条，按通道分桶（明细表见证据档）。两条先钉住的边角：
+
+- `network:check-connectivity` 的三条 16 分钟量级（980 / 972 / 428 s）全是 `cpuShare` 0.001，时间戳在夜里，
+  `pmset -g log` 当晚每 **943–944 s** 一次「Sleep Service Back to Sleep」⇒ **机器睡了**，不是慢通道缺陷，
+  既有 `cpuShare` 词汇已能读出。`acp:send-prompt` 的十分钟中位同理（是回合本身的工作量）。
+- 站得住的缺口在 `reviewer:get-for-session`（161 条慢、med 213 / p99 42 s / max 71 s），其自带分段行 73 条：
+  `flagMs` med 319 / p90 2,311 / **max 52,162**，最坏一条 `heldMs` 46,480 —— 循环被占住的正是这一段。
+
+`flagMs` 是「每条已完成复核重算一次当前回合范围」，而重算**每次都把该回合的每个产物整文件哈希一遍**并做一次版本解析。
+打包版库（只读）里 585 条复核的真实形状：一个会话 **60 条完成复核只对应 33 组 (turn, branch)**，另一个 19 条对应 9 组
+⇒ 一大半重算算的是同一份输入。
+
+### 二 交付（产品 2 文件 + 测试 2 文件 + 证据档）
+
+- `src/main/reviewer/stale-reviews.ts`：`flagStaleReviews` 内建 `Map<key, Promise<TurnScope>>`，
+  key = `scope.turnMessageId \0 scope.messageBranchId`（读**存储范围**里那两个字段，不是行上的 `turnMessageId`）；
+  失败的 promise **留在表里**，共用它的每条复核照旧 `stale: true`（fail-closed 不变）。新增可选出参
+  `StaleReviewScopeStats { scopeComputations, scopeReuses }`。
+- `src/main/reviewer/ipc.ts`：`getForSession` 传入该统计，并**只在那条慢行上**带出这两个字段
+  ⇒ 下一次读数能直接看出「N 条复核花了几次重算」。
+- 不做跨调用缓存：文件的当前字节必须真的重读，否则「外部改了内容」就看不出来。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（`flag-stale-reviews` / `ipc`） | **2 files / 45 passed** |
+| `src/main/reviewer` 整个目录 | **27 files / 315 passed**，exit 0 |
+| `tsc --noEmit -p tsconfig.node.json --composite false` | exit 0 |
+| `eslint --no-cache`（4 文件） | 0 error / 0 warning |
+
+**变异自证**：把复用短路掉（`scopeByTurn.get` 永远 `undefined`）⇒ 两条新用例当场红（2 failed / 8 passed），还原全绿。
+
+### 四 边界与下一轮第一步
+
+- 真机 UI 读数未取（资源闸门 + 慢读数只在打包版上）；下一版装出去后的判据写在证据档 §五：
+  新 `review load segments` 行出现 `scopeComputations < reviews`，且 `flagMs` 同比例下降。
+- 收益是**按去重比例预计**（60→33、19→9），实际毫秒取决于产物大小，未测。
+- `reviewsQueryMs`（项目库单连接查询）与 `sessionLoadMs`（会话文档解析）占另外一半，属不同根因，另案。
+- 下一轮第一步：① 取本笔的双车道判决（完整 40 位 SHA）；② 分桶表里剩下的两族：`sessions:import-posture`
+  （med 183 / p90 995，102 次）与 `artifacts:read-preview`（p99 8.2 s，83 次）；③ 资源闸门一开补 §299 §四 ② 的真机读数。

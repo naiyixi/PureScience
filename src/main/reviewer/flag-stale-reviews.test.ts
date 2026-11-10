@@ -166,6 +166,99 @@ describe('flagStaleReviews', () => {
     expect(result.stale).toBe(false)
   })
 
+  it('recomputes one scope for reviews of the same turn instead of one per review', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'flag-stale-shared-'))
+    const session = buildSession()
+    await writeArtifact(storageRoot, 'a,b\n1,2\n')
+    const scope = await resolveTurnScopeWithArtifactDigests(session, 'a1', storageRoot)
+    // The shape a real Session produces: a fix-loop re-review of the same turn, grouped with the first.
+    const first = buildReview(scope)
+    const reReview = buildReview(scope, { id: 'review-2' })
+    const artifactPath = join(
+      storageRoot,
+      'artifacts',
+      'project-1',
+      'session-1',
+      'a1',
+      'report.csv'
+    )
+    let versionResolves = 0
+    const stats = { scopeComputations: 0, scopeReuses: 0 }
+
+    const [flaggedFirst, flaggedReReview] = await flagStaleReviews(
+      [first, reReview],
+      session,
+      storageRoot,
+      () => {
+        versionResolves += 1
+        return Promise.resolve({ path: artifactPath, filename: 'report.csv' })
+      },
+      stats
+    )
+
+    // The artifact bytes and the version lookup are read once for the pair, not once per review.
+    expect(versionResolves).toBe(1)
+    expect(stats).toEqual({ scopeComputations: 1, scopeReuses: 1 })
+    expect(flaggedFirst.stale).toBe(false)
+    expect(flaggedReReview.stale).toBe(false)
+  })
+
+  it('still recomputes separately for reviews of different turns', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'flag-stale-distinct-'))
+    const session = buildSession()
+    session.messages.push({
+      id: 'a2',
+      role: 'agent',
+      content: 'second answer',
+      status: 'complete',
+      eventIds: [],
+      artifactIds: [],
+      createdAt: 1003,
+      updatedAt: 1003
+    })
+    await writeArtifact(storageRoot, 'a,b\n1,2\n')
+    const firstScope = await resolveTurnScopeWithArtifactDigests(session, 'a1', storageRoot)
+    const secondScope = await resolveTurnScopeWithArtifactDigests(session, 'a2', storageRoot)
+    const stats = { scopeComputations: 0, scopeReuses: 0 }
+
+    const [flaggedFirst, flaggedSecond] = await flagStaleReviews(
+      [buildReview(firstScope), buildReview(secondScope, { id: 'review-2', turnMessageId: 'a2' })],
+      session,
+      storageRoot,
+      undefined,
+      stats
+    )
+
+    expect(stats).toEqual({ scopeComputations: 2, scopeReuses: 0 })
+    expect(flaggedFirst.stale).toBe(false)
+    expect(flaggedSecond.stale).toBe(false)
+  })
+
+  it('fails closed on every review sharing a turn whose evidence cannot be recomputed', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'flag-stale-shared-unavailable-'))
+    const session = buildSession()
+    await writeArtifact(storageRoot, 'a,b\n1,2\n')
+    const scope = await resolveTurnScopeWithArtifactDigests(session, 'a1', storageRoot)
+    const first = buildReview(scope)
+    const reReview = buildReview(scope, { id: 'review-2' })
+    await rm(join(storageRoot, 'artifacts'), { recursive: true, force: true })
+    const stats = { scopeComputations: 0, scopeReuses: 0 }
+
+    const [flaggedFirst, flaggedReReview] = await flagStaleReviews(
+      [first, reReview],
+      session,
+      storageRoot,
+      undefined,
+      stats
+    )
+
+    // A shared recomposition that failed is not shared as a success: both reviews fail closed, and the
+    // same inputs are not retried for the second review.
+    expect(flaggedFirst.stale).toBe(true)
+    expect(flaggedReReview.stale).toBe(true)
+    expect(stats).toEqual({ scopeComputations: 1, scopeReuses: 1 })
+  })
+
   it('recomputes a historical review against its frozen Branch after the active Branch changes', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'flag-stale-historical-branch-'))
     const session = buildSession()
