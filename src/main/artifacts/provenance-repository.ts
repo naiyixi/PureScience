@@ -4434,6 +4434,15 @@ class ArtifactProvenanceRepository {
     // Started before the query and awaited after it: if this trivial query is also slow, the engine was busy
     // with someone else's work; if it is fast, the engine is clear and the cost is in this query.
     const dbCanary = startDbCanary(() => client.$queryRawUnsafe('SELECT 1'))
+    // Only the four columns the caller consumes are projected. `ArtifactVersion` also carries
+    // `evidenceJson` (real library: 24.9 KB average, 78 KB max) and `executionSnapshotJson` (63.6 KB
+    // average, 348 KB max) — pulling the whole row made every preview read, and every reviewer read
+    // through this seam, pay for tens to hundreds of KB of JSON it never looks at: the engine reads it
+    // off the overflow pages, the bridge copies it, and the client parses it into a JS object that is
+    // dropped one line later. Measured on 549 slow resolves: query segment 78 s total, p99 1.97 s, in a
+    // process whose CPU share was pegged (56/83 slow preview reads read `cpu-bound-in-process`).
+    // The parent `artifact` row was joined in for the same nothing, so the join goes too. The checksum
+    // gate below is untouched: this narrows what is read, not what is verified.
     const version = await client.artifactVersion.findFirst({
       where: {
         id: versionId,
@@ -4441,7 +4450,12 @@ class ArtifactProvenanceRepository {
         state: { in: ['pending', 'finalized'] },
         artifact: { is: { projectId, ...(appSessionId ? { sessionId: appSessionId } : {}) } }
       },
-      include: { artifact: true }
+      select: {
+        contentStorageKey: true,
+        filename: true,
+        contentType: true,
+        checksum: true
+      }
     })
     const queryEventLoopMaxMs = readEventLoopLatency().maxMs
     const queryMs = Date.now() - startedAt - clientMs

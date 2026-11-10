@@ -17199,3 +17199,66 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
   （多预览面板各一次 / 同一面板 effect 重跑），要在装机新构建上量，别按假设改。
 - 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 慢 IPC 分桶里剩下的读写族按「先量后改」继续；
   ③ 资源闸门一开补 §299 §四 ② 的真机读数。
+
+## 三百零九、本轮追加（执行器，2026-11-11 01:0x–）—— 预览/复核读一次内容，把整行证据 JSON 也读了一遍
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = HEAD = c760dbfe`，工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）
+  ⇒ 一个字节没碰、不提交。
+- **§308 那笔的双车道判决已取**（完整 40 位 `c760dbfe…`）：`Windows Full Test` success；
+  `Nightly` **failure**，红在 `build / Build macos-x64` 的 `macos_smoke`（启动 2,983 ms 后停在
+  `load-application-modules`、等满 60,194 ms）—— 与 `docs/evidence/2026-11-07-macos-x64-smoke-intermittent.md`
+  记录的同形间歇（同一 run 里 `Build macos-arm64` success，属天然对照），按该档口径 `--failed` 复跑判定，
+  **不改代码、不重打 tag**；复跑已提交（run `42835752858`）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 取 §308 §五 第 ② 条：慢 IPC 分桶剩下的族，先量后改。
+
+### 一 读数（真机日志 + 真机库，只读；全表见证据档）
+
+- `read-preview`：85 条，med 125 ms / p95 2,625 / max 8,241，`cpuShare` 中位 **0.80**、
+  `cpu-bound-in-process` **56/83** ⇒ 本进程在算，不是等网络。
+- 同一条解析路径自己的分段仪表 `artifact version resolve was slow` **549 行**：
+  `queryMs` med 60 / p90 235 / **p99 1,970** / max 3,846（合计 78.3 s），`dbCanaryMs` 同幅（2,232 ↔ 2,224）
+  ⇒ 引擎在忙；`readMs` med 34 / p90 226 / p99 8,564；`bytes` 合计 **491 MB**。
+- 真机库 517 条 `ArtifactVersion`：`evidenceJson` 平均 **24,944** / 最大 78,149，
+  `executionSnapshotJson` 平均 **63,577** / 最大 348,639，两列合计 **45,765,684** 字符。
+
+### 二 缺口
+
+`resolveVersionContent` 的查询是 `include: { artifact: true }`（整行 Version + 父行），而代码只用四个标量。
+每次预览打开/翻页与每次复核读取都要为平均 ~88 KB、最大 ~427 KB 的 JSON 付三笔钱（溢出页读、桥拷贝、客户端解析），
+下一行即丢。同文件里 `resolveVersionPaths` 的头注早已写下同族判断（「它是回答可用性问题的错误工具」），
+那次修的是「读不读文件」，这次修的是「读不读整行」。
+
+### 三 交付（2 文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/artifacts/provenance-repository.ts` | `include: { artifact: true }` → `select: { contentStorageKey, filename, contentType, checksum }`；注释写明真机字节数与「收窄的是读什么，不是校验什么」 |
+| `src/main/artifacts/provenance-repository.test.ts` | 新增 1 例：真 Prisma 临时库 + `vi.spyOn(artifactVersion.findFirst)` 抓查询形状，钉精确投影且不得出现 `include` |
+
+`where` 的归属条件、`state` 过滤、`readFile` + `sha256` 校验与不符即抛错**一字未改**。
+
+### 四 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 新用例（定向） | 1 passed |
+| `src/main/artifacts` 整目录 | **21 files / 292 passed**，exit 0 |
+| `src/main/reviewer` + `src/main/uploads`（另两个消费方） | **33 files / 402 passed**，exit 0 |
+| 双 typecheck（`--composite false`） | node 0；web 0 |
+| `eslint --no-cache`（2 文件） | 0 error / 0 warning |
+
+**变异自证两次**：① 投影加回 `evidenceJson: true` ⇒ 新用例红；② 改回 `include: { artifact: true }` ⇒ 新用例红。均还原。
+
+### 五 边界与下一轮第一步
+
+- **无装机读数**（main 侧改动，等下一次发版）。装机判据：`artifact version resolve was slow` 的 `queryMs` p90/p99
+  下移（基线 235 / 1,970 ms）、同段 `read-preview` 的 `cpu-bound-in-process` 条数与 `cpuShare` 中位（0.80）下降；
+  **不承诺毫秒数**。
+- **`readMs`（整文件读 + 校验）未动**：那是本仓的证据门，不以性能为名削弱；它的尾巴里混着别人的长同步块
+  （`readEventLoopMaxMs` 最大 15,141 ms），要单独归因需另立单元。
+- **`sessions:save-session`（3,776 条 / 2,311 s）仍是分桶第一名**；`network:check-connectivity` 的三条巨行判为
+  机器休眠（`heldMs` ≈ 整段），**不立案**。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位）；② 若 `macos-x64` 冒烟复跑仍红在同一停点，按证据档口径升级立案；
+  ③ 分桶里下一个候选：`sessions:save-session` 的持有窗口（其 `queueBlockers` 已可具名，等装机新行）。

@@ -130,6 +130,87 @@ describe('artifact provenance repository', () => {
     ).rejects.toThrow('Artifact Version not found')
   })
 
+  it('projects only the columns a content resolve consumes', async () => {
+    storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-resolve-projection-'))
+    const client = createProjectDbClient(storageRoot)
+    disconnect = () => client.$disconnect()
+    await ensureProjectSchema(client)
+    const contentStorageKey = 'artifacts/project-1/session-1/.provenance/versions/version-1/content'
+    const contentPath = join(storageRoot, ...contentStorageKey.split('/'))
+    const contentBytes = Buffer.from('artifact bytes')
+    await mkdir(dirname(contentPath), { recursive: true })
+    await writeFile(contentPath, contentBytes)
+    const checksum = createHash('sha256').update(contentBytes).digest('hex')
+    await client.fileOriginSession.create({
+      data: { projectId: 'project-1', sessionId: 'session-1' }
+    })
+    await client.artifactLineage.create({
+      data: {
+        id: 'artifact-1',
+        projectId: 'project-1',
+        sessionId: 'session-1',
+        normalizedFilename: 'plot.png',
+        filename: 'plot.png'
+      }
+    })
+    // The evidence payloads are what a whole-row read drags along (real library: 24.9 KB average for
+    // `evidenceJson`, 63.6 KB for `executionSnapshotJson`). They are written here so the row is shaped
+    // like a production one — the assertion below is about what the query asks for, not about this test.
+    const evidenceJson = JSON.stringify({ filler: 'e'.repeat(2_000) })
+    const executionSnapshotJson = JSON.stringify({ filler: 's'.repeat(4_000) })
+    await client.artifactVersion.create({
+      data: {
+        id: 'version-1',
+        artifactId: 'artifact-1',
+        versionNumber: 1,
+        filename: 'plot.png',
+        artifactRunId: 'artifact-run-1',
+        rootFrameId: 'root-1',
+        agentFrameId: 'agent-1',
+        messageBranchId: 'branch-1',
+        runtimeSegmentId: 'segment-1',
+        promptMessageId: 'prompt-1',
+        state: 'finalized',
+        contentStorageKey,
+        evidenceStorageKey:
+          'artifacts/project-1/session-1/.provenance/versions/version-1/evidence.json',
+        contentType: 'image/png',
+        sizeBytes: BigInt(contentBytes.byteLength),
+        checksum,
+        evidenceJson,
+        evidenceChecksum: createHash('sha256').update(evidenceJson).digest('hex'),
+        executionSnapshotJson
+      }
+    })
+    const repository = new ArtifactProvenanceRepository({
+      storageRoot,
+      getClient: () => Promise.resolve(client)
+    })
+    // Seeded after the rows exist so the only captured call is the resolve's own query.
+    const findFirst = vi.spyOn(client.artifactVersion, 'findFirst')
+
+    const resolved = await repository.resolveVersionContent({
+      projectId: 'project-1',
+      appSessionId: 'session-1',
+      artifactId: 'artifact-1',
+      versionId: 'version-1'
+    })
+
+    expect(resolved).toMatchObject({ path: contentPath, filename: 'plot.png', checksum })
+    expect(findFirst).toHaveBeenCalledTimes(1)
+    const query = findFirst.mock.calls[0][0]
+    // A whole-row read here costs every preview and every reviewer read the evidence/snapshot JSON the
+    // caller drops on the next line; `include: { artifact: true }` added the parent row for the same
+    // nothing. Pinned as an exact projection so widening it has to be deliberate.
+    expect(query?.select).toEqual({
+      contentStorageKey: true,
+      filename: true,
+      contentType: true,
+      checksum: true
+    })
+    expect(query).not.toHaveProperty('include')
+  })
+
   it('removes a stale orphaned staging directory that has no SQLite lifecycle row', async () => {
     storageRoot = await mkdtemp(join(tmpdir(), 'purescience-artifact-orphan-staging-'))
     const client = createProjectDbClient(storageRoot)
