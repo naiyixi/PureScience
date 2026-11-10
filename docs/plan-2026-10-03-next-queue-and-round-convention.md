@@ -17145,3 +17145,57 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
   —— 本轮已量出它的形状是**同一毫秒内 5–12 条并发**（时长差仅十几毫秒 = 合并到同一个在飞探测），
   下一步是判「谁在同一个面板里发这么多次」，别再从「探测太慢」那条假设开工；
   ③ 资源闸门一开补 §299 §四 ② 的真机读数。
+
+## 三百零八、本轮追加（执行器，2026-11-10 22:2x–）—— 一次面板打开发 7 次 `list-runtimes`：枚举是机器级的，却被按「每次读」重做
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = HEAD = 9f02bd88`；工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）
+  ⇒ 一个字节没碰、不提交。
+- **§307 那笔的双车道判决已取**（完整 40 位 `9f02bd88a8cba95429f89af9c8d31bc22877ba4d`）：
+  `Nightly` success、`Windows Full Test` success（两次查询都返回 2 条，非索引延迟造成的空）；推前未另开窗口。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 取 §307 §五 的第 ② 条（`notebook:list-runtimes`），
+  按「先量后改」：先量出并发形状，再决定改哪一层。
+
+### 一 读数（真机日志，只读；全表见证据档）
+
+`notebook:list-runtimes` 慢行 101 条、落在 **45 个时间戳**上，其中 **20 个时间戳有多条**、**单点最多 7 条**，
+同点多条的 `durationMs` 只差 0–1 ms（1,262×7 / 1,001–1,002×5 / 1,110–1,111×5 / 2,877–2,878×5 / 980–981×5）。
+`attribution`：`inconclusive` 76 / `no-cpu-in-process` 23 / `cpu-bound-in-process` **2**；`cpuShare` 中位 0.235。
+
+⇒ 形状是「一次爆发被合并在同一个在飞结果上」，不是「一条读很慢」；且不是这条通道自己在烧 CPU。
+（**边界**：只覆盖越阈值的记录，真值不小于 7，不能读成上限。）
+
+### 二 缺口
+
+渲染层只有一处调用方（`NotebookPreview.loadRuntimes`，deps 全原始值），但一次面板打开就并发 N 条；
+每条都走 `ensure`（已按 sessionId 合流）→ `discoverWithEnablement × 2` → **枚举**。枚举只取决于机器，
+与哪个会话、第几次读无关 —— 探针层 2026-11-02 已合流，**枚举层没有**。
+
+### 三 交付（2 文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/notebook/runtime-binding.ts` | 新增 `discoveryPass()`：**只合流在飞的那一遍**（`Map<key,{promise,joined}>`，key = `language \0 manualInterpreters`），完成即**按身份删除** ⇒ 不是缓存；手工解释器清单进 key，设置中途变化不会串配置；有读合流时打一行 `interpreter discovery joined an in-flight pass`（`language` / `joinedReads`） |
+| `src/main/notebook/runtime-service.test.ts` | 3 例：三条并发读只枚举一遍；下一次读重新枚举（合流不是缓存）；两会话共用枚举但各拿各的 `bindings`/`bound` |
+
+### 四 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `runtime-service.test.ts` | **189 passed** |
+| `src/main/notebook` 整目录 | **96 files / 1485 passed | 101 skipped**，exit 0 |
+| 双 typecheck（`--composite false`） | node 0；web 0 |
+| `eslint --no-cache`（2 文件） | 0 error / 0 warning |
+
+**变异自证两次**：关合流 ⇒ ①读成 `['python','python','python',…]`；关「完成即删」⇒ ②读成 `['python','r']`。均还原。
+
+### 五 边界与下一轮第一步
+
+- **无真机窗口读数**（main 侧内部改动，装机版要等下次发版）。下一版判据 = 日志出现
+  `interpreter discovery joined an in-flight pass` 且 `joinedReads ≥ 1`，同一时段慢行条数与时长下降；
+  **不承诺毫秒数**（节省 = 爆发条数 − 1 份枚举，实际值随解释器数量/内存状态，未测）。
+- **渲染层仍发 N 次**：本笔只让第 2…N 次变便宜。**谁在同一个面板里发这么多次仍未定**
+  （多预览面板各一次 / 同一面板 effect 重跑），要在装机新构建上量，别按假设改。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 慢 IPC 分桶里剩下的读写族按「先量后改」继续；
+  ③ 资源闸门一开补 §299 §四 ② 的真机读数。

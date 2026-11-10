@@ -11,6 +11,7 @@ import {
   type RuntimeSelection
 } from '../../shared/notebook-runtime'
 import type { NotebookRuntimeSettings } from '../settings/capabilities'
+import { createLogger } from '../logger'
 import {
   defaultDiscoveryDeps,
   discoverInterpreters,
@@ -56,6 +57,8 @@ const admissionGate = (): AdmissionGate => {
 
 const defaultEnvironment = (language: NotebookLanguage): string =>
   language === 'r' ? DEFAULT_R_ENV : DEFAULT_PY_ENV
+
+const log = createLogger('notebook:runtime-binding')
 
 /** Owns Notebook runtime discovery, selection, binding transitions, and durable wire snapshots. */
 export class NotebookRuntimeBindingOwner {
@@ -382,11 +385,67 @@ export class NotebookRuntimeBindingOwner {
     enabled: DiscoveredInterpreter[]
   }> {
     const settings = await this.runtimeSettingsSnapshot(language)
-    const discovered = await this.discover(language, settings?.manualInterpreters ?? [])
+    const discovered = await this.discoveryPass(language, settings?.manualInterpreters ?? [])
     return {
       discovered,
       enabled: discovered.filter((env) => isEnvEnabled(env, settings?.runtimeEnablement))
     }
+  }
+
+  // One panel opening fires SEVERAL reads of the same listing in the same millisecond, and each read used
+  // to run its own machine-wide enumeration. Real readings (2026-11-04 → 11-10, packaged build): 101 slow
+  // `notebook:list-runtimes` records, 20 of their 45 distinct timestamps carrying 2–7 reads with identical
+  // durations — the coalesced shape of one burst, not one slow read. Enumeration is a property of the
+  // MACHINE (candidate paths + version probes), not of the session, so the passes are joined here.
+  //
+  // Only IN-FLIGHT passes are joined; nothing is stored after completion, so a later read still re-derives
+  // the list and an env that vanished between two reads still disappears. The join key carries the manual
+  // interpreter list too: a settings change mid-burst must not hand a reader another configuration's list.
+  private readonly discoveryPasses = new Map<
+    string,
+    { readonly promise: Promise<DiscoveredInterpreter[]>; joined: number }
+  >()
+
+  private discoveryPass(
+    language: NotebookLanguage,
+    manualInterpreters: string[]
+  ): Promise<DiscoveredInterpreter[]> {
+    const key = `${language}\u0000${manualInterpreters.join('\u0000')}`
+    const running = this.discoveryPasses.get(key)
+    if (running) {
+      running.joined += 1
+      return running.promise
+    }
+    const pass: { promise: Promise<DiscoveredInterpreter[]>; joined: number } = {
+      promise: Promise.resolve([]),
+      joined: 0
+    }
+    const settle = (): void => {
+      // Deleting by identity: a pass that finished must never be handed to a later read (the next read
+      // re-enumerates), and a newer pass must not be deleted by an older one settling late.
+      if (this.discoveryPasses.get(key) === pass) this.discoveryPasses.delete(key)
+      // Named only when a read actually joined: one line per burst, so the next reading can tell
+      // "the panel asked N times" from "one read was slow" without inferring it from the timestamps.
+      if (pass.joined > 0) {
+        log.info('interpreter discovery joined an in-flight pass', {
+          language,
+          joinedReads: pass.joined
+        })
+      }
+    }
+    pass.promise = this.discover(language, manualInterpreters).then(
+      (discovered) => {
+        settle()
+        return discovered
+      },
+      (error: unknown) => {
+        settle()
+        throw error
+      }
+    )
+    this.discoveryPasses.set(key, pass)
+    // Every reader in the burst awaits the SAME promise, so the cleanup above runs exactly once.
+    return pass.promise
   }
 
   // IC14: re-judge a LIVE explicit binding against the filesystem. `reload()` already does this for a

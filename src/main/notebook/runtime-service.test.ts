@@ -5178,6 +5178,103 @@ describe('v4 runtime bindings & agent tools', () => {
     expect(afterBind.runtimes.find((r) => r.runtimeId === managedPy.envId)?.bound).toBe(false)
   })
 
+  // One panel opening fires SEVERAL reads of the same listing in the same millisecond (real readings,
+  // 2026-11-04 → 11-10: 20 of 45 distinct timestamps carried 2–7 reads with identical durations).
+  // Enumeration is machine-wide, not per-session, so the passes are joined: three reads in one burst pay
+  // for ONE enumeration per language.
+  it('joins the machine-wide enumeration of reads that land in one burst', async () => {
+    const root = await createStorageRoot()
+    const calls: Array<'python' | 'r'> = []
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const service = bindingService(root, {
+      discoverRuntimes: async (language) => {
+        calls.push(language)
+        await gate
+        return (language === 'python' ? [managedPy, userPyA] : [managedR]).filter(Boolean)
+      }
+    })
+
+    const request = { sessionId: 's', workspaceCwd: root }
+    const burst = Promise.all([
+      service.listRuntimes(request),
+      service.listRuntimes(request),
+      service.listRuntimes(request)
+    ])
+    // Let all three reads reach discovery before any of them is allowed to finish.
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    release()
+    const results = await burst
+
+    expect(calls).toEqual(['python', 'r'])
+    expect(results[1].runtimes).toEqual(results[0].runtimes)
+    expect(results[2].runtimes).toEqual(results[0].runtimes)
+  })
+
+  // The join is NOT a cache: the next read re-derives the list, so an env deleted between two reads still
+  // disappears (that is the IC14 judgement above, and it must survive this optimisation).
+  it('re-enumerates on the next read — the in-flight join stores nothing', async () => {
+    const root = await createStorageRoot()
+    const calls: Array<'python' | 'r'> = []
+    const service = bindingService(root, {
+      discoverRuntimes: async (language) => {
+        calls.push(language)
+        return language === 'python' ? [managedPy] : [managedR]
+      }
+    })
+
+    const request = { sessionId: 's', workspaceCwd: root }
+    await service.listRuntimes(request)
+    await service.listRuntimes(request)
+
+    expect(calls).toEqual(['python', 'r', 'python', 'r'])
+  })
+
+  // Sharing the enumeration must not share the ANSWER: two sessions in one burst differ only in their
+  // bindings, and each result has to describe its own session.
+  it('shares one enumeration but never the per-session bindings', async () => {
+    const root = await createStorageRoot()
+    const calls: Array<'python' | 'r'> = []
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let gated = false
+    const service = bindingService(root, {
+      enablement: { enabled: { [userPyA.envId]: true }, installAuthorized: {} },
+      discoverRuntimes: async (language) => {
+        calls.push(language)
+        if (gated) await gate
+        return language === 'python' ? [managedPy, userPyA] : [managedR]
+      }
+    })
+
+    await service.bindRuntime({
+      sessionId: 'bound',
+      workspaceCwd: root,
+      language: 'python',
+      runtimeId: userPyA.envId
+    })
+
+    gated = true
+    calls.length = 0
+    const burst = Promise.all([
+      service.listRuntimes({ sessionId: 'bound', workspaceCwd: root }),
+      service.listRuntimes({ sessionId: 'unbound', workspaceCwd: root })
+    ])
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    release()
+    const [bound, unbound] = await burst
+
+    expect(calls).toEqual(['python', 'r'])
+    expect(bound.bindings.python?.runtimeId).toBe(userPyA.envId)
+    expect(unbound.bindings.python).toBeUndefined()
+    expect(bound.runtimes.find((r) => r.runtimeId === userPyA.envId)?.bound).toBe(true)
+    expect(unbound.runtimes.find((r) => r.runtimeId === userPyA.envId)?.bound).toBe(false)
+  })
+
   // IC14: a runtime can disappear OUT OF BAND while the session is live. Reloading a session from disk
   // already re-judged that case, but a live window kept calling the binding 'active' and the next run
   // died inside the kernel instead of being refused by name. The read path re-judges it now.
