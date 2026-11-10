@@ -56,6 +56,20 @@ const SLOW_SESSION_SAVE_THRESHOLD_MS = 200
 // phase split only speaks for the tail (200 ms), where "waiting" and "parsing the durable JSON" are still
 // distinguishable. A second line at the median would be noise.
 const SLOW_SESSION_RUNTIME_READ_THRESHOLD_MS = 200
+// The queue is strictly serial, so a session-scoped side effect that runs for seconds blocks every save and
+// every read queued behind it. Until now those side effects were enqueued under
+// `save-session-specialist-binding` — a label no binding save ever produced (that path goes through
+// `save-session`), while it covered Upload finalization, artifact writes and review persistence alike. Nine
+// days of real logs therefore read "specialist binding held the queue for 17,212 ms" with no way to tell
+// whether any binding save had happened at all, and each investigation began by distrusting the wrong
+// operation. Two changes fix that: the label now comes from the caller (`SessionMutationLabel`), and a
+// mutation that holds the queue past this threshold says so in its own line instead of only appearing inside
+// somebody else's `queueBlockers`. Threshold above the save's (200 ms) because these are rarer and each one
+// is a queue-wide stall by construction.
+const SLOW_SESSION_MUTATION_THRESHOLD_MS = 1_000
+// What an unlabeled call is reported as. Named for what it is, so a caller that forgets to pass a label
+// cannot be misread as a specific operation.
+const DEFAULT_SESSION_MUTATION_LABEL = 'session-mutation'
 import { repairHistoricalArtifactAliases } from './artifact-alias-repair'
 import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
 import {
@@ -1500,26 +1514,57 @@ class SessionPersistenceCoordinator {
 
   // Joins late Session-owned side effects (for example Upload finalization) to the same ordering
   // boundary as JSON save and deletion. The mutation is rejected after a Session/Project tombstone.
+  // `label` is the caller's name for that side effect: it is what a save waiting behind it prints in
+  // `queueBlockers`, and what the mutation's own slow line reports.
   runSessionMutation<Result>(
     projectId: string,
     sessionId: string,
-    mutation: () => Promise<Result>
+    mutation: () => Promise<Result>,
+    label: string = DEFAULT_SESSION_MUTATION_LABEL
   ): Promise<Result> {
-    return this.enqueue('save-session-specialist-binding', async () => {
-      if (this.deletedProjects.has(projectId)) {
-        throw new Error('Cannot mutate a session whose project has been deleted.')
-      }
-      if (this.deletedSessions.has(sessionKey(projectId, sessionId))) {
-        throw new Error('Cannot mutate a session that has been deleted.')
-      }
+    return this.enqueue(label, async () => {
+      const startedAt = Date.now()
+      const cpuBefore = process.cpuUsage()
       try {
-        return await mutation()
+        if (this.deletedProjects.has(projectId)) {
+          throw new Error('Cannot mutate a session whose project has been deleted.')
+        }
+        if (this.deletedSessions.has(sessionKey(projectId, sessionId))) {
+          throw new Error('Cannot mutate a session that has been deleted.')
+        }
+        try {
+          return await mutation()
+        } finally {
+          // Artifact finalization can add a new binding without changing the Session graph. Force the
+          // next save to validate that new database scope before reusing a topology fingerprint.
+          this.validatedBindingTopologies.delete(sessionKey(projectId, sessionId))
+        }
       } finally {
-        // Artifact finalization can add a new binding without changing the Session graph. Force the
-        // next save to validate that new database scope before reusing a topology fingerprint.
-        this.validatedBindingTopologies.delete(sessionKey(projectId, sessionId))
+        this.logSlowSessionMutation(label, startedAt, cpuBefore)
       }
     })
+  }
+
+  // One line for a session mutation that held the serial queue long enough to delay saves behind it. The
+  // mutation's own hold used to be visible only through a *different* operation's `queueBlockers`, which
+  // meant a 17 s hold was reported against the save that waited rather than the side effect that ran — and
+  // the CPU share belongs to the holder, so it is reported here rather than inferred from the waiter.
+  private logSlowSessionMutation(
+    label: string,
+    startedAt: number,
+    cpuBefore: CpuUsageSample
+  ): void {
+    const ranMs = Date.now() - startedAt
+    if (ranMs < SLOW_SESSION_MUTATION_THRESHOLD_MS) return
+    try {
+      this.log.warn('session mutation held the queue', {
+        label,
+        ranMs,
+        ...cpuAttributionFields(cpuBefore, process.cpuUsage(), ranMs)
+      })
+    } catch {
+      // Best-effort: a logging failure must never fail a mutation that already ran.
+    }
   }
 
   // A path-only projection must become durable before terminal cleanup may consume its source.

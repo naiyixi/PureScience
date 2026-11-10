@@ -100,7 +100,8 @@ type ReviewerIpcOptions = {
   withSessionMutation?: <Result>(
     projectId: string,
     sessionId: string,
-    mutation: () => Promise<Result>
+    mutation: () => Promise<Result>,
+    label?: string
   ) => Promise<Result>
   // Optional loader for the session's folded-context chunks (fold timeline UI). Absent ⇒ the
   // reviewer command returns an empty list (feature not wired).
@@ -421,7 +422,8 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
         getSession: loadCurrentSession,
         reviewRepository,
         runSessionMutation: options.withSessionMutation
-          ? (mutation) => options.withSessionMutation!(projectId, sessionId, mutation)
+          ? (mutation) =>
+              options.withSessionMutation!(projectId, sessionId, mutation, 'review-persist')
           : undefined,
         acpRuntime: options.acpRuntime,
         // Artifacts live under the relocatable data root; DB/sessions stay on the config root.

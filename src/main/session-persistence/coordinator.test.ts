@@ -4139,6 +4139,159 @@ describe('session save diagnostics', () => {
     clock.mockRestore()
   })
 
+  // Every session-scoped side effect used to be enqueued as `save-session-specialist-binding` — a name no
+  // binding save produced (that path enqueues as `save-session`), while upload finalization, artifact
+  // writes and review persistence all travelled under it. Nine days of real logs therefore read
+  // "specialist binding held the queue for 17,212 ms" with no way to tell who actually held it. These two
+  // tests pin the fix on both sides: the blocker string and the mutation's own line.
+  it('names a slow session mutation by the caller label, in its own line and in a waiter queueBlockers', async () => {
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+    try {
+      // The save's own span has to cross the slow threshold too, so its line exists to read the blockers
+      // from. Nothing depends on real time here: the clock is the mock.
+      const repository = createSessionRepository({
+        saveSession: vi.fn(async () => {
+          now += 5_000
+        })
+      })
+      const log = createTestLogger()
+      const coordinator = new SessionPersistenceCoordinator(
+        repository,
+        createFileIndex(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        log
+      )
+
+      let release: () => void = () => {}
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const mutation = coordinator.runSessionMutation(
+        'project-1',
+        'session-1',
+        async () => {
+          await gate
+          return 'ok'
+        },
+        'review-persist'
+      )
+      await flushMicrotasks()
+
+      // The mutation holds the serial queue for 7 s; the save that lands meanwhile waits behind it.
+      now += 7_000
+      const behind = coordinator.saveSession(createSession({ title: 'Behind' }))
+      release()
+      await expect(mutation).resolves.toBe('ok')
+      await behind
+
+      const mutationLine = log.warn.mock.calls.find(
+        (call) => call[0] === 'session mutation held the queue'
+      )
+      expect(mutationLine).toBeDefined()
+      expect(mutationLine?.[1]).toMatchObject({ label: 'review-persist', ranMs: 7_000 })
+
+      const saveLine = log.warn.mock.calls.find((call) => call[0] === 'session save was slow')
+      expect(String((saveLine?.[1] as Record<string, unknown>).queueBlockers)).toContain(
+        'review-persist='
+      )
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  // A caller that forgets the label must not be read as a specific operation, and the retired name must be
+  // gone for good: it named an operation no binding save ever produced.
+  it('falls back to a neutral mutation label and never reports the retired binding name', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+    try {
+      let release: () => void = () => {}
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const mutation = coordinator.runSessionMutation('project-1', 'session-1', async () => {
+        await gate
+        return 'ok'
+      })
+      await flushMicrotasks()
+      now += 2_000
+      const behind = coordinator.saveSession(createSession({ title: 'Unlabeled' }))
+      release()
+      await mutation
+      now += 5_000
+      await behind
+
+      const mutationLine = log.warn.mock.calls.find(
+        (call) => call[0] === 'session mutation held the queue'
+      )
+      expect(mutationLine?.[1]).toMatchObject({ label: 'session-mutation' })
+
+      const saveLine = log.warn.mock.calls.find((call) => call[0] === 'session save was slow')
+      const blockers = String((saveLine?.[1] as Record<string, unknown>).queueBlockers)
+      expect(blockers).toContain('session-mutation=')
+      expect(blockers).not.toContain('save-session-specialist-binding')
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
+  // The mutation line is for the tail only: a session mutation that returns quickly is the common case and
+  // must not add a second line beside the saves that were not delayed.
+  it('keeps quiet for a session mutation that does not hold the queue', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => now)
+    try {
+      const mutation = coordinator.runSessionMutation(
+        'project-1',
+        'session-1',
+        async () => 'ok',
+        'write-user-edited-version'
+      )
+      now += 120
+      await expect(mutation).resolves.toBe('ok')
+
+      expect(
+        log.warn.mock.calls.filter((call) => call[0] === 'session mutation held the queue')
+      ).toHaveLength(0)
+    } finally {
+      clock.mockRestore()
+    }
+  })
+
   // `writeMs` is where the field reading put 44.6 s of 142.7 s, and whether that is serialization or the
   // filesystem decides the next unit. The repository measures its own write; this asserts the numbers reach
   // the slow-save line intact and that the part the five do not explain is printed rather than folded in.

@@ -860,8 +860,8 @@ const createApplicationModules = async (
     }
   )
   const uploadCommandOwner = createUploadCommandOwner(uploadRepository, {
-    withSessionMutation: (projectId, sessionId, mutation) =>
-      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation)
+    withSessionMutation: (projectId, sessionId, mutation, label) =>
+      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation, label)
   })
   const reviewRepository = createDefaultReviewRepository()
   // P0-10③: deleting a project now also releases its notebook session data, and says how much that freed.
@@ -2527,13 +2527,15 @@ const createApplicationModules = async (
           sessionPersistenceCoordinator.runSessionMutation(
             request.projectId,
             request.appSessionId,
-            () => artifactProvenanceRepository.createVersion(request)
+            () => artifactProvenanceRepository.createVersion(request),
+            'artifact-provenance-create-version'
           ),
         replayVersion: (request) =>
           sessionPersistenceCoordinator.runSessionMutation(
             request.projectId,
             request.appSessionId,
-            () => artifactProvenanceRepository.replayVersion(request)
+            () => artifactProvenanceRepository.replayVersion(request),
+            'artifact-provenance-replay'
           ),
         checkReproduction: (request) => {
           const dataRoot = resolveDataRoot()
@@ -3687,8 +3689,8 @@ const createApplicationModules = async (
         hasService: (service) => ALL_CONNECTOR_IDS.includes(service)
       })
     },
-    withSessionMutation: (projectId, sessionId, mutation) =>
-      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation),
+    withSessionMutation: (projectId, sessionId, mutation, label) =>
+      sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation, label),
     // Availability probes for uploads need the upload repository: their locators and their bytes live under
     // the uploads root, which the artifact resolver rightly refuses. Without this the window badged every
     // uploaded file "Missing" and disabled every action on it, OCR included.
@@ -3702,8 +3704,8 @@ const createApplicationModules = async (
       artifactRunRegistry,
       () => (runtimeRef.current ? runtimeRef.current.getActiveArtifactRunIds() : []),
       artifactProvenanceRepository,
-      (projectId, sessionId, mutation) =>
-        sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation),
+      (projectId, sessionId, mutation, label) =>
+        sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation, label),
       artifactHandlers
     )
   )
@@ -3853,8 +3855,9 @@ const createApplicationModules = async (
     withSessionMutation: <Result>(
       projectId: string,
       sessionId: string,
-      mutation: () => Promise<Result>
-    ) => sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation),
+      mutation: () => Promise<Result>,
+      label?: string
+    ) => sessionPersistenceCoordinator.runSessionMutation(projectId, sessionId, mutation, label),
     // Fold timeline: map persisted chunks to the UI view model.
     contextSummaryChunks: async (sessionId) => {
       const chunks = await contextSummaryRepository.listChunks(sessionId)

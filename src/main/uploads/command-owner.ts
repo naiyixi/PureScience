@@ -52,10 +52,13 @@ type UploadProgressTarget = Readonly<{
 }>
 
 type UploadCommandOwnerOptions = Readonly<{
+  // `label` names the side effect for the persistence queue's slow report (see runSessionMutation); the
+  // coordinator defaults it when absent, so a three-argument stub keeps working.
   withSessionMutation?: <Result>(
     projectId: string,
     sessionId: string,
-    mutation: () => Promise<Result>
+    mutation: () => Promise<Result>,
+    label?: string
   ) => Promise<Result>
 }>
 
@@ -389,7 +392,12 @@ const createUploadCommandOwner = (
             request.projectId
           )
         return options.withSessionMutation && request.projectId
-          ? options.withSessionMutation(request.projectId, request.sessionId, finalize)
+          ? options.withSessionMutation(
+              request.projectId,
+              request.sessionId,
+              finalize,
+              'finalize-session-uploads'
+            )
           : finalize()
       }),
     readPreview: ({ args: [request] }) => repository.readManagedUploadPreview(request)

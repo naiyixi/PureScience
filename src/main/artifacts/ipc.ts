@@ -109,7 +109,8 @@ type ArtifactHandlerDependencies = {
   withSessionMutation?: <Result>(
     projectId: string,
     sessionId: string,
-    mutation: () => Promise<Result>
+    mutation: () => Promise<Result>,
+    label?: string
   ) => Promise<Result>
   provenance?: Pick<
     ArtifactProvenanceRepository,
@@ -225,7 +226,12 @@ const createArtifactHandlers = (
               dependencies.logger ?? log
             )
           return dependencies.withSessionMutation
-            ? dependencies.withSessionMutation(claim.projectName, claim.sessionId, finalize)
+            ? dependencies.withSessionMutation(
+                claim.projectName,
+                claim.sessionId,
+                finalize,
+                'finalize-run-artifacts'
+              )
             : finalize()
         })
       ),
@@ -358,7 +364,12 @@ const createArtifactHandlers = (
       const write = (): Promise<ArtifactFile> =>
         dependencies.provenance!.writeUserEditedVersion(request)
       return dependencies.withSessionMutation
-        ? dependencies.withSessionMutation(request.projectId, request.appSessionId, write)
+        ? dependencies.withSessionMutation(
+            request.projectId,
+            request.appSessionId,
+            write,
+            'write-user-edited-version'
+          )
         : write()
     },
     verifyReading: (request) => {

@@ -17083,3 +17083,65 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
   （101 条、med 1,262 / p90 5,838，但只有 2 条是本进程在算 ⇒ 先判它是不是同一类排队）与
   `session-persistence` 的 `queuedMs`（本轮日志里出现 `queueBlockers=save-session-specialist-binding=7231ms`，
   属**队列阻塞**而不是写盘）；③ 资源闸门一开补 §299 §四 ② 的真机读数。
+
+## 三百零七、本轮追加（执行器，2026-11-10 20:0x–）—— 那条「专家绑定占着队列 17 秒」根本没发生过：名字指向了一件没有人做的事
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = HEAD = 305aeca6`，工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、`2026-11-04-…` 两份）
+  ⇒ 一个字节没碰、不提交。
+- **§306 那笔的双车道判决已取**（完整 40 位 `305aeca6e8c1d34a1aca2d29ac92b9a504b16bd6`）：
+  `Windows Full Test` success、`Nightly` success（含 09:33 起的那条 arm64 打包，§306 §四 ① 的挂账结清）、
+  `Scheduled Regression` success；推前现查在飞车道 = 0（本次推送没有取消任何人的判决）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 取记事本第 ② 条的 `session-persistence` 一族，
+  按 §305 §四「先量后改」开工。
+
+### 一 读数（真机日志，只读；全表见证据档）
+
+带 `queueBlockers` 的慢保存共 **76 条**，阻塞者名：`save-session-specialist-binding` **62 条**（中位 378 ms、
+**最大 17,212 ms**）、`read-session-runtime-context` 9 条（中位 4 ms）、`assert-session-available` 5 条（中位 1,061 ms）。
+单条样例：`queuedMs=8192, queueBlockers=save-session-specialist-binding=17212ms, totalMs=10696`，同刻
+`sessions:save-session` 的 `durationMs` 20,526 ms。
+
+### 二 缺口：名字指向一件从未发生的事
+
+`saveSession`（含真正的「改专家绑定」）入队标签是 **`save-session`**；而 `save-session-specialist-binding`
+**只**被 `runSessionMutation` 使用，承载的是上传落定、产物落定、改稿写入、产物溯源建版本/重放、复核持久化。
+⇒ 那 62 条「专家绑定占了队列」的结论不成立，且真正的持有者**从未被点名**。这是「记录只说一半」那一族
+（同 §301/§303/§304）的又一例：不是数字错，是**名字错**。
+
+### 三 交付（6 文件，1 新方法 + 8 处标签 + 3 例）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/session-persistence/coordinator.ts` | `runSessionMutation(..., label = 'session-mutation')`；新增 `logSlowSessionMutation`（持有 ≥ 1,000 ms 打 `session mutation held the queue`，带 `label/ranMs/cpuMs/cpuShare/attribution`，与慢保存同一套归属函数） |
+| `src/main/uploads/command-owner.ts` | 可选第 4 参 + `finalize-session-uploads` |
+| `src/main/artifacts/ipc.ts` | 同上 + `finalize-run-artifacts` / `write-user-edited-version` |
+| `src/main/reviewer/ipc.ts` | 同上 + `review-persist` |
+| `src/main/ipc.ts` | 四处接线转发标签 + 产物溯源两处 `artifact-provenance-create-version` / `-replay` |
+| `src/main/session-persistence/coordinator.test.ts` | 3 例：标签进自己的慢行与等待者 `queueBlockers`；缺省中性名且**旧名不再出现**；快变异安静 |
+
+**判据两条**：标签由**真正知道自己在做什么的那一层**给（接线层一个闭包服务多个变异，名字写在那里必然又变成一个大而空的词）；
+慢变异的 CPU 归属在**持有者**这一行算，不从等待者的 `cpuShare` 反推（两者窗口不同）。
+
+### 四 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `session-persistence` + `uploads` + `artifacts` + `reviewer` | **67 files / 957 passed** |
+| `coordinator.test.ts` | **120 passed**（新增 3 例） |
+| 双 typecheck（`--composite false`） | node 0；web 0 |
+| `eslint --no-cache`（6 文件） | 0 error / 0 warning |
+
+**变异自证两次**：入队标签改回硬编码旧名 ⇒ 2 红；删掉 `logSlowSessionMutation` 调用 ⇒ 同样 2 红。均还原。
+
+### 五 边界与下一轮第一步
+
+- **无真机窗口读数**（新行要下次装机才出现）：装机后判据 = `grep "session mutation held the queue"` 出现且 `label`
+  是具体名字、且同一时间的 `queueBlockers` 不再含旧名。**本笔只让读数可归因，没让 17 秒变短** —— 归属等第一批带名字的行。
+- 时间线旁证：那 17 s 窗口（11-05T16:46:14.7→31.9）紧接 `correction sendPrompt failed` / `fix loop … unaddressed`，
+  窗口内无上传/产物落定日志 ⇒ **复核侧嫌疑最大但不是结论**（这正是本次要修的：名字给不出）。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 慢行分桶里剩下的 `notebook:list-runtimes`
+  —— 本轮已量出它的形状是**同一毫秒内 5–12 条并发**（时长差仅十几毫秒 = 合并到同一个在飞探测），
+  下一步是判「谁在同一个面板里发这么多次」，别再从「探测太慢」那条假设开工；
+  ③ 资源闸门一开补 §299 §四 ② 的真机读数。
