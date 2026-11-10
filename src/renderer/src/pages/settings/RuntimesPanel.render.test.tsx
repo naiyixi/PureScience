@@ -1342,6 +1342,54 @@ describe('RuntimesPanel named environments (audit P0-8)', () => {
       '/data/runtime/envs/lock-import-env/bin/python'
     )
   })
+
+  it('asks again for a size the first answer could not include, without a reopen', async () => {
+    // Sizing a prefix is a full walk (≈5 s on a real env), so the main process answers the list first and
+    // leaves `sizeBytes` absent on that first answer. The row must not sit size-less until the user reopens
+    // Settings: a bounded follow-up read picks the number up from the cache behind it.
+    vi.useFakeTimers()
+    try {
+      let listCalls = 0
+      manageNamedEnvironments.mockImplementation(async (request: { action: string }) => {
+        if (request.action !== 'list') return { environments: [] }
+        listCalls += 1
+        return {
+          environments: [
+            {
+              name: 'analysis',
+              language: 'python' as const,
+              ready: true,
+              isDefault: false,
+              // The walk lands between the first and the second read.
+              ...(listCalls === 1 ? {} : { sizeBytes: 2048 })
+            }
+          ]
+        }
+      })
+      await render()
+
+      expect(container.querySelector('[data-testid="named-env-row"]')).not.toBeNull()
+      expect(container.querySelector('[data-testid="named-env-size"]')).toBeNull()
+      const callsBeforeRetry = listCalls
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_200)
+      })
+
+      const size = container.querySelector('[data-testid="named-env-size"]')
+      expect(size?.textContent).toContain('2 KB')
+      expect(listCalls).toBeGreaterThan(callsBeforeRetry)
+
+      // …and the sequence stops once every row has a size: no timer keeps asking a panel that is open.
+      const callsWhenSized = listCalls
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(listCalls).toBe(callsWhenSized)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('RuntimesPanel reads its own copy in the user’s language', () => {

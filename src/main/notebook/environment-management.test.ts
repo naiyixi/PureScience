@@ -10,6 +10,7 @@ import {
   type NotebookEnvironmentManager
 } from './environment-management'
 import { envPrefix } from './runtime-paths'
+import { createDirectorySizeCache } from '../storage/directory-size-cache'
 
 type OwnerOptions = ConstructorParameters<typeof NotebookEnvironmentManagementOwner>[0]
 type EnvironmentSession =
@@ -382,6 +383,93 @@ describe('NotebookEnvironmentManagementOwner', () => {
       }
     }
   )
+
+  describe('list sizes are not on the critical path (2026-11-11)', () => {
+    const deferredMeasure = (): {
+      promise: Promise<{ state: 'measured'; bytes: number }>
+      resolve: (value: { state: 'measured'; bytes: number }) => void
+    } => {
+      let resolve: (value: { state: 'measured'; bytes: number }) => void = () => {}
+      const promise = new Promise<{ state: 'measured'; bytes: number }>((res) => {
+        resolve = res
+      })
+      return { promise, resolve }
+    }
+    const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+    it('answers the list before the prefix walk finishes, then serves the size the walk landed', async () => {
+      // Measured on the real machine: sizing 1.65 GB / 44,716 files cost 4.8–5.0 s of handler time, and the
+      // Runtimes panel asks for this list the moment it opens. The first answer is "not measured yet"
+      // (absent) — the row prints nothing — and the size lands on the next read.
+      const runtimeRoot = await mkdtemp(join(tmpdir(), 'env-list-sizes-'))
+      try {
+        const prefix = envPrefix(runtimeRoot, 'analysis')
+        await mkdir(prefix, { recursive: true })
+        await writeFile(join(prefix, 'lib.so'), Buffer.alloc(4096, 1))
+
+        const walk = deferredMeasure()
+        const configured = manager()
+        vi.mocked(configured.listEnvironments).mockReturnValue([
+          { name: 'analysis', language: 'python', ready: true, isDefault: false }
+        ])
+        const { owner } = harness({
+          manager: configured,
+          runtimeRoot,
+          directorySizes: createDirectorySizeCache({
+            measure: () => walk.promise,
+            waitBudgetMs: 5
+          })
+        })
+
+        const first = await owner.manage({ action: 'list' })
+        expect(first.environments[0]).not.toHaveProperty('sizeBytes')
+
+        walk.resolve({ state: 'measured', bytes: 4096 })
+        await flush()
+        const second = await owner.manage({ action: 'list' })
+        expect(second.environments[0].sizeBytes).toBe(4096)
+      } finally {
+        await rm(runtimeRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('re-measures a prefix the app itself just created instead of serving the size it had before', async () => {
+      const runtimeRoot = await mkdtemp(join(tmpdir(), 'env-list-invalidate-'))
+      try {
+        const prefix = envPrefix(runtimeRoot, 'analysis')
+        await mkdir(prefix, { recursive: true })
+        let bytes = 100
+        const measure = vi.fn(async () => ({ state: 'measured' as const, bytes }))
+        const configured = manager()
+        vi.mocked(configured.listEnvironments).mockReturnValue([
+          { name: 'analysis', language: 'python', ready: true, isDefault: false }
+        ])
+        const { owner } = harness({
+          manager: configured,
+          runtimeRoot,
+          directorySizes: createDirectorySizeCache({ measure, waitBudgetMs: 50 })
+        })
+
+        await expect(owner.manage({ action: 'list' })).resolves.toEqual({
+          environments: [
+            { name: 'analysis', language: 'python', ready: true, isDefault: false, sizeBytes: 100 }
+          ]
+        })
+
+        // The app recreates the prefix; the size it used to hold is not a fact about the new one.
+        bytes = 250
+        await owner.manage({ action: 'create', name: 'analysis', language: 'python' })
+        await expect(owner.manage({ action: 'list' })).resolves.toEqual({
+          environments: [
+            { name: 'analysis', language: 'python', ready: true, isDefault: false, sizeBytes: 250 }
+          ]
+        })
+        expect(measure).toHaveBeenCalledTimes(2)
+      } finally {
+        await rm(runtimeRoot, { recursive: true, force: true })
+      }
+    })
+  })
 
   describe('importLock (A7)', () => {
     const request = {

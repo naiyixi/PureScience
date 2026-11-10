@@ -77,6 +77,12 @@ const LANGUAGES: ReadonlyArray<{ id: NotebookLanguage; label: string; icon: Reac
   { id: 'r', label: 'R', icon: <RIcon /> }
 ]
 
+// How long the named-environment list waits between follow-up reads while a prefix is still being sized.
+// The main process answers the list first and walks each prefix behind the reader (a real env is 1.3 GB /
+// 32,792 files ≈ 5 s), so the first answer legitimately lacks the number. Three follow-ups cover the walk
+// without turning a panel that stays open into a poller.
+const NAMED_ENV_SIZE_RETRY_MS = [1_200, 2_500, 4_000] as const
+
 type EnvLists = { python: DiscoveredInterpreter[]; r: DiscoveredInterpreter[] }
 type Enablements = Partial<Record<NotebookLanguage, RuntimeEnablement>>
 
@@ -211,6 +217,12 @@ const RuntimesPanel = ({
   // whose removal is being confirmed.
   const [namedEnvs, setNamedEnvs] = useState<EnvironmentInfo[] | null>(null)
   const [namedEnvAction, setNamedEnvAction] = useState<{ name: string } | null>(null)
+  // Sizing a prefix is a full walk (seconds on a real env), so the main process answers the list FIRST and
+  // measures behind the reader. A row without a size therefore means "not measured yet" — the panel asks
+  // again a few times instead of leaving the number to appear only after the user reopens Settings.
+  // Bounded on purpose: an absent size is a state the row already prints as nothing.
+  const [namedEnvSizeAttempt, setNamedEnvSizeAttempt] = useState(0)
+  const namedEnvsAwaitingSize = (namedEnvs ?? []).some((env) => env.sizeBytes === undefined)
   const dialogNamedEnvAction = useRetainedDialogValue(namedEnvAction)
   const initEnv = useNotebookEnvStore((state) => state.init)
   const provisionEnv = useNotebookEnvStore((state) => state.provision)
@@ -684,6 +696,8 @@ const RuntimesPanel = ({
     try {
       const result = await window.api.runtime.manageNamedEnvironments({ action: 'list' })
       setNamedEnvs(result.environments)
+      // Every row carries a size ⇒ the follow-up sequence is done and a later create/remove starts from 0.
+      if (!result.environments.some((env) => env.sizeBytes === undefined)) setNamedEnvSizeAttempt(0)
     } catch (e) {
       setNamedEnvs([])
       setError(e instanceof Error ? e.message : t('runtimes.namedEnvsEmpty'))
@@ -692,7 +706,20 @@ const RuntimesPanel = ({
 
   useEffect(() => {
     void refreshNamedEnvs()
-  }, [refreshNamedEnvs])
+  }, [refreshNamedEnvs, namedEnvSizeAttempt])
+
+  // The follow-up reads above: while a row still has no size, ask again after a short wait — the walk the
+  // main process started finishes into its cache, and the next read hands the number back. Three tries,
+  // then stop (see the state comment): a prefix nobody can list stays without a size, which is honest.
+  useEffect(() => {
+    if (!namedEnvsAwaitingSize) return
+    if (namedEnvSizeAttempt >= NAMED_ENV_SIZE_RETRY_MS.length) return
+    const timer = setTimeout(
+      () => setNamedEnvSizeAttempt((attempt) => attempt + 1),
+      NAMED_ENV_SIZE_RETRY_MS[namedEnvSizeAttempt]
+    )
+    return () => clearTimeout(timer)
+  }, [namedEnvsAwaitingSize, namedEnvSizeAttempt])
 
   // Removal is the service's call: it refuses while a live kernel uses the env, and that reason is shown
   // verbatim (never reworded into something friendlier).

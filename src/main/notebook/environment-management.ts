@@ -14,6 +14,7 @@ import type { NotebookEnvironmentOperations } from './environment-operations'
 import { ImportLockIncompleteError } from './provisioner'
 import { clearInterpreterProbeCache } from './environment-discovery'
 import { measureDirectorySize } from '../storage/usage'
+import { createDirectorySizeCache, type DirectorySizeCache } from '../storage/directory-size-cache'
 import { assertSafeEnvName, DEFAULT_PY_ENV, DEFAULT_R_ENV, envPrefix } from './runtime-paths'
 import type { NotebookRuntimeRepairOwner } from './runtime-repair'
 
@@ -51,6 +52,9 @@ type NotebookEnvironmentManagementOptions = {
   assertPrefixRecoverable: (prefix: string) => void
   environmentOperations: Pick<NotebookEnvironmentOperations, 'runMutation'>
   runtimeRepair: Pick<NotebookRuntimeRepairOwner, 'completeRemovedManagedEnvironment'>
+  // Prefix sizes for the list readout. Optional so tests can drive the "not measured yet" path without a
+  // real walk; production omits it and gets the TTL-cached walker (see `directory-size-cache.ts`).
+  directorySizes?: DirectorySizeCache
 }
 
 const isAppManagedEnvironment = (name: string): boolean =>
@@ -62,9 +66,13 @@ const isAppManagedEnvironment = (name: string): boolean =>
 /** Owns named-environment validation, lifecycle ordering, and live-use protection. */
 class NotebookEnvironmentManagementOwner {
   private manager: NotebookEnvironmentManager | undefined
+  private readonly directorySizes: DirectorySizeCache
 
   constructor(private readonly options: NotebookEnvironmentManagementOptions) {
     this.manager = options.manager
+    this.directorySizes =
+      options.directorySizes ??
+      createDirectorySizeCache({ measure: (dir) => measureDirectorySize(dir, new Set()) })
   }
 
   setManager(manager: NotebookEnvironmentManager): void {
@@ -92,6 +100,8 @@ class NotebookEnvironmentManagementOwner {
           } finally {
             // The new interpreter has never been probed; drop any answer an earlier env at this path left.
             clearInterpreterProbeCache()
+            // A prefix that was just created has no size of its own yet — never inherit one.
+            this.directorySizes.invalidate(envPrefix(this.options.runtimeRoot, name))
           }
         })
       }
@@ -128,8 +138,9 @@ class NotebookEnvironmentManagementOwner {
           const measurement = await measureDirectorySize(prefix, new Set())
           const environments = manager.removeEnvironment(name)
           this.options.runtimeRepair.completeRemovedManagedEnvironment(name)
-          // The prefix is gone; any memoised answer for its interpreter must not outlive it.
+          // The prefix is gone; any memoised answer for its interpreter or its size must not outlive it.
           clearInterpreterProbeCache()
+          this.directorySizes.invalidate(prefix)
           return measurement.state === 'measured'
             ? { environments, freedBytes: measurement.bytes }
             : { environments }
@@ -143,13 +154,20 @@ class NotebookEnvironmentManagementOwner {
   // agent and the window showed nothing. Filled here, on the readout path only, by reusing the storage
   // walker (inode-aware) instead of a second one. A prefix that cannot be measured is left absent rather
   // than reported as zero: "could not look" and "nothing there" must not read alike.
+  //
+  // The walk is NOT on this path's critical timing any more (2026-11-11): sizing every prefix cost 4.8–5.0 s
+  // of handler time on the real machine (1.65 GB / 44,716 files) and the window asks for this list the moment
+  // Settings → Runtimes opens — and again from the package dialog, which only reads the NAMES. The cache
+  // hands back the last reading, walks behind the reader, and on a cold read answers "not measured yet"
+  // (absent) instead of stalling; the panel asks again and the size lands. Absent is the state the field
+  // already had for a prefix nobody could list, and the row prints nothing for it.
   private async withSizes(environments: EnvironmentInfo[]): Promise<EnvironmentInfo[]> {
     const measured = await Promise.all(
       environments.map(async (environment) => {
         const prefix = envPrefix(this.options.runtimeRoot, environment.name)
         try {
-          // Existence first: 0-byte is a different fact from a prefix that could not be looked at. Only a
-          // prefix that exists is sized.
+          // Existence first: a missing prefix is a different fact from one that could not be looked at,
+          // and only a prefix that exists is sized at all.
           await stat(prefix)
         } catch {
           return environment
@@ -157,10 +175,8 @@ class NotebookEnvironmentManagementOwner {
         // P0-10 (last open item): the walk reports a reading or `unavailable`. A tree that could only be
         // PARTLY walked is not "this prefix is 1.2 GB" — the unreadable subtree would silently shrink the
         // number shown to the reader, so the row goes without a size instead of with a wrong one.
-        const measurement = await measureDirectorySize(prefix, new Set())
-        return measurement.state === 'measured'
-          ? { ...environment, sizeBytes: measurement.bytes }
-          : environment
+        const bytes = await this.directorySizes.read(prefix)
+        return bytes === undefined ? environment : { ...environment, sizeBytes: bytes }
       })
     )
     return measured
@@ -229,6 +245,7 @@ class NotebookEnvironmentManagementOwner {
       } finally {
         // A partial import still writes interpreters, so the memo is dropped on both outcomes.
         clearInterpreterProbeCache()
+        this.directorySizes.invalidate(envPrefix(this.options.runtimeRoot, name))
       }
     })
   }
