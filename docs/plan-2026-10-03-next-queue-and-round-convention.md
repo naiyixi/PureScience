@@ -17326,3 +17326,87 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
 - 下一轮第一步：① 取本笔双车道判决（完整 40 位）；② 分桶里下一个「self-borne 且中位过秒」的候选
   （`notifications:get-snapshot` 75 条 / med 470 ms / max 10 s，`cases:install` 3 条 / med 18.8 s）；
   ③ `sessions:save-session` 的持有窗口仍等装机新行（其 `queueBlockers` 已具名）。
+
+## 三百一十一、本轮追加（执行器，2026-11-11 07:4x–）—— 环境面板的体积读：冷读不再把整棵树走一遍；顺带把 `save-session` 的 789 条慢行分段量清楚
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `ae8bb64e`（案例市场）/ `03a9dcd7`（预览读内容）/ `c760dbfe`（list-runtimes 枚举）⇒ 与本节无关，不重做。
+- 工作区里那 6 个路径是本执行器**上一轮被截断时留下的在制品**（`src/main/storage/directory-size-cache.*` 新建 + `environment-management.*` + `RuntimesPanel.*`，mtime 05:27–05:34，无他人署名改动）⇒ 本轮接着收口，不是新建第二个实现。
+- 上一轮遗留的三份 `docs/evidence/2026-11-0*.md` 未跟踪文件不在本笔范围（非本轮产出）。
+
+### 一 交付（`d3b3dd92`，6 文件 / +415 −8）
+
+真机日志 (`logs/headless.out.log`, `runtime:manage-named-environments`)：`durationMs` **11.2 s / 18.2 s**，
+`cpuShare` **0.978 / 0.751**，`attribution: cpu-bound-in-process`，`ownMs` **4,760 / 4,991** —— 也就是说这两次里
+近 5 秒是「把每个命名环境的目录走一遍算体积」，而 Settings → Runtimes 一打开就要这份清单，打包对话框还会再要一次
+（它只读名字）。
+
+- 新增 `src/main/storage/directory-size-cache.ts`：TTL 缓存 + 同一目录最多一次在飞遍历；读返回上一次量到的数，
+  冷读按 **250 ms** 预算作答，量不到就先答「还没量」（字段**缺席**，绝不填 0），遍历在读者背后落进缓存；
+  `unavailable` 只记一个 TTL，免得一串读把不可读的树反复走一遍。三态各自具名（数字 / 缺席 / 量不了）。
+- `environment-management` 的 list 路径改走缓存；创建 / 导入 / 删除后 `invalidate` 对应前缀（刚建的目录不继承旧体积）。
+- `RuntimesPanel`：还有行缺体积时最多补读三次（1.2 s / 2.5 s / 4 s），补齐即停，不做常驻轮询。
+
+真实前缀（`du -sk` + `find` 现取，只读）：`default-python` **1.26 GB / 32,792 文件** + `molsim` **0.34 GB / 11,924 文件**
+= **1.60 GB / 44,716 文件**，与日志里 `ownMs` 的量级一致。
+
+### 二 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 3 文件 | **3 files / 66 passed** |
+| `src/main/notebook` + `src/main/storage` + `src/renderer/src/pages/settings` | **182 files / 2,507 passed / 102 skipped** |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（6 文件） | 0 problems |
+| `scripts/pre-push-checks.sh` | 全过（敏感词零命中 / README 与 CHANGELOG 核对 / 6 文件 lint） |
+
+已推 `d3b3dd92`（`ae8bb64e..d3b3dd92`），双车道判决见 §四。
+
+### 三 顺带量清楚的一笔：`sessions:save-session` 的 789 条慢行花在哪
+
+同一份打包版日志（`~/Library/Logs/PureScience/main{,1,2}.log`，2026-11-04…09），用日志自己写的分段行
+（`session save was slow`）聚合，**不猜**：
+
+| 段 | 合计 | 占比 | p50 | p90 | max |
+| --- | --- | --- | --- | --- | --- |
+| `totalMs` | **1,118.9 s** | 100% | 379 | 2,008 | 38,085 |
+| `queuedMs` | 34.9 s | 3% | 0 | 2 | 8,192 |
+| `authorityMs` | **460.2 s** | **41%** | 91 | 688 | 22,682 |
+| `prepareMs` | 28.5 s | 3% | 10 | 76 | 1,441 |
+| `writeMs` | 383.2 s | 34% | 71 | 410 | 27,637 |
+| ├ `writeDiskMs` | **320.3 s** | 29% | 41 | 360 | 25,051 |
+| ├ `writeReplaceMs` | 43.7 s | 4% | 1 | 16 | 16,708 |
+| ├ `writeSerializeMs` | 8.7 s | 1% | 6 | 25 | 157 |
+| └ `writeMaterializeMs` | 10.2 s | 1% | 5 | 25 | 382 |
+| `aftermathMs` | **212.1 s** | 19% | 132 | 451 | 8,657 |
+
+- 归因：`inconclusive` 406 / `cpu-bound-in-process` 377 / `no-cpu-in-process` 6；`cpuShare` 中位 **0.6**。
+- **排队不是问题**（3%，p90 = 2 ms）——与前一轮的结论一致；**序列化也不是**（`writeSerializeMs` 只占 1%）。
+- 两个真贵的半边是 **`authorityMs`（先整份读一遍会话 JSON，只为保住主进程自有的 `runtimeContext` / `archivedAt` /
+  `waiting-plan-approval` 三项）** 与 **`writeDiskMs`（真写盘）**，其次 `aftermathMs`（`captureFinalizedMessages` +
+  `fileIndex.syncSession`）。
+- 这一条是本轮**只量未改**：`sessions:save-session` 的持有窗口仍等装机新行，改动要下一轮从上面的归属里挑一处。
+
+### 四 CI 判决
+
+- `03a9dcd7`：Nightly **success** / Windows Full Test **success**（`gh run list` 直读）。
+- `ae8bb64e`：Nightly **success** / Windows Full Test **success**。
+- `c760dbfe`：Nightly **cancelled**（被后一笔顶掉，`cancel-in-progress`），Windows Full Test success；
+  它是 `03a9dcd7` 的祖先（`git merge-base --is-ancestor` 为真）⇒ 那一笔的证据引 `03a9dcd7` 的双绿，
+  不写成「`c760dbfe` 的 CI 绿」。它首跑里 macos-x64 的那条 `macos_smoke` 间歇（60.2 s 超时）按
+  `docs/evidence/2026-11-07-macos-x64-smoke-intermittent.md` 记档，复跑被后续推送取消，不再据此立案。
+- `d3b3dd92`：推送时无在飞车道（`gh run list` 现查）；判决 **Nightly `42925321156` success / Windows Full Test `42925320933` success**
+  （看门脚本第 77 次轮询落定）。其中 arm64 作业的 `Run P0 Electron certification` 是那条长步骤（00:03Z 起跑、约 50 分钟），
+  同 run 里 macos-x64 的 `Smoke test macOS packages` 这次是 success ⇒ 上一笔那次的 x64 间歇没有复现。
+
+### 五 边界与下一轮第一步
+
+- 装机侧未验：本改动在 main 上，打包版要等下一次发版才带电；「面板打开不再掉 5 秒」的装机判据 =
+  同一天打开 Runtimes 面板的时段里 `runtime:manage-named-environments` 慢行条数与 `ownMs` 下降。
+- 指针注入这一层只有单测与渲染用例证据（真机侧要靠上面那条装机判据）。
+- 下一轮第一步：① 取 `d3b3dd92` 双车道判决（完整 40 位）；② 从 §三 的归属里挑一处改动 —— 首选
+  `authorityMs`（41%）：先量这份读是「整份文档解析」还是「索引答的」（`session runtime context read was slow`
+  行里 `source` 字段：本批 16 条里 15 条 index / 1 条 document，但那是另一条读路径，不能直接外推到保存路径），
+  确认后要么让主进程自己持有那三项，要么只读必要字段；③ `notifications:get-snapshot`（75 条 / 中位 470 ms /
+  max 10 s）与 `cases:install`（3 条 / 中位 18.8 s）仍挂在候选里。
