@@ -17026,3 +17026,60 @@ at the deadline…`）；还原后 46 例全绿。
 - `reviewsQueryMs`（项目库单连接查询）与 `sessionLoadMs`（会话文档解析）占另外一半，属不同根因，另案。
 - 下一轮第一步：① 取本笔的双车道判决（完整 40 位 SHA）；② 分桶表里剩下的两族：`sessions:import-posture`
   （med 183 / p90 995，102 次）与 `artifacts:read-preview`（p99 8.2 s，83 次）；③ 资源闸门一开补 §299 §四 ② 的真机读数。
+
+## 三百零六、本轮追加（执行器，2026-11-10 17:0x–）—— 导入只读状态：每个流式块读一次主进程，改成每次打开会话读一次
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = f360468d`，工作树只有三份**不是我的**未跟踪证据档（`2026-11-01-…`、`2026-11-04-…` 两份）
+  ⇒ 一个字节没碰、不提交。
+- **`f360468d` 的双车道判决已取**（完整 40 位 `f360468d011952da10e43a060ea8ec968c4e9b2f`）：
+  `Windows Full Test` success、`Nightly` success（2026-11-10T06:46:34Z）⇒ §305 那笔有自身判决。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 本单元取记事本第 ② 条剩下的两族，
+  按 §305 §四 的判据先量后改。两族结论见下：一族是产品缺陷（本笔修），一族不是（零代码收口）。
+
+### 一 读数（先量后改；全部取自真机日志，只读）
+
+`sessions:import-posture` 102 条慢行：med 183 / p90 995 / p99 2,855 / max 3,908 ms，
+**97 条落在同一进程运行**（`4c440a91…`，11-09）；同一通道在 **1.2 秒内出现 10 次调用**
+（11-05T15:15:47.911 → :49.072），其中三对起止时刻逐字相同。
+`artifacts:read-preview` 85 条：p99 8.2 s 的几条全在 11-05T15:15:30 那一片，同一片 `diagnostics`
+写着 `event loop stalled … cause.kind = fs-queue-saturated`（fs canary 5,954 ms、loadAvg1m 14.23、
+freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifacts:probe-availability` 8.2 s
+同时变慢 ⇒ **宿主 fs 队列饱和 + 内存压力**，不是该通道的缺陷。
+
+### 二 缺口与交付（1 新文件 + 1 产品文件 + 1 测试 + 证据档）
+
+- `activeSession = sessions.find(...)` 的 memo 依赖 `sessions`，而 store 的 `appendAgentMessageChunk`
+  对**每个提交的块**都造新的会话对象（`shouldCommit` 在三个分支恒为 `true`）⇒ 原 effect 的 `[activeSession]`
+  在流式回合里**每块变一次**，每块发一次 IPC、读一次文件、并整页重渲一次。
+- 新 `src/renderer/src/hooks/useSessionImportPosture.ts`：依赖只有 `(projectId, sessionId)` 两个原始值，
+  返回值按 id 过滤（换会话后旧记录立刻不可见，不在 effect 里同步 setState 复位），
+  `window.api?.sessions?.importPosture` 全链可选（Web 面安静不动）。
+- `WorkspacePage.tsx` 删掉原 19 行 `useState` + `useEffect` 对，改为一次 hook 调用；横幅渲染条件不动。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向 vitest（新 hook） | **1 file / 4 passed** |
+| `src/renderer/src/hooks` + `components/session-package` | **9 files / 59 passed** |
+| `src/renderer/src/pages/workspace` | **177 files / 1,915 passed** |
+| `src/renderer/src`（整个渲染层） | **411 files / 4,455 passed \| 1 skipped** |
+| `tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
+| `eslint --no-cache`（3 文件） | 0 error / 0 warning |
+
+**变异自证**：依赖改回「每次渲染新建的对象」⇒ 两条用例当场红（2 failed / 2 passed），还原全绿。
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- 没有真机窗口读数（资源闸门未开、慢读数只在打包版上）。装机后的判据：同一会话在流式回合里该通道的
+  **慢行条数**与**同一分钟内的条数**同时下降（该通道只在超阈值时打行，所以只数总量会读错）。
+- 收益的毫秒未测；每次省一次 IPC + 一次小文件读 + 一次整页重渲。
+- 收紧了「记录被外部改写会被顺带看到」这一非设计行为：导入必然产生新会话 id，故可接受；
+  将来若出现「就地改写记录」的路径要显式触发重读。
+- `artifacts:read-preview` 判为**零代码收口**（上线是宿主 fs 队列饱和/内存压力，三条通道同时排队）。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 慢行分桶里剩下的 `notebook:list-runtimes`
+  （101 条、med 1,262 / p90 5,838，但只有 2 条是本进程在算 ⇒ 先判它是不是同一类排队）与
+  `session-persistence` 的 `queuedMs`（本轮日志里出现 `queueBlockers=save-session-specialist-binding=7231ms`，
+  属**队列阻塞**而不是写盘）；③ 资源闸门一开补 §299 §四 ② 的真机读数。
