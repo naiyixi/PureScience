@@ -22,6 +22,7 @@ import { AcpRuntime } from '../acp/runtime.test-utils'
 import { ReviewRepository } from './repository'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import { runReview } from './orchestrator'
+import { classifyCorrectionFailure, injectAuditorMessage } from './correction'
 import { callSubmitFindingsAfterReadingEvidence as callSubmitFindings } from './reviewer-mcp-test-client'
 import type { PersistedChatSession } from '../../shared/session-persistence'
 import { createLinearConversationGraph } from '../../shared/conversation-graph'
@@ -689,5 +690,54 @@ describe('single-round auditor correction', () => {
     expect(correctionFailedCount).toBe(1)
 
     await client.$disconnect()
+  })
+})
+
+// The correction prompt is a normal prompt turn, so it can collide with a turn already streaming in the
+// main session. Nine days of packaged logs carry 19 of those collisions, every one of them reported to
+// the user as the same sentence ("The correction prompt failed.") — a collision and a broken provider
+// were indistinguishable. These cases pin the named causes.
+describe('correction failure attribution', () => {
+  const finding = {
+    id: 'finding-1',
+    reviewId: 'review-1',
+    claim: 'Unsupported claim',
+    evidence: 'No source in the transcript',
+    status: 'warn',
+    sortIndex: 0
+  } as unknown as import('../../shared/reviewer').ReviewCheck
+
+  const inject = async (message: string): Promise<unknown[]> => {
+    const reasons: unknown[] = []
+    await injectAuditorMessage({
+      sessionId: 'session-1',
+      mainSessionId: 'main-session-1',
+      findings: [finding],
+      acpRuntime: {
+        sendPrompt: async () => {
+          throw new Error(message)
+        }
+      } as unknown as import('./acp-runtime').ReviewerAcpRuntime,
+      provenanceContext: {} as never,
+      onCorrectionFailed: (reason) => reasons.push(reason)
+    })
+    return reasons
+  }
+
+  it('names a session collision instead of a generic send failure', async () => {
+    await expect(inject('An ACP prompt is already running for this session')).resolves.toEqual([
+      'session-busy'
+    ])
+  })
+
+  it('keeps the residual case named as a send failure', async () => {
+    await expect(inject('RequestError: Authentication required')).resolves.toEqual(['send-failed'])
+  })
+
+  it('classifies without guessing from unrelated text', () => {
+    expect(
+      classifyCorrectionFailure('An ACP interaction is already running for this session')
+    ).toBe('session-busy')
+    expect(classifyCorrectionFailure('prompt already running')).toBe('send-failed')
   })
 })

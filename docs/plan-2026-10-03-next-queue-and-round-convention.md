@@ -16812,3 +16812,59 @@ finishes while the app is closed and is restarted later」。而投递**把结�
 - **下一轮第一步**：① 取本笔双车道判决（完整 40 位 SHA）；② 资源闸门一开就补 §299 §四 ② 的真机读数；③ 同一条日志里另两族开项
   按序取：`reviewer:correction` 的 `An ACP prompt is already running for this session`（同 run 3 次，随后
   `correction failed in fix loop — marking remaining checks unaddressed` ⇒ 修复环静默降级）、`egress approval timed out`（11 次）。
+
+## 三百零二、本轮追加（执行器，2026-11-10 09:4x–）—— 修正回合的 stop 又起了一份复核：状态闸 + `origin` 接线（19 次撞车）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `origin/main = e031864e`。§三百零一 §四 ① 的待取判决**已到手**（完整 40 位 SHA 现查）：
+  `Windows Full Test` **success**、`Nightly` **success**（此前挂着的 macos-arm64 作业也已 `completed`）。
+- 共享工作树 `git status --short` 仍只有三份**不是我的**未跟踪证据档（`2026-11-01-reviewer-fix-loop-double-review.md`、
+  `2026-11-04-file-ocr-branch-name.md`、`2026-11-04-upload-probe-availability.md`）⇒ 不碰、不提交；`src/` 无并行写入者。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；§299 §四 ② 的真机窗口读数仍被资源闸门挡着
+  （空闲页 4,183 × 16 KB ≈ 67 MB、swap 7,399 / 8,192 MB 已用）⇒ 按 §301 §四 ③ 取同一份日志里的那一族开项。
+- **与盘上那份未跟踪证据档的关系**：`2026-11-01-reviewer-fix-loop-double-review.md` 早已把同一现象与同一修法写成方案，
+  但**代码不在树里**（`grep -rn "fix-loop-active" src/` 零命中）⇒ 它不是「已完成」，本轮按自己的读数独立实现，
+  不修改那份文件（归属仍是它的）。
+
+### 一 读数与归因（先量后改）
+
+`main.log` + `main.1.log` 里 `An ACP prompt is already running for this session` 共 **19 次**（3 + 16）。同一 run 的时间线见
+证据档 §一：修正回合 10:46:44 结束 ⇒ 10:46:45 修复环开始 scoped re-review 的**同一秒**，自动复核又触发了一份
+（`turnMessageId` 是**另一条** agent 消息）⇒ 两个 reviewer session 并行、各 143 次工具调用；后完成的那份注入时撞车，
+把检查标成 `unaddressed`，落库说明只有一句「The correction prompt failed.」。
+
+**根因两条（读源码定死）**：① 抑制旗标只住在渲染层，而自动复核的权威触发点已在主进程 ⇒ 无窗口/CLI 回合不受它约束；
+② **主进程触发器的请求里没有 `origin`**，而审查侧两道自动保护（按回合幂等、本轮新增的归属闸）都以
+`origin === 'auto'` 为前提 ⇒ 真实路径上两道保护一道都没生效。
+
+### 二 交付（产品 4 文件 + 测试 3 文件 + 证据档）
+
+见证据档 §三的表格：`auto-review-trigger.ts` 请求带 `origin:'auto'`；`shared/reviewer.ts` 的
+`ReviewRunNotStartedReason` 增 `'fix-loop-active'`；`reviewer/ipc.ts` 的 `triggerReview` 最前面加**状态闸**
+（`fixLoopAbortControllers` 有该会话键 ⇒ 自动请求拒绝并写具名日志）；`correction.ts` / `orchestrator.ts` 把「发送失败」
+拆成 `session-busy` / `provenance-failed` / `send-failed` 三种具名原因并各给一句用户可见说明。
+
+判据：**状态而非时序**（闸读修复环自己的生命周期键，不信一次性旗标）+ **拒绝要具名**（`started:false` 与「没有回合」
+不许同形）。
+
+### 三 门禁（全部实跑，取自最后一次改动之后）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/reviewer` 整簇 | 28 files / **350 passed**，exit 0 |
+| 全量 vitest（`--maxWorkers=4`） | 1473 passed \| 31 skipped（1504 文件）；**18414 passed \| 228 skipped（18642）**；235.57 s；exit 0 |
+| 双 typecheck（`--composite false`，堆 4096） | node / web 各自 exit 0 |
+| `eslint --no-cache .` | **0 error**（本单元 6 文件 0 error / 0 warning） |
+
+**变异自证**：归属闸短路成 `false && …` ⇒ 新用例当场红（`expected { started: true } to deeply equal
+{ started: false, reason: 'fix-loop-active' }`），改回后 35 例全绿。
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- **真机窗口读数未取**（资源闸门同上）；证据是「真机日志读数 + 源码归因 + 全量单测」。
+  **验收判据（下一版装出去之后）**：同机日志出现 `auto review skipped: the fix loop owns this session`，
+  且不再新增 `already running for this session`；两条一起才算修好。
+- 闸只管自动路径（手动「请求复核」在修正轮次里仍可启动，有意为之）；回合身份（`turnMessageId`）不动，属独立单元。
+- **下一轮第一步**：① 取本笔双车道判决（完整 40 位 SHA）；② 资源闸门一开就补 §299 §四 ② 的真机读数；
+  ③ 同一条日志里最后一族开项：`egress approval timed out`（11 次）。

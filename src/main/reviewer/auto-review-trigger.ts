@@ -21,6 +21,11 @@ export type AutoReviewRequest = {
   projectId: string
   turnMessageId: string
   mainSessionId: string
+  // Why this field exists: `origin` is what makes a request automatic at the reviewer owner, and BOTH
+  // protections there key on it — the per-turn idempotency check and the fix-loop ownership gate. The
+  // trigger used to omit it, so a main-triggered review was indistinguishable from a manual one and
+  // neither protection applied on the path that actually runs for headless/CLI turns.
+  origin: 'auto'
 }
 
 export type AutoReviewTriggerDeps = {
@@ -65,7 +70,8 @@ export const createAutoReviewTrigger =
           sessionId,
           projectId: session.projectId,
           turnMessageId: turnMessage.id,
-          mainSessionId: sessionId
+          mainSessionId: sessionId,
+          origin: 'auto'
         })
         return 'reviewed'
       }

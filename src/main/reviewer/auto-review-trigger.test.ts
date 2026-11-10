@@ -150,6 +150,18 @@ describe('main-process auto-review trigger', () => {
     await expect(trigger('session-1')).rejects.toThrow('reviewer unavailable')
   })
 
+  it('marks the request automatic so the owner applies its auto-only protections', async () => {
+    // origin='auto' is what enables BOTH the per-turn idempotency check and the fix-loop ownership gate
+    // at the reviewer owner. Omitting it made main-triggered reviews look manual — the protections
+    // existed and never ran on the path that serves headless/CLI turns.
+    const { trigger, runReview } = deps([session()])
+
+    await expect(trigger('session-1')).resolves.toBe('reviewed')
+    expect(runReview).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: 'auto', sessionId: 'session-1', projectId: 'project-1' })
+    )
+  })
+
   it('spends the documented settle budget', () => {
     // The measured write lag on a real CLI turn is ~1.8 s; the default schedule must cover it and stay
     // bounded (a review that never starts must not turn into an unbounded retry loop).

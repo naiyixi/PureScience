@@ -264,6 +264,25 @@ const createReviewerCommandOwner = (options: ReviewerIpcOptions): ReviewerComman
     const { sessionId, turnMessageId, scopeTurnMessageId, projectId, mainSessionId, model } =
       request
 
+    // Ownership gate, and it is a STATE check rather than a timing one: `fixLoopAbortControllers` is
+    // written by onFixLoopStart/onFixLoopEnd, so an active key means a fix loop currently owns this
+    // session. The [Auditor] correction prompt is a normal prompt turn, so its stop is indistinguishable
+    // from a user turn's — auto-review used to start a second review of the very turn the loop was
+    // re-reviewing (measured on the real machine: two concurrent reviewer sessions, 143 tool calls each,
+    // then the duplicate loop's injection failed with `An ACP prompt is already running for this session`
+    // and its checks were marked unaddressed). Manual reviews stay allowed: the user may force one.
+    if (request.origin === 'auto') {
+      const ownerKey = `${projectId}\0${mainSessionId ?? sessionId}`
+      if (fixLoopAbortControllers.has(ownerKey)) {
+        log.info('auto review skipped: the fix loop owns this session', {
+          sessionId,
+          turnMessageId,
+          mainSessionId: mainSessionId ?? sessionId
+        })
+        return { started: false, reason: 'fix-loop-active' }
+      }
+    }
+
     // Reserve the turn SYNCHRONOUSLY (before any await) so a double-click / multiple stale cards can't
     // both pass the guard before the key is set. Released on the start-failure paths and, on success,
     // in the background run's finally.

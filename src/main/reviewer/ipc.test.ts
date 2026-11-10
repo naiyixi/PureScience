@@ -495,6 +495,71 @@ describe('reviewer IPC handlers', () => {
     expect(runReview).toHaveBeenCalledTimes(1)
   })
 
+  it('refuses an automatic review while a fix loop owns the session (state gate, not timing)', async () => {
+    // The [Auditor] correction prompt is a normal prompt turn, so its stop looks like a user turn's: an
+    // automatic review of it used to start a SECOND review of the very turn the fix loop re-reviews
+    // (measured on the real machine: two concurrent reviewer sessions, 143 tool calls each, then the
+    // duplicate loop's injection failed with `An ACP prompt is already running for this session` and two
+    // checks were persisted as unaddressed). The gate reads the fix loop's own lifecycle state.
+    let loop: { onFixLoopStart?: () => void; onFixLoopEnd?: () => void } = {}
+    runReview.mockReset()
+    runReview.mockImplementation(
+      (opts?: {
+        onStarted?: () => void
+        onFixLoopStart?: () => void
+        onFixLoopEnd?: () => void
+      }) => {
+        loop = opts ?? {}
+        opts?.onStarted?.()
+        return Promise.resolve(undefined)
+      }
+    )
+    registerReviewerIpcHandlers({ acpRuntime, searchEvidence })
+    const runHandler = handlers.get(REVIEWER_IPC.RUN)
+
+    await expect(runHandler?.({}, createRequest())).resolves.toEqual({ started: true })
+
+    // A correction is injected: the fix loop opens for (project-1, session-1).
+    loop.onFixLoopStart?.()
+    runReview.mockClear()
+
+    const autoDuringLoop = runHandler?.(
+      {},
+      {
+        sessionId: 'session-1',
+        turnMessageId: 'message-2',
+        projectId: 'project-1',
+        mainSessionId: 'session-1',
+        origin: 'auto'
+      }
+    )
+    await expect(autoDuringLoop).resolves.toEqual({ started: false, reason: 'fix-loop-active' })
+    expect(runReview).not.toHaveBeenCalled()
+
+    // Manual stays available: the user may force a review while the loop runs.
+    await expect(
+      runHandler?.({}, { ...createRequest(), turnMessageId: 'message-3', origin: 'manual' })
+    ).resolves.toEqual({ started: true })
+    expect(runReview).toHaveBeenCalledTimes(1)
+
+    // Loop settles → the same automatic request for the next turn starts normally.
+    loop.onFixLoopEnd?.()
+    runReview.mockClear()
+    await expect(
+      runHandler?.(
+        {},
+        {
+          sessionId: 'session-1',
+          turnMessageId: 'message-4',
+          projectId: 'project-1',
+          mainSessionId: 'session-1',
+          origin: 'auto'
+        }
+      )
+    ).resolves.toEqual({ started: true })
+    expect(runReview).toHaveBeenCalledTimes(1)
+  })
+
   describe('reviewer:get-for-session handler', () => {
     it('loads persisted reviews and runs them through the stale-review detector', async () => {
       const reviews = [

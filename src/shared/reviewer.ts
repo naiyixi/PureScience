@@ -311,6 +311,11 @@ export type ReviewRunNotStartedReason =
   | 'run-failed'
   | 'already-reviewed'
   | 'idempotency-check-failed'
+  // An automatic review asked for a turn while a fix loop already owns this session. The loop is
+  // re-reviewing that very correction turn itself, so a second review is duplicate work (measured: two
+  // concurrent reviewer sessions, then a colliding [Auditor] injection). Never retried — the fix loop's
+  // scoped re-review is the answer. Manual reviews are NOT refused: the user may force one.
+  | 'fix-loop-active'
 
 // IPC: result of reviewer:run. `started` is false when the run could not begin — no Review row is
 // created in that case, so the caller (e.g. a stale-review Re-run) can release its pending state and

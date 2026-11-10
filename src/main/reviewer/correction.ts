@@ -33,6 +33,19 @@ export const buildAuditorMessage = (checks: ReviewCheck[]): string => {
   return [header, ...lines, footer].join('\n')
 }
 
+// Why a correction prompt never reached the main session. Named rather than collapsed into one message:
+// `session-busy` means another turn was already streaming in this session (retriable in principle),
+// `provenance-failed` means the message could not be attributed, and `send-failed` is the residual case.
+// Measured on the real machine (2026-11-09): 19 `An ACP prompt is already running for this session`
+// failures were reported as "The correction prompt failed." — the user could not tell a collision from a
+// broken provider, and neither could the next investigation.
+export type CorrectionFailureReason = 'session-busy' | 'provenance-failed' | 'send-failed'
+
+const SESSION_BUSY_ERROR = 'already running for this session'
+
+export const classifyCorrectionFailure = (message: string): CorrectionFailureReason =>
+  message.includes(SESSION_BUSY_ERROR) ? 'session-busy' : 'send-failed'
+
 // Injects the [Auditor] message into the main session and waits for the correction turn to complete.
 // Resolution updates are NOT performed here — Phase 3 orchestrator drives re-review and sets
 // resolutions from the re-review outcome.
@@ -46,8 +59,9 @@ export const injectAuditorMessage = async (options: {
   provenanceContext: NonNullable<AcpPromptRequest['provenanceContext']>
   // Optional hook for tests to capture the injected message text.
   onCorrectionPrompt?: (text: string) => void
-  // Called if the correction sendPrompt fails, so the caller can undo pre-emptive suppression.
-  onCorrectionFailed?: () => void
+  // Called if the correction sendPrompt fails, so the caller can undo pre-emptive suppression and say
+  // WHY in the persisted disposition.
+  onCorrectionFailed?: (reason: CorrectionFailureReason) => void
 }): Promise<void> => {
   const {
     sessionId,
@@ -84,12 +98,14 @@ export const injectAuditorMessage = async (options: {
     log.info('[Auditor] correction turn complete', { mainSessionId })
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
+    const reason = classifyCorrectionFailure(errorMsg)
     log.error('[Auditor] correction sendPrompt failed', {
       mainSessionId,
+      reason,
       error: errorMsg
     })
     // Error handling: a failed correction does NOT spin into a re-review loop.
     // The correction turn never produced a stop, so undo the pre-emptive auto-review suppression.
-    onCorrectionFailed?.()
+    onCorrectionFailed?.(reason)
   }
 }

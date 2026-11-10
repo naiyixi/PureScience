@@ -36,7 +36,7 @@ import { createExternalSourceFetcher } from './external-source-fetch'
 import { buildReviewScopeSnapshot } from './scope-snapshot'
 import { REVIEWER_RUBRIC_SYSTEM_PROMPT_APPEND } from './rubric'
 import { buildSupervisorNotice, type SupervisorPlan } from '../../shared/supervisor-signals'
-import { injectAuditorMessage } from './correction'
+import { injectAuditorMessage, type CorrectionFailureReason } from './correction'
 import { buildHistoryPreamble } from '../../shared/history-preamble'
 import { getActiveConversationContext } from '../../shared/conversation-graph'
 
@@ -99,8 +99,10 @@ export type RunReviewOptions = {
   // Optional hook called with the auditor message text before it is sent. Used in tests.
   onCorrectionPrompt?: (text: string) => void
   // Optional hook called if the correction sendPrompt fails, so the caller can clear the pre-emptive
-  // auto-review suppression it set before the correction turn (the failed turn emits no stop).
-  onCorrectionFailed?: () => void
+  // auto-review suppression it set before the correction turn (the failed turn emits no stop). The
+  // reason travels with it: "a turn was already running" and "the provider rejected it" are different
+  // states, and the persisted note used to say the same sentence for both.
+  onCorrectionFailed?: (reason: CorrectionFailureReason) => void
   // Optional hook called when runReview is invoked externally; used in tests to assert no
   // recursive re-review is triggered by the correction path.
   onRunReviewCalled?: () => void
@@ -161,6 +163,15 @@ const reviewerToolBudgetMessage = (budget: number): string =>
 
 const DEFAULT_SESSION_REFRESH_TIMEOUT_MS = 10_000
 const SESSION_REFRESH_POLL_MS = 50
+
+// The sentence a user reads on the Review card when the fix could not be delivered, one per named
+// cause. `send-failed` keeps the original wording (nothing about it changed); the two new ones say what
+// actually happened, because "another turn was already running" is a different fact from a broken send.
+const CORRECTION_FAILURE_NOTES: Record<CorrectionFailureReason, string> = {
+  'session-busy': 'The fix could not be sent: another turn was already running in this session.',
+  'provenance-failed': 'The fix could not be attached to this turn, so it was not sent.',
+  'send-failed': 'The correction prompt failed.'
+}
 
 // A review can end without submit_findings for two very different reasons: the reviewer genuinely
 // stalled, or the permission gate rejected its tool calls. The rejection counter cannot tell these
@@ -545,7 +556,7 @@ type FixLoopOptions = {
   model: string
   onReviewUpdate?: (review: ReviewWithChecks) => void
   onCorrectionPrompt?: (text: string) => void
-  onCorrectionFailed?: () => void
+  onCorrectionFailed?: (reason: CorrectionFailureReason) => void
   reviewerTimeoutMs: number
   reviewerMaxUpdates: number
   reviewerMaxToolCalls: number
@@ -785,6 +796,7 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
 
     // Step B: inject [Auditor] with the currently-open warn/fail checks.
     let correctionFailed = false
+    let correctionFailureReason: CorrectionFailureReason = 'send-failed'
     try {
       const provenanceContext = getActiveConversationContext(
         materializeSessionConversationGraph(sessionBefore).conversationGraph!,
@@ -797,16 +809,19 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
         acpRuntime,
         provenanceContext,
         onCorrectionPrompt,
-        onCorrectionFailed: () => {
+        onCorrectionFailed: (reason) => {
           correctionFailed = true
-          onCorrectionFailed?.()
+          correctionFailureReason = reason
+          onCorrectionFailed?.(reason)
         }
       })
     } catch (error) {
       correctionFailed = true
+      correctionFailureReason = 'provenance-failed'
       log.warn('fix loop: failed to derive correction provenance', {
         sessionId,
         round,
+        reason: correctionFailureReason,
         error: error instanceof Error ? error.message : String(error)
       })
     }
@@ -817,9 +832,13 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
       log.warn('correction failed in fix loop — marking remaining checks unaddressed', {
         sessionId,
         round,
+        reason: correctionFailureReason,
         openCount: openChecks.length
       })
-      await markOpenChecksUnaddressed('correction_failed', 'The correction prompt failed.')
+      await markOpenChecksUnaddressed(
+        'correction_failed',
+        CORRECTION_FAILURE_NOTES[correctionFailureReason]
+      )
       return
     }
 
