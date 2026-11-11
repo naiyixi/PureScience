@@ -17669,3 +17669,19 @@ p90 三百多毫秒动不了；渲染层 `LATEST_SAVE_COALESCE_MS = 350` 已在�
    本地可先量的候选：`authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）仍没有各自的被占拆分。
 3. 投影重建路径（`mutation-projection.ts:324`、`mutation-owner.ts:399/410` 的 `uploadFile versions take:1`）
    同属「按父取一」，但只在重投影/对账时跑、频率未测 ⇒ 别先改，等第 2 条的读数。
+
+### 五 推送与判决（本笔 `a925df7f`）
+
+- 推前现查在飞车道（`gh run list --limit 8`）六条全 `completed` ⇒ **本次推送没有取消任何人的判决**；
+  本笔只碰 4 个源/测试文件 + 1 份证据档 + 本节，不碰发版四文件。
+- 判决（**完整 40 位 SHA** `a925df7f517e2d2f61c5186f189cc5538cde6514` 的 `actions/runs?head_sha=`）：
+  - `Windows Full Test` **completed / success**（run 1 次即绿）。
+  - `Nightly` 首轮 **failure**，唯一红的是 `build / Build linux-x64`；`Verify（lint + typecheck + test + package）`
+    与 macos-arm64 / macos-x64 / windows-x64 三条打包作业全 **success**（`publish` 按设计 `skipped`）。
+- **归因：基础设施，不是本次改动。** 失败步骤是 `sudo apt-get install --yes ./dist/*.deb`，日志逐行写着
+  `Temporary failure resolving 'azure.archive.ubuntu.com'` → `E: Unable to fetch some archives` → exit 100；
+  同一个作业的前一步已经把 **233 MB 的 `.deb` 构建出来**（`Get:1 … zerolink-purescience_2.26.0-nightly.ga925df7_amd64.deb`）
+  ⇒ 红在**取 apt 依赖的网络**，不在产物。对照：上一个提交 `200e2112` 的同一车道是 success。
+- **复跑证明（零代码改动）**：`gh run rerun 43049782887 --failed` → `build / Build linux-x64` **success**，
+  整条 `Nightly` 转为 **completed / success**（`run_attempt = 2`）。⇒ 按「零改动复跑转绿即为基础设施抖动」记档，
+  不改代码、不改测试、不重打 tag。
