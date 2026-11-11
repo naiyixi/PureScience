@@ -17746,3 +17746,74 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
   ② 接着按同一张聚合表取下一个真机缺口（`sessions:save-session` 那两段等待要等装机后的
   `peerFsOperations`/`fileIndexPath` 读数，本地已无刀可下）；③ `cases:marketplace` 仍有 80 行慢日志
   （median 4,273 ms），要看那笔 20 秒总预算在装机日志里落成什么样再决定动不动。
+
+## 三百一十七、本轮追加（执行器，2026-11-12 05:1x–）—— 列表读取的慢行自带分段；「并发索引预热压住读」这个假设被同一语料否掉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 1a9c0252`，`git log origin/main..HEAD` 为空；`git status --short` 只有
+  **上一轮自己留下的证据档补记**（`docs/evidence/2026-11-12-connectivity-probe-budget.md`，本轮随文档一起提交）
+  与**三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）——那三份一个字节没碰、不提交。
+- `hermes cron list` 只有本任务一个执行器；上一轮 03:0x 的 `1a9c0252` 已推。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；§三百一十五 §四 第 2 条点名「`authorityMs`
+  之外的分段（索引读 / 文档读 / 隔离检查）仍没有各自的被占拆分」⇒ 本轮就做这条的**列表读取**那一半。
+- **先按通道聚合真实日志再决定动谁**（打包版三份 `main*.log`）：`sessions:list-catalog` 6 行慢日志
+  p50 932 ms、一行 14.2 s 且 `attributedHeldMs` 12.5 s；`session-persistence` 的 789 行慢保存已在
+  §三百一十一/§三百一十四 收过，`reviewer:get-for-session` 的 250 ms 分段在 `reviewer/ipc.ts` 里已有，
+  工作区里也没有这两片的在制改动 ⇒ 不重做，改做**尚无分段的那条读**。
+
+### 一 交付
+
+`loadCatalogWithDiagnostics` / `readProjectCatalog` 现在把一次扫描拆成三段并在慢时自己报出来：
+
+| 段 | 含义 |
+| --- | --- |
+| `directoryMs` | 项目列举 + 每个项目的文件列举（累计） |
+| `indexMs` | 每次 `tryReadSessionSummary`（一份 `stat` + 一份小读） |
+| `documentMs` | 每次 `readSessionFile`（索引答不上来的回退解析） |
+
+外加 `manifestMs` / `projects` / `sessions` / `indexHits` / `parsedDocuments`，只在 **总时长 ≥ 250 ms** 时
+打印一行 `session catalog read was slow`（`session-persistence` 作用域）。返回结果与改前逐字段相同：
+`index.hits` / `parsedDocuments` 一个字没动，`catalog-index.test.ts` 的 8 条既有断言一字未改。
+新增 2 例（慢时报出分段且注入的延迟落在**它自己的那一段**、快时一行都不报）。
+
+### 二 读数（真实语料；先实测后决定）
+
+真实语料 = 打包版数据根 `~/.purescience/sessions` 拷到临时根（**264 份文档 / 206 MB / 60 个项目**）：
+
+| 次 | 总时长 | directoryMs | indexMs | documentMs | 命中/解析 |
+| --- | --- | --- | --- | --- | --- |
+| 冷（无索引） | 93,022 ms | 55 | 387 | 92,563 | 0 / 264 |
+| 第二次 | 103 ms | — | — | — | 264 / 0 |
+| 第三次 | 33 ms | — | — | — | 264 / 0 |
+
+单文件成本（产品自己的函数，最大的四份 2.75–5.29 MB）：`readFile` 4–11 ms、`JSON.parse` 6–12 ms、
+`normalizeSessionFile` 5–18 ms ⇒ **~35 ms/份**，而冷扫的 `documentMs/parsed` 是 **350 ms/份**；只取 30 份
+（28 个项目）冷扫 = **14,147 ms（470 ms/份）** ⇒ 与语料规模无关，每份的读都在等。
+
+### 三 一个被证伪的假设（已回退，不留这笔改动）
+
+先把「264 个并发索引预热压住读」写进代码（`summaryWarmQueue` 串行链）再量同一语料：
+93,022 ms → **94,504 ms**（`documentMs` 92,563 → 94,027）——**无改善**。改动已回退，理由写进证据档：
+本机同一时刻 `loadAvg` 14.1、空闲内存 169 MB / 8.6 GB、日志 4,402 行 `event loop stalled`
+⇒ 冷扫的 350–470 ms/份判为**这台机器的 I/O 与换页等待**，不是产品缺陷证据；没有那台空闲机器的读数之前，
+不往这个方向再动手。
+
+### 四 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/session-persistence`（14 文件） | **278 passed**，exit 0（`catalog-index.test.ts` 7→9 例） |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（两个改动文件） | 0 error / 0 warning |
+| 全量 vitest `--maxWorkers=4` | 见本节 §五 的判决行（本轮跑的读数） |
+
+### 五 边界与下一轮第一步
+
+- **不是装机读数**：库内、单连接、无并发；冷扫的绝对毫秒数不能当用户的等待时间用。
+- 装机判据写在证据档 §五：`totalMs` 大而三段都小 ⇒ 时间在**等**（别改这个函数）；`documentMs` 大且
+  `parsedDocuments` 高 ⇒ 修索引写入时机；`indexMs` 大 ⇒ 修成目录级批读。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA，`Nightly` + `Windows Full Test` 同查）；
+  ② 仍按 §三百一十六 §四 的第 ③ 条看 `cases:marketplace` 那 20 秒总预算在装机日志里的落点
+  （本轮 23 行慢日志里 9 行 `cpu-bound-in-process`、`cpuMs` 12.8–26.9 s，但 `heldMs` 同时存在
+  ⇒ 先分清是「等」还是「算」再动）；③ 本机冷扫的读等待要一台空闲机器才能定因，**不自作主张改读路径**。

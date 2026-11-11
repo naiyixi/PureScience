@@ -23,6 +23,7 @@ import {
   trimSessionHistory,
   type SessionRetention
 } from '../../shared/session-retention'
+import { createLogger, type Logger } from '../logger'
 import { SESSION_PACKAGE_IMPORT_RECORD_SUFFIX } from '../../shared/session-package-import'
 import {
   summarizeSessionCatalogEntry,
@@ -60,6 +61,24 @@ type SessionCatalogDiagnostics = {
   // acceptance can be checked against a real run instead of against the intent.
   index: { hits: number; parsedDocuments: number }
 }
+
+// Where a catalog scan spends its wall time, split by the three things a scan can be doing.
+//
+// Why split it: on the real machine `sessions:list-catalog` slow rows put p50 at 932 ms while the
+// same scan on a copy of the corpus with an idle loop is tens of milliseconds — so a field reading
+// says "slow", never whether the seconds were directory listings, index reads (one stat + one small
+// read per entry), or document fallbacks (the entries the index could not answer). Those are three
+// different repairs (`listing`: one readdir per project; `index`: 2 syscalls × entries; `document`:
+// a whole session parse), and no reader can infer which one from the total.
+type SessionCatalogStageMs = {
+  directoryMs: number
+  indexMs: number
+  documentMs: number
+}
+
+// Above this the scan names its own split. Below it a warning per list read would be noise: the
+// channel already reports its own slow rows, and this exists to explain them.
+const SLOW_CATALOG_SCAN_MS = 250
 
 type SessionScanOptions = {
   mode?: 'repair' | 'read-only'
@@ -292,7 +311,9 @@ class SessionRepository {
 
   constructor(
     private readonly storageDir: string,
-    dependencies: Partial<SessionRepositoryDependencies> = {}
+    dependencies: Partial<SessionRepositoryDependencies> = {},
+    // Injected so a test can read what the scan reported; production uses the shared scope logger.
+    private readonly log: Pick<Logger, 'warn'> = createLogger('session-persistence')
   ) {
     this.dependencies = {
       remove: dependencies.remove ?? DEFAULT_DEPENDENCIES.remove,
@@ -493,7 +514,11 @@ class SessionRepository {
    * the reconciliation pass to quarantine, because a list read must not move a user's file.
    */
   async loadCatalogWithDiagnostics(): Promise<SessionCatalogDiagnostics> {
+    const startedAt = Date.now()
+    const stageMs: SessionCatalogStageMs = { directoryMs: 0, indexMs: 0, documentMs: 0 }
+    const projectsStartedAt = Date.now()
     const projectDirectories = await this.listDirectoryNames(this.sessionsDir)
+    stageMs.directoryMs += Date.now() - projectsStartedAt
     const sessions: SessionCatalogSummary[] = []
     const warnings: SessionLoadWarning[] = []
     let isComplete = projectDirectories.isComplete
@@ -509,9 +534,26 @@ class SessionRepository {
       isComplete &&= project.isComplete
       indexHits += project.indexHits
       parsedDocuments += project.parsedDocuments
+      stageMs.directoryMs += project.stageMs.directoryMs
+      stageMs.indexMs += project.stageMs.indexMs
+      stageMs.documentMs += project.stageMs.documentMs
     }
 
+    const manifestStartedAt = Date.now()
     const manifestRead = await this.readManifest({ quarantineInvalidFiles: false })
+    const manifestMs = Date.now() - manifestStartedAt
+    const totalMs = Date.now() - startedAt
+    if (totalMs >= SLOW_CATALOG_SCAN_MS) {
+      this.log.warn('session catalog read was slow', {
+        totalMs,
+        ...stageMs,
+        manifestMs,
+        projects: projectDirectories.names.length,
+        sessions: sessions.length,
+        indexHits,
+        parsedDocuments
+      })
+    }
 
     return {
       result: { sessions, manifest: manifestRead.manifest },
@@ -992,12 +1034,16 @@ class SessionRepository {
     isComplete: boolean
     indexHits: number
     parsedDocuments: number
+    stageMs: SessionCatalogStageMs
   }> {
     const projectId = assertSafeSegment(projectIdValue)
     const projectDir = join(this.sessionsDir, projectId)
+    const stageMs: SessionCatalogStageMs = { directoryMs: 0, indexMs: 0, documentMs: 0 }
+    const directoryStartedAt = Date.now()
     const sessionFiles = await this.listSessionFileNames(projectDir, {
       missingIsIncomplete: options.missingDirectoryIsIncomplete
     })
+    stageMs.directoryMs = Date.now() - directoryStartedAt
     const sessions: SessionCatalogSummary[] = []
     let isComplete = sessionFiles.isComplete
     let indexHits = 0
@@ -1005,7 +1051,9 @@ class SessionRepository {
 
     for (const fileName of sessionFiles.names) {
       const filePath = join(projectDir, fileName)
+      const indexStartedAt = Date.now()
       const cached = await this.tryReadSessionSummary(filePath)
+      stageMs.indexMs += Date.now() - indexStartedAt
       if (cached) {
         // Served from the index: this document is never opened. The directory owns the project id, as
         // it does on the full scan, so the entry travels with the authoritative one.
@@ -1018,16 +1066,18 @@ class SessionRepository {
       // is switched OFF explicitly — a list read must not move a user's file, and the default here is
       // the repair path.
       parsedDocuments += 1
+      const documentStartedAt = Date.now()
       const read = await this.readSessionFile(filePath, projectId, {
         missingIsIncomplete: true,
         quarantineInvalidFiles: false
       })
+      stageMs.documentMs += Date.now() - documentStartedAt
       isComplete &&= read.isComplete
       if (read.warning) options.warnings?.push(read.warning)
       if (read.session) sessions.push(summarizeSessionCatalogEntry(read.session))
     }
 
-    return { sessions, isComplete, indexHits, parsedDocuments }
+    return { sessions, isComplete, indexHits, parsedDocuments, stageMs }
   }
 
   // Summary path for a session file: <session-file>.summary.json in the same directory.

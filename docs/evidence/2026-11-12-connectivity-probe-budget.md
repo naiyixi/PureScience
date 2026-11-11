@@ -55,6 +55,21 @@
 ⇒ **首个成功** 72–151 ms（= npmmirror 那一条），**全部落定** 429–654 ms（= npmjs 那一条）。
 在这台机器上改前改后的差距是 **约 4–9 倍**；在探测挂住的那种机器上差距是「5 秒 vs 十几分钟」。
 
+**再用产品自己的函数量一遍**（不是另写一段 https）：同一次运行里，`checkInternetReachability()`
+（改后：首个成功即答）与「两个探针都跑完」各量三次，真实外网、真实定时器：
+
+| 次 | `checkInternetReachability()` | 两个探针都跑完 | npmjs / npmmirror |
+| --- | --- | --- | --- |
+| 1 | 163 ms | 634 ms | 632 ms / 69 ms |
+| 2 | 150 ms | 522 ms | 522 ms / 62 ms |
+| 3 | 75 ms | 666 ms | 665 ms / 66 ms |
+
+⇒ 走交付的那个函数，答案落在 **75–163 ms**；改前的形状（等两个都落定）是 **522–666 ms**。
+口径说明：这是一次性探针文件（量完即删、不进提交）在 vitest 里 import 交付函数量的，
+**不是窗口里的读数** —— `network:check-connectivity` 在契约目录里是 Electron-only，
+Web RPC 面根本不承载它（实测 `POST /rpc/network:check-connectivity` 回 `method_not_found`）。
+
+
 复跑配方（只读外网，不写盘）：
 
 ```bash

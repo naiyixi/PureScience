@@ -301,6 +301,60 @@ describe('SessionRepository catalog index', () => {
     // A list read must not move a user's file: quarantine belongs to the reconciliation pass.
     await expect(lstat(target)).resolves.toBeDefined()
   })
+
+  // The scan names its own breakdown once it is slow, and stays quiet below the threshold. Both halves
+  // matter: a warning on every list read is noise, and one that only says "slow" costs the next round a
+  // guess at which of the three stages to look at.
+  it('names where a slow catalog scan spent its time', async () => {
+    const { dir, writes } = await setup()
+    await writes.saveSession(buildSession({ id: 'sess-1' }))
+    await waitForIndexEntries(documentPaths(dir), 1)
+
+    const warnings: Array<{ message: string; data?: Record<string, unknown> }> = []
+    const slowListing = async (
+      path: string
+    ): Promise<Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>> => {
+      // Only the projects listing is slowed: the delay is what the assertion below reads back.
+      if (path === join(dir, 'sessions')) await new Promise((resolve) => setTimeout(resolve, 300))
+      const entries = await readdir(path, { withFileTypes: true })
+      return entries.map((entry) => ({
+        name: entry.name,
+        isDirectory: () => entry.isDirectory(),
+        isFile: () => entry.isFile()
+      }))
+    }
+    const repository = new SessionRepository(
+      dir,
+      { readDirectoryEntries: slowListing },
+      { warn: (message, data) => warnings.push({ message, data: data as Record<string, unknown> }) }
+    )
+
+    const scan = await repository.loadCatalogWithDiagnostics()
+
+    expect(scan.index).toEqual({ hits: 1, parsedDocuments: 0 })
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0].message).toBe('session catalog read was slow')
+    const data = warnings[0].data ?? {}
+    // The injected delay has to land in the segment that caused it, not only in the total.
+    expect(Number(data.directoryMs)).toBeGreaterThanOrEqual(280)
+    expect(Number(data.totalMs)).toBeGreaterThanOrEqual(Number(data.directoryMs))
+    expect(Number(data.manifestMs)).toBeLessThanOrEqual(Number(data.totalMs))
+    expect(data.indexHits).toBe(1)
+    expect(data.parsedDocuments).toBe(0)
+  })
+
+  it('stays quiet when a catalog scan finishes inside the threshold', async () => {
+    const { dir, writes } = await setup()
+    await writes.saveSession(buildSession({ id: 'sess-1' }))
+    await waitForIndexEntries(documentPaths(dir), 1)
+
+    const warnings: string[] = []
+    const repository = new SessionRepository(dir, {}, { warn: (message) => warnings.push(message) })
+
+    await repository.loadCatalogWithDiagnostics()
+
+    expect(warnings).toEqual([])
+  })
 })
 
 const waitForIndexEntries = async (projectDir: string, expected: number): Promise<void> => {
