@@ -24,6 +24,7 @@ import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type {
   ProjectSessionDeletionState,
   RuntimeContextIndexLookup,
+  SaveAuthorityLookup,
   SessionWritePhases
 } from './repository'
 import {
@@ -117,6 +118,10 @@ type SessionMutationRepository = {
     | { status: 'missing' }
     | { status: 'unreadable' }
   >
+  // The narrow read a whole-Session save needs: the main-owned fields only, answered from the list-tier
+  // index when it can prove it describes the file on disk and from the document otherwise. `missing` and
+  // `unreadable` keep the same meaning they have on the document read.
+  loadSaveAuthority(projectId: string, sessionId: string): Promise<SaveAuthorityLookup>
   saveSession(
     session: PersistedChatSession,
     onWritePhases?: (phases: SessionWritePhases) => void
@@ -1300,11 +1305,18 @@ class SessionPersistenceCoordinator {
       // Whole-session saves are renderer-owned projections. Resolve main authority on every save so
       // a window holding an old snapshot cannot clear, forge, or roll back runtime context. An
       // unreadable primary fails closed because overwriting it would silently destroy that authority.
-      const authoritative = await this.repository.loadSessionWithDiagnostics(
-        session.projectId,
-        session.id
-      )
+      //
+      // Only four fields are main-owned, and the list-tier index carries all of them, so this asks the
+      // narrow question: the whole document is parsed only when the index cannot prove it describes the
+      // file on disk. `authorityMs` was 41% of 1,118.9 s of slow saves on the real machine, and what
+      // this removes from it is the per-save read + parse of a document (real corpus: 68.99 MB across 66
+      // files, read + parse p50 4.0 ms / p90 8.3 ms / max 19.0 ms warm, against p50 0.27 ms for the
+      // index). The phase is wall clock, so whatever else fills that window (event-loop starvation, a
+      // cold page, the quarantine listing) is measured but not touched here — `authoritySource` on the
+      // slow line says which side answered, so the next installed reading can tell them apart.
+      const authoritative = await this.repository.loadSaveAuthority(session.projectId, session.id)
       const readAt = Date.now()
+      const authoritySource = authoritative.status === 'found' ? authoritative.source : undefined
       if (authoritative.status === 'unreadable') {
         throw new Error(
           'Cannot save Session projection because main-owned runtime context is unreadable.'
@@ -1313,7 +1325,7 @@ class SessionPersistenceCoordinator {
       const rendererOwnedSession: PersistedChatSession = { ...session }
       delete rendererOwnedSession.runtimeContext
       delete rendererOwnedSession.archivedAt
-      const authority = authoritative.status === 'found' ? authoritative.session : undefined
+      const authority = authoritative.status === 'found' ? authoritative.authority : undefined
       const mainOwnedStatus =
         authority?.status === 'waiting-plan-approval' ||
         rendererOwnedSession.status === 'waiting-plan-approval'
@@ -1418,6 +1430,7 @@ class SessionPersistenceCoordinator {
         blockers: this.blockersSince(queueMark),
         startedAt,
         readAt,
+        authoritySource,
         preparedAt,
         writtenAt,
         capturedAt,
@@ -1440,6 +1453,8 @@ class SessionPersistenceCoordinator {
     blockers?: string
     startedAt: number
     readAt: number
+    /** Which side answered the authority question: the list-tier index or the document. */
+    authoritySource?: 'index' | 'document'
     preparedAt: number
     writtenAt: number
     capturedAt: number
@@ -1463,6 +1478,9 @@ class SessionPersistenceCoordinator {
         // save that waited inside a window where the loop never ran is not a save that serialized for 50 s.
         ...heldSplitFields(times.requestedAt, totalMs),
         authorityMs: times.readAt - times.startedAt,
+        // Said next to the number it explains: the same `authorityMs` means different things when the
+        // index answered (nothing was parsed) and when the document did (that save's own work).
+        ...(times.authoritySource ? { authoritySource: times.authoritySource } : {}),
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
         // How `writeMs` divides up. `writeUnaccountedMs` is the remainder the five parts do not explain — the

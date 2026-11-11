@@ -11,6 +11,7 @@ import {
   type LoadAllSessionsResult,
   type PersistedChatSession,
   type PersistedSessionManifest,
+  type PersistedSessionStatus,
   type SaveSessionManifestRequest,
   type SessionLoadFailure,
   type SessionLoadWarning,
@@ -212,6 +213,73 @@ const assertSafeSegment = (segment: string): string => {
 export type RuntimeContextIndexLookup =
   { status: 'answered'; runtimeContext?: SessionRuntimeContext } | { status: 'unavailable' }
 
+// What a whole-Session save must take from the durable record instead of the renderer's projection: the
+// three main-owned fields, plus the timestamp the merge uses to stay monotonic. Deliberately not a
+// `PersistedChatSession`: an object that only looks like a Session is how a caller ends up trusting a
+// partial document.
+export type SessionSaveAuthority = {
+  runtimeContext?: SessionRuntimeContext
+  archivedAt?: number
+  status?: PersistedSessionStatus
+  updatedAt: number
+}
+
+// `missing` and `unreadable` keep their document-read meaning; the caller must not merge either into a
+// write. Written as a closed union so a new state has to be handled where the save decides to fail.
+//
+// `source` is not decoration: the slow-save line reports it, so an installed reading can say whether the
+// narrow path was taken at all. Without it a smaller `authorityMs` and an index that was never consulted
+// look the same from the outside.
+export type SaveAuthorityLookup =
+  | { status: 'found'; authority: SessionSaveAuthority; source: 'index' | 'document' }
+  | { status: 'missing' }
+  | { status: 'unreadable' }
+
+const SESSION_STATUSES: readonly PersistedSessionStatus[] = [
+  'idle',
+  'running',
+  'waiting-permission',
+  'waiting-plan-approval',
+  'error'
+]
+
+// Reads the four fields a save may not take from the renderer out of a document that was just parsed and
+// normalized, so the document path and the index path agree field for field.
+const saveAuthorityFromSession = (session: PersistedChatSession): SessionSaveAuthority => {
+  const authority: SessionSaveAuthority = { updatedAt: session.updatedAt }
+  if (session.runtimeContext) authority.runtimeContext = session.runtimeContext
+  if (session.archivedAt !== undefined) authority.archivedAt = session.archivedAt
+  if (session.status !== undefined) authority.status = session.status
+  return authority
+}
+
+// The same four fields from an index entry, or `undefined` when that entry cannot stand in for the
+// document. Every check mirrors one the document read performs: a context must survive the same sanitizer
+// (`loadRuntimeContextFromSummary` already refuses otherwise), the archive stamp must be a safe integer
+// like `normalizeSessionFile` requires, and the status must be one of the persisted literals. Anything
+// else — including a field written by a build that shaped it differently — sends the caller back to the
+// document rather than being carried into a write.
+const saveAuthorityFromCatalog = (
+  catalog: SessionCatalogSummary
+): SessionSaveAuthority | undefined => {
+  if (!Number.isSafeInteger(catalog.updatedAt) || catalog.updatedAt < 0) return undefined
+  const authority: SessionSaveAuthority = { updatedAt: catalog.updatedAt }
+  if (catalog.runtimeContext !== undefined) {
+    const runtimeContext = sanitizeSessionRuntimeContext(catalog.runtimeContext)
+    if (!runtimeContext) return undefined
+    authority.runtimeContext = runtimeContext
+  }
+  if (catalog.archivedAt !== undefined) {
+    if (!Number.isSafeInteger(catalog.archivedAt) || catalog.archivedAt <= 0) return undefined
+    authority.archivedAt = catalog.archivedAt
+  }
+  if (catalog.status !== undefined) {
+    if (!SESSION_STATUSES.includes(catalog.status)) return undefined
+    authority.status = catalog.status
+  }
+  return authority
+}
+
 // Owns per-session durable reads/writes: one file per session under sessions/<projectId>/<id>.json,
 // plus a small manifest for the last-open selection. Writes are serialized and atomic (temp + rename),
 // while malformed JSON is backed up and I/O failures preserve the existing file for later recovery.
@@ -329,6 +397,41 @@ class SessionRepository {
     const runtimeContext = sanitizeSessionRuntimeContext(summary.runtimeContext)
     if (!runtimeContext) return { status: 'unavailable' }
     return { status: 'answered', runtimeContext }
+  }
+
+  // The whole-Session save asks a narrower question than `loadSessionWithDiagnostics` answers: it needs
+  // only the fields the renderer is not allowed to own — runtime context, archive state, the
+  // awaiting-approval block — plus `updatedAt`, which keeps the merged document monotonic.
+  //
+  // It used to answer that by parsing the whole document on every save. On the real corpus the documents
+  // are 69.0 MB across 67 files (average 1.03 MB, largest 3.11 MB) while their index entries are 0.64 MB
+  // across 66 (average 9.7 KB): 106x less to read and parse, for fields the index already carries. The
+  // save's own phase log agrees it was paying for it — `authorityMs` was 460.2 s of 1,118.9 s across 789
+  // slow saves (41%, p50 91 ms, p90 688 ms, max 22.7 s), second only to the disk write.
+  //
+  // Same rule as `loadRuntimeContextFromSummary`: the index answers only when its fingerprint still
+  // describes the bytes on disk, and every field it carries must survive the validators the document read
+  // would have run. Otherwise (absent entry, drift, an older format, a context the sanitizer rejects) the
+  // caller gets the document path, byte for byte the behaviour it had before this seam — including
+  // `unreadable`, which must keep failing closes rather than overwrite a file it could not read.
+  async loadSaveAuthority(projectId: string, sessionId: string): Promise<SaveAuthorityLookup> {
+    const safeProjectId = assertSafeSegment(projectId)
+    const safeSessionId = assertSafeSegment(sessionId)
+    const summary = await this.tryReadSessionSummary(
+      this.sessionFilePath(safeProjectId, safeSessionId)
+    )
+    if (summary) {
+      const fromIndex = saveAuthorityFromCatalog(summary)
+      if (fromIndex) return { status: 'found', authority: fromIndex, source: 'index' }
+    }
+
+    const document = await this.loadSessionWithDiagnostics(safeProjectId, safeSessionId)
+    if (document.status !== 'found') return document
+    return {
+      status: 'found',
+      authority: saveAuthorityFromSession(document.session),
+      source: 'document'
+    }
   }
 
   // Reports whether the live sessions tree was fully scanned so DB reconciliation never acts on a
@@ -655,7 +758,14 @@ class SessionRepository {
     if (phases) phases.diskWriteMs += Date.now() - mkdirStarted
     await this.atomicWrite(filePath, payload, phases)
     // Warm the summary cache so the next startup skips parsing this file.
-    void this.writeSessionSummary(filePath, sanitizedSession)
+    //
+    // Awaited, not fire-and-forget: this entry's fingerprint is taken with a `stat` of the file, and an
+    // earlier save's entry could otherwise stat a document a later save had already replaced while still
+    // carrying the older projection — an entry that claims to describe bytes it did not come from. Two
+    // consequences beyond correctness: the next save's authority read always finds a current entry (so
+    // the narrow path is hit deterministically rather than depending on write ordering), and a failed
+    // summary write still cannot fail the save (the writer swallows its own errors).
+    await this.writeSessionSummary(filePath, sanitizedSession)
   }
 
   private async writeManifest(request: SaveSessionManifestRequest): Promise<void> {

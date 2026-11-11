@@ -497,6 +497,83 @@ describe('SessionPersistenceCoordinator', () => {
     expect(durable.updatedAt).toBeGreaterThan(previousUpdatedAt)
   })
 
+  it('reads main-owned authority without parsing the document when the index can prove it', async () => {
+    const durable = createSession({
+      status: 'waiting-plan-approval',
+      archivedAt: 1_710_000_000_500,
+      updatedAt: 1_710_000_000_400,
+      runtimeContext: { version: 1, revision: 9, plan: createRuntimePlan() }
+    })
+    const loadSessionWithDiagnostics = vi.fn(async () => ({
+      status: 'found' as const,
+      session: durable
+    }))
+    let saved: PersistedChatSession | undefined
+    const repository = createSessionRepository({
+      loadSessionWithDiagnostics,
+      // The index already carries the four main-owned fields, so the save must never reach the document.
+      loadSaveAuthority: vi.fn(async () => ({
+        status: 'found' as const,
+        source: 'index' as const,
+        authority: {
+          updatedAt: 1_710_000_000_400,
+          runtimeContext: durable.runtimeContext,
+          archivedAt: 1_710_000_000_500,
+          status: 'waiting-plan-approval' as const
+        }
+      })),
+      saveSession: vi.fn(async (session) => {
+        saved = structuredClone(session)
+      })
+    })
+    const coordinator = new SessionPersistenceCoordinator(repository, createFileIndex())
+
+    const result = await coordinator.saveSession(createSession({ title: 'Renderer rename' }))
+
+    expect(loadSessionWithDiagnostics).not.toHaveBeenCalled()
+    expect(result).toMatchObject({ title: 'Renderer rename', status: 'waiting-plan-approval' })
+    expect(saved?.runtimeContext).toEqual(durable.runtimeContext)
+    expect(saved?.archivedAt).toBe(1_710_000_000_500)
+  })
+
+  it('names which side answered the authority read on a slow save', async () => {
+    const repository = createSessionRepository({
+      loadSaveAuthority: vi.fn(async () => ({
+        status: 'found' as const,
+        source: 'index' as const,
+        authority: { updatedAt: 1 }
+      }))
+    })
+    const log = createTestLogger()
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex(),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+    const clock = vi.spyOn(Date, 'now')
+    try {
+      let now = 1_000_000
+      clock.mockImplementation(() => now)
+      const pending = coordinator.saveSession(createSession({ title: 'Slow' }))
+      now += 5_000
+      await pending
+    } finally {
+      clock.mockRestore()
+    }
+
+    // The number and its explanation travel together: the same `authorityMs` means "nothing was parsed"
+    // when the index answered and "this save parsed the document" when it did not.
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, unknown>]
+    expect(message).toBe('session save was slow')
+    expect(fields.authoritySource).toBe('index')
+  })
+
   it('preserves main-owned archive state on a stale whole-session save', async () => {
     let durable = createSession({ archivedAt: 10 })
     const repository = createSessionRepository({
@@ -3904,6 +3981,27 @@ const createSessionRepository = (
     isComplete: true
   }),
   loadSessionWithDiagnostics: vi.fn().mockResolvedValue({ status: 'missing' }),
+  // Default: no index entry can answer, so the authority read takes the document path — every case
+  // written before this seam keeps seeing exactly the fields and states it saw then. A case that wants
+  // the narrow path overrides this directly; a case that only stubs the document read gets these same
+  // four fields derived from it, so the two paths cannot disagree inside one test.
+  loadSaveAuthority: vi.fn(async (projectId: string, sessionId: string) => {
+    const read = overrides.loadSessionWithDiagnostics
+    if (!read) return { status: 'missing' as const }
+    const loaded = await read(projectId, sessionId)
+    if (loaded.status !== 'found') return loaded
+    const { runtimeContext, archivedAt, status, updatedAt } = loaded.session
+    return {
+      status: 'found' as const,
+      source: 'document' as const,
+      authority: {
+        updatedAt,
+        ...(runtimeContext ? { runtimeContext } : {}),
+        ...(archivedAt !== undefined ? { archivedAt } : {}),
+        ...(status !== undefined ? { status } : {})
+      }
+    }
+  }),
   // Default: the index cannot answer, so every existing case keeps reading the document exactly as it
   // did before this seam existed. Cases that exercise the index override this.
   loadRuntimeContextFromSummary: vi.fn().mockResolvedValue({ status: 'unavailable' }),

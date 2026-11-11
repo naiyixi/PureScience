@@ -945,6 +945,136 @@ describe('session persistence repository (per-session files)', () => {
     })
   })
 
+  // The save's authority read asks for four fields, not a Session. These cases pin the seam the same way
+  // the Plan lookup's cases do: the cheap answer, the fallbacks, and that a fallback never invents state.
+  it('answers the save authority from the index without reading the document', async () => {
+    const root = await createStorageRoot()
+    const reads: string[] = []
+    const repository = new SessionRepository(root, {
+      readSessionFile: async (path) => {
+        reads.push(path)
+        return readFile(path, 'utf8')
+      }
+    })
+    await repository.saveSession(
+      createSession({
+        status: 'waiting-plan-approval',
+        runtimeContext: { version: 1, revision: 7 },
+        archivedAt: 1_710_000_020_000
+      })
+    )
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    reads.length = 0
+
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
+      status: 'found',
+      source: 'index',
+      authority: {
+        updatedAt: 1_710_000_000_100,
+        runtimeContext: { version: 1, revision: 7 },
+        archivedAt: 1_710_000_020_000,
+        status: 'waiting-plan-approval'
+      }
+    })
+    // Only the index entry was read: parsing the 1 MB document is exactly what this seam exists to avoid.
+    expect(reads).toEqual([`${documentPath}.summary.json`])
+  })
+
+  it('falls back to the document when the summary no longer describes the file', async () => {
+    const root = await createStorageRoot()
+    const reads: string[] = []
+    const repository = new SessionRepository(root, {
+      readSessionFile: async (path) => {
+        reads.push(path)
+        return readFile(path, 'utf8')
+      }
+    })
+    await repository.saveSession(
+      createSession({ runtimeContext: { version: 1, revision: 3 }, status: 'error' })
+    )
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    // One byte of drift invalidates the fingerprint — the document stays valid JSON, so the fallback has
+    // to answer from it rather than reporting the session as unreadable.
+    await writeFile(documentPath, `${await readFile(documentPath, 'utf8')} `, 'utf8')
+    reads.length = 0
+
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
+      status: 'found',
+      source: 'document',
+      authority: {
+        updatedAt: 1_710_000_000_100,
+        runtimeContext: { version: 1, revision: 3 },
+        status: 'error'
+      }
+    })
+    expect(reads).toContain(documentPath)
+  })
+
+  it('keeps missing and unreadable meaning what the document read means by them', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await expect(repository.loadSaveAuthority('project-a', 'absent')).resolves.toEqual({
+      status: 'missing'
+    })
+
+    await mkdir(join(root, 'sessions', 'project-a'), { recursive: true })
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    await writeFile(documentPath, '{not json', 'utf8')
+
+    // No index entry can exist for bytes that never parsed, so this is the document path — and it must
+    // keep failing closed instead of letting a save overwrite authority it could not read.
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
+      status: 'unreadable'
+    })
+  })
+
+  it('falls back to the document when an indexed field does not survive the validators', async () => {
+    const root = await createStorageRoot()
+    const reads: string[] = []
+    const repository = new SessionRepository(root, {
+      readSessionFile: async (path) => {
+        reads.push(path)
+        return readFile(path, 'utf8')
+      }
+    })
+    await repository.saveSession(createSession({ runtimeContext: { version: 1, revision: 2 } }))
+    const documentPath = join(root, 'sessions', 'project-a', 'session-1.json')
+    const summaryPath = `${documentPath}.summary.json`
+    // A context the document read would have rejected must not be carried into a write just because the
+    // fingerprint still matches: the index is a projection, so its fields face the same validators.
+    const summary = JSON.parse(await readFile(summaryPath, 'utf8')) as {
+      catalog: { runtimeContext?: unknown }
+    }
+    summary.catalog.runtimeContext = { version: 99, revision: 2 }
+    await writeFile(summaryPath, JSON.stringify(summary), 'utf8')
+    reads.length = 0
+
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
+      status: 'found',
+      source: 'document',
+      authority: {
+        updatedAt: 1_710_000_000_100,
+        runtimeContext: { version: 1, revision: 2 },
+        status: 'idle'
+      }
+    })
+    expect(reads).toContain(documentPath)
+  })
+
+  it('carries no runtime context when the durable record has none', async () => {
+    const root = await createStorageRoot()
+    const repository = new SessionRepository(root)
+    await repository.saveSession(createSession())
+
+    // Absence has to stay absence: an empty object here would let a stale renderer projection look like
+    // it agreed with main about a Plan the Session never had.
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toEqual({
+      status: 'found',
+      source: 'index',
+      authority: { updatedAt: 1_710_000_000_100, status: 'idle' }
+    })
+  })
+
   it('commits an empty Project Session phase with a durable marker', async () => {
     const root = await createStorageRoot()
     const repository = new SessionRepository(root)
