@@ -17464,3 +17464,73 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
 - 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 若 `authoritySource` 装机后仍以 `document` 为主，
   说明索引在保存路径上失效（先查指纹，别先改产品）；③ 候选仍在：`notifications:get-snapshot`
   （75 条 / 中位 470 ms / max 10 s）、`cases:install`（3 条 / 中位 18.8 s）、`writeDiskMs`（29%，p90 360 ms）。
+
+## 三百一十三、本轮追加（执行器，2026-11-11 13:5x–）—— `writeDiskMs` 不是字节问题：3.1 MB 写下去 1.9 ms，那 29% 是**等待**
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = e66b1f83`；工作树只有三份**不是我的**未跟踪证据档
+  （`2026-11-01-…`、两份 `2026-11-04-…`）⇒ 一个字节没碰、不提交。
+- **双车道判决已取**：`e66b1f83` 的 `Nightly` 与 `Windows Full Test` 均 **completed / success**
+  （`gh run list` 直读，同时点落定 §三百一十二 的待取项）。`17fd2414` 是它的祖先 ⇒ 那一笔的证据引本次双绿。
+- `git log --since="3 days ago" -- src/main/session-persistence` = `9f02bd88`/`17fd2414`（各自单元）
+  ⇒ 保存路径没有别人在做同一处。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 取 §三百一十二 §四 ③ 的候选里**最大的一笔**
+  `writeDiskMs`（29%、p90 360 ms、max 25.1 s）。另外两条候选本轮**先判掉**：`notifications:get-snapshot`
+  已在慢行窗口归并那一轮量掉并否掉（1.6% 慢行、最大两条是整段循环停顿；`docs/evidence/2026-11-03-slow-ipc-window-lens.md` §三）；`cases:install` 只有 3 条、
+  且路径里含 20 s 级网络下载（`downloadCaseArchive` → 校验 → 解包 → 导入），不是可判的本地杠杆。
+
+### 一 先量：这一段到底是不是写字节
+
+真实语料（`~/.purescience-project/sessions/**/*.json`，只读）：**132 份 / 69.63 MB**，最大一份 **3.118 MB**。
+把每一份原字节整份写出（`write` + `flush` + `fsync`，写只落 /tmp）现取 3 次取最小：
+
+| 量 | p50 | p90 | max |
+| --- | --- | --- | --- |
+| 文档大小 | 0.022 MB | 1.525 MB | 3.118 MB |
+| 整份写出 | **0.14 ms** | **1.02 ms** | **1.88 ms**（复跑 2.13 ms） |
+
+对照打包版日志（789 条慢保存）：`writeDiskMs` **p50 41 ms / p90 360 ms / max 25,051 ms** ⇒
+**差 20–200 倍**。结论：这一段记的是**等待**（libuv 共享池排队、或主线程不在时 `Date.now()` 窗口照走），
+不是磁盘吞吐。**「压缩文档 / 去掉缩进 / 合并小写」这条路因此被否掉**：最好的情况也只挪走 41 ms 里的几毫秒，
+p90 三百多毫秒动不了；渲染层 `LATEST_SAVE_COALESCE_MS = 350` 已在做 latest-wins 合并、主进程 `queuedMs` 只 3%
+⇒ 也没有「重复写」可去。
+
+### 二 交付（5 文件：3 产品 + 2 测试，外加证据档与本）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/session-persistence/repository.ts` | 新增 `reportFsOperation`（`begin` / `try` / `finally end`），包住保存路径五步：权威索引读、权威文档读、建目录、`atomicWrite`（临时文件写 + rename）、索引写 |
+| `src/main/session-persistence/coordinator.ts` | 慢行新增 `peerFsOperations`（写返回那一刻**我们仍在排队**的操作数，与判定器同一口径；不含本次自己的写） |
+| `src/main/diagnostics/stall-cause.ts` | 「今天只有预览获取自报」那句改成现状（预览获取 + 保存路径），否则下一位读者会按旧注释判盲区 |
+| `repository.test.ts` | +2 例：各步自报值恰为 1、结束后归零；失败步骤也归零 |
+| `coordinator.test.ts` | 既有写分段用例 +1 条断言：`peerFsOperations` 随写进慢行 |
+
+**为什么这是缺口而不是「再加一层仪器」**：停滞判定里 `fs-queue-saturated` 的门要求 `fs.inFlight > 0`，
+而 `inFlight` 只统计**自报**的操作，此前全树只有预览资源获取一条路自报 ⇒ 保存（应用里最大的 fs 扇出）
+在判定器眼里永远回答「我们没有东西在排队」。那条门本身是对的（同一文件记着 3,460 条误标里 3,436 条是
+`inFlight: 0`）⇒ 正解是让该自报的路径自报，不是放宽门。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/session-persistence` + `src/main/diagnostics` | **39 files / 481 passed**，exit 0 |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（5 文件） | 0 error / 0 warning |
+| 变异自证 | ① 去掉 `reportFsOperation` 的 begin/end ⇒ 新用例红（1 failed / 59 passed）；② 去掉慢行的 `peerFsOperations` ⇒ 协调者用例红（1 failed / 121 passed）。**两次都已还原** |
+
+证据档：`docs/evidence/2026-11-11-save-write-is-not-bytes.md`（含复跑配方，本轮按配方复跑过一次：132 份 / 69.63 MB / max 2.13 ms）。
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- **不是优化**：没有用户可见行为改变，**不声称变快**；`writeDiskMs` 的 29% 仍未移走，本轮只把它从「字节」
+  改判为「等待」，并给了判定器能说出「谁在排队」的那一半。
+- **无装机读数**（main 侧改动，等下一次发版）。装机判据两条缺一不可：① 慢保存行里 `peerFsOperations > 0`
+  的比例；② 同一时段 `event loop stalled` 记录出现 `cause.kind = 'fs-queue-saturated'` 且 `basis` 写着
+  「N of our reads waiting」。只有①没有② ⇒ canary 未到门限（池子不忙），是另一回事。
+- 全树扫描（启动期扇出、按需目录列举）仍不自报：属另一域，需要时按调用点各自自报。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 若继续追 `sessions:save-session`，
+  下一处是 `aftermathMs`（19%，p50 132 / p90 451）里的 `fileIndex.syncSession` —— 先量它的快路径
+  （`filesRevision` 未变时是否仍做两次 DB 读 + `isFileProjectionCurrent`）再决定；
+  ③ 若转向「谁在长窗口里占着主线程」，候选是 `authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）。

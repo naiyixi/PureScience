@@ -4434,6 +4434,10 @@ describe('session save diagnostics', () => {
       writeDiskMs: 4,
       writeReplaceMs: 5
     })
+    // The pool reading travels with the write: `writeDiskMs` is a wall clock, so the count of *our* operations
+    // still queued is the only field that can separate a busy pool from a loop that was gone. Zero here means
+    // "nothing else of ours was queued", which is what the fake repository leaves behind.
+    expect(fields.peerFsOperations).toBe(0)
     // The clock is frozen inside the write here, so `writeMs` is 0 and the remainder must not go negative.
     expect(fields.writeMs).toBe(0)
     expect(fields.writeUnaccountedMs).toBe(0)

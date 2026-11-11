@@ -37,6 +37,7 @@ import {
 } from '../artifacts/provenance-message-snapshot'
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
 import { cpuAttributionFields, type CpuUsageSample } from '../diagnostics/cpu-attribution'
+import { inFlightFsOperationCount } from '../diagnostics/fs-queue-probe'
 import { heldSplitFields } from '../diagnostics/loop-held-windows'
 import { createLogger, diagnosticErrorFields, type Logger } from '../logger'
 
@@ -1392,6 +1393,10 @@ class SessionPersistenceCoordinator {
       })
       this.upsertSessionMetadata(durableSession)
       const writtenAt = Date.now()
+      // Read at the instant the write returned, on the same rule the stall verdict uses: the count is the
+      // operations of ours *still* waiting on the shared pool, not a depth and not this save's own work.
+      // Zero therefore reads "nothing else of ours was queued", never "the pool was idle".
+      const peerFsOperations = inFlightFsOperationCount()
       // Cache only confirmed topology. A transient validation failure keeps the old fingerprint so
       // the next autosave retries the narrow lookup instead of silently treating it as acknowledged.
       if (bindingValidation.status === 'valid') {
@@ -1433,6 +1438,7 @@ class SessionPersistenceCoordinator {
         authoritySource,
         preparedAt,
         writtenAt,
+        peerFsOperations,
         capturedAt,
         indexedAt: Date.now(),
         writePhases
@@ -1457,6 +1463,12 @@ class SessionPersistenceCoordinator {
     authoritySource?: 'index' | 'document'
     preparedAt: number
     writtenAt: number
+    /**
+     * Our file-system operations still in flight when this write returned. The same reading the stall verdict
+     * gates on: with the save path reporting itself, "fs-queue-saturated" can now be decided for the channel
+     * whose slow rows dominate, instead of only for preview acquires.
+     */
+    peerFsOperations?: number
     capturedAt: number
     indexedAt: number
     writePhases?: SessionWritePhases
@@ -1483,6 +1495,12 @@ class SessionPersistenceCoordinator {
         ...(times.authoritySource ? { authoritySource: times.authoritySource } : {}),
         prepareMs: times.preparedAt - times.readAt,
         writeMs: times.writtenAt - times.preparedAt,
+        // Printed next to the write because it is the half the disk numbers cannot say: `writeDiskMs` is a wall
+        // clock around `writeFile`, and on this machine a 3.1 MB document writes in 1.9 ms with fsync — so a
+        // 360 ms p90 is not bytes. What is left is queueing, and this is the count that tells the two apart.
+        ...(times.peerFsOperations === undefined
+          ? {}
+          : { peerFsOperations: times.peerFsOperations }),
         // How `writeMs` divides up. `writeUnaccountedMs` is the remainder the five parts do not explain — the
         // clock here is 1 ms, and the revision bump runs inside the same span — printed rather than folded in
         // so nobody reads the parts as covering the whole when they do not.

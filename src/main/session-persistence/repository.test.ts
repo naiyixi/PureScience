@@ -19,6 +19,7 @@ import {
   type SessionWritePhases
 } from './repository'
 import { getSessionRevision } from './session-revision'
+import { inFlightFsOperationCount } from '../diagnostics/fs-queue-probe'
 
 let storageRoot: string | undefined
 
@@ -1332,5 +1333,55 @@ describe('session persistence repository (per-session files)', () => {
       repository.saveSession(createSession(), (phases) => reported.push(phases))
     ).rejects.toBe(failure)
     expect(reported).toHaveLength(0)
+  })
+
+  // The stall verdict can only name a busy file-system pool for operations that report themselves, and until
+  // this the only reporter was the preview acquire path: every slow save therefore answered `inFlight: 0`,
+  // which the verdict correctly reads as "nothing of ours was queueing" and then blames something else. These
+  // two cases pin the reporting on, and pin it shut again after each step (including a failed one), because a
+  // counter that leaks turns the next stall into a false `fs-queue-saturated`.
+  it('reports each save step to the shared pool probe and clears it when the step ends', async () => {
+    expect(inFlightFsOperationCount()).toBe(0)
+    const observed: Array<{ step: string; inFlight: number }> = []
+    const repository = new SessionRepository(await createStorageRoot(), {
+      renameFile: vi.fn(async (source: string, destination: string) => {
+        observed.push({ step: 'rename', inFlight: inFlightFsOperationCount() })
+        await rename(source, destination)
+      }),
+      writeSummaryFile: vi.fn(async (path: string, content: string) => {
+        observed.push({ step: 'summary', inFlight: inFlightFsOperationCount() })
+        await writeFile(path, content, 'utf8')
+      }),
+      readSessionFile: vi.fn(async (path: string) => {
+        observed.push({ step: 'read', inFlight: inFlightFsOperationCount() })
+        return readFile(path, 'utf8')
+      })
+    })
+
+    await repository.saveSession(createSession())
+    // Each step reports exactly its own operation: one in flight, not a depth.
+    expect(observed.map((entry) => entry.step)).toEqual(['rename', 'summary'])
+    expect(observed.map((entry) => entry.inFlight)).toEqual([1, 1])
+    expect(inFlightFsOperationCount()).toBe(0)
+
+    // The authority read reports too, and it is the number the slow-save line's `authorityMs` explains.
+    observed.length = 0
+    await expect(repository.loadSaveAuthority('project-a', 'session-1')).resolves.toMatchObject({
+      status: 'found',
+      source: 'index'
+    })
+    expect(observed).toEqual([{ step: 'read', inFlight: 1 }])
+    expect(inFlightFsOperationCount()).toBe(0)
+  })
+
+  it('clears the pool probe when a save step fails', async () => {
+    const failure = Object.assign(new Error('operation not permitted'), { code: 'EPERM' })
+    const repository = new SessionRepository(await createStorageRoot(), {
+      renameFile: vi.fn(async () => Promise.reject(failure)),
+      wait: vi.fn(async () => undefined)
+    })
+
+    await expect(repository.saveSession(createSession())).rejects.toBe(failure)
+    expect(inFlightFsOperationCount()).toBe(0)
   })
 })

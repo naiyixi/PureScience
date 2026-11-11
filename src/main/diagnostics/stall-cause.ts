@@ -24,8 +24,9 @@ export type StallCauseKind =
  * The fs reading taken at the instant the stall ended: a canary read and how many of our instrumented reads
  * were already waiting on the same pool.
  *
- * `inFlight` is not a pool depth. It counts only the callers that report themselves (`beginFsOperation`, today
- * the managed preview acquire path), so 0 means "no evidence that anything of ours was queueing" — never "the
+ * `inFlight` is not a pool depth. It counts only the callers that report themselves (`beginFsOperation`:
+ * today the managed preview acquire path and the Session save path — authority read, directory create,
+ * document write and index write), so 0 means "no evidence that anything of ours was queueing" — never "the
  * pool was idle", and never something a verdict can treat as calm.
  */
 export type StallFsReading =

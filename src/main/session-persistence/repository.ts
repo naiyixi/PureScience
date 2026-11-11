@@ -31,6 +31,7 @@ import {
 } from '../../shared/session-catalog-summary'
 import { decodeSessionDataPaths, encodeSessionDataPaths } from './session-data-paths'
 import { bumpSessionRevision } from './session-revision'
+import { beginFsOperation, endFsOperation } from '../diagnostics/fs-queue-probe'
 
 const SESSIONS_DIR = 'sessions'
 const DELETED_SESSIONS_DIR = 'deleted-sessions'
@@ -417,20 +418,41 @@ class SessionRepository {
   async loadSaveAuthority(projectId: string, sessionId: string): Promise<SaveAuthorityLookup> {
     const safeProjectId = assertSafeSegment(projectId)
     const safeSessionId = assertSafeSegment(sessionId)
-    const summary = await this.tryReadSessionSummary(
-      this.sessionFilePath(safeProjectId, safeSessionId)
+    // Both reads report themselves to the shared file-system probe: `authorityMs` is the save's largest
+    // segment, and until now the stall verdict could only see the preview acquire path's reads, so for this
+    // one it always answered "nothing of ours was queueing" — a blind spot, not a calm pool.
+    const summary = await this.reportFsOperation(() =>
+      this.tryReadSessionSummary(this.sessionFilePath(safeProjectId, safeSessionId))
     )
     if (summary) {
       const fromIndex = saveAuthorityFromCatalog(summary)
       if (fromIndex) return { status: 'found', authority: fromIndex, source: 'index' }
     }
 
-    const document = await this.loadSessionWithDiagnostics(safeProjectId, safeSessionId)
+    const document = await this.reportFsOperation(() =>
+      this.loadSessionWithDiagnostics(safeProjectId, safeSessionId)
+    )
     if (document.status !== 'found') return document
     return {
       status: 'found',
       authority: saveAuthorityFromSession(document.session),
       source: 'document'
+    }
+  }
+
+  // Runs one file-system step as a reported operation. The probe is a counter, not a clock: it says an
+  // operation of ours was in flight, never how long it took, which is what lets a stall verdict separate a
+  // busy thread pool from a loop that was gone.
+  //
+  // Scope is deliberately the save path (authority read, directory create, document write, index write) —
+  // the channel whose slow rows dominate the real logs. Whole-tree scans report the same way by call, not
+  // here: they are not part of a save and their fan-out is a different reading.
+  private async reportFsOperation<Result>(operation: () => Promise<Result>): Promise<Result> {
+    beginFsOperation()
+    try {
+      return await operation()
+    } finally {
+      endFsOperation()
     }
   }
 
@@ -754,9 +776,9 @@ class SessionRepository {
     if (phases) phases.materializeMs = Date.now() - materializeStarted
 
     const mkdirStarted = Date.now()
-    await mkdir(projectDirectory, { recursive: true })
+    await this.reportFsOperation(() => mkdir(projectDirectory, { recursive: true }))
     if (phases) phases.diskWriteMs += Date.now() - mkdirStarted
-    await this.atomicWrite(filePath, payload, phases)
+    await this.reportFsOperation(() => this.atomicWrite(filePath, payload, phases))
     // Warm the summary cache so the next startup skips parsing this file.
     //
     // Awaited, not fire-and-forget: this entry's fingerprint is taken with a `stat` of the file, and an
@@ -765,7 +787,7 @@ class SessionRepository {
     // consequences beyond correctness: the next save's authority read always finds a current entry (so
     // the narrow path is hit deterministically rather than depending on write ordering), and a failed
     // summary write still cannot fail the save (the writer swallows its own errors).
-    await this.writeSessionSummary(filePath, sanitizedSession)
+    await this.reportFsOperation(() => this.writeSessionSummary(filePath, sanitizedSession))
   }
 
   private async writeManifest(request: SaveSessionManifestRequest): Promise<void> {
