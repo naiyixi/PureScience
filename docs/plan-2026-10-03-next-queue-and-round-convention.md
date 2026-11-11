@@ -17410,3 +17410,57 @@ freeMem 64 MB、swapouts 11,208），`preview-resources:acquire` 5.6 s、`artifa
   行里 `source` 字段：本批 16 条里 15 条 index / 1 条 document，但那是另一条读路径，不能直接外推到保存路径），
   确认后要么让主进程自己持有那三项，要么只读必要字段；③ `notifications:get-snapshot`（75 条 / 中位 470 ms /
   max 10 s）与 `cases:install`（3 条 / 中位 18.8 s）仍挂在候选里。
+
+## 三百一十二、本轮追加（执行器，2026-11-11 11:0x–）—— 保存每次都整份读会话 JSON，只为四个主进程自有字段
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = HEAD = 653bff30`（§三百一十一 的文档笔），工作树只有三份**不是我的**
+  未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）⇒ 一个字节没碰、不提交。
+- **双车道判决已取**（`d3b3dd92`）：`Nightly 42925321156` success / `Windows Full Test 42925320933` success
+  （看门脚本落定）；`653bff30` 是纯 `docs/**` 提交，按 `paths:` 过滤不新建 run，也不改变上一笔的判决。
+- `git log --since="3 days ago" -- src/main/session-persistence` 只有 `9f02bd88`（队列阻塞者命名，不同单元）
+  ⇒ 保存路径的读法最近没人动过，不重复劳动。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 取 §三百一十一 §五 第 ② 条：从 `authorityMs`（41%）
+  里挑一处改动，先量再改。
+
+### 一 先量：这一段到底花在解析上吗
+
+- 真实语料（`~/.purescience-project/sessions/`，只读）：**66 份文档 = 68.99 MB**，66 份 `.summary.json`
+  = **0.64 MB**；逐份 `readFileSync` + `JSON.parse` 现取：文档 **p50 4.00 / p90 8.27 / max 19.02 ms**，
+  索引 **p50 0.27 / p90 0.46 / max 0.85 ms**。
+- 结论（写进证据档的同一句）：`authorityMs` 的 p90 是 **688 ms**，比一份文档的解析贵两个数量级
+  ⇒ **这个窗口的大头不是解析**；它是墙钟窗口，事件循环被别的活占住同样计进来。本单元能移走的是
+  「每次保存读 + 解析一份 1 MB 文档」这一笔真工作，**不声称 41% 全部消失**。
+
+### 二 交付（4 文件：2 产品 + 2 测试，外加证据档与本）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/session-persistence/repository.ts` | 新增 `loadSaveAuthority`：指纹命中答索引的四个字段，否则回落整份读（`missing`/`unreadable` 语义逐字不变）；索引的每个字段过与文档读同一套校验，任一不合格即回落；摘要写由 `void` 改 `await`（否则上一笔的条目可能用后一笔的指纹写前一笔的内容，那正是窄路会信的假条目） |
+| `src/main/session-persistence/coordinator.ts` | 保存的权威读取改走 `loadSaveAuthority`；慢行新增 `authoritySource: index\|document`（装机判据靠它区分「走了窄路」与「根本没走」） |
+| `repository.test.ts` | +5 例：索引作答且不读文档 / 指纹漂移回落 / `missing` 与 `unreadable` 守恒 / 索引字段过不了校验时回落 / 没有上下文时上下文缺席 |
+| `coordinator.test.ts` | +2 例：索引答得出时不读文档且三项主进程自有字段照旧合并 / 慢行说出哪一侧作答；工厂默认把文档读包装成同一答案，既有 40 余处夹具一字未改 |
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/session-persistence`（13 文件） | **271 passed**，exit 0 |
+| 另五个消费方测试文件（reviewer/storage IPC、plan service、通知运行时） | **5 files / 108 passed**，exit 0 |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（4 文件） | 0 error / 0 warning |
+
+**变异自证两次均还原**：索引分支短路 ⇒ 第一条红；协调者改回整份读文档 ⇒ 第三条红。
+
+### 四 边界与下一轮第一步
+
+- **无装机读数**（main 侧改动，等下一次发版）。装机判据：`session save was slow` 行里
+  `authoritySource: index` 占多数，且 `authorityMs` p50/p90 下移（基线 91 / 688 ms）；`writeMs` 会因摘要
+  await 小幅上升（每次 +一份 ~10 KB 小写，基线 p50 71 ms）。**不承诺毫秒数**。
+- **窗口里的其余成因未归因**：冷页、事件循环饥饿、`hasQuarantinedSessionFile` 的目录列举都在同一个
+  墙钟窗口里。本单元只移除解析这一笔；要定因得让 `authorityMs` 再分段（索引读 / 文档读 / 隔离检查），
+  属下一单元。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA）；② 若 `authoritySource` 装机后仍以 `document` 为主，
+  说明索引在保存路径上失效（先查指纹，别先改产品）；③ 候选仍在：`notifications:get-snapshot`
+  （75 条 / 中位 470 ms / max 10 s）、`cases:install`（3 条 / 中位 18.8 s）、`writeDiskMs`（29%，p90 360 ms）。
