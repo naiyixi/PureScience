@@ -20,6 +20,7 @@ import type {
   LoadAllSessionsOptions
 } from '../../shared/session-persistence'
 import type { ManagedFileSoftDeleteToken } from '../project-files/repository'
+import type { SessionFileSyncOutcome } from '../project-files/mutation-projection'
 import type { SessionCatalogResult } from '../../shared/session-catalog-summary'
 import type {
   ProjectSessionDeletionState,
@@ -147,7 +148,10 @@ type SessionMutationRepository = {
 type SessionFileIndex = {
   syncSession(
     session: PersistedChatSession,
-    options?: { force?: boolean }
+    options?: {
+      force?: boolean
+      onOutcome?: (outcome: SessionFileSyncOutcome) => void
+    }
   ): Promise<ProjectFileSource[]>
   softDeleteSession(projectId: string, sessionId: string): Promise<ManagedFileSoftDeleteToken>
   restoreSession(
@@ -500,6 +504,23 @@ const attachRecoveredMessageArtifacts = (
 // startup-recovery test proved that by recovering a Version through a path that listed neither. A caller
 // that cannot afford staleness must not be given a cached answer, and now cannot be.
 const CATALOG_CACHE_TTL_MS = 1000
+
+/**
+ * A span's held/own split under field names of its own. `heldSplitFields` answers in the vocabulary of one
+ * window, and a slow save now has three — folding a sub-span into `heldMs` would let the sub-span's silence
+ * read as the whole save's, which is the reading this split exists to prevent.
+ */
+const prefixHeldSplit = (
+  prefix: string,
+  wallStartMs: number,
+  windowMs: number
+): Record<string, number | string> => {
+  const split = heldSplitFields(wallStartMs, windowMs)
+  if (split.heldUnmeasured !== undefined)
+    return { [`${prefix}HeldUnmeasured`]: split.heldUnmeasured }
+  if (split.heldMs === undefined || split.ownMs === undefined) return {}
+  return { [`${prefix}HeldMs`]: split.heldMs, [`${prefix}OwnMs`]: split.ownMs }
+}
 
 class SessionPersistenceCoordinator {
   private queue: Promise<unknown> = Promise.resolve()
@@ -1408,8 +1429,15 @@ class SessionPersistenceCoordinator {
       // two halves is what turns "the save is slow" into "this half is slow" without a profiler.
       const capturedAt = Date.now()
       let changedSources: ProjectFileSource[]
+      // Which path the projection took, reported by the index itself. The save line cannot infer it, and the
+      // two paths differ by orders of magnitude in work, so the number alone is unreadable without it.
+      let fileSyncOutcome: SessionFileSyncOutcome | undefined
       try {
-        changedSources = await this.fileIndex.syncSession(durableSession)
+        changedSources = await this.fileIndex.syncSession(durableSession, {
+          onOutcome: (outcome): void => {
+            fileSyncOutcome = outcome
+          }
+        })
       } catch (error) {
         this.isSessionMetadataComplete = false
         // The JSON is already durable. Tell open Files views to surface the incomplete projection,
@@ -1441,6 +1469,7 @@ class SessionPersistenceCoordinator {
         peerFsOperations,
         capturedAt,
         indexedAt: Date.now(),
+        fileSyncOutcome,
         writePhases
       })
       return durableSession
@@ -1471,6 +1500,7 @@ class SessionPersistenceCoordinator {
     peerFsOperations?: number
     capturedAt: number
     indexedAt: number
+    fileSyncOutcome?: SessionFileSyncOutcome
     writePhases?: SessionWritePhases
   }): void {
     const finishedAt = Date.now()
@@ -1528,6 +1558,22 @@ class SessionPersistenceCoordinator {
         // was durable) so an older reading and a newer one are still comparable.
         provenanceMs: times.capturedAt - times.writtenAt,
         fileIndexMs: times.indexedAt - times.capturedAt,
+        // Which projection path answered. On a copy of the real corpus the revision path costs four small
+        // reads (p50 0.47 ms) while the reprojection path extracts every file and rewrites rows — so the same
+        // `fileIndexMs` means opposite things, and no reader can infer the path from the number.
+        ...(times.fileSyncOutcome
+          ? {
+              fileIndexPath: times.fileSyncOutcome.path,
+              fileIndexPathReason: times.fileSyncOutcome.reason
+            }
+          : {}),
+        // The same reads measured at half a millisecond, against a real-machine p50 of 127 ms and p90 of
+        // 416 ms for this segment (18.4 % of the slow-save tail). The seconds are therefore a wait, and the
+        // two candidates — the single Project connection busy, or this process not running — are told apart
+        // by splitting each span against the loop-held windows. Prefixed rather than folded into `heldMs`,
+        // which keeps meaning "the save's whole window".
+        ...prefixHeldSplit('authority', times.startedAt, times.readAt - times.startedAt),
+        ...prefixHeldSplit('fileIndex', times.capturedAt, times.indexedAt - times.capturedAt),
         aftermathMs: finishedAt - times.writtenAt,
         totalMs
       })

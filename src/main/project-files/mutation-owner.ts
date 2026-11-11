@@ -13,7 +13,8 @@ import {
   sessionKey,
   type IndexedFileInput,
   type ProjectFilesClient,
-  type ProjectFilesClientProvider
+  type ProjectFilesClientProvider,
+  type SessionFileSyncOutcome
 } from './mutation-projection'
 
 // Valid persisted revisions are non-negative. A collision loser stores this sentinel so it cannot
@@ -21,10 +22,29 @@ import {
 const RETRYABLE_COLLISION_REVISION = -1
 
 type ManagedFileSoftDeleteToken = string
-type ManagedFileSyncOptions = { force?: boolean }
+type ManagedFileSyncOptions = {
+  force?: boolean
+  /**
+   * Best-effort report of which path answered and why. Never awaited and never allowed to change the result:
+   * a diagnostic must not replace the thing it describes, so a throwing callback is the caller's defect, not a
+   * reason to fail a projection that already committed.
+   */
+  onOutcome?: (outcome: SessionFileSyncOutcome) => void
+}
 
 // Owns every Project Files projection mutation and its completeness state. The public repository
 // delegates here while retaining the stable caller interface and the query orchestration for FI2.
+const reportSyncOutcome = (
+  options: ManagedFileSyncOptions,
+  outcome: SessionFileSyncOutcome
+): void => {
+  try {
+    options.onOutcome?.(outcome)
+  } catch {
+    // Best-effort: the projection has already decided what to do, and a diagnostic must never fail it.
+  }
+}
+
 class ProjectFilesMutationOwner {
   private readonly incompleteSessions = new Map<string, string>()
   private isReconciliationIncomplete = false
@@ -44,16 +64,33 @@ class ProjectFilesMutationOwner {
       const currentSync = await client.managedFileSessionSync.findUnique({
         where: { projectId_sessionId: { projectId: session.projectId, sessionId: session.id } }
       })
+      // Two questions, and only the first one is cheap: does the ledger agree with the document's revision,
+      // and is the projection itself current? The second one cannot be inferred from the first, because an
+      // Artifact finalized after the last sync moves rows this Session never touched.
+      const ledgerMatchesRevision =
+        currentSync?.filesRevision === revision && currentSync.deletedAt === null
 
       if (
         !options.force &&
-        currentSync?.filesRevision === revision &&
-        currentSync.deletedAt === null &&
+        ledgerMatchesRevision &&
         (await isFileProjectionCurrent(client, session.projectId, session.id))
       ) {
         this.incompleteSessions.delete(sessionKey(session.projectId, session.id))
+        reportSyncOutcome(options, { path: 'current', reason: 'revision-current' })
         return []
       }
+
+      // Named at the decision point, not after the work: the two reprojection causes are repaired by the same
+      // code but have different owners — a stale ledger means the last save never finished its projection,
+      // while drift means something outside the Session moved the rows.
+      reportSyncOutcome(options, {
+        path: 'reprojected',
+        reason: options.force
+          ? 'forced'
+          : ledgerMatchesRevision
+            ? 'projection-drift'
+            : 'revision-mismatch'
+      })
 
       const extraction = await extractSessionFiles(this.getClient, this.dataRoot, session)
       const { files } = extraction

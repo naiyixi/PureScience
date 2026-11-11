@@ -14,6 +14,7 @@ import type { PersistedChatSession } from '../../shared/session-persistence'
 import { PENDING_UPLOAD_SESSION_ID } from '../../shared/uploads'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
 import { createManagedFileIndexRepository, ManagedFileIndexRepository } from './repository'
+import type { SessionFileSyncOutcome } from './mutation-projection'
 
 const PROJECT_ID = 'project-a'
 const SESSION_ID = 'session-a'
@@ -279,11 +280,23 @@ describe('ManagedFileIndexRepository', () => {
         }
       ]
     })
-    await repository.syncSession(staleSession)
+    const outcomes: SessionFileSyncOutcome[] = []
+    const recordOutcome = (outcome: SessionFileSyncOutcome): void => {
+      outcomes.push(outcome)
+    }
+    await repository.syncSession(staleSession, { onOutcome: recordOutcome })
     await client.artifactVersion.create({
       data: createVersionData(versionTwoId, 2, versionTwoPath, 'message-v2', 'b')
     })
-    await expect(repository.syncSession(staleSession)).resolves.toContain('artifact')
+    await expect(
+      repository.syncSession(staleSession, { onOutcome: recordOutcome })
+    ).resolves.toContain('artifact')
+    // Same revision, one new finalized Version: the ledger still agrees with the document, and the projection
+    // is what drifted. This is the only reprojection cause the Session itself cannot show.
+    expect(outcomes).toEqual([
+      { path: 'reprojected', reason: 'revision-mismatch' },
+      { path: 'reprojected', reason: 'projection-drift' }
+    ])
 
     await expect(
       repository.listFiles({
@@ -1260,8 +1273,19 @@ describe('ManagedFileIndexRepository', () => {
       ]
     })
 
-    await expect(repository.syncSession(original)).resolves.toEqual(['artifact'])
-    await expect(repository.syncSession(replacement)).resolves.toEqual([])
+    // Every call reports which path answered, so a slow-save line can tell "the cheap revision path hit" from
+    // "a full reprojection ran" — the two readings the same `fileIndexMs` cannot separate.
+    const outcomes: SessionFileSyncOutcome[] = []
+    const recordOutcome = (outcome: SessionFileSyncOutcome): void => {
+      outcomes.push(outcome)
+    }
+
+    await expect(repository.syncSession(original, { onOutcome: recordOutcome })).resolves.toEqual([
+      'artifact'
+    ])
+    await expect(
+      repository.syncSession(replacement, { onOutcome: recordOutcome })
+    ).resolves.toEqual([])
     await expect(
       repository.listFiles({
         projectId: PROJECT_ID,
@@ -1273,9 +1297,9 @@ describe('ManagedFileIndexRepository', () => {
       totalCount: 1
     })
 
-    await expect(repository.syncSession({ ...replacement, filesRevision: 5 })).resolves.toEqual([
-      'artifact'
-    ])
+    await expect(
+      repository.syncSession({ ...replacement, filesRevision: 5 }, { onOutcome: recordOutcome })
+    ).resolves.toEqual(['artifact'])
     await expect(
       repository.listFiles({
         projectId: PROJECT_ID,
@@ -1286,6 +1310,13 @@ describe('ManagedFileIndexRepository', () => {
       items: [expect.objectContaining({ sourceFileId: 'replacement', name: 'replacement.txt' })],
       totalCount: 1
     })
+    // The first call had no ledger row (revision mismatch), the second matched the ledger and a current
+    // projection, the third advanced the revision — so each path is named exactly once.
+    expect(outcomes).toEqual([
+      { path: 'reprojected', reason: 'revision-mismatch' },
+      { path: 'current', reason: 'revision-current' },
+      { path: 'reprojected', reason: 'revision-mismatch' }
+    ])
   })
 
   it('restores session and project deletions only for their matching operation token', async () => {
@@ -1459,8 +1490,21 @@ describe('ManagedFileIndexRepository', () => {
     await repository.syncSession(session)
     await client.managedFile.deleteMany({ where: { projectId: PROJECT_ID } })
 
-    await repository.syncSession(session, { force: true })
+    // Managed-file rows are not lineage-backed, so the revision path answers here even with the rows gone
+    // (the force rebuild test below is the one that repairs them). What this call must still name is its path:
+    // "current" without a reprojection, not an inference from a zero-millisecond reading.
+    const outcomes: SessionFileSyncOutcome[] = []
+    const recordOutcome = (outcome: SessionFileSyncOutcome): void => {
+      outcomes.push(outcome)
+    }
+    await repository.syncSession(session, { onOutcome: recordOutcome })
 
+    await repository.syncSession(session, { force: true, onOutcome: recordOutcome })
+
+    expect(outcomes).toEqual([
+      { path: 'current', reason: 'revision-current' },
+      { path: 'reprojected', reason: 'forced' }
+    ])
     await expect(repository.getOverview(PROJECT_ID)).resolves.toMatchObject({ totalCount: 1 })
   })
 

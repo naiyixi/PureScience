@@ -18,6 +18,8 @@ import {
 } from '../../shared/session-persistence'
 import type { ArtifactProjectReconciliationSnapshot } from '../artifacts/provenance-repository'
 import { FinalizedArtifactBindingConflictError } from '../artifacts/provenance-message-snapshot'
+import type { ProjectFileSource } from '../../shared/project-files'
+import type { SessionFileSyncOutcome } from '../project-files/mutation-projection'
 import type { Logger } from '../logger'
 import { sharedLoopHeldWindows } from '../diagnostics/loop-held-windows'
 import { createProjectDbClient, ensureProjectSchema } from '../projects/prisma-client'
@@ -4770,6 +4772,56 @@ describe('held split on the session slow lines', () => {
     expect(fields.totalMs).toBe(5_000)
     expect(fields.heldMs).toBe(5_000)
     expect(fields.ownMs).toBe(0)
+    clock.mockRestore()
+  })
+
+  it('splits the projection and authority spans against the same held window, and names the path', async () => {
+    const repository = createSessionRepository()
+    const log = createTestLogger()
+    const syncSession = vi.fn(
+      async (
+        _session: PersistedChatSession,
+        options?: { onOutcome?: (outcome: SessionFileSyncOutcome) => void }
+      ): Promise<ProjectFileSource[]> => {
+        options?.onOutcome?.({ path: 'reprojected', reason: 'projection-drift' })
+        return ['artifact']
+      }
+    )
+    const coordinator = new SessionPersistenceCoordinator(
+      repository,
+      createFileIndex({ syncSession }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      log
+    )
+
+    const heldStart = performance.now() - 5_000
+    sharedLoopHeldWindows.record(heldStart, heldStart + 65_000)
+    // A clock that advances on every read: the sub-spans then have a length of their own, which is what makes
+    // their split readable at all. A zero-length span answers nothing, by design, and a clock that barely moves
+    // would leave the save below the 200 ms threshold and print no line at all.
+    const clock = vi.spyOn(Date, 'now')
+    let now = 1_000_000
+    clock.mockImplementation(() => (now += 50))
+
+    await coordinator.saveSession(createSession({ title: 'Slow' }))
+
+    const [message, fields] = log.warn.mock.calls[0] as [string, Record<string, number | string>]
+    expect(message).toBe('session save was slow')
+    // Which path answered cannot be inferred from `fileIndexMs`, so the line carries it.
+    expect(fields.fileIndexPath).toBe('reprojected')
+    expect(fields.fileIndexPathReason).toBe('projection-drift')
+    // Both spans sit inside the recorded hold, so each span's own share is zero — and each one is cut out of
+    // its own span, never out of the save's, which keeps the whole-window `heldMs` comparable with older logs.
+    expect(fields.fileIndexMs).toBeGreaterThan(0)
+    expect(fields.fileIndexHeldMs).toBe(fields.fileIndexMs)
+    expect(fields.fileIndexOwnMs).toBe(0)
+    expect(fields.authorityMs).toBeGreaterThan(0)
+    expect(fields.authorityHeldMs).toBe(fields.authorityMs)
+    expect(fields.heldMs).toBe(fields.totalMs)
     clock.mockRestore()
   })
 

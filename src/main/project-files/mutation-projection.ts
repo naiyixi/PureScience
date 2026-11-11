@@ -31,6 +31,20 @@ type ProjectFilesClient = Pick<
 type ProjectFilesClientProvider = () => Promise<ProjectFilesClient>
 type ProjectFilesClientFactory = (configRoot: string) => Promise<ProjectFilesClient>
 
+/**
+ * Which of the two projection paths answered one `syncSession`, and — when it reprojected — which condition
+ * asked for it.
+ *
+ * Reported instead of returned because callers act on the changed sources, while only the slow-save line needs
+ * this. Without it `fileIndexMs` cannot be read: the revision path is four small reads (measured at 0.47 ms p50
+ * on a copy of the real corpus) and the reprojection path extracts every file and rewrites rows, so the same
+ * few hundred milliseconds means opposite things — "the fast path never hit" versus "it hit and waited".
+ */
+type SessionFileSyncOutcome = {
+  path: 'current' | 'reprojected'
+  reason: 'revision-current' | 'revision-mismatch' | 'projection-drift' | 'forced'
+}
+
 type IndexedFileInput = {
   source: ProjectFileSource
   sourceFileId: string
@@ -475,5 +489,6 @@ export type {
   IndexedFileInput,
   ProjectFilesClient,
   ProjectFilesClientFactory,
-  ProjectFilesClientProvider
+  ProjectFilesClientProvider,
+  SessionFileSyncOutcome
 }
