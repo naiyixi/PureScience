@@ -17599,3 +17599,73 @@ p90 三百多毫秒动不了；渲染层 `LATEST_SAVE_COALESCE_MS = 350` 已在�
    `fileIndexPath=reprojected` 的比例；本地可先量 `extractSessionFiles` 在真实语料单会话上的成本
    （它每次都重读该会话的 uploads/artifacts 目录），若明显，杠杆在「只对变化来源重抽取」。
 3. 若转向别处：`authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）仍没有各自的被占拆分读数。
+
+## 三百一十五、本轮追加（执行器，2026-11-11 23:3x–）—— 重投影一次抽取：26 ms 里没有一次是「查得慢」，是它把 1.2 MB 溯源 JSON 也读回来了（并收口一条会搬走用户文档的读路径）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 200e2112`，`git status` 里是**本任务上一轮留下的在制**四处
+  （`mutation-projection.ts` / `mutation-projection.test.ts` / `session-persistence/repository.ts` /
+  未跟踪的 `repository-decode-failure.test.ts`）＋未跟踪证据档 `docs/evidence/2026-11-11-extraction-cost-is-payload-not-shape.md`。
+  另有**三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）一个字节没碰、不提交。
+  `hermes cron list` 只有本任务一个执行器，上一次 run 21:29 `ok` ⇒ 四处是本任务上一轮的尾巴，内容与
+  §三百一十四 §四 第②条逐条对得上，于是**接手收口**，不重做。
+- **双车道判决已取**（完整 40 位 SHA，`actions/runs?head_sha=`）：`200e2112` 的 `Nightly`、`Windows Full Test`
+  均 **completed / success**，另加 `Scheduled Regression` **completed / success** ⇒ 点掉上轮待取项。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 继续追 §三百一十四 §四 第②条。
+
+### 一 交付
+
+**① `extractSessionFiles` 两处读从「整行」改成「Files 磁贴用到的列」**
+
+| 分支 | 改前 | 改后 |
+| --- | --- | --- |
+| 血缘 → 最新已定稿版本 | `include: { versions: { take: 1 } }`（整行） | `select: { id, filename, versions: { take: 1, select: { id, checksum, messageId, filename, contentType, sizeBytes, createdAt, contentStorageKey } } }` |
+| 上传 → 指定版本 | `include: { versions: { take: 1 } }`（整行） | 同上形态切片（`originalFilename` 等 8 列） |
+
+**② 更正上一轮那句因果**：`isFileProjectionCurrent` 的慢读**不是**「按父取一的 N+1」，是**载荷**。
+同一语料把形状按住不动、只收窄投影：嵌套 `take: 1` 整行 17.21–23.26 ms → 窄 `select` **0.45–0.55 ms**；
+平查窄投影 0.41–0.47 ms（两者同价）。31 个版本的 `evidenceJson` 合计 **1,166,896 字节**。代码注释与用例头注
+已就地改成「载荷」，不改行为。
+
+**③ 顺带收紧一条会搬走用户文档的读路径**（`readSessionFile`）：原来「解析 JSON」「归一化」「路径解码」共用一个
+`try`，`catch` 一律 `kind:'corrupt'` + 改名隔离。现在只有**内容自证不合格**（JSON 解析失败、纯函数
+`normalizeSessionFile` 判无效）才隔离；归一化/解码**抛错**报 `kind:'unreadable'` 且**不动文件**。
+隔离分支抽成 `quarantineCorruptSessionFile`。新用例 `repository-decode-failure.test.ts` 两支（解码抛错 ⇒ 文件原地、
+`unreadable`；坏 JSON ⇒ 仍隔离），是**正反对**。
+成因是实测出来的：本轮第一个探针没给 vitest `electron` 替身，`decodeSessionDataPaths` 在无 `app` 的进程里抛
+`Cannot read properties of undefined (reading 'isPackaged')`，于是 21:22:16 / 21:22:38 两次探针把
+**66 份真实会话文档全部**改名成 `<id>.json.invalid-<ts>-<n>`。已**当场按名还原 66 份**并复核「主文档 66 份、
+隔离件 0 份」；此后所有探针先 `vi.mock('electron')` + 用纯函数 `normalizeSessionFile` 预校验。
+
+### 二 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/project-files` + `src/main/session-persistence` | **22 files / 356 passed**，exit 0（上轮基线 21/351，新增 1 文件 5 例） |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（四个改动文件） | 0 error / 0 warning |
+| 全仓 `eslint --no-cache .` | **0 error / 94 warning**（与上轮基线同值） |
+| 变异自证（上轮已做） | 往 `versions.select` 加回 `evidenceJson: true` ⇒ 形状用例当场红，已还原 |
+
+证据档：`docs/evidence/2026-11-11-extraction-cost-is-payload-not-shape.md`（语料规模、五种读法逐项计时、
+交付函数的改前改后 p50/p90、复跑配方、以及 §五 那次事故的处置）。
+
+### 三 边界（不许读成更强）
+
+- **不是装机读数**：库内成本（真实库拷贝、单连接、无并发）。真实机器上 `fileIndexMs` p50 127 / p90 418 ms，
+  本笔在库内省掉 **16–26 ms**（≈13%–20%），其余仍是争同一条连接（`connection_limit=1`）的等待。
+  判据：下一版之后同一份日志里 `fileIndexMs` 的 p50/p90 各降十几毫秒。
+- **上传分支没有真实读数**：真实库 `UploadVersion` **0 行**，那条分支只经过单测（形状 + 字段映射）。
+- **没有动「什么时候重投影」**：`fileIndexPath=reprojected` 的比例仍未测（要等装机后的日志）。
+- **收紧隔离是 fail-closed，有代价**：解码/归一化抛错时该文档 `isComplete:false` ⇒ 扫描整体不完整 ⇒
+  渲染端走「Some saved conversations could not be read. Retry before creating or saving conversations.」，
+  即**宁可挡住保存，也不搬走用户的文件**。这条取舍是有意的：文档消失比保存被挡更难恢复。
+
+### 四 下一轮第一步
+
+1. 取本笔双车道判决（完整 40 位 SHA；`Nightly` + `Windows Full Test` 两处同查）。
+2. `fileIndexMs` 剩下的 ~110 ms 要等装机后 `fileIndexPath` 的**比例**读数才能判下一刀落在哪；
+   本地可先量的候选：`authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）仍没有各自的被占拆分。
+3. 投影重建路径（`mutation-projection.ts:324`、`mutation-owner.ts:399/410` 的 `uploadFile versions take:1`）
+   同属「按父取一」，但只在重投影/对账时跑、频率未测 ⇒ 别先改，等第 2 条的读数。
