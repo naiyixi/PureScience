@@ -1,5 +1,6 @@
 import { arch as hostArchitecture } from 'node:os'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
+import type { ClientRequest } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { join } from 'node:path'
 
@@ -87,44 +88,72 @@ const verifyStorageAccess = async (storageRoot: string): Promise<void> => {
 // Uses the same direct HTTPS route as the managed downloader and follows a small number of redirects.
 // A HEAD request keeps the required basic source check lightweight on every startup. Omitting
 // packagePath probes the registry root, which answers plain internet reachability.
-const probeRegistryReachability: RegistryProbe = (registry, packagePath = '') => {
-  const startedAt = Date.now()
+//
+// The budget is a wall clock around the whole exchange, not `request.setTimeout`: Node arms that one
+// only once a socket is assigned, so it never covers name resolution or anything else that happens
+// before the connection exists. This is not theoretical — the packaged build's `network:check-connectivity`
+// rows break the 5 s limit while the process is running (12.5 s / 12.6 s / 15.2 s / 17.3 s, each with
+// seconds of CPU), and a check that can outlive its own limit is exactly the state the Network panel
+// renders as "Checking…" for minutes.
+//
+// One budget for the whole chain, redirects included: a redirect hop is the same registry still not
+// answering, so re-arming the clock per hop would let a four-hop chain spend four times the limit.
+const createRegistryProbe =
+  (requestFn: typeof httpsRequest = httpsRequest): RegistryProbe =>
+  (registry, packagePath = '') => {
+    const startedAt = Date.now()
 
-  return new Promise<number>((resolve, reject) => {
-    const visit = (url: string, redirectsLeft: number): void => {
-      const request = httpsRequest(url, { method: 'HEAD' }, (response) => {
-        const status = response.statusCode ?? 0
+    return new Promise<number>((resolve, reject) => {
+      let settled = false
+      let inFlight: ClientRequest | undefined
+      const deadline = setTimeout(() => {
+        // Destroying the request is what aborts a lookup still waiting for a name; `settle` below is
+        // what the caller sees either way (the destroy's own 'error' is swallowed once settled).
+        inFlight?.destroy(new Error(`Timed out while checking ${registry}`))
+        settle(() => reject(new Error(`Timed out while checking ${registry}`)))
+      }, REGISTRY_PROBE_TIMEOUT_MS)
 
-        if (status >= 300 && status < 400 && response.headers.location) {
+      function settle(finish: () => void): void {
+        if (settled) return
+        settled = true
+        clearTimeout(deadline)
+        finish()
+      }
+      const fail = (error: Error): void => settle(() => reject(error))
+
+      const visit = (url: string, redirectsLeft: number): void => {
+        const request = requestFn(url, { method: 'HEAD' }, (response) => {
+          const status = response.statusCode ?? 0
           response.resume()
-          if (redirectsLeft <= 0) {
-            reject(new Error(`Too many redirects while checking ${registry}`))
+
+          if (status >= 300 && status < 400 && response.headers.location) {
+            if (redirectsLeft <= 0) {
+              fail(new Error(`Too many redirects while checking ${registry}`))
+              return
+            }
+
+            visit(new URL(response.headers.location, url).toString(), redirectsLeft - 1)
             return
           }
 
-          visit(new URL(response.headers.location, url).toString(), redirectsLeft - 1)
-          return
-        }
+          if (status < 200 || status >= 300) {
+            fail(new Error(`HTTP ${status} while checking ${registry}`))
+            return
+          }
 
-        response.resume()
-        if (status < 200 || status >= 300) {
-          reject(new Error(`HTTP ${status} while checking ${registry}`))
-          return
-        }
+          settle(() => resolve(Date.now() - startedAt))
+        })
 
-        resolve(Date.now() - startedAt)
-      })
+        inFlight = request
+        request.on('error', (error: Error) => fail(error))
+        request.end()
+      }
 
-      request.setTimeout(REGISTRY_PROBE_TIMEOUT_MS, () => {
-        request.destroy(new Error(`Timed out while checking ${registry}`))
-      })
-      request.on('error', reject)
-      request.end()
-    }
+      visit(`${REGISTRY_URLS[registry]}${packagePath}`, 3)
+    })
+  }
 
-    visit(`${REGISTRY_URLS[registry]}${packagePath}`, 3)
-  })
-}
+const probeRegistryReachability = createRegistryProbe()
 
 const inspectRegistry = async (
   registry: ManagedClaudeRegistry,
@@ -478,4 +507,11 @@ const runEnvironmentCheck = async ({
   }
 }
 
-export { REGISTRY_URLS, probeRegistryReachability, runEnvironmentCheck, verifyStorageAccess }
+export {
+  REGISTRY_URLS,
+  REGISTRY_PROBE_TIMEOUT_MS,
+  createRegistryProbe,
+  probeRegistryReachability,
+  runEnvironmentCheck,
+  verifyStorageAccess
+}

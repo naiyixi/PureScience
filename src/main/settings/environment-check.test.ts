@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  REGISTRY_PROBE_TIMEOUT_MS,
+  createRegistryProbe,
   runEnvironmentCheck,
   verifyStorageAccess,
   type EnvironmentCheckDeps
@@ -19,6 +21,80 @@ const baseDeps = (): EnvironmentCheckDeps => ({
     registry === 'npmmirror' ? 42 : 380
   ),
   now: () => 1234
+})
+
+describe('createRegistryProbe', () => {
+  it('gives up on its own budget even when no socket was ever assigned', async () => {
+    vi.useFakeTimers()
+    try {
+      const destroy = vi.fn()
+      // A request that never assigns a socket and never answers: exactly the state
+      // `request.setTimeout` cannot see, because Node arms that timer only after a socket exists.
+      // The old code therefore left this promise pending for as long as name resolution hung.
+      const requestFn = vi.fn(() => ({ on: vi.fn(), end: vi.fn(), destroy }))
+      const probe = createRegistryProbe(requestFn as never)
+
+      const outcome = probe('npmjs').then(
+        () => 'resolved',
+        (error: Error) => error.message
+      )
+      await vi.advanceTimersByTimeAsync(REGISTRY_PROBE_TIMEOUT_MS + 1)
+
+      await expect(outcome).resolves.toBe('Timed out while checking npmjs')
+      expect(destroy).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('spends one budget across a redirect chain instead of re-arming per hop', async () => {
+    vi.useFakeTimers()
+    try {
+      const destroy = vi.fn()
+      let calls = 0
+      const requestFn = vi.fn((_url: string, _options: unknown, callback: (r: unknown) => void) => {
+        calls += 1
+        if (calls === 1)
+          callback({ statusCode: 302, headers: { location: '/moved' }, resume: vi.fn() })
+        return { on: vi.fn(), end: vi.fn(), destroy }
+      })
+      const probe = createRegistryProbe(requestFn as never)
+
+      const outcome = probe('npmjs').then(
+        () => 'resolved',
+        (error: Error) => error.message
+      )
+      await vi.advanceTimersByTimeAsync(REGISTRY_PROBE_TIMEOUT_MS + 1)
+
+      // The second hop never answers; the chain must still stop at the one budget, and the reason is
+      // the budget, not the redirect count.
+      expect(requestFn).toHaveBeenCalledTimes(2)
+      await expect(outcome).resolves.toBe('Timed out while checking npmjs')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('answers with the measured latency when the registry responds', async () => {
+    const requestFn = vi.fn((_url: string, _options: unknown, callback: (r: unknown) => void) => {
+      callback({ statusCode: 200, headers: {}, resume: vi.fn() })
+      return { on: vi.fn(), end: vi.fn(), destroy: vi.fn() }
+    })
+    const probe = createRegistryProbe(requestFn as never)
+
+    await expect(probe('npmmirror')).resolves.toBeGreaterThanOrEqual(0)
+    expect(requestFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a non-2xx answer as a failure, not as reachable', async () => {
+    const requestFn = vi.fn((_url: string, _options: unknown, callback: (r: unknown) => void) => {
+      callback({ statusCode: 503, headers: {}, resume: vi.fn() })
+      return { on: vi.fn(), end: vi.fn(), destroy: vi.fn() }
+    })
+    const probe = createRegistryProbe(requestFn as never)
+
+    await expect(probe('npmjs')).rejects.toThrow('HTTP 503 while checking npmjs')
+  })
 })
 
 describe('runEnvironmentCheck', () => {

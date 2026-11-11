@@ -17685,3 +17685,64 @@ p90 三百多毫秒动不了；渲染层 `LATEST_SAVE_COALESCE_MS = 350` 已在�
 - **复跑证明（零代码改动）**：`gh run rerun 43049782887 --failed` → `build / Build linux-x64` **success**，
   整条 `Nightly` 转为 **completed / success**（`run_attempt = 2`）。⇒ 按「零改动复跑转绿即为基础设施抖动」记档，
   不改代码、不改测试、不重打 tag。
+
+## 三百一十六、本轮追加（执行器，2026-11-12 03:0x–）—— 连通性探针的 5 秒预算罩不住名字解析；「有一个通」也不必等最慢那条
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 07898c0e`，`git log origin/main..HEAD` 为空，`git status --short` 只有
+  **三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）⇒ 一个字节没碰、不提交。
+  `hermes cron list` 只有本任务一个执行器，上一次 run 01:01 `ok`；`gh run list --limit 8` 六条车道全
+  `completed`（最近三笔提交的 `Nightly`/`Windows Full Test` 均 success）⇒ **本次推送没有取消任何人的判决**。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项。§三百一十五 §四 给的三条候选里，
+  第 2 条（`fileIndexMs` 剩下的 ~110 ms）明确要等装机后 `fileIndexPath` 的比例读数，第 3 条要等第 2 条；
+  第 1 条（取判决）已在本轮开工核对里点掉 ⇒ 改从**真机日志里另找一处站得住的缺口**，判据同前几轮：
+  先按机制名在源码里找到它、再用日志行定量、最后用本机读数说清杠杆有多大。
+
+### 一 读数与缺陷
+
+把打包版六份 `main*.log` 的 `ipc handler was slow` 按通道聚合，`network:check-connectivity` 共 **122 行**：
+median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 5–60 s、3 行 > 60 s）。其中**进程确实在跑**
+的四行（同一行带 1.5–8.7 s CPU）是 12.5 s / 12.6 s / 15.2 s / 17.3 s；另有三行 428 s / 972 s / 980 s
+其 `attribution` 为 `no-cpu-in-process`，**不作为主要证据**（睡眠也能产生这种形状）。
+
+两处机制，各自独立：
+
+1. `request.setTimeout` 在 **socket 被分配之后**才生效、量的是 socket 空闲 ⇒ 名字解析与前 socket 等待
+   根本不在预算内，一个解析不出来的名字能让请求永不 settle。
+2. `Promise.all(...).some(Boolean)` 要等**全部**落定 ⇒ 一条挂住时，另一条 100 ms 就答了也不算数。
+
+代价用户可见：这个值是 `network-store` 的 `connectivity: 'unknown'` 之源，而 `unknown` 在界面上就是
+**「Checking…」**。
+
+### 二 交付（4 文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/settings/environment-check.ts` | 探针改成 `createRegistryProbe(requestFn = httpsRequest)`（与本仓 `createConnectionTypeResolver(execFileFn)` 同一种注入写法）；预算改成**整条链一条墙钟**（`setTimeout` ⇒ `settle` + `request.destroy`），跳转不重新计时；五个出口（成功 / 非 2xx / 跳转过多 / 网络错误 / 超时）汇到一个 `settle`，重复落定一律忽略 |
+| `src/main/net/network-info.ts` | `checkInternetReachability` 改成**首个成功即答**（成功立即 `true`，全部失败才 `false`）；落败那条不取消，语义仍是「任一 registry 2xx ⇒ 可达」 |
+| 两个测试文件 | `environment-check.test.ts` +4 例（无 socket 时按墙钟放弃且 destroy 被调用；跳转链共用一条预算；正常应答返回实测毫秒；非 2xx 报失败）、`network-info.test.ts` +1 例（第一条永不落定、第二条 12 ms ⇒ 仍 `true`） |
+
+证据档：`docs/evidence/2026-11-12-connectivity-probe-budget.md`（122 行分桶、四行越预算的原值、
+本机两处 registry 各 5 次实测、复跑配方）。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/settings` + `src/main/net` + `network-ipc.test.ts` | **105 files / 1,594 passed**（3 skipped），exit 0 |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（4 个改动文件） | 0 error / 0 warning |
+| 全仓 `eslint --no-cache .` | **0 error / 94 warning**（与基线同值） |
+| 变异自证（两次，均已还原） | ① 墙钟退回 `request.setTimeout` ⇒ 两条预算用例红；② 退回 `Promise.all` ⇒ 首个成功即答那例红（60 s 后失败），合计 3 failed / 40 passed |
+
+### 四 边界（不许读成更强）与下一轮第一步
+
+- **不是装机读数**：本机三条 registry 现在都通，量到的是「首个成功 72–151 ms vs 全部落定 429–654 ms」，
+  不是「那 13 行会不会消失」。装机判据：新版本之后 `network:check-connectivity` 的 **> 5 s 行数应为 0**
+  （基线 13/122）。
+- **没有改判定语义**：`runEnvironmentCheck` 里两个 registry 的延迟比较未变；落败的探针不取消。
+- 下一轮第一步：① 取本笔双车道判决（**完整 40 位 SHA**，`Nightly` + `Windows Full Test` 两处同查）；
+  ② 接着按同一张聚合表取下一个真机缺口（`sessions:save-session` 那两段等待要等装机后的
+  `peerFsOperations`/`fileIndexPath` 读数，本地已无刀可下）；③ `cases:marketplace` 仍有 80 行慢日志
+  （median 4,273 ms），要看那笔 20 秒总预算在装机日志里落成什么样再决定动不动。

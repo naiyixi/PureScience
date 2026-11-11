@@ -13,18 +13,44 @@ type RegistryProbe = typeof probeRegistryReachability
 // probe against both package registries (registry root this time — the question here is "is the
 // internet usable", not "can we download a specific runtime package"). Reachable when either
 // registry answers 2xx; each probe carries the probe's own 5s timeout and they run in parallel.
+//
+// The answer is taken from the FIRST registry that answers, not after every probe has settled. Both
+// probes run anyway (the loser is not cancelled, so a later caller still sees a warmed path), but
+// waiting for the slower one turned "one registry is up" into a window as long as the slowest probe
+// — and this is the value the Network panel renders as "Checking…". `false` still means what it did:
+// every registry failed.
 const checkInternetReachability = (
   probe: RegistryProbe = probeRegistryReachability
 ): Promise<boolean> => {
   const registries = Object.keys(REGISTRY_URLS) as ManagedClaudeRegistry[]
-  return Promise.all(
-    registries.map((registry) =>
-      probe(registry).then(
-        () => true,
-        () => false
+  if (registries.length === 0) return Promise.resolve(false)
+
+  return new Promise<boolean>((resolve) => {
+    let remaining = registries.length
+    let decided = false
+
+    const finish = (reachable: boolean): void => {
+      if (decided) return
+      if (reachable) {
+        decided = true
+        resolve(true)
+        return
+      }
+
+      remaining -= 1
+      if (remaining === 0) {
+        decided = true
+        resolve(false)
+      }
+    }
+
+    for (const registry of registries) {
+      void probe(registry).then(
+        () => finish(true),
+        () => finish(false)
       )
-    )
-  ).then((results) => results.some(Boolean))
+    }
+  })
 }
 
 // First non-internal IPv4 address across the active interfaces. Internal (loopback) and

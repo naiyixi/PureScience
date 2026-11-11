@@ -122,6 +122,17 @@ describe('createConnectionTypeResolver', () => {
 
 // The checker reuses the onboarding probe; tests inject a fake probe so no real HTTPS happens.
 describe('checkInternetReachability', () => {
+  it('answers from the first registry that succeeds instead of waiting for the slower one', async () => {
+    // The first registry never settles — the shape a name that never resolves produces at the probe
+    // level. Waiting for every probe left the caller in "checking" for as long as that hang lasted,
+    // even though the second registry had already answered.
+    const probe = vi.fn((registry: string) =>
+      registry === 'npmjs' ? new Promise<number>(() => undefined) : Promise.resolve(12)
+    )
+
+    await expect(checkInternetReachability(probe as never)).resolves.toBe(true)
+  })
+
   it('is reachable when any registry probe succeeds', async () => {
     const probe = vi.fn((registry: string) =>
       registry === 'npmjs' ? Promise.reject(new Error('down')) : Promise.resolve(12)
