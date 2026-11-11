@@ -1126,45 +1126,81 @@ class SessionRepository {
       }
     }
 
+    let parsed: unknown
     try {
-      const session = normalizeSessionFile(JSON.parse(raw) as unknown, {
-        preserveLegacyUploadPaths: true
-      })
-      if (!session) {
-        const wasQuarantined =
-          options.quarantineInvalidFiles !== false && (await this.tryBackupInvalidFile(filePath))
-        return {
-          isComplete: wasQuarantined,
-          wasQuarantined,
-          warning: {
-            kind: 'corrupt',
-            projectId,
-            fileName: basename(filePath),
-            recovered: wasQuarantined
-          }
-        }
-      }
-
-      const restored = decodeSessionDataPaths({ ...session, projectId })
-      // Warm the summary cache so the next startup skips the full parse. Deliberately NOT awaited: a scan
-      // answers from the documents it parsed rather than from the cache it writes beside them, so a first
-      // launch over N documents does not wait on N small writes. The consequence is that "the entry
-      // landed" runs on a later clock than "the scan returned" — a caller that needs the next read to be
-      // index-only (a test, a restart handler) waits for it explicitly rather than assuming it.
-      void this.writeSessionSummary(filePath, restored)
-      return { session: restored, isComplete: true }
+      parsed = JSON.parse(raw) as unknown
     } catch {
-      const wasQuarantined =
-        options.quarantineInvalidFiles !== false && (await this.tryBackupInvalidFile(filePath))
+      return this.quarantineCorruptSessionFile(filePath, projectId, options)
+    }
+
+    let session: PersistedChatSession | undefined
+    try {
+      session = normalizeSessionFile(parsed, { preserveLegacyUploadPaths: true })
+    } catch {
+      // The normalizer threw instead of answering. That is a defect in the reader, not a property of the
+      // bytes, so the document stays where it is — the same rule the decode below follows.
       return {
-        isComplete: wasQuarantined,
-        wasQuarantined,
+        isComplete: false,
         warning: {
-          kind: 'corrupt',
+          kind: 'unreadable',
           projectId,
           fileName: basename(filePath),
-          recovered: wasQuarantined
+          recovered: false
         }
+      }
+    }
+    if (!session) return this.quarantineCorruptSessionFile(filePath, projectId, options)
+
+    let restored: PersistedChatSession
+    try {
+      restored = decodeSessionDataPaths({ ...session, projectId })
+    } catch {
+      // Every failure past this point is the environment (data-root resolution, a path the URL builder
+      // rejects) or a bug, never proof that the bytes are invalid — so it must not move a user's Session
+      // aside. A real corpus run once quarantined every document this way; only content that proves itself
+      // invalid may be isolated.
+      return {
+        isComplete: false,
+        warning: {
+          kind: 'unreadable',
+          projectId,
+          fileName: basename(filePath),
+          recovered: false
+        }
+      }
+    }
+
+    // Warm the summary cache so the next startup skips the full parse. Deliberately NOT awaited: a scan
+    // answers from the documents it parsed rather than from the cache it writes beside them, so a first
+    // launch over N documents does not wait on N small writes. The consequence is that "the entry
+    // landed" runs on a later clock than "the scan returned" — a caller that needs the next read to be
+    // index-only (a test, a restart handler) waits for it explicitly rather than assuming it.
+    void this.writeSessionSummary(filePath, restored)
+    return { session: restored, isComplete: true }
+  }
+
+  // Only a document that proves itself invalid — unparseable JSON, or a value the pure normalizer refuses
+  // — is moved aside. Everything else is reported in place, because a scan must never turn "this build
+  // could not read it just now" into "your Session is gone".
+  private async quarantineCorruptSessionFile(
+    filePath: string,
+    projectId: string,
+    options: { quarantineInvalidFiles?: boolean }
+  ): Promise<{
+    isComplete: boolean
+    wasQuarantined?: boolean
+    warning: SessionLoadWarning
+  }> {
+    const wasQuarantined =
+      options.quarantineInvalidFiles !== false && (await this.tryBackupInvalidFile(filePath))
+    return {
+      isComplete: wasQuarantined,
+      wasQuarantined,
+      warning: {
+        kind: 'corrupt',
+        projectId,
+        fileName: basename(filePath),
+        recovered: wasQuarantined
       }
     }
   }

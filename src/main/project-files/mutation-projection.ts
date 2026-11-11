@@ -21,9 +21,10 @@ type ProjectFilesClient = Pick<
   | 'managedFileSessionSync'
   | 'fileOriginSession'
   | 'artifactLineage'
-  // The projection check needs the latest finalized Version per lineage. A nested `include` with per-parent
-  // `take: 1` makes that one query per lineage (31 lineages = 15.9 ms p50 on a copy of the real corpus), so the
-  // same answer is read flat and folded here instead — 0.42 ms p50 for the identical map.
+  // The projection check needs the latest finalized Version per lineage. Measured on a copy of the real
+  // corpus, what made that read expensive was the row payload (`evidenceJson` alone is 1.2 MB across
+  // 31 versions: full rows 16-17 ms p50, the four columns the check reads 0.3-0.5 ms), so it is read flat
+  // with an explicit projection and folded here.
   | 'artifactVersion'
   | 'uploadFile'
   | '$queryRaw'
@@ -160,11 +161,13 @@ const isFileProjectionCurrent = async (
       }
     })
   ])
-  // The latest finalized Version of each lineage, read as one flat query and folded here. The nested
-  // `include` form asks the engine once per lineage (the per-parent `take`/`orderBy` cannot be pushed down),
-  // which measured 15.9 ms p50 for 31 lineages on a copy of the real corpus; this form answers the same map
-  // in 0.42 ms. `versionNumber` then `id` descending is the same order the nested read asked for, so "latest"
-  // means the same row.
+  // The latest finalized Version of each lineage, read as one flat query and folded here. Measured on a
+  // copy of the real corpus (31 lineages, 1.2 MB of `evidenceJson` among them): full-row reads cost
+  // 16-17 ms p50, while the same rows projected down to the four columns this check needs cost 0.3-0.5 ms
+  // — the payload was the cost, not the per-lineage round-trip (the nested `take: 1` with a narrow
+  // `select` answers in 0.55 ms too). The flat form is kept because it is one row set rather than a
+  // parent list, and `versionNumber` then `id` descending is the same order the nested read asked for,
+  // so "latest" means the same row.
   const expectedArtifacts = new Map<string, string>()
   if (lineages.length > 0) {
     const versions = await client.artifactVersion.findMany({
@@ -255,16 +258,30 @@ const extractSessionFiles = async (
       if (upload.versionId) {
         try {
           const client = await getClient()
+          // Narrow projection for the same reason the Artifact read above is narrow: the UploadVersion
+          // row carries no large JSON today, but `include` costs a full-row read per upload and this
+          // branch runs once per referenced Upload in the Session.
           const file = await client.uploadFile.findFirst({
             where: {
               id: upload.id,
               projectId: session.projectId,
               sessionId: upload.sessionId
             },
-            include: {
+            select: {
+              id: true,
               versions: {
                 where: { id: upload.versionId, state: 'ready' },
-                take: 1
+                take: 1,
+                select: {
+                  id: true,
+                  checksum: true,
+                  originalFilename: true,
+                  filename: true,
+                  contentStorageKey: true,
+                  contentType: true,
+                  sizeBytes: true,
+                  createdAt: true
+                }
               }
             }
           })
@@ -318,13 +335,29 @@ const extractSessionFiles = async (
   const authoritativeArtifactIds = new Set<string>()
   try {
     const client = await getClient()
+    // Only the columns the Files tile reads. `include` would drag `evidenceJson` /
+    // `executionSnapshotJson` along (1.2 MB of JSON for 31 versions on the real corpus), and that
+    // payload — not the query shape — is what made this read cost 17-23 ms; the same nested
+    // `take: 1` with this projection answers in 0.5 ms.
     const lineages = await client.artifactLineage.findMany({
       where: { projectId: session.projectId, sessionId: session.id },
-      include: {
+      select: {
+        id: true,
+        filename: true,
         versions: {
           where: { state: 'finalized' },
           orderBy: [{ versionNumber: 'desc' }, { id: 'desc' }],
-          take: 1
+          take: 1,
+          select: {
+            id: true,
+            checksum: true,
+            messageId: true,
+            filename: true,
+            contentType: true,
+            sizeBytes: true,
+            createdAt: true,
+            contentStorageKey: true
+          }
         }
       }
     })
