@@ -17534,3 +17534,68 @@ p90 三百多毫秒动不了；渲染层 `LATEST_SAVE_COALESCE_MS = 350` 已在�
   下一处是 `aftermathMs`（19%，p50 132 / p90 451）里的 `fileIndex.syncSession` —— 先量它的快路径
   （`filesRevision` 未变时是否仍做两次 DB 读 + `isFileProjectionCurrent`）再决定；
   ③ 若转向「谁在长窗口里占着主线程」，候选是 `authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）。
+
+## 三百一十四、本轮追加（执行器，2026-11-11 18:2x–）—— 保存的投影段：慢行先说清走的是哪条路，再把「最新版本」的 N+1 读改成平查
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时共享工作树**不干净**：`mutation-owner.ts`/`mutation-projection.ts`/`repository.test.ts`/
+  `coordinator.ts`/`coordinator.test.ts` 五个在制路径（mtime 16:16–16:18），外加三份**不是我的**未跟踪证据档
+  （`2026-11-01-…`、两份 `2026-11-04-…`，本轮一个字节没碰、不提交）。`hermes cron list` 只有一个执行器（本任务），
+  上一次 run 已 `ok` ⇒ 这五个路径是**本任务上一轮留下的在制**，不是别人的：内容与上轮 §四 第②条候选
+  （`aftermathMs` 里的 `fileIndex.syncSession`）逐条对得上，于是接手继续，而不是重做。
+- **双车道判决已取**：`2f376d40` 的 `Nightly` 与 `Windows Full Test` 均 **completed / success**
+  （`gh run list` + 完整 40 位 SHA 的 `actions/runs?head_sha=` 两处同答）⇒ 点掉上轮待取项。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项 ⇒ 继续追 `sessions:save-session` 的尾段。
+
+### 一 交付（两笔）
+
+**① `db42b65c` 慢行点名投影路径 + 三个跨度各自拆分**（接手上一轮的在制并收口）
+
+| 位置 | 改动 |
+| --- | --- |
+| `mutation-projection.ts` | 新增 `SessionFileSyncOutcome`（`path: current\|reprojected`、`reason: revision-current\|revision-mismatch\|projection-drift\|forced`） |
+| `mutation-owner.ts` | 在**决策点**（不是事后）自报：账本对上且投影最新 ⇒ `current`；否则按 `force` / 账本是否对上命名重建原因。回调 `try/catch` 且永不 await —— 诊断不得反过来影响它描述的那次投影 |
+| `coordinator.ts` | 慢行新增 `fileIndexPath`/`fileIndexPathReason`；`authorityMs` 与 `fileIndexMs` 各自按循环被占窗口拆分（`authorityHeldMs`/`authorityOwnMs`、`fileIndexHeldMs`/`fileIndexOwnMs`），**不折叠进 `heldMs`**，保持与旧日志可比 |
+| 测试 | `repository.test.ts` 三处钉住每条路径各报到一次（含「同修订号、新定稿版本 ⇒ `projection-drift`」这唯一一条会话自身看不出的成因）；`coordinator.test.ts` +1 例 |
+
+**② 本轮新做：把「每个血缘取最新已定稿版本」的 N+1 读改成平查**
+
+`isFileProjectionCurrent` 原来用嵌套 `include{versions{take:1, orderBy:[versionNumber desc, id desc]}}`。
+在真实库拷贝上它落成**每条血缘一次子查询**：31 条血缘 = 15.9 ms p50（裸查同一张表 0.24 ms、无命中查询 0.11 ms），
+22 条血缘的会话 12.9 ms（≈0.58 ms/条）。改成「先取血缘 id，再一次性取这些血缘的全部已定稿版本，在 JS 里
+按 `artifactId` 取第一条」后，**已交付函数本体** 0.63 ms p50 / 0.68 p90（原形态 16.52 / 17.94），
+两种写法产出的 `lineageId → 最新版本 id` 映射逐条比对 `same-result=true`（31/31）。
+为让 `artifactVersion` 进入 `ProjectFilesClient` 的 `Pick<>`，在类型旁写明理由（扩面必须是有意为之）。
+
+### 二 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `src/main/project-files` + `src/main/session-persistence` | **21 files / 351 passed**，exit 0（第①笔当时是 20 files / 348） |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（改动文件） | 0 error / 0 warning（第①笔曾有 6 条 prettier warning，`--fix` 收净并复跑） |
+| 全仓 `eslint --no-cache .` | **0 error / 94 warning** |
+| 变异自证 | 把「按血缘取第一条」改成「最后一条覆盖」⇒ `repository.test.ts` 的 `projects the latest finalized Artifact Version instead of a stale Session descriptor` 当场红（1 failed / 38 passed），**已还原并复跑 39 passed** |
+| `scripts/pre-push-checks.sh` | 第①笔全过（5 文件 0 problems）；第②笔推送前同跑 |
+
+证据档：`docs/evidence/2026-11-11-fileindex-fast-path-is-n-plus-one.md`（含语料规模、逐读计时、复跑配方）。
+
+### 三 边界（不许读成更强）
+
+- **不是装机读数**：这是主进程一路读在「真实库拷贝、单连接、无并发」下的库内成本。装机后的效果只能从慢行
+  `fileIndexMs` 看（真实机器上该段 p50 127 / p90 418 ms，这一读原本约占 16 ms ≈ 13%，其余是与产品内其他
+  工作争同一条连接的等待）。下一版发出去之后，判据是同一份日志里该段 p50/p90 各降十几毫秒，且
+  `fileIndexPath` 能说出走哪条路。
+- **没有改判定语义**：三条否定条件（投影计数/版本号不符、旧式上传归属跨会话、原生上传归属跨会话）一条未动，
+  改的只是「最新版本」从哪里读；回归已由既有用例 + 新增三条钉住。
+- 上轮那条「`fileIndexMs` 里 0.47 ms」的说法**没有出处**（全盘 grep 不到任何证据档），本轮以实测替换为
+  「三处小读 0.65 ms」，并把代码注释里的数字改成与本次读数一致。
+
+### 四 下一轮第一步
+
+1. 取本笔双车道判决（**完整 40 位 SHA**，两处同查）。红在测试/类型当场修。
+2. `sessions:save-session` 的下一处：`fileIndexMs` 剩下的 ~110 ms 里，**重投影路径占多少**要看装机后
+   `fileIndexPath=reprojected` 的比例；本地可先量 `extractSessionFiles` 在真实语料单会话上的成本
+   （它每次都重读该会话的 uploads/artifacts 目录），若明显，杠杆在「只对变化来源重抽取」。
+3. 若转向别处：`authorityMs` 之外的分段（索引读 / 文档读 / 隔离检查）仍没有各自的被占拆分读数。
