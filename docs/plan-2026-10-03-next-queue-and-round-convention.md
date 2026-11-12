@@ -17939,3 +17939,62 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
   ② 本机冷扫的读等待仍要 `loadAvg < 2`（§三百一十七 §三），不到不动读路径；
   ③ 若要继续追 `sessions:save-session`，先按新分桶把 `cpuMs > durationMs` 那 877 行排除在「在算」之外，
   再对剩下的 cpu-bound 行取一次真机读数（别把全线程计数当证据）。
+
+## 三百二十、本轮追加（执行器，2026-11-12 13:2x–）—— 榜首那 2,670 条 error 全是认证夹具；按归属切开，把这条读法做成仪器
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = e450054b`，`git log origin/main..HEAD` 为空；`git status --short` 只有
+  **三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`，一个字节没碰、不提交）。
+- **判决已取**（完整 40 位 SHA 两处同查）：`e450054b` 的 `Nightly` 与 `Windows Full Test` 均
+  **completed / success**；`ba10e490` 的 `Windows Full Test` success，`Nightly` 被 `e450054b` 顶掉（cancelled）
+  —— 祖先成立（`git merge-base --is-ancestor ba10e490 e450054b`），以 `e450054b` 的双绿作它的证据。
+- `hermes cron list` 只有本任务一个执行器；队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；
+  §三百一十七 §三 的冷扫读等待仍等空闲机器（本轮 `loadAvg` 仍 > 2）。
+- 本轮改从**语料本身**动手：先问「按 msg 聚合出来的榜首，是不是同一个东西」。
+
+### 一 读数（先量后改；六份 `main*.log`，只读）
+
+六份日志 87,547 行结构化记录。按 `msg` 聚合，error 榜首是 `review protocol incomplete`
+（"Reviewer stopped without calling submit_findings…"）**2,670 行**。逐行看 `runId`：全部落在开发版，
+同一 run 的 `reviewer session started` 写着 `e2e-session-*` ⇒ 认证车道用替身 agent 驱动的夹具会话，
+夹具约定就是**不调 `submit_findings`**（替身不回工具调用，`reviewer drive stopped toolCalls=0`）。
+同一族在打包版三份日志里 **0 行**；打包版的 4,985 条慢行里 0 条来自夹具。
+
+⇒ 不切归属，这份语料会把一条夹具约定报成产品缺陷（并据此立案），而真要看的三族
+（`session save was slow` 789、`artifact version resolve was slow` 595、`egress target failed` 292）
+会被它埋在下面。
+
+### 二 交付（一笔，全部为本轮新写）
+
+| 位置 | 改动 |
+| --- | --- |
+| `scripts/log-corpus-attribution.mjs`（新） | 先按**实例**（文件所在目录名）与**会话归属**切开，再报错误/警告族与慢行分布。四态：`real` / `fixture`（id 以 `e2e` 开头）/ `mixed`（同一 run 里两种 id 都在场，不替它选边）/ `unattributed`（行上没有 id、同一 run 里也没有 ⇒ 不许默认成 real）。行上没有 id 时**借同一文件里同一 `runId`** 的 id 判归属（实测 2,670 行全靠这一步才判得到夹具）；借不到才是 `unattributed`。空答案具名：`no-log-files`=2、`no-rows`=3、用法错=1、自检失败=4；`--json` 可机读 |
+| `package.json` | `"diag:log-attribution": "node scripts/log-corpus-attribution.mjs"`（`check:script-entrypoints` 的入口约定） |
+| `docs/evidence/2026-11-12-log-corpus-attribution.md`（新） | 语料规模、四态判据、两版实例的真实读数、边界（借 run 只在同一文件内成立；`mixed` 不给结论；全量无采样）、复跑配方 |
+
+自检（`--selftest`）钉四件事：借 run 判归属、两种 id 同在 ⇒ `mixed`、无 id 的行是 `unattributed`
+而不是 `real`、空输入无实例 —— 这四件出错时报表仍然好看，那正是它会被信以为真的原因。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `node scripts/log-corpus-attribution.mjs --selftest` | `selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, empty input)`，exit 0 |
+| 真实语料实跑 | 两版实例分开成表；`review protocol incomplete` 2,670 = `fixture 2670 / real 0`；打包版慢行 4,985 = `real 4967 / unattributed 18 / fixture 0` |
+| `npm run check:script-entrypoints` | ✓ 64 launcher(s) parse under Node，exit 0 |
+| `npx eslint --no-cache scripts/log-corpus-attribution.mjs` | 0 error / 0 warning（先 `--fix` 收净 prettier 折行，复跑确认） |
+| `scripts/pre-push-checks.sh` | 见 §四（推送时实跑） |
+
+### 四 边界（不许读成更强）
+
+- **没有一行运行时代码改动**：App 的运行、写出的日志内容、判定语义全不变。改的是「读语料的人会不会
+  把夹具算成缺陷」，属分析侧仪器，不声称产品变快、也不声称那 2,670 行消失了。
+- **借 run 只在同一份文件内成立**：`runId` 跨轮转文件不可比，跨文件的情形落到 `unattributed`，
+  不会被判成 `real` 或 `fixture`。
+- **`mixed` 不是折中**：同一 run 里两种 id 都在场时不给结论；那一段要回到窗口里看具体哪条会话产生。
+- 本轮的结论**不推翻**既有读数：那些读数是在同一份语料上取的，只是标的要说清是**哪一版实例**。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA，两车道同查）；② 打包版错误族里仍挂着的
+  `[Auditor] correction sendPrompt failed`（20 行，全是 `An ACP prompt is already running`，集中在一个会话的
+  一次事故里）与 `artifact finalization attempt failed`（20 行，`failureKind: invalid-proof`）各判一次
+  「要不要为它加一个有界重试」——**先判它该不该立**，别先动实现；③ 冷扫读等待仍等 `loadAvg < 2`。

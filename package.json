@@ -36,6 +36,7 @@
     "check:script-entrypoints": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/check-script-entrypoints.mjs",
     "test:coverage": "vitest run --coverage",
     "i18n:coverage": "node scripts/i18n-coverage.mjs",
+    "diag:log-attribution": "node scripts/log-corpus-attribution.mjs",
     "diag:slow-ipc": "node scripts/slow-ipc-windows.mjs",
     "diag:stalls": "node scripts/stall-profile-report.mjs",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
