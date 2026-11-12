@@ -243,13 +243,12 @@ import { createCaseBundleCommandOwner } from './cases/case-bundle-owner'
 import { registerCaseBundleIpcHandlers } from './cases/ipc'
 import { exportCaseBundle } from './cases/export-bundle'
 import { importCaseBundle, materialiseCaseBundle } from './cases/import-bundle'
+import { installCaseFromMarketplace, packCaseArchive } from './cases/marketplace'
 import {
-  fetchCaseMarketplaceIndex,
-  installCaseFromMarketplace,
-  packCaseArchive
-} from './cases/marketplace'
+  CASE_MARKETPLACE_CACHE_FILENAME,
+  createCaseMarketplaceReader
+} from './cases/marketplace-cache'
 import { publishCaseBundle, readGitHubCredential } from './cases/publish'
-import { CASE_MARKETPLACE_INDEX_URL } from '../shared/case-marketplace'
 import { OcrService } from './settings/ocr-service'
 import { createWindowTranslation } from './translation/window-translation'
 import { PdfService } from './settings/pdf-service'
@@ -4034,7 +4033,12 @@ const createApplicationModules = async (
     write: exportCaseBundle,
     read: importCaseBundle,
     materialise: materialiseCaseBundle,
-    marketplace: (indexUrl) => fetchCaseMarketplaceIndex(indexUrl ?? CASE_MARKETPLACE_INDEX_URL),
+    // The shelf answers from the copy this machine already has, and only asks the host when the reader asks for a
+    // reload (or when nothing is saved yet). Packaged logs had twenty reads ending at the file's own 20 s deadline;
+    // a 739-byte index is not worth a spinner, and one that cannot be reached is worth nothing at all.
+    marketplace: createCaseMarketplaceReader({
+      cacheFile: join(resolveDataRoot(), 'cases', CASE_MARKETPLACE_CACHE_FILENAME)
+    }),
     // Publishing goes to this repository's release, using the GitHub credential `gh` already holds. The app does
     // not collect a token of its own; if `gh` is missing, publishing refuses and says so.
     publish: ({ draft, files }) =>

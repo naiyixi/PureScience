@@ -309,11 +309,22 @@ export const caseBundleIsComplete = (reconciliation: CaseBundleReconciliation): 
 /**
  * What the window may ask of the case marketplace. Note what is absent: no destination directory. Where an installed
  * case lands is this machine's decision, not the renderer's.
+ *
+ * `refresh` is the reader asking for the network rather than this machine's saved copy. Without it the shelf answers
+ * from what it already has, which is why the reload control has to send it.
  */
-export type CaseMarketplaceRequest = { indexUrl?: string }
+export type CaseMarketplaceRequest = { indexUrl?: string; refresh?: boolean }
 
 export type CaseMarketplaceOutcome =
-  | { status: 'ok'; cases: ReadonlyArray<CaseMarketplaceEntry>; updatedAt: number }
+  | {
+      status: 'ok'
+      cases: ReadonlyArray<CaseMarketplaceEntry>
+      updatedAt: number
+      // Where this list came from, and when those bytes were fetched. Required: a shelf that answered from disk and
+      // one that just talked to the host are not the same claim, and the window must not have to guess which it has.
+      source: 'network' | 'cache'
+      fetchedAt: number
+    }
   | {
       status: 'refused'
       reason: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'

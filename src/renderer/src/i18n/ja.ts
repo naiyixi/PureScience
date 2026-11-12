@@ -5210,5 +5210,7 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.incomplete':
     'バンドル内のファイルが一致しないため、インストールしていません。',
   'home.userCases.market.badEntry': 'この項目は有効なケースではありません。',
-  'home.userCases.market.installFailed': 'このケースはインストールできませんでした。'
+  'home.userCases.market.installFailed': 'このケースはインストールできませんでした。',
+  'home.userCases.market.savedCopy':
+    '{date} に保存されたコピーを表示しています。再読み込みで索引に問い合わせ直せます。'
 }

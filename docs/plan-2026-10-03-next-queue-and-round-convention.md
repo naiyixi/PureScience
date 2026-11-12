@@ -17817,3 +17817,62 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
   ② 仍按 §三百一十六 §四 的第 ③ 条看 `cases:marketplace` 那 20 秒总预算在装机日志里的落点
   （本轮 23 行慢日志里 9 行 `cpu-bound-in-process`、`cpuMs` 12.8–26.9 s，但 `heldMs` 同时存在
   ⇒ 先分清是「等」还是「算」再动）；③ 本机冷扫的读等待要一台空闲机器才能定因，**不自作主张改读路径**。
+
+## 三百一十八、本轮追加（执行器，2026-11-12 08:2x–）—— 20 秒预算落在 739 字节的文档上；货架改成「读过一次就留在本机」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 572acfca`，`git log origin/main..HEAD` 为空；`git status --short` 只有
+  **三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`）——一个字节没碰、不提交。
+- `hermes cron list` 只有本任务一个执行器。**上轮待取项已点掉**：`572acfca` 的 `Nightly` 与
+  `Windows Full Test` 现均 **completed / success**（完整 40 位 SHA 查询；上轮汇报里那条
+  「Build macos-arm64 仍 in_progress」已落定）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；§三百一十七 §五 第②条点名
+  「`cases:marketplace` 那 20 秒总预算在装机日志里的落点，先分清是等还是算再动」⇒ 本轮就做这条。
+
+### 一 先分「等」与「算」（读数见证据档）
+
+六份 `main*.log` 按通道聚合，`cases:marketplace` **80 行**慢日志：中位 4,163 ms，**17 行落在
+20,003–22,062 ms**（贴着 `CASE_MARKETPLACE_TIMEOUT_MS = 20_000` 的预算到点）。`cpuMs` 是
+`process.cpuUsage()` 的**全线程**累计，本轮取到 **5 行 `cpuMs` > `durationMs`**（最典型 20,005 ms 里
+26,928 ms CPU）⇒ 上一轮「9 行 cpu-bound」把别的线程的算读成了这条通道在算。加上「预算定时器只晚 5 ms 就
+触发」这一条 ⇒ 判定为**在主进程之外等**。载荷侧：真实索引 **739 字节 / 1 条**，产品自己的取回函数实测
+**3,984 ms**（同刻 curl 0.79 s）⇒ 20 秒预算罩的是连接与主机，不是体量。
+
+### 二 交付
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/cases/marketplace-cache.ts`（新） | 保存副本（临时件 + 一次 rename）、读回时用同一把校验器重验（验不过删掉）、`createCaseMarketplaceReader` 一条策略：有副本直接答 / `refresh` 才问网络 / 刷新失败答副本并带它自己的 `fetchedAt` / 没副本就原样交拒绝 / 窗口给了 `indexUrl` 不读不写副本 |
+| `src/main/ipc.ts` | 组合根一行换成 `createCaseMarketplaceReader({ cacheFile: <数据根>/cases/marketplace-index.json })` |
+| `src/shared/case-bundle.ts` | 请求加 `refresh?: boolean`；成功分支**必填** `source: 'network' \| 'cache'` 与 `fetchedAt` |
+| `case-bundle-owner.ts` | 把整个请求交给读，原样转出 `source` / `fetchedAt` |
+| `case-market-store.ts` | `force` 时请求带 `refresh: true`（否则刷新控件会重画同一份副本）；货架 ready 态带上来源 |
+| `CaseMarketplace.tsx` | `source === 'cache'` 时一行 `data-slot="case-market-cached"`：说这是本机保存的副本与取得时刻 |
+| 九语词典 | `home.userCases.market.savedCopy` 各一条（zh 与 en 不同形） |
+
+用例：`marketplace-cache.test.ts` 9 例（往返、无副本、坏 JSON 删除、验不过删除、有副本不问网络、
+`refresh` 才问并写回、刷新失败答副本、显式地址不落盘、失败不写盘）；owner 侧 +1（来源原样转出）；
+货架渲染 +1（保存副本那一行出现、日期在场），刷新那一支补断言「带 `refresh: true`」。
+另加 `real-marketplace-cache.local.test.ts`（`VITEST_LOCAL=1` 才跑）：真实主机读一次，然后注入一个只会
+抛错的取回函数再读一次 —— 返回 `source: 'cache'`、条数与 `fetchedAt` 相同（实测打印见证据档 §六）。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向（`src/main/cases` + `src/renderer/src/i18n` + 货架渲染） | **12 files / 129 passed**，exit 0 |
+| 全量 vitest `--maxWorkers=4` | **1478 files / 18,482 passed**（228 skipped），exit 0（上轮基线 1477/18,470） |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0（**在最后一次改动之后**跑的） |
+| `eslint --no-cache`（10 个改动/新增文件） | 0 error / 0 warning |
+| `prettier --check` | 改动文件全部通过（`ipc.ts` 先证明 HEAD 版本本就干净，再跑 `--write`，只动了我的 hunk） |
+
+### 四 边界与下一轮第一步
+
+- **不是装机读数**：本机一次 3,984 ms、网络此刻可达。装机判据（证据档 §七）：新版之后
+  `cases:marketplace` 落在 20,000–22,100 ms 的行数从 17 变 0；首次读成功后的下一次启动应出现保存副本那一行，
+  删掉副本再启动应回到「连不上索引」的拒绝而不是空白货架。
+- **没改判定语义**：预算仍 20,000 ms，归档的 idle/total 两条预算一个字节没动。
+- 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA，`Nightly` + `Windows Full Test` 同查）；
+  ② §三百一十七 §五 第②条的读数要等装机后的日志出现 `source`/`fetchedAt` 才完整——本地已无刀可下；
+  ③ 本机冷扫的读等待（§三百一十七 §三）要一台空闲机器才能定因，`loadAvg` 降到 < 2 之前不动读路径。

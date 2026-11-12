@@ -4811,5 +4811,6 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.digestMismatch': '歸檔與索引釘住的摘要不一致，因此沒有解包。',
   'home.userCases.market.incomplete': '包內檔案對不上帳，因此沒有安裝。',
   'home.userCases.market.badEntry': '這條不是合法的案例條目。',
-  'home.userCases.market.installFailed': '這個案例安裝不了。'
+  'home.userCases.market.installFailed': '這個案例安裝不了。',
+  'home.userCases.market.savedCopy': '正在顯示 {date} 儲存的副本，重新整理可再向索引查詢一次。'
 }

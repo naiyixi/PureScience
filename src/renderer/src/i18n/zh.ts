@@ -4866,7 +4866,8 @@ export const zh = {
   'home.userCases.market.digestMismatch': '归档与索引钉住的摘要不一致，因此没有解包。',
   'home.userCases.market.incomplete': '包内文件对不上账，因此没有安装。',
   'home.userCases.market.badEntry': '这条不是合法的案例条目。',
-  'home.userCases.market.installFailed': '这个案例安装不了。'
+  'home.userCases.market.installFailed': '这个案例安装不了。',
+  'home.userCases.market.savedCopy': '正在显示 {date} 保存的副本，刷新可再问一次索引。'
 }
 
 export type ZhKey = keyof typeof zh

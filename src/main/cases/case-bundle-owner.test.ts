@@ -62,6 +62,8 @@ const owner = (overrides: {
     overrides.marketplace ??
     (async () => ({
       ok: true as const,
+      source: 'network' as const,
+      fetchedAt: 7,
       index: {
         format: CASE_MARKETPLACE_FORMAT,
         version: 1,
@@ -294,9 +296,33 @@ describe('the marketplace half', () => {
   it('passes the index through with its own update stamp, and no destination for anything', async () => {
     const { commands } = owner({})
     const result = await commands.marketplace({})
-    expect(result).toMatchObject({ status: 'ok', updatedAt: 7 })
+    expect(result).toMatchObject({ status: 'ok', updatedAt: 7, source: 'network', fetchedAt: 7 })
     if (result.status !== 'ok') return
     expect(result.cases.map((entry) => entry.id)).toEqual(['a'])
+  })
+
+  it('keeps a saved-copy answer distinguishable from a fresh read', async () => {
+    const { commands } = owner({
+      marketplace: async () => ({
+        ok: true as const,
+        source: 'cache' as const,
+        fetchedAt: 1_600_000_000_000,
+        index: {
+          format: CASE_MARKETPLACE_FORMAT,
+          version: 1,
+          updatedAt: 7,
+          cases: []
+        } as CaseMarketplaceIndex
+      })
+    })
+    // The window renders this line differently, so the origin has to survive the owner unchanged.
+    expect(await commands.marketplace({})).toEqual({
+      status: 'ok',
+      cases: [],
+      updatedAt: 7,
+      source: 'cache',
+      fetchedAt: 1_600_000_000_000
+    })
   })
 
   it('carries the reader’s refusal instead of an empty shelf', async () => {

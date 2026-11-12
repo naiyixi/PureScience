@@ -79,8 +79,12 @@ export type CaseBundleFileEnumerator = (projectId: string) => Promise<
   | { ok: false; detail?: string }
 >
 
-export type CaseMarketplaceIndexReader = (url: string | undefined) => Promise<
-  | { ok: true; index: CaseMarketplaceIndex }
+/**
+ * The shelf read the owner hands the window. It answers with where the list came from, because the saved copy and a
+ * fresh read are different claims and the window renders them differently (see `marketplace-cache`).
+ */
+export type CaseMarketplaceIndexReader = (request: CaseMarketplaceRequest) => Promise<
+  | { ok: true; index: CaseMarketplaceIndex; source: 'network' | 'cache'; fetchedAt: number }
   | {
       ok: false
       problem: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'
@@ -299,7 +303,7 @@ export const createCaseBundleCommandOwner = (options: {
   // The marketplace half. Note what does not happen here: the window does not get to say where an installed case
   // lands, and it does not get to hand over an entry that has not been through the same validator the index was.
   marketplace: async (request) => {
-    const read = await options.marketplace(request.indexUrl)
+    const read = await options.marketplace(request)
     if (!read.ok) {
       return {
         status: 'refused',
@@ -310,7 +314,9 @@ export const createCaseBundleCommandOwner = (options: {
     return {
       status: 'ok',
       cases: read.index.cases,
-      updatedAt: read.index.updatedAt
+      updatedAt: read.index.updatedAt,
+      source: read.source,
+      fetchedAt: read.fetchedAt
     }
   },
 

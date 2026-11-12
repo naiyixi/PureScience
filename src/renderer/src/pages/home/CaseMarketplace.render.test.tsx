@@ -63,7 +63,13 @@ describe('the case marketplace shelf', () => {
   })
 
   it('shows what a published index says: whose it is, what it holds, and its licence', async () => {
-    fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
+    fetchMarketplace.mockResolvedValue({
+      status: 'ok',
+      cases: [entry()],
+      updatedAt: 1,
+      source: 'network',
+      fetchedAt: 1
+    })
     render(<CaseMarketplace />)
 
     await waitFor(() => expect(screen.getByText('内部评测：多组学异常到首次人体试验')).toBeTruthy())
@@ -87,7 +93,13 @@ describe('the case marketplace shelf', () => {
   })
 
   it('installs one case and reports where it landed', async () => {
-    fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
+    fetchMarketplace.mockResolvedValue({
+      status: 'ok',
+      cases: [entry()],
+      updatedAt: 1,
+      source: 'network',
+      fetchedAt: 1
+    })
     installFromMarketplace.mockResolvedValue({
       status: 'installed',
       name: '内部评测：多组学异常到首次人体试验',
@@ -109,7 +121,13 @@ describe('the case marketplace shelf', () => {
   })
 
   it('shows the offending file names when a case fails its own manifest', async () => {
-    fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
+    fetchMarketplace.mockResolvedValue({
+      status: 'ok',
+      cases: [entry()],
+      updatedAt: 1,
+      source: 'network',
+      fetchedAt: 1
+    })
     installFromMarketplace.mockResolvedValue({
       status: 'refused',
       reason: 'incomplete',
@@ -132,7 +150,9 @@ describe('the case marketplace shelf', () => {
     fetchMarketplace.mockResolvedValue({
       status: 'ok',
       cases: [entry(), entry({ id: 'other', name: 'mRNA-LNP 内体逃逸', author: 'Mistral' })],
-      updatedAt: 1
+      updatedAt: 1,
+      source: 'network',
+      fetchedAt: 1
     })
     render(<CaseMarketplace />)
 
@@ -151,7 +171,13 @@ describe('the case marketplace shelf', () => {
   // of another machine's document — and where that host does not answer, a second full deadline of waiting. Measured
   // in the machine's own log: the same window asked four times in twenty minutes, each read either slow or timing out.
   it('reads the shelf once per session, even when the section is opened again', async () => {
-    fetchMarketplace.mockResolvedValue({ status: 'ok', cases: [entry()], updatedAt: 1 })
+    fetchMarketplace.mockResolvedValue({
+      status: 'ok',
+      cases: [entry()],
+      updatedAt: 1,
+      source: 'network',
+      fetchedAt: 1
+    })
     const first = render(<CaseMarketplace />)
     await waitFor(() => expect(useCaseMarketStore.getState().shelf.kind).toBe('ready'))
     first.unmount()
@@ -181,5 +207,30 @@ describe('the case marketplace shelf', () => {
 
     ;(document.querySelector('[data-slot="case-market-refresh"]') as HTMLElement).click()
     await waitFor(() => expect(fetchMarketplace).toHaveBeenCalledTimes(2))
+    // The reload has to say it wants the host: without the flag the main process answers from this machine's saved
+    // copy, and the control would repaint the same list while looking like it asked again.
+    expect(fetchMarketplace).toHaveBeenLastCalledWith({ refresh: true })
+  })
+
+  it('says when the shelf is this machine’s saved copy rather than a fresh read', async () => {
+    fetchMarketplace.mockResolvedValue({
+      status: 'ok',
+      cases: [entry()],
+      updatedAt: 1,
+      source: 'cache',
+      fetchedAt: Date.UTC(2026, 10, 3, 4, 5)
+    })
+    render(<CaseMarketplace />)
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-slot="case-market-cached"]')).toBeTruthy()
+    )
+    const line = document.querySelector('[data-slot="case-market-cached"]') as HTMLElement
+    // The date is formatted for the reader, so the assertion is on the sentence's own promise: it says "saved", and it
+    // names the moment. A live read must not carry this line at all.
+    expect(line.textContent).toMatch(
+      /saved|保存|儲存|保存された|저장된|gespeicherte|enregistrée|guardada|сохранённая/
+    )
+    expect(line.textContent).toMatch(/2026/)
   })
 })

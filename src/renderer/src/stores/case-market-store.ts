@@ -12,7 +12,18 @@ import type { CaseMarketplaceEntry } from '../../../shared/case-marketplace'
 
 export type CaseShelf =
   | { kind: 'loading' }
-  | { kind: 'ready'; cases: ReadonlyArray<CaseMarketplaceEntry>; updatedAt: number }
+  | {
+      kind: 'ready'
+      cases: ReadonlyArray<CaseMarketplaceEntry>
+      updatedAt: number
+      /**
+       * Where this list came from. `cache` is this machine's saved copy: the shelf answers from it instead of making
+       * the reader wait on a host that may not answer, and the card says so rather than looking like a live read.
+       */
+      source: 'network' | 'cache'
+      /** When those bytes were fetched, in epoch ms. */
+      fetchedAt: number
+    }
   | {
       kind: 'refused'
       reason: 'unreachable' | 'bad-response' | 'too-large' | 'bad-index'
@@ -68,9 +79,12 @@ export const useCaseMarketStore = create<CaseMarketStore>((set, get) => ({
       return
     }
     set({ shelf: { kind: 'loading' }, reading: true })
+    // `force` is the reader asking the host again: without it in the request the main process would answer from this
+    // machine's saved copy and the reload control would look like it did nothing.
+    const request = options?.force === true ? { refresh: true } : {}
     let outcome: Awaited<ReturnType<typeof window.api.caseBundles.fetchMarketplace>>
     try {
-      outcome = await window.api.caseBundles.fetchMarketplace({})
+      outcome = await window.api.caseBundles.fetchMarketplace(request)
     } catch (error) {
       // `No handler registered for 'cases:marketplace'` arrives as a rejection, not as a refusal: the channel
       // itself is missing. That is exactly the case this branch is for, and the message is kept verbatim.
@@ -87,7 +101,13 @@ export const useCaseMarketStore = create<CaseMarketStore>((set, get) => ({
     set({
       shelf:
         outcome.status === 'ok'
-          ? { kind: 'ready', cases: outcome.cases, updatedAt: outcome.updatedAt }
+          ? {
+              kind: 'ready',
+              cases: outcome.cases,
+              updatedAt: outcome.updatedAt,
+              source: outcome.source,
+              fetchedAt: outcome.fetchedAt
+            }
           : {
               kind: 'refused',
               reason: outcome.reason,

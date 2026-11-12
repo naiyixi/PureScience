@@ -5231,5 +5231,7 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Архив не совпадает с закреплённым дайджестом, поэтому ничего не распаковано.',
   'home.userCases.market.incomplete': 'Пакет не сходится, поэтому ничего не установлено.',
   'home.userCases.market.badEntry': 'Эта запись не является корректным кейсом.',
-  'home.userCases.market.installFailed': 'Этот кейс не удалось установить.'
+  'home.userCases.market.installFailed': 'Этот кейс не удалось установить.',
+  'home.userCases.market.savedCopy':
+    'Показана копия, сохранённая {date}. Обновите, чтобы снова запросить индекс.'
 }

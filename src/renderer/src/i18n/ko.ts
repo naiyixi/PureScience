@@ -5119,5 +5119,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
     '압축 파일이 색인이 고정한 다이제스트와 달라 아무것도 풀지 않았습니다.',
   'home.userCases.market.incomplete': '번들 안의 파일이 맞지 않아 설치하지 않았습니다.',
   'home.userCases.market.badEntry': '이 항목은 올바른 사례가 아닙니다.',
-  'home.userCases.market.installFailed': '이 사례를 설치할 수 없습니다.'
+  'home.userCases.market.installFailed': '이 사례를 설치할 수 없습니다.',
+  'home.userCases.market.savedCopy':
+    '{date}에 저장된 사본을 표시하고 있습니다. 새로 고침하면 색인에 다시 요청합니다.'
 }

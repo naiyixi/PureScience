@@ -5359,5 +5359,7 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'L’archive ne correspond pas au condensat épinglé, donc rien n’a été décompressé.',
   'home.userCases.market.incomplete': 'Le lot ne concorde pas, donc rien n’a été installé.',
   'home.userCases.market.badEntry': 'Cette entrée n’est pas un cas valide.',
-  'home.userCases.market.installFailed': 'Ce cas n’a pas pu être installé.'
+  'home.userCases.market.installFailed': 'Ce cas n’a pas pu être installé.',
+  'home.userCases.market.savedCopy':
+    'Copie enregistrée le {date} affichée. Rechargez pour interroger l’index à nouveau.'
 }

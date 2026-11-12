@@ -5237,5 +5237,7 @@ export const en: Record<ZhKey, string> = {
   'home.userCases.market.incomplete':
     'The bundle inside does not add up, so nothing was installed.',
   'home.userCases.market.badEntry': 'That entry is not a valid case.',
-  'home.userCases.market.installFailed': 'The case could not be installed.'
+  'home.userCases.market.installFailed': 'The case could not be installed.',
+  'home.userCases.market.savedCopy':
+    'Showing the copy saved on {date}. Reload to ask the index again.'
 }

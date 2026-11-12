@@ -4,6 +4,7 @@ import type { CaseMarketplaceEntry } from '../../../../shared/case-marketplace'
 import { searchMarketplaceCases } from '../../../../shared/case-marketplace'
 import { useCaseMarketStore } from '@/stores/case-market-store'
 import { useLanguage } from '@/i18n'
+import { LOCALE_TAG } from '@/i18n/languages'
 
 // The shelf. It shows what a published index says and nothing more: no ratings, no counts we did not measure, and no
 // "featured". Each card carries the three things a reader needs to decide — whose it is, what it holds, and the fact
@@ -72,7 +73,7 @@ const actionClass =
   'rounded-lg border border-border-200/70 px-2.5 py-1 text-xs text-text-000 transition-colors hover:border-text-300/60 disabled:opacity-50'
 
 export const CaseMarketplace = (): React.JSX.Element => {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   // The shelf lives in a store: the index is another machine's document, read once, and a reader who leaves the
   // section and comes back should not cause another download.
   const shelf = useCaseMarketStore((state) => state.shelf)
@@ -112,6 +113,16 @@ export const CaseMarketplace = (): React.JSX.Element => {
           {t('home.userCases.market.refresh')}
         </button>
       </div>
+
+      {shelf.kind === 'ready' && shelf.source === 'cache' ? (
+        // The list came from this machine, not from the host: say when it was fetched and name the control that asks
+        // again. Showing it silently would make a saved copy look like the index's current answer.
+        <p className="mt-2 text-xs text-text-300" data-slot="case-market-cached">
+          {t('home.userCases.market.savedCopy', {
+            date: new Date(shelf.fetchedAt).toLocaleString(LOCALE_TAG[lang])
+          })}
+        </p>
+      ) : null}
 
       {shelf.kind === 'ready' && shelf.cases.length > 0 ? (
         <input

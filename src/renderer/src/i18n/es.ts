@@ -5325,5 +5325,7 @@ export const es: Partial<Record<ZhKey, string>> = {
     'El archivo no coincide con el resumen fijado, así que no se descomprimió nada.',
   'home.userCases.market.incomplete': 'El paquete no cuadra, así que no se instaló nada.',
   'home.userCases.market.badEntry': 'Esa entrada no es un caso válido.',
-  'home.userCases.market.installFailed': 'Ese caso no se pudo instalar.'
+  'home.userCases.market.installFailed': 'Ese caso no se pudo instalar.',
+  'home.userCases.market.savedCopy':
+    'Se muestra la copia guardada el {date}. Recarga para consultar el índice de nuevo.'
 }
