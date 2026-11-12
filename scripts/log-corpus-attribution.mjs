@@ -17,7 +17,10 @@
 // 实例归属只取自**文件所在目录名**（`PureScience` / `PureScience (DEV)` / …）：日志自己不带实例名，
 // 而目录名是唯一非推断的来源。
 //
-//   node scripts/log-corpus-attribution.mjs [--log <file> ...] [--top <n>] [--json] [--selftest]
+// `--recurrence` 再加一层：同一条失败**被同一个身份重复撞了 N 次**，还是只撞了一次？这一个数决定
+// 「要不要给它加有界重试」这类问题该不该立项——已经重试过 15 次的族再加一层重试，只会把代价乘上去。
+//
+//   node scripts/log-corpus-attribution.mjs [--log <file> ...] [--top <n>] [--json] [--recurrence] [--selftest]
 //
 // 退出码：0 已产出报表；1 用法错；2 没有可读的日志文件；3 读到了文件但没有任何可解析行；4 自检失败。
 
@@ -31,6 +34,16 @@ const DEFAULT_TOP = 12
 // 行上可能承载会话身份的字段。取第一个在场的：`sessionId` 是渲染侧与会话本身，`mainSessionId` 是
 // reviewer 侧对主会话的称呼，`appSessionId` 是评审记录里对它的另一种称呼。
 const SESSION_ID_FIELDS = ['sessionId', 'mainSessionId', 'appSessionId']
+// 重复尝试看的是「同一个东西被撞了几次」，所以身份优先取**记录/运行级**的键：一次定稿认领（claimId）、
+// 一个评审（reviewId）、一条产物运行（artifactRunId）都可能被反复尝试；会话 id 是最后的兜底。
+const REPEAT_ID_FIELDS = [
+  'claimId',
+  'reviewId',
+  'artifactRunId',
+  'sessionId',
+  'mainSessionId',
+  'appSessionId'
+]
 
 export const PROVENANCE_FIXTURE = 'fixture'
 export const PROVENANCE_REAL = 'real'
@@ -46,10 +59,14 @@ const PROVENANCE_KEYS = [
 const usage = () => {
   process.stderr.write(
     [
-      'usage: node scripts/log-corpus-attribution.mjs [--log <file> ...] [--top <n>] [--json] [--selftest]',
+      'usage: node scripts/log-corpus-attribution.mjs [--log <file> ...] [--top <n>] [--json] [--recurrence] [--selftest]',
       '',
       'splits a log corpus by instance and by session provenance (real / fixture / unattributed) before',
       'summarising error and warning families, so a certification fixture cannot be counted as a defect.',
+      '',
+      '--recurrence also answers "was this failure already retried": rows are grouped by scope + message +',
+      'one identity (claimId / reviewId / artifactRunId / sessionId), and only identities hit more than once',
+      'are listed, with their row count, span and (when logged) the attempt range.',
       ''
     ].join('\n')
   )
@@ -99,10 +116,24 @@ export const parseLogLine = (line) => {
   return {
     message,
     level,
+    // `scope` 是顶层字段（不是 data 里的），重复尝试按「同一条失败的同一身份」聚合时需要它区分族。
+    scope: typeof record.scope === 'string' ? record.scope : undefined,
     data,
     at: typeof record.t === 'string' ? record.t : undefined,
     runId: typeof record.runId === 'string' ? record.runId : undefined
   }
+}
+
+/**
+ * 一行失败的「身份」：用于回答「同一个东西被撞了几次」。没有这类键时说 undefined——一条说不出身份
+ * 的行不能与另一条说不出身份的行合成「重复」（那会把两个不同的事故读成一次重试）。
+ */
+export const identityOf = (data) => {
+  for (const field of REPEAT_ID_FIELDS) {
+    const value = data[field]
+    if (typeof value === 'string' && value.length > 0) return { field, value }
+  }
+  return undefined
 }
 
 /**
@@ -200,6 +231,7 @@ export const analyse = (entries) => {
       slowRows: 0,
       slowMs: 0,
       slowProvenance: emptyCounts(),
+      recurrence: new Map(),
       runIds: runIdsFor(name)
     }
     instances.set(name, instance)
@@ -223,6 +255,37 @@ export const analyse = (entries) => {
       instance.slowMs += typeof duration === 'number' && Number.isFinite(duration) ? duration : 0
       bump(instance.slowProvenance, provenance)
     }
+    // 重复尝试：只统计 error/warn，且必须有身份。`attempt` 只在部分族里出现（定稿认领有、修正注入没有），
+    // 所以「撞了几次」以行数为准，`attempt` 的范围只作旁证（缺了就不写，不填 0）。
+    if (entry.level === 'error' || entry.level === 'warn') {
+      const identity = identityOf(entry.data)
+      if (identity) {
+        const key = `${entry.scope ?? ''}\u0000${entry.message}\u0000${identity.field}:${identity.value}`
+        const repeat = instance.recurrence.get(key) ?? {
+          scope: entry.scope,
+          message: entry.message,
+          identity,
+          count: 0,
+          firstAt: entry.at,
+          lastAt: entry.at,
+          attemptMin: undefined,
+          attemptMax: undefined,
+          ...emptyCounts()
+        }
+        repeat.count += 1
+        bump(repeat, provenance)
+        if (entry.at && (!repeat.firstAt || entry.at < repeat.firstAt)) repeat.firstAt = entry.at
+        if (entry.at && (!repeat.lastAt || entry.at > repeat.lastAt)) repeat.lastAt = entry.at
+        const attempt = entry.data.attempt
+        if (typeof attempt === 'number' && Number.isInteger(attempt)) {
+          repeat.attemptMin =
+            repeat.attemptMin === undefined ? attempt : Math.min(repeat.attemptMin, attempt)
+          repeat.attemptMax =
+            repeat.attemptMax === undefined ? attempt : Math.max(repeat.attemptMax, attempt)
+        }
+        instance.recurrence.set(key, repeat)
+      }
+    }
   }
   const sortFamilies = (family) =>
     [...family.entries()]
@@ -242,7 +305,11 @@ export const analyse = (entries) => {
         rows: instance.slowRows,
         summedMs: Math.round(instance.slowMs),
         ...instance.slowProvenance
-      }
+      },
+      // 只留「重复」的：撞一次的身份不是重试问题，列出来会把表淹掉。
+      repeats: [...instance.recurrence.values()]
+        .filter((repeat) => repeat.count > 1)
+        .sort((a, b) => b.count - a.count)
     }))
     .sort((a, b) => b.rows - a.rows)
 }
@@ -261,7 +328,28 @@ const formatFamily = (family, top) => {
   return lines
 }
 
-export const formatReport = (report, top) => {
+const formatRepeats = (repeats, top) => {
+  if (repeats.length === 0) return ['  repeats: (none — no identity was hit twice)']
+  const lines = ['  repeats (same identity, more than one row):']
+  for (const repeat of repeats.slice(0, top)) {
+    const attempts =
+      repeat.attemptMin === undefined ? '' : `  attempt ${repeat.attemptMin}→${repeat.attemptMax}`
+    const attributed =
+      repeat.fixture > 0 || repeat.mixed > 0 || repeat.unattributed > 0
+        ? `  (real ${repeat.real} | fixture ${repeat.fixture} | mixed ${repeat.mixed} | unattributed ${repeat.unattributed})`
+        : ''
+    lines.push(
+      `    ${String(repeat.count).padStart(5)}  ${repeat.scope ?? '(no scope)'} | ${repeat.message} | ` +
+        `${repeat.identity.field}=${repeat.identity.value}` +
+        `${attempts}  ${repeat.firstAt ?? '?'} → ${repeat.lastAt ?? '?'}${attributed}`
+    )
+  }
+  if (repeats.length > top)
+    lines.push(`    … ${repeats.length - top} more repeated identity/identities (--top)`)
+  return lines
+}
+
+export const formatReport = (report, top, options = {}) => {
   const lines = []
   lines.push(`log corpus attribution | instances=${report.length}`)
   for (const instance of report) {
@@ -283,6 +371,9 @@ export const formatReport = (report, top) => {
         `(real ${instance.slow.real} | fixture ${instance.slow.fixture} | mixed ${instance.slow.mixed} | ` +
         `unattributed ${instance.slow.unattributed})`
     )
+    if (options.recurrence) {
+      lines.push(...formatRepeats(instance.repeats, top))
+    }
   }
   lines.push('')
   lines.push(
@@ -301,11 +392,12 @@ export const formatReport = (report, top) => {
 }
 
 const parseArgs = (argv) => {
-  const options = { logs: [], top: DEFAULT_TOP, json: false, selftest: false }
+  const options = { logs: [], top: DEFAULT_TOP, json: false, recurrence: false, selftest: false }
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]
     if (argument === '--selftest') options.selftest = true
     else if (argument === '--json') options.json = true
+    else if (argument === '--recurrence') options.recurrence = true
     else if (argument === '--log') {
       const value = argv[index + 1]
       if (!value) return undefined
@@ -426,12 +518,63 @@ export const selftest = () => {
   if (provenanceOfIds(['e2e-1', 'real-1']) !== PROVENANCE_MIXED)
     problems.push('both id kinds in one set is mixed')
   if (analyse([]).length !== 0) problems.push('empty input must report no instances')
+  // 重复尝试的自检：同一个 claimId 三行 ⇒ 一个 cluster 且 attempt 范围 1→3；另一个 claimId 只一行 ⇒ 不列出；
+  // 没有身份的行既不能自成 cluster，也不能并进别的 cluster（那是把两件事读成一次重试）。
+  const repeatEntries = [
+    {
+      t: '2026-01-01T00:00:00Z',
+      level: 'error',
+      scope: 'artifacts',
+      msg: 'boom',
+      data: { claimId: 'c1', attempt: 1 }
+    },
+    {
+      t: '2026-01-01T00:01:00Z',
+      level: 'error',
+      scope: 'artifacts',
+      msg: 'boom',
+      data: { claimId: 'c1', attempt: 2 }
+    },
+    {
+      t: '2026-01-01T00:02:00Z',
+      level: 'error',
+      scope: 'artifacts',
+      msg: 'boom',
+      data: { claimId: 'c1', attempt: 3 }
+    },
+    {
+      t: '2026-01-01T00:03:00Z',
+      level: 'error',
+      scope: 'artifacts',
+      msg: 'boom',
+      data: { claimId: 'c2', attempt: 1 }
+    },
+    { t: '2026-01-01T00:04:00Z', level: 'error', scope: 'other', msg: 'boom', data: { host: 'h' } },
+    { t: '2026-01-01T00:05:00Z', level: 'error', scope: 'other', msg: 'boom', data: { host: 'h' } }
+  ].map((record) => ({ ...parseLogLine(JSON.stringify(record)), instance: 'PureScience' }))
+  const repeatReport = analyse(repeatEntries)[0]
+  if (repeatReport.repeats.length !== 1)
+    problems.push(`expected exactly one repeated identity, got ${repeatReport.repeats.length}`)
+  else {
+    const repeat = repeatReport.repeats[0]
+    if (repeat.count !== 3) problems.push(`expected 3 rows for claim c1, got ${repeat.count}`)
+    if (repeat.identity.field !== 'claimId' || repeat.identity.value !== 'c1')
+      problems.push(
+        `expected identity claimId=c1, got ${repeat.identity.field}=${repeat.identity.value}`
+      )
+    if (repeat.attemptMin !== 1 || repeat.attemptMax !== 3)
+      problems.push(`expected attempt range 1→3, got ${repeat.attemptMin}→${repeat.attemptMax}`)
+    if (repeat.firstAt !== '2026-01-01T00:00:00Z' || repeat.lastAt !== '2026-01-01T00:02:00Z')
+      problems.push(`expected the span of the c1 rows, got ${repeat.firstAt}→${repeat.lastAt}`)
+  }
+  if (identityOf({ host: 'h' }) !== undefined)
+    problems.push('a row with no identity key must not claim one')
   if (problems.length > 0) {
     process.stderr.write(`selftest FAILED:\n  ${problems.join('\n  ')}\n`)
     return 4
   }
   process.stdout.write(
-    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, empty input)\n'
+    'selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, empty input)\n'
   )
   return 0
 }
@@ -493,7 +636,9 @@ const main = () => {
 
   const report = analyse(entries)
   process.stdout.write(
-    options.json ? `${JSON.stringify(report, null, 2)}\n` : `${formatReport(report, options.top)}\n`
+    options.json
+      ? `${JSON.stringify(report, null, 2)}\n`
+      : `${formatReport(report, options.top, { recurrence: options.recurrence })}\n`
   )
   return 0
 }

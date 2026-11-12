@@ -17998,3 +17998,68 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
   `[Auditor] correction sendPrompt failed`（20 行，全是 `An ACP prompt is already running`，集中在一个会话的
   一次事故里）与 `artifact finalization attempt failed`（20 行，`failureKind: invalid-proof`）各判一次
   「要不要为它加一个有界重试」——**先判它该不该立**，别先动实现；③ 冷扫读等待仍等 `loadAvg < 2`。
+
+## 三百二十一、本轮追加（执行器，2026-11-12 15:4x–）—— 两族各 20 行 error 该不该加重试：一族是两条车道自撞、一族已经被重试了 15 次
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 4b8ba307`，`git log origin/main..HEAD` 为空；`git status --short` 只有
+  **三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`，不碰、不提交）。
+- **判决已取**（完整 40 位 SHA 两处同查）：`4b8ba3071525c7af1cf8941b910b22749ba543e9` 的
+  `Nightly` 与 `Windows Full Test` 均 **completed / success**（上一轮 §三百二十 §四 的第一步到此关闭）。
+- `hermes cron list` 只有本任务一个执行器；队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；
+  §三百一十七 §三 的冷扫读等待仍等不到空闲机器（本轮 `loadAvg` 2.44 > 2，机器上有一个跑了 1 天 10 小时的
+  dev 实例）。⇒ 本轮做 §三百二十 §四 的第二步：**只判「要不要为那两族加有界重试」，先判不先动实现**。
+
+### 一 判据与读数（先量后判）
+
+`scripts/log-corpus-attribution.mjs` 新增 `--recurrence`：按 `scope` + `msg` + **一个身份**
+（`claimId` > `reviewId` > `artifactRunId` > `sessionId` > `mainSessionId` > `appSessionId`）聚合，
+只列「撞过不止一次」的身份，带行数、跨度、`attempt` 范围与归属切分。真实语料 87,654 行（六份日志）上的读数：
+
+| 族 | 行数 | 按身份切开 |
+| --- | --- | --- |
+| `[Auditor] correction sendPrompt failed` | 20（全 real） | `d8da1631…` 16 行（11-05 16:12→16:52）/ `38588c34…` 4 行（11-07 16:26 的 `Stream idle timeout` 1 行 + 11-09 10:49/11:05/11:07 各 1 行） |
+| `artifact finalization attempt failed` | 20（全 real，`invalid-proof`） | 认领 `…-38` **15 行（`attempt` 1→15，跨 36.5 小时）** / `…-31` 3 行 / `…-30` 2 行 |
+
+**第一族「谁占着会话」有确定答案**（同一份 `main.log` 逐毫秒）：`10:49:33.975` 注入 → `10:49:33.985`
+`prompt start len=1323`（这一次注入自己开出的回合）→ `10:49:40.688` 第二次注入 → `10:49:40.690` 被拒
+`An ACP prompt is already running`。⇒ **19/20 行是两条评审车道各自注入修正时自撞**，1/20 是供应商流中断。
+
+### 二 判：两族都不加有界重试
+
+| 族 | 不加重试的理由 |
+| --- | --- |
+| 修正注入 | ① 重试把「少一条修正」换成「多一条修正」——等对面回合结束再发，用户会话里就有两条高度重叠的修正指令；② 19/20 行的成因已由 `2eaf5100`（`fix-loop-active` 状态闸 + 失败分类）修掉，这 20 行全部来自 11-09 及更早的构建；③ 剩下 1 行是供应商流空闲超时，重试＝把一次昂贵评审回合再打一遍，该修的是超时与重连 |
+| 定稿失败 | ① **它已经在重试**：每回合的产物事件都再调一次定稿，`attempt` 已到 15，再加一层只是 15×N；② `invalid-proof` 是确定性拒绝，`ipc.ts` 自己的注释就写着 terminal 不可重试；③ 不能为少几行 error 把它判成终态——本仓有「Prompt 锚点后到而合法救回」的先例（`c481d17d`/`fcc2bb4b`/`cb047dd2`/`56976108`），一刀切会把能自愈的认领永久留在 `.pending` |
+
+### 三 交付
+
+| 位置 | 改动 |
+| --- | --- |
+| `scripts/log-corpus-attribution.mjs` | `--recurrence`（含 `identityOf`、按身份聚合、`attempt` 范围、只列重复项）+ 自检四条（同 `claimId` 三行成簇且 `attempt 1→3`；另一 `claimId` 仅一行不列出；无身份的行既不成簇也不并簇；`identityOf({host})` 必须 `undefined`）|
+| `docs/evidence/2026-11-12-retry-judgment-correction-and-finalization.md`（新） | 两族的逐毫秒时间线、按身份聚合的三张表、六条判断理由、以及「这 20 行说不出被哪条证明规则拒」的具名缺口 |
+
+### 四 具名立案（两条，都不在本轮动实现）
+
+1. **修正注入缺「按会话 single-flight」**：`2eaf5100` 的闸门只挡「自动复核的启动」，挡不住「两条车道在闸门
+   落地之前就已都起来」。落点 `src/main/reviewer/correction.ts` + `orchestrator.ts:805`。验收：并发时第二家
+   不发 prompt、不写 `error`，落一条具名结果，且它的检查**不因此被标成未处理**。
+2. **定稿证明拒绝的「该不该终态」缺证据**：需要带 `proofCause`（`7c64d0ca` 落地的 19 码闭集）的构建上
+   复跑同一语料、按码分桶；本轮 20 行全部早于该字段，故**本轮给不出哪条规则拒的**，不许猜。
+
+### 五 门禁（全部实跑）与下一轮第一步
+
+| 环 | 读数 |
+| --- | --- |
+| `node scripts/log-corpus-attribution.mjs --selftest` | `selftest OK (run-borrowed provenance, three-way plus mixed, id-less rows are unattributed, repeated identity needs one, empty input)`，exit 0 |
+| 真实语料 `--recurrence` | 两版实例分开；第一族 20 = `d8da1631` 16 + `38588c34` 4；第二族 20 = 认领 `…-38` 15（`attempt 1→15`）+ `…-31` 3 + `…-30` 2 |
+| `npm run check:script-entrypoints` | ✓ 64 launcher(s)，exit 0 |
+| `npx vitest run scripts/check-script-entrypoints.test.ts` | 4 passed |
+| `npx eslint --no-cache scripts/log-corpus-attribution.mjs` | 0 error / 0 warning（先 `--fix` 收净 prettier 折行，复跑确认） |
+| `bash scripts/pre-push-checks.sh` | 见提交信息（推送前实跑） |
+
+- 本笔只碰 1 个脚本 + 1 份证据档 + 本节，**不碰发版四文件**。
+- 下一轮第一步：① 按完整 40 位 SHA 取本笔双车道判决；② 立项 1（修正注入 single-flight）是本轮唯一
+  「有读数支撑、可当场做」的产品缺口，按「连锁最小」优先：先在 `correction.ts` 加按会话的在飞标记与具名
+  原因，再改 `orchestrator` 的落账口径；③ 冷扫读等待仍等 `loadAvg < 2`。
