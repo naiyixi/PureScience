@@ -111,6 +111,9 @@ export type ApplicationCommandDiagnostic = Readonly<{
   cpuMs?: number
   cpuShare?: number
   attribution?: ActivityAttribution
+  // Present only when the process-wide counter exceeded the window: the share is clamped at 1 and the
+  // verdict was withheld, so the line carries the reason instead of an `inconclusive` with no account.
+  cpuExceedsWindow?: true
   // Present only when the stall watchdog saw the loop held inside this window: how much of the wall time
   // the process was not running at all, and the remainder that was ours.
   heldMs?: number
@@ -127,6 +130,7 @@ type HandlerTiming = Readonly<{
   cpuMs?: number
   cpuShare?: number
   attribution?: ActivityAttribution
+  cpuExceedsWindow?: true
   heldMs?: number
   ownMs?: number
   heldUnmeasured?: 'windows-dropped'

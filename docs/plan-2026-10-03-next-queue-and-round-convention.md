@@ -17876,3 +17876,66 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
 - 下一轮第一步：① 取本笔双车道判决（完整 40 位 SHA，`Nightly` + `Windows Full Test` 同查）；
   ② §三百一十七 §五 第②条的读数要等装机后的日志出现 `source`/`fetchedAt` 才完整——本地已无刀可下；
   ③ 本机冷扫的读等待（§三百一十七 §三）要一台空闲机器才能定因，`loadAvg` 降到 < 2 之前不动读路径。
+
+## 三百一十九、本轮追加（执行器，2026-11-12 10:3x–）—— 比窗口还大的 CPU 读数被当成了「这条通道在算」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = 572acfca`；**工作树里躺着上一轮（08:2x）未提交的一整批**
+  `src/main/cases/marketplace-cache.*` + 货架 + 九语词典 + 证据档（该轮被「等模型响应」打断在提交之前）。
+  核对后**先把它验完并推上去**：定向 12 files/129 passed、全量 **1,478 files / 18,482 passed**、
+  双 typecheck 0、`eslint --no-cache` 0、prettier 全过，`scripts/pre-push-checks.sh` 全绿 ⇒ 提交 `ba10e490` 并推。
+  `572acfca` 的双车道判决本轮现取：`Nightly` 与 `Windows Full Test` 均 **completed / success**。
+- `hermes cron list` 只有本任务一个执行器；`git status --short` 除三份**不是我的**未跟踪证据档外干净
+  （`2026-11-01-…`、两份 `2026-11-04-…`：一个字节没碰、不提交）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；§三百一十七 §五 的第②③条都被外部条件挡着
+  （②要等装机日志里出现 `source`/`fetchedAt`；③要一台 `loadAvg < 2` 的空闲机器，本轮 loadAvg 6.2）
+  ⇒ 本轮回到「先有仪器再优化」：**上一轮推翻的那个读法（cpuMs 比 durationMs 还大）其实该由仪器自己说出来**。
+
+### 一 读数（先量后改；六份 `main*.log`，只读）
+
+`ipc handler was slow` 共 **6,384 行**，其中 **1,140 行（17.9%）`cpuMs > durationMs`**：
+`≥100 ms` 494 行、`≥1 s` 30 行、`≥5 s` 5 行。按通道：`sessions:save-session` 877/4,012、
+`notebook:state` 62/164、`reviewer:get-for-session` 40/168。**这 1,140 行全部被分类成
+`cpu-bound-in-process`**（全仓该类共 3,642 行 = 慢行的 57%）。
+
+一个串行 handler 不可能在自己的窗口里烧掉比窗口更长的 CPU ⇒ 多出来的必在别的线程；
+`process.cpuUsage()` 是全线程累计（该模块头注早已写明）。而 `cpuShare` 被夹到 1，
+「这条占满了窗口」与「别的线程在忙、这条在等」压成同一个数 ⇒ 分类器一律给 cpu-bound。
+§三百一十七 据此把 `cases:marketplace` 的 9 行读成「在算」，§三百一十八 靠人肉看数字才推翻它。
+
+### 二 交付
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/diagnostics/cpu-attribution.ts` | 新增 `cpuExceedsWindow(cpuMs, windowMs)`（`cpuMs - windowMs > 1`，1 ms 专挡四舍五入假阳）与 `attributionForWindow(...)`（超窗 ⇒ `inconclusive`）；`cpuAttributionFields` 改用它，并在超窗时补具名字段 `cpuExceedsWindow: true` |
+| `src/main/settings/service.ts` | 阶段计时与整段 key 迁移行改用同一对函数（此前各算一套） |
+| `src/main/diagnostics/slow-operation-ring.ts`、`src/main/application-command-router.ts` | 契约各补这个可选字段（运行时有、契约里没有就是漂移） |
+
+用例 3 条（`cpu-attribution.test.ts` 2 条、`ipc-rejection.test.ts` 1 条）：超窗不给判决、
+具名标记只在超窗时出现、1 ms 余量（`1,000/1,000` 与 `1,001/1,000` 仍判 cpu-bound，`1,002/1,000` 才扣下）。
+
+**影响面（同一份语料重算，不是推断）**：`cpu-bound-in-process` 3,642 → **2,502** 行（-31%），
+1,140 行改读 `inconclusive + cpuExceedsWindow`。证据档 `docs/evidence/2026-11-12-slow-line-cpu-exceeds-window.md`。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| 定向（`src/main/diagnostics` + 命令路由 + `src/main/settings`） | **125 files（124 passed \| 1 skipped）/ 1,724 passed \| 3 skipped**，exit 0 |
+| 定向（四份直接相关文件） | 4 files / **31 passed**，exit 0 |
+| 双 typecheck（`--composite false`，node 侧 `NODE_OPTIONS=…8192`） | node 0；web 0 |
+| `eslint --no-cache`（六个改动文件） | 0 error / 0 warning |
+| 全量 vitest `--maxWorkers=4` | **1,478 files（1,478 passed \| 31 skipped）/ 18,485 passed（228 skipped）**，exit 0（基线 18,482 + 本笔 3 例） |
+| `scripts/pre-push-checks.sh` | 见 §四（推送时实跑） |
+
+### 四 边界与下一轮第一步
+
+- **没改阈值带**（0.6 / 0.15 一个字没动），也没给新原因：超窗只说「这个数不是本窗口的 share」。
+- **仍不区分「在等外部」与「别的线程在忙」** —— 全线程计数做不到；要分开得换一支仪器
+  （单线程侧 event-loop utilization 或按线程采样），属改判定语义面，本轮不做，先把「不能自称算过」落地。
+- 不是装机读数：改动要等下一次发版才在用户机器上生效；不承诺行数会变，只承诺日志会自己说出原因。
+- 下一轮第一步：① 取 `ba10e490` 与本笔的双车道判决（完整 40 位 SHA，两车道同查）；
+  ② 本机冷扫的读等待仍要 `loadAvg < 2`（§三百一十七 §三），不到不动读路径；
+  ③ 若要继续追 `sessions:save-session`，先按新分桶把 `cpuMs > durationMs` 那 877 行排除在「在算」之外，
+  再对剩下的 cpu-bound 行取一次真机读数（别把全线程计数当证据）。

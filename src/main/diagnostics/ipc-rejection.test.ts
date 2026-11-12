@@ -70,6 +70,38 @@ describe('invokeWithIpcRejectionDiagnostics', () => {
     )
   })
 
+  it('withholds the verdict when the injected CPU outran the window, and names why', async () => {
+    // The most common slow shape in the packaged log (2026-11-12): 20,005 ms of wall time beside
+    // 26,928 ms of process CPU. A serial handler cannot burn more CPU than its own window, so the excess
+    // belongs to other threads — and the line used to call this `cpu-bound-in-process`, which sent two
+    // rounds looking for work inside a handler that was waiting.
+    const warn = vi.fn()
+    const callerContext = createWebCallerContext('client-9', {
+      location: 'local',
+      principalKind: 'human',
+      actionOrigin: 'human'
+    })
+    const now = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(21_005)
+    await invokeWithIpcRejectionDiagnostics({
+      channel: 'sessions:save-session',
+      callerContext,
+      invoke: async () => 'saved',
+      log: { warn },
+      now,
+      cpuUsage: cpuPair(26_928)
+    })
+    expect(warn).toHaveBeenCalledWith(
+      'ipc handler was slow',
+      expect.objectContaining({
+        durationMs: 20_005,
+        cpuMs: 26_928,
+        cpuShare: 1,
+        attribution: 'inconclusive',
+        cpuExceedsWindow: true
+      })
+    )
+  })
+
   it('hands the same measurement to the bundle sink, and nothing at all for a fast call', async () => {
     // The line answers whoever is reading that launch; the bundle answers the same question hours later, from
     // a .tar.gz. Both must describe one measurement, or a maintainer finds two answers for the same call.

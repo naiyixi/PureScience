@@ -73,7 +73,40 @@ export type CpuAttributionFields = Readonly<{
   cpuMs: number
   cpuShare: number
   attribution: ActivityAttribution
+  /**
+   * Present only when the process-wide counter exceeded the window's own length. `process.cpuUsage()`
+   * counts every thread, so a reading above the wall time proves some of that CPU was not this call's —
+   * the share that follows then cannot say whether this call was the busy one. Named so a withheld
+   * verdict is not read as "nothing was measured".
+   */
+  cpuExceedsWindow?: true
 }>
+
+/**
+ * The verdict for one window, from the process-wide counter.
+ *
+ * A counter larger than the window cannot be a share of it: other threads were busy, and `cpuShare`
+ * clamps to 1 for both "this call filled the window" and "other threads did the work while it waited".
+ * Measured in this machine's packaged log (2026-11-12, 6,384 slow IPC rows): 1,140 carry `cpuMs` above
+ * `durationMs` — 877 of them on `sessions:save-session` — and each was being classified
+ * `cpu-bound-in-process`. Two rounds read that band as "this channel is computing" and went looking for
+ * work inside handlers that were waiting. The share is still reported because it is what was measured;
+ * only the verdict is withheld.
+ */
+export const attributionForWindow = (cpuMs: number, windowMs: number): ActivityAttribution => {
+  if (cpuExceedsWindow(cpuMs, windowMs)) return 'inconclusive'
+  return classifyCpuShare(cpuShareOf(cpuMs, windowMs), windowMs)
+}
+
+/**
+ * Whether the process counter ran past the window's own length. `cpuMillisecondsBetween` rounds a
+ * microsecond reading to whole milliseconds, so a serial handler that filled its window lands at most
+ * 0.5 ms above it; one millisecond of slack keeps that rounding artifact from being read as another
+ * thread's work, while any larger excess cannot be rounding. Measured: 66 of the 1,140 rows in this shape
+ * carry ≤1 ms of excess; the rest are real.
+ */
+export const cpuExceedsWindow = (cpuMs: number, windowMs: number): boolean =>
+  windowMs > 0 && cpuMs - windowMs > 1
 
 /**
  * The three fields a slow line carries, computed from the two `process.cpuUsage()` samples around the window.
@@ -91,6 +124,8 @@ export const cpuAttributionFields = (
   return {
     cpuMs,
     cpuShare: Number(share.toFixed(3)),
-    attribution: classifyCpuShare(share, windowMs)
+    attribution: attributionForWindow(cpuMs, windowMs),
+    // Only when the counter is larger than the window, so an ordinary line's vocabulary is unchanged.
+    ...(cpuExceedsWindow(cpuMs, windowMs) ? { cpuExceedsWindow: true as const } : {})
   }
 }

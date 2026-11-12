@@ -92,8 +92,9 @@ import {
 } from '../function-models/event-log'
 import { detectFunctionModelTarget } from '../function-models/detect'
 import {
+  attributionForWindow,
   attributionSuffix,
-  classifyCpuShare,
+  cpuExceedsWindow,
   cpuMillisecondsBetween,
   cpuShareOf,
   type ActivityAttribution,
@@ -1173,7 +1174,7 @@ class SettingsService {
       } finally {
         const ms = Math.max(0, this.clock() - phaseStartedAt)
         const cpuMs = cpuMillisecondsBetween(phaseCpuStartedAt, this.cpuUsage())
-        phases[name] = { ms, attribution: classifyCpuShare(cpuShareOf(cpuMs, ms), ms) }
+        phases[name] = { ms, attribution: attributionForWindow(cpuMs, ms) }
       }
     }
 
@@ -1227,7 +1228,9 @@ class SettingsService {
       // timed. Both numbers are needed — `totalMs` alone is what produced a six-hour "keychain" claim.
       cpuMs,
       cpuShare: Number(cpuShare.toFixed(3)),
-      attribution: classifyCpuShare(cpuShare, totalMs),
+      attribution: attributionForWindow(cpuMs, totalMs),
+      // The named reason a verdict was withheld, when the counter ran past the window's own length.
+      ...(cpuExceedsWindow(cpuMs, totalMs) ? { cpuExceedsWindow: true as const } : {}),
       // Present only when the loop was actually held inside this pass: the six-hour `keychain` claim that
       // started this line was a suspended process, and the split is what says so in one field.
       ...heldSplitFields(startedAt, totalMs),

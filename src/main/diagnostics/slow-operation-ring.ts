@@ -41,6 +41,8 @@ export type SlowOperationFacts = Readonly<{
   cpuMs?: number
   cpuShare?: number
   attribution?: ActivityAttribution
+  /** The counter exceeded the window: `cpuShare` is clamped at 1 and no verdict was given. */
+  cpuExceedsWindow?: true
   /** Part of `durationMs` the process was not running at all (stall-watchdog windows). */
   heldMs?: number
   /** The remainder that was ours: `durationMs - heldMs`. */
@@ -107,6 +109,7 @@ const normalize = (facts: SlowOperationFacts): SlowOperationFacts => ({
   ...(isFiniteNumber(facts.cpuMs) ? { cpuMs: facts.cpuMs } : {}),
   ...(isFiniteNumber(facts.cpuShare) ? { cpuShare: facts.cpuShare } : {}),
   ...(facts.attribution ? { attribution: facts.attribution } : {}),
+  ...(facts.cpuExceedsWindow ? { cpuExceedsWindow: true } : {}),
   ...(isFiniteNumber(facts.heldMs) ? { heldMs: facts.heldMs } : {}),
   ...(isFiniteNumber(facts.ownMs) ? { ownMs: facts.ownMs } : {}),
   ...(facts.heldUnmeasured ? { heldUnmeasured: facts.heldUnmeasured } : {})

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  attributionForWindow,
   attributionSuffix,
   classifyCpuShare,
   cpuAttributionFields,
+  cpuExceedsWindow,
   cpuMillisecondsBetween,
   cpuShareOf
 } from './cpu-attribution'
@@ -85,5 +87,41 @@ describe('cpu attribution', () => {
         attribution: 'inconclusive'
       }
     )
+  })
+
+  it('refuses to call a window ours when the process counter outran the window itself', () => {
+    // `process.cpuUsage()` counts every thread. A reading above the window's own length therefore proves
+    // some of that CPU was not this call's — and the clamped share (1) cannot tell "we filled the window"
+    // from "other threads worked while this call waited". Measured in the packaged log (2026-11-12):
+    // 1,140 of 6,384 slow IPC rows are in this shape, and all of them read `cpu-bound-in-process`.
+    expect(attributionForWindow(26_928, 20_005)).toBe('inconclusive')
+    expect(attributionForWindow(1_149, 1_024)).toBe('inconclusive')
+    // Exactly filling the window is the honest top of the scale: every millisecond was CPU here.
+    expect(attributionForWindow(1_000, 1_000)).toBe('cpu-bound-in-process')
+    // One millisecond of slack, because the counter is rounded to whole milliseconds: a serial handler
+    // that filled its window can land just above it, and that is not evidence of another thread.
+    expect(attributionForWindow(1_001, 1_000)).toBe('cpu-bound-in-process')
+    expect(cpuExceedsWindow(1_000, 1_000)).toBe(false)
+    expect(cpuExceedsWindow(1_001, 1_000)).toBe(false)
+    expect(cpuExceedsWindow(1_002, 1_000)).toBe(true)
+    // Below the window the bands are unchanged, so ordinary lines keep the vocabulary they had.
+    expect(attributionForWindow(826, 900)).toBe('cpu-bound-in-process')
+    expect(attributionForWindow(13, 3_065)).toBe('no-cpu-in-process')
+  })
+
+  it('marks the exceeding case by name, and leaves the ordinary line without the marker', () => {
+    // Withholding a verdict silently is what made the old `inconclusive` band unreadable: the marker is
+    // the only field that says the ratio was not a share of the window.
+    expect(
+      cpuAttributionFields({ user: 0, system: 0 }, { user: 26_928_000, system: 0 }, 20_005)
+    ).toEqual({
+      cpuMs: 26_928,
+      cpuShare: 1,
+      attribution: 'inconclusive',
+      cpuExceedsWindow: true
+    })
+    const ordinary = cpuAttributionFields({ user: 0, system: 0 }, { user: 826_400, system: 0 }, 900)
+    expect(ordinary).not.toHaveProperty('cpuExceedsWindow')
+    expect(ordinary.attribution).toBe('cpu-bound-in-process')
   })
 })
