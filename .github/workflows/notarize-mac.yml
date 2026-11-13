@@ -227,15 +227,33 @@ jobs:
           # "timed out, not rejected" branch was unreachable and the log carried only `exit code 1`
           # (measured twice on v2.27.0). Every reading now comes from an explicit `notarytool info`,
           # so the step can never report an empty status.
+          #
+          # Reuse an earlier accepted submission of the same bytes. Without this, "re-run this job after
+          # Apple finishes" is not actually a resume: the job would queue a second submission and start
+          # polling from zero, so a slow queue could never be beaten by re-running. Apple keeps the accepted
+          # record, and the bytes are identical (no rebuild), so the ticket can be stapled straight from it.
+          accepted_id_for() {
+            local name="$1" history
+            history=$(xcrun notarytool history --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
+              --output-format json 2>/dev/null) || return 0
+            printf '%s' "$history" |
+              jq -r --arg n "$name" '[.history[] | select(.name == $n and .status == "Accepted")][0].id // empty'
+          }
+
           submit() {
             local f="$1" id status
             echo "==> submit: $f"
-            xcrun notarytool submit "$f" \
-              --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
-              --no-wait --output-format json > "$nt"
-            cat "$nt"
-            id=$(grep -o '"id":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)
-            if [ -z "$id" ]; then echo "::error::could not read submission id for $f"; exit 1; fi
+            id=$(accepted_id_for "$(basename "$f")")
+            if [ -n "$id" ]; then
+              echo "==> reusing an already accepted submission: $id"
+            else
+              xcrun notarytool submit "$f" \
+                --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
+                --no-wait --output-format json > "$nt"
+              cat "$nt"
+              id=$(grep -o '"id":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)
+              if [ -z "$id" ]; then echo "::error::could not read submission id for $f"; exit 1; fi
+            fi
 
             # Apple's queue is the variable here, not the build: the first signed v2.27.0 submission sat at
             # `In Progress` for over 25 minutes with no failure of ours to fix. 45m is a ceiling, not an
