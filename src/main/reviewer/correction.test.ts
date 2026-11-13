@@ -507,6 +507,95 @@ describe('single-round auditor correction', () => {
     await client.$disconnect()
   })
 
+  it('leaves its own checks open when another review lane already owns the correction', async () => {
+    const process = new FakeAgentProcess()
+    startFakeAgent(process, {
+      reviewerSessionId: 'reviewer-session-1',
+      mainSessionId: 'main-session-1',
+      simulateFindingsViaHttp: true,
+      checksToSubmit: [
+        {
+          status: 'fail',
+          claim: 'Test claim',
+          evidence: 'Test evidence',
+          locator: { blockRef: { blockIndex: 0 }, contentHash: 'hash1' }
+        }
+      ]
+    })
+
+    const runtime = new AcpRuntime({
+      appVersion: '0.1.0',
+      defaultCwd: '/workspace',
+      spawnAgent: () => asAgentProcess(process)
+    })
+    await runtime.createSession({ cwd: '/workspace' })
+
+    const client = createProjectDbClient(temporaryRoot!)
+    await ensureProjectSchema(client)
+    const repository = new ReviewRepository(() => Promise.resolve(client))
+    const session = makeSession()
+
+    // Another review lane already holds the correction turn for this main session.
+    let releaseOther!: () => void
+    const otherTurn = new Promise<void>((resolve) => {
+      releaseOther = resolve
+    })
+    const otherLane = injectAuditorMessage({
+      sessionId: 'session-1',
+      mainSessionId: 'main-session-1',
+      findings: [
+        {
+          id: 'other-lane-check',
+          reviewId: 'other-review',
+          claim: 'The other lane claim',
+          evidence: 'Evidence from the other lane',
+          status: 'warn',
+          resolution: 'open',
+          sortIndex: 0,
+          reflagCount: 0
+        } as unknown as import('../../shared/reviewer').ReviewCheck
+      ],
+      acpRuntime: {
+        sendPrompt: async () => {
+          await otherTurn
+        }
+      } as unknown as import('./acp-runtime').ReviewerAcpRuntime,
+      provenanceContext: {} as never
+    })
+
+    const correctionPrompts: string[] = []
+    const reviewPromise = runReview({
+      sessionId: 'session-1',
+      turnMessageId: 'msg-2',
+      projectId: 'project-1',
+      getSession: () => session,
+      reviewRepository: repository,
+      acpRuntime: runtime,
+      artifactStorageRoot: temporaryRoot!,
+      mainSessionId: 'main-session-1',
+      sessionRefreshTimeoutMs: 0,
+      onCorrectionPrompt: (text) => correctionPrompts.push(text)
+    })
+
+    // Give the second lane time to reach the deferral, then let the owning turn finish.
+    const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+    await wait(50)
+    releaseOther()
+    const review = await reviewPromise
+    await otherLane
+
+    // Only ONE correction prompt exists for this session, and it is not this lane's.
+    expect(correctionPrompts).toHaveLength(0)
+    // The deferred lane's checks are NOT reported as unaddressed — the fix WAS sent, by the other
+    // lane — so they stay open and visible.
+    expect(review.checks).toHaveLength(1)
+    expect(review.checks[0]?.resolution).toBe('open')
+    const stored = await repository.getReviewsForSession('session-1')
+    expect(stored[0]?.checks[0]?.resolution).toBe('open')
+
+    await client.$disconnect()
+  })
+
   it('message format contains numbered list with status and claim', async () => {
     // Test buildAuditorMessage directly.
     const { buildAuditorMessage } = await import('./correction')
@@ -739,5 +828,134 @@ describe('correction failure attribution', () => {
       classifyCorrectionFailure('An ACP interaction is already running for this session')
     ).toBe('session-busy')
     expect(classifyCorrectionFailure('prompt already running')).toBe('send-failed')
+  })
+})
+
+// Two review lanes over the same session both want to inject a correction. Measured on the real
+// machine (2026-11-09, millisecond timeline): the second injection 10 ms after the first was refused
+// with `An ACP prompt is already running for this session`, and its checks were marked unaddressed.
+// One correction turn per main session, and the loser says so by name instead of pretending to fail.
+describe('one correction turn per main session', () => {
+  const warnFinding = (claim: string): import('../../shared/reviewer').ReviewCheck =>
+    ({
+      id: `finding-${claim}`,
+      reviewId: 'review-single-flight',
+      claim,
+      evidence: 'No source in the transcript',
+      status: 'warn',
+      resolution: 'open',
+      sortIndex: 0,
+      reflagCount: 0
+    }) as unknown as import('../../shared/reviewer').ReviewCheck
+
+  const runtimeWith = (
+    sendPrompt: (request: { sessionId: string; text: string }) => Promise<void>
+  ): import('./acp-runtime').ReviewerAcpRuntime =>
+    ({ sendPrompt }) as unknown as import('./acp-runtime').ReviewerAcpRuntime
+
+  it('makes a concurrent lane wait for the running turn and report a deferral', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const sent: string[] = []
+    const acpRuntime = runtimeWith(async (request) => {
+      sent.push(request.text)
+      await gate
+    })
+
+    const base = {
+      sessionId: 'session-single-flight',
+      mainSessionId: 'main-single-flight-completed',
+      acpRuntime,
+      provenanceContext: {} as never
+    }
+    const prompts: string[] = []
+    const failures: unknown[] = []
+
+    const first = injectAuditorMessage({
+      ...base,
+      findings: [warnFinding('The first lane claim')],
+      onCorrectionPrompt: (text) => prompts.push(text)
+    })
+    // The first call registers its slot and reaches sendPrompt before it suspends, so the second
+    // call below sees an in-flight turn rather than an empty map.
+    expect(sent).toHaveLength(1)
+
+    const second = injectAuditorMessage({
+      ...base,
+      findings: [warnFinding('The second lane claim')],
+      onCorrectionPrompt: (text) => prompts.push(text),
+      onCorrectionFailed: (reason) => failures.push(reason)
+    })
+
+    release()
+    await expect(first).resolves.toEqual({ kind: 'injected' })
+    await expect(second).resolves.toEqual({ kind: 'deferred', waitedOn: 'completed' })
+
+    // One turn on the wire, one prompt hook — and the deferred lane reports no failure, because
+    // nothing of its own failed.
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain('The first lane claim')
+    expect(prompts).toHaveLength(1)
+    expect(failures).toEqual([])
+  })
+
+  it('takes the slot when the running turn failed, so the session still gets a correction', async () => {
+    const sent: string[] = []
+    let call = 0
+    const acpRuntime = runtimeWith(async (request) => {
+      call += 1
+      if (call === 1) {
+        throw new Error('An ACP prompt is already running for this session')
+      }
+      sent.push(request.text)
+    })
+
+    const base = {
+      sessionId: 'session-single-flight',
+      mainSessionId: 'main-single-flight-failed',
+      acpRuntime,
+      provenanceContext: {} as never
+    }
+    const failures: unknown[] = []
+    const first = injectAuditorMessage({
+      ...base,
+      findings: [warnFinding('The failing lane claim')],
+      onCorrectionFailed: (reason) => failures.push(reason)
+    })
+    const second = injectAuditorMessage({
+      ...base,
+      findings: [warnFinding('The takeover claim')]
+    })
+
+    await expect(first).resolves.toEqual({ kind: 'injected' })
+    await expect(second).resolves.toEqual({ kind: 'injected' })
+    expect(call).toBe(2)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain('The takeover claim')
+    // Only the lane whose own send failed reports a cause.
+    expect(failures).toEqual(['session-busy'])
+  })
+
+  it('releases the slot after a turn completes, so the next correction is sent normally', async () => {
+    const sent: string[] = []
+    const acpRuntime = runtimeWith(async (request) => {
+      sent.push(request.text)
+    })
+    const base = {
+      sessionId: 'session-single-flight',
+      mainSessionId: 'main-single-flight-reuse',
+      acpRuntime,
+      provenanceContext: {} as never
+    }
+
+    await expect(
+      injectAuditorMessage({ ...base, findings: [warnFinding('First round')] })
+    ).resolves.toEqual({ kind: 'injected' })
+    await expect(
+      injectAuditorMessage({ ...base, findings: [warnFinding('Second round')] })
+    ).resolves.toEqual({ kind: 'injected' })
+    expect(sent).toHaveLength(2)
   })
 })

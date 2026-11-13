@@ -18063,3 +18063,57 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
 - 下一轮第一步：① 按完整 40 位 SHA 取本笔双车道判决；② 立项 1（修正注入 single-flight）是本轮唯一
   「有读数支撑、可当场做」的产品缺口，按「连锁最小」优先：先在 `correction.ts` 加按会话的在飞标记与具名
   原因，再改 `orchestrator` 的落账口径；③ 冷扫读等待仍等 `loadAvg < 2`。
+
+## 三百二十二、本轮追加（执行器，2026-11-13 14:2x–）—— 同一主会话同一时刻只允许一条修正回合：注入点做 single-flight，输家不背锅
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = HEAD = da0abf4e`（`chore(release): v2.27.0`），`git log origin/main..HEAD` 为空；
+  `git status --short` 只有**三份不是我的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`，不碰、不提交）。
+- **发版窗口在飞**：`da0abf4e` 的 `Release` run `43376987927` 当时 `in_progress`（`build / Verify` 步骤在跑），
+  同 SHA 的 `Windows Full Test` 已 `success`。⇒ 本轮**只在本地提交，不推送**（推送会取消在跑的 Release）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；上一轮 §三百二十一 §五 点名的下一步就是本单元
+  「修正注入按会话 single-flight」，判据与落点都现成，无需重新调研。
+
+### 一 交付（两文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/reviewer/correction.ts` | 模块级 `inFlightCorrections`（键 `mainSessionId`）+ `MAX_DEFERRAL_HOPS`；`injectAuditorMessage` 返回 `CorrectionInjectionResult`（`injected` / `no-findings` / `deferred{waitedOn: completed｜failed｜still-in-flight}`）；查槽与占槽之间无 await，等的是对方那条 promise，对方发送失败会释放槽位让本家接手 |
+| `src/main/reviewer/orchestrator.ts` | `deferred` **不算失败**：记具名 info（`waitedOn` / `openCount`）后照常走 Step C 等那一回合的 agent 消息再定向复评；Step C 等不到且本轮 deferred ⇒ **不标 `unaddressed`**，检查留 `open` 并记一行具名 info |
+
+### 二 三条设计判据
+
+1. **判据是资源不是时序**：被占的资源是「主会话那一个回合」，键取 `mainSessionId`，与 `fixLoopAbortControllers`
+   的口径同源（`2eaf5100` 那条状态闸挡「新起复核」，本轮挡「重复注入」，两者正交）。
+2. **输家说得出为什么**：三态具名值替代「把 `sendPrompt` 异常揉成一句修正失败」。
+3. **不改写别人的结论**：修正确实发出去了（另一条车道发的）⇒ 本家的检查只能留 `open`，不能落成「从未发送」。
+
+### 三 门禁（全部实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/reviewer` | **27 files / 319 passed**，exit 0（新增 4 条，`--reporter=verbose` 逐条确认跑过） |
+| 全量 vitest `--maxWorkers=4` | 见提交信息（本轮在 /tmp 落全量日志后筛汇总行） |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache`（三文件） | **0 error / 0 warning** |
+| `bash scripts/pre-push-checks.sh` | 推送前实跑（本轮不发推送 ⇒ 下一轮补） |
+
+### 四 边界与下一轮第一步
+
+- 边界写进证据档 `docs/evidence/2026-11-13-correction-injection-single-flight.md`：① 槽位跟着回合照旧（回合挂住
+  ⇒ 后续车道 `still-in-flight` 放弃，与改动前本家自己挂住同一失败面）；② 残留竞态（对方的回合在本家取快照与查槽
+  之间恰好完成）仍落 `correction-wait`，但现在 warn 行带 `deferred` 可数；③ **没有真机窗口读数**（产品按设计
+  已不允许两条车道同跑 ⇒ 只能集成用例 + 真机语料历史读数），具名记档、不冒充已取证。
+- 下一轮第一步：① 先看 `Release` run `43376987927` 是否落定（落定后再推本笔，推前 `gh run list` 确认没有在飞的
+  Release）；② 推送后按完整 40 位 SHA 取 `Nightly` + `Windows Full Test` 判决；③ 之后回到 §三百二十一 §四 的
+  第二条立案（定稿拒绝的 `proofCause` 分桶），它需要带该字段的构建上复跑语料。
+
+### 五 顺手核对（一条陈旧读数，别再来追）
+
+打包版 `main.log`（5,900 行，11-09→11-13）里 `error` 家族第一名是 **91 行 `uncaughtException: write EPIPE`**
+（frame 全是 `afterWriteDispatched (stream_base_commons:159:15)`，runId 同一个 ⇒ 一次长跑实例）。查代码后确认
+**这不是缺口**：`src/main/console-pipe-guard.ts`（`e031864e`）就是照同一批读数写的，已在 `index.ts:254`
+接线（管道关闭 ⇒ 关掉控制台镜像 + 记一条 `console output pipe closed`），8 条用例全绿。这 91 行来自
+**修复之前的那个打包实例**（它一直跑到 11-13 才退出），v2.27.0 打包态起应自然消失。⇒ 下一轮读日志时
+**先查这段是否已被 `e031864e` 覆盖**，不要立项重做。

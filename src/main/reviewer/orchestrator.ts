@@ -797,12 +797,16 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
     // Step B: inject [Auditor] with the currently-open warn/fail checks.
     let correctionFailed = false
     let correctionFailureReason: CorrectionFailureReason = 'send-failed'
+    // True when this lane did not put a correction on the wire because another review lane's
+    // correction turn already owned the main session. It is NOT a failure: the other turn's output
+    // is what this lane re-reviews (Step C/D below).
+    let correctionDeferred = false
     try {
       const provenanceContext = getActiveConversationContext(
         materializeSessionConversationGraph(sessionBefore).conversationGraph!,
         `prompt-${randomUUID()}`
       )
-      await injectAuditorMessage({
+      const injection = await injectAuditorMessage({
         sessionId,
         mainSessionId,
         findings: openChecks,
@@ -815,6 +819,15 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
           onCorrectionFailed?.(reason)
         }
       })
+      if (injection.kind === 'deferred') {
+        correctionDeferred = true
+        log.info('fix loop: correction deferred to the turn already running in this session', {
+          sessionId,
+          round,
+          waitedOn: injection.waitedOn,
+          openCount: openChecks.length
+        })
+      }
     } catch (error) {
       correctionFailed = true
       correctionFailureReason = 'provenance-failed'
@@ -882,8 +895,21 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
         round,
         timeoutMs: sessionRefreshTimeoutMs,
         reason: correctionWait.status,
+        deferred: correctionDeferred,
         ...waitDiagnostics(correctionWait)
       })
+      if (correctionDeferred) {
+        // Not this lane's failure to attribute: the correction this session received was sent by
+        // another review lane, and this lane only knows its own snapshot. Marking these checks
+        // `unaddressed` would tell the user "the fix was never sent" about a turn that WAS sent, so
+        // they stay `open` — visible, and judged by whatever reviews the session next.
+        log.info('fix loop: leaving checks open — another review lane owns this correction', {
+          sessionId,
+          round,
+          openCount: openChecks.length
+        })
+        return
+      }
       await markOpenChecksUnaddressed(
         'correction_failed',
         'The correction turn did not reach durable storage.'
