@@ -1,6 +1,39 @@
 # PureScience 更新日记
 
-## v2.27.0 — 未发布（签名与公证；案例名落进数据）
+## v2.27.0 — 2026-11-13
+
+### macOS 签名与公证：这次是真的开了（本版主线）
+
+以前每次发版都是 ad-hoc 签名：`spctl` 拒收、`TeamIdentifier` 为空，应用自己那条「这台机器能不能原地更新」
+的判断永远为假。现在走完整链条：Developer ID Application 证书签名 → `notarytool` 公证 → `stapler` 钉票。
+
+- **证书**：`Developer ID Application: kai wang (UGQZPJ74DF)`，签发 2026-11-13，到期 2027-12-13。
+- **Team ID 在装配期固化**：`electron.vite.config.ts` 用 `define` 把它写进主进程产物（运行时 env 仍然优先，
+  演练要用）。不这么做，从 Finder 启动的打包应用读不到环境变量，原地更新那道门永远不会打开。
+- **`scripts/ci/assert-baked-team-id.mjs`**：遍历 `out/main` 全部 chunk 断言字面量真的在产物里。加它是因为
+  我自己第一次验证时 grep 了 `index.js` 一个文件、得到 0 命中，而值其实在代码分割出来的 chunk 里。
+- **`signing-preflight.yml`**：六项输入（证书、证书口令、API key、Key ID、Issuer、Team ID）只报「有没有、
+  形状对不对」，不打印任何密钥片段，输出可以直接贴出来讨论。
+- **三条工作流注入** `vars.PURESCIENCE_MAC_TEAM_ID`：`build.yml`（打包 + 签名门禁）、`notarize-mac.yml`
+  （公证后的签名复核）、`release.yml`（发布页披露）。
+
+证据：预检车道六项全 ok（PKCS#12 3,206 字节 / PEM 私钥 / 10 位 Key ID / UUID Issuer / 10 位 Team ID）；
+本机用同一把 key 直问苹果 `notarytool history` 返回空列表而不是 401，即凭据真的有效。凭据缺失时仍然
+fail-closed：未签名的 mac 资产按未签名发布，认证记录里写清楚。
+
+### 长会话越聊越卡：渲染线收口
+
+根因不是「行数多了所以慢」，而是**每个用户行都订阅了「现在能不能编辑」这个 context**，它每回合翻转 3~5 次，
+每次翻转把所有用户行重渲一遍；行越多越贵。
+
+- 160 回合：行渲染 **52,674 → 479**（−99.1%）、每次 store 提交重渲的行 **18.90 → 0.28**、容器渲染
+  414~447 → 165~167、每回合提交 18.4 → 10.5。
+- 顺手结掉两个自己造出来的误判：19 倍矛盾是**计量污染**（父级带动 + 两个 DOM 副本共用签名表）；
+  DOM 里 164/82 不是渲染两遍（库包装层与行根各写一次 `data-message-id`）。
+- 剩下的增长在**重算单价**而非次数：`RecalcStyleCount` 持平 33、`RecalcStyleDuration` 14 → 116 ms，
+  正比于文档元素量；虚拟化收紧实测更慢（80 回合 103.5 → 199.0 ms），记录为「不做」，不是待办。
+- 新增夜间车道 `transcript_render_budget`：把「每次提交重渲几行、每回合几次提交」做成预算断言。这些是计数，
+  机器再忙也不会变，所以能当门禁——墙钟不能。
 
 **一句话**：案例的名字以前属于「这台机器上的这份代码」——一张按 projectId 硬编码的表；现在它属于案例本身。
 
