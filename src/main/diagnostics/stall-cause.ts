@@ -15,10 +15,19 @@
 // word is how "nobody was watching" starts reading like "the machine was fine".
 
 import type { ActivityAttribution } from './cpu-attribution'
+import type { FsCanaryFailure } from './fs-queue-probe'
 import type { GcPauseReading } from './gc-pause-monitor'
 
 export type StallCauseKind =
-  'garbage-collection' | 'fs-queue-saturated' | 'cpu-in-process' | 'unexplained' | 'unmeasured'
+  | 'garbage-collection'
+  | 'fs-queue-saturated'
+  | 'cpu-in-process'
+  // No thread of this process ran: the app code cannot have held the loop. Named separately from `unexplained`
+  // because it is a different finding — the window belongs to the machine (a system sleep, an external stop, or
+  // total CPU starvation), and every in-process reading across it is an artefact, including a high `cpuShare`.
+  | 'process-frozen'
+  | 'unexplained'
+  | 'unmeasured'
 
 /**
  * The fs reading taken at the instant the stall ended: a canary read and how many of our instrumented reads
@@ -30,7 +39,25 @@ export type StallCauseKind =
  * pool was idle", and never something a verdict can treat as calm.
  */
 export type StallFsReading =
-  { status: 'measured'; canaryMs: number; inFlight: number } | { status: 'unavailable' }
+  | { status: 'measured'; canaryMs: number; inFlight: number }
+  // A failed canary is a reading with a reason, not a missing field: "the temp file was gone" and "the pool was
+  // fine" used to print the same sentence. `reason` is absent only for callers that did not run a probe at all.
+  | { status: 'unavailable'; reason?: FsCanaryFailure }
+
+/**
+ * What this process's own sampler thread saw across the stall (`host-stall-sampler`). Only the fields the
+ * verdict uses are named here so the classifier stays free of the sampler's full slice.
+ */
+export type StallHostReading =
+  | {
+      status: 'sampled'
+      continuity: 'kept-sampling' | 'gapped' | 'unknown'
+      maxGapMs?: number
+      samples: number
+      expectedSamples: number
+    }
+  | { status: 'unavailable' }
+  | { status: 'no-in-stall-samples' }
 
 export type StallCause = {
   kind: StallCauseKind
@@ -59,10 +86,25 @@ const describeGc = (gc: GcPauseReading): string =>
   gc.status === 'measured' ? `gc ${gc.pauseMs} ms in ${gc.pauses} pause(s)` : 'gc not observed'
 
 const describeFs = (fs: StallFsReading): string => {
-  if (fs.status !== 'measured') return 'fs canary unavailable'
+  if (fs.status !== 'measured')
+    return fs.reason ? `fs canary unavailable (${fs.reason})` : 'fs canary unavailable'
   return fs.inFlight > 0
     ? `fs canary ${fs.canaryMs} ms with ${fs.inFlight} of our reads waiting`
     : `fs canary ${fs.canaryMs} ms with nothing of ours queued`
+}
+
+// The sampler thread keeps its own timeline; a hole in it as wide as the stall means the process was not running
+// at all, which no in-process reading can explain. Measured on the shipped 2.26.0 log (659 stall records): the
+// largest host gap covers ≥80 % of the window in 120 of them, and those 120 carry `unexplained` (57),
+// `unmeasured` (52) and — the reading that is simply false — `cpu-in-process` (11) today. Their windows run to
+// 1,073 s, and at that scale "the app froze for eighteen minutes" is a claim about the machine, not the app.
+const FROZEN_GAP_SHARE = 0.8
+
+const frozenWindow = (host: StallHostReading | undefined, lateMs: number): string | undefined => {
+  if (!host || host.status !== 'sampled' || host.maxGapMs === undefined || lateMs <= 0)
+    return undefined
+  if (host.maxGapMs < lateMs * FROZEN_GAP_SHARE) return undefined
+  return `no thread of this process ran for ${host.maxGapMs} of ${lateMs} ms late (${host.samples} of ${host.expectedSamples} samples landed, continuity ${host.continuity})`
 }
 
 export const classifyStallCause = (input: {
@@ -70,8 +112,24 @@ export const classifyStallCause = (input: {
   attribution: ActivityAttribution
   gc: GcPauseReading
   fs: StallFsReading
+  /** What this process's own sampler thread saw across the stall — the only reading that can rule the app out. */
+  host?: StallHostReading
 }): StallCause => {
-  const { lateMs, attribution, gc, fs } = input
+  const { lateMs, attribution, gc, fs, host } = input
+
+  // First, because it subsumes the others: if our own sampler thread did not run either, then no frame we could
+  // profile, no pause V8 reported and no canary we timed describes app work. Checking GC or CPU first would let
+  // an artefact of a frozen window write the verdict.
+  const frozen = frozenWindow(host, lateMs)
+  if (frozen) {
+    return {
+      kind: 'process-frozen',
+      basis: `${frozen}; the window belongs to the machine (sleep, external stop or total CPU starvation), not to app code`,
+      gc,
+      fs
+    }
+  }
+
   const gcDominant =
     gc.status === 'measured' &&
     gc.pauseMs >= GC_DOMINANT_MIN_MS &&

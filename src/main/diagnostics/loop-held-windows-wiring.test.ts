@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createWebCallerContext } from '../caller-context'
 import { startEventLoopStallWatchdog } from './event-loop-stall-watchdog'
+import type { FsCanaryRead } from './fs-queue-probe'
 import type { HostStallSampler } from './host-stall-sampler'
 import { invokeWithIpcRejectionDiagnostics } from './ipc-rejection'
 import { heldSplitFields, sharedLoopHeldWindows } from './loop-held-windows'
@@ -22,7 +23,10 @@ const quietHostSampler = (): HostStallSampler => ({
 
 // The two instruments behind `cause` are not what this file is about, and a real canary read (a temp file)
 // would outlive the fake clock the window is driven on.
-const quietFsProbe = { inFlight: (): number => 0, startCanaryRead: async (): Promise<number> => 1 }
+const quietFsProbe = {
+  inFlight: (): number => 0,
+  startCanaryRead: async (): Promise<FsCanaryRead> => ({ ok: true, canaryMs: 1 })
+}
 
 const clock = (): {
   now: () => number

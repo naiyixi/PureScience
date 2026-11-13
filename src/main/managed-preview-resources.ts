@@ -201,11 +201,16 @@ class ManagedPreviewResources {
     if (acquireMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
       try {
         // The path itself is user data; only its segment costs, the source and the queue readings are reported.
+        // The canary answers a value now: a failed read is a named reason, not a missing field that reads as
+        // "the pool was fine" (see `fs-queue-probe`).
+        const canaryReading = await canary
         previewLog.warn('managed preview acquire was slow', {
           source: request.source,
           resolveMs,
           statMs,
-          canaryMs: await canary,
+          ...(canaryReading.ok
+            ? { canaryMs: canaryReading.canaryMs }
+            : { canaryFailure: canaryReading.reason }),
           inFlightFsOperations: inFlightFsOperationCount(),
           ...readEventLoopLatency(),
           ...cpuAttributionFields(cpuStartedAt, cpuEndedAt, acquireMs),

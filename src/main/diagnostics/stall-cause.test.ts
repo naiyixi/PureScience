@@ -186,4 +186,66 @@ describe('stall cause', () => {
     })
     expect(cause.basis).toContain('gc 900 ms in 4 pause(s) of 1200 ms late')
   })
+
+  // The sampler thread shares the process, so a hole in its timeline as wide as the stall is the one reading
+  // that rules app code out. Measured on the shipped 2.26.0 log: 120 of 659 records have that shape (their host
+  // gaps run from 666 ms to 1,073 s), and today 11 of them are labelled `cpu-in-process` — an artefact, because
+  // the CPU was not being spent by a running thread either.
+  it('rules app code out when no thread of the process ran, ahead of GC and CPU', () => {
+    const cause = classifyStallCause({
+      lateMs: 1_000,
+      attribution: 'cpu-bound-in-process',
+      gc: gcMeasured(900, 5),
+      fs: fsMeasured(1),
+      host: {
+        status: 'sampled',
+        continuity: 'gapped',
+        maxGapMs: 1_000,
+        samples: 0,
+        expectedSamples: 4
+      }
+    })
+    expect(cause.kind).toBe('process-frozen')
+    expect(cause.basis).toContain('no thread of this process ran for 1000 of 1000 ms late')
+    expect(cause.basis).toContain('not to app code')
+    // The instruments are still reported: a reader has to be able to check the verdict against the numbers.
+    expect(cause.gc).toEqual({ status: 'measured', pauseMs: 900, pauses: 5 })
+  })
+
+  it('does not call a partially sampled window frozen', () => {
+    // A sampler that kept ticking (or missed only part of the window) describes a running process: the loop was
+    // held by something inside it, and the other instruments get to decide.
+    const partial = classifyStallCause({
+      lateMs: 1_000,
+      attribution: 'no-cpu-in-process',
+      gc: gcMeasured(0, 0),
+      fs: fsMeasured(1),
+      host: {
+        status: 'sampled',
+        continuity: 'gapped',
+        maxGapMs: 400,
+        samples: 3,
+        expectedSamples: 4
+      }
+    })
+    expect(partial.kind).toBe('unexplained')
+    const kept = classifyStallCause({
+      lateMs: 1_000,
+      attribution: 'no-cpu-in-process',
+      gc: gcMeasured(0, 0),
+      fs: fsMeasured(1),
+      host: { status: 'sampled', continuity: 'kept-sampling', samples: 4, expectedSamples: 4 }
+    })
+    expect(kept.kind).toBe('unexplained')
+  })
+
+  it('names the canary failure in the sentence a reader sees', () => {
+    const cause = classifyStallCause({
+      lateMs: 700,
+      attribution: 'no-cpu-in-process',
+      gc: gcMeasured(0, 0),
+      fs: { status: 'unavailable', reason: 'missing' }
+    })
+    expect(cause.basis).toContain('fs canary unavailable (missing)')
+  })
 })

@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 
 import type { Logger } from '../logger'
 import { classifyCpuShare, cpuShareOf, type ActivityAttribution } from './cpu-attribution'
-import { inFlightFsOperationCount, startCanaryRead } from './fs-queue-probe'
+import { inFlightFsOperationCount, startCanaryRead, type FsCanaryRead } from './fs-queue-probe'
 import { createGcPauseMonitor, type GcPauseMonitor, type GcPauseReading } from './gc-pause-monitor'
 import { classifyStallCause, type StallCause, type StallFsReading } from './stall-cause'
 import {
@@ -126,7 +126,7 @@ export type EventLoopStallWatchdogInput = {
   // path already uses. Both are created at start-up, for the same reason the stack sampler is: an instrument
   // armed by the stall would only ever describe the recovery.
   createGcMonitor?: () => GcPauseMonitor | undefined
-  fsProbe?: { inFlight: () => number; startCanaryRead: () => Promise<number> }
+  fsProbe?: { inFlight: () => number; startCanaryRead: () => Promise<FsCanaryRead> }
   // Seams. Production passes nothing; tests drive time, CPU, machine state and both samplers directly.
   now?: () => number
   // Wall clock (epoch ms), used to line the sampler's timeline up with the stall: the sampler runs on its
@@ -264,9 +264,13 @@ export const startEventLoopStallWatchdog = (
       : { status: 'unavailable' }
     const fsInFlight = fsProbe.inFlight()
     const fsSlice: Promise<StallFsReading> = fsProbe.startCanaryRead().then(
-      (canaryMs): StallFsReading => ({ status: 'measured', canaryMs, inFlight: fsInFlight }),
-      // A failed canary is not a reading: say it was unavailable instead of reporting it as fast.
-      (): StallFsReading => ({ status: 'unavailable' })
+      (reading): StallFsReading =>
+        reading.ok
+          ? { status: 'measured', canaryMs: reading.canaryMs, inFlight: fsInFlight }
+          : // A failed canary is a named reading: the reason is what tells a purged temp file from a pool that
+            // was fine, and the caller used to drop it on the floor.
+            { status: 'unavailable', reason: reading.reason },
+      (): StallFsReading => ({ status: 'unavailable', reason: 'unavailable' })
     )
     // `take()` restarts the segment, so whatever happens next is recorded from this instant on.
     const stackSlice: Promise<StackProfile | undefined> = presampler
@@ -280,7 +284,7 @@ export const startEventLoopStallWatchdog = (
           // helper threads, which can be busy while the main thread itself was never scheduled.
           classifyCpuShare(cpuShareOf(profile.mainThreadMs, windowMs), windowMs)
         : base.attribution
-      const cause = classifyStallCause({ lateMs, attribution, gc, fs })
+      const cause = classifyStallCause({ lateMs, attribution, gc, fs, host })
       if (!profile) {
         report({ ...base, attribution, cause, stack: { status: 'unavailable' }, host })
         return

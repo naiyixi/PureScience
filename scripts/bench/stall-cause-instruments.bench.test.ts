@@ -56,16 +56,21 @@ describe.skipIf(!enabled)('stall cause instruments', () => {
     // The first read of the process also creates the canary file, so it measures mkdtemp + write + read. Warm
     // it first, or the "idle" number is setup cost and every later reading looks like saturation.
     await startCanaryRead()
-    const idle = await startCanaryRead()
+    const idleReading = await startCanaryRead()
+    expect(idleReading.ok).toBe(true)
+    const idle = idleReading.ok ? idleReading.canaryMs : Number.NaN
 
     // More reads than libuv has slots (4 by default), each of a file large enough to occupy its slot for
     // real: this is the shape the acquire path produces when a preview fans out.
     const busy = Array.from({ length: 96 }, () => readFile(file))
-    const saturated = await startCanaryRead()
+    const saturatedReading = await startCanaryRead()
+    expect(saturatedReading.ok).toBe(true)
+    const saturated = saturatedReading.ok ? saturatedReading.canaryMs : Number.NaN
     await Promise.all(busy)
 
     await rm(directory, { recursive: true, force: true })
-    const recovered = await startCanaryRead()
+    const recoveredReading = await startCanaryRead()
+    const recovered = recoveredReading.ok ? recoveredReading.canaryMs : 'unavailable'
     say(`FS idleMs=${idle} saturatedMs=${saturated} recoveredMs=${recovered}`)
     // The claim the verdict rests on: the canary can tell a busy pool from an idle one.
     expect(saturated).toBeGreaterThan(idle)

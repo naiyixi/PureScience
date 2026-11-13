@@ -5,6 +5,7 @@ import {
   type EventLoopStallRecord,
   type StallFrame
 } from './event-loop-stall-watchdog'
+import type { FsCanaryRead } from './fs-queue-probe'
 import type { HostStallSampler } from './host-stall-sampler'
 import type { GcPauseMonitor } from './gc-pause-monitor'
 import { createLoopHeldWindows } from './loop-held-windows'
@@ -38,7 +39,7 @@ const noPresampler = (): RollingStackProfile | undefined => undefined
 const noGcMonitor = (): GcPauseMonitor | undefined => undefined
 const quietFsProbe = {
   inFlight: (): number => 0,
-  startCanaryRead: async (): Promise<number> => 1
+  startCanaryRead: async (): Promise<FsCanaryRead> => ({ ok: true, canaryMs: 1 })
 }
 
 const presamplerStub = (
@@ -775,7 +776,10 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
         pauseMsWithin: () => ({ status: 'measured', pauseMs: 0, pauses: 0 }),
         stop: () => undefined
       }),
-      fsProbe: { inFlight: () => httpInFlight, startCanaryRead: async () => 250 }
+      fsProbe: {
+        inFlight: () => httpInFlight,
+        startCanaryRead: async () => ({ ok: true, canaryMs: 250 })
+      }
     })
 
     time.advance(1_000, 60)
@@ -812,7 +816,7 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
         pauseMsWithin: () => ({ status: 'measured', pauseMs: 0, pauses: 0 }),
         stop: () => undefined
       }),
-      fsProbe: { inFlight: () => 0, startCanaryRead: async () => 5_826 }
+      fsProbe: { inFlight: () => 0, startCanaryRead: async () => ({ ok: true, canaryMs: 5_826 }) }
     })
 
     time.advance(1_000, 60)
@@ -888,8 +892,86 @@ describe('event loop stall watchdog (real clock and sampler)', () => {
     expect(warned).toHaveLength(1)
     expect(warned[0]?.data.cause.kind).toBe('unmeasured')
     expect(warned[0]?.data.cause.gc).toEqual({ status: 'unavailable' })
-    // A failed canary is not a fast canary: the reading has to say it was not taken.
-    expect(warned[0]?.data.cause.fs).toEqual({ status: 'unavailable' })
+    // A failed canary is not a fast canary: the reading has to say it was not taken, and a probe that threw has
+    // no more specific reason to give than that.
+    expect(warned[0]?.data.cause.fs).toEqual({ status: 'unavailable', reason: 'unavailable' })
+    watchdog.stop()
+  })
+
+  it('carries the canary failure reason into the verdict instead of one opaque "unavailable"', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: quietHostSampler,
+      createGcMonitor: noGcMonitor,
+      fsProbe: {
+        inFlight: () => 0,
+        startCanaryRead: async () => ({ ok: false, reason: 'missing' })
+      }
+    })
+
+    time.advance(1_000, 60)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.fs).toEqual({ status: 'unavailable', reason: 'missing' })
+    // The sentence a reader sees has to name it: "unavailable" alone is what made 592 shipped readings
+    // unactionable.
+    expect(warned[0]?.data.cause.basis).toContain('fs canary unavailable (missing)')
+    watchdog.stop()
+  })
+
+  // The reading that used to be impossible to state: our own sampler thread stopped too, so no in-process
+  // instrument can describe the window — and a high `cpuShare` across it is an artefact, not evidence.
+  it('names a window no thread of this process ran as process-frozen, before GC or CPU get a say', async () => {
+    vi.useFakeTimers()
+    const time = drive()
+    const { log, warned } = collect()
+    const gappedHostSampler = (): HostStallSampler => ({
+      read: async (from, to) => ({
+        status: 'sampled',
+        intervalMs: 250,
+        stallMs: 1_000,
+        samples: 0,
+        expectedSamples: 4,
+        maxGapMs: to - from,
+        continuity: 'gapped'
+      }),
+      snapshot: async () => undefined,
+      stop: () => undefined
+    })
+    const watchdog = startEventLoopStallWatchdog({
+      log,
+      tickMs: 100,
+      thresholdMs: 500,
+      now: time.now,
+      cpuUsage: time.cpuUsage,
+      machine: () => ({ freeMemMb: 60 }),
+      createPresampler: noPresampler,
+      createHostSampler: gappedHostSampler,
+      createGcMonitor: noGcMonitor,
+      // A canary that looks fast and a GC pause that would otherwise be named first: neither may write this
+      // verdict, because nothing of this process was running to be measured.
+      fsProbe: quietFsProbe
+    })
+
+    time.advance(1_000, 960)
+    vi.advanceTimersByTime(100)
+    await settle()
+
+    expect(warned).toHaveLength(1)
+    expect(warned[0]?.data.cause.kind).toBe('process-frozen')
+    expect(warned[0]?.data.cause.basis).toContain('no thread of this process ran')
+    expect(warned[0]?.data.cause.basis).toContain('not to app code')
     watchdog.stop()
   })
 
