@@ -18230,3 +18230,49 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 - mac 原地更新的**应用级**真机读数仍未取，且**卡在一条外部条件**上：它需要一个比已安装版本更新的**签名**版本
   （本机造不出签名包）⇒ 最早只能在 v2.28.0 存在后取；路径选择这一半已由「签名包冷启动 0 次 `/version.json`」
   （§三百二十三 的 P0 红）证到。
+
+## 三百二十五、本轮追加（续 §三百二十四）—— 轮询修法在生产里生效了：45 分钟 90 次读数全是 `In Progress`，卡的是苹果侧
+
+### 〇 读数（真车道，不是推演）
+
+`v2.27.0` 的 tag 驱动 Release `43423715874`（`f814de58`）：
+
+| 作业 | 结论 | 说明 |
+| --- | --- | --- |
+| `Release preflight` / `Resolve platform matrix` / `Verify (lint + typecheck + test + package)` | success | 本笔的 workflow 改动过了 Verify 的 lint + typecheck |
+| `Build linux-x64` / `windows-x64` / `macos-x64` / `macos-arm64` | success | **P0 认证在签名包上通过**（§三百二十三 那条红已收：`update-manual-install` 走具名开关） |
+| `Notarize + staple macos-arm64` / `macos-x64` | **failure** | 见下 |
+| `publish` / `windows-upgrade-smoke` | skipped | 按设计：公证没结论就不发 |
+
+两个公证作业的日志现在是**可读的**（这就是 §三百二十四 要的）：
+
+```
+==> submission id: d52b5630-8c12-44d2-be9a-1244da08500d — polling up to 45m
+==> [mac/…-mac-arm64.dmg] status=In Progress | 2699s left of the 45m ceiling
+   …（每 30 s 一行，共 90 行）…
+==> [mac/…-mac-arm64.dmg] status=In Progress | -25s left of the 45m ceiling
+##[error]notarization did NOT reach a verdict within 45m for mac/…-mac-arm64.dmg (Apple slow, not a rejection).
+##[error]last status read: In Progress; submission id: d52b5630-8c12-44d2-be9a-1244da08500d
+```
+
+- **不是拒绝**：45 分钟里状态一次都没变成 `Invalid/Rejected`，也就没有逐条原因可读。
+- **不是我们的构建**：同一提交的四个平台构建（含 P0）全绿；签名门与 Team ID 检查都在构建侧过了。
+- **苹果侧的形状**：公开的开发者论坛里「首次 Developer ID / 首次提交被留在 In Progress 数小时到数天」是
+  已记录的现象（官方答复的口径是「首次会被留作深度分析，之后同一开发者会越来越少延迟」）⇒ 这条**不能靠改代码收**。
+  本轮不据此写「公证已通过」，也不据此改 `publish` 的 `needs`（那是 issue #19 定下的 fail-closed 边界）。
+
+### 一 恢复路径（下一轮第一步，按代价从小到大）
+
+1. **`gh run rerun 43423715874 --failed`**：只重跑两个公证作业，**不重建**（产物仍在这次 run 里，不会产生同名重复）；
+   重提的是**同一份字节**，苹果按内容去重，一旦先前那条被接受通常很快出结论。跑之前先看该 run 是否仍保留产物。
+2. 若 `publish` 在 rerun 之后仍不执行（它被 skipped 而不是 failed），那就要么再 rerun 一次让它评估，
+   要么走「移到 tag 重建」的完整链路（约 1 h，代价大，最后手段）。
+3. `1f4ceb40` 已经加了「先按文件名查已 Accepted 的提交、命中就复用 id 直接 staple」——移 tag 时那条会省掉整个等待，
+   但复用只按**文件名**匹配，字节是否同一由 `stapler validate` 兜底（不同则会响，不会静默钉错票）。
+
+### 二 本机这次取不到的读数（具名未取，不许当已验）
+
+- 本机没有 issuer（只留了 `~/Desktop/AuthKey_GYV9CN22GA.p8`，Issuer ID 只在 CI secret 里）⇒ **无法在本机
+  用 `notarytool info` 独立复核**这两条提交的当前状态。要在本机查，需要有 issuer 的那一份值。
+- `spctl`/`Notarized Developer ID` 的验收（排期档 v2.27.0 第 2 条）与 cask 去 `--no-quarantine`（第 3 条）
+  都**只能在 Release 页出现之后**做，现在两条都还空着。
