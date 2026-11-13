@@ -41,6 +41,14 @@ on:
         required: false
         type: boolean
         default: false
+      runner:
+        description: >-
+          Which hosted macOS image to read from. `notarytool` needs macOS, and the arm64 pool is
+          capacity-constrained from time to time ("job was not acquired by Runner of type hosted"),
+          so the intel image is the fallback — the reading itself is identical.
+        required: false
+        type: string
+        default: macos-15
 
 permissions:
   contents: read
@@ -48,7 +56,7 @@ permissions:
 jobs:
   status:
     name: Read notary state
-    runs-on: macos-15
+    runs-on: ${{ github.event.inputs.runner || 'macos-15' }}
     timeout-minutes: 20
     steps:
       # Presence first, by name, with every missing secret listed — this workflow is useless without
