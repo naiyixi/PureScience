@@ -73,3 +73,22 @@ fail-closed，不假装成功：mac 资产按 ad-hoc 发布，`RELEASE-CERTIFICA
 用 `openssl pkcs12 -export` 直接合成 `.p12`（不经过钥匙串导出）是可行的：`.cer` 用 `openssl x509 -inform DER` 转 PEM，与 `key.pem` 一起打包即可，`security verify-cert -c cert.pem -p codeSign` 报 `certificate verification successful`。
 
 本机在临时钥匙串里跑 `codesign` 仍会报 `errSecInternalComponent`（链已可验证、身份也有效），这一步以 CI 的 mac 车道为准——那才是发布用的环境。
+
+## 六项就位的证据（2026-11-13）
+
+`Signing preflight` 车道（run 由 `gh workflow run signing-preflight.yml` 触发）在 macOS runner 上的实际输出：
+
+```
+input                        state    detail
+---------------------------- -------- ------
+MAC_CSC_LINK                 ok       base64 PKCS#12, 3206 bytes
+MAC_CSC_KEY_PASSWORD         ok       set (24 characters)
+APPLE_API_KEY_P8_BASE64      ok       decodes to a PEM private key
+APPLE_API_KEY_ID             ok       10-character key id
+APPLE_API_ISSUER             ok       UUID
+vars.PURESCIENCE_MAC_TEAM_ID ok       10-character team id
+All six inputs are present and shaped correctly.
+```
+
+另外在本机用同一把 API key 直接问苹果：`xcrun notarytool history --key AuthKey_*.p8 --key-id … --issuer …`
+返回 `No submission history.`——**空白历史本身就是凭据有效的证据**（403/401 才是没通过），比只检查形状更硬。
