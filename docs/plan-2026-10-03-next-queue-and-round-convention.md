@@ -18162,3 +18162,71 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
 - 下一轮第一步：① 推 main 后**删 tag `v2.27.0` 重建到本笔提交**并推 tag（tag 事件才会跑公证：手动派发时
   `notarize-mac` 按设计 skip ⇒ 只会发出**未钉票**的 mac 包）；② 盯 Release 到落定，按「发布核验」清单核页与
   资产（`RELEASE-CERTIFICATION.json` 的 `sourceSha` 与新 tag 提交逐字符比）；③ 页落定后再取 mac 原地更新的真机读数。
+
+## 三百二十四、本轮追加（执行器，2026-11-13 20:0x–）—— 公证等待失败时「一句状态都没有」是仪器缺口，不是苹果拒绝
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工 `origin/main = 411684bd`（并行执行体刚落的「等苹果 45 分钟」，本地 HEAD `a6581897`，fast-forward 拉平）；
+  `git status --short` 只有三份不是我的未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`），一个字节没碰。
+- `v2.27.0` 两次 tag 驱动的 Release 都红在公证：`43404585301`（`9d4583e0`）、`43408771372`（`b1d25937`）。
+  后者的 `build` 四平台 + `notarize-mac` 凭据解析全绿，红在 `Notarize + staple macos-arm64/x64`；
+  `publish` 与 `windows-upgrade-smoke` 按设计 `skipped` ⇒ **没有 Release 页**（`gh release view v2.27.0` = not found，
+  Latest 仍是 v2.26.0）。411684bd 只抬了上限（15m→45m、job 30m→90m），红**仍在同一处**，说明还差一环。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）本轮无可做项 ⇒ 先收这条发版红。
+
+### 一 定因：`set -e` 加一次失败的命令替换，把整步带走，超时分支永远到不了
+
+两个作业的日志形状完全一致（arm64 与 x64 各一份）：
+
+```
+==> submission id: <id> — waiting up to 15m
+##[error]Process completed with exit code 1          ← 15 分钟后，没有一句状态
+```
+
+`notarytool submit --no-wait` 正常（id 取到了、`Successfully uploaded file` 也在），随后：
+
+```bash
+xcrun notarytool wait "$id" … --timeout 15m --output-format json > "$nt" 2>/dev/null || true
+status=$(grep -o '"status":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)   # ← 超时后 $nt 为空
+```
+
+`notarytool wait` 到点退出时 **stdout 什么都不写**，`$nt` 为空 ⇒ `grep` 退出码 1 ⇒ 步骤是 `bash -e`，
+**这条赋值当场把整步结束**：后面 `case "$status"` 里那句「超时说明是超时」「notarytool info」
+（含上一笔刚补进去的那次 info）一次都没执行。于是「苹果慢」与「真的失败」在日志里同形，
+而人只能看到一个裸 exit code。**这不是苹果拒绝**（同一把 key 在本机问过的结论是 `In Progress`）。
+
+### 二 交付（一文件：`.github/workflows/notarize-mac.yml`）
+
+改成**自己轮询 `notarytool info`**（30 s 一次，上限 45m，job 上限 90m 保持不变）：
+
+| 读数 | 行为 |
+| --- | --- |
+| 每轮 | 打印 `status=<In Progress/Accepted/unreadable> | <剩余>s left` —— 读数不可能为空 |
+| `Accepted` | 继续 staple（原路径不变） |
+| `Invalid` / `Rejected` | 打印苹果的逐条原因后失败（真拒绝，行为不变） |
+| 到点仍非终态 | 具名报「45 分钟内没给出结论（苹果慢，不是拒绝）」+ **最后读到的状态** + submission id + `notarytool info` 自查命令，publish 照旧跳过 |
+
+判断「真拒绝」与「读不出」分开命名：`info` 输出无法解析时 `status=unreadable` 继续轮询，
+超时行里直接写 `unreadable`，不会与 `In Progress` 混成一个词。
+
+### 三 仪器的自证（四条分支，替身 `xcrun` 在本机跑）
+
+| 场景 | 读数 |
+| --- | --- |
+| 第 3 次轮询 `Accepted` | `exit 0`，随后走 staple/validate（打印 3 行状态 + 2 行 stapler） |
+| 一直 `In Progress` 到上限 | `exit 1`，两行 `::error::`（未在 45m 内给出结论 / last status read: In Progress + submission id）+ info 原文 |
+| `Invalid` | `exit 1`，先打印 `REJECTED (Invalid)` 再调 `notarytool log` |
+| `info` 读不出（替身回 `connection reset by peer`） | `status=unreadable`，仍走到具名超时，**没有静默退出** |
+
+YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.test.ts` + `scripts/merge-mac-feed.test.ts`
+**2 files / 33 passed**；`bash -n` 过；`scripts/pre-push-checks.sh` exit 0（含品牌词扫描零命中）。
+
+### 四 发版动作与边界
+
+- `f814de58` 推 main → 删 tag `v2.27.0`（无 Release 页，删了不丢页）→ 重建到 `f814de58` 并推 tag
+  ⇒ Release `43423715874`（tag 事件才跑公证）。tag 标注用 `git rev-list v2.26.0..HEAD --count` 的真实笔数（116）。
+- **仍不声称**「公证已通过」：本轮只保证下一次红会带状态。判决只能由这条 tag 驱动车道给。
+- mac 原地更新的**应用级**真机读数仍未取，且**卡在一条外部条件**上：它需要一个比已安装版本更新的**签名**版本
+  （本机造不出签名包）⇒ 最早只能在 v2.28.0 存在后取；路径选择这一半已由「签名包冷启动 0 次 `/version.json`」
+  （§三百二十三 的 P0 红）证到。
