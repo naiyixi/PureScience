@@ -16,9 +16,16 @@ import { test } from '../fixtures/electron-app'
 // Chromium layout. A wrong digest is still a failed download here — the spec has to reach `ready` by
 // serving bytes that hash to the value the manifest pins, not by telling the app it succeeded.
 //
-// The macOS sentence exists because the builds are ad-hoc signed: macOS refuses to replace a running app
-// in place, so the reader is told to replace it by hand rather than discovering it mid-drag. It is only
-// rendered in the `ready` state, which is why this spec downloads instead of stopping at `available`.
+// The macOS sentence tells the reader to replace the bundle by hand rather than discovering it mid-drag,
+// and it is only rendered in the `ready` state — which is why this spec downloads instead of stopping at
+// `available`.
+//
+// The launch declares the Team ID unprovisioned (empty, not absent) on purpose. A packaged build now bakes
+// its Team ID in, so a signed stable build takes the in-place Squirrel path and never asks for
+// `version.json` at all; the manual flow below is the fallback that nightlies and unsigned builds still
+// ship, and that is what this spec certifies. Verified against the failure that prompted this: the first
+// signed release build made this spec time out waiting for one manifest request that never happened.
+process.env.PURESCIENCE_MAC_TEAM_ID = ''
 
 // The release must be newer than the app under test, or the check answers "up to date" and there is no
 // dialog to download from. Derived from the app's own version so a version bump cannot silently turn this

@@ -92,3 +92,22 @@ All six inputs are present and shaped correctly.
 
 另外在本机用同一把 API key 直接问苹果：`xcrun notarytool history --key AuthKey_*.p8 --key-id … --issuer …`
 返回 `No submission history.`——**空白历史本身就是凭据有效的证据**（403/401 才是没通过），比只检查形状更硬。
+
+## 签名打开后，一条被测路径换了
+
+`createUpdateStrategy` 的判断是「打包 + 非预发布版本 + 签名团队匹配」，三者都成立才走 electron-updater 原地更新，
+否则回落到 `UpdateService` 的手动安装流程。Team ID 一固化，**打包且签名的稳定版就走原地更新了**——这是设计本意，
+但它让 `e2e/certification/update-manual-install.spec.ts` 第一次在真机上失败：
+
+```
+expect.poll(manifestRequestLines).toBe(1)   → 收到 0，重试也一样
+```
+
+原因不是 flake：那条 spec 数的是 `/version.json` 请求，而原地更新走的是另一条路，根本不会请求它。日志里
+`version.json` 出现 **0** 次，是这条判断的实证。
+
+修法是让这条 spec 明确认证**回落路径本身**：launch 前把 `PURESCIENCE_MAC_TEAM_ID` 显式置空。为此改了取值语义——
+「未定义」才回落到烘焙值，「定义为空」表示"当作没配"，这样测试能要求一个原地更新被拒绝的启动。
+
+**仍未覆盖的一处**：稳定签名版的原地更新（Squirrel）只有单元测试，没有打包级 e2e。nightly 的版本号带 `-nightly.`
+所以它永远走手动流程，这条路径在 CI 里等于没有真机证据。列为下一版的缺口，不当作已覆盖。

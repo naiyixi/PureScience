@@ -199,6 +199,22 @@ describe('createUpdateStrategy', () => {
     expect(spawnSync).not.toHaveBeenCalled()
   })
 
+  // The packaged build bakes its Team ID in, so "unset" only happens on a machine that never packaged one.
+  // An explicitly empty variable is how a caller says "behave as if nothing is provisioned" — the
+  // certification specs for the manual installer rely on it, and it must win over the baked value.
+  it('treats an explicitly empty Team ID as unprovisioned even when one is baked in', () => {
+    process.env.PURESCIENCE_MAC_TEAM_ID = ''
+
+    expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
+      UpdateService
+    )
+    expect(loggerMocks.log.info).toHaveBeenCalledWith(
+      'in-place update not offered',
+      expect.objectContaining({ reason: 'mac-team-id-not-provisioned' })
+    )
+    expect(spawnSync).not.toHaveBeenCalled()
+  })
+
   it('falls back to UpdateService on darwin for a nightly (prerelease) build', () => {
     expect(
       createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3-nightly.abc1234' })
