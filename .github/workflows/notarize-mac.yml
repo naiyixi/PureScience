@@ -19,9 +19,9 @@ name: Notarize macOS
 # workflow_dispatch run (the notarization dry-run) still reports event_name == 'workflow_dispatch',
 # which would wrongly select the Release path and submit an unrelated published build.
 #
-# Time cap is enforced two ways: each dmg is submitted, then waited on for at most 15m
-# (`notarytool wait --timeout 45m`), and the job as a whole is bounded by `timeout-minutes: 90`.
-# The submission id is captured before waiting, so on a timeout the log still shows it plus the
+# Time cap is enforced two ways: each dmg is submitted, then polled (`notarytool info`) for at most
+# 45m, and the job as a whole is bounded by `timeout-minutes: 90`. The submission id is captured
+# before polling, so on a timeout the log still shows it, the last status read, and the
 # `notarytool info <id>` command to check the real status. A timeout is NOT a rejection — the Apple
 # submission keeps running; publish (which needs this job) is skipped, so nothing bad is published,
 # and re-running this workflow re-checks + staples with no rebuild.
@@ -218,9 +218,15 @@ jobs:
             echo "::error::APPLE_API_KEY_ID / APPLE_API_ISSUER are not set — cannot notarize"; exit 1
           fi
 
-          # submit <file>: submit first (capture the id), then wait up to 15m for a verdict.
-          # Splitting it out guarantees the submission id is known even if the wait times out, so
-          # the log always shows how to check the real status independently (notarytool info).
+          # submit <file>: submit first (capture the id), then poll Apple for a verdict for at most
+          # 45m. The submission id is captured before polling, so the log always shows it plus how to
+          # check the real status independently (notarytool info).
+          #
+          # Polling, not `notarytool wait --timeout`: when `wait` runs out it prints nothing on stdout,
+          # the status parse then fails, and under `set -e` the step died right there — the
+          # "timed out, not rejected" branch was unreachable and the log carried only `exit code 1`
+          # (measured twice on v2.27.0). Every reading now comes from an explicit `notarytool info`,
+          # so the step can never report an empty status.
           submit() {
             local f="$1" id status
             echo "==> submit: $f"
@@ -235,31 +241,38 @@ jobs:
             # `In Progress` for over 25 minutes with no failure of ours to fix. 45m is a ceiling, not an
             # expectation — a timeout is still reported as a timeout (not a rejection) and publish stays
             # skipped, so re-running this job after Apple finishes is the designed recovery (no rebuild).
-            echo "==> submission id: $id — waiting up to 45m"
-            xcrun notarytool wait "$id" \
-              --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
-              --timeout 45m --output-format json > "$nt" 2>/dev/null || true
-            status=$(grep -o '"status":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)
-            cat "$nt"
+            echo "==> submission id: $id — polling up to 45m"
+            local deadline=$((SECONDS + 2700)) remaining info
+            while :; do
+              info=$(xcrun notarytool info "$id" \
+                --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
+                --output-format json 2>&1 || true)
+              status=$(printf '%s\n' "$info" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+              remaining=$((deadline - SECONDS))
+              echo "==> [$f] status=${status:-unreadable} | ${remaining}s left of the 45m ceiling"
 
-            case "$status" in
-              Accepted) return 0 ;;
-              Invalid|Rejected)
-                # Real bad build — will never pass Gatekeeper. Show the per-issue reasons.
-                echo "::error::notarization REJECTED ($status) for $f — fix signing/entitlements:"
-                xcrun notarytool log "$id" --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" || true
-                exit 1 ;;
-              *)
+              case "${status:-unreadable}" in
+                Accepted) return 0 ;;
+                Invalid|Rejected)
+                  # Real bad build — will never pass Gatekeeper. Show the per-issue reasons.
+                  echo "::error::notarization REJECTED ($status) for $f — fix signing/entitlements:"
+                  xcrun notarytool log "$id" --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" || true
+                  exit 1 ;;
+              esac
+
+              if [ "$remaining" -le 0 ]; then
                 # Timed out / still In Progress — Apple is slow, NOT a rejection. Nothing is published.
-                # Ask Apple once more so this log carries the status even though `wait` gave up silently.
-                echo "==> last known status:"
-                xcrun notarytool info "$id" --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" || true
-                echo "::error::notarization did NOT finish within 45m for $f (Apple slow, not a rejection)."
-                echo "::error::submission id: $id"
+                echo "::error::notarization did NOT reach a verdict within 45m for $f (Apple slow, not a rejection)."
+                echo "::error::last status read: ${status:-unreadable}; submission id: $id"
+                echo "==> last notarytool info output:"
+                printf '%s\n' "$info"
                 echo "Check the real status any time (independent of CI), then re-run this job once Accepted:"
-                echo "  xcrun notarytool info $id --key <AuthKey.p8> --key-id $KEY_ID --issuer $ISSUER"
-                exit 1 ;;
-            esac
+                echo "  xcrun notarytool info $id --key <AuthKey.p8> --key-id \$KEY_ID --issuer \$ISSUER"
+                exit 1
+              fi
+
+              sleep 30
+            done
           }
 
           for dmg in mac/*-mac-*.dmg; do
