@@ -18311,6 +18311,10 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 这也让「首次 Developer ID 会被留作深度分析」**不足以解释全部**：与证书、entitlements、包内容无关的
 未签名探针也卡在队列里。能确证的只有「16:52Z 时服务对整批提交都不出判决」。
 
+同期官方状态页（`developer.apple.com/system-status/`，17:0xZ）报 `Developer ID Notary Service: available`
+⇒ **没有已承认的故障**。所以「状态页绿」不能回答「我能发版了吗」，反过来「没翻红」也不能证明不慢；
+唯一判据是我们自己那几笔提交在 `history` 里的状态。
+
 ### 三 仪器的自证（替身 `xcrun`，四条分支，本机跑）
 
 `notarize-mac.yml` 那次的教训是「写进 YAML 不等于跑得通」，所以这次先在 `/tmp` 用替身 `xcrun` 跑：
