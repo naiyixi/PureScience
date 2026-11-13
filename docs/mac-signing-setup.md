@@ -136,3 +136,27 @@ xcrun notarytool submit probe.zip --key AuthKey.p8 --key-id <id> --issuer <uuid>
   `notarytool history`，同名且已 `Accepted` 的直接复用 id 去 staple（字节没变、没有重建）。
 - `notarytool wait --timeout` 超时**不打印任何状态**，`set -e` 下直接变成一行 `exit code 1`。改成显式轮询
   `notarytool info`，每一步都把状态和剩余时间写进日志，超时分支才真的能被执行到。
+
+### 查状态不用再重跑发版（`notary-status.yml`，只读）
+
+上面那个探针以前只能写在纸上：`notarytool` 需要 issuer，而 issuer 只存在于 CI secret，本机没有 ⇒
+「苹果到底处理到哪一步了」在开发机上查不到。唯一的替代做法是**重跑 release 的公证作业**——而那会
+`notarytool submit` 一次新提交（同一份字节，新的 id），越查越排到队尾。
+
+现在这条读法进了工作流 `.github/workflows/notary-status.yml`（`workflow_dispatch`，不构建、不发布）：
+
+```
+gh workflow run notary-status.yml --ref main
+gh workflow run notary-status.yml --ref main -f submission_ids=<uuid>[,<uuid>]
+gh workflow run notary-status.yml --ref main -f probe=true
+```
+
+- 默认只读 `notarytool history`：逐行 `createdDate / status / name / id`，外加按状态计数。翻成
+  `Accepted` 就表示公证作业可以重跑（它按文件名复用那张票去 staple，不再排新队）。
+- `submission_ids` 用 `notarytool info` 读指定提交（就是失败作业日志里打出来的那个 id）。
+- `probe=true` 提交一个约 200 字节的**未签名 zip**：苹果必须回 `Invalid`。它回答的是「服务对所有人都慢，
+  还是我们这一单被留下」——包坏会说 `Invalid` 并逐条给原因，所以长时间 `In Progress` 从来不是拒绝；
+  探针自己也卡住 ⇒ 队列积压，重跑发版与改任何本地配置都不会有用。
+
+判据顺序照旧：**先读状态，再决定要不要重跑**。四条分支（缺凭据 / 历史 / 指定 id / 探针超时与有判决）
+都在本机用替身 `xcrun` 跑过，不是照着 YAML 推演的。

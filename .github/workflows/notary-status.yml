@@ -1,0 +1,180 @@
+name: Notary status (read-only)
+
+# Read Apple's notary state for this team WITHOUT re-running a release.
+#
+# Why this exists: the only way to learn "has Apple finished with our submission?" used to be
+# re-running the release's notarize jobs — and that re-run queues a NEW submission every time
+# (`notarytool submit` on the same bytes), so a slow queue gets slower the more you check. The
+# submission id is printed in the failing job's log, but reading its current status needs the API key
+# AND the issuer, and the issuer only exists as a CI secret — so the check cannot be done from a
+# developer machine. This workflow is that check, made runnable: it reads, it never builds, it never
+# publishes, and it submits nothing unless `probe` is explicitly turned on.
+#
+# How to read the answer:
+#   - `history` lists the team's recent submissions (createdDate / status / name / id). A row flipping
+#     to `Accepted` means the notarize jobs can be re-run and will staple from that ticket instead of
+#     queuing another submission (the reuse path in notarize-mac.yml matches by file name).
+#   - `submission_ids` reads one or more ids with `notarytool info` (the same call the failing job
+#     prints for you).
+#   - `probe` submits a 203-byte UNSIGNED zip, which Apple must answer with `Invalid` (unsigned
+#     content). That answer is the discriminator between "the service is slow for everyone" and "our
+#     package is being held": our package being rejected would say `Invalid` with per-issue reasons,
+#     so a long `In Progress` is never a rejection. If the probe also sits in `In Progress`, the queue
+#     itself is backed up and no local change helps.
+#
+# Nothing here is on a schedule and nothing here is a gate: a red step means "the reading failed",
+# not "the release is bad".
+on:
+  workflow_dispatch:
+    inputs:
+      submission_ids:
+        description: >-
+          Optional submission id(s) to read, comma or space separated (ids appear in the notarize
+          job's log as `submission id: <uuid>`). Empty means: list recent history only.
+        required: false
+        type: string
+        default: ''
+      probe:
+        description: >-
+          Submit a deliberately-invalid tiny (~200-byte) unsigned zip to measure how fast Apple
+          answers. Expected verdict is `Invalid` (unsigned content) within a couple of minutes.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    name: Read notary state
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      # Presence first, by name, with every missing secret listed — this workflow is useless without
+      # all three, and "it failed somewhere" is not a reading.
+      - name: Resolve Apple notarization credentials
+        id: creds
+        env:
+          P8_B64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "${P8_B64:-}" ] || missing="${missing} APPLE_API_KEY_P8_BASE64"
+          [ -n "${KEY_ID:-}" ] || missing="${missing} APPLE_API_KEY_ID"
+          [ -n "${ISSUER:-}" ] || missing="${missing} APPLE_API_ISSUER"
+          if [ -n "$missing" ]; then
+            echo "::error::cannot read notary state — missing secret(s):${missing}"
+            echo "### cannot read notary state — missing secret(s):${missing}" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          printf '%s' "$P8_B64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
+          echo "key=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_OUTPUT"
+
+      - name: Recent submissions (team-wide)
+        env:
+          KEY_PATH: ${{ steps.creds.outputs.key }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          xcrun notarytool history --key "$KEY_PATH" --key-id "$KEY_ID" --issuer "$ISSUER" \
+            --output-format json > "$RUNNER_TEMP/history.json"
+          echo "==> recorded submissions: $(jq '.history | length' "$RUNNER_TEMP/history.json")"
+          # Oldest last, newest first: the interesting one is at the top.
+          jq -r '.history | sort_by(.createdDate) | reverse | .[]
+                 | [.createdDate, .status, .name, .id] | @tsv' "$RUNNER_TEMP/history.json" \
+            | head -40 | tee "$RUNNER_TEMP/history.tsv"
+          {
+            echo "## Notary submissions (newest first)"
+            echo
+            echo "| created | status | name | id |"
+            echo "| --- | --- | --- | --- |"
+            awk -F'\t' '{ printf "| %s | %s | %s | %s |\n", $1, $2, $3, $4 }' "$RUNNER_TEMP/history.tsv"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Status counts make the shape readable at a glance (e.g. everything still In Progress).
+          echo "--- counts by status ---"
+          jq -r '.history[].status' "$RUNNER_TEMP/history.json" | sort | uniq -c
+
+      - name: Read the requested submission id(s)
+        if: inputs.submission_ids != ''
+        env:
+          KEY_PATH: ${{ steps.creds.outputs.key }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          IDS: ${{ inputs.submission_ids }}
+        run: |
+          set -euo pipefail
+          # Ids come from an operator's clipboard, so they are passed through env and split, never
+          # spliced into the script text.
+          for id in $(printf '%s' "$IDS" | tr ',' ' '); do
+            echo "==> info $id"
+            xcrun notarytool info "$id" --key "$KEY_PATH" --key-id "$KEY_ID" --issuer "$ISSUER" \
+              --output-format json | tee -a "$RUNNER_TEMP/info.jsonl"
+            echo
+          done
+          {
+            echo "## Requested submissions"
+            echo
+            echo '```json'
+            cat "$RUNNER_TEMP/info.jsonl"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Probe — how fast does Apple answer a package it must reject
+        if: inputs.probe
+        env:
+          KEY_PATH: ${{ steps.creds.outputs.key }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -euo pipefail
+          ceiling=600   # 10m: a package that must be rejected should never take this long
+          work="$RUNNER_TEMP/probe"
+          mkdir -p "$work"
+          printf 'probe\n' > "$work/probe.txt"
+          ( cd "$work" && zip -q probe.zip probe.txt )
+          echo "==> probe package: $(wc -c < "$work/probe.zip") bytes (unsigned zip — Apple must answer Invalid)"
+          id=$(xcrun notarytool submit "$work/probe.zip" \
+            --key "$KEY_PATH" --key-id "$KEY_ID" --issuer "$ISSUER" \
+            --no-wait --output-format json | jq -r '.id // empty')
+          if [ -z "$id" ]; then echo "::error::probe submission produced no id"; exit 1; fi
+          echo "==> probe submission id: $id"
+
+          start=$SECONDS
+          deadline=$((start + ceiling))
+          verdict=""
+          while :; do
+            info=$(xcrun notarytool info "$id" --key "$KEY_PATH" --key-id "$KEY_ID" \
+              --issuer "$ISSUER" --output-format json 2>&1 || true)
+            st=$(printf '%s' "$info" | jq -r '.status // "unreadable"' 2>/dev/null || echo unreadable)
+            left=$((deadline - SECONDS))
+            echo "==> probe status=${st} | ${left}s left of the ${ceiling}s probe ceiling"
+            case "$st" in
+              Accepted|Invalid|Rejected) verdict="$st"; break ;;
+            esac
+            if [ "$left" -le 0 ]; then verdict="no-verdict-within-${ceiling}s"; break; fi
+            sleep 15
+          done
+
+          elapsed=$((SECONDS - start))
+          echo "==> probe verdict: ${verdict} after ~${elapsed}s"
+          xcrun notarytool log "$id" --key "$KEY_PATH" --key-id "$KEY_ID" --issuer "$ISSUER" || true
+          {
+            echo "## Probe verdict: ${verdict} after ~${elapsed}s"
+            echo
+            case "$verdict" in
+              Invalid|Rejected)
+                echo "The service answered. Apple is processing *this* submission promptly, so a release submission sitting in \`In Progress\` is being held on its own merits (first submission for a new Developer ID is the documented case) — not a rejected package, which would name per-issue reasons."
+                ;;
+              no-verdict-within-*)
+                echo "The service did not answer even a package it must reject within the probe ceiling. That points at the queue itself being backed up: re-running the release cannot help, and no local signing change can help either."
+                ;;
+              *)
+                echo "Unexpected verdict (${verdict}); read the log line above rather than assuming."
+                ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
