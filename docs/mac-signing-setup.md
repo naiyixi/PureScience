@@ -106,8 +106,11 @@ expect.poll(manifestRequestLines).toBe(1)   → 收到 0，重试也一样
 原因不是 flake：那条 spec 数的是 `/version.json` 请求，而原地更新走的是另一条路，根本不会请求它。日志里
 `version.json` 出现 **0** 次，是这条判断的实证。
 
-修法是让这条 spec 明确认证**回落路径本身**：launch 前把 `PURESCIENCE_MAC_TEAM_ID` 显式置空。为此改了取值语义——
-「未定义」才回落到烘焙值，「定义为空」表示"当作没配"，这样测试能要求一个原地更新被拒绝的启动。
+修法是让这条 spec **按名字要求**它要认证的那条路：`PURESCIENCE_UPDATE_FLOW=installer`（只有这个精确值被采纳，
+其余一律走默认策略）。第一次把它写在模块作用域，被仓库自己的守卫用例当场拦下——Playwright 在跑第一个用例之前
+就 import 了 worker 里所有 spec 文件，模块级赋值会改掉**每一个** spec 的启动环境；改成 `beforeAll` 里通过
+`scopeEnvironmentToThisSpec` 设置、`afterAll` 还原。这条守卫是有来历的：曾经三条 spec 在模块级设了同一个变量，
+整个 P0 车道的四条文检用例全红。
 
 **仍未覆盖的一处**：稳定签名版的原地更新（Squirrel）只有单元测试，没有打包级 e2e。nightly 的版本号带 `-nightly.`
 所以它永远走手动流程，这条路径在 CI 里等于没有真机证据。列为下一版的缺口，不当作已覆盖。

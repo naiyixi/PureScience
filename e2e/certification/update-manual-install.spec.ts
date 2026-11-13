@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures/electron-app'
+import { scopeEnvironmentToThisSpec } from '../fixtures/spec-environment'
 
 // What this pins, on a real machine: the whole manifest → download → digest → ready chain of the update
 // path, and the two sentences a macOS reader needs before they drag a bundle into Applications.
@@ -19,13 +20,6 @@ import { test } from '../fixtures/electron-app'
 // The macOS sentence tells the reader to replace the bundle by hand rather than discovering it mid-drag,
 // and it is only rendered in the `ready` state — which is why this spec downloads instead of stopping at
 // `available`.
-//
-// The launch declares the Team ID unprovisioned (empty, not absent) on purpose. A packaged build now bakes
-// its Team ID in, so a signed stable build takes the in-place Squirrel path and never asks for
-// `version.json` at all; the manual flow below is the fallback that nightlies and unsigned builds still
-// ship, and that is what this spec certifies. Verified against the failure that prompted this: the first
-// signed release build made this spec time out waiting for one manifest request that never happened.
-process.env.PURESCIENCE_MAC_TEAM_ID = ''
 
 // The release must be newer than the app under test, or the check answers "up to date" and there is no
 // dialog to download from. Derived from the app's own version so a version bump cannot silently turn this
@@ -42,6 +36,12 @@ const ARTIFACT_BYTES = Buffer.from(
   Array.from({ length: 64 * 1024 }, (_unused, index) => (index * 31) % 251)
 )
 
+// A packaged build bakes its Team ID in, so a signed stable build now takes the in-place Squirrel path and
+// never requests `version.json` — which is why this spec declares the team unprovisioned for its own
+// launches. Empty (not absent) means "pretend nothing is provisioned"; the fallback it exercises is the one
+// nightlies and unsigned builds still ship. Verified against the failure that prompted it: the first signed
+// release build turned this spec's single-manifest-request assertion into a timeout on a request that never
+// happened. Scoped to this spec because a module-scope assignment would change every launch in the worker.
 const ARTIFACTS = {
   'mac-arm64': { file: `PureScience-${RELEASE_VERSION}-arm64.dmg` },
   'mac-x64': { file: `PureScience-${RELEASE_VERSION}-x64.dmg` },
@@ -107,11 +107,17 @@ test.skip(process.platform !== 'darwin', 'the ad-hoc replacement note is a macOS
 // what every install falls back to when the bundle's signature cannot be attributed, so it keeps its own
 // end-to-end certification on a signed bundle. The switch itself is pinned in
 // `src/main/update/create-strategy.test.ts`; the in-place flow's real-machine reading is its own item.
-process.env.PURESCIENCE_UPDATE_FLOW = 'installer'
+// Set from this spec's own hooks, never at module scope: Playwright imports every spec in the worker
+// before running the first one, so a module-scope assignment would change how every other spec's app
+// launches (`test/spec-environment-scope.test.ts` fails the build over exactly that).
+let restoreEnvironment = (): void => {}
+
+test.beforeAll(() => {
+  restoreEnvironment = scopeEnvironmentToThisSpec({ PURESCIENCE_UPDATE_FLOW: 'installer' })
+})
 
 test.afterAll(() => {
-  // Module scope runs once per worker: leave nothing behind for whichever spec runs next.
-  delete process.env.PURESCIENCE_UPDATE_FLOW
+  restoreEnvironment()
 })
 
 test('the update installer downloads, verifies, and tells a macOS reader to replace it by hand', async ({

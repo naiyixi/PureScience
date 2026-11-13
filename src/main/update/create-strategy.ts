@@ -36,13 +36,8 @@ const OFFICIAL_MAC_BUNDLE_ID = 'com.zerolink.purescience'
 // installer rather than trust some other publisher's identity.
 declare const __PURESCIENCE_MAC_TEAM_ID__: string
 
-const expectedMacTeamId = (): string => {
-  const fromEnvironment = process.env.PURESCIENCE_MAC_TEAM_ID
-  // Defined-but-empty means "pretend nothing is provisioned": the packaged build carries a baked Team ID
-  // now, and the certification specs for the manual installer need a launch where in-place is refused.
-  if (fromEnvironment !== undefined) return fromEnvironment.trim()
-  return bakedMacTeamId()
-}
+const expectedMacTeamId = (): string =>
+  (process.env.PURESCIENCE_MAC_TEAM_ID ?? '').trim() || bakedMacTeamId()
 
 // `electron.vite.config.ts` replaces this identifier with the value present at package time. Packaged apps
 // launched from Finder have no environment, so without the baked copy the gate could never pass in the field.
