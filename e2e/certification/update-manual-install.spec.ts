@@ -93,6 +93,20 @@ const MAC_MANUAL_NOTE =
 
 test.skip(process.platform !== 'darwin', 'the ad-hoc replacement note is a macOS promise')
 
+// Which updater this launch gets. A Developer-ID-signed stable build is routed to the in-place updater,
+// so on the release lane the manifest flow below would never run and its cold-start count would stay at
+// zero (measured: release runs 43384543262 and 43394830799 both failed here on `macos-arm64` for exactly
+// that reason). Ask for the installer flow by name: it is still what nightly and ad-hoc builds ship and
+// what every install falls back to when the bundle's signature cannot be attributed, so it keeps its own
+// end-to-end certification on a signed bundle. The switch itself is pinned in
+// `src/main/update/create-strategy.test.ts`; the in-place flow's real-machine reading is its own item.
+process.env.PURESCIENCE_UPDATE_FLOW = 'installer'
+
+test.afterAll(() => {
+  // Module scope runs once per worker: leave nothing behind for whichever spec runs next.
+  delete process.env.PURESCIENCE_UPDATE_FLOW
+})
+
 test('the update installer downloads, verifies, and tells a macOS reader to replace it by hand', async ({
   app
 }) => {

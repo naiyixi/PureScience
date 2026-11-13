@@ -58,6 +58,41 @@ describe('createUpdateStrategy', () => {
 
   afterEach(() => {
     delete process.env.PURESCIENCE_MAC_TEAM_ID
+    delete process.env.PURESCIENCE_UPDATE_FLOW
+  })
+
+  // A signed stable mac build is routed to the in-place updater, which is right for users but makes the
+  // installer flow unreachable on the stable release lane — where its end-to-end certification runs. The
+  // named request below is what that lane uses; it must win over the signature probe and must not be
+  // triggered by anything else (a typo may not silently change which updater a user gets).
+  it('honours an explicit installer-flow request on darwin even for a signed stable build', () => {
+    process.env.PURESCIENCE_UPDATE_FLOW = 'installer'
+
+    expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
+      UpdateService
+    )
+    // The request wins before the bundle is even probed.
+    expect(spawnSync).not.toHaveBeenCalled()
+    expect(loggerMocks.log.info).toHaveBeenCalledWith(
+      'installer update flow requested',
+      expect.objectContaining({ reason: 'installer-flow-requested' })
+    )
+  })
+
+  it('ignores any other value of the installer-flow switch', () => {
+    process.env.PURESCIENCE_UPDATE_FLOW = 'in-place'
+
+    expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
+      ElectronUpdaterStrategy
+    )
+  })
+
+  it('falls through to the default policy when the switch is blank', () => {
+    process.env.PURESCIENCE_UPDATE_FLOW = '   '
+
+    expect(createUpdateStrategy('darwin', { isPackaged: true, version: '1.2.3' })).toBeInstanceOf(
+      ElectronUpdaterStrategy
+    )
   })
 
   it('uses ElectronUpdaterStrategy on win32', () => {

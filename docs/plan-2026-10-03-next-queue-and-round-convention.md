@@ -18117,3 +18117,48 @@ median 1,034 ms，但 **13 行越过探针自己写死的 5 s 预算**（10 行 
 接线（管道关闭 ⇒ 关掉控制台镜像 + 记一条 `console output pipe closed`），8 条用例全绿。这 91 行来自
 **修复之前的那个打包实例**（它一直跑到 11-13 才退出），v2.27.0 打包态起应自然消失。⇒ 下一轮读日志时
 **先查这段是否已被 `e031864e` 覆盖**，不要立项重做。
+
+## 三百二十三、本轮追加（执行器，2026-11-13 17:3x–）—— 签名上线后 mac 的「手动安装」认证级不再可达：加一个具名开关，把两条更新路径各自钉住
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 开工时 `origin/main = b8dd679a`（它在 000e8212 之上，是发版窗口里补 Team ID 的那笔），本地 `HEAD = 000e8212`
+  **落后一笔**（`git log origin/main..HEAD` 为空 ⇒ 只是没拉，不是分叉）；本笔提交前先 `git rebase origin/main`
+  落到 `b8dd679a` 之上。`git status --short` 只有**三份不是我的**未跟踪证据档（`2026-11-01-…`、
+  两份 `2026-11-04-…`，不碰不提交）。工作区干净、无 `electron-vite`/`vitest`/`playwright` 在跑 ⇒ 无并发写入者。
+- `v2.27.0` 的 Release 已经红过两轮（`43384543262` 失败、`43394830799` 重跑仍失败，同一处），
+  **没有 Release 页**（`gh release view v2.27.0` = `release not found`，Latest 仍是 v2.26.0）⇒ 本轮先修这条红。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项；本单元不在任何「已完成（别再重做）」清单里。
+
+### 一 定因（两轮读数一致，确定性）
+
+`build / Build macos-arm64` 的 `Enforce platform certification` 报 `P0_OUTCOME: failure`，P0 明细是
+`update-manual-install.spec.ts:96` 的第 132 行断言（冷启动只发一次 manifest 请求）`Received: 0`，两轮各重试
+一次共四次机会全部为 0。根因：v2.27.0 是**第一个真的带 Developer ID + Team ID 的稳定版** ⇒
+`create-strategy.ts` 的 `macCanAutoUpdate` 首次成立 ⇒ 这台包走**原地更新**（`ElectronUpdaterStrategy`），
+而那条 spec 钉的是**手动安装流程**（数 `/version.json` 请求，替身也只拦 `net.fetch`，拦不到 electron-updater）。
+⇒ 规格钉的路在签名稳定版上已经不存在；Nightly（版本号带 `-`、ad-hoc）照旧绿，v2.26.0 及更早的 Release
+也绿，因为那时没有签名。证据档 `docs/evidence/2026-11-13-signed-mac-installer-flow-certification.md`。
+
+### 二 交付（三文件 + 证据档 + 本节）
+
+| 位置 | 改动 |
+| --- | --- |
+| `src/main/update/create-strategy.ts` | 具名开关 `PURESCIENCE_UPDATE_FLOW`（导出 `UPDATE_FLOW_ENV`）：值恰为 `installer` 时在 mac 上直接给 `UpdateService`，**先于签名探测**；其余任何值（含空/拼错）走既有默认策略；win32/linux 不受影响 |
+| `src/main/update/create-strategy.test.ts` | 三条用例：具名请求在签名稳定版上赢过探测（探测未被调用）、其它值不生效、空白不生效 |
+| `e2e/certification/update-manual-install.spec.ts` | 模块级设开关、`afterAll` 清掉；**断言一条不改**（不靠改断言收红） |
+
+### 三 边界（不许读成更强）
+
+1. 本机造不出「签名 + 真 Team」的包（证书只在 CI）⇒ 开关的确定性由单元用例钉住，**发版车道上这台包走了哪条
+   策略的判决只能由下一次 Release 给**，本机不声称已验。
+2. **mac 原地更新的真机读数仍未取**（排期档那条仍空）：需要一台装了签名稳定版、且有一个更新的签名版本的机器，
+   走「检查 → 下载 → 重启 → 版本变新」。本笔只把两条路分开，没有替代它 ⇒ 下一轮若拿到签名包，这是首选单元。
+3. 夹具替身 `stubUpdateManifest` 拦不到 electron-updater 的请求（测试台事实）：下一轮别拿它去驱原地更新求假绿。
+
+### 四 门禁与下一轮第一步
+
+- 门禁读数写进提交信息（定向 vitest `src/main/update` / 双 typecheck / `eslint --no-cache` 三文件 / pre-push）。
+- 下一轮第一步：① 推 main 后**删 tag `v2.27.0` 重建到本笔提交**并推 tag（tag 事件才会跑公证：手动派发时
+  `notarize-mac` 按设计 skip ⇒ 只会发出**未钉票**的 mac 包）；② 盯 Release 到落定，按「发布核验」清单核页与
+  资产（`RELEASE-CERTIFICATION.json` 的 `sourceSha` 与新 tag 提交逐字符比）；③ 页落定后再取 mac 原地更新的真机读数。

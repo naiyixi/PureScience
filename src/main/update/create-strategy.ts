@@ -18,6 +18,16 @@ export type CreateStrategyOptions = {
   installGate?: InstallGate
 }
 
+// Certification switch for the manifest installer flow. A Developer-ID-signed stable mac build is routed
+// to the in-place updater (see macCanAutoUpdate), so the installer flow — still what nightly and ad-hoc
+// builds ship, and the fallback whenever the installed signature cannot be attributed — can no longer
+// reach a window on the stable release lane. Its end-to-end certification therefore asks for it by name.
+// Only the exact value `installer` is honoured; anything else (including unset) keeps the default policy.
+export const UPDATE_FLOW_ENV = 'PURESCIENCE_UPDATE_FLOW'
+
+const installerFlowRequested = (): boolean =>
+  (process.env[UPDATE_FLOW_ENV] ?? '').trim() === 'installer'
+
 const OFFICIAL_MAC_BUNDLE_ID = 'com.zerolink.purescience'
 
 // A stable mac build may only be updated in place when this machine can prove the installed bundle and
@@ -79,6 +89,17 @@ export const createUpdateStrategy = (
     })
 
   if (platform === 'win32' || platform === 'linux') return createInPlaceStrategy()
+
+  // Named request wins over the signature probe (darwin only — the win/linux lanes certify the in-place
+  // updater itself): asking for the installer flow must not depend on what this bundle happens to be
+  // signed with, or the certification lane could not exercise it at all.
+  if (installerFlowRequested()) {
+    log.info('installer update flow requested', {
+      operation: 'update-strategy',
+      reason: 'installer-flow-requested'
+    })
+    return new UpdateService({ log })
+  }
 
   const isPackaged = opts.isPackaged ?? app?.isPackaged ?? false
   const version = opts.version ?? app?.getVersion?.() ?? '0.0.0'
