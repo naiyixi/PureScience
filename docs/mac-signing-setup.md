@@ -57,3 +57,19 @@ gh workflow run signing-preflight.yml && gh run watch
 ## 没配齐时会发生什么
 
 fail-closed，不假装成功：mac 资产按 ad-hoc 发布，`RELEASE-CERTIFICATION.json` 记 `"macSignature": "unsigned"`，签名门禁会把这件事如实写进结论。
+
+## 真实落地记录（2026-11-13）
+
+这一步实际遇到的坑，记下来省得再踩：
+
+| 现象                                                                                                                                                            | 原因                                  | 解法                                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Xcode `Manage Certificates` 里 `+ → Developer ID Application` 报 `Communication with Apple failed — This operation can only be performed by the Account Holder` | 登录 Xcode 的 Apple ID 不是团队持有人 | 换持有人账号，或在网页后台用持有人身份创建                                                                                                         |
+| 网页后台能建，但 CSR 不知道哪来                                                                                                                                 | 需要本机生成的 CSR，不是随便一个文件  | `openssl req -new -newkey rsa:2048 -nodes -keyout key.pem -out request.certSigningRequest -subj "/CN=PureScience"`，上传这个 `.certSigningRequest` |
+| 下载的 `.cer` 双击装进钥匙串后导出，链不完整                                                                                                                    | 本机缺 Developer ID G2 中间证书       | 中间证书可以从叶证书的 AIA 取：`curl -o devidg2.der http://certs.apple.com/devidg2.der`（苹果官网 `DeveloperIDG2CA.cer` 在本机会 403）             |
+
+证书有效期：2026-11-13 → 2027-12-13，Team ID `UGQZPJ74DF`。
+
+用 `openssl pkcs12 -export` 直接合成 `.p12`（不经过钥匙串导出）是可行的：`.cer` 用 `openssl x509 -inform DER` 转 PEM，与 `key.pem` 一起打包即可，`security verify-cert -c cert.pem -p codeSign` 报 `certificate verification successful`。
+
+本机在临时钥匙串里跑 `codesign` 仍会报 `errSecInternalComponent`（链已可验证、身份也有效），这一步以 CI 的 mac 车道为准——那才是发布用的环境。
