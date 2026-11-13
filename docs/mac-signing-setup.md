@@ -114,3 +114,25 @@ expect.poll(manifestRequestLines).toBe(1)   → 收到 0，重试也一样
 
 **仍未覆盖的一处**：稳定签名版的原地更新（Squirrel）只有单元测试，没有打包级 e2e。nightly 的版本号带 `-nightly.`
 所以它永远走手动流程，这条路径在 CI 里等于没有真机证据。列为下一版的缺口，不当作已覆盖。
+
+## 公证排队时的判别方法（2026-11-13 实测）
+
+六次提交（两个架构 × 三次重跑）在 Apple 侧停留 `In Progress` 四小时以上，`notarytool log` 报 "not yet
+available"。**这时候最贵的错误是去改签名配置**——拒绝会明确给出 `Invalid` 加逐条原因，`In Progress` 只是排队。
+
+用一个**必然被拒**的小包做判别，几分钟就能把"苹果慢"和"我们的包有问题"分开：
+
+```
+printf 'probe\n' > probe.txt && zip -q probe.zip probe.txt
+xcrun notarytool submit probe.zip --key AuthKey.p8 --key-id <id> --issuer <uuid> --no-wait
+```
+
+203 字节、未签名的 zip，正常情况下一两分钟内就该回 `Invalid`（内容未签名）。如果它**同样**长时间
+`In Progress`，那就不是包的问题：整个服务的队列都在积压，改任何本地配置都不会有用。
+
+配套的两条工作流事实：
+
+- 重跑 notarize job **不等于**续跑。原逻辑会再提交一次、从零开始等，慢队列永远追不上；现在先查
+  `notarytool history`，同名且已 `Accepted` 的直接复用 id 去 staple（字节没变、没有重建）。
+- `notarytool wait --timeout` 超时**不打印任何状态**，`set -e` 下直接变成一行 `exit code 1`。改成显式轮询
+  `notarytool info`，每一步都把状态和剩余时间写进日志，超时分支才真的能被执行到。
