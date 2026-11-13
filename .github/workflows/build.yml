@@ -559,6 +559,11 @@ jobs:
               ((matrix.platform == 'mac' && steps.macos_smoke.outcome == 'success') ||
                (matrix.platform == 'win' && steps.windows_smoke.outcome == 'success') ||
                (matrix.platform == 'linux' && steps.linux_smoke.outcome == 'success')) }}
+        env:
+          # The certification record states which team the asset is attributed to; without this the gate
+          # inside this step reports "Apple credentials are configured but no expected signing team is
+          # provisioned" and the release build fails after the asset was already signed correctly.
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         shell: bash
         run: |
           electron_p0=not-applicable

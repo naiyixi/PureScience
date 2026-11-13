@@ -350,6 +350,8 @@ jobs:
           steps.gate.outputs.enabled == 'true' &&
           inputs.from_run &&
           inputs.certified_build
+        env:
+          PURESCIENCE_MAC_TEAM_ID: ${{ vars.PURESCIENCE_MAC_TEAM_ID }}
         run: >-
           node scripts/ci/release-certification-evidence.mjs write
           --platform "macos-${{ matrix.arch }}"
