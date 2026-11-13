@@ -20,7 +20,7 @@ name: Notarize macOS
 # which would wrongly select the Release path and submit an unrelated published build.
 #
 # Time cap is enforced two ways: each dmg is submitted, then waited on for at most 15m
-# (`notarytool wait --timeout 15m`), and the job as a whole is bounded by `timeout-minutes: 30`.
+# (`notarytool wait --timeout 45m`), and the job as a whole is bounded by `timeout-minutes: 90`.
 # The submission id is captured before waiting, so on a timeout the log still shows it plus the
 # `notarytool info <id>` command to check the real status. A timeout is NOT a rejection — the Apple
 # submission keeps running; publish (which needs this job) is skipped, so nothing bad is published,
@@ -120,7 +120,7 @@ jobs:
     # launch is not silently dependent on Rosetta being installed on an Apple Silicon runner.
     runs-on: ${{ matrix.os }}
     # Hard ceiling so a stuck notarization can never run forever (see also the wait --timeout below).
-    timeout-minutes: 30
+    timeout-minutes: 90
     strategy:
       # One arch's Apple hiccup must not cancel the other.
       fail-fast: false
@@ -231,10 +231,14 @@ jobs:
             id=$(grep -o '"id":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)
             if [ -z "$id" ]; then echo "::error::could not read submission id for $f"; exit 1; fi
 
-            echo "==> submission id: $id — waiting up to 15m"
+            # Apple's queue is the variable here, not the build: the first signed v2.27.0 submission sat at
+            # `In Progress` for over 25 minutes with no failure of ours to fix. 45m is a ceiling, not an
+            # expectation — a timeout is still reported as a timeout (not a rejection) and publish stays
+            # skipped, so re-running this job after Apple finishes is the designed recovery (no rebuild).
+            echo "==> submission id: $id — waiting up to 45m"
             xcrun notarytool wait "$id" \
               --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" \
-              --timeout 15m --output-format json > "$nt" 2>/dev/null || true
+              --timeout 45m --output-format json > "$nt" 2>/dev/null || true
             status=$(grep -o '"status":"[^"]*"' "$nt" | head -1 | cut -d'"' -f4)
             cat "$nt"
 
@@ -247,7 +251,10 @@ jobs:
                 exit 1 ;;
               *)
                 # Timed out / still In Progress — Apple is slow, NOT a rejection. Nothing is published.
-                echo "::error::notarization did NOT finish within 15m for $f (Apple slow, not a rejection)."
+                # Ask Apple once more so this log carries the status even though `wait` gave up silently.
+                echo "==> last known status:"
+                xcrun notarytool info "$id" --key "$key" --key-id "$KEY_ID" --issuer "$ISSUER" || true
+                echo "::error::notarization did NOT finish within 45m for $f (Apple slow, not a rejection)."
                 echo "::error::submission id: $id"
                 echo "Check the real status any time (independent of CI), then re-run this job once Accepted:"
                 echo "  xcrun notarytool info $id --key <AuthKey.p8> --key-id $KEY_ID --issuer $ISSUER"
