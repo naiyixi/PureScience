@@ -18276,3 +18276,73 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
   用 `notarytool info` 独立复核**这两条提交的当前状态。要在本机查，需要有 issuer 的那一份值。
 - `spctl`/`Notarized Developer ID` 的验收（排期档 v2.27.0 第 2 条）与 cask 去 `--no-quarantine`（第 3 条）
   都**只能在 Release 页出现之后**做，现在两条都还空着。
+
+## 三百二十六、本轮追加（执行器，2026-11-13 16:2x–17:1xZ）—— 公证卡的是服务级积压：8 笔提交全 `In Progress`，连注定被拒的探针也没人答
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3`：会话刚落了 `3e99fa04`（公证排队的判别方法，写进 `docs/mac-signing-setup.md`），
+  本轮开工时工作区只有三份更早的未跟踪证据档（不是本轮产物，不动、不提交）。B 段（A7 / S3 / M2）已收口 ⇒
+  按 §三百二十五「一 恢复路径」接手，且**没有重做**会话那节已有的内容（它写的是「怎么判别」，本轮把判别做成可运行的仪器）。
+- 在飞车道：`Release 43423715874`（`f814de58`）attempt 2 已落定 = **failure**：两个公证作业各自 45 分钟
+  90 次读数全 `In Progress`，`publish` 按设计 skipped。产物仍在（`macos-arm64` 569,575,648 B、
+  `macos-x64` 602,252,065 B、`windows-x64` 551,256,050 B、`linux-x64` 539,485,398 B，均 `expired=false`）
+  ⇒ 一旦有判决就能就地重跑、不用重建。
+
+### 一 交付（新文件 + 文档 + 证据档 + 本节）
+
+- **`.github/workflows/notary-status.yml`**（只读，`workflow_dispatch`）：不构建、不发布；`history` 列出本 team
+  最近提交（`createdDate / status / name / id` + 状态计数），`submission_ids` 读指定提交，`probe=true` 提交一个
+  ~174 字节**未签名** zip（苹果必须回 `Invalid`）用来分开「服务对所有人都慢」与「我们这一单被留下」。
+- `docs/mac-signing-setup.md` 追加一节：为什么以前查不到（issuer 只在 CI secret）、怎么用这条读法、
+  以及「先读状态，再决定要不要重跑」的顺序。
+- 证据档 `docs/evidence/2026-11-13-notary-queue-jam.md`：8 行读数表 + 探针结果 + 边界。
+
+### 二 读数（真车道，两次）
+
+`gh run 43467128530`（16:52:55Z）：**8 笔提交，8 笔 `In Progress`**，状态计数只有这一行 ——
+最早两笔等了 **5h18m/5h20m**，13:2x 两笔 3h27m/3h28m，14:1x 两笔 2h33m/2h34m，15:58 那支探针 54m。
+`gh run 43465139244`（16:41:06Z 提交的本轮探针，10 分钟 40 次读数）：**全 `In Progress`，无判决**
+（`no-verdict-within-600s`）。
+
+⇒ **不是我们的包**：一个必须被拒的包同样没人答；「包有问题」这种解释要求**明确的 `Invalid` 加逐条原因**，
+而历史里连一笔 `Invalid` 都没有，同一提交的四平台构建（含签名门与 P0 认证）全绿。
+
+这也让「首次 Developer ID 会被留作深度分析」**不足以解释全部**：与证书、entitlements、包内容无关的
+未签名探针也卡在队列里。能确证的只有「16:52Z 时服务对整批提交都不出判决」。
+
+### 三 仪器的自证（替身 `xcrun`，四条分支，本机跑）
+
+`notarize-mac.yml` 那次的教训是「写进 YAML 不等于跑得通」，所以这次先在 `/tmp` 用替身 `xcrun` 跑：
+
+1. 缺凭据 ⇒ `::error::cannot read notary state — missing secret(s): APPLE_API_ISSUER`，退出 1（具名，不静默）；
+2. `history` ⇒ 3 行 TSV +「counts by status」两行，`GITHUB_STEP_SUMMARY` 里是同一张表；
+3. `info` 传两个 id（逗号+空格混排）⇒ 两次各读一条；
+4. 探针两条分支都过：判决 `Invalid` 立即收工；无判决则按 ceiling 收工并给出判词。
+   **第一版在这里被自证抓住两处**：`elapsed=$((600 - (deadline - SECONDS)))` 在超时后会算出 601s（> ceiling），
+   且判词把 10 分钟写死。改成 `start=$SECONDS` 起算 + `ceiling` 变量后，超时分支读数变成 `~5s`（4s ceiling 的替身）。
+
+### 四 门禁（全部实跑）
+
+- `bash scripts/pre-push-checks.sh` → 退出 0（品牌扫描零命中、README 双语一致、模型清单核对 OK）；
+- `node scripts/ci/check-ci-integrity.mjs --base <HEAD~1> --head <HEAD>` → 退出 0（新 workflow 的 action 引用为空、
+  无 `pull_request_target`、无保留检查名）；
+- 推送后 `f011d948` 的两条主干车道：`Windows Full Test` **success**；`Nightly` **无判决** ——
+  `build / Verify` 在 16:24:12Z 起排队 15 分钟后被取消，check-run 注解原文是
+  `The job was not acquired by Runner of type hosted even after multiple attempts` +
+  `Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.`
+  ⇒ 这是 GitHub 托管 macOS arm64 池的容量问题，不是本笔代码（同一提交的 Windows 车道是绿的；
+  17:5xZ 再派发同一 job 时 arm64 池已恢复、60 秒内完成）。
+- **本笔在 `f011d948` 上没有 Nightly 判决**这件事不许写成「CI 绿」；下一笔推送会带上同一棵树重新排队。
+
+### 五 边界（不许读成更强）与下一轮第一步
+
+- 没有判决 ≠ 通过，也 ≠ 拒绝。台账里任何一刻都不许写「公证已通过」；`publish` 的 fail-closed `needs` 不动。
+- 本读数只覆盖 `notarytool history` 返回的那 8 笔；不代表苹果内部没有更早的处理记录。
+- 下一轮第一步：**先读状态再决定重跑**。
+  `gh workflow run notary-status.yml --ref main`（arm64 拿不到 runner 时加 `-f runner=macos-15-intel`）：
+  - 任一 `*.dmg` 变 `Accepted` ⇒ `gh run rerun 43423715874 --failed`（产物未过期，已实测）→ 看 `publish` 是否
+    真的执行 → 页出现后做排期档 v2.27.0 第 2、3 条（`spctl -a -vvv` 的 `Notarized Developer ID`、
+    cask 去掉 `--no-quarantine`）；
+  - 仍全 `In Progress` ⇒ **不要再 rerun**（每 rerun 会 `notarytool submit` 出一笔新提交，实测已累计 6 笔 dmg 提交
+    在排队），只记录读数并等下一轮。
