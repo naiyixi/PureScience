@@ -54,7 +54,20 @@ if (available < computeHarvestDiskHeadroomBytes) { … finalizeAndReturn(…, '[
 | `npx eslint --no-cache`（本笔两文件） | 0 problems |
 | `npx prettier --check`（本笔两文件） | 通过 |
 
-## 五 边界与具名未办
+## 五 第二节那条时序错的取证方式（不是推断）
+
+它是在**真模块上执行出来**的，不是读代码推出来的：把新加的三条用例（`broadcast` 已接线）对着**未改动**的实现跑一次，得到
+
+```
+FAIL  |unit| … > harvestJob — disk headroom guard > refuses to download below the threshold and says where the files were left
+ReferenceError: Cannot access 'buildAndBroadcastNotification' before initialization
+FAIL  |unit| … > harvestJob — disk headroom guard > finalizes with a named reason when the volume cannot be read at all
+ReferenceError: Cannot access 'buildAndBroadcastNotification' before initialization
+```
+
+把声明挪到前面之后同一批用例 **19 passed**。也就是说：生产里那四条早退路径缺的就是「有一条用例把 `broadcast` 接上、然后走早退」——既有两条带 `broadcast` 的用例都在声明之后才调用，所以一直绿着。
+
+## 六 边界与具名未办
 
 1. **没有窗口读数**：本笔只到 `harvestJob` 写进作业行的那几个字段这一层。面板文案没有改，`FeaturedOutputs` 照旧把 `harvest_error` 与 workdir 显示出来，因此不声称界面外观有任何变化。
 2. **`left_on_remote` 仍然无法表达「未知」**：跳过路径写的是空数组，`left_on_remote_count = 0`，面板不会出现「N 个留在远端」那一行；真相只在那句 `harvest_error` 里。要让结构化字段自己说「没枚举」，需要动 `ComputeDonePayload` 的形状 + 面板 + 九语字典，属独立单元，本笔不掺。
