@@ -196,6 +196,84 @@ describe('macOS package smoke', () => {
     )
   })
 
+  // Two consecutive x64 runs died at the same 60 s limit with the tail ending on `electron-ready` and
+  // nothing after it. The phase timeline alone cannot say which of "slow" / "wedged" it was, so the
+  // two new readings must each name their own state — and an unrecorded one must not read as a reading.
+  it('separates a slow runner from a wedged app by the silence and the post-limit reading', () => {
+    const base = {
+      label: 'DMG-mounted bundle zerolink-purescience-2.27.0-nightly.gfa624f1-mac-x64.dmg',
+      elapsedMs: 60_323,
+      timeoutMs: 60_000,
+      processState: { status: 'running', pid: 18102 },
+      output: phaseBlock('electron-ready', 38_646)
+    }
+
+    const slow = describeStartupTimeout({
+      ...base,
+      outputActivity: { lastChunkAtMs: 38_900, silenceMs: 21_423 },
+      postTripObservation: { found: true, waitedMs: 2_700 }
+    })
+    expect(slow).toContain("1 reported, last 'electron-ready' at 38646 ms")
+    expect(slow).toContain(
+      'last line arrived at 38900 ms; 21423 ms of silence when the wait tripped'
+    )
+    expect(slow).toContain('the endpoint WAS announced at ≈63023 ms (2700 ms past the budget')
+    expect(slow).toContain('the budget cut a run that was still progressing')
+
+    const wedged = describeStartupTimeout({
+      ...base,
+      outputActivity: { lastChunkAtMs: 38_900, silenceMs: 21_423 },
+      postTripObservation: { found: false, waitedMs: 30_000 }
+    })
+    expect(wedged).toContain('still no endpoint after a further 30000 ms')
+    expect(wedged).toContain('not the budget; the app was still printing when it tripped')
+    expect(wedged).not.toContain('the budget cut a run that was still progressing')
+
+    const muted = describeStartupTimeout({
+      ...base,
+      outputActivity: { lastChunkAtMs: null, silenceMs: null }
+    })
+    expect(muted).toContain('nothing arrived on stdout/stderr in the whole window')
+
+    // An absent reading is named as absent — never as a zero, never as a pass.
+    const unrecorded = describeStartupTimeout(base)
+    expect(unrecorded).toContain('- output activity: not recorded')
+    expect(unrecorded).toContain('- after the wait tripped: not observed')
+  })
+
+  // The gate used to have one 60 s ceiling, which reported a loaded intel runner as a stuck app (two
+  // runs in a row). The two criteria must now be distinguishable in the message itself: a stall says
+  // the budget was NOT what tripped, and a budget trip says the app was still talking.
+  it('names which criterion tripped: silence (stall) or the absolute budget', () => {
+    const base = {
+      label: 'DMG-mounted bundle zerolink-purescience-2.27.0-nightly.gfa624f1-mac-x64.dmg',
+      timeoutMs: 180_000,
+      processState: { status: 'running', pid: 18102 },
+      output: phaseBlock('electron-ready', 38_646)
+    }
+
+    const stalled = describeStartupTimeout({
+      ...base,
+      elapsedMs: 60_240,
+      criterion: 'stall',
+      outputActivity: { lastChunkAtMs: 38_900, silenceMs: 60_240 }
+    })
+    expect(stalled).toContain('Stalled waiting for the packaged macOS web service')
+    expect(stalled).toContain('no output for 60240 ms (stall window 60000 ms)')
+    expect(stalled).toContain('the 180000 ms budget was not what tripped')
+
+    const budget = describeStartupTimeout({
+      ...base,
+      elapsedMs: 180_512,
+      criterion: 'budget',
+      outputActivity: { lastChunkAtMs: 179_001, silenceMs: 1_511 }
+    })
+    expect(budget).toContain('after 180512 ms (limit 180000 ms)')
+    expect(budget).not.toContain('Stalled waiting')
+    // The two headlines must not be interchangeable: each names its own trigger.
+    expect(stalled).not.toBe(budget)
+  })
+
   it('distinguishes "wrote nothing" from "printed something we cannot parse"', () => {
     const silent = describeStartupTimeout({
       label: 'ZIP-extracted bundle',

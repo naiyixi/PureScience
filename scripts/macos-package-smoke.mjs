@@ -10,7 +10,17 @@ import { readMacBundleSignature } from './ci/mac-signing-status.mjs'
 
 const ARTIFACT_PATTERN = /^zerolink-purescience-(.+)-mac-(?:arm64|x64)\.(dmg|zip)$/
 const SMOKE_ROOT_PREFIX = 'purescience-macos-package-smoke-'
-const STARTUP_TIMEOUT_MS = 60_000
+const STARTUP_BUDGET_MS = 180_000
+// Silence, not elapsed time, is the criterion that means "wedged": a loaded intel runner sat 21.7 s
+// between `electron-ready` and the next line and still finished (we cut it at 60 s before it could
+// announce), so a mere 60 s ceiling reported a slow machine as a stuck app. The budget is therefore
+// wider than any run we have seen, and the stall window — ~3× the worst legitimate gap measured — is
+// what keeps that from hiding a real hang. Both are named in the failure; neither is a pass.
+const STARTUP_STALL_MS = 60_000
+// Not a gate budget: once a criterion has tripped the run has already failed. This window only
+// separates "the app was still working and this runner is slow" from "the app went silent and never
+// got there" — two states that used to end in the identical sentence.
+const POST_TRIP_OBSERVATION_MS = 30_000
 
 const delay = (milliseconds) =>
   new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds))
@@ -108,23 +118,63 @@ const describeStartupPhases = (output) => {
   }`
 }
 
-export const describeStartupTimeout = ({ label, elapsedMs, timeoutMs, processState, output }) => {
+// Silence is a reading of its own: when the app last said anything is what separates "still working,
+// just slowly" from "wedged after <phase>". A phase timeline without it can be read either way.
+const describeOutputActivity = (activity) =>
+  activity === undefined
+    ? 'not recorded'
+    : activity.lastChunkAtMs === null || activity.lastChunkAtMs === undefined
+      ? 'nothing arrived on stdout/stderr in the whole window'
+      : `last line arrived at ${activity.lastChunkAtMs} ms; ${activity.silenceMs} ms of silence when the wait tripped`
+
+// The post-trip window is the only part of this that is still observing after the failure, so it
+// answers the one question the phase timeline cannot: was the announcement merely late (⇒ slowness)
+// or did it never come (⇒ a hang)? The sentence has to follow the criterion that tripped, or it
+// would blame the budget for a stall and vice versa.
+const describePostTripObservation = (observation, elapsedMs, criterion) =>
+  observation === undefined
+    ? 'not observed'
+    : observation.found
+      ? criterion === 'stall'
+        ? `the endpoint WAS announced at ≈${elapsedMs + observation.waitedMs} ms (${observation.waitedMs} ms after the stall window; poll granularity 250 ms) ⇒ it was slow, not wedged — the silence ended`
+        : `the endpoint WAS announced at ≈${elapsedMs + observation.waitedMs} ms (${observation.waitedMs} ms past the budget; poll granularity 250 ms) ⇒ the budget cut a run that was still progressing`
+      : criterion === 'stall'
+        ? `still no endpoint after a further ${observation.waitedMs} ms ⇒ the silence did not end: a hang, not slowness`
+        : `still no endpoint after a further ${observation.waitedMs} ms ⇒ not the budget; the app was still printing when it tripped, yet never announced`
+
+export const describeStartupTimeout = ({
+  label,
+  elapsedMs,
+  timeoutMs,
+  stallMs = STARTUP_STALL_MS,
+  criterion = 'budget',
+  processState,
+  output,
+  outputActivity,
+  postTripObservation
+}) => {
+  const headline =
+    criterion === 'stall'
+      ? `Stalled waiting for the packaged macOS web service (${label}): no output for ${elapsedMs} ms (stall window ${stallMs} ms) — the ${timeoutMs} ms budget was not what tripped.`
+      : `Timed out waiting for the packaged macOS web service (${label}) after ${elapsedMs} ms (limit ${timeoutMs} ms).`
   const announcements = output.split('\n').filter((line) => line.includes('PureScience Web:'))
   const announcementSummary =
     announcements.length === 0
       ? 'none — the app never announced a web endpoint'
       : `${announcements.length} line(s) mentioned the endpoint but none matched http://127.0.0.1:<port>/?token=… (format drift)`
   return [
-    `Timed out waiting for the packaged macOS web service (${label}) after ${elapsedMs} ms (limit ${timeoutMs} ms).`,
+    headline,
     `- process: ${describeProcessState(processState)}`,
     `- service announcements: ${announcementSummary}`,
     `- startup phases: ${describeStartupPhases(output)}`,
+    `- output activity: ${describeOutputActivity(outputActivity)}`,
+    `- after the wait tripped: ${describePostTripObservation(postTripObservation, elapsedMs, criterion)}`,
     `- last output (${DEFAULT_OUTPUT_TAIL_CHARS} chars max, tokens redacted):`,
     outputTail(output)
   ].join('\n')
 }
 
-export const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS) => {
+export const waitFor = async (description, check, timeoutMs = STARTUP_BUDGET_MS) => {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const value = await check().catch(() => undefined)
@@ -140,8 +190,8 @@ export const waitFor = async (description, check, timeoutMs = STARTUP_TIMEOUT_MS
 // cause, so it passes through untouched (same error object, same message). The `code` is kept on the
 // rewritten error: the failure writer below uses it to say which kind of failure left no reading.
 export const toStartupFailure = (error, context) =>
-  error instanceof Error && error.code === 'SMOKE_TIMEOUT'
-    ? Object.assign(new Error(describeStartupTimeout(context)), { code: 'SMOKE_TIMEOUT' })
+  error instanceof Error && (error.code === 'SMOKE_TIMEOUT' || error.code === 'SMOKE_STALL')
+    ? Object.assign(new Error(describeStartupTimeout(context)), { code: error.code })
     : error
 
 const runProcess = (executable, args, options = {}) =>
@@ -184,20 +234,71 @@ const packagedLaunchArguments = (userDataRoot) => [
   '--serve=0'
 ]
 
+// Two criteria instead of one ceiling: a run that stops talking is wedged (SMOKE_STALL), a run that
+// talks past the absolute budget is a runner we cannot measure anything from (SMOKE_TIMEOUT). The
+// windows are injectable so a probe can exercise both against a real child in seconds.
+const awaitServiceAnnouncement = async ({
+  read,
+  startedAt,
+  activity,
+  stallMs,
+  budgetMs,
+  label
+}) => {
+  for (;;) {
+    const service = await read().catch(() => undefined)
+    if (service !== undefined && service !== false) return service
+    const now = Date.now()
+    const lastChunkAtMs = activity.lastChunkAtMs
+    const silentMs = now - startedAt - (lastChunkAtMs ?? 0)
+    if (silentMs >= stallMs) {
+      throw Object.assign(
+        new Error(
+          `No output for ${silentMs} ms while waiting for ${label} (stall window ${stallMs} ms).`
+        ),
+        { code: 'SMOKE_STALL' }
+      )
+    }
+    if (now - startedAt >= budgetMs) {
+      throw Object.assign(
+        new Error(`No service after ${now - startedAt} ms (budget ${budgetMs} ms).`),
+        {
+          code: 'SMOKE_TIMEOUT'
+        }
+      )
+    }
+    await delay(250)
+  }
+}
+
 // Exported so a probe can exercise the timeout seam against a real child process (the unit tests
 // can only reach the message builder).
-export const launchAndProbe = async ({ executable, expectedVersion, env, userDataRoot, label }) => {
+export const launchAndProbe = async ({
+  executable,
+  expectedVersion,
+  env,
+  userDataRoot,
+  label,
+  stallMs = STARTUP_STALL_MS,
+  budgetMs = STARTUP_BUDGET_MS,
+  observationMs = POST_TRIP_OBSERVATION_MS
+}) => {
   const startedAt = Date.now()
   const child = spawn(executable, packagedLaunchArguments(userDataRoot), {
     env,
     stdio: ['ignore', 'pipe', 'pipe']
   })
   let output = ''
+  const activity = { lastChunkAtMs: null }
   let processState = { status: 'running', pid: child.pid }
   child.stdout?.setEncoding('utf8')
   child.stderr?.setEncoding('utf8')
-  child.stdout?.on('data', (chunk) => (output += chunk))
-  child.stderr?.on('data', (chunk) => (output += `\n${chunk}`))
+  const recordOutput = (text) => {
+    output += text
+    activity.lastChunkAtMs = Date.now() - startedAt
+  }
+  child.stdout?.on('data', (chunk) => recordOutput(chunk))
+  child.stderr?.on('data', (chunk) => recordOutput(`\n${chunk}`))
   const exit = new Promise((resolveExit, rejectExit) => {
     child.once('error', rejectExit)
     child.once('exit', (code, signal) => {
@@ -208,9 +309,14 @@ export const launchAndProbe = async ({ executable, expectedVersion, env, userDat
 
   try {
     const service = await Promise.race([
-      waitFor(`the packaged macOS web service (${label})`, async () =>
-        parsePackagedAppEndpoint(output)
-      ),
+      awaitServiceAnnouncement({
+        read: async () => parsePackagedAppEndpoint(output),
+        startedAt,
+        activity,
+        stallMs,
+        budgetMs,
+        label: `the packaged macOS web service (${label})`
+      }),
       exit.then((code) => {
         throw new Error(
           `Packaged macOS app exited before becoming healthy (${code}).\n${redactServiceTokens(output)}`
@@ -253,13 +359,55 @@ export const launchAndProbe = async ({ executable, expectedVersion, env, userDat
       throw new Error(`Packaged macOS app exited with ${exitCode}.\n${redactServiceTokens(output)}`)
     }
   } catch (error) {
+    // Observe past the trip BEFORE killing the child: killing it ends the only evidence stream, and
+    // "announced a few seconds later" vs "never announced" is the whole difference between a slow
+    // runner and a wedged app. The run has already failed either way, so this changes no verdict.
+    const tripped =
+      error instanceof Error && (error.code === 'SMOKE_TIMEOUT' || error.code === 'SMOKE_STALL')
+    let postTripObservation
+    let outputActivity
+    let tripElapsedMs
+    if (tripped) {
+      // Sample the last arrival and the silence at the SAME instant — the trip. Read at kill time
+      // they disagree (a line that arrived after the trip pairs with "silent since before it"), and
+      // read after the observation window every headline over-reports by the window itself.
+      tripElapsedMs = Date.now() - startedAt
+      outputActivity = {
+        lastChunkAtMs: activity.lastChunkAtMs,
+        silenceMs: activity.lastChunkAtMs === null ? null : tripElapsedMs - activity.lastChunkAtMs
+      }
+      const observationStartedAt = Date.now()
+      const reached = await waitFor(
+        `the packaged macOS web service (${label}) after the trip`,
+        async () => parsePackagedAppEndpoint(output),
+        observationMs
+      ).then(
+        () => true,
+        (lateError) => {
+          if (lateError instanceof Error && lateError.code === 'SMOKE_TIMEOUT') return false
+          throw lateError
+        }
+      )
+      postTripObservation = { found: reached, waitedMs: Date.now() - observationStartedAt }
+    }
     child.kill('SIGKILL')
+    const criterion = error instanceof Error && error.code === 'SMOKE_STALL' ? 'stall' : 'budget'
+    // A stall is described by how long it had been silent, a budget trip by how long it waited —
+    // both as of the trip, never as of the observation that followed it.
+    const elapsedMs =
+      criterion === 'stall'
+        ? (outputActivity?.silenceMs ?? tripElapsedMs)
+        : (tripElapsedMs ?? Date.now() - startedAt)
     throw toStartupFailure(error, {
       label,
-      elapsedMs: Date.now() - startedAt,
-      timeoutMs: STARTUP_TIMEOUT_MS,
+      elapsedMs,
+      timeoutMs: budgetMs,
+      stallMs,
+      criterion,
       processState,
-      output
+      output,
+      outputActivity,
+      postTripObservation
     })
   }
 }

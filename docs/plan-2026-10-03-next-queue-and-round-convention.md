@@ -18807,3 +18807,63 @@ Timed out waiting for the packaged macOS web service (DMG-mounted bundle …-mac
 2. 再读一次 `notary-status.yml`；任一 `*.dmg` 变 `Accepted` ⇒ 走 §三百三十一 §五 第 2 条；仍全 `In Progress` ⇒ 只记读数。
 3. 窗口读数单元仍卡内存门槛（先取 `vm_stat`/`sysctl vm.swapusage` 再决定），不满足就继续具名未办。
 
+
+## 三百三十四、本轮追加（执行器，2026-11-15 05:1x–）—— `fa624f13` 的 x64 冒烟是复发：判据从「一个 60 s 天花板」改成「静默 60 s / 预算 180 s」，并让超时后再观察 30 s
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = fa624f13`，共享工作树带 1 笔未推提交（`035e51ec`，上一轮的阶段时间线）
+  + 3 个**不是本轮的**未跟踪证据档（`docs/evidence/2026-11-0{1,4}-*`，不碰、不提交）。
+- 上一轮 §三百三十三 §四 第 2 条已经把这一情形判定为「下一笔再红就按复发处理」，并列出两支；
+  **本轮就是那次复发**：`198c5f2f`（16:07Z）与 `fa624f13`（19:03Z）**两笔都红在 `Build macos-x64`**，
+  而 `Verify`、`macos-arm64`、`windows-x64`、`linux-x64` 全绿 ⇒ 不是测试红、不是功能红。
+- 读数（本轮新取，不是推断）：`198c5f2f` 的失败正文到过 `compose-runtime @ 31,676 ms`；
+  `fa624f13` 的最后阶段是 `electron-ready @ 38,646 ms`，此后到 60,323 ms 被杀，**21.7 s 零输出**，
+  `service announcements: none`、`still running`。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `scripts/macos-package-smoke.mjs` | ① `recordOutput()` 记每块输出的到达时刻，失败正文增 `- output activity:`（静默与「最后一行时刻」**同刻取样**，取在判据触发那一刻）；② 判据触发后**先不杀进程**，再观察 `POST_TRIP_OBSERVATION_MS=30 s`，正文增 `- after the wait tripped:`，按判据分四态措辞；③ 判据改成两条：`STARTUP_STALL_MS=60_000`（零输出 60 s ⇒ `SMOKE_STALL`，正文写明「预算不是触发者」）与 `STARTUP_BUDGET_MS=180_000`（仍在输出但超绝对预算 ⇒ `SMOKE_TIMEOUT`）；三个窗口都可注入，供探针秒级跑完 |
+| `scripts/macos-package-smoke.test.ts` | 新增 3 条：静默/预算两条头行**互斥**、晚到与仍无两态、`未记录` 不得读成读数（rename 后 `not observed` 而不是静默记 0） |
+| `docs/evidence/2026-11-15-macos-smoke-stall-vs-budget.md` | 症状、缺口、改动、三支真机探针读数、门禁、边界 |
+
+**为什么抬绝对预算不等于放宽门禁**：旧的判据量的是**经过时间**，所以它量的是机器速度（38.6 s 才到
+`electron-ready` 的跑道在 60 s 被切断时还没轮到宣告）；新的失败判据是**静默**——卡死照样红，且正文点名
+最后阶段与静默时长。慢但仍在推进的运行不再红。
+
+### 二 真机读数（真实子进程，非单测）
+
+| 探针 | 注入 | 实测 |
+|---|---|---|
+| 说一句就静默 | stall 2 s / budget 20 s | `SMOKE_STALL`，`no output for 2014 ms`，`last line arrived at 4 ms`，正文写「the 20000 ms budget was not what tripped」 |
+| 一直说话从不宣告 | stall 1.5 s / budget 3 s | `SMOKE_TIMEOUT`，`after 3038 ms (limit 3000 ms)`，静默仅 220 ms（⇒ 两判据不互相顶替） |
+| 慢但在推进（2.8 s 才宣告） | stall 1.5 s / budget 20 s | `packaged startup …: endpoint announced after 3582 ms` ⇒ 慢不再读成卡死 |
+
+探针自己咬到两处口径错并已修：① 静默曾按「观察窗之后」计算（会把 30 s 观察算成静默，打印
+「静默 89,957 ms」而限额只有 60 s）；② `lastChunkAtMs` 与 `silence` 曾取自两个时刻（一条限额后才到的行
+配上「限额前就静默」）。
+
+### 三 门禁
+
+| 环 | 读数 |
+|---|---|
+| `npx vitest run scripts/macos-package-smoke.test.ts` | **1 file / 19 passed** |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（两个文件） | 0 problems |
+| 真脚本端到端（空产物目录） | `exit 1` + marker `readable:false`（失败通路与 marker 未被破坏） |
+
+### 四 边界与具名未办
+
+1. **真实 x64 跑道还没跑过新窗口**：本轮读数全部来自本机注入窗口的子进程。下一笔 Nightly 才会给出
+   「≈N ms 晚到」或「静默没有结束」；两者都指向不同修法（前者说明预算仍不足，后者说明是真卡死）。
+2. 60 s 静默窗是已测最大合法间隔（21.7 s，且被截断）的 2.8 倍；若应用合法地沉默更久，误红的正文会
+   自己说「it was slow, not wedged」，看到它就抬 `STARTUP_STALL_MS`，不动应用。
+3. 180 s 是对**截断值**的估计（3×），从未测到它自然跑完 —— 不许当「完成耗时」引用。
+
+### 五 下一轮第一步
+
+1. 推 `035e51ec` + 本轮提交（**一次推完**，两笔一起上，别边做边推）。
+2. 读新 SHA 的 `Nightly`：`Build macos-x64` 若仍红，按 §四 第 1 条读是「晚到」还是「静默未结束」，再定修法。
+3. 再读一次 `notary-status.yml`（已 26h+ 零判决，按 §三百三十一 收窄口径只记读数）。
