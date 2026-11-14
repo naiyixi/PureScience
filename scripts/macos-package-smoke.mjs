@@ -75,6 +75,39 @@ const describeProcessState = (processState) =>
       ? `already exited on signal ${processState.signal}`
       : `already exited with code ${processState.code}`
 
+// A bare timeout cannot be told apart from "the app wedged early" and "this runner is slow": the
+// phase timeline the app prints itself answers that (one intel runner reached electron-ready at
+// 26,931 ms and compose-runtime at 31,676 ms before the 60,000 ms wait expired — a reading of the
+// machine, not of a stall).
+const PHASE_MARKER = '[main] operation phase'
+const MAX_PHASES_NAMED = 6
+
+const extractStartupPhases = (output) => {
+  const phases = []
+  for (const block of output.split(PHASE_MARKER).slice(1)) {
+    const name = block.match(/phase:\s*'([^']+)'/)?.[1]
+    const elapsed = block.match(/elapsedMs:\s*(\d+)/)?.[1]
+    // A phase line without its timing says the app got there but not when — keep neither.
+    if (name === undefined || elapsed === undefined) continue
+    phases.push({ name, elapsedMs: Number(elapsed) })
+  }
+  return phases
+}
+
+const describeStartupPhases = (output) => {
+  const phases = extractStartupPhases(output)
+  if (phases.length === 0) return 'none — the app never reported a startup phase'
+  const last = phases[phases.length - 1]
+  const named = phases
+    .slice(-MAX_PHASES_NAMED)
+    .map((phase) => `${phase.name}@${phase.elapsedMs} ms`)
+    .join(' → ')
+  const omitted = phases.length - MAX_PHASES_NAMED
+  return `${phases.length} reported, last '${last.name}' at ${last.elapsedMs} ms ⇒ ${named}${
+    omitted > 0 ? ` (${omitted} earlier omitted)` : ''
+  }`
+}
+
 export const describeStartupTimeout = ({ label, elapsedMs, timeoutMs, processState, output }) => {
   const announcements = output.split('\n').filter((line) => line.includes('PureScience Web:'))
   const announcementSummary =
@@ -85,6 +118,7 @@ export const describeStartupTimeout = ({ label, elapsedMs, timeoutMs, processSta
     `Timed out waiting for the packaged macOS web service (${label}) after ${elapsedMs} ms (limit ${timeoutMs} ms).`,
     `- process: ${describeProcessState(processState)}`,
     `- service announcements: ${announcementSummary}`,
+    `- startup phases: ${describeStartupPhases(output)}`,
     `- last output (${DEFAULT_OUTPUT_TAIL_CHARS} chars max, tokens redacted):`,
     outputTail(output)
   ].join('\n')
@@ -183,6 +217,12 @@ export const launchAndProbe = async ({ executable, expectedVersion, env, userDat
         )
       })
     ])
+    // The passing side of the same reading: without it every later budget question (is this runner
+    // slow, or did the app get slower?) has no baseline on the platforms that did pass.
+    console.log(
+      `packaged startup (${label}): endpoint announced after ${Date.now() - startedAt} ms; ` +
+        `startup phases: ${describeStartupPhases(output)}`
+    )
     const response = await fetch(`${service.endpoint}/api/bootstrap?${service.auth}`, {
       signal: AbortSignal.timeout(15_000)
     })
@@ -428,6 +468,8 @@ export {
   artifactVersion,
   assertPackagedResources,
   describeSmokeFailure,
+  describeStartupPhases,
+  extractStartupPhases,
   findAppBundle,
   findArtifact,
   packagedLaunchArguments,

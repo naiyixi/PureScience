@@ -18724,3 +18724,86 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 ### 四 下一轮第一步
 
 同 §三百三十一 §五（① 读两条车道判决；② 公证再读一次；③ 满足内存门槛才做窗口读数单元）。
+
+## 三百三十三、本轮追加（执行器，2026-11-15 03:0x–）—— `198c5f2f` 的 Nightly 红在 macos-x64 冒烟超时；把「退到哪个启动阶段」写进失败里（公证第 8 次读数）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `198c5f2f`（§三百三十一 的 `left_on_remote` 状态）→ `0f9941c4` → `25b96b8c`；
+  `origin/main..HEAD` = 一笔 `fa624f13`（§三百三十二 的面板 reason 单元，上一轮已跑过定向门禁，按约定等 `198c5f2f` 的车道落定后再推）。
+- `git status --short`：三份**不是本轮的**未跟踪证据档（11-01 一份、11-04 两份），一个字节没碰、不提交。
+- 在飞车道现查（03:0x CST）：八条全 `completed`（`198c5f2f` 的 Nightly/Windows、`687f4e72` 的两条、`beef05bc` 的一条、两条公证读数）
+  ⇒ **本次推送没有取消任何人的判决**。
+- 机器侧：`Pages free: 4,969`（≈78 MB）、`swap used 10,064/11,264 MB`（可用 ≈1.2 GB）、常驻的 dev 无头实例与 WorkBuddy 占着大头
+  ⇒ **仍不做窗口读数**（门槛是空闲页 > 20,000 且 swap 可用 > 2 GB，见 §三百三十一 §五 第 3 条）。
+- 队列 B 段仍只剩 M2（⛔ 卡产品决定）；本轮先把上一笔推上去、读判决，再修那条把「慢」和「卡」糊成一句的仪器。
+
+### 一 `198c5f2f` 的车道判决：Windows 绿，Nightly 红在 macos-x64 的打包冒烟
+
+| 车道 | 结论 | 读数 |
+| --- | --- | --- |
+| `Windows Full Test` | success | 上一轮的 `/` 字面量修法（`beef05bc`）在真实分片上成立 |
+| `Nightly` → `build / Verify (lint + typecheck + test + package)` | success | 代码侧门禁全绿 |
+| `Nightly` → `build / Build windows-x64` / `macos-arm64` / `linux-x64` | success | 同提交、同代码的三台 |
+| `Nightly` → `build / Build macos-x64` | **failure** | 冒烟等待 60,167 ms 超时 |
+| `publish` | skipped | 前置作业红的正常后果，不是缺陷 |
+
+失败原文（run `43613880366`，作业 `Build macos-x64`）：
+
+```
+Timed out waiting for the packaged macOS web service (DMG-mounted bundle …-mac-x64.dmg) after 60167 ms (limit 60000 ms).
+- process: still running (pid 22331) when the limit expired
+- service announcements: none — the app never announced a web endpoint
+```
+
+同一条日志里应用自报的阶段：`load-bootstrap-modules` 1,468 ms → `single-instance-lock` 1,811 → `prepare-runtime` 1,813 →
+`load-application-modules` 1,818 → `electron-ready` **26,931** → `compose-runtime` **31,676**。
+判据：进程活着、到 31.7 s 仍在推进，而同一提交的 arm64 作业**通过了同一段冒烟** ⇒ 在这份证据上它是**这台 intel runner 的预算不够**，
+不是本批代码的缺陷；但**不证明** x64 最终会宣告端点（预算内没等到就是没等到）。**本轮不加预算**（见 §四 第 2 条）。
+
+### 二 本单元交付：把启动阶段时间线写进冒烟失败里（证据档 `docs/evidence/2026-11-15-macos-smoke-startup-phase-timeline.md`）
+
+- `scripts/macos-package-smoke.mjs`：新增 `extractStartupPhases(output)`（按 `[main] operation phase` 切块取 `phase` + `elapsedMs`，
+  **缺时间的块整块丢弃**），`describeStartupTimeout` 增一行 `- startup phases: N reported, last '<名>' at <ms> ms ⇒ 时间线`；
+  一条都没有时写 `none — the app never reported a startup phase`。**没动 60 s 预算**。
+- `scripts/macos-package-smoke.test.ts`：用真实日志形状钉住条数 / 最后阶段名与毫秒 / `electron-ready@26931 ms`；
+  「一个阶段都没有」单独断言；截断块被丢弃单独断言。
+- **通过的那一侧也记一条**：`launchAndProbe` 拿到端点后打 `packaged startup (<label>): endpoint announced after <ms> ms; startup phases: …`。
+  此前只有失败一侧有读数 ⇒ 任何「这台 runner 比昨天慢吗」的问题都没有基线；有了它，复发时才能拿两台跑道的**通过耗时**对照。
+- 首版把该函数同时写成 `export const` 并列入文件末尾的导出表 ⇒ Node `SyntaxError: Duplicate export`，
+  `leaves the marker on disk when the script itself fails` 当场抓住（marker 没落盘）；把 `describeStartupPhases` 提成导出时**又犯一次**，
+  同一条用例第二次抓住。该用例的价值就在这里：它真的会跑起脚本。
+
+### 三 公证读数（第 8 次，`notary-status.yml` run `43630013297`，2026-11-14T19:03:49Z）
+
+`==> recorded submissions: 9`，`--- counts by status ---` 仍只有一行 **`9 In Progress`**。最早一笔 `2026-11-13T11:32:48.826Z`
+到此 **31h31m** 无判决。判据不变：零判决 ≠ 通过 ≠ 拒绝，**不 rerun**（每 rerun 再排一笔）。只有用户能查的两项同 §三百三十一 §一
+（App Store Connect 协议/会员状态）。
+
+### 四 门禁（本机实跑）与两条环境读数
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/macos-package-smoke.test.ts scripts/ci/mac-signing-status.test.ts --maxWorkers=1` | **2 files / 33 passed**，exit 0 |
+| `npx vitest run scripts/macos-package-smoke.test.ts`（补「无阶段」断言后复跑） | **1 file / 16 passed**，exit 0 |
+| `npx tsc --noEmit -p tsconfig.node.json --composite false`（`NODE_OPTIONS=8192`） | exit 0 |
+| `npx tsc --noEmit -p tsconfig.web.json --composite false`（推 `fa624f13` 前跑的） | exit 0 |
+| `npx eslint --no-cache scripts/macos-package-smoke.{mjs,test.ts}` | 0 problems |
+| `npx prettier --check`（同上） | 通过 |
+| `bash scripts/pre-push-checks.sh`（推 `fa624f13` 前） | exit 0（13 个新增文件 lint 0 problems；品牌扫描零命中） |
+
+**1. 推送通路的现状与记忆相反（值得记一笔）**：本轮 `git push` 先失败两次 ——
+`-c http.proxy=` 直连是 `Empty reply from server`，直连 `https://github.com/…/info/refs` 用 curl 也是 `000`（25 s 超时）；
+而**经本机 `127.0.0.1:7897` 代理**同一 URL 是 `200`（0.96 s）。最终用 `HUSKY=0 git -c http.version=HTTP/1.1 push origin main`（**保留**配置里的代理）成功。
+⇒ 那条约「push 要绕开代理」的旧结论在本机当前状态下不成立；下次推之前先各测一次直连与代理，别照旧结论写死。
+
+**2. 60 s 冒烟预算未动**：它在 arm64 上够用、在 intel 上这一笔不够。若下一笔在 macos-x64 上再超时，就按**复发**处理，
+分岔与各自代价先写清再动：① 给冒烟加「阶段停滞」判据（最后阶段 15 s 不推进才判卡住，预算本身可以放宽 —— 让红代表卡住，而不是代表慢）；
+② 按平台给预算并写明两台跑道的对照读数。两者都要读数，不许只凭一次。
+
+### 五 下一轮第一步
+
+1. 读 `fa624f13` 的 Nightly / Windows Full Test 判决（看门脚本 `/tmp/ci-verdict.txt`）；`Build macos-x64` 若再超时 ⇒ 按 §四 第 2 条列为复发并选定一支。
+2. 再读一次 `notary-status.yml`；任一 `*.dmg` 变 `Accepted` ⇒ 走 §三百三十一 §五 第 2 条；仍全 `In Progress` ⇒ 只记读数。
+3. 窗口读数单元仍卡内存门槛（先取 `vm_stat`/`sysctl vm.swapusage` 再决定），不满足就继续具名未办。
+

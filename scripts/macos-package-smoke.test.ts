@@ -11,7 +11,9 @@ import {
   artifactVersion,
   assertPackagedResources,
   describeSmokeFailure,
+  describeStartupPhases,
   describeStartupTimeout,
+  extractStartupPhases,
   findAppBundle,
   findArtifact,
   packagedLaunchArguments,
@@ -27,6 +29,19 @@ import {
 const roots: string[] = []
 
 const SMOKE_SCRIPT = fileURLToPath(new URL('./macos-package-smoke.mjs', import.meta.url))
+
+// Verbatim shape of the app's own phase log (Electron main, one block per phase) — the fixture is
+// copied from a real CI log rather than invented, so a format drift shows up as a red here.
+const phaseBlock = (name: string, elapsedMs: number): string =>
+  [
+    '[main] operation phase {',
+    "  platform: 'darwin',",
+    "  arch: 'x64',",
+    '  isPackaged: true,',
+    `  phase: '${name}',`,
+    `  elapsedMs: ${elapsedMs}`,
+    '}'
+  ].join('\n')
 
 // Runs the script the way CI does (its own process, real argv) so the failure branch is exercised as
 // wiring rather than as a function call. `process.execPath` keeps this portable — a hardcoded local
@@ -137,6 +152,50 @@ describe('macOS package smoke', () => {
     expect(redactServiceTokens('a?token=abc_123&b=1')).toBe('a?token=<redacted>&b=1')
   })
 
+  it('names the startup phase reached, so a slow runner is not read as a hang', () => {
+    const message = describeStartupTimeout({
+      label: 'DMG-mounted bundle zerolink-purescience-2.27.0-nightly.g198c5f2-mac-x64.dmg',
+      elapsedMs: 60_167,
+      timeoutMs: 60_000,
+      processState: { status: 'running', pid: 22331 },
+      output: [
+        phaseBlock('load-bootstrap-modules', 1468),
+        phaseBlock('single-instance-lock', 1811),
+        phaseBlock('electron-ready', 26_931),
+        phaseBlock('compose-runtime', 31_676)
+      ].join('\n')
+    })
+
+    expect(message).toContain("4 reported, last 'compose-runtime' at 31676 ms")
+    expect(message).toContain('load-bootstrap-modules@1468 ms')
+    expect(message).toContain('electron-ready@26931 ms')
+    // The timeline must not be allowed to explain away a real silence: no endpoint block still says so.
+    expect(message).toContain('none — the app never announced a web endpoint')
+    // Phases without their timing are neither a phase nor evidence — dropping them keeps the count honest.
+    expect(
+      extractStartupPhases(
+        `${phaseBlock('compose-runtime', 500)}\n[main] operation phase {\n  phase: 'truncated'\n}`
+      )
+    ).toEqual([{ name: 'compose-runtime', elapsedMs: 500 }])
+    expect(message).toContain('⇒')
+  })
+
+  // The passing side: the same sentence is printed on success, so a later "is this runner slower than
+  // yesterday" question has a baseline from the platforms that passed (today: none at all).
+  it('prints the same phase timeline when the launch succeeds', () => {
+    const output = [
+      phaseBlock('electron-ready', 2100),
+      phaseBlock('web-service-started', 2600),
+      'PureScience Web: http://127.0.0.1:44100/?token=abc'
+    ].join('\n')
+    expect(describeStartupPhases(output)).toBe(
+      "2 reported, last 'web-service-started' at 2600 ms ⇒ electron-ready@2100 ms → web-service-started@2600 ms"
+    )
+    expect(describeStartupPhases('nothing but noise')).toBe(
+      'none — the app never reported a startup phase'
+    )
+  })
+
   it('distinguishes "wrote nothing" from "printed something we cannot parse"', () => {
     const silent = describeStartupTimeout({
       label: 'ZIP-extracted bundle',
@@ -146,6 +205,7 @@ describe('macOS package smoke', () => {
       output: '   \n'
     })
     expect(silent).toContain('none — the app never announced a web endpoint')
+    expect(silent).toContain('none — the app never reported a startup phase')
     expect(silent).toContain('(the app wrote nothing to stdout or stderr)')
     expect(silent).toContain('already exited with code 3')
 
