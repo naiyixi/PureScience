@@ -100,6 +100,9 @@ type StorageCommandOwnerDeps = {
   // Injectable so the duplicate sweep can be driven in tests without hashing a real tree; the production
   // default is the same walker the startup maintenance uses.
   sweepDuplicateContent?: (options: { storageRoot: string }) => Promise<SweepResult>
+  // Injectable so the "volume cannot be read at all" branch (free space reported as null, never as 0) can
+  // be exercised without an unmountable volume.
+  availableBytesProbe?: (path: string) => Promise<number>
 }
 
 type StorageParentRequest = Readonly<{ parent: string }>
@@ -152,12 +155,13 @@ const createStorageCommandOwner = (deps: StorageCommandOwnerDeps) => {
     const cpuStartedAt = process.cpuUsage()
     const dataRoot = resolveDataRoot()
     const dataRootMs = Date.now() - startedAt
-    // Stays null when the lookup fails: reporting 0 would read as "the disk is full", which is a
-    // measurement nobody took (the panel says it could not read the number instead). A missing default
-    // root on a fresh install reaches this branch — the volume is fine, the path simply isn't there yet.
+    // Stays null when the volume cannot be read at all: reporting 0 would read as "the disk is full", which
+    // is a measurement nobody took (the panel says it could not read the number instead). A data root that
+    // does not exist yet is NO LONGER this branch — `availableBytes` asks the nearest existing ancestor,
+    // because free space belongs to the volume (44 field-corpus lines, all before the folder existed).
     let available: number | null = null
     try {
-      available = await availableBytes(dataRoot)
+      available = await (deps.availableBytesProbe ?? availableBytes)(dataRoot)
     } catch (err) {
       logger.warn('available storage lookup failed', diagnosticErrorFields(err))
     }

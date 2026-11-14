@@ -1,7 +1,7 @@
 import { chmod, link, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { availableBytes, computeStorageUsage, dirSize, measureDirectorySize } from './usage'
 
@@ -244,6 +244,52 @@ describe('availableBytes', () => {
 
     expect(Number.isFinite(bytes)).toBe(true)
     expect(bytes).toBeGreaterThan(0)
+  })
+
+  // The field shape this exists for: a default data root that nothing has written into yet. Free space
+  // belongs to the volume, so the answer is the one the nearest existing ancestor gives — not a failure.
+  it('measures the volume through the nearest existing ancestor when the path does not exist yet', async () => {
+    const missing = join(tmpdir(), 'purescience-not-created-yet', 'PureScience')
+
+    const bytes = await availableBytes(missing)
+    const viaAncestor = await availableBytes(tmpdir())
+
+    expect(Number.isFinite(bytes)).toBe(true)
+    expect(bytes).toBeGreaterThan(0)
+    // Same volume, same answer: the extra path segment must not change the reading.
+    expect(bytes).toBe(viaAncestor)
+  })
+
+  it('walks up more than one missing segment and never invents a number', async () => {
+    const deep = join(tmpdir(), 'a-missing', 'b-missing', 'c-missing', 'PureScience')
+
+    const bytes = await availableBytes(deep)
+
+    expect(bytes).toBe(await availableBytes(tmpdir()))
+  })
+
+  // The honest branch: no ancestor can be read. That must stay an error the caller turns into "no reading",
+  // never a 0 that reads as "the disk is full".
+  it('throws (never returns 0) when the volume itself cannot be read', async () => {
+    const statfsOf = vi.fn(async () => {
+      throw Object.assign(new Error('statfs unavailable'), { code: 'EIO' })
+    })
+
+    await expect(availableBytes(join(tmpdir(), 'whatever'), { statfsOf })).rejects.toThrow(
+      'statfs unavailable'
+    )
+    // A non-missing failure is not walked past: it already says something true about the volume.
+    expect(statfsOf).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops at the filesystem root and reports the last error instead of looping', async () => {
+    const statfsOf = vi.fn(async (_path: string) => {
+      throw Object.assign(new Error('no such file'), { code: 'ENOENT' })
+    })
+
+    await expect(availableBytes(join(tmpdir(), 'x'), { statfsOf })).rejects.toThrow('no such file')
+    // Every attempt reports "not there" ⇒ walk to `/` and stop, rather than spin forever.
+    expect(statfsOf.mock.calls.at(-1)?.[0]).toBe('/')
   })
 })
 

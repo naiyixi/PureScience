@@ -1,5 +1,5 @@
 import { lstat, readdir, stat, statfs, unlink } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname, resolve } from 'node:path'
 
 import { logicalEnvNameFromDirectory } from '../notebook/runtime-paths'
 
@@ -356,7 +356,37 @@ export const computeStorageUsage = async (
   }
 }
 
-export const availableBytes = async (targetPath: string): Promise<number> => {
-  const stats = await statfs(targetPath)
-  return stats.bavail * stats.bsize
+// Free space is a property of the VOLUME, not of the path asked about: `statfs` answers "how much is left
+// where this would live", so a directory that does not exist yet still has a measurable answer — the one
+// its nearest existing ancestor gives. Asking only the exact path threw ENOENT for a fresh install's
+// default data root (before anything wrote into it), and the Storage panel then reported that free space
+// could not be read at all: 44 such lines in the field corpus, every one of them before that folder
+// existed. Walking up turns those into a real reading; the reading stays "no reading" (a thrown error the
+// caller reports as null, never as 0) only when no ancestor can be read either — an unmounted or
+// unresponsive volume, which is exactly the case that must not be papered over.
+type StatfsReading = { bavail: number; bsize: number }
+type AvailableBytesOptions = {
+  // Injectable so the "volume cannot be read at all" branch is testable without an unmountable volume.
+  statfsOf?: (path: string) => Promise<StatfsReading>
+}
+
+export const availableBytes = async (
+  targetPath: string,
+  options: AvailableBytesOptions = {}
+): Promise<number> => {
+  const probe = options.statfsOf ?? statfs
+  let current = resolve(targetPath)
+  for (;;) {
+    try {
+      const stats = await probe(current)
+      return stats.bavail * stats.bsize
+    } catch (error) {
+      // Only "this path is not there" earns a step up. A permission or I/O failure on an existing
+      // directory says something true about the volume and must not be re-asked at its parent.
+      if (!isMissingPath(error)) throw error
+      const parent = dirname(current)
+      if (parent === current) throw error
+      current = parent
+    }
+  }
 }

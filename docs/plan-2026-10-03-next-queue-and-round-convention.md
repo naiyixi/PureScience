@@ -18505,3 +18505,65 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
    「本账号下 8 笔提交（含一支注定被拒的未签名探针）在 24 小时内一律没有判决」，并具名列出「只有用户能查的两项」
    （待接受的协议 / 会员状态），不许再写成「苹果整体慢了」。
 3. 推送继续走 `git -c http.proxy= -c http.version=HTTP/1.1`（配置里的代理端口在听但 TLS 握手下不来，**不改全局配置**）。
+
+## 三百二十九、本轮追加（执行器，2026-11-14 15:5x–）—— 公证第 5 次读数（20h23m 零判决）；顺手把「可用空间读不到」的成因修掉
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `292ab359`（§三百二十八）→ `335f4adb` → `67c1c9b5`；`origin/main..HEAD` 为空。
+- `git status --short`：只有三份**不是本轮的**未跟踪证据档（11-01 一份、11-04 两份），一个字节没碰、不提交。
+- 在飞车道现查：六条全 `completed`（`292ab359` 的两条 Notary status、`335f4adb` 的 Nightly/Windows Full Test 双 success），
+  **本次推送没有取消任何人的判决**。
+- 机器侧：`load averages: 2.69 2.60 2.44`、空闲页 4,065（≈ 65 MB）⇒ 需要窗口/性能读数的单元仍不做；本单元只动主进程读数。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项；C 段外部阻塞 ⇒ 本轮按 §三百二十八 §五 第 1 条先读公证状态，
+  再取一件「有真机语料支撑、可当场做完」的产品修复。
+
+### 一 公证读数（第 5 次，`notary-status.yml` run `43573356953`，07:55:41Z）
+
+| created (Z) | 状态 | 名字 | 已等 |
+| --- | --- | --- | --- |
+| 2026-11-13T16:41:06 | In Progress | probe.zip | 15h15m |
+| 2026-11-13T15:58:27 | In Progress | probe.zip | 15h57m |
+| 2026-11-13T14:19:06 | In Progress | …-2.27.0-mac-x64.dmg | 17h37m |
+| 2026-11-13T14:18:33 | In Progress | …-2.27.0-mac-arm64.dmg | 17h37m |
+| 2026-11-13T13:25:25 | In Progress | …-2.27.0-mac-x64.dmg | 18h30m |
+| 2026-11-13T13:24:38 | In Progress | …-2.27.0-mac-arm64.dmg | 18h31m |
+| 2026-11-13T11:34:02 | In Progress | …-2.27.0-mac-arm64.dmg | **20h22m** |
+| 2026-11-13T11:32:48 | In Progress | …-2.27.0-mac-x64.dmg | **20h23m** |
+
+状态计数只有一行 `8 In Progress`。与 03:38Z 那次读数（8/8、最早 16h05m）对照：**4.3 小时后同一集合一格未动**。
+判据不变：**没有判决 ≠ 通过 ≠ 拒绝**；本轮**不 rerun**（每 rerun 会再排一笔新提交）。到 11:32Z 满 24h 若仍零判决，
+按 §三百二十八 §五 第 2 条把定性收窄成「本账号 8 笔提交 24h 内一律无判决」，并把「只有用户能查的两项」单列。
+
+### 二 交付：可用空间按**卷**测量 —— 数据根还不存在时不再读成「读不到」
+
+`docs/evidence/2026-11-14-free-space-is-a-volume-reading.md`（读数、改动、边界）。真机语料：DEV 实例 `main.log` 里
+`available storage lookup failed` **44 行、全部 `not-found`**，且全部产生在 `~/PureScience-DEV` 被创建（11-10 00:14）之前
+⇒ 成因是「默认数据根当时还没写出来」，不是卷坏了。改法：`availableBytes` 逐级向上问到**第一个存在的祖先**，
+只有卷本身读不出来才抛（调用方照旧落 `available: null`，绝不回 0）；非「路径不存在」的错误不向上走。
+
+**这不是把「量不到」放宽成「随便给个数」**：原来那一支的意图（没人量过的数字不许以 0 出现）完整保留，
+只是它现在只在真的量不到时到达；「路径还没建」这一支有了真读数。
+
+### 三 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/storage/usage.test.ts src/main/storage/ipc.test.ts --maxWorkers=2` | **2 files / 87 passed**，exit 0 |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache`（本笔四文件） | 0 problems |
+
+### 四 边界与具名未办
+
+- **没有窗口读数**：本笔只到 `storage:get-info` 的返回值这一层；面板文案未改（它本来就在没有读数时说话），
+  因此不声称界面外观有任何变化。
+- 具名未办：`src/main/compute/harvest-engine.ts:297` 的下载前余量闸**仍无 try/catch** ⇒ 卷不可读时会把一次已完成
+  远端作业的 finalize 整段丢掉。本笔只消除了「目录不存在」这一类触发面，「卷不可读」这一类仍在，修它要先给该引擎
+  一个可注入的读数（现在直接 import），属独立单元。
+
+### 五 下一轮第一步
+
+1. 再读一次 `notary-status.yml`（arm64 拿不到 runner 时加 `-f runner=macos-15-intel`）；任一 `*.dmg` 变 `Accepted` ⇒
+   `gh run rerun 43423715874 --failed` → 看 `publish` 是否执行 → 页出现后做 v2.27.0 第 2/3 条；仍全 `In Progress` ⇒ 只记读数。
+2. 到 11:32Z 满 24h 仍是零判决 ⇒ 定性收窄 + 把「待接受协议 / 会员状态」作为唯一需用户动手的两项写进汇报。
+3. `harvest-engine` 余量闸那条具名未办，可在下一轮按「可注入读数 + 不得丢 finalize」的形状做掉。
