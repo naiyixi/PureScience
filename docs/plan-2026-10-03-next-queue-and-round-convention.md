@@ -18624,4 +18624,5 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 
 1. 读 `beef05bc` 与本笔的车道判决（看门脚本 `/tmp/ci-verdict.txt`）；Windows 分片若仍红，按「失败文件是否本批碰过」逐次归因，不许先当抖动。
 2. 11:32:48Z 满 24h 仍零判决 ⇒ 定性收窄成「本账号 9 笔提交 24h 内一律无判决（含三笔注定被拒的探针）」，并把「待接受协议 / 会员状态」作为唯一需用户动手的两项写进汇报。
-3. 下一单元候选：`job-poller` 的那句 `harvest failed before recording a result` 在本次修复后**仍可能与事实相反**（例如 `jobRepository.update` 自己抛）⇒ 给它加「行是否已写」的判据；或从 B 段之外自拟一个新能力面。
+3. 下一单元候选：`left_on_remote` 目前没有「未知」态（跳过路径写空数组 ⇒ 面板读成「远端什么都没剩」，真相只在那句 `harvest_error` 里）⇒ 动 `ComputeDonePayload` 形状 + 面板 + 九语字典，属独立单元。
+   （**更正**：本条原先写的是「`job-poller` 那句 `harvest failed before recording a result` 仍可能与事实相反」——复查后不成立：本次修完 TDZ 之后，能抛出 `harvestJob` 的只剩「行还没写就抛」那些路径（`mkdir` / `withDataRootWrite` / `jobRepository.update` 自身），而写成功之后没有任何未被 try/catch 覆盖的语句 ⇒ 那句话现在是准确的，不需要加「行是否已写」的判据。）
