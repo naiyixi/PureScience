@@ -9,7 +9,7 @@ import { isNewer, selectDownload, type UpdateStatus } from '../../shared/update'
 import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
 import type { Logger } from '../logger'
 import { downloadInstaller } from './downloader'
-import { fetchManifest } from './manifest'
+import { describeUpdateFailure, fetchManifest, UpdateManifestError } from './manifest'
 import type { UpdateStrategy } from './strategy'
 import type { ApplicationEventMap } from '../application-events'
 import { broadcastToRenderers } from '../renderer-broadcast'
@@ -70,7 +70,10 @@ const withinDeadline = async <T>(
   let handle: ReturnType<typeof setTimeout> | undefined
   const deadline = new Promise<never>((_, reject) => {
     handle = setTimeout(
-      () => reject(new Error(`${label} did not settle within ${timeoutMs} ms`)),
+      () =>
+        reject(
+          new UpdateManifestError('deadline', `${label} did not settle within ${timeoutMs} ms`)
+        ),
       timeoutMs
     )
   })
@@ -205,7 +208,10 @@ export class UpdateService implements UpdateStrategy {
         current: this.currentVersion,
         error: error instanceof Error ? error.message : 'Update check failed'
       })
-      operation.fail(error, { result: 'error' })
+      // Name the class of failure on the line itself: an unreachable feed, a feed answering non-2xx and an
+      // unparseable payload all used to read as `errorCategory: 'error'`, which is a dead end for whoever
+      // reads the log (or the support bundle) later.
+      operation.fail(error, { result: 'error', ...describeUpdateFailure(error) })
     }
     return this.status
   }

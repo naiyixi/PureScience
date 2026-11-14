@@ -169,11 +169,70 @@ describe('UpdateService.check', () => {
           operation: 'update-check',
           outcome: 'failed',
           phase: 'fetch-manifest',
-          errorCategory: 'error'
+          errorCategory: 'error',
+          // The class of failure, not just "something failed": a rejected fetch never reached the feed.
+          failureCause: 'transport'
         })
       ])
     )
     expect(JSON.stringify(records)).not.toContain('raw provider diagnostic secret')
+  })
+
+  it('names a non-2xx feed answer with the status it answered', async () => {
+    const log = createLogSpy()
+    const service = new UpdateService({
+      fetchImpl: (() =>
+        Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({})
+        } as unknown as Response)) as unknown as typeof fetch,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      log
+    })
+
+    await service.check()
+
+    const records = diagnosticRecords(log)
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'update-check',
+          outcome: 'failed',
+          failureCause: 'http-status',
+          httpStatus: 404
+        })
+      ])
+    )
+  })
+
+  it('separates an unparseable feed from an unreachable one', async () => {
+    const log = createLogSpy()
+    const service = new UpdateService({
+      fetchImpl: (() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(new SyntaxError('Unexpected token <'))
+        } as unknown as Response)) as unknown as typeof fetch,
+      currentVersion: '0.2.0',
+      broadcast: vi.fn(),
+      log
+    })
+
+    await service.check()
+
+    expect(diagnosticRecords(log)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          operation: 'update-check',
+          outcome: 'failed',
+          failureCause: 'invalid-manifest',
+          manifestProblem: 'shape'
+        })
+      ])
+    )
   })
 
   it('stamps applyKind "installer" on every emitted status', async () => {
