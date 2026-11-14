@@ -737,3 +737,85 @@ describe('harvestJob — compute_done notification (issue 06)', () => {
     // No crash — just silent, no broadcast
   })
 })
+
+// ---------------------------------------------------------------------------
+// Local filesystem failures must record a reason, not escape
+//
+// `findTerminalUnharvested` selects rows with `harvestedAt: null` and the poller runs it on every
+// tick with no backoff, so an exit that never finalizes is retried every 15 s forever AND leaves the
+// job with no reason. Both local mkdir sites used to be in that shape.
+// ---------------------------------------------------------------------------
+
+describe('harvestJob — local filesystem failures', () => {
+  it('records a skip reason when the harvest directory cannot be created', async () => {
+    const storageRoot = await mkTmp()
+    const harvestDir = getJobHarvestDir(storageRoot, 'proj-1', 'sess-1', 'job-1')
+    // A regular file sitting where the per-job directory has to go: mkdir fails with ENOTDIR.
+    await mkdir(dirname(harvestDir), { recursive: true })
+    await writeFile(harvestDir, 'not a directory')
+
+    const job = makeJob({ output_manifest: JSON.stringify(['*.result']) })
+    const ssh = makeSshRunner(findOutput([{ path: 'run.result', size_bytes: 10 }]))
+    const scp = makeWritingScpRunner()
+    const { repo: jobRepo, updates } = makeJobRepo(job)
+
+    // The whole point: this must not reject. A throw here leaves harvestedAt null (no reason on the
+    // row) and the recovery scan re-runs the same harvest every tick.
+    await harvestJob(job, {
+      sshRunner: ssh,
+      scpRunner: scp,
+      hostRepository: makeHostRepo(sampleHost()),
+      jobRepository: jobRepo,
+      storageRoot
+    })
+
+    expect(updates).toHaveLength(1)
+    const finalUpdate = updates[0]!.data as Record<string, unknown>
+    expect(finalUpdate.harvestedAt).toBeInstanceOf(Date)
+    expect(String(finalUpdate.harvestError)).toContain(
+      'local harvest directory could not be created'
+    )
+    // null, not []: no listing was taken, so nothing may read this as "nothing is left".
+    expect(finalUpdate.leftOnRemote).toBeNull()
+    // Nothing remote ran: no enumeration, no copy.
+    expect(ssh.run).not.toHaveBeenCalled()
+    expect(scp.copy).not.toHaveBeenCalled()
+  })
+
+  it("keeps the other outputs when one entry's parent directory cannot be created", async () => {
+    const storageRoot = await mkTmp()
+    const harvestDir = getJobHarvestDir(storageRoot, 'proj-1', 'sess-1', 'job-1')
+    // `featured/sub` exists as a FILE, so creating a directory for `sub/run.result` must fail.
+    await mkdir(join(harvestDir, 'featured'), { recursive: true })
+    await writeFile(join(harvestDir, 'featured', 'sub'), 'occupied')
+
+    const job = makeJob({
+      output_manifest: JSON.stringify(['sub/*.result', '*.csv'])
+    })
+    const ssh = makeSshRunner(
+      findOutput([
+        { path: 'sub/run.result', size_bytes: 10 },
+        { path: 'table.csv', size_bytes: 20 }
+      ])
+    )
+    const scp = makeWritingScpRunner()
+    const { repo: jobRepo, updates } = makeJobRepo(job)
+
+    await harvestJob(job, {
+      sshRunner: ssh,
+      scpRunner: scp,
+      hostRepository: makeHostRepo(sampleHost()),
+      jobRepository: jobRepo,
+      storageRoot
+    })
+
+    expect(updates).toHaveLength(1)
+    const finalUpdate = updates[0]!.data as Record<string, unknown>
+    expect(finalUpdate.harvestedAt).toBeInstanceOf(Date)
+    // The local problem is reported through the same channel as a failed download.
+    expect(String(finalUpdate.harvestError)).toContain('harvest_failed')
+    // ...and the file whose directory could be created still landed.
+    const featured = await readdir(join(harvestDir, 'featured'))
+    expect(featured).toContain('table.csv')
+  })
+})

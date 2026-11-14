@@ -18867,3 +18867,80 @@ Timed out waiting for the packaged macOS web service (DMG-mounted bundle …-mac
 1. 推 `035e51ec` + 本轮提交（**一次推完**，两笔一起上，别边做边推）。
 2. 读新 SHA 的 `Nightly`：`Build macos-x64` 若仍红，按 §四 第 1 条读是「晚到」还是「静默未结束」，再定修法。
 3. 再读一次 `notary-status.yml`（已 26h+ 零判决，按 §三百三十一 收窄口径只记读数）。
+
+
+## 三百三十五、本轮追加（执行器，2026-11-15 07:3x–）—— 收割的本地目录建不出来时：既没有原因，也永不停止重试
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 7951ed5f`，共享工作树只有 3 个**不是本轮的**未跟踪证据档（`docs/evidence/2026-11-0{1,4}-*`，不碰）。
+- 上一轮 §三百三十四 的「下一轮第一步」三条已闭：① 两笔已推（`035e51ec` + `7951ed5f`）；② `7951ed5f` 的
+  `Nightly` 七个作业**全 success**，其中 `Build macos-x64` = **success** ⇒ 冒烟判据的改法在真实跑道上生效
+  （§三百三十三 §四 第 1 条要的那条读数）；③ 公证第 9 次读数见 §四。
+- **本轮先试的单元被自己否掉并撤回**：notepad 记的候选「`job-poller` 那句 `harvest failed before recording a
+  result` 可能与事实相反」——**§三百三十一 §四 已有一条「复查后不成立」的更正，本轮独立复核该更正成立**：
+  `harvestJobUnchecked` 在 `finalize` 之后只剩 `buildAndBroadcastNotification`（内部整段 try/catch）与
+  `withDataRootWrite` 的 `release()`（计数器，不抛），而 `jobRepository.update()` 的映射段
+  （`asStatus` / `parseProtectionSnapshot` / `toJson` 字段）全部受保护 ⇒ 生产接线（`job-runtime.ts` 的
+  `harvestFn: (job) => harvest(job, {...})`）里**没有**「写成功之后还能抛」的可达路径。于是那份
+  `harvestRecorded` 三态改动**已 `git checkout --` 撤回**，一个字节没留下。
+- 撤回时顺手发现**真缺陷**（本轮的单元）：`harvestJob` 里两处本地 `mkdir` **没有被任何 try 覆盖**，
+  而恢复扫描的选择条件就是 `harvestedAt: null` 且**无退避**、每 15 s 跑一次 ⇒ 一个本地权限/磁盘问题会表现成
+  「永远在重试、永远没有原因」。函数头注释当时还写着「On any error: sets harvestError + harvestedAt」——对这两处不成立。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/compute/harvest-engine.ts` | ① 目录创建挪到 `finalize`/`finalizeAndReturn` 声明**之后**并包 `try`，失败走 `finalizeAndReturn('harvest skipped: the local harvest directory could not be created (…)', null)`；② 下载循环里的父目录创建改为 `ensureParentDir()`：失败记进 `errors` 再 `continue`（其余产物照常落地，任务以 `harvest_failed` 终结，而不是整次中止）；③ 函数头注释按新顺序改写，并写明「顺序为什么重要」 |
+| `src/main/compute/harvest-engine.test.ts` | 新增 2 条：目录建不出来 ⇒ 不抛、`harvestedAt` 落库、原因含具名句、`left_on_remote` 为 `null`（不是 `[]`）、ssh/scp 一次都没跑；某个条目的父目录建不出来 ⇒ 其余产物仍落地且 `harvest_failed` 有值 |
+| `docs/evidence/2026-11-15-harvest-local-failure-reason.md` | 症状 / 根因（两处同一形状）/ 改动 / 真库读数与旧形状对照 / 变异自证 / 门禁 / 边界 |
+
+**为什么两处修法不同**：函数开头那次失败之后**什么都不能做**（连读到远端列表都还没发生）⇒ 一句 skip 原因 + `null`；
+循环里那次失败只毁掉**一个**条目 ⇒ 记成一次下载失败，别让一个怪文件名毁掉整批产物。两者共同点：
+**都必须落终态**，因为终态写入才是「恢复扫描别再挑中它」的那件事。
+
+### 二 读数（真 SQLite 行 + 真文件系统 + 真仓库；探针跑完即删）
+
+```
+PROBE row created id=probe-job-1 harvested_at=undefined
+PROBE scan-before count=1 ids=probe-job-1          ← 修复前每次 tick 都会被重派
+PROBE blocked <tmp>/notebooks/probe-proj-1/probe-sess-1/hpc/probe-job-1 with a regular file
+PROBE row after harvested_at=1794699761662 reason=harvest skipped: the local harvest directory could not be created (ENOTDIR: not …
+PROBE scan-after count=0                           ← 修复后不再被挑中，循环终止
+```
+
+**对照（守卫退回旧形状、同一支探针）**：`Error: ENOTDIR: not a directory, mkdir '…/probe-job-1/featured'` 直接逃出
+`harvestJob`，行没被写 ⇒ 扫描继续返回它。两行一起才说明这是「行永远不会被写」，不是「日志更好看」。
+
+**变异自证**：目录创建退回裸 `await mkdir` ⇒ 只红 `records a skip reason …`；`ensureParentDir` 去掉 `try/catch`
+⇒ 只红 `keeps the other outputs …`。（第一次的 B 变异改错了位置——守卫在 `ensureParentDir` 体内，改调用点等于没改；
+重做后才红，这一条记下来，免得下次按「改调用点」自证。）
+
+### 三 门禁
+
+| 环 | 读数 |
+|---|---|
+| `npx vitest run src/main/compute src/shared --maxWorkers=2` | **184 files passed / 1 skipped（185）**；**2270 passed / 5 skipped（2275）** |
+| `npx vitest run src/main/compute/harvest-engine.test.ts` | **21 passed**（+2） |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（两个文件） | 0 problems |
+| `npx prettier --check`（两个文件） | 通过 |
+
+用例总数的差可逐项对上：本轮开始时那次 2271 含**已撤回**的 poller 试验 +3，本单元 +2 ⇒ 2271 − 3 + 2 = 2270。
+
+### 四 公证第 9 次读数（只记读数，不重开定性）
+
+`notary-status`（`43654106551`，2026-11-14T23:36Z）：**9 笔全 `In Progress`**，最早一笔
+`2026-11-13T11:32:48Z` ⇒ **36h04m 零判决**；其中 `probe3.zip`（08:35Z）仍不是我方提交。与 §三百三十一 的收窄口径一致：
+卡在服务级积压，不是配置。仍只能由用户侧查的两项不变（App Store Connect 协议状态 / 会员状态）。
+
+### 五 边界与下一轮第一步
+
+1. **只覆盖本地文件系统失败这一类**；远端侧失败（枚举 / scp）本来就走 `finalizeAndReturn` / `errors`。
+2. **仍无窗口读数**：真实库 `ComputeJob` 零行、空闲页 **4,086（≈65 MB）**、`swap` 可用 **1.3 GB** ⇒ 起不了
+   Electron 窗口（第 4 轮同一条闸门，读数本轮回取）。本单元的证据落在「真库 + 真 fs」这一层。
+3. 下一轮第一步：① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（若满 48h 仍零判决，把「只能由用户查」两项
+   写进汇报即可，不再重复定性）；③ 下一单元候选（都不需要发版窗口）：§三百三十二 §三 第 2 条立案的
+   「`left_on_remote` 条目不带 `max_file_mb`/`max_total_mb` ⇒ 面板只能说『超过上限』给不出数字」（动 payload + 面板 + 九语，
+   属独立单元）；或 `0o` 那条链路里**其它**未落终态的本地产出路径（按 `findTerminalUnharvested` 的选择条件反向扫一遍）。

@@ -237,6 +237,7 @@ export const computeHarvestDiskHeadroomBytes = 2 * 1024 * 1024 * 1024 // 2 GiB d
 
 /**
  * Executes one harvest pass for a finished job:
+ *   0. Create the local harvest directory (before enumerating: a failure here is a skip with a reason).
  *   1. Look up the host record.
  *   2. Resolve SSH target.
  *   3. Enumerate remote files (single round-trip).
@@ -244,8 +245,12 @@ export const computeHarvestDiskHeadroomBytes = 2 * 1024 * 1024 * 1024 // 2 GiB d
  *   5. Download featured + hidden files; put stdout/stderr at harvest root.
  *   6. Write harvestedAt / harvestError / leftOnRemote to DB.
  *
- * On any error: sets harvestError + harvestedAt (harvest_failed). Remote workdir
+ * On a failure past step 0: sets harvestError + harvestedAt (harvest_failed). Remote workdir
  * is NEVER deleted (preserved for manual recovery, design §9).
+ *
+ * Ordering matters, which is why step 0 is numbered separately: every exit that happens after the
+ * finalize helpers are declared records a reason, and the recovery scan only re-dispatches jobs whose
+ * `harvestedAt` is still null. An exit that skipped the write would be retried forever.
  *
  * This function is idempotent: calling it twice on the same job overwrites the
  * previous harvest (re-downloads files, re-writes DB fields).
@@ -265,9 +270,8 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   const featuredDir = join(harvestDir, 'featured')
   const hiddenDir = join(harvestDir, 'hidden')
 
-  // Ensure harvest directory structure exists (idempotent).
-  await mkdir(featuredDir, { recursive: true })
-  await mkdir(hiddenDir, { recursive: true })
+  // The directory is created further down, after the finalize helpers exist: a local mkdir failure is
+  // one more early exit, and it has to record a reason like every other one (see the block below).
 
   // Declared before `finalizeAndReturn`, not after the guard: the early-exit paths below are exactly
   // the ones that must notify, and a later `const` would leave them throwing a temporal-dead-zone
@@ -356,6 +360,26 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   // The remote workdir the job was told to write into. Resolved here rather than next to the
   // enumeration because the headroom guard's skip message has to name where the files were left.
   const remoteWorkdir = job.remote_workdir ?? `~/.purescience/jobs/${job.job_id}`
+
+  // ── 0. Create the local harvest directory ───────────────────────────────────
+  // This is the first local write, so it is also the first thing that can fail locally (ENOSPC on the
+  // data root, EACCES, a stale *file* sitting where the directory belongs). It used to run before the
+  // finalize helpers existed, which meant its throw escaped the whole function: the row kept
+  // `harvestedAt = null` and carried no reason, so (a) the panel had nothing to explain the job with,
+  // and (b) the restart-recovery scan — which selects `harvestedAt: null` with no backoff — re-dispatched
+  // the same job on every 15 s tick, indefinitely. A local permission problem would therefore look like
+  // an endless harvest loop with one warn per tick and no reason anywhere.
+  try {
+    await mkdir(featuredDir, { recursive: true })
+    await mkdir(hiddenDir, { recursive: true })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    await finalizeAndReturn(
+      `harvest skipped: the local harvest directory could not be created (${msg}); the remote files were not enumerated and remain in ${remoteWorkdir}`,
+      null
+    )
+    return
+  }
 
   // Disk headroom guard (source v0.15.1 parity): refuse to harvest when less than 2 GiB is
   // available on the data root, protecting the local disk from filling up across jobs.
@@ -481,17 +505,34 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     await safeDownload('stderr', join(harvestDir, 'stderr'))
   }
 
+  // A parent directory that cannot be created for one entry is recorded, not thrown:
+  //
+  // The parent directory of one entry can fail on its own (a remote filename that is too long for this
+  // filesystem, or a stale *file* where a subdirectory belongs). That used to abort the whole harvest
+  // before `finalize`, so one odd output name cost the job every other output AND its reason. It is
+  // now recorded like a failed download: the remaining files still land, and the job still finalizes
+  // with `harvest_failed`.
+  const ensureParentDir = async (localPath: string): Promise<boolean> => {
+    try {
+      await mkdir(dirname(localPath), { recursive: true })
+      return true
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err))
+      return false
+    }
+  }
+
   // Download featured files.
   for (const relativePath of classification.featured) {
     const localPath = join(featuredDir, relativePath)
-    await mkdir(dirname(localPath), { recursive: true })
+    if (!(await ensureParentDir(localPath))) continue
     await safeDownload(relativePath, localPath)
   }
 
   // Download hidden files.
   for (const relativePath of classification.hidden) {
     const localPath = join(hiddenDir, relativePath)
-    await mkdir(dirname(localPath), { recursive: true })
+    if (!(await ensureParentDir(localPath))) continue
     await safeDownload(relativePath, localPath)
   }
 
