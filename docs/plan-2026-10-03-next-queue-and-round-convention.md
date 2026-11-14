@@ -18567,3 +18567,61 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
    `gh run rerun 43423715874 --failed` → 看 `publish` 是否执行 → 页出现后做 v2.27.0 第 2/3 条；仍全 `In Progress` ⇒ 只记读数。
 2. 到 11:32Z 满 24h 仍是零判决 ⇒ 定性收窄 + 把「待接受协议 / 会员状态」作为唯一需用户动手的两项写进汇报。
 3. `harvest-engine` 余量闸那条具名未办，可在下一轮按「可注入读数 + 不得丢 finalize」的形状做掉。
+
+## 三百三十、本轮追加（执行器，2026-11-14 18:2x–）—— 公证第 6 次读数（23h 零判决，且多了一笔 08:35Z 的探针）；Windows 车道的红是平台字面量，修掉它并补上收割闸的终态
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `8dbf5caa`（§三百二十九 的按卷测量）→ `292ab359` → `335f4adb`；`origin/main..HEAD` 为空。
+- `git status --short`：三份**不是本轮的**未跟踪证据档（11-01 一份、11-04 两份），一个字节没碰、不提交。
+- 在飞车道现查（18:21 CST）：六条全 `completed` —— 但 `8dbf5caa` 的 **Windows Full Test 是 failure**（上一轮汇报漏掉了它，见 §二）。
+- 队列 B 段仍无可做项（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）；本轮按 §三百二十九 §五 第 3 条做掉那条具名未办。
+
+### 一 公证读数（第 6 次，`notary-status.yml` run `43585776656`，10:32:41Z）
+
+| created (Z) | 状态 | 名字 | 已等 |
+| --- | --- | --- | --- |
+| 2026-11-14T08:35:04 | In Progress | probe3.zip | 1h57m |
+| 2026-11-13T16:41:06 | In Progress | probe.zip | 17h51m |
+| 2026-11-13T15:58:27 | In Progress | probe.zip | 18h34m |
+| 2026-11-13T14:19:06 | In Progress | …-2.27.0-mac-x64.dmg | 20h13m |
+| 2026-11-13T14:18:33 | In Progress | …-2.27.0-mac-arm64.dmg | 20h14m |
+| 2026-11-13T13:25:25 | In Progress | …-2.27.0-mac-x64.dmg | 21h07m |
+| 2026-11-13T13:24:38 | In Progress | …-2.27.0-mac-arm64.dmg | 21h08m |
+| 2026-11-13T11:34:02 | In Progress | …-2.27.0-mac-arm64.dmg | 22h57m |
+| 2026-11-13T11:32:48 | In Progress | …-2.27.0-mac-x64.dmg | **23h00m** |
+
+`--- counts by status ---` 只有一行 `9 In Progress`。比上一次（07:55Z，8 笔）多出的那笔是 `08:35:04Z` 的 `probe3.zip` —— **不是本执行器提交的**（本轮没有带 probe 输入），
+它同样躺在 `In Progress` 里，而它是最小的探针、注定被拒的那一类 ⇒ 队列堵在苹果侧，与本项目的包无关。判据不变：没有判决 ≠ 通过 ≠ 拒绝；本轮**不 rerun**。
+到 11:32:48Z 那笔满 24h 时（下一轮 20:2x CST 之后）按 §三百二十八 §五 第 2 条定性收窄。
+
+### 二 `8dbf5caa` 的 Windows 车道红：平台字面量，不是产品缺陷
+
+`Windows Full Test` shard **4/8** 红在 `src/main/storage/usage.test.ts` 一条用例：`AssertionError: expected 'C:\\' to be '/'`。
+那一笔把「可用空间按卷测量」做进去时，用例把「走到底」的期望值写成了 POSIX 的 `/`，而实现走的是宿主 `path.dirname` ⇒ Windows 上停在 `C:\`。
+按纪律**不改判据、只改期望值的构造**：`parse(resolve(p)).root`（POSIX `/`、Windows `C:\`），并补一条「确实向上走过不止一次」的断言 —— 只有一次也会「停在根」，等于把这段旅程整个跳过。
+
+**变异自证**：把实现的终止条件改成「根下一层就停」（`dirname(parent) === parent`），该用例当场红（`expected '/var' to be '/'`）；恢复后 2 files / 87 passed。提交 `beef05bc`。
+
+### 三 本单元交付：收割余量闸的两种失败形状都给出终态（证据档 `docs/evidence/2026-11-14-harvest-headroom-finalize.md`）
+
+- `availableBytes` 读不出来时原来会**抛出**，而抛出点在 `finalize` 之前 ⇒ 已跑完的远端作业在库里与「收割从未开始」同形。现在 fail-closed（不下载）但**必须落终态**，文案点名「没有枚举、文件仍在 `<workdir>`」。
+- 余量不足那条跳过路径补上同一句：它写进 `left_on_remote` 的是空数组，而空数组在面板上读作「远端什么都没剩」。
+- **用例逼出一个更早就存在的缺陷**：`finalizeAndReturn` 引用的是**靠后声明**的 `buildAndBroadcastNotification`（HEAD `282` vs `307`），而生产里 `broadcast` 永远有值（`job-runtime.ts:37`）⇒ 主机缺失 / SSH 解析失败 / 枚举失败 / 余量不足这四条早退路径一律**写完行再抛 ReferenceError**，通知一条也没发出去，而 `job-poller` 把它记成「记录之前就失败了」（与事实相反）。已把声明挪到前面，并在旁边写明为什么不能靠后。
+- 这道闸此前**一条用例都没有**（`availableBytes` 是直接 import 的，两种形状在本机都构造不出来）⇒ 新增可注入的 `availableBytesFn` + 三条用例。
+
+### 四 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/compute/harvest-engine.test.ts --maxWorkers=1` | 19 passed |
+| `npx vitest run src/main/compute --maxWorkers=2` | 28 files / 577 passed \| 5 skipped（582），exit 0 |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（本笔两文件） | 0 problems |
+| `prettier --check`（本笔两文件） | 通过 |
+
+### 五 下一轮第一步
+
+1. 读 `beef05bc` 与本笔的车道判决（看门脚本 `/tmp/ci-verdict.txt`）；Windows 分片若仍红，按「失败文件是否本批碰过」逐次归因，不许先当抖动。
+2. 11:32:48Z 满 24h 仍零判决 ⇒ 定性收窄成「本账号 9 笔提交 24h 内一律无判决（含三笔注定被拒的探针）」，并把「待接受协议 / 会员状态」作为唯一需用户动手的两项写进汇报。
+3. 下一单元候选：`job-poller` 的那句 `harvest failed before recording a result` 在本次修复后**仍可能与事实相反**（例如 `jobRepository.update` 自己抛）⇒ 给它加「行是否已写」的判据；或从 B 段之外自拟一个新能力面。
