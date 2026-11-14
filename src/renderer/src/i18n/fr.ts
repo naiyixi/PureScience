@@ -3992,6 +3992,9 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '{count} fichier(s) mis en avant',
   'jobDetail.leftOnRemote': '{count} laissé(s) sur l’hôte distant',
   'jobDetail.leftOnRemoteNotListed': '{count} de plus non listés dans le résultat',
+  'jobDetail.leftOnRemoteReasonResidency': 'Laissé volontairement sur l’hôte distant',
+  'jobDetail.leftOnRemoteReasonFileLimit': 'Dépasse la limite de téléchargement par fichier',
+  'jobDetail.leftOnRemoteReasonTotalLimit': 'Dépasse le total de téléchargement de cette tâche',
   'jobDetail.leftOnRemoteNotEnumerated':
     'Le répertoire de travail distant n’a pas été listé : ce qui s’y trouve encore reste inconnu',
   'jobDetail.harvestFailed': 'Récupération échouée',

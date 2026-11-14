@@ -18680,3 +18680,47 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 2. 再读一次 `notary-status.yml`；任一 `*.dmg` 变 `Accepted` ⇒ `gh run rerun 43423715874 --failed` → 看 `publish` 是否执行 → 页出现后做 v2.27.0 第 2/3 条；仍全 `In Progress` ⇒ 只记读数（不改定性）。
 3. **窗口读数单元（可做则做）**：在隔离根起一个实例（`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT` + 独立端口，且 `settings.dataRoot` 一并指到隔离目录），种一行「`harvest_error` 非空 + `left_on_remote` NULL」的作业，用 CDP 读 `[data-testid="left-on-remote-not-enumerated"]` 与数字芯片缺席，收尾删项目/停进程/删临时根。**前置条件**：空闲页 > 20,000 且 swap 可用 > 2 GB（先取数再决定，不满足就再记一轮具名未办）。
 4. 队列 B 段仍只剩 M2（⛔ 卡产品决定：本地解析模型是「随包分发」还是「按需下载」，属需用户拍板项，不自行开）。
+
+## 三百三十二、本轮追加（执行器，2026-11-15 00:1x–）—— 面板把收割的机器枚举直接印给人看：三个 reason 改成句子（九语），未知值照原样显示
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 承接 §三百三十一（同一轮内的第二个单元）：那一笔把「没枚举」这一态做完并推上去（`198c5f2f`），
+  收尾逐字段复核面板渲染时撞出这一格 —— `entry.reason` 是**原样渲染**的机器枚举。
+- `git log --oneline origin/main -1` = `198c5f2f`（本执行器上一笔）；工作区只有本单元的在制文件 + 三份**不是本轮的**
+  未跟踪证据档（11-01 一份、11-04 两份），一个字节没碰。
+- 在飞车道：`198c5f2f` 的 Nightly / Windows Full Test 都在跑 ⇒ 本单元**先本地提交、等那两条落定再推**（推送会取消在跑的 run）。
+
+### 一 交付
+
+- 新纯模块 `src/renderer/src/components/left-on-remote-reason.ts`：三个已知 reason → 字典键；**未知 reason 原样返回**
+  （认不出的值显示原值，至少可对照作业记录核查；换成「其他原因」就是一句没人能验证的解释）。
+- 面板 `FeaturedOutputs.tsx` 改为 `leftOnRemoteReasonLabel(entry.reason, t)`；文件、大小、顺序不变。
+- 九语字典各加 3 键（`jobDetail.leftOnRemoteReasonResidency` / `…FileLimit` / `…TotalLimit`），zh ≠ en；
+  **只在渲染层翻译** —— `JobResult` / `JobSummary` 里的 `reason` 保持原样标识符（agent 靠它分支、证据档靠它复核）。
+- 顺手修一处**面向 agent 的文档错误**：`resources/skills/remote-compute-ssh/SKILL.md` 把该字段写成
+  `reason: 'residency:remote'`（那是收割配置里的 `residency: 'remote'`），已改成真实取值并列出三个枚举。
+- 证据档 `docs/evidence/2026-11-15-left-on-remote-reason-labels.md`。
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run …/left-on-remote-reason.test.ts …/FeaturedOutputs.render.test.tsx --maxWorkers=1` | 2 files / **10 passed** |
+| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts` | **42 passed**（九文件齐平、zh ≠ en） |
+| `npx tsc --noEmit -p tsconfig.web.json --composite false` | exit 0 |
+| `npx eslint --no-cache`（面板+新模块+两测试+九字典） | 0 problems |
+| `npx prettier --check`（同上） | 通过 |
+
+新增渲染用例断言**原始枚举不再出现** + 两句译文都在 + 文件与大小不变 ⇒ 把实现改回 `entry.reason` 会当场红（本单元的守卫）。
+
+### 三 边界与具名未办
+
+1. **仍无窗口读数**（同 §三百三十一 §四 第 1 条：真实库 `ComputeJob` 零行、空闲页 ≈4,300、swap 可用 < 1 GB）。
+2. **阈值数字不上屏**：`left_on_remote` 条目没携带 `max_file_mb` / `max_total_mb`，文案只说「超过上限」，不编数字；
+   要显示阈值需让载荷带上收割配置，属独立单元。
+3. `reason` 仍是 `string`（非联合）：新增 reason 无需改类型即可流到面板并原样显示。
+
+### 四 下一轮第一步
+
+同 §三百三十一 §五（① 读两条车道判决；② 公证再读一次；③ 满足内存门槛才做窗口读数单元）。

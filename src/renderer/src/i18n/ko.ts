@@ -3819,6 +3819,9 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '주요 파일 {count}개',
   'jobDetail.leftOnRemote': '{count}개 원격에 남음',
   'jobDetail.leftOnRemoteNotListed': '추가 {count}개는 결과에 없음',
+  'jobDetail.leftOnRemoteReasonResidency': '작업 설정에 따라 원격에 그대로 남겨 둠',
+  'jobDetail.leftOnRemoteReasonFileLimit': '파일당 다운로드 한도를 초과함',
+  'jobDetail.leftOnRemoteReasonTotalLimit': '이 작업의 전체 다운로드 한도를 초과함',
   'jobDetail.leftOnRemoteNotEnumerated':
     '원격 작업 디렉터리를 나열하지 않았으므로 무엇이 남아 있는지 알 수 없습니다',
   'jobDetail.harvestFailed': '수확 실패',

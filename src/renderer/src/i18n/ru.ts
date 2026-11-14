@@ -3897,6 +3897,9 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': 'Ключевых файлов: {count}',
   'jobDetail.leftOnRemote': '{count} осталось на удалённом узле',
   'jobDetail.leftOnRemoteNotListed': 'Ещё {count} не указано в результате',
+  'jobDetail.leftOnRemoteReasonResidency': 'Оставлено на удалённом узле намеренно',
+  'jobDetail.leftOnRemoteReasonFileLimit': 'Больше предела загрузки на файл',
+  'jobDetail.leftOnRemoteReasonTotalLimit': 'Превышен общий лимит загрузки для этой задачи',
   'jobDetail.leftOnRemoteNotEnumerated':
     'Удалённый рабочий каталог не был просмотрен, поэтому неизвестно, что там осталось',
   'jobDetail.harvestFailed': 'Сбор не удался',

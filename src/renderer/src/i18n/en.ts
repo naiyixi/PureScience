@@ -3918,6 +3918,9 @@ export const en: Record<ZhKey, string> = {
   'jobDetail.featuredFilesLabel': '{count} featured file(s)',
   'jobDetail.leftOnRemote': '{count} left on the remote host',
   'jobDetail.leftOnRemoteNotListed': '{count} more not listed in the result payload',
+  'jobDetail.leftOnRemoteReasonResidency': 'Kept on the remote host on purpose',
+  'jobDetail.leftOnRemoteReasonFileLimit': 'Larger than the per-file download limit',
+  'jobDetail.leftOnRemoteReasonTotalLimit': 'Over the download total for this job',
   // Same reason as the entry list above, but for the case where there is no list at all: the harvest
   // stopped before it could look (see LeftOnRemoteState), so silence would read as "nothing stayed".
   'jobDetail.leftOnRemoteNotEnumerated':

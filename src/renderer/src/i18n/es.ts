@@ -3967,6 +3967,9 @@ export const es: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '{count} archivo(s) destacado(s)',
   'jobDetail.leftOnRemote': '{count} en el host remoto',
   'jobDetail.leftOnRemoteNotListed': '{count} más no listados en el resultado',
+  'jobDetail.leftOnRemoteReasonResidency': 'Dejado a propósito en el host remoto',
+  'jobDetail.leftOnRemoteReasonFileLimit': 'Supera el límite de descarga por archivo',
+  'jobDetail.leftOnRemoteReasonTotalLimit': 'Supera el total de descarga de esta tarea',
   'jobDetail.leftOnRemoteNotEnumerated':
     'No se listó el directorio de trabajo remoto, así que se desconoce qué queda allí',
   'jobDetail.harvestFailed': 'Recolección fallida',

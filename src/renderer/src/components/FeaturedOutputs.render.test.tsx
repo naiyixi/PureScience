@@ -139,6 +139,30 @@ describe('FeaturedOutputs', () => {
     expect(testId('harvest-error-workdir')?.textContent ?? '').toContain('/scratch/biowulf/job-abc')
   })
 
+  it("says why a file stayed in words, not in the harvest's machine enum", async () => {
+    await render(
+      makeJob({
+        featured_files: [],
+        featured_file_count: 0,
+        left_on_remote: [
+          { uri: 'ssh:biowulf//scratch/reads.bam', size_mb: 1_204, reason: 'exceeds_max_file_mb' },
+          { uri: 'ssh:biowulf//scratch/ckpt.bin', size_mb: 80, reason: 'residency_remote' }
+        ],
+        left_on_remote_count: 2
+      })
+    )
+
+    const left = testId('left-on-remote-files')?.textContent ?? ''
+    // A code identifier is not an explanation: the reader gets the sentence for each reason.
+    expect(left).not.toContain('exceeds_max_file_mb')
+    expect(left).not.toContain('residency_remote')
+    expect(left).toContain('Larger than the per-file download limit')
+    expect(left).toContain('Kept on the remote host on purpose')
+    // The file itself and its size are unchanged — only the reason was translated.
+    expect(left).toContain('ssh:biowulf//scratch/reads.bam')
+    expect(left).toContain('1204')
+  })
+
   it('does not raise the "never listed" line when the harvest did take a listing', async () => {
     await render(
       makeJob({

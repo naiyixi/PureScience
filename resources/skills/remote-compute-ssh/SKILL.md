@@ -181,7 +181,9 @@ const r = await c.attach_job(job_id).result()
 //   featured_files: ['hpc/<job_id>/featured/out.result', ...],   // workspace-relative
 //   hidden_files:   ['hpc/<job_id>/hidden/run.log', ...],
 //   output_files:   [...featured_files, ...hidden_files],         // featured first
-//   left_on_remote: [{ uri: 'ssh:<alias>/<abs_path>', size_mb: 420, reason: 'residency:remote' }],
+//   left_on_remote: [{ uri: 'ssh:<alias>/<abs_path>', size_mb: 420, reason: 'residency_remote' }],
+//     // reason is one of 'residency_remote' | 'exceeds_max_file_mb' | 'exceeds_max_total_mb'
+//     // (the same identifiers the harvest classifier writes — filter on these, not on the config value).
 //   left_on_remote_state: 'enumerated' | 'not-enumerated',
 //     // 'not-enumerated' = the harvest stopped before listing the workdir (headroom, ssh, enumeration),
 //     // so an empty left_on_remote means "nobody looked", not "nothing is there" — check before chaining.
