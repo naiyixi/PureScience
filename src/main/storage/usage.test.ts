@@ -1,6 +1,6 @@
 import { chmod, link, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, parse, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { availableBytes, computeStorageUsage, dirSize, measureDirectorySize } from './usage'
@@ -20,6 +20,11 @@ const writeSized = async (path: string, bytes: number): Promise<void> => {
   await mkdir(join(path, '..'), { recursive: true })
   await writeFile(path, Buffer.alloc(bytes))
 }
+
+// The host's own answer for "where is this path's volume root" (`/` on POSIX, `C:\` on Windows).
+// Derived from `node:path` rather than spelled as a literal, so an assertion about stopping at the
+// root means the same thing on every platform the suite runs on.
+const volumeRootOf = (path: string): string => parse(resolve(path)).root
 
 describe('computeStorageUsage', () => {
   it('sums per-category bytes and gives runtime a sorted children breakdown', async () => {
@@ -287,9 +292,14 @@ describe('availableBytes', () => {
       throw Object.assign(new Error('no such file'), { code: 'ENOENT' })
     })
 
-    await expect(availableBytes(join(tmpdir(), 'x'), { statfsOf })).rejects.toThrow('no such file')
-    // Every attempt reports "not there" ⇒ walk to `/` and stop, rather than spin forever.
-    expect(statfsOf.mock.calls.at(-1)?.[0]).toBe('/')
+    const start = join(tmpdir(), 'x')
+    await expect(availableBytes(start, { statfsOf })).rejects.toThrow('no such file')
+    // Every attempt reports "not there" ⇒ walk up and stop at the volume root rather than spin forever.
+    // The root is whatever the host says it is (`/` on POSIX, a drive such as `C:\` on Windows) — spelling
+    // it as a literal would make this assertion true only on the machine that wrote it.
+    expect(statfsOf.mock.calls.at(-1)?.[0]).toBe(volumeRootOf(start))
+    // …and it really climbed: one attempt would also "stop at the root" if the walk never started.
+    expect(statfsOf.mock.calls.length).toBeGreaterThan(1)
   })
 })
 
