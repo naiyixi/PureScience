@@ -22,7 +22,7 @@ import type { SshRunner } from './ssh-runner'
 import type { ScpRunner, ScpResult } from './scp-runner'
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
-import { getJobHarvestDir, harvestJob } from './harvest-engine'
+import { getJobHarvestDir, harvestJob, computeHarvestDiskHeadroomBytes } from './harvest-engine'
 import { beginMigration, clearMigrationPending } from '../storage/migration-state'
 
 // ---------------------------------------------------------------------------
@@ -497,6 +497,97 @@ describe('harvestJob — missing host', () => {
     const finalUpdate = updates[0]!.data as Record<string, unknown>
     expect(finalUpdate.harvestedAt).toBeInstanceOf(Date)
     expect(typeof finalUpdate.harvestError).toBe('string')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Disk headroom guard: the reading decides, and a reading that cannot be taken
+// still ends in a terminal job (never an escaping throw).
+// ---------------------------------------------------------------------------
+
+describe('harvestJob — disk headroom guard', () => {
+  it('refuses to download below the threshold and says where the files were left', async () => {
+    const storageRoot = await mkTmp()
+    const job = makeJob()
+    const ssh = makeSshRunner(findOutput([{ path: 'out.result', size_bytes: 10 }]))
+    const scp = makeScpRunner()
+    const { repo: jobRepo, updates } = makeJobRepo(job)
+    const broadcast = vi.fn()
+
+    await harvestJob(job, {
+      sshRunner: ssh,
+      scpRunner: scp,
+      hostRepository: makeHostRepo(sampleHost()),
+      jobRepository: jobRepo,
+      storageRoot,
+      availableBytesFn: () => Promise.resolve(1024),
+      broadcast
+    })
+
+    const data = updates[0]!.data as Record<string, unknown>
+    expect(data.harvestedAt).toBeInstanceOf(Date)
+    const error = String(data.harvestError)
+    expect(error).toContain('disk headroom insufficient')
+    // The honest half: an empty left_on_remote must not be read as "nothing is left there".
+    expect(error).toContain(job.remote_workdir!)
+    expect(error).toContain('not enumerated')
+    expect(scp.calls).toHaveLength(0)
+    // The guard sits before enumeration, so a full disk costs no SSH round-trip.
+    expect(vi.mocked(ssh.run).mock.calls).toHaveLength(0)
+    expect(broadcast).toHaveBeenCalled()
+  })
+
+  it('finalizes with a named reason when the volume cannot be read at all', async () => {
+    const storageRoot = await mkTmp()
+    const job = makeJob()
+    const ssh = makeSshRunner(findOutput([{ path: 'out.result', size_bytes: 10 }]))
+    const scp = makeScpRunner()
+    const { repo: jobRepo, updates } = makeJobRepo(job)
+    const broadcast = vi.fn()
+
+    await harvestJob(job, {
+      sshRunner: ssh,
+      scpRunner: scp,
+      hostRepository: makeHostRepo(sampleHost()),
+      jobRepository: jobRepo,
+      storageRoot,
+      availableBytesFn: () =>
+        Promise.reject(Object.assign(new Error('statfs unavailable'), { code: 'EACCES' })),
+      broadcast
+    })
+
+    // The failure this exists for: the throw used to escape before any finalize, leaving a finished
+    // remote job indistinguishable from one whose harvest never ran.
+    const data = updates[0]!.data as Record<string, unknown>
+    expect(data.harvestedAt).toBeInstanceOf(Date)
+    expect(data.notifiedAt).toBeInstanceOf(Date)
+    const error = String(data.harvestError)
+    expect(error).toContain('disk headroom could not be read')
+    expect(error).toContain('statfs unavailable')
+    expect(error).toContain(job.remote_workdir!)
+    expect(scp.calls).toHaveLength(0)
+    expect(broadcast).toHaveBeenCalled()
+  })
+
+  it('harvests normally when the reading clears the threshold', async () => {
+    const storageRoot = await mkTmp()
+    const job = makeJob()
+    const ssh = makeSshRunner(findOutput([{ path: 'out.result', size_bytes: 10 }]))
+    const scp = makeScpRunner()
+    const { repo: jobRepo, updates } = makeJobRepo(job)
+
+    await harvestJob(job, {
+      sshRunner: ssh,
+      scpRunner: scp,
+      hostRepository: makeHostRepo(sampleHost()),
+      jobRepository: jobRepo,
+      storageRoot,
+      availableBytesFn: () => Promise.resolve(computeHarvestDiskHeadroomBytes + 1)
+    })
+
+    const data = updates[0]!.data as Record<string, unknown>
+    expect(data.harvestError).toBeNull()
+    expect(scp.calls.length).toBeGreaterThan(0)
   })
 })
 

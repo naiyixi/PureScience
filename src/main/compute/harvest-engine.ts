@@ -202,6 +202,12 @@ export type HarvestDeps = {
    * Injected as undefined in tests that don't need notification assertions.
    */
   broadcast?: (summary: JobSummary) => void
+  /**
+   * Override the free-space reading for tests (defaults to the real `availableBytes`). Injected rather
+   * than imported directly at the call site so the headroom guard's two failure shapes — "below the
+   * threshold" and "the volume cannot be read at all" — are both reachable without an unwritable disk.
+   */
+  availableBytesFn?: typeof availableBytes
 }
 
 // ---------------------------------------------------------------------------
@@ -263,46 +269,10 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   await mkdir(featuredDir, { recursive: true })
   await mkdir(hiddenDir, { recursive: true })
 
-  // finalize writes harvestedAt + harvestError + leftOnRemote + notifiedAt in a single atomic
-  // update (fix: was two separate writes causing notification loss on restart between them).
-  // Returns the updated job so the caller can broadcast if needed.
-  const finalize = async (
-    harvestError: string | null,
-    leftOnRemoteJson: string
-  ): Promise<ComputeJob> => {
-    return await jobRepository.update(job.job_id, {
-      harvestedAt: new Date(),
-      harvestError,
-      leftOnRemote: leftOnRemoteJson,
-      notifiedAt: new Date() // Atomic with harvest result — notification inbox write (design §2/§11)
-    })
-  }
-
-  // Helper: finalize + broadcast + return (DRY for all early-exit paths).
-  const finalizeAndReturn = async (
-    harvestError: string | null,
-    leftOnRemoteJson: string
-  ): Promise<void> => {
-    const updatedJob = await finalize(harvestError, leftOnRemoteJson)
-    // Broadcast the compute_done notification. We already have host lookup result here for
-    // displayName, but early-exit paths don't — so we delegate displayName lookup to the
-    // notification builder (emitJobNotification now does host.get internally).
-    if (deps.broadcast) {
-      await buildAndBroadcastNotification(updatedJob)
-    }
-  }
-
-  // Disk headroom guard (source v0.15.1 parity): refuse to harvest when less than 2 GiB is
-  // available on the data root, protecting the local disk from filling up across jobs.
-  const available = await availableBytes(storageRoot)
-  if (available < computeHarvestDiskHeadroomBytes) {
-    await finalizeAndReturn(
-      `harvest skipped: disk headroom insufficient (${Math.round((available / (1024 * 1024 * 1024)) * 10) / 10} GiB free, need 2 GiB)`,
-      '[]'
-    )
-    return
-  }
-
+  // Declared before `finalizeAndReturn`, not after the guard: the early-exit paths below are exactly
+  // the ones that must notify, and a later `const` would leave them throwing a temporal-dead-zone
+  // ReferenceError after the row was already written (so the job persisted but the caller saw a
+  // throw and no notification was broadcast).
   // Builds the notification payload and broadcasts it (idempotent guard inside buildComputeDonePayload).
   const buildAndBroadcastNotification = async (updatedJob: ComputeJob): Promise<void> => {
     try {
@@ -348,6 +318,68 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     }
   }
 
+  // finalize writes harvestedAt + harvestError + leftOnRemote + notifiedAt in a single atomic
+  // update (fix: was two separate writes causing notification loss on restart between them).
+  // Returns the updated job so the caller can broadcast if needed.
+  const finalize = async (
+    harvestError: string | null,
+    leftOnRemoteJson: string
+  ): Promise<ComputeJob> => {
+    return await jobRepository.update(job.job_id, {
+      harvestedAt: new Date(),
+      harvestError,
+      leftOnRemote: leftOnRemoteJson,
+      notifiedAt: new Date() // Atomic with harvest result — notification inbox write (design §2/§11)
+    })
+  }
+
+  // Helper: finalize + broadcast + return (DRY for all early-exit paths).
+  const finalizeAndReturn = async (
+    harvestError: string | null,
+    leftOnRemoteJson: string
+  ): Promise<void> => {
+    const updatedJob = await finalize(harvestError, leftOnRemoteJson)
+    // Broadcast the compute_done notification. We already have host lookup result here for
+    // displayName, but early-exit paths don't — so we delegate displayName lookup to the
+    // notification builder (emitJobNotification now does host.get internally).
+    if (deps.broadcast) {
+      await buildAndBroadcastNotification(updatedJob)
+    }
+  }
+
+  // The remote workdir the job was told to write into. Resolved here rather than next to the
+  // enumeration because the headroom guard's skip message has to name where the files were left.
+  const remoteWorkdir = job.remote_workdir ?? `~/.purescience/jobs/${job.job_id}`
+
+  // Disk headroom guard (source v0.15.1 parity): refuse to harvest when less than 2 GiB is
+  // available on the data root, protecting the local disk from filling up across jobs.
+  //
+  // A reading that cannot be taken is neither "the disk is full" nor "there is room to download".
+  // The guard fails closed — it never starts a download it cannot size against the disk — but it
+  // still finalizes the job: the earlier shape let the throw escape before any finalize, so a
+  // finished remote job kept looking like one whose harvest never ran, and the caller got an
+  // exception instead of a terminal job carrying a reason. Both skip messages say out loud that the
+  // files were left where they are, because `left_on_remote` is written empty here (we never
+  // enumerated) and an empty list otherwise reads as "nothing is left on the remote".
+  let available: number
+  try {
+    available = await (deps.availableBytesFn ?? availableBytes)(storageRoot)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    await finalizeAndReturn(
+      `harvest skipped: disk headroom could not be read (${msg}); the remote files were not enumerated and remain in ${remoteWorkdir}`,
+      '[]'
+    )
+    return
+  }
+  if (available < computeHarvestDiskHeadroomBytes) {
+    await finalizeAndReturn(
+      `harvest skipped: disk headroom insufficient (${Math.round((available / (1024 * 1024 * 1024)) * 10) / 10} GiB free, need 2 GiB); the remote files were not enumerated and remain in ${remoteWorkdir}`,
+      '[]'
+    )
+    return
+  }
+
   // ── 1. Look up host ─────────────────────────────────────────────────────────
   let host: Awaited<ReturnType<typeof hostRepository.get>>
   try {
@@ -372,8 +404,6 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     await finalizeAndReturn(`ssh resolve failed: ${msg}`, '[]')
     return
   }
-
-  const remoteWorkdir = job.remote_workdir ?? `~/.purescience/jobs/${job.job_id}`
 
   // ── 3. Enumerate remote files ───────────────────────────────────────────────
   let remoteFiles: FileEntry[]
