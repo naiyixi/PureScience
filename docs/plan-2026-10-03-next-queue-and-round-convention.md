@@ -18350,3 +18350,82 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
     cask 去掉 `--no-quarantine`）；
   - 仍全 `In Progress` ⇒ **不要再 rerun**（每 rerun 会 `notarytool submit` 出一笔新提交，实测已累计 6 笔 dmg 提交
     在排队），只记录读数并等下一轮。
+
+## 三百二十七、本轮追加（执行器，2026-11-14 08:0x–）—— 苹果仍在排队（12h33m 零判决）；顺手把上一轮留在树上的"更新检查失败原因"收口
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3`：`85c04418`（证据档反证）→ `df5758db`（§三百二十六）→ `e4ff5355`；
+  本地 `origin/main..HEAD` 有 **一笔未推**：`297d5b45 fix(diagnostics)`（停顿判词 / canary）。
+- 工作区在制品：`src/main/update/{manifest,manifest.test,service,service.test}.ts`（mtime 03:51–03:53，**不是本轮的**）
+  + 三份更早的未跟踪证据档（11-01、11-04 各一份，同样不是本轮的，不动、不提交）。
+- **网络（本轮的真阻塞）**：`git fetch/push` 走配置里的 `http.proxy=127.0.0.1:7897` 一律
+  `LibreSSL SSL_connect: SSL_ERROR_SYSCALL`；`gh` 与 `curl` 直连同样超时。逐路探针后定因：
+  **直连 + HTTP/1.1 可用**（三次 `ls-remote` 全 `EXIT=0`），经代理不可用 ⇒ 推送改用
+  `git -c http.proxy= -c http.version=HTTP/1.1 push`（**只做单次命令行覆盖，不改全局配置**）。
+  首推被 `Error in the HTTP2 framing layer` 拒，换 HTTP/1.1 后 `85c04418..297d5b45` 成功。
+- B 段（A7 / S3 / M2）已收口，C 段仍外部阻塞 ⇒ 本轮按 §三百二十六「先读状态再决定重跑」执行，
+  并把上一轮**未完成在制品**验完门禁后收口。
+
+### 一 公证读数（真车道，第三次；`notary-status.yml` 43531887634，00:06:43Z）
+
+| created (Z) | 状态 | 名字 |
+| --- | --- | --- |
+| 2026-11-13T16:41:06 | In Progress | probe.zip |
+| 2026-11-13T15:58:27 | In Progress | probe.zip |
+| 2026-11-13T14:19:06 | In Progress | zerolink-purescience-2.27.0-mac-x64.dmg |
+| 2026-11-13T14:18:33 | In Progress | zerolink-purescience-2.27.0-mac-arm64.dmg |
+| 2026-11-13T13:25:25 | In Progress | zerolink-purescience-2.27.0-mac-x64.dmg |
+| 2026-11-13T13:24:38 | In Progress | zerolink-purescience-2.27.0-mac-arm64.dmg |
+| 2026-11-13T11:34:02 | In Progress | zerolink-purescience-2.27.0-mac-arm64.dmg |
+| 2026-11-13T11:32:48 | In Progress | zerolink-purescience-2.27.0-mac-x64.dmg |
+
+状态计数只有一行：`8 In Progress`。**最早那笔已等 12h33m，两支探针分别 8h08m / 7h25m**。
+与 16:52Z 那次读数（8/8 In Progress、最早 5h20m）对照：**7 小时后同一个集合一笔都没动过**，
+连"必须被拒"的未签名探针也没有判决 ⇒ 这是服务级积压的**持续**证据，不是某一次抓拍的抖动。
+
+判据不变：**没有判决 ≠ 通过 ≠ 拒绝**。按 §三百二十六 的结论**本轮不 rerun**（每 rerun 会再排一笔新提交）。
+`publish` 的 fail-closed `needs` 不动，v2.27.0 第 2/3 条（`spctl` 的 `Notarized Developer ID`、cask 去
+`--no-quarantine`）仍只能等第一笔 `Accepted`。
+**本轮没取到的一条（具名）**：`developer.apple.com/system-status/` 这次读不到（Firecrawl 走代理握手超时，
+`_ssl.c:1064 handshake timed out`）⇒ 状态页此刻是"未复核"，不是"仍为 available"。
+
+### 二 交付：更新检查的失败原因具名（接手在制品，`67c1c9b5`）
+
+这条路上的失败以前**全读成同一个** `errorCategory: 'error'`：抓不到 feed、feed 回 404、200 但正文不是 JSON、
+请求被 10 秒上限掐断 —— 11-12 的现场排查就是因为分不出来，只能重跑才能定因。
+
+- `manifest.ts`：闭合词表 `UpdateCheckFailureCause`（`http-status` / `invalid-manifest` / `transport` /
+  `deadline` / `unclassified`）+ 清单被拒时分 `shape` / `download-entry` / `download-host`（形状错、条目不全、
+  发布主机不在白名单是三种不同的修法）。`UpdateManifestError` **故意不改 `name`**：日志按 `name` 分类，
+  改名会把每一笔包装过的失败读成 `errorCategory: 'object'`，比原来的 `'error'` 更差 —— 词表由字段承载。
+- `service.ts`：`operation.fail(error, { result: 'error', ...describeUpdateFailure(error) })`；超时那条
+  （`withinDeadline`）改抛带 `deadline` 的错误，不再与"网络没了"同形。
+- 消息本身原样保留（渲染层会把 `error.message` 显示给用户，包装不许把「离线」换成通用话术）。
+- **消费方是生产代码**：`startDiagnosticOperation(...).fail()` 把 `fields` 并进 `operation failed` 那行日志
+  （`src/main/diagnostics/operation.ts` 的 `finish()`），所以这三个字段真的落到日志 / support bundle 里，
+  不是"写了没人读"的字段。
+- 守卫：`manifest.test.ts` 里一条**源读**用例钉住词表成员逐字不变，且 `manifest.ts` / `service.ts` 出现裸
+  `throw new Error(` 就红 —— 以后再加抛出点必须显式选一个原因。
+
+**边界（不许读成更强）**：读数取到"诊断行带哪几个字段"这一层（用产品自己的 `startDiagnosticOperation`
+与真 `UpdateService` 跑）；**"日志落盘后长什么样"没有单独取证** —— 那一层是既有机制、本轮未改。
+本条没有用户可见界面（纯主进程诊断字段），因此**没有真窗口读数**，也不声称有。
+
+### 三 门禁（全部实跑，改动的同一批文件）
+
+- `npx vitest run src/main/update --maxWorkers=2` → **9 文件 / 131 例通过**（`VITEST_EXIT=0`）；
+- `npx tsc --noEmit -p tsconfig.node.json --composite false` → 0；`… tsconfig.web.json …` → 0（`NODE_OPTIONS=--max-old-space-size=8192`）；
+- `npx eslint --no-cache`（四文件）→ 0 problems；
+- `bash scripts/pre-push-checks.sh` → 退出 0（推送 `297d5b45` 时跑过，同一棵树）。
+
+### 四 下一轮第一步
+
+1. **先读状态**：`gh workflow run notary-status.yml --ref main`（arm64 无 runner 加 `-f runner=macos-15-intel`）；
+   任一 `*.dmg` 变 `Accepted` ⇒ `gh run rerun 43423715874 --failed` → 看 `publish` 是否执行 → 页出现后做
+   v2.27.0 第 2/3 条；仍全 `In Progress` ⇒ 只记读数。
+2. 若到 24h 仍无任何判决（含探针）：那就不再是"排一会儿队"，要按**账号/凭证侧**查一次
+   （`notarytool history` 是否只剩我们的提交、`altool --notarization-info` 是否给不同答案），并在证据档里
+   写明"服务级积压"这个定性到什么时刻为止仍然成立。
+3. 推送继续走 `git -c http.proxy= -c http.version=HTTP/1.1`（配置里的代理端口在听但 TLS 握手全废，
+   **不改全局配置**）。
