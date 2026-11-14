@@ -18429,3 +18429,79 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
    写明"服务级积压"这个定性到什么时刻为止仍然成立。
 3. 推送继续走 `git -c http.proxy= -c http.version=HTTP/1.1`（配置里的代理端口在听但 TLS 握手全废，
    **不改全局配置**）。
+
+## 三百二十八、本轮追加（执行器，2026-11-14 11:4x–）—— 公证第 4 次读数：16 小时零判决；顺手把语料里最后三族逐条判掉（都不是缺陷）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `335f4adb`（§三百二十七）→ `67c1c9b5` → `297d5b45`；`origin/main..HEAD` 为空（上一轮的推送已落地）。
+- `git status --short`：只有三份**不是本轮的**未跟踪证据档（`2026-11-01-…`、两份 `2026-11-04-…`），一个字节没碰、不提交。
+- `hermes cron list` 只有本任务一个执行器；工作区无 `vitest`/`playwright` 在跑（只有一个跑了 3 天的 dev 实例）。
+- **机器侧：本轮不做任何性能测量。** `load averages: 32.15 15.49 9.59`、空闲页 3,950（≈ 65 MB）、swap 累计
+  2.15 亿次换出 ⇒ 墙钟读数一律不可归因（照技能「没有真机总量数字就不声称体感收益」）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）无可做项；C 段外部阻塞；发版卡在公证 ⇒ 本轮按 §三百二十七
+  §四 第 1 条执行「先读状态」，并把上一轮写下的那条不成立的取证路径改正（见 §二）。
+
+### 一 公证读数（第 4 次，`notary-status.yml` run `43552671696`，03:38:31Z）
+
+| created (Z) | 状态 | 名字 | 已等 |
+| --- | --- | --- | --- |
+| 2026-11-13T16:41:06 | In Progress | probe.zip | 10h57m |
+| 2026-11-13T15:58:27 | In Progress | probe.zip | 11h40m |
+| 2026-11-13T14:19:06 | In Progress | …-2.27.0-mac-x64.dmg | 13h19m |
+| 2026-11-13T14:18:33 | In Progress | …-2.27.0-mac-arm64.dmg | 13h20m |
+| 2026-11-13T13:25:25 | In Progress | …-2.27.0-mac-x64.dmg | 14h13m |
+| 2026-11-13T13:24:38 | In Progress | …-2.27.0-mac-arm64.dmg | 14h14m |
+| 2026-11-13T11:34:02 | In Progress | …-2.27.0-mac-arm64.dmg | 16h04m |
+| 2026-11-13T11:32:48 | In Progress | …-2.27.0-mac-x64.dmg | 16h05m |
+
+状态计数仍只有一行 `8 In Progress`。与 00:06Z 那次读数（8/8、最早 12h33m）对照：**3.5 小时后同一集合一格未动**，
+连「必须被判 `Invalid`」的未签名探针也没有判决。
+
+判据不变：**没有判决 ≠ 通过 ≠ 拒绝**。按 §三百二十六 的结论**本轮不 rerun**（每 rerun 会再排一笔新提交）。
+`publish` 的 fail-closed `needs` 不动；v2.27.0 第 2/3 条（`spctl` 的 `Notarized Developer ID`、cask 去
+`--no-quarantine`）仍只能等第一笔 `Accepted`。
+
+### 二 更正：上一轮写下的「账号侧查法」在本机做不到（别照着它再跑一轮）
+
+§三百二十七 §四 第 2 条写的是「按账号/凭证侧查（`altool --notarization-info` 对照）」。读源后**这条不成立**：
+
+- `xcrun altool --notarization-info` 要的是 **Apple ID + app-specific password** —— 本机两样都没有
+  （只有 `~/Desktop/AuthKey_GYV9CN22GA.p8` 这一把 API key）；
+- `notarytool info` 要 **Issuer ID**，而 Issuer 只存在于 CI secret（§三百二十五 §二 已具名记过），本机取不到。
+
+⇒ **本机唯一能拿到的判据就是 `notarytool history`**（已用于上表；它是团队级视图，8 笔就是这个账号下的全部）。
+能解释「未签名探针 12 小时不判决」的那一层 —— **开发者账号协议是否待接受、会员资格是否仍在有效状态** ——
+只存在于账号后台页面，**只能由用户看一眼**。本轮把它作为唯一需要人动手的一行写进汇报，不冒充已查。
+
+### 三 语料里最后三族逐条判掉（结论：都不是缺陷，别再来立項）
+
+本轮读的是**新鲜语料**：打包版 `main.log`（7,384 行，11-09 09:46Z → 11-14 03:38Z），先按
+`scripts/log-corpus-attribution.mjs` 切开归属，再对还没判过的三族逐条看。
+
+| 族 | 行数 | 判据 | 结论 |
+| --- | --- | --- | --- |
+| `uncaughtException: write EPIPE` | 128（**全在当前这个 run 里**，最后一条 03:36:16Z） | 打包版版本号 = **2.26.0**（`defaults read /Applications/PureScience.app/Contents/Info.plist CFBundleShortVersionString`），而修复 `e031864e`（控制台管道守卫，`index.ts:254` 接线）落于 2026-11-10、v2.26.0 的 tag 是 2026-11-05 | 已知缺口，**只能在下一版打包后被观测**；不是新缺陷 |
+| `unhandledRejection: ENOENT … open '<path>'` | 12 行（真实 19 次 / 两个 run） | 这些记录里 **`origin` 字段出现 0 次** ⇒ 写日志的进程早于 `58aa8bc8`（2026-11-10 12:08 补的「我方第一帧」）；即 2.26.0 | 同上：下一版打包后 `origin` 会直接点名调用方，届时再判，**本轮不许猜** |
+| `submit_findings evidence access validation failed` | 21 | 逐条都是 `Execution log for activity call_… was not read before submitting its check.`（`src/main/reviewer/mcp-server.ts:153` 的守卫）；同一 activity 出现约 2 次 = 一次被拒 + 一次重试 | **守卫按设计工作**：审查员没先读执行日志。不立項 |
+
+给下一轮留一条快判法：判「这一族是不是已经修好但还没发」用三步 —— ① 读产物版本号（`Info.plist`）
+② 看新字段在不在（`origin`）③ `git log -1 -- <修复文件>` 的日期是否早于该版本。**三样齐就不必再读代码。**
+
+### 四 边界（不许读成更强）
+
+- 本轮**没有任何产品行为改动**（只读语料 + 文档）。不声称 EPIPE/ENOENT 已消失，不声称公证有任何进展。
+- 上表「不是缺陷」只覆盖这三族在**这份语料**上的定性。`event loop stalled`（686 行）与
+  `ipc handler was slow`（保存 1,306 条、`reviewer:get-for-session` 44 条）是在 load 32 / 空闲 65 MB 的机器上取到的，
+  墙钟值一律不可归因 ⇒ 本轮不出结论、不拿它去改代码。
+- §二 的「协议/会员资格」是**推论**（它是唯一能解释「连注定被拒的探针也无判决」的已知机制），本机无法验证，标明未验。
+
+### 五 下一轮第一步
+
+1. 再读一次 `notary-status.yml`（arm64 拿不到 runner 时加 `-f runner=macos-15-intel`）：任一 `*.dmg` 变
+   `Accepted` ⇒ `gh run rerun 43423715874 --failed` → 看 `publish` 是否真的执行 → 页出现后做 v2.27.0 第 2/3 条；
+   仍全 `In Progress` ⇒ 只记录，**不 rerun**。
+2. 到 **2026-11-14T11:32Z**（最早那笔满 24 小时）仍零判决 ⇒ 把「服务级积压」的定性**收窄成一句可核的话**：
+   「本账号下 8 笔提交（含一支注定被拒的未签名探针）在 24 小时内一律没有判决」，并具名列出「只有用户能查的两项」
+   （待接受的协议 / 会员状态），不许再写成「苹果整体慢了」。
+3. 推送继续走 `git -c http.proxy= -c http.version=HTTP/1.1`（配置里的代理端口在听但 TLS 握手下不来，**不改全局配置**）。
