@@ -3600,6 +3600,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '重點檔案 {count} 個',
   'jobDetail.leftOnRemote': '{count} 個留在遠端',
   'jobDetail.leftOnRemoteNotListed': '另有 {count} 個未在結果裡列出',
+  'jobDetail.leftOnRemoteNotEnumerated': '遠端工作目錄未被列出，因此那邊還留著什麼尚不清楚',
   'jobDetail.harvestFailed': '收割失敗',
   'permissions.revokeAll': '全部撤銷',
   'permissions.revokeAllAria': '撤銷 {name} 的全部權限',

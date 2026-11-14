@@ -15,7 +15,11 @@ import type {
   ProbeResult,
   SubmitJobResult
 } from '../../shared/compute'
-import { DETAILS_DOC_MAX_LENGTH, isTerminalComputeJobStatus } from '../../shared/compute'
+import {
+  DETAILS_DOC_MAX_LENGTH,
+  isTerminalComputeJobStatus,
+  readLeftOnRemote
+} from '../../shared/compute'
 import {
   remoteUnprotectedRefusalMessage,
   unresolvedExecutionProtectionSnapshot,
@@ -1668,15 +1672,11 @@ export class ComputeService {
     // Terminal states that can have harvest output.
     const isTerminal = isTerminalComputeJobStatus(job.status)
 
-    // Parse left_on_remote JSON from the job row (may be undefined before harvest).
-    let leftOnRemote: Array<{ uri: string; size_mb: number; reason: string }> = []
-    if (job.left_on_remote) {
-      try {
-        leftOnRemote = JSON.parse(job.left_on_remote) as typeof leftOnRemote
-      } catch {
-        // Malformed JSON — treat as empty (same guard as harvest-engine and job-notifier).
-      }
-    }
+    // Parse left_on_remote JSON from the job row. Absent (before harvest, or a harvest that stopped
+    // before enumerating) and malformed both read as "no listing was taken" — never as an empty list,
+    // because an agent chaining this result would then treat unknown remote files as nothing.
+    const leftOnRemoteReading = readLeftOnRemote(job.left_on_remote)
+    const leftOnRemote = leftOnRemoteReading.entries
 
     // Return empty file lists for non-terminal or pre-harvest states (design §9 rules 1 & 2).
     if (!isTerminal || !job.harvested_at) {
@@ -1688,6 +1688,7 @@ export class ComputeService {
         hidden_files: [],
         output_files: [],
         left_on_remote: [],
+        left_on_remote_state: leftOnRemoteReading.state,
         remote_workdir: job.remote_workdir,
         stdout_tail: job.stdout_tail,
         stderr_tail: job.stderr_tail
@@ -1707,6 +1708,7 @@ export class ComputeService {
         hidden_files: [],
         output_files: [],
         left_on_remote: leftOnRemote,
+        left_on_remote_state: leftOnRemoteReading.state,
         remote_workdir: job.remote_workdir,
         stdout_tail: job.stdout_tail,
         stderr_tail: job.stderr_tail
@@ -1738,6 +1740,7 @@ export class ComputeService {
       // featured first, then hidden (design §9).
       output_files: [...featuredFiles, ...hiddenFiles],
       left_on_remote: leftOnRemote,
+      left_on_remote_state: leftOnRemoteReading.state,
       remote_workdir: job.remote_workdir,
       stdout_tail: job.stdout_tail,
       stderr_tail: job.stderr_tail

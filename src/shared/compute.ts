@@ -345,6 +345,10 @@ export type JobResult = {
   output_files: string[]
   // Files not downloaded from the remote workdir (JSON [{uri,size_mb,reason}]).
   left_on_remote: Array<{ uri: string; size_mb: number; reason: string }>
+  // Whether `left_on_remote` is the whole truth. 'enumerated' means the remote was listed, so an empty
+  // array means nothing stayed behind; 'not-enumerated' means the harvest stopped earlier and the array
+  // is empty because nothing was looked at — an agent chaining outputs must not read it as "clean".
+  left_on_remote_state: LeftOnRemoteState
   // Remote workdir path; preserved even on harvest_failed so the user can manually retrieve files.
   remote_workdir: string | undefined
   stdout_tail: string | undefined
@@ -368,6 +372,34 @@ export type ComputeJobErrorCode =
   | 'job_failed'
   | 'timeout'
   | 'process_vanished'
+
+// What the harvest actually knows about the remote workdir.
+//
+// `enumerated` means the remote listing was taken, so an empty `left_on_remote` is a fact: nothing was
+// left behind. `not-enumerated` means the harvest stopped before that listing (disk headroom, host
+// lookup, SSH resolution or the enumeration itself), so an empty list says nothing about what is still
+// on the remote — the two used to be the same shape, and every reader of the payload (the panel, the
+// job summary, and `attach_job().result()`) reported the second as the first.
+export type LeftOnRemoteState = 'enumerated' | 'not-enumerated'
+
+export type LeftOnRemoteEntry = { uri: string; size_mb: number; reason: string }
+
+export type LeftOnRemoteReading = { state: LeftOnRemoteState; entries: LeftOnRemoteEntry[] }
+
+// Reads the `left_on_remote` column (a JSON array written by the harvest) into a state plus its
+// entries. Absent and unparseable both mean "we never recorded a listing" — never "the list was
+// empty": a malformed column read as `[]` claims the remote was checked and found clean, which is the
+// one thing the column cannot tell us when it does not parse.
+export const readLeftOnRemote = (column: string | null | undefined): LeftOnRemoteReading => {
+  if (!column) return { state: 'not-enumerated', entries: [] }
+  try {
+    const parsed: unknown = JSON.parse(column)
+    if (!Array.isArray(parsed)) return { state: 'not-enumerated', entries: [] }
+    return { state: 'enumerated', entries: parsed as LeftOnRemoteEntry[] }
+  } catch {
+    return { state: 'not-enumerated', entries: [] }
+  }
+}
 
 // Lightweight job summary returned by the renderer IPC `compute:jobs:list` and broadcast via
 // `compute:job-updated`. Contains the fields the UI needs for badge + job feed display. The host
@@ -402,7 +434,10 @@ export type JobSummary = {
   // Phase 3b: compute_done payload fields (spec §11.3). Present when notified_at is set.
   featured_files?: string[]
   featured_file_count?: number
+  // Absent means the harvest never recorded a listing (it stopped before enumerating), so an absent
+  // count is not zero: read `left_on_remote_state` before saying anything about what stayed behind.
   left_on_remote_count?: number
   left_on_remote?: Array<{ uri: string; size_mb: number; reason: string }>
+  left_on_remote_state?: LeftOnRemoteState
   harvest_error?: string
 }

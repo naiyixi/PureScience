@@ -198,8 +198,11 @@ describe('emitJobNotification', () => {
     expect(summary.status).toBe('error')
     expect(summary.featured_files).toEqual([])
     expect(summary.featured_file_count).toBe(0)
-    expect(summary.left_on_remote_count).toBe(0)
-    expect(summary.left_on_remote).toEqual([])
+    // This job never recorded a listing (its harvest never ran), so the payload says so instead of
+    // claiming the remote was checked and found clean.
+    expect(summary.left_on_remote_state).toBe('not-enumerated')
+    expect(summary.left_on_remote_count).toBeUndefined()
+    expect(summary.left_on_remote).toBeUndefined()
     expect(summary.notified_at).toBeDefined()
   })
 

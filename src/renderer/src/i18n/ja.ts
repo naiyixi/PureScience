@@ -3891,6 +3891,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '注目ファイル {count} 件',
   'jobDetail.leftOnRemote': '{count} 件がリモートに残存',
   'jobDetail.leftOnRemoteNotListed': 'さらに {count} 件は結果に記載なし',
+  'jobDetail.leftOnRemoteNotEnumerated':
+    'リモートの作業ディレクトリを一覧していないため、何が残っているかは不明です',
   'jobDetail.harvestFailed': '回収に失敗',
   'permissions.revokeAll': 'すべて取り消す',
   'permissions.revokeAllAria': '{name} のすべての権限を取り消す',

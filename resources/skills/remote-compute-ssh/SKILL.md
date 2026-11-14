@@ -182,6 +182,9 @@ const r = await c.attach_job(job_id).result()
 //   hidden_files:   ['hpc/<job_id>/hidden/run.log', ...],
 //   output_files:   [...featured_files, ...hidden_files],         // featured first
 //   left_on_remote: [{ uri: 'ssh:<alias>/<abs_path>', size_mb: 420, reason: 'residency:remote' }],
+//   left_on_remote_state: 'enumerated' | 'not-enumerated',
+//     // 'not-enumerated' = the harvest stopped before listing the workdir (headroom, ssh, enumeration),
+//     // so an empty left_on_remote means "nobody looked", not "nothing is there" — check before chaining.
 //   remote_workdir: '.purescience/jobs/<job_id>',
 //   stdout_tail: '...last 64 KB...',
 //   stderr_tail: '...last 64 KB...'
@@ -215,7 +218,9 @@ Read `r.exit_code` and `r.stderr_tail`. An infrastructure failure (wrong partiti
 activated, missing module, OOM, walltime) is yours to fix — adjust `command`, record the fix,
 fresh `c.submit_job()`. A harvest failure (`r.stderr_tail` notes it, `r.remote_workdir` is
 preserved) means some files were not downloaded — the remote workdir is kept so you can
-`c.call_command('ls ...', intent='...')` to inspect what's there.
+`c.call_command('ls ...', intent='...')` to inspect what's there. Read `r.left_on_remote_state`
+first: when it is `not-enumerated` the workdir was never listed, so `r.left_on_remote` being empty
+says nothing about what remains there.
 
 ## Chaining jobs via left_on_remote
 

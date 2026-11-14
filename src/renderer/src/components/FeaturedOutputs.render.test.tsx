@@ -117,6 +117,45 @@ describe('FeaturedOutputs', () => {
     expect(testId('harvest-error-workdir')?.textContent ?? '').toContain('/scratch/biowulf/job-abc')
   })
 
+  it('says the remote was never listed instead of letting an empty list read as clean', async () => {
+    await render(
+      makeJob({
+        harvest_error:
+          'harvest skipped: disk headroom insufficient (0.4 GiB free, need 2 GiB); the remote files were not enumerated',
+        remote_workdir: '/scratch/biowulf/job-abc',
+        left_on_remote: [],
+        left_on_remote_count: undefined,
+        left_on_remote_state: 'not-enumerated',
+        featured_files: [],
+        featured_file_count: 0
+      })
+    )
+
+    const unknown = testId('left-on-remote-not-enumerated')
+    expect(unknown).not.toBeNull()
+    expect(unknown?.textContent ?? '').toContain('not listed')
+    // The count chip must not claim zero either: that would be the same false statement in numbers.
+    expect(testId('left-on-remote-count')).toBeNull()
+    expect(testId('harvest-error-workdir')?.textContent ?? '').toContain('/scratch/biowulf/job-abc')
+  })
+
+  it('does not raise the "never listed" line when the harvest did take a listing', async () => {
+    await render(
+      makeJob({
+        harvest_error: 'harvest_failed: scp: connection reset',
+        left_on_remote: [],
+        left_on_remote_count: 0,
+        left_on_remote_state: 'enumerated',
+        featured_files: [],
+        featured_file_count: 0
+      })
+    )
+
+    // Enumerated and empty is a fact: it must not be softened into "unknown", and no false zero shows.
+    expect(testId('left-on-remote-not-enumerated')).toBeNull()
+    expect(testId('harvest-failed')).not.toBeNull()
+  })
+
   it('stays out of the way when the result carried no harvest data at all', async () => {
     await render(makeJob({ status: 'running' }))
 

@@ -4003,6 +4003,8 @@ export const de: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '{count} hervorgehobene Datei(en)',
   'jobDetail.leftOnRemote': '{count} auf dem Remote-Host verblieben',
   'jobDetail.leftOnRemoteNotListed': '{count} weitere nicht im Ergebnis aufgeführt',
+  'jobDetail.leftOnRemoteNotEnumerated':
+    'Das entfernte Arbeitsverzeichnis wurde nicht aufgelistet — was dort noch liegt, ist unbekannt',
   'jobDetail.harvestFailed': 'Ernte fehlgeschlagen',
   'permissions.revokeAll': 'Alle widerrufen',
   'permissions.revokeAllAria': 'Alle {name}-Berechtigungen widerrufen',

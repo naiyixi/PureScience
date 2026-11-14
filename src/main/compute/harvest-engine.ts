@@ -309,7 +309,11 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
         featured_files: payload.featured_files,
         featured_file_count: payload.featured_file_count,
         left_on_remote_count: payload.left_on_remote_count,
-        left_on_remote: payload.left_on_remote
+        left_on_remote: payload.left_on_remote,
+        left_on_remote_state: payload.left_on_remote_state,
+        // The reason the harvest stopped, carried on the broadcast too: without it the panel could only
+        // say "nothing was enumerated" and the explanation would wait for a list refresh.
+        harvest_error: updatedJob.harvest_error ?? undefined
       }
 
       deps.broadcast?.(summary)
@@ -321,9 +325,11 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   // finalize writes harvestedAt + harvestError + leftOnRemote + notifiedAt in a single atomic
   // update (fix: was two separate writes causing notification loss on restart between them).
   // Returns the updated job so the caller can broadcast if needed.
+  // `null` means the harvest never recorded a listing (it stopped before enumerating), which is a
+  // different fact from an empty list — see LeftOnRemoteState in src/shared/compute.ts.
   const finalize = async (
     harvestError: string | null,
-    leftOnRemoteJson: string
+    leftOnRemoteJson: string | null
   ): Promise<ComputeJob> => {
     return await jobRepository.update(job.job_id, {
       harvestedAt: new Date(),
@@ -336,7 +342,7 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   // Helper: finalize + broadcast + return (DRY for all early-exit paths).
   const finalizeAndReturn = async (
     harvestError: string | null,
-    leftOnRemoteJson: string
+    leftOnRemoteJson: string | null
   ): Promise<void> => {
     const updatedJob = await finalize(harvestError, leftOnRemoteJson)
     // Broadcast the compute_done notification. We already have host lookup result here for
@@ -359,8 +365,9 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   // still finalizes the job: the earlier shape let the throw escape before any finalize, so a
   // finished remote job kept looking like one whose harvest never ran, and the caller got an
   // exception instead of a terminal job carrying a reason. Both skip messages say out loud that the
-  // files were left where they are, because `left_on_remote` is written empty here (we never
-  // enumerated) and an empty list otherwise reads as "nothing is left on the remote".
+  // files were left where they are, and they write `left_on_remote = null` rather than an empty list:
+  // absent is recorded as "no listing was taken" (LeftOnRemoteState), so no reader can turn "we never
+  // looked" into "nothing is left".
   let available: number
   try {
     available = await (deps.availableBytesFn ?? availableBytes)(storageRoot)
@@ -368,14 +375,14 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     const msg = err instanceof Error ? err.message : String(err)
     await finalizeAndReturn(
       `harvest skipped: disk headroom could not be read (${msg}); the remote files were not enumerated and remain in ${remoteWorkdir}`,
-      '[]'
+      null
     )
     return
   }
   if (available < computeHarvestDiskHeadroomBytes) {
     await finalizeAndReturn(
       `harvest skipped: disk headroom insufficient (${Math.round((available / (1024 * 1024 * 1024)) * 10) / 10} GiB free, need 2 GiB); the remote files were not enumerated and remain in ${remoteWorkdir}`,
-      '[]'
+      null
     )
     return
   }
@@ -386,12 +393,12 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     host = await hostRepository.get(job.provider_id)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await finalizeAndReturn(`host lookup failed: ${msg}`, '[]')
+    await finalizeAndReturn(`host lookup failed: ${msg}`, null)
     return
   }
 
   if (!host) {
-    await finalizeAndReturn(`host not found: ${job.provider_id}`, '[]')
+    await finalizeAndReturn(`host not found: ${job.provider_id}`, null)
     return
   }
 
@@ -401,7 +408,7 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     target = await resolveFn(host.sshAlias, host.sshOverrides)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await finalizeAndReturn(`ssh resolve failed: ${msg}`, '[]')
+    await finalizeAndReturn(`ssh resolve failed: ${msg}`, null)
     return
   }
 
@@ -411,7 +418,7 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
     remoteFiles = await enumerateRemoteFiles(sshRunner, target, remoteWorkdir)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    await finalizeAndReturn(`enumerate failed: ${msg}`, '[]')
+    await finalizeAndReturn(`enumerate failed: ${msg}`, null)
     return
   }
 

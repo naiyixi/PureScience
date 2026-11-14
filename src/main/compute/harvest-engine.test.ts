@@ -139,7 +139,27 @@ const makeJobRepo = (
   const repo = {
     update: vi.fn((jobId: string, data: unknown) => {
       updates.push({ jobId, data })
-      return Promise.resolve({ ...job, ...(data as object) })
+      // Mirror the repository's mapping (Prisma column names -> ComputeJob fields) instead of spreading
+      // the update payload onto the record: spreading leaves `harvest_error` / `left_on_remote` unset on
+      // the returned job, so anything reading the *returned* job (the broadcast summary does) silently
+      // sees the pre-update values — a fake that cannot fail the assertion it exists for.
+      const updatesRecord = data as Record<string, unknown>
+      const asEpoch = (value: unknown): number | undefined =>
+        value instanceof Date ? value.getTime() : (value as number | undefined)
+      const mapped: Partial<ComputeJob> = {}
+      if ('harvestedAt' in updatesRecord) {
+        mapped.harvested_at = asEpoch(updatesRecord.harvestedAt)
+      }
+      if ('harvestError' in updatesRecord) {
+        mapped.harvest_error = (updatesRecord.harvestError ?? undefined) as string | undefined
+      }
+      if ('leftOnRemote' in updatesRecord) {
+        mapped.left_on_remote = (updatesRecord.leftOnRemote ?? undefined) as string | undefined
+      }
+      if ('notifiedAt' in updatesRecord) {
+        mapped.notified_at = asEpoch(updatesRecord.notifiedAt)
+      }
+      return Promise.resolve({ ...job, ...mapped })
     })
   } as unknown as Pick<ComputeJobRepository, 'update'>
   return { repo, updates }
@@ -534,6 +554,13 @@ describe('harvestJob — disk headroom guard', () => {
     expect(scp.calls).toHaveLength(0)
     // The guard sits before enumeration, so a full disk costs no SSH round-trip.
     expect(vi.mocked(ssh.run).mock.calls).toHaveLength(0)
+    // No listing was taken, so the column records that absence instead of an empty list ("clean").
+    expect(data.leftOnRemote).toBeNull()
+    const summary = broadcast.mock.calls[0]![0]
+    expect(summary.left_on_remote_state).toBe('not-enumerated')
+    expect(summary.left_on_remote_count).toBeUndefined()
+    // The reason travels with the broadcast: otherwise the panel can only say "unknown".
+    expect(String(summary.harvest_error)).toContain('disk headroom insufficient')
     expect(broadcast).toHaveBeenCalled()
   })
 
@@ -566,6 +593,10 @@ describe('harvestJob — disk headroom guard', () => {
     expect(error).toContain('statfs unavailable')
     expect(error).toContain(job.remote_workdir!)
     expect(scp.calls).toHaveLength(0)
+    expect(data.leftOnRemote).toBeNull()
+    const summary = broadcast.mock.calls[0]![0]
+    expect(summary.left_on_remote_state).toBe('not-enumerated')
+    expect(String(summary.harvest_error)).toContain('disk headroom could not be read')
     expect(broadcast).toHaveBeenCalled()
   })
 

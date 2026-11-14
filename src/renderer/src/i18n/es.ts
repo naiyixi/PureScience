@@ -3967,6 +3967,8 @@ export const es: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '{count} archivo(s) destacado(s)',
   'jobDetail.leftOnRemote': '{count} en el host remoto',
   'jobDetail.leftOnRemoteNotListed': '{count} más no listados en el resultado',
+  'jobDetail.leftOnRemoteNotEnumerated':
+    'No se listó el directorio de trabajo remoto, así que se desconoce qué queda allí',
   'jobDetail.harvestFailed': 'Recolección fallida',
   'permissions.revokeAll': 'Revocar todo',
   'permissions.revokeAllAria': 'Revocar todos los permisos de {name}',

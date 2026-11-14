@@ -3819,6 +3819,8 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': '주요 파일 {count}개',
   'jobDetail.leftOnRemote': '{count}개 원격에 남음',
   'jobDetail.leftOnRemoteNotListed': '추가 {count}개는 결과에 없음',
+  'jobDetail.leftOnRemoteNotEnumerated':
+    '원격 작업 디렉터리를 나열하지 않았으므로 무엇이 남아 있는지 알 수 없습니다',
   'jobDetail.harvestFailed': '수확 실패',
   'permissions.revokeAll': '모두 취소',
   'permissions.revokeAllAria': '{name}의 모든 권한 취소',

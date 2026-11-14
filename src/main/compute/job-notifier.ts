@@ -25,7 +25,13 @@
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { ComputeJob, JobSummary } from '../../shared/compute'
+import type {
+  ComputeJob,
+  JobSummary,
+  LeftOnRemoteEntry,
+  LeftOnRemoteState
+} from '../../shared/compute'
+import { readLeftOnRemote } from '../../shared/compute'
 import { createLogger, errorLogFields } from '../logger'
 import type { ComputeJobRepository } from './job-repository'
 import type { ComputeHostRepository } from './repository'
@@ -55,8 +61,11 @@ const log = createLogger('compute')
 export type ComputeDonePayload = {
   featured_files: string[]
   featured_file_count: number
-  left_on_remote_count: number
-  left_on_remote: Array<{ uri: string; size_mb: number; reason: string }>
+  // Absent when the harvest never took a remote listing: an absent count is not zero, and the state
+  // below says which of the two happened.
+  left_on_remote_count?: number
+  left_on_remote?: LeftOnRemoteEntry[]
+  left_on_remote_state: LeftOnRemoteState
 }
 
 // ---------------------------------------------------------------------------
@@ -92,21 +101,16 @@ export const buildComputeDonePayload = async (
     // before any files were pulled). This is correct per design §8 and the acceptance criteria.
   }
 
-  // Parse left_on_remote from the job DB column (JSON array).
-  let leftOnRemote: Array<{ uri: string; size_mb: number; reason: string }> = []
-  if (job.left_on_remote) {
-    try {
-      leftOnRemote = JSON.parse(job.left_on_remote) as typeof leftOnRemote
-    } catch {
-      // Malformed — treat as empty.
-    }
-  }
+  // Parse left_on_remote from the job DB column (JSON array). Absent or malformed both mean the harvest
+  // never recorded a listing — an empty array here would claim the remote was checked and found clean.
+  const reading = readLeftOnRemote(job.left_on_remote)
 
   return {
     featured_files: featuredFiles,
     featured_file_count: featuredFiles.length,
-    left_on_remote_count: leftOnRemote.length,
-    left_on_remote: leftOnRemote
+    left_on_remote_count: reading.state === 'enumerated' ? reading.entries.length : undefined,
+    left_on_remote: reading.state === 'enumerated' ? reading.entries : undefined,
+    left_on_remote_state: reading.state
   }
 }
 
@@ -193,7 +197,9 @@ export const emitJobNotification = async (
     featured_files: payload.featured_files,
     featured_file_count: payload.featured_file_count,
     left_on_remote_count: payload.left_on_remote_count,
-    left_on_remote: payload.left_on_remote
+    left_on_remote: payload.left_on_remote,
+    left_on_remote_state: payload.left_on_remote_state,
+    harvest_error: updatedJob.harvest_error ?? undefined
   }
 
   broadcast(summary)

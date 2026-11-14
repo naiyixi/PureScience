@@ -3660,6 +3660,7 @@ export const zh = {
   'jobDetail.featuredFilesLabel': '重点文件 {count} 个',
   'jobDetail.leftOnRemote': '{count} 个留在远端',
   'jobDetail.leftOnRemoteNotListed': '另有 {count} 个未在结果里列出',
+  'jobDetail.leftOnRemoteNotEnumerated': '远程工作目录未被列出，因此那边还留着什么尚不清楚',
   'jobDetail.harvestFailed': '收割失败',
   'permissions.revokeAll': '全部撤销',
   'permissions.revokeAllAria': '撤销 {name} 的全部权限',

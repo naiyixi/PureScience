@@ -8,7 +8,9 @@ import { useLanguage } from '@/i18n'
 //
 // A file list without its reasons is a list a reader cannot act on, so every left-behind entry carries its
 // own reason; and a payload that reports more files than it lists says so rather than quietly showing a
-// subset, which would read as "this is everything".
+// subset, which would read as "this is everything". The third state is the absence of a list: a harvest
+// that stopped before enumerating the workdir reports `not-enumerated`, and that says so in words instead
+// of letting "0 left" stand in for "nobody looked".
 export function FeaturedOutputs({ job }: { job: JobSummary }): React.JSX.Element | null {
   const { t } = useLanguage()
 
@@ -16,6 +18,11 @@ export function FeaturedOutputs({ job }: { job: JobSummary }): React.JSX.Element
   const left = job.left_on_remote ?? []
   const featuredCount = job.featured_file_count ?? featured.length
   const leftCount = job.left_on_remote_count ?? left.length
+  // "We never listed the remote" is a different fact from "we listed it and nothing stayed there".
+  // Only the second one is what an absent/short list means; the first gets said out loud, and only
+  // where a failure explains why (otherwise the panel would nag about workdirs nobody tried to read).
+  const leftNotEnumerated =
+    job.left_on_remote_state === 'not-enumerated' && Boolean(job.harvest_error)
 
   // No harvest data at all — a job that has not finished, or one whose result carried nothing: the panel
   // stays out rather than standing there with empty headings.
@@ -80,6 +87,12 @@ export function FeaturedOutputs({ job }: { job: JobSummary }): React.JSX.Element
       {job.harvest_error ? (
         <p data-testid="harvest-error" className="mt-1 break-all text-destructive">
           {job.harvest_error}
+        </p>
+      ) : null}
+
+      {leftNotEnumerated ? (
+        <p data-testid="left-on-remote-not-enumerated" className="mt-1 text-warning-900">
+          {t('jobDetail.leftOnRemoteNotEnumerated')}
         </p>
       ) : null}
 

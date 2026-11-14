@@ -22,7 +22,7 @@ import type {
   DetailsAuthor,
   ProbeResult
 } from '../../shared/compute'
-import { computeProviderId } from '../../shared/compute'
+import { computeProviderId, readLeftOnRemote } from '../../shared/compute'
 import { createExecutionProtectionService } from '../execution-protection/service'
 import type { BackgroundDelivery } from '../../shared/background-delivery'
 import type {
@@ -91,15 +91,9 @@ export const toJobSummary = async (
   displayName: string,
   storageRoot: string
 ): Promise<JobSummary> => {
-  // Parse left_on_remote JSON safely (stored as string in DB, but JobSummary expects array).
-  let leftOnRemote: Array<{ uri: string; size_mb: number; reason: string }> = []
-  if (job.left_on_remote) {
-    try {
-      leftOnRemote = JSON.parse(job.left_on_remote)
-    } catch {
-      // Malformed JSON — fall back to empty array.
-    }
-  }
+  // Parse left_on_remote JSON safely (stored as string in DB, but JobSummary expects array). An absent or
+  // malformed column is reported as "no listing was taken", not as an empty list.
+  const leftOnRemoteReading = readLeftOnRemote(job.left_on_remote)
 
   // Compute featured_files by scanning the harvest directory (same logic as buildComputeDonePayload).
   const harvestDir = getJobHarvestDir(storageRoot, job.project_id, job.session_id, job.job_id)
@@ -136,8 +130,11 @@ export const toJobSummary = async (
     // Phase 3b compute_done payload fields (spec §11.3).
     featured_files: featuredFiles,
     featured_file_count: featuredFiles.length,
-    left_on_remote_count: leftOnRemote.length,
-    left_on_remote: leftOnRemote,
+    left_on_remote_count:
+      leftOnRemoteReading.state === 'enumerated' ? leftOnRemoteReading.entries.length : undefined,
+    left_on_remote:
+      leftOnRemoteReading.state === 'enumerated' ? leftOnRemoteReading.entries : undefined,
+    left_on_remote_state: leftOnRemoteReading.state,
     harvest_error: job.harvest_error ?? undefined,
     execution_protection: job.execution_protection
   }

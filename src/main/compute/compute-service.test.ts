@@ -2495,6 +2495,8 @@ describe('ComputeService.getJobResult', () => {
     expect(result.hidden_files).toEqual([])
     expect(result.output_files).toEqual([])
     expect(result.left_on_remote).toEqual([])
+    // Nothing has been listed yet, so the empty list is an absence of a reading, not a clean remote.
+    expect(result.left_on_remote_state).toBe('not-enumerated')
   })
 
   it('terminal but harvest not done: returns empty file lists without error', async () => {
@@ -2582,6 +2584,25 @@ describe('ComputeService.getJobResult', () => {
     expect(result.remote_workdir).toBe('~/.purescience/jobs/job-result-1')
     expect(result.left_on_remote).toHaveLength(1)
     expect(result.left_on_remote[0].uri).toBe('ssh://biowulf/tmp/big.bin')
+    // This listing was taken, so the entries are the whole truth even though the downloads failed.
+    expect(result.left_on_remote_state).toBe('enumerated')
+  })
+
+  it('harvest stopped before listing: empty left_on_remote is named as unknown, not as clean', async () => {
+    const job = baseJob({
+      harvested_at: Date.now(),
+      harvest_error: 'harvest skipped: disk headroom insufficient (0.5 GiB free, need 2 GiB)',
+      remote_workdir: '~/.purescience/jobs/job-result-1'
+      // no left_on_remote column: the harvest never enumerated the remote workdir
+    })
+    const service = makeServiceWithStorageRoot(job, tmpDir)
+    const result = await service.getJobResult('job-result-1')
+
+    expect(result.left_on_remote).toEqual([])
+    // An agent chaining outputs reads this: 'not-enumerated' is the difference between "nothing is
+    // there" and "nobody looked".
+    expect(result.left_on_remote_state).toBe('not-enumerated')
+    expect(result.remote_workdir).toBe('~/.purescience/jobs/job-result-1')
   })
 
   it('throws when job not found', async () => {

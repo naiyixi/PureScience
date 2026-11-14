@@ -764,15 +764,17 @@ describe('toJobSummary — harvest features and left_on_remote parsing', () => {
     ])
   })
 
-  it('falls back to an empty array when left_on_remote JSON is malformed', async () => {
+  it('reports a malformed left_on_remote column as "no listing was taken", not as an empty list', async () => {
     const summary = await toJobSummary(
       sampleJob({ left_on_remote: 'this is { not json' }),
       'Biowulf HPC',
       storageRoot
     )
 
-    expect(summary.left_on_remote).toEqual([])
-    expect(summary.left_on_remote_count).toBe(0)
+    // A column that does not parse cannot support "nothing stayed behind" — that claim needs a listing.
+    expect(summary.left_on_remote_state).toBe('not-enumerated')
+    expect(summary.left_on_remote).toBeUndefined()
+    expect(summary.left_on_remote_count).toBeUndefined()
   })
 
   it('treats a missing harvest directory as an empty featured list (harvest_failed shape)', async () => {
@@ -787,9 +789,23 @@ describe('toJobSummary — harvest features and left_on_remote parsing', () => {
     expect(summary.status).toBe('success')
   })
 
-  it('treats an absent left_on_remote field as an empty array', async () => {
+  it('reports an absent left_on_remote field as "no listing was taken", not as an empty list', async () => {
     const summary = await toJobSummary(sampleJob(), 'Biowulf HPC', storageRoot)
 
+    // Absent is "we never looked"; zero is "we looked and it was clean". They are not the same claim.
+    expect(summary.left_on_remote_state).toBe('not-enumerated')
+    expect(summary.left_on_remote).toBeUndefined()
+    expect(summary.left_on_remote_count).toBeUndefined()
+  })
+
+  it('reports an enumerated but empty listing as zero left behind', async () => {
+    const summary = await toJobSummary(
+      sampleJob({ left_on_remote: '[]' }),
+      'Biowulf HPC',
+      storageRoot
+    )
+
+    expect(summary.left_on_remote_state).toBe('enumerated')
     expect(summary.left_on_remote).toEqual([])
     expect(summary.left_on_remote_count).toBe(0)
   })

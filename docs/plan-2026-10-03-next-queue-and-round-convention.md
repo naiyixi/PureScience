@@ -18626,3 +18626,57 @@ YAML 仍可被仓库自己的用例解析：`scripts/windows-release-workflows.t
 2. 11:32:48Z 满 24h 仍零判决 ⇒ 定性收窄成「本账号 9 笔提交 24h 内一律无判决（含三笔注定被拒的探针）」，并把「待接受协议 / 会员状态」作为唯一需用户动手的两项写进汇报。
 3. 下一单元候选：`left_on_remote` 目前没有「未知」态（跳过路径写空数组 ⇒ 面板读成「远端什么都没剩」，真相只在那句 `harvest_error` 里）⇒ 动 `ComputeDonePayload` 形状 + 面板 + 九语字典，属独立单元。
    （**更正**：本条原先写的是「`job-poller` 那句 `harvest failed before recording a result` 仍可能与事实相反」——复查后不成立：本次修完 TDZ 之后，能抛出 `harvestJob` 的只剩「行还没写就抛」那些路径（`mkdir` / `withDataRootWrite` / `jobRepository.update` 自身），而写成功之后没有任何未被 try/catch 覆盖的语句 ⇒ 那句话现在是准确的，不需要加「行是否已写」的判据。）
+
+## 三百三十一、本轮追加（执行器，2026-11-15 00:0x–）—— 公证第 7 次读数（26h 零判决，按约收窄定性）；`left_on_remote` 补上「没枚举」这一态（payload + 面板 + 九语）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git log --oneline origin/main -3` = `687f4e72`（§三百三十）→ `2f7ac9bc` → `beef05bc`；`origin/main..HEAD` = 两笔**文档**（`0f9941c4` 证据档、`25b96b8c` §三百三十 更正），随本笔一起推。
+- `git status --short`：上一轮被我方中断时留下的 **20 个在制文件**（`src/main/compute/*` + `FeaturedOutputs` + 九语 + 计算技能文档），逐文件读过 diff 后确认是**同一单元的半成品**，本轮的活就是把它验完、补齐、提交；另有三份**不是本轮的**未跟踪证据档（11-01 一份、11-04 两份），一个字节没碰、不提交。
+- 在飞车道现查（2026-11-14 15:5xZ）：八条全 `completed`，`687f4e72` 的 **Nightly = success、Windows Full Test = success** ⇒ **本次推送没有取消任何人的判决**。
+- 机器侧：`Pages free: 4,306`（≈67 MB）、`swap used 10,409/11,264 MB`、`load averages: 3.88` ⇒ **不做窗口读数**（面板那一半的具名未办见 §四）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 本轮按 §三百三十 §五 第 3 条做掉那条候选单元。
+
+### 一 公证读数（第 7 次，`notary-status.yml` run `43601843692`，2026-11-14T13:51:24Z）
+
+`==> recorded submissions: 9`，`--- counts by status ---` 只有一行 **`9 In Progress`**。最早一笔 `2026-11-13T11:32:48.826Z`（x64 dmg）到此已 **26h19m**。
+
+**按 §三百二十八 §五 第 2 条收窄定性**：本账号 9 笔提交（6 个 2.27.0 安装包 + 3 个探针 zip）在提交后 15h–26h 的窗口内**一律无判决**，三笔注定被拒的最小探针同样躺着 ⇒ **堵塞在苹果侧，不在本项目的包上**。判据不变：零判决 ≠ 通过 ≠ 拒绝；**不 rerun**（每 rerun 再排一笔）。
+
+只有用户能查的两项（本执行器无凭据、也无法代点）：
+1. App Store Connect 的**协议/付费应用协议**是否处于「待接受」状态（未接受时 notary 服务只收不受理）；
+2. **Apple Developer Program 会员状态**与该 team 的 notary 配额/风控是否正常（例如被判异常后的静默限流）。
+
+### 二 本单元交付：`left_on_remote` 的第三种状态（证据档 `docs/evidence/2026-11-15-left-on-remote-unknown-state.md`）
+
+- `src/shared/compute.ts`：新增 `LeftOnRemoteState`（`'enumerated' | 'not-enumerated'`）与**单一读取器** `readLeftOnRemote(column)`；列缺席 / 非数组 / 解析失败**一律**归 `not-enumerated` —— 解析不出来的列没有资格支持「远端已检查且干净」。
+- `JobResult.left_on_remote_state` **必填**，三个返回点全接上；`JobSummary.left_on_remote_count` / `left_on_remote` 在未枚举时**缺席**（不是 0 / `[]`）。
+- 收割引擎五条早退路径写库由 `'[]'` 改 **`null`**；广播一并带 `left_on_remote_state` + `harvest_error`（否则面板在广播那一刻只能显示「未枚举」，原因要等下一次刷新）。
+- 三处各自手写过的 `JSON.parse`+`catch` 收成一份读取规则；面板新增一行 `jobDetail.leftOnRemoteNotEnumerated`（九语齐平，zh ≠ en），只在「未枚举 **且** 有 `harvest_error`」时出现；数字芯片在未枚举时不渲染（用例钉住）。
+- `resources/skills/remote-compute-ssh/SKILL.md`：agent 面文档同步（`result()` 字段清单 + 「串接作业」一节写明 `not-enumerated` 时空数组不代表远端是空的）。
+
+**顺带修掉一个假替身**：`harvest-engine.test.ts` 的 `makeJobRepo().update` 原来 `{ ...job, ...data }`，把 Prisma 列名直接铺到 `ComputeJob` 上 ⇒ 读「更新后的 job」的断言永远看到更新前的值（不可能失败）。改成按仓储真实映射（`harvestError → harvest_error`、`leftOnRemote → left_on_remote`、`Date → epoch ms`）。不修这条，本单元新加的状态断言全是假绿。
+
+### 三 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run src/main/compute --maxWorkers=2` | **28 passed \| 1 skipped（29 files）**；**579 passed \| 5 skipped（584）**，exit 0 |
+| `npx vitest run src/renderer/src/components/FeaturedOutputs.render.test.tsx --maxWorkers=1` | 6 passed |
+| `npx vitest run src/renderer/src/i18n/translation-quality.test.ts` | 42 passed |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（20 文件） | exit 0，0 problems |
+| `npx prettier --check`（同上） | 通过 |
+
+### 四 边界与具名未办
+
+1. **没有窗口读数，且本机此刻取不到**：真实安装的库里 `ComputeJob` **零行**（`sqlite3 file:…?mode=ro "SELECT COUNT(*) FROM ComputeJob"` → `0`），所以这个面板的任何状态都还没被真数据看过一次。造一行真数据要在隔离根起实例 + 种一行（`harvest_error` 非空 + `left_on_remote` NULL）+ 读 `[data-testid="left-on-remote-not-enumerated"]`；本轮空闲页 4,306（≈67 MB）、swap 10.4/11.2 GB 已用 ⇒ 按纪律不做。
+2. **`not-enumerated` 且没有 `harvest_error` 时不上屏**（收割还没开始的作业不该被提示「没列出」）——「作业终态但从未收割」这一支在面板上仍沉默，属既有行为。
+3. **公证/发版仍停在外部**：v2.27.0 的安装包已提交公证、26h 零判决；在拿到 `Accepted` 之前不动发版流程。
+
+### 五 下一轮第一步
+
+1. 读本笔（`left_on_remote` 单元）与 `687f4e72` 之后各条车道的判决；`Windows Full Test` 若红，先按「失败文件是否本批碰过」逐次归因。
+2. 再读一次 `notary-status.yml`；任一 `*.dmg` 变 `Accepted` ⇒ `gh run rerun 43423715874 --failed` → 看 `publish` 是否执行 → 页出现后做 v2.27.0 第 2/3 条；仍全 `In Progress` ⇒ 只记读数（不改定性）。
+3. **窗口读数单元（可做则做）**：在隔离根起一个实例（`--user-data-dir` + `PURESCIENCE_STORAGE_ROOT` + 独立端口，且 `settings.dataRoot` 一并指到隔离目录），种一行「`harvest_error` 非空 + `left_on_remote` NULL」的作业，用 CDP 读 `[data-testid="left-on-remote-not-enumerated"]` 与数字芯片缺席，收尾删项目/停进程/删临时根。**前置条件**：空闲页 > 20,000 且 swap 可用 > 2 GB（先取数再决定，不满足就再记一轮具名未办）。
+4. 队列 B 段仍只剩 M2（⛔ 卡产品决定：本地解析模型是「随包分发」还是「按需下载」，属需用户拍板项，不自行开）。

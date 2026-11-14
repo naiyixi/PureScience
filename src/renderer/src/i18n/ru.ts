@@ -3897,6 +3897,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'jobDetail.featuredFilesLabel': 'Ключевых файлов: {count}',
   'jobDetail.leftOnRemote': '{count} осталось на удалённом узле',
   'jobDetail.leftOnRemoteNotListed': 'Ещё {count} не указано в результате',
+  'jobDetail.leftOnRemoteNotEnumerated':
+    'Удалённый рабочий каталог не был просмотрен, поэтому неизвестно, что там осталось',
   'jobDetail.harvestFailed': 'Сбор не удался',
   'permissions.revokeAll': 'Отозвать все',
   'permissions.revokeAllAria': 'Отозвать все разрешения {name}',
