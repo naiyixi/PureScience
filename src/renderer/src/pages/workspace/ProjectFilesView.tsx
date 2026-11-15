@@ -69,7 +69,7 @@ import { FileBrowserModal } from '../settings/FileBrowserModal'
 import { LocalFileBrowser } from './LocalFileBrowser'
 import { getPreviewThumbnailReadEncoding } from './preview-support'
 import { createKeyedRequestReader } from './project-file-preview-queue'
-import { isUnavailableFileError, FILE_MISSING_TAG } from './previews/preview-errors'
+import { isUnavailableFileError, FILE_MISSING_TAG_KEY } from './previews/preview-errors'
 import { createPreviewRequestScope, getPreviewFileReader } from './previews/preview-file-reader'
 import { useNearViewport } from './previews/useNearViewport'
 import { useUnavailablePreviewProbe } from './previews/useUnavailablePreviewProbe'
@@ -634,6 +634,7 @@ const FileTile = ({
   onPreview: () => void
   onOpenInPanel: () => void
 }): React.JSX.Element => {
+  const { t } = useLanguage()
   const sizeLabel = formatByteSize(size)
   const relativeTimeLabel = formatRelativeFileTime(timestamp)
   const [setTileElement, isNearViewport] = useNearViewport<HTMLButtonElement>()
@@ -672,7 +673,7 @@ const FileTile = ({
           />
           {missing ? (
             <span className="absolute left-1.5 top-1.5 rounded bg-text-000/75 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-bg-000 shadow-sm">
-              {FILE_MISSING_TAG}
+              {t(FILE_MISSING_TAG_KEY)}
             </span>
           ) : null}
         </span>
@@ -756,7 +757,7 @@ const FileListRow = ({
         />
         {missing ? (
           <span className="shrink-0 text-[9px] font-semibold uppercase text-text-300">
-            {FILE_MISSING_TAG}
+            {t(FILE_MISSING_TAG_KEY)}
           </span>
         ) : null}
         {sizeLabel || relativeTimeLabel ? (

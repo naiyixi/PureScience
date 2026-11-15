@@ -29,6 +29,7 @@ import {
 import { cn } from '@/lib/utils'
 import { LanguageToggleButton } from '@/components/LanguageToggleButton'
 import { useLanguage } from '@/i18n'
+import type { Translate } from '@/i18n'
 import { useSessionStore } from '@/stores/session-store'
 import { NetworkStatusIndicator } from '@/components/NetworkStatusIndicator'
 import { UpdateCapsule } from '@/components/UpdateCapsule'
@@ -85,12 +86,21 @@ const sessionStatusDotClassName: Record<SessionStatus, string> = {
   error: 'bg-destructive'
 }
 
-const sessionStatusLabel: Record<SessionStatus, string> = {
-  idle: 'Idle',
-  running: 'Running',
-  'waiting-permission': 'Waiting for permission',
-  'waiting-plan-approval': 'Waiting for plan approval',
-  error: 'Error'
+// What a session's state is CALLED comes from the dictionaries, like every neighbouring label: the row
+// prints this inside its screen-reader line, so a reader on a Chinese interface heard an English word
+// beside an otherwise translated row. A status written by a newer build (outside today's union) is shown
+// as its raw value rather than as an empty space — and never through t(undefined), which throws in render.
+const sessionStatusLabelKeys: Record<SessionStatus, Parameters<Translate>[0]> = {
+  idle: 'sessionStatus.idle',
+  running: 'sessionStatus.running',
+  'waiting-permission': 'sessionStatus.waitingPermission',
+  'waiting-plan-approval': 'sessionStatus.waitingPlanApproval',
+  error: 'sessionStatus.error'
+}
+
+const sessionStatusLabel = (status: SessionStatus, t: Translate): string => {
+  const key = sessionStatusLabelKeys[status] as Parameters<Translate>[0] | undefined
+  return key ? t(key) : status
 }
 
 const sidebarInteractiveTransitionClassName = 'transition-colors duration-200 ease-out'
@@ -472,7 +482,7 @@ const WorkspaceSidebar = ({
                             />
                           </span>
                           <span className="sr-only">
-                            Session status: {sessionStatusLabel[session.status]}
+                            {t('sessionStatus.label')} {sessionStatusLabel(session.status, t)}
                           </span>
                           <span className="min-w-0 flex-1 truncate">{session.title}</span>
                           {!isActive && isUnread(session) ? (

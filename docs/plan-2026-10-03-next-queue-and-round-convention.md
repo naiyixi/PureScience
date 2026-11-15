@@ -19068,3 +19068,55 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次；③ 下一单元候选：
   （a）`job-observation-ui.test.tsx` 之外是否还有**别的族**用同一形状硬编码状态词（按本笔的静态守卫反向扫）；
   （b）`left_on_remote` 未枚举态在**通知中心卡片**（`needs-attention-notification`）上是否也说清楚——本轮只核了作业面板。
+
+## 三百三十八、本轮追加（执行器，2026-11-15 19:2x–）—— 状态词的第二批：六个面各写一份，外加一处「颜色按翻好的词判」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 7b75a8c9`（与本地同）；工作树里有一批**未提交**的渲染层改动（17:25–17:28 落盘，
+  与 §三百三十七 的 `git log -S` 零命中相反：那是上一轮运行到一半被中断留下的在制品）⇒ 本轮的活是**把它验完并提交**，
+  不是重做一遍；另外三份不属于本轮的未跟踪证据档（`docs/evidence/2026-11-0{1,4}-*`）**不碰**。
+- 上一轮 §五 三条：① `7b75a8c9` 的四条车道按完整 40 位 SHA 全部 `success`（Nightly / Windows Full Test /
+  Scheduled Regression / Notary status）；② 公证第 12 次读数见 §四；③ 本单元取候选（a）——反向扫别的族。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 继续收缺陷队列。
+
+### 一 交付（证据档 `docs/evidence/2026-11-15-status-wording-six-surfaces.md`）
+
+六个面把状态词收进字典（会话侧栏的读屏句、消息中心的动作词、首页网络胶囊、环境检查行的状态胶囊、
+专家胶囊的回退字、文件瓦片的 `MISSING` 角标），九语新 20 键（`Ready`/`Unavailable`/`None` 复用既有键）。
+**第二种形状**：`RemoteControlPanel` 的高亮样式原本拿**翻好的词**去比 `=== 'Connected'` ⇒ 中文界面下
+「已连接」永不高亮；改成 `providerIsConnected(snapshot)` 一个谓词同时喂标签与样式，并补一条中文 provider 的
+渲染用例（变异自证：判据改回比较译文，该用例当场红）。顺带清掉 `preview-errors.ts` 里两个**全树无消费方**的
+长句常量（打开视图读的是 `ws.fileUnavailable`/`ws.previewUnavailable`）。
+
+新守卫 `i18n/status-wording-guard.test.ts`：6 个面 × 双向（该印的 key 必须被引用；这些 key 的英文值不得作为
+字面量出现在该文件里），注释先剥离——注释里点名它替掉的词是文档，不是缺陷。
+
+### 二 门禁（本机实跑，改动的全部文件）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（i18n + components） | 73 files / 616 passed |
+| 定向 vitest（RemoteControlPanel.render + 新守卫） | 2 files / 7 passed |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（本笔全部改动 + 新测试） | 0 / 0 |
+| 全量 vitest `--maxWorkers=4` | 1481 files passed、31 skipped（共 1512）；18561 passed、228 skipped（共 18789），exit 0 |
+
+### 三 边界与具名未办
+
+- 只覆盖「字面量写在组件里」与「颜色按译文判」；`title=` 仍是英文的组件未普查（候选下一单元）。
+- `scripts/i18n-hardcoded-audit.mjs` 对这一族仍 0 命中（形状是对象字面量 value 与三元表达式）⇒ 与上一轮同结论：
+  需要语义判据，仍立案、不硬塞。
+- 无真机窗口读数：本笔不新增路径/数据，取证 = 真 `LanguageProvider` 渲染 + 全量门禁；装机版随下一次发版生效。
+
+### 四 公证第 12 次读数（只记读数，不重开定性）
+
+`notary-status`（`43709439255`，2026-11-15T11:32:44Z，本轮现派发）：**9 笔全 `In Progress`**，最早一笔
+`2026-11-13T11:32:48Z` ⇒ **整 48h00m 零判决**；`probe3.zip`（11-14T08:35Z）仍不是我方提交。卡在服务级积压，
+仍只能由用户侧查的两项不变（App Store Connect 协议状态 / 会员状态）。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（48h 已满，若仍零判决只报读数、不再做定性）；
+  ③ 下一单元候选：（a）`title=`/`aria-label=` 之外的第三种载体（`toast` 标题、原生菜单项）是否仍有英文；
+  （b）`needs-attention-notification` 卡片上 `left_on_remote` 未枚举态是否说清楚（§三百三十七 候选 b，仍未做）。

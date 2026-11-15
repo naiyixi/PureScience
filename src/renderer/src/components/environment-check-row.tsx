@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 
 import type { EnvironmentCheckId, EnvironmentCheckItem } from '../../../shared/settings'
+import { useLanguage } from '@/i18n'
+import type { Translate } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 // Shared check-row rendering: the onboarding environment step and the settings Network panel
@@ -22,11 +24,14 @@ const CHECK_ICONS = {
   'install-network': Wifi
 } satisfies Partial<Record<EnvironmentCheckId, typeof MonitorCog>>
 
-const STATUS_COPY = {
-  passed: 'Ready',
-  warning: 'Review',
-  failed: 'Action needed'
-} satisfies Record<EnvironmentCheckItem['status'], string>
+// The status pill's word is interface copy: this row is rendered by the onboarding environment step and
+// by the settings Network panel, both otherwise translated, so an English 'Action needed' beside a Chinese
+// summary was the only untranslated thing on the row. 'Ready' reuses the existing common.ready.
+const STATUS_COPY_KEYS = {
+  passed: 'common.ready',
+  warning: 'environmentStatus.review',
+  failed: 'environmentStatus.actionNeeded'
+} satisfies Record<EnvironmentCheckItem['status'], Parameters<Translate>[0]>
 
 const statusIcon = (status: EnvironmentCheckItem['status']): React.JSX.Element => {
   if (status === 'passed') {
@@ -45,11 +50,9 @@ type PendingCheckRowProps = {
   pendingText?: string
 }
 
-const PendingCheckRow = ({
-  id,
-  label,
-  pendingText = 'Waiting to check…'
-}: PendingCheckRowProps): React.JSX.Element => {
+const PendingCheckRow = ({ id, label, pendingText }: PendingCheckRowProps): React.JSX.Element => {
+  const { t } = useLanguage()
+  const pending = pendingText ?? t('environmentStatus.waiting')
   const Icon = CHECK_ICONS[id] ?? MonitorCog
 
   return (
@@ -59,7 +62,7 @@ const PendingCheckRow = ({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{pendingText}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{pending}</p>
       </div>
       <Loader2 className="mt-1 size-4 animate-spin text-muted-foreground" aria-hidden="true" />
     </li>
@@ -74,6 +77,7 @@ type EnvironmentCheckRowProps = {
 }
 
 const EnvironmentCheckRow = ({ check, icon }: EnvironmentCheckRowProps): React.JSX.Element => {
+  const { t } = useLanguage()
   const Icon = icon ?? CHECK_ICONS[check.id] ?? MonitorCog
 
   return (
@@ -100,7 +104,7 @@ const EnvironmentCheckRow = ({ check, icon }: EnvironmentCheckRowProps): React.J
             )}
           >
             {statusIcon(check.status)}
-            {STATUS_COPY[check.status]}
+            {t(STATUS_COPY_KEYS[check.status])}
           </span>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">{check.summary}</p>

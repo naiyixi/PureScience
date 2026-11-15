@@ -1,6 +1,7 @@
 import { WifiOff } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLanguage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useNetworkStore } from '@/stores/network-store'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -35,13 +36,16 @@ const NetworkStatusIndicator = ({
   const isOnline = useNetworkStore((state) => state.isOnline)
   const connectivity = useNetworkStore((state) => state.connectivity)
   const openSettingsToPanel = useSettingsStore((state) => state.openSettingsToPanel)
+  const { t } = useLanguage()
 
   if (isOnline && connectivity !== 'unreachable') return null
 
   const unreachable = isOnline // online but unreachable: amber instead of red
   const tone = unreachable ? 'warning' : 'danger'
-  const label = unreachable ? 'Internet unreachable' : 'No internet connection'
-  const text = unreachable ? 'Unreachable' : 'Offline'
+  // Both words are interface copy, not telemetry: the pill is on the home header, where every neighbouring
+  // label is translated — so they come from the dictionaries like the rest of it.
+  const label = unreachable ? t('network.internetUnreachable') : t('network.noInternet')
+  const text = unreachable ? t('network.unreachable') : t('network.offline')
 
   return (
     <TooltipProvider delayDuration={300}>

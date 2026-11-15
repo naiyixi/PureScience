@@ -78,6 +78,16 @@ const timeLabel = (timestamp: number): string =>
     timeStyle: 'short'
   }).format(timestamp)
 
+// The connected state as a fact, not as a word: the badge's colour used to be chosen by comparing the
+// translated label with 'Connected', so the highlight only ever applied in an English interface. One
+// predicate feeds both the label and the styling, so they cannot drift apart again.
+const providerIsConnected = (snapshot: RemoteAccessSnapshot): boolean =>
+  snapshot.remoteIt.installed &&
+  snapshot.remoteIt.registered &&
+  snapshot.remoteIt.loggedIn &&
+  snapshot.enabled &&
+  snapshot.lifecycle === 'running'
+
 const providerStatus = (
   snapshot: RemoteAccessSnapshot,
   t: (key: TranslationKey) => string
@@ -85,7 +95,7 @@ const providerStatus = (
   if (!snapshot.remoteIt.installed) return t('settings.notInstalled')
   if (!snapshot.remoteIt.registered) return t('settings.deviceSetupRequired')
   if (!snapshot.remoteIt.loggedIn) return t('settings.signInRequired')
-  if (snapshot.enabled && snapshot.lifecycle === 'running') return t('settings.connected')
+  if (providerIsConnected(snapshot)) return t('settings.connected')
   return t('settings.ready')
 }
 
@@ -210,8 +220,9 @@ export const RemoteControlPanel = (): React.JSX.Element => {
   const accessIsBrowser = snapshot.mode === 'remoteit-public'
   const accessUsesPairing = snapshot.mode === 'remoteit' || snapshot.mode === 'remoteit-public'
   const statusLabel = providerStatus(snapshot, t)
-  const statusClassName =
-    statusLabel === 'Connected' ? 'border-0 bg-primary/10 text-primary' : undefined
+  const statusClassName = providerIsConnected(snapshot)
+    ? 'border-0 bg-primary/10 text-primary'
+    : undefined
 
   const detectButton = snapshot.canManage ? (
     <Button

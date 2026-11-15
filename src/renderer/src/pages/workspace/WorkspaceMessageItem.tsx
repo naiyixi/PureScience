@@ -69,7 +69,7 @@ import {
   getArtifactName,
   shouldReadArtifactPreview
 } from './artifact-preview-utils'
-import { FILE_MISSING_TAG, isUnavailableFileError } from './previews/preview-errors'
+import { FILE_MISSING_TAG_KEY, isUnavailableFileError } from './previews/preview-errors'
 import { useNearViewport } from './previews/useNearViewport'
 import { useUnavailablePreviewProbe } from './previews/useUnavailablePreviewProbe'
 import { resolveSessionProviderId } from './error-report'
@@ -644,7 +644,7 @@ const ArtifactCard = ({
         </span>
         {missing ? (
           <span className="absolute left-1 top-1 rounded bg-text-000/75 px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-bg-000 shadow-sm">
-            {FILE_MISSING_TAG}
+            {t(FILE_MISSING_TAG_KEY)}
           </span>
         ) : null}
       </div>

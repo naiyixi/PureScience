@@ -497,7 +497,7 @@ const ComposerModelPicker = (): React.JSX.Element | null => {
                           aria-hidden="true"
                         />
                         <span className="min-w-0 flex-1 truncate">
-                          Unavailable for {frameworkName}
+                          {t('modelPicker.unavailableFor')} {frameworkName}
                         </span>
                       </DropdownMenuItem>
                     )}

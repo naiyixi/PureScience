@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useNetworkStore } from '@/stores/network-store'
+import { LanguageProvider } from '@/i18n'
 import { RemoteControlPanel } from './RemoteControlPanel'
 
 // IC38: `remoteItPublicUrl` is the "saved browser-access endpoint, including while locally disabled" — the panel
@@ -61,6 +62,7 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ''
+  window.localStorage.removeItem('purescience-language')
   delete (window as unknown as { api?: unknown }).api
 })
 
@@ -96,5 +98,38 @@ describe('RemoteControlPanel saved browser address', () => {
     await flush()
 
     expect(container.querySelector('[data-slot="saved-browser-address"]')).toBeNull()
+  })
+})
+
+// The connected highlight used to be chosen by comparing the *translated* label with 'Connected', so the
+// badge only ever looked connected on an English interface — on a Chinese one the same state rendered as
+// plain text. This case renders in Chinese, where that comparison could never match, and requires the
+// highlight anyway: the style has to follow the snapshot's facts, not the word it happens to print.
+describe('RemoteControlPanel connected state styling', () => {
+  it('highlights the connected badge on a non-English interface', async () => {
+    window.localStorage.setItem('purescience-language', 'zh')
+    mockApi(
+      snapshot({
+        mode: 'remoteit',
+        enabled: true,
+        lifecycle: 'running'
+      })
+    )
+
+    await act(async () => {
+      root.render(
+        <LanguageProvider>
+          <RemoteControlPanel />
+        </LanguageProvider>
+      )
+    })
+    await flush()
+    await flush()
+
+    const connected = [...container.querySelectorAll('[data-slot="badge"]')].filter(
+      (badge) => badge.textContent === '已连接'
+    )
+    expect(connected).toHaveLength(1)
+    expect(connected[0]?.className).toContain('bg-primary/10')
   })
 })

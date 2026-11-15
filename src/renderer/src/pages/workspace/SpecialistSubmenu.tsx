@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
 import { useLanguage } from '@/i18n'
+import type { Translate } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useSpecialistStore } from '@/stores/specialist-store'
@@ -32,15 +33,18 @@ type SpecialistSubmenuProps = {
   readOnly?: boolean
 }
 
-// Short label for the trigger capsule: truncated name when selected, "None" or
-// "Unavailable" otherwise. Kept compact so the trigger never wraps.
+// Short label for the trigger capsule: truncated name when selected, "None" or the existing
+// "Unavailable" wording otherwise. Both fallbacks are dictionary keys — the capsule sits in the composer
+// beside translated controls, so an English 'Unavailable' there was the only untranslated word on it.
+// Kept compact so the trigger never wraps.
 const capsuleLabel = (
   selected: SpecialistProfileView | undefined,
-  unavailable: boolean
+  unavailable: boolean,
+  t: Translate
 ): string => {
-  if (unavailable) return 'Unavailable'
+  if (unavailable) return t('specialist.unavailable')
   if (selected) return selected.name
-  return 'None'
+  return t('ws.none')
 }
 
 const SpecialistSubmenu = ({
@@ -79,7 +83,7 @@ const SpecialistSubmenu = ({
   const selected = enabledSpecialists.find((s) => s.id === selectedId)
   const isNone = selectedId === undefined
 
-  const label = capsuleLabel(selected, unavailable)
+  const label = capsuleLabel(selected, unavailable, t)
   const showValue = Boolean(selectedId) || unavailable
 
   // When the selected specialist is unavailable, keep it visible in the list as struck-through so

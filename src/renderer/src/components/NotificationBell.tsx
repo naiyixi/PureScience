@@ -44,17 +44,23 @@ const iconFor = (item: NotificationInboxItem): React.JSX.Element => {
   return <CircleAlert className="size-4" strokeWidth={2} aria-hidden="true" />
 }
 
-const actionLabel = (item: NotificationInboxItem): string | undefined => {
+// What a delivery's action state is CALLED belongs in the dictionaries for the same reason its title does:
+// these words sit beside translated copy in the message centre, and a Chinese interface was showing
+// 'Needs approval' / 'Resolved' in English. The wording table is closed over the states the inbox emits;
+// anything else (undefined) means the row carries no action word at all.
+type Translate = ReturnType<typeof useLanguage>['t']
+
+const actionLabel = (item: NotificationInboxItem, t: Translate): string | undefined => {
   if (item.source === 'agent-question') {
-    if (item.actionState === 'pending') return 'Needs response'
-    if (item.actionState === 'resolved') return 'Answered'
-    if (item.actionState === 'rejected') return 'Skipped'
+    if (item.actionState === 'pending') return t('notificationAction.needsResponse')
+    if (item.actionState === 'resolved') return t('notificationAction.answered')
+    if (item.actionState === 'rejected') return t('notificationAction.skipped')
   }
-  if (item.actionState === 'pending') return 'Needs approval'
-  if (item.actionState === 'expired') return 'Expired'
-  if (item.actionState === 'cancelled') return 'Cancelled'
-  if (item.actionState === 'rejected') return 'Rejected'
-  if (item.actionState === 'resolved') return 'Resolved'
+  if (item.actionState === 'pending') return t('notificationAction.needsApproval')
+  if (item.actionState === 'expired') return t('notificationAction.expired')
+  if (item.actionState === 'cancelled') return t('notificationAction.cancelled')
+  if (item.actionState === 'rejected') return t('notificationAction.rejected')
+  if (item.actionState === 'resolved') return t('notificationAction.resolved')
   return undefined
 }
 
@@ -85,8 +91,6 @@ const clamp = (value: number, minimum: number, maximum: number): number =>
 // 审批回放 (v0.12 特性): 本基座的审批走独立通道 (settings/compute enqueue), 无需回放。
 // 保留 pending 状态的展示; 点击已读等行为在下方处理。
 const replayPendingApproval = async (): Promise<boolean> => false
-
-type Translate = ReturnType<typeof useLanguage>['t']
 
 // One shared entry point for Home, desktop Workspace, and the always-visible mobile conversation
 // header. The backend owns read state, so multiple rendered bells always converge after one action.
@@ -429,7 +433,7 @@ const NotificationBell = ({
                     </div>
                   ) : (
                     items.map((item) => {
-                      const label = actionLabel(item)
+                      const label = actionLabel(item, t)
                       const title = displayTitle(item, t)
                       return (
                         <div
