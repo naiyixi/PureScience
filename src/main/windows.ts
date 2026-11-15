@@ -13,6 +13,8 @@ import { is } from '@electron-toolkit/utils'
 import iconPng from '../../resources/icon.png?asset'
 import iconWindows from '../../resources/icon-light.ico?asset'
 import { isAllowedExternalNavigation, isAllowedFrameNavigation } from './navigation-policy'
+import { RENDERER_RECOVERY_STRINGS } from './native-dialog-strings'
+import { nativeStringsFor } from './native-locale'
 import { createFindOverlayManager, type FindOverlayDeps } from './find-overlay'
 import { registerFindOverlayOwner } from './find-overlay-registry'
 import { createLogger } from './logger'
@@ -47,6 +49,25 @@ const RECOVERABLE_RENDERER_EXIT_REASONS = new Set([
   'launch-failed',
   'integrity-failure'
 ])
+
+// The dialog shown when the renderer has died too many times for automatic recovery to keep trying.
+// A window that keeps blanking out is exactly when a reader cannot read English-only copy, and this
+// dialog has no renderer behind it to localise anything — so the wording comes from the nine-language
+// table and the test drives every locale through it. Product name stays as-is in all languages.
+export const rendererRecoveryDialogOptions = (): Electron.MessageBoxOptions => {
+  const s = nativeStringsFor(RENDERER_RECOVERY_STRINGS)
+  return {
+    type: 'error',
+    // First button is the non-destructive one and is the default; closing the window is the cancel
+    // action, so a stray Escape never destroys a window the user may still want to inspect.
+    buttons: [s.reload, s.closeWindow],
+    defaultId: 0,
+    cancelId: 1,
+    title: 'PureScience',
+    message: s.message,
+    detail: s.detail
+  }
+}
 
 const loadRenderer = (window: BrowserWindow): void => {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -238,37 +259,26 @@ const createMainWindow = (opts?: MainWindowCloseOptions): BrowserWindow => {
       automaticRecoveries: rendererRecoveryTimes.length,
       recoveryWindowMs: RENDERER_RECOVERY_WINDOW_MS
     })
-    void dialog
-      .showMessageBox(window, {
-        type: 'error',
-        buttons: ['Reload', 'Close window'],
-        defaultId: 0,
-        cancelId: 1,
-        title: 'PureScience',
-        message: 'The app window stopped responding repeatedly.',
-        detail:
-          'Automatic recovery has been paused. Reloading returns this window to the home screen; background work may still be running.'
-      })
-      .then(
-        ({ response }) => {
-          rendererRecoveryDialogOpen = false
-          if (window.isDestroyed()) return
-          if (response === 0) {
-            rendererRecoveryTimes = []
-            log.warn('reloading renderer after user confirmation')
-            loadRenderer(window)
-            return
-          }
-          // Bypass the normal Windows close-to-tray interception: the user explicitly chose to close
-          // this unrecoverable blank window, not leave it hidden and alive in the tray.
-          window.destroy()
-        },
-        () => {
-          rendererRecoveryDialogOpen = false
-          log.error('renderer recovery dialog failed')
-          if (!window.isDestroyed()) window.destroy()
+    void dialog.showMessageBox(window, rendererRecoveryDialogOptions()).then(
+      ({ response }) => {
+        rendererRecoveryDialogOpen = false
+        if (window.isDestroyed()) return
+        if (response === 0) {
+          rendererRecoveryTimes = []
+          log.warn('reloading renderer after user confirmation')
+          loadRenderer(window)
+          return
         }
-      )
+        // Bypass the normal Windows close-to-tray interception: the user explicitly chose to close
+        // this unrecoverable blank window, not leave it hidden and alive in the tray.
+        window.destroy()
+      },
+      () => {
+        rendererRecoveryDialogOpen = false
+        log.error('renderer recovery dialog failed')
+        if (!window.isDestroyed()) window.destroy()
+      }
+    )
   })
   window.webContents.on('unresponsive', () => {
     if (rendererResponsive) {

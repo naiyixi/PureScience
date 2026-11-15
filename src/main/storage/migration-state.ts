@@ -1,6 +1,9 @@
 import { dialog, type App } from 'electron'
 import { AsyncLocalStorage } from 'node:async_hooks'
 
+import { MIGRATION_QUIT_STRINGS } from '../native-dialog-strings'
+import { nativeStringsFor } from '../native-locale'
+
 // Two module-level flags (not parameters) because the quit guard, the migrate IPC handler, and the
 // ACP/notebook write paths live in different modules but must agree on a single truth.
 //   - `copying`  drives the before-quit guard: true only while runDataRootMigration is actively copying.
@@ -97,17 +100,27 @@ export const waitForDataRootWriters = (): Promise<void> => {
 // Native confirm shown when the user tries to quit mid-migration. Returns true iff they chose to
 // quit anyway. Kept as the injectable default so the guard's control flow stays unit-testable
 // without a real Electron dialog.
-const defaultConfirmQuit = (): boolean =>
-  dialog.showMessageBoxSync({
+//
+// The options are built by an exported pure function because a native dialog has no renderer to
+// prove its wording: the per-language test calls this with each of the nine locales and asserts the
+// dialog really carries that language (see native-dialog-strings.test.ts).
+export const migrationQuitDialogOptions = (): Electron.MessageBoxSyncOptions => {
+  const s = nativeStringsFor(MIGRATION_QUIT_STRINGS)
+  return {
     type: 'warning',
-    buttons: ['Keep waiting', 'Quit anyway'],
+    // Order is the contract, not the translation: the first button is the safe one and is also the
+    // default/cancel action, so a stray Return or Escape never aborts a half-finished move.
+    buttons: [s.keepWaiting, s.quitAnyway],
     defaultId: 0,
     cancelId: 0,
-    title: 'Move in progress',
-    message: 'PureScience is still moving your data.',
-    detail:
-      'Your data is safe either way, but quitting now leaves the move unfinished — you may need to start it again. Keep the app open until it finishes.'
-  }) === 1
+    title: s.title,
+    message: s.message,
+    detail: s.detail
+  }
+}
+
+const defaultConfirmQuit = (): boolean =>
+  dialog.showMessageBoxSync(migrationQuitDialogOptions()) === 1
 
 // Installs a before-quit guard so an in-flight migration is not silently torn down by Cmd+Q / the
 // window close button. The move itself is crash-safe (copy → verify → commit → delete leaves either

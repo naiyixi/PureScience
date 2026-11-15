@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   CLOSE_ACTIVE_PANE_CHANNEL,
@@ -151,9 +151,16 @@ class FakeBrowserWindow {
   }
 }
 
+// Hoisted so the electron mock and the test bodies share the reported OS language.
+const { localeState } = vi.hoisted(() => ({ localeState: { code: 'en' } }))
+
 vi.mock('electron', () => ({
   // isPackaged=true skips the dev title-suffix branch, keeping the fake focused on the open + close handlers.
-  app: { isPackaged: true, getAppPath: () => '/app' },
+  app: {
+    isPackaged: true,
+    getAppPath: () => '/app',
+    getLocale: (): string => localeState.code
+  },
   BrowserWindow: class {
     constructor() {
       currentWindow = new FakeBrowserWindow()
@@ -171,7 +178,9 @@ vi.mock('@electron-toolkit/utils', () => ({ is: { dev: false } }))
 
 vi.mock('../../resources/icon.png?asset', () => ({ default: 'icon-path' }))
 
-const { createMainWindow } = await import('./windows')
+const { createMainWindow, rendererRecoveryDialogOptions } = await import('./windows')
+const { RENDERER_RECOVERY_STRINGS } = await import('./native-dialog-strings')
+const { NATIVE_LOCALE_CODES } = await import('./native-locale')
 
 // A keyDown close chord for the host platform: Cmd+W on macOS, Ctrl+W elsewhere. Built off
 // process.platform so the interception test passes on every CI runner (windows, linux, macOS).
@@ -996,5 +1005,36 @@ describe('createMainWindow close handling', () => {
     close({ preventDefault: vi.fn(), defaultPrevented: false })
     expect(resolveCloseAction).toHaveBeenCalledTimes(1)
     resolveFn('cancel')
+  })
+})
+
+// The "window kept dying" prompt is drawn outside the renderer, so this is its only wording gate: the
+// real options builder driven through every shipped locale, asserting the resolved language is what
+// the buttons and body actually say.
+describe('rendererRecoveryDialogOptions', () => {
+  afterEach(() => {
+    localeState.code = 'en'
+  })
+
+  it('offers a reload first and makes closing the window the cancel action', () => {
+    const options = rendererRecoveryDialogOptions()
+    expect(options.defaultId).toBe(0)
+    expect(options.cancelId).toBe(1)
+    expect(options.type).toBe('error')
+  })
+
+  it('speaks the reader’s language on every shipped locale', () => {
+    for (const code of NATIVE_LOCALE_CODES) {
+      localeState.code = code
+      const options = rendererRecoveryDialogOptions()
+      const row = RENDERER_RECOVERY_STRINGS[code]
+      expect(options.buttons).toEqual([row.reload, row.closeWindow])
+      expect(options.message).toBe(row.message)
+      expect(options.detail).toBe(row.detail)
+      // The product name is the one word that stays as-is in every language.
+      expect(options.title).toBe('PureScience')
+      if (code === 'en') continue
+      expect(options.message).not.toBe(RENDERER_RECOVERY_STRINGS.en.message)
+    }
   })
 })

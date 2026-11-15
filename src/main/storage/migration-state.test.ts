@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('electron', () => ({ dialog: { showMessageBoxSync: vi.fn() } }))
+// Hoisted so the electron mock and the test bodies agree on the reported OS language without either
+// one capturing the other at module-load time.
+const { localeState } = vi.hoisted(() => ({ localeState: { code: 'en' } }))
+
+vi.mock('electron', () => ({
+  app: { getLocale: (): string => localeState.code },
+  dialog: { showMessageBoxSync: vi.fn() }
+}))
 
 const {
   acquireDataRootWriter,
@@ -11,9 +18,13 @@ const {
   installMigrationQuitGuard,
   isMigrationInProgress,
   isMigrationPending,
+  migrationQuitDialogOptions,
   waitForDataRootWriters,
   withDataRootWrite
 } = await import('./migration-state')
+
+const { MIGRATION_QUIT_STRINGS } = await import('../native-dialog-strings')
+const { NATIVE_LOCALE_CODES } = await import('../native-locale')
 
 // A minimal app double: records the before-quit listener and whether quit() was called.
 type GuardApp = Parameters<typeof installMigrationQuitGuard>[0]
@@ -186,5 +197,48 @@ describe('migration-state', () => {
     expect(prevented).toBe(true)
     expect(isMigrationInProgress()).toBe(false)
     expect(app.quit).toHaveBeenCalledTimes(1)
+  })
+})
+
+// The mid-migration quit confirm is drawn outside the renderer, so nothing else in the product can
+// prove it reached the reader's language: this drives the real options builder through every locale
+// the app ships and asserts the wording the OS-language cascade resolved to is the one on the buttons.
+describe('migrationQuitDialogOptions', () => {
+  afterEach(() => {
+    localeState.code = 'en'
+  })
+
+  it('puts the safe choice first and makes it both the default and the cancel action', () => {
+    const options = migrationQuitDialogOptions()
+    expect(options.defaultId).toBe(0)
+    expect(options.cancelId).toBe(0)
+    expect(options.type).toBe('warning')
+  })
+
+  it('carries no English sentence once the OS language is one of the other eight', () => {
+    for (const code of NATIVE_LOCALE_CODES) {
+      localeState.code = code
+      const options = migrationQuitDialogOptions()
+      const row = MIGRATION_QUIT_STRINGS[code]
+      expect(options.buttons).toEqual([row.keepWaiting, row.quitAnyway])
+      expect(options.title).toBe(row.title)
+      expect(options.message).toBe(row.message)
+      expect(options.detail).toBe(row.detail)
+      if (code === 'en') continue
+      expect(options.message).not.toBe(MIGRATION_QUIT_STRINGS.en.message)
+      expect(options.buttons).not.toEqual([
+        MIGRATION_QUIT_STRINGS.en.keepWaiting,
+        MIGRATION_QUIT_STRINGS.en.quitAnyway
+      ])
+    }
+  })
+
+  it('falls back to English for a language the app does not ship', () => {
+    localeState.code = 'pt-BR'
+    const options = migrationQuitDialogOptions()
+    expect(options.buttons).toEqual([
+      MIGRATION_QUIT_STRINGS.en.keepWaiting,
+      MIGRATION_QUIT_STRINGS.en.quitAnyway
+    ])
   })
 })

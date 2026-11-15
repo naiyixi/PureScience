@@ -19120,3 +19120,58 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（48h 已满，若仍零判决只报读数、不再做定性）；
   ③ 下一单元候选：（a）`title=`/`aria-label=` 之外的第三种载体（`toast` 标题、原生菜单项）是否仍有英文；
   （b）`needs-attention-notification` 卡片上 `left_on_remote` 未枚举态是否说清楚（§三百三十七 候选 b，仍未做）。
+
+## 三百三十九、本轮追加（执行器，2026-11-16 00:0x–）—— 两个原生对话框把英文写在代码里：搬迁中途的 ⌘Q 与窗白了的恢复提示
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 0e20c9b5`（与本地同）；工作树只有三份**不是本轮的**未跟踪证据档
+  （`docs/evidence/2026-11-0{1,4}-*`，不碰）。上一轮那三笔 i18n 提交（`37dc2202` / `74469cb0` / `0e20c9b5`）已全部落地并推上去。
+- 上一轮 §五 三条：① `0e20c9b5` 的 `Nightly` 与 `Windows Full Test` 按完整 40 位 SHA **双双 success**；
+  ② 公证第 13 次读数见 §四；③ 候选（a）「toast / 原生菜单项是否还有英文」经核**不成立**：本仓没有 toast 库
+  （`toast(` 全树 0 处），菜单走 `shared/app-menu-labels.ts` 九语表、托盘走 `shared/tray-labels.ts`；
+  候选（b）`needs-attention` 卡片是**设计如此**（`notifications/needs-attention-notification.ts` 头注释写明
+  具名原因留在账本、卡片只报「需人工处理」，账本本身按写入语言本地化）⇒ 两条都不该做。
+- 于是按「原生对话框」继续扫，找到两处真缺口（同族机制早已存在、只这两处漏接）。
+- `grep -rn "Keep waiting|Move in progress|stopped responding repeatedly" src/ e2e/` 只命中被改的那两个文件，
+  没有别的执行体在做同一件事。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-native-dialogs-nine-languages.md`）
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/native-dialog-strings.ts`（新） | 两张 `Record<NativeLocaleCode, …>` 表：`MIGRATION_QUIT_STRINGS`（5 字段 × 9 语）、`RENDERER_RECOVERY_STRINGS`（4 字段 × 9 语）；英文值与改动前字面量逐字节相同 |
+| `src/main/storage/migration-state.ts` | 新增导出纯函数 `migrationQuitDialogOptions()`（安全项在前 + `defaultId=cancelId=0`）；`defaultConfirmQuit` 改调它 |
+| `src/main/windows.ts` | 新增导出纯函数 `rendererRecoveryDialogOptions()`（重载 `defaultId=0`、关窗 `cancelId=1`）；`render-process-gone` 处理器改调它 |
+| `src/main/native-dialog-strings.test.ts`（新） | 7 条：九语键集齐、每字段非空、**非英文行不得等于英文值**、zh-Hant 不得夹简体字符、英文逐字节钉旧值、两处调用点不得再有英文句子（剥注释后扫） |
+| `migration-state.test.ts` / `windows.test.ts` | 各补 3 / 2 条：用**真的**选项构造函数逐语跑（含 `pt-BR` 回落英文），断言按钮与正文就是解析到的语言 |
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（三个文件） | 3 files / **70 passed**，exit 0 |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache`（6 个文件） | **0 error / 0 warning** |
+| 全量 vitest `--maxWorkers=4` | **1482 files passed**、31 skipped（1513）；**18574 passed**、228 skipped（18802），exit 0（上轮 1481/18561 ⇒ +1 文件） |
+| 变异自证 | 换回英文 `title` ⇒ 静态守卫 + 逐语行为用例各红一条；`zh.reload` 改成 `Reload` ⇒ 表纪律用例红；还原复跑 70 passed |
+
+### 三 边界与具名未办
+
+- **无真机窗口读数**：两处只在「OS 语言 + 事件真发生」时出现（搬迁中途 ⌘Q / 渲染进程 60 s 内崩两次）。
+  取证 = 真 `app.getLocale()` 级联 + 真选项构造函数逐语跑，不是在屏幕上看见中文弹窗。装机版随下次发版生效。
+- **八种非英文行没有母语审校**（我写的，风格对齐 `window-close-confirm.ts` 同族表）；zh-Hant 已用简体独有字符清单静态扫过。
+- 本单元不覆盖：About 弹窗（应用名 + 版本号，无需翻译）、托盘（`src/main/index.ts:719` 已按 locale 取表）、关窗确认（已有九语表）。
+
+### 四 公证第 13 次读数（只记读数，不再定性——48h 已过）
+
+`notary-status`（`43733205840`，2026-11-15T16:02:30Z，本轮现派发）：**9 笔全 `In Progress`**，最早一笔
+`2026-11-13T11:32:48Z` ⇒ **52h29m 零判决**；`probe3.zip`（11-14T08:35Z）仍不是我方提交。与 §三百二十六 的
+服务级积压定性一致，仍只能由用户侧查的两项不变（App Store Connect 协议状态 / 会员状态）。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（只报读数）；
+  ③ 下一单元候选：（a）`src/main/**` 里其余**用户可见**文案按同一族反向扫（原生菜单/托盘已覆盖，剩下的是
+  `dialog.showOpenDialog` 的 `title`/`buttonLabel` 一类参数——先核有没有真被设过）；
+  （b）§三百三十八 立案的审计器语义判据（仪表类，不进产品）。
