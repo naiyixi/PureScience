@@ -438,7 +438,7 @@ export const LocalFileBrowser = ({
               className={TOOLBAR_ICON_BUTTON}
               disabled={isAtRoot}
               onClick={() => void navigate(parentLocalPath(currentPath, window.api.platform))}
-              aria-label={`${t('fileBrowser.goTo')} parent directory`}
+              aria-label={t('a11y.parentDirectory', { action: t('fileBrowser.goTo') })}
             >
               <ArrowLeft className="size-4" strokeWidth={TOOLBAR_ICON_STROKE} />
             </Button>

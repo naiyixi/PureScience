@@ -5270,5 +5270,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': 'モデルプロバイダー: {name}',
   'a11y.modelProviderWithModel': 'モデルプロバイダー: {name}、モデル: {model}',
   'settings.themeFallbackHint': 'システム設定に従うか、ライト／ダークを固定できます。',
-  'settings.connectorToolPermission': '{method} の権限'
+  'settings.connectorToolPermission': '{method} の権限',
+  'a11y.runtimeSection': '{label} ランタイム',
+  'a11y.repositoriesSection': 'リポジトリを{action}',
+  'a11y.grantsThisSession': 'このセッションで {count} 件を許可済み',
+  'a11y.cancelAttachment': '添付 {name} をキャンセル',
+  'a11y.removeFailedAttachment': '失敗した添付 {name} を削除',
+  'a11y.parentDirectory': '親ディレクトリへ{action}',
+  'a11y.scrollablePreview': '{name} のスクロール可能なプレビュー',
+  'a11y.stepStatus': '{step} のステータス: {status}'
 }

@@ -950,7 +950,7 @@ export const PdfPreviewContent = ({
         className="size-full overflow-auto p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
         tabIndex={0}
         role="region"
-        aria-label={`${name} scrollable preview`}
+        aria-label={t('a11y.scrollablePreview', { name })}
       >
         {/* Zero-height probe: reports the content-box width even when pages overflow horizontally. */}
         <div ref={measureRef} className="h-0 w-full" aria-hidden="true" />

@@ -5419,5 +5419,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': 'Fournisseur du modèle : {name}',
   'a11y.modelProviderWithModel': 'Fournisseur du modèle : {name} ; modèle : {model}',
   'settings.themeFallbackHint': 'Suivre le réglage du système, ou forcer le mode clair ou sombre.',
-  'settings.connectorToolPermission': 'Autorisation pour {method}'
+  'settings.connectorToolPermission': 'Autorisation pour {method}',
+  'a11y.runtimeSection': "Environnement d'exécution : {label}",
+  'a11y.repositoriesSection': '{action} les dépôts',
+  'a11y.grantsThisSession': '{count} autorisé(s) dans cette session',
+  'a11y.cancelAttachment': 'Annuler la pièce jointe {name}',
+  'a11y.removeFailedAttachment': 'Retirer la pièce jointe en échec {name}',
+  'a11y.parentDirectory': '{action} le dossier parent',
+  'a11y.scrollablePreview': 'Aperçu défilable de {name}',
+  'a11y.stepStatus': '{step} — statut : {status}'
 }

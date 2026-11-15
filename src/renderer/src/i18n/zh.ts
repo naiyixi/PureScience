@@ -4923,7 +4923,15 @@ export const zh = {
   'a11y.modelProvider': '模型提供方：{name}',
   'a11y.modelProviderWithModel': '模型提供方：{name}；模型：{model}',
   'settings.themeFallbackHint': '跟随系统设置，或强制使用浅色或深色。',
-  'settings.connectorToolPermission': '「{method}」的权限'
+  'settings.connectorToolPermission': '「{method}」的权限',
+  'a11y.runtimeSection': '{label} 运行时',
+  'a11y.repositoriesSection': '{action}仓库',
+  'a11y.grantsThisSession': '本会话已允许 {count} 项',
+  'a11y.cancelAttachment': '取消附件 {name}',
+  'a11y.removeFailedAttachment': '移除失败的附件 {name}',
+  'a11y.parentDirectory': '{action}上级目录',
+  'a11y.scrollablePreview': '{name} 可滚动预览',
+  'a11y.stepStatus': '{step} 状态：{status}'
 }
 
 export type ZhKey = keyof typeof zh

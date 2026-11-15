@@ -5451,5 +5451,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': 'Modellanbieter: {name}',
   'a11y.modelProviderWithModel': 'Modellanbieter: {name}; Modell: {model}',
   'settings.themeFallbackHint': 'Der Systemeinstellung folgen oder hell bzw. dunkel erzwingen.',
-  'settings.connectorToolPermission': 'Berechtigung für {method}'
+  'settings.connectorToolPermission': 'Berechtigung für {method}',
+  'a11y.runtimeSection': '{label}: Laufzeitumgebung',
+  'a11y.repositoriesSection': 'Repositorys {action}',
+  'a11y.grantsThisSession': '{count} in dieser Sitzung erlaubt',
+  'a11y.cancelAttachment': 'Anhang {name} abbrechen',
+  'a11y.removeFailedAttachment': 'Fehlgeschlagenen Anhang {name} entfernen',
+  'a11y.parentDirectory': '{action}: übergeordnetes Verzeichnis',
+  'a11y.scrollablePreview': '{name}: scrollbare Vorschau',
+  'a11y.stepStatus': '{step} – Status: {status}'
 }

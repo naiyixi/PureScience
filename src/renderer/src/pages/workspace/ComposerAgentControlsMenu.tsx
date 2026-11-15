@@ -314,7 +314,7 @@ const ComposerAgentControlsMenu = ({
             {hasGrants ? (
               <span
                 className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-bg-300 px-1 text-[10px] font-medium leading-none text-text-100"
-                aria-label={`${grants!.length} allowed this session`}
+                aria-label={t('a11y.grantsThisSession', { count: grants!.length })}
               >
                 {grants!.length}
               </span>

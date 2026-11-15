@@ -981,9 +981,11 @@ const ConversationPanel = ({
                                     type="button"
                                     className={attachmentRemoveButtonClassName}
                                     disabled={!canEditDraft || transfer.status === 'cancelling'}
-                                    aria-label={`${
-                                      transfer.status === 'error' ? t('ws.removeFailed') : 'Cancel'
-                                    } attachment ${transfer.name}`}
+                                    aria-label={
+                                      transfer.status === 'error'
+                                        ? t('a11y.removeFailedAttachment', { name: transfer.name })
+                                        : t('a11y.cancelAttachment', { name: transfer.name })
+                                    }
                                     onClick={() => onCancelAttachmentTransfer(transfer)}
                                   >
                                     <X className="size-3.5" strokeWidth={2.2} aria-hidden="true" />

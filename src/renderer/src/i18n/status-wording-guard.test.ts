@@ -7,7 +7,9 @@
 // round, and it fails at the literal — the exact line a future edit would add back. Both sides are pinned:
 // every key the surface should print must be referenced (so a renamed or deleted key is caught), and none
 // of the English words those keys resolve to may appear as a string literal in that file.
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
@@ -65,11 +67,11 @@ const SURFACES = [
   },
   {
     file: '../pages/workspace/LocalFileBrowser.tsx',
-    keys: ['a11y.removeBookmark', 'a11y.pinFolder']
+    keys: ['a11y.removeBookmark', 'a11y.pinFolder', 'a11y.parentDirectory']
   },
   {
     file: '../pages/workspace/session-plan/SessionPlanSurfaces.tsx',
-    keys: ['a11y.enterFullScreen', 'a11y.exitFullScreen']
+    keys: ['a11y.enterFullScreen', 'a11y.exitFullScreen', 'a11y.stepStatus']
   },
   {
     file: '../pages/workspace/WorkspaceMessageItem.tsx',
@@ -78,6 +80,29 @@ const SURFACES = [
   {
     file: '../components/streamdown/LinkSafetyModal.tsx',
     keys: ['a11y.openExternalLink']
+  },
+  // The third carrier: the same defect inside a template literal, where the English word sits BETWEEN the
+  // interpolations (`${label} runtime`). It is not a dictionary value, so the per-surface check cannot see
+  // it, and it reads as English in every locale. Pinned per file here and tree-wide below.
+  {
+    file: '../pages/settings/RuntimesPanel.tsx',
+    keys: ['a11y.runtimeSection']
+  },
+  {
+    file: '../pages/settings/SkillImportView.tsx',
+    keys: ['a11y.repositoriesSection']
+  },
+  {
+    file: '../pages/workspace/ComposerAgentControlsMenu.tsx',
+    keys: ['a11y.grantsThisSession']
+  },
+  {
+    file: '../pages/workspace/ConversationPanel.tsx',
+    keys: ['a11y.cancelAttachment', 'a11y.removeFailedAttachment']
+  },
+  {
+    file: '../pages/workspace/previews/renderers/PdfPreview.tsx',
+    keys: ['a11y.scrollablePreview']
   },
   {
     file: '../components/NetworkStatusIndicator.tsx',
@@ -107,6 +132,42 @@ const SURFACES = [
 // stripper keeps `https://` intact by requiring the preceding character not to be a colon.
 const stripComments = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+// The template-literal carrier has no fixed home, so it is scanned across the whole renderer tree instead of
+// per surface. Only the text OUTSIDE the interpolations counts: `${row.project} — ${row.title}` is data and
+// stays as it is, while `${label} runtime` keeps an English word that no dictionary can reach.
+const rendererRoot = fileURLToPath(new URL('../..', import.meta.url))
+
+const walkSource = (dir: string, out: string[] = []): string[] => {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) walkSource(full, out)
+    else if (/\.tsx?$/.test(entry.name)) out.push(full)
+  }
+  return out
+}
+
+const scanAnnouncedTemplates = (): { scanned: number; templates: number; offenders: string[] } => {
+  const offenders: string[] = []
+  let scanned = 0
+  let templates = 0
+  for (const file of walkSource(rendererRoot)) {
+    if (/\.(test|spec)\.tsx?$/.test(file)) continue
+    scanned += 1
+    for (const match of stripComments(readFileSync(file, 'utf8')).matchAll(
+      /(aria-label|title)=\{\s*`([^`]*)`\s*\}/gs
+    )) {
+      templates += 1
+      const literalText = match[2].replace(/\$\{[\s\S]*?\}/g, '')
+      if (/[A-Za-z]{2,}/.test(literalText)) {
+        offenders.push(
+          `${file.slice(rendererRoot.length)}: ${match[1]} = \`${match[2].slice(0, 80)}\``
+        )
+      }
+    }
+  }
+  return { scanned, templates, offenders }
+}
 
 const sources = SURFACES.map((surface) => {
   const text = readFileSync(new URL(surface.file, import.meta.url), 'utf8')
@@ -156,6 +217,14 @@ describe('status wording comes from the dictionaries', () => {
         .filter((word) => source.text.includes(`'${word}'`))
         .map((word) => `${source.file}: '${word}'`)
     )
+    expect(offenders).toEqual([])
+  })
+
+  // The file counts are the self-check: a walker that silently found nothing would otherwise pass.
+  it('keeps English words out of the announced text around an interpolation', () => {
+    const { scanned, templates, offenders } = scanAnnouncedTemplates()
+    expect(scanned).toBeGreaterThan(400)
+    expect(templates).toBeGreaterThan(3)
     expect(offenders).toEqual([])
   })
 })

@@ -5292,5 +5292,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'a11y.modelProviderWithModel': 'Поставщик модели: {name}; модель: {model}',
   'settings.themeFallbackHint':
     'Следовать системной настройке или принудительно выбрать светлую либо тёмную тему.',
-  'settings.connectorToolPermission': 'Разрешение для {method}'
+  'settings.connectorToolPermission': 'Разрешение для {method}',
+  'a11y.runtimeSection': 'Среда выполнения: {label}',
+  'a11y.repositoriesSection': '{action} репозитории',
+  'a11y.grantsThisSession': 'Разрешено в этой сессии: {count}',
+  'a11y.cancelAttachment': 'Отменить вложение {name}',
+  'a11y.removeFailedAttachment': 'Удалить неудавшееся вложение {name}',
+  'a11y.parentDirectory': '{action} в родительский каталог',
+  'a11y.scrollablePreview': 'Прокручиваемый просмотр: {name}',
+  'a11y.stepStatus': '{step} — состояние: {status}'
 }

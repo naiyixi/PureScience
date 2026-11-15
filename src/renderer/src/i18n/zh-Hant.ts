@@ -4868,5 +4868,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': '模型提供者：{name}',
   'a11y.modelProviderWithModel': '模型提供者：{name}；模型：{model}',
   'settings.themeFallbackHint': '跟隨系統設定，或強制使用淺色或深色。',
-  'settings.connectorToolPermission': '「{method}」的權限'
+  'settings.connectorToolPermission': '「{method}」的權限',
+  'a11y.runtimeSection': '{label} 執行環境',
+  'a11y.repositoriesSection': '{action}儲存庫',
+  'a11y.grantsThisSession': '本次工作階段已允許 {count} 項',
+  'a11y.cancelAttachment': '取消附件 {name}',
+  'a11y.removeFailedAttachment': '移除失敗的附件 {name}',
+  'a11y.parentDirectory': '{action}上層目錄',
+  'a11y.scrollablePreview': '{name} 可捲動預覽',
+  'a11y.stepStatus': '{step} 狀態：{status}'
 }

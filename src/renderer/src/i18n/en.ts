@@ -5299,5 +5299,13 @@ export const en: Record<ZhKey, string> = {
   'a11y.modelProvider': 'Model provider: {name}',
   'a11y.modelProviderWithModel': 'Model provider: {name}; model: {model}',
   'settings.themeFallbackHint': 'Follow the system setting, or force light or dark.',
-  'settings.connectorToolPermission': 'Permission for {method}'
+  'settings.connectorToolPermission': 'Permission for {method}',
+  'a11y.runtimeSection': '{label} runtime',
+  'a11y.repositoriesSection': '{action} repositories',
+  'a11y.grantsThisSession': '{count} allowed this session',
+  'a11y.cancelAttachment': 'Cancel attachment {name}',
+  'a11y.removeFailedAttachment': 'Remove failed attachment {name}',
+  'a11y.parentDirectory': '{action} parent directory',
+  'a11y.scrollablePreview': '{name} scrollable preview',
+  'a11y.stepStatus': '{step} status: {status}'
 }

@@ -5178,5 +5178,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': '모델 제공자: {name}',
   'a11y.modelProviderWithModel': '모델 제공자: {name}; 모델: {model}',
   'settings.themeFallbackHint': '시스템 설정을 따르거나 라이트/다크를 고정할 수 있습니다.',
-  'settings.connectorToolPermission': '{method} 권한'
+  'settings.connectorToolPermission': '{method} 권한',
+  'a11y.runtimeSection': '{label} 런타임',
+  'a11y.repositoriesSection': '저장소 {action}',
+  'a11y.grantsThisSession': '이 세션에서 {count}개 허용됨',
+  'a11y.cancelAttachment': '첨부 {name} 취소',
+  'a11y.removeFailedAttachment': '실패한 첨부 {name} 제거',
+  'a11y.parentDirectory': '상위 폴더로 {action}',
+  'a11y.scrollablePreview': '{name} 스크롤 가능한 미리보기',
+  'a11y.stepStatus': '{step} 상태: {status}'
 }

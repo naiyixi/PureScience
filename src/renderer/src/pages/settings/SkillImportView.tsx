@@ -249,7 +249,9 @@ const SkillImportView = ({ onImported }: SkillImportViewProps): React.JSX.Elemen
                 <Button
                   type="button"
                   variant="outline"
-                  aria-label={`${repositoriesExpanded ? t('settings.hide') : t('settings.show')} repositories`}
+                  aria-label={t('a11y.repositoriesSection', {
+                    action: repositoriesExpanded ? t('settings.hide') : t('settings.show')
+                  })}
                   aria-expanded={repositoriesExpanded}
                   aria-controls="github-repository-results"
                   className="shrink-0 gap-1.5 [@media(pointer:coarse)]:min-h-11"

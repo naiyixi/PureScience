@@ -1029,7 +1029,7 @@ const RuntimesPanel = ({
                 key={id}
                 title={label}
                 icon={icon}
-                aria-label={`${label} runtime`}
+                aria-label={t('a11y.runtimeSection', { label })}
                 separated
                 action={
                   <div className="flex items-center gap-2">

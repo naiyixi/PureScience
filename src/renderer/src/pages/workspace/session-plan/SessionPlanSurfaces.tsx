@@ -395,7 +395,10 @@ const PlanPreviewSurface = ({
                       return (
                         <div key={step.title} className="mt-3 grid grid-cols-[18px_1fr] gap-2">
                           <span
-                            aria-label={`${step.title} status: ${stepStatusLabel(state.status)}`}
+                            aria-label={t('a11y.stepStatus', {
+                              step: step.title,
+                              status: stepStatusLabel(state.status)
+                            })}
                             className={`mt-0.5 grid size-4 place-items-center rounded border text-[10px] ${presentation.className}`}
                           >
                             {presentation.mark}

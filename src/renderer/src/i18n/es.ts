@@ -5385,5 +5385,13 @@ export const es: Partial<Record<ZhKey, string>> = {
   'a11y.modelProvider': 'Proveedor del modelo: {name}',
   'a11y.modelProviderWithModel': 'Proveedor del modelo: {name}; modelo: {model}',
   'settings.themeFallbackHint': 'Seguir el ajuste del sistema, o forzar el modo claro u oscuro.',
-  'settings.connectorToolPermission': 'Permiso para {method}'
+  'settings.connectorToolPermission': 'Permiso para {method}',
+  'a11y.runtimeSection': 'Entorno de ejecución: {label}',
+  'a11y.repositoriesSection': '{action} los repositorios',
+  'a11y.grantsThisSession': '{count} permitidos en esta sesión',
+  'a11y.cancelAttachment': 'Cancelar el adjunto {name}',
+  'a11y.removeFailedAttachment': 'Quitar el adjunto fallido {name}',
+  'a11y.parentDirectory': '{action} la carpeta superior',
+  'a11y.scrollablePreview': 'Vista previa desplazable de {name}',
+  'a11y.stepStatus': '{step}: estado {status}'
 }
