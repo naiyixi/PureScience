@@ -19224,3 +19224,46 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（只报读数）；
   ③ 下一单元候选：（a）上面那两处抛错是否该走渲染层的 `messageKey` 通道（先核渲染层现在怎么显示它们，
   别造第二套）；（b）`scripts/i18n-hardcoded-audit.mjs` 的语义判据（仪表类，不进产品）。
+
+## 三百四十一、本轮追加（执行器，2026-11-16 05:0x–）—— 任务完成通知只留一个生产者（删掉绕过设置/焦点/无头三道门的那条）
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 本轮先把上一轮的 `c5209e70`（§三百四十）在**它自己的树上**重取了一遍门禁（不采信文档里的数字）：
+  定向 `src/main/native-dialog-strings.test.ts` + `native-file-dialogs.test.ts` + `file-save` + `session-package`
+  + `diagnostics` = **44 files / 437 passed**；双 typecheck 0；本笔 10 个文件 eslint 0；
+  `eslint --no-cache .` = **0 error / 94 warning**；全量 `--maxWorkers=4` = **1483 files / 18627 passed**（exit 0）
+  —— 与 §三百四十 记的数字逐项一致，遂 amend 一笔把证据档 §三 的「见 §五」回填成真读数并推上 main（`fcc93101`）。
+- 推送前现查在飞车道：六条全 `completed`，「本次推送没有取消任何人的判决」。
+- 本单元与在做的 i18n 面**不重合**：全树 `grep "notifyTurnOutcome"` 只有调用点与模块自身，无别的执行体在改。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-single-notification-producer.md`）
+
+同一事件两个生产者：收件箱服务（设置门 + 焦点门 + 无头门 + 点击回会话 + 未读/收件箱 + 规范英文标题）与
+回合工作流里附带的 `notifyTurnOutcome`（三道门全无、正文硬编码一种语言、每回合无条件）。删掉后者：
+删模块、去调用、新增**双向**守卫 5 条（唯一构造点 / 那一处仍带无头门 / 存活者仍接在运行时事件流 /
+全树无遗留引用 / 扫到的源文件数 > 200 的自检）。装机日志（`~/Library/Logs/PureScience/main.1.log`）里
+`delivering task notification` 两条即服务那条在真实机器上的投递证据；被删那条从不落日志 ⇒「历史上弹过两次」
+不可回溯，判据用「两处构造点 + 一处没有门」，不用日志计数。
+
+### 二 门禁
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（`src/main/acp` + `src/main/notifications`，107 文件） | **1681 passed**，exit 0 |
+| 新守卫单跑 | 1 file / **5 passed**；两处变异各自红并点名（探针已删） |
+| 双 typecheck | node **0** / web **0** |
+| 本笔 2 个 TS 文件 eslint | 0 problem |
+| 全量 vitest `--maxWorkers=4` | **1484 files / 18632 passed**（31 + 228 skipped），exit 0；较上一笔 +1 文件 +5 例 |
+
+### 三 边界与具名未办
+
+- **无真机窗口读数**：横幅由系统通知中心绘制，Playwright 抓不到；本轮证据 = 代码形状 + 装机日志 + 双向守卫。
+- **保留下来的横幅正文仍是规范英文**（横幅不经过渲染层）⇒ 非英文用户的系统横幅仍是英文标题。正解是给
+  `TaskNotification` 加结构化描述符 + 九语表、在投递那一刻按 `native-locale` 取语言——**下一个单元**。
+- 连接器配置诊断的 34 个码（`connector-template.ts` 的 `message`，用户可见的红色诊断行）仍在英文，量比上条大 4 倍。
+
+### 四 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道（`fcc93101` 的判决会被本笔顶掉 ⇒ 按祖先关系引本笔的判决）；
+- ② 先做「系统横幅正文按系统语言投递」（连锁 3–4 文件），再做连接器诊断九语。

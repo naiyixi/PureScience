@@ -1,6 +1,5 @@
 import type { ActiveSession, PromptResponse, SessionNotification } from '@agentclientprotocol/sdk'
 
-import { notifyTurnOutcome } from '../notifications/turn-notifications'
 import type { AcpPromptRequest } from '../../shared/acp'
 import type { ActivePlanProjection } from '../../shared/session-plan/contract'
 import { formatPlanProtectedContext } from '../../shared/session-plan/contract'
@@ -415,8 +414,6 @@ class AcpPromptTurnWorkflow {
       // report a reason for a turn that no longer exists.
       disarmTurnSilenceWatchdog(sessionId)
     }
-    // 任务完成/失败系统通知 (科学家长任务提醒; 不阻塞流程)
-    notifyTurnOutcome(outcome.kind === 'failed' ? 'failed' : 'completed')
     const model = env.backend().session.model
     return finalizer.finalize(
       {
