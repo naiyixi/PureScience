@@ -215,7 +215,7 @@ const ConnectorDetailView = ({
                     </button>
                     <ToolPermissionControl
                       value={tool.permission}
-                      label={`Permission for ${tool.method}`}
+                      label={t('settings.connectorToolPermission', { method: tool.method })}
                       onChange={(permission) => void handleToolChange(tool.id, permission)}
                     />
                   </div>

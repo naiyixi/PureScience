@@ -4904,7 +4904,26 @@ export const zh = {
   'environmentStatus.waiting': '待检查…',
   'preview.missingTag': '已缺失',
   'jobStatus.error': '错误',
-  'jobStatus.cancelled': '已取消'
+  'jobStatus.cancelled': '已取消',
+  'a11y.copied': '已复制',
+  'a11y.copyCode': '复制代码',
+  'a11y.copyToClipboard': '复制到剪贴板',
+  'a11y.copyMessage': '复制消息',
+  'a11y.compactContext': '压缩上下文',
+  'a11y.compactingContext': '正在压缩上下文',
+  'a11y.contextUsed': '已用上下文',
+  'a11y.estimatedContext': '估计上下文',
+  'a11y.enterFullScreen': '进入全屏',
+  'a11y.exitFullScreen': '退出全屏',
+  'a11y.removeBookmark': '取消收藏',
+  'a11y.pinFolder': '固定此文件夹',
+  'a11y.maximize': '最大化',
+  'a11y.restore': '还原',
+  'a11y.openExternalLink': '打开外部链接？',
+  'a11y.modelProvider': '模型提供方：{name}',
+  'a11y.modelProviderWithModel': '模型提供方：{name}；模型：{model}',
+  'settings.themeFallbackHint': '跟随系统设置，或强制使用浅色或深色。',
+  'settings.connectorToolPermission': '「{method}」的权限'
 }
 
 export type ZhKey = keyof typeof zh

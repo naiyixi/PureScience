@@ -351,8 +351,16 @@ const TurnTokenUsage = ({
                   <span
                     data-slot="turn-runtime-model"
                     role="img"
-                    aria-label={`Model provider: ${provider.name}${model ? `; model: ${model}` : ''}`}
-                    title={`Model provider: ${provider.name}${model ? `; model: ${model}` : ''}`}
+                    aria-label={
+                      model
+                        ? t('a11y.modelProviderWithModel', { name: provider.name, model })
+                        : t('a11y.modelProvider', { name: provider.name })
+                    }
+                    title={
+                      model
+                        ? t('a11y.modelProviderWithModel', { name: provider.name, model })
+                        : t('a11y.modelProvider', { name: provider.name })
+                    }
                     className="inline-flex size-5 items-center justify-center rounded-full border border-border bg-background"
                   >
                     <ProviderKindIcon kindKey={kindKey} className="size-3" />
@@ -1121,11 +1129,13 @@ const WorkspaceMessageItemImpl = ({
                 {showUserActions ? (
                   <TooltipProvider delayDuration={200}>
                     <div data-slot="user-message-actions" className={userMessageActionsClassName}>
-                      <UserMessageActionTooltip label={copied ? 'Copied' : 'Copy message'}>
+                      <UserMessageActionTooltip
+                        label={copied ? t('a11y.copied') : t('a11y.copyMessage')}
+                      >
                         <button
                           type="button"
                           className={userMessageActionButtonClassName}
-                          aria-label={copied ? 'Copied' : 'Copy message'}
+                          aria-label={copied ? t('a11y.copied') : t('a11y.copyMessage')}
                           onClick={handleCopyMessage}
                         >
                           {copied ? (

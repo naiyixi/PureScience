@@ -128,7 +128,7 @@ const ComposerContextUsage = ({
   const compactButton = (
     <button
       type="button"
-      aria-label={compacting ? 'Compacting context' : 'Compact context'}
+      aria-label={compacting ? t('a11y.compactingContext') : t('a11y.compactContext')}
       aria-disabled={compactUnavailable ? true : undefined}
       disabled={compacting || (compactUnavailable && !compactHint)}
       onClick={compacting || compactUnavailable ? undefined : onCompact}
@@ -146,7 +146,7 @@ const ComposerContextUsage = ({
           ref={triggerRef}
           type="button"
           className="flex h-8 min-w-0 items-center gap-1.5 rounded-md px-2 text-[12px] text-text-000 outline-none transition-colors duration-150 motion-reduce:transition-none hover:bg-bg-200 focus-visible:ring-3 focus-visible:ring-ring/50 active:bg-bg-300"
-          aria-label={`${hasAgentTotal ? 'Context used' : 'Estimated context'}: ${label}`}
+          aria-label={`${hasAgentTotal ? t('a11y.contextUsed') : t('a11y.estimatedContext')}: ${label}`}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? contentId : undefined}

@@ -493,7 +493,7 @@ export const LocalFileBrowser = ({
               size="icon-sm"
               className={TOOLBAR_ICON_BUTTON}
               onClick={() => void handleToggleBookmark()}
-              aria-label={isBookmarked ? 'Remove bookmark' : 'Pin this folder'}
+              aria-label={isBookmarked ? t('a11y.removeBookmark') : t('a11y.pinFolder')}
             >
               {/* Pushpin for the action in both directions: PinOff (crossed-out pin) is what a click
                   will do next, so a pinned folder reads as "click to unpin". */}

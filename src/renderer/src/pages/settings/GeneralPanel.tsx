@@ -207,10 +207,8 @@ const GeneralPanel = (): React.JSX.Element => {
           </Select>
         </SettingsRow>
         <SettingsRow
-          label="Theme"
-          description={
-            isMac ? t('settings.themeHint') : 'Follow the system setting, or force light or dark.'
-          }
+          label={t('settings.theme')}
+          description={isMac ? t('settings.themeHint') : t('settings.themeFallbackHint')}
           controlClassName="flex justify-end"
         >
           <ThemeSegmentedControl />

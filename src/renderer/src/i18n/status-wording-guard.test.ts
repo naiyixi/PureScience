@@ -39,6 +39,46 @@ const SURFACES = [
       'notificationAction.resolved'
     ]
   },
+  // The second carrier of the same defect: the words a control ANNOUNCES (aria-label) or explains itself
+  // with (tooltip/label) were English literals in otherwise translated surfaces — invisible to a sighted
+  // reader, read aloud in English by a screen reader, and shown in English inside a tooltip.
+  {
+    file: '../pages/workspace/WorkspaceToolCodeBlock.tsx',
+    keys: ['a11y.copied', 'a11y.copyCode']
+  },
+  {
+    file: '../pages/workspace/notebook-code.tsx',
+    keys: ['a11y.copied', 'a11y.copyToClipboard']
+  },
+  {
+    file: '../pages/workspace/ComposerContextUsage.tsx',
+    keys: [
+      'a11y.compactContext',
+      'a11y.compactingContext',
+      'a11y.contextUsed',
+      'a11y.estimatedContext'
+    ]
+  },
+  {
+    file: '../pages/settings/SettingsPage.tsx',
+    keys: ['a11y.maximize', 'a11y.restore']
+  },
+  {
+    file: '../pages/workspace/LocalFileBrowser.tsx',
+    keys: ['a11y.removeBookmark', 'a11y.pinFolder']
+  },
+  {
+    file: '../pages/workspace/session-plan/SessionPlanSurfaces.tsx',
+    keys: ['a11y.enterFullScreen', 'a11y.exitFullScreen']
+  },
+  {
+    file: '../pages/workspace/WorkspaceMessageItem.tsx',
+    keys: ['a11y.copied', 'a11y.copyMessage', 'a11y.modelProvider', 'a11y.modelProviderWithModel']
+  },
+  {
+    file: '../components/streamdown/LinkSafetyModal.tsx',
+    keys: ['a11y.openExternalLink']
+  },
   {
     file: '../components/NetworkStatusIndicator.tsx',
     keys: [

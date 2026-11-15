@@ -5272,5 +5272,25 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'environmentStatus.waiting': 'Ожидание проверки…',
   'preview.missingTag': 'Отсутствует',
   'jobStatus.error': 'Ошибка',
-  'jobStatus.cancelled': 'Отменено'
+  'jobStatus.cancelled': 'Отменено',
+  'a11y.copied': 'Скопировано',
+  'a11y.copyCode': 'Копировать код',
+  'a11y.copyToClipboard': 'Копировать в буфер обмена',
+  'a11y.copyMessage': 'Копировать сообщение',
+  'a11y.compactContext': 'Сжать контекст',
+  'a11y.compactingContext': 'Сжатие контекста',
+  'a11y.contextUsed': 'Использованный контекст',
+  'a11y.estimatedContext': 'Оценённый контекст',
+  'a11y.enterFullScreen': 'Во весь экран',
+  'a11y.exitFullScreen': 'Выйти из полноэкранного режима',
+  'a11y.removeBookmark': 'Удалить закладку',
+  'a11y.pinFolder': 'Закрепить эту папку',
+  'a11y.maximize': 'Развернуть',
+  'a11y.restore': 'Восстановить',
+  'a11y.openExternalLink': 'Открыть внешнюю ссылку?',
+  'a11y.modelProvider': 'Поставщик модели: {name}',
+  'a11y.modelProviderWithModel': 'Поставщик модели: {name}; модель: {model}',
+  'settings.themeFallbackHint':
+    'Следовать системной настройке или принудительно выбрать светлую либо тёмную тему.',
+  'settings.connectorToolPermission': 'Разрешение для {method}'
 }

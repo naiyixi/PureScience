@@ -316,7 +316,7 @@ const PlanPreviewSurface = ({
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
-                    aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+                    aria-label={isFullScreen ? t('a11y.exitFullScreen') : t('a11y.enterFullScreen')}
                     variant="ghost"
                     size="icon-sm"
                     onClick={onToggleFullScreen}
@@ -329,7 +329,7 @@ const PlanPreviewSurface = ({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="z-[70]">
-                  {isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+                  {isFullScreen ? t('a11y.exitFullScreen') : t('a11y.enterFullScreen')}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

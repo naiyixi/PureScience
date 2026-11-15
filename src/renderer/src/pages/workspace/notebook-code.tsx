@@ -3,6 +3,7 @@ import { Check, Copy } from 'lucide-react'
 
 import { HighlightedCodeLines } from './HighlightedCodeLines'
 import { canCopyText, copyText } from '@/lib/copy-text'
+import { useLanguage } from '@/i18n'
 
 const NotebookCodeBlock = ({
   code,
@@ -14,6 +15,7 @@ const NotebookCodeBlock = ({
   highlightLine?: number
 }): React.JSX.Element => {
   const [copied, setCopied] = useState(false)
+  const { t } = useLanguage()
 
   const copyCode = (): void => {
     if (!canCopyText()) return
@@ -29,7 +31,7 @@ const NotebookCodeBlock = ({
       <button
         type="button"
         className="absolute right-2 top-2 z-10 rounded bg-bg-300/80 p-1.5 text-text-300 opacity-60 backdrop-blur-sm transition-[background-color,color,opacity] duration-150 hover:bg-bg-300 hover:text-text-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-bg-300 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none group-hover:opacity-100"
-        aria-label={copied ? 'Copied' : 'Copy to clipboard'}
+        aria-label={copied ? t('a11y.copied') : t('a11y.copyToClipboard')}
         disabled={!canCopyText()}
         onClick={copyCode}
       >

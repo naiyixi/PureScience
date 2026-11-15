@@ -1,6 +1,7 @@
 import { code as streamdownCode } from '@streamdown/code'
 import type { HighlightResult } from '@streamdown/code'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/i18n'
 import { Copy } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { canCopyText, copyText } from '@/lib/copy-text'
@@ -48,6 +49,7 @@ const WorkspaceToolCodeBlock = ({
   copyable = false
 }: WorkspaceToolCodeBlockProps): React.JSX.Element => {
   const [highlighted, setHighlighted] = useState<HighlightState | null>(null)
+  const { t } = useLanguage()
   const [copied, setCopied] = useState(false)
   const highlightKey = createHighlightKey(source, language)
 
@@ -101,7 +103,7 @@ const WorkspaceToolCodeBlock = ({
         <button
           type="button"
           data-testid="code-copy-button"
-          aria-label={copied ? 'Copied' : 'Copy code'}
+          aria-label={copied ? t('a11y.copied') : t('a11y.copyCode')}
           onClick={() => void copyCode()}
           className="absolute right-2 top-2 z-10 rounded bg-bg-100/80 p-1.5 text-text-200 backdrop-blur-sm hover:bg-bg-200 hover:text-text-100"
         >

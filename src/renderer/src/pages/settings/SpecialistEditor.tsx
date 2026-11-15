@@ -1063,7 +1063,7 @@ const SpecialistEditor = ({
                             </>
                           )}
                           <SettingsIconAction
-                            label={`Remove ${skill.name}`}
+                            label={t('aria.removeItem', { name: skill.name })}
                             icon={X}
                             onClick={() => removeSkill(skill.id)}
                             danger
@@ -1113,7 +1113,7 @@ const SpecialistEditor = ({
                             </span>
                           ) : null}
                           <SettingsIconAction
-                            label={`Remove ${connector.name}`}
+                            label={t('aria.removeItem', { name: connector.name })}
                             icon={X}
                             onClick={() => removeConnector(connector.id)}
                             danger

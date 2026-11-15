@@ -1270,7 +1270,7 @@ const SettingsPage = forwardRef<SettingsPageHandle, SettingsPageProps>(function 
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => setIsExpanded((value) => !value)}
-                        aria-label={isExpanded ? 'Restore' : 'Maximize'}
+                        aria-label={isExpanded ? t('a11y.restore') : t('a11y.maximize')}
                         className="rounded-lg text-muted-foreground"
                       >
                         {isExpanded ? (
