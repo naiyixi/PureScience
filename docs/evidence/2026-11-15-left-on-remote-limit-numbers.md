@@ -85,6 +85,24 @@ AssertionError: expected undefined to be 100
 | `eslint --no-cache`（本笔 11 个文件）        | 见 §4.1                                                     |
 | `prettier --check`                           | 见 §4.1                                                     |
 
+### 4.1 补跑（2026-11-15 13:0x，**在 `84489e56` 的隔离工作树上重取的读数**）
+
+上一轮在写这份档的这三格之前被切断（`Operation interrupted: waiting for model response`），这三格一直空着，
+而计划档里那组数字取自**改动的不同时刻** ⇒ 按「门禁数字必须来自最后一次改动之后的那一遍」重跑一遍，
+下面这一组作用在**这个提交本身**（`git worktree add /tmp/ps-gate-84489 84489e56` + `node_modules` 软链）：
+
+| 环                                                                        | 读数（本轮实跑）                                                                                                                       |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 全量 vitest `--maxWorkers=4`                                              | **1477 files passed / 31 skipped（1508）**；**18507 passed / 228 skipped（18735）**；**`VITEST EXIT=0`**，298 s                        |
+| `npx eslint --no-cache`（本笔 18 个有代码的路径：9 源/测试 + 9 语言字典） | **exit 0**，输出为空（0 error / 0 warning）                                                                                            |
+| `npx prettier --check`（18 个代码路径 + 证据档 + `SKILL.md`）             | **exit 0** — `All matched files use Prettier code style!`（计划档除外：它在 `563870f1` 上就已是未格式化态，属既有、不重排 19k 行台账） |
+| `tsc --noEmit -p tsconfig.node.json --composite false`                    | **exit 0**，`error TS` **0** 处                                                                                                        |
+| `tsc --noEmit -p tsconfig.web.json --composite false`                     | **exit 0**，`error TS` **0** 处                                                                                                        |
+
+**与计划档那组数字的差**（如实记）：计划档 §三百三十六 §三 写的是 1479 文件 / 18533 例，本轮是 1477 / 18507。
+差在文件数 −2、用例 −26 —— 那一组取自共享工作树（同一时刻还躺着别人的在制测试文件），本组取自**只含这个提交**
+的隔离工作树 ⇒ 按纪律以**本组**为准，计划档那组不再作为本单元的证据。
+
 ## 5 边界与坑
 
 1. **只补数字，不改阈值行为**：分类规则（>max_file_mb、累计 >max_total_mb、顺序、`residency_remote` 不下载）一个字没改。
