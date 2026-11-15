@@ -564,6 +564,13 @@ describe('single-round auditor correction', () => {
     })
 
     const correctionPrompts: string[] = []
+    // The deferral is an event, not a timing assumption. A fixed sleep here was the defect: under a
+    // loaded runner this lane's review phase could outlast it, the owning turn then finished and
+    // released the slot, and this lane sent a second prompt — the very shape being pinned.
+    let announceDeferral!: () => void
+    const deferralSeen = new Promise<void>((resolve) => {
+      announceDeferral = resolve
+    })
     const reviewPromise = runReview({
       sessionId: 'session-1',
       turnMessageId: 'msg-2',
@@ -574,13 +581,22 @@ describe('single-round auditor correction', () => {
       artifactStorageRoot: temporaryRoot!,
       mainSessionId: 'main-session-1',
       sessionRefreshTimeoutMs: 0,
-      onCorrectionPrompt: (text) => correctionPrompts.push(text)
+      onCorrectionPrompt: (text) => correctionPrompts.push(text),
+      onCorrectionDeferred: () => announceDeferral()
     })
 
-    // Give the second lane time to reach the deferral, then let the owning turn finish.
+    // Release the owning turn only once this lane has actually stepped aside. The timeout only bounds
+    // a hang (and fails with the sentence below); it is not the correctness window.
     const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
-    await wait(50)
+    const deferred = await Promise.race([
+      deferralSeen.then(() => true),
+      wait(5000).then(() => false)
+    ])
     releaseOther()
+    expect(
+      deferred,
+      'this lane never deferred to the correction turn already in flight: it sent a second prompt for the same main session'
+    ).toBe(true)
     const review = await reviewPromise
     await otherLane
 

@@ -98,6 +98,9 @@ export type RunReviewOptions = {
   mainSessionId?: string
   // Optional hook called with the auditor message text before it is sent. Used in tests.
   onCorrectionPrompt?: (text: string) => void
+  // Optional hook called when this lane steps aside because another lane already owns the correction
+  // turn for the same main session. Used in tests to order two lanes without sleeping.
+  onCorrectionDeferred?: () => void
   // Optional hook called if the correction sendPrompt fails, so the caller can clear the pre-emptive
   // auto-review suppression it set before the correction turn (the failed turn emits no stop). The
   // reason travels with it: "a turn was already running" and "the provider rejected it" are different
@@ -556,6 +559,7 @@ type FixLoopOptions = {
   model: string
   onReviewUpdate?: (review: ReviewWithChecks) => void
   onCorrectionPrompt?: (text: string) => void
+  onCorrectionDeferred?: () => void
   onCorrectionFailed?: (reason: CorrectionFailureReason) => void
   reviewerTimeoutMs: number
   reviewerMaxUpdates: number
@@ -720,6 +724,7 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
     model,
     onReviewUpdate,
     onCorrectionPrompt,
+    onCorrectionDeferred,
     onCorrectionFailed,
     reviewerTimeoutMs,
     reviewerMaxUpdates,
@@ -813,6 +818,7 @@ const runFixLoop = async (options: FixLoopOptions): Promise<void> => {
         acpRuntime,
         provenanceContext,
         onCorrectionPrompt,
+        onCorrectionDeferred,
         onCorrectionFailed: (reason) => {
           correctionFailed = true
           correctionFailureReason = reason
@@ -1365,6 +1371,7 @@ const runReviewWithSession = async (
     onStarted,
     mainSessionId,
     onCorrectionPrompt,
+    onCorrectionDeferred,
     onCorrectionFailed,
     reviewerTimeoutMs = DEFAULT_REVIEWER_TIMEOUT_MS,
     reviewerMaxUpdates = DEFAULT_REVIEWER_MAX_UPDATES,
@@ -1638,6 +1645,7 @@ const runReviewWithSession = async (
         model,
         onReviewUpdate,
         onCorrectionPrompt,
+        onCorrectionDeferred,
         onCorrectionFailed,
         reviewerTimeoutMs,
         reviewerMaxUpdates,

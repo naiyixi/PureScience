@@ -86,6 +86,10 @@ export const injectAuditorMessage = async (options: {
   provenanceContext: NonNullable<AcpPromptRequest['provenanceContext']>
   // Optional hook for tests to capture the injected message text.
   onCorrectionPrompt?: (text: string) => void
+  // Optional hook called when this lane steps aside for a correction turn that is already in flight
+  // for the same main session. Tests use it to order two lanes deterministically: the deferral is
+  // announced by an event, so a test never has to sleep and hope the other lane got there first.
+  onCorrectionDeferred?: () => void
   // Called if the correction sendPrompt fails, so the caller can undo pre-emptive suppression and say
   // WHY in the persisted disposition.
   onCorrectionFailed?: (reason: CorrectionFailureReason) => void
@@ -97,6 +101,7 @@ export const injectAuditorMessage = async (options: {
     acpRuntime,
     provenanceContext,
     onCorrectionPrompt,
+    onCorrectionDeferred,
     onCorrectionFailed
   } = options
 
@@ -128,6 +133,7 @@ export const injectAuditorMessage = async (options: {
       '[Auditor] correction deferred: another correction turn is already in flight for this session',
       { sessionId, mainSessionId, findingCount: warnFailChecks.length }
     )
+    onCorrectionDeferred?.()
     const outcome = await inFlight
     if (outcome === 'completed') {
       // The other lane's turn is the correction this session got. Its own re-review is what judges

@@ -12,7 +12,7 @@
 // constructor outside the one delivery callback, and the one delivery callback is still reached from
 // the runtime event stream (removing the duplicate must not leave the product with no producer at all).
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
@@ -32,8 +32,10 @@ const walkSource = (dir: string, out: string[] = []): string[] => {
 const stripComments = (text: string): string =>
   text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
+// The relative path is reported with forward slashes on every platform: the assertions below name
+// repository paths, and `path.relative` answers `notifications\electron-wiring.ts` on Windows.
 const sources = walkSource(mainRoot).map((file) => ({
-  file: relative(mainRoot, file),
+  file: relative(mainRoot, file).split(sep).join('/'),
   text: stripComments(readFileSync(file, 'utf8'))
 }))
 
