@@ -4818,5 +4818,13 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.installFailed': '這個案例安裝不了。',
   'home.userCases.market.savedCopy': '正在顯示 {date} 儲存的副本，重新整理可再向索引查詢一次。',
   'jobDetail.leftOnRemoteReasonFileLimitIs': '超過單一檔案 {limit} MB 的下載上限',
-  'jobDetail.leftOnRemoteReasonTotalLimitIs': '會讓本次作業的下載總量超過 {limit} MB'
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '會讓本次作業的下載總量超過 {limit} MB',
+  'common.queued': '排隊中',
+  'jobStatus.queued': '排隊中',
+  'jobStatus.running': '執行中',
+  'jobStatus.success': '已完成',
+  'jobStatus.failed': '失敗',
+  'jobStatus.timeout': '逾時',
+  'jobStatus.error': '錯誤',
+  'jobStatus.cancelled': '已取消'
 }

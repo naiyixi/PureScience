@@ -5369,5 +5369,13 @@ export const fr: Partial<Record<ZhKey, string>> = {
     'Copie enregistrée le {date} affichée. Rechargez pour interroger l’index à nouveau.',
   'jobDetail.leftOnRemoteReasonFileLimitIs': 'Dépasse la limite de {limit} Mo par fichier',
   'jobDetail.leftOnRemoteReasonTotalLimitIs':
-    'Ferait dépasser le total de téléchargement de cette tâche ({limit} Mo)'
+    'Ferait dépasser le total de téléchargement de cette tâche ({limit} Mo)',
+  'common.queued': 'En attente',
+  'jobStatus.queued': 'En attente',
+  'jobStatus.running': 'En cours',
+  'jobStatus.success': 'Terminé',
+  'jobStatus.failed': 'Échec',
+  'jobStatus.timeout': 'Délai dépassé',
+  'jobStatus.error': 'Erreur',
+  'jobStatus.cancelled': 'Annulé'
 }

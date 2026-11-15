@@ -5249,5 +5249,13 @@ export const en: Record<ZhKey, string> = {
     'Showing the copy saved on {date}. Reload to ask the index again.',
   'jobDetail.leftOnRemoteReasonFileLimitIs': 'Larger than the {limit} MB per-file download limit',
   'jobDetail.leftOnRemoteReasonTotalLimitIs':
-    'Would take this job past its {limit} MB download total'
+    'Would take this job past its {limit} MB download total',
+  'common.queued': 'Queued',
+  'jobStatus.queued': 'Queued',
+  'jobStatus.running': 'Running',
+  'jobStatus.success': 'Done',
+  'jobStatus.failed': 'Failed',
+  'jobStatus.timeout': 'Timed out',
+  'jobStatus.error': 'Error',
+  'jobStatus.cancelled': 'Cancelled'
 }

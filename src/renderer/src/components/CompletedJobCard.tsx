@@ -1,7 +1,8 @@
 import { Zap, ChevronRight } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
-import type { JobSummary } from '../../../shared/compute'
+import type { ComputeJobStatus, JobSummary } from '../../../shared/compute'
+import { jobStatusLabel } from './job-status-label'
 
 // CompletedJobCard appears in the conversation timeline as an independent card.
 // Used when a job's job_id was NOT found in any tool-call rawOutput
@@ -14,25 +15,24 @@ type CompletedJobCardProps = {
   onOpen: (job: JobSummary) => void
 }
 
-// Returns the status label and color class based on job status.
-function getStatusDisplay(job: JobSummary): { label: string; colorClass: string } {
-  switch (job.status) {
-    case 'success':
-      return { label: 'finished', colorClass: 'text-green-600 dark:text-green-400' }
-    case 'failed':
-      return { label: 'failed', colorClass: 'text-red-600 dark:text-red-400' }
-    case 'timeout':
-      return { label: 'timed out', colorClass: 'text-red-600 dark:text-red-400' }
-    case 'error':
-      return { label: 'error', colorClass: 'text-red-600 dark:text-red-400' }
-    default:
-      return { label: job.status, colorClass: 'text-muted-foreground' }
-  }
+// Colour only — the status WORD comes from job-status-label.ts so the card says 已完成 on a Chinese
+// interface instead of the English literal it used to hard-code here.
+const STATUS_COLOR_CLASS: Record<ComputeJobStatus, string> = {
+  queued: 'text-muted-foreground',
+  submitted: 'text-muted-foreground',
+  running: 'text-amber-600 dark:text-amber-400',
+  success: 'text-green-600 dark:text-green-400',
+  failed: 'text-red-600 dark:text-red-400',
+  timeout: 'text-red-600 dark:text-red-400',
+  error: 'text-red-600 dark:text-red-400',
+  // Stopped by the reader: neutral, same reasoning as the badge.
+  cancelled: 'text-muted-foreground'
 }
 
 export function CompletedJobCard({ job, onOpen }: CompletedJobCardProps): React.JSX.Element {
   const { t } = useLanguage()
-  const { label, colorClass } = getStatusDisplay(job)
+  const colorClass = STATUS_COLOR_CLASS[job.status] ?? STATUS_COLOR_CLASS.queued
+  const statusLabel = jobStatusLabel(job.status, t)
 
   const intentDisplay = job.intent.length > 70 ? `${job.intent.slice(0, 67)}…` : job.intent
 
@@ -47,7 +47,7 @@ export function CompletedJobCard({ job, onOpen }: CompletedJobCardProps): React.
       <Zap size={13} className={colorClass} aria-hidden="true" style={{ flexShrink: 0 }} />
       <span className="text-[11px] text-muted-foreground shrink-0">{job.display_name}</span>
       <span className="flex-1 min-w-0 truncate text-secondary-foreground">{intentDisplay}</span>
-      <span className={`text-[11px] shrink-0 ${colorClass}`}>— {label}</span>
+      <span className={`text-[11px] shrink-0 ${colorClass}`}>— {statusLabel}</span>
       <ChevronRight size={12} className="text-muted-foreground shrink-0" aria-hidden="true" />
     </button>
   )

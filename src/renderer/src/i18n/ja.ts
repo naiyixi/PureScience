@@ -5220,5 +5220,13 @@ export const ja: Partial<Record<ZhKey, string>> = {
     '{date} に保存されたコピーを表示しています。再読み込みで索引に問い合わせ直せます。',
   'jobDetail.leftOnRemoteReasonFileLimitIs':
     '1 ファイルあたり {limit} MB のダウンロード上限を超えています',
-  'jobDetail.leftOnRemoteReasonTotalLimitIs': 'このジョブのダウンロード総量 {limit} MB を超えます'
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': 'このジョブのダウンロード総量 {limit} MB を超えます',
+  'common.queued': '待機中',
+  'jobStatus.queued': '待機中',
+  'jobStatus.running': '実行中',
+  'jobStatus.success': '完了',
+  'jobStatus.failed': '失敗',
+  'jobStatus.timeout': 'タイムアウト',
+  'jobStatus.error': 'エラー',
+  'jobStatus.cancelled': 'キャンセル済み'
 }

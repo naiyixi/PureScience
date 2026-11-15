@@ -3,6 +3,7 @@ import { Zap, ChevronRight } from 'lucide-react'
 
 import { useLanguage } from '@/i18n'
 import type { JobSummary } from '../../../shared/compute'
+import { jobStatusLabel } from './job-status-label'
 import { formatDuration, jobElapsedMs } from './remote-job-badge-utils'
 
 // RemoteJobRow appears at the bottom of the repl_execute tool-call block that submitted a job.
@@ -50,7 +51,9 @@ export function RemoteJobRow({ job, onOpen }: RemoteJobRowProps): React.JSX.Elem
         {intentDisplay}
       </span>
       <span className="text-[11px] shrink-0" style={{ color: 'var(--session-waiting)' }}>
-        {job.status === 'submitted' ? 'queued' : 'running'} · {elapsedStr}
+        {/* The live row names its own state too: this used to be the literals 'queued' / 'running', which is
+            why a Chinese interface showed English here while the elapsed time beside it was localized. */}
+        {jobStatusLabel(job.status, t)} · {elapsedStr}
       </span>
       <ChevronRight size={12} className="text-muted-foreground shrink-0" aria-hidden="true" />
     </button>

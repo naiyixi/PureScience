@@ -5241,5 +5241,13 @@ export const ru: Partial<Record<ZhKey, string>> = {
     'Показана копия, сохранённая {date}. Обновите, чтобы снова запросить индекс.',
   'jobDetail.leftOnRemoteReasonFileLimitIs': 'Больше предела загрузки {limit} МБ на файл',
   'jobDetail.leftOnRemoteReasonTotalLimitIs':
-    'Превысит общий объём загрузки этой задачи ({limit} МБ)'
+    'Превысит общий объём загрузки этой задачи ({limit} МБ)',
+  'common.queued': 'В очереди',
+  'jobStatus.queued': 'В очереди',
+  'jobStatus.running': 'Выполняется',
+  'jobStatus.success': 'Готово',
+  'jobStatus.failed': 'Сбой',
+  'jobStatus.timeout': 'Время истекло',
+  'jobStatus.error': 'Ошибка',
+  'jobStatus.cancelled': 'Отменено'
 }

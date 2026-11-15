@@ -4873,7 +4873,15 @@ export const zh = {
   'home.userCases.market.installFailed': '这个案例安装不了。',
   'home.userCases.market.savedCopy': '正在显示 {date} 保存的副本，刷新可再问一次索引。',
   'jobDetail.leftOnRemoteReasonFileLimitIs': '超过单文件 {limit} MB 的下载上限',
-  'jobDetail.leftOnRemoteReasonTotalLimitIs': '会让本次作业的下载总量超过 {limit} MB'
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '会让本次作业的下载总量超过 {limit} MB',
+  'common.queued': '排队中',
+  'jobStatus.queued': '排队中',
+  'jobStatus.running': '运行中',
+  'jobStatus.success': '已完成',
+  'jobStatus.failed': '失败',
+  'jobStatus.timeout': '超时',
+  'jobStatus.error': '错误',
+  'jobStatus.cancelled': '已取消'
 }
 
 export type ZhKey = keyof typeof zh

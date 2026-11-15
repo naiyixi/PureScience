@@ -5401,5 +5401,13 @@ export const de: Partial<Record<ZhKey, string>> = {
   'jobDetail.leftOnRemoteReasonFileLimitIs':
     'Größer als die Download-Grenze von {limit} MB pro Datei',
   'jobDetail.leftOnRemoteReasonTotalLimitIs':
-    'Würde das Download-Gesamtbudget dieses Auftrags von {limit} MB überschreiten'
+    'Würde das Download-Gesamtbudget dieses Auftrags von {limit} MB überschreiten',
+  'common.queued': 'In Warteschlange',
+  'jobStatus.queued': 'In Warteschlange',
+  'jobStatus.running': 'Läuft',
+  'jobStatus.success': 'Fertig',
+  'jobStatus.failed': 'Fehlgeschlagen',
+  'jobStatus.timeout': 'Zeitüberschreitung',
+  'jobStatus.error': 'Fehler',
+  'jobStatus.cancelled': 'Abgebrochen'
 }

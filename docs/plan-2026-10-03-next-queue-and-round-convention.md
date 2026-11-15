@@ -19017,3 +19017,52 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - **下一轮第一步**：① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（满 48h 仍零判决就只报读数，不再重复定性）；
   ③ 下一单元候选（都不需要发版窗口）：按 `findTerminalUnharvested` 的选择条件**反向扫**其它未落终态的本地产出路径；
   或 `left_on_remote` 的**未枚举**态在通知卡（`job-notifier`）上是否也说清楚了（面板已说，卡片尚未核）。
+
+## 三百三十七、本轮追加（执行器，2026-11-15 15:0x–）—— 远端作业的状态词四个界面各写英文：中文界面里读到的就是英文
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 302069ba`，工作树只有三份**不是本轮的**未跟踪证据档（`docs/evidence/2026-11-0{1,4}-*`，不碰）。
+  队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 继续收缺陷队列。
+- 上一轮 §五 三条已闭：① `302069ba` 的 `Nightly` 与 `Windows Full Test` 按完整 40 位 SHA **双双 success**；
+  ② 公证第 11 次读数见 §四；③ 本单元取的是上一轮点名的**第二候选**（`left_on_remote` 未枚举态在卡片上是否说清）
+  在核查时**撞见的相邻缺陷**——卡片确实说清了（`FeaturedOutputs` 早有一支），但同一批作业卡的状态词是硬编码英文。
+- `git log -S"jobStatus." --oneline --since="30 days ago"` 零命中 ⇒ 没有别的执行体在做同一件事。
+
+### 一 交付（证据档 `docs/evidence/2026-11-15-job-status-wording-i18n.md`）
+
+| 位置 | 改动 |
+|---|---|
+| `src/renderer/src/components/job-status-label.ts`（新） | 唯一口径：`Record<ComputeJobStatus, TranslationKey>` + `jobStatusLabel(status, t)`；联合外历史值原样显示（不 `t(undefined)`） |
+| `JobStatusBadge.tsx` / `CompletedJobCard.tsx` / `RemoteJobRow.tsx` | 三处各自手写的英文词改成取同一支；徽章只剩配色表 |
+| `ConversationPanel.tsx` | 附件上传芯片的 `'Queued'` → `t('common.queued')` |
+| 九语字典 | 新 8 键：`jobStatus.{queued,running,success,failed,timeout,error,cancelled}` + `common.queued` |
+| `job-status-label.render.test.tsx`（新） | 21 条：逐状态两语对值 + 卡片两种终态 + 闭集覆盖 + 「组件里不许再有英文状态字面量」静态守卫（变异自证：插一行 `'Done'` 当场红） |
+
+### 二 门禁（本机实跑）
+
+| 环 | 读数 |
+|---|---|
+| 全量 vitest `--maxWorkers=4` | **1480 files / 18556 passed**（+1 文件 +23 例，exit 0） |
+| `src/renderer/src/components` 全目录 | 68 files / 560 passed |
+| `src/renderer/src/i18n` | 5 files / 73 passed |
+| 双 typecheck（`--composite false`） | node 0 / web 0 |
+| `npx eslint --no-cache`（本笔全部改动） | 0 error / 0 warning |
+
+### 三 边界与具名未办
+
+- 只覆盖远端作业这一族；`ReviewerCard` 等其它族的 status→文案未核。
+- **审计器仍看不见这个形状**：`i18n-hardcoded-audit.mjs` 改动前对那两个组件报 0 命中；候选形状
+  （`label: '大写…'`）实测 **208 命中 / 1327 文件**，其中混着契约允许的「规范英文 + 渲染时翻译」
+  ⇒ 按审计器自己的纪律不加入，立案为下一轮的仪器类候选（要的是语义判据，不是正则）。
+- 无真机窗口读数：本笔没有新路径/新数据，取证＝真 `LanguageProvider` 渲染读数 + 全量门禁；装机版随下一次发版生效。
+
+### 四 公证第 11 次读数（只记读数，不重开定性）
+
+`notary-status`（`43689142845`，2026-11-15T07:15Z，本轮现派发）：见下方「本轮补记」。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次；③ 下一单元候选：
+  （a）`job-observation-ui.test.tsx` 之外是否还有**别的族**用同一形状硬编码状态词（按本笔的静态守卫反向扫）；
+  （b）`left_on_remote` 未枚举态在**通知中心卡片**（`needs-attention-notification`）上是否也说清楚——本轮只核了作业面板。

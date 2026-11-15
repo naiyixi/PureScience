@@ -5128,5 +5128,13 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.savedCopy':
     '{date}에 저장된 사본을 표시하고 있습니다. 새로 고침하면 색인에 다시 요청합니다.',
   'jobDetail.leftOnRemoteReasonFileLimitIs': '파일당 {limit} MB 다운로드 한도를 초과함',
-  'jobDetail.leftOnRemoteReasonTotalLimitIs': '이 작업의 전체 다운로드 {limit} MB를 초과하게 됨'
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '이 작업의 전체 다운로드 {limit} MB를 초과하게 됨',
+  'common.queued': '대기 중',
+  'jobStatus.queued': '대기 중',
+  'jobStatus.running': '실행 중',
+  'jobStatus.success': '완료',
+  'jobStatus.failed': '실패',
+  'jobStatus.timeout': '시간 초과',
+  'jobStatus.error': '오류',
+  'jobStatus.cancelled': '취소됨'
 }

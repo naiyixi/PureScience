@@ -4,6 +4,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { JobSummary } from '../../../shared/compute'
+// The wording under test is the dictionary's, not a literal this file keeps a second copy of: the labels
+// used to be hard-coded English in the components, and a test that spelled them again would have to be
+// edited twice every time the copy changes (and would pass while the component said something else).
+import { en } from '@/i18n/en'
 import { extractJobIdFromActivity, findActivitiesForJob } from './job-binding-utils'
 import type { ToolActivity } from '@/stores/session-store'
 
@@ -164,12 +168,13 @@ afterEach(() => {
 
 describe('JobStatusBadge', () => {
   it.each([
-    ['submitted', 'Queued'],
-    ['running', 'Running'],
-    ['success', 'Done'],
-    ['failed', 'Failed'],
-    ['timeout', 'Timeout'],
-    ['error', 'Error']
+    ['submitted', en['jobStatus.queued']],
+    ['running', en['jobStatus.running']],
+    ['success', en['jobStatus.success']],
+    ['failed', en['jobStatus.failed']],
+    ['timeout', en['jobStatus.timeout']],
+    ['error', en['jobStatus.error']],
+    ['cancelled', en['jobStatus.cancelled']]
   ] as const)('renders %s status as "%s"', (status, label) => {
     act(() => {
       root.render(<JobStatusBadge status={status} />)
@@ -255,20 +260,20 @@ describe('RemoteJobRow', () => {
     expect(container.textContent).toContain('Run EDA analysis')
   })
 
-  it('shows "running" status text for running jobs', () => {
+  it('names a running job with the running wording', () => {
     const job = makeJob({ status: 'running' })
     act(() => {
       root.render(<RemoteJobRow job={job} onOpen={vi.fn()} />)
     })
-    expect(container.textContent).toContain('running')
+    expect(container.textContent).toContain(en['jobStatus.running'])
   })
 
-  it('shows "queued" status text for submitted jobs', () => {
+  it('names a submitted job with the queued wording', () => {
     const job = makeJob({ status: 'submitted' })
     act(() => {
       root.render(<RemoteJobRow job={job} onOpen={vi.fn()} />)
     })
-    expect(container.textContent).toContain('queued')
+    expect(container.textContent).toContain(en['jobStatus.queued'])
   })
 
   it('calls onOpen when clicked', () => {
@@ -289,10 +294,11 @@ import { CompletedJobCard } from './CompletedJobCard'
 
 describe('CompletedJobCard', () => {
   it.each([
-    ['success', 'finished'],
-    ['failed', 'failed'],
-    ['timeout', 'timed out'],
-    ['error', 'error']
+    ['success', en['jobStatus.success']],
+    ['failed', en['jobStatus.failed']],
+    ['timeout', en['jobStatus.timeout']],
+    ['error', en['jobStatus.error']],
+    ['cancelled', en['jobStatus.cancelled']]
   ] as const)('renders correct label for %s status', (status, label) => {
     const job = makeJob({ status })
     act(() => {

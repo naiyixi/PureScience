@@ -926,7 +926,7 @@ const ConversationPanel = ({
                                     )
                               const statusLabel =
                                 transfer.status === 'queued'
-                                  ? 'Queued'
+                                  ? t('common.queued')
                                   : transfer.status === 'cancelling'
                                     ? t('common.cancelling')
                                     : transfer.status === 'error'
