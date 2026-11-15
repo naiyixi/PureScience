@@ -1,12 +1,12 @@
 import { BrowserWindow, dialog } from 'electron'
 
-import { SESSION_PACKAGE_EXTENSION } from '../../shared/session-package'
 import type {
   SessionPackageImportPreview,
   SessionPackageImportRecord,
   SessionPackageImportRequest
 } from '../../shared/session-package-import'
 import { ipcMainHandle } from '../ipc-handler-registry'
+import { sessionPackageSavePanelOptions } from '../native-file-dialogs'
 import { inspectSessionPackage } from './import'
 import type { SessionPackageImportOwner } from './import-owner'
 import { createSessionPackageOwner, type SessionPackageOwnerDeps } from './owner'
@@ -17,13 +17,8 @@ import { readPackageFile } from './package-bytes'
 // knows which window invoked the channel — and the sheet must belong to that window.
 export type SessionPackageIpcDeps = Omit<SessionPackageOwnerDeps, 'showSaveDialog' | 'now'>
 
-const saveDialogOptions = (suggestedFileName: string): Electron.SaveDialogOptions => ({
-  title: 'Export session package',
-  defaultPath: suggestedFileName,
-  filters: [
-    { name: 'PureScience session package', extensions: [SESSION_PACKAGE_EXTENSION.slice(1)] }
-  ]
-})
+const saveDialogOptions = (suggestedFileName: string): Electron.SaveDialogOptions =>
+  sessionPackageSavePanelOptions(suggestedFileName)
 
 const registerSessionPackageIpcHandlers = (
   deps: SessionPackageIpcDeps,

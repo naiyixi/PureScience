@@ -21,6 +21,12 @@ import {
 
 import { createIpcHandlerInstallationScope, ipcMainHandle } from './ipc-handler-registry'
 import {
+  annotationSavePanelOptions,
+  connectorConfigOpenPanelOptions,
+  connectorConfigSavePanelOptions,
+  sessionPackageOpenPanelOptions
+} from './native-file-dialogs'
+import {
   APPLICATION_MODULE_DISPOSAL_BUDGET_MS,
   composeApplicationRuntimeWithAdapters,
   type ApplicationModuleBuilder
@@ -2097,13 +2103,11 @@ const createApplicationModules = async (
     annotations: pdfAnnotationService,
     resolveVersionFile: resolvePdfAnnotationVersionFile,
     write: async (request) =>
-      saveBytesToChosenPath(request.suggestedName, request.bytes, {
-        filter: {
-          name: request.channel === 'notes' ? 'Text' : 'PDF',
-          extensions: [request.channel === 'notes' ? 'txt' : 'pdf']
-        },
-        title: request.channel === 'notes' ? 'Save annotation notes' : 'Save annotated copy'
-      })
+      saveBytesToChosenPath(
+        request.suggestedName,
+        request.bytes,
+        annotationSavePanelOptions(request.channel)
+      )
   })
   // Saved search filter sets (v1.67): the researcher's own working state, wired for the renderer only —
   // there is no agent-facing owner beside it.
@@ -3252,11 +3256,7 @@ const createApplicationModules = async (
       listAppIconPreviews,
       connectorTemplateFiles: {
         select: async () => {
-          const selected = await dialog.showOpenDialog({
-            title: 'Import Connector configuration',
-            properties: ['openFile'],
-            filters: [{ name: 'Connector configuration', extensions: ['json'] }]
-          })
+          const selected = await dialog.showOpenDialog(connectorConfigOpenPanelOptions())
           const filePath = selected.filePaths[0]
           if (selected.canceled || !filePath) return { cancelled: true as const }
           if ((await stat(filePath)).size > CONNECTOR_TEMPLATE_MAX_BYTES) {
@@ -3269,11 +3269,10 @@ const createApplicationModules = async (
           }
         },
         save: async (suggestedFileName, contents, sender) => {
-          const selected = await showSettingsSaveDialog(sender, {
-            title: 'Export Connector configuration',
-            defaultPath: suggestedFileName,
-            filters: [{ name: 'Connector configuration', extensions: ['json'] }]
-          })
+          const selected = await showSettingsSaveDialog(
+            sender,
+            connectorConfigSavePanelOptions(suggestedFileName)
+          )
           if (selected.canceled || !selected.filePath) return false
           await writeFile(selected.filePath, contents, 'utf8')
           return true
@@ -3996,11 +3995,7 @@ const createApplicationModules = async (
         readSessionPackageImportRecord(resolveConfigRoot(), projectId, sessionId),
       // The picker lives at the edge, like the export's save dialog: only the adapter knows the window.
       showOpenDialog: async (window?: BrowserWindow) => {
-        const options = {
-          title: 'Import session package',
-          filters: [{ name: 'PureScience session package', extensions: ['science'] }],
-          properties: ['openFile' as const]
-        }
+        const options = sessionPackageOpenPanelOptions()
         const result = window
           ? await dialog.showOpenDialog(window, options)
           : await dialog.showOpenDialog(options)

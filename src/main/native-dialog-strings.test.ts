@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ app: { getLocale: (): string => 'en' } }))
 
 import {
+  FILE_DIALOG_STRINGS,
   MIGRATION_QUIT_STRINGS,
   RENDERER_RECOVERY_STRINGS,
   type MigrationQuitStrings,
@@ -123,6 +124,92 @@ describe('native dialog string tables', () => {
   it('keeps the English wording byte-identical to what those dialogs already shipped', () => {
     expect(MIGRATION_QUIT_STRINGS.en).toEqual(PREVIOUS_EN_MIGRATION_QUIT)
     expect(RENDERER_RECOVERY_STRINGS.en).toEqual(PREVIOUS_EN_RENDERER_RECOVERY)
+  })
+})
+
+// The file-panel table is larger and carries one field that is a function of the count, so its
+// discipline is checked separately: the sweep above compares plain strings row by row.
+describe('native file panel string table', () => {
+  const stringFields = (code: (typeof NATIVE_LOCALE_CODES)[number]): Array<[string, string]> =>
+    Object.entries(FILE_DIALOG_STRINGS[code]).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    )
+
+  it('carries all nine languages', () => {
+    expect(Object.keys(FILE_DIALOG_STRINGS).sort()).toEqual([...NATIVE_LOCALE_CODES].sort())
+  })
+
+  it('fills every sentence in every language', () => {
+    for (const code of NATIVE_LOCALE_CODES) {
+      const fields = stringFields(code)
+      // The table has twenty fields, one of which is the count function; fifteen is far below the
+      // real number and only guards against a sweep that stopped early.
+      expect(fields.length).toBeGreaterThan(15)
+      for (const [field, value] of fields) {
+        expect(`${code}.${field}=${value}`).not.toMatch(/=\s*$/)
+      }
+      expect(FILE_DIALOG_STRINGS[code].overwriteNotebooksMessage(2).trim().length).toBeGreaterThan(
+        0
+      )
+      expect(FILE_DIALOG_STRINGS[code].overwriteNotebooksMessage(1).trim().length).toBeGreaterThan(
+        0
+      )
+    }
+  })
+
+  it('never repeats an English sentence in another language', () => {
+    const english = Object.fromEntries(stringFields('en'))
+    for (const code of NATIVE_LOCALE_CODES) {
+      if (code === 'en') continue
+      for (const [field, value] of stringFields(code)) {
+        expect(`${code}.${field}: ${value}`).not.toBe(`${code}.${field}: ${english[field]}`)
+      }
+      // The count sentence gets the same treatment: a row copied from English shows the English
+      // sentence shape, which differs in every one of the other eight languages.
+      expect(
+        `${code}.overwrite: ${FILE_DIALOG_STRINGS[code].overwriteNotebooksMessage(3)}`
+      ).not.toBe(`${code}.overwrite: ${FILE_DIALOG_STRINGS.en.overwriteNotebooksMessage(3)}`)
+    }
+  })
+
+  it('keeps the Traditional row Traditional', () => {
+    const traditional = stringFields('zh-Hant')
+    const simplified = Object.fromEntries(stringFields('zh'))
+    expect(JSON.stringify(traditional)).not.toBe(JSON.stringify(Object.entries(simplified)))
+    for (const [field, value] of traditional) {
+      for (const character of SIMPLIFIED_ONLY) {
+        expect(
+          value.includes(character) ? `zh-Hant.${field} still carries ${character}` : 'ok'
+        ).toBe('ok')
+      }
+    }
+  })
+
+  it('does not fill several panels with the same sentence', () => {
+    // A row filled by copying one title across the whole table would satisfy every other check here
+    // (non-blank, not English) while making four different panels indistinguishable.
+    for (const code of NATIVE_LOCALE_CODES) {
+      const row = FILE_DIALOG_STRINGS[code]
+      const titles = [
+        row.importConnectorTitle,
+        row.exportConnectorTitle,
+        row.importSessionPackageTitle,
+        row.exportSessionPackageTitle,
+        row.exportSupportBundleTitle,
+        row.saveUpdateInstallerTitle,
+        row.saveFileTitle,
+        row.saveArtifactTitle,
+        row.chooseArtifactFolderTitle,
+        row.saveAnnotationNotesTitle,
+        row.saveAnnotatedCopyTitle,
+        row.exportNotebooksTitle,
+        row.overwriteNotebooksTitle
+      ]
+      expect(`${code}: ${new Set(titles).size} of ${titles.length}`).toBe(
+        `${code}: ${titles.length} of ${titles.length}`
+      )
+      expect(`${code}: ${row.overwriteButton}`).not.toBe(`${code}: ${row.cancelButton}`)
+    }
   })
 })
 

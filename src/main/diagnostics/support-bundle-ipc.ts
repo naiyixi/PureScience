@@ -3,6 +3,7 @@ import type { SaveDialogOptions, SaveDialogReturnValue, WebContents } from 'elec
 
 import { ipcMainHandle } from '../ipc-handler-registry'
 import { createLogger, errorLogFields } from '../logger'
+import { supportBundleSavePanelOptions } from '../native-file-dialogs'
 import { showSettingsSaveDialog } from '../settings/save-dialog'
 import { SUPPORT_BUNDLE_CHANNEL, type ExportSupportBundleResult } from '../../shared/diagnostics'
 import { createSupportBundle, type SupportBundleInput } from './support-bundle'
@@ -98,11 +99,7 @@ export const createSupportBundleCommandOwner = (
         ? join(defaultDir, `support-bundle-${fileStamp(now())}.tar.gz`)
         : undefined
 
-      const selected = await showSaveDialog(sender, {
-        title: 'Export support bundle',
-        ...(defaultPath ? { defaultPath } : {}),
-        filters: [{ name: 'Support bundle', extensions: ['gz'] }]
-      })
+      const selected = await showSaveDialog(sender, supportBundleSavePanelOptions(defaultPath))
 
       // Cancelling is a normal outcome, not a failure: report it as "nothing exported" with no error.
       if (selected.canceled || !selected.filePath) return { exported: false }

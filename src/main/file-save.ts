@@ -1,6 +1,11 @@
 import { BrowserWindow, app, dialog, type OpenDialogOptions } from 'electron'
 
 import { ipcMainHandle } from './ipc-handler-registry'
+import {
+  managedFileSavePanelOptions,
+  sessionArtifactFolderPanelOptions,
+  sessionArtifactSavePanelOptions
+} from './native-file-dialogs'
 import type { ApprovalInfo } from './connectors/approval-broker'
 import type { ApprovalDecision } from '../shared/settings'
 import { insertPngProvenanceText } from '../shared/image-metadata'
@@ -247,10 +252,7 @@ const registerFileSaveHandlers = (options: RegisterFileSaveHandlersOptions = {})
         requestedBaseName && requestedBaseName !== '.' && requestedBaseName !== '..'
           ? requestedBaseName
           : basename(sourcePath)
-      const dialogOptions = {
-        defaultPath: join(app.getPath('downloads'), safeName),
-        title: 'Save file'
-      }
+      const dialogOptions = managedFileSavePanelOptions(join(app.getPath('downloads'), safeName))
       const managedFile = await (options.openManagedFile ?? openManagedFile)(sourcePath)
 
       try {
@@ -288,10 +290,9 @@ const registerFileSaveHandlers = (options: RegisterFileSaveHandlersOptions = {})
           file.path
         )
         const safeName = getSafeFilename(file.suggestedName, sourcePath)
-        const dialogOptions = {
-          defaultPath: join(app.getPath('downloads'), safeName),
-          title: 'Save artifact'
-        }
+        const dialogOptions = sessionArtifactSavePanelOptions(
+          join(app.getPath('downloads'), safeName)
+        )
         const managedFile = await (options.openManagedFile ?? openManagedFile)(sourcePath)
 
         try {
@@ -308,11 +309,9 @@ const registerFileSaveHandlers = (options: RegisterFileSaveHandlersOptions = {})
         }
       }
 
-      const directoryDialogOptions: OpenDialogOptions = {
-        defaultPath: app.getPath('downloads'),
-        properties: ['openDirectory', 'createDirectory'],
-        title: 'Choose where to save artifacts'
-      }
+      const directoryDialogOptions: OpenDialogOptions = sessionArtifactFolderPanelOptions(
+        app.getPath('downloads')
+      )
       const { canceled, filePaths } = parentWindow
         ? await dialog.showOpenDialog(parentWindow, directoryDialogOptions)
         : await dialog.showOpenDialog(directoryDialogOptions)

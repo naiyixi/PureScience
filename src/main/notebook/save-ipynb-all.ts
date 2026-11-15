@@ -1,9 +1,14 @@
+import type { MessageBoxOptions, OpenDialogOptions } from 'electron'
 import { link, mkdtemp, readFile as fsReadFile, rename, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 
 import type { ExportNotebookAllResult } from '../../shared/notebook'
+import {
+  notebookExportOpenPanelOptions,
+  notebookOverwritePanelOptions
+} from '../native-file-dialogs'
 
 export type SaveIpynbAllTarget = {
   kernel: 'python' | 'r'
@@ -86,20 +91,14 @@ export const writeNotebooksWithCleanup = async (
 export type ElectronSurface = {
   app: { getPath: (name: string) => string }
   dialog: {
-    showOpenDialog: (options: {
-      title: string
-      defaultPath: string
-      properties: string[]
-    }) => Promise<{ canceled: boolean; filePaths: string[] }>
-    showMessageBox: (options: {
-      type?: 'question' | 'info' | 'warning' | 'error'
-      title: string
-      message: string
-      detail?: string
-      buttons: string[]
-      defaultId?: number
-      cancelId?: number
-    }) => Promise<{ response: number }>
+    // Typed with Electron's own option shapes, not a hand-copied subset: the panels themselves are
+    // built by `native-file-dialogs`, and a local narrowing of these types would reject every option
+    // the platform legitimately accepts (a `type` of `none`, an extra filter field).
+    showOpenDialog: (options: OpenDialogOptions) => Promise<{
+      canceled: boolean
+      filePaths: string[]
+    }>
+    showMessageBox: (options: MessageBoxOptions) => Promise<{ response: number }>
   }
 }
 
@@ -160,11 +159,9 @@ export const saveIpynbAll = async (
       }
     } satisfies SaveIpynbAllDeps)
 
-  const { canceled, filePaths } = await resolvedDeps.electron.dialog.showOpenDialog({
-    title: 'Export notebooks by kernel',
-    defaultPath: resolvedDeps.electron.app.getPath('downloads'),
-    properties: ['openDirectory', 'createDirectory']
-  })
+  const { canceled, filePaths } = await resolvedDeps.electron.dialog.showOpenDialog(
+    notebookExportOpenPanelOptions(resolvedDeps.electron.app.getPath('downloads'))
+  )
   const directory = filePaths[0]
   if (canceled || !directory) return { saved: false }
 
@@ -173,15 +170,9 @@ export const saveIpynbAll = async (
 
   if (conflicts.length > 0) {
     const listing = conflicts.map((c) => c.name).join(', ')
-    const { response } = await resolvedDeps.electron.dialog.showMessageBox({
-      type: 'question',
-      title: 'Overwrite existing notebooks?',
-      message: `${conflicts.length} notebook${conflicts.length === 1 ? '' : 's'} already exist in the chosen directory.`,
-      detail: listing,
-      buttons: ['Overwrite', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1
-    })
+    const { response } = await resolvedDeps.electron.dialog.showMessageBox(
+      notebookOverwritePanelOptions(conflicts.length, listing)
+    )
     if (response !== 0) return { saved: false }
   }
 

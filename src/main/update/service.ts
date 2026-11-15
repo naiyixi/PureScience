@@ -8,6 +8,7 @@ import { APP } from '../../shared/app-config'
 import { isNewer, selectDownload, type UpdateStatus } from '../../shared/update'
 import { startDiagnosticOperation, type DiagnosticOperation } from '../diagnostics/operation'
 import type { Logger } from '../logger'
+import { updateInstallerSavePanelOptions } from '../native-file-dialogs'
 import { downloadInstaller } from './downloader'
 import { describeUpdateFailure, fetchManifest, UpdateManifestError } from './manifest'
 import type { UpdateStrategy } from './strategy'
@@ -151,7 +152,7 @@ export class UpdateService implements UpdateStrategy {
     if (this.platform !== 'darwin') return downloadsPath
 
     const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-    const options = { defaultPath: downloadsPath, title: 'Save the update installer' }
+    const options = updateInstallerSavePanelOptions(downloadsPath)
     const result = window
       ? await dialog.showSaveDialog(window, options)
       : await dialog.showSaveDialog(options)

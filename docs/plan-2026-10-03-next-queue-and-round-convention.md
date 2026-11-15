@@ -19175,3 +19175,52 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
   ③ 下一单元候选：（a）`src/main/**` 里其余**用户可见**文案按同一族反向扫（原生菜单/托盘已覆盖，剩下的是
   `dialog.showOpenDialog` 的 `title`/`buttonLabel` 一类参数——先核有没有真被设过）；
   （b）§三百三十八 立案的审计器语义判据（仪表类，不进产品）。
+
+## 三百四十、本轮追加（执行器，2026-11-16 02:4x–）—— 系统文件面板的标题/过滤器/按钮进九语
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = fcfcb0bd`（与本地同）；工作树只有三份**不是本轮的**未跟踪证据档
+  （`docs/evidence/2026-11-0{1,4}-*`，不碰）。
+- 上一轮 §五 三条：① `fcfcb0bd` 的 `Nightly` 与 `Windows Full Test` 按完整 40 位 SHA **双双 success**；
+  ② 公证第 14 次读数见 §四；③ 候选（a）落地成「文件面板标题/过滤器」这一族（候选里的 `showOpenDialog.title`
+  确实被真设过：九处）；候选（b）是仪表类，不动。
+- `grep` 这九处标题/过滤器名全树只命中待改的调用点 + 一处**抛错**文案 ⇒ 没有别的执行体在做同一件事。
+
+### 一 交付（证据档 `docs/evidence/2026-11-16-native-file-panels-nine-languages.md`）
+
+`native-dialog-strings.ts` 增 `FILE_DIALOG_STRINGS`（20 字段 × 9 语），新增 `native-file-dialogs.ts`
+（11 个接受语言码的纯构造函数），六个模块的九处面板改读构造器：连接器配置导入/导出、会话包导入/导出、
+支持包导出、更新安装包保存、受管文件保存、产物保存、产物目录选择、批注导出、笔记本导出、覆盖确认。
+术语逐字对齐已上线的九语字典；`PDF` 作为格式记号不进表。顺带修掉两处既有缺陷：
+① 覆盖确认的单数分支原文 `1 notebook already exist`（动词没跟着单数改）；② `ElectronSurface` 手抄的
+对话框参数子集连平台合法的 `type: 'none'` 都拒收，改为 Electron 自己的 `OpenDialogOptions`/`MessageBoxOptions`。
+
+### 二 门禁（本机实跑，改动的全部文件）
+
+| 环 | 读数 |
+|---|---|
+| 定向 vitest（新表 + 构造器 + 四个消费模块域） | 39 files / **468 passed** |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache .`（全仓，同 CI 口径） | **0 error** / 94 warning（全仓既有项，本笔 10 个文件 0/0） |
+| 全量 vitest `--maxWorkers=4` | **1483 files passed**、31 skipped（1514）；**18627 passed**、228 skipped（18855），exit 0（上轮 1482/18574 ⇒ +1 文件 +53 例） |
+| 变异自证 | ① 构造器读错字段 ⇒ 3 条红；② 德语过滤器抄英文 ⇒ 表纪律红；③ `zh-Hant` 夹简体字 ⇒ 红并点名字段与字符 |
+
+### 三 边界与具名未办
+
+- **无真机窗口读数**：这些面板由平台绘制（`NSOpenPanel`/`NSSavePanel`），Playwright 抓不到它的标题；
+  取证＝真 `app.getLocale()` 级联 + 真构造函数逐语跑。**本轮不声称在屏幕上看见中文面板**；装机版随下次发版生效。
+- 八种非英文行无母语审校（我写的，术语对齐既有字典；`zh-Hant` 已静态扫简体独有字符）。
+- 不覆盖：`ipc.ts:3263` / `settings/connector-template.ts:364` 的**抛错**文案（渲染层已有
+  `settings.connectorTooLarge` 兜同一事实，属另一族，单独立案）；About 面板（应用名 + 版本号，无需翻译）。
+
+### 四 公证第 14 次读数（只记读数，不定性）
+
+`notary-status`（`43748320055`，2026-11-15T18:43:08Z，本轮现派发）：**9 笔全 `In Progress`**，最早一笔
+`2026-11-13T11:32:48Z` ⇒ **55h10m 零判决**；`probe3.zip` 仍不是我方提交。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（只报读数）；
+  ③ 下一单元候选：（a）上面那两处抛错是否该走渲染层的 `messageKey` 通道（先核渲染层现在怎么显示它们，
+  别造第二套）；（b）`scripts/i18n-hardcoded-audit.mjs` 的语义判据（仪表类，不进产品）。

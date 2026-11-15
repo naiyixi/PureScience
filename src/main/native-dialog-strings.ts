@@ -166,3 +166,267 @@ export const RENDERER_RECOVERY_STRINGS: Record<NativeLocaleCode, RendererRecover
       'Автоматическое восстановление приостановлено. Перезагрузка вернёт это окно на главный экран; фоновая работа может продолжаться.'
   }
 }
+
+// Copy for the OS file panels main opens itself. A save/open panel is drawn by the platform, so the
+// renderer's i18n provider never reaches it: the title sitting above the file list, the file-type
+// filter in the dropdown and the buttons on the overwrite confirm are all literal English today.
+//
+// The same rule as above applies — `Record<NativeLocaleCode, …>` makes a missing language a compile
+// error — with one addition: the overwrite sentence is a function of the count, because plural forms
+// are not shared (Russian needs three, Japanese and Korean need one). Keeping it a plain string with
+// an "s" appended would ship "1 notebooks" to five readers and count nouns wrongly in two more.
+//
+// The filter name for a technical format stays out of these tables: `PDF` is `PDF` everywhere, and
+// `Text` is the only descriptive one.
+export type FileDialogStrings = {
+  importConnectorTitle: string
+  exportConnectorTitle: string
+  connectorFilter: string
+  importSessionPackageTitle: string
+  exportSessionPackageTitle: string
+  sessionPackageFilter: string
+  exportSupportBundleTitle: string
+  supportBundleFilter: string
+  saveUpdateInstallerTitle: string
+  saveFileTitle: string
+  saveArtifactTitle: string
+  chooseArtifactFolderTitle: string
+  saveAnnotationNotesTitle: string
+  saveAnnotatedCopyTitle: string
+  annotationTextFilter: string
+  exportNotebooksTitle: string
+  overwriteNotebooksTitle: string
+  overwriteNotebooksMessage: (count: number) => string
+  overwriteButton: string
+  cancelButton: string
+}
+
+export const FILE_DIALOG_STRINGS: Record<NativeLocaleCode, FileDialogStrings> = {
+  en: {
+    importConnectorTitle: 'Import Connector configuration',
+    exportConnectorTitle: 'Export Connector configuration',
+    connectorFilter: 'Connector configuration',
+    importSessionPackageTitle: 'Import session package',
+    exportSessionPackageTitle: 'Export session package',
+    sessionPackageFilter: 'PureScience session package',
+    exportSupportBundleTitle: 'Export support bundle',
+    supportBundleFilter: 'Support bundle',
+    saveUpdateInstallerTitle: 'Save the update installer',
+    saveFileTitle: 'Save file',
+    saveArtifactTitle: 'Save artifact',
+    chooseArtifactFolderTitle: 'Choose where to save artifacts',
+    saveAnnotationNotesTitle: 'Save annotation notes',
+    saveAnnotatedCopyTitle: 'Save annotated copy',
+    annotationTextFilter: 'Text',
+    exportNotebooksTitle: 'Export notebooks by kernel',
+    overwriteNotebooksTitle: 'Overwrite existing notebooks?',
+    overwriteNotebooksMessage: (count: number): string =>
+      // The singular branch used to read "1 notebook already exist" — the plural was appended but the
+      // verb was not. The count is now a parameter, so the branch can say it correctly.
+      count === 1
+        ? '1 notebook already exists in the chosen directory.'
+        : `${count} notebooks already exist in the chosen directory.`,
+    overwriteButton: 'Overwrite',
+    cancelButton: 'Cancel'
+  },
+  zh: {
+    importConnectorTitle: '导入连接器配置',
+    exportConnectorTitle: '导出连接器配置',
+    connectorFilter: '连接器配置',
+    importSessionPackageTitle: '导入会话包',
+    exportSessionPackageTitle: '导出会话包',
+    sessionPackageFilter: 'PureScience 会话包',
+    exportSupportBundleTitle: '导出支持包',
+    supportBundleFilter: '支持包',
+    saveUpdateInstallerTitle: '保存更新安装包',
+    saveFileTitle: '保存文件',
+    saveArtifactTitle: '保存产物',
+    chooseArtifactFolderTitle: '选择产物的保存位置',
+    saveAnnotationNotesTitle: '保存批注笔记',
+    saveAnnotatedCopyTitle: '保存带批注的副本',
+    annotationTextFilter: '文本',
+    exportNotebooksTitle: '按内核导出笔记本',
+    overwriteNotebooksTitle: '覆盖已有笔记本？',
+    overwriteNotebooksMessage: (count: number): string => `所选目录里已有 ${count} 个笔记本。`,
+    overwriteButton: '覆盖',
+    cancelButton: '取消'
+  },
+  'zh-Hant': {
+    importConnectorTitle: '匯入連接器組態',
+    exportConnectorTitle: '匯出連接器組態',
+    connectorFilter: '連接器組態',
+    importSessionPackageTitle: '匯入工作階段套件',
+    exportSessionPackageTitle: '匯出工作階段套件',
+    sessionPackageFilter: 'PureScience 工作階段套件',
+    exportSupportBundleTitle: '匯出支援包',
+    supportBundleFilter: '支援包',
+    saveUpdateInstallerTitle: '儲存更新安裝程式',
+    saveFileTitle: '儲存檔案',
+    saveArtifactTitle: '儲存產物',
+    chooseArtifactFolderTitle: '選擇產物的儲存位置',
+    saveAnnotationNotesTitle: '儲存註解筆記',
+    saveAnnotatedCopyTitle: '儲存含註解的副本',
+    annotationTextFilter: '文字',
+    exportNotebooksTitle: '依核心匯出筆記本',
+    overwriteNotebooksTitle: '覆寫現有筆記本？',
+    overwriteNotebooksMessage: (count: number): string => `所選目錄裡已有 ${count} 個筆記本。`,
+    overwriteButton: '覆寫',
+    cancelButton: '取消'
+  },
+  ja: {
+    importConnectorTitle: 'コネクタ設定をインポート',
+    exportConnectorTitle: 'コネクタ設定をエクスポート',
+    connectorFilter: 'コネクタ設定',
+    importSessionPackageTitle: 'セッションパッケージをインポート',
+    exportSessionPackageTitle: 'セッションパッケージを書き出す',
+    sessionPackageFilter: 'PureScience セッションパッケージ',
+    exportSupportBundleTitle: 'サポートバンドルを書き出す',
+    supportBundleFilter: 'サポートバンドル',
+    saveUpdateInstallerTitle: 'アップデートのインストーラを保存',
+    saveFileTitle: 'ファイルを保存',
+    saveArtifactTitle: '成果物を保存',
+    chooseArtifactFolderTitle: '成果物の保存先を選択',
+    saveAnnotationNotesTitle: '注釈ノートを保存',
+    saveAnnotatedCopyTitle: '注釈付きのコピーを保存',
+    annotationTextFilter: 'テキスト',
+    exportNotebooksTitle: 'カーネル別にノートブックを書き出す',
+    overwriteNotebooksTitle: '既存のノートブックを上書きしますか？',
+    overwriteNotebooksMessage: (count: number): string =>
+      `選択したフォルダーには既に ${count} 件のノートブックがあります。`,
+    overwriteButton: '上書き',
+    cancelButton: 'キャンセル'
+  },
+  ko: {
+    importConnectorTitle: '커넥터 구성 가져오기',
+    exportConnectorTitle: '커넥터 구성 내보내기',
+    connectorFilter: '커넥터 구성',
+    importSessionPackageTitle: '세션 패키지 가져오기',
+    exportSessionPackageTitle: '세션 패키지 내보내기',
+    sessionPackageFilter: 'PureScience 세션 패키지',
+    exportSupportBundleTitle: '지원 번들 내보내기',
+    supportBundleFilter: '지원 번들',
+    saveUpdateInstallerTitle: '업데이트 설치 관리자 저장',
+    saveFileTitle: '파일 저장',
+    saveArtifactTitle: '산출물 저장',
+    chooseArtifactFolderTitle: '산출물 저장 위치 선택',
+    saveAnnotationNotesTitle: '주석 노트 저장',
+    saveAnnotatedCopyTitle: '주석이 포함된 사본 저장',
+    annotationTextFilter: '텍스트',
+    exportNotebooksTitle: '커널별로 노트북 내보내기',
+    overwriteNotebooksTitle: '기존 노트북을 덮어쓸까요?',
+    overwriteNotebooksMessage: (count: number): string =>
+      `선택한 폴더에 이미 노트북 ${count}개가 있습니다.`,
+    overwriteButton: '덮어쓰기',
+    cancelButton: '취소'
+  },
+  es: {
+    importConnectorTitle: 'Importar configuración del conector',
+    exportConnectorTitle: 'Exportar configuración del conector',
+    connectorFilter: 'Configuración del conector',
+    importSessionPackageTitle: 'Importar paquete de sesión',
+    exportSessionPackageTitle: 'Exportar paquete de sesión',
+    sessionPackageFilter: 'Paquete de sesión de PureScience',
+    exportSupportBundleTitle: 'Exportar paquete de soporte',
+    supportBundleFilter: 'Paquete de soporte',
+    saveUpdateInstallerTitle: 'Guardar el instalador de la actualización',
+    saveFileTitle: 'Guardar archivo',
+    saveArtifactTitle: 'Guardar artefacto',
+    chooseArtifactFolderTitle: 'Elegir dónde guardar los artefactos',
+    saveAnnotationNotesTitle: 'Guardar notas de anotación',
+    saveAnnotatedCopyTitle: 'Guardar copia anotada',
+    annotationTextFilter: 'Texto',
+    exportNotebooksTitle: 'Exportar cuadernos por kernel',
+    overwriteNotebooksTitle: '¿Sobrescribir los cuadernos existentes?',
+    overwriteNotebooksMessage: (count: number): string =>
+      count === 1
+        ? '1 cuaderno ya existe en el directorio elegido.'
+        : `${count} cuadernos ya existen en el directorio elegido.`,
+    overwriteButton: 'Sobrescribir',
+    cancelButton: 'Cancelar'
+  },
+  de: {
+    importConnectorTitle: 'Konnektor-Konfiguration importieren',
+    exportConnectorTitle: 'Konnektor-Konfiguration exportieren',
+    connectorFilter: 'Konnektor-Konfiguration',
+    importSessionPackageTitle: 'Sitzungspaket importieren',
+    exportSessionPackageTitle: 'Sitzungspaket exportieren',
+    sessionPackageFilter: 'PureScience-Sitzungspaket',
+    exportSupportBundleTitle: 'Support-Paket exportieren',
+    supportBundleFilter: 'Support-Paket',
+    saveUpdateInstallerTitle: 'Update-Installer speichern',
+    saveFileTitle: 'Datei speichern',
+    saveArtifactTitle: 'Artefakt speichern',
+    chooseArtifactFolderTitle: 'Speicherort für Artefakte wählen',
+    saveAnnotationNotesTitle: 'Anmerkungsnotizen speichern',
+    saveAnnotatedCopyTitle: 'Annotierte Kopie speichern',
+    annotationTextFilter: 'Textdatei',
+    exportNotebooksTitle: 'Notebooks nach Kernel exportieren',
+    overwriteNotebooksTitle: 'Vorhandene Notebooks überschreiben?',
+    overwriteNotebooksMessage: (count: number): string =>
+      count === 1
+        ? 'Im gewählten Ordner ist bereits 1 Notebook vorhanden.'
+        : `Im gewählten Ordner sind bereits ${count} Notebooks vorhanden.`,
+    overwriteButton: 'Überschreiben',
+    cancelButton: 'Abbrechen'
+  },
+  fr: {
+    importConnectorTitle: 'Importer la configuration du connecteur',
+    exportConnectorTitle: 'Exporter la configuration du connecteur',
+    connectorFilter: 'Configuration du connecteur',
+    importSessionPackageTitle: 'Importer le paquet de session',
+    exportSessionPackageTitle: 'Exporter le paquet de session',
+    sessionPackageFilter: 'Paquet de session PureScience',
+    exportSupportBundleTitle: 'Exporter l’archive de support',
+    supportBundleFilter: 'Archive de support',
+    saveUpdateInstallerTitle: 'Enregistrer l’installateur de mise à jour',
+    saveFileTitle: 'Enregistrer le fichier',
+    saveArtifactTitle: 'Enregistrer l’artefact',
+    chooseArtifactFolderTitle: 'Choisir où enregistrer les artefacts',
+    saveAnnotationNotesTitle: 'Enregistrer les notes d’annotation',
+    saveAnnotatedCopyTitle: 'Enregistrer la copie annotée',
+    annotationTextFilter: 'Texte',
+    exportNotebooksTitle: 'Exporter les notebooks par noyau',
+    overwriteNotebooksTitle: 'Écraser les notebooks existants ?',
+    overwriteNotebooksMessage: (count: number): string =>
+      count === 1
+        ? '1 notebook existe déjà dans le dossier choisi.'
+        : `${count} notebooks existent déjà dans le dossier choisi.`,
+    overwriteButton: 'Écraser',
+    cancelButton: 'Annuler'
+  },
+  ru: {
+    importConnectorTitle: 'Импорт конфигурации коннектора',
+    exportConnectorTitle: 'Экспорт конфигурации коннектора',
+    connectorFilter: 'Конфигурация коннектора',
+    importSessionPackageTitle: 'Импорт пакета сеанса',
+    exportSessionPackageTitle: 'Экспортировать пакет сеанса',
+    sessionPackageFilter: 'Пакет сеанса PureScience',
+    exportSupportBundleTitle: 'Экспорт пакета поддержки',
+    supportBundleFilter: 'Пакет поддержки',
+    saveUpdateInstallerTitle: 'Сохранить установщик обновления',
+    saveFileTitle: 'Сохранить файл',
+    saveArtifactTitle: 'Сохранить артефакт',
+    chooseArtifactFolderTitle: 'Выберите папку для артефактов',
+    saveAnnotationNotesTitle: 'Сохранить заметки к аннотациям',
+    saveAnnotatedCopyTitle: 'Сохранить копию с пометками',
+    annotationTextFilter: 'Текст',
+    exportNotebooksTitle: 'Экспорт ноутбуков по ядрам',
+    overwriteNotebooksTitle: 'Перезаписать существующие ноутбуки?',
+    overwriteNotebooksMessage: (count: number): string => {
+      // Russian needs three forms here; the last digit decides, except that the teens (11–14) all
+      // take the plural-of-five form.
+      const last = count % 10
+      const teens = count % 100 >= 11 && count % 100 <= 14
+      const form = teens
+        ? 'ноутбуков'
+        : last === 1
+          ? 'ноутбук'
+          : last >= 2 && last <= 4
+            ? 'ноутбука'
+            : 'ноутбуков'
+      return `${count} ${form} уже есть в выбранной папке.`
+    },
+    overwriteButton: 'Перезаписать',
+    cancelButton: 'Отмена'
+  }
+}
