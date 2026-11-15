@@ -18944,3 +18944,76 @@ PROBE scan-after count=0                           ← 修复后不再被挑中�
    写进汇报即可，不再重复定性）；③ 下一单元候选（都不需要发版窗口）：§三百三十二 §三 第 2 条立案的
    「`left_on_remote` 条目不带 `max_file_mb`/`max_total_mb` ⇒ 面板只能说『超过上限』给不出数字」（动 payload + 面板 + 九语，
    属独立单元）；或 `0o` 那条链路里**其它**未落终态的本地产出路径（按 `findTerminalUnharvested` 的选择条件反向扫一遍）。
+
+
+## 三百三十六、本轮追加（执行器，2026-11-15 10:4x–）—— 收割把文件留在远端时，那一行终于给出「上限是多少」
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = 563870f1`，工作树只有三份**不是本轮的**未跟踪证据档（`docs/evidence/2026-11-0{1,4}-*`，不碰）。
+  队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项 ⇒ 继续收缺陷队列，取 §三百三十二 §三 第 2 条立案的那条。
+- 上一轮 §五 的三条已闭：① `563870f1` 的 `Nightly` 与 `Windows Full Test` **双双 success**（按完整 40 位 SHA 查）；
+  ② 公证第 10 次读数见 §四；③ 本单元＝上一轮点名的候选（`left_on_remote` 条目不带阈值 ⇒ 面板只能说「超过上限」）。
+- `git log -S"limit_mb"` 近 30 天**零命中** ⇒ 没有别的执行体在做同一件事。
+
+### 一 交付
+
+| 位置 | 改动 |
+|---|---|
+| `src/main/compute/harvest-classifier.ts` | `LeftOnRemoteEntry` 增 `limit_mb?`；`exceeds_max_file_mb` 写 `maxFileMb`、`exceeds_max_total_mb` 写 `maxTotalMb`；`residency_remote` 不写（那是**选择**不是限制，凑数会把选择说成限制） |
+| `src/main/compute/harvest-engine.ts` | 落库映射带上 `limit_mb`；`undefined` 时**不写这个键**（旧行形状原样保留） |
+| `src/shared/compute.ts` | 同一形状原来手抄三份（`JobResult` / `JobSummary` / `LeftOnRemoteEntry`）⇒ 收敛到 `LeftOnRemoteEntry` 一个类型，加字段不会再漏一份 |
+| `src/renderer/src/components/left-on-remote-reason.ts` | 新增 `formatMegabytes`（至多一位小数、无尾随 `.0`）；`leftOnRemoteReasonLabel(reason, t, limitMb?)` 有阈值时用带数字的句子，没有时仍用原句 |
+| `src/renderer/src/components/FeaturedOutputs.tsx` | 文件大小也走同一格式化器 ⇒ 一行里的两个数**同形**（`1204.5 MB` 与 `100 MB` 才可比） |
+| 九语字典 | 两条新键 `leftOnRemoteReasonFileLimitIs` / `leftOnRemoteReasonTotalLimitIs`（各带 `{limit}`） |
+| `resources/skills/remote-compute-ssh/SKILL.md` | agent 载荷说明补上 `limit_mb`，并写明「缺失＝没记录，不等于没有上限」 |
+| `docs/evidence/2026-11-15-left-on-remote-limit-numbers.md` | 症状 / 根因 / 改动 / 真库读数与变异自证 / 门禁 / 边界 |
+
+**为什么保留「没有数字」那两句**：`limit_mb` 是这一版才落库的字段，此前收割的行没有它。把它们显示成缺省 100/500
+会把「当时生效的是默认值」当成事实（那个作业可能配的是 250）⇒ 缺失就仍说「超过上限」，**不猜数字**。
+
+### 二 读数（真 SQLite 行 + 真 `harvestJob` + 产品自己的读路径；探针跑完即删）
+
+```
+PROBE row created id=probe-job-1 harvested_at=undefined
+PROBE column [{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-1/model.bin","size_mb":200,"reason":"exceeds_max_file_mb","limit_mb":100}]
+PROBE state=enumerated entries=[{…,"reason":"exceeds_max_file_mb","limit_mb":100}]
+PROBE scp calls=0
+PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.result","size_mb":60,"reason":"exceeds_max_total_mb","limit_mb":100}]
+```
+
+第二行是**累计**那一路：写进去的是该作业自己配的 `max_total_mb: 100`，不是默认 500 ⇒ 读出来的数字来自配置而非常量。
+`scp calls=0` 说明 200 MB 那条确实没被下载（记录与行为一致，不是只补了一句文案）。
+
+**变异自证**：把落库映射退回旧形状，同一支探针打印
+`PROBE column [{…,"reason":"exceeds_max_file_mb"}]` 并红在 `expected undefined to be 100` ⇒ 旧形状就是这一行，本单元确实改了落库内容。
+
+### 三 门禁
+
+| 环 | 读数 |
+|---|---|
+| 全量 vitest `--maxWorkers=4` | **1479 files passed / 31 skipped（1510）**；**18533 passed / 228 skipped（18761）**；**exit 0** |
+| 定向 vitest（4 文件） | **4 files / 52 passed**（本笔 +4：reason 3、render 1） |
+| `src/renderer/src/i18n`（九语门禁 + 质量门） | **4 files / 52 passed** |
+| 双 typecheck（`--composite false`） | node **0** / web **0** |
+| `npx eslint --no-cache`（本笔 11 文件 + 全仓） | 见 §五（推送时实跑） |
+| `npx prettier --check` | 全部通过（证据档先被 prettier 改写了一次，已 `--write` 后复检） |
+
+**一个自己踩的坑（记下来免得下次再踩）**：本单元的临时探针用真 SQLite 且落在 `src/main/compute/`，被
+`test/vitest-project-partition.test.ts` 的「real-SQLite 套件不得进并行池」守卫**当场点名**
+（`[ "src/main/compute/zz-limit-probe.test.ts" ]`）⇒ 这是守卫按设计工作；删掉探针后该用例复跑通过。
+即：未来的真库探针要么放 `test/` 的专用分区，要么跑完立刻删再跑全量。
+
+### 四 公证第 10 次读数（只记读数，不重开定性）
+
+`notary-status`（`43669056177`，2026-11-15T02:42Z，本轮现派发）：**9 笔全 `In Progress`**，最早一笔
+`2026-11-13T11:32:48Z` ⇒ **39h10m 零判决**；其中 `probe3.zip`（08:35Z）仍不是我方提交。与 §三百三十一 的收窄口径一致：
+卡在服务级积压，不是配置。仍只能由用户侧查的两项不变（App Store Connect 协议状态 / 会员状态）。
+
+### 五 推送与下一轮第一步
+
+- 本笔只碰上面列的源/测试/字典/资源文档 + 1 份证据档 + 本节，**不碰发版四文件**（v2.27.0 的公证仍零判决，本轮不发版）。
+- 推送前现查在飞车道：`563870f1` 的两条主干车道都已 `completed`，`notary-status` 是只读工作流 ⇒ 本次推送不顶掉任何判决。
+- **下一轮第一步**：① 按完整 40 位 SHA 读本笔两条车道；② 公证再读一次（满 48h 仍零判决就只报读数，不再重复定性）；
+  ③ 下一单元候选（都不需要发版窗口）：按 `findTerminalUnharvested` 的选择条件**反向扫**其它未落终态的本地产出路径；
+  或 `left_on_remote` 的**未枚举**态在通知卡（`job-notifier`）上是否也说清楚了（面板已说，卡片尚未核）。

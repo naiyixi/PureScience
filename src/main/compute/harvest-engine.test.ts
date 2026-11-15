@@ -385,11 +385,15 @@ describe('harvestJob — single-file threshold', () => {
       uri: string
       size_mb: number
       reason: string
+      limit_mb?: number
     }>
     expect(leftOnRemote.length).toBe(1)
     expect(leftOnRemote[0]!.reason).toBe('exceeds_max_file_mb')
     expect(leftOnRemote[0]!.uri).toMatch(/^ssh:\/\/biowulf\//)
     expect(leftOnRemote[0]!.size_mb).toBeGreaterThan(100)
+    // The persisted record carries the limit itself, so the panel and an agent reading
+    // `attach_job().result()` can say which threshold was hit instead of only that one was.
+    expect(leftOnRemote[0]!.limit_mb).toBe(100)
   })
 })
 
@@ -429,8 +433,11 @@ describe('harvestJob — cumulative threshold', () => {
     const finalUpdate = updates[0]!.data as Record<string, unknown>
     const leftOnRemote = JSON.parse(finalUpdate.leftOnRemote as string) as Array<{
       reason: string
+      limit_mb?: number
     }>
     expect(leftOnRemote.some((e) => e.reason === 'exceeds_max_total_mb')).toBe(true)
+    // The job's own max_total_mb is what the file broke — not the default.
+    expect(leftOnRemote.find((e) => e.reason === 'exceeds_max_total_mb')!.limit_mb).toBe(100)
   })
 })
 

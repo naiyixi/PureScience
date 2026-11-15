@@ -4816,5 +4816,7 @@ export const zhHant: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.incomplete': '包內檔案對不上帳，因此沒有安裝。',
   'home.userCases.market.badEntry': '這條不是合法的案例條目。',
   'home.userCases.market.installFailed': '這個案例安裝不了。',
-  'home.userCases.market.savedCopy': '正在顯示 {date} 儲存的副本，重新整理可再向索引查詢一次。'
+  'home.userCases.market.savedCopy': '正在顯示 {date} 儲存的副本，重新整理可再向索引查詢一次。',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': '超過單一檔案 {limit} MB 的下載上限',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '會讓本次作業的下載總量超過 {limit} MB'
 }

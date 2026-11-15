@@ -343,8 +343,8 @@ export type JobResult = {
   hidden_files: string[]
   // featured_files + hidden_files combined, featured first.
   output_files: string[]
-  // Files not downloaded from the remote workdir (JSON [{uri,size_mb,reason}]).
-  left_on_remote: Array<{ uri: string; size_mb: number; reason: string }>
+  // Files not downloaded from the remote workdir (JSON [{uri,size_mb,reason,limit_mb?}]).
+  left_on_remote: LeftOnRemoteEntry[]
   // Whether `left_on_remote` is the whole truth. 'enumerated' means the remote was listed, so an empty
   // array means nothing stayed behind; 'not-enumerated' means the harvest stopped earlier and the array
   // is empty because nothing was looked at — an agent chaining outputs must not read it as "clean".
@@ -382,7 +382,16 @@ export type ComputeJobErrorCode =
 // job summary, and `attach_job().result()`) reported the second as the first.
 export type LeftOnRemoteState = 'enumerated' | 'not-enumerated'
 
-export type LeftOnRemoteEntry = { uri: string; size_mb: number; reason: string }
+// One file that stayed on the remote host. `reason` is the harvest's machine enum (verbatim: it is what
+// an agent chains against and what the evidence documents quote). `limit_mb` is the threshold the file
+// ran into, when the harvest recorded one — a file left behind for exceeding a limit without the limit
+// itself tells a reader that something was too big, never how big was allowed or what to change.
+export type LeftOnRemoteEntry = {
+  uri: string
+  size_mb: number
+  reason: string
+  limit_mb?: number
+}
 
 export type LeftOnRemoteReading = { state: LeftOnRemoteState; entries: LeftOnRemoteEntry[] }
 
@@ -437,7 +446,7 @@ export type JobSummary = {
   // Absent means the harvest never recorded a listing (it stopped before enumerating), so an absent
   // count is not zero: read `left_on_remote_state` before saying anything about what stayed behind.
   left_on_remote_count?: number
-  left_on_remote?: Array<{ uri: string; size_mb: number; reason: string }>
+  left_on_remote?: LeftOnRemoteEntry[]
   left_on_remote_state?: LeftOnRemoteState
   harvest_error?: string
 }

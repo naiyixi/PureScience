@@ -40,6 +40,12 @@ export type LeftOnRemoteEntry = {
   path: string
   size_mb: number
   reason: 'residency_remote' | 'exceeds_max_file_mb' | 'exceeds_max_total_mb'
+  // The threshold this file ran into, in MB. Recorded so a reader can put the two numbers side by
+  // side: "1,204 MB, over the limit" leaves them guessing what the limit was (and whether it is a
+  // default they could raise), while "over the 100 MB per-file limit" answers it. Absent for
+  // `residency_remote`, where no threshold was involved — and absent on rows written before this
+  // field existed, which is why readers must treat "no limit recorded" as its own state.
+  limit_mb?: number
 }
 
 /** Classification result for a full file listing. */
@@ -188,13 +194,13 @@ export const classifyFiles = (
 
     // Rules 8 & 9: size threshold checks for files that would be downloaded.
     if (size_mb > maxFileMb) {
-      left_on_remote.push({ path, size_mb, reason: 'exceeds_max_file_mb' })
+      left_on_remote.push({ path, size_mb, reason: 'exceeds_max_file_mb', limit_mb: maxFileMb })
       continue
     }
 
     if (totalExceeded || totalMb + size_mb > maxTotalMb) {
       totalExceeded = true
-      left_on_remote.push({ path, size_mb, reason: 'exceeds_max_total_mb' })
+      left_on_remote.push({ path, size_mb, reason: 'exceeds_max_total_mb', limit_mb: maxTotalMb })
       continue
     }
 

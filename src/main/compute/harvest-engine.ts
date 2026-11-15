@@ -540,7 +540,11 @@ const harvestJobUnchecked = async (job: ComputeJob, deps: HarvestDeps): Promise<
   const leftOnRemote = classification.left_on_remote.map((entry) => ({
     uri: buildLeftOnRemoteUri(host.sshAlias, remoteWorkdir, entry.path),
     size_mb: entry.size_mb,
-    reason: entry.reason
+    reason: entry.reason,
+    // The threshold belongs to the record, not to the panel: a reader (or an agent deciding whether to
+    // raise the limit and re-harvest) needs the number the file ran into, and recomputing it later
+    // would mean reconstructing the config that was in force at harvest time.
+    ...(entry.limit_mb === undefined ? {} : { limit_mb: entry.limit_mb })
   }))
 
   const harvestError =

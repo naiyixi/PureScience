@@ -163,6 +163,38 @@ describe('FeaturedOutputs', () => {
     expect(left).toContain('1204')
   })
 
+  it('says which limit a file ran into, so the number can be acted on', async () => {
+    await render(
+      makeJob({
+        featured_files: [],
+        featured_file_count: 0,
+        left_on_remote: [
+          {
+            uri: 'ssh:biowulf//scratch/reads.bam',
+            size_mb: 1_204.4839,
+            reason: 'exceeds_max_file_mb',
+            limit_mb: 100
+          },
+          {
+            uri: 'ssh:biowulf//scratch/part7.csv',
+            size_mb: 60,
+            reason: 'exceeds_max_total_mb',
+            limit_mb: 500
+          }
+        ],
+        left_on_remote_count: 2
+      })
+    )
+
+    const left = testId('left-on-remote-files')?.textContent ?? ''
+    // Both numbers on the line come out in the same shape, so "1204.5 MB" can be compared with the
+    // "100 MB" it broke — which is the only reason to print the limit at all.
+    expect(left).toContain('1204.5 MB')
+    expect(left).not.toContain('1204.4839')
+    expect(left).toContain('Larger than the 100 MB per-file download limit')
+    expect(left).toContain('Would take this job past its 500 MB download total')
+  })
+
   it('does not raise the "never listed" line when the harvest did take a listing', async () => {
     await render(
       makeJob({

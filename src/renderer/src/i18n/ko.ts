@@ -5126,5 +5126,7 @@ export const ko: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.badEntry': '이 항목은 올바른 사례가 아닙니다.',
   'home.userCases.market.installFailed': '이 사례를 설치할 수 없습니다.',
   'home.userCases.market.savedCopy':
-    '{date}에 저장된 사본을 표시하고 있습니다. 새로 고침하면 색인에 다시 요청합니다.'
+    '{date}에 저장된 사본을 표시하고 있습니다. 새로 고침하면 색인에 다시 요청합니다.',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': '파일당 {limit} MB 다운로드 한도를 초과함',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '이 작업의 전체 다운로드 {limit} MB를 초과하게 됨'
 }

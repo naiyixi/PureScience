@@ -184,6 +184,10 @@ const r = await c.attach_job(job_id).result()
 //   left_on_remote: [{ uri: 'ssh:<alias>/<abs_path>', size_mb: 420, reason: 'residency_remote' }],
 //     // reason is one of 'residency_remote' | 'exceeds_max_file_mb' | 'exceeds_max_total_mb'
 //     // (the same identifiers the harvest classifier writes — filter on these, not on the config value).
+//     // limit_mb is present when the file was left behind for breaking a threshold, and names it:
+//     // e.g. { size_mb: 1204, reason: 'exceeds_max_file_mb', limit_mb: 100 }. Absent for residency_remote,
+//     // and absent on jobs harvested before this field existed — so read it as "the limit was not
+//     // recorded", never as "there was no limit".
 //   left_on_remote_state: 'enumerated' | 'not-enumerated',
 //     // 'not-enumerated' = the harvest stopped before listing the workdir (headroom, ssh, enumeration),
 //     // so an empty left_on_remote means "nobody looked", not "nothing is there" — check before chaining.

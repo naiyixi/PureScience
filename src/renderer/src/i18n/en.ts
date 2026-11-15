@@ -5246,5 +5246,8 @@ export const en: Record<ZhKey, string> = {
   'home.userCases.market.badEntry': 'That entry is not a valid case.',
   'home.userCases.market.installFailed': 'The case could not be installed.',
   'home.userCases.market.savedCopy':
-    'Showing the copy saved on {date}. Reload to ask the index again.'
+    'Showing the copy saved on {date}. Reload to ask the index again.',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': 'Larger than the {limit} MB per-file download limit',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs':
+    'Would take this job past its {limit} MB download total'
 }

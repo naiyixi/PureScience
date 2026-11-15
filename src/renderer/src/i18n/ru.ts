@@ -5238,5 +5238,8 @@ export const ru: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.badEntry': 'Эта запись не является корректным кейсом.',
   'home.userCases.market.installFailed': 'Этот кейс не удалось установить.',
   'home.userCases.market.savedCopy':
-    'Показана копия, сохранённая {date}. Обновите, чтобы снова запросить индекс.'
+    'Показана копия, сохранённая {date}. Обновите, чтобы снова запросить индекс.',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': 'Больше предела загрузки {limit} МБ на файл',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs':
+    'Превысит общий объём загрузки этой задачи ({limit} МБ)'
 }

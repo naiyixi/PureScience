@@ -137,14 +137,19 @@ describe('classifyFiles — max_file_mb threshold', () => {
     expect(result.left_on_remote[0]!.path).toBe('huge.bin')
     expect(result.left_on_remote[0]!.reason).toBe('exceeds_max_file_mb')
     expect(result.left_on_remote[0]!.size_mb).toBeCloseTo(200)
+    // The threshold travels with the entry: "over the limit" without the number tells a reader
+    // nothing about how far over, or which setting to raise.
+    expect(result.left_on_remote[0]!.limit_mb).toBe(100)
   })
 
-  it('uses default 100 MB when max_file_mb not configured', () => {
+  it('records the default per-file limit when max_file_mb is not configured', () => {
     const files: FileEntry[] = [file('big.csv', mb(101))]
     const outputs: OutputDeclaration[] = [{ glob: '*.csv', visibility: 'hidden' }]
     const result = classifyFiles(files, outputs, {}, new Set())
 
     expect(result.left_on_remote[0]!.reason).toBe('exceeds_max_file_mb')
+    // The default is a real limit in force for that job, so it is recorded like any other.
+    expect(result.left_on_remote[0]!.limit_mb).toBe(100)
   })
 })
 
@@ -171,6 +176,7 @@ describe('classifyFiles — max_total_mb threshold', () => {
     expect(result.left_on_remote).toHaveLength(1)
     expect(result.left_on_remote[0]!.path).toBe('c.csv')
     expect(result.left_on_remote[0]!.reason).toBe('exceeds_max_total_mb')
+    expect(result.left_on_remote[0]!.limit_mb).toBe(500)
   })
 
   it('preserves order when applying max_total_mb cutoff', () => {

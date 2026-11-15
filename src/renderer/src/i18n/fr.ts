@@ -5366,5 +5366,8 @@ export const fr: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.badEntry': 'Cette entrée n’est pas un cas valide.',
   'home.userCases.market.installFailed': 'Ce cas n’a pas pu être installé.',
   'home.userCases.market.savedCopy':
-    'Copie enregistrée le {date} affichée. Rechargez pour interroger l’index à nouveau.'
+    'Copie enregistrée le {date} affichée. Rechargez pour interroger l’index à nouveau.',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': 'Dépasse la limite de {limit} Mo par fichier',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs':
+    'Ferait dépasser le total de téléchargement de cette tâche ({limit} Mo)'
 }

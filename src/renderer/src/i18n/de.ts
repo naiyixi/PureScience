@@ -5397,5 +5397,9 @@ export const de: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.badEntry': 'Dieser Eintrag ist kein gültiger Fall.',
   'home.userCases.market.installFailed': 'Dieser Fall ließ sich nicht installieren.',
   'home.userCases.market.savedCopy':
-    'Angezeigt wird die am {date} gespeicherte Kopie. „Neu laden“ fragt den Index erneut.'
+    'Angezeigt wird die am {date} gespeicherte Kopie. „Neu laden“ fragt den Index erneut.',
+  'jobDetail.leftOnRemoteReasonFileLimitIs':
+    'Größer als die Download-Grenze von {limit} MB pro Datei',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs':
+    'Würde das Download-Gesamtbudget dieses Auftrags von {limit} MB überschreiten'
 }

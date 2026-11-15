@@ -5217,5 +5217,8 @@ export const ja: Partial<Record<ZhKey, string>> = {
   'home.userCases.market.badEntry': 'この項目は有効なケースではありません。',
   'home.userCases.market.installFailed': 'このケースはインストールできませんでした。',
   'home.userCases.market.savedCopy':
-    '{date} に保存されたコピーを表示しています。再読み込みで索引に問い合わせ直せます。'
+    '{date} に保存されたコピーを表示しています。再読み込みで索引に問い合わせ直せます。',
+  'jobDetail.leftOnRemoteReasonFileLimitIs':
+    '1 ファイルあたり {limit} MB のダウンロード上限を超えています',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': 'このジョブのダウンロード総量 {limit} MB を超えます'
 }

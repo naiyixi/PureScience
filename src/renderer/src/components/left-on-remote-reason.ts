@@ -15,16 +15,38 @@ const REASON_KEYS: Record<string, ZhKey> = {
   exceeds_max_total_mb: 'jobDetail.leftOnRemoteReasonTotalLimit'
 }
 
+// Two sentences exist for each limit reason: one that names the threshold, one that does not. The
+// second is not a fallback for a bug — entries harvested before the threshold was recorded carry no
+// `limit_mb`, and printing "100 MB" there would state a limit that was never in force for that job.
+const REASON_KEYS_WITH_LIMIT: Record<string, ZhKey> = {
+  exceeds_max_file_mb: 'jobDetail.leftOnRemoteReasonFileLimitIs',
+  exceeds_max_total_mb: 'jobDetail.leftOnRemoteReasonTotalLimitIs'
+}
+
+/**
+ * Sizes in this payload are already MB, so they are printed as MB rather than re-derived from bytes:
+ * at most one decimal, no trailing ".0". The file's size and the limit it ran into then come out in
+ * the same shape, which is the whole point of showing the limit at all.
+ */
+export const formatMegabytes = (megabytes: number): string => String(Number(megabytes.toFixed(1)))
+
 /**
  * Human-readable label for a `left_on_remote[].reason` value.
  *
  * Known reasons are translated through the dictionary; unknown ones fall through unchanged so a newer
- * harvest (or a hand-written payload) never has its reason silently swallowed.
+ * harvest (or a hand-written payload) never has its reason silently swallowed. When the entry recorded
+ * the threshold it ran into (`limitMb`), the sentence names it: "over the limit" without the number
+ * leaves the reader unable to tell how far over — or what to raise.
  */
 export const leftOnRemoteReasonLabel = (
   reason: string,
-  t: (key: ZhKey, vars?: Record<string, string | number>) => string
+  t: (key: ZhKey, vars?: Record<string, string | number>) => string,
+  limitMb?: number
 ): string => {
+  const withLimit = REASON_KEYS_WITH_LIMIT[reason]
+  if (withLimit && typeof limitMb === 'number' && Number.isFinite(limitMb)) {
+    return t(withLimit, { limit: formatMegabytes(limitMb) })
+  }
   const key = REASON_KEYS[reason]
   return key ? t(key) : reason
 }

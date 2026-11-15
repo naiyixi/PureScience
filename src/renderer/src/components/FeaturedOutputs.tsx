@@ -1,6 +1,6 @@
 import type { JobSummary } from '../../../shared/compute'
 import { useLanguage } from '@/i18n'
-import { leftOnRemoteReasonLabel } from './left-on-remote-reason'
+import { leftOnRemoteReasonLabel, formatMegabytes } from './left-on-remote-reason'
 
 // What a finished remote job actually produced, shown on the job it belongs to. The result payload already
 // carried three things no surface read: which outputs were featured, which files were left on the remote
@@ -72,7 +72,8 @@ export function FeaturedOutputs({ job }: { job: JobSummary }): React.JSX.Element
             <li key={entry.uri} className="break-all font-mono text-muted-foreground">
               {entry.uri}
               <span className="ml-2 font-sans">
-                {entry.size_mb} MB · {leftOnRemoteReasonLabel(entry.reason, t)}
+                {formatMegabytes(entry.size_mb)} MB ·{' '}
+                {leftOnRemoteReasonLabel(entry.reason, t, entry.limit_mb)}
               </span>
             </li>
           ))}

@@ -4871,7 +4871,9 @@ export const zh = {
   'home.userCases.market.incomplete': '包内文件对不上账，因此没有安装。',
   'home.userCases.market.badEntry': '这条不是合法的案例条目。',
   'home.userCases.market.installFailed': '这个案例安装不了。',
-  'home.userCases.market.savedCopy': '正在显示 {date} 保存的副本，刷新可再问一次索引。'
+  'home.userCases.market.savedCopy': '正在显示 {date} 保存的副本，刷新可再问一次索引。',
+  'jobDetail.leftOnRemoteReasonFileLimitIs': '超过单文件 {limit} MB 的下载上限',
+  'jobDetail.leftOnRemoteReasonTotalLimitIs': '会让本次作业的下载总量超过 {limit} MB'
 }
 
 export type ZhKey = keyof typeof zh
