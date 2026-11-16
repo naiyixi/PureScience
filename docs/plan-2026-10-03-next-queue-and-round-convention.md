@@ -19429,3 +19429,65 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
   并把读数记档，再按排期档 v2.27.0 第 2、3 条（`spctl` 验收、cask 去掉 `--no-quarantine`）收口；
 - ② 按完整 40 位 SHA 读 `c867118e` 的 Nightly / Windows Full Test 两条车道；
 - ③ 仍不碰别人正在写的九份 i18n 字典；下一单元继续取主进程/工具链方向（不需加 i18n 键的那种）。
+
+## 三百四十五、本轮追加（执行器，2026-11-17 00:4x–）—— 发版验收补上 Gatekeeper 自己的判决（`spctl` + `stapler`），把「有签名 ≠ 已公证」变成机器判据
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- `git fetch` 后 `origin/main = c867118e`；本地 `HEAD = 01b58d2f`（上一轮的发版验收命令，**仍未推**）
+  ⇒ 不是分叉，是「发版窗口里攒着没推」。
+- 工作区**仍带别人未提交的在制品**（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪的 `e2e/certification/connector-refusal-language.spec.ts`、
+  三份更早的未跟踪证据档）⇒ 一律不碰、不 stash、不提交；**因此本轮同样不能做要加 i18n 键的单元**。
+- `hermes cron list` 只有本任务一个执行器（`Last run` 22:42 那轮就是上一笔的实际执行者），
+  进程表里只有 5 天前起的常驻 `electron-vite dev`（launchd 无头实例）⇒ 无第二个执行体在跑。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无活；本单元取自排期档 v2.27.0 第 2 条那次立案的
+  「只能等第一笔 `Accepted`」——本轮把**判据**先做成可复跑的一条命令，读数仍等页。
+- 发版窗口：Release run `43849287714`（`4f26b9bd`）`Notarize + staple macos-arm64` 自 `15:33:49Z` 起
+  `in_progress`，`startedAt` 非空 ⇒ **拿到 runner 了，是长步骤，不是卡死**；3 小时上限落在 `18:33Z`。
+  本轮零推送（发版窗口），本地提交攒着。
+
+### 一 交付（`scripts/verify-release.mjs` +11 例；证据档 `docs/evidence/2026-11-17-release-gatekeeper-assessment.md`）
+
+- `parseGatekeeperAssessment`（纯函数）：解析 `spctl -a -t open --context context:primary-signature -vvv`
+  与 `xcrun stapler validate` 两段真实输出；`evaluateRelease` 增 `installerAssessments` /
+  `requireNotarized` / `gatekeeperSkipReason`；`main` 增 `--assess-installers` / `--require-notarized`。
+- **为什么值得做**：上一轮明确写着「不做 `codesign`/`spctl`/`stapler` 的真实性验证」，而排期档第 2 条的判据
+  恰恰是 OS 的判决。记录里的 `macSignature` 是流水线自陈，与 OS 判决**可以不一致**——Developer ID 在、
+  公证票没钉上就是中间那一档，而「有签名」被读成「已公证」正是这一版要防的失真。
+- 三类缺态各占一格且都不读成通过：**没问** / **本机问不了**（非 macOS、工具不在）/ **问了没有可判对象**
+  （页上无 mac dmg）。`stapler` 的 CloudKit 失败记 `unreadable`，**不许**记成「没有票」。
+
+### 二 真机读数（真实发布页、真实字节、两个方向）
+
+- `node scripts/verify-release.mjs v2.26.0 --assess-installers` ⇒ 两张 dmg 均
+  `rejected source=no usable signature` + `stapler validate=missing`，`VERDICT: accepted`、`EXIT=0`（4 warning）；
+- 同一条命令加 `--require-notarized` ⇒ 同样四条判 `FAIL`、`VERDICT: rejected`、`EXIT=1`。
+- **变异自证**：把严模式判据从「`accepted` 且 `source` 含 Notarized」降到「`accepted`」⇒ 只红
+  `accepts a signed-but-unstapled image only when notarization was required` 一条（其余 31 条仍绿）。
+
+### 三 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/verify-release.test.ts` | **1 file / 32 passed**（原 21，本轮 +11） |
+| `npm run typecheck:node` | 0 |
+| `npm run typecheck:web` | 0 |
+| `npx eslint --no-cache`（两个文件） | **0 error / 0 warning** |
+
+### 四 公证与车道读数（只记读数）
+
+- Release `43849287714`：`in_progress`，arm64 公证步骤 `15:33:49Z` 起在跑，`updated_at=15:33:29Z`；
+  其余作业（preflight / Verify / 四平台 build / x64 公证 12:39Z 完成）全 success。页仍未出现（Latest 仍是 v2.26.0）。
+- 按需派发的 `notary-status.yml`（run `43911423636`）**仍在 queued**（macOS runner 池被上面的公证作业占着）⇒
+  Apple 侧这一轮没有新判决，不据此下任何结论。
+- `c867118e` 的 Nightly / Windows Full Test 均 success（上一轮已按完整 40 位 SHA 读过）。
+
+### 五 边界与下一轮第一步
+
+- 本单元**没有窗口读数**（工具链，无界面）；资源读数空闲页 5,413（≈88 MB）、swap 可用 984 MB ⇒ 起不了窗口。
+- ① 页出现后立刻 `node scripts/verify-release.mjs v2.27.0 --assess-installers --require-notarized`，
+  三样（`accepted` / `source=Notarized Developer ID` / `stapler=valid`）齐了才动第 3 条；
+- ② 恢复推送时这一笔与 `01b58d2f` 一并推（`git log --oneline origin/main..HEAD` 会看到两笔，都是我的），
+  推后按完整 40 位 SHA 盯双车道；
+- ③ 若 `18:33Z` 到点仍无判决 ⇒ 记读数、**不 rerun**（rerun 会再提交一笔公证），把「等 Apple」写进汇报。

@@ -19,10 +19,11 @@
 // Usage:
 //   node scripts/verify-release.mjs v2.27.0
 //   node scripts/verify-release.mjs v2.27.0 --json --require-signed
+//   node scripts/verify-release.mjs v2.27.0 --assess-installers --require-notarized
 //   node scripts/verify-release.mjs nightly --allow-prerelease --min-body-bytes 0
 //
 // Exit code 0 only when every hard check passes.
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -97,6 +98,43 @@ export const readCertification = (record) => {
   }
 }
 
+// Gatekeeper's own verdict on a shipped installer, parsed from the two tools a user's Mac effectively
+// runs: `spctl -a -t open --context context:primary-signature` (assess the disk image) and
+// `xcrun stapler validate` (is a notarization ticket actually attached). Kept pure and separate from
+// the record's `macSignature`: the record is what the pipeline believed, this is what the OS says, and
+// the two can disagree — a Developer ID signature with no stapled ticket is exactly that case.
+// Nothing unreadable is ever reported as a pass: an empty or unrecognised output is `unreadable`.
+export const parseGatekeeperAssessment = ({
+  spctlStatus,
+  spctlStdout = '',
+  spctlStderr = '',
+  staplerStatus,
+  staplerStdout = '',
+  staplerStderr = ''
+}) => {
+  const spctlText = `${spctlStdout}\n${spctlStderr}`
+  const verdictMatch = spctlText
+    .split(/\r?\n/)
+    .map((line) => line.match(/^(.+?):\s+(accepted|rejected)\s*$/))
+    .find(Boolean)
+  // A tool that never ran has not answered anything: `spawnSync` reports status null when `spctl` is
+  // missing, and that must not be mistaken for an unrecognised answer from a tool that did run.
+  const ran = typeof spctlStatus === 'number'
+  const verdict = ran && verdictMatch ? verdictMatch[2] : 'unreadable'
+  const sourceMatch = spctlText.match(/^\s*source=(.+)$/m)
+  const source = sourceMatch ? sourceMatch[1].trim() : null
+
+  const staplerText = `${staplerStdout}\n${staplerStderr}`
+  let stapled = 'unreadable'
+  if (staplerStatus === 0 && /The validate action worked/i.test(staplerText)) {
+    stapled = 'valid'
+  } else if (/does not have a ticket|no ticket|not stapled/i.test(staplerText)) {
+    stapled = 'missing'
+  }
+
+  return { verdict, source, stapled }
+}
+
 // Pure evaluation: everything it needs is passed in, so the verdict is testable without a network.
 export const evaluateRelease = ({
   tag,
@@ -108,6 +146,9 @@ export const evaluateRelease = ({
   minBodyBytes = DEFAULT_MIN_BODY_BYTES,
   allowPrerelease = false,
   requireSigned = false,
+  requireNotarized = false,
+  installerAssessments = null,
+  gatekeeperSkipReason,
   certificationSkipReason,
   sha256SumsSkipReason
 }) => {
@@ -295,6 +336,55 @@ export const evaluateRelease = ({
     )
   }
 
+  // Gatekeeper's own verdict on the shipped installers. `--require-signed` above reads what the record
+  // claims; this reads what the OS decides, and only when the caller asked for it (it downloads the
+  // dmgs). Three shapes stay distinct: never asked, asked but this host cannot run spctl, and asked
+  // with nothing to assess — none of them is reported as a pass.
+  if (gatekeeperSkipReason) {
+    checks.push(check('gatekeeper-assessed', false, gatekeeperSkipReason, requireNotarized))
+  } else if (installerAssessments === null) {
+    checks.push(
+      check(
+        'gatekeeper-assessed',
+        !requireNotarized,
+        requireNotarized
+          ? 'no installer was assessed — Gatekeeper was never asked, so nothing here proves notarization'
+          : 'Gatekeeper was not asked to assess any installer (pass --assess-installers to add this reading)',
+        requireNotarized
+      )
+    )
+  } else if (installerAssessments.length === 0) {
+    checks.push(
+      check(
+        'gatekeeper-assessed',
+        false,
+        'no mac dmg was found on the page, so there was nothing to hand to spctl',
+        requireNotarized
+      )
+    )
+  } else {
+    for (const entry of installerAssessments) {
+      const notarized =
+        entry.verdict === 'accepted' && /Notarized Developer ID/i.test(entry.source ?? '')
+      checks.push(
+        check(
+          `gatekeeper:${entry.asset}`,
+          requireNotarized ? notarized : entry.verdict === 'accepted',
+          `${entry.verdict}${entry.source ? ` source=${entry.source}` : ''}`,
+          requireNotarized
+        )
+      )
+      checks.push(
+        check(
+          `stapled:${entry.asset}`,
+          entry.stapled === 'valid',
+          `stapler validate=${entry.stapled}`,
+          requireNotarized
+        )
+      )
+    }
+  }
+
   const failures = checks.filter((c) => !c.ok && c.hardFailure)
   const warnings = checks.filter((c) => !c.ok && !c.hardFailure)
   return { ok: failures.length === 0, tag, checks, failures, warnings }
@@ -314,7 +404,7 @@ const main = () => {
   const tag = argv[0] && !argv[0].startsWith('--') ? argv[0] : undefined
   if (!tag) {
     process.stderr.write(
-      'usage: node scripts/verify-release.mjs <tag> [--repo owner/name] [--json] [--allow-prerelease] [--require-signed] [--min-body-bytes N]\n'
+      'usage: node scripts/verify-release.mjs <tag> [--repo owner/name] [--json] [--allow-prerelease] [--require-signed] [--assess-installers] [--require-notarized] [--min-body-bytes N]\n'
     )
     process.exit(2)
   }
@@ -322,6 +412,8 @@ const main = () => {
   const asJson = argv.includes('--json')
   const allowPrerelease = argv.includes('--allow-prerelease')
   const requireSigned = argv.includes('--require-signed')
+  const requireNotarized = argv.includes('--require-notarized')
+  const assessInstallers = argv.includes('--assess-installers') || requireNotarized
   const minBodyBytes = Number(argumentValue(argv, '--min-body-bytes') ?? DEFAULT_MIN_BODY_BYTES)
 
   let release
@@ -393,6 +485,69 @@ const main = () => {
     rmSync(directory, { recursive: true, force: true })
   }
 
+  // Gatekeeper's verdict on the shipped mac installers, read from the bytes on the page rather than
+  // from the record. Only attempted when asked: it downloads each dmg (~150 MB per architecture).
+  let installerAssessments = null
+  let gatekeeperSkipReason
+  if (assessInstallers) {
+    if (process.platform !== 'darwin') {
+      installerAssessments = []
+      gatekeeperSkipReason = `this host is ${process.platform}; spctl and stapler validate only run on macOS, so nothing was assessed`
+    } else {
+      const dmgs = (release?.assets ?? [])
+        .map((asset) => asset.name)
+        .filter((name) => name.includes('-mac-') && name.endsWith('.dmg'))
+      installerAssessments = []
+      for (const name of dmgs) {
+        const work = mkdtempSync(join(tmpdir(), 'purescience-gatekeeper-'))
+        try {
+          run('gh', [
+            'release',
+            'download',
+            tag,
+            '--repo',
+            repo,
+            '--pattern',
+            name,
+            '--dir',
+            work,
+            '--clobber'
+          ])
+          const file = join(work, name)
+          // spawnSync, not the throwing helper: spctl answers "rejected" with exit 3 and that answer is
+          // the reading we came for, not an exception to swallow.
+          const spctl = spawnSync(
+            'spctl',
+            ['-a', '-t', 'open', '--context', 'context:primary-signature', '-vvv', file],
+            { encoding: 'utf8' }
+          )
+          const stapler = spawnSync('xcrun', ['stapler', 'validate', file], { encoding: 'utf8' })
+          installerAssessments.push({
+            asset: name,
+            ...parseGatekeeperAssessment({
+              spctlStatus: spctl.status,
+              spctlStdout: spctl.stdout ?? '',
+              spctlStderr: spctl.stderr ?? '',
+              staplerStatus: stapler.status,
+              staplerStdout: stapler.stdout ?? '',
+              staplerStderr: stapler.stderr ?? ''
+            })
+          })
+        } catch (error) {
+          installerAssessments.push({
+            asset: name,
+            verdict: 'unreadable',
+            source: null,
+            stapled: 'unreadable',
+            detail: `could not assess: ${String(error.message).split('\n')[0]}`
+          })
+        } finally {
+          rmSync(work, { recursive: true, force: true })
+        }
+      }
+    }
+  }
+
   const verdict = evaluateRelease({
     tag,
     release,
@@ -403,6 +558,9 @@ const main = () => {
     minBodyBytes,
     allowPrerelease,
     requireSigned,
+    requireNotarized,
+    installerAssessments,
+    gatekeeperSkipReason,
     certificationSkipReason,
     sha256SumsSkipReason
   })

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_MIN_BODY_BYTES,
   evaluateRelease,
+  parseGatekeeperAssessment,
   parseSha256Sums,
   planRequiredAssets,
   readCertification
@@ -301,5 +302,156 @@ describe('evaluateRelease', () => {
     })
     expect(verdict({ certification: noSignature }).ok).toBe(true)
     expect(verdict({ certification: noSignature, requireSigned: true }).ok).toBe(false)
+  })
+})
+
+// The two outputs below are what the tools actually print on this machine (accepted form read from a
+// notarized dmg, rejected form from an ad-hoc one); the parser must not be tuned to a cleaner shape
+// than the real one.
+const SPCTL_ACCEPTED = [
+  '/tmp/x.dmg: accepted',
+  'source=Notarized Developer ID',
+  'origin=Developer ID Application: Zerolink (ABCDE12345)'
+].join('\n')
+const SPCTL_REJECTED = ['/tmp/x.dmg: rejected', 'source=no usable signature'].join('\n')
+
+describe('parseGatekeeperAssessment', () => {
+  it('reads an accepted, notarized image with a stapled ticket', () => {
+    expect(
+      parseGatekeeperAssessment({
+        spctlStatus: 0,
+        spctlStdout: '',
+        spctlStderr: SPCTL_ACCEPTED,
+        staplerStatus: 0,
+        staplerStdout: 'Processing: /tmp/x.dmg\nThe validate action worked!\n',
+        staplerStderr: ''
+      })
+    ).toEqual({ verdict: 'accepted', source: 'Notarized Developer ID', stapled: 'valid' })
+  })
+
+  it('reads a rejected image and an unstapled ticket as two separate findings', () => {
+    expect(
+      parseGatekeeperAssessment({
+        spctlStatus: 3,
+        spctlStdout: '',
+        spctlStderr: SPCTL_REJECTED,
+        staplerStatus: 65,
+        staplerStdout: 'Processing: /tmp/x.dmg\nDoes not have a ticket stapled to it\n',
+        staplerStderr: ''
+      })
+    ).toEqual({ verdict: 'rejected', source: 'no usable signature', stapled: 'missing' })
+  })
+
+  it('reads empty output as unreadable rather than as a pass', () => {
+    expect(parseGatekeeperAssessment({ spctlStatus: 1, staplerStatus: 1 })).toEqual({
+      verdict: 'unreadable',
+      source: null,
+      stapled: 'unreadable'
+    })
+  })
+
+  it('does not read a tool that never ran as an answer', () => {
+    // spawnSync reports status null for a binary that is not installed; the text of a missing tool
+    // cannot be accepted just because it happens to contain the word "accepted" somewhere.
+    expect(
+      parseGatekeeperAssessment({
+        spctlStatus: null,
+        spctlStderr: SPCTL_ACCEPTED,
+        staplerStatus: null,
+        staplerStdout: 'The validate action worked!'
+      })
+    ).toEqual({ verdict: 'unreadable', source: 'Notarized Developer ID', stapled: 'unreadable' })
+  })
+
+  it('does not turn a failed ticket lookup into "no ticket"', () => {
+    // A network/tooling failure is a reading we do not have, not evidence the ticket is absent.
+    expect(
+      parseGatekeeperAssessment({
+        spctlStatus: 0,
+        spctlStderr: SPCTL_ACCEPTED,
+        staplerStatus: 1,
+        staplerStdout: 'Processing: /tmp/x.dmg\nCloudKit query failed.\nError: NSURLErrorDomain',
+        staplerStderr: ''
+      }).stapled
+    ).toBe('unreadable')
+  })
+
+  it('does not accept a zero exit without the tool’s own confirmation line', () => {
+    expect(
+      parseGatekeeperAssessment({ spctlStatus: 0, staplerStatus: 0, staplerStdout: '' }).stapled
+    ).toBe('unreadable')
+  })
+})
+
+describe('evaluateRelease with a Gatekeeper assessment', () => {
+  const dmgs = primary
+    .filter((entry) => entry.name.includes('-mac-') && entry.name.endsWith('.dmg'))
+    .map((entry) => entry.name)
+
+  const assessed = (
+    verdictName: 'accepted' | 'rejected' | 'unreadable',
+    source: string | null,
+    stapled: 'valid' | 'missing' | 'unreadable'
+  ): { asset: string; verdict: string; source: string | null; stapled: string }[] =>
+    dmgs.map((asset) => ({ asset, verdict: verdictName, source, stapled }))
+
+  const gatekeeperChecks = (result: { checks: { name: string; ok: boolean }[] }): string[] =>
+    result.checks.filter((c) => c.name.startsWith('gatekeeper:')).map((c) => c.name)
+
+  it('adds one reading per mac dmg, and stays silent when not asked', () => {
+    const notAsked = verdict()
+    expect(gatekeeperChecks(notAsked)).toHaveLength(0)
+    expect(notAsked.ok).toBe(true)
+    expect(notAsked.checks.some((c: { name: string }) => c.name === 'gatekeeper-assessed')).toBe(
+      true
+    )
+
+    const asked = verdict({
+      installerAssessments: assessed('accepted', 'Notarized Developer ID', 'valid')
+    })
+    expect(gatekeeperChecks(asked)).toEqual(dmgs.map((asset) => `gatekeeper:${asset}`))
+    expect(asked.ok).toBe(true)
+  })
+
+  it('fails a notarized-required release whose installers Gatekeeper rejects', () => {
+    const result = verdict({
+      installerAssessments: assessed('rejected', 'no usable signature', 'missing'),
+      requireNotarized: true
+    })
+    expect(result.ok).toBe(false)
+    expect(failing(result)).toContain(`gatekeeper:${dmgs[0]}`)
+    expect(failing(result)).toContain(`stapled:${dmgs[0]}`)
+  })
+
+  it('accepts a signed-but-unstapled image only when notarization was required', () => {
+    // Developer ID without a stapled ticket is the exact state a "signed" release used to hide.
+    const unstapled = assessed('accepted', 'Developer ID', 'missing')
+    expect(verdict({ installerAssessments: unstapled }).ok).toBe(true)
+    const strict = verdict({ installerAssessments: unstapled, requireNotarized: true })
+    expect(strict.ok).toBe(false)
+    expect(failing(strict)[0]).toMatch(/^gatekeeper:/)
+  })
+
+  it('refuses to pass a notarized-required release that was never assessed', () => {
+    const neverAsked = verdict({ requireNotarized: true })
+    expect(neverAsked.ok).toBe(false)
+    expect(failing(neverAsked)).toContain('gatekeeper-assessed')
+
+    const nothingOnPage = verdict({ installerAssessments: [], requireNotarized: true })
+    expect(nothingOnPage.ok).toBe(false)
+    expect(
+      nothingOnPage.checks.find((c: { name: string }) => c.name === 'gatekeeper-assessed')
+    ).toMatchObject({ ok: false })
+  })
+
+  it('names the host that cannot assess instead of reporting a pass', () => {
+    const result = verdict({
+      installerAssessments: [],
+      gatekeeperSkipReason: 'this host is linux; spctl and stapler validate only run on macOS',
+      requireNotarized: true
+    })
+    expect(result.ok).toBe(false)
+    const check = result.checks.find((c: { name: string }) => c.name === 'gatekeeper-assessed')
+    expect(check?.detail).toContain('only run on macOS')
   })
 })
