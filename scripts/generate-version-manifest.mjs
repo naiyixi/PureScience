@@ -13,6 +13,16 @@
 //
 // sha256 values come from the release's own SHA256SUMS.txt; every installer present in the
 // directory becomes a downloads entry keyed by the client's platformDownloadKey() values.
+//
+// CLI:
+//   node scripts/generate-version-manifest.mjs <artifacts-dir> [version] --github
+//     URLs under the release tag (the publish job; the asset the in-app UpdateService polls).
+//   node scripts/generate-version-manifest.mjs <artifacts-dir> [version] \
+//     --cdn-base <url> [--s3-prefix <prefix>] [--out <path>]
+//     URLs under the S3/CDN mirror (the website workflow). The base may also come from
+//     CDN_BASE_URL, the prefix from S3_PREFIX, the output path from OUTPUT. A mirrored run with no
+//     base at all fails instead of writing download URLs that point nowhere.
+//   version defaults to RELEASE_TAG, then GITHUB_REF_NAME (v-prefix stripped).
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,12 +32,18 @@ import { extractChangelogSection } from './release-notes.mjs'
 const GITHUB_REPO = 'naiyixi/PureScience'
 const HERE = dirname(fileURLToPath(import.meta.url))
 
-// Installer filename -> downloads key (matches electron-builder artifactName templates).
+// Installer filename -> downloads key (matches electron-builder artifactName templates). The linux
+// AppImage spells its arch `x86_64`, not `x64`: electron-builder substitutes `${arch}` from the
+// packaging arch, and for AppImage that is the uname form. Checked against every published release
+// from v1.75.0 to v2.27.0 (`zerolink-purescience-<v>-linux-x86_64.AppImage` in each). Getting this
+// wrong is silent by design — an unrecognized file only warns — so the manifest quietly lost the
+// AppImage entry and the client's linux fallback (src/shared/update.ts selectDownload) could never
+// fire.
 export const INSTALLERS = {
   'mac-arm64': (v) => `zerolink-purescience-${v}-mac-arm64.dmg`,
   'mac-x64': (v) => `zerolink-purescience-${v}-mac-x64.dmg`,
   'win-x64': (v) => `zerolink-purescience-${v}-win-x64-setup.exe`,
-  'linux-x64-appimage': (v) => `zerolink-purescience-${v}-linux-x64.AppImage`,
+  'linux-x64-appimage': (v) => `zerolink-purescience-${v}-linux-x86_64.AppImage`,
   'linux-x64-deb': (v) => `zerolink-purescience_${v}_amd64.deb`
 }
 
@@ -135,7 +151,7 @@ export const buildManifest = ({ dir, version, notes, releaseDate, cdnBase, prefi
       continue
     }
     downloads[key] = {
-      url: `${cdnBase}/${prefix}/releases/${version}/${file}`,
+      url: `${cdnBase}${prefix ? `/${prefix}` : ''}/releases/${version}/${file}`,
       size: statSync(join(dir, file)).size,
       sha256: sha
     }
@@ -205,40 +221,88 @@ export const resolveVersion = (argument, env = process.env) => {
   )
 }
 
-const main = async () => {
-  const args = process.argv.slice(2)
-  const github = args.includes('--github')
-  const dir = args.find((a) => !a.startsWith('--'))
-  const versionArg = args.filter((a) => !a.startsWith('--') && a !== dir)[0]
-  if (!dir) {
-    console.error('usage: generate-version-manifest.mjs <artifacts-dir> [version] [--github]')
-    process.exit(1)
+// Flags that consume the next argv element. Positional arguments are only the artifacts dir and the
+// optional version, so a value-taking flag has to be skipped rather than read as a positional —
+// otherwise `--out version.json` makes `version.json` look like the version.
+const VALUE_FLAGS = new Set(['--out', '--cdn-base', '--s3-prefix'])
+
+// Splits argv into positionals (dir, version) plus the named options and resolves their defaults.
+// Two modes: `--github` writes URLs under the release tag, the mirrored mode needs an explicit base
+// (and optional S3 prefix). The mirrored mode refuses to invent a base — a manifest whose download
+// URLs point nowhere is worse than a failed job, because the clients reading it are being told
+// "update available" at that moment.
+export const resolveManifestOptions = (args, env = process.env) => {
+  const positionals = []
+  const flags = {}
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]
+    if (VALUE_FLAGS.has(arg)) {
+      const value = args[i + 1]
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error(`${arg} needs a value`)
+      }
+      flags[arg.slice(2)] = value
+      i += 1
+    } else if (arg.startsWith('--')) {
+      flags[arg.slice(2)] = true
+    } else {
+      positionals.push(arg)
+    }
   }
+  const [dir, versionArg] = positionals
+  if (!dir) {
+    throw new Error(
+      'usage: generate-version-manifest.mjs <artifacts-dir> [version] [--github] [--out <path>] ' +
+        '[--cdn-base <url>] [--s3-prefix <prefix>]'
+    )
+  }
+  if (positionals.length > 2) {
+    throw new Error(`unexpected argument ${JSON.stringify(positionals[2])}`)
+  }
+  const text = (value) => String(value ?? '').trim()
+  const fromFlagOrEnv = (flag, key) =>
+    typeof flags[flag] === 'string' ? flags[flag] : text(env[key])
+  const github = flags.github === true
+  const cdnBase = fromFlagOrEnv('cdn-base', 'CDN_BASE_URL').replace(/\/+$/, '')
+  const prefix = fromFlagOrEnv('s3-prefix', 'S3_PREFIX').replace(/^\/+|\/+$/g, '')
+  const out = fromFlagOrEnv('out', 'OUTPUT')
+  if (!github && !cdnBase) {
+    throw new Error(
+      'the mirrored manifest needs a download base: pass --cdn-base <url> or set CDN_BASE_URL ' +
+        '(use --github for release-asset URLs). Refusing to write a manifest whose download URLs ' +
+        'would point nowhere.'
+    )
+  }
+  return { github, dir, versionArg, cdnBase, prefix, out: out || join(dir, 'version.json') }
+}
+
+const main = async () => {
+  let options
   let version
   try {
-    version = resolveVersion(versionArg)
+    options = resolveManifestOptions(process.argv.slice(2))
+    version = resolveVersion(options.versionArg)
   } catch (error) {
     console.error(`error: ${error instanceof Error ? error.message : String(error)}`)
     process.exit(1)
   }
-  const manifest = github
-    ? githubManifest(dir, version)
+  const manifest = options.github
+    ? githubManifest(options.dir, version)
     : buildManifest({
-        dir,
+        dir: options.dir,
         version,
         notes: manifestNotes(version),
         releaseDate: new Date().toISOString(),
-        cdnBase: 'https://github.com/naiyixi/PureScience/releases/download',
-        prefix: ''
+        cdnBase: options.cdnBase,
+        prefix: options.prefix
       })
   if (Object.keys(manifest.downloads).length === 0) {
-    console.error(`no installers for version ${version} found in ${dir}`)
+    console.error(`no installers for version ${version} found in ${options.dir}`)
     process.exit(1)
   }
-  const out = join(dir, 'version.json')
-  writeFileSync(out, JSON.stringify(manifest, null, 2) + '\n')
+  writeFileSync(options.out, JSON.stringify(manifest, null, 2) + '\n')
   console.log(
-    `==> ${out}: version=${version} platforms=${Object.keys(manifest.downloads).join(',')}`
+    `==> ${options.out}: version=${version} platforms=${Object.keys(manifest.downloads).join(',')}`
   )
 }
 

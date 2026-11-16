@@ -96,10 +96,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ref.outputs.tag }}
         run: |
+          # The script takes its inputs as arguments; the old env-only call (`node scripts/…
+          # generate-version-manifest.mjs` with DIST_DIR/VERSION/OUTPUT/CDN_BASE_URL/S3_PREFIX)
+          # exited 1 with `usage:`, so this path produced nothing at all. Pass the directory, the
+          # version and the mirror URL shape explicitly — the manifest's download URLs must point at
+          # the CDN, not at the release page, and must land where the upload step reads it.
+          if [ -z "${CDN_BASE_URL}" ]; then
+            echo "mirror not enabled: CDN_BASE_URL is unset, so a mirrored manifest would carry no" >&2
+            echo "usable download URLs. Set the repository variable CDN_BASE_URL (and S3_PREFIX)" >&2
+            echo "before using this workflow." >&2
+            exit 1
+          fi
           NOTES="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body)"
           RELEASE_DATE="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt)"
           export NOTES RELEASE_DATE
-          node scripts/generate-version-manifest.mjs
+          node scripts/generate-version-manifest.mjs "$DIST_DIR" "$VERSION" \
+            --cdn-base "$CDN_BASE_URL" --s3-prefix "$S3_PREFIX" --out "$OUTPUT"
 
       # electron-updater feed files (win latest.yml, linux latest-linux.yml, and the per-arch mac
       # feeds arm64-mac.yml / x64-mac.yml) must live at the channel root (a stable url the updater

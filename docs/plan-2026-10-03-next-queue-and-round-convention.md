@@ -19554,3 +19554,74 @@ PROBE2 entries=[{"uri":"ssh://biowulf/~/.purescience/jobs/probe-job-2/part2.resu
 - ② 把「门禁要求的字面量必须取自生产者自己的枚举」写成常驻口径（本轮教训），并在 `verify-release.mjs`
   头注里点名这一条。
 - ③ 恢复推送：把本地 5 笔 + 本轮这笔一并推，推前 `gh run list` 确认无在飞车道，推后按完整 40 位 SHA 盯双车道。
+
+## 三百四十七、本轮追加（执行器，2026-11-17 07:2x–）—— 清单里那行 AppImage：生产者写不出的键，消费方永远读不到
+
+### 〇 开工核对（防重做 + 并发 + 该谁做）
+
+- 上一轮收口后 `origin/main = 24a20513`，本地还压着两笔文档提交（`06e75820`、`c79694a8`）——本轮
+  先推这两笔（`24a20513..c79694a8`，pre-push 全过），再开工。
+- **上一笔的 CI 判决**：`24a20513` 的 `Windows Full Test` **success**、`Nightly` **failure**，失败作业是
+  `build / Build macos-x64`，**作业级注解**为
+  `The hosted runner lost communication with the server.`，卡在 `Install dependencies`（21:33→22:20）。
+  同一次 run 的另外三平台构建与 `build / Verify` 全 success ⇒ 判基础设施，非代码；已 `gh run rerun
+  --failed` 复跑取绿（Nightly 不是 Release，允许复跑，不会产生同名重复产物）。
+- 队列 B 段（A7 ✅ / S3 ✅ / M2 ⛔ 卡产品决定）仍无可做项；`docs/plan-2026-11-05-transcript-render-architecture.md`
+  已在 §三十五/§三十六 结案（本立项终点，不再取它的条目）。C 段外部阻塞。
+- 本轮取自仓库 **issue #20**（2026-09-30 立案的两处发布链缺口）：先核现状——两处**都还在**，且第一处
+  有已发布产物作证（`v2.27.0` 的 `version.json` 只有 4 个 platform 键，没有 `linux-x64-appimage`）。
+- 工作区仍带别人未提交的在制品（九份 i18n 字典、`main-message-catalog*`、`Connector{AddForm,ExportView,ImportView}`、
+  `background-delivery-labels*`、一支未跟踪的 e2e spec、三份更早的未跟踪证据档）⇒ 一个字节没碰。
+- `hermes cron list`：只有本任务一个执行器在跑（另一个是 `notarize-resume` 的无代理脚本）。
+
+### 一 交付（证据档 `docs/evidence/2026-11-17-release-manifest-and-mirror.md`）
+
+1. `scripts/generate-version-manifest.mjs`：`INSTALLERS['linux-x64-appimage']` 由 `-linux-x64.AppImage`
+   改为 `-linux-x86_64.AppImage`（electron-builder 在那里代的是 uname 形式的 arch；v1.75.0→v2.27.0 每个
+   发布页都是 `x86_64`）。写错的形态是**静默**的：只打一行 `warn: unrecognized release file`，作业照旧绿。
+2. 同文件新增 `resolveManifestOptions()`：位置参数仍 `<dir> [version]`，新增 `--out` / `--cdn-base` /
+   `--s3-prefix`（缺省回落 `OUTPUT` / `CDN_BASE_URL` / `S3_PREFIX`）；带值 flag 的值不再被当成 version；
+   **镜像模式没有 base 就具名失败**（旧代码硬编码 GitHub URL，prefix 为空时还会拼出 `…/download//releases/…`）。
+3. `buildManifest` 的 URL 在 prefix 为空时不再产生 `//`。
+4. `.github/workflows/mirror-to-website.yml`：按新契约调用脚本（`"$DIST_DIR" "$VERSION" --cdn-base …
+   --s3-prefix … --out "$OUTPUT"`），`CDN_BASE_URL` 为空先打三行具名原因再 `exit 1`。
+5. 用例 +11（42 总）：AppImage 键按真实名字产出、**旧错名仍被视为未识别**、生产者清单过客户端
+   `selectDownload` 能回落到 AppImage、空 prefix 单斜杠、`resolveManifestOptions` 八条（含「flag 值不当
+   version」「镜像无 base 拒绝」），以及三条**读真实工作流 YAML** 的断言（步内必须带 dir/version/三个 flag、
+   不许退回无参调用、无 base 必须具名拒绝）。
+
+### 二 读数（真发布资产 + 真脚本 + 产品自己的解析器）
+
+- `/tmp/rel2270` 下载 v2.27.0 全部 19 个资产（1.7 GB）后两种模式各跑一次：都产出
+  `platforms=linux-x64-appimage,mac-arm64,mac-x64,win-x64,linux-x64-deb`。
+- 五条逐项对账（清单 sha256/size ↔ 真文件字节 ↔ `SHA256SUMS.txt` ↔ GitHub API 的 asset size）**全 ok、
+  failures=0**；AppImage 308,696,035 字节 / `b122ae4f541b…`。
+- `selectDownload('linux')`：有 deb 回 deb；**去掉 deb 回落到 `-linux-x86_64.AppImage`**（修复前这一支永不命中）。
+- 变异自证：把文件名退回 `-linux-x64.AppImage` ⇒ 4 条红；把工作流里的 `--s3-prefix/--out` 去掉 ⇒ 1 条红。
+
+### 三 门禁（本机实跑）
+
+| 环 | 读数 |
+| --- | --- |
+| `npx vitest run scripts/generate-version-manifest.test.ts` | 1 file / **42 passed** |
+| `npx vitest run scripts/ --maxWorkers=4` | 43 files passed / 13 skipped；**557 passed / 17 skipped** |
+| `npx eslint --no-cache`（两个文件） | 0 error / 0 warning |
+| `npx prettier --check`（两个文件） | 通过 |
+| `npm run typecheck:node`（`--composite false`） | 0 |
+| `npm run typecheck:web` | 0 |
+
+### 四 边界与具名未办
+
+1. **「发布页清单里有 AppImage」要等下一次发版才能取**：本轮证明的是「真实资产喂给修好的脚本会产出该键且
+   与 `SHA256SUMS.txt`/API size 逐条一致」。发布页那半写明「待下一版确认」（issue #20 未关单）。
+2. **镜像工作流没有实跑**：仓库变量 `CDN_BASE_URL`/`S3_PREFIX` 与 S3 凭据都不存在（`gh api …/actions/variables`
+   只有 `PURESCIENCE_MAC_TEAM_ID`）⇒ 网站镜像尚未启用，派发会在新的具名原因处停住，且没有可写的桶。
+   启用前置写进证据档与 issue。
+3. 无界面/数据路径改动 ⇒ 无窗口读数（本单元是发布链工具）。
+
+### 五 下一轮第一步
+
+- ① 按完整 40 位 SHA 读本笔双车道；`24a20513` 的 Nightly 复跑判决一并收。
+- ② 下一单元候选（都不需要发版窗口、都不碰九份 i18n 字典）：issue #20 的第 2 条在「建站侧给出 CDN 基址」
+  之后才能派发；可先做的是 **`docs/evidence/` 里三份更早的未跟踪证据档**的归属确认（若属我方则补进台账，
+  否则不动），或按 `findTerminalUnharvested` 的选择条件反向扫 `0o` 那条链路上其它未落终态的本地产出路径。

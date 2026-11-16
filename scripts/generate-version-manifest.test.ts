@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { load } from 'js-yaml'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -11,21 +12,25 @@ import {
   manifestNotes,
   NOTES_FALLBACK,
   parseSha256Sums,
+  resolveManifestOptions,
   resolveVersion,
   VERSION_PATTERN
 } from './generate-version-manifest.mjs'
+import { selectDownload } from '../src/shared/update'
 
 const VERSION = '0.1.2'
 const CDN = 'https://cdn.example.com'
 const PREFIX = 'purescience'
 
 // The full set of installer filenames a complete release produces (matches electron-builder.yml
-// artifactName templates with the zerolink- prefix).
+// artifactName templates with the zerolink- prefix). The linux AppImage carries `x86_64` because
+// electron-builder substitutes the packaging arch there — every published release names it that way
+// (v1.75.0 … v2.27.0), and a near-miss here is silent: the file only warns as "unrecognized".
 const INSTALLERS = {
   'mac-arm64': `zerolink-purescience-${VERSION}-mac-arm64.dmg`,
   'mac-x64': `zerolink-purescience-${VERSION}-mac-x64.dmg`,
   'win-x64': `zerolink-purescience-${VERSION}-win-x64-setup.exe`,
-  'linux-x64-appimage': `zerolink-purescience-${VERSION}-linux-x64.AppImage`,
+  'linux-x64-appimage': `zerolink-purescience-${VERSION}-linux-x86_64.AppImage`,
   'linux-x64-deb': `zerolink-purescience_${VERSION}_amd64.deb`
 }
 
@@ -180,6 +185,73 @@ describe('buildManifest', () => {
     if (!deb) throw new Error('the fixture produced no linux-x64-deb entry')
     expect(manifest.downloads['linux-x64-deb'].sha256).toBe(deb.sha)
     expect(manifest.downloads['linux-x64-deb'].size).toBe(deb.content.length)
+  })
+
+  // The defect this pins (published v2.27.0): INSTALLERS asked for `-linux-x64.AppImage` while every
+  // release ships `-linux-x86_64.AppImage`, so the manifest shipped without the AppImage key and the
+  // client's linux fallback in selectDownload could never fire. The near-miss old name must stay
+  // unrecognized — otherwise the fix would accept both spellings and the typo would survive.
+  it('keys the linux AppImage by the name electron-builder actually writes', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    dir = makeReleaseDir([
+      entry('linux-x64-appimage', 1),
+      { name: `zerolink-purescience-${VERSION}-linux-x64.AppImage`, content: 'old', sha: HEX('2') }
+    ])
+
+    const manifest = buildManifest({
+      dir,
+      version: VERSION,
+      notes: '',
+      releaseDate: '',
+      cdnBase: CDN,
+      prefix: PREFIX
+    })
+
+    expect(manifest.downloads['linux-x64-appimage'].url).toBe(
+      `${CDN}/${PREFIX}/releases/${VERSION}/zerolink-purescience-${VERSION}-linux-x86_64.AppImage`
+    )
+    // Only one entry: the mis-spelled name was not silently accepted as the same key.
+    expect(Object.keys(manifest.downloads)).toEqual(['linux-x64-appimage'])
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('linux-x64.AppImage'))
+    warn.mockRestore()
+  })
+
+  // Producer -> consumer: the manifest this script writes is the one the app reads. With the deb
+  // absent, the client must fall back to the AppImage — the branch that was unreachable while the
+  // producer never emitted that key.
+  it('produces a manifest the client can fall back to the AppImage from', () => {
+    dir = makeReleaseDir([entry('linux-x64-appimage', 3)])
+
+    const manifest = buildManifest({
+      dir,
+      version: VERSION,
+      notes: '',
+      releaseDate: '',
+      cdnBase: CDN,
+      prefix: PREFIX
+    })
+
+    expect(manifest.downloads['linux-x64-deb']).toBeUndefined()
+    const picked = selectDownload(manifest, 'linux', 'x64')
+    expect(picked?.url).toContain('linux-x86_64.AppImage')
+  })
+
+  it('keeps a single slash when the mirror has no path prefix', () => {
+    dir = makeReleaseDir([entry('mac-arm64', 1)])
+
+    const manifest = buildManifest({
+      dir,
+      version: VERSION,
+      notes: '',
+      releaseDate: '',
+      cdnBase: CDN,
+      prefix: ''
+    })
+
+    expect(manifest.downloads['mac-arm64'].url).toBe(
+      `${CDN}/releases/${VERSION}/${INSTALLERS['mac-arm64']}`
+    )
+    expect(manifest.downloads['mac-arm64'].url).not.toContain('//releases')
   })
 
   it('omits a platform whose installer is missing', () => {
@@ -341,6 +413,88 @@ describe('resolveVersion', () => {
   })
 })
 
+// The mirror workflow used to call this CLI with env vars only (DIST_DIR/VERSION/OUTPUT/CDN_BASE_URL/
+// S3_PREFIX) and no arguments, which the argument-parsing main() answered with `usage:` and exit 1 —
+// so the website mirror step produced no manifest at all. These pin the argument contract it now uses.
+describe('resolveManifestOptions', () => {
+  it('reads the artifacts dir and version positionally, the mirror URL shape from flags', () => {
+    expect(
+      resolveManifestOptions(
+        [
+          'dist-assets',
+          '1.76.1',
+          '--cdn-base',
+          'https://cdn.example.com/',
+          '--s3-prefix',
+          'ps',
+          '--out',
+          'version.json'
+        ],
+        {}
+      )
+    ).toEqual({
+      github: false,
+      dir: 'dist-assets',
+      versionArg: '1.76.1',
+      cdnBase: 'https://cdn.example.com',
+      prefix: 'ps',
+      out: 'version.json'
+    })
+  })
+
+  it('does not mistake a flag value for the version', () => {
+    // `--out version.json` as the second flag argument: a naive `args.find(!startsWith('--'))` would
+    // take `version.json` as the version and then reject it as "not a version number".
+    const options = resolveManifestOptions(
+      ['artifacts', '--out', 'dist/version.json', '--github'],
+      { GITHUB_REF_NAME: 'v1.76.1' }
+    )
+    expect(options.versionArg).toBeUndefined()
+    expect(options.out).toBe('dist/version.json')
+    expect(options.github).toBe(true)
+  })
+
+  it('falls back to the env vars the workflow exports', () => {
+    const options = resolveManifestOptions(['dist-assets', '1.76.1'], {
+      CDN_BASE_URL: 'https://cdn.example.com',
+      S3_PREFIX: '/ps/',
+      OUTPUT: 'version.json'
+    })
+    expect(options).toMatchObject({
+      cdnBase: 'https://cdn.example.com',
+      prefix: 'ps',
+      out: 'version.json'
+    })
+  })
+
+  it('defaults the output into the artifacts directory', () => {
+    const options = resolveManifestOptions(['dist-assets', '1.76.1', '--github'], {})
+    expect(options.out).toBe(join('dist-assets', 'version.json'))
+  })
+
+  // Fail closed: a mirrored manifest with no base would carry URLs like `/releases/1.0.0/x.dmg`,
+  // which every client reads as "update available" and then fails to download.
+  it('refuses a mirrored manifest with no download base', () => {
+    expect(() => resolveManifestOptions(['dist-assets', '1.76.1'], {})).toThrow(
+      /mirrored manifest needs a download base/
+    )
+  })
+
+  it('does not demand a base in --github mode, where the URL comes from the tag', () => {
+    expect(resolveManifestOptions(['artifacts', '1.76.1', '--github'], {}).github).toBe(true)
+  })
+
+  it('reports a flag that is missing its value instead of consuming the next argument', () => {
+    expect(() => resolveManifestOptions(['dist-assets', '--github', '--cdn-base'], {})).toThrow(
+      /--cdn-base needs a value/
+    )
+  })
+
+  it('still prints usage when the artifacts directory is missing', () => {
+    expect(() => resolveManifestOptions([], {})).toThrow(/usage: generate-version-manifest/)
+  })
+})
+
 // The publish job runs this CLI and judges it on `$?`, so the exit code is the contract worth pinning
 // from a real process. On the v1.76.1 manual dispatch (ref = main, tag = v1.76.1, release_tag=input)
 // the job died here with "no installers for version main found in artifacts".
@@ -431,5 +585,87 @@ describe('CLI', () => {
 
     expect(result.status).toBe(0)
     expect(JSON.parse(readFileSync(join(dir, 'version.json'), 'utf8')).version).toBe('1.76.1')
+  })
+
+  // The mirror workflow's step, verbatim: positional dir + version, mirror URL shape from flags, and
+  // the manifest written where the upload step reads it (not into the artifacts dir).
+  it('writes the mirrored manifest with CDN urls to the requested output path', () => {
+    const releaseDir = makeReleaseDir([
+      ...RELEASE_1_76_1,
+      {
+        name: 'zerolink-purescience-1.76.1-linux-x86_64.AppImage',
+        content: 'appimage',
+        sha: HEX('4')
+      }
+    ])
+    dir = releaseDir
+    const out = join(releaseDir, 'mirror-version.json')
+
+    const result = runCli(
+      [releaseDir, '1.76.1', '--cdn-base', CDN, '--s3-prefix', PREFIX, '--out', out],
+      {
+        CDN_BASE_URL: '',
+        OUTPUT: ''
+      }
+    )
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    const manifest = JSON.parse(readFileSync(out, 'utf8'))
+    expect(Object.keys(manifest.downloads).sort()).toEqual([
+      'linux-x64-appimage',
+      'mac-arm64',
+      'mac-x64',
+      'win-x64'
+    ])
+    expect(manifest.downloads['linux-x64-appimage'].url).toBe(
+      `${CDN}/${PREFIX}/releases/1.76.1/zerolink-purescience-1.76.1-linux-x86_64.AppImage`
+    )
+    // The default location stays untouched — the upload step reads the --out path.
+    expect(() => readFileSync(join(releaseDir, 'version.json'), 'utf8')).toThrow()
+  })
+
+  it('fails with a named message instead of writing a manifest without a download base', () => {
+    const releaseDir = makeReleaseDir(RELEASE_1_76_1)
+    dir = releaseDir
+
+    const result = runCli([releaseDir, '1.76.1'], { CDN_BASE_URL: '', OUTPUT: '' })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toMatch(/mirrored manifest needs a download base/)
+    expect(() => readFileSync(join(releaseDir, 'version.json'), 'utf8')).toThrow()
+  })
+})
+
+// The other half of the same gap: the workflow step has to *call* the CLI the way the CLI now takes
+// its inputs. Pinning the YAML keeps a future edit from quietly going back to env-only invocation,
+// which reads as "the step exists" while producing nothing.
+describe('mirror workflow step', () => {
+  const stepRun = (): string => {
+    const workflow = load(
+      readFileSync(join(process.cwd(), '.github', 'workflows', 'mirror-to-website.yml'), 'utf8')
+    ) as { jobs: Record<string, { steps?: { name?: string; run?: string }[] }> }
+    const steps = Object.values(workflow.jobs).flatMap((job) => job.steps ?? [])
+    const step = steps.find((candidate) => candidate.name === 'Generate version.json')
+    if (!step?.run) throw new Error('the mirror workflow lost its "Generate version.json" step')
+    return step.run
+  }
+
+  it('passes the artifacts dir, the version and the mirror url flags to the CLI', () => {
+    const run = stepRun()
+    expect(run).toMatch(/generate-version-manifest\.mjs "\$DIST_DIR" "\$VERSION"/)
+    expect(run).toContain('--cdn-base "$CDN_BASE_URL"')
+    expect(run).toContain('--s3-prefix "$S3_PREFIX"')
+    expect(run).toContain('--out "$OUTPUT"')
+  })
+
+  it('does not invoke the CLI with no arguments (the shape that produced nothing)', () => {
+    // A bare `node scripts/generate-version-manifest.mjs` line exits 1 with `usage:` — it must not
+    // come back as the whole invocation.
+    expect(stepRun()).not.toMatch(/generate-version-manifest\.mjs\s*$/m)
+  })
+
+  it('refuses to run without a CDN base instead of writing unreachable download urls', () => {
+    expect(stepRun()).toMatch(/CDN_BASE_URL is unset/)
   })
 })
