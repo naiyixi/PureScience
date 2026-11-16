@@ -11,6 +11,7 @@ import {
   artifactVersion,
   assertPackagedResources,
   describeSmokeFailure,
+  describeSignatureReading,
   describeStartupPhases,
   describeStartupTimeout,
   extractStartupPhases,
@@ -56,6 +57,50 @@ const runSmokeScript = (args: string[]): Promise<{ exitCode: number | null; stde
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { force: true, recursive: true })))
+})
+
+describe('describeSignatureReading', () => {
+  it('does not answer "unsigned" when the step was given no expected team to attribute against', () => {
+    // The real v2.27.0 job line: TeamIdentifier present, `signed` false because PURESCIENCE_MAC_TEAM_ID
+    // was not exported into the smoke step. Printing that as `signed=false` invites a false defect.
+    const line = describeSignatureReading({
+      identifier: 'com.zerolink.purescience',
+      teamIdentifier: 'UGQZPJ74DF',
+      signerTeam: 'UGQZPJ74DF',
+      teamIdExpectation: 'not-configured',
+      signed: false
+    })
+    expect(line).toContain('TeamIdentifier=UGQZPJ74DF')
+    expect(line).toContain('signed=not-compared')
+    expect(line).toContain('signer=UGQZPJ74DF')
+    expect(line).not.toContain('signed=false')
+  })
+
+  it('answers signed=true only when the signer matches the expected team', () => {
+    expect(
+      describeSignatureReading({
+        identifier: 'com.zerolink.purescience',
+        teamIdentifier: 'UGQZPJ74DF',
+        signerTeam: 'UGQZPJ74DF',
+        teamIdExpectation: 'configured',
+        signed: true
+      })
+    ).toContain('signed=true')
+    expect(
+      describeSignatureReading({
+        identifier: 'com.zerolink.purescience',
+        teamIdentifier: 'OTHER99999',
+        signerTeam: 'OTHER99999',
+        teamIdExpectation: 'configured',
+        signed: false
+      })
+    ).toContain('signed=false')
+  })
+
+  it('names a missing bundle reading instead of printing undefined', () => {
+    expect(describeSignatureReading(undefined)).toContain('Identifier=<none>')
+    expect(describeSignatureReading(undefined)).not.toContain('undefined')
+  })
 })
 
 describe('macOS package smoke', () => {

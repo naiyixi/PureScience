@@ -441,6 +441,20 @@ const smokeAppBundle = async ({
   await launchAndProbe({ executable, expectedVersion, env, userDataRoot, label })
 }
 
+// A printed reading that says `signed=false` when no expected team was configured reads as "this bundle
+// is unsigned" — measured the hard way: the notarized v2.27.0 job printed
+// `TeamIdentifier=UGQZPJ74DF signed=false` and that line was one step from being reported as a defect.
+// Attribution is only decidable against an expected team, so the line says which question was asked
+// instead of answering a different one.
+export const describeSignatureReading = (reading) => {
+  const team = reading?.teamIdentifier ?? '<none>'
+  const attribution =
+    reading?.teamIdExpectation === 'configured'
+      ? `signed=${reading?.signed === true}`
+      : `signed=not-compared (no expected team in this step; signer=${reading?.signerTeam ?? '<none>'})`
+  return `Identifier=${reading?.identifier ?? '<none>'} TeamIdentifier=${team} ${attribution}`
+}
+
 // The shipped bytes' signing state, written where the certification-evidence step can read it
 // (issue #19). Read from the ZIP's own bundle — the artifact the mac updater replaces in place — so
 // the recorded state describes what a user installs, not what the build directory happened to hold.
@@ -448,10 +462,7 @@ const writeSignatureReading = async (path, { artifact, source, bundle }) => {
   const reading = readMacBundleSignature(bundle, { artifact, source })
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, `${JSON.stringify(reading, null, 2)}\n`, 'utf8')
-  console.log(
-    `macOS signature reading (${source}): Identifier=${reading.identifier ?? '<none>'} ` +
-      `TeamIdentifier=${reading.teamIdentifier ?? '<none>'} signed=${reading.signed}`
-  )
+  console.log(`macOS signature reading (${source}): ${describeSignatureReading(reading)}`)
   return reading
 }
 
